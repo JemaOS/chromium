@@ -6,15 +6,12 @@
 #define CHROME_TEST_BASE_BROWSER_WITH_TEST_WINDOW_TEST_H_
 
 #include <memory>
-#include <vector>
 
 #include "base/compiler_specific.h"
 #include "base/memory/raw_ptr.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/performance_manager/test_support/test_user_performance_tuning_manager_environment.h"
-#include "chrome/browser/profiles/profile_manager.h"
-#include "chrome/browser/profiles/profile_observer.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/test/base/test_browser_window.h"
 #include "chrome/test/base/testing_profile.h"
@@ -31,12 +28,9 @@
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/test/ash_test_helper.h"
 #include "ash/test/ash_test_views_delegate.h"
-#include "base/scoped_observation.h"
-#include "chrome/browser/ash/app_mode/kiosk_chrome_app_manager.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
 #include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
 #include "chromeos/ash/components/install_attributes/stub_install_attributes.h"
-#include "components/user_manager/fake_user_manager.h"
-#include "components/user_manager/scoped_user_manager.h"
 #else
 #include "ui/views/test/scoped_views_test_helper.h"
 #endif
@@ -50,6 +44,7 @@ class GURL;
 
 namespace chromeos {
 class ScopedLacrosServiceTestHelper;
+class TabletState;
 }  // namespace chromeos
 
 namespace content {
@@ -60,6 +55,10 @@ class NavigationController;
 namespace crosapi {
 class CrosapiManager;
 }
+
+namespace user_manager {
+class ScopedUserManager;
+}  // namespace user_manager
 #endif
 
 class TestingProfileManager;
@@ -86,7 +85,7 @@ class TestingProfileManager;
 //
 // Subclasses must invoke BrowserWithTestWindowTest::SetUp as it is responsible
 // for creating the various objects of this class.
-class BrowserWithTestWindowTest : public testing::Test, public ProfileObserver {
+class BrowserWithTestWindowTest : public testing::Test {
  public:
   // Trait which requests construction of a hosted app.
   struct HostedApp {};
@@ -104,9 +103,11 @@ class BrowserWithTestWindowTest : public testing::Test, public ProfileObserver {
   // Creates a BrowserWithTestWindowTest with zero or more traits. By default
   // the initial window will be a tabbed browser created on the native desktop,
   // which is not a hosted app.
-  template <typename... TaskEnvironmentTraits>
-    requires base::trait_helpers::AreValidTraits<ValidTraits,
-                                                 TaskEnvironmentTraits...>
+  template <
+      typename... TaskEnvironmentTraits,
+      class CheckArgumentsAreValid = std::enable_if_t<
+          base::trait_helpers::AreValidTraits<ValidTraits,
+                                              TaskEnvironmentTraits...>::value>>
   NOINLINE explicit BrowserWithTestWindowTest(TaskEnvironmentTraits... traits)
       : BrowserWithTestWindowTest(
             std::make_unique<content::BrowserTaskEnvironment>(
@@ -126,20 +127,12 @@ class BrowserWithTestWindowTest : public testing::Test, public ProfileObserver {
   void SetUp() override;
   void TearDown() override;
 
-  // Set up process for `profile_manager_`. If a `profile_manager` is supplied,
-  // it will be set as the underlying profile manager that `profile_manager_`
-  // uses, aka `profile_manager_->profile_manager()`. This can only be called
-  // before ::SetUp().
-  void SetUpProfileManager(
-      const base::FilePath& profiles_path = base::FilePath(),
-      std::unique_ptr<ProfileManager> profile_manager = nullptr);
-
  protected:
   BrowserWindow* window() const { return window_.get(); }
 
   Browser* browser() const { return browser_.get(); }
   void set_browser(Browser* browser) { browser_.reset(browser); }
-  std::unique_ptr<Browser> release_browser() { return std::move(browser_); }
+  [[nodiscard]] Browser* release_browser() { return browser_.release(); }
 
   TestingProfile* profile() const { return profile_; }
 
@@ -155,13 +148,12 @@ class BrowserWithTestWindowTest : public testing::Test, public ProfileObserver {
     return &test_url_loader_factory_;
   }
 
-  std::unique_ptr<BrowserWindow> release_browser_window() {
-    return std::move(window_);
+  [[nodiscard]] BrowserWindow* release_browser_window() {
+    return window_.release();
   }
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   ash::AshTestHelper* ash_test_helper() { return &ash_test_helper_; }
-  user_manager::FakeUserManager* user_manager() { return user_manager_.Get(); }
 #endif
 
   // The context to help determine desktop type when creating new Widgets.
@@ -190,30 +182,17 @@ class BrowserWithTestWindowTest : public testing::Test, public ProfileObserver {
                                            const GURL& url,
                                            const std::u16string& title);
 
-  // Returns the profile name used for the profile created in SetUp() by
-  // default.
-  // Subclasses can override to change the profile name.
-  virtual std::string GetDefaultProfileName();
-
   // Creates the profile used by this test. The caller doesn't own the return
   // value.
-  virtual TestingProfile* CreateProfile(const std::string& profile_name);
-
-  // Deletes the specified profile.
-  // If `profile_name` is the one returned from GetDefaultProfileName(),
-  // because this instance creates Browser for the profile in SetUp() and keeps
-  // it in a member, the Browser instance will also be destroyed to avoid leak.
-  virtual void DeleteProfile(const std::string& profile_name);
+  virtual TestingProfile* CreateProfile();
 
   // Returns a vector of testing factories to be used when creating the profile.
   // This is only used by CreateProfile(), and will be irrelevant if that
   // method is overridden.
   virtual TestingProfile::TestingFactories GetTestingFactories();
 
-  // Creates the BrowserWindow used by this test. Subclasses can provide their
-  // own test BrowserWindow. If the provided BrowserWindow is null then Browser
-  // will create a production BrowserWindow and the subclass is responsible for
-  // cleaning it up (usually by NativeWidget destruction).
+  // Creates the BrowserWindow used by this test. Can return NULL to use the
+  // default window created by Browser.
   virtual std::unique_ptr<BrowserWindow> CreateBrowserWindow();
 
   // Creates the browser given |profile|, |browser_type|, |hosted_app|, and
@@ -233,22 +212,7 @@ class BrowserWithTestWindowTest : public testing::Test, public ProfileObserver {
   }
 #endif
 
-#if BUILDFLAG(IS_CHROMEOS)
-  // Logs in an User as `email`.
-  virtual void LogIn(const std::string& email);
-#endif
-
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  // Handles the post-process for the newly created Profile.
-  // Expected to be called on customizing CreateProfile for ash.
-  virtual void OnUserProfileCreated(const std::string& email, Profile* profile);
-
-  // Switches the active user to the one specified by the email.
-  virtual void SwitchActiveUser(const std::string& email);
-
-  // ProfileObserver:
-  void OnProfileWillBeDestroyed(Profile* profile) override;
-
   ash::ScopedCrosSettingsTestHelper* GetCrosSettingsHelper();
   ash::StubInstallAttributes* GetInstallAttributes();
 #endif
@@ -271,16 +235,12 @@ class BrowserWithTestWindowTest : public testing::Test, public ProfileObserver {
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   ash::ScopedCrosSettingsTestHelper cros_settings_test_helper_;
-  user_manager::TypedScopedUserManager<user_manager::FakeUserManager>
-      user_manager_;
-  std::vector<
-      std::unique_ptr<base::ScopedObservation<Profile, ProfileObserver>>>
-      profile_observations_;
+  std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
   std::unique_ptr<crosapi::CrosapiManager> manager_;
-  std::unique_ptr<ash::KioskChromeAppManager> kiosk_chrome_app_manager_;
+  std::unique_ptr<ash::KioskAppManager> kiosk_app_manager_;
 #endif
 
-  raw_ptr<TestingProfile, AcrossTasksDanglingUntriaged> profile_ = nullptr;
+  raw_ptr<TestingProfile> profile_ = nullptr;
 
   // test_url_loader_factory_ is declared before profile_manager_
   // to guarantee it outlives any profiles that might use it.
@@ -298,6 +258,10 @@ class BrowserWithTestWindowTest : public testing::Test, public ProfileObserver {
   std::unique_ptr<views::ScopedViewsTestHelper> views_test_helper_ =
       std::make_unique<views::ScopedViewsTestHelper>(
           std::make_unique<ChromeTestViewsDelegate<>>());
+#endif
+
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+  std::unique_ptr<chromeos::TabletState> tablet_state_;
 #endif
 
   // The existence of this object enables tests via RenderViewHostTester.

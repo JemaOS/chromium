@@ -8,18 +8,18 @@
 #include <list>
 
 #include "ash/ash_export.h"
-#include "ash/system/notification_center/notification_center_tray.h"
 #include "ash/system/tray/tray_background_view.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 
 namespace ash {
 
+class NotificationCenterTray;
+
 // This class controls the animation sequence that runs when the notification
 // center tray's visibility changes.
 class ASH_EXPORT StatusAreaAnimationController
-    : public TrayBackgroundView::Observer,
-      public NotificationCenterTray::Observer {
+    : public TrayBackgroundView::Observer {
  public:
   explicit StatusAreaAnimationController(
       NotificationCenterTray* notification_center_tray);
@@ -27,9 +27,6 @@ class ASH_EXPORT StatusAreaAnimationController
   StatusAreaAnimationController& operator=(
       const StatusAreaAnimationController&) = delete;
   ~StatusAreaAnimationController() override;
-
-  // Returns true if the "hide" animation is scheduled to run, false otherwise.
-  bool is_hide_animation_scheduled() { return is_hide_animation_scheduled_; }
 
  private:
   // Starts running the visibility animation sequence. This will be the "show"
@@ -50,11 +47,8 @@ class ASH_EXPORT StatusAreaAnimationController
   // without animating any changes.
   void ImmediatelyUpdateTrayItemVisibilities();
 
-  // TrayBackgroundView::Observer:
+  // ash::TrayBackgroundView::Observer:
   void OnVisiblePreferredChanged(bool visible_preferred) override;
-
-  // NotificationCenterTray::Observer:
-  void OnAllTrayItemsAdded() override;
 
   // A `base::ScopedClosureRunner` that, when run, re-enables default visibility
   // animations for `NotificationCenterTray`. Note that this should not be run
@@ -69,10 +63,7 @@ class ASH_EXPORT StatusAreaAnimationController
   // are currently disabled.
   std::list<base::ScopedClosureRunner>
       notification_center_tray_item_animation_enablers_;
-  raw_ptr<NotificationCenterTray> notification_center_tray_;
-
-  // Whether the "hide" animation is scheduled to be run.
-  bool is_hide_animation_scheduled_ = false;
+  raw_ptr<NotificationCenterTray, ExperimentalAsh> notification_center_tray_;
 
   base::WeakPtrFactory<StatusAreaAnimationController> weak_factory_{this};
 };

@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {dp} = await testRunner.startBlank(
     `Verifies that redirects to a cached URL do not produce extra info events\n`);
 

@@ -151,9 +151,7 @@ class IdentifiabilityStudyHelper final {
     execution_context_ = context;
   }
 
-  ExecutionContext* execution_context() const {
-    return execution_context_.Get();
-  }
+  ExecutionContext* execution_context() const { return execution_context_; }
 
   // For testing, allows scoped changing the max number of operations for all
   // IdentifiabilityStudyHelper instances.

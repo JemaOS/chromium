@@ -13,9 +13,9 @@ namespace hud_display {
 
 // Draws CPU graphs;
 class CpuGraphPageView : public GraphPageViewBase {
-  METADATA_HEADER(CpuGraphPageView, GraphPageViewBase)
-
  public:
+  METADATA_HEADER(CpuGraphPageView);
+
   explicit CpuGraphPageView(const base::TimeDelta refresh_interval);
   CpuGraphPageView(const CpuGraphPageView&) = delete;
   CpuGraphPageView& operator=(const CpuGraphPageView&) = delete;

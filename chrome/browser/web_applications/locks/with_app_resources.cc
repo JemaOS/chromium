@@ -11,15 +11,6 @@ namespace web_app {
 
 WithAppResources::~WithAppResources() = default;
 
-ExtensionsManager& WithAppResources::extensions_manager() {
-  CHECK(lock_manager_);
-  return lock_manager_->provider().extensions_manager();
-}
-IsolatedWebAppInstallationManager&
-WithAppResources::isolated_web_app_installation_manager() {
-  CHECK(lock_manager_);
-  return lock_manager_->provider().isolated_web_app_installation_manager();
-}
 WebAppRegistrar& WithAppResources::registrar() {
   CHECK(lock_manager_);
   return lock_manager_->provider().registrar_unsafe();

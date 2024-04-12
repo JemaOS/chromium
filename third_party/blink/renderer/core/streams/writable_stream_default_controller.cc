@@ -7,7 +7,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/script_value.h"
 #include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_writable_stream_default_controller.h"
-#include "third_party/blink/renderer/core/dom/abort_controller.h"
+#include "third_party/blink/renderer/core/dom/abort_signal.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/streams/miscellaneous_operations.h"
 #include "third_party/blink/renderer/core/streams/promise_handler.h"
@@ -25,8 +25,9 @@ WritableStreamDefaultController* WritableStreamDefaultController::From(
     ScriptState* script_state,
     ScriptValue controller) {
   CHECK(controller.IsObject());
-  auto* controller_impl = V8WritableStreamDefaultController::ToWrappable(
-      script_state->GetIsolate(), controller.V8Value().As<v8::Object>());
+  auto* controller_impl =
+      V8WritableStreamDefaultController::ToImplWithTypeCheck(
+          script_state->GetIsolate(), controller.V8Value().As<v8::Object>());
   CHECK(controller_impl);
   return controller_impl;
 }
@@ -104,8 +105,9 @@ void WritableStreamDefaultController::SetUp(
   // Step not needed because queue is initialised during construction.
   //  5. Perform ! ResetQueue(controller).
 
-  //  6. Set controller.[[abortController]] to a new AbortController.
-  controller->abort_controller_ = AbortController::Create(script_state);
+  //  6. Set controller.[[signal]] to a new AbortSignal.
+  controller->signal_ =
+      MakeGarbageCollected<AbortSignal>(ExecutionContext::From(script_state));
 
   //  7. Set controller.[[started]] to false.
   controller->started_ = false;
@@ -332,7 +334,8 @@ void WritableStreamDefaultController::SetUpFromUnderlyingSink(
   // JavaScript. So the execution context should be valid and this call should
   // not crash.
   auto controller_value = ToV8Traits<WritableStreamDefaultController>::ToV8(
-      script_state, controller);
+                              script_state, controller)
+                              .ToLocalChecked();
 
   //  3. Let startAlgorithm be the following steps:
   //      a. Return ? InvokeOrNoop(underlyingSink, "start", « controller »).
@@ -394,8 +397,7 @@ void WritableStreamDefaultController::Close(
 double WritableStreamDefaultController::GetChunkSize(
     ScriptState* script_state,
     WritableStreamDefaultController* controller,
-    v8::Local<v8::Value> chunk,
-    ExceptionState& exception_state) {
+    v8::Local<v8::Value> chunk) {
   if (!controller->strategy_size_algorithm_) {
     DCHECK_NE(controller->controlled_writable_stream_->GetState(),
               WritableStream::kWritable);
@@ -403,6 +405,8 @@ double WritableStreamDefaultController::GetChunkSize(
     return 1;
   }
 
+  ExceptionState exception_state(script_state->GetIsolate(),
+                                 ExceptionState::kUnknownContext, "", "");
   // https://streams.spec.whatwg.org/#writable-stream-default-controller-get-chunk-size
   //  1. Let returnValue be the result of performing
   //     controller.[[strategySizeAlgorithm]], passing in chunk, and
@@ -436,13 +440,14 @@ void WritableStreamDefaultController::Write(
     ScriptState* script_state,
     WritableStreamDefaultController* controller,
     v8::Local<v8::Value> chunk,
-    double chunk_size,
-    ExceptionState& exception_state) {
+    double chunk_size) {
   // https://streams.spec.whatwg.org/#writable-stream-default-controller-write
   // The chunk is represented literally in the queue, rather than being embedded
   // in an object, so the following step is not performed:
   //  1. Let writeRecord be Record {[[chunk]]: chunk}.
   {
+    ExceptionState exception_state(script_state->GetIsolate(),
+                                   ExceptionState::kUnknownContext, "", "");
     //  2. Let enqueueResult be EnqueueValueWithSize(controller, writeRecord,
     //     chunkSize).
     controller->queue_->EnqueueValueWithSize(script_state->GetIsolate(), chunk,
@@ -498,7 +503,7 @@ void WritableStreamDefaultController::Trace(Visitor* visitor) const {
   visitor->Trace(close_algorithm_);
   visitor->Trace(controlled_writable_stream_);
   visitor->Trace(queue_);
-  visitor->Trace(abort_controller_);
+  visitor->Trace(signal_);
   visitor->Trace(strategy_size_algorithm_);
   visitor->Trace(write_algorithm_);
   visitor->Trace(resolve_function_);
@@ -702,15 +707,6 @@ void WritableStreamDefaultController::Error(
 
   //  4. Perform ! WritableStreamStartErroring(stream, error).
   WritableStream::StartErroring(script_state, stream, error);
-}
-
-AbortSignal* WritableStreamDefaultController::signal() const {
-  return abort_controller_->signal();
-}
-
-void WritableStreamDefaultController::Abort(ScriptState* script_state,
-                                            ScriptValue reason) {
-  abort_controller_->abort(script_state, reason);
 }
 
 }  // namespace blink

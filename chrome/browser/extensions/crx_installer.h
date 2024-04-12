@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_EXTENSIONS_CRX_INSTALLER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,8 +28,8 @@
 #include "extensions/browser/preload_check.h"
 #include "extensions/browser/sandboxed_unpacker.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/manifest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class ExtensionServiceTest;
 class ScopedProfileKeepAlive;
@@ -126,7 +125,7 @@ class CrxInstaller : public SandboxedUnpackerClient, public ProfileObserver {
   // Install the unpacked crx in |unpacked_dir|.
   // If |delete_source_| is true, |unpacked_dir| will be removed at the end of
   // the installation.
-  void InstallUnpackedCrx(const ExtensionId& extension_id,
+  void InstallUnpackedCrx(const std::string& extension_id,
                           const std::string& public_key,
                           const base::FilePath& unpacked_dir);
 
@@ -138,7 +137,7 @@ class CrxInstaller : public SandboxedUnpackerClient, public ProfileObserver {
   // |unpacked_dir|.
   // If |delete_source_| is true, |unpacked_dir| will be removed at the end of
   // the update.
-  void UpdateExtensionFromUnpackedCrx(const ExtensionId& extension_id,
+  void UpdateExtensionFromUnpackedCrx(const std::string& extension_id,
                                       const std::string& public_key,
                                       const base::FilePath& unpacked_dir);
 
@@ -164,8 +163,8 @@ class CrxInstaller : public SandboxedUnpackerClient, public ProfileObserver {
     install_source_ = source;
   }
 
-  const ExtensionId& expected_id() const { return expected_id_; }
-  void set_expected_id(const ExtensionId& val) { expected_id_ = val; }
+  const std::string& expected_id() const { return expected_id_; }
+  void set_expected_id(const std::string& val) { expected_id_ = val; }
 
   // Expected SHA256 hash sum for the package.
   const std::string& expected_hash() const { return expected_hash_; }
@@ -263,7 +262,7 @@ class CrxInstaller : public SandboxedUnpackerClient, public ProfileObserver {
  protected:
   // Run all callbacks received in AddInstallerCallback with the given error.
   // Protected so that FakeCrxInstaller can expose it.
-  void RunInstallerCallbacks(const std::optional<CrxInstallError>& error);
+  void RunInstallerCallbacks(const absl::optional<CrxInstallError>& error);
 
  private:
   friend class ::ExtensionServiceTest;
@@ -282,11 +281,11 @@ class CrxInstaller : public SandboxedUnpackerClient, public ProfileObserver {
 
   // Called after OnUnpackSuccess check to see whether the install expectations
   // are met and the install process should continue.
-  std::optional<CrxInstallError> CheckExpectations(const Extension* extension);
+  absl::optional<CrxInstallError> CheckExpectations(const Extension* extension);
 
   // Called after OnUnpackSuccess as a last check to see whether the install
   // should complete.
-  std::optional<CrxInstallError> AllowInstall(const Extension* extension);
+  absl::optional<CrxInstallError> AllowInstall(const Extension* extension);
 
   // To check whether we need to compute hashes or not, we have to make a query
   // to ContentVerifier, and that should be done on the UI thread.
@@ -347,7 +346,7 @@ class CrxInstaller : public SandboxedUnpackerClient, public ProfileObserver {
   // Always report from the UI thread.
   void ReportInstallationStage(InstallationStage stage);
   void NotifyCrxInstallBegin();
-  void NotifyCrxInstallComplete(const std::optional<CrxInstallError>& error);
+  void NotifyCrxInstallComplete(const absl::optional<CrxInstallError>& error);
 
   // Deletes temporary directory and crx file if needed.
   void CleanupTempFiles();
@@ -413,7 +412,7 @@ class CrxInstaller : public SandboxedUnpackerClient, public ProfileObserver {
 
   // For updates, external and webstore installs we have an ID we're expecting
   // the extension to contain.
-  ExtensionId expected_id_;
+  std::string expected_id_;
 
   // An expected hash sum for the .crx file.
   std::string expected_hash_;

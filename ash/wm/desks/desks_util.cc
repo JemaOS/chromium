@@ -5,9 +5,9 @@
 #include "ash/wm/desks/desks_util.h"
 
 #include <array>
-#include <optional>
 
 #include "ash/constants/ash_features.h"
+#include "ash/public/cpp/tablet_mode.h"
 #include "ash/shell.h"
 #include "ash/wm/desks/desk.h"
 #include "ash/wm/desks/desks_controller.h"
@@ -19,12 +19,9 @@
 #include "ash/wm/window_state.h"
 #include "ash/wm/window_util.h"
 #include "base/containers/adapters.h"
-#include "base/memory/raw_ptr.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/window.h"
 #include "ui/compositor/layer.h"
-#include "ui/display/screen.h"
 
 namespace ash {
 
@@ -144,15 +141,6 @@ ASH_EXPORT bool BelongsToActiveDesk(aura::Window* window) {
   return desk_container && desk_container->GetId() == active_desk_id;
 }
 
-std::optional<uint64_t> GetActiveDeskLacrosProfileId() {
-  std::optional<uint64_t> id;
-  if (auto* desk_controller = DesksController::Get();
-      desk_controller && chromeos::features::IsDeskProfilesEnabled()) {
-    id = desk_controller->active_desk()->lacros_profile_id();
-  }
-  return id;
-}
-
 aura::Window* GetDeskContainerForContext(aura::Window* context) {
   DCHECK(context);
 
@@ -169,11 +157,10 @@ aura::Window* GetDeskContainerForContext(aura::Window* context) {
 const Desk* GetDeskForContext(aura::Window* context) {
   DCHECK(context);
 
-  if (aura::Window* context_desk = GetDeskContainerForContext(context)) {
-    for (auto& desk : DesksController::Get()->desks()) {
-      if (desk->container_id() == context_desk->GetId()) {
-        return desk.get();
-      }
+  for (const auto& desk : DesksController::Get()->desks()) {
+    if (desk.get()->container_id() ==
+        GetDeskContainerForContext(context)->GetId()) {
+      return desk.get();
     }
   }
 
@@ -184,13 +171,8 @@ const Desk* GetDeskForContext(aura::Window* context) {
 }
 
 bool ShouldDesksBarBeCreated() {
-  if (display::Screen::GetScreen()->InTabletMode()) {
-    return DesksController::Get()->desks().size() > 1;
-  }
-
-  // If in clamshell mode, and overview was started by faster splitscreen setup,
-  // don't show the desk bar.
-  return !window_util::IsInFasterSplitScreenSetupSession();
+  return !TabletMode::Get()->InTabletMode() ||
+         DesksController::Get()->desks().size() > 1;
 }
 
 ui::Compositor* GetSelectedCompositorForPerformanceMetrics() {
@@ -230,8 +212,8 @@ bool IsZOrderTracked(aura::Window* window) {
              ui::ZOrderLevel::kNormal;
 }
 
-std::optional<size_t> GetWindowZOrder(
-    const std::vector<raw_ptr<aura::Window, VectorExperimental>>& windows,
+absl::optional<size_t> GetWindowZOrder(
+    const std::vector<aura::Window*>& windows,
     aura::Window* window) {
   size_t position = 0;
   for (aura::Window* w : base::Reversed(windows)) {
@@ -242,7 +224,7 @@ std::optional<size_t> GetWindowZOrder(
     }
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace desks_util

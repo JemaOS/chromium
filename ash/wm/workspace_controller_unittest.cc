@@ -68,8 +68,7 @@ std::string GetLayerNames(const aura::Window* window) {
   }
 
   std::string result;
-  const std::vector<raw_ptr<ui::Layer, VectorExperimental>>& layers(
-      window->layer()->children());
+  const std::vector<ui::Layer*>& layers(window->layer()->children());
   for (size_t i = 0; i < layers.size(); ++i) {
     LayerToWindowNameMap::iterator layer_i = window_names.find(layers[i]);
     if (layer_i != window_names.end()) {
@@ -458,12 +457,12 @@ TEST_F(WorkspaceControllerTest, MinimizeResetsVisibility) {
   wm::ActivateWindow(w1.get());
   w1->SetProperty(aura::client::kShowStateKey, ui::SHOW_STATE_MAXIMIZED);
   EXPECT_EQ(ShelfBackgroundType::kMaximized,
-            GetPrimaryShelf()->shelf_layout_manager()->shelf_background_type());
+            shelf_widget()->GetBackgroundType());
 
   w1->SetProperty(aura::client::kShowStateKey, ui::SHOW_STATE_MINIMIZED);
   EXPECT_EQ(SHELF_VISIBLE, GetPrimaryShelf()->GetVisibilityState());
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetPrimaryShelf()->shelf_layout_manager()->shelf_background_type());
+            shelf_widget()->GetBackgroundType());
 }
 
 // Verifies window visibility during various workspace changes.
@@ -610,7 +609,7 @@ class DontCrashOnChangeAndActivateDelegate
   }
 
  private:
-  raw_ptr<aura::Window> window_ = nullptr;
+  raw_ptr<aura::Window, ExperimentalAsh> window_ = nullptr;
 };
 
 }  // namespace
@@ -842,7 +841,7 @@ TEST_F(WorkspaceControllerTest, BasicAutoPlacingOnShowHide) {
 
   // Test4: A single manageable window should get centered.
   window4.reset();
-  window1_state->SetBoundsChangedByUser(false);
+  window1_state->set_bounds_changed_by_user(false);
   // Trigger the auto window placement function by showing (and hiding) it.
   window1->Hide();
   window1->Show();
@@ -872,7 +871,7 @@ TEST_F(WorkspaceControllerTest, TestUserMovedWindowRepositioning) {
 
   // Check that the current location gets preserved if the user has
   // positioned it previously.
-  window1_state->SetBoundsChangedByUser(true);
+  window1_state->set_bounds_changed_by_user(true);
   window1->Show();
   EXPECT_EQ("16,32 640x320", window1->bounds().ToString());
   // Flag should be still set.
@@ -894,7 +893,7 @@ TEST_F(WorkspaceControllerTest, TestUserMovedWindowRepositioning) {
   EXPECT_FALSE(window2_state->bounds_changed_by_user());
 
   // Going back to one shown window should keep the state.
-  window1_state->SetBoundsChangedByUser(true);
+  window1_state->set_bounds_changed_by_user(true);
   window2->Hide();
   EXPECT_EQ("0,32 640x320", window1->bounds().ToString());
   EXPECT_TRUE(window1_state->bounds_changed_by_user());
@@ -956,7 +955,7 @@ TEST_F(WorkspaceControllerTest, TestUserHandledWindowRestore) {
   window1->SetBounds(user_pos);
   WindowState* window1_state = WindowState::Get(window1.get());
 
-  window1_state->set_pre_auto_manage_window_bounds(user_pos);
+  window1_state->SetPreAutoManageWindowBounds(user_pos);
   gfx::Rect desktop_area = window1->parent()->bounds();
 
   // Create a second window to let the auto manager kick in.
@@ -1024,7 +1023,7 @@ TEST_F(WorkspaceControllerTest, TestRestoreToUserModifiedBounds) {
   resizer->Drag(location, 0);
   resizer->CompleteDrag();
 
-  window1_state->SetBoundsChangedByUser(true);
+  window1_state->set_bounds_changed_by_user(true);
   window1->SetBounds(gfx::Rect(100, 0, 100, 100));
 
   window2->Show();
@@ -1284,7 +1283,7 @@ TEST_F(WorkspaceControllerTest, RestoreMinimizedSnappedWindow) {
 
   // Left snap |window|.
   EXPECT_FALSE(window_state->bounds_changed_by_user());
-  const WindowSnapWMEvent snap_left(WM_EVENT_SNAP_PRIMARY);
+  const WMEvent snap_left(WM_EVENT_SNAP_PRIMARY);
   window_state->OnWMEvent(&snap_left);
   const gfx::Rect work_area =
       display::Screen::GetScreen()
@@ -1326,26 +1325,25 @@ TEST_F(WorkspaceControllerTest, SwitchFromModal) {
 TEST_F(WorkspaceControllerTest, DragWindowKeepsShelfAutohidden) {
   aura::test::TestWindowDelegate delegate;
   delegate.set_window_component(HTCAPTION);
-  std::unique_ptr<Window> window(aura::test::CreateTestWindowWithDelegate(
+  std::unique_ptr<Window> w1(aura::test::CreateTestWindowWithDelegate(
       &delegate, aura::client::WINDOW_TYPE_NORMAL, gfx::Rect(5, 5, 100, 50),
       nullptr));
-  ParentWindowInPrimaryRootWindow(window.get());
+  ParentWindowInPrimaryRootWindow(w1.get());
 
   Shelf* shelf = GetPrimaryShelf();
   shelf->SetAutoHideBehavior(ShelfAutoHideBehavior::kAlways);
   EXPECT_EQ(SHELF_AUTO_HIDE_HIDDEN, shelf->GetAutoHideState());
-  const auto window_bounds_before_drag = window->GetBoundsInScreen();
 
-  auto* event_generator = GetEventGenerator();
-  event_generator->set_current_screen_location(
-      window_bounds_before_drag.CenterPoint());
-  event_generator->PressLeftButton();
-  event_generator->MoveMouseBy(10, 10);
+  // Drag very little.
+  ui::test::EventGenerator generator(Shell::GetPrimaryRootWindow(),
+                                     gfx::Point());
+  generator.MoveMouseTo(10, 10);
+  generator.PressLeftButton();
+  generator.MoveMouseTo(12, 12);
 
   // Shelf should be hidden during and after the drag.
   EXPECT_EQ(SHELF_AUTO_HIDE_HIDDEN, shelf->GetAutoHideState());
-  event_generator->ReleaseLeftButton();
-  EXPECT_NE(window->GetBoundsInScreen(), window_bounds_before_drag);
+  generator.ReleaseLeftButton();
   EXPECT_EQ(SHELF_AUTO_HIDE_HIDDEN, shelf->GetAutoHideState());
 }
 

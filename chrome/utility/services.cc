@@ -9,6 +9,8 @@
 
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+#include "chrome/services/qrcode_generator/public/mojom/qrcode_generator.mojom.h"
+#include "chrome/services/qrcode_generator/qrcode_generator_service_impl.h"
 #include "chrome/services/speech/buildflags/buildflags.h"
 #include "components/paint_preview/buildflags/buildflags.h"
 #include "components/password_manager/core/common/password_manager_features.h"
@@ -19,6 +21,7 @@
 #include "components/services/language_detection/public/mojom/language_detection.mojom.h"
 #include "components/services/patch/file_patcher_impl.h"
 #include "components/services/patch/public/mojom/file_patcher.mojom.h"
+#include "components/services/screen_ai/buildflags/buildflags.h"
 #include "components/services/unzip/public/mojom/unzipper.mojom.h"
 #include "components/services/unzip/unzipper_impl.h"
 #include "components/webapps/services/web_app_origin_association/public/mojom/web_app_origin_association_parser.mojom.h"
@@ -28,12 +31,10 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/service_factory.h"
 #include "printing/buildflags/buildflags.h"
-#include "services/screen_ai/buildflags/buildflags.h"
 #include "ui/accessibility/accessibility_features.h"
 
 #if BUILDFLAG(ENABLE_SCREEN_AI_SERVICE)
-#include "services/screen_ai/public/mojom/screen_ai_factory.mojom.h"  // nogncheck
-#include "services/screen_ai/screen_ai_service_impl.h"  // nogncheck
+#include "components/services/screen_ai/screen_ai_service_impl.h"  // nogncheck
 #endif
 
 #if BUILDFLAG(IS_WIN)
@@ -63,6 +64,8 @@
 #include "chrome/common/importer/profile_import.mojom.h"
 #include "chrome/utility/importer/profile_import_impl.h"
 #include "components/mirroring/service/mirroring_service.h"
+#include "components/password_manager/services/password_strength/password_strength_calculator_impl.h"
+#include "components/password_manager/services/password_strength/public/mojom/password_strength_calculator.mojom.h"
 #include "services/proxy_resolver/proxy_resolver_factory_impl.h"  // nogncheck
 #include "services/proxy_resolver/public/mojom/proxy_resolver.mojom.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -124,10 +127,8 @@
 #include "chromeos/ash/services/ime/ime_service.h"
 #include "chromeos/ash/services/ime/public/mojom/input_engine.mojom.h"
 #include "chromeos/ash/services/nearby/public/mojom/sharing.mojom.h"  // nogncheck
-#include "chromeos/ash/services/orca/orca_library.h"
 #include "chromeos/ash/services/quick_pair/quick_pair_service.h"
 #include "chromeos/ash/services/recording/recording_service.h"
-#include "chromeos/constants/chromeos_features.h"  // nogncheck
 #include "chromeos/services/tts/public/mojom/tts_service.mojom.h"
 #include "chromeos/services/tts/tts_service.h"
 
@@ -138,8 +139,6 @@
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 #if BUILDFLAG(IS_CHROMEOS)
-#include "chromeos/components/mahi/content_extraction_service.h"
-#include "chromeos/components/mahi/public/mojom/content_extraction.mojom.h"
 #include "chromeos/components/quick_answers/public/cpp/service/spell_check_service.h"
 #include "chromeos/components/quick_answers/public/mojom/spell_check.mojom.h"
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -158,6 +157,13 @@ auto RunLanguageDetectionService(
     mojo::PendingReceiver<language_detection::mojom::LanguageDetectionService>
         receiver) {
   return std::make_unique<language_detection::LanguageDetectionServiceImpl>(
+      std::move(receiver));
+}
+
+auto RunQRCodeGeneratorService(
+    mojo::PendingReceiver<qrcode_generator::mojom::QRCodeGeneratorService>
+        receiver) {
+  return std::make_unique<qrcode_generator::QRCodeGeneratorServiceImpl>(
       std::move(receiver));
 }
 
@@ -248,6 +254,13 @@ auto RunMirroringService(
       std::move(receiver), content::UtilityThread::Get()->GetIOTaskRunner());
 }
 
+auto RunPasswordStrengthCalculator(
+    mojo::PendingReceiver<password_manager::mojom::PasswordStrengthCalculator>
+        receiver) {
+  return std::make_unique<password_manager::PasswordStrengthCalculatorImpl>(
+      std::move(receiver));
+}
+
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_BROWSER_SPEECH_SERVICE)
@@ -259,8 +272,8 @@ auto RunSpeechRecognitionService(
 #endif  // !BUILDFLAG(ENABLE_BROWSER_SPEECH_SERVICE)
 
 #if BUILDFLAG(ENABLE_SCREEN_AI_SERVICE)
-auto RunScreenAIServiceFactory(
-    mojo::PendingReceiver<screen_ai::mojom::ScreenAIServiceFactory> receiver) {
+auto RunScreenAIService(
+    mojo::PendingReceiver<screen_ai::mojom::ScreenAIService> receiver) {
   return std::make_unique<screen_ai::ScreenAIService>(std::move(receiver));
 }
 #endif
@@ -350,18 +363,6 @@ auto RunImeService(
       std::make_unique<ash::ime::FieldTrialParamsRetrieverImpl>());
 }
 
-auto RunOrcaService(
-    mojo::PendingReceiver<ash::orca::mojom::OrcaService> receiver) {
-  CHECK(chromeos::features::IsOrcaEnabled());
-  auto orca_library = std::make_unique<ash::orca::OrcaLibrary>();
-  base::expected<void, ash::orca::OrcaLibrary::BindError> error =
-      orca_library->BindReceiver(std::move(receiver));
-  if (!error.has_value()) {
-    LOG(ERROR) << error.error().message;
-  }
-  return orca_library;
-}
-
 auto RunRecordingService(
     mojo::PendingReceiver<recording::mojom::RecordingService> receiver) {
   return std::make_unique<recording::RecordingService>(std::move(receiver));
@@ -419,12 +420,6 @@ auto RunQuickAnswersSpellCheckService(
   return std::make_unique<quick_answers::SpellCheckService>(
       std::move(receiver));
 }
-
-auto RunMahiContentExtractionServiceFactory(
-    mojo::PendingReceiver<mahi::mojom::ContentExtractionServiceFactory>
-        receiver) {
-  return std::make_unique<mahi::ContentExtractionService>(std::move(receiver));
-}
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 }  // namespace
@@ -442,12 +437,14 @@ void RegisterMainThreadServices(mojo::ServiceFactory& services) {
   services.Add(RunFilePatcher);
   services.Add(RunUnzipper);
   services.Add(RunLanguageDetectionService);
+  services.Add(RunQRCodeGeneratorService);
   services.Add(RunWebAppOriginAssociationParser);
   services.Add(RunCSVPasswordParser);
 
 #if !BUILDFLAG(IS_ANDROID)
   services.Add(RunProfileImporter);
   services.Add(RunMirroringService);
+  services.Add(RunPasswordStrengthCalculator);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_BROWSER_SPEECH_SERVICE)
@@ -455,7 +452,8 @@ void RegisterMainThreadServices(mojo::ServiceFactory& services) {
 #endif  // !BUILDFLAG(ENABLE_BROWSER_SPEECH_SERVICE)
 
 #if BUILDFLAG(ENABLE_SCREEN_AI_SERVICE)
-  services.Add(RunScreenAIServiceFactory);
+  if (features::IsScreenAIServiceNeeded())
+    services.Add(RunScreenAIService);
 #endif
 
 #if BUILDFLAG(IS_WIN)
@@ -514,9 +512,6 @@ void RegisterMainThreadServices(mojo::ServiceFactory& services) {
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   services.Add(RunImeService);
-  if (chromeos::features::IsOrcaEnabled()) {
-    services.Add(RunOrcaService);
-  }
   services.Add(RunRecordingService);
   services.Add(RunSharing);
   services.Add(RunTrashService);
@@ -531,7 +526,6 @@ void RegisterMainThreadServices(mojo::ServiceFactory& services) {
 
 #if BUILDFLAG(IS_CHROMEOS)
   services.Add(RunQuickAnswersSpellCheckService);
-  services.Add(RunMahiContentExtractionServiceFactory);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 }
 

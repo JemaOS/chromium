@@ -11,7 +11,6 @@
 #include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/memory/ptr_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/metrics/user_metrics_action.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
@@ -22,6 +21,7 @@
 #include "chrome/grit/renderer_resources.h"
 #include "chrome/renderer/chrome_content_renderer_client.h"
 #include "chrome/renderer/custom_menu_commands.h"
+#include "chrome/renderer/plugins/plugin_uma.h"
 #include "components/content_settings/renderer/content_settings_agent_impl.h"
 #include "components/no_state_prefetch/renderer/prerender_observer_list.h"
 #include "components/strings/grit/components_strings.h"
@@ -78,14 +78,12 @@ class PlaceholderSet : public base::SupportsUserData::Data {
     return set;
   }
 
-  std::set<raw_ptr<ChromePluginPlaceholder, SetExperimental>>& placeholders() {
-    return placeholders_;
-  }
+  std::set<ChromePluginPlaceholder*>& placeholders() { return placeholders_; }
 
  private:
   PlaceholderSet() = default;
 
-  std::set<raw_ptr<ChromePluginPlaceholder, SetExperimental>> placeholders_;
+  std::set<ChromePluginPlaceholder*> placeholders_;
 };
 
 }  // namespace
@@ -96,8 +94,9 @@ gin::WrapperInfo ChromePluginPlaceholder::kWrapperInfo = {
 ChromePluginPlaceholder::ChromePluginPlaceholder(
     content::RenderFrame* render_frame,
     const blink::WebPluginParams& params,
+    const std::string& html_data,
     const std::u16string& title)
-    : plugins::LoadablePluginPlaceholder(render_frame, params),
+    : plugins::LoadablePluginPlaceholder(render_frame, params, html_data),
       status_(chrome::mojom::PluginStatus::kAllowed),
       title_(title) {
   RenderThread::Get()->AddObserver(this);
@@ -137,10 +136,8 @@ ChromePluginPlaceholder* ChromePluginPlaceholder::CreateLoadableMissingPlugin(
   std::string html_data = webui::GetI18nTemplateHtml(template_html, values);
 
   // Will destroy itself when its WebViewPlugin is going away.
-  auto* placeholder = new ChromePluginPlaceholder(render_frame, params,
-                                                  params.mime_type.Utf16());
-  placeholder->Init(html_data);
-  return placeholder;
+  return new ChromePluginPlaceholder(render_frame, params, html_data,
+                                     params.mime_type.Utf16());
 }
 
 // static
@@ -173,8 +170,8 @@ ChromePluginPlaceholder* ChromePluginPlaceholder::CreateBlockedPlugin(
 
   // |blocked_plugin| will destroy itself when its WebViewPlugin is going away.
   ChromePluginPlaceholder* blocked_plugin =
-      new ChromePluginPlaceholder(render_frame, params, name);
-  blocked_plugin->Init(html_data);
+      new ChromePluginPlaceholder(render_frame, params, html_data, name);
+
   blocked_plugin->SetPluginInfo(info);
   blocked_plugin->SetIdentifier(identifier);
 
@@ -187,9 +184,8 @@ void ChromePluginPlaceholder::ForEach(
     const base::RepeatingCallback<void(ChromePluginPlaceholder*)>& callback) {
   PlaceholderSet* set = PlaceholderSet::Get(render_frame);
   if (set) {
-    for (ChromePluginPlaceholder* placeholder : set->placeholders()) {
+    for (auto* placeholder : set->placeholders())
       callback.Run(placeholder);
-    }
   }
 }
 
@@ -208,10 +204,7 @@ void ChromePluginPlaceholder::PluginListChanged() {
   chrome::mojom::PluginInfoPtr plugin_info = chrome::mojom::PluginInfo::New();
   std::string mime_type(GetPluginParams().mime_type.Utf8());
 
-  mojo::AssociatedRemote<chrome::mojom::PluginInfoHost> plugin_info_host;
-  render_frame()->GetRemoteAssociatedInterfaces()->GetInterface(
-      &plugin_info_host);
-  plugin_info_host->GetPluginInfo(
+  ChromeContentRendererClient::GetPluginInfoHost()->GetPluginInfo(
       GetPluginParams().url,
       render_frame()->GetWebFrame()->Top()->GetSecurityOrigin(), mime_type,
       &plugin_info);
@@ -220,6 +213,10 @@ void ChromePluginPlaceholder::PluginListChanged() {
   blink::WebPlugin* new_plugin = ChromeContentRendererClient::CreatePlugin(
       render_frame(), GetPluginParams(), *plugin_info);
   ReplacePlugin(new_plugin);
+  if (!new_plugin) {
+    PluginUMAReporter::GetInstance()->ReportPluginMissing(
+        GetPluginParams().mime_type.Utf8(), GetPluginParams().url);
+  }
 }
 
 v8::Local<v8::Value> ChromePluginPlaceholder::GetV8Handle(

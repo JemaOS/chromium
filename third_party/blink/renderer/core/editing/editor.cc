@@ -46,7 +46,6 @@
 #include "third_party/blink/renderer/core/editing/commands/indent_outdent_command.h"
 #include "third_party/blink/renderer/core/editing/commands/insert_list_command.h"
 #include "third_party/blink/renderer/core/editing/commands/replace_selection_command.h"
-#include "third_party/blink/renderer/core/editing/commands/selection_for_undo_step.h"
 #include "third_party/blink/renderer/core/editing/commands/simplify_markup_command.h"
 #include "third_party/blink/renderer/core/editing/commands/typing_command.h"
 #include "third_party/blink/renderer/core/editing/commands/undo_stack.h"
@@ -99,8 +98,7 @@ namespace {
 bool IsInPasswordFieldWithUnrevealedPassword(const Position& position) {
   if (auto* input =
           DynamicTo<HTMLInputElement>(EnclosingTextControl(position))) {
-    return input->FormControlType() ==
-               mojom::blink::FormControlType::kInputPassword &&
+    return (input->type() == input_type_names::kPassword) &&
            !input->ShouldRevealPassword();
   }
   return false;
@@ -120,7 +118,7 @@ SelectionInDOMTree Editor::SelectionForCommand(Event* event) {
   if (!IsTextControl(*event->target()->ToNode()))
     return selection;
   auto* text_control_of_selection_start =
-      EnclosingTextControl(selection.Anchor());
+      EnclosingTextControl(selection.Base());
   auto* text_control_of_target = ToTextControl(event->target()->ToNode());
   if (!selection.IsNone() &&
       text_control_of_target == text_control_of_selection_start)
@@ -225,7 +223,7 @@ bool Editor::CanEditRichly() const {
       GetFrame()
           .Selection()
           .ComputeVisibleSelectionInDOMTreeDeprecated()
-          .Anchor());
+          .Base());
 }
 
 bool Editor::CanCut() const {
@@ -428,20 +426,6 @@ void Editor::RespondToChangedContents(const Position& position) {
   frame_->Client()->DidChangeContents();
 }
 
-void Editor::NotifyAccessibilityOfDeletionOrInsertionInTextField(
-    const SelectionForUndoStep& changed_selection,
-    bool is_deletion) {
-  if (AXObjectCache* cache =
-          GetFrame().GetDocument()->ExistingAXObjectCache()) {
-    if (!changed_selection.Start().IsValidFor(*GetFrame().GetDocument()) ||
-        !changed_selection.End().IsValidFor(*GetFrame().GetDocument())) {
-      return;
-    }
-    cache->HandleDeletionOrInsertionInTextField(changed_selection.AsSelection(),
-                                                is_deletion);
-  }
-}
-
 void Editor::RegisterCommandGroup(CompositeEditCommand* command_group_wrapper) {
   DCHECK(command_group_wrapper->IsCommandGroupWrapper());
   last_edit_command_ = command_group_wrapper;
@@ -640,12 +624,6 @@ void Editor::CopyImage(const HitTestResult& result) {
                             result.AltDisplayString());
 }
 
-void Editor::CopyImage(const HitTestResult& result,
-                       const scoped_refptr<Image>& image) {
-  WriteImageToClipboard(*frame_->GetSystemClipboard(), image, KURL(),
-                        result.AltDisplayString());
-}
-
 bool Editor::CanUndo() {
   return undo_stack_->CanUndo();
 }
@@ -670,10 +648,9 @@ void Editor::SetBaseWritingDirection(
       return;
     text_control->setAttribute(
         html_names::kDirAttr,
-        AtomicString(
-            direction == mojo_base::mojom::blink::TextDirection::LEFT_TO_RIGHT
-                ? "ltr"
-                : "rtl"));
+        direction == mojo_base::mojom::blink::TextDirection::LEFT_TO_RIGHT
+            ? "ltr"
+            : "rtl");
     text_control->DispatchInputEvent();
     return;
   }
@@ -980,6 +957,9 @@ void Editor::ReplaceSelection(const String& text) {
 }
 
 void Editor::ElementRemoved(Element* element) {
+  if (!RuntimeEnabledFeatures::DontLeakDetachedInputEnabled()) {
+    return;
+  }
   if (last_edit_command_ &&
       last_edit_command_->EndingSelection().RootEditableElement() == element) {
     last_edit_command_ = nullptr;

@@ -26,7 +26,6 @@ class MockMediaToolbarButtonControllerDelegate
   MOCK_METHOD(void, Hide, ());
   MOCK_METHOD(void, Enable, ());
   MOCK_METHOD(void, Disable, ());
-  MOCK_METHOD(void, MaybeShowLocalMediaCastingPromo, ());
   MOCK_METHOD(void, MaybeShowStopCastingPromo, ());
 };
 

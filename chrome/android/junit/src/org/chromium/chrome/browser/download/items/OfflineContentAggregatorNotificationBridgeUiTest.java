@@ -66,11 +66,14 @@ public class OfflineContentAggregatorNotificationBridgeUiTest {
         }
     }
 
-    @Mock private OfflineContentProvider mProvider;
+    @Mock
+    private OfflineContentProvider mProvider;
 
-    @Mock private DownloadNotifier mNotifier;
+    @Mock
+    private DownloadNotifier mNotifier;
 
-    @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     private static OfflineItem buildOfflineItem(ContentId id, @OfflineItemState int state) {
         OfflineItem item = new OfflineItem();
@@ -99,15 +102,14 @@ public class OfflineContentAggregatorNotificationBridgeUiTest {
                 new OfflineContentAggregatorNotificationBridgeUi(mProvider, mNotifier);
         verify(mProvider, times(1)).addObserver(bridge);
 
-        List<OfflineItem> items =
-                List.of(
-                        buildOfflineItem(new ContentId("1", "A"), OfflineItemState.IN_PROGRESS),
-                        buildOfflineItem(new ContentId("2", "B"), OfflineItemState.PENDING),
-                        buildOfflineItem(new ContentId("3", "C"), OfflineItemState.COMPLETE),
-                        buildOfflineItem(new ContentId("4", "D"), OfflineItemState.CANCELLED),
-                        buildOfflineItem(new ContentId("5", "E"), OfflineItemState.INTERRUPTED),
-                        buildOfflineItem(new ContentId("6", "F"), OfflineItemState.FAILED),
-                        buildOfflineItem(new ContentId("7", "G"), OfflineItemState.PAUSED));
+        List<OfflineItem> items = List.of(
+                buildOfflineItem(new ContentId("1", "A"), OfflineItemState.IN_PROGRESS),
+                buildOfflineItem(new ContentId("2", "B"), OfflineItemState.PENDING),
+                buildOfflineItem(new ContentId("3", "C"), OfflineItemState.COMPLETE),
+                buildOfflineItem(new ContentId("4", "D"), OfflineItemState.CANCELLED),
+                buildOfflineItem(new ContentId("5", "E"), OfflineItemState.INTERRUPTED),
+                buildOfflineItem(new ContentId("6", "F"), OfflineItemState.FAILED),
+                buildOfflineItem(new ContentId("7", "G"), OfflineItemState.PAUSED));
 
         bridge.onItemsAdded(items);
 
@@ -124,23 +126,17 @@ public class OfflineContentAggregatorNotificationBridgeUiTest {
         }
 
         verify(mNotifier, times(1))
-                .notifyDownloadProgress(
-                        argThat(new DownloadInfoIdMatcher(items.get(0).id)),
-                        ArgumentMatchers.anyLong(),
-                        ArgumentMatchers.anyBoolean());
+                .notifyDownloadProgress(argThat(new DownloadInfoIdMatcher(items.get(0).id)),
+                        ArgumentMatchers.anyLong(), ArgumentMatchers.anyBoolean());
         verify(mNotifier, times(1))
-                .notifyDownloadSuccessful(
-                        argThat(new DownloadInfoIdMatcher(items.get(2).id)),
-                        ArgumentMatchers.anyLong(),
-                        ArgumentMatchers.anyBoolean(),
+                .notifyDownloadSuccessful(argThat(new DownloadInfoIdMatcher(items.get(2).id)),
+                        ArgumentMatchers.anyLong(), ArgumentMatchers.anyBoolean(),
                         ArgumentMatchers.anyBoolean());
         verify(mNotifier, times(1))
                 .notifyDownloadCanceled(items.get(3).id /* OfflineItemState.CANCELLED */);
         verify(mNotifier, times(1))
-                .notifyDownloadInterrupted(
-                        argThat(new DownloadInfoIdMatcher(items.get(4).id)),
-                        ArgumentMatchers.anyBoolean(),
-                        eq(PendingState.NOT_PENDING));
+                .notifyDownloadInterrupted(argThat(new DownloadInfoIdMatcher(items.get(4).id)),
+                        ArgumentMatchers.anyBoolean(), eq(PendingState.NOT_PENDING));
         verify(mNotifier, times(1))
                 .notifyDownloadFailed(argThat(new DownloadInfoIdMatcher(items.get(5).id)));
         verify(mNotifier, times(1))
@@ -156,15 +152,14 @@ public class OfflineContentAggregatorNotificationBridgeUiTest {
                 new OfflineContentAggregatorNotificationBridgeUi(mProvider, mNotifier);
         verify(mProvider, times(1)).addObserver(bridge);
 
-        List<OfflineItem> items =
-                List.of(
-                        buildOfflineItem(new ContentId("1", "A"), OfflineItemState.IN_PROGRESS),
-                        buildOfflineItem(new ContentId("2", "B"), OfflineItemState.PENDING),
-                        buildOfflineItem(new ContentId("3", "C"), OfflineItemState.COMPLETE),
-                        buildOfflineItem(new ContentId("4", "D"), OfflineItemState.CANCELLED),
-                        buildOfflineItem(new ContentId("5", "E"), OfflineItemState.INTERRUPTED),
-                        buildOfflineItem(new ContentId("6", "F"), OfflineItemState.FAILED),
-                        buildOfflineItem(new ContentId("7", "G"), OfflineItemState.PAUSED));
+        List<OfflineItem> items = List.of(
+                buildOfflineItem(new ContentId("1", "A"), OfflineItemState.IN_PROGRESS),
+                buildOfflineItem(new ContentId("2", "B"), OfflineItemState.PENDING),
+                buildOfflineItem(new ContentId("3", "C"), OfflineItemState.COMPLETE),
+                buildOfflineItem(new ContentId("4", "D"), OfflineItemState.CANCELLED),
+                buildOfflineItem(new ContentId("5", "E"), OfflineItemState.INTERRUPTED),
+                buildOfflineItem(new ContentId("6", "F"), OfflineItemState.FAILED),
+                buildOfflineItem(new ContentId("7", "G"), OfflineItemState.PAUSED));
 
         for (int i = 0; i < items.size(); i++) bridge.onItemUpdated(items.get(i), null);
 
@@ -181,23 +176,17 @@ public class OfflineContentAggregatorNotificationBridgeUiTest {
         }
 
         verify(mNotifier, times(1))
-                .notifyDownloadProgress(
-                        argThat(new DownloadInfoIdMatcher(items.get(0).id)),
-                        ArgumentMatchers.anyLong(),
-                        ArgumentMatchers.anyBoolean());
+                .notifyDownloadProgress(argThat(new DownloadInfoIdMatcher(items.get(0).id)),
+                        ArgumentMatchers.anyLong(), ArgumentMatchers.anyBoolean());
         verify(mNotifier, times(1))
-                .notifyDownloadSuccessful(
-                        argThat(new DownloadInfoIdMatcher(items.get(2).id)),
-                        ArgumentMatchers.anyLong(),
-                        ArgumentMatchers.anyBoolean(),
+                .notifyDownloadSuccessful(argThat(new DownloadInfoIdMatcher(items.get(2).id)),
+                        ArgumentMatchers.anyLong(), ArgumentMatchers.anyBoolean(),
                         ArgumentMatchers.anyBoolean());
         verify(mNotifier, times(1))
                 .notifyDownloadCanceled(items.get(3).id /* OfflineItemState.CANCELLED */);
         verify(mNotifier, times(1))
-                .notifyDownloadInterrupted(
-                        argThat(new DownloadInfoIdMatcher(items.get(4).id)),
-                        ArgumentMatchers.anyBoolean(),
-                        eq(PendingState.NOT_PENDING));
+                .notifyDownloadInterrupted(argThat(new DownloadInfoIdMatcher(items.get(4).id)),
+                        ArgumentMatchers.anyBoolean(), eq(PendingState.NOT_PENDING));
         verify(mNotifier, times(1))
                 .notifyDownloadFailed(argThat(new DownloadInfoIdMatcher(items.get(5).id)));
         verify(mNotifier, times(1))
@@ -230,9 +219,7 @@ public class OfflineContentAggregatorNotificationBridgeUiTest {
         bridge.onVisualsAvailable(item1.id, visuals1);
         bridge.onVisualsAvailable(item2.id, null);
         verify(mNotifier, times(2))
-                .notifyDownloadProgress(
-                        captor.capture(),
-                        ArgumentMatchers.anyLong(),
+                .notifyDownloadProgress(captor.capture(), ArgumentMatchers.anyLong(),
                         ArgumentMatchers.anyBoolean());
 
         List<DownloadInfo> capturedInfo = captor.getAllValues();
@@ -304,8 +291,7 @@ public class OfflineContentAggregatorNotificationBridgeUiTest {
         verify(mProvider, times(1)).addObserver(bridge);
 
         List<OfflineItem> interestingItems =
-                List.of(
-                        buildOfflineItem(new ContentId("1", "A"), OfflineItemState.IN_PROGRESS),
+                List.of(buildOfflineItem(new ContentId("1", "A"), OfflineItemState.IN_PROGRESS),
                         buildOfflineItem(new ContentId("2", "B"), OfflineItemState.PENDING),
                         buildOfflineItem(new ContentId("3", "C"), OfflineItemState.COMPLETE),
                         buildOfflineItem(new ContentId("5", "E"), OfflineItemState.INTERRUPTED),
@@ -321,9 +307,7 @@ public class OfflineContentAggregatorNotificationBridgeUiTest {
             bridge.onItemUpdated(item, null);
             verify(mProvider, times(1)).getVisualsForItem(item.id, bridge);
             verify(mNotifier, times(2))
-                    .notifyDownloadProgress(
-                            ArgumentMatchers.any(),
-                            ArgumentMatchers.anyLong(),
+                    .notifyDownloadProgress(ArgumentMatchers.any(), ArgumentMatchers.anyLong(),
                             ArgumentMatchers.anyBoolean());
         }
 

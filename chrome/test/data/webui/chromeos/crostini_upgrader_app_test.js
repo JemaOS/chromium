@@ -78,7 +78,7 @@ suite('<crostini-upgrader-app>', () => {
 
   setup(async () => {
     fakeBrowserProxy = new FakeBrowserProxy();
-    BrowserProxy.setInstance(fakeBrowserProxy);
+    BrowserProxy.instance_ = fakeBrowserProxy;
 
     app = document.createElement('crostini-upgrader-app');
     PolymerTest.clearBody();

@@ -16,6 +16,7 @@
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/history/history_test_utils.h"
 #include "chrome/browser/policy/profile_policy_connector_builder.h"
+#include "chrome/browser/printing/print_preview_dialog_controller.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/browser.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/login/login_handler.h"
+#include "chrome/browser/ui/login/login_handler_test_utils.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/view_ids.h"
 #include "chrome/common/chrome_paths.h"
@@ -52,6 +54,7 @@
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/core/common/policy_map.h"
 #include "components/policy/policy_constants.h"
+#include "content/public/browser/native_web_keyboard_event.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
@@ -60,7 +63,6 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/common/content_features.h"
-#include "content/public/common/input/native_web_keyboard_event.h"
 #include "content/public/common/url_constants.h"
 #include "content/public/test/back_forward_cache_util.h"
 #include "content/public/test/browser_test.h"
@@ -79,10 +81,6 @@
 
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC)
 #include "third_party/blink/public/common/switches.h"
-#endif
-
-#if BUILDFLAG(ENABLE_PRINT_PREVIEW)
-#include "chrome/browser/printing/print_preview_dialog_controller.h"
 #endif
 
 using content::NativeWebKeyboardEvent;
@@ -136,8 +134,7 @@ class PopupBlockerBrowserTest : public InProcessBrowserTest {
     // Do a round trip to the renderer first to flush any in-flight IPCs to
     // create a to-be-blocked window.
     WebContents* tab = browser()->tab_strip_model()->GetActiveWebContents();
-    if (!content::ExecJs(tab, std::string(),
-                         content::EXECUTE_SCRIPT_NO_USER_GESTURE)) {
+    if (!content::ExecuteScriptWithoutUserGesture(tab, std::string())) {
       ADD_FAILURE() << "Failed to execute script in active tab.";
       return -1;
     }
@@ -219,13 +216,10 @@ class PopupBlockerBrowserTest : public InProcessBrowserTest {
     std::map<int32_t, GURL> blocked_requests =
         popup_blocker_helper->GetBlockedPopupRequests();
     std::map<int32_t, GURL>::const_iterator iter = blocked_requests.begin();
-    ui_test_utils::BrowserChangeObserver popup_observer(
-        nullptr, ui_test_utils::BrowserChangeObserver::ChangeType::kAdded);
     popup_blocker_helper->ShowBlockedPopup(iter->first, disposition);
 
     Browser* new_browser;
     if (what_to_expect == kExpectPopup || what_to_expect == kExpectNewWindow) {
-      ui_test_utils::WaitForBrowserSetLastActive(popup_observer.Wait());
       new_browser = BrowserList::GetInstance()->GetLastActive();
       EXPECT_NE(browser, new_browser);
       web_contents = new_browser->tab_strip_model()->GetActiveWebContents();
@@ -451,8 +445,7 @@ IN_PROC_BROWSER_TEST_F(PopupBlockerBrowserTest,
 // https://codereview.chromium.org/23903056
 // BUG=https://code.google.com/p/chromium/issues/detail?id=295299
 // TODO(ananta). Debug and fix this test.
-#if defined(USE_AURA) && \
-    (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN))
+#if defined(USE_AURA) && (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
 #define MAYBE_WindowFeatures DISABLED_WindowFeatures
 #else
 #define MAYBE_WindowFeatures WindowFeatures
@@ -829,8 +822,7 @@ IN_PROC_BROWSER_TEST_F(PopupBlockerBrowserTest,
   // before we perform the checks further down. Since we have no control over
   // that script we just run some more (that we do control) and wait for it to
   // finish.
-  EXPECT_TRUE(
-      content::ExecJs(tab_2, "", content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_TRUE(content::ExecuteScriptWithoutUserGesture(tab_2, ""));
 
   EXPECT_FALSE(content_settings::PageSpecificContentSettings::GetForFrame(
                    tab_1->GetPrimaryMainFrame())

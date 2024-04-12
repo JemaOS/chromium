@@ -70,7 +70,6 @@ bool ConvertHdcpVersion(const WebString& hdcp_version_string,
 
 void WebContentDecryptionModuleImpl::Create(
     media::CdmFactory* cdm_factory,
-    media::KeySystems* key_systems,
     const WebSecurityOrigin& security_origin,
     const media::CdmConfig& cdm_config,
     WebCdmCreatedCB web_cdm_created_cb) {
@@ -88,7 +87,7 @@ void WebContentDecryptionModuleImpl::Create(
   }
 
   // TODO(ddorwin): This should be a DCHECK.
-  if (!key_systems->IsSupportedKeySystem(key_system)) {
+  if (!media::KeySystems::GetInstance()->IsSupportedKeySystem(key_system)) {
     std::string message = "Keysystem '" + key_system + "' is not supported.";
     std::move(web_cdm_created_cb).Run(nullptr, message);
     return;
@@ -105,14 +104,14 @@ void WebContentDecryptionModuleImpl::Create(
   // if WebContentDecryptionModuleImpl is successfully created (returned in
   // |web_cdm_created_cb|), it will keep a reference to |adapter|. Otherwise,
   // |adapter| will be destructed.
-  scoped_refptr<CdmSessionAdapter> adapter(new CdmSessionAdapter(key_systems));
+  scoped_refptr<CdmSessionAdapter> adapter(new CdmSessionAdapter());
   adapter->CreateCdm(cdm_factory, cdm_config, std::move(web_cdm_created_cb));
 }
 
 WebContentDecryptionModuleImpl::WebContentDecryptionModuleImpl(
-    scoped_refptr<CdmSessionAdapter> adapter,
-    media::KeySystems* key_systems)
-    : adapter_(adapter), key_systems_(key_systems) {}
+    scoped_refptr<CdmSessionAdapter> adapter)
+    : adapter_(adapter) {
+}
 
 WebContentDecryptionModuleImpl::~WebContentDecryptionModuleImpl() = default;
 

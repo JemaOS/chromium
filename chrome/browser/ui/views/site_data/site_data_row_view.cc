@@ -13,7 +13,6 @@
 #include "chrome/grit/generated_resources.h"
 #include "components/omnibox/browser/favicon_cache.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/dialog_model.h"
 #include "ui/base/models/dialog_model_menu_model_adapter.h"
 #include "ui/views/controls/button/image_button.h"
@@ -311,6 +310,3 @@ void SiteDataRowView::SetContentSettingException(ContentSetting setting) {
 
   NotifyMenuItemClicked(this);
 }
-
-BEGIN_METADATA(SiteDataRowView)
-END_METADATA

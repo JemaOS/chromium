@@ -13,17 +13,14 @@
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #include "third_party/blink/renderer/core/editing/ephemeral_range.h"
 #include "third_party/blink/renderer/core/editing/iterators/text_searcher_icu.h"
-#include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_control_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/forms/text_control_element.h"
-#include "third_party/blink/renderer/core/html/html_dialog_element.h"
-#include "third_party/blink/renderer/core/layout/inline/inline_node.h"
-#include "third_party/blink/renderer/core/layout/inline/offset_mapping.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_inline_node.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_offset_mapping.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
-#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/text/unicode_utilities.h"
 #include "third_party/blink/renderer/platform/wtf/text/character_names.h"
 #include "third_party/blink/renderer/platform/wtf/text/unicode.h"
@@ -38,35 +35,10 @@ bool ShouldIgnoreContents(const Node& node) {
     return true;
   }
 
-  // A modal dialog and fullscreen element can escape inertness of ancestors.
-  // See https://issues.chromium.org/issues/40506558.
-  if (RuntimeEnabledFeatures::InertElementNonSearchableEnabled()) {
-    const Element* modal_element = node.GetDocument().ActiveModalDialog();
-    if (!modal_element) {
-      modal_element = Fullscreen::FullscreenElementFrom(node.GetDocument());
-    }
-    if (modal_element && modal_element != &node) {
-      // If `modal_element` is the child of `node`, `node` should not ignore
-      // contents to avoid skipping `modal_element`.
-      if (modal_element->IsDescendantOf(&node)) {
-        return false;
-      }
-      // https://html.spec.whatwg.org/multipage/interaction.html#modal-dialogs-and-inert-subtrees
-      // > While document is so blocked, every node that is connected to
-      // > document, with the exception of the subject element and its flat tree
-      // > descendants, must become inert.
-      if (!node.IsDescendantOf(modal_element)) {
-        return true;
-      }
-    }
-  }
-
   const auto* element = DynamicTo<HTMLElement>(node);
   if (!element)
     return false;
-  return (RuntimeEnabledFeatures::InertElementNonSearchableEnabled() &&
-          element->IsInertRoot()) ||
-         (!element->ShouldSerializeEndTag() &&
+  return (!element->ShouldSerializeEndTag() &&
           !IsA<HTMLInputElement>(*element)) ||
          (IsA<TextControlElement>(*element) &&
           !To<TextControlElement>(*element).SuggestedValue().empty()) ||
@@ -105,17 +77,6 @@ Node* GetOutermostNonSearchableAncestor(const Node& node) {
   return nullptr;
 }
 
-const ComputedStyle* EnsureComputedStyleForFind(Node& node) {
-  Element* element = DynamicTo<Element>(node);
-  if (!element) {
-    element = FlatTreeTraversal::ParentElement(node);
-  }
-  if (element) {
-    return element->EnsureComputedStyle();
-  }
-  return nullptr;
-}
-
 // Returns the next/previous node after |start_node| (including start node) that
 // is a text node and is searchable and visible.
 template <class Direction>
@@ -131,7 +92,7 @@ Node* GetVisibleTextNode(Node& start_node) {
   }
   // Move to first text node that's visible.
   while (node) {
-    const ComputedStyle* style = EnsureComputedStyleForFind(*node);
+    const ComputedStyle* style = node->EnsureComputedStyle();
     if (ShouldIgnoreContents(*node) ||
         (style && style->Display() == EDisplay::kNone)) {
       // This element and its descendants are not visible, skip it.
@@ -198,7 +159,7 @@ EphemeralRangeInFlatTree FindBuffer::FindMatchInRange(
     const EphemeralRangeInFlatTree& range,
     String search_text,
     FindOptions options,
-    std::optional<base::TimeDelta> timeout_ms) {
+    absl::optional<base::TimeDelta> timeout_ms) {
   if (!range.StartPosition().IsConnected())
     return EphemeralRangeInFlatTree();
 
@@ -285,10 +246,11 @@ bool FindBuffer::IsInSameUninterruptedBlock(const Node& start_node,
     return false;
 
   LayoutBlockFlow& start_block_flow =
-      *OffsetMapping::GetInlineFormattingContextOf(
+      *NGOffsetMapping::GetInlineFormattingContextOf(
           *start_node.GetLayoutObject());
   LayoutBlockFlow& end_block_flow =
-      *OffsetMapping::GetInlineFormattingContextOf(*end_node.GetLayoutObject());
+      *NGOffsetMapping::GetInlineFormattingContextOf(
+          *end_node.GetLayoutObject());
   if (start_block_flow != end_block_flow)
     return false;
 
@@ -303,10 +265,9 @@ bool FindBuffer::IsInSameUninterruptedBlock(const Node& start_node,
       continue;
 
     if (node->GetLayoutObject() &&
-        *OffsetMapping::GetInlineFormattingContextOf(
-            *node->GetLayoutObject()) != start_block_flow) {
+        *NGOffsetMapping::GetInlineFormattingContextOf(
+            *node->GetLayoutObject()) != start_block_flow)
       return false;
-    }
   }
 
   return true;
@@ -399,7 +360,7 @@ void FindBuffer::CollectTextUntilBlockBoundary(
       node = FlatTreeTraversal::NextSkippingChildren(*node);
       continue;
     }
-    const ComputedStyle* style = EnsureComputedStyleForFind(*node);
+    const ComputedStyle* style = node->EnsureComputedStyle();
     if (style->Display() == EDisplay::kNone) {
       // This element and its descendants are not visible, skip it.
       // We can safely just check the computed style of this node since
@@ -427,7 +388,7 @@ void FindBuffer::CollectTextUntilBlockBoundary(
       if (text_node) {
         last_added_text_node = node;
         LayoutBlockFlow& block_flow =
-            *OffsetMapping::GetInlineFormattingContextOf(
+            *NGOffsetMapping::GetInlineFormattingContextOf(
                 *text_node->GetLayoutObject());
         AddTextToBuffer(*text_node, block_flow, range);
       }
@@ -509,11 +470,11 @@ void FindBuffer::AddTextToBuffer(const Text& text_node,
                                  LayoutBlockFlow& block_flow,
                                  const EphemeralRangeInFlatTree& range) {
   if (!offset_mapping_) {
-    offset_mapping_ = InlineNode::GetOffsetMapping(&block_flow);
+    offset_mapping_ = NGInlineNode::GetOffsetMapping(&block_flow);
 
     if (UNLIKELY(!offset_mapping_)) {
       // TODO(crbug.com/955678): There are certain cases where we fail to
-      // compute the |OffsetMapping| due to failures in layout. As the root
+      // compute the |NGOffsetMapping| due to failures in layout. As the root
       // cause is hard to fix at the moment, we just work around it here.
       return;
     }
@@ -530,7 +491,7 @@ void FindBuffer::AddTextToBuffer(const Text& text_node,
   unsigned last_unit_end = 0;
   bool first_unit = true;
   const String mapped_text = offset_mapping_->GetText();
-  for (const OffsetMappingUnit& unit :
+  for (const NGOffsetMappingUnit& unit :
        offset_mapping_->GetMappingUnitsForDOMRange(
            EphemeralRange(node_start, node_end))) {
     if (first_unit || last_unit_end != unit.TextContentStart()) {

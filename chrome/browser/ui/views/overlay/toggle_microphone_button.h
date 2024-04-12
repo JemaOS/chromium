@@ -9,9 +9,9 @@
 #include "ui/base/metadata/metadata_header_macros.h"
 
 class ToggleMicrophoneButton : public OverlayWindowImageButton {
-  METADATA_HEADER(ToggleMicrophoneButton, OverlayWindowImageButton)
-
  public:
+  METADATA_HEADER(ToggleMicrophoneButton);
+
   explicit ToggleMicrophoneButton(PressedCallback callback);
   ToggleMicrophoneButton(const ToggleMicrophoneButton&) = delete;
   ToggleMicrophoneButton& operator=(const ToggleMicrophoneButton&) = delete;

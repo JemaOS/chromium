@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_LOGIN_QUICK_UNLOCK_QUICK_UNLOCK_FACTORY_H_
 #define CHROME_BROWSER_ASH_LOGIN_QUICK_UNLOCK_QUICK_UNLOCK_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "chromeos/ash/services/auth_factor_config/chrome_browser_delegates.h"
 #include "components/account_id/account_id.h"
@@ -47,13 +47,13 @@ class QuickUnlockFactory : public ProfileKeyedServiceFactory {
   QuickUnlockFactory& operator=(const QuickUnlockFactory&) = delete;
 
  private:
-  friend base::NoDestructor<QuickUnlockFactory>;
+  friend struct base::DefaultSingletonTraits<QuickUnlockFactory>;
 
   QuickUnlockFactory();
   ~QuickUnlockFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

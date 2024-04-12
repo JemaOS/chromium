@@ -12,7 +12,6 @@
 #include "services/device/public/mojom/usb_enumeration_options.mojom-blink.h"
 #include "third_party/blink/public/common/browser_interface_broker_proxy.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy.mojom-blink.h"
-#include "third_party/blink/public/mojom/service_worker/service_worker.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_usb_device_filter.h"
@@ -24,7 +23,6 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 #include "third_party/blink/renderer/modules/event_target_modules.h"
-#include "third_party/blink/renderer/modules/service_worker/service_worker_global_scope.h"
 #include "third_party/blink/renderer/modules/webusb/usb_connection_event.h"
 #include "third_party/blink/renderer/modules/webusb/usb_device.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
@@ -190,39 +188,36 @@ USB::~USB() {
   DCHECK(get_permission_requests_.empty());
 }
 
-ScriptPromiseTyped<IDLSequence<USBDevice>> USB::getDevices(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise USB::getDevices(ScriptState* script_state,
+                              ExceptionState& exception_state) {
   if (ShouldBlockUsbServiceCall(GetSupplementable()->DomWindow(),
                                 GetExecutionContext(), &exception_state)) {
-    return ScriptPromiseTyped<IDLSequence<USBDevice>>();
+    return ScriptPromise();
   }
 
   EnsureServiceConnection();
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLSequence<USBDevice>>>(
-          script_state, exception_state.GetContext());
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
   get_devices_requests_.insert(resolver);
   service_->GetDevices(WTF::BindOnce(&USB::OnGetDevices, WrapPersistent(this),
                                      WrapPersistent(resolver)));
   return resolver->Promise();
 }
 
-ScriptPromiseTyped<USBDevice> USB::requestDevice(
-    ScriptState* script_state,
-    const USBDeviceRequestOptions* options,
-    ExceptionState& exception_state) {
+ScriptPromise USB::requestDevice(ScriptState* script_state,
+                                 const USBDeviceRequestOptions* options,
+                                 ExceptionState& exception_state) {
   if (!DomWindow()) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kNotSupportedError,
         "The implementation did not support the requested type of object or "
         "operation.");
-    return ScriptPromiseTyped<USBDevice>();
+    return ScriptPromise();
   }
 
   if (ShouldBlockUsbServiceCall(GetSupplementable()->DomWindow(),
                                 GetExecutionContext(), &exception_state)) {
-    return ScriptPromiseTyped<USBDevice>();
+    return ScriptPromise();
   }
 
   EnsureServiceConnection();
@@ -230,37 +225,27 @@ ScriptPromiseTyped<USBDevice> USB::requestDevice(
   if (!LocalFrame::HasTransientUserActivation(DomWindow()->GetFrame())) {
     exception_state.ThrowSecurityError(
         "Must be handling a user gesture to show a permission request.");
-    return ScriptPromiseTyped<USBDevice>();
+    return ScriptPromise();
   }
 
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<USBDevice>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
-  auto mojo_options = mojom::blink::WebUsbRequestDeviceOptions::New();
+  ScriptPromise promise = resolver->Promise();
+  Vector<UsbDeviceFilterPtr> filters;
   if (options->hasFilters()) {
-    mojo_options->filters.reserve(options->filters().size());
+    filters.reserve(options->filters().size());
     for (const auto& filter : options->filters()) {
       UsbDeviceFilterPtr converted_filter =
           ConvertDeviceFilter(filter, resolver);
       if (!converted_filter)
         return promise;
-      mojo_options->filters.push_back(std::move(converted_filter));
+      filters.push_back(std::move(converted_filter));
     }
-  }
-  mojo_options->exclusion_filters.reserve(options->exclusionFilters().size());
-  for (const auto& filter : options->exclusionFilters()) {
-    UsbDeviceFilterPtr converted_filter = ConvertDeviceFilter(filter, resolver);
-    if (!converted_filter) {
-      return promise;
-    }
-    mojo_options->exclusion_filters.push_back(std::move(converted_filter));
   }
 
-  DCHECK(options->filters().size() == mojo_options->filters.size());
-  DCHECK(options->exclusionFilters().size() ==
-         mojo_options->exclusion_filters.size());
+  DCHECK(options->filters().size() == filters.size());
   get_permission_requests_.insert(resolver);
-  service_->GetPermission(std::move(mojo_options),
+  service_->GetPermission(std::move(filters),
                           resolver->WrapCallbackInScriptScope(WTF::BindOnce(
                               &USB::OnGetPermission, WrapPersistent(this))));
   return promise;
@@ -282,7 +267,7 @@ void USB::ContextDestroyed() {
 USBDevice* USB::GetOrCreateDevice(UsbDeviceInfoPtr device_info) {
   auto it = device_cache_.find(device_info->guid);
   if (it != device_cache_.end()) {
-    return it->value.Get();
+    return it->value;
   }
 
   String guid = device_info->guid;
@@ -301,9 +286,8 @@ void USB::ForgetDevice(
   service_->ForgetDevice(device_guid, std::move(callback));
 }
 
-void USB::OnGetDevices(
-    ScriptPromiseResolverTyped<IDLSequence<USBDevice>>* resolver,
-    Vector<UsbDeviceInfoPtr> device_infos) {
+void USB::OnGetDevices(ScriptPromiseResolver* resolver,
+                       Vector<UsbDeviceInfoPtr> device_infos) {
   DCHECK(get_devices_requests_.Contains(resolver));
 
   HeapVector<Member<USBDevice>> devices;
@@ -313,7 +297,7 @@ void USB::OnGetDevices(
   get_devices_requests_.erase(resolver);
 }
 
-void USB::OnGetPermission(ScriptPromiseResolverTyped<USBDevice>* resolver,
+void USB::OnGetPermission(ScriptPromiseResolver* resolver,
                           UsbDeviceInfoPtr device_info) {
   DCHECK(get_permission_requests_.Contains(resolver));
 
@@ -360,8 +344,7 @@ void USB::OnServiceConnectionError() {
   // script to be executed in the process of determining if the value is a
   // thenable. Move the set to a local variable to prevent such execution from
   // invalidating the iterator used by the loop.
-  HeapHashSet<Member<ScriptPromiseResolverTyped<IDLSequence<USBDevice>>>>
-      get_devices_requests;
+  HeapHashSet<Member<ScriptPromiseResolver>> get_devices_requests;
   get_devices_requests.swap(get_devices_requests_);
   for (auto& resolver : get_devices_requests)
     resolver->Resolve(HeapVector<Member<USBDevice>>(0));
@@ -381,32 +364,15 @@ void USB::OnServiceConnectionError() {
 
 void USB::AddedEventListener(const AtomicString& event_type,
                              RegisteredEventListener& listener) {
-  EventTarget::AddedEventListener(event_type, listener);
+  EventTargetWithInlineData::AddedEventListener(event_type, listener);
   if (event_type != event_type_names::kConnect &&
       event_type != event_type_names::kDisconnect) {
     return;
   }
 
-  auto* context = GetExecutionContext();
-  if (ShouldBlockUsbServiceCall(GetSupplementable()->DomWindow(), context,
-                                nullptr)) {
+  if (ShouldBlockUsbServiceCall(GetSupplementable()->DomWindow(),
+                                GetExecutionContext(), nullptr)) {
     return;
-  }
-
-  if (context->IsServiceWorkerGlobalScope()) {
-    auto* service_worker_global_scope =
-        static_cast<ServiceWorkerGlobalScope*>(context);
-    if (service_worker_global_scope->did_evaluate_script()) {
-      String message = String::Format(
-          "Event handler of '%s' event must be added on the initial evaluation "
-          "of worker script. More info: "
-          "https://developer.chrome.com/docs/extensions/mv3/service_workers/"
-          "events/",
-          event_type.Utf8().c_str());
-      GetExecutionContext()->AddConsoleMessage(
-          mojom::blink::ConsoleMessageSource::kJavaScript,
-          mojom::blink::ConsoleMessageLevel::kWarning, message);
-    }
   }
 
   EnsureServiceConnection();
@@ -443,7 +409,7 @@ void USB::Trace(Visitor* visitor) const {
   visitor->Trace(get_permission_requests_);
   visitor->Trace(client_receiver_);
   visitor->Trace(device_cache_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   Supplement<NavigatorBase>::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }

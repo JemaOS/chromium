@@ -40,6 +40,7 @@
 #include "ui/views/widget/tooltip_manager.h"
 #include "ui/views/widget/widget.h"
 #include "ui/wm/public/activation_client.h"
+#include "ui/wm/public/tooltip_client.h"
 #include "ui/wm/public/tooltip_observer.h"
 
 #if BUILDFLAG(IS_WIN)
@@ -62,6 +63,7 @@ class TestTooltipLacros : public Tooltip {
   TestTooltipLacros& operator=(const TestTooltipLacros&) = delete;
 
   ~TestTooltipLacros() override {
+    tooltip_parent_ = nullptr;
     state_manager_ = nullptr;
   }
 
@@ -89,7 +91,6 @@ class TestTooltipLacros : public Tooltip {
   }
   void Hide() override {
     is_visible_ = false;
-    tooltip_parent_ = nullptr;
     DCHECK(state_manager_);
     state_manager_->OnTooltipHiddenOnServer();
   }
@@ -125,6 +126,11 @@ views::Widget* CreateWidget(aura::Window* root) {
   widget->Init(std::move(params));
   widget->Show();
   return widget;
+}
+
+TooltipController* GetController(Widget* widget) {
+  return static_cast<TooltipController*>(
+      wm::GetTooltipClient(widget->GetNativeWindow()->GetRootWindow()));
 }
 
 }  // namespace
@@ -177,7 +183,7 @@ class TooltipControllerTest : public ViewsTestBase {
                      controller_.get());
 #endif
     helper_ = std::make_unique<TooltipControllerTestHelper>(
-        widget_->GetNativeWindow()->GetRootWindow());
+        GetController(widget_.get()));
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
     tooltip_->SetStateManager(helper_->state_manager());
 #endif
@@ -185,23 +191,17 @@ class TooltipControllerTest : public ViewsTestBase {
   }
 
   void TearDown() override {
-    // Reset the tooltip in case tests end with a visible tooltip.
-    helper_->state_manager()->HideAndReset();
-
 #if !BUILDFLAG(ENABLE_DESKTOP_AURA) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_CHROMEOS_LACROS)
     aura::Window* root_window = GetContext();
     if (root_window) {
       root_window->RemovePreTargetHandler(controller_.get());
       wm::SetTooltipClient(root_window, nullptr);
-      tooltip_ = nullptr;
-      helper_->set_controller(nullptr);
       controller_.reset();
     }
 #endif
     generator_.reset();
     helper_.reset();
-    view_ = nullptr;
     widget_.reset();
     ViewsTestBase::TearDown();
   }
@@ -1117,7 +1117,7 @@ class TooltipControllerTest2 : public aura::test::AuraTestBase {
         /* activation_client */ nullptr);
     root_window()->AddPreTargetHandler(controller_.get());
     SetTooltipClient(root_window(), controller_.get());
-    helper_ = std::make_unique<TooltipControllerTestHelper>(root_window());
+    helper_ = std::make_unique<TooltipControllerTestHelper>(controller_.get());
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
     test_tooltip_->SetStateManager(helper_->state_manager());
 #endif
@@ -1125,9 +1125,6 @@ class TooltipControllerTest2 : public aura::test::AuraTestBase {
   }
 
   void TearDown() override {
-    // Reset the tooltip in case tests end with a visible tooltip.
-    helper_->state_manager()->HideAndReset();
-
     root_window()->RemovePreTargetHandler(controller_.get());
     wm::SetTooltipClient(root_window(), nullptr);
     controller_.reset();
@@ -1139,7 +1136,7 @@ class TooltipControllerTest2 : public aura::test::AuraTestBase {
 
  protected:
   // Owned by |controller_|.
-  raw_ptr<TestTooltip, DanglingUntriaged> test_tooltip_;
+  raw_ptr<TestTooltip> test_tooltip_;
   std::unique_ptr<TooltipControllerTestHelper> helper_;
   std::unique_ptr<ui::test::EventGenerator> generator_;
 
@@ -1201,7 +1198,9 @@ class TooltipControllerTest3 : public ViewsTestBase {
 
     ViewsTestBase::SetUp();
 
-    widget_.reset(CreateWidget(GetContext()));
+    aura::Window* root_window = GetContext();
+
+    widget_.reset(CreateWidget(root_window));
     widget_->SetContentsView(std::make_unique<View>());
     view_ = new TooltipTestView;
     widget_->GetContentsView()->AddChildView(view_.get());
@@ -1212,16 +1211,16 @@ class TooltipControllerTest3 : public ViewsTestBase {
     test_tooltip_ = tooltip.get();
     controller_ = std::make_unique<TooltipController>(
         std::move(tooltip), /* activation_client */ nullptr);
-    auto* tooltip_controller =
-        static_cast<TooltipController*>(wm::GetTooltipClient(GetRootWindow()));
+    auto* tooltip_controller = static_cast<TooltipController*>(
+        wm::GetTooltipClient(widget_->GetNativeWindow()->GetRootWindow()));
     if (tooltip_controller)
       GetRootWindow()->RemovePreTargetHandler(tooltip_controller);
     GetRootWindow()->AddPreTargetHandler(controller_.get());
-    SetTooltipClient(GetRootWindow(), controller_.get());
-    helper_ = std::make_unique<TooltipControllerTestHelper>(GetRootWindow());
+    helper_ = std::make_unique<TooltipControllerTestHelper>(controller_.get());
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
     test_tooltip_->SetStateManager(helper_->state_manager());
 #endif
+    SetTooltipClient(GetRootWindow(), controller_.get());
   }
 
   void TearDown() override {
@@ -1231,7 +1230,6 @@ class TooltipControllerTest3 : public ViewsTestBase {
     controller_.reset();
     generator_.reset();
     helper_.reset();
-    view_ = nullptr;
     widget_.reset();
     ViewsTestBase::TearDown();
   }
@@ -1240,7 +1238,7 @@ class TooltipControllerTest3 : public ViewsTestBase {
 
  protected:
   // Owned by |controller_|.
-  raw_ptr<TestTooltip, DanglingUntriaged> test_tooltip_ = nullptr;
+  raw_ptr<TestTooltip> test_tooltip_ = nullptr;
   std::unique_ptr<TooltipControllerTestHelper> helper_;
   std::unique_ptr<ui::test::EventGenerator> generator_;
   std::unique_ptr<views::Widget> widget_;

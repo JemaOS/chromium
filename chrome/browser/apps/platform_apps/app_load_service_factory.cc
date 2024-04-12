@@ -23,19 +23,13 @@ AppLoadService* AppLoadServiceFactory::GetForBrowserContext(
 }
 
 AppLoadServiceFactory* AppLoadServiceFactory::GetInstance() {
-  static base::NoDestructor<AppLoadServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<AppLoadServiceFactory>::get();
 }
 
 AppLoadServiceFactory::AppLoadServiceFactory()
     : ProfileKeyedServiceFactory(
           "AppLoadService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(extensions::AppWindowRegistry::Factory::GetInstance());
   DependsOn(extensions::ExtensionPrefsFactory::GetInstance());
   DependsOn(extensions::ExtensionRegistryFactory::GetInstance());
@@ -44,12 +38,11 @@ AppLoadServiceFactory::AppLoadServiceFactory()
       extensions::ExtensionsBrowserClient::Get()->GetExtensionSystemFactory());
 }
 
-AppLoadServiceFactory::~AppLoadServiceFactory() = default;
+AppLoadServiceFactory::~AppLoadServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-AppLoadServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AppLoadServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<AppLoadService>(context);
+  return new AppLoadService(context);
 }
 
 bool AppLoadServiceFactory::ServiceIsCreatedWithBrowserContext() const {

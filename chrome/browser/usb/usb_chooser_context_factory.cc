@@ -11,16 +11,11 @@
 UsbChooserContextFactory::UsbChooserContextFactory()
     : ProfileKeyedServiceFactory(
           "UsbChooserContext",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HostContentSettingsMapFactory::GetInstance());
 }
 
-UsbChooserContextFactory::~UsbChooserContextFactory() = default;
+UsbChooserContextFactory::~UsbChooserContextFactory() {}
 
 KeyedService* UsbChooserContextFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
@@ -29,8 +24,7 @@ KeyedService* UsbChooserContextFactory::BuildServiceInstanceFor(
 
 // static
 UsbChooserContextFactory* UsbChooserContextFactory::GetInstance() {
-  static base::NoDestructor<UsbChooserContextFactory> instance;
-  return instance.get();
+  return base::Singleton<UsbChooserContextFactory>::get();
 }
 
 // static

@@ -17,7 +17,6 @@
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/shell.h"
 #include "ash/test/ash_test_base.h"
-#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "base/test/task_environment.h"
@@ -68,7 +67,7 @@ class AppListPresenterImplTest : public AshTestBase {
   void ShowAppList() {
     presenter()->Show(AppListViewState::kFullscreenAllApps,
                       GetPrimaryDisplay().id(), base::TimeTicks(),
-                      /*show_source=*/std::nullopt);
+                      /*show_source=*/absl::nullopt);
   }
 
   // Shows the Assistant UI.
@@ -94,7 +93,7 @@ TEST_F(AppListPresenterImplTest,
       Shelf::ForWindow(Shell::GetRootWindowForDisplayId(GetPrimaryDisplayId()))
           ->shelf_layout_manager();
   EXPECT_EQ(ShelfBackgroundType::kHomeLauncher,
-            shelf_layout_manager->shelf_background_type());
+            shelf_layout_manager->GetShelfBackgroundType());
   HotseatWidget* hotseat = GetPrimaryShelf()->hotseat_widget();
 
   for (int id : AppListPresenterImpl::kIdsOfContainersThatWontHideAppList) {
@@ -103,7 +102,7 @@ TEST_F(AppListPresenterImplTest,
     std::unique_ptr<views::Widget> widget = CreateTestWidget(nullptr, id);
 
     EXPECT_EQ(ShelfBackgroundType::kHomeLauncher,
-              shelf_layout_manager->shelf_background_type())
+              shelf_layout_manager->GetShelfBackgroundType())
         << " container " << id;
     EXPECT_EQ(hotseat->state(), HotseatState::kShownHomeLauncher);
   }

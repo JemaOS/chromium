@@ -17,7 +17,6 @@
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
-#include "chrome/browser/browser_process.h"
 #include "chrome/browser/media/router/discovery/access_code/access_code_cast_feature.h"
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/profiles/profile.h"
@@ -30,12 +29,10 @@
 #include "components/media_router/common/media_sink.h"
 #include "components/media_router/common/media_source.h"
 #include "components/user_manager/user_manager.h"
-#include "third_party/icu/source/common/unicode/uversion.h"
-#include "third_party/icu/source/i18n/unicode/coll.h"
 
 namespace {
 
-std::optional<media_router::MediaRouter*> g_media_router_for_test;
+absl::optional<media_router::MediaRouter*> media_router_for_test_;
 
 Profile* GetProfile() {
   if (!user_manager::UserManager::IsInitialized())
@@ -51,9 +48,8 @@ Profile* GetProfile() {
 // Returns the MediaRouter instance for the current primary profile, if there is
 // one.
 media_router::MediaRouter* GetMediaRouter() {
-  if (g_media_router_for_test) {
-    return *g_media_router_for_test;
-  }
+  if (media_router_for_test_)
+    return *media_router_for_test_;
 
   Profile* profile = GetProfile();
   if (!profile || !media_router::MediaRouterEnabled(profile))
@@ -98,13 +94,9 @@ class CastDeviceCache : public media_router::MediaRoutesObserver,
   // media_router::MediaRoutesObserver:
   void OnRoutesUpdated(const MediaRoutes& routes) override;
 
-  // Sorts `sinks_` alphabetically.
-  void SortSinks();
-
   MediaSinks sinks_;
   MediaRoutes routes_;
 
-  std::unique_ptr<icu::Collator> collator_;
   base::RepeatingClosure update_devices_callback_;
 };
 
@@ -133,35 +125,13 @@ void CastDeviceCache::OnSinksReceived(const MediaSinks& sinks) {
 
     sinks_.push_back(sink);
   }
-  SortSinks();
+
   update_devices_callback_.Run();
 }
 
 void CastDeviceCache::OnRoutesUpdated(const MediaRoutes& routes) {
   routes_ = routes;
   update_devices_callback_.Run();
-}
-
-void CastDeviceCache::SortSinks() {
-  if (sinks_.size() <= 1) {
-    return;
-  }
-  if (!collator_) {
-    UErrorCode error = U_ZERO_ERROR;
-    const std::string& locale = g_browser_process->GetApplicationLocale();
-    collator_.reset(
-        icu::Collator::createInstance(icu::Locale(locale.c_str()), error));
-    if (U_FAILURE(error)) {
-      collator_.reset();
-      return;
-    }
-  }
-  const icu::Collator* collator_ptr = collator_.get();
-  std::sort(sinks_.begin(), sinks_.end(),
-            [collator_ptr](const media_router::MediaSink& sink1,
-                           const media_router::MediaSink& sink2) {
-              return sink1.CompareUsingCollator(sink2, collator_ptr);
-            });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,7 +154,7 @@ void CastConfigControllerMediaRouter::OnFreezeInfoChanged() {
 // static
 void CastConfigControllerMediaRouter::SetMediaRouterForTest(
     media_router::MediaRouter* media_router) {
-  g_media_router_for_test = media_router;
+  media_router_for_test_ = media_router;
 }
 
 CastDeviceCache* CastConfigControllerMediaRouter::device_cache() {
@@ -266,7 +236,7 @@ void CastConfigControllerMediaRouter::CastToSink(const std::string& sink_id) {
     GetMediaRouter()->CreateRoute(
         media_router::MediaSource::ForUnchosenDesktop().id(), sink_id,
         url::Origin::Create(GURL("http://cros-cast-origin/")), nullptr,
-        base::DoNothing(), base::TimeDelta());
+        base::DoNothing(), base::TimeDelta(), false);
   }
 }
 
@@ -341,6 +311,7 @@ void CastConfigControllerMediaRouter::UpdateDevices() {
     AddFakeCastDevices();
   }
 #endif
+
   for (const media_router::MediaSink& sink : device_cache()->sinks()) {
     ash::SinkAndRoute device;
     device.sink.id = sink.id();
@@ -366,8 +337,8 @@ void CastConfigControllerMediaRouter::UpdateDevices() {
         // Only set freeze info if the appropriate feature is enabled. Else,
         // values default to false and freeze ui is not shown.
         if (freeze_host) {
-          device.route.freeze_info.can_freeze = freeze_host->CanFreeze();
-          device.route.freeze_info.is_frozen = freeze_host->IsFrozen();
+          device.route.freeze_info.can_freeze = freeze_host->can_freeze();
+          device.route.freeze_info.is_frozen = freeze_host->is_frozen();
         }
 
         // Default to a tab/app capture. This will display the media router

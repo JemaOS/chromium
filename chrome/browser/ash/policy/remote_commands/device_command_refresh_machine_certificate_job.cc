@@ -56,7 +56,7 @@ void DeviceCommandRefreshMachineCertificateJob::RunImpl(
                     << " certificate cannot be refreshed.";
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(result_callback),
-                                  ResultType::kFailure, std::nullopt));
+                                  ResultType::kFailure, absl::nullopt));
   }
 }
 
@@ -67,7 +67,7 @@ void DeviceCommandRefreshMachineCertificateJob::OnCertificateUploaded(
       FROM_HERE,
       base::BindOnce(std::move(result_callback),
                      success ? ResultType::kSuccess : ResultType::kFailure,
-                     std::nullopt));
+                     absl::nullopt));
 }
 
 }  // namespace policy

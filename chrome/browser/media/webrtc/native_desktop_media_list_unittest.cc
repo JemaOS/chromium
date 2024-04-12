@@ -130,7 +130,7 @@ class MockObserver : public DesktopMediaListObserver {
   MOCK_METHOD0(OnDelegatedSourceListDismissed, void());
 };
 
-class FakeScreenCapturer : public ThumbnailCapturer {
+class FakeScreenCapturer : public webrtc::DesktopCapturer {
  public:
   FakeScreenCapturer() {}
 
@@ -139,18 +139,14 @@ class FakeScreenCapturer : public ThumbnailCapturer {
 
   ~FakeScreenCapturer() override {}
 
-  // ThumbnailCapturer implementation.
-  void Start(Consumer* consumer) override { consumer_ = consumer; }
-
-  FrameDeliveryMethod GetFrameDeliveryMethod() const override {
-    return FrameDeliveryMethod::kOnRequest;
-  }
+  // webrtc::ScreenCapturer implementation.
+  void Start(Callback* callback) override { callback_ = callback; }
 
   void CaptureFrame() override {
-    DCHECK(consumer_);
+    DCHECK(callback_);
     std::unique_ptr<webrtc::DesktopFrame> frame(
         new webrtc::BasicDesktopFrame(webrtc::DesktopSize(10, 10)));
-    consumer_->OnCaptureResult(webrtc::DesktopCapturer::Result::SUCCESS,
+    callback_->OnCaptureResult(webrtc::DesktopCapturer::Result::SUCCESS,
                                std::move(frame));
   }
 
@@ -165,10 +161,10 @@ class FakeScreenCapturer : public ThumbnailCapturer {
   }
 
  protected:
-  raw_ptr<Consumer> consumer_;
+  raw_ptr<Callback> callback_;
 };
 
-class FakeWindowCapturer : public ThumbnailCapturer {
+class FakeWindowCapturer : public webrtc::DesktopCapturer {
  public:
   FakeWindowCapturer() = default;
   explicit FakeWindowCapturer(const webrtc::DesktopCaptureOptions& options)
@@ -191,15 +187,11 @@ class FakeWindowCapturer : public ThumbnailCapturer {
     frame_values_[window_id] = value;
   }
 
-  // ThumbnailCapturer implementation.
-  void Start(Consumer* consumer) override { consumer_ = consumer; }
-
-  FrameDeliveryMethod GetFrameDeliveryMethod() const override {
-    return FrameDeliveryMethod::kOnRequest;
-  }
+  // webrtc::WindowCapturer implementation.
+  void Start(Callback* callback) override { callback_ = callback; }
 
   void CaptureFrame() override {
-    DCHECK(consumer_);
+    DCHECK(callback_);
 
     base::AutoLock lock(frame_values_lock_);
 
@@ -208,7 +200,7 @@ class FakeWindowCapturer : public ThumbnailCapturer {
     std::unique_ptr<webrtc::DesktopFrame> frame(
         new webrtc::BasicDesktopFrame(webrtc::DesktopSize(10, 10)));
     memset(frame->data(), value, frame->stride() * frame->size().height());
-    consumer_->OnCaptureResult(webrtc::DesktopCapturer::Result::SUCCESS,
+    callback_->OnCaptureResult(webrtc::DesktopCapturer::Result::SUCCESS,
                                std::move(frame));
   }
 
@@ -239,8 +231,10 @@ class FakeWindowCapturer : public ThumbnailCapturer {
     return true;
   }
 
+  bool FocusOnSelectedSource() override { return true; }
+
  private:
-  raw_ptr<Consumer> consumer_;
+  raw_ptr<Callback> callback_;
   webrtc::DesktopCaptureOptions options_ =
       webrtc::DesktopCaptureOptions::CreateDefault();
   SourceList window_list_;
@@ -381,9 +375,9 @@ class NativeDesktopMediaListTest : public ChromeViewsTestBase {
 
   void UpdateModel() {
     base::RunLoop run_loop;
-    base::OnceClosure update_consumer =
+    base::OnceClosure update_callback =
         base::BindLambdaForTesting([&]() { run_loop.Quit(); });
-    model_->Update(std::move(update_consumer));
+    model_->Update(std::move(update_callback));
     run_loop.Run();
   }
 
@@ -477,7 +471,7 @@ class NativeDesktopMediaListTest : public ChromeViewsTestBase {
   MockObserver observer_;
 
   // Owned by |model_|;
-  raw_ptr<FakeWindowCapturer, DanglingUntriaged> window_capturer_;
+  raw_ptr<FakeWindowCapturer> window_capturer_;
 
   webrtc::DesktopCapturer::SourceList window_list_;
   std::vector<views::UniqueWidgetPtr> desktop_widgets_;

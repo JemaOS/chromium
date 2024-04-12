@@ -17,7 +17,6 @@ class Point;
 }  // namespace gfx
 
 namespace ui {
-class ColorProvider;
 class KeyEvent;
 }  // namespace ui
 
@@ -66,8 +65,7 @@ ASH_EXPORT bool ProcessLeftRightKeyTraversalForTextfield(
 // Returns a new image with the `icon` atop a circle background with
 // `background_color`.
 ASH_EXPORT gfx::ImageSkia CreateIconWithCircleBackground(
-    const gfx::ImageSkia& icon,
-    const ui::ColorProvider* color_provider);
+    const gfx::ImageSkia& icon);
 
 // Paints a rounded focus bar on `canvas` starting at `content_origin` extending
 // `height` dips vertically.

@@ -28,7 +28,7 @@ using blink::digital_goods_util::LogConsoleError;
 using payments::mojom::blink::CreateDigitalGoodsResponseCode;
 
 void OnCreateDigitalGoodsResponse(
-    ScriptPromiseResolverTyped<DigitalGoodsService>* resolver,
+    ScriptPromiseResolver* resolver,
     CreateDigitalGoodsResponseCode code,
     mojo::PendingRemote<payments::mojom::blink::DigitalGoods> pending_remote) {
   if (code != CreateDigitalGoodsResponseCode::kOk) {
@@ -48,32 +48,31 @@ void OnCreateDigitalGoodsResponse(
 
 const char DOMWindowDigitalGoods::kSupplementName[] = "DOMWindowDigitalGoods";
 
-DOMWindowDigitalGoods::DOMWindowDigitalGoods(LocalDOMWindow& window)
-    : Supplement(window), mojo_service_(&window) {}
+DOMWindowDigitalGoods::DOMWindowDigitalGoods(ExecutionContext* context)
+    : Supplement(nullptr), mojo_service_(context) {}
 
-ScriptPromiseTyped<DigitalGoodsService>
-DOMWindowDigitalGoods::getDigitalGoodsService(ScriptState* script_state,
-                                              LocalDOMWindow& window,
-                                              const String& payment_method,
-                                              ExceptionState& exception_state) {
+ScriptPromise DOMWindowDigitalGoods::getDigitalGoodsService(
+    ScriptState* script_state,
+    LocalDOMWindow& window,
+    const String& payment_method,
+    ExceptionState& exception_state) {
   return FromState(&window)->GetDigitalGoodsService(
       script_state, window, payment_method, exception_state);
 }
 
-ScriptPromiseTyped<DigitalGoodsService>
-DOMWindowDigitalGoods::GetDigitalGoodsService(ScriptState* script_state,
-                                              LocalDOMWindow& window,
-                                              const String& payment_method,
-                                              ExceptionState& exception_state) {
+ScriptPromise DOMWindowDigitalGoods::GetDigitalGoodsService(
+    ScriptState* script_state,
+    LocalDOMWindow& window,
+    const String& payment_method,
+    ExceptionState& exception_state) {
   if (!script_state->ContextIsValid()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "The execution context is not valid.");
-    return ScriptPromiseTyped<DigitalGoodsService>();
+    return ScriptPromise();
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<DigitalGoodsService>>(
-          script_state, exception_state.GetContext());
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
   auto promise = resolver->Promise();
   auto* execution_context = ExecutionContext::From(script_state);
   DCHECK(execution_context);
@@ -130,7 +129,7 @@ DOMWindowDigitalGoods* DOMWindowDigitalGoods::FromState(
   DOMWindowDigitalGoods* supplement =
       Supplement<LocalDOMWindow>::From<DOMWindowDigitalGoods>(window);
   if (!supplement) {
-    supplement = MakeGarbageCollected<DOMWindowDigitalGoods>(*window);
+    supplement = MakeGarbageCollected<DOMWindowDigitalGoods>(window);
     ProvideTo(*window, supplement);
   }
 

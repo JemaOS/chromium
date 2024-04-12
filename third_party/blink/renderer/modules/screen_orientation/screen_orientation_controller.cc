@@ -263,7 +263,6 @@ bool ScreenOrientationController::MaybeHasActiveLock() const {
 }
 
 void ScreenOrientationController::ContextDestroyed() {
-  pending_callback_.reset();
   active_lock_ = false;
 }
 

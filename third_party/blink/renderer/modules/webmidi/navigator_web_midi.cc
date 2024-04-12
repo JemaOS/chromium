@@ -76,7 +76,7 @@ NavigatorWebMIDI& NavigatorWebMIDI::From(Navigator& navigator) {
   return *supplement;
 }
 
-ScriptPromiseTyped<MIDIAccess> NavigatorWebMIDI::requestMIDIAccess(
+ScriptPromise NavigatorWebMIDI::requestMIDIAccess(
     ScriptState* script_state,
     Navigator& navigator,
     const MIDIOptions* options,
@@ -85,14 +85,14 @@ ScriptPromiseTyped<MIDIAccess> NavigatorWebMIDI::requestMIDIAccess(
       script_state, options, exception_state);
 }
 
-ScriptPromiseTyped<MIDIAccess> NavigatorWebMIDI::requestMIDIAccess(
+ScriptPromise NavigatorWebMIDI::requestMIDIAccess(
     ScriptState* script_state,
     const MIDIOptions* options,
     ExceptionState& exception_state) {
   if (!script_state->ContextIsValid()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kAbortError,
                                       "The frame is not working.");
-    return ScriptPromiseTyped<MIDIAccess>();
+    return ScriptPromise();
   }
 
   LocalDOMWindow* window = LocalDOMWindow::From(script_state);
@@ -104,10 +104,10 @@ ScriptPromiseTyped<MIDIAccess> NavigatorWebMIDI::requestMIDIAccess(
         WebFeature::
             kRequestMIDIAccessIframeWithSysExOption_ObscuredByFootprinting);
   } else {
-    // In the spec, step 7 below allows user-agents to prompt the user for
-    // permission regardless of sysex option.
+    // In the recent spec, the step 7 below allows user-agents to prompt the
+    // user for permission regardless of sysex option.
     // https://webaudio.github.io/web-midi-api/#dom-navigator-requestmidiaccess
-    // https://crbug.com/1420307.
+    // https://crbug.com/662000.
     if (window->IsSecureContext()) {
       Deprecation::CountDeprecation(
           window, WebFeature::kNoSysexWebMIDIWithoutPermission);
@@ -121,12 +121,10 @@ ScriptPromiseTyped<MIDIAccess> NavigatorWebMIDI::requestMIDIAccess(
           ReportOptions::kReportOnFailure, kFeaturePolicyConsoleWarning)) {
     UseCounter::Count(window, WebFeature::kMidiDisabledByFeaturePolicy);
     exception_state.ThrowSecurityError(kFeaturePolicyErrorMessage);
-    return ScriptPromiseTyped<MIDIAccess>();
+    return ScriptPromise();
   }
 
-  MIDIAccessInitializer* initializer =
-      MakeGarbageCollected<MIDIAccessInitializer>(script_state, options);
-  return initializer->Start(window);
+  return MIDIAccessInitializer::Start(script_state, options);
 }
 
 }  // namespace blink

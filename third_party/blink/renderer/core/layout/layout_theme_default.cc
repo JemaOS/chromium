@@ -24,7 +24,6 @@
 
 #include "third_party/blink/renderer/core/layout/layout_theme_default.h"
 
-#include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
 #include "third_party/blink/public/platform/web_theme_engine.h"
 #include "third_party/blink/public/resources/grit/blink_resources.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
@@ -47,13 +46,13 @@ static const float kMinCancelButtonSize = 5;
 static const float kMaxCancelButtonSize = 21;
 
 Color LayoutThemeDefault::active_selection_background_color_ =
-    Color::FromRGBA32(kDefaultActiveSelectionBgColor);
+    Color::FromRGBA32(0xFF1967D2);
 Color LayoutThemeDefault::active_selection_foreground_color_ =
-    Color::FromRGBA32(kDefaultActiveSelectionFgColor);
+    Color::FromRGBA32(0xFF000000);
 Color LayoutThemeDefault::inactive_selection_background_color_ =
-    Color::FromRGBA32(kDefaultInactiveSelectionBgColor);
+    Color::FromRGBA32(0xFFC8C8C8);
 Color LayoutThemeDefault::inactive_selection_foreground_color_ =
-    Color::FromRGBA32(kDefaultInactiveSelectionFgColor);
+    Color::FromRGBA32(0xFF323232);
 Color
     LayoutThemeDefault::active_list_box_selection_background_color_dark_mode_ =
         Color::FromRGBA32(0xFF99C8FF);
@@ -192,13 +191,8 @@ void LayoutThemeDefault::AdjustInnerSpinButtonStyle(
       WebThemeEngine::kPartInnerSpinButton);
 
   float zoom_level = style.EffectiveZoom();
-  if (IsHorizontalWritingMode(style.GetWritingMode())) {
-    style.SetWidth(Length::Fixed(size.width() * zoom_level));
-    style.SetMinWidth(Length::Fixed(size.width() * zoom_level));
-  } else {
-    style.SetHeight(Length::Fixed(size.width() * zoom_level));
-    style.SetMinHeight(Length::Fixed(size.width() * zoom_level));
-  }
+  style.SetWidth(Length::Fixed(size.width() * zoom_level));
+  style.SetMinWidth(Length::Fixed(size.width() * zoom_level));
 }
 
 Color LayoutThemeDefault::PlatformFocusRingColor() const {

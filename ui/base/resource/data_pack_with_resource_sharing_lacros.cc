@@ -200,7 +200,7 @@ bool DataPackWithResourceSharing::LoadMappingTable(const base::FilePath& path) {
   return true;
 }
 
-const std::optional<uint16_t> DataPackWithResourceSharing::LookupMappingTable(
+const absl::optional<uint16_t> DataPackWithResourceSharing::LookupMappingTable(
     uint16_t resource_id) const {
   // Look up `resource_id` in `mapping_table_`|.
   // If mapped ash resource id is not found, return null.
@@ -208,13 +208,13 @@ const std::optional<uint16_t> DataPackWithResourceSharing::LookupMappingTable(
       bsearch(&resource_id, mapping_table_, mapping_count_, sizeof(Mapping),
               Mapping::CompareById));
   if (!ret)
-    return std::nullopt;
+    return absl::nullopt;
 
   return ret->ash_resource_id;
 }
 
 bool DataPackWithResourceSharing::HasResource(uint16_t resource_id) const {
-  std::optional<uint16_t> ash_resource_id = LookupMappingTable(resource_id);
+  absl::optional<uint16_t> ash_resource_id = LookupMappingTable(resource_id);
   if (ash_resource_id.has_value()) {
     // If ash resource id is found in mapping table, its resource must exists.
     DCHECK(ash_data_pack_->HasResource(ash_resource_id.value()));
@@ -224,21 +224,23 @@ bool DataPackWithResourceSharing::HasResource(uint16_t resource_id) const {
   return fallback_data_pack_->HasResource(resource_id);
 }
 
-std::optional<base::StringPiece> DataPackWithResourceSharing::GetStringPiece(
-    uint16_t resource_id) const {
-  std::optional<uint16_t> ash_resource_id = LookupMappingTable(resource_id);
+bool DataPackWithResourceSharing::GetStringPiece(
+    uint16_t resource_id,
+    base::StringPiece* data) const {
+  absl::optional<uint16_t> ash_resource_id = LookupMappingTable(resource_id);
   if (ash_resource_id.has_value())
-    return ash_data_pack_->GetStringPiece(ash_resource_id.value());
+    return ash_data_pack_->GetStringPiece(ash_resource_id.value(), data);
 
-  return fallback_data_pack_->GetStringPiece(resource_id);
+  return fallback_data_pack_->GetStringPiece(resource_id, data);
 }
 
 base::RefCountedStaticMemory* DataPackWithResourceSharing::GetStaticMemory(
     uint16_t resource_id) const {
-  if (auto piece = GetStringPiece(resource_id); piece.has_value()) {
-    return new base::RefCountedStaticMemory(piece->data(), piece->length());
-  }
-  return nullptr;
+  base::StringPiece piece;
+  if (!GetStringPiece(resource_id, &piece))
+    return nullptr;
+
+  return new base::RefCountedStaticMemory(piece.data(), piece.length());
 }
 
 ResourceHandle::TextEncodingType
@@ -463,10 +465,10 @@ bool DataPackWithResourceSharing::MaybeGenerateFallbackAndMapping(
 
   std::vector<Mapping> mapping_table;
   std::map<uint16_t, base::StringPiece> fallback_resources;
-  std::unordered_map<base::StringPiece, uint16_t> ash_resources;
-  for (const DataPack::ResourceData& resource_data : *ash_data_pack) {
+  std::unordered_map<base::StringPiece, uint16_t, base::StringPieceHash>
+      ash_resources;
+  for (const DataPack::ResourceData& resource_data : *ash_data_pack)
     ash_resources.emplace(resource_data.data, resource_data.id);
-  }
 
   // Determine if lacros resource Entry exists in ash resources. Add to
   // `mapping_table` if exists. Add to `fallback_resources` instead if not.
@@ -509,23 +511,21 @@ bool DataPackWithResourceSharing::MaybeGenerateFallbackAndMapping(
     } else if (mapping_table[mapping_idx].lacros_resource_id < resource_id) {
       ++mapping_idx;
     } else {
-      if (auto piece = lacros_data_pack->GetStringPiece(resource_id); piece) {
-        fallback_resources[lacros_data_pack
-                               ->GetAliasByAliasTableIndex(alias_idx)
-                               ->resource_id] = piece.value();
-      }
+      lacros_data_pack->GetStringPiece(
+          resource_id,
+          &fallback_resources[lacros_data_pack
+                                  ->GetAliasByAliasTableIndex(alias_idx)
+                                  ->resource_id]);
       ++alias_idx;
     }
   }
 
   for (; alias_idx < lacros_data_pack->GetAliasTableSize(); ++alias_idx) {
-    if (auto piece = lacros_data_pack->GetStringPiece(
-            lacros_data_pack->GetAliasByAliasTableIndex(alias_idx)
-                ->resource_id);
-        piece) {
-      fallback_resources[lacros_data_pack->GetAliasByAliasTableIndex(alias_idx)
-                             ->resource_id] = piece.value();
-    }
+    lacros_data_pack->GetStringPiece(
+        lacros_data_pack->GetAliasByAliasTableIndex(alias_idx)->resource_id,
+        &fallback_resources[lacros_data_pack
+                                ->GetAliasByAliasTableIndex(alias_idx)
+                                ->resource_id]);
   }
 
   // Build a list of final resource aliases, and an alias map at the same time.

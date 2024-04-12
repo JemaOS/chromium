@@ -15,7 +15,6 @@
 #include <sstream>
 
 #include "base/compiler_specific.h"
-#include "base/version_info/channel.h"
 #include "build/branding_buildflags.h"
 #include "chrome/chrome_elf/nt_registry/nt_registry.h"
 #include "chrome/install_static/buildflags.h"
@@ -24,6 +23,7 @@
 #include "chrome/install_static/policy_path_parser.h"
 #include "chrome/install_static/user_data_dir.h"
 #include "components/nacl/common/buildflags.h"
+#include "components/version_info/channel.h"
 
 namespace install_static {
 
@@ -32,6 +32,7 @@ enum class ProcessType {
   OTHER_PROCESS,
   BROWSER_PROCESS,
 #if BUILDFLAG(ENABLE_NACL)
+  NACL_BROKER_PROCESS,
   NACL_LOADER_PROCESS,
 #endif
   CRASHPAD_HANDLER_PROCESS,
@@ -80,6 +81,7 @@ constexpr wchar_t kRegValueUsageStats[] = L"usagestats";
 constexpr wchar_t kMetricsReportingEnabled[] = L"MetricsReportingEnabled";
 
 #if BUILDFLAG(ENABLE_NACL)
+constexpr wchar_t kNaClBrokerProcess[] = L"nacl-broker";
 constexpr wchar_t kNaClLoaderProcess[] = L"nacl-loader";
 #endif
 
@@ -259,6 +261,8 @@ ProcessType GetProcessType(const std::wstring& process_type) {
   if (process_type.empty())
     return ProcessType::BROWSER_PROCESS;
 #if BUILDFLAG(ENABLE_NACL)
+  if (process_type == kNaClBrokerProcess)
+    return ProcessType::NACL_BROKER_PROCESS;
   if (process_type == kNaClLoaderProcess)
     return ProcessType::NACL_LOADER_PROCESS;
 #endif
@@ -275,6 +279,7 @@ bool ProcessNeedsProfileDir(ProcessType process_type) {
   switch (process_type) {
     case ProcessType::BROWSER_PROCESS:
 #if BUILDFLAG(ENABLE_NACL)
+    case ProcessType::NACL_BROKER_PROCESS:
     case ProcessType::NACL_LOADER_PROCESS:
 #endif
       return true;
@@ -367,20 +372,12 @@ const wchar_t* GetBaseAppId() {
   return InstallDetails::Get().base_app_id();
 }
 
-const wchar_t* GetBrowserProgIdPrefix() {
-  return InstallDetails::Get().mode().browser_prog_id_prefix;
+const wchar_t* GetProgIdPrefix() {
+  return InstallDetails::Get().mode().prog_id_prefix;
 }
 
-const wchar_t* GetBrowserProgIdDescription() {
-  return InstallDetails::Get().mode().browser_prog_id_description;
-}
-
-const wchar_t* GetPDFProgIdPrefix() {
-  return InstallDetails::Get().mode().pdf_prog_id_prefix;
-}
-
-const wchar_t* GetPDFProgIdDescription() {
-  return InstallDetails::Get().mode().pdf_prog_id_description;
+const wchar_t* GetProgIdDescription() {
+  return InstallDetails::Get().mode().prog_id_description;
 }
 
 std::wstring GetActiveSetupPath() {
@@ -397,20 +394,11 @@ bool SupportsSetAsDefaultBrowser() {
   return InstallDetails::Get().mode().supports_set_as_default_browser;
 }
 
-int GetAppIconResourceIndex() {
-  return InstallDetails::Get().mode().app_icon_resource_index;
+bool SupportsRetentionExperiments() {
+  return InstallDetails::Get().mode().supports_retention_experiments;
 }
 
-int GetHTMLIconResourceIndex() {
-  // TODO(https://crbug.com/414141): Return HTML specific resource index
-  // once we've added support for it. This will be used for all doc types
-  // Chrome registers itself as a default handler for, except for .pdf.
-  return InstallDetails::Get().mode().app_icon_resource_index;
-}
-
-int GetPDFIconResourceIndex() {
-  // TODO(https://crbug.com/414141): Return PDF specific resource index
-  // once we've added support for it.
+int GetIconResourceIndex() {
   return InstallDetails::Get().mode().app_icon_resource_index;
 }
 

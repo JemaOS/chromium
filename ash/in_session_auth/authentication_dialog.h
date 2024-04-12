@@ -11,6 +11,7 @@
 #include "ash/public/cpp/in_session_auth_token_provider.h"
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
+#include "base/unguessable_token.h"
 #include "chromeos/ash/components/login/auth/auth_performer.h"
 #include "chromeos/ash/components/login/auth/public/user_context.h"
 #include "components/account_id/account_id.h"
@@ -40,13 +41,13 @@ class AuthenticationDialog : public views::DialogDelegateView {
     }
 
    private:
-    raw_ptr<AuthenticationDialog, AcrossTasksDanglingUntriaged> const dialog_;
+    base::raw_ptr<AuthenticationDialog> const dialog_;
   };
 
   // |on_auth_complete| is called when the user has been authenticated
   // or when the dialog has been aborted
   explicit AuthenticationDialog(
-      auth_panel::AuthCompletionCallback on_auth_complete,
+      InSessionAuthDialogController::OnAuthComplete on_auth_complete,
       InSessionAuthTokenProvider* auth_token_provider,
       std::unique_ptr<AuthPerformer> auth_performer,
       const AccountId& account_id);
@@ -67,7 +68,7 @@ class AuthenticationDialog : public views::DialogDelegateView {
   // authentication was successful, and `success` == false if the dialog was
   // aborted.
   void NotifyResult(bool success,
-                    const AuthProofToken& token,
+                    const base::UnguessableToken& token,
                     base::TimeDelta timeout);
 
   // Modifies the Ok button to display the proper string and registers
@@ -87,10 +88,7 @@ class AuthenticationDialog : public views::DialogDelegateView {
   // modify the UI appropriately, in case of success we close the dialog.
   void OnAuthFactorValidityChecked(
       std::unique_ptr<UserContext> user_context,
-      std::optional<AuthenticationError> cryptohome_error);
-
-  // Show an auth error in the UI and mark the password field as invalid.
-  void ShowAuthError();
+      absl::optional<AuthenticationError> cryptohome_error);
 
   // Registered as a callback to the Cancel and Close buttons. Calls
   // `NotifyResult` with `success` == false.
@@ -105,22 +103,22 @@ class AuthenticationDialog : public views::DialogDelegateView {
   // and discovering that the auth session is no longer active
   void OnAuthSessionInvalid(bool user_exists,
                             std::unique_ptr<UserContext> user_context,
-                            std::optional<AuthenticationError> auth_error);
+                            absl::optional<AuthenticationError> auth_error);
 
   // Passed as a callback to `AuthPerformer::StartAuthSession`. Saves the
   // password key label to pass it later to authentication attempts and handles
   // errors from cryptohome
   void OnAuthSessionStarted(bool user_exists,
                             std::unique_ptr<UserContext> user_context,
-                            std::optional<AuthenticationError> auth_error);
+                            absl::optional<AuthenticationError> auth_error);
 
-  raw_ptr<views::Textfield> password_field_;
-  raw_ptr<views::Label> invalid_password_label_;
+  base::raw_ptr<views::Textfield> password_field_;
+  base::raw_ptr<views::Label> invalid_password_label_;
 
   // See implementation of `CancelAuthAttempt` for details.
   bool is_closing_ = false;
 
-  auth_panel::AuthCompletionCallback on_auth_complete_;
+  InSessionAuthDialogController::OnAuthComplete on_auth_complete_;
 
   // Called when user submits an auth factor to check its validity
   std::unique_ptr<AuthPerformer> auth_performer_;
@@ -130,7 +128,7 @@ class AuthenticationDialog : public views::DialogDelegateView {
   // `auth_token_provider_` will outlive this dialog since it will
   // be destroyed after `AshShellInit`, which owns the aura
   // window hierarchy.
-  raw_ptr<InSessionAuthTokenProvider> auth_token_provider_;
+  base::raw_ptr<InSessionAuthTokenProvider> auth_token_provider_;
 
   std::unique_ptr<UserContext> user_context_;
 

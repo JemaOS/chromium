@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 chrome.test.runTests([
-  function testApiIsUndefined() {
-    chrome.test.assertEq(undefined, chrome.userScripts);
+  function testGetTargetsThrows() {
+    chrome.test.assertEq(undefined, chrome.debugger);
     chrome.test.succeed();
   }
 ]);

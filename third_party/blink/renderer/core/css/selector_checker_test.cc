@@ -5,16 +5,13 @@
 #include "third_party/blink/renderer/core/css/selector_checker.h"
 
 #include <bitset>
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/css/css_test_helpers.h"
 #include "third_party/blink/renderer/core/css/selector_checker-inl.h"
 #include "third_party/blink/renderer/core/css/style_rule.h"
 #include "third_party/blink/renderer/core/dom/document.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
-#include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 
@@ -23,7 +20,7 @@ namespace blink {
 struct ScopeProximityTestData {
   const char* html;
   const char* rule;
-  std::optional<unsigned> proximity;
+  absl::optional<unsigned> proximity;
 };
 
 ScopeProximityTestData scope_proximity_test_data[] = {
@@ -173,7 +170,8 @@ TEST_P(ScopeProximityTest, All) {
   while (IsA<StyleRuleScope>(rule)) {
     auto& scope_rule = To<StyleRuleScope>(*rule);
     scope = scope_rule.GetStyleScope().CopyWithParent(scope);
-    const StyleRuleBase::ChildRuleVector& child_rules = scope_rule.ChildRules();
+    const HeapVector<Member<StyleRuleBase>>& child_rules =
+        scope_rule.ChildRules();
     ASSERT_EQ(1u, child_rules.size());
     rule = child_rules[0].Get();
   }
@@ -183,7 +181,7 @@ TEST_P(ScopeProximityTest, All) {
   auto* style_rule = DynamicTo<StyleRule>(rule);
   ASSERT_TRUE(style_rule);
 
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   ASSERT_TRUE(target);
 
   SelectorChecker checker(SelectorChecker::kResolvingStyle);
@@ -197,7 +195,7 @@ TEST_P(ScopeProximityTest, All) {
   bool match = checker.Match(context, result);
 
   EXPECT_EQ(param.proximity,
-            match ? std::optional<unsigned>(result.proximity) : std::nullopt);
+            match ? absl::optional<unsigned>(result.proximity) : absl::nullopt);
 }
 
 struct MatchFlagsTestData {
@@ -271,7 +269,7 @@ TEST_P(MatchFlagsTest, All) {
   )HTML");
   UpdateAllLifecyclePhasesForTest();
 
-  Element* element = GetDocument().getElementById(AtomicString("target"));
+  Element* element = GetDocument().getElementById("target");
   ASSERT_TRUE(element);
 
   CSSSelectorList* selector_list =
@@ -292,319 +290,6 @@ TEST_P(MatchFlagsTest, All) {
 
   SCOPED_TRACE(param.selector);
   EXPECT_EQ(Bits(param.expected), Bits(result.flags));
-}
-
-class ImpactTest : public PageTestBase {
- public:
-  void SetUp() override {
-    PageTestBase::SetUp();
-
-    GetDocument().body()->setInnerHTML(R"HTML(
-      <div id=outer>
-        <div id=middle>
-          <div id=inner>
-            <div></div>
-          </div>
-        </div>
-      </div>
-    )HTML");
-    UpdateAllLifecyclePhasesForTest();
-  }
-
-  Element& Outer() const {
-    return *GetDocument().getElementById(AtomicString("outer"));
-  }
-  Element& Middle() const {
-    return *GetDocument().getElementById(AtomicString("middle"));
-  }
-  Element& Inner() const {
-    return *GetDocument().getElementById(AtomicString("inner"));
-  }
-
-  using Impact = SelectorChecker::Impact;
-
-  MatchFlags Match(String selector, Element& element, Impact impact) {
-    CSSSelectorList* selector_list =
-        css_test_helpers::ParseSelectorList(selector);
-    DCHECK(selector_list);
-    DCHECK(selector_list->HasOneSelector());
-
-    SelectorChecker checker(SelectorChecker::kResolvingStyle);
-    SelectorChecker::SelectorCheckingContext context(&element);
-    context.selector = selector_list->First();
-    context.impact = impact;
-
-    SelectorChecker::MatchResult result;
-    checker.Match(context, result);
-
-    return result.flags;
-  }
-};
-
-// :hover
-
-TEST_F(ImpactTest, HoverSubjectOnly) {
-  MatchFlags flags = Match("#inner:hover", Inner(), Impact::kSubject);
-  EXPECT_EQ(Hover(), flags);
-  EXPECT_FALSE(Inner().ChildrenOrSiblingsAffectedByHover());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByHover());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByHover());
-}
-
-TEST_F(ImpactTest, HoverNonSubjectOnly) {
-  MatchFlags flags = Match("#inner:hover", Inner(), Impact::kNonSubject);
-  EXPECT_EQ(0u, flags);
-  EXPECT_TRUE(Inner().ChildrenOrSiblingsAffectedByHover());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByHover());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByHover());
-}
-
-TEST_F(ImpactTest, HoverBoth) {
-  MatchFlags flags = Match("#inner:hover", Inner(), Impact::kBoth);
-  EXPECT_EQ(Hover(), flags);
-  EXPECT_TRUE(Inner().ChildrenOrSiblingsAffectedByHover());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByHover());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByHover());
-}
-
-TEST_F(ImpactTest, HoverDescendantCombinatorSubject) {
-  MatchFlags flags = Match(":hover #inner", Inner(), Impact::kSubject);
-  EXPECT_EQ(0u, flags);
-  EXPECT_FALSE(Inner().ChildrenOrSiblingsAffectedByHover());
-  EXPECT_TRUE(Middle().ChildrenOrSiblingsAffectedByHover());
-  EXPECT_TRUE(Outer().ChildrenOrSiblingsAffectedByHover());
-}
-
-// :-webkit-drag
-
-TEST_F(ImpactTest, DragSubjectOnly) {
-  MatchFlags flags = Match("#inner:-webkit-drag", Inner(), Impact::kSubject);
-  EXPECT_EQ(Drag(), flags);
-  EXPECT_FALSE(Inner().ChildrenOrSiblingsAffectedByDrag());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByDrag());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByDrag());
-}
-
-TEST_F(ImpactTest, DragNonSubjectOnly) {
-  MatchFlags flags = Match("#inner:-webkit-drag", Inner(), Impact::kNonSubject);
-  EXPECT_EQ(0u, flags);
-  EXPECT_TRUE(Inner().ChildrenOrSiblingsAffectedByDrag());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByDrag());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByDrag());
-}
-
-TEST_F(ImpactTest, DragBoth) {
-  MatchFlags flags = Match("#inner:-webkit-drag", Inner(), Impact::kBoth);
-  EXPECT_EQ(Drag(), flags);
-  EXPECT_TRUE(Inner().ChildrenOrSiblingsAffectedByDrag());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByDrag());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByDrag());
-}
-
-TEST_F(ImpactTest, DragDescendantCombinatorSubject) {
-  MatchFlags flags = Match(":-webkit-drag #inner", Inner(), Impact::kSubject);
-  EXPECT_EQ(0u, flags);
-  EXPECT_FALSE(Inner().ChildrenOrSiblingsAffectedByDrag());
-  EXPECT_TRUE(Middle().ChildrenOrSiblingsAffectedByDrag());
-  EXPECT_TRUE(Outer().ChildrenOrSiblingsAffectedByDrag());
-}
-
-// :focus-within
-
-TEST_F(ImpactTest, FocusWithinSubjectOnly) {
-  MatchFlags flags = Match("#inner:focus-within", Inner(), Impact::kSubject);
-  EXPECT_EQ(FocusWithin(), flags);
-  EXPECT_FALSE(Inner().ChildrenOrSiblingsAffectedByFocusWithin());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByFocusWithin());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByFocusWithin());
-}
-
-TEST_F(ImpactTest, FocusWithinNonSubjectOnly) {
-  MatchFlags flags = Match("#inner:focus-within", Inner(), Impact::kNonSubject);
-  EXPECT_EQ(0u, flags);
-  EXPECT_TRUE(Inner().ChildrenOrSiblingsAffectedByFocusWithin());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByFocusWithin());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByFocusWithin());
-}
-
-TEST_F(ImpactTest, FocusWithinBoth) {
-  MatchFlags flags = Match("#inner:focus-within", Inner(), Impact::kBoth);
-  EXPECT_EQ(FocusWithin(), flags);
-  EXPECT_TRUE(Inner().ChildrenOrSiblingsAffectedByFocusWithin());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByFocusWithin());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByFocusWithin());
-}
-
-TEST_F(ImpactTest, FocusWithinDescendantCombinatorSubject) {
-  MatchFlags flags = Match(":focus-within #inner", Inner(), Impact::kSubject);
-  EXPECT_EQ(0u, flags);
-  EXPECT_FALSE(Inner().ChildrenOrSiblingsAffectedByFocusWithin());
-  EXPECT_TRUE(Middle().ChildrenOrSiblingsAffectedByFocusWithin());
-  EXPECT_TRUE(Outer().ChildrenOrSiblingsAffectedByFocusWithin());
-}
-
-// :active
-
-TEST_F(ImpactTest, ActiveSubjectOnly) {
-  MatchFlags flags = Match("#inner:active", Inner(), Impact::kSubject);
-  EXPECT_EQ(Active(), flags);
-  EXPECT_FALSE(Inner().ChildrenOrSiblingsAffectedByActive());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByActive());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByActive());
-}
-
-TEST_F(ImpactTest, ActiveNonSubjectOnly) {
-  MatchFlags flags = Match("#inner:active", Inner(), Impact::kNonSubject);
-  EXPECT_EQ(0u, flags);
-  EXPECT_TRUE(Inner().ChildrenOrSiblingsAffectedByActive());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByActive());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByActive());
-}
-
-TEST_F(ImpactTest, ActiveBoth) {
-  MatchFlags flags = Match("#inner:active", Inner(), Impact::kBoth);
-  EXPECT_EQ(Active(), flags);
-  EXPECT_TRUE(Inner().ChildrenOrSiblingsAffectedByActive());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByActive());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByActive());
-}
-
-TEST_F(ImpactTest, ActiveDescendantCombinatorSubject) {
-  MatchFlags flags = Match(":active #inner", Inner(), Impact::kSubject);
-  EXPECT_EQ(0u, flags);
-  EXPECT_FALSE(Inner().ChildrenOrSiblingsAffectedByActive());
-  EXPECT_TRUE(Middle().ChildrenOrSiblingsAffectedByActive());
-  EXPECT_TRUE(Outer().ChildrenOrSiblingsAffectedByActive());
-}
-
-// :focus-visible
-
-TEST_F(ImpactTest, FocusVisibleSubjectOnly) {
-  // Note that :focus-visible does not set any flags for Impact::kSubject.
-  // (There is no corresponding MatchFlag).
-  Match("#inner:focus-visible", Inner(), Impact::kSubject);
-  EXPECT_FALSE(Inner().ChildrenOrSiblingsAffectedByFocusVisible());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByFocusVisible());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByFocusVisible());
-}
-
-TEST_F(ImpactTest, FocusVisibleNonSubjectOnly) {
-  Match("#inner:focus-visible", Inner(), Impact::kNonSubject);
-  EXPECT_TRUE(Inner().ChildrenOrSiblingsAffectedByFocusVisible());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByFocusVisible());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByFocusVisible());
-}
-
-TEST_F(ImpactTest, FocusVisibleBoth) {
-  Match("#inner:focus-visible", Inner(), Impact::kBoth);
-  EXPECT_TRUE(Inner().ChildrenOrSiblingsAffectedByFocusVisible());
-  EXPECT_FALSE(Middle().ChildrenOrSiblingsAffectedByFocusVisible());
-  EXPECT_FALSE(Outer().ChildrenOrSiblingsAffectedByFocusVisible());
-}
-
-TEST_F(ImpactTest, FocusVisibleDescendantCombinatorSubject) {
-  Match(":focus-visible #inner", Inner(), Impact::kSubject);
-  EXPECT_FALSE(Inner().ChildrenOrSiblingsAffectedByFocusVisible());
-  EXPECT_TRUE(Middle().ChildrenOrSiblingsAffectedByFocusVisible());
-  EXPECT_TRUE(Outer().ChildrenOrSiblingsAffectedByFocusVisible());
-}
-
-// :has()
-
-TEST_F(ImpactTest, HasSubjectOnly) {
-  Match("#inner:has(.foo)", Inner(), Impact::kSubject);
-
-  EXPECT_TRUE(Inner().AffectedBySubjectHas());
-  EXPECT_FALSE(Middle().AffectedBySubjectHas());
-  EXPECT_FALSE(Outer().AffectedBySubjectHas());
-
-  EXPECT_FALSE(Inner().AffectedByNonSubjectHas());
-  EXPECT_FALSE(Middle().AffectedByNonSubjectHas());
-  EXPECT_FALSE(Outer().AffectedByNonSubjectHas());
-}
-
-TEST_F(ImpactTest, HasNonSubjectOnly) {
-  Match("#inner:has(.foo)", Inner(), Impact::kNonSubject);
-
-  EXPECT_FALSE(Inner().AffectedBySubjectHas());
-  EXPECT_FALSE(Middle().AffectedBySubjectHas());
-  EXPECT_FALSE(Outer().AffectedBySubjectHas());
-
-  EXPECT_TRUE(Inner().AffectedByNonSubjectHas());
-  EXPECT_FALSE(Middle().AffectedByNonSubjectHas());
-  EXPECT_FALSE(Outer().AffectedByNonSubjectHas());
-}
-
-TEST_F(ImpactTest, HasBoth) {
-  Match("#inner:has(.foo)", Inner(), Impact::kBoth);
-
-  EXPECT_TRUE(Inner().AffectedBySubjectHas());
-  EXPECT_FALSE(Middle().AffectedBySubjectHas());
-  EXPECT_FALSE(Outer().AffectedBySubjectHas());
-
-  EXPECT_TRUE(Inner().AffectedByNonSubjectHas());
-  EXPECT_FALSE(Middle().AffectedByNonSubjectHas());
-  EXPECT_FALSE(Outer().AffectedByNonSubjectHas());
-}
-
-TEST_F(ImpactTest, HasDescendantCombinatorSubject) {
-  Match(":has(.foo) #inner", Inner(), Impact::kSubject);
-
-  EXPECT_FALSE(Inner().AffectedBySubjectHas());
-  EXPECT_FALSE(Middle().AffectedBySubjectHas());
-  EXPECT_FALSE(Outer().AffectedBySubjectHas());
-
-  EXPECT_FALSE(Inner().AffectedByNonSubjectHas());
-  EXPECT_TRUE(Middle().AffectedByNonSubjectHas());
-  EXPECT_TRUE(Outer().AffectedByNonSubjectHas());
-}
-
-TEST_F(ImpactTest, HasDescendantCombinatorBoth) {
-  Match(":has(.foo) #inner", Inner(), Impact::kBoth);
-
-  EXPECT_FALSE(Inner().AffectedBySubjectHas());
-  EXPECT_FALSE(Middle().AffectedBySubjectHas());
-  EXPECT_FALSE(Outer().AffectedBySubjectHas());
-
-  EXPECT_FALSE(Inner().AffectedByNonSubjectHas());
-  EXPECT_TRUE(Middle().AffectedByNonSubjectHas());
-  EXPECT_TRUE(Outer().AffectedByNonSubjectHas());
-}
-
-TEST_F(ImpactTest, HasSubjectAndDescendantCombinatorBoth) {
-  Match(":has(.foo) #inner:has(div)", Inner(), Impact::kBoth);
-
-  EXPECT_TRUE(Inner().AffectedBySubjectHas());
-  EXPECT_FALSE(Middle().AffectedBySubjectHas());
-  EXPECT_FALSE(Outer().AffectedBySubjectHas());
-
-  EXPECT_TRUE(Inner().AffectedByNonSubjectHas());
-  EXPECT_TRUE(Middle().AffectedByNonSubjectHas());
-  EXPECT_TRUE(Outer().AffectedByNonSubjectHas());
-}
-
-TEST_F(ImpactTest, HasDescendantCombinatorWithinIsBoth) {
-  Match("#inner:is(:has(.foo) *)", Inner(), Impact::kBoth);
-
-  EXPECT_FALSE(Inner().AffectedBySubjectHas());
-  EXPECT_FALSE(Middle().AffectedBySubjectHas());
-  EXPECT_FALSE(Outer().AffectedBySubjectHas());
-
-  EXPECT_FALSE(Inner().AffectedByNonSubjectHas());
-  EXPECT_TRUE(Middle().AffectedByNonSubjectHas());
-  EXPECT_TRUE(Outer().AffectedByNonSubjectHas());
-}
-
-TEST_F(ImpactTest, HasDescendantCombinatorWithIsBoth) {
-  Match(":is(:has(.foo) #middle) #inner", Inner(), Impact::kBoth);
-
-  EXPECT_FALSE(Inner().AffectedBySubjectHas());
-  EXPECT_FALSE(Middle().AffectedBySubjectHas());
-  EXPECT_FALSE(Outer().AffectedBySubjectHas());
-
-  EXPECT_FALSE(Inner().AffectedByNonSubjectHas());
-  EXPECT_FALSE(Middle().AffectedByNonSubjectHas());
-  EXPECT_TRUE(Outer().AffectedByNonSubjectHas());
 }
 
 // Cases involving :host are special, because we need to call SelectorChecker
@@ -628,16 +313,16 @@ INSTANTIATE_TEST_SUITE_P(SelectorChecker,
 TEST_P(MatchFlagsShadowTest, Host) {
   MatchFlagsTestData param = GetParam();
 
-  GetDocument().body()->setHTMLUnsafe(R"HTML(
+  GetDocument().body()->setInnerHTMLWithDeclarativeShadowDOMForTesting(R"HTML(
     <div id=host>
-      <template shadowrootmode="open">
+      <template shadowroot="open">
         <div></div>
       </template>
     </div>
   )HTML");
   UpdateAllLifecyclePhasesForTest();
 
-  Element* host = GetDocument().getElementById(AtomicString("host"));
+  Element* host = GetDocument().getElementById("host");
   ASSERT_TRUE(host);
   ASSERT_TRUE(host->GetShadowRoot());
 
@@ -662,124 +347,19 @@ TEST_P(MatchFlagsShadowTest, Host) {
   EXPECT_EQ(Bits(param.expected), Bits(result.flags));
 }
 
-class MatchFlagsScopeTest : public PageTestBase {
- public:
-  void SetUp() override {
-    PageTestBase::SetUp();
-    GetDocument().body()->setInnerHTML(R"HTML(
-      <style id=style>
-      </style>
-      <div id=outer>
-        <div id=inner></div>
-      </div>
-    )HTML");
-    UpdateAllLifecyclePhasesForTest();
-  }
-
-  void SetStyle(String text) {
-    Element* style = GetDocument().getElementById(AtomicString("style"));
-    DCHECK(style);
-    style->setTextContent(text);
-    UpdateAllLifecyclePhasesForTest();
-  }
-
-  Element& Outer() const {
-    return *GetDocument().getElementById(AtomicString("outer"));
-  }
-  Element& Inner() const {
-    return *GetDocument().getElementById(AtomicString("inner"));
-  }
-
-  bool AffectedByHover(Element& element) {
-    return element.ComputedStyleRef().AffectedByHover();
-  }
-};
-
-TEST_F(MatchFlagsScopeTest, NoHover) {
-  SetStyle(R"HTML(
-    @scope (#inner) to (.unknown) {
-      :scope { --x:1; }
-    }
-    @scope (#outer) to (.unknown) {
-      :scope #inner { --x:1; }
-    }
-  )HTML");
-  EXPECT_FALSE(AffectedByHover(Outer()));
-  EXPECT_FALSE(AffectedByHover(Inner()));
-}
-
-TEST_F(MatchFlagsScopeTest, HoverSubject) {
-  SetStyle(R"HTML(
-    @scope (#outer) {
-      :scope #inner:hover { --x:1; }
-    }
-  )HTML");
-  EXPECT_FALSE(AffectedByHover(Outer()));
-  EXPECT_TRUE(AffectedByHover(Inner()));
-}
-
-TEST_F(MatchFlagsScopeTest, HoverNonSubject) {
-  SetStyle(R"HTML(
-    @scope (#outer) {
-      :scope:hover #inner { --x:1; }
-    }
-  )HTML");
-  EXPECT_FALSE(AffectedByHover(Outer()));
-  EXPECT_FALSE(AffectedByHover(Inner()));
-}
-
-TEST_F(MatchFlagsScopeTest, ScopeSubject) {
-  SetStyle(R"HTML(
-    @scope (#inner:hover) {
-      :scope { --x:1; }
-    }
-  )HTML");
-  EXPECT_FALSE(AffectedByHover(Outer()));
-  EXPECT_TRUE(AffectedByHover(Inner()));
-}
-
-TEST_F(MatchFlagsScopeTest, ScopeNonSubject) {
-  SetStyle(R"HTML(
-    @scope (#outer:hover) {
-      :scope #inner { --x:1; }
-    }
-  )HTML");
-  EXPECT_FALSE(AffectedByHover(Outer()));
-  EXPECT_FALSE(AffectedByHover(Inner()));
-}
-
-TEST_F(MatchFlagsScopeTest, ScopeLimit) {
-  SetStyle(R"HTML(
-    @scope (#inner) to (#inner:hover) {
-      :scope { --x:1; }
-    }
-  )HTML");
-  EXPECT_FALSE(AffectedByHover(Outer()));
-  EXPECT_TRUE(AffectedByHover(Inner()));
-}
-
-TEST_F(MatchFlagsScopeTest, ScopeLimitNonSubject) {
-  SetStyle(R"HTML(
-    @scope (#middle) to (#middle:hover) {
-      :scope #inner { --x:1; }
-    }
-  )HTML");
-  EXPECT_FALSE(AffectedByHover(Outer()));
-  EXPECT_FALSE(AffectedByHover(Inner()));
-}
-
 class EasySelectorCheckerTest : public PageTestBase {
  protected:
-  bool Matches(const String& selector_text, const char* id);
+  bool Matches(const String& selector_text, const AtomicString& id);
   static bool IsEasy(const String& selector_text);
 };
 
 bool EasySelectorCheckerTest::Matches(const String& selector_text,
-                                      const char* id) {
+                                      const AtomicString& id) {
   StyleRule* rule = To<StyleRule>(
       css_test_helpers::ParseRule(GetDocument(), selector_text + " {}"));
   CHECK(EasySelectorChecker::IsEasy(rule->FirstSelector()));
-  return EasySelectorChecker::Match(rule->FirstSelector(), GetElementById(id));
+  return EasySelectorChecker::Match(rule->FirstSelector(),
+                                    GetDocument().getElementById(id));
 }
 
 #if DCHECK_IS_ON()  // Requires all_rules_, to find back the rules we add.
@@ -870,7 +450,7 @@ TEST_F(SelectorCheckerTest, PseudoScopeWithoutScope) {
   ASSERT_TRUE(selector_list);
   ASSERT_TRUE(selector_list->First());
 
-  Element* foo = GetDocument().getElementById(AtomicString("foo"));
+  Element* foo = GetDocument().getElementById("foo");
   ASSERT_TRUE(foo);
 
   SelectorChecker checker(SelectorChecker::kResolvingStyle);
@@ -893,39 +473,12 @@ TEST_F(SelectorCheckerTest, PseudoTrue) {
   selector.SetTrue();
   selector.SetLastInComplexSelector(true);
 
-  Element* foo = GetDocument().getElementById(AtomicString("foo"));
+  Element* foo = GetDocument().getElementById("foo");
   ASSERT_TRUE(foo);
 
   SelectorChecker checker(SelectorChecker::kResolvingStyle);
   SelectorChecker::SelectorCheckingContext context(foo);
   context.selector = &selector;
-
-  SelectorChecker::MatchResult result;
-  EXPECT_TRUE(checker.Match(context, result));
-}
-
-TEST_F(SelectorCheckerTest, PseudoTrueMatchesHost) {
-  GetDocument().body()->setHTMLUnsafe(R"HTML(
-    <div id=host>
-      <template shadowrootmode=open>
-      </template>
-    </div>
-  )HTML");
-  UpdateAllLifecyclePhasesForTest();
-
-  CSSSelector selector;
-  selector.SetTrue();
-  selector.SetLastInComplexSelector(true);
-
-  Element* host = GetElementById("host");
-  ASSERT_TRUE(host);
-  ShadowRoot* shadow = host->GetShadowRoot();
-  ASSERT_TRUE(shadow);
-
-  SelectorChecker checker(SelectorChecker::kResolvingStyle);
-  SelectorChecker::SelectorCheckingContext context(host);
-  context.selector = &selector;
-  context.scope = shadow;
 
   SelectorChecker::MatchResult result;
   EXPECT_TRUE(checker.Match(context, result));

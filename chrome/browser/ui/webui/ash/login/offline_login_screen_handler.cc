@@ -4,7 +4,7 @@
 
 #include "chrome/browser/ui/webui/ash/login/offline_login_screen_handler.h"
 
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/login/localized_values_builder.h"
 #include "components/user_manager/known_user.h"
@@ -57,10 +57,6 @@ void OfflineLoginScreenHandler::ShowOnlineRequiredDialog() {
 
 void OfflineLoginScreenHandler::ShowPasswordMismatchMessage() {
   CallExternalAPI("showPasswordMismatchMessage");
-}
-
-base::WeakPtr<OfflineLoginView> OfflineLoginScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
 }
 
 }  // namespace ash

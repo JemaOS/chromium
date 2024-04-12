@@ -218,7 +218,7 @@ bool PendingExtensionManager::AddFromExternalFile(
   // installed, but this method assumes that the caller already
   // made sure it is not installed.  Make all AddFrom*() methods
   // consistent.
-  const GURL& kUpdateUrl = GURL();
+  const GURL& kUpdateUrl = GURL::EmptyGURL();
   static const bool kIsFromSync = false;
   static const bool kRemoteInstall = false;
 

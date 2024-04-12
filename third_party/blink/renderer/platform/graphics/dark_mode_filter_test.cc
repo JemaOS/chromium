@@ -4,10 +4,9 @@
 
 #include "third_party/blink/renderer/platform/graphics/dark_mode_filter.h"
 
-#include <optional>
-
 #include "cc/paint/paint_flags.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/platform/graphics/dark_mode_settings.h"
 #include "third_party/skia/include/core/SkColor.h"
 
@@ -37,7 +36,7 @@ TEST(DarkModeFilterTest, ApplyDarkModeToColorsAndFlags) {
   flags.setColor(SkColors::kWhite);
   auto flags_or_nullopt = filter.ApplyToFlagsIfNeeded(
       flags, DarkModeFilter::ElementRole::kBackground, SkColors::kTransparent);
-  ASSERT_NE(flags_or_nullopt, std::nullopt);
+  ASSERT_NE(flags_or_nullopt, absl::nullopt);
   EXPECT_EQ(SkColors::kBlack, flags_or_nullopt.value().getColor4f());
 }
 
@@ -101,7 +100,7 @@ TEST(DarkModeFilterTest, ApplyDarkModeToColorsAndFlagsWithInvertLightnessLAB) {
   flags.setColor(SkColors::kBlack);
   auto flags_or_nullopt = filter.ApplyToFlagsIfNeeded(
       flags, DarkModeFilter::ElementRole::kBackground, SkColors::kTransparent);
-  ASSERT_NE(flags_or_nullopt, std::nullopt);
+  ASSERT_NE(flags_or_nullopt, absl::nullopt);
   result = flags_or_nullopt.value().getColor4f();
   EXPECT_NEAR(SkColors::kWhite.fR, result.fR, kPrecision);
   EXPECT_NEAR(SkColors::kWhite.fG, result.fG, kPrecision);
@@ -133,7 +132,7 @@ TEST(DarkModeFilterTest, ApplyDarkModeToColorsAndFlagsWithContrast) {
   flags.setColor(SkColors::kWhite);
   auto flags_or_nullopt = filter.ApplyToFlagsIfNeeded(
       flags, DarkModeFilter::ElementRole::kBorder, SkColors::kBlack);
-  ASSERT_NE(flags_or_nullopt, std::nullopt);
+  ASSERT_NE(flags_or_nullopt, absl::nullopt);
   EXPECT_EQ(Target_For_White, flags_or_nullopt.value().getColor4f());
 }
 

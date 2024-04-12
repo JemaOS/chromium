@@ -11,7 +11,6 @@
 #include "ash/capture_mode/capture_mode_util.h"
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/shell.h"
-#include "ash/wm/desks/desks_util.h"
 #include "ui/compositor/layer.h"
 #include "ui/wm/public/activation_client.h"
 
@@ -21,45 +20,29 @@ CaptureWindowObserver::CaptureWindowObserver(
     CaptureModeSession* capture_mode_session)
     : capture_mode_session_(capture_mode_session) {
   Shell::Get()->activation_client()->AddObserver(this);
-  DesksController::Get()->AddObserver(this);
 }
 
 CaptureWindowObserver::~CaptureWindowObserver() {
-  DesksController::Get()->RemoveObserver(this);
-  Shell::Get()->activation_client()->RemoveObserver(this);
+  auto* shell = Shell::Get();
+  shell->activation_client()->RemoveObserver(this);
   StopObserving();
 }
 
 void CaptureWindowObserver::UpdateSelectedWindowAtPosition(
-    const gfx::Point& location_in_screen) {
-  if (capture_mode_session_->IsInCountDownAnimation()) {
+    const gfx::Point& location_in_screen,
+    const std::set<aura::Window*>& ignore_windows) {
+  if (capture_mode_session_->IsInCountDownAnimation())
     return;
-  }
-
   location_in_screen_ = location_in_screen;
 
   SetSelectedWindow(
-      capture_mode_util::GetTopMostCapturableWindowAtPoint(location_in_screen),
-      /*a11y_alert_again=*/false,
-      /*bar_anchored_to_window=*/false);
+      capture_mode_util::GetTopMostCapturableWindowAtPoint(location_in_screen));
   capture_mode_session_->UpdateCursor(location_in_screen, /*is_touch=*/false);
 }
 
-void CaptureWindowObserver::SetSelectedWindow(aura::Window* window,
-                                              bool a11y_alert_again,
-                                              bool bar_anchored_to_window) {
-  if (window_ == window) {
-    if (a11y_alert_again && window_) {
-      capture_mode_session_->A11yAlertCaptureSource(/*trigger_now=*/true);
-    }
+void CaptureWindowObserver::SetSelectedWindow(aura::Window* window) {
+  if (window_ == window)
     return;
-  }
-
-  if (window_ && bar_anchored_to_window_) {
-    return;
-  }
-
-  bar_anchored_to_window_ = bar_anchored_to_window;
 
   // Don't capture wallpaper window.
   if (window && window->parent() &&
@@ -101,59 +84,32 @@ void CaptureWindowObserver::OnWindowBoundsChanged(
   auto* controller = CaptureModeController::Get();
   if (!controller->is_recording_in_progress())
     controller->camera_controller()->MaybeUpdatePreviewWidget();
-
-  // The bounds of the capture bar should be updated accordingly if the bounds
-  // of the selected window has been updated.
-  if (bar_anchored_to_window_ &&
-      capture_mode_session_->GetCaptureModeBarWidget()) {
-    capture_mode_session_->RefreshBarWidgetBounds();
-  }
-}
-
-void CaptureWindowObserver::OnWindowParentChanged(aura::Window* window,
-                                                  aura::Window* parent) {
-  if (!parent || !bar_anchored_to_window_) {
-    return;
-  }
-  CHECK_EQ(window, window_);
-  if (!desks_util::BelongsToActiveDesk(window)) {
-    // Window has been sent to another desk, so we should stop recording.
-    CaptureModeController::Get()->Stop();
-    return;
-  }
-  // Move the capture mode widgets to the new root and repaint the capture
-  // region when the window parent changes. E.g, `window_` is moved to another
-  // display.
-  capture_mode_session_->MaybeChangeRoot(window_->GetRootWindow());
-  RepaintCaptureRegion();
 }
 
 void CaptureWindowObserver::OnWindowVisibilityChanging(aura::Window* window,
                                                        bool visible) {
-  CHECK_EQ(window, window_);
-  CHECK(!visible);
-  StopObserving();
-
-  if (bar_anchored_to_window_ ||
-      capture_mode_session_->IsInCountDownAnimation()) {
+  DCHECK_EQ(window, window_);
+  DCHECK(!visible);
+  if (capture_mode_session_->IsInCountDownAnimation()) {
     CaptureModeController::Get()->Stop();
     return;
   }
 
-  UpdateSelectedWindowAtPosition(location_in_screen_);
+  StopObserving();
+  UpdateSelectedWindowAtPosition(location_in_screen_,
+                                 /*ignore_windows=*/{window});
 }
 
 void CaptureWindowObserver::OnWindowDestroying(aura::Window* window) {
-  CHECK_EQ(window, window_);
-  StopObserving();
-
-  if (bar_anchored_to_window_ ||
-      capture_mode_session_->IsInCountDownAnimation()) {
+  DCHECK_EQ(window, window_);
+  if (capture_mode_session_->IsInCountDownAnimation()) {
     CaptureModeController::Get()->Stop();
     return;
   }
 
-  UpdateSelectedWindowAtPosition(location_in_screen_);
+  StopObserving();
+  UpdateSelectedWindowAtPosition(location_in_screen_,
+                                 /*ignore_windows=*/{window});
 }
 
 void CaptureWindowObserver::OnWindowActivated(ActivationReason reason,
@@ -163,17 +119,7 @@ void CaptureWindowObserver::OnWindowActivated(ActivationReason reason,
   // may change the selected window to the activated window if it's under the
   // current event location. If there is no selected window at the moment, we
   // also want to check if new activated window should be focused.
-  UpdateSelectedWindowAtPosition(location_in_screen_);
-}
-
-void CaptureWindowObserver::OnDeskActivationChanged(const Desk* activated,
-                                                    const Desk* deactivated) {
-  // When the desk switches and the window and bar are no longer visible, we
-  // should stop the session.
-  if (window_ && bar_anchored_to_window_ &&
-      !desks_util::BelongsToActiveDesk(window_)) {
-    CaptureModeController::Get()->Stop();
-  }
+  UpdateSelectedWindowAtPosition(location_in_screen_, /*ignore_windows=*/{});
 }
 
 void CaptureWindowObserver::StartObserving(aura::Window* window) {

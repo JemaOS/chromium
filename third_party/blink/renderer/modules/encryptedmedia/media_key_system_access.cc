@@ -24,6 +24,7 @@
 #include "third_party/blink/renderer/modules/encryptedmedia/encrypted_media_utils.h"
 #include "third_party/blink/renderer/modules/encryptedmedia/media_key_session.h"
 #include "third_party/blink/renderer/modules/encryptedmedia/media_keys.h"
+#include "third_party/blink/renderer/modules/encryptedmedia/media_keys_controller.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/timer.h"
 
@@ -40,10 +41,10 @@ namespace {
 class NewCdmResultPromise : public ContentDecryptionModuleResultPromise {
  public:
   NewCdmResultPromise(
-      ScriptPromiseResolverTyped<MediaKeys>* resolver,
+      ScriptState* script_state,
       const MediaKeysConfig& config,
       const WebVector<WebEncryptedMediaSessionType>& supported_session_types)
-      : ContentDecryptionModuleResultPromise(resolver,
+      : ContentDecryptionModuleResultPromise(script_state,
                                              config,
                                              EmeApiType::kCreateMediaKeys),
         config_(config),
@@ -68,7 +69,7 @@ class NewCdmResultPromise : public ContentDecryptionModuleResultPromise {
         config_);
 
     // 2.10. Resolve promise with media keys.
-    Resolve<MediaKeys>(media_keys);
+    Resolve(media_keys);
   }
 
  private:
@@ -201,8 +202,7 @@ MediaKeySystemConfiguration* MediaKeySystemAccess::getConfiguration() const {
   return result;
 }
 
-ScriptPromiseTyped<MediaKeys> MediaKeySystemAccess::createMediaKeys(
-    ScriptState* script_state) {
+ScriptPromise MediaKeySystemAccess::createMediaKeys(ScriptState* script_state) {
   // From http://w3c.github.io/encrypted-media/#createMediaKeys
   // (Reordered to be able to pass values into the promise constructor.)
   // 2.4 Let configuration be the value of this object's configuration value.
@@ -212,11 +212,9 @@ ScriptPromiseTyped<MediaKeys> MediaKeySystemAccess::createMediaKeys(
 
   // 1. Let promise be a new promise.
   MediaKeysConfig config = {keySystem(), UseHardwareSecureCodecs()};
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<MediaKeys>>(script_state);
   NewCdmResultPromise* helper = MakeGarbageCollected<NewCdmResultPromise>(
-      resolver, config, configuration.session_types);
-  auto promise = resolver->Promise();
+      script_state, config, configuration.session_types);
+  ScriptPromise promise = helper->Promise();
 
   // 2. Asynchronously create and initialize the MediaKeys object.
   // 2.1 Let cdm be the CDM corresponding to this object.

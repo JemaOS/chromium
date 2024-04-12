@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_EXTENSIONS_DEVTOOLS_UTIL_H_
 
 class Profile;
-enum class DevToolsOpenedByAction;
 
 namespace extensions {
 class Extension;
@@ -16,20 +15,16 @@ namespace devtools_util {
 // Open a dev tools window for the service worker background for the given
 // extension.
 void InspectServiceWorkerBackground(const Extension* extension,
-                                    Profile* profile,
-                                    DevToolsOpenedByAction opened_by);
+                                    Profile* profile);
 
 // Open a dev tools window for an inactive service worker background for the
 // given extension.
 void InspectInactiveServiceWorkerBackground(const Extension* extension,
-                                            Profile* profile,
-                                            DevToolsOpenedByAction opened_by);
+                                            Profile* profile);
 
 // Open a dev tools window for the background page for the given extension,
 // starting the background page first if necessary.
-void InspectBackgroundPage(const Extension* extension,
-                           Profile* profile,
-                           DevToolsOpenedByAction opened_by);
+void InspectBackgroundPage(const Extension* extension, Profile* profile);
 
 }  // namespace devtools_util
 }  // namespace extensions

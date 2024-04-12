@@ -12,7 +12,6 @@
 #include "base/time/tick_clock.h"
 #include "base/time/time.h"
 #include "base/types/pass_key.h"
-#include "extensions/common/extension_id.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "url/origin.h"
 
@@ -96,9 +95,6 @@ class UsageScenarioDataStore {
 
     // The number of times the system has been put to sleep during the interval.
     uint8_t sleep_events = 0;
-
-    // The number of extensions that ran content scripts during the interval.
-    size_t num_extensions_with_content_scripts = 0;
   };
 
   // Reset the interval data with the current state information and returns the
@@ -154,10 +150,8 @@ class UsageScenarioDataStoreImpl : public UsageScenarioDataStore {
   // tab playing video becomes non visible.
   void OnVideoStopsInVisibleTab();
 
-  void OnUkmSourceBecameVisible(
-      const ukm::SourceId& source,
-      const url::Origin& origin,
-      extensions::ExtensionIdSet extensions_with_content_scripts);
+  void OnUkmSourceBecameVisible(const ukm::SourceId& source,
+                                const url::Origin& origin);
   void OnUkmSourceBecameHidden(const ukm::SourceId& source,
                                const url::Origin& origin);
 
@@ -251,9 +245,6 @@ class UsageScenarioDataStoreImpl : public UsageScenarioDataStore {
 
   // Information about the origins that have been visible during the interval.
   OriginInfoMap origin_info_map_;
-
-  // Extensions that ran content scripts on visible origins during the interval.
-  extensions::ExtensionIdSet extensions_with_content_scripts_;
 
   IntervalData interval_data_;
 

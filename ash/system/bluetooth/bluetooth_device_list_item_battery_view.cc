@@ -13,7 +13,6 @@
 #include "base/strings/string_number_conversions.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/color/color_provider.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
@@ -70,10 +69,10 @@ void BluetoothDeviceListItemBatteryView::UpdateBatteryInfo(
         0, kSpacingBetweenIconAndLabel, 0, kSpacingBetweenIconAndLabel)));
   }
 
-  ui::ColorId color_id;
-    color_id = new_battery_percentage >= kPositiveBatteryPercentageCutoff
-                   ? cros_tokens::kCrosSysPositive
-                   : cros_tokens::kCrosSysError;
+  const ui::ColorId color_id =
+      new_battery_percentage >= kPositiveBatteryPercentageCutoff
+          ? kColorAshTextColorSecondary
+          : kColorAshTextColorAlert;
 
   label_->SetText(l10n_util::GetStringFUTF16(
       message_id, base::NumberToString16(new_battery_percentage)));
@@ -88,12 +87,12 @@ void BluetoothDeviceListItemBatteryView::UpdateBatteryInfo(
 
   last_shown_battery_percentage_ = new_battery_percentage;
 
-  PowerStatus::BatteryImageInfo battery_image_info(
-      GetColorProvider()->GetColor(color_id));
+  PowerStatus::BatteryImageInfo battery_image_info;
   battery_image_info.charge_percent = new_battery_percentage;
 
-  icon_->SetImage(PowerStatus::GetBatteryImage(
-      battery_image_info, kUnifiedTraySubIconSize, GetColorProvider()));
+  icon_->SetImage(
+      PowerStatus::GetBatteryImage(battery_image_info, kUnifiedTraySubIconSize,
+                                   GetColorProvider()->GetColor(color_id)));
 }
 
 bool BluetoothDeviceListItemBatteryView::ApproximatelyEqual(
@@ -122,7 +121,7 @@ bool BluetoothDeviceListItemBatteryView::ApproximatelyEqual(
   return max - min < kBatteryPercentageChangeThreshold;
 }
 
-BEGIN_METADATA(BluetoothDeviceListItemBatteryView)
+BEGIN_METADATA(BluetoothDeviceListItemBatteryView, views::View)
 END_METADATA
 
 }  // namespace ash

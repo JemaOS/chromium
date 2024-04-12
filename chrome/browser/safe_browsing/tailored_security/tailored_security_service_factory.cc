@@ -8,7 +8,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/safe_browsing/tailored_security/chrome_tailored_security_service.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/sync/sync_service_factory.h"
+#include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_context.h"
 
 namespace safe_browsing {
@@ -22,8 +22,7 @@ TailoredSecurityService* TailoredSecurityServiceFactory::GetForProfile(
 
 // static
 TailoredSecurityServiceFactory* TailoredSecurityServiceFactory::GetInstance() {
-  static base::NoDestructor<TailoredSecurityServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<TailoredSecurityServiceFactory>::get();
 }
 
 TailoredSecurityServiceFactory::TailoredSecurityServiceFactory()
@@ -36,22 +35,16 @@ TailoredSecurityServiceFactory::TailoredSecurityServiceFactory()
               .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {
   DependsOn(IdentityManagerFactory::GetInstance());
-  DependsOn(SyncServiceFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService>
-TailoredSecurityServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* TailoredSecurityServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<ChromeTailoredSecurityService>(
-      Profile::FromBrowserContext(context));
+  Profile* profile = static_cast<Profile*>(context);
+  return new ChromeTailoredSecurityService(profile);
 }
 
 bool TailoredSecurityServiceFactory::ServiceIsCreatedWithBrowserContext()
     const {
-  return true;
-}
-
-bool TailoredSecurityServiceFactory::ServiceIsNULLWhileTesting() const {
   return true;
 }
 

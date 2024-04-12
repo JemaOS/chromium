@@ -14,10 +14,7 @@ function import_data_url_test(testCase) {
 
     const worker = new Worker(dataURL, { type: 'module'});
     worker.postMessage('Send message for tests from main script.');
-    const msgEvent = await new Promise((resolve, reject) =>{
-        worker.onmessage = resolve;
-        worker.onerror = reject;
-    }).catch(e => assert_true(false));
+    const msgEvent = await new Promise(resolve => worker.onmessage = resolve);
     assert_array_equals(msgEvent.data, testCase.expectation);
   }, testCase.description);
 }

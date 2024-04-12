@@ -6,7 +6,7 @@ import {FakeMethodResolver} from 'chrome://resources/ash/common/fake_method_reso
 
 import {assertEquals} from 'chrome://webui-test/chromeos/chai_assert.js';
 
-suite('fakeMethodResolverTestSuite', () => {
+export function fakeMethodResolverTestSuite() {
   let resolver = null;
 
   setup(() => {
@@ -65,4 +65,4 @@ suite('fakeMethodResolverTestSuite', () => {
       assertEquals(expected, result);
     });
   });
-});
+}

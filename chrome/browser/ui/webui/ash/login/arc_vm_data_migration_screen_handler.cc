@@ -99,9 +99,4 @@ void ArcVmDataMigrationScreenHandler::SetEstimatedRemainingTime(
                                          ui::TimeFormat::LENGTH_SHORT, delta));
 }
 
-base::WeakPtr<ArcVmDataMigrationScreenView>
-ArcVmDataMigrationScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 }  // namespace ash

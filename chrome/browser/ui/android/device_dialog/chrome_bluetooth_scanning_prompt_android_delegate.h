@@ -9,13 +9,11 @@
 
 #include "base/android/scoped_java_ref.h"
 
-class Profile;
-
 // The implementation of BluetoothScanningPromptAndroidDelegate for Chrome.
 class ChromeBluetoothScanningPromptAndroidDelegate
     : public permissions::BluetoothScanningPromptAndroidDelegate {
  public:
-  explicit ChromeBluetoothScanningPromptAndroidDelegate(Profile* profile);
+  ChromeBluetoothScanningPromptAndroidDelegate();
 
   ChromeBluetoothScanningPromptAndroidDelegate(
       const ChromeBluetoothScanningPromptAndroidDelegate&) = delete;

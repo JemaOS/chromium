@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_EXTENSIONS_UNPACKED_INSTALLER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,6 +18,7 @@
 #include "extensions/browser/api/declarative_net_request/ruleset_install_pref.h"
 #include "extensions/browser/preload_check.h"
 #include "extensions/common/manifest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -148,7 +148,7 @@ class UnpackedInstaller
   base::WeakPtr<ExtensionService> service_weak_;
 
   // The Profile the extension is being installed in.
-  raw_ptr<Profile, DanglingUntriaged> profile_;
+  raw_ptr<Profile> profile_;
 
   // The pathname of the directory to load from, which is an absolute path
   // after GetAbsolutePath has been called.
@@ -177,13 +177,13 @@ class UnpackedInstaller
   CompletionCallback callback_;
 
   // Override default file access.
-  std::optional<bool> allow_file_access_;
+  absl::optional<bool> allow_file_access_;
 
   // Override default incognito access.
-  std::optional<bool> allow_incognito_access_;
+  absl::optional<bool> allow_incognito_access_;
 
   // Specify an install param.
-  std::optional<std::string> install_param_;
+  absl::optional<std::string> install_param_;
 };
 
 }  // namespace extensions

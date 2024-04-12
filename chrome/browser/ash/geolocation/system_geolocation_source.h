@@ -14,7 +14,7 @@
 #include "services/device/public/cpp/geolocation/system_geolocation_source.h"
 
 namespace device {
-class GeolocationSystemPermissionManager;
+class GeolocationManager;
 }
 
 class PrefService;
@@ -24,22 +24,22 @@ namespace ash {
 
 // The SystemGeolocationSource is responsible for listening to geolocation
 // permissions from the operation system and allows the
-// device::GeolocationSystemPermissionManager to access it in a platform
-// agnostic manner. This concrete implementation is to be used within the Ash
-// browser.
+// device::GeolocationManager to access it in a platform agnostic manner. This
+// concrete implementation is to be used within the Ash browser.
 class SystemGeolocationSource : public device::SystemGeolocationSource,
                                 public SessionObserver {
  public:
   SystemGeolocationSource();
   ~SystemGeolocationSource() override;
 
-  static std::unique_ptr<device::GeolocationSystemPermissionManager>
-  CreateGeolocationSystemPermissionManagerOnAsh();
+  static std::unique_ptr<device::GeolocationManager>
+  CreateGeolocationManagerOnAsh();
 
   // device::SystemGeolocationSource:
   void RegisterPermissionUpdateCallback(
       PermissionUpdateCallback callback) override;
-  void OpenSystemPermissionSetting() override;
+  void AppAttemptsToUseGeolocation() override;
+  void AppCeasesToUseGeolocation() override;
 
  private:
   // SessionObserver:

@@ -9,13 +9,11 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "base/component_export.h"
-#include "base/containers/span.h"
 #include "base/files/file_path.h"
 #include "base/files/memory_mapped_file.h"
 #include "base/gtest_prod_util.h"
@@ -23,6 +21,7 @@
 #include "base/sequence_checker.h"
 #include "base/strings/string_piece.h"
 #include "build/chromeos_buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/resource/resource_scale_factor.h"
 #include "ui/gfx/font_list.h"
 #include "ui/gfx/image/image.h"
@@ -133,11 +132,11 @@ class COMPONENT_EXPORT(UI_BASE) ResourceBundle {
         ResourceScaleFactor scale_factor) = 0;
 
     // Supports intercepting of ResourceBundle::LoadDataResourceString(): Return
-    // a populated std::optional instance to override the value that
+    // a populated absl::optional instance to override the value that
     // ResourceBundle::LoadDataResourceString() would return by default, or an
-    // empty std::optional instance to pass through to the default behavior of
+    // empty absl::optional instance to pass through to the default behavior of
     // ResourceBundle::LoadDataResourceString().
-    virtual std::optional<std::string> LoadDataResourceString(
+    virtual absl::optional<std::string> LoadDataResourceString(
         int resource_id) = 0;
 
     // Retrieve a raw data resource. Return true if a resource was provided or
@@ -155,10 +154,11 @@ class COMPONENT_EXPORT(UI_BASE) ResourceBundle {
     virtual ~Delegate() = default;
   };
 
-  using LottieData = std::vector<uint8_t>;
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  using LottieImageParseFunction = gfx::ImageSkia (*)(LottieData);
-  using LottieThemedImageParseFunction = ui::ImageModel (*)(LottieData);
+  using LottieImageParseFunction =
+      gfx::ImageSkia (*)(const std::string& bytes_string);
+  using LottieThemedImageParseFunction =
+      ui::ImageModel (*)(const std::string& bytes_string);
 #endif
 
   // Initialize the ResourceBundle for this process. Does not take ownership of
@@ -304,12 +304,6 @@ class COMPONENT_EXPORT(UI_BASE) ResourceBundle {
   // loading code of ResourceBundle.
   gfx::Image& GetNativeImageNamed(int resource_id);
 
-  // Loads a Lottie resource from `resource_id` and returns its decompressed
-  // contents. Returns `std::nullopt` if `resource_id` does not index a
-  // Lottie resource. The output of this is suitable for passing to
-  // `SkottieWrapper`.
-  std::optional<LottieData> GetLottieData(int resource_id) const;
-
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // Gets a themed Lottie image (not animated) with the specified |resource_id|
   // from the current module data. |ResourceBundle| owns the result.
@@ -414,6 +408,9 @@ class COMPONENT_EXPORT(UI_BASE) ResourceBundle {
   // Returns the maximum scale factor currently loaded.
   // Returns k100Percent if no resource is loaded.
   ResourceScaleFactor GetMaxResourceScaleFactor() const;
+
+  // Returns true if |scale_factor| is supported by this platform.
+  static bool IsScaleFactorSupported(ResourceScaleFactor scale_factor);
 
   // Checks whether overriding locale strings is supported. This will fail with
   // a DCHECK if the first string resource has already been queried.
@@ -523,7 +520,7 @@ class COMPONENT_EXPORT(UI_BASE) ResourceBundle {
 
   // Returns true if the data in |buf| is a PNG that has the special marker
   // added by GRIT that indicates that the image is actually 1x data.
-  static bool PNGContainsFallbackMarker(base::span<const uint8_t> buf);
+  static bool PNGContainsFallbackMarker(const unsigned char* buf, size_t size);
 
   // A wrapper for PNGCodec::Decode that returns information about custom
   // chunks. For security reasons we can't alter PNGCodec to return this
@@ -533,6 +530,12 @@ class COMPONENT_EXPORT(UI_BASE) ResourceBundle {
                         size_t size,
                         SkBitmap* bitmap,
                         bool* fell_back_to_1x);
+
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  // Creates the |bytes_string| from a Lottie asset, given the |resource_id|.
+  // Returns false if the resource is not a Lottie asset.
+  bool LoadLottieBytesString(int resource_id, std::string* bytes_string) const;
+#endif
 
   // Returns an empty image for when a resource cannot be loaded. This is a
   // bright red bitmap.

@@ -2,6 +2,5 @@ include_rules = [
   '+base',
   '+build',
   '+testing',
-  '+third_party/icu/source/i18n/unicode',
-  '+third_party/zlib/zlib.h',
+  "+third_party/zlib/zlib.h",
 ]

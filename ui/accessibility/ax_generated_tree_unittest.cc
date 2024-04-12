@@ -4,19 +4,18 @@
 
 #include <memory>
 #include <numeric>
-#include <optional>
 #include <vector>
 
 #include "base/strings/string_number_conversions.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest-param-test.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/ax_event_generator.h"
 #include "ui/accessibility/ax_node.h"
 #include "ui/accessibility/ax_serializable_tree.h"
 #include "ui/accessibility/ax_tree.h"
 #include "ui/accessibility/ax_tree_serializer.h"
-#include "ui/accessibility/ax_tree_update.h"
 #include "ui/accessibility/tree_generator.h"
 
 namespace ui {
@@ -59,7 +58,7 @@ std::string TreeToStringHelper(const AXNode* node) {
     result += "x";
   if (node->children().empty())
     return result;
-  const auto add_children = [](const std::string& str, const AXNode* node) {
+  const auto add_children = [](const std::string& str, const auto* node) {
     return str + " " + TreeToStringHelper(node);
   };
   return result + " (" +
@@ -74,11 +73,9 @@ std::string TreeToString(const AXTree& tree) {
 }
 
 AXTreeUpdate SerializeEntireTree(AXSerializableTree& tree) {
-  std::unique_ptr<AXTreeSource<const AXNode*, ui::AXTreeData*, ui::AXNodeData>>
-      tree_source(tree.CreateTreeSource());
-  AXTreeSerializer<const AXNode*, std::vector<const AXNode*>, ui::AXTreeUpdate*,
-                   ui::AXTreeData*, ui::AXNodeData>
-      serializer(tree_source.get());
+  std::unique_ptr<AXTreeSource<const AXNode*>> tree_source(
+      tree.CreateTreeSource());
+  AXTreeSerializer<const AXNode*> serializer(tree_source.get());
   AXTreeUpdate update;
   CHECK(serializer.SerializeChanges(tree.root(), &update));
   return update;
@@ -90,11 +87,11 @@ AXTreeUpdate MakeTreeUpdateFromIgnoredChanges(AXSerializableTree& tree0,
                                               AXSerializableTree& tree1) {
   AXTreeUpdate update = SerializeEntireTree(tree1);
   AXTreeUpdate result;
-  for (auto& node : update.nodes) {
-    AXNode* tree0_node = tree0.GetFromId(node.id);
-    AXNode* tree1_node = tree1.GetFromId(node.id);
+  for (size_t i = 0; i < update.nodes.size(); i++) {
+    AXNode* tree0_node = tree0.GetFromId(update.nodes[i].id);
+    AXNode* tree1_node = tree1.GetFromId(update.nodes[i].id);
     if (tree0_node->IsIgnored() != tree1_node->IsIgnored())
-      result.nodes.push_back(node);
+      result.nodes.push_back(update.nodes[i]);
   }
   return result;
 }
@@ -176,7 +173,7 @@ TEST(AXGeneratedTreeTest, TestGeneratingTreesWithIgnoredNodes) {
     for (int j = 0; j < ignored_permutation_count; j++) {
       AXTree tree;
       generator.BuildUniqueTreeWithIgnoredNodes(
-          i, j, /* focused_node */ std::nullopt, &tree);
+          i, j, /* focused_node */ absl::nullopt, &tree);
       std::string str = TreeToString(tree);
       EXPECT_EQ(EXPECTED_TREES[expected_index++], str);
     }
@@ -271,12 +268,9 @@ TEST_P(SerializeGeneratedTreesTest, SerializeGeneratedTrees) {
 
           // Start by serializing tree0 and unserializing it into a new
           // empty tree |dst_tree|.
-          std::unique_ptr<
-              AXTreeSource<const AXNode*, ui::AXTreeData*, ui::AXNodeData>>
-              tree0_source(tree0.CreateTreeSource());
-          AXTreeSerializer<const AXNode*, std::vector<const AXNode*>,
-                           ui::AXTreeUpdate*, ui::AXTreeData*, ui::AXNodeData>
-              serializer(tree0_source.get());
+          std::unique_ptr<AXTreeSource<const AXNode*>> tree0_source(
+              tree0.CreateTreeSource());
+          AXTreeSerializer<const AXNode*> serializer(tree0_source.get());
           AXTreeUpdate update0;
           ASSERT_TRUE(serializer.SerializeChanges(tree0.root(), &update0));
 
@@ -290,14 +284,13 @@ TEST_P(SerializeGeneratedTreesTest, SerializeGeneratedTrees) {
           EXPECT_EQ(TreeToString(tree0), TreeToString(dst_tree));
 
           // Next, pretend that tree0 turned into tree1.
-          std::unique_ptr<
-              AXTreeSource<const AXNode*, ui::AXTreeData*, ui::AXNodeData>>
-              tree1_source(tree1.CreateTreeSource());
+          std::unique_ptr<AXTreeSource<const AXNode*>> tree1_source(
+              tree1.CreateTreeSource());
           serializer.ChangeTreeSourceForTesting(tree1_source.get());
 
           // Mark as dirty the subtree rooted at one of the nodes.
           if (l > 0)
-            serializer.MarkSubtreeDirty(l);
+            serializer.MarkSubtreeDirty(tree1.GetFromId(l));
 
           // Serialize a sequence of updates to |dst_tree| to match.
           for (int k_index = 0; k_index < tree_size; ++k_index) {
@@ -389,7 +382,7 @@ TEST(AXGeneratedTreeTest, GeneratedTreesWithIgnoredNodes) {
          perm_index0++) {
       AXSerializableTree fat_tree;
       generator.BuildUniqueTreeWithIgnoredNodes(
-          tree_index, perm_index0, /* focused_node */ std::nullopt, &fat_tree);
+          tree_index, perm_index0, /* focused_node */ absl::nullopt, &fat_tree);
       SCOPED_TRACE("fat_tree is " + TreeToString(fat_tree));
 
       // Create a second tree, also with each permutations of nodes other than
@@ -398,7 +391,7 @@ TEST(AXGeneratedTreeTest, GeneratedTreesWithIgnoredNodes) {
            perm_index1++) {
         AXSerializableTree fat_tree1;
         generator.BuildUniqueTreeWithIgnoredNodes(
-            tree_index, perm_index1, /* focused_node */ std::nullopt,
+            tree_index, perm_index1, /* focused_node */ absl::nullopt,
             &fat_tree1);
         SCOPED_TRACE("fat_tree1 is " + TreeToString(fat_tree1));
 
@@ -428,12 +421,12 @@ TEST(AXGeneratedTreeTest, GeneratedTreesWithIgnoredNodes) {
           const AXNode* node = fat_tree.GetFromId(event.node_id);
           ASSERT_NE(nullptr, node);
           if (node->IsIgnored() ||
-              event.event_params->event ==
+              event.event_params.event ==
                   AXEventGenerator::Event::IGNORED_CHANGED) {
             continue;
           }
 
-          actual_events[event.node_id].insert(event.event_params->event);
+          actual_events[event.node_id].insert(event.event_params.event);
         }
 
         // Now, turn skinny_tree into skinny_tree1 and compare
@@ -453,7 +446,7 @@ TEST(AXGeneratedTreeTest, GeneratedTreesWithIgnoredNodes) {
         std::map<AXNodeID, std::set<AXEventGenerator::Event>> expected_events;
         for (const AXEventGenerator::TargetedEvent& event :
              skinny_event_generator)
-          expected_events[event.node_id].insert(event.event_params->event);
+          expected_events[event.node_id].insert(event.event_params.event);
 
         for (auto& entry : expected_events) {
           AXNodeID node_id = entry.first;

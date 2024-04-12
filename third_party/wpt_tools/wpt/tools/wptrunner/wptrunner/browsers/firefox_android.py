@@ -1,9 +1,6 @@
 # mypy: allow-untyped-defs
 
 import os
-import re
-import subprocess
-import traceback
 
 from mozrunner import FennecEmulatorRunner, get_app_context
 
@@ -17,7 +14,6 @@ from ..executors.executormarionette import (MarionetteTestharnessExecutor,  # no
 from .base import (Browser,
                    ExecutorBrowser)
 from .firefox import (get_timeout_multiplier,  # noqa: F401
-                      run_info_browser_version,
                       run_info_extras as fx_run_info_extras,
                       update_properties,  # noqa: F401
                       executor_kwargs as fx_executor_kwargs,  # noqa: F401
@@ -49,12 +45,11 @@ def check_args(**kwargs):
 def browser_kwargs(logger, test_type, run_info_data, config, **kwargs):
     return {"adb_binary": kwargs["adb_binary"],
             "webdriver_binary": kwargs["webdriver_binary"],
-            "webdriver_args": kwargs["webdriver_args"].copy(),
-            "binary": None,
+            "webdriver_args": kwargs["webdriver_args"],
             "package_name": kwargs["package_name"],
             "device_serial": kwargs["device_serial"],
             "prefs_root": kwargs["prefs_root"],
-            "extra_prefs": kwargs["extra_prefs"].copy(),
+            "extra_prefs": kwargs["extra_prefs"],
             "test_type": test_type,
             "debug_info": kwargs["debug_info"],
             "symbols_path": kwargs["symbols_path"],
@@ -62,20 +57,20 @@ def browser_kwargs(logger, test_type, run_info_data, config, **kwargs):
             "certutil_binary": kwargs["certutil_binary"],
             "ca_certificate_path": config.ssl_config["ca_cert_path"],
             "stackfix_dir": kwargs["stackfix_dir"],
-            "binary_args": kwargs["binary_args"].copy(),
+            "binary_args": kwargs["binary_args"],
             "timeout_multiplier": get_timeout_multiplier(test_type,
                                                          run_info_data,
                                                          **kwargs),
-            "disable_fission": kwargs["disable_fission"],
+            "e10s": run_info_data["e10s"],
             # desktop only
             "leak_check": False,
+            "stylo_threads": kwargs["stylo_threads"],
             "chaos_mode_flags": kwargs["chaos_mode_flags"],
             "config": config,
             "install_fonts": kwargs["install_fonts"],
             "tests_root": config.doc_root,
             "specialpowers_path": kwargs["specialpowers_path"],
-            "debug_test": kwargs["debug_test"],
-            "env_extras": dict([x.split('=') for x in kwargs.get("env", [])])}
+            "debug_test": kwargs["debug_test"]}
 
 
 def executor_kwargs(logger, test_type, test_environment, run_info_data,
@@ -91,41 +86,12 @@ def env_extras(**kwargs):
     return []
 
 
-def run_info_extras(logger, **kwargs):
-    rv = fx_run_info_extras(logger, **kwargs)
-    rv.update({"headless": False})
-
-    if kwargs["browser_version"] is None:
-        rv.update(run_info_browser_version(**kwargs))
-
-        if rv.get("browser_version") is None:
-            # If we didn't get the browser version from the apk, try to get it from adb dumpsys
-            rv["browser_version"] = get_package_browser_version(logger,
-                                                                kwargs["adb_binary"],
-                                                                kwargs["package_name"])
-
+def run_info_extras(**kwargs):
+    rv = fx_run_info_extras(**kwargs)
+    package = kwargs["package_name"]
+    rv.update({"e10s": True if package is not None and "geckoview" in package else False,
+               "headless": False})
     return rv
-
-
-def get_package_browser_version(logger, adb_binary, package_name):
-    if adb_binary is None:
-        logger.warning("Couldn't run adb to get Firefox Android version number")
-        return None
-    try:
-        completed = subprocess.run([adb_binary, "shell", "dumpsys", "package", package_name],
-                                   check=True,
-                                   capture_output=True,
-                                   encoding="utf8")
-    except subprocess.CalledProcessError as e:
-        logger.warning(f"adb failed with return code {e.returncode}\nCaptured stderr:\n{e.stderr}")
-        return None
-
-    version_name_re = re.compile(r"^\s+versionName=(.*)")
-    for line in completed.stdout.splitlines():
-        m = version_name_re.match(line)
-        if m is not None:
-            return m.group(1)
-    logger.warning("Failed to find versionName property in dumpsys output")
 
 
 def env_options():
@@ -133,13 +99,12 @@ def env_options():
             "supports_debugger": True}
 
 
-def get_environ(chaos_mode_flags, env_extras=None):
+def get_environ(stylo_threads, chaos_mode_flags):
     env = {}
-    if env_extras is not None:
-        env.update(env_extras)
     env["MOZ_CRASHREPORTER"] = "1"
     env["MOZ_CRASHREPORTER_SHUTDOWN"] = "1"
     env["MOZ_DISABLE_NONLOCAL_CONNECTIONS"] = "1"
+    env["STYLO_THREADS"] = str(stylo_threads)
     if chaos_mode_flags is not None:
         env["MOZ_CHAOSMODE"] = hex(chaos_mode_flags)
     return env
@@ -147,12 +112,10 @@ def get_environ(chaos_mode_flags, env_extras=None):
 
 class ProfileCreator(FirefoxProfileCreator):
     def __init__(self, logger, prefs_root, config, test_type, extra_prefs,
-                 disable_fission, debug_test, browser_channel, binary,
-                 package_name, certutil_binary, ca_certificate_path):
-
+                 enable_fission, debug_test, browser_channel, certutil_binary, ca_certificate_path):
         super().__init__(logger, prefs_root, config, test_type, extra_prefs,
-                         disable_fission, debug_test, browser_channel, None,
-                         package_name, certutil_binary, ca_certificate_path)
+                         True, enable_fission, debug_test, browser_channel, None,
+                         certutil_binary, ca_certificate_path)
 
     def _set_required_prefs(self, profile):
         profile.set_preferences({
@@ -160,11 +123,9 @@ class ProfileCreator(FirefoxProfileCreator):
             "dom.disable_open_during_load": False,
             "places.history.enabled": False,
             "dom.send_after_paint_to_content": True,
+            "network.preload": True,
+            "browser.tabs.remote.autostart": True,
         })
-
-        if self.package_name == "org.mozilla.geckoview.test_runner":
-            # Bug 1879324: The TestRunner doesn't support "beforeunload" prompts yet
-            profile.set_preferences({"dom.disable_beforeunload": True})
 
         if self.test_type == "reftest":
             self.logger.info("Setting android reftest preferences")
@@ -180,13 +141,6 @@ class ProfileCreator(FirefoxProfileCreator):
                 "layout.testing.overlay-scrollbars.always-visible": True,
             })
 
-        if self.test_type == "wdspec":
-            profile.set_preferences({"remote.prefs.recommended": True})
-
-        profile.set_preferences({"fission.autostart": True})
-        if self.disable_fission:
-            profile.set_preferences({"fission.autostart": False})
-
 
 class FirefoxAndroidBrowser(Browser):
     init_timeout = 300
@@ -195,11 +149,11 @@ class FirefoxAndroidBrowser(Browser):
     def __init__(self, logger, prefs_root, test_type, package_name="org.mozilla.geckoview.test_runner",
                  device_serial=None, extra_prefs=None, debug_info=None,
                  symbols_path=None, stackwalk_binary=None, certutil_binary=None,
-                 ca_certificate_path=None, stackfix_dir=None,
+                 ca_certificate_path=None, e10s=False, stackfix_dir=None,
                  binary_args=None, timeout_multiplier=None, leak_check=False, asan=False,
-                 chaos_mode_flags=None, config=None, browser_channel="nightly",
+                 stylo_threads=1, chaos_mode_flags=None, config=None, browser_channel="nightly",
                  install_fonts=False, tests_root=None, specialpowers_path=None, adb_binary=None,
-                 debug_test=False, disable_fission=False, **kwargs):
+                 debug_test=False, **kwargs):
 
         super().__init__(logger)
         self.prefs_root = prefs_root
@@ -211,11 +165,13 @@ class FirefoxAndroidBrowser(Browser):
         self.stackwalk_binary = stackwalk_binary
         self.certutil_binary = certutil_binary
         self.ca_certificate_path = ca_certificate_path
+        self.e10s = True
         self.stackfix_dir = stackfix_dir
         self.binary_args = binary_args
         self.timeout_multiplier = timeout_multiplier
         self.leak_check = leak_check
         self.asan = asan
+        self.stylo_threads = stylo_threads
         self.chaos_mode_flags = chaos_mode_flags
         self.config = config
         self.browser_channel = browser_channel
@@ -223,25 +179,21 @@ class FirefoxAndroidBrowser(Browser):
         self.tests_root = tests_root
         self.specialpowers_path = specialpowers_path
         self.adb_binary = adb_binary
-        self.disable_fission = disable_fission
 
         self.profile_creator = ProfileCreator(logger,
                                               prefs_root,
                                               config,
                                               test_type,
                                               extra_prefs,
-                                              disable_fission,
+                                              False,
                                               debug_test,
                                               browser_channel,
-                                              None,
-                                              package_name,
                                               certutil_binary,
                                               ca_certificate_path)
 
         self.marionette_port = None
         self.profile = None
         self.runner = None
-        self.env_extras = kwargs["env_extras"]
         self._settings = {}
 
     def settings(self, test):
@@ -277,7 +229,7 @@ class FirefoxAndroidBrowser(Browser):
                                           [cmd_arg("marionette"), "about:blank"],
                                           self.debug_info)
 
-        env = get_environ(self.chaos_mode_flags, self.env_extras)
+        env = get_environ(self.stylo_threads, self.chaos_mode_flags)
 
         self.runner = FennecEmulatorRunner(app=self.package_name,
                                            profile=self.profile,
@@ -350,36 +302,30 @@ class FirefoxAndroidBrowser(Browser):
     def check_crash(self, process, test):
         if not os.environ.get("MINIDUMP_STACKWALK", "") and self.stackwalk_binary:
             os.environ["MINIDUMP_STACKWALK"] = self.stackwalk_binary
-        try:
-            return bool(self.runner.check_for_crashes(test_name=test))
-        except Exception:
-            # We sometimes see failures trying to copy the minidump files
-            self.logger.warning(f"""Failed to complete crash check, assuming no crash:
-{traceback.format_exc()}""")
-            return False
+        return bool(self.runner.check_for_crashes(test_name=test))
 
 
 class FirefoxAndroidWdSpecBrowser(FirefoxWdSpecBrowser):
     def __init__(self, logger, prefs_root, webdriver_binary, webdriver_args,
                  extra_prefs=None, debug_info=None, symbols_path=None, stackwalk_binary=None,
-                 certutil_binary=None, ca_certificate_path=None,
-                 disable_fission=False, stackfix_dir=None, leak_check=False,
-                 asan=False, chaos_mode_flags=None, config=None,
-                 browser_channel="nightly", headless=None, debug_test=None,
-                 binary=None, package_name="org.mozilla.geckoview.test_runner", device_serial=None,
-                 adb_binary=None, profile_creator_cls=ProfileCreator, **kwargs):
+                 certutil_binary=None, ca_certificate_path=None, e10s=False,
+                 enable_fission=False, stackfix_dir=None, leak_check=False,
+                 asan=False, stylo_threads=1, chaos_mode_flags=None, config=None,
+                 browser_channel="nightly", headless=None,
+                 package_name="org.mozilla.geckoview.test_runner", device_serial=None,
+                 adb_binary=None, **kwargs):
 
-        super().__init__(logger, None, package_name, prefs_root, webdriver_binary, webdriver_args,
+        super().__init__(logger, None, prefs_root, webdriver_binary, webdriver_args,
                          extra_prefs=extra_prefs, debug_info=debug_info, symbols_path=symbols_path,
                          stackwalk_binary=stackwalk_binary, certutil_binary=certutil_binary,
-                         ca_certificate_path=ca_certificate_path,
-                         disable_fission=disable_fission, stackfix_dir=stackfix_dir,
-                         leak_check=leak_check, asan=asan,
+                         ca_certificate_path=ca_certificate_path, e10s=e10s,
+                         enable_fission=enable_fission, stackfix_dir=stackfix_dir,
+                         leak_check=leak_check, asan=asan, stylo_threads=stylo_threads,
                          chaos_mode_flags=chaos_mode_flags, config=config,
-                         browser_channel=browser_channel, headless=headless,
-                         debug_test=debug_test, profile_creator_cls=profile_creator_cls, **kwargs)
+                         browser_channel=browser_channel, headless=headless, **kwargs)
 
         self.config = config
+        self.package_name = package_name
         self.device_serial = device_serial
         # This is just to support the same adb lookup as for other test types
         context = get_app_context("fennec")(adb_path=adb_binary, device_serial=device_serial)
@@ -400,9 +346,10 @@ class FirefoxAndroidWdSpecBrowser(FirefoxWdSpecBrowser):
             self.logger.warning("Failed to remove forwarded or reversed ports: %s" % e)
         super().stop(force=force)
 
-    def get_env(self, binary, debug_info, headless, chaos_mode_flags, e10s):
-        env = get_environ(chaos_mode_flags)
+    def get_env(self, binary, debug_info, stylo_threads, headless, chaos_mode_flags):
+        env = get_environ(stylo_threads, chaos_mode_flags)
         env["RUST_BACKTRACE"] = "1"
+        del env["MOZ_DISABLE_NONLOCAL_CONNECTIONS"]
         return env
 
     def executor_browser(self):

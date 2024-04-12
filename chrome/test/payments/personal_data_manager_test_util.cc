@@ -13,10 +13,30 @@
 #include "components/autofill/core/browser/data_model/credit_card.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
 #include "components/autofill/core/browser/personal_data_manager_observer.h"
-#include "components/autofill/core/browser/personal_data_manager_test_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace payments::test {
+namespace payments {
+namespace test {
+namespace {
+
+class WaitForFinishedPersonalDataManagerObserver
+    : public autofill::PersonalDataManagerObserver {
+ public:
+  explicit WaitForFinishedPersonalDataManagerObserver(
+      base::OnceClosure callback)
+      : callback_(std::move(callback)) {}
+
+  // autofill::PersonalDataManagerObserver implementation.
+  void OnPersonalDataChanged() override {}
+  void OnPersonalDataFinishedProfileTasks() override {
+    std::move(callback_).Run();
+  }
+
+ private:
+  base::OnceClosure callback_;
+};
+
+}  // namespace
 
 void AddAutofillProfile(content::BrowserContext* browser_context,
                         const autofill::AutofillProfile& autofill_profile) {
@@ -24,9 +44,16 @@ void AddAutofillProfile(content::BrowserContext* browser_context,
   autofill::PersonalDataManager* personal_data_manager =
       autofill::PersonalDataManagerFactory::GetForProfile(profile);
   size_t profile_count = personal_data_manager->GetProfiles().size();
-  autofill::PersonalDataChangedWaiter waiter(*personal_data_manager);
+
+  base::RunLoop data_loop;
+  WaitForFinishedPersonalDataManagerObserver personal_data_observer(
+      data_loop.QuitClosure());
+  personal_data_manager->AddObserver(&personal_data_observer);
+
   personal_data_manager->AddProfile(autofill_profile);
-  std::move(waiter).Wait();
+  data_loop.Run();
+
+  personal_data_manager->RemoveObserver(&personal_data_observer);
   EXPECT_EQ(profile_count + 1, personal_data_manager->GetProfiles().size());
 }
 
@@ -35,16 +62,24 @@ void AddCreditCard(content::BrowserContext* browser_context,
   Profile* profile = Profile::FromBrowserContext(browser_context);
   autofill::PersonalDataManager* personal_data_manager =
       autofill::PersonalDataManagerFactory::GetForProfile(profile);
-  if (card.record_type() != autofill::CreditCard::RecordType::kLocalCard) {
+  if (card.record_type() != autofill::CreditCard::LOCAL_CARD) {
     personal_data_manager->AddServerCreditCardForTest(
         std::make_unique<autofill::CreditCard>(card));
     return;
   }
   size_t card_count = personal_data_manager->GetCreditCards().size();
-  autofill::PersonalDataChangedWaiter waiter(*personal_data_manager);
+
+  base::RunLoop data_loop;
+  WaitForFinishedPersonalDataManagerObserver personal_data_observer(
+      data_loop.QuitClosure());
+  personal_data_manager->AddObserver(&personal_data_observer);
+
   personal_data_manager->AddCreditCard(card);
-  std::move(waiter).Wait();
+  data_loop.Run();
+
+  personal_data_manager->RemoveObserver(&personal_data_observer);
   EXPECT_EQ(card_count + 1, personal_data_manager->GetCreditCards().size());
 }
 
-}  // namespace payments::test
+}  // namespace test
+}  // namespace payments

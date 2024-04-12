@@ -2,9 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// <if expr="chromeos_ash">
+import {appendParam} from 'chrome://resources/ash/common/util.js';
+// </if>
+// <if expr="not chromeos_ash">
+import {appendParam} from 'chrome://resources/js/util_ts.js';
+// </if>
+
 /**
  * Try to autofill email on login page for supported identity providers
- * @param {string} urlAsString Url of IdP login page
+ * @param {string} url Url of IdP login page
  * @param {?string} urlParameterNameToAutofillUsername Url parameter name
  *     which can be used to autofill the username field
  * @param {?string} email User's email which is to be used as a username on
@@ -13,24 +20,23 @@
  *     null.
  */
 export function maybeAutofillUsername(
-    urlAsString, urlParameterNameToAutofillUsername, email) {
+    url, urlParameterNameToAutofillUsername, email) {
   if (!urlParameterNameToAutofillUsername ||
       urlParameterNameToAutofillUsername.length === 0) {
     return null;
   }
-  const url = new URL(urlAsString);
-  if (url.protocol !== 'https:') {
+  if (!url.startsWith('https')) {
     return null;
   }
   if (!email) {
     return null;
   }
-  // Don't do anything if url already contains parameter with a name
+  // Don't do anything if url already contains
   // `urlParameterNameToAutofillUsername`.
-  if (url.searchParams.has(urlParameterNameToAutofillUsername)) {
+  if (url.match(urlParameterNameToAutofillUsername)) {
     return null;
   }
 
-  url.searchParams.append(urlParameterNameToAutofillUsername, email);
-  return url.href;
+  url = appendParam(url, urlParameterNameToAutofillUsername, email);
+  return url;
 }

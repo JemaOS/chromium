@@ -4,7 +4,9 @@
 
 package org.chromium.chrome.browser.tabmodel;
 
-/** Factory for creating {@link AsyncTabParamsManager}. */
+/**
+ * Factory for creating {@link AsyncTabParamsManager}.
+ */
 public class AsyncTabParamsManagerFactory {
     /**
      * @return New instance of {@link AsyncTabParamsManagerImpl}.

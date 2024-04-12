@@ -19,9 +19,8 @@ bool CrostiniActiveWindowThrottleObserver::ProcessWindowActivation(
     ActivationReason reason,
     aura::Window* gained_active,
     aura::Window* lost_active) {
-  if (!gained_active) {
+  if (!gained_active)
     return false;
-  }
 
   // Return true if the gained_active window is a Crostini app.
   if (gained_active->GetProperty(aura::client::kAppType) ==

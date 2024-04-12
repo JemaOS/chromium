@@ -4,9 +4,6 @@
 
 #include "chrome/updater/external_constants_default.h"
 
-#include <optional>
-#include <vector>
-
 #include "base/memory/scoped_refptr.h"
 #include "base/time/time.h"
 #include "base/values.h"
@@ -34,8 +31,6 @@ class DefaultExternalConstants : public ExternalConstants {
     return GURL(DEVICE_MANAGEMENT_SERVER_URL);
   }
 
-  GURL AppLogoURL() const override { return GURL(APP_LOGO_URL); }
-
   bool UseCUP() const override { return true; }
 
   base::TimeDelta InitialDelay() const override { return kInitialDelay; }
@@ -55,12 +50,6 @@ class DefaultExternalConstants : public ExternalConstants {
   base::TimeDelta OverinstallTimeout() const override {
     return base::Minutes(2);
   }
-
-  base::TimeDelta IdleCheckPeriod() const override { return base::Minutes(5); }
-
-  std::optional<bool> IsMachineManaged() const override { return std::nullopt; }
-
-  bool EnableDiffUpdates() const override { return false; }
 
  private:
   ~DefaultExternalConstants() override = default;

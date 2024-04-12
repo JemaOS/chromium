@@ -10,7 +10,6 @@
 #include <memory>
 #include <string>
 
-#include "base/files/scoped_temp_dir.h"
 #include "base/format_macros.h"
 #include "base/memory/ref_counted.h"
 #include "base/run_loop.h"
@@ -18,11 +17,7 @@
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
-#include "base/test/gmock_expected_support.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/test/simple_test_tick_clock.h"
-#include "base/test/test_future.h"
-#include "base/threading/thread_restrictions.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -38,7 +33,6 @@
 #include "chrome/browser/extensions/window_controller.h"
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
 #include "chrome/browser/resource_coordinator/tab_lifecycle_unit_source.h"
 #include "chrome/browser/resource_coordinator/tab_manager.h"
@@ -46,31 +40,17 @@
 #include "chrome/browser/resource_coordinator/utils.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/ui/web_applications/test/isolated_web_app_test_utils.h"
 #include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
-#include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_install_source.h"
-#include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_trust_checker.h"
-#include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_url_info.h"
-#include "chrome/browser/web_applications/isolated_web_apps/test/isolated_web_app_builder.h"
-#include "chrome/browser/web_applications/isolated_web_apps/test/test_signed_web_bundle_builder.h"
-#include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
-#include "chrome/browser/web_applications/web_app_command_scheduler.h"
-#include "chrome/browser/web_applications/web_app_provider.h"
-#include "chrome/browser/web_applications/web_app_provider_factory.h"
-#include "chrome/common/chrome_switches.h"
 #include "chrome/common/webui_url_constants.h"
-#include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/policy/core/common/policy_pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_context.h"
+#include "content/public/browser/notification_service.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/storage_partition.h"
-#include "content/public/common/content_features.h"
 #include "content/public/common/url_constants.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
@@ -82,15 +62,11 @@
 #include "extensions/common/error_utils.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/manifest_constants.h"
-#include "extensions/common/mojom/context_type.mojom.h"
 #include "extensions/test/extension_test_message_listener.h"
 #include "extensions/test/result_catcher.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "pdf/buildflags.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
-#include "ui/base/ozone_buildflags.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
@@ -102,9 +78,7 @@
 #endif
 
 #if BUILDFLAG(ENABLE_PDF)
-#include "base/test/with_feature_override.h"
 #include "chrome/browser/pdf/pdf_extension_test_util.h"
-#include "pdf/pdf_features.h"
 #endif
 
 namespace extensions {
@@ -167,7 +141,7 @@ class ExtensionTabsTest : public PlatformAppBrowserTest {
     return api_test_utils::GetString(result, "type");
   }
 
-  std::optional<base::Value> RunFunctionWithDispatcherDelegateAndReturnValue(
+  absl::optional<base::Value> RunFunctionWithDispatcherDelegateAndReturnValue(
       scoped_refptr<ExtensionFunction> function,
       const std::string& args,
       Browser* browser) {
@@ -257,7 +231,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, GetWindow) {
   // "populate" was enabled so tabs should be populated.
   base::Value::List tabs = api_test_utils::GetList(result, keys::kTabsKey);
   ASSERT_FALSE(tabs.empty());
-  std::optional<int> tab0_id = tabs[0].GetDict().FindInt(keys::kIdKey);
+  absl::optional<int> tab0_id = tabs[0].GetDict().FindInt(keys::kIdKey);
   ASSERT_TRUE(tab0_id.has_value());
   EXPECT_GE(*tab0_id, 0);
 
@@ -341,7 +315,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, GetCurrentWindow) {
   // "populate" was enabled so tabs should be populated.
   base::Value::List tabs = api_test_utils::GetList(result, keys::kTabsKey);
   ASSERT_FALSE(tabs.empty());
-  std::optional<int> tab0_id = tabs[0].GetDict().FindInt(keys::kIdKey);
+  absl::optional<int> tab0_id = tabs[0].GetDict().FindInt(keys::kIdKey);
   ASSERT_TRUE(tab0_id.has_value());
   // The tab id should not be -1 as this is a browser window.
   EXPECT_GE(*tab0_id, 0);
@@ -987,7 +961,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionWindowCreateTest, MAYBE_AcceptState) {
 // wayland since our current fix only applies to X11.
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
 // Must be checked inside IS_LINUX to compile on windows/mac.
-#if BUILDFLAG(IS_OZONE_X11)
+#if BUILDFLAG(OZONE_PLATFORM_X11)
   // DesktopWindowTreeHostX11::IsMinimized() relies on an asynchronous update
   // from the window server
   views::test::PropertyWaiter minimize_waiter(
@@ -995,7 +969,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionWindowCreateTest, MAYBE_AcceptState) {
                           base::Unretained(new_window->window())),
       true);
   EXPECT_TRUE(minimize_waiter.Wait());
-#elif BUILDFLAG(IS_OZONE_WAYLAND)
+#elif BUILDFLAG(OZONE_PLATFORM_WAYLAND)
   // TODO(crbug.com/1406188): Find a fix/workaround for wayland and add
   // verification of IsMinimized() for as well.
 #endif
@@ -1122,7 +1096,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionWindowCreateTest, ValidateCreateWindowBounds) {
 IN_PROC_BROWSER_TEST_F(ExtensionWindowCreateTest, CreatePopupWindowFromWebUI) {
   scoped_refptr<WindowsCreateFunction> function(new WindowsCreateFunction());
   function->SetBrowserContextForTesting(browser()->profile());
-  function->set_source_context_type(mojom::ContextType::kUntrustedWebUi);
+  function->set_source_context_type(Feature::Context::WEBUI_UNTRUSTED_CONTEXT);
 
   const base::Value::Dict result =
       utils::ToDict(utils::RunFunctionAndReturnSingleResult(
@@ -1133,187 +1107,6 @@ IN_PROC_BROWSER_TEST_F(ExtensionWindowCreateTest, CreatePopupWindowFromWebUI) {
       ChromeExtensionFunctionDetails(function.get()), window_id, &error));
   EXPECT_TRUE(error.empty());
 }
-
-struct ExtensionWindowCreateIwaParam {
-  std::string test_name;
-  bool want_success;
-  std::string args;
-};
-
-// Test that `windows.create` functions correctly for Isolated Web Apps.
-class ExtensionWindowCreateIwaTest
-    : public InProcessBrowserTest,
-      public testing::WithParamInterface<ExtensionWindowCreateIwaParam> {
- public:
-  ExtensionWindowCreateIwaTest() {
-    scoped_feature_list_.InitAndEnableFeature(features::kIsolatedWebApps);
-    set_open_about_blank_on_browser_launch(false);
-  }
-
-  void SetUpOnMainThread() override {
-    InProcessBrowserTest::SetUpOnMainThread();
-
-    web_app::test::WaitUntilReady(
-        web_app::WebAppProvider::GetForTest(profile()));
-    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
-  }
-
-  void SetUpDefaultCommandLine(base::CommandLine* command_line) override {
-    // Suppress "Welcome to Google Chrome" window
-    command_line->AppendSwitch(switches::kNoFirstRun);
-    command_line->AppendSwitch(switches::kNoStartupWindow);
-    command_line->AppendSwitch(switches::kKeepAliveForTest);
-  }
-
-  void TearDownOnMainThread() override {
-    if (BrowserList::GetInstance()->empty()) {
-      // Tests crash during teardown if no browser has opened combined with the
-      // command line switches above. Open a browser to avoid the crash.
-      CreateBrowser(profile());
-    }
-    InProcessBrowserTest::TearDownOnMainThread();
-  }
-
-  Profile* profile() {
-    // We cannot use `browser()->profile()` here, because `browser()` is
-    // `nullptr` due to the command line switches above.
-    return ProfileManager::GetLastUsedProfile();
-  }
-
- protected:
-  void InstallAndTrustBundle() {
-    auto bundle = web_app::TestSignedWebBundleBuilder::BuildDefault(
-        web_app::TestSignedWebBundleBuilder::BuildOptions()
-            .SetKeyPair(web_package::WebBundleSigner::KeyPair(
-                web_app::kTestPublicKey, web_app::kTestPrivateKey))
-            .SetIndexHTMLContent("Hello Extensions!"));
-
-    base::FilePath bundle_path =
-        scoped_temp_dir_.GetPath().AppendASCII("bundle.swbn");
-    {
-      base::ScopedAllowBlockingForTesting allow_blocking;
-      ASSERT_TRUE(base::WriteFile(bundle_path, bundle.data));
-    }
-
-    web_app::SetTrustedWebBundleIdsForTesting({bundle.id});
-
-    base::test::TestFuture<
-        base::expected<web_app::InstallIsolatedWebAppCommandSuccess,
-                       web_app::InstallIsolatedWebAppCommandError>>
-        future;
-    web_app::WebAppProvider::GetForTest(profile())
-        ->scheduler()
-        .InstallIsolatedWebApp(
-            web_app::IsolatedWebAppUrlInfo::CreateFromSignedWebBundleId(
-                bundle.id),
-            web_app::IsolatedWebAppInstallSource::FromGraphicalInstaller(
-                web_app::IwaSourceBundleProdModeWithFileOp(
-                    bundle_path, web_app::IwaSourceBundleProdFileOp::kCopy)),
-            /*expected_version=*/std::nullopt,
-            /*optional_keep_alive=*/nullptr,
-            /*optional_profile_keep_alive=*/nullptr, future.GetCallback());
-    EXPECT_THAT(future.Take(), base::test::HasValue());
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-  web_app::OsIntegrationManager::ScopedSuppressForTesting os_hooks_suppress_;
-  base::ScopedTempDir scoped_temp_dir_;
-};
-
-IN_PROC_BROWSER_TEST_P(ExtensionWindowCreateIwaTest, CreateWindowForIwa) {
-  EXPECT_NO_FATAL_FAILURE(InstallAndTrustBundle());
-
-  EXPECT_EQ(BrowserList::GetInstance()->size(), 0ul);
-
-  scoped_refptr<const Extension> extension =
-      ExtensionBuilder("ExtensionWindowCreateIwaTest").Build();
-  auto function = base::MakeRefCounted<WindowsCreateFunction>();
-  function->set_extension(extension);
-  bool result =
-      api_test_utils::RunFunction(function.get(), GetParam().args, profile(),
-                                  api_test_utils::FunctionMode::kNone);
-  if (GetParam().want_success) {
-    EXPECT_TRUE(result) << function->GetError();
-
-    // A single browser for the IWA should now be open.
-    ASSERT_EQ(BrowserList::GetInstance()->size(), 1ul);
-    Browser* iwa_browser = *BrowserList::GetInstance()->begin();
-    ASSERT_EQ(iwa_browser->tab_strip_model()->count(), 1);
-    EXPECT_EQ(iwa_browser->tab_strip_model()->GetWebContentsAt(0)->GetURL(),
-              GURL("isolated-app://"
-                   "4tkrnsmftl4ggvvdkfth3piainqragus2qbhf7rlz2a3wo3rh4wqaaic/"
-                   "index.html"));
-  } else {
-    EXPECT_FALSE(result);
-    // No browser should have opened.
-    EXPECT_EQ(BrowserList::GetInstance()->size(), 0ul);
-  }
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    /* no prefix */,
-    ExtensionWindowCreateIwaTest,
-    testing::Values(
-        ExtensionWindowCreateIwaParam{.test_name = "iwa_and_https",
-                                      .want_success = false,
-                                      .args = R"([{
-            "url": [
-              "isolated-app://4tkrnsmftl4ggvvdkfth3piainqragus2qbhf7rlz2a3wo3rh4wqaaic/index.html",
-              "https://example.com"
-            ]
-          }])"},
-        ExtensionWindowCreateIwaParam{.test_name = "https_and_iwa_and_https",
-                                      .want_success = false,
-                                      .args = R"([{
-            "url": [
-              "https://example.com",
-              "isolated-app://4tkrnsmftl4ggvvdkfth3piainqragus2qbhf7rlz2a3wo3rh4wqaaic/index.html",
-              "https://example.com"
-            ]
-          }])"},
-        // If we ever support tabbed IWAs, then this test must be updated to
-        // `.want_success true`.
-        ExtensionWindowCreateIwaParam{.test_name = "iwa_and_iwa",
-                                      .want_success = false,
-                                      .args = R"([{
-            "url": [
-              "isolated-app://4tkrnsmftl4ggvvdkfth3piainqragus2qbhf7rlz2a3wo3rh4wqaaic/index.html",
-              "isolated-app://4tkrnsmftl4ggvvdkfth3piainqragus2qbhf7rlz2a3wo3rh4wqaaic/index.html"
-            ]
-          }])"},
-        ExtensionWindowCreateIwaParam{.test_name = "iwa_and_different_iwa",
-                                      .want_success = false,
-                                      .args = R"([{
-            "url": [
-              "isolated-app://4tkrnsmftl4ggvvdkfth3piainqragus2qbhf7rlz2a3wo3rh4wqaaic/index.html",
-              "isolated-app://5dp4lo5h6tpc4vuokowxmlqs5gpbainu2nqvuddccx5mqsnje7fqaaic/index.html"
-            ]
-          }])"},
-        ExtensionWindowCreateIwaParam{.test_name = "invalid_iwa_url",
-                                      .want_success = false,
-                                      .args = R"([{
-            "url": [
-              "isolated-app://invalid-iwa-url"
-            ]
-          }])"},
-        // If we ever support tabbed IWAs, this test must be updated: If `tabId`
-        // refers to the tab of the same IWA origin that is specified in `url`,
-        // it should be allowed.
-        ExtensionWindowCreateIwaParam{.test_name = "iwa_and_tab_id",
-                                      .want_success = false,
-                                      .args = R"([{
-            "url":
-            "isolated-app://4tkrnsmftl4ggvvdkfth3piainqragus2qbhf7rlz2a3wo3rh4wqaaic/index.html",
-            "tabId": 1
-          }])"},
-        ExtensionWindowCreateIwaParam{.test_name = "iwa",
-                                      .want_success = true,
-                                      .args = R"([{
-            "url": "isolated-app://4tkrnsmftl4ggvvdkfth3piainqragus2qbhf7rlz2a3wo3rh4wqaaic/index.html",
-          }])"}),
-    [](const testing::TestParamInfo<ExtensionWindowCreateIwaTest::ParamType>&
-           info) { return info.param.test_name; });
 
 IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, DuplicateTab) {
   content::OpenURLParams params(GURL(url::kAboutBlankURL), content::Referrer(),
@@ -1587,7 +1380,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, DiscardedProperty) {
     int tab_id_a = ExtensionTabUtil::GetTabId(web_contents_a);
 
     ASSERT_TRUE(result[0].is_dict());
-    std::optional<int> id = result[0].GetDict().FindInt(keys::kIdKey);
+    absl::optional<int> id = result[0].GetDict().FindInt(keys::kIdKey);
     ASSERT_TRUE(id);
 
     EXPECT_EQ(tab_id_a, *id);
@@ -1606,7 +1399,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, DiscardedProperty) {
         ExtensionTabUtil::GetTabId(tab_strip_model->GetWebContentsAt(0));
 
     ASSERT_TRUE(result[0].is_dict());
-    std::optional<int> id = result[0].GetDict().FindInt(keys::kIdKey);
+    absl::optional<int> id = result[0].GetDict().FindInt(keys::kIdKey);
     ASSERT_TRUE(id);
 
     EXPECT_EQ(tab_id_c, *id);
@@ -1813,7 +1606,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, AutoDiscardableProperty) {
 
   // Make sure the returned tab is the correct one.
   ASSERT_TRUE(query_result[0].is_dict());
-  std::optional<int> tab_id = query_result[0].GetDict().FindInt(keys::kIdKey);
+  absl::optional<int> tab_id = query_result[0].GetDict().FindInt(keys::kIdKey);
   ASSERT_TRUE(tab_id);
   EXPECT_EQ(tab_id_a, *tab_id);
 
@@ -1830,7 +1623,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsTest, AutoDiscardableProperty) {
 
   // Make sure the returned tab is the correct one.
   ASSERT_TRUE(query_result[0].is_dict());
-  std::optional<int> id_value = query_result[0].GetDict().FindInt(keys::kIdKey);
+  absl::optional<int> id_value =
+      query_result[0].GetDict().FindInt(keys::kIdKey);
   ASSERT_TRUE(id_value);
   EXPECT_EQ(ExtensionTabUtil::GetTabId(tab_strip_model->GetWebContentsAt(0)),
             *id_value);
@@ -1917,7 +1711,7 @@ testing::AssertionResult ExtensionTabsZoomTest::RunGetZoom(
   get_zoom_function->set_extension(extension_.get());
   get_zoom_function->set_has_callback(true);
 
-  std::optional<base::Value> get_zoom_result =
+  absl::optional<base::Value> get_zoom_result =
       utils::RunFunctionAndReturnSingleResult(
           get_zoom_function.get(), base::StringPrintf("[%u]", tab_id),
           browser()->profile());
@@ -1925,7 +1719,7 @@ testing::AssertionResult ExtensionTabsZoomTest::RunGetZoom(
   if (!get_zoom_result)
     return testing::AssertionFailure() << "no result";
 
-  std::optional<double> maybe_value = get_zoom_result->GetIfDouble();
+  absl::optional<double> maybe_value = get_zoom_result->GetIfDouble();
   if (!maybe_value.has_value())
     return testing::AssertionFailure() << "result was not a double";
 
@@ -1964,7 +1758,7 @@ testing::AssertionResult ExtensionTabsZoomTest::RunGetZoomSettings(
   get_zoom_settings_function->set_extension(extension_.get());
   get_zoom_settings_function->set_has_callback(true);
 
-  std::optional<base::Value> get_zoom_settings_result =
+  absl::optional<base::Value> get_zoom_settings_result =
       utils::RunFunctionAndReturnSingleResult(
           get_zoom_settings_function.get(), base::StringPrintf("[%u]", tab_id),
           browser()->profile());
@@ -1989,7 +1783,7 @@ testing::AssertionResult ExtensionTabsZoomTest::RunGetDefaultZoom(
   get_zoom_settings_function->set_extension(extension_.get());
   get_zoom_settings_function->set_has_callback(true);
 
-  std::optional<base::Value> get_zoom_settings_result =
+  absl::optional<base::Value> get_zoom_settings_result =
       utils::RunFunctionAndReturnSingleResult(
           get_zoom_settings_function.get(), base::StringPrintf("[%u]", tab_id),
           browser()->profile());
@@ -1999,7 +1793,7 @@ testing::AssertionResult ExtensionTabsZoomTest::RunGetDefaultZoom(
            << "no result or result is not a dictionary";
   }
 
-  std::optional<double> default_zoom_factor_setting =
+  absl::optional<double> default_zoom_factor_setting =
       get_zoom_settings_result->GetDict().FindDouble("defaultZoomFactor");
   if (!default_zoom_factor_setting) {
     return testing::AssertionFailure()
@@ -2289,20 +2083,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabsZoomTest, CannotZoomInvalidTab) {
 }
 
 #if BUILDFLAG(ENABLE_PDF)
-class ExtensionApiPdfTest : public base::test::WithFeatureOverride,
-                            public ExtensionApiTest {
- public:
-  ExtensionApiPdfTest()
-      : base::test::WithFeatureOverride(chrome_pdf::features::kPdfOopif) {}
-};
-
 // Regression test for crbug.com/660498.
-IN_PROC_BROWSER_TEST_P(ExtensionApiPdfTest, TemporaryAddressSpoof) {
-  // TODO(crbug.com/1445746): Remove this once the test passes for OOPIF PDF.
-  if (IsParamFeatureEnabled()) {
-    GTEST_SKIP();
-  }
-
+IN_PROC_BROWSER_TEST_F(ExtensionApiTest, TemporaryAddressSpoof) {
   ASSERT_TRUE(StartEmbeddedTestServer());
   content::WebContents* first_web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
@@ -2356,10 +2138,6 @@ IN_PROC_BROWSER_TEST_P(ExtensionApiPdfTest, TemporaryAddressSpoof) {
   // avoid a race during browser teardown (see crbug.com/882213).
   ASSERT_TRUE(navigation_manager.WaitForNavigationFinished());
 }
-
-// TODO(crbug.com/1445746): Stop testing both modes after OOPIF PDF viewer
-// launches.
-INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(ExtensionApiPdfTest);
 #endif  // BUILDFLAG(ENABLE_PDF)
 
 // Tests how chrome.windows.create behaves when setSelfAsOpener parameter is
@@ -2385,7 +2163,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTest, WindowsCreate_WithOpener) {
         R"( window.name = 'old-contents';
             chrome.windows.create({url: '%s', setSelfAsOpener: true}); )",
         extension_url.spec().c_str());
-    ASSERT_TRUE(content::ExecJs(old_contents, script));
+    ASSERT_TRUE(content::ExecuteScript(old_contents, script));
     new_contents = observer.GetWebContents();
     ASSERT_TRUE(content::WaitForLoadStop(new_contents));
   }
@@ -2396,13 +2174,13 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTest, WindowsCreate_WithOpener) {
   GURL web_url2 = embedded_test_server()->GetURL("/title2.html");
   {
     content::TestNavigationObserver nav_observer(new_contents, 1);
-    ASSERT_TRUE(content::ExecJs(
+    ASSERT_TRUE(content::ExecuteScript(
         new_contents, "window.location = '" + web_url1.spec() + "';"));
     nav_observer.Wait();
   }
   {
     content::TestNavigationObserver nav_observer(old_contents, 1);
-    ASSERT_TRUE(content::ExecJs(
+    ASSERT_TRUE(content::ExecuteScript(
         old_contents, "window.location = '" + web_url2.spec() + "';"));
     nav_observer.Wait();
   }
@@ -2457,7 +2235,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTest, WindowsCreate_NoOpener) {
         R"( window.name = 'old-contents';
             chrome.windows.create({url: '%s'}); )",
         extension_url.spec().c_str());
-    ASSERT_TRUE(content::ExecJs(old_contents, script));
+    ASSERT_TRUE(content::ExecuteScript(old_contents, script));
     new_contents = observer.GetWebContents();
     ASSERT_TRUE(content::WaitForLoadStop(new_contents));
   }
@@ -2497,7 +2275,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTest, WindowsCreate_OpenerAndOrigin) {
     // The url to use in chrome.windows.create().
     std::string url;
     // If set, its value will be used to specify |setSelfAsOpener|.
-    std::optional<bool> set_self_as_opener;
+    absl::optional<bool> set_self_as_opener;
     // The origin we expect the new tab to be in, opaque origins will be "null".
     std::string expected_origin_str;
   } test_cases[] = {
@@ -2507,20 +2285,20 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTest, WindowsCreate_OpenerAndOrigin) {
       // origin.
       {url::kAboutBlankURL, true, extension_origin_str},
       {url::kAboutBlankURL, false, "null"},
-      {url::kAboutBlankURL, std::nullopt, "null"},
+      {url::kAboutBlankURL, absl::nullopt, "null"},
 
       // data:... URLs.
       // With opener relationship or not, "data:..." URLs always gets unique
       // origin, so origin will always be "null" in these cases.
       {kDataURL, true, "null"},
       {kDataURL, false, "null"},
-      {kDataURL, std::nullopt, "null"},
+      {kDataURL, absl::nullopt, "null"},
 
       // chrome-extension:// URLs.
       // These always get extension origin.
       {extension_url_str, true, extension_origin_str},
       {extension_url_str, false, extension_origin_str},
-      {extension_url_str, std::nullopt, extension_origin_str},
+      {extension_url_str, absl::nullopt, extension_origin_str},
   };
 
   auto run_test_case = [&web_contents](const TestCase& test_case) {
@@ -2537,7 +2315,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTest, WindowsCreate_OpenerAndOrigin) {
     content::WebContents* new_contents = nullptr;
     {
       content::WebContentsAddedObserver observer;
-      ASSERT_TRUE(content::ExecJs(web_contents, script));
+      ASSERT_TRUE(content::ExecuteScript(web_contents, script));
       new_contents = observer.GetWebContents();
     }
     ASSERT_TRUE(new_contents);

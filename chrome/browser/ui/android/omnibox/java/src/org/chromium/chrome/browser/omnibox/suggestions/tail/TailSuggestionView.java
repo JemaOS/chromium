@@ -37,14 +37,12 @@ public class TailSuggestionView extends TextView {
      */
     void setAlignmentManager(AlignmentManager coordinator) {
         mAlignmentManager = coordinator;
-        if (mAlignmentManager != null) {
-            mAlignmentManager.registerView(this);
-        }
+        mAlignmentManager.registerView(this);
     }
 
     /**
-     * Specify query full text. This text is used for measurement purposes and is not displayed
-     * anywhere.
+     * Specify query full text.
+     * This text is used for measurement purposes and is not displayed anywhere.
      *
      * @param fullText Full query text that will be executed if user selects this suggestion.
      */
@@ -65,9 +63,8 @@ public class TailSuggestionView extends TextView {
     @Override
     public void layout(int left, int top, int right, int bottom) {
         if (mAlignmentManager != null) {
-            final int pad =
-                    mAlignmentManager.requestStartPadding(
-                            this, mQueryTextWidth, mFullTextWidth, right - left);
+            final int pad = mAlignmentManager.requestStartPadding(
+                    this, mQueryTextWidth, mFullTextWidth, right - left);
             if (getLayoutDirection() == LAYOUT_DIRECTION_RTL) {
                 right -= pad;
             } else {

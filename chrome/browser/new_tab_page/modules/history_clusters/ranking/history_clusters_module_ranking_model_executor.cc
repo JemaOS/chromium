@@ -27,12 +27,12 @@ bool HistoryClustersModuleRankingModelExecutor::Preprocess(
   return true;
 }
 
-std::optional<float> HistoryClustersModuleRankingModelExecutor::Postprocess(
+absl::optional<float> HistoryClustersModuleRankingModelExecutor::Postprocess(
     const std::vector<const TfLiteTensor*>& output_tensors) {
   std::vector<float> output;
   if (!tflite::task::core::PopulateVector<float>(output_tensors[0], &output)
            .ok()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   CHECK_EQ(1u, output.size());

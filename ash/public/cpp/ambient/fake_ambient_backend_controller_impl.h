@@ -6,7 +6,6 @@
 #define ASH_PUBLIC_CPP_AMBIENT_FAKE_AMBIENT_BACKEND_CONTROLLER_IMPL_H_
 
 #include <array>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -14,6 +13,7 @@
 #include "ash/public/cpp/ambient/proto/photo_cache_entry.pb.h"
 #include "ash/public/cpp/ash_public_export.h"
 #include "base/functional/callback.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/size.h"
 
 namespace ash {
@@ -33,7 +33,7 @@ class ASH_PUBLIC_EXPORT FakeAmbientBackendControllerImpl
       OnScreenUpdateInfoFetchedCallback callback) override;
   void FetchPreviewImages(const gfx::Size& preview_size,
                           OnPreviewImagesFetchedCallback callback) override;
-  void UpdateSettings(const AmbientSettings settings,
+  void UpdateSettings(const AmbientSettings& settings,
                       UpdateSettingsCallback callback) override;
   void FetchSettingsAndAlbums(
       int banner_width,
@@ -45,7 +45,6 @@ class ASH_PUBLIC_EXPORT FakeAmbientBackendControllerImpl
   std::array<const char*, 2> GetTimeOfDayVideoPreviewImageUrls(
       AmbientVideo video) const override;
   const char* GetPromoBannerUrl() const override;
-  const char* GetTimeOfDayProductName() const override;
 
   // Simulate to reply the request of FetchSettingsAndAlbums().
   // If |success| is true, will return fake data.
@@ -54,7 +53,7 @@ class ASH_PUBLIC_EXPORT FakeAmbientBackendControllerImpl
   // the pending callback.
   void ReplyFetchSettingsAndAlbums(
       bool success,
-      const std::optional<AmbientSettings>& settings = std::nullopt);
+      const absl::optional<AmbientSettings>& settings = absl::nullopt);
 
   // Simulates the reply for FetchScreenUpdateInfo(). All future calls to
   // FetchScreenUpdateInfo() will return the number of topics specified by
@@ -77,7 +76,7 @@ class ASH_PUBLIC_EXPORT FakeAmbientBackendControllerImpl
 
   // Sets the weather info that will be returned in subsequent calls to
   // `FetchWeather`.
-  void SetWeatherInfo(std::optional<WeatherInfo> info);
+  void SetWeatherInfo(absl::optional<WeatherInfo> info);
 
   void SetPhotoOrientation(bool portrait);
 
@@ -99,22 +98,14 @@ class ASH_PUBLIC_EXPORT FakeAmbientBackendControllerImpl
     return current_temperature_unit_;
   }
 
-  int fetch_weather_count() const { return fetch_weather_count_; }
-
-  void set_run_fetch_weather_callback(bool value) {
-    run_fetch_weather_callback_ = value;
-  }
-
  private:
   OnSettingsAndAlbumsFetchedCallback pending_fetch_settings_albums_callback_;
 
   UpdateSettingsCallback pending_update_callback_;
 
-  AmbientSettings pending_settings_;
+  absl::optional<bool> update_auto_reply_;
 
-  std::optional<bool> update_auto_reply_;
-
-  std::optional<WeatherInfo> weather_info_;
+  absl::optional<WeatherInfo> weather_info_;
 
   bool is_portrait_ = false;
 
@@ -122,15 +113,12 @@ class ASH_PUBLIC_EXPORT FakeAmbientBackendControllerImpl
 
   ::ambient::TopicType topic_type_ = ::ambient::TopicType::kCulturalInstitute;
 
-  std::optional<int> custom_num_topics_to_return_;
+  absl::optional<int> custom_num_topics_to_return_;
 
   TopicGeneratorCallback custom_topic_generator_;
 
   AmbientModeTemperatureUnit current_temperature_unit_ =
       AmbientModeTemperatureUnit::kCelsius;
-
-  int fetch_weather_count_ = 0;
-  bool run_fetch_weather_callback_ = true;
 };
 
 }  // namespace ash

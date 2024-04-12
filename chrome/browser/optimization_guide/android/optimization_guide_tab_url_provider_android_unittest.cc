@@ -4,7 +4,6 @@
 
 #include "chrome/browser/optimization_guide/android/optimization_guide_tab_url_provider_android.h"
 
-#include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "chrome/browser/android/tab_android.h"
 #include "chrome/browser/profiles/profile.h"
@@ -18,7 +17,7 @@ namespace optimization_guide {
 namespace android {
 namespace {
 
-using FakeTab = std::pair<GURL, std::optional<base::TimeTicks>>;
+using FakeTab = std::pair<GURL, absl::optional<base::TimeTicks>>;
 
 using ::testing::ElementsAre;
 
@@ -27,8 +26,7 @@ class FakeTabModel : public TabModel {
  public:
   explicit FakeTabModel(
       Profile* profile,
-      const std::vector<raw_ptr<content::WebContents, VectorExperimental>>&
-          web_contents_list)
+      const std::vector<content::WebContents*>& web_contents_list)
       : TabModel(profile, chrome::android::ActivityType::kCustomTab),
         web_contents_list_(web_contents_list) {}
 
@@ -61,8 +59,7 @@ class FakeTabModel : public TabModel {
   void RemoveObserver(TabModelObserver* observer) override {}
 
  private:
-  std::vector<raw_ptr<content::WebContents, VectorExperimental>>
-      web_contents_list_;
+  std::vector<content::WebContents*> web_contents_list_;
 };
 
 }  // namespace
@@ -98,7 +95,7 @@ class OptimizationGuideTabUrlProviderAndroidTest
         OptimizationGuideTabUrlProviderAndroid::TabRepresentation tab;
         tab.tab_model_index = tab_model_idx;
         tab.tab_index = tab_idx;
-        std::pair<GURL, std::optional<base::TimeTicks>> fake_tab =
+        std::pair<GURL, absl::optional<base::TimeTicks>> fake_tab =
             fake_tabs[tab_model_idx][tab_idx];
         tab.url = fake_tab.first;
         tab.last_active_time = fake_tab.second;
@@ -180,12 +177,12 @@ TEST_F(OptimizationGuideTabUrlProviderAndroidTest, SortsTabsCorrectly) {
                      base::TimeTicks::Now() - base::Days(3)),
       std::make_pair(GURL("https://example.com/second"),
                      base::TimeTicks::Now() - base::Days(2)),
-      std::make_pair(GURL("https://example.com/0-2"), std::nullopt),
+      std::make_pair(GURL("https://example.com/0-2"), absl::nullopt),
   });
   fake_tabs.push_back({
       std::make_pair(GURL("https://example.com/first"),
                      base::TimeTicks::Now() - base::Days(1)),
-      std::make_pair(GURL("https://example.com/1-1"), std::nullopt),
+      std::make_pair(GURL("https://example.com/1-1"), absl::nullopt),
   });
 
   EXPECT_THAT(GetSortedURLsForTabs(fake_tabs),

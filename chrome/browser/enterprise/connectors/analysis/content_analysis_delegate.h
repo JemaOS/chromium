@@ -21,7 +21,6 @@
 #include "chrome/browser/safe_browsing/cloud_content_scanning/binary_upload_service.h"
 #include "chrome/browser/safe_browsing/cloud_content_scanning/deep_scanning_utils.h"
 #include "components/enterprise/common/proto/connectors.pb.h"
-#include "content/public/browser/clipboard_types.h"
 #include "url/gurl.h"
 
 class Profile;
@@ -93,13 +92,8 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   struct Data {
     Data();
     Data(Data&& other);
-    Data& operator=(Data&& other);
+    Data& operator=(Data&&);
     ~Data();
-
-    // Helper function to populate `text` and `image` with the data in a
-    // `content::ClipboardPasteData` object.
-    void AddClipboardData(
-        const content::ClipboardPasteData& clipboard_paste_data);
 
     // URL of the page that is to receive sensitive data.
     GURL url;
@@ -117,23 +111,8 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
     // Page to be printed to scan.
     base::ReadOnlySharedMemoryRegion page;
 
-    // Printer name of the page being sent to, empty for non-print actions.
-    std::string printer_name;
-
-    // TODO(b/283108167): Delete or send printer type information to local
-    // service partner.
-    //  Printer type of the page being sent to, the default value is UNKNOWN.
-    ContentMetaData::PrintMetadata::PrinterType printer_type =
-        ContentMetaData::PrintMetadata::UNKNOWN;
-
-    // The reason the scanning should happen. This should be populated at the
-    // same time as fields like `text`, `paths`, `page`, etc. so that caller
-    // code can let enterprise code know the user action triggering content
-    // analysis.
-    ContentAnalysisRequest::Reason reason = ContentAnalysisRequest::UNKNOWN;
-
     // The settings to use for the analysis of the data in this struct.
-    AnalysisSettings settings;
+    enterprise_connectors::AnalysisSettings settings;
   };
 
   // Result of deep scanning.  Each Result contains the verdicts of deep scans
@@ -171,15 +150,6 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   using CompletionCallback =
       base::OnceCallback<void(const Data& data, Result& result)>;
 
-  // Callback used with CreateForFilesInWebContents() that informs caller of
-  // verdict of deep scans.  `data` is the object passed to
-  // CreateForFilesInWebContents(). The boolean vector holds the same number of
-  // elements as `data.paths` and each corresponds to a path in `data.paths`
-  // with the same index.
-  using ForFilesCompletionCallback =
-      base::OnceCallback<void(std::vector<base::FilePath> paths,
-                              std::vector<bool>)>;
-
   // A factory function used in tests to create fake ContentAnalysisDelegate
   // instances.
   using Factory =
@@ -197,7 +167,7 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   // Called when the user decides to bypass the verdict they obtained from DLP.
   // This will allow the upload of files marked as DLP warnings.
   void BypassWarnings(
-      std::optional<std::u16string> user_justification) override;
+      absl::optional<std::u16string> user_justification) override;
 
   // Called when the user decides to cancel the file upload. This will stop the
   // upload to Chrome since the scan wasn't allowed to complete. If `warning` is
@@ -205,22 +175,15 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   // "CancelledByUser" metrics should not be recorded.
   void Cancel(bool warning) override;
 
-  // Returns both rule-based and policy-based custom message without the prefix
-  // if DialogCustomRuleMessageEnabled flag enabled.
-  // TODO(b/322999022) Cleanup comments after custom rule message finch flag
-  // experiment.
-  std::optional<std::u16string> GetCustomMessage() const override;
+  absl::optional<std::u16string> GetCustomMessage() const override;
 
-  std::optional<GURL> GetCustomLearnMoreUrl() const override;
-
-  std::optional<std::vector<std::pair<gfx::Range, GURL>>>
-  GetCustomRuleMessageRanges() const override;
+  absl::optional<GURL> GetCustomLearnMoreUrl() const override;
 
   bool BypassRequiresJustification() const override;
 
   std::u16string GetBypassJustificationLabel() const override;
 
-  std::optional<std::u16string> OverrideCancelButtonText() const override;
+  absl::optional<std::u16string> OverrideCancelButtonText() const override;
 
   // Returns true if the deep scanning feature is enabled in the upload
   // direction via enterprise policies.  If the appropriate enterprise policies
@@ -232,7 +195,7 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   static bool IsEnabled(Profile* profile,
                         GURL url,
                         Data* data,
-                        AnalysisConnector connector);
+                        enterprise_connectors::AnalysisConnector connector);
 
   // Entry point for starting a deep scan, with the callback being called once
   // all results are available.  When the UI is enabled, a tab-modal dialog
@@ -248,20 +211,6 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
       CompletionCallback callback,
       safe_browsing::DeepScanAccessPoint access_point);
 
-  // Helper function for calling CreateForWebContents() when the data to
-  // process is a collection of files on disk.  This requires first expanding
-  // any directories in the given paths in order analyze all the files.
-  // If the calling code has already done the directory expansion then it can
-  // call `CreateForWebContents()` directly.
-  //
-  // `data.paths` is expected to contain the files and/or directories to
-  // analyze.  `text` and `page` are expected to be null/empty.
-  static void CreateForFilesInWebContents(
-      content::WebContents* web_contents,
-      Data data,
-      ForFilesCompletionCallback callback,
-      safe_browsing::DeepScanAccessPoint access_point);
-
   // In tests, sets a factory function for creating fake
   // ContentAnalysisDelegates.
   static void SetFactoryForTesting(Factory factory);
@@ -270,9 +219,6 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   // Showing the UI is not possible in unit tests, call this to disable it.
   static void DisableUIForTesting();
 
-  // Undoes the effects of DisableUIForTesting() after testing is finished.
-  static void EnableUIAfterTesting();
-
   // Add a callback to allow tests to validate `AckAllRequests` will send the
   // appropriate actions.
   using OnAckAllRequestsCallback = base::OnceCallback<void(
@@ -280,8 +226,6 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
                      ContentAnalysisAcknowledgement::FinalAction>&)>;
   static void SetOnAckAllRequestsCallbackForTesting(
       OnAckAllRequestsCallback callback);
-
-  void SetPageWarningForTesting(ContentAnalysisResponse page_response);
 
  protected:
   ContentAnalysisDelegate(content::WebContents* web_contents,
@@ -293,12 +237,15 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   // testing derived classes.
   // TODO(crbug.com/1324892): Adapt once TextRequestHandler and
   // PageRequestHandler are created and move reporting to the RequestHandlers.
-  void StringRequestCallback(safe_browsing::BinaryUploadService::Result result,
-                             ContentAnalysisResponse response);
-  void ImageRequestCallback(safe_browsing::BinaryUploadService::Result result,
-                            ContentAnalysisResponse response);
-  void PageRequestCallback(safe_browsing::BinaryUploadService::Result result,
-                           ContentAnalysisResponse response);
+  void StringRequestCallback(
+      safe_browsing::BinaryUploadService::Result result,
+      enterprise_connectors::ContentAnalysisResponse response);
+  void ImageRequestCallback(
+      safe_browsing::BinaryUploadService::Result result,
+      enterprise_connectors::ContentAnalysisResponse response);
+  void PageRequestCallback(
+      safe_browsing::BinaryUploadService::Result result,
+      enterprise_connectors::ContentAnalysisResponse response);
 
   // Callback called after all files are scanned by the FilesRequestHandler.
   void FilesRequestCallback(std::vector<RequestHandlerResult> results);
@@ -323,25 +270,10 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   virtual bool CancelDialog();
 
  private:
-  // Enum representing the data uploading status.
-  enum class UploadDataStatus {
-    kNoLocalClientFound = 0,
-    kInProgress = 1,
-    kComplete = 2,
-  };
-
-  // Uploads data for deep scanning.  Returns "kNoClientFound" if there's no
-  // client to receive data, "kInProgress" if uploading is occurring in the
-  // background, and "kComplete" if data uploading is finished.
-  UploadDataStatus UploadData();
-
-  // Helper function to evaluate if fail-closed conditions are met.
-  bool IsFailClosed(UploadDataStatus upload_data_status,
-                    bool should_allow_by_default);
-
-  // Helper function to decide if fail-closed settings should be applied when
-  // LCAC cannot establish connection with local client.
-  bool ShouldFailOpenWithoutLocalClient(bool should_allow_by_default);
+  // Uploads data for deep scanning.  Returns true if uploading is occurring in
+  // the background and false if there is nothing to do. Sets `data_uploaded_`
+  // to true right before returning.
+  bool UploadData();
 
   // Prepares an upload request for the text in `data_`. If `data_.text` is
   // empty, this method does nothing.
@@ -361,7 +293,7 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   // service.
   // TODO(crbug.com/1324892): Remove once TextRequestHandler and
   // PageRequestHandler are created.
-  void PrepareRequest(AnalysisConnector connector,
+  void PrepareRequest(enterprise_connectors::AnalysisConnector connector,
                       safe_browsing::BinaryUploadService::Request* request);
 
   // Fills the arrays in `result_` with the given boolean status.
@@ -396,11 +328,8 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
 
   // Updates `final_result_` following the precedence established by the
   // FinalResult enum.
-  void UpdateFinalResult(
-      FinalContentAnalysisResult message,
-      const std::string& tag,
-      const ContentAnalysisResponse::Result::TriggeredRule::CustomRuleMessage&
-          custom_rule_message);
+  void UpdateFinalResult(FinalContentAnalysisResult message,
+                         const std::string& tag);
 
   // Send an acknowledgement to the service provider of the final result
   // for the requests of this ContentAnalysisDelegate instance.
@@ -409,11 +338,6 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   // Returns the BinaryUploadService used to upload content for deep scanning.
   // Virtual to override in tests.
   virtual safe_browsing::BinaryUploadService* GetBinaryUploadService();
-
-  // Returns the content transfer method for the action. This is only used for
-  // reporting and can be empty if the exact transfer method isn't supported in
-  // reporting.
-  std::string GetContentTransferMethod() const;
 
   // The Profile corresponding to the pending scan request(s).
   raw_ptr<Profile> profile_ = nullptr;
@@ -433,18 +357,18 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
 
   // Set to true if the full text got a DLP warning verdict.
   bool text_warning_ = false;
-  ContentAnalysisResponse text_response_;
+  enterprise_connectors::ContentAnalysisResponse text_response_;
 
   // Set to true if the full image got a DLP warning verdict.
   bool image_warning_ = false;
-  ContentAnalysisResponse image_response_;
+  enterprise_connectors::ContentAnalysisResponse image_response_;
 
   // Indices of warned files.
   std::vector<size_t> warned_file_indices_;
 
   // Set to true if the printed page got a DLP warning verdict.
   bool page_warning_ = false;
-  ContentAnalysisResponse page_response_;
+  enterprise_connectors::ContentAnalysisResponse page_response_;
 
   // Stores the scanned page's size since it moves from `data_` to be uploaded.
   // TODO(crbug.com/1324892): Move to PageRequestHandler.
@@ -518,14 +442,7 @@ class ContentAnalysisDelegate : public ContentAnalysisDelegateBase {
   // should wait before deleting `this`.
   bool all_work_done_ = false;
 
-  // Content type of the page that triggered the action.
-  std::string page_content_type_;
-
   base::TimeTicks upload_start_time_;
-
-  // Custom message for rule.
-  ContentAnalysisResponse::Result::TriggeredRule::CustomRuleMessage
-      custom_rule_message_;
 
   base::WeakPtrFactory<ContentAnalysisDelegate> weak_ptr_factory_{this};
 };

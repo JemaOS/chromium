@@ -5,10 +5,8 @@
 #include "chrome/browser/installable/installed_webapp_geolocation_context.h"
 
 #include <utility>
-#include <vector>
 
 #include "chrome/browser/installable/installed_webapp_geolocation_bridge.h"
-#include "url/origin.h"
 
 InstalledWebappGeolocationContext::InstalledWebappGeolocationContext() =
     default;
@@ -25,18 +23,6 @@ void InstalledWebappGeolocationContext::BindGeolocation(
     impls_.back()->SetOverride(geoposition_override_.Clone());
   else
     impls_.back()->StartListeningForUpdates();
-}
-
-void InstalledWebappGeolocationContext::OnPermissionRevoked(
-    const url::Origin& origin) {
-  std::erase_if(impls_, [&origin](const auto& impl) {
-    if (!origin.IsSameOriginWith(impl->url())) {
-      return false;
-    }
-    // Invoke the position callback with kPermissionDenied before removing.
-    impl->OnPermissionRevoked();
-    return true;
-  });
 }
 
 void InstalledWebappGeolocationContext::OnConnectionError(

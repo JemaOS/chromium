@@ -4,12 +4,11 @@
 
 import 'chrome://resources/cr_elements/cr_tab_box/cr_tab_box.js';
 
-import {assert} from 'chrome://resources/js/assert.js';
-import type {String16} from 'chrome://resources/mojo/mojo/public/mojom/base/string16.mojom-webui.js';
-import type {Time, TimeDelta} from 'chrome://resources/mojo/mojo/public/mojom/base/time.mojom-webui.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
+import {String16} from 'chrome://resources/mojo/mojo/public/mojom/base/string16.mojom-webui.js';
+import {Time, TimeDelta} from 'chrome://resources/mojo/mojo/public/mojom/base/time.mojom-webui.js';
 
-import type {PageHandlerRemote, WebUITopic} from './browsing_topics_internals.mojom-webui.js';
-import {PageHandler} from './browsing_topics_internals.mojom-webui.js';
+import {PageHandler, PageHandlerRemote, WebUITopic} from './browsing_topics_internals.mojom-webui.js';
 
 let pageHandler: PageHandlerRemote|null = null;
 let hostsClassificationSequenceNumber = 0;
@@ -127,10 +126,9 @@ async function asyncGetBrowsingTopicsConfiguration() {
   // Enabled status fields
   ['browsing-topics-enabled-div',
    'privacy-sandbox-ads-apis-override-enabled-div',
+   'privacy-sandbox-settings3-enabled-div',
    'override-privacy-sandbox-settings-local-testing-enabled-div',
-   'browsing-topics-bypass-ip-is-publicly-routable-check-enabled-div',
-   'browsing-topics-document-api-enabled-div',
-   'browsing-topics-parameters-enabled-div']
+   'browsing-topics-bypass-ip-is-publicly-routable-check-enabled-div']
       .forEach(id => {
         const div = document.querySelector<HTMLElement>(`#${id}`);
         assert(div);
@@ -139,14 +137,13 @@ async function asyncGetBrowsingTopicsConfiguration() {
       });
 
   // Number fields
-  ['config-version-div', 'number-of-epochs-to-expose-div',
-   'number-of-top-topics-per-epoch-div',
+  ['number-of-epochs-to-expose-div', 'number-of-top-topics-per-epoch-div',
    'use-random-topic-probability-percent-div',
    'number-of-epochs-of-observation-data-to-use-for-filtering-div',
    'max-number-of-api-usage-context-domains-to-keep-per-topic-div',
    'max-number-of-api-usage-context-entries-to-load-per-epoch-div',
    'max-number-of-api-usage-context-domains-to-store-per-page-load-div',
-   'taxonomy-version-div', 'disabled-topics-list-div']
+   'config-version-div', 'taxonomy-version-div']
       .forEach(id => {
         const div = document.querySelector<HTMLElement>(`#${id}`);
         assert(div);
@@ -155,14 +152,13 @@ async function asyncGetBrowsingTopicsConfiguration() {
       });
 
   // Time duration fields
-  ['time-period-per-epoch-div', 'max-epoch-introduction-delay-div'].forEach(
-      id => {
-        const div = document.querySelector<HTMLElement>(`#${id}`);
-        assert(div);
-        div.textContent! += formatTimeDuration(
-            (config[fieldNameFromId(id) as keyof typeof config] as TimeDelta)
-                .microseconds);
-      });
+  ['time-period-per-epoch-div'].forEach(id => {
+    const div = document.querySelector<HTMLElement>(`#${id}`);
+    assert(div);
+    div.textContent! += formatTimeDuration(
+        (config[fieldNameFromId(id) as keyof typeof config] as TimeDelta)
+            .microseconds);
+  });
 }
 
 async function asyncGetBrowsingTopicsState(calculateNow: boolean) {
@@ -211,7 +207,8 @@ async function asyncGetBrowsingTopicsState(calculateNow: boolean) {
     nestedDivs[3]!.textContent += epoch.taxonomyVersion;
 
     epoch.topics.forEach((topic) => {
-      epochDiv.querySelectorAll('table')[0]!.appendChild(createTopicRow(topic));
+      epochDiv.querySelectorAll('table')![0]!.appendChild(
+          createTopicRow(topic));
     });
 
     document.querySelector('#epoch-div-list-wrapper')!.appendChild(epochDiv);

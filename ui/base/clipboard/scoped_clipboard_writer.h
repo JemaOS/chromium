@@ -54,7 +54,9 @@ class COMPONENT_EXPORT(UI_BASE_CLIPBOARD) ScopedClipboardWriter {
   // Adds HTML to the clipboard. The url parameter is optional, but especially
   // useful if the HTML fragment contains relative links.
   // The `content_type` refers to the sanitization of the markup.
-  void WriteHTML(const std::u16string& markup, const std::string& source_url);
+  void WriteHTML(const std::u16string& markup,
+                 const std::string& source_url,
+                 ClipboardContentType content_type);
 
   // Adds SVG to the clipboard.
   void WriteSvg(const std::u16string& text);
@@ -99,9 +101,6 @@ class COMPONENT_EXPORT(UI_BASE_CLIPBOARD) ScopedClipboardWriter {
   // Mark the data to be written as confidential.
   void MarkAsConfidential();
 
-  // Data is copied from an incognito window.
-  void MarkAsOffTheRecord();
-
   // Removes all objects that would be written to the clipboard.
   void Reset();
 
@@ -119,10 +118,9 @@ class COMPONENT_EXPORT(UI_BASE_CLIPBOARD) ScopedClipboardWriter {
   // The type is set at construction, and can be changed before committing.
   const ClipboardBuffer buffer_;
 
-  // Contains the `Clipboard::PrivacyTypes` based on whether the content was
-  // marked as confidential or off the record. e.g. password is considered as
-  // confidential that should be concealed.
-  uint32_t privacy_types_ = 0;
+  SkBitmap bitmap_;
+
+  bool confidential_ = false;
 
   // The source of the data written in ScopedClipboardWriter, nullptr means it's
   // not set, or the source of the data can't be represented by

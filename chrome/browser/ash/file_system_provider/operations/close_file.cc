@@ -9,7 +9,9 @@
 #include "chrome/common/extensions/api/file_system_provider.h"
 #include "chrome/common/extensions/api/file_system_provider_internal.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 CloseFile::CloseFile(RequestDispatcher* dispatcher,
                      const ProvidedFileSystemInfo& file_system_info,
@@ -19,7 +21,8 @@ CloseFile::CloseFile(RequestDispatcher* dispatcher,
       open_request_id_(open_request_id),
       callback_(std::move(callback)) {}
 
-CloseFile::~CloseFile() = default;
+CloseFile::~CloseFile() {
+}
 
 bool CloseFile::Execute(int request_id) {
   using extensions::api::file_system_provider::CloseFileRequestedOptions;
@@ -49,4 +52,6 @@ void CloseFile::OnError(int /* request_id */,
   std::move(callback_).Run(error);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

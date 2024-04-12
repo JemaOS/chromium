@@ -61,10 +61,10 @@ class ArcPrintSpoolerBridge : public KeyedService,
   static void EnsureFactoryBuilt();
 
  private:
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
 
   base::WeakPtrFactory<ArcPrintSpoolerBridge> weak_ptr_factory_{this};
 };

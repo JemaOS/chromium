@@ -5,9 +5,7 @@
 #include "chrome/browser/ash/printing/fake_cups_print_job_manager.h"
 
 #include <utility>
-#include <vector>
 
-#include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/ash/printing/cups_print_job.h"
@@ -27,7 +25,7 @@ FakeCupsPrintJobManager::~FakeCupsPrintJobManager() = default;
 bool FakeCupsPrintJobManager::CreatePrintJob(
     const std::string& printer_id,
     const std::string& title,
-    uint32_t job_id,
+    int job_id,
     int total_page_number,
     ::printing::PrintJob::Source source,
     const std::string& source_id,
@@ -54,8 +52,12 @@ void FakeCupsPrintJobManager::CancelPrintJob(CupsPrintJob* job) {
   NotifyJobCanceled(job->GetWeakPtr());
 
   // Note: |job| is deleted here.
-  std::erase_if(print_jobs_,
-                [&](const auto& print_job) { return print_job.get() == job; });
+  for (auto iter = print_jobs_.begin(); iter != print_jobs_.end(); ++iter) {
+    if (iter->get() == job) {
+      print_jobs_.erase(iter);
+      break;
+    }
+  }
 }
 
 bool FakeCupsPrintJobManager::SuspendPrintJob(CupsPrintJob* job) {
@@ -79,8 +81,14 @@ bool FakeCupsPrintJobManager::ResumePrintJob(CupsPrintJob* job) {
 
 void FakeCupsPrintJobManager::ChangePrintJobState(CupsPrintJob* job) {
   // |job| might have been deleted.
-  const bool found =
-      base::Contains(print_jobs_, job, &std::unique_ptr<CupsPrintJob>::get);
+  bool found = false;
+  for (auto iter = print_jobs_.begin(); iter != print_jobs_.end(); ++iter) {
+    if (iter->get() == job) {
+      found = true;
+      break;
+    }
+  }
+
   if (!found || job->state() == CupsPrintJob::State::STATE_SUSPENDED ||
       job->state() == CupsPrintJob::State::STATE_FAILED) {
     return;
@@ -113,9 +121,12 @@ void FakeCupsPrintJobManager::ChangePrintJobState(CupsPrintJob* job) {
       break;
     case CupsPrintJob::State::STATE_DOCUMENT_DONE:
       // Delete |job| since it's completed.
-      std::erase_if(print_jobs_, [&](const auto& print_job) {
-        return print_job.get() == job;
-      });
+      for (auto iter = print_jobs_.begin(); iter != print_jobs_.end(); ++iter) {
+        if (iter->get() == job) {
+          print_jobs_.erase(iter);
+          break;
+        }
+      }
       break;
     default:
       break;

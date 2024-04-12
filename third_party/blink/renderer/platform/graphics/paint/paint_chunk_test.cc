@@ -4,9 +4,8 @@
 
 #include "third_party/blink/renderer/platform/graphics/paint/paint_chunk.h"
 
-#include <optional>
-
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/platform/testing/fake_display_item_client.h"
 
 namespace blink {
@@ -61,7 +60,7 @@ TEST(PaintChunkTest, IdNotMatchesUncacheable) {
 
 TEST(PaintChunkTest, IdNotMatchesJustCreated) {
   auto properties = PropertyTreeState::Root();
-  std::optional<FakeDisplayItemClient> client;
+  absl::optional<FakeDisplayItemClient> client;
   client.emplace();
   EXPECT_TRUE(client->IsJustCreated());
   // Invalidation won't change the "just created" status.
@@ -79,7 +78,7 @@ TEST(PaintChunkTest, IdNotMatchesJustCreated) {
                   .Matches(PaintChunk(0, 1, *client, id, properties)));
 
   // Delete the current object and create a new object at the same address.
-  client = std::nullopt;
+  client = absl::nullopt;
   client.emplace();
   EXPECT_TRUE(client->IsJustCreated());
   EXPECT_FALSE(PaintChunk(0, 1, *client, id, properties)

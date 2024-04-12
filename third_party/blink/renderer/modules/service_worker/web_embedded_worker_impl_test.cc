@@ -40,7 +40,6 @@
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_factory.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread.h"
 #include "third_party/blink/renderer/platform/scheduler/test/fake_task_runner.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/testing_platform_support.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_loader_mock_factory.h"
@@ -57,39 +56,37 @@ class FakeURLLoader final : public URLLoader {
   FakeURLLoader() = default;
   ~FakeURLLoader() override = default;
 
-  void LoadSynchronously(std::unique_ptr<network::ResourceRequest> request,
-                         scoped_refptr<const SecurityOrigin> top_frame_origin,
-                         bool download_to_blob,
-                         bool no_mime_sniffing,
-                         base::TimeDelta timeout_interval,
-                         URLLoaderClient*,
-                         WebURLResponse&,
-                         std::optional<WebURLError>&,
-                         scoped_refptr<SharedBuffer>&,
-                         int64_t& encoded_data_length,
-                         uint64_t& encoded_body_length,
-                         scoped_refptr<BlobDataHandle>& downloaded_blob,
-                         std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper>
-                             resource_load_info_notifier_wrapper) override {
+  void LoadSynchronously(
+      std::unique_ptr<network::ResourceRequest> request,
+      scoped_refptr<WebURLRequestExtraData> url_request_extra_data,
+      bool pass_response_pipe_to_client,
+      bool no_mime_sniffing,
+      base::TimeDelta timeout_interval,
+      URLLoaderClient*,
+      WebURLResponse&,
+      absl::optional<WebURLError>&,
+      scoped_refptr<SharedBuffer>&,
+      int64_t& encoded_data_length,
+      uint64_t& encoded_body_length,
+      scoped_refptr<BlobDataHandle>& downloaded_blob,
+      std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper>
+          resource_load_info_notifier_wrapper) override {
     NOTREACHED();
   }
 
   void LoadAsynchronously(
       std::unique_ptr<network::ResourceRequest> request,
-      scoped_refptr<const SecurityOrigin> top_frame_origin,
+      scoped_refptr<WebURLRequestExtraData> url_request_extra_data,
       bool no_mime_sniffing,
       std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper>
           resource_load_info_notifier_wrapper,
-      CodeCacheHost* code_cache_host,
       URLLoaderClient* client) override {
     if (request->url.spec() == kNotFoundScriptURL) {
       WebURLResponse response;
       response.SetMimeType("text/javascript");
       response.SetHttpStatusCode(404);
-      client->DidReceiveResponse(response,
-                                 /*body=*/mojo::ScopedDataPipeConsumerHandle(),
-                                 /*cached_metadata=*/std::nullopt);
-      client->DidFinishLoading(base::TimeTicks(), 0, 0, 0);
+      client->DidReceiveResponse(response);
+      client->DidFinishLoading(base::TimeTicks(), 0, 0, 0, false);
       return;
     }
     // Don't handle other requests intentionally to emulate ongoing load.
@@ -107,12 +104,11 @@ class FakeURLLoader final : public URLLoader {
 class FakeURLLoaderFactory final : public URLLoaderFactory {
  public:
   std::unique_ptr<URLLoader> CreateURLLoader(
-      const network::ResourceRequest&,
+      const WebURLRequest&,
       scoped_refptr<base::SingleThreadTaskRunner>,
       scoped_refptr<base::SingleThreadTaskRunner>,
       mojo::PendingRemote<mojom::blink::KeepAliveHandle>,
-      BackForwardCacheLoaderHelper*,
-      Vector<std::unique_ptr<URLLoaderThrottle>> throttles) override {
+      BackForwardCacheLoaderHelper*) override {
     return std::make_unique<FakeURLLoader>();
   }
 };
@@ -133,11 +129,6 @@ class FakeWebServiceWorkerFetchContext final
     return nullptr;
   }
   void WillSendRequest(WebURLRequest&) override {}
-  WebVector<std::unique_ptr<URLLoaderThrottle>> CreateThrottles(
-      const network::ResourceRequest& request) override {
-    return {};
-  }
-
   mojom::ControllerServiceWorkerMode GetControllerServiceWorkerMode()
       const override {
     return mojom::ControllerServiceWorkerMode::kNoController;
@@ -145,8 +136,8 @@ class FakeWebServiceWorkerFetchContext final
   net::SiteForCookies SiteForCookies() const override {
     return net::SiteForCookies();
   }
-  std::optional<WebSecurityOrigin> TopFrameOrigin() const override {
-    return std::optional<WebSecurityOrigin>();
+  absl::optional<WebSecurityOrigin> TopFrameOrigin() const override {
+    return absl::optional<WebSecurityOrigin>();
   }
   WebString GetAcceptLanguages() const override { return WebString(); }
   void SetIsOfflineMode(bool is_offline_mode) override {}
@@ -204,26 +195,12 @@ class MockServiceWorkerContextClient final
     mojo::PendingAssociatedRemote<mojom::blink::ServiceWorkerObject>
         service_worker_object;
 
-    mojo::PendingAssociatedRemote<mojom::blink::AssociatedInterfaceProvider>
-        associated_interfaces_remote_from_browser;
-    auto associated_interfaces_recevier_from_browser =
-        associated_interfaces_remote_from_browser
-            .InitWithNewEndpointAndPassReceiver();
-
-    mojo::PendingAssociatedRemote<mojom::blink::AssociatedInterfaceProvider>
-        associated_interfaces_remote_to_browser;
-    auto associated_interfaces_recevier_to_browser =
-        associated_interfaces_remote_to_browser
-            .InitWithNewEndpointAndPassReceiver();
-
     // Simulates calling blink.mojom.ServiceWorker.InitializeGlobalScope() to
     // unblock the service worker script evaluation.
     mojo::Remote<mojom::blink::ServiceWorker> service_worker;
     proxy->BindServiceWorker(service_worker.BindNewPipeAndPassReceiver());
     service_worker->InitializeGlobalScope(
         std::move(host_remote),
-        std::move(associated_interfaces_remote_from_browser),
-        std::move(associated_interfaces_recevier_to_browser),
         mojom::blink::ServiceWorkerRegistrationObjectInfo::New(
             2 /* registration_id */, KURL("https://example.com"),
             mojom::blink::ServiceWorkerUpdateViaCache::kImports,
@@ -242,8 +219,6 @@ class MockServiceWorkerContextClient final
 
     // To make the other side callable.
     host_receiver.EnableUnassociatedUsage();
-    associated_interfaces_recevier_from_browser.EnableUnassociatedUsage();
-    associated_interfaces_remote_to_browser.EnableUnassociatedUsage();
     registration_object_host_receiver.EnableUnassociatedUsage();
     service_worker_object_host_receiver.EnableUnassociatedUsage();
   }
@@ -332,7 +307,6 @@ class WebEmbeddedWorkerImplTest : public testing::Test {
     url_test_helpers::UnregisterAllURLsAndClearMemoryCache();
   }
 
-  test::TaskEnvironment task_environment_;
   WebURL script_url_;
   std::unique_ptr<MockServiceWorkerContextClient> mock_client_;
   std::unique_ptr<WebEmbeddedWorkerImpl> worker_;

@@ -37,7 +37,6 @@
 #include "third_party/blink/public/web/web_serialized_script_value.h"
 #include "third_party/blink/renderer/bindings/core/v8/serialization/serialized_script_value.h"
 #include "third_party/blink/renderer/core/dom/document.h"
-#include "third_party/blink/renderer/core/event_type_names.h"
 #include "third_party/blink/renderer/core/events/message_event.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/user_activation.h"
@@ -65,8 +64,8 @@ WebDOMMessageEvent::WebDOMMessageEvent(
   // TODO(esprehn): Chromium always passes empty string for lastEventId, is that
   // right?
   Unwrap<MessageEvent>()->initMessageEvent(
-      event_type_names::kMessage, false, false, message_data, origin,
-      "" /*lastEventId*/, window, ports, nullptr /*user_activation*/,
+      "message", false, false, message_data, origin, "" /*lastEventId*/, window,
+      ports, nullptr /*user_activation*/,
       mojom::blink::DelegatedCapability::kNone);
 }
 

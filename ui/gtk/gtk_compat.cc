@@ -229,8 +229,8 @@ SkColor GtkStyleContextGetBackgroundColor(GtkStyleContext* context) {
 }
 
 DISABLE_CFI_DLSYM
-std::optional<SkColor> GtkStyleContextLookupColor(GtkStyleContext* context,
-                                                  const gchar* color_name) {
+absl::optional<SkColor> GtkStyleContextLookupColor(GtkStyleContext* context,
+                                                   const gchar* color_name) {
   DCHECK(!GtkCheckVersion(4));
   static void* lookup_color =
       DlSym(GetLibGtk(), "gtk_style_context_lookup_color");
@@ -239,7 +239,7 @@ std::optional<SkColor> GtkStyleContextLookupColor(GtkStyleContext* context,
           context, color_name, &color)) {
     return GdkRgbaToSkColor(color);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 DISABLE_CFI_DLSYM

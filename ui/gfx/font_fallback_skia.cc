@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
+#include "ui/gfx/font_fallback.h"
+
 #include <string>
 #include <vector>
 
@@ -10,8 +11,8 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/font.h"
-#include "ui/gfx/font_fallback.h"
 #include "ui/gfx/font_fallback_skia_impl.h"
 #include "ui/gfx/font_render_params.h"
 #include "ui/gfx/platform_font.h"
@@ -42,7 +43,7 @@ bool GetFallbackFont(const Font& font,
   // font handles and is not guaranteed to result in the correct typeface, see
   // https://crbug.com/1003829
   *result = Font(PlatformFont::CreateFromSkTypeface(
-      std::move(fallback_typeface), font.GetFontSize(), std::nullopt));
+      std::move(fallback_typeface), font.GetFontSize(), absl::nullopt));
   return true;
 }
 

@@ -93,13 +93,13 @@ TEST_F(WallpaperControllerClientImplTest, DailyGooglePhotosDoNotRepeat) {
   // matters here).
   auto response =
       ash::personalization_app::mojom::FetchGooglePhotosPhotosResponse::New(
-          std::vector<GooglePhotosPhotoPtr>(), std::nullopt);
+          std::vector<GooglePhotosPhotoPtr>(), absl::nullopt);
   for (int i = 0; i < photos_in_album; i++) {
     response->photos->push_back(
         ash::personalization_app::mojom::GooglePhotosPhoto::New(
-            "id" + base::NumberToString(i), /*dedup_key=*/std::nullopt,
+            "id" + base::NumberToString(i), /*dedup_key=*/absl::nullopt,
             /*name=*/"", /*date=*/u"",
-            /*url=*/GURL(""), /*location=*/std::nullopt));
+            /*url=*/GURL(""), /*location=*/absl::nullopt));
   }
 
   std::deque<std::string> last_ten;

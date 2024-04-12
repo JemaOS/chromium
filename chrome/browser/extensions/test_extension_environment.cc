@@ -20,13 +20,13 @@
 #include "content/public/test/web_contents_tester.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/common/extension_builder.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/login/users/chrome_user_manager_impl.h"
+#include "chrome/browser/ash/login/users/scoped_test_user_manager.h"
 #include "chrome/browser/ash/settings/device_settings_service.h"
 #include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
-#include "components/user_manager/scoped_user_manager.h"
 #endif
 
 namespace extensions {
@@ -37,24 +37,29 @@ namespace {
 
 base::Value::Dict MakeExtensionManifest(
     const base::Value::Dict& manifest_extra) {
-  base::Value::Dict manifest = base::Value::Dict()
+  base::Value::Dict manifest = DictionaryBuilder()
                                    .Set("name", "Extension")
                                    .Set("version", "1.0")
-                                   .Set("manifest_version", 2);
+                                   .Set("manifest_version", 2)
+                                   .Build();
   manifest.Merge(manifest_extra.Clone());
   return manifest;
 }
 
 base::Value::Dict MakePackagedAppManifest() {
-  return base::Value::Dict()
+  return extensions::DictionaryBuilder()
       .Set("name", "Test App Name")
       .Set("version", "2.0")
       .Set("manifest_version", 2)
-      .Set("app",
-           base::Value::Dict().Set(
-               "background",
-               base::Value::Dict().Set(
-                   "scripts", base::Value::List().Append("background.js"))));
+      .Set("app", extensions::DictionaryBuilder()
+                      .Set("background",
+                           extensions::DictionaryBuilder()
+                               .Set("scripts", extensions::ListBuilder()
+                                                   .Append("background.js")
+                                                   .Build())
+                               .Build())
+                      .Build())
+      .Build();
 }
 
 }  // namespace
@@ -63,14 +68,14 @@ base::Value::Dict MakePackagedAppManifest() {
 // Extra environment state required for ChromeOS.
 class TestExtensionEnvironment::ChromeOSEnv {
  public:
-  ChromeOSEnv() = default;
+  ChromeOSEnv() {}
+
   ChromeOSEnv(const ChromeOSEnv&) = delete;
   ChromeOSEnv& operator=(const ChromeOSEnv&) = delete;
 
  private:
   ash::ScopedCrosSettingsTestHelper cros_settings_test_helper_;
-  user_manager::ScopedUserManager test_user_manager_{
-      ash::ChromeUserManagerImpl::CreateChromeUserManager()};
+  ash::ScopedTestUserManager test_user_manager_;
 };
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
@@ -83,38 +88,24 @@ ExtensionService* TestExtensionEnvironment::CreateExtensionServiceForProfile(
       base::CommandLine::ForCurrentProcess(), base::FilePath(), false);
 }
 
-TestExtensionEnvironment::TestExtensionEnvironment(
-    Type type,
-    ProfileCreationType profile_creation_mode
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-    ,
-    OSSetupType os_setup_mode
-#endif
-    )
+TestExtensionEnvironment::TestExtensionEnvironment(Type type)
     : task_environment_(
           type == Type::kWithTaskEnvironment
               ? std::make_unique<content::BrowserTaskEnvironment>()
               : nullptr),
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-      chromeos_env_(ash::DeviceSettingsService::IsInitialized() &&
-                            os_setup_mode != OSSetupType::kSetUp
+      chromeos_env_(ash::DeviceSettingsService::IsInitialized()
                         ? nullptr
                         : std::make_unique<ChromeOSEnv>()),
 #endif
-      profile_(profile_creation_mode != ProfileCreationType::kCreate
-                   ? nullptr
-                   : std::make_unique<TestingProfile>()),
-      profile_ptr_(profile_.get()) {
+      profile_(std::make_unique<TestingProfile>()) {
 }
 
-TestExtensionEnvironment::~TestExtensionEnvironment() = default;
-
-void TestExtensionEnvironment::SetProfile(TestingProfile* profile) {
-  profile_ptr_ = profile;
+TestExtensionEnvironment::~TestExtensionEnvironment() {
 }
 
 TestingProfile* TestExtensionEnvironment::profile() const {
-  return profile_ptr_.get();
+  return profile_.get();
 }
 
 TestExtensionSystem* TestExtensionEnvironment::GetExtensionSystem() {
@@ -128,7 +119,7 @@ ExtensionService* TestExtensionEnvironment::GetExtensionService() {
 }
 
 ExtensionPrefs* TestExtensionEnvironment::GetExtensionPrefs() {
-  return ExtensionPrefs::Get(profile());
+  return ExtensionPrefs::Get(profile_.get());
 }
 
 const Extension* TestExtensionEnvironment::MakeExtension(
@@ -174,7 +165,6 @@ std::unique_ptr<content::WebContents> TestExtensionEnvironment::MakeTab()
 }
 
 void TestExtensionEnvironment::DeleteProfile() {
-  profile_ptr_ = nullptr;
   profile_.reset();
   extension_service_ = nullptr;
 }

@@ -6,7 +6,6 @@
 
 #include <memory>
 
-#include "ash/public/cpp/holding_space/holding_space_file.h"
 #include "ash/public/cpp/holding_space/holding_space_image.h"
 #include "ash/public/cpp/holding_space/holding_space_section.h"
 #include "ash/public/cpp/holding_space/holding_space_test_api.h"
@@ -110,7 +109,7 @@ class HoldingSpaceItemViewsSectionTest
   views::UniqueWidgetPtr widget_;
   std::unique_ptr<HoldingSpaceViewDelegate> view_delegate_;
 
-  raw_ptr<TestHoldingSpaceItemViewsSection, DanglingUntriaged>
+  raw_ptr<TestHoldingSpaceItemViewsSection, ExperimentalAsh>
       item_views_section_ = nullptr;
 };
 
@@ -120,7 +119,7 @@ INSTANTIATE_TEST_SUITE_P(All,
 
 // Verifies the items are ordered as expected.
 TEST_P(HoldingSpaceItemViewsSectionTest, ItemOrder) {
-  const std::optional<size_t> section_max_views =
+  const absl::optional<size_t> section_max_views =
       GetHoldingSpaceSection(section_id())->max_visible_item_count;
 
   // Add a number of items.
@@ -170,12 +169,9 @@ TEST_P(HoldingSpaceItemViewsSectionTest, PartiallyInitializedItemsDontShow) {
   // Once initialized, the item should show a view as normal.
   model()->InitializeOrRemoveItem(
       partially_initialized_item->id(),
-      HoldingSpaceFile(
-          partially_initialized_item->file().file_path,
-          HoldingSpaceFile::FileSystemType::kTest,
-          GURL(base::StrCat({"filesystem:", partially_initialized_item->file()
-                                                .file_path.BaseName()
-                                                .value()}))));
+      GURL(base::StrCat(
+          {"filesystem:",
+           partially_initialized_item->file_path().BaseName().value()})));
 
   views = item_views_section()->GetHoldingSpaceItemViews();
   ASSERT_EQ(views.size(), 2u);
@@ -184,7 +180,7 @@ TEST_P(HoldingSpaceItemViewsSectionTest, PartiallyInitializedItemsDontShow) {
 
 // Verifies that resetting a section allows it to be destroyed asynchronously.
 TEST_P(HoldingSpaceItemViewsSectionTest, ResetForAsyncDestruction) {
-  const std::optional<size_t> section_max_views =
+  const absl::optional<size_t> section_max_views =
       GetHoldingSpaceSection(section_id())->max_visible_item_count;
 
   // Add items to the section.

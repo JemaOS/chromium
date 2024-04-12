@@ -1,1 +1,1 @@
-UIs related to account management (signin) inside a single profile.
+UIs related to account management (signin) and profiles.

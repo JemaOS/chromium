@@ -76,7 +76,7 @@ void DotIndicator::OnThemeChanged() {
   SchedulePaint();
 }
 
-BEGIN_METADATA(DotIndicator)
+BEGIN_METADATA(DotIndicator, View)
 END_METADATA
 
 }  // namespace views

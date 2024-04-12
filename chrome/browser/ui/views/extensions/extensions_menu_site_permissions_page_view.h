@@ -22,16 +22,16 @@ class RadioButton;
 }  // namespace views
 
 class Browser;
-class ExtensionsMenuHandler;
+class ExtensionsMenuNavigationHandler;
 
 class ExtensionsMenuSitePermissionsPageView : public views::View {
-  METADATA_HEADER(ExtensionsMenuSitePermissionsPageView, views::View)
-
  public:
+  METADATA_HEADER(ExtensionsMenuSitePermissionsPageView);
+
   explicit ExtensionsMenuSitePermissionsPageView(
       Browser* browser,
       extensions::ExtensionId extension_id,
-      ExtensionsMenuHandler* menu_handler);
+      ExtensionsMenuNavigationHandler* navigation_handler);
   ExtensionsMenuSitePermissionsPageView(
       const ExtensionsMenuSitePermissionsPageView&) = delete;
   const ExtensionsMenuSitePermissionsPageView& operator=(
@@ -43,12 +43,14 @@ class ExtensionsMenuSitePermissionsPageView : public views::View {
               const ui::ImageModel& extension_icon,
               const std::u16string& current_site,
               extensions::PermissionsManager::UserSiteAccess user_site_access,
-              bool is_show_requests_toggle_on,
-              bool is_on_site_enabled,
-              bool is_on_all_sites_enabled);
+              bool is_show_requests_toggle_on);
 
   // Updates `show_requests_toggle_` state to `is_on`.
   void UpdateShowRequestsToggle(bool is_on);
+
+  // Sets whether the extension pointed by `extension_id_` can request access
+  // the toolbar.
+  void OnShowRequestsTogglePressed();
 
   extensions::ExtensionId extension_id() { return extension_id_; }
 

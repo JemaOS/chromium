@@ -1,7 +1,6 @@
-<style include="cr-icons cr-hidden-style sp-shared-style">
+<style include="cr-icons cr-hidden-style">
   hr {
-    border: none;
-    border-top: var(--cr-hairline);
+    border: var(--cr-hairline);
   }
 
   .dropdown-item {
@@ -9,7 +8,7 @@
   }
 </style>
 
-<cr-action-menu id="menu" on-mousedown="onMousedown_">
+<cr-action-menu id="menu">
   <template is="dom-repeat"
       items="[[getMenuItemsForBookmarks_(
                    bookmarks_, priceTracked_, priceTrackingEligible_)]]">

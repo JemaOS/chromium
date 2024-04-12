@@ -5,10 +5,10 @@
 #include "chrome/browser/ash/app_list/arc/arc_usb_host_permission_manager.h"
 
 #include <utility>
-#include <vector>
 
 #include "ash/components/arc/arc_util.h"
 #include "ash/components/arc/usb/usb_host_bridge.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/ash/app_list/arc/arc_app_dialog.h"
@@ -44,7 +44,7 @@ std::string GetAppIdFromPackageName(const std::string& package_name,
 bool GetUint16FromDict(const base::Value::Dict& dict,
                        const std::string& key,
                        uint16_t* result) {
-  std::optional<int> value = dict.FindInt(key);
+  absl::optional<int> value = dict.FindInt(key);
   if (!value.has_value()) {
     return false;
   }
@@ -61,8 +61,8 @@ bool GetUint16FromDict(const base::Value::Dict& dict,
 ArcUsbHostPermissionManager::UsbPermissionRequest::UsbPermissionRequest(
     const std::string& package_name,
     bool is_scan_request,
-    std::optional<UsbDeviceEntry> usb_device_entry,
-    std::optional<ArcUsbHostUiDelegate::RequestPermissionCallback> callback)
+    absl::optional<UsbDeviceEntry> usb_device_entry,
+    absl::optional<ArcUsbHostUiDelegate::RequestPermissionCallback> callback)
     : package_name_(package_name),
       is_scan_request_(is_scan_request),
       usb_device_entry_(std::move(usb_device_entry)),
@@ -121,8 +121,8 @@ ArcUsbHostPermissionManager* ArcUsbHostPermissionManager::GetForBrowserContext(
 }
 
 // static
-std::unique_ptr<ArcUsbHostPermissionManager>
-ArcUsbHostPermissionManager::Create(content::BrowserContext* context) {
+ArcUsbHostPermissionManager* ArcUsbHostPermissionManager::Create(
+    content::BrowserContext* context) {
   ArcAppListPrefs* arc_app_list_prefs = ArcAppListPrefs::Get(context);
   // TODO(lgcheng): Change this to DCHECK(arc_app_list_prefs) after clear the
   // browsertest workflow.
@@ -134,7 +134,7 @@ ArcUsbHostPermissionManager::Create(content::BrowserContext* context) {
   if (!arc_usb_host_bridge)
     return nullptr;
 
-  return std::make_unique<ArcUsbHostPermissionManager>(
+  return new ArcUsbHostPermissionManager(
       static_cast<Profile*>(context), arc_app_list_prefs, arc_usb_host_bridge);
 }
 
@@ -232,7 +232,7 @@ void ArcUsbHostPermissionManager::RequestUsbScanDeviceListPermission(
   pending_requests_.emplace_back(
       ArcUsbHostPermissionManager::UsbPermissionRequest(
           package_name, true /*is_scan_request*/,
-          std::nullopt /*usb_device_entry*/, std::nullopt /*callback*/));
+          absl::nullopt /*usb_device_entry*/, absl::nullopt /*callback*/));
   MaybeProcessNextPermissionRequest();
 }
 
@@ -317,7 +317,7 @@ ArcUsbHostPermissionManager::GetEventPackageList(
 
 void ArcUsbHostPermissionManager::DeviceRemoved(const std::string& guid) {
   // Remove pending requests.
-  std::erase_if(pending_requests_,
+  base::EraseIf(pending_requests_,
                 [guid](const UsbPermissionRequest& usb_permission_request) {
                   return !usb_permission_request.is_scan_request() &&
                          usb_permission_request.usb_device_entry()->guid ==
@@ -340,7 +340,7 @@ void ArcUsbHostPermissionManager::OnPackageRemoved(
     const std::string& package_name,
     bool uninstalled) {
   // Remove pending requests.
-  std::erase_if(
+  base::EraseIf(
       pending_requests_,
       [package_name](const UsbPermissionRequest& usb_permission_request) {
         return usb_permission_request.package_name() == package_name;

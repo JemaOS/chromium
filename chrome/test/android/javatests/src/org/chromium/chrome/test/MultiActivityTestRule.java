@@ -6,7 +6,7 @@ package org.chromium.chrome.test;
 
 import android.content.Context;
 
-import androidx.test.core.app.ApplicationProvider;
+import androidx.test.InstrumentationRegistry;
 
 import org.hamcrest.Matchers;
 import org.junit.rules.TestRule;
@@ -27,6 +27,8 @@ import java.util.concurrent.TimeoutException;
 
 /** Custom TestRule for MultiActivity Tests. */
 public class MultiActivityTestRule implements TestRule {
+    private static final String TAG = "MultiActivityTest";
+
     Context mContext;
 
     public Context getContext() {
@@ -41,30 +43,25 @@ public class MultiActivityTestRule implements TestRule {
         final Tab tab = activity.getActivityTab();
         assert tab != null;
 
-        CriteriaHelper.pollUiThread(
-                () -> {
-                    Criteria.checkThat(
-                            ChromeTabUtils.isLoadingAndRenderingDone(tab), Matchers.is(true));
-                    Criteria.checkThat(tab.getTitle(), Matchers.is(expectedTitle));
-                });
+        CriteriaHelper.pollUiThread(() -> {
+            Criteria.checkThat(ChromeTabUtils.isLoadingAndRenderingDone(tab), Matchers.is(true));
+            Criteria.checkThat(tab.getTitle(), Matchers.is(expectedTitle));
+        });
     }
 
     private void waitForTabCreation(ChromeActivity activity) throws TimeoutException {
         final CallbackHelper newTabCreatorHelper = new CallbackHelper();
-        activity.getTabModelSelector()
-                .addObserver(
-                        new TabModelSelectorObserver() {
-                            @Override
-                            public void onNewTabCreated(
-                                    Tab tab, @TabCreationState int creationState) {
-                                newTabCreatorHelper.notifyCalled();
-                            }
-                        });
+        activity.getTabModelSelector().addObserver(new TabModelSelectorObserver() {
+            @Override
+            public void onNewTabCreated(Tab tab, @TabCreationState int creationState) {
+                newTabCreatorHelper.notifyCalled();
+            }
+        });
         newTabCreatorHelper.waitForCallback(0);
     }
 
     private void ruleSetUp() {
-        mContext = ApplicationProvider.getApplicationContext();
+        mContext = InstrumentationRegistry.getTargetContext();
         ChromeApplicationTestUtils.setUp(mContext);
     }
 

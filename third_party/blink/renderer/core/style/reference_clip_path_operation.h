@@ -40,26 +40,27 @@ class SVGResourceClient;
 
 class ReferenceClipPathOperation final : public ClipPathOperation {
  public:
-  ReferenceClipPathOperation(const String& url, SVGResource* resource)
-      : url_(url), resource_(resource) {}
-
-  void Trace(Visitor* visitor) const override {
-    visitor->Trace(resource_);
-    ClipPathOperation::Trace(visitor);
+  static scoped_refptr<ReferenceClipPathOperation> Create(
+      const AtomicString& url,
+      SVGResource* resource) {
+    return base::AdoptRef(new ReferenceClipPathOperation(url, resource));
   }
 
   void AddClient(SVGResourceClient&);
   void RemoveClient(SVGResourceClient&);
 
-  SVGResource* Resource() const { return resource_.Get(); }
+  SVGResource* Resource() const;
   const AtomicString& Url() const { return url_; }
 
  private:
   bool operator==(const ClipPathOperation&) const override;
   OperationType GetType() const override { return kReference; }
 
+  ReferenceClipPathOperation(const String& url, SVGResource* resource)
+      : resource_(resource), url_(url) {}
+
+  Persistent<SVGResource> resource_;
   AtomicString url_;
-  Member<SVGResource> resource_;
 };
 
 template <>

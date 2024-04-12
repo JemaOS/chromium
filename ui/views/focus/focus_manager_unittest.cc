@@ -11,31 +11,23 @@
 #include <vector>
 
 #include "base/command_line.h"
-#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/scoped_refptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/icu_test_util.h"
 #include "build/build_config.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/accelerators/test_accelerator_target.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/accessible_pane_view.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/buildflags.h"
-#include "ui/views/controls/focus_ring.h"
 #include "ui/views/focus/focus_manager_delegate.h"
 #include "ui/views/focus/focus_manager_factory.h"
 #include "ui/views/focus/widget_focus_manager.h"
-#include "ui/views/layout/flex_layout.h"
 #include "ui/views/test/focus_manager_test.h"
 #include "ui/views/test/native_widget_factory.h"
 #include "ui/views/test/test_platform_native_widget.h"
-#include "ui/views/test/test_views.h"
-#include "ui/views/test/views_test_utils.h"
 #include "ui/views/test/widget_test.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/widget/unique_widget_ptr.h"
@@ -56,21 +48,10 @@ struct FocusTestEvent {
   FocusManager::FocusChangeReason focus_change_reason;
 };
 
-class FocusTestEventList : public base::RefCounted<FocusTestEventList> {
- public:
-  std::vector<FocusTestEvent> vec;
-
- private:
-  friend class base::RefCounted<FocusTestEventList>;
-  ~FocusTestEventList() = default;
-};
-
 class SimpleTestView : public View {
-  METADATA_HEADER(SimpleTestView, View)
-
  public:
-  SimpleTestView(scoped_refptr<FocusTestEventList> event_list, int view_id)
-      : event_list_(std::move(event_list)) {
+  SimpleTestView(std::vector<FocusTestEvent>* event_list, int view_id)
+      : event_list_(event_list) {
     SetFocusBehavior(FocusBehavior::ALWAYS);
     set_suppress_default_focus_handling();
     SetID(view_id);
@@ -80,7 +61,7 @@ class SimpleTestView : public View {
   SimpleTestView& operator=(const SimpleTestView&) = delete;
 
   void OnFocus() override {
-    event_list_->vec.push_back({
+    event_list_->push_back({
         ON_FOCUS,
         GetID(),
         GetFocusManager()->focus_change_reason(),
@@ -88,7 +69,7 @@ class SimpleTestView : public View {
   }
 
   void OnBlur() override {
-    event_list_->vec.push_back({
+    event_list_->push_back({
         ON_BLUR,
         GetID(),
         GetFocusManager()->focus_change_reason(),
@@ -96,49 +77,47 @@ class SimpleTestView : public View {
   }
 
  private:
-  const scoped_refptr<FocusTestEventList> event_list_;
+  raw_ptr<std::vector<FocusTestEvent>> event_list_;
 };
-
-BEGIN_METADATA(SimpleTestView)
-END_METADATA
 
 // Tests that the appropriate Focus related methods are called when a View
 // gets/loses focus.
 TEST_F(FocusManagerTest, ViewFocusCallbacks) {
-  auto event_list = base::MakeRefCounted<FocusTestEventList>();
+  std::vector<FocusTestEvent> event_list;
   const int kView1ID = 1;
   const int kView2ID = 2;
-  SimpleTestView* view1 = new SimpleTestView(event_list, kView1ID);
-  SimpleTestView* view2 = new SimpleTestView(event_list, kView2ID);
+
+  SimpleTestView* view1 = new SimpleTestView(&event_list, kView1ID);
+  SimpleTestView* view2 = new SimpleTestView(&event_list, kView2ID);
   GetContentsView()->AddChildView(view1);
   GetContentsView()->AddChildView(view2);
 
   view1->RequestFocus();
-  ASSERT_EQ(1, static_cast<int>(event_list->vec.size()));
-  EXPECT_EQ(ON_FOCUS, event_list->vec[0].type);
-  EXPECT_EQ(kView1ID, event_list->vec[0].view_id);
+  ASSERT_EQ(1, static_cast<int>(event_list.size()));
+  EXPECT_EQ(ON_FOCUS, event_list[0].type);
+  EXPECT_EQ(kView1ID, event_list[0].view_id);
   EXPECT_EQ(FocusChangeReason::kDirectFocusChange,
-            event_list->vec[0].focus_change_reason);
+            event_list[0].focus_change_reason);
 
-  event_list->vec.clear();
+  event_list.clear();
   view2->RequestFocus();
-  ASSERT_EQ(2, static_cast<int>(event_list->vec.size()));
-  EXPECT_EQ(ON_BLUR, event_list->vec[0].type);
-  EXPECT_EQ(kView1ID, event_list->vec[0].view_id);
-  EXPECT_EQ(ON_FOCUS, event_list->vec[1].type);
-  EXPECT_EQ(kView2ID, event_list->vec[1].view_id);
+  ASSERT_EQ(2, static_cast<int>(event_list.size()));
+  EXPECT_EQ(ON_BLUR, event_list[0].type);
+  EXPECT_EQ(kView1ID, event_list[0].view_id);
+  EXPECT_EQ(ON_FOCUS, event_list[1].type);
+  EXPECT_EQ(kView2ID, event_list[1].view_id);
   EXPECT_EQ(FocusChangeReason::kDirectFocusChange,
-            event_list->vec[0].focus_change_reason);
+            event_list[0].focus_change_reason);
   EXPECT_EQ(FocusChangeReason::kDirectFocusChange,
-            event_list->vec[1].focus_change_reason);
+            event_list[1].focus_change_reason);
 
-  event_list->vec.clear();
+  event_list.clear();
   GetFocusManager()->ClearFocus();
-  ASSERT_EQ(1, static_cast<int>(event_list->vec.size()));
-  EXPECT_EQ(ON_BLUR, event_list->vec[0].type);
-  EXPECT_EQ(kView2ID, event_list->vec[0].view_id);
+  ASSERT_EQ(1, static_cast<int>(event_list.size()));
+  EXPECT_EQ(ON_BLUR, event_list[0].type);
+  EXPECT_EQ(kView2ID, event_list[0].view_id);
   EXPECT_EQ(FocusChangeReason::kDirectFocusChange,
-            event_list->vec[0].focus_change_reason);
+            event_list[0].focus_change_reason);
 }
 
 TEST_F(FocusManagerTest, FocusChangeListener) {
@@ -169,8 +148,6 @@ TEST_F(FocusManagerTest, FocusChangeListener) {
   GetFocusManager()->ClearFocus();
   ASSERT_EQ(1, static_cast<int>(listener.focus_changes().size()));
   EXPECT_TRUE(listener.focus_changes()[0] == ViewPair(view2, null_view));
-
-  RemoveFocusChangeListener(&listener);
 }
 
 TEST_F(FocusManagerTest, WidgetFocusChangeListener) {
@@ -199,17 +176,15 @@ TEST_F(FocusManagerTest, WidgetFocusChangeListener) {
   gfx::NativeView native_view1 = widget1->GetNativeView();
   test::WidgetTest::SimulateNativeActivate(widget1.get());
   ASSERT_EQ(2u, widget_listener.focus_changes().size());
-  EXPECT_EQ(gfx::NativeView(), widget_listener.focus_changes()[0]);
+  EXPECT_EQ(gfx::kNullNativeView, widget_listener.focus_changes()[0]);
   EXPECT_EQ(native_view1, widget_listener.focus_changes()[1]);
 
   widget_listener.ClearFocusChanges();
   gfx::NativeView native_view2 = widget2->GetNativeView();
   test::WidgetTest::SimulateNativeActivate(widget2.get());
   ASSERT_EQ(2u, widget_listener.focus_changes().size());
-  EXPECT_EQ(gfx::NativeView(), widget_listener.focus_changes()[0]);
+  EXPECT_EQ(gfx::kNullNativeView, widget_listener.focus_changes()[0]);
   EXPECT_EQ(native_view2, widget_listener.focus_changes()[1]);
-
-  RemoveWidgetFocusChangeListener(&widget_listener);
 }
 
 TEST_F(FocusManagerTest, CallsNormalAcceleratorTarget) {
@@ -464,8 +439,6 @@ TEST_F(FocusManagerTest, SuspendAccelerators) {
 namespace {
 
 class FocusInAboutToRequestFocusFromTabTraversalView : public View {
-  METADATA_HEADER(FocusInAboutToRequestFocusFromTabTraversalView, View)
-
  public:
   FocusInAboutToRequestFocusFromTabTraversalView() = default;
 
@@ -483,16 +456,13 @@ class FocusInAboutToRequestFocusFromTabTraversalView : public View {
  private:
   raw_ptr<views::View> view_to_focus_ = nullptr;
 };
-
-BEGIN_METADATA(FocusInAboutToRequestFocusFromTabTraversalView)
-END_METADATA
-
 }  // namespace
 
 // Verifies a focus change done during a call to
 // AboutToRequestFocusFromTabTraversal() is honored.
 TEST_F(FocusManagerTest, FocusInAboutToRequestFocusFromTabTraversal) {
-  // Create 3 views.
+  // Create 3 views focuses the 3 and advances to the second. The 2nd views
+  // implementation of AboutToRequestFocusFromTabTraversal() focuses the first.
   views::View* v1 = new View;
   v1->SetFocusBehavior(View::FocusBehavior::ALWAYS);
   GetContentsView()->AddChildView(v1);
@@ -507,16 +477,12 @@ TEST_F(FocusManagerTest, FocusInAboutToRequestFocusFromTabTraversal) {
   v3->SetFocusBehavior(View::FocusBehavior::ALWAYS);
   GetContentsView()->AddChildView(v3);
 
-  // Focus the third view and advances to the second. The second view's
-  // implementation of AboutToRequestFocusFromTabTraversal() focuses the first.
   v3->RequestFocus();
   GetWidget()->GetFocusManager()->AdvanceFocus(true);
   EXPECT_TRUE(v1->HasFocus());
-
-  v2->set_view_to_focus(nullptr);
 }
 
-TEST_F(FocusManagerTest, RotateFocus) {
+TEST_F(FocusManagerTest, RotatePaneFocus) {
   views::AccessiblePaneView* pane1 = new AccessiblePaneView();
   GetContentsView()->AddChildView(pane1);
 
@@ -539,7 +505,7 @@ TEST_F(FocusManagerTest, RotateFocus) {
   v4->SetFocusBehavior(View::FocusBehavior::ALWAYS);
   pane2->AddChildView(v4);
 
-  std::vector<raw_ptr<views::View, VectorExperimental>> panes;
+  std::vector<views::View*> panes;
   panes.push_back(pane1);
   panes.push_back(pane2);
   SetAccessiblePanes(panes);
@@ -563,6 +529,30 @@ TEST_F(FocusManagerTest, RotateFocus) {
   focus_manager->AdvanceFocus(false);
   EXPECT_EQ(v4, focus_manager->GetFocusedView());
   focus_manager->AdvanceFocus(false);
+  EXPECT_EQ(v3, focus_manager->GetFocusedView());
+
+  EXPECT_TRUE(focus_manager->RotatePaneFocus(Direction::kForward,
+                                             FocusCycleWrapping::kEnabled));
+  EXPECT_EQ(v1, focus_manager->GetFocusedView());
+
+  // Advance backwards.
+  EXPECT_TRUE(focus_manager->RotatePaneFocus(Direction::kBackward,
+                                             FocusCycleWrapping::kEnabled));
+  EXPECT_EQ(v3, focus_manager->GetFocusedView());
+
+  EXPECT_TRUE(focus_manager->RotatePaneFocus(Direction::kBackward,
+                                             FocusCycleWrapping::kEnabled));
+  EXPECT_EQ(v1, focus_manager->GetFocusedView());
+
+  // Advance without wrap. When it gets to the end of the list of
+  // panes, RotatePaneFocus should return false but the current
+  // focused view shouldn't change.
+  EXPECT_TRUE(focus_manager->RotatePaneFocus(Direction::kForward,
+                                             FocusCycleWrapping::kDisabled));
+  EXPECT_EQ(v3, focus_manager->GetFocusedView());
+
+  EXPECT_FALSE(focus_manager->RotatePaneFocus(Direction::kForward,
+                                              FocusCycleWrapping::kDisabled));
   EXPECT_EQ(v3, focus_manager->GetFocusedView());
 }
 
@@ -731,9 +721,9 @@ TEST_F(FocusManagerTest, SkipViewsInArrowKeyTraversal) {
 }
 
 TEST_F(FocusManagerTest, StoreFocusedView) {
-  auto event_list = base::MakeRefCounted<FocusTestEventList>();
+  std::vector<FocusTestEvent> event_list;
   const int kView1ID = 1;
-  SimpleTestView* view = new SimpleTestView(event_list, kView1ID);
+  SimpleTestView* view = new SimpleTestView(&event_list, kView1ID);
 
   // Add view to the view hierarchy and make it focusable.
   GetWidget()->GetRootView()->AddChildView(view);
@@ -744,36 +734,36 @@ TEST_F(FocusManagerTest, StoreFocusedView) {
   EXPECT_EQ(nullptr, GetFocusManager()->GetFocusedView());
   EXPECT_TRUE(GetFocusManager()->RestoreFocusedView());
   EXPECT_EQ(view, GetFocusManager()->GetStoredFocusView());
-  ASSERT_EQ(3, static_cast<int>(event_list->vec.size()));
-  EXPECT_EQ(ON_FOCUS, event_list->vec[0].type);
-  EXPECT_EQ(kView1ID, event_list->vec[0].view_id);
+  ASSERT_EQ(3, static_cast<int>(event_list.size()));
+  EXPECT_EQ(ON_FOCUS, event_list[0].type);
+  EXPECT_EQ(kView1ID, event_list[0].view_id);
   EXPECT_EQ(FocusChangeReason::kDirectFocusChange,
-            event_list->vec[0].focus_change_reason);
-  EXPECT_EQ(ON_BLUR, event_list->vec[1].type);
-  EXPECT_EQ(kView1ID, event_list->vec[1].view_id);
+            event_list[0].focus_change_reason);
+  EXPECT_EQ(ON_BLUR, event_list[1].type);
+  EXPECT_EQ(kView1ID, event_list[1].view_id);
   EXPECT_EQ(FocusChangeReason::kDirectFocusChange,
-            event_list->vec[1].focus_change_reason);
-  EXPECT_EQ(ON_FOCUS, event_list->vec[2].type);
-  EXPECT_EQ(kView1ID, event_list->vec[2].view_id);
+            event_list[1].focus_change_reason);
+  EXPECT_EQ(ON_FOCUS, event_list[2].type);
+  EXPECT_EQ(kView1ID, event_list[2].view_id);
   EXPECT_EQ(FocusChangeReason::kFocusRestore,
-            event_list->vec[2].focus_change_reason);
+            event_list[2].focus_change_reason);
 
   // Repeat with |true|.
-  event_list->vec.clear();
+  event_list.clear();
   GetFocusManager()->SetFocusedView(view);
   GetFocusManager()->StoreFocusedView(true);
   EXPECT_EQ(nullptr, GetFocusManager()->GetFocusedView());
   EXPECT_TRUE(GetFocusManager()->RestoreFocusedView());
   EXPECT_EQ(view, GetFocusManager()->GetStoredFocusView());
-  ASSERT_EQ(2, static_cast<int>(event_list->vec.size()));
-  EXPECT_EQ(ON_BLUR, event_list->vec[0].type);
-  EXPECT_EQ(kView1ID, event_list->vec[0].view_id);
+  ASSERT_EQ(2, static_cast<int>(event_list.size()));
+  EXPECT_EQ(ON_BLUR, event_list[0].type);
+  EXPECT_EQ(kView1ID, event_list[0].view_id);
   EXPECT_EQ(FocusChangeReason::kDirectFocusChange,
-            event_list->vec[0].focus_change_reason);
-  EXPECT_EQ(ON_FOCUS, event_list->vec[1].type);
-  EXPECT_EQ(kView1ID, event_list->vec[1].view_id);
+            event_list[0].focus_change_reason);
+  EXPECT_EQ(ON_FOCUS, event_list[1].type);
+  EXPECT_EQ(kView1ID, event_list[1].view_id);
   EXPECT_EQ(FocusChangeReason::kFocusRestore,
-            event_list->vec[1].focus_change_reason);
+            event_list[1].focus_change_reason);
 
   // Necessary for clean teardown.
   GetFocusManager()->ClearFocus();
@@ -933,9 +923,9 @@ TEST_F(FocusManagerTest, AdvanceFocusStaysInWidget) {
   UniqueWidgetPtr child_widget = std::make_unique<Widget>();
   std::unique_ptr<AdvanceFocusWidgetDelegate> delegate_owned =
       std::make_unique<AdvanceFocusWidgetDelegate>(child_widget.get());
-  params.delegate = delegate_owned.get();
-  params.delegate->RegisterDeleteDelegateCallback(
-      base::DoNothingWithBoundArgs(std::move(delegate_owned)));
+  AdvanceFocusWidgetDelegate* delegate = delegate_owned.get();
+  params.delegate = delegate_owned.release();
+  delegate->SetOwnedByWidget(true);
   child_widget->Init(std::move(params));
 
   View* view1 = new View;
@@ -1110,33 +1100,6 @@ TEST_F(FocusManagerTest, AnchoredDialogInPane) {
   EXPECT_TRUE(bubble_child->HasFocus());
 }
 
-// Test that a focused view has a visible focus ring.
-// This test uses FlexLayout intentionally because it had issues showing focus
-// rings.
-TEST_F(FocusManagerTest, FocusRing) {
-  GetContentsView()->SetLayoutManager(std::make_unique<FlexLayout>());
-  View* view = GetContentsView()->AddChildView(
-      std::make_unique<StaticSizedView>(gfx::Size(10, 10)));
-  GetContentsView()->SetFocusBehavior(View::FocusBehavior::ALWAYS);
-  view->SetFocusBehavior(View::FocusBehavior::ALWAYS);
-  FocusRing::Install(GetContentsView());
-  FocusRing::Install(view);
-
-  GetContentsView()->RequestFocus();
-  test::RunScheduledLayout(GetWidget());
-  EXPECT_TRUE(GetContentsView()->HasFocus());
-  EXPECT_TRUE(FocusRing::Get(GetContentsView())->GetVisible());
-  EXPECT_FALSE(view->HasFocus());
-  EXPECT_FALSE(FocusRing::Get(view)->GetVisible());
-
-  view->RequestFocus();
-  test::RunScheduledLayout(GetWidget());
-  EXPECT_FALSE(GetContentsView()->HasFocus());
-  EXPECT_FALSE(FocusRing::Get(GetContentsView())->GetVisible());
-  EXPECT_TRUE(view->HasFocus());
-  EXPECT_TRUE(FocusRing::Get(view)->GetVisible());
-}
-
 #if BUILDFLAG(ENABLE_DESKTOP_AURA)
 // This test is specifically for the permutation where the main widget is a
 // DesktopNativeWidgetAura and the bubble is a NativeWidgetAura. When focus
@@ -1185,18 +1148,16 @@ TEST_F(DesktopWidgetFocusManagerTest, AnchoredDialogInDesktopNativeWidgetAura) {
 
   // In order to pass the accessibility paint checks, focusable views must have
   // a valid role.
-  parent1->GetViewAccessibility().SetRole(ax::mojom::Role::kGroup);
-  parent2->GetViewAccessibility().SetRole(ax::mojom::Role::kGroup);
-  child->GetViewAccessibility().SetRole(ax::mojom::Role::kButton);
+  parent1->GetViewAccessibility().OverrideRole(ax::mojom::Role::kGroup);
+  parent2->GetViewAccessibility().OverrideRole(ax::mojom::Role::kGroup);
+  child->GetViewAccessibility().OverrideRole(ax::mojom::Role::kButton);
 
   // In order to pass the accessibility paint checks, focusable views must have
   // a non-empty accessible name, or have their name set to explicitly empty.
-  parent1->GetViewAccessibility().SetName(u"Parent 1",
-                                          ax::mojom::NameFrom::kAttribute);
-  parent2->GetViewAccessibility().SetName(
+  parent1->GetViewAccessibility().OverrideName(u"Parent 1");
+  parent2->GetViewAccessibility().OverrideName(
       u"", ax::mojom::NameFrom::kAttributeExplicitlyEmpty);
-  child->GetViewAccessibility().SetName("uChild",
-                                        ax::mojom::NameFrom::kAttribute);
+  child->GetViewAccessibility().OverrideName("uChild");
 
   widget->Activate();
   parent1->RequestFocus();
@@ -1253,9 +1214,6 @@ class RedirectToParentFocusManagerTest : public FocusManagerTest {
   }
 
   void TearDown() override {
-    parent_focus_manager_ = nullptr;
-    bubble_focus_manager_ = nullptr;
-    bubble_ = nullptr;
     FocusManagerFactory::Install(nullptr);
     FocusManagerTest::TearDown();
   }
@@ -1263,6 +1221,7 @@ class RedirectToParentFocusManagerTest : public FocusManagerTest {
  protected:
   raw_ptr<FocusManager> parent_focus_manager_ = nullptr;
   raw_ptr<FocusManager> bubble_focus_manager_ = nullptr;
+
   raw_ptr<BubbleDialogDelegateView> bubble_ = nullptr;
 };
 

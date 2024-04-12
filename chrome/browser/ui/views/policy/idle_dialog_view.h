@@ -21,7 +21,7 @@ namespace policy {
 // A View for the idle timeout dialog. This is shown to users to inform them
 // that Chrome will be closed by the IdleService, as dictated by the
 // IdleProfileCloseTimeout policy.
-class IdleDialogView : public views::DialogDelegateView {
+class IdleDialogView : public views::BubbleDialogDelegateView {
  public:
   IdleDialogView(base::TimeDelta dialog_duration,
                  base::TimeDelta idle_threshold,
@@ -33,8 +33,7 @@ class IdleDialogView : public views::DialogDelegateView {
   // IdleProfileCloseTimeout policy, for displaying to the user.
   // |on_close_by_user| is run if the user clicks on "Continue", or presses
   // Escape to close the dialog.
-  static base::WeakPtr<views::Widget> Show(Browser* browser,
-                                           base::TimeDelta dialog_duration,
+  static base::WeakPtr<views::Widget> Show(base::TimeDelta dialog_duration,
                                            base::TimeDelta idle_threshold,
                                            IdleDialog::ActionSet actions,
                                            base::OnceClosure on_close_by_user);

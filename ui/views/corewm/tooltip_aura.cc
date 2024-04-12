@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "base/feature_list.h"
 #include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/string_split.h"
@@ -27,6 +28,7 @@
 #include "ui/display/screen.h"
 #include "ui/gfx/color_utils.h"
 #include "ui/gfx/text_utils.h"
+#include "ui/views/views_features.h"
 #include "ui/views/widget/widget.h"
 #include "ui/wm/public/tooltip_observer.h"
 
@@ -69,10 +71,6 @@ void TooltipAura::AddObserver(wm::TooltipObserver* observer) {
 
 void TooltipAura::RemoveObserver(wm::TooltipObserver* observer) {
   observers_.RemoveObserver(observer);
-}
-
-void TooltipAura::SetMaxWidth(int width) {
-  max_width_ = width;
 }
 
 // static
@@ -201,7 +199,7 @@ void TooltipAura::DestroyWidget() {
 int TooltipAura::GetMaxWidth(const gfx::Point& location) const {
   display::Screen* screen = display::Screen::GetScreen();
   gfx::Rect display_bounds(screen->GetDisplayNearestPoint(location).bounds());
-  return std::min(max_width_, (display_bounds.width() + 1) / 2);
+  return std::min(kTooltipMaxWidth, (display_bounds.width() + 1) / 2);
 }
 
 void TooltipAura::Update(aura::Window* window,
@@ -235,6 +233,9 @@ void TooltipAura::Update(aura::Window* window,
 void TooltipAura::Show() {
   if (widget_) {
     widget_->Show();
+
+    if (!base::FeatureList::IsEnabled(views::features::kWidgetLayering))
+      widget_->StackAtTop();
 
     widget_->GetTooltipView()->NotifyAccessibilityEvent(
         ax::mojom::Event::kTooltipOpened, true);

@@ -11,19 +11,20 @@
 <div class="fragment-content">
   <settings-radio-group id="cookiesRadioGroup"
       pref="{{prefs.generated.cookie_primary_setting}}"
-      selectable-elements="settings-collapse-radio-button">
+      selectable-elements="settings-collapse-radio-button"
+      on-keydown="onRadioGroupKeyDown_">
     <settings-collapse-radio-button id="block3PIncognito"
         pref="[[prefs.generated.cookie_primary_setting]]"
         name="[[cookiePrimarySettingEnum_.BLOCK_THIRD_PARTY_INCOGNITO]]"
         label="$i18n{privacyGuideCookiesCardBlockTpcIncognitoSubheader}"
         expand-aria-label=
-            "$i18n{thirdPartyCookiesPageBlockIncognitoExpandA11yLabel}"
+            "$i18n{cookiePageBlockThirdIncognitoExpandA11yLabel}"
         on-click="onCookies3pIncognitoClick_">
-      <div slot="collapse" class="settings-columned-section">
-        <div class="column">
-          <h3 class="description-header">
+      <div slot="collapse" class="description-wrapper-radio two-column">
+        <div class="description-column description-column-first">
+          <div class=description-header>
             $i18n{privacyGuideFeatureDescriptionHeader}
-          </h3>
+          </div>
           <div role="list">
             <privacy-guide-description-item
                 role="listitem"
@@ -37,10 +38,10 @@
             </privacy-guide-description-item>
           </div>
         </div>
-        <div class="column">
-          <h3 class="description-header">
+        <div class="description-column">
+          <div class=description-header>
             $i18n{privacyGuideThingsToConsider}
-          </h3>
+          </div>
           <div role="list">
             <privacy-guide-description-item
                 role="listitem"
@@ -60,13 +61,13 @@
         pref="[[prefs.generated.cookie_primary_setting]]"
         name="[[cookiePrimarySettingEnum_.BLOCK_THIRD_PARTY]]"
         label="$i18n{privacyGuideCookiesCardBlockTpcSubheader}"
-        expand-aria-label="$i18n{thirdPartyCookiesPageBlockExpandA11yLabel}"
+        expand-aria-label="$i18n{cookiePageBlockThirdExpandA11yLabel}"
         on-click="onCookies3pClick_">
-      <div slot="collapse" class="settings-columned-section">
-        <div class="column">
-          <h3 class="description-header">
+      <div slot="collapse" class="description-wrapper-radio two-column">
+        <div class="description-column description-column-first">
+          <div class=description-header>
             $i18n{privacyGuideFeatureDescriptionHeader}
-          </h3>
+          </div>
           <div role="list">
             <privacy-guide-description-item
                 role="listitem"
@@ -80,10 +81,10 @@
             </privacy-guide-description-item>
           </div>
         </div>
-        <div class="column">
-          <h3 class="description-header">
+        <div class="description-column">
+          <div class=description-header>
             $i18n{privacyGuideThingsToConsider}
-          </h3>
+          </div>
           <div role="list">
             <privacy-guide-description-item
                 role="listitem"

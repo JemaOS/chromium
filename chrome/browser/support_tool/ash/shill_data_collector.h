@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 
@@ -23,6 +22,7 @@
 #include "components/feedback/redaction_tool/pii_types.h"
 #include "components/feedback/redaction_tool/redaction_tool.h"
 #include "components/feedback/system_logs/system_logs_source.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 // ShillDataCollector collects support debug data from shill. It detects
 // shill-specific PII and it also uses redaction::RedactionTool to further remove
@@ -73,24 +73,24 @@ class ShillDataCollector : public DataCollector {
                       bool success);
 
   // These are functions originated from `system_logs::ShillLogSource`.
-  void OnGetManagerProperties(std::optional<base::Value::Dict> result);
+  void OnGetManagerProperties(absl::optional<base::Value::Dict> result);
 
   void OnGetDevice(const std::string& device_path,
-                   std::optional<base::Value::Dict> properties);
+                   absl::optional<base::Value::Dict> properties);
 
   void AddDeviceAndRequestIPConfigs(const std::string& device_path,
                                     const base::Value::Dict& properties);
 
   void OnGetIPConfig(const std::string& device_path,
                      const std::string& ip_config_path,
-                     std::optional<base::Value::Dict> properties);
+                     absl::optional<base::Value::Dict> properties);
 
   void AddIPConfig(const std::string& device_path,
                    const std::string& ip_config_path,
                    const base::Value::Dict& properties);
 
   void OnGetService(const std::string& service_path,
-                    std::optional<base::Value::Dict> properties);
+                    absl::optional<base::Value::Dict> properties);
 
   // Expands UIData from JSON into a dictionary if present. Also detects PII
   // such as the device and service names.

@@ -13,7 +13,6 @@
 #include "components/autofill/core/browser/autofill_test_utils.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 
 namespace payments {
 
@@ -237,8 +236,7 @@ IN_PROC_BROWSER_TEST_F(MAYBE_PaymentRequestContactInfoEditorTest,
   autofill::PersonalDataManager* personal_data_manager = GetDataManager();
   personal_data_manager->AddObserver(&personal_data_observer_);
 
-  autofill::AutofillProfile incomplete_profile(
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode);
+  autofill::AutofillProfile incomplete_profile;
   incomplete_profile.SetInfo(autofill::NAME_FULL, kNameFull, GetLocale());
   AddAutofillProfile(incomplete_profile);
 
@@ -298,13 +296,11 @@ IN_PROC_BROWSER_TEST_F(MAYBE_PaymentRequestContactInfoEditorTest,
   autofill::PersonalDataManager* personal_data_manager = GetDataManager();
   personal_data_manager->AddObserver(&personal_data_observer_);
 
-  autofill::AutofillProfile incomplete_profile(
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode);
+  autofill::AutofillProfile incomplete_profile;
   incomplete_profile.SetInfo(autofill::NAME_FULL, kNameFull, GetLocale());
   AddAutofillProfile(incomplete_profile);
 
-  autofill::AutofillProfile other_incomplete_profile(
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode);
+  autofill::AutofillProfile other_incomplete_profile;
   other_incomplete_profile.SetInfo(autofill::NAME_FULL, u"other", GetLocale());
   AddAutofillProfile(other_incomplete_profile);
 
@@ -445,14 +441,14 @@ IN_PROC_BROWSER_TEST_F(MAYBE_PaymentRequestContactInfoEditorTest,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::BACK_TO_PAYMENT_SHEET_NAVIGATION,
                                DialogEvent::CONTACT_INFO_EDITOR_OPENED});
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(),
-                              "retry({"
-                              "  payer: {"
-                              "    email: 'EMAIL ERROR',"
-                              "    name: 'NAME ERROR',"
-                              "    phone: 'PHONE ERROR'"
-                              "  }"
-                              "});"));
+  ASSERT_TRUE(content::ExecuteScript(GetActiveWebContents(),
+                                     "retry({"
+                                     "  payer: {"
+                                     "    email: 'EMAIL ERROR',"
+                                     "    name: 'NAME ERROR',"
+                                     "    phone: 'PHONE ERROR'"
+                                     "  }"
+                                     "});"));
   ASSERT_TRUE(WaitForObservedEvent());
 
   EXPECT_EQ(u"EMAIL ERROR", GetErrorLabelForType(autofill::EMAIL_ADDRESS));
@@ -500,14 +496,14 @@ IN_PROC_BROWSER_TEST_F(
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::BACK_TO_PAYMENT_SHEET_NAVIGATION,
                                DialogEvent::CONTACT_INFO_EDITOR_OPENED});
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(),
-                              "retry({"
-                              "  payer: {"
-                              "    email: 'EMAIL ERROR',"
-                              "    name: 'NAME ERROR',"
-                              "    phone: 'PHONE ERROR'"
-                              "  }"
-                              "});"));
+  ASSERT_TRUE(content::ExecuteScript(GetActiveWebContents(),
+                                     "retry({"
+                                     "  payer: {"
+                                     "    email: 'EMAIL ERROR',"
+                                     "    name: 'NAME ERROR',"
+                                     "    phone: 'PHONE ERROR'"
+                                     "  }"
+                                     "});"));
   ASSERT_TRUE(WaitForObservedEvent());
 
   EXPECT_EQ(u"EMAIL ERROR", GetErrorLabelForType(autofill::EMAIL_ADDRESS));
@@ -550,14 +546,14 @@ IN_PROC_BROWSER_TEST_F(MAYBE_PaymentRequestContactInfoEditorTest,
                                DialogEvent::SPEC_DONE_UPDATING,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::BACK_TO_PAYMENT_SHEET_NAVIGATION});
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(),
-                              "retry({"
-                              "  payer: {"
-                              "    email: 'EMAIL ERROR',"
-                              "    name: 'NAME ERROR',"
-                              "    phone: 'PHONE ERROR'"
-                              "  }"
-                              "});"));
+  ASSERT_TRUE(content::ExecuteScript(GetActiveWebContents(),
+                                     "retry({"
+                                     "  payer: {"
+                                     "    email: 'EMAIL ERROR',"
+                                     "    name: 'NAME ERROR',"
+                                     "    phone: 'PHONE ERROR'"
+                                     "  }"
+                                     "});"));
   ASSERT_TRUE(WaitForObservedEvent());
 
   const int kErrorLabelOffset =

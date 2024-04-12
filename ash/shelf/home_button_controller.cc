@@ -12,15 +12,14 @@
 #include "ash/shelf/home_button.h"
 #include "ash/shelf/shelf_button.h"
 #include "ash/shell.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "base/check_op.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "components/account_id/account_id.h"
 #include "ui/display/screen.h"
-#include "ui/display/tablet_state.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/animation/ink_drop_state.h"
 #include "ui/views/widget/widget.h"
@@ -47,6 +46,7 @@ HomeButtonController::HomeButtonController(HomeButton* button)
 
   Shell* shell = Shell::Get();
   shell->app_list_controller()->AddObserver(this);
+  shell->tablet_mode_controller()->AddObserver(this);
   AssistantUiController::Get()->GetModel()->AddObserver(this);
   AssistantState::Get()->AddObserver(this);
 }
@@ -54,12 +54,14 @@ HomeButtonController::HomeButtonController(HomeButton* button)
 HomeButtonController::~HomeButtonController() {
   Shell* shell = Shell::Get();
 
-  // AppListController are destroyed early when Shel is being destroyed, so they
-  // may not exist.
+  // AppListController and TabletModeController are destroyed early when Shell
+  // is being destroyed, so they may not exist.
   if (AssistantUiController::Get())
     AssistantUiController::Get()->GetModel()->RemoveObserver(this);
   if (shell->app_list_controller())
     shell->app_list_controller()->RemoveObserver(this);
+  if (shell->tablet_mode_controller())
+    shell->tablet_mode_controller()->RemoveObserver(this);
   if (AssistantState::Get())
     AssistantState::Get()->RemoveObserver(this);
 }
@@ -73,8 +75,7 @@ bool HomeButtonController::MaybeHandleGestureEvent(ui::GestureEvent* event) {
         assistant_animation_delay_timer_->Stop();
       }
 
-      if (!chromeos::features::IsJellyEnabled() &&
-          CanActivate(button_->GetDisplayId())) {
+      if (CanActivate(button_->GetDisplayId())) {
         views::InkDrop::Get(button_)->AnimateToState(
             views::InkDropState::ACTION_TRIGGERED, event);
       }
@@ -89,8 +90,7 @@ bool HomeButtonController::MaybeHandleGestureEvent(ui::GestureEvent* event) {
                            base::Unretained(this)));
       }
 
-      if (!chromeos::features::IsJellyEnabled() &&
-          CanActivate(button_->GetDisplayId())) {
+      if (CanActivate(button_->GetDisplayId())) {
         views::InkDrop::Get(button_)->AnimateToState(
             views::InkDropState::ACTION_PENDING, event);
       }
@@ -116,10 +116,8 @@ bool HomeButtonController::MaybeHandleGestureEvent(ui::GestureEvent* event) {
         return false;
 
       // This event happens after the user long presses and lifts the finger.
-      if (!chromeos::features::IsJellyEnabled()) {
-        views::InkDrop::Get(button_)->AnimateToState(
-            views::InkDropState::HIDDEN, event);
-      }
+      views::InkDrop::Get(button_)->AnimateToState(views::InkDropState::HIDDEN,
+                                                   event);
 
       // We already handled the long press; consume the long tap to avoid
       // bringing up the context menu again.
@@ -151,16 +149,9 @@ void HomeButtonController::OnAppListVisibilityWillChange(bool shown,
     OnAppListDismissed();
 }
 
-void HomeButtonController::OnDisplayTabletStateChanged(
-    display::TabletState state) {
-  if (state != display::TabletState::kInTabletMode) {
-    return;
-  }
-
-  if (!chromeos::features::IsJellyEnabled()) {
-    views::InkDrop::Get(button_)->AnimateToState(
-        views::InkDropState::DEACTIVATED, nullptr);
-  }
+void HomeButtonController::OnTabletModeStarted() {
+  views::InkDrop::Get(button_)->AnimateToState(views::InkDropState::DEACTIVATED,
+                                               nullptr);
 }
 
 void HomeButtonController::OnAssistantFeatureAllowedChanged(
@@ -175,8 +166,8 @@ void HomeButtonController::OnAssistantSettingsEnabled(bool enabled) {
 void HomeButtonController::OnUiVisibilityChanged(
     AssistantVisibility new_visibility,
     AssistantVisibility old_visibility,
-    std::optional<AssistantEntryPoint> entry_point,
-    std::optional<AssistantExitPoint> exit_point) {
+    absl::optional<AssistantEntryPoint> entry_point,
+    absl::optional<AssistantExitPoint> exit_point) {
   button_->OnAssistantAvailabilityChanged();
 }
 
@@ -185,31 +176,23 @@ void HomeButtonController::StartAssistantAnimation() {
 }
 
 void HomeButtonController::OnAppListShown() {
-  // Do not show the button as toggled in tablet mode, since the home screen
-  // view is always open in the background.
+  // Do not show a highlight in tablet mode, since the home screen view is
+  // always open in the background.
   if (!Shell::Get()->IsInTabletMode()) {
-    button_->SetToggled(true);
-    if (!chromeos::features::IsJellyEnabled()) {
-      views::InkDrop::Get(button_)->AnimateToState(
-          views::InkDropState::ACTIVATED, nullptr);
-    }
+    views::InkDrop::Get(button_)->AnimateToState(views::InkDropState::ACTIVATED,
+                                                 nullptr);
   }
 }
 
 void HomeButtonController::OnAppListDismissed() {
-  button_->SetToggled(false);
-
-  if (!chromeos::features::IsJellyEnabled()) {
-    // If ink drop is not hidden already, snap it to active state, so animation
-    // to DEACTIVATED state starts immediately (the animation would otherwise
-    // wait for the current animation to finish).
-    views::InkDrop* const ink_drop = views::InkDrop::Get(button_)->GetInkDrop();
-    if (ink_drop->GetTargetInkDropState() != views::InkDropState::HIDDEN) {
-      ink_drop->SnapToActivated();
-    }
-    views::InkDrop::Get(button_)->AnimateToState(
-        views::InkDropState::DEACTIVATED, nullptr);
-  }
+  // If ink drop is not hidden already, snap it to active state, so animation to
+  // DEACTIVATED state starts immediately (the animation would otherwise wait
+  // for the current animation to finish).
+  views::InkDrop* const ink_drop = views::InkDrop::Get(button_)->GetInkDrop();
+  if (ink_drop->GetTargetInkDropState() != views::InkDropState::HIDDEN)
+    ink_drop->SnapToActivated();
+  views::InkDrop::Get(button_)->AnimateToState(views::InkDropState::DEACTIVATED,
+                                               nullptr);
 }
 
 void HomeButtonController::InitializeAssistantOverlay() {

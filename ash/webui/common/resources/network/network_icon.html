@@ -7,7 +7,7 @@
   }
 
   #icon {
-    background: var(--network-icon-fill-color, var(--cros-icon-color-primary, rgba(0, 0, 0, 0.65)));
+    background: var(--cros-icon-color-primary, rgba(0, 0, 0, 0.65));
     height: 20px;
     width: 20px;
   }
@@ -121,45 +121,6 @@
     }
   }
 
-  /* Hotspot images */
-  #icon.hotspot-on {
-    -webkit-mask: url(chrome://resources/ash/common/hotspot/hotspot.svg);
-  }
-
-  #icon.hotspot-off {
-    -webkit-mask: url(chrome://resources/ash/common/hotspot/hotspot-off.svg);
-  }
-
-  #icon.hotspot-0 {
-    -webkit-mask: url(chrome://resources/ash/common/hotspot/hotspot_dot.svg);
-  }
-
-  #icon.hotspot-1 {
-    -webkit-mask: url(chrome://resources/ash/common/hotspot/hotspot_inner.svg);
-  }
-
-  #icon.hotspot-2 {
-    -webkit-mask: url(chrome://resources/ash/common/hotspot/hotspot.svg);
-  }
-
-  #icon.hotspot-connecting {
-    animation: hotspot-levels 1500ms infinite;
-    animation-direction: alternate;
-    animation-timing-function: steps(4, end);
-  }
-
-  @keyframes hotspot-levels {
-    0% {
-      -webkit-mask: url(chrome://resources/ash/common/hotspot/hotspot_dot.svg);
-    }
-    50% {
-      -webkit-mask: url(chrome://resources/ash/common/hotspot/hotspot_inner.svg);
-    }
-    100% {
-      -webkit-mask: url(chrome://resources/ash/common/hotspot/hotspot.svg);
-    }
-  }
-
   /* Cellular images */
   #icon.cellular-not-connected {
     -webkit-mask: url(chrome://resources/ash/common/network/cellular_0_with_x.svg);
@@ -198,10 +159,6 @@
     -webkit-mask: url(chrome://resources/ash/common/network/cellular_locked.svg);
   }
 
-  #icon.cellular-carrier-locked {
-    -webkit-mask: url(chrome://resources/ash/common/network/cellular_carrier_locked.svg);
-  }
-
   #icon.cellular-connecting {
     animation: cellular-levels 750ms infinite;
     animation-direction: alternate;
@@ -226,16 +183,16 @@
     }
   }
 </style>
-<template is="dom-if" if="[[showIcon_(networkState, hotspotInfo)]]" restamp>
+<template is="dom-if" if="[[showIcon_(networkState)]]" restamp>
   <div id="icon"
-      class$="[[getIconClass_(networkState, deviceState, isListItem, hotspotInfo)]]">
+      class$="[[getIconClass_(networkState, deviceState, isListItem)]]">
   </div>
   <iron-icon id="technology"
-      hidden="[[!showTechnology_(networkState, showTechnologyBadge, hotspotInfo)]]"
-      icon="[[getTechnology_(networkState, hotspotInfo)]]">
+      hidden="[[!showTechnology_(networkState, showTechnologyBadge)]]"
+      icon="[[getTechnology_(networkState)]]">
   </iron-icon>
-  <iron-icon id="secure" hidden="[[!showSecure_(networkState, hotspotInfo)]]"
+  <iron-icon id="secure" hidden="[[!showSecure_(networkState)]]"
       icon="network8:badge-secure">
   </iron-icon>
-  <div id="roaming" hidden="[[!showRoaming_(networkState, hotspotInfo)]]"></div>
+  <div id="roaming" hidden="[[!showRoaming_(networkState)]]"></div>
 </template>

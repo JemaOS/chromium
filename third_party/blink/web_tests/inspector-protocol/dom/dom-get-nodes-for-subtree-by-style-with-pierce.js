@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {session, dp} = await testRunner.startHTML(`
     <div id='shadow-host'></div>
     <iframe id='iframe'></iframe>

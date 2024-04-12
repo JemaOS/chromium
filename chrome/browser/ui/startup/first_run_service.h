@@ -8,13 +8,12 @@
 #include <memory>
 
 #include "base/functional/callback_forward.h"
-#include "base/gtest_prod_util.h"
 #include "base/metrics/field_trial.h"
 #include "base/no_destructor.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
-#include "chrome/browser/ui/profiles/profile_picker.h"
+#include "chrome/browser/ui/profile_picker.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/signin/public/base/signin_buildflags.h"
 
@@ -29,10 +28,6 @@ class FeatureList;
 
 namespace version_info {
 enum class Channel;
-}
-
-namespace signin {
-class IdentityManager;
 }
 
 // Task to run after the FRE is exited, with `proceed` indicating whether it
@@ -70,11 +65,7 @@ class FirstRunService : public KeyedService {
     kFinishedFlow = 1,
     kProfileAlreadySetUp = 2,
     kSkippedByPolicies = 3,
-    // This is currently only used when the feature
-    // `kForceSigninFlowInProfilePicker` is enabled.
-    kForceSignin = 4,
-
-    kMaxValue = kForceSignin,
+    kMaxValue = kSkippedByPolicies,
   };
 
   static void RegisterLocalStatePrefs(PrefRegistrySimple* registry);
@@ -98,12 +89,12 @@ class FirstRunService : public KeyedService {
   static void EnsureStickToFirstRunCohort();
 #endif
 
-  FirstRunService(Profile& profile, signin::IdentityManager& identity_manager);
+  explicit FirstRunService(Profile* profile);
   ~FirstRunService() override;
 
   // Runs `::ShouldOpenFirstRun(Profile*)` with the profile associated with this
   // service instance.
-  virtual bool ShouldOpenFirstRun() const;
+  bool ShouldOpenFirstRun() const;
 
   // This function takes the user through the browser FRE.
   // 1) First, it checks whether the FRE flow can be skipped in the first place.
@@ -122,18 +113,16 @@ class FirstRunService : public KeyedService {
   //    again at the next startup.
   // When this method is called again while FRE is in progress, the previous
   // callback is aborted (called with false), and is replaced by `callback`.
-  virtual void OpenFirstRunIfNeeded(EntryPoint entry_point,
-                                    ResumeTaskCallback callback);
+  void OpenFirstRunIfNeeded(EntryPoint entry_point,
+                            ResumeTaskCallback callback);
 
   // Terminates the first run without re-opening a browser window.
-  virtual void FinishFirstRunWithoutResumeTask();
+  void FinishFirstRunWithoutResumeTask();
 
  private:
   friend class FirstRunServiceFactory;
   FRIEND_TEST_ALL_PREFIXES(FirstRunFieldTrialCreatorTest, SetUpFromClientSide);
   FRIEND_TEST_ALL_PREFIXES(FirstRunCohortSetupTest, JoinFirstRunCohort);
-  FRIEND_TEST_ALL_PREFIXES(FirstRunServiceTest,
-                           ShouldPopulateProfileNameFromPrimaryAccount);
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
   // Internal interface for `SetUpClientSideFieldTrialIfNeeded()`, exposed to
@@ -188,10 +177,7 @@ class FirstRunService : public KeyedService {
 #endif
 
   // Owns of this instance via the KeyedService mechanism.
-  const raw_ref<Profile> profile_;
-
-  // KeyedService(s) this service depends on:
-  const raw_ref<signin::IdentityManager> identity_manager_;
+  const raw_ptr<Profile> profile_;
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   std::unique_ptr<SilentSyncEnabler> silent_sync_enabler_;
@@ -224,7 +210,7 @@ class FirstRunServiceFactory : public ProfileKeyedServiceFactory {
   FirstRunServiceFactory();
   ~FirstRunServiceFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

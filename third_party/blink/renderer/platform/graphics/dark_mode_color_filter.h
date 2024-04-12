@@ -12,9 +12,7 @@
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
 
-namespace cc {
-class ColorFilter;
-}
+class SkColorFilter;
 
 namespace blink {
 
@@ -26,7 +24,7 @@ class PLATFORM_EXPORT DarkModeColorFilter {
 
   virtual ~DarkModeColorFilter();
   virtual SkColor4f InvertColor(const SkColor4f& color) const = 0;
-  virtual sk_sp<cc::ColorFilter> ToColorFilter() const = 0;
+  virtual sk_sp<SkColorFilter> ToSkColorFilter() const = 0;
   virtual SkColor4f AdjustColorForHigherConstrast(
       const SkColor4f& adjusted_color,
       const SkColor4f& background,

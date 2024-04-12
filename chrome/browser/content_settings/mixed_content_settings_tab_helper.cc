@@ -42,11 +42,10 @@ void MixedContentSettingsTabHelper::AllowRunningOfInsecureContent(
     RenderFrameHost& render_frame_host) {
   DCHECK(!render_frame_host.IsNestedWithinFencedFrame());
   auto* main_frame = render_frame_host.GetOutermostMainFrame();
-  if (!base::Contains(settings_, main_frame->GetSiteInstance())) {
-    settings_[main_frame->GetSiteInstance()] =
-        std::make_unique<SiteSettings>(main_frame);
+  if (!base::Contains(settings_, main_frame)) {
+    settings_[main_frame] = std::make_unique<PageSettings>(main_frame);
   }
-  settings_[main_frame->GetSiteInstance()]->AllowRunningOfInsecureContent();
+  settings_[main_frame]->AllowRunningOfInsecureContent();
 }
 
 void MixedContentSettingsTabHelper::RenderFrameCreated(
@@ -59,26 +58,10 @@ void MixedContentSettingsTabHelper::RenderFrameCreated(
   mojo::AssociatedRemote<content_settings::mojom::ContentSettingsAgent> agent;
   render_frame_host->GetRemoteAssociatedInterfaces()->GetInterface(&agent);
   agent->SetAllowRunningInsecureContent();
-
-  if (!render_frame_host->GetParentOrOuterDocument()) {
-    // A new main RenderFrames is using the SiteSettings for this SiteInstance.
-    settings_[render_frame_host->GetSiteInstance()]
-        ->IncrementRenderFrameCount();
-  }
 }
 
 void MixedContentSettingsTabHelper::RenderFrameDeleted(RenderFrameHost* frame) {
-  if (frame->GetParentOrOuterDocument() ||
-      !settings_.contains(frame->GetSiteInstance())) {
-    return;
-  }
-  SiteSettings* settings = settings_[frame->GetSiteInstance()].get();
-  /// The deleted RenderFrame is no longer using the SiteSettings.
-  settings->DecrementRenderFrameCount();
-  if (settings->render_frame_count() == 0) {
-    // No RenderFrame is using the SiteSettings.
-    settings_.erase(frame->GetSiteInstance());
-  }
+  settings_.erase(frame);
 }
 
 bool MixedContentSettingsTabHelper::IsRunningInsecureContentAllowed(
@@ -89,37 +72,21 @@ bool MixedContentSettingsTabHelper::IsRunningInsecureContentAllowed(
   // Frame the Insecure Content setting is ignored.
   if (render_frame_host.IsNestedWithinFencedFrame())
     return false;
-  auto setting_it = settings_.find(
-      render_frame_host.GetOutermostMainFrame()->GetSiteInstance());
+  auto setting_it = settings_.find(render_frame_host.GetOutermostMainFrame());
   if (setting_it == settings_.end())
     return false;
   return setting_it->second->is_running_insecure_content_allowed();
 }
 
-MixedContentSettingsTabHelper::SiteSettings::SiteSettings(
+MixedContentSettingsTabHelper::PageSettings::PageSettings(
     RenderFrameHost* main_frame_host) {
-  DCHECK(!main_frame_host->GetParentOrOuterDocument());
-  if (main_frame_host->IsRenderFrameLive()) {
-    // There is already a live RenderFrame using `main_frame_host`'s
-    // SiteInstance, so set the RenderFrame count to 1, so that we will decrease
-    // the RenderFrame count correctly when this RenderFrame gets deleted.
-    render_frame_count_ = 1;
-  }
+  DCHECK(!main_frame_host->GetParent());
 }
 
-void MixedContentSettingsTabHelper::SiteSettings::
+void MixedContentSettingsTabHelper::PageSettings::
     AllowRunningOfInsecureContent() {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   is_running_insecure_content_allowed_ = true;
-}
-
-void MixedContentSettingsTabHelper::SiteSettings::IncrementRenderFrameCount() {
-  render_frame_count_++;
-}
-
-void MixedContentSettingsTabHelper::SiteSettings::DecrementRenderFrameCount() {
-  DCHECK_GT(render_frame_count_, 0);
-  render_frame_count_--;
 }
 
 WEB_CONTENTS_USER_DATA_KEY_IMPL(MixedContentSettingsTabHelper);

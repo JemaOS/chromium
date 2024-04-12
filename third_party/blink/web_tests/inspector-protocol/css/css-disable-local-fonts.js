@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {session, dp} = await testRunner.startHTML(`
 <link rel="preload" href="${testRunner.url('./resources/Ahem.ttf')}" as="font">
 <style>

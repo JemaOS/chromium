@@ -7,7 +7,6 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/run_loop.h"
 #include "base/task/bind_post_task.h"
@@ -106,10 +105,12 @@ class MockVideoCaptureImpl : public VideoCaptureImpl,
     NOTREACHED();
   }
 
-  MOCK_METHOD1(OnFrameDropped, void(media::VideoCaptureFrameDropReason));
+  MOCK_METHOD2(OnFrameDropped,
+               void(const base::UnguessableToken&,
+                    media::VideoCaptureFrameDropReason));
   MOCK_METHOD2(OnLog, void(const base::UnguessableToken&, const String&));
 
-  const raw_ptr<PauseResumeCallback> pause_callback_;
+  PauseResumeCallback* const pause_callback_;
   base::OnceClosure destruct_callback_;
 };
 
@@ -135,7 +136,7 @@ class MockVideoCaptureImplManager : public WebVideoCaptureImplManager {
     return std::move(video_capture_impl);
   }
 
-  const raw_ptr<PauseResumeCallback> pause_callback_;
+  PauseResumeCallback* const pause_callback_;
   const base::RepeatingClosure stop_capture_callback_;
 };
 
@@ -208,8 +209,9 @@ class VideoCaptureImplManagerTest : public ::testing::Test,
     run_loop.Run();
   }
 
-  MOCK_METHOD2(OnFrameReady,
+  MOCK_METHOD3(OnFrameReady,
                void(scoped_refptr<media::VideoFrame>,
+                    std::vector<scoped_refptr<media::VideoFrame>>,
                     base::TimeTicks estimated_capture_time));
   MOCK_METHOD1(OnStarted, void(const media::VideoCaptureSessionId& id));
   MOCK_METHOD1(OnStopped, void(const media::VideoCaptureSessionId& id));
@@ -236,7 +238,7 @@ class VideoCaptureImplManagerTest : public ::testing::Test,
         ConvertToBaseRepeatingCallback(
             CrossThreadBindRepeating(&VideoCaptureImplManagerTest::OnFrameReady,
                                      CrossThreadUnretained(this))),
-        base::DoNothing(), base::DoNothing());
+        base::DoNothing());
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -244,7 +246,7 @@ class VideoCaptureImplManagerTest : public ::testing::Test,
       platform_;
   base::RunLoop cleanup_run_loop_;
   std::unique_ptr<MockVideoCaptureImplManager> manager_;
-  raw_ptr<BrowserInterfaceBrokerProxy> browser_interface_broker_;
+  BrowserInterfaceBrokerProxy* browser_interface_broker_;
 };
 
 // Multiple clients with the same session id. There is only one

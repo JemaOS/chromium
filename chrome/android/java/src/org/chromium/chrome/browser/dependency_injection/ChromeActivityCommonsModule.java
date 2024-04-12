@@ -18,11 +18,7 @@ import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import dagger.Module;
-import dagger.Provides;
-
 import org.chromium.base.supplier.ObservableSupplier;
-import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsSizer;
@@ -30,15 +26,14 @@ import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider
 import org.chromium.chrome.browser.browser_controls.BrowserControlsVisibilityManager;
 import org.chromium.chrome.browser.compositor.CompositorViewHolder;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerImpl;
+import org.chromium.chrome.browser.compositor.layouts.content.TabContentManager;
 import org.chromium.chrome.browser.flags.ActivityType;
 import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.init.ChromeActivityNativeDelegate;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.metrics.ActivityTabStartupMetricsTracker;
-import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.chrome.browser.share.ShareDelegate;
-import org.chromium.chrome.browser.tab_ui.TabContentManager;
 import org.chromium.chrome.browser.tabmodel.TabCreator;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModelInitializer;
@@ -54,7 +49,12 @@ import org.chromium.ui.modaldialog.ModalDialogManager;
 
 import javax.inject.Named;
 
-/** Module for common dependencies in {@link ChromeActivity}. */
+import dagger.Module;
+import dagger.Provides;
+
+/**
+ * Module for common dependencies in {@link ChromeActivity}.
+ */
 @Module
 public class ChromeActivityCommonsModule {
     private final AppCompatActivity mActivity;
@@ -67,7 +67,6 @@ public class ChromeActivityCommonsModule {
     private final Supplier<LayoutManagerImpl> mLayoutManagerSupplier;
     private final ActivityLifecycleDispatcher mLifecycleDispatcher;
     private final Supplier<SnackbarManager> mSnackbarManagerSupplier;
-    private final OneshotSupplier<ProfileProvider> mProfileProviderSupplier;
     private final ActivityTabProvider mActivityTabProvider;
     private final TabContentManager mTabContentManager;
     private final ActivityWindowAndroid mActivityWindowAndroid;
@@ -93,24 +92,19 @@ public class ChromeActivityCommonsModule {
 
     /** See {@link ModuleFactoryOverrides} */
     public interface Factory {
-        ChromeActivityCommonsModule create(
-                AppCompatActivity activity,
+        ChromeActivityCommonsModule create(AppCompatActivity activity,
                 Supplier<BottomSheetController> bottomSheetControllerSupplier,
                 Supplier<TabModelSelector> tabModelSelectorSupplier,
                 BrowserControlsManager browserControlsManager,
                 BrowserControlsVisibilityManager browserControlsVisibilityManager,
-                BrowserControlsSizer browserControlsSizer,
-                FullscreenManager fullscreenManager,
+                BrowserControlsSizer browserControlsSizer, FullscreenManager fullscreenManager,
                 Supplier<LayoutManagerImpl> layoutManagerSupplier,
                 ActivityLifecycleDispatcher lifecycleDispatcher,
                 Supplier<SnackbarManager> snackbarManagerSupplier,
-                OneshotSupplier<ProfileProvider> profileProvider,
-                ActivityTabProvider activityTabProvider,
-                TabContentManager tabContentManager,
+                ActivityTabProvider activityTabProvider, TabContentManager tabContentManager,
                 ActivityWindowAndroid activityWindowAndroid,
                 Supplier<CompositorViewHolder> compositorViewHolderSupplier,
-                TabCreatorManager tabCreatorManager,
-                Supplier<TabCreator> tabCreatorSupplier,
+                TabCreatorManager tabCreatorManager, Supplier<TabCreator> tabCreatorSupplier,
                 Supplier<Boolean> isPromotableToTabSupplier,
                 StatusBarColorController statusBarColorController,
                 ScreenOrientationProvider screenOrientationProvider,
@@ -124,28 +118,22 @@ public class ChromeActivityCommonsModule {
                 Supplier<Bundle> savedInstanceStateSupplier,
                 ObservableSupplier<Integer> autofillUiBottomInsetSupplier,
                 Supplier<ShareDelegate> shareDelegateSupplier,
-                TabModelInitializer tabModelInitializer,
-                @ActivityType int activityType);
+                TabModelInitializer tabModelInitializer, @ActivityType int activityType);
     }
 
-    public ChromeActivityCommonsModule(
-            AppCompatActivity activity,
+    public ChromeActivityCommonsModule(AppCompatActivity activity,
             Supplier<BottomSheetController> bottomSheetControllerSupplier,
             Supplier<TabModelSelector> tabModelSelectorSupplier,
             BrowserControlsManager browserControlsManager,
             BrowserControlsVisibilityManager browserControlsVisibilityManager,
-            BrowserControlsSizer browserControlsSizer,
-            FullscreenManager fullscreenManager,
+            BrowserControlsSizer browserControlsSizer, FullscreenManager fullscreenManager,
             Supplier<LayoutManagerImpl> layoutManagerSupplier,
             ActivityLifecycleDispatcher lifecycleDispatcher,
             Supplier<SnackbarManager> snackbarManagerSupplier,
-            OneshotSupplier<ProfileProvider> profileProviderSupplier,
-            ActivityTabProvider activityTabProvider,
-            TabContentManager tabContentManager,
+            ActivityTabProvider activityTabProvider, TabContentManager tabContentManager,
             ActivityWindowAndroid activityWindowAndroid,
             Supplier<CompositorViewHolder> compositorViewHolderSupplier,
-            TabCreatorManager tabCreatorManager,
-            Supplier<TabCreator> tabCreatorSupplier,
+            TabCreatorManager tabCreatorManager, Supplier<TabCreator> tabCreatorSupplier,
             Supplier<Boolean> isPromotableToTabSupplier,
             StatusBarColorController statusBarColorController,
             ScreenOrientationProvider screenOrientationProvider,
@@ -158,8 +146,7 @@ public class ChromeActivityCommonsModule {
             BrowserControlsStateProvider browserControlsStateProvider,
             Supplier<Bundle> savedInstanceStateSupplier,
             ObservableSupplier<Integer> autofillUiBottomInsetSupplier,
-            Supplier<ShareDelegate> shareDelegateSupplier,
-            TabModelInitializer tabModelInitializer,
+            Supplier<ShareDelegate> shareDelegateSupplier, TabModelInitializer tabModelInitializer,
             @ActivityType int activityType) {
         mActivity = activity;
         mBottomSheetControllerSupplier = bottomSheetControllerSupplier;
@@ -171,7 +158,6 @@ public class ChromeActivityCommonsModule {
         mLayoutManagerSupplier = layoutManagerSupplier;
         mLifecycleDispatcher = lifecycleDispatcher;
         mSnackbarManagerSupplier = snackbarManagerSupplier;
-        mProfileProviderSupplier = profileProviderSupplier;
         mActivityTabProvider = activityTabProvider;
         mTabContentManager = tabContentManager;
         mActivityWindowAndroid = activityWindowAndroid;
@@ -270,11 +256,6 @@ public class ChromeActivityCommonsModule {
     @Provides
     public SnackbarManager provideSnackbarManager() {
         return mSnackbarManagerSupplier.get();
-    }
-
-    @Provides
-    public OneshotSupplier<ProfileProvider> provideProfileProviderSupplier() {
-        return mProfileProviderSupplier;
     }
 
     @Provides

@@ -11,13 +11,12 @@ BorealisServiceImpl::BorealisServiceImpl(Profile* profile)
       app_launcher_(profile_),
       app_uninstaller_(profile_),
       context_manager_(profile),
+      disk_manager_dispatcher_(),
       features_(profile_),
       installer_(profile_),
-      install_url_handler_(profile_),
       launch_options_(profile_),
       shutdown_monitor_(profile_),
-      window_manager_(profile_),
-      survey_handler_(profile_, &window_manager_) {}
+      window_manager_(profile_) {}
 
 BorealisServiceImpl::~BorealisServiceImpl() = default;
 
@@ -33,16 +32,16 @@ BorealisContextManager& BorealisServiceImpl::ContextManager() {
   return context_manager_;
 }
 
+BorealisDiskManagerDispatcher& BorealisServiceImpl::DiskManagerDispatcher() {
+  return disk_manager_dispatcher_;
+}
+
 BorealisFeatures& BorealisServiceImpl::Features() {
   return features_;
 }
 
 BorealisInstaller& BorealisServiceImpl::Installer() {
   return installer_;
-}
-
-BorealisInstallUrlHandler& BorealisServiceImpl::InstallUrlHandler() {
-  return install_url_handler_;
 }
 
 BorealisLaunchOptions& BorealisServiceImpl::LaunchOptions() {
@@ -55,10 +54,6 @@ BorealisShutdownMonitor& BorealisServiceImpl::ShutdownMonitor() {
 
 BorealisWindowManager& BorealisServiceImpl::WindowManager() {
   return window_manager_;
-}
-
-BorealisSurveyHandler& BorealisServiceImpl::SurveyHandler() {
-  return survey_handler_;
 }
 
 }  // namespace borealis

@@ -10,24 +10,21 @@ import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
 
 /**
- * SimpleHorizontalLayoutView is a fast and specialized horizontal layout view. It is based on a
- * premise that no more than one child view can expand dynamically, while all other views must have
- * fixed, predefined size.
+ * SimpleHorizontalLayoutView is a fast and specialized horizontal layout view.
+ * It is based on a premise that no more than one child view can expand dynamically, while all other
+ * views must have fixed, predefined size.
  *
- * <p>Principles of operation:
- *
- * <ul>
- *   <li>Each fixed-size view must come with an associated LayoutParams structure.
- *   <li>The dynamically-sized view must have LayoutParams structure unset.
- *   <li>The height of the view will be the result of measurement of the dynamically sized view.
- * </ul>
+ * Principles of operation:
+ * - Each fixed-size view must come with an associated LayoutParams structure.
+ * - The dynamically-sized view must have LayoutParams structure unset.
+ * - The height of the view will be the result of measurement of the dynamically sized view.
  */
 public class SimpleHorizontalLayoutView extends ViewGroup {
     /**
      * SimpleHorizontalLayoutView's LayoutParams.
      *
-     * <p>These parameters introduce additional value to be used with |width| parameter that
-     * identifies object that should occupy remaining space.
+     * These parameters introduce additional value to be used with |width| parameter
+     * that identifies object that should occupy remaining space.
      */
     public static class LayoutParams extends ViewGroup.LayoutParams {
         /** Indicates a resizable view. */
@@ -37,7 +34,9 @@ public class SimpleHorizontalLayoutView extends ViewGroup {
             super(width, height);
         }
 
-        /** Create LayoutParams for a dynamic, resizable view. */
+        /**
+         * Create LayoutParams for a dynamic, resizeable view.
+         */
         public static LayoutParams forDynamicView() {
             LayoutParams res = new LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
             res.dynamic = true;
@@ -100,8 +99,7 @@ public class SimpleHorizontalLayoutView extends ViewGroup {
         assert dynamicView != null : "No content view specified";
 
         // Measure height of the content view given the width constraint.
-        dynamicView.measure(
-                MeasureSpec.makeMeasureSpec(contentViewWidth, MeasureSpec.EXACTLY),
+        dynamicView.measure(MeasureSpec.makeMeasureSpec(contentViewWidth, MeasureSpec.EXACTLY),
                 MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
         final int heightPx = dynamicView.getMeasuredHeight();
         heightSpec = MeasureSpec.makeMeasureSpec(heightPx, MeasureSpec.EXACTLY);
@@ -113,13 +111,11 @@ public class SimpleHorizontalLayoutView extends ViewGroup {
             // Avoid calling (expensive) measure on dynamic view twice.
             if (v == dynamicView) continue;
 
-            v.measure(
-                    MeasureSpec.makeMeasureSpec(v.getLayoutParams().width, MeasureSpec.EXACTLY),
+            v.measure(MeasureSpec.makeMeasureSpec(v.getLayoutParams().width, MeasureSpec.EXACTLY),
                     getChildMeasureSpec(heightSpec, 0, v.getLayoutParams().height));
         }
 
-        setMeasuredDimension(
-                widthPx,
+        setMeasuredDimension(widthPx,
                 MeasureSpec.makeMeasureSpec(
                         heightPx + getPaddingTop() + getPaddingBottom(), MeasureSpec.EXACTLY));
     }

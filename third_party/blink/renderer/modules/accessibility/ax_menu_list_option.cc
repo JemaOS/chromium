@@ -53,28 +53,22 @@ AXObject* AXMenuListOption::ComputeParentAXMenuPopupFor(
   DCHECK(option);
 
   HTMLSelectElement* select = option->OwnerSelectElement();
-  if (!select || !AXObjectCacheImpl::ShouldCreateAXMenuListFor(
-                     select->GetLayoutObject())) {
+  if (!select || !select->UsesMenuList()) {
     // If it's an <option> that is not inside of a menulist, we want it to
     // return to the caller and use the default logic.
     return nullptr;
   }
 
   // If there is a <select> ancestor, return the popup for it, if rendered.
-  AXObject* select_ax_object = cache.Get(select);
-  if (!select_ax_object) {
-    return nullptr;
+  if (AXObject* select_ax_object = cache.GetOrCreate(select)) {
+    if (auto* menu_list = DynamicTo<AXMenuList>(select_ax_object))
+      return menu_list->GetOrCreateMockPopupChild();
   }
 
-  if (auto* menu_list = DynamicTo<AXMenuList>(select_ax_object)) {
-    // Return the popup.
-    return menu_list->GetOrCreateMockPopupChild();
-  }
-
-  // Otherwise, just return the AXObject for the parent <select>.
+  // Otherwise, just return an AXObject for the parent node.
   // This could be the <select> if it was not rendered.
   // Or, any parent node if the <option> was not inside an AXMenuList.
-  return select_ax_object;
+  return cache.GetOrCreate(select);
 }
 
 bool AXMenuListOption::IsVisible() const {
@@ -164,8 +158,7 @@ bool AXMenuListOption::ComputeAccessibilityIsIgnored(
     return true;
   }
 
-  return !ParentObject() ||
-         ParentObject()->ComputeAccessibilityIsIgnored(ignored_reasons);
+  return ParentObject()->ComputeAccessibilityIsIgnored(ignored_reasons);
 }
 
 void AXMenuListOption::GetRelativeBounds(
@@ -186,7 +179,7 @@ void AXMenuListOption::GetRelativeBounds(
   // need to expose the bounds of options on those platforms.
 
   auto* select = To<HTMLOptionElement>(GetNode())->OwnerSelectElement();
-  AXObject* ax_menu_list = AXObjectCache().Get(select);
+  AXObject* ax_menu_list = AXObjectCache().GetOrCreate(select);
   if (!ax_menu_list)
     return;
   DCHECK(ax_menu_list->IsMenuList());

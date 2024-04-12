@@ -22,12 +22,7 @@ NssServiceFactory::NssServiceFactory()
     : ProfileKeyedServiceFactory(
           "NssServiceFactory",
           // Create separate service for incognito profiles.
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   DependsOn(CertDbInitializerFactory::GetInstance());
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -40,8 +35,7 @@ NssServiceFactory* NssServiceFactory::GetInstance() {
   return instance.get();
 }
 
-std::unique_ptr<KeyedService>
-NssServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* NssServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<NssService>(context);
+  return new NssService(context);
 }

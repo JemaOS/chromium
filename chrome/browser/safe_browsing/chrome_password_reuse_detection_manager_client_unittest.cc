@@ -107,8 +107,7 @@ TEST_F(ChromePasswordReuseDetectionManagerClientTest,
       "username", credentials, true, 0, std::string());
 }
 
-TEST_F(ChromePasswordReuseDetectionManagerClientTest,
-       IsHistorySyncAccountEmail) {
+TEST_F(ChromePasswordReuseDetectionManagerClientTest, IsSyncAccountEmail) {
   const struct {
     std::string fake_sync_email;
     std::string input_username;
@@ -124,6 +123,6 @@ TEST_F(ChromePasswordReuseDetectionManagerClientTest,
   for (size_t i = 0; i < std::size(kTestCases); ++i) {
     SCOPED_TRACE(testing::Message() << "i=" << i);
     EXPECT_EQ(kTestCases[i].expected_result,
-              client->IsHistorySyncAccountEmail(kTestCases[i].input_username));
+              client->IsSyncAccountEmail(kTestCases[i].input_username));
   }
 }

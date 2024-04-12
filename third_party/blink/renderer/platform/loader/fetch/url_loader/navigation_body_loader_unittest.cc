@@ -83,7 +83,7 @@ class NavigationBodyLoaderTest : public ::testing::Test,
         std::move(endpoints), scheduler::GetSingleThreadTaskRunnerForTesting(),
         std::make_unique<ResourceLoadInfoNotifierWrapper>(
             /*resource_load_info_notifier=*/nullptr),
-        /*is_main_frame=*/true, &navigation_params, /*is_ad_frame=*/false);
+        /*is_main_frame=*/true, &navigation_params);
     loader_ = std::move(navigation_params.body_loader);
   }
 
@@ -143,7 +143,8 @@ class NavigationBodyLoaderTest : public ::testing::Test,
                            int64_t total_encoded_data_length,
                            int64_t total_encoded_body_length,
                            int64_t total_decoded_body_length,
-                           const std::optional<WebURLError>& error) override {
+                           bool should_report_corb_blocking,
+                           const absl::optional<WebURLError>& error) override {
     ASSERT_TRUE(expecting_finished_);
     did_finish_ = true;
     error_ = error;
@@ -239,7 +240,7 @@ class NavigationBodyLoaderTest : public ::testing::Test,
   bool toggle_defers_loading_ = false;
   bool destroy_loader_ = false;
   std::string data_received_;
-  std::optional<WebURLError> error_;
+  absl::optional<WebURLError> error_;
   ProcessBackgroundDataCallback process_background_data_callback_;
 };
 
@@ -458,7 +459,7 @@ TEST_F(NavigationBodyLoaderTest, FillResponseWithSecurityDetails) {
       scheduler::GetSingleThreadTaskRunnerForTesting(),
       std::make_unique<ResourceLoadInfoNotifierWrapper>(
           /*resource_load_info_notifier=*/nullptr),
-      /*is_main_frame=*/true, &navigation_params, /*is_ad_frame=*/false);
+      /*is_main_frame=*/true, &navigation_params);
   EXPECT_TRUE(
       navigation_params.response.ToResourceResponse().GetSSLInfo().has_value());
 }
@@ -507,7 +508,7 @@ TEST_F(NavigationBodyLoaderTest, FillResponseReferrerRedirects) {
       scheduler::GetSingleThreadTaskRunnerForTesting(),
       std::make_unique<ResourceLoadInfoNotifierWrapper>(
           /*resource_load_info_notifier=*/nullptr),
-      /*is_main_frame=*/true, &navigation_params, /*is_ad_frame=*/false);
+      /*is_main_frame=*/true, &navigation_params);
   ASSERT_EQ(navigation_params.redirects.size(), 2u);
   ASSERT_EQ(navigation_params.redirects[0].new_referrer,
             WebString(Referrer::NoReferrer()));
@@ -532,7 +533,8 @@ class ChunkingLoaderClient : public WebNavigationBodyLoader::Client {
                            int64_t total_encoded_data_length,
                            int64_t total_encoded_body_length,
                            int64_t total_decoded_body_length,
-                           const std::optional<WebURLError>& error) override {
+                           bool should_report_corb_blocking,
+                           const absl::optional<WebURLError>& error) override {
     scheduler::GetSingleThreadTaskRunnerForTesting()->PostTask(
         FROM_HERE, run_loop_.QuitClosure());
   }

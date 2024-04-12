@@ -7,15 +7,12 @@
 
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/companion/core/mojom/companion.mojom.h"
-#include "chrome/browser/ui/webui/side_panel/companion/companion_page_handler.h"
-#include "chrome/browser/ui/webui/top_chrome/untrusted_top_chrome_web_ui_controller.h"
-#include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/webui_config.h"
 #include "content/public/common/url_constants.h"
+#include "ui/webui/untrusted_bubble_web_ui_controller.h"
 
 class CompanionSidePanelUntrustedUI
-    : public content::WebContentsObserver,
-      public UntrustedTopChromeWebUIController,
+    : public ui::UntrustedBubbleWebUIController,
       public side_panel::mojom::CompanionPageHandlerFactory {
  public:
   explicit CompanionSidePanelUntrustedUI(content::WebUI* web_ui);
@@ -34,23 +31,14 @@ class CompanionSidePanelUntrustedUI
   // Gets a weak pointer to this object.
   base::WeakPtr<CompanionSidePanelUntrustedUI> GetWeakPtr();
 
-  static constexpr std::string GetWebUIName() {
-    return "CompanionSidePanelUntrusted";
-  }
-
  private:
   // side_panel::mojom::CompanionPageHandlerFactory:
   void CreateCompanionPageHandler(
       mojo::PendingReceiver<side_panel::mojom::CompanionPageHandler> receiver,
       mojo::PendingRemote<side_panel::mojom::CompanionPage> page) override;
 
-  // content::WebContentsObserver:
-  // Listening to navigations because the primary document is the WebUI frame
-  // which is able to load without network access.
-  void DidFinishNavigation(
-      content::NavigationHandle* navigation_handle) override;
-
-  std::unique_ptr<companion::CompanionPageHandler> companion_page_handler_;
+  std::unique_ptr<side_panel::mojom::CompanionPageHandler>
+      companion_page_handler_;
   mojo::Receiver<side_panel::mojom::CompanionPageHandlerFactory>
       companion_page_factory_receiver_{this};
 
@@ -65,8 +53,6 @@ class CompanionSidePanelUntrustedUIConfig : public content::WebUIConfig {
   CompanionSidePanelUntrustedUIConfig();
   ~CompanionSidePanelUntrustedUIConfig() override = default;
 
-  // content::WebUIConfig:
-  bool IsWebUIEnabled(content::BrowserContext* browser_context) override;
   std::unique_ptr<content::WebUIController> CreateWebUIController(
       content::WebUI* web_ui,
       const GURL& url) override;

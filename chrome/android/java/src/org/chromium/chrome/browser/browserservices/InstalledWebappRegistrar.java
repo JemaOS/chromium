@@ -8,8 +8,6 @@ import static org.chromium.chrome.browser.dependency_injection.ChromeCommonQuali
 
 import android.content.Context;
 
-import dagger.Lazy;
-
 import org.chromium.chrome.browser.browserservices.permissiondelegation.PermissionUpdater;
 import org.chromium.components.embedder_support.util.Origin;
 
@@ -18,6 +16,8 @@ import java.util.Set;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+
+import dagger.Lazy;
 
 /**
  * Records in all the appropriate places that an installed webapp (TWA or WebAPK) has successfully
@@ -32,10 +32,8 @@ public class InstalledWebappRegistrar {
     private final Set<Origin> mRegisteredOrigins = new HashSet<>();
 
     @Inject
-    public InstalledWebappRegistrar(
-            @Named(APP_CONTEXT) Context appContext,
-            PermissionUpdater permissionUpdater,
-            Lazy<InstalledWebappDataRecorder> dataRecorder) {
+    public InstalledWebappRegistrar(@Named(APP_CONTEXT) Context appContext,
+            PermissionUpdater permissionUpdater, Lazy<InstalledWebappDataRecorder> dataRecorder) {
         mAppContext = appContext;
         mPermissionUpdater = permissionUpdater;
         mDataRecorder = dataRecorder;

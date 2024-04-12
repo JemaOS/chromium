@@ -13,7 +13,9 @@ import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 
-/** Unit tests for {@link PartnerBookmarksFaviconThrottle}. */
+/**
+ * Unit tests for {@link PartnerBookmarksFaviconThrottle}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class PartnerBookmarksFaviconThrottleTest {

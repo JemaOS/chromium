@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "base/command_line.h"
-#include "base/containers/contains.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
@@ -55,7 +54,7 @@ class ProcessSingletonPosixTest : public testing::Test {
                                &TestableProcessSingleton::NotificationCallback,
                                base::Unretained(this))) {}
 
-    std::vector<base::CommandLine> callback_command_lines_;
+    std::vector<base::CommandLine::StringVector> callback_command_lines_;
 
     using ProcessSingleton::NotifyOtherProcessWithTimeout;
     using ProcessSingleton::NotifyOtherProcessWithTimeoutOrCreate;
@@ -64,9 +63,9 @@ class ProcessSingletonPosixTest : public testing::Test {
     using ProcessSingleton::StartWatching;
 
    private:
-    bool NotificationCallback(base::CommandLine command_line,
+    bool NotificationCallback(const base::CommandLine& command_line,
                               const base::FilePath& current_directory) {
-      callback_command_lines_.push_back(std::move(command_line));
+      callback_command_lines_.push_back(command_line.argv());
       return true;
     }
   };
@@ -202,9 +201,17 @@ class ProcessSingletonPosixTest : public testing::Test {
   void CheckNotified() {
     ASSERT_TRUE(process_singleton_on_thread_);
     ASSERT_EQ(1u, process_singleton_on_thread_->callback_command_lines_.size());
-    ASSERT_TRUE(base::Contains(
-        process_singleton_on_thread_->callback_command_lines_[0].argv(),
-        "about:blank"));
+    bool found = false;
+    for (size_t i = 0;
+         i < process_singleton_on_thread_->callback_command_lines_[0].size();
+         ++i) {
+      if (process_singleton_on_thread_->callback_command_lines_[0][i] ==
+          "about:blank") {
+        found = true;
+        break;
+      }
+    }
+    ASSERT_TRUE(found);
     ASSERT_EQ(0, kill_callbacks_);
   }
 
@@ -260,8 +267,7 @@ class ProcessSingletonPosixTest : public testing::Test {
   base::WaitableEvent signal_event_;
 
   std::unique_ptr<base::Thread> worker_thread_;
-  raw_ptr<TestableProcessSingleton, DanglingUntriaged>
-      process_singleton_on_thread_;
+  raw_ptr<TestableProcessSingleton> process_singleton_on_thread_;
 };
 
 }  // namespace

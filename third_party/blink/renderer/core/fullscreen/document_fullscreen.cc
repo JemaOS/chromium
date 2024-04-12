@@ -37,7 +37,7 @@ Element* DocumentFullscreen::fullscreenElement(Document& document) {
   return Fullscreen::FullscreenElementForBindingFrom(document);
 }
 
-ScriptPromiseTyped<IDLUndefined> DocumentFullscreen::exitFullscreen(
+ScriptPromise DocumentFullscreen::exitFullscreen(
     ScriptState* script_state,
     Document& document,
     ExceptionState& exception_state) {

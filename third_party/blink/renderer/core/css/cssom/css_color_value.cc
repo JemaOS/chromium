@@ -141,7 +141,7 @@ V8UnionCSSColorValueOrCSSStyleValue* CSSColorValue::parse(
         return MakeGarbageCollected<V8UnionCSSColorValueOrCSSStyleValue>(
             CreateCSSRGBByNumbers(
                 result->Value().Red(), result->Value().Green(),
-                result->Value().Blue(), result->Value().AlphaAsInteger()));
+                result->Value().Blue(), result->Value().Alpha()));
       case CSSColorType::kHSL:
         return MakeGarbageCollected<V8UnionCSSColorValueOrCSSStyleValue>(
             MakeGarbageCollected<CSSHSL>(result->Value()));
@@ -163,7 +163,7 @@ V8UnionCSSColorValueOrCSSStyleValue* CSSColorValue::parse(
 
     return MakeGarbageCollected<V8UnionCSSColorValueOrCSSStyleValue>(
         CreateCSSRGBByNumbers(color.Red(), color.Green(), color.Blue(),
-                              color.AlphaAsInteger()));
+                              color.Alpha()));
   }
 
   return MakeGarbageCollected<V8UnionCSSColorValueOrCSSStyleValue>(

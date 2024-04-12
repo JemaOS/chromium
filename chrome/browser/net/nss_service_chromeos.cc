@@ -27,7 +27,6 @@
 #include "chromeos/ash/components/dbus/userdataauth/cryptohome_pkcs11_client.h"
 #include "chromeos/ash/components/settings/cros_settings_names.h"
 #include "chromeos/ash/components/tpm/tpm_token_info_getter.h"
-#include "chromeos/components/kiosk/kiosk_utils.h"
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
 #include "content/public/browser/browser_context.h"
@@ -36,6 +35,9 @@
 #include "crypto/nss_util.h"
 #include "crypto/nss_util_internal.h"
 #include "net/cert/nss_cert_database_chromeos.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
+#include "components/prefs/pref_service.h"
+#include "chrome/browser/browser_process.h"
 
 using content::BrowserThread;
 
@@ -80,7 +82,7 @@ namespace {
 void DidGetTPMInfoForUserOnUIThread(
     std::unique_ptr<ash::TPMTokenInfoGetter> getter,
     const std::string& username_hash,
-    std::optional<user_data_auth::TpmTokenInfo> token_info) {
+    absl::optional<user_data_auth::TpmTokenInfo> token_info) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   if (token_info.has_value() && token_info->slot() != -1) {
     DVLOG(1) << "Got TPM slot for " << username_hash << ": "
@@ -126,27 +128,16 @@ void StartTPMSlotInitializationOnIOThread(const AccountId& account_id,
       base::BindOnce(&GetTPMInfoForUserOnUIThread, account_id, username_hash));
 }
 
-void StartNSSInitOnIOThread(const AccountId& account_id,
+void StartNSSInitOnIOThread(bool tpm_fallback,
+                            const AccountId& account_id,
                             const std::string& username_hash,
-                            const base::FilePath& path,
-                            bool is_kiosk) {
+                            const base::FilePath& path) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
   DVLOG(1) << "Starting NSS init for " << account_id.Serialize()
            << "  hash:" << username_hash;
 
   // Make sure NSS is initialized for the user.
-  if (is_kiosk) {
-    // Kiosk sessions don't have the UI that could result in interactions with
-    // the public slot. Kiosk users are also not owner users and can't have
-    // the owner key in the public slot. So the public slot is not used in
-    // Kiosk sessions and can be replaced by the internal slot. This is done
-    // mainly because Chrome sometimes fails to load the public slot and has
-    // to crash because of that.
-    crypto::InitializeNSSForChromeOSUserWithSlot(
-        username_hash, crypto::ScopedPK11Slot(PK11_GetInternalKeySlot()));
-  } else {
-    crypto::InitializeNSSForChromeOSUser(username_hash, path);
-  }
+  crypto::InitializeNSSForChromeOSUser(username_hash, path);
 
   // Check if it's OK to initialize TPM for the user before continuing. This
   // may not be the case if the TPM slot initialization was previously
@@ -155,17 +146,20 @@ void StartNSSInitOnIOThread(const AccountId& account_id,
     return;
 
   crypto::WillInitializeTPMForChromeOSUser(username_hash);
+  if (tpm_fallback) {
+    crypto::InitializePrivateSoftwareSlotForChromeOSUser(username_hash);
+    return;
+  }
   crypto::IsTPMTokenEnabled(base::BindOnce(
       &StartTPMSlotInitializationOnIOThread, account_id, username_hash));
 }
 
-void NotifyCertsChangedInAshOnUIThread(
-    crosapi::mojom::CertDatabaseChangeType change_type) {
+void NotifyCertsChangedInAshOnUIThread() {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   crosapi::CrosapiManager::Get()
       ->crosapi_ash()
       ->cert_database_ash()
-      ->NotifyCertsChangedInAsh(change_type);
+      ->NotifyCertsChangedInAsh();
 }
 
 }  // namespace
@@ -219,18 +213,9 @@ class NssService::NSSCertDatabaseChromeOSManager
   }
 
   // net::NSSCertDatabase::Observer
-  void OnTrustStoreChanged() override {
+  void OnCertDBChanged() override {
     content::GetUIThreadTaskRunner({})->PostTask(
-        FROM_HERE,
-        base::BindOnce(&NotifyCertsChangedInAshOnUIThread,
-                       crosapi::mojom::CertDatabaseChangeType::kTrustStore));
-  }
-  void OnClientCertStoreChanged() override {
-    content::GetUIThreadTaskRunner({})->PostTask(
-        FROM_HERE,
-        base::BindOnce(
-            &NotifyCertsChangedInAshOnUIThread,
-            crosapi::mojom::CertDatabaseChangeType::kClientCertStore));
+        FROM_HERE, base::BindOnce(&NotifyCertsChangedInAshOnUIThread));
   }
 
  private:
@@ -264,16 +249,6 @@ class NssService::NSSCertDatabaseChromeOSManager
     DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
 
     auto public_slot = crypto::GetPublicSlotForChromeOSUser(username_hash_);
-
-#if BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_CHROMEOS_DEVICE)
-    if (!public_slot) {
-      // This is a "for testing" branch. The code below will intentionally crash
-      // when the public slot fails to load. By default prevent this from
-      // happening in tests that simply don't properly fake NSS. Consider using
-      // FakeNssService if a specific NSS behavior is required in tests.
-      public_slot = crypto::ScopedPK11Slot(PK11_GetInternalKeySlot());
-    }
-#endif
 
     // TODO(crbug.com/1163303): Remove when the bug is fixed.
     if (!public_slot) {
@@ -320,10 +295,11 @@ NssService::NssService(content::BrowserContext* context) {
   if (user && !user->username_hash().empty()) {
     username_hash = user->username_hash();
     DCHECK(!username_hash.empty());
+    PrefService* prefs = g_browser_process->local_state();
+    bool tpm_fallback = prefs->GetBoolean(jemaos::prefs::kCurrentForceTpmFallback);
     content::GetIOThreadTaskRunner({})->PostTask(
-        FROM_HERE, base::BindOnce(&StartNSSInitOnIOThread, user->GetAccountId(),
-                                  username_hash, profile->GetPath(),
-                                  chromeos::IsKioskSession()));
+        FROM_HERE, base::BindOnce(&StartNSSInitOnIOThread, tpm_fallback, user->GetAccountId(),
+                                  username_hash, profile->GetPath()));
 
     enable_system_slot = user->IsAffiliated();
   }

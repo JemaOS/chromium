@@ -10,7 +10,6 @@
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/testing/null_execution_context.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -31,7 +30,6 @@ class TreeScopeTest : public ::testing::Test {
   }
 
  private:
-  test::TaskEnvironment task_environment_;
   ScopedNullExecutionContext execution_context_;
   Persistent<Document> document_;
   Persistent<Element> body_;
@@ -41,7 +39,7 @@ TEST_F(TreeScopeTest, CommonAncestorOfSameTrees) {
   EXPECT_EQ(GetDocument(),
             GetDocument()->CommonAncestorTreeScope(*GetDocument()));
   ShadowRoot& shadow_root =
-      GetBody()->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+      GetBody()->AttachShadowRootInternal(ShadowRootType::kOpen);
   EXPECT_EQ(shadow_root, shadow_root.CommonAncestorTreeScope(shadow_root));
 }
 
@@ -51,7 +49,7 @@ TEST_F(TreeScopeTest, CommonAncestorOfInclusiveTrees) {
   // shadowRoot
 
   ShadowRoot& shadow_root =
-      GetBody()->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+      GetBody()->AttachShadowRootInternal(ShadowRootType::kOpen);
 
   EXPECT_EQ(GetDocument(), GetDocument()->CommonAncestorTreeScope(shadow_root));
   EXPECT_EQ(GetDocument(), shadow_root.CommonAncestorTreeScope(*GetDocument()));
@@ -68,9 +66,9 @@ TEST_F(TreeScopeTest, CommonAncestorOfSiblingTrees) {
   GetBody()->AppendChild(div_b);
 
   ShadowRoot& shadow_root_a =
-      div_a->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+      div_a->AttachShadowRootInternal(ShadowRootType::kOpen);
   ShadowRoot& shadow_root_b =
-      div_b->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+      div_b->AttachShadowRootInternal(ShadowRootType::kOpen);
 
   EXPECT_EQ(GetDocument(),
             shadow_root_a.CommonAncestorTreeScope(shadow_root_b));
@@ -91,14 +89,14 @@ TEST_F(TreeScopeTest, CommonAncestorOfTreesAtDifferentDepths) {
   GetBody()->AppendChild(div_b);
 
   ShadowRoot& shadow_root_y =
-      div_y->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+      div_y->AttachShadowRootInternal(ShadowRootType::kOpen);
   ShadowRoot& shadow_root_b =
-      div_b->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+      div_b->AttachShadowRootInternal(ShadowRootType::kOpen);
 
   Element* div_in_y = GetDocument()->CreateRawElement(html_names::kDivTag);
   shadow_root_y.AppendChild(div_in_y);
   ShadowRoot& shadow_root_a =
-      div_in_y->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+      div_in_y->AttachShadowRootInternal(ShadowRootType::kOpen);
 
   EXPECT_EQ(GetDocument(),
             shadow_root_a.CommonAncestorTreeScope(shadow_root_b));

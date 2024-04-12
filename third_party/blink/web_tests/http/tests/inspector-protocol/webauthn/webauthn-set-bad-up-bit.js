@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startURL(
       'https://devtools.test:8443/inspector-protocol/webauthn/resources/webauthn-test.https.html',
       'Check that the WebAuthn command setBadUVBit works');

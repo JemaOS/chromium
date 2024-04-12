@@ -3,10 +3,8 @@
 // found in the LICENSE file.
 
 #include "ash/system/phonehub/phone_hub_tray.h"
-#include <string>
 
 #include "ash/constants/ash_features.h"
-#include "ash/focus_cycler.h"
 #include "ash/public/cpp/test/test_new_window_delegate.h"
 #include "ash/shell.h"
 #include "ash/system/phonehub/multidevice_feature_opt_in_view.h"
@@ -14,17 +12,12 @@
 #include "ash/system/phonehub/phone_hub_view_ids.h"
 #include "ash/system/status_area_widget.h"
 #include "ash/system/status_area_widget_test_helper.h"
-#include "ash/system/toast/anchored_nudge.h"
-#include "ash/system/toast/anchored_nudge_manager_impl.h"
 #include "ash/test/ash_test_base.h"
 #include "base/memory/raw_ptr.h"
-#include "base/test/bind.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "chromeos/ash/components/phonehub/fake_connection_scheduler.h"
-#include "chromeos/ash/components/phonehub/fake_icon_decoder.h"
 #include "chromeos/ash/components/phonehub/fake_multidevice_feature_access_manager.h"
 #include "chromeos/ash/components/phonehub/fake_phone_hub_manager.h"
 #include "chromeos/ash/components/phonehub/phone_model_test_util.h"
@@ -32,12 +25,8 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "ui/compositor/layer_animator.h"
 #include "ui/compositor/scoped_animation_duration_scale_mode.h"
-#include "ui/events/base_event_utils.h"
 #include "ui/events/event.h"
-#include "ui/events/keycodes/keyboard_codes_posix.h"
 #include "ui/views/controls/button/button.h"
-#include "ui/views/controls/menu/menu_controller.h"
-#include "ui/views/controls/menu/menu_item_view.h"
 
 namespace ash {
 
@@ -49,9 +38,6 @@ using AccessProhibitedReason =
     phonehub::MultideviceFeatureAccessManager::AccessProhibitedReason;
 
 constexpr base::TimeDelta kConnectingViewGracePeriod = base::Seconds(40);
-constexpr char kTrayBackgroundViewHistogramName[] =
-    "Ash.StatusArea.TrayBackgroundView.Pressed";
-const std::string kPhoneHubNudgeId = "PhoneHubNudge";
 
 // A mock implementation of |NewWindowDelegate| for use in tests.
 class MockNewWindowDelegate : public testing::NiceMock<TestNewWindowDelegate> {
@@ -77,6 +63,7 @@ class PhoneHubTrayTest : public AshTestBase {
         /*enabled_features=*/{features::kPhoneHub,
                               features::kPhoneHubCameraRoll,
                               features::kEcheLauncher, features::kEcheSWA,
+                              features::kPhoneHubNudge,
                               features::kEcheNetworkConnectionState},
         /*disabled_features=*/{});
     auto delegate = std::make_unique<MockNewWindowDelegate>();
@@ -87,9 +74,6 @@ class PhoneHubTrayTest : public AshTestBase {
 
     phone_hub_tray_ =
         StatusAreaWidgetTestHelper::GetStatusAreaWidget()->phone_hub_tray();
-    // Disable pulse animation so the tests will not hang.
-    ui::ScopedAnimationDurationScaleMode duration_mode(
-        ui::ScopedAnimationDurationScaleMode::ZERO_DURATION);
 
     GetFeatureStatusProvider()->SetStatus(
         phonehub::FeatureStatus::kEnabledAndConnected);
@@ -128,6 +112,12 @@ class PhoneHubTrayTest : public AshTestBase {
     return phone_hub_manager_.fake_app_stream_launcher_data_model();
   }
 
+  void PressReturnKeyOnTrayButton() {
+    const ui::KeyEvent key_event(ui::ET_KEY_PRESSED, ui::VKEY_RETURN,
+                                 ui::EF_NONE);
+    phone_hub_tray_->PerformAction(key_event);
+  }
+
   void ClickTrayButton() { LeftClickOn(phone_hub_tray_); }
 
   // When first connecting, the connecting view is shown for 30 seconds when
@@ -145,8 +135,6 @@ class PhoneHubTrayTest : public AshTestBase {
     return phone_hub_tray_->content_view_for_testing();
   }
 
-  PhoneHubTray* phone_hub_tray() { return phone_hub_tray_; }
-
   MultideviceFeatureOptInView* multidevice_feature_opt_in_view() {
     return static_cast<MultideviceFeatureOptInView*>(bubble_view()->GetViewByID(
         PhoneHubViewID::kMultideviceFeatureOptInView));
@@ -156,9 +144,24 @@ class PhoneHubTrayTest : public AshTestBase {
     return bubble_view()->GetViewByID(PhoneHubViewID::kOnboardingMainView);
   }
 
+  views::View* onboarding_dismiss_prompt_view() {
+    return bubble_view()->GetViewByID(
+        PhoneHubViewID::kOnboardingDismissPromptView);
+  }
+
   views::Button* onboarding_get_started_button() {
     return static_cast<views::Button*>(bubble_view()->GetViewByID(
         PhoneHubViewID::kOnboardingGetStartedButton));
+  }
+
+  views::Button* onboarding_dismiss_button() {
+    return static_cast<views::Button*>(
+        bubble_view()->GetViewByID(PhoneHubViewID::kOnboardingDismissButton));
+  }
+
+  views::Button* onboarding_dismiss_ack_button() {
+    return static_cast<views::Button*>(bubble_view()->GetViewByID(
+        PhoneHubViewID::kOnboardingDismissAckButton));
   }
 
   views::Button* disconnected_refresh_button() {
@@ -187,10 +190,10 @@ class PhoneHubTrayTest : public AshTestBase {
   }
 
  protected:
-  raw_ptr<PhoneHubTray, DanglingUntriaged> phone_hub_tray_ = nullptr;
+  raw_ptr<PhoneHubTray, ExperimentalAsh> phone_hub_tray_ = nullptr;
   phonehub::FakePhoneHubManager phone_hub_manager_;
   base::test::ScopedFeatureList feature_list_;
-  raw_ptr<MockNewWindowDelegate, DanglingUntriaged> new_window_delegate_;
+  raw_ptr<MockNewWindowDelegate, ExperimentalAsh> new_window_delegate_;
   std::unique_ptr<TestNewWindowDelegateProvider> delegate_provider_;
 };
 
@@ -233,10 +236,7 @@ TEST_F(PhoneHubTrayTest, ClickTrayButton) {
 
 TEST_F(PhoneHubTrayTest, FocusBubbleWhenOpenedByKeyboard) {
   EXPECT_TRUE(phone_hub_tray_->GetVisible());
-
-  Shell::Get()->focus_cycler()->FocusWidget(phone_hub_tray_->GetWidget());
-  phone_hub_tray_->RequestFocus();
-  PressAndReleaseKey(ui::KeyboardCode::VKEY_RETURN);
+  PressReturnKeyOnTrayButton();
 
   // Generate a tab key press.
   ui::test::EventGenerator generator(Shell::GetPrimaryRootWindow());
@@ -546,22 +546,59 @@ TEST_F(PhoneHubTrayTest, StartOnboardingFlow) {
   EXPECT_EQ(1u, GetOnboardingUiTracker()->handle_get_started_call_count());
 }
 
-TEST_F(PhoneHubTrayTest, DismissOnboardingFlowByRightClickIcon) {
+TEST_F(PhoneHubTrayTest, DismissOnboardingFlowByClickingAckButton) {
   // Simulate a pending setup state to show the onboarding screen.
   GetFeatureStatusProvider()->SetStatus(
       phonehub::FeatureStatus::kEligiblePhoneButNotSetUp);
   GetOnboardingUiTracker()->SetShouldShowOnboardingUi(true);
 
-  RightClickOn(phone_hub_tray_);
-  EXPECT_TRUE(views::MenuController::GetActiveInstance());
-  views::MenuItemView* menu_item_view =
-      views::MenuController::GetActiveInstance()
-          ->GetSelectedMenuItem()
-          ->GetMenuItemByID(/*kHidePhoneHubIconCommandId*/ 1);
-  LeftClickOn(menu_item_view);
+  ClickTrayButton();
+  EXPECT_TRUE(phone_hub_tray_->is_active());
+  EXPECT_EQ(PhoneHubViewID::kOnboardingView, content_view()->GetID());
+  // It should display the onboarding main view at first.
+  EXPECT_TRUE(onboarding_main_view());
+
+  // Simulate a click on the "Dismiss" button.
+  LeftClickOn(onboarding_dismiss_button());
+
+  // It should transit to show the dismiss prompt.
+  EXPECT_TRUE(onboarding_dismiss_prompt_view());
+  EXPECT_TRUE(onboarding_dismiss_prompt_view()->GetVisible());
+
+  // Simulate a click on the "OK, got it" button to ack.
+  LeftClickOn(onboarding_dismiss_ack_button());
 
   // Clicking "Ok, got it" button should dismiss the bubble, hide the tray icon,
   // and disable the ability to show onboarding UI again.
+  EXPECT_FALSE(phone_hub_tray_->GetBubbleView());
+  EXPECT_FALSE(phone_hub_tray_->GetVisible());
+  EXPECT_FALSE(GetOnboardingUiTracker()->ShouldShowOnboardingUi());
+}
+
+TEST_F(PhoneHubTrayTest, DismissOnboardingFlowByClickingOutside) {
+  // Simulate a pending setup state to show the onboarding screen.
+  GetFeatureStatusProvider()->SetStatus(
+      phonehub::FeatureStatus::kEligiblePhoneButNotSetUp);
+  GetOnboardingUiTracker()->SetShouldShowOnboardingUi(true);
+
+  ClickTrayButton();
+  EXPECT_TRUE(phone_hub_tray_->is_active());
+  EXPECT_EQ(PhoneHubViewID::kOnboardingView, content_view()->GetID());
+  // It should display the onboarding main view at first.
+  EXPECT_TRUE(onboarding_main_view());
+
+  // Simulate a click on the "Dismiss" button.
+  LeftClickOn(onboarding_dismiss_button());
+
+  // It should transit to show the dismiss prompt.
+  EXPECT_TRUE(onboarding_dismiss_prompt_view());
+  EXPECT_TRUE(onboarding_dismiss_prompt_view()->GetVisible());
+
+  // Simulate a click outside the bubble.
+  phone_hub_tray_->ClickedOutsideBubble();
+
+  // Clicking outside should dismiss the bubble, hide the tray icon, and disable
+  // the ability to show onboarding UI again.
   EXPECT_FALSE(phone_hub_tray_->GetBubbleView());
   EXPECT_FALSE(phone_hub_tray_->GetVisible());
   EXPECT_FALSE(GetOnboardingUiTracker()->ShouldShowOnboardingUi());
@@ -579,9 +616,7 @@ TEST_F(PhoneHubTrayTest, ShouldNotShowMiniLauncherOnCloseBubble) {
   EXPECT_TRUE(GetAppStreamLauncherDataModel()->GetShouldShowMiniLauncher());
 
   // Simulate a click outside the bubble.
-  const ui::MouseEvent event(ui::ET_MOUSE_PRESSED, gfx::Point(), gfx::Point(),
-                             ui::EventTimeForNow(), 0, 0);
-  phone_hub_tray_->ClickedOutsideBubble(event);
+  phone_hub_tray_->ClickedOutsideBubble();
 
   // Clicking outside should dismiss the bubble and should not show the app
   // stream mini launcher.
@@ -742,96 +777,35 @@ TEST_F(PhoneHubTrayTest, MultiDisplay) {
   EXPECT_TRUE(secondary_phone_hub_tray->GetVisible());
 }
 
-TEST_F(PhoneHubTrayTest,
-       PhoneHubNotShownOnMoreThanFiveMinutesAfterSessionStartTime) {
-  GetSessionControllerClient()->SetSessionState(
-      session_manager::SessionState::ACTIVE);
-  GetFeatureStatusProvider()->SetStatus(
-      phonehub::FeatureStatus::kNotEligibleForFeature);
-
-  // Set time to fifteen minutes after session start time.
-  task_environment()->AdvanceClock(base::TimeDelta(base::Minutes(15)));
+TEST_F(PhoneHubTrayTest, ShowNudge) {
+  // Simulate kOnboardingWithoutPhone state.
   GetFeatureStatusProvider()->SetStatus(
       phonehub::FeatureStatus::kEligiblePhoneButNotSetUp);
   GetOnboardingUiTracker()->SetShouldShowOnboardingUi(true);
-  EXPECT_FALSE(phone_hub_tray_->GetVisible());
-
-  GetSessionControllerClient()->SetSessionState(
-      session_manager::SessionState::LOCKED);
-  EXPECT_FALSE(phone_hub_tray_->GetVisible());
-
   GetSessionControllerClient()->SetSessionState(
       session_manager::SessionState::ACTIVE);
-  EXPECT_TRUE(phone_hub_tray_->GetVisible());
+
+  PhoneHubNudgeController* nudge_controller =
+      phone_hub_tray_->phone_hub_nudge_controller_for_testing();
+  SystemNudge* nudge = nudge_controller->GetSystemNudgeForTesting();
+  EXPECT_TRUE(nudge);
 }
 
-TEST_F(PhoneHubTrayTest, ShowPhoneHubOnlyUpToFiveMinutesAfterSessionStartTime) {
-  // Reset session start time.
-  GetFeatureStatusProvider()->SetStatus(
-      phonehub::FeatureStatus::kNotEligibleForFeature);
-  GetSessionControllerClient()->SetSessionState(
-      session_manager::SessionState::ACTIVE);
-
-  // Set time to three minutes after session start time.
-  task_environment()->AdvanceClock(base::TimeDelta(base::Minutes(3)));
-  GetFeatureStatusProvider()->SetStatus(
-      phonehub::FeatureStatus::kEligiblePhoneButNotSetUp);
-  GetOnboardingUiTracker()->SetShouldShowOnboardingUi(true);
-  EXPECT_TRUE(phone_hub_tray_->GetVisible());
-}
-
-TEST_F(PhoneHubTrayTest, ShowAndHideNudge) {
+TEST_F(PhoneHubTrayTest, HideNudge) {
   GetFeatureStatusProvider()->SetStatus(
       phonehub::FeatureStatus::kEligiblePhoneButNotSetUp);
   GetOnboardingUiTracker()->SetShouldShowOnboardingUi(true);
   GetSessionControllerClient()->SetSessionState(
       session_manager::SessionState::ACTIVE);
 
-  EXPECT_TRUE(
-      Shell::Get()->anchored_nudge_manager()->IsNudgeShown(kPhoneHubNudgeId));
+  PhoneHubNudgeController* nudge_controller =
+      phone_hub_tray_->phone_hub_nudge_controller_for_testing();
+  SystemNudge* nudge = nudge_controller->GetSystemNudgeForTesting();
+  EXPECT_TRUE(nudge);
 
   ClickTrayButton();
-  EXPECT_TRUE(phone_hub_tray_->is_active());
-  EXPECT_EQ(PhoneHubViewID::kOnboardingView, content_view()->GetID());
-  // It should display the onboarding main view.
-  EXPECT_TRUE(onboarding_main_view());
-  EXPECT_TRUE(onboarding_main_view()->GetVisible());
-  EXPECT_EQ(0u, GetOnboardingUiTracker()->handle_get_started_call_count());
-
-  // Simulate a click on the "Get started" button.
-  LeftClickOn(onboarding_get_started_button());
-  // It should invoke the |HandleGetStarted| call.
-  EXPECT_EQ(1u, GetOnboardingUiTracker()->handle_get_started_call_count());
-  EXPECT_TRUE(GetOnboardingUiTracker()->is_icon_clicked_when_nudge_visible());
-  EXPECT_FALSE(
-      Shell::Get()->anchored_nudge_manager()->IsNudgeShown(kPhoneHubNudgeId));
-}
-
-TEST_F(PhoneHubTrayTest, EcheIconActivatesCallback) {
-  bool launched_app_window = false;
-  phone_hub_tray_->SetEcheIconActivationCallback(
-      base::BindLambdaForTesting([&]() { launched_app_window = true; }));
-  phone_hub_tray_->OnAppStreamUpdate(phonehub::proto::AppStreamUpdate());
-  phone_hub_manager_.fake_icon_decoder()->FinishLastCall();
-
-  LeftClickOn(phone_hub_tray_->eche_icon_);
-
-  EXPECT_TRUE(launched_app_window);
-}
-
-// Makes sure metrics are recorded for the phone hub tray or any nested button
-// being pressed.
-TEST_F(PhoneHubTrayTest, TrayPressedMetrics) {
-  base::HistogramTester histogram_tester;
-
-  LeftClickOn(phone_hub_tray());
-  histogram_tester.ExpectTotalCount(kTrayBackgroundViewHistogramName, 1);
-
-  LeftClickOn(phone_hub_tray()->icon_);
-  histogram_tester.ExpectTotalCount(kTrayBackgroundViewHistogramName, 2);
-
-  LeftClickOn(phone_hub_tray()->eche_icon_);
-  histogram_tester.ExpectTotalCount(kTrayBackgroundViewHistogramName, 3);
+  nudge = nudge_controller->GetSystemNudgeForTesting();
+  EXPECT_FALSE(nudge);
 }
 
 }  // namespace ash

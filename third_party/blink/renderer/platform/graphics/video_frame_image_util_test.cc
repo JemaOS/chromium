@@ -17,7 +17,6 @@
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/test/gpu_test_utils.h"
-#include "third_party/blink/renderer/platform/testing/testing_platform_support.h"
 #include "third_party/blink/renderer/platform/testing/video_frame_utils.h"
 #include "third_party/skia/include/gpu/GrDriverBugWorkarounds.h"
 
@@ -27,12 +26,6 @@ namespace {
 
 constexpr auto kTestSize = gfx::Size(64, 64);
 const auto kTestInfo = SkImageInfo::MakeN32Premul(64, 64);
-
-class AcceleratedCompositingTestPlatform
-    : public blink::TestingPlatformSupport {
- public:
-  bool IsGpuCompositingDisabled() const override { return false; }
-};
 
 class ScopedFakeGpuContext {
  public:
@@ -47,7 +40,7 @@ class ScopedFakeGpuContext {
           DISABLE_IMAGEBITMAP_FROM_VIDEO_USING_GPU);
     }
 
-    InitializeSharedGpuContextGLES2(test_context_provider_.get());
+    InitializeSharedGpuContext(test_context_provider_.get());
   }
 
   scoped_refptr<viz::ContextProvider> context_provider() const {
@@ -66,8 +59,6 @@ class ScopedFakeGpuContext {
  private:
   base::test::SingleThreadTaskEnvironment task_environment_;
   scoped_refptr<viz::TestContextProvider> test_context_provider_;
-  ScopedTestingPlatformSupport<AcceleratedCompositingTestPlatform>
-      accelerated_compositing_scope_;
 };
 
 // TODO(crbug.com/1186864): Remove |expect_broken_tagging| when fixed.
@@ -81,11 +72,10 @@ void TestOrientation(scoped_refptr<media::VideoFrame> frame,
   auto image =
       CreateImageFromVideoFrame(frame, true, nullptr, nullptr, gfx::Rect(),
                                 /*prefer_tagged_orientation=*/true);
-  if (expect_broken_tagging) {
+  if (expect_broken_tagging)
     EXPECT_EQ(image->CurrentFrameOrientation(), ImageOrientationEnum::kDefault);
-  } else {
+  else
     EXPECT_EQ(image->CurrentFrameOrientation(), kTestOrientation);
-  }
 
   image = CreateImageFromVideoFrame(frame, true, nullptr, nullptr, gfx::Rect(),
                                     /*prefer_tagged_orientation=*/false);
@@ -95,9 +85,8 @@ void TestOrientation(scoped_refptr<media::VideoFrame> frame,
 }  // namespace
 
 TEST(VideoFrameImageUtilTest, VideoTransformationToFromImageOrientation) {
-  for (int i = static_cast<int>(ImageOrientationEnum::kMinValue);
-       i <= static_cast<int>(ImageOrientationEnum::kMaxValue); ++i) {
-    auto blink_orientation = static_cast<ImageOrientationEnum>(i);
+  for (int i = 0; i < static_cast<int>(ImageOrientationEnum::kMaxValue); ++i) {
+    auto blink_orientation = ImageOrientation::FromEXIFValue(i).Orientation();
     auto media_transform =
         ImageOrientationToVideoTransformation(blink_orientation);
     EXPECT_EQ(blink_orientation,
@@ -260,7 +249,7 @@ TEST(VideoFrameImageUtilTest, FlushedAcceleratedImage) {
                                     provider.get());
   EXPECT_TRUE(image->IsTextureBacked());
 
-  ASSERT_FALSE(provider->Recorder().HasRecordedDrawOps());
+  ASSERT_FALSE(provider->HasRecordedDrawOps());
 }
 
 TEST(VideoFrameImageUtilTest, SoftwareCreateResourceProviderForVideoFrame) {

@@ -22,7 +22,6 @@
 
 namespace app_mode {
 class ForceInstallObserver;
-class LacrosLauncher;
 }  // namespace app_mode
 
 namespace ash {
@@ -83,7 +82,8 @@ void SetKioskLaunchStateCrashKey(KioskLaunchState state);
 //
 // It is all encompassed within the combination of two states -- AppState and
 // NetworkUI state.
-class KioskLaunchController : public KioskAppLauncher::Observer,
+class KioskLaunchController : public KioskProfileLoader::Delegate,
+                              public KioskAppLauncher::Observer,
                               public NetworkUiController::Observer {
  public:
   class KioskProfileLoadFailedObserver : public base::CheckedObserver {
@@ -91,12 +91,8 @@ class KioskLaunchController : public KioskAppLauncher::Observer,
     ~KioskProfileLoadFailedObserver() override = default;
     virtual void OnKioskProfileLoadFailed() = 0;
   };
-  class AcceleratorController {
-   public:
-    virtual ~AcceleratorController() = default;
-    virtual void EnableAccelerators() = 0;
-    virtual void DisableAccelerators() = 0;
-  };
+
+  using ReturnBoolCallback = base::RepeatingCallback<bool()>;
 
   // Factory class that constructs a `KioskAppLauncher`.
   // The default implementation constructs the correct implementation of
@@ -108,22 +104,29 @@ class KioskLaunchController : public KioskAppLauncher::Observer,
           KioskAppLauncher::NetworkDelegate*)>;
 
   explicit KioskLaunchController(OobeUI* oobe_ui);
-  KioskLaunchController(
-      LoginDisplayHost* host,
-      AppLaunchSplashScreenView* splash_screen,
-      LoadProfileCallback profile_loader,
-      KioskAppLauncherFactory app_launcher_factory,
-      std::unique_ptr<NetworkUiController::NetworkMonitor> network_monitor,
-      std::unique_ptr<AcceleratorController> accelerator_controller);
+  KioskLaunchController(LoginDisplayHost* host,
+                        AppLaunchSplashScreenView* splash_screen,
+                        KioskAppLauncherFactory app_launcher_factory);
   KioskLaunchController(const KioskLaunchController&) = delete;
   KioskLaunchController& operator=(const KioskLaunchController&) = delete;
   ~KioskLaunchController() override;
 
-  // Scoped overrides used during testing. The original behavior is restored
-  // when the returned objects are destroyed.
-  [[nodiscard]] static base::AutoReset<bool> SkipSplashScreenWaitForTesting();
-  [[nodiscard]] static base::AutoReset<bool> BlockAppLaunchForTesting();
+  [[nodiscard]] static std::unique_ptr<base::AutoReset<bool>>
+  DisableLoginOperationsForTesting();
+  [[nodiscard]] static std::unique_ptr<base::AutoReset<bool>>
+  SkipSplashScreenWaitForTesting();
+  [[nodiscard]] static std::unique_ptr<base::AutoReset<base::TimeDelta>>
+  SetNetworkWaitForTesting(base::TimeDelta wait_time);
+  [[nodiscard]] static std::unique_ptr<base::AutoReset<bool>>
+  BlockAppLaunchForTesting();
   [[nodiscard]] static base::AutoReset<bool> BlockExitOnFailureForTesting();
+
+  bool waiting_for_network() const {
+    return app_state_ == AppState::kInitNetwork;
+  }
+  bool showing_network_dialog() const {
+    return network_ui_controller_->IsShowingNetworkConfigScreen();
+  }
 
   void Start(const KioskAppId& kiosk_app_id, bool auto_launch);
 
@@ -149,13 +152,9 @@ class KioskLaunchController : public KioskAppLauncher::Observer,
 
  private:
   friend class KioskLaunchControllerTest;
-  friend class KioskLaunchControllerUsingLacrosTest;
-
-  class ScopedAcceleratorDisabler;
 
   enum AppState {
-    kCreatingProfile = 0,  // Profile is being created.
-    kLaunchingLacros,
+    kCreatingProfile = 0,   // Profile is being created.
     kInitLauncher,          // Launcher is initializing
     kInstallingApp,         // App is being installed.
     kInstallingExtensions,  // Force-installed extensions are being installed.
@@ -168,8 +167,6 @@ class KioskLaunchController : public KioskAppLauncher::Observer,
   void OnCancelAppLaunch();
   void OnNetworkConfigRequested();
   void InitializeKeyboard();
-  void LaunchLacros();
-  void OnLacrosLaunchComplete();
   void InitializeLauncher();
 
   // `KioskAppLauncher::Observer`
@@ -178,14 +175,20 @@ class KioskLaunchController : public KioskAppLauncher::Observer,
   void OnAppPrepared() override;
   void OnAppLaunched() override;
   void OnAppDataUpdated() override;
-  void OnAppWindowCreated(const std::optional<std::string>& app_name) override;
+  void OnAppWindowCreated(const absl::optional<std::string>& app_name) override;
 
-  void StartAppLaunch(Profile& profile);
-  void HandleProfileLoadError(KioskProfileLoader::ErrorResult error);
-  void HandleOldEncryption(std::unique_ptr<UserContext> user_context);
+  // `KioskProfileLoader::Delegate`
+  void OnProfileLoaded(Profile* profile) override;
+  void OnProfileLoadFailed(KioskAppLaunchError::Error error) override;
+  void OnOldEncryptionDetected(
+      std::unique_ptr<UserContext> user_context) override;
 
-  // Returns the `Data` struct used to populate the splash screen.
-  AppLaunchSplashScreenView::Data GetSplashScreenAppData();
+  KioskAppManagerBase::App GetAppData();
+
+  // Whether the network could be configured during launching.
+  bool CanConfigureNetwork();
+
+  void HandleWebAppInstallFailed();
 
   // Continues launching after forced extensions are installed if required.
   // If it times out waiting for extensions to install, logs metrics via UMA.
@@ -221,15 +224,8 @@ class KioskLaunchController : public KioskAppLauncher::Observer,
   // Whether the controller has already been cleaned-up.
   bool cleaned_up_ = false;
 
-  // Handle to the job returned by `profile_loader_`.
-  std::unique_ptr<CancellableJob> profile_loader_handle_;
-  // The function used to load the Kiosk profile. Overridable in tests.
-  LoadProfileCallback profile_loader_;
-
-  std::unique_ptr<app_mode::LacrosLauncher> lacros_launcher_;
-
-  std::unique_ptr<AcceleratorController> accelerator_controller_;
-  std::unique_ptr<ScopedAcceleratorDisabler> accelerator_disabler_;
+  // Used to login into kiosk user profile.
+  std::unique_ptr<KioskProfileLoader> kiosk_profile_loader_;
 
   // A timer to ensure the app splash is shown for a minimum amount of time.
   base::OneShotTimer splash_wait_timer_;
@@ -237,6 +233,10 @@ class KioskLaunchController : public KioskAppLauncher::Observer,
   // Used to prepare and launch the actual kiosk app, is created after
   // profile initialization. Is nullptr for arc kiosks.
   std::unique_ptr<KioskAppLauncher> app_launcher_;
+
+  // A timer that fires when the network was not prepared and we require user
+  // network configuration to continue.
+  base::OneShotTimer network_wait_timer_;
 
   // Tracks the moment when Kiosk launcher is started.
   base::Time launcher_start_time_;

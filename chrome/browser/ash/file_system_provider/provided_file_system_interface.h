@@ -31,35 +31,11 @@ namespace net {
 class IOBuffer;
 }  // namespace net
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 class ProvidedFileSystemInfo;
 class OperationRequestManager;
-
-// Represents a file or directory in cloud storage.
-struct CloudIdentifier {
-  std::string provider_name;
-  std::string id;
-
-  CloudIdentifier(const std::string& provider_name, const std::string& id);
-  bool operator==(const CloudIdentifier&) const;
-};
-
-// Represents version information relating to a particular file in cloud
-// storage.
-struct CloudFileInfo {
-  std::string version_tag;
-
-  explicit CloudFileInfo(const std::string& version_tag);
-
-  CloudFileInfo(const CloudFileInfo&) = delete;
-  CloudFileInfo& operator=(const CloudFileInfo&) = delete;
-
-  ~CloudFileInfo();
-
-  // Enables comparison for unit tests.
-  bool operator==(const CloudFileInfo&) const;
-};
 
 // Represents metadata for either a file or a directory.
 struct EntryMetadata {
@@ -78,8 +54,6 @@ struct EntryMetadata {
   std::unique_ptr<base::Time> modification_time;
   std::unique_ptr<std::string> mime_type;
   std::unique_ptr<std::string> thumbnail;
-  std::unique_ptr<CloudIdentifier> cloud_identifier;
-  std::unique_ptr<CloudFileInfo> cloud_file_info;
 };
 
 // Represents actions for either a file or a directory.
@@ -106,18 +80,6 @@ struct OpenedFile {
 // Map from a file handle to an OpenedFile struct.
 typedef std::map<int, OpenedFile> OpenedFiles;
 
-class ScopedUserInteraction {
- public:
-  virtual ~ScopedUserInteraction();
-  ScopedUserInteraction(const ScopedUserInteraction&) = delete;
-  ScopedUserInteraction& operator=(const ScopedUserInteraction&) = delete;
-  ScopedUserInteraction(ScopedUserInteraction&&);
-  ScopedUserInteraction& operator=(ScopedUserInteraction&&);
-
- protected:
-  ScopedUserInteraction();
-};
-
 // Interface for a provided file system. Acts as a proxy between providers
 // and clients. All of the request methods return an abort callback in order to
 // terminate it while running. They must be called on the same thread as the
@@ -134,9 +96,7 @@ class ProvidedFileSystemInterface {
     METADATA_FIELD_SIZE = 1 << 2,
     METADATA_FIELD_MODIFICATION_TIME = 1 << 3,
     METADATA_FIELD_MIME_TYPE = 1 << 4,
-    METADATA_FIELD_THUMBNAIL = 1 << 5,
-    METADATA_FIELD_CLOUD_IDENTIFIER = 1 << 6,
-    METADATA_FIELD_CLOUD_FILE_INFO = 1 << 7
+    METADATA_FIELD_THUMBNAIL = 1 << 5
   };
 
   // Callback for OpenFile(). In case of an error, file_handle is equal to 0
@@ -159,7 +119,7 @@ class ProvidedFileSystemInterface {
   // Mask of fields requested from the GetMetadata() call.
   typedef int MetadataFieldMask;
 
-  virtual ~ProvidedFileSystemInterface() = default;
+  virtual ~ProvidedFileSystemInterface() {}
 
   // Requests unmounting of the file system. The callback is called when the
   // request is accepted or rejected, with an error code.
@@ -262,13 +222,6 @@ class ProvidedFileSystemInterface {
       int length,
       storage::AsyncFileUtil::StatusCallback callback) = 0;
 
-  // Requests flushing data written to a file previously opened with
-  // `file_handle`. This is currently only called after the last write
-  // operation.
-  virtual AbortCallback FlushFile(
-      int file_handle,
-      storage::AsyncFileUtil::StatusCallback callback) = 0;
-
   // Requests adding a watcher on an entry. |recursive| must not be true for
   // files. |callback| is optional, but it can't be used for persistent
   // watchers.
@@ -326,12 +279,9 @@ class ProvidedFileSystemInterface {
 
   // Returns a weak pointer to this object.
   virtual base::WeakPtr<ProvidedFileSystemInterface> GetWeakPtr() = 0;
-
-  // Starts a user interaction with the file system, during which "unresponsive
-  // operation" notifications won't be created.
-  virtual std::unique_ptr<ScopedUserInteraction> StartUserInteraction() = 0;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_PROVIDED_FILE_SYSTEM_INTERFACE_H_

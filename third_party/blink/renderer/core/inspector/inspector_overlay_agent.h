@@ -89,7 +89,6 @@ class OverlayNames {
   static const char* OVERLAY_VIEWPORT_SIZE;
   static const char* OVERLAY_SCREENSHOT;
   static const char* OVERLAY_PAUSED;
-  static const char* OVERLAY_WINDOW_CONTROLS_OVERLAY;
 };
 
 class CORE_EXPORT InspectTool : public GarbageCollected<InspectTool> {
@@ -166,8 +165,8 @@ class CORE_EXPORT InspectorOverlayAgent final
   ToIsolationModeHighlightConfig(
       protocol::Overlay::IsolationModeHighlightConfig*,
       int highlight_index);
-  static std::optional<LineStyle> ToLineStyle(protocol::Overlay::LineStyle*);
-  static std::optional<BoxStyle> ToBoxStyle(protocol::Overlay::BoxStyle*);
+  static absl::optional<LineStyle> ToLineStyle(protocol::Overlay::LineStyle*);
+  static absl::optional<BoxStyle> ToBoxStyle(protocol::Overlay::BoxStyle*);
   static std::unique_ptr<InspectorHighlightConfig> ToHighlightConfig(
       protocol::Overlay::HighlightConfig*);
   InspectorOverlayAgent(WebLocalFrameImpl*,
@@ -238,9 +237,6 @@ class CORE_EXPORT InspectorOverlayAgent final
       std::unique_ptr<protocol::DictionaryValue>* highlights) override;
   protocol::Response setShowHinge(
       protocol::Maybe<protocol::Overlay::HingeConfig> hinge_config) override;
-  protocol::Response setShowWindowControlsOverlay(
-      protocol::Maybe<protocol::Overlay::WindowControlsOverlayConfig>
-          wco_config) override;
   protocol::Response setShowGridOverlays(
       std::unique_ptr<
           protocol::Array<protocol::Overlay::GridNodeHighlightConfig>>
@@ -267,9 +263,7 @@ class CORE_EXPORT InspectorOverlayAgent final
   void Dispose() override;
 
   void Inspect(Node*);
-  bool HasAXContext(Node*);
   void EnsureAXContext(Node*);
-  void EnsureAXContext(Document&);
   void DispatchBufferedTouchEvents();
   void SetPageIsScrolling(bool is_scrolling);
   WebInputEventResult HandleInputEvent(const WebInputEvent&);
@@ -291,8 +285,6 @@ class CORE_EXPORT InspectorOverlayAgent final
 
   float EmulationScaleFactor() const;
 
-  void DidInitializeFrameWidget();
-
  private:
   class InspectorOverlayChromeClient;
   class InspectorPageOverlayDelegate;
@@ -302,7 +294,6 @@ class CORE_EXPORT InspectorOverlayAgent final
                 ExceptionState& exception_state) override;
 
   bool IsEmpty();
-  bool FrameWidgetInitialized() const;
 
   LocalFrame* OverlayMainFrame();
   void Reset(const gfx::Size& viewport_size,

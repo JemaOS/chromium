@@ -23,9 +23,11 @@ struct BLINK_COMMON_EXPORT AdSize {
   AdSize(AdSize&&);
   AdSize& operator=(const AdSize&);
   AdSize& operator=(AdSize&&);
+  // Only used in tests, but provided as an operator instead of as
+  // IsEqualForTesting() to make it easier to implement InterestGroup's
+  // IsEqualForTesting().
   bool operator==(const AdSize& other) const;
   bool operator!=(const AdSize& other) const;
-  bool operator<(const AdSize& other) const;
   ~AdSize();
 
   double width;
@@ -37,7 +39,7 @@ struct BLINK_COMMON_EXPORT AdSize {
 
 struct BLINK_COMMON_EXPORT AdDescriptor {
   AdDescriptor();
-  explicit AdDescriptor(GURL url, std::optional<AdSize> size = std::nullopt);
+  explicit AdDescriptor(GURL url, absl::optional<AdSize> size = absl::nullopt);
   AdDescriptor(const AdDescriptor&);
   AdDescriptor(AdDescriptor&&);
   AdDescriptor& operator=(const AdDescriptor&);
@@ -47,7 +49,7 @@ struct BLINK_COMMON_EXPORT AdDescriptor {
   ~AdDescriptor();
 
   GURL url;
-  std::optional<AdSize> size;
+  absl::optional<AdSize> size;
 };
 
 }  // namespace blink

@@ -16,9 +16,7 @@
 #include "third_party/blink/renderer/core/css/resolver/style_resolver_state.h"
 #include "third_party/blink/renderer/core/style/basic_shapes.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
-#include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/style/shape_clip_path_operation.h"
-#include "third_party/blink/renderer/core/style/shape_offset_path_operation.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
 namespace blink {
@@ -36,23 +34,6 @@ const BasicShape* GetBasicShape(const CSSProperty& property,
       if (style.ShapeOutside()->CssBox() != CSSBoxType::kMissing)
         return nullptr;
       return style.ShapeOutside()->Shape();
-    case CSSPropertyID::kOffsetPath: {
-      auto* offset_path_operation =
-          DynamicTo<ShapeOffsetPathOperation>(style.OffsetPath());
-      if (!offset_path_operation) {
-        return nullptr;
-      }
-      const auto& shape = offset_path_operation->GetBasicShape();
-
-      // Path and Ray shapes are handled by PathInterpolationType and
-      // RayInterpolationType.
-      if (shape.GetType() == BasicShape::kStylePathType ||
-          shape.GetType() == BasicShape::kStyleRayType) {
-        return nullptr;
-      }
-
-      return &shape;
-    }
     case CSSPropertyID::kClipPath: {
       auto* clip_path_operation =
           DynamicTo<ShapeClipPathOperation>(style.ClipPath());
@@ -121,8 +102,7 @@ InterpolationValue CSSBasicShapeInterpolationType::MaybeConvertNeutral(
       const_cast<NonInterpolableValue*>(
           underlying.non_interpolable_value.get());
   conversion_checkers.push_back(
-      MakeGarbageCollected<UnderlyingCompatibilityChecker>(
-          non_interpolable_value));
+      std::make_unique<UnderlyingCompatibilityChecker>(non_interpolable_value));
   return InterpolationValue(
       basic_shape_interpolation_functions::CreateNeutralValue(
           *underlying.non_interpolable_value),
@@ -143,7 +123,7 @@ InterpolationValue CSSBasicShapeInterpolationType::MaybeConvertInherit(
     ConversionCheckers& conversion_checkers) const {
   const BasicShape* shape = GetBasicShape(CssProperty(), *state.ParentStyle());
   conversion_checkers.push_back(
-      MakeGarbageCollected<InheritedShapeChecker>(CssProperty(), shape));
+      std::make_unique<InheritedShapeChecker>(CssProperty(), shape));
   return basic_shape_interpolation_functions::MaybeConvertBasicShape(
       shape, state.ParentStyle()->EffectiveZoom());
 }
@@ -156,12 +136,8 @@ InterpolationValue CSSBasicShapeInterpolationType::MaybeConvertValue(
     return basic_shape_interpolation_functions::MaybeConvertCSSValue(value);
 
   const auto& list = To<CSSValueList>(value);
-  // Path and Ray shapes are handled by PathInterpolationType and
-  // RayInterpolationType.
-  if (!list.First().IsBasicShapeValue() || list.First().IsRayValue() ||
-      list.First().IsPathValue()) {
+  if (list.length() != 1)
     return nullptr;
-  }
   return basic_shape_interpolation_functions::MaybeConvertCSSValue(
       list.Item(0));
 }
@@ -213,17 +189,9 @@ void CSSBasicShapeInterpolationType::ApplyStandardPropertyValue(
       state.StyleBuilder().SetShapeOutside(MakeGarbageCollected<ShapeValue>(
           std::move(shape), CSSBoxType::kMissing));
       break;
-    case CSSPropertyID::kOffsetPath:
-      // TODO(sakhapov): handle coord box.
-      state.StyleBuilder().SetOffsetPath(
-          MakeGarbageCollected<ShapeOffsetPathOperation>(std::move(shape),
-                                                         CoordBox::kBorderBox));
-      break;
     case CSSPropertyID::kClipPath:
-      // TODO(pdr): Handle geometry box.
       state.StyleBuilder().SetClipPath(
-          MakeGarbageCollected<ShapeClipPathOperation>(
-              std::move(shape), GeometryBox::kBorderBox));
+          ShapeClipPathOperation::Create(std::move(shape)));
       break;
     case CSSPropertyID::kObjectViewBox:
       state.StyleBuilder().SetObjectViewBox(std::move(shape));

@@ -5,11 +5,10 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_WIDGET_FRAME_WIDGET_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_WIDGET_FRAME_WIDGET_H_
 
-#include <optional>
-
 #include "base/time/time.h"
 #include "mojo/public/mojom/base/text_direction.mojom-blink.h"
 #include "services/viz/public/mojom/compositing/frame_sink_id.mojom-blink.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/input/input_handler.mojom-blink.h"
 #include "third_party/blink/public/mojom/manifest/display_mode.mojom-blink.h"
 #include "third_party/blink/public/platform/web_text_input_info.h"
@@ -18,7 +17,6 @@
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "ui/base/ime/mojom/text_input_state.mojom-blink.h"
 #include "ui/base/ime/mojom/virtual_keyboard_types.mojom-blink.h"
-#include "ui/base/ui_base_types.h"
 #include "ui/gfx/mojom/delegated_ink_metadata.mojom-blink.h"
 
 namespace cc {
@@ -41,10 +39,6 @@ struct ScreenInfos;
 namespace ui {
 class Cursor;
 }  // namespace ui
-
-namespace viz {
-struct FrameTimingDetails;
-}  // namespace viz
 
 namespace blink {
 
@@ -87,8 +81,7 @@ class PLATFORM_EXPORT FrameWidget {
   // passed to the callback is the presentation timestamp; otherwise, it would
   // be timestamp of when the failure is detected.
   virtual void NotifyPresentationTimeInBlink(
-      base::OnceCallback<void(const viz::FrameTimingDetails&)>
-          presentation_callback) = 0;
+      base::OnceCallback<void(base::TimeTicks)> presentation_callback) = 0;
 
   // Enable or disable BeginMainFrameNotExpected signals from the compositor,
   // which are consumed by the blink scheduler.
@@ -121,14 +114,8 @@ class PLATFORM_EXPORT FrameWidget {
   // Returns the DisplayMode in use for the widget.
   virtual mojom::blink::DisplayMode DisplayMode() const = 0;
 
-  // Returns the WindowShowState in use for the widget.
-  virtual ui::WindowShowState WindowShowState() const = 0;
-
-  // Returns the CanResize value of the widget.
-  virtual bool Resizable() const = 0;
-
-  // Returns the viewport segments for the widget.
-  virtual const WebVector<gfx::Rect>& ViewportSegments() const = 0;
+  // Returns the window segments for the widget.
+  virtual const WebVector<gfx::Rect>& WindowSegments() const = 0;
 
   // Sets the ink metadata on the layer tree host
   virtual void SetDelegatedInkMetadata(
@@ -140,14 +127,13 @@ class PLATFORM_EXPORT FrameWidget {
                              const gfx::PointF& position,
                              const gfx::Vector2dF& velocity) = 0;
 
-  // For a scrollbar scroll action, requests that a gesture of |injected_type|
-  // be reissued at a later point in time. |injected_type| is required to be one
-  // of GestureScroll{Begin,Update,End}. The dispatched gesture will scroll the
+  // Requests that a gesture of |injected_type| be reissued at a later point in
+  // time. |injected_type| is required to be one of
+  // GestureScroll{Begin,Update,End}. The dispatched gesture will scroll the
   // ScrollableArea identified by |scrollable_area_element_id| by the given
   // delta + granularity.
-  // See also InputHandlerProxy::InjectScrollbarGestureScroll() which may
-  // shortcut callers of this function for composited scrollbars.
-  virtual void InjectScrollbarGestureScroll(
+  virtual void InjectGestureScrollEvent(
+      mojom::blink::GestureDevice device,
       const gfx::Vector2dF& delta,
       ui::ScrollGranularity granularity,
       cc::ElementId scrollable_area_element_id,
@@ -159,15 +145,6 @@ class PLATFORM_EXPORT FrameWidget {
   // Return the composition character in window coordinates.
   virtual void GetCompositionCharacterBoundsInWindow(
       Vector<gfx::Rect>* bounds_in_dips) = 0;
-
-  // Return the visible line bounds in screen coordinates.
-  virtual Vector<gfx::Rect>& GetVisibleLineBoundsOnScreen() = 0;
-
-  // Called to send new cursor anchor info data to the browser.
-  virtual void UpdateCursorAnchorInfo() = 0;
-
-  // Update the current visible line bounds for the focused element.
-  virtual void UpdateLineBounds() = 0;
 
   virtual gfx::Range CompositionRange() = 0;
   // Returns ime_text_spans and corresponding window coordinates for the list
@@ -181,8 +158,8 @@ class PLATFORM_EXPORT FrameWidget {
 
   // Return the edit context bounds in window coordinates.
   virtual void GetEditContextBoundsInWindow(
-      std::optional<gfx::Rect>* control_bounds,
-      std::optional<gfx::Rect>* selection_bounds) = 0;
+      absl::optional<gfx::Rect>* control_bounds,
+      absl::optional<gfx::Rect>* selection_bounds) = 0;
 
   virtual int32_t ComputeWebTextInputNextPreviousFlags() = 0;
   virtual void ResetVirtualKeyboardVisibilityRequest() = 0;
@@ -296,9 +273,8 @@ class PLATFORM_EXPORT FrameWidget {
   virtual float GetCompositingScaleFactor() = 0;
 
   // Get and set the configuration for the debugging overlay managed by the
-  // underlying LayerTreeHost. This may return null if the widget does not
-  // composite.
-  virtual const cc::LayerTreeDebugState* GetLayerTreeDebugState() = 0;
+  // underlaying LayerTreeHost.
+  virtual const cc::LayerTreeDebugState& GetLayerTreeDebugState() = 0;
   virtual void SetLayerTreeDebugState(const cc::LayerTreeDebugState& state) = 0;
 
   // Set whether or not this widget should be throttled if it sends
@@ -320,6 +296,7 @@ class PLATFORM_EXPORT FrameWidget {
 
   virtual void OnTaskCompletedForFrame(base::TimeTicks start_time,
                                        base::TimeTicks end_time,
+                                       base::TimeTicks desired_execution_time,
                                        LocalFrame*) = 0;
 };
 

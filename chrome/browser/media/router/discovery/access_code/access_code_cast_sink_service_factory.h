@@ -10,8 +10,8 @@
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace base {
-template <typename T>
-class NoDestructor;
+template <typename Type>
+struct DefaultSingletonTraits;
 }
 
 class Profile;
@@ -34,13 +34,13 @@ class AccessCodeCastSinkServiceFactory : public ProfileKeyedServiceFactory {
   static AccessCodeCastSinkServiceFactory* GetInstance();
 
  protected:
-  friend base::NoDestructor<AccessCodeCastSinkServiceFactory>;
+  friend struct base::DefaultSingletonTraits<AccessCodeCastSinkServiceFactory>;
 
   AccessCodeCastSinkServiceFactory();
   ~AccessCodeCastSinkServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

@@ -6,9 +6,9 @@
 
 #include <algorithm>
 #include <set>
-#include <vector>
 
 #include "base/containers/adapters.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/file_version_info.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
@@ -43,7 +43,6 @@
 #endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-#include "chrome/browser/extensions/chrome_content_browser_client_extensions_part.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/process_manager.h"
 #include "extensions/browser/process_map.h"
@@ -292,24 +291,19 @@ void MemoryDetails::CollectChildInfoOnUIThread() {
     // Determine if this is an extension process.
     bool process_is_for_extensions = false;
     const extensions::ExtensionSet* extension_set = nullptr;
-    if (render_process_host &&
-        !extensions::ChromeContentBrowserClientExtensionsPart::
-            AreExtensionsDisabledForProfile(
-                render_process_host->GetBrowserContext())) {
+    if (render_process_host) {
       content::BrowserContext* context =
           render_process_host->GetBrowserContext();
       extensions::ExtensionRegistry* extension_registry =
           extensions::ExtensionRegistry::Get(context);
-      DCHECK(extension_registry);
       extension_set = &extension_registry->enabled_extensions();
       extensions::ProcessMap* process_map =
           extensions::ProcessMap::Get(context);
-      DCHECK(process_map);
       int rph_id = render_process_host->GetID();
       process_is_for_extensions = process_map->Contains(rph_id);
 
-      // For our purposes, don't count processes containing only hosted
-      // apps as extension processes. See also: crbug.com/102533.
+      // For our purposes, don't count processes containing only hosted apps
+      // as extension processes. See also: crbug.com/102533.
       for (auto& extension_id : process_map->GetExtensionsInProcess(rph_id)) {
         const Extension* extension = extension_set->GetByID(extension_id);
         if (extension && !extension->is_hosted_app()) {
@@ -325,14 +319,14 @@ void MemoryDetails::CollectChildInfoOnUIThread() {
       // instances whose primary main RenderFrameHosts are in `process`. Refine
       // our determination of the `process.renderer_type`, and record the page
       // titles.
-      render_process_host->ForEachRenderFrameHost(
-          [&](content::RenderFrameHost* frame) {
-            UpdateProcessTypeAndTitles(
+      render_process_host->ForEachRenderFrameHost(base::BindRepeating(
+          &UpdateProcessTypeAndTitles,
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-                process_is_for_extensions ? extension_set : nullptr,
+          process_is_for_extensions ? extension_set : nullptr,
 #endif
-                process, frame);
-          });
+          // It is safe to use `std::ref` here, since `process` outlives this
+          // callback.
+          std::ref(process)));
     }
 
 #if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_ANDROID)
@@ -347,7 +341,7 @@ void MemoryDetails::CollectChildInfoOnUIThread() {
     return process.process_type == content::PROCESS_TYPE_UNKNOWN;
   };
   auto& vector = chrome_browser->processes;
-  std::erase_if(vector, is_unknown);
+  base::EraseIf(vector, is_unknown);
 
   // Grab a memory dump for all processes.
   memory_instrumentation::MemoryInstrumentation::GetInstance()

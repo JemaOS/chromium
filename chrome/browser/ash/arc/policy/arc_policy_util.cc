@@ -45,7 +45,7 @@ bool IsArcDisabledForEnterprise() {
 
 std::set<std::string> GetRequestedPackagesFromArcPolicy(
     const std::string& arc_policy) {
-  std::optional<base::Value> dict = ParsePolicyJson(arc_policy);
+  absl::optional<base::Value> dict = ParsePolicyJson(arc_policy);
   if (!dict.has_value() || !dict.value().is_dict()) {
     return {};
   }
@@ -66,16 +66,14 @@ std::set<std::string> GetRequestedPackagesFromArcPolicy(
 }
 
 void RecordPolicyMetrics(const std::string& arc_policy) {
-  std::optional<base::Value> dict = ParsePolicyJson(arc_policy);
+  absl::optional<base::Value> dict = ParsePolicyJson(arc_policy);
   if (!dict.has_value() || !dict.value().is_dict()) {
     return;
   }
 
   for (const auto it : dict.value().GetDict()) {
-    std::optional<ArcPolicyKey> key = GetPolicyKeyFromString(it.first);
-    if (key.has_value()) {
-      UMA_HISTOGRAM_ENUMERATION("Arc.Policy.Keys", key.value());
-    }
+    UMA_HISTOGRAM_ENUMERATION("Arc.Policy.Keys",
+                              GetPolicyKeyFromString(it.first));
   }
 
   std::map<std::string, std::set<std::string>> install_type_map =
@@ -88,7 +86,7 @@ void RecordPolicyMetrics(const std::string& arc_policy) {
   }
 }
 
-std::optional<base::Value> ParsePolicyJson(const std::string& arc_policy) {
+absl::optional<base::Value> ParsePolicyJson(const std::string& arc_policy) {
   return base::JSONReader::Read(
       arc_policy, base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS);
 }
@@ -121,71 +119,35 @@ std::map<std::string, std::set<std::string>> CreateInstallTypeMap(
   return install_type_map;
 }
 
-std::optional<ArcPolicyKey> GetPolicyKeyFromString(
-    const std::string& policy_key) {
-  if (policy_key == kArcPolicyKeyAvailableAppSetPolicyDeprecated ||
-      policy_key == kArcPolicyKeyWorkAccountAppWhitelistDeprecated ||
-      policy_key == kArcPolicyKeyGuid ||
-      policy_key == kArcPolicyKeyMountPhysicalMediaDisabled ||
-      policy_key == kArcPolicyKeyDpsInteractionsDisabled) {
-    // Ignore keys that are always set or represent server side flags.
-    return std::nullopt;
-  }
-
-  if (policy_key == kArcPolicyKeyAccountTypesWithManagementDisabled) {
+ArcPolicyKey GetPolicyKeyFromString(const std::string& policy_key) {
+  if (policy_key == "accountTypesWithManagementDisabled") {
     return ArcPolicyKey::kAccountTypesWithManagementDisabled;
-  } else if (policy_key == kArcPolicyKeyAlwaysOnVpnPackage) {
+  } else if (policy_key == "alwaysOnVpnPackage") {
     return ArcPolicyKey::kAlwaysOnVpnPackage;
-  } else if (policy_key == kArcPolicyKeyApplications) {
+  } else if (policy_key == "applications") {
     return ArcPolicyKey::kApplications;
-  } else if (policy_key == kArcPolicyKeyComplianceRules) {
+  } else if (policy_key == "availableAppSetPolicy") {
+    return ArcPolicyKey::kAvailableAppSetPolicy;
+  } else if (policy_key == "complianceRules") {
     return ArcPolicyKey::kComplianceRules;
-  } else if (policy_key == kArcPolicyKeyInstallUnknownSourcesDisabled) {
+  } else if (policy_key == "installUnknownSourcesDisabled") {
     return ArcPolicyKey::kInstallUnknownSourcesDisabled;
-  } else if (policy_key == kArcPolicyKeyMaintenanceWindow) {
+  } else if (policy_key == "maintenanceWindow") {
     return ArcPolicyKey::kMaintenanceWindow;
-  } else if (policy_key == kArcPolicyKeyModifyAccountsDisabled) {
+  } else if (policy_key == "modifyAccountsDisabled") {
     return ArcPolicyKey::kModifyAccountsDisabled;
-  } else if (policy_key == kArcPolicyKeyPermissionGrants) {
+  } else if (policy_key == "permissionGrants") {
     return ArcPolicyKey::kPermissionGrants;
-  } else if (policy_key == kArcPolicyKeyPermittedAccessibilityServices) {
+  } else if (policy_key == "permittedAccessibilityServices") {
     return ArcPolicyKey::kPermittedAccessibilityServices;
-  } else if (policy_key == kArcPolicyKeyPlayStoreMode) {
+  } else if (policy_key == "playStoreMode") {
     return ArcPolicyKey::kPlayStoreMode;
-  } else if (policy_key == kArcPolicyKeyShortSupportMessage) {
+  } else if (policy_key == "shortSupportMessage") {
     return ArcPolicyKey::kShortSupportMessage;
-  } else if (policy_key == kArcPolicyKeyStatusReportingSettings) {
+  } else if (policy_key == "statusReportingSettings") {
     return ArcPolicyKey::kStatusReportingSettings;
-  } else if (policy_key == kArcPolicyKeyApkCacheEnabled) {
-    return ArcPolicyKey::kApkCacheEnabled;
-  } else if (policy_key == kArcPolicyKeyDebuggingFeaturesDisabled) {
-    return ArcPolicyKey::kDebuggingFeaturesDisabled;
-  } else if (policy_key == kArcPolicyKeyCameraDisabled) {
-    return ArcPolicyKey::kCameraDisabled;
-  } else if (policy_key == kArcPolicyKeyPrintingDisabled) {
-    return ArcPolicyKey::kPrintingDisabled;
-  } else if (policy_key == kArcPolicyKeyScreenCaptureDisabled) {
-    return ArcPolicyKey::kScreenCaptureDisabled;
-  } else if (policy_key == kArcPolicyKeyShareLocationDisabled) {
-    return ArcPolicyKey::kShareLocationDisabled;
-  } else if (policy_key == kArcPolicyKeyUnmuteMicrophoneDisabled) {
-    return ArcPolicyKey::kUnmuteMicrophoneDisabled;
-  } else if (policy_key == kArcPolicyKeySetWallpaperDisabled) {
-    return ArcPolicyKey::kSetWallpaperDisabled;
-  } else if (policy_key == kArcPolicyKeyVpnConfigDisabled) {
-    return ArcPolicyKey::kVpnConfigDisabled;
-  } else if (policy_key == kArcPolicyKeyPrivateKeySelectionEnabled) {
-    return ArcPolicyKey::kPrivateKeySelectionEnabled;
-  } else if (policy_key == kArcPolicyKeyChoosePrivateKeyRules) {
-    return ArcPolicyKey::kChoosePrivateKeyRules;
-  } else if (policy_key == kArcPolicyKeyCredentialsConfigDisabled) {
-    return ArcPolicyKey::kCredentialsConfigDisabled;
-  } else if (policy_key == kArcPolicyKeyCaCerts) {
-    return ArcPolicyKey::kCaCerts;
-  } else if (policy_key == kArcPolicyKeyRequiredKeyPairs) {
-    return ArcPolicyKey::kRequiredKeyPairs;
-  } else if (policy_key == kArcPolicyKeyEnabledSystemAppPackageNames) {
-    return ArcPolicyKey::kEnabledSystemAppPackageNames;
+  } else if (policy_key == "workAccountAppWhitelist") {
+    return ArcPolicyKey::kWorkAccountAppWhitelist;
   }
 
   LOG(WARNING) << "Unknown policy key: " << policy_key;

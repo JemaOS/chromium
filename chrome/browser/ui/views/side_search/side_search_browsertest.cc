@@ -158,8 +158,7 @@ views::Button* SideSearchBrowserTest::GetSideSearchButtonFor(Browser* browser) {
 views::Button* SideSearchBrowserTest::GetSidePanelButtonFor(Browser* browser) {
   views::View* button_view =
       views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
-          kToolbarSidePanelButtonElementId,
-          browser->window()->GetElementContext());
+          kSidePanelButtonElementId, browser->window()->GetElementContext());
   return button_view ? views::AsViewClass<views::Button>(button_view) : nullptr;
 }
 

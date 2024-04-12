@@ -49,5 +49,6 @@ apiBridge.registerCustomHook(function(api) {
         }
         bindingUtil.sendRequest(
             'tts.speak', [utterance, options, callback], undefined);
+        return id;
       });
 });

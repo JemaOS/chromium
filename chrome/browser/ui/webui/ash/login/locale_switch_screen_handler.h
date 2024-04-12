@@ -11,7 +11,7 @@
 
 namespace ash {
 
-class LocaleSwitchView {
+class LocaleSwitchView : public base::SupportsWeakPtr<LocaleSwitchView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"locale-switch",
                                                        "LocaleSwitchScreen"};
@@ -23,28 +23,26 @@ class LocaleSwitchView {
   LocaleSwitchView& operator=(const LocaleSwitchView&) = delete;
 
   virtual void UpdateStrings() = 0;
-  virtual base::WeakPtr<LocaleSwitchView> AsWeakPtr() = 0;
 };
 
 // A class that updates localized strings in Oobe WebUI.
-class LocaleSwitchScreenHandler final : public BaseScreenHandler,
-                                        public LocaleSwitchView {
+class LocaleSwitchScreenHandler : public BaseScreenHandler,
+                                  public LocaleSwitchView {
  public:
   using TView = LocaleSwitchView;
 
-  LocaleSwitchScreenHandler();
+  explicit LocaleSwitchScreenHandler(CoreOobeView* core_oobe_view);
   ~LocaleSwitchScreenHandler() override;
 
   // LocaleSwitchView:
   void UpdateStrings() override;
-  base::WeakPtr<LocaleSwitchView> AsWeakPtr() override;
 
   // BaseScreenHandler:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
 
  private:
-  base::WeakPtrFactory<LocaleSwitchView> weak_ptr_factory_{this};
+  base::raw_ptr<CoreOobeView> core_oobe_view_;
 };
 
 }  // namespace ash

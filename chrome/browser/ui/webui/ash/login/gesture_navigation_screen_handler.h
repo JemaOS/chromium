@@ -11,7 +11,8 @@
 namespace ash {
 
 // Interface between gesture navigation screen and its representation.
-class GestureNavigationScreenView {
+class GestureNavigationScreenView
+    : public base::SupportsWeakPtr<GestureNavigationScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{
       "gesture-navigation", "GestureNavigationScreen"};
@@ -19,12 +20,11 @@ class GestureNavigationScreenView {
   virtual ~GestureNavigationScreenView() = default;
 
   virtual void Show() = 0;
-  virtual base::WeakPtr<GestureNavigationScreenView> AsWeakPtr() = 0;
 };
 
 // WebUI implementation of GestureNavigationScreenView.
-class GestureNavigationScreenHandler final : public GestureNavigationScreenView,
-                                             public BaseScreenHandler {
+class GestureNavigationScreenHandler : public GestureNavigationScreenView,
+                                       public BaseScreenHandler {
  public:
   using TView = GestureNavigationScreenView;
 
@@ -38,14 +38,10 @@ class GestureNavigationScreenHandler final : public GestureNavigationScreenView,
 
   // GestureNavigationScreenView:
   void Show() override;
-  base::WeakPtr<GestureNavigationScreenView> AsWeakPtr() override;
 
   // BaseScreenHandler:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
- private:
-  base::WeakPtrFactory<GestureNavigationScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

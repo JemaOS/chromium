@@ -6,6 +6,14 @@
 
 #include <string>
 
+bool AuthenticatorRequestSheetModel::ShouldFocusBackArrow() const {
+  return false;
+}
+
+bool AuthenticatorRequestSheetModel::IsCloseButtonVisible() const {
+  return false;
+}
+
 std::u16string AuthenticatorRequestSheetModel::GetAdditionalDescription()
     const {
   return std::u16string();
@@ -23,22 +31,9 @@ bool AuthenticatorRequestSheetModel::IsOtherMechanismButtonVisible() const {
   return false;
 }
 
-bool AuthenticatorRequestSheetModel::IsForgotGPMPinButtonVisible() const {
-  return false;
-}
-
-bool AuthenticatorRequestSheetModel::IsGPMPinOptionsButtonVisible() const {
-  return false;
-}
-
 std::u16string AuthenticatorRequestSheetModel::GetOtherMechanismButtonLabel()
     const {
   return std::u16string();
 }
 
 void AuthenticatorRequestSheetModel::OnManageDevices() {}
-
-void AuthenticatorRequestSheetModel::OnForgotGPMPin() {}
-
-void AuthenticatorRequestSheetModel::OnGPMPinOptionChosen(
-    bool is_arbitrary) const {}

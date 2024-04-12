@@ -3,19 +3,15 @@
 // found in the LICENSE file.
 
 function create(createProperties) {
-  return new Promise(resolve => {
-    chrome.contextMenus.create(createProperties, function() {
-      var error = !!chrome.runtime.lastError;
-      resolve(error);
-    });
+  chrome.contextMenus.create(createProperties, function() {
+    var error = !!chrome.runtime.lastError;
+    domAutomationController.send(error);
   });
 }
 
 function update(id, updateProperties) {
-  return new Promise(resolve => {
-    chrome.contextMenus.update(id, updateProperties, function() {
-      var error = !!chrome.runtime.lastError;
-      resolve(error);
-    });
+  chrome.contextMenus.update(id, updateProperties, function() {
+    var error = !!chrome.runtime.lastError;
+    domAutomationController.send(error);
   });
 }

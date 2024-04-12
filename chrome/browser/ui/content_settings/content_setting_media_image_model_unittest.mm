@@ -6,6 +6,7 @@
 
 #import <AVFoundation/AVFoundation.h>
 
+#include "base/mac/mac_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/content_settings/page_specific_content_settings_delegate.h"
@@ -13,6 +14,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/content_settings/media_authorization_wrapper_test.h"
 #include "chrome/common/chrome_features.h"
+#include "chrome/common/pref_names.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/testing_profile.h"
@@ -20,6 +22,7 @@
 #include "components/infobars/content/content_infobar_manager.h"
 #include "components/no_state_prefetch/browser/no_state_prefetch_manager.h"
 #include "components/permissions/permission_recovery_success_rate_tracker.h"
+#include "components/prefs/pref_service.h"
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/test/web_contents_tester.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -68,9 +71,22 @@ class ContentSettingMediaImageModelTest
     permissions::PermissionRecoverySuccessRateTracker::CreateForWebContents(
         web_contents());
   }
+
+  std::string GetDefaultAudioDevice() {
+    PrefService* prefs = profile()->GetPrefs();
+    return prefs->GetString(prefs::kDefaultAudioCaptureDevice);
+  }
+
+  std::string GetDefaultVideoDevice() {
+    PrefService* prefs = profile()->GetPrefs();
+    return prefs->GetString(prefs::kDefaultVideoCaptureDevice);
+  }
 };
 
 TEST_F(ContentSettingMediaImageModelTest, MediaUpdate) {
+  if (!base::mac::IsAtLeastOS10_14())
+    return;
+
   PageSpecificContentSettings::CreateForWebContents(
       web_contents(),
       std::make_unique<chrome::PageSpecificContentSettingsDelegate>(
@@ -88,21 +104,20 @@ TEST_F(ContentSettingMediaImageModelTest, MediaUpdate) {
   // Camera allowed per site: Test for system level permissions.
   {
     content_settings->OnMediaStreamPermissionSet(
-        kTestOrigin, {PageSpecificContentSettings::kCameraAccessed});
-    auth_wrapper.SetMockMediaPermissionStatus(AVAuthorizationStatusAuthorized);
+        kTestOrigin, PageSpecificContentSettings::CAMERA_ACCESSED,
+        std::string(), GetDefaultVideoDevice(), std::string(), std::string());
+    auth_wrapper.SetMockMediaPermissionStatus(kAllowed);
     content_setting_image_model->Update(web_contents());
     ExpectImageModelState(
-        *content_setting_image_model, /*is_visible=*/true, /*has_icon=*/true,
+        *content_setting_image_model, true /*is_visible*/, true /*has_icon*/,
         l10n_util::GetStringUTF16(IDS_CAMERA_ACCESSED), 0, &gfx::kNoneIcon);
-    auth_wrapper.SetMockMediaPermissionStatus(AVAuthorizationStatusDenied);
+    auth_wrapper.SetMockMediaPermissionStatus(kDenied);
     content_setting_image_model->Update(web_contents());
     ExpectImageModelState(
-        *content_setting_image_model, /*is_visible=*/true,
-        /*has_icon=*/true,
-        l10n_util::GetStringUTF16(IDS_CAMERA_TURNED_OFF_IN_MACOS),
-        IDS_CAMERA_TURNED_OFF, &gfx::kNoneIcon);
-    auth_wrapper.SetMockMediaPermissionStatus(
-        AVAuthorizationStatusNotDetermined);
+        *content_setting_image_model, true /*is_visible*/, true /*has_icon*/,
+        l10n_util::GetStringUTF16(IDS_CAMERA_BLOCKED), IDS_CAMERA_TURNED_OFF,
+        &vector_icons::kBlockedBadgeIcon);
+    auth_wrapper.SetMockMediaPermissionStatus(kNotDetermined);
     content_setting_image_model->Update(web_contents());
     EXPECT_FALSE(content_setting_image_model->is_visible());
   }
@@ -110,21 +125,20 @@ TEST_F(ContentSettingMediaImageModelTest, MediaUpdate) {
   // Microphone allowed per site: Test for system level permissions.
   {
     content_settings->OnMediaStreamPermissionSet(
-        kTestOrigin, {PageSpecificContentSettings::kMicrophoneAccessed});
-    auth_wrapper.SetMockMediaPermissionStatus(AVAuthorizationStatusAuthorized);
+        kTestOrigin, PageSpecificContentSettings::MICROPHONE_ACCESSED,
+        std::string(), GetDefaultVideoDevice(), std::string(), std::string());
+    auth_wrapper.SetMockMediaPermissionStatus(kAllowed);
     content_setting_image_model->Update(web_contents());
     ExpectImageModelState(
-        *content_setting_image_model, /*is_visible=*/true, /*has_icon=*/true,
+        *content_setting_image_model, true /*is_visible*/, true /*has_icon*/,
         l10n_util::GetStringUTF16(IDS_MICROPHONE_ACCESSED), 0, &gfx::kNoneIcon);
-    auth_wrapper.SetMockMediaPermissionStatus(AVAuthorizationStatusDenied);
+    auth_wrapper.SetMockMediaPermissionStatus(kDenied);
     content_setting_image_model->Update(web_contents());
-    ExpectImageModelState(
-        *content_setting_image_model, /*is_visible=*/true,
-        /*has_icon=*/true,
-        l10n_util::GetStringUTF16(IDS_MIC_TURNED_OFF_IN_MACOS),
-        IDS_MIC_TURNED_OFF, &gfx::kNoneIcon);
-    auth_wrapper.SetMockMediaPermissionStatus(
-        AVAuthorizationStatusNotDetermined);
+    ExpectImageModelState(*content_setting_image_model, true /*is_visible*/,
+                          true /*has_icon*/,
+                          l10n_util::GetStringUTF16(IDS_MICROPHONE_BLOCKED),
+                          IDS_MIC_TURNED_OFF, &vector_icons::kBlockedBadgeIcon);
+    auth_wrapper.SetMockMediaPermissionStatus(kNotDetermined);
     content_setting_image_model->Update(web_contents());
     EXPECT_FALSE(content_setting_image_model->is_visible());
   }
@@ -132,34 +146,33 @@ TEST_F(ContentSettingMediaImageModelTest, MediaUpdate) {
   // Microphone & camera allowed per site: Test for system level permissions.
   {
     content_settings->OnMediaStreamPermissionSet(
-        kTestOrigin, {PageSpecificContentSettings::kMicrophoneAccessed,
-                      PageSpecificContentSettings::kCameraAccessed});
-    auth_wrapper.SetMockMediaPermissionStatus(AVAuthorizationStatusAuthorized);
-    auth_wrapper.SetMockMediaPermissionStatus(AVAuthorizationStatusAuthorized);
+        kTestOrigin,
+        (PageSpecificContentSettings::MICROPHONE_ACCESSED |
+         PageSpecificContentSettings::CAMERA_ACCESSED),
+        std::string(), GetDefaultVideoDevice(), std::string(), std::string());
+    auth_wrapper.SetMockMediaPermissionStatus(kAllowed);
+    auth_wrapper.SetMockMediaPermissionStatus(kAllowed);
     content_setting_image_model->Update(web_contents());
     ExpectImageModelState(
-        *content_setting_image_model, /*is_visible=*/true, /*has_icon=*/true,
+        *content_setting_image_model, true /*is_visible*/, true /*has_icon*/,
         l10n_util::GetStringUTF16(IDS_MICROPHONE_CAMERA_ALLOWED), 0,
         &gfx::kNoneIcon);
-    auth_wrapper.SetMockMediaPermissionStatus(AVAuthorizationStatusDenied);
-    auth_wrapper.SetMockMediaPermissionStatus(AVAuthorizationStatusDenied);
+    auth_wrapper.SetMockMediaPermissionStatus(kDenied);
+    auth_wrapper.SetMockMediaPermissionStatus(kDenied);
     content_setting_image_model->Update(web_contents());
     ExpectImageModelState(
-        *content_setting_image_model, /*is_visible=*/true, /*has_icon=*/true,
-        l10n_util::GetStringUTF16(IDS_CAMERA_MIC_TURNED_OFF_IN_MACOS),
-        IDS_CAMERA_TURNED_OFF, &gfx::kNoneIcon);
-    auth_wrapper.SetMockMediaPermissionStatus(
-        AVAuthorizationStatusNotDetermined);
-    auth_wrapper.SetMockMediaPermissionStatus(
-        AVAuthorizationStatusNotDetermined);
+        *content_setting_image_model, true /*is_visible*/, true /*has_icon*/,
+        l10n_util::GetStringUTF16(IDS_MICROPHONE_CAMERA_BLOCKED),
+        IDS_CAMERA_TURNED_OFF, &vector_icons::kBlockedBadgeIcon);
+    auth_wrapper.SetMockMediaPermissionStatus(kNotDetermined);
+    auth_wrapper.SetMockMediaPermissionStatus(kNotDetermined);
     content_setting_image_model->Update(web_contents());
     EXPECT_EQ(content_setting_image_model->is_visible(), false);
   }
 
   // Test that system permissions being allowed do not affect the image view,
   // when the per site permission is denied.
-  for (const auto system_state :
-       {AVAuthorizationStatusAuthorized, AVAuthorizationStatusDenied}) {
+  for (const auto system_state : {kAllowed, kDenied}) {
     SCOPED_TRACE(system_state);
     auth_wrapper.SetMockMediaPermissionStatus(system_state);
     auth_wrapper.SetMockMediaPermissionStatus(system_state);
@@ -167,39 +180,48 @@ TEST_F(ContentSettingMediaImageModelTest, MediaUpdate) {
     // Camera blocked per site.
     {
       content_settings->OnMediaStreamPermissionSet(
-          kTestOrigin, {PageSpecificContentSettings::kCameraAccessed,
-                        PageSpecificContentSettings::kCameraBlocked});
+          kTestOrigin,
+          PageSpecificContentSettings::CAMERA_ACCESSED |
+              PageSpecificContentSettings::CAMERA_BLOCKED,
+          GetDefaultAudioDevice(), GetDefaultVideoDevice(), std::string(),
+          std::string());
       content_setting_image_model->Update(web_contents());
-      ExpectImageModelState(*content_setting_image_model, /*is_visible=*/true,
-                            /*has_icon=*/true,
+      ExpectImageModelState(*content_setting_image_model, true /*is_visible*/,
+                            true /*has_icon*/,
                             l10n_util::GetStringUTF16(IDS_CAMERA_BLOCKED), 0,
-                            &gfx::kNoneIcon);
+                            &vector_icons::kBlockedBadgeIcon);
     }
 
     // Microphone blocked per site.
     {
       content_settings->OnMediaStreamPermissionSet(
-          kTestOrigin, {PageSpecificContentSettings::kMicrophoneAccessed,
-                        PageSpecificContentSettings::kMicrophoneBlocked});
+          kTestOrigin,
+          PageSpecificContentSettings::MICROPHONE_ACCESSED |
+              PageSpecificContentSettings::MICROPHONE_BLOCKED,
+          GetDefaultAudioDevice(), GetDefaultVideoDevice(), std::string(),
+          std::string());
       content_setting_image_model->Update(web_contents());
-      ExpectImageModelState(*content_setting_image_model, /*is_visible=*/true,
-                            /*has_icon=*/true,
+      ExpectImageModelState(*content_setting_image_model, true /*is_visible*/,
+                            true /*has_icon*/,
                             l10n_util::GetStringUTF16(IDS_MICROPHONE_BLOCKED),
-                            0, &gfx::kNoneIcon);
+                            0, &vector_icons::kBlockedBadgeIcon);
     }
 
     // Microphone & camera blocked per site
     {
       content_settings->OnMediaStreamPermissionSet(
-          kTestOrigin, {PageSpecificContentSettings::kCameraAccessed,
-                        PageSpecificContentSettings::kCameraBlocked,
-                        PageSpecificContentSettings::kMicrophoneAccessed,
-                        PageSpecificContentSettings::kMicrophoneBlocked});
+          kTestOrigin,
+          PageSpecificContentSettings::CAMERA_ACCESSED |
+              PageSpecificContentSettings::CAMERA_BLOCKED |
+              PageSpecificContentSettings::MICROPHONE_ACCESSED |
+              PageSpecificContentSettings::MICROPHONE_BLOCKED,
+          GetDefaultAudioDevice(), GetDefaultVideoDevice(), std::string(),
+          std::string());
       content_setting_image_model->Update(web_contents());
       ExpectImageModelState(
-          *content_setting_image_model, /*is_visible=*/true, /*has_icon=*/true,
+          *content_setting_image_model, true /*is_visible*/, true /*has_icon*/,
           l10n_util::GetStringUTF16(IDS_MICROPHONE_CAMERA_BLOCKED), 0,
-          &gfx::kNoneIcon);
+          &vector_icons::kBlockedBadgeIcon);
     }
   }
 }

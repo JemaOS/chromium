@@ -61,7 +61,7 @@ bool ExtensionMediaAccessHandler::SupportsStreamType(
 
 bool ExtensionMediaAccessHandler::CheckMediaAccessPermission(
     content::RenderFrameHost* render_frame_host,
-    const url::Origin& security_origin,
+    const GURL& security_origin,
     blink::mojom::MediaStreamType type,
     const extensions::Extension* extension) {
   return extension->permissions_data()->HasAPIPermission(

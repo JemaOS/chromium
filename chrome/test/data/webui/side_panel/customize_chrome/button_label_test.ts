@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
 import 'chrome://customize-chrome-side-panel.top-chrome/button_label.js';
 
-import type {ButtonLabelElement} from 'chrome://customize-chrome-side-panel.top-chrome/button_label.js';
+import {ButtonLabelElement} from 'chrome://customize-chrome-side-panel.top-chrome/button_label.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
 
 import {assertNotStyle, assertStyle} from './test_support.js';

@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/login/login_handler.h"
 
 #include <string>
 
-#include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/ui/blocked_content/popunder_preventer.h"
 #include "chrome/browser/ui/browser_dialogs.h"
@@ -14,12 +14,13 @@
 #include "components/constrained_window/constrained_window_views.h"
 #include "components/password_manager/core/browser/password_manager.h"
 #include "components/strings/grit/components_strings.h"
-#include "components/web_modal/web_contents_modal_dialog_manager.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/window/dialog_delegate.h"
+
+namespace chrome {
 
 namespace {
 
@@ -47,23 +48,14 @@ class LoginHandlerViews : public LoginHandler {
 
  protected:
   // LoginHandler:
-  bool BuildViewImpl(const std::u16string& authority,
+  void BuildViewImpl(const std::u16string& authority,
                      const std::u16string& explanation,
                      LoginModelData* login_model_data) override {
     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
     DCHECK(!dialog_);
 
-    // A WebContentsModalDialogManager is necessary to show the Dialog. A
-    // manager may not be available during the shutdown process of the
-    // WebContents, which can trigger DidFinishNavigation events.
-    // See https://crbug.com/328462789.
-    if (!web_modal::WebContentsModalDialogManager::FromWebContents(
-            constrained_window::GetTopLevelWebContents(web_contents()))) {
-      return false;
-    }
     dialog_ = new Dialog(this, web_contents(), authority, explanation,
                          login_model_data);
-    return true;
   }
 
   void CloseDialog() override {
@@ -110,7 +102,7 @@ class LoginHandlerViews : public LoginHandler {
           [](Dialog* dialog) {
             if (!dialog->handler_)
               return;
-            dialog->handler_->CancelAuth(/*notify_others=*/true);
+            dialog->handler_->CancelAuth();
           },
           base::Unretained(this)));
       SetModalType(ui::MODAL_TYPE_CHILD);
@@ -146,7 +138,7 @@ class LoginHandlerViews : public LoginHandler {
       // Reference is no longer valid.
       widget_ = nullptr;
       if (handler_)
-        handler_->CancelAuth(/*notify_others=*/true);
+        handler_->CancelAuth();
     }
 
     views::View* GetInitiallyFocusedView() override {
@@ -179,11 +171,12 @@ class LoginHandlerViews : public LoginHandler {
 
 }  // namespace
 
-// static
-std::unique_ptr<LoginHandler> LoginHandler::Create(
+std::unique_ptr<LoginHandler> CreateLoginHandlerViews(
     const net::AuthChallengeInfo& auth_info,
     content::WebContents* web_contents,
     LoginAuthRequiredCallback auth_required_callback) {
   return std::make_unique<LoginHandlerViews>(auth_info, web_contents,
                                              std::move(auth_required_callback));
 }
+
+}  // namespace chrome

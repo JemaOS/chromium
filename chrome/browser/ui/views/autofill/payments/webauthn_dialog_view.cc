@@ -130,7 +130,7 @@ void WebauthnDialogView::RefreshContent() {
                  : ui::DIALOG_BUTTON_CANCEL);
 
   DialogModelChanged();
-  DeprecatedLayoutImmediately();
+  Layout();
 
   // Update the dialog's size.
   if (GetWidget() && controller_->GetWebContents()) {
@@ -142,7 +142,7 @@ void WebauthnDialogView::RefreshContent() {
   }
 }
 
-BEGIN_METADATA(WebauthnDialogView)
+BEGIN_METADATA(WebauthnDialogView, views::DialogDelegateView)
 END_METADATA
 
 }  // namespace autofill

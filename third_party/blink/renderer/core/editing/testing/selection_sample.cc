@@ -14,7 +14,6 @@
 #include "third_party/blink/renderer/core/dom/processing_instruction.h"
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #include "third_party/blink/renderer/core/editing/selection_template.h"
-#include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/html/html_collection.h"
 #include "third_party/blink/renderer/core/html/html_template_element.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -28,14 +27,12 @@ void ConvertTemplatesToShadowRoots(HTMLElement& element) {
   // |element| and descendant elements can have TEMPLATE element with
   // |data-mode="open"|, which is required. Each elemnt can have only one
   // TEMPLATE element.
-  HTMLCollection* const templates =
-      element.getElementsByTagName(AtomicString("template"));
+  HTMLCollection* const templates = element.getElementsByTagName("template");
   HeapVector<Member<Element>> template_vector;
   for (Element* template_element : *templates)
     template_vector.push_back(template_element);
   for (Element* template_element : template_vector) {
-    const AtomicString& data_mode =
-        template_element->getAttribute(AtomicString("data-mode"));
+    const AtomicString& data_mode = template_element->getAttribute("data-mode");
     DCHECK_EQ(data_mode, "open");
 
     Element* const parent = template_element->parentElement();
@@ -43,7 +40,7 @@ void ConvertTemplatesToShadowRoots(HTMLElement& element) {
 
     Document* const document = element.ownerDocument();
     ShadowRoot& shadow_root =
-        parent->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+        parent->AttachShadowRootInternal(ShadowRootType::kOpen);
     Node* const fragment = document->importNode(
         To<HTMLTemplateElement>(template_element)->content(), true,
         ASSERT_NO_EXCEPTION);
@@ -64,7 +61,6 @@ class Parser final {
   SelectionInDOMTree SetSelectionText(HTMLElement* element,
                                       const std::string& selection_text) {
     element->setInnerHTML(String::FromUTF8(selection_text.c_str()));
-    element->GetDocument().View()->UpdateAllLifecyclePhasesForTest();
     ConvertTemplatesToShadowRoots(*element);
     Traverse(element);
     if (anchor_node_ && focus_node_) {
@@ -193,45 +189,45 @@ class Serializer final {
       builder_.Append(text);
       return;
     }
-    const Node& anchor_node = *selection_.Anchor().ComputeContainerNode();
-    const Node& focus_node = *selection_.Focus().ComputeContainerNode();
-    const int anchor_offset =
-        selection_.Anchor().ComputeOffsetInContainerNode();
-    const int focus_offset = selection_.Focus().ComputeOffsetInContainerNode();
-    if (anchor_node == node && focus_node == node) {
-      if (anchor_offset == focus_offset) {
-        builder_.Append(text.Left(anchor_offset));
+    const Node& base_node = *selection_.Base().ComputeContainerNode();
+    const Node& extent_node = *selection_.Extent().ComputeContainerNode();
+    const int base_offset = selection_.Base().ComputeOffsetInContainerNode();
+    const int extent_offset =
+        selection_.Extent().ComputeOffsetInContainerNode();
+    if (base_node == node && extent_node == node) {
+      if (base_offset == extent_offset) {
+        builder_.Append(text.Left(base_offset));
         builder_.Append('|');
-        builder_.Append(text.Substring(anchor_offset));
+        builder_.Append(text.Substring(base_offset));
         return;
       }
-      if (anchor_offset < focus_offset) {
-        builder_.Append(text.Left(anchor_offset));
+      if (base_offset < extent_offset) {
+        builder_.Append(text.Left(base_offset));
         builder_.Append('^');
         builder_.Append(
-            text.Substring(anchor_offset, focus_offset - anchor_offset));
+            text.Substring(base_offset, extent_offset - base_offset));
         builder_.Append('|');
-        builder_.Append(text.Substring(focus_offset));
+        builder_.Append(text.Substring(extent_offset));
         return;
       }
-      builder_.Append(text.Left(focus_offset));
+      builder_.Append(text.Left(extent_offset));
       builder_.Append('|');
       builder_.Append(
-          text.Substring(focus_offset, anchor_offset - focus_offset));
+          text.Substring(extent_offset, base_offset - extent_offset));
       builder_.Append('^');
-      builder_.Append(text.Substring(anchor_offset));
+      builder_.Append(text.Substring(base_offset));
       return;
     }
-    if (anchor_node == node) {
-      builder_.Append(text.Left(anchor_offset));
+    if (base_node == node) {
+      builder_.Append(text.Left(base_offset));
       builder_.Append('^');
-      builder_.Append(text.Substring(anchor_offset));
+      builder_.Append(text.Substring(base_offset));
       return;
     }
-    if (focus_node == node) {
-      builder_.Append(text.Left(focus_offset));
+    if (extent_node == node) {
+      builder_.Append(text.Left(extent_offset));
       builder_.Append('|');
-      builder_.Append(text.Substring(focus_offset));
+      builder_.Append(text.Substring(extent_offset));
       return;
     }
     builder_.Append(text);
@@ -317,13 +313,12 @@ class Serializer final {
     if (selection_.IsNone())
       return;
     const PositionTemplate<Strategy> position(node, offset);
-    if (selection_.Focus().ToOffsetInAnchor() == position) {
+    if (selection_.Extent().ToOffsetInAnchor() == position) {
       builder_.Append('|');
       return;
     }
-    if (selection_.Anchor().ToOffsetInAnchor() != position) {
+    if (selection_.Base().ToOffsetInAnchor() != position)
       return;
-    }
     builder_.Append('^');
   }
 

@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function (testRunner) {
   const { page, session, dp } = await testRunner.startBlank(
     `Tests that the ad frame type is reported on navigation\n`);
   await dp.Page.enable();

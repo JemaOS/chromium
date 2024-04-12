@@ -5,9 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_PEERCONNECTION_PEER_CONNECTION_DEPENDENCY_FACTORY_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_PEERCONNECTION_PEER_CONNECTION_DEPENDENCY_FACTORY_H_
 
-#include "base/feature_list.h"
-#include "base/memory/raw_ptr.h"
-#include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/threading/thread.h"
@@ -21,9 +18,9 @@
 #include "third_party/blink/renderer/platform/heap/prefinalizer.h"
 #include "third_party/blink/renderer/platform/mojo/mojo_binding_context.h"
 #include "third_party/blink/renderer/platform/supplementable.h"
+#include "third_party/blink/renderer/platform/wtf/gc_plugin.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
-#include "third_party/webrtc/api/async_dns_resolver.h"
 #include "third_party/webrtc/api/peer_connection_interface.h"
 #include "third_party/webrtc_overrides/metronome_source.h"
 
@@ -38,7 +35,6 @@ class PortAllocator;
 namespace media {
 class DecoderFactory;
 class GpuVideoAcceleratorFactories;
-class MojoVideoEncoderMetricsProviderFactory;
 }
 
 namespace rtc {
@@ -118,9 +114,9 @@ class MODULES_EXPORT PeerConnectionDependencyFactory
   virtual std::unique_ptr<cricket::PortAllocator> CreatePortAllocator(
       blink::WebLocalFrame* web_frame);
 
-  // Creates an AsyncDnsResolverFactory that uses the networking Mojo service.
-  virtual std::unique_ptr<webrtc::AsyncDnsResolverFactoryInterface>
-  CreateAsyncDnsResolverFactory();
+  // Creates an AsyncResolverFactory that uses the networking Mojo service.
+  virtual std::unique_ptr<webrtc::AsyncResolverFactory>
+  CreateAsyncResolverFactory();
 
   // Creates a libjingle representation of an ice candidate.
   virtual webrtc::IceCandidateInterface* CreateIceCandidate(
@@ -150,11 +146,6 @@ class MODULES_EXPORT PeerConnectionDependencyFactory
   GetWebRtcSignalingTaskRunner();
 
   media::GpuVideoAcceleratorFactories* GetGpuFactories();
-
-  // Create a webrtc Metronome driven by the same source as the decode metronome
-  // passed to the WebRTC PeerConnection, allowing blink events to be coalesced
-  // around the same ticks.
-  virtual std::unique_ptr<webrtc::Metronome> CreateDecodeMetronome();
 
   void Trace(Visitor*) const override;
 
@@ -186,8 +177,6 @@ class MODULES_EXPORT PeerConnectionDependencyFactory
       scoped_refptr<base::SequencedTaskRunner> media_task_runner,
       media::GpuVideoAcceleratorFactories* gpu_factories,
       base::WeakPtr<media::DecoderFactory> media_decoder_factory,
-      scoped_refptr<media::MojoVideoEncoderMetricsProviderFactory>
-          video_encoder_metrics_provider_factory,
       base::WaitableEvent* event);
 
   void CreateIpcNetworkManagerOnNetworkThread(
@@ -198,17 +187,10 @@ class MODULES_EXPORT PeerConnectionDependencyFactory
       base::WaitableEvent* event);
   void CleanupPeerConnectionFactory();
 
-  void DoGetDevtoolsToken(
-      base::OnceCallback<void(std::optional<base::UnguessableToken>)> then);
-  std::optional<base::UnguessableToken> GetDevtoolsToken();
-  scoped_refptr<base::SequencedTaskRunner> context_task_runner_;
-
   // network_manager_ must be deleted on the network thread. The network manager
   // uses |p2p_socket_dispatcher_|.
   std::unique_ptr<IpcNetworkManager> network_manager_;
   std::unique_ptr<IpcPacketSocketFactory> socket_factory_;
-
-  Member<WebrtcVideoPerfReporter> webrtc_video_perf_reporter_;
 
   rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> pc_factory_;
 
@@ -217,7 +199,10 @@ class MODULES_EXPORT PeerConnectionDependencyFactory
 
   scoped_refptr<blink::WebRtcAudioDeviceImpl> audio_device_;
 
-  raw_ptr<media::GpuVideoAcceleratorFactories> gpu_factories_;
+  media::GpuVideoAcceleratorFactories* gpu_factories_;
+
+  GC_PLUGIN_IGNORE("https://crbug.com/1381979")
+  WebrtcVideoPerfReporter webrtc_video_perf_reporter_;
 
   THREAD_CHECKER(thread_checker_);
 };

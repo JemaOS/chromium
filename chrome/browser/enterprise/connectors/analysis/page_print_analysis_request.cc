@@ -25,7 +25,6 @@ PagePrintAnalysisRequest::PagePrintAnalysisRequest(
           std::move(callback),
           analysis_settings.cloud_or_local_settings),
       page_(std::move(page)) {
-  DCHECK(page_.IsValid());
   safe_browsing::IncrementCrashKey(
       safe_browsing::ScanningCrashKey::PENDING_PRINTS);
   safe_browsing::IncrementCrashKey(

@@ -11,7 +11,9 @@ import android.text.TextUtils;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.JNINamespace;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
+import org.chromium.base.library_loader.LibraryLoader;
 
 import java.util.Iterator;
 import java.util.PriorityQueue;
@@ -31,6 +33,7 @@ public class ToastManager {
     private static final int DURATION_SHORT_MS = 2000;
     private static final int DURATION_LONG_MS = 3500;
 
+    private static Boolean sIsEnabled;
     private static ToastManager sInstance;
 
     // A queue for toasts waiting to be shown.
@@ -40,7 +43,6 @@ public class ToastManager {
     // Handles toast events per SDK version.
     private interface ToastEvent {
         void onShow(Toast toast);
-
         void onCancel();
     }
 
@@ -49,7 +51,18 @@ public class ToastManager {
     // Toast currently showing. {@code null} if none is showing.
     private Toast mToast;
 
+    static boolean isEnabled() {
+        if (Boolean.FALSE.equals(sIsEnabled) || !LibraryLoader.getInstance().isInitialized()) {
+            return false;
+        }
+        if (sIsEnabled == null) {
+            sIsEnabled = ToastManagerJni.get().isEnabled();
+        }
+        return sIsEnabled;
+    }
+
     static ToastManager getInstance() {
+        assert sIsEnabled : "ToastManager should be enabled first.";
         if (sInstance == null) sInstance = new ToastManager();
         return sInstance;
     }
@@ -100,7 +113,9 @@ public class ToastManager {
         return mToast;
     }
 
-    /** Check if we already have the same Toast object showing on the screen or in the queue. */
+    /**
+     * Check if we already have the same Toast object showing on the screen or in the queue.
+     */
     private boolean isDuplicatedToast(Toast toast) {
         assert toast != null;
         Toast ct = getCurrentToast();
@@ -144,10 +159,8 @@ public class ToastManager {
 
         @Override
         public void onShow(Toast toast) {
-            int durationMs =
-                    (mToast.getDuration() == Toast.LENGTH_SHORT)
-                            ? DURATION_SHORT_MS
-                            : DURATION_LONG_MS;
+            int durationMs = (mToast.getDuration() == Toast.LENGTH_SHORT) ? DURATION_SHORT_MS
+                                                                          : DURATION_LONG_MS;
             mHandler.postDelayed(mPostToastRunnable, durationMs);
         }
 
@@ -163,13 +176,12 @@ public class ToastManager {
         private final android.widget.Toast.Callback mToastCallback;
 
         ToastEventR(Runnable finishRunnable) {
-            mToastCallback =
-                    new android.widget.Toast.Callback() {
-                        @Override
-                        public void onToastHidden() {
-                            finishRunnable.run();
-                        }
-                    };
+            mToastCallback = new android.widget.Toast.Callback() {
+                @Override
+                public void onToastHidden() {
+                    finishRunnable.run();
+                }
+            };
         }
 
         @Override
@@ -183,20 +195,25 @@ public class ToastManager {
         }
     }
 
-    /**
-     * Resets ToastManager state to initial state. Cancels the current toast if present,
-     * and clears the queue. This prevernts a test running a toast from interfering another one.
-     */
     public static void resetForTesting() {
-        getInstance().resetInternalForTesting(); // IN-TEST
+        if (isEnabled()) getInstance().resetInternalForTesting(); // IN-TEST
     }
 
     private void resetInternalForTesting() {
         mToastQueue.clear();
-        if (mToast != null) cancel(mToast);
+        mToast = null;
     }
 
     boolean isShowingForTesting() {
         return mToast != null;
+    }
+
+    public static void setEnabledForTesting(Boolean enabled) {
+        sIsEnabled = enabled;
+    }
+
+    @NativeMethods
+    public interface Natives {
+        boolean isEnabled();
     }
 }

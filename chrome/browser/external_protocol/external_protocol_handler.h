@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_EXTERNAL_PROTOCOL_EXTERNAL_PROTOCOL_HANDLER_H_
 #define CHROME_BROWSER_EXTERNAL_PROTOCOL_EXTERNAL_PROTOCOL_HANDLER_H_
 
-#include <optional>
 #include <string>
 
 #include "build/build_config.h"
@@ -13,6 +12,7 @@
 #include "content/public/browser/web_contents.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/network/public/mojom/url_loader_factory.mojom-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/page_transition_types.h"
 
 namespace content {
@@ -33,23 +33,6 @@ class ExternalProtocolHandler {
     DONT_BLOCK,
     BLOCK,
     UNKNOWN,
-  };
-
-  // This is used to back a UMA histogram, so it should be treated as
-  // append-only.
-  // This metric is related to BlockState but is only used for metrics
-  // reporting, and it differentiates multiple possible states that map to
-  // BlockState.
-  enum class BlockStateMetric {
-    kDeniedDefault,
-    kAllowedDefaultMail,
-    kAllowedDefaultNews_Deprecated,  // No longer emitted.
-    kNewsNotDefault_Deprecated,      // No longer emitted.
-    kAllowedByEnterprisePolicy,
-    kAllowedByPreference,
-    kPrompt,
-    // Insert new metric values above this line and update kMaxValue.
-    kMaxValue = kPrompt,
   };
 
   // This is used to back a UMA histogram, so it should be treated as
@@ -76,7 +59,7 @@ class ExternalProtocolHandler {
         content::WebContents* web_contents,
         ui::PageTransition page_transition,
         bool has_user_gesture,
-        const std::optional<url::Origin>& initiating_origin,
+        const absl::optional<url::Origin>& initiating_origin,
         const std::u16string& program_name) = 0;
     virtual void LaunchUrlWithoutSecurityCheck(
         const GURL& url,
@@ -90,7 +73,6 @@ class ExternalProtocolHandler {
   };
 
   // UMA histogram metric names.
-  static const char kBlockStateMetric[];
   static const char kHandleStateMetric[];
 
   ExternalProtocolHandler(const ExternalProtocolHandler&) = delete;
@@ -136,7 +118,7 @@ class ExternalProtocolHandler {
       ui::PageTransition page_transition,
       bool has_user_gesture,
       bool is_in_fenced_frame_tree,
-      const std::optional<url::Origin>& initiating_origin,
+      const absl::optional<url::Origin>& initiating_origin,
       content::WeakDocumentPtr initiator_document
 #if BUILDFLAG(IS_ANDROID)
       ,
@@ -197,7 +179,7 @@ class ExternalProtocolHandler {
       ui::PageTransition page_transition,
       bool has_user_gesture,
       bool is_in_fenced_frame_tree,
-      const std::optional<url::Origin>& initiating_origin,
+      const absl::optional<url::Origin>& initiating_origin,
       content::WeakDocumentPtr initiator_document,
       const std::u16string& program_name);
 #endif

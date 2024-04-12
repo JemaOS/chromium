@@ -19,7 +19,6 @@
 #include "third_party/blink/renderer/core/script/js_module_script.h"
 #include "third_party/blink/renderer/core/testing/dummy_modulator.h"
 #include "third_party/blink/renderer/core/testing/module_test_base.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "v8/include/v8.h"
 
 namespace blink {
@@ -69,7 +68,7 @@ class DynamicModuleResolverTestModulator final : public DummyModulator {
 
  private:
   // Implements Modulator:
-  ScriptState* GetScriptState() final { return script_state_.Get(); }
+  ScriptState* GetScriptState() final { return script_state_; }
 
   ModuleScript* GetFetchedModuleScript(const KURL& url,
                                        ModuleType module_type) final {
@@ -95,8 +94,7 @@ class DynamicModuleResolverTestModulator final : public DummyModulator {
                  network::mojom::RequestDestination,
                  const ScriptFetchOptions&,
                  ModuleScriptCustomFetchType custom_fetch_type,
-                 ModuleTreeClient* client,
-                 String) final {
+                 ModuleTreeClient* client) final {
     EXPECT_EQ(expected_fetch_tree_url_, url);
     EXPECT_EQ(expected_fetch_tree_module_type_, module_type);
 
@@ -144,8 +142,8 @@ class CaptureExportedStringFunction final : public ScriptFunction::Callable {
     v8::Local<v8::Value> exported_value =
         module_namespace->Get(context, V8String(isolate, export_name_))
             .ToLocalChecked();
-    captured_value_ = ToCoreString(
-        isolate, exported_value->ToString(context).ToLocalChecked());
+    captured_value_ =
+        ToCoreString(exported_value->ToString(context).ToLocalChecked());
 
     return ScriptValue();
   }
@@ -177,12 +175,11 @@ class CaptureErrorFunction final : public ScriptFunction::Callable {
 
     v8::Local<v8::Value> name =
         error_object->Get(context, V8String(isolate, "name")).ToLocalChecked();
-    name_ = ToCoreString(isolate, name->ToString(context).ToLocalChecked());
+    name_ = ToCoreString(name->ToString(context).ToLocalChecked());
     v8::Local<v8::Value> message =
         error_object->Get(context, V8String(isolate, "message"))
             .ToLocalChecked();
-    message_ =
-        ToCoreString(isolate, message->ToString(context).ToLocalChecked());
+    message_ = ToCoreString(message->ToString(context).ToLocalChecked());
 
     return ScriptValue();
   }
@@ -209,7 +206,6 @@ class DynamicModuleResolverTest : public testing::Test, public ModuleTestBase {
   void SetUp() override { ModuleTestBase::SetUp(); }
 
   void TearDown() override { ModuleTestBase::TearDown(); }
-  test::TaskEnvironment task_environment_;
 };
 
 }  // namespace
@@ -221,9 +217,8 @@ TEST_F(DynamicModuleResolverTest, ResolveSuccess) {
   modulator->SetExpectedFetchTreeURL(TestDependencyURL());
 
   auto* promise_resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLAny>>(
-          scope.GetScriptState());
-  auto promise = promise_resolver->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
+  ScriptPromise promise = promise_resolver->Promise();
 
   auto* capture = MakeGarbageCollected<CaptureExportedStringFunction>("foo");
   promise.Then(
@@ -264,9 +259,8 @@ TEST_F(DynamicModuleResolverTest, ResolveJSONModuleSuccess) {
   modulator->SetExpectedFetchTreeModuleType(ModuleType::kJSON);
 
   auto* promise_resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLAny>>(
-          scope.GetScriptState());
-  auto promise = promise_resolver->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
+  ScriptPromise promise = promise_resolver->Promise();
 
   auto* resolver = MakeGarbageCollected<DynamicModuleResolver>(modulator);
   Vector<ImportAssertion> import_assertions{
@@ -291,9 +285,8 @@ TEST_F(DynamicModuleResolverTest, ResolveSpecifierFailure) {
   modulator->SetExpectedFetchTreeURL(TestDependencyURL());
 
   auto* promise_resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLAny>>(
-          scope.GetScriptState());
-  auto promise = promise_resolver->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
+  ScriptPromise promise = promise_resolver->Promise();
 
   auto* capture = MakeGarbageCollected<CaptureErrorFunction>();
   promise.Then(
@@ -322,9 +315,8 @@ TEST_F(DynamicModuleResolverTest, ResolveModuleTypeFailure) {
   modulator->SetExpectedFetchTreeURL(TestDependencyURL());
 
   auto* promise_resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLAny>>(
-          scope.GetScriptState());
-  auto promise = promise_resolver->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
+  ScriptPromise promise = promise_resolver->Promise();
 
   auto* capture = MakeGarbageCollected<CaptureErrorFunction>();
   promise.Then(
@@ -354,9 +346,8 @@ TEST_F(DynamicModuleResolverTest, FetchFailure) {
   modulator->SetExpectedFetchTreeURL(TestDependencyURL());
 
   auto* promise_resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLAny>>(
-          scope.GetScriptState());
-  auto promise = promise_resolver->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
+  ScriptPromise promise = promise_resolver->Promise();
 
   auto* capture = MakeGarbageCollected<CaptureErrorFunction>();
   promise.Then(
@@ -389,9 +380,8 @@ TEST_F(DynamicModuleResolverTest, ExceptionThrown) {
   modulator->SetExpectedFetchTreeURL(TestDependencyURL());
 
   auto* promise_resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLAny>>(
-          scope.GetScriptState());
-  auto promise = promise_resolver->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
+  ScriptPromise promise = promise_resolver->Promise();
 
   auto* capture = MakeGarbageCollected<CaptureErrorFunction>();
   promise.Then(
@@ -433,9 +423,8 @@ TEST_F(DynamicModuleResolverTest, ResolveWithNullReferrerScriptSuccess) {
   modulator->SetExpectedFetchTreeURL(TestDependencyURL());
 
   auto* promise_resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLAny>>(
-          scope.GetScriptState());
-  auto promise = promise_resolver->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
+  ScriptPromise promise = promise_resolver->Promise();
 
   auto* capture = MakeGarbageCollected<CaptureExportedStringFunction>("foo");
   promise.Then(
@@ -479,8 +468,7 @@ TEST_F(DynamicModuleResolverTest, ResolveWithReferrerScriptInfoBaseURL) {
       KURL("https://example.com/correct/dependency.js"));
 
   auto* promise_resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLAny>>(
-          scope.GetScriptState());
+      MakeGarbageCollected<ScriptPromiseResolver>(scope.GetScriptState());
   auto* resolver = MakeGarbageCollected<DynamicModuleResolver>(modulator);
   KURL correct_base_url("https://example.com/correct/baz.js");
   ModuleRequest module_request("./dependency.js",

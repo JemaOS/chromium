@@ -44,9 +44,7 @@ const char kInspectorNoSuchFrameError[] =
     "Frame with the given id was not found.";
 const char kNoTargetWithGivenIdError[] = "No target with given id found";
 const char kUniqueContextIdNotFoundError[] = "uniqueContextId not found";
-const char kNoNodeForBackendNodeIdError[] =
-    "No node found for given backend id";
-const char kNoNodeWithGivenIdFoundError[] = "No node with given id found";
+const char kNoNodeForBackendNodeId[] = "No node found for given backend id";
 
 static constexpr int kSessionNotFoundInspectorCode = -32001;
 static constexpr int kCdpMethodNotFoundCode = -32601;
@@ -67,6 +65,10 @@ class ScopedIncrementer {
 
 Status ConditionIsMet(bool* is_condition_met) {
   *is_condition_met = true;
+  return Status(kOk);
+}
+
+Status FakeCloseFrontends() {
   return Status(kOk);
 }
 
@@ -108,7 +110,7 @@ Status DeserializePayload(const base::Value::Dict& params,
                   "payload is missing in the Runtime.bindingCalled params"};
   }
 
-  std::optional<base::Value> value =
+  absl::optional<base::Value> value =
       base::JSONReader::Read(*payload, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!value || !value->is_dict()) {
     return Status{kUnknownError, "unable to deserialize the BiDi payload"};
@@ -120,7 +122,7 @@ Status DeserializePayload(const base::Value::Dict& params,
 
 Status WrapCdpCommandInBidiCommand(base::Value::Dict cdp_cmd,
                                    base::Value::Dict* bidi_cmd) {
-  std::optional<int> cdp_cmd_id = cdp_cmd.FindInt("id");
+  absl::optional<int> cdp_cmd_id = cdp_cmd.FindInt("id");
   if (!cdp_cmd_id) {
     return Status(kUnknownError, "CDP command has no 'id' field");
   }
@@ -181,14 +183,47 @@ Status WrapBidiCommandInMapperCdpCommand(int cdp_cmd_id,
 
 }  // namespace
 
+namespace internal {
+
+InspectorEvent::InspectorEvent() {}
+
+InspectorEvent::~InspectorEvent() {}
+
+InspectorCommandResponse::InspectorCommandResponse() {}
+
+InspectorCommandResponse::~InspectorCommandResponse() {}
+
+}  // namespace internal
+
 const char DevToolsClientImpl::kBrowserwideDevToolsClientId[] = "browser";
 const char DevToolsClientImpl::kCdpTunnelChannel[] = "/cdp";
 const char DevToolsClientImpl::kBidiChannelSuffix[] = "/bidi";
 
 DevToolsClientImpl::DevToolsClientImpl(const std::string& id,
+                                       const std::string& session_id,
+                                       const std::string& url,
+                                       const SyncWebSocketFactory& factory)
+    : socket_(factory.Run()),
+      url_(url),
+      session_id_(session_id),
+      id_(id),
+      frontend_closer_func_(base::BindRepeating(&FakeCloseFrontends)),
+      parser_func_(base::BindRepeating(&internal::ParseInspectorMessage)) {
+  socket_->SetId(id_);
+  // If error happens during proactive event consumption we ignore it
+  // as there is no active user request where the error might be returned.
+  // Unretained 'this' won't cause any problems as we reset the callback in the
+  // .dtor.
+  socket_->SetNotificationCallback(base::BindRepeating(
+      base::IgnoreResult(&DevToolsClientImpl::HandleReceivedEvents),
+      base::Unretained(this)));
+}
+
+DevToolsClientImpl::DevToolsClientImpl(const std::string& id,
                                        const std::string& session_id)
     : session_id_(session_id),
       id_(id),
+      frontend_closer_func_(base::BindRepeating(&FakeCloseFrontends)),
       parser_func_(base::BindRepeating(&internal::ParseInspectorMessage)) {}
 
 DevToolsClientImpl::~DevToolsClientImpl() {
@@ -196,7 +231,7 @@ DevToolsClientImpl::~DevToolsClientImpl() {
     return;
   }
   if (parent_ != nullptr) {
-    parent_->UnregisterSessionHandler(session_id_);
+    parent_->children_.erase(session_id_);
   } else {
     // Resetting the callback is redundant as we assume
     // that .dtor won't start a nested message loop.
@@ -208,6 +243,11 @@ DevToolsClientImpl::~DevToolsClientImpl() {
 void DevToolsClientImpl::SetParserFuncForTesting(
     const ParserFunc& parser_func) {
   parser_func_ = parser_func;
+}
+
+void DevToolsClientImpl::SetFrontendCloserFunc(
+    const FrontendCloserFunc& frontend_closer_func) {
+  frontend_closer_func_ = frontend_closer_func;
 }
 
 const std::string& DevToolsClientImpl::GetId() {
@@ -231,22 +271,17 @@ Status DevToolsClientImpl::SetTunnelSessionId(std::string session_id) {
   return Status{kOk};
 }
 
-Status DevToolsClientImpl::StartBidiServer(
-    std::string bidi_mapper_script,
-    const base::Value::Dict& mapper_options) {
+Status DevToolsClientImpl::StartBidiServer(std::string bidi_mapper_script) {
   // Give BiDiMapper generous amount of time to start.
   // If the wait times out then we likely have a bug in BiDiMapper.
   // There is no need to make this timeout user configurable.
   // We use the default page load timeout (the biggest in the standard).
   Timeout timeout = Timeout(base::Seconds(300));
-  return StartBidiServer(std::move(bidi_mapper_script), mapper_options,
-                         timeout);
+  return StartBidiServer(std::move(bidi_mapper_script), timeout);
 }
 
-Status DevToolsClientImpl::StartBidiServer(
-    std::string bidi_mapper_script,
-    const base::Value::Dict& mapper_options,
-    const Timeout& timeout) {
+Status DevToolsClientImpl::StartBidiServer(std::string bidi_mapper_script,
+                                           const Timeout& timeout) {
   if (!is_main_page_) {
     // Later we might want to start the BiDiMapper an another type of targets
     // however for the moment being we support pages only.
@@ -268,11 +303,7 @@ Status DevToolsClientImpl::StartBidiServer(
     base::Value::Dict params;
     params.Set("bindingName", "cdp");
     params.Set("targetId", target_id);
-    DevToolsClient* root_client = this;
-    while (root_client->GetParentClient() != nullptr) {
-      root_client = root_client->GetParentClient();
-    }
-    status = root_client->SendCommandAndIgnoreResponse(
+    status = GetRootClient()->SendCommandAndIgnoreResponse(
         "Target.exposeDevToolsProtocol", std::move(params));
     if (status.IsError()) {
       return status;
@@ -291,8 +322,8 @@ Status DevToolsClientImpl::StartBidiServer(
     base::Value::Dict params;
     params.Set("expression", std::move(bidi_mapper_script));
     base::Value::Dict result;
-    status = SendCommandAndGetResultWithTimeout(
-        "Runtime.evaluate", std::move(params), &timeout, &result);
+    status =
+        SendCommandAndGetResult("Runtime.evaluate", std::move(params), &result);
 
     if (result.contains("exceptionDetails")) {
       std::string description = "unknown";
@@ -309,39 +340,34 @@ Status DevToolsClientImpl::StartBidiServer(
     }
   }
   {
-    base::Value::Dict result;
+    std::unique_ptr<base::Value> result;
     base::Value::Dict params;
     std::string window_id;
     status = SerializeAsJson(target_id, &window_id);
     if (status.IsError()) {
       return status;
     }
-
-    std::string mapper_options_str;
-    status = SerializeAsJson(mapper_options, &mapper_options_str);
-    if (status.IsError()) {
-      return status;
-    }
-
-    params.Set(
-        "expression",
-        base::StringPrintf("window.runMapperInstance(%s, %s)",
-                           window_id.c_str(), mapper_options_str.c_str()));
-    status = SendCommandAndGetResultWithTimeout(
-        "Runtime.evaluate", std::move(params), &timeout, &result);
-    if (result.contains("exceptionDetails")) {
-      std::string description = "unknown";
-      if (const std::string* maybe_description =
-              result.FindStringByDottedPath("result.description")) {
-        description = *maybe_description;
-      }
-      return Status(kUnknownError,
-                    "Failed to initialize BiDi Mapper: " + description);
-    }
+    params.Set("expression", "window.setSelfTargetId(" + window_id + ")");
+    status =
+        SendCommandAndIgnoreResponse("Runtime.evaluate", std::move(params));
     if (status.IsError()) {
       return status;
     }
   }
+  {
+    base::RepeatingCallback<Status(bool*)> bidi_mapper_is_launched =
+        base::BindRepeating(
+            [](bool* is_launched, bool* condition_is_met) {
+              *condition_is_met = *is_launched;
+              return Status{kOk};
+            },
+            base::Unretained(&bidi_server_is_launched_));
+    status = HandleEventsUntil(bidi_mapper_is_launched, timeout);
+    if (status.IsError()) {
+      return status;
+    }
+  }
+
   // We know that the current DevToolsClient is a CDP tunnel now
   tunnel_session_id_ = session_id_;
 
@@ -361,6 +387,7 @@ Status DevToolsClientImpl::StartBidiServer(
 
 Status DevToolsClientImpl::AppointAsBidiServerForTesting() {
   is_main_page_ = true;
+  bidi_server_is_launched_ = true;
   tunnel_session_id_ = session_id_;
   return Status{kOk};
 }
@@ -378,7 +405,7 @@ bool DevToolsClientImpl::IsConnected() const {
                  : (socket_ ? socket_->IsConnected() : false);
 }
 
-Status DevToolsClientImpl::AttachTo(DevToolsClient* parent) {
+Status DevToolsClientImpl::AttachTo(DevToolsClientImpl* parent) {
   // checking the preconditions
   if (parent == nullptr) {
     return Status{kUnknownError, "parent cannot be nullptr"};
@@ -393,14 +420,22 @@ Status DevToolsClientImpl::AttachTo(DevToolsClient* parent) {
     return Status{kUnknownError,
                   "DevToolsClientImpl can be attached only to a root client"};
   }
-  if (!parent->IsConnected()) {
-    return Status{kUnknownError, "cannot attach to a disconnected parent"};
+  if (parent->IsNull()) {
+    // parent.IsNull <=> (parent.parent == null) && (parent.socket == null)
+    // As, basing on the checks above, we know that parent.parent == null is
+    // true The expression above can be simplified to parent.IsNull <=>
+    // parent.socket == null
+    return Status{kUnknownError,
+                  "cannot attach to a parent that has no socket"};
   }
 
   Status status{kOk};
 
+  if (parent->IsConnected())
+    ResetListeners();
+
   parent_ = parent;
-  parent_->RegisterSessionHandler(session_id_, this);
+  parent_->children_[session_id_] = this;
 
   if (parent->IsConnected())
     status = OnConnected();
@@ -408,34 +443,46 @@ Status DevToolsClientImpl::AttachTo(DevToolsClient* parent) {
   return status;
 }
 
-void DevToolsClientImpl::RegisterSessionHandler(const std::string& session_id,
-                                                DevToolsClient* client) {
-  children_[session_id] = client;
-}
-
-void DevToolsClientImpl::UnregisterSessionHandler(
-    const std::string& session_id) {
-  children_.erase(session_id);
-}
-
-Status DevToolsClientImpl::SetSocket(std::unique_ptr<SyncWebSocket> socket) {
-  if (!socket) {
-    return Status{kUnknownError, "socket cannot be nullptr"};
+Status DevToolsClientImpl::Connect() {
+  if (stack_count_)
+    return Status(kUnknownError, "cannot connect when nested");
+  if (!socket_) {
+    return Status(kUnknownError, "cannot connect without a socket");
   }
-  if (!socket->IsConnected()) {
-    return Status{kUnknownError, "socket must be connected"};
+  if (socket_->IsConnected())
+    return Status(kOk);
+
+  ResetListeners();
+
+  if (!socket_->Connect(url_)) {
+    // Try to close devtools frontend and then reconnect.
+    Status status = frontend_closer_func_.Run();
+    if (status.IsError())
+      return status;
+    if (!socket_->Connect(url_))
+      return Status(kDisconnected, "unable to connect to renderer");
   }
-  socket_ = std::move(socket);
-  socket_->SetId(id_);
-  // If error happens during proactive event consumption we ignore it
-  // as there is no active user request where the error might be returned.
-  // Unretained 'this' won't cause any problems as we reset the callback in the
-  // .dtor.
-  socket_->SetNotificationCallback(base::BindRepeating(
-      base::IgnoreResult(&DevToolsClientImpl::HandleReceivedEvents),
-      base::Unretained(this)));
 
   return OnConnected();
+}
+
+void DevToolsClientImpl::ResetListeners() {
+  // checking the preconditions
+  if (IsConnected()) {
+    LOG(WARNING) << "Resetting listeners for already connected DevToolsClient. "
+                    "Some listeners might end-up working incorrectly.";
+  }
+
+  unnotified_connect_listeners_.clear();
+  for (DevToolsEventListener* listener : listeners_) {
+    if (listener->ListensToConnections()) {
+      unnotified_connect_listeners_.push_back(listener);
+    }
+  }
+
+  for (auto child : children_) {
+    child.second->ResetListeners();
+  }
 }
 
 Status DevToolsClientImpl::OnConnected() {
@@ -460,8 +507,8 @@ Status DevToolsClientImpl::OnConnected() {
     return status;
   }
 
-  for (auto& [session_id, client] : children_) {
-    status = client->OnConnected();
+  for (auto child : children_) {
+    status = child.second->OnConnected();
     if (status.IsError()) {
       break;
     }
@@ -473,15 +520,6 @@ Status DevToolsClientImpl::OnConnected() {
 Status DevToolsClientImpl::SetUpDevTools() {
   if (id_ != kBrowserwideDevToolsClientId &&
       (GetOwner() == nullptr || !GetOwner()->IsServiceWorker())) {
-    // The method Page.addScriptToEvaluateOnNewDocument used below has no effect
-    // until Page domain is enabled.
-    // In majority of cases the event listeners like NavigationTracker enable
-    // this domain quickly enough to mask the problem.
-    // In rare occasions (2% of cases) they kick in too late and therefore the
-    // tests like testExecuteScriptWithDeletedGlobalJSON can fail.
-    // To avoid such flakiness we enable the Page domain first.
-    SendCommandAndIgnoreResponse("Page.enable", base::Value::Dict());
-
     // This is a page or frame level DevToolsClient
     base::Value::Dict params;
     std::string script =
@@ -491,7 +529,6 @@ Status DevToolsClientImpl::SetUpDevTools() {
         "window.cdc_adoQpoasnfa76pfcZLmcfl_Promise = window.Promise;"
         "window.cdc_adoQpoasnfa76pfcZLmcfl_Proxy = window.Proxy;"
         "window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol = window.Symbol;"
-        "window.cdc_adoQpoasnfa76pfcZLmcfl_JSON = window.JSON;"
         "}) ();";
     params.Set("source", script);
     Status status = SendCommandAndIgnoreResponse(
@@ -605,9 +642,6 @@ void DevToolsClientImpl::AddListener(DevToolsEventListener* listener) {
         << " Connection notification will not arrive.";
   }
   listeners_.push_back(listener);
-  if (listener->ListensToConnections()) {
-    unnotified_connect_listeners_.push_back(listener);
-  }
 }
 
 void DevToolsClientImpl::RemoveListener(DevToolsEventListener* listener) {
@@ -634,12 +668,15 @@ Status DevToolsClientImpl::HandleReceivedEvents() {
 
 Status DevToolsClientImpl::HandleEventsUntil(
     const ConditionalFunc& conditional_func, const Timeout& timeout) {
-  if (!IsConnected()) {
+  SyncWebSocket* socket =
+      static_cast<DevToolsClientImpl*>(GetRootClient())->socket_.get();
+  DCHECK(socket);
+  if (!socket->IsConnected()) {
     return Status(kDisconnected, "not connected to DevTools");
   }
 
   while (true) {
-    if (!HasMessageForAnySession()) {
+    if (!socket->HasNextMessage()) {
       bool is_condition_met = false;
       Status status = conditional_func.Run(&is_condition_met);
       if (status.IsError())
@@ -684,7 +721,11 @@ WebViewImpl* DevToolsClientImpl::GetOwner() const {
 DevToolsClientImpl::ResponseInfo::ResponseInfo(const std::string& method)
     : state(kWaiting), method(method) {}
 
-DevToolsClientImpl::ResponseInfo::~ResponseInfo() = default;
+DevToolsClientImpl::ResponseInfo::~ResponseInfo() {}
+
+DevToolsClient* DevToolsClientImpl::GetRootClient() {
+  return parent_ ? parent_->GetRootClient() : this;
+}
 
 DevToolsClient* DevToolsClientImpl::GetParentClient() const {
   return parent_.get();
@@ -700,18 +741,18 @@ void DevToolsClientImpl::SetMainPage(bool value) {
 }
 
 int DevToolsClientImpl::NextMessageId() const {
-  if (parent_) {
-    return parent_->NextMessageId();
+  const DevToolsClientImpl* root = this;
+  for (; root->parent_ != nullptr; root = root->parent_.get()) {
   }
-  return next_id_;
+  return root->next_id_;
 }
 
 // Return NextMessageId and immediately increment it
 int DevToolsClientImpl::AdvanceNextMessageId() {
-  if (parent_) {
-    return parent_->AdvanceNextMessageId();
+  DevToolsClientImpl* root = this;
+  for (; root->parent_ != nullptr; root = root->parent_.get()) {
   }
-  return next_id_++;
+  return root->next_id_++;
 }
 
 Status DevToolsClientImpl::PostBidiCommandInternal(std::string channel,
@@ -747,26 +788,6 @@ Status DevToolsClientImpl::PostBidiCommandInternal(std::string channel,
                              nullptr, true, false, 0, nullptr);
 }
 
-Status DevToolsClientImpl::SendRaw(const std::string& message) {
-  if (socket_ && socket_->Send(message)) {
-    return Status{kOk};
-  }
-  if (parent_) {
-    return parent_->SendRaw(message);
-  }
-  return Status(kDisconnected, "unable to send message to renderer");
-}
-
-bool DevToolsClientImpl::HasMessageForAnySession() const {
-  if (socket_) {
-    return socket_->HasNextMessage();
-  }
-  if (parent_) {
-    return parent_->HasMessageForAnySession();
-  }
-  return false;
-}
-
 Status DevToolsClientImpl::SendCommandInternal(const std::string& method,
                                                const base::Value::Dict& params,
                                                const std::string& session_id,
@@ -775,7 +796,7 @@ Status DevToolsClientImpl::SendCommandInternal(const std::string& method,
                                                bool wait_for_response,
                                                const int client_command_id,
                                                const Timeout* timeout) {
-  if (parent_ == nullptr && !(socket_ && socket_->IsConnected())) {
+  if (parent_ == nullptr && !socket_->IsConnected()) {
     // The browser has crashed or closed the connection, e.g. due to
     // DeveloperToolsAvailability policy change.
     return Status(kDisconnected, "not connected to DevTools");
@@ -823,11 +844,10 @@ Status DevToolsClientImpl::SendCommandInternal(const std::string& method,
             << ")" << ::SessionId(session_id) << " " << id_ << " "
             << FormatValueForDisplay(base::Value(params.Clone()));
   }
-  {
-    Status status = SendRaw(message);
-    if (status.IsError()) {
-      return status;
-    }
+  SyncWebSocket* socket =
+      static_cast<DevToolsClientImpl*>(GetRootClient())->socket_.get();
+  if (!socket->Send(message)) {
+    return Status(kDisconnected, "unable to send message to renderer");
   }
 
   if (expect_response) {
@@ -863,7 +883,7 @@ Status DevToolsClientImpl::SendCommandInternal(const std::string& method,
         return Status(kUnexpectedAlertOpen);
       }
       CHECK_EQ(response_info->state, kReceived);
-      InspectorCommandResponse& response = response_info->response;
+      internal::InspectorCommandResponse& response = response_info->response;
       if (!response.result) {
         return internal::ParseInspectorError(response.error);
       }
@@ -878,7 +898,8 @@ Status DevToolsClientImpl::SendCommandInternal(const std::string& method,
 Status DevToolsClientImpl::ProcessNextMessage(int expected_id,
                                               bool log_timeout,
                                               const Timeout& timeout,
-                                              DevToolsClient* caller) {
+                                              DevToolsClientImpl* caller) {
+  ScopedIncrementer increment_stack_count(&stack_count_);
   if (!IsConnected()) {
     LOG(WARNING) << "Processing messages while being disconnected";
   }
@@ -938,17 +959,17 @@ Status DevToolsClientImpl::ProcessNextMessage(int expected_id,
 
 Status DevToolsClientImpl::HandleMessage(int expected_id,
                                          const std::string& message,
-                                         DevToolsClient* caller) {
+                                         DevToolsClientImpl* caller) {
   std::string session_id;
   internal::InspectorMessageType type;
-  InspectorEvent event;
-  InspectorCommandResponse response;
+  internal::InspectorEvent event;
+  internal::InspectorCommandResponse response;
   if (!parser_func_.Run(message, expected_id, &session_id, &type, &event,
                         &response)) {
     LOG(ERROR) << "Bad inspector message: " << message;
     return Status(kUnknownError, "bad inspector message: " + message);
   }
-  DevToolsClient* client = this;
+  DevToolsClientImpl* client = this;
   if (session_id != session_id_) {
     auto it = children_.find(session_id);
     if (it == children_.end()) {
@@ -960,7 +981,7 @@ Status DevToolsClientImpl::HandleMessage(int expected_id,
     }
     client = it->second;
   }
-  WebViewImplHolder client_holder(client->GetOwner());
+  WebViewImplHolder client_holder(client->owner_);
   if (type == internal::kEventMessageType) {
     Status status = client->ProcessEvent(event);
     if (caller == client || this == client) {
@@ -1004,7 +1025,7 @@ Status DevToolsClientImpl::HandleMessage(int expected_id,
   }
 }
 
-Status DevToolsClientImpl::ProcessEvent(const InspectorEvent& event) {
+Status DevToolsClientImpl::ProcessEvent(const internal::InspectorEvent& event) {
   if (IsVLogOn(1)) {
     // Note: ChromeDriver log-replay depends on the format of this logging.
     // see chromedriver/log_replay/devtools_log_reader.cc.
@@ -1024,6 +1045,18 @@ Status DevToolsClientImpl::ProcessEvent(const InspectorEvent& event) {
     status = IsBidiMessage(event.method, *event.params, &is_bidi_message);
     if (status.IsError()) {
       return status;
+    }
+  }
+  if (is_bidi_message && !bidi_server_is_launched_) {
+    // BiDi events arrive only to the client connected to the BiDiMapper.
+    // The check means that that the current client bound to BiDiMapper is
+    // awaiting for the notification that the mapper was successfully launched.
+    // Such event is intended for the infrastructural purposes.
+    // We consume it and remember the fact that BiDiMapper is up and running.
+    if (event.params->FindBoolByDottedPath("payload.launched")
+            .value_or(false)) {
+      bidi_server_is_launched_ = true;
+      return Status{kOk};
     }
   }
 
@@ -1053,13 +1086,12 @@ Status DevToolsClientImpl::ProcessEvent(const InspectorEvent& event) {
     base::Value::Dict enable_params;
     enable_params.Set("purpose", "detect if alert blocked any cmds");
     Status enable_status = SendCommand("Inspector.enable", enable_params);
-    for (const auto& [cmd_id, response] : response_info_map_) {
-      if (cmd_id > max_id) {
+    for (auto iter = response_info_map_.begin();
+         iter != response_info_map_.end(); ++iter) {
+      if (iter->first > max_id)
         continue;
-      }
-      if (response->state == kWaiting) {
-        response->state = kBlocked;
-      }
+      if (iter->second->state == kWaiting)
+        iter->second->state = kBlocked;
     }
     if (enable_status.IsError())
       return status;
@@ -1068,7 +1100,7 @@ Status DevToolsClientImpl::ProcessEvent(const InspectorEvent& event) {
 }
 
 Status DevToolsClientImpl::ProcessCommandResponse(
-    const InspectorCommandResponse& response) {
+    const internal::InspectorCommandResponse& response) {
   auto iter = response_info_map_.find(response.id);
   if (IsVLogOn(1)) {
     std::string method, result;
@@ -1127,7 +1159,7 @@ Status DevToolsClientImpl::ProcessCommandResponse(
 }
 
 Status DevToolsClientImpl::EnsureListenersNotifiedOfConnect() {
-  while (!unnotified_connect_listeners_.empty()) {
+  while (unnotified_connect_listeners_.size()) {
     DevToolsEventListener* listener = unnotified_connect_listeners_.front();
     unnotified_connect_listeners_.pop_front();
     Status status = listener->OnConnected(this);
@@ -1181,7 +1213,7 @@ bool ParseInspectorMessage(const std::string& message,
                            InspectorCommandResponse* command_response) {
   // We want to allow invalid characters in case they are valid ECMAScript
   // strings. For example, webplatform tests use this to check string handling
-  std::optional<base::Value> message_value =
+  absl::optional<base::Value> message_value =
       base::JSONReader::Read(message, base::JSON_REPLACE_INVALID_CHARACTERS);
   base::Value::Dict* message_dict =
       message_value ? message_value->GetIfDict() : nullptr;
@@ -1249,7 +1281,7 @@ bool ParseInspectorMessage(const std::string& message,
           return true;
         } else {  // CDP command response
 
-          std::optional<int> cdp_id = payload.FindInt("id");
+          absl::optional<int> cdp_id = payload.FindInt("id");
           if (!cdp_id) {
             LOG(WARNING) << "tunneled CDP response has no id";
             return false;
@@ -1322,12 +1354,12 @@ bool ParseInspectorMessage(const std::string& message,
 }
 
 Status ParseInspectorError(const std::string& error_json) {
-  std::optional<base::Value> error = base::JSONReader::Read(error_json);
+  absl::optional<base::Value> error = base::JSONReader::Read(error_json);
   base::Value::Dict* error_dict = error ? error->GetIfDict() : nullptr;
   if (!error_dict)
     return Status(kUnknownError, "inspector error with no error message");
 
-  std::optional<int> maybe_code = error_dict->FindInt("code");
+  absl::optional<int> maybe_code = error_dict->FindInt("code");
   std::string* maybe_message = error_dict->FindString("message");
 
   if (maybe_code.has_value()) {
@@ -1343,12 +1375,8 @@ Status ParseInspectorError(const std::string& error_json) {
   if (maybe_message) {
     std::string error_message = *maybe_message;
     if (error_message == kInspectorDefaultContextError ||
-        error_message == kInspectorContextError ||
-        error_message == kUniqueContextIdNotFoundError) {
-      // The error messages that can arise during a call to
-      // Runtime.evaluate and Runtime.callFunctionOn if the provided
-      // context does no longer exist.
-      return Status(kNoSuchExecutionContext);
+        error_message == kInspectorContextError) {
+      return Status(kNoSuchWindow);
     } else if (error_message == kInspectorInvalidURL) {
       return Status(kInvalidArgument);
     } else if (error_message == kInspectorInsecureContext) {
@@ -1361,13 +1389,17 @@ Status ParseInspectorError(const std::string& error_json) {
       // As the server returns the generic error code: SERVER_ERROR = -32000
       // we have to rely on the error message content.
       return Status(kNoSuchFrame, error_message);
-    } else if (error_message == kNoNodeForBackendNodeIdError ||
-               error_message == kNoNodeWithGivenIdFoundError) {
+    } else if (error_message == kUniqueContextIdNotFoundError) {
+      // The error message that can arise during a call to
+      // Runtime.evaluate and Runtime.callFunctionOn if the provided
+      // context does no longer exist.
+      return Status(kNoSuchExecutionContext, error_message);
+    } else if (error_message == kNoNodeForBackendNodeId) {
       // The error message that arises during DOM.resolveNode code.
       // This means that the node with given BackendNodeId is not found.
       return Status{kNoSuchElement, error_message};
     }
-    std::optional<int> error_code = error_dict->FindInt("code");
+    absl::optional<int> error_code = error_dict->FindInt("code");
     if (error_code == kInvalidParamsInspectorCode) {
       if (error_message == kNoTargetWithGivenIdError) {
         return Status(kNoSuchWindow, error_message);

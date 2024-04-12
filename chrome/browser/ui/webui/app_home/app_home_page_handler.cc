@@ -14,7 +14,6 @@
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
-#include "base/values.h"
 #include "chrome/browser/apps/app_service/app_icon/app_icon_source.h"
 #include "chrome/browser/apps/app_service/app_launch_params.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
@@ -32,6 +31,8 @@
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/extensions/extension_enable_flow.h"
 #include "chrome/browser/ui/tab_dialogs.h"
+#include "chrome/browser/ui/web_applications/web_app_dialog_manager.h"
+#include "chrome/browser/ui/web_applications/web_app_ui_manager_impl.h"
 #include "chrome/browser/ui/webui/app_home/app_home.mojom-shared.h"
 #include "chrome/browser/ui/webui/extensions/extension_icon_source.h"
 #include "chrome/browser/web_applications/extension_status_utils.h"
@@ -44,7 +45,6 @@
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
 #include "chrome/browser/web_applications/web_app_sync_bridge.h"
-#include "chrome/browser/web_applications/web_app_ui_manager.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/extensions/extension_constants.h"
@@ -85,6 +85,18 @@ bool IsYoutubeExtension(const std::string& extension_id) {
   return extension_id == extension_misc::kYoutubeAppId;
 }
 
+void AcquireAppLockAndScheduleCallback(
+    const std::string& operation_name,
+    web_app::WebAppProvider& provider,
+    const web_app::AppId& app_id,
+    base::OnceCallback<void(web_app::AppLock& lock)> callback) {
+  provider.scheduler().ScheduleCallbackWithLock<web_app::AppLock>(
+      operation_name,
+      std::make_unique<web_app::AppLockDescription,
+                       base::flat_set<web_app::AppId>>({app_id}),
+      std::move(callback));
+}
+
 }  // namespace
 
 AppHomePageHandler::AppHomePageHandler(
@@ -114,7 +126,7 @@ AppHomePageHandler::~AppHomePageHandler() {
 }
 
 Browser* AppHomePageHandler::GetCurrentBrowser() {
-  return chrome::FindBrowserWithTab(web_ui_->GetWebContents());
+  return chrome::FindBrowserWithWebContents(web_ui_->GetWebContents());
 }
 
 void AppHomePageHandler::LoadDeprecatedAppsDialogIfRequired() {
@@ -131,7 +143,14 @@ void AppHomePageHandler::LoadDeprecatedAppsDialogIfRequired() {
     if (extensions::IsExtensionUnsupportedDeprecatedApp(profile_, app_id) &&
         !deprecated_app_ids_.empty()) {
       TabDialogs::FromWebContents(web_contents)
-          ->ShowDeprecatedAppsDialog(app_id, deprecated_app_ids_, web_contents);
+          ->ShowDeprecatedAppsDialog(
+              app_id, deprecated_app_ids_, web_contents,
+              base::BindOnce(
+                  &AppHomePageHandler::LaunchAppInternal,
+                  weak_ptr_factory_.GetWeakPtr(), app_id,
+                  extension_misc::AppLaunchBucket::APP_LAUNCH_CMD_LINE_APP,
+                  std::move(event_ptr),
+                  /*force_launch_deprecated_apps=*/true));
     }
   } else if (net::GetValueForKeyInQuery(web_contents->GetLastCommittedURL(),
                                         kForceInstallDialogQueryString,
@@ -144,7 +163,14 @@ void AppHomePageHandler::LoadDeprecatedAppsDialogIfRequired() {
                                                                 web_contents);
       } else {
         TabDialogs::FromWebContents(web_contents)
-            ->ShowForceInstalledDeprecatedAppsDialog(app_id, web_contents);
+            ->ShowForceInstalledDeprecatedAppsDialog(
+                app_id, web_contents,
+                base::BindOnce(
+                    &AppHomePageHandler::LaunchAppInternal,
+                    weak_ptr_factory_.GetWeakPtr(), app_id,
+                    extension_misc::AppLaunchBucket::APP_LAUNCH_CMD_LINE_APP,
+                    std::move(event_ptr),
+                    /*force_launch_deprecated_apps=*/true));
       }
     }
   }
@@ -154,24 +180,26 @@ void AppHomePageHandler::LoadDeprecatedAppsDialogIfRequired() {
 void AppHomePageHandler::LaunchAppInternal(
     const std::string& app_id,
     extension_misc::AppLaunchBucket launch_bucket,
-    app_home::mojom::ClickEventPtr click_event) {
-  if (extensions::IsExtensionUnsupportedDeprecatedApp(profile_, app_id) &&
+    app_home::mojom::ClickEventPtr click_event,
+    bool force_launch_deprecated_apps) {
+  if (!force_launch_deprecated_apps &&
+      extensions::IsExtensionUnsupportedDeprecatedApp(profile_, app_id) &&
       base::FeatureList::IsEnabled(features::kChromeAppsDeprecation)) {
     if (!extensions::IsExtensionForceInstalled(profile_, app_id, nullptr)) {
       TabDialogs::FromWebContents(web_ui_->GetWebContents())
-          ->ShowDeprecatedAppsDialog(app_id, deprecated_app_ids_,
-                                     web_ui_->GetWebContents());
+          ->ShowDeprecatedAppsDialog(
+              app_id, deprecated_app_ids_, web_ui_->GetWebContents(),
+              base::BindOnce(&AppHomePageHandler::LaunchAppInternal,
+                             weak_ptr_factory_.GetWeakPtr(), app_id,
+                             launch_bucket, std::move(click_event), true));
       return;
     } else {
-      if (extensions::IsPreinstalledAppId(app_id)) {
-        TabDialogs::FromWebContents(web_ui_->GetWebContents())
-            ->ShowForceInstalledPreinstalledDeprecatedAppDialog(
-                app_id, web_ui_->GetWebContents());
-      } else {
-        TabDialogs::FromWebContents(web_ui_->GetWebContents())
-            ->ShowForceInstalledDeprecatedAppsDialog(app_id,
-                                                     web_ui_->GetWebContents());
-      }
+      TabDialogs::FromWebContents(web_ui_->GetWebContents())
+          ->ShowForceInstalledDeprecatedAppsDialog(
+              app_id, web_ui_->GetWebContents(),
+              base::BindOnce(&AppHomePageHandler::LaunchAppInternal,
+                             weak_ptr_factory_.GetWeakPtr(), app_id,
+                             launch_bucket, std::move(click_event), true));
       return;
     }
   }
@@ -274,27 +302,23 @@ void AppHomePageHandler::LaunchAppInternal(
 void AppHomePageHandler::SetUserDisplayMode(
     const std::string& app_id,
     web_app::mojom::UserDisplayMode user_display_mode) {
-  web_app_provider_->scheduler().ScheduleCallback(
-      "AppHomePageHandler::SetWebAppDisplayMode",
-      web_app::AppLockDescription(app_id),
+  AcquireAppLockAndScheduleCallback(
+      "AppHomePageHandler::SetWebAppDisplayMode", *web_app_provider_, app_id,
       base::BindOnce(
-          [](const webapps::AppId& app_id,
+          [](const web_app::AppId& app_id,
              web_app::mojom::UserDisplayMode user_display_mode,
-             web_app::AppLock& lock, base::Value::Dict& debug_value) {
+             web_app::AppLock& lock) {
             if (lock.registrar().IsLocallyInstalled(app_id)) {
-              debug_value.Set("user_display_mode",
-                              base::ToString(user_display_mode));
               lock.sync_bridge().SetAppUserDisplayMode(app_id,
                                                        user_display_mode,
                                                        /*is_user_action=*/true);
             }
           },
-          app_id, user_display_mode),
-      /*on_complete=*/base::DoNothing());
+          app_id, user_display_mode));
 }
 
 app_home::mojom::AppInfoPtr AppHomePageHandler::GetApp(
-    const webapps::AppId& app_id) {
+    const web_app::AppId& app_id) {
   std::vector<app_home::mojom::AppInfoPtr> all_apps;
   FillWebAppInfoList(&all_apps);
   FillExtensionInfoList(&all_apps);
@@ -344,7 +368,7 @@ void AppHomePageHandler::CreateExtensionAppShortcut(
 }
 
 app_home::mojom::AppInfoPtr AppHomePageHandler::CreateAppInfoPtrFromWebApp(
-    const webapps::AppId& app_id) {
+    const web_app::AppId& app_id) {
   auto& registrar = web_app_provider_->registrar_unsafe();
 
   auto app_info = app_home::mojom::AppInfo::New();
@@ -374,9 +398,9 @@ app_home::mojom::AppInfoPtr AppHomePageHandler::CreateAppInfoPtrFromWebApp(
   app_info->open_in_window = registrar.GetAppEffectiveDisplayMode(app_id) !=
                              blink::mojom::DisplayMode::kBrowser;
 
-  app_info->store_page_url = std::nullopt;
+  app_info->store_page_url = absl::nullopt;
   app_info->may_uninstall =
-      web_app_provider_->registrar_unsafe().CanUserUninstallWebApp(app_id);
+      web_app_provider_->install_finalizer().CanUserUninstallWebApp(app_id);
   app_info->is_deprecated_app = false;
   return app_info;
 }
@@ -391,7 +415,8 @@ app_home::mojom::AppInfoPtr AppHomePageHandler::CreateAppInfoPtrFromExtension(
   app_info->start_url = start_url;
 
   bool deprecated_app = false;
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_FUCHSIA)
   auto* context = extension_system_->extension_service()->GetBrowserContext();
   deprecated_app =
       extensions::IsExtensionUnsupportedDeprecatedApp(context, extension->id());
@@ -415,7 +440,7 @@ app_home::mojom::AppInfoPtr AppHomePageHandler::CreateAppInfoPtrFromExtension(
   app_info->is_locally_installed =
       !extension->is_hosted_app() ||
       extensions::BookmarkAppIsLocallyInstalled(profile_, extension);
-  app_info->store_page_url = std::nullopt;
+  app_info->store_page_url = absl::nullopt;
   if (extension->from_webstore()) {
     GURL store_url = GURL(base::StrCat(
         {"https://chrome.google.com/webstore/detail/", extension->id()}));
@@ -433,10 +458,9 @@ void AppHomePageHandler::FillWebAppInfoList(
     std::vector<app_home::mojom::AppInfoPtr>* result) {
   web_app::WebAppRegistrar& registrar = web_app_provider_->registrar_unsafe();
 
-  for (const webapps::AppId& web_app_id : registrar.GetAppIds()) {
-    if (IsYoutubeExtension(web_app_id)) {
+  for (const web_app::AppId& web_app_id : registrar.GetAppIds()) {
+    if (IsYoutubeExtension(web_app_id))
       continue;
-    }
     result->emplace_back(CreateAppInfoPtrFromWebApp(web_app_id));
   }
 }
@@ -454,7 +478,8 @@ void AppHomePageHandler::FillExtensionInfoList(
       continue;
     }
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_FUCHSIA)
     auto* context = extension_system_->extension_service()->GetBrowserContext();
     const bool is_deprecated_app =
         extensions::IsExtensionUnsupportedDeprecatedApp(context,
@@ -479,7 +504,7 @@ void AppHomePageHandler::ResetExtensionDialogState() {
 }
 
 void AppHomePageHandler::UninstallWebApp(const std::string& web_app_id) {
-  if (!web_app_provider_->registrar_unsafe().CanUserUninstallWebApp(
+  if (!web_app_provider_->install_finalizer().CanUserUninstallWebApp(
           web_app_id)) {
     LOG(ERROR) << "Attempt to uninstall a webapp that is non-usermanagable "
                   "was made. App id : "
@@ -500,9 +525,11 @@ void AppHomePageHandler::UninstallWebApp(const std::string& web_app_id) {
 
   Browser* browser = GetCurrentBrowser();
   CHECK(browser);
-  web_app_provider_->ui_manager().PresentUserUninstallDialog(
-      web_app_id, webapps::WebappUninstallSource::kAppsPage, browser->window(),
-      std::move(uninstall_success_callback));
+  web_app::WebAppUiManagerImpl::Get(web_app_provider_)
+      ->dialog_manager()
+      .UninstallWebApp(web_app_id, webapps::WebappUninstallSource::kAppsPage,
+                       browser->window(),
+                       std::move(uninstall_success_callback));
   return;
 }
 
@@ -535,14 +562,12 @@ void AppHomePageHandler::UninstallExtensionApp(const Extension* extension) {
 }
 
 void AppHomePageHandler::ExtensionRemoved(const Extension* extension) {
-  if (deprecated_app_ids_.find(extension->id()) != deprecated_app_ids_.end()) {
+  if (deprecated_app_ids_.find(extension->id()) != deprecated_app_ids_.end())
     deprecated_app_ids_.erase(extension->id());
-  }
 
   if (!extension->is_app() ||
-      !extensions::ui_util::ShouldDisplayInNewTabPage(extension, profile_)) {
+      !extensions::ui_util::ShouldDisplayInNewTabPage(extension, profile_))
     return;
-  }
 
   auto app_info = app_home::mojom::AppInfo::New();
   app_info->id = extension->id();
@@ -550,13 +575,13 @@ void AppHomePageHandler::ExtensionRemoved(const Extension* extension) {
 }
 
 void AppHomePageHandler::OnWebAppWillBeUninstalled(
-    const webapps::AppId& app_id) {
+    const web_app::AppId& app_id) {
   auto app_info = app_home::mojom::AppInfo::New();
   app_info->id = app_id;
   page_->RemoveApp(std::move(app_info));
 }
 
-void AppHomePageHandler::OnWebAppInstalled(const webapps::AppId& app_id) {
+void AppHomePageHandler::OnWebAppInstalled(const web_app::AppId& app_id) {
   page_->AddApp(CreateAppInfoPtrFromWebApp(app_id));
 }
 
@@ -586,9 +611,8 @@ void AppHomePageHandler::OnExtensionUninstalled(
 
 void AppHomePageHandler::PromptToEnableExtensionApp(
     const std::string& extension_app_id) {
-  if (extension_dialog_prompting_) {
+  if (extension_dialog_prompting_)
     return;  // Only one prompt at a time.
-  }
 
   extension_dialog_prompting_ = true;
   extension_enable_flow_ =
@@ -641,19 +665,19 @@ void AppHomePageHandler::GetDeprecationLinkString(
 }
 
 void AppHomePageHandler::OnWebAppRunOnOsLoginModeChanged(
-    const webapps::AppId& app_id,
+    const web_app::AppId& app_id,
     web_app::RunOnOsLoginMode run_on_os_login_mode) {
   page_->AddApp(CreateAppInfoPtrFromWebApp(app_id));
 }
 
 void AppHomePageHandler::OnWebAppUserDisplayModeChanged(
-    const webapps::AppId& app_id,
+    const web_app::AppId& app_id,
     web_app::mojom::UserDisplayMode user_display_mode) {
   page_->AddApp(CreateAppInfoPtrFromWebApp(app_id));
 }
 
 void AppHomePageHandler::OnWebAppInstalledWithOsHooks(
-    const webapps::AppId& app_id) {
+    const web_app::AppId& app_id) {
   page_->AddApp(CreateAppInfoPtrFromWebApp(app_id));
 }
 
@@ -662,9 +686,8 @@ void AppHomePageHandler::OnAppRegistrarDestroyed() {
 }
 
 void AppHomePageHandler::UninstallApp(const std::string& app_id) {
-  if (extension_dialog_prompting_) {
+  if (extension_dialog_prompting_)
     return;
-  }
 
   if (web_app_provider_->registrar_unsafe().IsInstalled(app_id) &&
       !IsYoutubeExtension(app_id)) {
@@ -711,23 +734,21 @@ void AppHomePageHandler::CreateAppShortcut(const std::string& app_id,
           app_id, extensions::ExtensionRegistry::ENABLED |
                       extensions::ExtensionRegistry::DISABLED |
                       extensions::ExtensionRegistry::TERMINATED);
-  if (extension) {
+  if (extension)
     CreateExtensionAppShortcut(extension, std::move(callback));
-  }
 }
 
 void AppHomePageHandler::LaunchApp(const std::string& app_id,
                                    app_home::mojom::ClickEventPtr click_event) {
   LaunchAppInternal(app_id, extension_misc::APP_LAUNCH_NTP_APPS_MAXIMIZED,
-                    std::move(click_event));
+                    std::move(click_event), false);
 }
 
 void AppHomePageHandler::SetRunOnOsLoginMode(
     const std::string& app_id,
     web_app::RunOnOsLoginMode run_on_os_login_mode) {
-  if (!base::FeatureList::IsEnabled(features::kDesktopPWAsRunOnOsLogin)) {
+  if (!base::FeatureList::IsEnabled(features::kDesktopPWAsRunOnOsLogin))
     return;
-  }
 
   if (run_on_os_login_mode != web_app::RunOnOsLoginMode::kNotRun &&
       run_on_os_login_mode != web_app::RunOnOsLoginMode::kWindowed) {
@@ -741,7 +762,7 @@ void AppHomePageHandler::SetRunOnOsLoginMode(
 void AppHomePageHandler::LaunchDeprecatedAppDialog() {
   TabDialogs::FromWebContents(web_ui_->GetWebContents())
       ->ShowDeprecatedAppsDialog(extensions::ExtensionId(), deprecated_app_ids_,
-                                 web_ui_->GetWebContents());
+                                 web_ui_->GetWebContents(), base::DoNothing());
 }
 
 void AppHomePageHandler::InstallAppLocally(const std::string& app_id) {

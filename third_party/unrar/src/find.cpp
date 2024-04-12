@@ -117,7 +117,7 @@ bool FindFile::FastFind(const wchar *FindMask,FindData *fd,bool GetSymLink)
   if (hFind==INVALID_HANDLE_VALUE)
     return false;
   FindClose(hFind);
-#elif defined(_UNIX)
+#else
   char FindMaskA[NM];
   WideToChar(FindMask,FindMaskA,ASIZE(FindMaskA));
 
@@ -143,7 +143,15 @@ bool FindFile::FastFind(const wchar *FindMask,FindData *fd,bool GetSymLink)
   fd->FileAttr=st.st_mode;
   fd->Size=st.st_size;
 
-  File::StatToRarTime(st, &fd->mtime, &fd->ctime, &fd->atime);
+#ifdef UNIX_TIME_NS
+  fd->mtime.SetUnixNS(st.st_mtim.tv_sec*(uint64)1000000000+st.st_mtim.tv_nsec);
+  fd->atime.SetUnixNS(st.st_atim.tv_sec*(uint64)1000000000+st.st_atim.tv_nsec);
+  fd->ctime.SetUnixNS(st.st_ctim.tv_sec*(uint64)1000000000+st.st_ctim.tv_nsec);
+#else
+  fd->mtime.SetUnix(st.st_mtime);
+  fd->atime.SetUnix(st.st_atime);
+  fd->ctime.SetUnix(st.st_ctime);
+#endif
 
   wcsncpyz(fd->Name,FindMask,ASIZE(fd->Name));
 #endif

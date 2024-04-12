@@ -90,9 +90,8 @@ gfx::Insets InfolistBorder::GetInsets() const {
 
 // InfolistRow renderes a row of a infolist.
 class InfolistEntryView : public views::View {
-  METADATA_HEADER(InfolistEntryView, views::View)
-
  public:
+  METADATA_HEADER(InfolistEntryView);
   InfolistEntryView(const ui::InfolistEntry& entry,
                     const gfx::FontList& title_font_list,
                     const gfx::FontList& description_font_list);
@@ -111,13 +110,13 @@ class InfolistEntryView : public views::View {
   ui::InfolistEntry entry_;
 
   // The title label. Owned by views hierarchy.
-  raw_ptr<views::Label> title_label_;
+  raw_ptr<views::Label, ExperimentalAsh> title_label_;
 
   // The description label. Owned by views hierarchy.
-  raw_ptr<views::Label> description_label_;
+  raw_ptr<views::Label, ExperimentalAsh> description_label_;
 };
 
-BEGIN_METADATA(InfolistEntryView)
+BEGIN_METADATA(InfolistEntryView, views::View)
 END_METADATA
 
 InfolistEntryView::InfolistEntryView(const ui::InfolistEntry& entry,
@@ -250,7 +249,7 @@ void InfolistWindow::Relayout(const std::vector<ui::InfolistEntry>& entries) {
     entry_views_.resize(entries.size());
   }
 
-  DeprecatedLayoutImmediately();
+  Layout();
   SizeToContents();
 }
 
@@ -280,7 +279,7 @@ void InfolistWindow::WindowClosing() {
   show_hide_timer_.Stop();
 }
 
-BEGIN_METADATA(InfolistWindow)
+BEGIN_METADATA(InfolistWindow, views::BubbleDialogDelegateView)
 END_METADATA
 
 }  // namespace ime

@@ -59,6 +59,9 @@ bool DialogDelegate::OnDialogCloseRequested() {
   return can_close_;
 }
 
+void DialogDelegate::GetWebUIMessageHandlers(
+    std::vector<content::WebUIMessageHandler*>* handlers) const {}
+
 std::string DialogDelegate::GetDialogArgs() const {
   return std::string();
 }

@@ -28,15 +28,10 @@ class ASH_EXPORT ScopedDragDropObserver
     : public aura::client::DragDropClientObserver,
       public ShellObserver {
  public:
-  enum class EventType { kDragUpdated, kDragCompleted, kDragCancelled };
+  ScopedDragDropObserver(
+      aura::client::DragDropClient* client,
+      base::RepeatingCallback<void(const ui::DropTargetEvent*)> event_callback);
 
-  // NOTE: `event` is `nullptr` for `event_type` == `EventType::kDragCancelled`.
-  using EventCallback =
-      base::RepeatingCallback<void(EventType event_type,
-                                   const ui::DropTargetEvent* event)>;
-
-  ScopedDragDropObserver(aura::client::DragDropClient* client,
-                         EventCallback event_callback);
   ScopedDragDropObserver(const ScopedDragDropObserver&) = delete;
   ScopedDragDropObserver& operator=(const ScopedDragDropObserver&) = delete;
   ~ScopedDragDropObserver() override;
@@ -50,7 +45,7 @@ class ASH_EXPORT ScopedDragDropObserver
   // ShellObserver:
   void OnShellDestroying() override;
 
-  EventCallback event_callback_;
+  base::RepeatingCallback<void(const ui::DropTargetEvent*)> event_callback_;
   base::ScopedObservation<aura::client::DragDropClient,
                           aura::client::DragDropClientObserver>
       drag_drop_client_observer_{this};

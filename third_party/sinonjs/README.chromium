@@ -3,9 +3,8 @@ Short Name: SinonJS
 URL: https://github.com/cjohansen/Sinon.JS
 Version: 1.10.0
 License: BSD
-License File: LICENSE
+License File: NOT_SHIPPED
 Security Critical: no
-Shipped: no
 
 Description:
 Standalone and test framework agnostic JavaScript test spies, stubs and mocks.

@@ -11,7 +11,6 @@ requests: [
     "requestMethod": "GET",
     "requestHeaders": [
       {
-        "custom": {},
         "name": "Host",
         "value": "localhost:8000"
       }
@@ -19,7 +18,6 @@ requests: [
     "mimeType": "text/html",
     "responseHeaders": [
       {
-        "custom": {},
         "name": "Content-Type",
         "value": "text/html;charset=ISO-8859-1"
       }
@@ -37,7 +35,15 @@ requests: [
       "encoded": false
     },
     "remoteAddress": "[::1]:80",
-    "resourceType": {},
+    "resourceType": {
+      "_name": "document",
+      "_title": "Document",
+      "_category": {
+        "title": "Documents",
+        "shortTitle": "Doc"
+      },
+      "_isTextType": true
+    },
     "priority": "VeryHigh",
     "finished": true,
     "timing": {
@@ -52,13 +58,10 @@ requests: [
       "sslEnd": -1,
       "workerStart": -1,
       "workerReady": -1,
-      "workerFetchStart": -1,
-      "workerRespondWithSettled": -1,
       "sendStart": 2.4644479999188333,
       "sendEnd": 2.534447999918833,
       "pushStart": 0,
       "pushEnd": 0,
-      "receiveHeadersStart": 2.534447999918833,
       "receiveHeadersEnd": 5.624447982991114
     },
     "endTime": 1542746587.7661417,
@@ -91,7 +94,15 @@ requests: [
       "encoded": false
     },
     "remoteAddress": "[::1]:80",
-    "resourceType": {},
+    "resourceType": {
+      "_name": "image",
+      "_title": "Image",
+      "_category": {
+        "title": "Images",
+        "shortTitle": "Img"
+      },
+      "_isTextType": false
+    },
     "priority": "Low",
     "finished": true,
     "timing": {
@@ -106,13 +117,10 @@ requests: [
       "sslEnd": -1,
       "workerStart": -1,
       "workerReady": -1,
-      "workerFetchStart": -1,
-      "workerRespondWithSettled": -1,
       "sendStart": 2.2485360001232477,
       "sendEnd": 2.3095360001232477,
       "pushStart": 0,
       "pushEnd": 0,
-      "receiveHeadersStart": 2.3095360001232477,
       "receiveHeadersEnd": 2.828536113491282
     },
     "endTime": 1542746587.8738945,
@@ -141,7 +149,15 @@ requests: [
       "encoded": false
     },
     "remoteAddress": "[::1]:80",
-    "resourceType": {},
+    "resourceType": {
+      "_name": "script",
+      "_title": "Script",
+      "_category": {
+        "title": "Scripts",
+        "shortTitle": "JS"
+      },
+      "_isTextType": true
+    },
     "priority": "Low",
     "finished": true,
     "timing": {
@@ -156,13 +172,10 @@ requests: [
       "sslEnd": -1,
       "workerStart": -1,
       "workerReady": -1,
-      "workerFetchStart": -1,
-      "workerRespondWithSettled": -1,
       "sendStart": 2.2485360001232477,
       "sendEnd": 2.3095360001232477,
       "pushStart": 0,
       "pushEnd": 0,
-      "receiveHeadersStart": 2.3095360001232477,
       "receiveHeadersEnd": 2.828536113491282
     },
     "endTime": 1542746587.8738945,
@@ -172,11 +185,7 @@ requests: [
     "url": "http://localhost:8000/endpoint",
     "documentURL": "http://localhost:8000/",
     "initiator": {
-      "type": "script",
-      "stack": {
-        "custom": {},
-        "callFrames": []
-      }
+      "type": "script"
     },
     "requestFormData": null,
     "connectionId": "2945",
@@ -197,7 +206,15 @@ requests: [
       "encoded": false
     },
     "remoteAddress": "[::1]:80",
-    "resourceType": {},
+    "resourceType": {
+      "_name": "fetch",
+      "_title": "Fetch",
+      "_category": {
+        "title": "XHR and Fetch",
+        "shortTitle": "XHR"
+      },
+      "_isTextType": true
+    },
     "priority": "Low",
     "finished": true,
     "timing": {
@@ -212,13 +229,10 @@ requests: [
       "sslEnd": -1,
       "workerStart": -1,
       "workerReady": -1,
-      "workerFetchStart": -1,
-      "workerRespondWithSettled": -1,
       "sendStart": 2.2485360001232477,
       "sendEnd": 2.3095360001232477,
       "pushStart": 0,
       "pushEnd": 0,
-      "receiveHeadersStart": 2.3095360001232477,
       "receiveHeadersEnd": 2.828536113491282
     },
     "endTime": 1542746587.8738945,
@@ -228,104 +242,75 @@ requests: [
     "url": "ws://localhost:8880/echo",
     "documentURL": "ws://localhost:8880/echo",
     "initiator": {
-      "type": "script",
-      "stack": {
-        "custom": {},
-        "callFrames": [
-          {
-            "custom": {},
-            "functionName": "",
-            "scriptId": "73",
-            "url": "",
-            "lineNumber": 0,
-            "columnNumber": 5
-          }
-        ]
-      }
+      "type": "script"
     },
     "requestFormData": null,
     "connectionId": "",
     "requestMethod": "GET",
     "requestHeaders": [
       {
-        "custom": {},
         "name": "Pragma",
         "value": "no-cache"
       },
       {
-        "custom": {},
         "name": "Origin",
         "value": "http://localhost:8000"
       },
       {
-        "custom": {},
         "name": "Accept-Encoding",
         "value": "gzip, deflate, br"
       },
       {
-        "custom": {},
         "name": "Host",
         "value": "localhost:8880"
       },
       {
-        "custom": {},
         "name": "Accept-Language",
         "value": "en-US,en;q=0.9"
       },
       {
-        "custom": {},
         "name": "Sec-WebSocket-Key",
         "value": "EBTeYTo1PMrIJhQV3KCyLA=="
       },
       {
-        "custom": {},
         "name": "User-Agent",
         "value": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3762.0 Safari/537.36"
       },
       {
-        "custom": {},
         "name": "Upgrade",
         "value": "websocket"
       },
       {
-        "custom": {},
         "name": "Sec-WebSocket-Extensions",
         "value": "permessage-deflate; client_max_window_bits"
       },
       {
-        "custom": {},
         "name": "Cache-Control",
         "value": "no-cache"
       },
       {
-        "custom": {},
         "name": "Connection",
         "value": "Upgrade"
       },
       {
-        "custom": {},
         "name": "Sec-WebSocket-Version",
         "value": "13"
       }
     ],
     "responseHeaders": [
       {
-        "custom": {},
         "name": "Sec-WebSocket-Accept",
         "value": "U81HpQbqlT7cIvlTLbf4dTv7m5w="
       },
       {
-        "custom": {},
         "name": "Connection",
         "value": "Upgrade"
       },
       {
-        "custom": {},
         "name": "Sec-WebSocket-Extensions",
         "value": "permessage-deflate"
       },
       {
-        "custom": {},
         "name": "Upgrade",
         "value": "websocket"
       }
@@ -343,7 +328,15 @@ requests: [
       "encoded": false
     },
     "remoteAddress": ":80",
-    "resourceType": {},
+    "resourceType": {
+      "_name": "websocket",
+      "_title": "WebSocket",
+      "_category": {
+        "title": "WebSockets",
+        "shortTitle": "WS"
+      },
+      "_isTextType": false
+    },
     "priority": null,
     "finished": true,
     "timing": {
@@ -358,13 +351,10 @@ requests: [
       "sslEnd": -1,
       "workerStart": -1,
       "workerReady": -1,
-      "workerFetchStart": -1,
-      "workerRespondWithSettled": -1,
       "sendStart": 0,
       "sendEnd": 0,
       "pushStart": 0,
       "pushEnd": 0,
-      "receiveHeadersStart": 0,
       "receiveHeadersEnd": 33045.93599960208
     },
     "endTime": 1555608261.2199361,

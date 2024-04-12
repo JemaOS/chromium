@@ -40,8 +40,4 @@ void GuestTosScreenHandler::Show(const std::string& google_eula_url,
   ShowInWebUI(std::move(data));
 }
 
-base::WeakPtr<GuestTosScreenView> GuestTosScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 }  // namespace ash

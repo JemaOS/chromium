@@ -276,12 +276,13 @@ void RelaunchNotificationController::HandleRelaunchRequiredState(
                  &RelaunchNotificationController::OnRelaunchDeadlineExpired);
   }
 
-  platform_impl_.SetDeadline(deadline);
-  // Show the dialog if there has been a level change or if the deadline is in
-  // the past.
-  if (!platform_impl_.IsRequiredNotificationShown() &&
-      (level != last_level_ || high_deadline <= now)) {
-    NotifyRelaunchRequired();
+  if (platform_impl_.IsRequiredNotificationShown()) {
+    platform_impl_.SetDeadline(deadline);
+  } else {
+    // Otherwise, show the dialog if there has been a level change or if the
+    // deadline is in the past.
+    if (level != last_level_ || high_deadline <= now)
+      NotifyRelaunchRequired();
   }
 }
 
@@ -356,6 +357,10 @@ void RelaunchNotificationController::DoNotifyRelaunchRequired(
 
 void RelaunchNotificationController::Close() {
   platform_impl_.CloseRelaunchNotification();
+}
+
+void RelaunchNotificationController::SetDeadline(base::Time deadline) {
+  platform_impl_.SetDeadline(deadline);
 }
 
 void RelaunchNotificationController::OnRelaunchDeadlineExpired() {

@@ -5,7 +5,6 @@
 /**
  * @fileoverview Provides color matching services for ChromeVox.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
 
 import {Msgs} from '../common/msgs.js';
 
@@ -245,5 +244,3 @@ const ColorObjectArray = [
   {'value': 0x7fff00, 'colorMessageId': 'color_chartreuse'},
   {'value': 0x1e90ff, 'colorMessageId': 'color_dodger_blue'},
 ];
-
-TestImportManager.exportForTesting(Color);

@@ -10,7 +10,6 @@
 #include <string>
 #include <utility>
 
-#include "ash/constants/ash_pref_names.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/scoped_refptr.h"
@@ -110,42 +109,32 @@ class MockLoginApiLockHandler : public chromeos::LoginApiLockHandler {
 class ScopedTestingProfile {
  public:
   ScopedTestingProfile(TestingProfile* profile,
-                       TestingProfileManager* profile_manager,
-                       const AccountId& account_id)
-      : profile_(profile),
-        profile_manager_(profile_manager),
-        account_id_(account_id) {
-    user_manager::UserManager::Get()->OnUserProfileCreated(account_id,
-                                                           profile->GetPrefs());
-  }
+                       TestingProfileManager* profile_manager)
+      : profile_(profile), profile_manager_(profile_manager) {}
 
   ScopedTestingProfile(const ScopedTestingProfile&) = delete;
 
   ScopedTestingProfile& operator=(const ScopedTestingProfile&) = delete;
 
   ~ScopedTestingProfile() {
-    user_manager::UserManager::Get()->OnUserProfileWillBeDestroyed(account_id_);
-    std::string user_name = profile_->GetProfileUserName();
-    profile_ = nullptr;
-    profile_manager_->DeleteTestingProfile(user_name);
+    profile_manager_->DeleteTestingProfile(profile_->GetProfileUserName());
   }
 
   TestingProfile* profile() { return profile_; }
 
  private:
-  raw_ptr<TestingProfile> profile_;
-  const raw_ptr<TestingProfileManager> profile_manager_;
-  const AccountId account_id_;
+  const raw_ptr<TestingProfile, ExperimentalAsh> profile_;
+  const raw_ptr<TestingProfileManager, ExperimentalAsh> profile_manager_;
 };
 
 ash::UserContext GetPublicUserContext(const std::string& email) {
-  return ash::UserContext(user_manager::UserType::kPublicAccount,
+  return ash::UserContext(user_manager::USER_TYPE_PUBLIC_ACCOUNT,
                           AccountId::FromUserEmail(email));
 }
 
 ash::UserContext GetRegularUserContext(const std::string& email,
                                        const std::string& gaia_id) {
-  return ash::UserContext(user_manager::UserType::kRegular,
+  return ash::UserContext(user_manager::USER_TYPE_REGULAR,
                           AccountId::FromUserEmailGaiaId(email, gaia_id));
 }
 
@@ -167,7 +156,7 @@ class LoginApiUnittest : public ExtensionApiUnittest {
   void SetUp() override {
     ExtensionApiUnittest::SetUp();
 
-    auth_events_recorder_ = ash::AuthEventsRecorder::CreateForTesting();
+    auth_metrics_recorder_ = ash::AuthMetricsRecorder::CreateForTesting();
     fake_chrome_user_manager_ = new ash::FakeChromeUserManager();
     scoped_user_manager_ = std::make_unique<user_manager::ScopedUserManager>(
         std::unique_ptr<ash::FakeChromeUserManager>(fake_chrome_user_manager_));
@@ -194,28 +183,27 @@ class LoginApiUnittest : public ExtensionApiUnittest {
     mock_existing_user_controller_.reset();
     mock_login_display_host_.reset();
     scoped_user_manager_.reset();
-    auth_events_recorder_.reset();
+    auth_metrics_recorder_.reset();
 
     ExtensionApiUnittest::TearDown();
   }
 
   std::unique_ptr<ScopedTestingProfile> AddPublicAccountUser(
       const std::string& email) {
-    user_manager::User* user = fake_chrome_user_manager_->AddPublicAccountUser(
+    fake_chrome_user_manager_->AddPublicAccountUser(
         AccountId::FromUserEmail(email));
     TestingProfile* profile = profile_manager()->CreateTestingProfile(email);
 
-    return std::make_unique<ScopedTestingProfile>(profile, profile_manager(),
-                                                  user->GetAccountId());
+    return std::make_unique<ScopedTestingProfile>(profile, profile_manager());
   }
 
-  raw_ptr<ash::FakeChromeUserManager, DanglingUntriaged>
+  raw_ptr<ash::FakeChromeUserManager, ExperimentalAsh>
       fake_chrome_user_manager_;
   std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
   std::unique_ptr<ash::MockLoginDisplayHost> mock_login_display_host_;
   std::unique_ptr<MockExistingUserController> mock_existing_user_controller_;
   std::unique_ptr<MockLoginApiLockHandler> mock_lock_handler_;
-  std::unique_ptr<ash::AuthEventsRecorder> auth_events_recorder_;
+  std::unique_ptr<ash::AuthMetricsRecorder> auth_metrics_recorder_;
 };
 
 MATCHER_P(MatchSigninSpecifics, expected, "") {
@@ -334,7 +322,7 @@ TEST_F(LoginApiUnittest, FetchDataForNextLoginAttemptClearsPref) {
   local_state->SetString(prefs::kLoginExtensionApiDataForNextLoginAttempt,
                          data_for_next_login_attempt);
 
-  std::optional<base::Value> value = RunFunctionAndReturnValue(
+  absl::optional<base::Value> value = RunFunctionAndReturnValue(
       base::MakeRefCounted<LoginFetchDataForNextLoginAttemptFunction>(), "[]");
   ASSERT_EQ(data_for_next_login_attempt, value->GetString());
 
@@ -347,7 +335,7 @@ TEST_F(LoginApiUnittest, FetchDataForNextLoginAttemptClearsPref) {
 TEST_F(LoginApiUnittest, SetDataForNextLoginAttempt) {
   const std::string data_for_next_login_attempt = "hello world";
 
-  std::optional<base::Value> value = RunFunctionAndReturnValue(
+  absl::optional<base::Value> value = RunFunctionAndReturnValue(
       base::MakeRefCounted<LoginSetDataForNextLoginAttemptFunction>(),
       "[\"" + data_for_next_login_attempt + "\"]");
 
@@ -362,12 +350,8 @@ TEST_F(LoginApiUnittest, LockManagedGuestSession) {
   ui::UserActivityDetector::Get()->set_now_for_test(now);
 
   std::unique_ptr<ScopedTestingProfile> profile = AddPublicAccountUser(kEmail);
-  profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  profile->profile()->GetPrefs()->SetBoolean(ash::prefs::kAllowScreenLock,
-                                             true);
-
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::ACTIVE);
 
@@ -387,12 +371,8 @@ TEST_F(LoginApiUnittest,
   ui::UserActivityDetector::Get()->set_now_for_test(now);
 
   std::unique_ptr<ScopedTestingProfile> profile = AddPublicAccountUser(kEmail);
-  profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  profile->profile()->GetPrefs()->SetBoolean(ash::prefs::kAllowScreenLock,
-                                             true);
-
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::ACTIVE);
 
@@ -426,12 +406,8 @@ TEST_F(LoginApiUnittest, LockManagedGuestSessionNotManagedGuestSession) {
 
 TEST_F(LoginApiUnittest, LockManagedGuestSessionUserCannotLock) {
   std::unique_ptr<ScopedTestingProfile> profile = AddPublicAccountUser(kEmail);
-  profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, false);
-  profile->profile()->GetPrefs()->SetBoolean(ash::prefs::kAllowScreenLock,
-                                             false);
-
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
+  fake_chrome_user_manager_->set_current_user_can_lock(false);
 
   ASSERT_EQ(
       login_api_errors::kNoLockableSession,
@@ -441,12 +417,8 @@ TEST_F(LoginApiUnittest, LockManagedGuestSessionUserCannotLock) {
 
 TEST_F(LoginApiUnittest, LockManagedGuestSessionSessionNotActive) {
   std::unique_ptr<ScopedTestingProfile> profile = AddPublicAccountUser(kEmail);
-  profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  profile->profile()->GetPrefs()->SetBoolean(ash::prefs::kAllowScreenLock,
-                                             true);
-
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
 
@@ -462,12 +434,8 @@ TEST_F(LoginApiUnittest, UnlockManagedGuestSession) {
 
   std::unique_ptr<ScopedTestingProfile> scoped_profile =
       AddPublicAccountUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
-
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
 
@@ -495,11 +463,8 @@ TEST_F(LoginApiUnittest,
 
   std::unique_ptr<ScopedTestingProfile> scoped_profile =
       AddPublicAccountUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
 
@@ -552,11 +517,7 @@ TEST_F(LoginApiUnittest, UnlockManagedGuestSessionCannotUnlock) {
 TEST_F(LoginApiUnittest, UnlockManagedGuestSessionSessionNotLocked) {
   std::unique_ptr<ScopedTestingProfile> scoped_profile =
       AddPublicAccountUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
-
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
 
   ASSERT_EQ(login_api_errors::kSessionIsNotLocked,
@@ -568,11 +529,7 @@ TEST_F(LoginApiUnittest, UnlockManagedGuestSessionSessionNotLocked) {
 TEST_F(LoginApiUnittest, UnlockManagedGuestSessionUnlockInProgress) {
   std::unique_ptr<ScopedTestingProfile> scoped_profile =
       AddPublicAccountUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
-
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
@@ -588,11 +545,7 @@ TEST_F(LoginApiUnittest, UnlockManagedGuestSessionUnlockInProgress) {
 TEST_F(LoginApiUnittest, UnlockManagedGuestSessionAuthenticationFailed) {
   std::unique_ptr<ScopedTestingProfile> scoped_profile =
       AddPublicAccountUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
-
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
@@ -626,13 +579,12 @@ class LoginApiUserSessionUnittest : public LoginApiUnittest {
  protected:
   std::unique_ptr<ScopedTestingProfile> AddRegularUser(
       const std::string& email) {
-    auto* user = fake_chrome_user_manager_->AddUserWithAffiliation(
+    fake_chrome_user_manager_->AddUserWithAffiliation(
         AccountId::FromUserEmailGaiaId(email, kGaiaId),
         /* is_affiliated= */ true);
     TestingProfile* profile = profile_manager()->CreateTestingProfile(email);
 
-    return std::make_unique<ScopedTestingProfile>(profile, profile_manager(),
-                                                  user->GetAccountId());
+    return std::make_unique<ScopedTestingProfile>(profile, profile_manager());
   }
 };
 
@@ -703,12 +655,8 @@ TEST_F(LoginApiUserSessionUnittest, LockUserSession) {
   ui::UserActivityDetector::Get()->set_now_for_test(now);
 
   std::unique_ptr<ScopedTestingProfile> profile = AddRegularUser(kEmail);
-  profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  profile->profile()->GetPrefs()->SetBoolean(ash::prefs::kAllowScreenLock,
-                                             true);
-
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::ACTIVE);
 
@@ -726,12 +674,8 @@ TEST_F(LoginApiUserSessionUnittest, LockUserSession) {
 // session is not active for regular user.
 TEST_F(LoginApiUserSessionUnittest, LockUserSessionSessionNotActive) {
   std::unique_ptr<ScopedTestingProfile> profile = AddRegularUser(kEmail);
-  profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  profile->profile()->GetPrefs()->SetBoolean(ash::prefs::kAllowScreenLock,
-                                             true);
-
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
 
@@ -747,12 +691,8 @@ TEST_F(LoginApiUserSessionUnittest, UnlockUserSession) {
   ui::UserActivityDetector::Get()->set_now_for_test(now);
 
   std::unique_ptr<ScopedTestingProfile> scoped_profile = AddRegularUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
-
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
 
@@ -777,11 +717,7 @@ TEST_F(LoginApiUserSessionUnittest, UnlockUserSession) {
 // user session is not locked for regular user.
 TEST_F(LoginApiUserSessionUnittest, UnlockUserSessionSessionNotLocked) {
   std::unique_ptr<ScopedTestingProfile> scoped_profile = AddRegularUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
-
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
 
   auto function = base::MakeRefCounted<LoginUnlockCurrentSessionFunction>();
@@ -793,11 +729,7 @@ TEST_F(LoginApiUserSessionUnittest, UnlockUserSessionSessionNotLocked) {
 // unlock is already in progress for regular user.
 TEST_F(LoginApiUserSessionUnittest, UnlockUserSessionUnlockInProgress) {
   std::unique_ptr<ScopedTestingProfile> scoped_profile = AddRegularUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
-
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
@@ -813,11 +745,7 @@ TEST_F(LoginApiUserSessionUnittest, UnlockUserSessionUnlockInProgress) {
 // on failed authentication for regular user.
 TEST_F(LoginApiUserSessionUnittest, UnlockUserSessionAuthenticationFailed) {
   std::unique_ptr<ScopedTestingProfile> scoped_profile = AddRegularUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
-
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   fake_chrome_user_manager_->SwitchActiveUser(AccountId::FromUserEmail(kEmail));
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
@@ -868,8 +796,8 @@ class LoginApiSharedSessionUnittest : public LoginApiUnittest {
   }
 
   void SetUpCleanupHandlerMocks(
-      std::optional<std::string> error1 = std::nullopt,
-      std::optional<std::string> error2 = std::nullopt) {
+      absl::optional<std::string> error1 = absl::nullopt,
+      absl::optional<std::string> error2 = absl::nullopt) {
     std::unique_ptr<chromeos::MockCleanupHandler> mock_cleanup_handler1 =
         std::make_unique<StrictMock<chromeos::MockCleanupHandler>>();
     EXPECT_CALL(*mock_cleanup_handler1, Cleanup(_))
@@ -917,11 +845,7 @@ class LoginApiSharedSessionUnittest : public LoginApiUnittest {
         base::MakeRefCounted<LoginLaunchSharedManagedGuestSessionFunction>(),
         "[\"" + password + "\"]");
 
-    testing_profile_->profile()->GetPrefs()->SetBoolean(
-        ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-    testing_profile_->profile()->GetPrefs()->SetBoolean(
-        ash::prefs::kAllowScreenLock, true);
-
+    fake_chrome_user_manager_->set_current_user_can_lock(true);
     fake_chrome_user_manager_->SwitchActiveUser(
         AccountId::FromUserEmail(kEmail));
 
@@ -1047,11 +971,7 @@ TEST_F(LoginApiSharedSessionUnittest, UnlockSharedSession) {
 TEST_F(LoginApiSharedSessionUnittest, UnlockSharedSessionNotLocked) {
   std::unique_ptr<ScopedTestingProfile> scoped_profile =
       AddPublicAccountUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
-
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   ASSERT_EQ(login_api_errors::kSessionIsNotLocked,
             RunFunctionAndReturnError(
                 base::MakeRefCounted<LoginUnlockSharedSessionFunction>(),
@@ -1063,11 +983,7 @@ TEST_F(LoginApiSharedSessionUnittest, UnlockSharedSessionNotLocked) {
 TEST_F(LoginApiSharedSessionUnittest, UnlockSharedSessionNoSharedMGS) {
   std::unique_ptr<ScopedTestingProfile> scoped_profile =
       AddPublicAccountUser(kEmail);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, true);
-  scoped_profile->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, true);
-
+  fake_chrome_user_manager_->set_current_user_can_lock(true);
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
   ASSERT_EQ(login_api_errors::kNoSharedMGSFound,
@@ -1126,10 +1042,7 @@ TEST_F(LoginApiSharedSessionUnittest, UnlockSharedSessionCannotUnlock) {
   LaunchSharedManagedGuestSession("foo");
   session_manager::SessionManager::Get()->SetSessionState(
       session_manager::SessionState::LOCKED);
-  testing_profile_->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kLoginExtensionApiCanLockManagedGuestSession, false);
-  testing_profile_->profile()->GetPrefs()->SetBoolean(
-      ash::prefs::kAllowScreenLock, false);
+  fake_chrome_user_manager_->set_current_user_can_lock(false);
 
   ASSERT_EQ(login_api_errors::kNoUnlockableSession,
             RunFunctionAndReturnError(

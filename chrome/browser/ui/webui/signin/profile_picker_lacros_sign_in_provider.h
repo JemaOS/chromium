@@ -49,7 +49,7 @@ class ProfilePickerLacrosSignInProvider
       const signin::PrimaryAccountChangeEvent& event_details) override;
 
   void OnLacrosProfileCreated(
-      const std::optional<AccountProfileMapper::AddAccountResult>& result);
+      const absl::optional<AccountProfileMapper::AddAccountResult>& result);
 
   void OnProfileSignedIn();
 

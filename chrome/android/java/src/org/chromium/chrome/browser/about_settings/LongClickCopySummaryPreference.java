@@ -12,9 +12,13 @@ import androidx.preference.PreferenceViewHolder;
 
 import org.chromium.ui.base.Clipboard;
 
-/** Preference that copies its summary to the clipboard upon a long press. */
+/**
+ * Preference that copies its summary to the clipboard upon a long press.
+ */
 public class LongClickCopySummaryPreference extends Preference {
-    /** Constructor for inflating from XML. */
+    /**
+     * Constructor for inflating from XML.
+     */
     public LongClickCopySummaryPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
@@ -22,11 +26,9 @@ public class LongClickCopySummaryPreference extends Preference {
     @Override
     public void onBindViewHolder(PreferenceViewHolder holder) {
         super.onBindViewHolder(holder);
-        holder.itemView.setOnLongClickListener(
-                v -> {
-                    Clipboard.getInstance()
-                            .setText(getTitle().toString(), getSummary().toString(), true);
-                    return true;
-                });
+        holder.itemView.setOnLongClickListener(v -> {
+            Clipboard.getInstance().setTextAndNotify(getSummary().toString());
+            return true;
+        });
     }
 }

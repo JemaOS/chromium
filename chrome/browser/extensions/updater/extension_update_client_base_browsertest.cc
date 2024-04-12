@@ -5,7 +5,6 @@
 #include "chrome/browser/extensions/updater/extension_update_client_base_browsertest.h"
 
 #include <memory>
-#include <optional>
 
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
@@ -14,13 +13,13 @@
 #include "chrome/browser/chrome_browser_main.h"
 #include "chrome/browser/chrome_browser_main_extra_parts.h"
 #include "chrome/browser/extensions/browsertest_util.h"
-#include "chrome/browser/profiles/profile.h"
 #include "components/update_client/net/url_loader_post_interceptor.h"
 #include "components/update_client/protocol_handler.h"
 #include "content/public/browser/browser_context.h"
 #include "extensions/browser/updater/update_service.h"
 #include "extensions/browser/updater/update_service_factory.h"
 #include "extensions/common/extension_features.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace extensions {
 
@@ -35,7 +34,7 @@ class TestChromeUpdateClientConfig
   TestChromeUpdateClientConfig(content::BrowserContext* context,
                                const std::vector<GURL>& update_url,
                                const std::vector<GURL>& ping_url)
-      : extensions::ChromeUpdateClientConfig(context, std::nullopt),
+      : extensions::ChromeUpdateClientConfig(context, absl::nullopt),
         update_url_(update_url),
         ping_url_(ping_url) {}
 

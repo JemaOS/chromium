@@ -1,5 +1,4 @@
 include_rules = [
-  "+services/accessibility/public/mojom",
   "+v8/include",
   "+gin",
 ]

@@ -102,10 +102,12 @@ std::unique_ptr<AssistantButton> AssistantButton::Create(
     return button;
   }
 
-  button->SetImageModel(
-      views::Button::STATE_NORMAL,
-      ui::ImageModel::FromVectorIcon(*icon_description.icon, params.icon_color,
-                                     icon_description.dip_size));
+  // `icon_color` does not change so we can set the color and icon for the
+  // button now.
+  icon_description.color = params.icon_color;
+
+  button->SetImage(views::Button::STATE_NORMAL,
+                   gfx::CreateVectorIcon(icon_description));
   return button;
 }
 
@@ -160,10 +162,8 @@ void AssistantButton::OnThemeChanged() {
   // This might be the first time the image is rendered since `icon_color_type_`
   // may not resolvable until now.
   icon_description_->color = GetColorProvider()->GetColor(*icon_color_type_);
-  SetImageModel(views::Button::STATE_NORMAL,
-                ui::ImageModel::FromVectorIcon(*icon_description_->icon,
-                                               icon_description_->color,
-                                               icon_description_->dip_size));
+  SetImage(views::Button::STATE_NORMAL,
+           gfx::CreateVectorIcon(icon_description_.value()));
 }
 
 void AssistantButton::OnButtonPressed() {
@@ -171,7 +171,7 @@ void AssistantButton::OnButtonPressed() {
   listener_->OnButtonPressed(id_);
 }
 
-BEGIN_METADATA(AssistantButton)
+BEGIN_METADATA(AssistantButton, views::ImageButton)
 END_METADATA
 
 }  // namespace ash

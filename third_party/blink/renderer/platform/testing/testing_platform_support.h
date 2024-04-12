@@ -37,11 +37,11 @@
 #include "base/auto_reset.h"
 #include "base/check_op.h"
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/platform/heap/heap_test_utilities.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
+#include "third_party/blink/renderer/platform/testing/code_cache_loader_mock.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "v8/include/v8-platform.h"
 
@@ -75,10 +75,6 @@ class TestingPlatformSupport : public Platform {
   virtual void RunUntilIdle();
   void SetThreadedAnimationEnabled(bool enabled);
 
-  virtual const base::Clock* GetClock() const;
-  virtual const base::TickClock* GetTickClock() const;
-  virtual base::TimeTicks NowTicks() const;
-
   // Overrides the handling of GetInterface on the platform's associated
   // interface provider.
   class ScopedOverrideMojoInterface {
@@ -96,7 +92,7 @@ class TestingPlatformSupport : public Platform {
  protected:
   class TestingBrowserInterfaceBroker;
 
-  const raw_ptr<Platform> old_platform_;
+  Platform* const old_platform_;
   scoped_refptr<TestingBrowserInterfaceBroker> interface_broker_;
 
  private:
@@ -155,7 +151,7 @@ class ScopedTestingPlatformSupport final {
 
  private:
   std::unique_ptr<T> testing_platform_support_;
-  raw_ptr<Platform> original_platform_;
+  Platform* original_platform_;
 };
 
 class ScopedUnittestsEnvironmentSetup final {
@@ -175,7 +171,7 @@ class ScopedUnittestsEnvironmentSetup final {
   std::unique_ptr<Platform> dummy_platform_;
   std::unique_ptr<v8::Platform> v8_platform_for_heap_testing_;
   std::unique_ptr<TestingPlatformSupport> testing_platform_support_;
-  std::optional<HeapPointersOnStackScope> conservative_gc_scope_;
+  absl::optional<HeapPointersOnStackScope> conservative_gc_scope_;
 };
 
 }  // namespace blink

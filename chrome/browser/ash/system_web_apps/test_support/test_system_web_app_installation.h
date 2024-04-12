@@ -6,19 +6,16 @@
 #define CHROME_BROWSER_ASH_SYSTEM_WEB_APPS_TEST_SUPPORT_TEST_SYSTEM_WEB_APP_INSTALLATION_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
 #include "chrome/browser/ash/system_web_apps/test_support/test_system_web_app_manager.h"
 #include "chrome/browser/ash/system_web_apps/test_support/test_system_web_app_web_ui_controller_factory.h"
 #include "chrome/browser/ash/system_web_apps/types/system_web_app_delegate.h"
+#include "chrome/browser/web_applications/test/fake_web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "components/content_settings/core/common/content_settings_types.h"
-
-namespace web_app {
-class FakeWebAppProviderCreator;
-}  // namespace web_app
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
@@ -39,7 +36,7 @@ class UnittestingSystemAppDelegate : public SystemWebAppDelegate {
                                        const GURL&,
                                        const apps::AppLaunchParams&)>;
 
-  std::unique_ptr<web_app::WebAppInstallInfo> GetWebAppInfo() const override;
+  std::unique_ptr<WebAppInstallInfo> GetWebAppInfo() const override;
 
   std::vector<std::string> GetAppIdsToUninstallAndReplace() const override;
   gfx::Size GetMinimumWindowSize() const override;
@@ -49,16 +46,15 @@ class UnittestingSystemAppDelegate : public SystemWebAppDelegate {
       const apps::AppLaunchParams& params) const override;
   std::vector<int> GetAdditionalSearchTerms() const override;
   bool ShouldShowInLauncher() const override;
-  bool ShouldShowInSearchAndShelf() const override;
+  bool ShouldShowInSearch() const override;
   bool ShouldHandleFileOpenIntents() const override;
   bool ShouldCaptureNavigations() const override;
   bool ShouldAllowResize() const override;
   bool ShouldAllowMaximize() const override;
-  bool ShouldAllowFullscreen() const override;
   bool ShouldHaveTabStrip() const override;
   bool ShouldHaveReloadButtonInMinimalUi() const override;
   bool ShouldAllowScriptsToCloseWindows() const override;
-  std::optional<SystemWebAppBackgroundTaskInfo> GetTimerInfo() const override;
+  absl::optional<SystemWebAppBackgroundTaskInfo> GetTimerInfo() const override;
   gfx::Rect GetDefaultBounds(Browser* browser) const override;
   Browser* LaunchAndNavigateSystemWebApp(
       Profile* profile,
@@ -73,7 +69,7 @@ class UnittestingSystemAppDelegate : public SystemWebAppDelegate {
   bool ShouldAnimateThemeChanges() const override;
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-  void SetAppIdsToUninstallAndReplace(const std::vector<webapps::AppId>&);
+  void SetAppIdsToUninstallAndReplace(const std::vector<web_app::AppId>&);
   void SetMinimumWindowSize(const gfx::Size&);
   void SetShouldReuseExistingWindow(bool);
   void SetShouldShowNewWindowMenuOption(bool);
@@ -81,7 +77,7 @@ class UnittestingSystemAppDelegate : public SystemWebAppDelegate {
   void SetEnabledOriginTrials(const OriginTrialsMap&);
   void SetAdditionalSearchTerms(const std::vector<int>&);
   void SetShouldShowInLauncher(bool);
-  void SetShouldShowInSearchAndShelf(bool);
+  void SetShouldShowInSearch(bool);
   void SetShouldHandleFileOpenIntents(bool);
   void SetShouldCaptureNavigations(bool);
   void SetShouldAllowResize(bool);
@@ -103,7 +99,7 @@ class UnittestingSystemAppDelegate : public SystemWebAppDelegate {
  private:
   web_app::WebAppInstallInfoFactory info_factory_;
 
-  std::vector<webapps::AppId> uninstall_and_replace_;
+  std::vector<web_app::AppId> uninstall_and_replace_;
   gfx::Size minimum_window_size_;
   bool single_window_ = true;
   bool show_new_window_menu_option_ = false;
@@ -115,7 +111,6 @@ class UnittestingSystemAppDelegate : public SystemWebAppDelegate {
   bool capture_navigations_ = false;
   bool is_resizeable_ = true;
   bool is_maximizable_ = true;
-  bool is_fullscreenable_ = true;
   bool has_tab_strip_ = false;
   bool should_have_reload_button_in_minimal_ui_ = true;
   bool allow_scripts_to_close_windows_ = false;
@@ -133,7 +128,7 @@ class UnittestingSystemAppDelegate : public SystemWebAppDelegate {
   LaunchAndNavigateSystemWebAppCallback launch_and_navigate_system_web_apps_ =
       base::NullCallback();
 
-  std::optional<SystemWebAppBackgroundTaskInfo> timer_info_;
+  absl::optional<SystemWebAppBackgroundTaskInfo> timer_info_;
 };
 
 // Class to setup the installation of a test System Web App.
@@ -162,8 +157,6 @@ class TestSystemWebAppInstallation {
 
   static std::unique_ptr<TestSystemWebAppInstallation>
   SetUpAppWithEnabledOriginTrials(const OriginTrialsMap& origin_to_trials);
-
-  static std::unique_ptr<TestSystemWebAppInstallation> SetUpAppLaunchWithUrl();
 
   static std::unique_ptr<TestSystemWebAppInstallation>
   SetUpAppNotShownInLauncher();
@@ -219,10 +212,10 @@ class TestSystemWebAppInstallation {
   SetUpAppsForContestMenuTest();
 
   static std::unique_ptr<TestSystemWebAppInstallation> SetUpAppWithColors(
-      std::optional<SkColor> theme_color,
-      std::optional<SkColor> dark_mode_theme_color,
-      std::optional<SkColor> background_color,
-      std::optional<SkColor> dark_mode_background_color);
+      absl::optional<SkColor> theme_color,
+      absl::optional<SkColor> dark_mode_theme_color,
+      absl::optional<SkColor> background_color,
+      absl::optional<SkColor> dark_mode_background_color);
 
   static std::unique_ptr<TestSystemWebAppInstallation> SetUpAppWithValidIcons();
 
@@ -230,7 +223,7 @@ class TestSystemWebAppInstallation {
 
   void WaitForAppInstall();
 
-  webapps::AppId GetAppId();
+  web_app::AppId GetAppId();
   const GURL& GetAppUrl();
   SystemWebAppDelegate* GetDelegate();
   SystemWebAppType GetType();
@@ -265,7 +258,7 @@ class TestSystemWebAppInstallation {
       test_system_web_app_manager_creator_;
 
   // nullopt if SetUpWithoutApps() was used.
-  const std::optional<SystemWebAppType> type_;
+  const absl::optional<SystemWebAppType> type_;
   std::vector<std::unique_ptr<TestSystemWebAppWebUIControllerFactory>>
       web_ui_controller_factories_;
   std::set<ContentSettingsType> auto_granted_permissions_;

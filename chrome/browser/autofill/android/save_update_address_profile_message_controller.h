@@ -70,7 +70,7 @@ class SaveUpdateAddressProfileMessageController {
   void DismissMessage();
 
   void RunSaveAddressProfileCallback(
-      AutofillClient::AddressPromptUserDecision decision);
+      AutofillClient::SaveAddressProfileOfferUserDecision decision);
 
   bool UserSignedIn() const;
   std::u16string GetTitle();
@@ -85,7 +85,7 @@ class SaveUpdateAddressProfileMessageController {
   // migrated to their Google Account.
   bool is_migration_to_account_;
   // The profile which is being confirmed by the user.
-  std::optional<AutofillProfile> profile_;
+  AutofillProfile profile_;
   // The profile (if exists) which will be updated if the user confirms.
   raw_ptr<const AutofillProfile> original_profile_;
   // The callback to run once the user makes the final decision.

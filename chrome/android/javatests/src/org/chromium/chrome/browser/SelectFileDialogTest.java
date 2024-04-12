@@ -42,33 +42,34 @@ import org.chromium.ui.base.SelectFileDialog;
 
 import java.io.File;
 
-/** Integration test for select file dialog used for <input type="file" /> */
+/**
+ * Integration test for select file dialog used for <input type="file" />
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 public class SelectFileDialogTest {
     @Rule
     public ChromeTabbedActivityTestRule mActivityTestRule = new ChromeTabbedActivityTestRule();
 
-    private static final String DATA_URL =
-            UrlUtils.encodeHtmlDataUri(
-                    "<html><head><meta name=\"viewport\"content=\"width=device-width,"
-                            + " initial-scale=2.0, maximum-scale=2.0\" /></head><body><form"
-                            + " action=\"about:blank\"><input id=\"input_file\" type=\"file\""
-                            + " /><br/><input id=\"input_text\" type=\"file\" accept=\"text/plain\""
-                            + " /><br/><input id=\"input_any\" type=\"file\" accept=\"*/*\""
-                            + " /><br/><input id=\"input_file_multiple\" type=\"file\" multiple /><br"
-                            + " /><input id=\"input_image\" type=\"file\" accept=\"image/*\" capture"
-                            + " /><br/><input id=\"input_audio\" type=\"file\" accept=\"audio/*\""
-                            + " capture /></form></body></html>");
+    private static final String DATA_URL = UrlUtils.encodeHtmlDataUri(
+            "<html><head><meta name=\"viewport\""
+            + "content=\"width=device-width, initial-scale=2.0, maximum-scale=2.0\" /></head>"
+            + "<body><form action=\"about:blank\">"
+            + "<input id=\"input_file\" type=\"file\" /><br/>"
+            + "<input id=\"input_text\" type=\"file\" accept=\"text/plain\" /><br/>"
+            + "<input id=\"input_any\" type=\"file\" accept=\"*/*\" /><br/>"
+            + "<input id=\"input_file_multiple\" type=\"file\" multiple /><br />"
+            + "<input id=\"input_image\" type=\"file\" accept=\"image/*\" capture /><br/>"
+            + "<input id=\"input_audio\" type=\"file\" accept=\"audio/*\" capture />"
+            + "</form>"
+            + "</body></html>");
 
     private static class ActivityWindowAndroidForTest extends ActivityWindowAndroid {
         public Intent lastIntent;
         public IntentCallback lastCallback;
 
         public ActivityWindowAndroidForTest(Activity activity) {
-            super(
-                    activity,
-                    /* listenToActivityState= */ true,
+            super(activity, /* listenToActivityState= */ true,
                     IntentRequestTracker.createFromActivity(activity));
         }
 
@@ -86,13 +87,10 @@ public class SelectFileDialogTest {
     }
 
     private void verifyIntentSent() {
-        CriteriaHelper.pollInstrumentationThread(
-                () -> {
-                    Criteria.checkThat(
-                            "SelectFileDialog never sent an intent.",
-                            mActivityWindowAndroidForTest.lastIntent,
-                            Matchers.notNullValue());
-                });
+        CriteriaHelper.pollInstrumentationThread(() -> {
+            Criteria.checkThat("SelectFileDialog never sent an intent.",
+                    mActivityWindowAndroidForTest.lastIntent, Matchers.notNullValue());
+        });
     }
 
     private WebContents mWebContents;
@@ -102,26 +100,24 @@ public class SelectFileDialogTest {
     public void setUp() {
         mActivityTestRule.startMainActivityWithURL(DATA_URL);
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mActivityWindowAndroidForTest =
-                            new ActivityWindowAndroidForTest(mActivityTestRule.getActivity());
-                    SelectFileDialog.setWindowAndroidForTests(mActivityWindowAndroidForTest);
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mActivityWindowAndroidForTest =
+                    new ActivityWindowAndroidForTest(mActivityTestRule.getActivity());
+            SelectFileDialog.setWindowAndroidForTests(mActivityWindowAndroidForTest);
 
-                    mWebContents = mActivityTestRule.getActivity().getCurrentWebContents();
-                });
+            mWebContents = mActivityTestRule.getActivity().getCurrentWebContents();
+        });
         DOMUtils.waitForNonZeroNodeBounds(mWebContents, "input_file");
     }
 
     @After
     public void tearDown() {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mActivityWindowAndroidForTest.destroy();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> { mActivityWindowAndroidForTest.destroy(); });
     }
 
-    /** Tests that clicks on <input type="file" /> trigger intent calls to ActivityWindowAndroid. */
+    /**
+     * Tests that clicks on <input type="file" /> trigger intent calls to ActivityWindowAndroid.
+     */
     @Test
     @RequiresApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
     @MediumTest
@@ -137,9 +133,8 @@ public class SelectFileDialogTest {
             Assert.assertEquals(
                     Intent.ACTION_CHOOSER, mActivityWindowAndroidForTest.lastIntent.getAction());
             Intent contentIntent =
-                    (Intent)
-                            mActivityWindowAndroidForTest.lastIntent.getParcelableExtra(
-                                    Intent.EXTRA_INTENT);
+                    (Intent) mActivityWindowAndroidForTest.lastIntent.getParcelableExtra(
+                            Intent.EXTRA_INTENT);
             Assert.assertNotNull(contentIntent);
             Assert.assertFalse(contentIntent.hasCategory(Intent.CATEGORY_OPENABLE));
             resetActivityWindowAndroidForTest();
@@ -151,9 +146,8 @@ public class SelectFileDialogTest {
             Assert.assertEquals(
                     Intent.ACTION_CHOOSER, mActivityWindowAndroidForTest.lastIntent.getAction());
             Intent contentIntent =
-                    (Intent)
-                            mActivityWindowAndroidForTest.lastIntent.getParcelableExtra(
-                                    Intent.EXTRA_INTENT);
+                    (Intent) mActivityWindowAndroidForTest.lastIntent.getParcelableExtra(
+                            Intent.EXTRA_INTENT);
             Assert.assertNotNull(contentIntent);
             Assert.assertTrue(contentIntent.hasCategory(Intent.CATEGORY_OPENABLE));
             resetActivityWindowAndroidForTest();
@@ -165,9 +159,8 @@ public class SelectFileDialogTest {
             Assert.assertEquals(
                     Intent.ACTION_CHOOSER, mActivityWindowAndroidForTest.lastIntent.getAction());
             Intent contentIntent =
-                    (Intent)
-                            mActivityWindowAndroidForTest.lastIntent.getParcelableExtra(
-                                    Intent.EXTRA_INTENT);
+                    (Intent) mActivityWindowAndroidForTest.lastIntent.getParcelableExtra(
+                            Intent.EXTRA_INTENT);
             Assert.assertNotNull(contentIntent);
             Assert.assertFalse(contentIntent.hasCategory(Intent.CATEGORY_OPENABLE));
             resetActivityWindowAndroidForTest();
@@ -179,9 +172,8 @@ public class SelectFileDialogTest {
             Assert.assertEquals(
                     Intent.ACTION_CHOOSER, mActivityWindowAndroidForTest.lastIntent.getAction());
             Intent contentIntent =
-                    (Intent)
-                            mActivityWindowAndroidForTest.lastIntent.getParcelableExtra(
-                                    Intent.EXTRA_INTENT);
+                    (Intent) mActivityWindowAndroidForTest.lastIntent.getParcelableExtra(
+                            Intent.EXTRA_INTENT);
             Assert.assertNotNull(contentIntent);
             Assert.assertFalse(contentIntent.hasCategory(Intent.CATEGORY_OPENABLE));
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
@@ -192,20 +184,20 @@ public class SelectFileDialogTest {
 
         DOMUtils.clickNode(mWebContents, "input_image");
         verifyIntentSent();
-        Assert.assertEquals(
-                MediaStore.ACTION_IMAGE_CAPTURE,
+        Assert.assertEquals(MediaStore.ACTION_IMAGE_CAPTURE,
                 mActivityWindowAndroidForTest.lastIntent.getAction());
         resetActivityWindowAndroidForTest();
 
         DOMUtils.clickNode(mWebContents, "input_audio");
         verifyIntentSent();
-        Assert.assertEquals(
-                MediaStore.Audio.Media.RECORD_SOUND_ACTION,
+        Assert.assertEquals(MediaStore.Audio.Media.RECORD_SOUND_ACTION,
                 mActivityWindowAndroidForTest.lastIntent.getAction());
         resetActivityWindowAndroidForTest();
     }
 
-    /** Tests that content URI resolving to local app dir is checked correctly. */
+    /**
+     * Tests that content URI resolving to local app dir is checked correctly.
+     */
     @Test
     @MediumTest
     @RequiresApi(Build.VERSION_CODES.O)
@@ -218,8 +210,7 @@ public class SelectFileDialogTest {
         TestContentProvider.resetResourceRequestCounts(ContextUtils.getApplicationContext());
         TestContentProvider.setDataFilePath(
                 ContextUtils.getApplicationContext(), dataDir.getPath());
-        Assert.assertEquals(
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O,
+        Assert.assertEquals(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O,
                 SelectFileDialog.isContentUriUnderAppDir(
                         Uri.parse(TestContentProvider.createContentUrl(temp.getName())),
                         ContextUtils.getApplicationContext()));
@@ -229,8 +220,8 @@ public class SelectFileDialogTest {
 
     private void resetActivityWindowAndroidForTest() {
         TestThreadUtils.runOnUiThreadBlocking(
-                () ->
-                        mActivityWindowAndroidForTest.lastCallback.onIntentCompleted(
+                ()
+                        -> mActivityWindowAndroidForTest.lastCallback.onIntentCompleted(
                                 Activity.RESULT_CANCELED, null));
         mActivityWindowAndroidForTest.lastCallback = null;
         mActivityWindowAndroidForTest.lastIntent = null;

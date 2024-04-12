@@ -7,7 +7,6 @@
 
 #include "base/dcheck_is_on.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/types/pass_key.h"
 #include "third_party/blink/renderer/bindings/core/v8/serialization/serialization_tag.h"
 #include "third_party/blink/renderer/bindings/core/v8/serialization/serialized_color_params.h"
 #include "third_party/blink/renderer/bindings/core/v8/serialization/serialized_script_value.h"
@@ -38,7 +37,6 @@ class CORE_EXPORT V8ScriptValueSerializer
 
  public:
   using Options = SerializedScriptValue::SerializeOptions;
-  using PassKey = base::PassKey<V8ScriptValueSerializer>;
 
   // |object_index| is for use in exceptiun messages.
   static bool ExtractTransferable(v8::Isolate*,

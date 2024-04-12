@@ -7,16 +7,20 @@ package org.chromium.chrome.browser.incognito.reauth;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.ResettersForTesting;
-import org.chromium.chrome.browser.device_reauth.DeviceAuthSource;
+import org.chromium.base.ContextUtils;
+import org.chromium.chrome.browser.device.DeviceClassManager;
+import org.chromium.chrome.browser.device_reauth.DeviceAuthRequester;
 import org.chromium.chrome.browser.device_reauth.ReauthenticatorBridge;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.components.user_prefs.UserPrefs;
 
-/** This class is responsible for managing the Incognito re-authentication flow. */
+/**
+ * This class is responsible for managing the Incognito re-authentication flow.
+ */
 public class IncognitoReauthManager {
     private static Boolean sIsIncognitoReauthFeatureAvailableForTesting;
     private ReauthenticatorBridge mReauthenticatorBridge;
@@ -29,16 +33,14 @@ public class IncognitoReauthManager {
         // This is invoked when either the Incognito re-authentication feature is not available or
         // the device screen lock is not setup or there's an authentication already in progress.
         void onIncognitoReauthNotPossible();
-
         // This is invoked when the Incognito re-authentication resulted in success.
         void onIncognitoReauthSuccess();
-
         // This is invoked when the Incognito re-authentication resulted in failure.
         void onIncognitoReauthFailure();
     }
 
     public IncognitoReauthManager() {
-        this(ReauthenticatorBridge.create(DeviceAuthSource.INCOGNITO));
+        this(ReauthenticatorBridge.create(DeviceAuthRequester.INCOGNITO_REAUTH_PAGE));
     }
 
     public IncognitoReauthManager(ReauthenticatorBridge reauthenticatorBridge) {
@@ -54,22 +56,20 @@ public class IncognitoReauthManager {
      */
     public void startReauthenticationFlow(
             @NonNull IncognitoReauthCallback incognitoReauthCallback) {
-        if (!mReauthenticatorBridge.canUseAuthenticationWithBiometricOrScreenLock()
+        if (!mReauthenticatorBridge.canUseAuthentication()
                 || !isIncognitoReauthFeatureAvailable()) {
             incognitoReauthCallback.onIncognitoReauthNotPossible();
             return;
         }
 
-        mReauthenticatorBridge.reauthenticate(
-                success -> {
-                    if (success) {
-                        incognitoReauthCallback.onIncognitoReauthSuccess();
-                    } else {
-                        incognitoReauthCallback.onIncognitoReauthFailure();
-                    }
-                });
+        mReauthenticatorBridge.reauthenticate(success -> {
+            if (success) {
+                incognitoReauthCallback.onIncognitoReauthSuccess();
+            } else {
+                incognitoReauthCallback.onIncognitoReauthFailure();
+            }
+        }, /*useLastValidAuth=*/false);
     }
-
     /**
      * @return A boolean indicating whether the platform version supports reauth and the
      *         corresponding Chrome feature flag is on;
@@ -87,6 +87,8 @@ public class IncognitoReauthManager {
         // The implementation relies on {@link BiometricManager} which was introduced in API
         // level 29. Android Q is not supported due to a potential bug in BiometricPrompt.
         return (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                && !DeviceClassManager.enableAccessibilityLayout(
+                        ContextUtils.getApplicationContext())
                 && ChromeFeatureList.sIncognitoReauthenticationForAndroid.isEnabled();
     }
 
@@ -102,9 +104,9 @@ public class IncognitoReauthManager {
                 && isIncognitoReauthSettingEnabled(profile);
     }
 
+    @VisibleForTesting
     public static void setIsIncognitoReauthFeatureAvailableForTesting(Boolean isAvailable) {
         sIsIncognitoReauthFeatureAvailableForTesting = isAvailable;
-        ResettersForTesting.register(() -> sIsIncognitoReauthFeatureAvailableForTesting = null);
     }
 
     private static boolean isIncognitoReauthSettingEnabled(Profile profile) {

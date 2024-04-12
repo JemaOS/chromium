@@ -31,13 +31,8 @@ FeedbackUploaderFactoryChrome::~FeedbackUploaderFactoryChrome() = default;
 
 content::BrowserContext* FeedbackUploaderFactoryChrome::GetBrowserContextToUse(
     content::BrowserContext* context) const {
-  return ProfileSelections::Builder()
-      .WithRegular(ProfileSelection::kRedirectedToOriginal)
-      // TODO(crbug.com/1418376): Check if this service is needed in
-      // Guest mode.
-      .WithGuest(ProfileSelection::kRedirectedToOriginal)
-      .Build()
-      .ApplyProfileSelection(Profile::FromBrowserContext(context));
+  return ProfileSelections::BuildRedirectedInIncognito().ApplyProfileSelection(
+      Profile::FromBrowserContext(context));
 }
 
 bool FeedbackUploaderFactoryChrome::ServiceIsCreatedWithBrowserContext() const {
@@ -50,10 +45,9 @@ bool FeedbackUploaderFactoryChrome::ServiceIsNULLWhileTesting() const {
   return true;
 }
 
-std::unique_ptr<KeyedService>
-FeedbackUploaderFactoryChrome::BuildServiceInstanceForBrowserContext(
+KeyedService* FeedbackUploaderFactoryChrome::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<FeedbackUploaderChrome>(context);
+  return new FeedbackUploaderChrome(context);
 }
 
 }  // namespace feedback

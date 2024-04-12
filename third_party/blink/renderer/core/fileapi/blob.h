@@ -33,7 +33,6 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_typedefs.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/fileapi/url_registry.h"
@@ -74,10 +73,10 @@ class CORE_EXPORT Blob : public ScriptWrappable,
   ~Blob() override;
 
   virtual uint64_t size() const { return blob_data_handle_->size(); }
-  Blob* slice(int64_t start,
-              int64_t end,
-              const String& content_type,
-              ExceptionState&) const;
+  virtual Blob* slice(int64_t start,
+                      int64_t end,
+                      const String& content_type,
+                      ExceptionState&) const;
 
   // To allow ExceptionState to be passed in last, manually enumerate the
   // optional argument overloads.
@@ -96,8 +95,8 @@ class CORE_EXPORT Blob : public ScriptWrappable,
   }
 
   ReadableStream* stream(ScriptState* script_state) const;
-  ScriptPromiseTyped<IDLUSVString> text(ScriptState* script_state);
-  ScriptPromiseTyped<DOMArrayBuffer> arrayBuffer(ScriptState* script_state);
+  ScriptPromise text(ScriptState* script_state);
+  ScriptPromise arrayBuffer(ScriptState* script_state);
   String type() const { return blob_data_handle_->GetType(); }
   String Uuid() const { return blob_data_handle_->Uuid(); }
   scoped_refptr<BlobDataHandle> GetBlobDataHandle() const {
@@ -109,13 +108,13 @@ class CORE_EXPORT Blob : public ScriptWrappable,
   virtual bool HasBackingFile() const { return false; }
 
   // Used by the JavaScript Blob and File constructors.
-  void AppendTo(BlobData&) const;
+  virtual void AppendTo(BlobData&) const;
 
   // URLRegistrable to support PublicURLs.
   URLRegistry& Registry() const final;
   bool IsMojoBlob() final;
   void CloneMojoBlob(mojo::PendingReceiver<mojom::blink::Blob>) final;
-  mojo::PendingRemote<mojom::blink::Blob> AsMojoBlob() const;
+  mojo::PendingRemote<mojom::blink::Blob> AsMojoBlob();
 
   // ImageBitmapSource implementation
   bool IsBlob() const override { return true; }

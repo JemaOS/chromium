@@ -33,8 +33,8 @@ class XRRay final : public ScriptWrappable {
         ExceptionState& exception_state);
   ~XRRay() override;
 
-  DOMPointReadOnly* origin() const { return origin_.Get(); }
-  DOMPointReadOnly* direction() const { return direction_.Get(); }
+  DOMPointReadOnly* origin() const { return origin_; }
+  DOMPointReadOnly* direction() const { return direction_; }
   DOMFloat32Array* matrix();
 
   // Calling |RawMatrix()| is equivalent to calling |matrix()| w.r.t. the data

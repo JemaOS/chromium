@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_PREDICTORS_LOADING_PREDICTOR_FACTORY_H_
 #define CHROME_BROWSER_PREDICTORS_LOADING_PREDICTOR_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -23,13 +23,13 @@ class LoadingPredictorFactory : public ProfileKeyedServiceFactory {
   LoadingPredictorFactory& operator=(const LoadingPredictorFactory&) = delete;
 
  private:
-  friend base::NoDestructor<LoadingPredictorFactory>;
+  friend struct base::DefaultSingletonTraits<LoadingPredictorFactory>;
 
   LoadingPredictorFactory();
   ~LoadingPredictorFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

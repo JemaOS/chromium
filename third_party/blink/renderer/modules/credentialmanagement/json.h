@@ -12,8 +12,6 @@ namespace blink {
 
 class AuthenticationExtensionsClientOutputsJSON;
 class AuthenticationExtensionsClientOutputs;
-class PublicKeyCredentialCreationOptions;
-class PublicKeyCredentialCreationOptionsJSON;
 class ScriptState;
 
 // WebAuthn JSON-encodes binary-valued fields as Base64URL without trailing '='
@@ -24,11 +22,6 @@ AuthenticationExtensionsClientOutputsJSON*
 AuthenticationExtensionsClientOutputsToJSON(
     ScriptState* script_state,
     const AuthenticationExtensionsClientOutputs& extension_outputs);
-
-PublicKeyCredentialCreationOptions* PublicKeyCredentialOptionsFromJSON(
-    ScriptState* script_sate,
-    const PublicKeyCredentialCreationOptionsJSON* json,
-    ExceptionState& exception_state);
 
 }  // namespace blink
 

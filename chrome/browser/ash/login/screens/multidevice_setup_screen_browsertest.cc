@@ -5,9 +5,7 @@
 #include "chrome/browser/ash/login/screens/multidevice_setup_screen.h"
 
 #include "base/functional/bind.h"
-#include "base/metrics/histogram_base.h"
 #include "base/run_loop.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "chrome/browser/ash/login/screen_manager.h"
 #include "chrome/browser/ash/login/test/js_checker.h"
 #include "chrome/browser/ash/login/test/login_manager_mixin.h"
@@ -265,7 +263,7 @@ class MultiDeviceSetupScreenTest : public OobeBaseTest {
         MultiDeviceSetupScreen::OobeMultideviceScreenSkippedReason::kUnknown);
   }
 
-  std::optional<MultiDeviceSetupScreen::Result> screen_result_;
+  absl::optional<MultiDeviceSetupScreen::Result> screen_result_;
   base::HistogramTester histogram_tester_;
   std::unique_ptr<multidevice_setup::FakeMultiDeviceSetupClient>
       fake_multidevice_setup_client_;

@@ -7,56 +7,43 @@
 #include <string>
 
 #include "ash/system/video_conference/effects/video_conference_tray_effects_manager_types.h"
-#include "base/strings/utf_string_conversions.h"
-#include "chromeos/crosapi/mojom/video_conference.mojom.h"
+#include "base/strings/string_util.h"
 
 namespace ash::video_conference_utils {
 
 namespace {
 
-std::string GetEffectHistogramNameBase(VcEffectId effect_id) {
-  switch (effect_id) {
-    case VcEffectId::kTestEffect:
-      return "Ash.VideoConferenceTray.TestEffect";
-    case VcEffectId::kBackgroundBlur:
-      return "Ash.VideoConferenceTray.BackgroundBlur";
-    case VcEffectId::kPortraitRelighting:
-      return "Ash.VideoConferenceTray.PortraitRelighting";
-    case VcEffectId::kNoiseCancellation:
-      return "Ash.VideoConferenceTray.NoiseCancellation";
-    case VcEffectId::kLiveCaption:
-      return "Ash.VideoConferenceTray.LiveCaption";
-    case VcEffectId::kCameraFraming:
-      return "Ash.VideoConferenceTray.CameraFraming";
-  }
-}
+constexpr char kTestEffectHistogramName[] = "TestEffect";
+constexpr char kBackgroundBlurHistogramName[] = "BackgroundBlur";
+constexpr char kPortraitRelightingHistogramName[] = "PortraitRelighting";
+constexpr char kNoiseCancellationHistogramName[] = "NoiseCancellation";
+constexpr char kLiveCaptionHistogramName[] = "LiveCaption";
+constexpr char kVideoConferenceHistogramPrefix[] = "Ash.VideoConferenceTray";
 
 }  // namespace
 
-std::string GetEffectHistogramNameForClick(VcEffectId effect_id) {
-  return GetEffectHistogramNameBase(effect_id) + ".Click";
-}
-
-std::string GetEffectHistogramNameForInitialState(VcEffectId effect_id) {
-  return GetEffectHistogramNameBase(effect_id) + ".InitialState";
-}
-
-std::u16string GetMediaAppDisplayText(
-    const mojo::StructPtr<crosapi::mojom::VideoConferenceMediaAppInfo>&
-        media_app) {
-  auto url = media_app->url;
-  auto title = media_app->title;
-
-  // Displays the title if it is not empty. Otherwise, display app url.
-  if (!title.empty()) {
-    return title;
+std::string GetEffectHistogramName(VcEffectId effect_id) {
+  std::string effect_name;
+  switch (effect_id) {
+    case VcEffectId::kTestEffect:
+      effect_name = kTestEffectHistogramName;
+      break;
+    case VcEffectId::kBackgroundBlur:
+      effect_name = kBackgroundBlurHistogramName;
+      break;
+    case VcEffectId::kPortraitRelighting:
+      effect_name = kPortraitRelightingHistogramName;
+      break;
+    case VcEffectId::kNoiseCancellation:
+      effect_name = kNoiseCancellationHistogramName;
+      break;
+    case VcEffectId::kLiveCaption:
+      effect_name = kLiveCaptionHistogramName;
+      break;
   }
-
-  if (url) {
-    return base::UTF8ToUTF16(url->GetContent());
-  }
-
-  return std::u16string();
+  return base::JoinString(
+      {kVideoConferenceHistogramPrefix, effect_name, "Click"},
+      /*separator=*/".");
 }
 
 }  // namespace ash::video_conference_utils

@@ -4,15 +4,13 @@
 
 #include "third_party/blink/renderer/modules/service_worker/service_worker_event_queue.h"
 
-#include <optional>
-
 #include "base/functional/callback_helpers.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/test/test_mock_time_task_runner.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker_event_status.mojom-blink.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
 namespace blink {
@@ -28,7 +26,7 @@ class MockEvent {
     return *event_id_;
   }
 
-  const std::optional<mojom::blink::ServiceWorkerEventStatus>& status() const {
+  const absl::optional<mojom::blink::ServiceWorkerEventStatus>& status() const {
     return status_;
   }
 
@@ -40,7 +38,7 @@ class MockEvent {
         *event_id_,
         WTF::BindOnce(&MockEvent::Start, weak_factory_.GetWeakPtr()),
         WTF::BindOnce(&MockEvent::Abort, weak_factory_.GetWeakPtr()),
-        std::nullopt);
+        absl::nullopt);
   }
 
   void EnqueuePendingTo(ServiceWorkerEventQueue* event_queue) {
@@ -49,7 +47,7 @@ class MockEvent {
         *event_id_,
         WTF::BindOnce(&MockEvent::Start, weak_factory_.GetWeakPtr()),
         WTF::BindOnce(&MockEvent::Abort, weak_factory_.GetWeakPtr()),
-        std::nullopt);
+        absl::nullopt);
   }
 
   void EnqueueWithCustomTimeoutTo(ServiceWorkerEventQueue* event_queue,
@@ -68,7 +66,7 @@ class MockEvent {
         *event_id_,
         WTF::BindOnce(&MockEvent::Start, weak_factory_.GetWeakPtr()),
         WTF::BindOnce(&MockEvent::Abort, weak_factory_.GetWeakPtr()),
-        std::nullopt);
+        absl::nullopt);
   }
 
   void EnqueueOfflineWithCustomTimeoutTo(ServiceWorkerEventQueue* event_queue,
@@ -100,7 +98,7 @@ class MockEvent {
             },
             WTF::Unretained(event_queue), WTF::Unretained(this), std::move(tag),
             WTF::Unretained(out_tags)),
-        base::DoNothing(), std::nullopt);
+        base::DoNothing(), absl::nullopt);
   }
 
  private:
@@ -116,8 +114,8 @@ class MockEvent {
     status_ = status;
   }
 
-  std::optional<int> event_id_;
-  std::optional<mojom::blink::ServiceWorkerEventStatus> status_;
+  absl::optional<int> event_id_;
+  absl::optional<mojom::blink::ServiceWorkerEventStatus> status_;
   bool started_ = false;
   base::WeakPtrFactory<MockEvent> weak_factory_{this};
 };
@@ -146,7 +144,6 @@ class ServiceWorkerEventQueueTest : public testing::Test {
   base::TestMockTimeTaskRunner* task_runner() { return task_runner_.get(); }
 
  private:
-  test::TaskEnvironment task_environment_;
   scoped_refptr<base::TestMockTimeTaskRunner> task_runner_;
   std::unique_ptr<base::TestMockTimeTaskRunner::ScopedContext>
       task_runner_context_;
@@ -227,6 +224,42 @@ TEST_F(ServiceWorkerEventQueueTest, InflightEventBeforeStart) {
   task_runner()->FastForwardBy(kIdleInterval);
   // Nothing happens since there is an inflight event.
   EXPECT_FALSE(is_idle);
+}
+
+// Tests whether idle_time_ won't be updated in Start() when there was an
+// event. The timeline is something like:
+// [StartEvent] [EndEvent]
+//       +----------+
+//                  ^
+//                  +-- idle_time_ --+
+//                                   v
+//                           [TimerStart]         [UpdateStatus]
+//                                 +-- kUpdateInterval --+
+// In the first UpdateStatus() the idle callback should be triggered.
+TEST_F(ServiceWorkerEventQueueTest, EventFinishedBeforeStart) {
+  bool is_idle = false;
+  ServiceWorkerEventQueue event_queue(
+      base::DoNothing(), CreateReceiverWithCalledFlag(&is_idle), task_runner(),
+      task_runner()->GetMockTickClock());
+  // Start and finish an event before starting the timer.
+  MockEvent event;
+  event.EnqueueTo(&event_queue);
+  task_runner()->FastForwardBy(base::Seconds(1));
+  event_queue.EndEvent(event.event_id());
+
+  // Move the time ticks to almost before |idle_time_| so that |idle_callback|
+  // will get called at the first update check.
+  task_runner()->FastForwardBy(
+      base::Seconds(mojom::blink::kServiceWorkerDefaultIdleDelayInSeconds) -
+      base::Seconds(1));
+
+  event_queue.Start();
+
+  // Make sure the timer calls UpdateStatus().
+  task_runner()->FastForwardBy(base::Seconds(1));
+  // |idle_callback| should be fired because enough time passed since the last
+  // event.
+  EXPECT_TRUE(is_idle);
 }
 
 TEST_F(ServiceWorkerEventQueueTest, EventTimer) {

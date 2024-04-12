@@ -5,22 +5,16 @@
 #ifndef CHROME_BROWSER_SIGNIN_BOUND_SESSION_CREDENTIALS_REGISTRATION_TOKEN_HELPER_H_
 #define CHROME_BROWSER_SIGNIN_BOUND_SESSION_CREDENTIALS_REGISTRATION_TOKEN_HELPER_H_
 
-#include <optional>
 #include <string>
-#include <string_view>
 
-#include "base/containers/span.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
+#include "base/strings/string_piece_forward.h"
 #include "components/unexportable_keys/service_error.h"
 #include "components/unexportable_keys/unexportable_key_id.h"
-#include "crypto/signature_verifier.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
-
-namespace base {
-class Time;
-}
 
 namespace unexportable_keys {
 class UnexportableKeyService;
@@ -37,59 +31,29 @@ class UnexportableKeyService;
 class RegistrationTokenHelper {
  public:
   struct Result {
-    Result(unexportable_keys::UnexportableKeyId binding_key_id,
-           std::vector<uint8_t> wrapped_binding_key,
-           std::string registration_token);
-    ~Result();
-
-    Result(const Result&) = delete;
-    Result& operator=(const Result&) = delete;
-    Result(Result&& other);
-    Result& operator=(Result&& other);
-
     unexportable_keys::UnexportableKeyId binding_key_id;
-    std::vector<uint8_t> wrapped_binding_key;
     std::string registration_token;
   };
 
+  // `unexportable_key_service` must outlive `this`.
   // Invokes `callback` with a `Result` containing a new binding key ID and a
   // corresponding registration token on success. Otherwise, invokes `callback`
-  // with `std::nullopt`.
-  // `unexportable_key_service` must outlive `this`.
+  // with `absl::nullopt`.
   // TODO(alexilin): support timeout.
-  static std::unique_ptr<RegistrationTokenHelper> CreateForSessionBinding(
+  explicit RegistrationTokenHelper(
       unexportable_keys::UnexportableKeyService& unexportable_key_service,
-      std::string_view challenge,
+      base::StringPiece client_id,
+      base::StringPiece auth_code,
       const GURL& registration_url,
-      base::OnceCallback<void(std::optional<Result>)> callback);
-  static std::unique_ptr<RegistrationTokenHelper> CreateForTokenBinding(
-      unexportable_keys::UnexportableKeyService& unexportable_key_service,
-      std::string_view client_id,
-      std::string_view auth_code,
-      const GURL& registration_url,
-      base::OnceCallback<void(std::optional<Result>)> callback);
+      base::OnceCallback<void(absl::optional<Result>)> callback);
 
   RegistrationTokenHelper(const RegistrationTokenHelper&) = delete;
   RegistrationTokenHelper& operator=(const RegistrationTokenHelper&) = delete;
 
   virtual ~RegistrationTokenHelper();
 
-  // Virtual for testing.
+  // virtual for testing.
   virtual void Start();
-
- protected:
-  using HeaderAndPayloadGenerator =
-      base::RepeatingCallback<std::optional<std::string>(
-          crypto::SignatureVerifier::SignatureAlgorithm,
-          base::span<const uint8_t>,
-          base::Time)>;
-
-  // The clients should use static factory methods `CreateFor*` instead.
-  // Protected for testing.
-  explicit RegistrationTokenHelper(
-      unexportable_keys::UnexportableKeyService& unexportable_key_service,
-      HeaderAndPayloadGenerator header_and_payload_generator,
-      base::OnceCallback<void(std::optional<Result>)> callback);
 
  private:
   // Callback for `GenerateSigningKeySlowlyAsync()`.
@@ -99,13 +63,14 @@ class RegistrationTokenHelper {
 
   // Callback for `SignSlowlyAsync()`.
   void OnDataSigned(
-      crypto::SignatureVerifier::SignatureAlgorithm algorithm,
       unexportable_keys::ServiceErrorOr<std::vector<uint8_t>> result);
 
-  const raw_ref<unexportable_keys::UnexportableKeyService>
+  const base::raw_ref<unexportable_keys::UnexportableKeyService>
       unexportable_key_service_;
-  HeaderAndPayloadGenerator header_and_payload_generator_;
-  base::OnceCallback<void(std::optional<Result>)> callback_;
+  const std::string client_id_;
+  const std::string auth_code_;
+  const GURL registration_url_;
+  base::OnceCallback<void(absl::optional<Result>)> callback_;
 
   bool started_ = false;
   unexportable_keys::UnexportableKeyId key_id_;

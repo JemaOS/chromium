@@ -7,12 +7,11 @@
 #include "base/command_line.h"
 #include "base/memory/ptr_util.h"
 #include "chrome/browser/apps/platform_apps/app_browsertest_util.h"
-#include "chrome/browser/ash/app_mode/kiosk_chrome_app_manager.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/ash/ownership/fake_owner_settings_service.h"
 #include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chromeos/components/kiosk/kiosk_test_utils.h"
 #include "components/account_id/account_id.h"
 #include "components/user_manager/scoped_user_manager.h"
 #include "content/public/test/browser_test.h"
@@ -48,14 +47,20 @@ class VideoCaptureApiTestChromeOs : public PlatformAppBrowserTest {
   void TearDownOnMainThread() override {
     owner_settings_service_.reset();
     settings_helper_.RestoreRealDeviceSettingsProvider();
-    user_manager_.Reset();
+    user_manager_enabler_.reset();
     PlatformAppBrowserTest::TearDownOnMainThread();
   }
 
  protected:
   void EnterKioskSession() {
-    user_manager_.Reset(std::make_unique<ash::FakeChromeUserManager>());
-    chromeos::SetUpFakeKioskSession();
+    auto fake_user_manager = std::make_unique<ash::FakeChromeUserManager>();
+    auto* fake_user_manager_ptr = fake_user_manager.get();
+    user_manager_enabler_ = std::make_unique<user_manager::ScopedUserManager>(
+        std::move(fake_user_manager));
+    const AccountId kiosk_account_id(
+        AccountId::FromUserEmail("kiosk@foobar.com"));
+    fake_user_manager_ptr->AddKioskAppUser(kiosk_account_id);
+    fake_user_manager_ptr->LoginUser(kiosk_account_id);
   }
 
   void SetAutoLaunchApp() {
@@ -64,12 +69,9 @@ class VideoCaptureApiTestChromeOs : public PlatformAppBrowserTest {
     manager()->SetAppWasAutoLaunchedWithZeroDelay(kTestingAppId);
   }
 
-  ash::KioskChromeAppManager* manager() const {
-    return ash::KioskChromeAppManager::Get();
-  }
+  ash::KioskAppManager* manager() const { return ash::KioskAppManager::Get(); }
 
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      user_manager_;
+  std::unique_ptr<user_manager::ScopedUserManager> user_manager_enabler_;
 
   ash::ScopedCrosSettingsTestHelper settings_helper_;
   std::unique_ptr<ash::FakeOwnerSettingsService> owner_settings_service_;

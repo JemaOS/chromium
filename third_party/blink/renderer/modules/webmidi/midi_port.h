@@ -48,7 +48,7 @@ class V8MIDIPortDeviceState;
 using MIDIPortConnectionState = V8MIDIPortConnectionState::Enum;
 using MIDIPortType = V8MIDIPortType::Enum;
 
-class MIDIPort : public EventTarget,
+class MIDIPort : public EventTargetWithInlineData,
                  public ActiveScriptWrappable<MIDIPort>,
                  public ExecutionContextLifecycleObserver {
   DEFINE_WRAPPERTYPEINFO();
@@ -64,8 +64,8 @@ class MIDIPort : public EventTarget,
   V8MIDIPortType type() const;
   String version() const { return version_; }
 
-  ScriptPromiseTyped<MIDIPort> open(ScriptState*);
-  ScriptPromiseTyped<MIDIPort> close(ScriptState*);
+  ScriptPromise open(ScriptState*);
+  ScriptPromise close(ScriptState*);
 
   midi::mojom::PortState GetState() const { return state_; }
   void SetState(midi::mojom::PortState);
@@ -98,14 +98,14 @@ class MIDIPort : public EventTarget,
 
   void open();
   bool IsOpening() { return running_open_count_; }
-  MIDIAccess* midiAccess() const { return access_.Get(); }
+  MIDIAccess* midiAccess() const { return access_; }
 
  private:
-  void OpenAsynchronously(ScriptPromiseResolverTyped<MIDIPort>*);
+  void OpenAsynchronously(ScriptPromiseResolver*);
   virtual void DidOpen(bool opened) {}
-  void CloseAsynchronously(ScriptPromiseResolverTyped<MIDIPort>*);
+  void CloseAsynchronously(ScriptPromiseResolver*);
 
-  ScriptPromiseTyped<MIDIPort> Accept(ScriptState*);
+  ScriptPromise Accept(ScriptState*);
 
   void SetStates(midi::mojom::PortState, MIDIPortConnectionState);
 

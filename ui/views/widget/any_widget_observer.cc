@@ -3,9 +3,6 @@
 // found in the LICENSE file.
 
 #include "ui/views/widget/any_widget_observer.h"
-
-#include <utility>
-
 #include "base/functional/bind.h"
 #include "ui/views/widget/any_widget_observer_singleton.h"
 #include "ui/views/widget/widget.h"
@@ -51,7 +48,8 @@ NamedWidgetShownWaiter::~NamedWidgetShownWaiter() = default;
 
 Widget* NamedWidgetShownWaiter::WaitIfNeededAndGet() {
   run_loop_.Run();
-  return widget_.get();
+  DCHECK(widget_);
+  return widget_;
 }
 
 NamedWidgetShownWaiter::NamedWidgetShownWaiter(const std::string& name)
@@ -62,7 +60,7 @@ NamedWidgetShownWaiter::NamedWidgetShownWaiter(const std::string& name)
 
 void NamedWidgetShownWaiter::OnAnyWidgetShown(Widget* widget) {
   if (widget->GetName() == name_) {
-    widget_ = widget->GetWeakPtr();
+    widget_ = widget;
     run_loop_.Quit();
   }
 }

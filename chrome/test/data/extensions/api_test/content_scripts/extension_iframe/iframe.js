@@ -38,5 +38,5 @@ chrome.test.getConfig(function(config) {
   success = success && checkPrivilegedApi(chrome.extension.getViews,
                                           'chrome.extension.getViews');
 
-  chrome.runtime.sendMessage({success: success});
+  chrome.extension.sendRequest({success: success});
 });

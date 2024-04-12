@@ -14,7 +14,6 @@
 
 #include <string.h>
 
-#include "base/check.h"
 #include "base/files/file_path.h"
 #include "base/logging.h"
 #include "client/crashpad_client.h"
@@ -129,10 +128,6 @@ int CrashyMain(int argc, wchar_t* argv[]) {
     LOG(ERROR) << "WerRegisterRuntimeExceptionModule";
     return EXIT_FAILURE;
   }
-
-  // Some versions of python call SetErrorMode() which extends to children, and
-  // prevents the WerFault infrastructure from running.
-  SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
 
   if (type == L"cf")
     CfgCrash();

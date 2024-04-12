@@ -6,6 +6,7 @@
 
 [
     ActiveScriptWrappable,
-    Exposed=Worklet
+    Exposed=Worklet,
+    ImmutablePrototype
 ] interface WorkletGlobalScope {
 };

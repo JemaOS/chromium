@@ -11,8 +11,6 @@
 #include "ash/accelerators//accelerator_tracker.h"
 #include "ash/accessibility/chromevox/key_accessibility_enabler.h"
 #include "ash/accessibility/magnifier/fullscreen_magnifier_controller.h"
-#include "ash/constants/ash_features.h"
-#include "ash/constants/ash_switches.h"
 #include "ash/display/mouse_cursor_event_filter.h"
 #include "ash/drag_drop/drag_drop_controller.h"
 #include "ash/drag_drop/drag_drop_controller_test_api.h"
@@ -35,14 +33,13 @@
 #include "ash/test/ash_test_helper.h"
 #include "ash/test/test_widget_builder.h"
 #include "ash/test_shell_delegate.h"
-#include "ash/wallpaper/views/wallpaper_widget_controller.h"
+#include "ash/wallpaper/wallpaper_widget_controller.h"
 #include "ash/wm/desks/desks_util.h"
 #include "ash/wm/overview/overview_controller.h"
 #include "base/command_line.h"
 #include "base/containers/flat_set.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/test/scoped_feature_list.h"
 #include "components/account_id/account_id.h"
 #include "ui/aura/env.h"
 #include "ui/aura/window.h"
@@ -593,21 +590,6 @@ TEST_F(ShellTest, NoWindowTabFocus) {
   // Hit shift tab and expect that focus is on status widget.
   PressAndReleaseKey(ui::VKEY_TAB, ui::EF_SHIFT_DOWN);
   EXPECT_TRUE(status_area_widget->GetNativeView()->HasFocus());
-}
-
-class ShellPickerDisabledTest : public AshTestBase {
- public:
-  ShellPickerDisabledTest() {
-    base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-    command_line->AppendSwitchASCII(switches::kPickerFeatureKey, "hello");
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_{features::kPicker};
-};
-
-TEST_F(ShellPickerDisabledTest, NoPickerControllerIfFeatureKeyIsWrong) {
-  EXPECT_FALSE(Shell::Get()->picker_controller());
 }
 
 // This verifies WindowObservers are removed when a window is destroyed after

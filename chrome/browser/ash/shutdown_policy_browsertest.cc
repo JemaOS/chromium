@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 
+#include "ash/constants/ash_features.h"
 #include "ash/constants/ash_switches.h"
 #include "ash/login_status.h"
 #include "ash/public/cpp/ash_view_ids.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/ash/policy/core/device_policy_builder.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
 #include "chrome/browser/ash/settings/device_settings_service.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/ui/webui/ash/login/gaia_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/oobe_ui.h"
@@ -131,10 +133,16 @@ class ShutdownPolicyInSessionTest : public ShutdownPolicyBaseTest {
   }
 };
 
-// Tests that by default the shutdown button tooltip is "Power menu".
+// Tests that by default the shutdown button tooltip is "Shut down" in the old
+// view or "Power menu" in the revamped view.
 IN_PROC_BROWSER_TEST_F(ShutdownPolicyInSessionTest, TestBasic) {
   OpenSystemTrayMenu();
-  EXPECT_TRUE(HasShutdownButtonTooltip("Power menu"));
+  if (base::FeatureList::IsEnabled(ash::features::kQsRevamp)) {
+    EXPECT_TRUE(HasShutdownButtonTooltip("Power menu"));
+  } else {
+    EXPECT_TRUE(HasShutdownButtonTooltip("Shut down"));
+  }
+
   CloseSystemTrayMenu();
 }
 

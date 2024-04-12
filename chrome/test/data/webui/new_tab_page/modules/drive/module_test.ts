@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
+
 import {DriveHandlerRemote} from 'chrome://new-tab-page/drive.mojom-webui.js';
-import type {DismissModuleEvent, DriveModuleElement} from 'chrome://new-tab-page/lazy_load.js';
-import {driveDescriptor, DriveProxy} from 'chrome://new-tab-page/lazy_load.js';
-import type {CrAutoImgElement} from 'chrome://new-tab-page/new_tab_page.js';
-import {$$} from 'chrome://new-tab-page/new_tab_page.js';
+import {DismissModuleEvent, driveDescriptor, DriveModuleElement, DriveProxy} from 'chrome://new-tab-page/lazy_load.js';
+import {$$, CrAutoImgElement} from 'chrome://new-tab-page/new_tab_page.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {TestMock} from 'chrome://webui-test/test_mock.js';
+import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {eventToPromise, isVisible} from 'chrome://webui-test/test_util.js';
 
 import {installMock} from '../../test_support.js';
@@ -137,7 +137,7 @@ suite('NewTabPageModulesDriveModuleTest', () => {
       ],
     };
     handler.setResultFor('getFiles', Promise.resolve(data));
-    const module = await driveDescriptor.initialize(0) as DriveModuleElement;
+    const module = await driveDescriptor.initialize(0);
     assertTrue(!!module);
     document.body.append(module);
 

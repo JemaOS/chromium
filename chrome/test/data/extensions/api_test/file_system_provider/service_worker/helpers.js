@@ -113,9 +113,7 @@ export async function getVolumeInfo(fileSystemId) {
   const volumeList = await promisifyWithLastError(
       chrome.fileManagerPrivate.getVolumeMetadataList);
   for (const volume of volumeList) {
-    if (volume.providerId === chrome.runtime.id &&
-        volume.fileSystemId === fileSystemId &&
-        volume.diskFileSystemType !== 'fusebox') {
+    if (volume.fileSystemId === fileSystemId) {
       return volume;
     }
   }

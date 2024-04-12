@@ -15,10 +15,7 @@ limitations under the License.
 
 #include "tensorflow_lite_support/cc/text/tokenizers/tokenizer_utils.h"
 
-#include "absl/memory/memory.h"  // from @com_google_absl
 #include "absl/status/status.h"  // from @com_google_absl
-#include "absl/strings/str_cat.h"  // from @com_google_absl
-#include "absl/strings/string_view.h"  // from @com_google_absl
 #include "tensorflow_lite_support/cc/common.h"
 #include "tensorflow_lite_support/cc/port/status_macros.h"
 #include "tensorflow_lite_support/cc/text/tokenizers/bert_tokenizer.h"
@@ -48,7 +45,7 @@ StatusOr<absl::string_view> CheckAndLoadFirstAssociatedFile(
         "Invalid vocab_file from input process unit.",
         TfLiteSupportStatus::kMetadataInvalidTokenizerError);
   }
-  TFLITE_ASSIGN_OR_RETURN(absl::string_view vocab_buffer,
+  ASSIGN_OR_RETURN(absl::string_view vocab_buffer,
                    metadata_extractor->GetAssociatedFile(
                        associated_files->Get(0)->name()->str()));
   return vocab_buffer;
@@ -68,7 +65,7 @@ StatusOr<std::unique_ptr<Tokenizer>> CreateTokenizerFromProcessUnit(
     case ProcessUnitOptions_BertTokenizerOptions: {
       const tflite::BertTokenizerOptions* options =
           tokenizer_process_unit->options_as<tflite::BertTokenizerOptions>();
-      TFLITE_ASSIGN_OR_RETURN(absl::string_view vocab_buffer,
+      ASSIGN_OR_RETURN(absl::string_view vocab_buffer,
                        CheckAndLoadFirstAssociatedFile(options->vocab_file(),
                                                        metadata_extractor));
       return absl::make_unique<BertTokenizer>(vocab_buffer.data(),
@@ -76,14 +73,14 @@ StatusOr<std::unique_ptr<Tokenizer>> CreateTokenizerFromProcessUnit(
     }
     case ProcessUnitOptions_SentencePieceTokenizerOptions: {
       return CreateStatusWithPayload(
-        absl::StatusCode::kInvalidArgument,
-        "Chromium does not support sentencepiece tokenization",
-        TfLiteSupportStatus::kMetadataInvalidTokenizerError);
+          absl::StatusCode::kInvalidArgument,
+          "Chromium does not support sentencepiece tokenization",
+          TfLiteSupportStatus::kMetadataInvalidTokenizerError);
     }
     case ProcessUnitOptions_RegexTokenizerOptions: {
       const tflite::RegexTokenizerOptions* options =
           tokenizer_process_unit->options_as<RegexTokenizerOptions>();
-      TFLITE_ASSIGN_OR_RETURN(absl::string_view vocab_buffer,
+      ASSIGN_OR_RETURN(absl::string_view vocab_buffer,
                        CheckAndLoadFirstAssociatedFile(options->vocab_file(),
                                                        metadata_extractor));
       if (options->delim_regex_pattern() == nullptr) {

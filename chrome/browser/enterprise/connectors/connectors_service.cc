@@ -26,13 +26,13 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_attributes_entry.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
+#include "chrome/browser/profiles/profiles_state.h"
 #include "chrome/browser/profiles/reporting_util.h"
 #include "chrome/browser/safe_browsing/cloud_content_scanning/deep_scanning_utils.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/managed_ui.h"
 #include "components/embedder_support/user_agent_utils.h"
 #include "components/enterprise/browser/controller/browser_dm_token_storage.h"
-#include "components/enterprise/buildflags/buildflags.h"
 #include "components/enterprise/common/proto/connectors.pb.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/policy/core/common/cloud/cloud_policy_store.h"
@@ -52,10 +52,6 @@
 #include "device_management_backend.pb.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chromeos/components/mgs/managed_guest_session_utils.h"
-#endif
-
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/policy/core/user_cloud_policy_manager_ash.h"
 #include "chrome/browser/ash/settings/device_settings_service.h"
@@ -63,8 +59,6 @@
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
 #include "extensions/common/constants.h"
-#else
-#include "components/policy/core/common/cloud/profile_cloud_policy_manager.h"
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -81,36 +75,32 @@ void PopulateBrowserMetadata(bool include_device_info,
   base::FilePath browser_id;
   if (base::PathService::Get(base::DIR_EXE, &browser_id))
     browser_proto->set_browser_id(browser_id.AsUTF8Unsafe());
-  browser_proto->set_chrome_version(
-      std::string(version_info::GetVersionNumber()));
+  browser_proto->set_chrome_version(version_info::GetVersionNumber());
   if (include_device_info)
     browser_proto->set_machine_user(policy::GetOSUsername());
-}
-
-std::string GetClientId(Profile* profile) {
-  std::string client_id;
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  auto* manager = profile->GetUserCloudPolicyManagerAsh();
-  if (manager && manager->core() && manager->core()->client())
-    client_id = manager->core()->client()->client_id();
-#elif BUILDFLAG(IS_CHROMEOS_LACROS)
-  Profile* main_profile = GetMainProfileLacros();
-  if (main_profile) {
-    client_id = reporting::GetUserClientId(main_profile).value_or("");
-  }
-#else
-  client_id = policy::BrowserDMTokenStorage::Get()->RetrieveClientId();
-#endif
-  return client_id;
 }
 
 void PopulateDeviceMetadata(const ReportingSettings& reporting_settings,
                             Profile* profile,
                             ClientMetadata::Device* device_proto) {
-  if (!reporting_settings.per_profile && !device_proto->has_dm_token()) {
+  if (!reporting_settings.per_profile && !device_proto->has_dm_token())
     device_proto->set_dm_token(reporting_settings.dm_token);
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  std::string client_id;
+  auto* manager = profile->GetUserCloudPolicyManagerAsh();
+  if (manager && manager->core() && manager->core()->client())
+    client_id = manager->core()->client()->client_id();
+#elif BUILDFLAG(IS_CHROMEOS_LACROS)
+  Profile* main_profile = GetMainProfileLacros();
+  std::string client_id;
+  if (main_profile) {
+    client_id = reporting::GetUserClientId(main_profile).value_or("");
   }
-  device_proto->set_client_id(GetClientId(profile));
+#else
+  std::string client_id =
+      policy::BrowserDMTokenStorage::Get()->RetrieveClientId();
+#endif
+  device_proto->set_client_id(client_id);
   device_proto->set_os_version(policy::GetOSVersion());
   device_proto->set_os_platform(policy::GetOSPlatform());
   device_proto->set_name(policy::GetDeviceName());
@@ -131,51 +121,28 @@ bool IsURLExemptFromAnalysis(const GURL& url) {
 }
 
 #if BUILDFLAG(IS_CHROMEOS)
-std::optional<std::string> GetDeviceDMToken() {
+absl::optional<std::string> GetDeviceDMToken() {
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   const chromeos::BrowserParamsProxy* init_params =
       chromeos::BrowserParamsProxy::Get();
   if (init_params->DeviceProperties()) {
     return init_params->DeviceProperties()->device_dm_token;
   }
-  return std::nullopt;
+  return absl::nullopt;
 #else
   const enterprise_management::PolicyData* policy_data =
       ash::DeviceSettingsService::Get()->policy_data();
   if (policy_data && policy_data->has_request_token())
     return policy_data->request_token();
-  return std::nullopt;
+  return absl::nullopt;
 #endif
 }
 #endif
-
-bool IsManagedGuestSession() {
-#if BUILDFLAG(IS_CHROMEOS)
-  return chromeos::IsManagedGuestSession();
-#else
-  return false;
-#endif
-}
-
-std::unique_ptr<ClientMetadata> GetBasicClientMetadata() {
-  // In this case, we are just using the client metadata to indicate to
-  // WebProtect whether or not the request is coming from a Managed Guest
-  // Session on ChromeOS, so we do not need the other info.
-  if (base::FeatureList::IsEnabled(kEnterpriseConnectorsEnabledOnMGS)) {
-    auto metadata = std::make_unique<ClientMetadata>();
-
-    metadata->mutable_profile()->set_is_chrome_os_managed_guest_session(
-        IsManagedGuestSession());
-    return metadata;
-  } else {
-    return nullptr;
-  }
-}
 }  // namespace
 
 BASE_FEATURE(kEnterpriseConnectorsEnabledOnMGS,
              "EnterpriseConnectorsEnabledOnMGS",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // --------------------------------
 // ConnectorsService implementation
@@ -190,23 +157,24 @@ ConnectorsService::ConnectorsService(content::BrowserContext* context,
 
 ConnectorsService::~ConnectorsService() = default;
 
-std::optional<ReportingSettings> ConnectorsService::GetReportingSettings(
+absl::optional<ReportingSettings> ConnectorsService::GetReportingSettings(
     ReportingConnector connector) {
   if (!ConnectorsEnabled())
-    return std::nullopt;
+    return absl::nullopt;
 
-  std::optional<ReportingSettings> settings =
+  absl::optional<ReportingSettings> settings =
       connectors_manager_->GetReportingSettings(connector);
   if (!settings.has_value())
-    return std::nullopt;
+    return absl::nullopt;
 
 #if BUILDFLAG(IS_CHROMEOS)
   Profile* profile = Profile::FromBrowserContext(context_);
-  if (IncludeDeviceInfo(profile, /*per_profile=*/false)) {
+  if (enterprise_connectors::IncludeDeviceInfo(profile,
+                                               /*per_profile=*/false)) {
     // The device dm token includes additional information like a device id,
     // which is relevant for reporting and should only be used for
     // IncludeDeviceInfo==true.
-    std::optional<std::string> device_dm_token = GetDeviceDMToken();
+    absl::optional<std::string> device_dm_token = GetDeviceDMToken();
     if (device_dm_token.has_value()) {
       settings.value().dm_token = device_dm_token.value();
       settings.value().per_profile = false;
@@ -214,9 +182,9 @@ std::optional<ReportingSettings> ConnectorsService::GetReportingSettings(
     }
   }
 #endif
-  std::optional<DmToken> dm_token = GetDmToken(ConnectorScopePref(connector));
+  absl::optional<DmToken> dm_token = GetDmToken(ConnectorScopePref(connector));
   if (!dm_token.has_value())
-    return std::nullopt;
+    return absl::nullopt;
 
   settings.value().dm_token = dm_token.value().value;
   settings.value().per_profile =
@@ -225,15 +193,15 @@ std::optional<ReportingSettings> ConnectorsService::GetReportingSettings(
   return settings;
 }
 
-std::optional<AnalysisSettings> ConnectorsService::GetAnalysisSettings(
+absl::optional<AnalysisSettings> ConnectorsService::GetAnalysisSettings(
     const GURL& url,
     AnalysisConnector connector) {
   DCHECK_NE(connector, AnalysisConnector::FILE_TRANSFER);
   if (!ConnectorsEnabled())
-    return std::nullopt;
+    return absl::nullopt;
 
   if (IsURLExemptFromAnalysis(url))
-    return std::nullopt;
+    return absl::nullopt;
 
   if (url.SchemeIsBlob() || url.SchemeIsFileSystem()) {
     GURL inner = url.inner_url() ? *url.inner_url() : GURL(url.path());
@@ -246,13 +214,13 @@ std::optional<AnalysisSettings> ConnectorsService::GetAnalysisSettings(
 }
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-std::optional<AnalysisSettings> ConnectorsService::GetAnalysisSettings(
+absl::optional<AnalysisSettings> ConnectorsService::GetAnalysisSettings(
     const storage::FileSystemURL& source_url,
     const storage::FileSystemURL& destination_url,
     AnalysisConnector connector) {
   DCHECK_EQ(connector, AnalysisConnector::FILE_TRANSFER);
   if (!ConnectorsEnabled())
-    return std::nullopt;
+    return absl::nullopt;
 
   return GetCommonAnalysisSettings(
       connectors_manager_->GetAnalysisSettings(context_, source_url,
@@ -261,34 +229,25 @@ std::optional<AnalysisSettings> ConnectorsService::GetAnalysisSettings(
 }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
-std::optional<AnalysisSettings> ConnectorsService::GetCommonAnalysisSettings(
-    std::optional<AnalysisSettings> settings,
+absl::optional<AnalysisSettings> ConnectorsService::GetCommonAnalysisSettings(
+    absl::optional<AnalysisSettings> settings,
     AnalysisConnector connector) {
   if (!settings.has_value())
-    return std::nullopt;
-
-#if !BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-  if (settings->cloud_or_local_settings.is_local_analysis()) {
-    return std::nullopt;
-  }
-#endif
-
-  std::optional<DmToken> dm_token = GetDmToken(ConnectorScopePref(connector));
+    return absl::nullopt;
+  absl::optional<DmToken> dm_token = GetDmToken(ConnectorScopePref(connector));
   bool is_cloud = settings.value().cloud_or_local_settings.is_cloud_analysis();
 
   if (is_cloud) {
     if (!dm_token.has_value())
-      return std::nullopt;
+      return absl::nullopt;
 
     absl::get<CloudAnalysisSettings>(settings.value().cloud_or_local_settings)
         .dm_token = dm_token.value().value;
   }
 
   settings.value().per_profile =
-      (dm_token.has_value() &&
-       dm_token.value().scope == policy::POLICY_SCOPE_USER) ||
-      GetPolicyScope(ConnectorScopePref(connector)) ==
-          policy::POLICY_SCOPE_USER;
+      dm_token.has_value() &&
+      dm_token.value().scope == policy::POLICY_SCOPE_USER;
   settings.value().client_metadata = BuildClientMetadata(is_cloud);
 
   return settings;
@@ -334,20 +293,20 @@ bool ConnectorsService::DelayUntilVerdict(AnalysisConnector connector) {
   return connectors_manager_->DelayUntilVerdict(connector);
 }
 
-std::optional<std::u16string> ConnectorsService::GetCustomMessage(
+absl::optional<std::u16string> ConnectorsService::GetCustomMessage(
     AnalysisConnector connector,
     const std::string& tag) {
   if (!ConnectorsEnabled())
-    return std::nullopt;
+    return absl::nullopt;
 
   return connectors_manager_->GetCustomMessage(connector, tag);
 }
 
-std::optional<GURL> ConnectorsService::GetLearnMoreUrl(
+absl::optional<GURL> ConnectorsService::GetLearnMoreUrl(
     AnalysisConnector connector,
     const std::string& tag) {
   if (!ConnectorsEnabled())
-    return std::nullopt;
+    return absl::nullopt;
 
   return connectors_manager_->GetLearnMoreUrl(connector, tag);
 }
@@ -382,7 +341,7 @@ std::string ConnectorsService::GetManagementDomain() {
   if (!ConnectorsEnabled())
     return std::string();
 
-  std::optional<policy::PolicyScope> scope = std::nullopt;
+  absl::optional<policy::PolicyScope> scope = absl::nullopt;
   for (const char* scope_pref :
        {prefs::kSafeBrowsingEnterpriseRealTimeUrlCheckScope,
         ConnectorScopePref(AnalysisConnector::FILE_ATTACHED),
@@ -390,7 +349,7 @@ std::string ConnectorsService::GetManagementDomain() {
         ConnectorScopePref(AnalysisConnector::BULK_DATA_ENTRY),
         ConnectorScopePref(AnalysisConnector::PRINT),
         ConnectorScopePref(ReportingConnector::SECURITY_EVENT)}) {
-    std::optional<DmToken> dm_token = GetDmToken(scope_pref);
+    absl::optional<DmToken> dm_token = GetDmToken(scope_pref);
     if (dm_token.has_value()) {
       scope = dm_token.value().scope;
 
@@ -435,23 +394,23 @@ std::string ConnectorsService::GetManagementDomain() {
 #endif
 }
 
-std::optional<std::string> ConnectorsService::GetDMTokenForRealTimeUrlCheck()
+absl::optional<std::string> ConnectorsService::GetDMTokenForRealTimeUrlCheck()
     const {
   if (!ConnectorsEnabled())
-    return std::nullopt;
+    return absl::nullopt;
 
   if (Profile::FromBrowserContext(context_)->GetPrefs()->GetInteger(
           prefs::kSafeBrowsingEnterpriseRealTimeUrlCheckMode) ==
       safe_browsing::REAL_TIME_CHECK_DISABLED) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
-  std::optional<DmToken> dm_token =
+  absl::optional<DmToken> dm_token =
       GetDmToken(prefs::kSafeBrowsingEnterpriseRealTimeUrlCheckScope);
 
   if (dm_token.has_value())
     return dm_token.value().value;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 safe_browsing::EnterpriseRealTimeUrlCheckMode
@@ -467,26 +426,6 @@ ConnectorsService::GetAppliedRealTimeUrlCheck() const {
           prefs::kSafeBrowsingEnterpriseRealTimeUrlCheckMode));
 }
 
-std::string ConnectorsService::GetRealTimeUrlCheckIdentifier() const {
-  auto dm_token =
-      GetDmToken(prefs::kSafeBrowsingEnterpriseRealTimeUrlCheckScope);
-  if (!dm_token) {
-    return std::string();
-  }
-
-  Profile* profile = Profile::FromBrowserContext(context_);
-  if (dm_token->scope == policy::POLICY_SCOPE_MACHINE) {
-    return GetClientId(profile);
-  }
-
-  auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
-  if (!identity_manager) {
-    return std::string();
-  }
-
-  return safe_browsing::GetProfileEmail(identity_manager);
-}
-
 ConnectorsManager* ConnectorsService::ConnectorsManagerForTesting() {
   return connectors_manager_.get();
 }
@@ -499,7 +438,7 @@ ConnectorsService::DmToken& ConnectorsService::DmToken::operator=(DmToken&&) =
     default;
 ConnectorsService::DmToken::~DmToken() = default;
 
-std::optional<ConnectorsService::DmToken> ConnectorsService::GetDmToken(
+absl::optional<ConnectorsService::DmToken> ConnectorsService::GetDmToken(
     const char* scope_pref) const {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // On CrOS the settings from primary profile applies to all profiles.
@@ -517,53 +456,55 @@ std::optional<ConnectorsService::DmToken> ConnectorsService::GetDmToken(
 #endif
 }
 
-std::optional<ConnectorsService::DmToken> ConnectorsService::GetBrowserDmToken()
-    const {
+absl::optional<ConnectorsService::DmToken>
+ConnectorsService::GetBrowserDmToken() const {
   policy::DMToken dm_token =
       policy::GetDMToken(Profile::FromBrowserContext(context_));
 
   if (!dm_token.is_valid())
-    return std::nullopt;
+    return absl::nullopt;
 
   return DmToken(dm_token.value(), policy::POLICY_SCOPE_MACHINE);
 }
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
-std::optional<ConnectorsService::DmToken> ConnectorsService::GetProfileDmToken()
-    const {
+absl::optional<ConnectorsService::DmToken>
+ConnectorsService::GetProfileDmToken() const {
+  if (!CanUseProfileDmToken())
+    return absl::nullopt;
+
   Profile* profile = Profile::FromBrowserContext(context_);
 
-  policy::CloudPolicyManager* policy_manager =
+  policy::UserCloudPolicyManager* policy_manager =
       profile->GetUserCloudPolicyManager();
-  if (!policy_manager) {
-    policy_manager = profile->GetProfileCloudPolicyManager();
-  }
-
-  if (!policy_manager || !policy_manager->IsClientRegistered()) {
-    return std::nullopt;
-  }
+  if (!policy_manager || !policy_manager->IsClientRegistered())
+    return absl::nullopt;
 
   return DmToken(policy_manager->core()->client()->dm_token(),
                  policy::POLICY_SCOPE_USER);
 }
 
+bool ConnectorsService::CanUseProfileDmToken() const {
+  Profile* profile = Profile::FromBrowserContext(context_);
+
+  // If the browser isn't managed by CBCM, then the profile DM token can be
+  // used.
+  if (!policy::BrowserDMTokenStorage::Get()->RetrieveDMToken().is_valid())
+    return true;
+
+  return chrome::enterprise_util::IsProfileAffiliated(profile);
+}
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
 policy::PolicyScope ConnectorsService::GetPolicyScope(
     const char* scope_pref) const {
-#if BUILDFLAG(IS_CHROMEOS)
-  // CrOS always uses a browser DM throughout connectors code, so its policy
-  // scope should always be POLICY_SCOPE_MACHINE.
-  return policy::PolicyScope::POLICY_SCOPE_MACHINE;
-#else
   return static_cast<policy::PolicyScope>(
       Profile::FromBrowserContext(context_)->GetPrefs()->GetInteger(
           scope_pref));
-#endif
 }
 
 bool ConnectorsService::ConnectorsEnabled() const {
-  if (IsManagedGuestSession() &&
+  if (profiles::IsPublicSession() &&
       !base::FeatureList::IsEnabled(kEnterpriseConnectorsEnabledOnMGS)) {
     return false;
   }
@@ -590,36 +531,28 @@ bool ConnectorsService::ConnectorsEnabled() const {
 
 std::unique_ptr<ClientMetadata> ConnectorsService::BuildClientMetadata(
     bool is_cloud) {
+  // Use reporting settings to determine what should be included in client
+  // metadata, but only for cloud service providers.  If the reporting
+  // connector is is not enabled, don't send anything at all.
   auto reporting_settings =
       GetReportingSettings(ReportingConnector::SECURITY_EVENT);
-
-  if (is_cloud && !reporting_settings.has_value()) {
-    return GetBasicClientMetadata();
-  }
+  if (is_cloud && !reporting_settings.has_value())
+    return nullptr;
 
   Profile* profile = Profile::FromBrowserContext(context_);
   auto metadata = std::make_unique<ClientMetadata>(
       reporting::GetContextAsClientMetadata(profile));
 
   // Device info is only useful for cloud service providers since local
-  // providers can already determine all this info themselves. For this reason,
-  // we only include browser metadata.
-  if (!is_cloud) {
-    PopulateBrowserMetadata(/*include_device_info=*/true,
-                            metadata->mutable_browser());
-    return metadata;
-  }
+  // provider can already determine all this info themselves.
+  const bool include_device_info =
+      is_cloud && enterprise_connectors::IncludeDeviceInfo(
+                      profile, reporting_settings.value().per_profile);
 
-  if (base::FeatureList::IsEnabled(kEnterpriseConnectorsEnabledOnMGS)) {
-    metadata->mutable_profile()->set_is_chrome_os_managed_guest_session(
-        IsManagedGuestSession());
-  }
-
-  bool include_device_info =
-      IncludeDeviceInfo(profile, reporting_settings.value().per_profile);
-
-  PopulateBrowserMetadata(include_device_info, metadata->mutable_browser());
-
+  // Always include browser metadata for local service providers, but include
+  // it for cloud service providers only if device info is included.
+  PopulateBrowserMetadata(!is_cloud || include_device_info,
+                          metadata->mutable_browser());
   if (include_device_info) {
     PopulateDeviceMetadata(reporting_settings.value(), profile,
                            metadata->mutable_device());
@@ -653,7 +586,7 @@ ConnectorsServiceFactory::~ConnectorsServiceFactory() = default;
 KeyedService* ConnectorsServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   bool observe_prefs =
-      IsManagedGuestSession()
+      profiles::IsPublicSession()
           ? base::FeatureList::IsEnabled(kEnterpriseConnectorsEnabledOnMGS)
           : true;
 

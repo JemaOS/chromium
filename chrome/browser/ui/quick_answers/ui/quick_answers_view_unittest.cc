@@ -6,7 +6,6 @@
 
 #include "chrome/browser/ui/quick_answers/test/chrome_quick_answers_test_base.h"
 #include "ui/views/controls/menu/menu_controller.h"
-#include "ui/views/widget/unique_widget_ptr.h"
 
 namespace {
 
@@ -32,16 +31,13 @@ class QuickAnswersViewsTest : public ChromeQuickAnswersTestBase {
   }
 
   void TearDown() override {
-    quick_answers_widget_.reset();
+    quick_answers_view_.reset();
 
     ChromeQuickAnswersTestBase::TearDown();
   }
 
   // Currently instantiated QuickAnswersView instance.
-  quick_answers::QuickAnswersView* view() {
-    return static_cast<quick_answers::QuickAnswersView*>(
-        quick_answers_widget_->GetContentsView());
-  }
+  QuickAnswersView* view() { return quick_answers_view_.get(); }
 
   // Needed to poll the current bounds of the mock anchor.
   const gfx::Rect& GetAnchorBounds() { return anchor_bounds_; }
@@ -50,8 +46,8 @@ class QuickAnswersViewsTest : public ChromeQuickAnswersTestBase {
   // title-text.
   void CreateQuickAnswersView(const gfx::Rect anchor_bounds,
                               const char* title) {
-    // Reset existing view widget if any.
-    quick_answers_widget_.reset();
+    // Reset existing view if any.
+    quick_answers_view_.reset();
 
     // Set up a companion menu before creating the QuickAnswersView.
     CreateAndShowBasicMenu();
@@ -59,13 +55,12 @@ class QuickAnswersViewsTest : public ChromeQuickAnswersTestBase {
     anchor_bounds_ = anchor_bounds;
 
     // TODO(b/222422130): Rewrite QuickAnswersViewsTest to expand coverage.
-    quick_answers_widget_ = quick_answers::QuickAnswersView::CreateWidget(
+    quick_answers_view_ = std::make_unique<QuickAnswersView>(
         anchor_bounds_, title, /*is_internal=*/false, /*controller=*/nullptr);
-    quick_answers_widget_->ShowInactive();
   }
 
  private:
-  views::UniqueWidgetPtr quick_answers_widget_;
+  std::unique_ptr<QuickAnswersView> quick_answers_view_;
   gfx::Rect anchor_bounds_;
 };
 

@@ -9,7 +9,9 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-/** A class that supplies custom view to TabSwitcher from other non tab switcher clients. */
+/**
+ * A class that supplies custom view to TabSwitcher from other non tab switcher clients.
+ */
 public class TabSwitcherCustomViewManager {
     /**
      * An interface for tab switcher, via which it can listen for signals concerning
@@ -19,19 +21,12 @@ public class TabSwitcherCustomViewManager {
         /**
          * This is fired when a client has requested a view to be shown.
          *
-         * @param customView        The {@link View} that is requested to be added.
+         * @param customView The {@link View} that is requested to be added.
          * @param backPressRunnable A {@link Runnable} which can be supplied if clients also wish to
-         *                          handle back presses while the custom view is shown. A null
-         *                          value can be passed to
-         *                          not intercept back presses.
-         * @param clearTabList      A boolean to indicate whether we should clear the tab list when
-         *                          showing the custom view.
+         *         handle back presses while the custom view is shown. A null value can be passed to
+         *         not intercept back presses.
          */
-        void addCustomView(
-                @NonNull View customView,
-                @Nullable Runnable backPressRunnable,
-                boolean clearTabList);
-
+        void addCustomView(@NonNull View customView, @Nullable Runnable backPressRunnable);
         /**
          * This is fired when the same client has made the view unavailable for it to be shown
          * any longer.
@@ -43,41 +38,32 @@ public class TabSwitcherCustomViewManager {
 
     // The {@link Delegate} that relays the events concerning the availability of the
     // custom view.
-    private @Nullable Delegate mDelegate;
+    private final Delegate mDelegate;
 
-    private @Nullable View mCustomView;
-    private @Nullable Runnable mBackPressRunnable;
-    private boolean mClearTabList;
-
+    // The view that is supplied by the clients.
+    private View mCustomView;
     // Whether a request to show custom view is in-flight.
     private boolean mIsCustomViewRequested;
 
     /**
-     * @param delegate The {@link Delegate} that is responsible for relaying signals from clients to
-     *     tab switcher, may be null if reset.
+     * @param delegate The {@link Delegate} that is responsible for relaying signals from clients
+     *                 to tab switcher.
      */
-    public void setDelegate(@NonNull Delegate delegate) {
-        assert mDelegate == null || delegate == null;
-        unbindDelegate(mDelegate);
-        bindDelegate(delegate);
+    public TabSwitcherCustomViewManager(@NonNull Delegate delegate) {
         mDelegate = delegate;
     }
 
     /**
      * A method to request showing a custom view.
      *
-     * @param customView        The {@link View} that is being requested by the client to be shown.
+     * @param customView The {@link View} that is being requested by the client to be shown.
      * @param backPressRunnable A {@link Runnable} which can be supplied if clients also wish to
-     *                          handle back presses while the custom view is shown. A null value
-     *                          can be passed to not
-     *                          intercept back presses.
-     * @param clearTabList      A boolean to indicate whether we should clear the tab list when
-     *                          showing the custom view.
+     *         handle back presses while the custom view is shown. A null value can be passed to not
+     *         intercept back presses.
      *
      * @return true, if the request to show custom view was relayed successfully, false otherwise.
      */
-    public boolean requestView(
-            @NonNull View customView, @Nullable Runnable backPressRunnable, boolean clearTabList) {
+    public boolean requestView(@NonNull View customView, @Nullable Runnable backPressRunnable) {
         if (mIsCustomViewRequested) {
             assert false : "Previous request view is in-flight.";
             // assert statements are removed in release builds.
@@ -85,9 +71,7 @@ public class TabSwitcherCustomViewManager {
         }
         mIsCustomViewRequested = true;
         mCustomView = customView;
-        mBackPressRunnable = backPressRunnable;
-        mClearTabList = clearTabList;
-        bindDelegate(mDelegate);
+        mDelegate.addCustomView(mCustomView, backPressRunnable);
         return true;
     }
 
@@ -103,22 +87,8 @@ public class TabSwitcherCustomViewManager {
             return false;
         }
         mIsCustomViewRequested = false;
-        unbindDelegate(mDelegate);
+        mDelegate.removeCustomView(mCustomView);
         mCustomView = null;
-        mBackPressRunnable = null;
-        mClearTabList = false;
         return true;
-    }
-
-    private void bindDelegate(@Nullable Delegate delegate) {
-        if (delegate == null || mCustomView == null) return;
-
-        delegate.addCustomView(mCustomView, mBackPressRunnable, mClearTabList);
-    }
-
-    private void unbindDelegate(@Nullable Delegate delegate) {
-        if (delegate == null || mCustomView == null) return;
-
-        delegate.removeCustomView(mCustomView);
     }
 }

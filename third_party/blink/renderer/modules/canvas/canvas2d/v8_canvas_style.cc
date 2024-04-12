@@ -29,19 +29,21 @@ bool ExtractV8CanvasStyle(v8::Isolate* isolate,
     style.type = V8CanvasStyleType::kString;
     return true;
   }
-  if (auto* pattern = V8CanvasPattern::ToWrappable(isolate, value)) {
-    style.pattern = pattern;
+  if (V8CanvasPattern::HasInstance(isolate, value)) {
+    style.pattern = V8CanvasPattern::ToWrappableUnsafe(value.As<v8::Object>());
     style.type = V8CanvasStyleType::kPattern;
     return true;
   }
-  if (auto* gradient = V8CanvasGradient::ToWrappable(isolate, value)) {
+  if (V8CanvasGradient::HasInstance(isolate, value)) {
     style.type = V8CanvasStyleType::kGradient;
-    style.gradient = gradient;
+    style.gradient =
+        V8CanvasGradient::ToWrappableUnsafe(value.As<v8::Object>());
     return true;
   }
-  if (auto* color_value = V8CSSColorValue::ToWrappable(isolate, value)) {
+  if (V8CSSColorValue::HasInstance(isolate, value)) {
     style.type = V8CanvasStyleType::kCSSColorValue;
-    style.css_color_value = color_value->ToColor();
+    style.css_color_value =
+        V8CSSColorValue::ToWrappableUnsafe(value.As<v8::Object>())->ToColor();
     return true;
   }
 
@@ -56,14 +58,19 @@ bool ExtractV8CanvasStyle(v8::Isolate* isolate,
 }
 
 v8::Local<v8::Value> CanvasStyleToV8(ScriptState* script_state,
-                                     const CanvasStyle& style) {
-  if (CanvasGradient* gradient = style.GetCanvasGradient()) {
-    return ToV8Traits<CanvasGradient>::ToV8(script_state, gradient);
+                                     CanvasStyle* style) {
+  // All the types have been validated by this point, so that it's safe to use
+  // ToLocalChecked().
+  if (CanvasGradient* gradient = style->GetCanvasGradient()) {
+    return ToV8Traits<CanvasGradient>::ToV8(script_state, gradient)
+        .ToLocalChecked();
   }
-  if (CanvasPattern* pattern = style.GetCanvasPattern()) {
-    return ToV8Traits<CanvasPattern>::ToV8(script_state, pattern);
+  if (CanvasPattern* pattern = style->GetCanvasPattern()) {
+    return ToV8Traits<CanvasPattern>::ToV8(script_state, pattern)
+        .ToLocalChecked();
   }
-  return ToV8Traits<IDLString>::ToV8(script_state, style.GetColorAsString());
+  return ToV8Traits<IDLString>::ToV8(script_state, style->GetColorAsString())
+      .ToLocalChecked();
 }
 
 }  // namespace blink

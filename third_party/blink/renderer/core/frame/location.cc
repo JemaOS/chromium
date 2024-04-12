@@ -35,43 +35,17 @@
 #include "third_party/blink/renderer/core/frame/dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
-#include "third_party/blink/renderer/core/frame/remote_dom_window.h"
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/url/dom_url_utils_read_only.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/v8_dom_activity_logger.h"
-#include "third_party/blink/renderer/platform/bindings/v8_dom_wrapper.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 
 namespace blink {
 
 Location::Location(DOMWindow* dom_window) : dom_window_(dom_window) {}
-
-v8::Local<v8::Value> Location::Wrap(ScriptState* script_state) {
-  // Note that this check is gated on whether or not |dom_window_| is remote,
-  // not whether or not |dom_window_| is cross-origin. If |dom_window_| is
-  // local, the |location| property must always return the same wrapper, even if
-  // the cross-origin status changes by changing properties like
-  // |document.domain|.
-  if (IsA<RemoteDOMWindow>(dom_window_.Get())) {
-    DCHECK(!DOMDataStore::ContainsWrapper(script_state->GetIsolate(), this));
-
-    DOMWrapperWorld& world = script_state->World();
-    v8::Isolate* isolate = script_state->GetIsolate();
-    const auto* location_wrapper_type = GetWrapperTypeInfo();
-    v8::Local<v8::Object> new_wrapper =
-        location_wrapper_type->GetV8ClassTemplate(isolate, world)
-            .As<v8::FunctionTemplate>()
-            ->NewRemoteInstance()
-            .ToLocalChecked();
-    return V8DOMWrapper::AssociateObjectWithWrapper(
-        isolate, this, location_wrapper_type, new_wrapper);
-  }
-
-  return ScriptWrappable::Wrap(script_state);
-}
 
 void Location::Trace(Visitor* visitor) const {
   visitor->Trace(dom_window_);
@@ -292,17 +266,14 @@ void Location::SetLocation(const String& url,
   }
 
   V8DOMActivityLogger* activity_logger =
-      V8DOMActivityLogger::CurrentActivityLoggerIfIsolatedWorld(
-          incumbent_window->GetIsolate());
+      V8DOMActivityLogger::CurrentActivityLoggerIfIsolatedWorld();
   if (activity_logger) {
     Vector<String> argv;
     argv.push_back("LocalDOMWindow");
     argv.push_back("url");
     argv.push_back(entered_document->Url());
     argv.push_back(completed_url);
-    // We use the CurrentDOMWindow here. `dom_window` might be remote here.
-    activity_logger->LogEvent(CurrentDOMWindow(incumbent_window->GetIsolate()),
-                              "blinkSetAttribute", argv.size(), argv.data());
+    activity_logger->LogEvent("blinkSetAttribute", argv.size(), argv.data());
   }
 
   ResourceRequestHead resource_request(completed_url);
@@ -315,6 +286,7 @@ void Location::SetLocation(const String& url,
   if (set_location_policy == SetLocationPolicy::kReplaceThisFrame)
     frame_load_type = WebFrameLoadType::kReplaceCurrentItem;
 
+  incumbent_window->GetFrame()->MaybeLogAdClickNavigation();
   dom_window_->GetFrame()->Navigate(request, frame_load_type);
 }
 

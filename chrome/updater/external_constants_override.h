@@ -6,7 +6,6 @@
 #define CHROME_UPDATER_EXTERNAL_CONSTANTS_OVERRIDE_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -16,6 +15,7 @@
 #include "base/values.h"
 #include "chrome/updater/external_constants.h"
 #include "chrome/updater/updater_scope.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class GURL;
 
@@ -31,7 +31,7 @@ enum class VerifierFormat;
 
 namespace updater {
 
-std::optional<base::FilePath> GetOverrideFilePath(UpdaterScope scope);
+absl::optional<base::FilePath> GetOverrideFilePath(UpdaterScope scope);
 
 class ExternalConstantsOverrider : public ExternalConstants {
  public:
@@ -50,16 +50,12 @@ class ExternalConstantsOverrider : public ExternalConstants {
   std::vector<GURL> UpdateURL() const override;
   GURL CrashUploadURL() const override;
   GURL DeviceManagementURL() const override;
-  GURL AppLogoURL() const override;
   bool UseCUP() const override;
   base::TimeDelta InitialDelay() const override;
   base::TimeDelta ServerKeepAliveTime() const override;
   crx_file::VerifierFormat CrxVerifierFormat() const override;
   base::Value::Dict GroupPolicies() const override;
   base::TimeDelta OverinstallTimeout() const override;
-  base::TimeDelta IdleCheckPeriod() const override;
-  std::optional<bool> IsMachineManaged() const override;
-  bool EnableDiffUpdates() const override;
 
  private:
   const base::Value::Dict override_values_;

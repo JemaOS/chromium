@@ -85,9 +85,6 @@ aura::Window* WindowTransientDescendantIterator::operator*() const {
   return current_window_;
 }
 
-WindowTransientDescendantIterator& WindowTransientDescendantIterator::operator=(
-    const WindowTransientDescendantIterator& other) = default;
-
 WindowTransientDescendantIteratorRange::WindowTransientDescendantIteratorRange(
     const WindowTransientDescendantIterator& begin)
     : begin_(begin) {}

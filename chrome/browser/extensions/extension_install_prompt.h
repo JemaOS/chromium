@@ -22,6 +22,7 @@
 #include "base/values.h"
 #include "chrome/browser/extensions/install_prompt_permissions.h"
 #include "chrome/common/buildflags.h"
+#include "components/supervised_user/core/common/buildflags.h"
 #include "extensions/common/permissions/permission_message.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/image/image.h"
@@ -59,7 +60,7 @@ class ExtensionInstallPrompt {
     RE_ENABLE_PROMPT = 3,
     PERMISSIONS_PROMPT = 4,
     EXTERNAL_INSTALL_PROMPT = 5,
-    // POST_INSTALL_PERMISSIONS_PROMPT_DEPRECATED = 6,
+    POST_INSTALL_PERMISSIONS_PROMPT = 6,
     // LAUNCH_PROMPT_DEPRECATED = 7,
     REMOTE_INSTALL_PROMPT = 8,
     REPAIR_PROMPT = 9,
@@ -120,7 +121,10 @@ class ExtensionInstallPrompt {
     std::u16string GetAcceptButtonLabel() const;
     std::u16string GetAbortButtonLabel() const;
     std::u16string GetPermissionsHeading() const;
+    std::u16string GetRetainedFilesHeading() const;
+    std::u16string GetRetainedDevicesHeading() const;
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
     void set_requires_parent_permission(bool requires_parent_permission) {
       requires_parent_permission_ = requires_parent_permission;
     }
@@ -128,6 +132,9 @@ class ExtensionInstallPrompt {
     bool requires_parent_permission() const {
       return requires_parent_permission_;
     }
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
+
+    bool ShouldShowPermissions() const;
 
     // Returns whether the dialog should withheld permissions if the dialog is
     // accepted.
@@ -147,10 +154,23 @@ class ExtensionInstallPrompt {
     size_t GetPermissionCount() const;
     std::u16string GetPermission(size_t index) const;
     std::u16string GetPermissionsDetails(size_t index) const;
+    size_t GetRetainedFileCount() const;
+    std::u16string GetRetainedFile(size_t index) const;
+    size_t GetRetainedDeviceCount() const;
+    std::u16string GetRetainedDeviceMessageString(size_t index) const;
 
     const extensions::Extension* extension() const { return extension_; }
     void set_extension(const extensions::Extension* extension) {
       extension_ = extension;
+    }
+
+    // May be populated for POST_INSTALL_PERMISSIONS_PROMPT.
+    void set_retained_files(const std::vector<base::FilePath>& retained_files) {
+      retained_files_ = retained_files;
+    }
+    void set_retained_device_messages(
+        const std::vector<std::u16string>& retained_device_messages) {
+      retained_device_messages_ = retained_device_messages;
     }
 
     const std::string& delegated_username() const {
@@ -181,20 +201,23 @@ class ExtensionInstallPrompt {
     void OnDialogCanceled();
 
    private:
+    bool ShouldDisplayRevokeButton() const;
+
     const PromptType type_;
 
     // Permissions that are being requested (may not be all of an extension's
     // permissions if only additional ones are being requested)
     extensions::InstallPromptPermissions prompt_permissions_;
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
     // True if the current user is a child.
     bool requires_parent_permission_ = false;
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
     bool is_requesting_host_permissions_;
 
     // The extension being installed.
-    raw_ptr<const extensions::Extension, AcrossTasksDanglingUntriaged>
-        extension_;
+    raw_ptr<const extensions::Extension, DanglingUntriaged> extension_;
 
     std::string delegated_username_;
 
@@ -351,7 +374,7 @@ class ExtensionInstallPrompt {
   // install and returns true. Otherwise returns false.
   bool AutoConfirmPromptIfEnabled();
 
-  raw_ptr<Profile, DanglingUntriaged> profile_;
+  raw_ptr<Profile> profile_;
 
   base::ThreadChecker ui_thread_checker_;
 

@@ -47,6 +47,7 @@ bool PostStyleUpdateScope::Apply() {
     return true;
   }
   ApplyAnimations();
+  document_.ClearFocusedElementIfNeeded();
   document_.RemoveFinishedTopLayerElements();
   return false;
 }
@@ -96,8 +97,9 @@ void PostStyleUpdateScope::AnimationData::SetPendingUpdate(
 
 void PostStyleUpdateScope::AnimationData::StoreOldStyleIfNeeded(
     Element& element) {
-  old_styles_.insert(&element,
-                     ComputedStyle::NullifyEnsured(element.GetComputedStyle()));
+  old_styles_.insert(
+      &element, scoped_refptr<const ComputedStyle>(
+                    ComputedStyle::NullifyEnsured(element.GetComputedStyle())));
 }
 
 const ComputedStyle* PostStyleUpdateScope::AnimationData::GetOldStyle(
@@ -106,7 +108,7 @@ const ComputedStyle* PostStyleUpdateScope::AnimationData::GetOldStyle(
   if (iter == old_styles_.end()) {
     return ComputedStyle::NullifyEnsured(element.GetComputedStyle());
   }
-  return iter->value.Get();
+  return iter->value.get();
 }
 
 void PostStyleUpdateScope::PseudoData::AddPendingBackdrop(

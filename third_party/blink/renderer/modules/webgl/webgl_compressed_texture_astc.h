@@ -7,10 +7,6 @@
 
 #include "third_party/blink/renderer/modules/webgl/webgl_extension.h"
 
-namespace WTF {
-class String;
-}  // namespace WTF
-
 namespace blink {
 
 class WebGLCompressedTextureASTC final : public WebGLExtension {
@@ -33,7 +29,7 @@ class WebGLCompressedTextureASTC final : public WebGLExtension {
   WebGLExtensionName GetName() const override;
   static const BlockSizeCompressASTC kBlockSizeCompressASTC[];
 
-  Vector<WTF::String> getSupportedProfiles();
+  Vector<String> getSupportedProfiles();
 };
 
 }  // namespace blink

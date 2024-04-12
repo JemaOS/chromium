@@ -21,6 +21,7 @@ import typ
 # Import test files so they they are included in .pydeps.
 import monochrome_dexdump_test
 import monochrome_apk_checker_test
+import monochrome_android_manifest_test
 
 
 def create_argument_parser():

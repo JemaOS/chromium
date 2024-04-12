@@ -5,9 +5,8 @@
 #ifndef CHROME_BROWSER_SAFE_BROWSING_EXTENSION_TELEMETRY_COOKIES_GET_ALL_SIGNAL_H_
 #define CHROME_BROWSER_SAFE_BROWSING_EXTENSION_TELEMETRY_COOKIES_GET_ALL_SIGNAL_H_
 
-#include <optional>
-
 #include "chrome/browser/safe_browsing/extension_telemetry/extension_signal.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace safe_browsing {
 
@@ -18,10 +17,10 @@ class CookiesGetAllSignal : public ExtensionSignal {
                       const std::string& domain,
                       const std::string& name,
                       const std::string& path,
-                      std::optional<bool> secure,
+                      absl::optional<bool> secure,
                       const std::string& store_id,
                       const std::string& url,
-                      std::optional<bool> is_session);
+                      absl::optional<bool> is_session);
   ~CookiesGetAllSignal() override;
 
   // ExtensionSignal:
@@ -34,10 +33,10 @@ class CookiesGetAllSignal : public ExtensionSignal {
   const std::string& domain() const { return domain_; }
   const std::string& name() const { return name_; }
   const std::string& path() const { return path_; }
-  std::optional<bool> secure() const { return secure_; }
+  absl::optional<bool> secure() const { return secure_; }
   const std::string& store_id() const { return store_id_; }
   const std::string& url() const { return url_; }
-  std::optional<bool> is_session() const { return is_session_; }
+  absl::optional<bool> is_session() const { return is_session_; }
 
  protected:
   // Restricts the retrieved cookies to those whose domains match or are
@@ -49,14 +48,14 @@ class CookiesGetAllSignal : public ExtensionSignal {
   // string.
   std::string path_;
   // Filters the cookies by their Secure property.
-  std::optional<bool> secure_;
+  absl::optional<bool> secure_;
   // The cookie store to retrieve cookies from. If omitted, the current
   // execution context's cookie store will be used.
   std::string store_id_;
   // Restricts the retrieved cookies to those that would match the given URL.
   std::string url_;
   // Filters out session vs.persistent cookies.
-  std::optional<bool> is_session_;
+  absl::optional<bool> is_session_;
 };
 
 }  // namespace safe_browsing

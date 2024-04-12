@@ -4,7 +4,7 @@
 
 import {FakeMethodResolver} from 'chrome://resources/ash/common/fake_method_resolver.js';
 import {FakeObservables} from 'chrome://resources/ash/common/fake_observables.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 
 import {BatteryChargeStatus, BatteryChargeStatusObserverRemote, BatteryHealth, BatteryHealthObserverRemote, BatteryInfo, CpuUsage, CpuUsageObserverRemote, MemoryUsage, MemoryUsageObserverRemote, SystemDataProviderInterface, SystemInfo} from './system_data_provider.mojom-webui.js';
 
@@ -13,20 +13,13 @@ import {BatteryChargeStatus, BatteryChargeStatusObserverRemote, BatteryHealth, B
  * Implements a fake version of the SystemDataProvider mojo interface.
  */
 
-/**
- * Type for methods needed for the fake SystemDataProvider implementation.
- */
-export type FakeSystemDataProviderInterface = SystemDataProviderInterface&{
+export interface FakeSystemDataProviderInterface {
   setFakeBatteryChargeStatus(batteryChargeStatusList: BatteryChargeStatus[]):
-      void,
-  setFakeBatteryHealth(batteryHealthList: BatteryHealth[]): void,
-  setFakeBatteryInfo(batteryInfo: BatteryInfo): void,
-  setFakeCpuUsage(cpuUsageList: CpuUsage[]): void,
-  setFakeMemoryUsage(memoryUsageList: MemoryUsage[]): void,
-  setFakeSystemInfo(systemInfo: SystemInfo): void,
-};
+      void;
+}
 
-export class FakeSystemDataProvider implements FakeSystemDataProviderInterface {
+export class FakeSystemDataProvider implements SystemDataProviderInterface,
+                                               FakeSystemDataProviderInterface {
   private methods: FakeMethodResolver = new FakeMethodResolver();
   private observables: FakeObservables = new FakeObservables();
   private observeBatteryChargeStatusPromise: Promise<void>|null = null;

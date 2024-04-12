@@ -27,59 +27,48 @@
 namespace blink {
 
 SVGClipPathElement::SVGClipPathElement(Document& document)
-    : SVGTransformableElement(svg_names::kClipPathTag, document),
+    : SVGGraphicsElement(svg_names::kClipPathTag, document),
       clip_path_units_(MakeGarbageCollected<
                        SVGAnimatedEnumeration<SVGUnitTypes::SVGUnitType>>(
           this,
           svg_names::kClipPathUnitsAttr,
-          SVGUnitTypes::kSvgUnitTypeUserspaceonuse)) {}
+          SVGUnitTypes::kSvgUnitTypeUserspaceonuse)) {
+  AddToPropertyMap(clip_path_units_);
+}
 
 void SVGClipPathElement::Trace(Visitor* visitor) const {
   visitor->Trace(clip_path_units_);
-  SVGTransformableElement::Trace(visitor);
+  SVGGraphicsElement::Trace(visitor);
 }
 
 void SVGClipPathElement::SvgAttributeChanged(
     const SvgAttributeChangedParams& params) {
   if (params.name == svg_names::kClipPathUnitsAttr) {
     SVGElement::InvalidationGuard invalidation_guard(this);
+
     auto* layout_object = To<LayoutSVGResourceContainer>(GetLayoutObject());
-    if (layout_object) {
-      layout_object->InvalidateCache();
-    }
+    if (layout_object)
+      layout_object->InvalidateCacheAndMarkForLayout();
     return;
   }
-  SVGTransformableElement::SvgAttributeChanged(params);
+
+  SVGGraphicsElement::SvgAttributeChanged(params);
 }
 
 void SVGClipPathElement::ChildrenChanged(const ChildrenChange& change) {
-  SVGTransformableElement::ChildrenChanged(change);
+  SVGGraphicsElement::ChildrenChanged(change);
 
   if (change.ByParser())
     return;
 
-  auto* layout_object = To<LayoutSVGResourceContainer>(GetLayoutObject());
-  if (layout_object) {
-    layout_object->InvalidateCache();
+  if (LayoutObject* object = GetLayoutObject()) {
+    object->SetNeedsLayoutAndFullPaintInvalidation(
+        layout_invalidation_reason::kChildChanged);
   }
 }
 
 LayoutObject* SVGClipPathElement::CreateLayoutObject(const ComputedStyle&) {
   return MakeGarbageCollected<LayoutSVGResourceClipper>(this);
-}
-
-SVGAnimatedPropertyBase* SVGClipPathElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kClipPathUnitsAttr) {
-    return clip_path_units_.Get();
-  }
-  return SVGTransformableElement::PropertyFromAttribute(attribute_name);
-}
-
-void SVGClipPathElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{clip_path_units_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGTransformableElement::SynchronizeAllSVGAttributes();
 }
 
 }  // namespace blink

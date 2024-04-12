@@ -11,7 +11,6 @@
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/paint/paint_invalidator.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
-#include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 
 namespace blink {
 
@@ -25,23 +24,6 @@ void ObjectPaintInvalidator::CheckPaintLayerNeedsRepaint() {
 void ObjectPaintInvalidator::SlowSetPaintingLayerNeedsRepaint() {
   if (PaintLayer* painting_layer = object_.PaintingLayer())
     painting_layer->SetNeedsRepaint();
-}
-
-void ObjectPaintInvalidator::InvalidateDisplayItemClient(
-    const DisplayItemClient& client,
-    PaintInvalidationReason reason) {
-#if DCHECK_IS_ON()
-  // It's caller's responsibility to ensure PaintingLayer's NeedsRepaint is
-  // set. Don't set the flag here because getting PaintLayer has cost and the
-  // caller can use various ways (e.g.
-  // PaintInvalidatinContext::painting_layer) to reduce the cost.
-  CheckPaintLayerNeedsRepaint();
-#endif
-  TRACE_EVENT_INSTANT2(TRACE_DISABLED_BY_DEFAULT("blink.invalidation"),
-                       "InvalidateDisplayItemClient", TRACE_EVENT_SCOPE_GLOBAL,
-                       "client", client.DebugName().Utf8(), "reason",
-                       PaintInvalidationReasonToString(reason));
-  client.Invalidate(reason);
 }
 
 DISABLE_CFI_PERF
@@ -67,9 +49,8 @@ ObjectPaintInvalidatorWithContext::ComputePaintInvalidationReason() {
   if (context_.fragment_data->PaintOffset() != context_.old_paint_offset)
     return PaintInvalidationReason::kLayout;
 
-  if (object_.ShouldDoFullPaintInvalidation()) {
-    return object_.PaintInvalidationReasonForPrePaint();
-  }
+  if (object_.ShouldDoFullPaintInvalidation())
+    return object_.FullPaintInvalidationReason();
 
   if (object_.GetDocument().InForcedColorsMode() && object_.IsLayoutBlockFlow())
     return PaintInvalidationReason::kBackplate;

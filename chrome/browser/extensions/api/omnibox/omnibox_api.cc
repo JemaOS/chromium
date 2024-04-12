@@ -7,7 +7,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,7 +28,6 @@
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_prefs_factory.h"
-#include "extensions/common/extension_id.h"
 #include "ui/gfx/image/image.h"
 
 namespace extensions {
@@ -48,27 +46,31 @@ const char kBackgroundTabDisposition[] = "newBackgroundTab";
 // Pref key for omnibox.setDefaultSuggestion.
 const char kOmniboxDefaultSuggestion[] = "omnibox_default_suggestion";
 
-std::optional<omnibox::SuggestResult> GetOmniboxDefaultSuggestion(
+std::unique_ptr<omnibox::SuggestResult> GetOmniboxDefaultSuggestion(
     Profile* profile,
-    const ExtensionId& extension_id) {
+    const std::string& extension_id) {
   ExtensionPrefs* prefs = ExtensionPrefs::Get(profile);
   if (!prefs) {
-    return std::nullopt;
+    return nullptr;
   }
 
   const base::Value::Dict* dict =
       prefs->ReadPrefAsDict(extension_id, kOmniboxDefaultSuggestion);
   if (!dict) {
-    return std::nullopt;
+    return nullptr;
   }
-  return omnibox::SuggestResult::FromValue(*dict);
+
+  auto suggestion = std::make_unique<omnibox::SuggestResult>();
+  omnibox::SuggestResult::Populate(*dict, *suggestion);
+
+  return suggestion;
 }
 
 // Tries to set the omnibox default suggestion; returns true on success or
 // false on failure.
 bool SetOmniboxDefaultSuggestion(
     Profile* profile,
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const omnibox::DefaultSuggestResult& suggestion) {
   ExtensionPrefs* prefs = ExtensionPrefs::Get(profile);
   if (!prefs)
@@ -85,7 +87,7 @@ bool SetOmniboxDefaultSuggestion(
 }
 
 // Returns a string used as a template URL string of the extension.
-std::string GetTemplateURLStringForExtension(const ExtensionId& extension_id) {
+std::string GetTemplateURLStringForExtension(const std::string& extension_id) {
   // This URL is not actually used for navigation. It holds the extension's ID.
   return std::string(extensions::kExtensionScheme) + "://" +
       extension_id + "/?q={searchTerms}";
@@ -95,8 +97,7 @@ std::string GetTemplateURLStringForExtension(const ExtensionId& extension_id) {
 
 // static
 void ExtensionOmniboxEventRouter::OnInputStarted(
-    Profile* profile,
-    const ExtensionId& extension_id) {
+    Profile* profile, const std::string& extension_id) {
   auto event = std::make_unique<Event>(events::OMNIBOX_ON_INPUT_STARTED,
                                        omnibox::OnInputStarted::kEventName,
                                        base::Value::List(), profile);
@@ -106,10 +107,8 @@ void ExtensionOmniboxEventRouter::OnInputStarted(
 
 // static
 bool ExtensionOmniboxEventRouter::OnInputChanged(
-    Profile* profile,
-    const ExtensionId& extension_id,
-    const std::string& input,
-    int suggest_id) {
+    Profile* profile, const std::string& extension_id,
+    const std::string& input, int suggest_id) {
   EventRouter* event_router = EventRouter::Get(profile);
   if (!event_router->ExtensionHasEventListener(
           extension_id, omnibox::OnInputChanged::kEventName))
@@ -129,7 +128,7 @@ bool ExtensionOmniboxEventRouter::OnInputChanged(
 // static
 void ExtensionOmniboxEventRouter::OnInputEntered(
     content::WebContents* web_contents,
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const std::string& input,
     WindowOpenDisposition disposition) {
   Profile* profile =
@@ -162,8 +161,7 @@ void ExtensionOmniboxEventRouter::OnInputEntered(
 
 // static
 void ExtensionOmniboxEventRouter::OnInputCancelled(
-    Profile* profile,
-    const ExtensionId& extension_id) {
+    Profile* profile, const std::string& extension_id) {
   auto event = std::make_unique<Event>(events::OMNIBOX_ON_INPUT_CANCELLED,
                                        omnibox::OnInputCancelled::kEventName,
                                        base::Value::List(), profile);
@@ -173,7 +171,7 @@ void ExtensionOmniboxEventRouter::OnInputCancelled(
 
 void ExtensionOmniboxEventRouter::OnDeleteSuggestion(
     Profile* profile,
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const std::string& suggestion_text) {
   base::Value::List args;
   args.Append(suggestion_text);
@@ -253,14 +251,14 @@ void OmniboxAPI::OnExtensionUnloaded(content::BrowserContext* browser_context,
   }
 }
 
-gfx::Image OmniboxAPI::GetOmniboxIcon(const ExtensionId& extension_id) {
+gfx::Image OmniboxAPI::GetOmniboxIcon(const std::string& extension_id) {
   return omnibox_icon_manager_.GetIcon(extension_id);
 }
 
 void OmniboxAPI::OnTemplateURLsLoaded() {
   // Register keywords for pending extensions.
   template_url_subscription_ = {};
-  for (const Extension* i : pending_extensions_) {
+  for (const auto* i : pending_extensions_) {
     url_service_->RegisterOmniboxKeyword(
         i->id(), i->short_name(), OmniboxInfo::GetKeyword(i),
         GetTemplateURLStringForExtension(i->id()),
@@ -345,7 +343,7 @@ void OmniboxSendSuggestionsFunction::NotifySuggestionsReady() {
 }
 
 ExtensionFunction::ResponseAction OmniboxSetDefaultSuggestionFunction::Run() {
-  std::optional<SetDefaultSuggestion::Params> params =
+  absl::optional<SetDefaultSuggestion::Params> params =
       SetDefaultSuggestion::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -409,13 +407,13 @@ ACMatchClassifications StyleTypesToACMatchClassifications(
 
       int type_class;
       switch (style.type) {
-        case omnibox::DescriptionStyleType::kUrl:
+        case omnibox::DESCRIPTION_STYLE_TYPE_URL:
           type_class = AutocompleteMatch::ACMatchClassification::URL;
           break;
-        case omnibox::DescriptionStyleType::kMatch:
+        case omnibox::DESCRIPTION_STYLE_TYPE_MATCH:
           type_class = AutocompleteMatch::ACMatchClassification::MATCH;
           break;
-        case omnibox::DescriptionStyleType::kDim:
+        case omnibox::DESCRIPTION_STYLE_TYPE_DIM:
           type_class = AutocompleteMatch::ACMatchClassification::DIM;
           break;
         default:
@@ -447,7 +445,7 @@ void ApplyDefaultSuggestionForExtensionKeyword(
     AutocompleteMatch* match) {
   DCHECK(keyword->type() == TemplateURL::OMNIBOX_API_EXTENSION);
 
-  std::optional<omnibox::SuggestResult> suggestion(
+  std::unique_ptr<omnibox::SuggestResult> suggestion(
       GetOmniboxDefaultSuggestion(profile, keyword->GetExtensionId()));
   if (!suggestion || suggestion->description.empty())
     return;  // fall back to the universal default

@@ -57,9 +57,9 @@ TEST_F(CSSStyleSheetTest,
        GarbageCollectedShadowRootsRemovedFromAdoptedTreeScopes) {
   SetBodyInnerHTML("<div id='host_a'></div><div id='host_b'></div>");
   auto* host_a = GetElementById("host_a");
-  auto& shadow_a = host_a->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+  auto& shadow_a = host_a->AttachShadowRootInternal(ShadowRootType::kOpen);
   auto* host_b = GetElementById("host_b");
-  auto& shadow_b = host_b->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+  auto& shadow_b = host_b->AttachShadowRootInternal(ShadowRootType::kOpen);
   DummyExceptionStateForTesting exception_state;
   CSSStyleSheetInit* init = CSSStyleSheetInit::Create();
   CSSStyleSheet* sheet =
@@ -83,8 +83,8 @@ TEST_F(CSSStyleSheetTest,
 TEST_F(CSSStyleSheetTest, AdoptedStyleSheetMediaQueryEvalChange) {
   SetBodyInnerHTML("<div id=green></div><div id=blue></div>");
 
-  Element* green = GetDocument().getElementById(AtomicString("green"));
-  Element* blue = GetDocument().getElementById(AtomicString("blue"));
+  Element* green = GetDocument().getElementById("green");
+  Element* blue = GetDocument().getElementById("blue");
 
   CSSStyleSheetInit* init = CSSStyleSheetInit::Create();
   CSSStyleSheet* sheet =

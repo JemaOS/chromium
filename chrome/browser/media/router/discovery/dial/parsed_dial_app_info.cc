@@ -17,7 +17,8 @@ std::string DialAppStateToString(DialAppState app_state) {
     case DialAppState::kStopped:
       return "stopped";
   }
-  NOTREACHED_NORETURN();
+  NOTREACHED();
+  return "unknown";
 }
 
 ParsedDialAppInfo::ParsedDialAppInfo() = default;

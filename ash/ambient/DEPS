@@ -1,6 +1,5 @@
 include_rules = [
   "+cc/metrics",
-  "+chromeos/ash/components/geolocation",
 ]
 
 specific_include_rules = {
@@ -11,7 +10,6 @@ specific_include_rules = {
   ],
   "ambient_controller.*": [
     "+chromeos/ash/components/assistant/buildflags.h",
-    "+chromeos/components/kiosk/kiosk_utils.h",
   ],
   ".*test.cc": [
     "+cc/test",

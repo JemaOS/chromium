@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_BUCKETS_STORAGE_BUCKET_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_BUCKETS_STORAGE_BUCKET_H_
 
+#include "base/memory/weak_ptr.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "third_party/blink/public/mojom/buckets/bucket_manager_host.mojom-blink.h"
@@ -14,20 +15,15 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/core/execution_context/navigator_base.h"
-#include "third_party/blink/renderer/modules/file_system_access/file_system_directory_handle.h"
-#include "third_party/blink/renderer/modules/file_system_access/storage_manager_file_system_access.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
 
 namespace blink {
 
 class CacheStorage;
-class FileSystemDirectoryHandle;
 class IDBFactory;
 class LockManager;
 class ScriptState;
-class StorageEstimate;
-class V8StorageBucketDurability;
 
 class StorageBucket final : public ScriptWrappable,
                             public ExecutionContextClient {
@@ -41,54 +37,39 @@ class StorageBucket final : public ScriptWrappable,
   ~StorageBucket() override = default;
 
   const String& name();
-  ScriptPromiseTyped<IDLBoolean> persist(ScriptState*);
-  ScriptPromiseTyped<IDLBoolean> persisted(ScriptState*);
-  ScriptPromiseTyped<StorageEstimate> estimate(ScriptState*);
-  ScriptPromiseTyped<V8StorageBucketDurability> durability(ScriptState*);
-  ScriptPromiseTyped<IDLUndefined> setExpires(ScriptState*,
-                                              const DOMHighResTimeStamp&);
-  ScriptPromiseTyped<IDLNullable<IDLDOMHighResTimeStamp>> expires(ScriptState*);
+  ScriptPromise persist(ScriptState*);
+  ScriptPromise persisted(ScriptState*);
+  ScriptPromise estimate(ScriptState*);
+  ScriptPromise durability(ScriptState*);
+  ScriptPromise setExpires(ScriptState*, const DOMHighResTimeStamp&);
+  ScriptPromise expires(ScriptState*);
   IDBFactory* indexedDB();
   LockManager* locks();
   CacheStorage* caches(ExceptionState&);
-  ScriptPromiseTyped<FileSystemDirectoryHandle> getDirectory(ScriptState*,
-                                                             ExceptionState&);
-
-  void GetDirectoryForDevTools(
-      ExecutionContext* context,
-      base::OnceCallback<void(mojom::blink::FileSystemAccessErrorPtr,
-                              FileSystemDirectoryHandle*)> callback);
+  ScriptPromise getDirectory(ScriptState*, ExceptionState&);
 
   // GarbageCollected
   void Trace(Visitor*) const override;
 
  private:
-  void DidRequestPersist(ScriptPromiseResolverTyped<IDLBoolean>* resolver,
+  void DidRequestPersist(ScriptPromiseResolver* resolver,
                          bool persisted,
                          bool success);
-  void DidGetPersisted(ScriptPromiseResolverTyped<IDLBoolean>* resolver,
+  void DidGetPersisted(ScriptPromiseResolver* resolver,
                        bool persisted,
                        bool success);
-  void DidGetEstimate(ScriptPromiseResolverTyped<StorageEstimate>*,
+  void DidGetEstimate(ScriptPromiseResolver* resolver,
                       int64_t current_usage,
                       int64_t current_quota,
                       bool success);
-  void DidGetDurability(
-      ScriptPromiseResolverTyped<V8StorageBucketDurability>* resolver,
-      mojom::blink::BucketDurability durability,
-      bool success);
-  void DidSetExpires(ScriptPromiseResolverTyped<IDLUndefined>*, bool success);
-  void DidGetExpires(
-      ScriptPromiseResolverTyped<IDLNullable<IDLDOMHighResTimeStamp>>* resolver,
-      const std::optional<base::Time> expires,
-      bool success);
-  void GetSandboxedFileSystem(
-      ScriptPromiseResolverTyped<FileSystemDirectoryHandle>* resolver);
-  void GetSandboxedFileSystemForDevtools(
-      ExecutionContext* context,
-      base::OnceCallback<void(mojom::blink::FileSystemAccessErrorPtr,
-                              FileSystemDirectoryHandle*)> callback,
-      mojom::blink::FileSystemAccessErrorPtr result);
+  void DidGetDurability(ScriptPromiseResolver* resolver,
+                        mojom::blink::BucketDurability durability,
+                        bool success);
+  void DidSetExpires(ScriptPromiseResolver* resolver, bool success);
+  void DidGetExpires(ScriptPromiseResolver* resolver,
+                     const absl::optional<base::Time> expires,
+                     bool success);
+  void GetSandboxedFileSystem(ScriptPromiseResolver* resolver);
 
   String name_;
 
@@ -99,6 +80,8 @@ class StorageBucket final : public ScriptWrappable,
   Member<LockManager> lock_manager_;
   Member<CacheStorage> caches_;
   Member<NavigatorBase> navigator_base_;
+
+  base::WeakPtrFactory<StorageBucket> weak_factory_{this};
 };
 
 }  // namespace blink

@@ -185,8 +185,8 @@ void AssistantNotificationControllerImpl::OnAllNotificationsRemoved(
 
 void AssistantNotificationControllerImpl::OnNotificationClicked(
     const std::string& id,
-    const std::optional<int>& button_index,
-    const std::optional<std::u16string>& reply) {
+    const absl::optional<int>& button_index,
+    const absl::optional<std::u16string>& reply) {
   const AssistantNotification* notification = model_.GetNotificationById(id);
   if (!notification)
     return;

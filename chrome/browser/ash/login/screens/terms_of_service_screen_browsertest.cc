@@ -7,9 +7,7 @@
 #include "ash/public/cpp/login_screen_test_api.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
-#include "base/metrics/histogram_base.h"
 #include "base/run_loop.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "base/threading/thread_restrictions.h"
 #include "chrome/browser/ash/login/existing_user_controller.h"
 #include "chrome/browser/ash/login/oobe_screen.h"
@@ -17,6 +15,7 @@
 #include "chrome/browser/ash/login/session/user_session_manager_test_api.h"
 #include "chrome/browser/ash/login/test/cryptohome_mixin.h"
 #include "chrome/browser/ash/login/test/device_state_mixin.h"
+#include "chrome/browser/ash/login/test/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/login/test/embedded_test_server_setup_mixin.h"
 #include "chrome/browser/ash/login/test/js_checker.h"
 #include "chrome/browser/ash/login/test/login_manager_mixin.h"
@@ -26,12 +25,10 @@
 #include "chrome/browser/ash/login/test/user_policy_mixin.h"
 #include "chrome/browser/ash/login/ui/login_display_host.h"
 #include "chrome/browser/ash/login/ui/webui_login_view.h"
-#include "chrome/browser/ash/login/wizard_context.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/ash/policy/core/device_local_account.h"
 #include "chrome/browser/ash/policy/core/device_policy_builder.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
-#include "chrome/browser/ash/policy/test_support/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/webui/ash/login/family_link_notice_screen_handler.h"
@@ -63,13 +60,13 @@ const char kManagedUser[] = "user@example.com";
 const char kManagedGaiaID[] = "33333";
 const char kTosText[] = "By using this test you agree to fix future bugs";
 
-std::optional<std::string> ReadFileToOptionalString(
+absl::optional<std::string> ReadFileToOptionalString(
     const base::FilePath& file_path) {
   base::ScopedAllowBlockingForTesting allow_blocking;
   std::string content;
   if (base::ReadFileToString(file_path, &content))
-    return std::make_optional<std::string>(content);
-  return std::nullopt;
+    return absl::make_optional<std::string>(content);
+  return absl::nullopt;
 }
 
 std::string TestServerBaseUrl(net::EmbeddedTestServer* server) {
@@ -211,7 +208,7 @@ class PublicSessionTosScreenTest : public OobeBaseTest {
     return FakeSessionManagerClient::Get();
   }
 
-  std::optional<TermsOfServiceScreen::Result> result_;
+  absl::optional<TermsOfServiceScreen::Result> result_;
   base::HistogramTester histogram_tester_;
 
  private:
@@ -342,10 +339,6 @@ class ManagedUserTosScreenTest : public OobeBaseTest {
     original_callback_ = screen->get_exit_callback_for_testing();
     screen->set_exit_callback_for_testing(base::BindRepeating(
         &ManagedUserTosScreenTest::HandleScreenExit, base::Unretained(this)));
-    LoginDisplayHost::default_host()
-        ->GetWizardContext()
-        ->knowledge_factor_setup.auth_setup_flow =
-        WizardContext::AuthChangeFlow::kReauthentication;
   }
 
   void WaitForScreenShown() {
@@ -380,7 +373,7 @@ class ManagedUserTosScreenTest : public OobeBaseTest {
     return saved_tos.has_value() && saved_tos.value() == tos;
   }
 
-  std::optional<TermsOfServiceScreen::Result> result_;
+  absl::optional<TermsOfServiceScreen::Result> result_;
   base::HistogramTester histogram_tester_;
 
  protected:

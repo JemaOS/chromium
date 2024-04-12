@@ -67,9 +67,7 @@ scoped_refptr<DrmFramebuffer> DrmFramebuffer::AddFramebuffer(
                                    params.handles, params.strides,
                                    params.offsets, modifiers, &framebuffer_id,
                                    params.flags)) {
-    VLOG(1) << "AddFramebuffer2:" << "size=" << params.width << "x"
-            << params.height << " drm_format=" << (int)drm_format
-            << " fb_id=" << framebuffer_id << " flags=" << params.flags;
+    DPLOG(WARNING) << "AddFramebuffer2";
     return nullptr;
   }
 
@@ -79,9 +77,7 @@ scoped_refptr<DrmFramebuffer> DrmFramebuffer::AddFramebuffer(
                                    params.handles, params.strides,
                                    params.offsets, modifiers,
                                    &opaque_framebuffer_id, params.flags)) {
-    VLOG(1) << "AddFramebuffer2:" << "size=" << params.width << "x"
-            << params.height << " drm_format=" << (int)drm_format
-            << " fb_id=" << opaque_framebuffer_id << " flags=" << params.flags;
+    DPLOG(WARNING) << "AddFramebuffer2";
     drm_device->RemoveFramebuffer(framebuffer_id);
     return nullptr;
   }
@@ -148,14 +144,11 @@ DrmFramebuffer::DrmFramebuffer(scoped_refptr<DrmDevice> drm_device,
       modeset_sequence_id_at_allocation_(drm_device_->modeset_sequence_id()) {}
 
 DrmFramebuffer::~DrmFramebuffer() {
-  if (!drm_device_->RemoveFramebuffer(framebuffer_id_)) {
-    VLOG(1) << "RemoveFramebuffer";
-  }
-
+  if (!drm_device_->RemoveFramebuffer(framebuffer_id_))
+    PLOG(WARNING) << "RemoveFramebuffer";
   if (opaque_framebuffer_id_ &&
-      !drm_device_->RemoveFramebuffer(opaque_framebuffer_id_)) {
-    VLOG(1) << "RemoveFramebuffer";
-  }
+      !drm_device_->RemoveFramebuffer(opaque_framebuffer_id_))
+    PLOG(WARNING) << "RemoveFramebuffer";
 }
 
 }  // namespace ui

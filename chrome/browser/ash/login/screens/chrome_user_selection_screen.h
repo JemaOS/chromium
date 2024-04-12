@@ -68,7 +68,7 @@ class ChromeUserSelectionScreen
   void SetPublicSessionShowFullManagementDisclosure(
       bool show_full_management_disclosure);
 
-  raw_ptr<policy::DeviceLocalAccountPolicyService>
+  raw_ptr<policy::DeviceLocalAccountPolicyService, ExperimentalAsh>
       device_local_account_policy_service_;
 
   // Map from public session account IDs to their display names set by policy.

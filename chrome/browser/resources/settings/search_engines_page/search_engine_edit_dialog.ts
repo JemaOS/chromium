@@ -10,17 +10,16 @@ import 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
 import 'chrome://resources/cr_elements/cr_input/cr_input.js';
 
-import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import type {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
-import type {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
 import {microTask, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {loadTimeData} from '../i18n_setup.js';
 
 import {getTemplate} from './search_engine_edit_dialog.html.js';
-import type {SearchEngine, SearchEnginesBrowserProxy, SearchEnginesInfo} from './search_engines_browser_proxy.js';
-import {SearchEnginesBrowserProxyImpl} from './search_engines_browser_proxy.js';
+import {SearchEngine, SearchEnginesBrowserProxy, SearchEnginesBrowserProxyImpl, SearchEnginesInfo} from './search_engines_browser_proxy.js';
 
 /**
  * The |modelIndex| to use when a new search engine is added. Must match
@@ -66,12 +65,6 @@ export class SettingsSearchEngineEditDialogElement extends
       queryUrl_: String,
       dialogTitle_: String,
       actionButtonText_: String,
-      cancelButtonHidden_: Boolean,
-      readonly_: Boolean,
-      urlIsReadonly_: {
-        type: Boolean,
-        computed: 'computeUrlIsReadonly_(model, readonly_)',
-      },
     };
   }
 
@@ -81,9 +74,6 @@ export class SettingsSearchEngineEditDialogElement extends
   private queryUrl_: string;
   private dialogTitle_: string;
   private actionButtonText_: string;
-  private cancelButtonHidden_: boolean;
-  private readonly_: boolean;
-  private urlIsReadonly_: boolean;
   private browserProxy_: SearchEnginesBrowserProxy =
       SearchEnginesBrowserProxyImpl.getInstance();
 
@@ -91,28 +81,18 @@ export class SettingsSearchEngineEditDialogElement extends
     super.ready();
 
     if (this.model) {
-      if (this.model.isPrepopulated || this.model.default) {
-        this.dialogTitle_ =
-            loadTimeData.getString('searchEnginesEditSearchEngine');
-      } else {
-        this.dialogTitle_ = loadTimeData.getString(
-            this.model.isManaged ? 'searchEnginesViewSiteSearch' :
-                                   'searchEnginesEditSiteSearch');
-      }
-
-      this.actionButtonText_ =
-          loadTimeData.getString(this.model.isManaged ? 'done' : 'save');
-      this.cancelButtonHidden_ = this.model.isManaged;
+      this.dialogTitle_ =
+          loadTimeData.getString('searchEnginesEditSearchEngine');
+      this.actionButtonText_ = loadTimeData.getString('save');
 
       // If editing an existing search engine, pre-populate the input fields.
       this.searchEngine_ = this.model.name;
       this.keyword_ = this.model.keyword;
       this.queryUrl_ = this.model.url;
-      this.readonly_ = this.model.isManaged;
     } else {
-      this.dialogTitle_ = loadTimeData.getString('searchEnginesAddSiteSearch');
+      this.dialogTitle_ =
+          loadTimeData.getString('searchEnginesAddSearchEngine');
       this.actionButtonText_ = loadTimeData.getString('add');
-      this.readonly_ = false;
     }
 
     this.addEventListener('cancel', () => {
@@ -189,10 +169,6 @@ export class SettingsSearchEngineEditDialogElement extends
       return !inputElement.invalid && inputElement.value.length > 0;
     });
     this.$.actionButton.disabled = !allValid;
-  }
-
-  private computeUrlIsReadonly_(): boolean {
-    return this.readonly_ || (!!this.model && this.model!.urlLocked);
   }
 }
 

@@ -65,6 +65,7 @@ bool MacOSVersionComponents(int* major,
                             int* minor,
                             int* bugfix,
                             std::string* build,
+                            bool* server,
                             std::string* version_string);
 
 //! \brief Returns the model name and board ID of the running system.

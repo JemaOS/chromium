@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import '//resources/js/util.js';
+import '//resources/js/util_ts.js';
 import '//resources/cr_elements/cr_button/cr_button.js';
 import '//resources/cr_elements/cr_dialog/cr_dialog.js';
 import '//resources/cr_elements/cr_input/cr_input.js';
@@ -24,30 +24,27 @@ import '//resources/cr_elements/cr_toast/cr_toast.js';
 
 // </if>
 
-import type {CrDialogElement} from '//resources/cr_elements/cr_dialog/cr_dialog.js';
-import type {CrInputElement} from '//resources/cr_elements/cr_input/cr_input.js';
+import {CrDialogElement} from '//resources/cr_elements/cr_dialog/cr_dialog.js';
+import {CrInputElement} from '//resources/cr_elements/cr_input/cr_input.js';
 import {WebUiListenerMixin} from '//resources/cr_elements/web_ui_listener_mixin.js';
-import {assert, assertNotReached} from '//resources/js/assert.js';
+import {assert, assertNotReached} from '//resources/js/assert_ts.js';
+import {BaseMixin, BaseMixinInterface} from '../base_mixin.js';
 import {focusWithoutInk} from '//resources/js/focus_without_ink.js';
-import type {IronCollapseElement} from '//resources/polymer/v3_0/iron-collapse/iron-collapse.js';
+import {IronCollapseElement} from '//resources/polymer/v3_0/iron-collapse/iron-collapse.js';
 import {flush, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {SyncBrowserProxy, SyncPrefs, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
-import {PageStatus, StatusAction, SyncBrowserProxyImpl} from '/shared/settings/people_page/sync_browser_proxy.js';
+import {PageStatus, StatusAction, SyncBrowserProxy, SyncBrowserProxyImpl, SyncPrefs, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
-import {OpenWindowProxyImpl} from 'chrome://resources/js/open_window_proxy.js';
 
-import type {FocusConfig} from '../focus_config.js';
+import {FocusConfig} from '../focus_config.js';
 import {loadTimeData} from '../i18n_setup.js';
-import type {MetricsBrowserProxy} from '../metrics_browser_proxy.js';
-import {MetricsBrowserProxyImpl} from '../metrics_browser_proxy.js';
 // <if expr="chromeos_ash">
-import type {SettingsPersonalizationOptionsElement} from '../privacy_page/personalization_options.js';
+import {SettingsPersonalizationOptionsElement} from '../privacy_page/personalization_options.js';
 // </if>
 
 import {RouteObserverMixin, Router} from '../router.js';
 
 // <if expr="chromeos_ash">
-import type {SettingsSyncEncryptionOptionsElement} from './sync_encryption_options.js';
+import {SettingsSyncEncryptionOptionsElement} from './sync_encryption_options.js';
 // </if>
 
 import {getTemplate} from './sync_page.html.js';
@@ -64,7 +61,7 @@ export interface SettingsSyncPageElement {
  */
 
 const SettingsSyncPageElementBase =
-    RouteObserverMixin(WebUiListenerMixin(I18nMixin(PolymerElement)));
+    RouteObserverMixin(WebUiListenerMixin(I18nMixin(BaseMixin(PolymerElement))));
 
 export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
   static get is() {
@@ -194,38 +191,12 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
         computed: 'computeExistingPassphraseLabel_(syncPrefs.encryptAllData,' +
             'syncPrefs.explicitPassphraseTime)',
       },
-
-      // <if expr="chromeos_lacros">
-      /**
-       * Whether to show the new UI for OS Sync Settings and
-       * Browser Sync Settings  which include sublabel and
-       * Apps toggle shared between Ash and Lacros.
-       */
-      showSyncSettingsRevamp_: {
+      isJemaProfile_: {
         type: Boolean,
-        value: loadTimeData.getBoolean('showSyncSettingsRevamp'),
+        value: function() {
+          return loadTimeData.getBoolean('isJemaProfile');
+        },
         readOnly: true,
-      },
-      //</if>
-
-      // TODO(crbug.com/324091979): Remove once crbug.com/324091979 launched.
-      enableLinkedServicesSetting_: {
-        type: Boolean,
-        value() {
-          return loadTimeData.getBoolean('enableLinkedServicesSetting');
-        },
-      },
-
-      isEeaChoiceCountry_: {
-        type: Boolean,
-        value() {
-          return loadTimeData.getBoolean('isEeaChoiceCountry');
-        },
-      },
-
-      personalizationCollapseExpanded_: {
-        type: Boolean,
-        value: false,
       },
     };
   }
@@ -248,13 +219,6 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
   private signedIn_: boolean;
   private syncDisabledByAdmin_: boolean;
   private syncSectionDisabled_: boolean;
-  private enableLinkedServicesSetting_: boolean;
-  private isEeaChoiceCountry_: boolean;
-  private personalizationCollapseExpanded_: boolean;
-
-  // <if expr="chromeos_lacros">
-  private showSyncSettingsRevamp_: boolean;
-  // </if>
 
   // <if expr="not chromeos_ash">
   private showSetupCancelDialog_: boolean;
@@ -262,11 +226,9 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
 
   private enterPassphraseLabel_: TrustedHTML;
   private existingPassphraseLabel_: TrustedHTML;
+  private isJemaProfile_: boolean;
 
-  private metricsBrowserProxy_: MetricsBrowserProxy =
-      MetricsBrowserProxyImpl.getInstance();
-  private syncBrowserProxy_: SyncBrowserProxy =
-      SyncBrowserProxyImpl.getInstance();
+  private browserProxy_: SyncBrowserProxy = SyncBrowserProxyImpl.getInstance();
   private collapsibleSectionsInitialized_: boolean;
   private didAbort_: boolean;
   private setupCancelConfirmed_: boolean;
@@ -324,6 +286,25 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
     if (router.getCurrentRoute() === router.getRoutes().SYNC) {
       this.onNavigateToPage_();
     }
+    const hideOtherSyncItems = () => {
+      const nodes = this.shadowRoot!.querySelectorAll('#other-sync-items cr-link-row') as NodeListOf<HTMLElement>;
+      const unSupportedEncryptElement = this.shadowRoot!.querySelector('#encryptionDescription') as HTMLElement;
+      [...nodes, unSupportedEncryptElement].forEach(n => {
+        if (n.id !== 'sync-advanced-row') {
+          n.style.display = 'none';
+        }
+      });
+    };
+
+    const hideAll = () => {
+      if (!this.isJemaProfile_) return;
+      hideOtherSyncItems();
+    };
+
+    setTimeout(() => {
+      hideAll();
+      setTimeout(hideAll, 30);
+    }, 0);
   }
 
   override disconnectedCallback() {
@@ -354,22 +335,15 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
   }
   // </if>
 
+  // <if expr="is_chromeos">
+  private shouldShowLacrosSideBySideWarning_(): boolean {
+    return loadTimeData.getBoolean('shouldShowLacrosSideBySideWarning');
+  }
+  // </if>
+
   private computeSignedIn_(): boolean {
     return !!this.syncStatus.signedIn;
   }
-
-  // <if expr="chromeos_lacros">
-  private onOsSyncSettingsLinkClick_(): void {
-    OpenWindowProxyImpl.getInstance().openUrl(
-        loadTimeData.getString('osSyncSettingsUrl'));
-  }
-
-  private getManageSyncedDataSubtitle_(): string {
-    return this.showSyncSettingsRevamp_ ?
-        this.i18n('manageSyncedDataSubtitle') :
-        '';
-  }
-  // </if>
 
   private computeSyncSectionDisabled_(): boolean {
     return this.syncStatus !== undefined &&
@@ -440,7 +414,9 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
     // <if expr="not chromeos_ash">
     const userActionCancelsSetup = this.syncStatus &&
         this.syncStatus.firstSetupInProgress && this.didAbort_;
-    if (userActionCancelsSetup && !this.setupCancelConfirmed_) {
+//---***JEMAOS BEGIN***---
+     if (!this.isJemaProfile_ && userActionCancelsSetup && !this.setupCancelConfirmed_) {
+//---***JEMAOS END***---
       chrome.metricsPrivate.recordUserAction(
           'Signin_Signin_BackOnAdvancedSyncSettings');
       // Show the 'Cancel sync?' dialog.
@@ -483,7 +459,7 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
     // Display loading page until the settings have been retrieved.
     this.pageStatus_ = PageStatus.SPINNER;
 
-    this.syncBrowserProxy_.didNavigateToSyncPage();
+    this.browserProxy_.didNavigateToSyncPage();
 
     this.beforeunloadCallback_ = event => {
       // When the user tries to leave the sync setup, show the 'Leave site'
@@ -510,7 +486,7 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
     // search useful content when the page is not visible to the user.
     this.pageStatus_ = PageStatus.CONFIGURE;
 
-    this.syncBrowserProxy_.didNavigateAwayFromSyncPage(this.didAbort_);
+    this.browserProxy_.didNavigateAwayFromSyncPage(this.didAbort_);
 
     window.removeEventListener('beforeunload', this.beforeunloadCallback_);
     this.beforeunloadCallback_ = null;
@@ -531,14 +507,8 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
 
   private onActivityControlsClick_() {
     chrome.metricsPrivate.recordUserAction('Sync_OpenActivityControlsPage');
-    this.syncBrowserProxy_.openActivityControlsUrl();
+    this.browserProxy_.openActivityControlsUrl();
     window.open(loadTimeData.getString('activityControlsUrl'));
-  }
-
-  private onLinkedServicesClick_() {
-    this.metricsBrowserProxy_.recordAction('Sync_OpenLinkedServicesPage');
-    OpenWindowProxyImpl.getInstance().openUrl(
-        loadTimeData.getString('linkedServicesUrl'));
   }
 
   private onSyncDashboardLinkClick_() {
@@ -613,7 +583,7 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
       return;
     }
 
-    this.syncBrowserProxy_.setDecryptionPassphrase(this.existingPassphrase_)
+    this.browserProxy_.setDecryptionPassphrase(this.existingPassphrase_)
         .then(
             sucessfullySet => this.handlePageStatusChanged_(
                 this.computePageStatusAfterPassphraseChange_(sucessfullySet)));

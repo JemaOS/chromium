@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string_view>
-
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "chrome/browser/profiles/profile.h"
@@ -15,7 +13,6 @@
 #include "content/public/browser/web_ui_data_source.h"
 #include "content/public/browser/webui_config.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/scoped_web_ui_controller_factory_registration.h"
 #include "content/public/test/web_ui_browsertest_util.h"
 
@@ -66,12 +63,12 @@ class CrosComponentsUIConfig : public content::WebUIConfig {
 
 struct ComponentTestData {
   // The URL of the component.
-  std::string_view script_src;
+  base::StringPiece script_src;
   // The name of the custom element.
-  std::string_view component_name;
+  base::StringPiece component_name;
   // Used to generate the test name. GTest names are only allowed to use
   // alphanumeric characters.
-  std::string_view gtest_name;
+  base::StringPiece gtest_name;
 };
 
 // Used by GTest to generate the test name.
@@ -150,11 +147,6 @@ static constexpr const ComponentTestData kComponentsTestData[] = {
         .gtest_name = "CrosButton",
     },
     {
-        .script_src = "chrome://resources/cros_components/card/card.js",
-        .component_name = "cros-card",
-        .gtest_name = "CrosCard",
-    },
-    {
         .script_src = "chrome://resources/cros_components/checkbox/checkbox.js",
         .component_name = "cros-checkbox",
         .gtest_name = "CrosCheckbox",
@@ -168,105 +160,6 @@ static constexpr const ComponentTestData kComponentsTestData[] = {
         .script_src = "chrome://resources/cros_components/switch/switch.js",
         .component_name = "cros-switch",
         .gtest_name = "CrosSwitch",
-    },
-    {
-        .script_src = "chrome://resources/cros_components/sidenav/sidenav.js",
-        .component_name = "cros-sidenav",
-        .gtest_name = "CrosSidenav",
-    },
-    {
-        .script_src = "chrome://resources/cros_components/slider/slider.js",
-        .component_name = "cros-slider",
-        .gtest_name = "CrosSlider",
-    },
-    {
-        .script_src =
-            "chrome://resources/cros_components/tab_slider/tab-slider.js",
-        .component_name = "cros-tab-slider",
-        .gtest_name = "CrosTabSlider",
-    },
-    {
-        .script_src =
-            "chrome://resources/cros_components/tab_slider/tab-slider-item.js",
-        .component_name = "cros-tab-slider-item",
-        .gtest_name = "CrosTabSliderItem",
-    },
-    {
-        .script_src = "chrome://resources/cros_components/tag/tag.js",
-        .component_name = "cros-tag",
-        .gtest_name = "CrosTag",
-    },
-    {
-        .script_src =
-            "chrome://resources/cros_components/textfield/textfield.js",
-        .component_name = "cros-textfield",
-        .gtest_name = "CrosTextfield",
-    },
-    {
-        .script_src =
-            "chrome://resources/cros_components/icon_button/icon-button.js",
-        .component_name = "cros-icon-button",
-        .gtest_name = "CrosIconButton",
-    },
-    {
-        .script_src = "chrome://resources/cros_components/dropdown/dropdown.js",
-        .component_name = "cros-dropdown",
-        .gtest_name = "CrosDropdown",
-    },
-    {
-        .script_src =
-            "chrome://resources/cros_components/dropdown/dropdown_option.js",
-        .component_name = "cros-dropdown-option",
-        .gtest_name = "CrosDropdownOption",
-    },
-    {
-        .script_src = "chrome://resources/cros_components/tabs/tabs.js",
-        .component_name = "cros-tabs",
-        .gtest_name = "CrosTabs",
-    },
-    {
-        .script_src = "chrome://resources/cros_components/tabs/tab.js",
-        .component_name = "cros-tab",
-        .gtest_name = "CrosTab",
-    },
-    {
-        .script_src = "chrome://resources/cros_components/menu/menu.js",
-        .component_name = "cros-menu",
-        .gtest_name = "CrosMenu",
-    },
-    {
-        .script_src = "chrome://resources/cros_components/menu/menu_item.js",
-        .component_name = "cros-menu-item",
-        .gtest_name = "CrosMenuItem",
-    },
-    {
-        .script_src =
-            "chrome://resources/cros_components/menu/menu_separator.js",
-        .component_name = "cros-menu-separator",
-        .gtest_name = "CrosMenuSeparator",
-    },
-    {
-        .script_src =
-            "chrome://resources/cros_components/menu/sub_menu_item.js",
-        .component_name = "cros-sub-menu-item",
-        .gtest_name = "CrosSubMenuItem",
-    },
-    {
-        .script_src = "chrome://resources/cros_components/snackbar/snackbar.js",
-        .component_name = "cros-snackbar",
-        .gtest_name = "CrosSnackbar",
-    },
-    {
-        .script_src =
-            "chrome://resources/cros_components/snackbar/snackbar-item.js",
-        .component_name = "cros-snackbar-item",
-        .gtest_name = "CrosSnackbarItem",
-    },
-    {
-        .script_src =
-            "chrome://resources/cros_components/orca_feedback/orca-feedback.js",
-        .component_name = "mako-orca-feedback",
-        .gtest_name = "CrosOrcaFeedbackItem",
     },
 };
 

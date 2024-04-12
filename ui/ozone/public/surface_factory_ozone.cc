@@ -82,7 +82,7 @@ scoped_refptr<gfx::NativePixmap> SurfaceFactoryOzone::CreateNativePixmap(
     gfx::Size size,
     gfx::BufferFormat format,
     gfx::BufferUsage usage,
-    std::optional<gfx::Size> framebuffer_size) {
+    absl::optional<gfx::Size> framebuffer_size) {
   return nullptr;
 }
 
@@ -125,23 +125,14 @@ void SurfaceFactoryOzone::SetGetProtectedNativePixmapDelegate(
     const GetProtectedNativePixmapCallback&
         get_protected_native_pixmap_callback) {}
 
-bool SurfaceFactoryOzone::SupportsDrmModifiersFilter() const {
-  return false;
-}
-
-void SurfaceFactoryOzone::SetDrmModifiersFilter(
-    std::unique_ptr<DrmModifiersFilter> filter) {
-  NOTIMPLEMENTED();
-}
-
 std::vector<gfx::BufferFormat>
 SurfaceFactoryOzone::GetSupportedFormatsForTexturing() const {
   return std::vector<gfx::BufferFormat>();
 }
 
-std::optional<gfx::BufferFormat>
+absl::optional<gfx::BufferFormat>
 SurfaceFactoryOzone::GetPreferredFormatForSolidColor() const {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace ui

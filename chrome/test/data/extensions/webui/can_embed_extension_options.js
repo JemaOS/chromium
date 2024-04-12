@@ -12,7 +12,8 @@
 if (!chrome || !chrome.test || !chrome.test.sendMessage) {
   console.error('chrome.test.sendMessage is unavailable on ' +
                 document.location.href);
-  return false;
+  domAutomationController.send(false);
+  return;
 }
 
 chrome.test.sendMessage('ready', function(reply) {
@@ -27,4 +28,4 @@ chrome.test.sendMessage('ready', function(reply) {
   document.body.appendChild(extensionoptions);
 });
 
-return true;
+domAutomationController.send(true);

@@ -14,8 +14,6 @@
 #include "base/base_paths.h"
 #include "base/containers/queue.h"
 #include "base/functional/bind.h"
-#include "base/i18n/string_search.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/path_service.h"
 #include "base/strings/string_util.h"
@@ -33,8 +31,8 @@
 #include "chrome/common/chrome_version.h"
 #include "chrome/install_static/test/scoped_install_details.h"
 #include "chrome/installer/util/google_update_settings.h"
-#include "chrome/installer/util/util_constants.h"
-#include "chrome/updater/app/server/win/updater_legacy_idl.h"
+#include "chrome/installer/util/helper.h"
+#include "google_update/google_update_idl.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/win/atl_module.h"
@@ -57,11 +55,6 @@ namespace {
 // generic matcher.
 MATCHER_P(HasSubstr, str, "") {
   return arg.find(str) != arg.npos;
-}
-
-MATCHER_P(HasSubstrCaseInsensitive, str, "") {
-  return base::i18n::StringSearchIgnoringCaseAndAccents(str, arg, nullptr,
-                                                        nullptr);
 }
 
 class MockUpdateCheckDelegate : public UpdateCheckDelegate {
@@ -346,7 +339,7 @@ class MockApp : public CComObjectRootEx<CComSingleThreadModel>, public IAppWeb {
   }
 
   // The states returned by the MockApp when probed.
-  base::queue<raw_ptr<CComObject<MockCurrentState>, CtnExperimental>> states_;
+  base::queue<CComObject<MockCurrentState>*> states_;
 
   // A gmock sequence under which a series of get_CurrentState expectations are
   // evaluated.
@@ -568,6 +561,16 @@ class GoogleUpdateWinTest : public ::testing::TestWithParam<bool> {
   void SetUp() override {
     ::testing::TestWithParam<bool>::SetUp();
 
+    // Override FILE_EXE so that it looks like the test is running from the
+    // standard install location for this mode (system-level or user-level).
+    base::FilePath file_exe;
+    ASSERT_TRUE(base::PathService::Get(base::FILE_EXE, &file_exe));
+    base::FilePath install_dir(
+        installer::GetChromeInstallPath(system_level_install_));
+    file_exe_override_.reset(new base::ScopedPathOverride(
+        base::FILE_EXE, install_dir.Append(file_exe.BaseName()),
+        true /* is_absolute */, false /* create */));
+
     // Override these paths so that they can be found after the registry
     // override manager is in place.
     base::FilePath temp;
@@ -600,15 +603,6 @@ class GoogleUpdateWinTest : public ::testing::TestWithParam<bool> {
               key.Create(root, kClientState, KEY_WRITE | KEY_WOW64_32KEY));
     ASSERT_EQ(ERROR_SUCCESS,
               key.CreateKey(kChromeGuid, KEY_WRITE | KEY_WOW64_32KEY));
-    base::FilePath dir_exe;
-    ASSERT_TRUE(base::PathService::Get(base::DIR_EXE, &dir_exe));
-    ASSERT_EQ(ERROR_SUCCESS,
-              key.WriteValue(L"UninstallString",
-                             dir_exe.AppendASCII(CHROME_VERSION_STRING)
-                                 .Append(installer::kInstallerDir)
-                                 .Append(L"setup.exe")
-                                 .value()
-                                 .c_str()));
     ASSERT_EQ(ERROR_SUCCESS,
               key.WriteValue(L"UninstallArguments", L"--uninstall"));
 
@@ -620,10 +614,10 @@ class GoogleUpdateWinTest : public ::testing::TestWithParam<bool> {
 
     // Compute a newer version.
     base::Version current_version(CHROME_VERSION_STRING);
-    new_version_ = base::ASCIIToUTF16(base::StringPrintf(
-        "%u.%u.%u.%u", current_version.components()[0],
+    new_version_ = base::StringPrintf(
+        u"%u.%u.%u.%u", current_version.components()[0],
         current_version.components()[1], current_version.components()[2] + 1,
-        current_version.components()[3]));
+        current_version.components()[3]);
 
     SetUpdateDriverTaskRunnerForTesting(task_runner_.get());
   }
@@ -659,6 +653,7 @@ class GoogleUpdateWinTest : public ::testing::TestWithParam<bool> {
       task_runner_current_default_handle_;
   bool system_level_install_;
   install_static::ScopedInstallDetails scoped_install_details_;
+  std::unique_ptr<base::ScopedPathOverride> file_exe_override_;
   std::unique_ptr<base::ScopedPathOverride> program_files_override_;
   std::unique_ptr<base::ScopedPathOverride> program_files_x86_override_;
   std::unique_ptr<base::ScopedPathOverride> local_app_data_override_;
@@ -688,15 +683,16 @@ const wchar_t GoogleUpdateWinTest::kChromeGuid[] =
 // Test that an update check fails with the proper error code if Chrome isn't in
 // one of the expected install directories.
 TEST_P(GoogleUpdateWinTest, InvalidInstallDirectory) {
-  // Override FILE_EXE so that it looks like the test is running from somewhere
-  // other than where Chrome is installed.
+  // Override FILE_EXE so that it looks like the test is running from a
+  // non-standard location.
   base::FilePath file_exe;
   base::FilePath dir_temp;
   ASSERT_TRUE(base::PathService::Get(base::FILE_EXE, &file_exe));
   ASSERT_TRUE(base::PathService::Get(base::DIR_TEMP, &dir_temp));
-  base::ScopedPathOverride file_exe_override(
+  file_exe_override_.reset();
+  file_exe_override_.reset(new base::ScopedPathOverride(
       base::FILE_EXE, dir_temp.Append(file_exe.BaseName()),
-      /*is_absolute=*/true, /*create=*/false);
+      true /* is_absolute */, false /* create */));
 
   EXPECT_CALL(mock_update_check_delegate_,
               OnError(CANNOT_UPGRADE_CHROME_IN_THIS_DIRECTORY, _, _));
@@ -1090,8 +1086,8 @@ TEST_P(GoogleUpdateWinTest, SimulateHresultWithErrorCode) {
   // Expect the appropriate error when the on-demand class cannot be created.
   EXPECT_CALL(mock_update_check_delegate_,
               OnError(GOOGLE_UPDATE_ONDEMAND_CLASS_NOT_FOUND,
-                      AllOfArray({HasSubstrCaseInsensitive(u"error code 3:"),
-                                  HasSubstrCaseInsensitive(u"0x80072EF2")}),
+                      AllOfArray({HasSubstr(u"error code 3:"),
+                                  HasSubstr(u"0x80072EF2")}),
                       _));
   BeginUpdateCheck(std::string(), false, 0,
                    mock_update_check_delegate_.AsWeakPtr());
@@ -1112,8 +1108,8 @@ TEST_P(GoogleUpdateWinTest, SimulateHresultOnly) {
   // Expect the appropriate error when the on-demand class cannot be created.
   EXPECT_CALL(mock_update_check_delegate_,
               OnError(GOOGLE_UPDATE_ERROR_UPDATING,
-                      AllOfArray({HasSubstrCaseInsensitive(u"error code 7:"),
-                                  HasSubstrCaseInsensitive(u"0x80072EF2")}),
+                      AllOfArray({HasSubstr(u"error code 7:"),
+                                  HasSubstr(u"0x80072EF2")}),
                       _));
   BeginUpdateCheck(std::string(), false, 0,
                    mock_update_check_delegate_.AsWeakPtr());
@@ -1132,8 +1128,8 @@ TEST_P(GoogleUpdateWinTest, SimulateHresultDefault) {
   // Expect the appropriate error when the on-demand class cannot be created.
   EXPECT_CALL(mock_update_check_delegate_,
               OnError(GOOGLE_UPDATE_ERROR_UPDATING,
-                      AllOfArray({HasSubstrCaseInsensitive(u"error code 7:"),
-                                  HasSubstrCaseInsensitive(u"0x80004005")}),
+                      AllOfArray({HasSubstr(u"error code 7:"),
+                                  HasSubstr(u"0x80004005")}),
                       _));
   BeginUpdateCheck(std::string(), false, 0,
                    mock_update_check_delegate_.AsWeakPtr());

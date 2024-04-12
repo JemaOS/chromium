@@ -15,7 +15,9 @@ namespace base {
 class FilePath;
 }  // namespace base
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 // Bridge between fileapi read directory operation and providing extension's
 // read directory request. Created per request.
@@ -45,6 +47,8 @@ class ReadDirectory : public Operation {
   const storage::AsyncFileUtil::ReadDirectoryCallback callback_;
 };
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_OPERATIONS_READ_DIRECTORY_H_

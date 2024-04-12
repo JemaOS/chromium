@@ -69,7 +69,7 @@ function loadFile(url, callback) {
 
 // createBuffer, createPeriodicWave and decodeAudioData should work on a context
 // that has `state` == "closed"
-async function tryLegalOperationsOnClosedContext(ctx) {
+async function tryLegalOpeerationsOnClosedContext(ctx) {
   assert_equals(ctx.state, "closed", "The context is in closed state");
 
   [
@@ -313,7 +313,7 @@ async function testAudioContext() {
   stateTracker.previous = ac.state;
 
   tryToCreateNodeOnClosedContext(ac);
-  await tryLegalOperationsOnClosedContext(ac);
+  await tryLegalOpeerationsOnClosedContext(ac);
 }
 
 async function testOfflineAudioContext() {
@@ -360,7 +360,7 @@ async function testOfflineAudioContext() {
   o.onstatechange = afterRenderingFinished;
 
   tryToCreateNodeOnClosedContext(o);
-  await tryLegalOperationsOnClosedContext(o);
+  await tryLegalOpeerationsOnClosedContext(o);
 }
 
 async function testSuspendResumeEventLoop() {
@@ -391,11 +391,11 @@ function testResumeInStateChangeForResumeCallback() {
 
 var tests = [
   testOfflineAudioContext,
+  testMultiContextOutput,
+  testMultiContextInput,
   testSuspendResumeEventLoop,
   testResumeInStateChangeForResumeCallback,
   testAudioContext,
-  testMultiContextOutput,
-  testMultiContextInput,
 ];
 
 tests.forEach(function (f) {

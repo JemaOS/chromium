@@ -237,9 +237,9 @@ SearchPermissionsService::PrefValue SearchPermissionsService::GetDSEPref() {
   PrefValue pref;
   const std::string* dse_name = dict.FindString(kDSENameKey);
   const std::string* dse_origin = dict.FindString(kDSEOriginKey);
-  std::optional<int> geolocation_setting_to_restore =
+  absl::optional<int> geolocation_setting_to_restore =
       dict.FindInt(kDSEGeolocationSettingKey);
-  std::optional<int> notifications_setting_to_restore =
+  absl::optional<int> notifications_setting_to_restore =
       dict.FindInt(kDSENotificationsSettingKey);
 
   if (dse_name && dse_origin && geolocation_setting_to_restore &&

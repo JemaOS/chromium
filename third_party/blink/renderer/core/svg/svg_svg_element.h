@@ -38,7 +38,6 @@ class SVGLengthTearOff;
 class SVGMatrixTearOff;
 class SVGNumberTearOff;
 class SVGPointTearOff;
-class SVGRect;
 class SVGTransformTearOff;
 class SVGViewSpec;
 
@@ -51,12 +50,9 @@ class SVGSVGElement final : public SVGGraphicsElement,
   explicit SVGSVGElement(Document&);
   ~SVGSVGElement() override;
 
-  std::optional<float> IntrinsicWidth() const;
-  std::optional<float> IntrinsicHeight() const;
-  const SVGRect& CurrentViewBox() const;
-  // This method, as opposed to the one above, also includes the synthesized
-  // viewBox if one is active. Because of that it shouldn't be used for sizing
-  // calculations.
+  absl::optional<float> IntrinsicWidth() const;
+  absl::optional<float> IntrinsicHeight() const;
+  gfx::SizeF CurrentViewportSize() const;
   gfx::RectF CurrentViewBoxRect() const;
   bool HasEmptyViewBox() const;
   const SVGPreserveAspectRatio* CurrentPreserveAspectRatio() const;
@@ -85,9 +81,8 @@ class SVGSVGElement final : public SVGGraphicsElement,
   void unsuspendRedrawAll() {}
   void forceRedraw() {}
 
-  StaticNodeTypeList<Element>* getIntersectionList(
-      SVGRectTearOff*,
-      SVGElement* reference_element) const;
+  StaticNodeList* getIntersectionList(SVGRectTearOff*,
+                                      SVGElement* reference_element) const;
   StaticNodeList* getEnclosureList(SVGRectTearOff*,
                                    SVGElement* reference_element) const;
   bool checkIntersection(SVGElement*, SVGRectTearOff*) const;
@@ -144,13 +139,15 @@ class SVGSVGElement final : public SVGGraphicsElement,
 
   void FinishParsingChildren() override;
 
-  bool CheckEnclosure(const SVGElement&, const gfx::RectF&) const;
+  enum GeometryMatchingMode { kCheckIntersection, kCheckEnclosure };
 
-  SVGAnimatedPropertyBase* PropertyFromAttribute(
-      const QualifiedName& attribute_name) const override;
-  void SynchronizeAllSVGAttributes() const override;
-  void CollectExtraStyleForPresentationAttribute(
-      MutableCSSPropertyValueSet* style) override;
+  bool CheckIntersectionOrEnclosure(const SVGElement&,
+                                    const gfx::RectF&,
+                                    GeometryMatchingMode) const;
+  StaticNodeList* CollectIntersectionOrEnclosureList(
+      const gfx::RectF&,
+      SVGElement*,
+      GeometryMatchingMode) const;
 
   Member<SVGAnimatedLength> x_;
   Member<SVGAnimatedLength> y_;

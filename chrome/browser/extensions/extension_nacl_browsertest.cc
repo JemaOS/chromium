@@ -6,8 +6,6 @@
 #include "base/files/file_path.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
-#include "base/test/scoped_feature_list.h"
-#include "chrome/browser/chrome_browser_main_extra_parts_nacl_deprecation.h"
 #include "chrome/browser/extensions/crx_installer.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/profiles/profile.h"
@@ -42,7 +40,7 @@ const char kExtensionId[] = "bjjcibdiodkkeanflmiijlcfieiemced";
 // .nexe is part of an extension from the Chrome Webstore.
 class NaClExtensionTest : public extensions::ExtensionBrowserTest {
  public:
-  NaClExtensionTest() { feature_list_.InitAndEnableFeature(kNaclAllow); }
+  NaClExtensionTest() {}
 
   void SetUpOnMainThread() override {
     extensions::ExtensionBrowserTest::SetUpOnMainThread();
@@ -73,30 +71,34 @@ class NaClExtensionTest : public extensions::ExtensionBrowserTest {
     switch (install_type) {
       case INSTALL_TYPE_COMPONENT:
         if (LoadExtensionAsComponent(file_path)) {
-          extension = registry->enabled_extensions().GetByID(kExtensionId);
+          extension = registry->GetExtensionById(
+              kExtensionId, extensions::ExtensionRegistry::ENABLED);
         }
         break;
 
       case INSTALL_TYPE_UNPACKED:
         // Install the extension from a folder so it's unpacked.
         if (LoadExtension(file_path)) {
-          extension = registry->enabled_extensions().GetByID(kExtensionId);
+          extension = registry->GetExtensionById(
+              kExtensionId, extensions::ExtensionRegistry::ENABLED);
         }
         break;
 
       case INSTALL_TYPE_FROM_WEBSTORE:
         // Install native_client.crx from the webstore.
         if (InstallExtensionFromWebstore(file_path, 1)) {
-          extension = registry->enabled_extensions().GetByID(
-              last_loaded_extension_id());
+          extension = registry->GetExtensionById(
+              last_loaded_extension_id(),
+              extensions::ExtensionRegistry::ENABLED);
         }
         break;
 
       case INSTALL_TYPE_NON_WEBSTORE:
         // Install native_client.crx but not from the webstore.
         if (extensions::ExtensionBrowserTest::InstallExtension(file_path, 1)) {
-          extension = registry->enabled_extensions().GetByID(
-              last_loaded_extension_id());
+          extension = registry->GetExtensionById(
+              last_loaded_extension_id(),
+              extensions::ExtensionRegistry::ENABLED);
         }
         break;
     }
@@ -155,9 +157,6 @@ class NaClExtensionTest : public extensions::ExtensionBrowserTest {
     CheckPluginsCreated(extension->GetResourceURL("test.html"),
                         expected_to_succeed);
   }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
 };
 
 // Test that the NaCl plugin isn't blocked for Webstore extensions.

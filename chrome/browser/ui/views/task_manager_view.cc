@@ -8,7 +8,6 @@
 
 #include "base/containers/adapters.h"
 #include "base/functional/callback_helpers.h"
-#include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/browser_process.h"
@@ -22,7 +21,7 @@
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/prefs/pref_service.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -124,17 +123,14 @@ bool TaskManagerView::IsColumnVisible(int column_id) const {
   return tab_table_->IsColumnVisible(column_id);
 }
 
-bool TaskManagerView::SetColumnVisibility(int column_id, bool new_visibility) {
+void TaskManagerView::SetColumnVisibility(int column_id, bool new_visibility) {
   // Check if there is at least 1 visible column before changing the visibility.
   // If this column would be the last column to be visible and its hiding, then
   // prevent this column visibility change. see crbug.com/1320307 for details.
-  if (!new_visibility && tab_table_->visible_columns().size() <= 1) {
-    return false;
-  }
+  if (!new_visibility && tab_table_->visible_columns().size() <= 1)
+    return;
 
-  const bool currently_visible = tab_table_->IsColumnVisible(column_id);
   tab_table_->SetColumnVisibility(column_id, new_visibility);
-  return new_visibility != currently_visible;
 }
 
 bool TaskManagerView::IsTableSorted() const {
@@ -159,15 +155,6 @@ void TaskManagerView::SetSortDescriptor(const TableSortDescriptor& descriptor) {
   }
 
   tab_table_->SetSortDescriptors(descriptor_list);
-}
-
-void TaskManagerView::MaybeHighlightActiveTask() {
-  if (table_model_ && tab_table_->selection_model().empty()) {
-    std::optional<size_t> row = table_model_->GetRowForActiveTask();
-    if (row.has_value()) {
-      tab_table_->Select(row.value());
-    }
-  }
 }
 
 gfx::Size TaskManagerView::CalculatePreferredSize() const {
@@ -200,7 +187,6 @@ bool TaskManagerView::ExecuteWindowsCommand(int command_id) {
 }
 
 ui::ImageModel TaskManagerView::GetWindowIcon() {
-  TRACE_EVENT0("ui", "TaskManagerView::GetWindowIcon");
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // TODO(crbug.com/1162514): Move apps::CreateStandardIconImage to some
   // where lower in the stack.
@@ -344,7 +330,7 @@ void TaskManagerView::Init() {
 
   // Create the table view.
   auto tab_table = std::make_unique<views::TableView>(
-      nullptr, columns_, views::TableType::kIconAndText, false);
+      nullptr, columns_, views::ICON_AND_TEXT, false);
   tab_table_ = tab_table.get();
   table_model_ = std::make_unique<TaskManagerTableModel>(this);
   tab_table->SetModel(table_model_.get());
@@ -386,7 +372,7 @@ void TaskManagerView::InitAlwaysOnTopState() {
 }
 
 void TaskManagerView::ActivateSelectedTab() {
-  const std::optional<size_t> active_row =
+  const absl::optional<size_t> active_row =
       tab_table_->selection_model().active();
   if (active_row.has_value())
     table_model_->ActivateTask(active_row.value());
@@ -410,7 +396,7 @@ void TaskManagerView::RetrieveSavedAlwaysOnTopState() {
   is_always_on_top_ = dictionary.FindBool("always_on_top").value_or(false);
 }
 
-BEGIN_METADATA(TaskManagerView)
+BEGIN_METADATA(TaskManagerView, views::DialogDelegateView)
 END_METADATA
 
 }  // namespace task_manager

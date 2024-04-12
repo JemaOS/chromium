@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -40,13 +40,13 @@ class AppListSyncableServiceFactory : public ProfileKeyedServiceFactory {
       const AppListSyncableServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<AppListSyncableServiceFactory>;
+  friend struct base::DefaultSingletonTraits<AppListSyncableServiceFactory>;
 
   AppListSyncableServiceFactory();
   ~AppListSyncableServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;

@@ -11,32 +11,10 @@
 #include "ui/gfx/mojom/overlay_priority_hint_mojom_traits.h"
 #include "ui/gfx/mojom/overlay_transform_mojom_traits.h"
 #include "ui/gfx/mojom/rrect_f_mojom_traits.h"
-#include "ui/gfx/mojom/transform_mojom_traits.h"
-#include "ui/gfx/overlay_plane_data.h"
 #include "ui/ozone/platform/wayland/common/wayland_overlay_config.h"
 #include "ui/ozone/platform/wayland/mojom/wayland_overlay_config.mojom-shared.h"
 
 namespace mojo {
-
-template <>
-struct UnionTraits<wl::mojom::TransformUnionDataView,
-                   absl::variant<gfx::OverlayTransform, gfx::Transform>> {
-  static wl::mojom::TransformUnionDataView::Tag GetTag(
-      const absl::variant<gfx::OverlayTransform, gfx::Transform>& transform);
-
-  static gfx::OverlayTransform overlay_transform(
-      const absl::variant<gfx::OverlayTransform, gfx::Transform>& transform) {
-    return absl::get<gfx::OverlayTransform>(transform);
-  }
-
-  static gfx::Transform matrix_transform(
-      const absl::variant<gfx::OverlayTransform, gfx::Transform>& transform) {
-    return absl::get<gfx::Transform>(transform);
-  }
-
-  static bool Read(wl::mojom::TransformUnionDataView data,
-                   absl::variant<gfx::OverlayTransform, gfx::Transform>* out);
-};
 
 template <>
 struct StructTraits<wl::mojom::WaylandOverlayConfigDataView,
@@ -45,12 +23,12 @@ struct StructTraits<wl::mojom::WaylandOverlayConfigDataView,
     return input.z_order;
   }
 
-  static const std::optional<gfx::ColorSpace>& color_space(
+  static const absl::optional<gfx::ColorSpace>& color_space(
       const wl::WaylandOverlayConfig& input) {
     return input.color_space;
   }
 
-  static const absl::variant<gfx::OverlayTransform, gfx::Transform>& transform(
+  static const gfx::OverlayTransform& transform(
       const wl::WaylandOverlayConfig& input) {
     return input.transform;
   }
@@ -93,17 +71,17 @@ struct StructTraits<wl::mojom::WaylandOverlayConfigDataView,
     return input.priority_hint;
   }
 
-  static const std::optional<gfx::RRectF>& rounded_clip_bounds(
+  static const absl::optional<gfx::RRectF>& rounded_clip_bounds(
       const wl::WaylandOverlayConfig& input) {
     return input.rounded_clip_bounds;
   }
 
-  static const std::optional<SkColor4f>& background_color(
+  static const absl::optional<SkColor4f>& background_color(
       const wl::WaylandOverlayConfig& input) {
     return input.background_color;
   }
 
-  static const std::optional<gfx::Rect>& clip_rect(
+  static const absl::optional<gfx::Rect>& clip_rect(
       const wl::WaylandOverlayConfig& input) {
     return input.clip_rect;
   }

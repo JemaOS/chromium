@@ -58,7 +58,7 @@ void OnGetPrintersComplete(
 
 base::Value::Dict AddProfileUsernameToJobSettings(
     base::Value::Dict settings,
-    const std::optional<std::string>& username) {
+    const absl::optional<std::string>& username) {
   if (username.has_value() && !username->empty()) {
     settings.Set(kSettingUsername, *username);
     settings.Set(kSettingSendUserInfo, true);
@@ -114,7 +114,7 @@ LocalPrinterHandlerChromeos::Create(
   handler->local_printer_ =
       service->GetRemote<crosapi::mojom::LocalPrinter>().get();
   handler->local_printer_version_ =
-      service->GetInterfaceVersion<crosapi::mojom::LocalPrinter>();
+      service->GetInterfaceVersion(crosapi::mojom::LocalPrinter::Uuid_);
 #endif
   return handler;
 }
@@ -144,9 +144,6 @@ base::Value::Dict LocalPrinterHandlerChromeos::PrinterToValue(
   value.Set(kSettingPrinterName, printer.name);
   value.Set(kSettingPrinterDescription, printer.description);
   value.Set(kCUPSEnterprisePrinter, printer.configured_via_policy);
-  value.Set(kPrinterStatus, printer.printer_status
-                                ? StatusToValue(*printer.printer_status)
-                                : base::Value::Dict());
   return value;
 }
 
@@ -174,8 +171,7 @@ base::Value::Dict LocalPrinterHandlerChromeos::StatusToValue(
     const crosapi::mojom::PrinterStatus& status) {
   base::Value::Dict dict;
   dict.Set("printerId", status.printer_id);
-  dict.Set("timestamp",
-           status.timestamp.InMillisecondsFSinceUnixEpochIgnoringNull());
+  dict.Set("timestamp", status.timestamp.ToJsTimeIgnoringNull());
   base::Value::List status_reasons;
   for (const crosapi::mojom::StatusReasonPtr& reason_ptr :
        status.status_reasons) {
@@ -233,12 +229,12 @@ void LocalPrinterHandlerChromeos::StartPrint(
   size_t size_in_kb = print_data->size() / 1024;
   base::UmaHistogramMemoryKB("Printing.CUPS.PrintDocumentSize", size_in_kb);
 
-  std::string printer_id = *settings.FindString(kSettingDeviceName);
+  const std::string* printer_id = settings.FindString(kSettingDeviceName);
   auto call_start_local_print_callback =
       base::BindOnce(&LocalPrinterHandlerChromeos::CallStartLocalPrint,
                      weak_ptr_factory_.GetWeakPtr(), std::move(print_data),
                      std::move(callback));
-  GetAshJobSettings(std::move(printer_id),
+  GetAshJobSettings(printer_id ? *printer_id : "",
                     std::move(call_start_local_print_callback),
                     std::move(settings));
 }
@@ -287,7 +283,7 @@ void LocalPrinterHandlerChromeos::GetUsernamePerPolicy(
               kGetUsernamePerPolicyMinVersion}) {
     LOG(WARNING) << "Ash LocalPrinter version " << local_printer_version_
                  << " does not support GetUsernamePerPolicy().";
-    std::move(add_profile_username_callback).Run(std::nullopt);
+    std::move(add_profile_username_callback).Run(absl::nullopt);
     return;
   }
 #endif
@@ -380,7 +376,7 @@ void LocalPrinterHandlerChromeos::StartPrinterStatusRequest(
   if (!local_printer_) {
     PRINTER_LOG(ERROR)
         << "Local printer not available (StartPrinterStatusRequest)";
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
   local_printer_->GetStatus(

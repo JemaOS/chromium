@@ -13,15 +13,13 @@ class Profile;
 
 namespace autofill {
 
-class AutofillImageFetcherBase;
+class AutofillImageFetcher;
 
-// Singleton that owns all AutofillImageFetchers and associates them with
-// Profiles.
 class AutofillImageFetcherFactory : public ProfileKeyedServiceFactory {
  public:
   // Returns the AutofillImageFetcher for |profile|, creating it if it is not
   // yet created.
-  static AutofillImageFetcherBase* GetForProfile(Profile* profile);
+  static AutofillImageFetcher* GetForProfile(Profile* profile);
 
   static AutofillImageFetcherFactory* GetInstance();
 

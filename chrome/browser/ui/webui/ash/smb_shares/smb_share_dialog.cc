@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ui/webui/ash/smb_shares/smb_share_dialog.h"
 
-#include "ash/webui/common/trusted_types_util.h"
 #include "base/functional/callback_helpers.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ash/smb_client/smb_service.h"
@@ -12,7 +11,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/webui/ash/smb_shares/smb_handler.h"
 #include "chrome/browser/ui/webui/ash/smb_shares/smb_shares_localized_strings_provider.h"
-#include "chrome/browser/ui/webui/webui_util.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/browser_resources.h"
 #include "chrome/grit/generated_resources.h"
@@ -26,7 +24,8 @@
 namespace ash::smb_dialog {
 namespace {
 
-constexpr int kSmbShareDialogHeight = 570;
+constexpr int kSmbShareDialogHeight = 515;
+constexpr int kSmbShareDialogHeightWithJellyOn = 570;
 
 void AddSmbSharesStrings(content::WebUIDataSource* html_source) {
   // Add strings specific to smb_dialog.
@@ -61,14 +60,18 @@ SmbShareDialog::SmbShareDialog()
 SmbShareDialog::~SmbShareDialog() = default;
 
 void SmbShareDialog::GetDialogSize(gfx::Size* size) const {
-  size->SetSize(SystemWebDialogDelegate::kDialogWidth, kSmbShareDialogHeight);
+  size->SetSize(SystemWebDialogDelegate::kDialogWidth,
+                chromeos::features::IsJellyEnabled()
+                    ? kSmbShareDialogHeightWithJellyOn
+                    : kSmbShareDialogHeight);
 }
 
 SmbShareDialogUI::SmbShareDialogUI(content::WebUI* web_ui)
     : ui::WebDialogUI(web_ui) {
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       Profile::FromWebUI(web_ui), chrome::kChromeUISmbShareHost);
-  ash::EnableTrustedTypesCSP(source);
+
+  source->DisableTrustedTypesCSP();
 
   AddSmbSharesStrings(source);
 
@@ -85,13 +88,12 @@ SmbShareDialogUI::SmbShareDialogUI(content::WebUI* web_ui)
       smb_service && smb_service->IsKerberosEnabledViaPolicy();
   source->AddBoolean("isKerberosEnabled", is_kerberos_enabled);
 
-  bool is_guest =
-      user_manager::UserManager::Get()->IsLoggedInAsGuest() ||
-      user_manager::UserManager::Get()->IsLoggedInAsManagedGuestSession();
+  bool is_guest = user_manager::UserManager::Get()->IsLoggedInAsGuest() ||
+                  user_manager::UserManager::Get()->IsLoggedInAsPublicAccount();
   source->AddBoolean("isGuest", is_guest);
 
-  source->AddBoolean("isCrosComponentsEnabled",
-                     chromeos::features::IsCrosComponentsEnabled());
+  bool is_jelly_enabled = chromeos::features::IsJellyEnabled();
+  source->AddBoolean("isJellyEnabled", is_jelly_enabled);
 
   source->UseStringsJs();
   source->SetDefaultResource(IDR_SMB_SHARES_DIALOG_CONTAINER_HTML);

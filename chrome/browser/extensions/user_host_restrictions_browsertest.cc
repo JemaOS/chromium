@@ -5,8 +5,7 @@
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/extensions/permissions/scripting_permissions_modifier.h"
-#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/extensions/scripting_permissions_modifier.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -14,7 +13,6 @@
 #include "content/public/test/browser_test.h"
 #include "extensions/browser/background_script_executor.h"
 #include "extensions/browser/permissions_manager.h"
-#include "extensions/browser/script_executor.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension_features.h"
 #include "extensions/common/mojom/api_permission_id.mojom.h"
@@ -59,7 +57,8 @@ class UserHostRestrictionsBrowserTest
   void WithholdExtensionPermissions(const Extension& extension) {
     // Withhold extension host permissions. Wait for the notification to be
     // fired to ensure all renderers and services have been properly updated.
-    PermissionsManagerWaiter waiter(PermissionsManager::Get(profile()));
+    extensions::PermissionsManagerWaiter waiter(
+        extensions::PermissionsManager::Get(profile()));
     ScriptingPermissionsModifier(profile(), &extension)
         .SetWithholdHostPermissions(true);
     waiter.WaitForExtensionPermissionsUpdate();

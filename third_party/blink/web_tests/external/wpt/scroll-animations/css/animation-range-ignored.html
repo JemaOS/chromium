@@ -32,8 +32,8 @@
   }
   .animate {
     animation:  anim auto linear;
-    view-timeline:  --timeline;
-    animation-timeline:  --timeline;
+    view-timeline:  timeline;
+    animation-timeline:  timeline;
     animation-range-start:  entry 0%;
     animation-range-end:  entry 100%;
   }
@@ -63,6 +63,7 @@
       const anim = startAnimation(t);
       await anim.ready;
 
+      await waitForNextFrame();
       scroller.scrollTop = 650;
       await waitForNextFrame();
 
@@ -88,10 +89,9 @@
       // Step 1: Set the range end programmatically and range start via CSS.
       // The start time will be respected since not previously set via the
       // animation API.
-      await runAndWaitForFrameUpdate(() => {
-        anim.rangeEnd = 'contain 100%';
-        target.style.animationRangeStart = 'entry 50%';
-      });
+      anim.rangeEnd = 'contain 100%';
+      target.style.animationRangeStart = 'entry 50%';
+      await waitForNextFrame();
 
       // Animation range does not affect timeline's currentTime.
       assert_percents_equal(
@@ -116,9 +116,7 @@
       // Step 2: Programmatically set the range start.
       // Scroll position is current at entry 50%, thus the animation's current
       // time is negative.
-      await runAndWaitForFrameUpdate(() => {
-        anim.rangeStart = 'contain 0%';
-      });
+      anim.rangeStart = 'contain 0%';
       // animation current time =
       //     (scroll pos - range start) / (cover 100% - cover 0%) * 100%
       //   = (650 - 700) / (900 - 600) * 100% = -100/6%
@@ -148,9 +146,8 @@
 
       // Step 3: Try to update the range start via CSS.  This change must be
       // ignored since previously set programmatically.
-      await runAndWaitForFrameUpdate(() => {
-        target.style.animationRangeStart = "entry 50%";
-      });
+      target.style.animationRangeStart = "entry 50%";
+      await waitForNextFrame();
       assert_percents_equal(
           anim.currentTime, 100/6,
           'Current time unchanged after change to ignored CSS property');
@@ -164,16 +161,16 @@
       const anim = startAnimation(t);
       await anim.ready;
 
+      await waitForNextFrame();
       scroller.scrollTop = 650;
       await waitForNextFrame();
 
       // Step 1: Set the range start programmatically and range end via CSS.
       // The start time will be respected since not previously set via the
       // animation API.
-      await runAndWaitForFrameUpdate(() => {
-        anim.rangeStart = "entry 50%";
-        target.style.animationRangeEnd = "contain 100%";
-      });
+      anim.rangeStart = "entry 50%";
+      target.style.animationRangeEnd = "contain 100%";
+      await waitForNextFrame();
 
       assert_percents_equal(
           anim.timeline.currentTime, 100/6,
@@ -193,10 +190,8 @@
       // Step 2: Programmatically set the range.
       // Scroll position is current at entry 50%, thus the animation's current
       // time is negative.
-      await runAndWaitForFrameUpdate(() => {
-        anim.rangeStart = "contain 0%";
-        anim.rangeEnd = "contain 100%";
-      });
+      anim.rangeStart = "contain 0%";
+      anim.rangeEnd = "contain 100%";
 
       assert_percents_equal(
         anim.currentTime, -100/6,
@@ -218,9 +213,8 @@
 
       // Step 3: Try to update the range end via CSS. This change must be
       // ignored since previously set programmatically.
-      await runAndWaitForFrameUpdate(() => {
-        target.style.animationRangeEnd = "cover 100%";
-      });
+      target.style.animationRangeEnd = "cover 100%";
+      await waitForNextFrame();
       assert_percents_equal(
           anim.currentTime, 100/6,
           'Current time unchanged after change to ignored CSS property');

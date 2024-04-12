@@ -20,20 +20,19 @@ namespace extensions {
 
 namespace {
 signin::ConsentLevel GetConsentLevelFromProfileDetails(
-    const std::optional<api::identity::ProfileDetails>& details) {
+    const absl::optional<api::identity::ProfileDetails>& details) {
   api::identity::AccountStatus account_status =
-      details ? details->account_status : api::identity::AccountStatus::kNone;
+      details ? details->account_status : api::identity::ACCOUNT_STATUS_NONE;
 
   switch (account_status) {
-    case api::identity::AccountStatus::kAny:
+    case api::identity::ACCOUNT_STATUS_ANY:
       return signin::ConsentLevel::kSignin;
-    case api::identity::AccountStatus::kNone:
-    case api::identity::AccountStatus::kSync:
+    case api::identity::ACCOUNT_STATUS_NONE:
+    case api::identity::ACCOUNT_STATUS_SYNC:
       return signin::ConsentLevel::kSync;
   }
 
-  NOTREACHED() << "Unexpected value for account_status: "
-               << api::identity::ToString(account_status);
+  NOTREACHED() << "Unexpected value for account_status: " << account_status;
   return signin::ConsentLevel::kSync;
 }
 }  // namespace
@@ -49,7 +48,7 @@ ExtensionFunction::ResponseAction IdentityGetProfileUserInfoFunction::Run() {
     return RespondNow(Error(identity_constants::kOffTheRecord));
   }
 
-  std::optional<api::identity::GetProfileUserInfo::Params> params =
+  absl::optional<api::identity::GetProfileUserInfo::Params> params =
       api::identity::GetProfileUserInfo::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 

@@ -102,19 +102,71 @@ void LayoutMultiColumnSpannerPlaceholder::WillBeRemovedFromTree() {
   LayoutBox::WillBeRemovedFromTree();
 }
 
+bool LayoutMultiColumnSpannerPlaceholder::NeedsPreferredWidthsRecalculation()
+    const {
+  NOT_DESTROYED();
+  return layout_object_in_flow_thread_->NeedsPreferredWidthsRecalculation();
+}
+
+void LayoutMultiColumnSpannerPlaceholder::RecalcVisualOverflow() {
+  NOT_DESTROYED();
+  LayoutBox::RecalcVisualOverflow();
+  ClearVisualOverflow();
+  AddContentsVisualOverflow(
+      layout_object_in_flow_thread_->VisualOverflowRect());
+}
+
+MinMaxSizes LayoutMultiColumnSpannerPlaceholder::PreferredLogicalWidths()
+    const {
+  NOT_DESTROYED();
+  NOTREACHED_NORETURN();
+}
+
 void LayoutMultiColumnSpannerPlaceholder::UpdateLayout() {
   NOT_DESTROYED();
   NOTREACHED_NORETURN();
 }
 
-LayoutPoint LayoutMultiColumnSpannerPlaceholder::LocationInternal() const {
+void LayoutMultiColumnSpannerPlaceholder::ComputeLogicalHeight(
+    LayoutUnit,
+    LayoutUnit logical_top,
+    LogicalExtentComputedValues& computed_values) const {
   NOT_DESTROYED();
-  return layout_object_in_flow_thread_->LocationInternal();
+  NOTREACHED_NORETURN();
 }
 
-PhysicalSize LayoutMultiColumnSpannerPlaceholder::Size() const {
+void LayoutMultiColumnSpannerPlaceholder::Paint(
+    const PaintInfo& paint_info) const {
   NOT_DESTROYED();
-  return layout_object_in_flow_thread_->Size();
+  if (!layout_object_in_flow_thread_->HasSelfPaintingLayer())
+    layout_object_in_flow_thread_->Paint(paint_info);
+}
+
+bool LayoutMultiColumnSpannerPlaceholder::NodeAtPoint(
+    HitTestResult& result,
+    const HitTestLocation& hit_test_location,
+    const PhysicalOffset& accumulated_offset,
+    HitTestPhase phase) {
+  NOT_DESTROYED();
+  return !layout_object_in_flow_thread_->HasSelfPaintingLayer() &&
+         layout_object_in_flow_thread_->NodeAtPoint(result, hit_test_location,
+                                                    accumulated_offset, phase);
+}
+
+LayoutPoint LayoutMultiColumnSpannerPlaceholder::Location() const {
+  NOT_DESTROYED();
+  if (RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled()) {
+    return layout_object_in_flow_thread_->Location();
+  }
+  return LayoutBox::Location();
+}
+
+LayoutSize LayoutMultiColumnSpannerPlaceholder::Size() const {
+  NOT_DESTROYED();
+  if (RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled()) {
+    return layout_object_in_flow_thread_->Size();
+  }
+  return LayoutBox::Size();
 }
 
 }  // namespace blink

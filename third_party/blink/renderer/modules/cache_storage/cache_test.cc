@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "mojo/public/cpp/bindings/associated_receiver.h"
@@ -62,10 +61,10 @@ class ScopedFetcherForTests final
  public:
   ScopedFetcherForTests() = default;
 
-  ScriptPromiseTyped<Response> Fetch(ScriptState* script_state,
-                                     const V8RequestInfo* request_info,
-                                     const RequestInit*,
-                                     ExceptionState& exception_state) override {
+  ScriptPromise Fetch(ScriptState* script_state,
+                      const V8RequestInfo* request_info,
+                      const RequestInit*,
+                      ExceptionState& exception_state) override {
     ++fetch_count_;
     if (expected_url_) {
       switch (request_info->GetContentType()) {
@@ -79,11 +78,16 @@ class ScopedFetcherForTests final
     }
 
     if (response_) {
-      return ToResolvedPromise<Response>(script_state, response_);
+      auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+          script_state, exception_state.GetContext());
+      const ScriptPromise promise = resolver->Promise();
+      resolver->Resolve(response_);
+      response_ = nullptr;
+      return promise;
     }
     exception_state.ThrowTypeError(
         "Unexpected call to fetch, no response available.");
-    return ScriptPromiseTyped<Response>();
+    return ScriptPromise();
   }
 
   // This does not take ownership of its parameter. The provided sample object
@@ -102,7 +106,7 @@ class ScopedFetcherForTests final
 
  private:
   uint32_t fetch_count_ = 0;
-  raw_ptr<const String> expected_url_ = nullptr;
+  const String* expected_url_ = nullptr;
   Member<Response> response_;
 };
 
@@ -254,10 +258,9 @@ class ErrorCacheForTests : public mojom::blink::CacheStorageCache {
 
   const mojom::blink::CacheStorageError error_;
 
-  raw_ptr<const String> expected_url_;
-  raw_ptr<const mojom::blink::CacheQueryOptionsPtr> expected_query_options_;
-  raw_ptr<const Vector<mojom::blink::BatchOperationPtr>>
-      expected_batch_operations_;
+  const String* expected_url_;
+  const mojom::blink::CacheQueryOptionsPtr* expected_query_options_;
+  const Vector<mojom::blink::BatchOperationPtr>* expected_batch_operations_;
 
   std::string last_error_web_cache_method_called_;
 };
@@ -290,10 +293,10 @@ class TestCache : public Cache {
   }
 
  protected:
-  AbortController* CreateAbortController(ScriptState* script_state) override {
+  AbortController* CreateAbortController(ExecutionContext* context) override {
     if (!abort_controller_)
-      abort_controller_ = AbortController::Create(script_state);
-    return abort_controller_.Get();
+      abort_controller_ = AbortController::Create(context);
+    return abort_controller_;
   }
 
  private:
@@ -345,7 +348,6 @@ class CacheStorageTest : public PageTestBase {
   std::string GetRejectString(ScriptPromise& promise) {
     ScriptValue on_reject = GetRejectValue(promise);
     return ToCoreString(
-               GetIsolate(),
                on_reject.V8Value()->ToString(GetContext()).ToLocalChecked())
         .Ascii()
         .data();
@@ -361,7 +363,6 @@ class CacheStorageTest : public PageTestBase {
   std::string GetResolveString(ScriptPromise& promise) {
     ScriptValue on_resolve = GetResolveValue(promise);
     return ToCoreString(
-               GetIsolate(),
                on_resolve.V8Value()->ToString(GetContext()).ToLocalChecked())
         .Ascii()
         .data();
@@ -612,7 +613,7 @@ TEST_F(CacheStorageTest, MatchResponseTest) {
                    exception_state);
   ScriptValue script_value = GetResolveValue(result);
   Response* response =
-      V8Response::ToWrappable(GetIsolate(), script_value.V8Value());
+      V8Response::ToImplWithTypeCheck(GetIsolate(), script_value.V8Value());
   ASSERT_TRUE(response);
   EXPECT_EQ(response_url, response->url());
 }

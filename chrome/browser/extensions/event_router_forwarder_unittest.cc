@@ -18,7 +18,6 @@
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/test/browser_task_environment.h"
-#include "extensions/common/extension_id.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
@@ -41,7 +40,7 @@ class MockEventRouterForwarder : public EventRouterForwarder {
                     const GURL&));
 
   void CallEventRouter(Profile* profile,
-                       const ExtensionId& extension_id,
+                       const std::string& extension_id,
                        events::HistogramValue histogram_value,
                        const std::string& event_name,
                        base::Value::List args,

@@ -5,7 +5,6 @@
 #include "ui/lottie/animation.h"
 
 #include <algorithm>
-#include <optional>
 #include <utility>
 
 #include "base/check.h"
@@ -14,6 +13,7 @@
 #include "base/observer_list.h"
 #include "base/trace_event/trace_event.h"
 #include "cc/paint/skottie_wrapper.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkImage.h"
@@ -228,7 +228,7 @@ gfx::Size Animation::GetOriginalSize() const {
   return gfx::ToRoundedSize(gfx::SkSizeToSizeF(skottie_->size()));
 }
 
-void Animation::Start(std::optional<PlaybackConfig> playback_config) {
+void Animation::Start(absl::optional<PlaybackConfig> playback_config) {
   DCHECK(state_ == PlayState::kStopped || state_ == PlayState::kEnded);
   if (!playback_config)
     playback_config = PlaybackConfig::CreateDefault(*this);
@@ -256,15 +256,12 @@ void Animation::ResumePlaying() {
 void Animation::Stop() {
   state_ = PlayState::kStopped;
   timer_control_.reset(nullptr);
-  for (AnimationObserver& obs : observers_) {
-    obs.AnimationStopped(this);
-  }
 }
 
-std::optional<float> Animation::GetCurrentProgress() const {
+absl::optional<float> Animation::GetCurrentProgress() const {
   switch (state_) {
     case PlayState::kStopped:
-      return std::nullopt;
+      return absl::nullopt;
     case PlayState::kEnded:
       DCHECK(timer_control_);
       return timer_control_->GetNormalizedEndOffset();
@@ -278,14 +275,14 @@ std::optional<float> Animation::GetCurrentProgress() const {
       if (timer_control_) {
         return timer_control_->GetNormalizedCurrentCycleProgress();
       } else {
-        return std::nullopt;
+        return absl::nullopt;
       }
   }
 }
 
-std::optional<int> Animation::GetNumCompletedCycles() const {
+absl::optional<int> Animation::GetNumCompletedCycles() const {
   if (state_ == PlayState::kStopped)
-    return std::nullopt;
+    return absl::nullopt;
 
   // This can happen if Start() has been called but a single frame has not been
   // painted yet.
@@ -300,18 +297,18 @@ std::optional<int> Animation::GetNumCompletedCycles() const {
   return timer_control_->completed_cycles();
 }
 
-std::optional<Animation::PlaybackConfig> Animation::GetPlaybackConfig() const {
+absl::optional<Animation::PlaybackConfig> Animation::GetPlaybackConfig() const {
   if (state_ == PlayState::kStopped) {
-    return std::nullopt;
+    return absl::nullopt;
   } else {
     return playback_config_;
   }
 }
 
-std::optional<Animation::CycleBoundaries> Animation::GetCurrentCycleBoundaries()
-    const {
+absl::optional<Animation::CycleBoundaries>
+Animation::GetCurrentCycleBoundaries() const {
   if (state_ == PlayState::kStopped || !timer_control_) {
-    return std::nullopt;
+    return absl::nullopt;
   } else {
     return timer_control_->current_cycle();
   }
@@ -363,7 +360,7 @@ void Animation::Paint(gfx::Canvas* canvas,
     case PlayState::kEnded:
       break;
   }
-  std::optional<float> current_progress = GetCurrentProgress();
+  absl::optional<float> current_progress = GetCurrentProgress();
   DCHECK(current_progress);
   PaintFrame(canvas, *current_progress, size);
 
@@ -414,8 +411,8 @@ cc::SkottieWrapper::FrameDataFetchResult Animation::LoadImageForAsset(
   all_frame_data.emplace(asset_id,
                          image_asset.GetFrameData(t, canvas->image_scale()));
   // Since this callback is only used for Seek() and not rendering, the output
-  // arguments can be ignored and kNoUpdate can be returned.
-  return cc::SkottieWrapper::FrameDataFetchResult::kNoUpdate;
+  // arguments can be ignored and NO_UPDATE can be returned.
+  return cc::SkottieWrapper::FrameDataFetchResult::NO_UPDATE;
 }
 
 void Animation::InitTimer(const base::TimeTicks& timestamp) {

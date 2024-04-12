@@ -12,6 +12,7 @@ from blinkpy.common.host_mock import MockHost as BlinkMockHost
 from blinkpy.common.path_finder import PathFinder
 from blinkpy.common.system.log_testing import LoggingTestCase
 from blinkpy.web_tests.port.factory_mock import MockPortFactory
+from blinkpy.w3c.wpt_manifest import BASE_MANIFEST_NAME
 from blinkpy.w3c.wpt_results_processor import (
     EventProcessingError,
     StreamShutdown,
@@ -22,17 +23,17 @@ from blinkpy.w3c.wpt_results_processor import (
 class WPTResultsProcessorTest(LoggingTestCase):
     def setUp(self):
         super().setUp()
+
         self.host = BlinkMockHost()
         self.host.port_factory = MockPortFactory(self.host)
         self.fs = self.host.filesystem
         self.path_finder = PathFinder(self.fs)
-        port = self.host.port_factory.get('test-linux-trusty')
-        port.set_option_default('manifest_update', False)
+        port = self.host.port_factory.get()
 
         # Create a testing manifest containing any test files that we
         # might interact with.
         self.fs.write_text_file(
-            self.path_finder.path_from_wpt_tests('MANIFEST.json'),
+            self.fs.join(port.web_tests_dir(), 'external', BASE_MANIFEST_NAME),
             json.dumps({
                 'items': {
                     'reftest': {
@@ -142,7 +143,6 @@ class WPTResultsProcessorTest(LoggingTestCase):
                     test='/reftest.html',
                     status='PASS')
 
-        self.assertEqual(self.processor.num_initial_failures, 0)
         report_mock = self.processor.sink.report_individual_test_result
         report_mock.assert_called_once_with(
             test_name_prefix='',
@@ -151,24 +151,18 @@ class WPTResultsProcessorTest(LoggingTestCase):
                                              'Default'),
             expectations=None,
             test_file_location=self.path_finder.path_from_web_tests(
-                'external', 'wpt', 'reftest.html'),
-            html_summary=None)
+                'external', 'wpt', 'reftest.html'))
 
         result = report_mock.call_args.kwargs['result']
-        self.assertEqual(result.name, 'external/wpt/reftest.html')
+        self.assertEqual(result.name, 'reftest.html')
         self.assertEqual(result.actual, 'PASS')
         self.assertEqual(result.expected, {'PASS'})
         self.assertFalse(result.unexpected)
         self.assertAlmostEqual(result.took, 2)
         self.assertEqual(result.artifacts, {})
+        self.assertFalse(self.processor.has_regressions)
 
     def test_report_unexpected_fail(self):
-        self.fs.write_text_file(
-            self.path_finder.path_from_web_tests('TestExpectations'),
-            textwrap.dedent("""\
-                # results: [ Pass Timeout ]
-                wpt_internal/reftest.html [ Pass Timeout ]
-                """))
         self._event(action='test_start',
                     time=1000,
                     test='/wpt_internal/reftest.html')
@@ -179,7 +173,6 @@ class WPTResultsProcessorTest(LoggingTestCase):
                     expected='PASS',
                     known_intermittent=['TIMEOUT'])
 
-        self.assertEqual(self.processor.num_initial_failures, 1)
         report_mock = self.processor.sink.report_individual_test_result
         report_mock.assert_called_once_with(
             test_name_prefix='',
@@ -188,8 +181,7 @@ class WPTResultsProcessorTest(LoggingTestCase):
                                              'Default'),
             expectations=None,
             test_file_location=self.path_finder.path_from_web_tests(
-                'wpt_internal', 'reftest.html'),
-            html_summary=mock.ANY)
+                'wpt_internal', 'reftest.html'))
 
         result = report_mock.call_args.kwargs['result']
         self.assertEqual(result.name, 'wpt_internal/reftest.html')
@@ -197,16 +189,18 @@ class WPTResultsProcessorTest(LoggingTestCase):
         self.assertEqual(result.expected, {'PASS', 'TIMEOUT'})
         self.assertTrue(result.unexpected)
         self.assertAlmostEqual(result.took, 0.5)
-        # `{expected,actual}_text` is not produced for WPT reftests.
-        self.assertEqual(result.artifacts, {})
-        summary = report_mock.call_args.kwargs['html_summary']
-        self.assertRegex(
-            summary,
-            'This WPT was run against .*chrome.* using .*chromedriver')
-        self.assertRegex(
-            summary, 'See .*these instructions.* about running '
-            'these tests locally and triaging failures')
-        self.assertNotIn('wpt.fyi', summary)
+        self.assertEqual(
+            result.artifacts, {
+                'actual_text': [
+                    self.fs.join('layout-test-results', 'wpt_internal',
+                                 'reftest-actual.txt'),
+                ],
+                'pretty_text_diff': [
+                    self.fs.join('layout-test-results', 'wpt_internal',
+                                 'reftest-pretty-diff.html'),
+                ]
+            })
+        self.assertTrue(self.processor.has_regressions)
 
     def test_report_pass_on_retry(self):
         self._event(action='suite_start', time=0)
@@ -228,15 +222,13 @@ class WPTResultsProcessorTest(LoggingTestCase):
                     time=5500,
                     status='PASS',
                     subtest='subtest',
-                    message='only compare message on failure')
+                    message="subtest")
         self._event(action='test_end',
                     test='/variant.html?foo=bar/abc',
                     time=6000,
-                    status='OK',
-                    message='message')
+                    status='OK')
         self._event(action='suite_end', time=7000)
 
-        self.assertEqual(self.processor.num_initial_failures, 1)
         report_mock = self.processor.sink.report_individual_test_result
         report_mock.assert_has_calls([
             mock.call(test_name_prefix='',
@@ -245,50 +237,34 @@ class WPTResultsProcessorTest(LoggingTestCase):
                                                        'Default'),
                       expectations=None,
                       test_file_location=self.path_finder.path_from_web_tests(
-                          'external', 'wpt', 'variant.html'),
-                      html_summary=mock.ANY),
+                          'external', 'wpt', 'variant.html')),
         ] * 2)
 
         fail, ok = [
             call.kwargs['result'] for call in report_mock.call_args_list
         ]
-        self.assertEqual(fail.name, 'external/wpt/variant.html?foo=bar/abc')
+        self.assertEqual(fail.name, 'variant.html?foo=bar/abc')
         self.assertEqual(fail.actual, 'FAIL')
         self.assertEqual(fail.expected, {'PASS'})
         self.assertTrue(fail.unexpected)
-        self.assertEqual(
-            fail.artifacts, {
-                'actual_text': [
-                    self.fs.join('layout-test-results', 'external', 'wpt',
-                                 'variant_foo=bar_abc-actual.txt'),
-                ],
-            })
-        self.assertEqual(ok.name, 'external/wpt/variant.html?foo=bar/abc')
+        self.assertEqual(ok.name, 'variant.html?foo=bar/abc')
         self.assertEqual(ok.actual, 'PASS')
         self.assertEqual(ok.expected, {'PASS'})
         self.assertFalse(ok.unexpected)
         self.assertEqual(
             ok.artifacts, {
                 'stderr': [
-                    self.fs.join('layout-test-results', 'retry_1', 'external',
-                                 'wpt', 'variant_foo=bar_abc-stderr.txt'),
+                    self.fs.join('layout-test-results', 'retry_1',
+                                 'variant_foo=bar_abc-stderr.txt'),
                 ],
             })
-        fail_summary = report_mock.call_args_list[0].kwargs['html_summary']
-        self.assertRegex(
-            fail_summary,
-            'https://wpt.fyi/results/variant.html%3Ffoo%3Dbar%2Fabc')
 
     def test_report_subtest_fail_all_expected(self):
-        """All (sub)tests running expectedly is reported as expected pass."""
-        self.fs.write_text_file(
-            self.path_finder.path_from_wpt_tests('test-expected.txt'),
-            textwrap.dedent("""\
-                This is a testharness.js-based test.
-                [FAIL] fail
-                [PASS] pass
-                Harness: the test ran to completion.
-                """))
+        """Subtest failures should be promoted to the test level.
+
+        When there are only expected subtest failures and expected subtest passes,
+        the overall result reported is expected failure.
+        """
         self._event(action='test_start', test='/test.html')
         self._event(action='test_status',
                     test='/test.html',
@@ -302,13 +278,17 @@ class WPTResultsProcessorTest(LoggingTestCase):
 
         result = self.processor.sink.report_individual_test_result.call_args.kwargs[
             'result']
-        self.assertEqual(result.name, 'external/wpt/test.html')
-        self.assertEqual(result.actual, 'PASS')
-        self.assertEqual(result.expected, {'PASS'})
+        self.assertEqual(result.name, 'test.html')
+        self.assertEqual(result.actual, 'FAIL')
+        self.assertEqual(result.expected, {'FAIL'})
         self.assertFalse(result.unexpected)
 
-    def test_report_subtest_unexpected_pass(self):
-        """Unexpected subtest pass should be promoted to an unexpected failure."""
+    def test_report_subtest_upexpected_pass(self):
+        """Unexpected subtest pass should be promoted to the test level.
+
+        An unexpected subtest pass has priority over an expected subtest fail, and
+        the overall result reported is unexpected pass.
+        """
         self._event(action='test_start', test='/test.html')
         self._event(action='test_status',
                     test='/test.html',
@@ -323,29 +303,12 @@ class WPTResultsProcessorTest(LoggingTestCase):
 
         result = self.processor.sink.report_individual_test_result.call_args.kwargs[
             'result']
-        self.assertEqual(result.name, 'external/wpt/test.html')
-        self.assertEqual(result.actual, 'FAIL')
+        self.assertEqual(result.name, 'test.html')
+        self.assertEqual(result.actual, 'PASS')
         self.assertEqual(result.expected, {'PASS'})
         self.assertTrue(result.unexpected)
-        self.assertEqual(
-            result.artifacts, {
-                'actual_text': [
-                    self.fs.join('layout-test-results', 'external', 'wpt',
-                                 'test-actual.txt'),
-                ],
-            })
-        self.assertEqual(
-            self.fs.read_text_file(
-                self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'external', 'wpt',
-                             'test-actual.txt')),
-            textwrap.dedent("""\
-                This is a testharness.js-based test.
-                [FAIL] fail
-                Harness: the test ran to completion.
-                """))
 
-    def test_report_subtest_unexpected_fail(self):
+    def test_report_unexpected_subtest_fail(self):
         self._event(action='test_start', test='/test.html')
         self._event(action='test_status',
                     test='/test.html',
@@ -365,77 +328,54 @@ class WPTResultsProcessorTest(LoggingTestCase):
                     subtest='unexpected pass after',
                     status='PASS',
                     expected='FAIL')
-        self._event(action='test_end', test='/test.html', status='ERROR')
-
-        result = self.processor.sink.report_individual_test_result.call_args.kwargs[
-            'result']
-        self.assertEqual(result.name, 'external/wpt/test.html')
-        self.assertEqual(result.actual, 'FAIL')
-        self.assertEqual(result.expected, {'PASS'})
-        self.assertTrue(result.unexpected)
-
-    def test_report_unexpected_fail_for_harness_mismatch(self):
-        self.fs.write_text_file(
-            self.path_finder.path_from_wpt_tests('test-expected.txt'),
-            textwrap.dedent("""\
-                This is a testharness.js-based test.
-                Harness Error. harness_status.status = 1 , harness_status.message = ignore this
-                Harness: the test ran to completion.
-                """))
-        self._event(action='test_start', test='/test.html')
-        self._event(action='test_end',
-                    test='/test.html',
-                    status='OK',
-                    expected='ERROR')
-
-        result = self.processor.sink.report_individual_test_result.call_args.kwargs[
-            'result']
-        self.assertEqual(result.name, 'external/wpt/test.html')
-        self.assertEqual(result.actual, 'FAIL')
-        self.assertEqual(result.expected, {'PASS'})
-        self.assertTrue(result.unexpected)
-
-    def test_report_unexpected_fail_for_unknown_subtests(self):
-        self.fs.write_text_file(
-            self.path_finder.path_from_web_tests(
-                'external/wpt/test-expected.txt'),
-            textwrap.dedent("""\
-                This is a testharness.js-based test.
-                [FAIL] does-not-exist
-                Harness: the test ran to completion.
-                """))
-        self._event(action='test_start', test='/test.html')
-        self._event(action='test_status',
-                    test='/test.html',
-                    subtest='implicit-pass',
-                    status='PASS')
         self._event(action='test_end', test='/test.html', status='OK')
 
         result = self.processor.sink.report_individual_test_result.call_args.kwargs[
             'result']
-        self.assertEqual(result.name, 'external/wpt/test.html')
+        self.assertEqual(result.name, 'test.html')
         self.assertEqual(result.actual, 'FAIL')
         self.assertEqual(result.expected, {'PASS'})
         self.assertTrue(result.unexpected)
-        self.assertEqual(self.processor.num_regressions, 1)
 
-    def test_report_unexpected_fail_for_different_types(self):
-        self._event(action='test_start', test='/reftest.html')
-        self._event(action='test_end',
-                    test='/reftest.html',
-                    status='ERROR',
-                    expected='FAIL')
+    def test_report_unexpected_pass_against_notrun(self):
+        """Any result against NOTRUN is an unexpected pass."""
+        self._event(action='test_start', test='/test.html')
+        self._event(action='test_status',
+                    test='/test.html',
+                    subtest='notrun',
+                    status='FAIL',
+                    expected='NOTRUN')
+        self._event(action='test_end', test='/test.html', status='OK')
 
         result = self.processor.sink.report_individual_test_result.call_args.kwargs[
             'result']
-        self.assertEqual(result.name, 'external/wpt/reftest.html')
-        # The unexpected flag is still set because the failures are of different
-        # types.
+        self.assertEqual(result.name, 'test.html')
+        self.assertEqual(result.actual, 'PASS')
+        self.assertEqual(result.expected, {'PASS'})
+        self.assertTrue(result.unexpected)
+
+    def test_report_unexpected_fail_for_notrun(self):
+        """A NOTRUN against other results is an unexpected fail."""
+        self._event(action='test_start', test='/test.html')
+        self._event(action='test_status',
+                    test='/test.html',
+                    subtest='notrun',
+                    status='NOTRUN',
+                    expected='FAIL')
+        self._event(action='test_end',
+                    test='/test.html',
+                    status='ERROR',
+                    expected='OK')
+
+        result = self.processor.sink.report_individual_test_result.call_args.kwargs[
+            'result']
+        self.assertEqual(result.name, 'test.html')
         self.assertEqual(result.actual, 'FAIL')
         self.assertEqual(result.expected, {'PASS'})
         self.assertTrue(result.unexpected)
 
     def test_report_unexpected_timeout(self):
+        """NOTRUN should not be promoted to the test level."""
         self._event(action='test_start', test='/timeout.html')
         self._event(action='test_status',
                     test='/timeout.html',
@@ -447,9 +387,6 @@ class WPTResultsProcessorTest(LoggingTestCase):
                     subtest='notrun',
                     status='NOTRUN',
                     expected='PASS')
-        self._event(action='process_output',
-                    command='chromedriver',
-                    data='Log this line')
         self._event(action='test_end',
                     test='/timeout.html',
                     status='TIMEOUT',
@@ -457,31 +394,18 @@ class WPTResultsProcessorTest(LoggingTestCase):
 
         result = self.processor.sink.report_individual_test_result.call_args.kwargs[
             'result']
-        self.assertEqual(result.name, 'external/wpt/timeout.html')
+        self.assertEqual(result.name, 'timeout.html')
         self.assertEqual(result.actual, 'TIMEOUT')
         self.assertEqual(result.expected, {'PASS'})
         self.assertTrue(result.unexpected)
-        # Timeouts and crashes shouldn't output `{actual,expected}_*` artifacts.
-        self.assertEqual(
-            result.artifacts, {
-                'crash_log': [
-                    self.fs.join('layout-test-results', 'external', 'wpt',
-                                 'timeout-crash-log.txt'),
-                ],
-            })
-        self.assertEqual(
-            self.fs.read_text_file(
-                self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'external', 'wpt',
-                             'timeout-crash-log.txt')), 'Log this line\n')
 
     def test_report_expected_timeout_with_unexpected_fails(self):
-        self.fs.write_text_file(
-            self.path_finder.path_from_web_tests('TestExpectations'),
-            textwrap.dedent("""\
-                # results: [ Pass Timeout ]
-                external/wpt/timeout.html [ Timeout ]
-                """))
+        """Timeouts are always reported, even with subtest failures.
+
+        We want to surface when the harness fails to run to completion, even if
+        the failure to complete is expected. Timeouts/crashes need to be fixed
+        before the failed assertions.
+        """
         self._event(action='test_start', test='/timeout.html')
         self._event(action='test_status',
                     test='/timeout.html',
@@ -496,95 +420,103 @@ class WPTResultsProcessorTest(LoggingTestCase):
 
         result = self.processor.sink.report_individual_test_result.call_args.kwargs[
             'result']
-        self.assertEqual(result.name, 'external/wpt/timeout.html')
+        self.assertEqual(result.name, 'timeout.html')
         self.assertEqual(result.actual, 'TIMEOUT')
         self.assertEqual(result.expected, {'TIMEOUT'})
         self.assertFalse(result.unexpected)
 
+    def test_report_sanitizer_fail(self):
+        self._event(action='suite_start', run_info={'sanitizer_enabled': True})
+        self._event(action='test_start', test='/reftest.html')
+        self._event(action='test_end',
+                    test='/reftest.html',
+                    status='FAIL',
+                    expected='PASS')
+        self._event(action='suite_end')
+
+        result = self.processor.sink.report_individual_test_result.call_args.kwargs[
+            'result']
+        self.assertEqual(result.name, 'reftest.html')
+        self.assertEqual(result.actual, 'PASS')
+        self.assertEqual(result.expected, {'PASS'})
+        self.assertFalse(result.unexpected)
+
     def test_report_skip(self):
-        self.fs.write_text_file(
-            self.path_finder.path_from_web_tests('NeverFixTests'),
-            textwrap.dedent("""\
-                # results: [ Skip ]
-                external/wpt/reftest.html [ Skip ]
-                """))
         self._event(action='test_start', test='/reftest.html')
         self._event(action='test_end', test='/reftest.html', status='SKIP')
 
         result = self.processor.sink.report_individual_test_result.call_args.kwargs[
             'result']
-        self.assertEqual(result.name, 'external/wpt/reftest.html')
+        self.assertEqual(result.name, 'reftest.html')
         self.assertEqual(result.actual, 'SKIP')
         self.assertEqual(result.expected, {'SKIP'})
         self.assertFalse(result.unexpected)
 
     def test_extract_text(self):
+        # There are multiple variants (test parameterizations) in the same
+        # metadata file. The processor should extract the relevant section as
+        # the expected text and generate diffs.
         self.fs.write_text_file(
-            self.path_finder.path_from_wpt_tests(
-                'variant_foo=baz-expected.txt'),
+            self.path_finder.path_from_wpt_tests('variant.html.ini'),
             textwrap.dedent("""\
-                This is a testharness.js-based test.
-                [FAIL] subtest
-                  expected-message
-                Harness: the test ran to completion.
+                [variant.html?foo=bar/abc]
+                  expected: OK
 
+                [variant.html?foo=baz]
+                  expected: FAIL
                 """))
         with self.fs.patch_builtins():
             self._event(action='test_start', test='/variant.html?foo=baz')
-            self._event(action='test_status',
-                        test='/variant.html?foo=baz',
-                        subtest='subtest',
-                        status='PRECONDITION_FAILED',
-                        expected='FAIL',
-                        message='actual-message')
             self._event(action='test_end',
                         test='/variant.html?foo=baz',
-                        status='OK')
+                        status='CRASH',
+                        expected='FAIL')
 
         self.assertEqual(
             self.fs.read_text_file(
                 self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'external', 'wpt',
+                             'layout-test-results',
                              'variant_foo=baz-actual.txt')),
             textwrap.dedent("""\
-                This is a testharness.js-based test.
-                [PRECONDITION_FAILED] subtest
-                  actual-message
-                Harness: the test ran to completion.
+                [variant.html?foo=baz]
+                  expected: CRASH
                 """))
         self.assertEqual(
             self.fs.read_text_file(
                 self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'external', 'wpt',
+                             'layout-test-results',
                              'variant_foo=baz-expected.txt')),
             textwrap.dedent("""\
-                This is a testharness.js-based test.
-                [FAIL] subtest
-                  expected-message
-                Harness: the test ran to completion.
+                [variant.html?foo=baz]
+                  expected: FAIL
                 """))
         diff_lines = self.fs.read_text_file(
             self.fs.join('/mock-checkout', 'out', 'Default',
-                         'layout-test-results', 'external', 'wpt',
+                         'layout-test-results',
                          'variant_foo=baz-diff.txt')).splitlines()
-        self.assertIn('-  expected-message', diff_lines)
-        self.assertIn('+  actual-message', diff_lines)
+        self.assertIn('-  expected: FAIL', diff_lines)
+        self.assertIn('+  expected: CRASH', diff_lines)
         pretty_diff = self.fs.read_text_file(
             self.fs.join('/mock-checkout', 'out', 'Default',
-                         'layout-test-results', 'external', 'wpt',
+                         'layout-test-results',
                          'variant_foo=baz-pretty-diff.html'))
-        self.assertIn('expected-message', pretty_diff)
-        self.assertIn('actual-message', pretty_diff)
+
+        self.assertIn('expected: FAIL', pretty_diff)
+        self.assertIn('actual: CRASH', pretty_diff)
 
     def test_extract_text_multiglobal(self):
+        # Similar to a test with variants, the processor should extract the
+        # correct section from a metadata file with multiple.
         self.fs.write_text_file(
-            self.path_finder.path_from_web_tests(
-                'wpt_internal', 'dir',
-                'multiglob.https.any.worker-expected.txt'),
+            self.path_finder.path_from_web_tests('wpt_internal', 'dir',
+                                                 'multiglob.https.any.js.ini'),
             textwrap.dedent("""\
-                This is a testharness.js-based test.
-                [FAIL] subtest
-                Harness: the test ran to completion.
+                [multiglob.https.any.worker.html]
+                  [subtest]
+                    expected: FAIL
+
+                [multiglob.https.any.html]
+                  expected: OK
                 """))
         with self.fs.patch_builtins():
             self._event(
@@ -593,68 +525,70 @@ class WPTResultsProcessorTest(LoggingTestCase):
             self._event(
                 action='test_end',
                 test='/wpt_internal/dir/multiglob.https.any.worker.html',
-                status='ERROR',
-                expected='OK',
-                message="Uncaught SyntaxError: Unexpected token ')'")
-        self.assertEqual(
-            self.fs.read_text_file(
-                self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'wpt_internal', 'dir',
-                             'multiglob.https.any.worker-actual.txt')),
-            textwrap.dedent("""\
-                This is a testharness.js-based test.
-                Harness Error. harness_status.status = 1 , harness_status.message = Uncaught SyntaxError: Unexpected token ')'
-                Harness: the test ran to completion.
-                """))
+                status='CRASH',
+                expected='OK')
         self.assertEqual(
             self.fs.read_text_file(
                 self.fs.join('/mock-checkout', 'out', 'Default',
                              'layout-test-results', 'wpt_internal', 'dir',
                              'multiglob.https.any.worker-expected.txt')),
             textwrap.dedent("""\
-                This is a testharness.js-based test.
-                [FAIL] subtest
-                Harness: the test ran to completion.
+                [multiglob.https.any.worker.html]
+                  [subtest]
+                    expected: FAIL
                 """))
 
-    def test_extract_text_all_pass(self):
+    def test_extract_text_with_conditions(self):
+        """Evaluate expectations with the latest `suite_start`'s `run_info`."""
+        self.fs.write_text_file(
+            self.path_finder.path_from_wpt_tests('test.html.ini'),
+            textwrap.dedent("""\
+                [test.html]
+                  expected:
+                    if flag_specific != "fake-flag": FAIL
+                    TIMEOUT
+                """))
         with self.fs.patch_builtins():
-            self._event(action='test_start', test='/variant.html?foo=baz')
-            self._event(action='test_status',
-                        test='/variant.html?foo=baz',
-                        subtest='passing subtest',
-                        status='PASS')
+            self._event(action='suite_start',
+                        run_info={'flag_specific': 'fake-flag'})
+            self._event(action='test_start', test='/test.html')
             self._event(action='test_end',
-                        test='/variant.html?foo=baz',
-                        status='OK')
+                        test='/test.html',
+                        status='FAIL',
+                        expected='OK')
+            self._event(action='suite_end')
+        self.assertEqual(
+            self.fs.read_text_file(
+                self.fs.join('/mock-checkout', 'out', 'Default',
+                             'layout-test-results', 'test-expected.txt')),
+            textwrap.dedent("""\
+                [test.html]
+                  expected: TIMEOUT
+                """))
+
+    def test_extract_text_with_invalid_metadata(self):
+        self.fs.write_text_file(
+            self.path_finder.path_from_wpt_tests('test.html.ini'),
+            textwrap.dedent("""\
+                [test.html
+                """))
+        with self.fs.patch_builtins():
+            self._event(action='test_start', test='/test.html')
+            self._event(action='test_end',
+                        test='/test.html',
+                        status='CRASH',
+                        expected='OK')
+        self.assertTrue(
+            self.fs.exists(
+                self.fs.join('/mock-checkout', 'out', 'Default',
+                             'layout-test-results', 'test-actual.txt')))
         self.assertFalse(
             self.fs.exists(
                 self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'external', 'wpt',
-                             'variant_foo=baz-actual.txt')))
-
-    def test_extract_text_reset_results(self):
-        self.processor.reset_results = True
-        with self.fs.patch_builtins():
-            self._event(action='test_start', test='/variant.html?foo=baz')
-            self._event(action='test_status',
-                        test='/variant.html?foo=baz',
-                        subtest='passing subtest',
-                        status='PASS')
-            self._event(action='test_end',
-                        test='/variant.html?foo=baz',
-                        status='OK')
-        self.assertEqual(
-            self.fs.read_text_file(
-                self.path_finder.path_from_web_tests(
-                    'platform', 'test-linux-trusty', 'external', 'wpt',
-                    'variant_foo=baz-expected.txt')),
-            textwrap.dedent("""\
-                This is a testharness.js-based test.
-                All subtests passed and are omitted for brevity.
-                See https://chromium.googlesource.com/chromium/src/+/HEAD/docs/testing/writing_web_tests.md#Text-Test-Baselines for details.
-                Harness: the test ran to completion.
-                """))
+                             'layout-test-results', 'test-expected.txt')))
+        self.assertLog([
+            'WARNING: Unable to parse metadata for test.html: EOL in heading:  line 1\n',
+        ])
 
     def test_extract_screenshots(self):
         self._event(action='test_start', test='/reftest.html')
@@ -674,59 +608,22 @@ class WPTResultsProcessorTest(LoggingTestCase):
         self.assertEqual(
             self.fs.read_binary_file(
                 self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'external', 'wpt',
-                             'reftest-actual.png')), base64.b64decode('abcd'))
+                             'layout-test-results', 'reftest-actual.png')),
+            base64.b64decode('abcd'))
         self.assertEqual(
             self.fs.read_binary_file(
                 self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'external',
-                             'wpt', 'reftest-expected.png')),
+                             'layout-test-results', 'reftest-expected.png')),
             base64.b64decode('bcde'))
         self.assertEqual(
             self.fs.read_binary_file(
                 self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'external', 'wpt',
-                             'reftest-diff.png')), '\n'.join([
-                                 '< bcde',
-                                 '---',
-                                 '> abcd',
-                             ]))
-
-    def test_extract_screenshots_for_wpt_internal(self):
-        self._event(action='test_start', test='/wpt_internal/reftest.html')
-        self._event(action='test_end',
-                    test='/wpt_internal/reftest.html',
-                    status='FAIL',
-                    expected='PASS',
-                    extra={
-                        'reftest_screenshots': [{
-                            'url': '/wpt_internal/reftest.html',
-                            'screenshot': 'abcd',
-                        }, {
-                            'url': 'wpt_internal/reftest-ref.html',
-                            'screenshot': 'bcde',
-                        }],
-                    })
-        self.assertEqual(
-            self.fs.read_binary_file(
-                self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'wpt_internal',
-                             'reftest-actual.png')), base64.b64decode('abcd'))
-        self.assertEqual(
-            self.fs.read_binary_file(
-                self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results',
-                             'wpt_internal', 'reftest-expected.png')),
-            base64.b64decode('bcde'))
-        self.assertEqual(
-            self.fs.read_binary_file(
-                self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'wpt_internal',
-                             'reftest-diff.png')), '\n'.join([
-                                 '< bcde',
-                                 '---',
-                                 '> abcd',
-                             ]))
+                             'layout-test-results', 'reftest-diff.png')),
+            '\n'.join([
+                '< bcde',
+                '---',
+                '> abcd',
+            ]))
 
     def test_no_diff_artifacts_on_pass(self):
         self.fs.write_text_file(
@@ -788,8 +685,7 @@ class WPTResultsProcessorTest(LoggingTestCase):
         self.assertEqual(
             self.fs.read_text_file(
                 self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'external', 'wpt',
-                             'test-stderr.txt')),
+                             'layout-test-results', 'test-stderr.txt')),
             textwrap.dedent("""\
                 Harness: Test ran to completion.
                 subtest with Unicode \u03c0: assert_eq(a, b)
@@ -797,8 +693,7 @@ class WPTResultsProcessorTest(LoggingTestCase):
         self.assertEqual(
             self.fs.read_text_file(
                 self.fs.join('/mock-checkout', 'out', 'Default',
-                             'layout-test-results', 'external', 'wpt',
-                             'test-crash-log.txt')),
+                             'layout-test-results', 'test-crash-log.txt')),
             textwrap.dedent("""\
                 [ERROR] Log this line
                 """))
@@ -828,57 +723,8 @@ class WPTResultsProcessorTest(LoggingTestCase):
             self._event(action='shutdown')
         self.assertLog([
             'WARNING: Some tests have unreported results:\n',
-            'WARNING:   external/wpt/test.html\n',
+            'WARNING:   test.html\n',
         ])
-
-    def test_early_exit_from_failures(self):
-        self.fs.write_text_file(
-            self.path_finder.path_from_wpt_tests(
-                'variant_foo=baz-expected.txt'),
-            textwrap.dedent("""\
-                This is a testharness.js-based test.
-                Harness Error. harness_status.status = 1 , harness_status.message = ignore this
-                Harness: the test ran to completion.
-                """))
-        self.processor.failure_threshold = 2
-        with mock.patch('os.kill') as kill_mock:
-            self._event(action='test_start', test='/variant.html?foo=bar/abc')
-            self._event(action='test_end',
-                        test='/variant.html?foo=bar/abc',
-                        status='ERROR',
-                        expected='OK')
-            self._event(action='test_start', test='/variant.html?foo=baz')
-            self._event(action='test_end',
-                        test='/variant.html?foo=baz',
-                        status='ERROR')
-            kill_mock.assert_not_called()
-            self._event(action='test_start', test='/reftest.html')
-            self._event(action='test_end',
-                        test='/reftest.html',
-                        status='FAIL',
-                        expected='PASS')
-            kill_mock.assert_called_once()
-
-    def test_early_exit_from_crashes_and_timeouts(self):
-        self.processor.crash_timeout_threshold = 2
-        with mock.patch('os.kill') as kill_mock:
-            self._event(action='test_start', test='/variant.html?foo=bar/abc')
-            self._event(action='test_end',
-                        test='/variant.html?foo=bar/abc',
-                        status='ERROR',
-                        expected='OK')
-            self._event(action='test_start', test='/variant.html?foo=baz')
-            self._event(action='test_end',
-                        test='/variant.html?foo=baz',
-                        status='TIMEOUT',
-                        expected='OK')
-            kill_mock.assert_not_called()
-            self._event(action='test_start', test='/reftest.html')
-            self._event(action='test_end',
-                        test='/reftest.html',
-                        status='CRASH',
-                        expected='OK')
-            kill_mock.assert_called_once()
 
     def test_process_json(self):
         """Ensure that various JSONs are written to the correct locations."""
@@ -904,47 +750,42 @@ class WPTResultsProcessorTest(LoggingTestCase):
                                     'screenshot': 'abcd',
                                 }]
                             })
-                self._event(action='test_start', test='/reftest.html')
-                self._event(action='test_end',
-                            test='/reftest.html',
-                            status='PASS')
                 self._event(action='suite_end')
-        self.processor.process_results_json()
 
+        results_json = {
+            'tests': {
+                'test.html': {
+                    'expected': 'PASS',
+                    'actual': 'FAIL FAIL',
+                    'artifacts': {
+                        'wpt_actual_status': ['ERROR'],
+                    },
+                    'is_unexpected': True,
+                    'is_regression': True,
+                },
+            },
+            'path_delimiter': '/',
+        }
+        full_json_path = self.fs.join('/mock-checkout', 'out', 'Default',
+                                      'layout-test-results',
+                                      'raw_wpt_output.json')
+        self.fs.write_text_file(full_json_path, json.dumps(results_json))
+
+        self.processor.process_results_json(full_json_path)
         full_json = json.loads(
             self.fs.read_text_file(
                 self.fs.join('/mock-checkout', 'out', 'Default',
                              'layout-test-results', 'full_results.json')))
-        self.assertEqual(full_json['num_regressions'], 1)
-        unexpected_fail = full_json['tests']['external']['wpt']['test.html']
-        self.assertTrue(unexpected_fail['has_stderr'])
+        unexpected_fail = full_json['tests']['test.html']
+        self.assertEqual(unexpected_fail['has_stderr'], True)
         self.assertEqual(unexpected_fail['artifacts']['stderr'], [
-            self.fs.join('layout-test-results', 'external', 'wpt',
-                         'test-stderr.txt'),
-            self.fs.join('layout-test-results', 'retry_1', 'external', 'wpt',
-                         'test-stderr.txt'),
+            self.fs.join('layout-test-results', 'test-stderr.txt'),
+            self.fs.join('layout-test-results', 'retry_1', 'test-stderr.txt'),
         ])
         self.assertEqual(unexpected_fail['image_diff_stats'], diff_stats)
 
-        path_to_failing_results = self.fs.join('/mock-checkout', 'out',
-                                               'Default',
-                                               'layout-test-results',
-                                               'failing_results.json')
-        failing_results_match = re.fullmatch(
-            'ADD_RESULTS\((?P<json>.*)\);',
-            self.fs.read_text_file(path_to_failing_results))
-        self.assertIsNotNone(failing_results_match)
-        failing_results = json.loads(failing_results_match['json'])
-        self.assertIn('external', failing_results['tests'])
-        self.assertIn('wpt', failing_results['tests']['external'])
-        self.assertIn('test.html', failing_results['tests']['external']['wpt'])
-        self.assertNotIn('reftest.html',
-                         failing_results['tests']['external']['wpt'])
-        self.assertRegex(self.fs.read_text_file(path_to_failing_results),
-                         'ADD_RESULTS\(.*\);$')
-
     def test_trim_json_to_regressions(self):
-        results = {
+        results_json = {
             'tests': {
                 'test.html': {
                     'expected': 'PASS',
@@ -973,16 +814,34 @@ class WPTResultsProcessorTest(LoggingTestCase):
             },
             'path_delimiter': '/',
         }
-        self.processor.trim_to_regressions(results['tests'])
+        full_json_path = self.fs.join('/mock-checkout', 'out', 'Default',
+                                      'layout-test-results',
+                                      'raw_wpt_output.json')
+        self.fs.write_text_file(full_json_path, json.dumps(results_json))
 
-        self.assertNotIn('test.html', results['tests'])
-        self.assertNotIn('variant.html?foo=bar/abc', results['tests'])
-        self.assertIn('variant.html?foo=baz', results['tests'])
+        self.processor.process_results_json(full_json_path)
+
+        failing_results_match = re.fullmatch(
+            'ADD_RESULTS\((?P<json>.*)\);',
+            self.fs.read_text_file(
+                self.fs.join('/mock-checkout', 'out', 'Default',
+                             'layout-test-results', 'failing_results.json')))
+        self.assertIsNotNone(failing_results_match)
+        failing_results = json.loads(failing_results_match['json'])
+        self.assertNotIn('test.html', failing_results['tests'])
+        self.assertNotIn('variant.html?foo=bar/abc', failing_results['tests'])
+        self.assertIn('variant.html?foo=baz', failing_results['tests'])
+        self.assertRegex(
+            self.fs.read_text_file(
+                self.fs.join('/mock-checkout', 'out', 'Default',
+                             'layout-test-results', 'full_results_jsonp.js')),
+            'ADD_FULL_RESULTS\(.*\);$')
 
     def test_process_wpt_report(self):
         report_src = self.fs.join('/mock-checkout', 'out', 'Default',
                                   'wpt_report.json')
-        self.fs.write_text_file(report_src, json.dumps(self.wpt_report))
+        self.fs.write_text_file(report_src,
+                                (json.dumps(self.wpt_report) + '\n') * 2)
         self.processor.process_wpt_report(report_src)
         report_dest = self.fs.join('/mock-checkout', 'out', 'Default',
                                    'layout-test-results', 'wpt_report.json')
@@ -994,4 +853,42 @@ class WPTResultsProcessorTest(LoggingTestCase):
             })
         report = json.loads(self.fs.read_text_file(report_dest))
         self.assertEqual(report['run_info'], self.wpt_report['run_info'])
-        self.assertEqual(report['results'], self.wpt_report['results'])
+        self.assertEqual(report['results'], self.wpt_report['results'] * 2)
+
+    def test_process_wpt_report_compact(self):
+        report_src = self.fs.join('/mock-checkout', 'out', 'Default',
+                                  'wpt_report.json')
+        self.wpt_report['run_info']['used_upstream'] = False
+        self.fs.write_text_file(report_src, json.dumps(self.wpt_report))
+        self.processor.process_wpt_report(report_src)
+        report_dest = self.fs.join('/mock-checkout', 'out', 'Default',
+                                   'layout-test-results', 'wpt_report.json')
+        self.processor.sink.report_invocation_level_artifacts.assert_called_once_with(
+            {
+                'wpt_report.json': {
+                    'filePath': report_dest,
+                },
+            })
+        report = json.loads(self.fs.read_text_file(report_dest))
+        self.assertEqual(
+            report['run_info'], {
+                'os': 'linux',
+                'version': '18.04',
+                'product': 'chrome',
+                'revision': '57a5dfb2d7d6253fbb7dbd7c43e7588f9339f431',
+                'used_upstream': False,
+            })
+        self.assertEqual(report['results'], [{
+            'test':
+            '/a/b.html',
+            'subtests': [{
+                'name': 'subtest',
+                'status': 'FAIL',
+                'expected': 'PASS',
+            }],
+            'status':
+            'OK',
+            'duration':
+            1000,
+            'known_intermittent': ['CRASH'],
+        }])

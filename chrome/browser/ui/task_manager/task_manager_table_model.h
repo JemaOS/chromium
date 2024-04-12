@@ -8,11 +8,11 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 
 #include "base/memory/raw_ptr.h"
 #include "base/values.h"
 #include "chrome/browser/task_manager/task_manager_observer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/models/table_model.h"
 
 namespace content {
@@ -46,9 +46,7 @@ class TableViewDelegate {
 
   virtual bool IsColumnVisible(int column_id) const = 0;
 
-  // Returns whether the visibility has been changed. (Always return true on
-  // Mac. See TaskManagerMac::toggleColumn)
-  virtual bool SetColumnVisibility(int column_id, bool new_visibility) = 0;
+  virtual void SetColumnVisibility(int column_id, bool new_visibility) = 0;
 
   virtual bool IsTableSorted() const = 0;
 
@@ -56,12 +54,6 @@ class TableViewDelegate {
 
   virtual void SetSortDescriptor(
       const TableSortDescriptor& sort_descriptor) = 0;
-
-  // Highlight task if no task is currently highlighted and `active_task_id_`
-  // has value and is present in Task Manager, otherwise do nothing. Highlight
-  // task will happen most likely right after task manager is open. We do not
-  // want to override user selection if user has selected any tasks.
-  virtual void MaybeHighlightActiveTask() = 0;
 };
 
 class TaskManagerTableModel : public TaskManagerObserver,
@@ -83,7 +75,6 @@ class TaskManagerTableModel : public TaskManagerObserver,
   void OnTaskAdded(TaskId id) override;
   void OnTaskToBeRemoved(TaskId id) override;
   void OnTasksRefreshed(const TaskIdList& task_ids) override;
-  void OnActiveTaskFetched(TaskId id) override;
 
   // Gets the start index and length of the group to which the task at
   // |row_index| belongs.
@@ -118,10 +109,8 @@ class TaskManagerTableModel : public TaskManagerObserver,
   // Returns the row index corresponding to a particular WebContents. Returns
   // nullopt if |web_contents| is nullptr, or is not currently found in the
   // model (for example, if the tab is currently crashed).
-  std::optional<size_t> GetRowForWebContents(
+  absl::optional<size_t> GetRowForWebContents(
       content::WebContents* web_contents);
-
-  std::optional<size_t> GetRowForActiveTask();
 
  private:
   friend class TaskManagerTester;
@@ -159,14 +148,6 @@ class TaskManagerTableModel : public TaskManagerObserver,
 
   // The status of the flag #enable-nacl-debug.
   bool is_nacl_debugging_flag_enabled_;
-
-  // Active task id when task manager is open. This variable will only set once
-  // after task manager is open. In desktop platforms other than Lacros, active
-  // tab is automatically highlighted when task manager is open. But in ash and
-  // Lacros it needs to wait for CROS API to passed back active task id to
-  // support that. This is currently only used in tracking Lacros active tab
-  // from ash through crosapi.
-  std::optional<TaskId> active_task_id_;
 };
 
 }  // namespace task_manager

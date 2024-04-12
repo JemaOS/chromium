@@ -5,8 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_STREAMS_WRITABLE_STREAM_DEFAULT_WRITER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_STREAMS_WRITABLE_STREAM_DEFAULT_WRITER_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
@@ -90,22 +89,21 @@ class CORE_EXPORT WritableStreamDefaultWriter final : public ScriptWrappable {
   // https://streams.spec.whatwg.org/#writable-stream-default-writer-write
   static v8::Local<v8::Promise> Write(ScriptState*,
                                       WritableStreamDefaultWriter*,
-                                      v8::Local<v8::Value> chunk,
-                                      ExceptionState&);
+                                      v8::Local<v8::Value> chunk);
 
   //
   // Accessors used by ReadableStream and WritableStream. These do
   // not appear in the standard.
   //
 
-  StreamPromiseResolver* ClosedPromise() { return closed_promise_.Get(); }
-  StreamPromiseResolver* ReadyPromise() { return ready_promise_.Get(); }
-  WritableStream* OwnerWritableStream() { return owner_writable_stream_.Get(); }
+  StreamPromiseResolver* ClosedPromise() { return closed_promise_; }
+  StreamPromiseResolver* ReadyPromise() { return ready_promise_; }
+  WritableStream* OwnerWritableStream() { return owner_writable_stream_; }
 
   // This is a variant of GetDesiredSize() that doesn't create an intermediate
-  // JavaScript object. Instead it returns std::nullopt where the JavaScript
+  // JavaScript object. Instead it returns absl::nullopt where the JavaScript
   // version would return null.
-  std::optional<double> GetDesiredSizeInternal() const;
+  absl::optional<double> GetDesiredSizeInternal() const;
 
   void SetReadyPromise(StreamPromiseResolver*);
 

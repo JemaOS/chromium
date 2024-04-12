@@ -5,7 +5,6 @@
 #include "chrome/browser/sessions/closed_tab_cache.h"
 
 #include "base/run_loop.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "base/test/test_mock_time_task_runner.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
@@ -24,10 +23,8 @@
 #include "components/memory_pressure/fake_memory_pressure_monitor.h"
 #include "components/sessions/core/session_id.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
-#include "third_party/blink/public/common/features.h"
 #include "url/gurl.h"
 
 using content::WebContents;
@@ -135,17 +132,9 @@ IN_PROC_BROWSER_TEST_F(ClosedTabCacheBrowserTest, StoreEntryWhenFull) {
   EXPECT_EQ(closed_tab_cache().EntriesCount(), 1U);
 }
 
-// TODO(crbug.com/1517451): Re-enable this test
-#if BUILDFLAG(IS_CHROMEOS) && defined(ADDRESS_SANITIZER)
-#define MAYBE_StoreEntryWithoutBeforeunloadListener \
-  DISABLED_StoreEntryWithoutBeforeunloadListener
-#else
-#define MAYBE_StoreEntryWithoutBeforeunloadListener \
-  StoreEntryWithoutBeforeunloadListener
-#endif
 // Only add an entry to the cache when no beforeunload listeners are running.
 IN_PROC_BROWSER_TEST_F(ClosedTabCacheBrowserTest,
-                       MAYBE_StoreEntryWithoutBeforeunloadListener) {
+                       StoreEntryWithoutBeforeunloadListener) {
   ASSERT_TRUE(embedded_test_server()->Start());
   EXPECT_TRUE(closed_tab_cache().IsEmpty())
       << "Expected cache to be empty at the start of the test.";
@@ -153,16 +142,9 @@ IN_PROC_BROWSER_TEST_F(ClosedTabCacheBrowserTest,
   // Don't cache WebContents when beforeunload listeners are run.
   NavigateToURL(browser(), "a.com");
   content::WebContents* a = browser()->tab_strip_model()->GetWebContentsAt(1);
-  if (base::FeatureList::IsEnabled(
-          blink::features::kBeforeunloadEventCancelByPreventDefault)) {
-    EXPECT_TRUE(ExecJs(a->GetPrimaryMainFrame(),
-                       "window.addEventListener('beforeunload', function (e) "
-                       "{e.preventDefault();});"));
-  } else {
-    EXPECT_TRUE(ExecJs(a->GetPrimaryMainFrame(),
-                       "window.addEventListener('beforeunload', function (e) "
-                       "{e.returnValue = 'Not empty string';});"));
-  }
+  EXPECT_TRUE(ExecJs(a->GetPrimaryMainFrame(),
+                     "window.addEventListener('beforeunload', function (e) "
+                     "{e.preventDefault();});"));
   EXPECT_TRUE(a->NeedToFireBeforeUnloadOrUnloadEvents());
   CloseTabAt(1);
   EXPECT_EQ(closed_tab_cache().EntriesCount(), 0U);
@@ -237,19 +219,8 @@ IN_PROC_BROWSER_TEST_F(ClosedTabCacheBrowserTest, RestoreEntryWhenFound) {
               testing::ElementsAre(base::Bucket(1, 1)));
 }
 
-// TODO(crbug.com/1491942): This fails with the field trial testing config.
-class ClosedTabCacheBrowserTestNoTestingConfig
-    : public ClosedTabCacheBrowserTest {
- public:
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    ClosedTabCacheBrowserTest::SetUpCommandLine(command_line);
-    command_line->AppendSwitch("disable-field-trial-config");
-  }
-};
-
 // Evict an entry after timeout.
-IN_PROC_BROWSER_TEST_F(ClosedTabCacheBrowserTestNoTestingConfig,
-                       EvictEntryOnTimeout) {
+IN_PROC_BROWSER_TEST_F(ClosedTabCacheBrowserTest, EvictEntryOnTimeout) {
   scoped_refptr<base::TestMockTimeTaskRunner> task_runner =
       base::MakeRefCounted<base::TestMockTimeTaskRunner>();
   closed_tab_cache().SetTaskRunnerForTesting(task_runner);

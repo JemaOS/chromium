@@ -135,9 +135,8 @@ IN_PROC_BROWSER_TEST_F(WebDialogBrowserTest, MAYBE_SizeWindow) {
   // used for window modals like this dialog, always centers them within the
   // parent window regardless of the requested origin. The size is still
   // honored.
-  if (base::mac::MacOSMajorVersion() >= 11) {
+  if (base::mac::IsAtLeastOS11())
     centered_in_window = true;
-  }
 #endif
 
   gfx::Rect set_bounds = view_->GetWidget()->GetClientAreaBoundsInScreen();
@@ -270,7 +269,7 @@ IN_PROC_BROWSER_TEST_F(WebDialogBrowserTest, CloseParentWindow) {
   // Open a second browser window so we don't trigger shutdown.
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL(url::kAboutBlankURL), WindowOpenDisposition::NEW_WINDOW,
-      ui_test_utils::BROWSER_TEST_NO_WAIT);
+      ui_test_utils::BROWSER_TEST_NONE);
 
   // TestWebDialogDelegate defaults to window-modal, so closing the browser
   // Window (as opposed to closing merely the tab) should close the dialog.
@@ -291,7 +290,7 @@ IN_PROC_BROWSER_TEST_F(WebDialogBrowserTest, CloseDialogOnEscapeEnabled) {
   // Open a second browser window so we don't trigger shutdown.
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL(url::kAboutBlankURL), WindowOpenDisposition::NEW_WINDOW,
-      ui_test_utils::BROWSER_TEST_NO_WAIT);
+      ui_test_utils::BROWSER_TEST_NONE);
 
   // If ShouldCloseDialogOnEscape() is true, pressing Escape should close the
   // dialog.
@@ -307,7 +306,7 @@ IN_PROC_BROWSER_TEST_F(WebDialogBrowserTest, CloseDialogOnEscapeDisabled) {
   // Open a second browser window so we don't trigger shutdown.
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL(url::kAboutBlankURL), WindowOpenDisposition::NEW_WINDOW,
-      ui_test_utils::BROWSER_TEST_NO_WAIT);
+      ui_test_utils::BROWSER_TEST_NONE);
 
   // If ShouldCloseDialogOnEscape() is false, pressing Escape does nothing.
   delegate_->SetCloseOnEscape(false);

@@ -8,7 +8,6 @@
 
 #include "base/bit_cast.h"
 #include "ui/base/wayland/wayland_display_util.h"
-#include "ui/ozone/platform/wayland/test/test_output.h"
 #include "ui/ozone/platform/wayland/test/test_output_metrics.h"
 
 namespace wl {
@@ -26,10 +25,8 @@ TestZAuraOutputManager::TestZAuraOutputManager()
 TestZAuraOutputManager::~TestZAuraOutputManager() = default;
 
 void TestZAuraOutputManager::SendOutputMetrics(
-    TestOutput* test_output,
+    wl_resource* output_resource,
     const TestOutputMetrics& metrics) {
-  wl_resource* output_resource = test_output->resource();
-
   const auto& physical_size = metrics.wl_physical_size;
   zaura_output_manager_send_physical_size(resource(), output_resource,
                                           physical_size.width(),
@@ -66,8 +63,7 @@ void TestZAuraOutputManager::SendOutputMetrics(
   zaura_output_manager_send_done(resource(), output_resource);
 }
 
-void TestZAuraOutputManager::SendActivated(TestOutput* test_output) {
-  wl_resource* output_resource = test_output->resource();
+void TestZAuraOutputManager::SendActivated(wl_resource* output_resource) {
   zaura_output_manager_send_activated(resource(), output_resource);
 }
 

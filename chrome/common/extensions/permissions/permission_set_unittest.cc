@@ -30,6 +30,7 @@
 #include "extensions/common/permissions/permissions_data.h"
 #include "extensions/common/permissions/permissions_info.h"
 #include "extensions/common/permissions/socket_permission.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/l10n/l10n_util.h"
 
@@ -115,7 +116,7 @@ testing::AssertionResult PermissionSetProducesMessage(
 // Tests GetByID.
 TEST(PermissionsTest, GetByID) {
   PermissionsInfo* info = PermissionsInfo::GetInstance();
-  APIPermissionSet apis = info->GetAllForTest();
+  APIPermissionSet apis = info->GetAll();
   for (const auto* api : apis)
     EXPECT_EQ(api->id(), api->info()->id());
 }
@@ -131,7 +132,7 @@ TEST(PermissionsTest, GetByName) {
 TEST(PermissionsTest, GetAll) {
   size_t count = 0;
   PermissionsInfo* info = PermissionsInfo::GetInstance();
-  APIPermissionSet apis = info->GetAllForTest();
+  APIPermissionSet apis = info->GetAll();
   for (const auto* api : apis) {
     // Make sure only the valid permission IDs get returned.
     EXPECT_NE(APIPermissionID::kInvalid, api->id());
@@ -158,7 +159,7 @@ TEST(PermissionsTest, GetAllByName) {
   expected.insert(APIPermissionID::kTab);
 
   EXPECT_EQ(expected,
-            PermissionsInfo::GetInstance()->GetAllByNameForTest(names));
+            PermissionsInfo::GetInstance()->GetAllByName(names));
 }
 
 // Tests that the aliases are properly mapped.
@@ -755,6 +756,7 @@ TEST(PermissionsTest, PermissionMessages) {
   skip.insert(APIPermissionID::kBrowsingData);
   skip.insert(APIPermissionID::kCommandsAccessibility);
   skip.insert(APIPermissionID::kContextMenus);
+  skip.insert(APIPermissionID::kDesktopCapturePrivate);
   skip.insert(APIPermissionID::kDiagnostics);
   skip.insert(APIPermissionID::kDns);
   skip.insert(APIPermissionID::kDownloadsShelf);
@@ -800,7 +802,6 @@ TEST(PermissionsTest, PermissionMessages) {
   skip.insert(APIPermissionID::kProxy);
   skip.insert(APIPermissionID::kScripting);
   skip.insert(APIPermissionID::kTabCapture);
-  skip.insert(APIPermissionID::kUserScripts);
   skip.insert(APIPermissionID::kWebRequest);
   skip.insert(APIPermissionID::kWebRequestBlocking);
   skip.insert(APIPermissionID::kWebRequestAuthProvider);
@@ -823,7 +824,6 @@ TEST(PermissionsTest, PermissionMessages) {
 
   // These are private.
   skip.insert(APIPermissionID::kAccessibilityPrivate);
-  skip.insert(APIPermissionID::kAccessibilityServicePrivate);
   skip.insert(APIPermissionID::kArcAppsPrivate);
   skip.insert(APIPermissionID::kAutoTestPrivate);
   skip.insert(APIPermissionID::kBrailleDisplayPrivate);
@@ -838,7 +838,7 @@ TEST(PermissionsTest, PermissionMessages) {
   skip.insert(APIPermissionID::kFileManagerPrivate);
   skip.insert(APIPermissionID::kFirstRunPrivate);
   skip.insert(APIPermissionID::kSharedStoragePrivate);
-  skip.insert(APIPermissionID::kImageLoaderPrivate);
+  skip.insert(APIPermissionID::kIdentityPrivate);
   skip.insert(APIPermissionID::kInputMethodPrivate);
   skip.insert(APIPermissionID::kLanguageSettingsPrivate);
   skip.insert(APIPermissionID::kLockWindowFullscreenPrivate);
@@ -862,7 +862,6 @@ TEST(PermissionsTest, PermissionMessages) {
   skip.insert(APIPermissionID::kWebstorePrivate);
   skip.insert(APIPermissionID::kWmDesksPrivate);
   skip.insert(APIPermissionID::kSystemLog);
-  skip.insert(APIPermissionID::kOdfsConfigPrivate);
 
   // Warned as part of host permissions.
   skip.insert(APIPermissionID::kDevtools);
@@ -888,7 +887,7 @@ TEST(PermissionsTest, PermissionMessages) {
 
   const PermissionMessageProvider* provider = PermissionMessageProvider::Get();
   PermissionsInfo* info = PermissionsInfo::GetInstance();
-  APIPermissionSet permissions = info->GetAllForTest();
+  APIPermissionSet permissions = info->GetAll();
   for (const auto* permission : permissions) {
     const APIPermissionInfo* permission_info = permission->info();
     EXPECT_TRUE(permission_info);
@@ -1722,7 +1721,7 @@ TEST(PermissionsTest, GetAPIsAsStrings) {
   // and we can convert it back to the id set.
   EXPECT_EQ(4u, api_names.size());
   EXPECT_EQ(apis,
-            PermissionsInfo::GetInstance()->GetAllByNameForTest(api_names));
+            PermissionsInfo::GetInstance()->GetAllByName(api_names));
 }
 
 TEST(PermissionsTest, IsEmpty) {

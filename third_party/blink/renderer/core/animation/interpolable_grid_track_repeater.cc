@@ -11,28 +11,30 @@
 namespace blink {
 
 InterpolableGridTrackRepeater::InterpolableGridTrackRepeater(
-    InterpolableList* values,
+    std::unique_ptr<InterpolableList> values,
     const NGGridTrackRepeater& repeater)
     : values_(std::move(values)), repeater_(repeater) {
   DCHECK(values_);
 }
 
 // static
-InterpolableGridTrackRepeater* InterpolableGridTrackRepeater::Create(
+std::unique_ptr<InterpolableGridTrackRepeater>
+InterpolableGridTrackRepeater::Create(
     const NGGridTrackRepeater& repeater,
     const Vector<GridTrackSize, 1>& repeater_track_sizes,
     float zoom) {
   DCHECK_EQ(repeater_track_sizes.size(), repeater.repeat_size);
 
-  InterpolableList* values =
-      MakeGarbageCollected<InterpolableList>(repeater_track_sizes.size());
+  std::unique_ptr<InterpolableList> values =
+      std::make_unique<InterpolableList>(repeater_track_sizes.size());
   for (wtf_size_t i = 0; i < repeater_track_sizes.size(); ++i) {
-    InterpolableGridTrackSize* result =
+    std::unique_ptr<InterpolableGridTrackSize> result =
         InterpolableGridTrackSize::Create(repeater_track_sizes[i], zoom);
     DCHECK(result);
     values->Set(i, std::move(result));
   }
-  return MakeGarbageCollected<InterpolableGridTrackRepeater>(values, repeater);
+  return std::make_unique<InterpolableGridTrackRepeater>(std::move(values),
+                                                         repeater);
 }
 
 Vector<GridTrackSize, 1> InterpolableGridTrackRepeater::CreateTrackSizes(
@@ -51,15 +53,16 @@ Vector<GridTrackSize, 1> InterpolableGridTrackRepeater::CreateTrackSizes(
 }
 
 InterpolableGridTrackRepeater* InterpolableGridTrackRepeater::RawClone() const {
-  InterpolableList* values(DynamicTo<InterpolableList>(values_->Clone()));
-  return MakeGarbageCollected<InterpolableGridTrackRepeater>(values, repeater_);
+  std::unique_ptr<InterpolableList> values(
+      DynamicTo<InterpolableList>(values_->Clone().release()));
+  return new InterpolableGridTrackRepeater(std::move(values), repeater_);
 }
 
 InterpolableGridTrackRepeater* InterpolableGridTrackRepeater::RawCloneAndZero()
     const {
-  InterpolableList* values(
-      DynamicTo<InterpolableList>(values_->CloneAndZero()));
-  return MakeGarbageCollected<InterpolableGridTrackRepeater>(values, repeater_);
+  std::unique_ptr<InterpolableList> values(
+      DynamicTo<InterpolableList>(values_->CloneAndZero().release()));
+  return new InterpolableGridTrackRepeater(std::move(values), repeater_);
 }
 
 bool InterpolableGridTrackRepeater::Equals(

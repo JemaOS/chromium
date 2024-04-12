@@ -10,7 +10,6 @@
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -23,7 +22,6 @@ class StyleInvalidatorTest : public testing::Test {
   Document& GetDocument() { return dummy_page_holder_->GetDocument(); }
 
  private:
-  test::TaskEnvironment task_environment_;
   std::unique_ptr<DummyPageHolder> dummy_page_holder_;
 };
 
@@ -43,10 +41,10 @@ TEST_F(StyleInvalidatorTest, SkipDisplayNone) {
   {
     InvalidationLists lists;
     scoped_refptr<InvalidationSet> set = DescendantInvalidationSet::Create();
-    set->AddClass(AtomicString("a"));
+    set->AddClass("a");
     lists.descendants.push_back(set);
     pending.ScheduleInvalidationSetsForNode(
-        lists, *GetDocument().getElementById(AtomicString("root")));
+        lists, *GetDocument().getElementById("root"));
   }
 
   StyleInvalidator invalidator(pending.GetPendingInvalidationMap());
@@ -72,30 +70,27 @@ TEST_F(StyleInvalidatorTest, SkipDisplayNoneClearPendingNth) {
   {
     InvalidationLists lists;
     scoped_refptr<InvalidationSet> set = NthSiblingInvalidationSet::Create();
-    set->AddClass(AtomicString("a"));
+    set->AddClass("a");
     lists.siblings.push_back(set);
     pending.ScheduleInvalidationSetsForNode(
-        lists, *GetDocument().getElementById(AtomicString("none")));
+        lists, *GetDocument().getElementById("none"));
   }
   {
     InvalidationLists lists;
     scoped_refptr<InvalidationSet> set = DescendantInvalidationSet::Create();
-    set->AddClass(AtomicString("a"));
+    set->AddClass("a");
     lists.descendants.push_back(set);
     pending.ScheduleInvalidationSetsForNode(
-        lists, *GetDocument().getElementById(AtomicString("descendant")));
+        lists, *GetDocument().getElementById("descendant"));
   }
 
   StyleInvalidator invalidator(pending.GetPendingInvalidationMap());
   invalidator.Invalidate(GetDocument(), GetDocument().body());
 
   EXPECT_TRUE(GetDocument().NeedsLayoutTreeUpdate());
-  EXPECT_FALSE(GetDocument()
-                   .getElementById(AtomicString("none"))
-                   ->ChildNeedsStyleRecalc());
-  EXPECT_TRUE(GetDocument()
-                  .getElementById(AtomicString("descendant"))
-                  ->ChildNeedsStyleRecalc());
+  EXPECT_FALSE(GetDocument().getElementById("none")->ChildNeedsStyleRecalc());
+  EXPECT_TRUE(
+      GetDocument().getElementById("descendant")->ChildNeedsStyleRecalc());
 }
 
 }  // namespace blink

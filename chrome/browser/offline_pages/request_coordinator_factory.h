@@ -10,7 +10,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace offline_pages {
@@ -29,12 +29,12 @@ class RequestCoordinatorFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<RequestCoordinatorFactory>;
+  friend struct base::DefaultSingletonTraits<RequestCoordinatorFactory>;
 
   RequestCoordinatorFactory();
   ~RequestCoordinatorFactory() override {}
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

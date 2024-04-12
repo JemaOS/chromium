@@ -16,7 +16,6 @@
 
 #include <vector>
 
-#include "base/format_macros.h"
 #include "base/logging.h"
 #include "base/strings/stringprintf.h"
 #include "util/stdlib/string_number_conversion.h"
@@ -100,8 +99,7 @@ bool InitialClientData::InitializeFromString(const std::string& str) {
 }
 
 std::string InitialClientData::StringRepresentation() const {
-  return base::StringPrintf("0x%x,0x%x,0x%x,0x%x,0x%x,0x%" PRIx64 ",0x%" PRIx64
-                            ",0x%" PRIx64,
+  return base::StringPrintf("0x%x,0x%x,0x%x,0x%x,0x%x,0x%I64x,0x%I64x,0x%I64x",
                             HandleToInt(request_crash_dump_),
                             HandleToInt(request_non_crash_dump_),
                             HandleToInt(non_crash_dump_completed_),

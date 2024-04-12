@@ -12,10 +12,6 @@
 
 class Browser;
 
-namespace content {
-class WebContents;
-}
-
 namespace views {
 class WebView;
 }
@@ -23,9 +19,8 @@ class WebView;
 // Implements the PrivacySandboxDialog as a View. The view contains a WebView
 // into which is loaded a WebUI page which renders the actual dialog content.
 class PrivacySandboxDialogView : public views::View {
-  METADATA_HEADER(PrivacySandboxDialogView, views::View)
-
  public:
+  METADATA_HEADER(PrivacySandboxDialogView);
   PrivacySandboxDialogView(Browser* browser,
                            PrivacySandboxService::PromptType dialog_type);
 
@@ -36,8 +31,6 @@ class PrivacySandboxDialogView : public views::View {
   void ShowNativeView();
   void OpenPrivacySandboxSettings();
   void OpenPrivacySandboxAdMeasurementSettings();
-  friend class PrivacySandboxDialogViewBrowserTest;
-  content::WebContents* GetWebContentsForTesting();
 
   raw_ptr<views::WebView> web_view_;
   raw_ptr<Browser> browser_;

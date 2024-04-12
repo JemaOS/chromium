@@ -23,7 +23,7 @@ enum class DOMExceptionCode;
 class ExceptionState;
 
 class MODULES_EXPORT MediaRecorder
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ActiveScriptWrappable<MediaRecorder>,
       public ExecutionContextLifecycleObserver {
   DEFINE_WRAPPERTYPEINFO();
@@ -95,8 +95,6 @@ class MODULES_EXPORT MediaRecorder
 
   void Trace(Visitor* visitor) const override;
 
-  void UpdateAudioBitrate(uint32_t bits_per_second);
-
  private:
   void CreateBlobEvent(Blob* blob, double timecode);
 
@@ -108,7 +106,7 @@ class MODULES_EXPORT MediaRecorder
   String mime_type_;
   uint32_t audio_bits_per_second_{0};
   uint32_t video_bits_per_second_{0};
-  std::optional<uint32_t> overall_bits_per_second_;
+  absl::optional<uint32_t> overall_bits_per_second_;
 
   State state_ = State::kInactive;
   bool first_write_received_ = false;

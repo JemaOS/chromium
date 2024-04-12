@@ -87,13 +87,12 @@ UndoWindow::UndoWindow(gfx::NativeView parent, AssistiveDelegate* delegate)
 }
 
 void UndoWindow::OnThemeChanged() {
-  undo_button_->SetImageModel(
+  undo_button_->SetImage(
       views::Button::ButtonState::STATE_NORMAL,
-      ui::ImageModel::FromVectorIcon(
-          kAutocorrectUndoIcon,
+      gfx::CreateVectorIcon(
+          kAutocorrectUndoIcon, kIconSize,
           ash::ColorProvider::Get()->GetContentLayerColor(
-              ash::ColorProvider::ContentLayerType::kIconColorPrimary),
-          kIconSize));
+              ash::ColorProvider::ContentLayerType::kIconColorPrimary)));
   undo_button_->SetEnabledTextColors(
       ash::ColorProvider::Get()->GetContentLayerColor(
           ash::ColorProvider::ContentLayerType::kTextColorSecondary));
@@ -164,7 +163,7 @@ void UndoWindow::UndoButtonPressed() {
   delegate_->AssistiveWindowButtonClicked(button);
 }
 
-BEGIN_METADATA(UndoWindow)
+BEGIN_METADATA(UndoWindow, views::BubbleDialogDelegateView)
 END_METADATA
 
 }  // namespace ime

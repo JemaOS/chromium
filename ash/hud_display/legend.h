@@ -19,10 +19,11 @@ class Graph;
 
 // Draws legend view.
 class Legend : public views::View {
-  METADATA_HEADER(Legend, views::View)
-
  public:
   using Formatter = base::RepeatingCallback<std::u16string(float)>;
+
+  METADATA_HEADER(Legend);
+
   struct Entry {
     Entry(const Graph& graph,
           std::u16string label,
@@ -31,7 +32,7 @@ class Legend : public views::View {
     Entry(const Entry&);
     ~Entry();
 
-    const raw_ref<const Graph> graph;
+    const raw_ref<const Graph, ExperimentalAsh> graph;
     std::u16string label;
     std::u16string tooltip;
     Formatter formatter;  // formatting function
@@ -45,7 +46,7 @@ class Legend : public views::View {
   ~Legend() override;
 
   // views::View:
-  void Layout(PassKey) override;
+  void Layout() override;
 
   // Display values for the given index. |index| is always interpreted as
   // "negative", i.e. "0" - current data, "1" - previous graph data, 2 - two

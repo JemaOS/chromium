@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <unordered_set>
 
@@ -21,18 +20,18 @@
 #include "chrome/common/buildflags.h"
 #include "components/content_settings/core/browser/content_settings_observer.h"
 #include "components/keyed_service/core/keyed_service.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/platform_notification_service.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/message_center/public/cpp/notification.h"
 
 class GURL;
 class Profile;
 
-namespace blink {
+namespace content {
 struct NotificationResources;
-}  // namespace blink
+}  // namespace content
 
 // The platform notification service is the profile-specific entry point through
 // which Web Notifications can be controlled.
@@ -71,9 +70,6 @@ class PlatformNotificationServiceImpl
   void CloseNotification(const std::string& notification_id) override;
   void ClosePersistentNotification(const std::string& notification_id) override;
   void GetDisplayedNotifications(
-      DisplayedNotificationsCallback callback) override;
-  void GetDisplayedNotificationsForOrigin(
-      const GURL& origin,
       DisplayedNotificationsCallback callback) override;
   void ScheduleTrigger(base::Time timestamp) override;
   base::Time ReadNextTriggerTimestamp() override;
@@ -121,10 +117,10 @@ class PlatformNotificationServiceImpl
       const ContentSettingsPattern& secondary_pattern,
       ContentSettingsTypeSet content_type_set) override;
 
-  static void RecordNotificationUkmEventWithSourceId(
+  static void DidGetBackgroundSourceId(
       base::OnceClosure recorded_closure,
       const content::NotificationDatabaseData& data,
-      ukm::SourceId source_id);
+      absl::optional<ukm::SourceId> source_id);
 
   // Creates a new Web Notification-based Notification object. Should only be
   // called when the notification is first shown. |web_app_hint_url| is used to
@@ -140,15 +136,10 @@ class PlatformNotificationServiceImpl
   // Returns a display name for an origin, to be used in the context message
   std::u16string DisplayNameForContextMessage(const GURL& origin) const;
 
-  // Finds the AppId associated with |web_app_hint_url| when this is part of
-  // an installed experience, and the notification can be attributed as such.
-  std::optional<webapps::AppId> FindWebAppId(
-      const GURL& web_app_hint_url) const;
-
-  // Finds the icon and title associated with |web_app_id| when this
+  // Finds the icon and title associated with |web_app_hint_url| when this
   // is part of an installed experience, and the notification can be attributed
   // as such.
-  std::optional<WebAppIconAndTitle> FindWebAppIconAndTitle(
+  absl::optional<WebAppIconAndTitle> FindWebAppIconAndTitle(
       const GURL& web_app_hint_url) const;
 
   // Identifies whether the notification was sent from an installed web app or

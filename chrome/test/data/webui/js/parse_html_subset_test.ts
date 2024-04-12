@@ -11,7 +11,7 @@ declare global {
   }
 }
 
-suite('ParseHtmlSubsetTest', function() {
+suite('ParseHtmlSubsetModuleTest', function() {
   function parseAndAssertThrows(
       s: string, extraTags?: string[], extraAttrs?: string[]) {
     assertThrows(function() {

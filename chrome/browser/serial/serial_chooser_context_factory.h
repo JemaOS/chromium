@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SERIAL_SERIAL_CHOOSER_CONTEXT_FACTORY_H_
 #define CHROME_BROWSER_SERIAL_SERIAL_CHOOSER_CONTEXT_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class SerialChooserContext;
@@ -22,13 +22,13 @@ class SerialChooserContextFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<SerialChooserContextFactory>;
+  friend struct base::DefaultSingletonTraits<SerialChooserContextFactory>;
 
   SerialChooserContextFactory();
   ~SerialChooserContextFactory() override;
 
   // BrowserContextKeyedServiceFactory methods:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   void BrowserContextShutdown(content::BrowserContext* context) override;
 };

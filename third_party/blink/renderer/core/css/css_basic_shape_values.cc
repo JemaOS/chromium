@@ -42,8 +42,7 @@ namespace cssvalue {
 
 static String BuildCircleString(const String& radius,
                                 const String& center_x,
-                                const String& center_y,
-                                bool has_explicit_center) {
+                                const String& center_y) {
   char at[] = "at";
   char separator[] = " ";
   StringBuilder result;
@@ -52,7 +51,7 @@ static String BuildCircleString(const String& radius,
     result.Append(radius);
   }
 
-  if (has_explicit_center) {
+  if (!center_x.IsNull() || !center_y.IsNull()) {
     if (!radius.IsNull()) {
       result.Append(separator);
     }
@@ -141,7 +140,7 @@ String CSSBasicShapeCircleValue::CustomCSSText() const {
 
   return BuildCircleString(
       radius, SerializePositionOffset(*normalized_cx, *normalized_cy),
-      SerializePositionOffset(*normalized_cy, *normalized_cx), center_x_);
+      SerializePositionOffset(*normalized_cy, *normalized_cx));
 }
 
 bool CSSBasicShapeCircleValue::Equals(
@@ -162,8 +161,7 @@ void CSSBasicShapeCircleValue::TraceAfterDispatch(
 static String BuildEllipseString(const String& radius_x,
                                  const String& radius_y,
                                  const String& center_x,
-                                 const String& center_y,
-                                 bool has_explicit_center) {
+                                 const String& center_y) {
   char at[] = "at";
   char separator[] = " ";
   StringBuilder result;
@@ -181,7 +179,7 @@ static String BuildEllipseString(const String& radius_x,
     needs_separator = true;
   }
 
-  if (has_explicit_center) {
+  if (!center_x.IsNull() || !center_y.IsNull()) {
     if (needs_separator) {
       result.Append(separator);
     }
@@ -227,7 +225,7 @@ String CSSBasicShapeEllipseValue::CustomCSSText() const {
   return BuildEllipseString(
       radius_x, radius_y,
       SerializePositionOffset(*normalized_cx, *normalized_cy),
-      SerializePositionOffset(*normalized_cy, *normalized_cx), center_x_);
+      SerializePositionOffset(*normalized_cy, *normalized_cx));
 }
 
 bool CSSBasicShapeEllipseValue::Equals(
@@ -301,8 +299,7 @@ String CSSBasicShapePolygonValue::CustomCSSText() const {
 
 bool CSSBasicShapePolygonValue::Equals(
     const CSSBasicShapePolygonValue& other) const {
-  return wind_rule_ == other.wind_rule_ &&
-         CompareCSSValueVector(values_, other.values_);
+  return CompareCSSValueVector(values_, other.values_);
 }
 
 void CSSBasicShapePolygonValue::TraceAfterDispatch(
@@ -654,16 +651,9 @@ void CSSBasicShapeXYWHValue::Validate() const {
   DCHECK(x_);
   DCHECK(y_);
   DCHECK(width_);
+  DCHECK_GT(width_->GetFloatValue(), 0);
   DCHECK(height_);
-
-  // The spec requires non-negative width and height but we can only validate
-  // numeric literals here.
-  if (width_->IsNumericLiteralValue()) {
-    DCHECK_GE(width_->GetFloatValue(), 0);
-  }
-  if (height_->IsNumericLiteralValue()) {
-    DCHECK_GE(height_->GetFloatValue(), 0);
-  }
+  DCHECK_GT(height_->GetFloatValue(), 0);
 }
 
 }  // namespace cssvalue

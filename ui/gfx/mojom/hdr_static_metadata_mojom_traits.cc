@@ -13,7 +13,6 @@ bool StructTraits<
   output->max = data.max();
   output->max_avg = data.max_avg();
   output->min = data.min();
-  output->supported_eotf_mask = data.supported_eotf_mask();
   return true;
 }
 

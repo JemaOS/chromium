@@ -40,13 +40,12 @@ class ProfileReportGeneratorDelegateBase
   bool Init(const base::FilePath& path) final;
   void GetSigninUserInfo(
       enterprise_management::ChromeUserProfileInfo* report) final;
-  std::unique_ptr<policy::PolicyConversionsClient> MakePolicyConversionsClient(
-      bool is_machine_scope) final;
-  policy::CloudPolicyManager* GetCloudPolicyManager(
-      bool is_machine_scope) final;
+  std::unique_ptr<policy::PolicyConversionsClient> MakePolicyConversionsClient()
+      final;
+  policy::MachineLevelUserCloudPolicyManager* GetCloudPolicyManager() final;
 
  protected:
-  raw_ptr<Profile, DanglingUntriaged> profile_;
+  raw_ptr<Profile> profile_;
 };
 
 }  // namespace enterprise_reporting

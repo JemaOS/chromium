@@ -17,6 +17,7 @@
 #include "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
+#include "third_party/blink/renderer/core/layout/text_run_constructor.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/box_painter.h"
@@ -26,12 +27,13 @@
 #include "third_party/blink/renderer/core/paint/scoped_paint_state.h"
 #include "third_party/blink/renderer/core/paint/timing/image_element_timing.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
+#include "third_party/blink/renderer/platform/geometry/layout_point.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/paint/display_item_cache_skipper.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/path.h"
 #include "third_party/blink/renderer/platform/graphics/placeholder_image.h"
-#include "third_party/blink/renderer/platform/graphics/scoped_image_rendering_settings.h"
+#include "third_party/blink/renderer/platform/graphics/scoped_interpolation_quality.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
@@ -47,15 +49,15 @@ bool CheckForOversizedImagesPolicy(const LayoutImage& layout_image,
           layout_image.GetDocument().GetExecutionContext()))
     return false;
 
-  const PhysicalSize layout_size = layout_image.PhysicalContentBoxSize();
-  const gfx::Size image_size = image->Size();
+  LayoutSize layout_size = layout_image.ContentSize();
+  gfx::Size image_size = image->Size();
   if (layout_size.IsEmpty() || image_size.IsEmpty())
     return false;
 
   const double downscale_ratio_width =
-      image_size.width() / layout_size.width.ToDouble();
+      image_size.width() / layout_size.Width().ToDouble();
   const double downscale_ratio_height =
-      image_size.height() / layout_size.height.ToDouble();
+      image_size.height() / layout_size.Height().ToDouble();
 
   const LayoutImageResource* image_resource = layout_image.ImageResource();
   const ImageResourceContent* cached_image =
@@ -148,7 +150,7 @@ void ImagePainter::PaintAreaElementFocusRing(const PaintInfo& paint_info) {
 
 void ImagePainter::PaintReplaced(const PaintInfo& paint_info,
                                  const PhysicalOffset& paint_offset) {
-  const PhysicalSize content_size = layout_image_.PhysicalContentBoxSize();
+  LayoutSize content_size = layout_image_.ContentSize();
   bool has_image = layout_image_.ImageResource()->HasImage();
 
   if (has_image) {
@@ -157,13 +159,13 @@ void ImagePainter::PaintReplaced(const PaintInfo& paint_info,
   } else {
     if (paint_info.phase == PaintPhase::kSelectionDragImage)
       return;
-    if (content_size.width <= 2 || content_size.height <= 2) {
+    if (content_size.Width() <= 2 || content_size.Height() <= 2)
       return;
-    }
   }
 
   PhysicalRect content_rect(
-      paint_offset + layout_image_.PhysicalContentBoxOffset(), content_size);
+      paint_offset + layout_image_.PhysicalContentBoxOffset(),
+      PhysicalSizeToBeNoop(content_size));
 
   PhysicalRect paint_rect = layout_image_.ReplacedContentRect();
   paint_rect.offset += paint_offset;
@@ -203,7 +205,7 @@ void ImagePainter::PaintReplaced(const PaintInfo& paint_info,
 
   // Disable cache in under-invalidation checking mode for animated image
   // because it may change before it's actually invalidated.
-  std::optional<DisplayItemCacheSkipper> cache_skipper;
+  absl::optional<DisplayItemCacheSkipper> cache_skipper;
   if (RuntimeEnabledFeatures::PaintUnderInvalidationCheckingEnabled() &&
       layout_image_.ImageResource() &&
       layout_image_.ImageResource()->MaybeAnimated())
@@ -213,11 +215,11 @@ void ImagePainter::PaintReplaced(const PaintInfo& paint_info,
     // Draw an outline rect where the image should be.
     BoxDrawingRecorder recorder(context, layout_image_, paint_info.phase,
                                 paint_offset);
+    context.SetStrokeStyle(kSolidStroke);
     context.SetStrokeColor(Color::kLightGray);
-    context.SetStrokeThickness(1);
     gfx::RectF outline_rect(ToPixelSnappedRect(content_rect));
     outline_rect.Inset(0.5f);
-    context.StrokeRect(outline_rect,
+    context.StrokeRect(outline_rect, 1,
                        PaintAutoDarkMode(layout_image_.StyleRef(),
                                          DarkModeFilter::ElementRole::kBorder));
     return;
@@ -276,9 +278,8 @@ void ImagePainter::PaintIntoRect(GraphicsContext& context,
       inspector_paint_image_event::Data, layout_image_, src_rect,
       gfx::RectF(dest_rect));
 
-  ScopedImageRenderingSettings image_rendering_settings_scope(
-      context, layout_image_.StyleRef().GetInterpolationQuality(),
-      layout_image_.StyleRef().GetDynamicRangeLimit());
+  ScopedInterpolationQuality interpolation_quality_scope(
+      context, layout_image_.StyleRef().GetInterpolationQuality());
 
   Node* node = layout_image_.GetNode();
   auto* image_element = DynamicTo<HTMLImageElement>(node);

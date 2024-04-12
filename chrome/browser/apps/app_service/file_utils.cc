@@ -32,7 +32,10 @@ storage::FileSystemURL GetFileSystemURL(Profile* profile,
   storage::FileSystemContext* file_system_context =
       file_manager::util::GetFileManagerFileSystemContext(profile);
 
-  return file_system_context->CrackURLInFirstPartyContext(file_url);
+  storage::FileSystemURL file_system_url;
+  file_system_url = file_system_context->CrackURLInFirstPartyContext(file_url);
+
+  return file_system_url;
 }
 
 std::vector<GURL> GetFileSystemUrls(

@@ -7,8 +7,8 @@
 #import <Cocoa/Cocoa.h>
 #include <CoreText/CoreText.h>
 
-#include "base/apple/bridging.h"
-#include "base/apple/foundation_util.h"
+#include "base/mac/foundation_util.h"
+#import "base/mac/scoped_nsobject.h"
 #include "base/strings/sys_string_conversions.h"
 #include "ui/gfx/decorated_text.h"
 
@@ -16,8 +16,9 @@ namespace gfx {
 
 NSAttributedString* GetAttributedStringFromDecoratedText(
     const DecoratedText& decorated_text) {
-  NSMutableAttributedString* str = [[NSMutableAttributedString alloc]
-      initWithString:base::SysUTF16ToNSString(decorated_text.text)];
+  base::scoped_nsobject<NSMutableAttributedString> str(
+      [[NSMutableAttributedString alloc]
+          initWithString:base::SysUTF16ToNSString(decorated_text.text)]);
   [str beginEditing];
 
   NSValue* const line_style =
@@ -25,32 +26,30 @@ NSAttributedString* GetAttributedStringFromDecoratedText(
 
   for (const auto& attribute : decorated_text.attributes) {
     DCHECK(!attribute.range.is_reversed());
-    DCHECK_LE(attribute.range.end(), str.length);
+    DCHECK_LE(attribute.range.end(), [str length]);
 
     NSMutableDictionary* attrs = [NSMutableDictionary dictionary];
     NSRange range = attribute.range.ToNSRange();
 
     CTFontRef font = attribute.font.GetCTFont();
     if (font) {
-      attrs[NSFontAttributeName] = base::apple::CFToNSPtrCast(font);
+      attrs[NSFontAttributeName] = base::mac::CFToNSCast(font);
     }
 
     // NSFont does not have underline as an attribute. Hence handle it
     // separately.
     const bool underline = attribute.font.GetStyle() & gfx::Font::UNDERLINE;
-    if (underline) {
+    if (underline)
       attrs[NSUnderlineStyleAttributeName] = line_style;
-    }
 
-    if (attribute.strike) {
+    if (attribute.strike)
       attrs[NSStrikethroughStyleAttributeName] = line_style;
-    }
 
     [str setAttributes:attrs range:range];
   }
 
   [str endEditing];
-  return str;
+  return str.autorelease();
 }
 
 }  // namespace gfx

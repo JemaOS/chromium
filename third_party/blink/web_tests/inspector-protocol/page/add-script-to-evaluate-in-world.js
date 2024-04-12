@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startBlank(
       'Tests that Page.addScriptToEvaluateOnNewDocument is executed in the given world');
 

@@ -4,7 +4,7 @@
 
 #include "chrome/browser/autofill/merchant_promo_code_manager_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/autofill/core/browser/merchant_promo_code_manager.h"
@@ -21,19 +21,13 @@ MerchantPromoCodeManager* MerchantPromoCodeManagerFactory::GetForProfile(
 // static
 MerchantPromoCodeManagerFactory*
 MerchantPromoCodeManagerFactory::GetInstance() {
-  static base::NoDestructor<MerchantPromoCodeManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<MerchantPromoCodeManagerFactory>::get();
 }
 
 MerchantPromoCodeManagerFactory::MerchantPromoCodeManagerFactory()
     : ProfileKeyedServiceFactory(
           "MerchantPromoCodeManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(PersonalDataManagerFactory::GetInstance());
 }
 

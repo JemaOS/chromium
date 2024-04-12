@@ -18,7 +18,6 @@
 #include "base/time/default_clock.h"
 #include "base/time/time.h"
 #include "chrome/app/chrome_command_ids.h"
-#include "chrome/browser/prefs/incognito_mode_prefs.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/reading_list/reading_list_model_factory.h"
 #include "chrome/browser/ui/bookmarks/bookmark_stats.h"
@@ -30,7 +29,6 @@
 #include "chrome/browser/ui/webui/side_panel/reading_list/reading_list_ui.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
-#include "components/policy/core/common/policy_pref_names.h"
 #include "components/profile_metrics/browser_profile_type.h"
 #include "components/reading_list/core/reading_list_entry.h"
 #include "components/url_formatter/url_formatter.h"
@@ -127,18 +125,6 @@ class ReadLaterItemContextMenu : public ui::SimpleMenuModel,
         NOTREACHED();
         break;
     }
-  }
-
-  bool IsCommandIdEnabled(int command_id) const override {
-    PrefService* prefs = browser_->profile()->GetPrefs();
-    policy::IncognitoModeAvailability incognito_avail =
-        IncognitoModePrefs::GetAvailability(prefs);
-    switch (command_id) {
-      case IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD:
-        return !browser_->profile()->IsOffTheRecord() &&
-               incognito_avail != policy::IncognitoModeAvailability::kDisabled;
-    }
-    return true;
   }
 
  private:
@@ -304,7 +290,7 @@ void ReadingListPageHandler::ReadingListDidApplyChanges(
   reading_list_model_->MarkAllSeen();
 }
 
-const std::optional<GURL> ReadingListPageHandler::GetActiveTabURL() {
+const absl::optional<GURL> ReadingListPageHandler::GetActiveTabURL() {
   if (active_tab_url_)
     return active_tab_url_.value();
   Browser* browser = chrome::FindLastActive();
@@ -312,7 +298,7 @@ const std::optional<GURL> ReadingListPageHandler::GetActiveTabURL() {
     return chrome::GetURLToBookmark(
         browser->tab_strip_model()->GetActiveWebContents());
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void ReadingListPageHandler::SetActiveTabURL(const GURL& url) {
@@ -384,7 +370,7 @@ void ReadingListPageHandler::UpdateCurrentPageActionButton() {
       Profile::FromWebUI(web_ui_)->IsGuestSession())
     return;
 
-  const std::optional<GURL> url = GetActiveTabURL();
+  const absl::optional<GURL> url = GetActiveTabURL();
   if (!url.has_value())
     return;
 
@@ -402,13 +388,4 @@ void ReadingListPageHandler::UpdateCurrentPageActionButton() {
     page_->CurrentPageActionButtonStateChanged(
         current_page_action_button_state_);
   }
-}
-
-std::unique_ptr<ui::SimpleMenuModel>
-ReadingListPageHandler::GetItemContextMenuModelForTesting(
-    Browser* browser,
-    ReadingListModel* reading_list_model,
-    GURL url) {
-  return std::make_unique<ReadLaterItemContextMenu>(browser, reading_list_model,
-                                                    url);
 }

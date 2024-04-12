@@ -74,7 +74,9 @@ class AndroidDeviceManager::AndroidWebSocket::WebSocketImpl {
     DCHECK(thread_checker_.CalledOnValidThread());
     DCHECK(socket_);
 
-    auto buffer = base::MakeRefCounted<net::IOBufferWithSize>(kBufferSize);
+    scoped_refptr<net::IOBuffer> buffer =
+        base::MakeRefCounted<net::IOBuffer>(kBufferSize);
+
     if (!response_buffer_.empty())
       ProcessResponseBuffer(buffer);
     else

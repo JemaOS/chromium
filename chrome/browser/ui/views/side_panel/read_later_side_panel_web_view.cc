@@ -15,12 +15,7 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/view_class_properties.h"
-
-using SidePanelWebUIViewT_ReadingListUI = SidePanelWebUIViewT<ReadingListUI>;
-BEGIN_TEMPLATE_METADATA(SidePanelWebUIViewT_ReadingListUI, SidePanelWebUIViewT)
-END_METADATA
 
 ReadLaterSidePanelWebView::ReadLaterSidePanelWebView(
     Browser* browser,
@@ -30,7 +25,7 @@ ReadLaterSidePanelWebView::ReadLaterSidePanelWebView(
               &ReadLaterSidePanelWebView::UpdateActiveURLToActiveTab,
               base::Unretained(this)),
           close_cb,
-          std::make_unique<WebUIContentsWrapperT<ReadingListUI>>(
+          std::make_unique<BubbleContentsWrapperT<ReadingListUI>>(
               GURL(chrome::kChromeUIReadLaterURL),
               browser->profile(),
               IDS_READ_LATER_TITLE,
@@ -76,6 +71,3 @@ void ReadLaterSidePanelWebView::UpdateActiveURL(
 void ReadLaterSidePanelWebView::UpdateActiveURLToActiveTab() {
   UpdateActiveURL(browser_->tab_strip_model()->GetActiveWebContents());
 }
-
-BEGIN_METADATA(ReadLaterSidePanelWebView)
-END_METADATA

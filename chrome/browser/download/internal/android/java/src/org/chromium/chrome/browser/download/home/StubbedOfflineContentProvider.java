@@ -4,8 +4,8 @@
 
 package org.chromium.chrome.browser.download.home;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNull;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -92,11 +92,10 @@ public class StubbedOfflineContentProvider implements OfflineContentProvider {
             }
         }
 
-        mHandler.post(
-                () -> {
-                    if (mObserver != null) mObserver.onItemRemoved(id);
-                    mDeleteItemCallback.notifyCalled();
-                });
+        mHandler.post(() -> {
+            if (mObserver != null) mObserver.onItemRemoved(id);
+            mDeleteItemCallback.notifyCalled();
+        });
     }
 
     @Override
@@ -106,7 +105,7 @@ public class StubbedOfflineContentProvider implements OfflineContentProvider {
     public void pauseDownload(ContentId id) {}
 
     @Override
-    public void resumeDownload(ContentId id) {}
+    public void resumeDownload(ContentId id, boolean hasUserGesture) {}
 
     @Override
     public void cancelDownload(ContentId id) {}

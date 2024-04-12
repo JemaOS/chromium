@@ -14,7 +14,7 @@ struct wl_resource;
 
 namespace wl {
 
-extern const struct wl_touch_interface kTestTouchImpl;
+extern const struct wl_pointer_interface kTestTouchImpl;
 
 class TestZcrTouchStylus;
 
@@ -33,7 +33,7 @@ class TestTouch : public ServerObject {
   TestZcrTouchStylus* touch_stylus() const { return touch_stylus_; }
 
  private:
-  raw_ptr<TestZcrTouchStylus, DanglingUntriaged> touch_stylus_ = nullptr;
+  raw_ptr<TestZcrTouchStylus> touch_stylus_ = nullptr;
 };
 
 }  // namespace wl

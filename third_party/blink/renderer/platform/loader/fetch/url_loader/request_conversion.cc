@@ -76,10 +76,6 @@ mojom::ResourceType RequestContextToResourceType(
     case mojom::blink::RequestContextType::IMAGE_SET:
       return mojom::ResourceType::kImage;
 
-    // Json
-    case mojom::blink::RequestContextType::JSON:
-      return mojom::ResourceType::kJson;
-
     // Media
     case mojom::blink::RequestContextType::AUDIO:
     case mojom::blink::RequestContextType::VIDEO:
@@ -116,7 +112,6 @@ mojom::ResourceType RequestContextToResourceType(
     // Subresource
     case mojom::blink::RequestContextType::DOWNLOAD:
     case mojom::blink::RequestContextType::MANIFEST:
-    case mojom::blink::RequestContextType::SPECULATION_RULES:
     case mojom::blink::RequestContextType::SUBRESOURCE:
     case mojom::blink::RequestContextType::SUBRESOURCE_WEBBUNDLE:
       return mojom::ResourceType::kSubResource;
@@ -329,7 +324,7 @@ void PopulateResourceRequest(const ResourceRequestHead& src,
   dest->fetch_integrity = src.GetFetchIntegrity().Utf8();
   if (src.GetWebBundleTokenParams().has_value()) {
     dest->web_bundle_token_params =
-        std::make_optional(network::ResourceRequest::WebBundleTokenParams(
+        absl::make_optional(network::ResourceRequest::WebBundleTokenParams(
             GURL(src.GetWebBundleTokenParams()->bundle_url),
             src.GetWebBundleTokenParams()->token,
             ToCrossVariantMojoType(
@@ -351,21 +346,17 @@ void PopulateResourceRequest(const ResourceRequestHead& src,
 
   dest->keepalive = src.GetKeepalive();
   dest->browsing_topics = src.GetBrowsingTopics();
-  dest->ad_auction_headers = src.GetAdAuctionHeaders();
-  dest->shared_storage_writable_eligible =
-      src.GetSharedStorageWritableEligible();
   dest->has_user_gesture = src.HasUserGesture();
   dest->enable_load_timing = true;
   dest->enable_upload_progress = src.ReportUploadProgress();
   dest->throttling_profile_id = src.GetDevToolsToken();
   dest->trust_token_params = ConvertTrustTokenParams(src.TrustTokenParams());
-  dest->required_ip_address_space = src.GetTargetAddressSpace();
 
   if (base::UnguessableToken window_id = src.GetFetchWindowId())
-    dest->fetch_window_id = std::make_optional(window_id);
+    dest->fetch_window_id = absl::make_optional(window_id);
 
-  if (!src.GetDevToolsId().IsNull()) {
-    dest->devtools_request_id = src.GetDevToolsId().Ascii();
+  if (src.GetDevToolsId().has_value()) {
+    dest->devtools_request_id = src.GetDevToolsId().value().Ascii();
   }
 
   if (src.GetDevToolsStackId().has_value()) {
@@ -373,8 +364,6 @@ void PopulateResourceRequest(const ResourceRequestHead& src,
   }
 
   dest->is_fetch_like_api = src.IsFetchLikeAPI();
-
-  dest->is_fetch_later_api = src.IsFetchLaterAPI();
 
   dest->is_favicon = src.IsFavicon();
 
@@ -389,6 +378,9 @@ void PopulateResourceRequest(const ResourceRequestHead& src,
   network_utils::SetAcceptHeader(dest->headers, request_destination);
 
   dest->original_destination = src.GetOriginalDestination();
+
+  if (dest->load_flags & net::LOAD_PREFETCH)
+    dest->corb_detachable = true;
 
   if (src.GetURLRequestExtraData()) {
     src.GetURLRequestExtraData()->CopyToResourceRequest(dest);
@@ -415,15 +407,6 @@ void PopulateResourceRequest(const ResourceRequestHead& src,
 
   dest->attribution_reporting_eligibility =
       src.GetAttributionReportingEligibility();
-
-  dest->attribution_reporting_runtime_features =
-      src.GetAttributionReportingRuntimeFeatures();
-
-  dest->attribution_reporting_src_token = src.GetAttributionSrcToken();
-
-  dest->shared_dictionary_writer_enabled = src.SharedDictionaryWriterEnabled();
-
-  dest->is_ad_tagged = src.IsAdResource();
 }
 
 }  // namespace blink

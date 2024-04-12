@@ -5505,6 +5505,9 @@ xsltCompileXSLTIncludeElem(xsltCompilerCtxtPtr cctxt, xmlNodePtr node) {
     return(item);
 }
 
+/**
+ * xsltParseFindTopLevelElem:
+ */
 static int
 xsltParseFindTopLevelElem(xsltCompilerCtxtPtr cctxt,
 			      xmlNodePtr cur,

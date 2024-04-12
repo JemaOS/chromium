@@ -11,6 +11,7 @@
 #include "base/memory/memory_pressure_listener.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/simple_test_tick_clock.h"
 #include "build/build_config.h"
@@ -41,10 +42,10 @@
 #include "components/performance_manager/public/features.h"
 #include "content/public/browser/navigation_details.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
-#include "content/public/browser/render_process_host_creation_observer.h"
-#include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
@@ -139,41 +140,6 @@ class DiscardWaiter : public TabLifecycleObserver {
   base::RunLoop run_loop_;
 };
 
-// Allows tests to wait for a renderer process host to exit.
-class WindowedRenderProcessHostExitObserver
-    : public content::RenderProcessHostObserver {
- public:
-  WindowedRenderProcessHostExitObserver() {
-    for (auto it = content::RenderProcessHost::AllHostsIterator();
-         !it.IsAtEnd(); it.Advance()) {
-      host_observation_.AddObservation(it.GetCurrentValue());
-    }
-  }
-
-  void Wait() {
-    if (!seen_) {
-      run_loop_.Run();
-    }
-    EXPECT_TRUE(seen_);
-  }
-
-  // content::RenderProcessHostObserver:
-  void RenderProcessExited(
-      content::RenderProcessHost* host,
-      const content::ChildProcessTerminationInfo& info) override {
-    seen_ = true;
-    host_observation_.RemoveObservation(host);
-  }
-
- private:
-  base::ScopedMultiSourceObservation<content::RenderProcessHost,
-                                     content::RenderProcessHostObserver>
-      host_observation_{this};
-
-  base::RunLoop run_loop_;
-  bool seen_ = false;
-};
-
 }  // namespace
 
 class TabManagerTest : public InProcessBrowserTest {
@@ -231,10 +197,7 @@ class TabManagerTest : public InProcessBrowserTest {
 
 class TabManagerTestWithTwoTabs : public TabManagerTest {
  public:
-  TabManagerTestWithTwoTabs() {
-    // Tests using two tabs assume that each tab has a dedicated process.
-    feature_list_.InitAndEnableFeature(features::kDisableProcessReuse);
-  }
+  TabManagerTestWithTwoTabs() = default;
 
   TabManagerTestWithTwoTabs(const TabManagerTestWithTwoTabs&) = delete;
   TabManagerTestWithTwoTabs& operator=(const TabManagerTestWithTwoTabs&) =
@@ -249,9 +212,6 @@ class TabManagerTestWithTwoTabs : public TabManagerTest {
     OpenTwoTabs(embedded_test_server()->GetURL("/title2.html"),
                 embedded_test_server()->GetURL("/title3.html"));
   }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(TabManagerTest, TabManagerBasics) {
@@ -386,7 +346,7 @@ IN_PROC_BROWSER_TEST_F(TabManagerTest, InvalidOrEmptyURL) {
 
   NavigateToURLWithDisposition(browser(), GURL(chrome::kChromeUICreditsURL),
                                WindowOpenDisposition::NEW_BACKGROUND_TAB,
-                               ui_test_utils::BROWSER_TEST_NO_WAIT);
+                               ui_test_utils::BROWSER_TEST_NONE);
 
   ASSERT_EQ(2, tsm()->count());
 
@@ -451,8 +411,6 @@ IN_PROC_BROWSER_TEST_F(TabManagerTest, ProtectPDFPages) {
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
 // Makes sure that recently opened or used tabs are protected.
-// These protections only apply on non-Ash desktop platforms. Check
-// TabLifecycleUnit::CanDiscard for more details.
 IN_PROC_BROWSER_TEST_F(TabManagerTest,
                        ProtectRecentlyUsedTabsFromUrgentDiscarding) {
   TabManager* tab_manager = g_browser_process->GetTabManager();
@@ -543,16 +501,7 @@ IN_PROC_BROWSER_TEST_F(TabManagerTest, ProtectVideoTabs) {
 }
 
 // Makes sure that tabs using DevTools are protected from discarding.
-// TODO(crbug.com/1446876): Flaky on debug Linux.
-#if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
-#define MAYBE_ProtectDevToolsTabsFromDiscarding \
-  DISABLED_ProtectDevToolsTabsFromDiscarding
-#else
-#define MAYBE_ProtectDevToolsTabsFromDiscarding \
-  ProtectDevToolsTabsFromDiscarding
-#endif
-IN_PROC_BROWSER_TEST_F(TabManagerTest,
-                       MAYBE_ProtectDevToolsTabsFromDiscarding) {
+IN_PROC_BROWSER_TEST_F(TabManagerTest, ProtectDevToolsTabsFromDiscarding) {
   // Get two tabs open, the second one being the foreground tab.
   GURL test_page(ui_test_utils::GetTestUrl(
       base::FilePath(), base::FilePath(FILE_PATH_LITERAL("simple.html"))));
@@ -622,11 +571,16 @@ IN_PROC_BROWSER_TEST_F(TabManagerTestWithTwoTabs,
   // The Tab Manager should be able to fast-kill a process for the discarded tab
   // on all platforms, as each tab will be running in a separate process by
   // itself regardless of the discard reason.
-  WindowedRenderProcessHostExitObserver observer;
+  content::WindowedNotificationObserver observer(
+      content::NOTIFICATION_RENDERER_PROCESS_CLOSED,
+      content::NotificationService::AllSources());
   // Advance time so everything is urgent discardable.
   test_clock_.Advance(kBackgroundUrgentProtectionTime);
+  base::HistogramTester tester;
   EXPECT_TRUE(
       tab_manager()->DiscardTabImpl(LifecycleUnitDiscardReason::URGENT));
+  tester.ExpectUniqueSample(
+      "TabManager.Discarding.DiscardedTabCouldFastShutdown", true, 1);
   observer.Wait();
 }
 
@@ -647,8 +601,16 @@ IN_PROC_BROWSER_TEST_F(TabManagerTest, UrgentFastShutdownSharedTabProcess) {
   // The Tab Manager will not be able to fast-kill either of the tabs since they
   // share the same process regardless of the discard reason. An unsafe attempt
   // will be made on some platforms.
+  base::HistogramTester tester;
   EXPECT_TRUE(
       tab_manager()->DiscardTabImpl(LifecycleUnitDiscardReason::URGENT));
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  // The unsafe killing attempt will fail for the same reason.
+  tester.ExpectUniqueSample(
+      "TabManager.Discarding.DiscardedTabCouldUnsafeFastShutdown", false, 1);
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+  tester.ExpectUniqueSample(
+      "TabManager.Discarding.DiscardedTabCouldFastShutdown", false, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(TabManagerTest, UrgentFastShutdownWithUnloadHandler) {
@@ -663,15 +625,25 @@ IN_PROC_BROWSER_TEST_F(TabManagerTest, UrgentFastShutdownWithUnloadHandler) {
   // The Tab Manager will not be able to safely fast-kill either of the tabs as
   // one of them is current, and the other has an unload handler. An unsafe
   // attempt will be made on some platforms.
+  base::HistogramTester tester;
 #if BUILDFLAG(IS_CHROMEOS)
   // The unsafe attempt for ChromeOS should succeed as ChromeOS ignores unload
   // handlers when in critical condition.
-  WindowedRenderProcessHostExitObserver observer;
+  content::WindowedNotificationObserver observer(
+      content::NOTIFICATION_RENDERER_PROCESS_CLOSED,
+      content::NotificationService::AllSources());
 #endif  // BUILDFLAG(IS_CHROMEOS)
   EXPECT_TRUE(
       tab_manager()->DiscardTabImpl(LifecycleUnitDiscardReason::URGENT));
 #if BUILDFLAG(IS_CHROMEOS)
+  tester.ExpectUniqueSample(
+      "TabManager.Discarding.DiscardedTabCouldUnsafeFastShutdown", true, 1);
+  tester.ExpectUniqueSample(
+      "TabManager.Discarding.DiscardedTabCouldFastShutdown", true, 1);
   observer.Wait();
+#else
+  tester.ExpectUniqueSample(
+      "TabManager.Discarding.DiscardedTabCouldFastShutdown", false, 1);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 }
 
@@ -688,8 +660,17 @@ IN_PROC_BROWSER_TEST_F(TabManagerTest,
   // The Tab Manager will not be able to safely fast-kill either of the tabs as
   // one of them is current, and the other has a beforeunload handler. An unsafe
   // attempt will be made on some platforms.
+  base::HistogramTester tester;
   EXPECT_TRUE(
       tab_manager()->DiscardTabImpl(LifecycleUnitDiscardReason::URGENT));
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  // The unsafe killing attempt will fail as ChromeOS does not ignore
+  // beforeunload handlers.
+  tester.ExpectUniqueSample(
+      "TabManager.Discarding.DiscardedTabCouldUnsafeFastShutdown", false, 1);
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+  tester.ExpectUniqueSample(
+      "TabManager.Discarding.DiscardedTabCouldFastShutdown", false, 1);
 }
 
 // Verifies the following state transitions for a tab:
@@ -929,10 +910,7 @@ void EnsureTabsInBrowser(Browser* browser, int num_tabs) {
 // Creates a browser with |num_tabs| tabs.
 Browser* CreateBrowserWithTabs(int num_tabs) {
   Browser* current_browser = BrowserList::GetInstance()->GetLastActive();
-  ui_test_utils::BrowserChangeObserver new_browser_observer(
-      nullptr, ui_test_utils::BrowserChangeObserver::ChangeType::kAdded);
   chrome::NewWindow(current_browser);
-  ui_test_utils::WaitForBrowserSetLastActive(new_browser_observer.Wait());
   Browser* new_browser = BrowserList::GetInstance()->GetLastActive();
   EXPECT_NE(new_browser, current_browser);
 
@@ -1020,15 +998,8 @@ IN_PROC_BROWSER_TEST_F(TabManagerTest, MAYBE_DiscardTabsWithOccludedWindow) {
 // On ChromeOS, active tabs are discarded if their window is non-visible. On
 // other platforms, they are never discarded.
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  if (base::FeatureList::IsEnabled(
-          performance_manager::features::
-              kAshUrgentDiscardingFromPerformanceManager)) {
-    EXPECT_FALSE(
-        IsTabDiscarded(browser()->tab_strip_model()->GetWebContentsAt(0)));
-  } else {
-    EXPECT_TRUE(
-        IsTabDiscarded(browser()->tab_strip_model()->GetWebContentsAt(0)));
-  }
+  EXPECT_TRUE(
+      IsTabDiscarded(browser()->tab_strip_model()->GetWebContentsAt(0)));
 #else
   EXPECT_FALSE(
       IsTabDiscarded(browser()->tab_strip_model()->GetWebContentsAt(0)));

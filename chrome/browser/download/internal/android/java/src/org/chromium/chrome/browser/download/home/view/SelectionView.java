@@ -34,9 +34,8 @@ public class SelectionView extends FrameLayout {
         LayoutInflater.from(context).inflate(R.layout.list_selection_handle_view, this, true);
         mCheck = findViewById(R.id.check);
         mCircle = findViewById(R.id.circle);
-        mCheckDrawable =
-                AnimatedVectorDrawableCompat.create(
-                        context, R.drawable.ic_check_googblue_24dp_animated);
+        mCheckDrawable = AnimatedVectorDrawableCompat.create(
+                context, R.drawable.ic_check_googblue_24dp_animated);
     }
 
     @Override
@@ -70,8 +69,8 @@ public class SelectionView extends FrameLayout {
             mCircle.setVisibility(GONE);
 
             mCheck.setImageDrawable(mCheckDrawable);
-            mCheck.getBackground()
-                    .setLevel(getResources().getInteger(R.integer.list_item_level_selected));
+            mCheck.getBackground().setLevel(
+                    getResources().getInteger(R.integer.list_item_level_selected));
             if (mShowSelectedAnimation) mCheckDrawable.start();
         } else if (mInSelectionMode) {
             mCheck.setVisibility(GONE);

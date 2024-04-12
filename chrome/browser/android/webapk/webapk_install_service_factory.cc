@@ -8,8 +8,7 @@
 
 // static
 WebApkInstallServiceFactory* WebApkInstallServiceFactory::GetInstance() {
-  static base::NoDestructor<WebApkInstallServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<WebApkInstallServiceFactory>::get();
 }
 
 // static
@@ -22,17 +21,11 @@ WebApkInstallService* WebApkInstallServiceFactory::GetForBrowserContext(
 WebApkInstallServiceFactory::WebApkInstallServiceFactory()
     : ProfileKeyedServiceFactory(
           "WebApkInstallService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
-WebApkInstallServiceFactory::~WebApkInstallServiceFactory() = default;
+WebApkInstallServiceFactory::~WebApkInstallServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-WebApkInstallServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* WebApkInstallServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<WebApkInstallService>(context);
+  return new WebApkInstallService(context);
 }

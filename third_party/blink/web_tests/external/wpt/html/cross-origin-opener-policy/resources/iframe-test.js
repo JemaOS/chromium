@@ -86,13 +86,6 @@ function popupOpeningScript(popup_via, popup_url, popup_origin, headers,
   assert_not_reached('Unrecognized popup opening method.');
 }
 
-function promise_test_parallel(promise, description) {
-  async_test(test => {
-    promise(test)
-        .then(() => test.done())
-        .catch(test.step_func(error => { throw error; }));
-  }, description);
-};
 
 // Verifies that a popup with origin `popup_origin` and headers `headers` has
 // the expected `opener_state` after being opened from an iframe with origin
@@ -100,7 +93,7 @@ function promise_test_parallel(promise, description) {
 function iframe_test(description, iframe_origin, popup_origin, headers,
     expected_opener_state) {
   for (const popup_via of ['window_open', 'anchor','form']) {
-    promise_test_parallel(async t => {
+    promise_test(async t => {
       const iframe_token = token();
       const popup_token = token();
       const reply_token = token();
@@ -173,8 +166,8 @@ function iframe_test(description, iframe_origin, popup_origin, headers,
             await evaluate(popup_token, 'opener != null'), "true",
             'Popup has an opener?');
           assert_equals(
-            await evaluate(popup_token, `name === ''`), "true",
-            'Popup name is cleared?');
+            await evaluate(popup_token, `name === '${popup_token}'`), "true",
+            'Popup has a name?');
 
           // When the popup was created using window.open, we've kept a handle
           // and we can do extra verifications.
@@ -201,8 +194,8 @@ function iframe_test(description, iframe_origin, popup_origin, headers,
           assert_equals(await evaluate(popup_token, 'opener != null'), "false",
                        'Popup has an opener?');
           assert_equals(
-            await evaluate(popup_token, `name === ''`), "true",
-            'Popup name is cleared?');
+            await evaluate(popup_token, `name === '${popup_token}'`), "false",
+            'Popup has a name?');
 
           // When the popup was created using window.open, we've kept a handle
           // and we can do extra verifications.
@@ -220,8 +213,8 @@ function iframe_test(description, iframe_origin, popup_origin, headers,
           assert_equals(await evaluate(popup_token, 'opener != null'), "false",
                         'Popup has an opener?');
           assert_equals(
-            await evaluate(popup_token, `name === ''`), "true",
-            'Popup name is cleared?');
+            await evaluate(popup_token, `name === '${popup_token}'`), "false",
+            'Popup has a name?');
 
           // When the popup was created using window.open, we've kept a handle
           // and we can do extra verifications.

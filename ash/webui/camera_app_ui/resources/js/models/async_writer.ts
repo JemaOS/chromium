@@ -12,7 +12,7 @@ import {Awaitable} from '../type.js';
  */
 export interface AsyncOps {
   write(blob: Blob): Awaitable<void>;
-  seek: ((offset: number) => Awaitable<void>)|null;
+  seek: ((offset: number) => Promise<void>)|null;
   close: (() => Promise<void>)|null;
 }
 
@@ -34,19 +34,23 @@ export class AsyncWriter {
   }
 
   /**
-   * Writes the |blob| asynchronously.
+   * Writes the blob asynchronously.
+   *
+   * @return Resolved when the data is written.
    */
-  write(blob: Blob): void {
+  async write(blob: Blob): Promise<void> {
     assert(!this.closed);
-    this.queue.push(() => this.ops.write(blob));
+    await this.queue.push(() => this.ops.write(blob));
   }
 
   /**
    * Seeks to the specified |offset|.
+   *
+   * @return Resolved when the seek operation is finished.
    */
-  seek(offset: number): void {
+  async seek(offset: number): Promise<void> {
     assert(!this.closed);
-    this.queue.push(async () => {
+    await this.queue.push(async () => {
       assert(this.ops.seek !== null);
       await this.ops.seek(offset);
     });
@@ -62,33 +66,27 @@ export class AsyncWriter {
       return;
     }
     this.closed = true;
-    await this.queue
-        .push(async () => {
-          if (this.ops.close !== null) {
-            await this.ops.close();
-          }
-        })
-        .result;
+    await this.queue.push(async () => {
+      if (this.ops.close !== null) {
+        await this.ops.close();
+      }
+    });
   }
 
   /**
-   * Combines multiple |writers| into one writer such that the blob would be
+   * Combines multiple writers into one writer such that the blob would be
    * written to each of them.
    *
    * @return The combined writer.
    */
   static combine(...writers: AsyncWriter[]): AsyncWriter {
-    function write(blob: Blob) {
-      for (const writer of writers) {
-        writer.write(blob);
-      }
+    async function write(blob: Blob) {
+      await Promise.all(writers.map((writer) => writer.write(blob)));
     }
 
     const allSeekable = writers.every((writer) => writer.seekable());
-    function seekAll(offset: number) {
-      for (const writer of writers) {
-        writer.seek(offset);
-      }
+    async function seekAll(offset: number) {
+      await Promise.all(writers.map((writer) => writer.seek(offset)));
     }
     const seek = allSeekable ? seekAll : null;
 

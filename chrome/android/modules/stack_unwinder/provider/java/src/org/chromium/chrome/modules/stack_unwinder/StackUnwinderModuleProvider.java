@@ -4,7 +4,7 @@
 
 package org.chromium.chrome.modules.stack_unwinder;
 
-import org.jni_zero.CalledByNative;
+import org.chromium.base.annotations.CalledByNative;
 
 /** Installs and loads the stack unwinder module. */
 public class StackUnwinderModuleProvider {

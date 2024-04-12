@@ -4,16 +4,13 @@
 
 #include "chrome/browser/sync/test/integration/web_apps_sync_test_base.h"
 
-#include "base/containers/extend.h"
-#include "chrome/common/chrome_features.h"
-
 #if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/apps/link_capturing/link_capturing_features.h"
+#include "chrome/browser/apps/intent_helper/intent_picker_features.h"
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/constants/ash_features.h"
-#include "chromeos/ash/components/standalone_browser/feature_refs.h"
+#include "chrome/common/chrome_features.h"
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -26,22 +23,19 @@ namespace web_app {
 WebAppsSyncTestBase::WebAppsSyncTestBase(TestType test_type)
     : SyncTest(test_type) {
   std::vector<base::test::FeatureRef> disabled_features;
-  std::vector<base::test::FeatureRef> enabled_features;
 
 #if BUILDFLAG(IS_CHROMEOS)
   // TODO(crbug.com/1357905): Update test driver to work with new UI.
-  enabled_features.push_back(apps::features::kLinkCapturingUiUpdate);
-#else
-  // TOOD(b/313492499): Update test driver to work with new intent picker UI.
-  enabled_features.push_back(features::kDesktopPWAsLinkCapturing);
+  disabled_features.push_back(apps::features::kLinkCapturingUiUpdate);
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  // Disable Lacros, so that Web Apps get synced in the Ash browser.
-  base::Extend(disabled_features, ash::standalone_browser::GetFeatureRefs());
+  // Disable WebAppsCrosapi, so that Web Apps get synced in the Ash browser.
+  disabled_features.push_back(features::kWebAppsCrosapi);
+  disabled_features.push_back(ash::features::kLacrosPrimary);
 #endif
 
-  scoped_feature_list_.InitWithFeatures(enabled_features, disabled_features);
+  scoped_feature_list_.InitWithFeatures({}, disabled_features);
 }
 
 WebAppsSyncTestBase::~WebAppsSyncTestBase() = default;

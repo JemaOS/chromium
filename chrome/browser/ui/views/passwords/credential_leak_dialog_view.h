@@ -19,9 +19,8 @@ class CredentialLeakDialogController;
 
 class CredentialLeakDialogView : public views::DialogDelegateView,
                                  public CredentialLeakPrompt {
-  METADATA_HEADER(CredentialLeakDialogView, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(CredentialLeakDialogView);
   CredentialLeakDialogView(CredentialLeakDialogController* controller,
                            content::WebContents* web_contents);
   CredentialLeakDialogView(const CredentialLeakDialogView&) = delete;
@@ -44,8 +43,8 @@ class CredentialLeakDialogView : public views::DialogDelegateView,
   // This field is not a raw_ptr<> because it was filtered by the rewriter for:
   // #addr-of
   RAW_PTR_EXCLUSION CredentialLeakDialogController* controller_ = nullptr;
-  const raw_ptr<content::WebContents, AcrossTasksDanglingUntriaged>
-      web_contents_ = nullptr;
+  const raw_ptr<content::WebContents, DanglingUntriaged> web_contents_ =
+      nullptr;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_PASSWORDS_CREDENTIAL_LEAK_DIALOG_VIEW_H_

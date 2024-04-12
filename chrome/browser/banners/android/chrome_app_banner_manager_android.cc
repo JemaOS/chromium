@@ -9,13 +9,11 @@
 #include "base/android/jni_android.h"
 #include "base/android/jni_string.h"
 #include "base/feature_list.h"
-#include "base/functional/callback.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/android/webapk/webapk_metrics.h"
 #include "chrome/browser/android/webapk/webapk_ukm_recorder.h"
 #include "chrome/browser/banners/android/jni_headers/AppBannerInProductHelpControllerProvider_jni.h"
-#include "chrome/browser/browser_process.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/segmentation_platform/segmentation_platform_service_factory.h"
@@ -23,7 +21,6 @@
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/feature_engagement/public/tracker.h"
 #include "components/site_engagement/content/site_engagement_service.h"
-#include "components/webapps/browser/android/app_banner_manager_android.h"
 #include "components/webapps/browser/android/bottomsheet/pwa_bottom_sheet_controller.h"
 #include "components/webapps/browser/banners/app_banner_settings_helper.h"
 #include "components/webapps/browser/installable/installable_data.h"
@@ -47,31 +44,77 @@ constexpr char kMinEngagementForIphKey[] = "x_min_engagement_for_iph";
 // The key to look up whether the in-product help should replace the toolbar or
 // complement it.
 constexpr char kIphReplacesToolbar[] = "x_iph_replaces_toolbar";
+
 }  // anonymous namespace
 
 ChromeAppBannerManagerAndroid::ChromeAppBannerManagerAndroid(
-    content::WebContents& web_contents)
-    : web_contents_(web_contents) {}
+    content::WebContents* web_contents)
+    : AppBannerManagerAndroid(web_contents),
+      content::WebContentsUserData<ChromeAppBannerManagerAndroid>(
+          *web_contents) {
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents->GetBrowserContext());
+
+  segmentation_platform_service_ =
+      segmentation_platform::SegmentationPlatformServiceFactory::GetForProfile(
+          profile);
+}
 
 ChromeAppBannerManagerAndroid::~ChromeAppBannerManagerAndroid() = default;
 
-void ChromeAppBannerManagerAndroid::OnInstallableCheckedNoErrors(
-    const ManifestId& manifest_id) const {
-  // TODO(b/320681613): Maybe move this to components.
-  webapk::WebApkUkmRecorder::RecordWebApkableVisit(manifest_id);
+void ChromeAppBannerManagerAndroid::OnDidPerformInstallableWebAppCheck(
+    const InstallableData& data) {
+  if (data.NoBlockingErrors())
+    WebApkUkmRecorder::RecordWebApkableVisit(*data.manifest_url);
+
+  AppBannerManagerAndroid::OnDidPerformInstallableWebAppCheck(data);
 }
 
-bool ChromeAppBannerManagerAndroid::
-    MaybeShowInProductHelpShouldAvoidAmbientBadge(const GURL& validated_url) {
+void ChromeAppBannerManagerAndroid::MaybeShowAmbientBadge() {
+  if (MaybeShowInProductHelp()) {
+    TrackIphWasShown();
+    if (base::GetFieldTrialParamByFeatureAsBool(
+            feature_engagement::kIPHPwaInstallAvailableFeature,
+            kIphReplacesToolbar, false)) {
+      DVLOG(2) << "Install infobar overridden by IPH, as per experiment.";
+      return;
+    }
+  }
+
+  ambient_badge_manager_ = std::make_unique<AmbientBadgeManager>(
+      web_contents(), GetAndroidWeakPtr(), segmentation_platform_service_);
+  ambient_badge_manager_->MaybeShow(
+      validated_url_, GetAppName(),
+      CreateAddToHomescreenParams(InstallableMetrics::GetInstallSource(
+          web_contents(), InstallTrigger::AMBIENT_BADGE)),
+      base::BindOnce(&ChromeAppBannerManagerAndroid::ShowBannerFromBadge,
+                     GetAndroidWeakPtr()));
+}
+
+void ChromeAppBannerManagerAndroid::RecordExtraMetricsForInstallEvent(
+    AddToHomescreenInstaller::Event event,
+    const AddToHomescreenParams& a2hs_params) {
+  if (a2hs_params.app_type == AddToHomescreenParams::AppType::WEBAPK &&
+      event == AddToHomescreenInstaller::Event::UI_CANCELLED) {
+    webapk::TrackInstallEvent(
+        webapk::ADD_TO_HOMESCREEN_DIALOG_DISMISSED_BEFORE_INSTALLATION);
+  }
+}
+
+bool ChromeAppBannerManagerAndroid::MaybeShowInProductHelp() const {
   if (!base::FeatureList::IsEnabled(
           feature_engagement::kIPHPwaInstallAvailableFeature)) {
     DVLOG(2) << "Feature not enabled";
     return false;
   }
 
-  double last_engagement_score = site_engagement::SiteEngagementService::Get(
-                                     web_contents_->GetBrowserContext())
-                                     ->GetScore(validated_url);
+  if (!web_contents()) {
+    DVLOG(2) << "IPH for PWA aborted: null WebContents";
+    return false;
+  }
+
+  double last_engagement_score =
+      GetSiteEngagementService()->GetScore(validated_url_);
   int min_engagement = base::GetFieldTrialParamByFeatureAsInt(
       feature_engagement::kIPHPwaInstallAvailableFeature,
       kMinEngagementForIphKey, 0);
@@ -84,43 +127,16 @@ bool ChromeAppBannerManagerAndroid::
   JNIEnv* env = base::android::AttachCurrentThread();
   std::string error_message = base::android::ConvertJavaStringToUTF8(
       Java_AppBannerInProductHelpControllerProvider_showInProductHelp(
-          env, web_contents_->GetJavaWebContents()));
+          env, web_contents()->GetJavaWebContents()));
   if (!error_message.empty()) {
     DVLOG(2) << "IPH for PWA showing aborted. " << error_message;
     return false;
   }
 
   DVLOG(2) << "Showing IPH.";
-  if (base::GetFieldTrialParamByFeatureAsBool(
-          feature_engagement::kIPHPwaInstallAvailableFeature,
-          kIphReplacesToolbar, false)) {
-    DVLOG(2) << "Install infobar overridden by IPH, as per experiment.";
-    return true;
-  }
-  return false;
+  return true;
 }
 
-segmentation_platform::SegmentationPlatformService*
-ChromeAppBannerManagerAndroid::GetSegmentationPlatformService() {
-  return segmentation_platform::SegmentationPlatformServiceFactory::
-      GetForProfile(
-          Profile::FromBrowserContext(web_contents_->GetBrowserContext()));
-}
-
-PrefService* ChromeAppBannerManagerAndroid::GetPrefService() {
-  return Profile::FromBrowserContext(web_contents_->GetBrowserContext())
-      ->GetPrefs();
-}
-
-void ChromeAppBannerManagerAndroid::RecordExtraMetricsForInstallEvent(
-    AddToHomescreenInstaller::Event event,
-    const AddToHomescreenParams& a2hs_params) {
-  if (a2hs_params.app_type == AddToHomescreenParams::AppType::WEBAPK &&
-      event == AddToHomescreenInstaller::Event::UI_CANCELLED) {
-    // TODO(b/320681613): Maybe move this to components.
-    webapk::TrackInstallEvent(
-        webapk::ADD_TO_HOMESCREEN_DIALOG_DISMISSED_BEFORE_INSTALLATION);
-  }
-}
+WEB_CONTENTS_USER_DATA_KEY_IMPL(ChromeAppBannerManagerAndroid);
 
 }  // namespace webapps

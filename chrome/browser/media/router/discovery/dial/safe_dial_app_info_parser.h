@@ -15,6 +15,8 @@
 
 namespace media_router {
 
+class DataDecoder;
+
 // SafeDialAppInfoParser parses the given app info XML file safely via a utility
 // process.
 // Spec for DIAL app info XML:

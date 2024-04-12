@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,18 +23,16 @@
 #include "components/domain_reliability/clear_mode.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/keyed_service/content/browser_context_keyed_service_factory.h"
-#include "components/keyed_service/content/refcounted_browser_context_keyed_service_factory.h"
 #include "components/keyed_service/core/simple_dependency_manager.h"
 #include "components/keyed_service/core/simple_factory_key.h"
 #include "components/supervised_user/core/common/buildflags.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/permission_controller_delegate.h"
 #include "extensions/buildflags/buildflags.h"
-#include "third_party/abseil-cpp/absl/types/variant.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
-#include "components/user_manager/scoped_user_manager.h"
 #endif
 
 class ExtensionSpecialStoragePolicy;
@@ -43,6 +40,7 @@ class HostContentSettingsMap;
 class TestingPrefStore;
 
 namespace content {
+class MockResourceContext;
 class SSLHostStateDelegate;
 class ZoomLevelDelegate;
 }  // namespace content
@@ -81,34 +79,16 @@ class TestingProfile : public Profile {
   // platforms but must be different on ChromeOS because a logged-in user cannot
   // use "Default" as profile directory.
   // Browser- and UI tests should always use this to get to the user's profile
-  // directory. Unit-tests, though, should use `chrome::kInitialProfile`, which
-  // is always "Default", because they are running without logged-in user.
+  // directory. Unit-tests, though, should use |kInitialProfile|, which is
+  // always "Default", because they are runnining without logged-in user.
   static const char kTestUserProfileDir[];
 
   // Default constructor that cannot be used with multi-profiles.
   TestingProfile();
 
-  // Wrapper over absl::variant to help type deduction when calling
-  // AddTestingFactories(). See example call in the method's comment.
-  struct TestingFactory {
-    TestingFactory(
-        BrowserContextKeyedServiceFactory* service_factory,
-        BrowserContextKeyedServiceFactory::TestingFactory testing_factory);
-    TestingFactory(RefcountedBrowserContextKeyedServiceFactory* service_factory,
-                   RefcountedBrowserContextKeyedServiceFactory::TestingFactory
-                       testing_factory);
-    TestingFactory(const TestingFactory&);
-    TestingFactory& operator=(const TestingFactory&);
-    ~TestingFactory();
-
-    absl::variant<
-        std::pair<BrowserContextKeyedServiceFactory*,
-                  BrowserContextKeyedServiceFactory::TestingFactory>,
-        std::pair<RefcountedBrowserContextKeyedServiceFactory*,
-                  RefcountedBrowserContextKeyedServiceFactory::TestingFactory>>
-        service_factory_and_testing_factory;
-  };
-  using TestingFactories = std::vector<TestingFactory>;
+  using TestingFactories =
+      std::vector<std::pair<BrowserContextKeyedServiceFactory*,
+                            BrowserContextKeyedServiceFactory::TestingFactory>>;
 
   // Helper class for building an instance of TestingProfile (allows injecting
   // mocks for various services prior to profile initialization).
@@ -133,18 +113,9 @@ class TestingProfile : public Profile {
     Builder& AddTestingFactory(
         BrowserContextKeyedServiceFactory* service_factory,
         BrowserContextKeyedServiceFactory::TestingFactory testing_factory);
-    Builder& AddTestingFactory(
-        RefcountedBrowserContextKeyedServiceFactory* service_factory,
-        RefcountedBrowserContextKeyedServiceFactory::TestingFactory
-            testing_factory);
 
     // Add multiple testing factories to the TestingProfile. These testing
     // factories are applied before the ProfileKeyedServices are created.
-    // Example use:
-    //
-    // AddTestingFactories(
-    //     {{RegularServiceFactory::GetInstance(), test_factory1},
-    //      {RefcountedServiceFactory::GetInstance(), test_factory2}});
     Builder& AddTestingFactories(const TestingFactories& testing_factories);
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -245,7 +216,7 @@ class TestingProfile : public Profile {
     std::unique_ptr<policy::PolicyService> policy_service_;
     TestingFactories testing_factories_;
     std::string profile_name_{kDefaultProfileUserName};
-    std::optional<bool> override_policy_connector_is_managed_;
+    absl::optional<bool> override_policy_connector_is_managed_;
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
   };
 
@@ -287,8 +258,8 @@ class TestingProfile : public Profile {
       std::unique_ptr<policy::PolicyService> policy_service,
       TestingFactories testing_factories,
       const std::string& profile_name,
-      std::optional<bool> override_policy_connector_is_managed,
-      std::optional<OTRProfileID> otr_profile_id,
+      absl::optional<bool> override_policy_connector_is_managed,
+      absl::optional<OTRProfileID> otr_profile_id,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory);
 
   ~TestingProfile() override;
@@ -311,9 +282,9 @@ class TestingProfile : public Profile {
   // |otr_profile| cannot be empty.
   void SetOffTheRecordProfile(std::unique_ptr<Profile> otr_profile);
 
-  // Marks profile Family Link supervision status.
+  // Marks profile as a Family Link supervised profile.
   // Only available when ENABLE_SUPERVISED_USERS feature is enabled.
-  void SetIsSupervisedProfile(bool is_supervised_profile = true);
+  void SetIsSupervisedProfile();
 
   sync_preferences::TestingPrefServiceSyncable* GetTestingPrefService();
 
@@ -333,6 +304,7 @@ class TestingProfile : public Profile {
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
   const OTRProfileID& GetOTRProfileID() const override;
   content::DownloadManagerDelegate* GetDownloadManagerDelegate() override;
+  content::ResourceContext* GetResourceContext() override;
   content::BrowserPluginGuestManager* GetGuestManager() override;
   storage::SpecialStoragePolicy* GetSpecialStoragePolicy() override;
   content::PlatformNotificationService* GetPlatformNotificationService()
@@ -385,10 +357,9 @@ class TestingProfile : public Profile {
   ProfileKey* GetProfileKey() const override;
   policy::SchemaRegistryService* GetPolicySchemaRegistryService() override;
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  void SetUserCloudPolicyManagerAsh(
-      std::unique_ptr<policy::UserCloudPolicyManagerAsh>
-          user_cloud_policy_manager);
   policy::UserCloudPolicyManagerAsh* GetUserCloudPolicyManagerAsh() override;
+  policy::ActiveDirectoryPolicyManager* GetActiveDirectoryPolicyManager()
+      override;
 #else
   policy::UserCloudPolicyManager* GetUserCloudPolicyManager() override;
   policy::ProfileCloudPolicyManager* GetProfileCloudPolicyManager() override;
@@ -408,7 +379,7 @@ class TestingProfile : public Profile {
   void InitChromeOSPreferences() override {}
   ash::ScopedCrosSettingsTestHelper* ScopedCrosSettingsTestHelper();
 
-  std::optional<std::string> requested_locale() { return requested_locale_; }
+  absl::optional<std::string> requested_locale() { return requested_locale_; }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
   // Schedules a task on the history backend and runs a nested loop until the
@@ -480,10 +451,6 @@ class TestingProfile : public Profile {
   // Creates a ProfilePolicyConnector.
   void CreateProfilePolicyConnector();
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
   std::map<OTRProfileID, std::unique_ptr<Profile>> otr_profiles_;
   raw_ptr<TestingProfile> original_profile_ = nullptr;
 
@@ -523,6 +490,11 @@ class TestingProfile : public Profile {
   raw_ptr<BrowserContextDependencyManager> browser_context_dependency_manager_{
       BrowserContextDependencyManager::GetInstance()};
 
+  // Live on the IO thread:
+  std::unique_ptr<content::MockResourceContext,
+                  content::BrowserThread::DeleteOnIOThread>
+      resource_context_;
+
   std::unique_ptr<policy::SchemaRegistryService> schema_registry_service_;
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   std::unique_ptr<policy::UserCloudPolicyManagerAsh> user_cloud_policy_manager_;
@@ -538,14 +510,14 @@ class TestingProfile : public Profile {
 
   std::string profile_name_{kDefaultProfileUserName};
 
-  std::optional<bool> override_policy_connector_is_managed_;
-  std::optional<OTRProfileID> otr_profile_id_;
+  absl::optional<bool> override_policy_connector_is_managed_;
+  absl::optional<OTRProfileID> otr_profile_id_;
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   std::unique_ptr<ash::ScopedCrosSettingsTestHelper>
       scoped_cros_settings_test_helper_;
 
-  std::optional<std::string> requested_locale_;
+  absl::optional<std::string> requested_locale_;
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -556,7 +528,8 @@ class TestingProfile : public Profile {
   std::unique_ptr<policy::PolicyService> policy_service_;
 
 #if BUILDFLAG(ENABLE_SUPERVISED_USERS)
-  scoped_refptr<TestingPrefStore> supervised_user_pref_store_ = nullptr;
+  raw_ptr<TestingPrefStore, DanglingUntriaged> supervised_user_pref_store_ =
+      nullptr;
 #endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;

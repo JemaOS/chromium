@@ -6,12 +6,12 @@ import {PageHandler} from '/ash/webui/files_internals/mojom/files_internals.mojo
 
 const pageHandler = PageHandler.getRemote();
 
-const refreshOfficeFileHandlers = async () => {
-  const officeFileHandlersSpan =
-      document.getElementById('office-default-file-handlers');
-  const officeFileHandlers =
-      (await pageHandler.getOfficeFileHandlers()).handlers;
-  officeFileHandlersSpan.innerText = officeFileHandlers;
+const refreshOfficeSetupComplete = async () => {
+  const officeSetupStatus =
+      document.getElementById('office-setup-complete-status');
+  const officeSetupComplete =
+      (await pageHandler.getOfficeSetupComplete()).complete;
+  officeSetupStatus.innerText = officeSetupComplete ? 'Yes' : 'No';
 };
 
 const refreshMoveConfirmationShownForDrive = async () => {
@@ -31,46 +31,6 @@ const refreshMoveConfirmationShownForOneDrive = async () => {
           .confirmationShown;
   moveConfirmationShownForOneDriveStatus.innerText =
       moveConfirmationShownForOneDrive ? 'Yes' : 'No';
-};
-
-const refreshMoveConfirmationShownForLocalToDrive = async () => {
-  const moveConfirmationShownForLocalToDriveStatus = document.getElementById(
-      'move-confirmation-shown-for-local-to-drive-status');
-  const moveConfirmationShownForLocalToDrive =
-      (await pageHandler.getMoveConfirmationShownForLocalToDrive())
-          .confirmationShown;
-  moveConfirmationShownForLocalToDriveStatus.innerText =
-      moveConfirmationShownForLocalToDrive ? 'Yes' : 'No';
-};
-
-const refreshMoveConfirmationShownForLocalToOneDrive = async () => {
-  const moveConfirmationShownForLocalToOneDriveStatus = document.getElementById(
-      'move-confirmation-shown-for-local-to-onedrive-status');
-  const moveConfirmationShownForLocalToOneDrive =
-      (await pageHandler.getMoveConfirmationShownForLocalToOneDrive())
-          .confirmationShown;
-  moveConfirmationShownForLocalToOneDriveStatus.innerText =
-      moveConfirmationShownForLocalToOneDrive ? 'Yes' : 'No';
-};
-
-const refreshMoveConfirmationShownForCloudToDrive = async () => {
-  const moveConfirmationShownForCloudToDriveStatus = document.getElementById(
-      'move-confirmation-shown-for-cloud-to-drive-status');
-  const moveConfirmationShownForCloudToDrive =
-      (await pageHandler.getMoveConfirmationShownForCloudToDrive())
-          .confirmationShown;
-  moveConfirmationShownForCloudToDriveStatus.innerText =
-      moveConfirmationShownForCloudToDrive ? 'Yes' : 'No';
-};
-
-const refreshMoveConfirmationShownForCloudToOneDrive = async () => {
-  const moveConfirmationShownForCloudToOneDriveStatus = document.getElementById(
-      'move-confirmation-shown-for-cloud-to-onedrive-status');
-  const moveConfirmationShownForCloudToOneDrive =
-      (await pageHandler.getMoveConfirmationShownForCloudToOneDrive())
-          .confirmationShown;
-  moveConfirmationShownForCloudToOneDriveStatus.innerText =
-      moveConfirmationShownForCloudToOneDrive ? 'Yes' : 'No';
 };
 
 const refreshAlwaysMoveToDriveStatus = async () => {
@@ -101,27 +61,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Office file handlers
-  refreshOfficeFileHandlers();
+  refreshOfficeSetupComplete();
   refreshMoveConfirmationShownForDrive();
   refreshMoveConfirmationShownForOneDrive();
-  refreshMoveConfirmationShownForLocalToDrive();
-  refreshMoveConfirmationShownForLocalToOneDrive();
-  refreshMoveConfirmationShownForCloudToDrive();
-  refreshMoveConfirmationShownForCloudToOneDrive();
   refreshAlwaysMoveToDriveStatus();
   refreshAlwaysMoveToOneDriveStatus();
 
-  const clearfileHandlers =
-      document.getElementById('clear-office-file-handlers');
-  clearfileHandlers.addEventListener('click', () => {
-    pageHandler.clearOfficeFileHandlers();
-    refreshOfficeFileHandlers();
+  const clearSetupButton =
+      document.getElementById('clear-office-setup-complete');
+  clearSetupButton.addEventListener('click', () => {
+    pageHandler.setOfficeSetupComplete(false);
+    refreshOfficeSetupComplete();
     refreshMoveConfirmationShownForDrive();
     refreshMoveConfirmationShownForOneDrive();
-    refreshMoveConfirmationShownForLocalToDrive();
-    refreshMoveConfirmationShownForLocalToOneDrive();
-    refreshMoveConfirmationShownForCloudToDrive();
-    refreshMoveConfirmationShownForCloudToOneDrive();
   });
 
   const clearAlwaysMoveToDriveButton =

@@ -113,7 +113,7 @@ ui::TextEditCommand Textarea::GetCommandForKeyEvent(const ui::KeyEvent& event) {
   }
 }
 
-BEGIN_METADATA(Textarea)
+BEGIN_METADATA(Textarea, Textfield)
 END_METADATA
 
 }  // namespace views

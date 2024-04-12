@@ -9,7 +9,6 @@
 #include <wrl/client.h>
 
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "base/files/file_enumerator.h"
@@ -150,9 +149,8 @@ bool IsPinnedToTaskbarHelper::ShortcutHasUnpinToTaskbarVerb(
       error_count++;
       continue;
     }
-    if (std::wstring_view(name.Get(), name.Length()) == verb_name) {
+    if (base::WStringPiece(name.Get(), name.Length()) == verb_name)
       return true;
-    }
   }
 
   if (error_count == verb_count)
@@ -182,7 +180,7 @@ bool IsPinnedToTaskbarHelper::DirectoryContainsPinnedShortcutForProgram(
   for (base::FilePath shortcut = shortcut_enum.Next(); !shortcut.empty();
        shortcut = shortcut_enum.Next()) {
     if (IsShortcutForProgram(shortcut, program_compare)) {
-      std::optional<bool> is_pinned = IsShortcutPinnedToTaskbar(shortcut);
+      absl::optional<bool> is_pinned = IsShortcutPinnedToTaskbar(shortcut);
       if (is_pinned == true)
         return true;
       // Fall back to checking for the taskbar verb on versions of Windows that

@@ -39,8 +39,6 @@ void TestNewWindowDelegate::OpenFeedbackPage(
     FeedbackSource source,
     const std::string& description_template) {}
 void TestNewWindowDelegate::OpenPersonalizationHub() {}
-void TestNewWindowDelegate::OpenCaptivePortalSignin(const GURL& url) {}
-void TestNewWindowDelegate::OpenFile(const base::FilePath& file_path) {}
 
 TestNewWindowDelegateProvider::TestNewWindowDelegateProvider(
     std::unique_ptr<TestNewWindowDelegate> delegate)

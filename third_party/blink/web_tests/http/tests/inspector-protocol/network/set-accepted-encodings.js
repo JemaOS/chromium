@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {session, dp} = await testRunner.startURL(
     'https://127.0.0.1:8443/inspector-protocol/resources/empty.html',
     `Tests setting accepted encodings.`);
@@ -11,8 +11,6 @@
     ['gzip', 'br'],
     ['gzip', 'br', 'deflate'],
     ['br'],
-    ['zstd', 'gzip'],
-    ['zstd'],
   ];
 
   async function runTest(injectTestResource) {

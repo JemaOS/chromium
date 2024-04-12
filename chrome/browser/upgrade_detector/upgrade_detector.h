@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_UPGRADE_DETECTOR_UPGRADE_DETECTOR_H_
 #define CHROME_BROWSER_UPGRADE_DETECTOR_UPGRADE_DETECTOR_H_
 
-#include <optional>
 #include <string>
 
 #include "base/gtest_prod_util.h"
@@ -18,6 +17,7 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/upgrade_detector/upgrade_observer.h"
 #include "components/prefs/pref_change_registrar.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PrefRegistrySimple;
 class UpgradeObserver;
@@ -222,7 +222,7 @@ class UpgradeDetector {
 
   // Returns the relaunch window specified via the RelaunchWindow policy
   // setting, or nullopt if unset or set incorrectly.
-  static std::optional<RelaunchWindow> GetRelaunchWindowPolicyValue();
+  static absl::optional<RelaunchWindow> GetRelaunchWindowPolicyValue();
 
   // Returns the default relaunch window within which the relaunch should take
   // place. It is 2am to 4am from Chrome OS and the whole day for others.
@@ -327,10 +327,7 @@ class UpgradeDetector {
 
  private:
   FRIEND_TEST_ALL_PREFIXES(AppMenuModelTest, Basics);
-  FRIEND_TEST_ALL_PREFIXES(RelaunchNotificationControllerUiTest,
-                           ReactivateAfterDeadline);
   FRIEND_TEST_ALL_PREFIXES(SystemTrayClientTest, UpdateTrayIcon);
-  friend class RelaunchNotificationControllerUiTest;
   friend class UpgradeMetricsProviderTest;
 
   // Called on the UI thread after one or more monitored prefs have changed. If

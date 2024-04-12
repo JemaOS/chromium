@@ -6,16 +6,16 @@
 
 #include "ash/constants/ash_features.h"
 #include "ash/resources/vector_icons/vector_icons.h"
+#include "ash/style/ash_color_provider.h"
 #include "ash/system/progress_indicator/progress_icon_animation.h"
+#include "ash/system/progress_indicator/progress_indicator_animation_registry.h"
 #include "ash/system/progress_indicator/progress_ring_animation.h"
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "base/task/sequenced_task_runner.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "third_party/skia/include/core/SkPath.h"
 #include "third_party/skia/include/core/SkPathBuilder.h"
 #include "third_party/skia/include/core/SkPathMeasure.h"
-#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/paint_recorder.h"
 #include "ui/gfx/canvas.h"
@@ -110,21 +110,16 @@ float GetInnerRingStrokeWidth(const ui::Layer* layer) {
          std::min(size.width(), size.height());
 }
 
-// TODO(b/324644877): We want the progress ring still keep the same opacity
-// after the `Pulse` animation. Please also provide an option for our this
-// expectation after removing `kForcedShow`.
 // Returns the opacity for the outer ring given the current `progress`.
-float GetOuterRingOpacity(const std::optional<float>& progress) {
-  return (progress == ProgressIndicator::kProgressComplete ||
-          progress == ProgressIndicator::kForcedShow)
-             ? 1.f
-             : kOuterRingOpacity;
+float GetOuterRingOpacity(const absl::optional<float>& progress) {
+  return progress != ProgressIndicator::kProgressComplete ? kOuterRingOpacity
+                                                          : 1.f;
 }
 
 // Returns the stroke width for the outer ring given `layer` dimensions and
 // the current `progress`.
 float GetOuterRingStrokeWidth(const ui::Layer* layer,
-                              const std::optional<float>& progress) {
+                              const absl::optional<float>& progress) {
   if (progress != ProgressIndicator::kProgressComplete) {
     const gfx::Size& size = layer->size();
     return kOuterRingStrokeWidthScaleFactor *
@@ -163,7 +158,7 @@ class DefaultProgressIndicatorAnimationRegistry
  private:
   // Invoked on changes to `progress_indicator_` progress.
   void OnProgressChanged() {
-    const std::optional<float>& progress = progress_indicator_->progress();
+    const absl::optional<float>& progress = progress_indicator_->progress();
     if (!progress.has_value()) {
       // Progress is indeterminate.
       EnsureProgressIconAnimation();
@@ -193,34 +188,30 @@ class DefaultProgressIndicatorAnimationRegistry
         FROM_HERE,
         base::BindOnce(
             [](const base::WeakPtr<DefaultProgressIndicatorAnimationRegistry>&
-                   self,
-               MayBeDangling<ProgressRingAnimation> animation) {
-              if (!self) {
+                   registry,
+               ProgressRingAnimation* animation) {
+              if (!registry)
                 return;
-              }
-              auto key = self->progress_indicator_->animation_key();
-              if (self->GetProgressRingAnimationForKey(key) == animation) {
-                self->SetProgressRingAnimationForKey(key, nullptr);
-              }
+              auto* key = registry->progress_indicator_.get();
+              if (registry->GetProgressRingAnimationForKey(key) == animation)
+                registry->SetProgressRingAnimationForKey(key, nullptr);
             },
-            weak_ptr_factory_.GetWeakPtr(), base::UnsafeDangling(animation)));
+            weak_ptr_factory_.GetWeakPtr(), animation));
   }
 
   // Ensures that a progress icon animation exists and is started.
   void EnsureProgressIconAnimation() {
-    auto key = progress_indicator_->animation_key();
-    if (!GetProgressIconAnimationForKey(key)) {
-      auto* icon_animation =
-          SetProgressIconAnimationForKey(key, ProgressIconAnimation::Create());
-      icon_animation->Start();
+    if (!GetProgressIconAnimationForKey(progress_indicator_)) {
+      SetProgressIconAnimationForKey(progress_indicator_,
+                                     std::make_unique<ProgressIconAnimation>())
+          ->Start();
     }
   }
 
   // Ensures that a progress ring animation of the specified `type` exists and
   // is started.
   void EnsureProgressRingAnimationOfType(ProgressRingAnimation::Type type) {
-    auto key = progress_indicator_->animation_key();
-    auto* ring_animation = GetProgressRingAnimationForKey(key);
+    auto* ring_animation = GetProgressRingAnimationForKey(progress_indicator_);
     if (ring_animation && ring_animation->type() == type)
       return;
 
@@ -233,29 +224,28 @@ class DefaultProgressIndicatorAnimationRegistry
                                 OnProgressRingAnimationUpdated,
                             base::Unretained(this), animation.get()));
 
-    SetProgressRingAnimationForKey(key, std::move(animation))->Start();
+    SetProgressRingAnimationForKey(progress_indicator_, std::move(animation))
+        ->Start();
   }
 
   // Erases any existing progress icon animation.
   void EraseProgressIconAnimation() {
-    SetProgressIconAnimationForKey(progress_indicator_->animation_key(),
-                                   nullptr);
+    SetProgressIconAnimationForKey(progress_indicator_, nullptr);
   }
 
   // Erases any existing progress ring animation.
   void EraseProgressRingAnimation() {
-    SetProgressRingAnimationForKey(progress_indicator_->animation_key(),
-                                   nullptr);
+    SetProgressRingAnimationForKey(progress_indicator_, nullptr);
   }
 
   // The progress indicator for which to manage animations and a subscription
   // to receive notification of progress change events.
-  raw_ptr<ProgressIndicator> progress_indicator_ = nullptr;
+  raw_ptr<ProgressIndicator, ExperimentalAsh> progress_indicator_ = nullptr;
   base::CallbackListSubscription progress_changed_subscription_;
 
   // Instantiate `previous_progress_` to completion to avoid starting a pulse
   // animation on first progress update.
-  std::optional<float> previous_progress_ =
+  absl::optional<float> previous_progress_ =
       ProgressIndicator::kProgressComplete;
 
   base::WeakPtrFactory<DefaultProgressIndicatorAnimationRegistry>
@@ -272,10 +262,9 @@ class DefaultProgressIndicator : public ProgressIndicator {
  public:
   DefaultProgressIndicator(
       std::unique_ptr<DefaultProgressIndicatorAnimationRegistry> registry,
-      base::RepeatingCallback<std::optional<float>()> progress_callback)
-      : ProgressIndicator(
-            registry.get(),
-            ProgressIndicatorAnimationRegistry::AsAnimationKey(this)),
+      base::RepeatingCallback<absl::optional<float>()> progress_callback)
+      : ProgressIndicator(/*registry=*/registry.get(),
+                          /*animation_key=*/this),
         registry_(std::move(registry)),
         progress_callback_(std::move(progress_callback)) {
     registry_->SetProgressIndicator(this);
@@ -287,12 +276,12 @@ class DefaultProgressIndicator : public ProgressIndicator {
 
  private:
   // ProgressIndicator:
-  std::optional<float> CalculateProgress() const override {
+  absl::optional<float> CalculateProgress() const override {
     return progress_callback_.Run();
   }
 
   std::unique_ptr<DefaultProgressIndicatorAnimationRegistry> registry_;
-  base::RepeatingCallback<std::optional<float>()> progress_callback_;
+  base::RepeatingCallback<absl::optional<float>()> progress_callback_;
 };
 
 }  // namespace
@@ -305,7 +294,7 @@ constexpr float ProgressIndicator::kProgressComplete;
 
 ProgressIndicator::ProgressIndicator(
     ProgressIndicatorAnimationRegistry* animation_registry,
-    ProgressIndicatorAnimationRegistry::AnimationKey animation_key)
+    const void* animation_key)
     : animation_registry_(animation_registry), animation_key_(animation_key) {
   if (!animation_registry_)
     return;
@@ -349,7 +338,7 @@ ProgressIndicator::~ProgressIndicator() = default;
 
 // static
 std::unique_ptr<ProgressIndicator> ProgressIndicator::CreateDefaultInstance(
-    base::RepeatingCallback<std::optional<float>()> progress_callback) {
+    base::RepeatingCallback<absl::optional<float>()> progress_callback) {
   return std::make_unique<DefaultProgressIndicator>(
       std::make_unique<DefaultProgressIndicatorAnimationRegistry>(),
       std::move(progress_callback));
@@ -360,9 +349,8 @@ base::CallbackListSubscription ProgressIndicator::AddProgressChangedCallback(
   return progress_changed_callback_list_.Add(std::move(callback));
 }
 
-ui::Layer* ProgressIndicator::CreateLayer(ColorResolver color_resolver) {
-  CHECK(!layer());
-  CHECK(color_resolver);
+ui::Layer* ProgressIndicator::CreateLayer() {
+  DCHECK(!layer());
 
   auto layer = std::make_unique<ui::Layer>(ui::LAYER_TEXTURED);
   layer->set_delegate(this);
@@ -370,14 +358,10 @@ ui::Layer* ProgressIndicator::CreateLayer(ColorResolver color_resolver) {
   layer->SetName(kClassName);
   Reset(std::move(layer));
 
-  color_resolver_ = std::move(color_resolver);
-
   return this->layer();
 }
 
 void ProgressIndicator::DestroyLayer() {
-  color_resolver_.Reset();
-
   if (layer())
     ReleaseLayer();
 }
@@ -385,15 +369,6 @@ void ProgressIndicator::DestroyLayer() {
 void ProgressIndicator::InvalidateLayer() {
   if (layer())
     layer()->SchedulePaint(gfx::Rect(layer()->size()));
-}
-
-void ProgressIndicator::SetColorId(const std::optional<ui::ColorId>& color_id) {
-  if (color_id_ == color_id) {
-    return;
-  }
-
-  color_id_ = color_id;
-  InvalidateLayer();
 }
 
 void ProgressIndicator::SetInnerIconVisible(bool visible) {
@@ -406,48 +381,6 @@ void ProgressIndicator::SetInnerIconVisible(bool visible) {
   // since the inner icon is only painted while progress is incomplete.
   if (progress_ != kProgressComplete)
     InvalidateLayer();
-}
-
-void ProgressIndicator::SetInnerRingVisible(bool visible) {
-  if (inner_ring_visible_ == visible) {
-    return;
-  }
-
-  inner_ring_visible_ = visible;
-
-  // It's not necessary to invalidate the `layer()` if progress is complete
-  // since the inner ring is only painted while progress is incomplete.
-  if (progress_ != kProgressComplete) {
-    InvalidateLayer();
-  }
-}
-
-void ProgressIndicator::SetOuterRingTrackVisible(bool visible) {
-  if (outer_ring_track_visible_ == visible) {
-    return;
-  }
-
-  outer_ring_track_visible_ = visible;
-
-  // It's not necessary to invalidate the `layer()` if progress is complete
-  // since the progress ring track is only painted while progress is incomplete.
-  if (progress_ != kProgressComplete) {
-    InvalidateLayer();
-  }
-}
-
-void ProgressIndicator::SetOuterRingStrokeWidth(float width) {
-  if (outer_ring_stroke_width_ == width) {
-    return;
-  }
-
-  outer_ring_stroke_width_ = width;
-
-  // It's not necessary to invalidate the `layer()` if progress is complete
-  // since the outer ring is only painted while progress is incomplete.
-  if (progress_ != kProgressComplete) {
-    InvalidateLayer();
-  }
 }
 
 void ProgressIndicator::OnDeviceScaleFactorChanged(float old_scale,
@@ -504,8 +437,7 @@ void ProgressIndicator::OnPaintLayer(const ui::PaintContext& context) {
     canvas->SaveLayerAlpha(SK_AlphaOPAQUE * opacity);
   }
 
-  float outer_ring_stroke_width = outer_ring_stroke_width_.value_or(
-      GetOuterRingStrokeWidth(layer(), progress_));
+  float outer_ring_stroke_width = GetOuterRingStrokeWidth(layer(), progress_);
   gfx::RectF bounds(gfx::SizeF(layer()->size()));
   bounds.Inset(gfx::InsetsF(outer_ring_stroke_width / 2.f));
   SkPath path(CreateRoundedRectPath(
@@ -513,35 +445,26 @@ void ProgressIndicator::OnPaintLayer(const ui::PaintContext& context) {
 
   cc::PaintFlags flags;
   flags.setAntiAlias(true);
-  flags.setStrokeCap(cc::PaintFlags::Cap::kRound_Cap);
+  flags.setStrokeCap(cc::PaintFlags::Cap::kDefault_Cap);
   flags.setStrokeWidth(outer_ring_stroke_width);
   flags.setStyle(cc::PaintFlags::Style::kStroke_Style);
 
-  const SkColor color =
-      color_resolver_.Run(color_id_.value_or(cros_tokens::kCrosSysPrimary));
+  const SkColor color = AshColorProvider::Get()->GetControlsLayerColor(
+      AshColorProvider::ControlsLayerType::kFocusRingColor);
 
+  // Outer ring.
   flags.setColor(SkColorSetA(
       color,
       SK_AlphaOPAQUE * GetOuterRingOpacity(progress_) * outer_ring_opacity));
-
-  // Outer ring track.
-  if (outer_ring_track_visible_) {
-    canvas->DrawPath(path, flags);
-  }
-
-  // Outer ring.
-  if (start == end) {
-    // If `start` == `end`, prevent the canvas from drawing the caps.
-  } else if (start < end) {
+  if (start <= end) {
     // If `start` <= `end`, only a single path segment is necessary.
     canvas->DrawPath(CreatePathSegment(path, start, end), flags);
   } else {
-    // If `start` > `end`, join two path segments as a single path and use that
-    // to draw the progress ring. This works around limitations of
-    // `SkPathMeasure` which require that `start` be <= `end`.
-    SkPath joined_path(CreatePathSegment(path, start, 1.0f));
-    joined_path.addPath(CreatePathSegment(path, 0.f, end));
-    canvas->DrawPath(joined_path, flags);
+    // If `start` > `end`, two path segments are used to give the illusion of a
+    // single progress ring. This works around limitations of `SkPathMeasure`
+    // which require that `start` be <= `end`.
+    canvas->DrawPath(CreatePathSegment(path, start, 1.f), flags);
+    canvas->DrawPath(CreatePathSegment(path, 0.f, end), flags);
   }
 
   // The inner ring and inner icon should be absent once progress completes.
@@ -557,7 +480,6 @@ void ProgressIndicator::OnPaintLayer(const ui::PaintContext& context) {
   }
 
   const bool inner_ring_visible =
-      inner_ring_visible_ &&
       !cc::MathUtil::IsWithinEpsilon(inner_ring_stroke_width, 0.f);
 
   // Inner ring.

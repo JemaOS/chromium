@@ -31,7 +31,7 @@ class AppTypeInitializedEvent : public apps::AppRegistryCache::Observer {
       apps::AppRegistryCache* cache) override;
 
  private:
-  raw_ptr<Profile> profile_ = nullptr;
+  raw_ptr<Profile> profile_;
   apps::AppType app_type_;
 
   base::OnceClosure callback_;

@@ -100,7 +100,7 @@ void ActivityLogAPI::OnExtensionActivity(scoped_refptr<Action> activity) {
 
 ExtensionFunction::ResponseAction
 ActivityLogPrivateGetExtensionActivitiesFunction::Run() {
-  std::optional<activity_log_private::GetExtensionActivities::Params> params =
+  absl::optional<activity_log_private::GetExtensionActivities::Params> params =
       activity_log_private::GetExtensionActivities::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -168,7 +168,7 @@ void ActivityLogPrivateGetExtensionActivitiesFunction::OnLookupCompleted(
 
 ExtensionFunction::ResponseAction
 ActivityLogPrivateDeleteActivitiesFunction::Run() {
-  std::optional<activity_log_private::DeleteActivities::Params> params =
+  absl::optional<activity_log_private::DeleteActivities::Params> params =
       activity_log_private::DeleteActivities::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -188,7 +188,7 @@ ActivityLogPrivateDeleteActivitiesFunction::Run() {
 
 ExtensionFunction::ResponseAction
 ActivityLogPrivateDeleteActivitiesByExtensionFunction::Run() {
-  std::optional<activity_log_private::DeleteActivitiesByExtension::Params>
+  absl::optional<activity_log_private::DeleteActivitiesByExtension::Params>
       params =
           activity_log_private::DeleteActivitiesByExtension::Params::Create(
               args());
@@ -209,7 +209,7 @@ ActivityLogPrivateDeleteDatabaseFunction::Run() {
 }
 
 ExtensionFunction::ResponseAction ActivityLogPrivateDeleteUrlsFunction::Run() {
-  std::optional<activity_log_private::DeleteUrls::Params> params =
+  absl::optional<activity_log_private::DeleteUrls::Params> params =
       activity_log_private::DeleteUrls::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 

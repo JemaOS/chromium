@@ -1,7 +1,3 @@
-
-import {TestRunner} from 'test_runner';
-
-import * as UI from 'devtools/ui/legacy/legacy.js';
 (async function() {
   TestRunner.addResult('Test ListControl rendering and selection for non-viewport mode.');
 
@@ -36,9 +32,9 @@ import * as UI from 'devtools/ui/legacy/legacy.js';
   }
 
   var delegate = new Delegate();
-  var model = new UI.ListModel.ListModel();
-  var list = new UI.ListControl.ListControl(model, delegate, UI.ListControl.ListMode.NonViewport);
-  UI.InspectorView.InspectorView.instance().element.appendChild(list.element);
+  var model = new UI.ListModel();
+  var list = new UI.ListControl(model, delegate, UI.ListMode.NonViewport);
+  UI.inspectorView.element.appendChild(list.element);
 
   function dumpList()
   {

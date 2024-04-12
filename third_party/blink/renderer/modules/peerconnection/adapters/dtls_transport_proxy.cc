@@ -25,8 +25,8 @@ std::unique_ptr<DtlsTransportProxy> DtlsTransportProxy::Create(
   std::unique_ptr<DtlsTransportProxy> proxy =
       base::WrapUnique(new DtlsTransportProxy(frame, proxy_thread, host_thread,
                                               dtls_transport, delegate));
-  // TODO(hta, tommi): Delete this thread jump once creation can be initiated
-  // from the host thread (=webrtc network thread).
+  // TODO(hta): Delete this thread jump once creation can be initiated
+  // from the host thread (=webrtc signalling thread).
   PostCrossThreadTask(
       *host_thread, FROM_HERE,
       CrossThreadBindOnce(&DtlsTransportProxy::StartOnHostThread,
@@ -43,15 +43,14 @@ DtlsTransportProxy::DtlsTransportProxy(
     : proxy_thread_(std::move(proxy_thread)),
       host_thread_(std::move(host_thread)),
       dtls_transport_(dtls_transport),
-      delegate_(MakeCrossThreadHandle(delegate)) {}
+      delegate_(delegate) {}
 
 void DtlsTransportProxy::StartOnHostThread() {
   DCHECK(host_thread_->BelongsToCurrentThread());
   dtls_transport_->RegisterObserver(this);
   PostCrossThreadTask(
       *proxy_thread_, FROM_HERE,
-      CrossThreadBindOnce(&Delegate::OnStartCompleted,
-                          MakeUnwrappingCrossThreadHandle(delegate_),
+      CrossThreadBindOnce(&Delegate::OnStartCompleted, delegate_,
                           dtls_transport_->Information()));
 }
 
@@ -65,12 +64,9 @@ void DtlsTransportProxy::OnStateChange(webrtc::DtlsTransportInformation info) {
   }
   PostCrossThreadTask(
       *proxy_thread_, FROM_HERE,
-      CrossThreadBindOnce(&Delegate::OnStateChange,
-                          MakeUnwrappingCrossThreadHandle(delegate_), info));
+      CrossThreadBindOnce(&Delegate::OnStateChange, delegate_, info));
   if (info.state() == webrtc::DtlsTransportState::kClosed) {
-    // This effectively nullifies `delegate_`. We can't just assign nullptr the
-    // normal way, because CrossThreadHandle does not support assignment.
-    CrossThreadHandle<Delegate> expiring_handle = std::move(delegate_);
+    delegate_ = nullptr;
   }
 }
 

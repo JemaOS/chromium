@@ -8,9 +8,7 @@
 #include <windows.h>
 
 #include <memory>
-#include <optional>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -34,13 +32,28 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "printing/emf_win.h"
 #include "printing/pdf_render_settings.h"
-#include "url/gurl.h"
 
 using content::BrowserThread;
 
 namespace printing {
 
 namespace {
+
+// Emf subclass that knows how to play back PostScript data embedded as EMF
+// comment records.
+class PostScriptMetaFile : public Emf {
+ public:
+  PostScriptMetaFile() {}
+
+  PostScriptMetaFile(const PostScriptMetaFile&) = delete;
+  PostScriptMetaFile& operator=(const PostScriptMetaFile&) = delete;
+
+  ~PostScriptMetaFile() override {}
+
+ private:
+  // Emf:
+  bool SafePlayback(HDC hdc) const override;
+};
 
 // Class for converting PDF to another format for printing (Emf, Postscript).
 // Class lives on the UI thread.
@@ -56,8 +69,6 @@ class PdfConverterImpl : public PdfConverter {
  public:
   PdfConverterImpl(scoped_refptr<base::RefCountedMemory> data,
                    const PdfRenderSettings& conversion_settings,
-                   const std::optional<bool>& use_skia,
-                   const GURL& url,
                    StartCallback start_callback);
 
   PdfConverterImpl(const PdfConverterImpl&) = delete;
@@ -118,15 +129,11 @@ class PdfConverterImpl : public PdfConverter {
   void OnPageDone(base::ReadOnlySharedMemoryRegion emf_region,
                   float scale_factor);
 
-  void OnFailed(std::string_view error_message);
+  void OnFailed(const std::string& error_message);
 
   void RecordConversionMetrics();
 
   const PdfRenderSettings settings_;
-
-  std::optional<bool> use_skia_;
-
-  const GURL url_;
 
   // Document loaded callback.
   PdfConverter::StartCallback start_callback_;
@@ -171,15 +178,27 @@ std::unique_ptr<MetafilePlayer> PdfConverterImpl::GetMetaFileFromMapping(
   return metafile;
 }
 
+bool PostScriptMetaFile::SafePlayback(HDC hdc) const {
+  Emf::Enumerator emf_enum(*this, nullptr, nullptr);
+  for (const Emf::Record& record : emf_enum) {
+    auto* emf_record = record.record();
+    if (emf_record->iType != EMR_GDICOMMENT)
+      continue;
+
+    const EMRGDICOMMENT* comment =
+        reinterpret_cast<const EMRGDICOMMENT*>(emf_record);
+    const char* data = reinterpret_cast<const char*>(comment->Data);
+    const uint16_t* ptr = reinterpret_cast<const uint16_t*>(data);
+    int ret = ExtEscape(hdc, PASSTHROUGH, 2 + *ptr, data, 0, nullptr);
+    DCHECK_EQ(*ptr, ret);
+  }
+  return true;
+}
+
 PdfConverterImpl::PdfConverterImpl(scoped_refptr<base::RefCountedMemory> data,
                                    const PdfRenderSettings& settings,
-                                   const std::optional<bool>& use_skia,
-                                   const GURL& url,
                                    StartCallback start_callback)
-    : settings_(settings),
-      use_skia_(use_skia),
-      url_(url),
-      start_callback_(std::move(start_callback)) {
+    : settings_(settings), start_callback_(std::move(start_callback)) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   DCHECK(start_callback_);
 
@@ -194,14 +213,14 @@ PdfConverterImpl::~PdfConverterImpl() {
 
 void PdfConverterImpl::Initialize(scoped_refptr<base::RefCountedMemory> data) {
   if (simulate_failure_initializing_conversion_) {
-    OnFailed("Failed to create PDF data mapping.");
+    OnFailed(std::string("Failed to create PDF data mapping."));
     return;
   }
 
   base::MappedReadOnlyRegion memory =
       base::ReadOnlySharedMemoryRegion::Create(data->size());
   if (!memory.IsValid()) {
-    OnFailed("Failed to create PDF data mapping.");
+    OnFailed(std::string("Failed to create PDF data mapping."));
     return;
   }
 
@@ -212,7 +231,7 @@ void PdfConverterImpl::Initialize(scoped_refptr<base::RefCountedMemory> data) {
       pdf_to_emf_converter_factory_.BindNewPipeAndPassReceiver());
   pdf_to_emf_converter_factory_.set_disconnect_handler(base::BindOnce(
       &PdfConverterImpl::OnFailed, weak_ptr_factory_.GetWeakPtr(),
-      "Connection to PdfToEmfConverterFactory error."));
+      std::string("Connection to PdfToEmfConverterFactory error.")));
 
   pdf_to_emf_converter_factory_->CreateConverter(
       std::move(memory.region), settings_,
@@ -228,11 +247,7 @@ void PdfConverterImpl::OnPageCount(
   pdf_to_emf_converter_.Bind(std::move(converter));
   pdf_to_emf_converter_.set_disconnect_handler(base::BindOnce(
       &PdfConverterImpl::OnFailed, weak_ptr_factory_.GetWeakPtr(),
-      "Connection to PdfToEmfConverter error."));
-  pdf_to_emf_converter_->SetWebContentsURL(url_);
-  if (use_skia_) {
-    pdf_to_emf_converter_->SetUseSkiaRendererPolicy(*use_skia_);
-  }
+      std::string("Connection to PdfToEmfConverter error.")));
   std::move(start_callback_).Run(page_count);
   page_count_ = page_count;
 }
@@ -247,7 +262,7 @@ void PdfConverterImpl::GetPage(
   get_page_callbacks_.push(GetPageCallbackData(page_index, get_page_callback));
 
   if (!pdf_to_emf_converter_)
-    return OnFailed("No PdfToEmfConverter.");
+    return OnFailed(std::string("No PdfToEmfConverter."));
 
   pdf_to_emf_converter_->ConvertPage(
       page_index, base::BindOnce(&PdfConverterImpl::OnPageDone,
@@ -259,7 +274,7 @@ void PdfConverterImpl::OnPageDone(base::ReadOnlySharedMemoryRegion emf_region,
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   if (get_page_callbacks_.empty())
-    return OnFailed("No get_page callbacks.");
+    return OnFailed(std::string("No get_page callbacks."));
 
   GetPageCallbackData& data = get_page_callbacks_.front();
   std::unique_ptr<MetafilePlayer> metafile;
@@ -290,11 +305,11 @@ void PdfConverterImpl::Stop() {
   pdf_to_emf_converter_.reset();
 }
 
-void PdfConverterImpl::OnFailed(std::string_view error_message) {
+void PdfConverterImpl::OnFailed(const std::string& error_message) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   LOG(ERROR) << "Failed to convert PDF: " << error_message;
   base::WeakPtr<PdfConverterImpl> weak_this = weak_ptr_factory_.GetWeakPtr();
-  if (start_callback_) {
+  if (!start_callback_.is_null()) {
     std::move(start_callback_).Run(/*page_count=*/0);
     if (!weak_this)
       return;  // Protect against the `start_callback_` deleting `this`.
@@ -347,6 +362,9 @@ void PdfConverterImpl::RecordConversionMetrics() {
           "Printing.ConversionSize.PostScript3WithType42Fonts",
           average_page_size_in_kb);
       return;
+    default:
+      NOTREACHED();
+      return;
   }
 }
 
@@ -358,11 +376,9 @@ PdfConverter::~PdfConverter() = default;
 std::unique_ptr<PdfConverter> PdfConverter::StartPdfConverter(
     scoped_refptr<base::RefCountedMemory> data,
     const PdfRenderSettings& conversion_settings,
-    const std::optional<bool>& use_skia,
-    const GURL& url,
     StartCallback start_callback) {
-  return std::make_unique<PdfConverterImpl>(data, conversion_settings, use_skia,
-                                            url, std::move(start_callback));
+  return std::make_unique<PdfConverterImpl>(data, conversion_settings,
+                                            std::move(start_callback));
 }
 
 ScopedSimulateFailureCreatingTempFileForTests::

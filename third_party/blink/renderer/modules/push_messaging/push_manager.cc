@@ -64,14 +64,14 @@ bool ValidateOptions(blink::PushSubscriptionOptions* options,
 }
 }  // namespace
 
-ScriptPromiseTyped<PushSubscription> PushManager::subscribe(
+ScriptPromise PushManager::subscribe(
     ScriptState* script_state,
     const PushSubscriptionOptionsInit* options_init,
     ExceptionState& exception_state) {
   if (!script_state->ContextIsValid()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Window is detached.");
-    return ScriptPromiseTyped<PushSubscription>();
+    return ScriptPromise();
   }
 
   ExecutionContext* execution_context = ExecutionContext::From(script_state);
@@ -79,28 +79,27 @@ ScriptPromiseTyped<PushSubscription> PushManager::subscribe(
     exception_state.ThrowDOMException(
         DOMExceptionCode::kNotAllowedError,
         "subscribe() is not allowed in fenced frames.");
-    return ScriptPromiseTyped<PushSubscription>();
+    return ScriptPromise();
   }
 
   if (!registration_->active()) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kAbortError,
         "Subscription failed - no active Service Worker");
-    return ScriptPromiseTyped<PushSubscription>();
+    return ScriptPromise();
   }
 
   PushSubscriptionOptions* options =
       PushSubscriptionOptions::FromOptionsInit(options_init, exception_state);
   if (exception_state.HadException())
-    return ScriptPromiseTyped<PushSubscription>();
+    return ScriptPromise();
 
   if (!ValidateOptions(options, exception_state))
-    return ScriptPromiseTyped<PushSubscription>();
+    return ScriptPromise();
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<PushSubscription>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
   // The window is the only reasonable context from which to ask the
   // user for permission to use the Push API. The embedder should persist the
@@ -112,38 +111,35 @@ ScriptPromiseTyped<PushSubscription> PushManager::subscribe(
     messaging_client->Subscribe(
         registration_, options,
         LocalFrame::HasTransientUserActivation(window->GetFrame()),
-        std::make_unique<PushSubscriptionCallbacks>(resolver,
-                                                    /*null_allowed=*/false));
+        std::make_unique<PushSubscriptionCallbacks>(resolver, registration_));
   } else {
     GetPushProvider(registration_)
         ->Subscribe(options, LocalFrame::HasTransientUserActivation(nullptr),
-                    std::make_unique<PushSubscriptionCallbacks>(
-                        resolver, /*null_allowed=*/false));
+                    std::make_unique<PushSubscriptionCallbacks>(resolver,
+                                                                registration_));
   }
 
   return promise;
 }
 
-ScriptPromiseTyped<IDLNullable<PushSubscription>> PushManager::getSubscription(
-    ScriptState* script_state) {
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLNullable<PushSubscription>>>(script_state);
-  auto promise = resolver->Promise();
+ScriptPromise PushManager::getSubscription(ScriptState* script_state) {
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   GetPushProvider(registration_)
-      ->GetSubscription(std::make_unique<PushSubscriptionCallbacks>(
-          resolver, /*null_allowed=*/true));
+      ->GetSubscription(
+          std::make_unique<PushSubscriptionCallbacks>(resolver, registration_));
   return promise;
 }
 
-ScriptPromiseTyped<V8PermissionState> PushManager::permissionState(
+ScriptPromise PushManager::permissionState(
     ScriptState* script_state,
     const PushSubscriptionOptionsInit* options,
     ExceptionState& exception_state) {
   if (!script_state->ContextIsValid()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Window is detached.");
-    return ScriptPromiseTyped<V8PermissionState>();
+    return ScriptPromise();
   }
 
   return PushMessagingBridge::From(registration_)

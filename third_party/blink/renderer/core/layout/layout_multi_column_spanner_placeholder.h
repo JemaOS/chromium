@@ -18,9 +18,10 @@ namespace blink {
 // multicol container.
 class LayoutMultiColumnSpannerPlaceholder final : public LayoutBox {
  public:
-  bool IsLayoutMultiColumnSpannerPlaceholder() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectMultiColumnSpannerPlaceholder ||
+           LayoutBox::IsOfType(type);
   }
 
   static LayoutMultiColumnSpannerPlaceholder* CreateAnonymous(
@@ -41,7 +42,16 @@ class LayoutMultiColumnSpannerPlaceholder final : public LayoutBox {
 
   LayoutBox* LayoutObjectInFlowThread() const {
     NOT_DESTROYED();
-    return layout_object_in_flow_thread_.Get();
+    return layout_object_in_flow_thread_;
+  }
+  void MarkForLayoutIfObjectInFlowThreadNeedsLayout() {
+    NOT_DESTROYED();
+    if (!layout_object_in_flow_thread_->NeedsLayout())
+      return;
+    // The containing block of a spanner is the multicol container (our parent
+    // here), but the spanner is laid out via its spanner set (us), so we need
+    // to make sure that we enter it.
+    SetChildNeedsLayout(kMarkOnlyThis);
   }
 
   bool AnonymousHasStylePropagationOverride() final {
@@ -62,11 +72,27 @@ class LayoutMultiColumnSpannerPlaceholder final : public LayoutBox {
  protected:
   void InsertedIntoTree() override;
   void WillBeRemovedFromTree() override;
+  bool NeedsPreferredWidthsRecalculation() const override;
+  void RecalcVisualOverflow() override;
+  MinMaxSizes PreferredLogicalWidths() const override;
   void UpdateLayout() override;
+  void ComputeLogicalHeight(LayoutUnit logical_height,
+                            LayoutUnit logical_top,
+                            LogicalExtentComputedValues&) const override;
+  void Paint(const PaintInfo&) const override;
+  bool NodeAtPoint(HitTestResult&,
+                   const HitTestLocation&,
+                   const PhysicalOffset& accumulated_offset,
+                   HitTestPhase) override;
 
  private:
-  LayoutPoint LocationInternal() const override;
-  PhysicalSize Size() const override;
+  MinMaxSizes ComputeIntrinsicLogicalWidths() const final {
+    NOT_DESTROYED();
+    NOTREACHED();
+    return MinMaxSizes();
+  }
+  LayoutPoint Location() const override;
+  LayoutSize Size() const override;
 
   // The actual column-span:all layoutObject inside the flow thread.
   Member<LayoutBox> layout_object_in_flow_thread_;

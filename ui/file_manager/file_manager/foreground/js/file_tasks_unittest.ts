@@ -5,40 +5,90 @@
 import {loadTimeData} from 'chrome://resources/ash/common/load_time_data.m.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 
-import type {EntryLocation} from '../../background/js/entry_location_impl.js';
 import {createCrostiniForTest} from '../../background/js/mock_crostini.js';
 import {MockProgressCenter} from '../../background/js/mock_progress_center.js';
-import type {VolumeInfo} from '../../background/js/volume_info.js';
-import type {VolumeManager} from '../../background/js/volume_manager.js';
-import {installMockChrome, MockMetrics} from '../../common/js/mock_chrome.js';
+import {metrics} from '../../common/js/metrics.js';
+import {installMockChrome} from '../../common/js/mock_chrome.js';
 import {MockFileEntry, MockFileSystem} from '../../common/js/mock_entry.js';
 import {ProgressItemState} from '../../common/js/progress_center_common.js';
 import {LEGACY_FILES_EXTENSION_ID} from '../../common/js/url_constants.js';
-import {descriptorEqual} from '../../common/js/util.js';
-import {RootType, VolumeError, VolumeType} from '../../common/js/volume_manager_types.js';
-import type {XfPasswordDialog} from '../../widgets/xf_password_dialog.js';
-import {USER_CANCELLED} from '../../widgets/xf_password_dialog.js';
+import {util} from '../../common/js/util.js';
+import {VolumeManagerCommon} from '../../common/js/volume_manager_types.js';
+import {EntryLocation} from '../../externs/entry_location.js';
+import {VolumeInfo} from '../../externs/volume_info.js';
+import {VolumeManager} from '../../externs/volume_manager.js';
+import {FilesPasswordDialog} from '../elements/files_password_dialog.js';
 
-import type {DirectoryModel} from './directory_model.js';
-import {type DirectoryChangeTracker} from './directory_model.js';
-import type {FileManager} from './file_manager.js';
+import {DirectoryChangeTracker, DirectoryModel} from './directory_model.js';
+import {FileManager} from './file_manager.js';
 import {FileTasks} from './file_tasks.js';
-import type {FileTransferController} from './file_transfer_controller.js';
+import {FileTransferController} from './file_transfer_controller.js';
 import {MetadataItem} from './metadata/metadata_item.js';
-import type {MetadataModel} from './metadata/metadata_model.js';
-import type {TaskController} from './task_controller.js';
-import type {TaskHistory} from './task_history.js';
-import type {DefaultTaskDialog} from './ui/default_task_dialog.js';
-import type {ImportCrostiniImageDialog} from './ui/import_crostini_image_dialog.js';
-import type {InstallLinuxPackageDialog} from './ui/install_linux_package_dialog.js';
+import {MetadataModel} from './metadata/metadata_model.js';
+import {TaskController} from './task_controller.js';
+import {TaskHistory} from './task_history.js';
+import {DefaultTaskDialog} from './ui/default_task_dialog.js';
+import {ImportCrostiniImageDialog} from './ui/import_crostini_image_dialog.js';
+import {InstallLinuxPackageDialog} from './ui/install_linux_package_dialog.js';
 
-let passwordDialog: XfPasswordDialog;
+/** Utility function that appends value under a given name in the store.  */
+function record<T>(store: Map<string, T[]>, name: string, value: T) {
+  let recorded = store.get(name);
+  if (!recorded) {
+    recorded = [];
+    store.set(name, recorded);
+  }
+  recorded.push(value);
+}
 
-/** Mock chrome APIs. */
-let mockChrome: any;
+/**
+ * A map from histogram name to all enums recorded for it.
+ */
+const enumMap = new Map();
 
-/** Mock to keep track of the calls to metricsPrivate. */
-let mockMetrics: MockMetrics;
+/**
+ * A map from histogram name to all counts recorded for it.
+ */
+const countMap = new Map();
+
+/**
+ * A map from histogram name to all times recorded for it.
+ */
+const timeMap = new Map();
+
+let passwordDialog: FilesPasswordDialog;
+
+/** Mock metrics.recordEnum.  */
+// @ts-ignore: Remove ignore once metrics_base.recordEnum() is in TS and the
+// signature is compatible.
+metrics.recordEnum = function<T>(name: string, value: T, valid: T[]): void {
+  assertTrue(valid.includes(value));
+  record(enumMap, name, value);
+};
+
+/**
+ * Mock metrics.recordSmallCount.
+ * @param {string} name Short metric name.
+ * @param {number} value Value to be recorded.
+ */
+metrics.recordSmallCount = function(name: string, value: number) {
+  record(countMap, name, value);
+};
+
+/**
+ * Mock metrics.recordTime.
+ * @param {string} name Short metric name.
+ * @param {number} time Time to be recorded in milliseconds.
+ */
+metrics.recordTime = function(name: string, time: number) {
+  record(timeMap, name, time);
+};
+
+/**
+ * Mock chrome APIs.
+ * @type {!Object}
+ */
+let mockChrome;
 
 /** Mock task history. */
 const mockTaskHistory = {
@@ -87,11 +137,8 @@ export function setUp() {
     isGenericFileHandler: true,
   } as unknown as chrome.fileManagerPrivate.FileTask;
 
-  mockMetrics = new MockMetrics();
-
   // Mock chome APIs.
   mockChrome = {
-    metricsPrivate: mockMetrics,
     fileManagerPrivate: {
       getFileTasks: function(
           _entries: Entry[], _sourceUrls: string[],
@@ -101,7 +148,7 @@ export function setUp() {
       executeTask: function(
           _descriptor: any, _entries: any,
           onViewFiles: (result: chrome.fileManagerPrivate.TaskResult) => void) {
-        onViewFiles(chrome.fileManagerPrivate.TaskResult.FAILED);
+        onViewFiles('failed');
       },
       sharePathsWithCrostini: function(
           _vmName: any, _entries: Entry[], _persist: any,
@@ -112,6 +159,9 @@ export function setUp() {
   };
 
   installMockChrome(mockChrome);
+  enumMap.clear();
+  countMap.clear();
+  timeMap.clear();
 }
 
 /**
@@ -130,12 +180,12 @@ function failWithMessage(message: string, details?: string) {
 function getMockFileManager(): FileManager {
   const crostini = createCrostiniForTest();
 
-  passwordDialog = {} as unknown as XfPasswordDialog;
+  passwordDialog = {} as unknown as FilesPasswordDialog;
   const fileManager = {
-    volumeManager: {
+    volumeManager: /** @type {!VolumeManager} */ ({
       getLocationInfo: function(_entry: Entry) {
         return {
-          rootType: RootType.DRIVE,
+          rootType: VolumeManagerCommon.RootType.DRIVE,
         };
       },
       getDriveConnectionState: function() {
@@ -143,11 +193,11 @@ function getMockFileManager(): FileManager {
       },
       getVolumeInfo: function(_entry: Entry) {
         return {
-          volumeType: VolumeType.DRIVE,
+          volumeType: VolumeManagerCommon.VolumeType.DRIVE,
         };
       },
-    },
-    ui: {
+    }),
+    ui: /** @type {!FileManagerUI} */ ({
       alertDialog: {
         showHtml: function(
             _title: string, _text: string, _onOk: () => void,
@@ -155,7 +205,7 @@ function getMockFileManager(): FileManager {
       },
       passwordDialog,
       speakA11yMessage: (_text: string) => {},
-    },
+    }),
     metadataModel: {
       getCache: function(_entries: Entry[], _names: string[]) {
         return _entries.map(_ => new MetadataItem());
@@ -398,20 +448,20 @@ export async function testOpenWithMostRecentlyExecuted(done: () => void) {
             0);
       };
 
-  const taskHistory = {
+  const taskHistory = /** @type {!TaskHistory} */ ({
     getLastExecutedTime: function(
         descriptor: chrome.fileManagerPrivate.FileTaskDescriptor) {
-      if (descriptorEqual(descriptor, oldTaskDescriptor)) {
+      if (util.descriptorEqual(descriptor, oldTaskDescriptor)) {
         return 10000;
       }
-      if (descriptorEqual(descriptor, latestTaskDescriptor)) {
+      if (util.descriptorEqual(descriptor, latestTaskDescriptor)) {
         return 20000;
       }
       return 0;
     },
     recordTaskExecuted: function(
         _descriptor: chrome.fileManagerPrivate.FileTaskDescriptor) {},
-  };
+  });
 
   type FileTaskDescriptor = chrome.fileManagerPrivate.FileTaskDescriptor;
   let executedTask: FileTaskDescriptor|null = null;
@@ -439,7 +489,7 @@ export async function testOpenWithMostRecentlyExecuted(done: () => void) {
       [mockEntry], taskHistory as TaskHistory, fileManager.crostini,
       fileManager.progressCenter, fileManager.taskController);
   await tasks.executeDefault();
-  assertTrue(descriptorEqual(latestTaskDescriptor, executedTask!));
+  assertTrue(util.descriptorEqual(latestTaskDescriptor, executedTask!));
 
   done();
 }
@@ -448,7 +498,7 @@ function setUpInstallLinuxPackage() {
   const fileManager = getMockFileManager();
   fileManager.volumeManager.getLocationInfo = (_entry): EntryLocation => {
     return {
-      rootType: RootType.CROSTINI,
+      rootType: VolumeManagerCommon.RootType.CROSTINI,
     } as unknown as EntryLocation;
   };
   const fileTask = {
@@ -550,6 +600,7 @@ export function testGetViewFileType() {
 /**
  * Checks that the progress center is properly updated when mounting archives
  * successfully.
+ * @suppress {visibility}
  */
 export async function testMountArchiveAndChangeDirectoryNotificationSuccess(
     done: () => void) {
@@ -585,7 +636,7 @@ export async function testMountArchiveAndChangeDirectoryNotificationSuccess(
       undefined, fileManager.progressCenter.getItemById(errorZipMountPanelId));
 
   // Check: a zip mount time UMA has been recorded.
-  assertTrue('FileBrowser.ZipMountTime.Other' in mockMetrics.metricCalls);
+  assertTrue(timeMap.has('ZipMountTime.Other'));
 
   done();
 }
@@ -593,6 +644,7 @@ export async function testMountArchiveAndChangeDirectoryNotificationSuccess(
 /**
  * Checks that the progress center is properly updated when mounting an archive
  * resolves with an error.
+ * @suppress {visibility}
  */
 export async function
 testMountArchiveAndChangeDirectoryNotificationInvalidArchive(done: () => void) {
@@ -606,7 +658,7 @@ testMountArchiveAndChangeDirectoryNotificationInvalidArchive(done: () => void) {
       fileManager.taskController);
 
   fileManager.volumeManager.mountArchive = function(_url, _password) {
-    return Promise.reject(VolumeError.INTERNAL_ERROR);
+    return Promise.reject(VolumeManagerCommon.VolumeError.INTERNAL_ERROR);
   };
 
   // Mount archive.
@@ -623,7 +675,7 @@ testMountArchiveAndChangeDirectoryNotificationInvalidArchive(done: () => void) {
 
   // Check: no zip mount time UMA has been recorded since mounting the archive
   // failed.
-  assertFalse('FileBrowser.ZipMountTime.Other' in mockMetrics.metricCalls);
+  assertFalse(timeMap.has('ZipMountTime.Other'));
 
   done();
 }
@@ -631,6 +683,7 @@ testMountArchiveAndChangeDirectoryNotificationInvalidArchive(done: () => void) {
 /**
  * Checks that the progress center is properly updated when the password prompt
  * for an encrypted archive is canceled.
+ * @suppress {visibility}
  */
 export async function
 testMountArchiveAndChangeDirectoryNotificationCancelPassword(done: () => void) {
@@ -644,12 +697,12 @@ testMountArchiveAndChangeDirectoryNotificationCancelPassword(done: () => void) {
       fileManager.taskController);
 
   fileManager.volumeManager.mountArchive = function(_url, _password) {
-    return Promise.reject(VolumeError.NEED_PASSWORD);
+    return Promise.reject(VolumeManagerCommon.VolumeError.NEED_PASSWORD);
   };
 
   passwordDialog.askForPassword =
       async function(_filename: string, _password: string|null = null) {
-    return Promise.reject(USER_CANCELLED);
+    return Promise.reject(FilesPasswordDialog.USER_CANCELLED);
   };
 
   // Mount archive.
@@ -666,7 +719,7 @@ testMountArchiveAndChangeDirectoryNotificationCancelPassword(done: () => void) {
 
   // Check: no zip mount time UMA has been recorded since the mount has been
   // cancelled.
-  assertFalse('FileBrowser.ZipMountTime.Other' in mockMetrics.metricCalls);
+  assertFalse(timeMap.has('ZipMountTime.Other'));
 
   done();
 }
@@ -674,6 +727,7 @@ testMountArchiveAndChangeDirectoryNotificationCancelPassword(done: () => void) {
 /**
  * Checks that the progress center is properly updated when mounting an
  * encrypted archive.
+ * @suppress {visibility}
  */
 export async function
 testMountArchiveAndChangeDirectoryNotificationEncryptedArchive(
@@ -695,7 +749,7 @@ testMountArchiveAndChangeDirectoryNotificationEncryptedArchive(
         const volumeInfo = {resolveDisplayRoot: () => null};
         resolve(volumeInfo as unknown as VolumeInfo);
       } else {
-        reject(VolumeError.NEED_PASSWORD);
+        reject(VolumeManagerCommon.VolumeError.NEED_PASSWORD);
       }
     });
   };

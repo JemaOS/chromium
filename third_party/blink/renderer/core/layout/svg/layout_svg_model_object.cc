@@ -74,8 +74,7 @@ void LayoutSVGModelObject::MapAncestorToLocal(
 void LayoutSVGModelObject::AbsoluteQuads(Vector<gfx::QuadF>& quads,
                                          MapCoordinatesFlags mode) const {
   NOT_DESTROYED();
-  quads.push_back(
-      LocalToAbsoluteQuad(gfx::QuadF(DecoratedBoundingBox()), mode));
+  quads.push_back(LocalToAbsoluteQuad(gfx::QuadF(StrokeBoundingBox()), mode));
 }
 
 // This method is called from inside PaintOutline(), and since we call
@@ -83,7 +82,7 @@ void LayoutSVGModelObject::AbsoluteQuads(Vector<gfx::QuadF>& quads,
 void LayoutSVGModelObject::AddOutlineRects(OutlineRectCollector& collector,
                                            OutlineInfo* info,
                                            const PhysicalOffset&,
-                                           OutlineType) const {
+                                           NGOutlineType) const {
   NOT_DESTROYED();
   gfx::RectF visual_rect = VisualRectInLocalSVGCoordinates();
   bool was_empty = visual_rect.IsEmpty();
@@ -99,13 +98,21 @@ void LayoutSVGModelObject::AddOutlineRects(OutlineRectCollector& collector,
 
 gfx::RectF LayoutSVGModelObject::LocalBoundingBoxRectForAccessibility() const {
   NOT_DESTROYED();
-  return DecoratedBoundingBox();
+  return StrokeBoundingBox();
 }
 
 void LayoutSVGModelObject::WillBeDestroyed() {
   NOT_DESTROYED();
   SVGResources::ClearEffects(*this);
   LayoutObject::WillBeDestroyed();
+}
+
+AffineTransform LayoutSVGModelObject::CalculateLocalTransform() const {
+  NOT_DESTROYED();
+  auto* element = GetElement();
+  if (element->HasTransform(SVGElement::kIncludeMotionTransform))
+    return element->CalculateTransform(SVGElement::kIncludeMotionTransform);
+  return AffineTransform();
 }
 
 bool LayoutSVGModelObject::CheckForImplicitTransformChange(
@@ -117,33 +124,10 @@ bool LayoutSVGModelObject::CheckForImplicitTransformChange(
     case ETransformBox::kViewBox:
       return SVGLayoutSupport::LayoutSizeOfNearestViewportChanged(this);
     case ETransformBox::kFillBox:
-    case ETransformBox::kContentBox:
-    case ETransformBox::kStrokeBox:
-    case ETransformBox::kBorderBox:
       return bbox_changed;
   }
   NOTREACHED();
   return false;
-}
-
-void LayoutSVGModelObject::ImageChanged(WrappedImagePtr image,
-                                        CanDeferInvalidation defer) {
-  NOT_DESTROYED();
-  for (const FillLayer* layer = &StyleRef().MaskLayers(); layer;
-       layer = layer->Next()) {
-    const StyleImage* style_image = layer->GetImage();
-    if (style_image && image == style_image->Data()) {
-      SetShouldDoFullPaintInvalidationWithoutLayoutChange(
-          PaintInvalidationReason::kImage);
-      if (style_image->IsMaskSource()) {
-        // Since an invalid <mask> reference does not yield a paint property on
-        // SVG content (see CSSMaskPainter), we need to update paint properties
-        // when such a reference changes.
-        SetNeedsPaintPropertyUpdate();
-      }
-      break;
-    }
-  }
 }
 
 void LayoutSVGModelObject::StyleDidChange(StyleDifference diff,
@@ -185,11 +169,6 @@ void LayoutSVGModelObject::StyleDidChange(StyleDifference diff,
 void LayoutSVGModelObject::InsertedIntoTree() {
   NOT_DESTROYED();
   LayoutObject::InsertedIntoTree();
-  // Ensure that the viewport dependency flag gets set on the ancestor chain.
-  if (SVGSelfOrDescendantHasViewportDependency()) {
-    ClearSVGSelfOrDescendantHasViewportDependency();
-    SetSVGSelfOrDescendantHasViewportDependency();
-  }
   LayoutSVGResourceContainer::MarkForLayoutAndParentResourceInvalidation(*this,
                                                                          false);
   if (StyleRef().HasSVGEffect())

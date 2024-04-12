@@ -25,7 +25,9 @@ class AppServiceInternalsPageHandlerImpl
   ~AppServiceInternalsPageHandlerImpl() override;
 
   // mojom::app_service_internals::AppServiceInternalsPageHandler:
-  void GetDebugInfo(GetDebugInfoCallback callback) override;
+  void GetApps(GetAppsCallback callback) override;
+  void GetPreferredApps(GetPreferredAppsCallback callback) override;
+  void GetPromiseApps(GetPromiseAppsCallback callback) override;
 
  private:
   raw_ptr<Profile> profile_;

@@ -7,6 +7,7 @@ Runs Python unit tests in /third_party/sqlite/scripts on upload.
 """
 
 PRESUBMIT_VERSION = '2.0.0'
+USE_PYTHON3 = True
 
 def CheckPythonUnittestsPass(input_api, output_api):
     results = []
@@ -18,6 +19,9 @@ def CheckPythonUnittestsPass(input_api, output_api):
             output_api,
             input_api.os_path.join(this_dir, 'scripts'),
             files_to_check=['.*unittest.py$'],
-            env=None))
+            env=None,
+            run_on_python2=False,
+            run_on_python3=True,
+            skip_shebang_check=True))
 
     return results

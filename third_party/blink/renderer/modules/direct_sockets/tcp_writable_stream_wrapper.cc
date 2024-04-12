@@ -104,9 +104,8 @@ void TCPWritableStreamWrapper::OnAbortSignal() {
   }
 }
 
-ScriptPromiseTyped<IDLUndefined> TCPWritableStreamWrapper::Write(
-    ScriptValue chunk,
-    ExceptionState& exception_state) {
+ScriptPromise TCPWritableStreamWrapper::Write(ScriptValue chunk,
+                                              ExceptionState& exception_state) {
   // There can only be one call to write() in progress at a time.
   DCHECK(!write_promise_resolver_);
   DCHECK(!buffer_source_);
@@ -116,19 +115,18 @@ ScriptPromiseTyped<IDLUndefined> TCPWritableStreamWrapper::Write(
     exception_state.ThrowDOMException(
         DOMExceptionCode::kNetworkError,
         "The underlying data pipe was disconnected.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   buffer_source_ = V8BufferSource::Create(GetScriptState()->GetIsolate(),
                                           chunk.V8Value(), exception_state);
   if (exception_state.HadException()) {
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
   DCHECK(buffer_source_);
 
-  write_promise_resolver_ =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          GetScriptState(), exception_state.GetContext());
+  write_promise_resolver_ = MakeGarbageCollected<ScriptPromiseResolver>(
+      GetScriptState(), exception_state.GetContext());
   auto promise = write_promise_resolver_->Promise();
 
   WriteDataAsynchronously();
@@ -232,13 +230,13 @@ void TCPWritableStreamWrapper::ErrorStream(int32_t error_code) {
                            ? write_promise_resolver_->GetScriptState()
                            : GetScriptState();
   // Scope is needed because there's no ScriptState* on the call stack for
-  // ScriptValue.
+  // ScriptValue::From.
   ScriptState::Scope scope{script_state};
 
-  auto exception = ScriptValue(script_state->GetIsolate(),
-                               V8ThrowDOMException::CreateOrDie(
-                                   script_state->GetIsolate(),
-                                   DOMExceptionCode::kNetworkError, message));
+  auto exception = ScriptValue::From(
+      script_state, V8ThrowDOMException::CreateOrDie(
+                        script_state->GetIsolate(),
+                        DOMExceptionCode::kNetworkError, message));
 
   // Can be already reset due to HandlePipeClosed() called previously.
   if (data_pipe_) {

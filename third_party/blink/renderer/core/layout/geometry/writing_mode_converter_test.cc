@@ -6,14 +6,12 @@
 
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
 namespace {
 
 TEST(WritingModeConverterTest, ConvertLogicalOffsetToPhysicalOffset) {
-  test::TaskEnvironment task_environment;
   LogicalOffset logical_offset(20, 30);
   PhysicalSize outer_size(300, 400);
   PhysicalSize inner_size(5, 65);
@@ -71,7 +69,6 @@ TEST(WritingModeConverterTest, ConvertLogicalOffsetToPhysicalOffset) {
 }
 
 TEST(WritingModeConverterTest, ConvertPhysicalOffsetToLogicalOffset) {
-  test::TaskEnvironment task_environment;
   PhysicalOffset physical_offset(20, 30);
   PhysicalSize outer_size(300, 400);
   PhysicalSize inner_size(5, 65);

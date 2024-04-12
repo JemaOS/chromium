@@ -3,43 +3,22 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ash/app_mode/web_app/web_kiosk_app_service_launcher.h"
-
 #include <memory>
-#include <optional>
 
 #include "base/check.h"
-#include "base/check_deref.h"
 #include "base/functional/bind.h"
+#include "base/metrics/histogram_functions.h"
+#include "base/syslog_logging.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
-#include "chrome/browser/ash/app_mode/kiosk_app_launch_error.h"
-#include "chrome/browser/ash/app_mode/kiosk_system_session.h"
+#include "chrome/browser/ash/app_mode/app_session_ash.h"
 #include "chrome/browser/ash/app_mode/web_app/web_kiosk_app_manager.h"
-#include "chrome/browser/ash/crosapi/browser_util.h"
-#include "chrome/browser/ash/crosapi/crosapi_ash.h"
-#include "chrome/browser/ash/crosapi/crosapi_manager.h"
-#include "chrome/browser/ash/crosapi/web_kiosk_service_ash.h"
 #include "chrome/browser/chromeos/app_mode/kiosk_app_service_launcher.h"
-#include "chrome/browser/chromeos/app_mode/web_kiosk_app_installer.h"
 #include "chrome/browser/extensions/extension_special_storage_policy.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
-#include "chromeos/crosapi/mojom/web_kiosk_service.mojom.h"
 #include "components/services/app_service/public/cpp/app_types.h"
-#include "components/webapps/common/web_app_id.h"
-#include "url/gurl.h"
+#include "components/webapps/browser/install_result_code.h"
 #include "url/origin.h"
-
-using chromeos::WebKioskAppInstaller;
-using crosapi::mojom::WebKioskInstallState;
-
-namespace {
-
-crosapi::WebKioskServiceAsh& crosapi_web_kiosk_service() {
-  return CHECK_DEREF(
-      crosapi::CrosapiManager::Get()->crosapi_ash()->web_kiosk_service_ash());
-}
-
-}  // namespace
 
 namespace ash {
 
@@ -73,93 +52,88 @@ void WebKioskAppServiceLauncher::RemoveObserver(
 void WebKioskAppServiceLauncher::Initialize() {
   DCHECK(!app_service_launcher_);
 
-  app_service_launcher_ =
-      std::make_unique<chromeos::KioskAppServiceLauncher>(profile_);
+  app_service_launcher_ = std::make_unique<KioskAppServiceLauncher>(profile_);
   app_service_launcher_->EnsureAppTypeInitialized(
       apps::AppType::kWeb,
-      base::BindOnce(&WebKioskAppServiceLauncher::OnWebAppInitialized,
+      base::BindOnce(&WebKioskAppServiceLauncher::OnWebAppInitializled,
                      weak_ptr_factory_.GetWeakPtr()));
-
-  // By default the app service will try to launch the start_url as defined by
-  // the web app's manifest. This is generally not what we want, so we need to
-  // set the complete url as override url.
-  app_service_launcher_->SetLaunchUrl(GetCurrentApp()->install_url());
-
   profile_->GetExtensionSpecialStoragePolicy()->AddOriginWithUnlimitedStorage(
       url::Origin::Create(GetCurrentApp()->install_url()));
 }
 
-void WebKioskAppServiceLauncher::OnWebAppInitialized() {
-  GetInstallState(
-      GetCurrentApp()->install_url(),
-      base::BindOnce(&WebKioskAppServiceLauncher::CheckWhetherNetworkIsRequired,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
+void WebKioskAppServiceLauncher::OnWebAppInitializled() {
+  web_app_provider_ = web_app::WebAppProvider::GetForWebApps(profile_);
+  DCHECK(web_app_provider_) << "WebAppProvider cannot be initialized.";
 
-void WebKioskAppServiceLauncher::GetInstallState(
-    const GURL& install_url,
-    WebKioskAppInstaller::InstallStateCallback callback) {
-  if (crosapi::browser_util::IsLacrosEnabledInWebKioskSession()) {
-    crosapi_web_kiosk_service().GetWebKioskInstallState(install_url,
-                                                        std::move(callback));
-  } else {
-    app_installer_ = std::make_unique<WebKioskAppInstaller>(
-        CHECK_DEREF(profile_.get()), install_url);
-    app_installer_->GetInstallState(std::move(callback));
-  }
-}
-
-void WebKioskAppServiceLauncher::CheckWhetherNetworkIsRequired(
-    WebKioskInstallState state,
-    const std::optional<webapps::AppId>& id) {
-  if (state == WebKioskInstallState::kInstalled) {
-    NotifyAppPrepared(id);
-    return;
-  }
-
-  delegate_->InitializeNetwork();
-}
-
-void WebKioskAppServiceLauncher::ContinueWithNetworkReady() {
-  observers_.NotifyAppInstalling();
-  if (crosapi::browser_util::IsLacrosEnabledInWebKioskSession()) {
-    InstallAppInLacros();
-  } else {
-    InstallAppInAsh();
-  }
-}
-
-void WebKioskAppServiceLauncher::InstallAppInAsh() {
   // Start observing app update as soon a web app system is ready so that app
   // updates being applied while launching can be handled.
   WebKioskAppManager::Get()->StartObservingAppUpdate(profile_, account_id_);
 
-  app_installer_->InstallApp(
-      base::BindOnce(&WebKioskAppServiceLauncher::OnInstallComplete,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
-
-void WebKioskAppServiceLauncher::InstallAppInLacros() {
-  crosapi_web_kiosk_service().InstallWebKiosk(
-      GetCurrentApp()->install_url(),
-      base::BindOnce(&WebKioskAppServiceLauncher::OnInstallComplete,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
-
-void WebKioskAppServiceLauncher::OnInstallComplete(
-    const std::optional<webapps::AppId>& app_id) {
-  if (app_id.has_value()) {
-    NotifyAppPrepared(app_id);
+  // If a web app |install_url| requires authentication, it will be assigned a
+  // temporary |app_id| which will be changed to the correct |app_id| once the
+  // authentication is done. The only key that is safe to be used as identifier
+  // for Kiosk web apps is |install_url|.
+  auto app_id = web_app_provider_->registrar_unsafe().LookUpAppIdByInstallUrl(
+      GetCurrentApp()->install_url());
+  if (!app_id || app_id->empty()) {
+    delegate_->InitializeNetwork();
     return;
   }
 
-  observers_.NotifyLaunchFailed(KioskAppLaunchError::Error::kUnableToInstall);
+  // If the installed app is a placeholder (similar to failed installation in
+  // the old launcher), try to install again to replace it.
+  bool is_placeholder_app =
+      web_app_provider_->registrar_unsafe().IsPlaceholderApp(
+          app_id.value(), web_app::WebAppManagement::Type::kKiosk);
+  base::UmaHistogramBoolean(kWebAppIsPlaceholderUMA, is_placeholder_app);
+  if (is_placeholder_app) {
+    SYSLOG(INFO) << "Placeholder app installed. Trying to reinstall...";
+    delegate_->InitializeNetwork();
+    return;
+  }
+
+  app_id_ = app_id.value();
+
+  // Don't enforce network status in web Kiosk if the app is already installed.
+  observers_.NotifyAppPrepared();
 }
 
-void WebKioskAppServiceLauncher::NotifyAppPrepared(
-    const std::optional<webapps::AppId>& id) {
-  CHECK(id.has_value());
-  app_id_ = id.value();
+void WebKioskAppServiceLauncher::ContinueWithNetworkReady() {
+  InstallApp();
+}
+
+void WebKioskAppServiceLauncher::InstallApp() {
+  observers_.NotifyAppInstalling();
+
+  web_app::ExternalInstallOptions options(
+      GetCurrentApp()->install_url(),
+      web_app::mojom::UserDisplayMode::kStandalone,
+      web_app::ExternalInstallSource::kKiosk);
+  // When the install URL redirects to another URL a placeholder will be
+  // installed. This happens if a web app requires authentication.
+  options.install_placeholder = true;
+  // If there is a placeholder app installed, try to reinstall it.
+  options.reinstall_placeholder = true;
+  web_app_provider_->externally_managed_app_manager().Install(
+      options,
+      base::BindOnce(&WebKioskAppServiceLauncher::OnExternalInstallCompleted,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void WebKioskAppServiceLauncher::OnExternalInstallCompleted(
+    const GURL& app_url,
+    web_app::ExternallyManagedAppManager::InstallResult result) {
+  base::UmaHistogramEnumeration(kWebAppInstallResultUMA, result.code);
+  if (!webapps::IsSuccess(result.code)) {
+    SYSLOG(ERROR) << "Failed to install Kiosk web app, code " << result.code;
+    observers_.NotifyLaunchFailed(KioskAppLaunchError::Error::kUnableToInstall);
+    return;
+  }
+
+  DCHECK(result.app_id && !result.app_id->empty());
+  SYSLOG(INFO) << "Successfully installed Kiosk web app.";
+  app_id_ = result.app_id.value();
+
   observers_.NotifyAppPrepared();
 }
 
@@ -182,6 +156,7 @@ void WebKioskAppServiceLauncher::OnAppLaunched(bool success) {
 }
 
 void WebKioskAppServiceLauncher::OnAppBecomesVisible() {
+  // TODO(b/242023891): Make sure we send a absl::nullopt when Lacros is enabled
   observers_.NotifyAppWindowCreated(
       web_app::GenerateApplicationNameFromAppId(app_id_));
 }

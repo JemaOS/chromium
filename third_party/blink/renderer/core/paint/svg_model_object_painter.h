@@ -17,7 +17,10 @@ class SVGModelObjectPainter {
   STACK_ALLOCATED();
 
  public:
-  // See ObjectPainter::RecordHitTestData().
+  // Expands the bounds of the current paint chunk for hit test, and records
+  // special touch action if any. This should be called when painting the
+  // background even if there is no other painted content. SVG backgrounds are
+  // painted in the kForeground paint phase.
   static void RecordHitTestData(const LayoutObject& svg_object,
                                 const PaintInfo&);
 

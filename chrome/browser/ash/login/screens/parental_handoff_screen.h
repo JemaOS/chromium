@@ -20,7 +20,7 @@ class ParentalHandoffScreen : public BaseScreen {
  public:
   using TView = ParentalHandoffScreenView;
 
-  enum class Result { kDone, kSkipped };
+  enum class Result { DONE, SKIPPED };
 
   static std::string GetResultString(Result result);
 

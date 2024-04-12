@@ -1,16 +1,11 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {AxeCoreTestRunner} from 'axe_core_test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as Sources from 'devtools/panels/sources/sources.js';
-import * as BrowserDebugger from 'devtools/panels/browser_debugger/browser_debugger.js';
-
 (async function() {
+  await TestRunner.loadTestModule('axe_core_test_runner');
+  await TestRunner.loadTestModule('elements_test_runner');
+  await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.showPanel('sources');
   await TestRunner.navigatePromise(
@@ -19,7 +14,7 @@ import * as BrowserDebugger from 'devtools/panels/browser_debugger/browser_debug
   TestRunner.addResult('Testing accessibility in the DOM breakpoints pane.');
 
   // Expand the DOM Breakpoints container
-  const domBreakpointContainer = Sources.SourcesPanel.SourcesPanel.instance().sidebarPaneStack.expandableContainers.get('sources.dom-breakpoints');
+  const domBreakpointContainer = UI.panels.sources.sidebarPaneStack.expandableContainers.get('sources.domBreakpoints');
   await domBreakpointContainer.expand();
 
   TestRunner.addResult('Setting DOM breakpoints.');
@@ -31,7 +26,7 @@ import * as BrowserDebugger from 'devtools/panels/browser_debugger/browser_debug
       TestRunner.domDebuggerModel.setDOMBreakpoint(hostElement, Protocol.DOMDebugger.DOMBreakpointType.NodeRemoved);
   TestRunner.domDebuggerModel.toggleDOMBreakpoint(breakpoint, false);
 
-  const domBreakpointsPane = BrowserDebugger.DOMBreakpointsSidebarPane.DOMBreakpointsSidebarPane.instance();
+  const domBreakpointsPane = BrowserDebugger.DOMBreakpointsSidebarPane.instance();
 
   TestRunner.addResult(`DOM breakpoints container text content: ${domBreakpointContainer.contentElement.deepTextContent()}`);
   TestRunner.addResult(

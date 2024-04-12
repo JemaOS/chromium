@@ -31,8 +31,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 
 #include "third_party/blink/renderer/bindings/core/v8/script_function.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
-#include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
+#include "third_party/blink/renderer/bindings/core/v8/to_v8_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
@@ -47,21 +46,16 @@ class PromiseAllHandler final : public GarbageCollected<PromiseAllHandler> {
  public:
   static ScriptPromise All(ScriptState* script_state,
                            const HeapVector<ScriptPromise>& promises) {
-    if (promises.empty()) {
-      return ScriptPromise::FromUntypedValueForBindings(
-          script_state, v8::Array::New(script_state->GetIsolate()));
-    }
-    auto* resolver =
-        MakeGarbageCollected<ScriptPromiseResolverTyped<IDLSequence<IDLAny>>>(
-            script_state);
-    MakeGarbageCollected<PromiseAllHandler>(script_state, promises, resolver);
-    return resolver->Promise();
+    if (promises.empty())
+      return ScriptPromise::Cast(script_state,
+                                 v8::Array::New(script_state->GetIsolate()));
+    return (MakeGarbageCollected<PromiseAllHandler>(script_state, promises))
+        ->resolver_.Promise();
   }
 
   PromiseAllHandler(ScriptState* script_state,
-                    HeapVector<ScriptPromise> promises,
-                    ScriptPromiseResolverTyped<IDLSequence<IDLAny>>* resolver)
-      : number_of_pending_promises_(promises.size()), resolver_(resolver) {
+                    HeapVector<ScriptPromise> promises)
+      : number_of_pending_promises_(promises.size()), resolver_(script_state) {
     DCHECK(!promises.empty());
     values_.resize(promises.size());
     for (wtf_size_t i = 0; i < promises.size(); ++i) {
@@ -135,21 +129,26 @@ class PromiseAllHandler final : public GarbageCollected<PromiseAllHandler> {
     if (--number_of_pending_promises_ > 0)
       return;
 
-    is_settled_ = true;
-    resolver_->Resolve(values_);
-    values_.clear();
+    v8::Local<v8::Value> values = ToV8(values_, resolver_.GetScriptState());
+    MarkPromiseSettled();
+    resolver_.Resolve(values);
   }
 
   void OnRejected(const ScriptValue& value) {
     if (is_settled_)
       return;
+    MarkPromiseSettled();
+    resolver_.Reject(value.V8Value());
+  }
+
+  void MarkPromiseSettled() {
+    DCHECK(!is_settled_);
     is_settled_ = true;
-    resolver_->Reject(value);
     values_.clear();
   }
 
   size_t number_of_pending_promises_;
-  Member<ScriptPromiseResolverTyped<IDLSequence<IDLAny>>> resolver_;
+  ScriptPromise::InternalResolver resolver_;
   bool is_settled_ = false;
 
   // This is cleared when owners of this handler, that is, given promises are
@@ -158,6 +157,56 @@ class PromiseAllHandler final : public GarbageCollected<PromiseAllHandler> {
 };
 
 }  // namespace
+
+ScriptPromise::InternalResolver::InternalResolver(ScriptState* script_state)
+    : script_state_(script_state),
+      resolver_(script_state->GetIsolate(),
+                v8::Promise::Resolver::New(script_state->GetContext())) {
+  // |resolver| can be empty when the thread is being terminated. We ignore such
+  // errors.
+}
+
+v8::Local<v8::Promise> ScriptPromise::InternalResolver::V8Promise() const {
+  if (resolver_.IsEmpty())
+    return v8::Local<v8::Promise>();
+  return resolver_.V8Value().As<v8::Promise::Resolver>()->GetPromise();
+}
+
+ScriptPromise ScriptPromise::InternalResolver::Promise() const {
+  if (resolver_.IsEmpty())
+    return ScriptPromise();
+  return ScriptPromise(script_state_, V8Promise());
+}
+
+void ScriptPromise::InternalResolver::Resolve(v8::Local<v8::Value> value) {
+  if (resolver_.IsEmpty())
+    return;
+  v8::MicrotasksScope microtasks_scope(
+      script_state_->GetIsolate(), ToMicrotaskQueue(script_state_),
+      v8::MicrotasksScope::kDoNotRunMicrotasks);
+  // |result| can be empty when the thread is being terminated. We ignore such
+  // errors, thus [[maybe_unused]].
+  [[maybe_unused]] v8::Maybe<bool> result =
+      resolver_.V8Value().As<v8::Promise::Resolver>()->Resolve(
+          script_state_->GetContext(), value);
+
+  Clear();
+}
+
+void ScriptPromise::InternalResolver::Reject(v8::Local<v8::Value> value) {
+  if (resolver_.IsEmpty())
+    return;
+  v8::MicrotasksScope microtasks_scope(
+      script_state_->GetIsolate(), ToMicrotaskQueue(script_state_),
+      v8::MicrotasksScope::kDoNotRunMicrotasks);
+  // |result| can be empty when the thread is being terminated. We ignore such
+  // errors, thus [[maybe_unused]].
+  [[maybe_unused]] v8::Maybe<bool> result =
+      resolver_.V8Value().As<v8::Promise::Resolver>()->Reject(
+          script_state_->GetContext(), value);
+
+  Clear();
+}
 
 ScriptPromise::ScriptPromise(ScriptState* script_state,
                              v8::Local<v8::Value> value)
@@ -179,65 +228,68 @@ ScriptPromise::ScriptPromise(const ScriptPromise& other) {
   promise_ = other.promise_;
 }
 
-ScriptPromiseTyped<IDLAny> ScriptPromise::Then(
-    v8::Local<v8::Function> on_fulfilled,
-    v8::Local<v8::Function> on_rejected) {
+ScriptPromise ScriptPromise::Then(v8::Local<v8::Function> on_fulfilled,
+                                  v8::Local<v8::Function> on_rejected) {
   if (promise_.IsEmpty())
-    return ScriptPromiseTyped<IDLAny>();
+    return ScriptPromise();
 
   v8::Local<v8::Promise> promise = promise_.V8Value().As<v8::Promise>();
 
   if (on_fulfilled.IsEmpty() && on_rejected.IsEmpty())
-    return ScriptPromiseTyped<IDLAny>::FromV8Promise(script_state_, promise);
+    return *this;
 
   v8::Local<v8::Promise> result_promise;
   if (on_rejected.IsEmpty()) {
     if (!promise->Then(script_state_->GetContext(), on_fulfilled)
              .ToLocal(&result_promise)) {
-      return ScriptPromiseTyped<IDLAny>();
+      return ScriptPromise();
     }
-    return ScriptPromiseTyped<IDLAny>::FromV8Promise(script_state_,
-                                                     result_promise);
+    return ScriptPromise(script_state_, result_promise);
   }
 
   if (on_fulfilled.IsEmpty()) {
     if (!promise->Catch(script_state_->GetContext(), on_rejected)
              .ToLocal(&result_promise)) {
-      return ScriptPromiseTyped<IDLAny>();
+      return ScriptPromise();
     }
-    return ScriptPromiseTyped<IDLAny>::FromV8Promise(script_state_,
-                                                     result_promise);
+    return ScriptPromise(script_state_, result_promise);
   }
 
   if (!promise->Then(script_state_->GetContext(), on_fulfilled, on_rejected)
            .ToLocal(&result_promise)) {
-    return ScriptPromiseTyped<IDLAny>();
+    return ScriptPromise();
   }
-  return ScriptPromiseTyped<IDLAny>::FromV8Promise(script_state_,
-                                                   result_promise);
+  return ScriptPromise(script_state_, result_promise);
 }
 
-ScriptPromiseTyped<IDLAny> ScriptPromise::Then(ScriptFunction* on_fulfilled,
-                                               ScriptFunction* on_rejected) {
+ScriptPromise ScriptPromise::Then(ScriptFunction* on_fulfilled,
+                                  ScriptFunction* on_rejected) {
   const v8::Local<v8::Function> empty;
   return Then(on_fulfilled ? on_fulfilled->V8Function() : empty,
               on_rejected ? on_rejected->V8Function() : empty);
 }
 
 ScriptPromise ScriptPromise::CastUndefined(ScriptState* script_state) {
-  return FromUntypedValueForBindings(script_state,
-                                     v8::Undefined(script_state->GetIsolate()));
+  return ScriptPromise::Cast(script_state,
+                             v8::Undefined(script_state->GetIsolate()));
 }
 
-ScriptPromise ScriptPromise::FromUntypedValueForBindings(
-    ScriptState* script_state,
-    v8::Local<v8::Value> value) {
+ScriptPromise ScriptPromise::Cast(ScriptState* script_state,
+                                  const ScriptValue& value) {
+  return ScriptPromise::Cast(script_state, value.V8Value());
+}
+
+ScriptPromise ScriptPromise::Cast(ScriptState* script_state,
+                                  v8::Local<v8::Value> value) {
   if (value.IsEmpty())
     return ScriptPromise();
   if (value->IsPromise()) {
     return ScriptPromise(script_state, value);
   }
-  return ScriptPromise(script_state, ResolveRaw(script_state, value));
+  InternalResolver resolver(script_state);
+  ScriptPromise promise = resolver.Promise();
+  resolver.Resolve(value);
+  return promise;
 }
 
 ScriptPromise ScriptPromise::Reject(ScriptState* script_state,
@@ -247,7 +299,12 @@ ScriptPromise ScriptPromise::Reject(ScriptState* script_state,
 
 ScriptPromise ScriptPromise::Reject(ScriptState* script_state,
                                     v8::Local<v8::Value> value) {
-  return ScriptPromise(script_state, RejectRaw(script_state, value));
+  if (value.IsEmpty())
+    return ScriptPromise();
+  InternalResolver resolver(script_state);
+  ScriptPromise promise = resolver.Promise();
+  resolver.Reject(value);
+  return promise;
 }
 
 ScriptPromise ScriptPromise::Reject(ScriptState* script_state,
@@ -262,29 +319,21 @@ ScriptPromise ScriptPromise::RejectWithDOMException(ScriptState* script_state,
                                                     DOMException* exception) {
   DCHECK(script_state->GetIsolate()->InContext());
   return Reject(script_state,
-                ToV8Traits<DOMException>::ToV8(script_state, exception));
-}
-
-v8::Local<v8::Promise> ScriptPromise::ResolveRaw(ScriptState* script_state,
-                                                 v8::Local<v8::Value> value) {
-  v8::MicrotasksScope microtasks_scope(
-      script_state->GetIsolate(), ToMicrotaskQueue(script_state),
-      v8::MicrotasksScope::kDoNotRunMicrotasks);
-  auto resolver =
-      v8::Promise::Resolver::New(script_state->GetContext()).ToLocalChecked();
-  std::ignore = resolver->Resolve(script_state->GetContext(), value);
-  return resolver->GetPromise();
+                ToV8(exception, script_state->GetContext()->Global(),
+                     script_state->GetIsolate()));
 }
 
 v8::Local<v8::Promise> ScriptPromise::RejectRaw(ScriptState* script_state,
                                                 v8::Local<v8::Value> value) {
-  v8::MicrotasksScope microtasks_scope(
-      script_state->GetIsolate(), ToMicrotaskQueue(script_state),
-      v8::MicrotasksScope::kDoNotRunMicrotasks);
-  auto resolver =
-      v8::Promise::Resolver::New(script_state->GetContext()).ToLocalChecked();
-  std::ignore = resolver->Reject(script_state->GetContext(), value);
-  return resolver->GetPromise();
+  if (value.IsEmpty())
+    return v8::Local<v8::Promise>();
+  v8::Local<v8::Promise::Resolver> resolver;
+  if (!v8::Promise::Resolver::New(script_state->GetContext())
+           .ToLocal(&resolver))
+    return v8::Local<v8::Promise>();
+  v8::Local<v8::Promise> promise = resolver->GetPromise();
+  resolver->Reject(script_state->GetContext(), value).ToChecked();
+  return promise;
 }
 
 void ScriptPromise::MarkAsHandled() {
@@ -296,12 +345,6 @@ void ScriptPromise::MarkAsHandled() {
 ScriptPromise ScriptPromise::All(ScriptState* script_state,
                                  const HeapVector<ScriptPromise>& promises) {
   return PromiseAllHandler::All(script_state, promises);
-}
-
-ScriptPromiseTyped<IDLUndefined> ToResolvedUndefinedPromise(
-    ScriptState* script_state) {
-  return ToResolvedPromise<IDLUndefined>(script_state,
-                                         ToV8UndefinedGenerator());
 }
 
 }  // namespace blink

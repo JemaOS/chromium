@@ -26,6 +26,7 @@
 #include "chrome/browser/media_galleries/fileapi/media_path_filter.h"
 #include "chrome/browser/media_galleries/fileapi/native_media_file_util.h"
 #include "chrome/browser/media_galleries/media_file_system_registry.h"
+#include "chrome/browser/media_galleries/media_galleries_histograms.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/download/public/common/quarantine_connection.h"
 #include "components/prefs/pref_service.h"
@@ -95,7 +96,8 @@ void AttemptAutoMountOnUIThread(
     extensions::ExtensionRegistry* extension_registry =
         extensions::ExtensionRegistry::Get(profile);
     const extensions::Extension* extension =
-        extension_registry->enabled_extensions().GetByID(storage_domain);
+        extension_registry->GetExtensionById(
+            storage_domain, extensions::ExtensionRegistry::ENABLED);
     std::string expected_mount_prefix =
         MediaFileSystemBackend::ConstructMountName(
             profile->GetPath(), storage_domain, kInvalidMediaGalleryPrefId);
@@ -281,14 +283,13 @@ MediaFileSystemBackend::GetCopyOrMoveFileValidatorFactory(
 
 std::unique_ptr<storage::FileSystemOperation>
 MediaFileSystemBackend::CreateFileSystemOperation(
-    storage::OperationType type,
     const FileSystemURL& url,
     FileSystemContext* context,
     base::File::Error* error_code) const {
   std::unique_ptr<storage::FileSystemOperationContext> operation_context(
       std::make_unique<storage::FileSystemOperationContext>(
           context, MediaTaskRunner().get()));
-  return storage::FileSystemOperation::Create(type, url, context,
+  return storage::FileSystemOperation::Create(url, context,
                                               std::move(operation_context));
 }
 

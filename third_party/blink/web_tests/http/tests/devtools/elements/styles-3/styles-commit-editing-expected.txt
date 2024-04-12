@@ -11,7 +11,6 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 
 Running: testCommitEditing
@@ -31,6 +30,5 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 

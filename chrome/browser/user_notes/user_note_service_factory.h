@@ -5,12 +5,13 @@
 #ifndef CHROME_BROWSER_USER_NOTES_USER_NOTE_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_USER_NOTES_USER_NOTE_SERVICE_FACTORY_H_
 
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
+
+#include <memory>
 
 namespace base {
 template <typename>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace user_notes {
@@ -25,7 +26,7 @@ class UserNoteServiceFactory : public ProfileKeyedServiceFactory {
 
   // Allows tests to set a mock UserNoteService that is going to be returned
   // by `GetForContext` every time, even if `context` is null.
-  static void SetServiceForTesting(UserNoteService* service);
+  static void SetServiceForTesting(std::unique_ptr<UserNoteService> service);
 
   static void EnsureFactoryBuilt();
 
@@ -33,7 +34,7 @@ class UserNoteServiceFactory : public ProfileKeyedServiceFactory {
   UserNoteServiceFactory& operator=(const UserNoteServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<UserNoteServiceFactory>;
+  friend struct base::DefaultSingletonTraits<UserNoteServiceFactory>;
 
   static UserNoteServiceFactory* GetInstance();
 
@@ -41,10 +42,10 @@ class UserNoteServiceFactory : public ProfileKeyedServiceFactory {
   ~UserNoteServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 
-  raw_ptr<UserNoteService> service_for_testing_;
+  std::unique_ptr<UserNoteService> service_for_testing_;
 };
 
 }  // namespace user_notes

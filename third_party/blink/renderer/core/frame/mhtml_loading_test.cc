@@ -48,7 +48,6 @@
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/testing/mock_policy_container_host.h"
 #include "third_party/blink/renderer/platform/loader/static_data_navigation_body_loader.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/testing_platform_support.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
@@ -104,7 +103,6 @@ class MHTMLLoadingTest : public testing::Test {
   Page* GetPage() const { return helper_.GetWebView()->GetPage(); }
 
  private:
-  test::TaskEnvironment task_environment_;
   ScopedTestingPlatformSupport<TestingPlatformSupport> platform_;
   frame_test_helpers::WebViewHelper helper_;
 };
@@ -147,7 +145,7 @@ TEST_F(MHTMLLoadingTest, EnforceSandboxFlags) {
   EXPECT_FALSE(window->CanExecuteScripts(kNotAboutToExecuteScript));
 
   // The element to be created by the script is not there.
-  EXPECT_FALSE(window->document()->getElementById(AtomicString("mySpan")));
+  EXPECT_FALSE(window->document()->getElementById("mySpan"));
 
   // Make sure the subframe is also sandboxed.
   LocalFrame* child_frame =
@@ -164,8 +162,7 @@ TEST_F(MHTMLLoadingTest, EnforceSandboxFlags) {
   EXPECT_FALSE(child_window->CanExecuteScripts(kNotAboutToExecuteScript));
 
   // The element to be created by the script is not there.
-  EXPECT_FALSE(
-      child_window->document()->getElementById(AtomicString("mySpan")));
+  EXPECT_FALSE(child_window->document()->getElementById("mySpan"));
 }
 
 TEST_F(MHTMLLoadingTest, EnforceSandboxFlagsInXSLT) {
@@ -198,22 +195,19 @@ TEST_F(MHTMLLoadingTest, ShadowDom) {
   Document* document = frame->GetDocument();
   ASSERT_TRUE(document);
 
-  EXPECT_TRUE(IsShadowHost(document->getElementById(AtomicString("h2"))));
+  EXPECT_TRUE(IsShadowHost(document->getElementById("h2")));
   // The nested shadow DOM tree is created.
-  EXPECT_TRUE(IsShadowHost(document->getElementById(AtomicString("h2"))
-                               ->GetShadowRoot()
-                               ->getElementById(AtomicString("h3"))));
+  EXPECT_TRUE(IsShadowHost(
+      document->getElementById("h2")->GetShadowRoot()->getElementById("h3")));
 
-  EXPECT_TRUE(IsShadowHost(document->getElementById(AtomicString("h4"))));
+  EXPECT_TRUE(IsShadowHost(document->getElementById("h4")));
   // The static element in the shadow dom template is found.
-  EXPECT_TRUE(document->getElementById(AtomicString("h4"))
-                  ->GetShadowRoot()
-                  ->getElementById(AtomicString("s1")));
+  EXPECT_TRUE(
+      document->getElementById("h4")->GetShadowRoot()->getElementById("s1"));
   // The element to be created by the script in the shadow dom template is
   // not found because the script is blocked.
-  EXPECT_FALSE(document->getElementById(AtomicString("h4"))
-                   ->GetShadowRoot()
-                   ->getElementById(AtomicString("s2")));
+  EXPECT_FALSE(
+      document->getElementById("h4")->GetShadowRoot()->getElementById("s2"));
 }
 
 TEST_F(MHTMLLoadingTest, FormControlElements) {
@@ -226,16 +220,13 @@ TEST_F(MHTMLLoadingTest, FormControlElements) {
   Document* document = frame->GetDocument();
   ASSERT_TRUE(document);
 
-  HTMLCollection* formControlElements =
-      document->getElementsByClassName(AtomicString("fc"));
+  HTMLCollection* formControlElements = document->getElementsByClassName("fc");
   ASSERT_TRUE(formControlElements);
   for (Element* element : *formControlElements)
     EXPECT_TRUE(element->IsDisabledFormControl());
 
-  EXPECT_FALSE(
-      document->getElementById(AtomicString("h1"))->IsDisabledFormControl());
-  EXPECT_FALSE(
-      document->getElementById(AtomicString("fm"))->IsDisabledFormControl());
+  EXPECT_FALSE(document->getElementById("h1")->IsDisabledFormControl());
+  EXPECT_FALSE(document->getElementById("fm")->IsDisabledFormControl());
 }
 
 TEST_F(MHTMLLoadingTest, LoadMHTMLContainingSoftLineBreaks) {
@@ -252,8 +243,8 @@ TEST_F(MHTMLLoadingTest, LoadMHTMLContainingSoftLineBreaks) {
 
   // We should not have problem to concatenate body lines separated by soft
   // line breaks.
-  EXPECT_TRUE(document->getElementById(AtomicString(
-      "AVeryLongID012345678901234567890123456789012345678901234567890End")));
+  EXPECT_TRUE(document->getElementById(
+      "AVeryLongID012345678901234567890123456789012345678901234567890End"));
 }
 
 }  // namespace test

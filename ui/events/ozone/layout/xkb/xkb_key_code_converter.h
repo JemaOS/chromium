@@ -9,7 +9,7 @@
 
 namespace ui {
 
-enum class DomCode : uint32_t;
+enum class DomCode;
 
 // XKB scan code values are platform-dependent; this provides the layout engine
 // with the mapping from DomCode to xkb_keycode_t. (This mapping is in principle

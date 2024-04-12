@@ -15,6 +15,7 @@ class MoveToDesksMenuModel;
 }
 #endif
 class Browser;
+class ZoomMenuModel;
 
 namespace ui {
 class AcceleratorProvider;
@@ -47,6 +48,9 @@ class SystemMenuModelBuilder {
   void BuildSystemMenuForBrowserWindow(ui::SimpleMenuModel* model);
   void BuildSystemMenuForAppOrPopupWindow(ui::SimpleMenuModel* model);
 
+  // Adds items for toggling the frame type (if necessary).
+  void AddFrameToggleItems(ui::SimpleMenuModel* model);
+
 #if BUILDFLAG(IS_CHROMEOS)
   // Add the submenu for move to desks.
   void AppendMoveToDesksMenu(ui::SimpleMenuModel* model);
@@ -57,7 +61,7 @@ class SystemMenuModelBuilder {
 
   SystemMenuModelDelegate menu_delegate_;
   std::unique_ptr<ui::MenuModel> menu_model_;
-  std::unique_ptr<ui::SimpleMenuModel> zoom_menu_contents_;
+  std::unique_ptr<ZoomMenuModel> zoom_menu_contents_;
 #if BUILDFLAG(IS_CHROMEOS)
   std::unique_ptr<chromeos::MoveToDesksMenuModel> move_to_desks_model_;
 #endif

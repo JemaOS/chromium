@@ -15,12 +15,11 @@
 // A dialog allowing the user to confirm Bluetooth device pairing with or
 // without PIN being displayed.
 class BluetoothDevicePairConfirmView : public views::DialogDelegateView {
-  METADATA_HEADER(BluetoothDevicePairConfirmView, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(BluetoothDevicePairConfirmView);
   BluetoothDevicePairConfirmView(
       const std::u16string& device_identifier,
-      const std::optional<std::u16string>& pin,
+      const absl::optional<std::u16string>& pin,
       content::BluetoothDelegate::PairPromptCallback close_callback);
   BluetoothDevicePairConfirmView(const BluetoothDevicePairConfirmView&) =
       delete;
@@ -30,7 +29,7 @@ class BluetoothDevicePairConfirmView : public views::DialogDelegateView {
 
   // Initialize the controls on the dialog.
   void InitControls(const std::u16string& device_identifier,
-                    const std::optional<std::u16string>& pin);
+                    const absl::optional<std::u16string>& pin);
 
   // View:
   gfx::Size CalculatePreferredSize() const override;

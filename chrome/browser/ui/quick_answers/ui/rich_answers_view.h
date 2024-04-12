@@ -8,100 +8,66 @@
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
-#include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
-#include "chrome/browser/ui/quick_answers/ui/quick_answers_text_label.h"
-#include "chromeos/components/quick_answers/quick_answers_model.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/views/controls/image_view.h"
-#include "ui/views/controls/link.h"
-#include "ui/views/layout/box_layout_view.h"
+#include "chrome/browser/ui/quick_answers/ui/quick_answers_focus_search.h"
+#include "chrome/browser/ui/quick_answers/ui/rich_answers_pre_target_handler.h"
+#include "ui/events/event_handler.h"
+#include "ui/views/focus/focus_manager.h"
 #include "ui/views/view.h"
-#include "ui/views/widget/unique_widget_ptr.h"
 
 namespace views {
 class ImageButton;
-class ImageView;
 }  // namespace views
 
 class QuickAnswersUiController;
 
 namespace quick_answers {
+
 struct QuickAnswer;
+class RichAnswersPreTargetHandler;
 
 // A bubble style view to show RichAnswer.
-//
-// `RichAnswersView` implements the common logic and UI between result-type
-// specific cards, e.g. settings button (both UI and on-click handling).
-// Subclasses are responsible for populating their UI on `GetContentsView()`.
-class RichAnswersView : public views::View, public views::WidgetObserver {
-  METADATA_HEADER(RichAnswersView, views::View)
-
+class RichAnswersView : public views::View {
  public:
   static constexpr char kWidgetName[] = "RichAnswersViewWidget";
+
+  RichAnswersView(const gfx::Rect& anchor_view_bounds,
+                  base::WeakPtr<QuickAnswersUiController> controller,
+                  const quick_answers::QuickAnswer& result);
 
   RichAnswersView(const RichAnswersView&) = delete;
   RichAnswersView& operator=(const RichAnswersView&) = delete;
 
   ~RichAnswersView() override;
 
-  static views::UniqueWidgetPtr CreateWidget(
-      const gfx::Rect& anchor_view_bounds,
-      base::WeakPtr<QuickAnswersUiController> controller,
-      const QuickAnswer& quick_answer,
-      const StructuredResult& result);
-
   // views::View:
-  void AddedToWidget() override;
-  void OnKeyEvent(ui::KeyEvent* event) override;
+  const char* GetClassName() const override;
+  void OnFocus() override;
   void OnThemeChanged() override;
+  views::FocusTraversable* GetPaneFocusTraversable() override;
   void GetAccessibleNodeData(ui::AXNodeData* node_data) override;
 
-  // views::WidgetObserver:
-  void OnWidgetActivationChanged(views::Widget* widget, bool active) override;
-  void OnWidgetDestroying(views::Widget* widget) override;
-
-  ui::ImageModel GetIconImageModelForTesting();
-
- protected:
-  RichAnswersView(const gfx::Rect& anchor_view_bounds,
-                  base::WeakPtr<QuickAnswersUiController> controller,
-                  const ResultType result_type);
-
-  views::View* AddSettingsButtonTo(views::View* container_view);
-
-  void AddHeaderViewsTo(views::View* container_view,
-                        const std::string& header_text);
-
-  // Used by subclasses to populate ResultType-specific contents.
-  // This will never return nullptr after `RichAnswerView` constructor call.
-  views::View* GetContentView();
-
  private:
-  void InitLayout();
-  void SetUpBaseView();
-  void SetUpMainView();
-  void SetUpContentView();
-  void AddResultTypeIcon();
-  void AddGoogleSearchLink();
-  void OnGoogleSearchLinkClicked();
+  void InitLayout(const quick_answers::QuickAnswer& result);
+  void InitWidget();
+  void AddFrameButtons();
   void UpdateBounds();
+
+  // QuickAnswersFocusSearch::GetFocusableViewsCallback to poll currently
+  // focusable views.
+  std::vector<views::View*> GetFocusableViews();
 
   gfx::Rect anchor_view_bounds_;
 
   base::WeakPtr<QuickAnswersUiController> controller_;
 
-  const ResultType result_type_;
-
   raw_ptr<views::View> base_view_ = nullptr;
-  raw_ptr<views::BoxLayoutView> main_view_ = nullptr;
-  raw_ptr<views::BoxLayoutView> content_view_ = nullptr;
+  raw_ptr<views::View> content_view_ = nullptr;
   raw_ptr<views::ImageButton> settings_button_ = nullptr;
-  raw_ptr<views::ImageView> vector_icon_ = nullptr;
-  raw_ptr<views::Link> search_link_label_ = nullptr;
 
-  base::ScopedObservation<views::Widget, views::WidgetObserver>
-      widget_observation_{this};
+  std::unique_ptr<quick_answers::RichAnswersPreTargetHandler>
+      rich_answers_view_handler_;
+  std::unique_ptr<QuickAnswersFocusSearch> focus_search_;
   base::WeakPtrFactory<RichAnswersView> weak_factory_{this};
 };
 

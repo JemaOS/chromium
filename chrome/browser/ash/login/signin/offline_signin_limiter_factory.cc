@@ -16,8 +16,7 @@ base::Clock* OfflineSigninLimiterFactory::clock_for_testing_ = nullptr;
 
 // static
 OfflineSigninLimiterFactory* OfflineSigninLimiterFactory::GetInstance() {
-  static base::NoDestructor<OfflineSigninLimiterFactory> instance;
-  return instance.get();
+  return base::Singleton<OfflineSigninLimiterFactory>::get();
 }
 
 // static
@@ -42,13 +41,12 @@ OfflineSigninLimiterFactory::OfflineSigninLimiterFactory()
               .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
-OfflineSigninLimiterFactory::~OfflineSigninLimiterFactory() = default;
+OfflineSigninLimiterFactory::~OfflineSigninLimiterFactory() {}
 
-std::unique_ptr<KeyedService>
-OfflineSigninLimiterFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* OfflineSigninLimiterFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<OfflineSigninLimiter>(static_cast<Profile*>(context),
-                                                clock_for_testing_);
+  return new OfflineSigninLimiter(static_cast<Profile*>(context),
+                                  clock_for_testing_);
 }
 
 }  // namespace ash

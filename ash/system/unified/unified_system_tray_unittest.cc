@@ -4,21 +4,20 @@
 
 #include "ash/system/unified/unified_system_tray.h"
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_switches.h"
 #include "ash/public/cpp/test/shell_test_api.h"
-#include "ash/public/cpp/test/test_cast_config_controller.h"
-#include "ash/public/cpp/test/test_nearby_share_delegate.h"
 #include "ash/root_window_controller.h"
 #include "ash/shelf/shelf.h"
 #include "ash/shelf/shelf_layout_manager.h"
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
-#include "ash/system/media/quick_settings_media_view_controller.h"
-#include "ash/system/model/system_tray_model.h"
+#include "ash/system/message_center/unified_message_center_bubble.h"
 #include "ash/system/notification_center/notification_center_tray.h"
-#include "ash/system/notification_center/views/notification_center_view.h"
+#include "ash/system/notification_center/notification_center_view.h"
+#include "ash/system/privacy/privacy_indicators_controller.h"
+#include "ash/system/privacy/privacy_indicators_tray_item_view.h"
 #include "ash/system/status_area_widget.h"
 #include "ash/system/status_area_widget_test_helper.h"
 #include "ash/system/time/time_tray_item_view.h"
@@ -27,6 +26,7 @@
 #include "ash/system/unified/ime_mode_view.h"
 #include "ash/system/unified/unified_slider_bubble_controller.h"
 #include "ash/system/unified/unified_system_tray_bubble.h"
+#include "ash/system/unified/unified_system_tray_view.h"
 #include "ash/system/video_conference/fake_video_conference_tray_controller.h"
 #include "ash/system/video_conference/video_conference_tray.h"
 #include "ash/test/ash_test_base.h"
@@ -38,10 +38,7 @@
 #include "chromeos/ash/components/audio/cras_audio_handler.h"
 #include "chromeos/ash/components/dbus/audio/audio_node.h"
 #include "chromeos/ash/components/dbus/audio/fake_cras_audio_client.h"
-#include "chromeos/constants/chromeos_features.h"
-#include "media/base/media_switches.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/events/event_constants.h"
@@ -52,16 +49,15 @@ namespace ash {
 namespace {
 
 constexpr int kQsDetailedViewHeight = 464;
-constexpr char kQuickSettingsPageCountOnClose[] =
-    "Ash.QuickSettings.PageCountOnClose";
 
 }  // namespace
 
 using message_center::MessageCenter;
 using message_center::Notification;
 
-class UnifiedSystemTrayTest : public AshTestBase,
-                              public testing::WithParamInterface<bool> {
+class UnifiedSystemTrayTest
+    : public AshTestBase,
+      public testing::WithParamInterface<std::tuple<bool, bool>> {
  public:
   UnifiedSystemTrayTest()
       : AshTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
@@ -70,12 +66,17 @@ class UnifiedSystemTrayTest : public AshTestBase,
   ~UnifiedSystemTrayTest() override = default;
 
   void SetUp() override {
-    std::vector<base::test::FeatureRef> enabled_features;
+    base::CommandLine::ForCurrentProcess()->AppendSwitch(
+        switches::kCameraEffectsSupportedByHardware);
 
+    std::vector<base::test::FeatureRef> enabled_features;
+    if (IsQsRevampEnabled()) {
+      enabled_features.push_back(features::kQsRevamp);
+    }
     if (IsVcControlsUiEnabled()) {
       fake_video_conference_tray_controller_ =
           std::make_unique<FakeVideoConferenceTrayController>();
-      enabled_features.push_back(features::kFeatureManagementVideoConference);
+      enabled_features.push_back(features::kVideoConference);
     }
     feature_list_.InitWithFeatures(enabled_features, {});
     AshTestBase::SetUp();
@@ -89,7 +90,9 @@ class UnifiedSystemTrayTest : public AshTestBase,
     }
   }
 
-  bool IsVcControlsUiEnabled() { return GetParam(); }
+  bool IsQsRevampEnabled() { return std::get<0>(GetParam()); }
+
+  bool IsVcControlsUiEnabled() { return std::get<1>(GetParam()); }
 
  protected:
   const std::string AddNotification() {
@@ -110,8 +113,10 @@ class UnifiedSystemTrayTest : public AshTestBase,
   }
 
   // Show the notification center bubble. This assumes that there is at least
-  // one notification in the notification list.
+  // one notification in the notification list. This should only be called
+  // when QsRevamp is enabled.
   void ShowNotificationBubble() {
+    DCHECK(IsQsRevampEnabled());
     Shell::Get()
         ->GetPrimaryRootWindowController()
         ->shelf()
@@ -121,8 +126,9 @@ class UnifiedSystemTrayTest : public AshTestBase,
   }
 
   // Hide the notification center bubble. This assumes that it is already
-  // shown.
+  // shown. This should only be called when QsRevamp is enabled.
   void HideNotificationBubble() {
+    DCHECK(IsQsRevampEnabled());
     Shell::Get()
         ->GetPrimaryRootWindowController()
         ->shelf()
@@ -174,13 +180,17 @@ class UnifiedSystemTrayTest : public AshTestBase,
     // `DateTray` becomes inactive.
     EXPECT_TRUE(tray->is_active());
     EXPECT_FALSE(date_tray()->is_active());
-    // The main bubble is shorter than the detailed view bubble.
+    // For QsRevamp: the main bubble is shorter than the detailed view bubble.
     EXPECT_GT(kQsDetailedViewHeight, bubble_view->height());
   }
 
   void CheckDetailedViewHeight(TrayBubbleView* bubble_view) {
-    // The bubble height should be fixed to the detailed view height.
-    EXPECT_EQ(kQsDetailedViewHeight, bubble_view->height());
+    if (IsQsRevampEnabled()) {
+      // The bubble height should be fixed to the detailed view height.
+      EXPECT_EQ(kQsDetailedViewHeight, bubble_view->height());
+    } else {
+      EXPECT_GT(kQsDetailedViewHeight, bubble_view->height());
+    }
   }
 
   TimeTrayItemView* time_view() {
@@ -210,9 +220,11 @@ class UnifiedSystemTrayTest : public AshTestBase,
   base::test::ScopedFeatureList feature_list_;
 };
 
-INSTANTIATE_TEST_SUITE_P(All,
-                         UnifiedSystemTrayTest,
-                         testing::Bool() /*IsVcControlsUiEnabled()*/);
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    UnifiedSystemTrayTest,
+    testing::Combine(testing::Bool() /* IsQsRevampEnabled() */,
+                     testing::Bool() /* IsVcControlsUiEnabled() */));
 
 // Regression test for crbug/1360579
 TEST_P(UnifiedSystemTrayTest, GetAccessibleNameForQuickSettingsBubble) {
@@ -345,7 +357,7 @@ TEST_P(UnifiedSystemTrayTest, HorizontalImeAndTimeLabelAlignment) {
 
   gfx::Rect time_bounds = time_view()
                               ->time_view()
-                              ->horizontal_time_label_for_test()
+                              ->horizontal_label_for_test()
                               ->GetBoundsInScreen();
   gfx::Rect ime_bounds = ime_mode_view()->label()->GetBoundsInScreen();
 
@@ -353,18 +365,147 @@ TEST_P(UnifiedSystemTrayTest, HorizontalImeAndTimeLabelAlignment) {
   EXPECT_EQ(time_bounds.height(), ime_bounds.height());
 }
 
+TEST_P(UnifiedSystemTrayTest, FocusMessageCenter) {
+  if (IsQsRevampEnabled()) {
+    return;
+  }
+
+  auto* tray = GetPrimaryUnifiedSystemTray();
+  tray->ShowBubble();
+
+  auto* message_center_view =
+      tray->message_center_bubble()->notification_center_view();
+  auto* focus_manager = message_center_view->GetFocusManager();
+
+  AddNotification();
+  AddNotification();
+  message_center_view->SetVisible(true);
+
+  EXPECT_FALSE(message_center_view->Contains(focus_manager->GetFocusedView()));
+  EXPECT_FALSE(message_center_view->collapsed());
+
+  auto did_focus = tray->FocusMessageCenter(false);
+
+  EXPECT_TRUE(did_focus);
+
+  EXPECT_TRUE(tray->IsMessageCenterBubbleShown());
+  EXPECT_FALSE(message_center_view->collapsed());
+  EXPECT_TRUE(message_center_view->Contains(focus_manager->GetFocusedView()));
+}
+
+TEST_P(UnifiedSystemTrayTest, FocusMessageCenter_MessageCenterBubbleNotShown) {
+  if (IsQsRevampEnabled()) {
+    return;
+  }
+
+  auto* tray = GetPrimaryUnifiedSystemTray();
+  tray->ShowBubble();
+  auto* message_center_bubble = tray->message_center_bubble();
+
+  EXPECT_FALSE(message_center_bubble->IsMessageCenterVisible());
+
+  auto did_focus = tray->FocusMessageCenter(false);
+
+  EXPECT_FALSE(did_focus);
+}
+
+TEST_P(UnifiedSystemTrayTest, FocusMessageCenter_VoxEnabled) {
+  if (IsQsRevampEnabled()) {
+    return;
+  }
+
+  auto* tray = GetPrimaryUnifiedSystemTray();
+  tray->ShowBubble();
+
+  auto* message_center_bubble = tray->message_center_bubble();
+  auto* message_center_view = message_center_bubble->notification_center_view();
+
+  AddNotification();
+  AddNotification();
+  message_center_view->SetVisible(true);
+  Shell::Get()->accessibility_controller()->spoken_feedback().SetEnabled(true);
+
+  EXPECT_FALSE(message_center_bubble->GetBubbleWidget()->IsActive());
+
+  auto did_focus = tray->FocusMessageCenter(false);
+
+  EXPECT_TRUE(did_focus);
+
+  auto* focus_manager = tray->GetFocusManager();
+
+  EXPECT_TRUE(tray->IsMessageCenterBubbleShown());
+  EXPECT_TRUE(message_center_bubble->GetBubbleWidget()->IsActive());
+  EXPECT_FALSE(message_center_view->Contains(focus_manager->GetFocusedView()));
+}
+
 TEST_P(UnifiedSystemTrayTest, FocusQuickSettings) {
   auto* tray = GetPrimaryUnifiedSystemTray();
   tray->ShowBubble();
 
-  auto* quick_settings_view = tray->bubble()->quick_settings_view();
-  auto* focus_manager = quick_settings_view->GetFocusManager();
-  EXPECT_FALSE(quick_settings_view->Contains(focus_manager->GetFocusedView()));
+  if (IsQsRevampEnabled()) {
+    auto* quick_settings_view = tray->bubble()->quick_settings_view();
+    auto* focus_manager = quick_settings_view->GetFocusManager();
+    EXPECT_FALSE(
+        quick_settings_view->Contains(focus_manager->GetFocusedView()));
 
-  // Press the tab key should focus on the first button in the qs bubble.
-  ui::test::EventGenerator generator(Shell::GetPrimaryRootWindow());
-  generator.PressKey(ui::KeyboardCode::VKEY_TAB, ui::EF_NONE);
-  EXPECT_TRUE(quick_settings_view->Contains(focus_manager->GetFocusedView()));
+    // There's no `FocusQuickSettings` method in the new view. Press the tab key
+    // should focus on the first button in the qs bubble.
+    ui::test::EventGenerator generator(Shell::GetPrimaryRootWindow());
+    generator.PressKey(ui::KeyboardCode::VKEY_TAB, ui::EF_NONE);
+    EXPECT_TRUE(quick_settings_view->Contains(focus_manager->GetFocusedView()));
+    return;
+  }
+
+  auto* unified_system_tray_view = tray->bubble()->unified_view();
+  auto* focus_manager = unified_system_tray_view->GetFocusManager();
+
+  EXPECT_FALSE(
+      unified_system_tray_view->Contains(focus_manager->GetFocusedView()));
+
+  auto did_focus = tray->FocusQuickSettings(false);
+
+  EXPECT_TRUE(did_focus);
+
+  EXPECT_TRUE(
+      unified_system_tray_view->Contains(focus_manager->GetFocusedView()));
+}
+
+TEST_P(UnifiedSystemTrayTest, FocusQuickSettings_BubbleNotShown) {
+  auto* tray = GetPrimaryUnifiedSystemTray();
+
+  auto did_focus = tray->FocusQuickSettings(false);
+
+  EXPECT_FALSE(did_focus);
+}
+
+TEST_P(UnifiedSystemTrayTest, FocusQuickSettings_VoxEnabled) {
+  auto* tray = GetPrimaryUnifiedSystemTray();
+  tray->ShowBubble();
+  auto* tray_bubble_widget = tray->bubble()->GetBubbleWidget();
+
+  Shell::Get()->accessibility_controller()->spoken_feedback().SetEnabled(true);
+
+  EXPECT_FALSE(tray_bubble_widget->IsActive());
+
+  auto did_focus = tray->FocusQuickSettings(false);
+
+  EXPECT_TRUE(did_focus);
+
+  if (IsQsRevampEnabled()) {
+    auto* quick_settings_view = tray->bubble()->quick_settings_view();
+    auto* focus_manager = quick_settings_view->GetFocusManager();
+    EXPECT_TRUE(tray_bubble_widget->IsActive());
+    EXPECT_FALSE(
+        quick_settings_view->Contains(focus_manager->GetFocusedView()));
+    return;
+  }
+
+  auto* unified_system_tray_view = tray->bubble()->unified_view();
+  auto* focus_manager = unified_system_tray_view->GetFocusManager();
+
+  EXPECT_TRUE(tray_bubble_widget->IsActive());
+  EXPECT_FALSE(
+      unified_system_tray_view->Contains(focus_manager->GetFocusedView()));
 }
 
 TEST_P(UnifiedSystemTrayTest, TimeInQuickSettingsMetric) {
@@ -401,46 +542,6 @@ TEST_P(UnifiedSystemTrayTest, TimeInQuickSettingsMetric) {
                                     /*count=*/2);
 }
 
-// Tests that the number of quick settings pages is recorded when the QS bubble
-// is closed.
-TEST_P(UnifiedSystemTrayTest, QuickSettingsPageCountMetric) {
-  base::HistogramTester histogram_tester;
-
-  // Show the bubble with one page and verify that nothing is recorded yet.
-  auto* tray = GetPrimaryUnifiedSystemTray();
-  tray->ShowBubble();
-  tray->bubble()
-      ->unified_system_tray_controller()
-      ->model()
-      ->pagination_model()
-      ->SetTotalPages(1);
-  histogram_tester.ExpectTotalCount(kQuickSettingsPageCountOnClose, 0);
-
-  // Close the bubble and verify that the metric is recorded.
-  tray->CloseBubble();
-  histogram_tester.ExpectTotalCount(kQuickSettingsPageCountOnClose, 1);
-  histogram_tester.ExpectBucketCount(kQuickSettingsPageCountOnClose,
-                                     /*sample=*/1,
-                                     /*expected_count=*/1);
-
-  // Show the bubble with two pages, and verify that the metric is recorded when
-  // the bubble is closed.
-  tray->ShowBubble();
-  tray->bubble()
-      ->unified_system_tray_controller()
-      ->model()
-      ->pagination_model()
-      ->SetTotalPages(2);
-  tray->CloseBubble();
-  histogram_tester.ExpectTotalCount(kQuickSettingsPageCountOnClose, 2);
-  histogram_tester.ExpectBucketCount(kQuickSettingsPageCountOnClose,
-                                     /*sample=*/2,
-                                     /*expected_count=*/1);
-  histogram_tester.ExpectBucketCount(kQuickSettingsPageCountOnClose,
-                                     /*sample=*/1,
-                                     /*expected_count=*/1);
-}
-
 // Tests that pressing the TOGGLE_CALENDAR accelerator once results in the
 // calendar view showing.
 TEST_P(UnifiedSystemTrayTest, PressCalendarAccelerator) {
@@ -475,8 +576,47 @@ TEST_P(UnifiedSystemTrayTest, CalendarAcceleratorFocusesDateCell) {
                "CalendarDateCellView");
 }
 
+// Tests that CalendarView switches back to Quick Settings when screen size is
+// limited and the bubble requires a collapsed state.
+TEST_P(UnifiedSystemTrayTest, CalendarGoesToMainView) {
+  if (IsQsRevampEnabled()) {
+    return;
+  }
+
+  auto* tray = GetPrimaryUnifiedSystemTray();
+  tray->ShowBubble();
+
+  // Set a limited screen size.
+  UpdateDisplay("800x600");
+
+  // Generate a notification, close and open the bubble so we can show the
+  // collapsed message center.
+  AddNotification();
+  tray->CloseBubble();
+  tray->ShowBubble();
+
+  // Ensure message center is collapsed when Calendar is not being shown.
+  auto* message_center_view =
+      tray->message_center_bubble()->notification_center_view();
+  EXPECT_FALSE(tray->IsShowingCalendarView());
+  EXPECT_TRUE(message_center_view->collapsed());
+
+  // Ensure message center is collapsed when the Calendar is being shown.
+  ShellTestApi().PressAccelerator(
+      ui::Accelerator(ui::VKEY_C, ui::EF_COMMAND_DOWN));
+  EXPECT_TRUE(tray->IsShowingCalendarView());
+  EXPECT_TRUE(message_center_view->collapsed());
+
+  // Test that Calendar is no longer shown after expanding the collapsed
+  // message center.
+  tray->message_center_bubble()->ExpandMessageCenter();
+  EXPECT_FALSE(message_center_view->collapsed());
+  EXPECT_FALSE(tray->IsShowingCalendarView());
+}
+
 // Tests that using functional keys to change brightness/volume when the
-// `CalendarView` is open will make ink drop transfer and bubble height change.
+// `CalendarView` is open will make ink drop transfer(before and after
+// QsRevamp) and bubble height change(after QsRevamp).
 TEST_P(UnifiedSystemTrayTest, CalendarGoesToMainViewByFunctionalKeys) {
   auto* tray = GetPrimaryUnifiedSystemTray();
   tray->ShowBubble();
@@ -490,7 +630,7 @@ TEST_P(UnifiedSystemTrayTest, CalendarGoesToMainViewByFunctionalKeys) {
   // Tests the volume up/down/mute functional keys. It should hide the calendar
   // view and open the `unified_system_tray_bubble_`. The ink drop should
   // transfer from `DateTray` to `UnifiedSystemTray` and the `bubble_view`
-  // should shrink for the Qs main page.
+  // should shrink for the revamped Qs main page.
   TransferFromCalendarViewToMainViewByFuncKeys(tray, bubble_view,
                                                ui::VKEY_VOLUME_UP);
   TransferFromCalendarViewToMainViewByFuncKeys(tray, bubble_view,
@@ -643,9 +783,7 @@ TEST_P(UnifiedSystemTrayTest, InputMuteStateToggledButNoMicrophoneAvailable) {
   EXPECT_FALSE(IsMicrophoneMuteToastShown());
 }
 
-// Tests that the bubble is closed after entering or exiting tablet mode. This
-// is required because the `FeatureTile`'s must be recreated to switch between
-// primary and compact.
+// Tests that the bubble is closed after entering or exiting tablet mode.
 TEST_P(UnifiedSystemTrayTest, BubbleClosedAfterTabletModeChange) {
   auto* tray = GetPrimaryUnifiedSystemTray();
   TabletModeController* tablet_mode_controller =
@@ -682,14 +820,8 @@ TEST_P(UnifiedSystemTrayTest, TrayBackgroundColorAfterSwitchToTabletMode) {
             ShelfConfig::Get()->GetShelfControlButtonColor(widget));
 
   tablet_mode_controller->SetEnabledForTest(true);
-  if (chromeos::features::IsJellyEnabled()) {
-    EXPECT_EQ(tray->layer()->background_color(),
-              widget->GetColorProvider()->GetColor(
-                  cros_tokens::kCrosSysSystemBaseElevated));
-  } else {
-    EXPECT_EQ(tray->layer()->background_color(),
-              ShelfConfig::Get()->GetShelfControlButtonColor(widget));
-  }
+  EXPECT_EQ(tray->layer()->background_color(),
+            ShelfConfig::Get()->GetShelfControlButtonColor(widget));
 
   tablet_mode_controller->SetEnabledForTest(false);
   EXPECT_EQ(tray->layer()->background_color(),
@@ -699,6 +831,11 @@ TEST_P(UnifiedSystemTrayTest, TrayBackgroundColorAfterSwitchToTabletMode) {
 // Tests that the bubble automatically hides if it is visible when another
 // bubble becomes visible, and otherwise does not automatically show or hide.
 TEST_P(UnifiedSystemTrayTest, BubbleHideBehavior) {
+  // This hiding behavior only applies when QsRevamp is enabled.
+  if (!IsQsRevampEnabled()) {
+    return;
+  }
+
   // Basic verification test that the unified system tray bubble can show/hide
   // itself when no other bubbles are visible.
   auto* tray = GetPrimaryUnifiedSystemTray();
@@ -770,94 +907,116 @@ TEST_P(UnifiedSystemTrayTest, BubbleViewSizeChangeNoEnoughSpace) {
   tray->CloseBubble();
 }
 
-TEST_P(UnifiedSystemTrayTest, BubbleViewSizeChangeWithBigMainPage) {
-  // Set a large enough screen size.
-  UpdateDisplay("1600x900");
+TEST_P(UnifiedSystemTrayTest, NoPrivacyIndicators) {
+  // No privacy indicators when the feature is not enabled.
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{},
+      /*disabled_features=*/{features::kVideoConference,
+                             features::kPrivacyIndicators});
 
-  // The following code adds 2 more row in the tile section and 1 media control
-  // view to the qs bubble. In this case the main page should be larger than the
-  // default detailed page height.
-
-  // Enables nearby sharing to show the tile.
-  auto* test_delegate = static_cast<TestNearbyShareDelegate*>(
-      Shell::Get()->nearby_share_delegate());
-  test_delegate->set_is_pod_button_visible(true);
-
-  // Constructs the test cast config to add the cast tile.
-  TestCastConfigController cast_config;
-
-  // Adds locales to show the locale tile.
-  std::vector<LocaleInfo> locale_list;
-  locale_list.emplace_back("en-US", u"English (United States)");
-  Shell::Get()->system_tray_model()->SetLocaleList(std::move(locale_list),
-                                                   "en-US");
-  // Adds the media control view.
-  auto* tray = GetPrimaryUnifiedSystemTray();
-  tray->ShowBubble();
-  auto* qs_view = tray->bubble()->quick_settings_view();
-  auto* tray_controller = tray->bubble()->unified_system_tray_controller();
-  if (base::FeatureList::IsEnabled(media::kGlobalMediaControlsCrOSUpdatedUI)) {
-    auto media_controller =
-        std::make_unique<QuickSettingsMediaViewController>(tray_controller);
-
-    // Outside tests the QuickSettingsMediaViewController is set in
-    // UnifiedSystemTrayController::CreateQuickSettingsView() which is not
-    // called here, but we need to reference QuickSettingsMediaViewController in
-    // QuickSettingsMediaViewContainer::MaybeShowMediaView() when calling
-    // QuickSettingsView::SetShowMediaView(), so we need to manually set the
-    // controller for testing.
-    tray_controller->SetMediaViewControllerForTesting(
-        std::move(media_controller));
-
-    qs_view->AddMediaView(
-        tray_controller->media_view_controller()->CreateView());
-    qs_view->SetShowMediaView(true);
-  } else {
-    auto media_controller =
-        std::make_unique<UnifiedMediaControlsController>(tray_controller);
-    qs_view->AddMediaControlsView(media_controller->CreateView());
-    qs_view->ShowMediaControls();
-  }
-
-  auto* bubble_view = tray->bubble()->GetBubbleView();
-
-  // The main page height should be larger than the detailed view height.
-  EXPECT_LT(kQsDetailedViewHeight, bubble_view->height());
-
-  const int main_page_height = bubble_view->height();
-
-  // Goes to a detailed view (here using calendar view).
-  ShellTestApi().PressAccelerator(
-      ui::Accelerator(ui::VKEY_C, ui::EF_COMMAND_DOWN));
-
-  // Asserts that calendar is actually shown.
-  EXPECT_TRUE(GetPrimaryUnifiedSystemTray()->IsShowingCalendarView());
-
-  EXPECT_LT(kQsDetailedViewHeight, bubble_view->height());
-  EXPECT_EQ(main_page_height, bubble_view->height());
-
-  tray->CloseBubble();
+  auto tray = std::make_unique<UnifiedSystemTray>(GetPrimaryShelf());
+  EXPECT_FALSE(tray->privacy_indicators_view());
 }
 
-// Tests that there's no bubble in the kiosk mode.
-TEST_P(UnifiedSystemTrayTest, NoBubbleAndNoDetailedViewInKioskMode) {
-  SimulateKioskMode(user_manager::UserType::kKioskApp);
+TEST_P(UnifiedSystemTrayTest, NoPrivacyIndicatorsWhenVcEnabled) {
+  // No privacy indicators when `kVideoConference` is enabled.
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kVideoConference,
+                            features::kPrivacyIndicators},
+      /*disabled_features=*/{});
 
-  auto* tray = GetPrimaryUnifiedSystemTray();
-  tray->ShowBubble();
+  auto tray = std::make_unique<UnifiedSystemTray>(GetPrimaryShelf());
+  EXPECT_FALSE(tray->privacy_indicators_view());
+}
 
-  // In the kiosk mode, the bubble doesn't exist.
-  EXPECT_FALSE(IsBubbleShown());
+// Tests that no camera or microphone views are present with VideoConference
+// enabled.
+TEST_P(UnifiedSystemTrayTest, NoCamOrMicViewWhenVcEnabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kVideoConference},
+      /*disabled_features=*/{});
 
-  // Trying to show any of the detailed view will not show the bubble.
-  tray->ShowAudioDetailedViewBubble();
-  EXPECT_FALSE(IsBubbleShown());
+  auto tray = std::make_unique<UnifiedSystemTray>(GetPrimaryShelf());
 
-  tray->ShowNetworkDetailedViewBubble();
-  EXPECT_FALSE(IsBubbleShown());
+  EXPECT_FALSE(tray->mic_view());
+  EXPECT_FALSE(tray->camera_view());
+}
 
-  tray->ShowDisplayDetailedViewBubble();
-  EXPECT_FALSE(IsBubbleShown());
+// Test suite for the system tray when `kPrivacyIndicators` is enabled.
+class UnifiedSystemTrayPrivacyIndicatorsTest
+    : public AshTestBase,
+      public testing::WithParamInterface<bool> {
+ public:
+  UnifiedSystemTrayPrivacyIndicatorsTest() = default;
+  UnifiedSystemTrayPrivacyIndicatorsTest(
+      const UnifiedSystemTrayPrivacyIndicatorsTest&) = delete;
+  UnifiedSystemTrayPrivacyIndicatorsTest& operator=(
+      const UnifiedSystemTrayPrivacyIndicatorsTest&) = delete;
+  ~UnifiedSystemTrayPrivacyIndicatorsTest() override = default;
+
+  void SetUp() override {
+    std::vector<base::test::FeatureRef> enabled_features = {
+        features::kPrivacyIndicators};
+    if (IsQsRevampEnabled()) {
+      enabled_features.push_back(features::kQsRevamp);
+    }
+
+    scoped_feature_list_.InitWithFeatures(
+        enabled_features,
+        /*disabled_features=*/{features::kVideoConference});
+
+    AshTestBase::SetUp();
+  }
+
+  bool IsQsRevampEnabled() { return GetParam(); }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         UnifiedSystemTrayPrivacyIndicatorsTest,
+                         testing::Bool() /* IsQsRevampEnabled() */);
+
+// Tests that privacy indicators view is created and show/hide accordingly when
+// updated.
+TEST_P(UnifiedSystemTrayPrivacyIndicatorsTest, PrivacyIndicatorsVisibility) {
+  auto* system_tray =
+      StatusAreaWidgetTestHelper::GetStatusAreaWidget()->unified_system_tray();
+  auto* privacy_indicators_view = system_tray->privacy_indicators_view();
+
+  // No privacy indicators when `kQsRevamp` is enabled.
+  if (IsQsRevampEnabled()) {
+    EXPECT_FALSE(privacy_indicators_view);
+    return;
+  }
+
+  // Privacy indicators should be created and show/hide when updated.
+  EXPECT_TRUE(privacy_indicators_view);
+
+  EXPECT_FALSE(privacy_indicators_view->GetVisible());
+
+  scoped_refptr<PrivacyIndicatorsNotificationDelegate> delegate =
+      base::MakeRefCounted<PrivacyIndicatorsNotificationDelegate>();
+
+  // Updates the controller to simulate camera access, the privacy indicators
+  // should become visible.
+  PrivacyIndicatorsController::Get()->UpdatePrivacyIndicators(
+      /*app_id=*/"app_id", /*app_name=*/u"App Name",
+      /*is_camera_used=*/true,
+      /*is_microphone_used=*/false, delegate, PrivacyIndicatorsSource::kApps);
+  EXPECT_TRUE(privacy_indicators_view->GetVisible());
+
+  // Updates the controller to simulate that camera and microphone are not
+  // accessed, the privacy indicators should be hidden.
+  PrivacyIndicatorsController::Get()->UpdatePrivacyIndicators(
+      /*app_id=*/"app_id", /*app_name=*/u"App Name",
+      /*is_camera_used=*/false,
+      /*is_microphone_used=*/false, delegate, PrivacyIndicatorsSource::kApps);
+  EXPECT_FALSE(privacy_indicators_view->GetVisible());
 }
 
 }  // namespace ash

@@ -34,10 +34,10 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_FRAME_LOADER_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/functional/callback_helpers.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 #include "third_party/blink/public/mojom/loader/code_cache.mojom-blink-forward.h"
@@ -62,6 +62,7 @@ namespace blink {
 
 class DocumentLoader;
 class FetchClientSettingsObject;
+class Frame;
 class LocalFrame;
 class LocalFrameClient;
 class PolicyContainer;
@@ -75,7 +76,6 @@ struct WebNavigationParams;
 
 CORE_EXPORT bool IsBackForwardLoadType(WebFrameLoadType);
 CORE_EXPORT bool IsReloadLoadType(WebFrameLoadType);
-CORE_EXPORT bool IsBackForwardOrRestore(WebFrameLoadType);
 
 class CORE_EXPORT FrameLoader final {
   DISALLOW_NEW();
@@ -148,7 +148,9 @@ class CORE_EXPORT FrameLoader final {
   void DidExplicitOpen();
 
   String UserAgent() const;
-  std::optional<blink::UserAgentMetadata> UserAgentMetadata() const;
+  String FullUserAgent() const;
+  String ReducedUserAgent() const;
+  absl::optional<blink::UserAgentMetadata> UserAgentMetadata() const;
 
   void DispatchDidClearWindowObjectInMainWorld();
   void DispatchDidClearDocumentOfWindowObject();
@@ -171,6 +173,9 @@ class CORE_EXPORT FrameLoader final {
       LocalDOMWindow* window_for_logging,
       mojom::RequestContextFrameType) const;
 
+  Frame* Opener();
+  void SetOpener(LocalFrame*);
+
   void Detach();
 
   void FinishedParsing();
@@ -180,7 +185,7 @@ class CORE_EXPORT FrameLoader final {
   void ProcessScrollForSameDocumentNavigation(
       const KURL&,
       WebFrameLoadType,
-      std::optional<HistoryItem::ViewState>,
+      absl::optional<HistoryItem::ViewState>,
       mojom::blink::ScrollRestorationType);
 
   // This will attempt to detach the current document. It will dispatch unload

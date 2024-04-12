@@ -10,11 +10,9 @@
 
 namespace blink {
 
-void DisplayItemList::clear() {
-  for (auto& item : *this) {
+DisplayItemList::~DisplayItemList() {
+  for (auto& item : *this)
     item.Destruct();
-  }
-  items_.clear();
 }
 
 #if DCHECK_IS_ON()

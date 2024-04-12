@@ -90,8 +90,8 @@ class RasterShape final : public Shape {
   RasterShape(const RasterShape&) = delete;
   RasterShape& operator=(const RasterShape&) = delete;
 
-  LogicalRect ShapeMarginLogicalBoundingBox() const override {
-    return LogicalRect(MarginIntervals().Bounds());
+  LayoutRect ShapeMarginLogicalBoundingBox() const override {
+    return static_cast<LayoutRect>(MarginIntervals().Bounds());
   }
   bool IsEmpty() const override { return intervals_->IsEmpty(); }
   LineSegment GetExcludedInterval(LayoutUnit logical_top,

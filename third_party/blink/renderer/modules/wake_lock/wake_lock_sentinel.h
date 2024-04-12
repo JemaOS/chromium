@@ -23,7 +23,7 @@ class ScriptState;
 class WakeLockManager;
 
 class MODULES_EXPORT WakeLockSentinel final
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ActiveScriptWrappable<WakeLockSentinel>,
       public ExecutionContextLifecycleObserver {
   DEFINE_WRAPPERTYPEINFO();
@@ -36,7 +36,7 @@ class MODULES_EXPORT WakeLockSentinel final
 
   // Web-exposed interfaces
   DEFINE_ATTRIBUTE_EVENT_LISTENER(release, kRelease)
-  ScriptPromiseTyped<IDLUndefined> release(ScriptState*);
+  ScriptPromise release(ScriptState*);
   bool released() const;
   V8WakeLockType type() const;
 

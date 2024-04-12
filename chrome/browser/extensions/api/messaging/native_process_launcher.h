@@ -10,7 +10,6 @@
 #include "base/files/file.h"
 #include "base/functional/callback_forward.h"
 #include "base/process/process.h"
-#include "chrome/browser/profiles/profile.h"
 #include "ui/gfx/native_widget_types.h"
 
 class GURL;
@@ -55,8 +54,7 @@ class NativeProcessLauncher {
       const base::FilePath& profile_directory,
       bool require_native_initiated_connections,
       const std::string& connect_id,
-      const std::string& error_arg,
-      Profile* profile);
+      const std::string& error_arg);
 
   NativeProcessLauncher() = default;
 
@@ -87,12 +85,10 @@ class NativeProcessLauncher {
                                      std::string* error_message);
 
   // Launches native messaging process.
-  static bool LaunchNativeProcess(
-      const base::CommandLine& command_line,
-      base::Process* process,
-      base::File* read_file,
-      base::File* write_file,
-      bool native_hosts_executables_launch_directly);
+  static bool LaunchNativeProcess(const base::CommandLine& command_line,
+                                  base::Process* process,
+                                  base::File* read_file,
+                                  base::File* write_file);
 };
 
 }  // namespace extensions

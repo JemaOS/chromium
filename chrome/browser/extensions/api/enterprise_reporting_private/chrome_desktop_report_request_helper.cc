@@ -30,7 +30,7 @@
 #endif
 
 #if BUILDFLAG(IS_MAC)
-#include "base/apple/foundation_util.h"
+#include "base/mac/foundation_util.h"
 #include "chrome/browser/extensions/api/enterprise_reporting_private/keychain_data_helper_mac.h"
 #include "crypto/apple_keychain.h"
 #endif
@@ -111,8 +111,8 @@ LONG DecryptString(const std::string& ciphertext, std::string* plaintext) {
 LONG CreateRandomSecret(std::string* secret) {
   // Generate a password with 128 bits of randomness.
   const int kBytes = 128 / 8;
-  std::string generated_secret =
-      base::Base64Encode(base::RandBytesAsVector(kBytes));
+  std::string generated_secret;
+  base::Base64Encode(base::RandBytesAsString(kBytes), &generated_secret);
 
   std::string encrypted_secret;
   LONG result = EncryptString(generated_secret, &encrypted_secret);
@@ -147,7 +147,8 @@ OSStatus AddRandomPasswordToKeychain(const crypto::AppleKeychain& keychain,
                                      std::string* secret) {
   // Generate a password with 128 bits of randomness.
   const int kBytes = 128 / 8;
-  std::string password = base::Base64Encode(base::RandBytesAsVector(kBytes));
+  std::string password;
+  base::Base64Encode(base::RandBytesAsString(kBytes), &password);
 
   OSStatus status = WriteKeychainItem(kServiceName, kAccountName, password);
   if (status == noErr)
@@ -169,7 +170,7 @@ int32_t ReadEncryptedSecret(std::string* password, bool force_recreate) {
   crypto::AppleKeychain keychain;
   UInt32 password_length = 0;
   void* password_data = nullptr;
-  base::apple::ScopedCFTypeRef<SecKeychainItemRef> item_ref;
+  base::ScopedCFTypeRef<SecKeychainItemRef> item_ref;
   status = keychain.FindGenericPassword(
       strlen(kServiceName), kServiceName, strlen(kAccountName), kAccountName,
       &password_length, &password_data, item_ref.InitializeInto());
@@ -200,7 +201,7 @@ int32_t ReadEncryptedSecret(std::string* password, bool force_recreate) {
     if (was_auth_error) {
       bool unlocked;
       OSStatus keychain_status =
-          VerifyKeychainForItemUnlocked(item_ref.get(), &unlocked);
+          VerifyKeychainForItemUnlocked(item_ref, &unlocked);
       if (keychain_status != noErr) {
         // Failed to get keychain status.
         return keychain_status;
@@ -283,7 +284,7 @@ void OverrideEndpointVerificationDirForTesting(const base::FilePath& path) {
 }
 
 void StoreDeviceData(const std::string& id,
-                     const std::optional<std::vector<uint8_t>> data,
+                     const absl::optional<std::vector<uint8_t>> data,
                      base::OnceCallback<void(bool)> callback) {
   base::FilePath data_file = GetEndpointVerificationDir();
   if (data_file.empty()) {

@@ -42,11 +42,10 @@ CrostiniMetricsService::Factory::Factory()
 
 CrostiniMetricsService::Factory::~Factory() = default;
 
-std::unique_ptr<KeyedService>
-CrostiniMetricsService::Factory::BuildServiceInstanceForBrowserContext(
+KeyedService* CrostiniMetricsService::Factory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<CrostiniMetricsService>(profile);
+  return new CrostiniMetricsService(profile);
 }
 
 bool CrostiniMetricsService::Factory::ServiceIsCreatedWithBrowserContext()

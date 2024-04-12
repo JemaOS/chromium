@@ -13,7 +13,6 @@
 
 #include "base/component_export.h"
 #include "base/functional/callback.h"
-#include "base/functional/callback_forward.h"
 #include "ui/events/ozone/evdev/cursor_delegate_evdev.h"
 #include "ui/events/ozone/evdev/event_device_util.h"
 #include "ui/events/ozone/evdev/event_dispatch_callback.h"
@@ -62,11 +61,6 @@ class COMPONENT_EXPORT(EVDEV) GestureInterpreterLibevdevCros
   void OnLibEvdevCrosStopped(Evdev* evdev, EventStateRec* state) override;
   void SetupHapticButtonGeneration(
       const base::RepeatingCallback<void(bool)>& callback) override;
-  void SetReceivedValidKeyboardInputCallback(
-      base::RepeatingCallback<void(uint64_t)> callback) override;
-  void SetReceivedValidMouseInputCallback(
-      base::RepeatingCallback<void(int)> callback) override;
-  void SetBlockModifiers(bool block_modifiers) override;
 
   // Handler for gesture events generated from libgestures.
   void OnGestureReady(const Gesture* gesture);
@@ -114,9 +108,6 @@ class COMPONENT_EXPORT(EVDEV) GestureInterpreterLibevdevCros
   bool is_mouse_ = false;
   bool is_pointing_stick_ = false;
 
-  // Whether modifier keys should be blocked from the input device.
-  bool block_modifiers_;
-
   // Shared cursor state.
   CursorDelegateEvdev* cursor_;
 
@@ -147,12 +138,6 @@ class COMPONENT_EXPORT(EVDEV) GestureInterpreterLibevdevCros
 
   // Callback for physical button clicks.
   base::RepeatingCallback<void(bool)> click_callback_;
-
-  // Callback for when a keyboard key press is registered.
-  base::RepeatingCallback<void(uint64_t)> received_keyboard_input_;
-
-  // Callback for when a mouse rel event is registered.
-  base::RepeatingCallback<void(int)> received_mouse_input_;
 };
 
 }  // namespace ui

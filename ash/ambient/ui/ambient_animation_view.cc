@@ -9,8 +9,7 @@
 #include <utility>
 
 #include "ash/ambient/ambient_view_delegate_impl.h"
-#include "ash/ambient/metrics/ambient_animation_metrics_recorder.h"
-#include "ash/ambient/metrics/ambient_metrics.h"
+#include "ash/ambient/metrics/ambient_session_metrics_recorder.h"
 #include "ash/ambient/model/ambient_animation_attribution_provider.h"
 #include "ash/ambient/model/ambient_backend_model.h"
 #include "ash/ambient/model/ambient_photo_config.h"
@@ -24,16 +23,14 @@
 #include "ash/ambient/ui/ambient_animation_shield_controller.h"
 #include "ash/ambient/ui/ambient_view_ids.h"
 #include "ash/ambient/ui/glanceable_info_view.h"
-#include "ash/ambient/ui/jitter_calculator.h"
 #include "ash/ambient/ui/media_string_view.h"
 #include "ash/ambient/util/ambient_util.h"
 #include "ash/constants/ash_features.h"
-#include "ash/public/cpp/ambient/ambient_ui_model.h"
+#include "ash/public/cpp/ambient/ambient_metrics.h"
 #include "ash/public/cpp/metrics_util.h"
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/shell.h"
 #include "ash/style/ash_color_id.h"
-#include "ash/webui/personalization_app/mojom/personalization_app.mojom-shared.h"
 #include "base/check.h"
 #include "base/functional/bind.h"
 #include "base/location.h"
@@ -66,6 +63,13 @@ namespace {
 // How often to shift the animation slightly to prevent screen burn.
 constexpr base::TimeDelta kAnimationJitterPeriod = base::Minutes(2);
 
+constexpr JitterCalculator::Config kAnimationJitterConfig = {
+    /*step_size=*/2,
+    /*x_min_translation=*/-10,
+    /*x_max_translation=*/10,
+    /*y_min_translation=*/-10,
+    /*y_max_translation=*/10};
+
 constexpr base::TimeDelta kThroughputTrackerRestartPeriod = base::Seconds(30);
 
 // Amount of x and y padding there should be from the top-left of the
@@ -84,40 +88,38 @@ constexpr int kTimeFontSizeDip = 32;
 constexpr SkColor kDarkModeShieldColor =
     SkColorSetA(gfx::kGoogleGrey900, SK_AlphaOPAQUE / 10);
 
-void LogCompositorThroughput(const AmbientUiSettings& ui_settings,
-                             int smoothness) {
+void LogCompositorThroughput(AmbientTheme theme, int smoothness) {
   // Use VLOG instead of DVLOG since this log is performance-related and
   // developers will almost certainly only care about this log on non-debug
   // builds.
   VLOG(1) << "Compositor throughput report: smoothness=" << smoothness;
-  ambient::RecordAmbientModeAnimationSmoothness(smoothness, ui_settings);
+  ambient::RecordAmbientModeAnimationSmoothness(smoothness, theme);
 }
 
 void OnCompositorThroughputReported(
     base::TimeTicks logging_start_time,
-    const AmbientUiSettings& ui_settings,
+    AmbientTheme theme,
     const cc::FrameSequenceMetrics::CustomReportData& data) {
   base::TimeDelta duration = base::TimeTicks::Now() - logging_start_time;
   float duration_sec = duration.InSecondsF();
-  VLOG(1) << "Compositor throughput report: frames_expected_v3="
-          << data.frames_expected_v3
-          << " frames_dropped_v3=" << data.frames_dropped_v3
-          << " jank_count_v3=" << data.jank_count_v3
-          << " expected_fps=" << data.frames_expected_v3 / duration_sec
-          << " actual_fps="
-          << (data.frames_expected_v3 - data.frames_dropped_v3) / duration_sec
+  VLOG(1) << "Compositor throughput report: frames_expected="
+          << data.frames_expected << " frames_produced=" << data.frames_produced
+          << " jank_count=" << data.jank_count
+          << " expected_fps=" << data.frames_expected / duration_sec
+          << " actual_fps=" << data.frames_produced / duration_sec
           << " duration=" << duration;
-  metrics_util::ForSmoothnessV3(
-      base::BindRepeating(&LogCompositorThroughput, ui_settings))
+  metrics_util::ForSmoothness(
+      base::BindRepeating(&LogCompositorThroughput, theme))
       .Run(data);
 }
 
 // Returns the maximum possible displacement in either dimension from the
 // original unshifted position when jitter is applied.
-int GetPaddingForAnimationJitter(const AmbientJitterConfig& config) {
-  return std::max({abs(config.x_min_translation), abs(config.x_max_translation),
-                   abs(config.y_min_translation),
-                   abs(config.y_max_translation)});
+int GetPaddingForAnimationJitter() {
+  return std::max({abs(kAnimationJitterConfig.x_min_translation),
+                   abs(kAnimationJitterConfig.x_max_translation),
+                   abs(kAnimationJitterConfig.y_min_translation),
+                   abs(kAnimationJitterConfig.y_max_translation)});
 }
 
 // When text with shadows requires X pixels of padding from the edges of its
@@ -145,13 +147,9 @@ gfx::Outsets GetTextShadowCorrection(const gfx::ShadowValues& text_shadows) {
 // The border serves as padding between the GlanceableInfoView and its
 // parent view's bounds.
 std::unique_ptr<views::Border> CreateGlanceableInfoBorder(
-    bool include_text_shadow,
     const gfx::Vector2d& jitter = gfx::Vector2d()) {
-  gfx::Outsets shadow_text_correction;
-  if (include_text_shadow) {
-    shadow_text_correction =
-        GetTextShadowCorrection(ambient::util::GetTextShadowValues(nullptr));
-  }
+  gfx::Outsets shadow_text_correction =
+      GetTextShadowCorrection(ambient::util::GetTextShadowValues(nullptr));
   int top_padding =
       kWeatherTimeBorderPaddingDip - shadow_text_correction.top() + jitter.y();
   int left_padding =
@@ -184,29 +182,25 @@ AmbientAnimationView::AmbientAnimationView(
     AmbientViewDelegateImpl* view_delegate,
     AmbientAnimationProgressTracker* progress_tracker,
     std::unique_ptr<const AmbientAnimationStaticResources> static_resources,
-    AmbientAnimationMetricsRecorder* animation_metrics_recorder,
+    AmbientSessionMetricsRecorder* session_metrics_recorder,
     AmbientAnimationFrameRateController* frame_rate_controller)
     : view_delegate_(view_delegate),
       progress_tracker_(progress_tracker),
       static_resources_(std::move(static_resources)),
       frame_rate_controller_(frame_rate_controller),
-      add_glanceable_info_text_shadow_(
-          static_resources_->GetUiSettings().theme() !=
-          personalization_app::mojom::AmbientTheme::kFeelTheBreeze),
       animation_photo_provider_(static_resources_.get(),
                                 view_delegate->GetAmbientBackendModel()),
-      animation_jitter_calculator_(
-          AmbientUiModel::Get()->GetAnimationJitterConfig()) {
+      animation_jitter_calculator_(kAnimationJitterConfig) {
   DCHECK(view_delegate_);
   DCHECK(frame_rate_controller_);
   SetID(AmbientViewID::kAmbientAnimationView);
-  Init(animation_metrics_recorder);
+  Init(session_metrics_recorder);
 }
 
 AmbientAnimationView::~AmbientAnimationView() = default;
 
 void AmbientAnimationView::Init(
-    AmbientAnimationMetricsRecorder* animation_metrics_recorder) {
+    AmbientSessionMetricsRecorder* session_metrics_recorder) {
   SetUseDefaultFillLayout(true);
 
   views::View* animation_container_view =
@@ -229,8 +223,8 @@ void AmbientAnimationView::Init(
       static_resources_->GetSkottieWrapper(), cc::SkottieColorMap(),
       &animation_photo_provider_);
   animation_observer_.Observe(animation.get());
-  DCHECK(animation_metrics_recorder);
-  animation_metrics_recorder->RegisterAnimation(animation.get());
+  DCHECK(session_metrics_recorder);
+  session_metrics_recorder->RegisterScreen(animation.get());
   animated_image_view_->SetAnimatedImage(std::move(animation));
   animated_image_view_observer_.Observe(animated_image_view_.get());
   animation_attribution_provider_ =
@@ -295,11 +289,9 @@ void AmbientAnimationView::Init(
       views::BoxLayout::MainAxisAlignment::kStart);
   glanceable_info_container_->SetCrossAxisAlignment(
       views::BoxLayout::CrossAxisAlignment::kStart);
-  glanceable_info_container_->SetBorder(
-      CreateGlanceableInfoBorder(add_glanceable_info_text_shadow_));
+  glanceable_info_container_->SetBorder(CreateGlanceableInfoBorder());
   glanceable_info_container_->AddChildView(std::make_unique<GlanceableInfoView>(
-      view_delegate_.get(), this, kTimeFontSizeDip,
-      add_glanceable_info_text_shadow_));
+      view_delegate_.get(), this, kTimeFontSizeDip));
 
   // Media string should appear in the top-right corner of the
   // AmbientAnimationView's bounds.
@@ -347,9 +339,8 @@ void AmbientAnimationView::OnViewBoundsChanged(View* observed_view) {
   // so that its proper bounds become available (they are 0x0 initially) before
   // starting the animation playback.
   gfx::Rect previous_animation_bounds = animated_image_view_->GetImageBounds();
-  AmbientAnimationResizer::Resize(
-      *animated_image_view_,
-      GetPaddingForAnimationJitter(animation_jitter_calculator_.config()));
+  AmbientAnimationResizer::Resize(*animated_image_view_,
+                                  GetPaddingForAnimationJitter());
   AmbientAnimationAttributionTransformer::TransformTextBox(
       *animated_image_view_);
   // When the device is in portrait mode, the landscape version of the
@@ -357,8 +348,7 @@ void AmbientAnimationView::OnViewBoundsChanged(View* observed_view) {
   // gets cut off at the top when doing this, making it look strange. UX
   // decision is to just omit the tree shadow in portrait mode. If/when
   // portrait versions of the animation are made, this logic can be removed.
-  if (static_resources_->GetUiSettings().theme() ==
-      personalization_app::mojom::AmbientTheme::kFeelTheBreeze) {
+  if (static_resources_->GetAmbientTheme() == AmbientTheme::kFeelTheBreeze) {
     bool tree_shadow_toggled = animation_photo_provider_.ToggleStaticImageAsset(
         cc::HashSkottieResourceId(ambient::resources::kTreeShadowAssetId),
         /*enabled=*/content_bounds.width() >= content_bounds.height());
@@ -436,7 +426,7 @@ void AmbientAnimationView::RestartThroughputTracking() {
   throughput_tracker_->Start(
       base::BindOnce(&OnCompositorThroughputReported,
                      /*logging_start_time=*/base::TimeTicks::Now(),
-                     static_resources_->GetUiSettings()));
+                     static_resources_->GetAmbientTheme()));
 }
 
 void AmbientAnimationView::ApplyJitter() {
@@ -445,8 +435,7 @@ void AmbientAnimationView::ApplyJitter() {
   // Sharing the same jitter between the animation and other peripheral content
   // keeps the spacing between features consistent.
   animated_image_view_->SetAdditionalTranslation(jitter);
-  glanceable_info_container_->SetBorder(
-      CreateGlanceableInfoBorder(add_glanceable_info_text_shadow_, jitter));
+  glanceable_info_container_->SetBorder(CreateGlanceableInfoBorder(jitter));
   media_string_container_->SetBorder(CreateMediaStringBorder(jitter));
 }
 
@@ -454,7 +443,7 @@ JitterCalculator* AmbientAnimationView::GetJitterCalculatorForTesting() {
   return &animation_jitter_calculator_;
 }
 
-BEGIN_METADATA(AmbientAnimationView)
+BEGIN_METADATA(AmbientAnimationView, views::View)
 END_METADATA
 
 }  // namespace ash

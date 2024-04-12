@@ -17,21 +17,21 @@ LaunchResult::State ConvertMojomLaunchResultStateToLaunchResultState(
     crosapi::mojom::LaunchResultState state) {
   switch (state) {
     case crosapi::mojom::LaunchResultState::kFailed:
-      return LaunchResult::State::kFailed;
+      return LaunchResult::State::FAILED;
     case crosapi::mojom::LaunchResultState::kFailedDirectoryNotShared:
-      return LaunchResult::State::kFailedDirectoryNotShared;
+      return LaunchResult::State::FAILED_DIRECTORY_NOT_SHARED;
     case crosapi::mojom::LaunchResultState::kSuccess:
-      return LaunchResult::State::kSuccess;
+      return LaunchResult::State::SUCCESS;
   }
 }
 crosapi::mojom::LaunchResultState
 ConvertLaunchResultStateToMojomLaunchResultState(LaunchResult::State state) {
   switch (state) {
-    case LaunchResult::State::kFailed:
+    case LaunchResult::State::FAILED:
       return crosapi::mojom::LaunchResultState::kFailed;
-    case LaunchResult::State::kFailedDirectoryNotShared:
+    case LaunchResult::State::FAILED_DIRECTORY_NOT_SHARED:
       return crosapi::mojom::LaunchResultState::kFailedDirectoryNotShared;
-    case LaunchResult::State::kSuccess:
+    case LaunchResult::State::SUCCESS:
       return crosapi::mojom::LaunchResultState::kSuccess;
   }
 }
@@ -50,9 +50,8 @@ LaunchResult ConvertMojomLaunchResultToLaunchResult(
     crosapi::mojom::LaunchResultPtr mojom_launch_result) {
   auto launch_result = LaunchResult();
   if (mojom_launch_result->instance_ids) {
-    for (auto token : *mojom_launch_result->instance_ids) {
+    for (auto token : *mojom_launch_result->instance_ids)
       launch_result.instance_ids.push_back(std::move(token));
-    }
   } else {
     launch_result.instance_ids.push_back(
         std::move(mojom_launch_result->instance_id));
@@ -115,11 +114,11 @@ LaunchCallback MojomLaunchResultToLaunchResultCallback(
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 LaunchResult ConvertBoolToLaunchResult(bool success) {
-  return success ? LaunchResult(State::kSuccess) : LaunchResult(State::kFailed);
+  return success ? LaunchResult(State::SUCCESS) : LaunchResult(State::FAILED);
 }
 
 bool ConvertLaunchResultToBool(const LaunchResult& result) {
-  return result.state == State::kSuccess ? true : false;
+  return result.state == State::SUCCESS ? true : false;
 }
 
 }  // namespace apps

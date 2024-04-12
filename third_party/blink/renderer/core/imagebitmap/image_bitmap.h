@@ -9,8 +9,6 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-blink.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_image_bitmap_options.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_image_source.h"
@@ -31,6 +29,7 @@ class ImageData;
 class ImageElementBase;
 class ImageDecoder;
 class OffscreenCanvas;
+class ScriptPromiseResolver;
 
 class CORE_EXPORT ImageBitmap final : public ScriptWrappable,
                                       public CanvasImageSource,
@@ -39,9 +38,9 @@ class CORE_EXPORT ImageBitmap final : public ScriptWrappable,
 
  public:
   // Expects the ImageElementBase to return/have an SVGImage.
-  static ScriptPromiseTyped<ImageBitmap> CreateAsync(
+  static ScriptPromise CreateAsync(
       ImageElementBase*,
-      std::optional<gfx::Rect>,
+      absl::optional<gfx::Rect>,
       ScriptState*,
       scoped_refptr<base::SequencedTaskRunner> task_runner,
       mojom::blink::PreferredColorScheme,
@@ -50,26 +49,26 @@ class CORE_EXPORT ImageBitmap final : public ScriptWrappable,
   static sk_sp<SkImage> GetSkImageFromDecoder(std::unique_ptr<ImageDecoder>);
 
   ImageBitmap(ImageElementBase*,
-              std::optional<gfx::Rect>,
+              absl::optional<gfx::Rect>,
               const ImageBitmapOptions* = ImageBitmapOptions::Create());
   ImageBitmap(HTMLVideoElement*,
-              std::optional<gfx::Rect>,
+              absl::optional<gfx::Rect>,
               const ImageBitmapOptions* = ImageBitmapOptions::Create());
   ImageBitmap(HTMLCanvasElement*,
-              std::optional<gfx::Rect>,
+              absl::optional<gfx::Rect>,
               const ImageBitmapOptions* = ImageBitmapOptions::Create());
   ImageBitmap(OffscreenCanvas*,
-              std::optional<gfx::Rect>,
+              absl::optional<gfx::Rect>,
               const ImageBitmapOptions* = ImageBitmapOptions::Create());
   ImageBitmap(ImageData*,
-              std::optional<gfx::Rect>,
+              absl::optional<gfx::Rect>,
               const ImageBitmapOptions* = ImageBitmapOptions::Create());
   ImageBitmap(ImageBitmap*,
-              std::optional<gfx::Rect>,
+              absl::optional<gfx::Rect>,
               const ImageBitmapOptions* = ImageBitmapOptions::Create());
   ImageBitmap(scoped_refptr<StaticBitmapImage>);
   ImageBitmap(scoped_refptr<StaticBitmapImage>,
-              std::optional<gfx::Rect>,
+              absl::optional<gfx::Rect>,
               const ImageBitmapOptions* = ImageBitmapOptions::Create());
   // This constructor may called by structured-cloning an ImageBitmap.
   // isImageBitmapOriginClean indicates whether the original ImageBitmap is
@@ -79,7 +78,6 @@ class CORE_EXPORT ImageBitmap final : public ScriptWrappable,
               ImageOrientationEnum);
 
   // Type and helper function required by CallbackPromiseAdapter:
-  using IDLType = ImageBitmap;
   using WebType = sk_sp<SkImage>;
   static ImageBitmap* Take(ScriptPromiseResolver*, sk_sp<SkImage>);
 
@@ -109,7 +107,7 @@ class CORE_EXPORT ImageBitmap final : public ScriptWrappable,
 
   // CanvasImageSource implementation
   scoped_refptr<Image> GetSourceImageForCanvas(
-      FlushReason,
+      CanvasResourceProvider::FlushReason,
       SourceImageStatus*,
       const gfx::SizeF&,
       const AlphaDisposition alpha_disposition = kPremultiplyAlpha) override;
@@ -123,10 +121,10 @@ class CORE_EXPORT ImageBitmap final : public ScriptWrappable,
 
   // ImageBitmapSource implementation
   gfx::Size BitmapSourceSize() const override { return Size(); }
-  ScriptPromiseTyped<ImageBitmap> CreateImageBitmap(ScriptState*,
-                                                    std::optional<gfx::Rect>,
-                                                    const ImageBitmapOptions*,
-                                                    ExceptionState&) override;
+  ScriptPromise CreateImageBitmap(ScriptState*,
+                                  absl::optional<gfx::Rect>,
+                                  const ImageBitmapOptions*,
+                                  ExceptionState&) override;
 
   struct ParsedOptions {
     bool flip_y = false;
@@ -144,12 +142,11 @@ class CORE_EXPORT ImageBitmap final : public ScriptWrappable,
 
  private:
   void UpdateImageBitmapMemoryUsage();
-  static void ResolvePromiseOnOriginalThread(
-      ScriptPromiseResolverTyped<ImageBitmap>*,
-      bool origin_clean,
-      std::unique_ptr<ParsedOptions>,
-      sk_sp<SkImage>,
-      const ImageOrientationEnum);
+  static void ResolvePromiseOnOriginalThread(ScriptPromiseResolver*,
+                                             bool origin_clean,
+                                             std::unique_ptr<ParsedOptions>,
+                                             sk_sp<SkImage>,
+                                             const ImageOrientationEnum);
   static void RasterizeImageOnBackgroundThread(
       PaintRecord,
       const gfx::Rect&,

@@ -13,9 +13,6 @@ import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
 
-import androidx.browser.customtabs.CustomTabsIntent;
-import androidx.browser.customtabs.CustomTabsSessionToken;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -32,6 +29,9 @@ import org.chromium.chrome.browser.customtabs.CustomTabActivity;
 import org.chromium.chrome.browser.customtabs.CustomTabsConnection;
 import org.chromium.chrome.browser.customtabs.TranslucentCustomTabActivity;
 
+import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.browser.customtabs.CustomTabsSessionToken;
+
 /** Unit tests for {@link SessionDataHolder}. */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
@@ -46,8 +46,10 @@ public class SessionDataHolderTest {
     private CustomTabsSessionToken mSession2;
 
     @Mock CustomTabsConnection mConnection;
-    @Mock SessionHandler mHandler1;
-    @Mock SessionHandler mHandler2;
+    @Mock
+    SessionHandler mHandler1;
+    @Mock
+    SessionHandler mHandler2;
     @Mock Activity mActivityInTask1;
     @Mock Activity mActivityInTask2;
     @Captor ArgumentCaptor<Callback<CustomTabsSessionToken>> mDisconnectCallbackCaptor;
@@ -72,10 +74,11 @@ public class SessionDataHolderTest {
     }
 
     private Intent createIntentWithSessionId(int id) {
-        PendingIntent pi =
-                PendingIntent.getActivity(RuntimeEnvironment.systemContext, id, new Intent(), 0);
+        PendingIntent pi = PendingIntent.getActivity(RuntimeEnvironment.systemContext, id,
+                new Intent(), 0);
         return new Intent().putExtra(CustomTabsIntent.EXTRA_SESSION_ID, pi);
     }
+
 
     @Test
     public void returnsActiveHandler_IfSessionsMatch() {
@@ -193,3 +196,4 @@ public class SessionDataHolderTest {
         mHolder.removeActiveHandler(mHandler1);
     }
 }
+

@@ -10,11 +10,6 @@
 #include "ash/public/cpp/tablet_mode_observer.h"
 #include "base/compiler_specific.h"
 #include "base/memory/weak_ptr.h"
-#include "ui/display/display_observer.h"
-
-namespace display {
-enum class TabletState;
-}  // namespace display
 
 namespace ash {
 
@@ -22,7 +17,7 @@ namespace ash {
 // the change of display configurations.
 class ASH_EXPORT DisplayConfigurationObserver
     : public WindowTreeHostManager::Observer,
-      public display::DisplayObserver {
+      public TabletModeObserver {
  public:
   DisplayConfigurationObserver();
 
@@ -37,8 +32,9 @@ class ASH_EXPORT DisplayConfigurationObserver
   void OnDisplaysInitialized() override;
   void OnDisplayConfigurationChanged() override;
 
-  // display::DisplayObserver:
-  void OnDisplayTabletStateChanged(display::TabletState state) override;
+  // TabletModeObserver:
+  void OnTabletModeStarted() override;
+  void OnTabletModeEnded() override;
 
  private:
   void StartMirrorMode();
@@ -46,8 +42,6 @@ class ASH_EXPORT DisplayConfigurationObserver
 
   // True if the device was in mirror mode before siwtching to tablet mode.
   bool was_in_mirror_mode_ = false;
-
-  display::ScopedDisplayObserver display_observer_{this};
 
   base::WeakPtrFactory<DisplayConfigurationObserver> weak_ptr_factory_{this};
 };

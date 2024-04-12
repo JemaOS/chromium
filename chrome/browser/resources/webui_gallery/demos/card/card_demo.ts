@@ -39,6 +39,4 @@ class CardDemoElement extends PolymerElement {
   }
 }
 
-export const tagName = CardDemoElement.is;
-
 customElements.define(CardDemoElement.is, CardDemoElement);

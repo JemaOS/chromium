@@ -140,8 +140,10 @@ RuntimeShape TensorShapeFromTensor(const TfLiteTensor& tensor) {
 }
 
 const TfLiteTensor* GetRowPartitionTensor(
-    const ConversionAttributes& conversion_attributes, TfLiteContext* context,
-    TfLiteNode* node, int dimension) {
+    const ConversionAttributes& conversion_attributes,
+    TfLiteContext* context,
+    TfLiteNode* node,
+    int dimension) {
   if (conversion_attributes.partition_types.front() ==
       tensorflow::RowPartitionType::FIRST_DIM_SIZE) {
     return &context->tensors[node->inputs->data[kFirstPartitionInputIndex + 1 +
@@ -211,7 +213,9 @@ int GetMaxWidthRowSplit(const TfLiteTensor* tensor) {
 }
 
 int GetMaxWidth(const ConversionAttributes& conversion_attributes,
-                TfLiteContext* context, TfLiteNode* node, int dimension) {
+                TfLiteContext* context,
+                TfLiteNode* node,
+                int dimension) {
   const TfLiteTensor* tensor = GetRowPartitionTensor(
       conversion_attributes, context, node, dimension - 1);
   switch (conversion_attributes.GetRowPartitionTypeByDimension(dimension - 1)) {
@@ -226,7 +230,8 @@ int GetMaxWidth(const ConversionAttributes& conversion_attributes,
 }
 
 RuntimeShape CombineRaggedTensorToTensorShapes(
-    int ragged_rank, const RuntimeShape& output_shape,
+    int ragged_rank,
+    const RuntimeShape& output_shape,
     const RuntimeShape& value_shape) {
   // TODO(mgubin): No checks, see
   // third_party/tensorflow/core/ops/ragged_to_dense_util.cc
@@ -247,9 +252,13 @@ RuntimeShape CombineRaggedTensorToTensorShapes(
 }
 
 RuntimeShape CalculateOutputSize(
-    const ConversionAttributes& conversion_attributes, TfLiteContext* context,
-    TfLiteNode* node, int first_dimension, int ragged_rank,
-    const TfLiteTensor& values, const TfLiteTensor& default_value,
+    const ConversionAttributes& conversion_attributes,
+    TfLiteContext* context,
+    TfLiteNode* node,
+    int first_dimension,
+    int ragged_rank,
+    const TfLiteTensor& values,
+    const TfLiteTensor& default_value,
     const TfLiteTensor& output_shape) {
   RuntimeShape values_shape(values.dims->size, values.dims->data);
   RuntimeShape default_value_shape(default_value.dims->size,
@@ -331,7 +340,8 @@ void CalculateFirstParentOutputIndex(int first_dimension,
 void CalculateOutputIndexValueRowID(const TfLiteTensor& value_rowids,
                                     const std::vector<int>& parent_output_index,
                                     int output_index_multiplier,
-                                    int output_size, std::vector<int>* result) {
+                                    int output_size,
+                                    std::vector<int>* result) {
   const RuntimeShape tensor_shape(value_rowids.dims->size,
                                   value_rowids.dims->data);
   const int index_size = tensor_shape.FlatSize();
@@ -380,7 +390,8 @@ void CalculateOutputIndexValueRowID(const TfLiteTensor& value_rowids,
 
 void CalculateOutputIndexRowSplit(const TfLiteTensor& row_split,
                                   const std::vector<int>& parent_output_index,
-                                  int output_index_multiplier, int output_size,
+                                  int output_index_multiplier,
+                                  int output_size,
                                   std::vector<int>* result) {
   const RuntimeShape row_split_shape(row_split.dims->size,
                                      row_split.dims->data);
@@ -421,10 +432,14 @@ void CalculateOutputIndexRowSplit(const TfLiteTensor& row_split,
 }
 
 TfLiteStatus CalculateOutputIndex(
-    const ConversionAttributes& conversion_attributes, TfLiteContext* context,
-    TfLiteNode* node, int dimension,
-    const std::vector<int>& parent_output_index, int output_index_multiplier,
-    int output_size, std::vector<int>* result) {
+    const ConversionAttributes& conversion_attributes,
+    TfLiteContext* context,
+    TfLiteNode* node,
+    int dimension,
+    const std::vector<int>& parent_output_index,
+    int output_index_multiplier,
+    int output_size,
+    std::vector<int>* result) {
   const TfLiteTensor* row_partition_tensor =
       GetRowPartitionTensor(conversion_attributes, context, node, dimension);
   auto partition_type =
@@ -447,7 +462,8 @@ TfLiteStatus CalculateOutputIndex(
 }
 
 template <typename VALUE_TYPE>
-void SetOutputT(TfLiteContext* context, int ragged_rank,
+void SetOutputT(TfLiteContext* context,
+                int ragged_rank,
                 const std::vector<int>& output_index,
                 const TfLiteTensor& values_tensor,
                 const TfLiteTensor& default_value_tensor,
@@ -522,7 +538,8 @@ void SetOutputT(TfLiteContext* context, int ragged_rank,
   }
 }
 
-void SetOutput(TfLiteContext* context, int ragged_rank,
+void SetOutput(TfLiteContext* context,
+               int ragged_rank,
                const std::vector<int>& output_index,
                const TfLiteTensor& values_tensor,
                const TfLiteTensor& default_value_tensor,

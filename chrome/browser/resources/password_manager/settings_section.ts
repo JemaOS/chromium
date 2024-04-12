@@ -7,29 +7,22 @@ import './shared_style.css.js';
 import './prefs/pref_toggle_button.js';
 import './user_utils_mixin.js';
 import '/shared/settings/controls/extension_controlled_indicator.js';
-import './dialogs/move_passwords_dialog.js';
 
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
-import {HelpBubbleMixin} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
-import type {CrLinkRowElement} from 'chrome://resources/cr_elements/cr_link_row/cr_link_row.js';
+import {PrefsMixin} from 'chrome://resources/cr_components/settings_prefs/prefs_mixin.js';
+import {CrLinkRowElement} from 'chrome://resources/cr_elements/cr_link_row/cr_link_row.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {OpenWindowProxyImpl} from 'chrome://resources/js/open_window_proxy.js';
-import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
-import type {DomRepeatEvent} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {DomRepeatEvent, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {MoveToAccountStoreTrigger} from './dialogs/move_passwords_dialog.js';
 // <if expr="is_win or is_macosx">
 import {PasskeysBrowserProxyImpl} from './passkeys_browser_proxy.js';
 // </if>
-import type {BlockedSite, BlockedSitesListChangedListener, CredentialsChangedListener} from './password_manager_proxy.js';
-import {PasswordManagerImpl} from './password_manager_proxy.js';
-import type {PrefToggleButtonElement} from './prefs/pref_toggle_button.js';
-import type {Route} from './router.js';
-import {RouteObserverMixin, Router, UrlParam} from './router.js';
+import {BlockedSite, BlockedSitesListChangedListener, CredentialsChangedListener, PasswordManagerImpl} from './password_manager_proxy.js';
+import {PrefToggleButtonElement} from './prefs/pref_toggle_button.js';
+import {Route, RouteObserverMixin, Router, UrlParam} from './router.js';
 import {getTemplate} from './settings_section.html.js';
 import {SyncBrowserProxyImpl, TrustedVaultBannerState} from './sync_browser_proxy.js';
 import {UserUtilMixin} from './user_utils_mixin.js';
@@ -40,19 +33,11 @@ export interface SettingsSectionElement {
     blockedSitesList: HTMLElement,
     passwordToggle: PrefToggleButtonElement,
     trustedVaultBanner: CrLinkRowElement,
-    accountStorageToggle: PrefToggleButtonElement,
   };
 }
 
-const PASSWORD_MANAGER_ADD_SHORTCUT_ELEMENT_ID =
-    'PasswordManagerUI::kAddShortcutElementId';
-const PASSWORD_MANAGER_ADD_SHORTCUT_CUSTOM_EVENT_ID =
-    'PasswordManagerUI::kAddShortcutCustomEventId';
-export const PASSWORD_MANAGER_ACCOUNT_STORE_TOGGLE_ELEMENT_ID =
-    'PasswordManagerUI::kAccountStoreToggleElementId';
-
-const SettingsSectionElementBase = HelpBubbleMixin(RouteObserverMixin(
-    PrefsMixin(UserUtilMixin(WebUiListenerMixin(I18nMixin(PolymerElement))))));
+const SettingsSectionElementBase = RouteObserverMixin(
+    PrefsMixin(UserUtilMixin(WebUiListenerMixin(I18nMixin(PolymerElement)))));
 
 export class SettingsSectionElement extends SettingsSectionElementBase {
   static get is() {
@@ -86,16 +71,6 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
         value: false,
       },
 
-      // <if expr="is_macosx">
-      createPasskeysInICloudKeychainToggleVisible_: {
-        type: Boolean,
-        value() {
-          return loadTimeData.getBoolean(
-              'createPasskeysInICloudKeychainToggleVisible');
-        },
-      },
-      // </if>
-
       hasPasskeys_: {
         type: Boolean,
         value: false,
@@ -120,19 +95,6 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
           return loadTimeData.getBoolean('canAddShortcut');
         },
       },
-
-      enableButterOnDesktopFollowup_: {
-        type: Boolean,
-        value() {
-          return loadTimeData.getBoolean('enableButterOnDesktopFollowup');
-        },
-      },
-
-      showMovePasswordsDialog_: Boolean,
-
-      passwordsOnDevice_: {
-        type: Array,
-      },
     };
   }
 
@@ -140,11 +102,7 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
   private hasPasskeys_: boolean;
   private hasPasswordsToExport_: boolean;
   private showPasswordsImporter_: boolean;
-  private showMovePasswordsDialog_: boolean;
   private trustedVaultBannerState_: TrustedVaultBannerState;
-  private enableButterOnDesktopFollowup_: boolean;
-  private movePasswordsLabel_: string;
-  private passwordsOnDevice_: chrome.passwordsPrivate.PasswordUiEntry[] = [];
 
   private setBlockedSitesListListener_: BlockedSitesListChangedListener|null =
       null;
@@ -161,8 +119,6 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
 
   override connectedCallback() {
     super.connectedCallback();
-
-    this.updatePasswordsOnDevice_();
     this.setBlockedSitesListListener_ = blockedSites => {
       this.blockedSites_ = blockedSites;
     };
@@ -174,7 +130,6 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
     this.setCredentialsChangedListener_ =
         (passwords: chrome.passwordsPrivate.PasswordUiEntry[]) => {
           this.hasPasswordsToExport_ = passwords.length > 0;
-          this.updatePasswordsOnDevice_();
         };
     PasswordManagerImpl.getInstance().getSavedPasswordList().then(
         this.setCredentialsChangedListener_);
@@ -195,11 +150,6 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
       this.hasPasskeys_ = hasPasskeys;
     });
     // </if>
-
-    const accountStorageToggleRoot = this.$.accountStorageToggle.shadowRoot;
-    this.registerHelpBubble(
-        PASSWORD_MANAGER_ACCOUNT_STORE_TOGGLE_ELEMENT_ID,
-        accountStorageToggleRoot!.querySelector('#control')!);
   }
 
   override disconnectedCallback() {
@@ -216,9 +166,8 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
   }
 
   override currentRouteChanged(route: Route): void {
-    const triggerImportParam =
-        route.queryParameters.get(UrlParam.START_IMPORT) || '';
-    if (triggerImportParam === 'true') {
+    const param = route.queryParameters.get(UrlParam.START_IMPORT) || '';
+    if (param === 'true') {
       const importer = this.shadowRoot!.querySelector('passwords-importer');
       assert(importer);
       importer.launchImport();
@@ -227,19 +176,13 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
     }
   }
 
-  private onShortcutBannerDomChanged_() {
-    const addShortcutBanner = this.root!.querySelector('#addShortcutBanner');
-    if (addShortcutBanner) {
-      this.registerHelpBubble(
-          PASSWORD_MANAGER_ADD_SHORTCUT_ELEMENT_ID, addShortcutBanner);
-    }
+  private getBlockedSitesDescription_() {
+    return this.i18n(
+        this.blockedSites_.length ? 'blockedSitesDescription' :
+                                    'blockedSitesEmptyDescription');
   }
 
   private onAddShortcutClick_() {
-    this.notifyHelpBubbleAnchorCustomEvent(
-        PASSWORD_MANAGER_ADD_SHORTCUT_ELEMENT_ID,
-        PASSWORD_MANAGER_ADD_SHORTCUT_CUSTOM_EVENT_ID,
-    );
     // TODO(crbug.com/1358448): Record metrics on all entry points usage.
     // TODO(crbug.com/1358448): Hide the button for users after the shortcut is
     // installed.
@@ -322,61 +265,17 @@ export class SettingsSectionElement extends SettingsSectionElementBase {
     }
   }
 
-  private getToggleSubLabelForAccountStorageOptIn_(accountEmail: string):
-      string {
-    if (this.enableButterOnDesktopFollowup_) {
-      return this.i18n('accountStorageToggleSubLabel', accountEmail);
-    }
-    return accountEmail;
-  }
-
-  // <if expr="is_win or is_macosx">
   private onManagePasskeysClick_() {
-    PasskeysBrowserProxyImpl.getInstance().managePasskeys();
+    // In the future this may, e.g., open System Settings on macOS for iCloud
+    // Keychain, or open Control Panel on Windows for Hello. Currently passkey
+    // management is filled in via Chrome settings.
+    OpenWindowProxyImpl.getInstance().openUrl('chrome://settings/passkeys');
   }
-  // </if>
 
   private computePasswordManagerDisabled_(): boolean {
     const pref = this.getPref('credentials_enable_service');
     return pref.enforcement === chrome.settingsPrivate.Enforcement.ENFORCED &&
         !pref.value;
-  }
-
-  private onMovePasswordsClicked_(e: Event) {
-    e.preventDefault();
-    this.showMovePasswordsDialog_ = true;
-  }
-
-  private onMovePasswordsDialogClose_() {
-    this.showMovePasswordsDialog_ = false;
-  }
-
-  private getMovePasswordsDialogTrigger_(): MoveToAccountStoreTrigger {
-    return MoveToAccountStoreTrigger
-        .EXPLICITLY_TRIGGERED_FOR_MULTIPLE_PASSWORDS_IN_SETTINGS;
-  }
-
-  private shouldShowMovePasswordsEntry_(): boolean {
-    return this.enableButterOnDesktopFollowup_ && this.isAccountStoreUser &&
-        this.passwordsOnDevice_.length > 0;
-  }
-
-  private async updatePasswordsOnDevice_() {
-    const groups =
-        await PasswordManagerImpl.getInstance().getCredentialGroups();
-    const localStorage = [
-      chrome.passwordsPrivate.PasswordStoreSet.DEVICE_AND_ACCOUNT,
-      chrome.passwordsPrivate.PasswordStoreSet.DEVICE,
-    ];
-
-    this.passwordsOnDevice_ =
-        groups.map(group => group.entries)
-            .flat()
-            .filter(entry => localStorage.includes(entry.storedIn));
-
-    this.movePasswordsLabel_ =
-        await PluralStringProxyImpl.getInstance().getPluralString(
-            'deviceOnlyPasswordsIconTooltip', this.passwordsOnDevice_.length);
   }
 }
 

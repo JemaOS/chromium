@@ -48,16 +48,17 @@ unsigned ConvertDeltaMode(const WebMouseWheelEvent& event) {
 }
 
 MouseEventInit* GetMouseEventInitForWheel(const WebMouseWheelEvent& event,
-                                          LocalDOMWindow& window) {
+                                          AbstractView* view) {
   MouseEventInit* initializer = MouseEventInit::Create();
   initializer->setBubbles(true);
   initializer->setCancelable(event.IsCancelable());
-  MouseEvent::SetCoordinatesFromWebPointerProperties(event.FlattenTransform(),
-                                                     &window, initializer);
+  auto* local_dom_window = DynamicTo<LocalDOMWindow>(view);
+  MouseEvent::SetCoordinatesFromWebPointerProperties(
+      event.FlattenTransform(), local_dom_window, initializer);
   initializer->setButton(static_cast<int16_t>(event.button));
   initializer->setButtons(
       MouseEvent::WebInputEventModifiersToButtons(event.GetModifiers()));
-  initializer->setView(&window);
+  initializer->setView(view);
   initializer->setComposed(true);
   initializer->setDetail(event.click_count);
   UIEventWithKeyState::SetFromWebInputEventModifiers(
@@ -73,14 +74,14 @@ MouseEventInit* GetMouseEventInitForWheel(const WebMouseWheelEvent& event,
 }  // namespace
 
 WheelEvent* WheelEvent::Create(const WebMouseWheelEvent& event,
-                               LocalDOMWindow& window) {
-  return MakeGarbageCollected<WheelEvent>(event, window);
+                               AbstractView* view) {
+  return MakeGarbageCollected<WheelEvent>(event, view);
 }
 
 WheelEvent* WheelEvent::Create(const WebMouseWheelEvent& event,
                                const gfx::Vector2dF& delta_in_pixels,
-                               LocalDOMWindow& window) {
-  return MakeGarbageCollected<WheelEvent>(event, delta_in_pixels, window);
+                               AbstractView* view) {
+  return MakeGarbageCollected<WheelEvent>(event, delta_in_pixels, view);
 }
 
 WheelEvent::WheelEvent()
@@ -104,24 +105,23 @@ WheelEvent::WheelEvent(const AtomicString& type,
       delta_z_(initializer->deltaZ()),
       delta_mode_(initializer->deltaMode()) {}
 
-WheelEvent::WheelEvent(const WebMouseWheelEvent& event, LocalDOMWindow& window)
+WheelEvent::WheelEvent(const WebMouseWheelEvent& event, AbstractView* view)
     : MouseEvent(event_type_names::kWheel,
-                 GetMouseEventInitForWheel(event, window),
+                 GetMouseEventInitForWheel(event, view),
                  event.TimeStamp()),
-      wheel_delta_(
-          (event.wheel_ticks_x * kTickMultiplier) / window.devicePixelRatio(),
-          (event.wheel_ticks_y * kTickMultiplier) / window.devicePixelRatio()),
-      delta_x_(-event.DeltaXInRootFrame() / window.devicePixelRatio()),
-      delta_y_(-event.DeltaYInRootFrame() / window.devicePixelRatio()),
+      wheel_delta_(event.wheel_ticks_x * kTickMultiplier,
+                   event.wheel_ticks_y * kTickMultiplier),
+      delta_x_(-event.DeltaXInRootFrame()),
+      delta_y_(-event.DeltaYInRootFrame()),
       delta_z_(0),
       delta_mode_(ConvertDeltaMode(event)),
       native_event_(event) {}
 
 WheelEvent::WheelEvent(const WebMouseWheelEvent& event,
                        const gfx::Vector2dF& delta_in_pixels,
-                       LocalDOMWindow& window)
+                       AbstractView* view)
     : MouseEvent(event_type_names::kWheel,
-                 GetMouseEventInitForWheel(event, window),
+                 GetMouseEventInitForWheel(event, view),
                  event.TimeStamp()),
       wheel_delta_(event.wheel_ticks_x * kTickMultiplier,
                    event.wheel_ticks_y * kTickMultiplier),

@@ -6,20 +6,11 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
-#include "base/logging.h"
 #include "chromeos/ui/base/window_properties.h"
-#include "ui/aura/client/aura_constants.h"
-#include "ui/aura/env.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_delegate.h"
-#include "ui/compositor/layer.h"
 #include "ui/events/event.h"
-#include "ui/events/event_handler.h"
-#include "ui/events/event_target.h"
-#include "ui/gfx/geometry/rounded_corners_f.h"
-#include "ui/gfx/geometry/rrect_f.h"
 #include "ui/ozone/public/ozone_platform.h"
 #include "ui/platform_window/extensions/desk_extension.h"
 #include "ui/platform_window/extensions/pinned_mode_extension.h"
@@ -28,12 +19,13 @@
 #include "ui/platform_window/platform_window.h"
 #include "ui/platform_window/platform_window_init_properties.h"
 #include "ui/platform_window/wm/wm_move_resize_handler.h"
+#include "ui/views/corewm/tooltip_aura.h"
 #include "ui/views/corewm/tooltip_controller.h"
+#include "ui/views/corewm/tooltip_lacros.h"
 #include "ui/views/views_delegate.h"
 #include "ui/views/widget/desktop_aura/desktop_native_widget_aura.h"
 #include "ui/views/widget/desktop_aura/window_event_filter_lacros.h"
 #include "ui/views/widget/widget.h"
-#include "ui/views/window/non_client_view.h"
 
 namespace {
 
@@ -56,36 +48,7 @@ chromeos::WindowStateType ToChromeosWindowStateType(
       return chromeos::WindowStateType::kSecondarySnapped;
     case ui::PlatformWindowState::kFloated:
       return chromeos::WindowStateType::kFloated;
-    case ui::PlatformWindowState::kPinnedFullscreen:
-      return chromeos::WindowStateType::kPinned;
-    case ui::PlatformWindowState::kTrustedPinnedFullscreen:
-      return chromeos::WindowStateType::kTrustedPinned;
   }
-}
-
-// Chrome do not expect the pointer (mouse/touch) events are dispatched to
-// chrome during move loop. The mouse events are already consumed by
-// ozone-wayland but touch events are sent to the `aura::WindowEventDispatcher`
-// to update the touch location. Consume touch events at system handler level so
-// that chrome will not see the touch events.
-class ScopedTouchEventDisabler : public ui::EventHandler {
- public:
-  ScopedTouchEventDisabler() {
-    aura::Env::GetInstance()->AddPreTargetHandler(
-        this, ui::EventTarget::Priority::kSystem);
-  }
-  ScopedTouchEventDisabler(const ScopedTouchEventDisabler&) = delete;
-  ScopedTouchEventDisabler& operator=(const ScopedTouchEventDisabler&) = delete;
-  ~ScopedTouchEventDisabler() override {
-    aura::Env::GetInstance()->RemovePreTargetHandler(this);
-  }
-
-  // ui::EventHandler:
-  void OnTouchEvent(ui::TouchEvent* event) override { event->SetHandled(); }
-};
-
-bool IsImmersive(ui::PlatformFullscreenType type) {
-  return type == ui::PlatformFullscreenType::kImmersive;
 }
 
 }  // namespace
@@ -95,10 +58,7 @@ DesktopWindowTreeHostLacros::DesktopWindowTreeHostLacros(
     internal::NativeWidgetDelegate* native_widget_delegate,
     DesktopNativeWidgetAura* desktop_native_widget_aura)
     : DesktopWindowTreeHostPlatform(native_widget_delegate,
-                                    desktop_native_widget_aura) {
-  CHECK(GetContentWindow());
-  content_window_observation_.Observe(GetContentWindow());
-}
+                                    desktop_native_widget_aura) {}
 
 DesktopWindowTreeHostLacros::~DesktopWindowTreeHostLacros() = default;
 
@@ -142,7 +102,6 @@ void DesktopWindowTreeHostLacros::OnClosed() {
   DestroyNonClientEventFilter();
   DesktopWindowTreeHostPlatform::OnClosed();
 }
-
 void DesktopWindowTreeHostLacros::OnWindowStateChanged(
     ui::PlatformWindowState old_window_show_state,
     ui::PlatformWindowState new_window_show_state) {
@@ -151,24 +110,12 @@ void DesktopWindowTreeHostLacros::OnWindowStateChanged(
   GetContentWindow()->SetProperty(
       chromeos::kWindowStateTypeKey,
       ToChromeosWindowStateType(new_window_show_state));
-
-  UpdateWindowHints();
 }
 
-void DesktopWindowTreeHostLacros::OnFullscreenTypeChanged(
-    ui::PlatformFullscreenType old_type,
-    ui::PlatformFullscreenType new_type) {
+void DesktopWindowTreeHostLacros::OnImmersiveModeChanged(bool enabled) {
   // Keep in sync with ImmersiveFullscreenController::Enable for widget. See
   // comment there for details.
-  if (IsImmersive(old_type) != IsImmersive(new_type)) {
-    GetContentWindow()->SetProperty(chromeos::kImmersiveIsActive,
-                                    IsImmersive(new_type));
-  }
-}
-
-void DesktopWindowTreeHostLacros::OnOverviewModeChanged(bool in_overview) {
-  GetContentWindow()->SetProperty(chromeos::kIsShowingInOverviewKey,
-                                  in_overview);
+  GetContentWindow()->SetProperty(chromeos::kImmersiveIsActive, enabled);
 }
 
 void DesktopWindowTreeHostLacros::OnTooltipShownOnServer(
@@ -186,12 +133,6 @@ void DesktopWindowTreeHostLacros::OnTooltipHiddenOnServer() {
   }
 }
 
-void DesktopWindowTreeHostLacros::OnBoundsChanged(const BoundsChange& change) {
-  DesktopWindowTreeHostPlatform::OnBoundsChanged(change);
-
-  UpdateWindowHints();
-}
-
 void DesktopWindowTreeHostLacros::AddAdditionalInitProperties(
     const Widget::InitParams& params,
     ui::PlatformWindowInitProperties* properties) {
@@ -199,36 +140,16 @@ void DesktopWindowTreeHostLacros::AddAdditionalInitProperties(
   properties->wayland_app_id = params.wayland_app_id;
 }
 
-Widget::MoveLoopResult DesktopWindowTreeHostLacros::RunMoveLoop(
-    const gfx::Vector2d& drag_offset,
-    Widget::MoveLoopSource source,
-    Widget::MoveLoopEscapeBehavior escape_behavior) {
-  ScopedTouchEventDisabler touch_event_disabler;
-  return DesktopWindowTreeHostPlatform::RunMoveLoop(drag_offset, source,
-                                                    escape_behavior);
-}
-
-void DesktopWindowTreeHostLacros::OnWindowPropertyChanged(aura::Window* window,
-                                                          const void* key,
-                                                          intptr_t old) {
-  CHECK_EQ(GetContentWindow(), window);
-  if (key == aura::client::kTopViewInset) {
-    if (auto* wayland_extension = GetWaylandExtension()) {
-      wayland_extension->SetTopInset(
-          GetContentWindow()->GetProperty(aura::client::kTopViewInset));
-    }
+std::unique_ptr<corewm::Tooltip> DesktopWindowTreeHostLacros::CreateTooltip() {
+  // TODO(crbug.com/1338597): Remove TooltipAura from Lacros when Ash is new
+  // enough.
+  if (ui::OzonePlatform::GetInstance()
+          ->GetPlatformRuntimeProperties()
+          .supports_tooltip) {
+    return std::make_unique<views::corewm::TooltipLacros>();
   }
-}
-
-void DesktopWindowTreeHostLacros::OnWindowDestroying(aura::Window* window) {
-  CHECK_EQ(GetContentWindow(), window);
-  content_window_observation_.Reset();
-}
-
-void DesktopWindowTreeHostLacros::OnWidgetInitDone() {
-  DesktopWindowTreeHostPlatform::OnWidgetInitDone();
-
-  UpdateWindowHints();
+  // Fallback to TooltipAura if wayland version is not new enough.
+  return std::make_unique<views::corewm::TooltipAura>();
 }
 
 void DesktopWindowTreeHostLacros::CreateNonClientEventFilter() {
@@ -239,72 +160,6 @@ void DesktopWindowTreeHostLacros::CreateNonClientEventFilter() {
 
 void DesktopWindowTreeHostLacros::DestroyNonClientEventFilter() {
   non_client_window_event_filter_.reset();
-}
-
-void DesktopWindowTreeHostLacros::UpdateWindowHints() {
-  if (!GetWidget()->non_client_view()) {
-    return;
-  }
-
-  const float scale = device_scale_factor();
-  const gfx::Size widget_size_px =
-      platform_window()->GetBoundsInPixels().size();
-
-  auto* wayland_extension = ui::GetWaylandExtension(*platform_window());
-
-  const gfx::RoundedCornersF window_radii =
-      wayland_extension ? wayland_extension->GetWindowCornersRadii()
-                        : gfx::RoundedCornersF();
-
-  std::vector<gfx::Rect> input_region;
-
-  const bool should_have_rounded_window =
-      views::ViewsDelegate::GetInstance()->ShouldWindowHaveRoundedCorners(
-          GetWidget()->GetNativeWindow());
-
-  if (should_have_rounded_window) {
-    GetContentWindow()->layer()->SetRoundedCornerRadius(window_radii);
-    GetContentWindow()->layer()->SetIsFastRoundedCorner(true);
-
-    auto to_rect = [](float origin_x, float origin_y, float size) {
-      gfx::RectF rect(origin_x, origin_y, size, size);
-      return gfx::ToEnclosingRectIgnoringError(rect);
-    };
-
-    cc::Region region(gfx::Rect{widget_size_px});
-    const int width = widget_size_px.width(), height = widget_size_px.height();
-
-    const float upper_left_px = window_radii.upper_left() * scale;
-    region.Subtract(to_rect(0, 0, upper_left_px));
-
-    const float upper_right_px = window_radii.upper_right() * scale;
-    region.Subtract(to_rect(width - upper_right_px * scale, 0, upper_right_px));
-
-    const float lower_left_px = window_radii.lower_left() * scale;
-    region.Subtract(to_rect(0, height - lower_left_px, lower_left_px));
-
-    const float lower_right_px = window_radii.lower_right() * scale;
-    region.Subtract(to_rect(width - lower_right_px, height - lower_right_px,
-                            lower_right_px));
-
-    // Convert the region to a list of rectangles.
-    for (gfx::Rect i : region) {
-      input_region.push_back(i);
-    }
-  } else {
-    GetContentWindow()->layer()->SetRoundedCornerRadius({});
-    GetContentWindow()->layer()->SetIsFastRoundedCorner(false);
-    input_region.push_back({{}, widget_size_px});
-  }
-  // TODO(crbug.com/1306688): Instead of setting in pixels, set in dp.
-  platform_window()->SetInputRegion(input_region);
-
-  // If the window is rounded, we hint the platform to match the drop shadow's
-  // radii to the window's radii. Otherwise, we allow the platform to
-  // determine the drop shadow's radii.
-  if (should_have_rounded_window && wayland_extension) {
-    wayland_extension->SetShadowCornersRadii(window_radii);
-  }
 }
 
 // static

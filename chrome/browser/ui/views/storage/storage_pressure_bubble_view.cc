@@ -130,5 +130,5 @@ bool StoragePressureBubbleView::ShouldShowCloseButton() const {
   return true;
 }
 
-BEGIN_METADATA(StoragePressureBubbleView)
+BEGIN_METADATA(StoragePressureBubbleView, views::BubbleDialogDelegateView)
 END_METADATA

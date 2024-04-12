@@ -4,8 +4,10 @@
 
 #include "chrome/browser/ui/web_applications/web_app_metrics.h"
 
-#include <optional>
+#include <stdint.h>
+#include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/check.h"
@@ -20,13 +22,18 @@
 #include "base/one_shot_event.h"
 #include "base/power_monitor/power_monitor.h"
 #include "base/ranges/algorithm.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
-#include "build/build_config.h"
+#include "base/types/pass_key.h"
+#include "base/value_iterators.h"
+#include "base/values.h"
 #include "chrome/browser/after_startup_task_utils.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_list.h"
@@ -39,14 +46,15 @@
 #include "chrome/browser/web_applications/web_app_tab_helper.h"
 #include "chrome/browser/web_applications/web_app_ui_manager.h"
 #include "chrome/common/chrome_features.h"
-#include "components/services/app_service/public/cpp/preferred_apps_list_handle.h"
 #include "components/site_engagement/content/engagement_type.h"
 #include "components/site_engagement/content/site_engagement_service.h"
+#include "components/sync/base/model_type.h"
 #include "components/webapps/browser/banners/app_banner_manager.h"
-#include "components/webapps/browser/banners/installable_web_app_check_result.h"
-#include "components/webapps/browser/banners/web_app_banner_data.h"
 #include "content/public/browser/web_contents.h"
-#include "third_party/blink/public/mojom/manifest/display_mode.mojom-forward.h"
+#include "services/metrics/public/cpp/ukm_recorder.h"
+#include "services/metrics/public/cpp/ukm_source_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "third_party/blink/public/mojom/manifest/display_mode.mojom.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/web_applications/preinstalled_web_app_window_experiment_utils.h"
@@ -54,6 +62,10 @@
 
 using DisplayMode = blink::mojom::DisplayMode;
 using content::WebContents;
+
+namespace syncer {
+class SyncService;
+}  // namespace syncer
 
 namespace web_app {
 
@@ -88,8 +100,7 @@ void RecordUserInstalledHistogram(
   RecordTabOrWindowHistogram(histogram_prefix, in_window, engagement_type);
 }
 
-bool IsPreferredAppForSupportedLinks(const webapps::AppId& app_id,
-                                     Profile* profile) {
+bool IsPreferredAppForSupportedLinks(const AppId& app_id, Profile* profile) {
   if (!apps::AppServiceProxyFactory::IsAppServiceAvailableForProfile(profile)) {
     return false;
   }
@@ -122,7 +133,7 @@ WebAppMetrics::WebAppMetrics(Profile* profile)
   if (base::FeatureList::IsEnabled(features::kDesktopPWAsIconHealthChecks) &&
       !g_disable_automatic_icon_health_checks_for_testing) {
     AfterStartupTaskUtils::PostTask(
-        FROM_HERE, base::SequencedTaskRunner::GetCurrentDefault(),
+        FROM_HERE, base::SingleThreadTaskRunner::GetCurrentDefault(),
         base::BindOnce(&WebAppIconHealthChecks::Start,
                        icon_health_checks_.GetWeakPtr(), base::DoNothing()));
   }
@@ -147,7 +158,7 @@ void WebAppMetrics::OnEngagementEvent(
   if (!web_contents)
     return;
 
-  Browser* browser = chrome::FindBrowserWithTab(web_contents);
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents);
   if (!browser)
     return;
 
@@ -170,7 +181,7 @@ void WebAppMetrics::OnEngagementEvent(
 
   // A presence of WebAppTabHelper with valid app_id indicates an installed
   // web app.
-  const webapps::AppId* app_id = WebAppTabHelper::GetAppId(web_contents);
+  const AppId* app_id = WebAppTabHelper::GetAppId(web_contents);
   if (!app_id)
     return;
 
@@ -254,8 +265,7 @@ void WebAppMetrics::OnTabStripModelChanged(
          change.GetRemove()->contents) {
       if (contents.remove_reason ==
           TabStripModelChange::RemoveReason::kDeleted) {
-        const webapps::AppId* app_id =
-            WebAppTabHelper::GetAppId(contents.contents);
+        const AppId* app_id = WebAppTabHelper::GetAppId(contents.contents);
         if (app_id)
           app_last_interacted_time_.erase(*app_id);
         // Newly-selected foreground contents should not be going away.
@@ -273,8 +283,7 @@ void WebAppMetrics::OnTabStripModelChanged(
 void WebAppMetrics::OnSuspend() {
   // Update current tab as foreground time.
   if (foreground_web_contents_) {
-    const webapps::AppId* app_id =
-        WebAppTabHelper::GetAppId(foreground_web_contents_);
+    const AppId* app_id = WebAppTabHelper::GetAppId(foreground_web_contents_);
     if (app_id && app_last_interacted_time_.contains(*app_id)) {
       UpdateUkmData(foreground_web_contents_, TabSwitching::kFrom);
       app_last_interacted_time_.erase(*app_id);
@@ -287,7 +296,7 @@ void WebAppMetrics::OnSuspend() {
     for (int i = 0; i < tab_count; i++) {
       WebContents* contents = browser->tab_strip_model()->GetWebContentsAt(i);
       DCHECK(contents);
-      const webapps::AppId* app_id = WebAppTabHelper::GetAppId(contents);
+      const AppId* app_id = WebAppTabHelper::GetAppId(contents);
       if (app_id && app_last_interacted_time_.contains(*app_id)) {
         UpdateUkmData(contents, TabSwitching::kBackgroundClosing);
       }
@@ -298,8 +307,8 @@ void WebAppMetrics::OnSuspend() {
 
 void WebAppMetrics::NotifyOnAssociatedAppChanged(
     content::WebContents* web_contents,
-    const std::optional<webapps::AppId>& previous_app_id,
-    const std::optional<webapps::AppId>& new_app_id) {
+    const absl::optional<AppId>& previous_app_id,
+    const absl::optional<AppId>& new_app_id) {
   // Ensure we aren't counting closed app as still open.
   // TODO (crbug.com/1081187): If there were multiple app instances open, this
   // will prevent background time being counted until the app is next active.
@@ -310,9 +319,7 @@ void WebAppMetrics::NotifyOnAssociatedAppChanged(
 }
 
 void WebAppMetrics::NotifyInstallableWebAppStatusUpdated(
-    WebContents* web_contents,
-    webapps::InstallableWebAppCheckResult result,
-    const std::optional<webapps::WebAppBannerData>& data) {
+    WebContents* web_contents) {
   DCHECK(web_contents);
   // Skip recording if app isn't in the foreground.
   if (web_contents != foreground_web_contents_)
@@ -323,13 +330,10 @@ void WebAppMetrics::NotifyInstallableWebAppStatusUpdated(
   auto* app_banner_manager =
       webapps::AppBannerManager::FromWebContents(foreground_web_contents_);
   DCHECK(app_banner_manager);
-  if (!data) {
+  if (!app_banner_manager->GetManifestStartUrl().is_valid())
     return;
-  }
-  if (!data->manifest().start_url.is_valid()) {
-    return;
-  }
-  if (data->manifest().start_url == last_recorded_web_app_start_url_) {
+  if (app_banner_manager->GetManifestStartUrl() ==
+      last_recorded_web_app_start_url_) {
     return;
   }
 
@@ -379,12 +383,7 @@ void WebAppMetrics::UpdateUkmData(WebContents* web_contents,
     return;
   DailyInteraction features;
 
-  webapps::InstallableWebAppCheckResult installable =
-      app_banner_manager->GetInstallableWebAppCheckResult();
-  std::optional<webapps::WebAppBannerData> banner_data =
-      app_banner_manager->GetCurrentWebAppBannerData();
-
-  const webapps::AppId* app_id = WebAppTabHelper::GetAppId(web_contents);
+  const AppId* app_id = WebAppTabHelper::GetAppId(web_contents);
   if (app_id && provider->registrar_unsafe().IsLocallyInstalled(*app_id)) {
     // App is installed
     features.start_url = provider->registrar_unsafe().GetAppStartUrl(*app_id);
@@ -444,15 +443,12 @@ void WebAppMetrics::UpdateUkmData(WebContents* web_contents,
               HasLaunchedAppBeforeExperiment(*app_id, profile_->GetPrefs());
     }
 #endif  // BUILDFLAG(IS_CHROMEOS)
-  } else if (banner_data &&
-             installable ==
-                 webapps::InstallableWebAppCheckResult::kYes_Promotable) {
+  } else if (app_banner_manager->IsPromotableWebApp()) {
     // App is not installed, but is promotable. Record a subset of features.
-    features.start_url = banner_data->manifest().start_url;
+    features.start_url = app_banner_manager->GetManifestStartUrl();
     DCHECK(features.start_url.is_valid());
     features.installed = false;
-    // TODO(dmurph): Consider display override here too.
-    DisplayMode display_mode = banner_data->manifest().display;
+    DisplayMode display_mode = app_banner_manager->GetManifestDisplayMode();
     features.effective_display_mode = static_cast<int>(display_mode);
     features.promotable = true;
   } else {
@@ -461,7 +457,8 @@ void WebAppMetrics::UpdateUkmData(WebContents* web_contents,
   }
   last_recorded_web_app_start_url_ = features.start_url;
 
-  FlushOldRecordsAndUpdate(features, profile_);
+  FlushOldRecordsAndUpdate(features, profile_,
+                           SyncServiceFactory::GetForProfile(profile_));
 }
 
 }  // namespace web_app

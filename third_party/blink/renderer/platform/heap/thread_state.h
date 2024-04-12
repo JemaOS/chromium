@@ -12,11 +12,11 @@
 #include "third_party/blink/renderer/platform/heap/thread_state_storage.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/threading.h"
+#include "v8-profiler.h"
 #include "v8/include/cppgc/common.h"
 #include "v8/include/cppgc/heap-consistency.h"
 #include "v8/include/v8-callbacks.h"
 #include "v8/include/v8-cppgc.h"
-#include "v8/include/v8-profiler.h"
 
 namespace v8 {
 class CppHeap;
@@ -25,8 +25,6 @@ class EmbedderRootsHandler;
 }  // namespace v8
 
 namespace blink {
-
-class BlinkGCMemoryDumpProvider;
 
 using V8BuildEmbedderGraphCallback = void (*)(v8::Isolate*,
                                               v8::EmbedderGraph*,
@@ -57,15 +55,21 @@ class PLATFORM_EXPORT ThreadState final {
 
   void AttachToIsolate(v8::Isolate* isolate, V8BuildEmbedderGraphCallback);
   void DetachFromIsolate();
+  bool IsAttachedToIsolate() const { return isolate_; }
 
   ALWAYS_INLINE cppgc::HeapHandle& heap_handle() const { return heap_handle_; }
   ALWAYS_INLINE v8::CppHeap& cpp_heap() const { return *cpp_heap_; }
+  ALWAYS_INLINE v8::Isolate* GetIsolate() const { return isolate_; }
+
+  void SafePoint(StackState);
 
   bool IsMainThread() const {
     return this ==
            &ThreadStateStorage::MainThreadStateStorage()->thread_state();
   }
   bool IsCreationThread() const { return thread_id_ == CurrentThread(); }
+
+  void NotifyGarbageCollection(v8::GCType, v8::GCCallbackFlags);
 
   bool IsAllocationAllowed() const {
     return cppgc::subtle::DisallowGarbageCollectionScope::
@@ -113,8 +117,7 @@ class PLATFORM_EXPORT ThreadState final {
   cppgc::HeapHandle& heap_handle_;
   v8::Isolate* isolate_ = nullptr;
   base::PlatformThreadId thread_id_;
-
-  friend class BlinkGCMemoryDumpProvider;
+  bool forced_scheduled_gc_for_testing_ = false;
 };
 
 // static

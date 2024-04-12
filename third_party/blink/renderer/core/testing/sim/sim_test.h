@@ -5,8 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_TESTING_SIM_SIM_TEST_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_TESTING_SIM_SIM_TEST_H_
 
-#include <optional>
-
 #include <gtest/gtest.h>
 #include "base/task/single_thread_task_runner.h"
 #include "third_party/blink/public/platform/web_effective_connection_type.h"
@@ -14,7 +12,7 @@
 #include "third_party/blink/renderer/core/testing/sim/sim_compositor.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_network.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_page.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
+#include "third_party/blink/renderer/core/testing/sim/sim_web_frame_widget.h"
 
 namespace blink {
 
@@ -25,8 +23,7 @@ class LocalDOMWindow;
 
 class SimTest : public testing::Test {
  protected:
-  explicit SimTest(std::optional<base::test::TaskEnvironment::TimeSource>
-                       time_source = std::nullopt);
+  SimTest();
   ~SimTest() override;
 
   void SetUp() override;
@@ -52,15 +49,37 @@ class SimTest : public testing::Test {
   WebLocalFrameImpl& MainFrame();
   WebLocalFrameImpl& LocalFrameRoot();
   frame_test_helpers::TestWebFrameClient& WebFrameClient();
-  frame_test_helpers::TestWebFrameWidget& GetWebFrameWidget();
+  SimWebFrameWidget& GetWebFrameWidget();
   SimCompositor& Compositor();
 
   Vector<String>& ConsoleMessages();
   void ResizeView(const gfx::Size&);
 
-  // Creates a TestWebFrameWidget. Subclasses can override this if the
+  // Creates a SimWebFrameWidget. Subclasses can override this if the
   // wish to create their own.
-  virtual frame_test_helpers::TestWebFrameWidget* CreateWebFrameWidget(
+  virtual SimWebFrameWidget* CreateSimWebFrameWidget(
+      base::PassKey<WebLocalFrame> pass_key,
+      CrossVariantMojoAssociatedRemote<
+          mojom::blink::FrameWidgetHostInterfaceBase> frame_widget_host,
+      CrossVariantMojoAssociatedReceiver<mojom::blink::FrameWidgetInterfaceBase>
+          frame_widget,
+      CrossVariantMojoAssociatedRemote<mojom::blink::WidgetHostInterfaceBase>
+          widget_host,
+      CrossVariantMojoAssociatedReceiver<mojom::blink::WidgetInterfaceBase>
+          widget,
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+      const viz::FrameSinkId& frame_sink_id,
+      bool hidden,
+      bool never_composited,
+      bool is_for_child_local_root,
+      bool is_for_nested_main_frame,
+      bool is_for_scalable_page,
+      SimCompositor* compositor);
+
+  void SetPreferCompositingToLCDText(bool enabled);
+
+ private:
+  frame_test_helpers::TestWebFrameWidget* CreateTestWebFrameWidget(
       base::PassKey<WebLocalFrame> pass_key,
       CrossVariantMojoAssociatedRemote<
           mojom::blink::FrameWidgetHostInterfaceBase> frame_widget_host,
@@ -78,11 +97,6 @@ class SimTest : public testing::Test {
       bool is_for_nested_main_frame,
       bool is_for_scalable_page);
 
-  void SetPreferCompositingToLCDText(bool enabled);
-  test::TaskEnvironment& task_environment() { return task_environment_; }
-
- private:
-  test::TaskEnvironment task_environment_;
   // These are unique_ptrs in order to destroy them in TearDown. Subclasses
   // may override Platform::Current() and these must shutdown before the
   // subclass destructor.

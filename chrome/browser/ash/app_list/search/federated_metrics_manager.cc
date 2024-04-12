@@ -15,7 +15,6 @@
 #include "chromeos/ash/services/federated/public/cpp/federated_example_util.h"
 #include "chromeos/ash/services/federated/public/mojom/example.mojom.h"
 #include "chromeos/ash/services/federated/public/mojom/federated_service.mojom.h"
-#include "chromeos/ash/services/federated/public/mojom/tables.mojom.h"
 #include "mojo/public/cpp/bindings/remote.h"
 
 namespace app_list::federated {
@@ -26,7 +25,22 @@ using ash::federated::CreateStringList;
 using chromeos::federated::mojom::Example;
 using chromeos::federated::mojom::ExamplePtr;
 using chromeos::federated::mojom::Features;
-using chromeos::federated::mojom::FederatedExampleTableId;
+
+constexpr char kClientName[] = "launcher_query_analytics_v1";
+
+std::string SearchSessionConclusionToString(
+    ash::SearchSessionConclusion conclusion) {
+  switch (conclusion) {
+    case ash::SearchSessionConclusion::kQuit:
+      return "quit";
+    case ash::SearchSessionConclusion::kLaunch:
+      return "launch";
+    case ash::SearchSessionConclusion::kAnswerCardSeen:
+      return "answer_card";
+    default:
+      NOTREACHED();
+  }
+}
 
 void LogSearchSessionConclusion(ash::SearchSessionConclusion conclusion) {
   base::UmaHistogramEnumeration(kHistogramSearchSessionConclusion, conclusion);
@@ -38,12 +52,6 @@ void LogInitStatus(FederatedMetricsManager::InitStatus status) {
 
 void LogReportStatus(FederatedMetricsManager::ReportStatus status) {
   base::UmaHistogramEnumeration(kHistogramReportStatus, status);
-}
-
-void LogQueryLength(int query_length) {
-  base::UmaHistogramExactLinear(kHistogramQueryLengthOnStorageSuccess,
-                                query_length,
-                                kMaxLoggedQueryLengthOnStorageSuccess);
 }
 
 ExamplePtr CreateExamplePtr(const std::string& query,
@@ -58,21 +66,16 @@ ExamplePtr CreateExamplePtr(const std::string& query,
   return example;
 }
 
-bool AreFeatureFlagsEnabled() {
-  return ash::features::IsFederatedServiceEnabled() &&
-         search_features::IsLauncherQueryFederatedAnalyticsPHHEnabled();
-}
-
 }  // namespace
 
 FederatedMetricsManager::FederatedMetricsManager(
     ash::AppListNotifier* notifier,
     ash::federated::FederatedServiceController* controller)
     : controller_(controller) {
-  if (!AreFeatureFlagsEnabled()) {
-    // Don't log InitStatus metrics if the feature is disabled.
+  if (!IsLoggingEnabled()) {
     return;
   }
+
   if (!notifier) {
     LogInitStatus(InitStatus::kMissingNotifier);
     return;
@@ -80,6 +83,12 @@ FederatedMetricsManager::FederatedMetricsManager(
 
   if (!controller_) {
     LogInitStatus(InitStatus::kMissingController);
+    return;
+  }
+
+  TryToBindFederatedServiceIfNecessary();
+  if (!federated_service_.is_bound() || !federated_service_.is_connected()) {
+    LogInitStatus(InitStatus::kFederatedConnectionFailedToEstablish);
     return;
   }
 
@@ -136,18 +145,14 @@ void FederatedMetricsManager::OnLaunch(Location location,
   }
 }
 
-void FederatedMetricsManager::OnDefaultSearchIsGoogleSet(bool is_google) {
-  is_default_search_engine_google_ = is_google;
-}
-
 bool FederatedMetricsManager::IsFederatedServiceAvailable() {
   return controller_ && controller_->IsServiceAvailable();
 }
 
 bool FederatedMetricsManager::IsLoggingEnabled() {
-  CHECK(is_default_search_engine_google_.has_value());
   return ChromeMetricsServiceAccessor::IsMetricsAndCrashReportingEnabled() &&
-         AreFeatureFlagsEnabled() && is_default_search_engine_google_.value();
+         ash::features::IsFederatedServiceEnabled() &&
+         search_features::IsLauncherQueryFederatedAnalyticsPHHEnabled();
 }
 
 void FederatedMetricsManager::TryToBindFederatedServiceIfNecessary() {
@@ -173,24 +178,11 @@ void FederatedMetricsManager::LogExample(const std::string& query) {
   } else if (!federated_service_.is_connected()) {
     LogReportStatus(ReportStatus::kFederatedServiceNotConnected);
   } else {
-    // Federated service is available and connected.
-
-    // Store example for launcher FA version 1.
-    ExamplePtr example_1 = CreateExamplePtr(
-        query, ash::SearchSessionConclusionToString(session_result_));
-    federated_service_->ReportExampleToTable(
-        FederatedExampleTableId::LAUNCHER_QUERY, std::move(example_1));
-
-    // Store example for launcher FA version 2.
-    // TODO(b/318575870): De-duplicate query collection once support is
-    // available on the infrastructure side.
-    ExamplePtr example_2 = CreateExamplePtr(
-        query, ash::SearchSessionConclusionToString(session_result_));
-    federated_service_->ReportExampleToTable(
-        FederatedExampleTableId::LAUNCHER_QUERY_V2, std::move(example_2));
-
+    // Federated service available and connected.
+    ExamplePtr example = CreateExamplePtr(
+        query, SearchSessionConclusionToString(session_result_));
+    federated_service_->ReportExample(kClientName, std::move(example));
     LogReportStatus(ReportStatus::kOk);
-    LogQueryLength(query.length());
   }
 }
 

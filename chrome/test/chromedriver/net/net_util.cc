@@ -124,9 +124,3 @@ bool FetchUrl(const std::string& url,
               std::string* response) {
   return SyncUrlFetcher(GURL(url), factory, response).Fetch();
 }
-
-bool FetchUrl(const GURL& url,
-              network::mojom::URLLoaderFactory* factory,
-              std::string* response) {
-  return SyncUrlFetcher(url, factory, response).Fetch();
-}

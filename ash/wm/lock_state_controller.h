@@ -6,7 +6,6 @@
 #define ASH_WM_LOCK_STATE_CONTROLLER_H_
 
 #include <memory>
-#include <optional>
 
 #include "ash/ash_export.h"
 #include "ash/public/cpp/session/session_observer.h"
@@ -21,8 +20,8 @@
 #include "base/timer/timer.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/window_tree_host_observer.h"
-#include "ui/gfx/image/image.h"
 
 namespace ash {
 
@@ -184,29 +183,6 @@ class ASH_EXPORT LockStateController : public aura::WindowTreeHostObserver,
   // Notifies observers.
   void OnLockStateEvent(LockStateObserver::EventType event);
 
-  // Triggers the shutdown way on `Pine`.
-  void ShutdownOnPine(bool with_pre_animation);
-
-  // Takes a pine image first and then start the shutdown process.
-  void TakePineImageAndShutdown(bool with_pre_animation);
-
-  // Starts the shutdown process. If `with_pre_animation` is true, then starts
-  // with the pre-shutdown animation, otherwise, starts the real shutdown.
-  void StartShutdownProcess(bool with_pre_animation);
-
-  // Triggers the shutdown process on `take_screenshot_fail_timer_` timeouts.
-  void OnTakeScreenshotFailTimeout(bool with_pre_animation);
-
-  // Callback invoked inside `TakePineImageAndShutdown` once the image is
-  // taken. Note: `gfx::Image` is cheap to pass by value.
-  void OnPineImageTaken(bool with_pre_animation,
-                        const base::FilePath& file_path,
-                        base::TimeTicks start_time,
-                        gfx::Image pine_image);
-
-  // Callback invoked when the pine image was encoded and saved.
-  void OnPineImageSaved(base::TimeTicks start_time);
-
   std::unique_ptr<SessionStateAnimator> animator_;
 
   // Current lock status.
@@ -216,7 +192,7 @@ class ASH_EXPORT LockStateController : public aura::WindowTreeHostObserver,
   bool shutting_down_ = false;
 
   // The reason (e.g. user action) for a pending shutdown.
-  std::optional<ShutdownReason> shutdown_reason_;
+  absl::optional<ShutdownReason> shutdown_reason_;
 
   // Indicates whether controller should proceed to (cancellable) shutdown after
   // locking.
@@ -241,9 +217,9 @@ class ASH_EXPORT LockStateController : public aura::WindowTreeHostObserver,
   std::unique_ptr<base::ElapsedTimer> lock_duration_timer_;
 
   // Controller used to trigger the actual shutdown.
-  raw_ptr<ShutdownController, DanglingUntriaged> shutdown_controller_;
+  raw_ptr<ShutdownController, ExperimentalAsh> shutdown_controller_;
 
-  // Started when we request that the screen be locked. When it fires, we
+  // Started when we request that the screen be locked.  When it fires, we
   // assume that our request got dropped.
   base::OneShotTimer lock_fail_timer_;
 
@@ -251,11 +227,11 @@ class ASH_EXPORT LockStateController : public aura::WindowTreeHostObserver,
   // that our request got dropped.
   base::OneShotTimer post_lock_fail_timer_;
 
-  // Started when we begin displaying the pre-shutdown animation. When it
+  // Started when we begin displaying the pre-shutdown animation.  When it
   // fires, we start the shutdown animation and get ready to request shutdown.
   base::OneShotTimer pre_shutdown_timer_;
 
-  // Started when we display the shutdown animation. When it fires, we actually
+  // Started when we display the shutdown animation.  When it fires, we actually
   // request shutdown.  Gives the animation time to complete before Chrome, X,
   // etc. are shut down.
   base::OneShotTimer real_shutdown_timer_;
@@ -263,17 +239,6 @@ class ASH_EXPORT LockStateController : public aura::WindowTreeHostObserver,
   base::OnceClosure lock_screen_displayed_callback_;
 
   base::OnceCallback<void(bool)> start_unlock_callback_;
-
-  // A new layer that mirrors the wallpaper layer, which will be added to the
-  // layer hierarchy and help include the wallpaper into the pine screenshot.
-  std::unique_ptr<ui::Layer> mirror_wallpaper_layer_;
-
-  // A timer tracks the time duration it takes to take the pine image. If this
-  // timer timeouts before taking the screenshot completes, the shutdown
-  // process will be triggered immediately without the pine image. This is done
-  // to avoid the shutdown process being blocked too long to be noticed by the
-  // users.
-  base::OneShotTimer take_screenshot_fail_timer_;
 
   ScopedSessionObserver scoped_session_observer_;
 
@@ -284,15 +249,7 @@ class ASH_EXPORT LockStateController : public aura::WindowTreeHostObserver,
   base::ObserverList<LockStateObserver>::Unchecked observers_;
 
   // To access the pref kLoginShutdownTimestampPrefName
-  raw_ptr<PrefService> local_state_;
-
-  // If set, it will be called once the operation on the pine image is
-  // completed, either it was deleted or saved to the disk.
-  base::OnceClosure pine_image_callback_for_test_;
-
-  // Disables the `take_screenshot_fail_timer_` for test, which means the timer
-  // will never start if this is set to true.
-  bool disable_screenshot_tiemout_for_test_ = false;
+  raw_ptr<PrefService, ExperimentalAsh> local_state_;
 
   base::WeakPtrFactory<LockStateController> weak_ptr_factory_{this};
 };

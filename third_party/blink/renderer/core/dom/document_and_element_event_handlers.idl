@@ -3,7 +3,10 @@
 // found in the LICENSE file.
 
 // https://html.spec.whatwg.org/C/#documentandelementeventhandlers
-interface mixin DocumentAndElementEventHandlers {
+
+[
+    LegacyTreatAsPartialInterface
+] interface mixin DocumentAndElementEventHandlers {
   attribute EventHandler oncopy;
   attribute EventHandler oncut;
   attribute EventHandler onpaste;

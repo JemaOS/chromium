@@ -102,7 +102,7 @@ class DialAppDiscoveryServiceTest : public ::testing::Test {
   }
 
   void OnDialAppInfoFetchError(DialAppDiscoveryService::PendingRequest* request,
-                               std::optional<int> response_code,
+                               absl::optional<int> response_code,
                                const std::string& error_text) {
     request->OnDialAppInfoFetchError(error_text, response_code);
   }
@@ -112,7 +112,7 @@ class DialAppDiscoveryServiceTest : public ::testing::Test {
   }
 
  protected:
-  raw_ptr<TestSafeDialAppInfoParser, DanglingUntriaged> test_parser_;
+  raw_ptr<TestSafeDialAppInfoParser> test_parser_;
   DialAppDiscoveryService dial_app_discovery_service_;
 
   // Must be on Chrome_UIThread, as `OnDialAppInfoFetchComplete` uses a
@@ -146,7 +146,7 @@ TEST_F(DialAppDiscoveryServiceTest,
 
   EXPECT_CALL(*this, OnAppInfoFailure(sink_id, _,
                                       DialAppInfoResultCode::kNetworkError));
-  OnDialAppInfoFetchError(request, std::nullopt, "Temporarily throttled");
+  OnDialAppInfoFetchError(request, absl::nullopt, "Temporarily throttled");
 }
 
 TEST_F(DialAppDiscoveryServiceTest, TestFetchDialAppInfoFetchURLError) {

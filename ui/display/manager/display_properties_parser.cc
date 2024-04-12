@@ -4,11 +4,10 @@
 
 #include "ui/display/manager/display_properties_parser.h"
 
-#include <optional>
-
 #include "base/logging.h"
 #include "base/strings/stringprintf.h"
 #include "base/values.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/gfx/geometry/rounded_corners_f.h"
 
@@ -21,21 +20,21 @@ constexpr char kDisplayUpperRightRadiusKeyName[] = "top-right";
 constexpr char kDisplayLowerLeftRadiusKeyName[] = "bottom-left";
 constexpr char kDisplayLowerRightRadiusKeyName[] = "bottom-right";
 
-std::optional<gfx::RoundedCornersF> ParsePanelRadii(
+absl::optional<gfx::RoundedCornersF> ParsePanelRadii(
     const base::Value* json_value) {
   if (!json_value || !json_value->is_dict()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   const auto& radii_value = json_value->GetDict();
   if (radii_value.size() != 4u) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   gfx::RoundedCornersF panel_radii;
   for (const auto value : radii_value) {
     if (!value.second.is_int() || value.second.GetInt() < 0) {
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     const auto& key = value.first;
@@ -57,26 +56,26 @@ std::optional<gfx::RoundedCornersF> ParsePanelRadii(
 
 }  // namespace
 
-std::optional<gfx::RoundedCornersF> ParseDisplayPanelRadii(
+absl::optional<gfx::RoundedCornersF> ParseDisplayPanelRadii(
     const base::Value* json_value) {
   if (!json_value->is_list()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   const auto& display_infos = json_value->GetList();
 
   if (display_infos.size() > 1) {
     LOG(WARNING) << "Currently rounded-display property is only supported for "
                     "the internal display";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   if (!display_infos.back().is_dict()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   const auto& display_info = display_infos.back().GetDict();
 
-  std::optional<gfx::RoundedCornersF> panel_radii =
+  absl::optional<gfx::RoundedCornersF> panel_radii =
       ParsePanelRadii(display_info.Find(kDisplayRadiiKeyName));
 
   if (!panel_radii.has_value()) {
@@ -85,7 +84,7 @@ std::optional<gfx::RoundedCornersF> ParseDisplayPanelRadii(
         "switch",
         kDisplayRadiiKeyName);
 
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return panel_radii;

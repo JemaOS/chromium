@@ -8,9 +8,8 @@
 namespace blink {
 
 TEST(StyleNameOrKeywordTest, StyleName) {
-  StyleName name_custom_ident(AtomicString("foo"),
-                              StyleName::Type::kCustomIdent);
-  StyleName name_string(AtomicString("foo"), StyleName::Type::kString);
+  StyleName name_custom_ident("foo", StyleName::Type::kCustomIdent);
+  StyleName name_string("foo", StyleName::Type::kString);
 
   EXPECT_FALSE(StyleNameOrKeyword(name_custom_ident).IsKeyword());
   EXPECT_FALSE(StyleNameOrKeyword(name_string).IsKeyword());
@@ -30,9 +29,8 @@ TEST(StyleNameOrKeywordTest, Keyword) {
 }
 
 TEST(StyleNameOrKeywordTest, Equality) {
-  StyleName name_custom_ident(AtomicString("foo"),
-                              StyleName::Type::kCustomIdent);
-  StyleName name_string(AtomicString("foo"), StyleName::Type::kString);
+  StyleName name_custom_ident("foo", StyleName::Type::kCustomIdent);
+  StyleName name_string("foo", StyleName::Type::kString);
 
   EXPECT_EQ(StyleNameOrKeyword(CSSValueID::kAuto),
             StyleNameOrKeyword(CSSValueID::kAuto));

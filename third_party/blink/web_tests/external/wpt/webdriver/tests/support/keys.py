@@ -17,9 +17,10 @@
 
 """The Keys implementation."""
 
+import sys
+
 from collections import OrderedDict
 from inspect import getmembers
-
 
 class Keys(object):
     """
@@ -105,7 +106,7 @@ class Keys(object):
     R_DELETE = u"\uE05D"
 
 
-ALL_KEYS = getmembers(Keys, lambda x: type(x) is str)
+ALL_KEYS = getmembers(Keys, lambda x: type(x) == str)
 
 ALL_EVENTS = OrderedDict(
     [
@@ -243,10 +244,10 @@ ALL_EVENTS = OrderedDict(
         )),
         ("EQUALS", OrderedDict(
             [
-                ("code", "NumpadEqual"),
+                ("code", ""),
                 ("ctrl", False),
                 ("key", "="),
-                ("location", 3),
+                ("location", 0),
                 ("meta", False),
                 ("shift", False),
                 ("value", u"\ue019")
@@ -441,7 +442,7 @@ ALL_EVENTS = OrderedDict(
         )),
         ("META", OrderedDict(
             [
-                ("code", "MetaLeft"),
+                ("code", "OSLeft"),
                 ("ctrl", False),
                 ("key", "Meta"),
                 ("location", 1),
@@ -606,7 +607,7 @@ ALL_EVENTS = OrderedDict(
         )),
         ("PAUSE", OrderedDict(
             [
-                ("code", "Pause"),
+                ("code", ""),
                 ("ctrl", False),
                 ("key", "Pause"),
                 ("location", 0),
@@ -749,7 +750,7 @@ ALL_EVENTS = OrderedDict(
         )),
         ("R_META", OrderedDict(
             [
-                ("code", "MetaRight"),
+                ("code", "OSRight"),
                 ("ctrl", False),
                 ("key", "Meta"),
                 ("location", 2),

@@ -5,7 +5,6 @@
 #include "chrome/browser/upgrade_detector/upgrade_detector_chromeos.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -26,6 +25,7 @@
 #include "components/prefs/testing_pref_service.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -73,7 +73,7 @@ class MockUpgradeObserver : public UpgradeObserver {
   MOCK_METHOD1(OnRelaunchOverriddenToRequired, void(bool overridden));
 
  private:
-  const raw_ptr<UpgradeDetector> upgrade_detector_;
+  const raw_ptr<UpgradeDetector, ExperimentalAsh> upgrade_detector_;
 };
 
 }  // namespace
@@ -205,9 +205,9 @@ class UpgradeDetectorChromeosTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
   ScopedTestingLocalState scoped_local_state_;
   std::unique_ptr<base::Environment> env_;
-  std::optional<std::string> original_tz_;
+  absl::optional<std::string> original_tz_;
 
-  raw_ptr<ash::FakeUpdateEngineClient, DanglingUntriaged>
+  raw_ptr<ash::FakeUpdateEngineClient, ExperimentalAsh>
       fake_update_engine_client_;  // Not owned.
 };
 

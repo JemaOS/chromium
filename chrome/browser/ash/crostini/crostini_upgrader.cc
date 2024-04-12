@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/crostini/crostini_upgrader.h"
 
-#include <optional>
-
 #include "base/files/file_util.h"
 #include "base/location.h"
 #include "base/no_destructor.h"
@@ -22,6 +20,7 @@
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/network_service_instance.h"
 #include "services/network/public/cpp/network_connection_tracker.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace crostini {
 
@@ -75,8 +74,8 @@ CrostiniUpgrader::CrostiniUpgrader(Profile* profile)
       container_id_(kCrostiniDefaultVmType, "", ""),
       log_sequence_(
           base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()})),
-      current_log_file_(std::nullopt),
-      backup_path_(std::nullopt) {
+      current_log_file_(absl::nullopt),
+      backup_path_(absl::nullopt) {
   CrostiniManager::GetForProfile(profile_)->AddUpgradeContainerProgressObserver(
       this);
 }
@@ -99,7 +98,7 @@ void CrostiniUpgrader::RemoveObserver(CrostiniUpgraderUIObserver* observer) {
 
 void CrostiniUpgrader::PageOpened() {
   // Clear log path so any log messages get buffered.
-  current_log_file_ = std::nullopt;
+  current_log_file_ = absl::nullopt;
   // Clear the buffer, which may have been previously moved from.
   log_buffer_ = std::vector<std::string>();
 }
@@ -112,13 +111,13 @@ void CrostiniUpgrader::CreateNewLogFile() {
   log_sequence_->PostTaskAndReplyWithResult(
       FROM_HERE,
       base::BindOnce(
-          [](base::FilePath path) -> std::optional<base::FilePath> {
+          [](base::FilePath path) -> absl::optional<base::FilePath> {
             path = base::GetUniquePath(path);
             base::File file(path,
                             base::File::FLAG_READ | base::File::FLAG_CREATE);
             if (!file.IsValid()) {
               PLOG(ERROR) << "Failed to create log file!";
-              return std::nullopt;
+              return absl::nullopt;
             }
             return path;
           },
@@ -126,10 +125,9 @@ void CrostiniUpgrader::CreateNewLogFile() {
       // Once the file is created, write out the buffered log messages.
       base::BindOnce(
           [](base::WeakPtr<CrostiniUpgrader> weak_this,
-             std::optional<base::FilePath> path) {
-            if (!weak_this) {
+             absl::optional<base::FilePath> path) {
+            if (!weak_this)
               return;
-            }
 
             weak_this->current_log_file_ = path;
             if (path) {
@@ -157,9 +155,8 @@ void CrostiniUpgrader::StatusTracker::SetStatusRunningUI(int progress_percent) {
   } else {
     upgrader_->OnRestoreProgress(progress_percent);
   }
-  if (has_notified_start_) {
+  if (has_notified_start_)
     return;
-  }
   for (auto& observer : upgrader_->upgrader_observers_) {
     observer.OnBackupMaybeStarted(/*did_start=*/true);
   }
@@ -194,7 +191,7 @@ void CrostiniUpgrader::StatusTracker::SetStatusFailedWithMessageUI(
     result = CrostiniResult::CONTAINER_EXPORT_IMPORT_FAILED_SPACE;
   }
   if (type() == ExportImportType::EXPORT) {
-    upgrader_->OnBackup(result, std::nullopt);
+    upgrader_->OnBackup(result, absl::nullopt);
   } else {
     upgrader_->OnRestore(result);
   }
@@ -239,7 +236,7 @@ void CrostiniUpgrader::OnBackupPathChecked(
 }
 
 void CrostiniUpgrader::OnBackup(CrostiniResult result,
-                                std::optional<base::FilePath> backup_path) {
+                                absl::optional<base::FilePath> backup_path) {
   if (result != CrostiniResult::SUCCESS) {
     for (auto& observer : upgrader_observers_) {
       observer.OnBackupFailed();
@@ -335,7 +332,7 @@ void CrostiniUpgrader::Upgrade(const guest_os::GuestId& container_id) {
               return;
             }
 
-            auto target_version = ContainerVersion::BOOKWORM;
+            auto target_version = ContainerVersion::BULLSEYE;
 
             CrostiniManager::GetForProfile(weak_this->profile_)
                 ->UpgradeContainer(

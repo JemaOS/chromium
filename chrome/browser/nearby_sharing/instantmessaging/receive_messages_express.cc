@@ -13,9 +13,9 @@
 #include "chrome/browser/nearby_sharing/instantmessaging/constants.h"
 #include "chrome/browser/nearby_sharing/instantmessaging/proto/instantmessaging.pb.h"
 #include "chrome/browser/nearby_sharing/instantmessaging/token_fetcher.h"
+#include "chrome/browser/nearby_sharing/logging/logging.h"
 #include "chrome/browser/nearby_sharing/webrtc_request_builder.h"
 #include "chromeos/ash/components/nearby/common/client/nearby_http_result.h"
-#include "components/cross_device/logging/logging.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "net/base/load_flags.h"
 #include "services/network/public/cpp/resource_request.h"
@@ -69,10 +69,10 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
             }
           })");
 
-std::optional<ash::nearby::NearbyHttpStatus> HttpStatusFromUrlLoader(
+absl::optional<ash::nearby::NearbyHttpStatus> HttpStatusFromUrlLoader(
     const network::SimpleURLLoader* loader) {
   if (!loader)
-    return std::nullopt;
+    return absl::nullopt;
 
   return ash::nearby::NearbyHttpStatus(loader->NetError(),
                                        loader->ResponseInfo());
@@ -80,7 +80,7 @@ std::optional<ash::nearby::NearbyHttpStatus> HttpStatusFromUrlLoader(
 
 void LogReceiveResult(
     bool success,
-    const std::optional<ash::nearby::NearbyHttpStatus>& http_status,
+    const absl::optional<ash::nearby::NearbyHttpStatus>& http_status,
     const std::string& request_id) {
   std::stringstream ss;
   ss << "Instant messaging receive express "
@@ -98,9 +98,9 @@ void LogReceiveResult(
   }
 
   if (success) {
-    CD_LOG(INFO, Feature::NS) << ss.str();
+    NS_LOG(INFO) << ss.str();
   } else {
-    CD_LOG(ERROR, Feature::NS) << ss.str();
+    NS_LOG(ERROR) << ss.str();
   }
 }
 
@@ -118,8 +118,8 @@ void ReceiveMessagesExpress::StartReceiveSession(
   chrome_browser_nearby_sharing_instantmessaging::ReceiveMessagesExpressRequest
       request = BuildReceiveRequest(self_id, std::move(location_hint));
 
-  CD_LOG(INFO, Feature::NS) << __func__ << ": self_id=" << self_id
-                            << ", request id=" << request.header().request_id();
+  NS_LOG(INFO) << __func__ << ": self_id=" << self_id
+               << ", request id=" << request.header().request_id();
 
   auto receive_messages_express = base::WrapUnique(
       new ReceiveMessagesExpress(std::move(incoming_messages_listener),
@@ -148,9 +148,9 @@ ReceiveMessagesExpress::ReceiveMessagesExpress(
 
 ReceiveMessagesExpress::~ReceiveMessagesExpress() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CD_LOG(VERBOSE, Feature::NS)
-      << __func__
-      << ": Receive messages session going down, request id=" << request_id_;
+  NS_LOG(VERBOSE) << __func__
+                  << ": Receive messages session going down, request id="
+                  << request_id_;
 
   fast_path_ready_timeout_timer_.Stop();
 
@@ -168,8 +168,7 @@ void ReceiveMessagesExpress::StartReceivingMessages(
         pending_remote_for_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(!url_loader_);
-  CD_LOG(VERBOSE, Feature::NS)
-      << "ReceiveMessagesExpress::StartReceivingMessages() called.";
+  NS_LOG(VERBOSE) << "ReceiveMessagesExpress::StartReceivingMessages() called.";
 
   request_id_ = request.header().request_id();
 
@@ -202,8 +201,8 @@ void ReceiveMessagesExpress::DoStartReceivingMessages(
     return;
   }
 
-  CD_LOG(VERBOSE, Feature::NS)
-      << __func__ << ": OAuth token fetched; starting stream download";
+  NS_LOG(VERBOSE) << __func__
+                  << ": OAuth token fetched; starting stream download";
 
   auto resource_request = std::make_unique<network::ResourceRequest>();
   resource_request->url = GURL(kInstantMessagingReceiveMessageAPI);
@@ -231,7 +230,7 @@ void ReceiveMessagesExpress::DoStartReceivingMessages(
 }
 
 void ReceiveMessagesExpress::OnFastPathReadyTimeout() {
-  CD_LOG(WARNING, Feature::NS) << __func__;
+  NS_LOG(WARNING) << __func__;
   FailSessionAndDestruct("Timeout before receiving fast path ready");
   // |this| will be destroyed here.
   return;
@@ -248,9 +247,8 @@ void ReceiveMessagesExpress::StopReceivingMessages() {
   // OnComplete() when the other side calls StopReceivingMessages().
   url_loader_.reset();
 
-  CD_LOG(VERBOSE, Feature::NS)
-      << __func__ << ": callback already invoked? "
-      << (start_receiving_messages_callback_ ? "no" : "yes");
+  NS_LOG(VERBOSE) << __func__ << ": callback already invoked? "
+                  << (start_receiving_messages_callback_ ? "no" : "yes");
 
   if (start_receiving_messages_callback_) {
     FailSessionAndDestruct(
@@ -288,9 +286,8 @@ void ReceiveMessagesExpress::DelegateMessage(
       OnMessageReceived(response.inbox_message().message());
       break;
     default:
-      CD_LOG(ERROR, Feature::NS)
-          << __func__
-          << ": message body case was unexpected: " << response.body_case();
+      NS_LOG(ERROR) << __func__ << ": message body case was unexpected: "
+                    << response.body_case();
       NOTREACHED();
   }
 }
@@ -298,14 +295,13 @@ void ReceiveMessagesExpress::DelegateMessage(
 void ReceiveMessagesExpress::OnComplete(bool success) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   fast_path_ready_timeout_timer_.Stop();
-  std::optional<ash::nearby::NearbyHttpStatus> http_status =
+  absl::optional<ash::nearby::NearbyHttpStatus> http_status =
       HttpStatusFromUrlLoader(url_loader_.get());
 
-  CD_LOG(VERBOSE, Feature::NS)
-      << __func__ << ": success? " << (success ? "yes" : "no")
-      << ", start calback invoked? "
-      << (start_receiving_messages_callback_ ? "no" : "yes") << ", net::Error "
-      << url_loader_->NetError();
+  NS_LOG(VERBOSE) << __func__ << ": success? " << (success ? "yes" : "no")
+                  << ", start calback invoked? "
+                  << (start_receiving_messages_callback_ ? "no" : "yes")
+                  << ", net::Error " << url_loader_->NetError();
 
   if (start_receiving_messages_callback_) {
     LogReceiveResult(success, http_status, request_id_);
@@ -323,16 +319,15 @@ void ReceiveMessagesExpress::OnComplete(bool success) {
 }
 
 void ReceiveMessagesExpress::OnRetry(base::OnceClosure start_retry) {
-  CD_LOG(ERROR, Feature::NS)
-      << __func__ << ": retry is not implemented for the url_fetcher";
+  NS_LOG(ERROR) << __func__ << ": retry is not implemented for the url_fetcher";
   NOTIMPLEMENTED();
 }
 
 void ReceiveMessagesExpress::OnFastPathReady() {
-  CD_LOG(VERBOSE, Feature::NS) << __func__;
+  NS_LOG(VERBOSE) << __func__;
   fast_path_ready_timeout_timer_.Stop();
   if (start_receiving_messages_callback_) {
-    LogReceiveResult(/*success=*/true, /*http_status=*/std::nullopt,
+    LogReceiveResult(/*success=*/true, /*http_status=*/absl::nullopt,
                      request_id_);
     std::move(start_receiving_messages_callback_)
         .Run(true, std::move(self_pending_remote_));
@@ -340,12 +335,10 @@ void ReceiveMessagesExpress::OnFastPathReady() {
 }
 
 void ReceiveMessagesExpress::OnMessageReceived(const std::string& message) {
-  CD_LOG(VERBOSE, Feature::NS)
-      << __func__ << ": message size: " << message.size();
+  NS_LOG(VERBOSE) << __func__ << ": message size: " << message.size();
 
   if (!incoming_messages_listener_) {
-    CD_LOG(WARNING, Feature::NS)
-        << __func__ << ": no listener available to receive message";
+    NS_LOG(WARNING) << __func__ << ": no listener available to receive message";
     return;
   }
 
@@ -364,9 +357,9 @@ void ReceiveMessagesExpress::FailSessionAndDestruct(const std::string reason) {
         .Run(false, mojo::NullRemote());
   }
 
-  CD_LOG(ERROR, Feature::NS)
-      << __func__ << ": Terminating receive message express session: ["
-      << reason << "]";
+  NS_LOG(ERROR) << __func__
+                << ": Terminating receive message express session: [" << reason
+                << "]";
   // If we have not returned self_pending_remote_ to the caller, This will kill
   // the self-owned mojo pipe and implicitly destroy this object. If we have
   // given out this pending remote through |start_receiving_messages_callback_|,

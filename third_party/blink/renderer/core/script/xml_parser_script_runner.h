@@ -26,9 +26,7 @@ class XMLParserScriptRunner final
   XMLParserScriptRunner& operator=(const XMLParserScriptRunner&) = delete;
   ~XMLParserScriptRunner() override;
 
-  bool HasParserBlockingScript() const {
-    return parser_blocking_script_ != nullptr;
-  }
+  bool HasParserBlockingScript() const { return parser_blocking_script_; }
 
   void ProcessScriptElement(Document&, Element*, TextPosition);
   void Detach();

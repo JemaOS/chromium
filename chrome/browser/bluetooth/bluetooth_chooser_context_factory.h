@@ -34,7 +34,7 @@ class BluetoothChooserContextFactory : public ProfileKeyedServiceFactory {
   ~BluetoothChooserContextFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   void BrowserContextShutdown(content::BrowserContext* context) override;
 };

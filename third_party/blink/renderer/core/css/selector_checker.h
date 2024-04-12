@@ -98,33 +98,12 @@ class CORE_EXPORT SelectorChecker {
       : scrollbar_(style_request.scrollbar),
         part_names_(part_names),
         pseudo_argument_(style_request.pseudo_argument),
-        pseudo_ident_list_(style_request.pseudo_ident_list),
         scrollbar_part_(style_request.scrollbar_part),
         mode_(mode),
         is_ua_rule_(is_ua_rule) {}
 
   SelectorChecker(const SelectorChecker&) = delete;
   SelectorChecker& operator=(const SelectorChecker&) = delete;
-
-  // When matching certain selectors (e.g :hover), we sometimes want to mark the
-  // relevant element(s) as being affected by that selector to aid some
-  // invalidation process later. We also typically need a distinction between
-  // elements that are affected themselves and elements that are *related* to
-  // affected elements (e.g. has an affected ancestor or sibling). The impact of
-  // a given SelectorCheckingContext tells us which invalidation flags to set.
-  enum class Impact {
-    // Invalidation
-    // flags on to the element itself should be set.
-    kSubject = 0b01,
-    // Ancestors or previous siblings
-    // should have their invalidation flags set.
-    kNonSubject = 0b10,
-    // Invalidation flags should be set as if both subject and non-subjects are
-    // impacted. This can be used defensively in situations where we don't know
-    // the full impact of a given selector at the time that selector is
-    // evaluated, e.g. '@scope (:hover) { ... }'.
-    kBoth = 0b11
-  };
 
   // Wraps the current element and a CSSSelector and stores some other state of
   // the selector matching process.
@@ -154,7 +133,6 @@ class CORE_EXPORT SelectorChecker {
 
     AtomicString* pseudo_argument = nullptr;
     PseudoId pseudo_id = kPseudoIdNone;
-    Impact impact = Impact::kSubject;
 
     bool is_sub_selector = false;
     bool in_rightmost_compound = true;
@@ -165,13 +143,6 @@ class CORE_EXPORT SelectorChecker {
     // If true, elements that are links will match :visited. Otherwise,
     // they will match :link.
     bool match_visited = false;
-    // The `match_visited` flag can become false during selector matching
-    // for various reasons (see DisallowMatchVisited and its call sites).
-    // The `had_match_visited` flag tracks whether was initially true or not.
-    // This is needed by @scope (CalculateActivations), which needs to evaluate
-    // visited-dependent selectors according to the original `match_visited`
-    // setting.
-    bool had_match_visited = false;
     bool pseudo_has_in_rightmost_compound = true;
     bool is_inside_has_pseudo_class = false;
   };
@@ -285,6 +256,7 @@ class CORE_EXPORT SelectorChecker {
 
   static bool MatchesFocusPseudoClass(const Element&);
   static bool MatchesFocusVisiblePseudoClass(const Element&);
+  static bool MatchesSpatialNavigationInterestPseudoClass(const Element&);
   static bool MatchesSelectorFragmentAnchorPseudoClass(const Element&);
 
  private:
@@ -330,7 +302,6 @@ class CORE_EXPORT SelectorChecker {
                                    const ContainerNode*,
                                    MatchResult&) const;
   bool CheckPseudoClass(const SelectorCheckingContext&, MatchResult&) const;
-  bool CheckPseudoAutofill(CSSSelector::PseudoType, Element&) const;
   bool CheckPseudoElement(const SelectorCheckingContext&, MatchResult&) const;
   bool CheckScrollbarPseudoClass(const SelectorCheckingContext&,
                                  MatchResult&) const;
@@ -348,24 +319,18 @@ class CORE_EXPORT SelectorChecker {
       Element&,
       const StyleScope&,
       const StyleScopeActivations& outer_activations,
-      StyleScopeFrame*,
-      bool match_visited) const;
+      StyleScopeFrame*) const;
   bool MatchesWithScope(Element&,
                         const CSSSelector& selector_list,
-                        const ContainerNode* scope,
-                        bool match_visited,
-                        MatchFlags&) const;
+                        const ContainerNode* scope) const;
   // https://drafts.csswg.org/css-cascade-6/#scoping-limit
   bool ElementIsScopingLimit(const StyleScope&,
                              const StyleScopeActivation&,
-                             Element& element,
-                             bool match_visited,
-                             MatchFlags&) const;
+                             Element& element) const;
 
   CustomScrollbar* scrollbar_;
   PartNames* part_names_;
   const String pseudo_argument_;
-  const Vector<AtomicString> pseudo_ident_list_;
   ScrollbarPart scrollbar_part_;
   Mode mode_;
   bool is_ua_rule_;

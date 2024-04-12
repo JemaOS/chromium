@@ -5,15 +5,14 @@
 #include "chrome/browser/ui/views/sharing_hub/preview_view.h"
 
 #include "chrome/browser/share/share_attempt.h"
+#include "chrome/browser/share/share_features.h"
 #include "chrome/test/views/chrome_views_test_base.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/image/image_skia.h"
-#include "ui/gfx/image/image_unittest_util.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/test/widget_test.h"
-#include "ui/views/view_utils.h"
 
 namespace {
 
@@ -22,7 +21,7 @@ using PreviewViewTest = ChromeViewsTestBase;
 views::Label* FindLabelWithText(views::View* root, std::u16string text) {
   return static_cast<views::Label*>(views::test::AnyViewMatchingPredicate(
       root, [=](const views::View* candidate) -> bool {
-        return (IsViewClass<views::Label>(candidate)) &&
+        return !strcmp(candidate->GetClassName(), "Label") &&
                static_cast<const views::Label*>(candidate)->GetText() == text;
       }));
 }
@@ -30,13 +29,16 @@ views::Label* FindLabelWithText(views::View* root, std::u16string text) {
 views::ImageView* FindImage(views::View* root) {
   return static_cast<views::ImageView*>(views::test::AnyViewMatchingPredicate(
       root, [](const views::View* candidate) -> bool {
-        return IsViewClass<views::ImageView>(candidate);
+        return !strcmp(candidate->GetClassName(), "ImageView");
       }));
 }
 
 ui::ImageModel BuildTestImage(SkColor color) {
-  return ui::ImageModel::FromImageSkia(gfx::ImageSkia::CreateFromBitmap(
-      gfx::test::CreateBitmap(/*size=*/32, color), 1.0));
+  SkBitmap new_bitmap;
+  new_bitmap.allocN32Pixels(32, 32);
+  new_bitmap.eraseColor(color);
+  return ui::ImageModel::FromImageSkia(
+      gfx::ImageSkia::CreateFromBitmap(new_bitmap, 1.0));
 }
 
 SkColor ImageTopLeftColor(ui::ImageModel model) {

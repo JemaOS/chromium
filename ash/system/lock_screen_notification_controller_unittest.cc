@@ -4,10 +4,12 @@
 
 #include "ash/system/lock_screen_notification_controller.h"
 
+#include "ash/constants/ash_features.h"
 #include "ash/system/notification_center/notification_center_test_api.h"
 #include "ash/system/status_area_widget.h"
 #include "ash/system/status_area_widget_test_helper.h"
 #include "ash/test/ash_test_base.h"
+#include "base/test/scoped_feature_list.h"
 #include "ui/message_center/message_center.h"
 
 namespace ash {
@@ -24,9 +26,13 @@ class LockScreenNotificationControllerTest
   ~LockScreenNotificationControllerTest() override = default;
 
   void SetUp() override {
+    scoped_feature_list_.InitAndEnableFeature(features::kQsRevamp);
+
     AshTestBase::SetUp();
 
-    test_api_ = std::make_unique<NotificationCenterTestApi>();
+    test_api_ = std::make_unique<NotificationCenterTestApi>(
+        StatusAreaWidgetTestHelper::GetStatusAreaWidget()
+            ->notification_center_tray());
   }
 
   bool IsLockScreenNotificationPresent() {
@@ -37,6 +43,8 @@ class LockScreenNotificationControllerTest
   NotificationCenterTestApi* test_api() { return test_api_.get(); }
 
  private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+
   std::unique_ptr<NotificationCenterTestApi> test_api_;
 };
 

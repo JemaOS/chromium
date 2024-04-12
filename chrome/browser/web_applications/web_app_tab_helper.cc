@@ -17,7 +17,6 @@
 #include "chrome/browser/web_applications/web_app_launch_queue.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_ui_manager.h"
-#include "chrome/common/chrome_features.h"
 #include "content/public/browser/media_session.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/site_instance.h"
@@ -32,37 +31,13 @@ void WebAppTabHelper::CreateForWebContents(content::WebContents* contents) {
   }
 }
 
-const webapps::AppId* WebAppTabHelper::GetAppId(
-    content::WebContents* web_contents) {
+const AppId* WebAppTabHelper::GetAppId(content::WebContents* web_contents) {
   auto* tab_helper = WebAppTabHelper::FromWebContents(web_contents);
   if (!tab_helper)
     return nullptr;
   return tab_helper->app_id_.has_value() ? &tab_helper->app_id_.value()
                                          : nullptr;
 }
-
-#if BUILDFLAG(IS_MAC)
-std::optional<webapps::AppId>
-WebAppTabHelper::GetAppIdForNotificationAttribution(
-    content::WebContents* web_contents) {
-  if (!base::FeatureList::IsEnabled(
-          features::kAppShimNotificationAttribution)) {
-    return std::nullopt;
-  }
-  const webapps::AppId* app_id = GetAppId(web_contents);
-  if (!app_id) {
-    return std::nullopt;
-  }
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents->GetBrowserContext());
-  WebAppProvider* web_app_provider = WebAppProvider::GetForWebApps(profile);
-  if (!web_app_provider ||
-      !web_app_provider->registrar_unsafe().IsLocallyInstalled(*app_id)) {
-    return std::nullopt;
-  }
-  return *app_id;
-}
-#endif
 
 WebAppTabHelper::WebAppTabHelper(content::WebContents* web_contents)
     : content::WebContentsUserData<WebAppTabHelper>(*web_contents),
@@ -90,7 +65,7 @@ WebAppLaunchQueue& WebAppTabHelper::EnsureLaunchQueue() {
   return *launch_queue_;
 }
 
-void WebAppTabHelper::SetAppId(std::optional<webapps::AppId> app_id) {
+void WebAppTabHelper::SetAppId(absl::optional<AppId> app_id) {
   // Empty string should not be used to indicate "no app ID".
   DCHECK(!app_id || !app_id->empty());
   DCHECK(!app_id || provider_->registrar_unsafe().IsInstalled(*app_id) ||
@@ -99,7 +74,7 @@ void WebAppTabHelper::SetAppId(std::optional<webapps::AppId> app_id) {
     return;
   }
 
-  std::optional<webapps::AppId> previous_app_id = std::move(app_id_);
+  absl::optional<AppId> previous_app_id = std::move(app_id_);
   app_id_ = std::move(app_id);
 
   OnAssociatedAppChanged(previous_app_id, app_id_);
@@ -165,29 +140,28 @@ bool WebAppTabHelper::IsInAppWindow() const {
   return provider_->ui_manager().IsInAppWindow(web_contents());
 }
 
-void WebAppTabHelper::OnWebAppInstalled(
-    const webapps::AppId& installed_app_id) {
+void WebAppTabHelper::OnWebAppInstalled(const AppId& installed_app_id) {
   // Check if current web_contents url is in scope for the newly installed app.
-  std::optional<webapps::AppId> app_id =
+  absl::optional<AppId> app_id =
       FindAppWithUrlInScope(web_contents()->GetURL());
   if (app_id == installed_app_id)
     SetAppId(app_id);
 }
 
 void WebAppTabHelper::OnWebAppWillBeUninstalled(
-    const webapps::AppId& uninstalled_app_id) {
+    const AppId& uninstalled_app_id) {
   if (app_id_ == uninstalled_app_id)
-    SetAppId(std::nullopt);
+    SetAppId(absl::nullopt);
 }
 
 void WebAppTabHelper::OnWebAppInstallManagerDestroyed() {
   observation_.Reset();
-  SetAppId(std::nullopt);
+  SetAppId(absl::nullopt);
 }
 
 void WebAppTabHelper::OnAssociatedAppChanged(
-    const std::optional<webapps::AppId>& previous_app_id,
-    const std::optional<webapps::AppId>& new_app_id) {
+    const absl::optional<AppId>& previous_app_id,
+    const absl::optional<AppId>& new_app_id) {
   provider_->ui_manager().NotifyOnAssociatedAppChanged(
       web_contents(), previous_app_id, new_app_id);
 
@@ -236,7 +210,7 @@ void WebAppTabHelper::ReinstallPlaceholderAppIfNecessary(const GURL& url) {
       url, base::DoNothing());
 }
 
-std::optional<webapps::AppId> WebAppTabHelper::FindAppWithUrlInScope(
+absl::optional<AppId> WebAppTabHelper::FindAppWithUrlInScope(
     const GURL& url) const {
   return provider_->registrar_unsafe().FindAppWithUrlInScope(url);
 }

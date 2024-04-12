@@ -5,7 +5,6 @@
 #include "chrome/browser/media/router/discovery/access_code/access_code_cast_discovery_interface.h"
 
 #include <cstddef>
-#include <optional>
 #include <string>
 
 #include "base/functional/callback_helpers.h"
@@ -32,6 +31,7 @@
 #include "net/http/http_request_headers.h"
 #include "net/http/http_status_code.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace media_router {
 
@@ -41,7 +41,7 @@ constexpr char kLoggerComponent[] = "AccessCodeCastDiscoveryInterface";
 
 using AddSinkResultCode = access_code_cast::mojom::AddSinkResultCode;
 
-constexpr base::TimeDelta kTimeout = base::Milliseconds(30000);
+const int64_t kTimeoutMs = 30000;
 
 const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
     net::DefineNetworkTrafficAnnotation("chrome_cast_discovery_api",
@@ -103,6 +103,20 @@ AccessCodeCastDiscoveryInterface::AccessCodeCastDiscoveryInterface(
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 }
 
+AccessCodeCastDiscoveryInterface::AccessCodeCastDiscoveryInterface(
+    Profile* profile,
+    const std::string& access_code,
+    LoggerImpl* logger,
+    signin::IdentityManager* identity_manager,
+    std::unique_ptr<EndpointFetcher> endpoint_fetcher)
+    : profile_(profile),
+      access_code_(access_code),
+      logger_(logger),
+      identity_manager_(identity_manager),
+      endpoint_fetcher_(std::move(endpoint_fetcher)) {
+  DCHECK(profile_);
+}
+
 AccessCodeCastDiscoveryInterface::~AccessCodeCastDiscoveryInterface() = default;
 
 void AccessCodeCastDiscoveryInterface::ReportErrorViaCallback(
@@ -110,7 +124,7 @@ void AccessCodeCastDiscoveryInterface::ReportErrorViaCallback(
   if (callback_.is_null()) {
     return;
   }
-  std::move(callback_).Run(std::nullopt, error);
+  std::move(callback_).Run(absl::nullopt, error);
 }
 
 AddSinkResultCode AccessCodeCastDiscoveryInterface::GetErrorFromResponse(
@@ -121,7 +135,7 @@ AddSinkResultCode AccessCodeCastDiscoveryInterface::GetErrorFromResponse(
   }
 
   // Get the HTTP code
-  std::optional<int> http_code = error->FindInt(kJsonErrorCode);
+  absl::optional<int> http_code = error->FindInt(kJsonErrorCode);
   if (!http_code) {
     return AddSinkResultCode::RESPONSE_MALFORMED;
   }
@@ -183,7 +197,7 @@ AddSinkResultCode AccessCodeCastDiscoveryInterface::GetErrorFromResponse(
 // TODO(b/206997996): Add an enum to the EndpointResponse struct so that we can
 // check the enum instead of the string
 AddSinkResultCode AccessCodeCastDiscoveryInterface::IsResponseValid(
-    const std::optional<base::Value>& response) {
+    const absl::optional<base::Value>& response) {
   if (!response || !response->is_dict()) {
     logger_->LogError(
         mojom::LogCategory::kDiscovery, kLoggerComponent,
@@ -244,15 +258,13 @@ AccessCodeCastDiscoveryInterface::CreateEndpointFetcher(
   std::vector<std::string> discovery_scopes;
   discovery_scopes.push_back(kDiscoveryOAuth2Scope);
 
-  // TODO(crbug.com/40067771): ConsentLevel::kSync is deprecated and should be
-  //     removed. See ConsentLevel::kSync documentation for details.
   return std::make_unique<EndpointFetcher>(
       profile_->GetDefaultStoragePartition()
           ->GetURLLoaderFactoryForBrowserProcess(),
       kDiscoveryOAuthConsumerName,
       GURL(base::StrCat({GetDiscoveryUrl(), "/", access_code})), kGetMethod,
-      kContentType, discovery_scopes, kTimeout, kEmptyPostData,
-      kTrafficAnnotation, identity_manager_, signin::ConsentLevel::kSync);
+      kContentType, discovery_scopes, kTimeoutMs, kEmptyPostData,
+      kTrafficAnnotation, identity_manager_);
 }
 
 void AccessCodeCastDiscoveryInterface::ValidateDiscoveryAccessCode(
@@ -267,17 +279,6 @@ void AccessCodeCastDiscoveryInterface::ValidateDiscoveryAccessCode(
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
-std::unique_ptr<EndpointFetcher>
-AccessCodeCastDiscoveryInterface::CreateEndpointFetcherForTesting(
-    const std::string& access_code) {
-  return CreateEndpointFetcher(access_code);
-}
-
-void AccessCodeCastDiscoveryInterface::HandleServerErrorForTesting(
-    std::unique_ptr<EndpointResponse> endpoint_response) {
-  HandleServerError(std::move(endpoint_response));
-}
-
 void AccessCodeCastDiscoveryInterface::HandleServerResponse(
     std::unique_ptr<EndpointResponse> response) {
   if (response->error_type.has_value()) {
@@ -285,7 +286,7 @@ void AccessCodeCastDiscoveryInterface::HandleServerResponse(
     return;
   }
 
-  std::optional<base::Value> response_value =
+  absl::optional<base::Value> response_value =
       base::JSONReader::Read(response->response);
 
   AddSinkResultCode result_code = IsResponseValid(response_value);
@@ -297,7 +298,7 @@ void AccessCodeCastDiscoveryInterface::HandleServerResponse(
     return;
   }
 
-  std::pair<std::optional<DiscoveryDevice>, AddSinkResultCode>
+  std::pair<absl::optional<DiscoveryDevice>, AddSinkResultCode>
       construction_result =
           ConstructDiscoveryDeviceFromJson(std::move(response_value.value()));
   std::move(callback_).Run(construction_result.first,
@@ -356,7 +357,7 @@ void AccessCodeCastDiscoveryInterface::HandleServerError(
   }
 }
 
-std::pair<std::optional<AccessCodeCastDiscoveryInterface::DiscoveryDevice>,
+std::pair<absl::optional<AccessCodeCastDiscoveryInterface::DiscoveryDevice>,
           AccessCodeCastDiscoveryInterface::AddSinkResultCode>
 AccessCodeCastDiscoveryInterface::ConstructDiscoveryDeviceFromJson(
     base::Value json_response) {
@@ -364,30 +365,30 @@ AccessCodeCastDiscoveryInterface::ConstructDiscoveryDeviceFromJson(
 
   base::Value::Dict* device = json_response.GetDict().FindDict(kJsonDevice);
   if (!device) {
-    return std::make_pair(std::nullopt, AddSinkResultCode::RESPONSE_MALFORMED);
+    return std::make_pair(absl::nullopt, AddSinkResultCode::RESPONSE_MALFORMED);
   }
 
   std::string* display_name = device->FindString(kJsonDisplayName);
   if (!display_name) {
-    return std::make_pair(std::nullopt, AddSinkResultCode::RESPONSE_MALFORMED);
+    return std::make_pair(absl::nullopt, AddSinkResultCode::RESPONSE_MALFORMED);
   }
 
   std::string* sink_id = device->FindString(kJsonId);
   if (!sink_id) {
-    return std::make_pair(std::nullopt, AddSinkResultCode::RESPONSE_MALFORMED);
+    return std::make_pair(absl::nullopt, AddSinkResultCode::RESPONSE_MALFORMED);
   }
 
   chrome_browser_media::proto::DeviceCapabilities device_capabilities_proto;
   base::Value::Dict* device_capabilities =
       device->FindDict(kJsonDeviceCapabilities);
   if (!device_capabilities) {
-    return std::make_pair(std::nullopt, AddSinkResultCode::RESPONSE_MALFORMED);
+    return std::make_pair(absl::nullopt, AddSinkResultCode::RESPONSE_MALFORMED);
   }
   const auto capability_keys = {kJsonVideoOut, kJsonVideoIn, kJsonAudioOut,
                                 kJsonAudioIn, kJsonDevMode};
 
   for (auto* const capability_key : capability_keys) {
-    std::optional<bool> capability =
+    absl::optional<bool> capability =
         device_capabilities->FindBool(capability_key);
     if (capability.has_value()) {
       SetDeviceCapabilitiesField(&device_capabilities_proto, capability.value(),
@@ -395,7 +396,7 @@ AccessCodeCastDiscoveryInterface::ConstructDiscoveryDeviceFromJson(
     } else if (device_capabilities->contains(capability_key)) {
       // It's ok if the capability isn't present, but if it is, it must be a
       // bool
-      return std::make_pair(std::nullopt,
+      return std::make_pair(absl::nullopt,
                             AddSinkResultCode::RESPONSE_MALFORMED);
     }
   }
@@ -403,7 +404,7 @@ AccessCodeCastDiscoveryInterface::ConstructDiscoveryDeviceFromJson(
   chrome_browser_media::proto::NetworkInfo network_info_proto;
   base::Value::Dict* network_info = device->FindDict(kJsonNetworkInfo);
   if (!network_info) {
-    return std::make_pair(std::nullopt, AddSinkResultCode::RESPONSE_MALFORMED);
+    return std::make_pair(absl::nullopt, AddSinkResultCode::RESPONSE_MALFORMED);
   }
   const auto network_keys = {kJsonHostName, kJsonPort, kJsonIpV4Address,
                              kJsonIpV6Address};

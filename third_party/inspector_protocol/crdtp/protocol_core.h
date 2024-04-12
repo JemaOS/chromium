@@ -85,18 +85,15 @@ class CRDTP_EXPORT ContainerSerializer {
   }
   template <typename T>
   void AddField(span<char> field_name, const detail::ValueMaybe<T>& value) {
-    if (!value.has_value()) {
+    if (!value.isJust())
       return;
-    }
-    AddField(field_name, value.value());
+    AddField(field_name, value.fromJust());
   }
-
   template <typename T>
   void AddField(span<char> field_name, const detail::PtrMaybe<T>& value) {
-    if (!value.has_value()) {
+    if (!value.isJust())
       return;
-    }
-    AddField(field_name, value.value());
+    AddField(field_name, *value.fromJust());
   }
 
   void EncodeStop();
@@ -226,7 +223,7 @@ struct ProtocolTypeTraits<detail::ValueMaybe<T>> {
 
   static void Serialize(const detail::ValueMaybe<T>& value,
                         std::vector<uint8_t>* bytes) {
-    ProtocolTypeTraits<T>::Serialize(value.value(), bytes);
+    ProtocolTypeTraits<T>::Serialize(value.fromJust(), bytes);
   }
 };
 
@@ -243,7 +240,7 @@ struct ProtocolTypeTraits<detail::PtrMaybe<T>> {
 
   static void Serialize(const detail::PtrMaybe<T>& value,
                         std::vector<uint8_t>* bytes) {
-    ProtocolTypeTraits<T>::Serialize(value.value(), bytes);
+    ProtocolTypeTraits<T>::Serialize(*value.fromJust(), bytes);
   }
 };
 

@@ -5,9 +5,8 @@
 #ifndef ASH_PUBLIC_CPP_HOLDING_SPACE_HOLDING_SPACE_PROGRESS_H_
 #define ASH_PUBLIC_CPP_HOLDING_SPACE_HOLDING_SPACE_PROGRESS_H_
 
-#include <optional>
-
 #include "ash/public/cpp/ash_public_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
@@ -19,16 +18,16 @@ class ASH_PUBLIC_EXPORT HoldingSpaceProgress {
   HoldingSpaceProgress();
 
   // Creates an instance for the specified `current_bytes` and `total_bytes`.
-  HoldingSpaceProgress(const std::optional<int64_t>& current_bytes,
-                       const std::optional<int64_t>& total_bytes);
+  HoldingSpaceProgress(const absl::optional<int64_t>& current_bytes,
+                       const absl::optional<int64_t>& total_bytes);
 
   // Creates an instance for the specified `current_bytes` and `total_bytes`
   // which is explicitly `complete` or incomplete. If absent, completion will be
   // calculated based on `current_bytes` and `total_bytes`. If `true`, then it
   // must also be true that `current_bytes.value()` == `total_bytes.value()`.
-  HoldingSpaceProgress(const std::optional<int64_t>& current_bytes,
-                       const std::optional<int64_t>& total_bytes,
-                       const std::optional<bool>& complete);
+  HoldingSpaceProgress(const absl::optional<int64_t>& current_bytes,
+                       const absl::optional<int64_t>& total_bytes,
+                       const absl::optional<bool>& complete);
 
   // Creates an instance for the specified `current_bytes` and `total_bytes`
   // which is explicitly `complete` or incomplete. If absent, completion will be
@@ -36,9 +35,9 @@ class ASH_PUBLIC_EXPORT HoldingSpaceProgress {
   // must also be true that `current_bytes.value()` == `total_bytes.value()`. If
   // `hidden` is `true`, this instance should not be painted nor included in
   // cumulative progress calculations.
-  HoldingSpaceProgress(const std::optional<int64_t>& current_bytes,
-                       const std::optional<int64_t>& total_bytes,
-                       const std::optional<bool>& complete,
+  HoldingSpaceProgress(const absl::optional<int64_t>& current_bytes,
+                       const absl::optional<int64_t>& total_bytes,
+                       const absl::optional<bool>& complete,
                        bool hidden);
 
   HoldingSpaceProgress(const HoldingSpaceProgress&);
@@ -53,7 +52,7 @@ class ASH_PUBLIC_EXPORT HoldingSpaceProgress {
   // Returns progress as an optional float value. If present, the returned
   // value is >= `0.f` and <= `1.f`. The value `1.f` indicates progress
   // completion while an absent value indicates indeterminate progress.
-  std::optional<float> GetValue() const;
+  absl::optional<float> GetValue() const;
 
   // Returns `true` if progress is complete.
   bool IsComplete() const;
@@ -66,8 +65,8 @@ class ASH_PUBLIC_EXPORT HoldingSpaceProgress {
   bool IsHidden() const;
 
  private:
-  std::optional<int64_t> current_bytes_;
-  std::optional<int64_t> total_bytes_;
+  absl::optional<int64_t> current_bytes_;
+  absl::optional<int64_t> total_bytes_;
   bool complete_;
   bool hidden_;
 };

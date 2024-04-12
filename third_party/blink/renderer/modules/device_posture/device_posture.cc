@@ -13,11 +13,11 @@ namespace blink {
 
 namespace {
 
-String PostureToString(mojom::blink::DevicePostureType posture) {
+String PostureToString(device::mojom::blink::DevicePostureType posture) {
   switch (posture) {
-    case mojom::blink::DevicePostureType::kContinuous:
+    case device::mojom::blink::DevicePostureType::kContinuous:
       return "continuous";
-    case mojom::blink::DevicePostureType::kFolded:
+    case device::mojom::blink::DevicePostureType::kFolded:
       return "folded";
   }
 }
@@ -25,7 +25,9 @@ String PostureToString(mojom::blink::DevicePostureType posture) {
 }  // namespace
 
 DevicePosture::DevicePosture(LocalDOMWindow* window)
-    : ExecutionContextClient(window), receiver_(this, GetExecutionContext()) {}
+    : ExecutionContextClient(window),
+      service_(GetExecutionContext()),
+      receiver_(this, GetExecutionContext()) {}
 
 DevicePosture::~DevicePosture() = default;
 
@@ -34,7 +36,8 @@ String DevicePosture::type() {
   return PostureToString(posture_);
 }
 
-void DevicePosture::OnPostureChanged(mojom::blink::DevicePostureType posture) {
+void DevicePosture::OnPostureChanged(
+    device::mojom::blink::DevicePostureType posture) {
   if (posture_ == posture)
     return;
 
@@ -43,27 +46,26 @@ void DevicePosture::OnPostureChanged(mojom::blink::DevicePostureType posture) {
 }
 
 void DevicePosture::EnsureServiceConnection() {
-  LocalDOMWindow* window = DomWindow();
-  if (!window) {
+  auto* context = GetExecutionContext();
+  if (!context)
     return;
-  }
 
-  if (receiver_.is_bound()) {
+  if (service_.is_bound())
     return;
-  }
 
-  mojom::blink::DevicePostureProvider* service =
-      window->GetFrame()->GetDevicePostureProvider();
   auto task_runner =
       GetExecutionContext()->GetTaskRunner(TaskType::kMiscPlatformAPI);
-  service->AddListenerAndGetCurrentPosture(
+  GetExecutionContext()->GetBrowserInterfaceBroker().GetInterface(
+      service_.BindNewPipeAndPassReceiver(task_runner));
+
+  service_->AddListenerAndGetCurrentPosture(
       receiver_.BindNewPipeAndPassRemote(task_runner),
       WTF::BindOnce(&DevicePosture::OnPostureChanged, WrapPersistent(this)));
 }
 
 void DevicePosture::AddedEventListener(const AtomicString& event_type,
                                        RegisteredEventListener& listener) {
-  EventTarget::AddedEventListener(event_type, listener);
+  EventTargetWithInlineData::AddedEventListener(event_type, listener);
 
   if (event_type != event_type_names::kChange)
     return;
@@ -84,8 +86,9 @@ const AtomicString& DevicePosture::InterfaceName() const {
 }
 
 void DevicePosture::Trace(blink::Visitor* visitor) const {
+  visitor->Trace(service_);
   visitor->Trace(receiver_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextClient::Trace(visitor);
 }
 

@@ -4,7 +4,6 @@
 
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/task_manager/mock_web_contents_task_manager.h"
 #include "chrome/browser/task_manager/providers/task.h"
 #include "chrome/browser/task_manager/providers/web_contents/web_contents_tag.h"
@@ -14,10 +13,9 @@
 #include "chrome/browser/ui/web_applications/test/isolated_web_app_test_utils.h"
 #include "chrome/browser/ui/web_applications/web_app_controller_browsertest.h"
 #include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_url_info.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
-#include "components/webapps/common/web_app_id.h"
-#include "content/public/browser/notification_service.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -25,14 +23,13 @@
 #include "url/origin.h"
 
 using testing::Contains;
-using testing::Pointee;
 using testing::Property;
 
 namespace task_manager {
 
 class WebAppTagWebAppTest : public web_app::WebAppControllerBrowserTest {
  protected:
-  Browser* LaunchBrowserForWebAppInTabAndWait(const webapps::AppId& app_id,
+  Browser* LaunchBrowserForWebAppInTabAndWait(const web_app::AppId& app_id,
                                               const GURL& observe_url) {
     ui_test_utils::UrlLoadObserver url_observer(
         observe_url, content::NotificationService::AllSources());
@@ -41,8 +38,7 @@ class WebAppTagWebAppTest : public web_app::WebAppControllerBrowserTest {
     return browser;
   }
 
-  const std::vector<raw_ptr<WebContentsTag, VectorExperimental>>& tracked_tags()
-      const {
+  const std::vector<WebContentsTag*>& tracked_tags() const {
     return WebContentsTagsManager::GetInstance()->tracked_tags();
   }
 
@@ -64,7 +60,7 @@ IN_PROC_BROWSER_TEST_F(WebAppTagWebAppTest, WebAppTaskCreatedForTab) {
 
   const GURL start_url =
       https_server()->GetURL("app.com", "/google/google.html");
-  const webapps::AppId app_id = InstallPWA(start_url);
+  const web_app::AppId app_id = InstallPWA(start_url);
 
   MockWebContentsTaskManager task_manager;
   EXPECT_TRUE(task_manager.tasks().empty());
@@ -85,7 +81,7 @@ IN_PROC_BROWSER_TEST_F(WebAppTagWebAppTest, WebAppTaskCreatedForTab) {
   EXPECT_EQ(2U, task_manager.tasks().size());
 
   EXPECT_THAT(task_manager.tasks(),
-              Contains(Pointee(Property(&Task::title, u"App: Google"))));
+              Contains(Property(&Task::title, u"App: Google")));
 }
 
 IN_PROC_BROWSER_TEST_F(WebAppTagWebAppTest, WebAppTaskCreatedForStandalone) {
@@ -93,7 +89,7 @@ IN_PROC_BROWSER_TEST_F(WebAppTagWebAppTest, WebAppTaskCreatedForStandalone) {
 
   const GURL start_url =
       https_server()->GetURL("app.com", "/google/google.html");
-  const webapps::AppId app_id = InstallPWA(start_url);
+  const web_app::AppId app_id = InstallPWA(start_url);
 
   MockWebContentsTaskManager task_manager;
   EXPECT_TRUE(task_manager.tasks().empty());
@@ -114,7 +110,7 @@ IN_PROC_BROWSER_TEST_F(WebAppTagWebAppTest, WebAppTaskCreatedForStandalone) {
   EXPECT_EQ(2U, task_manager.tasks().size());
 
   EXPECT_THAT(task_manager.tasks(),
-              Contains(Pointee(Property(&Task::title, u"App: Google"))));
+              Contains(Property(&Task::title, u"App: Google")));
 }
 
 IN_PROC_BROWSER_TEST_F(WebAppTagWebAppTest, TabNavigatedAwayNotWebAppTask) {
@@ -122,7 +118,7 @@ IN_PROC_BROWSER_TEST_F(WebAppTagWebAppTest, TabNavigatedAwayNotWebAppTask) {
 
   const GURL start_url =
       https_server()->GetURL("app.com", "/google/google.html");
-  const webapps::AppId app_id = InstallPWA(start_url);
+  const web_app::AppId app_id = InstallPWA(start_url);
 
   MockWebContentsTaskManager task_manager;
   EXPECT_TRUE(task_manager.tasks().empty());
@@ -143,7 +139,7 @@ IN_PROC_BROWSER_TEST_F(WebAppTagWebAppTest, TabNavigatedAwayNotWebAppTask) {
   EXPECT_EQ(2U, task_manager.tasks().size());
 
   EXPECT_THAT(task_manager.tasks(),
-              Contains(Pointee(Property(&Task::title, u"App: Google"))));
+              Contains(Property(&Task::title, u"App: Google")));
 
   const GURL not_app_url =
       https_server()->GetURL("notapp.com", "/google/google.html");
@@ -153,13 +149,13 @@ IN_PROC_BROWSER_TEST_F(WebAppTagWebAppTest, TabNavigatedAwayNotWebAppTask) {
   base::RunLoop().RunUntilIdle();
 
   EXPECT_THAT(task_manager.tasks(),
-              Contains(Pointee(Property(&Task::title, u"Tab: Google"))));
+              Contains(Property(&Task::title, u"Tab: Google")));
 }
 
 class WebAppTagIsolatedWebAppTest
     : public web_app::IsolatedWebAppBrowserTestHarness {
  protected:
-  webapps::AppId InstallIsolatedWebApp() {
+  web_app::AppId InstallIsolatedWebApp() {
     server_ =
         CreateAndStartServer(FILE_PATH_LITERAL("web_apps/simple_isolated_app"));
     web_app::IsolatedWebAppUrlInfo url_info =
@@ -167,8 +163,7 @@ class WebAppTagIsolatedWebAppTest
     return url_info.app_id();
   }
 
-  const std::vector<raw_ptr<WebContentsTag, VectorExperimental>>& tracked_tags()
-      const {
+  const std::vector<WebContentsTag*>& tracked_tags() const {
     return WebContentsTagsManager::GetInstance()->tracked_tags();
   }
 
@@ -193,7 +188,7 @@ class WebAppTagIsolatedWebAppTest
 IN_PROC_BROWSER_TEST_F(WebAppTagIsolatedWebAppTest, IsolatedWebAppTaskCreated) {
   EXPECT_EQ(1U, tracked_tags().size());
 
-  webapps::AppId app_id = InstallIsolatedWebApp();
+  web_app::AppId app_id = InstallIsolatedWebApp();
   MockWebContentsTaskManager task_manager;
   EXPECT_TRUE(task_manager.tasks().empty());
 
@@ -213,16 +208,15 @@ IN_PROC_BROWSER_TEST_F(WebAppTagIsolatedWebAppTest, IsolatedWebAppTaskCreated) {
 
   EXPECT_EQ(2U, task_manager.tasks().size());
 
-  EXPECT_THAT(
-      task_manager.tasks(),
-      Contains(Pointee(Property(&Task::title, u"App: Isolated Web App"))));
+  EXPECT_THAT(task_manager.tasks(),
+              Contains(Property(&Task::title, u"App: Isolated Web App")));
 }
 
 IN_PROC_BROWSER_TEST_F(WebAppTagIsolatedWebAppTest,
                        IsolatedWebAppTaskTitleFallbackToAppName) {
   EXPECT_EQ(1U, tracked_tags().size());
 
-  webapps::AppId app_id = InstallIsolatedWebApp();
+  web_app::AppId app_id = InstallIsolatedWebApp();
   MockWebContentsTaskManager task_manager;
   EXPECT_TRUE(task_manager.tasks().empty());
 
@@ -242,9 +236,8 @@ IN_PROC_BROWSER_TEST_F(WebAppTagIsolatedWebAppTest,
 
   EXPECT_EQ(2U, task_manager.tasks().size());
 
-  EXPECT_THAT(
-      task_manager.tasks(),
-      Contains(Pointee(Property(&Task::title, u"App: Isolated Web App"))));
+  EXPECT_THAT(task_manager.tasks(),
+              Contains(Property(&Task::title, u"App: Isolated Web App")));
 
   GURL iwa_url =
       browser->tab_strip_model()->GetActiveWebContents()->GetLastCommittedURL();
@@ -257,9 +250,8 @@ IN_PROC_BROWSER_TEST_F(WebAppTagIsolatedWebAppTest,
 
   base::RunLoop().RunUntilIdle();
 
-  EXPECT_THAT(
-      task_manager.tasks(),
-      Contains(Pointee(Property(&Task::title, u"App: Simple Isolated App"))));
+  EXPECT_THAT(task_manager.tasks(),
+              Contains(Property(&Task::title, u"App: Simple Isolated App")));
 }
 
 }  // namespace task_manager

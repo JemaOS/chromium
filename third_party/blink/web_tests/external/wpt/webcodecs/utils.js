@@ -49,10 +49,10 @@ function getDefaultCodecInit(test) {
 
 // Checks that codec can be configured, reset, reconfigured, and that incomplete
 // or invalid configs throw errors immediately.
-function testConfigurations(codec, validConfig, unsupportedCodecsList) {
+function testConfigurations(codec, validCondig, invalidCodecs) {
   assert_equals(codec.state, "unconfigured");
 
-  const requiredConfigPairs = validConfig;
+  const requiredConfigPairs = validCondig;
   let incrementalConfig = {};
 
   for (let key in requiredConfigPairs) {
@@ -72,13 +72,11 @@ function testConfigurations(codec, validConfig, unsupportedCodecsList) {
 
   let config = incrementalConfig;
 
-  unsupportedCodecsList.forEach(unsupportedCodec => {
+  invalidCodecs.forEach(badCodec => {
     // Invalid codecs should fail.
-    config.codec = unsupportedCodec;
-    assert_throws_dom('NotSupportedError', () => {
-      codec.configure(config);
-    }, unsupportedCodec);
-  });
+    config.codec = badCodec;
+    assert_throws_js(TypeError, () => { codec.configure(config); }, badCodec);
+  })
 
   // The failed configures should not affect the current config.
   assert_equals(codec.state, "configured");
@@ -87,7 +85,7 @@ function testConfigurations(codec, validConfig, unsupportedCodecsList) {
   codec.reset()
   assert_equals(codec.state, "unconfigured");
 
-  codec.configure(validConfig);
+  codec.configure(validCondig);
   assert_equals(codec.state, "configured");
 }
 

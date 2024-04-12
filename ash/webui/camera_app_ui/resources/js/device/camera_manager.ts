@@ -5,18 +5,20 @@
 import {
   assert,
   assertExists,
+  assertInstanceof,
 } from '../assert.js';
+import * as error from '../error.js';
 import * as expert from '../expert.js';
 import {Point} from '../geometry.js';
-import * as metrics from '../metrics.js';
-import * as loadTimeData from '../models/load_time_data.js';
 import {ChromeHelper} from '../mojo/chrome_helper.js';
-import {LidState, ScreenState} from '../mojo/type.js';
+import {ScreenState} from '../mojo/type.js';
 import * as nav from '../nav.js';
 import {PerfLogger} from '../perf.js';
 import * as state from '../state.js';
 import {
   AspectRatioSet,
+  ErrorLevel,
+  ErrorType,
   Facing,
   Mode,
   PerfEvent,
@@ -34,7 +36,6 @@ import {windowController} from '../window_controller.js';
 import {EventListener, OperationScheduler} from './camera_operation.js';
 import {VideoCaptureCandidate} from './capture_candidate.js';
 import {Preview} from './preview.js';
-import {PTZController} from './ptz_controller.js';
 import {
   CameraConfig,
   CameraInfo,
@@ -54,9 +55,7 @@ class ResumeStateWatchdog {
   private succeed = false;
 
   constructor(private readonly doReconfigure: () => Promise<boolean>) {
-    // This is for watchdog running in the background.
-    // TODO(pihsun): Move this out of constructor.
-    void this.start();
+    this.start();
   }
 
   private async start() {
@@ -79,7 +78,7 @@ class ResumeStateWatchdog {
 }
 
 /**
- * Manages usages of all camera operations.
+ * Manges usage of all camera operations.
  * TODO(b/209726472): Move more camera logic in camera view to here.
  */
 export class CameraManager implements EventListener {
@@ -111,7 +110,7 @@ export class CameraManager implements EventListener {
   ) {
     this.preview = new Preview(async () => {
       await this.reconfigure();
-    }, () => this.useSquareResolution());
+    });
 
     this.scheduler = new OperationScheduler(
         this,
@@ -120,10 +119,24 @@ export class CameraManager implements EventListener {
         modeConstraints,
     );
 
-    document.addEventListener('visibilitychange', async () => {
+    // Monitor the states to stop camera when locked/minimized.
+    const idleDetector = new IdleDetector();
+    idleDetector.addEventListener('change', () => {
+      this.locked = idleDetector.screenState === 'locked';
+      if (this.locked) {
+        this.reconfigure();
+      }
+    });
+    idleDetector.start().catch((e) => {
+      error.reportError(
+          ErrorType.IDLE_DETECTOR_FAILURE, ErrorLevel.ERROR,
+          assertInstanceof(e, Error));
+    });
+
+    document.addEventListener('visibilitychange', () => {
       const recording = state.get(state.State.TAKING) && state.get(Mode.VIDEO);
       if (this.isTabletBackground() && !recording) {
-        await this.reconfigure();
+        this.reconfigure();
       }
     });
 
@@ -151,8 +164,8 @@ export class CameraManager implements EventListener {
     return this.preview.getVideo();
   }
 
-  getAudioTrack(): MediaStreamTrack|null {
-    return this.getPreviewVideo().getStream().getAudioTracks()[0] ?? null;
+  getAudioTrack(): MediaStreamTrack {
+    return this.getPreviewVideo().getStream().getAudioTracks()[0];
   }
 
   /**
@@ -245,49 +258,32 @@ export class CameraManager implements EventListener {
     const isTablet = await helper.initTabletModeMonitor(setTablet);
     setTablet(isTablet);
 
-    function setLidClosed(lidState: LidState) {
-      state.set(state.State.LID_CLOSED, lidState === LidState.kClosed);
-    }
-
-    const lidState = await helper.initLidStateMonitor(setLidClosed);
-    setLidClosed(lidState);
-
-    const handleScreenLockedChange = async (isScreenLocked: boolean) => {
-      this.locked = isScreenLocked;
-      if (this.locked) {
-        await this.reconfigure();
-      }
-    };
-
-    this.locked =
-        await helper.initScreenLockedMonitor(handleScreenLockedChange);
-
-    const handleScreenStateChange = async () => {
+    const handleScreenStateChange = () => {
       if (this.screenOff) {
-        await this.reconfigure();
+        this.reconfigure();
       }
     };
 
-    const updateScreenOffAuto = async (screenState: ScreenState) => {
-      const isOffAuto = screenState === ScreenState.kOffAuto;
+    const updateScreenOffAuto = (screenState: ScreenState) => {
+      const isOffAuto = screenState === ScreenState.OFF_AUTO;
       if (this.screenOffAuto !== isOffAuto) {
         this.screenOffAuto = isOffAuto;
-        await handleScreenStateChange();
+        handleScreenStateChange();
       }
     };
     const screenState =
         await helper.initScreenStateMonitor(updateScreenOffAuto);
 
-    const updateExternalScreen = async (hasExternalScreen: boolean) => {
+    const updateExternalScreen = (hasExternalScreen: boolean) => {
       if (this.hasExternalScreen !== hasExternalScreen) {
         this.hasExternalScreen = hasExternalScreen;
-        await handleScreenStateChange();
+        handleScreenStateChange();
       }
     };
     const hasExternalScreen =
         await helper.initExternalScreenMonitor(updateExternalScreen);
 
-    this.screenOffAuto = screenState === ScreenState.kOffAuto;
+    this.screenOffAuto = screenState === ScreenState.OFF_AUTO;
     this.hasExternalScreen = hasExternalScreen;
 
     await this.scheduler.initialize(cameraViewUI);
@@ -314,26 +310,23 @@ export class CameraManager implements EventListener {
   switchCamera(): Promise<void>|null {
     const promise = this.tryReconfigure(() => {
       state.set(PerfEvent.CAMERA_SWITCHING, true);
-      const deviceIds =
-          this.scheduler.reconfigurer.getDeviceIdsSortedbyPreferredFacing(
-              this.getCameraInfo());
-      if (deviceIds.length === 0) {
-        return;
-      }
+      const devices = this.getCameraInfo().devicesInfo;
       let index =
-          deviceIds.findIndex((deviceId) => deviceId === this.getDeviceId());
-      // findIndex() may return -1, which means the device is not in the list.
-      // In this case, we will try to switch to the preferred facing device.
-      index = (index + 1) % deviceIds.length;
-      assertExists(this.scheduler.reconfigurer.config).deviceId =
-          deviceIds[index];
+          devices.findIndex((entry) => entry.deviceId === this.getDeviceId());
+      if (index === -1) {
+        index = 0;
+      }
+      if (devices.length > 0) {
+        index = (index + 1) % devices.length;
+        assert(this.scheduler.reconfigurer.config !== null);
+        this.scheduler.reconfigurer.config.deviceId = devices[index].deviceId;
+      }
     });
     if (promise === null) {
       return null;
     }
     return promise.then((succeed) => {
       state.set(PerfEvent.CAMERA_SWITCHING, false, {hasError: !succeed});
-      metrics.sendOpenCameraEvent(this.getVidPid());
     });
   }
 
@@ -376,25 +369,25 @@ export class CameraManager implements EventListener {
         .addVideoResolutionOptionListener(listener);
   }
 
-  async setPrefPhotoResolutionLevel(
-      deviceId: string, level: PhotoResolutionLevel): Promise<void> {
-    await this.setCapturePref(deviceId, () => {
+  setPrefPhotoResolutionLevel(deviceId: string, level: PhotoResolutionLevel):
+      void {
+    this.setCapturePref(deviceId, () => {
       this.scheduler.reconfigurer.capturePreferrer.setPrefPhotoResolutionLevel(
           deviceId, level);
     });
   }
 
-  async setPrefPhotoAspectRatioSet(
-      deviceId: string, aspectRatioSet: AspectRatioSet): Promise<void> {
-    await this.setCapturePref(deviceId, () => {
+  setPrefPhotoAspectRatioSet(deviceId: string, aspectRatioSet: AspectRatioSet):
+      void {
+    this.setCapturePref(deviceId, () => {
       this.scheduler.reconfigurer.capturePreferrer.setPrefPhotoAspectRatioSet(
           deviceId, aspectRatioSet);
     });
   }
 
-  async setPrefVideoResolutionLevel(
-      deviceId: string, level: VideoResolutionLevel): Promise<void> {
-    await this.setCapturePref(deviceId, () => {
+  setPrefVideoResolutionLevel(deviceId: string, level: VideoResolutionLevel):
+      void {
+    this.setCapturePref(deviceId, () => {
       this.scheduler.reconfigurer.capturePreferrer.setPrefVideoResolutionLevel(
           deviceId, level);
     });
@@ -403,9 +396,8 @@ export class CameraManager implements EventListener {
   /**
    * Used when showing all resolutions.
    */
-  async setPrefPhotoResolution(deviceId: string, resolution: Resolution):
-      Promise<void> {
-    await this.setCapturePref(deviceId, () => {
+  setPrefPhotoResolution(deviceId: string, resolution: Resolution): void {
+    this.setCapturePref(deviceId, () => {
       this.scheduler.reconfigurer.capturePreferrer.setPrefPhotoResolution(
           deviceId, resolution);
     });
@@ -414,9 +406,8 @@ export class CameraManager implements EventListener {
   /**
    * Used when showing all resolutions.
    */
-  async setPrefVideoResolution(deviceId: string, resolution: Resolution):
-      Promise<void> {
-    await this.setCapturePref(deviceId, () => {
+  setPrefVideoResolution(deviceId: string, resolution: Resolution): void {
+    this.setCapturePref(deviceId, () => {
       this.scheduler.reconfigurer.capturePreferrer.setPrefVideoResolution(
           deviceId, resolution);
     });
@@ -461,7 +452,7 @@ export class CameraManager implements EventListener {
   }
 
   /**
-   * Applies point of interest to the stream.
+   * Apply point of interest to the stream.
    *
    * @param point The point in normalize coordidate system, which means both
    *     |x| and |y| are in range [0, 1).
@@ -470,26 +461,8 @@ export class CameraManager implements EventListener {
     return this.preview.setPointOfInterest(point);
   }
 
-  getPTZController(): PTZController {
-    return this.preview.getPTZController();
-  }
-
   resetPTZ(): Promise<void> {
     return this.preview.resetPTZ();
-  }
-
-  /**
-   * Whether the photo taking should be done by using preview frame as photo.
-   * This is the workaround for b/184089334 to avoid mismatch between preview
-   * and photo results in some PTZ cameras.
-   */
-  shouldUsePreviewAsPhoto(): boolean {
-    const deviceId = this.getDeviceId();
-    if (deviceId === null) {
-      return false;
-    }
-    return state.get(state.State.ENABLE_PTZ) &&
-        this.getCameraInfo().hasBuiltinPTZSupport(deviceId);
   }
 
   /**
@@ -510,8 +483,8 @@ export class CameraManager implements EventListener {
     }
   }
 
-  async stopCapture(): Promise<void> {
-    await this.scheduler.stopCapture();
+  stopCapture(): void {
+    this.scheduler.stopCapture();
   }
 
   takeVideoSnapshot(): void {
@@ -557,9 +530,6 @@ export class CameraManager implements EventListener {
   }
 
   async reconfigure(): Promise<boolean> {
-    // TODO(pihsun): This (and tryReconfigure) is being called by many sync
-    // callback. Revisit this to push reconfigure jobs on an AsyncJobQueue and
-    // returns result in a AsyncJob instead of directly returning a Promise?
     if (this.watchdog !== null) {
       if (!await this.watchdog.waitNextReconfigure()) {
         return false;
@@ -568,7 +538,7 @@ export class CameraManager implements EventListener {
       // reconfigure result which may not reflect the setting before calling it.
       // Thus still fallthrough here to start another reconfigure.
     }
-    this.scheduler.reconfigurer.resetFailedDevices();
+
     return this.doReconfigure();
   }
 
@@ -576,14 +546,6 @@ export class CameraManager implements EventListener {
     state.set(state.State.CAMERA_CONFIGURING, true);
     this.setCameraAvailable(false);
     this.scheduler.reconfigurer.setShouldSuspend(this.shouldSuspend());
-    if (loadTimeData.isVideoCaptureDisallowed()) {
-      if (this.watchdog === null) {
-        nav.open(ViewName.WARNING, WarningType.DISABLED_CAMERA);
-        this.watchdog = new ResumeStateWatchdog(() => this.doReconfigure());
-        this.perfLogger.interrupt();
-      }
-      return false;
-    }
     try {
       if (!(await this.scheduler.reconfigure())) {
         throw new Error('camera suspended');

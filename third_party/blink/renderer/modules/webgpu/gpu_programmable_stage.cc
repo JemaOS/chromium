@@ -15,11 +15,9 @@ void GPUProgrammableStageAsWGPUProgrammableStage(
   DCHECK(descriptor);
   DCHECK(dawn_programmable_stage);
 
-  if (descriptor->hasEntryPoint()) {
-    dawn_programmable_stage->entry_point =
-        UTF8StringFromUSVStringWithNullReplacedByReplacementCodePoint(
-            descriptor->entryPoint());
-  }
+  dawn_programmable_stage->entry_point =
+      UTF8StringFromUSVStringWithNullReplacedByReplacementCodePoint(
+          descriptor->entryPoint());
 
   if (!descriptor->hasConstants()) {
     return;

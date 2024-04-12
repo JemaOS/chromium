@@ -9,7 +9,7 @@
 
 #include "ash/public/cpp/login_accelerators.h"
 #include "ash/public/cpp/login_types.h"
-#include "ash/system/tray/system_tray_observer.h"
+#include "ash/public/cpp/system_tray_observer.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
@@ -19,7 +19,6 @@
 #include "chrome/browser/ui/chrome_web_modal_dialog_manager_delegate.h"
 #include "chrome/browser/ui/webui/ash/login/oobe_ui.h"
 #include "components/web_modal/web_contents_modal_dialog_host.h"
-#include "components/web_modal/web_contents_modal_dialog_manager.h"
 #include "ui/views/view_observer.h"
 #include "ui/web_dialogs/web_dialog_delegate.h"
 
@@ -40,6 +39,7 @@ class Widget;
 class LoginScreenClientImpl;
 
 namespace ash {
+class CaptivePortalDialogDelegate;
 class LayoutWidgetDelegateView;
 class LoginDisplayHostMojo;
 class OobeWebDialogView;
@@ -56,9 +56,7 @@ class OobeUIDialogDelegate : public ui::WebDialogDelegate,
                              public CaptivePortalWindowProxy::Observer,
                              public OobeUI::Observer,
                              public views::ViewObserver,
-                             public SystemTrayObserver,
-                             public ChromeWebModalDialogManagerDelegate,
-                             public web_modal::WebContentsModalDialogHost {
+                             public SystemTrayObserver {
  public:
   explicit OobeUIDialogDelegate(base::WeakPtr<LoginDisplayHostMojo> controller);
 
@@ -97,15 +95,29 @@ class OobeUIDialogDelegate : public ui::WebDialogDelegate,
 
   views::View* GetWebDialogView();
 
+  CaptivePortalDialogDelegate* captive_portal_delegate_for_test() {
+    return captive_portal_delegate_.get();
+  }
+
  private:
-  class ModalDialogManagerCleanup;
   // ui::WebDialogDelegate:
+  ui::ModalType GetDialogModalType() const override;
+  std::u16string GetDialogTitle() const override;
+  GURL GetDialogContentURL() const override;
+  void GetWebUIMessageHandlers(
+      std::vector<content::WebUIMessageHandler*>* handlers) const override;
+  void GetDialogSize(gfx::Size* size) const override;
+  std::string GetDialogArgs() const override;
   // NOTE: This function starts cleanup sequence that would call FinishCleanup
   // and delete this object in the end.
   void OnDialogClosed(const std::string& json_retval) override;
+  void OnCloseContents(content::WebContents* source,
+                       bool* out_close_dialog) override;
+  bool ShouldShowDialogTitle() const override;
+  bool HandleContextMenu(content::RenderFrameHost& render_frame_host,
+                         const content::ContextMenuParams& params) override;
   std::vector<ui::Accelerator> GetAccelerators() override;
   bool AcceleratorPressed(const ui::Accelerator& accelerator) override;
-  WebDialogDelegate::FrameKind GetWebDialogFrameKind() const override;
 
   // views::ViewObserver:
   void OnViewBoundsChanged(views::View* observed_view) override;
@@ -128,24 +140,15 @@ class OobeUIDialogDelegate : public ui::WebDialogDelegate,
 
   base::WeakPtr<LoginDisplayHostMojo> controller_;
 
-  // ChromeWebModalDialogManagerDelegate:
-  web_modal::WebContentsModalDialogHost* GetWebContentsModalDialogHost()
-      override;
-
-  // web_modal::WebContentsModalDialogHost:
-  gfx::Size GetMaximumDialogSize() override;
-  gfx::NativeView GetHostView() const override;
-  gfx::Point GetDialogPosition(const gfx::Size& size) override;
-  void AddObserver(web_modal::ModalDialogHostObserver* observer) override;
-  void RemoveObserver(web_modal::ModalDialogHostObserver* observer) override;
+  base::WeakPtr<CaptivePortalDialogDelegate> captive_portal_delegate_;
 
   // Root widget. It is assumed that widget is placed as a full-screen inside
   // LockContainer.
-  raw_ptr<views::Widget> widget_ = nullptr;
+  raw_ptr<views::Widget, ExperimentalAsh> widget_ = nullptr;
   // Reference to view owned by widget_.
-  raw_ptr<LayoutWidgetDelegateView> layout_view_ = nullptr;
+  raw_ptr<LayoutWidgetDelegateView, ExperimentalAsh> layout_view_ = nullptr;
   // Reference to dialog view stored in widget_.
-  raw_ptr<OobeWebDialogView> dialog_view_ = nullptr;
+  raw_ptr<OobeWebDialogView, ExperimentalAsh> dialog_view_ = nullptr;
 
   base::ScopedObservation<views::View, views::ViewObserver> view_observer_{
       this};
@@ -166,10 +169,6 @@ class OobeUIDialogDelegate : public ui::WebDialogDelegate,
   // Whether the captive portal screen should be shown the next time the Gaia
   // dialog is opened.
   bool should_display_captive_portal_ = false;
-
-  base::ObserverList<web_modal::ModalDialogHostObserver>::Unchecked
-      modal_dialog_host_observer_list_;
-  std::unique_ptr<ModalDialogManagerCleanup> modal_dialog_manager_cleanup_;
 };
 
 }  // namespace ash

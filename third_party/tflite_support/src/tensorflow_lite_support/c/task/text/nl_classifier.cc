@@ -37,7 +37,8 @@ struct TfLiteNLClassifier {
 };
 
 TfLiteNLClassifier* TfLiteNLClassifierCreateFromOptions(
-    const char* model_path, const TfLiteNLClassifierOptions* options) {
+    const char* model_path,
+    const TfLiteNLClassifierOptions* options) {
   auto classifier_status = NLClassifierCpp::CreateFromFileAndOptions(
       std::string(model_path),
       {

@@ -15,7 +15,10 @@ namespace extensions {
 struct Event;
 }  // namespace extensions
 
-namespace ash::file_system_provider::operations::util {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
+namespace util {
 
 // Fake event dispatcher implementation with extra logging capability. Acts as
 // a providing extension end-point.
@@ -30,10 +33,10 @@ class LoggingDispatchEventImpl : public RequestDispatcher {
 
   // Handles sending a request event to a providing extension.
   bool DispatchRequest(int request_id,
-                       std::optional<std::string> file_system_id,
+                       absl::optional<std::string> file_system_id,
                        std::unique_ptr<extensions::Event> event) override;
   void CancelRequest(int request_id,
-                     std::optional<std::string> file_system_id) override;
+                     absl::optional<std::string> file_system_id) override;
 
   // Returns events sent to providing extensions.
   std::vector<std::unique_ptr<extensions::Event>>& events() { return events_; }
@@ -49,6 +52,9 @@ typedef std::vector<base::File::Error> StatusCallbackLog;
 // Pushes a result of the StatusCallback invocation to a log vector.
 void LogStatusCallback(StatusCallbackLog* log, base::File::Error result);
 
-}  // namespace ash::file_system_provider::operations::util
+}  // namespace util
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_OPERATIONS_TEST_UTIL_H_

@@ -60,20 +60,12 @@ std::u16string AXPlatformNodeDelegate::GetTextContentUTF16() const {
   if (!value.empty())
     return value;
 
-  // The name of a leaf node in Views is displayed inside the View, i.e.
-  // `GetNameFrom` == `ax::mojom::NameFrom::kContents`, except in text fields,
-  // where the name attribute is the field's label and the value attribute is
-  // the field's text contents. For maximum compatibility with the Web code, we
-  // compute the text of a non-leaf text field from the text contents of its
-  // children, even though we currently know of no such text field in Views.
-  //
   // TODO(https://crbug.com/1030703): The check for `IsInvisibleOrIgnored()`
   // should not be needed. `ChildAtIndex()` and `GetChildCount()` are already
   // supposed to skip over nodes that are invisible or ignored, but
   // `ViewAXPlatformNodeDelegate` does not currently implement this behavior.
-  if (IsLeaf() && !GetData().IsTextField() && !IsInvisibleOrIgnored()) {
+  if (IsLeaf() && !IsInvisibleOrIgnored())
     return GetString16Attribute(ax::mojom::StringAttribute::kName);
-  }
 
   std::u16string text_content;
   for (size_t i = 0; i < GetChildCount(); ++i) {
@@ -146,13 +138,13 @@ gfx::NativeViewAccessible AXPlatformNodeDelegate::GetParent() const {
   return nullptr;
 }
 
-std::optional<size_t> AXPlatformNodeDelegate::GetIndexInParent() const {
+absl::optional<size_t> AXPlatformNodeDelegate::GetIndexInParent() const {
   if (node_)
     return node_->GetUnignoredIndexInParent();
 
   AXPlatformNodeDelegate* parent = GetParentDelegate();
   if (!parent)
-    return std::nullopt;
+    return absl::nullopt;
 
   for (size_t i = 0; i < parent->GetChildCount(); i++) {
     AXPlatformNode* child_node =
@@ -160,7 +152,7 @@ std::optional<size_t> AXPlatformNodeDelegate::GetIndexInParent() const {
     if (child_node && child_node->GetDelegate() == this)
       return i;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 size_t AXPlatformNodeDelegate::GetChildCount() const {
@@ -408,11 +400,6 @@ TextAttributeMap AXPlatformNodeDelegate::ComputeTextAttributeMap(
   return attributes_map;
 }
 
-std::wstring AXPlatformNodeDelegate::ComputeListItemNameFromContent() const {
-  NOTIMPLEMENTED();
-  return std::wstring();
-}
-
 std::string AXPlatformNodeDelegate::GetInheritedFontFamilyName() const {
   return GetInheritedStringAttribute(ax::mojom::StringAttribute::kFontFamily);
 }
@@ -492,12 +479,18 @@ AXPlatformNode* AXPlatformNodeDelegate::GetTargetNodeForRelation(
   if (!GetIntAttribute(attr, &target_id))
     return nullptr;
 
-  AXPlatformNode* node = GetFromNodeID(target_id);
-  if (!IsValidRelationTarget(node)) {
-    return nullptr;
-  }
+  return GetFromNodeID(target_id);
+}
 
-  return node;
+std::set<AXPlatformNode*> AXPlatformNodeDelegate::GetNodesForNodeIds(
+    const std::set<int32_t>& ids) {
+  std::set<AXPlatformNode*> nodes;
+  for (int32_t node_id : ids) {
+    if (AXPlatformNode* node = GetFromNodeID(node_id)) {
+      nodes.insert(node);
+    }
+  }
+  return nodes;
 }
 
 std::vector<AXPlatformNode*> AXPlatformNodeDelegate::GetTargetNodesForRelation(
@@ -513,54 +506,29 @@ std::vector<AXPlatformNode*> AXPlatformNodeDelegate::GetTargetNodesForRelation(
 
   std::vector<ui::AXPlatformNode*> nodes;
   for (int32_t target_id : target_ids) {
-    ui::AXPlatformNode* target = GetFromNodeID(target_id);
-    if (target && IsValidRelationTarget(target) &&
-        !base::Contains(nodes, target)) {
-      nodes.push_back(target);
+    if (ui::AXPlatformNode* node = GetFromNodeID(target_id)) {
+      if (!base::Contains(nodes, node))
+        nodes.push_back(node);
     }
   }
 
   return nodes;
 }
 
-std::vector<AXPlatformNode*>
-AXPlatformNodeDelegate::GetSourceNodesForReverseRelations(
+std::set<AXPlatformNode*> AXPlatformNodeDelegate::GetSourceNodesForReverseRelations(
     ax::mojom::IntAttribute attr) {
   // TODO(accessibility) Implement these if views ever use relations more
   // widely. The use so far has been for the Omnibox to the suggestion
   // popup. If this is ever implemented, then the "popup for" to "controlled
   // by" mapping in AXPlatformRelationWin can be removed, as it would be
   // redundant with setting the controls relationship.
-  return std::vector<AXPlatformNode*>();
+  return std::set<AXPlatformNode*>();
 }
 
-std::vector<AXPlatformNode*>
+std::set<AXPlatformNode*>
 AXPlatformNodeDelegate::GetSourceNodesForReverseRelations(
     ax::mojom::IntListAttribute attr) {
-  return std::vector<AXPlatformNode*>();
-}
-
-std::vector<ui::AXPlatformNode*>
-AXPlatformNodeDelegate::GetNodesFromRelationIdSet(
-    const std::set<AXNodeID>& ids) {
-  std::vector<ui::AXPlatformNode*> nodes;
-
-  for (AXNodeID node_id : ids) {
-    ui::AXPlatformNode* node = GetFromNodeID(node_id);
-    if (node && IsValidRelationTarget(node)) {
-      nodes.push_back(node);
-    }
-  }
-  return nodes;
-}
-
-bool AXPlatformNodeDelegate::IsValidRelationTarget(
-    AXPlatformNode* target) const {
-  DCHECK_GT(GetUniqueId(), kInvalidAXUniqueId);
-  DCHECK(target);
-  DCHECK_GT(target->GetUniqueId(), kInvalidAXUniqueId);
-  // We should ignore reflexive relations.
-  return GetUniqueId() != target->GetUniqueId();
+  return std::set<AXPlatformNode*>();
 }
 
 std::u16string AXPlatformNodeDelegate::GetAuthorUniqueId() const {
@@ -954,42 +922,42 @@ bool AXPlatformNodeDelegate::IsTable() const {
   return ui::IsTableLike(GetRole());
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableRowCount() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableRowCount() const {
   if (node_)
     return node_->GetTableRowCount();
   return GetIntAttribute(ax::mojom::IntAttribute::kTableRowCount);
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableColCount() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableColCount() const {
   if (node_)
     return node_->GetTableColCount();
   return GetIntAttribute(ax::mojom::IntAttribute::kTableColumnCount);
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableCellCount() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableCellCount() const {
   if (node_)
     return node_->GetTableCellCount();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableAriaColCount() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableAriaColCount() const {
   int aria_column_count;
   if (node_)
     return node_->GetTableAriaColCount();
   if (!GetIntAttribute(ax::mojom::IntAttribute::kAriaColumnCount,
                        &aria_column_count)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return aria_column_count;
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableAriaRowCount() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableAriaRowCount() const {
   if (node_)
     return node_->GetTableAriaRowCount();
   int aria_row_count;
   if (!GetIntAttribute(ax::mojom::IntAttribute::kAriaRowCount,
                        &aria_row_count)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return aria_row_count;
 }
@@ -1030,7 +998,7 @@ bool AXPlatformNodeDelegate::IsTableRow() const {
   return ui::IsTableRow(GetRole());
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableRowRowIndex() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableRowRowIndex() const {
   if (node_)
     return node_->GetTableRowRowIndex();
   return GetIntAttribute(ax::mojom::IntAttribute::kTableRowIndex);
@@ -1042,86 +1010,72 @@ bool AXPlatformNodeDelegate::IsTableCellOrHeader() const {
   return ui::IsCellOrTableHeader(GetRole());
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableCellIndex() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableCellIndex() const {
   if (node_)
     return node_->GetTableCellIndex();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableCellColIndex() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableCellColIndex() const {
   if (node_)
     return node_->GetTableCellColIndex();
   return GetIntAttribute(ax::mojom::IntAttribute::kTableCellColumnIndex);
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableCellRowIndex() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableCellRowIndex() const {
   if (node_)
     return node_->GetTableCellRowIndex();
   return GetIntAttribute(ax::mojom::IntAttribute::kTableCellRowIndex);
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableCellColSpan() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableCellColSpan() const {
   if (node_)
     return node_->GetTableCellColSpan();
   return GetIntAttribute(ax::mojom::IntAttribute::kTableCellColumnSpan);
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableCellRowSpan() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableCellRowSpan() const {
   if (node_)
     return node_->GetTableCellRowSpan();
   return GetIntAttribute(ax::mojom::IntAttribute::kTableCellRowSpan);
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableCellAriaColIndex() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableCellAriaColIndex() const {
   if (node_)
     return node_->GetTableCellAriaColIndex();
   if (HasIntAttribute(ax::mojom::IntAttribute::kAriaCellColumnIndex))
     return GetIntAttribute(ax::mojom::IntAttribute::kAriaCellColumnIndex);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetTableCellAriaRowIndex() const {
+absl::optional<int> AXPlatformNodeDelegate::GetTableCellAriaRowIndex() const {
   if (node_)
     return node_->GetTableCellAriaRowIndex();
   if (HasIntAttribute(ax::mojom::IntAttribute::kAriaCellRowIndex))
     return GetIntAttribute(ax::mojom::IntAttribute::kAriaCellRowIndex);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int32_t> AXPlatformNodeDelegate::GetCellId(int row_index,
-                                                         int col_index) const {
+absl::optional<int32_t> AXPlatformNodeDelegate::GetCellId(int row_index,
+                                                          int col_index) const {
   if (node_) {
     AXNode* cell = node()->GetTableCellFromCoords(row_index, col_index);
     if (!cell)
-      return std::nullopt;
+      return absl::nullopt;
     return cell->id();
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int32_t> AXPlatformNodeDelegate::GetCellIdAriaCoords(
-    int aria_row_index,
-    int aria_col_index) const {
-  if (node_) {
-    AXNode* cell =
-        node()->GetTableCellFromAriaCoords(aria_row_index, aria_col_index);
-    if (!cell) {
-      return std::nullopt;
-    }
-    return cell->id();
-  }
-  return std::nullopt;
-}
-
-std::optional<int32_t> AXPlatformNodeDelegate::CellIndexToId(
+absl::optional<int32_t> AXPlatformNodeDelegate::CellIndexToId(
     int cell_index) const {
   if (node_) {
     ui::AXNode* cell = node()->GetTableCellFromIndex(cell_index);
     if (!cell)
-      return std::nullopt;
+      return absl::nullopt;
     return cell->id();
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool AXPlatformNodeDelegate::IsCellOrHeaderOfAriaGrid() const {
@@ -1153,12 +1107,12 @@ bool AXPlatformNodeDelegate::IsOrderedSet() const {
   return false;
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetPosInSet() const {
-  return std::nullopt;
+absl::optional<int> AXPlatformNodeDelegate::GetPosInSet() const {
+  return absl::nullopt;
 }
 
-std::optional<int> AXPlatformNodeDelegate::GetSetSize() const {
-  return std::nullopt;
+absl::optional<int> AXPlatformNodeDelegate::GetSetSize() const {
+  return absl::nullopt;
 }
 
 SkColor AXPlatformNodeDelegate::GetColor() const {
@@ -1207,12 +1161,6 @@ std::u16string AXPlatformNodeDelegate::GetLocalizedStringForRoleDescription()
 std::u16string AXPlatformNodeDelegate::GetStyleNameAttributeAsLocalizedString()
     const {
   return std::u16string();
-}
-
-void AXPlatformNodeDelegate::SetIsPrimaryWebContentsForWindow() {}
-
-bool AXPlatformNodeDelegate::IsPrimaryWebContentsForWindow() const {
-  return false;
 }
 
 bool AXPlatformNodeDelegate::ShouldIgnoreHoveredStateForTesting() {

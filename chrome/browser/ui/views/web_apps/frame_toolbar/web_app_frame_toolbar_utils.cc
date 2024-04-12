@@ -19,8 +19,6 @@ void ConfigureWebAppToolbarButton(
 
   toolbar_button->SetMinSize(toolbar_button_provider->GetToolbarButtonSize());
   toolbar_button->SetHorizontalAlignment(gfx::ALIGN_CENTER);
-
-  toolbar_button->SetAppearDisabledInInactiveWidget(true);
 }
 
 int WebAppFrameRightMargin() {

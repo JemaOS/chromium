@@ -12,7 +12,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace sync_sessions {
@@ -28,10 +28,10 @@ class SessionSyncServiceFactory : public ProfileKeyedServiceFactory {
   SessionSyncServiceFactory& operator=(const SessionSyncServiceFactory&) =
       delete;
 
-  static bool ShouldSyncURLForTestingAndMetrics(const GURL& url);
+  static bool ShouldSyncURLForTesting(const GURL& url);
 
  private:
-  friend base::NoDestructor<SessionSyncServiceFactory>;
+  friend struct base::DefaultSingletonTraits<SessionSyncServiceFactory>;
 
   SessionSyncServiceFactory();
   ~SessionSyncServiceFactory() override;

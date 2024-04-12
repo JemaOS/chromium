@@ -21,8 +21,10 @@ ___asan_default_options
 # Entry point from the app mode loader.
 _ChromeAppModeStart_v7
 
-# Entry point for the web app shortcut copier.
-_ChromeWebAppShortcutCopierMain
-
 # _ChromeMain must be listed last.  That's the whole point of this file.
 _ChromeMain
+
+# For coverage builds.
+_lprofDirMode
+___llvm_profile_filename
+___llvm_profile_raw_version

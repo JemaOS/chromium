@@ -33,13 +33,11 @@ class SizeF;
 namespace blink {
 
 class AffineTransform;
-class SVGAnimatedPropertyBase;
 class QualifiedName;
 class SVGAnimatedPreserveAspectRatio;
 class SVGAnimatedRect;
 class SVGElement;
 class SVGPreserveAspectRatio;
-class SVGRect;
 
 class SVGFitToViewBox : public GarbageCollectedMixin {
  public:
@@ -49,8 +47,6 @@ class SVGFitToViewBox : public GarbageCollectedMixin {
       const gfx::SizeF& viewport_size);
 
   static bool IsKnownAttribute(const QualifiedName&);
-
-  static bool HasValidViewBox(const SVGRect& view_box);
   bool HasValidViewBox() const;
 
   // JS API
@@ -63,10 +59,6 @@ class SVGFitToViewBox : public GarbageCollectedMixin {
 
  protected:
   explicit SVGFitToViewBox(SVGElement*);
-
-  SVGAnimatedPropertyBase* PropertyFromAttribute(
-      const QualifiedName& attribute_name) const;
-  void SynchronizeAllSVGAttributes() const;
 
  private:
   Member<SVGAnimatedRect> view_box_;

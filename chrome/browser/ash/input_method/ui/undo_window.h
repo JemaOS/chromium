@@ -21,9 +21,8 @@ namespace ime {
 
 // Pop up UI for users to undo an autocorrected word.
 class UI_CHROMEOS_EXPORT UndoWindow : public views::BubbleDialogDelegateView {
-  METADATA_HEADER(UndoWindow, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(UndoWindow);
   explicit UndoWindow(gfx::NativeView parent, AssistiveDelegate* delegate);
   UndoWindow(const UndoWindow&) = delete;
   UndoWindow& operator=(const UndoWindow&) = delete;
@@ -48,9 +47,9 @@ class UI_CHROMEOS_EXPORT UndoWindow : public views::BubbleDialogDelegateView {
 
   void UndoButtonPressed();
 
-  raw_ptr<AssistiveDelegate, DanglingUntriaged> delegate_;
-  raw_ptr<views::LabelButton> undo_button_;
-  raw_ptr<views::ImageButton> learn_more_button_;
+  raw_ptr<AssistiveDelegate, ExperimentalAsh> delegate_;
+  raw_ptr<views::LabelButton, ExperimentalAsh> undo_button_;
+  raw_ptr<views::ImageButton, ExperimentalAsh> learn_more_button_;
 };
 
 BEGIN_VIEW_BUILDER(UI_CHROMEOS_EXPORT,

@@ -19,11 +19,10 @@ namespace blink {
 const char BatteryManager::kSupplementName[] = "BatteryManager";
 
 // static
-ScriptPromiseTyped<BatteryManager> BatteryManager::getBattery(
-    ScriptState* script_state,
-    Navigator& navigator) {
+ScriptPromise BatteryManager::getBattery(ScriptState* script_state,
+                                         Navigator& navigator) {
   if (!navigator.DomWindow())
-    return ScriptPromiseTyped<BatteryManager>();
+    return ScriptPromise();
 
   // Check to see if this request would be blocked according to the Battery
   // Status API specification.
@@ -31,7 +30,7 @@ ScriptPromiseTyped<BatteryManager> BatteryManager::getBattery(
   // TODO(crbug.com/1007264, crbug.com/1290231): remove fenced frame specific
   // code when permission policy implements the battery status API support.
   if (window->GetFrame()->IsInFencedFrameTree()) {
-    return ScriptPromiseTyped<BatteryManager>::RejectWithDOMException(
+    return ScriptPromise::RejectWithDOMException(
         script_state,
         DOMException::Create(
             "getBattery is not allowed in a fenced frame tree.",
@@ -61,8 +60,7 @@ BatteryManager::BatteryManager(Navigator& navigator)
   UpdateStateIfNeeded();
 }
 
-ScriptPromiseTyped<BatteryManager> BatteryManager::StartRequest(
-    ScriptState* script_state) {
+ScriptPromise BatteryManager::StartRequest(ScriptState* script_state) {
   if (!battery_property_) {
     battery_property_ = MakeGarbageCollected<BatteryProperty>(
         ExecutionContext::From(script_state));
@@ -164,7 +162,7 @@ void BatteryManager::Trace(Visitor* visitor) const {
   visitor->Trace(battery_dispatcher_);
   Supplement<Navigator>::Trace(visitor);
   PlatformEventController::Trace(visitor);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextLifecycleStateObserver::Trace(visitor);
 }
 

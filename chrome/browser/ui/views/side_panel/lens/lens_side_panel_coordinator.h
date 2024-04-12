@@ -18,7 +18,6 @@
 #include "ui/gfx/image/image.h"
 
 class Browser;
-class SidePanelCoordinator;
 
 // LensSidePanelCoordinator handles the creation and registration of the
 // LensUnifiedSidePanelEntry.
@@ -29,6 +28,8 @@ class LensSidePanelCoordinator
       public TemplateURLServiceObserver {
  public:
   explicit LensSidePanelCoordinator(Browser* browser);
+  LensSidePanelCoordinator(const LensSidePanelCoordinator&) = delete;
+  LensSidePanelCoordinator& operator=(const LensSidePanelCoordinator&) = delete;
   ~LensSidePanelCoordinator() override;
 
   // Registers lens entry in the side panel and shows side panel with lens
@@ -60,18 +61,10 @@ class LensSidePanelCoordinator
   // Get the favicon to display in the side panel combobox dropdown.
   const ui::ImageModel GetFaviconImage();
 
-  // Get the lens action item that shows the lens sidepanel.
-  actions::ActionItem* GetActionItem();
-
-  // Updates the text and image of the lens sidepanel action item.
-  void UpdateActionItem();
-
   // This is a callback called after fetching favicon from favicon_cache.
   void OnFaviconFetched(const gfx::Image& favicon);
 
   BrowserView* GetBrowserView();
-
-  SidePanelCoordinator* GetSidePanelCoordinator();
 
   // Removes the lens entry from the side panel.
   void DeregisterLensFromSidePanel();
@@ -100,4 +93,4 @@ class LensSidePanelCoordinator
   BROWSER_USER_DATA_KEY_DECL();
 };
 
-#endif  // CHROME_BROWSER_UI_VIEWS_SIDE_PANEL_LENS_LENS_SIDE_PANEL_COORDINATOR_H_
+#endif  // CHROME_BROWSER_UI_VIEWS_SIDE_PANEL_LENS_SIDE_PANEL_COORDINATOR_H_

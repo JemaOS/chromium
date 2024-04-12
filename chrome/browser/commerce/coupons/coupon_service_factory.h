@@ -27,7 +27,7 @@ class CouponServiceFactory : public ProfileKeyedServiceFactory {
   CouponServiceFactory();
   ~CouponServiceFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

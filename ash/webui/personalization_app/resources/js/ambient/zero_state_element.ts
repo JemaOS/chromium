@@ -6,14 +6,14 @@
  * @fileoverview Polymer element that displays the Ambient zero state.
  */
 
-import 'chrome://resources/ash/common/personalization/common.css.js';
+import '../../css/common.css.js';
 import 'chrome://resources/polymer/v3_0/iron-media-query/iron-media-query.js';
 
 import {WithPersonalizationStore} from '../personalization_store.js';
 
 import {getTemplate} from './zero_state_element.html.js';
 
-export class AmbientZeroStateElement extends WithPersonalizationStore {
+export class AmbientZeroState extends WithPersonalizationStore {
   static get is() {
     return 'ambient-zero-state';
   }
@@ -45,4 +45,4 @@ export class AmbientZeroStateElement extends WithPersonalizationStore {
   }
 }
 
-customElements.define(AmbientZeroStateElement.is, AmbientZeroStateElement);
+customElements.define(AmbientZeroState.is, AmbientZeroState);

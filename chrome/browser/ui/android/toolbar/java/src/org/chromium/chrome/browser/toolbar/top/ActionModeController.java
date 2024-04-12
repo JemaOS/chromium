@@ -14,7 +14,6 @@ import android.util.IntProperty;
 
 import androidx.appcompat.app.ActionBar;
 
-import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.chrome.browser.toolbar.R;
 
 /**
@@ -27,7 +26,7 @@ public class ActionModeController {
     private ToolbarActionModeCallback mToolbarActionModeCallback;
     private ObjectAnimator mCurrentAnimation;
     private boolean mShowingActionMode;
-    private ObservableSupplier<Integer> mTabStripHeightSupplier;
+    private float mTabStripHeight;
     private final Context mContext;
     private final ActionBarDelegate mActionBarDelegate;
 
@@ -38,7 +37,6 @@ public class ActionModeController {
                 public Integer get(ActionBarDelegate delegate) {
                     return delegate.getControlTopMargin();
                 }
-
                 @Override
                 public void setValue(ActionBarDelegate delegate, int value) {
                     delegate.setControlTopMargin(value);
@@ -76,21 +74,23 @@ public class ActionModeController {
     /**
      * Creates the {@link ActionModeController} and ties it to an action bar using the given action
      * bar delegate.
-     *
      * @param actionBarDelegate The delegate for communicating with toolbar for animation.
      * @param toolbarActionModeCallback The callback for communicating action mode changes.
-     * @param tabStripHeightSupplier Supplier for the tab strip height.
      */
-    public ActionModeController(
-            Context context,
-            ActionBarDelegate actionBarDelegate,
-            ToolbarActionModeCallback toolbarActionModeCallback,
-            ObservableSupplier<Integer> tabStripHeightSupplier) {
+    public ActionModeController(Context context, ActionBarDelegate actionBarDelegate,
+            ToolbarActionModeCallback toolbarActionModeCallback) {
         mActionBarDelegate = actionBarDelegate;
         mContext = context;
         mToolbarActionModeCallback = toolbarActionModeCallback;
         mToolbarActionModeCallback.setActionModeController(this);
-        mTabStripHeightSupplier = tabStripHeightSupplier;
+        mTabStripHeight = mContext.getResources().getDimension(R.dimen.tab_strip_height);
+    }
+
+    /**
+     * Overrides the preset height of the tab strip.
+     */
+    public void setTabStripHeight(int tabStripHeight) {
+        mTabStripHeight = tabStripHeight;
     }
 
     /**
@@ -121,71 +121,68 @@ public class ActionModeController {
         return height;
     }
 
-    /** Show controls after orientation change if previously visible. */
+    /**
+     * Show controls after orientation change if previously visible.
+     */
     public void showControlsOnOrientationChange() {
         if (mShowingActionMode && mCurrentAnimation == null) {
             startShowAnimation();
         }
     }
 
-    /** Animation for the textview if the action bar is visible. */
+    /**
+     * Animation for the textview if the action bar is visible.
+     */
     public void startShowAnimation() {
         if (mCurrentAnimation != null) mCurrentAnimation.cancel();
 
-        int curHeight = queryCurrentActionBarHeight() - getTabStripHeight();
         mCurrentAnimation =
-                ObjectAnimator.ofInt(
-                                mActionBarDelegate,
-                                TOP_MARGIN_ANIM_PROPERTY,
-                                curHeight < 0 ? 0 : curHeight)
+                ObjectAnimator
+                        .ofInt(mActionBarDelegate, TOP_MARGIN_ANIM_PROPERTY,
+                                (int) (Math.max(
+                                        0, queryCurrentActionBarHeight() - mTabStripHeight)))
                         .setDuration(SLIDE_DURATION_MS);
 
-        mCurrentAnimation.addListener(
-                new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        mCurrentAnimation = null;
-                    }
-                });
+        mCurrentAnimation.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                mCurrentAnimation = null;
+            }
+        });
 
-        mCurrentAnimation.addUpdateListener(
-                new ValueAnimator.AnimatorUpdateListener() {
-                    @Override
-                    public void onAnimationUpdate(ValueAnimator animation) {
-                        ActionBar actionBar = mActionBarDelegate.getSupportActionBar();
-                        if (actionBar != null) {
-                            int newHeight = queryCurrentActionBarHeight() - getTabStripHeight();
-                            animation.setIntValues(newHeight < 0 ? 0 : newHeight);
-                        }
-                    }
-                });
+        mCurrentAnimation.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                ActionBar actionBar = mActionBarDelegate.getSupportActionBar();
+                if (actionBar != null) {
+                    animation.setIntValues(
+                            (int) (Math.max(0, queryCurrentActionBarHeight() - mTabStripHeight)));
+                }
+            }
+        });
 
         mActionBarDelegate.setActionBarBackgroundVisibility(true);
         mCurrentAnimation.start();
         mShowingActionMode = true;
     }
 
-    private int getTabStripHeight() {
-        return mTabStripHeightSupplier.get();
-    }
-
-    /** Hide animation for the textview if the action bar is not visible. */
+    /**
+     * Hide animation for the textview if the action bar is not visible.
+     */
     public void startHideAnimation() {
         if (!mShowingActionMode) return;
         if (mCurrentAnimation != null) mCurrentAnimation.cancel();
 
-        mCurrentAnimation =
-                ObjectAnimator.ofInt(mActionBarDelegate, TOP_MARGIN_ANIM_PROPERTY, 0)
-                        .setDuration(SLIDE_DURATION_MS);
+        mCurrentAnimation = ObjectAnimator.ofInt(mActionBarDelegate, TOP_MARGIN_ANIM_PROPERTY, 0)
+                                    .setDuration(SLIDE_DURATION_MS);
 
-        mCurrentAnimation.addListener(
-                new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        mCurrentAnimation = null;
-                        mActionBarDelegate.setActionBarBackgroundVisibility(false);
-                    }
-                });
+        mCurrentAnimation.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                mCurrentAnimation = null;
+                mActionBarDelegate.setActionBarBackgroundVisibility(false);
+            }
+        });
 
         mCurrentAnimation.start();
         mShowingActionMode = false;

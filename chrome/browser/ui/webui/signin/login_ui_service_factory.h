@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_UI_WEBUI_SIGNIN_LOGIN_UI_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_UI_WEBUI_SIGNIN_LOGIN_UI_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class LoginUIService;
@@ -28,14 +28,14 @@ class LoginUIServiceFactory : public ProfileKeyedServiceFactory {
   static LoginUIServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<LoginUIServiceFactory>;
+  friend struct base::DefaultSingletonTraits<LoginUIServiceFactory>;
 
   LoginUIServiceFactory();
   ~LoginUIServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
-      content::BrowserContext* browser_context) const override;
+  KeyedService* BuildServiceInstanceFor(
+      content::BrowserContext* profile) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };
 

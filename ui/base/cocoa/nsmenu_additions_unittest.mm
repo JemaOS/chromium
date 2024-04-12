@@ -4,6 +4,7 @@
 
 #import "ui/base/cocoa/nsmenu_additions.h"
 
+#include "base/mac/scoped_nsobject.h"
 #include "base/test/gtest_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -38,8 +39,8 @@
 namespace {
 
 NSMenu* Menu(NSString* title) {
-  NSMenu* menu = [[NSMenu alloc] initWithTitle:title];
-  menu.autoenablesItems = NO;
+  NSMenu* menu = [[[NSMenu alloc] initWithTitle:title] autorelease];
+  [menu setAutoenablesItems:NO];
   return menu;
 }
 
@@ -47,11 +48,12 @@ NSMenuItem* MenuItem(NSString* title,
                      NSString* key_equivalent = @"",
                      NSEventModifierFlags modifier_mask = 0) {
   NSMenuAdditionsUnitTestMenuItem* item =
-      [[NSMenuAdditionsUnitTestMenuItem alloc] initWithTitle:title
-                                                      action:nil
-                                               keyEquivalent:key_equivalent];
-  item.keyEquivalentModifierMask = modifier_mask;
-  item.enabled = YES;
+      [[[NSMenuAdditionsUnitTestMenuItem alloc] initWithTitle:title
+                                                       action:NULL
+                                                keyEquivalent:key_equivalent]
+          autorelease];
+  [item setKeyEquivalentModifierMask:modifier_mask];
+  [item setEnabled:YES];
   return item;
 }
 

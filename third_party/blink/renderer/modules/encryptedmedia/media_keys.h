@@ -51,7 +51,6 @@ class HTMLMediaElement;
 class MediaKeysPolicy;
 class MediaKeySession;
 class ScriptState;
-class V8MediaKeyStatus;
 class WebContentDecryptionModule;
 
 // References are held by JS and HTMLMediaElement.
@@ -73,13 +72,13 @@ class MediaKeys : public ScriptWrappable,
                                  const String& session_type_string,
                                  ExceptionState&);
 
-  ScriptPromiseTyped<IDLBoolean> setServerCertificate(
-      ScriptState*,
-      const DOMArrayPiece& server_certificate,
-      ExceptionState&);
+  ScriptPromise setServerCertificate(ScriptState*,
+                                     const DOMArrayPiece& server_certificate,
+                                     ExceptionState&);
 
-  ScriptPromiseTyped<V8MediaKeyStatus>
-  getStatusForPolicy(ScriptState*, const MediaKeysPolicy*, ExceptionState&);
+  ScriptPromise getStatusForPolicy(ScriptState*,
+                                   const MediaKeysPolicy*,
+                                   ExceptionState&);
 
   // Indicates that the provided HTMLMediaElement wants to use this object.
   // Returns true if no other HTMLMediaElement currently references this

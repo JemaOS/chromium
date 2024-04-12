@@ -38,10 +38,9 @@ base::FilePath GetDownloadsDirectory(content::WebUI* web_ui) {
 }
 
 std::string GetJsonPolicies(content::WebUI* web_ui) {
-  return policy::PolicyConversions(
-             std::make_unique<policy::ChromePolicyConversionsClient>(
-                 web_ui->GetWebContents()->GetBrowserContext()))
-      .ToJSON();
+  auto client = std::make_unique<policy::ChromePolicyConversionsClient>(
+      web_ui->GetWebContents()->GetBrowserContext());
+  return policy::DictionaryPolicyConversions(std::move(client)).ToJSON();
 }
 
 bool WriteTimestampedFile(const base::FilePath& file_path,
@@ -103,7 +102,7 @@ void NetworkLogsMessageHandler::OnStoreLogs(const base::Value::List& list) {
 void NetworkLogsMessageHandler::OnWriteSystemLogs(
     const std::string& callback_id,
     base::Value::Dict&& options,
-    std::optional<base::FilePath> syslogs_path) {
+    absl::optional<base::FilePath> syslogs_path) {
   if (!syslogs_path) {
     Respond(callback_id, "Error writing system logs file.", /*is_error=*/true);
     return;
@@ -134,7 +133,7 @@ void NetworkLogsMessageHandler::MaybeWriteDebugLogs(
 void NetworkLogsMessageHandler::OnWriteDebugLogs(
     const std::string& callback_id,
     base::Value::Dict&& options,
-    std::optional<base::FilePath> logs_path) {
+    absl::optional<base::FilePath> logs_path) {
   if (!logs_path) {
     Respond(callback_id, "Error writing debug logs.", /*is_error=*/true);
     return;

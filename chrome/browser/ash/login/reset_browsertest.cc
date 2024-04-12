@@ -304,7 +304,7 @@ IN_PROC_BROWSER_TEST_F(ResetTest, RestartBeforePowerwash) {
 }
 
 IN_PROC_BROWSER_TEST_F(ResetOobeTest, ResetOnWelcomeScreen) {
-  test::WaitForWelcomeScreen();
+  OobeScreenWaiter(WelcomeView::kScreenId).Wait();
   EXPECT_FALSE(LoginScreenTestApi::IsGuestButtonShown());
   InvokeResetScreen();
 
@@ -316,12 +316,12 @@ IN_PROC_BROWSER_TEST_F(ResetOobeTest, ResetOnWelcomeScreen) {
 }
 
 IN_PROC_BROWSER_TEST_F(ResetOobeTest, RequestAndCancleResetOnWelcomeScreen) {
-  test::WaitForWelcomeScreen();
+  OobeScreenWaiter(WelcomeView::kScreenId).Wait();
   EXPECT_FALSE(LoginScreenTestApi::IsGuestButtonShown());
   InvokeResetScreen();
 
   ClickCancelButton();
-  test::WaitForWelcomeScreen();
+  OobeScreenWaiter(WelcomeView::kScreenId).Wait();
   EXPECT_FALSE(LoginScreenTestApi::IsGuestButtonShown());
 
   EXPECT_EQ(

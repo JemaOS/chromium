@@ -4,9 +4,10 @@
 
 #import "chrome/browser/ui/cocoa/applescript/bookmark_node_applescript.h"
 
-#import "base/apple/foundation_util.h"
 #include "base/check.h"
 #include "base/check_op.h"
+#import "base/mac/foundation_util.h"
+#import "base/mac/scoped_nsobject.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/uuid.h"
 #import "chrome/browser/app_controller_mac.h"
@@ -17,6 +18,7 @@
 #import "chrome/browser/ui/cocoa/applescript/error_applescript.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/browser/bookmark_node.h"
+#include "components/bookmarks/browser/bookmark_utils.h"
 #import "components/bookmarks/common/bookmark_metrics.h"
 
 using bookmarks::BookmarkModel;
@@ -50,7 +52,7 @@ using bookmarks::BookmarkNode;
 
 - (instancetype)initWithBookmarkNode:(const BookmarkNode*)bookmarkNode {
   if (!bookmarkNode) {
-    self = nil;
+    [self release];
     return nil;
   }
 
@@ -60,6 +62,11 @@ using bookmarks::BookmarkNode;
         stringWithFormat:@"%s", _bookmarkGUID.AsLowercaseString().c_str()];
   }
   return self;
+}
+
+- (void)dealloc {
+  [_tempTitle release];
+  [super dealloc];
 }
 
 - (base::Uuid)bookmarkGUID {
@@ -74,9 +81,7 @@ using bookmarks::BookmarkNode;
 }
 
 - (const bookmarks::BookmarkNode*)bookmarkNode {
-  return self.bookmarkModel->GetNodeByUuid(
-      _bookmarkGUID,
-      bookmarks::BookmarkModel::NodeTypeForUuidLookup::kLocalOrSyncableNodes);
+  return bookmarks::GetBookmarkNodeByUuid(self.bookmarkModel, _bookmarkGUID);
 }
 
 - (NSString*)title {
@@ -126,7 +131,10 @@ using bookmarks::BookmarkNode;
 }
 
 - (BookmarkModel*)bookmarkModel {
-  Profile* lastProfile = AppController.sharedController.lastProfile;
+  AppController* appDelegate =
+      base::mac::ObjCCastStrict<AppController>([NSApp delegate]);
+
+  Profile* lastProfile = appDelegate.lastProfile;
   if (!lastProfile) {
     AppleScript::SetError(AppleScript::Error::kGetProfile);
     return nullptr;

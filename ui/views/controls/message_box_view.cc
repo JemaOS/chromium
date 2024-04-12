@@ -12,7 +12,6 @@
 
 #include "base/functional/bind.h"
 #include "base/i18n/rtl.h"
-#include "base/memory/raw_ptr.h"
 #include "base/strings/string_split.h"
 #include "base/strings/utf_string_conversions.h"
 #include "ui/accessibility/ax_node_data.h"
@@ -105,9 +104,7 @@ MessageBoxView::MessageBoxView(const std::u16string& message,
             .SetAllowCharacterBreak(true)
             .SetHorizontalAlignment(alignment)
             .CustomConfigure(base::BindOnce(
-                [](std::vector<raw_ptr<Label, VectorExperimental>>&
-                       message_labels,
-                   Label* message_label) {
+                [](std::vector<Label*>& message_labels, Label* message_label) {
                   message_labels.push_back(message_label);
                 },
                 std::ref(message_labels_))));
@@ -143,7 +140,7 @@ MessageBoxView::MessageBoxView(const std::u16string& message,
               .SetAccessibleName(message)
               .SetVisible(false)
               .CustomConfigure(base::BindOnce([](Textfield* prompt_field) {
-                prompt_field->GetViewAccessibility().SetIsIgnored(true);
+                prompt_field->GetViewAccessibility().OverrideIsIgnored(true);
               })),
           Builder<Checkbox>()
               .CopyAddressTo(&checkbox_)
@@ -237,7 +234,7 @@ void MessageBoxView::SetPromptField(const std::u16string& default_prompt) {
     return;
   prompt_field_->SetText(default_prompt);
   prompt_field_->SetVisible(true);
-  prompt_field_->GetViewAccessibility().SetIsIgnored(false);
+  prompt_field_->GetViewAccessibility().OverrideIsIgnored(false);
   // The same text visible in the message box is used as an accessible name for
   // the prompt. To prevent it from being announced twice, we hide the message
   // to ATs.
@@ -297,7 +294,7 @@ void MessageBoxView::ResetLayoutManager() {
 
   // Ignored views are not in the accessibility tree, but their children
   // still can be exposed. Leaf views have no accessible children.
-  checkbox_->GetViewAccessibility().SetIsIgnored(!checkbox_is_visible);
+  checkbox_->GetViewAccessibility().OverrideIsIgnored(!checkbox_is_visible);
   checkbox_->GetViewAccessibility().OverrideIsLeaf(!checkbox_is_visible);
 
   if (link_->GetVisible())
@@ -322,7 +319,7 @@ gfx::Insets MessageBoxView::GetHorizontalInsets(
   return horizontal_insets;
 }
 
-BEGIN_METADATA(MessageBoxView)
+BEGIN_METADATA(MessageBoxView, View)
 END_METADATA
 
 }  // namespace views

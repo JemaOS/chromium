@@ -4,8 +4,7 @@
 
 import 'chrome://password-manager/password_manager.js';
 
-import type {CrExpandButtonElement} from 'chrome://password-manager/password_manager.js';
-import {CheckupSubpage, OpenWindowProxyImpl, Page, PasswordCheckInteraction, PasswordManagerImpl, PluralStringProxyImpl, Router} from 'chrome://password-manager/password_manager.js';
+import {CheckupSubpage, CrExpandButtonElement, OpenWindowProxyImpl, Page, PasswordCheckInteraction, PasswordManagerImpl, PluralStringProxyImpl, Router} from 'chrome://password-manager/password_manager.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
@@ -262,7 +261,6 @@ suite('CheckupDetailsSectionTest', function() {
     assertFalse(isVisible(listItemElements[0]));
 
     dismissedButton.click();
-    await dismissedButton.updateComplete;
 
     assertTrue(isVisible(listItemElements[0]));
   });
@@ -271,9 +269,9 @@ suite('CheckupDetailsSectionTest', function() {
     Router.getInstance().navigateTo(
         Page.CHECKUP_DETAILS, CheckupSubpage.REUSED);
     const insecurePasswords = [
-      makeInsecureCredential({url: 'Some app', username: 'viking', id: 0}),
+      makeInsecureCredential({url: 'test.com', username: 'viking', id: 0}),
       makeInsecureCredential({url: 'example.com', username: 'user', id: 1}),
-      makeInsecureCredential({url: 'test.com', username: 'Lalala', id: 2}),
+      makeInsecureCredential({url: 'Some app', username: 'Lalala', id: 2}),
       makeInsecureCredential(
           {url: 'accounts.google.com', username: 'corporateEmail', id: 3}),
       makeInsecureCredential(
@@ -281,10 +279,10 @@ suite('CheckupDetailsSectionTest', function() {
     ];
     passwordManager.data.groups = insecurePasswords.map(
         entry => createCredentialGroup(
-            {name: entry.affiliatedDomains[0]!.name, credentials: [entry]}));
+            {name: entry.urls.shown, credentials: [entry]}));
     passwordManager.data.credentialWithReusedPassword = [
-      {entries: insecurePasswords.slice(0, 3).sort(() => Math.random() - 0.5)},
-      {entries: insecurePasswords.slice(3, 5).sort(() => Math.random() - 0.5)},
+      {entries: insecurePasswords.slice(0, 3)},
+      {entries: insecurePasswords.slice(3, 5)},
     ];
 
     const section = document.createElement('checkup-details-section');
@@ -307,7 +305,7 @@ suite('CheckupDetailsSectionTest', function() {
 
       assertTrue(!!listItemElement);
       assertEquals(
-          expectedCredential.affiliatedDomains[0]!.name,
+          expectedCredential.urls.shown,
           listItemElement.$.shownUrl.textContent!.trim());
       assertEquals(
           expectedCredential.username,
@@ -778,7 +776,7 @@ suite('CheckupDetailsSectionTest', function() {
     deleteDialog.$.delete.click();
     const interaction =
         await passwordManager.whenCalled('recordPasswordCheckInteraction');
-    const params = await passwordManager.whenCalled('removeCredential');
+    const params = await passwordManager.whenCalled('removeSavedPassword');
     assertEquals(params.id, credential.id);
     assertEquals(params.fromStores, credential.storedIn);
     assertEquals(PasswordCheckInteraction.REMOVE_PASSWORD, interaction);

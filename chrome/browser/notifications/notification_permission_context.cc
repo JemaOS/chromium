@@ -10,11 +10,9 @@
 #include "base/location.h"
 #include "base/rand_util.h"
 #include "base/task/single_thread_task_runner.h"
-#include "build/build_config.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/visibility_timer_tab_helper.h"
-#include "components/content_settings/browser/page_specific_content_settings.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings_pattern.h"
 #include "components/content_settings/core/common/content_settings_types.h"
@@ -25,8 +23,8 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/build_info.h"
-#include "chrome/browser/android/flags/chrome_cached_flags.h"
 #include "chrome/browser/android/shortcut_helper.h"
+#include "chrome/browser/flags/android/cached_feature_flags.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/installable/installed_webapp_bridge.h"
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -87,9 +85,6 @@ ContentSetting NotificationPermissionContext::GetPermissionStatusInternal(
       permissions::PermissionContextBase::GetPermissionStatusInternal(
           render_frame_host, requesting_origin, embedding_origin);
 
-  content_settings::PageSpecificContentSettings::NotificationsAccessed(
-      render_frame_host, /*blocked=*/setting != CONTENT_SETTING_ALLOW);
-
   if (requesting_origin != embedding_origin && setting == CONTENT_SETTING_ASK)
     return CONTENT_SETTING_BLOCK;
 
@@ -130,7 +125,10 @@ ContentSetting NotificationPermissionContext::GetPermissionStatusForExtension(
 #endif
 
 void NotificationPermissionContext::DecidePermission(
-    permissions::PermissionRequestData request_data,
+    const permissions::PermissionRequestID& id,
+    const GURL& requesting_origin,
+    const GURL& embedding_origin,
+    bool user_gesture,
     permissions::BrowserPermissionCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
@@ -139,13 +137,13 @@ void NotificationPermissionContext::DecidePermission(
   // continue to be allowed in all iframes: such frames could trivially work
   // around the restriction by posting a message to their Service Worker, where
   // showing a notification is allowed.
-  if (request_data.requesting_origin != request_data.embedding_origin) {
+  if (requesting_origin != embedding_origin) {
     std::move(callback).Run(CONTENT_SETTING_BLOCK);
     return;
   }
 
-  content::RenderFrameHost* rfh = content::RenderFrameHost::FromID(
-      request_data.id.global_render_frame_host_id());
+  content::RenderFrameHost* rfh =
+      content::RenderFrameHost::FromID(id.global_render_frame_host_id());
 
   content::WebContents* web_contents =
       content::WebContents::FromRenderFrameHost(rfh);
@@ -165,22 +163,21 @@ void NotificationPermissionContext::DecidePermission(
         ->PostTaskAfterVisibleDelay(
             FROM_HERE,
             base::BindOnce(&NotificationPermissionContext::NotifyPermissionSet,
-                           weak_factory_ui_thread_.GetWeakPtr(),
-                           request_data.id, request_data.requesting_origin,
-                           request_data.embedding_origin, std::move(callback),
-                           /*persist=*/true, CONTENT_SETTING_BLOCK,
-                           /*is_one_time=*/false,
+                           weak_factory_ui_thread_.GetWeakPtr(), id,
+                           requesting_origin, embedding_origin,
+                           std::move(callback), /*persist=*/true,
+                           CONTENT_SETTING_BLOCK, /*is_one_time=*/false,
                            /*is_final_decision=*/true),
             base::Seconds(delay_seconds));
     return;
   }
 
 #if BUILDFLAG(IS_ANDROID)
-  bool contains_webapk = ShortcutHelper::DoesOriginContainAnyInstalledWebApk(
-      request_data.requesting_origin);
+  bool contains_webapk =
+      ShortcutHelper::DoesOriginContainAnyInstalledWebApk(requesting_origin);
   bool contains_twa =
       ShortcutHelper::DoesOriginContainAnyInstalledTrustedWebActivity(
-          request_data.requesting_origin);
+          requesting_origin);
   bool contains_installed_webapp = contains_twa || contains_webapk;
   if (base::android::BuildInfo::GetInstance()->is_at_least_t() &&
       contains_installed_webapp) {
@@ -188,35 +185,17 @@ void NotificationPermissionContext::DecidePermission(
     // has no path and would not fall within such a scope. So to find a matching
     // WebAPK we must pass a more complete URL e.g. GetLastCommittedURL.
     InstalledWebappBridge::DecidePermission(
-        ContentSettingsType::NOTIFICATIONS, request_data.requesting_origin,
+        ContentSettingsType::NOTIFICATIONS, requesting_origin,
         web_contents->GetLastCommittedURL(),
         base::BindOnce(&NotificationPermissionContext::NotifyPermissionSet,
-                       weak_factory_ui_thread_.GetWeakPtr(), request_data.id,
-                       request_data.requesting_origin,
-                       request_data.embedding_origin, std::move(callback),
+                       weak_factory_ui_thread_.GetWeakPtr(), id,
+                       requesting_origin, embedding_origin, std::move(callback),
                        /*persist=*/false));
     return;
   }
 #endif  // BUILDFLAG(IS_ANDROID)
 
-  permissions::PermissionContextBase::DecidePermission(std::move(request_data),
-                                                       std::move(callback));
-}
-
-void NotificationPermissionContext::UpdateTabContext(
-    const permissions::PermissionRequestID& id,
-    const GURL& requesting_frame,
-    bool allowed) {
-  auto* content_settings =
-      content_settings::PageSpecificContentSettings::GetForFrame(
-          id.global_render_frame_host_id());
-  if (!content_settings) {
-    return;
-  }
-
-  if (allowed) {
-    content_settings->OnContentAllowed(ContentSettingsType::NOTIFICATIONS);
-  } else {
-    content_settings->OnContentBlocked(ContentSettingsType::NOTIFICATIONS);
-  }
+  permissions::PermissionContextBase::DecidePermission(
+      id, requesting_origin, embedding_origin, user_gesture,
+      std::move(callback));
 }

@@ -157,8 +157,7 @@ class GalleryWatchManager
   bool storage_monitor_observed_;
 
   // MediaGalleriesPreferences we are currently observing.
-  std::set<raw_ptr<MediaGalleriesPreferences, SetExperimental>>
-      observed_preferences_;
+  std::set<MediaGalleriesPreferences*> observed_preferences_;
 
   // All registered watches, keyed by WatchOwner.
   WatchesMap watches_;

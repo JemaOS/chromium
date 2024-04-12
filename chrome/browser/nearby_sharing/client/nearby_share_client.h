@@ -11,14 +11,16 @@
 #include "base/functional/callback_forward.h"
 #include "chromeos/ash/components/nearby/common/client/nearby_http_result.h"
 
-namespace nearby::sharing::proto {
+namespace nearbyshare {
+namespace proto {
 class ListContactPeopleRequest;
 class ListContactPeopleResponse;
 class ListPublicCertificatesRequest;
 class ListPublicCertificatesResponse;
 class UpdateDeviceRequest;
 class UpdateDeviceResponse;
-}  // namespace nearby::sharing::proto
+}  // namespace proto
+}  // namespace nearbyshare
 
 // Interface for making API requests to the NearbyShare service, which
 // manages certificates and provides access to contacts.
@@ -28,30 +30,30 @@ class NearbyShareClient {
  public:
   using ErrorCallback = base::OnceCallback<void(ash::nearby::NearbyHttpError)>;
   using ListContactPeopleCallback = base::OnceCallback<void(
-      const nearby::sharing::proto::ListContactPeopleResponse&)>;
+      const nearbyshare::proto::ListContactPeopleResponse&)>;
   using ListPublicCertificatesCallback = base::OnceCallback<void(
-      const nearby::sharing::proto::ListPublicCertificatesResponse&)>;
-  using UpdateDeviceCallback = base::OnceCallback<void(
-      const nearby::sharing::proto::UpdateDeviceResponse&)>;
+      const nearbyshare::proto::ListPublicCertificatesResponse&)>;
+  using UpdateDeviceCallback =
+      base::OnceCallback<void(const nearbyshare::proto::UpdateDeviceResponse&)>;
 
   NearbyShareClient() = default;
   virtual ~NearbyShareClient() = default;
 
   // NearbyShareService v1: UpdateDevice
   virtual void UpdateDevice(
-      const nearby::sharing::proto::UpdateDeviceRequest& request,
+      const nearbyshare::proto::UpdateDeviceRequest& request,
       UpdateDeviceCallback&& callback,
       ErrorCallback&& error_callback) = 0;
 
   // NearbyShareService v1: ListContactPeople
   virtual void ListContactPeople(
-      const nearby::sharing::proto::ListContactPeopleRequest& request,
+      const nearbyshare::proto::ListContactPeopleRequest& request,
       ListContactPeopleCallback&& callback,
       ErrorCallback&& error_callback) = 0;
 
   // NearbyShareService v1: ListPublicCertificates
   virtual void ListPublicCertificates(
-      const nearby::sharing::proto::ListPublicCertificatesRequest& request,
+      const nearbyshare::proto::ListPublicCertificatesRequest& request,
       ListPublicCertificatesCallback&& callback,
       ErrorCallback&& error_callback) = 0;
 

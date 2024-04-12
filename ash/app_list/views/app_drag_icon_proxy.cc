@@ -22,7 +22,6 @@
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/geometry/transform.h"
 #include "ui/gfx/geometry/transform_util.h"
-#include "ui/gfx/image/image_skia_operations.h"
 #include "ui/views/animation/animation_builder.h"
 #include "ui/views/widget/widget.h"
 
@@ -42,7 +41,6 @@ constexpr float kShadowScaleFactor = 176.f / 192.f;
 AppDragIconProxy::AppDragIconProxy(
     aura::Window* root_window,
     const gfx::ImageSkia& icon,
-    const gfx::ImageSkia& badge_icon,
     const gfx::Point& pointer_location_in_screen,
     const gfx::Vector2d& pointer_offset_from_center,
     float scale_factor,
@@ -53,13 +51,7 @@ AppDragIconProxy::AppDragIconProxy(
 
   DragImageView* drag_image =
       static_cast<DragImageView*>(drag_image_widget_->GetContentsView());
-
-  if (badge_icon.isNull()) {
-    drag_image->SetImage(icon);
-  } else {
-    drag_image->SetImage(
-        gfx::ImageSkiaOperations::CreateIconWithBadge(icon, badge_icon));
-  }
+  drag_image->SetImage(icon);
   gfx::Size size = drag_image->GetPreferredSize();
 
   // Create the drag image layer.
@@ -89,19 +81,28 @@ AppDragIconProxy::AppDragIconProxy(
   drag_image->AddLayerToRegion(shadow_->GetLayer(), views::LayerRegion::kBelow);
 
   shadow_->SetContentBounds(gfx::Rect(shadow_offset, scaled_shadow_size));
-  shadow_->ObserveColorProviderSource(drag_image_widget_.get());
 
   if (is_folder_icon) {
-    // The blur should be only added on the background circle, where none of
-    // any existing layer is bounded to that area.
-    // Therefore, the `blurred_background_layer_` is needed here to explicitly
-    // blur the background of the icon.
-    blurred_background_layer_ =
-        std::make_unique<ui::LayerOwner>(std::make_unique<ui::Layer>());
-    ui::Layer* const blurred_layer = blurred_background_layer_->layer();
-    drag_image->AddLayerToRegion(blurred_layer, views::LayerRegion::kBelow);
-    blurred_layer->SetBounds(shadow_->GetContentBounds());
-    const float corner_radius = shadow_->GetContentBounds().width() / 2.0f;
+    ui::Layer* blurred_layer;
+    float corner_radius;
+
+    if (features::IsAppCollectionFolderRefreshEnabled()) {
+      // For the refreshed icon, the blur should be only added on the background
+      // circle, where none of any exising layer is bounded to that area.
+      // Therefore, the `blurred_background_layer_` is needed here to explicitly
+      // blur the background of the icon.
+      blurred_background_layer_ =
+          std::make_unique<ui::LayerOwner>(std::make_unique<ui::Layer>());
+      blurred_layer = blurred_background_layer_->layer();
+      drag_image->AddLayerToRegion(blurred_layer, views::LayerRegion::kBelow);
+      blurred_layer->SetBounds(shadow_->GetContentBounds());
+      corner_radius = shadow_->GetContentBounds().width() / 2.0f;
+    } else {
+      // For the clipped drag icon, the `drag_image` layer can be used for
+      // blurring as the whole clipped area needs to be blurred.
+      blurred_layer = drag_image->layer();
+      corner_radius = size.width() / 2.0f;
+    }
 
     blurred_layer->SetRoundedCornerRadius(
         {corner_radius, corner_radius, corner_radius, corner_radius});
@@ -190,7 +191,9 @@ views::Widget* AppDragIconProxy::GetWidgetForTesting() {
 }
 
 ui::Layer* AppDragIconProxy::GetBlurredLayerForTesting() {
-  return blurred_background_layer_->layer();
+  return features::IsAppCollectionFolderRefreshEnabled()
+             ? blurred_background_layer_->layer()
+             : GetImageLayerForTesting();  // IN-TEST
 }
 
 void AppDragIconProxy::OnProxyAnimationCompleted() {

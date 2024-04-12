@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SAFE_BROWSING_VERDICT_CACHE_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_SAFE_BROWSING_VERDICT_CACHE_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class KeyedService;
@@ -37,13 +37,13 @@ class VerdictCacheManagerFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<VerdictCacheManagerFactory>;
+  friend struct base::DefaultSingletonTraits<VerdictCacheManagerFactory>;
 
   VerdictCacheManagerFactory();
   ~VerdictCacheManagerFactory() override = default;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

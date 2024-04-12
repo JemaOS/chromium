@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/phonehub/browser_tabs_model_provider_impl.h"
 
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/ash/crosapi/browser_util.h"
 #include "chrome/browser/ash/sync/synced_session_client_ash.h"
 #include "chromeos/ash/components/multidevice/remote_device_ref.h"
@@ -12,7 +11,7 @@
 #include "chromeos/ash/components/phonehub/browser_tabs_model.h"
 #include "components/sync/base/features.h"
 #include "components/sync/base/model_type.h"
-#include "components/sync/service/sync_service.h"
+#include "components/sync/driver/sync_service.h"
 #include "components/sync_sessions/open_tabs_ui_delegate.h"
 #include "components/sync_sessions/session_sync_service.h"
 
@@ -62,12 +61,12 @@ BrowserTabsModelProviderImpl::~BrowserTabsModelProviderImpl() {
   }
 }
 
-std::optional<std::string> BrowserTabsModelProviderImpl::GetHostDeviceName()
+absl::optional<std::string> BrowserTabsModelProviderImpl::GetHostDeviceName()
     const {
   const multidevice_setup::MultiDeviceSetupClient::HostStatusWithDevice&
       host_device_with_status = multidevice_setup_client_->GetHostStatus();
   if (!host_device_with_status.second) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   // The pii_free_name field of the device matches the session name for
   // sync.
@@ -107,7 +106,7 @@ bool BrowserTabsModelProviderImpl::IsBrowserTabSyncEnabled() {
 }
 
 void BrowserTabsModelProviderImpl::AttemptBrowserTabsModelUpdate() {
-  std::optional<std::string> host_device_name = GetHostDeviceName();
+  absl::optional<std::string> host_device_name = GetHostDeviceName();
   sync_sessions::OpenTabsUIDelegate* open_tabs =
       session_sync_service_->GetOpenTabsUIDelegate();
   // Tab sync is disabled or no valid |pii_free_name_|.
@@ -116,8 +115,7 @@ void BrowserTabsModelProviderImpl::AttemptBrowserTabsModelUpdate() {
     return;
   }
 
-  std::vector<raw_ptr<const sync_sessions::SyncedSession, VectorExperimental>>
-      sessions;
+  std::vector<const sync_sessions::SyncedSession*> sessions;
   bool was_fetch_successful = open_tabs->GetAllForeignSessions(&sessions);
   // No tabs were found, clear all tab metadata.
   if (!was_fetch_successful) {
@@ -131,7 +129,7 @@ void BrowserTabsModelProviderImpl::AttemptBrowserTabsModelUpdate() {
   // multiple phones of the same type, |phone_session| will have the latest
   // |modified_time|.
   const sync_sessions::SyncedSession* phone_session = nullptr;
-  for (const sync_sessions::SyncedSession* session : sessions) {
+  for (const auto* session : sessions) {
     if (session->GetSessionName() != *host_device_name) {
       continue;
     }
@@ -163,7 +161,8 @@ void BrowserTabsModelProviderImpl::InvalidateWeakPtrsAndClearTabMetadata(
 }
 
 void BrowserTabsModelProviderImpl::OnMetadataFetched(
-    std::optional<std::vector<BrowserTabsModel::BrowserTabMetadata>> metadata) {
+    absl::optional<std::vector<BrowserTabsModel::BrowserTabMetadata>>
+        metadata) {
   // The operation to fetch metadata was cancelled.
   if (!metadata) {
     return;
@@ -184,7 +183,7 @@ void BrowserTabsModelProviderImpl::OnForeignSyncedPhoneSessionsUpdated(
     return;
   }
 
-  std::optional<std::string> host_device_name = GetHostDeviceName();
+  absl::optional<std::string> host_device_name = GetHostDeviceName();
 
   // Tab sync is disabled or no valid |pii_free_name_|.
   if (!host_device_name) {
@@ -198,7 +197,7 @@ void BrowserTabsModelProviderImpl::OnForeignSyncedPhoneSessionsUpdated(
     return;
   }
 
-  std::optional<ForeignSyncedSessionAsh> host_phone_session;
+  absl::optional<ForeignSyncedSessionAsh> host_phone_session;
   for (const ForeignSyncedSessionAsh& session : phone_sessions) {
     if (session.session_name != *host_device_name) {
       continue;

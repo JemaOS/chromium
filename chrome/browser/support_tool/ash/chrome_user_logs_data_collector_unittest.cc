@@ -164,20 +164,20 @@ TEST_F(ChromeUserLogsDataCollectorTest, CollectAndExportData) {
   WriteFakeLogFiles();
 
   // Test data collection and PII detection.
-  base::test::TestFuture<std::optional<SupportToolError>>
+  base::test::TestFuture<absl::optional<SupportToolError>>
       test_future_collect_data;
   data_collector.CollectDataAndDetectPII(test_future_collect_data.GetCallback(),
                                          task_runner_for_redaction_tool_,
                                          redaction_tool_container_);
   // Check if CollectDataAndDetectPII call returned an error.
-  std::optional<SupportToolError> error = test_future_collect_data.Get();
-  EXPECT_EQ(error, std::nullopt);
+  absl::optional<SupportToolError> error = test_future_collect_data.Get();
+  EXPECT_EQ(error, absl::nullopt);
 
   // Check the PII map that `data_collector` detected.
   EXPECT_THAT(data_collector.GetDetectedPII(), ContainerEq(kExpectedPIIMap));
 
   // Check PII removal and data export.
-  base::test::TestFuture<std::optional<SupportToolError>>
+  base::test::TestFuture<absl::optional<SupportToolError>>
       test_future_export_data;
   base::FilePath output_dir = GetTempDirForOutput();
   // Export collected data to a directory and remove all PII from it.
@@ -186,7 +186,7 @@ TEST_F(ChromeUserLogsDataCollectorTest, CollectAndExportData) {
       redaction_tool_container_, test_future_export_data.GetCallback());
   // Check if ExportCollectedDataWithPII call returned an error.
   error = test_future_export_data.Get();
-  EXPECT_EQ(error, std::nullopt);
+  EXPECT_EQ(error, absl::nullopt);
 
   // Prepare expected logs.
   std::map<std::string, std::string> expected_logs;

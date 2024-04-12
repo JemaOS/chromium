@@ -5,14 +5,13 @@
 #ifndef CHROME_BROWSER_METRICS_USAGE_SCENARIO_TAB_USAGE_SCENARIO_TRACKER_H_
 #define CHROME_BROWSER_METRICS_USAGE_SCENARIO_TAB_USAGE_SCENARIO_TRACKER_H_
 
-#include <optional>
-
 #include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/metrics/tab_stats/tab_stats_observer.h"
 #include "chrome/browser/metrics/usage_scenario/usage_scenario_data_store.h"
 #include "content/public/browser/visibility.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/display/display_observer.h"
 #include "url/origin.h"
 
@@ -83,11 +82,11 @@ class TabUsageScenarioTracker : public TabStatsObserver,
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Keep track of the WebContents currently playing video.
-  base::flat_set<raw_ptr<content::WebContents, CtnExperimental>>
-      contents_playing_video_ GUARDED_BY_CONTEXT(sequence_checker_);
+  base::flat_set<content::WebContents*> contents_playing_video_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // The last reading of the number of displays.
-  std::optional<int> last_num_displays_;
+  absl::optional<int> last_num_displays_;
 
   // Keep track of the visible WebContents and the navigation data associated to
   // them. The associated sourceID for tabs that don't have committed a main
@@ -95,7 +94,7 @@ class TabUsageScenarioTracker : public TabStatsObserver,
   VisibleTabsMap visible_tabs_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // WebContents currently playing video fullscreen.
-  base::flat_set<raw_ptr<content::WebContents, DanglingUntriaged>>
+  base::flat_set<raw_ptr<content::WebContents>>
       contents_playing_video_fullscreen_;
 
   display::ScopedDisplayObserver display_observer_{this};

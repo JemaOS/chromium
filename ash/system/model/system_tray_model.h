@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include "ash/ash_export.h"
 #include "ash/public/cpp/system_tray.h"
 #include "ash/system/time/calendar_model.h"
 #include "base/memory/raw_ptr.h"
@@ -31,7 +30,7 @@ class PhoneHubManager;
 }
 
 // Top level model of SystemTray.
-class ASH_EXPORT SystemTrayModel : public SystemTray {
+class SystemTrayModel : public SystemTray {
  public:
   SystemTrayModel();
 
@@ -65,12 +64,6 @@ class ASH_EXPORT SystemTrayModel : public SystemTray {
   void ShowNetworkDetailedViewBubble() override;
   void SetPhoneHubManager(
       phonehub::PhoneHubManager* phone_hub_manager) override;
-
-  // This will be set to true in `FakeSystemTrayModel`.
-  virtual bool IsFakeModel() const;
-
-  // True if user is in a child session. Virtual for mocking.
-  virtual bool IsInUserChildSession() const;
 
   ClockModel* clock() { return clock_.get(); }
   EnterpriseDomainModel* enterprise_domain() {
@@ -106,10 +99,11 @@ class ASH_EXPORT SystemTrayModel : public SystemTray {
   std::unique_ptr<CalendarModel> calendar_model_;
 
   // Client interface in chrome browser. May be null in tests.
-  raw_ptr<SystemTrayClient> client_ = nullptr;
+  raw_ptr<SystemTrayClient, ExperimentalAsh> client_ = nullptr;
 
   // Unowned.
-  raw_ptr<phonehub::PhoneHubManager> phone_hub_manager_ = nullptr;
+  raw_ptr<phonehub::PhoneHubManager, ExperimentalAsh> phone_hub_manager_ =
+      nullptr;
 };
 
 }  // namespace ash

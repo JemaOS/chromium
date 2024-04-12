@@ -16,7 +16,7 @@
 
 namespace ui {
 
-enum class DomCode : uint32_t;
+enum class DomCode;
 
 KEYCODES_X_EXPORT KeyboardCode KeyboardCodeFromXKeyEvent(const x11::Event& xev);
 

@@ -8,38 +8,69 @@
  * embedded in the nearby_visibility_page as well as the settings pop-up dialog.
  */
 
-import 'chrome://resources/ash/common/cr_elements/cr_shared_style.css.js';
-import 'chrome://resources/ash/common/cr_elements/cr_radio_group/cr_radio_group.js';
-import 'chrome://resources/ash/common/cr_elements/cr_radio_button/cr_card_radio_button.js';
-import 'chrome://resources/ash/common/cr_elements/cr_icons.css.js';
-import 'chrome://resources/ash/common/cr_elements/cr_toggle/cr_toggle.js';
+import 'chrome://resources/cr_elements/cr_shared_style.css.js';
+import 'chrome://resources/cr_elements/cr_radio_group/cr_radio_group.js';
+import 'chrome://resources/cr_elements/cr_radio_button/cr_card_radio_button.js';
+import 'chrome://resources/cr_elements/cr_icons.css.js';
+import 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 import 'chrome://resources/polymer/v3_0/iron-media-query/iron-media-query.js';
 import './nearby_page_template.js';
 import './nearby_shared_icons.html.js';
 // <if expr='chromeos_ash'>
-import 'chrome://resources/ash/common/cr_elements/cros_color_overrides.css.js';
+import 'chrome://resources/cr_elements/chromeos/cros_color_overrides.css.js';
 
 // </if>
 
-import {I18nMixin} from 'chrome://resources/ash/common/cr_elements/i18n_mixin.js';
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {sendWithPromise} from 'chrome://resources/js/cr.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {sanitizeInnerHtml} from 'chrome://resources/js/parse_html_subset.js';
-import type {ContactManagerInterface, ContactRecord, DownloadContactsObserverReceiver} from 'chrome://resources/mojo/chromeos/ash/services/nearby/public/mojom/nearby_share_settings.mojom-webui.js';
-import {Visibility} from 'chrome://resources/mojo/chromeos/ash/services/nearby/public/mojom/nearby_share_settings.mojom-webui.js';
+import {ContactManagerInterface, ContactRecord, DownloadContactsObserverReceiver, Visibility} from 'chrome://resources/mojo/chromeos/ash/services/nearby/public/mojom/nearby_share_settings.mojom-webui.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getContactManager, observeContactManager} from './nearby_contact_manager.js';
 import {getTemplate} from './nearby_contact_visibility.html.js';
-import type {NearbySettings} from './nearby_share_settings_mixin.js';
+import {NearbySettings} from './nearby_share_settings_mixin.js';
 
 enum ContactsState {
   PENDING = 'pending',
   FAILED = 'failed',
   HAS_CONTACTS = 'hascontacts',
   ZERO_CONTACTS = 'zerocontacts',
+}
+
+/**
+ * Maps visibility string to the mojo enum
+ */
+function visibilityStringToValue(visibilityString: string|null): Visibility|
+    null {
+  switch (visibilityString) {
+    case 'all':
+      return Visibility.kAllContacts;
+    case 'some':
+      return Visibility.kSelectedContacts;
+    case 'none':
+      return Visibility.kNoOne;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Maps visibility mojo enum to a string for the radio button selection
+ */
+function visibilityValueToString(visibility: Visibility|null): string|null {
+  switch (visibility) {
+    case Visibility.kAllContacts:
+      return 'all';
+    case Visibility.kSelectedContacts:
+      return 'some';
+    case Visibility.kNoOne:
+      return 'none';
+    default:
+      return null;
+  }
 }
 
 function isHtmlAnchorElement(node: ChildNode): node is HTMLAnchorElement {
@@ -51,15 +82,6 @@ const DEVICE_VISIBILITY_LIGHT_ICON =
 
 const DEVICE_VISIBILITY_DARK_ICON =
     'nearby-images:nearby-device-visibility-dark';
-
-const CONTACTS_EMPTY_ICON = 'nearby-images:contacts-empty';
-
-const CONTACTS_EMPTY_JELLY_ICON = 'nearby-images:contacts-empty-jelly';
-
-const CONTACTS_FAILED_ICON = 'nearby-images:contacts-download-failed';
-
-const CONTACTS_FAILED_JELLY_ICON =
-    'nearby-images:contacts-download-failed-jelly';
 
 export interface NearbyVisibilityContact {
   id: string;
@@ -98,10 +120,8 @@ export class NearbyContactVisibilityElement extends
       },
 
       /**
-       * Which visibility setting is selected as a string or
-       * null for no selection.
-       * If self share is enabled: ('contacts', 'yourDevices', 'none', null).
-       * If self share is disabled: ('all', 'some', 'none', null).
+       * Which of visibility setting is selected as a string or
+       * null for no selection. ('all', 'some', 'none', null).
        */
       selectedVisibility: {
         type: String,
@@ -142,45 +162,6 @@ export class NearbyContactVisibilityElement extends
         type: Boolean,
         value: false,
       },
-
-      /**
-       * Return true if the Jelly feature flag is enabled.
-       */
-      isJellyEnabled_: {
-        type: Boolean,
-        readOnly: true,
-        value() {
-          return loadTimeData.valueExists('isJellyEnabled') &&
-              loadTimeData.getBoolean('isJellyEnabled');
-        },
-      },
-
-      /**
-       * Return true if the Self Share feature flag is enabled.
-       */
-      isSelfShareEnabled_: {
-        type: Boolean,
-        readOnly: true,
-        value() {
-          return loadTimeData.valueExists('isSelfShareEnabled') &&
-              loadTimeData.getBoolean('isSelfShareEnabled');
-        },
-      },
-
-      /**
-       * True if the user toggles All Contacts visibility.
-       */
-      isAllContactsToggledOn_: {
-        type: Boolean,
-        value() {
-          return true;
-        },
-      },
-
-      profileEmail: {
-        type: String,
-        value: '',
-      },
     };
   }
 
@@ -198,17 +179,12 @@ export class NearbyContactVisibilityElement extends
   isVisibilitySelected: boolean;
   selectedVisibility: string|null;
   settings: NearbySettings|null;
-  isSelectedContactsToggled: boolean;
-  profileEmail: string;
 
   private contactManager_: ContactManagerInterface|null;
   private downloadContactsObserverReceiver_: DownloadContactsObserverReceiver|
       null;
   private downloadTimeoutId_: number|null;
   private isDarkModeActive_: boolean;
-  private isJellyEnabled_: boolean;
-  private isAllContactsToggledOn_: boolean;
-  private isSelfShareEnabled_: boolean;
   private numUnreachable_: number;
   private numUnreachableMessage_: string;
 
@@ -254,70 +230,6 @@ export class NearbyContactVisibilityElement extends
   private isVisibility_(
       selectedVisibility: string|null, visibilityString: string): boolean {
     return selectedVisibility === visibilityString;
-  }
-
-  /**
-   * Maps visibility string to the mojo enum
-   */
-  private visibilityStringToValue(visibilityString: string|null): Visibility
-      |null {
-    if (this.isSelfShareEnabled_) {
-      switch (visibilityString) {
-        case 'contacts':
-          if (this.isAllContactsToggledOn_) {
-            return Visibility.kAllContacts;
-          }
-          return Visibility.kSelectedContacts;
-        case 'yourDevices':
-          return Visibility.kYourDevices;
-        case 'none':
-          return Visibility.kNoOne;
-        default:
-          return null;
-      }
-    } else {
-      switch (visibilityString) {
-        case 'all':
-          return Visibility.kAllContacts;
-        case 'some':
-          return Visibility.kSelectedContacts;
-        case 'none':
-          return Visibility.kNoOne;
-        default:
-          return null;
-      }
-    }
-  }
-
-  /**
-   * Maps visibility mojo enum to a string for the radio button selection
-   */
-  private visibilityValueToString(visibility: Visibility|null): string|null {
-    if (this.isSelfShareEnabled_) {
-      switch (visibility) {
-        case Visibility.kAllContacts:
-          return 'contacts';
-        case Visibility.kSelectedContacts:
-          return 'contacts';
-        case Visibility.kYourDevices:
-          return 'yourDevices';
-        case Visibility.kNoOne:
-          return 'none';
-        default:
-          return null;
-      }
-    } else {
-      switch (visibility) {
-        case Visibility.kAllContacts:
-          return 'all';
-        case Visibility.kSelectedContacts:
-          return 'some';
-        case Visibility.kNoOne:
-          return 'none';
-        default:
-          return null;
-      }
-    }
   }
 
   /**
@@ -402,7 +314,8 @@ export class NearbyContactVisibilityElement extends
    * @return true when checkboxes should be shown for contacts.
    */
   private showContactCheckBoxes_(): boolean {
-    return this.getSelectedVisibility() === Visibility.kSelectedContacts;
+    return this.selectedVisibility === 'some' ||
+        this.selectedVisibility === 'none';
   }
 
   /**
@@ -429,9 +342,7 @@ export class NearbyContactVisibilityElement extends
   private settingsChanged_(): void {
     if (this.settings && this.settings.visibility !== null) {
       this.selectedVisibility =
-          this.visibilityValueToString(this.settings.visibility);
-      this.isAllContactsToggledOn_ =
-          this.settings.visibility === Visibility.kAllContacts;
+          visibilityValueToString(this.settings.visibility);
     } else {
       this.selectedVisibility = null;
     }
@@ -467,34 +378,14 @@ export class NearbyContactVisibilityElement extends
 
   private showEmptyState_(selectedVisibility: string, contactsState: string):
       boolean {
-    if (this.isSelfShareEnabled_) {
-      return selectedVisibility === 'contacts' &&
-          contactsState === ContactsState.ZERO_CONTACTS;
-    } else {
-      return (selectedVisibility === 'all' || selectedVisibility === 'some') &&
-          contactsState === ContactsState.ZERO_CONTACTS;
-    }
+    return (selectedVisibility === 'all' || selectedVisibility === 'some') &&
+        contactsState === ContactsState.ZERO_CONTACTS;
   }
 
   private showContactList_(selectedVisibility: string, contactsState: string):
       boolean {
-    if (this.isSelfShareEnabled_) {
-      return selectedVisibility === 'contacts' &&
-          contactsState === ContactsState.HAS_CONTACTS;
-    } else {
-      return (selectedVisibility === 'all' || selectedVisibility === 'some') &&
-          contactsState === ContactsState.HAS_CONTACTS;
-    }
-  }
-
-  private showAllContactsToggle_(
-      selectedVisibility: string, contactsState: ContactsState): boolean {
-    return selectedVisibility === 'contacts' &&
+    return (selectedVisibility === 'all' || selectedVisibility === 'some') &&
         contactsState === ContactsState.HAS_CONTACTS;
-  }
-
-  private toggleAllContacts_(): void {
-    this.isAllContactsToggledOn_ = !this.isAllContactsToggledOn_;
   }
 
   /**
@@ -570,7 +461,7 @@ export class NearbyContactVisibilityElement extends
    * used directly because this is Polymer element is used outside settings.
    * TODO(crbug.com/1170849): Extract this logic into a general method.
    */
-  private getAriaLabelledZeroStateText_(): TrustedHTML {
+  private getAriaLabelledZeroStateText_(): string|TrustedHTML {
     const tempEl = document.createElement('div');
     const localizedString =
         this.i18nAdvanced('nearbyShareContactVisibilityZeroStateText');
@@ -619,8 +510,7 @@ export class NearbyContactVisibilityElement extends
     anchorTag.href = linkUrl;
     anchorTag.target = '_blank';
 
-    return sanitizeInnerHtml(
-        tempEl.innerHTML, {attrs: ['id', 'aria-hidden', 'aria-labelledby']});
+    return tempEl.innerHTML;
   }
 
   private showUnreachableContactsMessage_(): boolean {
@@ -640,44 +530,21 @@ export class NearbyContactVisibilityElement extends
         this.numUnreachable_)
         .then((labelTemplate) => {
           this.numUnreachableMessage_ = loadTimeData.substituteString(
-              labelTemplate, this.numUnreachable_,
-              this.i18n('nearbyShareFeatureName'));
+              labelTemplate, this.numUnreachable_);
         });
   }
 
-  private getVisibilityDescription_(): TrustedHTML {
-    if (this.isSelfShareEnabled_) {
-      switch (this.getSelectedVisibility()) {
-        case Visibility.kAllContacts:
-          return this.i18nAdvanced(
-              'nearbyShareContactVisibilityOwnAllSelfShare',
-              {substitutions: [this.profileEmail]});
-        case Visibility.kSelectedContacts:
-          return this.i18nAdvanced(
-              'nearbyShareContactVisibilityOwnSomeSelfShare',
-              {substitutions: [this.profileEmail]});
-        case Visibility.kYourDevices:
-          return this.i18nAdvanced(
-              'nearbyShareContactVisibilityOwnYourDevices',
-              {substitutions: [this.profileEmail]});
-        case Visibility.kNoOne:
-          return this.i18nAdvanced('nearbyShareContactVisibilityOwnNone');
-        default:
-          assert(window.trustedTypes);
-          return window.trustedTypes.emptyHTML;
-      }
-    } else {
-      switch (this.getSelectedVisibility()) {
-        case Visibility.kAllContacts:
-          return this.i18nAdvanced('nearbyShareContactVisibilityOwnAll');
-        case Visibility.kSelectedContacts:
-          return this.i18nAdvanced('nearbyShareContactVisibilityOwnSome');
-        case Visibility.kNoOne:
-          return this.i18nAdvanced('nearbyShareContactVisibilityOwnNone');
-        default:
-          assert(window.trustedTypes);
-          return window.trustedTypes.emptyHTML;
-      }
+  private getVisibilityDescription_(selectedVisibility: string): string
+      |TrustedHTML {
+    switch (visibilityStringToValue(selectedVisibility)) {
+      case Visibility.kAllContacts:
+        return this.i18n('nearbyShareContactVisibilityOwnAll');
+      case Visibility.kSelectedContacts:
+        return this.i18n('nearbyShareContactVisibilityOwnSome');
+      case Visibility.kNoOne:
+        return this.i18nAdvanced('nearbyShareContactVisibilityOwnNone');
+      default:
+        return '';
     }
   }
 
@@ -685,33 +552,18 @@ export class NearbyContactVisibilityElement extends
    * Save visibility setting and sync allowed contacts with contact manager.
    */
   saveVisibilityAndAllowedContacts(): void {
-    const visibility = this.getSelectedVisibility();
+    const visibility = visibilityStringToValue(this.selectedVisibility);
     if (visibility) {
       this.set('settings.visibility', visibility);
     }
 
-    if (!this.contacts) {
-      this.contactManager_!.setAllowedContacts([]);
-      return;
-    }
-
     const allowedContacts: string[] = [];
-
-    switch (visibility) {
-      case Visibility.kAllContacts:
-        for (const contact of this.contacts) {
+    if (this.contacts) {
+      for (const contact of this.contacts) {
+        if (contact.checked) {
           allowedContacts.push(contact.id);
         }
-        break;
-      case Visibility.kSelectedContacts:
-        for (const contact of this.contacts) {
-          if (contact.checked) {
-            allowedContacts.push(contact.id);
-          }
-        }
-        break;
-      default:
-        break;
+      }
     }
     this.contactManager_!.setAllowedContacts(allowedContacts);
   }
@@ -721,7 +573,7 @@ export class NearbyContactVisibilityElement extends
    * logging metric to avoid potential race condition
    */
   getSelectedVisibility(): Visibility|null {
-    return this.visibilityStringToValue(this.selectedVisibility);
+    return visibilityStringToValue(this.selectedVisibility);
   }
 
   /**
@@ -730,29 +582,6 @@ export class NearbyContactVisibilityElement extends
   private getDeviceVisibilityIcon_(): string {
     return this.isDarkModeActive_ ? DEVICE_VISIBILITY_DARK_ICON :
                                     DEVICE_VISIBILITY_LIGHT_ICON;
-  }
-
-  /**
-   * Returns the contacts empty icon based on Jelly enablement.
-   */
-  private getContactsEmptyIcon_(): string {
-    return this.isJellyEnabled_ ? CONTACTS_EMPTY_JELLY_ICON :
-                                  CONTACTS_EMPTY_ICON;
-  }
-
-  /**
-   * Returns the contacts failed icon based on Jelly enablement.
-   */
-  private getContactsFailedIcon_(): string {
-    return this.isJellyEnabled_ ? CONTACTS_FAILED_JELLY_ICON :
-                                  CONTACTS_FAILED_ICON;
-  }
-
-  /**
-   * Returns a boolean indicating whether to show Self Share UI.
-   */
-  private showSelfShareUi_(): boolean {
-    return this.isSelfShareEnabled_;
   }
 }
 

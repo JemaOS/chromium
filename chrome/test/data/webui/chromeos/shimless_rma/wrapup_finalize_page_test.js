@@ -6,10 +6,11 @@ import {PromiseResolver} from 'chrome://resources/ash/common/promise_resolver.js
 import {FakeShimlessRmaService} from 'chrome://shimless-rma/fake_shimless_rma_service.js';
 import {setShimlessRmaServiceForTesting} from 'chrome://shimless-rma/mojo_interface_provider.js';
 import {ShimlessRma} from 'chrome://shimless-rma/shimless_rma.js';
-import {FinalizationError, FinalizationStatus, RmadErrorCode} from 'chrome://shimless-rma/shimless_rma.mojom-webui.js';
+import {FinalizationError, FinalizationStatus, RmadErrorCode} from 'chrome://shimless-rma/shimless_rma_types.js';
 import {FINALIZATION_ERROR_CODE_PREFIX, WrapupFinalizePage} from 'chrome://shimless-rma/wrapup_finalize_page.js';
-import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
+
+import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 
 suite('wrapupFinalizePageTest', function() {
   /**
@@ -26,7 +27,7 @@ suite('wrapupFinalizePageTest', function() {
   let service = null;
 
   setup(() => {
-    document.body.innerHTML = trustedTypes.emptyHTML;
+    document.body.innerHTML = '';
     service = new FakeShimlessRmaService();
     setShimlessRmaServiceForTesting(service);
   });

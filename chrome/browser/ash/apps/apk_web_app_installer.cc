@@ -13,9 +13,9 @@
 #include "chrome/browser/ash/crosapi/crosapi_manager.h"
 #include "chrome/browser/ash/crosapi/web_app_service_ash.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/web_applications/externally_installed_web_app_prefs.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom.h"
 #include "chrome/browser/web_applications/web_app_command_scheduler.h"
-#include "chrome/browser/web_applications/web_app_install_params.h"
 #include "chrome/browser/web_applications/web_app_install_utils.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
@@ -59,7 +59,7 @@ ApkWebAppInstaller::ApkWebAppInstaller(Profile* profile,
                                        base::WeakPtr<Owner> weak_owner)
     : profile_(profile),
       is_web_only_twa_(false),
-      sha256_fingerprint_(std::nullopt),
+      sha256_fingerprint_(absl::nullopt),
       callback_(std::move(callback)),
       weak_owner_(weak_owner) {}
 
@@ -70,7 +70,7 @@ void ApkWebAppInstaller::Start(const std::string& package_name,
                                arc::mojom::RawIconPngDataPtr icon) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!weak_owner_.get()) {
-    CompleteInstallation(webapps::AppId(),
+    CompleteInstallation(web_app::AppId(),
                          webapps::InstallResultCode::kApkWebAppInstallFailed);
     return;
   }
@@ -80,13 +80,13 @@ void ApkWebAppInstaller::Start(const std::string& package_name,
   if (web_app_info.is_null() || !icon || !icon->icon_png_data ||
       !icon->icon_png_data.has_value() || icon->icon_png_data->empty()) {
     LOG(ERROR) << "Insufficient data to install a web app";
-    CompleteInstallation(webapps::AppId(),
+    CompleteInstallation(web_app::AppId(),
                          webapps::InstallResultCode::kApkWebAppInstallFailed);
     return;
   }
 
   DCHECK(!web_app_install_info_);
-  web_app_install_info_ = std::make_unique<web_app::WebAppInstallInfo>();
+  web_app_install_info_ = std::make_unique<WebAppInstallInfo>();
 
   web_app_install_info_->title = base::UTF8ToUTF16(web_app_info->title);
 
@@ -98,7 +98,8 @@ void ApkWebAppInstaller::Start(const std::string& package_name,
 
   web_app_install_info_->additional_policy_ids.push_back(package_name);
 
-  // The install_url and the start_url seem to be same in this case.
+  // The install_url and the start_url seem to be same in this case
+  // as far as ExternallyInstalledWebAppPrefs are concerned.
   // This is because inside OnWebAppCreated(), the start_url is
   // passed to the external prefs to be stored as the install_url.
   web_app_install_info_->install_url = GURL(web_app_info->start_url);
@@ -126,20 +127,20 @@ void ApkWebAppInstaller::Start(const std::string& package_name,
                      base::Unretained(this)));
 }
 
-void ApkWebAppInstaller::CompleteInstallation(const webapps::AppId& id,
+void ApkWebAppInstaller::CompleteInstallation(const web_app::AppId& id,
                                               webapps::InstallResultCode code) {
   std::move(callback_).Run(id, is_web_only_twa_, sha256_fingerprint_, code);
   delete this;
 }
 
 void ApkWebAppInstaller::OnWebAppCreated(const GURL& start_url,
-                                         const webapps::AppId& app_id,
+                                         const web_app::AppId& app_id,
                                          webapps::InstallResultCode code) {
   // It is assumed that if |weak_owner_| is gone, |profile_| is gone too. The
   // web app will be automatically cleaned up by provider.
   if (!weak_owner_.get()) {
     CompleteInstallation(
-        webapps::AppId(),
+        web_app::AppId(),
         webapps::InstallResultCode::kCancelledOnWebAppProviderShuttingDown);
     return;
   }
@@ -149,6 +150,11 @@ void ApkWebAppInstaller::OnWebAppCreated(const GURL& start_url,
     return;
   }
 
+  // Otherwise, insert this web app into the externally installed ID map so it
+  // is not removed automatically. TODO(crbug.com/910008): have a less bad way
+  // of doing this.
+  web_app::ExternallyInstalledWebAppPrefs(profile_->GetPrefs())
+      .Insert(start_url, app_id, web_app::ExternalInstallSource::kArc);
   CompleteInstallation(app_id, code);
 }
 
@@ -163,7 +169,7 @@ void ApkWebAppInstaller::OnImageDecoded(const SkBitmap& decoded_image) {
     // Assume |profile_| is no longer valid - destroy this object and
     // terminate.
     CompleteInstallation(
-        webapps::AppId(),
+        web_app::AppId(),
         webapps::InstallResultCode::kCancelledOnWebAppProviderShuttingDown);
     return;
   }
@@ -174,7 +180,7 @@ void ApkWebAppInstaller::DoInstall() {
   if (web_app::IsWebAppsCrosapiEnabled()) {
     GURL start_url = web_app_install_info_->start_url;
 
-    std::unique_ptr<web_app::WebAppInstallInfo> web_app_install_info =
+    std::unique_ptr<WebAppInstallInfo> web_app_install_info =
         std::move(web_app_install_info_);
     auto arc_install_info = crosapi::mojom::ArcWebAppInstallInfo::New();
     arc_install_info->title = std::move(web_app_install_info->title);
@@ -196,7 +202,7 @@ void ApkWebAppInstaller::DoInstall() {
             ->web_app_service_ash()
             ->GetWebAppProviderBridge();
     if (!web_app_provider_bridge) {
-      CompleteInstallation(webapps::AppId(),
+      CompleteInstallation(web_app::AppId(),
                            webapps::InstallResultCode::kWebAppProviderNotReady);
       return;
     }
@@ -210,13 +216,12 @@ void ApkWebAppInstaller::DoInstall() {
     // Doesn't overwrite already existing web app with manifest fields from the
     // apk.
     GURL start_url = web_app_install_info_->start_url;
-    provider->scheduler().InstallFromInfoWithParams(
+    provider->scheduler().InstallFromInfo(
         std::move(web_app_install_info_),
         /*overwrite_existing_manifest_fields=*/false,
         webapps::WebappInstallSource::ARC,
         base::BindOnce(&ApkWebAppInstaller::OnWebAppCreated,
-                       base::Unretained(this), std::move(start_url)),
-        web_app::WebAppInstallParams());
+                       base::Unretained(this), std::move(start_url)));
   }
 }
 

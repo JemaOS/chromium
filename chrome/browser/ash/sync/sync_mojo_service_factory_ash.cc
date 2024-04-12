@@ -36,8 +36,7 @@ SyncMojoServiceFactoryAsh::SyncMojoServiceFactoryAsh()
 
 SyncMojoServiceFactoryAsh::~SyncMojoServiceFactoryAsh() = default;
 
-std::unique_ptr<KeyedService>
-SyncMojoServiceFactoryAsh::BuildServiceInstanceForBrowserContext(
+KeyedService* SyncMojoServiceFactoryAsh::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   syncer::SyncService* sync_service =
@@ -48,7 +47,7 @@ SyncMojoServiceFactoryAsh::BuildServiceInstanceForBrowserContext(
     return nullptr;
   }
 
-  return std::make_unique<SyncMojoServiceAsh>(sync_service);
+  return new SyncMojoServiceAsh(sync_service);
 }
 
 }  // namespace ash

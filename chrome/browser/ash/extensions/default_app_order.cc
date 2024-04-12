@@ -161,8 +161,6 @@ void GetDefault(std::vector<std::string>* app_ids) {
 
     web_app::kHelpAppId,
 
-    web_app::kMallAppId,
-
     web_app::kCalculatorAppId,
     extension_misc::kCalculatorAppId,
 
@@ -170,12 +168,10 @@ void GetDefault(std::vector<std::string>* app_ids) {
     web_app::kCursiveAppId,
     web_app::kCanvasAppId,
 
-    ash::kChromeUIUntrustedProjectorSwaAppId,
-    web_app::kAdobeExpressAppId,
+    ash::kChromeUITrustedProjectorSwaAppId,
     extension_misc::kTextEditorAppId,
     web_app::kPrintManagementAppId,
     web_app::kScanningAppId,
-    web_app::kShortcutCustomizationAppId,
     guest_os::kTerminalSystemAppId,
 
     web_app::kYoutubeTVAppId,

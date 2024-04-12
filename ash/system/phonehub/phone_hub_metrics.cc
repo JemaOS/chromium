@@ -246,8 +246,4 @@ void LogRecentAppsTransitionToSuccessLatency(const base::TimeDelta latency) {
                           latency);
 }
 
-void LogMultiDeviceSetupNotificationInteraction() {
-  base::UmaHistogramCounts100("MultiDeviceSetup.NotificationInteracted", 1);
-}
-
 }  // namespace ash::phone_hub_metrics

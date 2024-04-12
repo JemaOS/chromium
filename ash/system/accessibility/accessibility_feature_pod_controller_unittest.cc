@@ -4,17 +4,16 @@
 
 #include "ash/system/accessibility/accessibility_feature_pod_controller.h"
 
-#include "ash/accessibility/a11y_feature_type.h"
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/constants/ash_features.h"
 #include "ash/constants/quick_settings_catalogs.h"
-#include "ash/shell.h"
+#include "ash/system/unified/feature_pod_button.h"
 #include "ash/system/unified/feature_tile.h"
 #include "ash/system/unified/unified_system_tray.h"
 #include "ash/system/unified/unified_system_tray_bubble.h"
 #include "ash/system/unified/unified_system_tray_controller.h"
 #include "ash/test/ash_test_base.h"
-#include "base/strings/string_number_conversions.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/scoped_feature_list.h"
 #include "ui/views/view.h"
 
 namespace ash {
@@ -24,7 +23,13 @@ class AccessibilityFeaturePodControllerTest
     : public NoSessionAshTestBase,
       public testing::WithParamInterface<bool> {
  public:
-  AccessibilityFeaturePodControllerTest() = default;
+  AccessibilityFeaturePodControllerTest() {
+    if (IsQsRevampEnabled()) {
+      feature_list_.InitAndEnableFeature(features::kQsRevamp);
+    } else {
+      feature_list_.InitAndDisableFeature(features::kQsRevamp);
+    }
+  }
 
   AccessibilityFeaturePodControllerTest(
       const AccessibilityFeaturePodControllerTest&) = delete;
@@ -33,12 +38,15 @@ class AccessibilityFeaturePodControllerTest
 
   ~AccessibilityFeaturePodControllerTest() override = default;
 
+  bool IsQsRevampEnabled() const { return GetParam(); }
+
   void SetUp() override {
     NoSessionAshTestBase::SetUp();
     GetPrimaryUnifiedSystemTray()->ShowBubble();
   }
 
   void TearDown() override {
+    button_.reset();
     controller_.reset();
     NoSessionAshTestBase::TearDown();
   }
@@ -47,56 +55,66 @@ class AccessibilityFeaturePodControllerTest
   void SetUpButton() {
     controller_ =
         std::make_unique<AccessibilityFeaturePodController>(tray_controller());
-    tile_ = controller_->CreateTile();
+    if (IsQsRevampEnabled()) {
+      tile_ = controller_->CreateTile();
+    } else {
+      button_.reset(controller_->CreateButton());
+    }
   }
 
-  AccessibilityController* GetAccessibilityController() {
-    return Shell::Get()->accessibility_controller();
-  }
-
-  FeatureTile* GetFeatureTile() { return tile_.get(); }
   UnifiedSystemTrayController* tray_controller() {
     return GetPrimaryUnifiedSystemTray()
         ->bubble()
         ->unified_system_tray_controller();
   }
 
-  bool IsButtonVisible() { return tile_->GetVisible(); }
+  bool IsButtonVisible() {
+    return IsQsRevampEnabled() ? tile_->GetVisible() : button_->GetVisible();
+  }
   void PressIcon() { controller_->OnIconPressed(); }
 
   void PressLabel() { controller_->OnLabelPressed(); }
 
   const char* GetToggledOnHistogramName() {
-    return "Ash.QuickSettings.FeaturePod.ToggledOn";
+    return IsQsRevampEnabled() ? "Ash.QuickSettings.FeaturePod.ToggledOn"
+                               : "Ash.UnifiedSystemView.FeaturePod.ToggledOn";
   }
 
   const char* GetToggledOffHistogramName() {
-    return "Ash.QuickSettings.FeaturePod.ToggledOff";
+    return IsQsRevampEnabled() ? "Ash.QuickSettings.FeaturePod.ToggledOff"
+                               : "Ash.UnifiedSystemView.FeaturePod.ToggledOff";
   }
 
   const char* GetDiveInHistogramName() {
-    return "Ash.QuickSettings.FeaturePod.DiveIn";
+    return IsQsRevampEnabled() ? "Ash.QuickSettings.FeaturePod.DiveIn"
+                               : "Ash.UnifiedSystemView.FeaturePod.DiveIn";
   }
 
  private:
+  base::test::ScopedFeatureList feature_list_;
   std::unique_ptr<AccessibilityFeaturePodController> controller_;
+  std::unique_ptr<FeaturePodButton> button_;
   std::unique_ptr<FeatureTile> tile_;
 };
 
-TEST_F(AccessibilityFeaturePodControllerTest, ButtonVisibilityNotLoggedIn) {
+INSTANTIATE_TEST_SUITE_P(QsRevamp,
+                         AccessibilityFeaturePodControllerTest,
+                         testing::Bool());
+
+TEST_P(AccessibilityFeaturePodControllerTest, ButtonVisibilityNotLoggedIn) {
   SetUpButton();
   // If not logged in, it should be always visible.
   EXPECT_TRUE(IsButtonVisible());
 }
 
-TEST_F(AccessibilityFeaturePodControllerTest, ButtonVisibilityLoggedIn) {
+TEST_P(AccessibilityFeaturePodControllerTest, ButtonVisibilityLoggedIn) {
   CreateUserSessions(1);
   SetUpButton();
   // If logged in, it's not visible by default.
   EXPECT_FALSE(IsButtonVisible());
 }
 
-TEST_F(AccessibilityFeaturePodControllerTest, IconUMATracking) {
+TEST_P(AccessibilityFeaturePodControllerTest, IconUMATracking) {
   SetUpButton();
 
   // No metrics logged before clicking on any views.
@@ -121,7 +139,7 @@ TEST_F(AccessibilityFeaturePodControllerTest, IconUMATracking) {
                                       /*expected_count=*/1);
 }
 
-TEST_F(AccessibilityFeaturePodControllerTest, LabelUMATracking) {
+TEST_P(AccessibilityFeaturePodControllerTest, LabelUMATracking) {
   SetUpButton();
 
   // No metrics logged before clicking on any views.
@@ -144,90 +162,6 @@ TEST_F(AccessibilityFeaturePodControllerTest, LabelUMATracking) {
   histogram_tester->ExpectBucketCount(GetDiveInHistogramName(),
                                       QsFeatureCatalogName::kAccessibility,
                                       /*expected_count=*/1);
-}
-
-TEST_F(AccessibilityFeaturePodControllerTest, FeatureTileBasicToggleBehavior) {
-  SetUpButton();
-
-  EXPECT_FALSE(GetFeatureTile()->IsToggled());
-
-  // Enable an accessibility feature and expect the feature tile to be toggled
-  // and the sublabel to be visible.
-  GetAccessibilityController()
-      ->GetFeature(A11yFeatureType::kHighContrast)
-      .SetEnabled(true);
-  EXPECT_TRUE(GetFeatureTile()->IsToggled());
-  EXPECT_TRUE(GetFeatureTile()->sub_label()->GetVisible());
-
-  // Disable an accessibility feature and expect the feature tile to be
-  // untoggled and the sublabel to be invisible.
-  GetAccessibilityController()
-      ->GetFeature(A11yFeatureType::kHighContrast)
-      .SetEnabled(false);
-  EXPECT_FALSE(GetFeatureTile()->IsToggled());
-  EXPECT_FALSE(GetFeatureTile()->sub_label()->GetVisible());
-}
-
-// Toggle all accessibility features one by one and make sure the feature tile
-// is updated appropriately.
-TEST_F(AccessibilityFeaturePodControllerTest, FeatureTileAllFeaturesToggled) {
-  SetUpButton();
-
-  for (int type = 0; type != static_cast<int>(A11yFeatureType::kFeatureCount);
-       type++) {
-    auto& feature = GetAccessibilityController()->GetFeature(
-        static_cast<A11yFeatureType>(type));
-    feature.SetEnabled(true);
-    if (!feature.enabled()) {
-      continue;
-    }
-    if (feature.toggleable_in_quicksettings()) {
-      EXPECT_TRUE(GetFeatureTile()->IsToggled());
-    } else {
-      EXPECT_FALSE(GetFeatureTile()->IsToggled());
-    }
-
-    feature.SetEnabled(false);
-  }
-}
-
-// Enable accessibility features one by one until we have double digits in the
-// count shown in the `sub_label`.
-TEST_F(AccessibilityFeaturePodControllerTest,
-       FeatureTileSubLabelCounterBehavior) {
-  SetUpButton();
-
-  GetAccessibilityController()
-      ->GetFeature(A11yFeatureType::kLargeCursor)
-      .SetEnabled(true);
-  int expected_count = 0;
-  auto feature_types = {
-      A11yFeatureType::kCaretHighlight, A11yFeatureType::kCursorHighlight,
-      A11yFeatureType::kDictation,      A11yFeatureType::kFocusHighlight,
-      A11yFeatureType::kHighContrast,   A11yFeatureType::kMonoAudio,
-      A11yFeatureType::kLiveCaption,    A11yFeatureType::kFullscreenMagnifier,
-      A11yFeatureType::kStickyKeys,     A11yFeatureType::kSwitchAccess};
-  for (A11yFeatureType type : feature_types) {
-    auto& feature = GetAccessibilityController()->GetFeature(
-        static_cast<A11yFeatureType>(type));
-
-    feature.SetEnabled(true);
-    expected_count++;
-
-    EXPECT_TRUE(base::EndsWith(GetFeatureTile()->sub_label()->GetText(),
-                               base::NumberToString16(expected_count)));
-  }
-
-  for (A11yFeatureType type : feature_types) {
-    EXPECT_TRUE(base::EndsWith(GetFeatureTile()->sub_label()->GetText(),
-                               base::NumberToString16(expected_count)));
-
-    auto& feature = GetAccessibilityController()->GetFeature(
-        static_cast<A11yFeatureType>(type));
-    expected_count--;
-
-    feature.SetEnabled(false);
-  }
 }
 
 }  // namespace ash

@@ -10,7 +10,8 @@
 
 namespace ash {
 
-class LocalStateErrorScreenView {
+class LocalStateErrorScreenView
+    : public base::SupportsWeakPtr<LocalStateErrorScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"local-state-error",
                                                        "LocalStateErrorScreen"};
@@ -18,11 +19,10 @@ class LocalStateErrorScreenView {
   virtual ~LocalStateErrorScreenView() = default;
 
   virtual void Show() = 0;
-  virtual base::WeakPtr<LocalStateErrorScreenView> AsWeakPtr() = 0;
 };
 
-class LocalStateErrorScreenHandler final : public LocalStateErrorScreenView,
-                                           public BaseScreenHandler {
+class LocalStateErrorScreenHandler : public LocalStateErrorScreenView,
+                                     public BaseScreenHandler {
  public:
   using TView = LocalStateErrorScreenView;
 
@@ -37,13 +37,10 @@ class LocalStateErrorScreenHandler final : public LocalStateErrorScreenView,
  private:
   // LocalStateErrorScreenView:
   void Show() override;
-  base::WeakPtr<LocalStateErrorScreenView> AsWeakPtr() override;
 
   // BaseScreenHandler:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
-  base::WeakPtrFactory<LocalStateErrorScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

@@ -4,12 +4,11 @@
 
 import './strings.m.js';
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {getRequiredElement} from 'chrome://resources/js/util.js';
+import {getRequiredElement} from 'chrome://resources/js/util_ts.js';
 
-import type {IsLogging, OfflineInternalsBrowserProxy, OfflinePage, SavePageRequest} from './offline_internals_browser_proxy.js';
-import {OfflineInternalsBrowserProxyImpl} from './offline_internals_browser_proxy.js';
+import {IsLogging, OfflineInternalsBrowserProxy, OfflineInternalsBrowserProxyImpl, OfflinePage, SavePageRequest} from './offline_internals_browser_proxy.js';
 
 let offlinePages: OfflinePage[] = [];
 

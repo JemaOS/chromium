@@ -1,7 +1,6 @@
 <?php
 $status = (int)$_REQUEST['status'];
-$redirected = $_GET['redirected'] ?? null;
-if ($status > 200 && !$redirected) {
+if ($status > 200 && !$_GET['redirected']) {
   header("Location: redirect-methods-result.php?redirected=true", TRUE, $status);
   exit();
 }

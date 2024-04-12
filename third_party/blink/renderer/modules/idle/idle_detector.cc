@@ -70,7 +70,7 @@ IdleDetector* IdleDetector::Create(ScriptState* script_state) {
 
 IdleDetector::IdleDetector(ExecutionContext* context)
     : ActiveScriptWrappable<IdleDetector>({}),
-      ExecutionContextLifecycleObserver(context),
+      ExecutionContextClient(context),
       task_runner_(context->GetTaskRunner(TaskType::kMiscPlatformAPI)),
       timer_(task_runner_, this, &IdleDetector::DispatchUserIdleEvent),
       receiver_(this, context) {}
@@ -82,7 +82,7 @@ const AtomicString& IdleDetector::InterfaceName() const {
 }
 
 ExecutionContext* IdleDetector::GetExecutionContext() const {
-  return ExecutionContextLifecycleObserver::GetExecutionContext();
+  return ExecutionContextClient::GetExecutionContext();
 }
 
 bool IdleDetector::HasPendingActivity() const {
@@ -106,27 +106,19 @@ String IdleDetector::screenState() const {
 }
 
 // static
-ScriptPromiseTyped<V8PermissionState> IdleDetector::requestPermission(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise IdleDetector::requestPermission(ScriptState* script_state,
+                                              ExceptionState& exception_state) {
   if (!script_state->ContextIsValid())
-    return ScriptPromiseTyped<V8PermissionState>();
+    return ScriptPromise();
 
   auto* context = ExecutionContext::From(script_state);
   return IdleManager::From(context)->RequestPermission(script_state,
                                                        exception_state);
 }
 
-ScriptPromiseTyped<IDLUndefined> IdleDetector::start(
-    ScriptState* script_state,
-    const IdleOptions* options,
-    ExceptionState& exception_state) {
-  if (!GetExecutionContext() || GetExecutionContext()->IsContextDestroyed()) {
-    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
-                                      "Execution context is detached.");
-    return ScriptPromiseTyped<IDLUndefined>();
-  }
-
+ScriptPromise IdleDetector::start(ScriptState* script_state,
+                                  const IdleOptions* options,
+                                  ExceptionState& exception_state) {
   ExecutionContext* context = ExecutionContext::From(script_state);
   DCHECK(context->IsContextThread());
 
@@ -134,20 +126,20 @@ ScriptPromiseTyped<IDLUndefined> IdleDetector::start(
           mojom::blink::PermissionsPolicyFeature::kIdleDetection,
           ReportOptions::kReportOnFailure)) {
     exception_state.ThrowSecurityError(kFeaturePolicyBlocked);
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   if (receiver_.is_bound()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Idle detector is already started.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   if (options->hasThreshold()) {
     auto threshold = base::Milliseconds(options->threshold());
     if (threshold < kMinimumThreshold) {
       exception_state.ThrowTypeError("Minimum threshold is 1 minute.");
-      return ScriptPromiseTyped<IDLUndefined>();
+      return ScriptPromise();
     }
     threshold_ = threshold;
   }
@@ -155,8 +147,7 @@ ScriptPromiseTyped<IDLUndefined> IdleDetector::start(
   signal_ = options->getSignalOr(nullptr);
   if (signal_) {
     if (signal_->aborted()) {
-      return ScriptPromiseTyped<IDLUndefined>::Reject(
-          script_state, signal_->reason(script_state));
+      return ScriptPromise::Reject(script_state, signal_->reason(script_state));
     }
     // If there was a previous algorithm, it should have been removed when we
     // reached the "stopped" state.
@@ -170,9 +161,9 @@ ScriptPromiseTyped<IDLUndefined> IdleDetector::start(
   receiver_.set_disconnect_handler(WTF::BindOnce(
       &IdleDetector::OnMonitorDisconnected, WrapWeakPersistent(this)));
 
-  resolver_ = MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
+  resolver_ = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver_->Promise();
+  ScriptPromise promise = resolver_->Promise();
   IdleManager::From(context)->AddMonitor(
       std::move(remote),
       WTF::BindOnce(&IdleDetector::OnAddMonitor, WrapWeakPersistent(this),
@@ -196,7 +187,11 @@ void IdleDetector::Abort() {
       resolver_->Reject(signal_->reason(script_state));
     }
   }
-  Clear();
+
+  resolver_ = nullptr;
+  abort_handle_ = nullptr;
+  has_state_ = false;
+  receiver_.reset();
 }
 
 void IdleDetector::OnMonitorDisconnected() {
@@ -210,13 +205,21 @@ void IdleDetector::OnMonitorDisconnected() {
         resolver_->GetScriptState()->GetIsolate(),
         DOMExceptionCode::kNotSupportedError, "Idle detection not available."));
   }
-  Clear();
+
+  if (abort_handle_) {
+    DCHECK(signal_);
+    signal_->RemoveAlgorithm(abort_handle_);
+  }
+
+  resolver_ = nullptr;
+  abort_handle_ = nullptr;
+  has_state_ = false;
+  receiver_.reset();
 }
 
-void IdleDetector::OnAddMonitor(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver,
-    IdleManagerError error,
-    mojom::blink::IdleStatePtr state) {
+void IdleDetector::OnAddMonitor(ScriptPromiseResolver* resolver,
+                                IdleManagerError error,
+                                mojom::blink::IdleStatePtr state) {
   if (resolver_ != resolver) {
     // Starting the detector was aborted so `resolver_` has already been used
     // and `receiver_` has already been reset.
@@ -313,24 +316,9 @@ void IdleDetector::Trace(Visitor* visitor) const {
   visitor->Trace(abort_handle_);
   visitor->Trace(resolver_);
   visitor->Trace(receiver_);
-  EventTarget::Trace(visitor);
-  ExecutionContextLifecycleObserver::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
+  ExecutionContextClient::Trace(visitor);
   ActiveScriptWrappable::Trace(visitor);
-}
-
-void IdleDetector::ContextDestroyed() {
-  Clear();
-}
-
-void IdleDetector::Clear() {
-  if (abort_handle_) {
-    CHECK(signal_);
-    signal_->RemoveAlgorithm(abort_handle_);
-  }
-  resolver_ = nullptr;
-  abort_handle_ = nullptr;
-  has_state_ = false;
-  receiver_.reset();
 }
 
 }  // namespace blink

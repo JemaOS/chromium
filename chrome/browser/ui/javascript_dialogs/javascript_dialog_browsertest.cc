@@ -263,7 +263,7 @@ class JavaScriptDialogDismissalCauseTester {
     js_helper_->CancelDialogs(tab_, reset_state);
   }
 
-  std::optional<DismissalCause> GetLastDismissalCause() {
+  absl::optional<DismissalCause> GetLastDismissalCause() {
     return dismissal_cause_;
   }
 
@@ -275,7 +275,7 @@ class JavaScriptDialogDismissalCauseTester {
   raw_ptr<javascript_dialogs::TabModalDialogManager, DanglingUntriaged>
       js_helper_;
 
-  std::optional<DismissalCause> dismissal_cause_;
+  absl::optional<DismissalCause> dismissal_cause_;
 
   base::WeakPtrFactory<JavaScriptDialogDismissalCauseTester> weak_factory_{
       this};
@@ -343,8 +343,7 @@ IN_PROC_BROWSER_TEST_F(JavaScriptDialogTest,
                        DismissalCausePromptBrowserSwitched) {
   JavaScriptDialogDismissalCauseTester tester(this);
   tester.PopupDialog(content::JAVASCRIPT_DIALOG_TYPE_PROMPT);
-  ui_test_utils::OpenNewEmptyWindowAndWaitUntilSetAsLastActive(
-      browser()->profile());
+  chrome::NewEmptyWindow(browser()->profile());
   EXPECT_EQ(DismissalCause::kBrowserSwitched, tester.GetLastDismissalCause());
 }
 
@@ -368,7 +367,7 @@ IN_PROC_BROWSER_TEST_F(JavaScriptDialogTest, NoDismissalAlertTabHidden) {
   JavaScriptDialogDismissalCauseTester tester(this);
   tester.PopupDialog(content::JAVASCRIPT_DIALOG_TYPE_ALERT);
   chrome::NewTab(browser());
-  EXPECT_EQ(std::nullopt, tester.GetLastDismissalCause());
+  EXPECT_EQ(absl::nullopt, tester.GetLastDismissalCause());
 }
 
 IN_PROC_BROWSER_TEST_F(JavaScriptDialogTest, DismissalCauseUkm) {
@@ -445,7 +444,7 @@ class JavaScriptDialogForPrerenderTest : public JavaScriptDialogTest {
                                 base::Unretained(this))) {}
 
   void SetUp() override {
-    prerender_helper_.RegisterServerRequestMonitor(embedded_test_server());
+    prerender_helper_.SetUp(embedded_test_server());
     JavaScriptDialogTest::SetUp();
   }
 
@@ -457,8 +456,7 @@ class JavaScriptDialogForPrerenderTest : public JavaScriptDialogTest {
   content::WebContents* web_contents() { return web_contents_; }
 
  protected:
-  raw_ptr<content::WebContents, AcrossTasksDanglingUntriaged> web_contents_ =
-      nullptr;
+  raw_ptr<content::WebContents, DanglingUntriaged> web_contents_ = nullptr;
   content::test::PrerenderTestHelper prerender_helper_;
 };
 

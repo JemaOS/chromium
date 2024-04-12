@@ -14,10 +14,6 @@
 #include "third_party/blink/renderer/platform/wtf/ref_counted.h"
 #include "ui/gfx/geometry/size.h"
 
-namespace gpu {
-class ClientSharedImage;
-}
-
 namespace blink {
 
 class DrawingBuffer;
@@ -61,7 +57,7 @@ class PLATFORM_EXPORT XRWebGLDrawingBuffer
       : public base::RefCountedThreadSafe<ColorBuffer> {
     ColorBuffer(base::WeakPtr<XRWebGLDrawingBuffer>,
                 const gfx::Size&,
-                scoped_refptr<gpu::ClientSharedImage> shared_image,
+                const gpu::Mailbox& mailbox,
                 GLuint texture_id);
     ColorBuffer(const ColorBuffer&) = delete;
     ColorBuffer& operator=(const ColorBuffer&) = delete;
@@ -81,8 +77,8 @@ class PLATFORM_EXPORT XRWebGLDrawingBuffer
     // DrawingBuffer's context.
     const GLuint texture_id = 0;
 
-    // The client shared image backing this color buffer.
-    scoped_refptr<gpu::ClientSharedImage> shared_image;
+    // The mailbox pointing to the shared image backing this color buffer.
+    const gpu::Mailbox mailbox;
 
     // The sync token for when this buffer was sent to the compositor.
     gpu::SyncToken produce_sync_token;

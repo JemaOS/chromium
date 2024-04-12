@@ -7,10 +7,8 @@
  * automatically remove WebUI listeners when detached.
  */
 
-import type {WebUiListener} from '//resources/js/cr.js';
-import {addWebUiListener, removeWebUiListener} from '//resources/js/cr.js';
-import type {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {dedupingMixin} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {addWebUiListener, removeWebUiListener, WebUiListener} from '//resources/js/cr.js';
+import {dedupingMixin, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 type Constructor<T> = new (...args: any[]) => T;
 

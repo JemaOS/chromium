@@ -34,18 +34,11 @@ bool BrowsingDataLifetimePolicyHandler::CheckPolicySettings(
     policy::PolicyErrorMap* errors) {
   if (!policy::SimpleSchemaValidatingPolicyHandler::CheckPolicySettings(
           policies, errors)) {
-    // Reset the sync types set in case the policy fails to be set after being
-    // previously set.
-    forced_disabled_sync_types_.Clear();
     return false;
   }
 
-  if (!policies.Get(policy_name())) {
-    // Reset the sync types set in case the policy has been unset after being
-    // previously set.
-    forced_disabled_sync_types_.Clear();
+  if (!policies.Get(policy_name()))
     return true;
-  }
 
   // If sync is already disabled or sign in is disabled altogether, the policy
   // requirements are automatically met.
@@ -53,6 +46,12 @@ bool BrowsingDataLifetimePolicyHandler::CheckPolicySettings(
       policies.GetValue(policy::key::kSyncDisabled, base::Value::Type::BOOLEAN);
   if ((sync_disabled && sync_disabled->GetBool())) {
     return true;
+  }
+
+  if (!browsing_data::IsPolicyDependencyEnabled()) {
+    errors->AddError(policy_name(), IDS_POLICY_DEPENDENCY_ERROR,
+                     policy::key::kSyncDisabled, "true");
+    return false;
   }
 
 // BrowserSignin policy is not available on ChromeOS.
@@ -82,12 +81,13 @@ void BrowsingDataLifetimePolicyHandler::ApplyPolicySettings(
     PrefValueMap* prefs) {
   SimpleSchemaValidatingPolicyHandler::ApplyPolicySettings(policies, prefs);
 
-  // `forced_disabled_sync_types_` will be empty if either SyncDisabled or
-  // BrowserSignin policy was set.
-  std::string log_message = browsing_data::DisableSyncTypes(
-      forced_disabled_sync_types_, prefs, policy_name());
-  if (!log_message.empty()) {
-    LOG_POLICY(INFO, POLICY_PROCESSING) << log_message;
+  if (browsing_data::IsPolicyDependencyEnabled()) {
+    std::string log_message;
+    browsing_data::DisableSyncTypes(forced_disabled_sync_types_, prefs,
+                                    policy_name(), log_message);
+    if (log_message != std::string()) {
+      LOG_POLICY(INFO, POLICY_PROCESSING) << log_message;
+    }
   }
 }
 

@@ -27,6 +27,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.os.Build;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,26 +35,22 @@ import org.mockito.InOrder;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowNotificationManager;
 
-import org.chromium.base.task.AsyncTask;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.chrome.browser.notifications.NotificationUmaTracker;
 import org.chromium.components.browser_ui.media.MediaNotificationController;
 import org.chromium.components.browser_ui.media.MediaNotificationInfo;
 import org.chromium.components.browser_ui.media.MediaNotificationManager;
 import org.chromium.services.media_session.MediaMetadata;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
 /**
  * JUnit tests for checking {@link MediaNotificationController} handles the listener service life
  * cycle correctly.
  */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(
-        manifest = Config.NONE,
-        shadows = {MediaNotificationTestShadowResources.class})
+@Config(manifest = Config.NONE,
+        // Remove this after updating to a version of Robolectric that supports
+        // notification channel creation. crbug.com/774315
+        sdk = Build.VERSION_CODES.N_MR1, shadows = {MediaNotificationTestShadowResources.class})
 public class MediaNotificationServiceLifecycleTest extends MediaNotificationTestBase {
     @Test
     public void testServiceLifeCycle() {
@@ -202,8 +199,7 @@ public class MediaNotificationServiceLifecycleTest extends MediaNotificationTest
         order.verify(getController(), times(1)).onServiceStarted(mService);
         order.verify(getController(), times(1)).updateNotification(anyBoolean(), eq(true));
         verify(mMockUmaTracker)
-                .onNotificationShown(
-                        eq(NotificationUmaTracker.SystemNotificationType.MEDIA),
+                .onNotificationShown(eq(NotificationUmaTracker.SystemNotificationType.MEDIA),
                         any(Notification.class));
     }
 
@@ -212,7 +208,6 @@ public class MediaNotificationServiceLifecycleTest extends MediaNotificationTest
         getController().mMediaNotificationInfo = mMediaNotificationInfoBuilder.build();
         getController().updateNotification(false, false);
 
-        waitForAsync();
         verify(getController()).updateNotification(anyBoolean(), eq(false));
         verify(getController(), never()).updateMediaSession();
         verify(getController(), never()).updateNotificationBuilder();
@@ -225,7 +220,6 @@ public class MediaNotificationServiceLifecycleTest extends MediaNotificationTest
         getController().mMediaNotificationInfo = null;
         getController().updateNotification(false, false);
 
-        waitForAsync();
         verify(getController()).updateNotification(anyBoolean(), eq(false));
         verify(getController(), never()).updateMediaSession();
         verify(getController(), never()).updateNotificationBuilder();
@@ -243,10 +237,9 @@ public class MediaNotificationServiceLifecycleTest extends MediaNotificationTest
         getController().mMediaNotificationInfo = mMediaNotificationInfoBuilder.build();
         getController().updateNotification(false, false);
 
-        waitForAsync();
         verify(mMockForegroundServiceUtils)
                 .stopForeground(eq(mService), eq(Service.STOP_FOREGROUND_DETACH));
-        assertEquals(1, getShadowNotificationManager().getAllNotifications().size());
+        assertEquals(1, getShadowNotificationManager().size());
     }
 
     @Test
@@ -257,12 +250,8 @@ public class MediaNotificationServiceLifecycleTest extends MediaNotificationTest
         getController().mMediaNotificationInfo = mMediaNotificationInfoBuilder.build();
         getController().updateNotification(false, false);
 
-        waitForAsync();
         verify(mMockForegroundServiceUtils)
-                .startForeground(
-                        eq(mService),
-                        eq(getNotificationId()),
-                        any(Notification.class),
+                .startForeground(eq(mService), eq(getNotificationId()), any(Notification.class),
                         eq(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK));
     }
 
@@ -274,12 +263,8 @@ public class MediaNotificationServiceLifecycleTest extends MediaNotificationTest
         getController().mMediaNotificationInfo = mMediaNotificationInfoBuilder.build();
         getController().updateNotification(false, false);
 
-        waitForAsync();
         verify(mMockForegroundServiceUtils)
-                .startForeground(
-                        eq(mService),
-                        eq(getNotificationId()),
-                        any(Notification.class),
+                .startForeground(eq(mService), eq(getNotificationId()), any(Notification.class),
                         eq(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK));
     }
 
@@ -287,21 +272,5 @@ public class MediaNotificationServiceLifecycleTest extends MediaNotificationTest
         NotificationManager notificationManager =
                 (NotificationManager) mMockContext.getSystemService(Context.NOTIFICATION_SERVICE);
         return shadowOf(notificationManager);
-    }
-
-    private class AsyncTaskRunnableHelper extends CallbackHelper implements Runnable {
-        @Override
-        public void run() {
-            notifyCalled();
-        }
-    }
-
-    private void waitForAsync() {
-        try {
-            AsyncTaskRunnableHelper runnableHelper = new AsyncTaskRunnableHelper();
-            AsyncTask.SERIAL_EXECUTOR.execute(runnableHelper);
-            runnableHelper.waitForCallback(0, 1, 5L, TimeUnit.SECONDS);
-        } catch (TimeoutException ex) {
-        }
     }
 }

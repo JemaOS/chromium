@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
-import * as UIModule from 'devtools/ui/legacy/legacy.js';
-
 (async function() {
   TestRunner.addResult(`Tests that editing is canceled properly after incremental editing.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <div id="inspected" style="color: red">Text</div>
@@ -29,7 +25,7 @@ import * as UIModule from 'devtools/ui/legacy/legacy.js';
       treeElement = ElementsTestRunner.getElementStylePropertyTreeItem('color');
       treeOutline = treeElement.treeOutline;
 
-      treeElement.startEditingName();
+      treeElement.startEditing();
       treeElement.nameElement.textContent = 'color';
       treeElement.nameElement.dispatchEvent(TestRunner.createKeyEvent('Enter'));
 
@@ -49,7 +45,7 @@ import * as UIModule from 'devtools/ui/legacy/legacy.js';
 
     function testNewPropertyEditorIsCreated(next) {
       var blankTreeElement = treeOutline.rootElement().childAt(1);
-      if (!UIModule.UIUtils.isBeingEdited(blankTreeElement.nameElement)) {
+      if (!UI.isBeingEdited(blankTreeElement.nameElement)) {
         TestRunner.addResult('No new property editor active!');
         TestRunner.completeTest();
         return;
@@ -61,7 +57,7 @@ import * as UIModule from 'devtools/ui/legacy/legacy.js';
     },
 
     function testCycleThroughPropertyEditing(next) {
-      if (!UIModule.UIUtils.isBeingEdited(treeOutline.firstChild().nameElement)) {
+      if (!UI.isBeingEdited(treeOutline.firstChild().nameElement)) {
         TestRunner.addResult('Original property name editor not active!');
         TestRunner.completeTest();
         return;

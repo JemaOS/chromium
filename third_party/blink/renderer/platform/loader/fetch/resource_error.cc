@@ -46,7 +46,7 @@ constexpr char kThrottledErrorDescription[] =
 }  // namespace
 
 ResourceError ResourceError::CancelledError(const KURL& url) {
-  return ResourceError(net::ERR_ABORTED, url, std::nullopt);
+  return ResourceError(net::ERR_ABORTED, url, absl::nullopt);
 }
 
 ResourceError ResourceError::CancelledDueToAccessCheckError(
@@ -71,21 +71,21 @@ ResourceError ResourceError::CancelledDueToAccessCheckError(
 ResourceError ResourceError::BlockedByResponse(
     const KURL& url,
     network::mojom::BlockedByResponseReason blocked_by_response_reason) {
-  ResourceError error(net::ERR_BLOCKED_BY_RESPONSE, url, std::nullopt);
+  ResourceError error(net::ERR_BLOCKED_BY_RESPONSE, url, absl::nullopt);
   error.blocked_by_response_reason_ = blocked_by_response_reason;
   return error;
 }
 
 ResourceError ResourceError::CacheMissError(const KURL& url) {
-  return ResourceError(net::ERR_CACHE_MISS, url, std::nullopt);
+  return ResourceError(net::ERR_CACHE_MISS, url, absl::nullopt);
 }
 
 ResourceError ResourceError::TimeoutError(const KURL& url) {
-  return ResourceError(net::ERR_TIMED_OUT, url, std::nullopt);
+  return ResourceError(net::ERR_TIMED_OUT, url, absl::nullopt);
 }
 
 ResourceError ResourceError::Failure(const KURL& url) {
-  return ResourceError(net::ERR_FAILED, url, std::nullopt);
+  return ResourceError(net::ERR_FAILED, url, absl::nullopt);
 }
 
 ResourceError ResourceError::HttpError(const KURL& url) {
@@ -97,7 +97,7 @@ ResourceError ResourceError::HttpError(const KURL& url) {
 ResourceError::ResourceError(
     int error_code,
     const KURL& url,
-    std::optional<network::CorsErrorStatus> cors_error_status)
+    absl::optional<network::CorsErrorStatus> cors_error_status)
     : error_code_(error_code),
       failing_url_(url),
       is_access_check_(cors_error_status.has_value()),
@@ -214,10 +214,6 @@ bool ResourceError::WasBlockedByResponse() const {
   return error_code_ == net::ERR_BLOCKED_BY_RESPONSE;
 }
 
-bool ResourceError::WasBlockedByORB() const {
-  return error_code_ == net::ERR_BLOCKED_BY_ORB;
-}
-
 namespace {
 blink::ResourceRequestBlockedReason
 BlockedByResponseReasonToResourceRequestBlockedReason(
@@ -245,11 +241,11 @@ BlockedByResponseReasonToResourceRequestBlockedReason(
 }
 }  // namespace
 
-std::optional<ResourceRequestBlockedReason>
+absl::optional<ResourceRequestBlockedReason>
 ResourceError::GetResourceRequestBlockedReason() const {
   if (error_code_ != net::ERR_BLOCKED_BY_CLIENT &&
       error_code_ != net::ERR_BLOCKED_BY_RESPONSE) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   if (blocked_by_response_reason_) {
     return BlockedByResponseReasonToResourceRequestBlockedReason(
@@ -261,14 +257,14 @@ ResourceError::GetResourceRequestBlockedReason() const {
     return static_cast<ResourceRequestBlockedReason>(extended_error_code_);
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<network::mojom::BlockedByResponseReason>
+absl::optional<network::mojom::BlockedByResponseReason>
 ResourceError::GetBlockedByResponseReason() const {
   if (error_code_ != net::ERR_BLOCKED_BY_CLIENT &&
       error_code_ != net::ERR_BLOCKED_BY_RESPONSE) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return blocked_by_response_reason_;
 }
@@ -276,7 +272,7 @@ ResourceError::GetBlockedByResponseReason() const {
 namespace {
 String DescriptionForBlockedByClientOrResponse(
     int error,
-    const std::optional<blink::ResourceRequestBlockedReason>& reason) {
+    const absl::optional<blink::ResourceRequestBlockedReason>& reason) {
   if (!reason || *reason == ResourceRequestBlockedReason::kOther)
     return WebString::FromASCII(net::ErrorToString(error));
   std::string detail;
@@ -302,6 +298,9 @@ String DescriptionForBlockedByClientOrResponse(
     case ResourceRequestBlockedReason::kContentType:
       detail = "ContentType";
       break;
+    case ResourceRequestBlockedReason::kContentRelationshipVerification:
+      detail = "ContentRelationshipVerification";
+      break;
     case ResourceRequestBlockedReason::kCoepFrameResourceNeedsCoepHeader:
       detail = "ResponseNeedsCrossOriginEmbedderPolicy";
       break;
@@ -322,9 +321,6 @@ String DescriptionForBlockedByClientOrResponse(
     case ResourceRequestBlockedReason::kConversionRequest:
       detail = "ConversionRequest";
       break;
-    case ResourceRequestBlockedReason::kSupervisedUserUrlBlocked:
-      detail = "SupervisedUserUrlBlocked";
-      break;
   }
   return WebString::FromASCII(net::ErrorToString(error) + "." + detail);
 }
@@ -335,7 +331,7 @@ void ResourceError::InitializeDescription() {
     localized_description_ = WebString::FromASCII(kThrottledErrorDescription);
   } else if (error_code_ == net::ERR_BLOCKED_BY_CLIENT ||
              error_code_ == net::ERR_BLOCKED_BY_RESPONSE) {
-    std::optional<ResourceRequestBlockedReason> reason =
+    absl::optional<ResourceRequestBlockedReason> reason =
         GetResourceRequestBlockedReason();
     localized_description_ =
         DescriptionForBlockedByClientOrResponse(error_code_, reason);

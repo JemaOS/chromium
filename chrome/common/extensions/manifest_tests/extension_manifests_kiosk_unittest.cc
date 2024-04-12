@@ -12,7 +12,8 @@
 
 namespace extensions {
 
-using ExtensionManifestKioskModeTest = ChromeManifestTest;
+class ExtensionManifestKioskModeTest : public ChromeManifestTest {
+};
 
 TEST_F(ExtensionManifestKioskModeTest, InvalidKioskEnabled) {
   LoadAndExpectError("kiosk_enabled_invalid.json",

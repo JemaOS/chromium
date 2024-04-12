@@ -8,9 +8,7 @@
 #include "ash/ash_export.h"
 #include "ash/system/phonehub/camera_roll_menu_model.h"
 #include "ash/system/phonehub/phone_hub_metrics.h"
-#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
-#include "base/time/time.h"
 #include "chromeos/ash/components/phonehub/camera_roll_item.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/models/simple_menu_model.h"
@@ -28,9 +26,8 @@ class UserActionRecorder;
 
 class ASH_EXPORT CameraRollThumbnail : public views::MenuButton,
                                        public views::ContextMenuController {
-  METADATA_HEADER(CameraRollThumbnail, views::MenuButton)
-
  public:
+  METADATA_HEADER(CameraRollThumbnail);
   CameraRollThumbnail(const int index,
                       const phonehub::CameraRollItem& item,
                       phonehub::CameraRollManager* camera_roll_manager,
@@ -53,13 +50,7 @@ class ASH_EXPORT CameraRollThumbnail : public views::MenuButton,
   FRIEND_TEST_ALL_PREFIXES(CameraRollThumbnailTest, ImageThumbnail);
   FRIEND_TEST_ALL_PREFIXES(CameraRollThumbnailTest, VideoThumbnail);
   FRIEND_TEST_ALL_PREFIXES(CameraRollThumbnailTest, LeftClickDownload);
-  FRIEND_TEST_ALL_PREFIXES(CameraRollThumbnailTest,
-                           LeftClickDownloadCantFollowupDownload);
-  FRIEND_TEST_ALL_PREFIXES(CameraRollThumbnailTest,
-                           LeftClickDownloadWithBackoff);
   FRIEND_TEST_ALL_PREFIXES(CameraRollThumbnailTest, RightClickOpenMenu);
-  FRIEND_TEST_ALL_PREFIXES(CameraRollThumbnailTest,
-                           ThrottleTimerDoesntBlockRightClickMenu);
 
   void ButtonPressed();
   ui::SimpleMenuModel* GetMenuModel();
@@ -71,11 +62,12 @@ class ASH_EXPORT CameraRollThumbnail : public views::MenuButton,
   const bool video_type_;
   const gfx::ImageSkia image_;
 
-  base::TimeTicks download_throttle_timestamp_ = base::TimeTicks();
   std::unique_ptr<CameraRollMenuModel> menu_model_;
   std::unique_ptr<views::MenuRunner> menu_runner_;
-  raw_ptr<phonehub::CameraRollManager> camera_roll_manager_ = nullptr;
-  raw_ptr<phonehub::UserActionRecorder> user_action_recorder_ = nullptr;
+  raw_ptr<phonehub::CameraRollManager, ExperimentalAsh> camera_roll_manager_ =
+      nullptr;
+  raw_ptr<phonehub::UserActionRecorder, ExperimentalAsh> user_action_recorder_ =
+      nullptr;
 };
 
 }  // namespace ash

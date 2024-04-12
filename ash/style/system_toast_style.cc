@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/accessibility/scoped_a11y_override_window_setter.h"
 #include "ash/public/cpp/style/color_provider.h"
 #include "ash/resources/vector_icons/vector_icons.h"
@@ -15,7 +15,6 @@
 #include "ash/style/ash_color_id.h"
 #include "ash/style/pill_button.h"
 #include "ash/style/system_shadow.h"
-#include "ash/style/typography.h"
 #include "ash/system/toast/toast_overlay.h"
 #include "ash/wm/work_area_insets.h"
 #include "base/strings/strcat.h"
@@ -55,14 +54,10 @@ constexpr int kLeadingIconSize = 20;
 constexpr int kLeadingIconLeftPadding = 18;
 constexpr int kLeadingIconRightPadding = 14;
 
-// Inset for the focus ring around the dismiss button.
-constexpr int kDismissButtonFocusRingHaloInset = 1;
-
 // The label inside SystemToastStyle, which allows two lines at maximum.
 class SystemToastInnerLabel : public views::Label {
-  METADATA_HEADER(SystemToastInnerLabel, views::Label)
-
  public:
+  METADATA_HEADER(SystemToastInnerLabel);
   explicit SystemToastInnerLabel(const std::u16string& text)
       : views::Label(text) {
     SetHorizontalAlignment(gfx::ALIGN_LEFT);
@@ -73,8 +68,8 @@ class SystemToastInnerLabel : public views::Label {
     SetSubpixelRenderingEnabled(false);
     SetEnabledColorId(cros_tokens::kTextColorPrimary);
 
-    SetFontList(TypographyProvider::Get()->ResolveTypographyToken(
-        TypographyToken::kLegacyBody1));
+    SetFontList(views::Label::GetDefaultFontList().Derive(
+        2, gfx::Font::FontStyle::NORMAL, gfx::Font::Weight::NORMAL));
   }
 
   SystemToastInnerLabel(const SystemToastInnerLabel&) = delete;
@@ -82,7 +77,7 @@ class SystemToastInnerLabel : public views::Label {
   ~SystemToastInnerLabel() override = default;
 };
 
-BEGIN_METADATA(SystemToastInnerLabel)
+BEGIN_METADATA(SystemToastInnerLabel, views::Label)
 END_METADATA
 
 // Returns the vertical padding for the layout given the presence of the dismiss
@@ -142,9 +137,6 @@ SystemToastStyle::SystemToastStyle(base::RepeatingClosure dismiss_callback,
     leading_icon_view_ = AddChildView(std::make_unique<views::ImageView>());
     leading_icon_view_->SetPreferredSize(
         gfx::Size(kLeadingIconSize, kLeadingIconSize));
-    leading_icon_view_->SetImage(ui::ImageModel::FromVectorIcon(
-        *leading_icon_, cros_tokens::kCrosSysOnSurface));
-
     auto* icon_padding = AddChildView(std::make_unique<views::View>());
     icon_padding->SetPreferredSize(
         gfx::Size(kLeadingIconRightPadding, kLeadingIconSize));
@@ -153,25 +145,26 @@ SystemToastStyle::SystemToastStyle(base::RepeatingClosure dismiss_callback,
   label_ = AddChildView(std::make_unique<SystemToastInnerLabel>(text));
 
   if (!dismiss_text.empty()) {
-    dismiss_button_ = AddChildView(std::make_unique<PillButton>(
+    button_ = AddChildView(std::make_unique<PillButton>(
         std::move(dismiss_callback), dismiss_text,
         PillButton::Type::kAccentFloatingWithoutIcon,
         /*icon=*/nullptr));
-    dismiss_button_->SetFocusBehavior(
-        views::View::FocusBehavior::ACCESSIBLE_ONLY);
+    button_->SetFocusBehavior(views::View::FocusBehavior::ACCESSIBLE_ONLY);
   }
 
   // Requesting size forces layout. Otherwise, we don't know how many lines
   // are needed.
   label_->GetPreferredSize();
+  const bool two_line = label_->GetRequiredLines() > 1;
 
-  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>());
+  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+      views::BoxLayout::Orientation::kHorizontal,
+      ComputeInsets(!!button_, two_line, !leading_icon.is_empty())));
   layout->set_cross_axis_alignment(
       views::BoxLayout::CrossAxisAlignment::kCenter);
   layout->SetFlexForView(label_, 1);
-  UpdateInsideBorderInsets();
 
-  const int toast_height = GetPreferredSize().height();
+  int toast_height = GetPreferredSize().height();
   const float toast_corner_radius = toast_height / 2.0f;
   layer()->SetRoundedCornerRadius(gfx::RoundedCornersF(toast_corner_radius));
   SetBorder(std::make_unique<views::HighlightBorder>(
@@ -191,26 +184,23 @@ SystemToastStyle::SystemToastStyle(base::RepeatingClosure dismiss_callback,
 SystemToastStyle::~SystemToastStyle() = default;
 
 bool SystemToastStyle::ToggleA11yFocus() {
-  if (!dismiss_button_) {
+  if (!button_ ||
+      !Shell::Get()->accessibility_controller()->spoken_feedback().enabled()) {
     return false;
   }
 
-  auto* focus_ring = views::FocusRing::Get(dismiss_button_);
-  focus_ring->SetHaloInset(kDismissButtonFocusRingHaloInset);
-  focus_ring->SetOutsetFocusRingDisabled(true);
-  focus_ring->SetHasFocusPredicate(base::BindRepeating(
-      [](const SystemToastStyle* style, const views::View* view) {
-        return style->is_dismiss_button_highlighted_;
-      },
-      base::Unretained(this)));
+  auto* focus_ring = views::FocusRing::Get(button_);
+  focus_ring->SetHasFocusPredicate([&](views::View* view) -> bool {
+    return is_dismiss_button_highlighted_;
+  });
 
   is_dismiss_button_highlighted_ = !is_dismiss_button_highlighted_;
-  if (is_dismiss_button_highlighted_) {
-    scoped_a11y_overrider_->MaybeUpdateA11yOverrideWindow(
-        dismiss_button_->GetWidget()->GetNativeWindow());
-    dismiss_button_->NotifyAccessibilityEvent(ax::mojom::Event::kSelection,
-                                              true);
-  }
+  scoped_a11y_overrider_->MaybeUpdateA11yOverrideWindow(
+      is_dismiss_button_highlighted_ ? button_->GetWidget()->GetNativeWindow()
+                                     : nullptr);
+
+  if (is_dismiss_button_highlighted_)
+    button_->NotifyAccessibilityEvent(ax::mojom::Event::kSelection, true);
 
   focus_ring->SetVisible(is_dismiss_button_highlighted_);
   focus_ring->SchedulePaint();
@@ -231,20 +221,21 @@ void SystemToastStyle::AddedToWidget() {
 
   // Update shadow content bounds with the bounds of widget layer.
   shadow_->SetContentBounds(gfx::Rect(widget_layer->bounds().size()));
-
-  // Make shadow observe the theme change of the widget.
-  shadow_->ObserveColorProviderSource(GetWidget());
 }
 
-void SystemToastStyle::UpdateInsideBorderInsets() {
-  static_cast<views::BoxLayout*>(GetLayoutManager())
-      ->set_inside_border_insets(ComputeInsets(!!dismiss_button_,
-                                               label_->GetRequiredLines() > 1,
-                                               !leading_icon_->is_empty()));
-  InvalidateLayout();
+void SystemToastStyle::OnThemeChanged() {
+  views::View::OnThemeChanged();
+
+  if (leading_icon_view_) {
+    leading_icon_view_->SetImage(gfx::CreateVectorIcon(
+        *leading_icon_,
+        GetColorProvider()->GetColor(cros_tokens::kCrosSysOnSurface)));
+  }
+
+  SchedulePaint();
 }
 
-BEGIN_METADATA(SystemToastStyle)
+BEGIN_METADATA(SystemToastStyle, views::View)
 END_METADATA
 
 }  // namespace ash

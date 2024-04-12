@@ -14,7 +14,7 @@ class GraphicsContext;
 struct PhysicalRect;
 
 class RoundedInnerRectClipper {
-  STACK_ALLOCATED();
+  DISALLOW_NEW();
 
  public:
   RoundedInnerRectClipper(GraphicsContext&,

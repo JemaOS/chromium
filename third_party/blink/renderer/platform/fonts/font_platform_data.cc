@@ -158,10 +158,6 @@ FontPlatformData::FontPlatformData(sk_sp<SkTypeface> typeface,
 
 FontPlatformData::~FontPlatformData() = default;
 
-void FontPlatformData::Trace(Visitor* visitor) const {
-  visitor->Trace(harfbuzz_face_);
-}
-
 #if BUILDFLAG(IS_MAC)
 CTFontRef FontPlatformData::CtFont() const {
   return SkTypeface_GetCTFontRef(typeface_.get());
@@ -190,7 +186,7 @@ bool FontPlatformData::operator==(const FontPlatformData& a) const {
          orientation_ == a.orientation_;
 }
 
-SkTypefaceID FontPlatformData::UniqueID() const {
+SkFontID FontPlatformData::UniqueID() const {
   return Typeface()->uniqueID();
 }
 
@@ -213,10 +209,11 @@ SkTypeface* FontPlatformData::Typeface() const {
 
 HarfBuzzFace* FontPlatformData::GetHarfBuzzFace() const {
   if (!harfbuzz_face_) {
-    harfbuzz_face_ = MakeGarbageCollected<HarfBuzzFace>(this, UniqueID());
+    harfbuzz_face_ =
+        HarfBuzzFace::Create(const_cast<FontPlatformData*>(this), UniqueID());
   }
 
-  return harfbuzz_face_.Get();
+  return harfbuzz_face_.get();
 }
 
 bool FontPlatformData::HasSpaceInLigaturesOrKerning(
@@ -229,7 +226,7 @@ bool FontPlatformData::HasSpaceInLigaturesOrKerning(
 }
 
 unsigned FontPlatformData::GetHash() const {
-  unsigned h = UniqueID();
+  unsigned h = SkTypeface::UniqueID(Typeface());
   h ^= 0x01010101 * ((static_cast<int>(is_hash_table_deleted_value_) << 3) |
                      (static_cast<int>(orientation_) << 2) |
                      (static_cast<int>(synthetic_bold_) << 1) |
@@ -246,7 +243,7 @@ unsigned FontPlatformData::GetHash() const {
 }
 
 #if !BUILDFLAG(IS_MAC)
-bool FontPlatformData::FontContainsCharacter(UChar32 character) const {
+bool FontPlatformData::FontContainsCharacter(UChar32 character) {
   return CreateSkFont().unicharToGlyph(character);
 }
 #endif
@@ -289,9 +286,7 @@ WebFontRenderStyle FontPlatformData::QuerySystemRenderStyle(
 
   return result;
 }
-#endif  // !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_WIN)
 
-#if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_WIN) && !BUILDFLAG(IS_IOS)
 SkFont FontPlatformData::CreateSkFont(const FontDescription*) const {
   SkFont font;
   style_.ApplyToSkFont(&font);
@@ -306,7 +301,12 @@ SkFont FontPlatformData::CreateSkFont(const FontDescription*) const {
 
   return font;
 }
-#endif  // !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_WIN) && !BUILDFLAG(IS_IOS)
+#endif  // !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_WIN)
+
+scoped_refptr<OpenTypeVerticalData> FontPlatformData::CreateVerticalData()
+    const {
+  return OpenTypeVerticalData::CreateUnscaled(typeface_);
+}
 
 IdentifiableToken FontPlatformData::ComputeTypefaceDigest() const {
   DCHECK(typeface_);

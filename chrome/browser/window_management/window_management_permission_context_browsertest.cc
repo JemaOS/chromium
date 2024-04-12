@@ -14,7 +14,6 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/default_handlers.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -64,7 +63,8 @@ class WindowManagementPermissionContextTest
  public:
   WindowManagementPermissionContextTest() {
     scoped_feature_list_.InitWithFeatureState(
-        permissions::features::kWindowPlacementPermissionAlias, AliasEnabled());
+        permissions::features::kWindowManagementPermissionAlias,
+        AliasEnabled());
   }
   void SetUpOnMainThread() override {
     // Support multiple sites on the test server.
@@ -107,7 +107,7 @@ class WindowManagementPermissionContextTest
   bool UseAlias() const { return std::get<1>(GetParam()); }
   bool ShouldError() const { return UseAlias() && !AliasEnabled(); }
   const std::string AliasToTest() const {
-    return UseAlias() ? kOldPermissionName : kNewPermissionName;
+    return UseAlias() ? kNewPermissionName : kOldPermissionName;
   }
   const std::string GetScreensScript() const {
     return base::ReplaceStringPlaceholders(kGetScreens, {AliasToTest()},
@@ -141,7 +141,7 @@ class MultiscreenWindowManagementPermissionContextTest
     display::Screen::SetScreenInstance(&screen_);
     screen_.display_list().AddDisplay({1, gfx::Rect(100, 100, 801, 802)},
                                       display::DisplayList::Type::PRIMARY);
-    screen_.display_list().AddDisplay({2, gfx::Rect(901, 100, 802, 803)},
+    screen_.display_list().AddDisplay({2, gfx::Rect(901, 100, 802, 802)},
                                       display::DisplayList::Type::NOT_PRIMARY);
     ASSERT_EQ(2, display::Screen::GetScreen()->GetNumDisplays());
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
@@ -152,7 +152,7 @@ class MultiscreenWindowManagementPermissionContextTest
     // This has to happen later than SetScreenInstance as the ash shell
     // does not exist yet.
     display::test::DisplayManagerTestApi(ash::Shell::Get()->display_manager())
-        .UpdateDisplay("100+100-801x802,901+100-802x803");
+        .UpdateDisplay("100+100-801x802,901+100-802x802");
     ASSERT_EQ(2, display::Screen::GetScreen()->GetNumDisplays());
 #endif
     WindowManagementPermissionContextTest::SetUpOnMainThread();

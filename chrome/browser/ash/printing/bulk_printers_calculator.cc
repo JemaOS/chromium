@@ -86,7 +86,7 @@ std::unique_ptr<PrinterCache> ParsePrinters(std::unique_ptr<std::string> data) {
       continue;
     }
 
-    auto printer = chromeos::ManagedPrinterToPrinter(val.GetDict());
+    auto printer = chromeos::RecommendedPrinterToPrinter(val.GetDict());
     if (!printer) {
       PRINTER_LOG(ERROR) << "Entry in printers policy skipped ("
                          << "failed to parse printer configuration)";
@@ -327,14 +327,10 @@ class BulkPrintersCalculatorImpl : public BulkPrintersCalculator {
     return (last_processed_task_ == last_received_task_);
   }
 
-  std::unordered_map<std::string, chromeos::Printer> GetPrinters()
+  const std::unordered_map<std::string, chromeos::Printer>& GetPrinters()
       const override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     return printers_;
-  }
-
-  base::WeakPtr<BulkPrintersCalculator> AsWeakPtr() override {
-    return weak_ptr_factory_.GetWeakPtr();
   }
 
  private:

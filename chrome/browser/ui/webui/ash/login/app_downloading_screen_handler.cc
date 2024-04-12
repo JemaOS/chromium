@@ -32,9 +32,11 @@ AppDownloadingScreenHandler::~AppDownloadingScreenHandler() = default;
 
 void AppDownloadingScreenHandler::DeclareLocalizedValues(
     ::login::LocalizedValuesBuilder* builder) {
-  builder->AddF("appDownloadingScreenDescription",
-                IDS_LOGIN_APP_DOWNLOADING_SCREEN_DESCRIPTION,
-                ui::GetChromeOSDeviceName());
+  // builder->AddF("appDownloadingScreenDescription",
+  //               IDS_LOGIN_APP_DOWNLOADING_SCREEN_DESCRIPTION,
+  //               ui::GetChromeOSDeviceName());
+  builder->Add("appDownloadingScreenDescription",
+                IDS_LOGIN_APP_DOWNLOADING_SCREEN_DESCRIPTION);
   builder->Add("appDownloadingContinueSetup",
                IDS_LOGIN_APP_DOWNLOADING_SCREEN_NEXT);
   builder->Add("appDownloadingScreenTitle",
@@ -45,11 +47,6 @@ void AppDownloadingScreenHandler::Show() {
   base::Value::Dict data;
   data.Set("numOfApps", GetNumberOfUserSelectedApps());
   ShowInWebUI(std::move(data));
-}
-
-base::WeakPtr<AppDownloadingScreenView>
-AppDownloadingScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
 }
 
 }  // namespace ash

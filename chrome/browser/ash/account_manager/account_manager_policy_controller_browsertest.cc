@@ -58,8 +58,6 @@ class AccountManagerPolicyControllerTest : public InProcessBrowserTest {
   ~AccountManagerPolicyControllerTest() override = default;
 
   void SetUpOnMainThread() override {
-    fake_user_manager_.Reset(std::make_unique<ash::FakeChromeUserManager>());
-
     // Prep private fields.
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     TestingProfile::Builder profile_builder;
@@ -84,10 +82,13 @@ class AccountManagerPolicyControllerTest : public InProcessBrowserTest {
     const AccountInfo primary_account_info =
         identity_test_env->MakePrimaryAccountAvailable(
             kFakePrimaryUsername, signin::ConsentLevel::kSignin);
+    auto user_manager = std::make_unique<FakeChromeUserManager>();
     primary_account_id_ = AccountId::FromUserEmailGaiaId(
         primary_account_info.email, primary_account_info.gaia);
-    fake_user_manager_->AddUser(primary_account_id_);
-    fake_user_manager_->LoginUser(primary_account_id_);
+    user_manager->AddUser(primary_account_id_);
+    user_manager->LoginUser(primary_account_id_);
+    scoped_user_manager_ = std::make_unique<user_manager::ScopedUserManager>(
+        std::move(user_manager));
 
     // Add accounts in Account Manager.
     account_manager_->UpsertAccount(
@@ -104,11 +105,16 @@ class AccountManagerPolicyControllerTest : public InProcessBrowserTest {
   }
 
   void TearDownOnMainThread() override {
-    fake_user_manager_->RemoveUserFromList(primary_account_id_);
+    GetFakeUserManager()->RemoveUserFromList(primary_account_id_);
     identity_test_environment_adaptor_.reset();
     profile_.reset();
     base::RunLoop().RunUntilIdle();
-    fake_user_manager_.Reset();
+    scoped_user_manager_.reset();
+  }
+
+  FakeChromeUserManager* GetFakeUserManager() const {
+    return static_cast<FakeChromeUserManager*>(
+        user_manager::UserManager::Get());
   }
 
   std::vector<::account_manager::Account> GetAccountManagerAccounts() {
@@ -129,8 +135,6 @@ class AccountManagerPolicyControllerTest : public InProcessBrowserTest {
 
  private:
   base::ScopedTempDir temp_dir_;
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_;
   raw_ptr<account_manager::AccountManager, DanglingUntriaged> account_manager_ =
       nullptr;
   raw_ptr<account_manager::AccountManagerFacade> account_manager_facade_ =
@@ -138,6 +142,7 @@ class AccountManagerPolicyControllerTest : public InProcessBrowserTest {
   std::unique_ptr<Profile> profile_;
   std::unique_ptr<IdentityTestEnvironmentProfileAdaptor>
       identity_test_environment_adaptor_;
+  std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
   AccountId primary_account_id_;
 };
 

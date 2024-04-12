@@ -5,16 +5,15 @@
 #ifndef CHROME_BROWSER_CART_COMMERCE_HINT_SERVICE_H_
 #define CHROME_BROWSER_CART_COMMERCE_HINT_SERVICE_H_
 
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/version.h"
 #include "chrome/common/cart/commerce_hints.mojom.h"
-#include "components/optimization_guide/core/optimization_guide_decider.h"
+#include "components/optimization_guide/content/browser/optimization_guide_decider.h"
 #include "components/optimization_guide/proto/hints.pb.h"
 #include "content/public/browser/web_contents_user_data.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/cart/cart_service.h"
 #endif
@@ -30,7 +29,7 @@ class CommerceHintService
       mojo::PendingReceiver<mojom::CommerceHintObserver> receiver);
   content::WebContents* WebContents();
   void OnAddToCart(const GURL& navigation_url,
-                   const std::optional<GURL>& cart_url,
+                   const absl::optional<GURL>& cart_url,
                    const std::string& product_id = std::string());
   void OnRemoveCart(const GURL& url);
   void OnFormSubmit(const GURL& navigation_url, bool is_purchase);
@@ -41,7 +40,7 @@ class CommerceHintService
 
   // Testing-only. Used to initialize commerce heuristics data in browser
   // process for testing.
-  static bool InitializeCommerceHeuristicsForTesting(
+  bool InitializeCommerceHeuristicsForTesting(
       base::Version version,
       const std::string& hint_json_data,
       const std::string& global_json_data,

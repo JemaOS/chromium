@@ -4,6 +4,7 @@
 
 #include "ash/system/unified/feature_tiles_container_view.h"
 
+#include "ash/constants/ash_features.h"
 #include "ash/constants/quick_settings_catalogs.h"
 #include "ash/public/cpp/pagination/pagination_model.h"
 #include "ash/shell.h"
@@ -17,6 +18,7 @@
 #include "ash/test/ash_test_base.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/test/scoped_feature_list.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/events/test/event_generator.h"
 #include "ui/views/test/views_test_utils.h"
@@ -31,6 +33,10 @@ class MockFeaturePodController : public FeaturePodControllerBase {
   MockFeaturePodController(const MockFeaturePodController&) = delete;
   MockFeaturePodController& operator=(const MockFeaturePodController&) = delete;
   ~MockFeaturePodController() override = default;
+
+  FeaturePodButton* CreateButton() override {
+    return new FeaturePodButton(/*controller=*/this);
+  }
 
   std::unique_ptr<FeatureTile> CreateTile(bool compact = false) override {
     auto tile = std::make_unique<FeatureTile>(
@@ -61,7 +67,10 @@ constexpr int kMaxPrimaryTilesPerRow = 2;
 class FeatureTilesContainerViewTest : public AshTestBase,
                                       public views::ViewObserver {
  public:
-  FeatureTilesContainerViewTest() = default;
+  FeatureTilesContainerViewTest() {
+    feature_list_.InitAndEnableFeature(features::kQsRevamp);
+  }
+
   FeatureTilesContainerViewTest(const FeatureTilesContainerViewTest&) = delete;
   FeatureTilesContainerViewTest& operator=(
       const FeatureTilesContainerViewTest&) = delete;
@@ -118,19 +127,13 @@ class FeatureTilesContainerViewTest : public AshTestBase,
     return container()->CalculateRowsFromHeight(height);
   }
 
-  void AdjustRowsForMediaViewVisibility(int height) {
-    container()->AdjustRowsForMediaViewVisibility(true, height);
-  }
-
   int GetRowCount() { return container()->row_count(); }
 
   int GetPageCount() { return container()->page_count(); }
 
   int GetVisibleCount() { return container()->GetVisibleFeatureTileCount(); }
 
-  std::vector<raw_ptr<views::View, VectorExperimental>> pages() {
-    return container()->children();
-  }
+  std::vector<views::View*> pages() { return container()->children(); }
 
   // Fills the container with a number of `pages` given the max amount of
   // displayable primary tiles per page.
@@ -151,10 +154,11 @@ class FeatureTilesContainerViewTest : public AshTestBase,
   }
 
  private:
+  base::test::ScopedFeatureList feature_list_;
   std::unique_ptr<views::Widget> widget_;
   std::unique_ptr<UnifiedSystemTrayController> tray_controller_;
   scoped_refptr<UnifiedSystemTrayModel> tray_model_;
-  raw_ptr<FeatureTilesContainerView, DanglingUntriaged> container_;
+  raw_ptr<FeatureTilesContainerView, ExperimentalAsh> container_;
 };
 
 // Tests `CalculateRowsFromHeight()` which returns the number of max displayable
@@ -173,23 +177,6 @@ TEST_F(FeatureTilesContainerViewTest, DisplayableRows) {
   EXPECT_EQ(kFeatureTileMinRows, CalculateRowsFromHeight(0));
 }
 
-TEST_F(FeatureTilesContainerViewTest,
-       DisplayableRowsIsLessWhenMediaViewIsShowing) {
-  int row_height = kFeatureTileHeight;
-  // Set height to equivalent of max+1 rows.
-  const int max_height = (kFeatureTileMaxRows + 1) * row_height;
-
-  // Expect default to cap at `kFeatureTileMaxRows`.
-  EXPECT_EQ(kFeatureTileMaxRows, CalculateRowsFromHeight(max_height));
-
-  AdjustRowsForMediaViewVisibility(max_height);
-
-  // Expect height to be capped at `kFeatureTileMaxRowsWhenMediaViewIsShowing`
-  // when media view is showing.
-  EXPECT_EQ(kFeatureTileMaxRowsWhenMediaViewIsShowing,
-            CalculateRowsFromHeight(max_height));
-}
-
 // Tests that rows are dynamically added by adding `FeatureTile` elements to the
 // container.
 TEST_F(FeatureTilesContainerViewTest, FeatureTileRows) {
@@ -203,7 +190,7 @@ TEST_F(FeatureTilesContainerViewTest, FeatureTileRows) {
   EXPECT_EQ(1, GetRowCount());
   EXPECT_EQ(2, GetVisibleCount());
 
-  // Add one primary, and two compact tiles. This should create a second row.
+  // Expect one other row by adding a primary and two compact tiles.
   std::vector<std::unique_ptr<FeatureTile>> one_primary_two_compact_tiles;
   one_primary_two_compact_tiles.push_back(mock_controller->CreateTile());
   one_primary_two_compact_tiles.push_back(
@@ -214,7 +201,7 @@ TEST_F(FeatureTilesContainerViewTest, FeatureTileRows) {
   EXPECT_EQ(2, GetRowCount());
   EXPECT_EQ(5, GetVisibleCount());
 
-  // Add one primary tile, this should result in a third row.
+  // Expect one other row by adding a single primary tile.
   std::vector<std::unique_ptr<FeatureTile>> one_primary_tile;
   one_primary_tile.push_back(mock_controller->CreateTile());
   container()->AddTiles(std::move(one_primary_tile));
@@ -487,7 +474,7 @@ TEST_F(FeatureTilesContainerViewTest, PaginationTransition) {
 
   // Page position after the transition ends should be a page offset to the
   // left.
-  int page_offset = kWideTrayMenuWidth;
+  int page_offset = kRevampedTrayMenuWidth;
   gfx::Rect final_bounds =
       gfx::Rect(initial_bounds.x() - page_offset, initial_bounds.y(),
                 initial_bounds.width(), initial_bounds.height());

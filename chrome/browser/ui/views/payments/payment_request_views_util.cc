@@ -12,7 +12,7 @@
 #include "chrome/browser/ui/views/chrome_typography.h"
 #include "chrome/browser/ui/views/payments/payment_request_dialog_view_ids.h"
 #include "chrome/browser/ui/views/payments/payment_request_sheet_controller.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/theme_resources.h"
 #include "components/autofill/core/browser/autofill_data_util.h"
 #include "components/autofill/core/browser/autofill_type.h"
@@ -59,9 +59,9 @@ namespace payments {
 namespace {
 
 class ThemeTrackingLabel : public views::Label {
-  METADATA_HEADER(ThemeTrackingLabel, views::Label)
-
  public:
+  METADATA_HEADER(ThemeTrackingLabel);
+
   explicit ThemeTrackingLabel(const std::u16string& text) : Label(text) {}
   ~ThemeTrackingLabel() override = default;
 
@@ -77,16 +77,16 @@ class ThemeTrackingLabel : public views::Label {
   }
 
  private:
-  std::optional<ui::ColorId> enabled_color_id_;
+  absl::optional<ui::ColorId> enabled_color_id_;
 };
 
-BEGIN_METADATA(ThemeTrackingLabel)
+BEGIN_METADATA(ThemeTrackingLabel, views::Label)
 END_METADATA
 
 class ChromeLogoImageView : public views::ImageView {
-  METADATA_HEADER(ChromeLogoImageView, views::ImageView)
-
  public:
+  METADATA_HEADER(ChromeLogoImageView);
+
   ChromeLogoImageView() {
     SetCanProcessEventsWithinSubtree(false);
     SetTooltipText(l10n_util::GetStringUTF16(IDS_PRODUCT_NAME));
@@ -96,13 +96,15 @@ class ChromeLogoImageView : public views::ImageView {
   // views::ImageView:
   void OnThemeChanged() override {
     ImageView::OnThemeChanged();
-    SetImage(ui::ImageModel::FromResourceId(
-        GetNativeTheme()->ShouldUseDarkColors() ? IDR_PRODUCT_LOGO_NAME_22_WHITE
-                                                : IDR_PRODUCT_LOGO_NAME_22));
+    SetImage(ui::ResourceBundle::GetSharedInstance()
+                 .GetImageNamed(GetNativeTheme()->ShouldUseDarkColors()
+                                    ? IDR_PRODUCT_LOGO_NAME_22_WHITE
+                                    : IDR_PRODUCT_LOGO_NAME_22)
+                 .AsImageSkia());
   }
 };
 
-BEGIN_METADATA(ChromeLogoImageView)
+BEGIN_METADATA(ChromeLogoImageView, views::ImageView)
 END_METADATA
 
 // |s1|, |s2|, and |s3| are lines identifying the profile. |s1| is the
@@ -238,7 +240,7 @@ std::unique_ptr<views::ImageView> CreateAppIconView(
     gfx::ImageSkia img = gfx::ImageSkia::CreateFrom1xBitmap(
                              (icon_bitmap ? *icon_bitmap : SkBitmap()))
                              .DeepCopy();
-    icon_view->SetImage(ui::ImageModel::FromImageSkia(img));
+    icon_view->SetImage(img);
     float width = base::checked_cast<float>(img.width());
     float height = base::checked_cast<float>(img.height());
     float ratio = 1;
@@ -250,7 +252,9 @@ std::unique_ptr<views::ImageView> CreateAppIconView(
         ratio * IconSizeCalculator::kPaymentAppDeviceIndependentIdealIconHeight,
         IconSizeCalculator::kPaymentAppDeviceIndependentIdealIconHeight));
   } else {
-    icon_view->SetImage(ui::ImageModel::FromResourceId(icon_resource_id));
+    icon_view->SetImage(ui::ResourceBundle::GetSharedInstance()
+                            .GetImageNamed(icon_resource_id)
+                            .AsImageSkia());
     // Images from |icon_resource_id| are 32x20 credit cards.
     icon_view->SetImageSize(gfx::Size(32, 20));
   }

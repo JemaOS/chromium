@@ -10,9 +10,8 @@ import android.content.Context;
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.ContextUtils;
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -32,7 +31,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class TabIdManager {
     private static final Object INSTANCE_LOCK = new Object();
-
     @SuppressLint("StaticFieldLeak")
     private static TabIdManager sInstance;
 
@@ -92,10 +90,11 @@ public class TabIdManager {
         // Read the shared preference.  This has to be done on the critical path to ensure that the
         // myriad Activities that serve as entries into Chrome are all synchronized on the correct
         // maximum Tab ID.
-        mPreferences = ChromeSharedPreferences.getInstance();
+        mPreferences = SharedPreferencesManager.getInstance();
         mIdCounter.set(mPreferences.readInt(ChromePreferenceKeys.TAB_ID_MANAGER_NEXT_ID));
     }
 
+    @VisibleForTesting
     public static void resetInstanceForTesting() {
         sInstance = null;
     }

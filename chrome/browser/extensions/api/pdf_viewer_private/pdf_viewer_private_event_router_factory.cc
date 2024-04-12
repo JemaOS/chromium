@@ -22,19 +22,13 @@ PdfViewerPrivateEventRouter* PdfViewerPrivateEventRouterFactory::GetForProfile(
 // static
 PdfViewerPrivateEventRouterFactory*
 PdfViewerPrivateEventRouterFactory::GetInstance() {
-  static base::NoDestructor<PdfViewerPrivateEventRouterFactory> instance;
-  return instance.get();
+  return base::Singleton<PdfViewerPrivateEventRouterFactory>::get();
 }
 
 PdfViewerPrivateEventRouterFactory::PdfViewerPrivateEventRouterFactory()
     : ProfileKeyedServiceFactory(
           "PdfViewerPrivateEventRouter",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(ExtensionsBrowserClient::Get()->GetExtensionSystemFactory());
   DependsOn(EventRouterFactory::GetInstance());
 }
@@ -42,8 +36,7 @@ PdfViewerPrivateEventRouterFactory::PdfViewerPrivateEventRouterFactory()
 PdfViewerPrivateEventRouterFactory::~PdfViewerPrivateEventRouterFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-PdfViewerPrivateEventRouterFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PdfViewerPrivateEventRouterFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   return PdfViewerPrivateEventRouter::Create(context);
 }

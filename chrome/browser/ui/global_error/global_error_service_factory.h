@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_UI_GLOBAL_ERROR_GLOBAL_ERROR_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_UI_GLOBAL_ERROR_GLOBAL_ERROR_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class GlobalErrorService;
@@ -25,7 +25,7 @@ class GlobalErrorServiceFactory : public ProfileKeyedServiceFactory {
   static GlobalErrorServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<GlobalErrorServiceFactory>;
+  friend struct base::DefaultSingletonTraits<GlobalErrorServiceFactory>;
 
   GlobalErrorServiceFactory();
   ~GlobalErrorServiceFactory() override;

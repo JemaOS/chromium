@@ -343,20 +343,13 @@ bool GetUint8Array(const Dictionary& raw,
                    WebVector<uint8_t>& bytes,
                    const ErrorContext& context,
                    ExceptionState& exception_state) {
-  v8::Local<v8::Value> v8_value;
-  if (!raw.Get(property_name, v8_value) || !v8_value->IsUint8Array()) {
+  DOMUint8Array* array = nullptr;
+  if (!DictionaryHelper::Get(raw, property_name, array) || !array) {
     SetTypeError(context.ToString(property_name, "Missing or not a Uint8Array"),
                  exception_state);
     return false;
   }
-
-  MaybeShared<DOMUint8Array> array =
-      NativeValueTraits<MaybeShared<DOMUint8Array>>::NativeValue(
-          raw.GetIsolate(), v8_value, exception_state);
-  if (exception_state.HadException()) {
-    return false;
-  }
-  bytes = CopyBytes(array.Get());
+  bytes = CopyBytes(array);
   return true;
 }
 
@@ -523,20 +516,15 @@ V8AlgorithmIdentifier* GetAlgorithmIdentifier(v8::Isolate* isolate,
         ScriptValue(isolate, dictionary.V8Value()));
   }
 
-  std::optional<String> algorithm_name =
-      raw.Get<IDLString>(property_name, exception_state);
-  if (exception_state.HadException()) {
-    return nullptr;
-  }
-
-  if (!algorithm_name.has_value()) {
+  String algorithm_name;
+  if (!DictionaryHelper::Get(raw, property_name, algorithm_name)) {
     SetTypeError(context.ToString(property_name,
                                   "Missing or not an AlgorithmIdentifier"),
                  exception_state);
     return nullptr;
   }
 
-  return MakeGarbageCollected<V8AlgorithmIdentifier>(*algorithm_name);
+  return MakeGarbageCollected<V8AlgorithmIdentifier>(algorithm_name);
 }
 
 // Defined by the WebCrypto spec as:
@@ -832,21 +820,16 @@ bool ParseNamedCurve(const Dictionary& raw,
                      WebCryptoNamedCurve& named_curve,
                      ErrorContext context,
                      ExceptionState& exception_state) {
-  std::optional<String> named_curve_string =
-      raw.Get<IDLString>("namedCurve", exception_state);
-  if (exception_state.HadException()) {
-    return false;
-  }
-
-  if (!named_curve_string.has_value()) {
+  String named_curve_string;
+  if (!DictionaryHelper::Get(raw, "namedCurve", named_curve_string)) {
     SetTypeError(context.ToString("namedCurve", "Missing or not a string"),
                  exception_state);
     return false;
   }
 
-  for (const auto& curve_name_mapping : kCurveNameMappings) {
-    if (curve_name_mapping.name == *named_curve_string) {
-      named_curve = curve_name_mapping.value;
+  for (size_t i = 0; i < std::size(kCurveNameMappings); ++i) {
+    if (kCurveNameMappings[i].name == named_curve_string) {
+      named_curve = kCurveNameMappings[i].value;
       return true;
     }
   }
@@ -901,7 +884,8 @@ bool GetPeerPublicKey(const Dictionary& raw,
     return false;
   }
 
-  CryptoKey* crypto_key = V8CryptoKey::ToWrappable(raw.GetIsolate(), v8_value);
+  CryptoKey* crypto_key =
+      V8CryptoKey::ToImplWithTypeCheck(raw.GetIsolate(), v8_value);
   if (!crypto_key) {
     SetTypeError(context.ToString("public", "Must be a CryptoKey"),
                  exception_state);
@@ -1158,23 +1142,17 @@ bool ParseAlgorithmIdentifier(v8::Isolate* isolate,
 
   // Get the name of the algorithm from the AlgorithmIdentifier.
   Dictionary params(isolate, raw.GetAsObject().V8Value(), exception_state);
-  if (exception_state.HadException()) {
+  if (exception_state.HadException())
     return false;
-  }
 
-  std::optional<String> algorithm_name =
-      params.Get<IDLString>("name", exception_state);
-  if (exception_state.HadException()) {
-    return false;
-  }
-
-  if (!algorithm_name.has_value()) {
+  String algorithm_name;
+  if (!DictionaryHelper::Get(params, "name", algorithm_name)) {
     SetTypeError(context.ToString("name", "Missing or not a string"),
                  exception_state);
     return false;
   }
 
-  return ParseAlgorithmDictionary(isolate, *algorithm_name, params, op,
+  return ParseAlgorithmDictionary(isolate, algorithm_name, params, op,
                                   algorithm, context, exception_state);
 }
 

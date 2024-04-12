@@ -9,16 +9,12 @@
 #include "base/functional/callback_helpers.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/strings/stringprintf.h"
 #include "base/unguessable_token.h"
 #include "chrome/browser/nearby_sharing/common/nearby_share_features.h"
 #include "chrome/browser/nearby_sharing/constants.h"
+#include "chrome/browser/nearby_sharing/logging/logging.h"
 #include "chrome/browser/nearby_sharing/public/cpp/nearby_connections_manager.h"
-#include "chrome/services/sharing/nearby/common/nearby_features.h"
-#include "chromeos/ash/components/nearby/presence/conversions/proto_conversions.h"
 #include "chromeos/ash/services/nearby/public/mojom/nearby_connections_types.mojom.h"
-#include "chromeos/ash/services/nearby/public/mojom/nearby_presence.mojom.h"
-#include "components/cross_device/logging/logging.h"
 #include "crypto/random.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "net/base/network_change_notifier.h"
@@ -46,7 +42,7 @@ bool ShouldUseInternet(DataUsage data_usage, PowerLevel power_level) {
 
   // Verify that this network has an internet connection.
   if (connection_type == net::NetworkChangeNotifier::CONNECTION_NONE) {
-    CD_LOG(VERBOSE, Feature::NC) << __func__ << ": No internet connection.";
+    NS_LOG(VERBOSE) << __func__ << ": No internet connection.";
     return false;
   }
 
@@ -54,8 +50,8 @@ bool ShouldUseInternet(DataUsage data_usage, PowerLevel power_level) {
   if (data_usage == DataUsage::kWifiOnly &&
       net::NetworkChangeNotifier::GetConnectionCost() ==
           net::NetworkChangeNotifier::CONNECTION_COST_METERED) {
-    CD_LOG(VERBOSE, Feature::NC) << __func__ << ": Do not use internet with "
-                                 << data_usage << " and a metered connection.";
+    NS_LOG(VERBOSE) << __func__ << ": Do not use internet with " << data_usage
+                    << " and a metered connection.";
     return false;
   }
 
@@ -109,54 +105,6 @@ std::string MediumSelectionToString(
   return ss.str();
 }
 
-// TODO(b/311040986): Migrate these to a conversions class.
-// `NearbyConnectionsManagerImpl` can't use the same conversion functions from
-// //chrome/services/sharing/nearby/nearby_presence_conversions.h.
-ash::nearby::presence::mojom::ActionType ActionTypeToMojom(uint32_t action) {
-  switch (::nearby::presence::ActionBit(action)) {
-    case ::nearby::presence::ActionBit::kActiveUnlockAction:
-      return ash::nearby::presence::mojom::ActionType::kActiveUnlockAction;
-    case ::nearby::presence::ActionBit::kNearbyShareAction:
-      return ash::nearby::presence::mojom::ActionType::kNearbyShareAction;
-    case ::nearby::presence::ActionBit::kInstantTetheringAction:
-      return ash::nearby::presence::mojom::ActionType::kInstantTetheringAction;
-    case ::nearby::presence::ActionBit::kPhoneHubAction:
-      return ash::nearby::presence::mojom::ActionType::kPhoneHubAction;
-    case ::nearby::presence::ActionBit::kPresenceManagerAction:
-      return ash::nearby::presence::mojom::ActionType::kPresenceManagerAction;
-    case ::nearby::presence::ActionBit::kFinderAction:
-      return ash::nearby::presence::mojom::ActionType::kFinderAction;
-    case ::nearby::presence::ActionBit::kFastPairSassAction:
-      return ash::nearby::presence::mojom::ActionType::kFastPairSassAction;
-    case ::nearby::presence::ActionBit::kTapToTransferAction:
-      return ash::nearby::presence::mojom::ActionType::kTapToTransferAction;
-    case ::nearby::presence::ActionBit::kLastAction:
-      return ash::nearby::presence::mojom::ActionType::kLastAction;
-  }
-}
-
-ash::nearby::presence::mojom::MetadataPtr MetadataToMojom(
-    ::nearby::internal::Metadata metadata) {
-  return ash::nearby::presence::mojom::Metadata::New(
-      ash::nearby::presence::proto::DeviceTypeToMojom(metadata.device_type()),
-      metadata.account_name(), metadata.device_name(), metadata.user_name(),
-      metadata.device_profile_url(),
-      std::vector<uint8_t>(metadata.bluetooth_mac_address().begin(),
-                           metadata.bluetooth_mac_address().end()));
-}
-
-ash::nearby::presence::mojom::PresenceDevicePtr BuildPresenceMojomDevice(
-    nearby::presence::PresenceDevice device) {
-  std::vector<ash::nearby::presence::mojom::ActionType> actions;
-  for (auto action : device.GetActions()) {
-    actions.push_back(ActionTypeToMojom(action.GetActionIdentifier()));
-  }
-
-  return ash::nearby::presence::mojom::PresenceDevice::New(
-      device.GetEndpointId(), std::move(actions),
-      /*stable_device_id=*/std::nullopt, MetadataToMojom(device.GetMetadata()));
-}
-
 }  // namespace
 
 NearbyConnectionsManagerImpl::NearbyConnectionsManagerImpl(
@@ -191,7 +139,7 @@ void NearbyConnectionsManagerImpl::StartAdvertising(
   }
 
   bool is_high_power = power_level == PowerLevel::kHighPower;
-  bool use_ble = features::IsNearbyBleV2Enabled() || !is_high_power;
+  bool use_ble = !is_high_power;
   auto allowed_mediums = MediumSelection::New(
       /*bluetooth=*/is_high_power, /*ble=*/use_ble,
       // Using kHighPower here rather than power_level to signal that power
@@ -201,10 +149,10 @@ void NearbyConnectionsManagerImpl::StartAdvertising(
       /*wifi_lan=*/
       ShouldEnableWifiLan(data_usage, PowerLevel::kHighPower) &&
           kIsWifiLanAdvertisingSupported);
-  CD_LOG(VERBOSE, Feature::NC)
-      << __func__ << ": " << "is_high_power=" << (is_high_power ? "yes" : "no")
-      << "use_ble=" << (use_ble ? "yes" : "no") << ", data_usage=" << data_usage
-      << ", allowed_mediums=" << MediumSelectionToString(*allowed_mediums);
+  NS_LOG(VERBOSE) << __func__ << ": "
+                  << "is_high_power=" << (is_high_power ? "yes" : "no")
+                  << ", data_usage=" << data_usage << ", allowed_mediums="
+                  << MediumSelectionToString(*allowed_mediums);
 
   mojo::PendingRemote<ConnectionLifecycleListener> lifecycle_listener;
   connection_lifecycle_listeners_.Add(
@@ -219,28 +167,17 @@ void NearbyConnectionsManagerImpl::StartAdvertising(
   // because high-visibility already leaks the device name.
   bool auto_upgrade_bandwidth = is_high_power;
 
-  // We pass in the Fast Advertisement service UUID when we want Nearby
-  // Connections to advertise a Fast Advertisement (AKA low-power, contacts
-  // mode advertising). For BLE v1, this is always the case. When BLE v2 is
-  // enabled, we only pass in the UUID when in low-power mode.
-  // TODO (b/327451380): Replace this with a bool in the NC layer.
-  std::optional<::device::BluetoothUUID> fast_advertisement_service_uuid =
-      features::IsNearbyBleV2Enabled() && is_high_power
-          ? std::nullopt
-          : std::make_optional(
-                device::BluetoothUUID(kFastAdvertisementServiceUuid));
-
   incoming_connection_listener_ = listener;
   nearby_connections->StartAdvertising(
       service_id_, endpoint_info,
-      AdvertisingOptions::New(kStrategy, std::move(allowed_mediums),
-                              auto_upgrade_bandwidth,
-                              /*enforce_topology_constraints=*/true,
-                              /*enable_bluetooth_listening=*/use_ble,
-                              /*enable_webrtc_listening=*/
-                              ShouldEnableWebRtc(data_usage, power_level),
-                              /*fast_advertisement_service_uuid=*/
-                              fast_advertisement_service_uuid),
+      AdvertisingOptions::New(
+          kStrategy, std::move(allowed_mediums), auto_upgrade_bandwidth,
+          /*enforce_topology_constraints=*/true,
+          /*enable_bluetooth_listening=*/use_ble,
+          /*enable_webrtc_listening=*/
+          ShouldEnableWebRtc(data_usage, power_level),
+          /*fast_advertisement_service_uuid=*/
+          device::BluetoothUUID(kFastAdvertisementServiceUuid)),
       std::move(lifecycle_listener), std::move(callback));
 }
 
@@ -279,9 +216,9 @@ void NearbyConnectionsManagerImpl::StartDiscovery(
       /*wifi_lan=*/
       ShouldEnableWifiLan(data_usage, PowerLevel::kHighPower) &&
           kIsWifiLanDiscoverySupported);
-  CD_LOG(VERBOSE, Feature::NC)
-      << __func__ << ": " << "data_usage=" << data_usage
-      << ", allowed_mediums=" << MediumSelectionToString(*allowed_mediums);
+  NS_LOG(VERBOSE) << __func__ << ": "
+                  << "data_usage=" << data_usage << ", allowed_mediums="
+                  << MediumSelectionToString(*allowed_mediums);
 
   discovery_listener_ = listener;
   nearby_connections->StartDiscovery(
@@ -307,18 +244,17 @@ void NearbyConnectionsManagerImpl::StopDiscovery() {
 
   process_reference_->GetNearbyConnections()->StopDiscovery(
       service_id_, base::BindOnce([](ConnectionsStatus status) {
-        CD_LOG(VERBOSE, Feature::NC)
-            << __func__
-            << ": Stop discovery attempted over Nearby "
-               "Connections with result: "
-            << ConnectionsStatusToString(status);
+        NS_LOG(VERBOSE) << __func__
+                        << ": Stop discovery attempted over Nearby "
+                           "Connections with result: "
+                        << ConnectionsStatusToString(status);
       }));
 }
 
 void NearbyConnectionsManagerImpl::Connect(
     std::vector<uint8_t> endpoint_info,
     const std::string& endpoint_id,
-    std::optional<std::vector<uint8_t>> bluetooth_mac_address,
+    absl::optional<std::vector<uint8_t>> bluetooth_mac_address,
     DataUsage data_usage,
     NearbyConnectionCallback callback) {
   // TODO(https://crbug.com/1177088): Determine if we should attempt to bind to
@@ -336,9 +272,9 @@ void NearbyConnectionsManagerImpl::Connect(
       /*bluetooth=*/true,
       /*ble=*/false, ShouldEnableWebRtc(data_usage, PowerLevel::kHighPower),
       /*wifi_lan=*/ShouldEnableWifiLan(data_usage, PowerLevel::kHighPower));
-  CD_LOG(VERBOSE, Feature::NC)
-      << __func__ << ": " << "data_usage=" << data_usage
-      << ", allowed_mediums=" << MediumSelectionToString(*allowed_mediums);
+  NS_LOG(VERBOSE) << __func__ << ": "
+                  << "data_usage=" << data_usage << ", allowed_mediums="
+                  << MediumSelectionToString(*allowed_mediums);
 
   mojo::PendingRemote<ConnectionLifecycleListener> lifecycle_listener;
   connection_lifecycle_listeners_.Add(
@@ -359,8 +295,8 @@ void NearbyConnectionsManagerImpl::Connect(
       service_id_, endpoint_info, endpoint_id,
       ConnectionOptions::New(std::move(allowed_mediums),
                              std::move(bluetooth_mac_address),
-                             /*keep_alive_interval_millis=*/std::nullopt,
-                             /*keep_alive_timeout_millis=*/std::nullopt),
+                             /*keep_alive_interval_millis=*/absl::nullopt,
+                             /*keep_alive_timeout_millis=*/absl::nullopt),
       std::move(lifecycle_listener),
       base::BindOnce(&NearbyConnectionsManagerImpl::OnConnectionRequested,
                      weak_ptr_factory_.GetWeakPtr(), endpoint_id));
@@ -368,8 +304,7 @@ void NearbyConnectionsManagerImpl::Connect(
 
 void NearbyConnectionsManagerImpl::OnConnectionTimedOut(
     const std::string& endpoint_id) {
-  CD_LOG(ERROR, Feature::NC)
-      << "Failed to connect to the remote shareTarget: Timed out.";
+  NS_LOG(ERROR) << "Failed to connect to the remote shareTarget: Timed out.";
   Disconnect(endpoint_id);
 }
 
@@ -382,26 +317,13 @@ void NearbyConnectionsManagerImpl::OnConnectionRequested(
   }
 
   if (status != ConnectionsStatus::kSuccess) {
-    CD_LOG(ERROR, Feature::NC)
-        << "Failed to connect to the remote shareTarget: "
-        << ConnectionsStatusToString(status);
+    NS_LOG(ERROR) << "Failed to connect to the remote shareTarget: "
+                  << ConnectionsStatusToString(status);
     Disconnect(endpoint_id);
     return;
   }
 
   // TODO(crbug/1111458): Support TransferManager.
-}
-
-void NearbyConnectionsManagerImpl::OnConnectionRequestedV3(
-    nearby::presence::PresenceDevice remote_device,
-    ConnectionsStatus status) {
-  if (status != ConnectionsStatus::kSuccess) {
-    CD_LOG(ERROR, Feature::NC)
-        << "Failed to connect (v3) to remote device with result: "
-        << ConnectionsStatusToString(status);
-    DisconnectV3(remote_device);
-    return;
-  }
 }
 
 void NearbyConnectionsManagerImpl::Disconnect(const std::string& endpoint_id) {
@@ -415,7 +337,7 @@ void NearbyConnectionsManagerImpl::Disconnect(const std::string& endpoint_id) {
       service_id_, endpoint_id,
       base::BindOnce(
           [](const std::string& endpoint_id, ConnectionsStatus status) {
-            CD_LOG(VERBOSE, Feature::NC)
+            NS_LOG(VERBOSE)
                 << __func__ << ": Disconnecting from endpoint " << endpoint_id
                 << " attempted over Nearby Connections with result: "
                 << ConnectionsStatusToString(status);
@@ -423,7 +345,7 @@ void NearbyConnectionsManagerImpl::Disconnect(const std::string& endpoint_id) {
           endpoint_id));
 
   OnDisconnected(endpoint_id);
-  CD_LOG(INFO, Feature::NC) << "Disconnected from " << endpoint_id;
+  NS_LOG(INFO) << "Disconnected from " << endpoint_id;
 }
 
 void NearbyConnectionsManagerImpl::Send(
@@ -444,7 +366,7 @@ void NearbyConnectionsManagerImpl::Send(
       service_id_, {endpoint_id}, std::move(payload),
       base::BindOnce(
           [](const std::string& endpoint_id, ConnectionsStatus status) {
-            CD_LOG(VERBOSE, Feature::NC)
+            NS_LOG(VERBOSE)
                 << __func__ << ": Sending payload to endpoint " << endpoint_id
                 << " attempted over Nearby Connections with result: "
                 << ConnectionsStatusToString(status);
@@ -518,7 +440,7 @@ void NearbyConnectionsManagerImpl::Cancel(int64_t payload_id) {
           PayloadTransferUpdate::New(payload_id, PayloadStatus::kCanceled,
                                      /*total_bytes=*/0,
                                      /*bytes_transferred=*/0),
-          /*upgraded_medium=*/std::nullopt);
+          /*upgraded_medium=*/absl::nullopt);
     }
   }
 
@@ -526,13 +448,13 @@ void NearbyConnectionsManagerImpl::Cancel(int64_t payload_id) {
       service_id_, payload_id,
       base::BindOnce(
           [](int64_t payload_id, ConnectionsStatus status) {
-            CD_LOG(VERBOSE, Feature::NC)
+            NS_LOG(VERBOSE)
                 << __func__ << ": Cancelling payload to id " << payload_id
                 << " attempted over Nearby Connections with result: "
                 << ConnectionsStatusToString(status);
           },
           payload_id));
-  CD_LOG(INFO, Feature::NC) << "Cancelling payload: " << payload_id;
+  NS_LOG(INFO) << "Cancelling payload: " << payload_id;
 }
 
 void NearbyConnectionsManagerImpl::ClearIncomingPayloads() {
@@ -546,43 +468,26 @@ void NearbyConnectionsManagerImpl::ClearIncomingPayloads() {
   incoming_payloads_.clear();
 }
 
-void NearbyConnectionsManagerImpl::ClearIncomingPayloadWithId(
-    int64_t payload_id) {
-  auto payload_found = incoming_payloads_.find(payload_id);
-  if (payload_found != incoming_payloads_.end()) {
-    std::vector<PayloadPtr> payload_found_container;
-    payload_found_container.push_back(std::move(payload_found->second));
-    file_handler_.ReleaseFilePayloads(std::move(payload_found_container));
-    incoming_payloads_.erase(payload_found);
-  }
-  payload_status_listeners_.erase(payload_id);
-}
-
-std::optional<std::string> NearbyConnectionsManagerImpl::GetAuthenticationToken(
+absl::optional<std::string>
+NearbyConnectionsManagerImpl::GetAuthenticationToken(
     const std::string& endpoint_id) {
   auto it = connection_info_map_.find(endpoint_id);
   if (it == connection_info_map_.end()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return it->second->authentication_token;
 }
 
-std::optional<std::vector<uint8_t>>
+absl::optional<std::vector<uint8_t>>
 NearbyConnectionsManagerImpl::GetRawAuthenticationToken(
     const std::string& endpoint_id) {
   auto it = connection_info_map_.find(endpoint_id);
   if (it == connection_info_map_.end()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return it->second->raw_authentication_token;
-}
-
-void NearbyConnectionsManagerImpl::RegisterBandwidthUpgradeListener(
-    base::WeakPtr<BandwidthUpgradeListener> listener) {
-  CHECK(!bandwidth_upgrade_listener_);
-  bandwidth_upgrade_listener_ = listener;
 }
 
 void NearbyConnectionsManagerImpl::UpgradeBandwidth(
@@ -604,7 +509,7 @@ void NearbyConnectionsManagerImpl::UpgradeBandwidth(
       service_id_, endpoint_id,
       base::BindOnce(
           [](const std::string& endpoint_id, ConnectionsStatus status) {
-            CD_LOG(VERBOSE, Feature::NC)
+            NS_LOG(VERBOSE)
                 << __func__ << ": Bandwidth upgrade attempted to endpoint "
                 << endpoint_id << "over Nearby Connections with result: "
                 << ConnectionsStatusToString(status);
@@ -615,74 +520,6 @@ void NearbyConnectionsManagerImpl::UpgradeBandwidth(
           endpoint_id));
 }
 
-void NearbyConnectionsManagerImpl::ConnectV3(
-    nearby::presence::PresenceDevice remote_presence_device,
-    DataUsage data_usage,
-    NearbyConnectionCallback callback) {
-  nearby::connections::mojom::NearbyConnections* nearby_connections =
-      GetNearbyConnections();
-  CHECK(nearby_connections);
-
-  // TODO(b/287340241): Enable BLE connections as an allowed medium.
-  auto allowed_mediums = MediumSelection::New(
-      /*bluetooth=*/true,
-      /*ble=*/false, ShouldEnableWebRtc(data_usage, PowerLevel::kHighPower),
-      /*wifi_lan=*/ShouldEnableWifiLan(data_usage, PowerLevel::kHighPower));
-  CD_LOG(VERBOSE, Feature::NC)
-      << __func__ << ": " << "data_usage=" << data_usage
-      << ", allowed_mediums=" << MediumSelectionToString(*allowed_mediums);
-
-  mojo::PendingRemote<ConnectionListenerV3> connection_listener_v3;
-  connection_listener_v3s_.Add(
-      this, connection_listener_v3.InitWithNewPipeAndPassReceiver());
-
-  pending_outgoing_connections_.emplace(remote_presence_device.GetEndpointId(),
-                                        std::move(callback));
-
-  auto timeout_timer = std::make_unique<base::OneShotTimer>();
-  timeout_timer->Start(
-      FROM_HERE, kInitiateNearbyConnectionTimeout,
-      base::BindOnce(&NearbyConnectionsManagerImpl::OnConnectionTimedOut,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     remote_presence_device.GetEndpointId()));
-  connect_timeout_timers_.emplace(remote_presence_device.GetEndpointId(),
-                                  std::move(timeout_timer));
-
-  nearby_connections->RequestConnectionV3(
-      service_id_, BuildPresenceMojomDevice(remote_presence_device),
-      ConnectionOptions::New(std::move(allowed_mediums),
-                             /*bluetooth_mac_address=*/std::nullopt,
-                             /*keep_alive_interval_millis=*/std::nullopt,
-                             /*keep_alive_timeout_millis=*/std::nullopt),
-      std::move(connection_listener_v3),
-      base::BindOnce(&NearbyConnectionsManagerImpl::OnConnectionRequestedV3,
-                     weak_ptr_factory_.GetWeakPtr(), remote_presence_device));
-}
-
-void NearbyConnectionsManagerImpl::DisconnectV3(
-    nearby::presence::PresenceDevice remote_presence_device) {
-  if (!process_reference_) {
-    return;
-  }
-
-  ash::nearby::presence::mojom::PresenceDevicePtr presence_device_mojom =
-      BuildPresenceMojomDevice(remote_presence_device);
-
-  process_reference_->GetNearbyConnections()->DisconnectFromDeviceV3(
-      service_id_, presence_device_mojom.Clone(),
-      base::BindOnce([](ConnectionsStatus status) {
-        CD_LOG(VERBOSE, Feature::NC)
-            << __func__ << ": Disconnect (V3) from device "
-            << "attempted over Nearby Connections with result: "
-            << ConnectionsStatusToString(status);
-      }));
-
-  // `OnDisconnected()` is called because if the remote_presence_device hasn't
-  // been connected yet, ConnectionListenerV3 is not notified of the
-  // disconnection event. Directly calling here will ensure the cleanup.
-  OnDisconnected(std::move(presence_device_mojom));
-}
-
 base::WeakPtr<NearbyConnectionsManager>
 NearbyConnectionsManagerImpl::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
@@ -690,8 +527,7 @@ NearbyConnectionsManagerImpl::GetWeakPtr() {
 
 void NearbyConnectionsManagerImpl::OnNearbyProcessStopped(
     ash::nearby::NearbyProcessManager::NearbyProcessShutdownReason) {
-  CD_LOG(VERBOSE, Feature::NC) << __func__;
-  process_reference_.reset();
+  NS_LOG(VERBOSE) << __func__;
   Reset();
 }
 
@@ -699,45 +535,47 @@ void NearbyConnectionsManagerImpl::OnEndpointFound(
     const std::string& endpoint_id,
     DiscoveredEndpointInfoPtr info) {
   if (!discovery_listener_) {
-    CD_LOG(INFO, Feature::NC) << "Ignoring discovered endpoint "
-                              << base::HexEncode(info->endpoint_info)
-                              << " because we're no longer "
-                                 "in discovery mode";
+    NS_LOG(INFO) << "Ignoring discovered endpoint "
+                 << base::HexEncode(info->endpoint_info.data(),
+                                    info->endpoint_info.size())
+                 << " because we're no longer "
+                    "in discovery mode";
     return;
   }
 
   auto result = discovered_endpoints_.insert(endpoint_id);
   if (!result.second) {
-    CD_LOG(INFO, Feature::NC) << "Ignoring discovered endpoint "
-                              << base::HexEncode(info->endpoint_info)
-                              << " because we've already "
-                                 "reported this endpoint";
+    NS_LOG(INFO) << "Ignoring discovered endpoint "
+                 << base::HexEncode(info->endpoint_info.data(),
+                                    info->endpoint_info.size())
+                 << " because we've already "
+                    "reported this endpoint";
     return;
   }
 
   discovery_listener_->OnEndpointDiscovered(endpoint_id, info->endpoint_info);
-  CD_LOG(INFO, Feature::NC)
-      << "Discovered " << base::HexEncode(info->endpoint_info)
-      << " over Nearby Connections";
+  NS_LOG(INFO) << "Discovered "
+               << base::HexEncode(info->endpoint_info.data(),
+                                  info->endpoint_info.size())
+               << " over Nearby Connections";
 }
 
 void NearbyConnectionsManagerImpl::OnEndpointLost(
     const std::string& endpoint_id) {
   if (!discovered_endpoints_.erase(endpoint_id)) {
-    CD_LOG(INFO, Feature::NC) << "Ignoring lost endpoint " << endpoint_id
-                              << " because we haven't reported this endpoint";
+    NS_LOG(INFO) << "Ignoring lost endpoint " << endpoint_id
+                 << " because we haven't reported this endpoint";
     return;
   }
 
   if (!discovery_listener_) {
-    CD_LOG(INFO, Feature::NC) << "Ignoring lost endpoint " << endpoint_id
-                              << " because we're no longer in discovery mode";
+    NS_LOG(INFO) << "Ignoring lost endpoint " << endpoint_id
+                 << " because we're no longer in discovery mode";
     return;
   }
 
   discovery_listener_->OnEndpointLost(endpoint_id);
-  CD_LOG(INFO, Feature::NC)
-      << "Endpoint " << endpoint_id << " lost over Nearby Connections";
+  NS_LOG(INFO) << "Endpoint " << endpoint_id << " lost over Nearby Connections";
 }
 
 void NearbyConnectionsManagerImpl::OnConnectionInitiated(
@@ -767,7 +605,7 @@ void NearbyConnectionsManagerImpl::OnConnectionInitiated(
       service_id_, endpoint_id, std::move(payload_listener),
       base::BindOnce(
           [](const std::string& endpoint_id, ConnectionsStatus status) {
-            CD_LOG(VERBOSE, Feature::NC)
+            NS_LOG(VERBOSE)
                 << __func__ << ": Accept connection attempted to endpoint "
                 << endpoint_id << " over Nearby Connections with result: "
                 << ConnectionsStatusToString(status);
@@ -790,8 +628,7 @@ void NearbyConnectionsManagerImpl::OnConnectionAccepted(
     }
 
     auto result = connections_.emplace(
-        endpoint_id, std::make_unique<NearbyConnectionImpl>(
-                         weak_ptr_factory_.GetWeakPtr(), endpoint_id));
+        endpoint_id, std::make_unique<NearbyConnectionImpl>(this, endpoint_id));
     DCHECK(result.second);
     incoming_connection_listener_->OnIncomingConnectionAccepted(
         endpoint_id, it->second->endpoint_info, result.first->second.get());
@@ -803,12 +640,9 @@ void NearbyConnectionsManagerImpl::OnConnectionAccepted(
     }
 
     auto result = connections_.emplace(
-        endpoint_id, std::make_unique<NearbyConnectionImpl>(
-                         weak_ptr_factory_.GetWeakPtr(), endpoint_id));
+        endpoint_id, std::make_unique<NearbyConnectionImpl>(this, endpoint_id));
     DCHECK(result.second);
-    std::move(pending_it->second)
-        .Run(
-            /*nearby_connection=*/result.first->second.get());
+    std::move(pending_it->second).Run(result.first->second.get());
     pending_outgoing_connections_.erase(pending_it);
     connect_timeout_timers_.erase(endpoint_id);
   }
@@ -821,7 +655,7 @@ void NearbyConnectionsManagerImpl::OnConnectionRejected(
 
   auto it = pending_outgoing_connections_.find(endpoint_id);
   if (it != pending_outgoing_connections_.end()) {
-    std::move(it->second).Run(/*nearby_connection=*/nullptr);
+    std::move(it->second).Run(nullptr);
     pending_outgoing_connections_.erase(it);
     connect_timeout_timers_.erase(endpoint_id);
   }
@@ -840,17 +674,6 @@ void NearbyConnectionsManagerImpl::OnDisconnected(
     connect_timeout_timers_.erase(endpoint_id);
   }
 
-  // TODO(b/326139109): Refactor to add a check for `endpoint_id` to ensure that
-  // it exists in either `pending_outgoing_connections_` or `connections_`.
-  // Otherwise we should `ReportBadMessage()`.
-
-  // Destroying the NearbyConnectionImpl object may start a chain of callbacks
-  // that can delete this NearbyConnectionsManagerImpl object. This may result
-  // in a crash (see b/303675257). Update the |connections_| map, but wait to
-  // destroy the connection object until after we're done modifying internal
-  // state in OnDisconnected() by letting the connection go out of scope.
-  std::unique_ptr<NearbyConnectionImpl> connection =
-      std::move(connections_[endpoint_id]);
   connections_.erase(endpoint_id);
 
   if (base::Contains(requested_bwu_endpoint_ids_, endpoint_id)) {
@@ -859,34 +682,18 @@ void NearbyConnectionsManagerImpl::OnDisconnected(
         base::Contains(current_upgraded_mediums_, endpoint_id));
   }
   requested_bwu_endpoint_ids_.erase(endpoint_id);
-  on_bandwidth_changed_endpoint_ids_.erase(endpoint_id);
   current_upgraded_mediums_.erase(endpoint_id);
+
+  // TODO(crbug/1111458): Support TransferManager.
 }
 
 void NearbyConnectionsManagerImpl::OnBandwidthChanged(
     const std::string& endpoint_id,
     Medium medium) {
-  // `OnBandwidthChanged` is always called for the first Medium we connected to.
-  // This is not guaranteed to be a specific Medium, but is usually Bluetooth.
-  // This may or may not be preceded by a call to `UpgradeBandwidth`. It's not
-  // useful to record this first Medium since no Bandwidth Upgrade occurred, so
-  // we ignore it.
-  if (!base::Contains(on_bandwidth_changed_endpoint_ids_, endpoint_id)) {
-    CD_LOG(VERBOSE, Feature::NC)
-        << __func__ << ": Initial call with medium=" << medium
-        << "; endpoint_id=" << endpoint_id;
-    on_bandwidth_changed_endpoint_ids_.emplace(endpoint_id);
-  } else {
-    CD_LOG(VERBOSE, Feature::NC) << __func__ << ": Changed to medium=" << medium
-                                 << "; endpoint_id=" << endpoint_id;
-    base::UmaHistogramEnumeration("Nearby.Share.Medium.ChangedToMedium",
-                                  medium);
-    current_upgraded_mediums_.insert_or_assign(endpoint_id, medium);
-    // Only propagate this event on actual bandwidth upgrades.
-    if (bandwidth_upgrade_listener_) {
-      bandwidth_upgrade_listener_->OnBandwidthUpgrade(endpoint_id, medium);
-    }
-  }
+  NS_LOG(VERBOSE) << __func__ << ": Changed to medium=" << medium
+                  << "; endpoint_id=" << endpoint_id;
+  base::UmaHistogramEnumeration("Nearby.Share.Medium.ChangedToMedium", medium);
+  current_upgraded_mediums_.insert_or_assign(endpoint_id, medium);
   // TODO(crbug/1111458): Support TransferManager.
 }
 
@@ -939,8 +746,7 @@ void NearbyConnectionsManagerImpl::OnPayloadTransferUpdate(
   }
 
   if (!payload_it->second->content->is_bytes()) {
-    CD_LOG(WARNING, Feature::NC)
-        << "Received unknown payload of file type. Cancelling.";
+    NS_LOG(WARNING) << "Received unknown payload of file type. Cancelling.";
     process_reference_->GetNearbyConnections()->CancelPayload(
         service_id_, payload_it->first, base::DoNothing());
     return;
@@ -955,155 +761,9 @@ void NearbyConnectionsManagerImpl::OnPayloadTransferUpdate(
     return;
   }
 
-  CD_LOG(INFO, Feature::NC)
-      << "Writing incoming byte message to NearbyConnection.";
+  NS_LOG(INFO) << "Writing incoming byte message to NearbyConnection.";
   connections_it->second->WriteMessage(
       payload_it->second->content->get_bytes()->bytes);
-}
-
-void NearbyConnectionsManagerImpl::OnConnectionInitiated(
-    PresenceDevicePtr remote_device,
-    InitialConnectionInfoV3Ptr info) {
-  if (!process_reference_) {
-    return;
-  }
-
-  if (info->authentication_status ==
-      nearby::connections::mojom::AuthenticationStatus::kSuccess) {
-    mojo::PendingRemote<PayloadListenerV3> payload_listener;
-    payload_listener_v3s_.Add(
-        this, payload_listener.InitWithNewPipeAndPassReceiver());
-
-    process_reference_->GetNearbyConnections()->AcceptConnectionV3(
-        service_id_, std::move(remote_device), std::move(payload_listener),
-        base::BindOnce([](ConnectionsStatus status) {
-          CD_LOG(VERBOSE, Feature::NC)
-              << __func__ << ": Accept connection (V3) attempted to device "
-              << " over Nearby Connections with result: "
-              << ConnectionsStatusToString(status);
-        }));
-  } else {
-    process_reference_->GetNearbyConnections()->RejectConnectionV3(
-        service_id_, std::move(remote_device),
-        base::BindOnce([](ConnectionsStatus status) {
-          CD_LOG(VERBOSE, Feature::NC)
-              << __func__ << ": Reject connection (V3) attempted to device "
-              << " over Nearby Connections with result: "
-              << ConnectionsStatusToString(status);
-        }));
-  }
-}
-
-void NearbyConnectionsManagerImpl::OnConnectionResult(
-    PresenceDevicePtr remote_device,
-    Status status) {
-  CD_LOG(INFO, Feature::NC)
-      << __func__ << ": OnConnectionResult result=" << status;
-
-  const std::string& endpoint_id = remote_device->endpoint_id;
-  auto it = pending_outgoing_connections_.find(endpoint_id);
-
-  if (it == pending_outgoing_connections_.end()) {
-    connection_listener_v3s_.ReportBadMessage(
-        base::StringPrintf("OnConnectionResult() received endpoint_id=%s which "
-                           "does not exist in connections V3",
-                           endpoint_id.c_str()));
-    return;
-  }
-
-  if (status == Status::kSuccess) {
-    auto result = connections_v3_.emplace(
-        endpoint_id, std::make_unique<NearbyConnectionImpl>(
-                         weak_ptr_factory_.GetWeakPtr(), endpoint_id));
-    std::move(it->second)
-        .Run(
-            /*nearby_connection=*/result.first->second.get());
-  } else {
-    std::move(it->second).Run(/*nearby_connection=*/nullptr);
-  }
-
-  pending_outgoing_connections_.erase(it);
-  connect_timeout_timers_.erase(endpoint_id);
-}
-
-void NearbyConnectionsManagerImpl::OnDisconnected(
-    PresenceDevicePtr remote_device) {
-  const std::string& endpoint_id = remote_device->endpoint_id;
-
-  auto it = pending_outgoing_connections_.find(endpoint_id);
-  if (it != pending_outgoing_connections_.end()) {
-    std::move(it->second).Run(/*nearby_connection=*/nullptr);
-    pending_outgoing_connections_.erase(it);
-    connect_timeout_timers_.erase(endpoint_id);
-  } else {
-    // Destroying the NearbyConnectionImpl object may start a chain of callbacks
-    // that can delete this NearbyConnectionsManagerImpl object. This may result
-    // in a crash (see b/303675257). Update the |connections_v3_| map, but wait
-    // to destroy the connection object until after we're done modifying
-    // internal state in OnDisconnected() by letting the connection go out of
-    // scope.
-    std::unique_ptr<NearbyConnectionImpl> connection;
-    auto active_connections_it = connections_v3_.find(endpoint_id);
-
-    // The specified endpoint_id was not in pending connections, and thus must
-    // be in active `connections_v3_`. If not, report a bad message from Nearby.
-    if (active_connections_it == connections_v3_.end()) {
-      connection_listener_v3s_.ReportBadMessage(
-          base::StringPrintf("OnDisconnected() received endpoint_id=%s which "
-                             "does not exist in pending connections or "
-                             "connections V3",
-                             endpoint_id.c_str()));
-    } else {
-      connection = std::move(active_connections_it->second);
-      connections_v3_.erase(active_connections_it);
-    }
-  }
-
-  // TODO(b/325534442): Emit to V3 version of the metric
-  // RequestedBandwidthUpgradeResult, and updated BWU-related maps. See older
-  // OnDisconnected() method.
-
-  on_bandwidth_changed_endpoint_ids_.erase(endpoint_id);
-  current_upgraded_mediums_v3_.erase(endpoint_id);
-}
-
-void NearbyConnectionsManagerImpl::OnBandwidthChanged(
-    PresenceDevicePtr remote_device,
-    BandwidthInfoPtr bandwidth_info) {
-  const std::string& endpoint_id = remote_device->endpoint_id;
-
-  // `OnBandwidthChanged` is always called for the first Medium we connected to.
-  // This is not guaranteed to be a specific Medium, but is usually Bluetooth.
-  // This may or may not be preceded by a call to `UpgradeBandwidth`. It's not
-  // useful to record this first Medium since no Bandwidth Upgrade occurred, so
-  // we ignore it.
-  if (!base::Contains(on_bandwidth_changed_endpoint_ids_v3_, endpoint_id)) {
-    CD_LOG(VERBOSE, Feature::NC)
-        << __func__
-        << ": (V3) Initial call with medium=" << bandwidth_info->medium
-        << " , quality=" << bandwidth_info->quality
-        << "; endpoint_id=" << endpoint_id;
-    on_bandwidth_changed_endpoint_ids_v3_.emplace(endpoint_id);
-  } else {
-    // TODO(b/325534442): Emit to a metric in the same that v1
-    // `NearbyConnectionsManagerImpl::OnBandwidthChanged()` emits
-    // "Nearby.Share.Medium.ChangedToMedium".
-    CD_LOG(VERBOSE, Feature::NC)
-        << __func__ << ": (V3) Changed to medium=" << bandwidth_info->medium
-        << " , quality=" << bandwidth_info->quality
-        << "; endpoint_id=" << endpoint_id;
-    current_upgraded_mediums_v3_.insert_or_assign(endpoint_id,
-                                                  bandwidth_info->medium);
-
-    // TODO(b/328296135): When NearbyConnectionsManagerImpl begins maintaining
-    // a `PresenceDevice` map, we will send that back as opposed to a just a
-    // `PresenceDevice` with only an `endpoint_id`.
-    if (bandwidth_upgrade_listener_) {
-      bandwidth_upgrade_listener_->OnBandwidthUpgradeV3(
-          nearby::presence::PresenceDevice(endpoint_id),
-          bandwidth_info->medium);
-    }
-  }
 }
 
 nearby::connections::mojom::NearbyConnections*
@@ -1114,8 +774,8 @@ NearbyConnectionsManagerImpl::GetNearbyConnections() {
                        base::Unretained(this)));
 
     if (!process_reference_) {
-      CD_LOG(WARNING, Feature::NC)
-          << __func__ << "Failed to get a reference to the nearby process.";
+      NS_LOG(WARNING) << __func__
+                      << "Failed to get a reference to the nearby process.";
       return nullptr;
     }
   }
@@ -1124,7 +784,7 @@ NearbyConnectionsManagerImpl::GetNearbyConnections() {
       process_reference_->GetNearbyConnections().get();
 
   if (!nearby_connections) {
-    CD_LOG(WARNING, Feature::NC)
+    NS_LOG(WARNING)
         << __func__
         << "Failed to get a nearby connections from process reference.";
   }
@@ -1136,11 +796,10 @@ void NearbyConnectionsManagerImpl::Reset() {
   if (process_reference_) {
     process_reference_->GetNearbyConnections()->StopAllEndpoints(
         service_id_, base::BindOnce([](ConnectionsStatus status) {
-          CD_LOG(VERBOSE, Feature::NC)
-              << __func__
-              << ": Stop all endpoints attempted over Nearby "
-                 "Connections with result: "
-              << ConnectionsStatusToString(status);
+          NS_LOG(VERBOSE) << __func__
+                          << ": Stop all endpoints attempted over Nearby "
+                             "Connections with result: "
+                          << ConnectionsStatusToString(status);
         }));
   }
   process_reference_.reset();
@@ -1148,17 +807,13 @@ void NearbyConnectionsManagerImpl::Reset() {
   payload_status_listeners_.clear();
   ClearIncomingPayloads();
   connections_.clear();
-  connections_v3_.clear();
   connection_info_map_.clear();
   discovery_listener_ = nullptr;
   incoming_connection_listener_ = nullptr;
   endpoint_discovery_listener_.reset();
   connect_timeout_timers_.clear();
   requested_bwu_endpoint_ids_.clear();
-  on_bandwidth_changed_endpoint_ids_.clear();
-  on_bandwidth_changed_endpoint_ids_v3_.clear();
   current_upgraded_mediums_.clear();
-  current_upgraded_mediums_v3_.clear();
 
   for (auto& entry : pending_outgoing_connections_) {
     std::move(entry.second).Run(/*connection=*/nullptr);
@@ -1167,12 +822,12 @@ void NearbyConnectionsManagerImpl::Reset() {
   pending_outgoing_connections_.clear();
 }
 
-std::optional<nearby::connections::mojom::Medium>
+absl::optional<nearby::connections::mojom::Medium>
 NearbyConnectionsManagerImpl::GetUpgradedMedium(
     const std::string& endpoint_id) const {
   const auto it = current_upgraded_mediums_.find(endpoint_id);
   if (it == current_upgraded_mediums_.end()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return it->second;

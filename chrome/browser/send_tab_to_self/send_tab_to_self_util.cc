@@ -13,24 +13,28 @@
 #include "components/send_tab_to_self/send_tab_to_self_sync_service.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/identity_manager/account_info.h"
-#include "components/sync/service/sync_service.h"
+#include "components/sync/driver/sync_service.h"
 #include "content/public/browser/web_contents.h"
 #include "url/gurl.h"
 
 namespace send_tab_to_self {
 
-std::optional<EntryPointDisplayReason> GetEntryPointDisplayReason(
+absl::optional<EntryPointDisplayReason> GetEntryPointDisplayReason(
     content::WebContents* web_contents) {
   // TODO(crbug.com/1274173): This can probably be a DCHECK instead.
   if (!web_contents)
-    return std::nullopt;
+    return absl::nullopt;
 
-  send_tab_to_self::SendTabToSelfSyncService* service =
-      SendTabToSelfSyncServiceFactory::GetForProfile(
-          Profile::FromBrowserContext(web_contents->GetBrowserContext()));
-  return service ? service->GetEntryPointDisplayReason(
-                       web_contents->GetLastCommittedURL())
-                 : std::nullopt;
+  auto* profile =
+      Profile::FromBrowserContext(web_contents->GetBrowserContext());
+  if (profile->IsJemaProfile()) {
+    return absl::nullopt;
+  }
+  return GetEntryPointDisplayReason(
+      web_contents->GetLastCommittedURL(),
+      SyncServiceFactory::GetForProfile(profile),
+      SendTabToSelfSyncServiceFactory::GetForProfile(profile),
+      profile->GetPrefs());
 }
 
 bool ShouldDisplayEntryPoint(content::WebContents* web_contents) {

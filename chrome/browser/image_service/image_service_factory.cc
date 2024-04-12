@@ -2,19 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
-
 #include "chrome/browser/image_service/image_service_factory.h"
 
-#include "chrome/browser/autocomplete/chrome_autocomplete_scheme_classifier.h"
-#include "chrome/browser/autocomplete/remote_suggestions_service_factory.h"
+#include "base/no_destructor.h"
+#include "chrome/browser/autocomplete/chrome_autocomplete_provider_client.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "components/page_image_service/image_service.h"
-#include "components/page_image_service/image_service_impl.h"
 
 namespace page_image_service {
 
@@ -40,25 +36,19 @@ ImageServiceFactory::ImageServiceFactory()
               // Guest mode.
               .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {
-  DependsOn(TemplateURLServiceFactory::GetInstance());
-  DependsOn(RemoteSuggestionsServiceFactory::GetInstance());
   DependsOn(OptimizationGuideKeyedServiceFactory::GetInstance());
   DependsOn(SyncServiceFactory::GetInstance());
 }
 
 ImageServiceFactory::~ImageServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-ImageServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ImageServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   auto* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<ImageServiceImpl>(
-      TemplateURLServiceFactory::GetForProfile(profile),
-      RemoteSuggestionsServiceFactory::GetForProfile(
-          profile, /*create_if_necessary=*/true),
+  return new ImageService(
+      std::make_unique<ChromeAutocompleteProviderClient>(profile),
       OptimizationGuideKeyedServiceFactory::GetForProfile(profile),
-      SyncServiceFactory::GetForProfile(profile),
-      std::make_unique<ChromeAutocompleteSchemeClassifier>(profile));
+      SyncServiceFactory::GetForProfile(profile));
 }
 
 // static

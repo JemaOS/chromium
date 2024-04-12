@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {loadTimeData} from 'chrome://resources/ash/common/load_time_data.m.js';
 import {PromiseResolver} from 'chrome://resources/ash/common/promise_resolver.js';
+import {loadTimeData} from 'chrome://resources/ash/common/load_time_data.m.js';
 import {FakeShimlessRmaService} from 'chrome://shimless-rma/fake_shimless_rma_service.js';
 import {setShimlessRmaServiceForTesting} from 'chrome://shimless-rma/mojo_interface_provider.js';
 import {ReimagingCalibrationSetupPage} from 'chrome://shimless-rma/reimaging_calibration_setup_page.js';
 import {ShimlessRma} from 'chrome://shimless-rma/shimless_rma.js';
-import {CalibrationComponentStatus, CalibrationSetupInstruction, CalibrationStatus, ComponentType} from 'chrome://shimless-rma/shimless_rma.mojom-webui.js';
+import {CalibrationComponentStatus, CalibrationSetupInstruction, CalibrationStatus, ComponentType} from 'chrome://shimless-rma/shimless_rma_types.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 
@@ -20,7 +20,7 @@ suite('reimagingCalibrationSetupPageTest', function() {
   let service = null;
 
   setup(() => {
-    document.body.innerHTML = trustedTypes.emptyHTML;
+    document.body.innerHTML = '';
     service = new FakeShimlessRmaService();
     setShimlessRmaServiceForTesting(service);
   });

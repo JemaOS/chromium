@@ -14,7 +14,7 @@ class MenuListInnerElement : public HTMLDivElement {
   explicit MenuListInnerElement(Document& document);
 
  private:
-  const ComputedStyle* CustomStyleForLayoutObject(
+  scoped_refptr<const ComputedStyle> CustomStyleForLayoutObject(
       const StyleRecalcContext&) override;
 };
 

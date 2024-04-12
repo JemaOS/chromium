@@ -125,7 +125,7 @@ void MediaQueryList::Trace(Visitor* visitor) const {
   visitor->Trace(matcher_);
   visitor->Trace(media_);
   visitor->Trace(listeners_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }
 

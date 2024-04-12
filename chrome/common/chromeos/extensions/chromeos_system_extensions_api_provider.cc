@@ -5,7 +5,6 @@
 #include "chrome/common/chromeos/extensions/chromeos_system_extensions_api_provider.h"
 
 #include <memory>
-#include <string_view>
 
 #include "base/logging.h"
 #include "chrome/common/chromeos/extensions/api/api_features.h"
@@ -58,7 +57,7 @@ bool ChromeOSSystemExtensionsAPIProvider::IsAPISchemaGenerated(
   return api::ChromeOSGeneratedSchemas::IsGenerated(name);
 }
 
-std::string_view ChromeOSSystemExtensionsAPIProvider::GetAPISchema(
+base::StringPiece ChromeOSSystemExtensionsAPIProvider::GetAPISchema(
     const std::string& name) {
   return api::ChromeOSGeneratedSchemas::Get(name);
 }

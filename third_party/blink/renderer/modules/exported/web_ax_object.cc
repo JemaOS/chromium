@@ -48,9 +48,9 @@
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input/keyboard_event_manager.h"
+#include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/page/page.h"
-#include "third_party/blink/renderer/core/page/page_popup.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/modules/accessibility/ax_object.h"
 #include "third_party/blink/renderer/modules/accessibility/ax_object_cache_impl.h"
@@ -205,25 +205,30 @@ void WebAXObject::Serialize(ui::AXNodeData* node_data,
   }
 #endif
 
-  ScopedFreezeAXCache freeze(private_->AXObjectCache());
   private_->Serialize(node_data, accessibility_mode);
 }
 
-void WebAXObject::AddDirtyObjectToSerializationQueue(
+void WebAXObject::MarkSerializerSubtreeDirty() const {
+  if (IsDetached())
+    return;
+  private_->AXObjectCache().MarkSerializerSubtreeDirty(*private_);
+}
+
+void WebAXObject::MarkAXObjectDirtyWithDetails(
+    bool subtree,
     ax::mojom::blink::EventFrom event_from,
     ax::mojom::blink::Action event_from_action,
     std::vector<ui::AXEventIntent> event_intents) const {
   if (IsDetached())
     return;
-  private_->AXObjectCache().AddDirtyObjectToSerializationQueue(
-      private_.Get(), event_from, event_from_action, event_intents);
+  private_->AXObjectCache().MarkAXObjectDirtyWithDetails(
+      private_.Get(), subtree, event_from, event_from_action, event_intents);
 }
 
 void WebAXObject::OnLoadInlineTextBoxes() const {
   if (IsDetached())
     return;
-
-  private_->LoadInlineTextBoxes();
+  private_->AXObjectCache().OnLoadInlineTextBoxes(*private_);
 }
 
 BLINK_EXPORT void WebAXObject::SetImageAsDataNodeId(
@@ -395,36 +400,8 @@ int WebAXObject::HierarchicalLevel() const {
 // point has the VisualViewport scale applied, but not the VisualViewport
 // offset. crbug.com/459591.
 WebAXObject WebAXObject::HitTest(const gfx::Point& point) const {
-  if (IsDetached()) {
+  if (IsDetached())
     return WebAXObject();
-  }
-
-  ScopedFreezeAXCache freeze(private_->AXObjectCache());
-
-  // If there's a popup document, hit test on that first.
-  // TODO(kschmi) - move this logic to `AXObject` once crbug.com/459591
-  // is fixed.
-  Document* popup_document =
-      private_->AXObjectCache().GetPopupDocumentIfShowing();
-  if (popup_document && popup_document != private_->GetDocument()) {
-    auto popup_root_obj = WebAXObject::FromWebDocument(popup_document);
-    gfx::RectF popup_bounds;
-    WebAXObject popup_container;
-    gfx::Transform transform;
-    popup_root_obj.GetRelativeBounds(popup_container, popup_bounds, transform);
-
-    // The |popup_container| will never be set for a popup element. See
-    // `AXObject::GetRelativeBounds`.
-    DCHECK(popup_container.IsNull());
-
-    WebAXObject hit_object = popup_root_obj.HitTest(
-        point - ToRoundedVector2d(popup_bounds.OffsetFromOrigin()));
-
-    // If the popup hit test succeeded, return that result.
-    if (!hit_object.IsDetached()) {
-      return hit_object;
-    }
-  }
 
   private_->GetDocument()->View()->CheckDoesNotNeedLayout();
 
@@ -434,20 +411,20 @@ WebAXObject WebAXObject::HitTest(const gfx::Point& point) const {
       private_->DocumentFrameView()->SoonToBeRemovedUnscaledViewportToContents(
           point);
 
-  if (AXObject* hit = private_->AccessibilityHitTest(contents_point)) {
+  AXObject* hit = private_->AccessibilityHitTest(contents_point);
+
+  if (hit)
     return WebAXObject(hit);
-  }
 
   if (private_->GetBoundsInFrameCoordinates().Contains(
-          PhysicalOffset(contents_point))) {
+          LayoutPoint(contents_point)))
     return *this;
-  }
 
   return WebAXObject();
 }
 
 gfx::Rect WebAXObject::GetBoundsInFrameCoordinates() const {
-  PhysicalRect rect = private_->GetBoundsInFrameCoordinates();
+  LayoutRect rect = private_->GetBoundsInFrameCoordinates();
   return ToEnclosingRect(rect);
 }
 
@@ -541,70 +518,77 @@ void WebAXObject::Selection(bool& is_selection_backward,
   if (!ax_selection)
     return;
 
-  const AXPosition ax_anchor = ax_selection.Anchor();
-  anchor_object =
-      WebAXObject(const_cast<AXObject*>(ax_anchor.ContainerObject()));
-  const AXPosition ax_focus = ax_selection.Focus();
-  focus_object = WebAXObject(const_cast<AXObject*>(ax_focus.ContainerObject()));
+  const AXPosition base = ax_selection.Base();
+  anchor_object = WebAXObject(const_cast<AXObject*>(base.ContainerObject()));
+  const AXPosition extent = ax_selection.Extent();
+  focus_object = WebAXObject(const_cast<AXObject*>(extent.ContainerObject()));
 
-  is_selection_backward = ax_anchor > ax_focus;
-  if (ax_anchor.IsTextPosition()) {
-    anchor_offset = ax_anchor.TextOffset();
-    anchor_affinity = ToAXAffinity(ax_anchor.Affinity());
+  is_selection_backward = base > extent;
+  if (base.IsTextPosition()) {
+    anchor_offset = base.TextOffset();
+    anchor_affinity = ToAXAffinity(base.Affinity());
   } else {
-    anchor_offset = ax_anchor.ChildIndex();
+    anchor_offset = base.ChildIndex();
   }
 
-  if (ax_focus.IsTextPosition()) {
-    focus_offset = ax_focus.TextOffset();
-    focus_affinity = ToAXAffinity(ax_focus.Affinity());
+  if (extent.IsTextPosition()) {
+    focus_offset = extent.TextOffset();
+    focus_affinity = ToAXAffinity(extent.Affinity());
   } else {
-    focus_offset = ax_focus.ChildIndex();
+    focus_offset = extent.ChildIndex();
   }
+}
+
+bool WebAXObject::SetSelected(bool selected) const {
+  if (IsDetached())
+    return false;
+
+  ScopedActionAnnotator annotater(private_.Get(),
+                                  ax::mojom::blink::Action::kSetSelection);
+  return private_->RequestSetSelectedAction(selected);
 }
 
 bool WebAXObject::SetSelection(const WebAXObject& anchor_object,
                                int anchor_offset,
                                const WebAXObject& focus_object,
                                int focus_offset) const {
-  if (IsDetached() || anchor_object.IsDetached() || focus_object.IsDetached()) {
+  if (IsDetached() || anchor_object.IsDetached() || focus_object.IsDetached())
     return false;
-  }
 
   ScopedActionAnnotator annotater(private_.Get(),
                                   ax::mojom::blink::Action::kSetSelection);
-  AXPosition ax_anchor, ax_focus;
+  AXPosition ax_base, ax_extent;
   if (static_cast<const AXObject*>(anchor_object)->IsTextObject() ||
       static_cast<const AXObject*>(anchor_object)->IsAtomicTextField()) {
-    ax_anchor =
+    ax_base =
         AXPosition::CreatePositionInTextObject(*anchor_object, anchor_offset);
   } else if (anchor_offset <= 0) {
-    ax_anchor = AXPosition::CreateFirstPositionInObject(*anchor_object);
+    ax_base = AXPosition::CreateFirstPositionInObject(*anchor_object);
   } else if (anchor_offset >= static_cast<int>(anchor_object.ChildCount())) {
-    ax_anchor = AXPosition::CreateLastPositionInObject(*anchor_object);
+    ax_base = AXPosition::CreateLastPositionInObject(*anchor_object);
   } else {
     DCHECK_GE(anchor_offset, 0);
-    ax_anchor = AXPosition::CreatePositionBeforeObject(
+    ax_base = AXPosition::CreatePositionBeforeObject(
         *anchor_object.ChildAt(static_cast<unsigned int>(anchor_offset)));
   }
 
   if (static_cast<const AXObject*>(focus_object)->IsTextObject() ||
       static_cast<const AXObject*>(focus_object)->IsAtomicTextField()) {
-    ax_focus =
+    ax_extent =
         AXPosition::CreatePositionInTextObject(*focus_object, focus_offset);
   } else if (focus_offset <= 0) {
-    ax_focus = AXPosition::CreateFirstPositionInObject(*focus_object);
+    ax_extent = AXPosition::CreateFirstPositionInObject(*focus_object);
   } else if (focus_offset >= static_cast<int>(focus_object.ChildCount())) {
-    ax_focus = AXPosition::CreateLastPositionInObject(*focus_object);
+    ax_extent = AXPosition::CreateLastPositionInObject(*focus_object);
   } else {
     DCHECK_GE(focus_offset, 0);
-    ax_focus = AXPosition::CreatePositionBeforeObject(
+    ax_extent = AXPosition::CreatePositionBeforeObject(
         *focus_object.ChildAt(static_cast<unsigned int>(focus_offset)));
   }
 
   AXSelection::Builder builder;
   AXSelection ax_selection =
-      builder.SetAnchor(ax_anchor).SetFocus(ax_focus).Build();
+      builder.SetBase(ax_base).SetExtent(ax_extent).Build();
   return ax_selection.Select();
 }
 
@@ -638,8 +622,6 @@ WebString WebAXObject::GetName(ax::mojom::NameFrom& out_name_from,
   if (IsDetached())
     return WebString();
 
-  ScopedFreezeAXCache freeze(private_->AXObjectCache());
-
   HeapVector<Member<AXObject>> name_objects;
   WebString result = private_->GetName(out_name_from, &name_objects);
 
@@ -653,8 +635,6 @@ WebString WebAXObject::GetName(ax::mojom::NameFrom& out_name_from,
 WebString WebAXObject::GetName() const {
   if (IsDetached())
     return WebString();
-
-  ScopedFreezeAXCache freeze(private_->AXObjectCache());
 
   ax::mojom::NameFrom name_from;
   HeapVector<Member<AXObject>> name_objects;
@@ -898,8 +878,8 @@ void WebAXObject::GetWordBoundaries(WebVector<int>& starts,
     word_end_offsets[i] = src_ends[i];
   }
 
-  starts.swap(word_start_offsets);
-  ends.swap(word_end_offsets);
+  starts.Swap(word_start_offsets);
+  ends.Swap(word_end_offsets);
 }
 
 gfx::Point WebAXObject::GetScrollOffset() const {
@@ -955,9 +935,7 @@ bool WebAXObject::ScrollToMakeVisible() const {
 
   ScopedActionAnnotator annotater(
       private_.Get(), ax::mojom::blink::Action::kScrollToMakeVisible);
-  ui::AXActionData action_data;
-  action_data.action = ax::mojom::blink::Action::kScrollToMakeVisible;
-  return private_->PerformAction(action_data);
+  return private_->RequestScrollToMakeVisibleAction();
 }
 
 bool WebAXObject::ScrollToMakeVisibleWithSubFocus(
@@ -988,34 +966,17 @@ bool WebAXObject::ScrollToMakeVisibleWithSubFocus(
       visible_horizontal_behavior, horizontal_behavior, horizontal_behavior};
   blink::mojom::blink::ScrollAlignment blink_vertical_scroll_alignment = {
       visible_vertical_behavior, vertical_behavior, vertical_behavior};
-
   return private_->RequestScrollToMakeVisibleWithSubFocusAction(
       subfocus, blink_horizontal_scroll_alignment,
       blink_vertical_scroll_alignment);
 }
 
-void WebAXObject::HandleAutofillSuggestionAvailabilityChanged(
-    blink::WebAXAutofillSuggestionAvailability suggestion_availability) const {
+void WebAXObject::HandleAutofillStateChanged(
+    const blink::WebAXAutofillState state) const {
   if (IsDetached() || !private_->IsAXLayoutObject())
     return;
 
-  private_->HandleAutofillSuggestionAvailabilityChanged(
-      suggestion_availability);
-}
-
-int WebAXObject::GenerateAXID() {
-  DCHECK(private_->GetDocument() && private_->GetDocument()->IsActive());
-  return private_->AXObjectCache().GenerateAXID();
-}
-
-void WebAXObject::SetPluginTreeSource(
-    ui::AXTreeSource<const ui::AXNode*, ui::AXTreeData*, ui::AXNodeData>*
-        source) {
-  private_->AXObjectCache().SetPluginTreeSource(source);
-}
-
-void WebAXObject::MarkPluginDescendantDirty(ui::AXNodeID node_id) {
-  private_->AXObjectCache().MarkPluginDescendantDirty(node_id);
+  private_->HandleAutofillStateChanged(state);
 }
 
 bool WebAXObject::CanCallAOMEventListenersForTesting() const {
@@ -1085,18 +1046,7 @@ WebAXObject WebAXObject::FromWebNode(const WebNode& web_node) {
   const Document* document = web_document.ConstUnwrap<Document>();
   auto* cache = To<AXObjectCacheImpl>(document->ExistingAXObjectCache());
   const Node* node = web_node.ConstUnwrap<Node>();
-
-  if (!cache) {
-    return WebAXObject();
-  }
-
-  // TODO: if this shouldn't be done by default, add a parameter passed by the
-  // caller.
-
-  // Since calls into this lookup might happen prior to the cache building
-  // everything from its backing objects like DOM, layout trees, force it here.
-  cache->UpdateAXForAllDocuments();
-  return WebAXObject(cache->Get(node));
+  return cache ? WebAXObject(cache->Get(node)) : WebAXObject();
 }
 
 // static
@@ -1106,7 +1056,7 @@ WebAXObject WebAXObject::FromWebDocument(const WebDocument& web_document) {
   DCHECK(cache);
   if (!cache->Root())
     return WebAXObject();  // Accessibility not yet active in this cache.
-  return WebAXObject(cache->Get(document));
+  return WebAXObject(cache->GetOrCreate(document));
 }
 
 // static
@@ -1125,7 +1075,6 @@ WebAXObject WebAXObject::FromWebDocumentFocused(
   CheckLayoutClean(document);
 #endif
   auto* cache = To<AXObjectCacheImpl>(document->ExistingAXObjectCache());
-  cache->UpdateAXForAllDocuments();
   return cache ? WebAXObject(cache->FocusedObject()) : WebAXObject();
 }
 

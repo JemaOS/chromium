@@ -19,10 +19,7 @@
 #include "components/image_fetcher/core/request_metadata.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
-#include "components/supervised_user/core/browser/proto/kidsmanagement_messages.pb.h"
-#include "components/supervised_user/core/browser/proto_fetcher.h"
 #include "content/public/test/test_web_ui.h"
-#include "net/base/net_errors.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
 #include "services/network/test/test_url_loader_factory.h"
@@ -48,41 +45,24 @@ constexpr char kFakeParentGaiaId2[] = "anotherObfuscatedGaiaId";
 constexpr char kFakeParentCredential[] = "someParentCredential";
 constexpr char kFakeAccessToken[] = "someAccessToken";
 
-kidsmanagement::ListMembersResponse GetFakeFamilyMembers() {
-  kidsmanagement::ListMembersResponse members;
-
-  kidsmanagement::FamilyMember* homer = members.add_members();
-  homer->set_role(kidsmanagement::HEAD_OF_HOUSEHOLD);
-  homer->set_user_id(kFakeParentGaiaId);
-  homer->mutable_profile()->set_display_name("Homer Simpson");
-  homer->mutable_profile()->set_email("homer@simpson.com");
-  homer->mutable_profile()->set_profile_url("http://profile.url/homer");
-  homer->mutable_profile()->set_profile_image_url(
-      "http://profile.url/homer/image");
-
-  kidsmanagement::FamilyMember* marge = members.add_members();
-  marge->set_role(kidsmanagement::PARENT);
-  marge->set_user_id(kFakeParentGaiaId2);
-  marge->mutable_profile()->set_display_name("Marge Simpson");
-  marge->mutable_profile()->set_profile_url("http://profile.url/marge");
-
-  kidsmanagement::FamilyMember* lisa = members.add_members();
-  lisa->set_role(kidsmanagement::CHILD);
-  lisa->set_user_id("obfuscatedGaiaId3");
-  lisa->mutable_profile()->set_display_name("Lisa Simpson");
-  lisa->mutable_profile()->set_email("lisa@gmail.com");
-  lisa->mutable_profile()->set_profile_image_url(
-      "http://profile.url/lisa/image");
-
-  kidsmanagement::FamilyMember* bart = members.add_members();
-  bart->set_role(kidsmanagement::CHILD);
-  bart->set_user_id("obfuscatedGaiaId4");
-  bart->mutable_profile()->set_display_name("Bart Simpson");
-  bart->mutable_profile()->set_email("bart@bart.bart");
-
-  kidsmanagement::FamilyMember* member = members.add_members();
-  member->set_role(kidsmanagement::MEMBER);
-  member->set_user_id("obfuscatedGaiaId5");
+std::vector<FamilyInfoFetcher::FamilyMember> GetFakeFamilyMembers() {
+  std::vector<FamilyInfoFetcher::FamilyMember> members;
+  members.push_back(FamilyInfoFetcher::FamilyMember(
+      kFakeParentGaiaId, FamilyInfoFetcher::HEAD_OF_HOUSEHOLD, "Homer Simpson",
+      "homer@simpson.com", "http://profile.url/homer",
+      "http://profile.url/homer/image"));
+  members.push_back(FamilyInfoFetcher::FamilyMember(
+      kFakeParentGaiaId2, FamilyInfoFetcher::PARENT, "Marge Simpson",
+      std::string(), "http://profile.url/marge", std::string()));
+  members.push_back(FamilyInfoFetcher::FamilyMember(
+      "obfuscatedGaiaId3", FamilyInfoFetcher::CHILD, "Lisa Simpson",
+      "lisa@gmail.com", std::string(), "http://profile.url/lisa/image"));
+  members.push_back(FamilyInfoFetcher::FamilyMember(
+      "obfuscatedGaiaId4", FamilyInfoFetcher::CHILD, "Bart Simpson",
+      "bart@bart.bart", std::string(), std::string()));
+  members.push_back(FamilyInfoFetcher::FamilyMember(
+      "obfuscatedGaiaId5", FamilyInfoFetcher::MEMBER, std::string(),
+      std::string(), std::string(), std::string()));
   return members;
 }
 
@@ -251,7 +231,7 @@ TEST_F(EduAccountLoginHandlerTest, HandleGetParentsSuccess) {
   EXPECT_CALL(*handler(), FetchParentImages(_, GetFakeProfileImageUrlMap()));
   // Simulate successful fetching of family members -> expect FetchParentImages
   // to be called.
-  handler()->OnListFamilyMembersSuccess(GetFakeFamilyMembers());
+  handler()->OnGetFamilyMembersSuccess(GetFakeFamilyMembers());
 
   // Simulate successful fetching of the images -> expect JavascriptCallack to
   // be resolved.
@@ -274,11 +254,9 @@ TEST_F(EduAccountLoginHandlerTest, HandleGetParentsFailure) {
   handler()->HandleGetParents(list_args);
 
   // Simulate failed fetching of family members.
-  handler()->OnListFamilyMembersFailure(
-      supervised_user::ProtoFetcherStatus::HttpStatusOrNetError(
-          net::ERR_IO_PENDING));
+  handler()->OnFailure(FamilyInfoFetcher::ErrorCode::kNetworkError);
   const content::TestWebUI::CallData& data = *web_ui()->call_data().back();
-  VerifyJavascriptCallbackResolved(data, callback_id, /*success=*/false);
+  VerifyJavascriptCallbackResolved(data, callback_id, false /*success*/);
 
   ASSERT_EQ(base::Value::List(), *data.arg3());
 }

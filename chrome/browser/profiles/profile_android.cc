@@ -9,8 +9,10 @@
 #include "base/memory/ptr_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/profiles/android/jni_headers/Profile_jni.h"
+#include "chrome/browser/profiles/profile_destroyer.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/profiles/profile_key_android.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/web_contents.h"
 
@@ -49,6 +51,33 @@ Profile* ProfileAndroid::FromProfileAndroid(const JavaRef<jobject>& obj) {
   return profile_android->profile_;
 }
 
+// static
+ScopedJavaLocalRef<jobject> ProfileAndroid::GetLastUsedRegularProfile(
+    JNIEnv* env) {
+  Profile* profile = ProfileManager::GetLastUsedProfile();
+  if (profile == NULL) {
+    NOTREACHED() << "Profile not found.";
+    return ScopedJavaLocalRef<jobject>();
+  }
+
+  ProfileAndroid* profile_android = ProfileAndroid::FromProfile(profile);
+  if (profile_android == NULL) {
+    NOTREACHED() << "ProfileAndroid not found.";
+    return ScopedJavaLocalRef<jobject>();
+  }
+
+  return ScopedJavaLocalRef<jobject>(profile_android->obj_);
+}
+
+void ProfileAndroid::DestroyWhenAppropriate(JNIEnv* env,
+                                            const JavaParamRef<jobject>& obj) {
+  CHECK(profile_->IsOffTheRecord())
+      << "Only OTR profiles can be destroyed from Java as regular profiles are "
+         "owned by the C++ ProfileManager.";
+  // Don't delete the Profile directly because the corresponding
+  // RenderViewHost might not be deleted yet.
+  ProfileDestroyer::DestroyOTRProfileWhenAppropriate(profile_);
+}
 
 base::android::ScopedJavaLocalRef<jobject> ProfileAndroid::GetOriginalProfile(
     JNIEnv* env,
@@ -140,6 +169,11 @@ void ProfileAndroid::Wipe(JNIEnv* env, const JavaParamRef<jobject>& obj) {
 jlong ProfileAndroid::GetBrowserContextPointer(JNIEnv* env) {
   return reinterpret_cast<jlong>(
       static_cast<content::BrowserContext*>(profile_));
+}
+
+// static
+ScopedJavaLocalRef<jobject> JNI_Profile_GetLastUsedRegularProfile(JNIEnv* env) {
+  return ProfileAndroid::GetLastUsedRegularProfile(env);
 }
 
 // static

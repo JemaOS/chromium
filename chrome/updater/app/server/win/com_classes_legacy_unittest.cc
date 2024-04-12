@@ -18,16 +18,14 @@
 #include "base/strings/strcat.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/test/bind.h"
-#include "base/test/task_environment.h"
 #include "base/win/scoped_variant.h"
 #include "base/win/win_util.h"
 #include "build/branding_buildflags.h"
 #include "chrome/updater/test/integration_tests_impl.h"
 #include "chrome/updater/test_scope.h"
-#include "chrome/updater/util/unit_test_util.h"
-#include "chrome/updater/util/unit_test_util_win.h"
+#include "chrome/updater/util/unittest_util.h"
+#include "chrome/updater/util/unittest_util_win.h"
 #include "chrome/updater/util/util.h"
-#include "chrome/updater/util/win_util.h"
 #include "chrome/updater/win/setup/setup_util.h"
 #include "chrome/updater/win/test/test_executables.h"
 #include "chrome/updater/win/test/test_strings.h"
@@ -39,7 +37,7 @@ namespace {
 
 constexpr wchar_t kAppId1[] = L"{3B1A3CCA-0525-4418-93E6-A0DB3398EC9B}";
 
-constexpr wchar_t kBadCmdLine[] = L"\"c:\\Program Files (x86)\\cmd.exe\"";
+constexpr wchar_t kBadCmdLine[] = L"\"c:\\Program Files\\cmd.exe\"";
 constexpr wchar_t kCmdLineValid[] =
     L"\"C:\\Program Files\\Windows Media Player\\wmpnscfg.exe\" /Close";
 
@@ -60,69 +58,60 @@ class LegacyAppCommandWebImplTest : public testing::Test {
 
   void TearDown() override { DeleteAppClientKey(GetTestScope(), kAppId1); }
 
-  [[nodiscard]] HRESULT CreateAppCommandWeb(
+  HRESULT CreateAppCommandWeb(
       const std::wstring& app_id,
       const std::wstring& command_id,
       const std::wstring& command_line_format,
-      LegacyAppCommandWebImpl::PingSender ping_sender,
       Microsoft::WRL::ComPtr<LegacyAppCommandWebImpl>& app_command_web) {
     CreateAppCommandRegistry(GetTestScope(), app_id, command_id,
                              command_line_format);
-    return MakeAndInitializeComObject<LegacyAppCommandWebImpl>(
-        app_command_web, GetTestScope(), app_id, command_id, ping_sender);
+
+    return Microsoft::WRL::MakeAndInitialize<LegacyAppCommandWebImpl>(
+        &app_command_web, GetTestScope(), app_id, command_id);
   }
 
   void WaitForUpdateCompletion(
       Microsoft::WRL::ComPtr<LegacyAppCommandWebImpl>& app_command_web) {
-    EXPECT_TRUE(test::WaitFor([&] {
+    EXPECT_TRUE(test::WaitFor(base::BindLambdaForTesting([&]() {
       UINT status = 0;
       EXPECT_HRESULT_SUCCEEDED(app_command_web->get_status(&status));
       return status == COMMAND_STATUS_COMPLETE;
-    }));
+    })));
   }
 
-  base::test::TaskEnvironment environment_;
   base::CommandLine cmd_exe_command_line_;
   base::ScopedTempDir temp_programfiles_dir_;
 };
 
 TEST_F(LegacyAppCommandWebImplTest, NoApp) {
   Microsoft::WRL::ComPtr<LegacyAppCommandWebImpl> app_command_web;
-  EXPECT_HRESULT_FAILED(MakeAndInitializeComObject<LegacyAppCommandWebImpl>(
-      app_command_web, GetTestScope(), kAppId1, kCmdId1));
+  EXPECT_HRESULT_FAILED(
+      Microsoft::WRL::MakeAndInitialize<LegacyAppCommandWebImpl>(
+          &app_command_web, GetTestScope(), kAppId1, kCmdId1));
 }
 
 TEST_F(LegacyAppCommandWebImplTest, NoCmd) {
   Microsoft::WRL::ComPtr<LegacyAppCommandWebImpl> app_command_web;
   CreateAppCommandRegistry(GetTestScope(), kAppId1, kCmdId1, kCmdLineValid);
-  EXPECT_HRESULT_FAILED(MakeAndInitializeComObject<LegacyAppCommandWebImpl>(
-      app_command_web, GetTestScope(), kAppId1, kCmdId2));
+
+  EXPECT_HRESULT_FAILED(
+      Microsoft::WRL::MakeAndInitialize<LegacyAppCommandWebImpl>(
+          &app_command_web, GetTestScope(), kAppId1, kCmdId2));
 }
 
 TEST_F(LegacyAppCommandWebImplTest, Execute) {
-  bool ping_sent = false;
   Microsoft::WRL::ComPtr<LegacyAppCommandWebImpl> app_command_web;
   ASSERT_HRESULT_SUCCEEDED(CreateAppCommandWeb(
       kAppId1, kCmdId1,
       base::StrCat(
           {cmd_exe_command_line_.GetCommandLineString(), L" /c \"exit 7\""}),
-      base::BindLambdaForTesting(
-          [&ping_sent](UpdaterScope scope, const std::string& app_id,
-                       const std::string& command_id,
-                       LegacyAppCommandWebImpl::ErrorParams error_params) {
-            ping_sent = true;
-            EXPECT_EQ(GetTestScope(), scope);
-            EXPECT_EQ(app_id, base::WideToASCII(kAppId1));
-            EXPECT_EQ(command_id, base::WideToASCII(kCmdId1));
-            EXPECT_EQ(error_params.error_code, 7);
-            EXPECT_EQ(error_params.extra_code1, 0);
-          }),
       app_command_web));
+
   UINT status = 0;
   EXPECT_HRESULT_SUCCEEDED(app_command_web->get_status(&status));
   EXPECT_EQ(status, COMMAND_STATUS_INIT);
   DWORD exit_code = 0;
-  EXPECT_EQ(app_command_web->get_exitCode(&exit_code), S_FALSE);
+  EXPECT_HRESULT_FAILED(app_command_web->get_exitCode(&exit_code));
 
   ASSERT_HRESULT_SUCCEEDED(
       app_command_web->execute(base::win::ScopedVariant::kEmptyVariant,
@@ -141,27 +130,14 @@ TEST_F(LegacyAppCommandWebImplTest, Execute) {
   EXPECT_EQ(status, COMMAND_STATUS_COMPLETE);
   EXPECT_HRESULT_SUCCEEDED(app_command_web->get_exitCode(&exit_code));
   EXPECT_EQ(exit_code, 7U);
-  EXPECT_TRUE(ping_sent);
 }
 
 TEST_F(LegacyAppCommandWebImplTest, ExecuteParameterizedCommand) {
-  bool ping_sent = false;
   Microsoft::WRL::ComPtr<LegacyAppCommandWebImpl> app_command_web;
   ASSERT_HRESULT_SUCCEEDED(CreateAppCommandWeb(
       kAppId1, kCmdId1,
       base::StrCat(
           {cmd_exe_command_line_.GetCommandLineString(), L" /c \"exit %1\""}),
-      base::BindLambdaForTesting(
-          [&ping_sent](UpdaterScope scope, const std::string& app_id,
-                       const std::string& command_id,
-                       LegacyAppCommandWebImpl::ErrorParams error_params) {
-            ping_sent = true;
-            EXPECT_EQ(GetTestScope(), scope);
-            EXPECT_EQ(app_id, base::WideToASCII(kAppId1));
-            EXPECT_EQ(command_id, base::WideToASCII(kCmdId1));
-            EXPECT_EQ(error_params.error_code, 5420);
-            EXPECT_EQ(error_params.extra_code1, 0);
-          }),
       app_command_web));
 
   ASSERT_HRESULT_SUCCEEDED(
@@ -179,27 +155,12 @@ TEST_F(LegacyAppCommandWebImplTest, ExecuteParameterizedCommand) {
   DWORD exit_code = 0;
   EXPECT_HRESULT_SUCCEEDED(app_command_web->get_exitCode(&exit_code));
   EXPECT_EQ(exit_code, 5420U);
-  EXPECT_TRUE(ping_sent);
 }
 
 TEST_F(LegacyAppCommandWebImplTest, FailedToLaunchStatus) {
-  bool ping_sent = false;
   Microsoft::WRL::ComPtr<LegacyAppCommandWebImpl> app_command_web;
-  ASSERT_HRESULT_SUCCEEDED(CreateAppCommandWeb(
-      kAppId1, kCmdId1, kBadCmdLine,
-      base::BindLambdaForTesting(
-          [&ping_sent](UpdaterScope scope, const std::string& app_id,
-                       const std::string& command_id,
-                       LegacyAppCommandWebImpl::ErrorParams error_params) {
-            ping_sent = true;
-            EXPECT_EQ(GetTestScope(), scope);
-            EXPECT_EQ(app_id, base::WideToASCII(kAppId1));
-            EXPECT_EQ(command_id, base::WideToASCII(kCmdId1));
-            EXPECT_EQ(error_params.error_code,
-                      HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND));
-            EXPECT_EQ(error_params.extra_code1, 105);
-          }),
-      app_command_web));
+  ASSERT_HRESULT_SUCCEEDED(
+      CreateAppCommandWeb(kAppId1, kCmdId1, kBadCmdLine, app_command_web));
 
   EXPECT_HRESULT_FAILED(
       app_command_web->execute(base::win::ScopedVariant::kEmptyVariant,
@@ -213,8 +174,7 @@ TEST_F(LegacyAppCommandWebImplTest, FailedToLaunchStatus) {
                                base::win::ScopedVariant::kEmptyVariant));
 
   DWORD exit_code = 0;
-  EXPECT_EQ(app_command_web->get_exitCode(&exit_code), S_FALSE);
-  EXPECT_TRUE(ping_sent);
+  EXPECT_HRESULT_FAILED(app_command_web->get_exitCode(&exit_code));
 }
 
 TEST_F(LegacyAppCommandWebImplTest, CommandRunningStatus) {
@@ -222,7 +182,6 @@ TEST_F(LegacyAppCommandWebImplTest, CommandRunningStatus) {
     return;
   }
 
-  bool ping_sent = false;
   Microsoft::WRL::ComPtr<LegacyAppCommandWebImpl> app_command_web;
   base::CommandLine command_line =
       GetTestProcessCommandLine(GetTestScope(), test::GetTestName());
@@ -233,17 +192,6 @@ TEST_F(LegacyAppCommandWebImplTest, CommandRunningStatus) {
   ASSERT_HRESULT_SUCCEEDED(CreateAppCommandWeb(
       kAppId1, kCmdId1,
       command_line.GetCommandLineStringWithUnsafeInsertSequences(),
-      base::BindLambdaForTesting(
-          [&ping_sent](UpdaterScope scope, const std::string& app_id,
-                       const std::string& command_id,
-                       LegacyAppCommandWebImpl::ErrorParams error_params) {
-            ping_sent = true;
-            EXPECT_EQ(GetTestScope(), scope);
-            EXPECT_EQ(app_id, base::WideToASCII(kAppId1));
-            EXPECT_EQ(command_id, base::WideToASCII(kCmdId1));
-            EXPECT_EQ(error_params.error_code, 999);
-            EXPECT_EQ(error_params.extra_code1, 0);
-          }),
       app_command_web));
 
   test::EventHolder event_holder(test::CreateWaitableEventForTest());
@@ -269,7 +217,6 @@ TEST_F(LegacyAppCommandWebImplTest, CommandRunningStatus) {
   DWORD exit_code = 0;
   EXPECT_HRESULT_SUCCEEDED(app_command_web->get_exitCode(&exit_code));
   EXPECT_EQ(exit_code, 999U);
-  EXPECT_TRUE(ping_sent);
 }
 
 TEST_F(LegacyAppCommandWebImplTest, CheckLegacyTypeLibAndInterfaceExist) {

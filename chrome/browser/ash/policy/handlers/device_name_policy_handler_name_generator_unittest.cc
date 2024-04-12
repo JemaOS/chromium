@@ -4,8 +4,7 @@
 
 #include "chrome/browser/ash/policy/handlers/device_name_policy_handler_name_generator.h"
 
-#include <string_view>
-
+#include "base/strings/string_piece.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace policy {
@@ -14,13 +13,13 @@ class DeviceNamePolicyHandlerNameGeneratorTest : public testing::Test {
  public:
   DeviceNamePolicyHandlerNameGeneratorTest() = default;
 
-  void FormatAndAssert(std::string_view expected,
-                       std::string_view name_template,
-                       std::string_view asset_id,
-                       std::string_view serial,
-                       std::string_view mac,
-                       std::string_view machine_name,
-                       std::string_view location) {
+  void FormatAndAssert(base::StringPiece expected,
+                       base::StringPiece name_template,
+                       base::StringPiece asset_id,
+                       base::StringPiece serial,
+                       base::StringPiece mac,
+                       base::StringPiece machine_name,
+                       base::StringPiece location) {
     auto result = FormatHostname(name_template, asset_id, serial, mac,
                                  machine_name, location);
     ASSERT_EQ(expected, result);

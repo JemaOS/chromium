@@ -13,7 +13,6 @@
 #include "ash/strings/grit/ash_strings.h"
 #include "base/functional/bind.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/views/border.h"
 #include "ui/views/controls/label.h"
@@ -80,7 +79,8 @@ AccessibilityFeatureDisableDialog::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }
 
-BEGIN_METADATA(AccessibilityFeatureDisableDialog)
-END_METADATA
+const char* AccessibilityFeatureDisableDialog::GetClassName() const {
+  return "AccessibilityFeatureDisableDialog";
+}
 
 }  // namespace ash

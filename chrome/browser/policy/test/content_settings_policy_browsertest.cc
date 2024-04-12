@@ -19,8 +19,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
-#include "components/content_settings/core/browser/private_network_settings.h"
-#include "components/content_settings/core/common/content_settings.h"
+#include "components/content_settings/core/browser/local_network_settings.h"
 #include "components/policy/core/common/policy_map.h"
 #include "components/policy/policy_constants.h"
 #include "content/public/browser/permission_controller.h"
@@ -34,7 +33,6 @@
 #include "device/bluetooth/test/mock_bluetooth_adapter.h"
 #include "services/device/public/cpp/test/fake_usb_device_info.h"
 #include "services/network/public/cpp/features.h"
-#include "third_party/blink/public/common/features_generated.h"
 #include "third_party/blink/public/common/permissions/permission_utils.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -51,7 +49,9 @@ const char kCookieOptions[] = ";expires=Wed Jan 01 2038 00:00:00 GMT";
 constexpr int kBlockAll = 2;
 
 bool IsJavascriptEnabled(content::WebContents* contents) {
-  return content::ExecJs(contents->GetPrimaryMainFrame(), "123");
+  base::Value value =
+      content::ExecuteScriptAndGetValue(contents->GetPrimaryMainFrame(), "123");
+  return value.is_int() && value.GetInt() == 123;
 }
 
 }  // namespace
@@ -280,12 +280,12 @@ IN_PROC_BROWSER_TEST_F(PolicyTest, WebUsbAllowDevicesForUrls) {
   EXPECT_FALSE(context->HasDevicePermission(kTestOrigin, device_info));
 }
 
-IN_PROC_BROWSER_TEST_F(PolicyTest, ShouldAllowInsecurePrivateNetworkRequests) {
+IN_PROC_BROWSER_TEST_F(PolicyTest, ShouldAllowInsecureLocalNetworkRequests) {
   const auto* settings_map =
       HostContentSettingsMapFactory::GetForProfile(browser()->profile());
 
   // By default, we should block requests.
-  EXPECT_FALSE(content_settings::ShouldAllowInsecurePrivateNetworkRequests(
+  EXPECT_FALSE(content_settings::ShouldAllowInsecureLocalNetworkRequests(
       settings_map, url::Origin::Create(GURL("http://bleep.com"))));
 
   PolicyMap policies;
@@ -294,7 +294,7 @@ IN_PROC_BROWSER_TEST_F(PolicyTest, ShouldAllowInsecurePrivateNetworkRequests) {
   UpdateProviderPolicy(policies);
 
   // Explicitly-disallowing is the same as not setting the policy.
-  EXPECT_FALSE(content_settings::ShouldAllowInsecurePrivateNetworkRequests(
+  EXPECT_FALSE(content_settings::ShouldAllowInsecureLocalNetworkRequests(
       settings_map, url::Origin::Create(GURL("http://bleep.com"))));
 
   base::Value::List allowlist;
@@ -305,28 +305,28 @@ IN_PROC_BROWSER_TEST_F(PolicyTest, ShouldAllowInsecurePrivateNetworkRequests) {
   UpdateProviderPolicy(policies);
 
   // Domain is not the in allowlist.
-  EXPECT_FALSE(content_settings::ShouldAllowInsecurePrivateNetworkRequests(
+  EXPECT_FALSE(content_settings::ShouldAllowInsecureLocalNetworkRequests(
       settings_map, url::Origin::Create(GURL("http://default.com"))));
 
   // Path does not matter, only the origin.
-  EXPECT_TRUE(content_settings::ShouldAllowInsecurePrivateNetworkRequests(
+  EXPECT_TRUE(content_settings::ShouldAllowInsecureLocalNetworkRequests(
       settings_map, url::Origin::Create(GURL("http://bleep.com/heyo"))));
 
   // Scheme matters: https is not http.
-  EXPECT_FALSE(content_settings::ShouldAllowInsecurePrivateNetworkRequests(
+  EXPECT_FALSE(content_settings::ShouldAllowInsecureLocalNetworkRequests(
       settings_map, url::Origin::Create(GURL("https://bleep.com"))));
 
   // Port is checked too.
-  EXPECT_TRUE(content_settings::ShouldAllowInsecurePrivateNetworkRequests(
+  EXPECT_TRUE(content_settings::ShouldAllowInsecureLocalNetworkRequests(
       settings_map,
       url::Origin::Create(GURL("http://woohoo.com:1234/index.html"))));
 
   // The wrong port does not match (default is 80).
-  EXPECT_FALSE(content_settings::ShouldAllowInsecurePrivateNetworkRequests(
+  EXPECT_FALSE(content_settings::ShouldAllowInsecureLocalNetworkRequests(
       settings_map, url::Origin::Create(GURL("http://woohoo.com/index.html"))));
 
   // Opaque origins never match the allowlist.
-  EXPECT_FALSE(content_settings::ShouldAllowInsecurePrivateNetworkRequests(
+  EXPECT_FALSE(content_settings::ShouldAllowInsecureLocalNetworkRequests(
       settings_map,
       url::Origin::Create(GURL("http://bleep.com")).DeriveNewOpaqueOrigin()));
 }
@@ -495,176 +495,5 @@ IN_PROC_BROWSER_TEST_F(SensorsPolicyTest, DynamicRefresh) {
   VerifyPermission(kFooUrl, blink::mojom::PermissionStatus::GRANTED);
   VerifyPermission(kBarUrl, blink::mojom::PermissionStatus::GRANTED);
 }
-
-#if BUILDFLAG(IS_CHROMEOS)
-class WebPrintingPolicyTest : public PolicyTest {
- public:
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    feature_list_.InitAndEnableFeature(blink::features::kWebPrinting);
-    PolicyTest::SetUpCommandLine(command_line);
-  }
-
-  void SetUpOnMainThread() override {
-    PolicyTest::SetUpOnMainThread();
-    ASSERT_TRUE(embedded_test_server()->Start());
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestingUrl()));
-  }
-
- protected:
-  static constexpr int32_t kBlockSetting = 2;
-  static constexpr int32_t kAskSetting = 3;
-
-  GURL GetTestingUrl() const {
-    return embedded_test_server()->GetURL("/empty.html");
-  }
-
-  ContentSetting GetWebPrintingDefaultContentSetting() {
-    return HostContentSettingsMapFactory::GetForProfile(browser()->profile())
-        ->GetDefaultContentSetting(ContentSettingsType::WEB_PRINTING,
-                                   /*provider_id=*/nullptr);
-  }
-
-  ContentSetting GetWebPrintingContentSetting(const GURL& url) {
-    return HostContentSettingsMapFactory::GetForProfile(browser()->profile())
-        ->GetContentSetting(/*primary_url=*/url, /*secondary_url=*/url,
-                            ContentSettingsType::WEB_PRINTING);
-  }
-
-  void SetDefaultWebPrintingSetting(int32_t setting) {
-    PolicyMap policies;
-    SetPolicy(&policies, key::kDefaultWebPrintingSetting, base::Value(setting));
-    UpdateProviderPolicy(policies);
-  }
-
-  void SetWebPrintingAllowedFor(const GURL& url) {
-    PolicyMap policies;
-    SetPolicy(&policies, key::kWebPrintingAllowedForUrls,
-              base::Value(base::Value::List().Append(url.spec())));
-    UpdateProviderPolicy(policies);
-  }
-
-  void SetWebPrintingBlockedFor(const GURL& url) {
-    PolicyMap policies;
-    SetPolicy(&policies, key::kWebPrintingBlockedForUrls,
-              base::Value(base::Value::List().Append(url.spec())));
-    UpdateProviderPolicy(policies);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_F(WebPrintingPolicyTest, DefaultWebPrintingSetting) {
-  EXPECT_EQ(CONTENT_SETTING_ASK, GetWebPrintingDefaultContentSetting());
-  EXPECT_EQ(CONTENT_SETTING_ASK, GetWebPrintingContentSetting(GetTestingUrl()));
-
-  SetDefaultWebPrintingSetting(kBlockSetting);
-
-  EXPECT_EQ(CONTENT_SETTING_BLOCK, GetWebPrintingDefaultContentSetting());
-  EXPECT_EQ(CONTENT_SETTING_BLOCK,
-            GetWebPrintingContentSetting(GetTestingUrl()));
-
-  SetDefaultWebPrintingSetting(kAskSetting);
-
-  EXPECT_EQ(CONTENT_SETTING_ASK, GetWebPrintingDefaultContentSetting());
-  EXPECT_EQ(CONTENT_SETTING_ASK, GetWebPrintingContentSetting(GetTestingUrl()));
-}
-
-IN_PROC_BROWSER_TEST_F(WebPrintingPolicyTest, WebPrintingAllowedForUrls) {
-  SetWebPrintingAllowedFor(GetTestingUrl());
-
-  EXPECT_EQ(CONTENT_SETTING_ASK, GetWebPrintingDefaultContentSetting());
-  EXPECT_EQ(CONTENT_SETTING_ALLOW,
-            GetWebPrintingContentSetting(GetTestingUrl()));
-}
-
-IN_PROC_BROWSER_TEST_F(WebPrintingPolicyTest, WebPrintingBlockedForUrls) {
-  SetWebPrintingBlockedFor(GetTestingUrl());
-
-  EXPECT_EQ(CONTENT_SETTING_ASK, GetWebPrintingDefaultContentSetting());
-  EXPECT_EQ(CONTENT_SETTING_BLOCK,
-            GetWebPrintingContentSetting(GetTestingUrl()));
-}
-#endif
-
-#if !BUILDFLAG(IS_ANDROID)
-class DirectSocketsPolicyTest : public PolicyTest {
- public:
-  void SetUpOnMainThread() override {
-    PolicyTest::SetUpOnMainThread();
-    ASSERT_TRUE(embedded_test_server()->Start());
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestingUrl()));
-  }
-
- protected:
-  GURL GetTestingUrl() const {
-    return embedded_test_server()->GetURL("/empty.html");
-  }
-
-  ContentSetting GetDirectSocketsDefaultContentSetting() {
-    return HostContentSettingsMapFactory::GetForProfile(browser()->profile())
-        ->GetDefaultContentSetting(ContentSettingsType::DIRECT_SOCKETS,
-                                   /*provider_id=*/nullptr);
-  }
-
-  ContentSetting GetDirectSocketsContentSetting(const GURL& url) {
-    return HostContentSettingsMapFactory::GetForProfile(browser()->profile())
-        ->GetContentSetting(/*primary_url=*/url, /*secondary_url=*/url,
-                            ContentSettingsType::DIRECT_SOCKETS);
-  }
-
-  void SetDefaultDirectSocketsSettingToBlocked() {
-    SetPolicy(&policies_, key::kDefaultDirectSocketsSetting,
-              base::Value(kBlockSetting));
-    UpdateProviderPolicy(policies_);
-  }
-
-  void SetDirectSocketsAllowedFor(const GURL& url) {
-    SetPolicy(&policies_, key::kDirectSocketsAllowedForUrls,
-              base::Value(base::Value::List().Append(url.spec())));
-    UpdateProviderPolicy(policies_);
-  }
-
-  void SetDirectSocketsBlockedFor(const GURL& url) {
-    SetPolicy(&policies_, key::kDirectSocketsBlockedForUrls,
-              base::Value(base::Value::List().Append(url.spec())));
-    UpdateProviderPolicy(policies_);
-  }
-
- private:
-  static constexpr int32_t kBlockSetting = 2;
-  base::test::ScopedFeatureList feature_list_;
-  PolicyMap policies_;
-};
-
-IN_PROC_BROWSER_TEST_F(DirectSocketsPolicyTest, DefaultDirectSocketsSetting) {
-  EXPECT_EQ(CONTENT_SETTING_ALLOW, GetDirectSocketsDefaultContentSetting());
-  EXPECT_EQ(CONTENT_SETTING_ALLOW,
-            GetDirectSocketsContentSetting(GetTestingUrl()));
-
-  SetDefaultDirectSocketsSettingToBlocked();
-
-  EXPECT_EQ(CONTENT_SETTING_BLOCK, GetDirectSocketsDefaultContentSetting());
-  EXPECT_EQ(CONTENT_SETTING_BLOCK,
-            GetDirectSocketsContentSetting(GetTestingUrl()));
-}
-
-IN_PROC_BROWSER_TEST_F(DirectSocketsPolicyTest, DirectSocketsAllowedForUrls) {
-  SetDefaultDirectSocketsSettingToBlocked();
-  SetDirectSocketsAllowedFor(GetTestingUrl());
-
-  EXPECT_EQ(CONTENT_SETTING_BLOCK, GetDirectSocketsDefaultContentSetting());
-  EXPECT_EQ(CONTENT_SETTING_ALLOW,
-            GetDirectSocketsContentSetting(GetTestingUrl()));
-}
-
-IN_PROC_BROWSER_TEST_F(DirectSocketsPolicyTest, DirectSocketsBlockedForUrls) {
-  SetDirectSocketsBlockedFor(GetTestingUrl());
-
-  EXPECT_EQ(CONTENT_SETTING_ALLOW, GetDirectSocketsDefaultContentSetting());
-  EXPECT_EQ(CONTENT_SETTING_BLOCK,
-            GetDirectSocketsContentSetting(GetTestingUrl()));
-}
-#endif
 
 }  // namespace policy

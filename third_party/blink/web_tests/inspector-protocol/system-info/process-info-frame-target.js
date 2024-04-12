@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const TIMEOUT_MS = 1000;
 
   const {dp} = await testRunner.startBlank(

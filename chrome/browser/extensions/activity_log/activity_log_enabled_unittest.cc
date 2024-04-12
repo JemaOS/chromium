@@ -129,10 +129,11 @@ TEST_F(ActivityLogEnabledTest, WatchdogSwitch) {
 
   scoped_refptr<const Extension> extension =
       ExtensionBuilder()
-          .SetManifest(base::Value::Dict()
+          .SetManifest(DictionaryBuilder()
                            .Set("name", "Watchdog Extension ")
                            .Set("version", "1.0.0")
-                           .Set("manifest_version", 2))
+                           .Set("manifest_version", 2)
+                           .Build())
           .SetID(kExtensionID)
           .Build();
   extension_service1->AddExtension(extension.get());
@@ -188,10 +189,11 @@ TEST_F(ActivityLogEnabledTest, WatchdogSwitch) {
 
   scoped_refptr<const Extension> extension2 =
       ExtensionBuilder()
-          .SetManifest(base::Value::Dict()
+          .SetManifest(DictionaryBuilder()
                            .Set("name", "Watchdog Extension ")
                            .Set("version", "1.0.0")
-                           .Set("manifest_version", 2))
+                           .Set("manifest_version", 2)
+                           .Build())
           .SetID("fpofdchlamddhnajleknffcbmnjfahpg")
           .Build();
   extension_service1->AddExtension(extension.get());
@@ -234,10 +236,11 @@ TEST_F(ActivityLogEnabledTest, AppAndCommandLine) {
   // Enable the extension.
   scoped_refptr<const Extension> extension =
       ExtensionBuilder()
-          .SetManifest(base::Value::Dict()
+          .SetManifest(DictionaryBuilder()
                            .Set("name", "Watchdog Extension ")
                            .Set("version", "1.0.0")
-                           .Set("manifest_version", 2))
+                           .Set("manifest_version", 2)
+                           .Build())
           .SetID(kExtensionID)
           .Build();
   extension_service->AddExtension(extension.get());
@@ -289,10 +292,11 @@ TEST_F(ActivityLogEnabledTest, IncorrectPrefsRecovery) {
   // Testing adding an extension maintains pref and active correctness.
   scoped_refptr<const Extension> extension =
       ExtensionBuilder()
-          .SetManifest(base::Value::Dict()
+          .SetManifest(DictionaryBuilder()
                            .Set("name", "Watchdog Extension ")
                            .Set("version", "1.0.0")
-                           .Set("manifest_version", 2))
+                           .Set("manifest_version", 2)
+                           .Build())
           .SetID(kExtensionID)
           .Build();
   extension_service->AddExtension(extension.get());

@@ -130,7 +130,7 @@ MouseEvent* CreateMouseOrPointerEvent(
                                   ? underlying_event->PlatformTimeStamp()
                                   : base::TimeTicks::Now();
   MouseEvent::SyntheticEventType synthetic_type = MouseEvent::kPositionless;
-  if (IsA<MouseEvent>(underlying_event)) {
+  if (const auto* mouse_event = DynamicTo<MouseEvent>(underlying_event)) {
     synthetic_type = MouseEvent::kRealOrIndistinguishable;
   }
   if (creation_scope == SimulatedClickCreationScope::kFromAccessibility) {

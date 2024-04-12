@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_NEARBY_NEARBY_DEPENDENCIES_PROVIDER_FACTORY_H_
 #define CHROME_BROWSER_ASH_NEARBY_NEARBY_DEPENDENCIES_PROVIDER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -26,13 +26,13 @@ class NearbyDependenciesProviderFactory : public ProfileKeyedServiceFactory {
       const NearbyDependenciesProviderFactory&) = delete;
 
  private:
-  friend base::NoDestructor<NearbyDependenciesProviderFactory>;
+  friend struct base::DefaultSingletonTraits<NearbyDependenciesProviderFactory>;
 
   NearbyDependenciesProviderFactory();
   ~NearbyDependenciesProviderFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

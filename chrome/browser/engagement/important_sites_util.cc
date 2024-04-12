@@ -8,7 +8,6 @@
 #include <map>
 #include <memory>
 #include <set>
-#include <string_view>
 #include <unordered_set>
 #include <utility>
 
@@ -42,9 +41,9 @@
 #include "url/url_util.h"
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
-#include "components/webapps/common/web_app_id.h"
 #endif
 
 namespace site_engagement {
@@ -107,16 +106,15 @@ enum CrossedReason {
 void RecordIgnore(base::Value::Dict& dict) {
   int times_ignored = dict.FindInt(kNumTimesIgnoredName).value_or(0);
   dict.Set(kNumTimesIgnoredName, ++times_ignored);
-  dict.Set(kTimeLastIgnored, base::Time::Now().InSecondsFSinceUnixEpoch());
+  dict.Set(kTimeLastIgnored, base::Time::Now().ToDoubleT());
 }
 
 // If we should suppress the item with the given dictionary ignored record.
 bool ShouldSuppressItem(base::Value::Dict& dict) {
-  std::optional<double> last_ignored_time = dict.FindDouble(kTimeLastIgnored);
+  absl::optional<double> last_ignored_time = dict.FindDouble(kTimeLastIgnored);
   if (last_ignored_time) {
     base::TimeDelta diff =
-        base::Time::Now() -
-        base::Time::FromSecondsSinceUnixEpoch(*last_ignored_time);
+        base::Time::Now() - base::Time::FromDoubleT(*last_ignored_time);
     if (diff >= base::Days(kSuppressionExpirationTimeDays)) {
       dict.Set(kNumTimesIgnoredName, 0);
       dict.Remove(kTimeLastIgnored);
@@ -124,7 +122,7 @@ bool ShouldSuppressItem(base::Value::Dict& dict) {
     }
   }
 
-  std::optional<int> times_ignored = dict.FindInt(kNumTimesIgnoredName);
+  absl::optional<int> times_ignored = dict.FindInt(kNumTimesIgnoredName);
   return times_ignored && *times_ignored >= kTimesIgnoredForSuppression;
 }
 
@@ -154,16 +152,12 @@ void MaybePopulateImportantInfoForReason(
     const GURL& origin,
     std::set<GURL>* visited_origins,
     ImportantReason reason,
-    std::optional<std::string> app_name,
+    absl::optional<std::string> app_name,
     std::map<std::string, ImportantDomainInfo>* output) {
   if (!origin.is_valid() || !visited_origins->insert(origin).second)
     return;
   std::string registerable_domain =
       ImportantSitesUtil::GetRegisterableDomainOrIP(origin);
-  if (registerable_domain.empty()) {
-    return;
-  }
-
   ImportantDomainInfo& info = (*output)[registerable_domain];
   info.reason_bitfield |= 1 << reason;
   if (info.example_origin.is_empty()) {
@@ -219,11 +213,14 @@ bool CompareDescendingImportantInfo(
 
 std::unordered_set<std::string> GetSuppressedImportantDomains(
     Profile* profile) {
+  ContentSettingsForOneType content_settings_list;
   HostContentSettingsMap* map =
       HostContentSettingsMapFactory::GetForProfile(profile);
+  map->GetSettingsForOneType(ContentSettingsType::IMPORTANT_SITE_INFO,
+
+                             &content_settings_list);
   std::unordered_set<std::string> ignoring_domains;
-  for (ContentSettingPatternSource& site :
-       map->GetSettingsForOneType(ContentSettingsType::IMPORTANT_SITE_INFO)) {
+  for (ContentSettingPatternSource& site : content_settings_list) {
     GURL origin(site.primary_pattern.ToString());
     if (!origin.is_valid() || base::Contains(ignoring_domains, origin.host())) {
       continue;
@@ -257,7 +254,7 @@ void PopulateInfoMapWithEngagement(
     if (detail.installed_bonus > 0) {
       MaybePopulateImportantInfoForReason(detail.origin, &content_origins,
                                           ImportantReason::HOME_SCREEN,
-                                          std::nullopt, output);
+                                          absl::nullopt, output);
     }
 
     (*engagement_map)[detail.origin] = detail.total_score;
@@ -269,11 +266,6 @@ void PopulateInfoMapWithEngagement(
 
     std::string registerable_domain =
         ImportantSitesUtil::GetRegisterableDomainOrIP(detail.origin);
-
-    if (registerable_domain.empty()) {
-      continue;
-    }
-
     ImportantDomainInfo& info = (*output)[registerable_domain];
     if (detail.total_score > info.engagement_score) {
       info.registerable_domain = registerable_domain;
@@ -289,18 +281,21 @@ void PopulateInfoMapWithContentTypeAllowed(
     ContentSettingsType content_type,
     ImportantReason reason,
     std::map<std::string, ImportantDomainInfo>* output) {
+  // Grab our content settings list.
+  ContentSettingsForOneType content_settings_list;
+  HostContentSettingsMapFactory::GetForProfile(profile)->GetSettingsForOneType(
+      content_type, &content_settings_list);
+
   // Extract a set of urls, using the primary pattern. We don't handle
   // wildcard patterns.
   std::set<GURL> content_origins;
-  for (const ContentSettingPatternSource& site :
-       HostContentSettingsMapFactory::GetForProfile(profile)
-           ->GetSettingsForOneType(content_type)) {
+  for (const ContentSettingPatternSource& site : content_settings_list) {
     if (site.GetContentSetting() != CONTENT_SETTING_ALLOW)
       continue;
     GURL url(site.primary_pattern.ToString());
 
     MaybePopulateImportantInfoForReason(url, &content_origins, reason,
-                                        std::nullopt, output);
+                                        absl::nullopt, output);
   }
 }
 
@@ -312,7 +307,8 @@ void PopulateInfoMapWithBookmarks(
       BookmarkModelFactory::GetForBrowserContextIfExists(profile);
   if (!model)
     return;
-  std::vector<UrlAndTitle> untrimmed_bookmarks = model->GetUniqueUrls();
+  std::vector<UrlAndTitle> untrimmed_bookmarks;
+  model->GetBookmarks(&untrimmed_bookmarks);
 
   // Process the bookmarks and optionally trim them if we have too many.
   std::vector<UrlAndTitle> result_bookmarks;
@@ -347,7 +343,7 @@ void PopulateInfoMapWithBookmarks(
   for (const UrlAndTitle& bookmark : result_bookmarks) {
     MaybePopulateImportantInfoForReason(bookmark.url, &content_origins,
                                         ImportantReason::BOOKMARKS,
-                                        std::nullopt, output);
+                                        absl::nullopt, output);
   }
 }
 
@@ -364,7 +360,7 @@ std::string ImportantSitesUtil::GetRegisterableDomainOrIP(const GURL& url) {
 }
 
 std::string ImportantSitesUtil::GetRegisterableDomainOrIPFromHost(
-    std::string_view host) {
+    base::StringPiece host) {
   std::string registerable_domain =
       net::registry_controlled_domains::GetDomainAndRegistry(
           host, net::registry_controlled_domains::INCLUDE_PRIVATE_REGISTRIES);
@@ -470,7 +466,7 @@ void ImportantSitesUtil::RecordExcludedAndIgnoredImportantSites(
     for (const std::string& ignored_site : ignored_sites) {
       GURL origin("http://" + ignored_site);
       base::Value dict = map->GetWebsiteSetting(
-          origin, origin, ContentSettingsType::IMPORTANT_SITE_INFO);
+          origin, origin, ContentSettingsType::IMPORTANT_SITE_INFO, nullptr);
 
       if (!dict.is_dict())
         dict = base::Value(base::Value::Type::DICT);
@@ -491,12 +487,12 @@ void ImportantSitesUtil::RecordExcludedAndIgnoredImportantSites(
   // We clear our ignore counter for sites that the user chose.
   for (const std::string& excluded_site : excluded_sites) {
     GURL origin("http://" + excluded_site);
-    base::Value::Dict dict;
-    dict.Set(kNumTimesIgnoredName, 0);
-    dict.Remove(kTimeLastIgnored);
+    base::Value dict(base::Value::Type::DICT);
+    dict.SetIntKey(kNumTimesIgnoredName, 0);
+    dict.RemoveKey(kTimeLastIgnored);
     map->SetWebsiteSettingDefaultScope(origin, origin,
                                        ContentSettingsType::IMPORTANT_SITE_INFO,
-                                       base::Value(std::move(dict)));
+                                       std::move(dict));
   }
 
   // Finally, record our old crossed-stats.

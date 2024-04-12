@@ -8,11 +8,9 @@
 #include <string>
 
 #include "base/process/kill.h"
-#include "chrome/browser/ui/performance_controls/tab_resource_usage_tab_helper.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_network_state.h"
 #include "chrome/browser/ui/thumbnails/thumbnail_image.h"
-#include "ui/base/models/image_model.h"
 #include "ui/gfx/image/image_skia.h"
 #include "url/gurl.h"
 
@@ -20,7 +18,7 @@ class TabStripModel;
 
 // Wraps the state needed by the renderers.
 struct TabRendererData {
-  static TabRendererData FromTabInModel(const TabStripModel* model, int index);
+  static TabRendererData FromTabInModel(TabStripModel* model, int index);
 
   TabRendererData();
   TabRendererData(const TabRendererData& other);
@@ -37,7 +35,7 @@ struct TabRendererData {
   // process died unexpectedly).
   bool IsCrashed() const;
 
-  ui::ImageModel favicon;
+  gfx::ImageSkia favicon;
   scoped_refptr<ThumbnailImage> thumbnail;
   TabNetworkState network_state = TabNetworkState::kNone;
   std::u16string title;
@@ -59,12 +57,6 @@ struct TabRendererData {
   bool should_render_empty_title = false;
   bool should_themify_favicon = false;
   bool is_tab_discarded = false;
-  bool should_show_discard_status = false;
-  // Amount of memory saved through discarding the tab
-  uint64_t discarded_memory_savings_in_bytes = 0;
-  // Contains information about how much resource a tab is using
-  scoped_refptr<const TabResourceUsage> tab_resource_usage;
-  bool is_monochrome_favicon = false;
 };
 
 #endif  // CHROME_BROWSER_UI_TABS_TAB_RENDERER_DATA_H_

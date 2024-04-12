@@ -11,7 +11,9 @@ import org.chromium.chrome.browser.dependency_injection.ActivityScope;
 
 import javax.inject.Inject;
 
-/** Empty {@link Verifier} implementation. */
+/**
+ * Empty {@link Verifier} implementation.
+ */
 @ActivityScope
 public class EmptyVerifier implements Verifier {
     @Inject

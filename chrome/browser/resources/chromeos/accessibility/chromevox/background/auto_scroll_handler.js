@@ -5,19 +5,17 @@
 /**
  * @fileoverview Handles auto scrolling on navigation.
  */
-import {AutomationPredicate} from '/common/automation_predicate.js';
-import {AutomationUtil} from '/common/automation_util.js';
-import {constants} from '/common/constants.js';
-import {CursorUnit} from '/common/cursors/cursor.js';
-import {CursorRange} from '/common/cursors/range.js';
-import {EventHandler} from '/common/event_handler.js';
-import {TestImportManager} from '/common/testing/test_import_manager.js';
-
-import {Command} from '../common/command.js';
+import {AutomationPredicate} from '../../common/automation_predicate.js';
+import {AutomationUtil} from '../../common/automation_util.js';
+import {constants} from '../../common/constants.js';
+import {CursorUnit} from '../../common/cursors/cursor.js';
+import {CursorRange} from '../../common/cursors/range.js';
+import {EventHandler} from '../../common/event_handler.js';
 import {TtsSpeechProperties} from '../common/tts_types.js';
 
 import {ChromeVoxRange} from './chromevox_range.js';
-import {CommandHandlerInterface} from './input/command_handler_interface.js';
+import {ChromeVoxState} from './chromevox_state.js';
+import {CommandHandlerInterface} from './command_handler_interface.js';
 
 // setTimeout and its clean-up are referencing each other. So, we need to set
 // "ignoreReadBeforeAssign" in this file. ESLint doesn't support per-line rule
@@ -28,8 +26,7 @@ const AutomationNode = chrome.automation.AutomationNode;
 const EventType = chrome.automation.EventType;
 
 /**
- * Handles scrolling, based either on a user command or an event firing.
- * Most of the logic is to support ARC++.
+ * Handler of auto scrolling. Most logics are for supporting ARC++.
  */
 export class AutoScrollHandler {
   constructor() {
@@ -47,9 +44,6 @@ export class AutoScrollHandler {
 
     /** @private {boolean} */
     this.relatedFocusEventHappened_ = false;
-
-    /** @private {boolean} */
-    this.allowWebContentsForTesting_ = false;
   }
 
   static init() {
@@ -65,7 +59,7 @@ export class AutoScrollHandler {
    * @param {?AutomationPredicate.Unary} pred The predicate to match.
    * @param {?CursorUnit} unit The unit to navigate by.
    * @param {?TtsSpeechProperties} speechProps The optional speech properties
-   *     given to |navigateTo| to provide feedback from the current command.
+   *     given to |navigateToRange| to provide feedback of the current command.
    * @param {AutomationPredicate.Unary} rootPred The predicate that expresses
    *     the current navigation root.
    * @param {Function} retryCommandFunc The callback used to retry the command
@@ -106,66 +100,9 @@ export class AutoScrollHandler {
     this.lastScrolledTime_ = new Date();
     this.relatedFocusEventHappened_ = false;
 
-    this.scrollForCommandNavigation_(
-            target, dir, pred, unit, speechProps, rootPred, retryCommandFunc)
+    this.scrollForCommandNavigation_(...arguments)
         .catch(() => this.isScrolling_ = false);
     return false;
-  }
-
-  /**
-   * This function will scroll to find nodes that are offscreen and not in the
-   * tree.
-   * @param {!chrome.automation.AutomationNode} bound The current cell node.
-   * @param {!string} command the command handler command.
-   * @param {!CursorRange} target
-   * @param {!constants.Dir} dir the direction of movement
-   * @return {boolean} True if the given navigation can be executed. False if
-   *     the given navigation shouldn't happen, and AutoScrollHandler handles
-   *     the command instead.
-   */
-  scrollToFindNodes(bound, command, target, dir, postScrollCallback) {
-    if (bound.parent.hasHiddenOffscreenNodes && target) {
-      let pred = null;
-      // Handle grids going over edge.
-
-      if (bound.parent.role === chrome.automation.RoleType.GRID) {
-        const currentRow = bound.tableCellRowIndex;
-        const totalRows = bound.parent.tableRowCount;
-        const currentCol = bound.tableCellColumnIndex;
-        const totalCols = bound.parent.tableColumnCount;
-        if (command === Command.NEXT_ROW || command === Command.PREVIOUS_ROW) {
-          if (dir === constants.Dir.BACKWARD && currentRow === 0) {
-            return true;
-          } else if (
-              dir === constants.Dir.FORWARD && currentRow === (totalRows - 1)) {
-            return true;
-          }
-          // Create predicate
-          pred = AutomationPredicate.makeTableCellPredicate(bound, {
-            row: true,
-            dir,
-          });
-        } else if (
-            command === Command.NEXT_COL || command === Command.PREVIOUS_COL) {
-          if (dir === constants.Dir.BACKWARD && currentCol === 0) {
-            return true;
-          } else if (
-              dir === constants.Dir.FORWARD && currentCol === (totalCols - 1)) {
-            return true;
-          }
-          // Create predicate
-          pred = AutomationPredicate.makeTableCellPredicate(bound, {
-            col: true,
-            dir,
-          });
-        }
-      }
-
-      return this.onCommandNavigation(
-          target, dir, pred, null, null, AutomationPredicate.root,
-          postScrollCallback);
-    }
-    return true;
   }
 
   /**
@@ -174,20 +111,8 @@ export class AutoScrollHandler {
    * @return {?AutomationNode}
    */
   findScrollableAncestor_(target) {
-    let ancestors;
-    if (ChromeVoxRange.current && target.equals(ChromeVoxRange.current)) {
-      ancestors = AutomationUtil.getAncestors(target.start.node);
-    } else {
-      ancestors = AutomationUtil.getUniqueAncestors(
-          target.start.node, ChromeVoxRange.current.start.node);
-    }
-    // Check if we are in ARC++. Scrolling behavior should only happen there,
-    // where additional nodes are not loaded until the user scrolls.
-    if (!this.allowWebContentsForTesting_ &&
-        !ancestors.find(
-            node => node.role === chrome.automation.RoleType.APPLICATION)) {
-      return null;
-    }
+    const ancestors = AutomationUtil.getUniqueAncestors(
+        target.start.node, ChromeVoxRange.current.start.node);
     const scrollable =
         ancestors.find(node => AutomationPredicate.autoScrollable(node));
     return scrollable ?? null;
@@ -225,7 +150,7 @@ export class AutoScrollHandler {
    * @param {?AutomationPredicate.Unary} pred The predicate to match.
    * @param {?CursorUnit} unit The unit to navigate by.
    * @param {?TtsSpeechProperties} speechProps The optional speech properties
-   *     given to |navigateTo| to provide feedback for the current command.
+   *     given to |navigateToRange| to provide feedback of the current command.
    * @param {AutomationPredicate.Unary} rootPred The predicate that expresses
    *     the current navigation root.
    * @param {Function} retryCommandFunc The callback used to retry the command
@@ -238,7 +163,7 @@ export class AutoScrollHandler {
         await this.scrollInDirection_(this.scrollingNode_, dir);
     if (!scrollResult) {
       this.isScrolling_ = false;
-      ChromeVoxRange.navigateTo(target, false, speechProps);
+      ChromeVoxState.instance.navigateToRange(target, false, speechProps);
       return;
     }
 
@@ -265,7 +190,8 @@ export class AutoScrollHandler {
       const nextRange = this.handleScrollingInAndroidRecyclerView_(
           pred, unit, dir, rootPred, this.scrollingNode_);
 
-      ChromeVoxRange.navigateTo(nextRange ?? target, false, speechProps);
+      ChromeVoxState.instance.navigateToRange(
+          nextRange ?? target, false, speechProps);
       return;
     }
 
@@ -450,5 +376,3 @@ const TIMEOUT_FOCUS_EVENT_DROP_MS = 2000;
  * @const {number}
  */
 const DELAY_HANDLE_SCROLLED_MS = 150;
-
-TestImportManager.exportForTesting(AutoScrollHandler);

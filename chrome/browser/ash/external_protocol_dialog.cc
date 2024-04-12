@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/external_protocol_dialog.h"
 
-#include "ash/constants/ash_features.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/ash/arc/intent_helper/arc_intent_helper_mojo_ash.h"
 #include "chrome/browser/ash/guest_os/guest_os_external_protocol_handler.h"
@@ -12,9 +11,8 @@
 #include "chrome/browser/external_protocol/external_protocol_handler.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/views/external_protocol_dialog.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
-#include "chromeos/ash/components/browser_context_helper/browser_context_types.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/weak_document_ptr.h"
@@ -34,7 +32,7 @@ namespace {
 const int kMessageWidth = 400;
 
 void OnArcHandled(const GURL& url,
-                  const std::optional<url::Origin>& initiating_origin,
+                  const absl::optional<url::Origin>& initiating_origin,
                   content::WeakDocumentPtr initiator_document,
                   base::WeakPtr<WebContents> web_contents,
                   bool handled) {
@@ -53,12 +51,12 @@ void OnArcHandled(const GURL& url,
   // Display the standard ExternalProtocolDialog if Guest OS has a handler.
   // Otherwise, if there is no handler and the URL is a Tel-link, show the No
   // Handler Tel Scheme dialog
-  std::optional<guest_os::GuestOsUrlHandler> registration =
-      guest_os::GuestOsUrlHandler::GetForUrl(
+  absl::optional<guest_os::GuestOsRegistryService::Registration> registration =
+      guest_os::GetHandler(
           Profile::FromBrowserContext(web_contents->GetBrowserContext()), url);
   if (registration) {
     new ExternalProtocolDialog(web_contents.get(), url,
-                               base::UTF8ToUTF16(registration->name()),
+                               base::UTF8ToUTF16(registration->Name()),
                                initiating_origin, initiator_document);
   } else if (url.scheme() == url::kTelScheme) {
     new ash::ExternalProtocolNoHandlersTelSchemeDialog(parent_window);
@@ -77,15 +75,9 @@ void ExternalProtocolHandler::RunExternalProtocolDialog(
     ui::PageTransition page_transition,
     bool has_user_gesture,
     bool is_in_fenced_frame_tree,
-    const std::optional<url::Origin>& initiating_origin,
+    const absl::optional<url::Origin>& initiating_origin,
     content::WeakDocumentPtr initiator_document,
     const std::u16string& program_name) {
-  // Don't launch anything from Shimless RMA app.
-  if (ash::features::IsShimlessRMA3pDiagnosticsEnabled() &&
-      ash::IsShimlessRmaAppBrowserContext(web_contents->GetBrowserContext())) {
-    return;
-  }
-
   // First, check if ARC version of the dialog is available and run ARC version
   // when possible.
   arc::RunArcExternalProtocolDialog(

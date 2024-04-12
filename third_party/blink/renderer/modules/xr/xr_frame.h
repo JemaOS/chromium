@@ -21,7 +21,6 @@ namespace blink {
 
 class ExceptionState;
 class ScriptState;
-class XRAnchor;
 class XRAnchorSet;
 class XRCPUDepthInformation;
 class XRHitTestResult;
@@ -43,9 +42,6 @@ class XRTransientInputHitTestSource;
 class XRView;
 class XRViewerPose;
 
-template <typename IDLType>
-class FrozenArray;
-
 class XRFrame final : public ScriptWrappable {
   DEFINE_WRAPPERTYPEINFO();
 
@@ -58,7 +54,7 @@ class XRFrame final : public ScriptWrappable {
 
   explicit XRFrame(XRSession* session, bool is_animation_frame = false);
 
-  XRSession* session() const { return session_.Get(); }
+  XRSession* session() const { return session_; }
 
   // Returns basespace_from_viewer.
   XRViewerPose* getViewerPose(XRReferenceSpace* basespace,
@@ -87,21 +83,21 @@ class XRFrame final : public ScriptWrappable {
 
   bool IsAnimationFrame() const { return is_animation_frame_; }
 
-  const FrozenArray<XRHitTestResult>& getHitTestResults(
+  HeapVector<Member<XRHitTestResult>> getHitTestResults(
       XRHitTestSource* hit_test_source,
       ExceptionState& exception_state);
 
-  const FrozenArray<XRTransientInputHitTestResult>&
+  HeapVector<Member<XRTransientInputHitTestResult>>
   getHitTestResultsForTransientInput(
       XRTransientInputHitTestSource* hit_test_source,
       ExceptionState& exception_state);
 
-  ScriptPromiseTyped<XRAnchor> createAnchor(ScriptState* script_state,
-                                            XRRigidTransform* initial_pose,
-                                            XRSpace* space,
-                                            ExceptionState& exception_state);
+  ScriptPromise createAnchor(ScriptState* script_state,
+                             XRRigidTransform* initial_pose,
+                             XRSpace* space,
+                             ExceptionState& exception_state);
 
-  const FrozenArray<XRImageTrackingResult>& getImageTrackingResults(
+  HeapVector<Member<XRImageTrackingResult>> getImageTrackingResults(
       ExceptionState&);
 
   XRJointPose* getJointPose(XRJointSpace* joint,
@@ -124,11 +120,11 @@ class XRFrame final : public ScriptWrappable {
   // |native_origin_from_anchor| is a transform from |space|'s native origin to
   // the desired anchor position (i.e. the origin-offset of the |space| is
   // already taken into account).
-  ScriptPromiseTyped<XRAnchor> CreateAnchorFromNonStationarySpace(
+  ScriptPromise CreateAnchorFromNonStationarySpace(
       ScriptState* script_state,
       const gfx::Transform& native_origin_from_anchor,
       XRSpace* space,
-      std::optional<uint64_t> maybe_plane_id,
+      absl::optional<uint64_t> maybe_plane_id,
       ExceptionState& exception_state);
   // Helper for checking if space and frame have the same session.
   // Sets kInvalidStateError exception state if sessions are different.

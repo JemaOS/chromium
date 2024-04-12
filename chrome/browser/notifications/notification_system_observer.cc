@@ -12,6 +12,7 @@
 #include "chrome/browser/notifications/notification_ui_manager.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
+#include "content/public/browser/notification_service.h"
 #include "extensions/common/extension.h"
 
 NotificationSystemObserver::NotificationSystemObserver(

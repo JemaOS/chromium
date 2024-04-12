@@ -16,7 +16,7 @@ namespace blink {
 
 bool IsAcceleratedCanvasImageSource(v8::Isolate* isolate,
                                     v8::Local<v8::Value> value) {
-  ExceptionState exception_state(isolate, ExceptionContextType::kUnknown,
+  ExceptionState exception_state(isolate, ExceptionState::kUnknownContext,
                                  "IsAcceleratedCanvasImageSource");
   auto* v8_image_source =
       V8CanvasImageSource::Create(isolate, value, exception_state);

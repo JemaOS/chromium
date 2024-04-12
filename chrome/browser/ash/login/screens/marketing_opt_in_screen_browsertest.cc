@@ -19,6 +19,7 @@
 #include "chrome/browser/ash/accessibility/accessibility_manager.h"
 #include "chrome/browser/ash/login/login_pref_names.h"
 #include "chrome/browser/ash/login/marketing_backend_connector.h"
+#include "chrome/browser/ash/login/test/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/login/test/js_checker.h"
 #include "chrome/browser/ash/login/test/local_state_mixin.h"
 #include "chrome/browser/ash/login/test/login_manager_mixin.h"
@@ -28,7 +29,6 @@
 #include "chrome/browser/ash/login/test/user_policy_mixin.h"
 #include "chrome/browser/ash/login/ui/login_display_host.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
-#include "chrome/browser/ash/policy/test_support/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser.h"
@@ -141,7 +141,7 @@ class MarketingOptInScreenTest : public OobeBaseTest,
   // Logs in as a normal user. Overridden by subclasses.
   virtual void PerformLogin();
 
-  std::optional<MarketingOptInScreen::Result> screen_result_;
+  absl::optional<MarketingOptInScreen::Result> screen_result_;
   base::HistogramTester histogram_tester_;
 
  protected:
@@ -212,6 +212,8 @@ MarketingOptInScreen* MarketingOptInScreenTest::GetScreen() {
 void MarketingOptInScreenTest::ShowMarketingOptInScreen() {
   PerformLogin();
   OobeScreenExitWaiter(GetFirstSigninScreen()).Wait();
+  ProfileManager::GetActiveUserProfile()->GetPrefs()->SetBoolean(
+      prefs::kGestureEducationNotificationShown, true);
   LoginDisplayHost::default_host()->StartWizard(
       MarketingOptInScreenView::kScreenId);
 }
@@ -504,7 +506,13 @@ class MarketingTestCountryCodes : public MarketingOptInScreenTestWithRequest,
 
 // Tests that the given timezone resolves to the correct location and
 // generates a request for the server with the correct region code.
-IN_PROC_BROWSER_TEST_P(MarketingTestCountryCodes, CountryCodes) {
+// TODO(crbug.com/1369443): Fix flaky test.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_CountryCodes DISABLED_CountryCodes
+#else
+#define MAYBE_CountryCodes CountryCodes
+#endif
+IN_PROC_BROWSER_TEST_P(MarketingTestCountryCodes, MAYBE_CountryCodes) {
   const RegionToCodeMap param = GetParam();
   ShowMarketingOptInScreen();
   OobeScreenWaiter(MarketingOptInScreenView::kScreenId).Wait();

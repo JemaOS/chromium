@@ -11,7 +11,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -41,7 +41,7 @@ class OfflinePageModelFactory : public SimpleKeyedServiceFactory {
   OfflinePageModelFactory& operator=(const OfflinePageModelFactory&) = delete;
 
  private:
-  friend base::NoDestructor<OfflinePageModelFactory>;
+  friend struct base::DefaultSingletonTraits<OfflinePageModelFactory>;
 
   OfflinePageModelFactory();
   ~OfflinePageModelFactory() override {}

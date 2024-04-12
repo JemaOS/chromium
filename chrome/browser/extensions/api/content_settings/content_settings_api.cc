@@ -21,7 +21,6 @@
 #include "chrome/common/extensions/api/content_settings.h"
 #include "components/content_settings/core/browser/content_settings_info.h"
 #include "components/content_settings/core/browser/content_settings_registry.h"
-#include "components/content_settings/core/browser/content_settings_uma_util.h"
 #include "components/content_settings/core/browser/content_settings_utils.h"
 #include "components/content_settings/core/browser/cookie_settings.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
@@ -33,8 +32,8 @@
 #include "extensions/browser/api/content_settings/content_settings_helpers.h"
 #include "extensions/browser/api/content_settings/content_settings_service.h"
 #include "extensions/browser/api/content_settings/content_settings_store.h"
+#include "extensions/browser/extension_prefs_scope.h"
 #include "extensions/browser/extension_util.h"
-#include "extensions/common/api/extension_types.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/error_utils.h"
 
@@ -46,8 +45,6 @@ namespace Set = extensions::api::content_settings::ContentSetting::Set;
 namespace pref_helpers = extensions::preference_helpers;
 
 namespace {
-
-using extensions::api::types::ChromeSettingScope;
 
 bool RemoveContentType(base::Value::List& args,
                        ContentSettingsType* content_type) {
@@ -83,7 +80,7 @@ ContentSettingsContentSettingClearFunction::Run() {
   ContentSettingsType content_type;
   EXTENSION_FUNCTION_VALIDATE(RemoveContentType(mutable_args(), &content_type));
 
-  std::optional<Clear::Params> params = Clear::Params::Create(args());
+  absl::optional<Clear::Params> params = Clear::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   if (content_type == ContentSettingsType::DEPRECATED_PPAPI_BROKER) {
@@ -91,11 +88,11 @@ ContentSettingsContentSettingClearFunction::Run() {
     return RespondNow(Error(kUnknownErrorDoNotUse));
   }
 
-  ChromeSettingScope scope = ChromeSettingScope::kRegular;
+  ExtensionPrefsScope scope = kExtensionPrefsScopeRegular;
   bool incognito = false;
   if (params->details.scope ==
-      api::content_settings::Scope::kIncognitoSessionOnly) {
-    scope = ChromeSettingScope::kIncognitoSessionOnly;
+      api::content_settings::SCOPE_INCOGNITO_SESSION_ONLY) {
+    scope = kExtensionPrefsScopeIncognitoSessionOnly;
     incognito = true;
   }
 
@@ -121,7 +118,7 @@ ContentSettingsContentSettingGetFunction::Run() {
   ContentSettingsType content_type;
   EXTENSION_FUNCTION_VALIDATE(RemoveContentType(mutable_args(), &content_type));
 
-  std::optional<Get::Params> params = Get::Params::Create(args());
+  absl::optional<Get::Params> params = Get::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   if (content_type == ContentSettingsType::DEPRECATED_PPAPI_BROKER) {
@@ -150,7 +147,7 @@ ContentSettingsContentSettingGetFunction::Run() {
     return RespondNow(Error(extension_misc::kIncognitoErrorMessage));
 
   HostContentSettingsMap* map;
-  scoped_refptr<content_settings::CookieSettings> cookie_settings;
+  content_settings::CookieSettings* cookie_settings;
   Profile* profile = Profile::FromBrowserContext(browser_context());
   if (incognito) {
     if (!profile->HasPrimaryOTRProfile()) {
@@ -160,11 +157,13 @@ ContentSettingsContentSettingGetFunction::Run() {
     }
     map = HostContentSettingsMapFactory::GetForProfile(
         profile->GetPrimaryOTRProfile(/*create_if_needed=*/true));
-    cookie_settings = CookieSettingsFactory::GetForProfile(
-        profile->GetPrimaryOTRProfile(/*create_if_needed=*/true));
+    cookie_settings =
+        CookieSettingsFactory::GetForProfile(
+            profile->GetPrimaryOTRProfile(/*create_if_needed=*/true))
+            .get();
   } else {
     map = HostContentSettingsMapFactory::GetForProfile(profile);
-    cookie_settings = CookieSettingsFactory::GetForProfile(profile);
+    cookie_settings = CookieSettingsFactory::GetForProfile(profile).get();
   }
 
   // TODO(crbug.com/1386190): Consider whether the following check should
@@ -190,7 +189,7 @@ ContentSettingsContentSettingSetFunction::Run() {
   ContentSettingsType content_type;
   EXTENSION_FUNCTION_VALIDATE(RemoveContentType(mutable_args(), &content_type));
 
-  std::optional<Set::Params> params = Set::Params::Create(args());
+  absl::optional<Set::Params> params = Set::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   if (content_type == ContentSettingsType::DEPRECATED_PPAPI_BROKER) {
@@ -267,13 +266,16 @@ ContentSettingsContentSettingSetFunction::Run() {
                                                readable_type_name.c_str())));
   }
 
+  size_t num_values = 0;
+  int histogram_value =
+      ContentSettingTypeToHistogramValue(content_type, &num_values);
   if (primary_pattern != secondary_pattern &&
       secondary_pattern != ContentSettingsPattern::Wildcard()) {
-    content_settings_uma_util::RecordContentSettingsHistogram(
-        "ContentSettings.ExtensionEmbeddedSettingSet", content_type);
+    UMA_HISTOGRAM_EXACT_LINEAR("ContentSettings.ExtensionEmbeddedSettingSet",
+                               histogram_value, num_values);
   } else {
-    content_settings_uma_util::RecordContentSettingsHistogram(
-        "ContentSettings.ExtensionNonEmbeddedSettingSet", content_type);
+    UMA_HISTOGRAM_EXACT_LINEAR("ContentSettings.ExtensionNonEmbeddedSettingSet",
+                               histogram_value, num_values);
   }
 
   if (primary_pattern != secondary_pattern &&
@@ -284,11 +286,11 @@ ContentSettingsContentSettingSetFunction::Run() {
     return RespondNow(Error(kUnsupportedEmbeddedException));
   }
 
-  ChromeSettingScope scope = ChromeSettingScope::kRegular;
+  ExtensionPrefsScope scope = kExtensionPrefsScopeRegular;
   bool incognito = false;
   if (params->details.scope ==
-      api::content_settings::Scope::kIncognitoSessionOnly) {
-    scope = ChromeSettingScope::kIncognitoSessionOnly;
+      api::content_settings::SCOPE_INCOGNITO_SESSION_ONLY) {
+    scope = kExtensionPrefsScopeIncognitoSessionOnly;
     incognito = true;
   }
 
@@ -307,7 +309,7 @@ ContentSettingsContentSettingSetFunction::Run() {
       return RespondNow(Error(kIncognitoContextError));
   }
 
-  if (scope == ChromeSettingScope::kIncognitoSessionOnly &&
+  if (scope == kExtensionPrefsScopeIncognitoSessionOnly &&
       !Profile::FromBrowserContext(browser_context())->HasPrimaryOTRProfile()) {
     return RespondNow(Error(extension_misc::kIncognitoSessionOnlyErrorMessage));
   }

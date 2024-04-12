@@ -36,8 +36,8 @@ class HistoryAwareSiteEngagementService
   void Shutdown() override;
 
   // history::HistoryServiceObserver:
-  void OnHistoryDeletions(history::HistoryService* history_service,
-                          const history::DeletionInfo& deletion_info) override;
+  void OnURLsDeleted(history::HistoryService* history_service,
+                     const history::DeletionInfo& deletion_info) override;
 
  private:
   // Updates site engagement scores after some data has been deleted.

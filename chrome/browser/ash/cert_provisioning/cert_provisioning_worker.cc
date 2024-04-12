@@ -108,7 +108,7 @@ CertProvisioningWorkerFactory::Deserialize(
     std::unique_ptr<CertProvisioningInvalidator> invalidator,
     base::RepeatingClosure state_change_callback,
     CertProvisioningWorkerCallback result_callback) {
-  std::optional<ProtocolVersion> protocol_version =
+  absl::optional<ProtocolVersion> protocol_version =
       CertProvisioningSerializer::GetProtocolVersion(saved_worker);
   if (!protocol_version) {
     LOG(ERROR) << "Could not parse protocol version";

@@ -32,7 +32,8 @@ class DummySurface : public SurfaceOzoneCanvas {
   SkCanvas* GetCanvas() override { return surface_->getCanvas(); }
 
   void ResizeCanvas(const gfx::Size& viewport_size, float scale) override {
-    surface_ = SkSurfaces::Null(viewport_size.width(), viewport_size.height());
+    surface_ =
+        SkSurface::MakeNull(viewport_size.width(), viewport_size.height());
   }
 
   void PresentCanvas(const gfx::Rect& damage) override {}
@@ -77,7 +78,7 @@ class CastPixmap : public gfx::NativePixmap {
       std::vector<gfx::GpuFence> release_fences) override {
     return false;
   }
-  gfx::NativePixmapHandle ExportHandle() const override {
+  gfx::NativePixmapHandle ExportHandle() override {
     return gfx::NativePixmapHandle();
   }
 
@@ -132,7 +133,7 @@ scoped_refptr<gfx::NativePixmap> SurfaceFactoryCast::CreateNativePixmap(
     gfx::Size size,
     gfx::BufferFormat format,
     gfx::BufferUsage usage,
-    std::optional<gfx::Size> framebuffer_size) {
+    absl::optional<gfx::Size> framebuffer_size) {
   DCHECK(!framebuffer_size || framebuffer_size == size);
   return base::MakeRefCounted<CastPixmap>();
 }

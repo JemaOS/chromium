@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -16,7 +15,6 @@
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/rand_util.h"
-#include "base/sequence_checker.h"
 #include "base/time/time.h"
 #include "base/version.h"
 #include "build/build_config.h"
@@ -25,13 +23,13 @@
 #include "chrome/updater/crx_downloader_factory.h"
 #include "chrome/updater/external_constants.h"
 #include "chrome/updater/net/network.h"
-#include "chrome/updater/persisted_data.h"
 #include "chrome/updater/policy/service.h"
 #include "chrome/updater/prefs.h"
 #include "chrome/updater/updater_scope.h"
 #include "chrome/updater/util/util.h"
 #include "components/crx_file/crx_verifier.h"
 #include "components/prefs/pref_service.h"
+#include "components/update_client/buildflags.h"
 #include "components/update_client/network.h"
 #include "components/update_client/patch/in_process_patcher.h"
 #include "components/update_client/patcher.h"
@@ -39,6 +37,7 @@
 #include "components/update_client/unzip/in_process_unzipper.h"
 #include "components/update_client/unzipper.h"
 #include "components/version_info/version_info.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_WIN)
@@ -52,20 +51,18 @@ Configurator::Configurator(scoped_refptr<UpdaterPrefs> prefs,
     : prefs_(prefs),
       policy_service_(base::MakeRefCounted<PolicyService>(external_constants)),
       external_constants_(external_constants),
-      persisted_data_(base::MakeRefCounted<PersistedData>(
-          GetUpdaterScope(),
-          prefs->GetPrefService(),
-          std::make_unique<ActivityDataService>(GetUpdaterScope()))),
+      activity_data_service_(
+          std::make_unique<ActivityDataService>(GetUpdaterScope())),
       unzip_factory_(
           base::MakeRefCounted<update_client::InProcessUnzipperFactory>()),
       patch_factory_(
           base::MakeRefCounted<update_client::InProcessPatcherFactory>()),
-      is_managed_device_([] {
+      is_managed_device_([]() {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
         return base::IsManagedOrEnterpriseDevice();
 #else
-        return std::nullopt;
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+        return absl::nullopt;
+#endif
       }()) {
 #if BUILDFLAG(IS_LINUX)
   // On Linux creating the NetworkFetcherFactory requires performing blocking IO
@@ -77,94 +74,77 @@ Configurator::Configurator(scoped_refptr<UpdaterPrefs> prefs,
 Configurator::~Configurator() = default;
 
 base::TimeDelta Configurator::InitialDelay() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return base::RandDouble() * external_constants_->InitialDelay();
 }
 
 base::TimeDelta Configurator::ServerKeepAliveTime() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return std::clamp(external_constants_->ServerKeepAliveTime(),
-                    base::Seconds(1), kServerKeepAliveTime);
+                     base::Seconds(1), kServerKeepAliveTime);
 }
 
 base::TimeDelta Configurator::NextCheckDelay() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   PolicyStatus<base::TimeDelta> delay = policy_service_->GetLastCheckPeriod();
   CHECK(delay);
   return delay.policy();
 }
 
 base::TimeDelta Configurator::OnDemandDelay() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return base::Seconds(0);
 }
 
 base::TimeDelta Configurator::UpdateDelay() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return base::Seconds(0);
 }
 
 std::vector<GURL> Configurator::UpdateUrl() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return external_constants_->UpdateURL();
 }
 
 std::vector<GURL> Configurator::PingUrl() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return UpdateUrl();
 }
 
 GURL Configurator::CrashUploadURL() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return external_constants_->CrashUploadURL();
 }
 
 GURL Configurator::DeviceManagementURL() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return external_constants_->DeviceManagementURL();
 }
 
 std::string Configurator::GetProdId() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return "updater";
 }
 
 base::Version Configurator::GetBrowserVersion() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return version_info::GetVersion();
 }
 
 std::string Configurator::GetChannel() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return {};
 }
 
 std::string Configurator::GetLang() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return "";
 }
 
 std::string Configurator::GetOSLongName() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return std::string(version_info::GetOSType());
+  return version_info::GetOSType();
 }
 
 base::flat_map<std::string, std::string> Configurator::ExtraRequestParams()
     const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return {};
 }
 
 std::string Configurator::GetDownloadPreference() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   PolicyStatus<std::string> preference =
-      policy_service_->GetDownloadPreference();
+      policy_service_->GetDownloadPreferenceGroupPolicy();
   return preference ? preference.policy() : std::string();
 }
 
 scoped_refptr<update_client::NetworkFetcherFactory>
 Configurator::GetNetworkFetcherFactory() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!network_fetcher_factory_) {
     network_fetcher_factory_ = base::MakeRefCounted<NetworkFetcherFactory>(
         PolicyServiceProxyConfiguration::Get(policy_service_));
@@ -174,7 +154,6 @@ Configurator::GetNetworkFetcherFactory() {
 
 scoped_refptr<update_client::CrxDownloaderFactory>
 Configurator::GetCrxDownloaderFactory() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!crx_downloader_factory_) {
     crx_downloader_factory_ =
         updater::MakeCrxDownloaderFactory(GetNetworkFetcherFactory());
@@ -184,91 +163,71 @@ Configurator::GetCrxDownloaderFactory() {
 
 scoped_refptr<update_client::UnzipperFactory>
 Configurator::GetUnzipperFactory() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return unzip_factory_;
 }
 
 scoped_refptr<update_client::PatcherFactory> Configurator::GetPatcherFactory() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return patch_factory_;
 }
 
 bool Configurator::EnabledDeltas() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return external_constants_->EnableDiffUpdates();
+  return false;
 }
 
 bool Configurator::EnabledBackgroundDownloader() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return false;
 }
 
 bool Configurator::EnabledCupSigning() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return external_constants_->UseCUP();
 }
 
 PrefService* Configurator::GetPrefService() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return prefs_->GetPrefService();
 }
 
-update_client::PersistedData* Configurator::GetPersistedData() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return persisted_data_.get();
-}
-
-scoped_refptr<PersistedData> Configurator::GetUpdaterPersistedData() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return persisted_data_;
+update_client::ActivityDataService* Configurator::GetActivityDataService()
+    const {
+  return activity_data_service_.get();
 }
 
 bool Configurator::IsPerUserInstall() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return !IsSystemInstall();
 }
 
 std::unique_ptr<update_client::ProtocolHandlerFactory>
 Configurator::GetProtocolHandlerFactory() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return std::make_unique<update_client::ProtocolHandlerFactoryJSON>();
 }
 
-std::optional<bool> Configurator::IsMachineExternallyManaged() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  const std::optional<bool> is_managed_overridden =
-      external_constants_->IsMachineManaged();
-  return is_managed_overridden.has_value() ? is_managed_overridden
-                                           : is_managed_device_;
+absl::optional<bool> Configurator::IsMachineExternallyManaged() const {
+  return is_managed_device_;
 }
 
 scoped_refptr<PolicyService> Configurator::GetPolicyService() const {
-  // The policy service is accessed by RPC on a different sequence and this
-  // function can't enforce the sequence check for now: crbug.com/1517079.
   return policy_service_;
 }
 
 crx_file::VerifierFormat Configurator::GetCrxVerifierFormat() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return external_constants_->CrxVerifierFormat();
 }
 
 update_client::UpdaterStateProvider Configurator::GetUpdaterStateProvider()
     const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return base::BindRepeating([](bool /*is_machine*/) {
     return update_client::UpdaterStateAttributes();
   });
 }
 
-std::optional<base::FilePath> Configurator::GetCrxCachePath() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return updater::GetCrxDiffCacheDirectory(GetUpdaterScope());
+#if BUILDFLAG(ENABLE_PUFFIN_PATCHES)
+absl::optional<base::FilePath> Configurator::GetCrxCachePath() const {
+  absl::optional<base::FilePath> optional_result =
+      updater::GetInstallDirectory(GetUpdaterScope());
+  return optional_result.has_value()
+             ? absl::optional<base::FilePath>(
+                   optional_result.value().AppendASCII(kCrxCachePath))
+             : absl::nullopt;
 }
-
-bool Configurator::IsConnectionMetered() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return false;
-}
+#endif
 
 }  // namespace updater

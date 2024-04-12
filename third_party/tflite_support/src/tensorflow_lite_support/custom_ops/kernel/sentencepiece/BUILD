@@ -6,6 +6,7 @@ load("@org_tensorflow//tensorflow:tensorflow.bzl", "tf_gen_op_wrapper_py")
 load(":native.bzl", "micore_tf_copts", "micore_tf_deps")
 
 package(
+    default_applicable_licenses = ["//tensorflow_lite_support:license"],
     default_visibility = [
         "//tensorflow_lite_support:users",
     ],
@@ -176,8 +177,8 @@ cc_library(
         "//visibility:public",
     ],
     deps = [
-        ":optimized_encoder",
         ":sentencepiece_tokenizer_h",
+        ":optimized_encoder",
     ] + micore_tf_deps(),
     alwayslink = 1,
 )
@@ -190,8 +191,8 @@ cc_binary(
     copts = micore_tf_copts(),
     linkshared = 1,
     deps = [
-        ":optimized_encoder",
         ":sentencepiece_tokenizer_h",
+        ":optimized_encoder",
     ] + micore_tf_deps(),
 )
 
@@ -203,8 +204,8 @@ cc_library(
         "//visibility:public",
     ],
     deps = [
-        ":optimized_decoder",
         ":sentencepiece_detokenizer_h",
+        ":optimized_decoder",
     ] + micore_tf_deps(),
     alwayslink = 1,
 )
@@ -217,8 +218,8 @@ cc_binary(
     copts = micore_tf_copts(),
     linkshared = 1,
     deps = [
-        ":optimized_decoder",
         ":sentencepiece_detokenizer_h",
+        ":optimized_decoder",
     ] + micore_tf_deps(),
 )
 

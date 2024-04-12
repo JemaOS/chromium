@@ -2,25 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {BrowserApi} from './browser_api.js';
-import {ZoomBehavior} from './browser_api.js';
-import type {Point} from './constants.js';
-import {FittingType} from './constants.js';
-import type {ContentController, MessageData} from './controller.js';
-import {PluginController, PluginControllerEventType} from './controller.js';
+import {BrowserApi, ZoomBehavior} from './browser_api.js';
+import {FittingType, Point} from './constants.js';
+import {ContentController, MessageData, PluginController, PluginControllerEventType} from './controller.js';
 import {record, recordFitTo, UserAction} from './metrics.js';
-import type {OpenPdfParams} from './open_pdf_params_parser.js';
-import {OpenPdfParamsParser} from './open_pdf_params_parser.js';
-import type {SerializedKeyEvent} from './pdf_scripting_api.js';
-import {LoadState} from './pdf_scripting_api.js';
-import type {DocumentDimensionsMessageData} from './pdf_viewer_utils.js';
+import {OpenPdfParams, OpenPdfParamsParser} from './open_pdf_params_parser.js';
+import {LoadState, SerializedKeyEvent} from './pdf_scripting_api.js';
+import {DocumentDimensionsMessageData} from './pdf_viewer_utils.js';
 import {Viewport} from './viewport.js';
+import {ViewportScroller} from './viewport_scroller.js';
 import {ZoomManager} from './zoom_manager.js';
 
 /** @return Width of a scrollbar in pixels */
@@ -58,10 +54,10 @@ export abstract class PdfViewerBaseElement extends PolymerElement {
   protected lastViewportPosition: Point|null = null;
   protected originalUrl: string = '';
   protected paramsParser: OpenPdfParamsParser|null = null;
-  protected pdfOopifEnabled: boolean = false;
   showErrorDialog: boolean;
   protected strings?: {[key: string]: string};
   protected tracker: EventTracker = new EventTracker();
+  protected viewportScroller: ViewportScroller|null = null;
   private delayedScriptingMessages_: MessageEvent[] = [];
   private initialLoadComplete_: boolean = false;
   private loaded_: PromiseResolver<void>|null = null;
@@ -121,20 +117,15 @@ export abstract class PdfViewerBaseElement extends PolymerElement {
       plugin.toggleAttribute('pdf-viewer-update-enabled', true);
     }
 
-    // Pass the attributes for loading PDF plugin through the `pdfViewerPrivate`
-    // API if OOPIF PDF is enabled, or the `mimeHandlerPrivate` API.
+    // Pass the attributes for loading PDF plugin through the
+    // `mimeHandlerPrivate` API.
     const attributesForLoading:
         chrome.mimeHandlerPrivate.PdfPluginAttributes = {
       backgroundColor: this.getBackgroundColor(),
       allowJavascript: javascript === 'allow',
     };
-
-    // PDF viewer only, as Print Preview doesn't set PDF plugin attributes.
-    if (this.pdfOopifEnabled) {
-      if (chrome.pdfViewerPrivate) {
-        chrome.pdfViewerPrivate.setPdfPluginAttributes(attributesForLoading);
-      }
-    } else if (chrome.mimeHandlerPrivate) {
+    if (chrome.mimeHandlerPrivate &&
+        chrome.mimeHandlerPrivate.setPdfPluginAttributes) {
       chrome.mimeHandlerPrivate.setPdfPluginAttributes(attributesForLoading);
     }
 
@@ -155,8 +146,6 @@ export abstract class PdfViewerBaseElement extends PolymerElement {
       content: HTMLElement) {
     this.browserApi = browserApi;
     this.originalUrl = this.browserApi!.getStreamInfo().originalUrl;
-    this.pdfOopifEnabled =
-        document.documentElement.hasAttribute('pdfOopifEnabled');
 
     record(UserAction.DOCUMENT_OPENED);
 
@@ -228,6 +217,10 @@ export abstract class PdfViewerBaseElement extends PolymerElement {
     this.viewport_!.setZoomManager(this.zoomManager_);
     this.browserApi!.addZoomEventListener(
         (zoom: number) => this.zoomManager_!.onBrowserZoomChange(zoom));
+
+    // TODO(crbug.com/1278476): Don't need this after Pepper plugin goes away.
+    this.viewportScroller =
+        new ViewportScroller(this.viewport_, this.plugin_, window);
 
     // Request translated strings.
     chrome.resourcesPrivate.getStrings(
@@ -366,16 +359,8 @@ export abstract class PdfViewerBaseElement extends PolymerElement {
     this.documentDimensions = documentDimensions;
     this.isUserInitiatedEvent = false;
     this.viewport_!.setDocumentDimensions(this.documentDimensions);
-    this.paramsParser!.setPageCount(documentDimensions.pageDimensions.length);
     this.paramsParser!.setViewportDimensions(this.viewport_!.size);
     this.isUserInitiatedEvent = true;
-  }
-
-  /**
-   * @return True if OOPIF PDF is enabled, false otherwise.
-   */
-  get isPdfOopifEnabled(): boolean {
-    return this.pdfOopifEnabled;
   }
 
   /**
@@ -453,22 +438,34 @@ export abstract class PdfViewerBaseElement extends PolymerElement {
     if (params.position) {
       this.viewport_.goToPageAndXy(
           params.page || 0, params.position.x, params.position.y);
+    } else if (params.page) {
+      this.viewport_.goToPage(params.page);
     }
 
     if (params.view) {
       this.isUserInitiatedEvent = false;
-      const fittingTypeParams = {
-        boundingBox: params.boundingBox,
-        page: params.page || 0,
-        viewPosition: params.viewPosition,
-        fitToWidth: params.view === FittingType.FIT_TO_BOUNDING_BOX_WIDTH,
-      };
+      let fittingTypeParams;
+      if (params.view === FittingType.FIT_TO_BOUNDING_BOX) {
+        assert(params.boundingBox);
+        fittingTypeParams = {
+          page: params.page || 0,
+          boundingBox: params.boundingBox,
+        };
+      }
       this.viewport_.setFittingType(params.view, fittingTypeParams);
       this.forceFit(params.view);
+      if (params.viewPosition) {
+        const zoomedPositionShift =
+            params.viewPosition * this.viewport_.getZoom();
+        const currentViewportPosition = this.viewport_.position;
+        if (params.view === FittingType.FIT_TO_WIDTH) {
+          currentViewportPosition.y += zoomedPositionShift;
+        } else if (params.view === FittingType.FIT_TO_HEIGHT) {
+          currentViewportPosition.x += zoomedPositionShift;
+        }
+        this.viewport_.setPosition(currentViewportPosition);
+      }
       this.isUserInitiatedEvent = true;
-    } else if (!params.position && params.page) {
-      // No fitting type provided, so just go to page.
-      this.viewport_.goToPage(params.page);
     }
   }
 

@@ -31,13 +31,12 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_PAGE_PAGE_HIDDEN_STATE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_PAGE_PAGE_HIDDEN_STATE_H_
 
-#include "third_party/blink/renderer/core/keywords.h"
+#include "third_party/blink/renderer/core/core_export.h"
+#include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
 
-ALWAYS_INLINE AtomicString PageHiddenStateString(bool hidden) {
-  return hidden ? keywords::kHidden : keywords::kVisible;
-}
+CORE_EXPORT AtomicString PageHiddenStateString(bool visible);
 
 }  // namespace blink
 

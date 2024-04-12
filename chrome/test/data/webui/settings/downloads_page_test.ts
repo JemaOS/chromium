@@ -9,11 +9,9 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
-import type {DownloadsBrowserProxy, SettingsDownloadsPageElement} from 'chrome://settings/lazy_load.js';
-import {DownloadsBrowserProxyImpl} from 'chrome://settings/lazy_load.js';
+import {DownloadsBrowserProxy, DownloadsBrowserProxyImpl, SettingsDownloadsPageElement} from 'chrome://settings/lazy_load.js';
 import {assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {SettingsPrefsElement} from 'chrome://settings/settings.js';
-import {CrSettingsPrefs} from 'chrome://settings/settings.js';
+import {CrSettingsPrefs, SettingsPrefsElement} from 'chrome://settings/settings.js';
 // <if expr="chromeos_ash">
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
 // </if>
@@ -85,7 +83,9 @@ suite('DownloadsHandler', function() {
     const button = downloadsPage.shadowRoot!.querySelector<HTMLElement>(
         '#changeDownloadsPath');
     assertTrue(!!button);
-    button.click();
+    button!.click();
+    button!.dispatchEvent(
+        new CustomEvent('transitionend', {bubbles: true, composed: true}));
     return downloadsBrowserProxy.whenCalled('selectDownloadLocation');
   });
 
@@ -140,14 +140,14 @@ suite('DownloadsHandler', function() {
   });
 });
 
-suite('DownloadsHandlerWithBubblePartialView', function() {
+suite('DownloadsHandlerWithBubble', function() {
   let downloadsBrowserProxy: TestDownloadsBrowserProxy;
   let downloadsPage: SettingsDownloadsPageElement;
   let settingsPrefs: SettingsPrefsElement;
 
   suiteSetup(function() {
     loadTimeData.overrideValues({
-      downloadBubblePartialViewControlledByPref: true,
+      downloadBubbleEnabled: true,
     });
     settingsPrefs = document.createElement('settings-prefs');
     return CrSettingsPrefs.initialized;

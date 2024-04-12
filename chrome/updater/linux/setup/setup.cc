@@ -7,8 +7,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include <optional>
-
 #include "base/base_paths.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -19,25 +17,21 @@
 #include "chrome/updater/linux/systemd_util.h"
 #include "chrome/updater/util/posix_util.h"
 #include "chrome/updater/util/util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
+// TODO(1382547): There is a overlap between the Mac and Linux setup functions.
+// We should find a way to merge these.
 namespace updater {
 
 int Setup(UpdaterScope scope) {
   VLOG(1) << base::CommandLine::ForCurrentProcess()->GetCommandLineString()
           << " : " << __func__;
-  std::optional<base::FilePath> dest_path = GetVersionedInstallDirectory(scope);
+  absl::optional<base::FilePath> dest_path =
+      GetVersionedInstallDirectory(scope);
 
   if (!dest_path) {
     return kErrorFailedToGetVersionedInstallDirectory;
   }
-
-  if (base::PathExists(*dest_path)) {
-    if (!DeleteExcept(dest_path->Append("Crashpad"))) {
-      LOG(ERROR) << "Could not remove existing copy of this updater.";
-      return kErrorFailedToDeleteFolder;
-    }
-  }
-
   dest_path = dest_path->Append(GetExecutableRelativePath());
 
   base::FilePath exe_path;
@@ -74,7 +68,7 @@ int UninstallCandidate(UpdaterScope scope) {
     error = kErrorFailedToDeleteFolder;
   }
 
-  std::optional<base::FilePath> versioned_socket =
+  absl::optional<base::FilePath> versioned_socket =
       GetActiveDutyInternalSocketPath(scope);
   if (!versioned_socket || !base::DeleteFile(versioned_socket.value())) {
     error = kErrorFailedToDeleteSocket;
@@ -85,7 +79,7 @@ int UninstallCandidate(UpdaterScope scope) {
 
 int PromoteCandidate(UpdaterScope scope) {
   // Create a hard link in the base install directory to this updater.
-  std::optional<base::FilePath> launcher_path =
+  absl::optional<base::FilePath> launcher_path =
       GetUpdateServiceLauncherPath(scope);
   base::FilePath updater_executable;
 
@@ -98,11 +92,11 @@ int PromoteCandidate(UpdaterScope scope) {
       launcher_path->DirName().AppendASCII("launcher_new");
   if (link(updater_executable.value().c_str(),
            tmp_launcher_name.value().c_str())) {
-    return kErrorFailedToLinkCurrent;
+    return kErrorFailedToLinkLauncher;
   }
   if (rename(tmp_launcher_name.value().c_str(),
              launcher_path->value().c_str())) {
-    return kErrorFailedToRenameCurrent;
+    return kErrorFailedToRenameLauncher;
   }
 
   if (!InstallSystemdUnits(scope)) {

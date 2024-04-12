@@ -41,9 +41,7 @@ DownloadBubbleUpdateServiceFactory::DownloadBubbleUpdateServiceFactory()
 DownloadBubbleUpdateServiceFactory::~DownloadBubbleUpdateServiceFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-DownloadBubbleUpdateServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* DownloadBubbleUpdateServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<DownloadBubbleUpdateService>(
-      Profile::FromBrowserContext(context));
+  return new DownloadBubbleUpdateService(Profile::FromBrowserContext(context));
 }

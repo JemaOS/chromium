@@ -6,7 +6,6 @@
 
 #include <initializer_list>
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/run_loop.h"
@@ -21,6 +20,7 @@
 #include "chrome/browser/web_applications/web_app_registrar.h"
 #include "chrome/test/base/testing_profile.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/features.h"
 #include "url/gurl.h"
 
@@ -35,7 +35,7 @@ class WebAppTranslationManagerTest : public WebAppTest {
 
  protected:
   void AwaitWriteTranslations(
-      const webapps::AppId& app_id,
+      const AppId& app_id,
       const base::flat_map<Locale, blink::Manifest::TranslationItem>&
           translations) {
     base::RunLoop run_loop;
@@ -47,7 +47,7 @@ class WebAppTranslationManagerTest : public WebAppTest {
     run_loop.Run();
   }
 
-  void AwaitDeleteTranslations(const webapps::AppId& app_id) {
+  void AwaitDeleteTranslations(const AppId& app_id) {
     base::RunLoop run_loop;
     translation_manager().DeleteTranslations(
         app_id, base::BindLambdaForTesting([&](bool success) {
@@ -57,13 +57,11 @@ class WebAppTranslationManagerTest : public WebAppTest {
     run_loop.Run();
   }
 
-  std::map<webapps::AppId, blink::Manifest::TranslationItem>
-  AwaitReadTranslations() {
+  std::map<AppId, blink::Manifest::TranslationItem> AwaitReadTranslations() {
     base::RunLoop run_loop;
-    std::map<webapps::AppId, blink::Manifest::TranslationItem> result;
+    std::map<AppId, blink::Manifest::TranslationItem> result;
     translation_manager().ReadTranslations(base::BindLambdaForTesting(
-        [&](const std::map<webapps::AppId, blink::Manifest::TranslationItem>&
-                cache) {
+        [&](const std::map<AppId, blink::Manifest::TranslationItem>& cache) {
           result = cache;
           run_loop.Quit();
         }));
@@ -86,14 +84,12 @@ TEST_F(WebAppTranslationManagerTest, WriteReadAndDelete) {
   auto app_info1 = std::make_unique<WebAppInstallInfo>();
   app_info1->start_url = GURL("https://example.com/path");
   app_info1->title = u"App1 name";
-  const webapps::AppId app_id1 =
-      test::InstallWebApp(profile(), std::move(app_info1));
+  const AppId app_id1 = test::InstallWebApp(profile(), std::move(app_info1));
 
   auto app_info2 = std::make_unique<WebAppInstallInfo>();
   app_info2->start_url = GURL("https://example.com/path2");
   app_info2->title = u"App2 name";
-  const webapps::AppId app_id2 =
-      test::InstallWebApp(profile(), std::move(app_info2));
+  const AppId app_id2 = test::InstallWebApp(profile(), std::move(app_info2));
 
   g_browser_process->SetApplicationLocale("en");
 
@@ -126,7 +122,7 @@ TEST_F(WebAppTranslationManagerTest, WriteReadAndDelete) {
 
   // Read translations for the current language.
   {
-    std::map<webapps::AppId, blink::Manifest::TranslationItem> cache =
+    std::map<AppId, blink::Manifest::TranslationItem> cache =
         AwaitReadTranslations();
     ASSERT_EQ(cache.size(), static_cast<size_t>(2));
     EXPECT_EQ(cache.find(app_id1)->second, item1);
@@ -163,7 +159,7 @@ TEST_F(WebAppTranslationManagerTest, WriteReadAndDelete) {
 
   // Read translations to ensure web_app1 deleted.
   {
-    std::map<webapps::AppId, blink::Manifest::TranslationItem> cache =
+    std::map<AppId, blink::Manifest::TranslationItem> cache =
         AwaitReadTranslations();
     ASSERT_EQ(cache.size(), static_cast<size_t>(1));
     EXPECT_EQ(cache.find(app_id2)->second, item3);
@@ -174,8 +170,7 @@ TEST_F(WebAppTranslationManagerTest, UpdateTranslations) {
   auto app_info1 = std::make_unique<WebAppInstallInfo>();
   app_info1->start_url = GURL("https://example.com/path");
   app_info1->title = u"App1 name";
-  const webapps::AppId app_id1 =
-      test::InstallWebApp(profile(), std::move(app_info1));
+  const AppId app_id1 = test::InstallWebApp(profile(), std::move(app_info1));
 
   g_browser_process->SetApplicationLocale("en");
 
@@ -234,7 +229,7 @@ TEST_F(WebAppTranslationManagerTest, InstallAndUninstall) {
   app_info->translations = translations;
 
   // Install app
-  webapps::AppId app_id = test::InstallWebApp(profile(), std::move(app_info));
+  AppId app_id = test::InstallWebApp(profile(), std::move(app_info));
 
   // Check translations are stored
   EXPECT_EQ(provider().translation_manager().GetTranslatedName(app_id),

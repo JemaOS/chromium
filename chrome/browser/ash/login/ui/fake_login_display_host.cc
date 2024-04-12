@@ -6,7 +6,6 @@
 
 #include "base/notreached.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
-#include "chrome/browser/ui/webui/ash/login/user_creation_screen_handler.h"
 #include "components/session_manager/core/session_manager.h"
 
 namespace ash {
@@ -28,8 +27,7 @@ class FakeLoginDisplayHost::FakeBaseScreen : public BaseScreen {
 };
 
 FakeLoginDisplayHost::FakeLoginDisplayHost()
-    : wizard_context_(std::make_unique<WizardContext>()),
-      oobe_metrics_helper_(std::make_unique<OobeMetricsHelper>()) {
+    : wizard_context_(std::make_unique<WizardContext>()) {
   // Only one SessionManager can be instantiated at a time. Check to see if one
   // has already been instantiated before creating one.
   if (!session_manager::SessionManager::Get())
@@ -37,6 +35,10 @@ FakeLoginDisplayHost::FakeLoginDisplayHost()
 }
 
 FakeLoginDisplayHost::~FakeLoginDisplayHost() = default;
+
+LoginDisplay* FakeLoginDisplayHost::GetLoginDisplay() {
+  return nullptr;
+}
 
 ExistingUserController* FakeLoginDisplayHost::GetExistingUserController() {
   return nullptr;
@@ -51,7 +53,7 @@ views::Widget* FakeLoginDisplayHost::GetLoginWindowWidget() const {
 }
 
 OobeUI* FakeLoginDisplayHost::GetOobeUI() const {
-  return oobe_ui_;
+  return nullptr;
 }
 
 content::WebContents* FakeLoginDisplayHost::GetOobeWebContents() const {
@@ -68,20 +70,18 @@ bool FakeLoginDisplayHost::IsFinalizing() {
   return false;
 }
 
+void FakeLoginDisplayHost::Finalize(base::OnceClosure) {}
+
 void FakeLoginDisplayHost::FinalizeImmediately() {}
 
 void FakeLoginDisplayHost::SetStatusAreaVisible(bool visible) {}
 
 void FakeLoginDisplayHost::StartWizard(OobeScreenId first_screen) {
-  if (wizard_controller_) {
-    wizard_controller_->AdvanceToScreen(first_screen);
-  } else {
-    wizard_controller_ =
-        std::make_unique<WizardController>(wizard_context_.get());
+  wizard_controller_ =
+      std::make_unique<WizardController>(wizard_context_.get());
 
-    fake_screen_ = std::make_unique<FakeBaseScreen>(first_screen);
-    wizard_controller_->SetCurrentScreenForTesting(fake_screen_.get());
-  }
+  fake_screen_ = std::make_unique<FakeBaseScreen>(first_screen);
+  wizard_controller_->SetCurrentScreenForTesting(fake_screen_.get());
 }
 
 WizardController* FakeLoginDisplayHost::GetWizardController() {
@@ -93,14 +93,15 @@ KioskLaunchController* FakeLoginDisplayHost::GetKioskLaunchController() {
 }
 
 WizardContext* FakeLoginDisplayHost::GetWizardContext() {
-  return wizard_context_.get();
+  return nullptr;
 }
+
+void FakeLoginDisplayHost::StartUserAdding(
+    base::OnceClosure completion_callback) {}
 
 void FakeLoginDisplayHost::CancelUserAdding() {}
 
-void FakeLoginDisplayHost::StartSignInScreen() {
-  StartWizard(UserCreationView::kScreenId);
-}
+void FakeLoginDisplayHost::StartSignInScreen() {}
 
 void FakeLoginDisplayHost::StartKiosk(const KioskAppId& kiosk_app_id,
                                       bool is_auto_launch) {}
@@ -113,27 +114,27 @@ void FakeLoginDisplayHost::OnGaiaScreenReady() {}
 
 void FakeLoginDisplayHost::SetDisplayEmail(const std::string& email) {}
 
-void FakeLoginDisplayHost::UpdateWallpaper(const AccountId& prefilled_account) {
-}
+void FakeLoginDisplayHost::SetDisplayAndGivenName(
+    const std::string& display_name,
+    const std::string& given_name) {}
+
+void FakeLoginDisplayHost::LoadWallpaper(const AccountId& account_id) {}
+
+void FakeLoginDisplayHost::LoadSigninWallpaper() {}
 
 bool FakeLoginDisplayHost::IsUserAllowlisted(
     const AccountId& account_id,
-    const std::optional<user_manager::UserType>& user_type) {
+    const absl::optional<user_manager::UserType>& user_type) {
   return false;
 }
 
 void FakeLoginDisplayHost::ShowGaiaDialog(const AccountId& prefilled_account) {}
-
-void FakeLoginDisplayHost::StartUserRecovery(
-    const AccountId& account_to_recover) {}
 
 void FakeLoginDisplayHost::ShowAllowlistCheckFailedError() {}
 
 void FakeLoginDisplayHost::ShowOsInstallScreen() {}
 
 void FakeLoginDisplayHost::ShowGuestTosScreen() {}
-
-void FakeLoginDisplayHost::ShowRemoteActivityNotificationScreen() {}
 
 void FakeLoginDisplayHost::HideOobeDialog(bool saml_page_closed) {}
 
@@ -160,6 +161,8 @@ void FakeLoginDisplayHost::RequestSystemInfoUpdate() {}
 bool FakeLoginDisplayHost::HasUserPods() {
   return false;
 }
+
+void FakeLoginDisplayHost::VerifyOwnerForKiosk(base::OnceClosure) {}
 
 void FakeLoginDisplayHost::AddObserver(LoginDisplayHost::Observer* observer) {}
 
@@ -197,19 +200,6 @@ bool FakeLoginDisplayHost::GetKeyboardRemappedPrefValue(
     const std::string& pref_name,
     int* value) const {
   return false;
-}
-
-void FakeLoginDisplayHost::SetOobeUI(OobeUI* oobe_ui) {
-  oobe_ui_ = oobe_ui;
-}
-
-void FakeLoginDisplayHost::SetWizardController(
-    std::unique_ptr<WizardController> wizard_controller) {
-  wizard_controller_ = std::move(wizard_controller);
-}
-
-OobeMetricsHelper* FakeLoginDisplayHost::GetOobeMetricsHelper() {
-  return oobe_metrics_helper_.get();
 }
 
 }  // namespace ash

@@ -41,16 +41,9 @@ String DocumentType::nodeName() const {
   return name();
 }
 
-Node* DocumentType::Clone(Document& factory,
-                          NodeCloningData&,
-                          ContainerNode* append_to,
-                          ExceptionState& append_exception_state) const {
-  DocumentType* clone = MakeGarbageCollected<DocumentType>(
-      &factory, name_, public_id_, system_id_);
-  if (append_to) {
-    append_to->AppendChild(clone, append_exception_state);
-  }
-  return clone;
+Node* DocumentType::Clone(Document& factory, CloneChildrenFlag) const {
+  return MakeGarbageCollected<DocumentType>(&factory, name_, public_id_,
+                                            system_id_);
 }
 
 Node::InsertionNotificationRequest DocumentType::InsertedInto(

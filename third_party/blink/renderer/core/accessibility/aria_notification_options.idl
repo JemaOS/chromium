@@ -1,8 +1,8 @@
-enum AriaNotifyInterrupt { "none", "all", "pending" };
-enum AriaNotifyPriority { "none", "important" };
+enum AriaNotificationInsertionMode { "queue", "stack", "clear" };
 
 dictionary AriaNotificationOptions {
-  AriaNotifyInterrupt interrupt = "none";
-  AriaNotifyPriority priority = "none";
-  DOMString notificationId = "";
+  AriaNotificationInsertionMode insertionMode = "queue";
+  boolean interruptCurrent = false;
+  boolean preventInterrupt = false;
+  DOMString label = "";
 };

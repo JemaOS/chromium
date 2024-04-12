@@ -76,8 +76,4 @@ void RecommendAppsScreenHandler::LoadAppListInUI(base::Value app_list) {
   CallExternalAPI("loadAppList", std::move(app_list));
 }
 
-base::WeakPtr<RecommendAppsScreenView> RecommendAppsScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 }  // namespace ash

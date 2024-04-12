@@ -45,11 +45,10 @@ BackForwardButton::BackForwardButton(Direction direction,
                    kBackArrowTouchIcon);
     SetTooltipText(l10n_util::GetStringUTF16(IDS_TOOLTIP_BACK));
     SetAccessibleName(l10n_util::GetStringUTF16(IDS_ACCNAME_BACK));
-    GetViewAccessibility().SetDescription(
+    GetViewAccessibility().OverrideDescription(
         l10n_util::GetStringUTF8(IDS_ACCDESCRIPTION_BACK));
     SetID(VIEW_ID_BACK_BUTTON);
-    SetProperty(views::kElementIdentifierKey, kToolbarBackButtonElementId);
-    set_menu_identifier(kToolbarBackButtonMenuElementId);
+    SetProperty(views::kElementIdentifierKey, kBackButtonElementId);
   } else {
     SetVectorIcons(features::IsChromeRefresh2023()
                        ? vector_icons::kForwardArrowChromeRefreshIcon
@@ -57,11 +56,10 @@ BackForwardButton::BackForwardButton(Direction direction,
                    kForwardArrowTouchIcon);
     SetTooltipText(l10n_util::GetStringUTF16(IDS_TOOLTIP_FORWARD));
     SetAccessibleName(l10n_util::GetStringUTF16(IDS_ACCNAME_FORWARD));
-    GetViewAccessibility().SetDescription(
+    GetViewAccessibility().OverrideDescription(
         l10n_util::GetStringUTF8(IDS_ACCDESCRIPTION_FORWARD));
     SetID(VIEW_ID_FORWARD_BUTTON);
-    SetProperty(views::kElementIdentifierKey, kToolbarForwardButtonElementId);
-    set_menu_identifier(kToolbarForwardButtonMenuElementId);
+    SetProperty(views::kElementIdentifierKey, kForwardButtonElementId);
   }
 }
 
@@ -135,5 +133,5 @@ bool BackForwardButton::ShouldShowInkdropAfterIphInteraction() {
   return false;
 }
 
-BEGIN_METADATA(BackForwardButton)
+BEGIN_METADATA(BackForwardButton, ToolbarButton)
 END_METADATA

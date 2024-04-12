@@ -36,7 +36,7 @@ export class PrivacySandboxNoticeRestrictedDialogAppElement extends
       this.updateScrollableContents();
       this.maybeShowMoreButton().then(
           () => this.promptActionOccurred(
-              PrivacySandboxPromptAction.RESTRICTED_NOTICE_SHOWN));
+              PrivacySandboxPromptAction.NOTICE_SHOWN));
     });
   }
 

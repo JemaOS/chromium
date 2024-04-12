@@ -118,11 +118,10 @@ static FloatShapeInterval ClippedCircleXRange(const gfx::PointF& center,
   return FloatShapeInterval(center.x() - xi, center.x() + xi);
 }
 
-LogicalRect PolygonShape::ShapeMarginLogicalBoundingBox() const {
+LayoutRect PolygonShape::ShapeMarginLogicalBoundingBox() const {
   gfx::RectF box = polygon_.BoundingBox();
   box.Outset(ShapeMargin());
-  return LogicalRect(LayoutUnit(box.x()), LayoutUnit(box.y()),
-                     LayoutUnit(box.width()), LayoutUnit(box.height()));
+  return LayoutRect(box);
 }
 
 LineSegment PolygonShape::GetExcludedInterval(LayoutUnit logical_top,

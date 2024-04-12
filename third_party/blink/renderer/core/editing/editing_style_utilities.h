@@ -51,8 +51,9 @@ class EditingStyleUtilities {
 
  public:
   static EditingStyle* CreateWrappingStyleForAnnotatedSerialization(
-      Element* context);
-  static EditingStyle* CreateWrappingStyleForSerialization(Element* context);
+      ContainerNode* context);
+  static EditingStyle* CreateWrappingStyleForSerialization(
+      ContainerNode* context);
   static EditingStyle* CreateStyleAtSelectionStart(
       const VisibleSelection&,
       bool should_use_background_color_in_effect = false,

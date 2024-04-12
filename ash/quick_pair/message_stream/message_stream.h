@@ -5,7 +5,6 @@
 #ifndef ASH_QUICK_PAIR_MESSAGE_STREAM_MESSAGE_STREAM_H_
 #define ASH_QUICK_PAIR_MESSAGE_STREAM_MESSAGE_STREAM_H_
 
-#include <optional>
 #include <string>
 
 #include "base/containers/circular_deque.h"
@@ -15,6 +14,7 @@
 #include "base/observer_list_types.h"
 #include "chromeos/ash/services/quick_pair/quick_pair_process_manager.h"
 #include "device/bluetooth/bluetooth_socket.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace net {
 class IOBuffer;

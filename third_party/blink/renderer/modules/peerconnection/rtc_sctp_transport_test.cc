@@ -4,7 +4,6 @@
 
 #include "third_party/blink/renderer/modules/peerconnection/rtc_sctp_transport.h"
 
-#include "base/memory/raw_ptr.h"
 #include "base/test/test_simple_task_runner.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -12,7 +11,6 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
 #include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
 #include "third_party/blink/renderer/core/testing/null_execution_context.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/webrtc/api/sctp_transport_interface.h"
 #include "third_party/webrtc/rtc_base/ref_counted_object.h"
 
@@ -56,8 +54,7 @@ class MockSctpTransport : public webrtc::SctpTransportInterface {
  private:
   webrtc::SctpTransportInformation info_ =
       webrtc::SctpTransportInformation(webrtc::SctpTransportState::kNew);
-  raw_ptr<webrtc::SctpTransportObserverInterface, DanglingUntriaged> observer_ =
-      nullptr;
+  webrtc::SctpTransportObserverInterface* observer_ = nullptr;
 };
 
 class RTCSctpTransportTest : public testing::Test {
@@ -69,7 +66,6 @@ class RTCSctpTransportTest : public testing::Test {
   void RunUntilIdle();
 
  protected:
-  test::TaskEnvironment task_environment_;
   scoped_refptr<base::TestSimpleTaskRunner> main_thread_;
   scoped_refptr<base::TestSimpleTaskRunner> worker_thread_;
   Vector<Persistent<MockEventListener>> mock_event_listeners_;

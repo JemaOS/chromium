@@ -76,6 +76,16 @@ class ArcAppInstallEventLogCollector : public InstallEventLogCollectorBase,
   void SuspendDone(base::TimeDelta sleep_duration) override;
 
   // arc::ArcPolicyBridge::Observer:
+  void OnCloudDpsRequested(base::Time time,
+                           const std::set<std::string>& package_names) override;
+  void OnCloudDpsSucceeded(base::Time time,
+                           const std::set<std::string>& package_names) override;
+  void OnCloudDpsFailed(base::Time time,
+                        const std::string& package_name,
+                        arc::mojom::InstallErrorReason reason) override;
+  void OnReportForceInstallMainLoopFailed(
+      base::Time time,
+      const std::set<std::string>& package_names) override;
   void OnPlayStoreLocalPolicySet(
       base::Time time,
       const std::set<std::string>& package_names) override;
@@ -83,8 +93,7 @@ class ArcAppInstallEventLogCollector : public InstallEventLogCollectorBase,
   // ArcAppListPrefs::Observer:
   void OnInstallationStarted(const std::string& package_name) override;
   void OnInstallationFinished(const std::string& package_name,
-                              bool success,
-                              bool is_launchable_app) override;
+                              bool success) override;
 
  protected:
   // Overrides to handle events from InstallEventLogCollectorBase.
@@ -93,7 +102,7 @@ class ArcAppInstallEventLogCollector : public InstallEventLogCollectorBase,
   void OnConnectionStateChanged(network::mojom::ConnectionType type) override;
 
  private:
-  const raw_ptr<Delegate> delegate_;
+  const raw_ptr<Delegate, ExperimentalAsh> delegate_;
 
   // Set of apps whose push-install is currently pending.
   std::set<std::string> pending_packages_;

@@ -1,5 +1,8 @@
-# Kiosk team is primary owner
-file://chrome/browser/ash/app_mode/OWNERS
+# Primary owners
+bfranz@chromium.org
+
+# Backup owners
+anqing@chromium.org
 
 # Policy stack owners
 file://chrome/browser/ash/policy/OWNERS

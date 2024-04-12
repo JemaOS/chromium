@@ -7,9 +7,8 @@
  */
 
 // clang-format off
-import type { PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {dedupingMixin} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {assert, assertNotReached} from '//resources/js/assert.js';
+import {dedupingMixin, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {assert, assertNotReached} from '//resources/js/assert_ts.js';
 
 interface PaperRippleElement {
   clear(): void;

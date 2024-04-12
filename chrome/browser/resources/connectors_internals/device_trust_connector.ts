@@ -3,14 +3,21 @@
 // found in the LICENSE file.
 
 import {CustomElement} from 'chrome://resources/js/custom_element.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 
-import {BrowserProxy} from './browser_proxy.js';
-import type {ConsentMetadata, DeviceTrustState, KeyInfo, PageHandlerInterface} from './connectors_internals.mojom-webui.js';
-import {KeyManagerInitializedValue, KeyManagerPermanentFailure} from './connectors_internals.mojom-webui.js';
-import * as utils from './connectors_utils.js';
+import {DeviceTrustState, Int32Value, KeyInfo, KeyManagerInitializedValue, KeyManagerPermanentFailure, KeyTrustLevel, KeyType, PageHandler, PageHandlerInterface} from './connectors_internals.mojom-webui.js';
 import {getTemplate} from './device_trust_connector.html.js';
 
+const TrustLevelStringMap = {
+  [KeyTrustLevel.UNSPECIFIED]: 'Unspecified',
+  [KeyTrustLevel.HW]: 'HW',
+  [KeyTrustLevel.OS]: 'OS',
+};
+
+const KeyTypeStringMap = {
+  [KeyType.UNKNOWN]: 'Unknown',
+  [KeyType.RSA]: 'RSA',
+  [KeyType.EC]: 'EC',
+};
 
 const KeyPermanentFailureMap = {
   [KeyManagerPermanentFailure.CREATION_UPLOAD_CONFLICT]:
@@ -35,42 +42,16 @@ export class DeviceTrustConnectorElement extends CustomElement {
     return getTemplate();
   }
 
-  get deleteKeyEnabled(): boolean {
-    return loadTimeData.getBoolean('canDeleteDeviceTrustKey');
-  }
-
-  set enabledString(isEnabledString: string) {
-    this.setValueToElement('#enabled-string', isEnabledString);
-  }
-
-  set policyEnabledLevels(policyLevels: string[]) {
-    if (policyLevels.length === 0) {
-      this.setValueToElement('#policy-enabled-levels', 'None');
-      return;
+  public set enabledString(str: string) {
+    const strEl = (this.$('#enabled-string') as HTMLElement);
+    if (strEl) {
+      strEl.innerText = str;
+    } else {
+      console.error('Could not find #enabled-string element.');
     }
-
-    this.setValueToElement('#policy-enabled-levels', `${policyLevels}`);
   }
 
-  set consentMetadata(consentMetadata: ConsentMetadata|null) {
-    const consentDetailsEl = (this.$('#consent-details') as HTMLElement);
-    const noConsentDetailsEl = (this.$('#no-consent') as HTMLElement);
-    if (!consentMetadata) {
-      this.showElement(noConsentDetailsEl);
-      this.hideElement(consentDetailsEl);
-      return;
-    }
-
-    this.showElement(consentDetailsEl);
-    this.hideElement(noConsentDetailsEl);
-
-    this.setValueToElement(
-        '#consent-received', `${consentMetadata.consentReceived}`);
-    this.setValueToElement(
-        '#can-collect', `${consentMetadata.canCollectSignals}`);
-  }
-
-  set keyInfo(keyInfo: KeyInfo) {
+  public set keyInfo(keyInfo: KeyInfo) {
     const keySectionEl = (this.$('#key-manager-section') as HTMLElement);
     const initStateEl = (this.$('#key-manager-state') as HTMLElement);
 
@@ -108,27 +89,21 @@ export class DeviceTrustConnectorElement extends CustomElement {
       const keyMetadata = keyInfo.loadedKeyInfo;
       if (keyMetadata) {
         trustLevelStateEl.innerText =
-            utils.trustLevelToString(keyMetadata.trustLevel);
-        keyTypeStateEl.innerText = utils.keyTypeToString(keyMetadata.keyType);
+            this.trustLevelToString(keyMetadata.trustLevel);
+        keyTypeStateEl.innerText = this.keyTypeToString(keyMetadata.keyType);
         spkiHashStateEl.innerText = keyMetadata.encodedSpkiHash;
-        keySyncStateEl.innerText = utils.keySyncCodeToString(
-            keyMetadata.keyUploadStatus?.syncKeyResponseCode);
+        keySyncStateEl.innerText =
+            this.keySyncCodeToString(keyMetadata.syncKeyResponseCode);
 
         this.showElement(keyLoadedRows);
       } else {
         this.hideElement(keyLoadedRows);
       }
-
-      const deleteKeyButton = this.deleteKeyButton;
-      if (deleteKeyButton) {
-        this.deleteKeyEnabled ? this.showElement(deleteKeyButton) :
-                                this.hideElement(deleteKeyButton);
-      }
     }
   }
 
   private signalsString_: string = '';
-  set signalsString(str: string) {
+  public set signalsString(str: string) {
     const signalsEl = (this.$('#signals') as HTMLElement);
     if (signalsEl) {
       signalsEl.innerText = str;
@@ -136,67 +111,23 @@ export class DeviceTrustConnectorElement extends CustomElement {
     } else {
       console.error('Could not find #signals element.');
     }
-
-    const signalsSection = (this.$('#signals-section') as HTMLElement);
-    if (signalsSection) {
-      str === '' ? this.hideElement(signalsSection) :
-                   this.showElement(signalsSection);
-    } else {
-      console.error('Could not find #signals-section element.');
-    }
   }
 
-  get copyButton(): HTMLButtonElement|undefined {
+  public get copyButton(): HTMLButtonElement|undefined {
     return this.$('#copy-signals') as HTMLButtonElement;
   }
 
-  get deleteKeyButton(): HTMLButtonElement|undefined {
-    return this.$('#delete-key') as HTMLButtonElement;
-  }
-
-  get signalsString(): string {
+  public get signalsString(): string {
     return this.signalsString_;
   }
 
-  private get pageHandler(): PageHandlerInterface {
-    return BrowserProxy.getInstance().handler;
-  }
+  private readonly pageHandler: PageHandlerInterface;
 
   constructor() {
     super();
+    this.pageHandler = PageHandler.getRemote();
 
-    this.fetchDeviceTrustValues();
-
-    if (this.deleteKeyEnabled) {
-      const deleteKeyButton = this.deleteKeyButton;
-      if (deleteKeyButton) {
-        deleteKeyButton.addEventListener('click', () => this.deleteKey());
-      }
-    }
-  }
-
-  private setDeviceTrustValues(state: DeviceTrustState|undefined) {
-    if (!state) {
-      this.enabledString = 'error';
-      return;
-    }
-
-    this.enabledString = `${state.isEnabled}`;
-    this.policyEnabledLevels = state.policyEnabledLevels;
-    this.consentMetadata = state.consentMetadata;
-    this.keyInfo = state.keyInfo;
-    this.signalsString = state.signalsJson;
-  }
-
-  private async fetchDeviceTrustValues(): Promise<void> {
-    this.pageHandler.getDeviceTrustState()
-        .then(
-            (response: {state: DeviceTrustState}) => response && response.state,
-            (e: object) => {
-              console.warn(
-                  `fetchDeviceTrustValues failed: ${JSON.stringify(e)}`);
-              return undefined;
-            })
+    this.fetchDeviceTrustValues()
         .then(state => this.setDeviceTrustValues(state))
         .then(() => {
           const copyButton = this.copyButton;
@@ -207,14 +138,32 @@ export class DeviceTrustConnectorElement extends CustomElement {
         });
   }
 
+  private setDeviceTrustValues(state: DeviceTrustState|undefined) {
+    if (!state) {
+      this.enabledString = 'error';
+      return;
+    }
+
+    this.enabledString = `${state.isEnabled}`;
+
+    this.keyInfo = state.keyInfo;
+
+    this.signalsString = state.signalsJson;
+  }
+
+  private async fetchDeviceTrustValues(): Promise<DeviceTrustState|undefined> {
+    return this.pageHandler.getDeviceTrustState().then(
+        (response: {state: DeviceTrustState}) => response && response.state,
+        (e: object) => {
+          console.warn(`fetchDeviceTrustValues failed: ${JSON.stringify(e)}`);
+          return undefined;
+        });
+  }
+
   private async copySignals(copyButton: HTMLButtonElement): Promise<void> {
     copyButton.disabled = true;
     navigator.clipboard.writeText(this.signalsString)
         .finally(() => copyButton.disabled = false);
-  }
-
-  private async deleteKey(): Promise<void> {
-    await this.pageHandler.deleteDeviceTrustKey();
   }
 
   private showElement(element: Element) {
@@ -225,13 +174,25 @@ export class DeviceTrustConnectorElement extends CustomElement {
     element?.classList.add('hidden');
   }
 
-  private setValueToElement(elementId: string, stringValue: string) {
-    const htmlElement = (this.$(elementId) as HTMLElement);
-    if (htmlElement) {
-      htmlElement.innerText = stringValue;
-    } else {
-      console.error(`Could not find ${elementId} element.`);
+  private trustLevelToString(trustLevel: KeyTrustLevel): string {
+    return TrustLevelStringMap[trustLevel] || 'invalid';
+  }
+
+  private keyTypeToString(keyType: KeyType): string {
+    return KeyTypeStringMap[keyType] || 'invalid';
+  }
+
+  private keySyncCodeToString(syncKeyResponseCode: Int32Value|
+                              undefined): string {
+    if (!syncKeyResponseCode) {
+      return 'Undefined';
     }
+
+    const value = syncKeyResponseCode.value;
+    if (value / 100 === 2) {
+      return `Success (${value})`;
+    }
+    return `Failure (${value})`;
   }
 }
 

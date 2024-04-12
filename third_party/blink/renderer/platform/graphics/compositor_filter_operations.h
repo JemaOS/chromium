@@ -34,7 +34,7 @@ class PLATFORM_EXPORT CompositorFilterOperations {
   void AppendOpacityFilter(float amount);
   void AppendBlurFilter(float amount,
                         SkTileMode tile_mode = SkTileMode::kDecal);
-  void AppendDropShadowFilter(gfx::Vector2d offset,
+  void AppendDropShadowFilter(gfx::Point offset,
                               float std_deviation,
                               const Color& color);
   void AppendColorMatrixFilter(const cc::FilterOperation::Matrix&);

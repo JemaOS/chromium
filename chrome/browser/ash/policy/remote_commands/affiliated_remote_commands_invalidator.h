@@ -38,8 +38,8 @@ class AffiliatedRemoteCommandsInvalidator
       invalidation::InvalidationService* invalidation_service) override;
 
  private:
-  const raw_ptr<CloudPolicyCore> core_;
-  const raw_ptr<AffiliatedInvalidationServiceProvider>
+  const raw_ptr<CloudPolicyCore, ExperimentalAsh> core_;
+  const raw_ptr<AffiliatedInvalidationServiceProvider, ExperimentalAsh>
       invalidation_service_provider_;
 
   std::unique_ptr<RemoteCommandsInvalidatorImpl> invalidator_;

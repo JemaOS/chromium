@@ -136,14 +136,14 @@ MediaStreamTrackGenerator::MediaStreamTrackGenerator(
 
 WritableStream* MediaStreamTrackGenerator::writable(ScriptState* script_state) {
   if (writable_)
-    return writable_.Get();
+    return writable_;
 
   if (kind() == "video")
     CreateVideoStream(script_state);
   else if (kind() == "audio")
     CreateAudioStream(script_state);
 
-  return writable_.Get();
+  return writable_;
 }
 
 PushableMediaStreamVideoSource* MediaStreamTrackGenerator::PushableVideoSource()

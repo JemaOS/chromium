@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -31,13 +31,13 @@ class SharingServiceFactory : public ProfileKeyedServiceFactory {
   SharingServiceFactory& operator=(const SharingServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<SharingServiceFactory>;
+  friend struct base::DefaultSingletonTraits<SharingServiceFactory>;
 
   SharingServiceFactory();
   ~SharingServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsNULLWhileTesting() const override;
 };

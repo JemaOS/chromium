@@ -9,7 +9,7 @@
         aria-labelledby="sourceLabel">
       <template is="dom-repeat" items="[[options]]" as="source">
         <option value="[[source.name]]" selected$='[[isDefaultOption(source)]]'>
-          [[getSourceTypeAsString(source.type)]]
+          [[getSourceTypeString_(source.type)]]
         </option>
       </template>
       <template is="dom-if" if="[[!options.length]]" restamp>

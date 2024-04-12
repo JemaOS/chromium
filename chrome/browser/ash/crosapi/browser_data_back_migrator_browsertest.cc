@@ -6,9 +6,9 @@
 
 #include "ash/constants/ash_features.h"
 #include "base/files/file_util.h"
+#include "base/run_loop.h"
 #include "base/test/bind.h"
-#include "base/test/test_future.h"
-#include "chrome/browser/ash/app_mode/kiosk_controller.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
 #include "chrome/browser/ash/crosapi/browser_data_migrator.h"
 #include "chrome/browser/ash/crosapi/browser_util.h"
 #include "chrome/browser/ash/login/app_mode/test/kiosk_base_test.h"
@@ -20,8 +20,6 @@
 #include "chrome/browser/browser_process.h"
 #include "chromeos/ash/components/dbus/session_manager/fake_session_manager_client.h"
 #include "chromeos/ash/components/login/auth/public/user_context.h"
-#include "chromeos/ash/components/standalone_browser/standalone_browser_features.h"
-#include "components/account_id/account_id.h"
 #include "components/policy/core/common/policy_map.h"
 #include "components/policy/policy_constants.h"
 #include "components/user_manager/fake_user_manager.h"
@@ -90,7 +88,7 @@ class BrowserDataBackMigratorOnSignIn : public ash::LoginManagerTest {
   void SetUpInProcessBrowserTestFixture() override {
     feature_list_.InitWithFeatures(
         {ash::features::kLacrosProfileBackwardMigration},
-        {ash::standalone_browser::features::kLacrosOnly});
+        {ash::features::kLacrosSupport});
 
     SessionManagerClient::InitializeFakeInMemory();
   }
@@ -107,12 +105,12 @@ class BrowserDataBackMigratorOnSignIn : public ash::LoginManagerTest {
 IN_PROC_BROWSER_TEST_F(BrowserDataBackMigratorOnSignIn, BackMigrateOnSignIn) {
   CreateLacrosDirectoryForProfile(regular_user_.account_id);
 
-  base::test::TestFuture<void> waiter;
+  base::RunLoop run_loop;
   ScopedBackMigratorRestartAttemptForTesting
       scoped_back_migrator_restart_attempt(
-          base::BindLambdaForTesting([&]() { waiter.SetValue(); }));
+          base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
   ASSERT_TRUE(Login());
-  EXPECT_TRUE(waiter.Wait());
+  run_loop.Run();
   EXPECT_TRUE(FakeSessionManagerClient::Get()
                   ->request_browser_data_backward_migration_called());
 }
@@ -155,17 +153,21 @@ class BrowserDataBackMigratorForKiosk : public KioskBaseTest {
 };
 
 IN_PROC_BROWSER_TEST_F(BrowserDataBackMigratorForKiosk, MigrateOnKioskLaunch) {
-  // Register app in `KioskController` so its `AccountId` can be retrieved.
+  // Register the test app with `KioskAppManager` so that the `AccountId` can be
+  // retrieved.
   PrepareAppLaunch();
-  CreateLacrosDirectoryForProfile(test_kiosk_app().id().account_id);
+  KioskAppManager::App app;
+  CHECK(KioskAppManager::Get());
+  CHECK(KioskAppManager::Get()->GetApp(test_app_id(), &app));
+  CreateLacrosDirectoryForProfile(app.account_id);
 
-  base::test::TestFuture<void> waiter;
+  base::RunLoop run_loop;
   ScopedBackMigratorRestartAttemptForTesting
       scoped_back_migrator_restart_attempt(
-          base::BindLambdaForTesting([&]() { waiter.SetValue(); }));
+          base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
   StartAppLaunchFromLoginScreen(
       NetworkPortalDetector::CAPTIVE_PORTAL_STATUS_ONLINE);
-  EXPECT_TRUE(waiter.Wait());
+  run_loop.Run();
   EXPECT_TRUE(FakeSessionManagerClient::Get()
                   ->request_browser_data_backward_migration_called());
 }

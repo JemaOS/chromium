@@ -4,8 +4,6 @@
 
 #include "chrome/browser/extensions/forced_extensions/force_installed_metrics.h"
 
-#include <optional>
-
 #include "base/command_line.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
@@ -33,9 +31,11 @@
 #include "extensions/browser/updater/safe_manifest_parser.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest.h"
+#include "extensions/common/value_builder.h"
 #include "net/base/net_errors.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/components/arc/arc_prefs.h"
@@ -183,12 +183,14 @@ class ForceInstalledMetricsTest : public ForceInstalledTestBase {
 
   void SetupExtensionManagementPref() {
     base::Value::Dict extension_entry =
-        base::Value::Dict()
+        DictionaryBuilder()
             .Set("installation_mode", "allowed")
-            .Set(ExternalProviderImpl::kExternalUpdateUrl, kExtensionUpdateUrl);
-    prefs()->SetManagedPref(
-        pref_names::kExtensionManagement,
-        base::Value::Dict().Set(kExtensionId1, std::move(extension_entry)));
+            .Set(ExternalProviderImpl::kExternalUpdateUrl, kExtensionUpdateUrl)
+            .Build();
+    prefs()->SetManagedPref(pref_names::kExtensionManagement,
+                            DictionaryBuilder()
+                                .Set(kExtensionId1, std::move(extension_entry))
+                                .Build());
   }
 
   void CreateExtensionService(bool extensions_enabled) {
@@ -212,7 +214,7 @@ class ForceInstalledMetricsTest : public ForceInstalledTestBase {
         ExtensionDownloaderDelegate::Stage::DOWNLOADING_MANIFEST);
   }
 
-  void ReportInstallationStarted(std::optional<base::TimeDelta> install_time) {
+  void ReportInstallationStarted(absl::optional<base::TimeDelta> install_time) {
     install_stage_tracker()->ReportDownloadingStage(
         kExtensionId1, ExtensionDownloaderDelegate::Stage::MANIFEST_LOADED);
     install_stage_tracker()->ReportDownloadingStage(
@@ -227,7 +229,7 @@ class ForceInstalledMetricsTest : public ForceInstalledTestBase {
 
  protected:
   base::HistogramTester histogram_tester_;
-  raw_ptr<base::MockOneShotTimer, DanglingUntriaged> fake_timer_;
+  raw_ptr<base::MockOneShotTimer> fake_timer_;
   std::unique_ptr<ForceInstalledMetrics> metrics_;
 };
 
@@ -267,8 +269,7 @@ TEST_F(ForceInstalledMetricsTest, ExtensionsInstalled) {
   histogram_tester_.ExpectTotalCount(kFailureCrxInstallErrorStats, 0);
   histogram_tester_.ExpectUniqueSample(
       kTotalCountStats,
-      prefs()->GetManagedPref(pref_names::kInstallForceList)->GetDict().size(),
-      1);
+      prefs()->GetManagedPref(pref_names::kInstallForceList)->DictSize(), 1);
 }
 
 // Verifies that failure is reported for the extensions which are listed in
@@ -305,8 +306,7 @@ TEST_F(ForceInstalledMetricsTest, ExtensionsInstallationTimedOut) {
   histogram_tester_.ExpectTotalCount(kFailureCrxInstallErrorStats, 0);
   histogram_tester_.ExpectUniqueSample(
       kTotalCountStats,
-      prefs()->GetManagedPref(pref_names::kInstallForceList)->GetDict().size(),
-      1);
+      prefs()->GetManagedPref(pref_names::kInstallForceList)->DictSize(), 1);
 }
 
 // Reporting the time for downloading the manifest of an extension and verifying
@@ -376,7 +376,7 @@ TEST_F(ForceInstalledMetricsTest,
 TEST_F(ForceInstalledMetricsTest, ExtensionsReportInstallationStageTimes) {
   SetupForceList(ExtensionOrigin::kWebStore);
   ReportDownloadingManifestStage();
-  ReportInstallationStarted(std::nullopt);
+  ReportInstallationStarted(absl::nullopt);
   install_stage_tracker()->ReportCRXInstallationStage(
       kExtensionId1, InstallationStage::kVerification);
 
@@ -593,8 +593,7 @@ TEST_F(ForceInstalledMetricsTest,
                                        CrxInstallErrorDetail::UNEXPECTED_ID, 1);
   histogram_tester_.ExpectUniqueSample(
       kTotalCountStats,
-      prefs()->GetManagedPref(pref_names::kInstallForceList)->GetDict().size(),
-      1);
+      prefs()->GetManagedPref(pref_names::kInstallForceList)->DictSize(), 1);
 }
 
 // Reporting SandboxedUnpackerFailureReason when the force installed extension
@@ -867,8 +866,7 @@ TEST_F(ForceInstalledMetricsTest, ExtensionsStuck) {
   histogram_tester_.ExpectTotalCount(kFailureCrxInstallErrorStats, 0);
   histogram_tester_.ExpectUniqueSample(
       kTotalCountStats,
-      prefs()->GetManagedPref(pref_names::kInstallForceList)->GetDict().size(),
-      1);
+      prefs()->GetManagedPref(pref_names::kInstallForceList)->DictSize(), 1);
 }
 
 TEST_F(ForceInstalledMetricsTest, ExtensionStuckInCreatedStage) {
@@ -905,6 +903,7 @@ TEST_F(ForceInstalledMetricsTest, ReportManagedGuestSessionOnExtensionFailure) {
   fake_user_manager->UserLoggedIn(account_id, user->username_hash(),
                                   false /* browser_restart */,
                                   false /* is_child */);
+  ash::ProfileHelper::Get()->SetProfileToUserMappingForTesting(user);
   SetupForceList(ExtensionOrigin::kWebStore);
   install_stage_tracker()->ReportFailure(
       kExtensionId1, InstallStageTracker::FailureReason::INVALID_ID);
@@ -924,10 +923,13 @@ TEST_F(ForceInstalledMetricsTest, ReportGuestSessionOnExtensionFailure) {
   auto* fake_user_manager = new ash::FakeChromeUserManager();
   user_manager::ScopedUserManager scoped_user_manager(
       base::WrapUnique(fake_user_manager));
+  const AccountId account_id =
+      AccountId::FromUserEmail(profile()->GetProfileUserName());
   user_manager::User* user = fake_user_manager->AddGuestUser();
-  fake_user_manager->UserLoggedIn(user->GetAccountId(), user->username_hash(),
+  fake_user_manager->UserLoggedIn(account_id, user->username_hash(),
                                   false /* browser_restart */,
                                   false /* is_child */);
+  ash::ProfileHelper::Get()->SetProfileToUserMappingForTesting(user);
   SetupForceList(ExtensionOrigin::kWebStore);
   install_stage_tracker()->ReportFailure(
       kExtensionId1, InstallStageTracker::FailureReason::INVALID_ID);
@@ -950,10 +952,13 @@ TEST_F(ForceInstalledMetricsTest,
   auto* fake_user_manager = new ash::FakeChromeUserManager();
   user_manager::ScopedUserManager scoped_user_manager(
       base::WrapUnique(fake_user_manager));
+  const AccountId account_id =
+      AccountId::FromUserEmail(profile()->GetProfileUserName());
   user_manager::User* user = fake_user_manager->AddGuestUser();
-  fake_user_manager->UserLoggedIn(user->GetAccountId(), user->username_hash(),
+  fake_user_manager->UserLoggedIn(account_id, user->username_hash(),
                                   false /* browser_restart */,
                                   false /* is_child */);
+  ash::ProfileHelper::Get()->SetProfileToUserMappingForTesting(user);
 
   SetupForceList(ExtensionOrigin::kWebStore);
   CreateExtensionService(/*extensions_enabled=*/true);
@@ -1016,8 +1021,7 @@ TEST_F(ForceInstalledMetricsTest, ExtensionsAreDownloading) {
       ExtensionDownloaderDelegate::Stage::DOWNLOADING_CRX, 1);
   histogram_tester_.ExpectUniqueSample(
       kTotalCountStats,
-      prefs()->GetManagedPref(pref_names::kInstallForceList)->GetDict().size(),
-      1);
+      prefs()->GetManagedPref(pref_names::kInstallForceList)->DictSize(), 1);
 }
 
 // Error Codes in case of CRX_FETCH_FAILED for CWS extensions.
@@ -1358,7 +1362,7 @@ TEST_F(ForceInstalledMetricsTest,
   SetupForceList(ExtensionOrigin::kWebStore);
   // Set TYPE_EXTENSION and TYPE_THEME as the allowed extension types.
   base::Value::List list =
-      base::Value::List().Append("extension").Append("theme");
+      ListBuilder().Append("extension").Append("theme").Build();
   prefs()->SetManagedPref(pref_names::kAllowedTypes, std::move(list));
 
   scoped_refptr<const Extension> ext1 = CreateNewExtension(
@@ -1388,7 +1392,7 @@ TEST_F(ForceInstalledMetricsTest,
 
   // Set TYPE_EXTENSION and TYPE_THEME as the allowed extension types.
   base::Value::List list =
-      base::Value::List().Append("extension").Append("theme");
+      ListBuilder().Append("extension").Append("theme").Build();
   prefs()->SetManagedPref(pref_names::kAllowedTypes, std::move(list));
 
   scoped_refptr<const Extension> ext1 = CreateNewExtension(

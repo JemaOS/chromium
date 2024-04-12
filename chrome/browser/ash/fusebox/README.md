@@ -208,8 +208,6 @@ recordings):
 - [Fusebox Code
   Walkthrough](https://goto.google.com/fusebox-code-walkthrough-2023), February
   2023.
-- [How to Build ChromiumOS'
-  Fusebox](https://goto.google.com/how-to-build-cros-fusebox), January 2024.
 
 There's also [the ChromeOS Files Team site](https://goto.google.com/xf-site)
 for more general information. It is also Google-internal.

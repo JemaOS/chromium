@@ -56,7 +56,7 @@ class PdfPrinterHandler : public PrinterHandler,
                   PrintCallback callback) override;
 
   // SelectFileDialog::Listener implementation.
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override;
   void FileSelectionCanceled(void* params) override;

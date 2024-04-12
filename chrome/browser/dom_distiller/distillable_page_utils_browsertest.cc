@@ -2,11 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "components/dom_distiller/content/browser/distillable_page_utils.h"
-
 #include <cstring>
 #include <memory>
-#include <optional>
 
 #include "base/command_line.h"
 #include "base/functional/bind.h"
@@ -20,6 +17,7 @@
 #include "chrome/common/chrome_switches.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/dom_distiller/content/browser/distillable_page_utils.h"
 #include "components/dom_distiller/core/dom_distiller_switches.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
@@ -27,6 +25,12 @@
 #include "content/public/test/test_utils.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
+#include "components/ukm/test_ukm_recorder.h"
+#endif
 
 namespace dom_distiller {
 namespace {
@@ -121,8 +125,7 @@ class TestOption : public InProcessBrowserTest {
 
   std::unique_ptr<base::RunLoop> run_loop_;
   MockObserver holder_;
-  raw_ptr<content::WebContents, AcrossTasksDanglingUntriaged> web_contents_ =
-      nullptr;
+  raw_ptr<content::WebContents, DanglingUntriaged> web_contents_ = nullptr;
   std::unique_ptr<net::test_server::EmbeddedTestServer> https_server_;
 };
 
@@ -160,7 +163,7 @@ IN_PROC_BROWSER_TEST_F(DistillablePageUtilsBrowserTestAlways,
                        LocalUrlsDoNotCallObserver) {
   EXPECT_CALL(holder_, OnResult(_)).Times(0);
   NavigateAndWait("about:blank", kWaitNoExpectedCall);
-  EXPECT_EQ(GetLatestResult(web_contents_), std::nullopt);
+  EXPECT_EQ(GetLatestResult(web_contents_), absl::nullopt);
 }
 
 using DistillablePageUtilsBrowserTestNone =
@@ -169,7 +172,7 @@ using DistillablePageUtilsBrowserTestNone =
 IN_PROC_BROWSER_TEST_F(DistillablePageUtilsBrowserTestNone, NeverCallObserver) {
   EXPECT_CALL(holder_, OnResult(_)).Times(0);
   NavigateAndWait(kSimpleArticlePath, kWaitNoExpectedCall);
-  EXPECT_EQ(GetLatestResult(web_contents_), std::nullopt);
+  EXPECT_EQ(GetLatestResult(web_contents_), absl::nullopt);
 }
 
 using DistillablePageUtilsBrowserTestOGArticle =
@@ -266,15 +269,8 @@ IN_PROC_BROWSER_TEST_F(DistillablePageUtilsBrowserTestAllArticles,
       Optional(AllOf(Not(IsDistillable()), IsLast(), Not(IsMobileFriendly()))));
 }
 
-// TODO(crbug.com/1461973): Flaky on Linux MSAN.
-#if BUILDFLAG(IS_LINUX) && defined(MEMORY_SANITIZER)
-#define MAYBE_ObserverNotCalledAfterRemoval \
-  DISABLED_ObserverNotCalledAfterRemoval
-#else
-#define MAYBE_ObserverNotCalledAfterRemoval ObserverNotCalledAfterRemoval
-#endif
 IN_PROC_BROWSER_TEST_F(DistillablePageUtilsBrowserTestAllArticles,
-                       MAYBE_ObserverNotCalledAfterRemoval) {
+                       ObserverNotCalledAfterRemoval) {
   RemoveObserver(web_contents_, &holder_);
   EXPECT_CALL(holder_, OnResult(_)).Times(0);
   NavigateAndWait(kSimpleArticlePath, kWaitNoExpectedCall);
@@ -282,5 +278,41 @@ IN_PROC_BROWSER_TEST_F(DistillablePageUtilsBrowserTestAllArticles,
       GetLatestResult(web_contents_),
       Optional(AllOf(IsDistillable(), IsLast(), Not(IsMobileFriendly()))));
 }
+
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
+IN_PROC_BROWSER_TEST_F(DistillablePageUtilsBrowserTestAllArticles,
+                       RecordPageIsDistillableOnArticleLoad) {
+  ON_CALL(holder_, OnResult(IsLast()))
+      .WillByDefault(InvokeWithoutArgs(this, &TestOption::QuitSoon));
+
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+  NavigateAndWait(kSimpleArticlePath, base::TimeDelta());
+
+  std::vector<const ukm::mojom::UkmEntry*> distillability_entries =
+      ukm_recorder.GetEntriesByName("ReaderModeReceivedDistillability");
+  ASSERT_THAT(distillability_entries, SizeIs(1));
+  EXPECT_THAT(ukm_recorder.GetEntryMetric(distillability_entries.front(),
+                                          "IsPageDistillable"),
+              Pointee(true));
+}
+
+IN_PROC_BROWSER_TEST_F(DistillablePageUtilsBrowserTestAllArticles,
+                       RecordPageIsNotDistillableOnNonArticleLoad) {
+  ON_CALL(holder_, OnResult(IsLast()))
+      .WillByDefault(InvokeWithoutArgs(this, &TestOption::QuitSoon));
+
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+  NavigateAndWait(kNonArticlePath, base::TimeDelta());
+
+  std::vector<const ukm::mojom::UkmEntry*> distillability_entries =
+      ukm_recorder.GetEntriesByName("ReaderModeReceivedDistillability");
+  ASSERT_THAT(distillability_entries, SizeIs(1));
+  EXPECT_THAT(ukm_recorder.GetEntryMetric(distillability_entries.front(),
+                                          "IsPageDistillable"),
+              Pointee(false));
+}
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_LINUX) ||
+        // BUILDFLAG(IS_MAC)OS || BUILDFLAG(IS_WIN)
 
 }  // namespace dom_distiller

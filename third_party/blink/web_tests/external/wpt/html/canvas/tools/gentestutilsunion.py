@@ -1,4 +1,3 @@
-"""Generates Canvas tests from YAML file definitions."""
 # Current code status:
 #
 # This was originally written by Philip Taylor for use at
@@ -29,7 +28,7 @@
 #
 # * Test the tests, add new ones to Git, remove deleted ones from Git, etc.
 
-from typing import Any, DefaultDict, List, Mapping, Optional, Set, Tuple
+from typing import Any, List, Mapping, MutableMapping, Optional, Tuple
 
 import re
 import collections
@@ -41,8 +40,6 @@ import os
 import pathlib
 import sys
 import textwrap
-
-import jinja2
 
 try:
     import cairocffi as cairo  # type: ignore
@@ -64,12 +61,12 @@ class InvalidTestDefinitionError(Error):
     """Raised on invalid test definition."""
 
 
-def _double_quote_escape(string: str) -> str:
+def _simpleEscapeJS(string: str) -> str:
     return string.replace('\\', '\\\\').replace('"', '\\"')
 
 
-def _escape_js(string: str) -> str:
-    string = _double_quote_escape(string)
+def _escapeJS(string: str) -> str:
+    string = _simpleEscapeJS(string)
     # Kind of an ugly hack, for nicer failure-message output.
     string = re.sub(r'\[(\w+)\]', r'[\\""+(\1)+"\\"]', string)
     return string
@@ -90,10 +87,7 @@ def _unroll(text: str) -> str:
     f = {b: 3};
     """
     patterns = []  # type: List[Tuple[str, List[str]]]
-    while True:
-        match = re.search(r'<([^>]+)>', text)
-        if not match:
-            break
+    while match := re.search(r'<([^>]+)>', text):
         key = f'@unroll_pattern_{len(patterns)}'
         values = text[match.start(1):match.end(1)]
         text = text[:match.start(0)] + key + text[match.end(0):]
@@ -138,15 +132,15 @@ def _expand_nonfinite(method: str, argstr: str, tail: str) -> str:
         match = re.match('<(.*)>', arg)
         if match is None:
             raise InvalidTestDefinitionError(
-                f'Expected arg to match format "<(.*)>", but was: {arg}')
+                f"Expected arg to match format '<(.*)>', but was: {arg}")
         a = match.group(1)
         args.append(a.split(' '))
     calls = []
     # Start with the valid argument list.
     call = [args[j][0] for j in range(len(args))]
     # For each argument alone, try setting it to all its invalid values:
-    for i, arg in enumerate(args):
-        for a in arg[1:]:
+    for i in range(len(args)):
+        for a in args[i][1:]:
             c2 = call[:]
             c2[i] = a
             calls.append(c2)
@@ -165,8 +159,7 @@ def _expand_nonfinite(method: str, argstr: str, tail: str) -> str:
 
     f(call, 0, 0)
 
-    str_calls = (', '.join(c) for c in calls)
-    return '\n'.join(f'{method}({params}){tail}' for params in str_calls)
+    return '\n'.join('%s(%s)%s' % (method, ', '.join(c), tail) for c in calls)
 
 
 def _get_test_sub_dir(name: str, name_to_sub_dir: Mapping[str, str]) -> str:
@@ -174,26 +167,12 @@ def _get_test_sub_dir(name: str, name_to_sub_dir: Mapping[str, str]) -> str:
         if name.startswith(prefix):
             return name_to_sub_dir[prefix]
     raise InvalidTestDefinitionError(
-        f'Test "{name}" has no defined target directory mapping')
-
-
-def _remove_extra_newlines(text: str) -> str:
-    """Remove newlines if a backslash is found at end of line."""
-    # Lines ending with '\' gets their newline character removed.
-    text = re.sub(r'\\\n', '', text, flags=re.MULTILINE | re.DOTALL)
-
-    # Lines ending with '\-' gets their newline and any leading white spaces on
-    # the following line removed.
-    text = re.sub(r'\\-\n\s*', '', text, flags=re.MULTILINE | re.DOTALL)
-    return text
+        'Test "%s" has no defined target directory mapping' % name)
 
 
 def _expand_test_code(code: str) -> str:
-    code = re.sub(r' @moz-todo', '', code)
-
-    code = re.sub(r'@moz-UniversalBrowserRead;', '', code)
-
-    code = _remove_extra_newlines(code)
+    # Remove newlines if a backslash is found at end of line.
+    code = re.sub(r'\\\n\s*', '', code, flags=re.MULTILINE | re.DOTALL)
 
     # Unroll expressions with a cross-product-style parameter expansion.
     code = re.sub(r'@unroll ([^;]*;)', lambda m: _unroll(m.group(1)), code)
@@ -211,329 +190,277 @@ def _expand_test_code(code: str) -> str:
     code = re.sub(r'@assert pixel (\d+,\d+) ==~ (\d+,\d+,\d+,\d+) \+/- (\d+);',
                   r'_assertPixelApprox(canvas, \1, \2, \3);', code)
 
-    code = re.sub(r'@assert throws (\S+_ERR) (.*?);$',
-                  r'assert_throws_dom("\1", function() { \2; });', code,
-                  flags=re.MULTILINE | re.DOTALL)
+    code = re.sub(r'@assert throws (\S+_ERR) (.*);',
+                  r'assert_throws_dom("\1", function() { \2; });', code)
 
-    code = re.sub(r'@assert throws (\S+Error) (.*?);$',
-                  r'assert_throws_js(\1, function() { \2; });', code,
-                  flags=re.MULTILINE | re.DOTALL)
+    code = re.sub(r'@assert throws (\S+Error) (.*);',
+                  r'assert_throws_js(\1, function() { \2; });', code)
 
     code = re.sub(
-        r'@assert (.*) === (.*);', lambda m:
-        (f'_assertSame({m.group(1)}, {m.group(2)}, '
-         f'"{_escape_js(m.group(1))}", "{_escape_js(m.group(2))}");'), code)
+        r'@assert (.*) === (.*);', lambda m: '_assertSame(%s, %s, "%s", "%s");'
+        % (m.group(1), m.group(2), _escapeJS(m.group(1)), _escapeJS(m.group(2))
+           ), code)
 
     code = re.sub(
         r'@assert (.*) !== (.*);', lambda m:
-        (f'_assertDifferent({m.group(1)}, {m.group(2)}, '
-         f'"{_escape_js(m.group(1))}", "{_escape_js(m.group(2))}");'), code)
+        '_assertDifferent(%s, %s, "%s", "%s");' % (m.group(1), m.group(
+            2), _escapeJS(m.group(1)), _escapeJS(m.group(2))), code)
 
     code = re.sub(
-        r'@assert (.*) =~ (.*);',
-        lambda m: f'assert_regexp_match({m.group(1)}, {m.group(2)});', code)
+        r'@assert (.*) =~ (.*);', lambda m: 'assert_regexp_match(%s, %s);' % (
+            m.group(1), m.group(2)), code)
 
     code = re.sub(
-        r'@assert (.*);',
-        lambda m: f'_assert({m.group(1)}, "{_escape_js(m.group(1))}");', code)
+        r'@assert (.*);', lambda m: '_assert(%s, "%s");' % (m.group(
+            1), _escapeJS(m.group(1))), code)
 
-    assert '@' not in code
+    code = re.sub(r' @moz-todo', '', code)
+
+    code = re.sub(r'@moz-UniversalBrowserRead;', '', code)
+
+    assert ('@' not in code)
 
     return code
 
 
-_TestParams = Mapping[str, Any]
+class CanvasType(str, enum.Enum):
+    HTML_CANVAS = 'htmlcanvas'
+    OFFSCREEN_CANVAS = 'offscreencanvas'
 
 
-class _CanvasType(str, enum.Enum):
-    HTML_CANVAS = 'HtmlCanvas'
-    OFFSCREEN_CANVAS = 'OffscreenCanvas'
-    WORKER = 'Worker'
-
-
-def _get_enabled_canvas_types(test: _TestParams) -> Set[_CanvasType]:
-    return {_CanvasType(t) for t in test.get('canvas_types', _CanvasType)}
+def _get_enabled_canvas_types(test: Mapping[str, Any]) -> List[CanvasType]:
+    return [CanvasType(t.lower()) for t in test.get('canvasType', CanvasType)]
 
 
 @dataclasses.dataclass
-class _OutputPaths:
-    element: str
-    offscreen: str
-
-    def sub_path(self, sub_dir: str):
-        """Create a new _OutputPaths that is a subpath of this _OutputPath."""
-        return _OutputPaths(element=os.path.join(self.element, sub_dir),
-                            offscreen=os.path.join(self.offscreen, sub_dir))
+class TestConfig:
+    out_dir: str
+    image_out_dir: str
+    enabled: bool
 
 
-def _validate_test(test: _TestParams):
-    if test.get('expected', '') == 'green' and re.search(
-            r'@assert pixel .* 0,0,0,0;', test['code']):
-        print(f'Probable incorrect pixel test in {test["name"]}')
+_CANVAS_SIZE_REGEX = re.compile(r'(?P<width>.*), (?P<height>.*)',
+                                re.MULTILINE | re.DOTALL)
 
-    if 'size' in test and (not isinstance(test['size'], list)
-                           or len(test['size']) != 2):
+
+def _get_canvas_size(test: Mapping[str, Any]):
+    size = test.get('size', '100, 50')
+    match = _CANVAS_SIZE_REGEX.match(size)
+    if not match:
         raise InvalidTestDefinitionError(
-            f'Invalid canvas size "{test["size"]}" in test {test["name"]}. '
-            'Expected an array with two numbers.')
-
-    if 'test_type' in test and test['test_type'] != 'promise':
-        raise InvalidTestDefinitionError(
-            f'Test {test["name"]}\' test_type is invalid, it only accepts '
-            '"promise" now for creating promise test type in the template '
-            'file.')
-
-    if 'reference' in test and 'html_reference' in test:
-        raise InvalidTestDefinitionError(
-            f'Test {test["name"]} is invalid, "reference" and "html_reference" '
-            'can\'t both be specified at the same time.')
+            'Invalid canvas size "%s" in test %s. Expected a string matching '
+            'this pattern: "%%s, %%s" %% (width, height)' %
+            (size, test['name']))
+    return match.group('width'), match.group('height')
 
 
-def _render_template(jinja_env: jinja2.Environment, template: jinja2.Template,
-                     params: _TestParams) -> str:
-    """Renders the specified jinja template.
+def _write_reference_test(is_js_ref: bool, templates: Mapping[str, str],
+                          template_params: MutableMapping[str, str],
+                          ref_code: str, canvas_path: Optional[str],
+                          offscreen_path: Optional[str]):
+    ref_code = ref_code.strip()
+    ref_code = textwrap.indent(ref_code, '  ') if is_js_ref else ref_code
+    ref_template_name = 'element_ref_test' if is_js_ref else 'html_ref_test'
 
-    The template is repetitively rendered until no more changes are observed.
-    This allows for template parameters to refer to other template parameters.
-    """
-    rendered = template.render(params)
-    previous = ''
-    while rendered != previous:
-        previous = rendered
-        template = jinja_env.from_string(rendered)
-        rendered = template.render(params)
-    return rendered
+    code = template_params['code']
+    template_params['code'] = textwrap.indent(code, '  ')
+    if canvas_path:
+        pathlib.Path(f'{canvas_path}.html').write_text(
+            templates['element_ref_test'] % template_params, 'utf-8')
+    if offscreen_path:
+        pathlib.Path(f'{offscreen_path}.html').write_text(
+            templates['offscreen_ref_test'] % template_params, 'utf-8')
+        template_params['code'] = textwrap.indent(code, '    ')
+        pathlib.Path(f'{offscreen_path}.w.html').write_text(
+            templates['worker_ref_test'] % template_params, 'utf-8')
 
-
-def _render(jinja_env: jinja2.Environment, template_name: str,
-            params: _TestParams):
-    params = dict(params)
-    params.update({
-        # Render the code on its own, as it could contain templates expanding
-        # to multiple lines. This is needed to get proper indentation of the
-        # code in the main template.
-        'code': _render_template(jinja_env,
-                                 jinja_env.from_string(params['code']),
-                                 params)
-    })
-
-    return _render_template(jinja_env, jinja_env.get_template(template_name),
-                            params)
-
-
-def _add_default_params(test: _TestParams) -> _TestParams:
-    params = {
-        'desc': '',
-        'size': [100, 50],
-        'variant_names': [],
-    }
-    params.update(test)
-    return params
+    template_params['code'] = ref_code
+    template_params['links'] = ''
+    template_params['fuzzy'] = ''
+    if canvas_path:
+        pathlib.Path(f'{canvas_path}-expected.html').write_text(
+            templates[ref_template_name] % template_params, 'utf-8')
+    if offscreen_path:
+        pathlib.Path(f'{offscreen_path}-expected.html').write_text(
+            templates[ref_template_name] % template_params, 'utf-8')
 
 
-def _write_reference_test(jinja_env: jinja2.Environment, params: _TestParams,
-                          enabled_tests: Set[_CanvasType],
-                          output_files: _OutputPaths) -> None:
-    if _CanvasType.HTML_CANVAS in enabled_tests:
-        html_params = dict(params)
-        html_params.update({'canvas_type': _CanvasType.HTML_CANVAS.value})
-        pathlib.Path(f'{output_files.element}.html').write_text(
-            _render(jinja_env, 'reftest_element.html', html_params), 'utf-8')
-    if _CanvasType.OFFSCREEN_CANVAS in enabled_tests:
-        offscreen_params = dict(params)
-        offscreen_params.update(
-            {'canvas_type': _CanvasType.OFFSCREEN_CANVAS.value})
-        pathlib.Path(f'{output_files.offscreen}.html').write_text(
-            _render(jinja_env, 'reftest_offscreen.html', offscreen_params),
-            'utf-8')
-    if _CanvasType.WORKER in enabled_tests:
-        worker_params = dict(params)
-        worker_params.update({'canvas_type': _CanvasType.WORKER.value})
-        pathlib.Path(f'{output_files.offscreen}.w.html').write_text(
-            _render(jinja_env, 'reftest_worker.html', worker_params), 'utf-8')
+def _write_testharness_test(templates: Mapping[str, str],
+                            template_params: MutableMapping[str, str],
+                            canvas_path: Optional[str],
+                            offscreen_path: Optional[str]):
 
-    js_ref = params.get('reference', '')
-    html_ref = params.get('html_reference', '')
-    ref_params = dict(params)
-    ref_params.update({
-        'is_test_reference': True,
-        'code': js_ref or html_ref
-    })
-    ref_template_name = 'reftest_element.html' if js_ref else 'reftest.html'
-    if _CanvasType.HTML_CANVAS in enabled_tests:
-        pathlib.Path(f'{output_files.element}-expected.html').write_text(
-            _render(jinja_env, ref_template_name, ref_params), 'utf-8')
-    if {_CanvasType.OFFSCREEN_CANVAS, _CanvasType.WORKER} & enabled_tests:
-        pathlib.Path(f'{output_files.offscreen}-expected.html').write_text(
-            _render(jinja_env, ref_template_name, ref_params), 'utf-8')
-
-
-def _write_testharness_test(jinja_env: jinja2.Environment, params: _TestParams,
-                            enabled_tests: Set[_CanvasType],
-                            output_files: _OutputPaths) -> None:
     # Create test cases for canvas and offscreencanvas.
-    if _CanvasType.HTML_CANVAS in enabled_tests:
-        html_params = dict(params)
-        html_params.update({'canvas_type': _CanvasType.HTML_CANVAS.value})
-        pathlib.Path(f'{output_files.element}.html').write_text(
-            _render(jinja_env, 'testharness_element.html', html_params),
-            'utf-8')
+    if canvas_path:
+        pathlib.Path(f'{canvas_path}.html').write_text(
+            templates['element'] % template_params, 'utf-8')
 
-    if _CanvasType.OFFSCREEN_CANVAS in enabled_tests:
-        offscreen_params = dict(params)
-        offscreen_params.update(
-            {'canvas_type': _CanvasType.OFFSCREEN_CANVAS.value})
-        pathlib.Path(f'{output_files.offscreen}.html').write_text(
-            _render(jinja_env, 'testharness_offscreen.html', offscreen_params),
-            'utf-8')
+    if offscreen_path:
+        code = template_params['code']
+        offscreen_template = templates['offscreen']
+        worker_template = templates['worker']
+        if ('then(t_pass, t_fail);' in code):
+            offscreen_template = offscreen_template.replace('t.done();\n', '')
+            worker_template = worker_template.replace('t.done();\n', '')
 
-    if _CanvasType.WORKER in enabled_tests:
-        worker_params = dict(params)
-        worker_params.update({'canvas_type': _CanvasType.WORKER.value})
-        pathlib.Path(f'{output_files.offscreen}.worker.js').write_text(
-            _render(jinja_env, 'testharness_worker.js', worker_params),
-            'utf-8')
+        pathlib.Path(f'{offscreen_path}.html').write_text(
+            offscreen_template % template_params, 'utf-8')
+        pathlib.Path(f'{offscreen_path}.worker.js').write_text(
+            worker_template % template_params, 'utf-8')
 
 
-def _generate_expected_image(expected: str, name: str,
-                             enabled_canvas_types: Set[_CanvasType],
-                             output_dirs: _OutputPaths) -> str:
-    """Creates a reference image using Cairo and returns the file location."""
-    if expected == 'green':
-        return '/images/green-100x50.png'
-    if expected == 'clear':
-        return '/images/clear-100x50.png'
-    if ';' in expected:
-        print(f'Found semicolon in {name}')
-    expected = re.sub(
-        r'^size (\d+) (\d+)',
-        r'surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, \1, \2)'
-        r'\ncr = cairo.Context(surface)', expected)
-
-    output_paths = output_dirs.sub_path(name)
-    if _CanvasType.HTML_CANVAS in enabled_canvas_types:
-        expected_canvas = (
-            f'{expected}\n'
-            f'surface.write_to_png("{output_paths.element}.png")\n')
-        eval(compile(expected_canvas, f'<test {name}>', 'exec'), {},
-             {'cairo': cairo})
-
-    if {_CanvasType.OFFSCREEN_CANVAS, _CanvasType.WORKER
-        } & enabled_canvas_types:
-        expected_offscreen = (
-            f'{expected}\n'
-            f'surface.write_to_png("{output_paths.offscreen}.png")\n')
-        eval(compile(expected_offscreen, f'<test {name}>', 'exec'), {},
-             {'cairo': cairo})
-
-    return f'{name}.png'
-
-
-def _generate_test(test: _TestParams, jinja_env: jinja2.Environment,
-                   used_tests: DefaultDict[str, Set[_CanvasType]],
-                   output_dirs: _OutputPaths) -> None:
-    _validate_test(test)
-
+def _generate_test(test: Mapping[str, Any], templates: Mapping[str, str],
+                   sub_dir: str, html_canvas_cfg: TestConfig,
+                   offscreen_canvas_cfg: TestConfig) -> None:
     name = test['name']
 
-    enabled_canvas_types = _get_enabled_canvas_types(test)
+    if test.get('expected', '') == 'green' and re.search(
+            r'@assert pixel .* 0,0,0,0;', test['code']):
+        print('Probable incorrect pixel test in %s' % name)
 
-    # Render parameters used in the test name.
-    name = jinja_env.from_string(name).render(test)
-    print(f'\r({name})', ' ' * 32, '\t')
+    code_canvas = _expand_test_code(test['code']).strip()
 
-    expected_img = None
+    expectation_html = ''
     if 'expected' in test and test['expected'] is not None:
-        expected_img = _generate_expected_image(test['expected'], name,
-                                                enabled_canvas_types,
-                                                output_dirs)
+        expected = test['expected']
+        expected_img = None
+        if expected == 'green':
+            expected_img = '/images/green-100x50.png'
+        elif expected == 'clear':
+            expected_img = '/images/clear-100x50.png'
+        else:
+            if ';' in expected:
+                print('Found semicolon in %s' % name)
+            expected = re.sub(
+                r'^size (\d+) (\d+)',
+                r'surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, \1, \2)'
+                r'\ncr = cairo.Context(surface)', expected)
 
-    params = dict(test)
-    params.update({
-        'code': _expand_test_code(test['code']),
-        'expected_img': expected_img
-    })
+            expected_canvas = (
+                expected + "\nsurface.write_to_png('%s.png')\n" %
+                os.path.join(html_canvas_cfg.image_out_dir, sub_dir, name))
+            eval(compile(expected_canvas, '<test %s>' % name, 'exec'), {},
+                 {'cairo': cairo})
 
-    already_tested = used_tests[name].intersection(enabled_canvas_types)
-    if already_tested:
-        raise InvalidTestDefinitionError(
-            f'Test {name} is defined twice for types {already_tested}')
-    used_tests[name].update(enabled_canvas_types)
+            expected_offscreencanvas = (
+                expected + "\nsurface.write_to_png('%s.png')\n" % os.path.join(
+                    offscreen_canvas_cfg.image_out_dir, sub_dir, name))
+            eval(compile(expected_offscreencanvas, '<test %s>' % name, 'exec'),
+                 {}, {'cairo': cairo})
 
-    file_name = name
+            expected_img = '%s.png' % name
+
+        if expected_img:
+            expectation_html = (
+                '<p class="output expectedtext">Expected output:<p>'
+                '<img src="%s" class="output expected" id="expected" '
+                'alt="">' % expected_img)
+
+    canvas = ' ' + test['canvas'] if 'canvas' in test else ''
+    width, height = _get_canvas_size(test)
+
+    notes = '<p class="notes">%s' % test['notes'] if 'notes' in test else ''
+
+    links = f'\n<link rel="match" href="{name}-expected.html">'
+    fuzzy = ('\n<meta name=fuzzy content="%s">' %
+             test['fuzzy'] if 'fuzzy' in test else '')
+    timeout = ('\n<meta name="timeout" content="%s">' %
+               test['timeout'] if 'timeout' in test else '')
+    timeout_js = ('// META: timeout=%s\n' % test['timeout']
+                  if 'timeout' in test else '')
+
+    images = ''
+    for src in test.get('images', []):
+        img_id = src.split('/')[-1]
+        if '/' not in src:
+            src = '../images/%s' % src
+        images += '<img src="%s" id="%s" class="resource">\n' % (src, img_id)
+    for src in test.get('svgimages', []):
+        img_id = src.split('/')[-1]
+        if '/' not in src:
+            src = '../images/%s' % src
+        images += ('<svg><image xlink:href="%s" id="%s" class="resource">'
+                   '</svg>\n' % (src, img_id))
+    images = images.replace('../images/', '/images/')
+
+    fonts = ''
+    fonthack = ''
+    for font in test.get('fonts', []):
+        fonts += ('@font-face {\n  font-family: %s;\n'
+                  '  src: url("/fonts/%s.ttf");\n}\n' % (font, font))
+        # Browsers require the font to actually be used in the page.
+        if test.get('fonthack', 1):
+            fonthack += ('<span style="font-family: %s; position: '
+                         'absolute; visibility: hidden">A</span>\n' % font)
+    if fonts:
+        fonts = '<style>\n%s</style>\n' % fonts
+
+    fallback = test.get('fallback',
+                        '<p class="fallback">FAIL (fallback content)</p>')
+
+    desc = test.get('desc', '')
+    escaped_desc = _simpleEscapeJS(desc)
+
+    attributes = test.get('attributes', '')
+    if attributes:
+        context_args = "'2d', %s" % attributes.strip()
+        attributes = ', ' + attributes.strip()
+    else:
+        context_args = "'2d'"
+
+    template_params = {
+        'name': name,
+        'desc': desc,
+        'escaped_desc': escaped_desc,
+        'notes': notes,
+        'images': images,
+        'fonts': fonts,
+        'fonthack': fonthack,
+        'timeout': timeout,
+        'timeout_js': timeout_js,
+        'fuzzy': fuzzy,
+        'links': links,
+        'canvas': canvas,
+        'width': width,
+        'height': height,
+        'expected': expectation_html,
+        'code': code_canvas,
+        'fallback': fallback,
+        'attributes': attributes,
+        'context_args': context_args
+    }
+
+    canvas_path = os.path.join(html_canvas_cfg.out_dir, sub_dir, name)
+    offscreen_path = os.path.join(offscreen_canvas_cfg.out_dir, sub_dir, name)
     if 'manual' in test:
-        file_name += '-manual'
-    output_files = output_dirs.sub_path(file_name)
+        canvas_path += '-manual'
+        offscreen_path += '-manual'
 
-    if 'reference' in test or 'html_reference' in test:
-        _write_reference_test(jinja_env, params, enabled_canvas_types,
-                              output_files)
-    else:
-        _write_testharness_test(jinja_env, params, enabled_canvas_types,
-                                output_files)
-
-
-def _recursive_expand_variant_matrix(original_test: _TestParams,
-                                     variant_matrix: List[_TestParams],
-                                     current_selection: List[Tuple[str, Any]],
-                                     test_variants: List[_TestParams]):
-    if len(current_selection) == len(variant_matrix):
-        # Selection for each variant is done, so add a new test to test_list.
-        test = dict(original_test)
-        variant_name_list = []
-        for variant_name, variant_params in current_selection:
-            test.update(variant_params)
-            variant_name_list.append(variant_name)
-            if test.get('append_variants_to_name', True):
-                test['name'] += '.' + variant_name
-        # Expose variant names as a list so they can be used from the yaml
-        # files, which helps with better naming of tests.
-        test.update({'variant_names': variant_name_list})
-        test_variants.append(test)
-    else:
-        # Continue the recursion with each possible selection for the current
-        # variant.
-        variant = variant_matrix[len(current_selection)]
-        for variant_options in variant.items():
-            current_selection.append(variant_options)
-            _recursive_expand_variant_matrix(original_test, variant_matrix,
-                                             current_selection, test_variants)
-            current_selection.pop()
-
-
-def _get_variants(test: _TestParams) -> List[_TestParams]:
-    current_selection = []
-    test_variants = []
-    variants = test.get('variants', [])
-    if not isinstance(variants, list):
+    js_reference = test.get('reference')
+    html_reference = test.get('html_reference')
+    if js_reference is not None and html_reference is not None:
         raise InvalidTestDefinitionError(
-            textwrap.dedent("""
-            Variants must be specified as a list of variant dimensions, e.g.:
-              variants:
-              - dimension1-variant1:
-                  param: ...
-                dimension1-variant2:
-                  param: ...
-              - dimension2-variant1:
-                  param: ...
-                dimension2-variant2:
-                  param: ..."""))
-    _recursive_expand_variant_matrix(test, variants, current_selection,
-                                     test_variants)
-    return test_variants
+            f'Test {name} is invalid, "reference" and "html_reference" can\'t '
+            'both be specified at the same time.')
+
+    ref_code = js_reference or html_reference
+    if ref_code is not None:
+        _write_reference_test(
+            js_reference is not None, templates, template_params, ref_code,
+            canvas_path if html_canvas_cfg.enabled else None,
+            offscreen_path if offscreen_canvas_cfg.enabled else None)
+    else:
+        _write_testharness_test(
+            templates, template_params,
+            canvas_path if html_canvas_cfg.enabled else None,
+            offscreen_path if offscreen_canvas_cfg.enabled else None)
 
 
-def generate_test_files(name_to_dir_file: str) -> None:
-    """Generate Canvas tests from YAML file definition."""
-    output_dirs = _OutputPaths(element='../element', offscreen='../offscreen')
-
-    jinja_env = jinja2.Environment(
-        loader=jinja2.PackageLoader('gentestutilsunion'),
-        keep_trailing_newline=True,
-        trim_blocks=True,
-        lstrip_blocks=True)
-
-    jinja_env.filters['double_quote_escape'] = _double_quote_escape
+def genTestUtils_union(TEMPLATEFILE: str, NAME2DIRFILE: str) -> None:
+    CANVASOUTPUTDIR = '../element'
+    CANVASIMAGEOUTPUTDIR = '../element'
+    OFFSCREENCANVASOUTPUTDIR = '../offscreen'
+    OFFSCREENCANVASIMAGEOUTPUTDIR = '../offscreen'
 
     # Run with --test argument to run unit tests.
     if len(sys.argv) > 1 and sys.argv[1] == '--test':
@@ -541,19 +468,17 @@ def generate_test_files(name_to_dir_file: str) -> None:
         doctest.testmod()
         sys.exit()
 
-    name_to_sub_dir = (yaml.safe_load(
-        pathlib.Path(name_to_dir_file).read_text(encoding='utf-8')))
+    templates = yaml.safe_load(pathlib.Path(TEMPLATEFILE).read_text())
+    name_to_sub_dir = yaml.safe_load(pathlib.Path(NAME2DIRFILE).read_text())
 
     tests = []
     test_yaml_directory = 'yaml-new'
-    yaml_files = [
+    TESTSFILES = [
         os.path.join(test_yaml_directory, f)
         for f in os.listdir(test_yaml_directory) if f.endswith('.yaml')
     ]
-    for t in sum([
-            yaml.safe_load(pathlib.Path(f).read_text(encoding='utf-8'))
-            for f in yaml_files
-    ], []):
+    for t in sum(
+        [yaml.safe_load(pathlib.Path(f).read_text()) for f in TESTSFILES], []):
         if 'DISABLED' in t:
             continue
         if 'meta' in t:
@@ -563,22 +488,59 @@ def generate_test_files(name_to_dir_file: str) -> None:
             tests.append(t)
 
     # Ensure the test output directories exist.
-    test_dirs = [output_dirs.element, output_dirs.offscreen]
+    testdirs = [
+        CANVASOUTPUTDIR, OFFSCREENCANVASOUTPUTDIR, CANVASIMAGEOUTPUTDIR,
+        OFFSCREENCANVASIMAGEOUTPUTDIR
+    ]
     for sub_dir in set(name_to_sub_dir.values()):
-        test_dirs.append(f'{output_dirs.element}/{sub_dir}')
-        test_dirs.append(f'{output_dirs.offscreen}/{sub_dir}')
-    for d in test_dirs:
+        testdirs.append('%s/%s' % (CANVASOUTPUTDIR, sub_dir))
+        testdirs.append('%s/%s' % (OFFSCREENCANVASOUTPUTDIR, sub_dir))
+    for d in testdirs:
         try:
             os.mkdir(d)
         except FileExistsError:
             pass  # Ignore if it already exists,
 
     used_tests = collections.defaultdict(set)
-    for test in tests:
-        test = _add_default_params(test)
-        for variant in _get_variants(test):
-            sub_dir = _get_test_sub_dir(variant['name'], name_to_sub_dir)
-            _generate_test(variant, jinja_env, used_tests,
-                           output_dirs.sub_path(sub_dir))
+    for original_test in tests:
+        variants = original_test.get('variants', {'': dict()})
+        for variant_name, variant_params in variants.items():
+            test = original_test.copy()
+            if variant_name or variant_params:
+                test['name'] += '.' + variant_name
+                test['code'] = test['code'] % variant_params
+                if 'reference' in test:
+                    test['reference'] = test['reference'] % variant_params
+                if 'html_reference' in test:
+                    test['html_reference'] = (
+                        test['html_reference'] % variant_params)
+                test.update(variant_params)
+
+            name = test['name']
+            print('\r(%s)' % name, ' ' * 32, '\t')
+
+            enabled_canvas_types = _get_enabled_canvas_types(test)
+
+            already_tested = used_tests[name].intersection(
+                enabled_canvas_types)
+            if already_tested:
+                raise InvalidTestDefinitionError(
+                    f'Test {name} is defined twice for types {already_tested}')
+            used_tests[name].update(enabled_canvas_types)
+
+            sub_dir = _get_test_sub_dir(name, name_to_sub_dir)
+            _generate_test(
+                test,
+                templates,
+                sub_dir,
+                html_canvas_cfg=TestConfig(
+                    out_dir=CANVASOUTPUTDIR,
+                    image_out_dir=CANVASIMAGEOUTPUTDIR,
+                    enabled=CanvasType.HTML_CANVAS in enabled_canvas_types),
+                offscreen_canvas_cfg=TestConfig(
+                    out_dir=OFFSCREENCANVASOUTPUTDIR,
+                    image_out_dir=OFFSCREENCANVASIMAGEOUTPUTDIR,
+                    enabled=CanvasType.OFFSCREEN_CANVAS in
+                    enabled_canvas_types))
 
     print()

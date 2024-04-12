@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_LOGIN_SECURITY_TOKEN_SESSION_CONTROLLER_FACTORY_H_
 #define CHROME_BROWSER_ASH_LOGIN_SECURITY_TOKEN_SESSION_CONTROLLER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/ash/login/security_token_session_controller.h"
 #include "chrome/browser/certificate_provider/certificate_provider_service_factory.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
@@ -23,7 +23,8 @@ class SecurityTokenSessionControllerFactory
   static SecurityTokenSessionControllerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<SecurityTokenSessionControllerFactory>;
+  friend struct base::DefaultSingletonTraits<
+      SecurityTokenSessionControllerFactory>;
 
   SecurityTokenSessionControllerFactory();
   SecurityTokenSessionControllerFactory(
@@ -33,7 +34,7 @@ class SecurityTokenSessionControllerFactory
   ~SecurityTokenSessionControllerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

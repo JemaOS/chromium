@@ -82,12 +82,12 @@ void OsUpdatesReporter::MaybeReportEvent(
     return;
   }
 
-  std::optional<std::string> os_version = chromeos::version_loader::GetVersion(
+  absl::optional<std::string> os_version = chromeos::version_loader::GetVersion(
       chromeos::version_loader::VERSION_SHORT);
   record.set_current_os_version(os_version.value_or("0.0.0.0"));
 
   record.set_current_channel(
-      std::string(version_info::GetChannelString(chrome::GetChannel())));
+      version_info::GetChannelString(chrome::GetChannel()));
 
   record.set_event_timestamp_sec(base::Time::Now().ToTimeT());
 

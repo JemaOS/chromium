@@ -33,9 +33,6 @@ class UninstallDialog;
 
 namespace apps {
 
-using OnUninstallForTestingCallback = base::OnceCallback<void(bool)>;
-using OnDialogCreatedCallback = base::OnceCallback<void(views::Widget*)>;
-
 // Currently, app uninstallation on Chrome OS invokes a specific dialog per app
 // type, Chrome Apps / PWAs, ARC apps and Crostini. There are 3 separate views
 // for app uninstalling, which are subtly different from each other.
@@ -74,7 +71,7 @@ class UninstallDialog {
     UninstallDialog* uninstall_dialog() const { return uninstall_dialog_; }
 
    private:
-    raw_ptr<UninstallDialog, AcrossTasksDanglingUntriaged> uninstall_dialog_;
+    raw_ptr<UninstallDialog, DanglingUntriaged> uninstall_dialog_;
   };
 
   // Called when the dialog closes after the user has made a decision about
@@ -88,6 +85,8 @@ class UninstallDialog {
                               bool report_rebuse,
                               UninstallDialog* uninstall_dialog)>;
 
+  using OnUninstallForTestingCallback = base::OnceCallback<void(bool)>;
+
   UninstallDialog(Profile* profile,
                   apps::AppType app_type,
                   const std::string& app_id,
@@ -100,9 +99,7 @@ class UninstallDialog {
 
   // Loads the app icon to show the icon in the uninstall dialog before creating
   // the dialog view.
-  void PrepareToShow(IconKey icon_key,
-                     apps::IconLoader* icon_loader,
-                     int32_t icon_size);
+  void PrepareToShow(IconKey icon_key, apps::IconLoader* icon_loader);
 
   // Closes this dialog if it is open. If the dialog is not open yet because
   // icons are still loading, immediately runs `uninstall_callback_` so that
@@ -131,7 +128,7 @@ class UninstallDialog {
 
   OnUninstallForTestingCallback uninstall_dialog_created_callback_;
 
-  raw_ptr<views::Widget, AcrossTasksDanglingUntriaged> widget_ = nullptr;
+  raw_ptr<views::Widget, DanglingUntriaged> widget_ = nullptr;
 
   // Tracks whether |parent_window_| got destroyed.
   std::unique_ptr<views::NativeWindowTracker> parent_window_tracker_;

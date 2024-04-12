@@ -4,11 +4,14 @@
 
 #include "third_party/blink/renderer/modules/indexeddb/idb_request_queue_item.h"
 
+#include <algorithm>
+#include <cstdint>
+#include <iterator>
 #include <memory>
 #include <utility>
 
+#include "base/check.h"
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
@@ -17,7 +20,10 @@
 #include "third_party/blink/renderer/modules/indexeddb/idb_request_loader.h"
 #include "third_party/blink/renderer/modules/indexeddb/idb_value.h"
 #include "third_party/blink/renderer/modules/indexeddb/idb_value_wrapping.h"
+#include "third_party/blink/renderer/modules/indexeddb/web_idb_cursor.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
+#include "third_party/blink/renderer/platform/wtf/vector.h"
+#include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 
 namespace blink {
 
@@ -114,140 +120,178 @@ class IDBDatabaseGetAllResultSinkImpl
 
  private:
   mojo::Receiver<mojom::blink::IDBDatabaseGetAllResultSink> receiver_;
-  raw_ptr<IDBRequestQueueItem> owner_;
+  IDBRequestQueueItem* owner_;
   bool key_only_;
 
   WTF::Vector<mojom::blink::IDBReturnValuePtr> values_;
   WTF::Vector<std::unique_ptr<IDBKey>> keys_;
 };
 
-IDBRequestQueueItem::IDBRequestQueueItem(IDBRequest* request,
-                                         DOMException* error,
-                                         base::OnceClosure on_result_ready)
+IDBRequestQueueItem::IDBRequestQueueItem(
+    IDBRequest* request,
+    DOMException* error,
+    base::OnceClosure on_result_load_complete)
     : request_(request),
       error_(error),
-      on_result_ready_(std::move(on_result_ready)),
-      response_type_(kError) {
-  DCHECK(on_result_ready_);
+      on_result_load_complete_(std::move(on_result_load_complete)),
+      response_type_(kError),
+      ready_(true) {
+  DCHECK(on_result_load_complete_);
   DCHECK_EQ(request->queue_item_, nullptr);
   request_->queue_item_ = this;
 }
 
-IDBRequestQueueItem::IDBRequestQueueItem(IDBRequest* request,
-                                         int64_t value,
-                                         base::OnceClosure on_result_ready)
+IDBRequestQueueItem::IDBRequestQueueItem(
+    IDBRequest* request,
+    int64_t value,
+    base::OnceClosure on_result_load_complete)
     : request_(request),
-      on_result_ready_(std::move(on_result_ready)),
+      on_result_load_complete_(std::move(on_result_load_complete)),
       int64_value_(value),
-      response_type_(kNumber) {
-  DCHECK(on_result_ready_);
+      response_type_(kNumber),
+      ready_(true) {
+  DCHECK(on_result_load_complete_);
   DCHECK_EQ(request->queue_item_, nullptr);
   request_->queue_item_ = this;
 }
 
-IDBRequestQueueItem::IDBRequestQueueItem(IDBRequest* request,
-                                         base::OnceClosure on_result_ready)
+IDBRequestQueueItem::IDBRequestQueueItem(
+    IDBRequest* request,
+    base::OnceClosure on_result_load_complete)
     : request_(request),
-      on_result_ready_(std::move(on_result_ready)),
-      response_type_(kVoid) {
-  DCHECK(on_result_ready_);
+      on_result_load_complete_(std::move(on_result_load_complete)),
+      response_type_(kVoid),
+      ready_(true) {
+  DCHECK(on_result_load_complete_);
   DCHECK_EQ(request->queue_item_, nullptr);
   request_->queue_item_ = this;
 }
 
-IDBRequestQueueItem::IDBRequestQueueItem(IDBRequest* request,
-                                         std::unique_ptr<IDBKey> key,
-                                         base::OnceClosure on_result_ready)
+IDBRequestQueueItem::IDBRequestQueueItem(
+    IDBRequest* request,
+    std::unique_ptr<IDBKey> key,
+    base::OnceClosure on_result_load_complete)
     : request_(request),
       key_(std::move(key)),
-      on_result_ready_(std::move(on_result_ready)),
-      response_type_(kKey) {
-  DCHECK(on_result_ready_);
+      on_result_load_complete_(std::move(on_result_load_complete)),
+      response_type_(kKey),
+      ready_(true) {
+  DCHECK(on_result_load_complete_);
   DCHECK_EQ(request->queue_item_, nullptr);
   request_->queue_item_ = this;
 }
 
-IDBRequestQueueItem::IDBRequestQueueItem(IDBRequest* request,
-                                         std::unique_ptr<IDBValue> value,
-                                         base::OnceClosure on_result_ready)
+IDBRequestQueueItem::IDBRequestQueueItem(
+    IDBRequest* request,
+    std::unique_ptr<IDBValue> value,
+    bool attach_loader,
+    base::OnceClosure on_result_load_complete)
     : request_(request),
-      on_result_ready_(std::move(on_result_ready)),
-      response_type_(kValue) {
-  DCHECK(on_result_ready_);
+      on_result_load_complete_(std::move(on_result_load_complete)),
+      response_type_(kValue),
+      ready_(!attach_loader) {
+  DCHECK(on_result_load_complete_);
   DCHECK_EQ(request->queue_item_, nullptr);
   request_->queue_item_ = this;
-  bool is_wrapped = IDBValueUnwrapper::IsWrapped(value.get());
   values_.push_back(std::move(value));
-  if (is_wrapped) {
+  if (attach_loader)
     loader_ = MakeGarbageCollected<IDBRequestLoader>(this, values_);
-  }
 }
 
 IDBRequestQueueItem::IDBRequestQueueItem(
     IDBRequest* request,
     Vector<std::unique_ptr<IDBValue>> values,
-    base::OnceClosure on_result_ready)
+    bool attach_loader,
+    base::OnceClosure on_result_load_complete)
     : request_(request),
       values_(std::move(values)),
-      on_result_ready_(std::move(on_result_ready)),
-      response_type_(kValueArray) {
-  DCHECK(on_result_ready_);
+      on_result_load_complete_(std::move(on_result_load_complete)),
+      response_type_(kValueArray),
+      ready_(!attach_loader) {
+  DCHECK(on_result_load_complete_);
   DCHECK_EQ(request->queue_item_, nullptr);
   request_->queue_item_ = this;
-  if (IDBValueUnwrapper::IsWrapped(values_)) {
+  if (attach_loader)
     loader_ = MakeGarbageCollected<IDBRequestLoader>(this, values_);
-  }
 }
 
-IDBRequestQueueItem::IDBRequestQueueItem(IDBRequest* request,
-                                         std::unique_ptr<IDBKey> key,
-                                         std::unique_ptr<IDBKey> primary_key,
-                                         std::unique_ptr<IDBValue> value,
-                                         base::OnceClosure on_result_ready)
+IDBRequestQueueItem::IDBRequestQueueItem(
+    IDBRequest* request,
+    Vector<Vector<std::unique_ptr<IDBValue>>> all_values,
+    bool attach_loader,
+    base::OnceClosure on_result_load_complete)
     : request_(request),
-      key_(std::move(key)),
-      primary_key_(std::move(primary_key)),
-      on_result_ready_(std::move(on_result_ready)),
-      response_type_(kKeyPrimaryKeyValue) {
-  DCHECK(on_result_ready_);
+      on_result_load_complete_(std::move(on_result_load_complete)),
+      response_type_(kValueArrayArray),
+      ready_(!attach_loader) {
+  DCHECK(on_result_load_complete_);
   DCHECK_EQ(request->queue_item_, nullptr);
   request_->queue_item_ = this;
-  bool is_wrapped = IDBValueUnwrapper::IsWrapped(value.get());
-  values_.push_back(std::move(value));
-  if (is_wrapped) {
+
+  all_values_size_info_.ReserveInitialCapacity(all_values.size());
+  for (Vector<std::unique_ptr<IDBValue>>& values : all_values) {
+    all_values_size_info_.push_back(values.size());
+    values_.AppendRange(std::make_move_iterator(values.begin()),
+                        std::make_move_iterator(values.end()));
+  }
+
+  if (attach_loader) {
     loader_ = MakeGarbageCollected<IDBRequestLoader>(this, values_);
   }
 }
 
 IDBRequestQueueItem::IDBRequestQueueItem(
     IDBRequest* request,
-    mojo::PendingAssociatedRemote<mojom::blink::IDBCursor> pending_cursor,
     std::unique_ptr<IDBKey> key,
     std::unique_ptr<IDBKey> primary_key,
     std::unique_ptr<IDBValue> value,
-    base::OnceClosure on_result_ready)
+    bool attach_loader,
+    base::OnceClosure on_result_load_complete)
     : request_(request),
       key_(std::move(key)),
       primary_key_(std::move(primary_key)),
-      pending_cursor_(std::move(pending_cursor)),
-      on_result_ready_(std::move(on_result_ready)),
-      response_type_(kCursorKeyPrimaryKeyValue) {
-  DCHECK(on_result_ready_);
+      on_result_load_complete_(std::move(on_result_load_complete)),
+      response_type_(kKeyPrimaryKeyValue),
+      ready_(!attach_loader) {
+  DCHECK(on_result_load_complete_);
   DCHECK_EQ(request->queue_item_, nullptr);
   request_->queue_item_ = this;
-  bool is_wrapped = IDBValueUnwrapper::IsWrapped(value.get());
   values_.push_back(std::move(value));
-  if (is_wrapped) {
+  if (attach_loader)
     loader_ = MakeGarbageCollected<IDBRequestLoader>(this, values_);
-  }
+}
+
+IDBRequestQueueItem::IDBRequestQueueItem(
+    IDBRequest* request,
+    std::unique_ptr<WebIDBCursor> cursor,
+    std::unique_ptr<IDBKey> key,
+    std::unique_ptr<IDBKey> primary_key,
+    std::unique_ptr<IDBValue> value,
+    bool attach_loader,
+    base::OnceClosure on_result_load_complete)
+    : request_(request),
+      key_(std::move(key)),
+      primary_key_(std::move(primary_key)),
+      cursor_(std::move(cursor)),
+      on_result_load_complete_(std::move(on_result_load_complete)),
+      response_type_(kCursorKeyPrimaryKeyValue),
+      ready_(!attach_loader) {
+  DCHECK(on_result_load_complete_);
+  DCHECK_EQ(request->queue_item_, nullptr);
+  request_->queue_item_ = this;
+  values_.push_back(std::move(value));
+  if (attach_loader)
+    loader_ = MakeGarbageCollected<IDBRequestLoader>(this, values_);
 }
 
 IDBRequestQueueItem::IDBRequestQueueItem(
     IDBRequest* request,
     bool key_only,
     mojo::PendingReceiver<mojom::blink::IDBDatabaseGetAllResultSink> receiver,
-    base::OnceClosure on_result_ready)
-    : request_(request), on_result_ready_(std::move(on_result_ready)) {
+    base::OnceClosure on_result_load_complete)
+    : request_(request),
+      on_result_load_complete_(std::move(on_result_load_complete)),
+      ready_(false) {
   DCHECK_EQ(request->queue_item_, nullptr);
   request_->queue_item_ = this;
   get_all_sink_ = std::make_unique<IDBDatabaseGetAllResultSinkImpl>(
@@ -257,16 +301,16 @@ IDBRequestQueueItem::IDBRequestQueueItem(
 IDBRequestQueueItem::~IDBRequestQueueItem() {
 #if DCHECK_IS_ON()
   DCHECK(ready_);
-  DCHECK(result_sent_);
+  DCHECK(callback_fired_);
 #endif  // DCHECK_IS_ON()
 }
 
 void IDBRequestQueueItem::OnResultLoadComplete() {
-  CHECK(!ready_);
+  DCHECK(!ready_);
   ready_ = true;
 
-  CHECK(on_result_ready_);
-  std::move(on_result_ready_).Run();
+  DCHECK(on_result_load_complete_);
+  std::move(on_result_load_complete_).Run();
 }
 
 void IDBRequestQueueItem::OnResultLoadComplete(DOMException* error) {
@@ -307,8 +351,6 @@ void IDBRequestQueueItem::StartLoading() {
   if (loader_) {
     DCHECK(!ready_);
     loader_->Start();
-  } else {
-    OnResultLoadComplete();
   }
 }
 
@@ -323,7 +365,7 @@ void IDBRequestQueueItem::CancelLoading() {
     loader_->Cancel();
     loader_.Clear();
 
-    // IDBRequestLoader::Cancel() should not call any of the SendResult
+    // IDBRequestLoader::Cancel() should not call any of the EnqueueResponse
     // variants.
     DCHECK(!ready_);
   }
@@ -334,13 +376,13 @@ void IDBRequestQueueItem::CancelLoading() {
   OnResultLoadComplete();
 }
 
-void IDBRequestQueueItem::SendResult() {
+void IDBRequestQueueItem::EnqueueResponse() {
   DCHECK(ready_);
 #if DCHECK_IS_ON()
-  DCHECK(!result_sent_);
-  result_sent_ = true;
+  DCHECK(!callback_fired_);
+  callback_fired_ = true;
 #endif  // DCHECK_IS_ON()
-  CHECK_EQ(request_->queue_item_, this);
+  DCHECK_EQ(request_->queue_item_, this);
   request_->queue_item_ = nullptr;
 
   switch (response_type_) {
@@ -350,52 +392,61 @@ void IDBRequestQueueItem::SendResult() {
 
     case kCursorKeyPrimaryKeyValue:
       DCHECK_EQ(values_.size(), 1U);
-      request_->SendResultCursor(std::move(pending_cursor_), std::move(key_),
-                                 std::move(primary_key_),
-                                 std::move(values_.front()));
+      request_->EnqueueResponse(std::move(cursor_), std::move(key_),
+                                std::move(primary_key_),
+                                std::move(values_.front()));
       break;
 
     case kError:
       DCHECK(error_);
-      request_->SendError(error_);
+      request_->EnqueueResponse(error_);
       break;
 
     case kKeyPrimaryKeyValue:
       DCHECK_EQ(values_.size(), 1U);
-      request_->SendResultAdvanceCursor(
-          std::move(key_), std::move(primary_key_), std::move(values_.front()));
+      request_->EnqueueResponse(std::move(key_), std::move(primary_key_),
+                                std::move(values_.front()));
       break;
 
     case kKey:
       DCHECK_EQ(values_.size(), 0U);
-
-      if (key_ && key_->IsValid()) {
-        request_->SendResult(MakeGarbageCollected<IDBAny>(std::move(key_)));
-      } else {
-        request_->SendResult(
-            MakeGarbageCollected<IDBAny>(IDBAny::kUndefinedType));
-      }
-
+      request_->EnqueueResponse(std::move(key_));
       break;
 
     case kNumber:
       DCHECK_EQ(values_.size(), 0U);
-      request_->SendResult(MakeGarbageCollected<IDBAny>(int64_value_));
+      request_->EnqueueResponse(int64_value_);
       break;
 
     case kValue:
       DCHECK_EQ(values_.size(), 1U);
-      request_->SendResultValue(std::move(values_.front()));
+      request_->EnqueueResponse(std::move(values_.front()));
       break;
 
     case kValueArray:
-      request_->SendResult(MakeGarbageCollected<IDBAny>(std::move(values_)));
+      request_->EnqueueResponse(std::move(values_));
       break;
+
+    case kValueArrayArray: {
+      // rebuild all_values (2d vector)
+      wtf_size_t current_value_idx = 0;
+      Vector<Vector<std::unique_ptr<IDBValue>>> all_values;
+      for (auto s : all_values_size_info_) {
+        Vector<std::unique_ptr<IDBValue>> all_value;
+        all_value.AppendRange(
+            std::make_move_iterator(values_.begin() + current_value_idx),
+            std::make_move_iterator(values_.begin() + current_value_idx + s));
+        all_values.push_back(std::move(all_value));
+        current_value_idx += s;
+      }
+
+      request_->EnqueueResponse(std::move(all_values));
+      break;
+    }
 
     case kVoid:
       DCHECK_EQ(values_.size(), 0U);
-      request_->SendResult(
-          MakeGarbageCollected<IDBAny>(IDBAny::kUndefinedType));
+      request_->EnqueueResponse();
       break;
   }
 }

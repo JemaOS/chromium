@@ -16,6 +16,7 @@ constexpr float kHoldingSpaceSelectedOverlayOpacity = 0.3f;
 constexpr gfx::Insets kHoldingSpaceChildBubblePadding(16);
 constexpr gfx::Size kHoldingSpaceScreenCaptureSize(104, 80);
 constexpr int kHoldingSpaceBubbleContainerChildSpacing = 8;
+constexpr int kHoldingSpaceBubbleWidth = 360;
 constexpr int kHoldingSpaceChildBubbleChildSpacing = 16;
 constexpr int kHoldingSpaceChipCountPerRow = 2;
 constexpr int kHoldingSpaceChipIconSize = 24;
@@ -45,10 +46,8 @@ enum class HoldingSpaceCommandId {
 
   // In-progress item commands.
   kCancelItem,
-  kOpenItem,
-  kPauseItem,
   kResumeItem,
-  kViewItemDetailsInBrowser,
+  kPauseItem,
 
   // Tray commands.
   kHidePreviews,

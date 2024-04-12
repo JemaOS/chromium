@@ -16,10 +16,10 @@
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/sync/base/progress_marker_map.h"
 #include "components/sync/base/user_selectable_type.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_service_observer.h"
 #include "components/sync/engine/cycle/sync_cycle_snapshot.h"
 #include "components/sync/protocol/sync_enums.pb.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_service_observer.h"
 #include "components/sync/test/test_sync_service.h"
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
@@ -27,6 +27,9 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace ash {
+
+constexpr char kAppsSyncOptinIOHistogram[] =
+    "Cros.AppsSyncOptinFileWriteAttempts";
 
 namespace {
 
@@ -69,7 +72,8 @@ class FakeSyncService : public syncer::TestSyncService {
   void SetAppsyncOptin(bool opted_in) {
     if (opted_in) {
       GetUserSettings()->SetSelectedOsTypes(
-          false, {syncer::UserSelectableOsType::kOsApps});
+          false, syncer::UserSelectableOsTypeSet(
+                     syncer::UserSelectableOsType::kOsApps));
     } else {
       GetUserSettings()->SetSelectedOsTypes(false,
                                             syncer::UserSelectableOsTypeSet());
@@ -164,6 +168,7 @@ TEST_F(SyncAppsyncOptinClientTest, ServiceCreatesDirectory) {
 
 TEST_F(SyncAppsyncOptinClientTest, ServiceCreatesOptInFile) {
   EXPECT_TRUE(base::IsDirectoryEmpty(tmp_dir_path_));
+  base::HistogramTester histogram_tester;
 
   test_sync_service_->SetAppsyncOptin(false);
   test_appsync_optin_client_ = std::make_unique<SyncAppsyncOptinClient>(
@@ -175,6 +180,10 @@ TEST_F(SyncAppsyncOptinClientTest, ServiceCreatesOptInFile) {
 
   EXPECT_FALSE(base::IsDirectoryEmpty(tmp_dir_path_));
   EXPECT_TRUE(base::PathExists(tmp_dir_path_.Append("opted-in")));
+
+  histogram_tester.ExpectUniqueSample(
+      kAppsSyncOptinIOHistogram,
+      SyncAppsyncOptinClient::AppsSyncOptinFileWrite::kAttempt, 1);
 }
 
 TEST_F(SyncAppsyncOptinClientTest, LoggedInUser) {
@@ -212,6 +221,8 @@ TEST_F(SyncAppsyncOptinClientTest, LoggedInUserWithPermission) {
 }
 
 TEST_F(SyncAppsyncOptinClientTest, UserChangesPermission) {
+  base::HistogramTester histogram_tester;
+
   test_sync_service_->SetAppsyncOptin(true);
   test_appsync_optin_client_ = std::make_unique<SyncAppsyncOptinClient>(
       test_sync_service_.get(), test_user_manager_.get(),
@@ -237,6 +248,10 @@ TEST_F(SyncAppsyncOptinClientTest, UserChangesPermission) {
   EXPECT_TRUE(
       base::ReadFileToString(tmp_dir_path_.Append("opted-in"), &contents));
   EXPECT_EQ("0", contents);
+
+  histogram_tester.ExpectUniqueSample(
+      kAppsSyncOptinIOHistogram,
+      SyncAppsyncOptinClient::AppsSyncOptinFileWrite::kAttempt, 2);
 }
 
 TEST_F(SyncAppsyncOptinClientTest, WriteFails) {
@@ -249,6 +264,13 @@ TEST_F(SyncAppsyncOptinClientTest, WriteFails) {
   task_environment_.RunUntilIdle();
 
   EXPECT_TRUE(base::IsDirectoryEmpty(tmp_dir_path_));
+
+  histogram_tester.ExpectBucketCount(
+      kAppsSyncOptinIOHistogram,
+      SyncAppsyncOptinClient::AppsSyncOptinFileWrite::kAttempt, 1);
+  histogram_tester.ExpectBucketCount(
+      kAppsSyncOptinIOHistogram,
+      SyncAppsyncOptinClient::AppsSyncOptinFileWrite::kFailure, 1);
 }
 
 TEST_F(SyncAppsyncOptinClientTest, RemovesOldState) {

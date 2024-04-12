@@ -52,9 +52,9 @@ gfx::Rect GetChooserAnchorRect(Browser* browser) {
 // View implementation for the chooser bubble.
 class ChooserBubbleUiViewDelegate : public LocationBarBubbleDelegateView,
                                     public views::TableViewObserver {
-  METADATA_HEADER(ChooserBubbleUiViewDelegate, LocationBarBubbleDelegateView)
-
  public:
+  METADATA_HEADER(ChooserBubbleUiViewDelegate);
+
   ChooserBubbleUiViewDelegate(
       Browser* browser,
       content::WebContents* web_contents,
@@ -184,7 +184,7 @@ void ChooserBubbleUiViewDelegate::Close() {
     GetWidget()->CloseWithReason(views::Widget::ClosedReason::kUnspecified);
 }
 
-BEGIN_METADATA(ChooserBubbleUiViewDelegate)
+BEGIN_METADATA(ChooserBubbleUiViewDelegate, LocationBarBubbleDelegateView)
 END_METADATA
 
 namespace chrome {
@@ -197,7 +197,7 @@ base::OnceClosure ShowDeviceChooserDialogForExtension(
     const extensions::Extension* extension,
     std::unique_ptr<permissions::ChooserController> controller) {
   auto* contents = content::WebContents::FromRenderFrameHost(owner);
-  auto* browser = chrome::FindBrowserWithTab(contents);
+  auto* browser = chrome::FindBrowserWithWebContents(contents);
   if (!browser)
     return base::DoNothing();
 
@@ -253,7 +253,7 @@ base::OnceClosure ShowDeviceChooserDialog(
   }
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
-  auto* browser = chrome::FindBrowserWithTab(contents);
+  auto* browser = chrome::FindBrowserWithWebContents(contents);
   if (!browser)
     return base::DoNothing();
 

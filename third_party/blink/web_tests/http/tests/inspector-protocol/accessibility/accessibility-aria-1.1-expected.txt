@@ -102,8 +102,7 @@ Tests ARIA 1.1 accessibility markup.
                         nodeResult : h3#err
                     }
                 ]
-                type : idrefList
-                value : err
+                type : idref
             }
         }
     ]
@@ -171,7 +170,7 @@ Tests ARIA 1.1 accessibility markup.
     ]
     role : {
         type : role
-        value : image
+        value : img
     }
 }
 {

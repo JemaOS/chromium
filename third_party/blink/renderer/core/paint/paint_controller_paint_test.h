@@ -8,8 +8,6 @@
 #include "base/check_op.h"
 #include "cc/paint/paint_op.h"
 #include "cc/paint/paint_op_buffer_iterator.h"
-#include "third_party/blink/renderer/core/dom/events/add_event_listener_options_resolved.h"
-#include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
@@ -110,7 +108,7 @@ class PaintControllerPaintTestBase : public RenderingTest {
   // hit test, visual viewport, overlays, etc. Includes LayoutView scrolling
   // background.
   PaintChunkSubset ContentPaintChunks() {
-    const auto& chunks = RootPaintController().GetPaintChunks();
+    const auto& chunks = RootPaintController().PaintChunks();
     wtf_size_t begin_index = 0;
     wtf_size_t end_index = chunks.size();
     while (begin_index < end_index) {
@@ -125,28 +123,12 @@ class PaintControllerPaintTestBase : public RenderingTest {
            IsNotContentType(chunks[end_index - 1].id.type)) {
       end_index--;
     }
-    const auto& artifact = RootPaintController().GetPaintArtifact();
+    auto artifact = RootPaintController().GetPaintArtifactShared();
     PaintChunkSubset subset(artifact, chunks[begin_index]);
     for (wtf_size_t i = begin_index + 1; i < end_index; i++) {
       subset.Merge(PaintChunkSubset(artifact, chunks[i]));
     }
     return subset;
-  }
-
-  class MockEventListener final : public NativeEventListener {
-   public:
-    void Invoke(ExecutionContext*, Event*) override {}
-  };
-
-  void SetWheelEventListener(const char* element_id) {
-    auto* element = GetDocument().getElementById(AtomicString(element_id));
-    auto* listener = MakeGarbageCollected<MockEventListener>();
-    auto* resolved_options =
-        MakeGarbageCollected<AddEventListenerOptionsResolved>();
-    resolved_options->setPassive(false);
-    element->addEventListener(event_type_names::kWheel, listener,
-                              resolved_options);
-    UpdateAllLifecyclePhasesForTest();
   }
 };
 

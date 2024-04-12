@@ -7,7 +7,6 @@
 
 #include "base/functional/callback.h"
 #include "base/scoped_observation.h"
-#include "chrome/browser/ash/login/test/test_condition_waiter.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_observer.h"
 
@@ -17,8 +16,7 @@ namespace ash {
 // When waiting for the OOBE UI window to be hidden, it handles the window
 // getting destroyed. Window getting destroyed while waiting for the window
 // to become visible will stop the waiter, but will cause a test failure.
-class OobeWindowVisibilityWaiter : public aura::WindowObserver,
-                                   public test::TestConditionWaiter {
+class OobeWindowVisibilityWaiter : public aura::WindowObserver {
  public:
   explicit OobeWindowVisibilityWaiter(bool target_visibilty);
 
@@ -28,7 +26,7 @@ class OobeWindowVisibilityWaiter : public aura::WindowObserver,
 
   ~OobeWindowVisibilityWaiter() override;
 
-  void Wait() override;
+  void Wait();
 
   // aura::WindowObserver:
   void OnWindowVisibilityChanged(aura::Window* window, bool visible) override;

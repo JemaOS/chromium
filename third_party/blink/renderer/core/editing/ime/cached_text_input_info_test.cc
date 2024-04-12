@@ -30,9 +30,8 @@ class CachedTextInputInfoTest : public EditingTestBase {
 };
 
 TEST_F(CachedTextInputInfoTest, Basic) {
-  GetFrame().Selection().SetSelection(
-      SetSelectionTextToBody("<div contenteditable id=\"sample\">a|b</div>"),
-      SetSelectionOptions());
+  GetFrame().Selection().SetSelectionAndEndTyping(
+      SetSelectionTextToBody("<div contenteditable id=\"sample\">a|b</div>"));
   const Element& sample = *GetElementById("sample");
 
   EXPECT_EQ(PlainTextRange(1, 1),
@@ -47,15 +46,14 @@ TEST_F(CachedTextInputInfoTest, Basic) {
 
 // http://crbug.com/1382425
 TEST_F(CachedTextInputInfoTest, InlineElementEditable) {
-  GetFrame().Selection().SetSelection(
-      SetSelectionTextToBody("<span contenteditable><img>|a</img></span>"),
-      SetSelectionOptions());
+  GetFrame().Selection().SetSelectionAndEndTyping(
+      SetSelectionTextToBody("<span contenteditable><img>|a</img></span>"));
 
   EXPECT_EQ(PlainTextRange(1, 1),
             GetInputMethodController().GetSelectionOffsets());
   EXPECT_EQ(String(u"\uFFFCa"), GetCachedTextInputInfo().GetText());
 
-  auto& span = *GetDocument().QuerySelector(AtomicString("span"));
+  auto& span = *GetDocument().QuerySelector("span");
   span.replaceChild(Text::Create(GetDocument(), "12345"), span.firstChild());
 
   EXPECT_EQ(PlainTextRange(5, 5),
@@ -69,11 +67,10 @@ TEST_F(CachedTextInputInfoTest, PlaceholderBRInTextArea) {
   auto& target = *To<TextControlElement>(GetElementById("target"));
 
   // Inner editor is <div>abc<br></div>.
-  GetFrame().Selection().SetSelection(
+  GetFrame().Selection().SetSelectionAndEndTyping(
       SelectionInDOMTree::Builder()
           .Collapse(Position::LastPositionInNode(*target.InnerEditorElement()))
-          .Build(),
-      SetSelectionOptions());
+          .Build());
 
   EXPECT_EQ(PlainTextRange(4, 4),
             GetInputMethodController().GetSelectionOffsets());
@@ -90,11 +87,10 @@ TEST_F(CachedTextInputInfoTest, PlaceholderBROnlyInTextArea) {
   GetDocument().execCommand("delete", false, "", ASSERT_NO_EXCEPTION);
 
   // Inner editor is <div><br></div>.
-  GetFrame().Selection().SetSelection(
+  GetFrame().Selection().SetSelectionAndEndTyping(
       SelectionInDOMTree::Builder()
           .Collapse(Position::LastPositionInNode(*target.InnerEditorElement()))
-          .Build(),
-      SetSelectionOptions());
+          .Build());
 
   EXPECT_EQ(PlainTextRange(0, 0),
             GetInputMethodController().GetSelectionOffsets());
@@ -104,10 +100,8 @@ TEST_F(CachedTextInputInfoTest, PlaceholderBROnlyInTextArea) {
 TEST_F(CachedTextInputInfoTest, RelayoutBoundary) {
   InsertStyleElement(
       "#sample { contain: strict; width: 100px; height: 100px; }");
-  GetFrame().Selection().SetSelection(
-      SetSelectionTextToBody(
-          "<div contenteditable><div id=\"sample\">^a|b</div>"),
-      SetSelectionOptions());
+  GetFrame().Selection().SetSelectionAndEndTyping(SetSelectionTextToBody(
+      "<div contenteditable><div id=\"sample\">^a|b</div>"));
   const Element& sample = *GetElementById("sample");
   ASSERT_TRUE(sample.GetLayoutObject()->IsRelayoutBoundary());
 
@@ -123,12 +117,10 @@ TEST_F(CachedTextInputInfoTest, RelayoutBoundary) {
 
 // http://crbug.com/1292516
 TEST_F(CachedTextInputInfoTest, PositionAbsolute) {
-  GetFrame().Selection().SetSelection(
-      SetSelectionTextToBody(
-          "<div contenteditable>"
-          "<p id=sample style='position:absolute'>ab|<b>cd</b></p>"
-          "</div>"),
-      SetSelectionOptions());
+  GetFrame().Selection().SetSelectionAndEndTyping(SetSelectionTextToBody(
+      "<div contenteditable>"
+      "<p id=sample style='position:absolute'>ab|<b>cd</b></p>"
+      "</div>"));
 
   const auto& sample = *GetElementById("sample");
   auto& text_ab = *To<Text>(sample.firstChild());
@@ -145,9 +137,8 @@ TEST_F(CachedTextInputInfoTest, PositionAbsolute) {
   EXPECT_EQ("abABcd", GetCachedTextInputInfo().GetText());
 
   // Move caret after "cd"
-  GetFrame().Selection().SetSelection(
-      SelectionInDOMTree::Builder().Collapse(Position(text_cd, 2)).Build(),
-      SetSelectionOptions());
+  GetFrame().Selection().SetSelectionAndEndTyping(
+      SelectionInDOMTree::Builder().Collapse(Position(text_cd, 2)).Build());
 
   // Insert "CD" after "cd"
   GetDocument().execCommand("insertText", false, "CD", ASSERT_NO_EXCEPTION);
@@ -159,11 +150,10 @@ TEST_F(CachedTextInputInfoTest, PositionAbsolute) {
 
 // http://crbug.com/1228373
 TEST_F(CachedTextInputInfoTest, ShadowTree) {
-  GetFrame().Selection().SetSelection(
+  GetFrame().Selection().SetSelectionAndEndTyping(
       SetSelectionTextToBody("<div id=host><template data-mode=open>"
                              "<a>012</a><b>3^45</b>67|8"
-                             "</template></div>"),
-      SetSelectionOptions());
+                             "</template></div>"));
 
   EXPECT_EQ(PlainTextRange(4, 8),
             GetInputMethodController().GetSelectionOffsets());
@@ -174,11 +164,10 @@ TEST_F(CachedTextInputInfoTest, ShadowTree) {
                            shadow_root.firstChild());
 
   // Ask |CachedTextInputInfo| to compute |PlainTextRange| for selection.
-  GetFrame().Selection().SetSelection(
+  GetFrame().Selection().SetSelectionAndEndTyping(
       SelectionInDOMTree::Builder()
           .Collapse(Position(*To<Text>(shadow_root.lastChild()), 0))
-          .Build(),
-      SetSelectionOptions());
+          .Build());
 
   EXPECT_EQ(PlainTextRange(9, 9),
             GetInputMethodController().GetSelectionOffsets());
@@ -186,11 +175,9 @@ TEST_F(CachedTextInputInfoTest, ShadowTree) {
 
 // http://crbug.com/1228635
 TEST_F(CachedTextInputInfoTest, VisibilityHiddenToVisible) {
-  GetFrame().Selection().SetSelection(
-      SetSelectionTextToBody(
-          "<div contenteditable id=sample>"
-          "<b id=target style='visibility: hidden'>A</b><b>^Z|</b></div>"),
-      SetSelectionOptions());
+  GetFrame().Selection().SetSelectionAndEndTyping(SetSelectionTextToBody(
+      "<div contenteditable id=sample>"
+      "<b id=target style='visibility: hidden'>A</b><b>^Z|</b></div>"));
 
   EXPECT_EQ(PlainTextRange(0, 1),
             GetInputMethodController().GetSelectionOffsets());
@@ -208,11 +195,9 @@ TEST_F(CachedTextInputInfoTest, VisibilityHiddenToVisible) {
 
 // http://crbug.com/1228635
 TEST_F(CachedTextInputInfoTest, VisibilityVisibleToHidden) {
-  GetFrame().Selection().SetSelection(
-      SetSelectionTextToBody(
-          "<div contenteditable id=sample>"
-          "<b id=target style='visibility: visible'>A</b><b>^Z|</b></div>"),
-      SetSelectionOptions());
+  GetFrame().Selection().SetSelectionAndEndTyping(SetSelectionTextToBody(
+      "<div contenteditable id=sample>"
+      "<b id=target style='visibility: visible'>A</b><b>^Z|</b></div>"));
 
   EXPECT_EQ(PlainTextRange(1, 2),
             GetInputMethodController().GetSelectionOffsets());

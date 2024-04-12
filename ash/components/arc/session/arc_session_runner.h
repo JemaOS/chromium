@@ -6,7 +6,6 @@
 #define ASH_COMPONENTS_ARC_SESSION_ARC_SESSION_RUNNER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "ash/components/arc/session/arc_client_adapter.h"
@@ -20,6 +19,7 @@
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "chromeos/ash/components/cryptohome/cryptohome_parameters.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace arc {
 
@@ -123,13 +123,10 @@ class ArcSessionRunner : public ArcSession::Observer {
     default_device_scale_factor_ = scale_factor;
   }
 
-  bool use_virtio_blk_data() const { return use_virtio_blk_data_; }
+  bool use_virtio_blk_data() { return use_virtio_blk_data_; }
   void set_use_virtio_blk_data(bool use_virtio_blk_data) {
     use_virtio_blk_data_ = use_virtio_blk_data;
   }
-
-  bool arc_signed_in() const { return arc_signed_in_; }
-  void set_arc_signed_in(bool arc_signed_in) { arc_signed_in_ = arc_signed_in; }
 
   // Returns the current ArcSession instance for testing purpose.
   ArcSession* GetArcSessionForTesting() { return arc_session_.get(); }
@@ -168,7 +165,7 @@ class ArcSessionRunner : public ArcSession::Observer {
 
   // Target ARC instance running mode. If nullopt, it means the ARC instance
   // should stop eventually.
-  std::optional<ArcInstanceMode> target_mode_;
+  absl::optional<ArcInstanceMode> target_mode_;
 
   // Instead of immediately trying to restart the container, give it some time
   // to finish tearing down in case it is still in the process of stopping.
@@ -199,8 +196,6 @@ class ArcSessionRunner : public ArcSession::Observer {
 
   // Whether ARCVM uses virtio-blk for /data.
   bool use_virtio_blk_data_ = false;
-
-  bool arc_signed_in_ = false;
 
   // DemoModeDelegate to be used by ArcSession.
   std::unique_ptr<ArcClientAdapter::DemoModeDelegate> demo_mode_delegate_;

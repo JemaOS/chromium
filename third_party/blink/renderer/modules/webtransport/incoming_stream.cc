@@ -48,7 +48,7 @@ class IncomingStream::UnderlyingByteSource final
                      ExceptionState& exception_state) override {
     DCHECK_EQ(controller, incoming_stream_->controller_);
     incoming_stream_->ReadFromPipeAndEnqueue(exception_state);
-    return ScriptPromise::CastUndefined(script_state_.Get());
+    return ScriptPromise::CastUndefined(script_state_);
   }
 
   ScriptPromise Cancel(ExceptionState& exception_state) override {
@@ -58,16 +58,16 @@ class IncomingStream::UnderlyingByteSource final
   ScriptPromise Cancel(v8::Local<v8::Value> reason,
                        ExceptionState& exception_state) override {
     uint8_t code = 0;
-    WebTransportError* exception =
-        V8WebTransportError::ToWrappable(script_state_->GetIsolate(), reason);
+    WebTransportError* exception = V8WebTransportError::ToImplWithTypeCheck(
+        script_state_->GetIsolate(), reason);
     if (exception) {
       code = exception->streamErrorCode().value_or(0);
     }
     incoming_stream_->AbortAndReset(code);
-    return ScriptPromise::CastUndefined(script_state_.Get());
+    return ScriptPromise::CastUndefined(script_state_);
   }
 
-  ScriptState* GetScriptState() override { return script_state_.Get(); }
+  ScriptState* GetScriptState() override { return script_state_; }
 
   void Trace(Visitor* visitor) const override {
     visitor->Trace(script_state_);
@@ -82,7 +82,7 @@ class IncomingStream::UnderlyingByteSource final
 
 IncomingStream::IncomingStream(
     ScriptState* script_state,
-    base::OnceCallback<void(std::optional<uint8_t>)> on_abort,
+    base::OnceCallback<void(absl::optional<uint8_t>)> on_abort,
     mojo::ScopedDataPipeConsumerHandle handle)
     : script_state_(script_state),
       on_abort_(std::move(on_abort)),
@@ -198,7 +198,7 @@ void IncomingStream::ProcessClose() {
   if (fin_received_.value()) {
     ScriptState::Scope scope(script_state_);
     ExceptionState exception_state(script_state_->GetIsolate(),
-                                   ExceptionContextType::kUnknown, "", "");
+                                   ExceptionState::kUnknownContext, "", "");
     CloseAbortAndReset(exception_state);
     // Ignore exception because stream will be errored soon.
     if (exception_state.HadException()) {
@@ -315,7 +315,7 @@ void IncomingStream::CloseAbortAndReset(ExceptionState& exception_state) {
     }
   }
 
-  AbortAndReset(std::nullopt);
+  AbortAndReset(absl::nullopt);
 }
 
 void IncomingStream::ErrorStreamAbortAndReset(ScriptValue exception) {
@@ -326,10 +326,10 @@ void IncomingStream::ErrorStreamAbortAndReset(ScriptValue exception) {
     controller_ = nullptr;
   }
 
-  AbortAndReset(std::nullopt);
+  AbortAndReset(absl::nullopt);
 }
 
-void IncomingStream::AbortAndReset(std::optional<uint8_t> code) {
+void IncomingStream::AbortAndReset(absl::optional<uint8_t> code) {
   DVLOG(1) << "IncomingStream::AbortAndReset() this=" << this;
 
   state_ = State::kAborted;

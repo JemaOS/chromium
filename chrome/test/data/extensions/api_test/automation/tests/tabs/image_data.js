@@ -7,17 +7,14 @@ var allTests = [
     var image = rootNode.find({ role: RoleType.IMAGE });
     image.addEventListener(EventType.IMAGE_FRAME_UPDATED, function() {
       assertEq(image.imageDataUrl.substr(0, 22), 'data:image/png;base64,');
-      fetch(image.imageDataUrl).then(function(response) {
-        if (!response.ok) {
-          throw response;
-        }
-        return response.blob();
-      }).then(function(blob) {
-        return createImageBitmap(blob);
-      }).then(function(img) {
-        var canvas = new OffscreenCanvas(2, 3);
-        var context = canvas.getContext('2d');
-        context.drawImage(img, 0, 0);
+      var imgElement = document.createElement('img');
+      imgElement.src = image.imageDataUrl;
+      var canvas = document.createElement('canvas');
+      canvas.setAttribute('width', 2);
+      canvas.setAttribute('height', 3);
+      var context = canvas.getContext('2d');
+      imgElement.onload = function() {
+        context.drawImage(imgElement, 0, 0);
         var imageData = context.getImageData(0, 0, 2, 3);
         // Check image data in RGBA format.
         // Top row: red
@@ -48,10 +45,10 @@ var allTests = [
         assertEq(imageData.data[22], 0xFF);
         assertEq(imageData.data[23], 0xFF);
         chrome.test.succeed();
-      });
+      };
     }, true);
     image.getImageData(0, 0);
   }
 ];
 
-setUpAndRunTabsTests(allTests, 'image_data.html');
+setUpAndRunTests(allTests, 'image_data.html');

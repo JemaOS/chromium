@@ -5,8 +5,6 @@
 #ifndef CHROME_SERVICES_FILE_UTIL_FAKE_FILE_UTIL_SERVICE_H_
 #define CHROME_SERVICES_FILE_UTIL_FAKE_FILE_UTIL_SERVICE_H_
 
-#include <optional>
-
 #include "base/files/file.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -40,7 +38,6 @@ class MockSafeArchiveAnalyzer : public chrome::mojom::SafeArchiveAnalyzer {
       void,
       AnalyzeZipFile,
       (base::File zip_file,
-       const std::optional<std::string>& password,
        mojo::PendingRemote<chrome::mojom::TemporaryFileGetter> temp_file_getter,
        AnalyzeZipFileCallback callback),
       (override));
@@ -55,7 +52,6 @@ class MockSafeArchiveAnalyzer : public chrome::mojom::SafeArchiveAnalyzer {
       void,
       AnalyzeRarFile,
       (base::File rar_file,
-       const std::optional<std::string>& password,
        mojo::PendingRemote<chrome::mojom::TemporaryFileGetter> temp_file_getter,
        AnalyzeRarFileCallback callback),
       (override));

@@ -31,7 +31,6 @@
 #include "ui/display/display_layout.h"
 #include "ui/display/display_switches.h"
 #include "ui/display/manager/display_manager.h"
-#include "ui/display/test/display_manager_test_api.h"
 
 namespace policy {
 
@@ -40,11 +39,11 @@ namespace {
 namespace em = ::enterprise_management;
 
 struct PolicyValue {
-  std::optional<int> external_width;
-  std::optional<int> external_height;
-  std::optional<int> external_scale_percentage;
+  absl::optional<int> external_width;
+  absl::optional<int> external_height;
+  absl::optional<int> external_scale_percentage;
   bool use_native = false;
-  std::optional<int> internal_scale_percentage;
+  absl::optional<int> internal_scale_percentage;
 
   bool operator==(const PolicyValue& rhs) const {
     return external_width == rhs.external_width &&
@@ -77,7 +76,7 @@ PolicyValue GetPolicySetting() {
       resolution_pref->FindInt(ash::kDeviceDisplayResolutionKeyExternalScale);
   result.internal_scale_percentage =
       resolution_pref->FindInt(ash::kDeviceDisplayResolutionKeyInternalScale);
-  const std::optional<bool> use_native = resolution_pref->FindBool(
+  const absl::optional<bool> use_native = resolution_pref->FindBool(
       ash::kDeviceDisplayResolutionKeyExternalUseNative);
   if (use_native && *use_native)
     result.use_native = true;
@@ -85,13 +84,12 @@ PolicyValue GetPolicySetting() {
 }
 
 void AddExternalDisplay(display::DisplayManager* display_manager) {
-  display::test::DisplayManagerTestApi test_api(display_manager);
-  test_api.UpdateDisplay(
-      "1280x800,1920x1080#1920x1080%60|800x600%30|800x600%60|1280x800%60|"
-      "1920x1080%30",
-      /*from_native_platform=*/true);
-
-  // Policy change is applied in the posted task.
+  display_manager->AddRemoveDisplay(
+      {display::ManagedDisplayMode(gfx::Size(800, 600), 30.0, false, false),
+       display::ManagedDisplayMode(gfx::Size(800, 600), 60.0, false, false),
+       display::ManagedDisplayMode(gfx::Size(1280, 800), 60.0, false, false),
+       display::ManagedDisplayMode(gfx::Size(1920, 1080), 30.0, false, false),
+       display::ManagedDisplayMode(gfx::Size(1920, 1080), 60.0, false, true)});
   base::RunLoop().RunUntilIdle();
 }
 
@@ -326,7 +324,8 @@ class DisplayResolutionBootTest
   DeviceDisplayCrosTestHelper helper_;
 };
 
-IN_PROC_BROWSER_TEST_P(DisplayResolutionBootTest, PRE_Reboot) {
+// b/276667320 Disable flaky test
+IN_PROC_BROWSER_TEST_P(DisplayResolutionBootTest, DISABLED_PRE_Reboot) {
   const PolicyValue policy_value = GetParam();
 
   // Set policy.
@@ -358,7 +357,8 @@ IN_PROC_BROWSER_TEST_P(DisplayResolutionBootTest, PRE_Reboot) {
       << "Initial primary display scale after policy set";
 }
 
-IN_PROC_BROWSER_TEST_P(DisplayResolutionBootTest, Reboot) {
+// b/276667320 Disable flaky test
+IN_PROC_BROWSER_TEST_P(DisplayResolutionBootTest, DISABLED_Reboot) {
   const PolicyValue policy_value = GetParam();
 
   AddExternalDisplay(display_helper()->GetDisplayManager());
@@ -401,14 +401,14 @@ class DeviceDisplayResolutionRecommendedTest
       extensions::api::system_display::DisplayProperties props) {
     base::RunLoop run_loop;
     base::OnceClosure quit_closure(run_loop.QuitClosure());
-    std::optional<std::string> operation_error;
+    absl::optional<std::string> operation_error;
     extensions::DisplayInfoProvider* provider =
         extensions::DisplayInfoProvider::Get();
     ASSERT_TRUE(provider);
     provider->SetDisplayProperties(
         std::to_string(display_id), std::move(props),
         base::BindOnce(
-            [](base::OnceClosure quit_closure, std::optional<std::string>) {
+            [](base::OnceClosure quit_closure, absl::optional<std::string>) {
               std::move(quit_closure).Run();
             },
             std::move(quit_closure)));

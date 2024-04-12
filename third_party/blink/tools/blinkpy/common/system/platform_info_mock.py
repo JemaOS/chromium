@@ -30,13 +30,12 @@
 class MockPlatformInfo(object):
     def __init__(self,
                  os_name='mac',
-                 os_version='mac11',
+                 os_version='mac10.14',
                  linux_distribution=None,
                  is_highdpi=False,
                  is_running_rosetta=False,
                  machine=None,
-                 interactive=True,
-                 processor=''):
+                 interactive=True):
         self.os_name = os_name
         self.os_version = os_version
         self.interactive = interactive
@@ -44,7 +43,6 @@ class MockPlatformInfo(object):
         self._is_highdpi = is_highdpi
         self._is_running_rosetta = is_running_rosetta
         self._machine = machine or 'x86_64'
-        self._processor = processor
 
     def is_mac(self):
         return self.os_name == 'mac'
@@ -54,9 +52,6 @@ class MockPlatformInfo(object):
 
     def is_win(self):
         return self.os_name == 'win'
-
-    def processor(self):
-        return self._processor or ''
 
     def is_highdpi(self):
         return self._is_highdpi

@@ -28,7 +28,6 @@
 #include <type_traits>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/base/internal/fast_type_id.h"
 #include "absl/base/macros.h"
 #include "absl/meta/type_traits.h"
@@ -115,7 +114,7 @@ class BitGenRef {
                                (!std::is_same<URBG, BitGenRef>::value &&
                                 random_internal::is_urbg<URBG>::value &&
                                 !HasInvokeMock<URBG>::value)>* = nullptr>
-  BitGenRef(URBG& gen ABSL_ATTRIBUTE_LIFETIME_BOUND)  // NOLINT
+  BitGenRef(URBG& gen)  // NOLINT
       : t_erased_gen_ptr_(reinterpret_cast<uintptr_t>(&gen)),
         mock_call_(NotAMock),
         generate_impl_fn_(ImplFn<URBG>) {}
@@ -124,7 +123,7 @@ class BitGenRef {
             typename absl::enable_if_t<(!std::is_same<URBG, BitGenRef>::value &&
                                         random_internal::is_urbg<URBG>::value &&
                                         HasInvokeMock<URBG>::value)>* = nullptr>
-  BitGenRef(URBG& gen ABSL_ATTRIBUTE_LIFETIME_BOUND)  // NOLINT
+  BitGenRef(URBG& gen)  // NOLINT
       : t_erased_gen_ptr_(reinterpret_cast<uintptr_t>(&gen)),
         mock_call_(&MockCall<URBG>),
         generate_impl_fn_(ImplFn<URBG>) {}

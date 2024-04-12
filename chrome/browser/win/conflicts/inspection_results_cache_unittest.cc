@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/files/scoped_temp_dir.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -53,7 +54,10 @@ class InspectionResultsCacheTest : public testing::Test {
   InspectionResultsCacheTest& operator=(const InspectionResultsCacheTest&) =
       delete;
 
-  void SetUp() override { ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir()); }
+  void SetUp() override {
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    scoped_feature_list_.InitAndEnableFeature(kInspectionResultsCache);
+  }
 
   void RunUntilIdle() { task_environment_.RunUntilIdle(); }
 
@@ -62,6 +66,8 @@ class InspectionResultsCacheTest : public testing::Test {
   }
 
  private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+
   base::test::TaskEnvironment task_environment_;
 
   base::ScopedTempDir scoped_temp_dir_;

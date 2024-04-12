@@ -52,9 +52,8 @@ bool IsProhibitedByPolicy(Profile* profile) {
 }
 
 bool IsLoggedInAsPrimaryUser(Profile* profile) {
-  // Guest/incognito/signin profiles cannot use Phone Hub.
-  if (ash::ProfileHelper::IsSigninProfile(profile) ||
-      profile->IsOffTheRecord()) {
+  // Guest/incognito profiles cannot use Phone Hub.
+  if (profile->IsOffTheRecord()) {
     return false;
   }
 
@@ -77,8 +76,7 @@ PhoneHubManager* PhoneHubManagerFactory::GetForProfile(Profile* profile) {
 
 // static
 PhoneHubManagerFactory* PhoneHubManagerFactory::GetInstance() {
-  static base::NoDestructor<PhoneHubManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<PhoneHubManagerFactory>::get();
 }
 
 PhoneHubManagerFactory::PhoneHubManagerFactory()
@@ -111,8 +109,7 @@ PhoneHubManagerFactory::PhoneHubManagerFactory()
 
 PhoneHubManagerFactory::~PhoneHubManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-PhoneHubManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PhoneHubManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   if (!features::IsPhoneHubEnabled()) {
     return nullptr;
@@ -150,7 +147,7 @@ PhoneHubManagerFactory::BuildServiceInstanceForBrowserContext(
     }
   }
 
-  auto phone_hub_manager = std::make_unique<PhoneHubManagerImpl>(
+  PhoneHubManagerImpl* phone_hub_manager = new PhoneHubManagerImpl(
       profile->GetPrefs(),
       device_sync::DeviceSyncClientFactory::GetForProfile(profile),
       multidevice_setup::MultiDeviceSetupClientFactory::GetForProfile(profile),
@@ -177,7 +174,7 @@ PhoneHubManagerFactory::BuildServiceInstanceForBrowserContext(
 
   // Provide |phone_hub_manager| to the system tray so that it can be used by
   // the UI.
-  SystemTray::Get()->SetPhoneHubManager(phone_hub_manager.get());
+  SystemTray::Get()->SetPhoneHubManager(phone_hub_manager);
 
   DCHECK(!g_context_for_service);
   g_context_for_service = context;

@@ -13,26 +13,23 @@
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "base/command_line.h"
 #include "base/logging.h"
-#include "base/no_destructor.h"
 #include "base/uuid.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/browser_process.h"
-#include "chrome/browser/signin/signin_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/base/signin_switches.h"
 #include "components/user_manager/known_user.h"
 #include "components/user_manager/user_manager.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-namespace {
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-constexpr char kEphemeralUserDeviceIDPrefix[] = "t_";
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-}  // namespace
+#endif
 
 std::string GetSigninScopedDeviceIdForProfile(Profile* profile) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kDisableSigninScopedDeviceId)) {
+    return std::string();
+  }
+
   // UserManager may not exist in unit_tests.
   if (!user_manager::UserManager::IsInitialized())
     return std::string();
@@ -56,24 +53,9 @@ std::string GetSigninScopedDeviceIdForProfile(Profile* profile) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 
 std::string GenerateSigninScopedDeviceId(bool for_ephemeral) {
-  static base::NoDestructor<std::string> cached_device_id;
-
-  if (for_ephemeral) {
-    // Always generate a new identifier for ephemeral users.
-    return kEphemeralUserDeviceIDPrefix +
-           base::Uuid::GenerateRandomV4().AsLowercaseString();
-  }
-
-  if (!base::FeatureList::IsEnabled(kStableDeviceId)) {
-    // Do not cache identifiers if the feature is not enabled yet.
-    return base::Uuid::GenerateRandomV4().AsLowercaseString();
-  }
-
-  // Return cached values for non ephemeral users.
-  if (cached_device_id->empty()) {
-    *cached_device_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
-  }
-  return *cached_device_id;
+  constexpr char kEphemeralUserDeviceIDPrefix[] = "t_";
+  std::string guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  return for_ephemeral ? kEphemeralUserDeviceIDPrefix + guid : guid;
 }
 
 void MigrateSigninScopedDeviceId(Profile* profile) {

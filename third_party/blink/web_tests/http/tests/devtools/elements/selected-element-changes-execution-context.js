@@ -2,14 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
-import * as SDK from 'devtools/core/sdk/sdk.js';
-import * as UIModule from 'devtools/ui/legacy/legacy.js';
-
 (async function() {
   TestRunner.addResult(`Tests that the execution context is changed to match new selected node.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <iframe id="iframe-per-se" src="resources/set-outer-html-body-iframe.html""></iframe>
@@ -23,7 +18,7 @@ import * as UIModule from 'devtools/ui/legacy/legacy.js';
       ElementsTestRunner.expandElementsTree(onExpanded);
 
       function onExpanded() {
-        mainContext = UIModule.Context.Context.instance().flavor(SDK.RuntimeModel.ExecutionContext);
+        mainContext = UI.context.flavor(SDK.ExecutionContext);
         dumpContextAndNext(next);
       }
     },
@@ -41,15 +36,15 @@ import * as UIModule from 'devtools/ui/legacy/legacy.js';
     },
 
     function selectIframeContentDocument(next) {
-      var iframe = UIModule.Context.Context.instance().flavor(SDK.DOMModel.DOMNode);
+      var iframe = UI.context.flavor(SDK.DOMNode);
       var child = iframe.contentDocument();
       ElementsTestRunner.selectNode(child).then(dumpContextAndNext.bind(null, next));
     },
   ]);
 
   function dumpContextAndNext(next) {
-    var context = UIModule.Context.Context.instance().flavor(SDK.RuntimeModel.ExecutionContext);
-    var node = UIModule.Context.Context.instance().flavor(SDK.DOMModel.DOMNode);
+    var context = UI.context.flavor(SDK.ExecutionContext);
+    var node = UI.context.flavor(SDK.DOMNode);
     var contextName = context === mainContext ? 'main' : 'iframe';
     var matchesNode = context.frameId === node.frameId();
     TestRunner.addResult('Execution Context: ' + contextName);

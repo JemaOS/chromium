@@ -12,7 +12,6 @@
 #include "base/memory/weak_ptr.h"
 #include "base/unguessable_token.h"
 #include "build/chromeos_buildflags.h"
-#include "chromeos/crosapi/mojom/video_conference.mojom-forward.h"
 #include "chromeos/crosapi/mojom/video_conference.mojom.h"
 #include "content/public/browser/web_contents.h"
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -72,7 +71,6 @@ class VideoConferenceManagerClientImpl
       crosapi::mojom::VideoConferenceMediaDevice device,
       bool disabled,
       SetSystemMediaDeviceStatusCallback callback) override;
-  void StopAllScreenShare() override;
 
  protected:
   // Sends VcManager the updated `VideoConferenceMediaUsageStatus`. Can be
@@ -86,10 +84,6 @@ class VideoConferenceManagerClientImpl
   // Returns the aggregated camera and microphone permissions granted status
   // from all VC apps on the client.
   VideoConferencePermissions GetAggregatedPermissions();
-
-  // Sends a new client update to the VC Manager. Uses mojo for lacros-chrome
-  // clients.
-  void SendClientUpdate(crosapi::mojom::VideoConferenceClientUpdatePtr update);
 
   // Unique id associated with this client. It is used by the VcManager to
   // identify clients.

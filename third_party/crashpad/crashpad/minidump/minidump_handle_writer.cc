@@ -16,7 +16,6 @@
 
 #include <string>
 
-#include "base/check_op.h"
 #include "base/logging.h"
 #include "minidump/minidump_extensions.h"
 #include "util/file/file_writer.h"

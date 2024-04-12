@@ -133,20 +133,14 @@ class DeviceManagementServiceIntegrationTest
       DeviceManagementService::JobConfiguration::JobType type,
       bool critical,
       DMAuth auth_data,
-      std::optional<std::string>&& oauth_token,
+      absl::optional<std::string> oauth_token,
       const em::DeviceManagementRequest request) {
     std::string payload;
     request.SerializeToString(&payload);
-
-    auto params = DMServerJobConfiguration::CreateParams::WithoutClient(
-        type, service_.get(), kClientID, GetFactory());
-    params.critical = critical;
-    params.auth_data = std::move(auth_data);
-    params.oauth_token = std::move(oauth_token);
-
     std::unique_ptr<FakeJobConfiguration> config =
         std::make_unique<FakeJobConfiguration>(
-            std::move(params),
+            service_.get(), type, kClientID, critical, std::move(auth_data),
+            oauth_token, GetFactory(),
             base::BindOnce(&DeviceManagementServiceIntegrationTest::OnJobDone,
                            base::Unretained(this)),
             base::DoNothing(), base::DoNothing());

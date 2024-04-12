@@ -90,5 +90,5 @@ CaretBrowsingDialogDelegate::CaretBrowsingDialogDelegate(
 
 CaretBrowsingDialogDelegate::~CaretBrowsingDialogDelegate() = default;
 
-BEGIN_METADATA(CaretBrowsingDialogDelegate)
+BEGIN_METADATA(CaretBrowsingDialogDelegate, views::DialogDelegateView)
 END_METADATA

@@ -31,7 +31,6 @@ class BorealisSplashScreenView
 
   // views::DialogDelegateView:
   void OnThemeChanged() override;
-  bool ShouldShowWindowTitle() const override;
 
   // Overrides for AppWindowLifetimeObserver
   void OnWindowManagerDeleted(
@@ -41,11 +40,8 @@ class BorealisSplashScreenView
   void OnGetRootPath(const std::string& path);
 
  private:
-  void UpdateColors();
-
-  raw_ptr<Profile> profile_ = nullptr;
-  raw_ptr<views::Label> title_label_;
-  raw_ptr<views::Label> starting_label_;
+  raw_ptr<Profile, ExperimentalAsh> profile_ = nullptr;
+  base::raw_ptr<views::Label> starting_label_;
   base::WeakPtrFactory<BorealisSplashScreenView> weak_factory_;
 };
 

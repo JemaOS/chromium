@@ -8,7 +8,6 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <type_traits>
 
 #include "ipcz/driver_memory.h"
@@ -24,6 +23,7 @@
 #include "ipcz/sublink_id.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "third_party/abseil-cpp/absl/synchronization/mutex.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/abseil-cpp/absl/types/span.h"
 #include "util/ref_counted.h"
 
@@ -117,7 +117,7 @@ class NodeLink : public msg::NodeMessageListener {
 
   // Retrieves the Router and RemoteRouterLink currently bound to `sublink`
   // on this NodeLink.
-  std::optional<Sublink> GetSublink(SublinkId sublink);
+  absl::optional<Sublink> GetSublink(SublinkId sublink);
 
   // Retrieves only the Router currently bound to `sublink` on this NodeLink.
   Ref<Router> GetRouter(SublinkId sublink);
@@ -210,8 +210,6 @@ class NodeLink : public msg::NodeMessageListener {
   void Transmit(Message& message);
 
  private:
-  friend class RefCounted<NodeLink>;
-
   enum ActivationState {
     kNeverActivated,
     kActive,
@@ -267,19 +265,16 @@ class NodeLink : public msg::NodeMessageListener {
   // not yet known to the local node. This schedules the parcel for acceptance
   // as soon as that buffer is available.
   void WaitForParcelFragmentToResolve(SublinkId for_sublink,
-                                      std::unique_ptr<Parcel> parcel,
+                                      Parcel& parcel,
                                       const FragmentDescriptor& descriptor,
                                       bool is_split_parcel);
 
-  bool AcceptParcelWithoutDriverObjects(SublinkId for_sublink,
-                                        std::unique_ptr<Parcel> parcel);
-  bool AcceptParcelDriverObjects(SublinkId for_sublink,
-                                 std::unique_ptr<Parcel> parcel);
+  bool AcceptParcelWithoutDriverObjects(SublinkId for_sublink, Parcel& parcel);
+  bool AcceptParcelDriverObjects(SublinkId for_sublink, Parcel& parcel);
   bool AcceptSplitParcel(SublinkId for_sublink,
-                         std::unique_ptr<Parcel> parcel_without_driver_objects,
-                         std::unique_ptr<Parcel> parcel_with_driver_objects);
-  bool AcceptCompleteParcel(SublinkId for_sublink,
-                            std::unique_ptr<Parcel> parcel);
+                         Parcel& parcel_without_driver_objects,
+                         Parcel& parcel_with_driver_objects);
+  bool AcceptCompleteParcel(SublinkId for_sublink, Parcel& parcel);
 
   const Ref<Node> node_;
   const LinkSide link_side_;
@@ -313,8 +308,7 @@ class NodeLink : public msg::NodeMessageListener {
   // Tracks partially received contents of split parcels so they can be
   // reconstructed for dispatch.
   using PartialParcelKey = std::tuple<SublinkId, SequenceNumber>;
-  using PartialParcelMap =
-      absl::flat_hash_map<PartialParcelKey, std::unique_ptr<Parcel>>;
+  using PartialParcelMap = absl::flat_hash_map<PartialParcelKey, Parcel>;
   PartialParcelMap partial_parcels_ ABSL_GUARDED_BY(mutex_);
 
   // Mapping from subparcel index to Parcel object.

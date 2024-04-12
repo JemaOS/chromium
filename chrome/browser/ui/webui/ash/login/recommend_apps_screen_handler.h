@@ -15,7 +15,8 @@ class RecommendAppsScreen;
 
 // Interface for dependency injection between RecommendAppsScreen and its
 // WebUI representation.
-class RecommendAppsScreenView {
+class RecommendAppsScreenView
+    : public base::SupportsWeakPtr<RecommendAppsScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"recommend-apps",
                                                        "RecommendAppsScreen"};
@@ -32,14 +33,11 @@ class RecommendAppsScreenView {
   // Called when parsing the recommend app list response fails. Should skip this
   // screen.
   virtual void OnParseResponseError() = 0;
-
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<RecommendAppsScreenView> AsWeakPtr() = 0;
 };
 
 // The sole implementation of the RecommendAppsScreenView, using WebUI.
-class RecommendAppsScreenHandler final : public BaseScreenHandler,
-                                         public RecommendAppsScreenView {
+class RecommendAppsScreenHandler : public BaseScreenHandler,
+                                   public RecommendAppsScreenView {
  public:
   using TView = RecommendAppsScreenView;
 
@@ -59,13 +57,10 @@ class RecommendAppsScreenHandler final : public BaseScreenHandler,
   void Show() override;
   void OnLoadSuccess(base::Value app_list) override;
   void OnParseResponseError() override;
-  base::WeakPtr<RecommendAppsScreenView> AsWeakPtr() override;
 
  private:
   // Call the JS function to load the list of apps in the WebView.
   void LoadAppListInUI(base::Value app_list);
-
-  base::WeakPtrFactory<RecommendAppsScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

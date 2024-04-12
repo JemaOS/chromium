@@ -20,7 +20,6 @@ requestWillBeSentExtraInfo blocked cookies:[
             sourceScheme : Secure
             value : value
         }
-        exemptionReason : None
     }
 ]
 

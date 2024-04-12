@@ -12,7 +12,6 @@
 #include "ui/compositor/compositor.h"
 #include "ui/compositor/compositor_observer.h"
 #include "ui/compositor/compositor_switches.h"
-#include "ui/display/types/display_constants.h"
 
 namespace ui {
 
@@ -66,8 +65,7 @@ void RecyclableCompositorMac::Unsuspend() {
 void RecyclableCompositorMac::UpdateSurface(
     const gfx::Size& size_pixels,
     float scale_factor,
-    const gfx::DisplayColorSpaces& display_color_spaces,
-    int64_t display_id) {
+    const gfx::DisplayColorSpaces& display_color_spaces) {
   if (size_pixels != size_pixels_ || scale_factor != scale_factor_) {
     size_pixels_ = size_pixels;
     scale_factor_ = scale_factor;
@@ -77,19 +75,21 @@ void RecyclableCompositorMac::UpdateSurface(
     compositor()->SetScaleAndSize(scale_factor_, size_pixels_,
                                   local_surface_id);
   }
-  compositor()->SetDisplayColorSpaces(display_color_spaces);
-  compositor()->SetVSyncDisplayID(display_id);
+  if (display_color_spaces != display_color_spaces_) {
+    display_color_spaces_ = display_color_spaces;
+    compositor()->SetDisplayColorSpaces(display_color_spaces_);
+  }
 }
 
 void RecyclableCompositorMac::InvalidateSurface() {
   size_pixels_ = gfx::Size();
   scale_factor_ = 1.f;
   local_surface_id_allocator_.Invalidate();
+  display_color_spaces_ = gfx::DisplayColorSpaces();
   compositor()->SetScaleAndSize(
       scale_factor_, size_pixels_,
       local_surface_id_allocator_.GetCurrentLocalSurfaceId());
   compositor()->SetDisplayColorSpaces(gfx::DisplayColorSpaces());
-  compositor()->SetVSyncDisplayID(display::kInvalidDisplayId);
 }
 
 void RecyclableCompositorMac::OnCompositingDidCommit(

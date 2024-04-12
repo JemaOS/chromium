@@ -183,7 +183,7 @@ void SyncableFileSystemOperation::FileExists(const FileSystemURL& url,
 }
 
 void SyncableFileSystemOperation::GetMetadata(const FileSystemURL& url,
-                                              GetMetadataFieldSet fields,
+                                              int fields,
                                               GetMetadataCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
   impl_->GetMetadata(url, fields, std::move(callback));
@@ -372,7 +372,6 @@ base::File::Error SyncableFileSystemOperation::SyncGetPlatformPath(
 }
 
 SyncableFileSystemOperation::SyncableFileSystemOperation(
-    storage::OperationType type,
     const FileSystemURL& url,
     storage::FileSystemContext* file_system_context,
     std::unique_ptr<storage::FileSystemOperationContext> operation_context,
@@ -388,7 +387,7 @@ SyncableFileSystemOperation::SyncableFileSystemOperation(
     // Returning here to leave operation_runner_ as NULL.
     return;
   }
-  impl_ = storage::FileSystemOperation::Create(type, url_, file_system_context,
+  impl_ = storage::FileSystemOperation::Create(url_, file_system_context,
                                                std::move(operation_context));
   operation_runner_ = backend->sync_context()->operation_runner();
 }

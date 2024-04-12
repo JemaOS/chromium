@@ -20,28 +20,20 @@ ChromeExtensionCookies* ChromeExtensionCookiesFactory::GetForBrowserContext(
 
 // static
 ChromeExtensionCookiesFactory* ChromeExtensionCookiesFactory::GetInstance() {
-  static base::NoDestructor<ChromeExtensionCookiesFactory> instance;
-  return instance.get();
+  return base::Singleton<ChromeExtensionCookiesFactory>::get();
 }
 
 ChromeExtensionCookiesFactory::ChromeExtensionCookiesFactory()
     : ProfileKeyedServiceFactory(
           "ChromeExtensionCookies",
           // Incognito gets separate extension cookies, too.
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
-ChromeExtensionCookiesFactory::~ChromeExtensionCookiesFactory() = default;
+ChromeExtensionCookiesFactory::~ChromeExtensionCookiesFactory() {}
 
-std::unique_ptr<KeyedService>
-ChromeExtensionCookiesFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ChromeExtensionCookiesFactory::BuildServiceInstanceFor(
     BrowserContext* context) const {
-  return std::make_unique<ChromeExtensionCookies>(
-      static_cast<Profile*>(context));
+  return new ChromeExtensionCookies(static_cast<Profile*>(context));
 }
 
 }  // namespace extensions

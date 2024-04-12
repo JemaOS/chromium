@@ -12,7 +12,7 @@
  *   browser test.
  */
 
-(function(QUnit, exports) {
+(function(QUnit, automationController, exports) {
 
 'use strict';
 
@@ -67,8 +67,9 @@ TestReporter.prototype.getErrorMessage = function(){
   return errorMessage;
 };
 
-var BrowserTestHarness = function(qunit, reporter) {
+var BrowserTestHarness = function(qunit, domAutomationController, reporter) {
   this.qunit_ = qunit;
+  this.automationController_ = domAutomationController;
   this.reporter_ = reporter;
 };
 
@@ -77,29 +78,35 @@ BrowserTestHarness.prototype.init = function() {
 };
 
 BrowserTestHarness.prototype.run = function() {
-  return new Promise((resolve, reject) => {
-    this.reporter_.init(this.qunit_);
-    this.qunit_.start();
-    this.qunit_.done(function(details) {
-      resolve(JSON.stringify({
-        passed: details.passed == details.total,
-        errorMessage: this.reporter_.getErrorMessage()
-      }));
-    }.bind(this));
-  });
+  this.reporter_.init(this.qunit_);
+  this.qunit_.start();
+  this.qunit_.done(function(details){
+    this.automationController_.send(JSON.stringify({
+      passed: details.passed == details.total,
+      errorMessage: this.reporter_.getErrorMessage()
+    }));
+  }.bind(this));
 };
 
+// The browser test runs chrome with the flag --dom-automation, which creates
+// the window.domAutomationController object.  This allows the test suite to
+// JS-encoded data back to the browser test.
+if (automationController) {
+  if (!QUnit) {
+    console.error('browser_test_harness.js must be included after QUnit.js.');
+    return;
+  }
 
-if (!QUnit) {
-  console.error('browser_test_harness.js must be included after QUnit.js.');
-  return;
+  var testHarness = new BrowserTestHarness(
+      QUnit,
+      automationController,
+      new TestReporter());
+  testHarness.init();
+  exports.browserTestHarness = testHarness;
 }
 
-var testHarness = new BrowserTestHarness(QUnit, new TestReporter());
-testHarness.init();
-exports.browserTestHarness = testHarness;
-
 var qunitTest = QUnit.test;
+var reasonTimeout = {};
 
 /**
  * Returns a promise that resolves after |delay| along with a timerId
@@ -137,10 +144,9 @@ BrowserTestHarness.test = function(testCallback) {
     var timeout = BrowserTestHarness.timeout(TEST_TIMEOUT_IN_MS);
 
     var testPromise = Promise.resolve(testCallback.apply(this, args))
-                          .then(function(response) {
-                            window.clearTimeout(timeout.timerId);
-                            return response;
-                          });
+      .then(function() {
+        window.clearTimeout(timeout.timerId);
+      });
 
     var asserts = args[0];
     var timeoutPromise = timeout.promise.then(function(){
@@ -156,4 +162,5 @@ if (!QUnit.urlParams.disableTestTimeout) {
     qunitTest(name, expected, BrowserTestHarness.test(testCallback), async);
   };
 }
-})(window.QUnit, window);
+
+})(window.QUnit, window.domAutomationController, window);

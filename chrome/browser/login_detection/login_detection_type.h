@@ -17,33 +17,33 @@ enum class LoginDetectionType {
 
   // OAuth login was detected for this site, and was remembered in persistent
   // memory.
-  kDeprecatedOauthLogin,
+  kOauthLogin,
 
   // Successful OAuth login flow was detected.
   kOauthFirstTimeLoginFlow,
 
   // The user had typed password to log-in. This includes sites where user
   // typed password manually or used Chrome password manager to fill-in.
-  kDeprecatedPasswordEnteredLogin,
+  kPasswordEnteredLogin,
 
   // The site is in one of preloaded top sites where users commonly log-in.
-  kDeprecatedPreloadedPasswordSiteLogin,
+  kPreloadedPasswordSiteLogin,
 
   // Treated as logged-in since as the site was retrieved from field trial as
   // commonly logged-in.
-  kDeprecatedFieldTrialLoggedInSite,
+  kFieldTrialLoggedInSite,
 
   // The site has credentials saved in the password manager.
-  kDeprecatedPasswordManagerSavedSite,
+  kPasswordManagerSavedSite,
 
   // Successful popup based OAuth login flow was detected.
   kOauthPopUpFirstTimeLoginFlow,
 
   // Treated as logged-in since the site was detected as commonly logged-in from
   // optimization guide hints.
-  kDeprecatedOptimizationGuideDetected,
+  kOptimizationGuideDetected,
 
-  kMaxValue = kDeprecatedOptimizationGuideDetected
+  kMaxValue = kOptimizationGuideDetected
 };
 }  // namespace login_detection
 

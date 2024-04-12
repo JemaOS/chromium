@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var eventCount = 0;
   var {page, dp} = await testRunner.startBlank(
       `Tests filtering of ReportingApiReportAdded events (Session 1).\n`);

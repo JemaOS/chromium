@@ -50,7 +50,7 @@ class MockDesktopMediaList : public DesktopMediaList {
   MOCK_METHOD(void, Update, (UpdateCallback callback));
   MOCK_METHOD(void,
               SetPreviewedSource,
-              (const std::optional<content::DesktopMediaID>& id));
+              (const absl::optional<content::DesktopMediaID>& id));
   MOCK_METHOD(int, GetSourceCount, (), (const));
   MOCK_METHOD(Source&, GetSource, (int), (const));
   MOCK_METHOD(DesktopMediaList::Type, GetMediaListType, (), (const));
@@ -64,7 +64,7 @@ class MockDesktopMediaPickerFactory : public DesktopMediaPickerFactory {
  public:
   MOCK_METHOD(std::unique_ptr<DesktopMediaPicker>,
               CreatePicker,
-              (const content::MediaStreamRequest*),
+              (),
               (override));
   MOCK_METHOD(std::vector<std::unique_ptr<DesktopMediaList>>,
               CreateMediaList,
@@ -91,8 +91,7 @@ class DesktopMediaPickerControllerTest : public testing::Test {
   }
 
  protected:
-  DesktopMediaPickerController::Params picker_params_{
-      DesktopMediaPickerController::Params::RequestSource::kUnknown};
+  DesktopMediaPickerController::Params picker_params_;
   base::MockCallback<DesktopMediaPickerController::DoneCallback> done_;
   std::vector<DesktopMediaList::Type> source_types_{
       DesktopMediaList::Type::kScreen};
@@ -107,7 +106,7 @@ class DesktopMediaPickerControllerTest : public testing::Test {
 // Test that the picker dialog is shown and the selected media ID is returned.
 TEST_F(DesktopMediaPickerControllerTest, ShowPicker) {
   auto filter = GetDefaultFilter();
-  EXPECT_CALL(factory_, CreatePicker(nullptr));
+  EXPECT_CALL(factory_, CreatePicker());
   EXPECT_CALL(factory_, CreateMediaList(source_types_, nullptr, filter));
   EXPECT_CALL(done_, Run("", media_id_));
   EXPECT_CALL(*picker_, Show)
@@ -123,7 +122,7 @@ TEST_F(DesktopMediaPickerControllerTest, ShowPicker) {
 // Test that a null result is returned in response to WebContentsDestroyed().
 TEST_F(DesktopMediaPickerControllerTest, WebContentsDestroyed) {
   auto filter = GetDefaultFilter();
-  EXPECT_CALL(factory_, CreatePicker(nullptr));
+  EXPECT_CALL(factory_, CreatePicker());
   EXPECT_CALL(factory_, CreateMediaList(source_types_, nullptr, filter));
   EXPECT_CALL(done_, Run("", content::DesktopMediaID()));
   EXPECT_CALL(*picker_, Show);
@@ -142,7 +141,7 @@ TEST_F(DesktopMediaPickerControllerTest, ShowSingleScreen) {
   source.id = media_id_;
   source.name = u"fake name";
 
-  EXPECT_CALL(factory_, CreatePicker(nullptr)).Times(0);
+  EXPECT_CALL(factory_, CreatePicker()).Times(0);
   EXPECT_CALL(factory_, CreateMediaList(source_types_, nullptr, filter));
   EXPECT_CALL(done_, Run("", source.id));
   EXPECT_CALL(*picker_, Show).Times(0);

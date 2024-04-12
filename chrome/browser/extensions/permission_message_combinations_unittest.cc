@@ -204,7 +204,7 @@ class PermissionMessageCombinationsUnittest : public testing::Test {
   }
 
  private:
-  TestExtensionEnvironment env_;
+  extensions::TestExtensionEnvironment env_;
   std::unique_ptr<ChromePermissionMessageProvider> message_provider_;
   scoped_refptr<const Extension> app_;
   // Add a known extension id to the explicit allowlist so we can test all

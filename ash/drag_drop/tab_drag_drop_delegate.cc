@@ -19,7 +19,6 @@
 #include "ash/wm/splitview/split_view_drag_indicators.h"
 #include "ash/wm/splitview/split_view_utils.h"
 #include "ash/wm/tablet_mode/tablet_mode_window_state.h"
-#include "ash/wm/window_util.h"
 #include "ash/wm/wm_metrics.h"
 #include "base/pickle.h"
 #include "base/strings/utf_string_conversions.h"
@@ -83,6 +82,9 @@ OverviewSession* GetOverviewSession() {
 
 // static
 bool TabDragDropDelegate::IsChromeTabDrag(const ui::OSExchangeData& drag_data) {
+  if (!features::IsWebUITabStripTabDragIntegrationEnabled())
+    return false;
+
   return Shell::Get()->shell_delegate()->IsTabDrag(drag_data);
 }
 
@@ -136,18 +138,20 @@ void TabDragDropDelegate::DragUpdate(const gfx::Point& location_in_screen) {
       screen_util::GetDisplayWorkAreaBoundsInScreenForActiveDeskContainer(
           root_window_);
 
-  SnapPosition snap_position = ash::GetSnapPositionForLocation(
-      Shell::GetPrimaryRootWindow(), location_in_screen,
-      start_location_in_screen_,
-      /*snap_distance_from_edge=*/kDistanceFromEdgeDp,
-      /*minimum_drag_distance=*/kMinimumDragToSnapDistanceDp,
-      /*horizontal_edge_inset=*/area.width() *
-              kHighlightScreenPrimaryAxisRatio +
-          kHighlightScreenEdgePaddingDp,
-      /*vertical_edge_inset=*/area.height() * kHighlightScreenPrimaryAxisRatio +
-          kHighlightScreenEdgePaddingDp);
+  SplitViewController::SnapPosition snap_position =
+      ::ash::GetSnapPositionForLocation(
+          Shell::GetPrimaryRootWindow(), location_in_screen,
+          start_location_in_screen_,
+          /*snap_distance_from_edge=*/kDistanceFromEdgeDp,
+          /*minimum_drag_distance=*/kMinimumDragToSnapDistanceDp,
+          /*horizontal_edge_inset=*/area.width() *
+                  kHighlightScreenPrimaryAxisRatio +
+              kHighlightScreenEdgePaddingDp,
+          /*vertical_edge_inset=*/area.height() *
+                  kHighlightScreenPrimaryAxisRatio +
+              kHighlightScreenEdgePaddingDp);
   if (ShouldPreventSnapToTheEdge(location_in_screen))
-    snap_position = SnapPosition::kNone;
+    snap_position = SplitViewController::SnapPosition::kNone;
 
   split_view_drag_indicators_->SetWindowDraggingState(
       SplitViewDragIndicators::ComputeWindowDraggingState(
@@ -163,9 +167,6 @@ void TabDragDropDelegate::DropAndDeleteSelf(
     const gfx::Point& location_in_screen,
     const ui::OSExchangeData& drop_data) {
   tab_dragging_recorder_.reset();
-
-  // Release input capture in advance.
-  ReleaseCapture();
 
   auto closure = base::BindOnce(&TabDragDropDelegate::OnNewBrowserWindowCreated,
                                 base::Owned(this), location_in_screen);
@@ -196,9 +197,11 @@ void TabDragDropDelegate::OnNewBrowserWindowCreated(
   // It's possible new window is created when the dragged WebContents
   // closes itself during the drag session.
   if (!new_window) {
-    if (is_lacros && !crosapi::lacros_startup_state::IsLacrosEnabled()) {
-      LOG(ERROR) << "New browser window creation for tab detaching failed.\n"
-                 << "Check whether Lacros is enabled";
+    if (is_lacros && !crosapi::lacros_startup_state::IsLacrosPrimaryEnabled()) {
+      LOG(ERROR)
+          << "New browser window creation for tab detaching failed.\n"
+          << "Check whether about:flags#lacros-primary is enabled or "
+          << "--enable-features=LacrosPrimary is passed in when launching Ash";
     }
     return;
   }
@@ -207,19 +210,23 @@ void TabDragDropDelegate::OnNewBrowserWindowCreated(
       screen_util::GetDisplayWorkAreaBoundsInScreenForActiveDeskContainer(
           root_window_);
 
-  SnapPosition snap_position_in_snapping_zone = ash::GetSnapPosition(
-      root_window_, new_window, location_in_screen, start_location_in_screen_,
-      /*snap_distance_from_edge=*/kDistanceFromEdgeDp,
-      /*minimum_drag_distance=*/kMinimumDragToSnapDistanceDp,
-      /*horizontal_edge_inset=*/area.width() *
-              kHighlightScreenPrimaryAxisRatio +
-          kHighlightScreenEdgePaddingDp,
-      /*vertical_edge_inset=*/area.height() * kHighlightScreenPrimaryAxisRatio +
-          kHighlightScreenEdgePaddingDp);
+  SplitViewController::SnapPosition snap_position_in_snapping_zone =
+      ash::GetSnapPosition(
+          root_window_, new_window, location_in_screen,
+          start_location_in_screen_,
+          /*snap_distance_from_edge=*/kDistanceFromEdgeDp,
+          /*minimum_drag_distance=*/kMinimumDragToSnapDistanceDp,
+          /*horizontal_edge_inset=*/area.width() *
+                  kHighlightScreenPrimaryAxisRatio +
+              kHighlightScreenEdgePaddingDp,
+          /*vertical_edge_inset=*/area.height() *
+                  kHighlightScreenPrimaryAxisRatio +
+              kHighlightScreenEdgePaddingDp);
   if (ShouldPreventSnapToTheEdge(location_in_screen))
-    snap_position_in_snapping_zone = SnapPosition::kNone;
+    snap_position_in_snapping_zone = SplitViewController::SnapPosition::kNone;
 
-  if (snap_position_in_snapping_zone == SnapPosition::kNone) {
+  if (snap_position_in_snapping_zone ==
+      SplitViewController::SnapPosition::kNone) {
     RestoreSourceWindowBounds();
   }
 
@@ -233,28 +240,30 @@ void TabDragDropDelegate::OnNewBrowserWindowCreated(
   // If it's already in split view mode, either snap the new window
   // to the left or the right depending on the drop location.
   const bool in_split_view_mode = split_view_controller->InSplitViewMode();
-  SnapPosition snap_position = snap_position_in_snapping_zone;
+  SplitViewController::SnapPosition snap_position =
+      snap_position_in_snapping_zone;
   if (in_split_view_mode) {
     snap_position =
         split_view_controller->ComputeSnapPosition(location_in_screen);
   }
 
-  if (snap_position == SnapPosition::kNone) {
+  if (snap_position == SplitViewController::SnapPosition::kNone)
     return;
-  }
 
   OverviewSession* overview_session = GetOverviewSession();
   // If overview session is present on the other side and the new window is
   // about to snap to that side but not in the snapping zone then drop the new
   // window into overview.
   if (overview_session &&
-      snap_position_in_snapping_zone == SnapPosition::kNone &&
+      snap_position_in_snapping_zone ==
+          SplitViewController::SnapPosition::kNone &&
       split_view_controller->GetPositionOfSnappedWindow(source_window_) !=
           snap_position) {
     overview_session->MergeWindowIntoOverviewForWebUITabStrip(new_window);
   } else {
+    WindowState::Get(new_window)
+        ->set_snap_action_source(WindowSnapActionSource::kDragTabToSnap);
     split_view_controller->SnapWindow(new_window, snap_position,
-                                      WindowSnapActionSource::kDragTabToSnap,
                                       /*activate_window=*/true);
   }
 
@@ -265,15 +274,17 @@ void TabDragDropDelegate::OnNewBrowserWindowCreated(
   // The tab drag source window is the last window the user was
   // interacting with. When dropping into split view, it makes the most
   // sense to snap this window to the opposite side. Do this.
-  SnapPosition opposite_position = (snap_position == SnapPosition::kPrimary)
-                                       ? SnapPosition::kSecondary
-                                       : SnapPosition::kPrimary;
+  SplitViewController::SnapPosition opposite_position =
+      (snap_position == SplitViewController::SnapPosition::kPrimary)
+          ? SplitViewController::SnapPosition::kSecondary
+          : SplitViewController::SnapPosition::kPrimary;
 
   // |source_window_| is itself a child window of the browser since it
   // hosts web content (specifically, the tab strip WebUI). Snap its
   // toplevel window which is the browser window.
-  split_view_controller->SnapWindow(source_window_, opposite_position,
-                                    WindowSnapActionSource::kDragTabToSnap);
+  WindowState::Get(new_window)
+      ->set_snap_action_source(WindowSnapActionSource::kDragTabToSnap);
+  split_view_controller->SnapWindow(source_window_, opposite_position);
 }
 
 bool TabDragDropDelegate::ShouldPreventSnapToTheEdge(
@@ -281,13 +292,13 @@ bool TabDragDropDelegate::ShouldPreventSnapToTheEdge(
   SplitViewController* const split_view_controller =
       SplitViewController::Get(source_window_);
   return !split_view_controller->InSplitViewMode() &&
-         IsLayoutHorizontal(source_window_) &&
+         split_view_controller->IsLayoutHorizontal(source_window_) &&
          location_in_screen.y() <
              Shell::Get()->shell_delegate()->GetBrowserWebUITabStripHeight();
 }
 
 void TabDragDropDelegate::UpdateSourceWindowBoundsIfNecessary(
-    SnapPosition candidate_snap_position,
+    SplitViewController::SnapPosition candidate_snap_position,
     const gfx::Point& location_in_screen) {
   SplitViewController* const split_view_controller =
       SplitViewController::Get(source_window_);
@@ -300,7 +311,7 @@ void TabDragDropDelegate::UpdateSourceWindowBoundsIfNecessary(
   }
 
   gfx::Rect new_source_window_bounds;
-  if (candidate_snap_position == SnapPosition::kNone) {
+  if (candidate_snap_position == SplitViewController::SnapPosition::kNone) {
     const gfx::Rect area =
         screen_util::GetDisplayWorkAreaBoundsInScreenForActiveDeskContainer(
             root_window_);
@@ -314,17 +325,13 @@ void TabDragDropDelegate::UpdateSourceWindowBoundsIfNecessary(
                     area.height() * kSourceWindowScale));
     }
   } else {
-    const SnapPosition opposite_position =
-        (candidate_snap_position == SnapPosition::kPrimary)
-            ? SnapPosition::kSecondary
-            : SnapPosition::kPrimary;
+    const SplitViewController::SnapPosition opposite_position =
+        (candidate_snap_position == SplitViewController::SnapPosition::kPrimary)
+            ? SplitViewController::SnapPosition::kSecondary
+            : SplitViewController::SnapPosition::kPrimary;
     new_source_window_bounds =
         SplitViewController::Get(source_window_)
-            ->GetSnappedWindowBoundsInScreen(
-                opposite_position, source_window_,
-                window_util::GetSnapRatioForWindow(source_window_),
-                /*account_for_divider_width=*/
-                display::Screen::GetScreen()->InTabletMode());
+            ->GetSnappedWindowBoundsInScreen(opposite_position, source_window_);
   }
   wm::ConvertRectFromScreen(source_window_->parent(),
                             &new_source_window_bounds);

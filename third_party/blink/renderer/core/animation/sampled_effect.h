@@ -30,7 +30,7 @@ class SampledEffect final : public GarbageCollected<SampledEffect> {
     return interpolations_;
   }
 
-  KeyframeEffect* Effect() const { return effect_.Get(); }
+  KeyframeEffect* Effect() const { return effect_; }
   unsigned SequenceNumber() const { return sequence_number_; }
   KeyframeEffect::Priority GetPriority() const { return priority_; }
   bool WillNeverChange() const;

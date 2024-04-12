@@ -18,16 +18,15 @@ SupervisedUserSettingsServiceFactory::GetForKey(SimpleFactoryKey* key) {
 // static
 SupervisedUserSettingsServiceFactory*
 SupervisedUserSettingsServiceFactory::GetInstance() {
-  static base::NoDestructor<SupervisedUserSettingsServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<SupervisedUserSettingsServiceFactory>::get();
 }
 
 SupervisedUserSettingsServiceFactory::SupervisedUserSettingsServiceFactory()
     : SimpleKeyedServiceFactory("SupervisedUserSettingsService",
                                 SimpleDependencyManager::GetInstance()) {}
 
-SupervisedUserSettingsServiceFactory::~SupervisedUserSettingsServiceFactory() =
-    default;
+SupervisedUserSettingsServiceFactory::
+    ~SupervisedUserSettingsServiceFactory() {}
 
 std::unique_ptr<KeyedService>
 SupervisedUserSettingsServiceFactory::BuildServiceInstanceFor(

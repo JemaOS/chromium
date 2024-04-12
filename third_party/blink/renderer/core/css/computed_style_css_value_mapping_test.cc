@@ -18,26 +18,24 @@ TEST_F(ComputedStyleCSSValueMappingTest, GetVariablesOnOldStyle) {
   GetDocument().body()->setInnerHTML("<div id=target style='--x:red'></div>");
   UpdateAllLifecyclePhasesForTest();
 
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   ASSERT_TRUE(target);
 
   auto before = ComputedStyleCSSValueMapping::GetVariables(
-      target->ComputedStyleRef(), GetDocument().GetPropertyRegistry(),
-      CSSValuePhase::kComputedValue);
+      target->ComputedStyleRef(), GetDocument().GetPropertyRegistry());
   EXPECT_EQ(1u, before.size());
-  EXPECT_TRUE(before.Contains(AtomicString("--x")));
-  EXPECT_FALSE(before.Contains(AtomicString("--y")));
+  EXPECT_TRUE(before.Contains("--x"));
+  EXPECT_FALSE(before.Contains("--y"));
 
   RegisterProperty(GetDocument(), "--y", "<length>", "0px", false);
 
   // Registering a property should not affect variables reported on a
   // ComputedStyle created pre-registration.
   auto after = ComputedStyleCSSValueMapping::GetVariables(
-      target->ComputedStyleRef(), GetDocument().GetPropertyRegistry(),
-      CSSValuePhase::kComputedValue);
+      target->ComputedStyleRef(), GetDocument().GetPropertyRegistry());
   EXPECT_EQ(1u, after.size());
-  EXPECT_TRUE(after.Contains(AtomicString("--x")));
-  EXPECT_FALSE(after.Contains(AtomicString("--y")));
+  EXPECT_TRUE(after.Contains("--x"));
+  EXPECT_FALSE(after.Contains("--y"));
 }
 
 }  // namespace blink

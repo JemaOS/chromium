@@ -27,6 +27,7 @@
 #include "third_party/blink/renderer/core/svg/svg_animated_length.h"
 #include "third_party/blink/renderer/core/svg/svg_fe_image_element.h"
 #include "third_party/blink/renderer/core/svg/svg_filter_element.h"
+#include "third_party/blink/renderer/core/svg/svg_length_context.h"
 
 namespace blink {
 
@@ -50,7 +51,8 @@ gfx::RectF LayoutSVGResourceFilter::ResourceBoundingBox(
     const gfx::RectF& reference_box) const {
   NOT_DESTROYED();
   const auto* filter_element = To<SVGFilterElement>(GetElement());
-  return ResolveRectangle(*filter_element, FilterUnits(), reference_box);
+  return SVGLengthContext::ResolveRectangle(filter_element, FilterUnits(),
+                                            reference_box);
 }
 
 SVGUnitTypes::SVGUnitType LayoutSVGResourceFilter::FilterUnits() const {

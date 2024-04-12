@@ -41,8 +41,7 @@ class RequestHandlerBase {
       const std::string& user_action_id,
       const std::string& tab_title,
       uint64_t user_action_requests_count,
-      safe_browsing::DeepScanAccessPoint access_point,
-      ContentAnalysisRequest::Reason reason);
+      safe_browsing::DeepScanAccessPoint access_point);
 
   virtual ~RequestHandlerBase();
 
@@ -60,7 +59,7 @@ class RequestHandlerBase {
   // expected to send one or more reports corresponding to the data that was
   // allowed to be transferred by the user.
   virtual void ReportWarningBypass(
-      std::optional<std::u16string> user_justification) = 0;
+      absl::optional<std::u16string> user_justification) = 0;
 
   // After all file requests have been processed, this call can be used to
   // retrieve any final actions stored internally.  There should one for
@@ -86,7 +85,7 @@ class RequestHandlerBase {
   safe_browsing::BinaryUploadService* GetBinaryUploadService();
 
   base::WeakPtr<safe_browsing::BinaryUploadService> upload_service_ = nullptr;
-  raw_ptr<Profile> profile_ = nullptr;
+  base::raw_ptr<Profile> profile_ = nullptr;
   const raw_ref<const enterprise_connectors::AnalysisSettings>
       analysis_settings_;
   GURL url_;
@@ -96,7 +95,6 @@ class RequestHandlerBase {
   std::string tab_title_;
   uint64_t user_action_requests_count_;
   safe_browsing::DeepScanAccessPoint access_point_;
-  ContentAnalysisRequest::Reason reason_;
 
   // A mapping of request tokens (corresponding to one user action) to their Ack
   // final action.

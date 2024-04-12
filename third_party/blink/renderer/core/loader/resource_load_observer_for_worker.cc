@@ -39,7 +39,7 @@ void ResourceLoadObserverForWorker::WillSendRequest(
     RenderBlockingBehavior render_blocking_behavior,
     const Resource* resource) {
   probe::WillSendRequest(
-      worker_fetch_context_->GetExecutionContext(), nullptr,
+      probe_, nullptr,
       fetcher_properties_->GetFetchClientSettingsObject().GlobalObjectUrl(),
       request, redirect_response, options, resource_type,
       render_blocking_behavior, base::TimeTicks::Now());
@@ -112,9 +112,11 @@ void ResourceLoadObserverForWorker::DidFinishLoading(
     uint64_t identifier,
     base::TimeTicks finish_time,
     int64_t encoded_data_length,
-    int64_t decoded_body_length) {
+    int64_t decoded_body_length,
+    bool should_report_corb_blocking) {
   probe::DidFinishLoading(probe_, identifier, nullptr, finish_time,
-                          encoded_data_length, decoded_body_length);
+                          encoded_data_length, decoded_body_length,
+                          should_report_corb_blocking);
 }
 
 void ResourceLoadObserverForWorker::DidFailLoading(const KURL&,

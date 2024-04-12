@@ -26,7 +26,7 @@ WindowScreenDetails::WindowScreenDetails(LocalDOMWindow* window)
       permission_service_(window) {}
 
 // static
-ScriptPromiseTyped<ScreenDetails> WindowScreenDetails::getScreenDetails(
+ScriptPromise WindowScreenDetails::getScreenDetails(
     ScriptState* script_state,
     LocalDOMWindow& window,
     ExceptionState& exception_state) {
@@ -55,13 +55,13 @@ WindowScreenDetails* WindowScreenDetails::From(LocalDOMWindow* window) {
   return supplement;
 }
 
-ScriptPromiseTyped<ScreenDetails> WindowScreenDetails::GetScreenDetails(
+ScriptPromise WindowScreenDetails::GetScreenDetails(
     ScriptState* script_state,
     ExceptionState& exception_state) {
   if (!script_state->ContextIsValid()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "The execution context is not valid.");
-    return ScriptPromiseTyped<ScreenDetails>();
+    return ScriptPromise();
   }
 
   LocalDOMWindow* window = LocalDOMWindow::From(script_state);
@@ -75,20 +75,17 @@ ScriptPromiseTyped<ScreenDetails> WindowScreenDetails::GetScreenDetails(
 
   auto permission_descriptor = CreatePermissionDescriptor(
       mojom::blink::PermissionName::WINDOW_MANAGEMENT);
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<ScreenDetails>>(
-          script_state, exception_state.GetContext());
-  const bool has_transient_user_activation =
-      LocalFrame::HasTransientUserActivation(GetSupplementable()->GetFrame());
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
   auto callback =
-      WTF::BindOnce(&WindowScreenDetails::OnPermissionInquiryComplete,
-                    WrapPersistent(this), WrapPersistent(resolver),
-                    /*permission_requested=*/has_transient_user_activation);
+      WTF::BindOnce(&WindowScreenDetails::OnPermissionRequestComplete,
+                    WrapPersistent(this), WrapPersistent(resolver));
 
-  // Only request permission with transient activation, otherwise check quietly.
-  // This lets sites with permission get screen details any time (e.g. on load),
-  // but prevents sites from prompting users without a transient activation.
-  if (has_transient_user_activation) {
+  // Only allow the user prompts when the frame has a transient activation.
+  // Otherwise, resolve or reject the promise with the current permission state.
+  // This allows sites with permission already granted to obtain screen info
+  // when the document loads, to populate multi-screen UI.
+  if (LocalFrame::HasTransientUserActivation(GetSupplementable()->GetFrame())) {
     permission_service_->RequestPermission(std::move(permission_descriptor),
                                            /*user_gesture=*/true,
                                            std::move(callback));
@@ -100,9 +97,8 @@ ScriptPromiseTyped<ScreenDetails> WindowScreenDetails::GetScreenDetails(
   return resolver->Promise();
 }
 
-void WindowScreenDetails::OnPermissionInquiryComplete(
-    ScriptPromiseResolverTyped<ScreenDetails>* resolver,
-    bool permission_requested,
+void WindowScreenDetails::OnPermissionRequestComplete(
+    ScriptPromiseResolver* resolver,
     mojom::blink::PermissionStatus status) {
   if (!resolver->GetScriptState()->ContextIsValid())
     return;
@@ -111,9 +107,9 @@ void WindowScreenDetails::OnPermissionInquiryComplete(
     ScriptState::Scope scope(resolver->GetScriptState());
     resolver->Reject(V8ThrowDOMException::CreateOrEmpty(
         isolate, DOMExceptionCode::kNotAllowedError,
-        (status == mojom::blink::PermissionStatus::ASK && !permission_requested)
-            ? "Transient activation is required to request permission."
-            : "Permission denied."));
+        status == mojom::blink::PermissionStatus::DENIED
+            ? "Permission denied."
+            : "Permission decision deferred."));
     return;
   }
 

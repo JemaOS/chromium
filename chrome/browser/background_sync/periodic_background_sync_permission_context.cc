@@ -114,7 +114,10 @@ PeriodicBackgroundSyncPermissionContext::GetPermissionStatusInternal(
 }
 
 void PeriodicBackgroundSyncPermissionContext::DecidePermission(
-    permissions::PermissionRequestData request_data,
+    const permissions::PermissionRequestID& id,
+    const GURL& requesting_origin,
+    const GURL& embedding_origin,
+    bool user_gesture,
     permissions::BrowserPermissionCallback callback) {
   // The user should never be prompted to authorize Periodic Background Sync
   // from PeriodicBackgroundSyncPermissionContext.

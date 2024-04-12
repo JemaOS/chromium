@@ -5,13 +5,8 @@
 #include "ash/public/cpp/test/test_nearby_share_delegate.h"
 
 #include "base/time/time.h"
-#include "ui/gfx/vector_icon_types.h"
 
 namespace ash {
-
-namespace {
-const gfx::VectorIcon kEmptyIcon;
-}  // namespace
 
 TestNearbyShareDelegate::TestNearbyShareDelegate() = default;
 
@@ -46,13 +41,5 @@ void TestNearbyShareDelegate::DisableHighVisibility() {
 }
 
 void TestNearbyShareDelegate::ShowNearbyShareSettings() const {}
-
-const gfx::VectorIcon& TestNearbyShareDelegate::GetIcon(bool on_icon) const {
-  return kEmptyIcon;
-}
-
-std::u16string TestNearbyShareDelegate::GetPlaceholderFeatureName() const {
-  return u"Nearby Share";
-}
 
 }  // namespace ash

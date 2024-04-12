@@ -7,7 +7,6 @@
 #include "chrome/browser/ash/login/screens/welcome_screen.h"
 #include "chrome/browser/ash/login/test/oobe_base_test.h"
 #include "chrome/browser/ash/login/test/oobe_screen_waiter.h"
-#include "chrome/browser/ash/login/test/oobe_screens_utils.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/ui/webui/ash/login/network_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/os_install_screen_handler.h"
@@ -40,7 +39,7 @@ class OsTrialScreenTest : public OobeBaseTest {
   }
 
   void ShowOsTrialScreen() {
-    test::WaitForWelcomeScreen();
+    OobeScreenWaiter(WelcomeView::kScreenId).Wait();
     test::OobeJS().TapOnPath(kWelcomeGetStartedButton);
     OobeScreenWaiter(OsTrialScreenView::kScreenId).Wait();
     test::OobeJS().ExpectHasAttribute("checked", kInstallRadioButton);
@@ -74,7 +73,7 @@ IN_PROC_BROWSER_TEST_F(OsTrialScreenTest, InstallOptionSelected) {
 IN_PROC_BROWSER_TEST_F(OsTrialScreenTest, BackNavigation) {
   ShowOsTrialScreen();
   test::OobeJS().ClickOnPath(kBackButton);
-  test::WaitForWelcomeScreen();
+  OobeScreenWaiter(WelcomeView::kScreenId).Wait();
 }
 
 // If `Start OS Install` button was clicked from the shelf in the user creation

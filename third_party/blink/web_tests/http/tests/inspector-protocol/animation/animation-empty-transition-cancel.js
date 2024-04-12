@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startHTML(`
     <div id='node' style='background-color: red; width: 100px'></div>
   `, 'Test that canceling css transition is reported over protocol.');

@@ -18,7 +18,9 @@ import org.chromium.components.browser_ui.widget.selectable_list.SelectableListT
 
 import java.util.List;
 
-/** Handles toolbar functionality for the download home. */
+/**
+ * Handles toolbar functionality for the download home.
+ */
 public class DownloadHomeToolbar extends SelectableListToolbar<ListItem> {
     private UiConfig mUiConfig;
 
@@ -30,11 +32,10 @@ public class DownloadHomeToolbar extends SelectableListToolbar<ListItem> {
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
-        post(
-                () -> {
-                    mUiConfig = new UiConfig(this);
-                    configureWideDisplayStyle(mUiConfig);
-                });
+        post(() -> {
+            mUiConfig = new UiConfig(this);
+            configureWideDisplayStyle(mUiConfig);
+        });
     }
 
     @Override
@@ -69,23 +70,16 @@ public class DownloadHomeToolbar extends SelectableListToolbar<ListItem> {
                 if (BuildInfo.getInstance().isAutomotive) {
                     shareButton.setVisibility(View.GONE);
                 } else {
-                    shareButton.setContentDescription(
-                            getResources()
-                                    .getQuantityString(
-                                            R.plurals.accessibility_share_selected_items,
-                                            numSelected,
-                                            numSelected));
+                    shareButton.setContentDescription(getResources().getQuantityString(
+                            R.plurals.accessibility_share_selected_items, numSelected,
+                            numSelected));
                 }
             }
 
             View deleteButton = findViewById(R.id.selection_mode_delete_menu_id);
             if (deleteButton != null) {
-                deleteButton.setContentDescription(
-                        getResources()
-                                .getQuantityString(
-                                        R.plurals.accessibility_remove_selected_items,
-                                        numSelected,
-                                        numSelected));
+                deleteButton.setContentDescription(getResources().getQuantityString(
+                        R.plurals.accessibility_remove_selected_items, numSelected, numSelected));
             }
 
             if (!wasSelectionEnabled) {

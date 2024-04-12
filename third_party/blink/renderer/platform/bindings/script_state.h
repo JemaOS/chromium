@@ -5,11 +5,13 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_BINDINGS_SCRIPT_STATE_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_BINDINGS_SCRIPT_STATE_H_
 
-#include "base/memory/raw_ptr.h"
+#include <memory>
+
 #include "gin/public/context_holder.h"
 #include "gin/public/gin_embedders.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/renderer/platform/bindings/scoped_persistent.h"
+#include "third_party/blink/renderer/platform/bindings/v8_cross_origin_callback_info.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/heap/self_keep_alive.h"
@@ -74,7 +76,7 @@ class V8PerContextData;
 // ScriptState is created when v8::Context is created.
 // ScriptState is destroyed when v8::Context is garbage-collected and
 // all V8 proxy objects that have references to the ScriptState are destructed.
-class PLATFORM_EXPORT ScriptState : public GarbageCollected<ScriptState> {
+class PLATFORM_EXPORT ScriptState final : public GarbageCollected<ScriptState> {
  public:
   class Scope final {
     STACK_ALLOCATED();
@@ -122,15 +124,16 @@ class PLATFORM_EXPORT ScriptState : public GarbageCollected<ScriptState> {
     v8::Local<v8::Context> context_;
   };
 
-  static ScriptState* Create(v8::Local<v8::Context>,
-                             DOMWrapperWorld*,
-                             ExecutionContext*);
-
+  // If this ScriptState is associated with an ExecutionContext then it must be
+  // provided here, otherwise providing nullptr is fine.
+  ScriptState(v8::Local<v8::Context>,
+              scoped_refptr<DOMWrapperWorld>,
+              ExecutionContext* execution_context);
   ScriptState(const ScriptState&) = delete;
   ScriptState& operator=(const ScriptState&) = delete;
-  virtual ~ScriptState();
+  ~ScriptState();
 
-  virtual void Trace(Visitor*) const;
+  void Trace(Visitor*) const;
 
   static ScriptState* Current(v8::Isolate* isolate) {  // DEPRECATED
     return From(isolate->GetCurrentContext());
@@ -144,6 +147,25 @@ class PLATFORM_EXPORT ScriptState : public GarbageCollected<ScriptState> {
   static ScriptState* ForCurrentRealm(
       const v8::PropertyCallbackInfo<v8::Value>& info) {
     return From(info.GetIsolate()->GetCurrentContext());
+  }
+
+  static ScriptState* ForRelevantRealm(
+      const v8::FunctionCallbackInfo<v8::Value>& info) {
+    return ForRelevantRealm(info.Holder());
+  }
+
+  static ScriptState* ForRelevantRealm(const V8CrossOriginCallbackInfo& info) {
+    return ForRelevantRealm(info.Holder());
+  }
+
+  static ScriptState* ForRelevantRealm(
+      const v8::PropertyCallbackInfo<v8::Value>& info) {
+    return ForRelevantRealm(info.Holder());
+  }
+
+  static ScriptState* ForRelevantRealm(
+      const v8::PropertyCallbackInfo<void>& info) {
+    return ForRelevantRealm(info.Holder());
   }
 
   static ScriptState* ForRelevantRealm(v8::Local<v8::Object> object) {
@@ -170,26 +192,6 @@ class PLATFORM_EXPORT ScriptState : public GarbageCollected<ScriptState> {
     return script_state;
   }
 
-  // For use when it is not absolutely certain that the v8::Context is
-  // associated with a ScriptState. This is necessary in unit tests when a
-  // v8::Context is created directly on the v8 API without going through the
-  // usual blink codepaths.
-  // This is also called in some situations where DissociateContext() has
-  // already been called and therefore the ScriptState pointer on the
-  // v8::Context has already been nulled.
-  static ScriptState* MaybeFrom(v8::Local<v8::Context> context) {
-    DCHECK(!context.IsEmpty());
-    if (context->GetNumberOfEmbedderDataFields() <=
-        kV8ContextPerContextDataIndex) {
-      return nullptr;
-    }
-    ScriptState* script_state =
-        static_cast<ScriptState*>(context->GetAlignedPointerFromEmbedderData(
-            kV8ContextPerContextDataIndex));
-    SECURITY_CHECK(!script_state || script_state->context_ == context);
-    return script_state;
-  }
-
   v8::Isolate* GetIsolate() const { return isolate_; }
   DOMWrapperWorld& World() const { return *world_; }
   const V8ContextToken& GetToken() const { return token_; }
@@ -212,21 +214,24 @@ class PLATFORM_EXPORT ScriptState : public GarbageCollected<ScriptState> {
   // termination.
   void DissociateContext();
 
- protected:
-  ScriptState(v8::Local<v8::Context>, DOMWrapperWorld*, ExecutionContext*);
-
  private:
   static void OnV8ContextCollectedCallback(
       const v8::WeakCallbackInfo<ScriptState>&);
 
-  raw_ptr<v8::Isolate, DanglingUntriaged> isolate_;
+  v8::Isolate* isolate_;
   // This persistent handle is weak.
   ScopedPersistent<v8::Context> context_;
 
   // This refptr doesn't cause a cycle because all persistent handles that
   // DOMWrapperWorld holds are weak.
-  Member<DOMWrapperWorld> world_;
+  scoped_refptr<DOMWrapperWorld> world_;
 
+  // This std::unique_ptr causes a cycle:
+  // V8PerContextData --(Persistent)--> v8::Context --(RefPtr)--> ScriptState
+  //     --(std::unique_ptr)--> V8PerContextData
+  // So you must explicitly clear the std::unique_ptr by calling
+  // disposePerContextData() once you no longer need V8PerContextData.
+  // Otherwise, the v8::Context will leak.
   Member<V8PerContextData> per_context_data_;
 
   // v8::Context has an internal field to this ScriptState* as a raw pointer,
@@ -239,13 +244,6 @@ class PLATFORM_EXPORT ScriptState : public GarbageCollected<ScriptState> {
   // Serves as a unique ID for this context, which can be used to name the
   // context in browser/renderer communications.
   V8ContextToken token_;
-
-  using CreateCallback = ScriptState* (*)(v8::Local<v8::Context>,
-                                          DOMWrapperWorld*,
-                                          ExecutionContext*);
-  static CreateCallback s_create_callback_;
-  static void SetCreateCallback(CreateCallback);
-  friend class ScriptStateImpl;
 
   static constexpr int kV8ContextPerContextDataIndex =
       static_cast<int>(gin::kPerContextDataStartIndex) +
@@ -272,7 +270,7 @@ class ScriptStateProtectingContext final
 
   void Trace(Visitor* visitor) const { visitor->Trace(script_state_); }
 
-  ScriptState* Get() const { return script_state_.Get(); }
+  ScriptState* Get() const { return script_state_; }
   void Reset() {
     script_state_ = nullptr;
     context_.Clear();

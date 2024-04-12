@@ -27,29 +27,6 @@ bool StyleRecalcChange::TraverseChild(const Node& node) const {
          node.NeedsLayoutSubtreeUpdate();
 }
 
-bool StyleRecalcChange::RecalcContainerQueryDependent(const Node& node) const {
-  // Early exit before getting the computed style.
-  if (!RecalcContainerQueryDependent()) {
-    return false;
-  }
-  const Element* element = DynamicTo<Element>(node);
-  if (!element) {
-    return false;
-  }
-  const ComputedStyle* old_style = element->GetComputedStyle();
-  // Container queries may affect display:none elements, and we since we store
-  // that dependency on ComputedStyle we need to recalc style for display:none
-  // subtree roots.
-  return !old_style ||
-         (RecalcSizeContainerQueryDependent() &&
-          (old_style->DependsOnSizeContainerQueries() ||
-           old_style->HighlightPseudoElementStylesDependOnContainerUnits())) ||
-         (RecalcStyleContainerQueryDependent() &&
-          old_style->DependsOnStyleContainerQueries()) ||
-         (RecalcStateContainerQueryDependent() &&
-          old_style->DependsOnStateContainerQueries());
-}
-
 bool StyleRecalcChange::ShouldRecalcStyleFor(const Node& node) const {
   if (flags_ & kSuppressRecalc) {
     return false;
@@ -60,7 +37,19 @@ bool StyleRecalcChange::ShouldRecalcStyleFor(const Node& node) const {
   if (node.NeedsStyleRecalc()) {
     return true;
   }
-  return RecalcContainerQueryDependent(node);
+  // Early exit before getting the computed style.
+  if (!RecalcContainerQueryDependent()) {
+    return false;
+  }
+  const ComputedStyle* old_style = node.GetComputedStyle();
+  // Container queries may affect display:none elements, and we since we store
+  // that dependency on ComputedStyle we need to recalc style for display:none
+  // subtree roots.
+  return !old_style ||
+         (RecalcSizeContainerQueryDependent() &&
+          old_style->DependsOnSizeContainerQueries()) ||
+         (RecalcStyleContainerQueryDependent() &&
+          old_style->DependsOnStyleContainerQueries());
 }
 
 bool StyleRecalcChange::ShouldUpdatePseudoElement(
@@ -69,9 +58,6 @@ bool StyleRecalcChange::ShouldUpdatePseudoElement(
     return true;
   }
   if (pseudo_element.NeedsStyleRecalc()) {
-    return true;
-  }
-  if (pseudo_element.ChildNeedsStyleRecalc()) {
     return true;
   }
   if (pseudo_element.NeedsLayoutSubtreeUpdate()) {
@@ -105,6 +91,9 @@ String StyleRecalcChange::ToString() const {
       break;
     case kRecalcDescendants:
       builder.Append("kRecalcDescendants");
+      break;
+    case kRecalcSiblingDescendants:
+      builder.Append("kRecalcSiblingDescendants");
       break;
   }
   builder.Append(", flags=");

@@ -27,6 +27,7 @@
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 
 #include "third_party/blink/public/platform/platform.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_get_inner_html_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_observable_array_css_style_sheet.h"
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
 #include "third_party/blink/renderer/core/css/style_change_reason.h"
@@ -50,15 +51,13 @@ namespace blink {
 struct SameSizeAsShadowRoot : public DocumentFragment,
                               public TreeScope,
                               public ElementRareDataField {
-  Member<void*> member[2];
+  Member<void*> member[3];
   unsigned flags[1];
 };
 
 ASSERT_SIZE(ShadowRoot, SameSizeAsShadowRoot);
 
-ShadowRoot::ShadowRoot(Document& document,
-                       ShadowRootMode mode,
-                       SlotAssignmentMode assignment_mode)
+ShadowRoot::ShadowRoot(Document& document, ShadowRootType type)
     : DocumentFragment(nullptr, kCreateShadowRoot),
       TreeScope(
           *this,
@@ -67,12 +66,15 @@ ShadowRoot::ShadowRoot(Document& document,
               &ShadowRoot::OnAdoptedStyleSheetSet),
           static_cast<V8ObservableArrayCSSStyleSheet::DeleteAlgorithmCallback>(
               &ShadowRoot::OnAdoptedStyleSheetDelete)),
+      style_sheet_list_(nullptr),
       child_shadow_root_count_(0),
-      mode_(static_cast<unsigned>(mode)),
+      type_(static_cast<unsigned>(type)),
       registered_with_parent_shadow_root_(false),
       delegates_focus_(false),
-      slot_assignment_mode_(static_cast<unsigned>(assignment_mode)),
-      has_focusgroup_attribute_on_descendant_(false) {}
+      slot_assignment_mode_(static_cast<unsigned>(SlotAssignmentMode::kNamed)),
+      needs_dir_auto_attribute_update_(false),
+      has_focusgroup_attribute_on_descendant_(false),
+      unused_(0) {}
 
 ShadowRoot::~ShadowRoot() = default;
 
@@ -99,12 +101,13 @@ void ShadowRoot::DidChangeHostChildSlotName(const AtomicString& old_value,
   slot_assignment_->DidChangeHostChildSlotName(old_value, new_value);
 }
 
-Node* ShadowRoot::Clone(Document&,
-                        NodeCloningData&,
-                        ContainerNode*,
-                        ExceptionState&) const {
+Node* ShadowRoot::Clone(Document&, CloneChildrenFlag) const {
   NOTREACHED() << "ShadowRoot nodes are not clonable.";
   return nullptr;
+}
+
+void ShadowRoot::SetSlotAssignmentMode(SlotAssignmentMode assignment_mode) {
+  slot_assignment_mode_ = static_cast<unsigned>(assignment_mode);
 }
 
 String ShadowRoot::innerHTML() const {
@@ -132,23 +135,27 @@ void ShadowRoot::OnAdoptedStyleSheetDelete(
                                        exception_state);
 }
 
+String ShadowRoot::getInnerHTML(const GetInnerHTMLOptions* options) const {
+  ClosedRootsSet include_closed_roots;
+  if (options->hasClosedRoots()) {
+    for (auto& shadow_root : options->closedRoots()) {
+      include_closed_roots.insert(shadow_root);
+    }
+  }
+  return CreateMarkup(
+      this, kChildrenOnly, kDoNotResolveURLs,
+      options->includeShadowRoots() ? kIncludeShadowRoots : kNoShadowRoots,
+      include_closed_roots);
+}
+
 void ShadowRoot::setInnerHTML(const String& html,
                               ExceptionState& exception_state) {
   if (DocumentFragment* fragment = CreateFragmentForInnerOuterHTML(
-          html, &host(), kAllowScriptingContent,
-          Element::ParseDeclarativeShadowRoots::kDontParse,
-          Element::ForceHtml::kDontForce, exception_state)) {
+          html, &host(), kAllowScriptingContent, "innerHTML",
+          /*include_shadow_roots=*/false, exception_state)) {
     ReplaceChildrenWithFragment(this, fragment, exception_state);
-  }
-}
-
-void ShadowRoot::setHTMLUnsafe(const String& html,
-                               ExceptionState& exception_state) {
-  if (DocumentFragment* fragment = CreateFragmentForInnerOuterHTML(
-          html, &host(), kAllowScriptingContent,
-          Element::ParseDeclarativeShadowRoots::kParse,
-          Element::ForceHtml::kDontForce, exception_state)) {
-    ReplaceChildrenWithFragment(this, fragment, exception_state);
+    if (auto* element = DynamicTo<HTMLElement>(host()))
+      element->AdjustDirectionalityIfNeededAfterShadowRootChanged();
   }
 }
 
@@ -230,13 +237,7 @@ bool ShadowRoot::NeedsSlotAssignmentRecalc() const {
 void ShadowRoot::ChildrenChanged(const ChildrenChange& change) {
   ContainerNode::ChildrenChanged(change);
 
-  if (change.type ==
-      ChildrenChangeType::kFinishedBuildingDocumentFragmentTree) {
-    // No need to call CheckForSiblingStyleChanges() as at this point the
-    // node is not in the active document (CheckForSiblingStyleChanges() does
-    // nothing when not in the active document).
-    DCHECK(!InActiveDocument());
-  } else if (change.IsChildElementChange()) {
+  if (change.IsChildElementChange()) {
     CheckForSiblingStyleChanges(
         change.type == ChildrenChangeType::kElementRemoved
             ? kSiblingElementRemoved
@@ -244,16 +245,12 @@ void ShadowRoot::ChildrenChanged(const ChildrenChange& change) {
         To<Element>(change.sibling_changed), change.sibling_before_change,
         change.sibling_after_change);
   }
+}
 
-  // In the case of input types like button where the child element is not
-  // in a container, we need to explicit adjust directionality.
-  if (RuntimeEnabledFeatures::DirnameMoreInputTypesEnabled()) {
-    if (TextControlElement* text_element =
-            HTMLElement::ElementIfAutoDirectionalityFormAssociatedOrNull(
-                &host())) {
-      text_element->AdjustDirectionalityIfNeededAfterChildrenChanged(change);
-    }
-  }
+StyleSheetList& ShadowRoot::StyleSheets() {
+  if (!style_sheet_list_)
+    SetStyleSheets(MakeGarbageCollected<StyleSheetList>(this));
+  return *style_sheet_list_;
 }
 
 void ShadowRoot::SetRegistry(CustomElementRegistry* registry) {
@@ -261,12 +258,10 @@ void ShadowRoot::SetRegistry(CustomElementRegistry* registry) {
   DCHECK(!registry ||
          RuntimeEnabledFeatures::ScopedCustomElementRegistryEnabled());
   registry_ = registry;
-  if (registry) {
-    registry->AssociatedWith(GetDocument());
-  }
 }
 
 void ShadowRoot::Trace(Visitor* visitor) const {
+  visitor->Trace(style_sheet_list_);
   visitor->Trace(slot_assignment_);
   visitor->Trace(registry_);
   ElementRareDataField::Trace(visitor);
@@ -274,15 +269,15 @@ void ShadowRoot::Trace(Visitor* visitor) const {
   DocumentFragment::Trace(visitor);
 }
 
-std::ostream& operator<<(std::ostream& ostream, const ShadowRootMode& mode) {
-  switch (mode) {
-    case ShadowRootMode::kUserAgent:
+std::ostream& operator<<(std::ostream& ostream, const ShadowRootType& type) {
+  switch (type) {
+    case ShadowRootType::kUserAgent:
       ostream << "UserAgent";
       break;
-    case ShadowRootMode::kOpen:
+    case ShadowRootType::kOpen:
       ostream << "Open";
       break;
-    case ShadowRootMode::kClosed:
+    case ShadowRootType::kClosed:
       ostream << "Closed";
       break;
   }

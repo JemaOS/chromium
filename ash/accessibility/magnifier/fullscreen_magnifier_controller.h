@@ -150,7 +150,6 @@ class ASH_EXPORT FullscreenMagnifierController
   }
 
  private:
-  friend class FullscreenMagnifierControllerTest;
   class GestureProviderClient;
 
   // ui::ImplicitAnimationObserver overrides:
@@ -208,10 +207,7 @@ class ASH_EXPORT FullscreenMagnifierController
                                   bool animate,
                                   bool ignore_mouse_change);
 
-  // Takes mouse root `location` in floating-point DIP. Note at higher zoom
-  // levels, the floating point values matter more, because the ratio of px to
-  // DIP increases.
-  void OnMouseMove(const gfx::PointF& location);
+  void OnMouseMove(const gfx::Point& location);
 
   // Move the mouse cursot to the given point. Actual move will be done when
   // the animation is completed. This should be called after animation is
@@ -259,7 +255,7 @@ class ASH_EXPORT FullscreenMagnifierController
   void MoveCursorTo(const gfx::Point& root_location);
 
   // Target root window. This must not be NULL.
-  raw_ptr<aura::Window> root_window_;
+  raw_ptr<aura::Window, ExperimentalAsh> root_window_;
 
   // True if the magnified window is currently animating a change. Otherwise,
   // false.

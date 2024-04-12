@@ -34,7 +34,6 @@
 #include "third_party/blink/renderer/bindings/core/v8/idl_types.h"
 #include "third_party/blink/renderer/bindings/core/v8/native_value_traits_impl.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_state_impl.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_element.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_event_target.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_html_link_element.h"
@@ -42,7 +41,6 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_script_runner.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_window.h"
 #include "third_party/blink/renderer/bindings/core/v8/window_proxy.h"
-#include "third_party/blink/renderer/bindings/core/v8/window_proxy_manager.h"
 #include "third_party/blink/renderer/bindings/core/v8/worker_or_worklet_script_controller.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/qualified_name.h"
@@ -86,22 +84,21 @@ void V8SetReturnValue(const v8::PropertyCallbackInfo<v8::Value>& info,
     DCHECK(descriptor.has_writable());
     info.GetReturnValue().Set(
         V8ObjectBuilder(ScriptState::ForCurrentRealm(info))
-            .AddBoolean("configurable", descriptor.configurable())
-            .AddBoolean("enumerable", descriptor.enumerable())
-            .AddV8Value("value", descriptor.value())
-            .AddBoolean("writable", descriptor.writable())
+            .Add("configurable", descriptor.configurable())
+            .Add("enumerable", descriptor.enumerable())
+            .Add("value", descriptor.value())
+            .Add("writable", descriptor.writable())
             .V8Value());
     return;
   }
   // Accessor property
   DCHECK(descriptor.has_get() || descriptor.has_set());
-  info.GetReturnValue().Set(
-      V8ObjectBuilder(ScriptState::ForCurrentRealm(info))
-          .AddBoolean("configurable", descriptor.configurable())
-          .AddBoolean("enumerable", descriptor.enumerable())
-          .AddV8Value("get", descriptor.get())
-          .AddV8Value("set", descriptor.set())
-          .V8Value());
+  info.GetReturnValue().Set(V8ObjectBuilder(ScriptState::ForCurrentRealm(info))
+                                .Add("configurable", descriptor.configurable())
+                                .Add("enumerable", descriptor.enumerable())
+                                .Add("get", descriptor.get())
+                                .Add("set", descriptor.set())
+                                .V8Value());
 }
 
 const int32_t kMaxInt32 = 0x7fffffff;
@@ -633,21 +630,15 @@ String ReplaceUnmatchedSurrogates(String string) {
   return String::Adopt(result);
 }
 
-LocalDOMWindow* ToLocalDOMWindow(const ScriptState* script_state) {
-  return DynamicTo<LocalDOMWindow>(ToExecutionContext(script_state));
-}
-
-ExecutionContext* ToExecutionContext(const ScriptState* script_state) {
-  RUNTIME_CALL_TIMER_SCOPE(script_state->GetIsolate(),
-                           RuntimeCallStats::CounterId::kToExecutionContext);
-  return static_cast<const ScriptStateImpl*>(script_state)
-      ->GetExecutionContext();
+DOMWindow* ToDOMWindow(v8::Isolate* isolate, v8::Local<v8::Value> value) {
+  return V8Window::ToImplWithTypeCheck(isolate, value);
 }
 
 LocalDOMWindow* ToLocalDOMWindow(v8::Local<v8::Context> context) {
   if (context.IsEmpty())
     return nullptr;
-  return DynamicTo<LocalDOMWindow>(ToExecutionContext(context));
+  return To<LocalDOMWindow>(
+      ToDOMWindow(context->GetIsolate(), context->Global()));
 }
 
 LocalDOMWindow* EnteredDOMWindow(v8::Isolate* isolate) {
@@ -668,9 +659,39 @@ LocalDOMWindow* CurrentDOMWindow(v8::Isolate* isolate) {
 }
 
 ExecutionContext* ToExecutionContext(v8::Local<v8::Context> context) {
-  DCHECK(!context.IsEmpty());
-  ScriptState* script_state = ScriptState::MaybeFrom(context);
-  return script_state ? ToExecutionContext(script_state) : nullptr;
+  // TODO(jgruber,crbug.com/v8/10460): Change this back to a DCHECK once the
+  // crash has been flushed out.
+  CHECK(!context.IsEmpty());
+
+  RUNTIME_CALL_TIMER_SCOPE(context->GetIsolate(),
+                           RuntimeCallStats::CounterId::kToExecutionContext);
+
+  v8::Local<v8::Object> global_proxy = context->Global();
+
+  // TODO(jgruber,crbug.com/v8/10460): Change these back to a DCHECK once the
+  // crash has been flushed out.
+  CHECK(!global_proxy.IsEmpty());
+  CHECK(global_proxy->IsObject());
+
+  // There are several contexts other than Window, WorkerGlobalScope or
+  // WorkletGlobalScope but entering into ToExecutionContext, namely GC context,
+  // DevTools' context (debug context), and maybe more.  They all don't have
+  // any internal field.
+  if (global_proxy->InternalFieldCount() == 0)
+    return nullptr;
+
+  ScriptWrappable::TypeDispatcher dispatcher(ToScriptWrappable(global_proxy));
+  if (auto* x = dispatcher.ToMostDerived<DOMWindow>())
+    return x->GetExecutionContext();
+  if (auto* x = dispatcher.DowncastTo<WorkerGlobalScope>())
+    return x->GetExecutionContext();
+  if (auto* x = dispatcher.DowncastTo<WorkletGlobalScope>())
+    return x->GetExecutionContext();
+  if (auto* x = dispatcher.ToMostDerived<ShadowRealmGlobalScope>())
+    return x->GetExecutionContext();
+
+  NOTREACHED();
+  return nullptr;
 }
 
 ExecutionContext* CurrentExecutionContext(v8::Isolate* isolate) {
@@ -784,18 +805,7 @@ ScriptState* ToScriptState(LocalFrame* frame, DOMWrapperWorld& world) {
 }
 
 ScriptState* ToScriptStateForMainWorld(LocalFrame* frame) {
-  if (!frame) {
-    return nullptr;
-  }
-  auto* isolate = ToIsolate(frame);
-  v8::HandleScope handle_scope(isolate);
-  return ToScriptStateImpl(frame, DOMWrapperWorld::MainWorld(isolate));
-}
-
-ScriptState* ToScriptStateForMainWorld(ExecutionContext* context) {
-  DCHECK(context);
-  return ToScriptState(context,
-                       DOMWrapperWorld::MainWorld(context->GetIsolate()));
+  return ToScriptState(frame, DOMWrapperWorld::MainWorld());
 }
 
 bool IsValidEnum(const String& value,

@@ -54,12 +54,6 @@ void WebAppOriginAssociationManager::SetFetcherForTest(
   fetcher_ = std::move(fetcher);
 }
 
-webapps::WebAppOriginAssociationFetcher&
-WebAppOriginAssociationManager::GetFetcherForTest() {
-  DCHECK(fetcher_);
-  return *fetcher_;
-}
-
 const mojo::Remote<webapps::mojom::WebAppOriginAssociationParser>&
 WebAppOriginAssociationManager::GetParser() {
   if (!parser_ || !parser_.is_bound()) {

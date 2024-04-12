@@ -64,9 +64,9 @@ LanguageSettingsPrivateDelegate::~LanguageSettingsPrivateDelegate() {
   pref_change_registrar_.RemoveAll();
 }
 
-std::unique_ptr<LanguageSettingsPrivateDelegate>
-LanguageSettingsPrivateDelegate::Create(content::BrowserContext* context) {
-  return std::make_unique<LanguageSettingsPrivateDelegate>(context);
+LanguageSettingsPrivateDelegate* LanguageSettingsPrivateDelegate::Create(
+    content::BrowserContext* context) {
+  return new LanguageSettingsPrivateDelegate(context);
 }
 
 std::vector<language_settings_private::SpellcheckDictionaryStatus>

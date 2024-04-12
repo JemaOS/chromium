@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import json
 import os
 
 from googleapiclient.discovery import build
@@ -14,15 +13,6 @@ class RealTimeReportingServer(Verifyable):
   SCOPES = ['https://www.googleapis.com/auth/admin.reports.audit.readonly']
   USER_EMAIL = 'admin@beyondcorp.bigr.name'
 
-  def __init__(self, credentials):
-    self.credentials = None
-    try:
-      serviceAccountInfo = json.loads(credentials)
-      self.credentials = service_account.Credentials.from_service_account_info(
-          serviceAccountInfo, scopes=self.SCOPES)
-    except json.JSONDecodeError:
-      print('Decoding RealTimeReportingServer credentials JSON has failed')
-
   def create_reports_service(self, user_email):
     """Build and returns an Admin SDK Reports service object authorized with
       the service accounts that act on behalf of the given user.
@@ -33,7 +23,12 @@ class RealTimeReportingServer(Verifyable):
       Returns:
         Admin SDK reports service object.
       """
-    delegatedCreds = self.credentials.with_subject(user_email)
+    localDir = os.path.dirname(os.path.abspath(__file__))
+    filePath = os.path.join(localDir, 'service_accountkey.json')
+    credentials = service_account.Credentials.from_service_account_file(
+        filePath, scopes=self.SCOPES)
+
+    delegatedCreds = credentials.with_subject(user_email)
 
     return build('admin', 'reports_v1', credentials=delegatedCreds)
 
@@ -46,7 +41,7 @@ class RealTimeReportingServer(Verifyable):
         userKey='all',
         applicationName='chrome',
         customerId='C029rpj4z',
-        eventName='UNSAFE_SITE_VISIT',
+        eventName='MALWARE_TRANSFER',
         startTime=content.timestamp.strftime(
             '%Y-%m-%dT%H:%M:%S.%fZ')).execute()
     activities = results.get('items', [])

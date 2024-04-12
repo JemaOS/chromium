@@ -10,7 +10,6 @@
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/common/chrome_features.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
-#include "third_party/blink/public/mojom/page/draggable_region.mojom.h"
 
 DraggableRegionsHostImpl::DraggableRegionsHostImpl(
     content::RenderFrameHost& render_frame_host,
@@ -26,7 +25,7 @@ void DraggableRegionsHostImpl::CreateIfAllowed(
   CHECK(render_frame_host);
   auto* web_contents =
       content::WebContents::FromRenderFrameHost(render_frame_host);
-  auto* browser = chrome::FindBrowserWithTab(web_contents);
+  auto* browser = chrome::FindBrowserWithWebContents(web_contents);
 
   // We only want to bind the receiver for PWAs.
   if (!web_app::AppBrowserController::IsWebApp(browser))
@@ -38,17 +37,17 @@ void DraggableRegionsHostImpl::CreateIfAllowed(
 }
 
 void DraggableRegionsHostImpl::UpdateDraggableRegions(
-    std::vector<blink::mojom::DraggableRegionPtr> draggable_region) {
+    std::vector<chrome::mojom::DraggableRegionPtr> draggable_region) {
   auto* web_contents =
       content::WebContents::FromRenderFrameHost(&render_frame_host());
-  auto* browser = chrome::FindBrowserWithTab(web_contents);
+  auto* browser = chrome::FindBrowserWithWebContents(web_contents);
   // When a WebApp browser's WebContents is reparented to a tabbed browser, a
   // draggable regions update may race with the reparenting logic.
   if (!web_app::AppBrowserController::IsWebApp(browser))
     return;
 
   SkRegion sk_region;
-  for (const blink::mojom::DraggableRegionPtr& region : draggable_region) {
+  for (const chrome::mojom::DraggableRegionPtr& region : draggable_region) {
     sk_region.op(
         SkIRect::MakeLTRB(region->bounds.x(), region->bounds.y(),
                           region->bounds.x() + region->bounds.width(),

@@ -11,13 +11,11 @@
 
 #include "base/functional/bind.h"
 #include "base/logging.h"
-#include "base/memory/raw_ptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
-#include "base/token.h"
 #include "base/types/optional_util.h"
 #include "chrome/common/search/search.mojom.h"
 #include "chrome/common/webui_url_constants.h"
@@ -59,12 +57,12 @@ class SearchBoxIconURLHelper: public SearchBox::IconURLHelper {
  public:
   explicit SearchBoxIconURLHelper(const SearchBox* search_box);
   ~SearchBoxIconURLHelper() override;
-  std::string GetMainFrameToken() const override;
+  int GetMainFrameID() const override;
   std::string GetURLStringFromRestrictedID(InstantRestrictedID rid) const
       override;
 
  private:
-  raw_ptr<const SearchBox> search_box_;
+  const SearchBox* search_box_;
 };
 
 SearchBoxIconURLHelper::SearchBoxIconURLHelper(const SearchBox* search_box)
@@ -74,11 +72,8 @@ SearchBoxIconURLHelper::SearchBoxIconURLHelper(const SearchBox* search_box)
 SearchBoxIconURLHelper::~SearchBoxIconURLHelper() {
 }
 
-std::string SearchBoxIconURLHelper::GetMainFrameToken() const {
-  return search_box_->render_frame()
-      ->GetWebFrame()
-      ->GetLocalFrameToken()
-      .ToString();
+int SearchBoxIconURLHelper::GetMainFrameID() const {
+  return search_box_->render_frame()->GetRoutingID();
 }
 
 std::string SearchBoxIconURLHelper::GetURLStringFromRestrictedID(
@@ -94,13 +89,12 @@ std::string SearchBoxIconURLHelper::GetURLStringFromRestrictedID(
 
 namespace internal {  // for testing
 
-// Parses "<frame_token>/<restricted_id>". If successful, assigns
-// |*frame_token| := "<frame_token>", |*rid| := "<restricted_id>", and returns
-// true.
-bool ParseFrameTokenAndRestrictedId(const std::string& id_part,
-                                    std::string* frame_token_out,
-                                    InstantRestrictedID* rid_out) {
-  DCHECK(frame_token_out);
+// Parses "<frame_id>/<restricted_id>". If successful, assigns
+// |*frame_id| := "<frame_id>", |*rid| := "<restricted_id>", and returns true.
+bool ParseFrameIdAndRestrictedId(const std::string& id_part,
+                                 int* frame_id_out,
+                                 InstantRestrictedID* rid_out) {
+  DCHECK(frame_id_out);
   DCHECK(rid_out);
   // Check that the path is of Most visited item ID form.
   std::vector<base::StringPiece> tokens = base::SplitStringPiece(
@@ -108,29 +102,30 @@ bool ParseFrameTokenAndRestrictedId(const std::string& id_part,
   if (tokens.size() != 2)
     return false;
 
+  int frame_id;
   InstantRestrictedID rid;
-  std::optional<base::Token> frame_token = base::Token::FromString(tokens[0]);
-  if (!frame_token || !base::StringToInt(tokens[1], &rid) || rid < 0) {
+  if (!base::StringToInt(tokens[0], &frame_id) || frame_id < 0 ||
+      !base::StringToInt(tokens[1], &rid) || rid < 0)
     return false;
-  }
-  *frame_token_out = tokens[0];
+
+  *frame_id_out = frame_id;
   *rid_out = rid;
   return true;
 }
 
 // Takes a favicon |url| that looks like:
 //
-//   chrome-search://favicon/<frame_token>/<restricted_id>
-//   chrome-search://favicon/<parameters>/<frame_token>/<restricted_id>
+//   chrome-search://favicon/<frame_id>/<restricted_id>
+//   chrome-search://favicon/<parameters>/<frame_id>/<restricted_id>
 //
 // If successful, assigns |*param_part| := "" or "<parameters>/" (note trailing
 // slash), |*frame_id| := "<frame_id>", |*rid| := "rid", and returns true.
 bool ParseIconRestrictedUrl(const GURL& url,
                             std::string* param_part,
-                            std::string* frame_token,
+                            int* frame_id,
                             InstantRestrictedID* rid) {
   DCHECK(param_part);
-  DCHECK(frame_token);
+  DCHECK(frame_id);
   DCHECK(rid);
   // Strip leading slash.
   std::string raw_path = url.path();
@@ -147,9 +142,8 @@ bool ParseIconRestrictedUrl(const GURL& url,
   int path_index = parsed.path_index;
 
   std::string id_part = raw_path.substr(path_index);
-  if (!ParseFrameTokenAndRestrictedId(id_part, frame_token, rid)) {
+  if (!ParseFrameIdAndRestrictedId(id_part, frame_id, rid))
     return false;
-  }
 
   *param_part = raw_path.substr(0, path_index);
   return true;
@@ -159,12 +153,12 @@ void TranslateIconRestrictedUrl(const GURL& transient_url,
                                 const SearchBox::IconURLHelper& helper,
                                 GURL* url) {
   std::string params;
-  std::string frame_token;
+  int frame_id = -1;
   InstantRestrictedID rid = -1;
 
-  if (!internal::ParseIconRestrictedUrl(transient_url, &params, &frame_token,
+  if (!internal::ParseIconRestrictedUrl(transient_url, &params, &frame_id,
                                         &rid) ||
-      frame_token != helper.GetMainFrameToken()) {
+      frame_id != helper.GetMainFrameID()) {
     *url = GURL(base::StringPrintf("chrome-search://%s/",
                                    chrome::kChromeUIFaviconHost));
   } else {

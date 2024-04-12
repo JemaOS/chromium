@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
 #include <string>
 
 #include "ash/constants/ash_features.h"
@@ -13,7 +12,7 @@
 #include "base/test/gtest_util.h"
 #include "base/values.h"
 #include "build/build_config.h"
-#include "chrome/browser/ash/app_mode/kiosk_chrome_app_manager.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
 #include "chrome/browser/ash/login/app_mode/kiosk_launch_controller.h"
 #include "chrome/browser/ash/login/app_mode/test/kiosk_apps_mixin.h"
 #include "chrome/browser/ash/login/app_mode/test/kiosk_test_helpers.h"
@@ -22,6 +21,7 @@
 #include "chrome/browser/ash/login/enrollment/enrollment_screen_view.h"
 #include "chrome/browser/ash/login/startup_utils.h"
 #include "chrome/browser/ash/login/test/device_state_mixin.h"
+#include "chrome/browser/ash/login/test/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/login/test/enrollment_ui_mixin.h"
 #include "chrome/browser/ash/login/test/js_checker.h"
 #include "chrome/browser/ash/login/test/login_or_lock_screen_visible_waiter.h"
@@ -29,7 +29,7 @@
 #include "chrome/browser/ash/login/test/oobe_base_test.h"
 #include "chrome/browser/ash/login/test/oobe_screen_waiter.h"
 #include "chrome/browser/ash/login/test/oobe_screens_utils.h"
-#include "chrome/browser/ash/login/test/scoped_policy_update.h"
+#include "chrome/browser/ash/login/test/policy_test_server_constants.h"
 #include "chrome/browser/ash/login/test/test_condition_waiter.h"
 #include "chrome/browser/ash/login/ui/login_display_host.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
@@ -39,8 +39,6 @@
 #include "chrome/browser/ash/policy/enrollment/enrollment_requisition_manager.h"
 #include "chrome/browser/ash/policy/enrollment/psm/rlwe_test_support.h"
 #include "chrome/browser/ash/policy/server_backed_state/server_backed_state_keys_broker.h"
-#include "chrome/browser/ash/policy/test_support/embedded_policy_test_server_mixin.h"
-#include "chrome/browser/ash/policy/test_support/policy_test_server_constants.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
 #include "chrome/browser/ui/webui/ash/login/device_disabled_screen_handler.h"
@@ -63,6 +61,7 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_utils.h"
 #include "net/http/http_status_code.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace {
@@ -100,7 +99,7 @@ class EnrollmentEmbeddedPolicyServerBase : public OobeBaseTest {
  public:
   EnrollmentEmbeddedPolicyServerBase() {
     gaia_frame_parent_ = "authView";
-    authenticator_id_ = "$('enterprise-enrollment').authenticator";
+    authenticator_id_ = "$('enterprise-enrollment').authenticator_";
   }
 
   EnrollmentEmbeddedPolicyServerBase(
@@ -114,17 +113,6 @@ class EnrollmentEmbeddedPolicyServerBase : public OobeBaseTest {
                                      FakeGaiaMixin::kFakeRefreshToken);
     policy_server_.SetUpdateDeviceAttributesPermission(false);
     OobeBaseTest::SetUpOnMainThread();
-  }
-
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    OobeBaseTest::SetUpCommandLine(command_line);
-
-    // This will change the verification key to be used by the
-    // CloudPolicyValidator. It will allow for the policy provided by the
-    // PolicyBuilder to pass the signature validation.
-    command_line->AppendSwitchASCII(
-        policy::switches::kPolicyVerificationKey,
-        policy::PolicyBuilder::GetEncodedPolicyVerificationKey());
   }
 
  protected:
@@ -247,7 +235,7 @@ class AutoEnrollmentEmbeddedPolicyServer
 
 class AutoEnrollmentWithStatistics : public AutoEnrollmentEmbeddedPolicyServer {
  public:
-  AutoEnrollmentWithStatistics() {
+  AutoEnrollmentWithStatistics() : AutoEnrollmentEmbeddedPolicyServer() {
     // `AutoEnrollmentTypeChecker` assumes that VPD is in valid state if
     // "serial_number" or "Product_S/N" could be read from it.
     fake_statistics_provider_.SetMachineStatistic(
@@ -371,7 +359,7 @@ class InitialEnrollmentTest : public EnrollmentEmbeddedPolicyServerBase {
     // we already checked the existence of the pref with non-default value.
     EXPECT_FALSE(psm_determination_timestamp.is_null());
 
-    return psm_determination_timestamp.InMillisecondsSinceUnixEpoch();
+    return psm_determination_timestamp.ToJavaTime();
   }
 
  private:
@@ -428,18 +416,6 @@ IN_PROC_BROWSER_TEST_F(EnrollmentEmbeddedPolicyServerBase, ManualEnrollment) {
   test::OobeJS().ExpectTrue("Oobe.isEnrollmentSuccessfulForTest()");
   EXPECT_TRUE(StartupUtils::IsDeviceRegistered());
   EXPECT_TRUE(InstallAttributes::Get()->IsCloudManaged());
-}
-
-IN_PROC_BROWSER_TEST_F(EnrollmentEmbeddedPolicyServerBase, GetDeviceId) {
-  host()->HandleAccelerator(LoginAcceleratorAction::kStartEnrollment);
-  OobeScreenWaiter(EnrollmentScreenView::kScreenId).Wait();
-  WaitForGaiaPageBackButtonUpdate();
-
-  SigninFrameJS().ExecuteAsync("gaia.chromeOSLogin.sendGetDeviceId()");
-  SigninFrameJS().CreateWaiter("gaia.chromeOSLogin.receivedDeviceId")->Wait();
-  std::string received_device_id =
-      SigninFrameJS().GetString("gaia.chromeOSLogin.receivedDeviceId");
-  EXPECT_TRUE(!received_device_id.empty());
 }
 
 // The test case is the same as
@@ -693,7 +669,7 @@ IN_PROC_BROWSER_TEST_F(EnrollmentEmbeddedPolicyServerBase,
 }
 
 IN_PROC_BROWSER_TEST_F(EnrollmentEmbeddedPolicyServerBase,
-                       EnrollmentErrorEnterpriseTosHasNotBeenAccepted) {
+                       EnrollmentErrorEnterpriseTosHasNotBeenAccepeted) {
   policy_server_.SetDeviceEnrollmentError(
       policy::DeviceManagementService::kTosHasNotBeenAccepted);
 
@@ -905,7 +881,6 @@ IN_PROC_BROWSER_TEST_F(AutoEnrollmentEmbeddedPolicyServer, DeviceDisabled) {
 
 // Attestation enrollment.
 IN_PROC_BROWSER_TEST_F(AutoEnrollmentEmbeddedPolicyServer, Attestation) {
-  WaitForOobeUI();
   policy_server_.SetUpdateDeviceAttributesPermission(true);
 
   AllowlistSimpleChallengeSigningKey();
@@ -916,8 +891,7 @@ IN_PROC_BROWSER_TEST_F(AutoEnrollmentEmbeddedPolicyServer, Attestation) {
           RESTORE_MODE_REENROLLMENT_ZERO_TOUCH,
       test::kTestDomain));
 
-  WizardController::default_controller()->AdvanceToScreen(
-      AutoEnrollmentCheckScreenView::kScreenId);
+  host()->StartWizard(AutoEnrollmentCheckScreenView::kScreenId);
 
   enrollment_ui_.WaitForStep(test::ui::kEnrollmentStepSuccess);
   EXPECT_TRUE(StartupUtils::IsDeviceRegistered());
@@ -940,7 +914,7 @@ IN_PROC_BROWSER_TEST_F(AutoEnrollmentEmbeddedPolicyServer, TestCaptivePortal) {
 IN_PROC_BROWSER_TEST_F(AutoEnrollmentNoStateKeys, FREExplicitlyRequired) {
   SetFRERequiredKey("1");
   host()->StartWizard(AutoEnrollmentCheckScreenView::kScreenId);
-  WaitForOobeUI();
+  OobeScreenWaiter(AutoEnrollmentCheckScreenView::kScreenId).Wait();
 
   OobeScreenWaiter(ErrorScreenView::kScreenId).Wait();
   test::OobeJS().ExpectHiddenPath({"error-message", "error-guest-signin"});
@@ -953,7 +927,7 @@ IN_PROC_BROWSER_TEST_F(AutoEnrollmentNoStateKeys,
                        FREExplicitlyRequiredInvalid) {
   SetFRERequiredKey("anything");
   host()->StartWizard(AutoEnrollmentCheckScreenView::kScreenId);
-  WaitForOobeUI();
+  OobeScreenWaiter(AutoEnrollmentCheckScreenView::kScreenId).Wait();
 
   OobeScreenWaiter(ErrorScreenView::kScreenId).Wait();
   test::OobeJS().ExpectHiddenPath({"error-message", "error-guest-signin"});
@@ -1096,13 +1070,7 @@ IN_PROC_BROWSER_TEST_F(EnrollmentRecoveryTest, DifferentDomain) {
   enrollment_ui_.RetryAndWaitForSigninStep();
 }
 
-// TODO(crbug.com/1454755): Flaky on ChromeOS.
-#if BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_EnrollmentForced DISABLED_EnrollmentForced
-#else
-#define MAYBE_EnrollmentForced EnrollmentForced
-#endif
-IN_PROC_BROWSER_TEST_F(InitialEnrollmentTest, MAYBE_EnrollmentForced) {
+IN_PROC_BROWSER_TEST_F(InitialEnrollmentTest, EnrollmentForced) {
   auto initial_enrollment =
       enterprise_management::DeviceInitialEnrollmentStateResponse::
           INITIAL_ENROLLMENT_MODE_ENROLLMENT_ENFORCED;
@@ -1377,19 +1345,20 @@ class KioskEnrollmentTest : public EnrollmentEmbeddedPolicyServerBase {
   // EnrollmentEmbeddedPolicyServerBase:
   void SetUp() override {
     needs_background_networking_ = true;
+    skip_splash_wait_override_ =
+        KioskLaunchController::SkipSplashScreenWaitForTesting();
     EnrollmentEmbeddedPolicyServerBase::SetUp();
   }
 
   void SetupAutoLaunchApp(FakeOwnerSettingsService* service) {
-    KioskChromeAppManager::Get()->AddApp(KioskAppsMixin::kKioskAppId, service);
-    KioskChromeAppManager::Get()->SetAutoLaunchApp(KioskAppsMixin::kKioskAppId,
-                                                   service);
+    KioskAppManager::Get()->AddApp(KioskAppsMixin::kKioskAppId, service);
+    KioskAppManager::Get()->SetAutoLaunchApp(KioskAppsMixin::kKioskAppId,
+                                             service);
   }
 
  private:
   KioskAppsMixin kiosk_apps_{&mixin_host_, embedded_test_server()};
-  base::AutoReset<bool> skip_splash_wait_override_ =
-      KioskLaunchController::SkipSplashScreenWaitForTesting();
+  std::unique_ptr<base::AutoReset<bool>> skip_splash_wait_override_;
 };
 
 IN_PROC_BROWSER_TEST_F(KioskEnrollmentTest,

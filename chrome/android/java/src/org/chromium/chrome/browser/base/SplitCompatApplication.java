@@ -1,28 +1,25 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.base;
 
 import android.app.Application;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Process;
 
 import androidx.annotation.CallSuper;
-import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.ApplicationState;
 import org.chromium.base.ApplicationStatus;
+import org.chromium.base.BuildInfo;
 import org.chromium.base.BundleUtils;
 import org.chromium.base.CommandLineInitUtil;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.EarlyTraceEvent;
-import org.chromium.base.IntentUtils;
 import org.chromium.base.JNIUtils;
 import org.chromium.base.LocaleUtils;
 import org.chromium.base.Log;
@@ -33,11 +30,10 @@ import org.chromium.base.library_loader.LibraryProcessType;
 import org.chromium.base.memory.MemoryPressureMonitor;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.base.task.AsyncTask;
-import org.chromium.base.version_info.VersionConstants;
 import org.chromium.build.BuildConfig;
-import org.chromium.build.NativeLibraries;
 import org.chromium.chrome.browser.ProductConfig;
 import org.chromium.chrome.browser.crash.ApplicationStatusTracker;
+import org.chromium.chrome.browser.crash.FirebaseConfig;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.language.AppLocaleUtils;
 import org.chromium.chrome.browser.language.GlobalAppLocaleController;
@@ -48,6 +44,7 @@ import org.chromium.components.crash.PureJavaExceptionHandler.JavaExceptionRepor
 import org.chromium.components.crash.PureJavaExceptionHandler.JavaExceptionReporterFactory;
 import org.chromium.components.embedder_support.application.FontPreloadingWorkaround;
 import org.chromium.components.module_installer.util.ModuleUtil;
+import org.chromium.components.version_info.VersionConstants;
 import org.chromium.ui.base.ResourceBundle;
 
 /**
@@ -65,10 +62,6 @@ public class SplitCompatApplication extends Application {
     private static final String ATTACH_BASE_CONTEXT_EVENT = "ChromeApplication.attachBaseContext";
     // Public to allow use in ChromeBackupAgent
     public static final String PRIVATE_DATA_DIRECTORY_SUFFIX = "chrome";
-
-    @VisibleForTesting
-    public static final String LAUNCH_FAILED_ACTIVITY_CLASS_NAME =
-            "org.chromium.chrome.browser.init.LaunchFailedActivity";
 
     private Supplier<Impl> mImplSupplier;
     private Impl mImpl;
@@ -97,7 +90,6 @@ public class SplitCompatApplication extends Application {
         public void onCreate() {}
 
         public void onTrimMemory(int level) {}
-
         public void onConfigurationChanged(Configuration newConfig) {}
     }
 
@@ -129,19 +121,15 @@ public class SplitCompatApplication extends Application {
     protected void attachBaseContext(Context context) {
         boolean isIsolatedProcess = ContextUtils.isIsolatedProcess();
         boolean isBrowserProcess = isBrowserProcess();
-        Log.i(
-                TAG,
-                "version=%s (%s) minSdkVersion=%s isBundle=%s processName=%s isIsolatedProcess=%s",
-                VersionConstants.PRODUCT_VERSION,
-                BuildConfig.VERSION_CODE,
-                BuildConfig.MIN_SDK_VERSION,
-                ProductConfig.IS_BUNDLE,
-                ContextUtils.getProcessName(),
-                isIsolatedProcess);
+        // Using concatenation rather than %s to allow values to be inlined by R8.
+        Log.i(TAG,
+                "Launched version=" + VersionConstants.PRODUCT_VERSION
+                        + " minSdkVersion=" + BuildConfig.MIN_SDK_VERSION
+                        + " isBundle=" + ProductConfig.IS_BUNDLE + " processName=%s isIsolated=%s",
+                ContextUtils.getProcessName(), isIsolatedProcess);
 
         if (isBrowserProcess) {
             UmaUtils.recordMainEntryPointTime();
-
             // Register Service tracing early as some services are used below in this function.
             mServiceTracingProxyProvider = ServiceTracingProxyProvider.create(context);
             // *** The Application Context should not be used before the locale override is set ***
@@ -159,35 +147,6 @@ public class SplitCompatApplication extends Application {
         super.attachBaseContext(context);
         // Perform initialization of globals common to all processes.
         ContextUtils.initApplicationContext(this);
-
-        if (isBrowserProcess) {
-            // This must come as early as possible to avoid early loading of the native library from
-            // failing unnoticed.
-            LibraryLoader.sLoadFailedCallback =
-                    unsatisfiedLinkError -> {
-                        Intent newIntent = new Intent();
-                        newIntent.setComponent(
-                                new ComponentName(
-                                        ContextUtils.getApplicationContext(),
-                                        LAUNCH_FAILED_ACTIVITY_CLASS_NAME));
-                        newIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        IntentUtils.safeStartActivity(
-                                ContextUtils.getApplicationContext(), newIntent);
-                        if (cannotLoadIn64Bit()) {
-                            throw new RuntimeException(
-                                    "Starting in 64-bit mode requires the 64-bit native library. If"
-                                            + " the device is 64-bit only, see alternatives here: "
-                                            + "https://crbug.com/1303857#c7.",
-                                    unsatisfiedLinkError);
-                        } else if (cannotLoadIn32Bit()) {
-                            throw new RuntimeException(
-                                    "Starting in 32-bit mode requires the 32-bit native library.",
-                                    unsatisfiedLinkError);
-                        }
-                        throw unsatisfiedLinkError;
-                    };
-        }
-
         maybeInitProcessType();
         BundleUtils.setIsBundle(ProductConfig.IS_BUNDLE);
 
@@ -220,14 +179,13 @@ public class SplitCompatApplication extends Application {
             CommandLineInitUtil.initCommandLine(
                     COMMAND_LINE_FILE, SplitCompatApplication::shouldUseDebugFlags);
 
-            TraceEvent.maybeEnableEarlyTracing(/* readCommandLine= */ true);
+            TraceEvent.maybeEnableEarlyTracing(/*readCommandLine=*/true);
             TraceEvent.begin(ATTACH_BASE_CONTEXT_EVENT);
 
             // Register for activity lifecycle callbacks. Must be done before any activities are
             // created and is needed only by processes that use the ApplicationStatus api (which
             // for Chrome is just the browser process).
             ApplicationStatus.initialize(this);
-            ColdStartTracker.initialize();
 
             // Register and initialize application status listener for crashes, this needs to be
             // done as early as possible so that this value is set before any crashes are
@@ -245,23 +203,22 @@ public class SplitCompatApplication extends Application {
             }
         }
 
+        BuildInfo.setFirebaseAppId(FirebaseConfig.getFirebaseAppId());
+
         // WebView installs its own PureJavaExceptionHandler.
         // Incremental install disables process isolation, so things in this block will
         // actually be run for incremental apks, but not normal apks.
         if (!isIsolatedProcess && !isWebViewProcess()) {
-            JavaExceptionReporterFactory factory =
-                    new JavaExceptionReporterFactory() {
-                        @Override
-                        public JavaExceptionReporter createJavaExceptionReporter() {
-                            // ChromePureJavaExceptionReporter may be in the chrome module, so load
-                            // by reflection from there.
-                            return (JavaExceptionReporter)
-                                    BundleUtils.newInstance(
-                                            createChromeContext(
-                                                    ContextUtils.getApplicationContext()),
-                                            "org.chromium.chrome.browser.crash.ChromePureJavaExceptionReporter");
-                        }
-                    };
+            JavaExceptionReporterFactory factory = new JavaExceptionReporterFactory() {
+                @Override
+                public JavaExceptionReporter createJavaExceptionReporter() {
+                    // ChromePureJavaExceptionReporter may be in the chrome module, so load by
+                    // reflection from there.
+                    return (JavaExceptionReporter) BundleUtils.newInstance(
+                            createChromeContext(ContextUtils.getApplicationContext()),
+                            "org.chromium.chrome.browser.crash.ChromePureJavaExceptionReporter");
+                }
+            };
             PureJavaExceptionHandler.installHandler(factory);
             CustomAssertionHandler.installPreNativeHandler(factory);
         }
@@ -335,17 +292,6 @@ public class SplitCompatApplication extends Application {
             return base;
         }
         return BundleUtils.createIsolatedSplitContext(base, CHROME_SPLIT_NAME);
-    }
-
-    public static boolean cannotLoadIn64Bit() {
-        if (LibraryLoader.sOverrideNativeLibraryCannotBeLoadedForTesting) {
-            return true;
-        }
-        return Process.is64Bit() && !NativeLibraries.sSupport64Bit;
-    }
-
-    public static boolean cannotLoadIn32Bit() {
-        return !Process.is64Bit() && !NativeLibraries.sSupport32Bit;
     }
 
     private void maybeInitProcessType() {

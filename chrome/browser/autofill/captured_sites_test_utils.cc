@@ -5,7 +5,6 @@
 #include "chrome/browser/autofill/captured_sites_test_utils.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,7 +15,6 @@
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_string_value_serializer.h"
-#include "base/logging.h"
 #include "base/path_service.h"
 #include "base/process/launch.h"
 #include "base/strings/strcat.h"
@@ -46,7 +44,6 @@
 #include "components/javascript_dialogs/app_modal_dialog_controller.h"
 #include "components/javascript_dialogs/app_modal_dialog_view.h"
 #include "components/permissions/permission_request_manager.h"
-#include "components/variations/variations_switches.h"
 #include "content/public/browser/browsing_data_remover.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
@@ -61,6 +58,7 @@
 #include "ipc/ipc_logging.h"
 #include "ipc/ipc_message_macros.h"
 #include "ipc/ipc_sync_message.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/zlib/google/compression_utils.h"
 #include "ui/events/keycodes/dom/dom_key.h"
 #include "ui/events/keycodes/keyboard_code_conversion.h"
@@ -133,22 +131,26 @@ and then write commands into it:
                                   command_file_path.AsUTF8Unsafe().c_str());
 }
 
-std::optional<autofill::FieldType> StringToFieldType(std::string_view str) {
+absl::optional<autofill::ServerFieldType> StringToFieldType(
+    const std::string& str) {
   static auto map = []() {
-    std::map<std::string_view, autofill::FieldType> map;
-    for (autofill::FieldType field_type : autofill::kAllFieldTypes) {
-      map[autofill::AutofillType(field_type).ToStringView()] = field_type;
+    std::map<std::string, autofill::ServerFieldType> map;
+    for (size_t i = autofill::NO_SERVER_DATA;
+         i < autofill::MAX_VALID_FIELD_TYPE; ++i) {
+      auto field_type = static_cast<autofill::ServerFieldType>(i);
+      map[autofill::AutofillType(field_type).ToString()] = field_type;
     }
-    for (autofill::HtmlFieldType html_field_type :
-         autofill::kAllHtmlFieldTypes) {
-      autofill::AutofillType field_type(html_field_type);
-      map[field_type.ToStringView()] = field_type.GetStorableType();
+    for (size_t i = static_cast<size_t>(autofill::HtmlFieldType::kUnspecified);
+         i <= static_cast<size_t>(autofill::HtmlFieldType::kMaxValue); ++i) {
+      autofill::AutofillType field_type(static_cast<autofill::HtmlFieldType>(i),
+                                        autofill::HtmlFieldMode::kNone);
+      map[field_type.ToString()] = field_type.GetStorableType();
     }
     return map;
   }();
   auto it = map.find(str);
   if (it == map.end()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return it->second;
 }
@@ -195,24 +197,24 @@ std::vector<ExecutionCommand> ReadExecutionCommands(
         return value;
       };
 
-      if (command.starts_with("run")) {
+      if (base::StartsWith(command, "run")) {
         commands.push_back({ExecutionCommandType::kAbsoluteLimit,
                             std::numeric_limits<int>::max()});
-      } else if (command.starts_with("next")) {
+      } else if (base::StartsWith(command, "next")) {
         commands.push_back(
             {ExecutionCommandType::kRelativeLimit, GetParamOr(1)});
-      } else if (command.starts_with("skip")) {
+      } else if (base::StartsWith(command, "skip")) {
         commands.push_back({ExecutionCommandType::kSkipAction, GetParamOr(1)});
-      } else if (command.starts_with("show")) {
+      } else if (base::StartsWith(command, "show")) {
         commands.push_back({ExecutionCommandType::kShowAction, GetParamOr(1)});
-      } else if (command.starts_with("where")) {
+      } else if (base::StartsWith(command, "where")) {
         commands.push_back({ExecutionCommandType::kWhereAmI});
-      } else if (command.starts_with("failure")) {
+      } else if (base::StartsWith(command, "failure")) {
         commands.push_back({ExecutionCommandType::kRunUntilFailure});
         // also add an absolute max limit (like a" run" command).
         commands.push_back({ExecutionCommandType::kAbsoluteLimit,
                             std::numeric_limits<int>::max()});
-      } else if (command.starts_with("help")) {
+      } else if (base::StartsWith(command, "help")) {
         PrintDebugInstructions(command_file_path);
       }
     }
@@ -290,7 +292,7 @@ struct AllowNull {
   inline constexpr AllowNull() = default;
 };
 
-std::optional<std::string> FindPopulateString(
+absl::optional<std::string> FindPopulateString(
     const base::Value::Dict& container,
     base::StringPiece key_name,
     absl::variant<base::StringPiece, AllowNull> key_descriptor) {
@@ -301,13 +303,13 @@ std::optional<std::string> FindPopulateString(
                     << absl::get<base::StringPiece>(key_descriptor)
                     << "' string from container!";
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return *value;
 }
 
-std::optional<std::vector<std::string>> FindPopulateStringVector(
+absl::optional<std::vector<std::string>> FindPopulateStringVector(
     const base::Value::Dict& container,
     base::StringPiece key_name,
     absl::variant<base::StringPiece, AllowNull> key_descriptor) {
@@ -318,7 +320,7 @@ std::optional<std::vector<std::string>> FindPopulateStringVector(
                     << absl::get<base::StringPiece>(key_descriptor)
                     << "' strings from container!";
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   std::vector<std::string> strings;
@@ -329,7 +331,7 @@ std::optional<std::vector<std::string>> FindPopulateStringVector(
                       << absl::get<base::StringPiece>(key_descriptor)
                       << "' vector from container!";
       }
-      return std::nullopt;
+      return absl::nullopt;
     }
     strings.push_back(item.GetString());
   }
@@ -362,28 +364,32 @@ std::vector<CapturedSiteParams> GetCapturedSites(
       replay_files_dir_path.AppendASCII("testcases.json");
 
   std::string json_text;
-  if (!base::ReadFileToString(config_file_path, &json_text)) {
-    LOG(WARNING) << "Could not read json file: " << config_file_path;
-    return sites;
+  {
+    if (!base::ReadFileToString(config_file_path, &json_text)) {
+      LOG(WARNING) << "Could not read json file: " << config_file_path;
+      return sites;
+    }
   }
   // Parse json text content to json value node.
-  auto value_with_error = JSONReader::ReadAndReturnValueWithError(
-      json_text, JSONParserOptions::JSON_PARSE_RFC);
-  if (!value_with_error.has_value()) {
-    LOG(WARNING) << "Could not load test config from json file: "
-                 << "`testcases.json` because: "
-                 << value_with_error.error().message;
-    return sites;
+  base::Value::Dict root_node;
+  {
+    auto value_with_error = JSONReader::ReadAndReturnValueWithError(
+        json_text, JSONParserOptions::JSON_PARSE_RFC);
+    if (!value_with_error.has_value()) {
+      LOG(WARNING) << "Could not load test config from json file: "
+                   << "`testcases.json` because: "
+                   << value_with_error.error().message;
+      return sites;
+    }
+    root_node = std::move(*value_with_error).TakeDict();
   }
-  base::Value::Dict root_node = std::move(*value_with_error).TakeDict();
   const base::Value::List* list_node = root_node.FindList("tests");
   if (!list_node) {
     LOG(WARNING) << "No tests found in `testcases.json` config";
     return sites;
   }
 
-  bool also_run_disabled = GTEST_FLAG_GET(also_run_disabled_tests);
-
+  bool also_run_disabled = testing::FLAGS_gtest_also_run_disabled_tests == 1;
   for (auto& item_val : *list_node) {
     if (!item_val.is_dict()) {
       continue;
@@ -397,7 +403,7 @@ std::vector<CapturedSiteParams> GetCapturedSites(
     }
     param.is_disabled = item.FindBool("disabled").value_or(false);
 
-    const std::optional<int> bug_number = item.FindInt("bug_number");
+    const absl::optional<int> bug_number = item.FindInt("bug_number");
     if (bug_number) {
       param.bug_number = bug_number.value();
     }
@@ -450,13 +456,13 @@ std::string FilePathToUTF8(const base::FilePath::StringType& str) {
 #endif
 }
 
-std::optional<base::FilePath> GetCommandFilePath() {
+absl::optional<base::FilePath> GetCommandFilePath() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line && command_line->HasSwitch(kCommandFileFlag)) {
-    return std::make_optional(
+    return absl::make_optional(
         command_line->GetSwitchValuePath(kCommandFileFlag));
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void PrintInstructions(const char* test_file_name) {
@@ -620,7 +626,7 @@ bool WebPageReplayServerWrapper::Start(
     const base::FilePath& capture_file_path) {
   std::vector<std::string> args;
   base::FilePath src_dir;
-  if (!base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &src_dir)) {
+  if (!base::PathService::Get(base::DIR_SOURCE_ROOT, &src_dir)) {
     ADD_FAILURE() << "Failed to extract the Chromium source directory!";
     return false;
   }
@@ -728,7 +734,7 @@ bool WebPageReplayServerWrapper::RunWebPageReplayCmd(
 
   base::LaunchOptions options = base::LaunchOptionsForTest();
   base::FilePath exe_dir;
-  if (!base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &exe_dir)) {
+  if (!base::PathService::Get(base::DIR_SOURCE_ROOT, &exe_dir)) {
     ADD_FAILURE() << "Failed to extract the Chromium source directory!";
     return false;
   }
@@ -769,7 +775,7 @@ bool WebPageReplayServerWrapper::RunWebPageReplayCmd(
   // The custom cert and key files are different from those of the official
   // WPR releases. The custom files are made to work on iOS.
   base::FilePath src_dir;
-  if (!base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &src_dir)) {
+  if (!base::PathService::Get(base::DIR_SOURCE_ROOT, &src_dir)) {
     ADD_FAILURE() << "Failed to extract the Chromium source directory!";
     return false;
   }
@@ -781,21 +787,14 @@ bool WebPageReplayServerWrapper::RunWebPageReplayCmd(
           .AppendASCII("autofill")
           .AppendASCII("web_page_replay_support_files");
   full_command.AppendArg(base::StringPrintf(
-      "--https_cert_file=%s,%s",
+      "--https_cert_file=%s",
       FilePathToUTF8(
           web_page_replay_support_file_dir.AppendASCII("wpr_cert.pem").value())
-          .c_str(),
-      FilePathToUTF8(
-          web_page_replay_support_file_dir.AppendASCII("ecdsa_cert.pem")
-              .value())
           .c_str()));
   full_command.AppendArg(base::StringPrintf(
-      "--https_key_file=%s,%s",
+      "--https_key_file=%s",
       FilePathToUTF8(
           web_page_replay_support_file_dir.AppendASCII("wpr_key.pem").value())
-          .c_str(),
-      FilePathToUTF8(
-          web_page_replay_support_file_dir.AppendASCII("ecdsa_key.pem").value())
           .c_str()));
 
   for (const auto& arg : args)
@@ -813,6 +812,21 @@ ProfileDataController::ProfileDataController()
       card_(autofill::CreditCard(
           base::Uuid::GenerateRandomV4().AsLowercaseString(),
           "http://www.example.com")) {
+  for (size_t i = autofill::NO_SERVER_DATA; i < autofill::MAX_VALID_FIELD_TYPE;
+       ++i) {
+    autofill::ServerFieldType field_type =
+        static_cast<autofill::ServerFieldType>(i);
+    string_to_field_type_map_[autofill::AutofillType(field_type).ToString()] =
+        field_type;
+  }
+
+  for (size_t i = static_cast<size_t>(autofill::HtmlFieldType::kUnspecified);
+       i <= static_cast<size_t>(autofill::HtmlFieldType::kMaxValue); ++i) {
+    autofill::AutofillType field_type(static_cast<autofill::HtmlFieldType>(i),
+                                      autofill::HtmlFieldMode::kNone);
+    string_to_field_type_map_[field_type.ToString()] =
+        field_type.GetStorableType();
+  }
 
   // Initialize the credit card with default values, in case the test recipe
   // file does not contain pre-saved credit card info.
@@ -825,7 +839,8 @@ ProfileDataController::~ProfileDataController() = default;
 bool ProfileDataController::AddAutofillProfileInfo(
     const std::string& field_type,
     const std::string& field_value) {
-  std::optional<autofill::FieldType> type = StringToFieldType(field_type);
+  absl::optional<autofill::ServerFieldType> type =
+      StringToFieldType(field_type);
   if (!type.has_value()) {
     ADD_FAILURE() << "Unable to recognize autofill field type '" << field_type
                   << "'!";
@@ -839,6 +854,10 @@ bool ProfileDataController::AddAutofillProfileInfo(
     if (type == autofill::CREDIT_CARD_VERIFICATION_CODE) {
       cvc_ = base::UTF8ToUTF16(field_value);
     }
+    if (type == autofill::CREDIT_CARD_NAME_FIRST ||
+        type == autofill::CREDIT_CARD_NAME_LAST) {
+      card_.SetRawInfo(autofill::CREDIT_CARD_NAME_FULL, u"");
+    }
     card_.SetRawInfo(type.value(), base::UTF8ToUTF16(field_value));
   } else {
     profile_.SetRawInfo(type.value(), base::UTF8ToUTF16(field_value));
@@ -851,27 +870,14 @@ bool ProfileDataController::AddAutofillProfileInfo(
 TestRecipeReplayer::TestRecipeReplayer(
     Browser* browser,
     TestRecipeReplayChromeFeatureActionExecutor* feature_action_executor)
-    : browser_(browser), feature_action_executor_(feature_action_executor) {
-  CleanupSiteData();
-  // Bypass permission dialogs.
-  permissions::PermissionRequestManager::FromWebContents(GetWebContents())
-      ->set_auto_response_for_test(
-          permissions::PermissionRequestManager::ACCEPT_ALL);
-}
+    : browser_(browser), feature_action_executor_(feature_action_executor) {}
 
-TestRecipeReplayer::~TestRecipeReplayer() {
-  // If there are still cookies at the time the browser test shuts down,
-  // Chrome's SQL lite persistent cookie store will crash.
-  CleanupSiteData();
-  EXPECT_TRUE(web_page_replay_server_wrapper()->Stop())
-      << "Cannot stop the local Web Page Replay server.";
-}
+TestRecipeReplayer::~TestRecipeReplayer() {}
 
 bool TestRecipeReplayer::ReplayTest(
     const base::FilePath& capture_file_path,
     const base::FilePath& recipe_file_path,
-    const std::optional<base::FilePath>& command_file_path) {
-  logging::SetMinLogLevel(logging::LOGGING_WARNING);
+    const absl::optional<base::FilePath>& command_file_path) {
   if (!web_page_replay_server_wrapper()->Start(capture_file_path))
     return false;
   if (OverrideAutofillClock(capture_file_path))
@@ -903,20 +909,21 @@ bool TestRecipeReplayer::OverrideAutofillClock(
     return false;
   }
   // Convert the file text into a json object.
-  std::optional<base::Value> parsed_json =
+  absl::optional<base::Value> parsed_json =
       base::JSONReader::Read(decompressed_json_text);
   if (!parsed_json) {
     VLOG(1) << kClockNotSetMessage << "Failed to deserialize json";
     return false;
   }
 
-  const std::optional<double> time_value =
+  const absl::optional<double> time_value =
       parsed_json->GetDict().FindDouble("DeterministicTimeSeedMs");
   if (!time_value) {
     VLOG(1) << kClockNotSetMessage << "No DeterministicTimeSeedMs found";
     return false;
   }
-  test_clock_.SetNow(base::Time::FromMillisecondsSinceUnixEpoch(*time_value));
+  // wpr archive stores time seed in ms, clock is set in seconds.
+  test_clock_.SetNow(base::Time::FromDoubleT(*time_value / 1000));
   return true;
 }
 
@@ -942,10 +949,25 @@ void TestRecipeReplayer::SetUpCommandLine(base::CommandLine* command_line) {
       network::switches::kIgnoreCertificateErrorsSPKIList,
       kWebPageReplayCertSPKI);
   command_line->AppendSwitch(switches::kStartMaximized);
-  // Since we are adding via ScopedFeatureList for test features required, we
-  // need to explicitly also enable field trials.
-  command_line->AppendSwitch(
-      variations::switches::kEnableFieldTrialTestingConfig);
+}
+
+void TestRecipeReplayer::Setup() {
+  CleanupSiteData();
+  web_page_replay_server_wrapper_ =
+      std::make_unique<WebPageReplayServerWrapper>(true);
+
+  // Bypass permission dialogs.
+  permissions::PermissionRequestManager::FromWebContents(GetWebContents())
+      ->set_auto_response_for_test(
+          permissions::PermissionRequestManager::ACCEPT_ALL);
+}
+
+void TestRecipeReplayer::Cleanup() {
+  // If there are still cookies at the time the browser test shuts down,
+  // Chrome's SQL lite persistent cookie store will crash.
+  CleanupSiteData();
+  EXPECT_TRUE(web_page_replay_server_wrapper()->Stop())
+      << "Cannot stop the local Web Page Replay server.";
 }
 
 TestRecipeReplayChromeFeatureActionExecutor*
@@ -1057,7 +1079,7 @@ void TestRecipeReplayer::CleanupSiteData() {
 
 bool TestRecipeReplayer::ReplayRecordedActions(
     const base::FilePath& recipe_file_path,
-    const std::optional<base::FilePath>& command_file_path) {
+    const absl::optional<base::FilePath>& command_file_path) {
   // Read the text of the recipe file.
   base::ScopedAllowBlockingForTesting for_testing;
   std::string json_text;
@@ -1067,7 +1089,7 @@ bool TestRecipeReplayer::ReplayRecordedActions(
   }
 
   // Convert the file text into a json object.
-  std::optional<base::Value> parsed_json = base::JSONReader::Read(json_text);
+  absl::optional<base::Value> parsed_json = base::JSONReader::Read(json_text);
   if (!parsed_json) {
     ADD_FAILURE() << "Failed to deserialize json text!";
     return false;
@@ -1118,14 +1140,14 @@ bool TestRecipeReplayer::ReplayRecordedActions(
         while (!thread_finished) {
           base::RunLoop run_loop;
           base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-              FROM_HERE, run_loop.QuitClosure(), base::Seconds(1));
+              FROM_HERE, run_loop.QuitClosure(), base::Milliseconds(1000));
           run_loop.Run();
         }
       }
     }
-    VLOG(1) << "Proceeding with execution with action " << execution_state.index
-            << " of " << execution_state.length << ": "
-            << (*action_list)[execution_state.index];
+    LOG(INFO) << "Proceeding with execution with action "
+              << execution_state.index << " of " << execution_state.length
+              << ": " << (*action_list)[execution_state.index];
 
     if (!(*action_list)[execution_state.index].is_dict()) {
       ADD_FAILURE()
@@ -1135,7 +1157,7 @@ bool TestRecipeReplayer::ReplayRecordedActions(
 
     base::Value::Dict action =
         std::move((*action_list)[execution_state.index].GetDict());
-    std::optional<std::string> type =
+    absl::optional<std::string> type =
         FindPopulateString(action, "type", "action type");
 
     if (!type)
@@ -1217,6 +1239,12 @@ bool TestRecipeReplayer::ReplayRecordedActions(
     ++execution_state.index;
   }
 
+  // Dismiss the beforeUnloadDialog if the last page of the test has a
+  // beforeUnload function.
+  if (recipe.contains("dismissBeforeUnload")) {
+    NavigateAwayAndDismissBeforeUnloadDialog();
+  }
+
   return true;
 }
 
@@ -1261,9 +1289,9 @@ bool TestRecipeReplayer::InitializeBrowserToExecuteRecipe(
   }
 
   // Navigate to the starting URL, wait for the page to complete loading.
-  if (!content::ExecJs(GetWebContents(),
-                       base::StringPrintf("window.location.href = '%s';",
-                                          starting_url->c_str()))) {
+  if (!content::ExecuteScript(GetWebContents(),
+                              base::StringPrintf("window.location.href = '%s';",
+                                                 starting_url->c_str()))) {
     ADD_FAILURE() << "Failed to navigate Chrome to '" << *starting_url << "!";
     return false;
   }
@@ -1344,7 +1372,7 @@ bool TestRecipeReplayer::ExecuteClickIfNotSeenAction(base::Value::Dict action) {
   } else {
     // If the selector wasn't found, take the clickSelector and make it the
     // selector to attempt a click with that element instead.
-    std::optional<std::string> click_xpath_text =
+    absl::optional<std::string> click_xpath_text =
         FindPopulateString(action, "clickSelector", "click xpath selector");
 
     action.Set("selector", *click_xpath_text);
@@ -1413,7 +1441,7 @@ bool TestRecipeReplayer::ExecuteForceLoadPage(base::Value::Dict action) {
     return true;
   }
 
-  std::optional<std::string> url =
+  absl::optional<std::string> url =
       FindPopulateString(action, "url", "Force Load URL");
   if (!url)
     return false;
@@ -1485,7 +1513,7 @@ bool TestRecipeReplayer::ExecuteRunCommandAction(base::Value::Dict action) {
 
   // Execute the commands.
   for (const std::string& command : commands) {
-    if (!content::ExecJs(frame, command)) {
+    if (!content::ExecuteScript(frame, command)) {
       ADD_FAILURE() << "Failed to execute JavaScript command `" << command
                     << "`!";
       return false;
@@ -1517,7 +1545,7 @@ bool TestRecipeReplayer::ExecuteSavePasswordAction(base::Value::Dict action) {
 }
 
 bool TestRecipeReplayer::ExecuteSelectDropdownAction(base::Value::Dict action) {
-  std::optional<int> index = action.FindInt("index");
+  absl::optional<int> index = action.FindInt("index");
   if (!index.has_value()) {
     ADD_FAILURE() << "Failed to extract Selection Index from action";
     return false;
@@ -1543,7 +1571,7 @@ bool TestRecipeReplayer::ExecuteSelectDropdownAction(base::Value::Dict action) {
 }
 
 bool TestRecipeReplayer::ExecuteTypeAction(base::Value::Dict action) {
-  std::optional<std::string> value =
+  absl::optional<std::string> value =
       FindPopulateString(action, "value", "typing value");
   if (!value)
     return false;
@@ -1572,7 +1600,7 @@ bool TestRecipeReplayer::ExecuteTypePasswordAction(base::Value::Dict action) {
   if (!ExtractFrameAndVerifyElement(action, &xpath, &frame, true))
     return false;
 
-  std::optional<std::string> value =
+  absl::optional<std::string> value =
       FindPopulateString(action, "value", "password text");
   if (!value)
     return false;
@@ -1651,9 +1679,9 @@ bool TestRecipeReplayer::ExecuteValidateFieldValueAction(
         IgnoreCase(true));
   }
 
-  std::optional<std::vector<std::string>> expected_values =
+  absl::optional<std::vector<std::string>> expected_values =
       FindPopulateStringVector(action, "expectedValues", AllowNull());
-  std::optional<std::string> expected_value =
+  absl::optional<std::string> expected_value =
       FindPopulateString(action, "expectedValue", AllowNull());
   if (!!expected_values == !!expected_value) {
     ADD_FAILURE() << "Failed to extract 'expectedValue' xor 'expectedValues' "
@@ -1760,7 +1788,7 @@ bool TestRecipeReplayer::GetTargetHTMLElementXpathFromAction(
     const base::Value::Dict& action,
     std::string* xpath) {
   xpath->clear();
-  std::optional<std::string> xpath_text =
+  absl::optional<std::string> xpath_text =
       FindPopulateString(action, "selector", "xpath selector");
   if (!xpath_text)
     return false;
@@ -1803,7 +1831,7 @@ bool TestRecipeReplayer::GetTargetFrameFromAction(
     return false;
   }
 
-  std::optional<bool> is_iframe_container =
+  absl::optional<bool> is_iframe_container =
       iframe_container->GetDict().FindBool("isIframe");
   if (!is_iframe_container) {
     ADD_FAILURE() << "Failed to extract isIframe from the iframe context! ";
@@ -2002,14 +2030,19 @@ bool TestRecipeReplayer::AllAssertionsPassed(
     const content::ToRenderFrameHost& frame,
     const std::vector<std::string>& assertions) {
   for (const std::string& assertion : assertions) {
-    if (!EvalJs(frame, base::StringPrintf("(function() {"
-                                          "  try {"
-                                          "    %s"
-                                          "  } catch (ex) {}"
-                                          "  return false;"
-                                          "})();",
-                                          assertion.c_str()))
-             .ExtractBool()) {
+    bool assertion_passed = false;
+    EXPECT_TRUE(ExecuteScriptAndExtractBool(
+        frame,
+        base::StringPrintf("window.domAutomationController.send("
+                           "    (function() {"
+                           "      try {"
+                           "        %s"
+                           "      } catch (ex) {}"
+                           "      return false;"
+                           "    })());",
+                           assertion.c_str()),
+        &assertion_passed));
+    if (!assertion_passed) {
       VLOG(1) << "'" << assertion << "' failed!";
       return false;
     }
@@ -2028,7 +2061,7 @@ bool TestRecipeReplayer::ExecuteJavaScriptOnElementByXpath(
       "  (function(target) { %s })(element);"
       "} catch(ex) {}",
       element_xpath.c_str(), execute_function_body.c_str()));
-  return ExecJs(frame, js);
+  return ExecuteScript(frame, js);
 }
 
 bool TestRecipeReplayer::GetElementProperty(
@@ -2036,20 +2069,21 @@ bool TestRecipeReplayer::GetElementProperty(
     const std::string& element_xpath,
     const std::string& get_property_function_body,
     std::string* property) {
-  content::EvalJsResult result = content::EvalJs(
-      frame, base::StringPrintf(
-                 "(function() {"
-                 "    var element = function() {"
-                 "      return automation_helper.getElementByXpath(`%s`);"
-                 "    }();"
-                 "    return function(target){%s}(element);})();",
-                 element_xpath.c_str(), get_property_function_body.c_str()));
-  if (result.error.empty() && result.value.is_string()) {
-    *property = result.ExtractString();
-    return true;
-  }
-  *property = result.error;
-  return false;
+  *property =
+      content::EvalJs(
+          frame, base::StringPrintf(
+                     "(function() {"
+                     "  try {"
+                     "    var element = function() {"
+                     "      return automation_helper.getElementByXpath(`%s`);"
+                     "    }();"
+                     "    return function(target){%s}(element);"
+                     "  } catch (ex) {}"
+                     "  return 'Exception encountered';"
+                     "})();",
+                     element_xpath.c_str(), get_property_function_body.c_str()))
+          .ExtractString();
+  return true;
 }
 
 bool TestRecipeReplayer::ExpectElementPropertyEqualsAnyOf(
@@ -2094,13 +2128,18 @@ bool TestRecipeReplayer::ScrollElementIntoView(
       "  const element = automation_helper.getElementByXpath(`%s`);"
       "  element.scrollIntoView({"
       "    block: 'center', inline: 'center'});"
-      "  true;"
+      "  window.domAutomationController.send(true);"
       "} catch(ex) {"
-      "  false;"
+      "  window.domAutomationController.send(false);"
       "}",
       element_xpath.c_str()));
 
-  return EvalJs(frame, scroll_target_js).ExtractBool();
+  bool succeeded = false;
+  if (!ExecuteScriptAndExtractBool(frame, scroll_target_js, &succeeded)) {
+    ADD_FAILURE() << "Failed to scroll the element into view with JavaScript!";
+    return false;
+  }
+  return true;
 }
 
 bool TestRecipeReplayer::PlaceFocusOnElement(
@@ -2110,26 +2149,37 @@ bool TestRecipeReplayer::PlaceFocusOnElement(
   if (!ScrollElementIntoView(element_xpath, frame))
     return false;
 
-  const std::string focus_on_target_field_js(
-      base::StringPrintf("(function() {const element = "
-                         "automation_helper.getElementByXpath(`%s`);"
-                         "    if (document.activeElement !== element) {"
-                         "      element.focus();"
-                         "    }"
-                         "    return document.activeElement === element;})();",
-                         element_xpath.c_str()));
+  const std::string focus_on_target_field_js(base::StringPrintf(
+      "try {"
+      "  function onFocusHandler(event) {"
+      "    event.target.removeEventListener(event.type, arguments.callee);"
+      "    window.domAutomationController.send(true);"
+      "  }"
+      "  const element = automation_helper.getElementByXpath(`%s`);"
+      "  if (document.activeElement === element) {"
+      "    window.domAutomationController.send(true);"
+      "  } else {"
+      "    element.addEventListener('focus', onFocusHandler);"
+      "    element.focus();"
+      "  }"
+      "  setTimeout(() => {"
+      "    element.removeEventListener('focus', onFocusHandler);"
+      "    window.domAutomationController.send(false);"
+      "  }, 1000);"
+      "} catch(ex) {"
+      "  window.domAutomationController.send(false);"
+      "}",
+      element_xpath.c_str()));
 
-  content::EvalJsResult result =
-      content::EvalJs(frame, focus_on_target_field_js);
-  if (result.error.empty() && result.value.is_bool() && result.ExtractBool()) {
+  bool focused = false;
+  if (!ExecuteScriptAndExtractBool(frame, focus_on_target_field_js, &focused)) {
+    ADD_FAILURE() << "Failed to place focus on the element with JavaScript!";
+    return false;
+  }
+
+  if (focused) {
     return true;
   } else {
-    VLOG(1) << "Failed to focus element through script:"
-            << (result.error.empty()
-                    ? (result.value.is_bool() ? "Not a valid bool"
-                                              : "Returned false")
-                    : result.error);
-
     // Failing focusing on an element through script, use the less preferred
     // method of left mouse clicking the element.
     gfx::Rect rect;
@@ -2276,14 +2326,24 @@ void TestRecipeReplayer::SimulateKeyPressWrapper(
                    false);
 }
 
+void TestRecipeReplayer::NavigateAwayAndDismissBeforeUnloadDialog() {
+  content::PrepContentsForBeforeUnloadTest(GetWebContents());
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL(url::kAboutBlankURL), WindowOpenDisposition::CURRENT_TAB,
+      ui_test_utils::BROWSER_TEST_NONE);
+  javascript_dialogs::AppModalDialogController* alert =
+      ui_test_utils::WaitForAppModalDialog();
+  alert->view()->AcceptAppModalDialog();
+}
+
 bool TestRecipeReplayer::HasChromeStoredCredential(
     const base::Value::Dict& action,
     bool* stored_cred) {
-  std::optional<std::string> origin =
+  absl::optional<std::string> origin =
       FindPopulateString(action, "origin", "Origin");
-  std::optional<std::string> username =
+  absl::optional<std::string> username =
       FindPopulateString(action, "userName", "Username");
-  std::optional<std::string> password =
+  absl::optional<std::string> password =
       FindPopulateString(action, "password", "Password");
   if (!origin || !username || !password)
     return false;
@@ -2302,9 +2362,9 @@ bool TestRecipeReplayer::SetupSavedAutofillProfile(
     }
 
     const base::Value::Dict list_entry_dict = std::move(list_entry).TakeDict();
-    std::optional<std::string> type =
+    absl::optional<std::string> type =
         FindPopulateString(list_entry_dict, "type", "profile field type");
-    std::optional<std::string> value =
+    absl::optional<std::string> value =
         FindPopulateString(list_entry_dict, "value", "profile field value");
 
     if (!type || !value)
@@ -2338,11 +2398,11 @@ bool TestRecipeReplayer::SetupSavedPasswords(
 
     const base::Value::Dict entry_dict = std::move(entry.GetDict());
 
-    std::optional<std::string> origin =
+    absl::optional<std::string> origin =
         FindPopulateString(entry_dict, "website", "Website");
-    std::optional<std::string> username =
+    absl::optional<std::string> username =
         FindPopulateString(entry_dict, "username", "Username");
-    std::optional<std::string> password =
+    absl::optional<std::string> password =
         FindPopulateString(entry_dict, "password", "Password");
     if (!origin || !username || !password)
       return false;
@@ -2367,7 +2427,7 @@ bool TestRecipeReplayChromeFeatureActionExecutor::AutofillForm(
     const std::vector<std::string>& iframe_path,
     const int attempts,
     content::RenderFrameHost* frame,
-    std::optional<autofill::FieldType> triggered_field_type) {
+    absl::optional<autofill::ServerFieldType> triggered_field_type) {
   ADD_FAILURE() << "TestRecipeReplayChromeFeatureActionExecutor::AutofillForm "
                    "is not implemented!";
   return false;

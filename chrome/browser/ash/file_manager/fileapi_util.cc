@@ -14,14 +14,11 @@
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/strings/escape.h"
-#include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/ash/file_manager/app_id.h"
 #include "chrome/browser/ash/file_manager/filesystem_api_util.h"
-#include "chrome/browser/ash/fileapi/file_system_backend.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/webui/ash/cloud_upload/cloud_upload_util.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
@@ -31,6 +28,7 @@
 #include "content/public/common/url_utils.h"
 #include "extensions/browser/extension_util.h"
 #include "google_apis/common/task_util.h"
+#include "storage/browser/file_system/file_system_backend.h"
 #include "storage/browser/file_system/file_system_context.h"
 #include "storage/browser/file_system/isolated_context.h"
 #include "storage/browser/file_system/open_file_system_mode.h"
@@ -244,8 +242,7 @@ void OnConvertFileDefinitionDone(
 bool IsUnderNonNativeLocalPath(const storage::FileSystemContext& context,
                                const base::FilePath& file_path) {
   base::FilePath virtual_path;
-  if (!ash::FileSystemBackend::Get(context)->GetVirtualPath(file_path,
-                                                            &virtual_path)) {
+  if (!context.external_backend()->GetVirtualPath(file_path, &virtual_path)) {
     return false;
   }
 
@@ -255,7 +252,7 @@ bool IsUnderNonNativeLocalPath(const storage::FileSystemContext& context,
     return false;
   }
 
-  return !url.TypeImpliesPathIsReal();
+  return IsNonNativeFileSystemType(url.type());
 }
 
 // Helper class to convert SelectedFileInfoList into ChooserFileInfoList.
@@ -301,7 +298,7 @@ class ConvertSelectedFileInfoListToFileChooserFileInfoListImpl {
 
       // Non-native file without a snapshot file.
       base::FilePath virtual_path;
-      if (!ash::FileSystemBackend::Get(*context)->GetVirtualPath(
+      if (!context->external_backend()->GetVirtualPath(
               selected_info_list[i].file_path, &virtual_path)) {
         NotifyError(std::move(lifetime));
         return;
@@ -382,9 +379,9 @@ class ConvertSelectedFileInfoListToFileChooserFileInfoListImpl {
 
     context_->operation_runner()->GetMetadata(
         context_->CrackURLInFirstPartyContext((*it)->get_file_system()->url),
-        {storage::FileSystemOperation::GetMetadataField::kIsDirectory,
-         storage::FileSystemOperation::GetMetadataField::kSize,
-         storage::FileSystemOperation::GetMetadataField::kLastModified},
+        storage::FileSystemOperation::GET_METADATA_FIELD_IS_DIRECTORY |
+            storage::FileSystemOperation::GET_METADATA_FIELD_SIZE |
+            storage::FileSystemOperation::GET_METADATA_FIELD_LAST_MODIFIED,
         base::BindOnce(
             &ConvertSelectedFileInfoListToFileChooserFileInfoListImpl::
                 OnGotMetadataOnIOThread,
@@ -445,7 +442,7 @@ void CheckIfDirectoryExistsOnIoThread(
 void GetMetadataForPathOnIoThread(
     scoped_refptr<storage::FileSystemContext> file_system_context,
     const storage::FileSystemURL& internal_url,
-    storage::FileSystemOperationRunner::GetMetadataFieldSet fields,
+    int fields,
     storage::FileSystemOperationRunner::GetMetadataCallback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
   file_system_context->operation_runner()->GetMetadata(internal_url, fields,
@@ -500,20 +497,6 @@ void GenerateUnusedFilenameOnGotMetadata(
       file_system_context, filesystem_url,
       base::BindOnce(&GenerateUnusedFilenameOnGotMetadata, filesystem_url,
                      std::move(state), std::move(callback)));
-}
-
-// If the file is on ODFS (OneDrive), trim leading and trailing spaces from the
-// destination name because OneDrive will not allow this, even though Files app
-// is fine with it.
-base::FilePath TrimFilenameIfOnODFS(storage::FileSystemURL destination_folder,
-                                    base::FilePath filename) {
-  if (ash::cloud_upload::UrlIsOnODFS(destination_folder)) {
-    std::string name = filename.AsUTF8Unsafe();
-    base::TrimString(name, " ", &name);
-    return base::FilePath(name);
-  }
-
-  return filename;
 }
 
 }  // namespace
@@ -571,8 +554,8 @@ bool ConvertAbsoluteFilePathToRelativeFileSystemPath(
     const GURL& source_url,
     const base::FilePath& absolute_path,
     base::FilePath* virtual_path) {
-  auto* backend = ash::FileSystemBackend::Get(
-      *GetFileSystemContextForSourceURL(profile, source_url));
+  storage::ExternalFileSystemBackend* backend =
+      GetFileSystemContextForSourceURL(profile, source_url)->external_backend();
   if (!backend) {
     return false;
   }
@@ -648,7 +631,8 @@ void CheckIfDirectoryExists(
     storage::FileSystemOperationRunner::StatusCallback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
-  auto* const backend = ash::FileSystemBackend::Get(*file_system_context);
+  storage::ExternalFileSystemBackend* const backend =
+      file_system_context->external_backend();
   DCHECK(backend);
   const storage::FileSystemURL internal_url =
       backend->CreateInternalURL(file_system_context.get(), directory_path);
@@ -663,11 +647,12 @@ void CheckIfDirectoryExists(
 void GetMetadataForPath(
     scoped_refptr<storage::FileSystemContext> file_system_context,
     const base::FilePath& entry_path,
-    storage::FileSystemOperationRunner::GetMetadataFieldSet fields,
+    int fields,
     storage::FileSystemOperationRunner::GetMetadataCallback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
-  auto* const backend = ash::FileSystemBackend::Get(*file_system_context);
+  storage::ExternalFileSystemBackend* const backend =
+      file_system_context->external_backend();
   DCHECK(backend);
   const storage::FileSystemURL internal_url =
       backend->CreateInternalURL(file_system_context.get(), entry_path);
@@ -712,20 +697,17 @@ void GenerateUnusedFilename(
     return;
   }
 
-  base::FilePath trimmed_filename =
-      TrimFilenameIfOnODFS(destination_folder, filename);
-
   auto trial_url = file_system_context->CreateCrackedFileSystemURL(
       destination_folder.storage_key(), destination_folder.mount_type(),
-      destination_folder.virtual_path().Append(trimmed_filename));
+      destination_folder.virtual_path().Append(filename));
 
   GenerateUnusedFilenameState state;
   state.destination_folder = std::move(destination_folder);
   state.file_system_context = file_system_context;
-  state.extension = trimmed_filename.Extension();
+  state.extension = filename.Extension();
   // Extracts the filename without extension or existing counter.
   // E.g. "foo (3).txt" -> "foo".
-  bool res = RE2::FullMatch(trimmed_filename.RemoveExtension().value(),
+  bool res = RE2::FullMatch(filename.RemoveExtension().value(),
                             R"((.*?)(?: \(\d+\))?)", &state.prefix);
   DCHECK(res);
 

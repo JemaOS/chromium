@@ -138,9 +138,6 @@ MAX_RESOURCE_DEPTH = 32
 # Limit number of exported symbols
 MAX_SYMBOL_EXPORT_COUNT = 0x2000
 
-# Arbitrary maximum offset to detect suspicious/bogus files.
-MAX_OFFSET = 0x40000000
-
 IMAGE_DOS_SIGNATURE             = 0x5A4D
 IMAGE_DOSZM_SIGNATURE           = 0x4D5A
 IMAGE_NE_SIGNATURE              = 0x454E
@@ -2433,16 +2430,16 @@ class PE(object):
                 self.__warnings.append(
                     'Error parsing section {0}. PointerToRawData points beyond the end of the file.'.format(i))
 
-            if section.Misc_VirtualSize > MAX_OFFSET:
+            if section.Misc_VirtualSize > 0x10000000:
                 simultaneous_errors += 1
                 self.__warnings.append(
-                    'Suspicious value found parsing section {0}. VirtualSize is extremely large > {1}.'.format(i, MAX_OFFSET))
+                    'Suspicious value found parsing section {0}. VirtualSize is extremely large > 256MiB.'.format(i))
 
             if self.adjust_SectionAlignment( section.VirtualAddress,
-                self.OPTIONAL_HEADER.SectionAlignment, self.OPTIONAL_HEADER.FileAlignment ) > MAX_OFFSET:
+                self.OPTIONAL_HEADER.SectionAlignment, self.OPTIONAL_HEADER.FileAlignment ) > 0x10000000:
                 simultaneous_errors += 1
                 self.__warnings.append(
-                    'Suspicious value found parsing section {0}. VirtualAddress is beyond {1}.'.format(i, MAX_OFFSET))
+                    'Suspicious value found parsing section {0}. VirtualAddress is beyond 0x10000000.'.format(i))
 
             if ( self.OPTIONAL_HEADER.FileAlignment != 0 and
                 ( section.PointerToRawData % self.OPTIONAL_HEADER.FileAlignment) != 0):
@@ -4400,7 +4397,7 @@ class PE(object):
         return table
 
 
-    def get_memory_mapped_image(self, max_virtual_address=MAX_OFFSET, ImageBase=None):
+    def get_memory_mapped_image(self, max_virtual_address=0x10000000, ImageBase=None):
         """Returns the data corresponding to the memory layout of the PE file.
 
         The data includes the PE header and the sections loaded at offsets

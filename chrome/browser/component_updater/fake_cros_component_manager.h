@@ -8,14 +8,12 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/synchronization/lock.h"
-#include "base/version.h"
 #include "chrome/browser/component_updater/cros_component_manager.h"
 
 namespace component_updater {
@@ -30,12 +28,6 @@ class FakeCrOSComponentManager : public CrOSComponentManager {
     ComponentInfo(Error load_response,
                   const base::FilePath& install_path,
                   const base::FilePath& mount_path);
-    ComponentInfo(Error load_response,
-                  const base::FilePath& install_path,
-                  const base::FilePath& mount_path,
-                  const base::Version& version);
-    ComponentInfo(const ComponentInfo& other);
-    ComponentInfo& operator=(const ComponentInfo& other);
     ~ComponentInfo();
 
     // The status load requests for the component should produce.
@@ -48,9 +40,6 @@ class FakeCrOSComponentManager : public CrOSComponentManager {
     // The path where the fake component manager thinks the component is
     // mounted.
     base::FilePath mount_path;
-
-    // The version of the component. Must be set to use GetVersion().
-    std::optional<base::Version> version;
   };
 
   FakeCrOSComponentManager();
@@ -94,11 +83,8 @@ class FakeCrOSComponentManager : public CrOSComponentManager {
             UpdatePolicy update_policy,
             LoadCallback load_callback) override;
   bool Unload(const std::string& name) override;
-  void GetVersion(const std::string& name,
-                  base::OnceCallback<void(const base::Version&)>
-                      version_callback) const override;
   void RegisterCompatiblePath(const std::string& name,
-                              CompatibleComponentInfo info) override;
+                              const base::FilePath& path) override;
   void UnregisterCompatiblePath(const std::string& name) override;
   base::FilePath GetCompatiblePath(const std::string& name) const override;
   bool IsRegisteredMayBlock(const std::string& name) override;
@@ -169,7 +155,7 @@ class FakeCrOSComponentManager : public CrOSComponentManager {
 
   // Maps the currently installed (and loaded) components to their installation
   // path.
-  std::map<std::string, CompatibleComponentInfo> installed_components_;
+  std::map<std::string, base::FilePath> installed_components_;
 
   // Maps the currently mounted components to their mount point path.
   std::map<std::string, base::FilePath> mounted_components_;

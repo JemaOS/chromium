@@ -17,6 +17,7 @@ package org.tensorflow.lite.support.image;
 
 import android.graphics.Bitmap;
 import android.media.Image;
+
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
 
@@ -32,28 +33,27 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
  * </ul>
  */
 interface ImageContainer {
+    /** Performs deep copy of the {@link ImageContainer}. */
+    ImageContainer clone();
 
-  /** Performs deep copy of the {@link ImageContainer}. */
-  ImageContainer clone();
+    /** Returns the width of the image. */
+    int getWidth();
 
-  /** Returns the width of the image. */
-  int getWidth();
+    /** Returns the height of the image. */
+    int getHeight();
 
-  /** Returns the height of the image. */
-  int getHeight();
+    /** Gets the {@link Bitmap} representation of the underlying image format. */
+    Bitmap getBitmap();
 
-  /** Gets the {@link Bitmap} representation of the underlying image format. */
-  Bitmap getBitmap();
+    /**
+     * Gets the {@link TensorBuffer} representation with the specific {@code dataType} of the
+     * underlying image format.
+     */
+    TensorBuffer getTensorBuffer(DataType dataType);
 
-  /**
-   * Gets the {@link TensorBuffer} representation with the specific {@code dataType} of the
-   * underlying image format.
-   */
-  TensorBuffer getTensorBuffer(DataType dataType);
+    /** Gets the {@link Image} representation of the underlying image format. */
+    Image getMediaImage();
 
-  /** Gets the {@link Image} representation of the underlying image format. */
-  Image getMediaImage();
-
-  /** Returns the color space type of the image. */
-  ColorSpaceType getColorSpaceType();
+    /** Returns the color space type of the image. */
+    ColorSpaceType getColorSpaceType();
 }

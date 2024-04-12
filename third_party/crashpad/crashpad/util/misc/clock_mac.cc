@@ -14,12 +14,32 @@
 
 #include "util/misc/clock.h"
 
-#include <time.h>
+#include <mach/mach_time.h>
+
+#include "base/mac/mach_logging.h"
+
+namespace {
+
+mach_timebase_info_data_t* TimebaseInternal() {
+  mach_timebase_info_data_t* timebase_info = new mach_timebase_info_data_t;
+  kern_return_t kr = mach_timebase_info(timebase_info);
+  MACH_CHECK(kr == KERN_SUCCESS, kr) << "mach_timebase_info";
+  return timebase_info;
+}
+
+mach_timebase_info_data_t* Timebase() {
+  static mach_timebase_info_data_t* timebase_info = TimebaseInternal();
+  return timebase_info;
+}
+
+}  // namespace
 
 namespace crashpad {
 
 uint64_t ClockMonotonicNanoseconds() {
-  return clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+  uint64_t absolute_time = mach_absolute_time();
+  mach_timebase_info_data_t* timebase_info = Timebase();
+  return absolute_time * timebase_info->numer / timebase_info->denom;
 }
 
 }  // namespace crashpad

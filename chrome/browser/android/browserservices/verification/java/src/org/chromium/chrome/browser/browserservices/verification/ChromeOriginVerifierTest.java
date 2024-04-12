@@ -93,18 +93,10 @@ public class ChromeOriginVerifierTest {
         mHttpsOrigin = Origin.create("https://www.example.com");
         mHttpOrigin = Origin.create("http://www.android.com");
 
-        mHandleAllUrlsVerifier =
-                mFactory.create(
-                        PACKAGE_NAME,
-                        CustomTabsService.RELATION_HANDLE_ALL_URLS,
-                        new MockWebContents(),
-                        null);
-        mUseAsOriginVerifier =
-                mFactory.create(
-                        PACKAGE_NAME,
-                        CustomTabsService.RELATION_USE_AS_ORIGIN,
-                        /* webContents= */ null,
-                        null);
+        mHandleAllUrlsVerifier = mFactory.create(PACKAGE_NAME,
+                CustomTabsService.RELATION_HANDLE_ALL_URLS, new MockWebContents(), null);
+        mUseAsOriginVerifier = mFactory.create(PACKAGE_NAME,
+                CustomTabsService.RELATION_USE_AS_ORIGIN, /* webContents= */ null, null);
         mVerificationResultSemaphore = new Semaphore(0);
 
         mExternalAuthUtils = new TestExternalAuthUtils();
@@ -113,10 +105,9 @@ public class ChromeOriginVerifierTest {
     @Test
     @SmallTest
     public void testOnlyHttpsAllowed() throws InterruptedException {
-        PostTask.postTask(
-                TaskTraits.UI_DEFAULT,
-                () ->
-                        mHandleAllUrlsVerifier.start(
+        PostTask.postTask(TaskTraits.UI_DEFAULT,
+                ()
+                        -> mHandleAllUrlsVerifier.start(
                                 new TestOriginVerificationListener(), mHttpOrigin));
         Assert.assertTrue(
                 mVerificationResultSemaphore.tryAcquire(TIMEOUT_MS, TimeUnit.MILLISECONDS));
@@ -126,39 +117,28 @@ public class ChromeOriginVerifierTest {
     @Test
     @SmallTest
     public void testMultipleRelationships() throws Exception {
-        PostTask.postTask(
-                TaskTraits.UI_DEFAULT,
-                () ->
-                        ChromeOriginVerifier.addVerificationOverride(
-                                PACKAGE_NAME,
-                                mHttpsOrigin,
+        PostTask.postTask(TaskTraits.UI_DEFAULT,
+                ()
+                        -> ChromeOriginVerifier.addVerificationOverride(PACKAGE_NAME, mHttpsOrigin,
                                 CustomTabsService.RELATION_USE_AS_ORIGIN));
-        PostTask.postTask(
-                TaskTraits.UI_DEFAULT,
-                () ->
-                        mUseAsOriginVerifier.start(
+        PostTask.postTask(TaskTraits.UI_DEFAULT,
+                ()
+                        -> mUseAsOriginVerifier.start(
                                 new TestOriginVerificationListener(), mHttpsOrigin));
         Assert.assertTrue(
                 mVerificationResultSemaphore.tryAcquire(TIMEOUT_MS, TimeUnit.MILLISECONDS));
         Assert.assertTrue(mLastVerified);
-        Assert.assertTrue(
-                TestThreadUtils.runOnUiThreadBlocking(
-                        () ->
-                                ChromeOriginVerifier.wasPreviouslyVerified(
-                                        PACKAGE_NAME,
-                                        mHttpsOrigin,
-                                        CustomTabsService.RELATION_USE_AS_ORIGIN)));
-        Assert.assertTrue(
-                TestThreadUtils.runOnUiThreadBlocking(
-                        () -> mUseAsOriginVerifier.wasPreviouslyVerified(mHttpsOrigin)));
+        Assert.assertTrue(TestThreadUtils.runOnUiThreadBlocking(
+                ()
+                        -> ChromeOriginVerifier.wasPreviouslyVerified(PACKAGE_NAME, mHttpsOrigin,
+                                CustomTabsService.RELATION_USE_AS_ORIGIN)));
+        Assert.assertTrue(TestThreadUtils.runOnUiThreadBlocking(
+                () -> mUseAsOriginVerifier.wasPreviouslyVerified(mHttpsOrigin)));
 
-        Assert.assertFalse(
-                TestThreadUtils.runOnUiThreadBlocking(
-                        () ->
-                                ChromeOriginVerifier.wasPreviouslyVerified(
-                                        PACKAGE_NAME,
-                                        mHttpsOrigin,
-                                        CustomTabsService.RELATION_HANDLE_ALL_URLS)));
+        Assert.assertFalse(TestThreadUtils.runOnUiThreadBlocking(
+                ()
+                        -> ChromeOriginVerifier.wasPreviouslyVerified(PACKAGE_NAME, mHttpsOrigin,
+                                CustomTabsService.RELATION_HANDLE_ALL_URLS)));
 
         Assert.assertEquals(mLastPackageName, PACKAGE_NAME);
         Assert.assertEquals(mLastOrigin, mHttpsOrigin);
@@ -167,15 +147,10 @@ public class ChromeOriginVerifierTest {
     @Test
     @SmallTest
     public void testVerificationBypass() throws InterruptedException {
-        ChromeOriginVerifier verifier =
-                mFactory.create(
-                        PACKAGE_NAME,
-                        CustomTabsService.RELATION_HANDLE_ALL_URLS,
-                        null,
-                        mExternalAuthUtils);
+        ChromeOriginVerifier verifier = mFactory.create(
+                PACKAGE_NAME, CustomTabsService.RELATION_HANDLE_ALL_URLS, null, mExternalAuthUtils);
 
-        PostTask.postTask(
-                TaskTraits.UI_DEFAULT,
+        PostTask.postTask(TaskTraits.UI_DEFAULT,
                 () -> verifier.start(new TestOriginVerificationListener(), mHttpsOrigin));
         Assert.assertTrue(
                 mVerificationResultSemaphore.tryAcquire(TIMEOUT_MS, TimeUnit.MILLISECONDS));
@@ -183,8 +158,7 @@ public class ChromeOriginVerifierTest {
 
         // Try again, but this time allowlist the package/origin.
         mExternalAuthUtils.addToAllowlist(PACKAGE_NAME, mHttpsOrigin);
-        PostTask.postTask(
-                TaskTraits.UI_DEFAULT,
+        PostTask.postTask(TaskTraits.UI_DEFAULT,
                 () -> verifier.start(new TestOriginVerificationListener(), mHttpsOrigin));
         Assert.assertTrue(
                 mVerificationResultSemaphore.tryAcquire(TIMEOUT_MS, TimeUnit.MILLISECONDS));
@@ -195,43 +169,31 @@ public class ChromeOriginVerifierTest {
     @Test
     @SmallTest
     public void testRelationToRelationship() throws InterruptedException {
-        Assert.assertEquals(
-                ChromeOriginVerifier.relationToRelationship(
-                        CustomTabsService.RELATION_USE_AS_ORIGIN),
+        Assert.assertEquals(ChromeOriginVerifier.relationToRelationship(
+                                    CustomTabsService.RELATION_USE_AS_ORIGIN),
                 "delegate_permission/common.use_as_origin");
-        Assert.assertEquals(
-                ChromeOriginVerifier.relationToRelationship(
-                        CustomTabsService.RELATION_HANDLE_ALL_URLS),
+        Assert.assertEquals(ChromeOriginVerifier.relationToRelationship(
+                                    CustomTabsService.RELATION_HANDLE_ALL_URLS),
                 "delegate_permission/common.handle_all_urls");
     }
 
     @Test
     @SmallTest
     public void testIsAllowlisted() throws InterruptedException {
-        ChromeOriginVerifier verifier =
-                mFactory.create(
-                        PACKAGE_NAME,
-                        CustomTabsService.RELATION_HANDLE_ALL_URLS,
-                        null,
-                        mExternalAuthUtils);
-        Assert.assertFalse(
-                verifier.isAllowlisted(
-                        "no.existing.package",
-                        Origin.create("https://not.exist.com"),
-                        "delegate_permission/common.handle_all_urls"));
+        ChromeOriginVerifier verifier = mFactory.create(
+                PACKAGE_NAME, CustomTabsService.RELATION_HANDLE_ALL_URLS, null, mExternalAuthUtils);
+        Assert.assertFalse(verifier.isAllowlisted("no.existing.package",
+                Origin.create("https://not.exist.com"),
+                "delegate_permission/common.handle_all_urls"));
         mExternalAuthUtils.addToAllowlist(PACKAGE_NAME, mHttpsOrigin);
-        Assert.assertFalse(
-                verifier.isAllowlisted(
-                        PACKAGE_NAME, mHttpsOrigin, "delegate_permission/common.use_as_origin"));
-        Assert.assertTrue(
-                verifier.isAllowlisted(
-                        PACKAGE_NAME, mHttpsOrigin, "delegate_permission/common.handle_all_urls"));
+        Assert.assertFalse(verifier.isAllowlisted(
+                PACKAGE_NAME, mHttpsOrigin, "delegate_permission/common.use_as_origin"));
+        Assert.assertTrue(verifier.isAllowlisted(
+                PACKAGE_NAME, mHttpsOrigin, "delegate_permission/common.handle_all_urls"));
 
-        ChromeOriginVerifier verifierNoAuth =
-                mFactory.create(
-                        PACKAGE_NAME, CustomTabsService.RELATION_HANDLE_ALL_URLS, null, null);
-        Assert.assertFalse(
-                verifierNoAuth.isAllowlisted(
-                        PACKAGE_NAME, mHttpsOrigin, "delegate_permission/common.handle_all_urls"));
+        ChromeOriginVerifier verifierNoAuth = mFactory.create(
+                PACKAGE_NAME, CustomTabsService.RELATION_HANDLE_ALL_URLS, null, null);
+        Assert.assertFalse(verifierNoAuth.isAllowlisted(
+                PACKAGE_NAME, mHttpsOrigin, "delegate_permission/common.handle_all_urls"));
     }
 }

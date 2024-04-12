@@ -4,15 +4,11 @@
 
 #include "chrome/browser/apps/app_discovery_service/app_fetcher_manager.h"
 
-#include <memory>
 #include <utility>
 
 #include "base/notreached.h"
-#include "chrome/browser/apps/almanac_api_client/almanac_icon_cache.h"
-#include "chrome/browser/apps/app_discovery_service/almanac_fetcher.h"
-#include "chrome/browser/apps/app_discovery_service/app_discovery_service.h"
+#include "chrome/browser/apps/app_discovery_service/game_fetcher.h"
 #include "chrome/browser/apps/app_discovery_service/recommended_arc_app_fetcher.h"
-#include "chrome/browser/profiles/profile.h"
 #include "ui/gfx/image/image_skia.h"
 
 namespace apps {
@@ -23,7 +19,7 @@ base::CallbackListSubscription AppFetcher::RegisterForAppUpdates(
   return base::CallbackListSubscription();
 }
 
-void AppFetcher::GetIcon(const std::string& icon_id,
+void AppFetcher::GetIcon(const std::string& app_id,
                          int32_t size_hint_in_dip,
                          GetIconCallback callback) {
   NOTREACHED();
@@ -37,10 +33,8 @@ AppFetcher* AppFetcherManager::g_test_fetcher_ = nullptr;
 AppFetcherManager::AppFetcherManager(Profile* profile)
     : profile_(profile),
       recommended_arc_app_fetcher_(
-          std::make_unique<RecommendedArcAppFetcher>(profile_)),
-      almanac_fetcher_(std::make_unique<AlmanacFetcher>(
-          profile_,
-          std::make_unique<AlmanacIconCache>(profile->GetProfileKey()))) {}
+          std::make_unique<RecommendedArcAppFetcher>()),
+      game_fetcher_(std::make_unique<GameFetcher>(profile_)) {}
 
 AppFetcherManager::~AppFetcherManager() = default;
 
@@ -56,8 +50,8 @@ void AppFetcherManager::GetApps(ResultType result_type,
       recommended_arc_app_fetcher_->GetApps(std::move(callback));
       return;
     case ResultType::kGameSearchCatalog:
-      DCHECK(almanac_fetcher_);
-      almanac_fetcher_->GetApps(std::move(callback));
+      DCHECK(game_fetcher_);
+      game_fetcher_->GetApps(std::move(callback));
       return;
   }
 }
@@ -75,12 +69,12 @@ base::CallbackListSubscription AppFetcherManager::RegisterForAppUpdates(
       DCHECK(g_test_fetcher_);
       return g_test_fetcher_->RegisterForAppUpdates(std::move(callback));
     case ResultType::kGameSearchCatalog:
-      DCHECK(almanac_fetcher_);
-      return almanac_fetcher_->RegisterForAppUpdates(std::move(callback));
+      DCHECK(game_fetcher_);
+      return game_fetcher_->RegisterForAppUpdates(std::move(callback));
   }
 }
 
-void AppFetcherManager::GetIcon(const std::string& icon_id,
+void AppFetcherManager::GetIcon(const std::string& app_id,
                                 int32_t size_hint_in_dip,
                                 ResultType result_type,
                                 GetIconCallback callback) {
@@ -96,8 +90,8 @@ void AppFetcherManager::GetIcon(const std::string& icon_id,
                               DiscoveryError::kErrorRequestFailed);
       return;
     case ResultType::kGameSearchCatalog:
-      DCHECK(almanac_fetcher_);
-      almanac_fetcher_->GetIcon(icon_id, size_hint_in_dip, std::move(callback));
+      DCHECK(game_fetcher_);
+      game_fetcher_->GetIcon(app_id, size_hint_in_dip, std::move(callback));
       return;
   }
 }

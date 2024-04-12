@@ -7,23 +7,19 @@
  * and manipulate state.
  */
 
-import {Actions, emptyState, PersonalizationState, PersonalizationStore, reduce} from 'chrome://personalization/js/personalization_app.js';
-import {TestStore} from 'chrome://webui-test/test_store.js';
+import {emptyState, PersonalizationState, PersonalizationStore, reduce} from 'chrome://personalization/js/personalization_app.js';
+import {Action} from 'chrome://resources/ash/common/store/store.js';
+import {TestStore} from 'chrome://webui-test/chromeos/test_store.js';
 
-/**
- * Records actions and states observed during a test run. A Personalization App
- * specific specialization of the generic TestStore.
- */
-export class TestPersonalizationStore extends
-    TestStore<PersonalizationState, Actions> {
+export class TestPersonalizationStore extends TestStore {
   // received actions and states.
-  private actions_: Actions[];
+  private actions_: Action[];
   private states_: any[];
 
   override data: PersonalizationState = emptyState();
 
-  constructor(data: Partial<PersonalizationState>) {
-    super(data, emptyState(), reduce);
+  constructor(data: any) {
+    super(data, PersonalizationStore, emptyState(), reduce);
     this.actions_ = [];
     this.states_ = [];
   }
@@ -36,13 +32,13 @@ export class TestPersonalizationStore extends
     return this.states_;
   }
 
-  override reduce(action: Actions) {
+  override reduce(action: Action) {
     super.reduce(action);
     this.actions_.push(action);
     this.states_.push(this.data);
   }
 
-  replaceSingleton() {
+  override replaceSingleton() {
     PersonalizationStore.setInstance(this);
   }
 

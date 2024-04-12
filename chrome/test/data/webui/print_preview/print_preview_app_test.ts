@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {NativeInitialSettings, PrintPreviewAppElement} from 'chrome://print/print_preview.js';
-import {DuplexMode, NativeLayerImpl, PluginProxyImpl} from 'chrome://print/print_preview.js';
+import {DuplexMode, NativeInitialSettings, NativeLayerImpl, PluginProxyImpl, PrintPreviewAppElement} from 'chrome://print/print_preview.js';
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 
@@ -15,7 +14,20 @@ import {NativeLayerStub} from './native_layer_stub.js';
 import {TestPluginProxy} from './test_plugin_proxy.js';
 
 
-suite('PrintPreviewAppTest', function() {
+const print_preview_app_test = {
+  suiteName: 'PrintPreviewAppTest',
+  TestNames: {
+    PrintPresets: 'print presets',
+    DestinationsManaged: 'destinations managed',
+    HeaderFooterManaged: 'header footer managed',
+    CssBackgroundManaged: 'css background managed',
+    SheetsManaged: 'sheets managed',
+  },
+};
+
+Object.assign(window, {print_preview_app_test: print_preview_app_test});
+
+suite(print_preview_app_test.suiteName, function() {
   let page: PrintPreviewAppElement;
 
   let nativeLayer: NativeLayerStub;
@@ -68,7 +80,7 @@ suite('PrintPreviewAppTest', function() {
     PluginProxyImpl.setInstance(pluginProxy);
   });
 
-  test('PrintPresets', async () => {
+  test(print_preview_app_test.TestNames.PrintPresets, async () => {
     await initialize();
     assertEquals(1, page.settings.copies.value);
     assertFalse(page.settings.duplex.value);
@@ -83,33 +95,31 @@ suite('PrintPreviewAppTest', function() {
     assertFalse(page.getSetting('copies').setFromUi);
   });
 
-  test('DestinationsManaged', async () => {
+  test(print_preview_app_test.TestNames.DestinationsManaged, async () => {
     initialSettings.destinationsManaged = true;
     await initialize();
     const sidebar = page.shadowRoot!.querySelector('print-preview-sidebar')!;
     assertTrue(sidebar.controlsManaged);
   });
 
-  test('HeaderFooterManaged', async () => {
+  test(print_preview_app_test.TestNames.HeaderFooterManaged, async () => {
     initialSettings.policies = {headerFooter: {allowedMode: true}};
     await initialize();
     const sidebar = page.shadowRoot!.querySelector('print-preview-sidebar')!;
     assertTrue(sidebar.controlsManaged);
   });
 
-  test('CssBackgroundManaged', async () => {
+  test(print_preview_app_test.TestNames.CssBackgroundManaged, async () => {
     initialSettings.policies = {cssBackground: {allowedMode: 1}};
     await initialize();
     const sidebar = page.shadowRoot!.querySelector('print-preview-sidebar')!;
     assertTrue(sidebar.controlsManaged);
   });
 
-  // <if expr="is_chromeos">
-  test('SheetsManaged', async () => {
+  test(print_preview_app_test.TestNames.SheetsManaged, async () => {
     initialSettings.policies = {sheets: {value: 2}};
     await initialize();
     const sidebar = page.shadowRoot!.querySelector('print-preview-sidebar')!;
     assertTrue(sidebar.controlsManaged);
   });
-  // </if>
 });

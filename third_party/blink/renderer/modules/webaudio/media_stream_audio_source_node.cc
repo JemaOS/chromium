@@ -95,8 +95,7 @@ MediaStreamAudioSourceNode* MediaStreamAudioSourceNode::Create(
   // 1.24.1. Step 5: The step is out of order because the constructor needs
   // this provider, which is [[input track]] from the spec.
   std::unique_ptr<AudioSourceProvider> provider =
-      audio_track->CreateWebAudioSource(context.sampleRate(),
-                                        context.PlatformBufferSize());
+      audio_track->CreateWebAudioSource(context.sampleRate());
 
   // 1.24.1. Step 4.
   MediaStreamAudioSourceNode* node =

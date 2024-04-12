@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/policy/enrollment/psm/rlwe_dmserver_client_impl.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -26,6 +25,7 @@
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/private_membership/src/internal/testing/regression_test_data/regression_test_data.pb.h"
 #include "third_party/private_membership/src/private_membership_rlwe.pb.h"
 #include "third_party/private_membership/src/private_membership_rlwe_client.h"
@@ -252,7 +252,8 @@ TEST_P(RlweDmserverClientImplTest, MembershipRetrievedSuccessfully) {
 
   ASSERT_NO_FATAL_FAILURE(CheckMembershipWithRlweClient());
 
-  VerifyResultHolder(PsmResultHolder(kExpectedMembershipResult,
+  VerifyResultHolder(PsmResultHolder(psm::RlweResult::kSuccessfulDetermination,
+                                     kExpectedMembershipResult,
                                      kExpectedPsmDeterminationTimestamp));
 
   ExpectPsmHistograms(psm::RlweResult::kSuccessfulDetermination,
@@ -304,8 +305,7 @@ TEST_P(RlweDmserverClientImplTest, ConnectionErrorForRlweQueryResponse) {
 
   ASSERT_NO_FATAL_FAILURE(CheckMembershipWithRlweClient());
 
-  VerifyResultHolder(PsmResultHolder(AutoEnrollmentDMServerError{
-      .dm_error = DM_STATUS_SUCCESS, .network_error = net::ERR_FAILED}));
+  VerifyResultHolder(PsmResultHolder(psm::RlweResult::kConnectionError));
 
   ExpectPsmHistograms(psm::RlweResult::kConnectionError,
                       /*success_time_recorded=*/false);
@@ -324,8 +324,7 @@ TEST_P(RlweDmserverClientImplTest, ConnectionErrorForRlweOprfResponse) {
 
   ASSERT_NO_FATAL_FAILURE(CheckMembershipWithRlweClient());
 
-  VerifyResultHolder(PsmResultHolder(AutoEnrollmentDMServerError{
-      .dm_error = DM_STATUS_SUCCESS, .network_error = net::ERR_FAILED}));
+  VerifyResultHolder(PsmResultHolder(psm::RlweResult::kConnectionError));
 
   ExpectPsmHistograms(psm::RlweResult::kConnectionError,
                       /*success_time_recorded=*/false);
@@ -342,8 +341,7 @@ TEST_P(RlweDmserverClientImplTest, NetworkFailureForRlweOprfResponse) {
 
   ASSERT_NO_FATAL_FAILURE(CheckMembershipWithRlweClient());
 
-  VerifyResultHolder(PsmResultHolder(
-      AutoEnrollmentDMServerError{.dm_error = DM_STATUS_HTTP_STATUS_ERROR}));
+  VerifyResultHolder(PsmResultHolder(psm::RlweResult::kServerError));
 
   ExpectPsmHistograms(psm::RlweResult::kServerError,
                       /*success_time_recorded=*/false);
@@ -359,8 +357,7 @@ TEST_P(RlweDmserverClientImplTest, NetworkFailureForRlweQueryResponse) {
 
   ASSERT_NO_FATAL_FAILURE(CheckMembershipWithRlweClient());
 
-  VerifyResultHolder(PsmResultHolder(
-      AutoEnrollmentDMServerError{.dm_error = DM_STATUS_HTTP_STATUS_ERROR}));
+  VerifyResultHolder(PsmResultHolder(psm::RlweResult::kServerError));
 
   ExpectPsmHistograms(psm::RlweResult::kServerError,
                       /*success_time_recorded=*/false);

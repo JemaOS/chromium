@@ -12,7 +12,9 @@
 #include "chrome/common/extensions/api/file_system_provider.h"
 #include "chrome/common/extensions/api/file_system_provider_internal.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 WriteFile::WriteFile(RequestDispatcher* dispatcher,
                      const ProvidedFileSystemInfo& file_system_info,
@@ -28,7 +30,8 @@ WriteFile::WriteFile(RequestDispatcher* dispatcher,
       length_(length),
       callback_(std::move(callback)) {}
 
-WriteFile::~WriteFile() = default;
+WriteFile::~WriteFile() {
+}
 
 bool WriteFile::Execute(int request_id) {
   TRACE_EVENT0("file_system_provider", "WriteFile::Execute");
@@ -78,4 +81,6 @@ void WriteFile::OnError(int /* request_id */,
   std::move(callback_).Run(error);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

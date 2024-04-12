@@ -21,8 +21,7 @@ namespace network_diagnostics {
 // this routine.
 class LanConnectivityRoutine : public NetworkDiagnosticsRoutine {
  public:
-  explicit LanConnectivityRoutine(
-      chromeos::network_diagnostics::mojom::RoutineCallSource source);
+  LanConnectivityRoutine();
   LanConnectivityRoutine(const LanConnectivityRoutine&) = delete;
   LanConnectivityRoutine& operator=(const LanConnectivityRoutine&) = delete;
   ~LanConnectivityRoutine() override;

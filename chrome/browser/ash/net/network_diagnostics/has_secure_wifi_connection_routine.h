@@ -18,8 +18,7 @@ namespace network_diagnostics {
 // Tests whether the WiFi connection uses a secure encryption method.
 class HasSecureWiFiConnectionRoutine : public NetworkDiagnosticsRoutine {
  public:
-  explicit HasSecureWiFiConnectionRoutine(
-      chromeos::network_diagnostics::mojom::RoutineCallSource source);
+  HasSecureWiFiConnectionRoutine();
   HasSecureWiFiConnectionRoutine(const HasSecureWiFiConnectionRoutine&) =
       delete;
   HasSecureWiFiConnectionRoutine& operator=(

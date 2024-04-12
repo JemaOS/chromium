@@ -53,9 +53,7 @@ ComputedAccessibleNodePromiseResolver::ComputedAccessibleNodePromiseResolver(
     Document& document,
     AXID ax_id)
     : ax_id_(ax_id),
-      resolver_(MakeGarbageCollected<
-                ScriptPromiseResolverTyped<ComputedAccessibleNode>>(
-          script_state)),
+      resolver_(MakeGarbageCollected<ScriptPromiseResolver>(script_state)),
       ax_context_(std::make_unique<AXContext>(document, ui::kAXModeComplete)) {
   DCHECK(ax_id);
 }
@@ -64,14 +62,11 @@ ComputedAccessibleNodePromiseResolver::ComputedAccessibleNodePromiseResolver(
     ScriptState* script_state,
     Element& element)
     : element_(element),
-      resolver_(MakeGarbageCollected<
-                ScriptPromiseResolverTyped<ComputedAccessibleNode>>(
-          script_state)),
+      resolver_(MakeGarbageCollected<ScriptPromiseResolver>(script_state)),
       ax_context_(std::make_unique<AXContext>(element.GetDocument(),
                                               ui::kAXModeComplete)) {}
 
-ScriptPromiseTyped<ComputedAccessibleNode>
-ComputedAccessibleNodePromiseResolver::Promise() {
+ScriptPromise ComputedAccessibleNodePromiseResolver::Promise() {
   return resolver_->Promise();
 }
 
@@ -119,7 +114,7 @@ void ComputedAccessibleNodePromiseResolver::UpdateTreeAndResolve() {
   ax_context_->GetDocument()->View()->UpdateAllLifecyclePhasesExceptPaint(
       DocumentUpdateReason::kAccessibility);
   AXObjectCache& cache = ax_context_->GetAXObjectCache();
-  AXID ax_id = ax_id_ ? ax_id_ : element_->GetDomNodeId();
+  AXID ax_id = ax_id_ ? ax_id_ : cache.GetAXID(element_);
   if (!ax_id || !cache.ObjectFromAXID(ax_id)) {
     resolver_->Resolve();  // No AXObject exists for this element.
     return;
@@ -140,101 +135,101 @@ ComputedAccessibleNode::ComputedAccessibleNode(AXID ax_id, Document* document)
 
 ComputedAccessibleNode::~ComputedAccessibleNode() = default;
 
-std::optional<bool> ComputedAccessibleNode::atomic() const {
+absl::optional<bool> ComputedAccessibleNode::atomic() const {
   return GetBoolAttribute(WebAOMBoolAttribute::AOM_ATTR_ATOMIC);
 }
 
-std::optional<bool> ComputedAccessibleNode::busy() const {
+absl::optional<bool> ComputedAccessibleNode::busy() const {
   return GetBoolAttribute(WebAOMBoolAttribute::AOM_ATTR_BUSY);
 }
 
-std::optional<bool> ComputedAccessibleNode::disabled() const {
+absl::optional<bool> ComputedAccessibleNode::disabled() const {
   return GetBoolAttribute(WebAOMBoolAttribute::AOM_ATTR_DISABLED);
 }
 
-std::optional<bool> ComputedAccessibleNode::readOnly() const {
+absl::optional<bool> ComputedAccessibleNode::readOnly() const {
   return GetBoolAttribute(WebAOMBoolAttribute::AOM_ATTR_READONLY);
 }
 
-std::optional<bool> ComputedAccessibleNode::expanded() const {
+absl::optional<bool> ComputedAccessibleNode::expanded() const {
   return GetBoolAttribute(WebAOMBoolAttribute::AOM_ATTR_EXPANDED);
 }
 
-std::optional<bool> ComputedAccessibleNode::modal() const {
+absl::optional<bool> ComputedAccessibleNode::modal() const {
   return GetBoolAttribute(WebAOMBoolAttribute::AOM_ATTR_MODAL);
 }
 
-std::optional<bool> ComputedAccessibleNode::multiline() const {
+absl::optional<bool> ComputedAccessibleNode::multiline() const {
   return GetBoolAttribute(WebAOMBoolAttribute::AOM_ATTR_MULTILINE);
 }
 
-std::optional<bool> ComputedAccessibleNode::multiselectable() const {
+absl::optional<bool> ComputedAccessibleNode::multiselectable() const {
   return GetBoolAttribute(WebAOMBoolAttribute::AOM_ATTR_MULTISELECTABLE);
 }
 
-std::optional<bool> ComputedAccessibleNode::required() const {
+absl::optional<bool> ComputedAccessibleNode::required() const {
   return GetBoolAttribute(WebAOMBoolAttribute::AOM_ATTR_REQUIRED);
 }
 
-std::optional<bool> ComputedAccessibleNode::selected() const {
+absl::optional<bool> ComputedAccessibleNode::selected() const {
   return GetBoolAttribute(WebAOMBoolAttribute::AOM_ATTR_SELECTED);
 }
 
-std::optional<int32_t> ComputedAccessibleNode::colCount() const {
+absl::optional<int32_t> ComputedAccessibleNode::colCount() const {
   return GetIntAttribute(WebAOMIntAttribute::AOM_ATTR_COLUMN_COUNT);
 }
 
-std::optional<int32_t> ComputedAccessibleNode::colIndex() const {
+absl::optional<int32_t> ComputedAccessibleNode::colIndex() const {
   return GetIntAttribute(WebAOMIntAttribute::AOM_ATTR_COLUMN_INDEX);
 }
 
-std::optional<int32_t> ComputedAccessibleNode::colSpan() const {
+absl::optional<int32_t> ComputedAccessibleNode::colSpan() const {
   return GetIntAttribute(WebAOMIntAttribute::AOM_ATTR_COLUMN_SPAN);
 }
 
-std::optional<int32_t> ComputedAccessibleNode::level() const {
+absl::optional<int32_t> ComputedAccessibleNode::level() const {
   return GetIntAttribute(WebAOMIntAttribute::AOM_ATTR_HIERARCHICAL_LEVEL);
 }
 
-std::optional<int32_t> ComputedAccessibleNode::posInSet() const {
+absl::optional<int32_t> ComputedAccessibleNode::posInSet() const {
   return GetIntAttribute(WebAOMIntAttribute::AOM_ATTR_POS_IN_SET);
 }
 
-std::optional<int32_t> ComputedAccessibleNode::rowCount() const {
+absl::optional<int32_t> ComputedAccessibleNode::rowCount() const {
   return GetIntAttribute(WebAOMIntAttribute::AOM_ATTR_ROW_COUNT);
 }
 
-std::optional<int32_t> ComputedAccessibleNode::rowIndex() const {
+absl::optional<int32_t> ComputedAccessibleNode::rowIndex() const {
   return GetIntAttribute(WebAOMIntAttribute::AOM_ATTR_ROW_INDEX);
 }
 
-std::optional<int32_t> ComputedAccessibleNode::rowSpan() const {
+absl::optional<int32_t> ComputedAccessibleNode::rowSpan() const {
   return GetIntAttribute(WebAOMIntAttribute::AOM_ATTR_ROW_SPAN);
 }
 
-std::optional<int32_t> ComputedAccessibleNode::setSize() const {
+absl::optional<int32_t> ComputedAccessibleNode::setSize() const {
   return GetIntAttribute(WebAOMIntAttribute::AOM_ATTR_SET_SIZE);
 }
 
-std::optional<float> ComputedAccessibleNode::valueMax() const {
+absl::optional<float> ComputedAccessibleNode::valueMax() const {
   return GetFloatAttribute(WebAOMFloatAttribute::AOM_ATTR_VALUE_MAX);
 }
 
-std::optional<float> ComputedAccessibleNode::valueMin() const {
+absl::optional<float> ComputedAccessibleNode::valueMin() const {
   return GetFloatAttribute(WebAOMFloatAttribute::AOM_ATTR_VALUE_MIN);
 }
 
-std::optional<float> ComputedAccessibleNode::valueNow() const {
+absl::optional<float> ComputedAccessibleNode::valueNow() const {
   return GetFloatAttribute(WebAOMFloatAttribute::AOM_ATTR_VALUE_NOW);
 }
 
-ScriptPromiseTyped<ComputedAccessibleNode>
-ComputedAccessibleNode::ensureUpToDate(ScriptState* script_state) {
+ScriptPromise ComputedAccessibleNode::ensureUpToDate(
+    ScriptState* script_state) {
   if (!GetDocument())
-    return ScriptPromiseTyped<ComputedAccessibleNode>();  // Empty promise.
+    return ScriptPromise();  // Empty promise.
   auto* resolver = MakeGarbageCollected<ComputedAccessibleNodePromiseResolver>(
       script_state, *GetDocument(), ax_id_);
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
   resolver->EnsureUpToDate();
   return promise;
 }
@@ -354,28 +349,28 @@ WebComputedAXTree* ComputedAccessibleNode::GetTree() const {
   return client->GetOrCreateWebComputedAXTree();
 }
 
-std::optional<bool> ComputedAccessibleNode::GetBoolAttribute(
+absl::optional<bool> ComputedAccessibleNode::GetBoolAttribute(
     WebAOMBoolAttribute attr) const {
   bool value;
   if (GetTree() && GetTree()->GetBoolAttributeForAXNode(ax_id_, attr, &value))
     return value;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int32_t> ComputedAccessibleNode::GetIntAttribute(
+absl::optional<int32_t> ComputedAccessibleNode::GetIntAttribute(
     WebAOMIntAttribute attr) const {
   int32_t value;
   if (GetTree() && GetTree()->GetIntAttributeForAXNode(ax_id_, attr, &value))
     return value;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<float> ComputedAccessibleNode::GetFloatAttribute(
+absl::optional<float> ComputedAccessibleNode::GetFloatAttribute(
     WebAOMFloatAttribute attr) const {
   float value;
   if (GetTree() && GetTree()->GetFloatAttributeForAXNode(ax_id_, attr, &value))
     return value;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 const String ComputedAccessibleNode::GetStringAttribute(

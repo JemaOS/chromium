@@ -19,8 +19,8 @@ namespace ash {
 class NearbyShareDelegate;
 class UnifiedSystemTrayController;
 
-// Controller for a feature tile that toggles the high visibility mode of Nearby
-// Share.
+// Controller for a feature pod button that toggles the high visibility mode of
+// Nearby Share.
 class ASH_EXPORT NearbyShareFeaturePodController
     : public FeaturePodControllerBase,
       public NearbyShareControllerImpl::Observer {
@@ -34,6 +34,7 @@ class ASH_EXPORT NearbyShareFeaturePodController
   ~NearbyShareFeaturePodController() override;
 
   // FeaturePodControllerBase:
+  FeaturePodButton* CreateButton() override;
   std::unique_ptr<FeatureTile> CreateTile(bool compact = false) override;
   QsFeatureCatalogName GetCatalogName() override;
   void OnIconPressed() override;
@@ -52,10 +53,12 @@ class ASH_EXPORT NearbyShareFeaturePodController
   base::RepeatingTimer countdown_timer_;
   base::TimeTicks shutoff_time_;
 
-  const raw_ptr<UnifiedSystemTrayController> tray_controller_;
-  const raw_ptr<NearbyShareDelegate> nearby_share_delegate_;
-  const raw_ptr<NearbyShareControllerImpl> nearby_share_controller_;
-  raw_ptr<FeatureTile, DanglingUntriaged> tile_ = nullptr;
+  const raw_ptr<UnifiedSystemTrayController, ExperimentalAsh> tray_controller_;
+  const raw_ptr<NearbyShareDelegate, ExperimentalAsh> nearby_share_delegate_;
+  const raw_ptr<NearbyShareControllerImpl, ExperimentalAsh>
+      nearby_share_controller_;
+  raw_ptr<FeaturePodButton, ExperimentalAsh> button_ = nullptr;
+  raw_ptr<FeatureTile, ExperimentalAsh> tile_ = nullptr;
 
   base::WeakPtrFactory<NearbyShareFeaturePodController> weak_ptr_factory_{this};
 };

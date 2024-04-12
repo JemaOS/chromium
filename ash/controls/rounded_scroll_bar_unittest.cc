@@ -6,8 +6,6 @@
 
 #include "ash/controls/rounded_scroll_bar.h"
 #include "base/memory/raw_ptr.h"
-#include "base/test/scoped_feature_list.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "ui/compositor/layer.h"
 #include "ui/events/test/event_generator.h"
 #include "ui/gfx/geometry/rect.h"
@@ -25,10 +23,6 @@ namespace {
 constexpr int kScrollBarWidth = 10;
 constexpr int kViewportHeight = 200;
 constexpr int kContentHeight = 1000;
-
-// Scroll bar thumb thickness.
-constexpr int kThumbThickness = 8;
-constexpr int kThumbHoverInset = 2;
 
 // Thumb opacity values.
 constexpr float kDefaultOpacity = 0.38f;
@@ -48,8 +42,7 @@ class TestScrollBarController : public views::ScrollBarController {
 
 // Uses ViewsTestBase because we may want to move this control into //ui/views
 // in the future.
-class RoundedScrollBarTest : public views::ViewsTestBase,
-                             public testing::WithParamInterface<bool> {
+class RoundedScrollBarTest : public views::ViewsTestBase {
  public:
   RoundedScrollBarTest()
       : ViewsTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
@@ -57,14 +50,6 @@ class RoundedScrollBarTest : public views::ViewsTestBase,
 
   // testing::Test:
   void SetUp() override {
-    if (GetParam()) {
-      scoped_feature_list_.InitWithFeatures(
-          {chromeos::features::kJelly, chromeos::features::kJellyroll}, {});
-    } else {
-      scoped_feature_list_.InitWithFeatures(
-          {}, {chromeos::features::kJelly, chromeos::features::kJellyroll});
-    }
-
     ViewsTestBase::SetUp();
 
     // Create a small widget.
@@ -77,8 +62,8 @@ class RoundedScrollBarTest : public views::ViewsTestBase,
 
     // Add a vertical scrollbar along the right edge.
     auto* contents = widget_->SetContentsView(std::make_unique<views::View>());
-    scroll_bar_ = contents->AddChildView(std::make_unique<RoundedScrollBar>(
-        views::ScrollBar::Orientation::kVertical));
+    scroll_bar_ = contents->AddChildView(
+        std::make_unique<RoundedScrollBar>(/*horizontal=*/false));
     scroll_bar_->set_controller(&controller_);
     scroll_bar_->SetBounds(90, 0, kScrollBarWidth, kViewportHeight);
     scroll_bar_->Update(kViewportHeight, kContentHeight,
@@ -96,19 +81,16 @@ class RoundedScrollBarTest : public views::ViewsTestBase,
  protected:
   views::UniqueWidgetPtr widget_;
   TestScrollBarController controller_;
-  raw_ptr<RoundedScrollBar, DanglingUntriaged> scroll_bar_ = nullptr;
-  raw_ptr<views::BaseScrollBarThumb, DanglingUntriaged> thumb_ = nullptr;
+  raw_ptr<RoundedScrollBar, ExperimentalAsh> scroll_bar_ = nullptr;
+  raw_ptr<views::BaseScrollBarThumb, ExperimentalAsh> thumb_ = nullptr;
   std::unique_ptr<ui::test::EventGenerator> generator_;
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-INSTANTIATE_TEST_SUITE_P(All, RoundedScrollBarTest, testing::Bool());
-
-TEST_P(RoundedScrollBarTest, InvisibleByDefault) {
+TEST_F(RoundedScrollBarTest, InvisibleByDefault) {
   EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), 0.f);
 }
 
-TEST_P(RoundedScrollBarTest, ShowOnThumbBoundsChanged) {
+TEST_F(RoundedScrollBarTest, ShowOnThumbBoundsChanged) {
   // Programmatically scroll the view, which changes the thumb bounds.
   // By default this does not show the thumb.
   scroll_bar_->Update(kViewportHeight, kContentHeight,
@@ -119,62 +101,46 @@ TEST_P(RoundedScrollBarTest, ShowOnThumbBoundsChanged) {
   scroll_bar_->SetShowOnThumbBoundsChanged(true);
   scroll_bar_->Update(kViewportHeight, kContentHeight,
                       /*contents_scroll_offset=*/200);
-  EXPECT_EQ(thumb_->layer()->GetTargetOpacity(),
-            GetParam() ? kActiveOpacity : kDefaultOpacity);
+  EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), kDefaultOpacity);
 }
 
-TEST_P(RoundedScrollBarTest, ShowOnScrolling) {
+TEST_F(RoundedScrollBarTest, ScrollingShowsDefaultOpacity) {
   scroll_bar_->ScrollByAmount(views::ScrollBar::ScrollAmount::kNextLine);
-  EXPECT_EQ(thumb_->layer()->GetTargetOpacity(),
-            GetParam() ? kActiveOpacity : kDefaultOpacity);
+  EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), kDefaultOpacity);
 }
 
-TEST_P(RoundedScrollBarTest, FadesAfterScroll) {
+TEST_F(RoundedScrollBarTest, FadesAfterScroll) {
   scroll_bar_->ScrollByAmount(views::ScrollBar::ScrollAmount::kNextLine);
   task_environment()->FastForwardBy(base::Seconds(1));
   EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), 0.f);
 }
 
-TEST_P(RoundedScrollBarTest, MoveToThumbShowsActiveOpacity) {
+TEST_F(RoundedScrollBarTest, MoveToThumbShowsActiveOpacity) {
   generator_->MoveMouseTo(thumb_->GetBoundsInScreen().CenterPoint());
   EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), kActiveOpacity);
 }
 
-TEST_P(RoundedScrollBarTest, MoveToTrackOutsideThumbShowsInactiveThumb) {
+TEST_F(RoundedScrollBarTest, MoveToTrackOutsideThumbShowsDefaultOpacity) {
   gfx::Point thumb_bottom = thumb_->GetBoundsInScreen().bottom_center();
   generator_->MoveMouseTo(thumb_bottom.x(), thumb_bottom.y() + 1);
-
-  if (GetParam()) {
-    EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), 1.0f);
-    EXPECT_EQ(scroll_bar_->GetThickness(), kThumbThickness - kThumbHoverInset);
-  } else {
-    EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), kDefaultOpacity);
-    EXPECT_EQ(scroll_bar_->GetThickness(), kThumbThickness);
-  }
+  EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), kDefaultOpacity);
 }
 
-TEST_P(RoundedScrollBarTest, MoveFromThumbToTrackShowsInactiveThumb) {
+TEST_F(RoundedScrollBarTest, MoveFromThumbToTrackShowsDefaultOpacity) {
   generator_->MoveMouseTo(thumb_->GetBoundsInScreen().CenterPoint());
   gfx::Point thumb_bottom = thumb_->GetBoundsInScreen().bottom_center();
   generator_->MoveMouseTo(thumb_bottom.x(), thumb_bottom.y() + 1);
-  if (GetParam()) {
-    EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), 1.0f);
-    EXPECT_EQ(scroll_bar_->GetThickness(), kThumbThickness - kThumbHoverInset);
-  } else {
-    EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), kDefaultOpacity);
-    EXPECT_EQ(scroll_bar_->GetThickness(), kThumbThickness);
-  }
+  EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), kDefaultOpacity);
 }
 
-TEST_P(RoundedScrollBarTest, MoveFromTrackToThumbShowsActiveThumb) {
+TEST_F(RoundedScrollBarTest, MoveFromTrackToThumbShowsActiveOpacity) {
   gfx::Point thumb_bottom = thumb_->GetBoundsInScreen().bottom_center();
   generator_->MoveMouseTo(thumb_bottom.x(), thumb_bottom.y() + 1);
   generator_->MoveMouseTo(thumb_->GetBoundsInScreen().CenterPoint());
   EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), kActiveOpacity);
-  EXPECT_EQ(scroll_bar_->GetThickness(), kThumbThickness);
 }
 
-TEST_P(RoundedScrollBarTest, DragOutsideTrackShowsActiveThumb) {
+TEST_F(RoundedScrollBarTest, DragOutsideTrackShowsActiveOpacity) {
   gfx::Point thumb_center = thumb_->GetBoundsInScreen().CenterPoint();
   generator_->MoveMouseTo(thumb_center);
   generator_->PressLeftButton();
@@ -182,7 +148,6 @@ TEST_P(RoundedScrollBarTest, DragOutsideTrackShowsActiveThumb) {
                                 thumb_center.y());
   generator_->MoveMouseTo(outside_scroll_bar);
   EXPECT_EQ(thumb_->layer()->GetTargetOpacity(), kActiveOpacity);
-  EXPECT_EQ(scroll_bar_->GetThickness(), kThumbThickness);
 }
 
 }  // namespace

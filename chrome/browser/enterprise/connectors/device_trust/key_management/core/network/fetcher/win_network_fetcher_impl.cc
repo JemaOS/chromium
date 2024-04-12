@@ -9,15 +9,16 @@
 
 #include "base/containers/flat_map.h"
 #include "base/functional/callback_helpers.h"
-#include "base/memory/scoped_refptr.h"
 #include "url/gurl.h"
 
 namespace enterprise_connectors {
 
+namespace {}  // namespace
+
 WinNetworkFetcherImpl::WinNetworkFetcherImpl(
     const GURL& url,
     const std::string& body,
-    base::flat_map<std::string, std::string> headers)
+    const base::flat_map<std::string, std::string> headers)
     : url_(url), body_(body), headers_(std::move(headers)) {}
 
 WinNetworkFetcherImpl::~WinNetworkFetcherImpl() = default;
@@ -28,12 +29,10 @@ void WinNetworkFetcherImpl::Fetch(FetchCompletedCallback callback) {
   // Otherwise create an winhttp::AutoProxyConfiguration instance.
   if (!winhttp_network_fetcher_) {
     auto proxy_config = base::MakeRefCounted<winhttp::ProxyConfiguration>();
-    winhttp_session_ = base::MakeRefCounted<winhttp::SharedHInternet>(
-        winhttp::CreateSessionHandle(
-            L"DeviceTrustKeyManagement", proxy_config->access_type(),
-            proxy_config->proxy(), proxy_config->proxy_bypass()));
+    winhttp_session_ = winhttp::CreateSessionHandle(
+        L"DeviceTrustKeyManagement", proxy_config->access_type());
     winhttp_network_fetcher_ = base::MakeRefCounted<winhttp::NetworkFetcher>(
-        winhttp_session_, std::move(proxy_config));
+        winhttp_session_.get(), std::move(proxy_config));
   }
 
   winhttp_network_fetcher_->PostRequest(

@@ -14,8 +14,8 @@
 
 namespace {
 
-std::optional<base::Time>& GetTimeOverride() {
-  static std::optional<base::Time> time_override;
+absl::optional<base::Time>& GetTimeOverride() {
+  static absl::optional<base::Time> time_override;
   return time_override;
 }
 
@@ -27,13 +27,13 @@ base::Time GetTime() {
 
 // TODO(alancutter): Dedupe Time/Value conversion logic with
 // app_banner_settings_helper.cc and PrefService.
-std::optional<base::Time> ParseTime(const base::Value* value) {
+absl::optional<base::Time> ParseTime(const base::Value* value) {
   if (!value || !value->is_string())
-    return std::nullopt;
+    return absl::nullopt;
 
   int64_t integer;
   if (!base::StringToInt64(value->GetString(), &integer))
-    return std::nullopt;
+    return absl::nullopt;
 
   return base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(integer));
 }
@@ -51,9 +51,9 @@ struct InstallMetrics {
   webapps::WebappInstallSource source;
 };
 
-std::optional<InstallMetrics> ParseInstallMetricsFromPrefs(
+absl::optional<InstallMetrics> ParseInstallMetricsFromPrefs(
     const PrefService* pref_service,
-    const webapps::AppId& app_id) {
+    const web_app::AppId& app_id) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
   const base::Value::Dict& ids_to_metrics =
@@ -61,16 +61,16 @@ std::optional<InstallMetrics> ParseInstallMetricsFromPrefs(
 
   const base::Value::Dict* metrics = ids_to_metrics.FindDict(app_id);
   if (!metrics)
-    return std::nullopt;
+    return absl::nullopt;
 
-  std::optional<base::Time> timestamp =
+  absl::optional<base::Time> timestamp =
       ParseTime(metrics->Find(kInstallTimestamp));
   if (!timestamp)
-    return std::nullopt;
+    return absl::nullopt;
 
   const base::Value* source = metrics->Find(kInstallSource);
   if (!source || !source->is_int())
-    return std::nullopt;
+    return absl::nullopt;
 
   return InstallMetrics{
       *timestamp, static_cast<webapps::WebappInstallSource>(source->GetInt())};
@@ -78,7 +78,7 @@ std::optional<InstallMetrics> ParseInstallMetricsFromPrefs(
 
 void WriteInstallMetricsToPrefs(const InstallMetrics& install_metrics,
                                 PrefService* pref_service,
-                                const webapps::AppId& app_id) {
+                                const web_app::AppId& app_id) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   base::Value::Dict dict;
   dict.Set(kInstallTimestamp, SerializeTime(install_metrics.timestamp));
@@ -92,7 +92,7 @@ void WriteInstallMetricsToPrefs(const InstallMetrics& install_metrics,
 
 namespace web_app {
 
-void SetInstallBounceMetricTimeForTesting(std::optional<base::Time> time) {
+void SetInstallBounceMetricTimeForTesting(absl::optional<base::Time> time) {
   GetTimeOverride() = time;
 }
 
@@ -102,15 +102,15 @@ void RegisterInstallBounceMetricProfilePrefs(PrefRegistrySimple* registry) {
 
 void RecordWebAppInstallationTimestamp(
     PrefService* pref_service,
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     webapps::WebappInstallSource install_source) {
   WriteInstallMetricsToPrefs(InstallMetrics{GetTime(), install_source},
                              pref_service, app_id);
 }
 
 void RecordWebAppUninstallation(PrefService* pref_service,
-                                const webapps::AppId& app_id) {
-  std::optional<InstallMetrics> metrics =
+                                const AppId& app_id) {
+  absl::optional<InstallMetrics> metrics =
       ParseInstallMetricsFromPrefs(pref_service, app_id);
   if (!metrics)
     return;

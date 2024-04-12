@@ -11,7 +11,11 @@
 
 // The ConfirmQuitPanelController manages the black HUD window that tells users
 // to "Hold Cmd+Q to Quit".
-@interface ConfirmQuitPanelController : NSWindowController <NSWindowDelegate>
+@interface ConfirmQuitPanelController : NSWindowController<NSWindowDelegate> {
+ @private
+  // The content view of the window that this controller manages.
+  ConfirmQuitFrameView* _contentView;  // Weak, owned by the window.
+}
 
 // Returns a singleton instance of the Controller. This will create one if it
 // does not currently exist.

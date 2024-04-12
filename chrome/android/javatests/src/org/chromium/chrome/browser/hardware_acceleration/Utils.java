@@ -21,12 +21,14 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Various utils for hardware acceleration tests. */
+/**
+ * Various utils for hardware acceleration tests.
+ */
 public class Utils {
 
     /**
-     * Asserts that activity is hardware accelerated only on high-end devices. I.e. on low-end
-     * devices hardware acceleration must be off.
+     * Asserts that activity is hardware accelerated only on high-end devices.
+     * I.e. on low-end devices hardware acceleration must be off.
      */
     public static void assertHardwareAcceleration(ChromeActivity activity) throws Exception {
         assertActivityAcceleration(activity);
@@ -34,14 +36,16 @@ public class Utils {
     }
 
     /**
-     * Asserts that there is no thread named 'RenderThread' (which is essential for hardware
-     * acceleration).
+     * Asserts that there is no thread named 'RenderThread' (which is essential
+     * for hardware acceleration).
      */
     public static void assertNoRenderThread() {
         Assert.assertFalse(collectThreadNames().contains("RenderThread"));
     }
 
-    /** Asserts that the argument is true when HW acceleration is enabled and false otherwise. */
+    /**
+     * Asserts that the argument is true when HW acceleration is enabled and false otherwise.
+     */
     public static void assertAcceleration(boolean accelerated) {
         if (SysUtils.isLowEndDevice()) {
             Assert.assertFalse(accelerated);
@@ -54,23 +58,19 @@ public class Utils {
         final AtomicBoolean accelerated = new AtomicBoolean();
         final CallbackHelper listenerCalled = new CallbackHelper();
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    final View view = activity.getWindow().getDecorView();
-                    view.getViewTreeObserver()
-                            .addOnPreDrawListener(
-                                    new OnPreDrawListener() {
-                                        @Override
-                                        public boolean onPreDraw() {
-                                            view.getViewTreeObserver()
-                                                    .removeOnPreDrawListener(this);
-                                            accelerated.set(view.isHardwareAccelerated());
-                                            listenerCalled.notifyCalled();
-                                            return true;
-                                        }
-                                    });
-                    view.invalidate();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            final View view = activity.getWindow().getDecorView();
+            view.getViewTreeObserver().addOnPreDrawListener(new OnPreDrawListener() {
+                @Override
+                public boolean onPreDraw() {
+                    view.getViewTreeObserver().removeOnPreDrawListener(this);
+                    accelerated.set(view.isHardwareAccelerated());
+                    listenerCalled.notifyCalled();
+                    return true;
+                }
+            });
+            view.invalidate();
+        });
 
         listenerCalled.waitForCallback(0);
         assertAcceleration(accelerated.get());
@@ -81,25 +81,22 @@ public class Utils {
         final AtomicBoolean accelerated = new AtomicBoolean();
         final CallbackHelper listenerCalled = new CallbackHelper();
 
-        PostTask.postTask(
-                TaskTraits.UI_DEFAULT,
-                new Runnable() {
+        PostTask.postTask(TaskTraits.UI_DEFAULT, new Runnable() {
+            @Override
+            public void run() {
+                final Dialog dialog = new Dialog(activity);
+                dialog.setContentView(new View(activity) {
                     @Override
-                    public void run() {
-                        final Dialog dialog = new Dialog(activity);
-                        dialog.setContentView(
-                                new View(activity) {
-                                    @Override
-                                    public void onAttachedToWindow() {
-                                        super.onAttachedToWindow();
-                                        accelerated.set(isHardwareAccelerated());
-                                        listenerCalled.notifyCalled();
-                                        dialog.dismiss();
-                                    }
-                                });
-                        dialog.show();
+                    public void onAttachedToWindow() {
+                        super.onAttachedToWindow();
+                        accelerated.set(isHardwareAccelerated());
+                        listenerCalled.notifyCalled();
+                        dialog.dismiss();
                     }
                 });
+                dialog.show();
+            }
+        });
 
         listenerCalled.waitForCallback(0);
         assertAcceleration(accelerated.get());

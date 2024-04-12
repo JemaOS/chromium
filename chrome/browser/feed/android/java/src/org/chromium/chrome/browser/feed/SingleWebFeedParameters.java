@@ -4,7 +4,9 @@
 
 package org.chromium.chrome.browser.feed;
 
-/** This class bundles the parameters for the creation of a single web feed. */
+/**
+ * This class bundles the parameters for the creation of a single web feed.
+ */
 public class SingleWebFeedParameters {
     private byte[] mWebFeedId;
     private int mEntryPoint;
@@ -17,7 +19,6 @@ public class SingleWebFeedParameters {
     public int getEntryPoint() {
         return mEntryPoint;
     }
-
     public byte[] getWebFeedId() {
         return mWebFeedId;
     }

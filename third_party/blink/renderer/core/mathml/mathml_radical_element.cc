@@ -4,7 +4,7 @@
 
 #include "third_party/blink/renderer/core/mathml/mathml_radical_element.h"
 
-#include "third_party/blink/renderer/core/layout/mathml/layout_mathml_block_with_anonymous_mrow.h"
+#include "third_party/blink/renderer/core/layout/ng/mathml/layout_ng_mathml_block_with_anonymous_mrow.h"
 
 namespace blink {
 
@@ -18,12 +18,13 @@ bool MathMLRadicalElement::HasIndex() const {
 
 LayoutObject* MathMLRadicalElement::CreateLayoutObject(
     const ComputedStyle& style) {
-  if (!style.IsDisplayMathType()) {
+  if (!RuntimeEnabledFeatures::MathMLCoreEnabled() ||
+      !style.IsDisplayMathType()) {
     return MathMLElement::CreateLayoutObject(style);
   }
   if (HasTagName(mathml_names::kMsqrtTag))
-    return MakeGarbageCollected<LayoutMathMLBlockWithAnonymousMrow>(this);
-  return MakeGarbageCollected<LayoutMathMLBlock>(this);
+    return MakeGarbageCollected<LayoutNGMathMLBlockWithAnonymousMrow>(this);
+  return MakeGarbageCollected<LayoutNGMathMLBlock>(this);
 }
 
 }  // namespace blink

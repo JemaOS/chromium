@@ -16,10 +16,10 @@ V8CSSNumberish* CSSMathNegate::value() {
   return MakeGarbageCollected<V8CSSNumberish>(value_);
 }
 
-std::optional<CSSNumericSumValue> CSSMathNegate::SumValue() const {
+absl::optional<CSSNumericSumValue> CSSMathNegate::SumValue() const {
   auto maybe_sum = value_->SumValue();
   if (!maybe_sum.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   base::ranges::for_each(maybe_sum->terms,

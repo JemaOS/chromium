@@ -11,7 +11,6 @@
 #include "ash/app_list/views/search_result_page_dialog_controller.h"
 #include "ash/ash_export.h"
 #include "base/memory/raw_ptr.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 
 namespace ash {
 
@@ -23,8 +22,6 @@ class SystemShadow;
 
 // The search results page for the app list.
 class ASH_EXPORT SearchResultPageView : public AppListPage {
-  METADATA_HEADER(SearchResultPageView, AppListPage)
-
  public:
   SearchResultPageView();
 
@@ -37,9 +34,10 @@ class ASH_EXPORT SearchResultPageView : public AppListPage {
                             SearchBoxView* search_box_view);
 
   // Overridden from views::View:
-  void VisibilityChanged(View* starting_from, bool is_visible) override;
+  const char* GetClassName() const override;
   gfx::Size CalculatePreferredSize() const override;
   void OnBoundsChanged(const gfx::Rect& previous_bounds) override;
+  void OnThemeChanged() override;
 
   // AppListPage overrides:
   void OnHidden() override;
@@ -61,7 +59,7 @@ class ASH_EXPORT SearchResultPageView : public AppListPage {
   // UI.
   bool CanSelectSearchResults() const;
 
-  AppListSearchView* search_view() { return search_view_; }
+  AppListSearchView* search_view_for_test() { return search_view_; }
 
   SearchResultPageAnchoredDialog* dialog_for_test() {
     return dialog_controller_->dialog();
@@ -101,7 +99,10 @@ class ASH_EXPORT SearchResultPageView : public AppListPage {
   int GetCornerRadiusForSearchResultsState(SearchResultsState state);
 
   // Search result container used for productivity launcher.
-  raw_ptr<AppListSearchView> search_view_ = nullptr;
+  raw_ptr<AppListSearchView, ExperimentalAsh> search_view_ = nullptr;
+
+  // View containing SearchCardView instances. Owned by view hierarchy.
+  raw_ptr<views::View, ExperimentalAsh> root_view_ = nullptr;
 
   // The currently shown search results state. Used with productivity launcher.
   SearchResultsState current_search_results_state_ =

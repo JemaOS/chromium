@@ -5,10 +5,9 @@
 #ifndef CHROME_BROWSER_ASH_LOGIN_SAML_LOCKSCREEN_REAUTH_DIALOG_TEST_HELPER_H_
 #define CHROME_BROWSER_ASH_LOGIN_SAML_LOCKSCREEN_REAUTH_DIALOG_TEST_HELPER_H_
 
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ash/login/test/js_checker.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace content {
 class WebContents;
@@ -30,13 +29,13 @@ class LockScreenReauthDialogTestHelper {
  public:
   // Triggers the online re-authentication dialog.
   // Precondition: A user is logged in and the lock screen is shown.
-  // Returns an empty `std::optional` if the operation fails.
-  static std::optional<LockScreenReauthDialogTestHelper> ShowDialogAndWait();
+  // Returns an empty `absl::optional` if the operation fails.
+  static absl::optional<LockScreenReauthDialogTestHelper> ShowDialogAndWait();
 
-  // Triggers the online re-authentication dialog and navigates through initial
-  // state until SAML IdP page is loaded. Returns an empty `std::optional` if
+  // Triggers the online re-authentication dialog, clicks through VerifyAccount
+  // screen and waits for IdP page to load. Returns an empty `absl::optional` if
   // the operation fails.
-  static std::optional<LockScreenReauthDialogTestHelper>
+  static absl::optional<LockScreenReauthDialogTestHelper>
   StartSamlAndWaitForIdpPageLoad();
 
   ~LockScreenReauthDialogTestHelper();
@@ -50,6 +49,9 @@ class LockScreenReauthDialogTestHelper {
   LockScreenReauthDialogTestHelper(LockScreenReauthDialogTestHelper&& other);
   LockScreenReauthDialogTestHelper& operator=(
       LockScreenReauthDialogTestHelper&& other);
+
+  // Forces SAML redirect regardless of email.
+  void ForceSamlRedirect();
 
   // Waits for the 'Verify Account' screen (the first screen the dialog shows)
   // to be visible.
@@ -72,27 +74,16 @@ class LockScreenReauthDialogTestHelper {
   // Clicks the 'Enter Google Account Info' button on the SAML screen.
   void ClickChangeIdPButtonOnSamlScreen();
 
-  // Primary Gaia button is the "Next" button on Gaia pages.
-  void ClickPrimaryGaiaButton();
-  void WaitForPrimaryGaiaButtonToBeEnabled();
+  // Waits for a screen with the `saml-container` element to be shown.
+  void WaitForSamlScreen();
 
-  // Check visibility of native Gaia button on online re-authentication dialog.
-  void ExpectGaiaButtonsVisible();
-  void ExpectGaiaButtonsHidden();
-
-  // Check visibility of the button which allows to restart online flow from the
-  // Gaia page.
-  void ExpectChangeIdPButtonVisible();
-  void ExpectChangeIdPButtonHidden();
-
-  // Waits for sign-in webview to be shown.
-  void WaitForSigninWebview();
-
+  // Next members allow to check visibility for some screens ('verify account',
+  // ' error screen' and 'saml screen')
   void ExpectVerifyAccountScreenVisible();
   void ExpectVerifyAccountScreenHidden();
   void ExpectErrorScreenVisible();
-  void ExpectSigninWebviewVisible();
-  void ExpectSigninWebviewHidden();
+  void ExpectSamlScreenVisible();
+  void ExpectSamlScreenHidden();
 
   void ExpectGaiaScreenVisible();
 
@@ -158,23 +149,23 @@ class LockScreenReauthDialogTestHelper {
   void WaitForNetworkDialogToLoad();
 
   // Main Dialog
-  raw_ptr<LockScreenStartReauthDialog, AcrossTasksDanglingUntriaged>
-      reauth_dialog_ = nullptr;
-  raw_ptr<LockScreenStartReauthUI, AcrossTasksDanglingUntriaged>
+  base::raw_ptr<LockScreenStartReauthDialog, DanglingUntriaged> reauth_dialog_ =
+      nullptr;
+  base::raw_ptr<LockScreenStartReauthUI, DanglingUntriaged>
       reauth_webui_controller_ = nullptr;
-  raw_ptr<LockScreenReauthHandler, AcrossTasksDanglingUntriaged> main_handler_ =
+  base::raw_ptr<LockScreenReauthHandler, DanglingUntriaged> main_handler_ =
       nullptr;
 
   // Network dialog which is owned by the main dialog.
-  raw_ptr<LockScreenNetworkDialog, AcrossTasksDanglingUntriaged>
-      network_dialog_ = nullptr;
-  raw_ptr<LockScreenNetworkUI, AcrossTasksDanglingUntriaged>
+  base::raw_ptr<LockScreenNetworkDialog, DanglingUntriaged> network_dialog_ =
+      nullptr;
+  base::raw_ptr<LockScreenNetworkUI, DanglingUntriaged>
       network_webui_controller_ = nullptr;
-  raw_ptr<NetworkConfigMessageHandler, AcrossTasksDanglingUntriaged>
+  base::raw_ptr<NetworkConfigMessageHandler, DanglingUntriaged>
       network_handler_ = nullptr;
 
   // Captive portal dialog which is owned by the main dialog.
-  raw_ptr<LockScreenCaptivePortalDialog, AcrossTasksDanglingUntriaged>
+  base::raw_ptr<LockScreenCaptivePortalDialog, DanglingUntriaged>
       captive_portal_dialog_ = nullptr;
 };
 

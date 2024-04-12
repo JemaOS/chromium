@@ -13,9 +13,8 @@ import './print_preview_vars.css.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {Destination} from '../data/destination.js';
-import type {PrinterStatusReason} from '../data/printer_status_cros.js';
-import {ERROR_STRING_KEY_MAP, getPrinterStatusIcon} from '../data/printer_status_cros.js';
+import {Destination} from '../data/destination.js';
+import {ERROR_STRING_KEY_MAP, getPrinterStatusIcon, PrinterStatusReason} from '../data/printer_status_cros.js';
 
 import {getTemplate} from './destination_dropdown_cros.html.js';
 
@@ -85,19 +84,7 @@ export class PrintPreviewDestinationDropdownCrosElement extends
       },
 
       destinationStatusText: String,
-
-      pdfPosinset: Number,
-
-      drivePosinset: Number,
-
-      seeMorePosinset: Number,
     };
-  }
-
-  static get observers() {
-    return [
-      'updateAriaPosinset(itemList, pdfPrinterDisabled, driveDestinationKey)',
-    ];
   }
 
   value: Destination;
@@ -112,9 +99,6 @@ export class PrintPreviewDestinationDropdownCrosElement extends
   private isDarkModeActive_: boolean;
   private highlightedIndex_: number;
   private dropdownLength_: number;
-  private pdfPosinset: number;
-  private drivePosinset: number;
-  private seeMorePosinset: number;
 
   private opened_: boolean = false;
   private dropdownRefitPending_: boolean = false;
@@ -364,24 +348,6 @@ export class PrintPreviewDestinationDropdownCrosElement extends
       isEnterprisePrinter: boolean): string {
     return getPrinterStatusIcon(
         printerStatusReason, isEnterprisePrinter, this.isDarkModeActive_);
-  }
-
-  private getPrinterPosinset_(index: number): number {
-    return index + 1;
-  }
-
-  /**
-   * Set the ARIA position in the dropdown based on the visible items.
-   */
-  private updateAriaPosinset(): void {
-    let currentPosition = this.itemList ? this.itemList.length + 1 : 1;
-    if (!this.pdfPrinterDisabled) {
-      this.pdfPosinset = currentPosition++;
-    }
-    if (this.driveDestinationKey) {
-      this.drivePosinset = currentPosition++;
-    }
-    this.seeMorePosinset = currentPosition++;
   }
 }
 

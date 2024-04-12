@@ -21,9 +21,4 @@ gfx::Point WaylandCursorPosition::GetCursorSurfacePoint() const {
   return cursor_surface_point_;
 }
 
-void WaylandCursorPosition::DumpState(std::ostream& out) const {
-  out << "WaylandCursorPositoin: cursor_surface_point:"
-      << cursor_surface_point_.ToString();
-}
-
 }  // namespace ui

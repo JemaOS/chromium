@@ -56,13 +56,12 @@ void BackgroundFetchRecord::ResolveResponseReadyProperty(Response* response) {
   }
 }
 
-ScriptPromiseTyped<Response> BackgroundFetchRecord::responseReady(
-    ScriptState* script_state) {
+ScriptPromise BackgroundFetchRecord::responseReady(ScriptState* script_state) {
   return response_ready_property_->Promise(script_state->World());
 }
 
 Request* BackgroundFetchRecord::request() const {
-  return request_.Get();
+  return request_;
 }
 
 void BackgroundFetchRecord::UpdateState(

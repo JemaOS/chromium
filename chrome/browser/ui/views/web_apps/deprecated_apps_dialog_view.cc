@@ -115,9 +115,11 @@ DeprecatedAppsDialogView::~DeprecatedAppsDialogView() {
 DeprecatedAppsDialogView* DeprecatedAppsDialogView::CreateAndShowDialog(
     const extensions::ExtensionId& optional_launched_extension_id,
     const std::set<extensions::ExtensionId>& deprecated_app_ids,
-    content::WebContents* web_contents) {
+    content::WebContents* web_contents,
+    base::OnceClosure launch_anyways) {
   DeprecatedAppsDialogView* view = new DeprecatedAppsDialogView(
-      optional_launched_extension_id, deprecated_app_ids, web_contents);
+      optional_launched_extension_id, deprecated_app_ids, web_contents,
+      std::move(launch_anyways));
   view->InitDialog();
   constrained_window::ShowWebModalDialogViews(view, web_contents);
   return view;
@@ -146,8 +148,11 @@ std::u16string DeprecatedAppsDialogView::GetWindowTitle() const {
 DeprecatedAppsDialogView::DeprecatedAppsDialogView(
     const extensions::ExtensionId& optional_launched_extension_id,
     const std::set<extensions::ExtensionId>& deprecated_app_ids,
-    content::WebContents* web_contents)
-    : deprecated_app_ids_(deprecated_app_ids), web_contents_(web_contents) {
+    content::WebContents* web_contents,
+    base::OnceClosure launch_anyways)
+    : deprecated_app_ids_(deprecated_app_ids),
+      launch_anyways_(std::move(launch_anyways)),
+      web_contents_(web_contents) {
   if (!optional_launched_extension_id.empty()) {
     const extensions::Extension* extension =
         extensions::ExtensionRegistry::Get(web_contents_->GetBrowserContext())
@@ -188,8 +193,16 @@ void DeprecatedAppsDialogView::InitDialog() {
   SetAcceptCallback(base::BindOnce(&DeprecatedAppsDialogView::OnAccept,
                                    base::Unretained(this)));
 
+  bool hide_launch_anyways =
+      features::kChromeAppsDeprecationHideLaunchAnyways.Get();
+  if (launched_extension_name_ && !hide_launch_anyways) {
+    SetButtonLabel(
+        ui::DIALOG_BUTTON_CANCEL,
+        l10n_util::GetStringUTF16(IDS_DEPRECATED_APPS_LAUNCH_ANYWAY_LABEL));
+  } else {
     SetButtonLabel(ui::DIALOG_BUTTON_CANCEL,
                    l10n_util::GetStringUTF16(IDS_DEPRECATED_APPS_CANCEL_LABEL));
+  }
   SetCancelCallback(base::BindOnce(&DeprecatedAppsDialogView::OnCancel,
                                    base::Unretained(this)));
 
@@ -221,8 +234,7 @@ void DeprecatedAppsDialogView::InitDialog() {
   columns.emplace_back(ui::TableColumn());
 
   auto table = std::make_unique<views::TableView>(
-      deprecated_apps_table_model_.get(), columns,
-      views::TableType::kIconAndText,
+      deprecated_apps_table_model_.get(), columns, views::ICON_AND_TEXT,
       /*single_selection=*/true);
   deprecated_apps_table_view_ = table.get();
   table->SetID(DEPRECATED_APPS_TABLE);
@@ -256,8 +268,12 @@ void DeprecatedAppsDialogView::OnAccept() {
 }
 
 void DeprecatedAppsDialogView::OnCancel() {
+  bool hide_launch_anyways =
+      features::kChromeAppsDeprecationHideLaunchAnyways.Get();
+  if (!hide_launch_anyways)
+    std::move(launch_anyways_).Run();
   CloseDialog();
 }
 
-BEGIN_METADATA(DeprecatedAppsDialogView)
+BEGIN_METADATA(DeprecatedAppsDialogView, views::DialogDelegateView)
 END_METADATA

@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_UI_COCOA_TOUCHBAR_BROWSER_WINDOW_DEFAULT_TOUCH_BAR_H_
 
 #import <Cocoa/Cocoa.h>
+#include <os/availability.h>
 
 class BookmarkTabHelperObserver;
 class Browser;

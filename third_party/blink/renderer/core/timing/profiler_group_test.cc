@@ -9,7 +9,6 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_profiler_init_options.h"
 #include "third_party/blink/renderer/core/timing/profiler.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
@@ -21,12 +20,7 @@ static constexpr int kMaxConcurrentProfilerCount = 100;
 
 }  // namespace
 
-class ProfilerGroupTest : public testing::Test {
- protected:
-  test::TaskEnvironment task_environment_;
-};
-
-TEST_F(ProfilerGroupTest, StopProfiler) {
+TEST(ProfilerGroupTest, StopProfiler) {
   V8TestingScope scope;
 
   ProfilerGroup* profiler_group = ProfilerGroup::From(scope.GetIsolate());
@@ -45,7 +39,7 @@ TEST_F(ProfilerGroupTest, StopProfiler) {
 }
 
 // Tests that attached profilers are stopped on ProfilerGroup deallocation.
-TEST_F(ProfilerGroupTest, StopProfilerOnGroupDeallocate) {
+TEST(ProfilerGroupTest, StopProfilerOnGroupDeallocate) {
   V8TestingScope scope;
 
   ProfilerGroup* profiler_group = ProfilerGroup::From(scope.GetIsolate());
@@ -63,7 +57,7 @@ TEST_F(ProfilerGroupTest, StopProfilerOnGroupDeallocate) {
   EXPECT_TRUE(profiler->stopped());
 }
 
-TEST_F(ProfilerGroupTest, CreateProfiler) {
+TEST(ProfilerGroupTest, CreateProfiler) {
   V8TestingScope scope;
 
   ProfilerGroup* profiler_group = ProfilerGroup::From(scope.GetIsolate());
@@ -82,7 +76,7 @@ TEST_F(ProfilerGroupTest, CreateProfiler) {
   profiler->stop(scope.GetScriptState());
 }
 
-TEST_F(ProfilerGroupTest, ClampedSamplingIntervalZero) {
+TEST(ProfilerGroupTest, ClampedSamplingIntervalZero) {
   V8TestingScope scope;
 
   ProfilerGroup* profiler_group = ProfilerGroup::From(scope.GetIsolate());
@@ -105,7 +99,7 @@ TEST_F(ProfilerGroupTest, ClampedSamplingIntervalZero) {
   profiler->stop(scope.GetScriptState());
 }
 
-TEST_F(ProfilerGroupTest, ClampedSamplingIntervalNext) {
+TEST(ProfilerGroupTest, ClampedSamplingIntervalNext) {
   V8TestingScope scope;
 
   ProfilerGroup* profiler_group = ProfilerGroup::From(scope.GetIsolate());
@@ -130,8 +124,7 @@ TEST_F(ProfilerGroupTest, ClampedSamplingIntervalNext) {
   profiler->stop(scope.GetScriptState());
 }
 
-TEST_F(ProfilerGroupTest,
-       V8ProfileLimitThrowsExceptionWhenMaxConcurrentReached) {
+TEST(ProfilerGroupTest, V8ProfileLimitThrowsExceptionWhenMaxConcurrentReached) {
   V8TestingScope scope;
 
   HeapVector<Member<Profiler>> profilers;
@@ -165,7 +158,7 @@ TEST_F(ProfilerGroupTest,
   }
 }
 
-TEST_F(ProfilerGroupTest, NegativeSamplingInterval) {
+TEST(ProfilerGroupTest, NegativeSamplingInterval) {
   V8TestingScope scope;
 
   ProfilerGroup* profiler_group = ProfilerGroup::From(scope.GetIsolate());
@@ -179,7 +172,7 @@ TEST_F(ProfilerGroupTest, NegativeSamplingInterval) {
   EXPECT_TRUE(scope.GetExceptionState().HadException());
 }
 
-TEST_F(ProfilerGroupTest, OverflowSamplingInterval) {
+TEST(ProfilerGroupTest, OverflowSamplingInterval) {
   V8TestingScope scope;
 
   ProfilerGroup* profiler_group = ProfilerGroup::From(scope.GetIsolate());
@@ -194,7 +187,7 @@ TEST_F(ProfilerGroupTest, OverflowSamplingInterval) {
   EXPECT_TRUE(scope.GetExceptionState().HadException());
 }
 
-TEST_F(ProfilerGroupTest, Bug1119865) {
+TEST(ProfilerGroupTest, Bug1119865) {
   class ExpectNoCallFunction : public ScriptFunction::Callable {
    public:
     ScriptValue Call(ScriptState*, ScriptValue) override {
@@ -227,7 +220,7 @@ TEST_F(ProfilerGroupTest, Bug1119865) {
 
 // Tests that a leaked profiler doesn't crash the isolate on heap teardown.
 // These should run last
-TEST_F(ProfilerGroupTest, LeakProfiler) {
+TEST(ProfilerGroupTest, LeakProfiler) {
   V8TestingScope scope;
 
   ProfilerGroup* profiler_group = ProfilerGroup::From(scope.GetIsolate());
@@ -245,7 +238,7 @@ TEST_F(ProfilerGroupTest, LeakProfiler) {
 
 // Tests that a leaked profiler doesn't crash when disposed alongside its
 // context.
-TEST_F(ProfilerGroupTest, LeakProfilerWithContext) {
+TEST(ProfilerGroupTest, LeakProfilerWithContext) {
   Profiler* profiler;
   {
     V8TestingScope scope;
@@ -271,7 +264,7 @@ TEST_F(ProfilerGroupTest, LeakProfilerWithContext) {
 
 // Tests that a ProfilerGroup doesn't crash if the ProfilerGroup is destroyed
 // before a Profiler::Dispose is ran.
-TEST_F(ProfilerGroupTest, Bug1297283) {
+TEST(ProfilerGroupTest, Bug1297283) {
   {
     V8TestingScope scope;
     ProfilerGroup* profiler_group = ProfilerGroup::From(scope.GetIsolate());

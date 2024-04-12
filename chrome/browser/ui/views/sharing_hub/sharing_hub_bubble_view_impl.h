@@ -7,10 +7,14 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/time/time.h"
 #include "chrome/browser/share/share_attempt.h"
 #include "chrome/browser/ui/sharing_hub/sharing_hub_bubble_view.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_bubble_delegate_view.h"
-#include "ui/base/metadata/metadata_header_macros.h"
+
+namespace gfx {
+class Canvas;
+}  // namespace gfx
 
 namespace sharing_hub {
 
@@ -23,8 +27,6 @@ struct SharingHubAction;
 // the content being shared.
 class SharingHubBubbleViewImpl : public SharingHubBubbleView,
                                  public LocationBarBubbleDelegateView {
-  METADATA_HEADER(SharingHubBubbleViewImpl, LocationBarBubbleDelegateView)
-
  public:
   // Bubble will be anchored to |anchor_view|.
   SharingHubBubbleViewImpl(views::View* anchor_view,
@@ -39,11 +41,22 @@ class SharingHubBubbleViewImpl : public SharingHubBubbleView,
   // SharingHubBubbleView:
   void Hide() override;
 
+  // views::WidgetDelegateView:
+  bool ShouldShowCloseButton() const override;
+  bool ShouldShowWindowTitle() const override;
+  void WindowClosing() override;
+
   // LocationBarBubbleDelegateView:
+  std::u16string GetAccessibleWindowTitle() const override;
+  void OnPaint(gfx::Canvas* canvas) override;
   void OnThemeChanged() override;
 
-  // Public for testing.
+  // Shows the bubble view.
+  void Show(DisplayReason reason);
+
   void OnActionSelected(SharingHubBubbleActionButton* button);
+
+  const views::View* GetButtonContainerForTesting() const;
 
  private:
   // views::BubbleDialogDelegateView:
@@ -60,10 +73,6 @@ class SharingHubBubbleViewImpl : public SharingHubBubbleView,
   // size.
   void MaybeSizeToContents();
 
-  // Callback when the window is about to close, either from external causes
-  // (parent window closed) or because the web contents requested it.
-  void OnWindowClosing();
-
   // A raw pointer is *not* safe here; the controller can be torn down before
   // the bubble during the window close path, since the bubble will be closed
   // asynchronously during browser window teardown but the controller will be
@@ -73,8 +82,19 @@ class SharingHubBubbleViewImpl : public SharingHubBubbleView,
   // ScrollView containing the list of share/save actions.
   raw_ptr<views::ScrollView> scroll_view_ = nullptr;
 
+  // The "Share link to" annotation text, which indicates to the user what
+  // the 3P target options do.
+  raw_ptr<views::Label> share_link_label_ = nullptr;
+
+  // The time that Show() was called. This is reset after the first time the
+  // sharing hub is painted to avoid repeatedly collecting the metric it is used
+  // for.
+  absl::optional<base::Time> show_time_;
+
   // The share attempt this bubble was opened for.
   const share::ShareAttempt attempt_;
+
+  base::WeakPtrFactory<SharingHubBubbleViewImpl> weak_factory_{this};
 };
 
 }  // namespace sharing_hub

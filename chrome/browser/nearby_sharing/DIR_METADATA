@@ -1,1 +1,4 @@
-mixins: "//chrome/browser/nearby_sharing/COMMON_METADATA"
+buganizer {
+  component_id: 1131838
+}
+team_email: "chromeos-cross-device-eng@google.com "

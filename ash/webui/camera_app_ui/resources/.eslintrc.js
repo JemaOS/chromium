@@ -413,7 +413,7 @@ module.exports = {
       },
     },
   },
-  parser: `${typescriptEslintDir}/parser/dist/index.js`,
+  parser: `${typescriptEslintDir}/parser`,
   plugins: ['@typescript-eslint', 'jsdoc', 'eslint-plugin-cca'],
   // Generally, the rules should be compatible to both bundled and the newest
   // stable eslint, so it's easier to upgrade and develop without the full
@@ -474,22 +474,7 @@ module.exports = {
         noSingleLineBlocks: true,
       },
     ],
-    'jsdoc/no-bad-blocks': [
-      'error',
-      {
-        // The first four are default values, and the last one is added since
-        // the lint name is too long and the eslint-disable-next-line is
-        // frequently line wrapped, which cause jsdoc/no-bad-blocks to think
-        // that it should be a docstring.
-        ignore: [
-          'ts-check',
-          'ts-expect-error',
-          'ts-ignore',
-          'ts-nocheck',
-          'typescript-eslint/consistent-type-assertions',
-        ],
-      },
-    ],
+    'jsdoc/no-bad-blocks': 'error',
     'jsdoc/no-defaults': 'error',
     'jsdoc/no-multi-asterisks': [
       'error',
@@ -629,21 +614,13 @@ module.exports = {
       },
     ],
 
-    // Using "as" type assertion should be rare and as a last resort if it's
-    // really too complicated to put the constraint in type system, and it's
-    // not easy to do a runtime assertion (assertInstanceof) either.
-    //
-    // If it's the case, please have a eslint-disable-next-line to disable the
-    // lint together with some comment explaining why the assertion is safe.
-    //
-    // See also:
-    // go/tsstyle#type-and-non-nullability-assertions
     // go/tsstyle#type-assertions-syntax
     // go/tsstyle#type-assertions-and-object-literals
     '@typescript-eslint/consistent-type-assertions': [
       'error',
       {
-        assertionStyle: 'never',
+        assertionStyle: 'as',
+        objectLiteralTypeAssertions: 'never',
       },
     ],
 
@@ -696,7 +673,9 @@ module.exports = {
       },
     ],
 
-    '@typescript-eslint/sort-type-constituents': 'error',
+    '@typescript-eslint/prefer-optional-chain': 'error',
+
+    '@typescript-eslint/sort-type-union-intersection-members': 'error',
 
     'comma-dangle': 'off',
     '@typescript-eslint/comma-dangle': ['error', 'always-multiline'],
@@ -746,6 +725,7 @@ module.exports = {
     'jsdoc/check-values': 'error',
     'jsdoc/empty-tags': 'error',
     'jsdoc/implements-on-classes': 'error',
+    'jsdoc/newline-after-description': 'error',
     'jsdoc/no-undefined-types': 'error',
     'jsdoc/require-param-description': 'error',
     'jsdoc/require-param-name': 'error',
@@ -756,13 +736,11 @@ module.exports = {
     'jsdoc/require-returns-check': 'error',
     'jsdoc/require-returns-description': 'error',
     'jsdoc/require-yields-check': 'error',
-    'jsdoc/tag-lines': ['error', 'never', {startLines: 1}],
+    'jsdoc/tag-lines': 'error',
     'jsdoc/valid-types': 'error',
 
     'no-invalid-this': 'off',
     '@typescript-eslint/no-invalid-this': 'error',
-
-    'no-constant-condition': ['error', {checkLoops: false}],
   }),
   overrides: [{
     files: ['**/*.ts'],
@@ -779,47 +757,10 @@ module.exports = {
 
       '@typescript-eslint/prefer-nullish-coalescing': 'error',
 
-      '@typescript-eslint/prefer-optional-chain': 'error',
-
       // go/tsstyle#optimization-compatibility-for-property-access
       '@typescript-eslint/dot-notation': 'error',
 
       '@typescript-eslint/return-await': 'error',
-
-      '@typescript-eslint/strict-boolean-expressions': ['error', {
-        allowString: false,
-        allowNumber: false,
-        allowNullableObject: false,
-        // `any` is allowed here since our .eslintrc doesn't use the full
-        // tsconfig.json (contains reference to board specific files), which
-        // cause this rule to have some false negative on unrecognized types.
-        // TODO(pihsun): Change the lint action to be board dependent if we can
-        // find a way to keep running it on presubmit check.
-        allowAny: true,
-      }],
-
-      // Prevent floating promises, since promises that are not awaited usually
-      // indicates improper sequencing that might cause race, and if the
-      // promise is rejected, the error is only logged by unhandled promise
-      // rejection, and not propagated to caller.
-      //
-      // There are several potential ways to fix the lint error if you
-      // encounter this:
-      // * If the caller should wait for the promise, make the caller async and
-      //   await the promise.
-      // * If the caller doesn't want to wait for the promise, and the promise
-      //   is some kind of "job" that should be run independently but multiple
-      //   jobs shouldn't be run at the same time, consider using AsyncJobQueue
-      //   in async_job_queue.ts.
-      // * As a last resort, add "void" before the promise to suppress the
-      //   lint, ideally with a comment explaining why that is needed, check
-      //   that there won't be issue if multiple of those promises got created
-      //   at the same time, and check that error handling with unhandled
-      //   promise rejection is sufficient.
-      '@typescript-eslint/no-floating-promises': 'error',
-      '@typescript-eslint/require-await': 'error',
-      '@typescript-eslint/await-thenable': 'error',
-      '@typescript-eslint/no-meaningless-void-operator': 'error',
     },
   }],
 };

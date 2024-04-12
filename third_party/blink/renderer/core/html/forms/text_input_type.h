@@ -42,6 +42,7 @@ class TextInputType final : public BaseTextInputType {
 
  private:
   void CountUsage() override;
+  const AtomicString& FormControlType() const override;
   bool SupportsInputModeAttribute() const override;
 };
 

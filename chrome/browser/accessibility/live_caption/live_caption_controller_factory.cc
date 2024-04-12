@@ -56,10 +56,9 @@ bool LiveCaptionControllerFactory::ServiceIsCreatedWithBrowserContext() const {
   return true;
 }
 
-std::unique_ptr<KeyedService>
-LiveCaptionControllerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* LiveCaptionControllerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<LiveCaptionController>(
+  return new LiveCaptionController(
       Profile::FromBrowserContext(context)->GetPrefs(),
       g_browser_process->local_state(),
       g_browser_process->GetApplicationLocale(), context);

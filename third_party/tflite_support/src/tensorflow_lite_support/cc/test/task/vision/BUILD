@@ -4,6 +4,7 @@ load(
 )
 
 package(
+    default_applicable_licenses = ["//tensorflow_lite_support:license"],
     default_visibility = [
         "//visibility:private",
     ],
@@ -18,10 +19,7 @@ cc_test_with_tflite(
         "//tensorflow_lite_support/cc/test/testdata/task/vision:test_models",
     ],
     tflite_deps = [
-        "@org_tensorflow//tensorflow/lite:framework",
-        "@org_tensorflow//tensorflow/lite:test_util",
-        "@org_tensorflow//tensorflow/lite/c:common",
-        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
+        "@org_tensorflow//tensorflow/lite/core/shims:cc_shims_test_util",
         "//tensorflow_lite_support/cc/task/core:task_api_factory",
         "//tensorflow_lite_support/cc/task/core:tflite_engine",
         "//tensorflow_lite_support/cc/task/vision:image_classifier",
@@ -42,7 +40,10 @@ cc_test_with_tflite(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:cord",
+        "@org_tensorflow//tensorflow/lite:framework",
+        "@org_tensorflow//tensorflow/lite/c:common",
         "@org_tensorflow//tensorflow/lite/experimental/acceleration/mini_benchmark:mini_benchmark_implementation",  # Activating mini-benchmark
+        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
     ],
 )
 
@@ -82,9 +83,7 @@ cc_test_with_tflite(
         "//tensorflow_lite_support/cc/test/testdata/task/vision:test_models",
     ],
     tflite_deps = [
-        "@org_tensorflow//tensorflow/lite:framework",
-        "@org_tensorflow//tensorflow/lite:test_util",
-        "@org_tensorflow//tensorflow/lite/c:common",
+        "@org_tensorflow//tensorflow/lite/core/shims:cc_shims_test_util",
         "//tensorflow_lite_support/cc/task/core:task_api_factory",
         "//tensorflow_lite_support/cc/task/core:tflite_engine",
         "//tensorflow_lite_support/cc/task/vision:object_detector",
@@ -106,6 +105,8 @@ cc_test_with_tflite(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:cord",
+        "@org_tensorflow//tensorflow/lite:framework",
+        "@org_tensorflow//tensorflow/lite/c:common",
         "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
     ],
 )
@@ -118,10 +119,7 @@ cc_test_with_tflite(
         "//tensorflow_lite_support/cc/test/testdata/task/vision:test_models",
     ],
     tflite_deps = [
-        "@org_tensorflow//tensorflow/lite:framework",
-        "@org_tensorflow//tensorflow/lite:test_util",
-        "@org_tensorflow//tensorflow/lite/c:common",
-        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
+        "@org_tensorflow//tensorflow/lite/core/shims:cc_shims_test_util",
         "//tensorflow_lite_support/cc/task/core:task_api_factory",
         "//tensorflow_lite_support/cc/task/core:tflite_engine",
         "//tensorflow_lite_support/cc/task/vision:image_segmenter",
@@ -141,6 +139,9 @@ cc_test_with_tflite(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings:cord",
+        "@org_tensorflow//tensorflow/lite:framework",
+        "@org_tensorflow//tensorflow/lite/c:common",
+        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
     ],
 )
 
@@ -152,11 +153,8 @@ cc_test_with_tflite(
         "//tensorflow_lite_support/cc/test/testdata/task/vision:test_models",
     ],
     tflite_deps = [
-        "@org_tensorflow//tensorflow/lite:framework",
-        "@org_tensorflow//tensorflow/lite:test_util",
-        "@org_tensorflow//tensorflow/lite/c:common",
-        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
         "//tensorflow_lite_support/cc/task/vision:image_embedder",
+        "@org_tensorflow//tensorflow/lite/core/shims:cc_shims_test_util",
     ],
     deps = [
         "//tensorflow_lite_support/cc:common",
@@ -172,6 +170,9 @@ cc_test_with_tflite(
         "//tensorflow_lite_support/cc/test:test_utils",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/status",
+        "@org_tensorflow//tensorflow/lite:framework",
+        "@org_tensorflow//tensorflow/lite/c:common",
+        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
     ],
 )
 
@@ -184,11 +185,8 @@ cc_test_with_tflite(
         "//tensorflow_lite_support/cc/test/testdata/task/vision:test_models",
     ],
     tflite_deps = [
-        "@org_tensorflow//tensorflow/lite:framework",
-        "@org_tensorflow//tensorflow/lite:test_util",
-        "@org_tensorflow//tensorflow/lite/c:common",
-        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
         "//tensorflow_lite_support/cc/task/vision:image_searcher",
+        "@org_tensorflow//tensorflow/lite/core/shims:cc_shims_test_util",
     ],
     deps = [
         "//tensorflow_lite_support/cc:common",
@@ -209,5 +207,8 @@ cc_test_with_tflite(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+        "@org_tensorflow//tensorflow/lite:framework",
+        "@org_tensorflow//tensorflow/lite/c:common",
+        "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
     ],
 )

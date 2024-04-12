@@ -4,8 +4,7 @@
 
 // Utilities that are used in multiple tests.
 
-import type {Bookmark, DocumentDimensions, LayoutOptions, PdfViewerElement} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
-import {Viewport} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
+import {Bookmark, DocumentDimensions, LayoutOptions, Viewport} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
 import {html, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 export class MockElement {
@@ -161,7 +160,7 @@ export class MockDocumentDimensions implements DocumentDimensions {
   }
 }
 
-export class MockPdfPluginElement extends HTMLEmbedElement {
+export class MockUnseasonedPdfPluginElement extends HTMLEmbedElement {
   private messages_: any[] = [];
 
   get messages(): any[] {
@@ -181,14 +180,16 @@ export class MockPdfPluginElement extends HTMLEmbedElement {
   }
 }
 customElements.define(
-    'mock-pdf-plugin', MockPdfPluginElement, {extends: 'embed'});
+    'mock-unseasoned-pdf-plugin', MockUnseasonedPdfPluginElement,
+    {extends: 'embed'});
 
 /**
- * Creates a fake element simulating the PDF plugin.
+ * Creates a fake element simulating the unseasoned PDF plugin.
  */
-export function createMockPdfPluginForTest(): MockPdfPluginElement {
-  return document.createElement('embed', {is: 'mock-pdf-plugin'}) as
-      MockPdfPluginElement;
+export function createMockUnseasonedPdfPluginForTest():
+    MockUnseasonedPdfPluginElement {
+  return document.createElement('embed', {is: 'mock-unseasoned-pdf-plugin'}) as
+      MockUnseasonedPdfPluginElement;
 }
 
 class TestBookmarksElement extends PolymerElement {
@@ -227,24 +228,6 @@ customElements.define(TestBookmarksElement.is, TestBookmarksElement);
  */
 export function createBookmarksForTest(): TestBookmarksElement {
   return document.createElement('test-bookmarks');
-}
-
-/**
- * Checks if the PDF title matches the expected title.
- * @param expectedTitle The expected title of the PDF.
- * @return True if the PDF title matches the expected title, false otherwise.
- */
-export function checkPdfTitleIsExpectedTitle(expectedTitle: string): boolean {
-  const viewer = document.body.querySelector<PdfViewerElement>('#viewer')!;
-  // Tab title is updated only when document.title is called in a top-level
-  // document (`main_frame` of `WebContents`). For OOPIF PDF viewer, the current
-  // document is the child of a top-level document, hence document.title is not
-  // set and therefore validation is unnecessary.
-  if (!viewer.isPdfOopifEnabled && expectedTitle !== document.title) {
-    return false;
-  }
-
-  return expectedTitle === viewer.pdfTitle;
 }
 
 /**

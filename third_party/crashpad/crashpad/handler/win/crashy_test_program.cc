@@ -25,7 +25,6 @@
 #include <type_traits>
 #include <vector>
 
-#include "base/check.h"
 #include "base/files/file_path.h"
 #include "base/logging.h"
 #include "build/build_config.h"

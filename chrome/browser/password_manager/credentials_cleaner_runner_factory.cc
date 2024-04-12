@@ -33,8 +33,7 @@ CredentialsCleanerRunnerFactory::GetForProfile(Profile* profile) {
       GetInstance()->GetServiceForBrowserContext(profile, true));
 }
 
-std::unique_ptr<KeyedService>
-CredentialsCleanerRunnerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* CredentialsCleanerRunnerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<password_manager::CredentialsCleanerRunner>();
+  return new password_manager::CredentialsCleanerRunner();
 }

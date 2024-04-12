@@ -13,7 +13,7 @@
 namespace blink {
 
 class AbortSignal;
-class ScriptState;
+class ExecutionContext;
 class ScriptValue;
 
 // Implementation of https://dom.spec.whatwg.org/#interface-abortcontroller
@@ -24,7 +24,7 @@ class CORE_EXPORT AbortController : public ScriptWrappable {
   USING_PRE_FINALIZER(AbortController, Dispose);
 
  public:
-  static AbortController* Create(ScriptState*);
+  static AbortController* Create(ExecutionContext*);
 
   explicit AbortController(AbortSignal*);
   ~AbortController() override;

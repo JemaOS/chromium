@@ -60,7 +60,7 @@ class ViewFocusChangeWaiter : public views::FocusChangeListener {
     focus_manager_->RemoveFocusChangeListener(this);
   }
 
-  void Wait() { loop_.Run(); }
+  void Wait() { content::RunMessageLoop(); }
 
  private:
   // views::FocusChangeListener:
@@ -71,12 +71,11 @@ class ViewFocusChangeWaiter : public views::FocusChangeListener {
                         views::View* focused_now) override {
     if (focused_now && focused_now->GetID() != previous_view_id_) {
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE, loop_.QuitWhenIdleClosure());
+          FROM_HERE, base::RunLoop::QuitCurrentWhenIdleClosureDeprecated());
     }
   }
 
   raw_ptr<views::FocusManager> focus_manager_;
-  base::RunLoop loop_;
   int previous_view_id_;
   base::WeakPtrFactory<ViewFocusChangeWaiter> weak_factory_{this};
 };
@@ -97,15 +96,14 @@ class SendKeysMenuListener : public AppMenuButtonObserver {
 
   ~SendKeysMenuListener() override = default;
 
-  void Wait() { loop_.Run(); }
-
   // AppMenuButtonObserver:
   void AppMenuShown() override {
     menu_open_count_++;
     if (test_dismiss_menu_) {
       SendKeyPress(browser_, ui::VKEY_ESCAPE);
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-          FROM_HERE, loop_.QuitWhenIdleClosure(), base::Milliseconds(200));
+          FROM_HERE, base::RunLoop::QuitCurrentWhenIdleClosureDeprecated(),
+          base::Milliseconds(200));
     } else {
       DCHECK(observation_.IsObserving());
       observation_.Reset();
@@ -124,10 +122,6 @@ class SendKeysMenuListener : public AppMenuButtonObserver {
   // If this is set then on receiving a notification that the menu was opened
   // we dismiss it by sending the ESC key.
   bool test_dismiss_menu_;
-
-  // This used to use content::RunMessageLoop() which used a nestable loop. We
-  // tried removing kNestableTasksAllowed but that failed on trybots.
-  base::RunLoop loop_{base::RunLoop::Type::kNestableTasksAllowed};
 
   base::ScopedObservation<AppMenuButton, AppMenuButtonObserver> observation_{
       this};
@@ -383,6 +377,7 @@ void KeyboardAccessTest::TestMenuKeyboardAccessAndDismiss() {
   SendKeysMenuListener menu_listener(
       browser_view->toolbar_button_provider()->GetAppMenuButton(), browser(),
       true);
+
   browser()->window()->GetLocationBar()->FocusLocation(false);
 
   ASSERT_TRUE(ui_test_utils::SendKeyPressSync(browser(), ui::VKEY_F10, false,
@@ -391,7 +386,7 @@ void KeyboardAccessTest::TestMenuKeyboardAccessAndDismiss() {
   WaitForFocusedViewIDToChange(original_view_id);
 
   SendKeyPress(browser(), ui::VKEY_DOWN);
-  menu_listener.Wait();
+  content::RunMessageLoop();
   ASSERT_EQ(1, menu_listener.menu_open_count());
 }
 

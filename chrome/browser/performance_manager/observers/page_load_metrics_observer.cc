@@ -149,7 +149,7 @@ bool PageLoadMetricsWebContentsObserver::IsTab() const {
 #if BUILDFLAG(IS_ANDROID)
   return !!TabAndroid::FromWebContents(web_contents());
 #else
-  return !!chrome::FindBrowserWithTab(web_contents());
+  return !!chrome::FindBrowserWithWebContents(web_contents());
 #endif
 }
 

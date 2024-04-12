@@ -8,8 +8,7 @@
 #import <CoreServices/CoreServices.h>  // pre-macOS 11
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h> // macOS 11
 
-#include "base/apple/bridging.h"
-#include "base/apple/foundation_util.h"
+#include "base/mac/foundation_util.h"
 #include "base/no_destructor.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
@@ -19,45 +18,33 @@
 
 namespace ui {
 
-struct ClipboardFormatType::ObjCStorage {
-  // A Uniform Type identifier string.
-  NSString* uttype;
-};
+ClipboardFormatType::ClipboardFormatType() : uttype_(nil) {}
 
-// ClipboardFormatType implementation.
-ClipboardFormatType::ClipboardFormatType()
-    : objc_storage_(std::make_unique<ObjCStorage>()) {}
-
-ClipboardFormatType::ClipboardFormatType(NSString* native_format)
-    : ClipboardFormatType() {
-  objc_storage_->uttype = native_format;
-}
+ClipboardFormatType::ClipboardFormatType(NSString* uttype)
+    : uttype_([uttype copy]) {}
 
 ClipboardFormatType::ClipboardFormatType(const ClipboardFormatType& other)
-    : ClipboardFormatType() {
-  objc_storage_->uttype = other.objc_storage_->uttype;
-}
+    : uttype_([other.uttype_ copy]) {}
 
 ClipboardFormatType& ClipboardFormatType::operator=(
     const ClipboardFormatType& other) {
   if (this != &other) {
-    objc_storage_->uttype = other.objc_storage_->uttype;
+    [uttype_ release];
+    uttype_ = [other.uttype_ copy];
   }
   return *this;
 }
 
 bool ClipboardFormatType::operator==(const ClipboardFormatType& other) const {
-  return [objc_storage_->uttype isEqualToString:other.objc_storage_->uttype];
+  return [uttype_ isEqualToString:other.uttype_];
 }
 
-ClipboardFormatType::~ClipboardFormatType() = default;
+ClipboardFormatType::~ClipboardFormatType() {
+  [uttype_ release];
+}
 
 std::string ClipboardFormatType::Serialize() const {
-  return base::SysNSStringToUTF8(objc_storage_->uttype);
-}
-
-NSString* ClipboardFormatType::ToNSString() const {
-  return objc_storage_->uttype;
+  return base::SysNSStringToUTF8(uttype_);
 }
 
 // static
@@ -71,8 +58,7 @@ std::string ClipboardFormatType::GetName() const {
 }
 
 bool ClipboardFormatType::operator<(const ClipboardFormatType& other) const {
-  return [objc_storage_->uttype compare:other.objc_storage_->uttype] ==
-         NSOrderedAscending;
+  return [uttype_ compare:other.uttype_] == NSOrderedAscending;
 }
 
 // static
@@ -137,7 +123,7 @@ const ClipboardFormatType& ClipboardFormatType::SvgType() {
     return *type;
   } else {
     static base::NoDestructor<ClipboardFormatType> type(
-        base::apple::CFToNSPtrCast(kUTTypeScalableVectorGraphics));
+        base::mac::CFToNSCast(kUTTypeScalableVectorGraphics));
     return *type;
   }
 }

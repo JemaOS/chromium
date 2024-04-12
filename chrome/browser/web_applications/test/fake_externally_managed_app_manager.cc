@@ -5,13 +5,13 @@
 #include "chrome/browser/web_applications/test/fake_externally_managed_app_manager.h"
 
 #include "base/ranges/algorithm.h"
-#include "base/task/sequenced_task_runner.h"
+#include "base/task/single_thread_task_runner.h"
 
 namespace web_app {
 
 FakeExternallyManagedAppManager::FakeExternallyManagedAppManager(
     Profile* profile)
-    : ExternallyManagedAppManager(profile) {}
+    : ExternallyManagedAppManagerImpl(profile) {}
 
 FakeExternallyManagedAppManager::~FakeExternallyManagedAppManager() = default;
 
@@ -26,13 +26,15 @@ void FakeExternallyManagedAppManager::Install(
     OnceInstallCallback callback) {
   install_requests_.push_back(install_options);
   if (handle_install_request_callback_) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTaskAndReplyWithResult(
-        FROM_HERE,
-        base::BindOnce(handle_install_request_callback_, install_options),
-        base::BindOnce(std::move(callback), install_options.install_url));
+    base::SingleThreadTaskRunner::GetCurrentDefault()
+        ->PostTaskAndReplyWithResult(
+            FROM_HERE,
+            base::BindOnce(handle_install_request_callback_, install_options),
+            base::BindOnce(std::move(callback), install_options.install_url));
     return;
   }
-  ExternallyManagedAppManager::Install(install_options, std::move(callback));
+  ExternallyManagedAppManagerImpl::Install(install_options,
+                                           std::move(callback));
 }
 
 void FakeExternallyManagedAppManager::InstallApps(
@@ -47,7 +49,8 @@ void FakeExternallyManagedAppManager::InstallApps(
   base::ranges::copy(install_options_list,
                      std::back_inserter(install_requests_));
   if (!drop_requests_for_testing_) {
-    ExternallyManagedAppManager::InstallApps(install_options_list, callback);
+    ExternallyManagedAppManagerImpl::InstallApps(install_options_list,
+                                                 callback);
   }
 }
 
@@ -58,7 +61,7 @@ void FakeExternallyManagedAppManager::UninstallApps(
   base::ranges::copy(uninstall_urls, std::back_inserter(uninstall_requests_));
   if (handle_uninstall_request_callback_) {
     for (auto& app_url : uninstall_urls) {
-      base::SequencedTaskRunner::GetCurrentDefault()
+      base::SingleThreadTaskRunner::GetCurrentDefault()
           ->PostTaskAndReplyWithResult(
               FROM_HERE,
               base::BindOnce(handle_uninstall_request_callback_, app_url,
@@ -67,8 +70,8 @@ void FakeExternallyManagedAppManager::UninstallApps(
     }
     return;
   }
-  ExternallyManagedAppManager::UninstallApps(uninstall_urls, install_source,
-                                             callback);
+  ExternallyManagedAppManagerImpl::UninstallApps(uninstall_urls, install_source,
+                                                 callback);
 }
 
 void FakeExternallyManagedAppManager::SetHandleInstallRequestCallback(

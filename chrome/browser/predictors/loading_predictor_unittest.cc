@@ -13,7 +13,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "chrome/browser/predictors/loading_test_util.h"
-#include "chrome/browser/preloading/preloading_prefs.h"
+#include "chrome/browser/prefetch/prefetch_prefs.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/prefs/pref_service.h"
@@ -143,7 +143,6 @@ void LoadingPredictorTest::SetPreference() {
 class LoadingPredictorPreconnectTest : public LoadingPredictorTest {
  public:
   void SetUp() override;
-  void TearDown() override;
 
  protected:
   void SetPreference() override;
@@ -158,11 +157,6 @@ void LoadingPredictorPreconnectTest::SetUp() {
           predictor_->GetWeakPtr(), profile_.get());
   mock_preconnect_manager_ = mock_preconnect_manager.get();
   predictor_->set_mock_preconnect_manager(std::move(mock_preconnect_manager));
-}
-
-void LoadingPredictorPreconnectTest::TearDown() {
-  mock_preconnect_manager_ = nullptr;
-  LoadingPredictorTest::TearDown();
 }
 
 void LoadingPredictorPreconnectTest::SetPreference() {
@@ -447,6 +441,8 @@ TEST_F(LoadingPredictorPreconnectTest,
   GURL main_frame_url("http://search.com/kittens");
   net::NetworkAnonymizationKey network_anonymization_key =
       CreateNetworkanonymization_key(main_frame_url);
+  EXPECT_CALL(*mock_predictor_, PredictPreconnectOrigins(main_frame_url, _))
+      .WillOnce(Return(false));
   PreconnectPrediction prediction = CreatePreconnectPrediction(
       "search.com", true,
       {{url::Origin::Create(GURL("http://cdn1.search.com")), 1,
@@ -475,6 +471,8 @@ TEST_F(LoadingPredictorPreconnectTest,
   GURL main_frame_url("http://nopredictions.com/");
   net::NetworkAnonymizationKey network_anonymization_key =
       CreateNetworkanonymization_key(main_frame_url);
+  EXPECT_CALL(*mock_predictor_, PredictPreconnectOrigins(main_frame_url, _))
+      .WillOnce(Return(false));
   PreconnectPrediction prediction;
   EXPECT_FALSE(predictor_->PrepareForPageLoad(
       main_frame_url, HintOrigin::OPTIMIZATION_GUIDE, false, prediction));
@@ -575,57 +573,6 @@ TEST_F(
                        network_anonymization_key}})));
   EXPECT_TRUE(predictor_->PrepareForPageLoad(
       main_frame_url, HintOrigin::OPTIMIZATION_GUIDE, false, prediction));
-}
-
-// Checks that the opaque origins will not trigger preconnect as it is treated
-// as cross-origin and cannot be reused.
-TEST_F(LoadingPredictorPreconnectTest, TestHandleHintWithOpaqueOrigins) {
-  GURL main_frame_url("about:blank");
-  LoadingPredictor::PreconnectData preconnect_data;
-  EXPECT_FALSE(predictor_->HandleHintByOrigin(main_frame_url,
-                                              /*preconnectable=*/true,
-                                              /*only_allow_https=*/false,
-                                              preconnect_data));
-}
-
-// Checks that the behavior of HandleHintByOrigin is expected when
-// only_allow_https = true.
-TEST_F(LoadingPredictorPreconnectTest, TestHandleHintWhenOnlyHttpsAllowed) {
-  GURL main_frame_url_non_https("http://www.google.com/cats");
-  GURL main_frame_url_https("https://www.google.com/cats");
-  LoadingPredictor::PreconnectData preconnect_data;
-  EXPECT_FALSE(predictor_->HandleHintByOrigin(main_frame_url_non_https,
-                                              /*preconnectable=*/true,
-                                              /*only_allow_https=*/true,
-                                              preconnect_data));
-  EXPECT_CALL(
-      *mock_preconnect_manager_,
-      StartPreconnectUrl(main_frame_url_https, true,
-                         CreateNetworkanonymization_key(main_frame_url_https)));
-  EXPECT_TRUE(predictor_->HandleHintByOrigin(main_frame_url_https,
-                                             /*preconnectable=*/true,
-                                             /*only_allow_https=*/true,
-                                             preconnect_data));
-}
-
-// Checks that HandleHintByOrigin can preresolve correctly.
-TEST_F(LoadingPredictorPreconnectTest,
-       TestHandleHintPreresolveWhenOnlyHttpsAllowed) {
-  GURL main_frame_url_non_https("http://www.google.com/cats");
-  GURL main_frame_url_https("https://www.google.com/cats");
-  LoadingPredictor::PreconnectData preconnect_data;
-  EXPECT_FALSE(predictor_->HandleHintByOrigin(main_frame_url_non_https,
-                                              /*preconnectable=*/false,
-                                              /*only_allow_https=*/true,
-                                              preconnect_data));
-  EXPECT_CALL(*mock_preconnect_manager_,
-              StartPreresolveHost(
-                  main_frame_url_https,
-                  CreateNetworkanonymization_key(main_frame_url_https)));
-  EXPECT_TRUE(predictor_->HandleHintByOrigin(main_frame_url_https,
-                                             /*preconnectable=*/false,
-                                             /*only_allow_https=*/true,
-                                             preconnect_data));
 }
 
 }  // namespace predictors

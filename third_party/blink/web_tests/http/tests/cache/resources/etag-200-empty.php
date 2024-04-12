@@ -3,13 +3,12 @@
 // returns 200 with empty body for revalidating requests.
 header('ETag: foo');
 header('Cache-control: max-age=0');
-$type = $_GET['type'] ?? null;
-if ($type == 'css') {
+
+if ($_GET['type'] == 'css') {
     header('Content-Type: text/css');
 }
 
-$http_if_none_match = $_SERVER['HTTP_IF_NONE_MATCH'] ?? null;
-if ($http_if_none_match == 'foo') {
+if ($_SERVER['HTTP_IF_NONE_MATCH'] == 'foo') {
     // The body is intentionally empty.
     exit;
 }

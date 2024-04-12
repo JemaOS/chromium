@@ -5,13 +5,11 @@
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/installer/key_rotation_manager.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
 #include "base/check.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/scoped_refptr.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
@@ -27,6 +25,7 @@
 #include "crypto/unexportable_key.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 using BPKUR = enterprise_management::BrowserPublicKeyUploadRequest;
@@ -98,7 +97,7 @@ constexpr std::array<
 class KeyRotationManagerTest : public testing::Test {
  protected:
   KeyRotationManagerTest()
-      : key_provider_(crypto::GetUnexportableKeyProvider(/*config=*/{})) {
+      : key_provider_(crypto::GetUnexportableKeyProvider()) {
     ResetHistograms();
     auto mock_network_delegate =
         std::make_unique<StrictMock<MockKeyNetworkDelegate>>();
@@ -131,15 +130,14 @@ class KeyRotationManagerTest : public testing::Test {
 
   void SetUpOldKey(bool exists = true) {
     if (exists) {
-      old_key_pair_ = base::MakeRefCounted<SigningKeyPair>(
+      auto old_key = std::make_unique<SigningKeyPair>(
           CreateHardwareKey(), BPKUR::CHROME_BROWSER_HW_KEY);
-      EXPECT_CALL(*mock_persistence_delegate_,
-                  LoadKeyPair(KeyStorageType::kPermanent, _))
-          .WillOnce(Return(old_key_pair_));
+      old_key_pair_ = old_key.get();
+      EXPECT_CALL(*mock_persistence_delegate_, LoadKeyPair())
+          .WillOnce(Return(ByMove(std::move(old_key))));
     } else {
-      old_key_pair_.reset();
-      EXPECT_CALL(*mock_persistence_delegate_,
-                  LoadKeyPair(KeyStorageType::kPermanent, _))
+      old_key_pair_ = nullptr;
+      EXPECT_CALL(*mock_persistence_delegate_, LoadKeyPair())
           .WillOnce(Invoke([]() { return nullptr; }));
     }
   }
@@ -151,10 +149,11 @@ class KeyRotationManagerTest : public testing::Test {
 
   void SetUpNewKeyCreation(bool success = true) {
     if (success) {
-      new_key_pair_ = base::MakeRefCounted<SigningKeyPair>(
+      auto new_key = std::make_unique<SigningKeyPair>(
           CreateHardwareKey(), BPKUR::CHROME_BROWSER_HW_KEY);
+      new_key_pair_ = new_key.get();
       EXPECT_CALL(*mock_persistence_delegate_, CreateKeyPair())
-          .WillOnce(Return(new_key_pair_));
+          .WillOnce(Return(ByMove(std::move(new_key))));
     } else {
       EXPECT_CALL(*mock_persistence_delegate_, CreateKeyPair())
           .WillOnce(Invoke([]() { return nullptr; }));
@@ -208,14 +207,12 @@ class KeyRotationManagerTest : public testing::Test {
   std::unique_ptr<base::HistogramTester> histogram_tester_;
   std::unique_ptr<crypto::UnexportableKeyProvider> key_provider_;
 
-  raw_ptr<StrictMock<MockKeyNetworkDelegate>, DanglingUntriaged>
-      mock_network_delegate_;
-  raw_ptr<StrictMock<MockKeyPersistenceDelegate>, DanglingUntriaged>
-      mock_persistence_delegate_;
+  raw_ptr<StrictMock<MockKeyNetworkDelegate>> mock_network_delegate_;
+  raw_ptr<StrictMock<MockKeyPersistenceDelegate>> mock_persistence_delegate_;
 
-  scoped_refptr<SigningKeyPair> old_key_pair_;
-  scoped_refptr<SigningKeyPair> new_key_pair_;
-  std::optional<std::string> captured_upload_body_;
+  raw_ptr<SigningKeyPair> old_key_pair_;
+  raw_ptr<SigningKeyPair> new_key_pair_;
+  absl::optional<std::string> captured_upload_body_;
 
   std::unique_ptr<KeyRotationManager> key_rotation_manager_;
 };

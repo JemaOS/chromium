@@ -47,6 +47,7 @@ namespace blink {
 
 class CSSStyleDeclaration;
 class CSSComputedStyleDeclaration;
+class ContainerNode;
 class Document;
 class Element;
 class ExecutionContext;
@@ -78,12 +79,10 @@ class CORE_EXPORT EditingStyle final : public GarbageCollected<EditingStyle> {
   static constexpr float kNoFontDelta = 0.0f;
 
   EditingStyle() = default;
-  explicit EditingStyle(
-      Element*,
-      PropertiesToInclude = kOnlyEditingInheritableProperties);
-  explicit EditingStyle(
-      const Position&,
-      PropertiesToInclude = kOnlyEditingInheritableProperties);
+  EditingStyle(ContainerNode*,
+               PropertiesToInclude = kOnlyEditingInheritableProperties);
+  EditingStyle(const Position&,
+               PropertiesToInclude = kOnlyEditingInheritableProperties);
   explicit EditingStyle(const CSSPropertyValueSet*);
   EditingStyle(CSSPropertyID, const String& value, SecureContextMode);
 
@@ -146,7 +145,7 @@ class CORE_EXPORT EditingStyle final : public GarbageCollected<EditingStyle> {
                                             PropertiesToInclude);
   void MergeStyleFromRules(Element*);
   void MergeStyleFromRulesForSerialization(Element*);
-  void RemoveStyleFromRulesAndContext(Element*, Element* context);
+  void RemoveStyleFromRulesAndContext(Element*, ContainerNode* context);
   void RemovePropertiesInElementDefaultStyle(Element*);
   void ForceInline();
   int LegacyFontSize(Document*) const;

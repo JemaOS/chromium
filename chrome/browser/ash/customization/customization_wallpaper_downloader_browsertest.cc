@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "ash/constants/ash_switches.h"
-#include "ash/public/cpp/wallpaper/wallpaper_controller.h"
 #include "ash/public/cpp/wallpaper/wallpaper_controller_observer.h"
 #include "base/command_line.h"
 #include "base/functional/bind.h"
@@ -18,6 +17,7 @@
 #include "base/time/time.h"
 #include "chrome/browser/ash/customization/customization_document.h"
 #include "chrome/browser/ash/customization/customization_wallpaper_downloader.h"
+#include "chrome/browser/ui/ash/wallpaper_controller_client_impl.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "content/public/test/browser_test.h"
@@ -25,11 +25,7 @@
 #include "net/http/http_status_code.h"
 #include "net/test/embedded_test_server/http_response.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/codec/jpeg_codec.h"
-#include "ui/gfx/geometry/point.h"
-#include "ui/gfx/geometry/rect.h"
-#include "ui/gfx/geometry/size.h"
 
 namespace ash {
 
@@ -126,37 +122,32 @@ bool CreateJPEGImage(int width,
 class TestWallpaperObserver : public WallpaperControllerObserver {
  public:
   TestWallpaperObserver() {
-    ash::WallpaperController::Get()->AddObserver(this);
+    WallpaperControllerClientImpl::Get()->AddObserver(this);
   }
 
   TestWallpaperObserver(const TestWallpaperObserver&) = delete;
   TestWallpaperObserver& operator=(const TestWallpaperObserver&) = delete;
 
   ~TestWallpaperObserver() override {
-    ash::WallpaperController::Get()->RemoveObserver(this);
+    WallpaperControllerClientImpl::Get()->RemoveObserver(this);
   }
 
   // WallpaperControllerObserver:
   void OnWallpaperChanged() override {
     finished_ = true;
-    if (run_loop_) {
-      run_loop_->Quit();
-    }
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
   }
 
   // Wait until the wallpaper update is completed.
   void WaitForWallpaperChanged() {
-    while (!finished_) {
-      run_loop_ = std::make_unique<base::RunLoop>();
-      run_loop_->Run();
-    }
+    while (!finished_)
+      base::RunLoop().Run();
   }
 
   void Reset() { finished_ = false; }
 
  private:
   bool finished_ = false;
-  std::unique_ptr<base::RunLoop> run_loop_;
 };
 
 }  // namespace
@@ -248,7 +239,7 @@ IN_PROC_BROWSER_TEST_F(CustomizationWallpaperDownloaderBrowserTest,
                        OEMWallpaperIsPresent) {
   TestWallpaperObserver observer;
   // Show a built-in default wallpaper first.
-  ash::WallpaperController::Get()->ShowSigninWallpaper();
+  WallpaperControllerClientImpl::Get()->ShowSigninWallpaper();
   observer.WaitForWallpaperChanged();
   observer.Reset();
 
@@ -266,7 +257,8 @@ IN_PROC_BROWSER_TEST_F(CustomizationWallpaperDownloaderBrowserTest,
 
   // Verify the customized default wallpaper has replaced the built-in default
   // wallpaper.
-  gfx::ImageSkia image = ash::WallpaperController::Get()->GetWallpaperImage();
+  gfx::ImageSkia image =
+      WallpaperControllerClientImpl::Get()->GetWallpaperImage();
   EXPECT_TRUE(ImageIsNearColor(image, kCustomizedDefaultWallpaperColor));
   EXPECT_EQ(1U, num_attempts());
 }
@@ -275,7 +267,7 @@ IN_PROC_BROWSER_TEST_F(CustomizationWallpaperDownloaderBrowserTest,
                        OEMWallpaperRetryFetch) {
   TestWallpaperObserver observer;
   // Show a built-in default wallpaper.
-  ash::WallpaperController::Get()->ShowSigninWallpaper();
+  WallpaperControllerClientImpl::Get()->ShowSigninWallpaper();
   observer.WaitForWallpaperChanged();
   observer.Reset();
 
@@ -293,7 +285,8 @@ IN_PROC_BROWSER_TEST_F(CustomizationWallpaperDownloaderBrowserTest,
 
   // Verify the customized default wallpaper has replaced the built-in default
   // wallpaper.
-  gfx::ImageSkia image = ash::WallpaperController::Get()->GetWallpaperImage();
+  gfx::ImageSkia image =
+      WallpaperControllerClientImpl::Get()->GetWallpaperImage();
   EXPECT_TRUE(ImageIsNearColor(image, kCustomizedDefaultWallpaperColor));
   EXPECT_EQ(2U, num_attempts());
 }

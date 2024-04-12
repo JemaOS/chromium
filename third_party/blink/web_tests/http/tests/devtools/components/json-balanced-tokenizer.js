@@ -2,15 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-
-import * as TextUtils from 'devtools/models/text_utils/text_utils.js';
-
 (async function() {
-  TestRunner.addResult(`Test TextUtils.TextUtils.BalancedJSONTokenizer.\n`);
+  TestRunner.addResult(`Test TextUtils.BalancedJSONTokenizer.\n`);
 
-  const BalancedJSONTokenizer = TextUtils.TextUtils.BalancedJSONTokenizer ||
-      TextUtils.TextUtils.Utils.BalancedJSONTokenizer;
+  const BalancedJSONTokenizer = TextUtils.BalancedJSONTokenizer ||
+      TextUtils.TextUtils.BalancedJSONTokenizer;
 
   TestRunner.runTestSuite([
     function testMatchQuotes(next) {

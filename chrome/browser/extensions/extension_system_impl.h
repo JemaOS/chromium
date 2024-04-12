@@ -31,6 +31,7 @@ class ValueStoreFactoryImpl;
 namespace extensions {
 
 class ExtensionSystemSharedFactory;
+class NavigationObserver;
 class UninstallPingSender;
 class InstallGate;
 class ExtensionsPermissionsTracker;
@@ -79,7 +80,7 @@ class ExtensionSystemImpl : public ExtensionSystem {
                      InstallUpdateCallback install_update_callback) override;
   void PerformActionBasedOnOmahaAttributes(
       const std::string& extension_id,
-      const base::Value::Dict& attributes) override;
+      const base::Value& attributes) override;
   bool FinishDelayedInstallationIfReady(const std::string& extension_id,
                                         bool install_immediately) override;
 
@@ -126,6 +127,7 @@ class ExtensionSystemImpl : public ExtensionSystem {
     std::unique_ptr<StateStore> rules_store_;
     std::unique_ptr<StateStore> dynamic_user_scripts_store_;
     scoped_refptr<value_store::ValueStoreFactoryImpl> store_factory_;
+    std::unique_ptr<NavigationObserver> navigation_observer_;
     std::unique_ptr<ServiceWorkerManager> service_worker_manager_;
     // Shared memory region manager for scripts statically declared in extension
     // manifests. This region is shared between all extensions.

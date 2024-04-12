@@ -27,7 +27,6 @@ namespace {
 
 void AddAppManagementStrings(content::WebUIDataSource* html_source) {
   static constexpr webui::LocalizedString kLocalizedStrings[] = {
-      {"cancel", IDS_CANCEL},
       {"close", IDS_CLOSE},
       {"title", IDS_WEB_APP_SETTINGS_TITLE},
       {"appManagementAppInstalledByPolicyLabel",
@@ -35,10 +34,6 @@ void AddAppManagementStrings(content::WebUIDataSource* html_source) {
       {"appManagementFileHandlingHeader",
        IDS_APP_MANAGEMENT_FILE_HANDLING_HEADER},
       {"appManagementNotificationsLabel", IDS_APP_MANAGEMENT_NOTIFICATIONS},
-#if BUILDFLAG(IS_MAC)
-      {"appManagementNotificationsDescription",
-       IDS_APP_MANAGEMENT_NOTIFICATIONS_DESCRIPTION},
-#endif
       {"appManagementPermissionsLabel", IDS_APP_MANAGEMENT_PERMISSIONS},
       {"appManagementLocationPermissionLabel", IDS_APP_MANAGEMENT_LOCATION},
       {"appManagementMicrophonePermissionLabel", IDS_APP_MANAGEMENT_MICROPHONE},
@@ -53,53 +48,11 @@ void AddAppManagementStrings(content::WebUIDataSource* html_source) {
        IDS_APP_MANAGEMENT_FILE_HANDLING_OVERFLOW_DIALOG_TITLE},
       {"fileHandlingSetDefaults",
        IDS_APP_MANAGEMENT_FILE_HANDLING_SET_DEFAULTS_LINK},
-      {"appManagementIntentSettingsDialogTitle",
-       IDS_APP_MANAGEMENT_INTENT_SETTINGS_DIALOG_TITLE},
-      {"appManagementIntentSettingsTitle",
-       IDS_APP_MANAGEMENT_INTENT_SETTINGS_TITLE},
-      {"appManagementIntentOverlapDialogTitle",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_DIALOG_TITLE},
-      {"appManagementIntentOverlapChangeButton",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_CHANGE_BUTTON},
-      {"appManagementIntentSharingOpenBrowserLabel",
-       IDS_APP_MANAGEMENT_INTENT_SHARING_BROWSER_OPEN},
-      {"appManagementIntentSharingOpenAppLabel",
-       IDS_APP_MANAGEMENT_INTENT_SHARING_APP_OPEN},
-      {"appManagementIntentOverlapWarningText1App",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_WARNING_TEXT_1_APP},
-      {"appManagementIntentOverlapWarningText2Apps",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_WARNING_TEXT_2_APPS},
-      {"appManagementIntentOverlapWarningText3Apps",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_WARNING_TEXT_3_APPS},
-      {"appManagementIntentOverlapWarningText4Apps",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_WARNING_TEXT_4_APPS},
-      {"appManagementIntentOverlapWarningText5OrMoreApps",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_WARNING_TEXT_5_OR_MORE_APPS},
-      {"appManagementIntentOverlapDialogText1App",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_DIALOG_TEXT_1_APP},
-      {"appManagementIntentOverlapDialogText2Apps",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_DIALOG_TEXT_2_APPS},
-      {"appManagementIntentOverlapDialogText3Apps",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_DIALOG_TEXT_3_APPS},
-      {"appManagementIntentOverlapDialogText4Apps",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_DIALOG_TEXT_4_APPS},
-      {"appManagementIntentOverlapDialogText5OrMoreApps",
-       IDS_APP_MANAGEMENT_INTENT_OVERLAP_DIALOG_TEXT_5_OR_MORE_APPS},
-      {"appManagementIntentSharingTabExplanation",
-       IDS_APP_MANAGEMENT_INTENT_SHARING_TAB_EXPLANATION},
-      {"appManagementAppContentLabel", IDS_APP_MANAGEMENT_APP_CONTENT_TITLE},
-      {"appManagementAppContentSublabel",
-       IDS_APP_MANAGEMENT_APP_CONTENT_SUBTITLE},
-      {"appManagementAppContentDialogSublabel",
-       IDS_APP_MANAGEMENT_APP_CONTENT_DIALOG_SUBTITLE},
-      {"appManagementPermissionsWithOriginLabel",
-       IDS_APP_MANAGEMENT_PERMISSIONS_WITH_ORIGIN},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
 }
 
-class WebAppSettingsWindowDelegate
-    : public AppManagementPageHandlerBase::Delegate {
+class WebAppSettingsWindowDelegate : public AppManagementPageHandler::Delegate {
  public:
   explicit WebAppSettingsWindowDelegate(Profile* profile) : profile_(profile) {}
 
@@ -112,13 +65,13 @@ class WebAppSettingsWindowDelegate
   }
 
  private:
-  raw_ptr<Profile, AcrossTasksDanglingUntriaged> profile_;
+  raw_ptr<Profile, DanglingUntriaged> profile_;
 };
 
 }  // namespace
 
 // static
-std::unique_ptr<AppManagementPageHandlerBase::Delegate>
+std::unique_ptr<AppManagementPageHandler::Delegate>
 WebAppSettingsUI::CreateAppManagementPageHandlerDelegate(Profile* profile) {
   return std::make_unique<WebAppSettingsWindowDelegate>(profile);
 }
@@ -157,10 +110,10 @@ void WebAppSettingsUI::BindInterface(
 }
 
 void WebAppSettingsUI::OnWebAppUninstalled(
-    const webapps::AppId& app_id,
+    const web_app::AppId& app_id,
     webapps::WebappUninstallSource uninstall_source) {
   auto* web_contents = web_ui()->GetWebContents();
-  const webapps::AppId current_app_id =
+  const web_app::AppId current_app_id =
       web_app::GetAppIdFromAppSettingsUrl(web_contents->GetURL());
 
   if (app_id == current_app_id)

@@ -5,9 +5,9 @@
 // clang-format off
 import 'chrome://settings/settings.js';
 
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {FontsBrowserProxy, FontsData,SettingsAppearanceFontsPageElement} from 'chrome://settings/lazy_load.js';
-import {FontsBrowserProxyImpl} from 'chrome://settings/lazy_load.js';
+import {FontsBrowserProxy, FontsBrowserProxyImpl, FontsData,SettingsAppearanceFontsPageElement} from 'chrome://settings/lazy_load.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
@@ -37,6 +37,12 @@ let fontsPage: SettingsAppearanceFontsPageElement;
 let fontsBrowserProxy: TestFontsBrowserProxy;
 
 suite('AppearanceFontHandler', function() {
+  suiteSetup(function() {
+    loadTimeData.overrideValues({
+      enableMathMLCore: true,
+    });
+  });
+
   setup(function() {
     fontsBrowserProxy = new TestFontsBrowserProxy();
     FontsBrowserProxyImpl.setInstance(fontsBrowserProxy);

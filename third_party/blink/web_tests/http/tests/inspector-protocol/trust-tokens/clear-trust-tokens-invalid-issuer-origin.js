@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {dp} = await testRunner.startBlank(
     `Check that calling Storage.clearTrustTokens with an invalid issuerOrigin produces an error`);
 

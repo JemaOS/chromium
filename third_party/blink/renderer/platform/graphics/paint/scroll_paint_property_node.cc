@@ -4,8 +4,7 @@
 
 #include "third_party/blink/renderer/platform/graphics/paint/scroll_paint_property_node.h"
 
-#include "third_party/blink/renderer/platform/geometry/infinite_int_rect.h"
-#include "third_party/blink/renderer/platform/graphics/paint/clip_paint_property_node.h"
+#include "third_party/blink/renderer/platform/geometry/layout_rect.h"
 
 namespace blink {
 
@@ -49,22 +48,15 @@ PaintPropertyChangeType ScrollPaintPropertyNode::State::ComputeChange(
 }
 
 const ScrollPaintPropertyNode& ScrollPaintPropertyNode::Root() {
-  DEFINE_STATIC_REF(
-      ScrollPaintPropertyNode, root,
-      base::AdoptRef(new ScrollPaintPropertyNode(
-          nullptr, State{InfiniteIntRect(), InfiniteIntRect().size()})));
+  DEFINE_STATIC_REF(ScrollPaintPropertyNode, root,
+                    base::AdoptRef(new ScrollPaintPropertyNode(
+                        nullptr, State{LayoutRect::InfiniteIntRect(),
+                                       LayoutRect::InfiniteIntRect().size()})));
   return *root;
 }
 
-void ScrollPaintPropertyNode::ClearChangedToRoot(int sequence_number) const {
-  for (auto* n = this; n && n->ChangedSequenceNumber() != sequence_number;
-       n = n->Parent()) {
-    n->ClearChanged(sequence_number);
-  }
-}
-
 std::unique_ptr<JSONObject> ScrollPaintPropertyNode::ToJSON() const {
-  auto json = PaintPropertyNode::ToJSON();
+  auto json = ToJSONBase();
   if (!state_.container_rect.IsEmpty())
     json->SetString("containerRect", String(state_.container_rect.ToString()));
   if (!state_.contents_size.IsEmpty())

@@ -77,9 +77,10 @@ class CORE_EXPORT DocumentParser : public GarbageCollected<DocumentParser>,
 
   virtual void Finish() = 0;
 
-  // GetDocument() returns null after detach() is called.
+  // document() will return 0 after detach() is called.
   Document* GetDocument() const {
-    return document_.Get();
+    DCHECK(document_);
+    return document_;
   }
 
   bool IsParsing() const { return state_ == kParsingState; }

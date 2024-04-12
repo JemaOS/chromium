@@ -21,6 +21,7 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
+#include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/profiles/profile_attributes_entry.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -28,7 +29,6 @@
 #include "chrome/browser/profiles/profile_test_util.h"
 #include "chrome/browser/profiles/profiles_state.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/signin/signin_browser_test_base.h"
 #include "chrome/browser/signin/signin_promo.h"
 #include "chrome/browser/signin/signin_ui_util.h"
 #include "chrome/browser/sync/sync_service_factory.h"
@@ -54,7 +54,6 @@
 #include "chrome/browser/ui/webui/signin/login_ui_test_utils.h"
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/browser/web_applications/test/web_app_test_utils.h"
-#include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/common/chrome_paths.h"
@@ -63,21 +62,22 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
-#include "chrome/test/user_education/interactive_feature_promo_test.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/feature_engagement/public/feature_constants.h"
+#include "components/feature_engagement/public/tracker.h"
+#include "components/feature_engagement/test/test_tracker.h"
 #include "components/google/core/common/google_util.h"
 #include "components/password_manager/core/common/password_manager_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/base/signin_pref_names.h"
-#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/signin/public/identity_manager/primary_account_mutator.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_user_settings.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "components/sync/test/fake_server_network_resources.h"
 #include "components/user_education/common/feature_promo_controller.h"
+#include "components/user_education/test/feature_promo_test_util.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_navigation_observer.h"
@@ -89,26 +89,18 @@
 #include "net/test/embedded_test_server/http_response.h"
 #include "net/test/embedded_test_server/request_handler_util.h"
 #include "services/network/test/test_url_loader_factory.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
 #include "ui/events/event_utils.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/webview/webview.h"
-#include "ui/views/test/widget_activation_waiter.h"
 #include "ui/views/test/widget_test.h"
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
 #include "chrome/browser/lacros/account_manager/fake_account_manager_ui_dialog_waiter.h"
 #include "chrome/browser/signin/signin_ui_delegate_impl_lacros.h"
-#include "chromeos/crosapi/mojom/crosapi.mojom.h"
-#include "chromeos/startup/browser_init_params.h"
 #include "components/account_manager_core/chromeos/account_manager_facade_factory.h"
-#include "components/account_manager_core/chromeos/account_manager_mojo_service.h"
 #endif
 
 namespace {
-
-constexpr char kTestEmail[] = "foo@example.com";
 
 class UnconsentedPrimaryAccountChecker
     : public StatusChangeChecker,
@@ -151,16 +143,19 @@ Profile* CreateAdditionalProfile() {
   return &profile;
 }
 
+std::unique_ptr<KeyedService> CreateTestTracker(content::BrowserContext*) {
+  return feature_engagement::CreateTestTracker();
+}
+
 #if !BUILDFLAG(IS_CHROMEOS)
 
-const char kPasswordManagerId[] = "chrome://password-manager/";
 const char kPasswordManagerPWAUrl[] = "chrome://password-manager/?source=pwa";
 
-std::unique_ptr<web_app::WebAppInstallInfo> CreatePasswordManagerWebAppInfo() {
-  auto web_app_info = std::make_unique<web_app::WebAppInstallInfo>();
+std::unique_ptr<WebAppInstallInfo> CreatePasswordManagerWebAppInfo() {
+  auto web_app_info = std::make_unique<WebAppInstallInfo>();
   web_app_info->start_url = GURL(kPasswordManagerPWAUrl);
   web_app_info->title = u"Password Manager";
-  web_app_info->manifest_id = GURL(kPasswordManagerId);
+  web_app_info->manifest_id = "";
   return web_app_info;
 }
 
@@ -193,7 +188,7 @@ class ProfileMenuViewTestBase {
     views::Widget* menu_widget = profile_menu_view()->GetWidget();
     ASSERT_TRUE(menu_widget);
     if (menu_widget->CanActivate()) {
-      views::test::WaitForWidgetActive(menu_widget, /*active=*/true);
+      views::test::WidgetActivationWaiter(menu_widget, /*active=*/true).Wait();
     } else {
       LOG(ERROR) << "menu_widget can not be activated";
     }
@@ -221,22 +216,34 @@ class ProfileMenuViewTestBase {
   }
 
  private:
-  raw_ptr<Browser, AcrossTasksDanglingUntriaged> target_browser_ = nullptr;
+  raw_ptr<Browser, DanglingUntriaged> target_browser_ = nullptr;
 };
 
-class ProfileMenuViewExtensionsTest
-    : public ProfileMenuViewTestBase,
-      public InteractiveFeaturePromoTestT<extensions::ExtensionBrowserTest> {
+class ProfileMenuViewExtensionsTest : public ProfileMenuViewTestBase,
+                                      public extensions::ExtensionBrowserTest {
  public:
-  ProfileMenuViewExtensionsTest()
-      : InteractiveFeaturePromoTestT(UseDefaultTrackerAllowingPromos(
-            {feature_engagement::kIPHProfileSwitchFeature})) {}
+  ProfileMenuViewExtensionsTest() {
+    feature_list_.InitAndEnableFeatures(
+        {feature_engagement::kIPHProfileSwitchFeature});
+    subscription_ =
+        BrowserContextDependencyManager::GetInstance()
+            ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+                &ProfileMenuViewExtensionsTest::RegisterTestTracker));
+  }
 
-  // InteractiveFeaturePromoTestT:
+  // extensions::ExtensionBrowserTest:
   void SetUpOnMainThread() override {
-    InteractiveFeaturePromoTestT::SetUpOnMainThread();
+    ExtensionBrowserTest::SetUpOnMainThread();
     SetTargetBrowser(browser());
   }
+
+ private:
+  static void RegisterTestTracker(content::BrowserContext* context) {
+    feature_engagement::TrackerFactory::GetInstance()->SetTestingFactory(
+        context, base::BindRepeating(&CreateTestTracker));
+  }
+  base::CallbackListSubscription subscription_;
+  feature_engagement::test::ScopedIphFeatureList feature_list_;
 };
 
 // Make sure nothing bad happens when the browser theme changes while the
@@ -337,35 +344,32 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewExtensionsTest,
 // Regression test for https://crbug.com/1205901
 IN_PROC_BROWSER_TEST_F(ProfileMenuViewExtensionsTest, CloseIPH) {
   // Display the IPH.
-  EXPECT_TRUE(browser()->window()->MaybeShowFeaturePromo(
+  auto lock = BrowserFeaturePromoController::BlockActiveWindowCheckForTesting();
+  BrowserView* const browser_view =
+      BrowserView::GetBrowserViewForBrowser(browser());
+  ASSERT_TRUE(user_education::test::WaitForFeatureEngagementReady(
+      browser_view->GetFeaturePromoController()));
+  EXPECT_TRUE(browser_view->MaybeShowFeaturePromo(
       feature_engagement::kIPHProfileSwitchFeature));
-  EXPECT_TRUE(browser()->window()->IsFeaturePromoActive(
+  EXPECT_TRUE(browser_view->IsFeaturePromoActive(
       feature_engagement::kIPHProfileSwitchFeature));
 
   // Open the menu.
   ASSERT_NO_FATAL_FAILURE(OpenProfileMenu());
 
   // Check the IPH is no longer showing.
-  EXPECT_FALSE(browser()->window()->IsFeaturePromoActive(
+  EXPECT_FALSE(browser_view->IsFeaturePromoActive(
       feature_engagement::kIPHProfileSwitchFeature));
 }
 
 // Test that sets up a primary account (without sync) and simulates a click on
 // the signout button.
 class ProfileMenuViewSignoutTest : public ProfileMenuViewTestBase,
-                                   public SigninBrowserTestBase {
+                                   public InProcessBrowserTest {
  public:
-  ProfileMenuViewSignoutTest()
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-      // Signout is not allowed on the main profile.
-      : SigninBrowserTestBase(/*use_main_profile=*/false){}
-#else
-      = default;
-#endif
+  ProfileMenuViewSignoutTest() = default;
 
-        CoreAccountId account_id() const {
-    return account_id_;
-  }
+  CoreAccountId account_id() const { return account_id_; }
 
   bool Signout() {
     OpenProfileMenu();
@@ -376,34 +380,36 @@ class ProfileMenuViewSignoutTest : public ProfileMenuViewTestBase,
     return true;
   }
 
-#if !BUILDFLAG(IS_CHROMEOS_LACROS)
-  GURL GetExpectedLogoutURL(bool uno_enabled) const {
-    if (uno_enabled) {
-      return GaiaUrls::GetInstance()->LogOutURLWithContinueURL(GURL());
-    } else {
-      return GaiaUrls::GetInstance()->service_logout_url();
-    }
+  signin::IdentityManager* identity_manager() {
+    return IdentityManagerFactory::GetForProfile(GetProfile());
+  }
+
+  Profile* GetProfile() {
+    return profile_ ? profile_.get() : browser()->profile();
+  }
+
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+  void UseSecondaryProfile() {
+    // Signout not allowed in the main profile.
+    profile_ = CreateAdditionalProfile();
+    SetTargetBrowser(CreateBrowser(profile_));
   }
 #endif
 
-  // SigninBrowserTestBase:
+  // InProcessBrowserTest:
   void SetUpOnMainThread() override {
-    SigninBrowserTestBase::SetUpOnMainThread();
-    SetTargetBrowser(GetProfile() == browser()->profile()
-                         ? browser()
-                         : CreateBrowser(GetProfile()));
+    InProcessBrowserTest::SetUpOnMainThread();
+    SetTargetBrowser(browser());
 
-    // Add an account (no sync) with cookie.
-    signin::AccountAvailabilityOptionsBuilder builder =
-        identity_test_env()
-            ->CreateAccountAvailabilityOptionsBuilder()
-            .AsPrimary(signin::ConsentLevel::kSignin)
-            .WithCookie();
-    CoreAccountInfo account_info =
-        identity_test_env()->MakeAccountAvailable(builder.Build(kTestEmail));
-    account_id_ = account_info.account_id;
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+    // Signout is not allowed on the main profile.
+    UseSecondaryProfile();
+#endif
+    // Add an account (no sync).
+    account_id_ =
+        signin::MakeAccountAvailable(identity_manager(), "foo@example.com")
+            .account_id;
     ASSERT_TRUE(identity_manager()->HasAccountWithRefreshToken(account_id_));
-    identity_test_env()->SetFreshnessOfAccountsInGaiaCookie(true);
   }
 
  private:
@@ -422,36 +428,8 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewSignoutTest, Signout) {
 #endif
 
 #if !BUILDFLAG(IS_CHROMEOS_LACROS)
-
-// Wrapper class to add parametrized feature tests.
-// Param of the ProfileMenuViewSignoutTestWithExplicitBrowserSigninFeature:
-// -- bool uno_enabled;
-class ProfileMenuViewSignoutTestWithExplicitBrowserSigninFeature
-    : public ProfileMenuViewSignoutTest,
-      public testing::WithParamInterface<bool> {
- public:
-  ProfileMenuViewSignoutTestWithExplicitBrowserSigninFeature() {
-    if (uno_enabled()) {
-      feature_list_.InitWithFeatures(
-          {switches::kUnoDesktop, switches::kExplicitBrowserSigninUIOnDesktop},
-          {});
-    } else {
-      feature_list_.InitWithFeatures(
-          {},
-          {switches::kUnoDesktop, switches::kExplicitBrowserSigninUIOnDesktop});
-    }
-  }
-
-  bool uno_enabled() const { return GetParam(); }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
 // Checks that signout opens a new logout tab.
-IN_PROC_BROWSER_TEST_P(
-    ProfileMenuViewSignoutTestWithExplicitBrowserSigninFeature,
-    OpenLogoutTab) {
+IN_PROC_BROWSER_TEST_F(ProfileMenuViewSignoutTest, OpenLogoutTab) {
   // Start from a page that is not the NTP.
   ASSERT_TRUE(
       ui_test_utils::NavigateToURL(browser(), GURL("https://www.google.com")));
@@ -468,18 +446,13 @@ IN_PROC_BROWSER_TEST_P(
   EXPECT_EQ(2, tab_strip->count());
   EXPECT_EQ(1, tab_strip->active_index());
   content::WebContents* logout_page = tab_strip->GetActiveWebContents();
-  EXPECT_EQ(logout_page->GetURL(), GetExpectedLogoutURL(uno_enabled()));
-  if (uno_enabled()) {
-    EXPECT_FALSE(IdentityManagerFactory::GetForProfile(browser()->profile())
-                     ->HasPrimaryAccount(signin::ConsentLevel::kSignin));
-  }
+  EXPECT_EQ(GaiaUrls::GetInstance()->service_logout_url(),
+            logout_page->GetURL());
 }
 
 // Checks that the NTP is navigated to the logout URL, instead of creating
 // another tab.
-IN_PROC_BROWSER_TEST_P(
-    ProfileMenuViewSignoutTestWithExplicitBrowserSigninFeature,
-    SignoutFromNTP) {
+IN_PROC_BROWSER_TEST_F(ProfileMenuViewSignoutTest, SignoutFromNTP) {
   // Start from the NTP.
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(),
                                            GURL(chrome::kChromeUINewTabURL)));
@@ -493,49 +466,25 @@ IN_PROC_BROWSER_TEST_P(
   ASSERT_TRUE(Signout());
   EXPECT_EQ(1, tab_strip->count());
   content::WebContents* logout_page = tab_strip->GetActiveWebContents();
-  EXPECT_EQ(logout_page->GetURL(), GetExpectedLogoutURL(uno_enabled()));
-  if (uno_enabled()) {
-    EXPECT_FALSE(IdentityManagerFactory::GetForProfile(browser()->profile())
-                     ->HasPrimaryAccount(signin::ConsentLevel::kSignin));
-  }
+  EXPECT_EQ(GaiaUrls::GetInstance()->service_logout_url(),
+            logout_page->GetURL());
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    ,
-    ProfileMenuViewSignoutTestWithExplicitBrowserSigninFeature,
-    testing::Bool(),
-    [](const ::testing::TestParamInfo<bool>& info) {
-      return info.param ? "UnoEnabled" : "UnoDisabled";
-    });
 
 // Signout test that handles logout requests. The parameter indicates whether
 // an error page is generated for the logout request.
-// Params of the ProfileMenuViewSignoutTestWithNetwork:
-// -- bool uno_enabled;
-// -- bool has_network_error;
 class ProfileMenuViewSignoutTestWithNetwork
     : public ProfileMenuViewSignoutTest,
-      public testing::WithParamInterface<std::tuple<bool, bool>> {
+      public testing::WithParamInterface<bool> {
  public:
   ProfileMenuViewSignoutTestWithNetwork()
       : https_server_(net::EmbeddedTestServer::TYPE_HTTPS) {
     https_server_.RegisterRequestHandler(base::BindRepeating(
         &ProfileMenuViewSignoutTestWithNetwork::HandleSignoutURL,
         has_network_error()));
-
-    if (uno_enabled()) {
-      feature_list_.InitWithFeatures(
-          {switches::kUnoDesktop, switches::kExplicitBrowserSigninUIOnDesktop},
-          {});
-    } else {
-      feature_list_.InitWithFeatures(
-          {},
-          {switches::kUnoDesktop, switches::kExplicitBrowserSigninUIOnDesktop});
-    }
   }
 
-  bool uno_enabled() const { return std::get<0>(GetParam()); }
-  bool has_network_error() const { return std::get<1>(GetParam()); }
+  // Simple wrapper around GetParam(), with a better name.
+  bool has_network_error() const { return GetParam(); }
 
   // Handles logout requests, either with success or an error page.
   static std::unique_ptr<net::test_server::HttpResponse> HandleSignoutURL(
@@ -562,16 +511,6 @@ class ProfileMenuViewSignoutTestWithNetwork
                ->GetPageType() == content::PAGE_TYPE_ERROR;
   }
 
-  static std::string GenerateTestSuffix(
-      const testing::TestParamInfo<std::tuple<bool, bool>>& info) {
-    std::string suffix;
-    suffix.append("Uno");
-    suffix.append(std::get<0>(info.param) ? "Enabled" : "Disabled");
-    suffix.append("AndNetwork");
-    suffix.append(std::get<1>(info.param) ? "Off" : "On");
-    return suffix;
-  }
-
   // InProcessBrowserTest:
   void SetUp() override {
     ASSERT_TRUE(https_server_.InitializeAndListen());
@@ -591,7 +530,6 @@ class ProfileMenuViewSignoutTestWithNetwork
 
  private:
   net::EmbeddedTestServer https_server_;
-  base::test::ScopedFeatureList feature_list_;
 };
 
 // Tests that the local signout is performed (tokens are deleted) only if the
@@ -602,7 +540,8 @@ IN_PROC_BROWSER_TEST_P(ProfileMenuViewSignoutTestWithNetwork, Signout) {
   ASSERT_TRUE(Signout());
   TabStripModel* tab_strip = browser()->tab_strip_model();
   content::WebContents* logout_page = tab_strip->GetActiveWebContents();
-  EXPECT_EQ(logout_page->GetURL(), GetExpectedLogoutURL(uno_enabled()));
+  EXPECT_EQ(GaiaUrls::GetInstance()->service_logout_url(),
+            logout_page->GetURL());
 
   // Wait until navigation is finished.
   content::TestNavigationObserver navigation_observer(logout_page);
@@ -615,17 +554,11 @@ IN_PROC_BROWSER_TEST_P(ProfileMenuViewSignoutTestWithNetwork, Signout) {
       IdentityManagerFactory::GetForProfile(browser()->profile());
   EXPECT_EQ(identity_manager->HasAccountWithRefreshToken(account_id()),
             !has_network_error());
-  if (uno_enabled()) {
-    EXPECT_FALSE(
-        identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
-  }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    ,
-    ProfileMenuViewSignoutTestWithNetwork,
-    testing::Combine(testing::Bool(), testing::Bool()),
-    &ProfileMenuViewSignoutTestWithNetwork::GenerateTestSuffix);
+INSTANTIATE_TEST_SUITE_P(NetworkOnOrOff,
+                         ProfileMenuViewSignoutTestWithNetwork,
+                         ::testing::Bool());
 #endif  // !BUILDFLAG(IS_CHROMEOS_LACROS)
 
 // Test suite that sets up a primary sync account in an error state and
@@ -662,7 +595,7 @@ class ProfileMenuViewSyncErrorButtonTest : public ProfileMenuViewTestBase,
     signin::IdentityManager* identity_manager =
         IdentityManagerFactory::GetForProfile(browser()->profile());
     account_info_ = signin::MakePrimaryAccountAvailable(
-        identity_manager, kTestEmail, signin::ConsentLevel::kSync);
+        identity_manager, "foo@example.com", signin::ConsentLevel::kSync);
     signin::SetInvalidRefreshTokenForPrimaryAccount(identity_manager);
     ASSERT_TRUE(
         identity_manager->HasAccountWithRefreshTokenInPersistentErrorState(
@@ -705,9 +638,10 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewSyncErrorButtonTest, OpenReauthTab) {
   EXPECT_EQ(2, tab_strip->count());
   EXPECT_EQ(1, tab_strip->active_index());
   content::WebContents* reauth_page = tab_strip->GetActiveWebContents();
-  EXPECT_THAT(
-      reauth_page->GetURL().spec(),
-      testing::StartsWith(GaiaUrls::GetInstance()->add_account_url().spec()));
+  EXPECT_TRUE(
+      base::StartsWith(reauth_page->GetURL().spec(),
+                       GaiaUrls::GetInstance()->add_account_url().spec(),
+                       base::CompareCase::INSENSITIVE_ASCII));
 }
 #endif
 
@@ -726,6 +660,7 @@ class ProfileMenuViewSigninErrorButtonTest : public ProfileMenuViewTestBase,
                 (Profile * profile,
                  signin_metrics::AccessPoint access_point,
                  signin_metrics::PromoAction promo_action,
+                 signin_metrics::Reason signin_reason,
                  const CoreAccountId& account_id,
                  TurnSyncOnHelper::SigninAbortedMode signin_aborted_mode),
                 ());
@@ -746,7 +681,7 @@ class ProfileMenuViewSigninErrorButtonTest : public ProfileMenuViewTestBase,
     signin::IdentityManager* identity_manager =
         IdentityManagerFactory::GetForProfile(browser()->profile());
     account_info_ = signin::MakePrimaryAccountAvailable(
-        identity_manager, kTestEmail, signin::ConsentLevel::kSignin);
+        identity_manager, "foo@example.com", signin::ConsentLevel::kSignin);
     signin::UpdatePersistentErrorOfRefreshTokenForAccount(
         identity_manager, account_info_.account_id,
         GoogleServiceAuthError::FromInvalidGaiaCredentialsReason(
@@ -763,9 +698,7 @@ class ProfileMenuViewSigninErrorButtonTest : public ProfileMenuViewTestBase,
     // but this is tested in ProfileMenuClickTest.
     base::HistogramTester histogram_tester;
     static_cast<ProfileMenuView*>(profile_menu_view())
-        ->OnSigninButtonClicked(
-            account_info(),
-            ProfileMenuViewBase::ActionableItem::kSigninAccountButton);
+        ->OnSigninAccountButtonClicked(account_info());
     histogram_tester.ExpectUniqueSample(
         "Profile.Menu.ClickedActionableItem",
         ProfileMenuViewBase::ActionableItem::kSigninAccountButton,
@@ -800,20 +733,11 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewSigninErrorButtonTest, OpenReauthDialog) {
           browser()->profile(),
           signin_metrics::AccessPoint::ACCESS_POINT_AVATAR_BUBBLE_SIGN_IN,
           signin_metrics::PromoAction::PROMO_ACTION_WITH_DEFAULT,
-          account_info().account_id,
+          signin_metrics::Reason::kReauthentication, account_info().account_id,
           TurnSyncOnHelper::SigninAbortedMode::KEEP_ACCOUNT))
       .WillOnce([&loop]() { loop.Quit(); });
 
   // Complete reauth.
-  // Fake that this account was successfully reauthenticated via the UI.
-  crosapi::AccountManagerMojoService* mojo_service =
-      MaybeGetAshAccountManagerMojoServiceForTests();
-  DCHECK(mojo_service);
-  account_manager::AccountKey kAccountKey{account_info_.gaia,
-                                          account_manager::AccountType::kGaia};
-  mojo_service->OnAccountUpsertionFinishedForTesting(
-      account_manager::AccountUpsertionResult::FromAccount(
-          {kAccountKey, account_info_.email}));
   account_manager_ui->CloseDialog();
 
   // Wait until the Sync confirmation is shown.
@@ -865,6 +789,10 @@ class ProfileMenuClickTest : public SyncTest,
   void SetUpInProcessBrowserTestFixture() override {
     test_signin_client_subscription_ =
         secondary_account_helper::SetUpSigninClient(&test_url_loader_factory_);
+
+    // Needed by ProfileMenuClickTest_PasswordManagerWebApp test.
+    feature_list_.InitAndEnableFeature(
+        password_manager::features::kPasswordManagerRedesign);
   }
 
   // SyncTest:
@@ -901,7 +829,7 @@ class ProfileMenuClickTest : public SyncTest,
   }
 
   void EnableSync() {
-    ASSERT_TRUE(sync_harness()->SetupSync());
+    sync_harness()->SetupSync();
     ASSERT_TRUE(
         identity_manager()->HasPrimaryAccount(signin::ConsentLevel::kSync));
     ASSERT_TRUE(sync_service()->IsSyncFeatureEnabled());
@@ -949,11 +877,11 @@ class ProfileMenuClickTest : public SyncTest,
   base::HistogramTester histogram_tester_;
   std::unique_ptr<SyncServiceImplHarness> sync_harness_;
   raw_ptr<Profile, DanglingUntriaged> profile_ = nullptr;
+  base::test::ScopedFeatureList feature_list_;
 };
 
-#define PROFILE_MENU_CLICK_TEST_F(FixtureClass, actionable_item_list,     \
-                                  test_case_name)                         \
-  class test_case_name : public FixtureClass {                            \
+#define PROFILE_MENU_CLICK_TEST(actionable_item_list, test_case_name)     \
+  class test_case_name : public ProfileMenuClickTest {                    \
    public:                                                                \
     test_case_name() = default;                                           \
     test_case_name(const test_case_name&) = delete;                       \
@@ -970,12 +898,6 @@ class ProfileMenuClickTest : public SyncTest,
       ::testing::Range(size_t(0), std::size(actionable_item_list)));      \
                                                                           \
   IN_PROC_BROWSER_TEST_P(test_case_name, test_case_name)
-
-// Specialized variant of `PROFILE_MENU_CLICK_TEST_F` using
-// `ProfileMenuClickTest` as `FixtureClass`.
-#define PROFILE_MENU_CLICK_TEST(actionable_item_list, test_case_name)   \
-  PROFILE_MENU_CLICK_TEST_F(ProfileMenuClickTest, actionable_item_list, \
-                            test_case_name)
 
 // List of actionable items in the correct order as they appear in the menu.
 // If a new button is added to the menu, it should also be added to this list.
@@ -1069,8 +991,7 @@ constexpr ProfileMenuViewBase::ActionableItem kActionableItems_SyncError[] = {
 
 PROFILE_MENU_CLICK_TEST(kActionableItems_SyncError,
                         ProfileMenuClickTest_SyncError) {
-  ASSERT_TRUE(
-      sync_harness()->SignInPrimaryAccount(signin::ConsentLevel::kSync));
+  ASSERT_TRUE(sync_harness()->SignInPrimaryAccount());
   // Check that the setup was successful.
   ASSERT_TRUE(
       identity_manager()->HasPrimaryAccount(signin::ConsentLevel::kSync));
@@ -1333,33 +1254,6 @@ PROFILE_MENU_CLICK_TEST(kActionableItems_GuestProfile,
   RunTest();
 }
 
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-
-class ProfileMenuClickTestGuestSession : public ProfileMenuClickTest {
- public:
-  // Enable the guest session.
-  void CreatedBrowserMainParts(
-      content::BrowserMainParts* browser_main_parts) override {
-    crosapi::mojom::BrowserInitParamsPtr init_params =
-        chromeos::BrowserInitParams::GetForTests()->Clone();
-    init_params->session_type = crosapi::mojom::SessionType::kGuestSession;
-    chromeos::BrowserInitParams::SetInitParamsForTests(std::move(init_params));
-    ProfileMenuClickTest::CreatedBrowserMainParts(browser_main_parts);
-  }
-};
-
-// This tests the device guest session, which is not the same as the browser
-// guest mode.
-PROFILE_MENU_CLICK_TEST_F(ProfileMenuClickTestGuestSession,
-                          kActionableItems_GuestProfile,
-                          ProfileMenuClickTest_GuestSession) {
-  SetTargetBrowser(browser());
-
-  RunTest();
-}
-
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-
 #if !BUILDFLAG(IS_CHROMEOS)
 // List of actionable items in the correct order as they appear in the menu.
 // If a new button is added to the menu, it should also be added to this list.
@@ -1374,7 +1268,7 @@ PROFILE_MENU_CLICK_TEST(kActionableItems_PasswordManagerWebApp,
 
   // Install and launch an application for the first profile.
   WebAppFrameToolbarTestHelper toolbar_helper;
-  webapps::AppId app_id = toolbar_helper.InstallAndLaunchCustomWebApp(
+  web_app::AppId app_id = toolbar_helper.InstallAndLaunchCustomWebApp(
       browser(), CreatePasswordManagerWebAppInfo(),
       GURL(kPasswordManagerPWAUrl));
   SetTargetBrowser(toolbar_helper.app_browser());
@@ -1384,13 +1278,19 @@ PROFILE_MENU_CLICK_TEST(kActionableItems_PasswordManagerWebApp,
 class ProfileMenuViewWebAppTest : public ProfileMenuViewTestBase,
                                   public web_app::WebAppControllerBrowserTest {
  protected:
-  void SetUp() override { web_app::WebAppControllerBrowserTest::SetUp(); }
+  void SetUp() override {
+    // Enable the installable PasswordManager WebUI.
+    feature_list_.InitAndEnableFeature(
+        password_manager::features::kPasswordManagerRedesign);
+    web_app::WebAppControllerBrowserTest::SetUp();
+  }
 
   WebAppFrameToolbarTestHelper* toolbar_helper() {
     return &web_app_frame_toolbar_helper_;
   }
 
  private:
+  base::test::ScopedFeatureList feature_list_;
   WebAppFrameToolbarTestHelper web_app_frame_toolbar_helper_;
 };
 
@@ -1402,7 +1302,7 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewWebAppTest, SelectingOtherProfile) {
   ASSERT_FALSE(chrome::FindBrowserWithProfile(second_profile));
 
   // Install and launch an application for the first profile.
-  webapps::AppId app_id = toolbar_helper()->InstallAndLaunchCustomWebApp(
+  web_app::AppId app_id = toolbar_helper()->InstallAndLaunchCustomWebApp(
       browser(), CreatePasswordManagerWebAppInfo(),
       GURL(kPasswordManagerPWAUrl));
   SetTargetBrowser(toolbar_helper()->app_browser());

@@ -4,6 +4,8 @@
 
 package org.chromium.chrome.browser.keyboard_accessory.all_passwords_bottom_sheet;
 
+import static org.chromium.chrome.browser.password_manager.PasswordManagerHelper.usesUnifiedPasswordManagerBranding;
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -35,25 +37,24 @@ class AllPasswordsBottomSheetView implements BottomSheetContent {
     private final RecyclerView mSheetItemListView;
     private final LinearLayout mContentView;
 
-    private final BottomSheetObserver mBottomSheetObserver =
-            new EmptyBottomSheetObserver() {
-                @Override
-                public void onSheetClosed(@BottomSheetController.StateChangeReason int reason) {
-                    super.onSheetClosed(reason);
-                    assert mDismissHandler != null;
-                    mDismissHandler.onResult(reason);
-                    mBottomSheetController.removeObserver(mBottomSheetObserver);
-                }
+    private final BottomSheetObserver mBottomSheetObserver = new EmptyBottomSheetObserver() {
+        @Override
+        public void onSheetClosed(@BottomSheetController.StateChangeReason int reason) {
+            super.onSheetClosed(reason);
+            assert mDismissHandler != null;
+            mDismissHandler.onResult(reason);
+            mBottomSheetController.removeObserver(mBottomSheetObserver);
+        }
 
-                @Override
-                public void onSheetStateChanged(int newState, int reason) {
-                    super.onSheetStateChanged(newState, reason);
-                    if (newState != BottomSheetController.SheetState.HIDDEN) return;
-                    // This is a fail-safe for cases where onSheetClosed isn't triggered.
-                    mDismissHandler.onResult(BottomSheetController.StateChangeReason.NONE);
-                    mBottomSheetController.removeObserver(mBottomSheetObserver);
-                }
-            };
+        @Override
+        public void onSheetStateChanged(int newState, int reason) {
+            super.onSheetStateChanged(newState, reason);
+            if (newState != BottomSheetController.SheetState.HIDDEN) return;
+            // This is a fail-safe for cases where onSheetClosed isn't triggered.
+            mDismissHandler.onResult(BottomSheetController.StateChangeReason.NONE);
+            mBottomSheetController.removeObserver(mBottomSheetObserver);
+        }
+    };
 
     /**
      * Constructs an AllPasswordsBottomSheetView which creates, modifies, and shows the bottom
@@ -64,15 +65,17 @@ class AllPasswordsBottomSheetView implements BottomSheetContent {
     public AllPasswordsBottomSheetView(
             Context context, BottomSheetController bottomSheetController) {
         mBottomSheetController = bottomSheetController;
-        mContentView =
-                (LinearLayout)
-                        LayoutInflater.from(context)
-                                .inflate(R.layout.all_passwords_bottom_sheet, null);
+        mContentView = (LinearLayout) LayoutInflater.from(context).inflate(
+                R.layout.all_passwords_bottom_sheet, null);
         mSheetItemListView = mContentView.findViewById(R.id.sheet_item_list);
-        mSheetItemListView.setLayoutManager(
-                new LinearLayoutManager(
-                        mSheetItemListView.getContext(), LinearLayoutManager.VERTICAL, false));
+        mSheetItemListView.setLayoutManager(new LinearLayoutManager(
+                mSheetItemListView.getContext(), LinearLayoutManager.VERTICAL, false));
         mSheetItemListView.setItemAnimator(null);
+        if (usesUnifiedPasswordManagerBranding()) {
+            // TODO(crbug.com/1217070): update the layout xml once feature is rolled out
+            final TextView titleTextView = mContentView.findViewById(R.id.sheet_title);
+            titleTextView.setText(R.string.all_passwords_bottom_sheet_title_gpm);
+        }
     }
 
     /**
@@ -103,6 +106,12 @@ class AllPasswordsBottomSheetView implements BottomSheetContent {
     void setWarning(CharSequence warningMessage) {
         final TextView warningTextView = mContentView.findViewById(R.id.sheet_warning);
         warningTextView.setText(warningMessage);
+        if (usesUnifiedPasswordManagerBranding()) {
+            // TODO(crbug.com/1217070): remove from the layout xml once feature roll out
+            final TextView warningSecondTextView =
+                    mContentView.findViewById(R.id.sheet_warning_second);
+            warningSecondTextView.setVisibility(View.GONE);
+        }
     }
 
     void setSheetItemListAdapter(RecyclerView.Adapter adapter) {
@@ -111,25 +120,23 @@ class AllPasswordsBottomSheetView implements BottomSheetContent {
 
     void setSearchQueryChangeHandler(Callback<String> callback) {
         SearchView searchView = getSearchView();
-        searchView.setOnQueryTextListener(
-                new OnQueryTextListener() {
-                    @Override
-                    public boolean onQueryTextSubmit(String s) {
-                        return false;
-                    }
+        searchView.setOnQueryTextListener(new OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String s) {
+                return false;
+            }
 
-                    @Override
-                    public boolean onQueryTextChange(String newString) {
-                        callback.onResult(newString);
-                        return true;
-                    }
-                });
+            @Override
+            public boolean onQueryTextChange(String newString) {
+                callback.onResult(newString);
+                return true;
+            }
+        });
     }
 
     public SearchView getSearchView() {
         return mContentView.findViewById(R.id.all_passwords_search_view);
     }
-
     @Override
     public View getContentView() {
         return mContentView;

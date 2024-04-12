@@ -10,10 +10,9 @@ bool NoKeyboardLayoutEngine::CanSetCurrentLayout() const {
   return false;
 }
 
-void NoKeyboardLayoutEngine::SetCurrentLayoutByName(
-    const std::string& layout_name,
-    base::OnceCallback<void(bool)> callback) {
-  std::move(callback).Run(false);
+bool NoKeyboardLayoutEngine::SetCurrentLayoutByName(
+    const std::string& layout_name) {
+  return false;
 }
 
 bool NoKeyboardLayoutEngine::SetCurrentLayoutFromBuffer(const char* keymap_str,

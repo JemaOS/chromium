@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "base/functional/bind.h"
-#include "base/memory/weak_ptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/task/single_thread_task_runner.h"
@@ -91,8 +90,9 @@ AndroidDeviceManager::DeviceInfo ServiceDescriptionToDeviceInfo(
 // different threads in undefined order.
 //
 // TODO(crbug.com/963216): Consolidate DNS-SD implementations for Cast.
-class CastDeviceProvider::DeviceListerDelegate final
-    : public ServiceDiscoveryDeviceLister::Delegate {
+class CastDeviceProvider::DeviceListerDelegate
+    : public ServiceDiscoveryDeviceLister::Delegate,
+      public base::SupportsWeakPtr<DeviceListerDelegate> {
  public:
   DeviceListerDelegate(base::WeakPtr<CastDeviceProvider> provider,
                        scoped_refptr<base::SingleThreadTaskRunner> runner)
@@ -136,10 +136,6 @@ class CastDeviceProvider::DeviceListerDelegate final
                                      provider_, service_type));
   }
 
-  base::WeakPtr<DeviceListerDelegate> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
  private:
   // The device provider to notify of device changes.
   base::WeakPtr<CastDeviceProvider> provider_;
@@ -148,7 +144,6 @@ class CastDeviceProvider::DeviceListerDelegate final
   scoped_refptr<base::SingleThreadTaskRunner> runner_;
   scoped_refptr<ServiceDiscoverySharedClient> service_discovery_client_;
   std::unique_ptr<ServiceDiscoveryDeviceLister> device_lister_;
-  base::WeakPtrFactory<DeviceListerDelegate> weak_ptr_factory_{this};
 };
 
 CastDeviceProvider::CastDeviceProvider() {}

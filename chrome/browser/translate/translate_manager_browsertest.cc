@@ -8,7 +8,6 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/test/scoped_logging_settings.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/language/accept_languages_service_factory.h"
@@ -28,11 +27,8 @@
 #include "components/translate/core/common/language_detection_details.h"
 #include "components/translate/core/common/translate_switches.h"
 #include "components/translate/core/common/translate_util.h"
-#include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
-#include "content/public/test/back_forward_cache_util.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/prerender_test_util.h"
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/http_request.h"
@@ -119,6 +115,31 @@ static const char kTestScriptAvailableTimeout[] =
     "})();"
     "cr.googleTranslate.onTranslateElementLoad();";
 
+static const char kTestScriptTranslateTimeout[] =
+    "var google = {};"
+    "google.translate = (function() {"
+    "  return {"
+    "    TranslateService: function() {"
+    "      return {"
+    "        isAvailable : function() {"
+    "          return true;"
+    "        },"
+    "        restore : function() {"
+    "          return;"
+    "        },"
+    "        getDetectedLanguage : function() {"
+    "          return \"fr\";"
+    "        },"
+    "        translatePage : function(sourceLang, targetLang,"
+    "                                 onTranslateProgress) {"
+    "          onTranslateProgress(33, false, 0);"
+    "        }"
+    "      };"
+    "    }"
+    "  };"
+    "})();"
+    "cr.googleTranslate.onTranslateElementLoad();";
+
 static const char kTestScriptUnexpectedScriptError[] =
     "var google = {};"
     "google.translate = (function() {"
@@ -198,10 +219,13 @@ static const char kTestScriptLoadError[] =
 
 static const char kTranslateHrefHintStatusHistogram[] =
     "Translate.HrefHint.Status";
+static const char kTranslateHrefHintPrefsFilterStatusHistogram[] =
+    "Translate.HrefHint.PrefsFilterStatus";
 
 class TranslateManagerBrowserTest : public InProcessBrowserTest {
  public:
   TranslateManagerBrowserTest() {
+    scoped_feature_list_.InitAndDisableFeature(translate::kTranslateSubFrames);
     error_subscription_ = TranslateManager::RegisterTranslateErrorCallback(
         base::BindRepeating(&TranslateManagerBrowserTest::OnTranslateError,
                             base::Unretained(this)));
@@ -290,7 +314,7 @@ class TranslateManagerBrowserTest : public InProcessBrowserTest {
 
     const std::string click_link_js =
         "(function() { document.getElementById('test').click(); })();";
-    ASSERT_TRUE(content::ExecJs(web_contents, click_link_js));
+    ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
 
     // Detect language on the new page
     // TODO(crbug.com/1258185): Migrate to better mechanism for testing around
@@ -343,6 +367,7 @@ class TranslateManagerBrowserTest : public InProcessBrowserTest {
   void SetTranslateScript(const std::string& script) { script_ = script; }
 
  private:
+  base::test::ScopedFeatureList scoped_feature_list_;
   TranslateErrors error_type_;
 
   base::CallbackListSubscription error_subscription_;
@@ -438,26 +463,17 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest, PageTranslationSuccess) {
 
   // Translate the page through TranslateManager.
   TranslateManager* manager = chrome_translate_client->GetTranslateManager();
-
-  LanguageState* language_state = manager->GetLanguageState();
-  EXPECT_EQ(TranslationType::kUninitialized,
-            language_state->translation_type());
-
   manager->TranslatePage(
-      chrome_translate_client->GetLanguageState().source_language(), "en", true,
-      TranslationType::kAutomaticTranslationByPref);
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
 
-  EXPECT_EQ(TranslationType::kAutomaticTranslationByPref,
-            language_state->translation_type());
   WaitUntilPageTranslated();
 
   EXPECT_FALSE(chrome_translate_client->GetLanguageState().translation_error());
   EXPECT_EQ(TranslateErrors::NONE, GetPageTranslatedResult());
-  EXPECT_EQ(TranslationType::kUninitialized,
-            language_state->translation_type());
 
   histograms.ExpectTotalCount("Translate.LanguageDetection.ContentLength", 1);
-  histograms.ExpectBucketCount("Translate.LanguageDetection.ContentLength", 149,
+  histograms.ExpectBucketCount("Translate.LanguageDetection.ContentLength", 148,
                                1);
   histograms.ExpectTotalCount("Translate.LanguageDeterminedDuration", 1);
 }
@@ -522,6 +538,11 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest, HrefTranslateSuccess) {
       static_cast<int>(
           TranslateBrowserMetrics::HrefTranslateStatus::kAutoTranslated),
       1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kNotInBlocklists),
+      1);
 }
 
 // Test that hrefTranslate doesn't auto-translate if the originator of the
@@ -553,7 +574,7 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest,
 
   const std::string click_link_js =
       "(function() { document.getElementById('test').click(); })();";
-  ASSERT_TRUE(content::ExecJs(web_contents, click_link_js));
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
 
   // Detect language on the new page.
   // TODO(crbug.com/1258185): Migrate to better mechanism for testing around
@@ -567,6 +588,7 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest,
   EXPECT_EQ("", chrome_translate_client->GetLanguageState().AutoTranslateTo());
 
   histograms.ExpectTotalCount(kTranslateHrefHintStatusHistogram, 0);
+  histograms.ExpectTotalCount(kTranslateHrefHintPrefsFilterStatusHistogram, 0);
 }
 
 // Test that hrefTranslate with an unsupported language doesn't trigger.
@@ -601,7 +623,7 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest, HrefTranslateUnsupported) {
   const std::string click_link_js =
       "(function() { "
       "document.getElementById('test-unsupported-language').click(); })();";
-  ASSERT_TRUE(content::ExecJs(web_contents, click_link_js));
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
 
   // Detect language on the new page.
   // TODO(crbug.com/1258185): Migrate to better mechanism for testing around
@@ -618,6 +640,11 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest, HrefTranslateUnsupported) {
       kTranslateHrefHintStatusHistogram,
       static_cast<int>(TranslateBrowserMetrics::HrefTranslateStatus::
                            kNoUiShownNotAutoTranslated),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kNotInBlocklists),
       1);
 }
 
@@ -651,7 +678,7 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest, HrefTranslateConflict) {
 
   const std::string click_link_js =
       "(function() { document.getElementById('test-conflict').click(); })();";
-  ASSERT_TRUE(content::ExecJs(web_contents, click_link_js));
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
 
   // Detect language on the new page.
   WaitUntilLanguageDetermined(chrome_translate_client);
@@ -667,6 +694,11 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest, HrefTranslateConflict) {
       kTranslateHrefHintStatusHistogram,
       static_cast<int>(
           TranslateBrowserMetrics::HrefTranslateStatus::kAutoTranslated),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kNotInBlocklists),
       1);
 }
 
@@ -700,7 +732,7 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest, HrefTranslateNoHrefLang) {
   const std::string click_link_js =
       "(function() { document.getElementById('test-no-hrefLang').click(); "
       "})();";
-  ASSERT_TRUE(content::ExecJs(web_contents, click_link_js));
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
 
   // Detect language on the new page
   WaitUntilLanguageDetermined(chrome_translate_client);
@@ -716,6 +748,11 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest, HrefTranslateNoHrefLang) {
       kTranslateHrefHintStatusHistogram,
       static_cast<int>(
           TranslateBrowserMetrics::HrefTranslateStatus::kAutoTranslated),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kNotInBlocklists),
       1);
 }
 
@@ -743,6 +780,11 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest,
       kTranslateHrefHintStatusHistogram,
       static_cast<int>(TranslateBrowserMetrics::HrefTranslateStatus::
                            kAutoTranslatedDifferentTargetLanguage),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kNotInBlocklists),
       1);
 }
 
@@ -774,6 +816,11 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest,
       static_cast<int>(
           TranslateBrowserMetrics::HrefTranslateStatus::kAutoTranslated),
       1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kLanguageInBlocklist),
+      1);
 }
 
 // Test that hrefTranslate doesn't translate if the website is in the user's
@@ -793,6 +840,11 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest, HrefTranslateSiteBlocked) {
       kTranslateHrefHintStatusHistogram,
       static_cast<int>(TranslateBrowserMetrics::HrefTranslateStatus::
                            kNoUiShownNotAutoTranslated),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kSiteInBlocklist),
       1);
 }
 
@@ -816,6 +868,11 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest,
       kTranslateHrefHintStatusHistogram,
       static_cast<int>(TranslateBrowserMetrics::HrefTranslateStatus::
                            kNoUiShownNotAutoTranslated),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kBothLanguageAndSiteInBlocklist),
       1);
 }
 
@@ -1096,7 +1153,7 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest,
 
   const std::string click_link_js =
       "(function() { document.getElementById('test').click(); })();";
-  ASSERT_TRUE(content::ExecJs(web_contents, click_link_js));
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
 
   // Detect language on the new page
   WaitUntilLanguageDetermined(chrome_translate_client);
@@ -1109,13 +1166,902 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest,
             chrome_translate_client->GetLanguageState().current_language());
 }
 
-class TranslateManagerPrerenderBrowserTest
+// Test that iframes not translated.
+IN_PROC_BROWSER_TEST_F(TranslateManagerBrowserTest,
+                       TranslateIframeNotTranslated) {
+  SetTranslateScript(kTestValidScript);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  base::HistogramTester histograms;
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/translate/fr_iframe_test.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_FALSE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::NONE, GetPageTranslatedResult());
+
+  histograms.ExpectTotalCount("Translate.TranslateFrameCount", 0);
+  histograms.ExpectTotalCount("Translate.LanguageDetection.ContentLength", 1);
+  EXPECT_TRUE(
+      histograms.GetTotalSum("Translate.LanguageDetection.ContentLength") > 0);
+}
+
+class TranslateManagerWithSubFrameSupportBrowserTest
     : public TranslateManagerBrowserTest {
+ public:
+  TranslateManagerWithSubFrameSupportBrowserTest(
+      const TranslateManagerWithSubFrameSupportBrowserTest&) = delete;
+  TranslateManagerWithSubFrameSupportBrowserTest& operator=(
+      const TranslateManagerWithSubFrameSupportBrowserTest&) = delete;
+
+ protected:
+  TranslateManagerWithSubFrameSupportBrowserTest() {
+    scoped_feature_list_.InitAndEnableFeature(translate::kTranslateSubFrames);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+// TODO(crbug/1258234): All subframe translation tests are disabled now that
+// CLD3 is no longer used. Re-enable if subframe translation is migrated to the
+// new detection mechanism.
+
+// Tests that the CLD (Compact Language Detection) works properly.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageLanguageDetection) {
+  // Open a new tab with a page in English.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/english_page.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("en",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  ResetObserver();
+  // Now navigate to a page in French.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL(embedded_test_server()->GetURL("/french_page.html"))));
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+}
+
+// Tests that the language detection / HTML attribute override works correctly.
+// For languages in the always-translate list, the detected language should
+// override the HTML attribute. For all other languages, the HTML attribute
+// should be used.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageLanguageDetectionConflict) {
+  // Open a new tab with a page in French with incorrect HTML language
+  // attribute specified. The language attribute should be overridden by the
+  // language detection.
+  ASSERT_TRUE(AddTabAtIndex(
+      0,
+      GURL(embedded_test_server()->GetURL("/french_page_lang_conflict.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("de",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Open a new tab with a page in Korean with incorrect HTML language
+  // attribute specified. The language attribute should not be overridden by the
+  // language detection.
+  ASSERT_TRUE(AddTabAtIndex(
+      0,
+      GURL(embedded_test_server()->GetURL("/korean_page_lang_conflict.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("en",
+            chrome_translate_client->GetLanguageState().source_language());
+}
+
+// Test that the translation was successful.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageTranslationSuccess) {
+  base::HistogramTester histograms;
+  SetTranslateScript(kTestValidScript);
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/french_page.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_FALSE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::NONE, GetPageTranslatedResult());
+  histograms.ExpectTotalCount("Translate.LanguageDetection.ContentLength", 1);
+  histograms.ExpectBucketCount("Translate.LanguageDetection.ContentLength", 148,
+                               1);
+  histograms.ExpectTotalCount("Translate.LanguageDeterminedDuration", 1);
+}
+
+// Test that hrefTranslate is propagating properly
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_HrefTranslateSuccess) {
+  base::HistogramTester histograms;
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+  chrome_translate_client->GetTranslateManager()->SetIgnoreMissingKeyForTesting(
+      true);
+  SetTranslateScript(kTestValidScript);
+
+  // Load a German page and detect it's language
+  ASSERT_TRUE(AddTabAtIndex(0,
+                            GURL(embedded_test_server()->GetURL(
+                                "www.google.com", "/href_translate_test.html")),
+                            ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("de",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Navigate to the French page by way of a link on the original page
+  ResetObserver();
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetWebContentsAt(0);
+
+  const std::string click_link_js =
+      "(function() { document.getElementById('test').click(); })();";
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
+
+  // Detect language on the new page
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // See that the page was translated automatically
+  WaitUntilPageTranslated();
+  EXPECT_EQ("ja",
+            chrome_translate_client->GetLanguageState().current_language());
+
+  // The target shouldn't be added to accept languages.
+  EXPECT_FALSE(
+      AcceptLanguagesServiceFactory::GetForBrowserContext(browser()->profile())
+          ->IsAcceptLanguage("ja"));
+
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintStatusHistogram,
+      static_cast<int>(
+          TranslateBrowserMetrics::HrefTranslateStatus::kAutoTranslated),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kNotInBlocklists),
+      1);
+}
+
+// Test that hrefTranslate doesn't auto-translate if the originator of the
+// navigation isn't a Google origin.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_HrefTranslateNotFromGoogle) {
+  base::HistogramTester histograms;
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+  chrome_translate_client->GetTranslateManager()->SetIgnoreMissingKeyForTesting(
+      true);
+  SetTranslateScript(kTestValidScript);
+
+  // Load a German page and detect it's language
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/href_translate_test.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Navigate to the French page by way of a link on the original page
+  ResetObserver();
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetWebContentsAt(0);
+
+  const std::string click_link_js =
+      "(function() { document.getElementById('test').click(); })();";
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
+
+  // Detect language on the new page
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  EXPECT_EQ("", chrome_translate_client->GetLanguageState().AutoTranslateTo());
+
+  histograms.ExpectTotalCount(kTranslateHrefHintStatusHistogram, 0);
+  histograms.ExpectTotalCount(kTranslateHrefHintPrefsFilterStatusHistogram, 0);
+}
+
+// Test that hrefTranslate with an unsupported language doesn't trigger.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_HrefTranslateUnsupported) {
+  base::HistogramTester histograms;
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+  chrome_translate_client->GetTranslateManager()->SetIgnoreMissingKeyForTesting(
+      true);
+  SetTranslateScript(kTestValidScript);
+
+  // Load a German page and detect it's language
+  ASSERT_TRUE(AddTabAtIndex(0,
+                            GURL(embedded_test_server()->GetURL(
+                                "www.google.com", "/href_translate_test.html")),
+                            ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("de",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Navigate to the French page by way of a link on the original page. This
+  // link has the hrefTranslate attribute set to "unsupported", so it shouldn't
+  // trigger translate.
+  ResetObserver();
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetWebContentsAt(0);
+
+  const std::string click_link_js =
+      "(function() { "
+      "document.getElementById('test-unsupported-language').click(); })();";
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
+
+  // Detect language on the new page
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  EXPECT_EQ("", chrome_translate_client->GetLanguageState().AutoTranslateTo());
+
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslateStatus::
+                           kNoUiShownNotAutoTranslated),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kNotInBlocklists),
+      1);
+}
+
+// Test an href translate link to a conflicted page
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_HrefTranslateConflict) {
+  base::HistogramTester histograms;
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+  chrome_translate_client->GetTranslateManager()->SetIgnoreMissingKeyForTesting(
+      true);
+  SetTranslateScript(kTestValidScript);
+
+  // Load a German page and detect it's language
+  ASSERT_TRUE(AddTabAtIndex(0,
+                            GURL(embedded_test_server()->GetURL(
+                                "www.google.com", "/href_translate_test.html")),
+                            ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Navigate to the French page that thinks its in English by way of a link on
+  // the original page
+  ResetObserver();
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetWebContentsAt(0);
+
+  const std::string click_link_js =
+      "(function() { document.getElementById('test-conflict').click(); })();";
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
+
+  // Detect language on the new page
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // See that the page was translated automatically
+  WaitUntilPageTranslated();
+  EXPECT_EQ("en",
+            chrome_translate_client->GetLanguageState().current_language());
+
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintStatusHistogram,
+      static_cast<int>(
+          TranslateBrowserMetrics::HrefTranslateStatus::kAutoTranslated),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kNotInBlocklists),
+      1);
+}
+
+// Test an href translate link without an href lang for the landing page
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_HrefTranslateNoHrefLang) {
+  base::HistogramTester histograms;
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+  chrome_translate_client->GetTranslateManager()->SetIgnoreMissingKeyForTesting(
+      true);
+  SetTranslateScript(kTestValidScript);
+
+  // Load a German page and detect it's language
+  ASSERT_TRUE(AddTabAtIndex(0,
+                            GURL(embedded_test_server()->GetURL(
+                                "www.google.com", "/href_translate_test.html")),
+                            ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("de",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Use a link with no hrefLang to navigate to a French page
+  ResetObserver();
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetWebContentsAt(0);
+
+  const std::string click_link_js =
+      "(function() { document.getElementById('test-no-hrefLang').click(); "
+      "})();";
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
+
+  // Detect language on the new page
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // See that the page was translated automatically
+  WaitUntilPageTranslated();
+  EXPECT_EQ("en",
+            chrome_translate_client->GetLanguageState().current_language());
+
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintStatusHistogram,
+      static_cast<int>(
+          TranslateBrowserMetrics::HrefTranslateStatus::kAutoTranslated),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kNotInBlocklists),
+      1);
+}
+
+// Test an href translate link that's overridden by the auto translate settings
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_HrefTranslateOverridenByAutoTranslate) {
+  base::HistogramTester histograms;
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+  chrome_translate_client->GetTranslateManager()->SetIgnoreMissingKeyForTesting(
+      true);
+  SetTranslateScript(kTestValidScript);
+
+  // Before browsing: set auto translate from French to Chinese.
+  chrome_translate_client->GetTranslatePrefs()
+      ->AddLanguagePairToAlwaysTranslateList("fr", "zh-CN");
+
+  // Load a German page and detect it's language
+  ASSERT_TRUE(AddTabAtIndex(0,
+                            GURL(embedded_test_server()->GetURL(
+                                "www.google.com", "/href_translate_test.html")),
+                            ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("de",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Navigate to the French page by way of a link on the original page
+  ResetObserver();
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetWebContentsAt(0);
+
+  const std::string click_link_js =
+      "(function() { document.getElementById('test').click(); })();";
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
+
+  // Detect language on the new page
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // See that the page was translated automatically
+  WaitUntilPageTranslated();
+  EXPECT_EQ("zh-CN",
+            chrome_translate_client->GetLanguageState().current_language());
+
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslateStatus::
+                           kAutoTranslatedDifferentTargetLanguage),
+      1);
+  histograms.ExpectUniqueSample(
+      kTranslateHrefHintPrefsFilterStatusHistogram,
+      static_cast<int>(TranslateBrowserMetrics::HrefTranslatePrefsFilterStatus::
+                           kNotInBlocklists),
+      1);
+}
+
+// Test if there was an error during translation.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageTranslationError) {
+  SetTranslateScript(kTestValidScript);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/french_page.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_TRUE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::TRANSLATION_ERROR, GetPageTranslatedResult());
+}
+
+// Test if there was an error during translate library initialization.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageTranslationInitializationError) {
+  SetTranslateScript(kTestScriptInitializationError);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/french_page.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_TRUE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::INITIALIZATION_ERROR, GetPageTranslatedResult());
+}
+
+// Test the checks translate lib never gets ready and throws timeout.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageTranslationAvailableTimeoutError) {
+  SetTranslateScript(kTestScriptAvailableTimeout);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/french_page.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_TRUE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::TRANSLATION_TIMEOUT, GetPageTranslatedResult());
+}
+
+// Test the checks translate operation status never resolves.
+// TODO(1064974): consolidate the common test logic here that is used between
+// several error type tests from different script inputs.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageTranslationTranslateTimeoutError) {
+  SetTranslateScript(kTestScriptTranslateTimeout);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/french_page.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_TRUE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::TRANSLATION_TIMEOUT, GetPageTranslatedResult());
+}
+
+// Test the checks if both source and target languages mentioned are identical.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageTranslationIdenticalLanguagesError) {
+  SetTranslateScript(kTestScriptIdenticalLanguages);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/french_page.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage("aa", "en", true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_TRUE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::IDENTICAL_LANGUAGES, GetPageTranslatedResult());
+}
+
+// Test if there was an error during translatePage script execution.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageTranslationUnexpectedScriptError) {
+  SetTranslateScript(kTestScriptUnexpectedScriptError);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/french_page.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_TRUE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::UNEXPECTED_SCRIPT_ERROR,
+            GetPageTranslatedResult());
+}
+
+// Test if securityOrigin mentioned in url is valid.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageTranslationBadOriginError) {
+  SetTranslateScript(kTestScriptBadOrigin);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/french_page.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_TRUE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::BAD_ORIGIN, GetPageTranslatedResult());
+}
+
+// Test if there was an error during script load.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PageTranslationScriptLoadError) {
+  SetTranslateScript(kTestScriptLoadError);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/french_page.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_TRUE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::SCRIPT_LOAD_ERROR, GetPageTranslatedResult());
+}
+
+// Test that session restore restores the translate infobar and other translate
+// settings.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_PRE_TranslateSessionRestore) {
+  SessionStartupPref pref(SessionStartupPref::LAST);
+  SessionStartupPref::SetStartupPref(browser()->profile(), pref);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  ResetObserver();
+
+  GURL french_url = ui_test_utils::GetTestUrl(
+      base::FilePath(), base::FilePath(FILE_PATH_LITERAL("french_page.html")));
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), french_url));
+
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+}
+
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_TranslateSessionRestore) {
+  // Make restored tab active to (on some platforms) initiate language
+  // detection.
+  browser()->tab_strip_model()->ActivateTabAt(
+      0, TabStripUserGestureDetails(
+             TabStripUserGestureDetails::GestureType::kOther));
+
+  content::WebContents* restored_web_contents =
+      browser()->tab_strip_model()->GetWebContentsAt(0);
+  ChromeTranslateClient* restored_translate_client =
+      ChromeTranslateClient::FromWebContents(restored_web_contents);
+  ResetObserver();
+  WaitUntilLanguageDetermined(restored_translate_client);
+  EXPECT_EQ("fr",
+            restored_translate_client->GetLanguageState().current_language());
+}
+
+// Test that hrefTranslate overrides manual translate
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_HrefTranslateOverridesManualTranslate) {
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->SetIgnoreMissingKeyForTesting(true);
+
+  // Set target language manually
+  manager->SetPredefinedTargetLanguage("ru");
+  EXPECT_EQ("ru", chrome_translate_client->GetLanguageState()
+                      .GetPredefinedTargetLanguage());
+
+  SetTranslateScript(kTestValidScript);
+
+  // Load a German page and detect it's language
+  ASSERT_TRUE(AddTabAtIndex(0,
+                            GURL(embedded_test_server()->GetURL(
+                                "www.google.com", "/href_translate_test.html")),
+                            ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("de",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Navigate to the French page by way of a link on the original page
+  ResetObserver();
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetWebContentsAt(0);
+
+  const std::string click_link_js =
+      "(function() { document.getElementById('test').click(); })();";
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_link_js));
+
+  // Detect language on the new page
+  WaitUntilLanguageDetermined(chrome_translate_client);
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Href-translate to ja should override manual translate to ru.
+  WaitUntilPageTranslated();
+  EXPECT_EQ("ja",
+            chrome_translate_client->GetLanguageState().current_language());
+}
+
+// Test that iframes can be translated.
+IN_PROC_BROWSER_TEST_F(TranslateManagerWithSubFrameSupportBrowserTest,
+                       DISABLED_TranslateIframe) {
+  base::HistogramTester histograms;
+  SetTranslateScript(kTestValidScript);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/translate/fr_iframe_test.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_FALSE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::NONE, GetPageTranslatedResult());
+
+  // 3 frames are translated.
+  histograms.ExpectBucketCount("Translate.TranslateFrameCount", 3, 1);
+  histograms.ExpectBucketCount("Translate.TranslateSubframe.SuccessPercentage",
+                               100, 1);
+  histograms.ExpectTotalCount("Translate.TranslateSubframe.ErrorType", 0);
+  histograms.ExpectTotalCount("Translate.LanguageDetection.ContentLength", 1);
+  // More than the 54 characters of main frame are used for language detection.
+  histograms.ExpectBucketCount("Translate.LanguageDetection.ContentLength", 550,
+                               1);
+}
+
+class TranslateManagerWithMainFrameLanguageDetectionBrowserTest
+    : public TranslateManagerBrowserTest {
+ public:
+  TranslateManagerWithMainFrameLanguageDetectionBrowserTest(
+      const TranslateManagerWithMainFrameLanguageDetectionBrowserTest&) =
+      delete;
+  TranslateManagerWithMainFrameLanguageDetectionBrowserTest& operator=(
+      const TranslateManagerWithMainFrameLanguageDetectionBrowserTest&) =
+      delete;
+
+ protected:
+  TranslateManagerWithMainFrameLanguageDetectionBrowserTest() {
+    // Enable sub frame translation but with sub frame language
+    // detection turned off.
+    scoped_feature_list_.InitAndEnableFeatureWithParameters(
+        translate::kTranslateSubFrames,
+        {std::make_pair("detect_language_in_sub_frames", "false")});
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+// Test that iframes can be translated.
+//
+// TODO(https://crbug.com/1106620): Disabled due to flake and crashes.
+IN_PROC_BROWSER_TEST_F(
+    TranslateManagerWithMainFrameLanguageDetectionBrowserTest,
+    DISABLED_TranslateIframe) {
+  base::HistogramTester histograms;
+  SetTranslateScript(kTestValidScript);
+
+  ChromeTranslateClient* chrome_translate_client = GetChromeTranslateClient();
+
+  // Open a new tab with a page in French.
+  ASSERT_TRUE(AddTabAtIndex(
+      0, GURL(embedded_test_server()->GetURL("/translate/fr_iframe_test.html")),
+      ui::PAGE_TRANSITION_TYPED));
+  ResetObserver();
+  chrome_translate_client = GetChromeTranslateClient();
+  WaitUntilLanguageDetermined(chrome_translate_client);
+
+  EXPECT_EQ("fr",
+            chrome_translate_client->GetLanguageState().source_language());
+
+  // Translate the page through TranslateManager.
+  TranslateManager* manager = chrome_translate_client->GetTranslateManager();
+  manager->TranslatePage(
+      chrome_translate_client->GetLanguageState().source_language(), "en",
+      true);
+
+  WaitUntilPageTranslated();
+
+  EXPECT_FALSE(chrome_translate_client->GetLanguageState().translation_error());
+  EXPECT_EQ(TranslateErrors::NONE, GetPageTranslatedResult());
+
+  // 3 frames are translated.
+  histograms.ExpectBucketCount("Translate.TranslateFrameCount", 3, 1);
+  histograms.ExpectBucketCount("Translate.TranslateSubframe.SuccessPercentage",
+                               100, 1);
+  histograms.ExpectTotalCount("Translate.TranslateSubframe.ErrorType", 0);
+  histograms.ExpectTotalCount("Translate.LanguageDetection.ContentLength", 1);
+  // But only the 54 characters of main frame are used for language detection.
+  histograms.ExpectBucketCount("Translate.LanguageDetection.ContentLength", 54,
+                               1);
+}
+
+class TranslateManagerPrerenderBrowserTest
+    : public TranslateManagerBrowserTest,
+      public ::testing::WithParamInterface<bool> {
  public:
   TranslateManagerPrerenderBrowserTest()
       : prerender_helper_(base::BindRepeating(
             &TranslateManagerPrerenderBrowserTest::web_contents,
-            base::Unretained(this))) {}
+            base::Unretained(this))) {
+    if (GetParam() /* enable kTranslateSubFrames */) {
+      scoped_feature_list_.InitAndEnableFeature(translate::kTranslateSubFrames);
+    } else {
+      scoped_feature_list_.InitAndDisableFeature(
+          translate::kTranslateSubFrames);
+    }
+  }
 
   content::WebContents* web_contents() {
     return browser()->tab_strip_model()->GetActiveWebContents();
@@ -1123,9 +2069,12 @@ class TranslateManagerPrerenderBrowserTest
 
  protected:
   content::test::PrerenderTestHelper prerender_helper_;
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_F(TranslateManagerPrerenderBrowserTest,
+IN_PROC_BROWSER_TEST_P(TranslateManagerPrerenderBrowserTest,
                        SkipPrerenderPage) {
   SetTranslateScript(kTestValidScript);
 
@@ -1153,7 +2102,11 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerPrerenderBrowserTest,
   WaitUntilPageTranslated();
   EXPECT_FALSE(chrome_translate_client->GetLanguageState().translation_error());
   EXPECT_EQ(TranslateErrors::NONE, GetPageTranslatedResult());
-  histograms.ExpectTotalCount("Translate.LanguageDetection.ContentLength", 1);
+  // TODO(crbug.com/1408495): Sub frame translation code does not handle skipped
+  // language detection.
+  if (!GetParam()) {
+    histograms.ExpectTotalCount("Translate.LanguageDetection.ContentLength", 1);
+  }
   histograms.ExpectTotalCount("Translate.LanguageDeterminedDuration", 1);
 
   // Activate the prerendered page.
@@ -1164,9 +2117,11 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerPrerenderBrowserTest,
   ResetObserver();
   chrome_translate_client = GetChromeTranslateClient();
   // TODO(crbug.com/1258185): Migrate to better mechanism for testing around
-  // language detection.
+  // language detection. Subframe translation is disabled and not under
+  // experimentation otherwise, language detection return "fr".
+  std::string expected_lang = GetParam() ? "de" : "fr";
   WaitUntilLanguageDetermined(chrome_translate_client);
-  EXPECT_EQ("fr",
+  EXPECT_EQ(expected_lang,
             chrome_translate_client->GetLanguageState().source_language());
   manager->TranslatePage(
       chrome_translate_client->GetLanguageState().source_language(), "en",
@@ -1174,100 +2129,19 @@ IN_PROC_BROWSER_TEST_F(TranslateManagerPrerenderBrowserTest,
   WaitUntilPageTranslated();
   EXPECT_FALSE(chrome_translate_client->GetLanguageState().translation_error());
   EXPECT_EQ(TranslateErrors::NONE, GetPageTranslatedResult());
-  histograms.ExpectTotalCount("Translate.LanguageDetection.ContentLength", 2);
+  // TODO(crbug.com/1408495): Sub frame translation code does not handle skipped
+  // language detection.
+  if (!GetParam()) {
+    histograms.ExpectTotalCount("Translate.LanguageDetection.ContentLength", 2);
+  }
 
   // Check noisy data was filtered out.
   histograms.ExpectTotalCount("Translate.LanguageDeterminedDuration", 1);
 }
 
-class TranslateManagerBackForwardCacheBrowserTest
-    : public TranslateManagerBrowserTest {
- public:
-  TranslateManagerBackForwardCacheBrowserTest() = default;
-  ~TranslateManagerBackForwardCacheBrowserTest() override = default;
-
- protected:
-  void SetUpOnMainThread() override {
-    host_resolver()->AddRule("*", "127.0.0.1");
-    TranslateManagerBrowserTest::SetUpOnMainThread();
-  }
-
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    SetupFeaturesAndParameters();
-    TranslateManagerBrowserTest::SetUpCommandLine(command_line);
-  }
-
-  content::WebContents* web_contents() const {
-    return browser()->tab_strip_model()->GetActiveWebContents();
-  }
-
-  content::RenderFrameHost* current_frame_host() {
-    return web_contents()->GetPrimaryMainFrame();
-  }
-
-  GURL GetURL(const std::string& host) {
-    return embedded_test_server()->GetURL(host, "/french_page.html");
-  }
-
-  void SetupFeaturesAndParameters() {
-    scoped_feature_list_.InitWithFeaturesAndParameters(
-        content::GetDefaultEnabledBackForwardCacheFeaturesForTesting(),
-        content::GetDefaultDisabledBackForwardCacheFeaturesForTesting(
-            {// Entry to the cache can be slow during testing and cause
-             // flakiness.
-             ::features::kBackForwardCacheEntryTimeout}));
-
-    vmodule_switches_.InitWithSwitches("back_forward_cache_impl=1");
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-  logging::ScopedVmoduleSwitches vmodule_switches_;
-};
-
-IN_PROC_BROWSER_TEST_F(TranslateManagerBackForwardCacheBrowserTest,
-                       RestorePageTranslatorAfterBackForwardCache) {
-  SetTranslateScript(kTestValidScript);
-
-  EXPECT_TRUE(content::NavigateToURL(web_contents(), GetURL("a.com")));
-  content::RenderFrameHostWrapper rfh_a(current_frame_host());
-
-  WaitUntilLanguageDetermined(GetChromeTranslateClient());
-
-  EXPECT_EQ("fr",
-            GetChromeTranslateClient()->GetLanguageState().source_language());
-  ResetObserver();
-  EXPECT_TRUE(content::NavigateToURL(web_contents(), GetURL("b.com")));
-  content::RenderFrameHostWrapper rfh_b(current_frame_host());
-
-  // A is frozen in the BackForwardCache.
-  EXPECT_EQ(rfh_a->GetLifecycleState(),
-            content::RenderFrameHost::LifecycleState::kInBackForwardCache);
-
-  // 3) Navigate back.
-  ASSERT_TRUE(content::HistoryGoBack(web_contents()));
-  WaitUntilLanguageDetermined(GetChromeTranslateClient());
-  ResetObserver();
-
-  // A is restored, B is stored.
-  EXPECT_EQ(rfh_b->GetLifecycleState(),
-            content::RenderFrameHost::LifecycleState::kInBackForwardCache);
-
-  // Translate the page through TranslateManager.
-  TranslateManager* manager = GetChromeTranslateClient()->GetTranslateManager();
-
-  LanguageState* language_state = manager->GetLanguageState();
-  EXPECT_EQ(TranslationType::kUninitialized,
-            language_state->translation_type());
-
-  manager->TranslatePage(
-      GetChromeTranslateClient()->GetLanguageState().source_language(), "en",
-      true, TranslationType::kAutomaticTranslationByPref);
-
-  EXPECT_EQ(TranslationType::kAutomaticTranslationByPref,
-            language_state->translation_type());
-  WaitUntilPageTranslated();
-}
+INSTANTIATE_TEST_SUITE_P(All,
+                         TranslateManagerPrerenderBrowserTest,
+                         ::testing::Bool());
 
 }  // namespace
 }  // namespace translate

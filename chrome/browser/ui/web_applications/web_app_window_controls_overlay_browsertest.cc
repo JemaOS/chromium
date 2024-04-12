@@ -37,15 +37,14 @@ class WebAppWindowControlsOverlayBrowserTest
     ASSERT_TRUE(embedded_test_server()->Start());
   }
 
-  webapps::AppId InstallTestApp(const char* path, bool await_metric) {
+  AppId InstallTestApp(const char* path, bool await_metric) {
     GURL start_url = embedded_test_server()->GetURL(path);
     page_load_metrics::PageLoadMetricsTestWaiter metrics_waiter(
         browser()->tab_strip_model()->GetActiveWebContents());
     if (await_metric)
       metrics_waiter.AddWebFeatureExpectation(window_controls_overlay_feature);
 
-    webapps::AppId app_id =
-        web_app::InstallWebAppFromPage(browser(), start_url);
+    AppId app_id = web_app::InstallWebAppFromPage(browser(), start_url);
     if (await_metric)
       metrics_waiter.Wait();
 
@@ -67,7 +66,7 @@ class WebAppWindowControlsOverlayBrowserTest
 
 IN_PROC_BROWSER_TEST_F(WebAppWindowControlsOverlayBrowserTest,
                        BasicDisplayOverride) {
-  webapps::AppId app_id = InstallTestApp(
+  AppId app_id = InstallTestApp(
       "/banners/"
       "manifest_test_page.html?manifest=manifest_window_controls_overlay.json",
       /*await_metric=*/true);
@@ -83,7 +82,7 @@ IN_PROC_BROWSER_TEST_F(WebAppWindowControlsOverlayBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(WebAppWindowControlsOverlayBrowserTest,
                        NoDisplayOverride) {
-  webapps::AppId app_id =
+  AppId app_id =
       InstallTestApp("/banners/manifest_test_page.html?manifest=manifest.json",
                      /*await_metric=*/false);
 

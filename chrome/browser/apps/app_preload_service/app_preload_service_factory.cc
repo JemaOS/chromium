@@ -11,11 +11,6 @@
 #include "chrome/browser/web_applications/web_app_provider_factory.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/chrome_features.h"
-#include "google_apis/google_api_keys.h"
-
-namespace {
-bool g_skip_api_key_check = false;
-}  // namespace
 
 namespace apps {
 
@@ -53,12 +48,6 @@ bool AppPreloadServiceFactory::IsAvailable(Profile* profile) {
     return false;
   }
 
-  // Ensure that the build uses the Google-internal file containing the
-  // official API keys, which are required to make queries to the Almanac.
-  if (!google_apis::IsGoogleChromeAPIKeyUsed() && !g_skip_api_key_check) {
-    return false;
-  }
-
   if (!apps::AppServiceProxyFactory::IsAppServiceAvailableForProfile(profile)) {
     return false;
   }
@@ -77,20 +66,13 @@ bool AppPreloadServiceFactory::IsAvailable(Profile* profile) {
   return true;
 }
 
-// static
-void AppPreloadServiceFactory::SkipApiKeyCheckForTesting(
-    bool skip_api_key_check) {
-  g_skip_api_key_check = skip_api_key_check;
-}
-
-std::unique_ptr<KeyedService>
-AppPreloadServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AppPreloadServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   if (!IsAvailable(profile)) {
     return nullptr;
   }
-  return std::make_unique<AppPreloadService>(profile);
+  return new AppPreloadService(profile);
 }
 
 bool AppPreloadServiceFactory::ServiceIsCreatedWithBrowserContext() const {

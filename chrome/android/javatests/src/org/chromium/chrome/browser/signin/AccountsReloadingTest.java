@@ -18,13 +18,13 @@ import org.chromium.base.Callback;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
-import org.chromium.chrome.browser.profiles.ProfileManager;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
+import org.chromium.chrome.browser.sync.SyncService;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.ChromeTabbedActivityTestRule;
 import org.chromium.chrome.test.util.browser.signin.SigninTestRule;
 import org.chromium.chrome.test.util.browser.signin.SigninTestUtil;
-import org.chromium.chrome.test.util.browser.sync.SyncTestUtil;
 import org.chromium.components.signin.base.CoreAccountInfo;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
@@ -37,7 +37,7 @@ import java.util.Set;
 /**
  * This class tests the accounts reloading within {@link IdentityManager}.
  *
- * <p>When a user signs in or when a signed in user adds a new accounts, the refresh token should
+ * When a user signs in or when a signed in user adds a new accounts, the refresh token should
  * also be updated within {@link IdentityManager}. This is essential for having the accounts in
  * cookie jar and the device accounts consistent.
  */
@@ -58,9 +58,11 @@ public class AccountsReloadingTest {
         }
     }
 
-    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    @Rule public final SigninTestRule mSigninTestRule = new SigninTestRule();
+    @Rule
+    public final SigninTestRule mSigninTestRule = new SigninTestRule();
 
     @Rule
     public final ChromeTabbedActivityTestRule mActivityTestRule =
@@ -73,13 +75,11 @@ public class AccountsReloadingTest {
     @Before
     public void setUp() {
         mActivityTestRule.startMainActivityOnBlankPage();
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mIdentityManager =
-                            IdentityServicesProvider.get()
-                                    .getIdentityManager(ProfileManager.getLastUsedRegularProfile());
-                    mIdentityManager.setRefreshTokenUpdateObserverForTests(mObserver);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mIdentityManager = IdentityServicesProvider.get().getIdentityManager(
+                    Profile.getLastUsedRegularProfile());
+            mIdentityManager.setRefreshTokenUpdateObserverForTests(mObserver);
+        });
     }
 
     @Test
@@ -101,8 +101,8 @@ public class AccountsReloadingTest {
 
         SigninTestUtil.signin(account1);
 
-        CriteriaHelper.pollUiThread(
-                () -> mObserver.mCallCount == 2,
+        CriteriaHelper.pollUiThread(()
+                                            -> mObserver.mCallCount == 2,
                 "Refresh token should only be updated when user signs in. "
                         + "Adding account when user is signed out shouldn't trigger refresh "
                         + "token update.");
@@ -117,11 +117,13 @@ public class AccountsReloadingTest {
         final CoreAccountInfo account2 = mSigninTestRule.addAccountAndWaitForSeeding(TEST_EMAIL2);
         CriteriaHelper.pollUiThread(() -> mObserver.mCallCount == 0);
         Assert.assertEquals(Collections.emptySet(), mObserver.mAccountsUpdated);
-        SigninTestUtil.signinAndEnableSync(
-                account1, SyncTestUtil.getSyncServiceForLastUsedProfile());
+        final SyncService syncService =
+                TestThreadUtils.runOnUiThreadBlockingNoException(SyncService::get);
 
-        CriteriaHelper.pollUiThread(
-                () -> mObserver.mCallCount == 2,
+        SigninTestUtil.signinAndEnableSync(account1, syncService);
+
+        CriteriaHelper.pollUiThread(()
+                                            -> mObserver.mCallCount == 2,
                 "Refresh token should only be updated when user signs in. "
                         + "Adding account when user is signed out shouldn't trigger refresh "
                         + "token update.");
@@ -138,8 +140,8 @@ public class AccountsReloadingTest {
 
         final CoreAccountInfo account2 = mSigninTestRule.addTestAccountThenSignin();
 
-        CriteriaHelper.pollUiThread(
-                () -> mObserver.mCallCount == 2,
+        CriteriaHelper.pollUiThread(()
+                                            -> mObserver.mCallCount == 2,
                 "Refresh token should only be updated when user signs in. "
                         + "Adding account when user is signed out shouldn't trigger refresh "
                         + "token update.");
@@ -156,8 +158,8 @@ public class AccountsReloadingTest {
 
         final CoreAccountInfo account2 = mSigninTestRule.addTestAccountThenSigninAndEnableSync();
 
-        CriteriaHelper.pollUiThread(
-                () -> mObserver.mCallCount == 2,
+        CriteriaHelper.pollUiThread(()
+                                            -> mObserver.mCallCount == 2,
                 "Refresh token should only be updated when user signs in. "
                         + "Adding account when user is signed out shouldn't trigger refresh "
                         + "token update.");
@@ -175,8 +177,8 @@ public class AccountsReloadingTest {
 
         final CoreAccountInfo account2 = mSigninTestRule.addAccountAndWaitForSeeding(TEST_EMAIL2);
 
-        CriteriaHelper.pollUiThread(
-                () -> mObserver.mCallCount == 3,
+        CriteriaHelper.pollUiThread(()
+                                            -> mObserver.mCallCount == 3,
                 "Refresh token should be updated 3 times: "
                         + "1 when user signs in, twice when the signed-in user adds "
                         + "a new account.");
@@ -194,8 +196,8 @@ public class AccountsReloadingTest {
 
         final CoreAccountInfo account2 = mSigninTestRule.addAccountAndWaitForSeeding(TEST_EMAIL2);
 
-        CriteriaHelper.pollUiThread(
-                () -> mObserver.mCallCount == 3,
+        CriteriaHelper.pollUiThread(()
+                                            -> mObserver.mCallCount == 3,
                 "Refresh token should be updated 3 times: "
                         + "1 when user signs in, twice when the signed-in user adds "
                         + "a new account.");

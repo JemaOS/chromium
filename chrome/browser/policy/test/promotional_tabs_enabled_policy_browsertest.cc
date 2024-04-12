@@ -38,7 +38,6 @@
 #include "content/public/test/browser_test.h"
 #include "net/base/url_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/base/ui_base_features.h"
 #include "url/gurl.h"
 
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -60,7 +59,7 @@ class PromotionalTabsEnabledPolicyTest
  protected:
   PromotionalTabsEnabledPolicyTest() {
     const std::vector<base::test::FeatureRef> kEnabledFeatures = {
-      whats_new::kForceEnabled,
+      features::kChromeWhatsNewUI,
 #if !BUILDFLAG(IS_CHROMEOS)
       welcome::kForceEnabled,
 #endif
@@ -264,7 +263,11 @@ class PromotionalTabsEnabledPolicyWhatsNewTest
 };
 
 // This is disabled due to flakiness: https://crbug.com/1362518
+#if BUILDFLAG(IS_MAC)
 #define MAYBE_RunTest DISABLED_RunTest
+#else
+#define MAYBE_RunTest RunTest
+#endif
 IN_PROC_BROWSER_TEST_P(PromotionalTabsEnabledPolicyWhatsNewTest,
                        MAYBE_RunTest) {
   // Delay to allow the network request simulation to finish.
@@ -330,14 +333,11 @@ IN_PROC_BROWSER_TEST_P(PromotionalTabsEnabledPolicyWhatsNewInvalidTest,
   TabStripModel* tab_strip = browser()->tab_strip_model();
   ASSERT_GE(tab_strip->count(), 1);
   const auto& url = tab_strip->GetWebContentsAt(0)->GetLastCommittedURL();
-
   // Only the NTP should show. There are no other relevant tabs since
-  // welcome and What's New have both already been shown or promotional tabs
-  // are disabled.
+  // welcome and What's New have both already been shown.
   EXPECT_EQ(tab_strip->count(), 1);
-  if (url.possibly_invalid_spec() != chrome::kChromeUINewTabURL) {
+  if (url.possibly_invalid_spec() != chrome::kChromeUINewTabURL)
     EXPECT_PRED2(search::IsNTPOrRelatedURL, url, browser()->profile());
-  }
 }
 
 INSTANTIATE_TEST_SUITE_P(

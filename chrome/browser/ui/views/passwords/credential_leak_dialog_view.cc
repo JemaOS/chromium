@@ -26,10 +26,10 @@ namespace {
 std::unique_ptr<views::TooltipIcon> CreateInfoIcon() {
   auto explanation_tooltip = std::make_unique<views::TooltipIcon>(
       password_manager::GetLeakDetectionTooltip());
-  explanation_tooltip->SetBubbleWidth(
+  explanation_tooltip->set_bubble_width(
       ChromeLayoutProvider::Get()->GetDistanceMetric(
           views::DISTANCE_BUBBLE_PREFERRED_WIDTH));
-  explanation_tooltip->SetAnchorPointArrow(
+  explanation_tooltip->set_anchor_point_arrow(
       views::BubbleBorder::Arrow::TOP_RIGHT);
   return explanation_tooltip;
 }
@@ -147,7 +147,7 @@ void CredentialLeakDialogView::InitWindow() {
   SetExtraView(CreateInfoIcon());
 }
 
-BEGIN_METADATA(CredentialLeakDialogView)
+BEGIN_METADATA(CredentialLeakDialogView, views::DialogDelegateView)
 END_METADATA
 
 CredentialLeakPrompt* CreateCredentialLeakPromptView(

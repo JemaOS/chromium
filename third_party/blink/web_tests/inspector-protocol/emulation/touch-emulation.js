@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startBlank('Testing that touch emulation affects certain media queries');
 
   await dp.Emulation.setTouchEmulationEnabled({enabled: true, maxTouchPoints: 11});

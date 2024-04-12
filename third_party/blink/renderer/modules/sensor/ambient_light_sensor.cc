@@ -35,10 +35,10 @@ AmbientLightSensor::AmbientLightSensor(ExecutionContext* execution_context,
              SensorType::AMBIENT_LIGHT,
              {mojom::blink::PermissionsPolicyFeature::kAmbientLightSensor}) {}
 
-std::optional<double> AmbientLightSensor::illuminance() const {
+absl::optional<double> AmbientLightSensor::illuminance() const {
   if (hasReading())
     return GetReading().als.value;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace blink

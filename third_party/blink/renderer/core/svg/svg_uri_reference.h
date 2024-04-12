@@ -37,7 +37,6 @@ class SVGAnimatedHref;
 class SVGAnimatedString;
 class SVGElement;
 class TreeScope;
-class SVGAnimatedPropertyBase;
 
 class CORE_EXPORT SVGURIReference : public GarbageCollectedMixin {
  public:
@@ -88,10 +87,6 @@ class CORE_EXPORT SVGURIReference : public GarbageCollectedMixin {
 
  protected:
   explicit SVGURIReference(SVGElement*);
-
-  SVGAnimatedPropertyBase* PropertyFromAttribute(
-      const QualifiedName& attribute_name) const;
-  void SynchronizeAllSVGAttributes() const;
 
  private:
   Member<SVGAnimatedHref> href_;

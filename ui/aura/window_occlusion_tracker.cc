@@ -7,6 +7,7 @@
 #include "base/auto_reset.h"
 #include "base/containers/adapters.h"
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "third_party/skia/include/core/SkRect.h"
 #include "third_party/skia/include/core/SkRegion.h"
 #include "ui/aura/env.h"
@@ -51,7 +52,7 @@ constexpr ui::LayerAnimationElement::AnimatableProperties
 // RenderWidgetHostViewAura. https://crbug.com/827268
 constexpr int kMaxRecomputeOcclusion = 3;
 
-bool WindowOrParentHasShape(const Window* window) {
+bool WindowOrParentHasShape(Window* window) {
   if (window->layer()->alpha_shape())
     return true;
   if (window->parent())
@@ -59,7 +60,7 @@ bool WindowOrParentHasShape(const Window* window) {
   return false;
 }
 
-bool WindowHasOpaqueRegionsForOcclusion(const Window* window) {
+bool WindowHasOpaqueRegionsForOcclusion(Window* window) {
   return !window->opaque_regions_for_occlusion().empty();
 }
 
@@ -94,38 +95,22 @@ gfx::Transform GetWindowTransformRelativeToRoot(
   return transform_relative_to_root;
 }
 
-// Applies `transform_relative_to_root` to `bounds` and returns the enclosing
-// bounds.
-SkIRect ComputeTransformedBoundsEnclosing(
+SkIRect ComputeClippedAndTransformedBounds(
     const gfx::Rect& bounds,
-    const gfx::Transform& transform_relative_to_root) {
+    const gfx::Transform& transform_relative_to_root,
+    const SkIRect* clipped_bounds) {
   DCHECK(transform_relative_to_root.Preserves2dAxisAlignment());
-  return gfx::RectToSkIRect(transform_relative_to_root.MapRect(bounds));
-}
-
-// Applies `transform_relative_to_root` to `bounds` and returns the enclosed
-// bounds.
-SkIRect ComputeTransformedBoundsEnclosed(
-    const gfx::Rect& bounds,
-    const gfx::Transform& transform_relative_to_root) {
-  DCHECK(transform_relative_to_root.Preserves2dAxisAlignment());
-  return gfx::RectToSkIRect(gfx::ToEnclosedRect(
-      transform_relative_to_root.MapRect(gfx::RectF(bounds))));
-}
-
-SkIRect ComputeClippedBounds(SkIRect bounds, const SkIRect* clipped_bounds) {
+  gfx::Rect transformed_bounds = transform_relative_to_root.MapRect(bounds);
+  SkIRect skirect_bounds = gfx::RectToSkIRect(transformed_bounds);
   // If necessary, clip the bounds.
-  if (clipped_bounds && !bounds.intersect(*clipped_bounds)) {
+  if (clipped_bounds && !skirect_bounds.intersect(*clipped_bounds))
     return SkIRect::MakeEmpty();
-  }
-  return bounds;
+  return skirect_bounds;
 }
 
 // Returns the bounds of |window| relative to its |root|.
 // |transform_relative_to_root| is the transform of |window| relative to its
 // root. If |clipped_bounds| is not null, the returned bounds are clipped by it.
-// If the bounds after transform have fractional coordinates, enclosed bounds in
-// integers are used.
 SkIRect GetWindowBoundsInRootWindow(
     Window* window,
     const gfx::Transform& transform_relative_to_root,
@@ -134,9 +119,8 @@ SkIRect GetWindowBoundsInRootWindow(
   // Compute the unclipped bounds of |window|.
   const gfx::Rect src_bounds =
       use_target_values ? window->layer()->GetTargetBounds() : window->bounds();
-  const SkIRect transformed_bounds = ComputeTransformedBoundsEnclosed(
-      gfx::Rect(src_bounds.size()), transform_relative_to_root);
-  return ComputeClippedBounds(transformed_bounds, clipped_bounds);
+  return ComputeClippedAndTransformedBounds(
+      gfx::Rect(src_bounds.size()), transform_relative_to_root, clipped_bounds);
 }
 
 // Returns the bounds that |window| should contribute to be used for occluding
@@ -146,8 +130,6 @@ SkIRect GetWindowBoundsInRootWindow(
 // contribute to occluding other windows because a translucent region should
 // not be considered to occlude other windows, but must be covered by something
 // opaque for it itself to be occluded.
-// If the bounds after transform have fractional coordinates, enclosing bounds
-// in integers are used.
 SkIRect GetOpaqueBoundsInRootWindow(
     Window* window,
     const gfx::Transform& transform_relative_to_root,
@@ -161,9 +143,9 @@ SkIRect GetOpaqueBoundsInRootWindow(
   // top-left corner of the window is considered to be the point (0, 0).
   gfx::Rect opaque_region = window->opaque_regions_for_occlusion()[0];
   opaque_region.Intersect(gfx::Rect(window->bounds().size()));
-  const SkIRect transformed_bounds = ComputeTransformedBoundsEnclosing(
-      opaque_region, transform_relative_to_root);
-  return ComputeClippedBounds(transformed_bounds, clipped_bounds);
+
+  return ComputeClippedAndTransformedBounds(
+      opaque_region, transform_relative_to_root, clipped_bounds);
 }
 
 float GetLayerCombinedTargetOpacity(const ui::Layer* layer) {
@@ -259,13 +241,12 @@ WindowOcclusionTracker::ComputeTargetOcclusionForWindow(Window* window) {
   base::AutoReset<OcclusionData> auto_reset_occlusion_data(
       &tracked_window_iter->second, OcclusionData());
   DCHECK(!target_occlusion_window_);
-  base::AutoReset<raw_ptr<Window>> auto_reset_target_occlusion_window(
+  base::AutoReset<Window*> auto_reset_target_occlusion_window(
       &target_occlusion_window_, window);
 
   Window* root_window = window->GetRootWindow();
   SkRegion occluded_region;
-  SkIRect root_window_clip = gfx::RectToSkIRect(root_window->bounds());
-  RecomputeOcclusionImpl(root_window, gfx::Transform(), &root_window_clip,
+  RecomputeOcclusionImpl(root_window, gfx::Transform(), nullptr,
                          &occluded_region);
 
   return tracked_window_iter->second;
@@ -324,20 +305,10 @@ void WindowOcclusionTracker::MaybeComputeOcclusion() {
               Window::OcclusionState::OCCLUDED) {
             SetWindowAndDescendantsAreOccluded(
                 root_window, /* is_occluded */ true, root_window->IsVisible());
-// TODO(crbug.com/1429517): Enable for other platforms in a separate CL.
-#if BUILDFLAG(IS_CHROMEOS)
-          } else if (root_window_pair.second.occlusion_state ==
-                     Window::OcclusionState::HIDDEN) {
-            SetWindowAndDescendantsAreOccluded(root_window,
-                                               /* is_occluded */ false,
-                                               /* is_parent_visible */ false);
-#endif
           } else {
             SkRegion occluded_region = root_window_pair.second.occluded_region;
-            SkIRect root_window_clip =
-                gfx::RectToSkIRect(root_window->bounds());
-            RecomputeOcclusionImpl(root_window, gfx::Transform(),
-                                   &root_window_clip, &occluded_region);
+            RecomputeOcclusionImpl(root_window, gfx::Transform(), nullptr,
+                                   &occluded_region);
           }
         }
       }
@@ -434,7 +405,7 @@ bool WindowOcclusionTracker::RecomputeOcclusionImpl(
   SkRegion region_for_forced_visible_windows;
   SkRegion* occluded_region_for_children =
       force_visible ? &region_for_forced_visible_windows : occluded_region;
-  for (aura::Window* child : base::Reversed(window->children())) {
+  for (auto* child : base::Reversed(window->children())) {
     has_visible_child |= RecomputeOcclusionImpl(
         child, transform_relative_to_root, clipped_bounds_for_children,
         occluded_region_for_children);
@@ -466,7 +437,7 @@ bool WindowOcclusionTracker::RecomputeOcclusionImpl(
 }
 
 bool WindowOcclusionTracker::VisibleWindowCanOccludeOtherWindows(
-    const Window* window) const {
+    Window* window) const {
   DCHECK(window->layer());
   float combined_opacity = ShouldUseTargetValues()
                                ? GetLayerCombinedTargetOpacity(window->layer())
@@ -485,9 +456,12 @@ bool WindowOcclusionTracker::VisibleWindowCanOccludeOtherWindows(
          WindowHasOpaqueRegionsForOcclusion(window);
 }
 
-bool WindowOcclusionTracker::WindowHasContent(const Window* window) const {
+bool WindowOcclusionTracker::WindowHasContent(Window* window) const {
   if (window->layer()->type() != ui::LAYER_NOT_DRAWN)
     return true;
+
+  if (window_has_content_callback_)
+    return window_has_content_callback_.Run(window);
 
   return false;
 }

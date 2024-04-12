@@ -10,29 +10,29 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 class Profile;
 
 namespace autofill {
 
-class IbanManager;
+class IBANManager;
 
-// Singleton that owns all IbanManagers and associates them with Profiles.
-class IbanManagerFactory : public ProfileKeyedServiceFactory {
+// Singleton that owns all IBANManagers and associates them with Profiles.
+class IBANManagerFactory : public ProfileKeyedServiceFactory {
  public:
-  // Returns the IbanManager for |profile|, creating it if it is not yet
+  // Returns the IBANManager for |profile|, creating it if it is not yet
   // created.
-  static IbanManager* GetForProfile(Profile* profile);
+  static IBANManager* GetForProfile(Profile* profile);
 
-  static IbanManagerFactory* GetInstance();
+  static IBANManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<IbanManagerFactory>;
+  friend struct base::DefaultSingletonTraits<IBANManagerFactory>;
 
-  IbanManagerFactory();
-  ~IbanManagerFactory() override;
+  IBANManagerFactory();
+  ~IBANManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
   KeyedService* BuildServiceInstanceFor(

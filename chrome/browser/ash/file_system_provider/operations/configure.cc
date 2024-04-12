@@ -7,14 +7,17 @@
 #include "base/values.h"
 #include "chrome/common/extensions/api/file_system_provider.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 Configure::Configure(RequestDispatcher* dispatcher,
                      const ProvidedFileSystemInfo& file_system_info,
                      storage::AsyncFileUtil::StatusCallback callback)
     : Operation(dispatcher, file_system_info), callback_(std::move(callback)) {}
 
-Configure::~Configure() = default;
+Configure::~Configure() {
+}
 
 bool Configure::Execute(int request_id) {
   using extensions::api::file_system_provider::ConfigureRequestedOptions;
@@ -45,4 +48,6 @@ void Configure::OnError(int /* request_id */,
   std::move(callback_).Run(error);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

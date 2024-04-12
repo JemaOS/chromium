@@ -77,8 +77,8 @@ HoldingSpaceImage::HoldingSpaceImage(
       async_bitmap_resolver_(async_bitmap_resolver),
       placeholder_image_skia_resolver_(placeholder_image_skia_resolver) {
   placeholder_ = placeholder_image_skia_resolver_.Run(
-      backing_file_path_, max_size_, /*dark_background=*/std::nullopt,
-      /*is_folder=*/std::nullopt);
+      backing_file_path_, max_size_, /*dark_background=*/absl::nullopt,
+      /*is_folder=*/absl::nullopt);
   CreateImageSkia();
 }
 
@@ -91,8 +91,8 @@ HoldingSpaceImage::CreateDefaultPlaceholderImageSkiaResolver(
   return base::BindRepeating(
       [](bool use_light_mode_as_default,
          const base::FilePath& backing_file_path, const gfx::Size& size,
-         const std::optional<bool>& dark_background,
-         const std::optional<bool>& is_folder) {
+         const absl::optional<bool>& dark_background,
+         const absl::optional<bool>& is_folder) {
         // The requested image `size` should be >= `kFileTypeIconSize` to
         // give the `file_type_icon` generated below enough space to fully
         // paint.
@@ -176,7 +176,7 @@ void HoldingSpaceImage::OnBitmapLoaded(const base::FilePath& file_path,
 }
 
 gfx::ImageSkia HoldingSpaceImage::GetImageSkia(
-    const std::optional<gfx::Size>& opt_size,
+    const absl::optional<gfx::Size>& opt_size,
     bool dark_background) const {
   const gfx::Size size = opt_size.value_or(max_size_);
 
@@ -198,7 +198,22 @@ gfx::ImageSkia HoldingSpaceImage::GetImageSkia(
   if (image_skia_.size() == size)
     return image_skia_;
 
-  return image_util::ResizeAndCropImage(image_skia_, size);
+  gfx::ImageSkia image_skia(image_skia_);
+
+  // Resize.
+  const float scale_x = size.width() / static_cast<float>(image_skia.width());
+  const float scale_y = size.height() / static_cast<float>(image_skia.height());
+  const float scale = std::max(scale_x, scale_y);
+  DCHECK_LE(scale, 1.f);  // Upscaling would result in pixelation.
+  gfx::Size scaled_size = gfx::ScaleToCeiledSize(image_skia.size(), scale);
+  image_skia = gfx::ImageSkiaOperations::CreateResizedImage(
+      image_skia, skia::ImageOperations::ResizeMethod::RESIZE_BEST,
+      scaled_size);
+
+  // Crop.
+  gfx::Rect cropped_bounds(image_skia.size());
+  cropped_bounds.ClampToCenteredSize(size);
+  return gfx::ImageSkiaOperations::ExtractSubset(image_skia, cropped_bounds);
 }
 
 void HoldingSpaceImage::Invalidate() {

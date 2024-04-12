@@ -39,6 +39,10 @@ void ButtonInputType::CountUsage() {
   CountUsageIfVisible(WebFeature::kInputTypeButton);
 }
 
+const AtomicString& ButtonInputType::FormControlType() const {
+  return input_type_names::kButton;
+}
+
 bool ButtonInputType::SupportsValidation() const {
   return false;
 }

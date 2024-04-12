@@ -95,7 +95,8 @@ void DeviceOAuth2TokenStoreDesktop::SetAndSaveRefreshToken(
     token_decrypted_ = true;
 
     // The string must be encoded as base64 for storage in local state.
-    std::string encoded = base::Base64Encode(encrypted_token);
+    std::string encoded;
+    base::Base64Encode(encrypted_token, &encoded);
 
     local_state_->SetString(kCBCMServiceAccountRefreshToken, encoded);
     if (observer() && !GetAccountId().empty())

@@ -10,7 +10,6 @@
 #include "base/unguessable_token.h"
 #include "third_party/blink/public/common/browser_interface_broker_proxy.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy_feature.mojom-blink.h"
-#include "third_party/blink/public/mojom/serial/serial.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_serial_port_filter.h"
@@ -23,7 +22,6 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
-#include "third_party/blink/renderer/modules/bluetooth/bluetooth_uuid.h"
 #include "third_party/blink/renderer/modules/event_target_modules_names.h"
 #include "third_party/blink/renderer/modules/serial/serial_port.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -125,29 +123,25 @@ void Serial::ContextDestroyed() {
     entry.value->ContextDestroyed();
 }
 
-void Serial::OnPortConnectedStateChanged(
-    mojom::blink::SerialPortInfoPtr port_info) {
-  bool connected = port_info->connected;
+void Serial::OnPortAdded(mojom::blink::SerialPortInfoPtr port_info) {
   SerialPort* port = GetOrCreatePort(std::move(port_info));
-  port->set_connected(connected);
-  if (connected) {
-    port->DispatchEvent(*Event::CreateBubble(event_type_names::kConnect));
-  } else {
-    port->DispatchEvent(*Event::CreateBubble(event_type_names::kDisconnect));
-  }
+  port->DispatchEvent(*Event::CreateBubble(event_type_names::kConnect));
 }
 
-ScriptPromiseTyped<IDLSequence<SerialPort>> Serial::getPorts(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+void Serial::OnPortRemoved(mojom::blink::SerialPortInfoPtr port_info) {
+  SerialPort* port = GetOrCreatePort(std::move(port_info));
+  port->DispatchEvent(*Event::CreateBubble(event_type_names::kDisconnect));
+}
+
+ScriptPromise Serial::getPorts(ScriptState* script_state,
+                               ExceptionState& exception_state) {
   if (ShouldBlockSerialServiceCall(GetSupplementable()->DomWindow(),
                                    GetExecutionContext(), &exception_state)) {
-    return ScriptPromiseTyped<IDLSequence<SerialPort>>();
+    return ScriptPromise();
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLSequence<SerialPort>>>(
-          script_state, exception_state.GetContext());
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
   get_ports_promises_.insert(resolver);
 
   EnsureServiceConnection();
@@ -157,99 +151,55 @@ ScriptPromiseTyped<IDLSequence<SerialPort>> Serial::getPorts(
   return resolver->Promise();
 }
 
-// static
-mojom::blink::SerialPortFilterPtr Serial::CreateMojoFilter(
-    const SerialPortFilter* filter,
-    ExceptionState& exception_state) {
-  auto mojo_filter = mojom::blink::SerialPortFilter::New();
-
-  if (filter->hasBluetoothServiceClassId()) {
-    if (filter->hasUsbVendorId() || filter->hasUsbProductId()) {
-      exception_state.ThrowTypeError(
-          "A filter cannot specify both bluetoothServiceClassId and "
-          "usbVendorId or usbProductId.");
-      return nullptr;
-    }
-    mojo_filter->bluetooth_service_class_id =
-        ::bluetooth::mojom::blink::UUID::New(
-            GetBluetoothUUIDFromV8Value(filter->bluetoothServiceClassId()));
-    if (mojo_filter->bluetooth_service_class_id->uuid.empty()) {
-      exception_state.ThrowTypeError(
-          "Invalid Bluetooth service class ID filter value.");
-      return nullptr;
-    }
-    return mojo_filter;
-  }
-
-  mojo_filter->has_product_id = filter->hasUsbProductId();
-  mojo_filter->has_vendor_id = filter->hasUsbVendorId();
-  if (mojo_filter->has_product_id) {
-    if (!mojo_filter->has_vendor_id) {
-      exception_state.ThrowTypeError(
-          "A filter containing a usbProductId must also specify a "
-          "usbVendorId.");
-      return nullptr;
-    }
-    mojo_filter->product_id = filter->usbProductId();
-  }
-
-  if (mojo_filter->has_vendor_id) {
-    mojo_filter->vendor_id = filter->usbVendorId();
-  } else {
-    exception_state.ThrowTypeError(
-        "A filter must provide a property to filter by.");
-    return nullptr;
-  }
-
-  return mojo_filter;
-}
-
-ScriptPromiseTyped<SerialPort> Serial::requestPort(
-    ScriptState* script_state,
-    const SerialPortRequestOptions* options,
-    ExceptionState& exception_state) {
+ScriptPromise Serial::requestPort(ScriptState* script_state,
+                                  const SerialPortRequestOptions* options,
+                                  ExceptionState& exception_state) {
   if (ShouldBlockSerialServiceCall(GetSupplementable()->DomWindow(),
                                    GetExecutionContext(), &exception_state)) {
-    return ScriptPromiseTyped<SerialPort>();
+    return ScriptPromise();
   }
 
   if (!LocalFrame::HasTransientUserActivation(DomWindow()->GetFrame())) {
     exception_state.ThrowSecurityError(
         "Must be handling a user gesture to show a permission request.");
-    return ScriptPromiseTyped<SerialPort>();
+    return ScriptPromise();
   }
 
   Vector<mojom::blink::SerialPortFilterPtr> filters;
   if (options && options->hasFilters()) {
     for (const auto& filter : options->filters()) {
-      auto mojo_filter = CreateMojoFilter(filter, exception_state);
-      if (!mojo_filter) {
-        CHECK(exception_state.HadException());
-        return ScriptPromiseTyped<SerialPort>();
+      auto mojo_filter = mojom::blink::SerialPortFilter::New();
+
+      mojo_filter->has_vendor_id = filter->hasUsbVendorId();
+      if (mojo_filter->has_vendor_id) {
+        mojo_filter->vendor_id = filter->usbVendorId();
+      } else {
+        exception_state.ThrowTypeError(
+            "A filter must provide a property to filter by.");
+        return ScriptPromise();
       }
 
-      CHECK(!exception_state.HadException());
+      mojo_filter->has_product_id = filter->hasUsbProductId();
+      if (mojo_filter->has_product_id) {
+        if (!mojo_filter->has_vendor_id) {
+          exception_state.ThrowTypeError(
+              "A filter containing a usbProductId must also specify a "
+              "usbVendorId.");
+          return ScriptPromise();
+        }
+        mojo_filter->product_id = filter->usbProductId();
+      }
+
       filters.push_back(std::move(mojo_filter));
     }
   }
 
-  Vector<::bluetooth::mojom::blink::UUIDPtr>
-      allowed_bluetooth_service_class_ids;
-  if (options && options->hasAllowedBluetoothServiceClassIds()) {
-    for (const auto& id : options->allowedBluetoothServiceClassIds()) {
-      allowed_bluetooth_service_class_ids.push_back(
-          ::bluetooth::mojom::blink::UUID::New(
-              GetBluetoothUUIDFromV8Value(id)));
-    }
-  }
-
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<SerialPort>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
   request_port_promises_.insert(resolver);
 
   EnsureServiceConnection();
   service_->RequestPort(std::move(filters),
-                        std::move(allowed_bluetooth_service_class_ids),
                         resolver->WrapCallbackInScriptScope(WTF::BindOnce(
                             &Serial::OnRequestPort, WrapPersistent(this))));
 
@@ -279,14 +229,14 @@ void Serial::Trace(Visitor* visitor) const {
   visitor->Trace(get_ports_promises_);
   visitor->Trace(request_port_promises_);
   visitor->Trace(port_cache_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   Supplement<NavigatorBase>::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }
 
 void Serial::AddedEventListener(const AtomicString& event_type,
                                 RegisteredEventListener& listener) {
-  EventTarget::AddedEventListener(event_type, listener);
+  EventTargetWithInlineData::AddedEventListener(event_type, listener);
 
   if (event_type != event_type_names::kConnect &&
       event_type != event_type_names::kDisconnect) {
@@ -323,12 +273,10 @@ void Serial::OnServiceConnectionError() {
 
   // Script may execute during a call to Resolve(). Swap these sets to prevent
   // concurrent modification.
-  HeapHashSet<Member<ScriptPromiseResolverTyped<IDLSequence<SerialPort>>>>
-      get_ports_promises;
+  HeapHashSet<Member<ScriptPromiseResolver>> get_ports_promises;
   get_ports_promises_.swap(get_ports_promises);
-  for (auto& resolver : get_ports_promises) {
+  for (ScriptPromiseResolver* resolver : get_ports_promises)
     resolver->Resolve(HeapVector<Member<SerialPort>>());
-  }
 
   HeapHashSet<Member<ScriptPromiseResolver>> request_port_promises;
   request_port_promises_.swap(request_port_promises);
@@ -347,7 +295,7 @@ void Serial::OnServiceConnectionError() {
 SerialPort* Serial::GetOrCreatePort(mojom::blink::SerialPortInfoPtr info) {
   auto it = port_cache_.find(TokenToString(info->token));
   if (it != port_cache_.end()) {
-    return it->value.Get();
+    return it->value;
   }
 
   SerialPort* port = MakeGarbageCollected<SerialPort>(this, std::move(info));
@@ -355,9 +303,8 @@ SerialPort* Serial::GetOrCreatePort(mojom::blink::SerialPortInfoPtr info) {
   return port;
 }
 
-void Serial::OnGetPorts(
-    ScriptPromiseResolverTyped<IDLSequence<SerialPort>>* resolver,
-    Vector<mojom::blink::SerialPortInfoPtr> port_infos) {
+void Serial::OnGetPorts(ScriptPromiseResolver* resolver,
+                        Vector<mojom::blink::SerialPortInfoPtr> port_infos) {
   DCHECK(get_ports_promises_.Contains(resolver));
   get_ports_promises_.erase(resolver);
 
@@ -368,7 +315,7 @@ void Serial::OnGetPorts(
   resolver->Resolve(ports);
 }
 
-void Serial::OnRequestPort(ScriptPromiseResolverTyped<SerialPort>* resolver,
+void Serial::OnRequestPort(ScriptPromiseResolver* resolver,
                            mojom::blink::SerialPortInfoPtr port_info) {
   DCHECK(request_port_promises_.Contains(resolver));
   request_port_promises_.erase(resolver);

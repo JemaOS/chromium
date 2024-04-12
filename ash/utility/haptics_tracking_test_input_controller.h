@@ -13,9 +13,8 @@ namespace ash {
 
 // Test input controller that can be used to track haptics events sent out in
 // tests. The input controller will be set as the input controller that should
-// be used by haptics util using
-// `chromeos::haptics_util::SetInputControllerForTesting()`. Only one should be
-// initialized at a time.
+// be used by haptics util using `haptics_util::SetInputControllerForTesting()`.
+// Only one should be initialized at a time.
 class HapticsTrackingTestInputController : public ui::InputController {
  public:
   HapticsTrackingTestInputController();
@@ -39,41 +38,42 @@ class HapticsTrackingTestInputController : public ui::InputController {
                          const base::TimeDelta& interval) override;
   void GetAutoRepeatRate(base::TimeDelta* delay,
                          base::TimeDelta* interval) override;
-  void SetCurrentLayoutByName(const std::string& layout_name,
-                              base::OnceCallback<void(bool)> callback) override;
+  void SetCurrentLayoutByName(const std::string& layout_name) override;
   void SetKeyboardKeyBitsMapping(
       base::flat_map<int, std::vector<uint64_t>> key_bits_mapping) override;
   std::vector<uint64_t> GetKeyboardKeyBits(int id) override;
   void SetThreeFingerClick(bool enabled) override;
-  void SetTouchpadSensitivity(std::optional<int> device_id, int value) override;
-  void SetTouchpadScrollSensitivity(std::optional<int> device_id,
+  void SetTouchpadSensitivity(absl::optional<int> device_id,
+                              int value) override;
+  void SetTouchpadScrollSensitivity(absl::optional<int> device_id,
                                     int value) override;
-  void SetTapToClick(std::optional<int> device_id, bool enabled) override;
-  void SetTapDragging(std::optional<int> device_id, bool enabled) override;
-  void SetNaturalScroll(std::optional<int> device_id, bool enabled) override;
-  void SetTouchpadAcceleration(std::optional<int> device_id,
+  void SetTapToClick(absl::optional<int> device_id, bool enabled) override;
+  void SetTapDragging(absl::optional<int> device_id, bool enabled) override;
+  void SetNaturalScroll(absl::optional<int> device_id, bool enabled) override;
+  void SetTouchpadAcceleration(absl::optional<int> device_id,
                                bool enabled) override;
-  void SetTouchpadScrollAcceleration(std::optional<int> device_id,
+  void SetTouchpadScrollAcceleration(absl::optional<int> device_id,
                                      bool enabled) override;
-  void SetTouchpadHapticFeedback(std::optional<int> device_id,
+  void SetTouchpadHapticFeedback(absl::optional<int> device_id,
                                  bool enabled) override;
-  void SetTouchpadHapticClickSensitivity(std::optional<int> device_id,
+  void SetTouchpadHapticClickSensitivity(absl::optional<int> device_id,
                                          int value) override;
-  void SetMouseSensitivity(std::optional<int> device_id, int value) override;
-  void SetMouseScrollSensitivity(std::optional<int> device_id,
+  void SetMouseSensitivity(absl::optional<int> device_id, int value) override;
+  void SetMouseScrollSensitivity(absl::optional<int> device_id,
                                  int value) override;
-  void SetPrimaryButtonRight(std::optional<int> device_id, bool right) override;
-  void SetMouseReverseScroll(std::optional<int> device_id,
+  void SetPrimaryButtonRight(absl::optional<int> device_id,
+                             bool right) override;
+  void SetMouseReverseScroll(absl::optional<int> device_id,
                              bool enabled) override;
-  void SetMouseAcceleration(std::optional<int> device_id,
+  void SetMouseAcceleration(absl::optional<int> device_id,
                             bool enabled) override;
-  void SetMouseScrollAcceleration(std::optional<int> device_id,
+  void SetMouseScrollAcceleration(absl::optional<int> device_id,
                                   bool enabled) override;
-  void SetPointingStickSensitivity(std::optional<int> device_id,
+  void SetPointingStickSensitivity(absl::optional<int> device_id,
                                    int value) override;
-  void SetPointingStickPrimaryButtonRight(std::optional<int> device_id,
+  void SetPointingStickPrimaryButtonRight(absl::optional<int> device_id,
                                           bool right) override;
-  void SetPointingStickAcceleration(std::optional<int> device_id,
+  void SetPointingStickAcceleration(absl::optional<int> device_id,
                                     bool enabled) override;
   void SuspendMouseAcceleration() override;
   void EndMouseAccelerationSuspension() override;
@@ -83,7 +83,6 @@ class HapticsTrackingTestInputController : public ui::InputController {
   void GetTouchDeviceStatus(GetTouchDeviceStatusReply reply) override;
   void GetTouchEventLog(const base::FilePath& out_dir,
                         GetTouchEventLogReply reply) override;
-  void DescribeForLog(DescribeForLogReply reply) const override;
   void SetTouchEventLoggingEnabled(bool enabled) override;
   void SetTapToClickPaused(bool state) override;
   void SetInternalTouchpadEnabled(bool enabled) override;
@@ -106,10 +105,6 @@ class HapticsTrackingTestInputController : public ui::InputController {
   void GetGesturePropertiesService(
       mojo::PendingReceiver<ui::ozone::mojom::GesturePropertiesService>
           receiver) override;
-  bool AreAnyKeysPressed() override;
-  void BlockModifiersOnDevices(std::vector<int> device_ids) override;
-  bool AreInputDevicesEnabled() const override;
-  std::unique_ptr<ui::ScopedDisableInputDevices> DisableInputDevices() override;
 
   // Returns haptic count for effect/strength combination for testing.
   int GetSentHapticCount(ui::HapticTouchpadEffect effect,

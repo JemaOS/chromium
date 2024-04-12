@@ -31,9 +31,9 @@ class SVGDefsElement final : public SVGGraphicsElement {
  public:
   explicit SVGDefsElement(Document&);
 
- private:
-  bool SupportsFocus(UpdateBehavior) const override { return false; }
+  bool SupportsFocus() const override { return false; }
 
+ private:
   LayoutObject* CreateLayoutObject(const ComputedStyle&) override;
 };
 

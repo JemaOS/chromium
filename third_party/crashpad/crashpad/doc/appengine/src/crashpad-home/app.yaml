@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-runtime: go121
-app_engine_apis: true
+runtime: go111
 
 handlers:
 - url: /.*

@@ -26,9 +26,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /**
- * Class to intercept {@link PendingIntent}s from notifications, including {@link
- * Notification#contentIntent}, {@link Notification.Action#actionIntent} and {@link
- * Notification#deleteIntent} with broadcast receivers.
+ * Class to intercept {@link PendingIntent}s from notifications, including
+ * {@link Notification#contentIntent}, {@link Notification.Action#actionIntent} and
+ * {@link Notification#deleteIntent} with broadcast receivers.
  */
 public class NotificationIntentInterceptor {
     private static final String TAG = "IntentInterceptor";
@@ -46,21 +46,17 @@ public class NotificationIntentInterceptor {
             "notifications.NotificationIntentInterceptor.INTENT_ACTION";
     public static final long INVALID_CREATE_TIME = -1;
 
-    /** Enum that defines type of notification intent. */
-    @IntDef({
-        IntentType.UNKNOWN,
-        IntentType.CONTENT_INTENT,
-        IntentType.ACTION_INTENT,
-        IntentType.DELETE_INTENT
-    })
+    /**
+     * Enum that defines type of notification intent.
+     */
+    @IntDef({IntentType.UNKNOWN, IntentType.CONTENT_INTENT, IntentType.ACTION_INTENT,
+            IntentType.DELETE_INTENT})
     @Retention(RetentionPolicy.SOURCE)
     public @interface IntentType {
         int UNKNOWN = -1;
         int CONTENT_INTENT = 0;
         int ACTION_INTENT = 1;
         int DELETE_INTENT = 2;
-
-        int NUM_ENTRIES = 3;
     }
 
     /**
@@ -77,12 +73,11 @@ public class NotificationIntentInterceptor {
     }
 
     private static void processIntent(Context context, Intent intent) {
-        @IntentType int intentType = intent.getIntExtra(EXTRA_INTENT_TYPE, IntentType.UNKNOWN);
+        @IntentType
+        int intentType = intent.getIntExtra(EXTRA_INTENT_TYPE, IntentType.UNKNOWN);
         @NotificationUmaTracker.SystemNotificationType
-        int notificationType =
-                intent.getIntExtra(
-                        EXTRA_NOTIFICATION_TYPE,
-                        NotificationUmaTracker.SystemNotificationType.UNKNOWN);
+        int notificationType = intent.getIntExtra(
+                EXTRA_NOTIFICATION_TYPE, NotificationUmaTracker.SystemNotificationType.UNKNOWN);
 
         long createTime = intent.getLongExtra(EXTRA_CREATE_TIME, INVALID_CREATE_TIME);
 
@@ -90,19 +85,18 @@ public class NotificationIntentInterceptor {
             case IntentType.UNKNOWN:
                 break;
             case IntentType.CONTENT_INTENT:
-                NotificationUmaTracker.getInstance()
-                        .onNotificationContentClick(notificationType, createTime);
+                NotificationUmaTracker.getInstance().onNotificationContentClick(
+                        notificationType, createTime);
                 break;
             case IntentType.DELETE_INTENT:
-                NotificationUmaTracker.getInstance()
-                        .onNotificationDismiss(notificationType, createTime);
+                NotificationUmaTracker.getInstance().onNotificationDismiss(
+                        notificationType, createTime);
                 break;
             case IntentType.ACTION_INTENT:
-                int actionType =
-                        intent.getIntExtra(
-                                EXTRA_ACTION_TYPE, NotificationUmaTracker.ActionType.UNKNOWN);
-                NotificationUmaTracker.getInstance()
-                        .onNotificationActionClick(actionType, notificationType, createTime);
+                int actionType = intent.getIntExtra(
+                        EXTRA_ACTION_TYPE, NotificationUmaTracker.ActionType.UNKNOWN);
+                NotificationUmaTracker.getInstance().onNotificationActionClick(
+                        actionType, notificationType, createTime);
                 break;
         }
 
@@ -126,21 +120,19 @@ public class NotificationIntentInterceptor {
     /**
      * Wraps the notification {@link PendingIntent} into another PendingIntent, to intercept clicks
      * and dismiss events for metrics purpose.
-     *
      * @param intentType The type of the pending intent to intercept.
-     * @param actionType Distinguishes actions for `ACTION_INTENT` {@link IntentType}, both for
-     *     metrics recording purposes, as well as for ensuring that the wrapper {@link
-     *     PendingIntent} will be unique.
+     * @param intentId The unique ID of the {@link PendingIntent}, used to distinguish action
+     *                 intents.
      * @param metadata The metadata including notification id, tag, type, etc.
      * @param pendingIntentProvider Provides the {@link PendingIntent} to launch Chrome.
+     *
      */
-    public static PendingIntent createInterceptPendingIntent(
-            @IntentType int intentType,
-            @NotificationUmaTracker.ActionType int actionType,
-            NotificationMetadata metadata,
+    @SuppressWarnings("WrongConstant") // https://crbug.com/1412248 flags from PendingIntent.
+    public static PendingIntent createInterceptPendingIntent(@IntentType int intentType,
+            int intentId, NotificationMetadata metadata,
             @Nullable PendingIntentProvider pendingIntentProvider) {
         PendingIntent pendingIntent = null;
-        int flags = IntentUtils.getPendingIntentMutabilityFlag(/* mutable= */ false);
+        int flags = IntentUtils.getPendingIntentMutabilityFlag(false /* mutable */);
         if (pendingIntentProvider != null) {
             pendingIntent = pendingIntentProvider.getPendingIntent();
             flags = pendingIntentProvider.getFlags();
@@ -149,18 +141,11 @@ public class NotificationIntentInterceptor {
         // The delete intent needs to be handled by broadcast receiver from Q due to background
         // activity start restriction.
         boolean shouldUseBroadcast =
-                intentType == NotificationIntentInterceptor.IntentType.DELETE_INTENT
-                        || actionType == NotificationUmaTracker.ActionType.PRE_UNSUBSCRIBE
-                        || actionType == NotificationUmaTracker.ActionType.UNDO_UNSUBSCRIBE
-                        || actionType
-                                == NotificationUmaTracker.ActionType.COMMIT_UNSUBSCRIBE_IMPLICIT
-                        || actionType
-                                == NotificationUmaTracker.ActionType.COMMIT_UNSUBSCRIBE_EXPLICIT;
+                intentType == NotificationIntentInterceptor.IntentType.DELETE_INTENT;
         Context applicationContext = ContextUtils.getApplicationContext();
-        Intent intent =
-                shouldUseBroadcast
-                        ? new Intent(applicationContext, Receiver.class)
-                        : new Intent(applicationContext, TrampolineActivity.class);
+        Intent intent = shouldUseBroadcast
+                ? new Intent(applicationContext, Receiver.class)
+                : new Intent(applicationContext, TrampolineActivity.class);
 
         intent.setAction(INTENT_ACTION);
         intent.putExtra(EXTRA_PENDING_INTENT, pendingIntent);
@@ -168,7 +153,7 @@ public class NotificationIntentInterceptor {
         intent.putExtra(EXTRA_NOTIFICATION_TYPE, metadata.type);
         intent.putExtra(EXTRA_CREATE_TIME, System.currentTimeMillis());
         if (intentType == IntentType.ACTION_INTENT) {
-            intent.putExtra(EXTRA_ACTION_TYPE, actionType);
+            intent.putExtra(EXTRA_ACTION_TYPE, intentId);
         }
 
         // This flag ensures the TrampolineActivity won't trigger ChromeActivity's auto enter
@@ -184,7 +169,7 @@ public class NotificationIntentInterceptor {
         // Use request code to distinguish different PendingIntents on Android.
         int originalRequestCode =
                 pendingIntentProvider != null ? pendingIntentProvider.getRequestCode() : 0;
-        int requestCode = computeHashCode(metadata, intentType, actionType, originalRequestCode);
+        int requestCode = computeHashCode(metadata, intentType, intentId, originalRequestCode);
 
         return shouldUseBroadcast
                 ? PendingIntent.getBroadcast(applicationContext, requestCode, intent, flags)
@@ -193,16 +178,13 @@ public class NotificationIntentInterceptor {
 
     /**
      * Get the default delete PendingIntent used to track the notification metrics.
-     *
      * @param metadata The metadata including notification id, tag, type, etc.
      * @return The {@link PendingIntent} triggered when the user dismiss the notification.
      */
     public static PendingIntent getDefaultDeletePendingIntent(NotificationMetadata metadata) {
         return NotificationIntentInterceptor.createInterceptPendingIntent(
-                NotificationIntentInterceptor.IntentType.DELETE_INTENT,
-                /* actionType= */ NotificationUmaTracker.ActionType.UNKNOWN,
-                metadata,
-                /* pendingIntentProvider= */ null);
+                NotificationIntentInterceptor.IntentType.DELETE_INTENT, 0 /* intentId */, metadata,
+                null /* pendingIntentProvider */);
     }
 
     // Launches the notification's pending intent, which will perform Chrome feature related tasks.
@@ -230,25 +212,19 @@ public class NotificationIntentInterceptor {
     /**
      * Computes an unique hash code to identify the intercept {@link PendingIntent} that wraps the
      * notification's {@link PendingIntent}.
-     *
      * @param metadata Notification metadata including notification id, tag, etc.
      * @param intentType The type of the {@link PendingIntent}.
-     * @param actionType Distinguishes actions for `ACTION_INTENT` {@link IntentType}, both for
-     *     metrics recording purposes, as well as for ensuring that the wrapper {@link
-     *     PendingIntent} will be unique.
+     * @param intentId The unique ID of the {@link PendingIntent}, used to distinguish action
+     *                 intents.
      * @param requestCode The request code of the {@link PendingIntent}.
      * @return The hashcode for the intercept {@link PendingIntent}.
      */
-    private static int computeHashCode(
-            NotificationMetadata metadata,
-            @IntentType int intentType,
-            @NotificationUmaTracker.ActionType int actionType,
-            int requestCode) {
+    private static int computeHashCode(NotificationMetadata metadata, @IntentType int intentType,
+            int intentId, int requestCode) {
         assert metadata != null;
-        // Use perfect hashing on the first three, low-entropy, attributes to avoid collisions.
         int hashcode = metadata.type;
-        hashcode = hashcode * (IntentType.NUM_ENTRIES + 1) + intentType;
-        hashcode = hashcode * (NotificationUmaTracker.ActionType.NUM_ENTRIES + 1) + actionType;
+        hashcode = hashcode * 31 + intentType;
+        hashcode = hashcode * 31 + intentId;
         hashcode = hashcode * 31 + (metadata.tag == null ? 0 : metadata.tag.hashCode());
         hashcode = hashcode * 31 + metadata.id;
         hashcode = hashcode * 31 + requestCode;

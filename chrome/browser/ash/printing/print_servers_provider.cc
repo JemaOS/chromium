@@ -70,15 +70,14 @@ TaskResults ParseData(int task_id, std::unique_ptr<std::string> data) {
   std::set<GURL> print_server_urls;
   task_data.servers.reserve(json_blob.GetList().size());
   for (const base::Value& val : json_blob.GetList()) {
-    auto* val_dict = val.GetIfDict();
-    if (!val_dict) {
+    if (!val.is_dict()) {
       LOG(WARNING) << "Entry in print servers policy skipped. "
                    << "Not a dictionary.";
       continue;
     }
-    const std::string* id = val_dict->FindString("id");
-    const std::string* url = val_dict->FindString("url");
-    const std::string* name = val_dict->FindString("display_name");
+    const std::string* id = val.FindStringKey("id");
+    const std::string* url = val.FindStringKey("url");
+    const std::string* name = val.FindStringKey("display_name");
     if (!id || !url || !name) {
       LOG(WARNING) << "Entry in print servers policy skipped. The following "
                    << "fields are required: id, url, display_name.";
@@ -184,12 +183,8 @@ class PrintServersProviderImpl : public PrintServersProvider {
     }
   }
 
-  std::optional<std::vector<PrintServer>> GetPrintServers() override {
-    return IsCompleted() ? std::make_optional(result_servers_) : std::nullopt;
-  }
-
-  base::WeakPtr<PrintServersProvider> AsWeakPtr() override {
-    return weak_ptr_factory_.GetWeakPtr();
+  absl::optional<std::vector<PrintServer>> GetPrintServers() override {
+    return IsCompleted() ? absl::make_optional(result_servers_) : absl::nullopt;
   }
 
   void AddObserver(PrintServersProvider::Observer* observer) override {
@@ -246,8 +241,7 @@ class PrintServersProviderImpl : public PrintServersProvider {
 
   // Called when a new allowlist is available.
   void UpdateAllowlist() {
-    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-    allowlist_ = std::nullopt;
+    allowlist_ = absl::nullopt;
     // Fetch and parse the allowlist.
     const PrefService::Preference* pref =
         prefs_->FindPreference(allowlist_pref_);
@@ -324,11 +318,11 @@ class PrintServersProviderImpl : public PrintServersProvider {
   // The current input list of servers.
   std::vector<PrintServer> servers_;
   // The current allowlist.
-  std::optional<std::set<std::string>> allowlist_ = std::nullopt;
+  absl::optional<std::set<std::string>> allowlist_ = absl::nullopt;
   // The current resultant list of servers.
   std::vector<PrintServer> result_servers_;
 
-  raw_ptr<PrefService, LeakedDanglingUntriaged> prefs_ = nullptr;
+  raw_ptr<PrefService, ExperimentalAsh> prefs_ = nullptr;
   PrefChangeRegistrar pref_change_registrar_;
   std::string allowlist_pref_;
 

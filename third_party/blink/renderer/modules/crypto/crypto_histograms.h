@@ -119,10 +119,6 @@ void HistogramAlgorithmAndKey(ExecutionContext*,
                               const WebCryptoAlgorithm&,
                               const WebCryptoKey&);
 
-void HistogramDeriveBitsTruncation(ExecutionContext*,
-                                   unsigned int,
-                                   WebCryptoWarningType);
-
 }  // namespace blink
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_MODULES_CRYPTO_CRYPTO_HISTOGRAMS_H_

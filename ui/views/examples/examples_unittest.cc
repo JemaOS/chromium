@@ -7,13 +7,21 @@
 #include "ui/views/examples/examples_exit_code.h"
 #include "ui/views/examples/examples_main_proc.h"
 
+#if BUILDFLAG(IS_WIN)
+#include "ui/native_theme/native_theme_win.h"
+#endif
+
 namespace views::examples {
 
 TEST(ExamplesTest, TestViewsExamplesLaunches) {
-  const ExamplesExitCode exit_code = ExamplesMainProc(/*under_test=*/true);
+#if BUILDFLAG(IS_WIN)
+  if (ui::NativeTheme::GetInstanceForNativeUi()->ShouldUseDarkColors()) {
+    GTEST_SKIP() << "Host is in dark mode; skipping test";
+  }
+#endif
+  const ExamplesExitCode exit_code = ExamplesMainProc(true);
   // Check the status of the Skia Gold comparison.
-  EXPECT_TRUE((exit_code == ExamplesExitCode::kSucceeded) ||
-              (exit_code == ExamplesExitCode::kNone));
+  EXPECT_EQ(ExamplesExitCode::kSucceeded, exit_code);
 }
 
 }  // namespace views::examples

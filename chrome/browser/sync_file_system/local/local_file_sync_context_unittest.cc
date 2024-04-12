@@ -17,7 +17,6 @@
 #include "base/run_loop.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/test/gmock_expected_support.h"
 #include "base/test/test_future.h"
 #include "chrome/browser/sync_file_system/local/canned_syncable_file_system.h"
 #include "chrome/browser/sync_file_system/local/local_file_change_tracker.h"
@@ -86,8 +85,7 @@ class LocalFileSyncContextTest : public testing::Test {
                            LocalFileSyncContext::SyncMode sync_mode,
                            SyncFileMetadata* metadata,
                            FileChangeList* changes,
-                           storage::ScopedFile* snapshot,
-                           base::OnceClosure quit_closure) {
+                           storage::ScopedFile* snapshot) {
     ASSERT_TRUE(changes != nullptr);
     ASSERT_FALSE(has_inflight_prepare_for_sync_);
     status_ = SYNC_STATUS_UNKNOWN;
@@ -95,8 +93,7 @@ class LocalFileSyncContextTest : public testing::Test {
     sync_context_->PrepareForSync(
         file_system_context, url, sync_mode,
         base::BindOnce(&LocalFileSyncContextTest::DidPrepareForSync,
-                       base::Unretained(this), metadata, changes, snapshot,
-                       std::move(quit_closure)));
+                       base::Unretained(this), metadata, changes, snapshot));
   }
 
   SyncStatusCode PrepareForSync(FileSystemContext* file_system_context,
@@ -105,11 +102,9 @@ class LocalFileSyncContextTest : public testing::Test {
                                 SyncFileMetadata* metadata,
                                 FileChangeList* changes,
                                 storage::ScopedFile* snapshot) {
-    base::RunLoop loop;
     StartPrepareForSync(file_system_context, url, sync_mode, metadata, changes,
-                        snapshot, loop.QuitWhenIdleClosure());
-
-    loop.Run();
+                        snapshot);
+    base::RunLoop().Run();
     return status_;
   }
 
@@ -119,17 +114,16 @@ class LocalFileSyncContextTest : public testing::Test {
       LocalFileSyncContext::SyncMode sync_mode,
       SyncFileMetadata* metadata,
       FileChangeList* changes,
-      storage::ScopedFile* snapshot,
-      base::OnceClosure quit_closure) {
+      storage::ScopedFile* snapshot) {
     return base::BindOnce(&LocalFileSyncContextTest::StartPrepareForSync,
                           base::Unretained(this),
                           base::Unretained(file_system_context), url, sync_mode,
-                          metadata, changes, snapshot, std::move(quit_closure));
+                          metadata, changes, snapshot);
   }
+
   void DidPrepareForSync(SyncFileMetadata* metadata_out,
                          FileChangeList* changes_out,
                          storage::ScopedFile* snapshot_out,
-                         base::OnceClosure quit_closure,
                          SyncStatusCode status,
                          const LocalFileSyncInfo& sync_file_info,
                          storage::ScopedFile snapshot) {
@@ -141,7 +135,7 @@ class LocalFileSyncContextTest : public testing::Test {
     if (snapshot_out) {
       *snapshot_out = std::move(snapshot);
     }
-    std::move(quit_closure).Run();
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
   }
 
   SyncStatusCode ApplyRemoteChange(FileSystemContext* file_system_context,
@@ -161,26 +155,23 @@ class LocalFileSyncContextTest : public testing::Test {
     EXPECT_EQ(expected_file_type, metadata.file_type);
 
     status_ = SYNC_STATUS_UNKNOWN;
-    base::RunLoop loop;
     sync_context_->ApplyRemoteChange(
         file_system_context, change, local_path, url,
         base::BindOnce(&LocalFileSyncContextTest::DidApplyRemoteChange,
                        base::Unretained(this),
-                       base::RetainedRef(file_system_context), url,
-                       loop.QuitWhenIdleClosure()));
-    loop.Run();
+                       base::RetainedRef(file_system_context), url));
+    base::RunLoop().Run();
     return status_;
   }
 
   void DidApplyRemoteChange(FileSystemContext* file_system_context,
                             const FileSystemURL& url,
-                            base::OnceClosure quit_closure,
                             SyncStatusCode status) {
     status_ = status;
     sync_context_->FinalizeExclusiveSync(
         file_system_context, url,
         status == SYNC_STATUS_OK /* clear_local_changes */,
-        std::move(quit_closure));
+        base::RunLoop::QuitCurrentWhenIdleClosureDeprecated());
   }
 
   void StartModifyFileOnIOThread(CannedSyncableFileSystem* file_system,
@@ -441,10 +432,11 @@ TEST_F(LocalFileSyncContextTest, CreateDefaultSyncableBucket) {
       storage::kDefaultBucketName, blink::mojom::StorageType::kSyncable,
       base::SequencedTaskRunner::GetCurrentDefault(), future.GetCallback());
 
-  ASSERT_OK_AND_ASSIGN(const auto result, future.Take());
-  EXPECT_EQ(result.name, storage::kDefaultBucketName);
-  EXPECT_EQ(result.type, blink::mojom::StorageType::kSyncable);
-  EXPECT_GT(result.id.value(), 0);
+  const auto result = future.Take();
+  EXPECT_TRUE(result.has_value());
+  EXPECT_EQ(result->name, storage::kDefaultBucketName);
+  EXPECT_EQ(result->type, blink::mojom::StorageType::kSyncable);
+  EXPECT_GT(result->id.value(), 0);
 
   // Finishing the test.
   sync_context_->ShutdownOnUIThread();
@@ -601,19 +593,17 @@ TEST_F(LocalFileSyncContextTest, DISABLED_PrepareSyncWhileWriting) {
   // on IO thread in this test.)
   metadata.file_type = SYNC_FILE_TYPE_UNKNOWN;
   changes.clear();
-  base::RunLoop loop;
   sync_context_->RegisterURLForWaitingSync(
-      kURL1,
-      GetPrepareForSyncClosure(file_system.file_system_context(), kURL1,
-                               LocalFileSyncContext::SYNC_EXCLUSIVE, &metadata,
-                               &changes, nullptr, loop.QuitClosure()));
+      kURL1, GetPrepareForSyncClosure(file_system.file_system_context(), kURL1,
+                                      LocalFileSyncContext::SYNC_EXCLUSIVE,
+                                      &metadata, &changes, nullptr));
 
   // Wait for the completion.
   EXPECT_EQ(base::File::FILE_OK, WaitUntilModifyFileIsDone());
 
   // The PrepareForSync must have been started; wait until DidPrepareForSync
   // is done.
-  loop.Run();
+  base::RunLoop().Run();
   ASSERT_FALSE(has_inflight_prepare_for_sync_);
 
   // Now PrepareForSync should have run and returned OK.

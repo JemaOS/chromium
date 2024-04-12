@@ -4,8 +4,6 @@
 
 #include "third_party/blink/renderer/platform/text/layout_locale.h"
 
-#include <optional>
-
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace blink {
@@ -17,19 +15,17 @@ TEST(LayoutLocaleTest, Get) {
 
   EXPECT_EQ(g_empty_atom, LayoutLocale::Get(g_empty_atom)->LocaleString());
 
-  EXPECT_STRCASEEQ(
-      "en-us",
-      LayoutLocale::Get(AtomicString("en-us"))->LocaleString().Ascii().c_str());
-  EXPECT_STRCASEEQ(
-      "ja-jp",
-      LayoutLocale::Get(AtomicString("ja-jp"))->LocaleString().Ascii().c_str());
+  EXPECT_STRCASEEQ("en-us",
+                   LayoutLocale::Get("en-us")->LocaleString().Ascii().c_str());
+  EXPECT_STRCASEEQ("ja-jp",
+                   LayoutLocale::Get("ja-jp")->LocaleString().Ascii().c_str());
 
   LayoutLocale::ClearForTesting();
 }
 
 TEST(LayoutLocaleTest, GetCaseInsensitive) {
-  const LayoutLocale* en_us = LayoutLocale::Get(AtomicString("en-us"));
-  EXPECT_EQ(en_us, LayoutLocale::Get(AtomicString("en-US")));
+  const LayoutLocale* en_us = LayoutLocale::Get("en-us");
+  EXPECT_EQ(en_us, LayoutLocale::Get("en-US"));
 }
 
 // Test combinations of BCP 47 locales.
@@ -38,7 +34,7 @@ struct LocaleTestData {
   const char* locale;
   UScriptCode script;
   const char* sk_font_mgr = nullptr;
-  std::optional<UScriptCode> script_for_han;
+  absl::optional<UScriptCode> script_for_han;
 } locale_test_data[] = {
     // Country is not relevant to |SkFontMgr|.
     {"en-US", USCRIPT_LATIN, "en"},
@@ -145,7 +141,7 @@ INSTANTIATE_TEST_SUITE_P(LayoutLocaleTest,
 TEST_P(LocaleTestDataFixture, Script) {
   const auto& test = GetParam();
   scoped_refptr<LayoutLocale> locale =
-      LayoutLocale::CreateForTesting(AtomicString(test.locale));
+      LayoutLocale::CreateForTesting(test.locale);
   EXPECT_EQ(test.script, locale->GetScript()) << test.locale;
   EXPECT_EQ(test.script_for_han.has_value(), locale->HasScriptForHan())
       << test.locale;
@@ -162,30 +158,23 @@ TEST(LayoutLocaleTest, BreakKeyword) {
   struct {
     const char* expected;
     const char* locale;
-    LineBreakStrictness strictness;
-    bool use_phrase = false;
+    LineBreakIteratorMode mode;
   } tests[] = {
-      {nullptr, nullptr, LineBreakStrictness::kDefault},
-      {"", "", LineBreakStrictness::kDefault},
-      {nullptr, nullptr, LineBreakStrictness::kStrict},
-      {"", "", LineBreakStrictness::kStrict},
-      {"ja", "ja", LineBreakStrictness::kDefault},
-      {"ja@lb=normal", "ja", LineBreakStrictness::kNormal},
-      {"ja@lb=strict", "ja", LineBreakStrictness::kStrict},
-      {"ja@lb=loose", "ja", LineBreakStrictness::kLoose},
-      {"ja@lw=phrase", "ja", LineBreakStrictness::kDefault, true},
-      {"ja@lb=normal;lw=phrase", "ja", LineBreakStrictness::kNormal, true},
-      {"ja@lb=strict;lw=phrase", "ja", LineBreakStrictness::kStrict, true},
-      {"ja@lb=loose;lw=phrase", "ja", LineBreakStrictness::kLoose, true},
+      {nullptr, nullptr, LineBreakIteratorMode::kDefault},
+      {"", "", LineBreakIteratorMode::kDefault},
+      {nullptr, nullptr, LineBreakIteratorMode::kStrict},
+      {"", "", LineBreakIteratorMode::kStrict},
+      {"ja", "ja", LineBreakIteratorMode::kDefault},
+      {"ja@lb=normal", "ja", LineBreakIteratorMode::kNormal},
+      {"ja@lb=strict", "ja", LineBreakIteratorMode::kStrict},
+      {"ja@lb=loose", "ja", LineBreakIteratorMode::kLoose},
   };
   for (const auto& test : tests) {
     scoped_refptr<LayoutLocale> locale =
-        LayoutLocale::CreateForTesting(AtomicString(test.locale));
-    EXPECT_EQ(test.expected,
-              locale->LocaleWithBreakKeyword(test.strictness, test.use_phrase))
-        << String::Format("'%s' with line-break %d, phrase=%d should be '%s'",
-                          test.locale, static_cast<int>(test.strictness),
-                          static_cast<int>(test.use_phrase), test.expected);
+        LayoutLocale::CreateForTesting(test.locale);
+    EXPECT_EQ(test.expected, locale->LocaleWithBreakKeyword(test.mode))
+        << String::Format("'%s' with line-break %d should be '%s'", test.locale,
+                          static_cast<int>(test.mode), test.expected);
   }
 }
 
@@ -204,7 +193,7 @@ TEST(LayoutLocaleTest, GetQuotesData) {
   };
   for (const auto& test : tests) {
     scoped_refptr<LayoutLocale> locale =
-        LayoutLocale::CreateForTesting(AtomicString(test.locale));
+        LayoutLocale::CreateForTesting(test.locale);
     scoped_refptr<QuotesData> quotes = locale->GetQuotesData();
     if (test.expected) {
       EXPECT_EQ(test.expected->GetOpenQuote(0), quotes->GetOpenQuote(0));
@@ -222,10 +211,9 @@ TEST(LayoutLocaleTest, ExistingKeywordName) {
       "en@x=", "en@lb=xyz", "en@ =",
   };
   for (auto* const test : tests) {
-    scoped_refptr<LayoutLocale> locale =
-        LayoutLocale::CreateForTesting(AtomicString(test));
+    scoped_refptr<LayoutLocale> locale = LayoutLocale::CreateForTesting(test);
     EXPECT_EQ(test,
-              locale->LocaleWithBreakKeyword(LineBreakStrictness::kNormal));
+              locale->LocaleWithBreakKeyword(LineBreakIteratorMode::kNormal));
   }
 }
 

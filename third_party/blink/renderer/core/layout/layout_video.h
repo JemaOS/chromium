@@ -39,10 +39,11 @@ class CORE_EXPORT LayoutVideo final : public LayoutMedia {
   explicit LayoutVideo(HTMLVideoElement*);
   ~LayoutVideo() override;
 
-  static PhysicalSize DefaultSize();
+  static LayoutSize DefaultSize();
 
   PhysicalRect ReplacedContentRectFrom(
-      const PhysicalRect& base_content_rect) const final;
+      const LayoutSize size,
+      const NGPhysicalBoxStrut& border_padding) const final;
 
   bool SupportsAcceleratedRendering() const;
 
@@ -64,23 +65,25 @@ class CORE_EXPORT LayoutVideo final : public LayoutMedia {
                                  : kOverflowClipBothAxis;
   }
 
- private:
-  void UpdateAfterLayout() final;
-  void UpdateFromElement() final;
-  void InvalidateCompositing();
+  void UpdatePlayer(bool is_in_layout);
 
-  PhysicalSize CalculateIntrinsicSize(float scale);
-  void UpdateIntrinsicSize();
+ private:
+  void UpdateFromElement() override;
+
+  LayoutSize CalculateIntrinsicSize(float scale);
+  void UpdateIntrinsicSize(bool is_in_layout);
 
   void ImageChanged(WrappedImagePtr, CanDeferInvalidation) override;
 
-  bool IsVideo() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectVideo || LayoutMedia::IsOfType(type);
   }
 
   void PaintReplaced(const PaintInfo&,
                      const PhysicalOffset& paint_offset) const override;
+
+  void UpdateLayout() override;
 
   bool CanHaveAdditionalCompositingReasons() const override {
     NOT_DESTROYED();
@@ -88,7 +91,7 @@ class CORE_EXPORT LayoutVideo final : public LayoutMedia {
   }
   CompositingReasons AdditionalCompositingReasons() const override;
 
-  PhysicalSize cached_image_size_;
+  LayoutSize cached_image_size_;
 };
 
 template <>

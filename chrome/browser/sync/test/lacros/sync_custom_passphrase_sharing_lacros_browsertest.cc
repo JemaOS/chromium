@@ -5,11 +5,13 @@
 #include <utility>
 
 #include "base/run_loop.h"
+#include "base/test/gmock_callback_support.h"
 #include "chrome/browser/sync/test/integration/encryption_helper.h"
 #include "chrome/browser/sync/test/integration/passwords_helper.h"
 #include "chrome/browser/sync/test/integration/sync_test.h"
 #include "chrome/common/chrome_constants.h"
 #include "chromeos/crosapi/mojom/account_manager.mojom.h"
+#include "chromeos/crosapi/mojom/sync.mojom.h"
 #include "chromeos/lacros/lacros_service.h"
 #include "components/sync/chromeos/explicit_passphrase_mojo_utils.h"
 #include "components/sync/engine/nigori/nigori.h"
@@ -18,6 +20,7 @@
 #include "components/sync/test/fake_sync_mojo_service.h"
 #include "components/sync/test/nigori_test_utils.h"
 #include "content/public/test/browser_test.h"
+#include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -65,10 +68,26 @@ class SyncCustomPassphraseSharingLacrosBrowserTest : public SyncTest {
       content::BrowserMainParts* browser_main_parts) override {
     SyncTest::CreatedBrowserMainParts(browser_main_parts);
 
+    // If SyncService Crosapi interface is not available on this version of
+    // ash-chrome, this test suite will no-op.
+    if (!IsServiceAvailable()) {
+      return;
+    }
+
     // Replace the production SyncService Crosapi interface with a fake for
     // testing.
-    chromeos::LacrosService::Get()->InjectRemoteForTesting(
-        sync_mojo_service_.BindNewPipeAndPassRemote());
+    mojo::Remote<crosapi::mojom::SyncService>& remote =
+        chromeos::LacrosService::Get()
+            ->GetRemote<crosapi::mojom::SyncService>();
+    remote.reset();
+    sync_mojo_service_.BindReceiver(remote.BindNewPipeAndPassReceiver());
+  }
+
+  bool IsServiceAvailable() const {
+    const chromeos::LacrosService* lacros_service =
+        chromeos::LacrosService::Get();
+    return lacros_service &&
+           lacros_service->IsAvailable<crosapi::mojom::SyncService>();
   }
 
   bool SetupSyncAndSetAccountKeyExpectations() {
@@ -97,6 +116,10 @@ class SyncCustomPassphraseSharingLacrosBrowserTest : public SyncTest {
 
 IN_PROC_BROWSER_TEST_F(SyncCustomPassphraseSharingLacrosBrowserTest,
                        ShouldGetDecryptionKeyFromAsh) {
+  if (!IsServiceAvailable()) {
+    GTEST_SKIP() << "Unsupported Ash version.";
+  }
+
   ASSERT_TRUE(SetupSyncAndSetAccountKeyExpectations());
 
   // Mimic custom passphrase being set by other client.
@@ -125,6 +148,10 @@ IN_PROC_BROWSER_TEST_F(SyncCustomPassphraseSharingLacrosBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(SyncCustomPassphraseSharingLacrosBrowserTest,
                        ShouldExposeEncryptionKeyWhenSetDecryptionPassphrase) {
+  if (!IsServiceAvailable()) {
+    GTEST_SKIP() << "Unsupported Ash version.";
+  }
+
   ASSERT_TRUE(SetupSyncAndSetAccountKeyExpectations());
 
   // Mimic custom passphrase being set by other client.
@@ -154,6 +181,10 @@ IN_PROC_BROWSER_TEST_F(SyncCustomPassphraseSharingLacrosBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(SyncCustomPassphraseSharingLacrosBrowserTest,
                        ShouldExposeEncryptionKeyWhenSetEncryptionPassphrase) {
+  if (!IsServiceAvailable()) {
+    GTEST_SKIP() << "Unsupported Ash version.";
+  }
+
   ASSERT_TRUE(SetupSyncAndSetAccountKeyExpectations());
 
   const std::string kPassphrase = "hunter2";

@@ -6,15 +6,17 @@
     await dp.Network.enable();
     await dp.Audits.enable();
 
-    // Set the cookie. Make sure the cookie won't be excluded by other reasons.
+    // Set the cookie.
     const response = await dp.Network.setCookie({
       url: 'https://cookie.test:8443',
       secure: true,
       name: 'foo',
       value: 'bar',
       sameSite: 'None',
-      sourcePort: 8443,
     });
+
+    // With third-party cookie blocking.
+    await session.evaluate('testRunner.setBlockThirdPartyCookies(true)');
 
     if (response.error)
       testRunner.log(`setCookie failed: ${response.error.message}`);

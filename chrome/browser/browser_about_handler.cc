@@ -55,9 +55,6 @@ bool HandleChromeAboutAndChromeSyncRewrite(
 }
 
 bool HandleNonNavigationAboutURL(const GURL& url) {
-  if (!url.is_valid()) {
-    return false;
-  }
   const std::string spec(url.spec());
 
   if (base::EqualsCaseInsensitiveASCII(spec, chrome::kChromeUIRestartURL)) {

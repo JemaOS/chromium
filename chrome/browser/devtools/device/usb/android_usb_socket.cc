@@ -212,6 +212,11 @@ bool AndroidUsbSocket::WasEverUsed() const {
   return true;
 }
 
+bool AndroidUsbSocket::WasAlpnNegotiated() const {
+  NOTIMPLEMENTED();
+  return true;
+}
+
 net::NextProto AndroidUsbSocket::GetNegotiatedProtocol() const {
   NOTIMPLEMENTED();
   return net::kProtoUnknown;

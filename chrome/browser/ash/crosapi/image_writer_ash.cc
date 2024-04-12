@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/crosapi/image_writer_ash.h"
 
-#include <optional>
-
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/unguessable_token.h"
@@ -15,6 +13,7 @@
 #include "chrome/common/extensions/api/image_writer_private.h"
 #include "content/public/browser/browser_context.h"
 #include "extensions/browser/api/extensions_api_client.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace crosapi {
@@ -79,7 +78,7 @@ void ImageWriterAsh::DestroyPartitions(
 void ImageWriterAsh::WriteFromUrl(
     const std::string& storage_unit_id,
     const GURL& image_url,
-    const std::optional<std::string>& image_hash,
+    const absl::optional<std::string>& image_hash,
     mojo::PendingRemote<mojom::ImageWriterClient> remote_client,
     WriteFromUrlCallback callback) {
   mojo::Remote<mojom::ImageWriterClient> remote(std::move(remote_client));
@@ -174,7 +173,7 @@ void ImageWriterAsh::OnDeviceListReady(
     ListRemovableStorageDevicesCallback callback,
     scoped_refptr<StorageDeviceList> device_list) {
   if (!device_list) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
@@ -189,7 +188,7 @@ void ImageWriterAsh::OnDeviceListReady(
 void ImageWriterAsh::OnOperationCompleted(OperationCallback callback,
                                           bool success,
                                           const std::string& error) {
-  std::move(callback).Run(success ? std::nullopt : std::make_optional(error));
+  std::move(callback).Run(success ? absl::nullopt : absl::make_optional(error));
 }
 
 void ImageWriterAsh::OnCancelWriteDone(bool success, const std::string& error) {

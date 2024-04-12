@@ -16,15 +16,15 @@ std::unique_ptr<KeyedService>
 MockFileSuggestKeyedService::BuildMockFileSuggestKeyedService(
     const base::FilePath& proto_path,
     content::BrowserContext* context) {
-  PersistentProto<app_list::RemovedResultsProto> proto(proto_path,
-                                                       base::TimeDelta());
+  app_list::PersistentProto<app_list::RemovedResultsProto> proto(
+      proto_path, base::TimeDelta());
   return std::make_unique<MockFileSuggestKeyedService>(
       Profile::FromBrowserContext(context), std::move(proto));
 }
 
 MockFileSuggestKeyedService::MockFileSuggestKeyedService(
     Profile* profile,
-    PersistentProto<app_list::RemovedResultsProto> proto)
+    app_list::PersistentProto<app_list::RemovedResultsProto> proto)
     : FileSuggestKeyedService(profile, std::move(proto)) {
   ON_CALL(*this, RemoveSuggestionsAndNotify)
       .WillByDefault(
@@ -40,7 +40,7 @@ void MockFileSuggestKeyedService::GetSuggestFileData(
     FileSuggestionType type,
     GetSuggestFileDataCallback callback) {
   if (!IsProtoInitialized()) {
-    std::move(callback).Run(/*suggestions=*/std::nullopt);
+    std::move(callback).Run(/*suggestions=*/absl::nullopt);
     return;
   }
 
@@ -54,7 +54,7 @@ void MockFileSuggestKeyedService::GetSuggestFileData(
 
 void MockFileSuggestKeyedService::SetSuggestionsForType(
     FileSuggestionType type,
-    const std::optional<std::vector<FileSuggestData>>& suggestions) {
+    const absl::optional<std::vector<FileSuggestData>>& suggestions) {
   type_suggestion_mappings_[type] = suggestions;
   OnSuggestionProviderUpdated(type);
 }
@@ -62,7 +62,7 @@ void MockFileSuggestKeyedService::SetSuggestionsForType(
 void MockFileSuggestKeyedService::RunGetSuggestFileDataCallback(
     FileSuggestionType type,
     GetSuggestFileDataCallback callback) {
-  std::optional<std::vector<FileSuggestData>> suggestions;
+  absl::optional<std::vector<FileSuggestData>> suggestions;
   auto iter = type_suggestion_mappings_.find(type);
   if (iter != type_suggestion_mappings_.end()) {
     suggestions = iter->second;

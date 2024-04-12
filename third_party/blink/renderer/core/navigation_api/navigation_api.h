@@ -24,11 +24,10 @@ namespace blink {
 
 class DOMException;
 class HistoryItem;
-class NavigationApiMethodTracker;
+class NavigationApiNavigation;
 class NavigationUpdateCurrentEntryOptions;
 class NavigationHistoryEntry;
 class NavigateEvent;
-class NavigationActivation;
 class NavigationNavigateOptions;
 class NavigationReloadOptions;
 class NavigationResult;
@@ -37,7 +36,7 @@ class NavigationTransition;
 class RegisteredEventListener;
 class SerializedScriptValue;
 
-class CORE_EXPORT NavigationApi final : public EventTarget {
+class CORE_EXPORT NavigationApi final : public EventTargetWithInlineData {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
@@ -49,14 +48,10 @@ class CORE_EXPORT NavigationApi final : public EventTarget {
                               CommitReason,
                               NavigationApi* previous,
                               const WebVector<WebHistoryItem>& back_entries,
-                              const WebVector<WebHistoryItem>& forward_entries,
-                              HistoryItem* previous_entry);
+                              const WebVector<WebHistoryItem>& forward_entries);
   void UpdateForNavigation(HistoryItem&, WebFrameLoadType);
   void SetEntriesForRestore(
-      const mojom::blink::NavigationApiHistoryEntryArraysPtr&,
-      mojom::blink::NavigationApiEntryRestoreReason);
-
-  void UpdateCurrentEntryForTesting(HistoryItem& item);
+      const mojom::blink::NavigationApiHistoryEntryArraysPtr&);
 
   // The entries indicated by |keys| have been removed from the session history
   // in the browser process and should be disposed. In many cases, this won't
@@ -81,8 +76,7 @@ class CORE_EXPORT NavigationApi final : public EventTarget {
   HeapVector<Member<NavigationHistoryEntry>> entries();
   void updateCurrentEntry(NavigationUpdateCurrentEntryOptions*,
                           ExceptionState&);
-  NavigationTransition* transition() const { return transition_.Get(); }
-  NavigationActivation* activation() const;
+  NavigationTransition* transition() const { return transition_; }
 
   bool canGoBack() const;
   bool canGoForward() const;
@@ -127,12 +121,10 @@ class CORE_EXPORT NavigationApi final : public EventTarget {
                          mojom::blink::TraverseCancelledReason reason);
 
   int GetIndexFor(NavigationHistoryEntry*);
-  NavigationHistoryEntry* GetExistingEntryFor(const String& key,
-                                              const String& id);
 
-  // EventTarget overrides:
+  // EventTargetWithInlineData overrides:
   const AtomicString& InterfaceName() const final;
-  ExecutionContext* GetExecutionContext() const final { return window_.Get(); }
+  ExecutionContext* GetExecutionContext() const final { return window_; }
   void AddedEventListener(const AtomicString&, RegisteredEventListener&) final;
   void RemovedEventListener(const AtomicString&,
                             const RegisteredEventListener&) final;
@@ -144,7 +136,6 @@ class CORE_EXPORT NavigationApi final : public EventTarget {
   NavigationHistoryEntry* GetEntryForRestore(
       const mojom::blink::NavigationApiHistoryEntryPtr&);
   void PopulateKeySet();
-  void UpdateActivation(HistoryItem* previous_entry, WebFrameLoadType);
   void AbortOngoingNavigation(ScriptState*);
   void DidFinishOngoingNavigation();
   void DidFailOngoingNavigation(ScriptValue);
@@ -175,12 +166,10 @@ class CORE_EXPORT NavigationApi final : public EventTarget {
   bool has_dropped_navigation_ = false;
 
   Member<NavigationTransition> transition_;
-  Member<NavigationActivation> activation_;
 
-  Member<NavigationApiMethodTracker> ongoing_api_method_tracker_;
-  HeapHashMap<String, Member<NavigationApiMethodTracker>>
-      upcoming_traverse_api_method_trackers_;
-  Member<NavigationApiMethodTracker> upcoming_non_traverse_api_method_tracker_;
+  Member<NavigationApiNavigation> ongoing_navigation_;
+  HeapHashMap<String, Member<NavigationApiNavigation>> upcoming_traversals_;
+  Member<NavigationApiNavigation> upcoming_non_traversal_navigation_;
 
   Member<NavigateEvent> ongoing_navigate_event_;
 

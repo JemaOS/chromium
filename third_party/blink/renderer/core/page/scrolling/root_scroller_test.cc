@@ -11,7 +11,6 @@
 #include "third_party/blink/public/web/web_script_source.h"
 #include "third_party/blink/public/web/web_settings.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_node_string_trustedscript.h"
-#include "third_party/blink/renderer/core/css/css_default_style_sheets.h"
 #include "third_party/blink/renderer/core/css/css_style_declaration.h"
 #include "third_party/blink/renderer/core/frame/browser_controls.h"
 #include "third_party/blink/renderer/core/frame/dom_visual_viewport.h"
@@ -35,9 +34,7 @@
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_request.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_test.h"
-#include "third_party/blink/renderer/platform/loader/fetch/memory_cache.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_loader_mock_factory.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
@@ -176,7 +173,6 @@ class RootScrollerTest : public testing::Test,
     view->UpdateAllLifecyclePhasesForTest();
   }
 
-  test::TaskEnvironment task_environment_;
   String base_url_;
   frame_test_helpers::CreateTestWebFrameWidgetCallback create_widget_callback_;
   std::unique_ptr<frame_test_helpers::WebViewHelper> helper_;
@@ -207,7 +203,7 @@ TEST_F(RootScrollerTest, defaultEffectiveRootScrollerIsDocumentNode) {
   HeapVector<Member<V8UnionNodeOrStringOrTrustedScript>> nodes;
   nodes.push_back(
       MakeGarbageCollected<V8UnionNodeOrStringOrTrustedScript>(iframe));
-  document->documentElement()->replaceWith(nodes, ASSERT_NO_EXCEPTION);
+  document->documentElement()->ReplaceWith(nodes, ASSERT_NO_EXCEPTION);
 
   UpdateAllLifecyclePhases(MainFrameView());
 
@@ -221,8 +217,7 @@ TEST_F(RootScrollerTest, BrowserControlsAndOverscroll) {
   Initialize("root-scroller.html");
   UpdateAllLifecyclePhases(MainFrameView());
 
-  Element* container =
-      MainFrame()->GetDocument()->getElementById(AtomicString("container"));
+  Element* container = MainFrame()->GetDocument()->getElementById("container");
   ASSERT_EQ(container, EffectiveRootScroller(MainFrame()->GetDocument()));
 
   // Content is 1000x1000, WebView is 400x400 but hiding the 50px top controls
@@ -358,8 +353,7 @@ TEST_F(RootScrollerTest, BrowserControlsAndOverscroll) {
 TEST_F(RootScrollerTest, TestRemoveRootScrollerFromDom) {
   Initialize("root-scroller.html");
 
-  Element* container =
-      MainFrame()->GetDocument()->getElementById(AtomicString("container"));
+  Element* container = MainFrame()->GetDocument()->getElementById("container");
   UpdateAllLifecyclePhases(MainFrameView());
 
   EXPECT_EQ(container, EffectiveRootScroller(MainFrame()->GetDocument()));
@@ -375,8 +369,7 @@ TEST_F(RootScrollerTest, TestRemoveRootScrollerFromDom) {
 TEST_F(RootScrollerTest, TestRootScrollerBecomesInvalid) {
   Initialize("root-scroller.html");
 
-  Element* container =
-      MainFrame()->GetDocument()->getElementById(AtomicString("container"));
+  Element* container = MainFrame()->GetDocument()->getElementById("container");
 
   {
     EXPECT_EQ(container, EffectiveRootScroller(MainFrame()->GetDocument()));
@@ -436,8 +429,7 @@ TEST_F(RootScrollerTest, RemoveCurrentRootScroller) {
 
   RootScrollerController& controller =
       MainFrame()->GetDocument()->GetRootScrollerController();
-  Element* container =
-      MainFrame()->GetDocument()->getElementById(AtomicString("container"));
+  Element* container = MainFrame()->GetDocument()->getElementById("container");
   UpdateAllLifecyclePhases(MainFrameView());
   ASSERT_EQ(container, controller.EffectiveRootScroller());
 
@@ -485,8 +477,7 @@ TEST_F(RootScrollerTest, AlwaysCreateCompositedScrollingLayers) {
   GetWebView()->ResizeWithBrowserControls(gfx::Size(400, 400), 50, 0, true);
   UpdateAllLifecyclePhases(MainFrameView());
 
-  Element* container =
-      MainFrame()->GetDocument()->getElementById(AtomicString("container"));
+  Element* container = MainFrame()->GetDocument()->getElementById("container");
 
   PaintLayerScrollableArea* container_scroller = GetScrollableArea(*container);
   ASSERT_FALSE(container_scroller->UsesCompositedScrolling());
@@ -507,8 +498,7 @@ TEST_F(RootScrollerTest, AlwaysCreateCompositedScrollingLayers) {
 // immediately demoted.
 TEST_F(RootScrollerTest, IFrameSwapToRemote) {
   Initialize("root-scroller-iframe.html");
-  Element* iframe =
-      MainFrame()->GetDocument()->getElementById(AtomicString("iframe"));
+  Element* iframe = MainFrame()->GetDocument()->getElementById("iframe");
 
   ASSERT_EQ(iframe, EffectiveRootScroller(MainFrame()->GetDocument()));
 
@@ -533,7 +523,7 @@ TEST_F(RootScrollerTest, RemoveRootScrollerFromDom) {
 
   {
     auto* iframe = To<HTMLFrameOwnerElement>(
-        MainFrame()->GetDocument()->getElementById(AtomicString("iframe")));
+        MainFrame()->GetDocument()->getElementById("iframe"));
 
     ASSERT_EQ(iframe, EffectiveRootScroller(MainFrame()->GetDocument()));
 
@@ -567,8 +557,7 @@ TEST_F(RootScrollerTest, DocumentElementHasNoLayoutObject) {
 TEST_F(RootScrollerTest, UseVisualViewportScrollbars) {
   Initialize("root-scroller.html");
 
-  Element* container =
-      MainFrame()->GetDocument()->getElementById(AtomicString("container"));
+  Element* container = MainFrame()->GetDocument()->getElementById("container");
   ASSERT_EQ(container, EffectiveRootScroller(MainFrame()->GetDocument()));
 
   ScrollableArea* container_scroller = GetScrollableArea(*container);
@@ -584,8 +573,7 @@ TEST_F(RootScrollerTest, UseVisualViewportScrollbars) {
 TEST_F(RootScrollerTest, UseVisualViewportScrollbarsIframe) {
   Initialize("root-scroller-iframe.html");
 
-  Element* iframe =
-      MainFrame()->GetDocument()->getElementById(AtomicString("iframe"));
+  Element* iframe = MainFrame()->GetDocument()->getElementById("iframe");
   auto* child_frame =
       To<LocalFrame>(To<HTMLFrameOwnerElement>(iframe)->ContentFrame());
 
@@ -630,8 +618,7 @@ TEST_F(RootScrollerTest, TopControlsAdjustmentAppliedToRootScroller) {
   layer_tree_host->CompositeForTest(base::TimeTicks::Now(), false,
                                     base::OnceClosure());
 
-  Element* container =
-      MainFrame()->GetDocument()->getElementById(AtomicString("container"));
+  Element* container = MainFrame()->GetDocument()->getElementById("container");
   ASSERT_EQ(container, EffectiveRootScroller(MainFrame()->GetDocument()));
 
   ScrollableArea* container_scroller = GetScrollableArea(*container);
@@ -694,14 +681,13 @@ TEST_F(RootScrollerTest, RotationAnchoring) {
     UpdateAllLifecyclePhases(MainFrameView());
 
     Element* container =
-        MainFrame()->GetDocument()->getElementById(AtomicString("container"));
+        MainFrame()->GetDocument()->getElementById("container");
     ASSERT_EQ(container, EffectiveRootScroller(MainFrame()->GetDocument()));
 
     container_scroller = GetScrollableArea(*container);
   }
 
-  Element* target =
-      MainFrame()->GetDocument()->getElementById(AtomicString("target"));
+  Element* target = MainFrame()->GetDocument()->getElementById("target");
 
   // Zoom in and scroll the viewport so that the target is fully in the
   // viewport and the visual viewport is fully scrolled within the layout
@@ -738,7 +724,7 @@ TEST_F(RootScrollerTest, RotationAnchoring) {
   UpdateAllLifecyclePhases(MainFrameView());
 
   // The visual viewport should remain fully filled by the target.
-  DOMRect* rect = target->GetBoundingClientRect();
+  DOMRect* rect = target->getBoundingClientRect();
   EXPECT_EQ(rect->left(), GetVisualViewport().GetScrollOffset().x());
   EXPECT_EQ(rect->top(), GetVisualViewport().GetScrollOffset().y());
 }
@@ -772,7 +758,7 @@ TEST_F(RootScrollerTest, IFrameRootScrollerGetsNonFixedLayoutSize) {
   UpdateAllLifecyclePhases(MainFrameView());
 
   auto* iframe = To<HTMLFrameOwnerElement>(
-      MainFrame()->GetDocument()->getElementById(AtomicString("iframe")));
+      MainFrame()->GetDocument()->getElementById("iframe"));
   auto* iframe_view = To<LocalFrame>(iframe->ContentFrame())->View();
 
   ASSERT_EQ(gfx::Size(400, 400), iframe_view->GetLayoutSize());
@@ -839,7 +825,7 @@ TEST_F(RootScrollerTest, ImmediateUpdateOfLayoutViewport) {
   Initialize("root-scroller-iframe.html");
 
   auto* iframe = To<HTMLFrameOwnerElement>(
-      MainFrame()->GetDocument()->getElementById(AtomicString("iframe")));
+      MainFrame()->GetDocument()->getElementById("iframe"));
 
   ASSERT_EQ(iframe, EffectiveRootScroller(MainFrame()->GetDocument()));
 
@@ -862,12 +848,7 @@ TEST_F(RootScrollerTest, ImmediateUpdateOfLayoutViewport) {
 class ImplicitRootScrollerSimTest : public SimTest {
  public:
   ImplicitRootScrollerSimTest() : implicit_root_scroller_for_test_(true) {}
-  ~ImplicitRootScrollerSimTest() override {
-    // TODO(crbug.com/1315595): Consider moving this to MainThreadIsolate.
-    MemoryCache::Get()->EvictResources();
-    // Clear lazily loaded style sheets.
-    CSSDefaultStyleSheets::Instance().PrepareForLeakDetection();
-  }
+
   void SetUp() override {
     SimTest::SetUp();
     WebView().GetPage()->GetSettings().SetViewportEnabled(true);
@@ -920,7 +901,7 @@ TEST_F(ImplicitRootScrollerSimTest, NonLifecycleLayoutDoesntCauseReselection) {
             <div id="spacer"></div>
           </div>
       )HTML");
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   Compositor().BeginFrame();
   ASSERT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
@@ -1015,7 +996,7 @@ TEST_F(ImplicitRootScrollerSimTest, RecomputeEffectiveWithNoContentFrame) {
           </script>
       )HTML");
 
-  Element* container = GetDocument().getElementById(AtomicString("first"));
+  Element* container = GetDocument().getElementById("first");
   Compositor().BeginFrame();
 
   ASSERT_EQ(container,
@@ -1059,7 +1040,7 @@ TEST_F(ImplicitRootScrollerSimTest, UsePaddingBoxForViewportFillingCondition) {
           </div>
       )HTML");
 
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   Compositor().BeginFrame();
 
   ASSERT_EQ(container,
@@ -1067,8 +1048,7 @@ TEST_F(ImplicitRootScrollerSimTest, UsePaddingBoxForViewportFillingCondition) {
 
   // Setting a border should cause the element to no longer be valid as its
   // padding box doesn't fill the viewport exactly.
-  container->setAttribute(html_names::kStyleAttr,
-                          AtomicString("border: 1px solid black"));
+  container->setAttribute(html_names::kStyleAttr, "border: 1px solid black");
   Compositor().BeginFrame();
   EXPECT_EQ(&GetDocument(),
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
@@ -1116,7 +1096,7 @@ TEST_F(ImplicitRootScrollerSimTest, RootScrollerDoesntAffectVisualViewport) {
   request.Finish();
   Compositor().BeginFrame();
 
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   ASSERT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
   container->setScrollTop(50);
@@ -1160,7 +1140,7 @@ TEST_F(ImplicitRootScrollerSimTest, ResizeFromResizeAfterLayout) {
   RunPendingTasks();
   Compositor().BeginFrame();
 
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   ASSERT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
   ASSERT_EQ(gfx::Size(800, 600), GetDocument().View()->Size());
@@ -1211,7 +1191,7 @@ TEST_F(ImplicitRootScrollerSimTest, ImplicitRootScroller) {
 
   ASSERT_EQ(&GetDocument(),
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
 
   // overflow: auto and overflow: scroll should cause a valid element to be
   // promoted to root scroller. Otherwise, they shouldn't, even if they're
@@ -1257,7 +1237,7 @@ TEST_F(ImplicitRootScrollerSimTest, ImplicitRootScroller) {
   // Now remove the overflowing element and rerun the tests. The container
   // element should no longer be implicitly promoted as it doesn't have any
   // overflow.
-  Element* spacer = GetDocument().getElementById(AtomicString("spacer"));
+  Element* spacer = GetDocument().getElementById("spacer");
   spacer->remove();
 
   for (auto test_case : test_cases) {
@@ -1318,13 +1298,13 @@ TEST_F(ImplicitRootScrollerSimTest, ImplicitRootScrollerAddOverflow) {
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "Shouldn't promote 'container' since it has no overflow.";
 
-  Element* spacer = GetDocument().getElementById(AtomicString("spacer"));
+  Element* spacer = GetDocument().getElementById("spacer");
   spacer->style()->setProperty(GetDocument().GetExecutionContext(), "height",
                                "2000px", String(), ASSERT_NO_EXCEPTION);
   spacer->style()->setProperty(GetDocument().GetExecutionContext(), "width",
                                "2000px", String(), ASSERT_NO_EXCEPTION);
   Compositor().BeginFrame();
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   EXPECT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "Adding overflow should cause 'container' to be promoted.";
@@ -1359,15 +1339,15 @@ TEST_F(ImplicitRootScrollerSimTest, CandidateLosesLayoutBoxDontCrash) {
             <div id="spacer"></div>
           </b>
       )HTML");
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
 
   // An overflowing box will be added to the implicit candidates list.
-  container->setAttribute(html_names::kClassAttr, AtomicString("box"));
+  container->setAttribute(html_names::kClassAttr, "box");
   Compositor().BeginFrame();
 
   // This will make change from a box to an inline. Ensure we don't crash when
   // we reevaluate the candidates list.
-  container->setAttribute(html_names::kClassAttr, AtomicString("nonbox"));
+  container->setAttribute(html_names::kClassAttr, "nonbox");
   Compositor().BeginFrame();
 }
 
@@ -1386,7 +1366,7 @@ TEST_F(ImplicitRootScrollerSimTest, ConsiderEmbedCrash) {
           </script>
       )HTML");
   Compositor().BeginFrame();
-  Element* embed = GetDocument().getElementById(AtomicString("embed"));
+  Element* embed = GetDocument().getElementById("embed");
   GetDocument().GetRootScrollerController().ConsiderForImplicit(*embed);
 }
 
@@ -1426,11 +1406,11 @@ TEST_F(ImplicitRootScrollerSimTest,
       )HTML");
   Compositor().BeginFrame();
 
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   ASSERT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 
-  Element* overflow = GetDocument().getElementById(AtomicString("overflow"));
+  Element* overflow = GetDocument().getElementById("overflow");
   overflow->style()->setProperty(GetDocument().GetExecutionContext(), "height",
                                  "10px", String(), ASSERT_NO_EXCEPTION);
   overflow->style()->setProperty(GetDocument().GetExecutionContext(), "width",
@@ -1480,7 +1460,7 @@ TEST_F(ImplicitRootScrollerSimTest, ImplicitRootScrollerVisibilityCondition) {
       )HTML");
   Compositor().BeginFrame();
 
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   ASSERT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 
@@ -1555,7 +1535,7 @@ TEST_F(ImplicitRootScrollerSimTest, ImplicitRootScrollerIframe) {
   RunPendingTasks();
   Compositor().BeginFrame();
 
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   ASSERT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 
@@ -1594,7 +1574,7 @@ TEST_F(ImplicitRootScrollerSimTest, UseCounterNegative) {
       )HTML");
   Compositor().BeginFrame();
 
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   ASSERT_NE(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 
@@ -1642,7 +1622,7 @@ TEST_F(ImplicitRootScrollerSimTest, UseCounterPositive) {
       )HTML");
   Compositor().BeginFrame();
 
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   ASSERT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 
@@ -1693,7 +1673,7 @@ TEST_F(ImplicitRootScrollerSimTest, UseCounterPositiveAfterLoad) {
       )HTML");
   Compositor().BeginFrame();
 
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   ASSERT_NE(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 
@@ -1741,8 +1721,7 @@ TEST_F(ImplicitRootScrollerSimTest, LayoutTreeReplaced) {
       )HTML");
   Compositor().BeginFrame();
 
-  Element* scroller =
-      GetDocument().getElementById(AtomicString("rootscroller"));
+  Element* scroller = GetDocument().getElementById("rootscroller");
   ASSERT_EQ(scroller,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
   ASSERT_TRUE(scroller->GetLayoutObject()->IsEffectiveRootScroller());
@@ -1802,14 +1781,13 @@ TEST_F(ImplicitRootScrollerSimTest, DontPromoteWhenMultipleAreValid) {
 
   // Now make the second one invalid, that should cause the first to be
   // promoted.
-  Element* container2 =
-      GetDocument().getElementById(AtomicString("container2"));
+  Element* container2 = GetDocument().getElementById("container2");
   container2->style()->setProperty(GetDocument().GetExecutionContext(),
                                    "height", "95%", String(),
                                    ASSERT_NO_EXCEPTION);
   Compositor().BeginFrame();
 
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   ASSERT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 }
@@ -1859,7 +1837,7 @@ TEST_F(ImplicitRootScrollerSimTest, IframeLoadedWithoutLayout) {
   )HTML");
 
   Compositor().BeginFrame();
-  EXPECT_EQ(GetDocument().getElementById(AtomicString("container")),
+  EXPECT_EQ(GetDocument().getElementById("container"),
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "Once loaded, the iframe should be promoted.";
 }
@@ -1902,7 +1880,7 @@ TEST_F(ImplicitRootScrollerSimTest, NavigateToValidRemainsRootScroller) {
         </style>
   )HTML");
   Compositor().BeginFrame();
-  ASSERT_EQ(GetDocument().getElementById(AtomicString("container")),
+  ASSERT_EQ(GetDocument().getElementById("container"),
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 
   // Navigate the child frame. When it's loaded, the FrameView should swap.
@@ -1933,7 +1911,7 @@ TEST_F(ImplicitRootScrollerSimTest, NavigateToValidRemainsRootScroller) {
   child_request2.Finish();
   Compositor().BeginFrame();
 
-  EXPECT_EQ(GetDocument().getElementById(AtomicString("container")),
+  EXPECT_EQ(GetDocument().getElementById("container"),
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "Once loaded, the iframe should be promoted again.";
 }
@@ -1975,7 +1953,7 @@ TEST_F(ImplicitRootScrollerSimTest, ScrollRestorationIgnoresImplicit) {
         </style>
   )HTML");
   Compositor().BeginFrame();
-  ASSERT_EQ(GetDocument().getElementById(AtomicString("container")),
+  ASSERT_EQ(GetDocument().getElementById("container"),
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 
   HistoryItem::ViewState view_state;
@@ -2042,7 +2020,7 @@ TEST_F(ImplicitRootScrollerSimTest,
             };
           </script>
       )HTML");
-  Element* container = GetDocument().getElementById(AtomicString("container"));
+  Element* container = GetDocument().getElementById("container");
   Compositor().BeginFrame();
 
   ASSERT_EQ(container,
@@ -2078,7 +2056,7 @@ TEST_F(ImplicitRootScrollerSimTest,
   Compositor().BeginFrame();
   EXPECT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
-  EXPECT_EQ(To<LayoutBox>(container->GetLayoutObject())->Size().height, 600);
+  EXPECT_EQ(To<LayoutBox>(container->GetLayoutObject())->Size().Height(), 600);
   WebView().SetZoomLevel(PageZoomFactorToZoomLevel(2.0));
   WebView().GetPage()->GetBrowserControls().SetShownRatio(0, 0);
   WebView().ResizeWithBrowserControls(gfx::Size(800, 650), 50, 50, false);
@@ -2126,9 +2104,9 @@ TEST_F(ImplicitRootScrollerSimTest, ContinuallyReevaluateImplicitPromotion) {
       )HTML");
   Compositor().BeginFrame();
 
-  Element* parent = GetDocument().getElementById(AtomicString("parent"));
-  Element* container = GetDocument().getElementById(AtomicString("container"));
-  Element* spacer = GetDocument().getElementById(AtomicString("spacer"));
+  Element* parent = GetDocument().getElementById("parent");
+  Element* container = GetDocument().getElementById("container");
+  Element* spacer = GetDocument().getElementById("spacer");
 
   // The container isn't yet scrollable.
   ASSERT_EQ(GetDocument(),
@@ -2207,8 +2185,8 @@ TEST_F(ImplicitRootScrollerSimTest, IframeScrollingAffectsPromotion) {
   RunPendingTasks();
   Compositor().BeginFrame();
 
-  auto* container = To<HTMLFrameOwnerElement>(
-      GetDocument().getElementById(AtomicString("container")));
+  auto* container =
+      To<HTMLFrameOwnerElement>(GetDocument().getElementById("container"));
   Element* inner_html_element = container->contentDocument()->documentElement();
 
   // Shouldn't be promoted since it's not scrollable.
@@ -2272,7 +2250,7 @@ TEST_F(ImplicitRootScrollerSimTest, PromotionChangesLayoutSize) {
   )HTML");
 
   Compositor().BeginFrame();
-  EXPECT_EQ(GetDocument().getElementById(AtomicString("container")),
+  EXPECT_EQ(GetDocument().getElementById("container"),
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "Once loaded, the iframe should be promoted.";
 }
@@ -2361,10 +2339,8 @@ TEST_F(ImplicitRootScrollerSimTest, BottomFixedAffectedByTopControls) {
 
   Compositor().BeginFrame();
 
-  Element* container1 =
-      GetDocument().getElementById(AtomicString("container1"));
-  Element* container2 =
-      GetDocument().getElementById(AtomicString("container2"));
+  Element* container1 = GetDocument().getElementById("container1");
+  Element* container2 = GetDocument().getElementById("container2");
   ASSERT_EQ(container1,
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "The #container1 iframe must be promoted.";
@@ -2374,11 +2350,11 @@ TEST_F(ImplicitRootScrollerSimTest, BottomFixedAffectedByTopControls) {
   Document* child2_document =
       To<HTMLFrameOwnerElement>(container2)->contentDocument();
   LayoutObject* fixed =
-      GetDocument().getElementById(AtomicString("fixed"))->GetLayoutObject();
+      GetDocument().getElementById("fixed")->GetLayoutObject();
   LayoutObject* fixed1 =
-      child1_document->getElementById(AtomicString("fixed"))->GetLayoutObject();
+      child1_document->getElementById("fixed")->GetLayoutObject();
   LayoutObject* fixed2 =
-      child2_document->getElementById(AtomicString("fixed"))->GetLayoutObject();
+      child2_document->getElementById("fixed")->GetLayoutObject();
 
   EXPECT_TRUE(fixed->FirstFragment()
                   .PaintProperties()
@@ -2443,7 +2419,7 @@ TEST_F(ImplicitRootScrollerSimTest, IframeUsesContentBox) {
 
   Compositor().BeginFrame();
 
-  Element* iframe = GetDocument().getElementById(AtomicString("container"));
+  Element* iframe = GetDocument().getElementById("container");
 
   ASSERT_EQ(iframe,
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
@@ -2451,8 +2427,7 @@ TEST_F(ImplicitRootScrollerSimTest, IframeUsesContentBox) {
 
   // Adding padding should cause the iframe to be demoted.
   {
-    iframe->setAttribute(html_names::kStyleAttr,
-                         AtomicString("padding-left: 20%"));
+    iframe->setAttribute(html_names::kStyleAttr, "padding-left: 20%");
     Compositor().BeginFrame();
 
     EXPECT_NE(iframe,
@@ -2463,8 +2438,7 @@ TEST_F(ImplicitRootScrollerSimTest, IframeUsesContentBox) {
   // Replacing padding with a border should also ensure the iframe remains
   // demoted.
   {
-    iframe->setAttribute(html_names::kStyleAttr,
-                         AtomicString("border: 5px solid black"));
+    iframe->setAttribute(html_names::kStyleAttr, "border: 5px solid black");
     Compositor().BeginFrame();
 
     EXPECT_NE(iframe,
@@ -2473,7 +2447,7 @@ TEST_F(ImplicitRootScrollerSimTest, IframeUsesContentBox) {
   }
 
   // Removing the border should now cause the iframe to be promoted once again.
-  iframe->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  iframe->setAttribute(html_names::kStyleAttr, "");
   Compositor().BeginFrame();
 
   ASSERT_EQ(iframe,
@@ -2531,12 +2505,12 @@ TEST_F(ImplicitRootScrollerSimTest, OverflowInMainDocumentRestrictsImplicit) {
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "iframe shouldn't be promoted due to overflow in the main document.";
 
-  Element* spacer = GetDocument().getElementById(AtomicString("spacer"));
+  Element* spacer = GetDocument().getElementById("spacer");
   spacer->style()->setProperty(GetDocument().GetExecutionContext(), "height",
                                "100%", String(), ASSERT_NO_EXCEPTION);
   Compositor().BeginFrame();
 
-  EXPECT_EQ(GetDocument().getElementById(AtomicString("container")),
+  EXPECT_EQ(GetDocument().getElementById("container"),
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "Once vertical overflow is removed, the iframe should be promoted.";
 }
@@ -2590,7 +2564,7 @@ TEST_F(ImplicitRootScrollerSimTest, OverflowHiddenDoesntRestrictImplicit) {
   )HTML");
 
   Compositor().BeginFrame();
-  EXPECT_EQ(GetDocument().getElementById(AtomicString("container")),
+  EXPECT_EQ(GetDocument().getElementById("container"),
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "iframe should be promoted since document's overflow is hidden.";
 
@@ -2681,8 +2655,8 @@ TEST_F(ImplicitRootScrollerSimTest, ClippingAncestorPreventsPromotion) {
   for (auto test_case : test_cases) {
     String& style = std::get<0>(test_case);
     String& style_val = std::get<1>(test_case);
-    Element* ancestor = GetDocument().getElementById(AtomicString("ancestor"));
-    Element* iframe = GetDocument().getElementById(AtomicString("container"));
+    Element* ancestor = GetDocument().getElementById("ancestor");
+    Element* iframe = GetDocument().getElementById("container");
 
     ASSERT_EQ(iframe,
               GetDocument().GetRootScrollerController().EffectiveRootScroller())
@@ -2763,14 +2737,14 @@ TEST_F(ImplicitRootScrollerSimTest, AppliedAtFractionalZoom) {
   PaintLayerScrollableArea* area = GetDocument().View()->LayoutViewport();
   ASSERT_FALSE(area->HasVerticalOverflow());
 
-  EXPECT_EQ(GetDocument().getElementById(AtomicString("container")),
+  EXPECT_EQ(GetDocument().getElementById("container"),
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "<iframe> should be promoted when URL bar is hidden";
 
   WebView().ResizeWithBrowserControls(gfx::Size(1442, 2545), 196, 0, false);
   Compositor().BeginFrame();
 
-  EXPECT_EQ(GetDocument().getElementById(AtomicString("container")),
+  EXPECT_EQ(GetDocument().getElementById("container"),
             GetDocument().GetRootScrollerController().EffectiveRootScroller())
       << "<iframe> should remain promoted when URL bar is hidden";
 }
@@ -2906,8 +2880,8 @@ TEST_F(RootScrollerHitTest, HitTestInAreaRevealedByURLBarSameLayer) {
       )HTML");
 
   Compositor().BeginFrame();
-  Element* container = GetDocument().getElementById(AtomicString("container"));
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* container = GetDocument().getElementById("container");
+  Element* target = GetDocument().getElementById("target");
   ASSERT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 
@@ -2961,8 +2935,8 @@ TEST_F(RootScrollerHitTest, HitTestInAreaRevealedByURLBarDifferentLayer) {
       )HTML");
 
   Compositor().BeginFrame();
-  Element* container = GetDocument().getElementById(AtomicString("container"));
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* container = GetDocument().getElementById("container");
+  Element* target = GetDocument().getElementById("target");
   ASSERT_EQ(container,
             GetDocument().GetRootScrollerController().EffectiveRootScroller());
 

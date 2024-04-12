@@ -13,7 +13,9 @@ import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.tabmodel.NextTabPolicy;
 import org.chromium.chrome.browser.tabmodel.NextTabPolicy.NextTabPolicySupplier;
 
-/** Decides to show a next tab by location if overview is open, or by hierarchy otherwise. */
+/**
+ * Decides to show a next tab by location if overview is open, or by hierarchy otherwise.
+ */
 public class ChromeNextTabPolicySupplier implements NextTabPolicySupplier {
     private LayoutStateProvider mLayoutStateProvider;
 

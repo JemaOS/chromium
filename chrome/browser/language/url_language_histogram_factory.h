@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_LANGUAGE_URL_LANGUAGE_HISTOGRAM_FACTORY_H_
 #define CHROME_BROWSER_LANGUAGE_URL_LANGUAGE_HISTOGRAM_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -31,13 +31,13 @@ class UrlLanguageHistogramFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<UrlLanguageHistogramFactory>;
+  friend struct base::DefaultSingletonTraits<UrlLanguageHistogramFactory>;
 
   UrlLanguageHistogramFactory();
   ~UrlLanguageHistogramFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;

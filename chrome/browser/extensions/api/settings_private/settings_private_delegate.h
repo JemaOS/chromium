@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -17,6 +16,7 @@
 #include "chrome/common/extensions/api/settings_private.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "extensions/browser/extension_function.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -41,7 +41,7 @@ class SettingsPrivateDelegate : public KeyedService {
                                                   const base::Value* value);
 
   // Gets the value of the pref with the given |name|.
-  std::optional<base::Value::Dict> GetPref(const std::string& name);
+  absl::optional<base::Value::Dict> GetPref(const std::string& name);
 
   // Gets the values of all allowlisted prefs.
   virtual base::Value::List GetAllPrefs();

@@ -18,7 +18,8 @@ namespace ash {
 
 // Interface for dependency injection between ParentalHandoffScreen and its
 // WebUI representation.
-class ParentalHandoffScreenView {
+class ParentalHandoffScreenView
+    : public base::SupportsWeakPtr<ParentalHandoffScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"parental-handoff",
                                                        "ParentalHandoffScreen"};
@@ -27,13 +28,10 @@ class ParentalHandoffScreenView {
 
   // Shows the contents of the screen.
   virtual void Show(const std::u16string& username) = 0;
-
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<ParentalHandoffScreenView> AsWeakPtr() = 0;
 };
 
-class ParentalHandoffScreenHandler final : public BaseScreenHandler,
-                                           public ParentalHandoffScreenView {
+class ParentalHandoffScreenHandler : public BaseScreenHandler,
+                                     public ParentalHandoffScreenView {
  public:
   using TView = ParentalHandoffScreenView;
 
@@ -50,9 +48,6 @@ class ParentalHandoffScreenHandler final : public BaseScreenHandler,
 
   // Shows the contents of the screen.
   void Show(const std::u16string& username) override;
-  base::WeakPtr<ParentalHandoffScreenView> AsWeakPtr() override;
-
-  base::WeakPtrFactory<ParentalHandoffScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

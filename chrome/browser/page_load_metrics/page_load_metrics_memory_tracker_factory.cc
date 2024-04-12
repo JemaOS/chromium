@@ -4,7 +4,7 @@
 
 #include "chrome/browser/page_load_metrics/page_load_metrics_memory_tracker_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "components/page_load_metrics/browser/page_load_metrics_memory_tracker.h"
 
 namespace page_load_metrics {
@@ -18,29 +18,22 @@ PageLoadMetricsMemoryTrackerFactory::GetForBrowserContext(
 
 PageLoadMetricsMemoryTrackerFactory*
 PageLoadMetricsMemoryTrackerFactory::GetInstance() {
-  static base::NoDestructor<PageLoadMetricsMemoryTrackerFactory> instance;
-  return instance.get();
+  return base::Singleton<PageLoadMetricsMemoryTrackerFactory>::get();
 }
 
 PageLoadMetricsMemoryTrackerFactory::PageLoadMetricsMemoryTrackerFactory()
     : ProfileKeyedServiceFactory(
           "PageLoadMetricsMemoryTracker",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 bool PageLoadMetricsMemoryTrackerFactory::ServiceIsCreatedWithBrowserContext()
     const {
   return base::FeatureList::IsEnabled(features::kV8PerFrameMemoryMonitoring);
 }
 
-std::unique_ptr<KeyedService>
-PageLoadMetricsMemoryTrackerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PageLoadMetricsMemoryTrackerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<page_load_metrics::PageLoadMetricsMemoryTracker>();
+  return new page_load_metrics::PageLoadMetricsMemoryTracker();
 }
 
 }  // namespace page_load_metrics

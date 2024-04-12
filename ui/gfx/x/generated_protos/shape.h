@@ -7,19 +7,36 @@
 //    ../../third_party/xcbproto/src \
 //    gen/ui/gfx/x \
 //    bigreq \
+//    composite \
+//    damage \
+//    dpms \
+//    dri2 \
 //    dri3 \
+//    ge \
 //    glx \
+//    present \
 //    randr \
+//    record \
 //    render \
+//    res \
 //    screensaver \
 //    shape \
 //    shm \
 //    sync \
+//    xc_misc \
+//    xevie \
+//    xf86dri \
+//    xf86vidmode \
 //    xfixes \
+//    xinerama \
 //    xinput \
 //    xkb \
+//    xprint \
 //    xproto \
-//    xtest
+//    xselinux \
+//    xtest \
+//    xv \
+//    xvmc
 
 #ifndef UI_GFX_X_GENERATED_PROTOS_SHAPE_H_
 #define UI_GFX_X_GENERATED_PROTOS_SHAPE_H_
@@ -28,13 +45,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <optional>
 #include <vector>
 
 #include "base/component_export.h"
 #include "base/files/scoped_file.h"
 #include "base/memory/ref_counted_memory.h"
 #include "base/memory/scoped_refptr.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/x/error.h"
 #include "ui/gfx/x/ref_counted_fd.h"
 #include "xproto.h"
@@ -82,7 +99,7 @@ class COMPONENT_EXPORT(X11) Shape {
   };
 
   struct NotifyEvent {
-    static constexpr uint8_t type_id = 6;
+    static constexpr int type_id = 14;
     static constexpr uint8_t opcode = 0;
     Sk shape_kind{};
     uint16_t sequence{};
@@ -93,6 +110,10 @@ class COMPONENT_EXPORT(X11) Shape {
     uint16_t extents_height{};
     Time server_time{};
     uint8_t shaped{};
+
+    x11::Window* GetWindow() {
+      return reinterpret_cast<x11::Window*>(&affected_window);
+    }
   };
 
   struct QueryVersionRequest {};

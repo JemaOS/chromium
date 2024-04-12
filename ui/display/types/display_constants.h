@@ -6,18 +6,12 @@
 #define UI_DISPLAY_TYPES_DISPLAY_CONSTANTS_H_
 
 #include <stdint.h>
-
 #include <array>
 
-#include "base/containers/enum_set.h"
 #include "base/containers/flat_map.h"
-#include "ui/display/types/display_types_export.h"
 #include "ui/gfx/geometry/size_conversions.h"
 
 namespace display {
-
-// 1 inch in mm.
-constexpr float kInchInMm = 25.4f;
 
 // Display ID that represents an invalid display. Often used as a default value
 // before display IDs are known.
@@ -146,22 +140,15 @@ enum ConfigurationType {
 
 // A flag to allow ui/display and ozone to adjust the behavior of display
 // configurations.
-enum class ModesetFlag {
+enum ModesetFlag {
   // At least one of kTestModeset and kCommitModeset must be set.
-  kTestModeset,
-  kCommitModeset,
+  kTestModeset = 1 << 0,
+  kCommitModeset = 1 << 1,
   // When |kSeamlessModeset| is set, the commit (or test) will succeed only if
   // the submitted configuration can be completed without visual artifacts such
   // as blanking.
-  kSeamlessModeset,
-
-  kMinValue = kTestModeset,
-  kMaxValue = kSeamlessModeset,
+  kSeamlessModeset = 1 << 2,
 };
-
-// A bitmask of flags as defined in display::ModesetFlag.
-using ModesetFlags =
-    base::EnumSet<ModesetFlag, ModesetFlag::kMinValue, ModesetFlag::kMaxValue>;
 
 enum VariableRefreshRateState {
   kVrrDisabled = 0,
@@ -319,10 +306,6 @@ constexpr struct Data {
 // See third_party/libdrm/src/include/drm/drm_fourcc.h for the canonical list of
 // formats and modifiers
 using DrmFormatsAndModifiers = base::flat_map<uint32_t, std::vector<uint64_t>>;
-
-// Converts the display connection type from enum to string.
-DISPLAY_TYPES_EXPORT std::string DisplayConnectionTypeString(
-    DisplayConnectionType type);
 
 }  // namespace display
 

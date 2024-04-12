@@ -15,14 +15,13 @@
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/ash/app_list/search/common/icon_constants.h"
-#include "chrome/browser/ash/app_list/search/types.h"
 #include "chrome/browser/ash/app_list/vector_icons/vector_icons.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "components/services/app_service/public/cpp/app_launch_util.h"
 #include "components/services/app_service/public/cpp/app_types.h"
-#include "ui/base/models/image_model.h"
+#include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/paint_vector_icon.h"
 #include "url/gurl.h"
 
@@ -59,7 +58,7 @@ HelpAppResult::HelpAppResult(
     const float& relevance,
     Profile* profile,
     const ash::help_app::mojom::SearchResultPtr& result,
-    const ui::ImageModel& icon,
+    const gfx::ImageSkia& icon,
     const std::u16string& query)
     : profile_(profile),
       url_path_(result->url_path_with_parameters),
@@ -96,21 +95,18 @@ void HelpAppResult::Open(int event_flags) {
 
 HelpAppProvider::HelpAppProvider(Profile* profile,
                                  ash::help_app::SearchHandler* search_handler)
-    : SearchProvider(SearchCategory::kHelp),
-      profile_(profile),
-      search_handler_(search_handler) {
+    : profile_(profile), search_handler_(search_handler) {
   DCHECK(profile_);
 
-  app_registry_cache_observer_.Observe(
-      &apps::AppServiceProxyFactory::GetForProfile(profile_)
-           ->AppRegistryCache());
+  app_service_proxy_ = apps::AppServiceProxyFactory::GetForProfile(profile_);
+  Observe(&app_service_proxy_->AppRegistryCache());
   LoadIcon();
 
   // TODO(b/261867385): We manually load the icon from the local codebase as
   // the icon load from proxy is flaky. When the flakiness if solved, we can
   // safely remove this.
-  icon_ = ui::ImageModel::FromVectorIcon(
-      app_list::kHelpAppIcon, SK_ColorTRANSPARENT, kAppIconDimension);
+  icon_ = gfx::CreateVectorIcon(app_list::kHelpAppIcon, kAppIconDimension,
+                                SK_ColorTRANSPARENT);
 
   if (!search_handler_) {
     return;
@@ -141,7 +137,7 @@ void HelpAppProvider::Start(const std::u16string& query) {
   if (!search_handler_) {
     LogListSearchResultState(ListSearchResultState::kSearchHandlerUnavailable);
     return;
-  } else if (icon_.IsEmpty()) {
+  } else if (icon_.isNull()) {
     LogListSearchResultState(ListSearchResultState::kNoHelpAppIcon);
     // This prevents a timeout in the test, but it does not change the user
     // experience because the results were already cleared at the start.
@@ -199,7 +195,7 @@ void HelpAppProvider::OnAppUpdate(const apps::AppUpdate& update) {
 
 void HelpAppProvider::OnAppRegistryCacheWillBeDestroyed(
     apps::AppRegistryCache* cache) {
-  app_registry_cache_observer_.Reset();
+  Observe(nullptr);
 }
 
 // If the availability of search results changed, start a new search.
@@ -212,13 +208,13 @@ void HelpAppProvider::OnSearchResultAvailabilityChanged() {
 
 void HelpAppProvider::OnLoadIcon(apps::IconValuePtr icon_value) {
   if (icon_value && icon_value->icon_type == apps::IconType::kStandard) {
-    icon_ = ui::ImageModel::FromImageSkia(icon_value->uncompressed);
+    icon_ = icon_value->uncompressed;
   }
 }
 
 void HelpAppProvider::LoadIcon() {
-  auto* proxy = apps::AppServiceProxyFactory::GetForProfile(profile_);
-  proxy->LoadIcon(
+  app_service_proxy_->LoadIcon(
+      app_service_proxy_->AppRegistryCache().GetAppType(web_app::kHelpAppId),
       web_app::kHelpAppId, apps::IconType::kStandard,
       ash::SharedAppListConfig::instance().suggestion_chip_icon_dimension(),
       /*allow_placeholder_icon=*/false,

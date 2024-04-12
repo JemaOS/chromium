@@ -14,9 +14,8 @@
 #include "ui/views/controls/combobox/combobox.h"
 
 class ReadAnythingFontCombobox : public views::Combobox {
-  METADATA_HEADER(ReadAnythingFontCombobox, views::Combobox)
-
  public:
+  METADATA_HEADER(ReadAnythingFontCombobox);
   class Delegate {
    public:
     virtual void OnFontChoiceChanged(int new_index) = 0;
@@ -36,15 +35,15 @@ class ReadAnythingFontCombobox : public views::Combobox {
   // views::Combobox:
   gfx::Size GetMinimumSize() const override;
 
-  void SetFocusRingColorId(ui::ColorId focus_ring_color);
-
  private:
+  class MenuModel;
+
   void FontNameChangedCallback();
 
   // views::View:
   void GetAccessibleNodeData(ui::AXNodeData* node_data) override;
 
-  raw_ptr<ReadAnythingFontCombobox::Delegate, DanglingUntriaged> delegate_;
+  raw_ptr<ReadAnythingFontCombobox::Delegate> delegate_;
 
   base::WeakPtrFactory<ReadAnythingFontCombobox> weak_pointer_factory_{this};
 };

@@ -19,49 +19,47 @@
  *   - no horizontal scrolling, it is assumed that tabs always fit in the
  *     available space
  */
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
-import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
+import '../cr_hidden_style.css.js';
+import '../cr_shared_vars.css.js';
 
-import {getCss} from './cr_tabs.css.js';
-import {getHtml} from './cr_tabs.html.js';
+import {DomRepeatEvent, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-export const NONE_SELECTED: number = -1;
+import {getTemplate} from './cr_tabs.html.js';
 
-export class CrTabsElement extends CrLitElement {
+export class CrTabsElement extends PolymerElement {
   static get is() {
     return 'cr-tabs';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
       // Optional icon urls displayed in each tab.
       tabIcons: {
         type: Array,
+        value: () => [],
       },
 
       // Tab names displayed in each tab.
       tabNames: {
         type: Array,
+        value: () => [],
       },
 
       /** Index of the selected tab. */
       selected: {
         type: Number,
         notify: true,
+        observer: 'onSelectedChanged_',
       },
     };
   }
 
-  tabIcons: string[] = [];
-  tabNames: string[] = [];
+  tabIcons: string[];
+  tabNames: string[];
   selected: number;
 
   private isRtl_: boolean = false;
@@ -72,46 +70,34 @@ export class CrTabsElement extends CrLitElement {
     this.isRtl_ = this.matches(':host-context([dir=rtl]) cr-tabs');
   }
 
-  override firstUpdated() {
+  override ready() {
+    super.ready();
+
     this.setAttribute('role', 'tablist');
     this.addEventListener('keydown', this.onKeyDown_.bind(this));
   }
 
-  override updated(changedProperties: PropertyValues<this>) {
-    super.updated(changedProperties);
-
-    if (changedProperties.has('selected')) {
-      this.onSelectedChanged_(this.selected, changedProperties.get('selected'));
-    }
-  }
-
-  protected getAriaSelected_(index: number): string {
+  private getAriaSelected_(index: number): string {
     return index === this.selected ? 'true' : 'false';
   }
 
-  protected getIconStyle_(index: number): string {
+  private getIconStyle_(index: number): string {
     const icon = this.tabIcons[index];
     return icon ? `-webkit-mask-image: url(${icon}); display: block;` : '';
   }
 
-  protected getTabindex_(index: number): string {
+  private getTabindex_(index: number): string {
     return index === this.selected ? '0' : '-1';
   }
 
-  protected getSelectedClass_(index: number): string {
+  private getSelectedClass_(index: number): string {
     return index === this.selected ? 'selected' : '';
   }
 
-  private onSelectedChanged_(
-      newSelected: number, oldSelected: number|undefined) {
-    if (newSelected === NONE_SELECTED || oldSelected === NONE_SELECTED ||
-        oldSelected === undefined) {
-      return;
-    }
-
+  private onSelectedChanged_(newSelected: number, oldSelected: number) {
     const tabs = this.shadowRoot!.querySelectorAll('.tab');
-
-    if (tabs.length <= oldSelected) {
+    if (tabs.length === 0 || oldSelected === undefined) {
+      // Tabs are not rendered yet.
       return;
     }
 
@@ -139,7 +125,7 @@ export class CrTabsElement extends CrLitElement {
     this.updateIndicator_(newIndicator, newTabRect, leftmostEdge, fullWidth);
   }
 
-  private async onKeyDown_(e: KeyboardEvent) {
+  private onKeyDown_(e: KeyboardEvent) {
     const count = this.tabNames.length;
     let newSelection;
     if (e.key === 'Home') {
@@ -156,7 +142,6 @@ export class CrTabsElement extends CrLitElement {
     e.preventDefault();
     e.stopPropagation();
     this.selected = newSelection;
-    await this.updateComplete;
     this.shadowRoot!.querySelector<HTMLElement>('.tab.selected')!.focus();
   }
 
@@ -166,9 +151,8 @@ export class CrTabsElement extends CrLitElement {
     indicator.style.transform = `translateX(0) scaleX(1)`;
   }
 
-  protected onTabClick_(e: Event) {
-    const target = e.currentTarget as HTMLElement;
-    this.selected = Number(target.dataset['index']);
+  private onTabClick_(e: DomRepeatEvent<string>) {
+    this.selected = e.model.index;
   }
 
   private updateIndicator_(

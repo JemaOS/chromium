@@ -25,7 +25,7 @@ FindBarIcon::FindBarIcon(
                          "Find"),
       browser_(browser) {
   DCHECK(browser_);
-  SetAccessibilityProperties(/*role*/ std::nullopt,
+  SetAccessibilityProperties(/*role*/ absl::nullopt,
                              l10n_util::GetStringUTF16(IDS_TOOLTIP_FIND));
 }
 
@@ -72,5 +72,5 @@ void FindBarIcon::UpdateImpl() {
   SetActive(GetVisible(), was_visible != GetVisible());
 }
 
-BEGIN_METADATA(FindBarIcon)
+BEGIN_METADATA(FindBarIcon, PageActionIconView)
 END_METADATA

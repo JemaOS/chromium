@@ -14,8 +14,9 @@
 namespace extensions {
 
 void OpenExtensionSidePanel(Browser& browser, const ExtensionId& id) {
-  SidePanelUI::GetSidePanelUIForBrowser(&browser)->Show(
-      SidePanelEntry::Key(SidePanelEntry::Id::kExtension, id));
+  SidePanelCoordinator* coordinator =
+      BrowserView::GetBrowserViewForBrowser(&browser)->side_panel_coordinator();
+  coordinator->Show(SidePanelEntry::Key(SidePanelEntry::Id::kExtension, id));
 }
 
 content::WebContents* GetExtensionSidePanelWebContents(Browser& browser,

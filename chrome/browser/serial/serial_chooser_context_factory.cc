@@ -11,28 +11,20 @@
 SerialChooserContextFactory::SerialChooserContextFactory()
     : ProfileKeyedServiceFactory(
           "SerialChooserContext",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HostContentSettingsMapFactory::GetInstance());
 }
 
-SerialChooserContextFactory::~SerialChooserContextFactory() = default;
+SerialChooserContextFactory::~SerialChooserContextFactory() {}
 
-std::unique_ptr<KeyedService>
-SerialChooserContextFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SerialChooserContextFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<SerialChooserContext>(
-      Profile::FromBrowserContext(context));
+  return new SerialChooserContext(Profile::FromBrowserContext(context));
 }
 
 // static
 SerialChooserContextFactory* SerialChooserContextFactory::GetInstance() {
-  static base::NoDestructor<SerialChooserContextFactory> instance;
-  return instance.get();
+  return base::Singleton<SerialChooserContextFactory>::get();
 }
 
 // static

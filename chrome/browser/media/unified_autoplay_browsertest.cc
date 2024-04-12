@@ -11,7 +11,6 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings_pattern.h"
-#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
@@ -105,19 +104,20 @@ class UnifiedAutoplayBrowserTest : public InProcessBrowserTest {
   bool NavigateInRenderer(content::WebContents* web_contents, const GURL& url) {
     content::TestNavigationObserver observer(web_contents);
 
-    bool result =
-        content::ExecJs(web_contents, "window.location = '" + url.spec() + "';",
-                        content::EXECUTE_SCRIPT_NO_USER_GESTURE);
+    bool result = content::ExecuteScriptWithoutUserGesture(
+        web_contents, "window.location = '" + url.spec() + "';");
 
     if (result)
       observer.Wait();
     return result;
   }
 
-  void SetAutoplayForceAllowFlag(content::RenderFrameHost* rfh,
-                                 const GURL& url) {
+  void SetAutoplayForceAllowFlag(const GURL& url) {
     mojo::AssociatedRemote<blink::mojom::AutoplayConfigurationClient> client;
-    rfh->GetRemoteAssociatedInterfaces()->GetInterface(&client);
+    GetWebContents()
+        ->GetPrimaryMainFrame()
+        ->GetRemoteAssociatedInterfaces()
+        ->GetInterface(&client);
     client->AddAutoplayFlags(url::Origin::Create(url),
                              blink::mojom::kAutoplayFlagForceAllow);
   }
@@ -254,23 +254,8 @@ IN_PROC_BROWSER_TEST_F(UnifiedAutoplayBrowserTest, NoBypassUsingAutoplayFlag) {
 IN_PROC_BROWSER_TEST_F(UnifiedAutoplayBrowserTest, BypassUsingAutoplayFlag) {
   const GURL kTestPageUrl = embedded_test_server()->GetURL(kTestPagePath);
 
-  content::TestNavigationManager navigation_manager(GetWebContents(),
-                                                    kTestPageUrl);
-  content::NavigationController::LoadURLParams params(kTestPageUrl);
-  params.transition_type = ui::PAGE_TRANSITION_LINK;
-  params.frame_tree_node_id =
-      GetWebContents()->GetPrimaryMainFrame()->GetFrameTreeNodeId();
-  GetWebContents()->GetController().LoadURLWithParams(params);
-  EXPECT_TRUE(navigation_manager.WaitForResponse());
-
-  // Set the flag on the RenderFrameHost we're navigating to as well, in case
-  // we commit in a different RenderFrameHsot.
-  SetAutoplayForceAllowFlag(
-      navigation_manager.GetNavigationHandle()->GetRenderFrameHost(),
-      kTestPageUrl);
-  navigation_manager.ResumeNavigation();
-  EXPECT_TRUE(navigation_manager.WaitForNavigationFinished());
-  EXPECT_TRUE(content::WaitForLoadStop(GetWebContents()));
+  SetAutoplayForceAllowFlag(kTestPageUrl);
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kTestPageUrl));
 
   EXPECT_TRUE(AttemptPlay(GetWebContents()));
 }
@@ -279,9 +264,8 @@ IN_PROC_BROWSER_TEST_F(UnifiedAutoplayBrowserTest,
                        BypassUsingAutoplayFlag_SameDocument) {
   const GURL kTestPageUrl = embedded_test_server()->GetURL(kTestPagePath);
 
+  SetAutoplayForceAllowFlag(kTestPageUrl);
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kTestPageUrl));
-  SetAutoplayForceAllowFlag(GetWebContents()->GetPrimaryMainFrame(),
-                            kTestPageUrl);
 
   // Simulate a same document navigation by navigating to #test.
   GURL::Replacements replace_ref;

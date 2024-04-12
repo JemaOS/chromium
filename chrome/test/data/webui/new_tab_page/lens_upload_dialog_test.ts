@@ -1,17 +1,16 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
 import 'chrome://new-tab-page/new_tab_page.js';
 
-import type {LensUploadDialogElement} from 'chrome://new-tab-page/lazy_load.js';
-import {LensErrorType, LensSubmitType, LensUploadDialogAction, LensUploadDialogError} from 'chrome://new-tab-page/lazy_load.js';
+import {LensErrorType, LensSubmitType, LensUploadDialogAction, LensUploadDialogElement, LensUploadDialogError} from 'chrome://new-tab-page/lazy_load.js';
 import {WindowProxy} from 'chrome://new-tab-page/new_tab_page.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
-import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
+import {fakeMetricsPrivate, MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
-import type {TestMock} from 'chrome://webui-test/test_mock.js';
+import {TestMock} from 'chrome://webui-test/test_mock.js';
 
 import {installMock} from './test_support.js';
 
@@ -75,8 +74,7 @@ suite('LensUploadDialogTest', () => {
   test('hides when close button is clicked', async () => {
     // Act.
     const closeButton =
-        uploadDialog.shadowRoot!.querySelector<HTMLElement>('#closeButton');
-    assertTrue(!!closeButton);
+      uploadDialog.shadowRoot!.querySelector('#closeButton') as HTMLElement;
     closeButton.click();
 
     // Assert.
@@ -167,23 +165,6 @@ suite('LensUploadDialogTest', () => {
         document.hasFocus = nativeHasFocus;
       });
 
-  test('focusout that occurs during drag does not close dialog', async () => {
-    // Arrange.
-    const focusEvent = new FocusEvent('focusout', {relatedTarget: null});
-    const dragEvent = new DragEvent('dragenter');
-    // Act.
-    uploadDialog.$.dragDropArea.dispatchEvent(dragEvent);
-    uploadDialog.$.dialog.dispatchEvent(focusEvent);
-
-    // Assert.
-    assertFalse(uploadDialog.$.dialog.hidden);
-    assertEquals(
-        0,
-        metrics.count(
-            'NewTabPage.Lens.UploadDialog.DialogAction',
-            LensUploadDialogAction.DIALOG_CLOSED));
-  });
-
   test('clicking esc key closes the dialog', async () => {
     // Act.
     document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));
@@ -233,8 +214,8 @@ suite('LensUploadDialogTest', () => {
         windowProxy.setResultFor('onLine', true);
 
         // Act.
-        uploadDialog.shadowRoot!
-            .querySelector<HTMLElement>('#offlineRetryButton')!.click();
+        (uploadDialog.shadowRoot!.querySelector('#offlineRetryButton') as
+         HTMLElement)!.click();
         await waitAfterNextRender(uploadDialog);
 
         // Assert.
@@ -331,7 +312,7 @@ suite('LensUploadDialogTest', () => {
   test('drop event should submit files', async () => {
     // Arrange.
     let submitFileListCalled = false;
-    uploadDialog.$.lensForm.submitFileList = async (_fileList: FileList) => {
+    uploadDialog.$.lensForm.submitFileList = (_fileList: FileList) => {
       submitFileListCalled = true;
     };
     // Act.

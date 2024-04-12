@@ -67,7 +67,7 @@ PaintWorkletProxyClient::PaintWorkletProxyClient(
       worklet_id_(worklet_id),
       state_(RunState::kUninitialized),
       main_thread_runner_(std::move(main_thread_runner)),
-      paint_worklet_(MakeCrossThreadWeakHandle<PaintWorklet>(paint_worklet)) {
+      paint_worklet_(paint_worklet) {
   DCHECK(IsMainThread());
 }
 
@@ -144,8 +144,7 @@ void PaintWorkletProxyClient::RegisterCSSPaintDefinition(
         *main_thread_runner_, FROM_HERE,
         CrossThreadBindOnce(
             &PaintWorklet::RegisterMainThreadDocumentPaintDefinition,
-            MakeUnwrappingCrossThreadWeakHandle(paint_worklet_), name,
-            definition->NativeInvalidationProperties(),
+            paint_worklet_, name, definition->NativeInvalidationProperties(),
             std::move(passed_custom_properties),
             definition->InputArgumentTypes(),
             definition->GetPaintRenderingContext2DSettings()->alpha()));

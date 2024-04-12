@@ -49,12 +49,6 @@ InternetAvailabilityChecker* InternetAvailabilityChecker::Get() {
 }
 
 // static
-void InternetAvailabilityChecker::SetInstanceForTesting(
-    InternetAvailabilityChecker* instance) {
-  *GetInstanceStorage() = instance;
-}
-
-// static
 InternetAvailabilityChecker**
 InternetAvailabilityChecker::GetInstanceStorage() {
   static InternetAvailabilityChecker instance;

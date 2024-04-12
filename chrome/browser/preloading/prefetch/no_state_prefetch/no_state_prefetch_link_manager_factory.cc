@@ -21,30 +21,25 @@ NoStatePrefetchLinkManagerFactory::GetForBrowserContext(
 // static
 NoStatePrefetchLinkManagerFactory*
 NoStatePrefetchLinkManagerFactory::GetInstance() {
-  static base::NoDestructor<NoStatePrefetchLinkManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<NoStatePrefetchLinkManagerFactory>::get();
 }
 
 NoStatePrefetchLinkManagerFactory::NoStatePrefetchLinkManagerFactory()
     : ProfileKeyedServiceFactory(
           "NoStatePrefetchLinkManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(NoStatePrefetchManagerFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService>
-NoStatePrefetchLinkManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* NoStatePrefetchLinkManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   NoStatePrefetchManager* no_state_prefetch_manager =
       NoStatePrefetchManagerFactory::GetForBrowserContext(context);
   if (!no_state_prefetch_manager)
     return nullptr;
-  return std::make_unique<NoStatePrefetchLinkManager>(no_state_prefetch_manager);
+  NoStatePrefetchLinkManager* no_state_prefetch_link_manager =
+      new NoStatePrefetchLinkManager(no_state_prefetch_manager);
+  return no_state_prefetch_link_manager;
 }
 
 }  // namespace prerender

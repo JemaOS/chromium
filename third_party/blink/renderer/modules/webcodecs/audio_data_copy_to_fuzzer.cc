@@ -27,14 +27,13 @@ DEFINE_TEXT_PROTO_FUZZER(const wc_fuzzer::AudioDataCopyToCase& proto) {
   }();
 
   // Request a full GC upon returning.
-  auto scoped_gc =
-      MakeScopedGarbageCollectionRequest(test_support.GetIsolate());
+  auto scoped_gc = MakeScopedGarbageCollectionRequest();
 
   ScriptState* script_state =
       ToScriptStateForMainWorld(&page_holder->GetFrame());
   ScriptState::Scope scope(script_state);
 
-  AudioData* audio_data = MakeAudioData(script_state, proto.audio_data());
+  AudioData* audio_data = MakeAudioData(proto.audio_data());
   if (!audio_data)
     return;
 
@@ -45,7 +44,7 @@ DEFINE_TEXT_PROTO_FUZZER(const wc_fuzzer::AudioDataCopyToCase& proto) {
   audio_data->allocationSize(options, IGNORE_EXCEPTION_FOR_TESTING);
 
   AllowSharedBufferSource* destination =
-      MakeAllowSharedBufferSource(proto.copy_to().destination()).source;
+      MakeAllowSharedBufferSource(proto.copy_to().destination());
   DCHECK(destination);
 
   // The returned promise will be fulfilled synchronously since the source frame

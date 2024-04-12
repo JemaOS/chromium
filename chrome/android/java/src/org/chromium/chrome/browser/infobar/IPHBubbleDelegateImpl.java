@@ -14,6 +14,7 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.infobar.IPHInfoBarSupport.PopupState;
 import org.chromium.chrome.browser.infobar.IPHInfoBarSupport.TrackerParameters;
 import org.chromium.chrome.browser.permissions.PermissionSettingsBridge;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.util.ChromeAccessibilityUtil;
 import org.chromium.components.browser_ui.widget.textbubble.TextBubble;
@@ -32,7 +33,8 @@ class IPHBubbleDelegateImpl implements IPHInfoBarSupport.IPHBubbleDelegate {
 
     IPHBubbleDelegateImpl(Context context, Tab tab) {
         mContext = context;
-        mTracker = TrackerFactory.getTrackerForProfile(tab.getProfile());
+        mTracker =
+                TrackerFactory.getTrackerForProfile(Profile.fromWebContents(tab.getWebContents()));
         mTab = tab;
     }
 
@@ -46,13 +48,8 @@ class IPHBubbleDelegateImpl implements IPHInfoBarSupport.IPHBubbleDelegate {
         state.view = anchorView;
         state.feature = params.feature;
         state.bubble =
-                new TextBubble(
-                        mContext,
-                        anchorView,
-                        params.textId,
-                        params.accessibilityTextId,
-                        anchorView,
-                        ChromeAccessibilityUtil.get().isAccessibilityEnabled());
+                new TextBubble(mContext, anchorView, params.textId, params.accessibilityTextId,
+                        anchorView, ChromeAccessibilityUtil.get().isAccessibilityEnabled());
         state.bubble.setDismissOnTouchInteraction(true);
 
         return state;
@@ -69,11 +66,10 @@ class IPHBubbleDelegateImpl implements IPHInfoBarSupport.IPHBubbleDelegate {
                 return null;
             case InfoBarIdentifier.PERMISSION_INFOBAR_DELEGATE_ANDROID:
                 if (PermissionSettingsBridge.shouldShowNotificationsPromo(mTab.getWebContents())) {
-                    PermissionSettingsBridge.didShowNotificationsPromo(mTab.getProfile());
+                    PermissionSettingsBridge.didShowNotificationsPromo();
                     return new IPHInfoBarSupport.TrackerParameters(
                             FeatureConstants.QUIET_NOTIFICATION_PROMPTS_FEATURE,
-                            R.string.notifications_iph,
-                            R.string.notifications_iph);
+                            R.string.notifications_iph, R.string.notifications_iph);
                 }
                 return null;
             default:

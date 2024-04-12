@@ -18,7 +18,8 @@ UnderlyingSinkBase*
 RtcEncodedAudioReceiverSinkOptimizer::PerformInProcessOptimization(
     ScriptState* script_state) {
   auto* new_sink = MakeGarbageCollected<RTCEncodedAudioUnderlyingSink>(
-      script_state, std::move(transformer_));
+      script_state, std::move(transformer_),
+      webrtc::TransformableFrameInterface::Direction::kReceiver);
 
   std::move(set_underlying_sink_).Run(new_sink);
 

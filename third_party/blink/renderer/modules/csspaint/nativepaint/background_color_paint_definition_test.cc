@@ -18,7 +18,6 @@
 #include "third_party/blink/renderer/core/css/background_color_paint_image_generator.h"
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
 #include "third_party/blink/renderer/core/dom/element.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
@@ -39,14 +38,14 @@ class FakeBackgroundColorPaintImageGenerator
                              const Node* node,
                              const Vector<Color>& animated_colors,
                              const Vector<double>& offsets,
-                             const std::optional<double>& progress) override {
+                             const absl::optional<double>& progress) override {
     return BitmapImage::Create();
   }
 
   bool GetBGColorPaintWorkletParams(Node* node,
                                     Vector<Color>* animated_colors,
                                     Vector<double>* offsets,
-                                    std::optional<double>* progress) override {
+                                    absl::optional<double>* progress) override {
     return BackgroundColorPaintDefinition::GetBGColorPaintWorkletParams(
         node, animated_colors, offsets, progress);
   }
@@ -127,7 +126,7 @@ TEST_F(BackgroundColorPaintDefinitionTest, SimpleBGColorAnimationNotFallback) {
   EXPECT_EQ(element->GetElementAnimations()->Animations().size(), 1u);
   Vector<Color> animated_colors;
   Vector<double> offsets;
-  std::optional<double> progress;
+  absl::optional<double> progress;
   EXPECT_TRUE(BackgroundColorPaintDefinition::GetBGColorPaintWorkletParams(
       element, &animated_colors, &offsets, &progress));
   EXPECT_EQ(
@@ -270,7 +269,7 @@ TEST_F(BackgroundColorPaintDefinitionTest, FallbackToMainNoAnimation) {
   EXPECT_FALSE(element->GetElementAnimations());
   Vector<Color> animated_colors;
   Vector<double> offsets;
-  std::optional<double> progress;
+  absl::optional<double> progress;
   EXPECT_FALSE(BackgroundColorPaintDefinition::GetBGColorPaintWorkletParams(
       element, &animated_colors, &offsets, &progress));
 }
@@ -319,7 +318,7 @@ TEST_F(BackgroundColorPaintDefinitionTest, NoBGColorAnimationFallback) {
   EXPECT_EQ(element->GetElementAnimations()->Animations().size(), 1u);
   Vector<Color> animated_colors;
   Vector<double> offsets;
-  std::optional<double> progress;
+  absl::optional<double> progress;
   EXPECT_FALSE(BackgroundColorPaintDefinition::GetBGColorPaintWorkletParams(
       element, &animated_colors, &offsets, &progress));
   EXPECT_TRUE(animated_colors.empty());
@@ -368,7 +367,7 @@ TEST_F(BackgroundColorPaintDefinitionTest, FallbackToMainCompositeAccumulate) {
   EXPECT_EQ(element->GetElementAnimations()->Animations().size(), 1u);
   Vector<Color> animated_colors;
   Vector<double> offsets;
-  std::optional<double> progress;
+  absl::optional<double> progress;
   EXPECT_FALSE(BackgroundColorPaintDefinition::GetBGColorPaintWorkletParams(
       element, &animated_colors, &offsets, &progress));
 }
@@ -426,7 +425,7 @@ TEST_F(BackgroundColorPaintDefinitionTest, MultipleAnimationsFallback) {
   EXPECT_EQ(element->GetElementAnimations()->Animations().size(), 2u);
   Vector<Color> animated_colors;
   Vector<double> offsets;
-  std::optional<double> progress;
+  absl::optional<double> progress;
   EXPECT_FALSE(BackgroundColorPaintDefinition::GetBGColorPaintWorkletParams(
       element, &animated_colors, &offsets, &progress));
 }
@@ -463,8 +462,9 @@ TEST_F(BackgroundColorPaintDefinitionTest,
   Element* element = GetElementById("target");
   StyleRecalcContext style_recalc_context;
   style_recalc_context.old_style = element->GetComputedStyle();
-  const ComputedStyle* style = GetDocument().GetStyleResolver().ResolveStyle(
-      element, style_recalc_context);
+  scoped_refptr<const ComputedStyle> style =
+      GetDocument().GetStyleResolver().ResolveStyle(element,
+                                                    style_recalc_context);
   EXPECT_FALSE(style->HasCurrentBackgroundColorAnimation());
 
   NonThrowableExceptionState exception_state;
@@ -537,8 +537,9 @@ TEST_F(BackgroundColorPaintDefinitionTest, TriggerRepaintChangedKeyframe) {
   Element* element = GetElementById("target");
   StyleRecalcContext style_recalc_context;
   style_recalc_context.old_style = element->GetComputedStyle();
-  const ComputedStyle* style = GetDocument().GetStyleResolver().ResolveStyle(
-      element, style_recalc_context);
+  scoped_refptr<const ComputedStyle> style =
+      GetDocument().GetStyleResolver().ResolveStyle(element,
+                                                    style_recalc_context);
   EXPECT_FALSE(style->HasCurrentBackgroundColorAnimation());
 
   NonThrowableExceptionState exception_state;
@@ -705,26 +706,6 @@ TEST_F(BackgroundColorPaintDefinitionTest,
       CompositorPaintWorkletInput::NativePropertyType::kBackgroundColor,
       CompositorElementId(1u));
   float progress = 1 - std::numeric_limits<float>::epsilon();
-  CompositorPaintWorkletInput::PropertyValue property_value(progress);
-  property_values.insert(std::make_pair(property_key, property_value));
-  RunPaintForTest(animated_colors, offsets, property_values);
-}
-
-// Test that BackgroundColorPaintWorkletProxyClient::Paint handles colors with
-// differing color spaces - i.e won't crash/DCHECK.
-TEST_F(BackgroundColorPaintDefinitionTest,
-       ProxyClientPaintWithColorOfDifferingColorSpaces) {
-  ScopedCompositeBGColorAnimationForTest composite_bgcolor_animation(true);
-  Vector<Color> animated_colors = {
-      Color::FromColorSpace(Color::ColorSpace::kSRGBLegacy, 1, 0, 0, 1),
-      Color::FromColorSpace(Color::ColorSpace::kSRGB, 0, 0.5, 0, 1),
-  };
-  Vector<double> offsets = {0, 1};
-  CompositorPaintWorkletJob::AnimatedPropertyValues property_values;
-  CompositorPaintWorkletInput::PropertyKey property_key(
-      CompositorPaintWorkletInput::NativePropertyType::kBackgroundColor,
-      CompositorElementId(1u));
-  float progress = 0.5f;
   CompositorPaintWorkletInput::PropertyValue property_value(progress);
   property_values.insert(std::make_pair(property_key, property_value));
   RunPaintForTest(animated_colors, offsets, property_values);

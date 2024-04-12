@@ -31,6 +31,7 @@ class FetchRespondWithObserver;
 class PerformanceMark;
 class PerformanceMeasure;
 class Request;
+class Response;
 class ScriptState;
 struct WebServiceWorkerError;
 class WebURLResponse;
@@ -46,7 +47,8 @@ class MODULES_EXPORT FetchEvent final
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  using PreloadResponseProperty = ScriptPromiseProperty<IDLAny, DOMException>;
+  using PreloadResponseProperty =
+      ScriptPromiseProperty<Member<Response>, Member<DOMException>>;
   static FetchEvent* Create(ScriptState*,
                             const AtomicString& type,
                             const FetchEventInit*);
@@ -65,8 +67,8 @@ class MODULES_EXPORT FetchEvent final
   bool isReload() const;
 
   void respondWith(ScriptState*, ScriptPromise, ExceptionState&);
-  ScriptPromiseTyped<IDLAny> preloadResponse(ScriptState*);
-  ScriptPromiseTyped<IDLUndefined> handled(ScriptState*);
+  ScriptPromise preloadResponse(ScriptState*);
+  ScriptPromise handled(ScriptState*);
 
   void ResolveHandledPromise();
   void RejectHandledPromise(const String& error_message);
@@ -98,7 +100,8 @@ class MODULES_EXPORT FetchEvent final
   Member<PreloadResponseProperty> preload_response_property_;
   std::unique_ptr<WebURLResponse> preload_response_;
   Member<DataPipeBytesConsumer::CompletionNotifier> body_completion_notifier_;
-  Member<ScriptPromiseProperty<IDLUndefined, DOMException>> handled_property_;
+  Member<ScriptPromiseProperty<ToV8UndefinedGenerator, Member<DOMException>>>
+      handled_property_;
   String client_id_;
   String resulting_client_id_;
   bool is_reload_;

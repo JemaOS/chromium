@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SIGNIN_SIGNIN_PROFILE_ATTRIBUTES_UPDATER_FACTORY_H_
 #define CHROME_BROWSER_SIGNIN_SIGNIN_PROFILE_ATTRIBUTES_UPDATER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -27,13 +27,14 @@ class SigninProfileAttributesUpdaterFactory
       const SigninProfileAttributesUpdaterFactory&) = delete;
 
  private:
-  friend base::NoDestructor<SigninProfileAttributesUpdaterFactory>;
+  friend struct base::DefaultSingletonTraits<
+      SigninProfileAttributesUpdaterFactory>;
 
   SigninProfileAttributesUpdaterFactory();
   ~SigninProfileAttributesUpdaterFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

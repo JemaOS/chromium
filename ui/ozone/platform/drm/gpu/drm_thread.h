@@ -8,8 +8,6 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
-#include <vector>
 
 #include "base/files/file.h"
 #include "base/memory/raw_ptr.h"
@@ -26,7 +24,6 @@
 #include "ui/ozone/platform/drm/gpu/drm_device_generator.h"
 #include "ui/ozone/platform/drm/mojom/device_cursor.mojom.h"
 #include "ui/ozone/platform/drm/mojom/drm_device.mojom.h"
-#include "ui/ozone/public/drm_modifiers_filter.h"
 #include "ui/ozone/public/hardware_capabilities.h"
 #include "ui/ozone/public/overlay_surface_candidate.h"
 #include "ui/ozone/public/swap_completion_callback.h"
@@ -36,10 +33,7 @@ class FilePath;
 }  // namespace base
 
 namespace display {
-class GammaCurve;
-struct ColorCalibration;
-struct ColorTemperatureAdjustment;
-struct GammaAdjustment;
+struct GammaRampRGBEntry;
 }  // namespace display
 
 namespace gfx {
@@ -117,6 +111,9 @@ class DrmThread : public base::Thread,
   void AddDrmDeviceReceiver(
       mojo::PendingReceiver<ozone::mojom::DrmDevice> receiver);
 
+  void SetColorSpace(gfx::AcceleratedWidget widget,
+                     const gfx::ColorSpace& color_space);
+
   // Verifies if the display controller can successfully scanout the given set
   // of OverlaySurfaceCandidates and return the status associated with each
   // candidate.
@@ -144,10 +141,6 @@ class DrmThread : public base::Thread,
 
   void IsDeviceAtomic(gfx::AcceleratedWidget widget, bool* is_atomic);
 
-  // Sets a filter that the DRM thread can invoke to filter out modifiers
-  // incompatible with use in GPU main and Viz threads.
-  void SetDrmModifiersFilter(std::unique_ptr<DrmModifiersFilter> filter);
-
   // ozone::mojom::DrmDevice
   void CreateWindow(gfx::AcceleratedWidget widget,
                     const gfx::Rect& initial_bounds) override;
@@ -167,7 +160,7 @@ class DrmThread : public base::Thread,
   void RemoveGraphicsDevice(const base::FilePath& path) override;
   void ConfigureNativeDisplays(
       const std::vector<display::DisplayConfigurationParams>& config_requests,
-      display::ModesetFlags modeset_flags,
+      uint32_t modeset_flag,
       ConfigureNativeDisplaysCallback callback) override;
   void SetHdcpKeyProp(int64_t display_id,
                       const std::string& key,
@@ -182,26 +175,15 @@ class DrmThread : public base::Thread,
                     display::HDCPState state,
                     display::ContentProtectionMethod protection_method,
                     base::OnceCallback<void(int64_t, bool)> callback) override;
-  void SetColorTemperatureAdjustment(
-      int64_t display_id,
-      const display::ColorTemperatureAdjustment& cta) override;
-  void SetColorCalibration(
-      int64_t display_id,
-      const display::ColorCalibration& calibration) override;
-  void SetGammaAdjustment(int64_t display_id,
-                          const display::GammaAdjustment& adjustment) override;
   void SetColorMatrix(int64_t display_id,
                       const std::vector<float>& color_matrix) override;
-  void SetGammaCorrection(int64_t display_id,
-                          const display::GammaCurve& degamma,
-                          const display::GammaCurve& gamma) override;
+  void SetGammaCorrection(
+      int64_t display_id,
+      const std::vector<display::GammaRampRGBEntry>& degamma_lut,
+      const std::vector<display::GammaRampRGBEntry>& gamma_lut) override;
   void SetPrivacyScreen(int64_t display_id,
                         bool enabled,
                         base::OnceCallback<void(bool)> callback) override;
-  void GetSeamlessRefreshRates(
-      int64_t display_id,
-      GetSeamlessRefreshRatesCallback callback) override;
-
   void GetDeviceCursor(
       mojo::PendingAssociatedReceiver<ozone::mojom::DeviceCursor> receiver)
       override;
@@ -209,7 +191,7 @@ class DrmThread : public base::Thread,
   // ozone::mojom::DeviceCursor
   void SetCursor(gfx::AcceleratedWidget widget,
                  const std::vector<SkBitmap>& bitmaps,
-                 const std::optional<gfx::Point>& location,
+                 const gfx::Point& location,
                  base::TimeDelta frame_delay) override;
   void MoveCursor(gfx::AcceleratedWidget widget,
                   const gfx::Point& location) override;
@@ -221,7 +203,7 @@ class DrmThread : public base::Thread,
  private:
   struct TaskInfo {
     base::OnceClosure task;
-    raw_ptr<base::WaitableEvent> done;
+    raw_ptr<base::WaitableEvent, ExperimentalAsh> done;
 
     TaskInfo(base::OnceClosure task, base::WaitableEvent* done);
     TaskInfo(TaskInfo&& other);

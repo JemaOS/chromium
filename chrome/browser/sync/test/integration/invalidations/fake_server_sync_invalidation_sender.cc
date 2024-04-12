@@ -4,8 +4,7 @@
 
 #include "chrome/browser/sync/test/integration/invalidations/fake_server_sync_invalidation_sender.h"
 
-#include <vector>
-
+#include "base/containers/cxx20_erase.h"
 #include "base/logging.h"
 #include "base/time/time.h"
 #include "components/gcm_driver/instance_id/fake_gcm_driver_for_instance_id.h"
@@ -43,7 +42,7 @@ void FakeServerSyncInvalidationSender::AddFakeGCMDriver(
 void FakeServerSyncInvalidationSender::RemoveFakeGCMDriver(
     instance_id::FakeGCMDriverForInstanceID* fake_gcm_driver) {
   fake_gcm_driver->RemoveConnectionObserver(this);
-  std::erase(fake_gcm_drivers_, fake_gcm_driver);
+  base::Erase(fake_gcm_drivers_, fake_gcm_driver);
 }
 
 void FakeServerSyncInvalidationSender::OnWillCommit() {
@@ -52,6 +51,7 @@ void FakeServerSyncInvalidationSender::OnWillCommit() {
 }
 
 void FakeServerSyncInvalidationSender::OnCommit(
+    const std::string& committer_invalidator_client_id,
     syncer::ModelTypeSet committed_model_types) {
   // Update token to interested data types mapping. This is needed to support
   // newly added DeviceInfos during commit request.
@@ -74,7 +74,7 @@ void FakeServerSyncInvalidationSender::OnCommit(
 
     // Versions are used to keep hints ordered. Versions are not really used by
     // tests, just use current time.
-    payload.set_version(base::Time::Now().InMillisecondsSinceUnixEpoch());
+    payload.set_version(base::Time::Now().ToJavaTime());
     payload.set_hint("hint");
 
     invalidations_to_deliver_[token].push_back(std::move(payload));

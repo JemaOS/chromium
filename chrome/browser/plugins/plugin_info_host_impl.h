@@ -18,6 +18,7 @@
 #include "chrome/common/plugin.mojom.h"
 #include "components/content_settings/core/common/content_settings.h"
 #include "components/keyed_service/core/keyed_service_shutdown_notifier.h"
+#include "content/public/browser/browser_message_filter.h"
 #include "content/public/browser/browser_thread.h"
 #include "extensions/buildflags/buildflags.h"
 #include "media/media_buildflags.h"
@@ -75,7 +76,7 @@ class PluginInfoHostImpl : public chrome::mojom::PluginInfoHost {
     raw_ptr<extensions::ExtensionRegistry, DanglingUntriaged>
         extension_registry_;
 #endif
-    raw_ptr<const HostContentSettingsMap, AcrossTasksDanglingUntriaged>
+    raw_ptr<const HostContentSettingsMap, DanglingUntriaged>
         host_content_settings_map_;
     scoped_refptr<PluginPrefs> plugin_prefs_;
   };

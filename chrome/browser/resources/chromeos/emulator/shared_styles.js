@@ -4,9 +4,7 @@
 
 import 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {html} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-
 const styleElement = document.createElement('dom-module');
 styleElement.setAttribute('assetpath', 'chrome://resources/');
-styleElement.appendChild(html`{__html_template__}`.content);
+styleElement.innerHTML = `{__html_template__}`;
 styleElement.register('device-emulator-shared-styles');

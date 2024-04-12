@@ -34,7 +34,7 @@ class ShelfButtonPressedMetricTrackerTestAPI {
   void SetTickClock(const base::TickClock* tick_clock);
 
  private:
-  const raw_ptr<ShelfButtonPressedMetricTracker>
+  const raw_ptr<ShelfButtonPressedMetricTracker, ExperimentalAsh>
       shelf_button_pressed_metric_tracker_;
 };
 

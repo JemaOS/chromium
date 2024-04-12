@@ -69,9 +69,9 @@ class SilentTurnSyncOnHelperDelegate : public TurnSyncOnHelper::Delegate {
 
 }  // namespace
 
-SilentSyncEnabler::SilentSyncEnabler(Profile& profile,
-                                     signin::IdentityManager& identity_manager)
-    : profile_(profile), identity_manager_(identity_manager) {}
+SilentSyncEnabler::SilentSyncEnabler(Profile* profile) : profile_(profile) {
+  DCHECK(profile_);
+}
 
 SilentSyncEnabler::~SilentSyncEnabler() = default;
 
@@ -79,14 +79,16 @@ void SilentSyncEnabler::StartAttempt(base::OnceClosure callback) {
   DCHECK(!callback_);  // An attempt should not be ongoing
   DCHECK(callback);
 
-  DCHECK(identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSignin));
-  DCHECK(!identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSync));
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile_);
+  DCHECK(identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+  DCHECK(!identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync));
 
   callback_ = std::move(callback);
-  if (identity_manager_->AreRefreshTokensLoaded()) {
+  if (identity_manager->AreRefreshTokensLoaded()) {
     TryEnableSyncSilentlyWithToken();
   } else {
-    scoped_observation_.Observe(&identity_manager_.get());
+    scoped_observation_.Observe(identity_manager);
   }
 }
 
@@ -96,9 +98,12 @@ void SilentSyncEnabler::OnRefreshTokensLoaded() {
 }
 
 void SilentSyncEnabler::TryEnableSyncSilentlyWithToken() {
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile_);
+
   CoreAccountId account_id =
-      identity_manager_->GetPrimaryAccountId(signin::ConsentLevel::kSignin);
-  if (!identity_manager_->HasAccountWithRefreshToken(account_id)) {
+      identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin);
+  if (!identity_manager->HasAccountWithRefreshToken(account_id)) {
     // Still no token, just give up.
     if (callback_)
       std::move(callback_).Run();
@@ -107,8 +112,9 @@ void SilentSyncEnabler::TryEnableSyncSilentlyWithToken() {
 
   // TurnSyncOnHelper deletes itself once done.
   new TurnSyncOnHelper(
-      &profile_.get(), signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN,
-      signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO, account_id,
+      profile_, signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN,
+      signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO,
+      signin_metrics::Reason::kSigninPrimaryAccount, account_id,
       TurnSyncOnHelper::SigninAbortedMode::KEEP_ACCOUNT,
       std::make_unique<SilentTurnSyncOnHelperDelegate>(), std::move(callback_));
 }

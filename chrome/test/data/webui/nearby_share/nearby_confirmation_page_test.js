@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import 'chrome://nearby/nearby_confirmation_page.js';
-import 'chrome://webui-test/chromeos/mojo_webui_test_support.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
 import {TransferStatus} from 'chrome://nearby/shared/nearby_share.mojom-webui.js';
 import {ShareType} from 'chrome://nearby/shared/nearby_share_share_type.mojom-webui.js';
@@ -131,13 +131,13 @@ suite('ConfirmatonPageTest', function() {
         TransferStatus.kInProgress, token);
     await transferUpdateListener.remote_.$.flushForTesting();
 
-    const isAnimationShown =
-        !!confirmationPageElement.shadowRoot.querySelector('#animation');
+    const isAnimationHidden =
+        !!confirmationPageElement.shadowRoot.querySelector('cr-lottie[style]');
 
     if (confirmationPageElement.shadowRoot.querySelector('#errorTitle')) {
-      assertFalse(isAnimationShown);
+      assertTrue(isAnimationHidden);
     } else {
-      assertTrue(isAnimationShown);
+      assertFalse(isAnimationHidden);
     }
   });
 
@@ -159,14 +159,14 @@ suite('ConfirmatonPageTest', function() {
         TransferStatus.kRejected, token);
     await transferUpdateListener.remote_.$.flushForTesting();
 
-    const isAnimationShown =
-        !!confirmationPageElement.shadowRoot.querySelector('#animation');
+    const isAnimationHidden =
+        !!confirmationPageElement.shadowRoot.querySelector('cr-lottie[style]');
 
     if (confirmationPageElement.shadowRoot.querySelector('#errorTitle')
             .textContent) {
-      assertFalse(isAnimationShown);
+      assertTrue(isAnimationHidden);
     } else {
-      assertTrue(isAnimationShown);
+      assertFalse(isAnimationHidden);
     }
   });
 

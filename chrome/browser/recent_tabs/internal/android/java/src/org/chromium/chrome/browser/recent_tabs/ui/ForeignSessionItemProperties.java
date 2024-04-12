@@ -10,7 +10,9 @@ import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModel.ReadableObjectPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableBooleanPropertyKey;
 
-/** Model for a ForeignSession entry in the device detail screen sheet. */
+/**
+ * Model for a ForeignSession entry in the device detail screen sheet.
+ */
 public class ForeignSessionItemProperties {
     /** The device represented by this entry. */
     public static final ReadableObjectPropertyKey<ForeignSession> SESSION_PROFILE =
@@ -22,7 +24,9 @@ public class ForeignSessionItemProperties {
      */
     public static final WritableBooleanPropertyKey IS_SELECTED = new WritableBooleanPropertyKey();
 
-    /** The function to run when this session item is selected by the user. */
+    /**
+     * The function to run when this session item is selected by the user.
+     */
     public static final ReadableObjectPropertyKey<Runnable> ON_CLICK_LISTENER =
             new ReadableObjectPropertyKey<>();
 

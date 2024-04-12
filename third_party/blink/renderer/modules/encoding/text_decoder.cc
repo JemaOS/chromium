@@ -145,12 +145,10 @@ String TextDecoder::decode(const char* start,
 
   if (!ignore_bom_ && !bom_seen_ && !s.empty()) {
     bom_seen_ = true;
-    if (s[0] == 0xFEFF) {
-      std::string_view name = encoding_.GetName();
-      if ((name == "UTF-8" || name == "UTF-16LE" || name == "UTF-16BE")) {
-        s.Remove(0);
-      }
-    }
+    String name(encoding_.GetName());
+    if ((name == "UTF-8" || name == "UTF-16LE" || name == "UTF-16BE") &&
+        s[0] == 0xFEFF)
+      s.Remove(0);
   }
 
   return s;

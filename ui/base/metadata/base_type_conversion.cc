@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <optional>
 #include <string>
 
 #include "base/containers/fixed_flat_set.h"
@@ -19,6 +18,7 @@
 #include "base/strings/sys_string_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time_delta_from_string.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkScalar.h"
 #include "ui/gfx/color_utils.h"
 #include "ui/gfx/geometry/rect.h"
@@ -149,116 +149,115 @@ std::u16string TypeConverter<url::Component>::ToString(
       base::StringPrintf("{%d,%d}", source_value.begin, source_value.len));
 }
 
-std::optional<int8_t> TypeConverter<int8_t>::FromString(
+absl::optional<int8_t> TypeConverter<int8_t>::FromString(
     const std::u16string& source_value) {
   int32_t ret = 0;
   if (base::StringToInt(source_value, &ret) &&
       base::IsValueInRangeForNumericType<int8_t>(ret)) {
     return static_cast<int8_t>(ret);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int16_t> TypeConverter<int16_t>::FromString(
+absl::optional<int16_t> TypeConverter<int16_t>::FromString(
     const std::u16string& source_value) {
   int32_t ret = 0;
   if (base::StringToInt(source_value, &ret) &&
       base::IsValueInRangeForNumericType<int16_t>(ret)) {
     return static_cast<int16_t>(ret);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int32_t> TypeConverter<int32_t>::FromString(
+absl::optional<int32_t> TypeConverter<int32_t>::FromString(
     const std::u16string& source_value) {
   int value;
-  return base::StringToInt(source_value, &value) ? std::make_optional(value)
-                                                 : std::nullopt;
+  return base::StringToInt(source_value, &value) ? absl::make_optional(value)
+                                                 : absl::nullopt;
 }
 
-std::optional<int64_t> TypeConverter<int64_t>::FromString(
+absl::optional<int64_t> TypeConverter<int64_t>::FromString(
     const std::u16string& source_value) {
   int64_t value;
-  return base::StringToInt64(source_value, &value) ? std::make_optional(value)
-                                                   : std::nullopt;
+  return base::StringToInt64(source_value, &value) ? absl::make_optional(value)
+                                                   : absl::nullopt;
 }
 
-std::optional<uint8_t> TypeConverter<uint8_t>::FromString(
+absl::optional<uint8_t> TypeConverter<uint8_t>::FromString(
     const std::u16string& source_value) {
   unsigned ret = 0;
   if (base::StringToUint(source_value, &ret) &&
       base::IsValueInRangeForNumericType<uint8_t>(ret)) {
     return static_cast<uint8_t>(ret);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<uint16_t> TypeConverter<uint16_t>::FromString(
+absl::optional<uint16_t> TypeConverter<uint16_t>::FromString(
     const std::u16string& source_value) {
   unsigned ret = 0;
   if (base::StringToUint(source_value, &ret) &&
       base::IsValueInRangeForNumericType<uint16_t>(ret)) {
     return static_cast<uint16_t>(ret);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<uint32_t> TypeConverter<uint32_t>::FromString(
+absl::optional<uint32_t> TypeConverter<uint32_t>::FromString(
     const std::u16string& source_value) {
   unsigned value;
-  return base::StringToUint(source_value, &value) ? std::make_optional(value)
-                                                  : std::nullopt;
+  return base::StringToUint(source_value, &value) ? absl::make_optional(value)
+                                                  : absl::nullopt;
 }
 
-std::optional<uint64_t> TypeConverter<uint64_t>::FromString(
+absl::optional<uint64_t> TypeConverter<uint64_t>::FromString(
     const std::u16string& source_value) {
   uint64_t value;
-  return base::StringToUint64(source_value, &value) ? std::make_optional(value)
-                                                    : std::nullopt;
+  return base::StringToUint64(source_value, &value) ? absl::make_optional(value)
+                                                    : absl::nullopt;
 }
 
-std::optional<float> TypeConverter<float>::FromString(
+absl::optional<float> TypeConverter<float>::FromString(
     const std::u16string& source_value) {
-  if (std::optional<double> temp =
-          TypeConverter<double>::FromString(source_value)) {
+  if (absl::optional<double> temp =
+          TypeConverter<double>::FromString(source_value))
     return static_cast<float>(temp.value());
-  }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<double> TypeConverter<double>::FromString(
+absl::optional<double> TypeConverter<double>::FromString(
     const std::u16string& source_value) {
   double value;
   return base::StringToDouble(base::UTF16ToUTF8(source_value), &value)
-             ? std::make_optional(value)
-             : std::nullopt;
+             ? absl::make_optional(value)
+             : absl::nullopt;
 }
 
-std::optional<bool> TypeConverter<bool>::FromString(
+absl::optional<bool> TypeConverter<bool>::FromString(
     const std::u16string& source_value) {
   const bool is_true = source_value == u"true";
   if (is_true || source_value == u"false")
     return is_true;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<std::u16string> TypeConverter<std::u16string>::FromString(
+absl::optional<std::u16string> TypeConverter<std::u16string>::FromString(
     const std::u16string& source_value) {
   return source_value;
 }
 
-std::optional<base::FilePath> TypeConverter<base::FilePath>::FromString(
+absl::optional<base::FilePath> TypeConverter<base::FilePath>::FromString(
     const std::u16string& source_value) {
   return base::FilePath::FromUTF16Unsafe(source_value);
 }
 
-std::optional<base::TimeDelta> TypeConverter<base::TimeDelta>::FromString(
+absl::optional<base::TimeDelta> TypeConverter<base::TimeDelta>::FromString(
     const std::u16string& source_value) {
   std::string source = base::UTF16ToUTF8(source_value);
   return base::TimeDeltaFromString(source);
 }
 
-std::optional<gfx::Insets> TypeConverter<gfx::Insets>::FromString(
+absl::optional<gfx::Insets> TypeConverter<gfx::Insets>::FromString(
     const std::u16string& source_value) {
   const auto values = base::SplitStringPiece(
       source_value, u",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -269,10 +268,10 @@ std::optional<gfx::Insets> TypeConverter<gfx::Insets>::FromString(
       base::StringToInt(values[3], &right)) {
     return gfx::Insets::TLBR(top, left, bottom, right);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<gfx::Point> TypeConverter<gfx::Point>::FromString(
+absl::optional<gfx::Point> TypeConverter<gfx::Point>::FromString(
     const std::u16string& source_value) {
   const auto values = base::SplitStringPiece(
       source_value, u",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -281,10 +280,10 @@ std::optional<gfx::Point> TypeConverter<gfx::Point>::FromString(
       base::StringToInt(values[1], &y)) {
     return gfx::Point(x, y);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<gfx::PointF> TypeConverter<gfx::PointF>::FromString(
+absl::optional<gfx::PointF> TypeConverter<gfx::PointF>::FromString(
     const std::u16string& source_value) {
   const auto values = base::SplitStringPiece(
       source_value, u",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -293,10 +292,10 @@ std::optional<gfx::PointF> TypeConverter<gfx::PointF>::FromString(
       base::StringToDouble(values[1], &y)) {
     return gfx::PointF(x, y);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<gfx::Range> TypeConverter<gfx::Range>::FromString(
+absl::optional<gfx::Range> TypeConverter<gfx::Range>::FromString(
     const std::u16string& source_value) {
   const auto values = base::SplitStringPiece(
       source_value, u"{,}", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -305,40 +304,40 @@ std::optional<gfx::Range> TypeConverter<gfx::Range>::FromString(
       base::StringToUint(values[1], &max)) {
     return gfx::Range(min, max);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<gfx::Rect> TypeConverter<gfx::Rect>::FromString(
+absl::optional<gfx::Rect> TypeConverter<gfx::Rect>::FromString(
     const std::u16string& source_value) {
   const auto values = base::SplitString(
       source_value, u" ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (values.size() != 2)
-    return std::nullopt;
-  const std::optional<gfx::Point> origin =
+    return absl::nullopt;
+  const absl::optional<gfx::Point> origin =
       TypeConverter<gfx::Point>::FromString(values[0]);
-  const std::optional<gfx::Size> size =
+  const absl::optional<gfx::Size> size =
       TypeConverter<gfx::Size>::FromString(values[1]);
   if (origin && size)
     return gfx::Rect(*origin, *size);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<gfx::RectF> TypeConverter<gfx::RectF>::FromString(
+absl::optional<gfx::RectF> TypeConverter<gfx::RectF>::FromString(
     const std::u16string& source_value) {
   const auto values = base::SplitString(
       source_value, u" ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (values.size() != 2)
-    return std::nullopt;
-  const std::optional<gfx::PointF> origin =
+    return absl::nullopt;
+  const absl::optional<gfx::PointF> origin =
       TypeConverter<gfx::PointF>::FromString(values[0]);
-  const std::optional<gfx::SizeF> size =
+  const absl::optional<gfx::SizeF> size =
       TypeConverter<gfx::SizeF>::FromString(values[1]);
   if (origin && size)
     return gfx::RectF(*origin, *size);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<gfx::ShadowValues> TypeConverter<gfx::ShadowValues>::FromString(
+absl::optional<gfx::ShadowValues> TypeConverter<gfx::ShadowValues>::FromString(
     const std::u16string& source_value) {
   gfx::ShadowValues ret;
   const auto shadow_value_strings = base::SplitStringPiece(
@@ -370,7 +369,7 @@ std::optional<gfx::ShadowValues> TypeConverter<gfx::ShadowValues>::FromString(
   return ret;
 }
 
-std::optional<gfx::Size> TypeConverter<gfx::Size>::FromString(
+absl::optional<gfx::Size> TypeConverter<gfx::Size>::FromString(
     const std::u16string& source_value) {
   const auto values = base::SplitStringPiece(
       source_value, u"x", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -379,10 +378,10 @@ std::optional<gfx::Size> TypeConverter<gfx::Size>::FromString(
       base::StringToInt(values[1], &height)) {
     return gfx::Size(width, height);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<gfx::SizeF> TypeConverter<gfx::SizeF>::FromString(
+absl::optional<gfx::SizeF> TypeConverter<gfx::SizeF>::FromString(
     const std::u16string& source_value) {
   const auto values = base::SplitStringPiece(
       source_value, u"x", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -391,15 +390,15 @@ std::optional<gfx::SizeF> TypeConverter<gfx::SizeF>::FromString(
       base::StringToDouble(values[1], &height)) {
     return gfx::SizeF(width, height);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<std::string> TypeConverter<std::string>::FromString(
+absl::optional<std::string> TypeConverter<std::string>::FromString(
     const std::u16string& source_value) {
   return base::UTF16ToUTF8(source_value);
 }
 
-std::optional<url::Component> TypeConverter<url::Component>::FromString(
+absl::optional<url::Component> TypeConverter<url::Component>::FromString(
     const std::u16string& source_value) {
   const auto values = base::SplitStringPiece(
       source_value, u"{,}", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -408,7 +407,7 @@ std::optional<url::Component> TypeConverter<url::Component>::FromString(
       base::StringToInt(values[1], &len) && len >= -1) {
     return url::Component(begin, len);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::u16string TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::ToString(
@@ -416,7 +415,7 @@ std::u16string TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::ToString(
   return base::UTF8ToUTF16(color_utils::SkColorToRgbaString(source_value));
 }
 
-std::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::FromString(
+absl::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::FromString(
     const std::u16string& source_value) {
   return GetNextColor(source_value.cbegin(), source_value.cend());
 }
@@ -468,7 +467,7 @@ bool TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::GetNextColor(
   return GetNextColor(start, end, color, next_token);
 }
 
-std::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::GetNextColor(
+absl::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::GetNextColor(
     std::u16string::const_iterator start,
     std::u16string::const_iterator end,
     std::u16string::const_iterator& next_token) {
@@ -482,19 +481,19 @@ std::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::GetNextColor(
       return ParseHexString(color);
     SkColor value;
     if (base::StringToUint(color, &value))
-      return std::make_optional(value);
+      return absl::make_optional(value);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::GetNextColor(
+absl::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::GetNextColor(
     std::u16string::const_iterator start,
     std::u16string::const_iterator end) {
   std::u16string::const_iterator next_token;
   return GetNextColor(start, end, next_token);
 }
 
-std::optional<SkColor>
+absl::optional<SkColor>
 TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::RgbaPiecesToSkColor(
     const std::vector<base::StringPiece16>& pieces,
     size_t start_piece) {
@@ -509,24 +508,26 @@ TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::RgbaPiecesToSkColor(
           base::IsValueInRangeForNumericType<uint8_t>(b) &&
           base::StringToDouble(pieces[start_piece + 3], &a) && a >= 0.0 &&
           a <= 1.0)
-             ? std::make_optional(SkColorSetARGB(
+             ? absl::make_optional(SkColorSetARGB(
                    base::ClampRound<SkAlpha>(a * SK_AlphaOPAQUE), r, g, b))
-             : std::nullopt;
+             : absl::nullopt;
 }
 
-std::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::ParseHexString(
+absl::optional<SkColor>
+TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::ParseHexString(
     const std::u16string& hex_string) {
   SkColor value;
   if (base::HexStringToUInt(base::UTF16ToUTF8(hex_string), &value)) {
     // Add in a 1.0 alpha channel if it wasn't included in the input.
     if (hex_string.length() <= 8)
       value = SkColorSetA(value, 0xFF);
-    return std::make_optional(value);
+    return absl::make_optional(value);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::ParseHslString(
+absl::optional<SkColor>
+TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::ParseHslString(
     const std::u16string& hsl_string) {
   std::u16string pruned_string;
   base::RemoveChars(hsl_string, u"(%)hsla", &pruned_string);
@@ -546,13 +547,14 @@ std::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::ParseHslString(
         s > 1.0 ? std::clamp(s, 0.0, 100.0) / 100.0 : std::clamp(s, 0.0, 1.0);
     hsv[2] =
         v > 1.0 ? std::clamp(v, 0.0, 100.0) / 100.0 : std::clamp(v, 0.0, 1.0);
-    return std::make_optional(
+    return absl::make_optional(
         SkHSVToColor(base::ClampRound<SkAlpha>(a * SK_AlphaOPAQUE), hsv));
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<SkColor> TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::ParseRgbString(
+absl::optional<SkColor>
+TypeConverter<UNIQUE_TYPE_NAME(SkColor)>::ParseRgbString(
     const std::u16string& rgb_string) {
   // Declare a constant string here for use below since it might trigger an
   // ASAN error due to the stack temp going out of scope before the call to
@@ -601,9 +603,3 @@ DEFINE_ENUM_CONVERTERS(
     {ui::MenuSeparatorType::SPACING_SEPARATOR, u"SPACING_SEPARATOR"},
     {ui::MenuSeparatorType::VERTICAL_SEPARATOR, u"VERTICAL_SEPARATOR"},
     {ui::MenuSeparatorType::PADDED_SEPARATOR, u"PADDED_SEPARATOR"})
-
-DEFINE_ENUM_CONVERTERS(ui::ButtonStyle,
-                       {ui::ButtonStyle::kDefault, u"kDefault"},
-                       {ui::ButtonStyle::kProminent, u"kProminent"},
-                       {ui::ButtonStyle::kTonal, u"kTonal"},
-                       {ui::ButtonStyle::kText, u"kText"})

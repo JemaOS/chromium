@@ -5,13 +5,11 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_SCHEDULER_WORKER_NON_MAIN_THREAD_TASK_QUEUE_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_SCHEDULER_WORKER_NON_MAIN_THREAD_TASK_QUEUE_H_
 
-#include <optional>
-
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/common/lazy_now.h"
-#include "base/task/sequence_manager/task_queue.h"
+#include "base/task/sequence_manager/task_queue_impl.h"
 #include "base/task/single_thread_task_runner.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/scheduler/common/blink_scheduler_single_thread_task_runner.h"
@@ -42,20 +40,20 @@ class PLATFORM_EXPORT NonMainThreadTaskQueue
     }
 
     QueueCreationParams SetWebSchedulingQueueType(
-        std::optional<WebSchedulingQueueType> type) {
+        absl::optional<WebSchedulingQueueType> type) {
       web_scheduling_queue_type = type;
       return *this;
     }
 
     QueueCreationParams SetWebSchedulingPriority(
-        std::optional<WebSchedulingPriority> priority) {
+        absl::optional<WebSchedulingPriority> priority) {
       web_scheduling_priority = priority;
       return *this;
     }
 
     bool can_be_throttled = false;
-    std::optional<WebSchedulingQueueType> web_scheduling_queue_type;
-    std::optional<WebSchedulingPriority> web_scheduling_priority;
+    absl::optional<WebSchedulingQueueType> web_scheduling_queue_type;
+    absl::optional<WebSchedulingPriority> web_scheduling_priority;
   };
 
   NonMainThreadTaskQueue(
@@ -131,19 +129,19 @@ class PLATFORM_EXPORT NonMainThreadTaskQueue
   scoped_refptr<BlinkSchedulerSingleThreadTaskRunner> WrapTaskRunner(
       scoped_refptr<base::SingleThreadTaskRunner>);
 
-  TaskQueue::Handle task_queue_;
-  std::optional<TaskQueueThrottler> throttler_;
+  scoped_refptr<TaskQueue> task_queue_;
+  absl::optional<TaskQueueThrottler> throttler_;
 
   // Not owned.
-  raw_ptr<NonMainThreadSchedulerBase> non_main_thread_scheduler_;
+  NonMainThreadSchedulerBase* non_main_thread_scheduler_;
 
   // Set if this is queue is used for the web-exposed scheduling API. Used to
   // differentiate initial tasks from continuations for prioritization.
-  const std::optional<WebSchedulingQueueType> web_scheduling_queue_type_;
+  const absl::optional<WebSchedulingQueueType> web_scheduling_queue_type_;
 
   // |web_scheduling_priority_| is the priority of the task queue within the web
   // scheduling API. This priority is used to determine the task queue priority.
-  std::optional<WebSchedulingPriority> web_scheduling_priority_;
+  absl::optional<WebSchedulingPriority> web_scheduling_priority_;
 
   scoped_refptr<base::SingleThreadTaskRunner> thread_task_runner_;
   scoped_refptr<base::SingleThreadTaskRunner>

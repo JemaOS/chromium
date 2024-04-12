@@ -21,8 +21,7 @@
 #include "ui/display/display_layout_builder.h"
 #include "ui/display/display_switches.h"
 #include "ui/display/manager/display_manager.h"
-#include "ui/display/manager/util/display_manager_test_util.h"
-#include "ui/display/manager/util/display_manager_util.h"
+#include "ui/display/manager/display_manager_utilities.h"
 #include "ui/display/test/display_manager_test_api.h"
 #include "ui/display/util/display_util.h"
 #include "ui/message_center/message_center.h"
@@ -61,9 +60,6 @@ class ScreenLayoutObserverTest : public AshTestBase {
   std::u16string GetUnifiedDisplayName();
 
   bool IsNotificationShown() const;
-
-  display::ManagedDisplayInfo CreateDisplayInfo(int64_t id,
-                                                const gfx::Rect& bounds);
 
  private:
   const message_center::Notification* GetDisplayNotification() const;
@@ -132,23 +128,11 @@ bool ScreenLayoutObserverTest::IsNotificationShown() const {
            GetDisplayNotificationAdditionalText().empty());
 }
 
-display::ManagedDisplayInfo ScreenLayoutObserverTest::CreateDisplayInfo(
-    int64_t id,
-    const gfx::Rect& bounds) {
-  display::ManagedDisplayInfo info = display::CreateDisplayInfo(id, bounds);
-  // Each display should have at least one native mode.
-  display::ManagedDisplayMode mode(bounds.size(), /*refresh_rate=*/60.f,
-                                   /*is_interlaced=*/true,
-                                   /*native=*/true);
-  info.SetManagedDisplayModes({mode});
-  return info;
-}
-
 const message_center::Notification*
 ScreenLayoutObserverTest::GetDisplayNotification() const {
   const message_center::NotificationList::Notifications notifications =
       message_center::MessageCenter::Get()->GetVisibleNotifications();
-  for (const message_center::Notification* notification : notifications) {
+  for (const auto* notification : notifications) {
     if (notification->id() == ScreenLayoutObserver::kNotificationId)
       return notification;
   }
@@ -178,11 +162,11 @@ TEST_F(ScreenLayoutObserverTest, DISABLED_DisplayNotifications) {
   const int64_t first_display_id =
       display::Screen::GetScreen()->GetPrimaryDisplay().id();
   const int64_t second_display_id =
-      display::SynthesizeDisplayIdFromSeed(first_display_id);
+      display::GetNextSynthesizedDisplayId(first_display_id);
   display::ManagedDisplayInfo first_display_info =
-      CreateDisplayInfo(first_display_id, gfx::Rect(1, 1, 500, 500));
+      display::CreateDisplayInfo(first_display_id, gfx::Rect(1, 1, 500, 500));
   display::ManagedDisplayInfo second_display_info =
-      CreateDisplayInfo(second_display_id, gfx::Rect(2, 2, 500, 500));
+      display::CreateDisplayInfo(second_display_id, gfx::Rect(2, 2, 500, 500));
   std::vector<display::ManagedDisplayInfo> display_info_list;
   display_info_list.push_back(first_display_info);
   display_info_list.push_back(second_display_info);
@@ -204,7 +188,7 @@ TEST_F(ScreenLayoutObserverTest, DISABLED_DisplayNotifications) {
   base::RunLoop().RunUntilIdle();
 
   // Exit mirror mode manually. Now display mode should be extending mode.
-  display_manager()->SetMirrorMode(display::MirrorMode::kOff, std::nullopt);
+  display_manager()->SetMirrorMode(display::MirrorMode::kOff, absl::nullopt);
   EXPECT_EQ(l10n_util::GetStringUTF16(IDS_ASH_STATUS_TRAY_DISPLAY_MIRROR_EXIT),
             GetDisplayNotificationText());
   CloseNotification();
@@ -231,7 +215,7 @@ TEST_F(ScreenLayoutObserverTest, DISABLED_DisplayNotifications) {
 
   // Turn on mirror mode.
   CloseNotification();
-  display_manager()->SetMirrorMode(display::MirrorMode::kNormal, std::nullopt);
+  display_manager()->SetMirrorMode(display::MirrorMode::kNormal, absl::nullopt);
   EXPECT_EQ(l10n_util::GetStringFUTF16(IDS_ASH_STATUS_TRAY_DISPLAY_MIRRORING,
                                        GetMirroringDisplayNames()),
             GetDisplayNotificationText());
@@ -256,7 +240,7 @@ TEST_F(ScreenLayoutObserverTest, DISABLED_DisplayNotifications) {
 
   // Turn off mirror mode.
   CloseNotification();
-  display_manager()->SetMirrorMode(display::MirrorMode::kOff, std::nullopt);
+  display_manager()->SetMirrorMode(display::MirrorMode::kOff, absl::nullopt);
   EXPECT_EQ(l10n_util::GetStringUTF16(IDS_ASH_STATUS_TRAY_DISPLAY_MIRROR_EXIT),
             GetDisplayNotificationText());
   EXPECT_TRUE(GetDisplayNotificationAdditionalText().empty());
@@ -283,11 +267,11 @@ TEST_F(ScreenLayoutObserverTest, DisplayNotificationsDisabled) {
   const int64_t first_display_id =
       display::Screen::GetScreen()->GetPrimaryDisplay().id();
   const int64_t second_display_id =
-      display::SynthesizeDisplayIdFromSeed(first_display_id);
+      display::GetNextSynthesizedDisplayId(first_display_id);
   display::ManagedDisplayInfo first_display_info =
-      CreateDisplayInfo(first_display_id, gfx::Rect(1, 1, 500, 400));
+      display::CreateDisplayInfo(first_display_id, gfx::Rect(1, 1, 500, 400));
   display::ManagedDisplayInfo second_display_info =
-      CreateDisplayInfo(second_display_id, gfx::Rect(2, 2, 500, 400));
+      display::CreateDisplayInfo(second_display_id, gfx::Rect(2, 2, 500, 400));
   std::vector<display::ManagedDisplayInfo> display_info_list;
   display_info_list.push_back(first_display_info);
   display_info_list.push_back(second_display_info);
@@ -312,7 +296,7 @@ TEST_F(ScreenLayoutObserverTest, DisplayNotificationsDisabled) {
   base::RunLoop().RunUntilIdle();
 
   // Exit mirror mode manually. Now display mode should be extending mode.
-  display_manager()->SetMirrorMode(display::MirrorMode::kOff, std::nullopt);
+  display_manager()->SetMirrorMode(display::MirrorMode::kOff, absl::nullopt);
   EXPECT_FALSE(IsNotificationShown());
 
   // Simulate that device can support at most two displays and user connects

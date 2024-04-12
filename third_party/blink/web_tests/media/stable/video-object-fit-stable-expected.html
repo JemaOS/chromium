@@ -27,10 +27,16 @@
 
         function init()
         {
-            var videosPresented = allVideosPresentedPromise();
             setSrcByTagName("video", "../content/test.ogv");
 
-            videosPresented.then(() => testRunner.notifyDone());
+            var totalCount = document.getElementsByTagName('video').length;
+            var count = totalCount;
+            document.addEventListener("canplaythrough", function () {
+                if (!--count) {
+                    if (window.testRunner)
+                        setTimeout(function() { testRunner.notifyDone(); }, totalCount * 150);
+                }
+            }, true);
         }
     </script>
 

@@ -10,6 +10,7 @@
 
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
+#include "base/guid.h"
 #include "base/memory/weak_ptr.h"
 #include "base/test/task_environment.h"
 #include "chrome/services/cups_proxy/fake_cups_proxy_service_delegate.h"
@@ -22,7 +23,7 @@ namespace {
 
 using Printer = chromeos::Printer;
 
-// Generated via base::Uuid::GenerateRandomV4().AsLowercaseString().
+// Generated via base::GenerateGUID.
 const char kGenericGUID[] = "fd4c5f2e-7549-43d5-b931-9bf4e4f1bf51";
 
 // Faked delegate gives control over PrinterInstaller's printing stack
@@ -47,9 +48,14 @@ class FakeServiceDelegate : public FakeCupsProxyServiceDelegate {
     return installed_printers_.at(printer.id());
   }
 
-  std::optional<Printer> GetPrinter(const std::string& id) override {
+  void PrinterInstalled(const Printer& printer) override {
+    DCHECK(base::Contains(installed_printers_, printer.id()));
+    installed_printers_[printer.id()] = true;
+  }
+
+  absl::optional<Printer> GetPrinter(const std::string& id) override {
     if (!base::Contains(installed_printers_, id)) {
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     return Printer(id);
@@ -68,7 +74,6 @@ class FakeServiceDelegate : public FakeCupsProxyServiceDelegate {
     }
 
     // Install printer.
-    installed_printers_[printer.id()] = true;
     return std::move(callback).Run(true);
   }
 

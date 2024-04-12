@@ -5,51 +5,42 @@
 #ifndef CHROME_BROWSER_UI_ANDROID_AUTOFILL_AUTOFILL_PROGRESS_DIALOG_VIEW_ANDROID_H_
 #define CHROME_BROWSER_UI_ANDROID_AUTOFILL_AUTOFILL_PROGRESS_DIALOG_VIEW_ANDROID_H_
 
-#include "components/autofill/core/browser/ui/payments/autofill_progress_dialog_view.h"
-
 #include <jni.h>
 #include <stddef.h>
 
 #include "base/android/scoped_java_ref.h"
-#include "base/memory/weak_ptr.h"
-#include "content/public/browser/web_contents.h"
+#include "base/memory/raw_ptr.h"
+#include "chrome/browser/ui/autofill/payments/autofill_progress_dialog_controller.h"
+#include "chrome/browser/ui/autofill/payments/autofill_progress_dialog_view.h"
 
 namespace autofill {
 
-class AutofillProgressDialogController;
-
-// Android implementation of the AutofillProgressDialogView. This class
-// must delete itself when the view is dismissed to avoid memory leak as
-// it is not owned by other autofill components.
+// Android implementation of the AutofillProgressDialogView. This view is owned
+// by the `AutofillProgressDialogControllerImpl` which lives for the duration of
+// the tab.
 class AutofillProgressDialogViewAndroid : public AutofillProgressDialogView {
  public:
   explicit AutofillProgressDialogViewAndroid(
-      base::WeakPtr<AutofillProgressDialogController> controller);
+      AutofillProgressDialogController* controller);
   ~AutofillProgressDialogViewAndroid() override;
 
   // AutofillProgressDialogView.
   void Dismiss(bool show_confirmation_before_closing,
                bool is_canceled_by_user) override;
-  void InvalidateControllerForCallbacks() override;
-  base::WeakPtr<AutofillProgressDialogView> GetWeakPtr() override;
 
   // Called by the Java code when the progress dialog is dismissed.
   void OnDismissed(JNIEnv* env);
 
-  // Show the dialog view. Return value indicates whether the dialog is
-  // successfully shown.
-  bool ShowDialog(content::WebContents* web_contents);
+  // Show the dialog view.
+  void ShowDialog();
 
   // Show the confirmation icon and text.
   void ShowConfirmation(std::u16string confirmation_message);
 
  private:
-  base::WeakPtr<AutofillProgressDialogController> controller_;
+  raw_ptr<AutofillProgressDialogController> controller_;
   // The corresponding java object.
   base::android::ScopedJavaGlobalRef<jobject> java_object_;
-
-  base::WeakPtrFactory<AutofillProgressDialogViewAndroid> weak_ptr_factory_{
-      this};
 };
 
 }  // namespace autofill

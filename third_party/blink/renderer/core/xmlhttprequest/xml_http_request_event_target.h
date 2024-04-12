@@ -36,7 +36,7 @@
 
 namespace blink {
 
-class XMLHttpRequestEventTarget : public EventTarget {
+class XMLHttpRequestEventTarget : public EventTargetWithInlineData {
   DEFINE_WRAPPERTYPEINFO();
 
  public:

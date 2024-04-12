@@ -18,7 +18,6 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
-#include "components/content_settings/core/common/pref_names.h"
 #include "components/metrics/content/subprocess_metrics_provider.h"
 #include "components/optimization_guide/core/model_util.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
@@ -33,7 +32,6 @@
 #include "components/permissions/request_type.h"
 #include "components/permissions/test/mock_permission_prompt_factory.h"
 #include "components/permissions/test/mock_permission_request.h"
-#include "components/prefs/pref_service.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "net/dns/mock_host_resolver.h"
@@ -67,10 +65,6 @@ class PredictionServiceBrowserTest : public InProcessBrowserTest {
     mock_permission_prompt_factory_ =
         std::make_unique<MockPermissionPromptFactory>(manager);
     host_resolver()->AddRule("*", "127.0.0.1");
-    browser()->profile()->GetPrefs()->SetBoolean(prefs::kEnableNotificationCPSS,
-                                                 true);
-    browser()->profile()->GetPrefs()->SetBoolean(prefs::kEnableGeolocationCPSS,
-                                                 true);
   }
 
   void TearDownOnMainThread() override {
@@ -103,7 +97,7 @@ class PredictionServiceBrowserTest : public InProcessBrowserTest {
       std::string test_url,
       PermissionAction permission_action,
       bool should_expect_quiet_ui,
-      std::optional<PermissionUmaUtil::PredictionGrantLikelihood>
+      absl::optional<PermissionUmaUtil::PredictionGrantLikelihood>
           expected_prediction_likelihood) {
     auto* manager = GetPermissionRequestManager();
     GURL url = embedded_test_server()->GetURL(test_url, "/title1.html");
@@ -130,7 +124,7 @@ class PredictionServiceBrowserTest : public InProcessBrowserTest {
 base::FilePath& model_file_path() {
   static base::NoDestructor<base::FilePath> file_path([]() {
     base::FilePath source_root_dir;
-    base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &source_root_dir);
+    base::PathService::Get(base::DIR_SOURCE_ROOT, &source_root_dir);
     return source_root_dir.AppendASCII("chrome")
         .AppendASCII("test")
         .AppendASCII("data")
@@ -163,7 +157,7 @@ IN_PROC_BROWSER_TEST_F(PredictionServiceBrowserTest, ModelReturnsUnlikely) {
   std::string test_urls[] = {"a.test", "b.test", "c.test", "d.test"};
   for (std::string test_url : test_urls) {
     TriggerPromptAndVerifyUI(test_url, PermissionAction::DISMISSED,
-                             /*should_expect_quiet_ui=*/false, std::nullopt);
+                             /*should_expect_quiet_ui=*/false, absl::nullopt);
   }
   TriggerPromptAndVerifyUI(
       "e.test", PermissionAction::DISMISSED,
@@ -192,7 +186,7 @@ IN_PROC_BROWSER_TEST_F(PredictionServiceBrowserTest, ModelReturnsLikely) {
   std::string test_urls[] = {"a.test", "b.test", "c.test", "d.test"};
   for (std::string test_url : test_urls) {
     TriggerPromptAndVerifyUI(test_url, PermissionAction::GRANTED,
-                             /*should_expect_quiet_ui=*/false, std::nullopt);
+                             /*should_expect_quiet_ui=*/false, absl::nullopt);
   }
   TriggerPromptAndVerifyUI(
       "e.test", PermissionAction::DISMISSED,

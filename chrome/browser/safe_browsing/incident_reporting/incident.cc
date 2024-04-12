@@ -20,8 +20,7 @@ std::unique_ptr<ClientIncidentReport_IncidentData> Incident::TakePayload() {
 }
 
 Incident::Incident() : payload_(new ClientIncidentReport_IncidentData) {
-  payload_->set_incident_time_msec(
-      base::Time::Now().InMillisecondsSinceUnixEpoch());
+  payload_->set_incident_time_msec(base::Time::Now().ToJavaTime());
 }
 
 ClientIncidentReport_IncidentData* Incident::payload() {

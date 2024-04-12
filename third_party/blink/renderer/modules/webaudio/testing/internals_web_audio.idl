@@ -6,5 +6,4 @@
     ImplementedAs=InternalsWebAudio
 ] partial interface Internals {
     unsigned long audioHandlerCount();
-    unsigned long audioWorkletProcessorCount();
 };

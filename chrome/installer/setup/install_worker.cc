@@ -27,6 +27,7 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/version.h"
@@ -487,9 +488,9 @@ void AddUninstallShortcutWorkItems(const InstallParams& install_params,
                                          KEY_WOW64_32KEY, L"InstallLocation",
                                          install_path.value(), true);
 
-    std::wstring chrome_icon = ShellUtil::FormatIconLocation(
-        install_path.Append(kChromeExe),
-        install_static::GetAppIconResourceIndex());
+    std::wstring chrome_icon =
+        ShellUtil::FormatIconLocation(install_path.Append(kChromeExe),
+                                      install_static::GetIconResourceIndex());
     install_list->AddSetRegValueWorkItem(reg_root, uninstall_reg,
                                          KEY_WOW64_32KEY, L"DisplayIcon",
                                          chrome_icon, true);
@@ -641,7 +642,6 @@ std::wstring GetUpdatedBrandCode(const std::wstring& brand_code) {
   } kEnterpriseBrandRemapping[] = {
       {L"GGLS", L"GCEU"},
       {L"GGRV", L"GCEV"},
-      {L"GTPM", L"GCER"},
   };
 
   for (auto mapping : kEnterpriseBrandRemapping) {
@@ -880,6 +880,9 @@ void AddInstallWorkItems(const InstallParams& install_params,
                   CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE);
               success = success_target && success_temp;
             }
+
+            base::UmaHistogramBoolean("Setup.Install.AddAppContainerAce",
+                                      success);
             return success;
           },
           target_path, temp_path),
@@ -1235,16 +1238,6 @@ void AddFinalizeUpdateWorkItems(const base::Version& new_version,
       installer_state.root_key(), client_state_key, KEY_WOW64_32KEY,
       google_update::kRegCleanInstallRequiredForVersionBelowField,
       kLastBreakingInstallerVersion, true);
-
-  // Remove any "experiment_labels" value that may have been set. Support for
-  // this was removed in Q4 2023.
-  list->AddDeleteRegValueWorkItem(
-          installer_state.root_key(),
-          installer_state.system_install()
-              ? install_static::GetClientStateMediumKeyPath()
-              : client_state_key,
-          KEY_WOW64_32KEY, L"experiment_labels")
-      ->set_best_effort(true);
 }
 
 }  // namespace installer

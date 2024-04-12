@@ -9,7 +9,6 @@
 
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
-#include "base/no_destructor.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "media/base/key_systems.h"
@@ -48,86 +47,6 @@ void CompleteWebContentDecryptionModuleResult(
 }
 
 }  // namespace
-
-struct UMAReportStatus {
-  bool is_request_reported = false;
-  bool is_result_reported = false;
-  base::TimeTicks request_start_time;
-};
-
-// Report usage of key system to UMA. There are 2 different UMAs logged:
-// 1. The resolve time of the key system.
-// 2. The reject time of the key system.
-// At most one of each will be reported at most once per process.
-class PerProcessReporter {
- public:
-  explicit PerProcessReporter(const std::string& key_system_for_uma)
-      : uma_name_(kKeySystemSupportUMAPrefix + key_system_for_uma) {}
-  ~PerProcessReporter() = default;
-
-  void ReportRequested() {
-    if (report_status_.is_request_reported) {
-      return;
-    }
-
-    report_status_.is_request_reported = true;
-    report_status_.request_start_time = base::TimeTicks::Now();
-  }
-
-  void ReportResolveTime() {
-    DCHECK(report_status_.is_request_reported);
-    if (report_status_.is_result_reported) {
-      return;
-    }
-
-    base::UmaHistogramTimes(
-        uma_name_ + ".TimeTo.Resolve",
-        base::TimeTicks::Now() - report_status_.request_start_time);
-    report_status_.is_result_reported = true;
-  }
-
-  void ReportRejectTime() {
-    if (report_status_.is_result_reported) {
-      return;
-    }
-
-    base::UmaHistogramTimes(
-        uma_name_ + ".TimeTo.Reject",
-        base::TimeTicks::Now() - report_status_.request_start_time);
-    report_status_.is_result_reported = true;
-  }
-
- private:
-  const std::string uma_name_;
-  UMAReportStatus report_status_;
-};
-
-using PerProcessReporterMap =
-    std::unordered_map<std::string, std::unique_ptr<PerProcessReporter>>;
-
-PerProcessReporterMap& GetPerProcessReporterMap() {
-  static base::NoDestructor<PerProcessReporterMap> per_process_reporters_map;
-  return *per_process_reporters_map;
-}
-
-static PerProcessReporter* GetPerProcessReporter(const WebString& key_system) {
-  // Assumes that empty will not be found by GetKeySystemNameForUMA().
-  std::string key_system_ascii;
-  if (key_system.ContainsOnlyASCII()) {
-    key_system_ascii = key_system.Ascii();
-  }
-
-  std::string uma_name = media::GetKeySystemNameForUMA(key_system_ascii);
-
-  std::unique_ptr<PerProcessReporter>& reporter =
-      GetPerProcessReporterMap()[uma_name];
-
-  if (!reporter) {
-    reporter = std::make_unique<PerProcessReporter>(uma_name);
-  }
-
-  return reporter.get();
-}
 
 // Report usage of key system to UMA. There are 2 different counts logged:
 // 1. The key system is requested.
@@ -176,13 +95,12 @@ class WebEncryptedMediaClientImpl::Reporter {
 };
 
 WebEncryptedMediaClientImpl::WebEncryptedMediaClientImpl(
-    media::KeySystems* key_systems,
     media::CdmFactory* cdm_factory,
     media::MediaPermission* media_permission,
     std::unique_ptr<KeySystemConfigSelector::WebLocalFrameDelegate>
         web_frame_delegate)
-    : key_systems_(key_systems),
-      cdm_factory_(cdm_factory),
+    : cdm_factory_(cdm_factory),
+      key_systems_(media::KeySystems::GetInstance()),
       key_system_config_selector_(key_systems_,
                                   media_permission,
                                   std::move(web_frame_delegate)) {
@@ -195,8 +113,6 @@ void WebEncryptedMediaClientImpl::RequestMediaKeySystemAccess(
     WebEncryptedMediaRequest request) {
   GetReporter(request.KeySystem())->ReportRequested();
 
-  GetPerProcessReporter(request.KeySystem())->ReportRequested();
-
   pending_requests_.push_back(std::move(request));
   key_systems_->UpdateIfNeeded(
       base::BindOnce(&WebEncryptedMediaClientImpl::OnKeySystemsUpdated,
@@ -208,7 +124,7 @@ void WebEncryptedMediaClientImpl::CreateCdm(
     const media::CdmConfig& cdm_config,
     std::unique_ptr<WebContentDecryptionModuleResult> result) {
   WebContentDecryptionModuleImpl::Create(
-      cdm_factory_, key_systems_, security_origin, cdm_config,
+      cdm_factory_, security_origin, cdm_config,
       base::BindOnce(&CompleteWebContentDecryptionModuleResult,
                      std::move(result)));
 }
@@ -238,12 +154,12 @@ void WebEncryptedMediaClientImpl::OnConfigSelected(
   // and kUnsupportedConfigs.
   const char kUnsupportedKeySystemOrConfigMessage[] =
       "Unsupported keySystem or supportedConfigurations.";
+
   // Handle unsupported cases first.
   switch (status) {
     case KeySystemConfigSelector::Status::kUnsupportedKeySystem:
     case KeySystemConfigSelector::Status::kUnsupportedConfigs:
       request.RequestNotSupported(kUnsupportedKeySystemOrConfigMessage);
-      GetPerProcessReporter(request.KeySystem())->ReportRejectTime();
       return;
     case KeySystemConfigSelector::Status::kSupported:
       break;  // Handled below.
@@ -253,7 +169,6 @@ void WebEncryptedMediaClientImpl::OnConfigSelected(
   // RequestMediaKeySystemAccess().
   DCHECK_EQ(status, KeySystemConfigSelector::Status::kSupported);
   GetReporter(request.KeySystem())->ReportSupported();
-  GetPerProcessReporter(request.KeySystem())->ReportResolveTime();
 
   // If the frame is closed while the permission prompt is displayed,
   // the permission prompt is dismissed and this may result in the
@@ -275,6 +190,7 @@ void WebEncryptedMediaClientImpl::OnConfigSelected(
 WebEncryptedMediaClientImpl::Reporter* WebEncryptedMediaClientImpl::GetReporter(
     const WebString& key_system) {
   // Assumes that empty will not be found by GetKeySystemNameForUMA().
+  // TODO(sandersd): Avoid doing ASCII conversion more than once.
   std::string key_system_ascii;
   if (key_system.ContainsOnlyASCII())
     key_system_ascii = key_system.Ascii();
@@ -286,4 +202,5 @@ WebEncryptedMediaClientImpl::Reporter* WebEncryptedMediaClientImpl::GetReporter(
     reporter = std::make_unique<Reporter>(uma_name);
   return reporter.get();
 }
+
 }  // namespace blink

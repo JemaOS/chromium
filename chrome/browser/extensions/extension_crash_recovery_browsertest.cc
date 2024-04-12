@@ -32,7 +32,6 @@
 #include "extensions/browser/process_map.h"
 #include "extensions/browser/test_extension_registry_observer.h"
 #include "extensions/common/constants.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/test/extension_background_page_waiter.h"
 #include "ui/message_center/public/cpp/notification.h"
 #include "ui/message_center/public/cpp/notification_delegate.h"
@@ -71,9 +70,9 @@ class ExtensionCrashRecoveryTest : public extensions::ExtensionBrowserTest {
     return GetExtensionRegistry()->terminated_extensions().size();
   }
 
-  void CrashExtension(const extensions::ExtensionId& extension_id) {
-    const Extension* extension =
-        GetExtensionRegistry()->enabled_extensions().GetByID(extension_id);
+  void CrashExtension(const std::string& extension_id) {
+    const Extension* extension = GetExtensionRegistry()->GetExtensionById(
+        extension_id, ExtensionRegistry::ENABLED);
     ASSERT_TRUE(extension);
     extensions::ExtensionHost* extension_host = GetProcessManager()->
         GetBackgroundHostForExtension(extension_id);
@@ -90,9 +89,9 @@ class ExtensionCrashRecoveryTest : public extensions::ExtensionBrowserTest {
     base::RunLoop().RunUntilIdle();
   }
 
-  void CheckExtensionConsistency(const extensions::ExtensionId& extension_id) {
-    const Extension* extension =
-        GetExtensionRegistry()->enabled_extensions().GetByID(extension_id);
+  void CheckExtensionConsistency(const std::string& extension_id) {
+    const Extension* extension = GetExtensionRegistry()->GetExtensionById(
+        extension_id, ExtensionRegistry::ENABLED);
     ASSERT_TRUE(extension);
     extensions::ExtensionHost* extension_host = GetProcessManager()->
         GetBackgroundHostForExtension(extension_id);
@@ -127,11 +126,11 @@ class ExtensionCrashRecoveryTest : public extensions::ExtensionBrowserTest {
     CheckExtensionConsistency(second_extension_id_);
   }
 
-  void AcceptNotification(const extensions::ExtensionId& extension_id) {
+  void AcceptNotification(const std::string& extension_id) {
     extensions::TestExtensionRegistryObserver observer(GetExtensionRegistry());
     display_service_->SimulateClick(NotificationHandler::Type::TRANSIENT,
                                     "app.background.crashed." + extension_id,
-                                    std::nullopt, std::nullopt);
+                                    absl::nullopt, absl::nullopt);
     scoped_refptr<const Extension> extension =
         observer.WaitForExtensionLoaded();
     extensions::ExtensionBackgroundPageWaiter(profile(), *extension.get())
@@ -144,14 +143,13 @@ class ExtensionCrashRecoveryTest : public extensions::ExtensionBrowserTest {
         .size();
   }
 
-  extensions::ExtensionId first_extension_id_;
-  extensions::ExtensionId second_extension_id_;
+  std::string first_extension_id_;
+  std::string second_extension_id_;
   std::unique_ptr<NotificationDisplayServiceTester> display_service_;
   content::ScopedAllowRendererCrashes scoped_allow_renderer_crashes_;
 };
 
-// TODO(crbug.com/1482434): timeout on wayland, chromeos and mac.
-IN_PROC_BROWSER_TEST_F(ExtensionCrashRecoveryTest, DISABLED_Basic) {
+IN_PROC_BROWSER_TEST_F(ExtensionCrashRecoveryTest, Basic) {
   const size_t count_before = GetEnabledExtensionCount();
   const size_t crash_count_before = GetTerminatedExtensionCount();
   LoadTestExtension();
@@ -201,9 +199,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrashRecoveryTest, ReloadIndependently) {
   ASSERT_EQ(0U, CountNotifications());
 }
 
-// TODO(crbug.com/1482434): Flaky on wayland, lacros and mac.
 IN_PROC_BROWSER_TEST_F(ExtensionCrashRecoveryTest,
-                       DISABLED_ReloadIndependentlyChangeTabs) {
+                       ReloadIndependentlyChangeTabs) {
   const size_t count_before = GetEnabledExtensionCount();
   LoadTestExtension();
   CrashExtension(first_extension_id_);
@@ -232,9 +229,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrashRecoveryTest,
   ASSERT_EQ(0U, CountNotifications());
 }
 
-// TODO(crbug.com/1482434): timeout on wayland, lacros and mac.
 IN_PROC_BROWSER_TEST_F(ExtensionCrashRecoveryTest,
-                       DISABLED_ReloadIndependentlyNavigatePage) {
+                       ReloadIndependentlyNavigatePage) {
   const size_t count_before = GetEnabledExtensionCount();
   LoadTestExtension();
   CrashExtension(first_extension_id_);

@@ -1,23 +1,7 @@
-// Copyright 2015 The Chromium Authors
+// Copyright 2015 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 package org.chromium.customtabsclient;
-
-import static androidx.browser.customtabs.CustomTabsIntent.ACTIVITY_HEIGHT_FIXED;
-import static androidx.browser.customtabs.CustomTabsIntent.ACTIVITY_SIDE_SHEET_DECORATION_TYPE_DIVIDER;
-import static androidx.browser.customtabs.CustomTabsIntent.ACTIVITY_SIDE_SHEET_DECORATION_TYPE_NONE;
-import static androidx.browser.customtabs.CustomTabsIntent.ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW;
-import static androidx.browser.customtabs.CustomTabsIntent.ACTIVITY_SIDE_SHEET_POSITION_END;
-import static androidx.browser.customtabs.CustomTabsIntent.ACTIVITY_SIDE_SHEET_POSITION_START;
-import static androidx.browser.customtabs.CustomTabsIntent.ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_POSITION_TOP;
-import static androidx.browser.customtabs.CustomTabsIntent.EXTRA_ACTIVITY_HEIGHT_RESIZE_BEHAVIOR;
-import static androidx.browser.customtabs.CustomTabsIntent.EXTRA_ACTIVITY_SIDE_SHEET_DECORATION_TYPE;
-import static androidx.browser.customtabs.CustomTabsIntent.EXTRA_ACTIVITY_SIDE_SHEET_ENABLE_MAXIMIZATION;
-import static androidx.browser.customtabs.CustomTabsIntent.EXTRA_ACTIVITY_SIDE_SHEET_POSITION;
-import static androidx.browser.customtabs.CustomTabsIntent.EXTRA_ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_POSITION;
-import static androidx.browser.customtabs.CustomTabsIntent.EXTRA_CLOSE_BUTTON_POSITION;
-import static androidx.browser.customtabs.CustomTabsIntent.EXTRA_INITIAL_ACTIVITY_HEIGHT_PX;
-import static androidx.browser.customtabs.CustomTabsIntent.EXTRA_TOOLBAR_CORNER_RADIUS_DP;
 
 import android.app.ActivityManager;
 import android.app.ActivityOptions;
@@ -49,9 +33,6 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowMetrics;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
-import android.webkit.URLUtil;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
@@ -84,9 +65,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
-/** Example client activity for using Chrome Custom Tabs. */
-public class MainActivity extends AppCompatActivity
-        implements OnClickListener, ServiceConnectionCallback {
+/**
+ * Example client activity for using Chrome Custom Tabs.
+ */
+public class MainActivity
+        extends AppCompatActivity implements OnClickListener, ServiceConnectionCallback {
     private static final String TAG = "CustomTabsClientExample";
     private static final String DEFAULT_URL = "https://www.google.com";
     private static final String SHARED_PREF_BACKGROUND_INTERACT = "BackgroundInteract";
@@ -95,6 +78,7 @@ public class MainActivity extends AppCompatActivity
     private static final String SHARED_PREF_CLOSE_ICON = "CloseIcon";
     private static final String SHARED_PREF_CLOSE_POSITION = "ClosePosition";
     private static final String SHARED_PREF_SIDE_SHEET_POSITION = "SideSheetPosition";
+    private static final String SHARED_PREF_SIDE_SHEET_ANIMATION = "SideSheetAnimation";
     private static final String SHARED_PREF_COLOR = "Color";
     private static final String SHARED_PREF_DECORATION = "Decoration";
     private static final String SHARED_PREF_HEIGHT = "Height";
@@ -106,32 +90,33 @@ public class MainActivity extends AppCompatActivity
     private static final String SHARED_PREF_SHOW_TITLE = "ShowTitle";
     private static final String SHARED_PREF_THEME = "Theme";
     private static final String SHARED_PREF_URL_HIDING = "UrlHiding";
+    private static final String SHARED_PREF_FORCE_ENGAGEMENT_SIGNALS = "ForceEngagementSignals";
     private static final String SHARED_PREF_SIDE_SHEET_MAX_BUTTON = "SideSheetMaxButton";
     private static final String SHARED_PREF_SIDE_SHEET_ROUNDED_CORNER = "RoundedCorner";
-    private static final String SHARED_PREF_CONTENT_SCROLL = "ContentScrollMayResizeTab";
-    private static final String SHARED_PREF_SEARCH_IN_CCT = "SearchInCCT";
-    private static final String SHARED_PREF_CONNECT_BUTTON = "ConnectButton";
-    private static final String SHARED_PREF_DISCONNECT_BUTTON = "DisconnectButton";
-    private static final String SHARED_PREF_WARMUP_BUTTON = "WarmupButton";
-    private static final String SHARED_PREF_MAY_LAUNCH_BUTTON = "MayLaunchButton";
-    private static final String SHARED_PREF_ENGAGEMENT_SIGNALS_BUTTON = "EngagementSignalsButton";
     private static final int CLOSE_ICON_X = 0;
     private static final int CLOSE_ICON_BACK = 1;
     private static final int CLOSE_ICON_CHECK = 2;
     private static final int UNCHECKED = 0;
     private static final int CHECKED = 1;
+    private static final int ACTIVITY_HEIGHT_FIXED = 2;
     private static final int BACKGROUND_INTERACT_OFF_VALUE = 2;
 
-    /** Minimal height the bottom sheet CCT should show is half of the display height. */
+    /** Extra that enables the maximization button on the side sheet Custom Tab toolbar. */
+    public static final String EXTRA_ACTIVITY_SIDE_SHEET_ENABLE_MAXIMIZATION =
+            "androidx.browser.customtabs.extra.ACTIVITY_SIDE_SHEET_ENABLE_MAXIMIZATION";
+
+    /**
+     * Minimal height the bottom sheet CCT should show is half of the display height.
+     */
     private static final float MINIMAL_HEIGHT_RATIO = 0.5f;
-
-    /** Minimal height the side sheet CCT should show is a third of the display height. */
+    /**
+     * Minimal height the side sheet CCT should show is a third of the display height.
+     */
     private static final float MINIMAL_WIDTH_RATIO = 0.33f;
-
     private static final int DEFAULT_BREAKPOINT = 840;
-    private static CustomTabsClient sClient;
     private AutoCompleteTextView mEditUrl;
     private CustomTabsSession mCustomTabsSession;
+    private CustomTabsClient mClient;
     private CustomTabsServiceConnection mConnection;
     private String mPackageNameToBind;
     private String mPackageTitle;
@@ -143,14 +128,13 @@ public class MainActivity extends AppCompatActivity
     private Button mMayLaunchButton;
     private Button mWarmupButton;
     private Button mLaunchButton;
-    private Button mResultLaunchButton;
-    private Button mEngagementSignalsButton;
     private MediaPlayer mMediaPlayer;
     private MaterialButtonToggleGroup mCloseButtonPositionToggle;
     private MaterialButtonToggleGroup mCloseButtonIcon;
     private MaterialButtonToggleGroup mDecorationType;
     private MaterialButtonToggleGroup mThemeButton;
     private MaterialButtonToggleGroup mSideSheetPositionToggle;
+    private MaterialButtonToggleGroup mSideSheetAnimationToggle;
     private TextView mToolbarCornerRadiusLabel;
     private SeekBar mToolbarCornerRadiusSlider;
     private CheckBox mBottomToolbarCheckbox;
@@ -158,10 +142,9 @@ public class MainActivity extends AppCompatActivity
     private CheckBox mShowTitleCheckbox;
     private CheckBox mUrlHidingCheckbox;
     private CheckBox mBackgroundInteractCheckbox;
+    private CheckBox mForceEngagementSignalsCheckbox;
     private CheckBox mSideSheetMaxButtonCheckbox;
     private CheckBox mSideSheetRoundedCornerCheckbox;
-    private CheckBox mContentScrollCheckbox;
-    private CheckBox mSearchInCCTCheckbox;
     private TextView mPcctBreakpointLabel;
     private SeekBar mPcctBreakpointSlider;
     private TextView mPcctInitialHeightLabel;
@@ -175,38 +158,60 @@ public class MainActivity extends AppCompatActivity
     private @Px int mMaxWidth;
     private @Px int mInitialWidth;
 
-    public static final String EXTRA_ACTIVITY_SCROLL_CONTENT_RESIZE =
-            "androidx.browser.customtabs.extra.ACTIVITY_SCROLL_CONTENT_RESIZE";
-    private static final String EXTRA_OMNIBOX_ENABLED =
-            "org.chromium.chrome.browser.customtabs.OMNIBOX_ENABLED";
+    public static final int ACTIVITY_SIDE_SHEET_POSITION_DEFAULT = 0;
+    public static final int ACTIVITY_SIDE_SHEET_POSITION_START = 1;
+    public static final int ACTIVITY_SIDE_SHEET_POSITION_END = 2;
 
-    /** Once per second, asks the framework for the process importance, and logs any change. */
-    private Runnable mLogImportance =
-            new Runnable() {
-                private int mPreviousImportance = -1;
-                private boolean mPreviousServiceInUse;
-                private Handler mHandler = new Handler(Looper.getMainLooper());
+    public static final String EXTRA_ACTIVITY_SIDE_SHEET_POSITION =
+            "androidx.browser.customtabs.extra.ACTIVITY_SIDE_SHEET_POSITION";
 
-                @Override
-                public void run() {
-                    ActivityManager.RunningAppProcessInfo state =
-                            new ActivityManager.RunningAppProcessInfo();
-                    ActivityManager.getMyMemoryState(state);
-                    int importance = state.importance;
-                    boolean serviceInUse =
-                            state.importanceReasonCode
-                                    == ActivityManager.RunningAppProcessInfo.REASON_SERVICE_IN_USE;
-                    if (importance != mPreviousImportance
-                            || serviceInUse != mPreviousServiceInUse) {
-                        mPreviousImportance = importance;
-                        mPreviousServiceInUse = serviceInUse;
-                        String message = "New importance = " + importance;
-                        if (serviceInUse) message += " (Reason: Service in use)";
-                        Log.w(TAG, message);
-                    }
-                    mHandler.postDelayed(this, 1000);
-                }
-            };
+    public static final int ACTIVITY_SIDE_SHEET_DECORATION_TYPE_DEFAULT = 0;
+    public static final int ACTIVITY_SIDE_SHEET_DECORATION_TYPE_NONE = 1;
+    public static final int ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW = 2;
+    public static final int ACTIVITY_SIDE_SHEET_DECORATION_TYPE_DIVIDER = 3;
+
+    public static final String EXTRA_ACTIVITY_SIDE_SHEEET_DECORATION_TYPE =
+            "androidx.browser.customtabs.extra.ACTIVITY_SIDE_SHEET_DECORATION_TYPE";
+
+    public static final int ACTIVITY_SIDE_SHEET_SLIDE_IN_DEFAULT = 0;
+    public static final int ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_BOTTOM = 1;
+    public static final int ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_SIDE = 2;
+
+    public static final String EXTRA_ACTIVITY_SIDE_SHEET_SLIDE_IN_BEHAVIOR =
+            "androidx.browser.customtabs.extra.ACTIVITY_SIDE_SHEET_SLIDE_IN_BEHAVIOR";
+
+    public static final int ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_DEFAULT = 0;
+    public static final int ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_NONE = 1;
+    public static final int ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_TOP = 2;
+
+    public static final String EXTRA_ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_POSITION =
+            "androidx.browser.customtabs.extra.ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_POSITION";
+
+    /**
+     * Once per second, asks the framework for the process importance, and logs any change.
+     */
+    private Runnable mLogImportance = new Runnable() {
+        private int mPreviousImportance = -1;
+        private boolean mPreviousServiceInUse;
+        private Handler mHandler = new Handler(Looper.getMainLooper());
+        @Override
+        public void run() {
+            ActivityManager.RunningAppProcessInfo state =
+                    new ActivityManager.RunningAppProcessInfo();
+            ActivityManager.getMyMemoryState(state);
+            int importance = state.importance;
+            boolean serviceInUse = state.importanceReasonCode
+                    == ActivityManager.RunningAppProcessInfo.REASON_SERVICE_IN_USE;
+            if (importance != mPreviousImportance || serviceInUse != mPreviousServiceInUse) {
+                mPreviousImportance = importance;
+                mPreviousServiceInUse = serviceInUse;
+                String message = "New importance = " + importance;
+                if (serviceInUse) message += " (Reason: Service in use)";
+                Log.w(TAG, message);
+            }
+            mHandler.postDelayed(this, 1000);
+        }
+    };
 
     private static class NavigationCallback extends CustomTabsCallback {
         @Override
@@ -220,96 +225,74 @@ public class MainActivity extends AppCompatActivity
         }
 
         @Override
-        public void onActivityLayout(
-                int left,
-                int top,
-                int right,
-                int bottom,
-                @ActivityLayoutState int state,
-                Bundle extras) {
-            logOnActivityLayout("onActivityLayout:", left, top, right, bottom, state);
-        }
-
-        @Override
-        public void onMinimized(Bundle extras) {
-            Log.w(TAG, "onMinimized");
-        }
-
-        @Override
-        public void onUnminimized(Bundle extras) {
-            Log.w(TAG, "onUnminimized");
-        }
-
-        @Override
         public void extraCallback(@NonNull String callbackName, @Nullable Bundle args) {
             if (args == null) return;
 
-            // CustomTabsConnection#ON_RESIZED_CALLBACK
-            if (callbackName.equals("onResized")) {
+            // CustomTabsConnection#ON_VERTICAL_SCROLL_EVENT_CALLBACK
+            if (callbackName.equals("onVerticalScrollEvent")) {
+                // CustomTabsConnection#ON_VERTICAL_SCROLL_EVENT_IS_DIRECTION_UP_EXTRA
+                Log.w(TAG,
+                        "onVerticalScrollEvent: isDirectionUp = "
+                                + args.getBoolean("isDirectionUp"));
+                // CustomTabsConnection#ON_GREATEST_SCROLL_PERCENTAGE_INCREASED_CALLBACK
+            } else if (callbackName.equals("onGreatestScrollPercentageIncreased")) {
+                // CustomTabsConnection#ON_GREATEST_SCROLL_PERCENTAGE_INCREASED_PERCENTAGE_EXTRA
+                Log.w(TAG,
+                        "onGreatestScrollPercentageIncreased: scrollPercentage = "
+                                + args.getInt("scrollPercentage"));
+                // CustomTabsConnection#ON_RESIZED_CALLBACK
+            } else if (callbackName.equals("onResized")) {
                 // CustomTabsConnection#ON_RESIZED_SIZE_EXTRA
                 Log.w(TAG, "onResized: size = " + args.getInt("size"));
                 // CustomTabsConnection#ON_ACTIVITY_LAYOUT_CALLBACK
             } else if (callbackName.equals("onActivityLayout")) {
-                logOnActivityLayout(
-                        "onActivityLayout extraCallback:",
-                        args.getInt("left"),
-                        args.getInt("top"),
-                        args.getInt("right"),
-                        args.getInt("bottom"),
-                        args.getInt("state"));
+                Log.w(TAG,
+                        "onActivityLayout:"
+                                // CustomTabsConnection#ON_ACTIVITY_LAYOUT_LEFT_EXTRA
+                                + " left = "
+                                + args.getInt("left")
+                                // CustomTabsConnection#ON_ACTIVITY_LAYOUT_TOP_EXTRA
+                                + " top = "
+                                + args.getInt("top")
+                                // CustomTabsConnection#ON_ACTIVITY_LAYOUT_RIGHT_EXTRA
+                                + " right = "
+                                + args.getInt("right")
+                                // CustomTabsConnection#ON_ACTIVITY_LAYOUT_BOTTOM_EXTRA
+                                + " bottom = "
+                                + args.getInt("bottom")
+                                // CustomTabsConnection#ON_ACTIVITY_LAYOUT_STATE_EXTRA
+                                + " state = " + args.getInt("state"));
             }
-        }
-
-        private void logOnActivityLayout(
-                String callbackName,
-                int left,
-                int top,
-                int right,
-                int bottom,
-                @ActivityLayoutState int state) {
-            Log.w(
-                    TAG,
-                    callbackName
-                            // CustomTabsConnection#ON_ACTIVITY_LAYOUT_LEFT_EXTRA
-                            + " left = "
-                            + left
-                            // CustomTabsConnection#ON_ACTIVITY_LAYOUT_TOP_EXTRA
-                            + " top = "
-                            + top
-                            // CustomTabsConnection#ON_ACTIVITY_LAYOUT_RIGHT_EXTRA
-                            + " right = "
-                            + right
-                            // CustomTabsConnection#ON_ACTIVITY_LAYOUT_BOTTOM_EXTRA
-                            + " bottom = "
-                            + bottom
-                            // CustomTabsConnection#ON_ACTIVITY_LAYOUT_STATE_EXTRA
-                            + " state = "
-                            + state);
         }
     }
 
     private class EngagementCallback implements EngagementSignalsCallback {
         @Override
         public void onVerticalScrollEvent(boolean isDirectionUp, Bundle extras) {
-            Log.w(
-                    TAG,
+            Log.w(TAG,
                     "EngagementSignalsCallback#onVerticalScrollEvent: isDirectionUp = "
                             + isDirectionUp);
         }
 
         @Override
         public void onGreatestScrollPercentageIncreased(int scrollPercentage, Bundle extras) {
-            Log.w(
-                    TAG,
+            Log.w(TAG,
                     "EngagementSignalsCallback#onGreatestScrollPercentageIncreased: "
-                            + "scrollPercentage = "
-                            + scrollPercentage);
+                            + "scrollPercentage = " + scrollPercentage);
+            try {
+                Log.w(TAG,
+                        "getGreatestScrollPercentage: "
+                                + getSession().getGreatestScrollPercentage(Bundle.EMPTY));
+            } catch (RemoteException e) {
+                Log.w(TAG, "The Service died while responding to the request.", e);
+            } catch (UnsupportedOperationException e) {
+                Log.w(TAG, "Engagement Signals API isn't supported by the browser.", e);
+            }
         }
 
         @Override
         public void onSessionEnded(boolean didUserInteract, Bundle extras) {
-            Log.w(
-                    TAG,
+            Log.w(TAG,
                     "EngagementSignalsCallback#onSessionEnded: didUserInteract = "
                             + didUserInteract);
         }
@@ -332,7 +315,7 @@ public class MainActivity extends AppCompatActivity
         initializeBreakpointSlider();
         initializeCheckBoxes();
         initializeCctSpinner();
-        initializeButtons(savedInstanceState != null);
+        initializeButtons();
         mLogImportance.run();
     }
 
@@ -340,8 +323,7 @@ public class MainActivity extends AppCompatActivity
         // Populate the dropdown menu with most recently used URLs up to 5.
         String recent = "";
         ArrayList<String> urlsDropdown = new ArrayList<>();
-        HashSet<String> stringSet =
-                (HashSet<String>) mSharedPref.getStringSet(SHARED_PREF_SITES, null);
+        HashSet<String> stringSet = (HashSet<String>) mSharedPref.getStringSet(SHARED_PREF_SITES, null);
         if (stringSet != null) {
             for (String site : stringSet) {
                 // We use prefixes with numbers on the StringSet in order to track the ordering
@@ -360,139 +342,52 @@ public class MainActivity extends AppCompatActivity
                 new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, urlsDropdown);
         mEditUrl.setAdapter(adapter);
         mEditUrl.setOnClickListener(v -> mEditUrl.showDropDown());
-        mEditUrl.setOnEditorActionListener(
-                (v, actionId, event) -> {
-                    if (actionId == EditorInfo.IME_ACTION_DONE) {
-                        mEditUrl.clearFocus();
-                        // Hide the keyboard
-                        InputMethodManager imm =
-                                (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                        imm.hideSoftInputFromWindow(mEditUrl.getWindowToken(), 0);
-                        return true;
-                    }
-                    return false;
-                });
-    }
-
-    private void updateUrlsList() {
-        String url = mEditUrl.getText().toString();
-        HashSet<String> savedUrlSet;
-        SharedPreferences.Editor editor = mSharedPref.edit();
-        if (mSharedPref.getStringSet(SHARED_PREF_SITES, null) != null) {
-            savedUrlSet = (HashSet<String>) mSharedPref.getStringSet(SHARED_PREF_SITES, null);
-            boolean duplicate = false;
-            int duplicatePos = -1;
-            for (String s : savedUrlSet) {
-                if (s.substring(1).equals(url)) {
-                    duplicate = true;
-                    duplicatePos = Integer.parseInt(s.substring(0, 1));
-                }
-            }
-            if (!duplicate) {
-                String[] savedUrlArr = savedUrlSet.toArray(new String[5]);
-                if (!TextUtils.isEmpty(url)) {
-                    // Populate new entry into array - 3 steps:
-                    //  1. Found empty spot in array, just add new url and STOP
-                    //  2. Array full, replace oldest entry with newest
-                    //  3. Increment position of other entries
-                    for (int i = 0; i < savedUrlArr.length; i++) {
-                        if (savedUrlArr[i] == null) {
-                            savedUrlArr[i] = "1" + url;
-                            break;
-                        } else if (savedUrlArr[i].substring(0, 1).equals("5")) {
-                            savedUrlArr[i] = "1" + url;
-                        } else {
-                            int position = Integer.parseInt(savedUrlArr[i].substring(0, 1));
-                            savedUrlArr[i] = (position + 1) + savedUrlArr[i].substring(1);
-                        }
-                    }
-                    savedUrlSet.clear();
-                    for (String entry : savedUrlArr) {
-                        if (entry != null) savedUrlSet.add(entry);
-                    }
-                    editor.remove(SHARED_PREF_SITES);
-                    editor.apply();
-                    editor.putStringSet(SHARED_PREF_SITES, savedUrlSet);
-                    editor.apply();
-                }
-            } else if (duplicatePos > 1) {
-                String previousMainUrl = "";
-                savedUrlSet.remove(duplicatePos + url);
-                for (String s : savedUrlSet) {
-                    if (s.charAt(0) == '1') {
-                        previousMainUrl = s;
-                        break;
-                    }
-                }
-                savedUrlSet.remove(previousMainUrl);
-                savedUrlSet.add(duplicatePos + previousMainUrl.substring(1));
-                savedUrlSet.add("1" + url);
-                editor.remove(SHARED_PREF_SITES);
-                editor.apply();
-                editor.putStringSet(SHARED_PREF_SITES, savedUrlSet);
-                editor.apply();
-            }
-        } else {
-            // TODO(1369795) Refactor the way ordering is stored so it's not mixed with URLs
-            savedUrlSet = new HashSet<String>();
-            if (!TextUtils.isEmpty(url)) {
-                savedUrlSet.add("1" + url);
-                editor.putStringSet(SHARED_PREF_SITES, savedUrlSet);
-                editor.apply();
-            }
-        }
     }
 
     private void initializePackageSpinner() {
         Spinner packageSpinner = findViewById(R.id.package_spinner);
         List<Pair<String, String>> packagesSupportingCustomTabs =
                 mCustomTabsPackageHelper.getCustomTabsSupportingPackages();
-        ArrayAdapter<Pair<String, String>> adapter =
-                new ArrayAdapter<>(this, 0, packagesSupportingCustomTabs) {
+        ArrayAdapter<Pair<String, String>> adapter = new ArrayAdapter<>(
+                this, 0, packagesSupportingCustomTabs) {
 
-                    @Override
-                    public View getView(int position, View convertView, ViewGroup parent) {
-                        View view = convertView;
-                        if (view == null) {
-                            view =
-                                    LayoutInflater.from(MainActivity.this)
-                                            .inflate(
-                                                    android.R.layout.simple_list_item_2,
-                                                    parent,
-                                                    false);
-                        }
-                        Pair<String, String> data = getItem(position);
-                        ((TextView) view.findViewById(android.R.id.text1)).setText(data.first);
-                        ((TextView) view.findViewById(android.R.id.text2)).setText(data.second);
-                        return view;
-                    }
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View view = convertView;
+                if (view == null) {
+                    view = LayoutInflater.from(MainActivity.this).inflate(
+                            android.R.layout.simple_list_item_2, parent, false);
+                }
+                Pair<String, String> data = getItem(position);
+                ((TextView) view.findViewById(android.R.id.text1)).setText(data.first);
+                ((TextView) view.findViewById(android.R.id.text2)).setText(data.second);
+                return view;
+            }
 
-                    @Override
-                    public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                        return getView(position, convertView, parent);
-                    }
-                };
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                return getView(position, convertView, parent);
+            }
+        };
 
         packageSpinner.setAdapter(adapter);
-        packageSpinner.setOnItemSelectedListener(
-                new AdapterView.OnItemSelectedListener() {
-                    @Override
-                    public void onItemSelected(
-                            AdapterView<?> parent, View view, int position, long id) {
-                        Pair<String, String> item = adapter.getItem(position);
-                        if (TextUtils.isEmpty(item.second)) {
-                            onNothingSelected(parent);
-                            return;
-                        }
-                        mPackageTitle = item.first;
-                        mPackageNameToBind = item.second;
-                    }
+        packageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                Pair<String, String> item = adapter.getItem(position);
+                if (TextUtils.isEmpty(item.second)) {
+                    onNothingSelected(parent);
+                    return;
+                }
+                mPackageTitle = item.first;
+                mPackageNameToBind = item.second;
+            }
 
-                    @Override
-                    public void onNothingSelected(AdapterView<?> parent) {
-                        mPackageNameToBind = null;
-                    }
-                });
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                mPackageNameToBind = null;
+            }
+        });
     }
 
     private void initializeColorSpinner() {
@@ -504,8 +399,7 @@ public class MainActivity extends AppCompatActivity
         colors.put("Green", "#369f3d");
         colors.put("Blue", "#3d3bad");
 
-        // Check if there is a saved color preference which needs to be moved to the default/0
-        // position
+        // Check if there is a saved color preference which needs to be moved to the default/0 position
         String prefColor = mSharedPref.getString(SHARED_PREF_COLOR, "");
         String[] colorsArr = colors.keySet().toArray(new String[0]);
         for (int i = 0; i < colorsArr.length; i++) {
@@ -516,47 +410,40 @@ public class MainActivity extends AppCompatActivity
             }
         }
 
-        final ArrayAdapter<String> colorAdapter =
-                new ArrayAdapter<String>(this, 0, colorsArr) {
-                    @Override
-                    public View getView(int position, View convertView, ViewGroup parent) {
-                        View view = convertView;
-                        if (view == null) {
-                            view =
-                                    LayoutInflater.from(MainActivity.this)
-                                            .inflate(
-                                                    android.R.layout.simple_list_item_2,
-                                                    parent,
-                                                    false);
-                        }
-                        String data = getItem(position);
-                        ((TextView) view.findViewById(android.R.id.text1)).setText(data);
-                        return view;
-                    }
+        final ArrayAdapter<String> colorAdapter = new ArrayAdapter<String>(this, 0, colorsArr) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View view = convertView;
+                if (view == null) {
+                    view = LayoutInflater.from(MainActivity.this)
+                                   .inflate(android.R.layout.simple_list_item_2, parent, false);
+                }
+                String data = getItem(position);
+                ((TextView) view.findViewById(android.R.id.text1)).setText(data);
+                return view;
+            }
 
-                    @Override
-                    public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                        return getView(position, convertView, parent);
-                    }
-                };
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                return getView(position, convertView, parent);
+            }
+        };
         colorSpinner.setAdapter(colorAdapter);
-        colorSpinner.setOnItemSelectedListener(
-                new AdapterView.OnItemSelectedListener() {
-                    @Override
-                    public void onItemSelected(
-                            AdapterView<?> parent, View view, int position, long id) {
-                        String item = colorAdapter.getItem(position);
-                        if (TextUtils.isEmpty(item)) {
-                            onNothingSelected(parent);
-                            return;
-                        }
-                        mColorName = item;
-                        mToolbarColor = colors.get(item);
-                    }
+        colorSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String item = colorAdapter.getItem(position);
+                if (TextUtils.isEmpty(item)) {
+                    onNothingSelected(parent);
+                    return;
+                }
+                mColorName = item;
+                mToolbarColor = colors.get(item);
+            }
 
-                    @Override
-                    public void onNothingSelected(AdapterView<?> parent) {}
-                });
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 
     private void initializeToggles() {
@@ -572,13 +459,9 @@ public class MainActivity extends AppCompatActivity
         }
 
         mCloseButtonPositionToggle = findViewById(R.id.close_button_position_toggle);
-        int buttonType =
-                mSharedPref.getInt(
-                                        SHARED_PREF_CLOSE_POSITION,
-                                        CustomTabsIntent.CLOSE_BUTTON_POSITION_START)
-                                == CustomTabsIntent.CLOSE_BUTTON_POSITION_START
-                        ? R.id.start_button
-                        : R.id.end_button;
+        int buttonType = mSharedPref.getInt(SHARED_PREF_CLOSE_POSITION,
+                CustomTabsIntent.CLOSE_BUTTON_POSITION_START)
+                == CustomTabsIntent.CLOSE_BUTTON_POSITION_START ? R.id.start_button : R.id.end_button;
         mCloseButtonPositionToggle.check(buttonType);
 
         mCloseButtonIcon = findViewById(R.id.close_button_icon_toggle);
@@ -591,21 +474,26 @@ public class MainActivity extends AppCompatActivity
         }
 
         mSideSheetPositionToggle = findViewById(R.id.side_sheet_position_toggle);
-        int sideSheetPositionType =
-                mSharedPref.getInt(
-                                        SHARED_PREF_SIDE_SHEET_POSITION,
-                                        ACTIVITY_SIDE_SHEET_POSITION_END)
-                                == ACTIVITY_SIDE_SHEET_POSITION_START
-                        ? R.id.side_sheet_start_button
-                        : R.id.side_sheet_end_button;
+        int sideSheetPositionType = mSharedPref.getInt(SHARED_PREF_SIDE_SHEET_POSITION,
+                                            ACTIVITY_SIDE_SHEET_POSITION_END)
+                        == ACTIVITY_SIDE_SHEET_POSITION_START
+                ? R.id.side_sheet_start_button
+                : R.id.side_sheet_end_button;
         mSideSheetPositionToggle.check(sideSheetPositionType);
+        mSideSheetAnimationToggle = findViewById(R.id.side_sheet_animation_toggle);
+        int sideSheetAnimationType = mSharedPref.getInt(SHARED_PREF_SIDE_SHEET_ANIMATION,
+                                             ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_SIDE)
+                        == ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_SIDE
+                ? R.id.side_sheet_side_button
+                : R.id.side_sheet_bottom_button;
+        mSideSheetAnimationToggle.check(sideSheetAnimationType);
 
         mDecorationType = findViewById(R.id.decoration_type_toggle);
         if (mSharedPref.getInt(SHARED_PREF_DECORATION, ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW)
                 == ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW) {
             mDecorationType.check(R.id.decoration_type_shadow_button);
         } else if (mSharedPref.getInt(
-                        SHARED_PREF_DECORATION, ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW)
+                           SHARED_PREF_DECORATION, ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW)
                 == ACTIVITY_SIDE_SHEET_DECORATION_TYPE_DIVIDER) {
             mDecorationType.check(R.id.decoration_type_divider_button);
         } else {
@@ -621,21 +509,19 @@ public class MainActivity extends AppCompatActivity
 
         mToolbarCornerRadiusLabel.setText(
                 getString(R.string.dp_template, mToolbarCornerRadiusSlider.getProgress()));
-        mToolbarCornerRadiusSlider.setOnSeekBarChangeListener(
-                new OnSeekBarChangeListener() {
+        mToolbarCornerRadiusSlider.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                        mToolbarCornerRadiusLabel.setText(
-                                getString(R.string.dp_template, progress));
-                    }
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                mToolbarCornerRadiusLabel.setText(getString(R.string.dp_template, progress));
+            }
 
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
 
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) {}
-                });
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
     }
 
     private void initializeCheckBoxes() {
@@ -646,26 +532,21 @@ public class MainActivity extends AppCompatActivity
         mBottomToolbarCheckbox.setChecked(
                 mSharedPref.getInt(SHARED_PREF_BOTTOM_TOOLBAR, UNCHECKED) == CHECKED);
         mShowTitleCheckbox = findViewById(R.id.show_title_checkbox);
-        mShowTitleCheckbox.setChecked(
-                mSharedPref.getInt(SHARED_PREF_SHOW_TITLE, CHECKED) == CHECKED);
+        mShowTitleCheckbox.setChecked(mSharedPref.getInt(SHARED_PREF_SHOW_TITLE, CHECKED) == CHECKED);
         mUrlHidingCheckbox = findViewById(R.id.url_hiding_checkbox);
-        mUrlHidingCheckbox.setChecked(
-                mSharedPref.getInt(SHARED_PREF_URL_HIDING, CHECKED) == CHECKED);
+        mUrlHidingCheckbox.setChecked(mSharedPref.getInt(SHARED_PREF_URL_HIDING, CHECKED) == CHECKED);
         mBackgroundInteractCheckbox = findViewById(R.id.background_interact_checkbox);
         mBackgroundInteractCheckbox.setChecked(
                 mSharedPref.getInt(SHARED_PREF_BACKGROUND_INTERACT, CHECKED) == CHECKED);
+        mForceEngagementSignalsCheckbox = findViewById(R.id.force_engagement_signals_checkbox);
+        mForceEngagementSignalsCheckbox.setChecked(
+                mSharedPref.getInt(SHARED_PREF_FORCE_ENGAGEMENT_SIGNALS, CHECKED) == CHECKED);
         mSideSheetMaxButtonCheckbox = findViewById(R.id.side_sheet_max_button_checkbox);
         mSideSheetMaxButtonCheckbox.setChecked(
                 mSharedPref.getInt(SHARED_PREF_SIDE_SHEET_MAX_BUTTON, CHECKED) == CHECKED);
         mSideSheetRoundedCornerCheckbox = findViewById(R.id.side_sheet_rounded_corner_checkbox);
         mSideSheetRoundedCornerCheckbox.setChecked(
                 mSharedPref.getInt(SHARED_PREF_SIDE_SHEET_ROUNDED_CORNER, CHECKED) == CHECKED);
-        mContentScrollCheckbox = findViewById(R.id.content_scroll_checkbox);
-        mContentScrollCheckbox.setChecked(
-                mSharedPref.getInt(SHARED_PREF_CONTENT_SCROLL, UNCHECKED) == CHECKED);
-        mSearchInCCTCheckbox = findViewById(R.id.search_in_cct_checkbox);
-        mSearchInCCTCheckbox.setChecked(
-                mSharedPref.getInt(SHARED_PREF_SEARCH_IN_CCT, UNCHECKED) == CHECKED);
     }
 
     private void initializeCctSpinner() {
@@ -680,74 +561,54 @@ public class MainActivity extends AppCompatActivity
             }
         }
 
-        final ArrayAdapter<String> cctAdapter =
-                new ArrayAdapter<String>(this, 0, cctOptions) {
-                    @Override
-                    public View getView(int position, View convertView, ViewGroup parent) {
-                        View view = convertView;
-                        if (view == null) {
-                            view =
-                                    LayoutInflater.from(MainActivity.this)
-                                            .inflate(
-                                                    android.R.layout.simple_list_item_2,
-                                                    parent,
-                                                    false);
-                        }
-                        ((TextView) view.findViewById(android.R.id.text1))
-                                .setText(getItem(position));
-                        return view;
-                    }
+        final ArrayAdapter<String> cctAdapter = new ArrayAdapter<String>(this, 0, cctOptions) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View view = convertView;
+                if (view == null) {
+                    view = LayoutInflater.from(MainActivity.this)
+                                   .inflate(android.R.layout.simple_list_item_2, parent, false);
+                }
+                ((TextView) view.findViewById(android.R.id.text1)).setText(getItem(position));
+                return view;
+            }
 
-                    @Override
-                    public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                        return getView(position, convertView, parent);
-                    }
-                };
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                return getView(position, convertView, parent);
+            }
+        };
         cctSpinner.setAdapter(cctAdapter);
-        cctSpinner.setOnItemSelectedListener(
-                new AdapterView.OnItemSelectedListener() {
-                    @Override
-                    public void onItemSelected(
-                            AdapterView<?> parent, View view, int position, long id) {
-                        String item = cctAdapter.getItem(position);
-                        if (TextUtils.isEmpty(item)) {
-                            onNothingSelected(parent);
-                            return;
-                        }
-                        mCctType = item;
-                    }
+        cctSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String item = cctAdapter.getItem(position);
+                if (TextUtils.isEmpty(item)) {
+                    onNothingSelected(parent);
+                    return;
+                }
+                mCctType = item;
+                if (mDisconnectButton.isEnabled()) {
+                    unbindCustomTabsService();
+                }
+            }
 
-                    @Override
-                    public void onNothingSelected(AdapterView<?> parent) {}
-                });
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 
-    private void initializeButtons(boolean configChange) {
+    private void initializeButtons() {
         mConnectButton = (Button) findViewById(R.id.connect_button);
         mDisconnectButton = (Button) findViewById(R.id.disconnect_button);
         mWarmupButton = (Button) findViewById(R.id.warmup_button);
         mMayLaunchButton = (Button) findViewById(R.id.may_launch_button);
         mLaunchButton = (Button) findViewById(R.id.launch_button);
-        mResultLaunchButton = (Button) findViewById(R.id.result_launch_button);
-        mEngagementSignalsButton = (Button) findViewById(R.id.engagement_signals_button);
         mConnectButton.setOnClickListener(this);
         mDisconnectButton.setOnClickListener(this);
         mWarmupButton.setOnClickListener(this);
         mMayLaunchButton.setOnClickListener(this);
         mLaunchButton.setOnClickListener(this);
-        mResultLaunchButton.setOnClickListener(this);
-        mEngagementSignalsButton.setOnClickListener(this);
-        if (configChange) {
-            mConnectButton.setEnabled(mSharedPref.getBoolean(SHARED_PREF_CONNECT_BUTTON, true));
-            mDisconnectButton.setEnabled(
-                    mSharedPref.getBoolean(SHARED_PREF_DISCONNECT_BUTTON, false));
-            mWarmupButton.setEnabled(mSharedPref.getBoolean(SHARED_PREF_WARMUP_BUTTON, false));
-            mMayLaunchButton.setEnabled(
-                    mSharedPref.getBoolean(SHARED_PREF_MAY_LAUNCH_BUTTON, false));
-            mEngagementSignalsButton.setEnabled(
-                    mSharedPref.getBoolean(SHARED_PREF_ENGAGEMENT_SIGNALS_BUTTON, false));
-        }
-        findViewById(R.id.test_asm_button).setOnClickListener(this);
     }
 
     private void initializeHeightSlider() {
@@ -760,20 +621,19 @@ public class MainActivity extends AppCompatActivity
         mPcctInitialHeightSlider.setProgress(sharedHeight != -1 ? sharedHeight : mInitialHeight);
         mPcctInitialHeightLabel.setText(
                 getString(R.string.px_template, mPcctInitialHeightSlider.getProgress()));
-        mPcctInitialHeightSlider.setOnSeekBarChangeListener(
-                new OnSeekBarChangeListener() {
+        mPcctInitialHeightSlider.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                        mPcctInitialHeightLabel.setText(getString(R.string.px_template, progress));
-                    }
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                mPcctInitialHeightLabel.setText(getString(R.string.px_template, progress));
+            }
 
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
 
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) {}
-                });
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
     }
 
     private void initializeWidthSlider() {
@@ -786,19 +646,18 @@ public class MainActivity extends AppCompatActivity
         mPcctInitialWidthSlider.setProgress(sharedWidth != -1 ? sharedWidth : mInitialWidth);
         mPcctInitialWidthLabel.setText(
                 getString(R.string.px_template, mPcctInitialWidthSlider.getProgress()));
-        mPcctInitialWidthSlider.setOnSeekBarChangeListener(
-                new OnSeekBarChangeListener() {
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                        mPcctInitialWidthLabel.setText(getString(R.string.px_template, progress));
-                    }
+        mPcctInitialWidthSlider.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                mPcctInitialWidthLabel.setText(getString(R.string.px_template, progress));
+            }
 
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
 
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) {}
-                });
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
     }
 
     private void initializeBreakpointSlider() {
@@ -812,52 +671,39 @@ public class MainActivity extends AppCompatActivity
                 sharedBreakpoint != -1 ? sharedBreakpoint : DEFAULT_BREAKPOINT);
         mPcctBreakpointLabel.setText(
                 getString(R.string.dp_template, mPcctBreakpointSlider.getProgress()));
-        mPcctBreakpointSlider.setOnSeekBarChangeListener(
-                new OnSeekBarChangeListener() {
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                        mPcctBreakpointLabel.setText(getString(R.string.dp_template, progress));
-                    }
+        mPcctBreakpointSlider.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                mPcctBreakpointLabel.setText(getString(R.string.dp_template, progress));
+            }
 
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
 
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) {}
-                });
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
     }
 
     @Override
     protected void onDestroy() {
-        if (!isChangingConfigurations()) {
-            mMediaPlayer.release();
-            unbindCustomTabsService();
-        } else {
-            SharedPreferences.Editor editor = mSharedPref.edit();
-            editor.putBoolean(SHARED_PREF_CONNECT_BUTTON, mConnectButton.isEnabled());
-            editor.putBoolean(SHARED_PREF_DISCONNECT_BUTTON, mDisconnectButton.isEnabled());
-            editor.putBoolean(SHARED_PREF_WARMUP_BUTTON, mWarmupButton.isEnabled());
-            editor.putBoolean(SHARED_PREF_MAY_LAUNCH_BUTTON, mMayLaunchButton.isEnabled());
-            editor.putBoolean(
-                    SHARED_PREF_ENGAGEMENT_SIGNALS_BUTTON, mEngagementSignalsButton.isEnabled());
-            editor.putBoolean(SHARED_PREF_SEARCH_IN_CCT, mSearchInCCTCheckbox.isChecked());
-            editor.apply();
-        }
+        mMediaPlayer.release();
+        unbindCustomTabsService();
         super.onDestroy();
     }
 
     private CustomTabsSession getSession() {
-        if (sClient == null) {
+        if (mClient == null) {
             mCustomTabsSession = null;
         } else if (mCustomTabsSession == null) {
-            mCustomTabsSession = sClient.newSession(new NavigationCallback());
+            mCustomTabsSession = mClient.newSession(new NavigationCallback());
             SessionHelper.setCurrentSession(mCustomTabsSession);
         }
         return mCustomTabsSession;
     }
 
     private void bindCustomTabsService() {
-        if (sClient != null) return;
+        if (mClient != null) return;
 
         if (TextUtils.isEmpty(mPackageNameToBind)) {
             mPackageNameToBind = CustomTabsHelper.getPackageNameToUse(this);
@@ -876,75 +722,36 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void unbindCustomTabsService() {
-        sClient = null;
+        initializeUrlEditTextView();
+        if (mConnection == null) return;
+
+        unbindService(mConnection);
+        mClient = null;
         mCustomTabsSession = null;
         mConnectButton.setEnabled(true);
         mDisconnectButton.setEnabled(false);
         mWarmupButton.setEnabled(false);
-        mEngagementSignalsButton.setEnabled(false);
-
-        if (mConnection == null) return;
-        unbindService(mConnection);
     }
 
     @Override
     public void onClick(View v) {
         String url = mEditUrl.getText().toString();
+        HashSet<String> savedUrlSet;
 
         int viewId = v.getId();
         SharedPreferences.Editor editor = mSharedPref.edit();
-
-        if (viewId == R.id.connect_button) {
-            updateUrlsList();
-            bindCustomTabsService();
-        } else if (viewId == R.id.disconnect_button) {
-            unbindCustomTabsService();
-        } else if (viewId == R.id.warmup_button) {
-            boolean success = false;
-            if (sClient != null) success = sClient.warmup(0);
-            if (!success) mWarmupButton.setEnabled(false);
-        } else if (viewId == R.id.may_launch_button) {
-            CustomTabsSession session = getSession();
-            boolean success = false;
-            if (sClient != null) success = session.mayLaunchUrl(Uri.parse(url), null, null);
-            if (!success) mMayLaunchButton.setEnabled(false);
-        } else if (viewId == R.id.test_asm_button) {
-            launchCct(url, editor, false);
-            new Handler().postDelayed(() -> launchCct("https://abc.xyz", editor, false), 5000);
-        } else if (viewId == R.id.launch_button) {
-            updateUrlsList();
-            launchCct(url, editor, false);
-        } else if (viewId == R.id.result_launch_button) {
-            updateUrlsList();
-            launchCct(url, editor, true);
-        } else if (viewId == R.id.engagement_signals_button) {
-            try {
-                getSession().setEngagementSignalsCallback(new EngagementCallback(), Bundle.EMPTY);
-            } catch (RemoteException e) {
-                Log.w(TAG, "The Service died while responding to the request.", e);
-            }
-        }
-    }
-
-    private void launchCct(
-            String url, SharedPreferences.Editor editor, boolean startActivityForResult) {
-        url = mayPrependUrl(url);
-        CustomTabsSession session = getSession();
-        CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder(session);
-        prepareMenuItems(builder);
-        prepareActionButton(builder);
-        boolean isPCCT = mCctType.equals("Partial CCT");
-        prepareAesthetics(builder, isPCCT);
-
         // @CloseButtonPosition
-        int closeButtonPosition =
-                mCloseButtonPositionToggle.getCheckedButtonId() == R.id.end_button
-                        ? CustomTabsIntent.CLOSE_BUTTON_POSITION_END
-                        : CustomTabsIntent.CLOSE_BUTTON_POSITION_START;
+        int closeButtonPosition = mCloseButtonPositionToggle.getCheckedButtonId()
+                == R.id.end_button ? CustomTabsIntent.CLOSE_BUTTON_POSITION_END
+                : CustomTabsIntent.CLOSE_BUTTON_POSITION_START;
         int sideSheetPosition =
                 mSideSheetPositionToggle.getCheckedButtonId() == R.id.side_sheet_end_button
-                        ? ACTIVITY_SIDE_SHEET_POSITION_END
-                        : ACTIVITY_SIDE_SHEET_POSITION_START;
+                ? ACTIVITY_SIDE_SHEET_POSITION_END
+                : ACTIVITY_SIDE_SHEET_POSITION_START;
+        int sideSheetAnimation =
+                mSideSheetAnimationToggle.getCheckedButtonId() == R.id.side_sheet_side_button
+                ? ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_SIDE
+                : ACTIVITY_SIDE_SHEET_SLIDE_IN_FROM_BOTTOM;
         int decorationType = ACTIVITY_SIDE_SHEET_DECORATION_TYPE_SHADOW;
         if (mDecorationType.getCheckedButtonId() == R.id.decoration_type_divider_button) {
             decorationType = ACTIVITY_SIDE_SHEET_DECORATION_TYPE_DIVIDER;
@@ -952,112 +759,176 @@ public class MainActivity extends AppCompatActivity
             decorationType = ACTIVITY_SIDE_SHEET_DECORATION_TYPE_NONE;
         }
 
-        CustomTabsIntent customTabsIntent;
-
-        if (isPCCT) {
-            editor.putString(SHARED_PREF_CCT, "Partial CCT");
-            int pcctInitialWidthPx = mPcctInitialWidthSlider.getProgress();
-            if (pcctInitialWidthPx != 0) {
-                builder.setInitialActivityWidthPx(pcctInitialWidthPx);
+        if (viewId == R.id.connect_button) {
+            if (mSharedPref.getStringSet(SHARED_PREF_SITES, null) != null) {
+                savedUrlSet = (HashSet<String>) mSharedPref.getStringSet(SHARED_PREF_SITES, null);
+                boolean duplicate = false;
+                for (String s : savedUrlSet) {
+                    if (s.substring(1).equals(url)) {
+                        duplicate = true;
+                    }
+                }
+                if (!duplicate) {
+                    String[] savedUrlArr = savedUrlSet.toArray(new String[5]);
+                    if (!TextUtils.isEmpty(url)) {
+                        // Populate new entry into array - 3 steps:
+                        //  1. Found empty spot in array, just add new url and STOP
+                        //  2. Array full, replace oldest entry with newest
+                        //  3. Increment position of other entries
+                        for (int i = 0; i < savedUrlArr.length; i++) {
+                            if (savedUrlArr[i] == null) {
+                                savedUrlArr[i] = "1" + url;
+                                break;
+                            } else if (savedUrlArr[i].substring(0, 1).equals("5")) {
+                                savedUrlArr[i] = "1" + url;
+                            } else {
+                                int position = Integer.parseInt(savedUrlArr[i].substring(0, 1));
+                                savedUrlArr[i] = (position + 1) + savedUrlArr[i].substring(1);
+                            }
+                        }
+                        savedUrlSet.clear();
+                        for (String entry : savedUrlArr) {
+                            if (entry != null) savedUrlSet.add(entry);
+                        }
+                        editor.remove(SHARED_PREF_SITES);
+                        editor.apply();
+                        editor.putStringSet(SHARED_PREF_SITES, savedUrlSet);
+                        editor.apply();
+                    }
+                }
+            } else {
+                // TODO(1369795) Refactor the way ordering is stored so it's not mixed with URLs
+                savedUrlSet = new HashSet<String>();
+                if (!TextUtils.isEmpty(url)) {
+                    savedUrlSet.add("1" + url);
+                    editor.putStringSet(SHARED_PREF_SITES, savedUrlSet);
+                    editor.apply();
+                }
             }
-
-            int pcctBreakpointDp = mPcctBreakpointSlider.getProgress();
-            if (pcctBreakpointDp != 0) {
-                builder.setActivitySideSheetBreakpointDp(pcctBreakpointDp);
-            }
-
-            customTabsIntent = builder.build();
-            int toolbarCornerRadiusDp = mToolbarCornerRadiusSlider.getProgress();
-            customTabsIntent.intent.putExtra(EXTRA_CLOSE_BUTTON_POSITION, closeButtonPosition);
-            customTabsIntent.intent.putExtra(EXTRA_TOOLBAR_CORNER_RADIUS_DP, toolbarCornerRadiusDp);
-            int pcctInitialHeightPx = mPcctInitialHeightSlider.getProgress();
-            if (pcctInitialHeightPx != 0) {
+            bindCustomTabsService();
+        } else if (viewId == R.id.disconnect_button) {
+            unbindCustomTabsService();
+        } else if (viewId == R.id.warmup_button) {
+            boolean success = false;
+            if (mClient != null) success = mClient.warmup(0);
+            if (!success) mWarmupButton.setEnabled(false);
+        } else if (viewId == R.id.may_launch_button) {
+            CustomTabsSession session = getSession();
+            boolean success = false;
+            if (mClient != null) success = session.mayLaunchUrl(Uri.parse(url), null, null);
+            if (!success) mMayLaunchButton.setEnabled(false);
+        } else if (viewId == R.id.launch_button) {
+            CustomTabsSession session = getSession();
+            CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder(session);
+            prepareMenuItems(builder);
+            prepareActionButton(builder);
+            boolean isPCCT = mCctType.equals("Partial CCT");
+            prepareAesthetics(builder, isPCCT);
+            CustomTabsIntent customTabsIntent = builder.build();
+            if (isPCCT) {
+                editor.putString(SHARED_PREF_CCT, "Partial CCT");
+                int toolbarCornerRadiusDp = mToolbarCornerRadiusSlider.getProgress();
+                int toolbarCornerRadiusPx = Math.round(
+                        toolbarCornerRadiusDp * getResources().getDisplayMetrics().density);
                 customTabsIntent.intent.putExtra(
-                        EXTRA_INITIAL_ACTIVITY_HEIGHT_PX, pcctInitialHeightPx);
-            }
-
-            if (mSideSheetMaxButtonCheckbox.isChecked()) {
+                        "androidx.browser.customtabs.extra.CLOSE_BUTTON_POSITION",
+                        closeButtonPosition);
                 customTabsIntent.intent.putExtra(
-                        EXTRA_ACTIVITY_SIDE_SHEET_ENABLE_MAXIMIZATION, true);
-            }
-
-            if (!mPcctHeightResizableCheckbox.isChecked()) {
+                        "androidx.browser.customtabs.extra.TOOLBAR_CORNER_RADIUS_IN_PIXEL",
+                        toolbarCornerRadiusPx);
+                int pcctInitialHeightPx = mPcctInitialHeightSlider.getProgress();
+                if (pcctInitialHeightPx != 0) {
+                    customTabsIntent.intent.putExtra(
+                            "androidx.browser.customtabs.extra.INITIAL_ACTIVITY_HEIGHT_IN_PIXEL",
+                            pcctInitialHeightPx);
+                }
+                int pcctInitialWidthPx = mPcctInitialWidthSlider.getProgress();
+                if (pcctInitialWidthPx != 0) {
+                    customTabsIntent.intent.putExtra(
+                            "androidx.browser.customtabs.extra.INITIAL_ACTIVITY_WIDTH_PX",
+                            pcctInitialWidthPx);
+                }
+                int pcctBreakpointDp = mPcctBreakpointSlider.getProgress();
                 customTabsIntent.intent.putExtra(
-                        EXTRA_ACTIVITY_HEIGHT_RESIZE_BEHAVIOR, ACTIVITY_HEIGHT_FIXED);
-            }
-            if (!mBackgroundInteractCheckbox.isChecked()) {
+                        "androidx.browser.customtabs.extra.ACTIVITY_SIDE_SHEET_BREAKPOINT_DP",
+                        pcctBreakpointDp);
+                if (mSideSheetMaxButtonCheckbox.isChecked()) {
+                    customTabsIntent.intent.putExtra(
+                            EXTRA_ACTIVITY_SIDE_SHEET_ENABLE_MAXIMIZATION, true);
+                }
+                if (!mPcctHeightResizableCheckbox.isChecked()) {
+                    customTabsIntent.intent.putExtra(
+                            "androidx.browser.customtabs.extra.ACTIVITY_HEIGHT_RESIZE_BEHAVIOR",
+                            ACTIVITY_HEIGHT_FIXED);
+                }
+                if (!mBackgroundInteractCheckbox.isChecked()) {
+                    customTabsIntent.intent.putExtra(
+                            "androidx.browser.customtabs.extra.ENABLE_BACKGROUND_INTERACTION",
+                            BACKGROUND_INTERACT_OFF_VALUE);
+                }
+                if (mSideSheetRoundedCornerCheckbox.isChecked()) {
+                    customTabsIntent.intent.putExtra(
+                            EXTRA_ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_POSITION,
+                            ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_TOP);
+                }
                 customTabsIntent.intent.putExtra(
-                        "androidx.browser.customtabs.extra.ENABLE_BACKGROUND_INTERACTION",
-                        BACKGROUND_INTERACT_OFF_VALUE);
-            }
-            if (mSideSheetRoundedCornerCheckbox.isChecked()) {
+                        EXTRA_ACTIVITY_SIDE_SHEET_POSITION, sideSheetPosition);
                 customTabsIntent.intent.putExtra(
-                        EXTRA_ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_POSITION,
-                        ACTIVITY_SIDE_SHEET_ROUNDED_CORNERS_POSITION_TOP);
+                        EXTRA_ACTIVITY_SIDE_SHEET_SLIDE_IN_BEHAVIOR, sideSheetAnimation);
+                customTabsIntent.intent.putExtra(
+                        EXTRA_ACTIVITY_SIDE_SHEEET_DECORATION_TYPE, decorationType);
+            } else {
+                editor.putString(SHARED_PREF_CCT,
+                        mCctType.equals("Incognito CCT") ? "Incognito CCT" : "CCT");
+                if (session != null && mBottomToolbarCheckbox.isChecked()) {
+                    prepareBottombar(builder);
+                    Intent broadcastIntent =
+                            new Intent(this, BottomBarManager.SwipeUpReceiver.class);
+                    PendingIntent pi = PendingIntent.getBroadcast(
+                            this, 0, broadcastIntent, PendingIntent.FLAG_MUTABLE);
+                    customTabsIntent.intent.putExtra(
+                            "androidx.browser.customtabs.extra.SECONDARY_TOOLBAR_SWIPE_UP_ACTION",
+                            pi);
+                }
+                // NOTE: opening in incognito may be restricted. This assumes it is not.
+                customTabsIntent.intent.putExtra(
+                        "com.google.android.apps.chrome.EXTRA_OPEN_NEW_INCOGNITO_TAB",
+                        mCctType.equals("Incognito CCT"));
+                customTabsIntent.intent.putExtra(
+                        "androidx.browser.customtabs.extra.CLOSE_BUTTON_POSITION",
+                        closeButtonPosition);
             }
-            if (mContentScrollCheckbox.isChecked()) {
-                customTabsIntent.intent.putExtra(EXTRA_ACTIVITY_SCROLL_CONTENT_RESIZE, true);
+            if (mForceEngagementSignalsCheckbox.isChecked()) {
+                // NOTE: this may not work because this app is not a trusted 1st party app,
+                // and CCT requires that for this feature currently.
+                // Set the command-line-flag --cct-client-firstparty-override to fake 1st-party!
+                customTabsIntent.intent.putStringArrayListExtra(
+                        "org.chromium.chrome.browser.customtabs.EXPERIMENTS_ENABLE",
+                        new ArrayList<String>(
+                                List.of("CCTRealTimeEngagementSignals", "CCTBrandTransparency")));
             }
-            customTabsIntent.intent.putExtra(EXTRA_ACTIVITY_SIDE_SHEET_POSITION, sideSheetPosition);
-            customTabsIntent.intent.putExtra(
-                    EXTRA_ACTIVITY_SIDE_SHEET_DECORATION_TYPE, decorationType);
-        } else {
-            editor.putString(
-                    SHARED_PREF_CCT, mCctType.equals("Incognito CCT") ? "Incognito CCT" : "CCT");
-            if (session != null && mBottomToolbarCheckbox.isChecked()) {
-                prepareBottombar(builder);
-                Intent broadcastIntent = new Intent(this, BottomBarManager.SwipeUpReceiver.class);
-                PendingIntent pi =
-                        PendingIntent.getBroadcast(
-                                this, 0, broadcastIntent, PendingIntent.FLAG_MUTABLE);
-                builder.setSecondaryToolbarSwipeUpGesture(pi);
-            }
-            customTabsIntent = builder.build();
-            // NOTE: opening in incognito may be restricted. This assumes it is not.
-            customTabsIntent.intent.putExtra(
-                    "com.google.android.apps.chrome.EXTRA_OPEN_NEW_INCOGNITO_TAB",
-                    mCctType.equals("Incognito CCT"));
-            customTabsIntent.intent.putExtra(EXTRA_CLOSE_BUTTON_POSITION, closeButtonPosition);
-        }
-
-        customTabsIntent.intent.putExtra(EXTRA_OMNIBOX_ENABLED, mSearchInCCTCheckbox.isChecked());
-
-        if (startActivityForResult) {
-            customTabsIntent.intent.setData(Uri.parse(url));
-            startActivityForResult(customTabsIntent.intent, 0);
-        } else {
             configSessionConnection(session, customTabsIntent);
             customTabsIntent.launchUrl(this, Uri.parse(url));
+
+            editor.putInt(SHARED_PREF_HEIGHT, mPcctInitialHeightSlider.getProgress());
+            editor.putInt(SHARED_PREF_WIDTH, mPcctInitialWidthSlider.getProgress());
+            editor.putInt(SHARED_PREF_BREAKPOINT, mPcctBreakpointSlider.getProgress());
+            editor.putInt(SHARED_PREF_PROGRESS, mToolbarCornerRadiusSlider.getProgress());
+            int toolbarCheck =
+                    session != null && mBottomToolbarCheckbox.isChecked() ? CHECKED : UNCHECKED;
+            editor.putInt(SHARED_PREF_BOTTOM_TOOLBAR, toolbarCheck);
+            editor.putInt(SHARED_PREF_CLOSE_POSITION, closeButtonPosition);
+            editor.putInt(SHARED_PREF_SIDE_SHEET_POSITION, sideSheetPosition);
+            editor.putInt(SHARED_PREF_SIDE_SHEET_ANIMATION, sideSheetAnimation);
+            editor.putInt(SHARED_PREF_HEIGHT_RESIZABLE,
+                    mPcctHeightResizableCheckbox.isChecked() ? CHECKED : UNCHECKED);
+            editor.putInt(SHARED_PREF_SIDE_SHEET_MAX_BUTTON,
+                    mSideSheetMaxButtonCheckbox.isChecked() ? CHECKED : UNCHECKED);
+            editor.putInt(SHARED_PREF_SIDE_SHEET_ROUNDED_CORNER,
+                    mSideSheetRoundedCornerCheckbox.isChecked() ? CHECKED : UNCHECKED);
+            editor.putInt(SHARED_PREF_DECORATION, decorationType);
+            editor.apply();
         }
-
-        editor.putInt(SHARED_PREF_HEIGHT, mPcctInitialHeightSlider.getProgress());
-        editor.putInt(SHARED_PREF_WIDTH, mPcctInitialWidthSlider.getProgress());
-        editor.putInt(SHARED_PREF_BREAKPOINT, mPcctBreakpointSlider.getProgress());
-        editor.putInt(SHARED_PREF_PROGRESS, mToolbarCornerRadiusSlider.getProgress());
-        int toolbarCheck =
-                session != null && mBottomToolbarCheckbox.isChecked() ? CHECKED : UNCHECKED;
-        editor.putInt(SHARED_PREF_BOTTOM_TOOLBAR, toolbarCheck);
-        editor.putInt(SHARED_PREF_CLOSE_POSITION, closeButtonPosition);
-        editor.putInt(SHARED_PREF_SIDE_SHEET_POSITION, sideSheetPosition);
-        editor.putInt(
-                SHARED_PREF_HEIGHT_RESIZABLE,
-                mPcctHeightResizableCheckbox.isChecked() ? CHECKED : UNCHECKED);
-        editor.putInt(
-                SHARED_PREF_SIDE_SHEET_MAX_BUTTON,
-                mSideSheetMaxButtonCheckbox.isChecked() ? CHECKED : UNCHECKED);
-        editor.putInt(
-                SHARED_PREF_SIDE_SHEET_ROUNDED_CORNER,
-                mSideSheetRoundedCornerCheckbox.isChecked() ? CHECKED : UNCHECKED);
-        editor.putInt(SHARED_PREF_DECORATION, decorationType);
-        editor.apply();
-    }
-
-    private String mayPrependUrl(String url) {
-        if (!URLUtil.isValidUrl(url)) {
-            url = "https://" + url;
-        }
-
-        return url;
     }
 
     private void prepareAesthetics(CustomTabsIntent.Builder builder, boolean isPcct) {
@@ -1067,6 +938,11 @@ public class MainActivity extends AppCompatActivity
             editor.putInt(SHARED_PREF_URL_HIDING, CHECKED);
         } else {
             editor.putInt(SHARED_PREF_URL_HIDING, UNCHECKED);
+        }
+        if (mForceEngagementSignalsCheckbox.isChecked()) {
+            editor.putInt(SHARED_PREF_FORCE_ENGAGEMENT_SIGNALS, CHECKED);
+        } else {
+            editor.putInt(SHARED_PREF_FORCE_ENGAGEMENT_SIGNALS, UNCHECKED);
         }
         boolean backgroundInteract = mBackgroundInteractCheckbox.isChecked();
         if (backgroundInteract) {
@@ -1125,17 +1001,10 @@ public class MainActivity extends AppCompatActivity
         Intent menuIntent = new Intent();
         menuIntent.setClass(getApplicationContext(), this.getClass());
         // Optional animation configuration when the user clicks menu items.
-        Bundle menuBundle =
-                ActivityOptions.makeCustomAnimation(
-                                this, android.R.anim.slide_in_left, android.R.anim.slide_out_right)
-                        .toBundle();
-        PendingIntent pi =
-                PendingIntent.getActivity(
-                        getApplicationContext(),
-                        0,
-                        menuIntent,
-                        PendingIntent.FLAG_MUTABLE,
-                        menuBundle);
+        Bundle menuBundle = ActivityOptions.makeCustomAnimation(this, android.R.anim.slide_in_left,
+                android.R.anim.slide_out_right).toBundle();
+        PendingIntent pi = PendingIntent.getActivity(
+                getApplicationContext(), 0, menuIntent, PendingIntent.FLAG_MUTABLE, menuBundle);
         builder.addMenuItem("Menu entry 1", pi);
     }
 
@@ -1156,10 +1025,8 @@ public class MainActivity extends AppCompatActivity
         Intent broadcastIntent = new Intent(this, BottomBarManager.class);
         PendingIntent pi =
                 PendingIntent.getBroadcast(this, 0, broadcastIntent, PendingIntent.FLAG_MUTABLE);
-        builder.setSecondaryToolbarViews(
-                BottomBarManager.createRemoteViews(this, true),
-                BottomBarManager.getClickableIDs(),
-                pi);
+        builder.setSecondaryToolbarViews(BottomBarManager.createRemoteViews(this, true),
+                BottomBarManager.getClickableIDs(), pi);
     }
 
     private void configSessionConnection(
@@ -1175,14 +1042,14 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onServiceConnected(CustomTabsClient client) {
-        sClient = client;
+        mClient = client;
         mConnectButton.setEnabled(false);
         mWarmupButton.setEnabled(true);
         mDisconnectButton.setEnabled(true);
         mMayLaunchButton.setEnabled(true);
         try {
             if (getSession().isEngagementSignalsApiAvailable(Bundle.EMPTY)) {
-                mEngagementSignalsButton.setEnabled(true);
+                getSession().setEngagementSignalsCallback(new EngagementCallback(), Bundle.EMPTY);
             }
         } catch (RemoteException e) {
             Log.w(TAG, "The Service died while responding to the request.", e);
@@ -1196,19 +1063,14 @@ public class MainActivity extends AppCompatActivity
         mConnectButton.setEnabled(true);
         mWarmupButton.setEnabled(false);
         mMayLaunchButton.setEnabled(false);
-        mEngagementSignalsButton.setEnabled(false);
-        sClient = null;
+        mClient = null;
     }
 
     private @Px int getMaximumPossibleSizePx() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             WindowMetrics windowMetrics = getWindowManager().getCurrentWindowMetrics();
-            Insets navbarInsets =
-                    windowMetrics
-                            .getWindowInsets()
-                            .getInsets(
-                                    WindowInsets.Type.navigationBars()
-                                            | WindowInsets.Type.displayCutout());
+            Insets navbarInsets = windowMetrics.getWindowInsets().getInsets(
+                    WindowInsets.Type.navigationBars() | WindowInsets.Type.displayCutout());
             int navbarWidth = navbarInsets.left + navbarInsets.right;
             Rect windowBounds = getWindowManager().getCurrentWindowMetrics().getBounds();
             int width = windowBounds.width() - navbarWidth;

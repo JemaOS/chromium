@@ -4,86 +4,94 @@
 
 package org.chromium.chrome.browser.tabmodel;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import androidx.test.filters.SmallTest;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import org.mockito.MockitoAnnotations;
+import org.robolectric.annotation.Config;
 
-import org.chromium.base.Callback;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features;
 import org.chromium.base.test.util.JniMocker;
+import org.chromium.chrome.browser.compositor.layouts.content.TabContentManager;
 import org.chromium.chrome.browser.flags.ActivityType;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.homepage.HomepageManager;
-import org.chromium.chrome.browser.price_tracking.PriceTrackingFeatures;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.MockTab;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabCreationState;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabSelectionType;
-import org.chromium.chrome.browser.tab_ui.TabContentManager;
+import org.chromium.chrome.browser.tab.state.CriticalPersistedTabData;
 
 import java.util.Arrays;
 
-/** Unit tests for {@link TabModelImpl}. */
+/**
+ * Unit tests for {@link TabModelImpl}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
+@Config(manifest = Config.NONE)
 public class TabModelImplUnitTest {
+    @Rule
+    public TestRule mProcessor = new Features.JUnitProcessor();
+
     private static final long FAKE_NATIVE_ADDRESS = 123L;
 
-    @Rule public TestRule mProcessor = new Features.JUnitProcessor();
-    @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
+    /**
+     * Disable native calls from {@link TabModelJniBridge}.
+     */
+    @Rule
+    public JniMocker mJniMocker = new JniMocker();
+    @Mock
+    private TabModelJniBridge.Natives mTabModelJniBridge;
+    /**
+     * Required to be non-null for {@link TabModelJniBridge}.
+     */
+    @Mock
+    private Profile mProfile;
+    /**
+     * Required to simulate tab thumbnail deletion.
+     */
+    @Mock
+    private TabContentManager mTabContentManager;
+    /**
+     * Required to handle some tab lookup actions.
+     */
+    @Mock
+    private TabModelDelegate mTabModelDelegate;
+    /**
+     * Required to handle some actions and initialize {@link TabModelOrderControllerImpl}.
+     */
+    @Mock
+    private TabModelSelector mTabModelSelector;
 
-    /** Disable native calls from {@link TabModelJniBridge}. */
-    @Rule public JniMocker mJniMocker = new JniMocker();
-
-    @Mock private TabModelJniBridge.Natives mTabModelJniBridge;
-
-    /** Required to be non-null for {@link TabModelJniBridge}. */
-    @Mock private Profile mProfile;
-
-    @Mock private Profile mIncognitoProfile;
-
-    /** Required to simulate tab thumbnail deletion. */
-    @Mock private TabContentManager mTabContentManager;
-
-    /** Required to handle some tab lookup actions. */
-    @Mock private TabModelDelegate mTabModelDelegate;
-
-    /** Required to handle some actions and initialize {@link TabModelOrderControllerImpl}. */
-    @Mock private TabModelSelector mTabModelSelector;
-
-    @Mock private TabModelFilterProvider mTabModelFilterProvider;
-    @Mock private TabModelFilter mTabModelFilter;
-
-    @Mock private Callback<Tab> mTabSupplierObserver;
+    @Mock
+    private TabModelFilterProvider mTabModelFilterProvider;
+    @Mock
+    private TabModelFilter mTabModelFilter;
 
     private int mNextTabId;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         // Disable HomepageManager#shouldCloseAppWithZeroTabs() for TabModelImpl#closeAllTabs().
         HomepageManager.getInstance().setPrefHomepageEnabled(false);
-
-        when(mIncognitoProfile.isOffTheRecord()).thenReturn(true);
-        PriceTrackingFeatures.setPriceTrackingEnabledForTesting(false);
 
         mJniMocker.mock(TabModelJniBridgeJni.TEST_HOOKS, mTabModelJniBridge);
         when(mTabModelJniBridge.init(any(), any(), anyInt())).thenReturn(FAKE_NATIVE_ADDRESS);
@@ -104,15 +112,14 @@ public class TabModelImplUnitTest {
     }
 
     private Tab createTab(final TabModel model, long activeTimestampMillis, int parentId) {
-        MockTab tab = MockTab.createAndInitialize(mNextTabId++, model.getProfile());
-        tab.setTimestampMillis(activeTimestampMillis);
-        tab.setParentId(parentId);
+        final int launchType = TabLaunchType.FROM_CHROME_UI;
+        MockTab tab = new MockTab(mNextTabId++, model.isIncognito());
+        CriticalPersistedTabData data = new CriticalPersistedTabData(tab);
+        data.setTimestampMillis(activeTimestampMillis);
+        data.setParentId(parentId);
+        tab = (MockTab) MockTab.initializeWithCriticalPersistedTabData(tab, data);
         tab.setIsInitialized(true);
-        model.addTab(
-                tab,
-                TabList.INVALID_TAB_INDEX,
-                TabLaunchType.FROM_CHROME_UI,
-                TabCreationState.LIVE_IN_FOREGROUND);
+        model.addTab(tab, -1, TabLaunchType.FROM_CHROME_UI, TabCreationState.LIVE_IN_FOREGROUND);
         return tab;
     }
 
@@ -120,25 +127,22 @@ public class TabModelImplUnitTest {
         model.setIndex(model.indexOf(tab), TabSelectionType.FROM_USER, false);
     }
 
-    /** Create a {@link TabModel} to use for the test. */
+    /**
+     * Create a {@link TabModel} to use for the test.
+     */
     private TabModel createTabModel(boolean isActive, boolean isIncognito) {
         AsyncTabParamsManager realAsyncTabParamsManager =
                 AsyncTabParamsManagerFactory.createAsyncTabParamsManager();
         TabModelOrderControllerImpl orderController =
                 new TabModelOrderControllerImpl(mTabModelSelector);
-        Profile profile = isIncognito ? mIncognitoProfile : mProfile;
-        TabModel tabModel =
-                new TabModelImpl(
-                        profile,
-                        ActivityType.TABBED,
-                        /* regularTabCreator= */ null,
-                        /* incognitoTabCreator= */ null,
-                        orderController,
-                        mTabContentManager,
-                        () -> NextTabPolicy.HIERARCHICAL,
-                        realAsyncTabParamsManager,
-                        mTabModelDelegate,
-                        /* supportsUndo= */ true);
+        TabModel tabModel;
+        when(mProfile.isOffTheRecord()).thenReturn(isIncognito);
+        tabModel = new TabModelImpl(mProfile, ActivityType.TABBED,
+                /*regularTabCreator=*/null, /*incognitoTabCreator=*/null, orderController,
+                mTabContentManager,
+                ()
+                        -> NextTabPolicy.HIERARCHICAL,
+                realAsyncTabParamsManager, mTabModelDelegate, /*supportsUndo=*/false);
         when(mTabModelSelector.getModel(isIncognito)).thenReturn(tabModel);
         tabModel.setActive(isActive);
         if (isActive) {
@@ -163,7 +167,7 @@ public class TabModelImplUnitTest {
         selectTab(activeIncognito, incognitoTab1);
         selectTab(inactiveNormal, tab1);
 
-        assertEquals(incognitoTab1, inactiveNormal.getNextTabIfClosed(tab1.getId(), false));
+        Assert.assertEquals(incognitoTab1, inactiveNormal.getNextTabIfClosed(tab1.getId(), false));
     }
 
     @Test
@@ -178,16 +182,16 @@ public class TabModelImplUnitTest {
         Tab tab2 = createTab(activeNormal);
 
         selectTab(activeNormal, tab0);
-        assertEquals(tab0, activeNormal.getNextTabIfClosed(tab1.getId(), false));
-        assertEquals(tab0, activeNormal.getNextTabIfClosed(tab2.getId(), false));
+        Assert.assertEquals(tab0, activeNormal.getNextTabIfClosed(tab1.getId(), false));
+        Assert.assertEquals(tab0, activeNormal.getNextTabIfClosed(tab2.getId(), false));
 
         selectTab(activeNormal, tab1);
-        assertEquals(tab1, activeNormal.getNextTabIfClosed(tab0.getId(), false));
-        assertEquals(tab1, activeNormal.getNextTabIfClosed(tab2.getId(), false));
+        Assert.assertEquals(tab1, activeNormal.getNextTabIfClosed(tab0.getId(), false));
+        Assert.assertEquals(tab1, activeNormal.getNextTabIfClosed(tab2.getId(), false));
 
         selectTab(activeNormal, tab2);
-        assertEquals(tab2, activeNormal.getNextTabIfClosed(tab0.getId(), false));
-        assertEquals(tab2, activeNormal.getNextTabIfClosed(tab1.getId(), false));
+        Assert.assertEquals(tab2, activeNormal.getNextTabIfClosed(tab0.getId(), false));
+        Assert.assertEquals(tab2, activeNormal.getNextTabIfClosed(tab1.getId(), false));
     }
 
     @Test
@@ -202,7 +206,7 @@ public class TabModelImplUnitTest {
         Tab tab2 = createTab(activeNormal, 0, tab0.getId());
 
         selectTab(activeNormal, tab2);
-        assertEquals(tab0, activeNormal.getNextTabIfClosed(tab2.getId(), false));
+        Assert.assertEquals(tab0, activeNormal.getNextTabIfClosed(tab2.getId(), false));
     }
 
     @Test
@@ -217,13 +221,13 @@ public class TabModelImplUnitTest {
         Tab tab2 = createTab(activeNormal);
 
         selectTab(activeNormal, tab0);
-        assertEquals(tab1, activeNormal.getNextTabIfClosed(tab0.getId(), false));
+        Assert.assertEquals(tab1, activeNormal.getNextTabIfClosed(tab0.getId(), false));
 
         selectTab(activeNormal, tab1);
-        assertEquals(tab0, activeNormal.getNextTabIfClosed(tab1.getId(), false));
+        Assert.assertEquals(tab0, activeNormal.getNextTabIfClosed(tab1.getId(), false));
 
         selectTab(activeNormal, tab2);
-        assertEquals(tab1, activeNormal.getNextTabIfClosed(tab2.getId(), false));
+        Assert.assertEquals(tab1, activeNormal.getNextTabIfClosed(tab2.getId(), false));
     }
 
     @Test
@@ -237,10 +241,10 @@ public class TabModelImplUnitTest {
         Tab tab1 = createTab(inactiveNormal);
 
         selectTab(inactiveNormal, tab0);
-        assertEquals(tab0, activeIncognito.getNextTabIfClosed(incognitoTab0.getId(), false));
+        Assert.assertEquals(tab0, activeIncognito.getNextTabIfClosed(incognitoTab0.getId(), false));
 
         selectTab(inactiveNormal, tab1);
-        assertEquals(tab1, activeIncognito.getNextTabIfClosed(incognitoTab0.getId(), false));
+        Assert.assertEquals(tab1, activeIncognito.getNextTabIfClosed(incognitoTab0.getId(), false));
     }
 
     @Test
@@ -256,13 +260,13 @@ public class TabModelImplUnitTest {
         Tab tab2 = createTab(activeNormal, 30, tab0.getId());
 
         selectTab(activeNormal, tab0);
-        assertEquals(tab1, activeNormal.getNextTabIfClosed(tab0.getId(), true));
+        Assert.assertEquals(tab1, activeNormal.getNextTabIfClosed(tab0.getId(), true));
 
         selectTab(activeNormal, tab1);
-        assertEquals(tab2, activeNormal.getNextTabIfClosed(tab1.getId(), true));
+        Assert.assertEquals(tab2, activeNormal.getNextTabIfClosed(tab1.getId(), true));
 
         selectTab(activeNormal, tab2);
-        assertEquals(tab1, activeNormal.getNextTabIfClosed(tab2.getId(), true));
+        Assert.assertEquals(tab1, activeNormal.getNextTabIfClosed(tab2.getId(), true));
     }
 
     @Test
@@ -274,11 +278,12 @@ public class TabModelImplUnitTest {
 
         Tab tab0 = createTab(activeNormal);
         selectTab(activeNormal, tab0);
-        assertNull(activeNormal.getNextTabIfClosed(tab0.getId(), false));
+        Assert.assertNull(activeNormal.getNextTabIfClosed(tab0.getId(), false));
     }
 
     @Test
     @SmallTest
+    @Features.EnableFeatures(ChromeFeatureList.TAB_STATE_V1_OPTIMIZATIONS)
     public void testDontSwitchModelsIfIncognitoGroupClosed() {
         TabModel activeIncognito = createTabModel(true, true);
         TabModel inactiveNormal = createTabModel(false, false);
@@ -293,89 +298,6 @@ public class TabModelImplUnitTest {
         activeIncognito.closeMultipleTabs(
                 Arrays.asList(new Tab[] {incognitoTab0, incognitoTab1}), false);
         verify(mTabModelSelector, never()).selectModel(anyBoolean());
-        assertEquals(incognitoTab2, activeIncognito.getTabAt(activeIncognito.index()));
-    }
-
-    @Test
-    @SmallTest
-    public void testObserveCurrentTabSupplierActiveNormal() {
-        TabModel activeNormal = createTabModel(true, false);
-        // Unused but required for correct mocking of mTabModelDelegate to avoid NPE.
-        TabModel inactiveIncognito = createTabModel(false, true);
-
-        assertNull(activeNormal.getCurrentTabSupplier().get());
-        assertEquals(0, activeNormal.getTabCountSupplier().get().intValue());
-        activeNormal.getCurrentTabSupplier().addObserver(mTabSupplierObserver);
-
-        Tab tab0 = createTab(activeNormal);
-        assertEquals(tab0, activeNormal.getCurrentTabSupplier().get());
-        assertEquals(1, activeNormal.getTabCountSupplier().get().intValue());
-        verify(mTabSupplierObserver).onResult(eq(tab0));
-
-        Tab tab1 = createTab(activeNormal);
-        assertEquals(tab1, activeNormal.getCurrentTabSupplier().get());
-        assertEquals(2, activeNormal.getTabCountSupplier().get().intValue());
-        verify(mTabSupplierObserver).onResult(eq(tab1));
-
-        selectTab(activeNormal, tab0);
-        assertEquals(tab0, activeNormal.getCurrentTabSupplier().get());
-        assertEquals(2, activeNormal.getTabCountSupplier().get().intValue());
-        verify(mTabSupplierObserver, times(2)).onResult(eq(tab0));
-
-        activeNormal.removeTab(tab0);
-        assertEquals(tab1, activeNormal.getCurrentTabSupplier().get());
-        assertEquals(1, activeNormal.getTabCountSupplier().get().intValue());
-        verify(mTabSupplierObserver, times(2)).onResult(eq(tab1));
-    }
-
-    @Test
-    @SmallTest
-    public void testObserveCurrentTabSupplierInactiveNormal() {
-        TabModel inactiveNormal = createTabModel(false, false);
-        // Unused but required for correct mocking of mTabModelDelegate to avoid NPE.
-        TabModel activeIncognito = createTabModel(true, true);
-
-        assertNull(inactiveNormal.getCurrentTabSupplier().get());
-        assertEquals(0, inactiveNormal.getTabCountSupplier().get().intValue());
-        inactiveNormal.getCurrentTabSupplier().addObserver(mTabSupplierObserver);
-
-        Tab tab0 = createTab(inactiveNormal);
-        assertEquals(tab0, inactiveNormal.getCurrentTabSupplier().get());
-        assertEquals(1, inactiveNormal.getTabCountSupplier().get().intValue());
-        verify(mTabSupplierObserver).onResult(eq(tab0));
-
-        Tab tab1 = createTab(inactiveNormal);
-        assertEquals(tab1, inactiveNormal.getCurrentTabSupplier().get());
-        assertEquals(2, inactiveNormal.getTabCountSupplier().get().intValue());
-        verify(mTabSupplierObserver).onResult(eq(tab1));
-
-        selectTab(inactiveNormal, tab0);
-        assertEquals(tab0, inactiveNormal.getCurrentTabSupplier().get());
-        assertEquals(2, inactiveNormal.getTabCountSupplier().get().intValue());
-        verify(mTabSupplierObserver, times(2)).onResult(eq(tab0));
-
-        inactiveNormal.removeTab(tab0);
-        assertEquals(tab1, inactiveNormal.getCurrentTabSupplier().get());
-        assertEquals(1, inactiveNormal.getTabCountSupplier().get().intValue());
-        verify(mTabSupplierObserver, times(2)).onResult(eq(tab1));
-    }
-
-    @Test
-    @SmallTest
-    public void testGetTabById() {
-        TabModel tabModel = createTabModel(/* isActive= */ true, /* isIncognito= */ false);
-        createTabModel(/* isActive= */ false, /* isIncognito= */ true);
-
-        Tab tab1 = createTab(tabModel);
-        assertEquals(tab1, tabModel.getTabById(tab1.getId()));
-
-        tabModel.closeTab(tab1, /* animate= */ false, /* uponExit= */ false, /* canUndo= */ true);
-        assertEquals(null, tabModel.getTabById(tab1.getId()));
-
-        tabModel.cancelTabClosure(tab1.getId());
-        assertEquals(tab1, tabModel.getTabById(tab1.getId()));
-
-        tabModel.destroy();
-        assertEquals(null, tabModel.getTabById(tab1.getId()));
+        Assert.assertEquals(incognitoTab2, activeIncognito.getTabAt(activeIncognito.index()));
     }
 }

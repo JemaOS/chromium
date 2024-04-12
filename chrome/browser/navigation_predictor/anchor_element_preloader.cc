@@ -7,17 +7,15 @@
 #include "base/metrics/histogram_functions.h"
 #include "chrome/browser/predictors/loading_predictor.h"
 #include "chrome/browser/predictors/loading_predictor_factory.h"
+#include "chrome/browser/prefetch/prefetch_prefs.h"
 #include "chrome/browser/preloading/chrome_preloading.h"
-#include "chrome/browser/preloading/preloading_prefs.h"
 #include "content/public/browser/browser_context.h"
-#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/preloading.h"
 #include "content/public/browser/preloading_data.h"
 #include "content/public/browser/web_contents.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "third_party/blink/public/common/features.h"
-#include "ui/base/page_transition_types.h"
 #include "url/scheme_host_port.h"
 
 namespace {
@@ -39,27 +37,12 @@ AnchorElementPreloader::~AnchorElementPreloader() = default;
 
 AnchorElementPreloader::AnchorElementPreloader(
     content::RenderFrameHost& render_frame_host)
-    : render_frame_host_(render_frame_host) {
+    : render_frame_host_(render_frame_host) {}
+
+void AnchorElementPreloader::MaybePreconnect(const GURL& target) {
   content::PreloadingData* preloading_data =
       content::PreloadingData::GetOrCreateForWebContents(
           content::WebContents::FromRenderFrameHost(&*render_frame_host_));
-  preloading_data->SetIsNavigationInDomainCallback(
-      chrome_preloading_predictor::kPointerDownOnAnchor,
-      base::BindRepeating(
-          [](content::NavigationHandle* navigation_handle) -> bool {
-            return ui::PageTransitionCoreTypeIs(
-                       navigation_handle->GetPageTransition(),
-                       ui::PageTransition::PAGE_TRANSITION_LINK) &&
-                   ui::PageTransitionIsNewNavigation(
-                       navigation_handle->GetPageTransition());
-          }));
-}
-
-void AnchorElementPreloader::MaybePreconnect(const GURL& target) {
-  auto* web_contents =
-      content::WebContents::FromRenderFrameHost(&*render_frame_host_);
-  content::PreloadingData* preloading_data =
-      content::PreloadingData::GetOrCreateForWebContents(web_contents);
   url::SchemeHostPort scheme_host_port(target);
   content::PreloadingURLMatchCallback match_callback =
       base::BindRepeating(is_match_for_preconnect, scheme_host_port);
@@ -67,15 +50,12 @@ void AnchorElementPreloader::MaybePreconnect(const GURL& target) {
   // For now we add a prediction with a confidence of 100. In the future we will
   // likely compute the confidence by looking at different factors (e.g. anchor
   // element dimensions, last time since scroll, etc.).
-  ukm::SourceId triggered_primary_page_source_id =
-      web_contents->GetPrimaryMainFrame()->GetPageUkmSourceId();
   preloading_data->AddPreloadingPrediction(
       chrome_preloading_predictor::kPointerDownOnAnchor,
-      /*confidence=*/100, match_callback, triggered_primary_page_source_id);
+      /*confidence=*/100, match_callback);
   content::PreloadingAttempt* attempt = preloading_data->AddPreloadingAttempt(
       chrome_preloading_predictor::kPointerDownOnAnchor,
-      content::PreloadingType::kPreconnect, match_callback,
-      triggered_primary_page_source_id);
+      content::PreloadingType::kPreconnect, match_callback);
 
   if (content::PreloadingEligibility eligibility =
           prefetch::IsSomePreloadingEnabled(

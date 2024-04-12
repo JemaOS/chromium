@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startBlank('Verifies Browser.getVersion method.');
   var response = await dp.Browser.getVersion();
   check('protocolVersion', /^\d+\.\d+$/); // e.g. 1.2

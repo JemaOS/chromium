@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_STORAGE_STORAGE_NOTIFICATION_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_STORAGE_STORAGE_NOTIFICATION_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "chrome/browser/storage/storage_notification_service_impl.h"
 
@@ -23,7 +23,7 @@ class StorageNotificationServiceFactory : public ProfileKeyedServiceFactory {
   bool ServiceIsCreatedWithBrowserContext() const override;
 
  private:
-  friend base::NoDestructor<StorageNotificationServiceFactory>;
+  friend struct base::DefaultSingletonTraits<StorageNotificationServiceFactory>;
 
   StorageNotificationServiceFactory();
   ~StorageNotificationServiceFactory() override;

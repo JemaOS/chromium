@@ -8,29 +8,35 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
+#include "base/timer/timer.h"
 #include "base/values.h"
+#include "chrome/browser/ui/webui/ash/arc_graphics_tracing/arc_graphics_tracing.h"
 #include "components/exo/surface_observer.h"
-#include "content/public/browser/tracing_controller.h"
 #include "content/public/browser/web_ui_message_handler.h"
 #include "ui/aura/window_observer.h"
 #include "ui/events/event_handler.h"
 #include "ui/wm/public/activation_change_observer.h"
+
+class Profile;
+
+namespace arc {
+class ArcGraphicsJankDetector;
+class ArcSystemStatCollector;
+}  // namespace arc
 
 namespace base {
 class FilePath;
 }  // namespace base
 
 namespace exo {
+class Surface;
 class WMHelper;
 }  // namespace exo
-
-namespace aura {
-class Window;
-}  // namespace aura
 
 namespace ash {
 
@@ -40,12 +46,10 @@ class ArcGraphicsTracingHandler : public content::WebUIMessageHandler,
                                   public ui::EventHandler,
                                   public exo::SurfaceObserver {
  public:
-  struct ActiveTrace;
+  static base::FilePath GetModelPathFromTitle(Profile* profile,
+                                              const std::string& title);
 
-  base::FilePath GetModelPathFromTitle(std::string_view title,
-                                       base::Time timestamp);
-
-  ArcGraphicsTracingHandler();
+  explicit ArcGraphicsTracingHandler(ArcGraphicsTracingMode mode);
 
   ArcGraphicsTracingHandler(const ArcGraphicsTracingHandler&) = delete;
   ArcGraphicsTracingHandler& operator=(const ArcGraphicsTracingHandler&) =
@@ -74,42 +78,15 @@ class ArcGraphicsTracingHandler : public content::WebUIMessageHandler,
   void OnSurfaceDestroying(exo::Surface* surface) override;
   void OnCommit(exo::Surface* surface) override;
 
- protected:
-  // Traces stop automatically when they get this long. Visible for testing.
-  base::TimeDelta max_tracing_time_ = base::Seconds(5);
-
  private:
-  virtual aura::Window* GetWebUIWindow();
-  virtual void StartTracingOnController(
-      const base::trace_event::TraceConfig& trace_config,
-      content::TracingController::StartTracingDoneCallback after_start);
-  virtual void StopTracingOnController(
-      content::TracingController::CompletionCallback after_stop);
-
-  // For testing. This lets tests avoid casting from BrowserContext to Profile.
-  virtual base::FilePath GetDownloadsFolder();
-
-  // There is a ScopedTimeClockOverrides for tests that makes this seem
-  // redundant, but it is rather awkward to have a single test base which
-  // utilizes either system time or mock time, as this must be specified in
-  // the constructor, and the childmost test class constructor must be
-  // parameterless.
-  virtual base::Time Now();
-
-  // Exposed for testing. This implementation uses TRACE_TIME_TICKS_NOW.
-  // Returns the timestamp using clock_gettime(CLOCK_MONOTONIC), which is
-  // needed for comparison with trace timestamps.
-  virtual base::TimeTicks SystemTicksNow();
-
-  void ActivateWebUIWindow();
+  void Activate();
   void StartTracing();
   void StopTracing();
   void StopTracingAndActivate();
   void SetStatus(const std::string& status);
 
   void OnTracingStarted();
-  void OnTracingStopped(std::unique_ptr<ActiveTrace> trace,
-                        std::unique_ptr<std::string> trace_data);
+  void OnTracingStopped(std::unique_ptr<std::string> trace_data);
 
   // Called when graphics model is built or load. Extra string parameter
   // contains a status. In case model cannot be built/load empty |base::Value|
@@ -117,6 +94,8 @@ class ArcGraphicsTracingHandler : public content::WebUIMessageHandler,
   void OnGraphicsModelReady(std::pair<base::Value, std::string> result);
 
   // Handlers for calls from JS.
+  void HandleReady(const base::Value::List& args);
+  void HandleSetStopOnJank(const base::Value::List& args);
   void HandleSetMaxTime(const base::Value::List& args);
   void HandleLoadFromText(const base::Value::List& args);
 
@@ -126,11 +105,49 @@ class ArcGraphicsTracingHandler : public content::WebUIMessageHandler,
   // Stops tracking ARC window for janks.
   void DiscardActiveArcWindow();
 
-  std::unique_ptr<ActiveTrace> active_trace_;
+  // Called in case jank is detected in active ARC window.
+  void OnJankDetected(const base::Time& timestamp);
 
-  const raw_ptr<exo::WMHelper> wm_helper_;
+  // Returns max sampling interval to display.
+  base::TimeDelta GetMaxInterval() const;
 
-  raw_ptr<aura::Window> arc_active_window_ = nullptr;
+  // Indicates that tracing was initiated by this handler.
+  bool tracing_active_ = false;
+
+  // Determines if tracing should stop in case jank is detected runtime.
+  // Works only in |ArcGraphicsTracingMode::kFull| mode.
+  bool stop_on_jank_ = true;
+
+  // Determines the maximum tracing time.
+  // Works only in |ArcGraphicsTracingMode::kOverview| mode.
+  base::TimeDelta max_tracing_time_ = base::Seconds(5);
+
+  base::OneShotTimer stop_tracing_timer_;
+
+  const raw_ptr<exo::WMHelper, ExperimentalAsh> wm_helper_;
+
+  const ArcGraphicsTracingMode mode_;
+
+  raw_ptr<aura::Window, ExperimentalAsh> arc_active_window_ = nullptr;
+
+  // Time filter for tracing, since ARC++ window was activated last until
+  // tracing is stopped.
+  base::TimeTicks tracing_time_min_;
+  base::TimeTicks tracing_time_max_;
+
+  // Task id and title for current ARC window.
+  int active_task_id_ = -1;
+
+  // Used to detect janks for the currently active ARC++ window.
+  std::unique_ptr<arc::ArcGraphicsJankDetector> jank_detector_;
+
+  // Collects system stat runtime.
+  std::unique_ptr<arc::ArcSystemStatCollector> system_stat_collector_;
+
+  // Information about active task, title and icon.
+  std::string active_task_title_;
+  std::vector<unsigned char> active_task_icon_png_;
+  base::Time timestamp_;
 
   base::WeakPtrFactory<ArcGraphicsTracingHandler> weak_ptr_factory_{this};
 };

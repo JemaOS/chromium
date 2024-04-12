@@ -4,14 +4,12 @@
 
 #include "third_party/blink/renderer/platform/media/smoothness_helper.h"
 
-#include <optional>
-
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "base/unguessable_token.h"
 #include "media/learning/common/learning_task_controller.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace blink {
 namespace {
@@ -65,7 +63,7 @@ class SmoothnessWindowMonitor {
   }
 
  private:
-  raw_ptr<SmoothnessHelper::Client> player_ = nullptr;
+  SmoothnessHelper::Client* player_ = nullptr;
   WindowCB cb_;
   base::RepeatingTimer update_timer_;
   // Current dropped, decoded frames at the start of the segment.
@@ -195,7 +193,7 @@ class SmoothnessHelperImpl : public SmoothnessHelper {
 
    private:
     // If an observation is in progress, then this is the id.
-    std::optional<base::UnguessableToken> id_;
+    absl::optional<base::UnguessableToken> id_;
     std::unique_ptr<LearningTaskController> controller_;
     TargetValue target_value_;
   };
@@ -209,7 +207,7 @@ class SmoothnessHelperImpl : public SmoothnessHelper {
   struct Task consecutive_nnr_;
 
   // Time of the most recent nnr.
-  std::optional<base::TimeTicks> most_recent_nnr_;
+  absl::optional<base::TimeTicks> most_recent_nnr_;
 
   // Number of NNRs that have occurred within |kMaxNNRDistance|.
   int num_consecutive_nnrs_ = 0;
@@ -218,7 +216,7 @@ class SmoothnessHelperImpl : public SmoothnessHelper {
   int max_num_consecutive_nnrs_ = 0;
 
   // WebMediaPlayer which will tell us about the decoded / dropped frame counts.
-  raw_ptr<Client> player_;
+  Client* player_;
 
   std::unique_ptr<SmoothnessWindowMonitor> monitor_;
 };

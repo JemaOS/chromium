@@ -4,14 +4,13 @@
 
 #include "chrome/browser/password_manager/android/password_settings_updater_android_dispatcher_bridge_impl.h"
 
-#include <optional>
-
 #include "base/android/jni_android.h"
 #include "base/android/jni_string.h"
 #include "chrome/browser/password_manager/android/jni_headers/PasswordSettingsUpdaterDispatcherBridge_jni.h"
 #include "chrome/browser/password_manager/android/password_settings_updater_android_dispatcher_bridge.h"
 #include "chrome/browser/password_manager/android/password_settings_updater_android_receiver_bridge.h"
 #include "components/password_manager/core/browser/password_manager_setting.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace password_manager {
 
@@ -21,7 +20,7 @@ using SyncingAccount =
     PasswordSettingsUpdaterAndroidDispatcherBridgeImpl::SyncingAccount;
 
 base::android::ScopedJavaLocalRef<jstring> GetJavaStringFromAccount(
-    std::optional<SyncingAccount> account) {
+    absl::optional<SyncingAccount> account) {
   if (!account.has_value()) {
     return nullptr;
   }
@@ -65,7 +64,7 @@ void PasswordSettingsUpdaterAndroidDispatcherBridgeImpl::Init(
 }
 
 void PasswordSettingsUpdaterAndroidDispatcherBridgeImpl::
-    GetPasswordSettingValue(std::optional<SyncingAccount> account,
+    GetPasswordSettingValue(absl::optional<SyncingAccount> account,
                             PasswordManagerSetting setting) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   Java_PasswordSettingsUpdaterDispatcherBridge_getSettingValue(
@@ -74,7 +73,7 @@ void PasswordSettingsUpdaterAndroidDispatcherBridgeImpl::
 }
 
 void PasswordSettingsUpdaterAndroidDispatcherBridgeImpl::
-    SetPasswordSettingValue(std::optional<SyncingAccount> account,
+    SetPasswordSettingValue(absl::optional<SyncingAccount> account,
                             PasswordManagerSetting setting,
                             bool value) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);

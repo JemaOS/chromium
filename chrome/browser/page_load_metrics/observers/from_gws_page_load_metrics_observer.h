@@ -5,12 +5,11 @@
 #ifndef CHROME_BROWSER_PAGE_LOAD_METRICS_OBSERVERS_FROM_GWS_PAGE_LOAD_METRICS_OBSERVER_H_
 #define CHROME_BROWSER_PAGE_LOAD_METRICS_OBSERVERS_FROM_GWS_PAGE_LOAD_METRICS_OBSERVER_H_
 
-#include <optional>
-
 #include "base/time/time.h"
 #include "components/google/core/common/google_util.h"
 #include "components/page_load_metrics/browser/page_load_metrics_observer.h"
 #include "services/metrics/public/cpp/ukm_source.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace internal {
@@ -132,7 +131,7 @@ class FromGWSPageLoadMetricsLogger {
   bool ShouldLogFailedProvisionalLoadMetrics();
   bool ShouldLogPostCommitMetrics(const GURL& url);
   bool ShouldLogForegroundEventAfterCommit(
-      const std::optional<base::TimeDelta>& event,
+      const absl::optional<base::TimeDelta>& event,
       const page_load_metrics::PageLoadMetricsObserverDelegate& delegate);
 
  private:
@@ -152,12 +151,12 @@ class FromGWSPageLoadMetricsLogger {
   // The committed URL in the side panel that initiated this navigation. (i.e.
   // first entry in the current redirection chain). This is only set if this
   // navigation was initiated from the side panel
-  std::optional<GURL> initiating_side_panel_url_;
+  absl::optional<GURL> initiating_side_panel_url_;
 
   base::TimeTicks navigation_start_;
 
   // The time of first user interaction after paint from navigation start.
-  std::optional<base::TimeDelta> first_user_interaction_after_paint_;
+  absl::optional<base::TimeDelta> first_user_interaction_after_paint_;
 };
 
 class FromGWSPageLoadMetricsObserver

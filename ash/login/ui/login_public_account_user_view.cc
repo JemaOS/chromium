@@ -14,7 +14,6 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
 #include "ui/views/layout/box_layout.h"
@@ -65,7 +64,7 @@ LoginPublicAccountUserView::LoginPublicAccountUserView(
     : NonAccessibleView(kLoginPublicAccountUserViewClassName),
       on_tap_(callbacks.on_tap),
       on_public_account_tap_(callbacks.on_public_account_tapped) {
-  DCHECK_EQ(user.basic_user_info.type, user_manager::UserType::kPublicAccount);
+  DCHECK_EQ(user.basic_user_info.type, user_manager::USER_TYPE_PUBLIC_ACCOUNT);
   DCHECK(callbacks.on_tap);
   DCHECK(callbacks.on_public_account_tapped);
 
@@ -73,7 +72,7 @@ LoginPublicAccountUserView::LoginPublicAccountUserView(
       LoginDisplayStyle::kLarge, false /*show_dropdown*/,
       base::BindRepeating(&LoginPublicAccountUserView::OnUserViewTap,
                           base::Unretained(this)),
-      base::RepeatingClosure());
+      base::RepeatingClosure(), base::RepeatingClosure());
   auto arrow_button = std::make_unique<ArrowButtonView>(
       base::BindRepeating(&LoginPublicAccountUserView::ArrowButtonPressed,
                           base::Unretained(this)),
@@ -204,8 +203,5 @@ void LoginPublicAccountUserView::UpdateArrowButtonOpacity(float target_opacity,
     arrow_button_->layer()->SetOpacity(target_opacity);
   }
 }
-
-BEGIN_METADATA(LoginPublicAccountUserView)
-END_METADATA
 
 }  // namespace ash

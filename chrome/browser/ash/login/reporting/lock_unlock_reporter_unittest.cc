@@ -1,10 +1,8 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/ash/login/reporting/lock_unlock_reporter.h"
-
-#include <string_view>
 
 #include "base/memory/raw_ptr.h"
 #include "base/task/sequenced_task_runner.h"
@@ -52,7 +50,10 @@ class LockUnlockTestHelper {
   void Init() {
     chromeos::PowerManagerClient::InitializeFake();
     SessionManagerClient::InitializeFake();
-    fake_user_manager_.Reset(std::make_unique<ash::FakeChromeUserManager>());
+    auto user_manager = std::make_unique<FakeChromeUserManager>();
+    user_manager_ = user_manager.get();
+    user_manager_enabler_ = std::make_unique<user_manager::ScopedUserManager>(
+        std::move(user_manager));
   }
 
   void Shutdown() { chromeos::PowerManagerClient::Shutdown(); }
@@ -63,13 +64,14 @@ class LockUnlockTestHelper {
 
   std::unique_ptr<TestingProfile> CreateRegularUserProfile() {
     AccountId account_id = AccountId::FromUserEmail(kFakeEmail);
-    auto* const user = fake_user_manager_->AddUser(account_id);
+    auto* const user = user_manager_->AddUser(account_id);
     TestingProfile::Builder profile_builder;
     profile_builder.SetProfileName(user->GetAccountId().GetUserEmail());
     auto profile = profile_builder.Build();
+    ProfileHelper::Get()->SetProfileToUserMappingForTesting(user);
     ProfileHelper::Get()->SetUserToProfileMappingForTesting(user,
                                                             profile.get());
-    fake_user_manager_->LoginUser(user->GetAccountId(), true);
+    user_manager_->LoginUser(user->GetAccountId(), true);
     return profile;
   }
 
@@ -87,7 +89,7 @@ class LockUnlockTestHelper {
 
     ON_CALL(*mock_queue, AddRecord(_, ::reporting::Priority::SECURITY, _))
         .WillByDefault(
-            [this, status](std::string_view record_string,
+            [this, status](base::StringPiece record_string,
                            ::reporting::Priority event_priority,
                            ::reporting::ReportQueue::EnqueueCallback cb) {
               ++report_count_;
@@ -108,8 +110,8 @@ class LockUnlockTestHelper {
   int GetReportCount() { return report_count_; }
 
  private:
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_;
+  raw_ptr<FakeChromeUserManager, ExperimentalAsh> user_manager_;
+  std::unique_ptr<user_manager::ScopedUserManager> user_manager_enabler_;
   content::BrowserTaskEnvironment task_environment_;
 
   LockUnlockRecord record_;

@@ -65,6 +65,7 @@ var expected = {
     {
       "name": "LayoutNGBlockFlow (positioned) DIV id='container'",
       "bounds": [100, 100],
+      "contentsOpaqueForText": true,
       "backgroundColor": "#0000FF80",
       "invalidations": [
         [20, 20, 10, 10]
@@ -74,6 +75,7 @@ var expected = {
     {
       "name": "LayoutNGBlockFlow (relative positioned) DIV id='scrollable'",
       "bounds": [302, 302],
+      "contentsOpaqueForText": true,
       "transform": 3
     },
     {
@@ -82,13 +84,6 @@ var expected = {
       "bounds": [300, 300],
       "drawsContent": false,
       "transform": 3
-    },
-    {
-      "name": "LayoutNGBlockFlow (relative positioned) DIV id='scrollable'",
-      "position": [1, 1],
-      "bounds": [795, 1491],
-      "drawsContent": false,
-      "transform": 4
     },
     {
       "name": "LayoutNGBlockFlow (relative positioned) DIV id='transform'",
@@ -177,6 +172,7 @@ var actual = {
     {
       "name": "LayoutNGBlockFlow (positioned) DIV id='container'",
       "bounds": [100, 100],
+      "contentsOpaqueForText": true,
       "backgroundColor": "#0000FF80",
       "invalidations": [
         [20, 20, 10, 10]
@@ -186,6 +182,7 @@ var actual = {
     {
       "name": "LayoutNGBlockFlow (relative positioned) DIV id='scrollable'",
       "bounds": [302, 302],
+      "contentsOpaqueForText": true,
       "transform": 3
     },
     {
@@ -194,13 +191,6 @@ var actual = {
       "bounds": [300, 300],
       "drawsContent": false,
       "transform": 3
-    },
-    {
-      "name": "LayoutNGBlockFlow (relative positioned) DIV id='scrollable'",
-      "position": [1, 1],
-      "bounds": [795, 1491],
-      "drawsContent": false,
-      "transform": 4
     },
     {
       "name": "LayoutNGBlockFlow (relative positioned) DIV id='transform'",

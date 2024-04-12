@@ -2,14 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {BindingsTestRunner} from 'bindings_test_runner';
-
-import * as Sources from 'devtools/panels/sources/sources.js';
-import * as UI from 'devtools/ui/legacy/legacy.js';
-
 (async function() {
   TestRunner.addResult(`Verify that navigator's 'Make a copy' works as expected.\n`);
+  await TestRunner.loadTestModule('bindings_test_runner');
+  await TestRunner.loadLegacyModule('sources');
   await TestRunner.showPanel('sources');
 
   var fs = new BindingsTestRunner.TestFileSystem('/var/www');
@@ -19,8 +15,8 @@ import * as UI from 'devtools/ui/legacy/legacy.js';
   fs.reportCreated(function() {});
   var uiSourceCode = await TestRunner.waitForUISourceCode('script.js');
 
-  var sourcesNavigator = new Sources.SourcesNavigator.NetworkNavigatorView();
-  sourcesNavigator.show(UI.InspectorView.InspectorView.instance().element);
+  var sourcesNavigator = new Sources.NetworkNavigatorView();
+  sourcesNavigator.show(UI.inspectorView.element);
   TestRunner.addResult('BEFORE:\n' + 'file://' + fs.dumpAsText());
   sourcesNavigator.handleContextMenuCreate(uiSourceCode.project(), '', uiSourceCode);
   await TestRunner.waitForUISourceCode('NewFile');

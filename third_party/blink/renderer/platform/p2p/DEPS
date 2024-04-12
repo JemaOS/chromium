@@ -1,4 +1,5 @@
 include_rules = [
+    "+base/observer_list_threadsafe.h",
     "+crypto/random.h",
     "+components/webrtc/net_address_utils.h",
     "+media/base/media_permission.h",
@@ -8,4 +9,6 @@ include_rules = [
     "+net/base/network_interfaces.h",
     "+net/base/port_util.h",
     "+net/traffic_annotation/network_traffic_annotation.h",
+    "+services/network/public/cpp/p2p_param_traits.h",
+    "+services/network/public/cpp/p2p_socket_type.h",
 ]

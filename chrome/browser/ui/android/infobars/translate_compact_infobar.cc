@@ -151,6 +151,8 @@ void TranslateCompactInfoBar::ApplyBoolTranslateOption(
       action_flags_ |= FLAG_ALWAYS_TRANSLATE;
       delegate->ToggleAlwaysTranslate();
     }
+    delegate->ReportUIInteraction(
+        translate::UIInteraction::kAlwaysTranslateLanguage);
   } else if (option == translate::TranslateUtils::OPTION_NEVER_TRANSLATE) {
     if (delegate->ShouldNeverTranslateLanguage() != value) {
       action_flags_ |= FLAG_NEVER_LANGUAGE;
@@ -160,6 +162,8 @@ void TranslateCompactInfoBar::ApplyBoolTranslateOption(
         delegate->RevertTranslation();
         delegate->OnInfoBarClosedByUser();
       }
+      delegate->ReportUIInteraction(
+          translate::UIInteraction::kNeverTranslateLanguage);
     }
   } else if (option == translate::TranslateUtils::OPTION_NEVER_TRANSLATE_SITE) {
     if (delegate->IsSiteOnNeverPromptList() != value) {
@@ -170,6 +174,8 @@ void TranslateCompactInfoBar::ApplyBoolTranslateOption(
         RemoveSelf();
         delegate->OnInfoBarClosedByUser();
       }
+      delegate->ReportUIInteraction(
+          translate::UIInteraction::kNeverTranslateSite);
     }
   } else {
     DCHECK(false);

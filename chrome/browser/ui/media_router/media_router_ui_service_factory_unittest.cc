@@ -26,7 +26,7 @@ namespace {
 class MockMediaRouterUIServiceObserver
     : public media_router::MediaRouterUIService::Observer {
  public:
-  MOCK_METHOD(void, OnServiceDisabled, ());
+  MOCK_METHOD0(OnServiceDisabled, void());
 };
 
 }  // namespace
@@ -65,14 +65,13 @@ class MediaRouterUIServiceFactoryUnitTest : public testing::Test {
 };
 
 TEST_F(MediaRouterUIServiceFactoryUnitTest, CreateService) {
-  // We call BuildServiceInstanceForBrowserContext() directly because
+  // We call BuildServiceInstanceFor() directly because
   // MediaRouterUIServiceFactory::GetForBrowserContext() is set to return a
   // nullptr for a test profile.
   std::unique_ptr<MediaRouterUIService> service(
       static_cast<MediaRouterUIService*>(
-          MediaRouterUIServiceFactory::GetInstance()
-              ->BuildServiceInstanceForBrowserContext(profile_.get())
-              .release()));
+          MediaRouterUIServiceFactory::GetInstance()->BuildServiceInstanceFor(
+              profile_.get())));
   ASSERT_TRUE(service);
   ASSERT_TRUE(service->action_controller());
 }
@@ -83,9 +82,8 @@ TEST_F(MediaRouterUIServiceFactoryUnitTest,
       ::prefs::kEnableMediaRouter, std::make_unique<base::Value>(false));
   std::unique_ptr<MediaRouterUIService> service(
       static_cast<MediaRouterUIService*>(
-          MediaRouterUIServiceFactory::GetInstance()
-              ->BuildServiceInstanceForBrowserContext(profile_.get())
-              .release()));
+          MediaRouterUIServiceFactory::GetInstance()->BuildServiceInstanceFor(
+              profile_.get())));
   ASSERT_TRUE(service);
   EXPECT_EQ(nullptr, service->action_controller());
 }
@@ -93,9 +91,8 @@ TEST_F(MediaRouterUIServiceFactoryUnitTest,
 TEST_F(MediaRouterUIServiceFactoryUnitTest, DisablingMediaRouting) {
   std::unique_ptr<MediaRouterUIService> service(
       static_cast<MediaRouterUIService*>(
-          MediaRouterUIServiceFactory::GetInstance()
-              ->BuildServiceInstanceForBrowserContext(profile_.get())
-              .release()));
+          MediaRouterUIServiceFactory::GetInstance()->BuildServiceInstanceFor(
+              profile_.get())));
   ASSERT_TRUE(service);
   ASSERT_TRUE(service->action_controller());
 

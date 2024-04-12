@@ -22,10 +22,8 @@
 <script>
 // crbug.com/352178: Heap-use-after-free in WebCore::SVGFontFaceElement::associatedFontElement.
 // PASS if no crash occurs.
-if (window.testRunner) {
+if (window.testRunner)
     testRunner.dumpAsText();
-    testRunner.waitUntilDone();
-}
 
 document.execCommand("SelectAll");
 
@@ -40,7 +38,6 @@ function runTest() {
         fontWillBeRemoved = null;
 	gc();
         use.appendChild(text);
-        testRunner.notifyDone();
     }, 0);
 }
 

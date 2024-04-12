@@ -78,7 +78,7 @@ KURL AbstractWorker::ResolveURL(ExecutionContext* execution_context,
 }
 
 void AbstractWorker::Trace(Visitor* visitor) const {
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }
 

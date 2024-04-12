@@ -4,11 +4,10 @@
 
 #include "chrome/updater/ipc/ipc_names.h"
 
-#include <optional>
-
 #include "chrome/updater/linux/ipc_constants.h"
 #include "chrome/updater/updater_scope.h"
 #include "mojo/public/cpp/platform/named_platform_channel.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace updater {
 
@@ -19,7 +18,7 @@ mojo::NamedPlatformChannel::ServerName GetUpdateServiceInternalServerName(
 
 mojo::NamedPlatformChannel::ServerName GetUpdateServiceServerName(
     UpdaterScope scope) {
-  std::optional<base::FilePath> socket = GetActiveDutySocketPath(scope);
+  absl::optional<base::FilePath> socket = GetActiveDutySocketPath(scope);
   CHECK(socket);
   return socket->MaybeAsASCII();
 }

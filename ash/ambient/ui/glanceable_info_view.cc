@@ -27,7 +27,6 @@
 #include "ui/gfx/font_list.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/rect.h"
-#include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/image/image_skia_operations.h"
 #include "ui/views/background.h"
 #include "ui/views/border.h"
@@ -80,12 +79,10 @@ int GetTemperatureFontDescent() {
 GlanceableInfoView::GlanceableInfoView(
     AmbientViewDelegate* delegate,
     GlanceableInfoView::Delegate* glanceable_info_view_delegate,
-    int time_font_size_dip,
-    bool add_text_shadow)
+    int time_font_size_dip)
     : delegate_(delegate),
       glanceable_info_view_delegate_(glanceable_info_view_delegate),
-      time_font_size_dip_(time_font_size_dip),
-      add_text_shadow_(add_text_shadow) {
+      time_font_size_dip_(time_font_size_dip) {
   DCHECK(delegate);
   DCHECK_GT(time_font_size_dip_, 0);
   SetID(AmbientViewID::kAmbientGlanceableInfoView);
@@ -96,40 +93,31 @@ GlanceableInfoView::GlanceableInfoView(
 
   if (!weather_model->weather_condition_icon().isNull()) {
     // already has weather info, show immediately.
-    ShowWeather();
+    Show();
   }
 }
 
 GlanceableInfoView::~GlanceableInfoView() = default;
 
 void GlanceableInfoView::OnWeatherInfoUpdated() {
-  ShowWeather();
+  Show();
 }
 
 void GlanceableInfoView::OnThemeChanged() {
   views::View::OnThemeChanged();
+  gfx::ShadowValues text_shadow_values =
+      ambient::util::GetTextShadowValues(GetColorProvider());
+  time_view_->SetTextShadowValues(text_shadow_values);
   time_view_->SetTextColor(
       glanceable_info_view_delegate_->GetTimeTemperatureFontColor(),
       /*auto_color_readability_enabled=*/false);
+  temperature_->SetShadows(text_shadow_values);
   temperature_->SetEnabledColor(
       glanceable_info_view_delegate_->GetTimeTemperatureFontColor());
-  if (add_text_shadow_) {
-    gfx::ShadowValues text_shadow_values =
-        ambient::util::GetTextShadowValues(GetColorProvider());
-    time_view_->SetTextShadowValues(text_shadow_values);
-    temperature_->SetShadows(text_shadow_values);
-  }
 }
 
-void GlanceableInfoView::ShowWeather() {
+void GlanceableInfoView::Show() {
   AmbientWeatherModel* weather_model = delegate_->GetAmbientWeatherModel();
-
-  // Hide the weather info when the model is incomplete.
-  if (weather_model->IsIncomplete()) {
-    temperature_->SetText(std::u16string());
-    weather_condition_icon_->SetImage(gfx::ImageSkia());
-    return;
-  }
 
   // When ImageView has an |image_| with different size than the |image_size_|,
   // it will resize and draw the |image_|. The quality is not as good as if we
@@ -156,13 +144,6 @@ std::u16string GlanceableInfoView::GetTemperatureText() const {
       static_cast<int>(weather_model->temperature_fahrenheit()));
 }
 
-bool GlanceableInfoView::IsWeatherConditionIconSetForTesting() const {
-  return !weather_condition_icon_->GetImage().isNull();
-}
-bool GlanceableInfoView::IsTemperatureSetForTesting() const {
-  return !temperature_->GetText().empty();
-}
-
 void GlanceableInfoView::InitLayout() {
   // The children of |GlanceableInfoView| will be drawn on their own
   // layer instead of the layer of |PhotoView| with a solid black background.
@@ -175,11 +156,8 @@ void GlanceableInfoView::InitLayout() {
   layout->set_main_axis_alignment(views::BoxLayout::MainAxisAlignment::kStart);
   layout->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kEnd);
 
-  gfx::Insets shadow_insets;
-  if (add_text_shadow_) {
-    shadow_insets = gfx::ShadowValue::GetMargin(
-        ambient::util::GetTextShadowValues(nullptr));
-  }
+  gfx::Insets shadow_insets =
+      gfx::ShadowValue::GetMargin(ambient::util::GetTextShadowValues(nullptr));
 
   // Inits the time view.
   time_view_ = AddChildView(
@@ -212,11 +190,7 @@ void GlanceableInfoView::InitLayout() {
       0, 0, GetFontDescent(time_font_list) - GetTemperatureFontDescent(), 0)));
 }
 
-int GlanceableInfoView::GetTimeFontDescent() {
-  return GetFontDescent(GetTimeFontList(time_font_size_dip_));
-}
-
-BEGIN_METADATA(GlanceableInfoView)
+BEGIN_METADATA(GlanceableInfoView, views::View)
 END_METADATA
 
 }  // namespace ash

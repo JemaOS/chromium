@@ -21,4 +21,4 @@ var allTests = [
   }
 ];
 
-setUpAndRunTabsTests(allTests);
+setUpAndRunTests(allTests);

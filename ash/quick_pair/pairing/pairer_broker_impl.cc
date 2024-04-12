@@ -10,9 +10,9 @@
 #include "ash/quick_pair/common/account_key_failure.h"
 #include "ash/quick_pair/common/device.h"
 #include "ash/quick_pair/common/fast_pair/fast_pair_metrics.h"
+#include "ash/quick_pair/common/logging.h"
 #include "ash/quick_pair/common/pair_failure.h"
 #include "ash/quick_pair/common/protocol.h"
-#include "ash/quick_pair/fast_pair_handshake/fast_pair_gatt_service_client_lookup_impl.h"
 #include "ash/quick_pair/fast_pair_handshake/fast_pair_handshake.h"
 #include "ash/quick_pair/fast_pair_handshake/fast_pair_handshake_lookup.h"
 #include "ash/quick_pair/pairing/fast_pair/fast_pair_pairer.h"
@@ -21,7 +21,6 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/scoped_refptr.h"
-#include "components/cross_device/logging/logging.h"
 #include "device/bluetooth/bluetooth_adapter.h"
 #include "device/bluetooth/bluetooth_adapter_factory.h"
 
@@ -74,7 +73,7 @@ void PairerBrokerImpl::PairDevice(scoped_refptr<Device> device) {
     auto* handshake = FastPairHandshakeLookup::GetInstance()->Get(
         model_id_to_current_ble_address_map_[device->metadata_id()]);
     if (handshake) {
-      CD_LOG(VERBOSE, Feature::FP)
+      QP_LOG(VERBOSE)
           << __func__
           << ": A handshake already occurred for this device using a "
              "different BLE Address, setting the callback and returning.";
@@ -108,15 +107,12 @@ void PairerBrokerImpl::OnBleAddressRotation(scoped_refptr<Device> device) {
 void PairerBrokerImpl::EraseHandshakeAndFromPairers(
     scoped_refptr<Device> device) {
   // |fast_pair_pairers_| and its children objects depend on the handshake
-  // instance. Shut them down before destroying the handshake. Also remove
-  // the GATT connection.
+  // instance. Shut them down before destroying the handshake.
   pair_failure_counts_.erase(device->metadata_id());
   fast_pair_pairers_.erase(device->metadata_id());
   FastPairHandshakeLookup::GetInstance()->Erase(device);
   did_handshake_previously_complete_successfully_map_.insert_or_assign(
       device->metadata_id(), false);
-  FastPairGattServiceClientLookup::GetInstance()->Erase(
-      adapter_->GetDevice(device->ble_address()));
 }
 
 bool PairerBrokerImpl::IsPairing() {
@@ -132,8 +128,7 @@ void PairerBrokerImpl::StopPairing() {
 
 void PairerBrokerImpl::PairFastPairDevice(scoped_refptr<Device> device) {
   if (base::Contains(fast_pair_pairers_, device->metadata_id())) {
-    CD_LOG(WARNING, Feature::FP)
-        << __func__ << ": Already pairing device" << device;
+    QP_LOG(WARNING) << __func__ << ": Already pairing device" << device;
     RecordFastPairInitializePairingProcessEvent(
         *device, FastPairInitializePairingProcessEvent::kAlreadyPairingFailure);
     return;
@@ -158,7 +153,7 @@ void PairerBrokerImpl::CreateHandshake(scoped_refptr<Device> device) {
           model_id_to_current_ble_address_map_[device->metadata_id()]) {
     // If the current |device| has a different BLE Address than the address in
     // the map, abort creating the handshake and return early;
-    CD_LOG(VERBOSE, Feature::FP)
+    QP_LOG(VERBOSE)
         << __func__
         << ": The device's BLE did not match the expected value, returning.";
     return;
@@ -169,8 +164,8 @@ void PairerBrokerImpl::CreateHandshake(scoped_refptr<Device> device) {
 
   if (fast_pair_handshake) {
     if (fast_pair_handshake->completed_successfully()) {
-      CD_LOG(VERBOSE, Feature::FP)
-          << __func__ << ": Reusing existing handshake for pair attempt.";
+      QP_LOG(VERBOSE) << __func__
+                      << ": Reusing existing handshake for pair attempt.";
       RecordFastPairInitializePairingProcessEvent(
           *device, FastPairInitializePairingProcessEvent::kHandshakeReused);
       StartBondingAttempt(device);
@@ -182,8 +177,7 @@ void PairerBrokerImpl::CreateHandshake(scoped_refptr<Device> device) {
     }
   }
 
-  CD_LOG(VERBOSE, Feature::FP)
-      << __func__ << ": Creating new handshake for pair attempt.";
+  QP_LOG(VERBOSE) << __func__ << ": Creating new handshake for pair attempt.";
   num_handshake_attempts_[device->metadata_id()]++;
   FastPairHandshakeLookup::GetInstance()->Create(
       adapter_, device,
@@ -191,19 +185,19 @@ void PairerBrokerImpl::CreateHandshake(scoped_refptr<Device> device) {
                      weak_pointer_factory_.GetWeakPtr()));
 }
 
-void PairerBrokerImpl::OnHandshakeComplete(scoped_refptr<Device> device,
-                                           std::optional<PairFailure> failure) {
+void PairerBrokerImpl::OnHandshakeComplete(
+    scoped_refptr<Device> device,
+    absl::optional<PairFailure> failure) {
   if (failure.has_value()) {
-    CD_LOG(WARNING, Feature::FP) << __func__ << ": Handshake failed with "
-                                 << device << " because: " << failure.value();
+    QP_LOG(WARNING) << __func__ << ": Handshake failed with " << device
+                    << " because: " << failure.value();
     OnHandshakeFailure(device, failure.value());
     return;
   }
 
   // During handshake, the device address can be set to null.
   if (!device->classic_address()) {
-    CD_LOG(WARNING, Feature::FP)
-        << __func__ << ": Device lost during handshake.";
+    QP_LOG(WARNING) << __func__ << ": Device lost during handshake.";
     OnHandshakeFailure(device, PairFailure::kPairingDeviceLost);
     return;
   }
@@ -237,20 +231,23 @@ void PairerBrokerImpl::OnHandshakeComplete(scoped_refptr<Device> device,
 void PairerBrokerImpl::OnHandshakeFailure(scoped_refptr<Device> device,
                                           PairFailure failure) {
   if (num_handshake_attempts_[device->metadata_id()] <
-          kMaxNumHandshakeAttempts &&
-      !ash::features::IsFastPairHandshakeLongTermRefactorEnabled()) {
-    // Directly calling CreateHandshake() from here will cause the new
-    // handshake to be nested inside the failed handshake. Use a timer to give
-    // the failed handshake time to cleanup and avoid nesting.
-    retry_handshake_timer_.Start(
-        FROM_HERE, kRetryHandshakeDelay,
-        base::BindOnce(&PairerBrokerImpl::CreateHandshake,
-                       weak_pointer_factory_.GetWeakPtr(), device));
+      kMaxNumHandshakeAttempts) {
+    if (ash::features::IsFastPairHandshakeRefactorEnabled()) {
+      // Directly calling CreateHandshake() from here will cause the new
+      // handshake to be nested inside the failed handshake. Use a timer to give
+      // the failed handshake time to cleanup and avoid nesting.
+      retry_handshake_timer_.Start(
+          FROM_HERE, kRetryHandshakeDelay,
+          base::BindOnce(&PairerBrokerImpl::CreateHandshake,
+                         weak_pointer_factory_.GetWeakPtr(), device));
+    } else {
+      CreateHandshake(device);
+    }
     return;
   }
 
-  CD_LOG(VERBOSE, Feature::FP)
-      << __func__ << ": Handshake failed to be created. Notifying observers.";
+  QP_LOG(VERBOSE) << __func__
+                  << ": Handshake failed to be created. Notifying observers.";
   RecordEffectiveHandshakeSuccess(/*success=*/false);
   RecordInitializationFailureReason(*device, failure);
   for (auto& observer : observers_) {
@@ -275,7 +272,7 @@ void PairerBrokerImpl::StartBondingAttempt(scoped_refptr<Device> device) {
     }
   }
 
-  CD_LOG(VERBOSE, Feature::FP) << __func__ << ": " << device;
+  QP_LOG(VERBOSE) << __func__ << ": " << device;
 
   DCHECK(adapter_);
   fast_pair_pairers_[device->metadata_id()] =
@@ -292,7 +289,7 @@ void PairerBrokerImpl::StartBondingAttempt(scoped_refptr<Device> device) {
 }
 
 void PairerBrokerImpl::OnFastPairDeviceBonded(scoped_refptr<Device> device) {
-  CD_LOG(VERBOSE, Feature::FP) << __func__ << ": Device=" << device;
+  QP_LOG(VERBOSE) << __func__ << ": Device=" << device;
 
   for (auto& observer : observers_) {
     observer.OnDevicePaired(device);
@@ -306,9 +303,9 @@ void PairerBrokerImpl::OnFastPairDeviceBonded(scoped_refptr<Device> device) {
 void PairerBrokerImpl::OnFastPairBondingFailure(scoped_refptr<Device> device,
                                                 PairFailure failure) {
   ++pair_failure_counts_[device->metadata_id()];
-  CD_LOG(VERBOSE, Feature::FP)
-      << __func__ << ": Device=" << device << ", Failure=" << failure
-      << ", Failure Count = " << pair_failure_counts_[device->metadata_id()];
+  QP_LOG(VERBOSE) << __func__ << ": Device=" << device
+                  << ", Failure=" << failure << ", Failure Count = "
+                  << pair_failure_counts_[device->metadata_id()];
 
   device::BluetoothDevice* bt_device = nullptr;
   if (device->classic_address()) {
@@ -316,8 +313,8 @@ void PairerBrokerImpl::OnFastPairBondingFailure(scoped_refptr<Device> device,
   }
 
   if (pair_failure_counts_[device->metadata_id()] == kMaxFailureRetryCount) {
-    CD_LOG(VERBOSE, Feature::FP)
-        << __func__ << ": Reached max failure count. Notifying observers.";
+    QP_LOG(VERBOSE) << __func__
+                    << ": Reached max failure count. Notifying observers.";
     RecordProtocolPairingStep(FastPairProtocolPairingSteps::kExhaustedRetries,
                               *device);
     for (auto& observer : observers_) {
@@ -335,7 +332,7 @@ void PairerBrokerImpl::OnFastPairBondingFailure(scoped_refptr<Device> device,
   fast_pair_pairers_.erase(device->metadata_id());
 
   if (bt_device && !bt_device->IsPaired()) {
-    CD_LOG(VERBOSE, Feature::FP)
+    QP_LOG(VERBOSE)
         << __func__
         << ": Cancelling pairing and scheduling retry for failed pair attempt.";
     bt_device->CancelPairing();
@@ -355,8 +352,8 @@ void PairerBrokerImpl::OnFastPairBondingFailure(scoped_refptr<Device> device,
 
 void PairerBrokerImpl::OnAccountKeyFailure(scoped_refptr<Device> device,
                                            AccountKeyFailure failure) {
-  CD_LOG(VERBOSE, Feature::FP)
-      << __func__ << ": Device=" << device << ", Failure=" << failure;
+  QP_LOG(VERBOSE) << __func__ << ": Device=" << device
+                  << ", Failure=" << failure;
 
   for (auto& observer : observers_) {
     observer.OnAccountKeyWrite(device, failure);
@@ -367,7 +364,7 @@ void PairerBrokerImpl::OnAccountKeyFailure(scoped_refptr<Device> device,
 
 void PairerBrokerImpl::OnFastPairProcedureComplete(
     scoped_refptr<Device> device) {
-  CD_LOG(VERBOSE, Feature::FP) << __func__ << ": Device=" << device;
+  QP_LOG(VERBOSE) << __func__ << ": Device=" << device;
 
   for (auto& observer : observers_) {
     observer.OnPairingComplete(device);
@@ -381,7 +378,7 @@ void PairerBrokerImpl::OnFastPairProcedureComplete(
       (device->protocol() == Protocol::kFastPairInitial ||
        device->protocol() == Protocol::kFastPairRetroactive)) {
     for (auto& observer : observers_) {
-      observer.OnAccountKeyWrite(device, /*error=*/std::nullopt);
+      observer.OnAccountKeyWrite(device, /*error=*/absl::nullopt);
     }
   }
 

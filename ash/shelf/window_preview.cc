@@ -10,7 +10,6 @@
 #include "ash/wm/window_util.h"
 #include "base/functional/bind.h"
 #include "ui/aura/window.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
 #include "ui/gfx/color_palette.h"
@@ -39,7 +38,8 @@ constexpr int kPreviewBorderRadius = 4;
 
 WindowPreview::WindowPreview(aura::Window* window, Delegate* delegate)
     : delegate_(delegate) {
-  preview_view_ = new WindowPreviewView(window);
+  preview_view_ =
+      new WindowPreviewView(window, /*trilinear_filtering_on_init=*/false);
   preview_container_view_ = new views::View();
   preview_container_view_->SetBackground(views::CreateRoundedRectBackground(
       kPreviewContainerBgColor, kPreviewBorderRadius));
@@ -66,7 +66,7 @@ gfx::Size WindowPreview::CalculatePreferredSize() const {
                    container_size.height() + title_height_with_padding);
 }
 
-void WindowPreview::Layout(PassKey) {
+void WindowPreview::Layout() {
   gfx::Rect content_rect = GetContentsBounds();
 
   gfx::Size title_size = title_->CalculatePreferredSize();
@@ -130,6 +130,10 @@ bool WindowPreview::OnMousePressed(const ui::MouseEvent& event) {
   return true;
 }
 
+const char* WindowPreview::GetClassName() const {
+  return "WindowPreview";
+}
+
 void WindowPreview::OnThemeChanged() {
   views::View::OnThemeChanged();
   const auto* color_provider = GetColorProvider();
@@ -142,10 +146,9 @@ void WindowPreview::OnThemeChanged() {
   // The background is not opaque, so we can't do subpixel rendering.
   title_->SetSubpixelRenderingEnabled(false);
 
-  close_button_->SetImageModel(
+  close_button_->SetImage(
       views::Button::STATE_NORMAL,
-      ui::ImageModel::FromVectorIcon(kOverviewWindowCloseIcon,
-                                     kCloseButtonColor));
+      gfx::CreateVectorIcon(kOverviewWindowCloseIcon, kCloseButtonColor));
   close_button_->SetImageHorizontalAlignment(views::ImageButton::ALIGN_CENTER);
   close_button_->SetImageVerticalAlignment(views::ImageButton::ALIGN_MIDDLE);
   close_button_->SetMinimumImageSize(
@@ -173,8 +176,5 @@ void WindowPreview::CloseButtonPressed() {
   // This will have the effect of deleting this view.
   delegate_->OnPreviewDismissed(this);
 }
-
-BEGIN_METADATA(WindowPreview)
-END_METADATA
 
 }  // namespace ash

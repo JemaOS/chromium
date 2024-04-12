@@ -86,13 +86,19 @@ class MediaEngagementChangeWaiter : public content_settings::Observer {
 };
 
 base::Time GetReferenceTime() {
-  static constexpr base::Time::Exploded kReferenceTime = {.year = 2015,
-                                                          .month = 1,
-                                                          .day_of_week = 5,
-                                                          .day_of_month = 30,
-                                                          .hour = 11};
+  base::Time::Exploded exploded_reference_time;
+  exploded_reference_time.year = 2015;
+  exploded_reference_time.month = 1;
+  exploded_reference_time.day_of_month = 30;
+  exploded_reference_time.day_of_week = 5;
+  exploded_reference_time.hour = 11;
+  exploded_reference_time.minute = 0;
+  exploded_reference_time.second = 0;
+  exploded_reference_time.millisecond = 0;
+
   base::Time out_time;
-  EXPECT_TRUE(base::Time::FromLocalExploded(kReferenceTime, &out_time));
+  EXPECT_TRUE(
+      base::Time::FromLocalExploded(exploded_reference_time, &out_time));
   return out_time;
 }
 
@@ -528,9 +534,9 @@ TEST_P(MediaEngagementServiceTest, CleanupOriginsOnHistoryDeletion) {
 
     base::CancelableTaskTracker task_tracker;
     // Expire origin1, url1a, origin2, and url3a's most recent visit.
-    history->ExpireHistoryBetween(
-        std::set<GURL>(), history::kNoAppIdFilter, yesterday, today,
-        /*user_initiated*/ true, base::DoNothing(), &task_tracker);
+    history->ExpireHistoryBetween(std::set<GURL>(), yesterday, today,
+                                  /*user_initiated*/ true, base::DoNothing(),
+                                  &task_tracker);
     waiter.Wait();
 
     // origin1 should have a score that is not zero and is the same as the old
@@ -704,9 +710,9 @@ TEST_P(MediaEngagementServiceTest, CleanUpDatabaseWhenHistoryIsDeleted) {
     base::RunLoop run_loop;
     base::CancelableTaskTracker task_tracker;
     // Clear all history.
-    history->ExpireHistoryBetween(
-        std::set<GURL>(), history::kNoAppIdFilter, base::Time(), base::Time(),
-        /*user_initiated*/ true, run_loop.QuitClosure(), &task_tracker);
+    history->ExpireHistoryBetween(std::set<GURL>(), base::Time(), base::Time(),
+                                  /*user_initiated*/ true,
+                                  run_loop.QuitClosure(), &task_tracker);
     run_loop.Run();
 
     // origin1 should have a score that is not zero and is the same as the old
@@ -753,10 +759,10 @@ TEST_P(MediaEngagementServiceTest, HistoryExpirationIsNoOp) {
     history::HistoryService* history = HistoryServiceFactory::GetForProfile(
         profile(), ServiceAccessType::IMPLICIT_ACCESS);
 
-    service()->OnHistoryDeletions(
+    service()->OnURLsDeleted(
         history, history::DeletionInfo(history::DeletionTimeRange::Invalid(),
                                        true, history::URLRows(),
-                                       std::set<GURL>(), std::nullopt));
+                                       std::set<GURL>(), absl::nullopt));
 
     // Same as above, nothing should have changed.
     ExpectScores(origin1, 7.0 / 11.0,

@@ -4,30 +4,30 @@
 
 import './cluster.js';
 import './history_clusters_shared_style.css.js';
-import '//resources/cr_elements/cr_button/cr_button.js';
-import '//resources/cr_elements/cr_dialog/cr_dialog.js';
-import '//resources/cr_elements/cr_lazy_render/cr_lazy_render.js';
-import '//resources/cr_elements/cr_toast/cr_toast.js';
-import '//resources/polymer/v3_0/iron-list/iron-list.js';
-import '//resources/polymer/v3_0/iron-scroll-threshold/iron-scroll-threshold.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render.js';
+import 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
+import 'chrome://resources/polymer/v3_0/iron-list/iron-list.js';
+import 'chrome://resources/polymer/v3_0/iron-scroll-threshold/iron-scroll-threshold.js';
 
-import type {CrDialogElement} from '//resources/cr_elements/cr_dialog/cr_dialog.js';
-import type {CrLazyRenderElement} from '//resources/cr_elements/cr_lazy_render/cr_lazy_render.js';
-import type {CrToastElement} from '//resources/cr_elements/cr_toast/cr_toast.js';
-import {I18nMixin} from '//resources/cr_elements/i18n_mixin.js';
-import {assert} from '//resources/js/assert.js';
-import {FocusOutlineManager} from '//resources/js/focus_outline_manager.js';
-import {loadTimeData} from '//resources/js/load_time_data.js';
-import type {Time} from '//resources/mojo/mojo/public/mojom/base/time.mojom-webui.js';
-import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
-import type {IronListElement} from '//resources/polymer/v3_0/iron-list/iron-list.js';
-import type {IronScrollThresholdElement} from '//resources/polymer/v3_0/iron-scroll-threshold/iron-scroll-threshold.js';
-import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import {CrLazyRenderElement} from 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render.js';
+import {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
+import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
+import {FocusOutlineManager} from 'chrome://resources/js/focus_outline_manager.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {Time} from 'chrome://resources/mojo/mojo/public/mojom/base/time.mojom-webui.js';
+import {Url} from 'chrome://resources/mojo/url/mojom/url.mojom-webui.js';
+import {IronListElement} from 'chrome://resources/polymer/v3_0/iron-list/iron-list.js';
+import {IronScrollThresholdElement} from 'chrome://resources/polymer/v3_0/iron-scroll-threshold/iron-scroll-threshold.js';
+import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {BrowserProxyImpl} from './browser_proxy.js';
 import {getTemplate} from './clusters.html.js';
-import type {Cluster, URLVisit} from './history_cluster_types.mojom-webui.js';
-import type {PageCallbackRouter, PageHandlerRemote, QueryResult} from './history_clusters.mojom-webui.js';
+import {Cluster, URLVisit} from './history_cluster_types.mojom-webui.js';
+import {PageCallbackRouter, PageHandlerRemote, QueryResult} from './history_clusters.mojom-webui.js';
 
 /**
  * @fileoverview This file provides a custom element that requests and shows
@@ -38,6 +38,11 @@ import type {PageCallbackRouter, PageHandlerRemote, QueryResult} from './history
 declare global {
   interface HTMLElementTagNameMap {
     'history-clusters': HistoryClustersElement;
+  }
+
+  interface Window {
+    // https://github.com/microsoft/TypeScript/issues/40807
+    requestIdleCallback(callback: () => void): void;
   }
 }
 
@@ -231,13 +236,6 @@ export class HistoryClustersElement extends HistoryClustersElementBase {
   }
 
   /**
-   * Called with `event` received from visits requesting to be hidden.
-   */
-  private onHideVisits_(event: CustomEvent<URLVisit[]>) {
-    this.pageHandler_.hideVisits(event.detail);
-  }
-
-  /**
    * Called with `event` received from a cluster requesting to be removed from
    * the list when all its visits have been removed. Contains the cluster index.
    */
@@ -324,7 +322,7 @@ export class HistoryClustersElement extends HistoryClustersElementBase {
    */
   private onBrowserIdle_(): Promise<void> {
     return new Promise(resolve => {
-      requestIdleCallback(() => {
+      window.requestIdleCallback(() => {
         resolve();
       });
     });

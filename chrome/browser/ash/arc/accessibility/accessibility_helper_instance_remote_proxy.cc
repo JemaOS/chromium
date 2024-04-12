@@ -12,7 +12,7 @@
 namespace arc {
 
 bool AccessibilityHelperInstanceRemoteProxy::SetFilter(
-    ax::android::mojom::AccessibilityFilterType filter_type) const {
+    mojom::AccessibilityFilterType filter_type) const {
   auto* const instance = ARC_GET_INSTANCE_FOR_METHOD(
       arc_bridge_service_->accessibility_helper(), SetFilter);
   if (!instance)
@@ -23,9 +23,8 @@ bool AccessibilityHelperInstanceRemoteProxy::SetFilter(
 }
 
 bool AccessibilityHelperInstanceRemoteProxy::PerformAction(
-    ax::android::mojom::AccessibilityActionDataPtr action_data_ptr,
-    ax::android::mojom::AccessibilityHelperInstance::PerformActionCallback
-        callback) const {
+    mojom::AccessibilityActionDataPtr action_data_ptr,
+    mojom::AccessibilityHelperInstance::PerformActionCallback callback) const {
   auto* const instance = ARC_GET_INSTANCE_FOR_METHOD(
       arc_bridge_service_->accessibility_helper(), PerformAction);
   if (!instance)
@@ -38,7 +37,7 @@ bool AccessibilityHelperInstanceRemoteProxy::PerformAction(
 bool AccessibilityHelperInstanceRemoteProxy::
     SetNativeChromeVoxArcSupportForFocusedWindow(
         bool enabled,
-        ax::android::mojom::AccessibilityHelperInstance::
+        mojom::AccessibilityHelperInstance::
             SetNativeChromeVoxArcSupportForFocusedWindowCallback callback)
         const {
   auto* const instance =
@@ -64,9 +63,9 @@ bool AccessibilityHelperInstanceRemoteProxy::SetExploreByTouchEnabled(
 }
 
 bool AccessibilityHelperInstanceRemoteProxy::RefreshWithExtraData(
-    ax::android::mojom::AccessibilityActionDataPtr action_data_ptr,
-    ax::android::mojom::AccessibilityHelperInstance::
-        RefreshWithExtraDataCallback callback) const {
+    mojom::AccessibilityActionDataPtr action_data_ptr,
+    mojom::AccessibilityHelperInstance::RefreshWithExtraDataCallback callback)
+    const {
   auto* const instance = ARC_GET_INSTANCE_FOR_METHOD(
       arc_bridge_service_->accessibility_helper(), RefreshWithExtraData);
   if (!instance)
@@ -77,8 +76,19 @@ bool AccessibilityHelperInstanceRemoteProxy::RefreshWithExtraData(
   return true;
 }
 
+bool AccessibilityHelperInstanceRemoteProxy::SetCaptionStyle(
+    mojom::CaptionStylePtr style_ptr) const {
+  auto* const instance = ARC_GET_INSTANCE_FOR_METHOD(
+      arc_bridge_service_->accessibility_helper(), SetCaptionStyle);
+  if (!instance)
+    return false;
+
+  instance->SetCaptionStyle(std::move(style_ptr));
+  return true;
+}
+
 bool AccessibilityHelperInstanceRemoteProxy::RequestSendAccessibilityTree(
-    ax::android::mojom::AccessibilityWindowKeyPtr window_key_ptr) const {
+    mojom::AccessibilityWindowKeyPtr window_key_ptr) const {
   auto* const instance =
       ARC_GET_INSTANCE_FOR_METHOD(arc_bridge_service_->accessibility_helper(),
                                   RequestSendAccessibilityTree);

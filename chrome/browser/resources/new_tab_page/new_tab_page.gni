@@ -10,12 +10,10 @@ all_non_web_component_files = [
                                 "background_manager.ts",
                                 "customize_dialog_types.ts",
                                 "i18n_setup.ts",
-                                "image_processor.ts",
                                 "lazy_load.ts",
                                 "metrics_utils.ts",
                                 "new_tab_page_proxy.ts",
                                 "new_tab_page.ts",
-                                "transparency.ts",
                                 "utils.ts",
                                 "window_proxy.ts",
                               ] + modules_non_web_component_files
@@ -34,6 +32,7 @@ all_web_component_files = [
                             "logo.ts",
                             "middle_slot_promo.ts",
                             "mini_page.ts",
+                            "realbox/realbox.ts",
                             "voice_search_overlay.ts",
                           ] + modules_web_component_files
 
@@ -41,19 +40,14 @@ if (optimize_webui) {
   # Transpiled Mojo JS files to be excluded from the bundle in optimized builds.
   mojo_js_files = [
     "cart.mojom-webui.js",
-    "discount.mojom-webui.js",
     "chrome_cart.mojom-webui.js",
     "drive.mojom-webui.js",
     "feed.mojom-webui.js",
     "history_cluster_types.mojom-webui.js",
     "history_clusters.mojom-webui.js",
-    "history_clusters_v2.mojom-webui.js",
-    "history_clusters_layout_type.mojom-webui.js",
-    "history_types.mojom-webui.js",
     "new_tab_page.mojom-webui.js",
     "photos.mojom-webui.js",
     "recipes.mojom-webui.js",
-    "tab_resumption.mojom-webui.js",
   ]
 
   if (!is_official_build) {

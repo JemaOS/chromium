@@ -35,7 +35,6 @@
 #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/platform/heap/thread_state.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_loader_mock_factory.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
@@ -112,7 +111,6 @@ class ListenerLeakTest : public testing::Test {
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   frame_test_helpers::WebViewHelper web_view_helper;
 };
 

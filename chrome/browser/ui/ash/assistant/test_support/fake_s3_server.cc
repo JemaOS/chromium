@@ -27,7 +27,6 @@ namespace {
 // TODO(b/258750971): remove when internal assistant codes are migrated to
 // namespace ash.
 using ::chromeos::assistant::kFakeS3ServerBinary;
-using ::chromeos::assistant::kFakeS3ServerBinaryV2;
 using ::chromeos::assistant::kGenerateTokenInstructions;
 
 // Folder where the S3 communications are stored when running in replay mode.
@@ -47,7 +46,7 @@ base::FilePath GetExecutableDir() {
 
 base::FilePath GetSourceDir() {
   base::FilePath result;
-  base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &result);
+  base::PathService::Get(base::DIR_SOURCE_ROOT, &result);
   return result;
 }
 
@@ -56,9 +55,10 @@ std::string GetSanitizedTestName() {
       "%s_%s",
       testing::UnitTest::GetInstance()->current_test_info()->test_suite_name(),
       testing::UnitTest::GetInstance()->current_test_info()->name()));
-  // The test name may has `disabled_`. Remove it to match the data_file
+  // The test name has suffix of `/0` or `/1`. Remove it to match the data_file
   // name.
-  base::ReplaceSubstringsAfterOffset(&test_name, 0, "disabled_", "");
+  base::ReplaceSubstringsAfterOffset(&test_name, 0, "/0", "");
+  base::ReplaceSubstringsAfterOffset(&test_name, 0, "/1", "");
   return test_name;
 }
 
@@ -118,7 +118,7 @@ class PortSelector {
   constexpr static int kMaxAttempts = 20000;
 
   void SelectPort() {
-    for (int offset = 0; offset + 1 < kMaxAttempts; offset += 2) {
+    for (int offset = 0; offset < kMaxAttempts; offset++) {
       port_ = kStartPort + offset;
       lock_file_ = base::File(GetLockFilePath(), GetFileFlags());
       if (lock_file_.IsValid())
@@ -209,14 +209,11 @@ void FakeS3Server::StartS3ServerProcess(FakeS3Mode mode) {
     return;
   }
 
-  base::FilePath fake_s3_server_main;
-  fake_s3_server_main =
-      GetExecutableDir().Append(FILE_PATH_LITERAL(kFakeS3ServerBinaryV2));
+  base::FilePath fake_s3_server_main =
+      GetExecutableDir().Append(FILE_PATH_LITERAL(kFakeS3ServerBinary));
 
   base::CommandLine command_line(fake_s3_server_main);
   AppendArgument(&command_line, "--port", base::NumberToString(port()));
-  AppendArgument(&command_line, "--http_port",
-                 base::NumberToString(port() + 1));
   AppendArgument(&command_line, "--mode", FakeS3ModeToString(mode));
   AppendArgument(&command_line, "--auth_token", GetAccessToken());
   AppendArgument(&command_line, "--test_data_file", GetTestDataFileName());

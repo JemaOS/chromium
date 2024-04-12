@@ -33,7 +33,7 @@ void SetupUserDeviceAffiliation() {
       std::move(profile_policy_data));
 
   ::crosapi::mojom::BrowserInitParamsPtr init_params =
-      chromeos::BrowserInitParams::GetForTests()->Clone();
+      ::crosapi::mojom::BrowserInitParams::New();
   init_params->device_properties = crosapi::mojom::DeviceProperties::New();
   init_params->device_properties->device_dm_token = kFakeDMToken;
   init_params->device_properties->device_affiliation_ids = {kAffiliationId};

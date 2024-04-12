@@ -4,7 +4,9 @@
 
 package org.chromium.chrome.browser.toolbar;
 
-/** Handles toolbar triggered actions on the specific tab. */
+/**
+ * Handles toolbar triggered actions on the specific tab.
+ */
 public interface ToolbarTabController {
     /**
      * If the page is currently loading, this will trigger the tab to stop.  If the page is fully
@@ -26,6 +28,8 @@ public interface ToolbarTabController {
      */
     boolean forward();
 
-    /** Opens hompage in the current tab. */
+    /**
+     * Opens hompage in the current tab.
+     */
     void openHomepage();
 }

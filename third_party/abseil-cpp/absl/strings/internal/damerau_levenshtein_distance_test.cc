@@ -54,7 +54,7 @@ TEST(Distance, TestDistances) {
 }
 
 TEST(Distance, TestCutoff) {
-  // Returning cutoff + 1 if the value is larger than cutoff or string longer
+  // Returing cutoff + 1 if the value is larger than cutoff or string longer
   // than MAX_SIZE.
   EXPECT_THAT(CappedDamerauLevenshteinDistance("abcd", "a", 3), uint8_t{3});
   EXPECT_THAT(CappedDamerauLevenshteinDistance("abcd", "a", 2), uint8_t{3});

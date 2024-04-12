@@ -21,16 +21,6 @@
 
 namespace blink {
 
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class PrivacyBudgetRecordedSample {
-  kAccepted = 0,
-  kDroppedMaxTrackedSources = 1,
-  kDroppedMaxTrackedSurfaces = 2,
-  kDroppedMaxTrackedPerSurfacePerSource = 3,
-  kMaxValue = kDroppedMaxTrackedPerSurfacePerSource,
-};
-
 // An `IdentifiabilitySampleCollector` that does the following:
 //
 // * De-duplicates recorded samples so that the same

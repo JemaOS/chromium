@@ -5,7 +5,6 @@
 /**
  * @fileoverview Class which allows construction of annotated strings.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
 
 export class Spannable {
   /**
@@ -504,5 +503,3 @@ function spanValueIs(value) {
 function valueOfSpan(span) {
   return span ? span.value : undefined;
 }
-
-TestImportManager.exportForTesting(Spannable, MultiSpannable);

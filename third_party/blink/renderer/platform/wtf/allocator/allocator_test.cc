@@ -12,9 +12,9 @@ struct StackAllocatedType {
   STACK_ALLOCATED();
 };
 
-static_assert(!WTF::IsStackAllocatedType<Empty>,
+static_assert(!WTF::IsStackAllocatedType<Empty>::value,
               "Failed to detect STACK_ALLOCATED macro.");
-static_assert(WTF::IsStackAllocatedType<StackAllocatedType>,
+static_assert(WTF::IsStackAllocatedType<StackAllocatedType>::value,
               "Failed to detect STACK_ALLOCATED macro.");
 
 }  // namespace

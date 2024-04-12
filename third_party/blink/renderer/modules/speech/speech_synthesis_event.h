@@ -46,7 +46,7 @@ class SpeechSynthesisEvent : public Event {
                        float elapsed_time,
                        const String& name);
 
-  SpeechSynthesisUtterance* utterance() const { return utterance_.Get(); }
+  SpeechSynthesisUtterance* utterance() const { return utterance_; }
   unsigned charIndex() const { return char_index_; }
   unsigned charLength() const { return char_length_; }
   float elapsedTime() const { return elapsed_time_; }

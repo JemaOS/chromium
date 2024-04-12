@@ -3,11 +3,9 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/views/tabs/z_orderable_tab_container_element.h"
-
-#include <bit>
-#include <cstdint>
-
+#include "base/bits.h"
 #include "chrome/browser/ui/views/tabs/tab.h"
+
 #include "chrome/browser/ui/views/tabs/tab_group_header.h"
 #include "chrome/browser/ui/views/tabs/tab_group_highlight.h"
 #include "chrome/browser/ui/views/tabs/tab_group_underline.h"
@@ -36,7 +34,7 @@ float ZOrderableTabContainerElement::CalculateZValue(views::View* child) {
   // reserved for the factors considered by TabStyle, e.g. selection and hover
   // state.
   constexpr int num_bits_reserved_for_tab_style_z_value =
-      std::bit_width<uint32_t>(TabStyle::kMaximumZValue);
+      base::bits::Log2Ceiling(static_cast<int>(TabStyle::kMaximumZValue) + 1);
   enum ZValue {
     kActiveTab = (1u << (num_bits_reserved_for_tab_style_z_value + 1)),
     kGroupView = (1u << num_bits_reserved_for_tab_style_z_value)

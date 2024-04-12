@@ -1,7 +1,5 @@
-monorail: {
-  component: "Blink>SecurityFeature>MixedContent"
+monorail {
+  component: "Blink>SecurityFeature"
 }
-team_email: "trusty-transport@chromium.org"
-buganizer_public: {
-  component_id: 1456961
-}
+team_email: "security-dev@chromium.org"
+

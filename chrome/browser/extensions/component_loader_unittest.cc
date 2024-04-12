@@ -5,9 +5,7 @@
 #include "chrome/browser/extensions/component_loader.h"
 
 #include <stddef.h>
-
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/command_line.h"
@@ -32,6 +30,7 @@
 #include "extensions/common/extension_set.h"
 #include "extensions/common/manifest_handlers/background_info.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace extensions {
 class ExtensionUnloadedObserver : public ExtensionRegistryObserver {
@@ -112,7 +111,7 @@ class ComponentLoaderTest : public ExtensionServiceUserTestBase {
 };
 
 TEST_F(ComponentLoaderTest, ParseManifest) {
-  std::optional<base::Value::Dict> manifest;
+  absl::optional<base::Value::Dict> manifest;
 
   // Test invalid JSON.
   manifest =

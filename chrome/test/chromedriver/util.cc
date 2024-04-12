@@ -14,7 +14,6 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/format_macros.h"
-#include "base/numerics/safe_conversions.h"
 #include "base/rand_util.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
@@ -451,14 +450,14 @@ bool GetOptionalValue(const base::Value::Dict& dict,
                       base::StringPiece path,
                       T* out_value,
                       bool* has_value,
-                      std::optional<T> (base::Value::*getter)() const) {
+                      absl::optional<T> (base::Value::*getter)() const) {
   if (has_value != nullptr)
     *has_value = false;
 
   const base::Value* value = dict.FindByDottedPath(path);
   if (!value)
     return true;
-  std::optional<T> maybe_value = (value->*getter)();
+  absl::optional<T> maybe_value = (value->*getter)();
   if (maybe_value.has_value()) {
     *out_value = maybe_value.value();
     if (has_value != nullptr)
@@ -487,11 +486,9 @@ bool GetOptionalInt(const base::Value::Dict& dict,
     return true;
   }
   // See if we have a double that contains an int value.
-  std::optional<double> maybe_decimal = dict.FindDoubleByDottedPath(path);
-  if (!maybe_decimal.has_value() ||
-      !base::IsValueInRangeForNumericType<int>(maybe_decimal.value())) {
+  absl::optional<double> maybe_decimal = dict.FindDoubleByDottedPath(path);
+  if (!maybe_decimal.has_value())
     return false;
-  }
 
   int i = static_cast<int>(maybe_decimal.value());
   if (i == maybe_decimal.value()) {
@@ -587,7 +584,7 @@ bool GetOptionalSafeInt(const base::Value::Dict& dict,
   }
 
   // Check if we have a double, which may or may not contain a safe int value.
-  std::optional<double> maybe_decimal = dict.FindDoubleByDottedPath(path);
+  absl::optional<double> maybe_decimal = dict.FindDoubleByDottedPath(path);
   if (!maybe_decimal.has_value())
     return false;
 

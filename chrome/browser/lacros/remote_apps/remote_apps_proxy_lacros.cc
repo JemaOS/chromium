@@ -4,7 +4,6 @@
 
 #include "chrome/browser/lacros/remote_apps/remote_apps_proxy_lacros.h"
 
-#include <optional>
 #include <utility>
 
 #include "base/memory/ptr_util.h"
@@ -16,8 +15,15 @@
 #include "content/public/browser/browser_context.h"
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/extension_event_histogram_value.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace chromeos {
+
+namespace {
+
+constexpr char kErrorNoAshRemoteConnected[] = "No Ash remote connected";
+
+}  // namespace
 
 // static
 std::unique_ptr<RemoteAppsProxyLacros> RemoteAppsProxyLacros::CreateForTesting(
@@ -124,24 +130,6 @@ void RemoteAppsProxyLacros::SortLauncherWithRemoteAppsFirst(
   ash_remote_apps_remote_->SortLauncherWithRemoteAppsFirst(std::move(callback));
 }
 
-void RemoteAppsProxyLacros::SetPinnedApps(
-    const std::vector<std::string>& app_ids,
-    SetPinnedAppsCallback callback) {
-  if (!ash_remote_apps_remote_.is_bound() ||
-      !ash_remote_apps_remote_.is_connected()) {
-    std::move(callback).Run(kErrorNoAshRemoteConnected);
-    return;
-  }
-  if (is_ash_remote_apps_remote_version_known_) {
-    SetPinnedAppsImpl(app_ids, std::move(callback),
-                      ash_remote_apps_remote_.version());
-  } else {
-    ash_remote_apps_remote_.QueryVersion(
-        base::BindOnce(&RemoteAppsProxyLacros::OnVersionForAppPinningReady,
-                       base::Unretained(this), app_ids, std::move(callback)));
-  }
-}
-
 void RemoteAppsProxyLacros::OnRemoteAppLaunched(const std::string& app_id,
                                                 const std::string& source_id) {
   std::unique_ptr<extensions::Event> event = std::make_unique<
@@ -173,34 +161,6 @@ void RemoteAppsProxyLacros::DisconnectHandler(mojo::RemoteSetElementId id) {
     return;
 
   source_id_to_remote_id_map_.erase(it);
-}
-
-void RemoteAppsProxyLacros::OnVersionForAppPinningReady(
-    const std::vector<std::string>& app_ids,
-    SetPinnedAppsCallback callback,
-    uint32_t interface_version) {
-  is_ash_remote_apps_remote_version_known_ = true;
-  SetPinnedAppsImpl(app_ids, std::move(callback), interface_version);
-}
-
-void RemoteAppsProxyLacros::SetPinnedAppsImpl(
-    const std::vector<std::string>& app_ids,
-    SetPinnedAppsCallback callback,
-    uint32_t interface_version) {
-  if (interface_version < remote_apps::mojom::RemoteApps::MethodMinVersions::
-                              kSetPinnedAppsMinVersion) {
-    std::move(callback).Run(kErrorSetPinnedAppsNotAvailable);
-    return;
-  }
-
-  ash_remote_apps_remote_->SetPinnedApps(app_ids, std::move(callback));
-}
-
-uint32_t RemoteAppsProxyLacros::AshRemoteAppsVersionForTests() const {
-  // This implementation assumes that `ash_remote_apps_remote_.QueryVersion` was
-  // called before because by default `mojo::Remote` has its version set to 0.
-  CHECK(is_ash_remote_apps_remote_version_known_);
-  return ash_remote_apps_remote_.version();
 }
 
 }  // namespace chromeos

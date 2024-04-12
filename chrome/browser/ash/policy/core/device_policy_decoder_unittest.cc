@@ -5,22 +5,16 @@
 #include "chrome/browser/ash/policy/core/device_policy_decoder.h"
 
 #include <memory>
-#include <vector>
 
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/time/time.h"
 #include "base/values.h"
 #include "chrome/browser/ash/policy/core/device_local_account.h"
-#include "chromeos/ash/components/policy/weekly_time/weekly_time.h"
-#include "chromeos/ash/components/policy/weekly_time/weekly_time_interval.h"
 #include "chromeos/ash/components/settings/cros_settings_names.h"
 #include "components/policy/core/common/policy_bundle.h"
 #include "components/policy/policy_constants.h"
 #include "components/policy/proto/chrome_device_policy.pb.h"
 #include "components/strings/grit/components_strings.h"
-#include "policy_common_definitions.pb.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/l10n/l10n_util.h"
 
@@ -65,29 +59,6 @@ constexpr char kInvalidBluetoothServiceUUIDList[] = "[\"wrong-uuid\"]";
 
 constexpr char kDeviceLocalAccountKioskAccountId[] = "kiosk_account_id";
 
-constexpr char kValidDeviceWeeklyScheduledSuspendList[] = R"([
-    {
-      "start": {
-        "day_of_week": "MONDAY",
-        "time": 64800000
-      },
-      "end": {
-        "day_of_week": "TUESDAY",
-        "time": 28800000
-      }
-    },
-    {
-      "start": {
-        "day_of_week": "FRIDAY",
-        "time": 75600000
-      },
-      "end": {
-        "day_of_week": "MONDAY",
-        "time": 25200000
-      }
-    }
-])";
-
 }  // namespace
 
 class DevicePolicyDecoderTest : public testing::Test {
@@ -102,7 +73,6 @@ class DevicePolicyDecoderTest : public testing::Test {
  protected:
   base::Value GetWallpaperDict() const;
   base::Value GetBluetoothServiceAllowedList() const;
-  std::vector<WeeklyTimeInterval> GetDeviceWeeklyScheduledSuspendList() const;
   void DecodeDevicePolicyTestHelper(
       const em::ChromeDeviceSettingsProto& device_policy,
       const std::string& policy_path,
@@ -113,34 +83,18 @@ class DevicePolicyDecoderTest : public testing::Test {
 };
 
 base::Value DevicePolicyDecoderTest::GetWallpaperDict() const {
-  return base::Value(
-      base::Value::Dict()
-          .Set(kWallpaperUrlPropertyName, kWallpaperUrlPropertyValue)
-          .Set(kWallpaperHashPropertyName, kWallpaperHashPropertyValue));
+  base::Value::Dict dict;
+  dict.Set(kWallpaperUrlPropertyName, kWallpaperUrlPropertyValue);
+  dict.Set(kWallpaperHashPropertyName, kWallpaperHashPropertyValue);
+  return base::Value(std::move(dict));
 }
 
 base::Value DevicePolicyDecoderTest::GetBluetoothServiceAllowedList() const {
-  return base::Value(base::Value::List()
-                         .Append(kValidBluetoothServiceUUID4)
-                         .Append(kValidBluetoothServiceUUID8)
-                         .Append(kValidBluetoothServiceUUID32));
-}
-
-std::vector<WeeklyTimeInterval>
-DevicePolicyDecoderTest::GetDeviceWeeklyScheduledSuspendList() const {
-  using time_proto = em::WeeklyTimeProto;
-  std::vector<WeeklyTimeInterval> ret;
-  ret.emplace_back(
-      WeeklyTime(time_proto::MONDAY, base::Hours(18).InMilliseconds(),
-                 /*timezone_offset=*/std::nullopt),
-      WeeklyTime(time_proto::TUESDAY, base::Hours(8).InMilliseconds(),
-                 /*timezone_offset=*/std::nullopt));
-  ret.emplace_back(
-      WeeklyTime(time_proto::FRIDAY, base::Hours(21).InMilliseconds(),
-                 /*timezone_offset=*/std::nullopt),
-      WeeklyTime(time_proto::MONDAY, base::Hours(7).InMilliseconds(),
-                 /*timezone_offset=*/std::nullopt));
-  return ret;
+  base::Value::List list;
+  list.Append(kValidBluetoothServiceUUID4);
+  list.Append(kValidBluetoothServiceUUID8);
+  list.Append(kValidBluetoothServiceUUID32);
+  return base::Value(std::move(list));
 }
 
 void DevicePolicyDecoderTest::DecodeDevicePolicyTestHelper(
@@ -177,13 +131,15 @@ void DevicePolicyDecoderTest::DecodeUnsetDevicePolicyTestHelper(
 
 TEST_F(DevicePolicyDecoderTest, DecodeJsonStringAndNormalizeJSONParseError) {
   std::string error;
-  std::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
+  absl::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
       kInvalidJson, key::kDeviceWallpaperImage, &error);
   std::string localized_error = l10n_util::GetStringFUTF8(
       IDS_POLICY_PROTO_PARSING_ERROR, base::UTF8ToUTF16(error));
   EXPECT_FALSE(decoded_json.has_value());
-  EXPECT_NE(std::string::npos,
-            localized_error.find("Policy parsing error: Invalid JSON string"));
+  EXPECT_NE(
+      std::string::npos,
+      localized_error.find(
+          "Policy parsing error: Invalid JSON string: Line: 1, column: 14,"));
 }
 
 #if GTEST_HAS_DEATH_TEST
@@ -197,7 +153,7 @@ TEST_F(DevicePolicyDecoderTest, DecodeJsonStringAndNormalizeInvalidSchema) {
 
 TEST_F(DevicePolicyDecoderTest, DecodeJsonStringAndNormalizeInvalidValue) {
   std::string error;
-  std::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
+  absl::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
       kWallpaperJsonInvalidValue, key::kDeviceWallpaperImage, &error);
   EXPECT_FALSE(decoded_json.has_value());
   std::string localized_error = l10n_util::GetStringFUTF8(
@@ -211,7 +167,7 @@ TEST_F(DevicePolicyDecoderTest, DecodeJsonStringAndNormalizeInvalidValue) {
 
 TEST_F(DevicePolicyDecoderTest, DecodeJsonStringAndNormalizeUnknownProperty) {
   std::string error;
-  std::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
+  absl::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
       kWallpaperJsonUnknownProperty, key::kDeviceWallpaperImage, &error);
   std::string localized_error = l10n_util::GetStringFUTF8(
       IDS_POLICY_PROTO_PARSING_ERROR, base::UTF8ToUTF16(error));
@@ -224,7 +180,7 @@ TEST_F(DevicePolicyDecoderTest, DecodeJsonStringAndNormalizeUnknownProperty) {
 
 TEST_F(DevicePolicyDecoderTest, DecodeJsonStringAndNormalizeSuccess) {
   std::string error;
-  std::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
+  absl::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
       kWallpaperJson, key::kDeviceWallpaperImage, &error);
   EXPECT_EQ(GetWallpaperDict(), decoded_json.value());
   EXPECT_TRUE(error.empty());
@@ -337,23 +293,6 @@ TEST_F(DevicePolicyDecoderTest, ReportDeviceAudioStatusCheckingRateMs) {
                                key::kReportDeviceAudioStatusCheckingRateMs,
                                std::move(event_checking_rate_ms_value));
 }
-
-TEST_F(DevicePolicyDecoderTest, DeviceReportRuntimeCountersCheckingRateMs) {
-  em::ChromeDeviceSettingsProto device_policy;
-
-  DecodeUnsetDevicePolicyTestHelper(
-      device_policy, key::kDeviceReportRuntimeCountersCheckingRateMs);
-
-  base::Value event_checking_rate_ms_value(90000000);
-  device_policy.mutable_device_reporting()
-      ->set_device_report_runtime_counters_checking_rate_ms(
-          event_checking_rate_ms_value.GetInt());
-
-  DecodeDevicePolicyTestHelper(device_policy,
-                               key::kDeviceReportRuntimeCountersCheckingRateMs,
-                               std::move(event_checking_rate_ms_value));
-}
-
 TEST_F(DevicePolicyDecoderTest, ReportDevicePeripherals) {
   em::ChromeDeviceSettingsProto device_policy;
 
@@ -380,20 +319,6 @@ TEST_F(DevicePolicyDecoderTest, ReportDeviceAudioStatus) {
 
   DecodeDevicePolicyTestHelper(device_policy, key::kReportDeviceAudioStatus,
                                std::move(report_audio_status_value));
-}
-
-TEST_F(DevicePolicyDecoderTest, DeviceReportRuntimeCounters) {
-  em::ChromeDeviceSettingsProto device_policy;
-
-  DecodeUnsetDevicePolicyTestHelper(device_policy,
-                                    key::kDeviceReportRuntimeCounters);
-
-  base::Value report_runtime_counters_value(true);
-  device_policy.mutable_device_reporting()->set_report_runtime_counters(
-      report_runtime_counters_value.GetBool());
-
-  DecodeDevicePolicyTestHelper(device_policy, key::kDeviceReportRuntimeCounters,
-                               std::move(report_runtime_counters_value));
 }
 
 TEST_F(DevicePolicyDecoderTest, ReportDeviceSecurityStatus) {
@@ -460,8 +385,9 @@ TEST_F(DevicePolicyDecoderTest,
   DecodeUnsetDevicePolicyTestHelper(
       device_policy, key::kReportDeviceSignalStrengthEventDrivenTelemetry);
 
-  auto signal_strength_telemetry_list =
-      base::Value::List().Append("network_telemetry").Append("https_latency");
+  base::Value::List signal_strength_telemetry_list;
+  signal_strength_telemetry_list.Append("network_telemetry");
+  signal_strength_telemetry_list.Append("https_latency");
   device_policy.mutable_device_reporting()
       ->mutable_report_signal_strength_event_driven_telemetry()
       ->add_entries("network_telemetry");
@@ -490,7 +416,7 @@ TEST_F(DevicePolicyDecoderTest, DeviceReportNetworkEvents) {
 
 TEST_F(DevicePolicyDecoderTest, DecodeServiceUUIDListSuccess) {
   std::string error;
-  std::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
+  absl::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
       kValidBluetoothServiceUUIDList, key::kDeviceAllowedBluetoothServices,
       &error);
   EXPECT_EQ(GetBluetoothServiceAllowedList(), decoded_json.value());
@@ -499,7 +425,7 @@ TEST_F(DevicePolicyDecoderTest, DecodeServiceUUIDListSuccess) {
 
 TEST_F(DevicePolicyDecoderTest, DecodeServiceUUIDListError) {
   std::string error;
-  std::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
+  absl::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
       kInvalidBluetoothServiceUUIDList, key::kDeviceAllowedBluetoothServices,
       &error);
   EXPECT_FALSE(decoded_json.has_value());
@@ -649,172 +575,6 @@ TEST_F(DevicePolicyDecoderTest,
               .Set(ash::kAccountsPrefDeviceLocalAccountsKeyEphemeralMode,
                    static_cast<int>(
                        DeviceLocalAccount::EphemeralMode::kDisable)))));
-}
-
-TEST_F(DevicePolicyDecoderTest, DeviceLowBatterySoundEnabled) {
-  em::ChromeDeviceSettingsProto device_policy;
-
-  DecodeUnsetDevicePolicyTestHelper(device_policy,
-                                    key::kDeviceLowBatterySoundEnabled);
-
-  base::Value device_low_battery_sound_enabled_value(true);
-  device_policy.mutable_device_low_battery_sound()->set_enabled(
-      device_low_battery_sound_enabled_value.GetBool());
-
-  DecodeDevicePolicyTestHelper(
-      device_policy, key::kDeviceLowBatterySoundEnabled,
-      std::move(device_low_battery_sound_enabled_value));
-}
-
-TEST_F(DevicePolicyDecoderTest, DeviceChargingSoundsEnabled) {
-  em::ChromeDeviceSettingsProto device_policy;
-
-  DecodeUnsetDevicePolicyTestHelper(device_policy,
-                                    key::kDeviceChargingSoundsEnabled);
-
-  base::Value device_charging_sounds_enabled_value(true);
-  device_policy.mutable_device_charging_sounds()->set_enabled(
-      device_charging_sounds_enabled_value.GetBool());
-
-  DecodeDevicePolicyTestHelper(device_policy, key::kDeviceChargingSoundsEnabled,
-                               std::move(device_charging_sounds_enabled_value));
-}
-
-TEST_F(DevicePolicyDecoderTest, DecodeDeviceAuthenticationURLBlocklist) {
-  em::ChromeDeviceSettingsProto device_policy;
-
-  DecodeUnsetDevicePolicyTestHelper(device_policy,
-                                    key::kDeviceAuthenticationURLBlocklist);
-
-  em::StringList* blocklist =
-      device_policy.mutable_device_authentication_url_blocklist()
-          ->mutable_value();
-
-  auto blocklist_items =
-      base::Value::List().Append("example.com").Append("*.example.com");
-
-  for (auto& item : blocklist_items) {
-    blocklist->add_entries(item.GetString());
-  }
-
-  DecodeDevicePolicyTestHelper(device_policy,
-                               key::kDeviceAuthenticationURLBlocklist,
-                               base::Value(std::move(blocklist_items)));
-}
-
-TEST_F(DevicePolicyDecoderTest, DecodeDeviceAuthenticationURLAllowlist) {
-  em::ChromeDeviceSettingsProto device_policy;
-
-  DecodeUnsetDevicePolicyTestHelper(device_policy,
-                                    key::kDeviceAuthenticationURLAllowlist);
-
-  em::StringList* allowlist =
-      device_policy.mutable_device_authentication_url_allowlist()
-          ->mutable_value();
-
-  auto allowlist_items = base::Value::List()
-                             .Append("allow.example.com")
-                             .Append("*.allow.example.com");
-
-  for (auto& item : allowlist_items) {
-    allowlist->add_entries(item.GetString());
-  }
-
-  DecodeDevicePolicyTestHelper(device_policy,
-                               key::kDeviceAuthenticationURLAllowlist,
-                               base::Value(std::move(allowlist_items)));
-}
-
-TEST_F(DevicePolicyDecoderTest, DeviceSwitchFunctionKeysBehaviorEnabled) {
-  em::ChromeDeviceSettingsProto device_policy;
-
-  DecodeUnsetDevicePolicyTestHelper(
-      device_policy, key::kDeviceSwitchFunctionKeysBehaviorEnabled);
-
-  base::Value device_switch_function_keys_behavior_enabled(true);
-  device_policy.mutable_device_switch_function_keys_behavior_enabled()
-      ->set_enabled(device_switch_function_keys_behavior_enabled.GetBool());
-
-  DecodeDevicePolicyTestHelper(
-      device_policy, key::kDeviceSwitchFunctionKeysBehaviorEnabled,
-      std::move(device_switch_function_keys_behavior_enabled));
-}
-
-TEST_F(DevicePolicyDecoderTest, DeviceEphemeralNetworkPoliciesEnabled) {
-  em::ChromeDeviceSettingsProto device_policy;
-
-  DecodeUnsetDevicePolicyTestHelper(
-      device_policy, key::kDeviceEphemeralNetworkPoliciesEnabled);
-
-  device_policy.mutable_device_ephemeral_network_policies_enabled()->set_value(
-      true);
-
-  DecodeDevicePolicyTestHelper(device_policy,
-                               key::kDeviceEphemeralNetworkPoliciesEnabled,
-                               /*expected_value=*/base::Value(true));
-}
-
-TEST_F(DevicePolicyDecoderTest, DeviceLoginScreenTouchVirtualKeyboardPolicy) {
-  em::ChromeDeviceSettingsProto device_policy;
-
-  DecodeUnsetDevicePolicyTestHelper(device_policy,
-                                    key::kTouchVirtualKeyboardEnabled);
-
-  device_policy.mutable_deviceloginscreentouchvirtualkeyboardenabled()
-      ->set_value(true);
-
-  DecodeDevicePolicyTestHelper(device_policy, key::kTouchVirtualKeyboardEnabled,
-                               base::Value(true));
-}
-
-TEST_F(DevicePolicyDecoderTest, DeviceExtendedAutoUpdateEnabled) {
-  em::ChromeDeviceSettingsProto device_policy;
-
-  DecodeUnsetDevicePolicyTestHelper(device_policy,
-                                    key::kDeviceExtendedAutoUpdateEnabled);
-
-  base::Value deviceextendedautoupdateenabled(true);
-  device_policy.mutable_deviceextendedautoupdateenabled()->set_value(
-      deviceextendedautoupdateenabled.GetBool());
-
-  DecodeDevicePolicyTestHelper(device_policy,
-                               key::kDeviceExtendedAutoUpdateEnabled,
-                               std::move(deviceextendedautoupdateenabled));
-}
-
-TEST_F(DevicePolicyDecoderTest, DecodeDeviceWeeklyScheduledSuspendSuccess) {
-  std::string error;
-  std::optional<base::Value> decoded_json =
-      DecodeJsonStringAndNormalize(kValidDeviceWeeklyScheduledSuspendList,
-                                   key::kDeviceWeeklyScheduledSuspend, &error);
-  ASSERT_TRUE(decoded_json.has_value());
-  ASSERT_TRUE(decoded_json->is_list());
-
-  std::vector<WeeklyTimeInterval> actual_list;
-  for (const auto& item : decoded_json->GetList()) {
-    ASSERT_TRUE(item.is_dict());
-    std::unique_ptr<WeeklyTimeInterval> interval =
-        WeeklyTimeInterval::ExtractFromDict(item.GetDict(),
-                                            /*timezone_offset=*/std::nullopt);
-    ASSERT_TRUE(interval);
-    actual_list.emplace_back(std::move(*interval));
-  }
-
-  EXPECT_EQ(GetDeviceWeeklyScheduledSuspendList(), actual_list);
-  EXPECT_THAT(error, ::testing::IsEmpty());
-}
-
-TEST_F(DevicePolicyDecoderTest,
-       DecodeDeviceWeeklyScheduledSuspendInvalidJsonError) {
-  std::string error;
-  std::optional<base::Value> decoded_json = DecodeJsonStringAndNormalize(
-      kInvalidJson, key::kDeviceWeeklyScheduledSuspend, &error);
-  EXPECT_FALSE(decoded_json.has_value());
-  std::string localized_error = l10n_util::GetStringFUTF8(
-      IDS_POLICY_PROTO_PARSING_ERROR, base::UTF8ToUTF16(error));
-  EXPECT_THAT(
-      localized_error,
-      ::testing::HasSubstr("Policy parsing error: Invalid JSON string"));
 }
 
 }  // namespace policy

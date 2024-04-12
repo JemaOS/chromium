@@ -31,11 +31,9 @@ n * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_FRAME_FETCH_CONTEXT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_FRAME_FETCH_CONTEXT_H_
 
-#include <optional>
-
 #include "base/task/single_thread_task_runner.h"
-#include "base/types/optional_ref.h"
 #include "services/network/public/mojom/web_client_hints_types.mojom-blink-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/subresource_load_metrics.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink-forward.h"
@@ -68,6 +66,17 @@ class WebContentSettingsClient;
 class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
                                             public LoadingBehaviorObserver {
  public:
+  // Returns true if execution of scripts from the url are allowed. Compared to
+  // AllowScriptFromSource(), this method does not generate any
+  // notification to the `WebContentSettingsClient` that the execution of the
+  // script was blocked. This method should be called only when there is a need
+  // to check the settings, and where blocked setting doesn't really imply that
+  // JavaScript was blocked from being executed.
+  static bool AllowScriptFromSourceWithoutNotifying(
+      const KURL& url,
+      WebContentSettingsClient* settings_client,
+      Settings* settings);
+
   static ResourceFetcher* CreateFetcherForCommittedDocument(DocumentLoader&,
                                                             Document&);
   FrameFetchContext(DocumentLoader& document_loader,
@@ -75,13 +84,14 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
                     const DetachableResourceFetcherProperties&);
   ~FrameFetchContext() override = default;
 
-  std::optional<ResourceRequestBlockedReason> CanRequest(
+  void AddAdditionalRequestHeaders(ResourceRequest&) override;
+  absl::optional<ResourceRequestBlockedReason> CanRequest(
       ResourceType type,
       const ResourceRequest& resource_request,
       const KURL& url,
       const ResourceLoaderOptions& options,
       ReportingDisposition reporting_disposition,
-      base::optional_ref<const ResourceRequest::RedirectInfo> redirect_info)
+      const absl::optional<ResourceRequest::RedirectInfo>& redirect_info)
       const override;
   mojom::FetchCacheMode ResourceRequestCachePolicy(
       const ResourceRequest&,
@@ -94,20 +104,18 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
 
   void AddResourceTiming(mojom::blink::ResourceTimingInfoPtr,
                          const AtomicString& initiator_type) override;
-  bool AllowImage() const override;
+  bool AllowImage(bool images_enabled, const KURL&) const override;
 
   void PopulateResourceRequest(ResourceType,
-                               const std::optional<float> resource_width,
+                               const absl::optional<float> resource_width,
                                ResourceRequest&,
                                const ResourceLoaderOptions&) override;
 
   bool IsPrerendering() const override;
 
-  bool DoesLCPPHaveAnyHintData() override;
-
   // Exposed for testing.
   void ModifyRequestForCSP(ResourceRequest&);
-  void AddClientHintsIfNecessary(const std::optional<float> resource_width,
+  void AddClientHintsIfNecessary(const absl::optional<float> resource_width,
                                  ResourceRequest&);
 
   void AddReducedAcceptLanguageIfNecessary(ResourceRequest&);
@@ -118,7 +126,7 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
 
   bool CalculateIfAdSubresource(
       const ResourceRequestHead& resource_request,
-      base::optional_ref<const KURL> alias_url,
+      const absl::optional<KURL>& alias_url,
       ResourceType type,
       const FetchInitiatorInfo& initiator_info) override;
 
@@ -135,8 +143,6 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
   void UpdateSubresourceLoadMetrics(
       const SubresourceLoadMetrics& subresource_load_metrics) override;
 
-  scoped_refptr<const SecurityOrigin> GetTopFrameOrigin() const override;
-
  private:
   friend class FrameFetchContextTest;
 
@@ -151,8 +157,9 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
 
   // BaseFetchContext overrides:
   net::SiteForCookies GetSiteForCookies() const override;
+  scoped_refptr<const SecurityOrigin> GetTopFrameOrigin() const override;
   SubresourceFilter* GetSubresourceFilter() const override;
-  bool AllowScript() const override;
+  bool AllowScriptFromSource(const KURL&) const override;
   bool ShouldBlockRequestByInspector(const KURL&) const override;
   void DispatchDidBlockRequest(const ResourceRequest&,
                                const ResourceLoaderOptions&,
@@ -169,10 +176,10 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
   bool ShouldBlockFetchByMixedContentCheck(
       mojom::blink::RequestContextType request_context,
       network::mojom::blink::IPAddressSpace target_address_space,
-      base::optional_ref<const ResourceRequest::RedirectInfo> redirect_info,
+      const absl::optional<ResourceRequest::RedirectInfo>& redirect_info,
       const KURL& url,
       ReportingDisposition reporting_disposition,
-      const String& devtools_id) const override;
+      const absl::optional<String>& devtools_id) const override;
   bool ShouldBlockFetchAsCredentialedSubresource(const ResourceRequest&,
                                                  const KURL&) const override;
 
@@ -182,7 +189,9 @@ class CORE_EXPORT FrameFetchContext final : public BaseFetchContext,
   WebContentSettingsClient* GetContentSettingsClient() const;
   Settings* GetSettings() const;
   String GetUserAgent() const;
-  std::optional<UserAgentMetadata> GetUserAgentMetadata() const;
+  String GetFullUserAgent() const;
+  String GetReducedUserAgent() const;
+  absl::optional<UserAgentMetadata> GetUserAgentMetadata() const;
   const PermissionsPolicy* GetPermissionsPolicy() const override;
   const ClientHintsPreferences GetClientHintsPreferences() const;
   float GetDevicePixelRatio() const;

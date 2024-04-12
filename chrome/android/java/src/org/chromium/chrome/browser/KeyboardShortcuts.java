@@ -11,7 +11,6 @@ import android.view.KeyboardShortcutInfo;
 
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
-import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -24,7 +23,9 @@ import org.chromium.device.gamepad.GamepadList;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Implements app-level keyboard shortcuts for ChromeTabbedActivity and DocumentActivity. */
+/**
+ * Implements app-level keyboard shortcuts for ChromeTabbedActivity and DocumentActivity.
+ */
 public class KeyboardShortcuts {
 
     private static final int CTRL = 1 << 31;
@@ -53,9 +54,7 @@ public class KeyboardShortcuts {
      * @return True if the event was handled. False if the event was ignored. Null if the event
      *         should be handled by the activity's parent class.
      */
-    public static Boolean dispatchKeyEvent(
-            KeyEvent event,
-            boolean uiInitialized,
+    public static Boolean dispatchKeyEvent(KeyEvent event, boolean uiInitialized,
             FullscreenManager fullscreenManager,
             MenuOrKeyboardActionController menuOrKeyboardActionController) {
         int keyCode = event.getKeyCode();
@@ -124,152 +123,63 @@ public class KeyboardShortcuts {
 
         List<KeyboardShortcutGroup> shortcutGroups = new ArrayList<>();
 
-        KeyboardShortcutGroup tabShortcutGroup =
-                new KeyboardShortcutGroup(
-                        context.getString(R.string.keyboard_shortcut_tab_group_header));
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_open_new_tab,
-                KeyEvent.KEYCODE_T,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_open_new_window,
-                KeyEvent.KEYCODE_N,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_reopen_new_tab,
-                KeyEvent.KEYCODE_T,
-                ctrlShift);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_new_incognito_tab,
-                KeyEvent.KEYCODE_N,
-                ctrlShift);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_next_tab,
-                KeyEvent.KEYCODE_TAB,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_prev_tab,
-                KeyEvent.KEYCODE_TAB,
-                ctrlShift);
-        addShortcut(
-                context,
-                tabShortcutGroup,
-                R.string.keyboard_shortcut_close_tab,
-                KeyEvent.KEYCODE_W,
-                KeyEvent.META_CTRL_ON);
+        KeyboardShortcutGroup tabShortcutGroup = new KeyboardShortcutGroup(
+                context.getString(R.string.keyboard_shortcut_tab_group_header));
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_open_new_tab,
+                KeyEvent.KEYCODE_N, KeyEvent.META_CTRL_ON);
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_reopen_new_tab,
+                KeyEvent.KEYCODE_T, ctrlShift);
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_new_incognito_tab,
+                KeyEvent.KEYCODE_N, ctrlShift);
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_next_tab,
+                KeyEvent.KEYCODE_TAB, KeyEvent.META_CTRL_ON);
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_prev_tab,
+                KeyEvent.KEYCODE_TAB, ctrlShift);
+        addShortcut(context, tabShortcutGroup, R.string.keyboard_shortcut_close_tab,
+                KeyEvent.KEYCODE_W, KeyEvent.META_CTRL_ON);
         shortcutGroups.add(tabShortcutGroup);
 
-        KeyboardShortcutGroup chromeFeatureShortcutGroup =
-                new KeyboardShortcutGroup(
-                        context.getString(R.string.keyboard_shortcut_chrome_feature_group_header));
-        addShortcut(
-                context,
-                chromeFeatureShortcutGroup,
-                R.string.keyboard_shortcut_open_menu,
-                KeyEvent.KEYCODE_E,
-                KeyEvent.META_ALT_ON);
-        addShortcut(
-                context,
-                chromeFeatureShortcutGroup,
-                R.string.keyboard_shortcut_bookmark_manager,
-                KeyEvent.KEYCODE_B,
-                ctrlShift);
-        addShortcut(
-                context,
-                chromeFeatureShortcutGroup,
-                R.string.keyboard_shortcut_history_manager,
-                KeyEvent.KEYCODE_H,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                chromeFeatureShortcutGroup,
-                R.string.keyboard_shortcut_find_bar,
-                KeyEvent.KEYCODE_F,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                chromeFeatureShortcutGroup,
-                R.string.keyboard_shortcut_address_bar,
-                KeyEvent.KEYCODE_L,
-                KeyEvent.META_CTRL_ON);
+        KeyboardShortcutGroup chromeFeatureShortcutGroup = new KeyboardShortcutGroup(
+                context.getString(R.string.keyboard_shortcut_chrome_feature_group_header));
+        addShortcut(context, chromeFeatureShortcutGroup, R.string.keyboard_shortcut_open_menu,
+                KeyEvent.KEYCODE_E, KeyEvent.META_ALT_ON);
+        addShortcut(context, chromeFeatureShortcutGroup,
+                R.string.keyboard_shortcut_bookmark_manager, KeyEvent.KEYCODE_B, ctrlShift);
+        addShortcut(context, chromeFeatureShortcutGroup, R.string.keyboard_shortcut_history_manager,
+                KeyEvent.KEYCODE_H, KeyEvent.META_CTRL_ON);
+        addShortcut(context, chromeFeatureShortcutGroup, R.string.keyboard_shortcut_find_bar,
+                KeyEvent.KEYCODE_F, KeyEvent.META_CTRL_ON);
+        addShortcut(context, chromeFeatureShortcutGroup, R.string.keyboard_shortcut_address_bar,
+                KeyEvent.KEYCODE_L, KeyEvent.META_CTRL_ON);
         shortcutGroups.add(chromeFeatureShortcutGroup);
 
-        KeyboardShortcutGroup webpageShortcutGroup =
-                new KeyboardShortcutGroup(
-                        context.getString(R.string.keyboard_shortcut_webpage_group_header));
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_print_page,
-                KeyEvent.KEYCODE_P,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_reload_page,
-                KeyEvent.KEYCODE_R,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_reload_no_cache,
-                KeyEvent.KEYCODE_R,
-                ctrlShift);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_bookmark_page,
-                KeyEvent.KEYCODE_D,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_zoom_in,
-                KeyEvent.KEYCODE_EQUALS,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_zoom_out,
-                KeyEvent.KEYCODE_MINUS,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_reset_zoom,
-                KeyEvent.KEYCODE_0,
-                KeyEvent.META_CTRL_ON);
-        addShortcut(
-                context,
-                webpageShortcutGroup,
-                R.string.keyboard_shortcut_help_center,
-                KeyEvent.KEYCODE_SLASH,
-                ctrlShift);
+        KeyboardShortcutGroup webpageShortcutGroup = new KeyboardShortcutGroup(
+                context.getString(R.string.keyboard_shortcut_webpage_group_header));
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_print_page,
+                KeyEvent.KEYCODE_P, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_reload_page,
+                KeyEvent.KEYCODE_R, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_reload_no_cache,
+                KeyEvent.KEYCODE_R, ctrlShift);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_bookmark_page,
+                KeyEvent.KEYCODE_D, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_zoom_in,
+                KeyEvent.KEYCODE_EQUALS, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_zoom_out,
+                KeyEvent.KEYCODE_MINUS, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_reset_zoom,
+                KeyEvent.KEYCODE_0, KeyEvent.META_CTRL_ON);
+        addShortcut(context, webpageShortcutGroup, R.string.keyboard_shortcut_help_center,
+                KeyEvent.KEYCODE_SLASH, ctrlShift);
         shortcutGroups.add(webpageShortcutGroup);
 
         return shortcutGroups;
     }
 
-    private static void addShortcut(
-            Context context,
-            KeyboardShortcutGroup shortcutGroup,
-            int resId,
-            int keyCode,
-            int keyModifier) {
-        shortcutGroup.addItem(
-                new KeyboardShortcutInfo(context.getString(resId), keyCode, keyModifier));
+    private static void addShortcut(Context context, KeyboardShortcutGroup shortcutGroup, int resId,
+            int keyCode, int keyModifier) {
+        shortcutGroup.addItem(new KeyboardShortcutInfo(context.getString(resId), keyCode,
+                keyModifier));
     }
 
     /**
@@ -288,19 +198,15 @@ public class KeyboardShortcuts {
      * @param toolbarManager Manages the toolbar.
      * @return Whether the key event was handled.
      */
-    public static boolean onKeyDown(
-            KeyEvent event,
-            boolean isCurrentTabVisible,
-            boolean tabSwitchingEnabled,
-            TabModelSelector tabModelSelector,
+    public static boolean onKeyDown(KeyEvent event, boolean isCurrentTabVisible,
+            boolean tabSwitchingEnabled, TabModelSelector tabModelSelector,
             MenuOrKeyboardActionController menuOrKeyboardActionController,
             ToolbarManager toolbarManager) {
         int keyCode = event.getKeyCode();
         if (event.getRepeatCount() != 0 || KeyEvent.isModifierKey(keyCode)) return false;
         if (KeyEvent.isGamepadButton(keyCode)) {
             if (GamepadList.isGamepadAPIActive()) return false;
-        } else if (!event.isCtrlPressed()
-                && !event.isAltPressed()
+        } else if (!event.isCtrlPressed() && !event.isAltPressed()
                 && keyCode != KeyEvent.KEYCODE_F3
                 && keyCode != KeyEvent.KEYCODE_F5
                 && keyCode != KeyEvent.KEYCODE_F10
@@ -322,30 +228,21 @@ public class KeyboardShortcuts {
                         R.id.open_recently_closed_tab, false);
                 return true;
             case CTRL | KeyEvent.KEYCODE_T:
-                menuOrKeyboardActionController.onMenuOrKeyboardAction(
-                        currentTabModel.isIncognito()
+                menuOrKeyboardActionController.onMenuOrKeyboardAction(currentTabModel.isIncognito()
                                 ? R.id.new_incognito_tab_menu_id
                                 : R.id.new_tab_menu_id,
                         false);
                 return true;
             case CTRL | KeyEvent.KEYCODE_N:
-                if (MultiWindowUtils.isMultiInstanceApi31Enabled()) {
-                    menuOrKeyboardActionController.onMenuOrKeyboardAction(
-                            R.id.new_window_menu_id, false);
-                    return true;
-                } else {
-                    break;
-                }
-            case CTRL | KeyEvent.KEYCODE_S:
-                menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.offline_page_id, false);
+                menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.new_tab_menu_id, false);
                 return true;
             case CTRL | SHIFT | KeyEvent.KEYCODE_N:
                 menuOrKeyboardActionController.onMenuOrKeyboardAction(
                         R.id.new_incognito_tab_menu_id, false);
                 return true;
-                // Alt+E represents a special character ´ (latin code: &#180) in Android.
-                // If an EditText or ContentView has focus, Alt+E will be swallowed by
-                // the default dispatchKeyEvent and cannot open the menu.
+            // Alt+E represents a special character ´ (latin code: &#180) in Android.
+            // If an EditText or ContentView has focus, Alt+E will be swallowed by
+            // the default dispatchKeyEvent and cannot open the menu.
             case ALT | KeyEvent.KEYCODE_E:
             case ALT | KeyEvent.KEYCODE_F:
             case KeyEvent.KEYCODE_F10:
@@ -381,10 +278,8 @@ public class KeyboardShortcuts {
                 case CTRL | KeyEvent.KEYCODE_PAGE_UP:
                 case KeyEvent.KEYCODE_BUTTON_L1:
                     if (tabSwitchingEnabled && tabCount > 1) {
-                        TabModelUtils.setIndex(
-                                currentTabModel,
-                                (currentTabModel.index() + tabCount - 1) % tabCount,
-                                false);
+                        TabModelUtils.setIndex(currentTabModel,
+                                (currentTabModel.index() + tabCount - 1) % tabCount, false);
                     }
                     return true;
                 case CTRL | KeyEvent.KEYCODE_W:
@@ -447,8 +342,7 @@ public class KeyboardShortcuts {
                             currentTab.reload();
                         }
 
-                        if (toolbarManager != null
-                                && currentWebContents != null
+                        if (toolbarManager != null && currentWebContents != null
                                 && currentWebContents.focusLocationBarByDefault()) {
                             toolbarManager.revertLocationBarChanges();
                         } else if (currentTab.getView() != null) {
@@ -464,7 +358,7 @@ public class KeyboardShortcuts {
                 case KeyEvent.KEYCODE_BUTTON_START:
                     if (currentTab != null && currentTab.canGoForward()) currentTab.goForward();
                     return true;
-                case CTRL | SHIFT | KeyEvent.KEYCODE_SLASH: // i.e. Ctrl+?
+                case CTRL | SHIFT | KeyEvent.KEYCODE_SLASH:  // i.e. Ctrl+?
                     menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.help_id, false);
                     return true;
             }

@@ -24,7 +24,8 @@ class PDFPluginPlaceholder final : public plugins::PluginPlaceholderBase,
 
  private:
   PDFPluginPlaceholder(content::RenderFrame* render_frame,
-                       const blink::WebPluginParams& params);
+                       const blink::WebPluginParams& params,
+                       const std::string& html_data);
   ~PDFPluginPlaceholder() final;
 
   // WebViewPlugin::Delegate methods:

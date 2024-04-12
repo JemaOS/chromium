@@ -12,7 +12,6 @@
 #include "base/strings/stringprintf.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
-#include "media/base/audio_glitch_info.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/modules/webrtc/webrtc_logging.h"
 #include "third_party/blink/public/platform/platform.h"
@@ -128,7 +127,7 @@ void* MediaStreamAudioSource::GetClassIdentifier() const {
 
 bool MediaStreamAudioSource::HasSameReconfigurableSettings(
     const blink::AudioProcessingProperties& selected_properties) const {
-  std::optional<blink::AudioProcessingProperties> configured_properties =
+  absl::optional<blink::AudioProcessingProperties> configured_properties =
       GetAudioProcessingProperties();
   if (!configured_properties)
     return false;
@@ -142,9 +141,9 @@ bool MediaStreamAudioSource::HasSameNonReconfigurableSettings(
   if (!other_source)
     return false;
 
-  std::optional<blink::AudioProcessingProperties> others_properties =
+  absl::optional<blink::AudioProcessingProperties> others_properties =
       other_source->GetAudioProcessingProperties();
-  std::optional<blink::AudioProcessingProperties> this_properties =
+  absl::optional<blink::AudioProcessingProperties> this_properties =
       GetAudioProcessingProperties();
 
   if (!others_properties || !this_properties)
@@ -200,9 +199,8 @@ void MediaStreamAudioSource::SetFormat(const media::AudioParameters& params) {
 
 void MediaStreamAudioSource::DeliverDataToTracks(
     const media::AudioBus& audio_bus,
-    base::TimeTicks reference_time,
-    const media::AudioGlitchInfo& glitch_info) {
-  deliverer_.OnData(audio_bus, reference_time, glitch_info);
+    base::TimeTicks reference_time) {
+  deliverer_.OnData(audio_bus, reference_time);
 }
 
 void MediaStreamAudioSource::DoStopSource() {

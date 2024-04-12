@@ -6,63 +6,67 @@ package org.chromium.chrome.browser.tab;
 
 import androidx.annotation.Nullable;
 
-import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.tab.state.CriticalPersistedTabData;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.url.GURL;
 
-/** Tab used for various testing purposes. */
+/**
+ * Tab used for various testing purposes.
+ */
 public class MockTab extends TabImpl {
     private GURL mGurlOverride;
-    private WebContents mWebContentsOverride;
     // TODO(crbug.com/1223963) set mIsInitialized to true when initialize is called
     private boolean mIsInitialized;
     private boolean mIsDestroyed;
     private boolean mIsBeingRestored;
 
-    private Boolean mCanGoBack;
-    private Boolean mCanGoForward;
-
-    private boolean mIsCustomTab;
-
-    private Long mTimestampMillis;
-    private Integer mParentId;
-
-    /** Create a new Tab for testing and initializes Tab UserData objects. */
-    public static MockTab createAndInitialize(int id, Profile profile) {
-        MockTab tab = new MockTab(id, profile);
+    /**
+     * Create a new Tab for testing and initializes Tab UserData objects.
+     */
+    public static Tab createAndInitialize(int id, boolean incognito) {
+        TabImpl tab = new MockTab(id, incognito);
         tab.initialize(null, null, null, null, null, false, null, false);
         return tab;
     }
 
-    /** Create a new Tab for testing and initializes Tab UserData objects. */
-    public static MockTab createAndInitialize(
-            int id, Profile profile, @TabLaunchType int tabLaunchType) {
-        MockTab tab = new MockTab(id, profile, tabLaunchType);
+    /**
+     * Create a new Tab for testing and initializes Tab UserData objects.
+     */
+    public static Tab createAndInitialize(
+            int id, boolean incognito, @TabLaunchType int tabLaunchType) {
+        TabImpl tab = new MockTab(id, incognito, tabLaunchType);
         tab.initialize(null, null, null, null, null, false, null, false);
         return tab;
     }
 
-    public MockTab(int id, Profile profile) {
-        this(id, profile, null);
+    public static TabImpl initializeWithCriticalPersistedTabData(
+            TabImpl tab, CriticalPersistedTabData criticalPersistedTabData) {
+        tab.getUserDataHost().setUserData(CriticalPersistedTabData.class, criticalPersistedTabData);
+        tab.initialize(null, null, null, null, null, false, null, false);
+        return tab;
     }
 
-    public MockTab(int id, Profile profile, @TabLaunchType Integer type) {
-        super(id, profile, type);
+    /**
+     * Constructor for id and incognito attribute. Tests often need to initialize
+     * these two fields only.
+     */
+    public MockTab(int id, boolean incognito) {
+        super(id, incognito, null, null);
+    }
+
+    public MockTab(int id, boolean incognito, @TabLaunchType Integer type) {
+        super(id, incognito, type, null);
     }
 
     @Override
-    public void initialize(
-            Tab parent,
-            @Nullable @TabCreationState Integer creationState,
-            LoadUrlParams loadUrlParams,
-            WebContents webContents,
-            @Nullable TabDelegateFactory delegateFactory,
-            boolean initiallyHidden,
-            TabState tabState,
-            boolean initializeRenderer) {
+    public void initialize(Tab parent, @Nullable @TabCreationState Integer creationState,
+            LoadUrlParams loadUrlParams, WebContents webContents,
+            @Nullable TabDelegateFactory delegateFactory, boolean initiallyHidden,
+            TabState tabState, boolean initializeRenderer) {
         if (loadUrlParams != null) {
             mGurlOverride = new GURL(loadUrlParams.getUrl());
+            CriticalPersistedTabData.from(this).setUrl(mGurlOverride);
         }
         TabHelpers.initTabHelpers(this, parent);
     }
@@ -75,31 +79,12 @@ public class MockTab extends TabImpl {
         return mGurlOverride;
     }
 
-    /**
-     * @param url The {@link GURL} to override with or null to remove the override.
-     */
-    public void setUrl(@Nullable GURL url) {
-        mGurlOverride = url;
-    }
-
     public void broadcastOnLoadStopped(boolean toDifferentDocument) {
         for (TabObserver observer : mObservers) observer.onLoadStopped(this, toDifferentDocument);
     }
 
     public void setGurlOverrideForTesting(GURL url) {
         mGurlOverride = url;
-    }
-
-    public void setWebContentsOverrideForTesting(WebContents webContents) {
-        mWebContentsOverride = webContents;
-    }
-
-    @Override
-    public WebContents getWebContents() {
-        if (mWebContentsOverride != null) {
-            return mWebContentsOverride;
-        }
-        return super.getWebContents();
     }
 
     @Override
@@ -116,10 +101,6 @@ public class MockTab extends TabImpl {
         mIsInitialized = isInitialized;
     }
 
-    public void setIsCustomTab(boolean isCustomTab) {
-        mIsCustomTab = isCustomTab;
-    }
-
     @Override
     public void destroy() {
         mIsDestroyed = true;
@@ -130,7 +111,7 @@ public class MockTab extends TabImpl {
 
     @Override
     public boolean isCustomTab() {
-        return mIsCustomTab;
+        return false;
     }
 
     @Override
@@ -140,68 +121,5 @@ public class MockTab extends TabImpl {
 
     public void setIsBeingRestored(boolean isBeingRestored) {
         mIsBeingRestored = isBeingRestored;
-    }
-
-    @Override
-    public long getTimestampMillis() {
-        if (mTimestampMillis == null) {
-            return super.getTimestampMillis();
-        }
-        return mTimestampMillis;
-    }
-
-    public void setTimestampMillis(long timestampMillis) {
-        mTimestampMillis = timestampMillis;
-    }
-
-    @Override
-    public int getParentId() {
-        if (mParentId == null) {
-            return super.getParentId();
-        }
-        return mParentId;
-    }
-
-    public void setParentId(int parentId) {
-        mParentId = parentId;
-    }
-
-    /**
-     * Overrides the {@link canGoBack} return value
-     *
-     * @param canGoBack The canGoBack return value or null to remove the override.
-     */
-    public void setCanGoBack(@Nullable Boolean canGoBack) {
-        mCanGoBack = canGoBack;
-    }
-
-    @Override
-    public boolean canGoBack() {
-        if (mCanGoBack != null) {
-            return mCanGoBack;
-        }
-        return super.canGoBack();
-    }
-
-    /**
-     * Overrides the {@link canGoForward} return value
-     *
-     * @param canGoForward The canGoForward return value or null to remove the override.
-     */
-    public void setCanGoForward(@Nullable Boolean canGoForward) {
-        mCanGoForward = canGoForward;
-    }
-
-    @Override
-    public boolean canGoForward() {
-        if (mCanGoForward != null) {
-            return mCanGoForward;
-        }
-        return super.canGoForward();
-    }
-
-    @Override
-    public void setTitle(String title) {
-        super.setTitle(title);
     }
 }

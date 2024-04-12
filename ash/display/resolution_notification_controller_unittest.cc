@@ -50,7 +50,7 @@ class ResolutionNotificationControllerTest
         base::Seconds(timeout_count));
     if (::display::features::IsListAllDisplayModesEnabled()) {
       return l10n_util::GetStringFUTF16(
-          IDS_ASH_RESOLUTION_REFRESH_CHANGE_DIALOG_CHANGED_NEW, display_name,
+          IDS_ASH_RESOLUTION_REFRESH_CHANGE_DIALOG_CHANGED, display_name,
           base::UTF8ToUTF16(new_resolution.ToString()),
           ConvertRefreshRateToString16(new_refresh_rate), countdown);
     }
@@ -73,11 +73,11 @@ class ResolutionNotificationControllerTest
         base::Seconds(timeout_count));
     if (::display::features::IsListAllDisplayModesEnabled()) {
       return l10n_util::GetStringFUTF16(
-          IDS_ASH_RESOLUTION_REFRESH_CHANGE_DIALOG_FALLBACK_NEW,
-          {display_name, base::UTF8ToUTF16(fallback_resolution.ToString()),
-           ConvertRefreshRateToString16(fallback_refresh_rate),
-           base::UTF8ToUTF16(specified_resolution.ToString()),
-           ConvertRefreshRateToString16(specified_refresh_rate), countdown},
+          IDS_ASH_RESOLUTION_REFRESH_CHANGE_DIALOG_FALLBACK,
+          {display_name, base::UTF8ToUTF16(specified_resolution.ToString()),
+           ConvertRefreshRateToString16(specified_refresh_rate),
+           base::UTF8ToUTF16(fallback_resolution.ToString()),
+           ConvertRefreshRateToString16(fallback_refresh_rate), countdown},
           /*offsets=*/nullptr);
     }
     return l10n_util::GetStringFUTF16(
@@ -463,7 +463,7 @@ TEST_P(ResolutionNotificationControllerTest, NoTimeoutInKioskMode) {
   // Login in as kiosk app.
   UserSession session;
   session.session_id = 1u;
-  session.user_info.type = user_manager::UserType::kKioskApp;
+  session.user_info.type = user_manager::USER_TYPE_KIOSK_APP;
   session.user_info.account_id = AccountId::FromUserEmail("user1@test.com");
   session.user_info.display_name = "User 1";
   session.user_info.display_email = "user1@test.com";
@@ -483,7 +483,7 @@ TEST_P(ResolutionNotificationControllerTest, NoDialogInKioskMode) {
   // Login in as kiosk app.
   UserSession session;
   session.session_id = 1u;
-  session.user_info.type = user_manager::UserType::kKioskApp;
+  session.user_info.type = user_manager::USER_TYPE_KIOSK_APP;
   session.user_info.account_id = AccountId::FromUserEmail("user1@test.com");
   session.user_info.display_name = "User 1";
   session.user_info.display_email = "user1@test.com";

@@ -34,7 +34,6 @@ class HTMLVideoElementMockMediaPlayer : public EmptyWebMediaPlayer {
   MOCK_METHOD1(SetIsEffectivelyFullscreen, void(WebFullscreenVideoStatus));
   MOCK_METHOD1(OnDisplayTypeChanged, void(DisplayType));
   MOCK_CONST_METHOD0(HasAvailableVideoFrame, bool());
-  MOCK_CONST_METHOD0(HasReadableVideoFrame, bool());
 };
 }  // namespace
 
@@ -74,7 +73,7 @@ TEST_P(HTMLVideoElementTest, PictureInPictureInterstitialAndTextContainer) {
   SetFakeCcLayer(layer.get());
 
   video()->SetBooleanAttribute(html_names::kControlsAttr, true);
-  video()->SetSrc(AtomicString("http://example.com/foo.mp4"));
+  video()->SetSrc("http://example.com/foo.mp4");
   test::RunPendingTasks();
 
   // Simulate the text track being displayed.
@@ -101,7 +100,7 @@ TEST_P(HTMLVideoElementTest, PictureInPictureInterstitial_Reattach) {
   SetFakeCcLayer(layer.get());
 
   video()->SetBooleanAttribute(html_names::kControlsAttr, true);
-  video()->SetSrc(AtomicString("http://example.com/foo.mp4"));
+  video()->SetSrc("http://example.com/foo.mp4");
   test::RunPendingTasks();
 
   EXPECT_CALL(*MockWebMediaPlayer(),
@@ -122,7 +121,7 @@ TEST_P(HTMLVideoElementTest, PictureInPictureInterstitial_Reattach) {
 }
 
 TEST_P(HTMLVideoElementTest, EffectivelyFullscreen_DisplayType) {
-  video()->SetSrc(AtomicString("http://example.com/foo.mp4"));
+  video()->SetSrc("http://example.com/foo.mp4");
   test::RunPendingTasks();
   UpdateAllLifecyclePhasesForTest();
 
@@ -155,7 +154,7 @@ TEST_P(HTMLVideoElementTest, EffectivelyFullscreen_DisplayType) {
 }
 
 TEST_P(HTMLVideoElementTest, ChangeLayerNeedsCompositingUpdate) {
-  video()->SetSrc(AtomicString("http://example.com/foo.mp4"));
+  video()->SetSrc("http://example.com/foo.mp4");
   test::RunPendingTasks();
   UpdateAllLifecyclePhasesForTest();
 
@@ -182,7 +181,7 @@ TEST_P(HTMLVideoElementTest, ChangeLayerNeedsCompositingUpdate) {
 }
 
 TEST_P(HTMLVideoElementTest, HasAvailableVideoFrameChecksWMP) {
-  video()->SetSrc(AtomicString("http://example.com/foo.mp4"));
+  video()->SetSrc("http://example.com/foo.mp4");
   test::RunPendingTasks();
   UpdateAllLifecyclePhasesForTest();
 
@@ -194,7 +193,7 @@ TEST_P(HTMLVideoElementTest, HasAvailableVideoFrameChecksWMP) {
 }
 
 TEST_P(HTMLVideoElementTest, AutoPIPExitPIPTest) {
-  video()->SetSrc(AtomicString("http://example.com/foo.mp4"));
+  video()->SetSrc("http://example.com/foo.mp4");
   test::RunPendingTasks();
 
   // Set in auto PIP.
@@ -228,7 +227,7 @@ TEST_P(HTMLVideoElementTest, DefaultPosterImage) {
 
   // Set the poster image of the video to something
   video->setAttribute(html_names::kPosterAttr,
-                      AtomicString("http://www.example.com/bar.jpg"));
+                      "http://www.example.com/bar.jpg");
   EXPECT_FALSE(video->IsDefaultPosterImageURL());
   EXPECT_NE(kDefaultPosterImage, video->PosterImageURL());
 }

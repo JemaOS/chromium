@@ -19,8 +19,7 @@
 #include "chrome/browser/ash/arc/session/arc_provisioning_result.h"
 #include "chrome/browser/ash/login/demo_mode/demo_session.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
-#include "components/user_manager/user_manager.h"
+#include "chrome/browser/profiles/profile_manager.h"
 
 // Enable VLOG level 1.
 #undef ENABLED_VLOG_LEVEL
@@ -60,25 +59,14 @@ ArcEnabledState ComputeEnabledState(bool enabled, const Profile* profile) {
 }  // namespace
 
 void UpdateEnabledStateByUserTypeUMA() {
-  auto* primary_user = user_manager::UserManager::Get()->GetPrimaryUser();
-  // Don't record UMA if there is no primary user.
-  if (!primary_user) {
-    return;
-  }
+  const Profile* profile = ProfileManager::GetPrimaryUserProfile();
 
-  const Profile* profile = Profile::FromBrowserContext(
-      ash::BrowserContextHelper::Get()->GetBrowserContextByUser(primary_user));
-  // Don't record UMA if the primary user profile is not loaded.
-  if (!profile) {
+  // Don't record UMA if current primary user profile should be ignored in the
+  // first place, or we're currently in guest session.
+  if (!IsRealUserProfile(profile) || profile->IsGuestSession())
     return;
-  }
 
-  // Don't record UMA if we're currently in guest session.
-  if (profile->IsGuestSession()) {
-    return;
-  }
-
-  std::optional<bool> enabled_state;
+  absl::optional<bool> enabled_state;
   if (auto* stability_metrics_manager = StabilityMetricsManager::Get())
     enabled_state = stability_metrics_manager->GetArcEnabledState();
 
@@ -101,10 +89,6 @@ void UpdateOptInFlowResultUMA(OptInFlowResult result) {
 
 void UpdateOptInNetworkErrorActionUMA(OptInNetworkErrorActionType type) {
   base::UmaHistogramEnumeration("Arc.OptInNetworkErrorAction", type);
-}
-
-void UpdateOptinTosLoadResultUMA(bool success) {
-  base::UmaHistogramBoolean("Arc.OptinTosLoadResult", success);
 }
 
 void UpdateProvisioningStatusUMA(ProvisioningStatus status,

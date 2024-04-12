@@ -6,10 +6,10 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GEOMETRY_MATH_FUNCTIONS_H_
 
 #include <cfloat>
-#include <optional>
 #include <utility>
 
 #include "base/notreached.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace blink {
 
@@ -47,9 +47,9 @@ std::pair<ValueType, ValueType> GetNearestMultiples(ValueType a, ValueType b) {
 }
 
 template <class OperatorType, typename ValueType>
-std::optional<ValueType> PreCheckSteppedValueFunctionArguments(OperatorType op,
-                                                               ValueType a,
-                                                               ValueType b) {
+absl::optional<ValueType> PreCheckSteppedValueFunctionArguments(OperatorType op,
+                                                                ValueType a,
+                                                                ValueType b) {
   // In round(A, B), if B is 0, the result is NaN.
   // In mod(A, B) or rem(A, B), if B is 0, the result is NaN.
   // If A and B are both infinite, the result is NaN.
@@ -77,7 +77,7 @@ ValueType EvaluateSteppedValueFunction(OperatorType op,
                                        ValueType a,
                                        ValueType b) {
   // https://drafts.csswg.org/css-values/#round-infinities
-  std::optional<ValueType> pre_check =
+  absl::optional<ValueType> pre_check =
       PreCheckSteppedValueFunctionArguments(op, a, b);
   if (pre_check.has_value()) {
     return pre_check.value();
@@ -143,35 +143,27 @@ ValueType EvaluateSteppedValueFunction(OperatorType op,
       if (std::isinf(b) && std::signbit(a) != std::signbit(b)) {
         return std::numeric_limits<ValueType>::quiet_NaN();
       }
-      // If both arguments are positive or both are negative:
-      // the value of the function is equal to the value of A
-      // shifted by the integer multiple of B that brings
-      // the value between zero and B.
-      // If the A value and the B step are on opposite sides of zero:
-      // mod() (short for “modulus”) continues to choose the integer
-      // multiple of B that puts the value between zero and B.
-      // std::fmod - the returned value has the same sign as A
-      // and is less than B in magnitude.
-      ValueType result = std::fmod(a, b);
-      // If the result is on opposite side of zero from B,
-      // put it between 0 and B. As the result of std::fmod is less
-      // than B in magnitude, adding B would perform a correct shift.
-      if (std::signbit(result) != std::signbit(b)) {
-        result += b;
+      if ((a < 0.0) == (b < 0.0)) {
+        // If both arguments are positive or both are negative:
+        // the value of the function is equal to the value of A
+        // shifted by the integer multiple of B that brings
+        // the value between zero and B.
+        return std::fmod(a, b);
+      } else {
+        // If the A value and the B step are on opposite sides of zero:
+        // mod() (short for “modulus”) continues to choose the integer
+        // multiple of B that puts the value between zero and B,
+        // as above (guaranteeing that the result will either be zero
+        // or share the sign of B, not A)
+        // For example, mod(-18px, 5px) resolves to the value 2px:
+        // adding 5px * 4 to -18px yields 2px, which is between 0px and 5px.
+        // On the other hand, rem(-18px, 5px) resolves to the value -3px:
+        // adding 5px * 3 to -18px yields -3px,
+        // which has the same sign as -18px but is between 0px and -5px.
+        return std::remainder(a, b);
       }
-      return result;
     }
     case OperatorType::kRem: {
-      // If both arguments are positive or both are negative:
-      // the value of the function is equal to the value of A
-      // shifted by the integer multiple of B that brings
-      // the value between zero and B.
-      // If the A value and the B step are on opposite sides of zero:
-      // rem() (short for "remainder") chooses the integer multiple of B
-      // that puts the value between zero and -B,
-      // avoiding changing the sign of the value.
-      // std::fmod - the returned value has the same sign as A
-      // and is less than B in magnitude.
       return std::fmod(a, b);
     }
     default:

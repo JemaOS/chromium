@@ -5,11 +5,9 @@
 #include "chrome/browser/ash/preferences.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "ash/constants/ash_features.h"
-#include "base/containers/to_vector.h"
 #include "base/json/json_string_value_serializer.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
@@ -50,13 +48,13 @@
 namespace ash {
 namespace {
 
-constexpr char kIdentityIMEID[] =
+const char kIdentityIMEID[] =
     "_ext_ime_iafoklpfplgfnoimmaejoeondnjnlcfpIdentityIME";
-constexpr char kToUpperIMEID[] =
+const char kToUpperIMEID[] =
     "_ext_ime_iafoklpfplgfnoimmaejoeondnjnlcfpToUpperIME";
-constexpr char kAPIArgumentIMEID[] =
+const char kAPIArgumentIMEID[] =
     "_ext_ime_iafoklpfplgfnoimmaejoeondnjnlcfpAPIArgumentIME";
-constexpr char kUnknownIMEID[] =
+const char kUnknownIMEID[] =
     "_ext_ime_iafoklpfplgfnoimmaejoeondnjnlcfpUnknownIME";
 
 syncer::SyncData
@@ -107,8 +105,7 @@ class MyMockInputMethodManager : public MockInputMethodManagerImpl {
                                  TextInputMethod* instance) override {
       InputMethodDescriptor descriptor(
           id, std::string(), std::string(), std::string(),
-          std::vector<std::string>(), false, GURL(), GURL(),
-          /*handwriting_language=*/std::nullopt);
+          std::vector<std::string>(), false, GURL(), GURL());
       input_method_extensions_->push_back(descriptor);
     }
 
@@ -116,7 +113,7 @@ class MyMockInputMethodManager : public MockInputMethodManagerImpl {
     ~State() override {}
 
    private:
-    const raw_ptr<MyMockInputMethodManager> manager_;
+    const raw_ptr<MyMockInputMethodManager, ExperimentalAsh> manager_;
     std::unique_ptr<InputMethodDescriptors> input_method_extensions_;
   };
 
@@ -132,8 +129,8 @@ class MyMockInputMethodManager : public MockInputMethodManagerImpl {
   std::string last_input_method_id_;
 
  private:
-  raw_ptr<StringPrefMember> previous_;
-  raw_ptr<StringPrefMember> current_;
+  raw_ptr<StringPrefMember, ExperimentalAsh> previous_;
+  raw_ptr<StringPrefMember, ExperimentalAsh> current_;
 };
 
 }  // anonymous namespace
@@ -214,13 +211,14 @@ class PreferencesTest : public testing::Test {
   base::test::ScopedFeatureList feature_list_;
 
   // Not owned.
-  raw_ptr<FakeChromeUserManager> user_manager_;
-  raw_ptr<const user_manager::User> test_user_;
-  raw_ptr<TestingProfile> test_profile_;
-  raw_ptr<sync_preferences::TestingPrefServiceSyncable> pref_service_;
-  raw_ptr<input_method::MyMockInputMethodManager, DanglingUntriaged>
+  raw_ptr<FakeChromeUserManager, ExperimentalAsh> user_manager_;
+  raw_ptr<const user_manager::User, ExperimentalAsh> test_user_;
+  raw_ptr<TestingProfile, ExperimentalAsh> test_profile_;
+  raw_ptr<sync_preferences::TestingPrefServiceSyncable, ExperimentalAsh>
+      pref_service_;
+  raw_ptr<input_method::MyMockInputMethodManager, ExperimentalAsh>
       mock_manager_;
-  raw_ptr<FakeUpdateEngineClient, DanglingUntriaged> fake_update_engine_client_;
+  raw_ptr<FakeUpdateEngineClient, ExperimentalAsh> fake_update_engine_client_;
 };
 
 TEST_F(PreferencesTest, TestUpdatePrefOnBrowserScreenDetails) {
@@ -423,11 +421,11 @@ class InputMethodPreferencesTest : public PreferencesTest {
 
   // Translates engine IDs in a CSV string to input method IDs.
   std::string ToInputMethodIds(const std::string& value) {
-    return base::JoinString(
-        base::ToVector(base::SplitString(value, ",", base::TRIM_WHITESPACE,
-                                         base::SPLIT_WANT_ALL),
-                       &extension_ime_util::GetInputMethodIDByEngineID),
-        ",");
+    std::vector<std::string> tokens = base::SplitString(
+        value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+    base::ranges::transform(tokens, tokens.begin(),
+                            &extension_ime_util::GetInputMethodIDByEngineID);
+    return base::JoinString(tokens, ",");
   }
 
   // Simulates the initial sync of preferences.

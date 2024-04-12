@@ -30,10 +30,6 @@ class PolicyCertificateProvider;
 namespace chromeos {
 class CertificateProvider;
 }
-
-namespace kcer {
-class Kcer;
-}
 #endif
 
 // CertificateManagerModel provides the data to be displayed in the certificate
@@ -136,10 +132,6 @@ class CertificateManagerModel {
     // May be nullptr.
     std::unique_ptr<chromeos::CertificateProvider>
         extension_certificate_provider;
-    // Valid as long as the underlying Profile is valid. The implementation
-    // doesn't check for validity of the WeakPtr because the
-    // CertificateManagerModel has the same validity time frame.
-    base::WeakPtr<kcer::Kcer> kcer;
 #endif
 
     Params();
@@ -206,13 +198,11 @@ class CertificateManagerModel {
   // Import private keys and certificates from PKCS #12 encoded
   // |data|, using the given |password|. If |is_extractable| is false,
   // mark the private key as unextractable from the slot.
-  // Returns a net error code on failure or net::OK on success using the
-  // `callback`.
-  void ImportFromPKCS12(PK11SlotInfo* slot_info,
-                        const std::string& data,
-                        const std::u16string& password,
-                        bool is_extractable,
-                        base::OnceCallback<void(int net_result)> callback);
+  // Returns a net error code on failure.
+  int ImportFromPKCS12(PK11SlotInfo* slot_info,
+                       const std::string& data,
+                       const std::u16string& password,
+                       bool is_extractable);
 
   // Import user certificate from DER encoded |data|.
   // Returns a net error code on failure.
@@ -283,9 +273,6 @@ class CertificateManagerModel {
                                   CreationCallback callback);
 
   raw_ptr<net::NSSCertDatabase> cert_db_;
-#if BUILDFLAG(IS_CHROMEOS)
-  base::WeakPtr<kcer::Kcer> kcer_;
-#endif
 
   // CertsSource instances providing certificates. The order matters - if a
   // certificate is provided by more than one CertsSource, only the first one is

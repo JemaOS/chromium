@@ -61,19 +61,17 @@ int SwitchAccessBackButtonView::GetFocusRingWidthPerSide() {
 }
 
 void SwitchAccessBackButtonView::SetFocusRing(bool should_show) {
-  if (show_focus_ring_ == should_show) {
+  if (show_focus_ring_ == should_show)
     return;
-  }
   show_focus_ring_ = should_show;
   SchedulePaint();
 }
 
 void SwitchAccessBackButtonView::SetForMenu(bool for_menu) {
-  if (for_menu) {
+  if (for_menu)
     back_button_->SetVectorIcon(kSwitchAccessCloseIcon);
-  } else {
+  else
     back_button_->SetVectorIcon(kSwitchAccessBackIcon);
-  }
 }
 
 void SwitchAccessBackButtonView::GetAccessibleNodeData(
@@ -94,9 +92,8 @@ void SwitchAccessBackButtonView::OnPaint(gfx::Canvas* canvas) {
   flags.setStyle(cc::PaintFlags::kFill_Style);
   canvas->DrawCircle(gfx::PointF(rect.CenterPoint()), kRadiusDp, flags);
 
-  if (!show_focus_ring_) {
+  if (!show_focus_ring_)
     return;
-  }
 
   flags.setColor(
       color_provider->GetColor(kColorAshSwitchAccessInnerStrokeColor));
@@ -116,7 +113,7 @@ void SwitchAccessBackButtonView::OnButtonPressed() {
                            /*send_native_event=*/false);
 }
 
-BEGIN_METADATA(SwitchAccessBackButtonView)
+BEGIN_METADATA(SwitchAccessBackButtonView, views::BoxLayoutView)
 END_METADATA
 
 }  // namespace ash

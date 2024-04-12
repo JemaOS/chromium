@@ -4,9 +4,7 @@
 
 #include "chrome/browser/direct_sockets/chrome_direct_sockets_delegate.h"
 
-#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
-#include "components/content_settings/core/browser/host_content_settings_map.h"
-#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/browser_context.h"
 #include "content/public/common/socket_permission_request.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/api/sockets/sockets_manifest_data.h"
@@ -29,21 +27,12 @@ const extensions::Extension* GetExtensionByLockUrl(
 
 }  // namespace
 
-bool ChromeDirectSocketsDelegate::IsAPIAccessAllowed(
-    content::RenderFrameHost& rfh) {
-  const GURL& url = rfh.GetLastCommittedURL();
-  return HostContentSettingsMapFactory::GetForProfile(rfh.GetBrowserContext())
-             ->GetContentSetting(url, url,
-                                 ContentSettingsType::DIRECT_SOCKETS) ==
-         CONTENT_SETTING_ALLOW;
-}
-
 bool ChromeDirectSocketsDelegate::ValidateAddressAndPort(
     content::BrowserContext* browser_context,
     const GURL& lock_url,
     const std::string& address,
     uint16_t port,
-    ProtocolType protocol) {
+    ProtocolType protocol) const {
   if (!IsLockedToExtension(lock_url)) {
     return true;
   }

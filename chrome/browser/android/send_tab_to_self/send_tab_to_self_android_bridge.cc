@@ -8,13 +8,14 @@
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
-#include "chrome/android/chrome_jni_headers/SendTabToSelfAndroidBridge_jni.h"
-#include "chrome/android/chrome_jni_headers/TargetDeviceInfo_jni.h"
 #include "chrome/browser/android/send_tab_to_self/android_notification_handler.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_android.h"
 #include "chrome/browser/send_tab_to_self/receiving_ui_handler_registry.h"
+#include "chrome/browser/share/android/jni_headers/SendTabToSelfAndroidBridge_jni.h"
+#include "chrome/browser/share/android/jni_headers/TargetDeviceInfo_jni.h"
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
+#include "chrome/browser/sync/sync_service_factory.h"
 #include "components/send_tab_to_self/entry_point_display_reason.h"
 #include "components/send_tab_to_self/send_tab_to_self_model.h"
 #include "components/send_tab_to_self/send_tab_to_self_sync_service.h"
@@ -23,7 +24,6 @@
 #include "url/gurl.h"
 
 using base::android::AttachCurrentThread;
-using base::android::ConvertJavaStringToUTF8;
 using base::android::ConvertUTF8ToJavaString;
 using base::android::JavaParamRef;
 using base::android::JavaRef;
@@ -47,24 +47,29 @@ SendTabToSelfModel* GetModel(const JavaParamRef<jobject>& j_profile) {
 
 }  // namespace
 
-static std::vector<ScopedJavaLocalRef<jobject>>
+static ScopedJavaLocalRef<jobjectArray>
 JNI_SendTabToSelfAndroidBridge_GetAllTargetDeviceInfos(
     JNIEnv* env,
     const JavaParamRef<jobject>& j_profile) {
-  std::vector<ScopedJavaLocalRef<jobject>> infos;
+  ScopedJavaLocalRef<jclass> type = base::android::GetClass(
+      env,
+      "org/chromium/chrome/browser/share/send_tab_to_self/TargetDeviceInfo");
   SendTabToSelfModel* model = GetModel(j_profile);
-  if (model->IsReady()) {
-    for (const TargetDeviceInfo& info :
-         model->GetTargetDeviceInfoSortedList()) {
-      infos.push_back(Java_TargetDeviceInfo_build(
-          env, ConvertUTF8ToJavaString(env, info.device_name),
-          ConvertUTF8ToJavaString(env, info.cache_guid),
-          static_cast<int>(info.form_factor),
-          info.last_updated_timestamp.InMillisecondsSinceUnixEpoch()));
-    }
+  if (!model->IsReady()) {
+    return base::android::ToTypedJavaArrayOfObjects(
+        env, std::vector<ScopedJavaLocalRef<jobject>>(), type);
   }
 
-  return infos;
+  std::vector<ScopedJavaLocalRef<jobject>> infos;
+  for (const TargetDeviceInfo& info : model->GetTargetDeviceInfoSortedList()) {
+    infos.push_back(Java_TargetDeviceInfo_build(
+        env, ConvertUTF8ToJavaString(env, info.device_name),
+        ConvertUTF8ToJavaString(env, info.cache_guid),
+        static_cast<int>(info.form_factor),
+        info.last_updated_timestamp.ToJavaTime()));
+  }
+
+  return base::android::ToTypedJavaArrayOfObjects(env, infos, type);
 }
 
 // Adds a new entry with the specified parameters. Returns whether the
@@ -128,13 +133,13 @@ JNI_SendTabToSelfAndroidBridge_GetEntryPointDisplayReason(
     JNIEnv* env,
     const JavaParamRef<jobject>& j_profile,
     const JavaParamRef<jstring>& j_url_to_share) {
-  send_tab_to_self::SendTabToSelfSyncService* service =
-      SendTabToSelfSyncServiceFactory::GetForProfile(
-          ProfileAndroid::FromProfileAndroid(j_profile));
-  std::optional<send_tab_to_self::EntryPointDisplayReason> reason =
-      service ? service->GetEntryPointDisplayReason(
-                    GURL(ConvertJavaStringToUTF8(env, j_url_to_share)))
-              : std::nullopt;
+  Profile* profile = ProfileAndroid::FromProfileAndroid(j_profile);
+  absl::optional<send_tab_to_self::EntryPointDisplayReason> reason =
+      send_tab_to_self::GetEntryPointDisplayReason(
+          GURL(ConvertJavaStringToUTF8(env, j_url_to_share)),
+          SyncServiceFactory::GetForProfile(profile),
+          SendTabToSelfSyncServiceFactory::GetForProfile(profile),
+          profile->GetPrefs());
 
   if (!reason) {
     return nullptr;

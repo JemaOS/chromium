@@ -8,9 +8,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.chrome.browser.flags.ActivityType;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -24,9 +23,11 @@ import org.chromium.ui.base.WindowAndroid;
 import org.chromium.url.GURL;
 import org.chromium.url.Origin;
 
-/** Bridges between the C++ and Java {@link TabModel} interfaces. */
+/**
+ * Bridges between the C++ and Java {@link TabModel} interfaces.
+ */
 public abstract class TabModelJniBridge implements TabModel {
-    private final Profile mProfile;
+    private final boolean mIsIncognito;
 
     /** The type of the Activity for which this tab model works. */
     private final @ActivityType int mActivityType;
@@ -35,7 +36,7 @@ public abstract class TabModelJniBridge implements TabModel {
     private long mNativeTabModelJniBridge;
 
     public TabModelJniBridge(@NonNull Profile profile, @ActivityType int activityType) {
-        mProfile = profile;
+        mIsIncognito = profile.isOffTheRecord();
         mActivityType = activityType;
     }
 
@@ -46,7 +47,7 @@ public abstract class TabModelJniBridge implements TabModel {
                 TabModelJniBridgeJni.get().init(TabModelJniBridge.this, profile, mActivityType);
     }
 
-    /** Returns whether the native-side pointer has been initialized. */
+    /** @return Whether the native-side pointer has been initialized. */
     public boolean isNativeInitialized() {
         return mNativeTabModelJniBridge != 0;
     }
@@ -62,19 +63,21 @@ public abstract class TabModelJniBridge implements TabModel {
 
     @Override
     public boolean isIncognito() {
-        return mProfile.isOffTheRecord();
+        return mIsIncognito;
     }
 
     @Override
     public Profile getProfile() {
-        return mProfile;
+        assert isNativeInitialized();
+        return TabModelJniBridgeJni.get().getProfileAndroid(
+                mNativeTabModelJniBridge, TabModelJniBridge.this);
     }
 
     /** Broadcast a native-side notification that all tabs are now loaded from storage. */
     public void broadcastSessionRestoreComplete() {
         assert isNativeInitialized();
-        TabModelJniBridgeJni.get()
-                .broadcastSessionRestoreComplete(mNativeTabModelJniBridge, TabModelJniBridge.this);
+        TabModelJniBridgeJni.get().broadcastSessionRestoreComplete(
+                mNativeTabModelJniBridge, TabModelJniBridge.this);
     }
 
     /**
@@ -83,8 +86,8 @@ public abstract class TabModelJniBridge implements TabModel {
      */
     protected void tabAddedToModel(Tab tab) {
         if (isNativeInitialized()) {
-            TabModelJniBridgeJni.get()
-                    .tabAddedToModel(mNativeTabModelJniBridge, TabModelJniBridge.this, tab);
+            TabModelJniBridgeJni.get().tabAddedToModel(
+                    mNativeTabModelJniBridge, TabModelJniBridge.this, tab);
         }
     }
 
@@ -133,15 +136,9 @@ public abstract class TabModelJniBridge implements TabModel {
             Tab parent, Profile profile, WebContents webContents);
 
     @CalledByNative
-    protected abstract void openNewTab(
-            Tab parent,
-            GURL url,
-            @Nullable Origin initiatorOrigin,
-            String extraHeaders,
-            ResourceRequestBody postData,
-            int disposition,
-            boolean persistParentage,
-            boolean isRendererInitiated);
+    protected abstract void openNewTab(Tab parent, GURL url, @Nullable Origin initiatorOrigin,
+            String extraHeaders, ResourceRequestBody postData, int disposition,
+            boolean persistParentage, boolean isRendererInitiated);
 
     /**
      * Creates a Tab with the given WebContents for DevTools.
@@ -149,14 +146,14 @@ public abstract class TabModelJniBridge implements TabModel {
      */
     @CalledByNative
     protected Tab createNewTabForDevTools(GURL url) {
-        return getTabCreator(/* incognito= */ false)
+        return getTabCreator(/*incognito=*/false)
                 .createNewTab(new LoadUrlParams(url), TabLaunchType.FROM_CHROME_UI, null);
     }
 
     /** Returns whether supplied Tab instance has been grouped together with other Tabs. */
     @CalledByNative
-    @VisibleForTesting
-    static boolean isTabInTabGroup(@NonNull Tab tab) {
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    static boolean hasOtherRelatedTabs(@NonNull Tab tab) {
         assert tab != null;
         final WindowAndroid windowAndroid = tab.getWindowAndroid();
         if (windowAndroid == null) return false;
@@ -170,12 +167,10 @@ public abstract class TabModelJniBridge implements TabModel {
 
         final TabModelFilter filter =
                 selector.getTabModelFilterProvider().getTabModelFilter(tab.isIncognito());
-        // Filter may still be null for CCTs.
-        if (filter == null) return false;
+        if (!(filter instanceof TabGroupModelFilter)) return false;
 
-        assert filter instanceof TabGroupModelFilter;
         final TabGroupModelFilter groupingFilter = (TabGroupModelFilter) filter;
-        return groupingFilter.isTabInTabGroup(tab);
+        return groupingFilter.hasOtherRelatedTabs(tab);
     }
 
     @Override
@@ -186,7 +181,7 @@ public abstract class TabModelJniBridge implements TabModel {
     @CalledByNative
     public abstract int index();
 
-    /** Returns whether or not a sync session is currently being restored. */
+    /** @return Whether or not a sync session is currently being restored. */
     @CalledByNative
     protected abstract boolean isSessionRestoreInProgress();
 
@@ -201,12 +196,10 @@ public abstract class TabModelJniBridge implements TabModel {
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     public interface Natives {
         long init(TabModelJniBridge caller, Profile profile, @ActivityType int activityType);
-
+        Profile getProfileAndroid(long nativeTabModelJniBridge, TabModelJniBridge caller);
         void broadcastSessionRestoreComplete(
                 long nativeTabModelJniBridge, TabModelJniBridge caller);
-
         void destroy(long nativeTabModelJniBridge, TabModelJniBridge caller);
-
         void tabAddedToModel(long nativeTabModelJniBridge, TabModelJniBridge caller, Tab tab);
     }
 }

@@ -26,7 +26,7 @@ base::ScopedFD CreateEglFenceAndExportFd() {
     LOG(ERROR) << "Gpu fence handle is null";
     return base::ScopedFD();
   }
-  return fence_handle.Release();
+  return std::move(fence_handle.owned_fd);
 }
 
 bool InsertEglFenceAndWait(base::ScopedFD acquire_fence_fd) {

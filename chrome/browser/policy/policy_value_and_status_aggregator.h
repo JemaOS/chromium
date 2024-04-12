@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "base/containers/flat_map.h"
-#include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "base/scoped_multi_source_observation.h"
 #include "base/values.h"
@@ -109,8 +108,7 @@ class PolicyValueAndStatusAggregator : public PolicyValueProvider::Observer,
   // Contains the pointers to PolicyValueProvider which also implement
   // PolicyStatusProvider. The ownership of the instances will be in
   // `status_providers_`.
-  std::vector<raw_ptr<PolicyValueProvider, VectorExperimental>>
-      value_providers_unowned_;
+  std::vector<PolicyValueProvider*> value_providers_unowned_;
   base::ObserverList<Observer> observers_;
   base::ScopedMultiSourceObservation<PolicyValueProvider,
                                      PolicyValueProvider::Observer>

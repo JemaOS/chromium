@@ -7,7 +7,6 @@
 #include <cmath>
 
 #include "base/files/file_path.h"
-#include "base/functional/bind.h"
 #include "base/numerics/safe_conversions.h"
 
 namespace app_list {
@@ -42,10 +41,8 @@ FtrlOptimizer::FtrlOptimizer(FtrlOptimizer::Proto proto, const Params& params)
   DCHECK_LE(params.gamma, 1.0);
   DCHECK_GT(params.num_experts, 0u);
 
-  // `proto_` is a class member so it is safe to call `RegisterOnInitUnsafe()`.
-  proto_.RegisterOnInitUnsafe(
-      base::BindOnce(&FtrlOptimizer::OnProtoInit, base::Unretained(this)));
-
+  proto_.RegisterOnRead(
+      base::BindOnce(&FtrlOptimizer::OnProtoRead, weak_factory_.GetWeakPtr()));
   proto_.Init();
 }
 
@@ -135,7 +132,7 @@ double FtrlOptimizer::Loss(size_t expert, const std::string& item) {
   return static_cast<double>(rank) / last_expert_scores_.size();
 }
 
-void FtrlOptimizer::OnProtoInit() {
+void FtrlOptimizer::OnProtoRead(ReadStatus status) {
   if (!proto_->has_version() || proto_->version() != kVersion ||
       params_.num_experts !=
           base::checked_cast<size_t>(proto_->weights_size())) {

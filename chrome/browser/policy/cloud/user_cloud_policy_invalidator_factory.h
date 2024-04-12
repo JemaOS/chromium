@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_POLICY_CLOUD_USER_CLOUD_POLICY_INVALIDATOR_FACTORY_H_
 #define CHROME_BROWSER_POLICY_CLOUD_USER_CLOUD_POLICY_INVALIDATOR_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace policy {
@@ -21,13 +21,13 @@ class UserCloudPolicyInvalidatorFactory : public ProfileKeyedServiceFactory {
       const UserCloudPolicyInvalidatorFactory&) = delete;
 
  private:
-  friend base::NoDestructor<UserCloudPolicyInvalidatorFactory>;
+  friend struct base::DefaultSingletonTraits<UserCloudPolicyInvalidatorFactory>;
 
   UserCloudPolicyInvalidatorFactory();
   ~UserCloudPolicyInvalidatorFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;

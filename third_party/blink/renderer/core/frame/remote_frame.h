@@ -7,6 +7,8 @@
 
 #include "base/task/single_thread_task_runner.h"
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
+#include "mojo/public/cpp/bindings/associated_receiver.h"
+#include "mojo/public/cpp/bindings/associated_remote.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink-forward.h"
 #include "third_party/blink/public/common/frame/frame_visual_properties.h"
 #include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom-blink-forward.h"
@@ -19,9 +21,8 @@
 #include "third_party/blink/renderer/core/frame/child_frame_compositor.h"
 #include "third_party/blink/renderer/core/frame/frame.h"
 #include "third_party/blink/renderer/core/frame/remote_frame_view.h"
-#include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_receiver.h"
-#include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_remote.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
+#include "third_party/blink/renderer/platform/wtf/gc_plugin.h"
 
 namespace cc {
 class Layer;
@@ -139,9 +140,9 @@ class CORE_EXPORT RemoteFrame final : public Frame,
   // Called when the main frame's zoom level is changed and should be propagated
   // to the remote's associated view.
   void ZoomLevelChanged(double zoom_level);
-  // Called when the local root's viewport segments change.
-  void DidChangeRootViewportSegments(
-      const std::vector<gfx::Rect>& root_widget_viewport_segments);
+  // Called when the local root's window segments change.
+  void DidChangeRootWindowSegments(
+      const std::vector<gfx::Rect>& root_widget_window_segments);
   // Called when the local page scale factor changed.
   void PageScaleFactorChanged(float page_scale_factor,
                               bool is_pinch_gesture_active);
@@ -149,8 +150,6 @@ class CORE_EXPORT RemoteFrame final : public Frame,
   void DidChangeVisibleViewportSize(const gfx::Size& visible_viewport_size);
   // Called when the local root's capture sequence number has changed.
   void UpdateCaptureSequenceNumber(uint32_t sequence_number);
-  // Called when the cursor accessibility scale factor changed.
-  void CursorAccessibilityScaleFactorChanged(float scale_factor);
 
   const String& UniqueName() const { return unique_name_; }
   const FrameVisualProperties& GetPendingVisualPropertiesForTesting() const {
@@ -201,7 +200,7 @@ class CORE_EXPORT RemoteFrame final : public Frame,
   // until the next navigation.
   void DidUpdateFramePolicy(const FramePolicy& frame_policy) override;
   void UpdateOpener(
-      const std::optional<blink::FrameToken>& opener_frame_token) override;
+      const absl::optional<blink::FrameToken>& opener_frame_token) override;
   void DetachAndDispose() override;
   void EnableAutoResize(const gfx::Size& min_size,
                         const gfx::Size& max_size) override;
@@ -212,7 +211,7 @@ class CORE_EXPORT RemoteFrame final : public Frame,
   void ChildProcessGone() override;
   void CreateRemoteChild(
       const RemoteFrameToken& token,
-      const std::optional<FrameToken>& opener_frame_token,
+      const absl::optional<FrameToken>& opener_frame_token,
       mojom::blink::TreeScopeType tree_scope_type,
       mojom::blink::FrameReplicationStatePtr replication_state,
       mojom::blink::FrameOwnerPropertiesPtr owner_properties,
@@ -222,8 +221,6 @@ class CORE_EXPORT RemoteFrame final : public Frame,
       override;
   void CreateRemoteChildren(
       Vector<mojom::blink::CreateRemoteChildParamsPtr> params) override;
-  void ForwardFencedFrameEventToEmbedder(
-      const WTF::String& event_type) override;
 
   // Called only when this frame has a local frame owner.
   gfx::Size GetOutermostMainFrameSize() const override;
@@ -278,7 +275,7 @@ class CORE_EXPORT RemoteFrame final : public Frame,
 
   Member<RemoteFrameView> view_;
   RemoteSecurityContext security_context_;
-  std::optional<blink::FrameVisualProperties> sent_visual_properties_;
+  absl::optional<blink::FrameVisualProperties> sent_visual_properties_;
   blink::FrameVisualProperties pending_visual_properties_;
   scoped_refptr<cc::Layer> cc_layer_;
   bool is_surface_layer_ = false;
@@ -304,12 +301,14 @@ class CORE_EXPORT RemoteFrame final : public Frame,
   // Whether the frame is considered to be an ad frame by Ad Tagging.
   bool is_ad_frame_;
 
-  HeapMojoAssociatedRemote<mojom::blink::RemoteFrameHost>
-      remote_frame_host_remote_{nullptr};
-  HeapMojoAssociatedReceiver<mojom::blink::RemoteFrame, RemoteFrame> receiver_{
-      this, nullptr};
-  HeapMojoAssociatedReceiver<mojom::blink::RemoteMainFrame, RemoteFrame>
-      main_frame_receiver_{this, nullptr};
+  GC_PLUGIN_IGNORE("https://crbug.com/1381979")
+  mojo::AssociatedRemote<mojom::blink::RemoteFrameHost>
+      remote_frame_host_remote_;
+  GC_PLUGIN_IGNORE("https://crbug.com/1381979")
+  mojo::AssociatedReceiver<mojom::blink::RemoteFrame> receiver_{this};
+  GC_PLUGIN_IGNORE("https://crbug.com/1381979")
+  mojo::AssociatedReceiver<mojom::blink::RemoteMainFrame> main_frame_receiver_{
+      this};
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 };
 

@@ -4,37 +4,20 @@
 
 #include "ui/gl/scoped_restore_texture.h"
 
-#include "base/notreached.h"
-
 namespace gl {
 
-ScopedRestoreTexture::ScopedRestoreTexture(
-    gl::GLApi* api,
-    GLenum target,
-    GLuint new_binding /*= 0*/)
+ScopedRestoreTexture::ScopedRestoreTexture(gl::GLApi* api, GLenum target)
     : api_(api), target_(target) {
-  DCHECK(target == GL_TEXTURE_2D || target == GL_TEXTURE_EXTERNAL_OES ||
-         target == GL_TEXTURE_RECTANGLE_ARB);
-  GLenum get_target = GL_TEXTURE_BINDING_2D;
-  switch (target) {
-    case GL_TEXTURE_2D:
-      get_target = GL_TEXTURE_BINDING_2D;
-      break;
-    case GL_TEXTURE_RECTANGLE_ARB:
-      get_target = GL_TEXTURE_BINDING_RECTANGLE_ARB;
-      break;
-    case GL_TEXTURE_EXTERNAL_OES:
-      get_target = GL_TEXTURE_BINDING_EXTERNAL_OES;
-      break;
-    default:
-      NOTREACHED();
-  }
+  DCHECK(target == GL_TEXTURE_2D || target == GL_TEXTURE_EXTERNAL_OES);
   GLint binding = 0;
-  api->glGetIntegervFn(get_target, &binding);
-  prev_binding_ = binding;
-  if (new_binding) {
-    api->glBindTextureFn(target, new_binding);
-  }
+  api->glGetIntegervFn(target == GL_TEXTURE_2D
+                           ? GL_TEXTURE_BINDING_2D
+                           : GL_TEXTURE_BINDING_EXTERNAL_OES,
+                       &binding);
+  // The bound texture could be already deleted by another context, and the
+  // texture ID |binding| could be reused and points to a different texture.
+  if (api->glIsTextureFn(binding))
+    prev_binding_ = binding;
 }
 
 ScopedRestoreTexture::~ScopedRestoreTexture() {

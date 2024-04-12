@@ -27,8 +27,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_OFFLINE_AUDIO_CONTEXT_H_
 
 #include "base/synchronization/lock.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/modules/webaudio/base_audio_context.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
@@ -36,7 +34,7 @@
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 
 namespace blink {
-class AudioBuffer;
+
 class ExceptionState;
 class OfflineAudioContextOptions;
 class OfflineAudioDestinationHandler;
@@ -55,7 +53,7 @@ class MODULES_EXPORT OfflineAudioContext final : public BaseAudioContext {
                                      const OfflineAudioContextOptions*,
                                      ExceptionState&);
 
-  OfflineAudioContext(LocalDOMWindow*,
+  OfflineAudioContext(Document*,
                       unsigned number_of_channels,
                       uint32_t number_of_frames,
                       float sample_rate,
@@ -66,13 +64,10 @@ class MODULES_EXPORT OfflineAudioContext final : public BaseAudioContext {
 
   uint32_t length() const { return total_render_frames_; }
 
-  ScriptPromiseTyped<AudioBuffer> startOfflineRendering(ScriptState*,
-                                                        ExceptionState&);
+  ScriptPromise startOfflineRendering(ScriptState*, ExceptionState&);
 
-  ScriptPromiseTyped<IDLUndefined> suspendContext(ScriptState*,
-                                                  double,
-                                                  ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> resumeContext(ScriptState*, ExceptionState&);
+  ScriptPromise suspendContext(ScriptState*, double, ExceptionState&);
+  ScriptPromise resumeContext(ScriptState*, ExceptionState&);
 
   void RejectPendingResolvers() override;
 
@@ -99,11 +94,13 @@ class MODULES_EXPORT OfflineAudioContext final : public BaseAudioContext {
 
   // The HashMap with 'zero' key is needed because `CurrentSampleFrame()` can be
   // zero.
-  using SuspendMap =
-      HeapHashMap<size_t,
-                  Member<ScriptPromiseResolverTyped<IDLUndefined>>,
-                  IntWithZeroKeyHashTraits<size_t>>;
+  using SuspendMap = HeapHashMap<size_t,
+                                 Member<ScriptPromiseResolver>,
+                                 IntWithZeroKeyHashTraits<size_t>>;
 
+  using OfflineGraphAutoLocker = DeferredTaskHandler::OfflineGraphAutoLocker;
+
+  // Document notification
   bool HasPendingActivity() const final;
 
  private:
@@ -131,7 +128,7 @@ class MODULES_EXPORT OfflineAudioContext final : public BaseAudioContext {
   HashSet<size_t, IntWithZeroKeyHashTraits<size_t>> scheduled_suspend_frames_
       GUARDED_BY(suspend_frames_lock_);
 
-  Member<ScriptPromiseResolverTyped<AudioBuffer>> complete_resolver_;
+  Member<ScriptPromiseResolver> complete_resolver_;
 
   // This flag is necessary to indicate the rendering has actually started or
   // running. Note that initial state of context is 'Suspended', which is the

@@ -99,8 +99,8 @@ class CandidateViewTest : public views::ViewsTestBase {
   ui::test::EventGenerator* event_generator() { return event_generator_.get(); }
 
  private:
-  raw_ptr<views::Widget, DanglingUntriaged> widget_ = nullptr;
-  raw_ptr<views::View, DanglingUntriaged> container_ = nullptr;
+  raw_ptr<views::Widget, ExperimentalAsh> widget_ = nullptr;
+  raw_ptr<views::View, ExperimentalAsh> container_ = nullptr;
   std::unique_ptr<ui::test::EventGenerator> event_generator_;
 };
 

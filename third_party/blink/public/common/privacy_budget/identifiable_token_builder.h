@@ -96,12 +96,13 @@ class BLINK_COMMON_EXPORT IdentifiableTokenBuilder {
   // all of the bytes, pads the remainder with NUL bytes.
   template <typename T,
             typename std::enable_if_t<
-                std::is_same<T, std::remove_cvref_t<T>>::value &&
+                std::is_same<T, base::remove_cvref_t<T>>::value &&
                 internal::has_unique_object_representations<T>::value &&
                 sizeof(T) <= sizeof(uint64_t)>* = nullptr>
   IdentifiableTokenBuilder& AddValue(T in) {
     AlignPartialBuffer();
-    int64_t clean_buffer = internal::DigestOfObjectRepresentation(in);
+    int64_t clean_buffer =
+        base::ByteSwapToLE64(internal::DigestOfObjectRepresentation(in));
     return AddBytes(base::make_span(
         reinterpret_cast<const uint8_t*>(&clean_buffer), sizeof(clean_buffer)));
   }

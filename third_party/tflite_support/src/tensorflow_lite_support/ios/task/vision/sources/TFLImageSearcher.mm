@@ -50,7 +50,7 @@ using ::tflite::support::StatusOr;
   return self;
 }
 
-- (instancetype)initWithModelPath:(NSString *)modelPath {
+- (instancetype)initWithModelPath:(NSString*)modelPath {
   self = [self init];
   if (self) {
     _baseOptions.modelFile.filePath = modelPath;
@@ -61,7 +61,8 @@ using ::tflite::support::StatusOr;
 - (ImageSearcherOptionsCpp)cppOptions {
   ImageSearcherOptionsCpp cppOptions = {};
   [self.baseOptions copyToCppOptions:cppOptions.mutable_base_options()];
-  [self.embeddingOptions copyToCppOptions:cppOptions.mutable_embedding_options()];
+  [self.embeddingOptions
+      copyToCppOptions:cppOptions.mutable_embedding_options()];
   [self.searchOptions copyToCppOptions:cppOptions.mutable_search_options()];
 
   return cppOptions;
@@ -71,13 +72,15 @@ using ::tflite::support::StatusOr;
 
 @implementation TFLImageSearcher
 
-- (nullable instancetype)initWithCppImageSearcherOptions:(ImageSearcherOptionsCpp)cppOptions
-                                                   error:(NSError **)error {
+- (nullable instancetype)initWithCppImageSearcherOptions:
+                             (ImageSearcherOptionsCpp)cppOptions
+                                                   error:(NSError**)error {
   self = [super init];
   if (self) {
     StatusOr<std::unique_ptr<ImageSearcherCpp>> cppImageSearcher =
         ImageSearcherCpp::CreateFromOptions(cppOptions);
-    if (![TFLCommonCppUtils checkCppError:cppImageSearcher.status() toError:error]) {
+    if (![TFLCommonCppUtils checkCppError:cppImageSearcher.status()
+                                  toError:error]) {
       return nil;
     }
 
@@ -86,21 +89,25 @@ using ::tflite::support::StatusOr;
   return self;
 }
 
-+ (nullable instancetype)imageSearcherWithOptions:(TFLImageSearcherOptions *)options
-                                            error:(NSError **)error {
++ (nullable instancetype)imageSearcherWithOptions:
+                             (TFLImageSearcherOptions*)options
+                                            error:(NSError**)error {
   if (!options) {
-    [TFLCommonUtils createCustomError:error
-                             withCode:TFLSupportErrorCodeInvalidArgumentError
-                          description:@"TFLImageSearcherOptions argument cannot be nil."];
+    [TFLCommonUtils
+        createCustomError:error
+                 withCode:TFLSupportErrorCodeInvalidArgumentError
+              description:@"TFLImageSearcherOptions argument cannot be nil."];
     return nil;
   }
 
   ImageSearcherOptionsCpp cppOptions = [options cppOptions];
 
-  return [[TFLImageSearcher alloc] initWithCppImageSearcherOptions:cppOptions error:error];
+  return [[TFLImageSearcher alloc] initWithCppImageSearcherOptions:cppOptions
+                                                             error:error];
 }
 
-- (nullable TFLSearchResult *)searchWithGMLImage:(GMLImage *)image error:(NSError **)error {
+- (nullable TFLSearchResult*)searchWithGMLImage:(GMLImage*)image
+                                          error:(NSError**)error {
   if (!image) {
     [TFLCommonUtils createCustomError:error
                              withCode:TFLSupportErrorCodeInvalidArgumentError
@@ -108,26 +115,28 @@ using ::tflite::support::StatusOr;
     return nil;
   }
 
-  uint8_t *buffer = nil;
-  std::unique_ptr<FrameBufferCpp> cppFrameBuffer = [image cppFrameBufferWithUnderlyingBuffer:&buffer
-                                                                                       error:error];
+  uint8_t* buffer = nil;
+  std::unique_ptr<FrameBufferCpp> cppFrameBuffer =
+      [image cppFrameBufferWithUnderlyingBuffer:&buffer error:error];
 
   if (!cppFrameBuffer) {
     free(buffer);
     return nil;
   }
 
-  StatusOr<SearchResultCpp> cppSearchResultStatus = _cppImageSearcher->Search(*cppFrameBuffer);
+  StatusOr<SearchResultCpp> cppSearchResultStatus =
+      _cppImageSearcher->Search(*cppFrameBuffer);
 
   // Free the underlying buffer
   free(buffer);
 
-  return [TFLSearchResult searchResultWithCppResult:cppSearchResultStatus error:error];
+  return [TFLSearchResult searchResultWithCppResult:cppSearchResultStatus
+                                              error:error];
 }
 
-- (nullable TFLSearchResult *)searchWithGMLImage:(GMLImage *)image
-                                regionOfInterest:(CGRect)roi
-                                           error:(NSError **)error {
+- (nullable TFLSearchResult*)searchWithGMLImage:(GMLImage*)image
+                               regionOfInterest:(CGRect)roi
+                                          error:(NSError**)error {
   if (!image) {
     [TFLCommonUtils createCustomError:error
                              withCode:TFLSupportErrorCodeInvalidArgumentError
@@ -135,9 +144,9 @@ using ::tflite::support::StatusOr;
     return nil;
   }
 
-  uint8_t *buffer = nil;
-  std::unique_ptr<FrameBufferCpp> cppFrameBuffer = [image cppFrameBufferWithUnderlyingBuffer:&buffer
-                                                                                       error:error];
+  uint8_t* buffer = nil;
+  std::unique_ptr<FrameBufferCpp> cppFrameBuffer =
+      [image cppFrameBufferWithUnderlyingBuffer:&buffer error:error];
 
   if (!cppFrameBuffer) {
     free(buffer);
@@ -156,6 +165,7 @@ using ::tflite::support::StatusOr;
   // Free the underlying buffer
   free(buffer);
 
-  return [TFLSearchResult searchResultWithCppResult:cppSearchResultStatus error:error];
+  return [TFLSearchResult searchResultWithCppResult:cppSearchResultStatus
+                                              error:error];
 }
 @end

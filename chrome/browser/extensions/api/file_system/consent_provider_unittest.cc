@@ -95,7 +95,7 @@ class TestingConsentProviderDelegate
   }
 
   // Use raw_ptr since |state| is owned by owner.
-  raw_ptr<TestDelegateState> state_;
+  base::raw_ptr<TestDelegateState> state_;
 };
 
 // Rewrites result of a consent request from |result| to |log|.
@@ -123,13 +123,13 @@ class FileSystemApiConsentProviderTest : public testing::Test {
   void TearDown() override {
     scoped_user_manager_enabler_.reset();
     user_manager_ = nullptr;
-    TestingBrowserProcess::GetGlobal()->SetLocalState(nullptr);
     testing_pref_service_.reset();
+    TestingBrowserProcess::GetGlobal()->SetLocalState(nullptr);
   }
 
  protected:
   std::unique_ptr<TestingPrefServiceSimple> testing_pref_service_;
-  raw_ptr<ash::FakeChromeUserManager, DanglingUntriaged>
+  raw_ptr<ash::FakeChromeUserManager, ExperimentalAsh>
       user_manager_;  // Owned by the scope enabler.
   std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_enabler_;
   content::BrowserTaskEnvironment task_environment_;
@@ -194,9 +194,10 @@ TEST_F(FileSystemApiConsentProviderTest, ForKioskApps) {
             .SetManifestKey("kiosk_enabled", true)
             .SetManifestKey("kiosk_only", true)
             .Build());
-    auto* auto_user = user_manager_->AddKioskAppUser(
+    user_manager_->AddKioskAppUser(
         AccountId::FromUserEmail(auto_launch_kiosk_app->id()));
-    user_manager_->LoginUser(auto_user->GetAccountId());
+    user_manager_->LoginUser(
+        AccountId::FromUserEmail(auto_launch_kiosk_app->id()));
 
     TestDelegateState state;
     state.is_auto_launched = true;
@@ -222,9 +223,10 @@ TEST_F(FileSystemApiConsentProviderTest, ForKioskApps) {
           .SetManifestKey("kiosk_enabled", true)
           .SetManifestKey("kiosk_only", true)
           .Build());
-  auto* manual_user = user_manager_->AddKioskAppUser(
-      AccountId::FromUserEmail(manual_launch_kiosk_app->id()));
-  user_manager_->LoginUser(manual_user->GetAccountId());
+  user_manager::User* const manual_kiosk_app_user =
+      user_manager_->AddKioskAppUser(
+          AccountId::FromUserEmail(manual_launch_kiosk_app->id()));
+  user_manager_->KioskAppLoggedIn(manual_kiosk_app_user);
   {
     TestDelegateState state;
     state.dialog_button = ui::DIALOG_BUTTON_OK;

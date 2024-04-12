@@ -11,10 +11,6 @@ found in the LICENSE file.
     --iron-pages-overflow: auto;
   }
 
-  :host-context(.jelly-enabled) multidevice-setup {
-    --cr-card-background-color: var(--oobe-bg-color);
-  }
-
   #multidevice-help-overlay-container {
     width: 768px;
   }
@@ -80,51 +76,51 @@ found in the LICENSE file.
 </style>
 <multidevice-setup
   id="multideviceSetup"
-  delegate="[[delegate]]"
-  on-setup-exited="onExitRequested"
-  on-open-learn-more-webview-requested="onOpenLearnMoreWebviewRequested"
-  on-forward-button-focus-requested="onForwardButtonFocusRequested"
-  forward-button-text-id="{{forwardButtonTextId}}"
-  forward-button-disabled="{{forwardButtonDisabled}}"
-  cancel-button-text-id="{{cancelButtonTextId}}"
+  delegate="[[delegate_]]"
+  on-setup-exited="onExitRequested_"
+  on-open-learn-more-webview-requested="onOpenLearnMoreWebviewRequested_"
+  on-forward-button-focus-requested="onForwardButtonFocusRequested_"
+  forward-button-text-id="{{forwardButtonTextId_}}"
+  forward-button-disabled="{{forwardButtonDisabled_}}"
+  cancel-button-text-id="{{cancelButtonTextId_}}"
 >
   <oobe-text-button
     slot="cancel-button"
-    text-key="[[cancelButtonTextId]]"
+    text-key="[[cancelButtonTextId_]]"
   ></oobe-text-button>
   <oobe-next-button
     id="nextButton"
     slot="forward-button"
-    disabled$="[[forwardButtonDisabled]]"
-    text-key="[[forwardButtonTextId]]"
+    disabled$="[[forwardButtonDisabled_]]"
+    text-key="[[forwardButtonTextId_]]"
   ></oobe-next-button>
 </multidevice-setup>
 
 <div
   id="multidevice-help-overlay"
   class="popup-overlay"
-  hidden$="[[webviewOverlayHidden]]"
+  hidden$="[[webviewOverlayHidden_]]"
 >
   <div id="multidevice-help-overlay-container" class="oobe-popup not-resizable">
     <div
       id="multidevice-help-overlay-close-top"
       class="multidevice-help-overlay-close-top
           multidevice-help-overlay-close-button"
-      on-click="hideWebviewOverlay"
+      on-click="hideWebviewOverlay_"
       title="[[i18nDynamic(locale, 'arcOverlayClose')]]"
     ></div>
     <div id="multidevice-help-overlay-webview-container">
       <div
         class="multidevice-help-overlay-webview-loading
             layout horizontal center-center"
-        hidden$="[[!isWebviewLoading]]"
+        hidden$="[[!isWebviewLoading_]]"
       >
         <throbber-notice text-key="gaiaLoading"></throbber-notice>
       </div>
       <webview
         id="multideviceHelpOverlayWebview"
-        hidden$="[[isWebviewLoading]]"
-        src="[[webviewSrc]]"
+        hidden$="[[isWebviewLoading_]]"
+        src="[[webviewSrc_]]"
       >
       </webview>
     </div>
@@ -136,7 +132,7 @@ found in the LICENSE file.
         id="multidevice-help-overlay-close-bottom"
         class="multidevice-help-overlay-close-button"
         text-key="arcOverlayClose"
-        on-click="hideWebviewOverlay"
+        on-click="hideWebviewOverlay_"
       >
       </oobe-text-button>
     </div>

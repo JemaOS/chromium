@@ -14,9 +14,7 @@
 #include "ash/wm/mru_window_tracker.h"
 #include "ash/wm/overview/overview_controller.h"
 #include "ash/wm/window_positioner.h"
-#include "base/containers/contains.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/ranges/algorithm.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/compositor/layer.h"
@@ -75,8 +73,7 @@ class MaximizedWindowAnimationWatcher : public ui::ImplicitAnimationObserver {
 
 // Modifies the given |window_list| such that the most-recently used window (if
 // any, and if it exists in |window_list|) will be the last window in the list.
-void PutMruWindowLast(
-    std::vector<raw_ptr<aura::Window, VectorExperimental>>* window_list) {
+void PutMruWindowLast(std::vector<aura::Window*>* window_list) {
   DCHECK(window_list);
   auto it = base::ranges::find_if(*window_list, &wm::IsActiveWindow);
   if (it == window_list->end())
@@ -218,9 +215,8 @@ void UserSwitchAnimator::TransitionWindows(AnimationStep animation_step) {
       // Hide the old users.
       for (auto& user_pair : windows_by_account_id_) {
         auto& show_for_account_id = user_pair.first;
-        if (show_for_account_id == new_account_id_) {
+        if (show_for_account_id == new_account_id_)
           continue;
-        }
 
         bool found_foreground_maximized_window = false;
 
@@ -230,9 +226,9 @@ void UserSwitchAnimator::TransitionWindows(AnimationStep animation_step) {
         // activateable window to restore focus to, and so we don't change
         // window order (crbug.com/424307).
         PutMruWindowLast(&(user_pair.second));
-        for (aura::Window* window : user_pair.second) {
+        for (auto* window : user_pair.second) {
           // Minimized visiting windows (minimized windows with an owner
-          // different than that of the for_show_account_id) should return to
+          // different than that of the for_show_account_id) should retrun to
           // their
           // original owners' desktops.
           MultiUserWindowManagerImpl::WindowToEntryMap::const_iterator itr =
@@ -284,19 +280,17 @@ void UserSwitchAnimator::TransitionWindows(AnimationStep animation_step) {
         return;
       }
 
-      for (aura::Window* window : new_user_itr->second) {
+      for (auto* window : new_user_itr->second) {
         auto entry = owner_->window_to_entry().find(window);
         DCHECK(entry != owner_->window_to_entry().end());
 
-        if (entry->second->show()) {
+        if (entry->second->show())
           owner_->SetWindowVisibility(window, true, duration);
-        }
       }
       desks_controller->OnNewUserShown();
 
       break;
     }
-
     case ANIMATION_STEP_SHOW_NEW_USER: {
       // In order to make the animation look better, we had to move the code
       // that shows the new user to the previous step. Hence, we do nothing
@@ -314,9 +308,8 @@ void UserSwitchAnimator::TransitionWindows(AnimationStep animation_step) {
           // Several unit tests come here without an activation client.
           wm::ActivationClient* client =
               wm::GetActivationClient(window->GetRootWindow());
-          if (client) {
+          if (client)
             client->ActivateWindow(window);
-          }
         }
       }
 
@@ -364,9 +357,9 @@ void UserSwitchAnimator::BuildUserToWindowsListMap() {
   auto& window_to_entry_map = owner_->window_to_entry();
   for (auto& window_entry_pair : window_to_entry_map) {
     aura::Window* parent_window = window_entry_pair.first->parent();
-    if (!base::Contains(parent_windows, parent_window)) {
+    if (parent_windows.find(parent_window) == parent_windows.end()) {
       parent_windows.insert(parent_window);
-      for (aura::Window* child_window : parent_window->children()) {
+      for (auto* child_window : parent_window->children()) {
         auto itr = window_to_entry_map.find(child_window);
         if (itr != window_to_entry_map.end()) {
           windows_by_account_id_[itr->second->show_for_user()].push_back(

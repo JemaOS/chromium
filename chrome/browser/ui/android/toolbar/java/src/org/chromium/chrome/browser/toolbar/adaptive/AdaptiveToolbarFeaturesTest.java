@@ -39,8 +39,7 @@ public class AdaptiveToolbarFeaturesTest {
         Integer testMinVersion = AdaptiveToolbarFeatures.VERSION - 1;
         mTestValues.addFieldTrialParamOverride(
                 ChromeFeatureList.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_V2,
-                AdaptiveToolbarFeatures.VARIATION_PARAM_MIN_VERSION,
-                testMinVersion.toString());
+                AdaptiveToolbarFeatures.VARIATION_PARAM_MIN_VERSION, testMinVersion.toString());
 
         assertTrue(AdaptiveToolbarFeatures.isCustomizationEnabled());
     }
@@ -52,8 +51,7 @@ public class AdaptiveToolbarFeaturesTest {
         Integer testMinVersion = AdaptiveToolbarFeatures.VERSION;
         mTestValues.addFieldTrialParamOverride(
                 ChromeFeatureList.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_V2,
-                AdaptiveToolbarFeatures.VARIATION_PARAM_MIN_VERSION,
-                testMinVersion.toString());
+                AdaptiveToolbarFeatures.VARIATION_PARAM_MIN_VERSION, testMinVersion.toString());
 
         assertTrue(AdaptiveToolbarFeatures.isCustomizationEnabled());
     }
@@ -65,8 +63,7 @@ public class AdaptiveToolbarFeaturesTest {
         Integer testMinVersion = AdaptiveToolbarFeatures.VERSION + 1;
         mTestValues.addFieldTrialParamOverride(
                 ChromeFeatureList.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_V2,
-                AdaptiveToolbarFeatures.VARIATION_PARAM_MIN_VERSION,
-                testMinVersion.toString());
+                AdaptiveToolbarFeatures.VARIATION_PARAM_MIN_VERSION, testMinVersion.toString());
 
         assertFalse(AdaptiveToolbarFeatures.isCustomizationEnabled());
     }

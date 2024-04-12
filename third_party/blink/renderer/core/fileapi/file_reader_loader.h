@@ -34,6 +34,7 @@
 #include "base/dcheck_is_on.h"
 #include "base/memory/weak_ptr.h"
 #include "base/task/single_thread_task_runner.h"
+#include "mojo/public/cpp/bindings/receiver.h"
 #include "third_party/blink/public/mojom/blob/blob.mojom-blink.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
@@ -43,7 +44,6 @@
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
-#include "third_party/blink/renderer/platform/mojo/heap_mojo_receiver.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/gc_plugin.h"
 
@@ -81,7 +81,7 @@ class CORE_EXPORT FileReaderLoader : public GarbageCollected<FileReaderLoader>,
 
   // Before OnCalculatedSize() is called: Returns nullopt.
   // After OnCalculatedSize() is called: Returns the size of the resource.
-  std::optional<uint64_t> TotalBytes() const { return total_bytes_; }
+  absl::optional<uint64_t> TotalBytes() const { return total_bytes_; }
 
   FileErrorCode GetErrorCode() const { return error_code_; }
 
@@ -89,10 +89,7 @@ class CORE_EXPORT FileReaderLoader : public GarbageCollected<FileReaderLoader>,
 
   bool HasFinishedLoading() const { return finished_loading_; }
 
-  void Trace(Visitor* visitor) const {
-    visitor->Trace(client_);
-    visitor->Trace(receiver_);
-  }
+  void Trace(Visitor* visitor) const { visitor->Trace(client_); }
 
  private:
   void StartInternal(scoped_refptr<BlobDataHandle>, bool is_sync);
@@ -116,15 +113,15 @@ class CORE_EXPORT FileReaderLoader : public GarbageCollected<FileReaderLoader>,
   // total_bytes_ is set to the total size of the blob being loaded as soon as
   // it is known, and  the buffer for receiving data of total_bytes_ is
   // allocated and never grow even when extra data is appended.
-  std::optional<uint64_t> total_bytes_;
+  absl::optional<uint64_t> total_bytes_;
 
   int32_t net_error_ = 0;  // net::OK
   FileErrorCode error_code_ = FileErrorCode::kOK;
 
   mojo::ScopedDataPipeConsumerHandle consumer_handle_;
   mojo::SimpleWatcher handle_watcher_;
-  HeapMojoReceiver<mojom::blink::BlobReaderClient, FileReaderLoader> receiver_{
-      this, nullptr};
+  GC_PLUGIN_IGNORE("https://crbug.com/1381979")
+  mojo::Receiver<mojom::blink::BlobReaderClient> receiver_{this};
   bool received_all_data_ = false;
   bool received_on_complete_ = false;
 #if DCHECK_IS_ON()

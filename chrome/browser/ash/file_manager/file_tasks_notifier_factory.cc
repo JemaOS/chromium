@@ -31,11 +31,9 @@ FileTasksNotifier* FileTasksNotifierFactory::GetForProfile(Profile* profile) {
       GetServiceForBrowserContext(profile, true));
 }
 
-std::unique_ptr<KeyedService>
-FileTasksNotifierFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* FileTasksNotifierFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<FileTasksNotifier>(
-      Profile::FromBrowserContext(context));
+  return new FileTasksNotifier(Profile::FromBrowserContext(context));
 }
 
 }  // namespace file_tasks

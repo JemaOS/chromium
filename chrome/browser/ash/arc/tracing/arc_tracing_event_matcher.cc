@@ -80,16 +80,16 @@ bool ArcTracingEventMatcher::Match(const ArcTracingEvent& event) const {
   return true;
 }
 
-std::optional<int64_t> ArcTracingEventMatcher::ReadAndroidEventInt64(
+absl::optional<int64_t> ArcTracingEventMatcher::ReadAndroidEventInt64(
     const ArcTracingEvent& event) const {
   if (!name_prefix_match_ || (event.GetName().find(name_) != 0))
-    return std::nullopt;
+    return absl::nullopt;
 
   int64_t value = 0;
   if (!base::StringToInt64(event.GetName().data() + name_.size(), &value))
-    return std::nullopt;
+    return absl::nullopt;
 
-  return std::make_optional(value);
+  return absl::make_optional(value);
 }
 
 }  // namespace arc

@@ -49,7 +49,7 @@ export class Portrait extends Photo {
   override async start(): Promise<[Promise<void>]> {
     const timestamp = Date.now();
     let photoSettings: PhotoSettings;
-    if (this.captureResolution !== null) {
+    if (this.captureResolution) {
       photoSettings = {
         imageWidth: this.captureResolution.width,
         imageHeight: this.captureResolution.height,
@@ -66,7 +66,7 @@ export class Portrait extends Photo {
     let portrait: TakePhotoResult;
     try {
       [reference, portrait] = await this.getImageCapture().takePhoto(
-          photoSettings, [Effect.kPortraitMode]);
+          photoSettings, [Effect.PORTRAIT_MODE]);
       this.portraitHandler.playShutterEffect();
     } catch (e) {
       toast.show(I18nString.ERROR_MSG_TAKE_PHOTO_FAILED);

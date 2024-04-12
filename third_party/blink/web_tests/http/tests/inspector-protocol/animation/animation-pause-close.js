@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startBlank('Tests that the playback rate is reset on disabling.');
 
   dp.Animation.enable();

@@ -13,14 +13,12 @@
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/color/chrome_color_mixer.h"
 #include "chrome/browser/ui/color/material_chrome_color_mixer.h"
-#include "chrome/browser/ui/color/material_new_tab_page_color_mixer.h"
 #include "chrome/browser/ui/color/material_omnibox_color_mixer.h"
 #include "chrome/browser/ui/color/material_side_panel_color_mixer.h"
 #include "chrome/browser/ui/color/material_tab_strip_color_mixer.h"
 #include "chrome/browser/ui/color/native_chrome_color_mixer.h"
 #include "chrome/browser/ui/color/new_tab_page_color_mixer.h"
 #include "chrome/browser/ui/color/omnibox_color_mixer.h"
-#include "chrome/browser/ui/color/product_specifications_color_mixer.h"
 #include "chrome/browser/ui/color/tab_strip_color_mixer.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/color/color_provider_utils.h"
@@ -41,7 +39,7 @@ bool ChromeColorProviderUtilsCallbacks::ColorIdName(
     base::StringPiece* color_name) {
   static constexpr const auto chrome_color_id_map =
       base::MakeFixedFlatMap<ui::ColorId, const char*>({CHROME_COLOR_IDS});
-  auto i = chrome_color_id_map.find(color_id);
+  auto* i = chrome_color_id_map.find(color_id);
   if (i != chrome_color_id_map.cend()) {
     *color_name = i->second;
     return true;
@@ -56,20 +54,18 @@ bool ChromeColorProviderUtilsCallbacks::ColorIdName(
 }  // namespace
 
 void AddChromeColorMixers(ui::ColorProvider* provider,
-                          const ui::ColorProviderKey& key) {
+                          const ui::ColorProviderManager::Key& key) {
   static base::NoDestructor<ChromeColorProviderUtilsCallbacks>
       chrome_color_provider_utils_callbacks;
   ui::SetColorProviderUtilsCallbacks(
       chrome_color_provider_utils_callbacks.get());
   AddChromeColorMixer(provider, key);
-  AddNewTabPageColorMixer(provider, key);
   AddOmniboxColorMixer(provider, key);
-  AddProductSpecificationsColorMixer(provider, key);
   AddTabStripColorMixer(provider, key);
+  AddNewTabPageColorMixer(provider, key);
 
   if (features::IsChromeRefresh2023()) {
     AddMaterialChromeColorMixer(provider, key);
-    AddMaterialNewTabPageColorMixer(provider, key);
     AddMaterialOmniboxColorMixer(provider, key);
     AddMaterialSidePanelColorMixer(provider, key);
     AddMaterialTabStripColorMixer(provider, key);

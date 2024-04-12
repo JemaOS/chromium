@@ -2,17 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ApplicationTestRunner} from 'application_test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
-import * as Application from 'devtools/panels/application/application.js';
-
 (async function() {
   TestRunner.addResult(`Tests IndexedDB tree element on resources panel.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('application_test_runner');
     // Note: every test that uses a storage API must manually clean-up state from previous tests.
   await ApplicationTestRunner.resetState();
 
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
 
   var mainFrameId;
   var indexedDBModel;
@@ -58,7 +54,7 @@ import * as Application from 'devtools/panels/application/application.js';
   await TestRunner.showPanel('resources');
 
   TestRunner.addResult('Expanded IndexedDB tree element.');
-  Application.ResourcesPanel.ResourcesPanel.instance().sidebar.indexedDBListTreeElement.expand();
+  UI.panels.resources.sidebar.indexedDBListTreeElement.expand();
   ApplicationTestRunner.dumpIndexedDBTree();
   TestRunner.addResult('Creating database.');
   createDatabase(databaseCreated);
@@ -66,17 +62,17 @@ import * as Application from 'devtools/panels/application/application.js';
   function databaseCreated() {
     TestRunner.addResult('Created database.');
     indexedDBModel = ApplicationTestRunner.indexedDBModel();
-    indexedDBModel.addEventListener(Application.IndexedDBModel.Events.DatabaseLoaded, databaseLoaded);
-    Application.ResourcesPanel.ResourcesPanel.instance().sidebar.indexedDBListTreeElement.refreshIndexedDB();
+    indexedDBModel.addEventListener(Resources.IndexedDBModel.Events.DatabaseLoaded, databaseLoaded);
+    UI.panels.resources.sidebar.indexedDBListTreeElement.refreshIndexedDB();
     TestRunner.addResult('Refreshing.');
   }
 
   async function databaseLoaded() {
     TestRunner.addResult('Refreshed.');
-    indexedDBModel.removeEventListener(Application.IndexedDBModel.Events.DatabaseLoaded, databaseLoaded);
+    indexedDBModel.removeEventListener(Resources.IndexedDBModel.Events.DatabaseLoaded, databaseLoaded);
     ApplicationTestRunner.dumpIndexedDBTree();
     TestRunner.addResult('Navigating to another security origin.');
-    const dbRemoval = indexedDBModel.once(Application.IndexedDBModel.Events.DatabaseRemoved);
+    const dbRemoval = indexedDBModel.once(Resources.IndexedDBModel.Events.DatabaseRemoved);
     const navigationPromise = new Promise(resolve =>
       TestRunner.deprecatedRunAfterPendingDispatches(() =>
         TestRunner.navigatePromise(withoutIndexedDBURL).then(resolve))
@@ -87,23 +83,22 @@ import * as Application from 'devtools/panels/application/application.js';
 
   function navigatedAway() {
     TestRunner.addResult('Navigated to another security origin.');
-    indexedDBModel.removeEventListener(Application.IndexedDBModel.Events.DatabaseRemoved);
+    indexedDBModel.removeEventListener(Resources.IndexedDBModel.Events.DatabaseRemoved);
     ApplicationTestRunner.dumpIndexedDBTree();
     TestRunner.addResult('Navigating back.');
     TestRunner.deprecatedRunAfterPendingDispatches(() => TestRunner.navigate(originalURL, navigatedBack));
   }
 
-  async function navigatedBack() {
+  function navigatedBack() {
     TestRunner.addResult('Navigated back.');
-    await new Promise(resolve => TestRunner.deprecatedRunAfterPendingDispatches(resolve));
-    indexedDBModel.addEventListener(Application.IndexedDBModel.Events.DatabaseLoaded, databaseLoaded2);
-    Application.ResourcesPanel.ResourcesPanel.instance().sidebar.indexedDBListTreeElement.refreshIndexedDB();
+    indexedDBModel.addEventListener(Resources.IndexedDBModel.Events.DatabaseLoaded, databaseLoaded2);
+    UI.panels.resources.sidebar.indexedDBListTreeElement.refreshIndexedDB();
     TestRunner.addResult('Refreshing.');
   }
 
   async function databaseLoaded2() {
     TestRunner.addResult('Refreshed.');
-    indexedDBModel.removeEventListener(Application.IndexedDBModel.Events.DatabaseLoaded, databaseLoaded2);
+    indexedDBModel.removeEventListener(Resources.IndexedDBModel.Events.DatabaseLoaded, databaseLoaded2);
     ApplicationTestRunner.dumpIndexedDBTree();
     await ApplicationTestRunner.setupIndexedDBHelpers();
     mainFrameId = TestRunner.resourceTreeModel.mainFrame.id;
@@ -114,15 +109,15 @@ import * as Application from 'devtools/panels/application/application.js';
   function databaseDeleted() {
     TestRunner.addResult('Deleted database.');
     TestRunner.addResult('Refreshing.');
-    Application.ResourcesPanel.ResourcesPanel.instance().sidebar.indexedDBListTreeElement.refreshIndexedDB();
+    UI.panels.resources.sidebar.indexedDBListTreeElement.refreshIndexedDB();
     TestRunner.addSniffer(
-        Application.IndexedDBModel.IndexedDBModel.prototype, 'updateStorageKeyDatabaseNames', databaseNamesLoadedAfterDeleting, false);
+        Resources.IndexedDBModel.prototype, 'updateStorageKeyDatabaseNames', databaseNamesLoadedAfterDeleting, false);
   }
 
   function databaseNamesLoadedAfterDeleting() {
     TestRunner.addResult('Refreshed.');
     ApplicationTestRunner.dumpIndexedDBTree();
-    Application.ResourcesPanel.ResourcesPanel.instance().sidebar.indexedDBListTreeElement.collapse();
+    UI.panels.resources.sidebar.indexedDBListTreeElement.collapse();
     TestRunner.completeTest();
   }
 })();

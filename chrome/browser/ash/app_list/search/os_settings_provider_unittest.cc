@@ -10,9 +10,9 @@
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/ash/app_list/search/test/test_search_controller.h"
-#include "chrome/browser/ui/webui/ash/settings/search/search_handler.h"
-#include "chrome/browser/ui/webui/ash/settings/test_support/fake_hierarchy.h"
-#include "chrome/browser/ui/webui/ash/settings/test_support/fake_os_settings_sections.h"
+#include "chrome/browser/ui/webui/settings/ash/fake_hierarchy.h"
+#include "chrome/browser/ui/webui/settings/ash/fake_os_settings_sections.h"
+#include "chrome/browser/ui/webui/settings/ash/search/search_handler.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/testing_browser_process.h"
@@ -126,9 +126,10 @@ class MockSearchHandler : public ash::settings::SearchHandler {
     results_ = std::move(results);
   }
 
-  raw_ptr<ash::settings::SearchTagRegistry> search_tag_registry_;
-  raw_ptr<ash::settings::OsSettingsSections> sections_;
-  raw_ptr<ash::settings::Hierarchy> hierarchy_;
+  raw_ptr<ash::settings::SearchTagRegistry, ExperimentalAsh>
+      search_tag_registry_;
+  raw_ptr<ash::settings::OsSettingsSections, ExperimentalAsh> sections_;
+  raw_ptr<ash::settings::Hierarchy, ExperimentalAsh> hierarchy_;
   std::vector<SettingsResultPtr> results_;
 };
 
@@ -157,13 +158,13 @@ class OsSettingsProviderTest : public testing::Test {
         TestingBrowserProcess::GetGlobal());
     ASSERT_TRUE(profile_manager_->SetUp());
     profile_ = profile_manager_->CreateTestingProfile("name");
+    proxy_ = apps::AppServiceProxyFactory::GetForProfile(profile_);
 
     apps::StubIconLoader stub_icon_loader;
-    apps::AppServiceProxyFactory::GetForProfile(profile_)
-        ->OverrideInnerIconLoaderForTesting(&stub_icon_loader);
+    proxy_->OverrideInnerIconLoaderForTesting(&stub_icon_loader);
 
     // Insert dummy map values so that the stub_icon_loader knows of the app.
-    stub_icon_loader.update_version_by_app_id_[web_app::kOsSettingsAppId] = 1;
+    stub_icon_loader.timelines_by_app_id_[web_app::kOsSettingsAppId] = 1;
 
     // Populate the fake hierarchy with data.
     fake_hierarchy_.AddSubpageMetadata(
@@ -174,26 +175,26 @@ class OsSettingsProviderTest : public testing::Test {
         IDS_SETTINGS_BLUETOOTH_SAVED_DEVICES, mojom::Section::kBluetooth,
         mojom::Subpage::kBluetoothSavedDevices, SearchResultIcon::kBluetooth,
         SearchResultDefaultRank::kMedium, mojom::kBluetoothSectionPath,
-        std::make_optional(mojom::Subpage::kBluetoothDevices));
+        absl::make_optional(mojom::Subpage::kBluetoothDevices));
     fake_hierarchy_.AddSettingMetadata(mojom::Section::kPrinting,
                                        mojom::Setting::kAddPrinter);
     fake_hierarchy_.AddSettingMetadata(mojom::Section::kPrinting,
                                        mojom::Setting::kSavedPrinters);
     fake_hierarchy_.AddSettingMetadata(
         mojom::Section::kBluetooth, mojom::Setting::kFastPairSavedDevices,
-        std::make_optional(mojom::Subpage::kBluetoothSavedDevices));
+        absl::make_optional(mojom::Subpage::kBluetoothSavedDevices));
 
-    auto provider = std::make_unique<OsSettingsProvider>(
-        profile_, &mock_handler_, &fake_hierarchy_);
-    provider_ = provider.get();
-    search_controller_->AddProvider(std::move(provider));
+    provider_ = std::make_unique<OsSettingsProvider>(profile_, &mock_handler_,
+                                                     &fake_hierarchy_, proxy_);
+    provider_->set_controller(search_controller_.get());
     task_environment_.RunUntilIdle();
   }
 
   void TearDown() override {
-    provider_ = nullptr;
+    provider_.reset();
     search_controller_.reset();
     profile_ = nullptr;
+    proxy_ = nullptr;
     profile_manager_->DeleteTestingProfile("name");
   }
 
@@ -204,7 +205,7 @@ class OsSettingsProviderTest : public testing::Test {
 
   // Starts a search and waits for the query to be sent.
   void StartSearch(const std::u16string& query) {
-    search_controller_->StartSearch(query);
+    provider_->Start(query);
     base::RunLoop().RunUntilIdle();
   }
 
@@ -220,8 +221,9 @@ class OsSettingsProviderTest : public testing::Test {
 
  private:
   std::unique_ptr<TestingProfileManager> profile_manager_;
-  raw_ptr<TestingProfile> profile_;
-  raw_ptr<OsSettingsProvider> provider_;
+  raw_ptr<TestingProfile, ExperimentalAsh> profile_;
+  raw_ptr<apps::AppServiceProxy, ExperimentalAsh> proxy_;
+  std::unique_ptr<OsSettingsProvider> provider_;
 };
 
 TEST_F(OsSettingsProviderTest, Basic) {

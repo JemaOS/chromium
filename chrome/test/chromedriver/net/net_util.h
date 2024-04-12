@@ -9,15 +9,15 @@
 
 #include "base/memory/scoped_refptr.h"
 
-class GURL;
-
 namespace base {
 class SequencedTaskRunner;
 }
 
-namespace network::mojom {
+namespace network {
+namespace mojom {
 class URLLoaderFactory;
-}  // namespace network::mojom
+}
+}  // namespace network
 
 class NetAddress {
  public:
@@ -45,12 +45,6 @@ void SetIOCapableTaskRunnerForTest(
 // Synchronously fetches data from a GET HTTP request to the given URL.
 // Returns true if response is 200 OK and sets response body to |response|.
 bool FetchUrl(const std::string& url,
-              network::mojom::URLLoaderFactory* factory,
-              std::string* response);
-
-// Synchronously fetches data from a GET HTTP request to the given URL.
-// Returns true if response is 200 OK and sets response body to |response|.
-bool FetchUrl(const GURL& url,
               network::mojom::URLLoaderFactory* factory,
               std::string* response);
 

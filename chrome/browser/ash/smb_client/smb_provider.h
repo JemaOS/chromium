@@ -17,7 +17,8 @@
 
 class Profile;
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 class SmbProvider : public file_system_provider::ProviderInterface {
  public:
@@ -28,10 +29,9 @@ class SmbProvider : public file_system_provider::ProviderInterface {
 
   // file_system_provider::ProviderInterface overrides.
   std::unique_ptr<file_system_provider::ProvidedFileSystemInterface>
-  CreateProvidedFileSystem(
-      Profile* profile,
-      const file_system_provider::ProvidedFileSystemInfo& file_system_info,
-      file_system_provider::CacheManager* cache_manager) override;
+  CreateProvidedFileSystem(Profile* profile,
+                           const file_system_provider::ProvidedFileSystemInfo&
+                               file_system_info) override;
   const file_system_provider::Capabilities& GetCapabilities() const override;
   const file_system_provider::ProviderId& GetId() const override;
   const std::string& GetName() const override;
@@ -48,6 +48,7 @@ class SmbProvider : public file_system_provider::ProviderInterface {
   file_system_provider::IconSet icon_set_;
 };
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_SMB_CLIENT_SMB_PROVIDER_H_

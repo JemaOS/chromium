@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <algorithm>
-#include <string_view>
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -95,7 +94,7 @@ class TestStreamFactory : public audio::FakeStreamFactory {
     base::SyncSocket socket1, socket2;
     base::SyncSocket::CreatePair(&socket1, &socket2);
     std::move(created_callback)
-        .Run({std::in_place,
+        .Run({absl::in_place,
               base::ReadOnlySharedMemoryRegion::Create(kShMemSize).region,
               mojo::PlatformHandle(socket1.Take())},
              false /*initially muted*/, base::UnguessableToken::Create());
@@ -118,7 +117,7 @@ class TestStreamFactory : public audio::FakeStreamFactory {
   mojo::Remote<media::mojom::AudioInputStreamClient> client_;
   mojo::Receiver<media::mojom::AudioInputStream> stream_receiver_;
   std::string device_id_;
-  std::optional<media::AudioParameters> params_;
+  absl::optional<media::AudioParameters> params_;
 
  private:
   void OnTimer() {
@@ -145,7 +144,6 @@ class SpeechRecognitionServiceTest
 
   // InProcessBrowserTest
   void SetUp() override;
-  void TearDownOnMainThread() override;
 
   // media::mojom::SpeechRecognitionRecognizerClient
   void OnSpeechRecognitionRecognitionEvent(
@@ -196,20 +194,12 @@ class SpeechRecognitionServiceTest
 
   std::vector<std::string> recognition_results_;
 
-  std::unique_ptr<ChromeSpeechRecognitionService> service_;
-
   bool is_client_requesting_speech_recognition_ = true;
 };
 
 void SpeechRecognitionServiceTest::SetUp() {
-  ASSERT_TRUE(
-      base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &test_data_dir_));
+  ASSERT_TRUE(base::PathService::Get(base::DIR_SOURCE_ROOT, &test_data_dir_));
   InProcessBrowserTest::SetUp();
-}
-
-void SpeechRecognitionServiceTest::TearDownOnMainThread() {
-  // The ChromeSpeechRecognitionService must be destroyed on the main thread.
-  service_.reset();
 }
 
 void SpeechRecognitionServiceTest::OnSpeechRecognitionRecognitionEvent(
@@ -268,9 +258,9 @@ void SpeechRecognitionServiceTest::LaunchService() {
   // Launch the Speech Recognition service.
   auto* browser_context =
       static_cast<content::BrowserContext*>(browser()->profile());
-  service_ = std::make_unique<ChromeSpeechRecognitionService>(browser_context);
+  auto* service = new ChromeSpeechRecognitionService(browser_context);
 
-  service_->BindSpeechRecognitionContext(
+  service->BindSpeechRecognitionContext(
       speech_recognition_context_.BindNewPipeAndPassReceiver());
 
   bool is_multichannel_supported = true;
@@ -300,9 +290,9 @@ void SpeechRecognitionServiceTest::LaunchServiceWithAudioSourceFetcher() {
   // Launch the Speech Recognition service.
   auto* browser_context =
       static_cast<content::BrowserContext*>(browser()->profile());
-  service_ = std::make_unique<ChromeSpeechRecognitionService>(browser_context);
+  auto* service = new ChromeSpeechRecognitionService(browser_context);
 
-  service_->BindAudioSourceSpeechRecognitionContext(
+  service->BindAudioSourceSpeechRecognitionContext(
       audio_source_speech_recognition_context_.BindNewPipeAndPassReceiver());
 
   bool is_multichannel_supported = true;
@@ -533,7 +523,7 @@ IN_PROC_BROWSER_TEST_F(SpeechRecognitionServiceTest, CompromisedRenderer) {
   ASSERT_TRUE(base::PathExists(config_dir));
   base::FilePath config_file_path =
       config_dir.Append(FILE_PATH_LITERAL("config_file"));
-  ASSERT_TRUE(base::WriteFile(config_file_path, std::string_view()));
+  ASSERT_TRUE(base::WriteFile(config_file_path, base::StringPiece()));
   ASSERT_TRUE(base::PathExists(config_file_path));
   g_browser_process->local_state()->SetFilePath(prefs::kSodaEnUsConfigPath,
                                                 config_file_path);
@@ -541,8 +531,8 @@ IN_PROC_BROWSER_TEST_F(SpeechRecognitionServiceTest, CompromisedRenderer) {
   // Launch the Speech Recognition service.
   auto* browser_context =
       static_cast<content::BrowserContext*>(browser()->profile());
-  service_ = std::make_unique<ChromeSpeechRecognitionService>(browser_context);
-  service_->BindSpeechRecognitionContext(
+  auto* service = new ChromeSpeechRecognitionService(browser_context);
+  service->BindSpeechRecognitionContext(
       speech_recognition_context_.BindNewPipeAndPassReceiver());
 
   // Bind the recognizer pipes used to send audio and receive results.

@@ -4,7 +4,6 @@
 
 class Background {
   constructor() {
-    this.readyTabs_ = new Set();
     this.init_();
   }
 
@@ -28,17 +27,9 @@ class Background {
 
   /** @public */
   injectContentScripts() {
-    this.forAllTabs_(tab => {
-      try {
-        chrome.scripting.executeScript({
-          target: {tabId: tab.id, allFrames: true},
-          files: ['highcontrast.js'],
-        });
-      } catch (err) {
-        // Convert the error to a warning to prevent service worker crash.
-        console.warn(err);
-      }
-    });
+    this.forAllTabs_(tab => chrome.tabs.executeScript(
+        tab.id,
+        {file: 'highcontrast.js', allFrames: true}));
   }
 
   /** @private */
@@ -46,11 +37,9 @@ class Background {
     this.forAllTabs_(tab => {
       const msg = {
         'enabled': Storage.enabled,
-        'scheme': Storage.getSiteScheme(siteFromUrl(tab.url)),
+        'scheme': Storage.getSiteScheme(siteFromUrl(tab.url))
       };
-      if (this.readyTabs_.has(tab.id)) {
-        chrome.tabs.sendMessage(tab.id, msg);
-      }
+      chrome.tabs.sendRequest(tab.id, msg);
     });
   }
 
@@ -79,32 +68,29 @@ class Background {
   }
 
   /**
-   * @param {*} message
+   * @param {*} request
    * @param {chrome.runtime.MessageSender} sender
    * @param {function} sendResponse
    * @private
    */
-  handleRequest_(message, sender, sendResponse) {
-    if (message['updateTabs']) {
+  handleRequest_(request, sender, sendResponse) {
+    if (request['updateTabs']) {
       this.updateTabs_();
     }
-    if (message['toggle_global']) {
+    if (request['toggle_global']) {
       this.toggleEnabled_();
     }
-    if (message['toggle_site']) {
+    if (request['toggle_site']) {
       this.toggleSite_(sender.tab ? sender.tab.url : 'www.example.com');
     }
-    if (message['init']) {
+    if (request['init']) {
       let scheme = Storage.scheme;
       if (sender.tab) {
         scheme = Storage.getSiteScheme(siteFromUrl(sender.tab.url));
-        this.readyTabs_.add(sender.tab.id);
-      } else {
-        console.warn('No tab for init message from', JSON.stringify(sender));
       }
       const msg = {
         'enabled': Storage.enabled,
-        'scheme': scheme,
+        'scheme': scheme
       };
       sendResponse(msg);
     }
@@ -115,12 +101,12 @@ class Background {
     this.injectContentScripts();
     this.updateTabs_();
 
-    chrome.runtime.onMessage.addListener(this.handleRequest_.bind(this));
+    chrome.extension.onRequest.addListener(this.handleRequest_.bind(this));
 
     chrome.storage.onChanged.addListener(this.updateTabs_.bind(this));
 
-    if (navigator.userAgentData.platform.indexOf('Mac') != -1) {
-      chrome.action.setTitle({'title': 'High Contrast (Cmd+Shift+F11)'});
+    if (navigator.appVersion.indexOf('Mac') != -1) {
+      chrome.browserAction.setTitle({'title': 'High Contrast (Cmd+Shift+F11)'});
     }
   }
 }

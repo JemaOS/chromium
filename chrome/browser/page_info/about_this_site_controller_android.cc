@@ -10,7 +10,6 @@
 #include "chrome/browser/android/resource_mapper.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/page_info/about_this_site_service_factory.h"
-#include "chrome/browser/page_info/about_this_site_tab_helper.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/page_info/core/about_this_site_service.h"
 #include "components/page_info/core/features.h"
@@ -44,10 +43,10 @@ JNI_PageInfoAboutThisSiteController_GetSiteInfo(
   if (!service)
     return nullptr;
   auto url = url::GURLAndroid::ToNativeGURL(env, j_url);
-  auto* web_contents = content::WebContents::FromJavaWebContents(j_webContents);
-  auto source_id = web_contents->GetPrimaryMainFrame()->GetPageUkmSourceId();
-  auto* tab_helper = AboutThisSiteTabHelper::FromWebContents(web_contents);
-  auto info = service->GetAboutThisSiteInfo(*url, source_id, tab_helper);
+  auto source_id = content::WebContents::FromJavaWebContents(j_webContents)
+                       ->GetPrimaryMainFrame()
+                       ->GetPageUkmSourceId();
+  auto info = service->GetAboutThisSiteInfo(*url, source_id);
   if (!info)
     return nullptr;
 
@@ -57,7 +56,7 @@ JNI_PageInfoAboutThisSiteController_GetSiteInfo(
   int size = info->ByteSize();
   std::vector<uint8_t> data(size);
   info->SerializeToArray(data.data(), size);
-  return base::android::ToJavaByteArray(env, data);
+  return base::android::ToJavaByteArray(env, data.data(), size);
 }
 
 static void JNI_PageInfoAboutThisSiteController_OnAboutThisSiteRowClicked(

@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {CapabilitiesResponse, Cdd, ColorOption, DpiOption, DuplexOption, ExtensionDestinationInfo, LocalDestinationInfo, MediaSizeCapability, MediaSizeOption, MediaTypeOption, NativeInitialSettings, PageOrientationOption} from 'chrome://print/print_preview.js';
-import {DEFAULT_MAX_COPIES, Destination, DestinationOrigin, DestinationStore, GooglePromotedDestinationId, MeasurementSystemUnitType, VendorCapabilityValueType} from 'chrome://print/print_preview.js';
-import type {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
+import {CapabilitiesResponse, Cdd, ColorOption, DEFAULT_MAX_COPIES, Destination, DestinationOrigin, DestinationStore, DpiOption, DuplexOption, ExtensionDestinationInfo, GooglePromotedDestinationId, LocalDestinationInfo, MeasurementSystemUnitType, MediaSizeCapability, MediaSizeOption, NativeInitialSettings, PageOrientationOption, VendorCapabilityValueType} from 'chrome://print/print_preview.js';
+import {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
@@ -87,43 +86,8 @@ export function getCddTemplate(
               width_microns: 215900,
               height_microns: 215900,
               custom_display_name: 'CUSTOM_SQUARE',
-              has_borderless_variant: true,
-            },
-            {
-              name: 'LEGAL',
-              width_microns: 215900,
-              height_microns: 355600,
-              custom_display_name: 'Legal',
-              imageable_area_left_microns: 5000,
-              imageable_area_bottom_microns: 5000,
-              imageable_area_right_microns: 5000,
-              imageable_area_top_microns: 5000,
-              has_borderless_variant: false,
-            },
-            {
-              name: '4x6',
-              width_microns: 101600,
-              height_microns: 152400,
-              custom_display_name: '4 x 6 in',
-              imageable_area_left_microns: 0,
-              imageable_area_bottom_microns: 0,
-              imageable_area_right_microns: 101600,
-              imageable_area_top_microns: 152400,
             },
           ] as MediaSizeOption[],
-        },
-        media_type: {
-          option: [
-            {
-              vendor_id: 'stationery',
-              custom_display_name: 'Plain',
-              is_default: true,
-            },
-            {
-              vendor_id: 'photographic',
-              custom_display_name: 'Photo',
-            },
-          ] as MediaTypeOption[],
         },
       },
     },
@@ -367,16 +331,13 @@ export function getMediaSizeCapabilityWithCustomNames(): MediaSizeCapability {
  * @param parentElement The element that receives the input-change event.
  * @return Promise that resolves when the input-change event has fired.
  */
-export async function triggerInputEvent(
+export function triggerInputEvent(
     inputElement: HTMLInputElement|CrInputElement, input: string,
     parentElement: HTMLElement): Promise<void> {
   inputElement.value = input;
-  if (inputElement.tagName === 'CR-INPUT') {
-    await (inputElement as CrInputElement).updateComplete;
-  }
   inputElement.dispatchEvent(
       new CustomEvent('input', {composed: true, bubbles: true}));
-  return await eventToPromise('input-change', parentElement);
+  return eventToPromise('input-change', parentElement);
 }
 
 const TestListenerElementBase = WebUiListenerMixin(PolymerElement);

@@ -5,9 +5,7 @@
 #include <algorithm>
 #include <iterator>
 #include <map>
-#include <optional>
 #include <set>
-#include <string_view>
 #include <utility>
 
 #include "base/containers/span.h"
@@ -30,9 +28,9 @@
 #include "components/network_session_configurator/common/network_switches.h"
 #include "components/search/ntp_features.h"
 #include "content/public/browser/devtools_agent_host_client.h"
-#include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || \
@@ -65,8 +63,8 @@ class NewTabPageTest : public InProcessBrowserTest,
   // content::DevToolsAgentHostClient:
   void DispatchProtocolMessage(content::DevToolsAgentHost* agent_host,
                                base::span<const uint8_t> message) override {
-    std::optional<base::Value> maybe_parsed_message =
-        base::JSONReader::Read(std::string_view(
+    absl::optional<base::Value> maybe_parsed_message =
+        base::JSONReader::Read(base::StringPiece(
             reinterpret_cast<const char*>(message.data()), message.size()));
     CHECK(maybe_parsed_message.has_value());
     base::Value::Dict parsed_message =
@@ -191,14 +189,17 @@ class NewTabPageTest : public InProcessBrowserTest,
                 const std::string& screenshot_name) {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || \
     (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS))
-    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-            switches::kVerifyPixels)) {
-      views::ViewSkiaGoldPixelDiff pixel_diff(screenshot_prefix);
-      return pixel_diff.CompareViewScreenshot(
-          screenshot_name, browser_view_->contents_web_view());
+    if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
+            "browser-ui-tests-verify-pixels")) {
+      return true;
     }
-#endif
+    views::ViewSkiaGoldPixelDiff pixel_diff;
+    pixel_diff.Init(screenshot_prefix);
+    return pixel_diff.CompareViewScreenshot(screenshot_name,
+                                            browser_view_->contents_web_view());
+#else
     return true;
+#endif
   }
 
  protected:
@@ -218,9 +219,12 @@ class NewTabPageTest : public InProcessBrowserTest,
 // ubsan.
 // TODO(crbug.com/1377330): NewTabPageTest.LandingPagePixelTest is failing on
 // Win11 Tests x64.
-// TODO(crbug.com/1416880): It's also found flaky on Linux Tests, Linux Tests
-// (Wayland), linux-lacros-tester-rel, Mac12 Tests.
-IN_PROC_BROWSER_TEST_F(NewTabPageTest, DISABLED_LandingPagePixelTest) {
+#if (defined(UNDEFINED_SANITIZER) && BUILDFLAG(IS_LINUX)) || BUILDFLAG(IS_WIN)
+#define MAYBE_LandingPagePixelTest DISABLED_LandingPagePixelTest
+#else
+#define MAYBE_LandingPagePixelTest LandingPagePixelTest
+#endif
+IN_PROC_BROWSER_TEST_F(NewTabPageTest, MAYBE_LandingPagePixelTest) {
   WaitForLazyLoad();
   // By default WaitForNetworkLoad waits for all resources that have started
   // loading at this point. However, sometimes not all required resources have

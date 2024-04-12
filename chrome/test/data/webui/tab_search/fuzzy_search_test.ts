@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {FuzzySearchOptions, TabGroup} from 'chrome://tab-search.top-chrome/tab_search.js';
-import {fuzzySearch, TabData, TabItemType} from 'chrome://tab-search.top-chrome/tab_search.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
+
+import {fuzzySearch, FuzzySearchOptions, TabData, TabGroup, TabItemType} from 'chrome://tab-search.top-chrome/tab_search.js';
 import {assertDeepEquals, assertEquals} from 'chrome://webui-test/chai_assert.js';
 
 import {createTab, sampleToken} from './tab_search_test_data.js';

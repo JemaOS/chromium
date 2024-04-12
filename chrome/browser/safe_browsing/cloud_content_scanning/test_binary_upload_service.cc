@@ -11,11 +11,6 @@
 namespace safe_browsing {
 
 TestBinaryUploadService::TestBinaryUploadService() = default;
-TestBinaryUploadService::~TestBinaryUploadService() = default;
-
-base::WeakPtr<BinaryUploadService> TestBinaryUploadService::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
 
 void TestBinaryUploadService::MaybeUploadForDeepScanning(
     std::unique_ptr<Request> request) {

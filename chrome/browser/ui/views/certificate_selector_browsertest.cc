@@ -103,8 +103,7 @@ class CertificateSelectorTest : public InProcessBrowserTest {
 
   // The selector will be owned by the Views hierarchy and will at latest be
   // deleted during the browser shutdown.
-  raw_ptr<TestCertificateSelector, AcrossTasksDanglingUntriaged> selector_ =
-      nullptr;
+  raw_ptr<TestCertificateSelector, DanglingUntriaged> selector_ = nullptr;
 };
 
 }  // namespace

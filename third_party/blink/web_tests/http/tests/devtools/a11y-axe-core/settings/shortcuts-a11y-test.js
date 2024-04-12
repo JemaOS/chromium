@@ -1,24 +1,20 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {AxeCoreTestRunner} from 'axe_core_test_runner';
-
-import * as Settings from 'devtools/panels/settings/settings.js';
-import * as UI from 'devtools/ui/legacy/legacy.js';
-
 (async function() {
   TestRunner.addResult('Tests accessibility in the settings tool shortcuts pane using the axe-core linter.');
+  await TestRunner.loadTestModule('axe_core_test_runner');
+  await TestRunner.loadLegacyModule('settings');
 
   async function testShortcuts() {
     // Open a view that supports context menu action to open shortcuts panel
-    await UI.ViewManager.ViewManager.instance().showView('sources');
+    await UI.viewManager.showView('sources');
 
     // Open Shortcuts pane using context menu action
-    await UI.ActionRegistry.ActionRegistry.instance().getAction('settings.shortcuts').execute();
+    await UI.actionRegistry.action('settings.shortcuts').execute();
 
-    const settingsPaneElement = Settings.SettingsScreen.SettingsScreen.instance().tabbedLocation.tabbedPane().contentElement;
+    const settingsPaneElement = Settings.SettingsScreen.instance().tabbedLocation.tabbedPane().contentElement;
     await AxeCoreTestRunner.runValidation(settingsPaneElement);
   }
 

@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://os-settings/os_settings.js';
-
-import {CrLinkRowElement, DevicePageBrowserProxyImpl, fakeKeyboards, fakeKeyboards2, Router, routes, SettingsPerDeviceKeyboardElement, SettingsSliderElement} from 'chrome://os-settings/os_settings.js';
-import {assert} from 'chrome://resources/js/assert.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {DevicePageBrowserProxyImpl, fakeKeyboards, fakeKeyboards2, Router, routes, SettingsPerDeviceKeyboardElement, SettingsSliderElement} from 'chrome://os-settings/chromeos/os_settings.js';
+import {CrLinkRowElement} from 'chrome://resources/cr_elements/cr_link_row/cr_link_row.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {pressAndReleaseKeyOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-interactions.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
@@ -15,8 +13,6 @@ import {isVisible} from 'chrome://webui-test/test_util.js';
 import {TestDevicePageBrowserProxy} from './test_device_page_browser_proxy.js';
 
 suite('<settings-per-device-keyboard>', () => {
-  const isRevampWayfindingEnabled =
-      loadTimeData.getBoolean('isRevampWayfindingEnabled');
   let perDeviceKeyboardPage: SettingsPerDeviceKeyboardElement;
   let devicePageBrowserProxy: TestDevicePageBrowserProxy;
 
@@ -47,10 +43,9 @@ suite('<settings-per-device-keyboard>', () => {
   setup(async () => {
     devicePageBrowserProxy = new TestDevicePageBrowserProxy();
     DevicePageBrowserProxyImpl.setInstanceForTesting(devicePageBrowserProxy);
-
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
     perDeviceKeyboardPage =
         document.createElement('settings-per-device-keyboard');
+    assert(perDeviceKeyboardPage);
     perDeviceKeyboardPage.set('prefs', getFakeAutoRepeatPrefs());
     perDeviceKeyboardPage.set('keyboards', fakeKeyboards);
     document.body.appendChild(perDeviceKeyboardPage);
@@ -58,6 +53,7 @@ suite('<settings-per-device-keyboard>', () => {
   });
 
   teardown(() => {
+    perDeviceKeyboardPage.remove();
     Router.getInstance().resetRouteForTesting();
   });
 
@@ -65,8 +61,6 @@ suite('<settings-per-device-keyboard>', () => {
     let subsections = perDeviceKeyboardPage.shadowRoot!.querySelectorAll(
         'settings-per-device-keyboard-subsection');
     assertEquals(fakeKeyboards.length, subsections.length);
-    assertFalse(subsections[0]!.get('isLastDevice'));
-    assertTrue(subsections[fakeKeyboards.length - 1]!.get('isLastDevice'));
 
     // Check the number of subsections when the keyboard list is updated.
     perDeviceKeyboardPage.set('keyboards', fakeKeyboards2);
@@ -74,7 +68,6 @@ suite('<settings-per-device-keyboard>', () => {
     subsections = perDeviceKeyboardPage.shadowRoot!.querySelectorAll(
         'settings-per-device-keyboard-subsection');
     assertEquals(fakeKeyboards2.length, subsections.length);
-    assertTrue(subsections[fakeKeyboards2.length - 1]!.get('isLastDevice'));
   });
 
   test(
@@ -85,10 +78,10 @@ suite('<settings-per-device-keyboard>', () => {
           const name =
               subsections[i]!.shadowRoot!.querySelector('h2')!.textContent;
           if (fakeKeyboards[i]!.isExternal) {
-            assertEquals(fakeKeyboards[i]!.name, name!.trim());
+            assertEquals(fakeKeyboards[i]!.name, name);
           } else {
             assertTrue(subsections[i]!.i18nExists('builtInKeyboardName'));
-            assertEquals('Built-in Keyboard', name!.trim());
+            assertEquals('Built-in Keyboard', name);
           }
         }
       });
@@ -113,16 +106,12 @@ suite('<settings-per-device-keyboard>', () => {
     pressAndReleaseKeyOn(
         perDeviceKeyboardPage.shadowRoot!.querySelector('#delaySlider')!
             .shadowRoot!.querySelector('cr-slider')!,
-        37, [],
-        // In the revamp, slider values and labels are reversed from low to
-        // high.
-        isRevampWayfindingEnabled ? 'ArrowRight' : 'ArrowLeft');
+        37, [], 'ArrowLeft');
     pressAndReleaseKeyOn(
         perDeviceKeyboardPage.shadowRoot!.querySelector('#repeatRateSlider')!
             .shadowRoot!.querySelector('cr-slider')!,
         39, [], 'ArrowRight');
     await flushTasks();
-
     assertEquals(
         1000,
         perDeviceKeyboardPage.get(
@@ -180,7 +169,7 @@ suite('<settings-per-device-keyboard>', () => {
 
   test('Navigate to input tab', async () => {
     perDeviceKeyboardPage.shadowRoot!
-        .querySelector<CrLinkRowElement>('#inputRow')!.click();
+        .querySelector<CrLinkRowElement>('#showLanguagesInput')!.click();
     assertEquals(routes.OS_LANGUAGES_INPUT, Router.getInstance().currentRoute);
   });
 
@@ -190,7 +179,7 @@ suite('<settings-per-device-keyboard>', () => {
     assertTrue(isVisible(perDeviceKeyboardPage.shadowRoot!.querySelector(
         '#noKeyboardsConnectedContainer')));
     assertEquals(
-        'No keyboard connected',
+        'No keyboard detected',
         perDeviceKeyboardPage.shadowRoot!
             .querySelector<HTMLElement>(
                 '#noKeyboardsConnectedMessage')!.innerText.trim());

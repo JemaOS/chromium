@@ -7,8 +7,6 @@
 #include <memory>
 
 #include "ui/aura/window.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/controls/native/native_view_host_test_base.h"
 #include "ui/views/test/views_test_base.h"
 #include "ui/views/widget/widget.h"
@@ -33,8 +31,6 @@ namespace {
 // View implementation used by NativeViewHierarchyChanged to count number of
 // times NativeViewHierarchyChanged() is invoked.
 class NativeViewHierarchyChangedTestView : public View {
-  METADATA_HEADER(NativeViewHierarchyChangedTestView, View)
-
  public:
   NativeViewHierarchyChangedTestView() = default;
 
@@ -57,16 +53,11 @@ class NativeViewHierarchyChangedTestView : public View {
   int notification_count_ = 0;
 };
 
-BEGIN_METADATA(NativeViewHierarchyChangedTestView)
-END_METADATA
-
 aura::Window* GetNativeParent(aura::Window* window) {
   return window->parent();
 }
 
 class ViewHierarchyChangedTestHost : public NativeViewHost {
-  METADATA_HEADER(ViewHierarchyChangedTestHost, NativeViewHost)
-
  public:
   ViewHierarchyChangedTestHost() = default;
 
@@ -93,9 +84,6 @@ class ViewHierarchyChangedTestHost : public NativeViewHost {
  private:
   int num_parent_changes_ = 0;
 };
-
-BEGIN_METADATA(ViewHierarchyChangedTestHost)
-END_METADATA
 
 }  // namespace
 

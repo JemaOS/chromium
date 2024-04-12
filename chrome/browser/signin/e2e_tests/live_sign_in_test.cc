@@ -17,8 +17,8 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/profiles/profile_picker.h"
-#include "chrome/browser/ui/profiles/profile_ui_test_utils.h"
+#include "chrome/browser/ui/profile_picker.h"
+#include "chrome/browser/ui/profile_ui_test_utils.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service_factory.h"
 #include "chrome/browser/ui/webui/signin/login_ui_test_utils.h"
@@ -33,10 +33,9 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/signin/public/identity_manager/tribool.h"
-#include "components/sync/service/sync_service.h"
+#include "components/sync/driver/sync_service.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "google_apis/gaia/gaia_urls.h"
 #include "third_party/skia/include/core/SkColor.h"
@@ -271,7 +270,7 @@ IN_PROC_BROWSER_TEST_F(LiveSignInTest, MANUAL_CancelSyncWithWebAccount) {
       "settings.SyncBrowserProxyImpl.getInstance()."
       "startSyncingWithEmail(\"%s\", true);",
       test_account.user.c_str());
-  EXPECT_TRUE(content::ExecJs(
+  EXPECT_TRUE(content::ExecuteScript(
       settings_tab, base::StringPrintf(kSettingsScriptWrapperFormat,
                                        start_syncing_script.c_str())));
   EXPECT_TRUE(login_ui_test_utils::CancelSyncConfirmationDialog(
@@ -513,10 +512,8 @@ IN_PROC_BROWSER_TEST_F(LiveSignInTest,
     AccountInfo account_info =
         identity_manager()->FindExtendedAccountInfoByAccountId(
             core_account_info.account_id);
-    EXPECT_EQ(
-        account_info.capabilities
-            .can_show_history_sync_opt_ins_without_minor_mode_restrictions(),
-        Tribool::kTrue);
+    EXPECT_EQ(account_info.capabilities.can_offer_extended_chrome_sync_promos(),
+              Tribool::kTrue);
   }
 
   // Test secondary minor account.
@@ -536,10 +533,8 @@ IN_PROC_BROWSER_TEST_F(LiveSignInTest,
     AccountInfo account_info =
         identity_manager()->FindExtendedAccountInfoByAccountId(
             core_account_info.account_id);
-    EXPECT_EQ(
-        account_info.capabilities
-            .can_show_history_sync_opt_ins_without_minor_mode_restrictions(),
-        Tribool::kFalse);
+    EXPECT_EQ(account_info.capabilities.can_offer_extended_chrome_sync_promos(),
+              Tribool::kFalse);
   }
 }
 

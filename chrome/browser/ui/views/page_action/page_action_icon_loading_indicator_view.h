@@ -22,9 +22,8 @@ class PageActionIconView;
 class PageActionIconLoadingIndicatorView : public views::View,
                                            public views::ViewObserver,
                                            public gfx::AnimationDelegate {
-  METADATA_HEADER(PageActionIconLoadingIndicatorView, views::View)
-
  public:
+  METADATA_HEADER(PageActionIconLoadingIndicatorView);
   explicit PageActionIconLoadingIndicatorView(PageActionIconView* parent);
   PageActionIconLoadingIndicatorView(
       const PageActionIconLoadingIndicatorView&) = delete;
@@ -45,7 +44,7 @@ class PageActionIconLoadingIndicatorView : public views::View,
   void AnimationProgressed(const gfx::Animation* animation) override;
 
  private:
-  std::optional<base::TimeTicks> throbber_start_time_;
+  absl::optional<base::TimeTicks> throbber_start_time_;
 
   gfx::ThrobAnimation animation_{this};
 

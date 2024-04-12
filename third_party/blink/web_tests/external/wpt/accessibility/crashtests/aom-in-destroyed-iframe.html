@@ -1,10 +1,6 @@
 <html class="test-wait">
 <body></body>
 <script>
-
-// Bypass this abandoned syntax in all but the engines that implement it.
-if (typeof getComputedAccessibleNode !== 'undefined') {
-
   const frameElem = document.createElement('iframe');
 
   frameElem.srcdoc = '<html><head><title>X</title></head><body><div>-</div></body></html>';
@@ -25,11 +21,7 @@ if (typeof getComputedAccessibleNode !== 'undefined') {
       });
     });
   };
-  document.body.appendChild(frameElem);
 
-} else {
-  // Pass in other engines that have not implemented the abandoned API
-  document.documentElement.className = '';
-}
+  document.body.appendChild(frameElem);
 </script>
 </html>

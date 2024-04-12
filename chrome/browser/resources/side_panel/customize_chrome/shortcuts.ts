@@ -2,21 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://customize-chrome-side-panel.top-chrome/shared/sp_shared_style.css.js';
 import 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 import 'chrome://resources/cr_elements/cr_radio_group/cr_radio_group.js';
 import 'chrome://resources/cr_elements/cr_radio_button/cr_radio_button.js';
 import 'chrome://resources/polymer/v3_0/iron-collapse/iron-collapse.js';
 import './button_label.js';
 
-import type {CrRadioButtonElement} from 'chrome://resources/cr_elements/cr_radio_button/cr_radio_button.js';
-import type {CrRadioGroupElement} from 'chrome://resources/cr_elements/cr_radio_group/cr_radio_group.js';
-import type {CrToggleElement} from 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {CrRadioButtonElement} from 'chrome://resources/cr_elements/cr_radio_button/cr_radio_button.js';
+import {CrRadioGroupElement} from 'chrome://resources/cr_elements/cr_radio_group/cr_radio_group.js';
+import {CrToggleElement} from 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {CustomizeChromeAction, recordCustomizeChromeAction} from './common.js';
-import type {CustomizeChromePageCallbackRouter, CustomizeChromePageHandlerInterface} from './customize_chrome.mojom-webui.js';
+import {CustomizeChromePageCallbackRouter, CustomizeChromePageHandlerInterface} from './customize_chrome.mojom-webui.js';
 import {CustomizeChromeApiProxy} from './customize_chrome_api_proxy.js';
 import {getTemplate} from './shortcuts.html.js';
 
@@ -93,9 +91,6 @@ export class ShortcutsElement extends PolymerElement {
   }
 
   private onShortcutsRadioSelectionChanged_(e: CustomEvent<{value: string}>) {
-    if (e.detail.value === this.shortcutsRadioSelection_) {
-      return;
-    }
     this.customLinksEnabled_ = e.detail.value === 'customLinksOption';
     this.setMostVisitedSettings_();
   }
@@ -105,8 +100,6 @@ export class ShortcutsElement extends PolymerElement {
   }
 
   private onShowShortcutsToggleChange_(e: CustomEvent<boolean>) {
-    recordCustomizeChromeAction(
-        CustomizeChromeAction.SHOW_SHORTCUTS_TOGGLE_CLICKED);
     this.show_ = e.detail;
     this.setMostVisitedSettings_();
   }

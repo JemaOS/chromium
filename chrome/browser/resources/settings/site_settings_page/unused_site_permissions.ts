@@ -15,26 +15,21 @@ import '../site_favicon.js';
 import '../i18n_setup.js';
 import './site_review_shared.css.js';
 
-import type {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
+import {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
 import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
-import {isUndoKeyboardEvent} from 'chrome://resources/js/util.js';
-import type {DomRepeatEvent} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {isUndoKeyboardEvent} from 'chrome://resources/js/util_ts.js';
+import {DomRepeatEvent, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {MetricsBrowserProxy} from '../metrics_browser_proxy.js';
-import {MetricsBrowserProxyImpl, SafetyCheckUnusedSitePermissionsModuleInteractions} from '../metrics_browser_proxy.js';
+import {MetricsBrowserProxy, MetricsBrowserProxyImpl, SafetyCheckUnusedSitePermissionsModuleInteractions} from '../metrics_browser_proxy.js';
 import {routes} from '../route.js';
-import type {Route} from '../router.js';
-import {RouteObserverMixin} from '../router.js';
-import type {SafetyHubBrowserProxy, UnusedSitePermissions} from '../safety_hub/safety_hub_browser_proxy.js';
-import {SafetyHubBrowserProxyImpl, SafetyHubEvent} from '../safety_hub/safety_hub_browser_proxy.js';
-import type {ContentSettingsTypes} from '../site_settings/constants.js';
-import {MODEL_UPDATE_DELAY_MS} from '../site_settings/constants.js';
+import {Route, RouteObserverMixin} from '../router.js';
+import {ContentSettingsTypes, MODEL_UPDATE_DELAY_MS} from '../site_settings/constants.js';
 import {SiteSettingsMixin} from '../site_settings/site_settings_mixin.js';
+import {SiteSettingsPermissionsBrowserProxy, SiteSettingsPermissionsBrowserProxyImpl, UnusedSitePermissions} from '../site_settings/site_settings_permissions_browser_proxy.js';
 import {TooltipMixin} from '../tooltip_mixin.js';
 
 import {getLocalizationStringForContentType} from './site_settings_page_util.js';
@@ -133,8 +128,8 @@ export class SettingsUnusedSitePermissionsElement extends
     };
   }
 
-  private browserProxy_: SafetyHubBrowserProxy =
-      SafetyHubBrowserProxyImpl.getInstance();
+  private browserProxy_: SiteSettingsPermissionsBrowserProxy =
+      SiteSettingsPermissionsBrowserProxyImpl.getInstance();
   private eventTracker_: EventTracker = new EventTracker();
   private headerString_: string;
   private lastUnusedSitePermissionsAllowedAgain_: UnusedSitePermissions|null;
@@ -153,7 +148,7 @@ export class SettingsUnusedSitePermissionsElement extends
 
   override async connectedCallback() {
     this.addWebUiListener(
-        SafetyHubEvent.UNUSED_PERMISSIONS_MAYBE_CHANGED,
+        'unused-permission-review-list-maybe-changed',
         (sites: UnusedSitePermissions[]) =>
             this.onUnusedSitePermissionListChanged_(sites));
 
@@ -218,7 +213,8 @@ export class SettingsUnusedSitePermissionsElement extends
     const permissionsI18n = permissions.map(permission => {
       const localizationString =
           getLocalizationStringForContentType(permission);
-      return localizationString ? this.i18n(localizationString) : '';
+      assert(localizationString !== null);
+      return this.i18n(localizationString);
     });
 
     if (permissionsI18n.length === 1) {

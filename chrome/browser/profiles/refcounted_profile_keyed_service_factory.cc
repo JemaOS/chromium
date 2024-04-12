@@ -9,9 +9,8 @@
 
 RefcountedProfileKeyedServiceFactory::RefcountedProfileKeyedServiceFactory(
     const char* name)
-    : RefcountedProfileKeyedServiceFactory(
-          name,
-          ProfileSelections::Builder().Build()) {}
+    : RefcountedProfileKeyedServiceFactory(name,
+                                           ProfileSelections::BuildDefault()) {}
 
 RefcountedProfileKeyedServiceFactory::RefcountedProfileKeyedServiceFactory(
     const char* name,

@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const genericFamilySettingsMap = {
     'initial': 'Standard',
     'serif': 'Serif',

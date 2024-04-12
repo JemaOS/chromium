@@ -9,6 +9,7 @@
 #include "ash/capture_mode/capture_mode_util.h"
 #include "ash/style/ash_color_id.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/views/controls/button/toggle_button.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/layout/box_layout.h"
@@ -16,6 +17,8 @@
 namespace ash {
 
 namespace {
+
+constexpr gfx::Size kToggleButtonSize{40, 20};
 
 constexpr int kSpaceBetweenChildView = 16;
 
@@ -28,14 +31,15 @@ CaptureModeMenuToggleButton::CaptureModeMenuToggleButton(
     views::ToggleButton::PressedCallback callback)
     : icon_view_(AddChildView(std::make_unique<views::ImageView>())),
       label_view_(AddChildView(std::make_unique<views::Label>(label_text))),
-      toggle_button_(
-          AddChildView(std::make_unique<Switch>(std::move(callback)))) {
+      toggle_button_(AddChildView(
+          std::make_unique<views::ToggleButton>(std::move(callback)))) {
   toggle_button_->SetAccessibleName(label_text);
   CaptureModeSessionFocusCycler::HighlightHelper::Install(toggle_button_);
   icon_view_->SetImageSize(capture_mode::kSettingsIconSize);
   icon_view_->SetPreferredSize(capture_mode::kSettingsIconSize);
   icon_view_->SetImage(
       ui::ImageModel::FromVectorIcon(icon, kColorAshButtonIconColor));
+  toggle_button_->SetPreferredSize(kToggleButtonSize);
   toggle_button_->SetIsOn(enabled);
 
   SetBorder(views::CreateEmptyBorder(capture_mode::kSettingsMenuBorderSize));
@@ -60,7 +64,7 @@ void CaptureModeMenuToggleButton::OnThemeChanged() {
       color_provider->GetColor(kColorAshSwitchTrackColorInactive));
 }
 
-BEGIN_METADATA(CaptureModeMenuToggleButton)
+BEGIN_METADATA(CaptureModeMenuToggleButton, views::View)
 END_METADATA
 
 }  // namespace ash

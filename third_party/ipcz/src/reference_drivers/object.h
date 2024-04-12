@@ -14,7 +14,7 @@
 namespace ipcz::reference_drivers {
 
 // Base class for all driver-managed objects used by both reference drivers.
-class Object : public RefCounted<Object> {
+class Object : public RefCounted {
  public:
   enum Type : uint32_t {
     kTransport,
@@ -50,11 +50,9 @@ class Object : public RefCounted<Object> {
   virtual IpczResult Close();
 
  protected:
-  virtual ~Object();
+  ~Object() override;
 
  private:
-  friend class RefCounted<Object>;
-
   const Type type_;
 };
 
@@ -83,7 +81,7 @@ class ObjectImpl : public Object {
   }
 
  protected:
-  virtual ~ObjectImpl() = default;
+  ~ObjectImpl() override = default;
 };
 
 }  // namespace ipcz::reference_drivers

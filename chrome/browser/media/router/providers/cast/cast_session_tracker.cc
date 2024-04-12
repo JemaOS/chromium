@@ -16,11 +16,7 @@ namespace media_router {
 
 CastSessionTracker::Observer::~Observer() = default;
 
-CastSessionTracker::~CastSessionTracker() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  media_sink_service_->RemoveObserver(this);
-  message_handler_->RemoveObserver(this);
-}
+CastSessionTracker::~CastSessionTracker() = default;
 
 // static
 CastSessionTracker* CastSessionTracker::GetInstance() {
@@ -142,7 +138,7 @@ void CastSessionTracker::HandleMediaStatusMessage(
   for (auto& media : *updated_status) {
     base::Value::Dict& media_dict = media.GetDict();
     media_dict.Set("sessionId", session_id);
-    std::optional<int> supported_media_commands =
+    absl::optional<int> supported_media_commands =
         media_dict.FindInt("supportedMediaCommands");
     if (!supported_media_commands.has_value())
       continue;
@@ -157,7 +153,7 @@ void CastSessionTracker::HandleMediaStatusMessage(
   DVLOG(2) << "Final updated MEDIA_STATUS: " << *updated_status;
   session->UpdateMedia(*updated_status);
 
-  std::optional<int> request_id =
+  absl::optional<int> request_id =
       cast_channel::GetRequestIdFromResponse(updated_message);
 
   // Notify observers of media update.
@@ -178,7 +174,7 @@ void CastSessionTracker::CopySavedMediaFieldsToMediaList(
 
   for (auto& media : media_list) {
     base::Value::Dict& media_dict = media.GetDict();
-    std::optional<int> media_session_id = media_dict.FindInt("mediaSessionId");
+    absl::optional<int> media_session_id = media_dict.FindInt("mediaSessionId");
     if (!media_session_id.has_value() || media_dict.Find("media"))
       continue;
 
@@ -217,9 +213,6 @@ void CastSessionTracker::OnSinkRemoved(const MediaSinkInternal& sink) {
       observer.OnSessionRemoved(sink);
   }
 }
-
-void CastSessionTracker::OnAppMessage(int channel_id,
-                                      const CastMessage& message) {}
 
 void CastSessionTracker::OnInternalMessage(
     int channel_id,

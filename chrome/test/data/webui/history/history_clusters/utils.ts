@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {ClusterAction, MetricsProxy, RelatedSearchAction, VisitAction, VisitType} from 'chrome://history/history.js';
-import {PageCallbackRouter, PageHandlerRemote} from 'chrome://history/history.js';
+import {ClusterAction, MetricsProxy, PageCallbackRouter, PageHandlerRemote, RelatedSearchAction, VisitAction, VisitType} from 'chrome://history/history.js';
 import {TestBrowserProxy as BaseTestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 

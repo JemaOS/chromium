@@ -9,14 +9,9 @@
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_file_handle.mojom-blink.h"
 #include "third_party/blink/renderer/modules/file_system_access/file_system_handle.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
-#include "third_party/blink/renderer/platform/wtf/casting.h"
 
 namespace blink {
-class File;
 class FileSystemCreateWritableOptions;
-class FileSystemCreateSyncAccessHandleOptions;
-class FileSystemSyncAccessHandle;
-class FileSystemWritableFileStream;
 
 class FileSystemFileHandle final : public FileSystemHandle {
   DEFINE_WRAPPERTYPEINFO();
@@ -29,21 +24,14 @@ class FileSystemFileHandle final : public FileSystemHandle {
 
   bool isFile() const override { return true; }
 
-  ScriptPromiseTyped<FileSystemWritableFileStream> createWritable(
-      ScriptState*,
-      const FileSystemCreateWritableOptions* options,
-      ExceptionState&);
-  ScriptPromiseTyped<File> getFile(ScriptState*, ExceptionState&);
+  ScriptPromise createWritable(ScriptState*,
+                               const FileSystemCreateWritableOptions* options,
+                               ExceptionState&);
+  ScriptPromise getFile(ScriptState*, ExceptionState&);
 
   // TODO(fivedots): Define if this method should be generally exposed or only
   // on files backed by the Origin Private File System.
-  ScriptPromiseTyped<FileSystemSyncAccessHandle> createSyncAccessHandle(
-      ScriptState*,
-      ExceptionState&);
-  ScriptPromiseTyped<FileSystemSyncAccessHandle> createSyncAccessHandle(
-      ScriptState*,
-      const FileSystemCreateSyncAccessHandleOptions* options,
-      ExceptionState&);
+  ScriptPromise createSyncAccessHandle(ScriptState*, ExceptionState&);
 
   mojo::PendingRemote<mojom::blink::FileSystemAccessTransferToken> Transfer()
       override;
@@ -75,22 +63,9 @@ class FileSystemFileHandle final : public FileSystemHandle {
       mojo::PendingRemote<mojom::blink::FileSystemAccessTransferToken> other,
       base::OnceCallback<void(mojom::blink::FileSystemAccessErrorPtr, bool)>)
       override;
-  void GetUniqueIdImpl(
-      base::OnceCallback<void(mojom::blink::FileSystemAccessErrorPtr,
-                              const WTF::String&)>) override;
-  void GetCloudIdentifiersImpl(
-      base::OnceCallback<void(
-          mojom::blink::FileSystemAccessErrorPtr,
-          Vector<mojom::blink::FileSystemAccessCloudIdentifierPtr>)>) override;
+  void GetUniqueIdImpl(base::OnceCallback<void(const WTF::String&)>) override;
 
   HeapMojoRemote<mojom::blink::FileSystemAccessFileHandle> mojo_ptr_;
-};
-
-template <>
-struct DowncastTraits<FileSystemFileHandle> {
-  static bool AllowFrom(const FileSystemHandle& handle) {
-    return handle.isFile();
-  }
 };
 
 }  // namespace blink

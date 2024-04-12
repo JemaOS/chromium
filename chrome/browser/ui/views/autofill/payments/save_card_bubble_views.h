@@ -10,6 +10,7 @@
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/autofill/autofill_bubble_base.h"
 #include "chrome/browser/ui/autofill/payments/save_card_bubble_controller.h"
+#include "chrome/browser/ui/sync/bubble_sync_promo_delegate.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_bubble_delegate_view.h"
 #include "components/autofill/core/browser/ui/payments/payments_bubble_closed_reasons.h"
 #include "components/signin/public/base/signin_metrics.h"
@@ -42,8 +43,6 @@ class SaveCardBubbleViews : public AutofillBubbleBase,
   void Hide() override;
 
   // LocationBarBubbleDelegateView:
-  void OnBeforeBubbleWidgetInit(views::Widget::InitParams* params,
-                                views::Widget* widget) const override;
   void AddedToWidget() override;
   std::u16string GetWindowTitle() const override;
   void WindowClosing() override;
@@ -71,13 +70,12 @@ class SaveCardBubbleViews : public AutofillBubbleBase,
   void Init() override;
 
   void OnDialogAccepted();
+  void OnDialogCancelled();
 
   ~SaveCardBubbleViews() override;
 
  private:
   friend class SaveCardBubbleViewsFullFormBrowserTest;
-
-  std::unique_ptr<views::View> GetCardIdentifierView();
 
   raw_ptr<views::View> footnote_view_ = nullptr;
 

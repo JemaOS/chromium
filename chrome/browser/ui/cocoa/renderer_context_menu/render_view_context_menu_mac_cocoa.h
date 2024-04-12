@@ -7,6 +7,7 @@
 
 #import <Cocoa/Cocoa.h>
 
+#include "base/mac/scoped_nsobject.h"
 #include "chrome/browser/ui/cocoa/renderer_context_menu/render_view_context_menu_mac.h"
 
 @class MenuControllerCocoa;
@@ -27,23 +28,35 @@ class RenderViewContextMenuMacCocoa : public RenderViewContextMenuMac {
 
   ~RenderViewContextMenuMacCocoa() override;
 
-  // RenderViewContextMenu:
+  // RenderViewContextMenuViewsMac:
   void Show() override;
 
  private:
-  // RenderViewContextMenuViewsMac:
-  void CancelToolkitMenu() override;
+  friend class ToolkitDelegateMacCocoa;
+
+  // Cancels the menu.
+  void CancelToolkitMenu();
+
+  // Updates the status and text of the specified context-menu item.
   void UpdateToolkitMenuItem(int command_id,
                              bool enabled,
                              bool hidden,
-                             const std::u16string& title) override;
+                             const std::u16string& title);
 
   // The Cocoa menu controller for this menu.
-  MenuControllerCocoa* __strong menu_controller_;
-  MenuControllerCocoaDelegateImpl* __strong menu_controller_delegate_;
+  base::scoped_nsobject<MenuControllerCocoa> menu_controller_;
+  base::scoped_nsobject<MenuControllerCocoaDelegateImpl>
+      menu_controller_delegate_;
 
   // The Cocoa parent view.
-  NSView* __weak parent_view_;
+  NSView* parent_view_;
 };
+
+// The ChromeSwizzleServicesMenuUpdater filters Services menu items in the
+// contextual menus and elsewhere using swizzling.
+@interface ChromeSwizzleServicesMenuUpdater : NSObject
+// Return filtered entries, for testing.
++ (void)storeFilteredEntriesForTestingInArray:(NSMutableArray*)array;
+@end
 
 #endif  // CHROME_BROWSER_UI_COCOA_RENDERER_CONTEXT_MENU_RENDER_VIEW_CONTEXT_MENU_MAC_COCOA_H_

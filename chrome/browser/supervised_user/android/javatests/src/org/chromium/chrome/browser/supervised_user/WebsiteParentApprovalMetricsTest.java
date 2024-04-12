@@ -13,7 +13,9 @@ import org.robolectric.annotation.Config;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.HistogramWatcher;
 
-/** Tests the recording of the metrics within the local web approval flow. */
+/**
+ * Tests the recording of the metrics within the local web approval flow.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class WebsiteParentApprovalMetricsTest {
@@ -22,11 +24,9 @@ public class WebsiteParentApprovalMetricsTest {
     public void recordOutcomeMetrics() {
         final String histogramName = "FamilyLinkUser.LocalWebApprovalOutcome";
 
-        var histogram =
-                HistogramWatcher.newSingleRecordWatcher(
-                        histogramName,
-                        WebsiteParentApprovalMetrics.FamilyLinkUserLocalWebApprovalOutcome
-                                .APPROVED_BY_PARENT);
+        var histogram = HistogramWatcher.newSingleRecordWatcher(histogramName,
+                WebsiteParentApprovalMetrics.FamilyLinkUserLocalWebApprovalOutcome
+                        .APPROVED_BY_PARENT);
         WebsiteParentApprovalMetrics.recordOutcomeMetric(
                 WebsiteParentApprovalMetrics.FamilyLinkUserLocalWebApprovalOutcome
                         .APPROVED_BY_PARENT);
@@ -34,8 +34,7 @@ public class WebsiteParentApprovalMetricsTest {
 
         histogram =
                 HistogramWatcher.newBuilder()
-                        .expectIntRecordTimes(
-                                histogramName,
+                        .expectIntRecordTimes(histogramName,
                                 WebsiteParentApprovalMetrics.FamilyLinkUserLocalWebApprovalOutcome
                                         .PARENT_APPROVAL_CANCELLED,
                                 2)
@@ -61,10 +60,9 @@ public class WebsiteParentApprovalMetricsTest {
         WebsiteParentApprovalMetrics.recordParentAuthenticationErrorCode(negativeErrorCode);
         histogram.assertExpected();
 
-        histogram =
-                HistogramWatcher.newBuilder()
-                        .expectIntRecordTimes(histogramName, lowValueCode, 2)
-                        .build();
+        histogram = HistogramWatcher.newBuilder()
+                            .expectIntRecordTimes(histogramName, lowValueCode, 2)
+                            .build();
         WebsiteParentApprovalMetrics.recordParentAuthenticationErrorCode(lowValueCode);
         WebsiteParentApprovalMetrics.recordParentAuthenticationErrorCode(lowValueCode);
         histogram.assertExpected();

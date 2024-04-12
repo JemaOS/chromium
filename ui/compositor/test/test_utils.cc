@@ -8,7 +8,6 @@
 #include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "base/timer/timer.h"
-#include "components/viz/common/frame_timing_details.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/compositor/compositor.h"
 #include "ui/gfx/geometry/rect.h"
@@ -52,20 +51,18 @@ void CheckApproximatelyEqual(const gfx::RoundedCornersF& lhs,
 }
 
 bool WaitForNextFrameToBePresented(ui::Compositor* compositor,
-                                   std::optional<base::TimeDelta> timeout) {
+                                   absl::optional<base::TimeDelta> timeout) {
   bool frames_presented = false;
   base::RunLoop runloop;
-  base::CancelableOnceCallback<void(
-      const viz::FrameTimingDetails& frame_timing_details)>
-      cancelable_callback(base::BindLambdaForTesting(
-          [&](const viz::FrameTimingDetails& frame_timing_details) {
-            frames_presented = true;
-            runloop.Quit();
-          }));
+  base::CancelableOnceCallback<void(base::TimeTicks)> cancelable_callback(
+      base::BindLambdaForTesting([&](base::TimeTicks presentation_timestamp) {
+        frames_presented = true;
+        runloop.Quit();
+      }));
   compositor->RequestSuccessfulPresentationTimeForNextFrame(
       cancelable_callback.callback());
 
-  std::optional<base::OneShotTimer> timer;
+  absl::optional<base::OneShotTimer> timer;
   if (timeout.has_value()) {
     timer.emplace();
     timer->Start(FROM_HERE, timeout.value(), runloop.QuitClosure());

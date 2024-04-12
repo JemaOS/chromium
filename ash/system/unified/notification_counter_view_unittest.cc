@@ -4,11 +4,14 @@
 
 #include "ash/system/unified/notification_counter_view.h"
 
+#include "ash/constants/ash_features.h"
 #include "ash/shelf/shelf.h"
 #include "ash/system/notification_center/notification_center_tray.h"
 #include "ash/system/unified/notification_icons_controller.h"
+#include "ash/system/unified/unified_system_tray.h"
 #include "ash/test/ash_test_base.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/test/scoped_feature_list.h"
 #include "ui/message_center/message_center.h"
 #include "ui/message_center/public/cpp/notification.h"
 #include "ui/message_center/public/cpp/notification_types.h"
@@ -35,7 +38,8 @@ void AddNotification(const std::string& notification_id,
 
 }  // namespace
 
-class NotificationCounterViewTest : public AshTestBase {
+class NotificationCounterViewTest : public AshTestBase,
+                                    public testing::WithParamInterface<bool> {
  public:
   NotificationCounterViewTest()
       : AshTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
@@ -44,21 +48,46 @@ class NotificationCounterViewTest : public AshTestBase {
       delete;
   ~NotificationCounterViewTest() override = default;
 
+  void SetUp() override {
+    scoped_feature_list_ = std::make_unique<base::test::ScopedFeatureList>();
+    if (IsQsRevampEnabled()) {
+      scoped_feature_list_->InitAndEnableFeature(features::kQsRevamp);
+    }
+
+    AshTestBase::SetUp();
+  }
+
+  bool IsQsRevampEnabled() { return GetParam(); }
+
  protected:
   NotificationCounterView* GetNotificationCounterView() {
     auto* status_area_widget = GetPrimaryShelf()->status_area_widget();
-    return status_area_widget->notification_center_tray()
-        ->notification_icons_controller_->notification_counter_view();
+    return IsQsRevampEnabled() ? status_area_widget->notification_center_tray()
+                                     ->notification_icons_controller_
+                                     ->notification_counter_view()
+                               : status_area_widget->unified_system_tray()
+                                     ->notification_icons_controller_
+                                     ->notification_counter_view();
   }
 
   QuietModeView* GetDoNotDisturbIconView() {
     auto* status_area_widget = GetPrimaryShelf()->status_area_widget();
-    return status_area_widget->notification_center_tray()
-        ->notification_icons_controller_->quiet_mode_view();
+    return IsQsRevampEnabled()
+               ? status_area_widget->notification_center_tray()
+                     ->notification_icons_controller_->quiet_mode_view()
+               : status_area_widget->unified_system_tray()
+                     ->notification_icons_controller_->quiet_mode_view();
   }
+
+ private:
+  std::unique_ptr<base::test::ScopedFeatureList> scoped_feature_list_;
 };
 
-TEST_F(NotificationCounterViewTest, CountForDisplay) {
+INSTANTIATE_TEST_SUITE_P(All,
+                         NotificationCounterViewTest,
+                         testing::Bool() /* IsQsRevampEnabled() */);
+
+TEST_P(NotificationCounterViewTest, CountForDisplay) {
   // Not visible when count == 0.
   GetNotificationCounterView()->Update();
   EXPECT_EQ(0, GetNotificationCounterView()->count_for_display_for_testing());
@@ -81,7 +110,7 @@ TEST_F(NotificationCounterViewTest, CountForDisplay) {
   EXPECT_TRUE(GetNotificationCounterView()->GetVisible());
 }
 
-TEST_F(NotificationCounterViewTest, HiddenNotificationCount) {
+TEST_P(NotificationCounterViewTest, HiddenNotificationCount) {
   // Not visible when count == 0.
   GetNotificationCounterView()->Update();
   EXPECT_EQ(0, GetNotificationCounterView()->count_for_display_for_testing());
@@ -112,7 +141,7 @@ TEST_F(NotificationCounterViewTest, HiddenNotificationCount) {
   EXPECT_EQ(1, GetNotificationCounterView()->count_for_display_for_testing());
 }
 
-TEST_F(NotificationCounterViewTest, DisplayChanged) {
+TEST_P(NotificationCounterViewTest, DisplayChanged) {
   AddNotification("1", true /* is_pinned */);
   GetNotificationCounterView()->Update();
 
@@ -144,7 +173,7 @@ TEST_F(NotificationCounterViewTest, DisplayChanged) {
   EXPECT_FALSE(GetNotificationCounterView()->GetVisible());
 }
 
-TEST_F(NotificationCounterViewTest, DoNotDisturbIconVisibility) {
+TEST_P(NotificationCounterViewTest, DoNotDisturbIconVisibility) {
   ASSERT_FALSE(GetDoNotDisturbIconView()->GetVisible());
 
   // Turn on Do not disturb mode.
@@ -160,7 +189,12 @@ TEST_F(NotificationCounterViewTest, DoNotDisturbIconVisibility) {
   EXPECT_TRUE(GetDoNotDisturbIconView()->GetVisible());
 }
 
-TEST_F(NotificationCounterViewTest, LockScreenCounter) {
+TEST_P(NotificationCounterViewTest, LockScreenCounter) {
+  // This behavior is only applicable when QsRevamp is enabled.
+  if (!IsQsRevampEnabled()) {
+    return;
+  }
+
   for (size_t i = 0; i < kTrayNotificationMaxCount; i++) {
     AddNotification(base::NumberToString(i));
   }
@@ -172,7 +206,12 @@ TEST_F(NotificationCounterViewTest, LockScreenCounter) {
             GetNotificationCounterView()->count_for_display_for_testing());
 }
 
-TEST_F(NotificationCounterViewTest, LockScreenCounterInDoNotDisturbMode) {
+TEST_P(NotificationCounterViewTest, LockScreenCounterInDoNotDisturbMode) {
+  // This behavior is only applicable when QsRevamp is enabled.
+  if (!IsQsRevampEnabled()) {
+    return;
+  }
+
   for (size_t i = 0; i < kTrayNotificationMaxCount; i++) {
     AddNotification(base::NumberToString(i));
   }

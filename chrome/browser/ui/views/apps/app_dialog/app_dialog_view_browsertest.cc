@@ -141,9 +141,8 @@ class AppDialogViewBrowserTest : public DialogBrowserTest {
 
  private:
   std::string app_id_;
-  raw_ptr<apps::AppServiceProxy, DanglingUntriaged> app_service_proxy_ =
-      nullptr;
-  raw_ptr<ArcAppListPrefs, DanglingUntriaged> arc_app_list_pref_ = nullptr;
+  raw_ptr<apps::AppServiceProxy, ExperimentalAsh> app_service_proxy_ = nullptr;
+  raw_ptr<ArcAppListPrefs, ExperimentalAsh> arc_app_list_pref_ = nullptr;
   std::unique_ptr<arc::FakeAppInstance> app_instance_;
 };
 

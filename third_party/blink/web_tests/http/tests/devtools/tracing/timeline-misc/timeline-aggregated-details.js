@@ -2,16 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {PerformanceTestRunner} from 'performance_test_runner';
-import {NetworkTestRunner} from 'network_test_runner';
-
-import * as UI from 'devtools/ui/legacy/legacy.js';
-import * as Timeline from 'devtools/panels/timeline/timeline.js';
-import * as TimelineModel from 'devtools/models/timeline_model/timeline_model.js';
-
 (async function() {
   TestRunner.addResult(`Test timeline aggregated details.\n`);
+  await TestRunner.loadLegacyModule('timeline'); await TestRunner.loadTestModule('performance_test_runner');
+  await TestRunner.loadTestModule('network_test_runner');
   await TestRunner.showPanel('timeline');
 
   TestRunner.addResult('');
@@ -565,15 +559,15 @@ import * as TimelineModel from 'devtools/models/timeline_model/timeline_model.js
     }
   ];
 
-  var timeline = Timeline.TimelinePanel.TimelinePanel.instance();
+  var timeline = UI.panels.timeline;
   timeline.setModel(await PerformanceTestRunner.createPerformanceModelWithEvents(rawTraceEvents));
 
-  var groupByEnum = Timeline.TimelineTreeView.AggregatedTimelineTreeView.GroupBy;
+  var groupByEnum = Timeline.AggregatedTimelineTreeView.GroupBy;
   for (var grouping of Object.values(groupByEnum)) {
-    testEventTree('call-tree', grouping);
-    testEventTree('bottom-up', grouping);
+    testEventTree('CallTree', grouping);
+    testEventTree('BottomUp', grouping);
   }
-  testEventTree('event-log');
+  testEventTree('EventLog');
   TestRunner.completeTest();
 
   function getTreeView(type) {
@@ -605,8 +599,8 @@ import * as TimelineModel from 'devtools/models/timeline_model/timeline_model.js
       name = treeView.displayInfoForGroupNode(node).name;
     } else {
       name = node.event.name === TimelineModel.TimelineModel.RecordType.JSFrame ?
-          UI.UIUtils.beautifyFunctionName(node.event.args['data']['functionName']) :
-          Timeline.TimelineUIUtils.TimelineUIUtils.eventTitle(node.event);
+          UI.beautifyFunctionName(node.event.args['data']['functionName']) :
+          Timeline.TimelineUIUtils.eventTitle(node.event);
     }
     TestRunner.addResult('  '.repeat(padding) + `${name}: ${node.selfTime.toFixed(3)}  ${node.totalTime.toFixed(3)}`);
     node.children().forEach(printEventTree.bind(null, padding + 1));

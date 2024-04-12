@@ -27,7 +27,7 @@ void PrintingSubmitJobFunction::GetQuotaLimitHeuristics(
 }
 
 ExtensionFunction::ResponseAction PrintingSubmitJobFunction::Run() {
-  std::optional<api::printing::SubmitJob::Params> params =
+  absl::optional<api::printing::SubmitJob::Params> params =
       api::printing::SubmitJob::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   PrintingAPIHandler::Get(browser_context())
@@ -40,9 +40,9 @@ ExtensionFunction::ResponseAction PrintingSubmitJobFunction::Run() {
 }
 
 void PrintingSubmitJobFunction::OnPrintJobSubmitted(
-    std::optional<api::printing::SubmitJobStatus> status,
-    std::optional<std::string> job_id,
-    std::optional<std::string> error) {
+    absl::optional<api::printing::SubmitJobStatus> status,
+    absl::optional<std::string> job_id,
+    absl::optional<std::string> error) {
   if (error.has_value()) {
     Respond(Error(error.value()));
     return;
@@ -57,10 +57,10 @@ void PrintingSubmitJobFunction::OnPrintJobSubmitted(
 PrintingCancelJobFunction::~PrintingCancelJobFunction() = default;
 
 ExtensionFunction::ResponseAction PrintingCancelJobFunction::Run() {
-  std::optional<api::printing::CancelJob::Params> params =
+  absl::optional<api::printing::CancelJob::Params> params =
       api::printing::CancelJob::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
-  std::optional<std::string> error =
+  absl::optional<std::string> error =
       PrintingAPIHandler::Get(browser_context())
           ->CancelJob(extension_id(), params->job_id);
 
@@ -96,7 +96,7 @@ void PrintingGetPrinterInfoFunction::GetQuotaLimitHeuristics(
 }
 
 ExtensionFunction::ResponseAction PrintingGetPrinterInfoFunction::Run() {
-  std::optional<api::printing::GetPrinterInfo::Params> params =
+  absl::optional<api::printing::GetPrinterInfo::Params> params =
       api::printing::GetPrinterInfo::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   PrintingAPIHandler::Get(browser_context())
@@ -109,9 +109,9 @@ ExtensionFunction::ResponseAction PrintingGetPrinterInfoFunction::Run() {
 }
 
 void PrintingGetPrinterInfoFunction::OnPrinterInfoRetrieved(
-    std::optional<base::Value> capabilities,
-    std::optional<api::printing::PrinterStatus> status,
-    std::optional<std::string> error) {
+    absl::optional<base::Value> capabilities,
+    absl::optional<api::printing::PrinterStatus> status,
+    absl::optional<std::string> error) {
   if (error.has_value()) {
     Respond(Error(error.value()));
     return;

@@ -4,15 +4,12 @@
 
 #include "ash/wm/desks/templates/admin_template_launch_tracker.h"
 
-#include <vector>
-
 #include "ash/public/cpp/saved_desk_delegate.h"
 #include "ash/root_window_settings.h"
 #include "ash/shell.h"
 #include "ash/wm/desks/desk.h"
 #include "ash/wm/desks/desks_controller.h"
 #include "ash/wm/desks/templates/saved_desk_constants.h"
-#include "ash/wm/desks/templates/saved_desk_util.h"
 #include "ash/wm/work_area_insets.h"
 #include "base/containers/adapters.h"
 #include "base/logging.h"
@@ -37,9 +34,30 @@ using ObserverDoneCallback =
 // not exactly overlap an existing window.
 constexpr int kWindowOffset = 10;
 
+// The next activation index to assign to an admin template window.
+int32_t g_admin_template_next_activation_index =
+    kAdminTemplateStartingActivationIndex;
+
+// This function updates the activation indices of all the windows in an admin
+// template so that windows launched from it will stack in the order they are
+// defined, while also stacking on top of any existing windows.
+void UpdateAdminTemplateActivationIndices(DeskTemplate& saved_desk) {
+  auto& app_id_to_launch_list =
+      saved_desk.mutable_desk_restore_data()->mutable_app_id_to_launch_list();
+  // Go through the windows as defined in the saved desk in reverse order so
+  // that the window with the lowest id gets the lowest activation index. NB:
+  // for now, we expect admin templates to only contain a single app.
+  for (auto& [app_id, launch_list] : app_id_to_launch_list) {
+    for (auto& [window_id, app_restore_data] : base::Reversed(launch_list)) {
+      app_restore_data->activation_index =
+          g_admin_template_next_activation_index--;
+    }
+  }
+}
+
 // This function updates the window bounds of the windows identified by `rwids`
-// in `saved_desk` such that none of them exactly overlap the window bounds in
-// `existing_bounds`. Note that the existing bounds are in screen coordinates.
+// in `saved_desk` such that none of them exactly overlap
+// `existing_bounds`.
 void UpdateWindowBounds(DeskTemplate& saved_desk,
                         const gfx::Rect& work_area,
                         std::vector<gfx::Rect> existing_bounds,
@@ -49,18 +67,14 @@ void UpdateWindowBounds(DeskTemplate& saved_desk,
 
   for (auto& [app_id, launch_list] : app_id_to_launch_list) {
     for (auto& [window_id, app_restore_data] : base::Reversed(launch_list)) {
-      CHECK(app_restore_data->window_info.current_bounds.has_value());
+      CHECK(app_restore_data->current_bounds.has_value());
 
-      // The bounds as found in the template are in display-local
-      // coordinates. We must first translate them into screen coordinates.
-      gfx::Rect& bounds = *app_restore_data->window_info.current_bounds;
-      bounds.Offset(work_area.origin().x(), work_area.origin().y());
-
-      AdjustAdminTemplateWindowBounds(work_area, existing_bounds, bounds);
+      AdjustAdminTemplateWindowBounds(work_area, existing_bounds,
+                                      *app_restore_data->current_bounds);
 
       // Append to existing bounds so that a later window doesn't end up exactly
       // matching.
-      existing_bounds.push_back(bounds);
+      existing_bounds.push_back(*app_restore_data->current_bounds);
     }
   }
 }
@@ -80,12 +94,10 @@ class AdminTemplateWindowObserver : public aura::WindowObserver {
   AdminTemplateWindowObserver(WindowUpdateCallback update_cb,
                               ObserverDoneCallback done_cb,
                               aura::Window* window,
-                              int32_t template_rwid,
-                              std::vector<WindowIdPair> all_rwids)
+                              int32_t template_rwid)
       : update_cb_(std::move(update_cb)),
         done_cb_(std::move(done_cb)),
-        template_rwid_(template_rwid),
-        all_rwids_(std::move(all_rwids)) {
+        template_rwid_(template_rwid) {
     observer_.Observe(window);
   }
 
@@ -113,24 +125,6 @@ class AdminTemplateWindowObserver : public aura::WindowObserver {
 
   void OnWindowDestroyed(aura::Window* window) override { done_cb_.Run(this); }
 
-  void OnWindowStackingChanged(aura::Window* window) override {
-    // iterate through siblings and update the Z-ordering.  Z ordering is
-    // determined via the reverse order of `window->parent()->children()`
-    int32_t activation_index = 0;
-    for (aura::Window* child : window->parent()->children()) {
-      int32_t rwid = child->GetProperty(app_restore::kRestoreWindowIdKey);
-
-      // ignore windows not being tracked.
-      if (const auto it =
-              base::ranges::find(all_rwids_, rwid, &WindowIdPair::unique_rwid);
-          it != all_rwids_.end()) {
-        update_cb_.Run({.template_rwid = it->template_rwid,
-                        .activation_index = activation_index});
-        --activation_index;
-      }
-    }
-  }
-
   // Called when the the tracked window has updated its state.
   WindowUpdateCallback update_cb_;
   // Called when the tracked window has been destroyed. This destroys the
@@ -138,9 +132,6 @@ class AdminTemplateWindowObserver : public aura::WindowObserver {
   ObserverDoneCallback done_cb_;
   // The window ID of the tracked window, as it appears in the template.
   int32_t template_rwid_;
-  // The IDs of the other tracked windows, we need this in order to update
-  // the z order.
-  std::vector<WindowIdPair> all_rwids_;
 
   base::ScopedObservation<aura::Window, aura::WindowObserver> observer_{this};
 };
@@ -157,8 +148,7 @@ class AdminTemplateDeskObserver : public aura::WindowObserver {
       : update_cb_(std::move(update_cb)),
         created_cb_(std::move(created_cb)),
         done_cb_(std::move(done_cb)),
-        rwids_(std::move(rwids)),
-        window_observer_rwids_(rwids_) {
+        rwids_(std::move(rwids)) {
     observer_.Observe(desk_container);
   }
 
@@ -169,8 +159,7 @@ class AdminTemplateDeskObserver : public aura::WindowObserver {
     if (auto it = base::ranges::find(rwids_, rwid, &WindowIdPair::unique_rwid);
         it != rwids_.end()) {
       auto window_observer = std::make_unique<AdminTemplateWindowObserver>(
-          update_cb_, done_cb_, new_window, it->template_rwid,
-          window_observer_rwids_);
+          update_cb_, done_cb_, new_window, it->template_rwid);
 
       created_cb_.Run(std::move(window_observer));
 
@@ -185,6 +174,7 @@ class AdminTemplateDeskObserver : public aura::WindowObserver {
   }
 
   void OnWindowDestroyed(aura::Window* window) override { done_cb_.Run(this); }
+
   // TODO(dandersson): Consider if there's an edge case where a desk can be
   // closed between the launch has been initiated and windows appear.
 
@@ -194,14 +184,8 @@ class AdminTemplateDeskObserver : public aura::WindowObserver {
   ObserverCreatedCallback created_cb_;
   // Callback used when an observer is done.
   ObserverDoneCallback done_cb_;
-  // Restore window IDs of windows that have not yet been created. Entries are
-  // removed as expected windows are created. When this vector becomes empty,
-  // the observer exits.
+  // Restore window IDs of windows that have not yet been created.
   std::vector<WindowIdPair> rwids_;
-  // Copy of rwids_ that is copied into window observers.  This enables the
-  // window observers to preserve relative Z ordering by filtering out non
-  // tracked windows in the set of the window's siblings.
-  std::vector<WindowIdPair> window_observer_rwids_;
 
   base::ScopedObservation<aura::Window, aura::WindowObserver> observer_{this};
 };
@@ -228,7 +212,7 @@ bool DoesAllWindowsHaveBounds(const DeskTemplate& admin_template) {
       admin_template.desk_restore_data()->app_id_to_launch_list();
   for (auto& [app_id, launch_list] : app_id_to_launch_list) {
     for (auto& [window_id, app_restore_data] : launch_list) {
-      if (!app_restore_data->window_info.current_bounds.has_value()) {
+      if (!app_restore_data->current_bounds.has_value()) {
         return false;
       }
     }
@@ -256,10 +240,7 @@ bool MergeAdminTemplateWindowUpdate(DeskTemplate& admin_template,
     restore_data->display_id = *update.display_id;
   }
   if (update.bounds) {
-    restore_data->window_info.current_bounds = *update.bounds;
-  }
-  if (update.activation_index) {
-    restore_data->window_info.activation_index = *update.activation_index;
+    restore_data->current_bounds = *update.bounds;
   }
 
   return true;
@@ -286,7 +267,7 @@ void AdjustAdminTemplateWindowBounds(
   }
 }
 
-std::vector<gfx::Rect> GetInitialWindowLayout(const gfx::Size& work_area_size,
+std::vector<gfx::Rect> GetInitialWindowLayout(const gfx::Rect& work_area,
                                               const int window_count) {
   if (window_count == 0) {
     return std::vector<gfx::Rect>();
@@ -295,51 +276,36 @@ std::vector<gfx::Rect> GetInitialWindowLayout(const gfx::Size& work_area_size,
   std::vector<gfx::Rect> all_bounds;
   std::vector<BoundsCoeff> coeff;
 
-  // The bounds are generated as follows:
+  const int total_width = work_area.width();
+  const int total_height = work_area.height();
+
   if (window_count == 1) {
-    // For a single window, we make one that occupies 80% of the work area.
     coeff.push_back({0.1, 0.1, 0.8, 0.8});
   } else if (window_count == 2) {
-    // For any other count, the entire work area will be used. For two windows:
-    //  ┌───┬───┐
-    //  │   │   │
-    //  │ 0 │ 1 │
-    //  │   │   │
-    //  └───┴───┘
     coeff.push_back({0, 0, 0.5, 1});
     coeff.push_back({0.5, 0, 0.5, 1});
   } else if (window_count == 3) {
-    // For three windows:
-    //  ┌───┬───┐
-    //  │   │ 1 │
-    //  │ 0 ├───┤
-    //  │   │ 2 │
-    //  └───┴───┘
     coeff.push_back({0, 0, 0.5, 1});
     coeff.push_back({0.5, 0, 0.5, 0.5});
     coeff.push_back({0.5, 0.5, 0.5, 0.5});
   } else {
-    // For four (and more) windows:
-    //  ┌───┬───┐
-    //  │ 0 │ 1 │
-    //  ├───┼───┤
-    //  │ 2 │ 3 │
-    //  └───┴───┘
     std::vector<BoundsCoeff> tmp = {{0, 0, 0.5, 0.5},
                                     {0.5, 0, 0.5, 0.5},
-                                    {0, 0.5, 0.5, 0.5},
-                                    {0.5, 0.5, 0.5, 0.5}};
-    // The fifth window and beyond will re-use prior slots.
+                                    {0.5, 0.5, 0.5, 0.5},
+                                    {0, 0.5, 0.5, 0.5}};
+
     for (int i = 0; i < window_count; ++i) {
-      coeff.push_back(tmp[i % 4]);
+      coeff.push_back(tmp.at(i % 4));
     }
   }
 
-  const int width = work_area_size.width();
-  const int height = work_area_size.height();
   for (int i = 0; i < window_count; ++i) {
-    all_bounds.emplace_back(width * coeff[i].x, height * coeff[i].y,
-                            width * coeff[i].w, height * coeff[i].h);
+    gfx::Rect bounds =
+        gfx::Rect(work_area.x() + total_width * coeff.at(i).x,
+                  work_area.y() + total_height * coeff.at(i).y,
+                  total_width * coeff.at(i).w, total_height * coeff.at(i).h);
+
+    all_bounds.push_back(bounds);
   }
 
   return all_bounds;
@@ -347,11 +313,9 @@ std::vector<gfx::Rect> GetInitialWindowLayout(const gfx::Size& work_area_size,
 
 AdminTemplateLaunchTracker::AdminTemplateLaunchTracker(
     std::unique_ptr<DeskTemplate> admin_template,
-    base::RepeatingCallback<void(const DeskTemplate&)> template_update_cb,
-    base::TimeDelta update_delay)
+    base::RepeatingCallback<void(const DeskTemplate&)> template_update_cb)
     : admin_template_(std::move(admin_template)),
-      template_update_cb_(template_update_cb),
-      update_delay_(update_delay) {}
+      template_update_cb_(template_update_cb) {}
 
 AdminTemplateLaunchTracker::~AdminTemplateLaunchTracker() = default;
 
@@ -373,10 +337,11 @@ void AdminTemplateLaunchTracker::LaunchTemplate(SavedDeskDelegate* delegate,
 
   // Set apps to launch on the current desk.
   auto* desks_controller = DesksController::Get();
-  admin_template->SetDeskUuid(desks_controller->active_desk()->uuid());
+  const int desk_index =
+      desks_controller->GetDeskIndex(desks_controller->active_desk());
+  admin_template->SetDeskIndex(desk_index);
 
-  saved_desk_util::UpdateTemplateActivationIndicesRelativeOrder(
-      *admin_template);
+  UpdateAdminTemplateActivationIndices(*admin_template);
 
   // Get a mapping from unique RWIDs to IDs as specified in the original
   // template. This is needed so that we can track launched windows and map
@@ -387,9 +352,6 @@ void AdminTemplateLaunchTracker::LaunchTemplate(SavedDeskDelegate* delegate,
   // Maps root windows to a list of restore window IDs for the display.
   base::flat_map<aura::Window*, std::vector<WindowIdPair>> root_to_rwids;
 
-  // If all windows in the template have bounds, then we will use those when
-  // launching. If that's not the case, we will auto-generate a placement for
-  // the windows.
   if (DoesAllWindowsHaveBounds(*admin_template)) {
     auto& app_id_to_launch_list = admin_template->mutable_desk_restore_data()
                                       ->mutable_app_id_to_launch_list();
@@ -417,17 +379,13 @@ void AdminTemplateLaunchTracker::LaunchTemplate(SavedDeskDelegate* delegate,
     for (auto& [app_id, launch_list] : app_id_to_launch_list) {
       window_count += launch_list.size();
     }
-    // The generated bounds (as well as bounds stored in the template) are in
-    // coordinates relative to the display they are to be launched on. In other
-    // words: 0,0 is the top-left corner of the display.
     const std::vector<gfx::Rect> all_bounds = GetInitialWindowLayout(
-        WorkAreaInsets::ForWindow(default_root)->user_work_area_bounds().size(),
+        WorkAreaInsets::ForWindow(default_root)->user_work_area_bounds(),
         window_count);
 
     for (auto& [app_id, launch_list] : app_id_to_launch_list) {
       for (auto& [window_id, app_restore_data] : launch_list) {
-        app_restore_data->window_info.current_bounds =
-            all_bounds[--window_count];
+        app_restore_data->current_bounds = all_bounds.at(--window_count);
         app_restore_data->display_id = default_display_id;
         root_to_rwids[default_root].push_back(
             {.template_rwid = mapping[window_id], .unique_rwid = window_id});
@@ -453,7 +411,7 @@ void AdminTemplateLaunchTracker::LaunchTemplate(SavedDeskDelegate* delegate,
     for (aura::Window* child : container->children()) {
       // This window has been launched from a template.
       if (child->GetProperty(app_restore::kRestoreWindowIdKey) < -1) {
-        existing_window_bounds.push_back(child->GetBoundsInScreen());
+        existing_window_bounds.push_back(child->bounds());
       }
     }
 
@@ -462,9 +420,6 @@ void AdminTemplateLaunchTracker::LaunchTemplate(SavedDeskDelegate* delegate,
       unique_rwids.push_back(pair.unique_rwid);
     }
 
-    // Update the bounds in the template from display local to screen
-    // coordinates. We will also ensure that they do not exactly overlap
-    // existing template windows.
     WorkAreaInsets* work_area_insets = WorkAreaInsets::ForWindow(root);
     UpdateWindowBounds(*admin_template,
                        work_area_insets->user_work_area_bounds(),
@@ -478,16 +433,6 @@ void AdminTemplateLaunchTracker::LaunchTemplate(SavedDeskDelegate* delegate,
   delegate->LaunchAppsFromSavedDesk(std::move(admin_template));
 }
 
-void AdminTemplateLaunchTracker::FlushPendingUpdate() {
-  if (update_delay_timer_.IsRunning()) {
-    update_delay_timer_.FireNow();
-  }
-}
-
-bool AdminTemplateLaunchTracker::IsActive() const {
-  return !window_observers_.empty();
-}
-
 void AdminTemplateLaunchTracker::OnObserverCreated(
     std::unique_ptr<base::CheckedObserver> observer) {
   window_observers_.push_back(std::move(observer));
@@ -495,32 +440,17 @@ void AdminTemplateLaunchTracker::OnObserverCreated(
 
 void AdminTemplateLaunchTracker::OnObserverDone(
     base::CheckedObserver* observer) {
-  std::erase_if(window_observers_,
+  base::EraseIf(window_observers_,
                 [&](const auto& ptr) { return ptr.get() == observer; });
 }
 
 void AdminTemplateLaunchTracker::OnUpdate(
     const AdminTemplateWindowUpdate& update) {
+  // TODO(dandersson): Implement throttling of updates so that we don't issue a
+  // ton of updates as a window is dragged around.
   if (MergeAdminTemplateWindowUpdate(*admin_template_, update)) {
-    // If the delay is set to zero, we call the callback synchronously.
-    if (update_delay_.is_zero()) {
-      template_update_cb_.Run(*admin_template_);
-      return;
-    }
-
-    if (update_delay_timer_.IsRunning()) {
-      return;
-    }
-
-    update_delay_timer_.Start(
-        FROM_HERE, update_delay_,
-        base::BindOnce(&AdminTemplateLaunchTracker::OnTimer,
-                       weak_ptr_factory_.GetWeakPtr()));
+    template_update_cb_.Run(*admin_template_);
   }
-}
-
-void AdminTemplateLaunchTracker::OnTimer() {
-  template_update_cb_.Run(*admin_template_);
 }
 
 }  // namespace ash

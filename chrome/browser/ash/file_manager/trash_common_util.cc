@@ -10,7 +10,6 @@
 #include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
 #include "chrome/browser/ash/file_manager/volume_manager.h"
-#include "chrome/browser/ash/policy/local_user_files/policy_utils.h"
 #include "components/prefs/pref_service.h"
 
 namespace file_manager::trash {
@@ -45,8 +44,8 @@ bool IsTrashEnabledForProfile(Profile* profile) {
   if (!profile || !profile->GetPrefs()) {
     return false;
   }
-  return profile->GetPrefs()->GetBoolean(ash::prefs::kFilesAppTrashEnabled) &&
-         policy::local_user_files::LocalUserFilesAllowed();
+  return base::FeatureList::IsEnabled(ash::features::kFilesTrash) &&
+         profile->GetPrefs()->GetBoolean(ash::prefs::kFilesAppTrashEnabled);
 }
 
 const base::FilePath GenerateTrashPath(const base::FilePath& trash_path,

@@ -35,8 +35,8 @@ class BrowsingDataHistoryObserverService
   ~BrowsingDataHistoryObserverService() override;
 
   // history::HistoryServiceObserver:
-  void OnHistoryDeletions(history::HistoryService* history_service,
-                          const history::DeletionInfo& deletion_info) override;
+  void OnURLsDeleted(history::HistoryService* history_service,
+                     const history::DeletionInfo& deletion_info) override;
 
   class Factory : public ProfileKeyedServiceFactory {
    public:
@@ -49,7 +49,7 @@ class BrowsingDataHistoryObserverService
     ~Factory() override = default;
 
     // BrowserContextKeyedServiceFactory:
-    std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+    KeyedService* BuildServiceInstanceFor(
         content::BrowserContext* context) const override;
     bool ServiceIsCreatedWithBrowserContext() const override;
   };

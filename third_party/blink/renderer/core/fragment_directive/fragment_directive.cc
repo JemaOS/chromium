@@ -70,39 +70,31 @@ void RejectWithCode(ScriptPromiseResolver* resolver,
                     const String& message) {
   ScriptState::Scope scope(resolver->GetScriptState());
   ExceptionState exception_state(resolver->GetScriptState()->GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
+                                 ExceptionState::kExecutionContext,
                                  "FragmentDirective",
                                  "createSelectorDirective");
   exception_state.ThrowDOMException(code, message);
   resolver->Reject(exception_state);
 }
-
-void DisposeTemporaryRange(Range* range) {
-  if (range) {
-    range->Dispose();
-  }
-}
 }  // namespace
 
-ScriptPromiseTyped<SelectorDirective>
-FragmentDirective::createSelectorDirective(ScriptState* state,
-                                           const V8UnionRangeOrSelection* arg) {
+ScriptPromise FragmentDirective::createSelectorDirective(
+    ScriptState* state,
+    const V8UnionRangeOrSelection* arg) {
   if (ExecutionContext::From(state)->IsContextDestroyed())
-    return ScriptPromiseTyped<SelectorDirective>();
+    return ScriptPromise();
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<SelectorDirective>>(
-          state);
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(state);
 
   // Access the promise first to ensure it is created so that the proper state
   // can be changed when it is resolved or rejected.
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
 
   Range* range = nullptr;
 
-  bool is_content_type_selection =
-      arg->GetContentType() == V8UnionRangeOrSelection::ContentType::kSelection;
-  if (is_content_type_selection) {
+  if (arg->GetContentType() ==
+      V8UnionRangeOrSelection::ContentType::kSelection) {
     DOMSelection* selection = arg->GetAsSelection();
     if (selection->rangeCount() == 0) {
       RejectWithCode(resolver, DOMExceptionCode::kNotSupportedError,
@@ -120,18 +112,12 @@ FragmentDirective::createSelectorDirective(ScriptState* state,
   if (!range || range->collapsed()) {
     RejectWithCode(resolver, DOMExceptionCode::kNotSupportedError,
                    "RangeOrSelector must be non-null and non-collapsed");
-    if (is_content_type_selection) {
-      DisposeTemporaryRange(range);
-    }
     return promise;
   }
 
   if (range->OwnerDocument() != owner_document_) {
     RejectWithCode(resolver, DOMExceptionCode::kWrongDocumentError,
                    "RangeOrSelector must be from this document");
-    if (is_content_type_selection) {
-      DisposeTemporaryRange(range);
-    }
     return promise;
   }
 
@@ -139,9 +125,6 @@ FragmentDirective::createSelectorDirective(ScriptState* state,
   if (!frame) {
     RejectWithCode(resolver, DOMExceptionCode::kInvalidStateError,
                    "Document must be attached to frame");
-    if (is_content_type_selection) {
-      DisposeTemporaryRange(range);
-    }
     return promise;
   }
 
@@ -153,7 +136,7 @@ FragmentDirective::createSelectorDirective(ScriptState* state,
   generator->Generate(
       *range_in_flat_tree,
       WTF::BindOnce(
-          [](ScriptPromiseResolverTyped<SelectorDirective>* resolver,
+          [](ScriptPromiseResolver* resolver,
              TextFragmentSelectorGenerator* generator,
              const RangeInFlatTree* range, const TextFragmentSelector& selector,
              shared_highlighting::LinkGenerationError error) {
@@ -171,9 +154,6 @@ FragmentDirective::createSelectorDirective(ScriptState* state,
           WrapPersistent(resolver), WrapPersistent(generator),
           WrapPersistent(range_in_flat_tree)));
 
-  if (is_content_type_selection) {
-    DisposeTemporaryRange(range);
-  }
   return promise;
 }
 

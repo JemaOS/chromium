@@ -15,10 +15,6 @@
 #include "third_party/blink/renderer/core/css/parser/css_tokenizer.h"
 #include "third_party/blink/renderer/core/css/style_rule_keyframe.h"
 
-namespace ui {
-class ColorProvider;
-}  // namespace ui
-
 namespace blink {
 
 class Color;
@@ -61,7 +57,6 @@ class CORE_EXPORT CSSParser {
       const CSSParserContext*,
       CSSNestingType,
       StyleRule* parent_rule_for_nesting,
-      bool is_within_scope,
       StyleSheetContents*,
       const String&,
       HeapVector<CSSSelector>& arena);
@@ -75,13 +70,13 @@ class CORE_EXPORT CSSParser {
   static MutableCSSPropertyValueSet::SetResult ParseValue(
       MutableCSSPropertyValueSet*,
       CSSPropertyID unresolved_property,
-      StringView value,
+      const String&,
       bool important,
       const ExecutionContext* execution_context = nullptr);
   static MutableCSSPropertyValueSet::SetResult ParseValue(
       MutableCSSPropertyValueSet*,
       CSSPropertyID unresolved_property,
-      StringView value,
+      const String&,
       bool important,
       SecureContextMode,
       StyleSheetContents*,
@@ -90,7 +85,7 @@ class CORE_EXPORT CSSParser {
   static MutableCSSPropertyValueSet::SetResult ParseValueForCustomProperty(
       MutableCSSPropertyValueSet*,
       const AtomicString& property_name,
-      StringView value,
+      const String& value,
       bool important,
       SecureContextMode,
       StyleSheetContents*,
@@ -108,18 +103,14 @@ class CORE_EXPORT CSSParser {
   static ImmutableCSSPropertyValueSet* ParseInlineStyleDeclaration(
       const String&,
       Element*);
-  static ImmutableCSSPropertyValueSet* ParseInlineStyleDeclaration(
-      const String&,
-      CSSParserMode,
-      SecureContextMode,
-      const Document*);
+  static ImmutableCSSPropertyValueSet*
+  ParseInlineStyleDeclaration(const String&, CSSParserMode, SecureContextMode);
 
   static std::unique_ptr<Vector<KeyframeOffset>> ParseKeyframeKeyList(
       const CSSParserContext*,
       const String&);
   static StyleRuleKeyframe* ParseKeyframeRule(const CSSParserContext*,
                                               const String&);
-  static String ParseCustomPropertyName(const String&);
 
   static bool ParseSupportsCondition(const String&, const ExecutionContext*);
 
@@ -128,8 +119,7 @@ class CORE_EXPORT CSSParser {
   static bool ParseColor(Color&, const String&, bool strict = false);
   static bool ParseSystemColor(Color&,
                                const String&,
-                               mojom::blink::ColorScheme color_scheme,
-                               const ui::ColorProvider* color_provider);
+                               mojom::blink::ColorScheme color_scheme);
 
   static void ParseSheetForInspector(const CSSParserContext*,
                                      StyleSheetContents*,
@@ -153,7 +143,7 @@ class CORE_EXPORT CSSParser {
   static MutableCSSPropertyValueSet::SetResult ParseValue(
       MutableCSSPropertyValueSet*,
       CSSPropertyID unresolved_property,
-      StringView,
+      const String&,
       bool important,
       const CSSParserContext*);
 };

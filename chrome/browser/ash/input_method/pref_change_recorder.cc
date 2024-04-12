@@ -61,7 +61,7 @@ AutocorrectPrefs ExtractAutocorrectPrefs(PrefService* pref_service) {
 // preference where its respective value differs between the two sets. This
 // function will be called once per setting change, so we can assume there
 // would be at most one preference with different values in the two sets.
-std::optional<AutocorrectPrefChange> FindPrefChange(
+absl::optional<AutocorrectPrefChange> FindPrefChange(
     const AutocorrectPrefs& previous,
     const AutocorrectPrefs& current) {
   for (const auto& [key, details] : current) {
@@ -86,7 +86,7 @@ std::optional<AutocorrectPrefChange> FindPrefChange(
     }
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 AutocorrectPrefStateTransition MapToAutocorrectPrefStateTransition(

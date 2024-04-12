@@ -2,14 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ApplicationTestRunner} from 'application_test_runner';
-
-import * as Application from 'devtools/panels/application/application.js';
-
 (async function() {
   TestRunner.addResult(
       `Test that storage panel is present and that it contains correct data whenever localStorage is updated.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('application_test_runner');
     // Note: every test that uses a storage API must manually clean-up state from previous tests.
   await ApplicationTestRunner.resetState();
 
@@ -72,8 +68,8 @@ import * as Application from 'devtools/panels/application/application.js';
 
       TestRunner.assertTrue(!!storage, 'Local storage not found.');
 
-      Application.ResourcesPanel.ResourcesPanel.instance().showDOMStorage(storage);
-      view = Application.ResourcesPanel.ResourcesPanel.instance().domStorageView;
+      UI.panels.resources.showDOMStorage(storage);
+      view = UI.panels.resources.domStorageView;
       TestRunner.addSniffer(view, 'showDOMStorageItems', viewUpdated);
     },
 

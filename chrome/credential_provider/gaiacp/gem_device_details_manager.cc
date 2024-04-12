@@ -13,10 +13,10 @@
 #define _NTDEF_  // Prevent redefition errors, must come after <winternl.h>
 #include <ntsecapi.h>  // For POLICY_ALL_ACCESS types
 
-#include <algorithm>
 #include <memory>
 
 #include "base/containers/span.h"
+#include "base/cxx17_backports.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/credential_provider/common/gcp_strings.h"
 #include "chrome/credential_provider/gaiacp/gcp_utils.h"
@@ -289,7 +289,7 @@ HRESULT GemDeviceDetailsManager::UploadDeviceDetailsInternal(
                        base::WideToUTF8(known_resource_id));
   }
 
-  std::optional<base::Value> request_result;
+  absl::optional<base::Value> request_result;
 
   hr = WinHttpUrlFetcher::BuildRequestAndFetchResultFromHttpService(
       GemDeviceDetailsManager::Get()->GetGemServiceUploadDeviceDetailsUrl(),
@@ -302,7 +302,7 @@ HRESULT GemDeviceDetailsManager::UploadDeviceDetailsInternal(
     return E_FAIL;
   }
 
-  auto* resource_id = request_result->GetDict().FindString(
+  std::string* resource_id = request_result->FindStringKey(
       kUploadDeviceDetailsResponseDeviceResourceIdParameterName);
   if (resource_id) {
     hr = SetUserProperty(sid, kRegUserDeviceResourceId,

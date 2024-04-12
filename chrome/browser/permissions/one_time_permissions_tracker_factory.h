@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 class OneTimePermissionsTracker;
 
@@ -28,13 +28,13 @@ class OneTimePermissionsTrackerFactory : public ProfileKeyedServiceFactory {
   bool ServiceIsCreatedWithBrowserContext() const override;
 
  private:
-  friend base::NoDestructor<OneTimePermissionsTrackerFactory>;
+  friend struct base::DefaultSingletonTraits<OneTimePermissionsTrackerFactory>;
 
   OneTimePermissionsTrackerFactory();
   ~OneTimePermissionsTrackerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

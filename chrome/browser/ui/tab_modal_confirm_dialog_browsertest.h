@@ -63,11 +63,10 @@ class TabModalConfirmDialogTest
 
  protected:
   // Owned by |dialog_|.
-  raw_ptr<MockTabModalConfirmDialogDelegate, AcrossTasksDanglingUntriaged>
-      delegate_;
+  raw_ptr<MockTabModalConfirmDialogDelegate, DanglingUntriaged> delegate_;
 
   // Deletes itself.
-  raw_ptr<TabModalConfirmDialog, AcrossTasksDanglingUntriaged> dialog_;
+  raw_ptr<TabModalConfirmDialog, DanglingUntriaged> dialog_;
 
   int accepted_count_;
   int canceled_count_;

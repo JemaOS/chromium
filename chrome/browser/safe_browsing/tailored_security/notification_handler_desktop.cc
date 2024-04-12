@@ -15,9 +15,9 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
-#include "chrome/grit/theme_resources.h"
+#include "chrome/grit/google_chrome_strings.h"
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/core/browser/tailored_security_service/tailored_security_outcome.h"
 #include "components/safe_browsing/core/common/features.h"
@@ -92,8 +92,8 @@ void TailoredSecurityNotificationHandler::OnClick(
     Profile* profile,
     const GURL& origin,
     const std::string& notification_id,
-    const std::optional<int>& action_index,
-    const std::optional<std::u16string>& reply,
+    const absl::optional<int>& action_index,
+    const absl::optional<std::u16string>& reply,
     base::OnceClosure completed_closure) {
   if (!action_index) {
     std::move(completed_closure).Run();
@@ -109,16 +109,6 @@ void TailoredSecurityNotificationHandler::OnClick(
   }
 
   std::move(completed_closure).Run();
-}
-
-ui::ImageModel GetNotificationIcon() {
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  return ui::ImageModel::FromResourceId(
-      IDR_TAILORED_SECURITY_UNCONSENTED_NOTIFICATION);
-#else
-  return ui::ImageModel::FromVectorIcon(kSafetyCheckIcon, ui::kColorAccent,
-                                        message_center::kNotificationIconSize);
-#endif
 }
 
 void DisplayTailoredSecurityUnconsentedPromotionNotification(Profile* profile) {
@@ -142,12 +132,12 @@ void DisplayTailoredSecurityUnconsentedPromotionNotification(Profile* profile) {
 #else
   const message_center::NotifierId notifier_id = GetNotifierId();
 #endif
-  auto icon = (base::FeatureList::IsEnabled(
-                  safe_browsing::kTailoredSecurityUpdatedMessages))
-                  ? GetNotificationIcon()
-                  : ui::ImageModel::FromVectorIcon(
-                        kSafetyCheckIcon, ui::kColorAccent,
-                        message_center::kNotificationIconSize);
+
+  // TODO(crbug/1257622): Confirm with UX that it's appropriate to use the
+  // blue color here.
+  auto icon =
+      ui::ImageModel::FromVectorIcon(kSafetyCheckIcon, ui::kColorAccent,
+                                     message_center::kNotificationIconSize);
   LogUnconsentedOutcome(TailoredSecurityOutcome::kShown);
   message_center::Notification notification(
       message_center::NOTIFICATION_TYPE_SIMPLE, notification_id, title,

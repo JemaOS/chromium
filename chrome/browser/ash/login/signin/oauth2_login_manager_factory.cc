@@ -24,7 +24,7 @@ OAuth2LoginManagerFactory::OAuth2LoginManagerFactory()
   DependsOn(AccountReconcilorFactory::GetInstance());
 }
 
-OAuth2LoginManagerFactory::~OAuth2LoginManagerFactory() = default;
+OAuth2LoginManagerFactory::~OAuth2LoginManagerFactory() {}
 
 // static
 OAuth2LoginManager* OAuth2LoginManagerFactory::GetForProfile(Profile* profile) {
@@ -34,15 +34,15 @@ OAuth2LoginManager* OAuth2LoginManagerFactory::GetForProfile(Profile* profile) {
 
 // static
 OAuth2LoginManagerFactory* OAuth2LoginManagerFactory::GetInstance() {
-  static base::NoDestructor<OAuth2LoginManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<OAuth2LoginManagerFactory>::get();
 }
 
-std::unique_ptr<KeyedService>
-OAuth2LoginManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* OAuth2LoginManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = static_cast<Profile*>(context);
-  return std::make_unique<OAuth2LoginManager>(profile);
+  OAuth2LoginManager* service;
+  service = new OAuth2LoginManager(profile);
+  return service;
 }
 
 }  // namespace ash

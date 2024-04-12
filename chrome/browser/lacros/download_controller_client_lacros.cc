@@ -39,7 +39,7 @@ DownloadControllerClientLacros::DownloadControllerClientLacros() {
     return;
 
   int remote_version =
-      service->GetInterfaceVersion<crosapi::mojom::DownloadController>();
+      service->GetInterfaceVersion(crosapi::mojom::DownloadController::Uuid_);
   if (remote_version < 0 ||
       static_cast<uint32_t>(remote_version) <
           crosapi::mojom::DownloadController::kBindClientMinVersion) {
@@ -58,10 +58,8 @@ void DownloadControllerClientLacros::GetAllDownloads(
   std::vector<crosapi::mojom::DownloadItemPtr> downloads;
 
   // Aggregate all downloads.
-  for (download::DownloadItem* download :
-       download_notifier_.GetAllDownloads()) {
+  for (auto* download : download_notifier_.GetAllDownloads())
     downloads.push_back(ConvertToMojoDownloadItem(download));
-  }
 
   // Sort chronologically by start time.
   std::sort(downloads.begin(), downloads.end(),
@@ -113,18 +111,16 @@ void DownloadControllerClientLacros::OnManagerInitialized(
     content::DownloadManager* manager) {
   download::SimpleDownloadManager::DownloadVector downloads;
   manager->GetAllDownloads(&downloads);
-  for (download::DownloadItem* download : downloads) {
+  for (auto* download : downloads)
     OnDownloadCreated(manager, download);
-  }
 }
 
 void DownloadControllerClientLacros::OnManagerGoingDown(
     content::DownloadManager* manager) {
   download::SimpleDownloadManager::DownloadVector downloads;
   manager->GetAllDownloads(&downloads);
-  for (download::DownloadItem* download : downloads) {
+  for (auto* download : downloads)
     OnDownloadDestroyed(manager, download);
-  }
 }
 
 void DownloadControllerClientLacros::OnDownloadCreated(

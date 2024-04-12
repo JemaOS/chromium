@@ -6,8 +6,8 @@
 #include <vector>
 
 #include "base/command_line.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/callback_helpers.h"
-#include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/profiles/profile.h"
@@ -122,15 +122,13 @@ class WorkerTaskProviderBrowserTest : public InProcessBrowserTest,
 
   void TaskRemoved(Task* task) override {
     DCHECK(task);
-    std::erase(tasks_, task);
+    base::Erase(tasks_, task);
 
     if (expected_task_count_ == tasks_.size())
       StopWaiting();
   }
 
-  const std::vector<raw_ptr<Task, VectorExperimental>>& tasks() const {
-    return tasks_;
-  }
+  const std::vector<Task*>& tasks() const { return tasks_; }
   TaskProvider* task_provider() const { return task_provider_.get(); }
 
  protected:
@@ -150,7 +148,7 @@ class WorkerTaskProviderBrowserTest : public InProcessBrowserTest,
   std::unique_ptr<WorkerTaskProvider> task_provider_;
 
   // Tasks created by |task_provider_|.
-  std::vector<raw_ptr<Task, VectorExperimental>> tasks_;
+  std::vector<Task*> tasks_;
 
   base::OnceClosure quit_closure_for_waiting_;
 

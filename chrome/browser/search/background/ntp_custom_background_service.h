@@ -17,8 +17,6 @@
 #include "components/image_fetcher/core/image_fetcher_impl.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/prefs/pref_change_registrar.h"
-#include "services/network/public/cpp/simple_url_loader.h"
-#include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/color_utils.h"
 
 class NtpCustomBackgroundServiceObserver;
@@ -36,7 +34,6 @@ class NtpCustomBackgroundService : public KeyedService,
                                    public NtpBackgroundServiceObserver {
  public:
   static void RegisterProfilePrefs(PrefRegistrySimple* registry);
-  static void ResetNtpTheme(Profile* profile);
   static void ResetProfilePrefs(Profile* profile);
 
   explicit NtpCustomBackgroundService(Profile* profile);
@@ -72,10 +69,6 @@ class NtpCustomBackgroundService : public KeyedService,
   // Virtual for testing.
   virtual void SelectLocalBackgroundImage(const base::FilePath& path);
 
-  // Set bool pref for local background and set id.
-  virtual void SetBackgroundToLocalResourceWithId(const base::Token& id,
-                                                  bool is_inspiration_image);
-
   // Virtual for testing.
   virtual void RefreshBackgroundIfNeeded();
 
@@ -86,7 +79,7 @@ class NtpCustomBackgroundService : public KeyedService,
   void ConfirmBackgroundChanges();
 
   // Virtual for testing.
-  virtual std::optional<CustomBackground> GetCustomBackground();
+  virtual absl::optional<CustomBackground> GetCustomBackground();
 
   // Adds/Removes NtpCustomBackgroundServiceObserver observers.
   virtual void AddObserver(NtpCustomBackgroundServiceObserver* observer);
@@ -99,30 +92,21 @@ class NtpCustomBackgroundService : public KeyedService,
   bool IsCustomBackgroundSet();
 
   void AddValidBackdropUrlForTesting(const GURL& url) const;
+  void AddValidBackdropCollectionForTesting(
+      const std::string& collection_id) const;
+  void SetNextCollectionImageForTesting(const CollectionImage& image) const;
   void SetClockForTesting(base::Clock* clock);
 
-  // TODO(crbug/1383250): Make private when color extraction is refactored
-  // outside of this service.
+  // TODO: Make private when color extraction is refactored outside of this
+  // service.
   // Calculates the most frequent color of the image and stores it in prefs.
   void UpdateCustomBackgroundColorAsync(
       const GURL& image_url,
       const gfx::Image& fetched_image,
       const image_fetcher::RequestMetadata& metadata);
 
-  // TODO(crbug/1383250): Make private when color extraction is refactored
-  // outside of this service.
-  // Calculates the most frequent color of the local image and stores it.
-  virtual void UpdateCustomLocalBackgroundColorAsync(const gfx::Image& image);
-
-  // Requests an asynchronous fetch of a custom background image's URL headers.
-  // Virtual for testing.
-  virtual void VerifyCustomBackgroundImageURL();
-
  private:
-  // Set bool pref for local background and clear id.
   void SetBackgroundToLocalResource();
-
-  void ForceRefreshBackground();
   // Returns false if the custom background pref cannot be parsed, otherwise
   // returns true.
   bool IsCustomBackgroundPrefValid();
@@ -132,26 +116,13 @@ class NtpCustomBackgroundService : public KeyedService,
   void UpdateCustomBackgroundPrefsWithColor(const GURL& image_url,
                                             SkColor color);
 
-  // Updates prefs with custom background color for local background image.
-  void UpdateLocalCustomBackgroundPrefsWithColor(SkColor color);
-
-  // Process local background image for color extraction
-  void ProcessLocalImageData(std::string image_data);
-
   // Fetches the image for the given |fetch_url| and extract its main color.
   void FetchCustomBackgroundAndExtractBackgroundColor(const GURL& image_url,
                                                       const GURL& fetch_url);
 
-  // Callback that updates custom background information after the fetch of its
-  // URL's headers has been completed.
-  void OnCustomBackgroundURLHeadersReceived(
-      const GURL& verified_custom_background_url,
-      int headers_response_code);
-
   const raw_ptr<Profile> profile_;
   raw_ptr<PrefService, DanglingUntriaged> pref_service_;
   raw_ptr<ThemeService, DanglingUntriaged> theme_service_;
-  std::unique_ptr<network::SimpleURLLoader> custom_background_image_url_loader_;
   PrefChangeRegistrar pref_change_registrar_;
   raw_ptr<NtpBackgroundService, DanglingUntriaged> background_service_;
   base::ScopedObservation<NtpBackgroundService, NtpBackgroundServiceObserver>
@@ -163,7 +134,7 @@ class NtpCustomBackgroundService : public KeyedService,
 
   // Used to track information for previous background when a background is
   // being previewed.
-  std::optional<base::Value> previous_background_info_;
+  absl::optional<base::Value> previous_background_info_;
   bool previous_local_background_ = false;
 
   base::WeakPtrFactory<NtpCustomBackgroundService> weak_ptr_factory_{this};

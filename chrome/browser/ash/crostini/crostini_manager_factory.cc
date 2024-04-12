@@ -26,19 +26,18 @@ CrostiniManagerFactory::CrostiniManagerFactory()
     : ProfileKeyedServiceFactory(
           "CrostiniManager",
           ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              .WithGuest(ProfileSelection::kNone)
-              .WithAshInternals(ProfileSelection::kNone)
-              .WithSystem(ProfileSelection::kNone)
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
 CrostiniManagerFactory::~CrostiniManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-CrostiniManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* CrostiniManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<CrostiniManager>(profile);
+  return new CrostiniManager(profile);
 }
 
 }  // namespace crostini

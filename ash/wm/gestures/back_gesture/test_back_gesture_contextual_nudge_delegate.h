@@ -28,7 +28,8 @@ class TestBackGestureContextualNudgeDelegate
   void MaybeStartTrackingNavigation(aura::Window* window) override;
 
  private:
-  const raw_ptr<BackGestureContextualNudgeController> controller_;
+  const raw_ptr<BackGestureContextualNudgeController, ExperimentalAsh>
+      controller_;
 };
 
 }  // namespace ash

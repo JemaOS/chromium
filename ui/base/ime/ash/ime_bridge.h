@@ -79,15 +79,16 @@ class COMPONENT_EXPORT(UI_BASE_IME_ASH) IMEBridge {
   IMEBridge();
 
   // TODO(b/245020074): Rename this member.
-  raw_ptr<TextInputTarget, DanglingUntriaged> input_context_handler_ = nullptr;
+  raw_ptr<TextInputTarget, ExperimentalAsh> input_context_handler_ = nullptr;
   // TODO(b/245020074): Rename this member.
-  raw_ptr<TextInputMethod, DanglingUntriaged> engine_handler_ = nullptr;
+  raw_ptr<TextInputMethod, ExperimentalAsh> engine_handler_ = nullptr;
   base::ObserverList<IMEBridgeObserver> observers_;
   TextInputMethod::InputContext current_input_context_;
 
-  raw_ptr<IMECandidateWindowHandlerInterface, LeakedDanglingUntriaged>
+  raw_ptr<IMECandidateWindowHandlerInterface, ExperimentalAsh>
       candidate_window_handler_ = nullptr;
-  raw_ptr<IMEAssistiveWindowHandlerInterface, DanglingUntriaged>
+  raw_ptr<IMEAssistiveWindowHandlerInterface,
+          DanglingUntriaged | ExperimentalAsh>
       assistive_window_handler_ = nullptr;
 };
 

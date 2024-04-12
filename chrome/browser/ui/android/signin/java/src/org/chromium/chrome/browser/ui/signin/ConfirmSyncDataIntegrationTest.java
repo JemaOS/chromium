@@ -26,7 +26,6 @@ import androidx.test.filters.MediumTest;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
@@ -36,21 +35,12 @@ import org.mockito.quality.Strictness;
 import org.chromium.base.Callback;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CommandLineFlags;
-import org.chromium.base.test.util.Features;
-import org.chromium.base.test.util.Features.EnableFeatures;
-import org.chromium.base.test.util.JniMocker;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
-import org.chromium.chrome.browser.password_manager.PasswordManagerUtilBridge;
-import org.chromium.chrome.browser.password_manager.PasswordManagerUtilBridgeJni;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.SigninManager;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.components.browser_ui.modaldialog.AppModalPresenter;
-import org.chromium.components.prefs.PrefService;
-import org.chromium.components.signin.SigninFeatures;
-import org.chromium.components.user_prefs.UserPrefs;
-import org.chromium.components.user_prefs.UserPrefsJni;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modaldialog.ModalDialogManager.ModalDialogType;
@@ -59,16 +49,15 @@ import org.chromium.ui.test.util.BlankUiTestActivityTestCase;
 /**
  * This class regroups the integration tests for {@link ConfirmSyncDataStateMachine}.
  *
- * <p>In this class we use a real {@link ConfirmSyncDataStateMachineDelegate} to walk through
- * different states of the state machine by clicking on the dialogs shown with the delegate. This
- * way we tested the invocation of delegate inside state machine and vice versa.
+ * In this class we use a real {@link ConfirmSyncDataStateMachineDelegate} to walk through
+ * different states of the state machine by clicking on the dialogs shown with the delegate.
+ * This way we tested the invocation of delegate inside state machine and vice versa.
  *
- * <p>In contrast, {@link ConfirmSyncDataStateMachineTest} takes a delegate mock to check the
+ * In contrast, {@link ConfirmSyncDataStateMachineTest} takes a delegate mock to check the
  * interaction between the state machine and its delegate in one level.
  */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
-@EnableFeatures(SigninFeatures.ENTERPRISE_POLICY_ON_SIGNIN)
 @Batch(Batch.PER_CLASS)
 public class ConfirmSyncDataIntegrationTest extends BlankUiTestActivityTestCase {
     private static final String OLD_ACCOUNT_NAME = "test.account.old@gmail.com";
@@ -76,46 +65,33 @@ public class ConfirmSyncDataIntegrationTest extends BlankUiTestActivityTestCase 
     private static final String MANAGED_DOMAIN = "managed-domain.com";
 
     @Rule
-    public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.LENIENT);
+    public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
 
-    @Rule public final JniMocker mJniMocker = new JniMocker();
+    @Mock
+    private SigninManager mSigninManagerMock;
 
-    @Rule public TestRule mProcessor = new Features.JUnitProcessor();
+    @Mock
+    private IdentityServicesProvider mIdentityServicesProviderMock;
 
-    @Mock private SigninManager mSigninManagerMock;
+    @Mock
+    private ConfirmSyncDataStateMachine.Listener mListenerMock;
 
-    @Mock private IdentityServicesProvider mIdentityServicesProviderMock;
-
-    @Mock private ConfirmSyncDataStateMachine.Listener mListenerMock;
-
-    @Mock private PasswordManagerUtilBridge.Natives mPasswordManagerUtilBridgeNativeMock;
-
-    @Mock private UserPrefs.Natives mUserPrefsNativeMock;
-
-    @Mock private PrefService mPrefService;
-
-    @Mock private Profile mProfile;
+    @Mock
+    private Profile mProfile;
 
     private ConfirmSyncDataStateMachineDelegate mDelegate;
 
     @Before
     public void setUp() {
         IdentityServicesProvider.setInstanceForTests(mIdentityServicesProviderMock);
-        mJniMocker.mock(
-                PasswordManagerUtilBridgeJni.TEST_HOOKS, mPasswordManagerUtilBridgeNativeMock);
-        mJniMocker.mock(UserPrefsJni.TEST_HOOKS, mUserPrefsNativeMock);
-        when(mUserPrefsNativeMock.get(mProfile)).thenReturn(mPrefService);
+        Profile.setLastUsedProfileForTesting(mProfile);
         when(IdentityServicesProvider.get().getSigninManager(any())).thenReturn(mSigninManagerMock);
-        mDelegate =
-                TestThreadUtils.runOnUiThreadBlockingNoException(
-                        () -> {
-                            return new ConfirmSyncDataStateMachineDelegate(
-                                    getActivity(),
-                                    mProfile,
-                                    new ModalDialogManager(
-                                            new AppModalPresenter(getActivity()),
-                                            ModalDialogType.APP));
-                        });
+        mDelegate = TestThreadUtils.runOnUiThreadBlockingNoException(() -> {
+            return new ConfirmSyncDataStateMachineDelegate(getActivity(),
+                    getActivity().getSupportFragmentManager(),
+                    new ModalDialogManager(
+                            new AppModalPresenter(getActivity()), ModalDialogType.APP));
+        });
     }
 
     @Test
@@ -125,7 +101,7 @@ public class ConfirmSyncDataIntegrationTest extends BlankUiTestActivityTestCase 
         startConfirmSyncFlow(OLD_ACCOUNT_NAME, NEW_ACCOUNT_NAME);
         onView(withId(R.id.sync_keep_separate_choice)).inRoot(isDialog()).perform(click());
         onView(withText(R.string.continue_button)).perform(click());
-        verify(mListenerMock).onConfirm(true, false);
+        verify(mListenerMock).onConfirm(true);
         verify(mListenerMock, never()).onCancel();
     }
 
@@ -136,7 +112,7 @@ public class ConfirmSyncDataIntegrationTest extends BlankUiTestActivityTestCase 
         startConfirmSyncFlow(OLD_ACCOUNT_NAME, NEW_ACCOUNT_NAME);
         onView(withId(R.id.sync_keep_separate_choice)).inRoot(isDialog()).perform(click());
         onView(isRoot()).perform(pressBack());
-        verify(mListenerMock, never()).onConfirm(anyBoolean(), anyBoolean());
+        verify(mListenerMock, never()).onConfirm(anyBoolean());
         verify(mListenerMock).onCancel();
     }
 
@@ -151,7 +127,7 @@ public class ConfirmSyncDataIntegrationTest extends BlankUiTestActivityTestCase 
         onView(withId(R.id.sync_confirm_import_choice)).inRoot(isDialog()).perform(click());
         onView(withText(R.string.continue_button)).perform(click());
         onView(withText(R.string.policy_dialog_proceed)).inRoot(isDialog()).perform(click());
-        verify(mListenerMock).onConfirm(false, true);
+        verify(mListenerMock).onConfirm(false);
         verify(mListenerMock, never()).onCancel();
     }
 
@@ -166,7 +142,7 @@ public class ConfirmSyncDataIntegrationTest extends BlankUiTestActivityTestCase 
         onView(withId(R.id.sync_keep_separate_choice)).inRoot(isDialog()).perform(click());
         onView(withText(R.string.continue_button)).perform(click());
         onView(isRoot()).perform(pressBack());
-        verify(mListenerMock, never()).onConfirm(anyBoolean(), anyBoolean());
+        verify(mListenerMock, never()).onConfirm(anyBoolean());
         verify(mListenerMock).onCancel();
     }
 
@@ -177,7 +153,7 @@ public class ConfirmSyncDataIntegrationTest extends BlankUiTestActivityTestCase 
         startConfirmSyncFlow(OLD_ACCOUNT_NAME, OLD_ACCOUNT_NAME);
         onView(withId(R.id.sync_import_data_prompt)).check(doesNotExist());
         onView(withText(R.string.sign_in_managed_account)).check(doesNotExist());
-        verify(mListenerMock).onConfirm(false, false);
+        verify(mListenerMock).onConfirm(false);
         verify(mListenerMock, never()).onCancel();
     }
 
@@ -190,30 +166,23 @@ public class ConfirmSyncDataIntegrationTest extends BlankUiTestActivityTestCase 
                 .thenReturn(MANAGED_DOMAIN);
         startConfirmSyncFlow("", managedNewAccountName);
         onView(withText(R.string.policy_dialog_proceed)).inRoot(isDialog()).perform(click());
-        verify(mListenerMock).onConfirm(false, true);
+        verify(mListenerMock).onConfirm(false);
         verify(mListenerMock, never()).onCancel();
     }
 
     private void startConfirmSyncFlow(String oldAccountName, String newAccountName) {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    ConfirmSyncDataStateMachine stateMachine =
-                            new ConfirmSyncDataStateMachine(
-                                    mProfile,
-                                    mDelegate,
-                                    oldAccountName,
-                                    newAccountName,
-                                    mListenerMock);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            ConfirmSyncDataStateMachine stateMachine = new ConfirmSyncDataStateMachine(
+                    mDelegate, oldAccountName, newAccountName, mListenerMock);
+        });
     }
 
     private void mockSigninManagerIsAccountManaged(boolean isAccountManaged) {
-        doAnswer(
-                        invocation -> {
-                            Callback<Boolean> callback = invocation.getArgument(1);
-                            callback.onResult(isAccountManaged);
-                            return null;
-                        })
+        doAnswer(invocation -> {
+            Callback<Boolean> callback = invocation.getArgument(1);
+            callback.onResult(isAccountManaged);
+            return null;
+        })
                 .when(mSigninManagerMock)
                 .isAccountManaged(anyString(), any());
     }

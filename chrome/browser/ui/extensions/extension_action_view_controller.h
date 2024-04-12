@@ -10,7 +10,7 @@
 #include "base/scoped_observation.h"
 #include "chrome/browser/extensions/extension_action_icon_factory.h"
 #include "chrome/browser/extensions/extension_context_menu_model.h"
-#include "chrome/browser/extensions/permissions/site_permissions_helper.h"
+#include "chrome/browser/extensions/site_permissions_helper.h"
 #include "chrome/browser/ui/toolbar/toolbar_action_hover_card_types.h"
 #include "chrome/browser/ui/toolbar/toolbar_action_view_controller.h"
 #include "extensions/browser/extension_host.h"
@@ -70,8 +70,6 @@ class ExtensionActionViewController
   ui::ImageModel GetIcon(content::WebContents* web_contents,
                          const gfx::Size& size) override;
   std::u16string GetActionName() const override;
-  std::u16string GetActionTitle(
-      content::WebContents* web_contents) const override;
   std::u16string GetAccessibleName(
       content::WebContents* web_contents) const override;
   std::u16string GetTooltip(content::WebContents* web_contents) const override;
@@ -88,10 +86,8 @@ class ExtensionActionViewController
   ui::MenuModel* GetContextMenu(
       extensions::ExtensionContextMenuModel::ContextMenuSource
           context_menu_source) override;
-  void OnContextMenuShown(
-      extensions::ExtensionContextMenuModel::ContextMenuSource source) override;
-  void OnContextMenuClosed(
-      extensions::ExtensionContextMenuModel::ContextMenuSource source) override;
+  void OnContextMenuShown() override;
+  void OnContextMenuClosed() override;
   void ExecuteUserAction(InvocationSource source) override;
   void TriggerPopupForAPI(ShowPopupCallback callback) override;
   void UpdateState() override;

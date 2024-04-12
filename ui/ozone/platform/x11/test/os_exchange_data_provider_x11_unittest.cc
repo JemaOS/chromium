@@ -12,8 +12,8 @@
 #include "ui/base/clipboard/clipboard_constants.h"
 #include "ui/base/clipboard/file_info.h"
 #include "ui/events/platform/x11/x11_event_source.h"
-#include "ui/gfx/x/atom_cache.h"
 #include "ui/gfx/x/connection.h"
+#include "ui/gfx/x/x11_atom_cache.h"
 #include "url/gurl.h"
 
 const char kFileURL[] = "file:///home/user/file.txt";
@@ -47,21 +47,23 @@ TEST_F(OSExchangeDataProviderX11Test, MozillaURL) {
   // Check that we can get titled entries.
   provider.SetURL(GURL(kGoogleURL), kGoogleTitle);
   {
-    std::optional<OSExchangeDataProvider::UrlInfo> url_info =
-        provider.GetURLAndTitle(FilenameToURLPolicy::DO_NOT_CONVERT_FILENAMES);
-    ASSERT_TRUE(url_info.has_value());
-    EXPECT_EQ(kGoogleTitle, url_info->title);
-    EXPECT_EQ(kGoogleURL, url_info->url);
+    GURL out_gurl;
+    std::u16string out_str;
+    EXPECT_TRUE(provider.GetURLAndTitle(
+        FilenameToURLPolicy::DO_NOT_CONVERT_FILENAMES, &out_gurl, &out_str));
+    EXPECT_EQ(kGoogleTitle, out_str);
+    EXPECT_EQ(kGoogleURL, out_gurl.spec());
   }
 
   // Check that we can get non-titled entries.
   provider.SetURL(GURL(kGoogleURL), std::u16string());
   {
-    std::optional<OSExchangeDataProvider::UrlInfo> url_info =
-        provider.GetURLAndTitle(FilenameToURLPolicy::DO_NOT_CONVERT_FILENAMES);
-    ASSERT_TRUE(url_info.has_value());
-    EXPECT_EQ(std::u16string(), url_info->title);
-    EXPECT_EQ(kGoogleURL, url_info->url);
+    GURL out_gurl;
+    std::u16string out_str;
+    EXPECT_TRUE(provider.GetURLAndTitle(
+        FilenameToURLPolicy::DO_NOT_CONVERT_FILENAMES, &out_gurl, &out_str));
+    EXPECT_EQ(std::u16string(), out_str);
+    EXPECT_EQ(kGoogleURL, out_gurl.spec());
   }
 }
 
@@ -89,17 +91,18 @@ TEST_F(OSExchangeDataProviderX11Test, URIListWithBoth) {
   EXPECT_TRUE(provider.HasURL(FilenameToURLPolicy::DO_NOT_CONVERT_FILENAMES));
 
   // We should only receive the file from GetFilenames().
-  std::optional<std::vector<FileInfo>> filenames = provider.GetFilenames();
-  ASSERT_TRUE(filenames.has_value());
-  ASSERT_EQ(1u, filenames.value().size());
-  EXPECT_EQ(kFileName, filenames.value()[0].path.value());
+  std::vector<FileInfo> filenames;
+  EXPECT_TRUE(provider.GetFilenames(&filenames));
+  ASSERT_EQ(1u, filenames.size());
+  EXPECT_EQ(kFileName, filenames[0].path.value());
 
   // We should only receive the URL here.
-  std::optional<OSExchangeDataProvider::UrlInfo> url_info =
-      provider.GetURLAndTitle(FilenameToURLPolicy::DO_NOT_CONVERT_FILENAMES);
-  ASSERT_TRUE(url_info.has_value());
-  EXPECT_EQ(std::u16string(), url_info->title);
-  EXPECT_EQ(kGoogleURL, url_info->url);
+  GURL out_gurl;
+  std::u16string out_str;
+  EXPECT_TRUE(provider.GetURLAndTitle(
+      FilenameToURLPolicy::DO_NOT_CONVERT_FILENAMES, &out_gurl, &out_str));
+  EXPECT_EQ(std::u16string(), out_str);
+  EXPECT_EQ(kGoogleURL, out_gurl.spec());
 }
 
 TEST_F(OSExchangeDataProviderX11Test, OnlyStringURLIsUnfiltered) {
@@ -116,7 +119,8 @@ TEST_F(OSExchangeDataProviderX11Test, StringAndURIListFilterString) {
   AddURLList(kFileURL);
 
   EXPECT_FALSE(provider.HasString());
-  EXPECT_FALSE(provider.GetString().has_value());
+  std::u16string out_str;
+  EXPECT_FALSE(provider.GetString(&out_str));
 
   EXPECT_TRUE(provider.HasFile());
 }

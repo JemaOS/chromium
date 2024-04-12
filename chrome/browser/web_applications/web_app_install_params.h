@@ -5,22 +5,23 @@
 #ifndef CHROME_BROWSER_WEB_APPLICATIONS_WEB_APP_INSTALL_PARAMS_H_
 #define CHROME_BROWSER_WEB_APPLICATIONS_WEB_APP_INSTALL_PARAMS_H_
 
-#include <iosfwd>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/functional/callback.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "components/webapps/browser/install_result_code.h"
-#include "components/webapps/common/web_app_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/webui/system_apps/public/system_web_app_type.h"
 #endif
+
+struct WebAppInstallInfo;
 
 namespace content {
 class WebContents;
@@ -28,14 +29,12 @@ class WebContents;
 
 namespace web_app {
 
-struct WebAppInstallInfo;
-
 // |app_id| may be empty on failure.
 using OnceInstallCallback =
-    base::OnceCallback<void(const webapps::AppId& app_id,
+    base::OnceCallback<void(const AppId& app_id,
                             webapps::InstallResultCode code)>;
 using OnceUninstallCallback =
-    base::OnceCallback<void(const webapps::AppId& app_id, bool uninstalled)>;
+    base::OnceCallback<void(const AppId& app_id, bool uninstalled)>;
 
 // Callback used to indicate whether a user has accepted the installation of a
 // web app.
@@ -61,13 +60,18 @@ struct WebAppInstallParams {
   bool force_reinstall = false;
 
   // See `WebAppInstallTask::ApplyParamsToWebAppInstallInfo`
-  std::optional<mojom::UserDisplayMode> user_display_mode = std::nullopt;
+  absl::optional<mojom::UserDisplayMode> user_display_mode = absl::nullopt;
 
   // URL to be used as start_url if manifest is unavailable.
   GURL fallback_start_url;
 
+  // Setting this field will force the webapp to have a manifest id, which
+  // will result in a different AppId than if it isn't set. Currently here
+  // to support forwards compatibility with future sync entities..
+  absl::optional<std::string> override_manifest_id;
+
   // App name to be used if manifest is unavailable.
-  std::optional<std::u16string> fallback_app_name;
+  absl::optional<std::u16string> fallback_app_name;
 
   bool locally_installed = true;
 
@@ -87,6 +91,7 @@ struct WebAppInstallParams {
   bool is_disabled = false;
   bool handles_file_open_intents = true;
 
+  bool bypass_service_worker_check = false;
   bool require_manifest = false;
 
   // Used only by ExternallyManagedInstallCommand.
@@ -95,9 +100,9 @@ struct WebAppInstallParams {
 
   std::vector<std::string> additional_search_terms;
 
-  std::optional<std::string> launch_query_params;
+  absl::optional<std::string> launch_query_params;
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  std::optional<ash::SystemWebAppType> system_app_type;
+  absl::optional<ash::SystemWebAppType> system_app_type;
 #endif
 
   bool oem_installed = false;
@@ -123,23 +128,6 @@ enum class WebAppInstallFlow {
   // experience determined by the site.
   kInstallSite,
 };
-
-enum class FallbackBehavior {
-  // Installation will use the crafted manifest, and error if the manifest is
-  // not installable.
-  kCraftedManifestOnly,
-  // Installation will use whatever is available - if the site is installable
-  // then crafted app UX will be used, and if not then DIY WebApp UX will be
-  // used. See go/dpwa-universal-install.
-  kUseFallbackInfoWhenNotInstallable,
-  // Installation uses the legacy 'create shortcut' flow, which uses the crafted
-  // manifest if possible, and otherwise fallback information (which has an
-  // empty
-  // 'scope()', so IsShortcut() returns true).
-  kAllowFallbackDataAlways,
-};
-
-std::ostream& operator<<(std::ostream& os, FallbackBehavior state);
 
 }  // namespace web_app
 

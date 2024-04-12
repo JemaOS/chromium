@@ -11,15 +11,18 @@
 #include <wrl/client.h>
 
 #include "base/containers/circular_deque.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/synchronization/lock.h"
 #include "base/time/time.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "ui/gfx/frame_data.h"
 #include "ui/gfx/geometry/transform.h"
 #include "ui/gl/child_window_win.h"
+#include "ui/gl/direct_composition_surface_win.h"
 #include "ui/gl/gl_export.h"
 #include "ui/gl/presenter.h"
-#include "ui/gl/vsync_thread_win.h"
+#include "ui/gl/vsync_observer.h"
 
 namespace base {
 class SequencedTaskRunner;
@@ -38,25 +41,20 @@ class DCLayerTree;
 
 // This class owns the DComp layer tree and its presentation. It does not own
 // the root surface.
-class GL_EXPORT DCompPresenter : public Presenter,
-                                 public VSyncThreadWin::VSyncObserver {
+class GL_EXPORT DCompPresenter : public Presenter, public VSyncObserver {
  public:
-  struct Settings {
-    bool disable_nv12_dynamic_textures = false;
-    bool disable_vp_auto_hdr = false;
-    bool disable_vp_scaling = false;
-    bool disable_vp_super_resolution = false;
-    bool force_dcomp_triple_buffer_video_swap_chain = false;
-    size_t max_pending_frames = 2;
-    bool use_angle_texture_offset = false;
-    bool no_downscaled_overlay_promotion = false;
-  };
+  using VSyncCallback =
+      base::RepeatingCallback<void(base::TimeTicks, base::TimeDelta)>;
+  using OverlayHDRInfoUpdateCallback = base::RepeatingClosure;
 
-  explicit DCompPresenter(const Settings& settings);
+  DCompPresenter(GLDisplayEGL* display,
+                 VSyncCallback vsync_callback,
+                 const DirectCompositionSurfaceWin::Settings& settings);
 
   DCompPresenter(const DCompPresenter&) = delete;
   DCompPresenter& operator=(const DCompPresenter&) = delete;
 
+  bool Initialize();
   void Destroy();
   gfx::VSyncProvider* GetVSyncProvider();
   bool SupportsProtectedVideo() const;
@@ -67,7 +65,8 @@ class GL_EXPORT DCompPresenter : public Presenter,
               const gfx::ColorSpace& color_space,
               bool has_alpha) override;
   bool SetDrawRectangle(const gfx::Rect& rect) override;
-  bool SupportsViewporter() const override;
+  bool SupportsGpuVSync() const override;
+  void SetGpuVSyncEnabled(bool enabled) override;
   // This schedules an overlay plane to be displayed on the next SwapBuffers
   // or PostSubBuffer call. Overlay planes must be scheduled before every swap
   // to remain in the layer tree. This surface's backbuffer doesn't have to be
@@ -90,7 +89,7 @@ class GL_EXPORT DCompPresenter : public Presenter,
       mojo::PendingReceiver<gfx::mojom::DelegatedInkPointRenderer>
           pending_receiver) override;
 
-  HWND GetWindow() const override;
+  HWND window() const { return child_window_.window(); }
 
   scoped_refptr<base::TaskRunner> GetWindowTaskRunnerForTesting();
 
@@ -127,15 +126,23 @@ class GL_EXPORT DCompPresenter : public Presenter,
 
   void StartOrStopVSyncThread();
 
+  bool VSyncCallbackEnabled() const;
+
   void HandleVSyncOnMainThread(base::TimeTicks vsync_time,
                                base::TimeDelta interval);
 
   ChildWindowWin child_window_;
 
   Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device_;
+
+  const VSyncCallback vsync_callback_;
+
+  const raw_ptr<VSyncThreadWin> vsync_thread_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 
-  bool observing_vsync_ = false;
+  bool vsync_thread_started_ = false;
+  bool vsync_callback_enabled_ GUARDED_BY(vsync_callback_enabled_lock_) = false;
+  mutable base::Lock vsync_callback_enabled_lock_;
 
   // Queue of pending presentation callbacks.
   base::circular_deque<PendingFrame> pending_frames_;

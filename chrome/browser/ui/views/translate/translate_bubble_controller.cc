@@ -14,10 +14,10 @@
 #include "chrome/browser/ui/translate/partial_translate_bubble_model_impl.h"
 #include "chrome/browser/ui/translate/partial_translate_bubble_ui_action_logger.h"
 #include "chrome/browser/ui/translate/translate_bubble_model_impl.h"
+#include "chrome/browser/ui/translate/translate_bubble_ui_action_logger.h"
 #include "chrome/browser/ui/views/translate/partial_translate_bubble_view.h"
 #include "components/contextual_search/core/browser/contextual_search_delegate_impl.h"
 #include "components/translate/content/browser/partial_translate_manager.h"
-#include "components/translate/core/browser/translate_language_list.h"
 #include "components/translate/core/browser/translate_manager.h"
 #include "components/translate/core/browser/translate_ui_delegate.h"
 #include "components/translate/core/browser/translate_ui_languages_manager.h"
@@ -106,6 +106,8 @@ views::Widget* TranslateBubbleController::ShowTranslateBubble(
   translate_bubble_view_->SetViewState(step, error_type);
 
   translate_bubble_view_->ShowForReason(reason);
+  translate::ReportTranslateBubbleUiAction(
+      translate::TranslateBubbleUiEvent::BUBBLE_SHOWN);
 
   translate_bubble_view_->model()->ReportUIChange(true);
 
@@ -128,7 +130,8 @@ void TranslateBubbleController::StartPartialTranslate(
   // the bubble will be shown in a loading state until the translation is ready.
   partial_translate_timer_.Start(
       FROM_HERE,
-      base::Milliseconds(translate::kDesktopPartialTranslateBubbleShowDelayMs),
+      base::Milliseconds(
+          translate::kDesktopPartialTranslateBubbleShowDelayMs.Get()),
       base::BindOnce(&TranslateBubbleController::OnPartialTranslateWaitExpired,
                      weak_ptr_factory_.GetWeakPtr()));
 
@@ -196,7 +199,7 @@ void TranslateBubbleController::CreatePartialTranslateBubble(
       source_text.length());
   std::u16string truncated_source_text = gfx::TruncateString(
       source_text,
-      translate::kDesktopPartialTranslateTextSelectionMaxCharacters,
+      translate::kDesktopPartialTranslateTextSelectionMaxCharacters.Get(),
       gfx::WORD_BREAK);
   bool is_truncated = (source_text.compare(truncated_source_text) != 0);
 
@@ -225,14 +228,11 @@ void TranslateBubbleController::CreatePartialTranslateBubble(
   if (partial_model_factory_callback_) {
     model = partial_model_factory_callback_.Run();
   } else {
-    std::vector<std::string> language_codes;
-    translate::TranslateLanguageList::GetSupportedPartialTranslateLanguages(
-        &language_codes);
     auto translate_ui_languages_manager =
         std::make_unique<translate::TranslateUILanguagesManager>(
             ChromeTranslateClient::GetManagerFromWebContents(web_contents)
                 ->GetWeakPtr(),
-            language_codes, source_language, target_language);
+            source_language, target_language);
 
     Profile* profile =
         Profile::FromBrowserContext(web_contents->GetBrowserContext());

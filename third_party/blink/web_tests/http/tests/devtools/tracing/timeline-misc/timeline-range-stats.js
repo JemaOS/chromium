@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {PerformanceTestRunner} from 'performance_test_runner';
-
-import * as TimelineModule from 'devtools/panels/timeline/timeline.js';
-
 (async function() {
   TestRunner.addResult(`Tests that aggregated summary in Timeline is properly computed.\n`);
+  await TestRunner.loadLegacyModule('timeline'); await TestRunner.loadTestModule('performance_test_runner');
   await TestRunner.showPanel('timeline');
 
   var mainThread = 1;
@@ -115,7 +111,7 @@ import * as TimelineModule from 'devtools/panels/timeline/timeline.js';
     for (var endTime = startTime + 1000; endTime <= 109000; endTime += 1000) {
       dumpStats(
           startTime, endTime,
-          TimelineModule.TimelineUIUtils.TimelineUIUtils.statsForTimeRange(PerformanceTestRunner.mainTrackEvents(), startTime / 1000, endTime / 1000));
+          Timeline.TimelineUIUtils.statsForTimeRange(PerformanceTestRunner.mainTrackEvents(), startTime / 1000, endTime / 1000));
     }
   }
   function dumpStats(t1, t2, obj) {

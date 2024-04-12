@@ -49,7 +49,7 @@ class ExceptionState;
 class ExecutionContext;
 enum class FileErrorCode;
 
-class FileWriter final : public EventTarget,
+class FileWriter final : public EventTargetWithInlineData,
                          public FileWriterBase,
                          public ActiveScriptWrappable<FileWriter>,
                          public ExecutionContextLifecycleObserver {
@@ -74,7 +74,9 @@ class FileWriter final : public EventTarget,
   void DidTruncateImpl() override;
   void DidFailImpl(base::File::Error error) override;
   void DoTruncate(const KURL& path, int64_t offset) override;
-  void DoWrite(const KURL& path, const Blob& blob, int64_t offset) override;
+  void DoWrite(const KURL& path,
+               const String& blob_id,
+               int64_t offset) override;
   void DoCancel() override;
 
   // ExecutionContextLifecycleObserver

@@ -13,19 +13,19 @@ import 'chrome://resources/cr_elements/cr_input/cr_input.js';
 import 'chrome://resources/cr_elements/icons.html.js';
 import 'chrome://resources/polymer/v3_0/iron-a11y-keys/iron-a11y-keys.js';
 import 'chrome://resources/polymer/v3_0/iron-list/iron-list.js';
-import '/shared/settings/prefs/prefs.js';
+import 'chrome://resources/cr_components/settings_prefs/prefs.js';
 import '../settings_shared.css.js';
 import '../settings_vars.css.js';
 
-import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import type {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
-import type {IronA11yKeysElement} from 'chrome://resources/polymer/v3_0/iron-a11y-keys/iron-a11y-keys.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
+import {IronA11yKeysElement} from 'chrome://resources/polymer/v3_0/iron-a11y-keys/iron-a11y-keys.js';
 import {flush, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {GlobalScrollTargetMixin} from '../global_scroll_target_mixin.js';
 import {loadTimeData} from '../i18n_setup.js';
 import {routes} from '../route.js';
-import type {Route} from '../router.js';
+import {Route} from '../router.js';
 
 import {getTemplate} from './edit_dictionary_page.html.js';
 import {LanguagesBrowserProxyImpl} from './languages_browser_proxy.js';

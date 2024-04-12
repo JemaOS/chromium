@@ -40,7 +40,6 @@
 #include "third_party/blink/renderer/core/animation/interpolation_effect.h"
 #include "third_party/blink/renderer/core/animation/property_handle.h"
 #include "third_party/blink/renderer/core/animation/string_keyframe.h"
-#include "third_party/blink/renderer/core/animation/timeline_range.h"
 #include "third_party/blink/renderer/core/animation/transition_keyframe.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/animation/timing_function.h"
@@ -68,22 +67,14 @@ class CORE_EXPORT KeyframeEffectModelBase : public EffectModel {
       return keyframes_;
     }
 
-    bool IsStatic() const { return has_static_value_; }
-
     void Trace(Visitor* visitor) const { visitor->Trace(keyframes_); }
 
    private:
     void RemoveRedundantKeyframes();
-    void CheckIfStatic();
     bool AddSyntheticKeyframeIfRequired(
         scoped_refptr<TimingFunction> zero_offset_easing);
 
     PropertySpecificKeyframeVector keyframes_;
-
-    // TODO(kevers): Store CSS value if static in order to short-circuit
-    // applying the effect if set as we don't need to determine the bounding
-    // keyframes.
-    bool has_static_value_ = false;
 
     friend class KeyframeEffectModelBase;
   };
@@ -92,8 +83,6 @@ class CORE_EXPORT KeyframeEffectModelBase : public EffectModel {
   bool IsReplaceOnly() const;
 
   PropertyHandleSet Properties() const;
-
-  PropertyHandleSet DynamicProperties() const;
 
   using KeyframeVector = HeapVector<Member<Keyframe>>;
   const KeyframeVector& GetFrames() const { return keyframes_; }
@@ -182,12 +171,12 @@ class CORE_EXPORT KeyframeEffectModelBase : public EffectModel {
 
   virtual KeyframeEffectModelBase* Clone() = 0;
 
+  void SetViewTimelineIfRequired(const ViewTimeline* timeline);
+
   // Ensure timeline offsets are properly resolved. If any of the offsets
   // changed, the keyframes are resorted and cached data is cleared. Returns
   // true if one or more offsets were affected.
-  bool ResolveTimelineOffsets(const TimelineRange&,
-                              double range_start,
-                              double range_end);
+  bool ResolveTimelineOffsets(double range_start, double range_end);
 
   void Trace(Visitor*) const override;
 
@@ -254,11 +243,7 @@ class CORE_EXPORT KeyframeEffectModelBase : public EffectModel {
   mutable bool has_revert_ = false;
   mutable bool has_named_range_keyframes_ = false;
 
-  // The timeline and animation ranges last used to resolve
-  // named range offsets. (See ResolveTimelineOffsets).
-  std::optional<TimelineRange> last_timeline_range_;
-  std::optional<double> last_range_start_;
-  std::optional<double> last_range_end_;
+  Member<const ViewTimeline> view_timeline_;
 
   friend class KeyframeEffectModelTest;
 };

@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/crosapi/browser_data_back_migrator_metrics.h"
 
-#include <string_view>
-
 #include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
 #include "base/metrics/histogram_functions.h"
@@ -81,7 +79,7 @@ void RecordNumberOfLacrosSecondaryProfiles(
 }
 
 void RecordBackwardMigrationTimeDelta(
-    std::optional<base::Time> forward_migration_completion_time) {
+    absl::optional<base::Time> forward_migration_completion_time) {
   if (!forward_migration_completion_time.has_value()) {
     VLOG(1) << "Forward migration completion time not found.";
     return;
@@ -93,17 +91,6 @@ void RecordBackwardMigrationTimeDelta(
   base::UmaHistogramCustomTimes(
       browser_data_back_migrator_metrics::kElapsedTimeBetweenDataMigrations,
       time_delta, base::Minutes(1), base::Days(24), 100);
-}
-
-void RecordBackwardMigrationPrecededByForwardMigration(
-    std::optional<base::Time> forward_migration_completion_time) {
-  bool is_backward_migration_preceded_by_forward_migration =
-      forward_migration_completion_time.has_value();
-
-  base::UmaHistogramBoolean(
-      browser_data_back_migrator_metrics::
-          kIsBackwardMigrationPrecededByForwardMigration,
-      is_backward_migration_preceded_by_forward_migration);
 }
 
 std::string TaskStatusToString(
@@ -135,7 +122,7 @@ std::string TaskStatusToString(
 }
 
 bool IsSecondaryProfileDirectory(const std::string& dir_base_name) {
-  const std::string_view prefix = chrome::kMultiProfileDirPrefix;
+  const base::StringPiece prefix = chrome::kMultiProfileDirPrefix;
   const size_t prefix_length = prefix.length();
 
   if (dir_base_name.length() <= prefix_length) {

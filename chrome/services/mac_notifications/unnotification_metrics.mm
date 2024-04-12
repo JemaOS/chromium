@@ -35,6 +35,7 @@ enum class UNNotificationPermissionStatus {
   kMaxValue = kPermissionGranted,
 };
 
+API_AVAILABLE(macosx(10.14))
 UNNotificationStyle ConvertNotificationStyle(UNAlertStyle alert_style) {
   switch (alert_style) {
     case UNAlertStyleBanner:
@@ -46,6 +47,7 @@ UNNotificationStyle ConvertNotificationStyle(UNAlertStyle alert_style) {
   }
 }
 
+API_AVAILABLE(macosx(10.14))
 UNNotificationPermissionStatus ConvertAuthorizationStatus(
     UNAuthorizationStatus authorization_status) {
   switch (authorization_status) {
@@ -61,25 +63,28 @@ UNNotificationPermissionStatus ConvertAuthorizationStatus(
 }  // namespace
 
 void LogUNNotificationRequestPermissionResult(
-    mojom::RequestPermissionResult result) {
+    UNNotificationRequestPermissionResult result) {
   base::UmaHistogramEnumeration(
-      base::StrCat(
-          {"Notifications.Permissions.UNNotification.",
-           MacNotificationStyleSuffix(NotificationStyleFromAppBundle()),
-           ".PermissionRequest"}),
+      base::StrCat({"Notifications.Permissions.UNNotification.",
+                    MacNotificationStyleSuffix(IsAppBundleAlertStyle()),
+                    ".PermissionRequest"}),
       result);
 }
 
-void LogUNNotificationSettings(UNNotificationSettings* settings) {
-  std::string prefix = base::StrCat(
-      {"Notifications.Permissions.UNNotification.",
-       MacNotificationStyleSuffix(NotificationStyleFromAppBundle())});
+void LogUNNotificationSettings(UNUserNotificationCenter* center) {
+  [center getNotificationSettingsWithCompletionHandler:^(
+              UNNotificationSettings* _Nonnull settings) {
+    std::string prefix =
+        base::StrCat({"Notifications.Permissions.UNNotification.",
+                      MacNotificationStyleSuffix(IsAppBundleAlertStyle())});
 
-  base::UmaHistogramEnumeration(base::StrCat({prefix, ".Style"}),
-                                ConvertNotificationStyle(settings.alertStyle));
-  base::UmaHistogramEnumeration(
-      base::StrCat({prefix, ".PermissionStatus"}),
-      ConvertAuthorizationStatus(settings.authorizationStatus));
+    base::UmaHistogramEnumeration(
+        base::StrCat({prefix, ".Style"}),
+        ConvertNotificationStyle(settings.alertStyle));
+    base::UmaHistogramEnumeration(
+        base::StrCat({prefix, ".PermissionStatus"}),
+        ConvertAuthorizationStatus(settings.authorizationStatus));
+  }];
 }
 
 }  // namespace mac_notifications

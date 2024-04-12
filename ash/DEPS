@@ -11,12 +11,9 @@ include_rules = [
   "+components/discardable_memory/public",
   "+components/discardable_memory/service/discardable_shared_memory_manager.h",
   "+components/fullscreen_control",
-  "+components/global_media_controls",
   "+components/language/core/browser/pref_names.h",
   "+components/live_caption",
   "+components/media_message_center",
-  "+components/metrics/structured/structured_events.h",
-  "+components/metrics/structured/structured_metrics_client.h",
   "+components/pref_registry",
   "+components/prefs",
   "+components/quirks",
@@ -25,7 +22,6 @@ include_rules = [
   "+components/strings",
   "+components/sync",
   "+components/ui_devtools",
-  "+components/ukm",
   "+components/url_matcher",
   "+components/user_education/common",
   "+components/user_education/views",
@@ -43,7 +39,6 @@ include_rules = [
   "+services/device/public",
   "+services/data_decoder/public",
   "+services/media_session/public",
-  "+services/metrics/public/cpp",
   "+services/video_capture/public/mojom",
   "+services/network/public",
   "+services/network/test",
@@ -68,23 +63,15 @@ include_rules = [
   "-chromeos",
   # //ash can use chromeos components that sit below it in the dependency tree.
   "+chromeos/ash/components/audio",
-  "+chromeos/ash/components/auth_panel",
-  "+chromeos/ash/components/osauth/public",
   "+chromeos/ash/components/cryptohome",
-  "+chromeos/ash/components/emoji",
   "+chromeos/ash/components/feature_usage",
   "+chromeos/ash/components/human_presence",
   "+chromeos/ash/components/local_search_service",
   "+chromeos/ash/components/login/auth",
-  "+chromeos/ash/components/mojo_service_manager",
   "+chromeos/ash/components/multidevice",
-  "+chromeos/ash/components/osauth/public",
   "+chromeos/ash/components/peripheral_notification",
-  "+chromeos/ash/components/phonehub",
   "+chromeos/ash/components/proximity_auth",
-  "+chromeos/ash/components/string_matching",
   "+chromeos/ash/components/system",
-  "+chromeos/components/mahi",
   "+chromeos/components/quick_answers",
   "+chromeos/components/security_token_pin",
   "+chromeos/components/sensors",
@@ -119,7 +106,6 @@ include_rules = [
   "+chromeos/services/power/public",
   "+chromeos/strings",
   "+chromeos/ui",
-  "+chromeos/utils",
 
   # ui/base/idle depends on SessionManagerClient so disallow it.
   "-ui/base/idle",
@@ -134,7 +120,6 @@ include_rules = [
   "+components/session_manager/session_manager_types.h",
   "-components/user_manager",
   "+components/user_manager/known_user.h",
-  "+components/user_manager/multi_user/multi_user_sign_in_policy.h",
   "+components/user_manager/user_directory_integrity_manager.h",
   "+components/user_manager/user_names.h",
   "+components/user_manager/user_type.h",
@@ -148,7 +133,7 @@ specific_include_rules = {
   "policy_recommendation_restorer_unittest.cc": [
     "+components/sync_preferences/testing_pref_service_syncable.h"
   ],
-  "root_window_controller\.(cc|h)": [
+  "root_window_controller\.*": [
     "+ash/host"
   ],
   "shell.cc": [
@@ -158,9 +143,4 @@ specific_include_rules = {
   "window_manager.cc": [
     "+ash/host/ash_window_tree_host.h"
   ],
-  ".*test\.cc": [
-    # Allowed to access user_manager in test code to set up testing environment
-    # close to the production.
-    "+components/user_manager",
-  ]
 }

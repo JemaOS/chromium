@@ -36,7 +36,7 @@ class MODULES_EXPORT MediaStreamSet final
   void Trace(Visitor*) const override;
 
  private:
-  void InitializeGetAllScreensMediaStreams(
+  void InitializeGetDisplayMediaSetStreams(
       ExecutionContext* context,
       const MediaStreamDescriptorVector& stream_descriptors);
   void OnMediaStreamInitialized(MediaStream*);

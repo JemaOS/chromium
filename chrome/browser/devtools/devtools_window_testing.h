@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_DEVTOOLS_DEVTOOLS_WINDOW_TESTING_H_
 
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "ui/gfx/geometry/rect.h"
 
@@ -79,8 +78,7 @@ class DevToolsWindowCreationObserver {
 
   ~DevToolsWindowCreationObserver();
 
-  using DevToolsWindows =
-      std::vector<raw_ptr<DevToolsWindow, VectorExperimental>>;
+  using DevToolsWindows = std::vector<DevToolsWindow*>;
   const DevToolsWindows& devtools_windows() { return devtools_windows_; }
   DevToolsWindow* devtools_window();
 

@@ -387,7 +387,7 @@ TEST_F(FocusgroupControllerTest, FocusgroupExtendsInAxis) {
 }
 
 TEST_F(FocusgroupControllerTest, FindNearestFocusgroupAncestor) {
-  GetDocument().body()->setHTMLUnsafe(R"HTML(
+  GetDocument().body()->setInnerHTMLWithDeclarativeShadowDOMForTesting(R"HTML(
     <div>
       <span id=item1 tabindex=0></span>
     </div>
@@ -413,7 +413,7 @@ TEST_F(FocusgroupControllerTest, FindNearestFocusgroupAncestor) {
             </tr>
           </table>
           <div id=fg6-container>
-            <template shadowrootmode=open>
+            <template shadowroot=open>
               <div id=fg6 focusgroup=extend>
                 <span id=item8 tabindex=-1></span>
               </div>
@@ -435,15 +435,13 @@ TEST_F(FocusgroupControllerTest, FindNearestFocusgroupAncestor) {
   auto* item5 = GetElementById("item5");
   auto* item6 = GetElementById("item6");
   auto* item7 = GetElementById("item7");
-  auto* item8 =
-      fg6_container->GetShadowRoot()->getElementById(AtomicString("item8"));
+  auto* item8 = fg6_container->GetShadowRoot()->getElementById("item8");
   auto* fg1 = GetElementById("fg1");
   auto* fg2 = GetElementById("fg2");
   auto* fg3 = GetElementById("fg3");
   auto* fg4 = GetElementById("fg4");
   auto* fg5 = GetElementById("fg5");
-  auto* fg6 =
-      fg6_container->GetShadowRoot()->getElementById(AtomicString("fg6"));
+  auto* fg6 = fg6_container->GetShadowRoot()->getElementById("fg6");
   ASSERT_TRUE(item1);
   ASSERT_TRUE(item2);
   ASSERT_TRUE(item3);
@@ -506,7 +504,7 @@ TEST_F(FocusgroupControllerTest, FindNearestFocusgroupAncestor) {
 }
 
 TEST_F(FocusgroupControllerTest, NextElement) {
-  GetDocument().body()->setHTMLUnsafe(R"HTML(
+  GetDocument().body()->setInnerHTMLWithDeclarativeShadowDOMForTesting(R"HTML(
     <div id=fg1 focusgroup>
       <span id=item1></span>
       <span id=item2 tabindex=-1></span>
@@ -515,7 +513,7 @@ TEST_F(FocusgroupControllerTest, NextElement) {
       <span id=item3 tabindex=-1></span>
     </div>
     <div id=fg3 focusgroup>
-        <template shadowrootmode=open>
+        <template shadowroot=open>
           <span id=item4 tabindex=-1></span>
         </template>
     </div>
@@ -529,7 +527,7 @@ TEST_F(FocusgroupControllerTest, NextElement) {
   ASSERT_TRUE(fg3);
 
   auto* item1 = GetElementById("item1");
-  auto* item4 = fg3->GetShadowRoot()->getElementById(AtomicString("item4"));
+  auto* item4 = fg3->GetShadowRoot()->getElementById("item4");
   auto* item5 = GetElementById("item5");
   ASSERT_TRUE(item1);
   ASSERT_TRUE(item4);
@@ -542,7 +540,7 @@ TEST_F(FocusgroupControllerTest, NextElement) {
 }
 
 TEST_F(FocusgroupControllerTest, PreviousElement) {
-  GetDocument().body()->setHTMLUnsafe(R"HTML(
+  GetDocument().body()->setInnerHTMLWithDeclarativeShadowDOMForTesting(R"HTML(
     <div id=fg1 focusgroup>
       <span id=item1></span>
       <span id=item2 tabindex=-1></span>
@@ -551,7 +549,7 @@ TEST_F(FocusgroupControllerTest, PreviousElement) {
       <span id=item3 tabindex=-1></span>
     </div>
     <div id=fg3 focusgroup>
-        <template shadowrootmode=open>
+        <template shadowroot=open>
           <span id=item4 tabindex=-1></span>
         </template>
     </div>
@@ -561,7 +559,7 @@ TEST_F(FocusgroupControllerTest, PreviousElement) {
   ASSERT_TRUE(fg3);
 
   auto* item3 = GetElementById("item3");
-  auto* item4 = fg3->GetShadowRoot()->getElementById(AtomicString("item4"));
+  auto* item4 = fg3->GetShadowRoot()->getElementById("item4");
   auto* item5 = GetElementById("item5");
   ASSERT_TRUE(item3);
   ASSERT_TRUE(item4);
@@ -573,13 +571,13 @@ TEST_F(FocusgroupControllerTest, PreviousElement) {
 }
 
 TEST_F(FocusgroupControllerTest, LastElementWithin) {
-  GetDocument().body()->setHTMLUnsafe(R"HTML(
+  GetDocument().body()->setInnerHTMLWithDeclarativeShadowDOMForTesting(R"HTML(
     <div id=fg1 focusgroup>
       <span id=item1></span>
       <span id=item2 tabindex=-1></span>
     </div>
     <div id=fg2 focusgroup>
-        <template shadowrootmode=open>
+        <template shadowroot=open>
           <span id=item3 tabindex=-1></span>
           <span id=item4></span>
         </template>
@@ -592,7 +590,7 @@ TEST_F(FocusgroupControllerTest, LastElementWithin) {
   ASSERT_TRUE(fg2);
 
   auto* item2 = GetElementById("item2");
-  auto* item4 = fg2->GetShadowRoot()->getElementById(AtomicString("item4"));
+  auto* item4 = fg2->GetShadowRoot()->getElementById("item4");
   ASSERT_TRUE(item2);
   ASSERT_TRUE(item4);
 

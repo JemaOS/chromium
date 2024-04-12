@@ -8,7 +8,6 @@
 
 #include "base/base64.h"
 #include "base/i18n/rtl.h"
-#include "base/json/json_string_value_serializer.h"
 #include "base/logging.h"
 #include "base/strings/escape.h"
 #include "base/strings/string_number_conversions.h"
@@ -20,6 +19,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/template_expressions.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/base/window_open_disposition_utils.h"
 #include "ui/gfx/codec/png_codec.h"
@@ -39,11 +39,13 @@ namespace {
 constexpr float kMaxScaleFactor = 1000.0f;
 
 std::string GetFontFamilyMd() {
-#if BUILDFLAG(IS_LINUX)
-  return "Roboto, " + GetFontFamily();
-#else
-  return GetFontFamily();
+#if !BUILDFLAG(IS_LINUX)
+  if (base::FeatureList::IsEnabled(features::kWebUiSystemFont)) {
+    return GetFontFamily();
+  }
 #endif
+
+  return "Roboto, " + GetFontFamily();
 }
 
 std::string GetWebUiCssTextDefaults(const std::string& css_template) {
@@ -67,6 +69,12 @@ std::string GetBitmapDataUrl(const SkBitmap& bitmap) {
 
 std::string GetPngDataUrl(const unsigned char* data, size_t size) {
   std::string output = "data:image/png;base64,";
+  base::Base64EncodeAppend(base::make_span(data, size), &output);
+  return output;
+}
+
+std::string GetWebPDataUrl(const unsigned char* data, size_t size) {
+  std::string output = "data:image/webp;base64,";
   base::Base64EncodeAppend(base::make_span(data, size), &output);
   return output;
 }
@@ -157,7 +165,7 @@ void ParsePathAndImageSpec(const GURL& url,
             pos + 1, stripped_path.length() - pos - 1), &factor)) {
       // Strip scale factor specification from path.
       stripped_path.remove_suffix(stripped_path.length() - pos);
-      *path = std::string(stripped_path);
+      path->assign(stripped_path.data(), stripped_path.size());
     }
     if (scale_factor)
       *scale_factor = factor;
@@ -174,7 +182,7 @@ void ParsePathAndImageSpec(const GURL& url,
             &index)) {
       // Strip frame index specification from path.
       stripped_path.remove_suffix(stripped_path.length() - pos);
-      *path = std::string(stripped_path);
+      path->assign(stripped_path.data(), stripped_path.size());
     }
     if (frame_index)
       *frame_index = index;
@@ -235,28 +243,6 @@ std::string GetFontSize() {
 
 std::string GetTextDirection() {
   return base::i18n::IsRTL() ? "rtl" : "ltr";
-}
-
-std::string GetLocalizedHtml(base::StringPiece html_template,
-                             const base::Value::Dict& strings) {
-  // Populate $i18n{...} placeholders.
-  ui::TemplateReplacements replacements;
-  ui::TemplateReplacementsFromDictionaryValue(strings, &replacements);
-  std::string output =
-      ui::ReplaceTemplateExpressions(html_template, replacements);
-
-  // Inject data to the UI that will be used to populate loadTimeData upon
-  // initialization.
-  std::string json;
-  JSONStringValueSerializer serializer(&json);
-  serializer.Serialize(strings);
-  output.append("<script>");
-  output.append("var loadTimeDataRaw = ");
-  output.append(json);
-  output.append(";");
-  output.append("</script>");
-
-  return output;
 }
 
 }  // namespace webui

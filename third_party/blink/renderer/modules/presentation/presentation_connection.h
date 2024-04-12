@@ -35,7 +35,7 @@ class ScriptPromiseResolver;
 class WebString;
 
 class MODULES_EXPORT PresentationConnection
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ExecutionContextLifecycleStateObserver,
       public mojom::blink::PresentationConnection {
   DEFINE_WRAPPERTYPEINFO();

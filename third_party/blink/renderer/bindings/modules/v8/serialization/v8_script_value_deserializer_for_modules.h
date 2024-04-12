@@ -17,7 +17,6 @@ class EncodedAudioChunk;
 class EncodedVideoChunk;
 class FileSystemHandle;
 class MediaSourceHandleImpl;
-class RestrictionTarget;
 class RTCEncodedAudioFrame;
 class RTCEncodedVideoFrame;
 class VideoFrame;
@@ -64,7 +63,6 @@ class MODULES_EXPORT V8ScriptValueDeserializerForModules final
   EncodedVideoChunk* ReadEncodedVideoChunk();
   MediaStreamTrack* ReadMediaStreamTrack();
   CropTarget* ReadCropTarget();
-  RestrictionTarget* ReadRestrictionTarget();
   MediaSourceHandleImpl* ReadMediaSourceHandle();
 };
 

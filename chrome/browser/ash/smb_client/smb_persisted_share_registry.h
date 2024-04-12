@@ -5,11 +5,11 @@
 #ifndef CHROME_BROWSER_ASH_SMB_CLIENT_SMB_PERSISTED_SHARE_REGISTRY_H_
 #define CHROME_BROWSER_ASH_SMB_CLIENT_SMB_PERSISTED_SHARE_REGISTRY_H_
 
-#include <optional>
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ash/smb_client/smb_share_info.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -17,7 +17,8 @@ namespace user_prefs {
 class PrefRegistrySyncable;
 }  // namespace user_prefs
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 class SmbUrl;
 
@@ -43,15 +44,16 @@ class SmbPersistedShareRegistry {
 
   // Return the saved share with URL |share_url|, or the empty Optional<> if no
   // share is found.
-  std::optional<SmbShareInfo> Get(const SmbUrl& share_url) const;
+  absl::optional<SmbShareInfo> Get(const SmbUrl& share_url) const;
 
   // Return a list of all saved shares.
   std::vector<SmbShareInfo> GetAll() const;
 
  private:
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
 };
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_SMB_CLIENT_SMB_PERSISTED_SHARE_REGISTRY_H_

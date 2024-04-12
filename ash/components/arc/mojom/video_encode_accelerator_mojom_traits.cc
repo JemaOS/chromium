@@ -4,11 +4,25 @@
 
 #include "ash/components/arc/mojom/video_encode_accelerator_mojom_traits.h"
 
-#include <optional>
-
 #include "ash/components/arc/mojom/video_accelerator_mojom_traits.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace mojo {
+
+// Make sure values in arc::mojom::VideoEncodeAccelerator::Error and
+// media::VideoEncodeAccelerator::Error match.
+#define CHECK_ERROR_ENUM(value)                                            \
+  static_assert(                                                           \
+      static_cast<int>(arc::mojom::VideoEncodeAccelerator_Error::value) == \
+          media::VideoEncodeAccelerator::Error::value,                     \
+      "enum ##value mismatch")
+
+CHECK_ERROR_ENUM(kIllegalStateError);
+CHECK_ERROR_ENUM(kInvalidArgumentError);
+CHECK_ERROR_ENUM(kPlatformFailureError);
+CHECK_ERROR_ENUM(kErrorMax);
+
+#undef CHECK_ERROR_ENUM
 
 // static
 arc::mojom::VideoFrameStorageType
@@ -32,6 +46,23 @@ bool EnumTraits<arc::mojom::VideoFrameStorageType,
           media::VideoEncodeAccelerator::Config::StorageType::kGpuMemoryBuffer;
       return true;
   }
+  return false;
+}
+
+// static
+arc::mojom::VideoEncodeAccelerator_Error
+EnumTraits<arc::mojom::VideoEncodeAccelerator_Error,
+           media::VideoEncodeAccelerator::Error>::
+    ToMojom(media::VideoEncodeAccelerator::Error input) {
+  return static_cast<arc::mojom::VideoEncodeAccelerator_Error>(input);
+}
+
+// static
+bool EnumTraits<arc::mojom::VideoEncodeAccelerator_Error,
+                media::VideoEncodeAccelerator::Error>::
+    FromMojom(arc::mojom::VideoEncodeAccelerator_Error input,
+              media::VideoEncodeAccelerator::Error* output) {
+  NOTIMPLEMENTED();
   return false;
 }
 
@@ -134,12 +165,12 @@ bool StructTraits<arc::mojom::VideoEncodeAcceleratorConfigDataView,
   if (!input.ReadOutputProfile(&output_profile))
     return false;
 
-  std::optional<uint32_t> initial_framerate;
-  if (input.has_initial_framerate_deprecated()) {
+  absl::optional<uint32_t> initial_framerate;
+  if (input.has_initial_framerate()) {
     initial_framerate = input.initial_framerate();
   }
 
-  std::optional<uint8_t> h264_output_level;
+  absl::optional<uint8_t> h264_output_level;
   if (input.has_h264_output_level()) {
     h264_output_level = input.h264_output_level();
   }
@@ -148,7 +179,7 @@ bool StructTraits<arc::mojom::VideoEncodeAcceleratorConfigDataView,
   if (!input.ReadStorageType(&storage_type))
     return false;
 
-  std::optional<media::Bitrate> bitrate;
+  absl::optional<media::Bitrate> bitrate;
   if (!input.ReadBitrate(&bitrate))
     return false;
   if (bitrate.has_value()) {
@@ -163,12 +194,7 @@ bool StructTraits<arc::mojom::VideoEncodeAcceleratorConfigDataView,
 
   *output = media::VideoEncodeAccelerator::Config(
       input_format, input_visible_size, output_profile, *bitrate,
-      initial_framerate.value_or(
-          media::VideoEncodeAccelerator::kDefaultFramerate),
-      storage_type,
-      media::VideoEncodeAccelerator::Config::ContentType::kCamera);
-  output->h264_output_level = h264_output_level;
-
+      initial_framerate, absl::nullopt, h264_output_level, false, storage_type);
   return true;
 }
 

@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startURL('resources/inline-wrap.html', 'Tests DOM.getContentQuads method.');
 
   var NodeTracker = await testRunner.loadScript('../resources/node-tracker.js');

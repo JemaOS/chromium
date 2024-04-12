@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ACCESSIBILITY_PDF_OCR_CONTROLLER_FACTORY_H_
 #define CHROME_BROWSER_ACCESSIBILITY_PDF_OCR_CONTROLLER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -25,13 +25,13 @@ class PdfOcrControllerFactory : public ProfileKeyedServiceFactory {
   PdfOcrControllerFactory& operator=(const PdfOcrControllerFactory&) = delete;
 
  private:
-  friend base::NoDestructor<PdfOcrControllerFactory>;
+  friend struct base::DefaultSingletonTraits<PdfOcrControllerFactory>;
 
   PdfOcrControllerFactory();
   ~PdfOcrControllerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

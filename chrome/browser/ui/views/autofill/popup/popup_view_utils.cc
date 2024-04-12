@@ -11,16 +11,14 @@
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/views/extensions/extension_popup.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
-#include "chrome/browser/ui/views/permissions/permission_prompt_bubble_base_view.h"
+#include "chrome/browser/ui/views/permissions/permission_prompt_bubble_view.h"
 #include "components/autofill/core/browser/ui/popup_item_ids.h"
 #include "components/autofill/core/common/autofill_features.h"
-#include "components/feature_engagement/public/feature_constants.h"
-#include "components/user_education/views/help_bubble_view.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/common/constants.h"
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/views/interaction/element_tracker_views.h"
-#include "ui/views/window/dialog_delegate.h"
+#include "ui/views/widget/widget.h"
 
 using views::BubbleBorder;
 
@@ -200,13 +198,16 @@ void CalculatePopupYAndHeight(int popup_preferred_height,
   popup_bounds->set_height(popup_preferred_height);
   popup_bounds->set_y(top_growth_end);
 
-  int y_adjustment = (bottom_available >= popup_preferred_height ||
-                      bottom_available >= top_available)
-                         ? element_bounds.bottom()
-                         : content_area_bounds.y();
-  popup_bounds->AdjustToFit(gfx::Rect(popup_bounds->x(), y_adjustment,
-                                      popup_bounds->width(),
-                                      content_area_bounds.height()));
+  if (bottom_available >= popup_preferred_height ||
+      bottom_available >= top_available) {
+    popup_bounds->AdjustToFit(
+        gfx::Rect(popup_bounds->x(), element_bounds.bottom(),
+                  popup_bounds->width(), bottom_available));
+  } else {
+    popup_bounds->AdjustToFit(gfx::Rect(popup_bounds->x(),
+                                        content_area_bounds.y(),
+                                        popup_bounds->width(), top_available));
+  }
 }
 
 gfx::Rect CalculatePopupBounds(const gfx::Size& desired_size,
@@ -248,78 +249,20 @@ bool CanShowDropdownHere(int item_height,
       element_bounds.bottom() > content_area_bounds.y() &&
       element_bounds.bottom() <= content_area_bounds.bottom();
 
-  // TODO(crbug.com/1455336): Test the space on the left/right or forbid it explicitly.
   return (enough_space_for_one_item_in_content_area_above_element &&
           element_top_is_within_content_area_bounds) ||
          (enough_space_for_one_item_in_content_area_below_element &&
           element_bottom_is_within_content_area_bounds);
 }
 
-bool BoundsOverlapWithAnyWidget(const views::Widget::Widgets& widgets,
-                                const gfx::Rect& screen_bounds,
-                                const views::Widget* web_contents_widget,
-                                const content::WebContents* web_contents) {
-  return base::ranges::any_of(widgets, [&screen_bounds, web_contents_widget,
-                                        web_contents](views::Widget* w) {
-    // If the autofill popup overlaps with certain autofill IPH bubbles, then
-    // keep displaying the autofill popup.
-    //
-    // This code is needed because hiding the IPH bubble is an asynchronous
-    // process. If the caller hides the IPH bubble before showing the autofill
-    // popup, it cannot be guaranteed that the IPH bubble is hidden at this
-    // moment of time. Hence, the code ignores a potential overlap between the
-    // autofill popup and the IPH bubble.
-    //
-    // IMPORTANT: The expectation is that the caller will make a call to hide
-    // the IPH bubble immediately AFTER it shows the autofill popup. Even with
-    // this code in place, if one attempted to hide the IPH bubble before
-    // showing the autofill popup, this code will be reached in a weird state
-    // in which `IsFeaturePromoActive()` returns false (because this happens
-    // synchronously), while the popup is not hidden yet (because hiding the
-    // popup happens asynchronously).
-    //
-    // From the user perspective, it will appear that the IPH bubble is hidden
-    // the moment the autofill popup is displayed. They will see no overlap.
-    //
-    // This will most likely not be a concern for IPH's attached to the autofill
-    // bubble, but only for IPH's attached directly to DOM elements. That's why
-    // this check doesn't contain all autofill IPH's.
-    //
-    // The logic behind this check is that the feature engagement code allows
-    // only one IPH to be shown at a time. So there can be only one help bubble
-    // widget at a time, and that help bubble will correspond to the feature for
-    // which `IsFeaturePromoActive(feature)` returns true.
-    //
-    // Note: To add a new IPH bubble to this exception, it is enough to append
-    // the following check to the if:
-    // `|| IsFeaturePromoActive(new_iph_feature)`.
-    views::DialogDelegate* delegate = w->widget_delegate()->AsDialogDelegate();
-    if (delegate && user_education::HelpBubbleView::IsHelpBubble(delegate) &&
-        chrome::FindBrowserWithTab(web_contents)
-            ->window()
-            ->IsFeaturePromoActive(
-                feature_engagement::kIPHAutofillManualFallbackFeature)) {
-      return false;
-    }
-
-    return w->IsDialogBox() &&
-           w->GetWindowBoundsInScreen().Intersects(screen_bounds) &&
-           w != web_contents_widget;
-  });
-}
-
 // Keep in sync with TryToCloseAllPrompts() from autofill_uitest.cc.
 bool BoundsOverlapWithAnyOpenPrompt(const gfx::Rect& screen_bounds,
                                     content::WebContents* web_contents) {
-  gfx::NativeWindow top_level_window = web_contents->GetTopLevelNativeWindow();
-  // `top_level_window` can be `nullptr` if `web_contents` is not attached to
-  // a window, e.g. in unit test runs.
-  if (!top_level_window) {
+  gfx::NativeView top_level_view =
+      platform_util::GetViewForWindow(web_contents->GetTopLevelNativeWindow());
+  if (!top_level_view) {
     return false;
   }
-  gfx::NativeView top_level_view =
-      platform_util::GetViewForWindow(top_level_window);
-
   // We generally want to ensure that no prompt overlaps with |screen_bounds|.
   // It is possible, however, that a <datalist> is part of a prompt (e.g. an
   // extension popup can render a <datalist>). Therefore, we exclude the widget
@@ -337,14 +280,18 @@ bool BoundsOverlapWithAnyOpenPrompt(const gfx::Rect& screen_bounds,
                        : top_level_view;
   views::Widget::Widgets all_widgets;
   views::Widget::GetAllChildWidgets(top_level_view, &all_widgets);
-  return BoundsOverlapWithAnyWidget(all_widgets, screen_bounds,
-                                    web_contents_widget, web_contents);
+  return base::ranges::any_of(
+      all_widgets, [&screen_bounds, web_contents_widget](views::Widget* w) {
+        return w->IsDialogBox() &&
+               w->GetWindowBoundsInScreen().Intersects(screen_bounds) &&
+               w != web_contents_widget;
+      });
 }
 
 bool BoundsOverlapWithOpenPermissionsPrompt(
     const gfx::Rect& screen_bounds,
     content::WebContents* web_contents) {
-  Browser* browser = chrome::FindBrowserWithTab(web_contents);
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents);
   if (!browser) {
     return false;
   }
@@ -356,7 +303,7 @@ bool BoundsOverlapWithOpenPermissionsPrompt(
 
   views::View* const permission_bubble_view =
       views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
-          PermissionPromptBubbleBaseView::kMainViewId,
+          PermissionPromptBubbleView::kPermissionPromptBubbleViewIdentifier,
           views::ElementTrackerViews::GetInstance()->GetContextForView(
               browser_view));
   if (!permission_bubble_view) {
@@ -369,7 +316,7 @@ bool BoundsOverlapWithOpenPermissionsPrompt(
 }
 
 bool BoundsOverlapWithPictureInPictureWindow(const gfx::Rect& screen_bounds) {
-  std::optional<gfx::Rect> pip_window_bounds =
+  absl::optional<gfx::Rect> pip_window_bounds =
       PictureInPictureWindowManager::GetInstance()
           ->GetPictureInPictureWindowBounds();
   return pip_window_bounds && pip_window_bounds->Intersects(screen_bounds);
@@ -461,10 +408,12 @@ bool IsPopupPlaceableOnSideOfElement(const gfx::Rect& content_area_bounds,
 views::BubbleArrowSide GetOptimalArrowSide(
     const gfx::Rect& content_area_bounds,
     const gfx::Rect& element_bounds,
-    const gfx::Size& popup_preferred_size,
-    base::span<const views::BubbleArrowSide> popup_preferred_sides) {
+    const gfx::Size& popup_preferred_size) {
   // Probe for a side of the element on which the popup can be shown entirely.
-  for (views::BubbleArrowSide possible_side : popup_preferred_sides) {
+  const std::vector<views::BubbleArrowSide> sides_by_preference(
+      {views::BubbleArrowSide::kTop, views::BubbleArrowSide::kBottom,
+       views::BubbleArrowSide::kLeft, views::BubbleArrowSide::kRight});
+  for (views::BubbleArrowSide possible_side : sides_by_preference) {
     if (IsPopupPlaceableOnSideOfElement(
             content_area_bounds, element_bounds, popup_preferred_size,
             BubbleBorder::kVisibleArrowLength, possible_side) &&
@@ -492,13 +441,11 @@ BubbleBorder::Arrow GetOptimalPopupPlacement(
     int scrollbar_width,
     int maximum_pixel_offset_to_center,
     int maximum_width_percentage_to_center,
-    gfx::Rect& popup_bounds,
-    base::span<const views::BubbleArrowSide> popup_preferred_sides) {
+    gfx::Rect& popup_bounds) {
   // Determine the best side of the element to put the popup and get a
   // corresponding arrow.
-  views::BubbleArrowSide side =
-      GetOptimalArrowSide(content_area_bounds, element_bounds,
-                          popup_preferred_size, popup_preferred_sides);
+  views::BubbleArrowSide side = GetOptimalArrowSide(
+      content_area_bounds, element_bounds, popup_preferred_size);
   BubbleBorder::Arrow arrow =
       GetBubbleArrowForBubbleArrowSide(side, right_to_left);
 
@@ -585,123 +532,25 @@ BubbleBorder::Arrow GetOptimalPopupPlacement(
   return arrow;
 }
 
-bool IsFooterPopupItemId(PopupItemId popup_item_id) {
-  switch (popup_item_id) {
-    case PopupItemId::kScanCreditCard:
-    case PopupItemId::kPasswordAccountStorageEmpty:
-    case PopupItemId::kPasswordAccountStorageOptIn:
-    case PopupItemId::kPasswordAccountStorageReSignin:
-    case PopupItemId::kPasswordAccountStorageOptInAndGenerate:
-    case PopupItemId::kShowAccountCards:
-    case PopupItemId::kAllSavedPasswordsEntry:
-    case PopupItemId::kFillEverythingFromAddressProfile:
-    case PopupItemId::kClearForm:
-    case PopupItemId::kAutofillOptions:
-    case PopupItemId::kSeePromoCodeDetails:
-    case PopupItemId::kEditAddressProfile:
-    case PopupItemId::kDeleteAddressProfile:
-    case PopupItemId::kViewPasswordDetails:
+bool IsFooterFrontendId(int frontend_id) {
+  switch (frontend_id) {
+    case PopupItemId::POPUP_ITEM_ID_SCAN_CREDIT_CARD:
+    case PopupItemId::POPUP_ITEM_ID_CREDIT_CARD_SIGNIN_PROMO:
+    case PopupItemId::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_EMPTY:
+    case PopupItemId::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN:
+    case PopupItemId::POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_RE_SIGNIN:
+    case PopupItemId::
+        POPUP_ITEM_ID_PASSWORD_ACCOUNT_STORAGE_OPT_IN_AND_GENERATE:
+    case PopupItemId::POPUP_ITEM_ID_SHOW_ACCOUNT_CARDS:
+    case PopupItemId::POPUP_ITEM_ID_USE_VIRTUAL_CARD:
+    case PopupItemId::POPUP_ITEM_ID_ALL_SAVED_PASSWORDS_ENTRY:
+    case PopupItemId::POPUP_ITEM_ID_CLEAR_FORM:
+    case PopupItemId::POPUP_ITEM_ID_AUTOFILL_OPTIONS:
+    case PopupItemId::POPUP_ITEM_ID_SEE_PROMO_CODE_DETAILS:
       return true;
-    case PopupItemId::kAccountStoragePasswordEntry:
-    case PopupItemId::kAddressEntry:
-    case PopupItemId::kAddressFieldByFieldFilling:
-    case PopupItemId::kAutocompleteEntry:
-    case PopupItemId::kCompose:
-    case PopupItemId::kComposeSavedStateNotification:
-    case PopupItemId::kCreateNewPlusAddress:
-    case PopupItemId::kCreditCardEntry:
-    case PopupItemId::kCreditCardFieldByFieldFilling:
-    case PopupItemId::kDatalistEntry:
-    case PopupItemId::kDevtoolsTestAddressEntry:
-    case PopupItemId::kDevtoolsTestAddresses:
-    case PopupItemId::kFillExistingPlusAddress:
-    case PopupItemId::kFillFullAddress:
-    case PopupItemId::kFillFullName:
-    case PopupItemId::kFillFullEmail:
-    case PopupItemId::kFillFullPhoneNumber:
-    case PopupItemId::kGeneratePasswordEntry:
-    case PopupItemId::kIbanEntry:
-    case PopupItemId::kInsecureContextPaymentDisabledMessage:
-    case PopupItemId::kMerchantPromoCodeEntry:
-    case PopupItemId::kMixedFormMessage:
-    case PopupItemId::kPasswordEntry:
-    case PopupItemId::kSeparator:
-    case PopupItemId::kVirtualCreditCardEntry:
-    case PopupItemId::kWebauthnCredential:
-    case PopupItemId::kWebauthnSignInWithAnotherDevice:
-    case PopupItemId::kPasswordFieldByFieldFilling:
-    case PopupItemId::kFillPassword:
+    default:
       return false;
   }
-}
-
-bool IsExpandablePopupItemId(PopupItemId popup_item_id) {
-  switch (popup_item_id) {
-    case PopupItemId::kAddressEntry:
-    case PopupItemId::kAddressFieldByFieldFilling:
-    case PopupItemId::kCreditCardFieldByFieldFilling:
-    case PopupItemId::kDevtoolsTestAddresses:
-    case PopupItemId::kFillFullAddress:
-    case PopupItemId::kFillFullName:
-    case PopupItemId::kFillFullEmail:
-    case PopupItemId::kFillFullPhoneNumber:
-    case PopupItemId::kCreditCardEntry:
-    case PopupItemId::kPasswordEntry:
-      return true;
-    case PopupItemId::kAccountStoragePasswordEntry:
-    case PopupItemId::kAllSavedPasswordsEntry:
-    case PopupItemId::kAutocompleteEntry:
-    case PopupItemId::kAutofillOptions:
-    case PopupItemId::kClearForm:
-    case PopupItemId::kCompose:
-    case PopupItemId::kComposeSavedStateNotification:
-    case PopupItemId::kCreateNewPlusAddress:
-    case PopupItemId::kDatalistEntry:
-    case PopupItemId::kDevtoolsTestAddressEntry:
-    case PopupItemId::kDeleteAddressProfile:
-    case PopupItemId::kEditAddressProfile:
-    case PopupItemId::kFillEverythingFromAddressProfile:
-    case PopupItemId::kFillExistingPlusAddress:
-    case PopupItemId::kGeneratePasswordEntry:
-    case PopupItemId::kIbanEntry:
-    case PopupItemId::kInsecureContextPaymentDisabledMessage:
-    case PopupItemId::kMerchantPromoCodeEntry:
-    case PopupItemId::kMixedFormMessage:
-    case PopupItemId::kPasswordAccountStorageEmpty:
-    case PopupItemId::kPasswordAccountStorageOptIn:
-    case PopupItemId::kPasswordAccountStorageOptInAndGenerate:
-    case PopupItemId::kPasswordAccountStorageReSignin:
-    case PopupItemId::kPasswordFieldByFieldFilling:
-    case PopupItemId::kFillPassword:
-    case PopupItemId::kViewPasswordDetails:
-    case PopupItemId::kScanCreditCard:
-    case PopupItemId::kSeePromoCodeDetails:
-    case PopupItemId::kSeparator:
-    case PopupItemId::kShowAccountCards:
-    case PopupItemId::kVirtualCreditCardEntry:
-    case PopupItemId::kWebauthnCredential:
-    case PopupItemId::kWebauthnSignInWithAnotherDevice:
-      return false;
-  }
-}
-
-bool ShouldApplyNewAutofillPopupStyle() {
-  return base::FeatureList::IsEnabled(
-             features::kAutofillShowAutocompleteDeleteButton) ||
-         base::FeatureList::IsEnabled(
-             features::kAutofillGranularFillingAvailable);
-}
-
-views::style::TextStyle GetPrimaryTextStyle() {
-  return ShouldApplyNewAutofillPopupStyle()
-             ? views::style::TextStyle::STYLE_BODY_3_MEDIUM
-             : views::style::TextStyle::STYLE_PRIMARY;
-}
-
-views::style::TextStyle GetSecondaryTextStyle() {
-  return ShouldApplyNewAutofillPopupStyle()
-             ? views::style::TextStyle::STYLE_BODY_4
-             : views::style::TextStyle::STYLE_SECONDARY;
 }
 
 }  // namespace autofill

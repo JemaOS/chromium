@@ -24,7 +24,8 @@
 
 using content::BrowserThread;
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 // Converts net::CompletionOnceCallback to net::Int64CompletionOnceCallback.
 void Int64ToIntCompletionOnceCallback(net::CompletionOnceCallback callback,
@@ -132,7 +133,7 @@ class FileStreamReader::OperationRunner
       content::BrowserThread::UI>;
   friend class base::DeleteHelper<OperationRunner>;
 
-  virtual ~OperationRunner() = default;
+  virtual ~OperationRunner() {}
 
   // Remembers a file handle for further operations and forwards the result to
   // the IO thread.
@@ -449,4 +450,5 @@ void FileStreamReader::OnGetMetadataForGetLengthReceived(
   std::move(get_length_callback_).Run(*metadata->size);
 }
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

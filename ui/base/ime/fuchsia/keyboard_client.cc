@@ -112,7 +112,7 @@ int ModifiersToEventFlags(fuchsia_ui_input3::Modifiers modifiers) {
   return event_flags;
 }
 
-std::optional<EventType> ConvertKeyEventType(
+absl::optional<EventType> ConvertKeyEventType(
     fuchsia_ui_input3::KeyEventType type) {
   switch (type) {
     case fuchsia_ui_input3::KeyEventType::kPressed:
@@ -122,11 +122,11 @@ std::optional<EventType> ConvertKeyEventType(
     case fuchsia_ui_input3::KeyEventType::kSync:
     case fuchsia_ui_input3::KeyEventType::kCancel:
       // SYNC and CANCEL should not generate ui::Events.
-      return std::nullopt;
+      return absl::nullopt;
     default:
       NOTREACHED() << "Unknown KeyEventType received: "
                    << static_cast<int>(type);
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
@@ -149,7 +149,7 @@ KeyboardClient::KeyboardClient(
       ->AddListener(
           {{.view_ref = std::move(view_ref),
             .listener = std::move(keyboard_listener_endpoints->client)}})
-      .Then([](auto result) {});
+      .ThenExactlyOnce([](auto result) {});
   binding_.emplace(async_get_default_dispatcher(),
                    std::move(keyboard_listener_endpoints->server), this,
                    fidl::kIgnoreBindingClosure);
@@ -186,7 +186,7 @@ bool KeyboardClient::IsValid(const fuchsia_ui_input3::KeyEvent& key_event) {
 
 bool KeyboardClient::ProcessKeyEvent(
     const fuchsia_ui_input3::KeyEvent& key_event) {
-  std::optional<EventType> event_type =
+  absl::optional<EventType> event_type =
       ConvertKeyEventType(key_event.type().value());
   if (!event_type)
     return false;

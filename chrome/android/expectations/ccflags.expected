@@ -1,4 +1,4 @@
---param=ssp-buffer-size=8
+--param=ssp-buffer-size=4
 --target=arm-linux-androideabi21
 -DANDROID
 -DDYNAMIC_ANNOTATIONS_ENABLED=0

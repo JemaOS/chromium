@@ -14,25 +14,20 @@
 #include "base/memory/raw_ptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "chrome/android/chrome_jni_headers/SigninManagerImpl_jni.h"
-#include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/signin_pref_names.h"
-#include "components/sync/service/sync_service.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 
 #include "base/android/callback_android.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browsing_data/chrome_browsing_data_remover_constants.h"
-#include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/policy/cloud/user_policy_signin_service_factory.h"
 #include "chrome/browser/policy/cloud/user_policy_signin_service_mobile.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profile_android.h"
 #include "chrome/browser/signin/account_id_from_account_info.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "components/google/core/common/google_util.h"
-#include "components/password_manager/core/browser/password_store/split_stores_and_local_upm.h"
 #include "components/policy/core/common/cloud/user_cloud_policy_manager.h"
 #include "components/signin/public/identity_manager/account_managed_status_finder.h"
 #include "components/signin/public/identity_manager/accounts_cookie_mutator.h"
@@ -62,19 +57,8 @@ class ProfileDataRemover : public content::BrowsingDataRemover::Observer {
     remover_->AddObserver(this);
 
     if (all_data) {
-      chrome_browsing_data_remover::DataType removed_types =
-          chrome_browsing_data_remover::ALL_DATA_TYPES;
-      if (password_manager::UsesSplitStoresAndUPMForLocal(
-              profile_->GetPrefs())) {
-        // If usesSplitStoresAndUPMForLocal() is true, browser sign-in won't
-        // upload existing passwords, so there's no reason to wipe them
-        // immediately before. Similarly, on browser sign-out, account passwords
-        // should survive (outside of the browser) to be used by other apps,
-        // until system-level sign-out. In other words, the browser has no
-        // business deleting any passwords here.
-        removed_types &= ~chrome_browsing_data_remover::DATA_TYPE_PASSWORDS;
-      }
-      remover_->RemoveAndReply(base::Time(), base::Time::Max(), removed_types,
+      remover_->RemoveAndReply(base::Time(), base::Time::Max(),
+                               chrome_browsing_data_remover::ALL_DATA_TYPES,
                                chrome_browsing_data_remover::ALL_ORIGIN_TYPES,
                                this);
     } else {
@@ -109,9 +93,8 @@ class ProfileDataRemover : public content::BrowsingDataRemover::Observer {
       // All the Profile data has been wiped. Clear the last signed in username
       // as well, so that the next signin doesn't trigger the account
       // change dialog.
-      profile_->GetPrefs()->ClearPref(prefs::kGoogleServicesLastSyncingGaiaId);
-      profile_->GetPrefs()->ClearPref(
-          prefs::kGoogleServicesLastSyncingUsername);
+      profile_->GetPrefs()->ClearPref(prefs::kGoogleServicesLastGaiaId);
+      profile_->GetPrefs()->ClearPref(prefs::kGoogleServicesLastUsername);
     }
 
     origin_runner_->PostTask(FROM_HERE, std::move(callback_));
@@ -159,11 +142,9 @@ SigninManagerAndroid::SigninManagerAndroid(
 
   java_signin_manager_ = Java_SigninManagerImpl_create(
       base::android::AttachCurrentThread(), reinterpret_cast<intptr_t>(this),
-      ProfileAndroid::FromProfile(profile_)->GetJavaObject(),
       identity_manager_->LegacyGetAccountTrackerServiceJavaObject(),
       identity_manager_->GetJavaObject(),
-      identity_manager_->GetIdentityMutatorJavaObject(),
-      SyncServiceFactory::GetForProfile(profile_)->GetJavaObject());
+      identity_manager_->GetIdentityMutatorJavaObject());
 }
 
 base::android::ScopedJavaLocalRef<jobject>
@@ -178,16 +159,6 @@ void SigninManagerAndroid::Shutdown() {
                                  java_signin_manager_);
 }
 
-SigninManagerAndroid::ManagementCredentials::ManagementCredentials(
-    const std::string& dm_token,
-    const std::string& client_id,
-    const std::vector<std::string>& user_affiliation_ids)
-    : dm_token(dm_token),
-      client_id(client_id),
-      user_affiliation_ids(user_affiliation_ids) {}
-
-SigninManagerAndroid::ManagementCredentials::~ManagementCredentials() = default;
-
 bool SigninManagerAndroid::IsSigninAllowed() const {
   return signin_allowed_.GetValue();
 }
@@ -201,7 +172,6 @@ jboolean SigninManagerAndroid::IsForceSigninEnabled(JNIEnv* env) {
 }
 
 void SigninManagerAndroid::OnSigninAllowedPrefChanged() const {
-  VLOG(1) << "::OnSigninAllowedPrefChanged() " << IsSigninAllowed();
   Java_SigninManagerImpl_onSigninAllowedByPolicyChanged(
       base::android::AttachCurrentThread(), java_signin_manager_,
       IsSigninAllowed());
@@ -215,7 +185,7 @@ void SigninManagerAndroid::RegisterPolicyWithAccount(
     const CoreAccountInfo& account,
     RegisterPolicyWithAccountCallback callback) {
   if (!ShouldLoadPolicyForUser(account.email)) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
@@ -223,11 +193,10 @@ void SigninManagerAndroid::RegisterPolicyWithAccount(
       account.email, account.account_id,
       base::BindOnce(
           [](RegisterPolicyWithAccountCallback callback,
-             const std::string& dm_token, const std::string& client_id,
-             const std::vector<std::string>& user_affiliation_ids) {
-            std::optional<ManagementCredentials> credentials;
+             const std::string& dm_token, const std::string& client_id) {
+            absl::optional<ManagementCredentials> credentials;
             if (!dm_token.empty()) {
-              credentials.emplace(dm_token, client_id, user_affiliation_ids);
+              credentials.emplace(dm_token, client_id);
             }
             std::move(callback).Run(credentials);
           },
@@ -252,7 +221,7 @@ void SigninManagerAndroid::FetchAndApplyCloudPolicy(
 void SigninManagerAndroid::OnPolicyRegisterDone(
     const CoreAccountInfo& account,
     base::OnceCallback<void()> policy_callback,
-    const std::optional<ManagementCredentials>& credentials) {
+    const absl::optional<ManagementCredentials>& credentials) {
   if (credentials) {
     FetchPolicyBeforeSignIn(account, std::move(policy_callback),
                             credentials.value());
@@ -271,8 +240,7 @@ void SigninManagerAndroid::FetchPolicyBeforeSignIn(
           ->GetURLLoaderFactoryForBrowserProcess();
   user_policy_signin_service_->FetchPolicyForSignedInUser(
       AccountIdFromAccountInfo(account), credentials.dm_token,
-      credentials.client_id, credentials.user_affiliation_ids,
-      url_loader_factory,
+      credentials.client_id, url_loader_factory,
       base::BindOnce([](base::OnceCallback<void()> callback,
                         bool success) { std::move(callback).Run(); },
                      std::move(policy_callback)));
@@ -286,13 +254,14 @@ void SigninManagerAndroid::IsAccountManaged(
   base::android::ScopedJavaGlobalRef<jobject> callback(env, j_callback);
 
   RegisterPolicyWithAccount(
-      account, base::BindOnce(
-                   [](base::android::ScopedJavaGlobalRef<jobject> callback,
-                      const std::optional<ManagementCredentials>& credentials) {
-                     base::android::RunBooleanCallbackAndroid(
-                         callback, credentials.has_value());
-                   },
-                   callback));
+      account,
+      base::BindOnce(
+          [](base::android::ScopedJavaGlobalRef<jobject> callback,
+             const absl::optional<ManagementCredentials>& credentials) {
+            base::android::RunBooleanCallbackAndroid(callback,
+                                                     credentials.has_value());
+          },
+          callback));
 }
 
 base::android::ScopedJavaLocalRef<jstring>
@@ -341,15 +310,4 @@ JNI_SigninManagerImpl_ExtractDomainName(JNIEnv* env,
   std::string email = base::android::ConvertJavaStringToUTF8(env, j_email);
   std::string domain = gaia::ExtractDomainName(email);
   return base::android::ConvertUTF8ToJavaString(env, domain);
-}
-
-void SigninManagerAndroid::SetUserAcceptedAccountManagement(
-    JNIEnv* env,
-    jboolean acceptedAccountManagement) {
-  chrome::enterprise_util::SetUserAcceptedAccountManagement(
-      profile_, acceptedAccountManagement);
-}
-
-bool SigninManagerAndroid::GetUserAcceptedAccountManagement(JNIEnv* env) {
-  return chrome::enterprise_util::UserAcceptedAccountManagement(profile_);
 }

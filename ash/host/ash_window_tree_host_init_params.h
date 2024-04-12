@@ -17,7 +17,7 @@ class AshWindowTreeHostDelegate;
 
 struct ASH_EXPORT AshWindowTreeHostInitParams {
   // Not owned.
-  raw_ptr<AshWindowTreeHostDelegate> delegate = nullptr;
+  raw_ptr<AshWindowTreeHostDelegate, ExperimentalAsh> delegate = nullptr;
   // This corresponds to display::ManagedDisplayInfo::bounds_in_native.
   gfx::Rect initial_bounds;
   bool offscreen = false;

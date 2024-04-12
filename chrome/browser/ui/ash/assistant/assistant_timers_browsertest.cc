@@ -10,15 +10,16 @@
 #include "ash/shelf/shelf.h"
 #include "ash/shelf/shelf_widget.h"
 #include "ash/shell.h"
-#include "ash/system/notification_center/notification_center_tray.h"
-#include "ash/system/notification_center/views/notification_center_view.h"
-#include "ash/system/notification_center/views/notification_list_view.h"
+#include "ash/system/message_center/unified_message_center_bubble.h"
+#include "ash/system/notification_center/notification_center_view.h"
 #include "ash/system/status_area_widget.h"
+#include "ash/system/unified/unified_system_tray.h"
 #include "base/command_line.h"
 #include "base/scoped_observation.h"
 #include "base/strings/string_util.h"
 #include "base/test/bind.h"
 #include "base/test/icu_test_util.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/time/time.h"
 #include "chrome/browser/ui/ash/assistant/assistant_test_mixin.h"
 #include "chrome/browser/ui/ash/assistant/test_support/test_util.h"
@@ -56,13 +57,13 @@ constexpr int kVersion = 1;
     if (!FindVisibleNotificationsByPrefixedId(prefix_).empty()) {             \
       return;                                                                 \
     }                                                                         \
-    MockMessageCenterObserver mock_observer;                                  \
+    MockMessageCenterObserver mock;                                           \
     base::ScopedObservation<MessageCenter, MessageCenterObserver>             \
-        observation_{&mock_observer};                                         \
+        observation_{&mock};                                                  \
     observation_.Observe(MessageCenter::Get());                               \
                                                                               \
     base::RunLoop run_loop;                                                   \
-    EXPECT_CALL(mock_observer, OnNotificationAdded)                           \
+    EXPECT_CALL(mock, OnNotificationAdded)                                    \
         .WillOnce(                                                            \
             testing::Invoke([&run_loop](const std::string& notification_id) { \
               if (!FindVisibleNotificationsByPrefixedId(prefix_).empty())     \
@@ -95,8 +96,7 @@ message_center::Notification* FindVisibleNotificationById(
 std::vector<message_center::Notification*> FindVisibleNotificationsByPrefixedId(
     const std::string& prefix) {
   std::vector<message_center::Notification*> notifications;
-  for (message_center::Notification* notification :
-       MessageCenter::Get()->GetVisibleNotifications()) {
+  for (auto* notification : MessageCenter::Get()->GetVisibleNotifications()) {
     if (base::StartsWith(notification->id(), prefix,
                          base::CompareCase::SENSITIVE)) {
       notifications.push_back(notification);
@@ -110,8 +110,10 @@ message_center::MessageView* FindViewForNotification(
     const message_center::Notification* notification) {
   NotificationListView* notification_list_view =
       FindStatusAreaWidget()
-          ->notification_center_tray()
-          ->GetNotificationListView();
+          ->unified_system_tray()
+          ->message_center_bubble()
+          ->notification_center_view()
+          ->notification_list_view();
 
   // TODO(crbug/1335196): `FindDescendentsOfClass` returning empty list for
   // `NotificationCenterView` even when `MessageView`s exist. Need to
@@ -156,6 +158,16 @@ void TapOnAndWait(const views::View* view) {
   base::RunLoop().RunUntilIdle();
 }
 
+// Performs a tap of the specified |widget| and waits until the RunLoop idles.
+void TapOnAndWait(const views::Widget* widget) {
+  aura::Window* root_window = widget->GetNativeWindow()->GetRootWindow();
+  ui::test::EventGenerator event_generator(root_window);
+  event_generator.MoveTouch(widget->GetWindowBoundsInScreen().CenterPoint());
+  event_generator.PressTouch();
+  event_generator.ReleaseTouch();
+  base::RunLoop().RunUntilIdle();
+}
+
 // Mocks -----------------------------------------------------------------------
 
 class MockMessageCenterObserver
@@ -175,17 +187,16 @@ class MockMessageCenterObserver
 
 }  // namespace
 
-// AssistantTimersBrowserTest
-// --------------------------------------------------
+// AssistantTimersBrowserTest --------------------------------------------------
 
-// All tests are disabled because LibAssistant V2 binary does not run on Linux
-// bot. To run the tests on gLinux, please add
-// `--gtest_also_run_disabled_tests`.
-class DISABLED_AssistantTimersBrowserTest
-    : public MixinBasedInProcessBrowserTest,
-      public testing::WithParamInterface<bool> {
+class AssistantTimersBrowserTest : public MixinBasedInProcessBrowserTest,
+                                   public testing::WithParamInterface<bool> {
  public:
-  DISABLED_AssistantTimersBrowserTest() {
+  AssistantTimersBrowserTest() {
+    // Disable V2 feature because LibAssistant V2 binary does not run on linux
+    // bot.
+    feature_list_.InitAndDisableFeature(features::kEnableLibAssistantV2);
+
     // Do not log to file in test. Otherwise multiple tests may create/delete
     // the log file at the same time. See http://crbug.com/1307868.
     base::CommandLine::ForCurrentProcess()->AppendSwitch(
@@ -198,12 +209,11 @@ class DISABLED_AssistantTimersBrowserTest
         sandbox::policy::switches::kNoSandbox);
   }
 
-  DISABLED_AssistantTimersBrowserTest(
-      const DISABLED_AssistantTimersBrowserTest&) = delete;
-  DISABLED_AssistantTimersBrowserTest& operator=(
-      const DISABLED_AssistantTimersBrowserTest&) = delete;
+  AssistantTimersBrowserTest(const AssistantTimersBrowserTest&) = delete;
+  AssistantTimersBrowserTest& operator=(const AssistantTimersBrowserTest&) =
+      delete;
 
-  ~DISABLED_AssistantTimersBrowserTest() override = default;
+  ~AssistantTimersBrowserTest() override = default;
 
   void ShowAssistantUi() {
     if (!tester()->IsVisible())
@@ -215,6 +225,7 @@ class DISABLED_AssistantTimersBrowserTest
   AssistantTestMixin* tester() { return &tester_; }
 
  private:
+  base::test::ScopedFeatureList feature_list_;
   base::test::ScopedRestoreICUDefaultLocale locale_{"en_US"};
   AssistantTestMixin tester_{&mixin_host_, this, embedded_test_server(), kMode,
                              kVersion};
@@ -224,8 +235,9 @@ class DISABLED_AssistantTimersBrowserTest
 
 // Timer notifications should be dismissed when disabling Assistant in settings.
 // Flaky. See https://crbug.com/1196564.
-IN_PROC_BROWSER_TEST_F(DISABLED_AssistantTimersBrowserTest,
-                       ShouldDismissTimerNotificationsWhenDisablingAssistant) {
+IN_PROC_BROWSER_TEST_F(
+    AssistantTimersBrowserTest,
+    DISABLED_ShouldDismissTimerNotificationsWhenDisablingAssistant) {
   tester()->StartAssistantAndWaitForReady();
 
   ShowAssistantUi();
@@ -254,8 +266,8 @@ IN_PROC_BROWSER_TEST_F(DISABLED_AssistantTimersBrowserTest,
 // Pressing the "STOP" action button in a timer notification should result in
 // the timer being removed.
 // Flaky. See https://crbug.com/1196564.
-IN_PROC_BROWSER_TEST_F(DISABLED_AssistantTimersBrowserTest,
-                       ShouldRemoveTimerWhenStoppingViaNotification) {
+IN_PROC_BROWSER_TEST_F(AssistantTimersBrowserTest,
+                       DISABLED_ShouldRemoveTimerWhenStoppingViaNotification) {
   tester()->StartAssistantAndWaitForReady();
 
   ShowAssistantUi();
@@ -268,18 +280,20 @@ IN_PROC_BROWSER_TEST_F(DISABLED_AssistantTimersBrowserTest,
   tester()->SendTextQuery("Set a timer for 5 minutes");
   tester()->ExpectTextResponse("5 min.");
 
+  // Tap status area widget (to show notifications in the Message Center).
+  TapOnAndWait(FindStatusAreaWidget());
+
   // Confirm that an Assistant timer notification is now showing.
-  EXPECT_VISIBLE_NOTIFICATIONS_BY_PREFIXED_ID("assistant/timer");
   auto notifications = FindVisibleNotificationsByPrefixedId("assistant/timer");
   ASSERT_EQ(1u, notifications.size());
 
   // Find the action buttons for our notification.
-  // NOTE: We expect action buttons for "Pause" and "Cancel".
+  // NOTE: We expect action buttons for "STOP" and "ADD 1 MIN".
   auto action_buttons = FindActionButtonsForNotification(notifications.at(0));
   EXPECT_EQ(2u, action_buttons.size());
 
-  // Tap the "Cancel" action button in the notification.
-  EXPECT_EQ(u"Cancel", action_buttons.at(1)->GetText());
+  // Tap the "CANCEL" action button in the notification.
+  EXPECT_EQ(u"CANCEL", action_buttons.at(1)->GetText());
   TapOnAndWait(action_buttons.at(1));
 
   ShowAssistantUi();
@@ -293,7 +307,7 @@ IN_PROC_BROWSER_TEST_F(DISABLED_AssistantTimersBrowserTest,
 }
 
 // Verifies that timer notifications are ticked at regular intervals.
-IN_PROC_BROWSER_TEST_F(DISABLED_AssistantTimersBrowserTest,
+IN_PROC_BROWSER_TEST_F(AssistantTimersBrowserTest,
                        ShouldTickNotificationsAtRegularIntervals) {
   // Observe notifications.
   MockMessageCenterObserver mock;
@@ -308,20 +322,30 @@ IN_PROC_BROWSER_TEST_F(DISABLED_AssistantTimersBrowserTest,
 
   // Start a timer for five seconds.
   tester()->SendTextQuery("Set a timer for 5 seconds");
-  tester()->ExpectTextResponse("5 sec.");
 
   // We're going to cache the time of the last notification update so that we
   // can verify updates occur within an expected time frame.
   base::Time last_update;
 
   // Expect and wait for our five second timer notification to be created.
-  EXPECT_VISIBLE_NOTIFICATIONS_BY_PREFIXED_ID("assistant/timer");
-  last_update = base::Time::Now();
+  base::RunLoop notification_add_run_loop;
+  EXPECT_CALL(mock, OnNotificationAdded)
+      .WillRepeatedly(testing::Invoke([&](const std::string& notification_id) {
+        last_update = base::Time::Now();
 
-  auto* notification = FindVisibleNotificationById("assistant");
-  auto* title_label = FindTitleLabelForNotification(notification);
-  auto title = base::UTF16ToUTF8(title_label->GetText());
-  EXPECT_EQ("0:05", title);
+        // Tap status area widget (to show notifications in the Message Center).
+        TapOnAndWait(FindStatusAreaWidget());
+
+        // Assert that the notification has the expected title.
+        auto* notification = FindVisibleNotificationById(notification_id);
+        auto* title_label = FindTitleLabelForNotification(notification);
+        auto title = base::UTF16ToUTF8(title_label->GetText());
+        EXPECT_EQ("0:05", title);
+
+        // Allow test to proceed.
+        notification_add_run_loop.QuitClosure().Run();
+      }));
+  notification_add_run_loop.Run();
 
   // We are going to assert that updates to our notification occur within an
   // expected time frame, allowing a degree of tolerance to reduce flakiness.
@@ -333,6 +357,9 @@ IN_PROC_BROWSER_TEST_F(DISABLED_AssistantTimersBrowserTest,
                                              "0:00",  "-0:01", "-0:02", "-0:03",
                                              "-0:04", "-0:05"};
   bool is_first_update = true;
+
+  auto* title_label =
+      FindTitleLabelForNotification(*FindAssistantNotifications().begin());
 
   // Watch |title_label| and await all expected notification updates.
   base::RunLoop notification_update_run_loop;
@@ -364,9 +391,8 @@ IN_PROC_BROWSER_TEST_F(DISABLED_AssistantTimersBrowserTest,
 
         // When |expected_titles| is empty, our test is finished.
         expected_titles.pop_front();
-        if (expected_titles.empty()) {
+        if (expected_titles.empty())
           notification_update_run_loop.QuitClosure().Run();
-        }
       }));
   notification_update_run_loop.Run();
 }

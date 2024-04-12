@@ -8,12 +8,10 @@ import android.text.format.DateUtils;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
-import org.chromium.base.ResettersForTesting;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 
 /**
  * The {@link NotificationTriggerScheduler} singleton is responsible for scheduling notification
@@ -23,9 +21,7 @@ import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 public class NotificationTriggerScheduler {
 
     /** Clock to use so we can mock time in tests. */
-    public static interface Clock {
-        public long currentTimeMillis();
-    }
+    public static interface Clock { public long currentTimeMillis(); }
 
     private Clock mClock;
 
@@ -44,9 +40,9 @@ public class NotificationTriggerScheduler {
 
     private static NotificationTriggerScheduler sInstanceForTests;
 
+    @VisibleForTesting
     protected static void setInstanceForTests(NotificationTriggerScheduler instance) {
         sInstanceForTests = instance;
-        ResettersForTesting.register(() -> sInstanceForTests = null);
     }
 
     @CalledByNative
@@ -59,7 +55,36 @@ public class NotificationTriggerScheduler {
         mClock = clock;
     }
 
-    /** Calls into native code to trigger all pending notifications. */
+    /**
+     * Schedules a one-off background task to wake the browser up and call into native code to
+     * display pending notifications. If there is already a trigger scheduled earlier, this is a
+     * nop. Otherwise the existing trigger is overwritten.
+     * @param timestamp The timestamp of the next trigger.
+     */
+    @CalledByNative
+    @VisibleForTesting
+    protected void schedule(long timestamp) {
+        // Check if there is already a trigger scheduled earlier. Also check for the case where
+        // Android did not execute our task and reschedule.
+        long now = mClock.currentTimeMillis();
+        long nextTrigger = getNextTrigger();
+
+        if (timestamp < nextTrigger) {
+            // New timestamp is earlier than existing one -> schedule new task.
+            setNextTrigger(timestamp);
+            nextTrigger = timestamp;
+        } else if (nextTrigger >= now) {
+            // Existing timestamp is earlier than new one and still in future -> do nothing.
+            return;
+        } // else: Existing timestamp is earlier than new one and overdue -> schedule task again.
+
+        long delay = Math.max(nextTrigger - now, 0);
+        NotificationTriggerBackgroundTask.schedule(nextTrigger, delay);
+    }
+
+    /**
+     * Calls into native code to trigger all pending notifications.
+     */
     public void triggerNotifications() {
         NotificationTriggerSchedulerJni.get().triggerNotifications();
     }
@@ -77,18 +102,18 @@ public class NotificationTriggerScheduler {
     }
 
     private long getNextTrigger() {
-        return ChromeSharedPreferences.getInstance()
-                .readLong(ChromePreferenceKeys.NOTIFICATIONS_NEXT_TRIGGER, Long.MAX_VALUE);
+        return SharedPreferencesManager.getInstance().readLong(
+                ChromePreferenceKeys.NOTIFICATIONS_NEXT_TRIGGER, Long.MAX_VALUE);
     }
 
     private void removeNextTrigger() {
-        ChromeSharedPreferences.getInstance()
-                .removeKey(ChromePreferenceKeys.NOTIFICATIONS_NEXT_TRIGGER);
+        SharedPreferencesManager.getInstance().removeKey(
+                ChromePreferenceKeys.NOTIFICATIONS_NEXT_TRIGGER);
     }
 
     private void setNextTrigger(long timestamp) {
-        ChromeSharedPreferences.getInstance()
-                .writeLong(ChromePreferenceKeys.NOTIFICATIONS_NEXT_TRIGGER, timestamp);
+        SharedPreferencesManager.getInstance().writeLong(
+                ChromePreferenceKeys.NOTIFICATIONS_NEXT_TRIGGER, timestamp);
     }
 
     @NativeMethods

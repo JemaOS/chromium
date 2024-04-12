@@ -29,7 +29,11 @@ class NavbarVisibilityDelegate {
     }
 
     int getBackButtonVisibility(int currentStepIdx) {
-        return isCardBetweenFirstAndLast(currentStepIdx) ? View.VISIBLE : View.GONE;
+        if (isCardBetweenFirstAndLast(currentStepIdx)) {
+            return isSecondCard(currentStepIdx) ? View.INVISIBLE : View.VISIBLE;
+        }
+
+        return View.GONE;
     }
 
     int getFinishButtonVisibility(int currentStepIdx) {
@@ -46,6 +50,10 @@ class NavbarVisibilityDelegate {
 
     private boolean isFirstCard(int currentStepIdx) {
         return currentStepIdx == 0;
+    }
+
+    private boolean isSecondCard(int currentStepIdx) {
+        return currentStepIdx == 1;
     }
 
     private boolean isCardBetweenFirstAndLast(int currentStepIdx) {

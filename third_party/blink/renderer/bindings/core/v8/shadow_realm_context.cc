@@ -66,7 +66,7 @@ v8::MaybeLocal<v8::Context> OnCreateShadowRealmV8Context(
       ExecutionContext::From(initiator_context);
   DCHECK(initiator_execution_context);
   v8::Isolate* isolate = initiator_context->GetIsolate();
-  DOMWrapperWorld* world = DOMWrapperWorld::Create(
+  scoped_refptr<DOMWrapperWorld> world = DOMWrapperWorld::Create(
       isolate, DOMWrapperWorld::WorldType::kShadowRealm);
   CHECK(world);  // Not yet run out of the world id.
 
@@ -90,8 +90,8 @@ v8::MaybeLocal<v8::Context> OnCreateShadowRealmV8Context(
   context->UseDefaultSecurityToken();
 
   // Associate the Blink object with the v8::Context.
-  ScriptState* script_state =
-      ScriptState::Create(context, world, shadow_realm_global_scope);
+  ScriptState* script_state = MakeGarbageCollected<ScriptState>(
+      context, world, shadow_realm_global_scope);
 
   // Associate the Blink object with the v8::Objects.
   global_proxy = context->Global();

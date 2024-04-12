@@ -67,15 +67,15 @@ void LoopbackCrosapiAppServiceProxy::RegisterAppServiceSubscriber(
 }
 void LoopbackCrosapiAppServiceProxy::Launch(
     crosapi::mojom::LaunchParamsPtr launch_params) {
-  app_service_->LacrosWebAppsControllerForTesting()->Launch(
-      std::move(launch_params), base::DoNothing());
+  // Implement this if needed.
+  NOTIMPLEMENTED();
 }
 
 void LoopbackCrosapiAppServiceProxy::LaunchWithResult(
     crosapi::mojom::LaunchParamsPtr launch_params,
     LaunchWithResultCallback callback) {
-  app_service_->LacrosWebAppsControllerForTesting()->Launch(
-      std::move(launch_params), std::move(callback));
+  // Implement this if needed.
+  NOTIMPLEMENTED();
 }
 
 void LoopbackCrosapiAppServiceProxy::LoadIcon(const std::string& app_id,
@@ -86,9 +86,10 @@ void LoopbackCrosapiAppServiceProxy::LoadIcon(const std::string& app_id,
   // Implement this if needed.
   NOTIMPLEMENTED();
 }
-void LoopbackCrosapiAppServiceProxy::AddPreferredAppDeprecated(
+void LoopbackCrosapiAppServiceProxy::AddPreferredApp(
     const std::string& app_id,
     crosapi::mojom::IntentPtr intent) {
+  // Implement this if needed.
   NOTIMPLEMENTED();
 }
 void LoopbackCrosapiAppServiceProxy::ShowAppManagementPage(
@@ -107,13 +108,6 @@ void LoopbackCrosapiAppServiceProxy::SetSupportedLinksPreference(
 void LoopbackCrosapiAppServiceProxy::UninstallSilently(
     const std::string& app_id,
     apps::UninstallSource uninstall_source) {
-  // Implement this if needed.
-  NOTIMPLEMENTED();
-}
-
-void LoopbackCrosapiAppServiceProxy::InstallApp(
-    crosapi::mojom::InstallAppParamsPtr params,
-    InstallAppCallback callback) {
   // Implement this if needed.
   NOTIMPLEMENTED();
 }

@@ -8,8 +8,7 @@
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace base {
-template <typename T>
-class NoDestructor;
+template <typename T> struct DefaultSingletonTraits;
 }
 
 namespace content {
@@ -37,13 +36,13 @@ class LargeIconServiceFactory : public ProfileKeyedServiceFactory {
   static int desired_size_in_dip_for_server_requests();
 
  private:
-  friend base::NoDestructor<LargeIconServiceFactory>;
+  friend struct base::DefaultSingletonTraits<LargeIconServiceFactory>;
 
   LargeIconServiceFactory();
   ~LargeIconServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsNULLWhileTesting() const override;
 };

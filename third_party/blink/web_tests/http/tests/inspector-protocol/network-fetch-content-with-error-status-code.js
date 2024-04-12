@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startBlank(
       `Test to make sure if an xhr is fetched with the response as a blob and cross origin devtools can get body.`);
 

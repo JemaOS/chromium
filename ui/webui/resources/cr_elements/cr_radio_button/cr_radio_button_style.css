@@ -4,7 +4,6 @@
 
 /* #css_wrapper_metadata_start
  * #type=style
- * #scheme=relative
  * #import=../cr_shared_vars.css.js
  * #import=../cr_shared_vars.css.js
  * #css_wrapper_metadata_end */
@@ -26,8 +25,13 @@
         align-items: center;
         display: flex;
         flex-shrink: 0;
-        gap: var(--cr-radio-button-label-spacing, 20px);
         outline: none;
+      }
+
+      :host-context(body.jemaos) {
+        --cr-radio-button-checked-color: var(--jemaos-pink-600);
+        --cr-radio-button-checked-ripple-color:
+            rgba(var(--jemaos-pink-600-rgb), .2);
       }
 
       @media (prefers-color-scheme: dark) {
@@ -38,6 +42,11 @@
           --cr-radio-button-unchecked-color: var(--google-grey-500);
           --cr-radio-button-unchecked-ripple-color:
               rgba(var(--google-grey-300-rgb), .4);
+        }
+        :host-context(body.jemaos) {
+          --cr-radio-button-checked-color: var(--jemaos-pink-300);
+          --cr-radio-button-checked-ripple-color:
+              rgba(var(--jemaos-pink-300-rgb), .4);
         }
       }
 
@@ -59,10 +68,6 @@
         :host {
           --cr-radio-button-checked-color: SelectedItem;
         }
-
-        :host-context([chrome-refresh-2023]) {
-          forced-color-adjust: none;
-        }
       }
 
       :host([disabled]) {
@@ -75,22 +80,19 @@
       :host-context([chrome-refresh-2023]):host([disabled]) {
         opacity: 1;
         --cr-radio-button-checked-color: var(--color-radio-foreground-disabled,
-            var(--cr-fallback-color-disabled-background));
+            rgba(var(--cr-fallback-color-on-surface-rgb), .12));
         --cr-radio-button-unchecked-color:
             var(--color-radio-foreground-disabled,
-                var(--cr-fallback-color-disabled-background));
+                rgba(var(--cr-fallback-color-on-surface-rgb), .12));
       }
 
       :host(:not([disabled])) {
         cursor: pointer;
       }
 
-      :host(.label-first) {
-        flex-direction: row-reverse;
-      }
-
       #labelWrapper {
         flex: 1;
+        margin-inline-start: var(--cr-radio-button-label-spacing, 20px);
       }
 
       :host-context([chrome-refresh-2023]):host([disabled]) #labelWrapper {
@@ -111,7 +113,6 @@
       .disc-border,
       .disc,
       .disc-wrapper,
-      cr-ripple,
       paper-ripple {
         border-radius: 50%;
       }
@@ -178,7 +179,6 @@
         display: block;
       }
 
-      cr-ripple,
       paper-ripple {
         --paper-ripple-opacity: 1;  /* Opacity in each color's alpha. */
         color: var(--cr-radio-button-unchecked-ripple-color);
@@ -191,13 +191,11 @@
         width: var(--cr-radio-button-ink-size);
       }
 
-      :host-context([dir=rtl]) cr-ripple,
       :host-context([dir=rtl]) paper-ripple {
         left: auto;
         right: calc(-1 * var(--ink-to-circle));
       }
 
-      :host([checked]) cr-ripple,
       :host([checked]) paper-ripple {
         color: var(--cr-radio-button-checked-ripple-color);
       }

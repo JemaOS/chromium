@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SHARING_HUB_SHARING_HUB_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_SHARING_HUB_SHARING_HUB_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -23,13 +23,13 @@ class SharingHubServiceFactory : public ProfileKeyedServiceFactory {
   SharingHubServiceFactory& operator=(const SharingHubServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<SharingHubServiceFactory>;
+  friend struct base::DefaultSingletonTraits<SharingHubServiceFactory>;
 
   SharingHubServiceFactory();
   ~SharingHubServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

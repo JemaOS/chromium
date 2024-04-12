@@ -9,20 +9,16 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 
-import androidx.annotation.Nullable;
-
-import org.jni_zero.NativeMethods;
+import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
-import org.chromium.base.ResettersForTesting;
-import org.chromium.base.ThreadUtils;
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
-import org.chromium.base.supplier.ObservableSupplierImpl;
+import org.chromium.base.ObserverList;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.policy.PolicyServiceFactory;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.components.minidump_uploader.util.NetworkPermissionUtil;
 import org.chromium.components.policy.PolicyMap;
 import org.chromium.components.policy.PolicyService;
@@ -36,17 +32,16 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
 
     private final Context mContext;
     private final SharedPreferencesManager mPrefs;
+
+    private ObserverList<Observer> mObservers;
     private PolicyService mPolicyService;
     private PolicyService.Observer mPolicyServiceObserver;
-
-    // Supplier for other class to observe. Null until the supplier is requested.
-    private @Nullable ObservableSupplierImpl<Boolean> mCrashUploadPermittedSupplier;
 
     private boolean mNativeInitialized;
 
     PrivacyPreferencesManagerImpl(Context context) {
         mContext = context;
-        mPrefs = ChromeSharedPreferences.getInstance();
+        mPrefs = SharedPreferencesManager.getInstance();
         mNativeInitialized = false;
         // TODO(https://crbug.com/1320040). Clean up deprecated preference migration.
         migrateDeprecatedPreferences();
@@ -59,10 +54,9 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
         return sInstance;
     }
 
+    @VisibleForTesting
     public static void setInstanceForTesting(PrivacyPreferencesManagerImpl instance) {
-        var oldValue = sInstance;
         sInstance = instance;
-        ResettersForTesting.register(() -> sInstance = oldValue);
     }
 
     public void onNativeInitialized() {
@@ -80,18 +74,17 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
 
         mPolicyService = PolicyServiceFactory.getGlobalPolicyService();
 
-        mPolicyServiceObserver =
-                new PolicyService.Observer() {
-                    @Override
-                    public void onPolicyServiceInitialized() {
-                        syncUsageAndCrashReportingPermittedByPolicy();
-                    }
+        mPolicyServiceObserver = new PolicyService.Observer() {
+            @Override
+            public void onPolicyServiceInitialized() {
+                syncUsageAndCrashReportingPermittedByPolicy();
+            }
 
-                    @Override
-                    public void onPolicyUpdated(PolicyMap previous, PolicyMap current) {
-                        syncUsageAndCrashReportingPermittedByPolicy();
-                    }
-                };
+            @Override
+            public void onPolicyUpdated(PolicyMap previous, PolicyMap current) {
+                syncUsageAndCrashReportingPermittedByPolicy();
+            }
+        };
 
         if (mPolicyService.isInitializationComplete()) {
             syncUsageAndCrashReportingPermittedByPolicy();
@@ -102,8 +95,7 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
 
     protected void migrateDeprecatedPreferences() {
         if (mPrefs.contains(ChromePreferenceKeys.PRIVACY_METRICS_REPORTING)) {
-            mPrefs.writeBoolean(
-                    ChromePreferenceKeys.PRIVACY_METRICS_REPORTING_PERMITTED_BY_USER,
+            mPrefs.writeBoolean(ChromePreferenceKeys.PRIVACY_METRICS_REPORTING_PERMITTED_BY_USER,
                     mPrefs.readBoolean(ChromePreferenceKeys.PRIVACY_METRICS_REPORTING, false));
             mPrefs.removeKey(ChromePreferenceKeys.PRIVACY_METRICS_REPORTING);
         }
@@ -132,21 +124,35 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
         // Skip if native browser process is not yet fully initialized.
         if (!mNativeInitialized) return;
 
-        mPrefs.writeBoolean(
-                ChromePreferenceKeys.PRIVACY_METRICS_REPORTING_PERMITTED_BY_POLICY,
+        mPrefs.writeBoolean(ChromePreferenceKeys.PRIVACY_METRICS_REPORTING_PERMITTED_BY_POLICY,
                 !PrivacyPreferencesManagerImplJni.get().isMetricsReportingDisabledByPolicy());
     }
 
     @Override
     public void addObserver(Observer observer) {
-        getUsageAndCrashReportingPermittedObservableSupplier()
-                .addObserver(observer::onIsUsageAndCrashReportingPermittedChanged);
+        if (mObservers == null) {
+            mObservers = new ObserverList<>();
+        }
+        mObservers.addObserver(observer);
+        mPrefs.addObserver(key -> {
+            if (key.equals(ChromePreferenceKeys.PRIVACY_METRICS_REPORTING_PERMITTED_BY_USER)
+                    || key.equals(
+                            ChromePreferenceKeys.PRIVACY_METRICS_REPORTING_PERMITTED_BY_POLICY)) {
+                notifyObservers();
+            }
+        });
     }
 
     @Override
     public void removeObserver(Observer observer) {
-        getUsageAndCrashReportingPermittedObservableSupplier()
-                .removeObserver(observer::onIsUsageAndCrashReportingPermittedChanged);
+        mObservers.removeObserver(observer);
+    }
+
+    private void notifyObservers() {
+        boolean permitted = isUsageAndCrashReportingPermitted();
+        for (var observer : mObservers) {
+            observer.onIsUsageAndCrashReportingPermittedChanged(permitted);
+        }
     }
 
     @Override
@@ -162,31 +168,16 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
     }
 
     @Override
-    public void setClientInSampleForMetrics(boolean inSample) {
-        mPrefs.writeBoolean(ChromePreferenceKeys.PRIVACY_IN_SAMPLE_FOR_METRICS, inSample);
+    public void setClientInMetricsSample(boolean inSample) {
+        mPrefs.writeBoolean(ChromePreferenceKeys.PRIVACY_METRICS_IN_SAMPLE, inSample);
     }
 
     @Override
-    public boolean isClientInSampleForMetrics() {
-        // The default value is true to avoid sampling out metrics that occur before native code has
-        // been initialized on first run. I.e., clients are presumed to be in-sample until we know
-        // otherwise. Note that metrics reporting is also gated on the user's pref, not just being
-        // in-sample.
-        return mPrefs.readBoolean(ChromePreferenceKeys.PRIVACY_IN_SAMPLE_FOR_METRICS, true);
-    }
-
-    @Override
-    public void setClientInSampleForCrashes(boolean inSampleForCrash) {
-        mPrefs.writeBoolean(ChromePreferenceKeys.PRIVACY_IN_SAMPLE_FOR_CRASHES, inSampleForCrash);
-    }
-
-    @Override
-    public boolean isClientInSampleForCrashes() {
+    public boolean isClientInMetricsSample() {
         // The default value is true to avoid sampling out crashes that occur before native code has
-        // been initialized on first run.  I.e., clients are presumed to be in-sample until we know
-        // otherwise. Note that crash reporting is also gated on the user's pref, not just being
-        // in-sample.
-        return mPrefs.readBoolean(ChromePreferenceKeys.PRIVACY_IN_SAMPLE_FOR_CRASHES, true);
+        // been initialized on first run. We'd rather have some extra crashes than none from that
+        // time.
+        return mPrefs.readBoolean(ChromePreferenceKeys.PRIVACY_METRICS_IN_SAMPLE, true);
     }
 
     @Override
@@ -210,8 +201,7 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
 
     @Override
     public boolean isUploadEnabledForTests() {
-        CommandLine commandLine = CommandLine.getInstance();
-        return commandLine != null && commandLine.hasSwitch(ChromeSwitches.FORCE_CRASH_DUMP_UPLOAD);
+        return CommandLine.getInstance().hasSwitch(ChromeSwitches.FORCE_CRASH_DUMP_UPLOAD);
     }
 
     @Override
@@ -228,25 +218,12 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
     @Override
     public void setMetricsReportingEnabled(boolean enabled) {
         PrivacyPreferencesManagerImplJni.get().setMetricsReportingEnabled(enabled);
-        getUsageAndCrashReportingPermittedObservableSupplier().set(enabled);
-    }
-
-    @Override
-    public ObservableSupplierImpl<Boolean> getUsageAndCrashReportingPermittedObservableSupplier() {
-        ThreadUtils.assertOnUiThread();
-        if (mCrashUploadPermittedSupplier == null) {
-            mCrashUploadPermittedSupplier = new ObservableSupplierImpl<>();
-            mCrashUploadPermittedSupplier.set(isUsageAndCrashReportingPermitted());
-        }
-        return mCrashUploadPermittedSupplier;
     }
 
     @NativeMethods
     public interface Natives {
         boolean isMetricsReportingEnabled();
-
         void setMetricsReportingEnabled(boolean enabled);
-
         boolean isMetricsReportingDisabledByPolicy();
     }
 }

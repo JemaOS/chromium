@@ -58,7 +58,8 @@ absl::Status SanityCheckOptions(const TextEmbedderOptions& options) {
 
 /* static */
 tflite::support::StatusOr<double> TextEmbedder::CosineSimilarity(
-    const FeatureVector& u, const FeatureVector& v) {
+    const FeatureVector& u,
+    const FeatureVector& v) {
   return processor::EmbeddingPostprocessor::CosineSimilarity(u, v);
 }
 
@@ -66,15 +67,15 @@ tflite::support::StatusOr<double> TextEmbedder::CosineSimilarity(
 tflite::support::StatusOr<std::unique_ptr<TextEmbedder>>
 TextEmbedder::CreateFromOptions(const TextEmbedderOptions& options,
                                 std::unique_ptr<tflite::OpResolver> resolver) {
-  TFLITE_RETURN_IF_ERROR(SanityCheckOptions(options));
+  RETURN_IF_ERROR(SanityCheckOptions(options));
   // Copy options to ensure the ExternalFile-s outlive the constructed object.
   auto options_copy = absl::make_unique<TextEmbedderOptions>(options);
 
-  TFLITE_ASSIGN_OR_RETURN(auto text_embedder,
+  ASSIGN_OR_RETURN(auto text_embedder,
                    TaskAPIFactory::CreateFromBaseOptions<TextEmbedder>(
                        &options_copy->base_options(), std::move(resolver)));
 
-  TFLITE_RETURN_IF_ERROR(text_embedder->Init(std::move(options_copy)));
+  RETURN_IF_ERROR(text_embedder->Init(std::move(options_copy)));
 
   return text_embedder;
 }
@@ -87,7 +88,7 @@ absl::Status TextEmbedder::Init(std::unique_ptr<TextEmbedderOptions> options) {
   std::vector<int> output_tensor_indices;
   if (input_count == 1) {
     // Assume Regex-based model.
-    TFLITE_ASSIGN_OR_RETURN(preprocessor_, processor::RegexPreprocessor::Create(
+    ASSIGN_OR_RETURN(preprocessor_, processor::RegexPreprocessor::Create(
                                         GetTfLiteEngine(), 0));
     // All output tensors are assumed to be embeddings.
     for (int i = 0; i < GetTfLiteEngine()->GetOutputs().size(); ++i) {
@@ -97,9 +98,9 @@ absl::Status TextEmbedder::Init(std::unique_ptr<TextEmbedderOptions> options) {
     // Check if BertTokenizer is present.
     if (GetMetadataExtractor()->GetInputProcessUnitsCount() > 0) {
       // Assume Bert-based model.
-      TFLITE_ASSIGN_OR_RETURN(auto input_indices,
+      ASSIGN_OR_RETURN(auto input_indices,
                        GetBertInputTensorIndices(GetTfLiteEngine()));
-      TFLITE_ASSIGN_OR_RETURN(preprocessor_, processor::BertPreprocessor::Create(
+      ASSIGN_OR_RETURN(preprocessor_, processor::BertPreprocessor::Create(
                                           GetTfLiteEngine(),
                                           {input_indices[0], input_indices[1],
                                            input_indices[2]}));
@@ -109,13 +110,13 @@ absl::Status TextEmbedder::Init(std::unique_ptr<TextEmbedderOptions> options) {
       }
     } else {
       // Assume Universal Sentence Encoder-based model.
-      TFLITE_ASSIGN_OR_RETURN(
+      ASSIGN_OR_RETURN(
           auto input_indices,
           GetUniversalSentenceEncoderInputTensorIndices(GetTfLiteEngine()));
-      TFLITE_ASSIGN_OR_RETURN(
+      ASSIGN_OR_RETURN(
           auto output_indices,
           GetUniversalSentenceEncoderOutputTensorIndices(GetTfLiteEngine()));
-      TFLITE_ASSIGN_OR_RETURN(
+      ASSIGN_OR_RETURN(
           preprocessor_,
           processor::UniversalSentenceEncoderPreprocessor::Create(
               GetTfLiteEngine(),
@@ -154,7 +155,7 @@ absl::Status TextEmbedder::Init(std::unique_ptr<TextEmbedderOptions> options) {
           "number of output tensors.",
           support::TfLiteSupportStatus::kInvalidArgumentError);
     }
-    TFLITE_ASSIGN_OR_RETURN(
+    ASSIGN_OR_RETURN(
         auto processor,
         processor::EmbeddingPostprocessor::Create(
             GetTfLiteEngine(), {output_tensor_indices[i]}, std::move(option)));
@@ -170,7 +171,8 @@ tflite::support::StatusOr<EmbeddingResult> TextEmbedder::Embed(
 }
 
 absl::Status TextEmbedder::Preprocess(
-    const std::vector<TfLiteTensor*>& input_tensors, const std::string& input) {
+    const std::vector<TfLiteTensor*>& input_tensors,
+    const std::string& input) {
   return preprocessor_->Preprocess(input);
 }
 
@@ -183,7 +185,7 @@ tflite::support::StatusOr<EmbeddingResult> TextEmbedder::Postprocess(
     const std::string& input) {
   EmbeddingResult result;
   for (int i = 0; i < postprocessors_.size(); ++i) {
-    TFLITE_RETURN_IF_ERROR(
+    RETURN_IF_ERROR(
         postprocessors_.at(i)->Postprocess(result.add_embeddings()));
   }
 

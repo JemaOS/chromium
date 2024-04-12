@@ -27,9 +27,6 @@ constexpr GUID CLSID_TaskbandPin = {
 
 constexpr wchar_t kInstallerPinned[] = L"InstallerPinned";
 
-// Set by tests to control whether or not pinning to taskbar is allowed.
-CanPinToTaskBarDelegateFunctionPtr g_can_pin_to_taskbar;
-
 // Undocumented COM interface for manipulating taskbar pinned list.
 class __declspec(uuid("0DD79AE2-D156-45D4-9EEB-3B549769E940")) IPinnedList3
     : public IUnknown {
@@ -119,29 +116,42 @@ bool CanPinShortcutToTaskbar() {
 }
 
 bool PinShortcutToTaskbar(const base::FilePath& shortcut) {
-  if (g_can_pin_to_taskbar && !(*g_can_pin_to_taskbar)()) {
-    return false;
-  }
-  return PinShortcutWithIPinnedList3(shortcut);
+  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
+                                                base::BlockingType::MAY_BLOCK);
+  DCHECK(CanPinShortcutToTaskbar());
+  if (base::win::GetVersion() >= base::win::Version::WIN10_RS5)
+    return PinShortcutWithIPinnedList3(shortcut);
+
+  intptr_t result = reinterpret_cast<intptr_t>(ShellExecute(
+      nullptr, L"taskbarpin", shortcut.value().c_str(), nullptr, nullptr, 0));
+  return result > 32;
 }
 
 bool UnpinShortcutFromTaskbar(const base::FilePath& shortcut) {
-  return UnpinShortcutWithIPinnedList3(shortcut);
+  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
+                                                base::BlockingType::MAY_BLOCK);
+  // Calling ShellExecute can be crashy because of shell hooks/malware, so try
+  // using IPinnedList3. Fallback to ShellExecute if it fails.
+  if (base::win::GetVersion() >= base::win::Version::WIN10_RS5 &&
+      UnpinShortcutWithIPinnedList3(shortcut)) {
+    return true;
+  }
+
+  intptr_t result = reinterpret_cast<intptr_t>(ShellExecute(
+      nullptr, L"taskbarunpin", shortcut.value().c_str(), nullptr, nullptr, 0));
+  return result > 32;
 }
 
-std::optional<bool> IsShortcutPinnedToTaskbar(const base::FilePath& shortcut) {
+// static
+absl::optional<bool> IsShortcutPinnedToTaskbar(const base::FilePath& shortcut) {
   Microsoft::WRL::ComPtr<IPinnedList3> pinned_list = GetTaskbarPinnedList();
   if (!pinned_list.Get())
-    return std::nullopt;
+    return absl::nullopt;
 
   ScopedPIDLFromPath item_id_list(shortcut.value().data());
   HRESULT hr = pinned_list->IsPinned(item_id_list.Get());
   // S_OK means `shortcut` is pinned, S_FALSE means it's not pinned.
-  return SUCCEEDED(hr) ? std::optional<bool>(hr == S_OK) : std::nullopt;
-}
-
-void SetCanPinToTaskbarDelegate(CanPinToTaskBarDelegateFunctionPtr delegate) {
-  g_can_pin_to_taskbar = delegate;
+  return SUCCEEDED(hr) ? absl::optional<bool>(hr == S_OK) : absl::nullopt;
 }
 
 bool SetInstallerPinnedChromeToTaskbar(bool installed) {
@@ -153,7 +163,7 @@ bool SetInstallerPinnedChromeToTaskbar(bool installed) {
   return false;
 }
 
-std::optional<bool> GetInstallerPinnedChromeToTaskbar() {
+absl::optional<bool> GetInstallerPinnedChromeToTaskbar() {
   base::win::RegKey key;
   if (key.Open(HKEY_CURRENT_USER, install_static::GetRegistryPath().c_str(),
                KEY_QUERY_VALUE | KEY_WOW64_32KEY) == ERROR_SUCCESS) {
@@ -162,5 +172,5 @@ std::optional<bool> GetInstallerPinnedChromeToTaskbar() {
     if (result == ERROR_SUCCESS)
       return installer_pinned != 0;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }

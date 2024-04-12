@@ -14,10 +14,11 @@ namespace payments {
 
 // This class implements a clickable row of the Payment Request dialog that
 // darkens on hover and displays a horizontal ruler on its lower bound.
-class PaymentRequestRowView : public views::Button {
-  METADATA_HEADER(PaymentRequestRowView, views::Button)
-
+class PaymentRequestRowView
+    : public views::Button,
+      public base::SupportsWeakPtr<PaymentRequestRowView> {
  public:
+  METADATA_HEADER(PaymentRequestRowView);
   PaymentRequestRowView();
   // Creates a row view. If |clickable| is true, the row will be shaded on hover
   // and handle click events. |insets| are used as padding around the content.
@@ -37,9 +38,6 @@ class PaymentRequestRowView : public views::Button {
   void set_previous_row(base::WeakPtr<PaymentRequestRowView> previous_row) {
     previous_row_ = previous_row;
   }
-
-  // Deriving classes must override this and provide their own factory.
-  virtual base::WeakPtr<PaymentRequestRowView> AsWeakPtr();
 
  private:
   // Show/hide the separator at the bottom of the row. This is used to hide the
@@ -73,8 +71,6 @@ class PaymentRequestRowView : public views::Button {
   // A non-owned pointer to the previous row object in the UI. Used to hide the
   // bottom border of the previous row when highlighting this one. May be null.
   base::WeakPtr<PaymentRequestRowView> previous_row_;
-
-  base::WeakPtrFactory<PaymentRequestRowView> weak_ptr_factory_{this};
 };
 
 BEGIN_VIEW_BUILDER(, PaymentRequestRowView, views::Button)

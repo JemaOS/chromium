@@ -16,13 +16,6 @@
 
 #include "dpf/aes_128_fixed_key_hash.h"
 
-#include <thread>  // NOLINT(build/c++11)
-#include <vector>
-
-#include "absl/numeric/int128.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/types/span.h"
 #include "dpf/internal/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -46,11 +39,11 @@ constexpr absl::uint128 kSeed2 =
 constexpr absl::uint128 kSeed3 =
     absl::MakeUint128(0xcdefcdefcdefcdef, 0xcdefcdefcdefcdef);
 
-TEST(Aes128FixedKeyHashTest, CreateSucceeds) {
+TEST(PseudorandomGeneratorTest, CreateSucceeds) {
   DPF_EXPECT_OK(Aes128FixedKeyHash::Create(kKey0));
 }
 
-TEST(Aes128FixedKeyHashTest, SameKeysAndSeedsGenerateSameOutput) {
+TEST(PseudorandomGeneratorTest, SameKeysAndSeedsGenerateSameOutput) {
   std::vector<absl::uint128> in;
 
   DPF_ASSERT_OK_AND_ASSIGN(Aes128FixedKeyHash prg_0,
@@ -67,7 +60,7 @@ TEST(Aes128FixedKeyHashTest, SameKeysAndSeedsGenerateSameOutput) {
   EXPECT_THAT(out_0, testing::ElementsAreArray(out_1));
 }
 
-TEST(Aes128FixedKeyHashTest, DifferentKeysGenerateDifferentOutput) {
+TEST(PseudorandomGeneratorTest, DifferentKeysGenerateDifferentOutput) {
   std::vector<absl::uint128> in{kSeed0};
 
   DPF_ASSERT_OK_AND_ASSIGN(Aes128FixedKeyHash prg_0,
@@ -83,7 +76,7 @@ TEST(Aes128FixedKeyHashTest, DifferentKeysGenerateDifferentOutput) {
   EXPECT_THAT(out_0, testing::Not(testing::ElementsAreArray(out_1)));
 }
 
-TEST(Aes128FixedKeyHashTest, DifferentSeedsGenerateDifferentOutput) {
+TEST(PseudorandomGeneratorTest, DifferentSeedsGenerateDifferentOutput) {
   DPF_ASSERT_OK_AND_ASSIGN(Aes128FixedKeyHash prg,
                            Aes128FixedKeyHash::Create(kKey0));
   std::vector<absl::uint128> in_0, in_1;
@@ -100,7 +93,7 @@ TEST(Aes128FixedKeyHashTest, DifferentSeedsGenerateDifferentOutput) {
   EXPECT_THAT(out_0, testing::Not(testing::ElementsAreArray(out_1)));
 }
 
-TEST(Aes128FixedKeyHashTest, BatchedEvaluationEqualsBlockWiseEvaluation) {
+TEST(PseudorandomGeneratorTest, BatchedEvaluationEqualsBlockWiseEvaluation) {
   DPF_ASSERT_OK_AND_ASSIGN(Aes128FixedKeyHash prg,
                            Aes128FixedKeyHash::Create(kKey0));
   std::vector<absl::uint128> in_0, in_1, in_2;
@@ -117,7 +110,7 @@ TEST(Aes128FixedKeyHashTest, BatchedEvaluationEqualsBlockWiseEvaluation) {
   EXPECT_THAT(out_2, testing::ElementsAre(out_0[0], out_1[0]));
 }
 
-TEST(Aes128FixedKeyHashTest, TestSpecificOutputValues) {
+TEST(PseudorandomGeneratorTest, TestSpecificOutputValues) {
   std::vector<absl::uint128> in, out_0, out_1;
 
   DPF_ASSERT_OK_AND_ASSIGN(Aes128FixedKeyHash prg_0,
@@ -140,7 +133,7 @@ TEST(Aes128FixedKeyHashTest, TestSpecificOutputValues) {
                   absl::MakeUint128(0x530098817046d284, 0x43e61d3273a04f7c)));
 }
 
-TEST(Aes128FixedKeyHashTest, EvaluateFailsWhenSizesDontMatch) {
+TEST(PseudorandomGeneratorTest, EvaluateFailsWhenSizesDontMatch) {
   std::vector<absl::uint128> in{kSeed0};
   DPF_ASSERT_OK_AND_ASSIGN(Aes128FixedKeyHash prg,
                            Aes128FixedKeyHash::Create(kKey0));
@@ -150,28 +143,6 @@ TEST(Aes128FixedKeyHashTest, EvaluateFailsWhenSizesDontMatch) {
   EXPECT_THAT(prg.Evaluate(in, absl::MakeSpan(out)),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "Input and output sizes don't match"));
-}
-
-TEST(Aes128FixedKeyHashTest, TestThreadSafety) {
-  std::vector<absl::uint128> in{kSeed0};
-  DPF_ASSERT_OK_AND_ASSIGN(Aes128FixedKeyHash prg,
-                           Aes128FixedKeyHash::Create(kKey0));
-  constexpr int kNumThreads = 1024;
-
-  auto do_evaluation = [&prg, &in]() {
-    absl::uint128 out;
-    DPF_ASSERT_OK(prg.Evaluate(in, absl::MakeSpan(&out, 1)));
-  };
-
-  std::vector<std::thread> threads;
-  threads.reserve(kNumThreads);
-  for (int i = 0; i < kNumThreads; ++i) {
-    threads.emplace_back(do_evaluation);
-  }
-
-  for (auto& thread : threads) {
-    thread.join();
-  }
 }
 
 }  // namespace

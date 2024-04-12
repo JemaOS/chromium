@@ -6,7 +6,6 @@
 #define UI_EVENTS_OZONE_EVDEV_EVENT_CONVERTER_EVDEV_IMPL_H_
 
 #include <bitset>
-#include <ostream>
 
 #include "base/component_export.h"
 #include "base/files/file_path.h"
@@ -53,16 +52,12 @@ class COMPONENT_EXPORT(EVDEV) EventConverterEvdevImpl
   bool HasCapsLockLed() const override;
   bool HasStylusSwitch() const override;
   ui::StylusState GetStylusSwitchState() override;
-  bool HasAssistantKey() const override;
   void SetKeyFilter(bool enable_filter,
                     std::vector<DomCode> allowed_keys) override;
   void OnDisabled() override;
   std::vector<uint64_t> GetKeyboardKeyBits() const override;
-  void SetBlockModifiers(bool block_modifiers) override;
 
   void ProcessEvents(const struct input_event* inputs, int count);
-
-  std::ostream& DescribeForLog(std::ostream& os) const override;
 
  private:
   void ConvertKeyEvent(const input_event& input);
@@ -98,8 +93,6 @@ class COMPONENT_EXPORT(EVDEV) EventConverterEvdevImpl
   bool has_touchpad_;
   bool has_numberpad_;
   bool has_stylus_switch_;
-  // `has_assistant_key_` can only be true if the device is a keyboard.
-  bool has_assistant_key_;
 
   // LEDs for this device.
   bool has_caps_lock_led_;
@@ -123,9 +116,6 @@ class COMPONENT_EXPORT(EVDEV) EventConverterEvdevImpl
 
   // Pressed keys bitset.
   std::bitset<KEY_CNT> key_state_;
-
-  // Whether modifier keys should be blocked from the input device.
-  bool block_modifiers_ = false;
 
   // Last mouse button state.
   static const int kMouseButtonCount = BTN_JOYSTICK - BTN_MOUSE;

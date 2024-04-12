@@ -31,7 +31,6 @@ class ArcWindowObserver : public ash::ThrottleObserver,
 
   // ash::ArcWindowWatcher::ArcWindowCountObserver:
   void OnArcWindowCountChanged(uint32_t count) override;
-  void OnWillDestroyWatcher() override;
 
  private:
   base::ScopedObservation<ash::ArcWindowWatcher,

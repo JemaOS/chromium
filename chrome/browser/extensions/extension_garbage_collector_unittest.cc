@@ -8,7 +8,6 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/values.h"
-#include "chrome/browser/extensions/crx_installer.h"
 #include "chrome/browser/extensions/extension_garbage_collector.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_service_test_base.h"
@@ -21,8 +20,6 @@
 #include "content/public/test/test_utils.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/pref_names.h"
-#include "extensions/common/extension_features.h"
-#include "extensions/common/extension_id.h"
 #include "ppapi/buildflags/buildflags.h"
 
 #if BUILDFLAG(ENABLE_PLUGINS)
@@ -48,15 +45,11 @@ class ExtensionGarbageCollectorUnitTest : public ExtensionServiceTestBase {
     // Wait for GarbageCollectExtensions task to complete.
     content::RunAllTasksUntilIdle();
   }
-
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 // Test that partially deleted extensions are cleaned up during startup.
 TEST_F(ExtensionGarbageCollectorUnitTest, CleanupOnStartup) {
-  feature_list_.InitAndDisableFeature(
-      extensions_features::kExtensionsZipFileInstalledInProfileDir);
-  const ExtensionId kExtensionId = "behllobkkfkfnphdnhnkndlbkcpglgmj";
+  const std::string kExtensionId = "behllobkkfkfnphdnhnkndlbkcpglgmj";
 
   InitPluginService();
   InitializeGoodInstalledExtensionService();
@@ -86,87 +79,10 @@ TEST_F(ExtensionGarbageCollectorUnitTest, CleanupOnStartup) {
   ASSERT_FALSE(base::PathExists(extension_dir));
 }
 
-// TODO(crbug.com/1378775): The test extension good_juKvIh seems to error on
-// install with "Manifest file is missing or unreadable" despite the manifest
-// being valid. This test case is still valid because we're only checking if the
-// files get deleted. The files get copied to the install directory by the test
-// infra despite the installation failure. So we should probably fix this in the
-// future so that this test extension can be used in other tests.
-
-// Test that partially deleted unpacked extensions (e.g. from .zips) are cleaned
-// up during startup.
-TEST_F(ExtensionGarbageCollectorUnitTest,
-       CleanupUnpackedOnStartup_DeleteWhenNoLongerInstalled) {
-  feature_list_.InitAndEnableFeature(
-      extensions_features::kExtensionsZipFileInstalledInProfileDir);
-  const ExtensionId kExtensionId = "lckcjklfapeiadkadngidmocpbkemckm";
-
-  InitPluginService();
-  InitializeGoodInstalledExtensionService();
-  base::FilePath zipped_extension_dir =
-      unpacked_install_dir().AppendASCII("good_juKvIh");
-  ASSERT_TRUE(base::PathExists(zipped_extension_dir));
-
-  // Simulate that the extensions was partially deleted (no longer considered
-  // installed) by clearing its pref.
-  {
-    ScopedDictPrefUpdate update(profile_->GetPrefs(), pref_names::kExtensions);
-    update->Remove(kExtensionId);
-  }
-
-  service_->Init();
-  GarbageCollectExtensions();
-
-  base::FileEnumerator dirs(unpacked_install_dir(),
-                            false,  // not recursive
-                            base::FileEnumerator::DIRECTORIES);
-
-  // We should have have zero extensions now.
-  EXPECT_TRUE(dirs.Next().empty());
-
-  // And unpacked extension dir should now be toast.
-  EXPECT_FALSE(base::PathExists(zipped_extension_dir));
-}
-
-TEST_F(ExtensionGarbageCollectorUnitTest,
-       CleanupUnpackedOnStartup_DoNotDeleteWhenStillInstalled) {
-  feature_list_.InitAndEnableFeature(
-      extensions_features::kExtensionsZipFileInstalledInProfileDir);
-  const ExtensionId kExtensionId = "lckcjklfapeiadkadngidmocpbkemckm";
-
-  InitPluginService();
-  InitializeGoodInstalledExtensionService();
-  base::FilePath zipped_extension_dir =
-      unpacked_install_dir().AppendASCII("good_juKvIh");
-  ASSERT_TRUE(base::PathExists(zipped_extension_dir));
-
-  // Update the path of the installed extension to be accurate for the test.
-  {
-    ScopedDictPrefUpdate update(profile_->GetPrefs(), pref_names::kExtensions);
-    base::Value::Dict& update_dict = update.Get();
-    // An unpacked extension installed in the profile dir in production usually
-    // has it's full install path written to the "path" key, but since we don't
-    // know what the path is during the test (due to variation of test directory
-    // location) we need to manually set it during the test. The garbage
-    // collection checks this path to determine whether to delete the
-    // installation directory.
-    base::Value::Dict* extension_entry = update_dict.FindDict(kExtensionId);
-    ASSERT_TRUE(extension_entry);
-    extension_entry->Set("path",
-                         base::Value(zipped_extension_dir.MaybeAsASCII()));
-  }
-
-  service_->Init();
-  GarbageCollectExtensions();
-
-  // Unpacked extension dir should not be deleted.
-  EXPECT_TRUE(base::PathExists(zipped_extension_dir));
-}
-
 // Test that garbage collection doesn't delete anything while a crx is being
 // installed.
 TEST_F(ExtensionGarbageCollectorUnitTest, NoCleanupDuringInstall) {
-  const ExtensionId kExtensionId = "behllobkkfkfnphdnhnkndlbkcpglgmj";
+  const std::string kExtensionId = "behllobkkfkfnphdnhnkndlbkcpglgmj";
 
   InitPluginService();
   InitializeGoodInstalledExtensionService();
@@ -180,9 +96,7 @@ TEST_F(ExtensionGarbageCollectorUnitTest, NoCleanupDuringInstall) {
   service_->Init();
 
   // Simulate a CRX installation.
-  auto installer = CrxInstaller::CreateSilent(service_);
-  InstallTracker::Get(profile_.get())
-      ->OnBeginCrxInstall(*installer, kExtensionId);
+  InstallTracker::Get(profile_.get())->OnBeginCrxInstall(kExtensionId);
 
   GarbageCollectExtensions();
 
@@ -192,8 +106,7 @@ TEST_F(ExtensionGarbageCollectorUnitTest, NoCleanupDuringInstall) {
   ASSERT_TRUE(base::PathExists(extension_dir));
 
   // Finish CRX installation and re-run garbage collection.
-  InstallTracker::Get(profile_.get())
-      ->OnFinishCrxInstall(*installer, kExtensionId, false);
+  InstallTracker::Get(profile_.get())->OnFinishCrxInstall(kExtensionId, false);
   GarbageCollectExtensions();
 
   // extension1 dir should be gone

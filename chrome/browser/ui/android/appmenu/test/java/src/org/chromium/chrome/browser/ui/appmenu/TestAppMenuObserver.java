@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.ui.appmenu;
 
 import org.chromium.base.test.util.CallbackHelper;
 
-/** AppMenuObserver that notifies callbacks when app menu events occur. */
+/**
+ * AppMenuObserver that notifies callbacks when app menu events occur.
+ */
 public class TestAppMenuObserver implements AppMenuObserver {
     public CallbackHelper menuShownCallback = new CallbackHelper();
     public CallbackHelper menuHiddenCallback = new CallbackHelper();

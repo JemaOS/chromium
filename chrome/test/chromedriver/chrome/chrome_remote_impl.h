@@ -10,17 +10,19 @@
 
 #include "chrome/test/chromedriver/chrome/chrome_impl.h"
 #include "chrome/test/chromedriver/chrome/mobile_device.h"
+#include "chrome/test/chromedriver/net/sync_websocket_factory.h"
 
 class DevToolsClient;
+class DevToolsHttpClient;
 
 class ChromeRemoteImpl : public ChromeImpl {
  public:
-  ChromeRemoteImpl(BrowserInfo browser_info,
-                   std::set<WebViewInfo::Type> window_types,
+  ChromeRemoteImpl(std::unique_ptr<DevToolsHttpClient> http_client,
                    std::unique_ptr<DevToolsClient> websocket_client,
                    std::vector<std::unique_ptr<DevToolsEventListener>>
                        devtools_event_listeners,
-                   std::optional<MobileDevice> mobile_device,
+                   absl::optional<MobileDevice> mobile_device,
+                   SyncWebSocketFactory socket_factory,
                    std::string page_load_strategy);
   ~ChromeRemoteImpl() override;
 

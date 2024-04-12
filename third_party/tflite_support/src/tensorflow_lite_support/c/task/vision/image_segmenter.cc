@@ -92,7 +92,8 @@ TfLiteImageSegmenterOptions TfLiteImageSegmenterOptionsCreate(void) {
 }
 
 TfLiteImageSegmenter* TfLiteImageSegmenterFromOptions(
-    const TfLiteImageSegmenterOptions* options, TfLiteSupportError** error) {
+    const TfLiteImageSegmenterOptions* options,
+    TfLiteSupportError** error) {
   StatusOr<ImageSegmenterOptionsCpp> cpp_option_status =
       CreateImageSegmenterCppOptionsFromCOptions(options);
 
@@ -182,7 +183,8 @@ TfLiteSegmentationResult* GetSegmentationResultCStruct(
 
 TfLiteSegmentationResult* TfLiteImageSegmenterSegment(
     const TfLiteImageSegmenter* segmenter,
-    const TfLiteFrameBuffer* frame_buffer, TfLiteSupportError** error) {
+    const TfLiteFrameBuffer* frame_buffer,
+    TfLiteSupportError** error) {
   if (segmenter == nullptr) {
     tflite::support::CreateTfLiteSupportError(
         kInvalidArgumentError, "Expected non null image segmenter.", error);

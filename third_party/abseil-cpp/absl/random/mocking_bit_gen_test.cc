@@ -16,7 +16,6 @@
 #include "absl/random/mocking_bit_gen.h"
 
 #include <cmath>
-#include <cstdint>
 #include <numeric>
 #include <random>
 
@@ -177,18 +176,12 @@ TEST(BasicMocking, MultipleGenerators) {
   EXPECT_NE(get_value(mocked_with_11), 11);
 }
 
-TEST(BasicMocking, MocksNotTriggeredForIncorrectTypes) {
+TEST(BasicMocking, MocksNotTrigeredForIncorrectTypes) {
   absl::MockingBitGen gen;
-  EXPECT_CALL(absl::MockUniform<uint32_t>(), Call(gen))
-      .WillRepeatedly(Return(42));
+  EXPECT_CALL(absl::MockUniform<uint32_t>(), Call(gen)).WillOnce(Return(42));
 
-  bool uint16_always42 = true;
-  for (int i = 0; i < 10000; i++) {
-    EXPECT_EQ(absl::Uniform<uint32_t>(gen), 42);  // Mock triggered.
-    // uint16_t not mocked.
-    uint16_always42 = uint16_always42 && absl::Uniform<uint16_t>(gen) == 42;
-  }
-  EXPECT_FALSE(uint16_always42);
+  EXPECT_NE(absl::Uniform<uint16_t>(gen), 42);  // Not mocked
+  EXPECT_EQ(absl::Uniform<uint32_t>(gen), 42);  // Mock triggered
 }
 
 TEST(BasicMocking, FailsOnUnsatisfiedMocks) {

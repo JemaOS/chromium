@@ -14,7 +14,9 @@ import org.chromium.chrome.browser.toolbar.ToolbarManager;
 
 import javax.inject.Inject;
 
-/** Manages the visibility of the close button. */
+/**
+ * Manages the visibility of the close button.
+ */
 @ActivityScope
 public class CloseButtonVisibilityManager {
     private final Drawable mCloseButtonDrawable;

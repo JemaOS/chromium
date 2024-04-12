@@ -13,6 +13,7 @@
 #include "base/functional/callback_helpers.h"
 #include "base/notreached.h"
 #include "chrome/browser/notifications/scheduler/internal/scheduler_utils.h"
+#include "chrome/browser/notifications/scheduler/internal/stats.h"
 
 namespace notifications {
 namespace {
@@ -45,7 +46,6 @@ std::string ToDatabaseKey(SchedulerClientType type) {
     case SchedulerClientType::kTest3:
       return "Test3";
     case SchedulerClientType::kUnknown:
-    case SchedulerClientType::kDeprecatedFeatureGuide:
       NOTREACHED();
       return std::string();
     case SchedulerClientType::kWebUI:
@@ -56,6 +56,8 @@ std::string ToDatabaseKey(SchedulerClientType type) {
       return "Prefetch";
     case SchedulerClientType::kReadingList:
       return "ReadingList";
+    case SchedulerClientType::kFeatureGuide:
+      return "FeatureGuide";
   }
 }
 
@@ -89,7 +91,7 @@ void ImpressionHistoryTrackerImpl::AddImpression(
     const std::string& guid,
     const Impression::ImpressionResultMap& impression_mapping,
     const Impression::CustomData& custom_data,
-    std::optional<base::TimeDelta> ignore_timeout_duration) {
+    absl::optional<base::TimeDelta> ignore_timeout_duration) {
   DCHECK(initialized_);
   auto it = client_states_.find(type);
   if (it == client_states_.end())
@@ -171,6 +173,8 @@ void ImpressionHistoryTrackerImpl::OnStoreInitialized(
     InitCallback callback,
     bool success,
     CollectionStore<ClientState>::Entries entries) {
+  stats::LogDbInit(stats::DatabaseType::kImpressionDb, success, entries.size());
+
   if (!success) {
     std::move(callback).Run(false);
     return;
@@ -193,6 +197,7 @@ void ImpressionHistoryTrackerImpl::OnStoreInitialized(
         impressions.emplace_back(impression);
       }
     }
+    stats::LogImpressionCount(impressions.size(), type);
     entry->impressions.swap(impressions);
     client_states_.emplace(type, std::move(*it));
     MaybeUpdateDb(type);
@@ -208,7 +213,8 @@ void ImpressionHistoryTrackerImpl::SyncRegisteredClients() {
     auto client_type = it->first;
     if (!base::Contains(registered_clients_, client_type)) {
       store_->Delete(ToDatabaseKey(client_type),
-                     /*callback=*/base::DoNothing());
+                     base::BindOnce(&stats::LogDbOperation,
+                                    stats::DatabaseType::kImpressionDb));
       client_states_.erase(it++);
       continue;
     } else {
@@ -223,7 +229,8 @@ void ImpressionHistoryTrackerImpl::SyncRegisteredClients() {
 
       DCHECK(new_client_data);
       store_->Add(ToDatabaseKey(type), *new_client_data.get(),
-                  /*callback=*/base::DoNothing());
+                  base::BindOnce(&stats::LogDbOperation,
+                                 stats::DatabaseType::kImpressionDb));
       client_states_.emplace(type, std::move(new_client_data));
     }
   }
@@ -400,6 +407,7 @@ void ImpressionHistoryTrackerImpl::ApplyPositiveImpression(
     client_state->current_max_daily_show =
         client_state->suppression_info->recover_goal;
     client_state->suppression_info.reset();
+    stats::LogImpressionEvent(stats::ImpressionEvent::kSuppressionRelease);
     return;
   }
 
@@ -442,6 +450,7 @@ void ImpressionHistoryTrackerImpl::OnCustomSuppressionDurationQueried(
   client_state->current_max_daily_show = 0;
   client_state->last_negative_event_ts = now;
   client_state->negative_events_count++;
+  stats::LogImpressionEvent(stats::ImpressionEvent::kNewSuppression);
 }
 
 void ImpressionHistoryTrackerImpl::CheckSuppressionExpiration(
@@ -464,6 +473,7 @@ void ImpressionHistoryTrackerImpl::CheckSuppressionExpiration(
   // Clear suppression if fully recovered.
   client_state->suppression_info.reset();
   SetNeedsUpdate(client_state->type, true);
+  stats::LogImpressionEvent(stats::ImpressionEvent::kSuppressionExpired);
 }
 
 bool ImpressionHistoryTrackerImpl::MaybeUpdateDb(SchedulerClientType type) {
@@ -474,7 +484,8 @@ bool ImpressionHistoryTrackerImpl::MaybeUpdateDb(SchedulerClientType type) {
   bool db_updated = false;
   if (NeedsUpdate(type)) {
     store_->Update(ToDatabaseKey(type), *(it->second.get()),
-                   /*callback=*/base::DoNothing());
+                   base::BindOnce(&stats::LogDbOperation,
+                                  stats::DatabaseType::kImpressionDb));
     db_updated = true;
   }
   SetNeedsUpdate(type, false);

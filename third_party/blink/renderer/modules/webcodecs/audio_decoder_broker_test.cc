@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "third_party/blink/renderer/modules/webcodecs/audio_decoder_broker.h"
-
 #include <memory>
 #include <vector>
 
@@ -32,8 +30,9 @@
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
+
+#include "third_party/blink/renderer/modules/webcodecs/audio_decoder_broker.h"
 
 using ::testing::_;
 using ::testing::Return;
@@ -123,9 +122,8 @@ class FakeInterfaceFactory : public media::mojom::InterfaceFactory {
   void CreateAudioDecoder(
       mojo::PendingReceiver<media::mojom::AudioDecoder> receiver) override {
     audio_decoder_receivers_.Add(
-        std::make_unique<media::MojoAudioDecoderService>(
-            &mojo_media_client_, &cdm_service_context_,
-            base::SingleThreadTaskRunner::GetCurrentDefault()),
+        std::make_unique<media::MojoAudioDecoderService>(&mojo_media_client_,
+                                                         &cdm_service_context_),
         std::move(receiver));
   }
   void CreateAudioEncoder(
@@ -136,11 +134,6 @@ class FakeInterfaceFactory : public media::mojom::InterfaceFactory {
       mojo::PendingReceiver<media::mojom::VideoDecoder> receiver,
       mojo::PendingRemote<media::stable::mojom::StableVideoDecoder>
           dst_video_decoder) override {}
-#if BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
-  void CreateStableVideoDecoder(
-      mojo::PendingReceiver<media::stable::mojom::StableVideoDecoder>
-          video_decoder) override {}
-#endif  // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
   void CreateDefaultRenderer(
       const std::string& audio_device_id,
       mojo::PendingReceiver<media::mojom::Renderer> receiver) override {}
@@ -277,7 +270,6 @@ class AudioDecoderBrokerTest : public testing::Test {
   bool SupportsDecryption() { return decoder_broker_->SupportsDecryption(); }
 
  protected:
-  test::TaskEnvironment task_environment_;
   media::NullMediaLog null_media_log_;
   std::unique_ptr<AudioDecoderBroker> decoder_broker_;
   std::vector<scoped_refptr<media::AudioBuffer>> output_buffers_;

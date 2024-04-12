@@ -13,6 +13,7 @@
 #include "ui/base/models/dialog_model.h"
 #include "ui/base/models/dialog_model_field.h"
 #include "ui/views/bubble/bubble_dialog_model_host.h"
+#include "ui/views/views_features.h"
 
 void ExtensionsRequestAccessHoverCardCoordinator::ShowBubble(
     content::WebContents* web_contents,
@@ -69,9 +70,13 @@ void ExtensionsRequestAccessHoverCardCoordinator::ShowBubble(
   bubble_tracker_.SetView(bubble->GetContentsView());
 
   auto* widget = views::BubbleDialogDelegate::CreateBubble(std::move(bubble));
-  // Ensure the hover card Widget assumes a higher z-order to avoid occlusion
+  // Ensure the hover card Widget assumes the highest z-order to avoid occlusion
   // by other secondary UI Widgets
-  widget->SetZOrderSublevel(ChromeWidgetSublevel::kSublevelHoverable);
+  if (base::FeatureList::IsEnabled(views::features::kWidgetLayering)) {
+    widget->SetZOrderSublevel(ChromeWidgetSublevel::kSublevelHoverable);
+  } else {
+    widget->StackAtTop();
+  }
 
   widget->Show();
 }

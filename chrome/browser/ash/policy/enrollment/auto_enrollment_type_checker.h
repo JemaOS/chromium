@@ -5,15 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_POLICY_ENROLLMENT_AUTO_ENROLLMENT_TYPE_CHECKER_H_
 #define CHROME_BROWSER_ASH_POLICY_ENROLLMENT_AUTO_ENROLLMENT_TYPE_CHECKER_H_
 
-#include "base/functional/callback_forward.h"
-
-template <class T>
-class scoped_refptr;
-
-namespace network {
-class SharedURLLoaderFactory;
-}
-
 namespace ash::system {
 class StatisticsProvider;
 }
@@ -67,16 +58,6 @@ class AutoEnrollmentTypeChecker {
     // the system clock is not synchronized.
     kUnknownDueToMissingSystemClockSync = 4,
   };
-
-  // Returns true when class has been initialized.
-  static bool Initialized();
-
-  // Perform async initialization of this class, which requires access to the
-  // network. Users must call this method and wait until `init_callback` has
-  // been invoked before calling any other non-testing functions below.
-  static void Initialize(
-      scoped_refptr<network::SharedURLLoaderFactory> loader_factory,
-      base::OnceClosure init_callback);
 
   // Returns true when unified state determination is enabled based on
   // command-line switch, official build status and server-based kill-switch.
@@ -133,14 +114,7 @@ class AutoEnrollmentTypeChecker {
 
   // Allows to configure unified state determination kill switch. Used for
   // testing.
-  static void SetUnifiedStateDeterminationKillSwitchForTesting(bool is_killed);
-
-  // Clears unified state determination kill switch. Used for testing.
-  static void ClearUnifiedStateDeterminationKillSwitchForTesting();
-
-  // Checks if unified state determination is disabled using the server-based
-  // kill-switch. Used for testing.
-  static bool IsUnifiedStateDeterminationDisabledByKillSwitchForTesting();
+  static void SetUnifiedStateDeterminationKillSwitchForTesting(bool enabled);
 
  private:
   // Requirement for initial state determination.
@@ -166,6 +140,10 @@ class AutoEnrollmentTypeChecker {
   GetInitialStateDeterminationRequirement(
       bool is_system_clock_synchronized,
       ash::system::StatisticsProvider* statistics_provider);
+
+  // Checks if unified state determination is disabled using the server-based
+  // kill-switch.
+  static bool IsUnifiedStateDeterminationDisabledByKillSwitch();
 };
 
 }  // namespace policy

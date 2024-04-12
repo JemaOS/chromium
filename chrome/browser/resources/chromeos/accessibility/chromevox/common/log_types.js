@@ -5,7 +5,6 @@
 /**
  * @fileoverview Class definitions of log that are stored in LogStore
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
 
 import {TreeDumper} from './tree_dumper.js';
 import {QueueMode} from './tts_types.js';
@@ -158,5 +157,3 @@ export class TreeLog extends BaseLog {
     return this.tree_.treeToString();
   }
 }
-
-TestImportManager.exportForTesting(['LogType', LogType]);

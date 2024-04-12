@@ -36,6 +36,7 @@ namespace {
 bool IsSupportedFileSystemType(storage::FileSystemType type) {
   switch (type) {
     case storage::kFileSystemTypeLocal:
+    case storage::kFileSystemTypeRestrictedLocal:
     case storage::kFileSystemTypeDriveFs:
       return true;
     default:
@@ -54,7 +55,7 @@ void ReturnQueryResults(
 
 struct FileTasksNotifier::PendingFileAvailabilityTask {
   storage::FileSystemURL url;
-  raw_ptr<FileTasksNotifier::FileAvailability, DanglingUntriaged> output;
+  raw_ptr<FileTasksNotifier::FileAvailability, ExperimentalAsh> output;
   base::OnceClosure done;
 };
 

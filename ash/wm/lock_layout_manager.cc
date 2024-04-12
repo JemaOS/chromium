@@ -4,6 +4,7 @@
 
 #include "ash/wm/lock_layout_manager.h"
 
+#include "ash/keyboard/ui/keyboard_ui_controller.h"
 #include "ash/wm/lock_window_state.h"
 #include "ash/wm/window_state.h"
 #include "ash/wm/wm_event.h"
@@ -32,8 +33,7 @@ LockLayoutManager::~LockLayoutManager() {
 }
 
 void LockLayoutManager::OnWindowResized() {
-  const DisplayMetricsChangedWMEvent event(
-      display::DisplayObserver::DISPLAY_METRIC_WORK_AREA);
+  const WMEvent event(WM_EVENT_WORKAREA_BOUNDS_CHANGED);
   AdjustWindowsForWorkAreaChange(&event);
 }
 
@@ -66,6 +66,9 @@ void LockLayoutManager::OnWindowRemovedFromLayout(aura::Window* child) {
   config.overscroll_behavior = keyboard::KeyboardOverscrollBehavior::kDefault;
   keyboard::KeyboardUIController::Get()->UpdateKeyboardConfig(config);
 }
+
+void LockLayoutManager::OnChildWindowVisibilityChanged(aura::Window* child,
+                                                       bool visible) {}
 
 void LockLayoutManager::SetChildBounds(aura::Window* child,
                                        const gfx::Rect& requested_bounds) {
@@ -104,8 +107,7 @@ void LockLayoutManager::OnDisplayMetricsChanged(const display::Display& display,
   }
 
   if (changed_metrics & display::DisplayObserver::DISPLAY_METRIC_WORK_AREA) {
-    const DisplayMetricsChangedWMEvent event(
-        display::DisplayObserver::DISPLAY_METRIC_WORK_AREA);
+    const WMEvent event(WM_EVENT_WORKAREA_BOUNDS_CHANGED);
     AdjustWindowsForWorkAreaChange(&event);
   }
 }
@@ -116,10 +118,8 @@ void LockLayoutManager::OnKeyboardOccludedBoundsChanged(
 }
 
 void LockLayoutManager::AdjustWindowsForWorkAreaChange(const WMEvent* event) {
-  const DisplayMetricsChangedWMEvent* display_event =
-      event->AsDisplayMetricsChangedWMEvent();
-  CHECK(display_event->display_bounds_changed() ||
-        display_event->work_area_changed());
+  DCHECK(event->type() == WM_EVENT_DISPLAY_BOUNDS_CHANGED ||
+         event->type() == WM_EVENT_WORKAREA_BOUNDS_CHANGED);
 
   for (aura::Window* child : window_->children())
     WindowState::Get(child)->OnWMEvent(event);

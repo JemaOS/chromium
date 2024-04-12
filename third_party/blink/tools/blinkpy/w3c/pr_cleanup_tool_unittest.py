@@ -30,7 +30,6 @@ class PrCleanupToolTest(LoggingTestCase):
                         number=1234,
                         body='Change-Id: 88',
                         state='open',
-                        node_id='PR_kwDOADc1Vc5jhje_',
                         labels=[]),
         ])
         gerrit = MockGerritAPI()
@@ -56,7 +55,7 @@ class PrCleanupToolTest(LoggingTestCase):
         pr_cleanup.run(wpt_github, gerrit)
         self.assertEqual(gerrit.cls_queried, ['88'])
         self.assertEqual(wpt_github.calls, [
-            'all_provisional_pull_requests',
+            'all_pull_requests',
             'add_comment "Close this PR because the Chromium CL has been abandoned."',
             'update_pr', 'get_pr_branch', 'delete_remote_branch'
         ])
@@ -67,7 +66,6 @@ class PrCleanupToolTest(LoggingTestCase):
                         number=1234,
                         body='Change-Id: 88',
                         state='open',
-                        node_id='PR_kwDOADc1Vc5jhje_',
                         labels=[]),
         ])
         gerrit = MockGerritAPI()
@@ -92,7 +90,7 @@ class PrCleanupToolTest(LoggingTestCase):
                                  api=gerrit)
         pr_cleanup.run(wpt_github, gerrit)
         self.assertEqual(gerrit.cls_queried, ['88'])
-        self.assertEqual(wpt_github.calls, ['all_provisional_pull_requests'])
+        self.assertEqual(wpt_github.calls, ['all_pull_requests'])
 
     def test_successful_close_no_exportable_changes(self):
         wpt_github = MockWPTGitHub(pull_requests=[
@@ -100,7 +98,6 @@ class PrCleanupToolTest(LoggingTestCase):
                         number=1234,
                         body='Change-Id: 99',
                         state='open',
-                        node_id='PR_kwDOADc1Vc5jhje_',
                         labels=[]),
         ])
         gerrit = MockGerritAPI()
@@ -129,7 +126,7 @@ class PrCleanupToolTest(LoggingTestCase):
         pr_cleanup.run(wpt_github, gerrit)
         self.assertEqual(gerrit.cls_queried, ['99'])
         self.assertEqual(wpt_github.calls, [
-            'all_provisional_pull_requests',
+            'all_pull_requests',
             'add_comment "Close this PR because the Chromium'
             ' CL does not have exportable changes."', 'update_pr',
             'get_pr_branch', 'delete_remote_branch'
@@ -141,7 +138,6 @@ class PrCleanupToolTest(LoggingTestCase):
                         number=1234,
                         body='Change-Id: 88',
                         state='open',
-                        node_id='PR_kwDOADc1Vc5jhje_',
                         labels=[]),
         ])
         gerrit = MockGerritAPI(raise_error=True)
@@ -166,4 +162,4 @@ class PrCleanupToolTest(LoggingTestCase):
                                  api=gerrit)
         pr_cleanup.run(wpt_github, gerrit)
         self.assertEqual(gerrit.cls_queried, ['88'])
-        self.assertEqual(wpt_github.calls, ['all_provisional_pull_requests'])
+        self.assertEqual(wpt_github.calls, ['all_pull_requests'])

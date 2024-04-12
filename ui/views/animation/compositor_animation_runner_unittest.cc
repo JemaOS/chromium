@@ -66,9 +66,7 @@ class TestAnimationDelegateViews : public AnimationDelegateViews {
 
 }  // namespace
 
-#if BUILDFLAG(IS_CHROMEOS)
-// Tests that ui::ThroughputTracker will report for gfx::Animation. Only
-// supported on ChromeOS.
+// Tests that ui::ThroughputTracker will report for gfx::Animation.
 TEST_F(CompositorAnimationRunnerTest, ThroughputTracker) {
   WidgetAutoclosePtr widget(CreateTopLevelPlatformWidget());
   widget->Show();
@@ -135,7 +133,6 @@ TEST_F(CompositorAnimationRunnerTest, ThroughputTracker) {
   EXPECT_EQ(1, report_count);
   EXPECT_EQ(1, report_count2);
 }
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 // No DesktopAura on ChromeOS.
 // Each widget on MACOSX has its own ui::Compositor.

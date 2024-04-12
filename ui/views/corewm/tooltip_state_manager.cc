@@ -142,13 +142,21 @@ void TooltipStateManager::StartWillShowTooltipTimer(
     const base::TimeDelta show_delay,
     const base::TimeDelta hide_delay) {
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
-  // Send `show_delay` and `hide_delay` together and delegate the timer
-  // handling on Ash side.
-  tooltip_->Update(tooltip_parent_window_, trimmed_text, position_,
-                   tooltip_trigger_);
-  tooltip_->SetDelay(show_delay, hide_delay);
-  tooltip_->Show();
-#else
+  // TODO(crbug.com/1338597): Remove support check and always use this step when
+  // Ash-chrome supporting server side tooltip is spread enough.
+  if (ui::OzonePlatform::GetInstance()
+          ->GetPlatformRuntimeProperties()
+          .supports_tooltip) {
+    // Send `show_delay` and `hide_delay` together and delegate the timer
+    // handling on Ash side.
+    tooltip_->Update(tooltip_parent_window_, trimmed_text, position_,
+                     tooltip_trigger_);
+    tooltip_->SetDelay(show_delay, hide_delay);
+    tooltip_->Show();
+    return;
+  }
+#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
+
   if (!show_delay.is_zero()) {
     // Start will show tooltip timer is show_delay is non-zero.
     will_show_tooltip_timer_.Start(
@@ -163,7 +171,6 @@ void TooltipStateManager::StartWillShowTooltipTimer(
     // timer to fire before continuing for non-Lacros platforms.
     ShowNow(trimmed_text, hide_delay);
   }
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 }
 
 }  // namespace views::corewm

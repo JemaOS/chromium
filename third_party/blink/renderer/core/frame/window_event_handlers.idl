@@ -29,23 +29,25 @@
 
 // https://html.spec.whatwg.org/C/#windoweventhandlers
 
-interface mixin WindowEventHandlers {
-  attribute EventHandler onafterprint;
-  attribute EventHandler onbeforeprint;
-  attribute OnBeforeUnloadEventHandler onbeforeunload;
-  attribute EventHandler onhashchange;
-  attribute EventHandler onlanguagechange;
-  attribute EventHandler onmessage;
-  attribute EventHandler onmessageerror;
-  [RuntimeEnabled=DesktopPWAsAdditionalWindowingControls] attribute EventHandler onmove;
-  attribute EventHandler onoffline;
-  attribute EventHandler ononline;
-  attribute EventHandler onpagehide;
-  attribute EventHandler onpageshow;
-  attribute EventHandler onpopstate;
-  attribute EventHandler onrejectionhandled;
-  attribute EventHandler onstorage;
-  [RuntimeEnabled=TimeZoneChangeEvent] attribute EventHandler ontimezonechange;
-  attribute EventHandler onunhandledrejection;
-  attribute EventHandler onunload;
+[
+    LegacyTreatAsPartialInterface
+] interface mixin WindowEventHandlers {
+    attribute EventHandler onafterprint;
+    attribute EventHandler onbeforeprint;
+    attribute OnBeforeUnloadEventHandler onbeforeunload;
+    attribute EventHandler onhashchange;
+    attribute EventHandler onlanguagechange;
+    attribute EventHandler onmessage;
+    attribute EventHandler onmessageerror;
+    attribute EventHandler onoffline;
+    attribute EventHandler ononline;
+    attribute EventHandler onpagehide;
+    attribute EventHandler onpageshow;
+    attribute EventHandler onpopstate;
+    [RuntimeEnabled=Portals] attribute EventHandler onportalactivate;
+    attribute EventHandler onrejectionhandled;
+    attribute EventHandler onstorage;
+    [RuntimeEnabled=TimeZoneChangeEvent] attribute EventHandler ontimezonechange;
+    attribute EventHandler onunhandledrejection;
+    attribute EventHandler onunload;
 };

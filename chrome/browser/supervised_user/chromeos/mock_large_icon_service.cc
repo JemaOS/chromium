@@ -40,5 +40,6 @@ MockLargeIconService::MockLargeIconService() {
 MockLargeIconService::~MockLargeIconService() = default;
 
 void MockLargeIconService::StoreIconInCache() {
-  favicon_ = gfx::test::CreateImageSkia(1, 2);
+  SkBitmap bitmap = gfx::test::CreateBitmap(1, 2);
+  favicon_ = gfx::ImageSkia::CreateFrom1xBitmap(bitmap);
 }

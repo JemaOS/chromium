@@ -1,14 +1,12 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/support_tool/policy_data_collector.h"
 
 #include <map>
-#include <optional>
 #include <set>
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "base/containers/fixed_flat_map.h"
@@ -16,6 +14,7 @@
 #include "base/files/file_util.h"
 #include "base/json/json_writer.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
@@ -28,6 +27,7 @@
 #include "components/policy/core/browser/webui/json_generation.h"
 #include "components/policy/core/browser/webui/policy_status_provider.h"
 #include "components/policy/core/browser/webui/policy_webui_constants.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
 #include "components/policy/core/browser/webui/machine_level_user_cloud_policy_status_provider.h"
@@ -37,33 +37,32 @@ namespace {
 
 // Returns the PII type that `status_field` is categorised in if it's considered
 // as PII.
-std::optional<redaction::PIIType> GetPIITypeOfStatusField(
-    std::string_view status_field) {
+absl::optional<redaction::PIIType> GetPIITypeOfStatusField(
+    base::StringPiece status_field) {
   // List of keys in policy status that will be considered as PII and will be
   // redacted selectively.
-  // TODO(crbug.com/1513684): Convert to MakeFixedFlatMap().
-  static constexpr auto kPersonallyIdentifiableStatusFields =
-      base::MakeFixedFlatMap<std::string_view, redaction::PIIType>({
+  static const auto kPersonallyIdentifiableStatusFields =
+      base::MakeFixedFlatMap<base::StringPiece, redaction::PIIType>({
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
-          {policy::kDeviceIdKey, redaction::PIIType::kStableIdentifier},
-          {policy::kEnrollmentTokenKey, redaction::PIIType::kStableIdentifier},
-          {policy::kMachineKey, redaction::PIIType::kStableIdentifier},
+        {policy::kDeviceIdKey, redaction::PIIType::kStableIdentifier},
+            {policy::kEnrollmentTokenKey,
+             redaction::PIIType::kStableIdentifier},
+            {policy::kMachineKey, redaction::PIIType::kStableIdentifier},
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
-          {policy::kAssetIdKey, redaction::PIIType::kStableIdentifier},
-          // kLocationKey is the "Asset location" which is an identifier for
-          // the device that is set during enterprise enrollment or by the
-          // administrator.
-          {policy::kLocationKey, redaction::PIIType::kStableIdentifier},
-          {policy::kDirectoryApiIdKey, redaction::PIIType::kStableIdentifier},
-          {policy::kGaiaIdKey, redaction::PIIType::kGaiaID},
-          {policy::kClientIdKey, redaction::PIIType::kStableIdentifier},
-          {policy::kUsernameKey, redaction::PIIType::kEmail},
-          {policy::kEnterpriseDomainManagerKey, redaction::PIIType::kEmail},
-          {policy::kDomainKey, redaction::PIIType::kEmail}});
+            {policy::kAssetIdKey, redaction::PIIType::kStableIdentifier},
+            {policy::kLocationKey, redaction::PIIType::kLocationInfo},
+            {policy::kDirectoryApiIdKey, redaction::PIIType::kStableIdentifier},
+            {policy::kGaiaIdKey, redaction::PIIType::kGaiaID},
+            {policy::kClientIdKey, redaction::PIIType::kStableIdentifier},
+            {policy::kUsernameKey, redaction::PIIType::kEmail},
+            {policy::kEnterpriseDomainManagerKey, redaction::PIIType::kEmail}, {
+          policy::kDomainKey, redaction::PIIType::kEmail
+        }
+      });
   return kPersonallyIdentifiableStatusFields.contains(status_field)
-             ? std::make_optional(
+             ? absl::make_optional(
                    kPersonallyIdentifiableStatusFields.at(status_field))
-             : std::nullopt;
+             : absl::nullopt;
 }
 
 // Opens a file named "policies.json" in `target_directory` and writes
@@ -115,7 +114,7 @@ void PolicyDataCollector::CollectDataAndDetectPII(
   // policy status.
   DetectPIIInPolicyStatus();
 
-  std::move(on_data_collected_callback).Run(/*error=*/std::nullopt);
+  std::move(on_data_collected_callback).Run(/*error=*/absl::nullopt);
 }
 
 void PolicyDataCollector::ExportCollectedDataWithPII(
@@ -152,7 +151,7 @@ void PolicyDataCollector::OnFileWritten(
     std::move(on_exported_callback).Run(error);
     return;
   }
-  std::move(on_exported_callback).Run(/*error=*/std::nullopt);
+  std::move(on_exported_callback).Run(/*error=*/absl::nullopt);
 }
 
 void PolicyDataCollector::OnPolicyValueAndStatusChanged() {}
@@ -160,7 +159,7 @@ void PolicyDataCollector::OnPolicyValueAndStatusChanged() {}
 void PolicyDataCollector::DetectPIIInPolicyStatus() {
   for (auto entry : policy_status_) {
     for (const auto [status_key, status_value] : entry.second.GetDict()) {
-      std::optional<redaction::PIIType> pii_type =
+      absl::optional<redaction::PIIType> pii_type =
           GetPIITypeOfStatusField(status_key);
       if (!pii_type)
         continue;
@@ -182,7 +181,7 @@ void PolicyDataCollector::RedactPIIInPolicyStatus(
   for (std::pair<const std::string&, base::Value&> entry : policy_status_) {
     for (std::pair<const std::string&, base::Value&> status_pair :
          entry.second.GetDict()) {
-      std::optional<redaction::PIIType> pii_type =
+      absl::optional<redaction::PIIType> pii_type =
           GetPIITypeOfStatusField(status_pair.first);
       if (!pii_type || base::Contains(pii_types_to_keep, pii_type.value()))
         continue;

@@ -15,7 +15,6 @@
 #include "ash/public/cpp/assistant/assistant_state.h"
 #include "ash/public/cpp/test/assistant_test_api.h"
 #include "base/auto_reset.h"
-#include "base/containers/to_vector.h"
 #include "base/ranges/algorithm.h"
 #include "base/run_loop.h"
 #include "base/task/sequenced_task_runner.h"
@@ -79,7 +78,7 @@ class AssistantStatusWaiter : private AssistantStateObserver {
       std::move(quit_loop_).Run();
   }
 
-  const raw_ptr<AssistantState> state_;
+  const raw_ptr<AssistantState, ExperimentalAsh> state_;
   AssistantStatus const expected_status_;
 
   base::OnceClosure quit_loop_;
@@ -150,7 +149,7 @@ class ResponseWaiter : private views::ViewObserver {
   }
 
   std::string GetResponseTextRecursive(views::View* view) const {
-    std::optional<std::string> response_maybe = GetResponseTextOfView(view);
+    absl::optional<std::string> response_maybe = GetResponseTextOfView(view);
     if (response_maybe) {
       return response_maybe.value() + "\n";
     } else {
@@ -161,10 +160,10 @@ class ResponseWaiter : private views::ViewObserver {
     }
   }
 
-  virtual std::optional<std::string> GetResponseTextOfView(
+  virtual absl::optional<std::string> GetResponseTextOfView(
       views::View* view) const = 0;
 
-  raw_ptr<views::View> parent_view_;
+  raw_ptr<views::View, ExperimentalAsh> parent_view_;
   base::OnceClosure quit_loop_;
 };
 
@@ -219,12 +218,12 @@ class TypedResponseWaiter : public ResponseWaiter {
 
  private:
   // ResponseWaiter overrides:
-  std::optional<std::string> GetResponseTextOfView(
+  absl::optional<std::string> GetResponseTextOfView(
       views::View* view) const override {
     if (view->GetClassName() == class_name_) {
       return static_cast<AssistantUiElementView*>(view)->ToStringForTesting();
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   const std::string class_name_;
@@ -246,11 +245,11 @@ class TypedExpectedResponseWaiter : public ExpectedResponseWaiter {
 
  private:
   // ExpectedResponseWaiter overrides:
-  std::optional<std::string> GetResponseTextOfView(
+  absl::optional<std::string> GetResponseTextOfView(
       views::View* view) const override {
     if (view->GetClassName() == class_name_)
       return static_cast<AssistantUiElementView*>(view)->ToStringForTesting();
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   const std::string class_name_;
@@ -291,7 +290,7 @@ class CallbackViewHierarchyChangedObserver : views::ViewObserver {
  private:
   base::RepeatingCallback<void(const views::ViewHierarchyChangedDetails&)>
       callback_;
-  raw_ptr<views::View> parent_view_;
+  raw_ptr<views::View, ExperimentalAsh> parent_view_;
 };
 
 }  // namespace
@@ -361,7 +360,7 @@ class LoggedInUserMixin : public InProcessBrowserTestMixin {
   FakeGaiaMixin fake_gaia_;
 
   LoginManagerMixin::TestUserInfo user_;
-  const raw_ptr<InProcessBrowserTest> test_base_;
+  const raw_ptr<InProcessBrowserTest, ExperimentalAsh> test_base_;
   UserContext user_context_;
   std::string access_token_{FakeGaiaMixin::kFakeAllScopeAccessToken};
 };
@@ -456,8 +455,8 @@ T AssistantTestMixin::SyncCall(
   return result;
 }
 
-template std::optional<double> AssistantTestMixin::SyncCall(
-    base::OnceCallback<void(base::OnceCallback<void(std::optional<double>)>)>
+template absl::optional<double> AssistantTestMixin::SyncCall(
+    base::OnceCallback<void(base::OnceCallback<void(absl::optional<double>)>)>
         func);
 
 void AssistantTestMixin::ExpectCardResponse(
@@ -529,12 +528,16 @@ std::vector<base::TimeDelta> AssistantTestMixin::ExpectAndReturnTimersResponse(
                         base::SplitResult::SPLIT_WANT_ALL);
 
   // Transform the textual representation of our timers into TimeDelta objects.
-  return base::ToVector(
-      timers_as_strings, [](const std::string& timer_as_string) {
-        int seconds_remaining = 0;
-        base::StringToInt(timer_as_string, &seconds_remaining);
-        return base::Seconds(seconds_remaining);
-      });
+  std::vector<base::TimeDelta> timers;
+  base::ranges::transform(timers_as_strings, std::back_inserter(timers),
+                          [](const std::string& timer_as_string) {
+                            int seconds_remaining = 0;
+                            base::StringToInt(timer_as_string,
+                                              &seconds_remaining);
+                            return base::Seconds(seconds_remaining);
+                          });
+
+  return timers;
 }
 
 void AssistantTestMixin::PressAssistantKey() {

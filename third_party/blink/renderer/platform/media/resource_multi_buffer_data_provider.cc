@@ -7,7 +7,6 @@
 #include <stddef.h>
 #include <utility>
 
-#include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/location.h"
@@ -217,7 +216,7 @@ void ResourceMultiBufferDataProvider::DidReceiveResponse(
 #endif
   DCHECK(active_loader_);
 
-  scoped_refptr<UrlData> destination_url_data(url_data_.get());
+  scoped_refptr<UrlData> destination_url_data(url_data_);
 
   if (!redirects_to_.is_empty()) {
     destination_url_data = url_data_->url_index()->GetByUrl(
@@ -261,9 +260,8 @@ void ResourceMultiBufferDataProvider::DidReceiveResponse(
     // Check to see whether the server supports byte ranges.
     std::string accept_ranges =
         response.HttpHeaderField("Accept-Ranges").Utf8();
-    if (base::Contains(accept_ranges, "bytes")) {
+    if (accept_ranges.find("bytes") != std::string::npos)
       destination_url_data->set_range_supported();
-    }
 
     // If we have verified the partial response and it is correct.
     // It's also possible for a server to support range requests
@@ -323,12 +321,12 @@ void ResourceMultiBufferDataProvider::DidReceiveResponse(
   destination_url_data->set_passed_timing_allow_origin_check(
       response.TimingAllowPassed());
 
-  if (destination_url_data != url_data_.get()) {
+  if (destination_url_data != url_data_) {
     // At this point, we've encountered a redirect, or found a better url data
     // instance for the data that we're about to download.
 
     // First, let's take a ref on the current url data.
-    scoped_refptr<UrlData> old_url_data(url_data_.get());
+    scoped_refptr<UrlData> old_url_data(url_data_);
     destination_url_data->Use();
 
     // Take ownership of ourselves. (From the multibuffer)
@@ -451,7 +449,7 @@ void ResourceMultiBufferDataProvider::DidFinishLoading() {
   fifo_.push_back(media::DataBuffer::CreateEOSBuffer());
 
   if (url_data_->url_index()) {
-    url_data_->url_index()->TryInsert(url_data_.get());
+    url_data_->url_index()->TryInsert(url_data_);
   }
 
   DCHECK(Available());

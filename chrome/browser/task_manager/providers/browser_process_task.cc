@@ -7,7 +7,7 @@
 #include "chrome/browser/task_manager/task_manager_observer.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/theme_resources.h"
-#include "sql/sql_memory_dump_provider.h"
+#include "third_party/sqlite/sqlite3.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace task_manager {
@@ -36,9 +36,8 @@ void BrowserProcessTask::Refresh(const base::TimeDelta& update_interval,
                                  int64_t refresh_flags) {
   Task::Refresh(update_interval, refresh_flags);
 
-  if (refresh_flags & REFRESH_TYPE_SQLITE_MEMORY) {
-    used_sqlite_memory_ = sql::SqlMemoryDumpProvider::GetMemoryUse();
-  }
+  if ((refresh_flags & REFRESH_TYPE_SQLITE_MEMORY) != 0)
+    used_sqlite_memory_ = static_cast<int64_t>(sqlite3_memory_used());
 }
 
 Task::Type BrowserProcessTask::GetType() const {

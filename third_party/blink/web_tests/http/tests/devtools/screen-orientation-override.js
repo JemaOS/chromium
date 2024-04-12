@@ -2,17 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
-import * as ProtocolClient from 'devtools/core/protocol_client/protocol_client.js';
-
 (async function() {
   TestRunner.addResult(`Test screen orientation override.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
 
   await TestRunner.navigatePromise('resources/screen-orientation-resource.html');
 
-  ProtocolClient.InspectorBackend.test.suppressRequestErrors = false;
+  ProtocolClient.test.suppressRequestErrors = false;
   function addDumpResult(next) {
     TestRunner.evaluateInPage('dump()', dumpCallback);
 

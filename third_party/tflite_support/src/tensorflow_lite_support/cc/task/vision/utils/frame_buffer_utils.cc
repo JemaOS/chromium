@@ -22,8 +22,8 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "absl/memory/memory.h"  // from @com_google_absl
-#include "absl/status/status.h"  // from @com_google_absl
+#include "absl/memory/memory.h"       // from @com_google_absl
+#include "absl/status/status.h"       // from @com_google_absl
 #include "absl/strings/str_format.h"  // from @com_google_absl
 #include "tensorflow/lite/kernels/internal/compatibility.h"
 #include "tensorflow/lite/kernels/op_macros.h"
@@ -91,7 +91,8 @@ static int GetOrientationIndex(FrameBuffer::Orientation orientation) {
 // The new box origin is (x:box.origin_y, y:width - (box.origin_x + box.width).
 // The new box dimension is (w: box.height, h: box.width).
 //
-static BoundingBox RotateBoundingBox(const BoundingBox& box, int angle,
+static BoundingBox RotateBoundingBox(const BoundingBox& box,
+                                     int angle,
                                      FrameBuffer::Dimension frame_dimension) {
   int rx = box.origin_x(), ry = box.origin_y(), rw = box.width(),
       rh = box.height();
@@ -130,9 +131,12 @@ static BoundingBox RotateBoundingBox(const BoundingBox& box, int angle,
 // in counterclockwise degree in one of the values [0, 90, 180, 270].
 //
 // See `RotateBoundingBox` above for more details.
-static void RotateCoordinates(int from_x, int from_y, int angle,
+static void RotateCoordinates(int from_x,
+                              int from_y,
+                              int angle,
                               const FrameBuffer::Dimension& frame_dimension,
-                              int* to_x, int* to_y) {
+                              int* to_x,
+                              int* to_y) {
   switch (angle) {
     case 0:
       *to_x = from_x;
@@ -199,7 +203,10 @@ BoundingBox OrientBoundingBox(const BoundingBox& from_box,
 }
 
 BoundingBox OrientAndDenormalizeBoundingBox(
-    float from_left, float from_top, float from_right, float from_bottom,
+    float from_left,
+    float from_top,
+    float from_right,
+    float from_bottom,
     FrameBuffer::Orientation from_orientation,
     FrameBuffer::Orientation to_orientation,
     FrameBuffer::Dimension from_dimension) {
@@ -214,10 +221,12 @@ BoundingBox OrientAndDenormalizeBoundingBox(
   return to_box;
 }
 
-void OrientCoordinates(int from_x, int from_y,
+void OrientCoordinates(int from_x,
+                       int from_y,
                        FrameBuffer::Orientation from_orientation,
                        FrameBuffer::Orientation to_orientation,
-                       FrameBuffer::Dimension from_dimension, int* to_x,
+                       FrameBuffer::Dimension from_dimension,
+                       int* to_x,
                        int* to_y) {
   *to_x = from_x;
   *to_y = from_y;
@@ -298,15 +307,19 @@ bool RequireDimensionSwap(FrameBuffer::Orientation from_orientation,
   return params.rotation_angle_deg == 90 || params.rotation_angle_deg == 270;
 }
 
-absl::Status FrameBufferUtils::Crop(const FrameBuffer& buffer, int x0, int y0,
-                                    int x1, int y1,
+absl::Status FrameBufferUtils::Crop(const FrameBuffer& buffer,
+                                    int x0,
+                                    int y0,
+                                    int x1,
+                                    int y1,
                                     FrameBuffer* output_buffer) {
   TFLITE_DCHECK(utils_ != nullptr);
   return utils_->Crop(buffer, x0, y0, x1, y1, output_buffer);
 }
 
 FrameBuffer::Dimension FrameBufferUtils::GetSize(
-    const FrameBuffer& buffer, const FrameBufferOperation& operation) {
+    const FrameBuffer& buffer,
+    const FrameBufferOperation& operation) {
   FrameBuffer::Dimension dimension = buffer.dimension();
   if (absl::holds_alternative<OrientOperation>(operation)) {
     OrientParams params =
@@ -327,7 +340,8 @@ FrameBuffer::Dimension FrameBufferUtils::GetSize(
 }
 
 std::vector<FrameBuffer::Plane> FrameBufferUtils::GetPlanes(
-    const uint8* buffer, FrameBuffer::Dimension dimension,
+    const uint8* buffer,
+    FrameBuffer::Dimension dimension,
     FrameBuffer::Format format) {
   std::vector<FrameBuffer::Plane> planes;
   switch (format) {
@@ -378,7 +392,8 @@ std::vector<FrameBuffer::Plane> FrameBufferUtils::GetPlanes(
 }
 
 FrameBuffer::Orientation FrameBufferUtils::GetOrientation(
-    const FrameBuffer& buffer, const FrameBufferOperation& operation) {
+    const FrameBuffer& buffer,
+    const FrameBufferOperation& operation) {
   if (absl::holds_alternative<OrientOperation>(operation)) {
     return absl::get<OrientOperation>(operation).to_orientation;
   }
@@ -386,7 +401,8 @@ FrameBuffer::Orientation FrameBufferUtils::GetOrientation(
 }
 
 FrameBuffer::Format FrameBufferUtils::GetFormat(
-    const FrameBuffer& buffer, const FrameBufferOperation& operation) {
+    const FrameBuffer& buffer,
+    const FrameBufferOperation& operation) {
   if (absl::holds_alternative<ConvertOperation>(operation)) {
     return absl::get<ConvertOperation>(operation).to_format;
   }
@@ -398,22 +414,22 @@ absl::Status FrameBufferUtils::Execute(const FrameBuffer& buffer,
                                        FrameBuffer* output_buffer) {
   if (absl::holds_alternative<CropResizeOperation>(operation)) {
     const auto& params = absl::get<CropResizeOperation>(operation);
-    TFLITE_RETURN_IF_ERROR(
+    RETURN_IF_ERROR(
         Crop(buffer, params.crop_origin_x, params.crop_origin_y,
              (params.crop_dimension.width + params.crop_origin_x - 1),
              (params.crop_dimension.height + params.crop_origin_y - 1),
              output_buffer));
   } else if (absl::holds_alternative<UniformCropResizeOperation>(operation)) {
     const auto& params = absl::get<UniformCropResizeOperation>(operation);
-    TFLITE_RETURN_IF_ERROR(
+    RETURN_IF_ERROR(
         Crop(buffer, params.crop_origin_x, params.crop_origin_y,
              (params.crop_dimension.width + params.crop_origin_x - 1),
              (params.crop_dimension.height + params.crop_origin_y - 1),
              output_buffer));
   } else if (absl::holds_alternative<ConvertOperation>(operation)) {
-    TFLITE_RETURN_IF_ERROR(Convert(buffer, output_buffer));
+    RETURN_IF_ERROR(Convert(buffer, output_buffer));
   } else if (absl::holds_alternative<OrientOperation>(operation)) {
-    TFLITE_RETURN_IF_ERROR(Orient(buffer, output_buffer));
+    RETURN_IF_ERROR(Orient(buffer, output_buffer));
   } else {
     return absl::UnimplementedError(absl::StrFormat(
         "FrameBufferOperation %i is not supported.", operation.index()));
@@ -428,7 +444,8 @@ absl::Status FrameBufferUtils::Resize(const FrameBuffer& buffer,
 }
 
 absl::Status FrameBufferUtils::ResizeNearestNeighbor(
-    const FrameBuffer& buffer, FrameBuffer* output_buffer) {
+    const FrameBuffer& buffer,
+    FrameBuffer* output_buffer) {
   TFLITE_DCHECK(utils_ != nullptr);
   return utils_->ResizeNearestNeighbor(buffer, output_buffer);
 }
@@ -494,7 +511,7 @@ absl::Status FrameBufferUtils::Orient(const FrameBuffer& buffer,
                 output_buffer->format()),
       output_buffer->dimension(), buffer.format(), buffer.orientation());
 
-  TFLITE_RETURN_IF_ERROR(utils_->Rotate(buffer, params.rotation_angle_deg,
+  RETURN_IF_ERROR(utils_->Rotate(buffer, params.rotation_angle_deg,
                                  tmp_frame_buffer.get()));
   if (params.flip == OrientParams::FlipType::kHorizontal) {
     return utils_->FlipHorizontally(*tmp_frame_buffer, output_buffer);
@@ -517,7 +534,7 @@ absl::Status FrameBufferUtils::Execute(
   std::unique_ptr<uint8[]> buffer1;
   std::unique_ptr<uint8[]> buffer2;
 
-  for (size_t i = 0; i < operations.size(); i++) {
+  for (int i = 0; i < operations.size(); i++) {
     const FrameBufferOperation& operation = operations[i];
 
     // The first command's input is always passed in `buffer`. Before
@@ -578,14 +595,16 @@ absl::Status FrameBufferUtils::Execute(
       temp_frame_buffer = FrameBuffer(planes, new_size, new_format,
                                       new_orientation, buffer.timestamp());
     }
-    TFLITE_RETURN_IF_ERROR(Execute(input_frame_buffer, operation, &temp_frame_buffer));
+    RETURN_IF_ERROR(Execute(input_frame_buffer, operation, &temp_frame_buffer));
   }
   return absl::OkStatus();
 }
 
 absl::Status FrameBufferUtils::Preprocess(
-    const FrameBuffer& buffer, absl::optional<BoundingBox> bounding_box,
-    FrameBuffer* output_buffer, bool uniform_resizing) {
+    const FrameBuffer& buffer,
+    absl::optional<BoundingBox> bounding_box,
+    FrameBuffer* output_buffer,
+    bool uniform_resizing) {
   std::vector<FrameBufferOperation> frame_buffer_operations;
   // Handle cropping and resizing.
   bool needs_dimension_swap =
@@ -652,9 +671,9 @@ absl::Status FrameBufferUtils::Preprocess(
   // Execute the processing pipeline.
   if (frame_buffer_operations.empty()) {
     // Using resize to perform copy.
-    TFLITE_RETURN_IF_ERROR(Resize(buffer, output_buffer));
+    RETURN_IF_ERROR(Resize(buffer, output_buffer));
   } else {
-    TFLITE_RETURN_IF_ERROR(Execute(buffer, frame_buffer_operations, output_buffer));
+    RETURN_IF_ERROR(Execute(buffer, frame_buffer_operations, output_buffer));
   }
   return absl::OkStatus();
 }

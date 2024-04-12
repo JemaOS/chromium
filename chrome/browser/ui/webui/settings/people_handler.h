@@ -20,8 +20,8 @@
 #include "components/prefs/pref_change_registrar.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_service_observer.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_service_observer.h"
 #include "content/public/browser/web_contents_observer.h"
 
 class LoginUIService;
@@ -79,8 +79,6 @@ class PeopleHandler : public SettingsPageUIHandler,
   FRIEND_TEST_ALL_PREFIXES(PeopleHandlerTest,
                            ShowSetupCustomPassphraseRequired);
   FRIEND_TEST_ALL_PREFIXES(PeopleHandlerTest,
-                           OngoingSetupCustomPassphraseRequired);
-  FRIEND_TEST_ALL_PREFIXES(PeopleHandlerTest,
                            ShowSetupTrustedVaultKeysRequired);
   FRIEND_TEST_ALL_PREFIXES(PeopleHandlerTest, ShowSetupEncryptAll);
   FRIEND_TEST_ALL_PREFIXES(PeopleHandlerTest, ShowSetupEncryptAllDisallowed);
@@ -118,7 +116,8 @@ class PeopleHandler : public SettingsPageUIHandler,
                            DashboardClearWhileSettingsOpen_ConfirmSoon);
   FRIEND_TEST_ALL_PREFIXES(PeopleHandlerTest,
                            DashboardClearWhileSettingsOpen_ConfirmLater);
-  FRIEND_TEST_ALL_PREFIXES(PeopleHandlerDiceTest, StoredAccountsList);
+  FRIEND_TEST_ALL_PREFIXES(PeopleHandlerDiceUnifiedConsentTest,
+                           StoredAccountsList);
   FRIEND_TEST_ALL_PREFIXES(PeopleHandlerGuestModeTest, GetStoredAccountsList);
   FRIEND_TEST_ALL_PREFIXES(PeopleHandlerTest, TurnOffSync);
   FRIEND_TEST_ALL_PREFIXES(PeopleHandlerTest, GetStoredAccountsList);
@@ -129,7 +128,12 @@ class PeopleHandler : public SettingsPageUIHandler,
                            GetStoredAccountsList);
 #if DCHECK_IS_ON()
   FRIEND_TEST_ALL_PREFIXES(PeopleHandlerMainProfile, DeleteProfileCrashes);
+  FRIEND_TEST_ALL_PREFIXES(PeopleHandlerSignoutTest, RevokeSyncNotAllowed);
+  FRIEND_TEST_ALL_PREFIXES(PeopleHandlerSignoutTest, SignoutNotAllowedSyncOff);
 #endif
+  FRIEND_TEST_ALL_PREFIXES(PeopleHandlerSignoutTest, SignoutNotAllowedSyncOn);
+  FRIEND_TEST_ALL_PREFIXES(PeopleHandlerSignoutTest, SignoutWithSyncOff);
+  FRIEND_TEST_ALL_PREFIXES(PeopleHandlerSignoutTest, SignoutWithSyncOn);
 
   // SettingsPageUIHandler implementation.
   void RegisterMessages() override;
@@ -181,8 +185,6 @@ class PeopleHandler : public SettingsPageUIHandler,
 #endif
 #if BUILDFLAG(ENABLE_DICE_SUPPORT) || BUILDFLAG(IS_CHROMEOS_LACROS)
   void HandleSignout(const base::Value::List& args);
-  void HandleTurnOffSync(bool delete_profile,
-                         bool is_clear_primary_account_allowed);
 #endif
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
   void HandlePauseSync(const base::Value::List& args);
@@ -231,7 +233,7 @@ class PeopleHandler : public SettingsPageUIHandler,
   void InitializeSyncBlocker();
 
   // Weak pointer.
-  raw_ptr<Profile, DanglingUntriaged> profile_;
+  raw_ptr<Profile> profile_;
 
   // Prevents Sync from running until configuration is complete.
   std::unique_ptr<syncer::SyncSetupInProgressHandle> sync_blocker_;
@@ -246,7 +248,7 @@ class PeopleHandler : public SettingsPageUIHandler,
   std::unique_ptr<base::OneShotTimer> engine_start_timer_;
 
   // Used to listen for pref changes to allow or disallow signin.
-  std::unique_ptr<PrefChangeRegistrar> profile_pref_registrar_;
+  PrefChangeRegistrar profile_pref_registrar_;
 
   // Manages observer lifetimes.
   base::ScopedObservation<signin::IdentityManager,

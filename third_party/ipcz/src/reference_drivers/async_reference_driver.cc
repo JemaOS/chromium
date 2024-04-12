@@ -211,11 +211,11 @@ IpczResult IPCZ_API CreateTransports(IpczDriverHandle transport0,
 }
 
 IpczResult IPCZ_API ActivateTransport(IpczDriverHandle transport,
-                                      IpczHandle listener,
+                                      IpczHandle ipcz_transport,
                                       IpczTransportActivityHandler handler,
                                       uint32_t,
                                       const void*) {
-  AsyncTransport::FromHandle(transport)->Activate(listener, handler);
+  AsyncTransport::FromHandle(transport)->Activate(ipcz_transport, handler);
   return IPCZ_RESULT_OK;
 }
 
@@ -242,7 +242,7 @@ IpczResult IPCZ_API SerializeWithForcedBrokering(IpczDriverHandle handle,
                                                  IpczDriverHandle transport,
                                                  uint32_t flags,
                                                  const void* options,
-                                                 volatile void* data,
+                                                 void* data,
                                                  size_t* num_bytes,
                                                  IpczDriverHandle* handles,
                                                  size_t* num_handles) {

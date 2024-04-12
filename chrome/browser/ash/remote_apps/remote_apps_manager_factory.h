@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_REMOTE_APPS_REMOTE_APPS_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_ASH_REMOTE_APPS_REMOTE_APPS_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/ash/remote_apps/remote_apps_manager.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
@@ -27,7 +27,7 @@ class RemoteAppsManagerFactory : public ProfileKeyedServiceFactory {
   static RemoteAppsManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<RemoteAppsManagerFactory>;
+  friend struct base::DefaultSingletonTraits<RemoteAppsManagerFactory>;
 
   RemoteAppsManagerFactory();
   RemoteAppsManagerFactory(const RemoteAppsManagerFactory&) = delete;
@@ -35,7 +35,7 @@ class RemoteAppsManagerFactory : public ProfileKeyedServiceFactory {
   ~RemoteAppsManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;

@@ -11,7 +11,6 @@
 #include "ash/components/arc/arc_features.h"
 #include "ash/components/arc/arc_util.h"
 #include "ash/public/cpp/app_types_util.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
 #include "base/feature_list.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
@@ -41,6 +40,7 @@
 #include "chrome/browser/sharesheet/sharesheet_service_factory.h"
 #include "chrome/browser/sharesheet/sharesheet_types.h"
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
 #include "chrome/browser/webshare/prepare_directory_task.h"
 #include "chrome/common/chrome_paths_internal.h"
 #include "components/services/app_service/public/cpp/intent.h"
@@ -140,8 +140,8 @@ void DeleteFilesAndMonikers(const base::FilePath& file_path,
                              base::BindOnce(&DeletePathAndFiles, file_path));
 }
 
-std::optional<fusebox::Moniker> ConvertToMoniker(Profile* profile,
-                                                 const GURL& content_url) {
+absl::optional<fusebox::Moniker> ConvertToMoniker(Profile* profile,
+                                                  const GURL& content_url) {
   GURL external_file_url = arc::ArcUrlToExternalFileUrl(content_url);
 
   const base::FilePath virtual_path =
@@ -155,13 +155,13 @@ std::optional<fusebox::Moniker> ConvertToMoniker(Profile* profile,
               storage::kFileSystemTypeExternal, virtual_path);
   if (!fs_url.is_valid()) {
     LOG(ERROR) << "Failed to create moniker for invalid FileSystemURL.";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   fusebox::Server* fusebox_server = fusebox::Server::GetInstance();
   if (!fusebox_server) {
     LOG(ERROR) << "FuseBox server was unavailable when creating moniker.";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return fusebox_server->CreateMoniker(fs_url, /*read_only=*/true);
@@ -176,7 +176,7 @@ bool IsValidArcWindow(aura::Window* const window, uint32_t task_id) {
     return false;
   }
 
-  std::optional<int> maybe_task_id = arc::GetWindowTaskId(window);
+  absl::optional<int> maybe_task_id = arc::GetWindowTaskId(window);
   if (!maybe_task_id.has_value() || maybe_task_id.value() < 0 ||
       static_cast<uint32_t>(maybe_task_id.value()) != task_id) {
     return false;
@@ -359,7 +359,7 @@ NearbyShareSessionImpl::ConvertShareIntentInfoToMonikerFileIntent() {
 
   std::vector<apps::IntentFilePtr> files;
   for (const auto& file_info : *share_info_->files) {
-    std::optional<fusebox::Moniker> moniker =
+    absl::optional<fusebox::Moniker> moniker =
         ConvertToMoniker(profile_, file_info->content_uri);
     if (!moniker.has_value()) {
       return nullptr;
@@ -401,8 +401,8 @@ void NearbyShareSessionImpl::OnPreparedDirectory(base::File::Error result) {
     return;
   }
 
-  // PrepareDirectoryTask can sometimes be flaky but the error does not affect
-  // functionality. Log a warning when this happens and continue.
+  // TODO(b/191232168): Figure out why PrepareDirectoryTask is flaky. Ignoring
+  // the error seem to always work otherwise will sometimes return error.
   PLOG_IF(WARNING, result != base::File::FILE_OK)
       << "Prepare Directory was not successful";
 
@@ -466,7 +466,7 @@ void NearbyShareSessionImpl::OnFileStreamingStarted() {
 }
 
 void NearbyShareSessionImpl::ShowNearbyShareBubbleInArcWindow(
-    std::optional<base::File::Error> result) {
+    absl::optional<base::File::Error> result) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   DCHECK(arc_window_);
 

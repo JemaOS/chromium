@@ -10,10 +10,9 @@
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
 #include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_url_info.h"
 #include "chrome/browser/web_applications/test/web_app_icon_waiter.h"
-#include "components/webapps/common/web_app_id.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/url_loader_interceptor.h"
 #include "net/base/net_errors.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -24,10 +23,8 @@ namespace {
 
 base::flat_map</*error code*/ net::Error, /*error message*/ std::string>
     kTestCases{
-        {net::ERR_INVALID_WEB_BUNDLE, "This application is missing or damaged"},
-        {net::ERR_CONNECTION_REFUSED,
-         "The development server for this application cannot be reached"},
-        {net::ERR_INVALID_URL, "net::ERR_INVALID_URL"},
+        {net::ERR_INTERNET_DISCONNECTED, "You're offline"},
+        {net::ERR_INVALID_URL, "DEFAULT IWA ERROR PAGE"},
     };
 
 }  // namespace
@@ -45,7 +42,7 @@ class IsolatedWebAppErrorPageTest : public IsolatedWebAppBrowserTestHarness {
   }
 
   // Navigates IWA and fails with error
-  Browser* LaunchIwaAndFailWithError(const webapps::AppId& app_id,
+  Browser* LaunchIwaAndFailWithError(const AppId& app_id,
                                      const url::Origin& iwa_origin,
                                      net::Error error_code) {
     GURL starting_url = iwa_origin.GetURL().Resolve("/index.html");

@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/cancelable_callback.h"
@@ -21,6 +20,7 @@
 #include "chromeos/ash/components/network/network_state.h"
 #include "chromeos/ash/components/network/network_state_handler.h"
 #include "chromeos/ash/components/network/network_state_handler_observer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
@@ -68,6 +68,9 @@ class NetworkStateInformer : public NetworkStateHandlerObserver,
   std::string network_path() const { return network_path_; }
 
   static std::string GetNetworkName(const std::string& service_path);
+  static bool IsOnline(State state, NetworkError::ErrorReason reason);
+  static bool IsBehindCaptivePortal(State state,
+                                    NetworkError::ErrorReason reason);
   static bool IsProxyError(State state, NetworkError::ErrorReason reason);
 
  private:
@@ -82,7 +85,7 @@ class NetworkStateInformer : public NetworkStateHandlerObserver,
 
   State state_;
   std::string network_path_;
-  std::optional<base::Value::Dict> proxy_config_;
+  absl::optional<base::Value::Dict> proxy_config_;
 
   base::ObserverList<NetworkStateInformerObserver>::Unchecked observers_;
 

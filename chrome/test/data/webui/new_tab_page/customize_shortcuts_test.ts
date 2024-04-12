@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
 import 'chrome://new-tab-page/lazy_load.js';
 
-import type {CustomizeShortcutsElement} from 'chrome://new-tab-page/lazy_load.js';
+import {CustomizeShortcutsElement} from 'chrome://new-tab-page/lazy_load.js';
 import {NewTabPageProxy} from 'chrome://new-tab-page/new_tab_page.js';
 import {PageCallbackRouter, PageHandlerRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {TestMock} from 'chrome://webui-test/test_mock.js';
+import {TestMock} from 'chrome://webui-test/test_mock.js';
 
 import {installMock} from './test_support.js';
 
@@ -79,10 +80,8 @@ suite('NewTabPageCustomizeShortcutsTest', () => {
     customizeShortcuts.$.optionMostVisitedButton.click();
     assertUseMostVisited();
     customizeShortcuts.$.hideToggle.click();
-    await customizeShortcuts.$.hideToggle.updateComplete;
     assertHidden();
     customizeShortcuts.$.hideToggle.click();
-    await customizeShortcuts.$.hideToggle.updateComplete;
     assertUseMostVisited();
   });
 
@@ -115,7 +114,6 @@ suite('NewTabPageCustomizeShortcutsTest', () => {
         /* customLinksEnabled= */ true, /* shortcutsVisible= */ true);
     assertCustomLinksEnabled();
     customizeShortcuts.$.hideToggle.click();
-    await customizeShortcuts.$.hideToggle.updateComplete;
     const setSettingsCalled = handler.whenCalled('setMostVisitedSettings');
     customizeShortcuts.apply();
     const [customLinksEnabled, visible] = await setSettingsCalled;

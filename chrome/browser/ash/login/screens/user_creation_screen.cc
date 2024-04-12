@@ -15,22 +15,16 @@
 #include "chrome/browser/ui/webui/ash/login/user_creation_screen_handler.h"
 #include "chromeos/ash/components/network/network_state.h"
 #include "chromeos/ash/components/network/network_state_handler.h"
+#include "jemaos/switches/account/account_switches.h"
 
 namespace ash {
 
 namespace {
 
 constexpr char kUserActionSignIn[] = "signin";
-constexpr char kUserActionAddChild[] = "add-child";
+constexpr char kUserActionChildSignIn[] = "child-signin";
+constexpr char kUserActionChildAccountCreate[] = "child-account-create";
 constexpr char kUserActionCancel[] = "cancel";
-
-// The following user actions are only possible when `OobeSoftwareUpdate` flag
-// is enabled.
-constexpr char kUserActionSignInTriage[] = "signin-triage";
-constexpr char kUserActionSignInSchool[] = "signin-school";
-constexpr char kUserActionEnroll[] = "enroll";
-constexpr char kUserActionTriage[] = "triage";
-constexpr char kUserActionChildSetup[] = "child-setup";
 
 UserCreationScreen::UserCreationScreenExitTestDelegate* test_exit_delegate =
     nullptr;
@@ -42,20 +36,16 @@ std::string UserCreationScreen::GetResultString(Result result) {
   switch (result) {
     case Result::SIGNIN:
       return "SignIn";
-    case Result::SIGNIN_TRIAGE:
-      return "SignInTriage";
-    case Result::ADD_CHILD:
-      return "AddChild";
-    case Result::ENTERPRISE_ENROLL_TRIAGE:
-      return "EnterpriseEnrollTriage";
-    case Result::ENTERPRISE_ENROLL_SHORTCUT:
-      return "EnterpriseEnrollShortcut";
+    case Result::CHILD_SIGNIN:
+      return "SignInAsChild";
+    case Result::CHILD_ACCOUNT_CREATE:
+      return "CreateChildAccount";
+    case Result::ENTERPRISE_ENROLL:
+      return "EnterpriseEnroll";
     case Result::KIOSK_ENTERPRISE_ENROLL:
       return "KioskEnterpriseEnroll";
     case Result::CANCEL:
       return "Cancel";
-    case Result::SIGNIN_SCHOOL:
-      return "SignInSchool";
     case Result::SKIPPED:
       return BaseScreen::kNotApplicable;
   }
@@ -83,14 +73,15 @@ void UserCreationScreen::SetUserCreationScreenExitTestDelegate(
 }
 
 bool UserCreationScreen::MaybeSkip(WizardContext& context) {
-  const bool is_managed = g_browser_process->platform_part()
-                              ->browser_policy_connector_ash()
-                              ->IsDeviceEnterpriseManaged();
-  context.is_user_creation_enabled = !is_managed;
-  if (context.skip_to_login_for_tests || is_managed) {
+  if (g_browser_process->platform_part()
+          ->browser_policy_connector_ash()
+          ->IsDeviceEnterpriseManaged() ||
+      context.skip_to_login_for_tests) {
+    context.is_user_creation_enabled = false;
     RunExitCallback(Result::SKIPPED);
     return true;
   }
+  context.is_user_creation_enabled = true;
   return false;
 }
 
@@ -105,8 +96,10 @@ void UserCreationScreen::ShowImpl() {
   // Back button is only available in login screen (add user flow) which is
   // indicated by if the device has users. Back button is hidden in the oobe
   // flow.
+  // ---***JEMAOS BEGIN***---
   view_->SetIsBackButtonVisible(
-      LoginDisplayHost::default_host()->HasUserPods());
+      LoginDisplayHost::default_host()->HasUserPods() || !jemaos::switches::IsJemaAccountEnabled());
+  // ---***JEMAOS END***---
 
   UpdateState(NetworkError::ERROR_REASON_UPDATE);
 
@@ -123,37 +116,22 @@ void UserCreationScreen::HideImpl() {
   error_screen_->Hide();
 }
 
-void UserCreationScreen::SetChildSetupStep() {
-  if (!view_) {
-    return;
-  }
-  view_->SetChildSetupStep();
-}
-
 void UserCreationScreen::OnUserAction(const base::Value::List& args) {
   const std::string& action_id = args[0].GetString();
   if (action_id == kUserActionSignIn) {
     context()->sign_in_as_child = false;
     RunExitCallback(Result::SIGNIN);
-  } else if (action_id == kUserActionAddChild) {
-    RunExitCallback(Result::ADD_CHILD);
+  } else if (action_id == kUserActionChildSignIn) {
+    context()->sign_in_as_child = true;
+    context()->is_child_gaia_account_new = false;
+    RunExitCallback(Result::CHILD_SIGNIN);
+  } else if (action_id == kUserActionChildAccountCreate) {
+    context()->sign_in_as_child = true;
+    context()->is_child_gaia_account_new = true;
+    RunExitCallback(Result::CHILD_ACCOUNT_CREATE);
   } else if (action_id == kUserActionCancel) {
     context()->is_user_creation_enabled = false;
     RunExitCallback(Result::CANCEL);
-  } else if (action_id == kUserActionEnroll) {
-    RunExitCallback(Result::ENTERPRISE_ENROLL_TRIAGE);
-  } else if (action_id == kUserActionTriage) {
-    if (context()->is_add_person_flow) {
-      RunExitCallback(Result::SIGNIN);
-    } else {
-      view_->SetTriageStep();
-    }
-  } else if (action_id == kUserActionSignInTriage) {
-    RunExitCallback(Result::SIGNIN_TRIAGE);
-  } else if (action_id == kUserActionChildSetup) {
-    view_->SetChildSetupStep();
-  } else if (action_id == kUserActionSignInSchool) {
-    RunExitCallback(Result::SIGNIN_SCHOOL);
   } else {
     BaseScreen::OnUserAction(args);
   }
@@ -161,7 +139,7 @@ void UserCreationScreen::OnUserAction(const base::Value::List& args) {
 
 bool UserCreationScreen::HandleAccelerator(LoginAcceleratorAction action) {
   if (action == LoginAcceleratorAction::kStartEnrollment) {
-    RunExitCallback(Result::ENTERPRISE_ENROLL_SHORTCUT);
+    RunExitCallback(Result::ENTERPRISE_ENROLL);
     return true;
   }
   if (action == LoginAcceleratorAction::kStartKioskEnrollment) {
@@ -171,17 +149,10 @@ bool UserCreationScreen::HandleAccelerator(LoginAcceleratorAction action) {
   return false;
 }
 
-void UserCreationScreen::SetDefaultStep() {
-  if (!view_) {
-    return;
-  }
-  view_->SetDefaultStep();
-}
-
 void UserCreationScreen::UpdateState(NetworkError::ErrorReason reason) {
   NetworkStateInformer::State state = network_state_informer_->state();
-  if (state != NetworkStateInformer::ONLINE ||
-      reason == NetworkError::ERROR_REASON_LOADING_TIMEOUT) {
+  const bool is_online = NetworkStateInformer::IsOnline(state, reason);
+  if (!is_online) {
     error_screen_visible_ = true;
     error_screen_->SetParentScreen(UserCreationView::kScreenId);
     error_screen_->ShowNetworkErrorMessage(state, reason);

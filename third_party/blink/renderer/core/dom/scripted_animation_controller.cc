@@ -37,7 +37,6 @@
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/page_animator.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
-#include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 
 namespace blink {
@@ -84,10 +83,10 @@ void ScriptedAnimationController::ContextLifecycleStateChanged(
 }
 
 void ScriptedAnimationController::DispatchEventsAndCallbacksForPrinting() {
-  DispatchEvents(WTF::BindRepeating([](Event* event) {
+  DispatchEvents([](const Event* event) {
     return event->InterfaceName() ==
            event_interface_names::kMediaQueryListEvent;
-  }));
+  });
   CallMediaQueryListListeners();
 }
 
@@ -99,10 +98,6 @@ void ScriptedAnimationController::ScheduleVideoFrameCallbacksExecution(
 
 ScriptedAnimationController::CallbackId
 ScriptedAnimationController::RegisterFrameCallback(FrameCallback* callback) {
-  // If we no longer have a context, there is no need to register the callback.
-  if (!GetExecutionContext()) {
-    return 0;
-  }
   CallbackId id = callback_collection_.RegisterFrameCallback(callback);
   ScheduleAnimationIfNeeded();
   return id;
@@ -124,15 +119,15 @@ void ScriptedAnimationController::RunTasks() {
     std::move(task).Run();
 }
 
-bool ScriptedAnimationController::DispatchEvents(DispatchFilter filter) {
+void ScriptedAnimationController::DispatchEvents(const DispatchFilter& filter) {
   HeapVector<Member<Event>> events;
-  if (filter.is_null()) {
+  if (!filter.has_value()) {
     events.swap(event_queue_);
     per_frame_events_.clear();
   } else {
     HeapVector<Member<Event>> remaining;
     for (auto& event : event_queue_) {
-      if (event && filter.Run(event)) {
+      if (event && filter.value()(event)) {
         EraseFromPerFrameEventsMap(event.Get());
         events.push_back(event.Release());
       } else {
@@ -142,10 +137,7 @@ bool ScriptedAnimationController::DispatchEvents(DispatchFilter filter) {
     remaining.swap(event_queue_);
   }
 
-  bool did_dispatch = false;
-
   for (const auto& event : events) {
-    did_dispatch = true;
     EventTarget* event_target = event->target();
     // FIXME: we should figure out how to make dispatchEvent properly virtual to
     // avoid special casting window.
@@ -158,8 +150,6 @@ bool ScriptedAnimationController::DispatchEvents(DispatchFilter filter) {
     else
       event_target->DispatchEvent(*event);
   }
-
-  return did_dispatch;
 }
 
 void ScriptedAnimationController::ExecuteVideoFrameCallbacks() {
@@ -252,6 +242,25 @@ void ScriptedAnimationController::ScheduleAnimationIfNeeded() {
 
 LocalDOMWindow* ScriptedAnimationController::GetWindow() const {
   return To<LocalDOMWindow>(GetExecutionContext());
+}
+
+void ScriptedAnimationController::WebGPURegisterVideoFrameStateCallback(
+    WebGPUVideoFrameStateCallback webgpu_video_frame_state_callback) {
+  webgpu_video_frame_state_callbacks_.push_back(
+      std::move(webgpu_video_frame_state_callback));
+}
+
+// If a callback |IsCancelled| or returns false, remove that callback
+// from the list. Otherwise, keep it to be checked again later.
+void ScriptedAnimationController::WebGPUCheckStateToExpireVideoFrame() {
+  for (auto* it = webgpu_video_frame_state_callbacks_.begin();
+       it != webgpu_video_frame_state_callbacks_.end();) {
+    if (it->IsCancelled() || !it->Run()) {
+      it = webgpu_video_frame_state_callbacks_.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 }  // namespace blink

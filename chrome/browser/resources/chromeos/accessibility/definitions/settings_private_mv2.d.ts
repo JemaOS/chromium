@@ -7,7 +7,7 @@
 // TODO(b/260590502): Delete this after MV3 migration.
 // TODO(crbug.com/1203307): Auto-generate this file.
 
-import {ChromeEvent} from '../../../../../../tools/typescript/definitions/chrome_event.js';
+import {ChromeEvent} from '../../../../../../tools/typescript/definitions/chrome_event';
 
 declare global {
   export namespace chrome {

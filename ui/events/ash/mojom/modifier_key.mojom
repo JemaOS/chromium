@@ -22,6 +22,4 @@ enum ModifierKey {
   // layout used has a conflicting use of Mod3 which is generally used to mark
   // `kCapsLock` in ChromeOS.
   kIsoLevel5ShiftMod3 = 8,
-  kFunction = 9,
-  kRightAlt = 10,
 };

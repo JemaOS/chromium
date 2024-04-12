@@ -14,9 +14,8 @@
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
-#include "chromeos/ash/components/auth_panel/public/shared_types.h"
+#include "base/unguessable_token.h"
 #include "chromeos/ash/components/cryptohome/common_types.h"
-#include "chromeos/ash/components/cryptohome/error_util.h"
 #include "chromeos/ash/components/login/auth/auth_performer.h"
 #include "chromeos/ash/components/login/auth/public/auth_session_intent.h"
 #include "chromeos/ash/components/login/auth/public/authentication_error.h"
@@ -77,7 +76,7 @@ void CenterWidgetOnPrimaryDisplay(views::Widget* widget) {
 }  // namespace
 
 AuthenticationDialog::AuthenticationDialog(
-    auth_panel::AuthCompletionCallback on_auth_complete,
+    InSessionAuthDialogController::OnAuthComplete on_auth_complete,
     InSessionAuthTokenProvider* auth_token_provider,
     std::unique_ptr<AuthPerformer> auth_performer,
     const AccountId& account_id)
@@ -136,7 +135,7 @@ void AuthenticationDialog::Init() {
 }
 
 void AuthenticationDialog::NotifyResult(bool success,
-                                        const AuthProofToken& token,
+                                        const base::UnguessableToken& token,
                                         base::TimeDelta timeout) {
   if (on_auth_complete_) {
     std::move(on_auth_complete_).Run(success, token, timeout);
@@ -163,15 +162,12 @@ void AuthenticationDialog::ValidateAuthFactor() {
 
   SetUIDisabled(true);
 
-  const auto* password_factor =
-      user_context_->GetAuthFactorsData().FindAnyPasswordFactor();
-  if (!password_factor) {
-    LOG(ERROR) << "Could not find password key";
-    ShowAuthError();
-    return;
-  }
+  cryptohome::KeyLabel key_label;
 
-  cryptohome::KeyLabel key_label = password_factor->ref().label();
+  key_label = user_context_->GetAuthFactorsData()
+                  .FindOnlinePasswordFactor()
+                  ->ref()
+                  .label();
 
   // Create a copy of `user_context_` so that we don't lose it to std::move
   // for future auth attempts
@@ -184,11 +180,10 @@ void AuthenticationDialog::ValidateAuthFactor() {
 
 void AuthenticationDialog::OnAuthFactorValidityChecked(
     std::unique_ptr<UserContext> user_context,
-    std::optional<AuthenticationError> authentication_error) {
+    absl::optional<AuthenticationError> authentication_error) {
   if (authentication_error.has_value()) {
-    if (cryptohome::ErrorMatches(
-            authentication_error.value().get_cryptohome_error(),
-            user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)) {
+    if (authentication_error.value().get_cryptohome_code() ==
+        user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN) {
       // Auth session expired for some reason, start it again and reattempt
       // authentication.
       // TODO(b/240147756): Choose the intent based on
@@ -202,8 +197,12 @@ void AuthenticationDialog::OnAuthFactorValidityChecked(
     }
     LOG(ERROR) << "An error happened during the attempt to validate"
                   "the password: "
-               << authentication_error.value().get_cryptohome_error();
-    ShowAuthError();
+               << authentication_error.value().get_cryptohome_code();
+    password_field_->SetInvalid(true);
+    password_field_->SelectAll(false);
+    invalid_password_label_->SetText(
+        l10n_util::GetStringUTF16(IDS_ASH_LOGIN_ERROR_AUTHENTICATING));
+    SetUIDisabled(false);
     return;
   }
 
@@ -217,14 +216,6 @@ void AuthenticationDialog::OnAuthFactorValidityChecked(
   SetUIDisabled(false);
   CancelDialog();
   return;
-}
-
-void AuthenticationDialog::ShowAuthError() {
-  password_field_->SetInvalid(true);
-  password_field_->SelectAll(false);
-  invalid_password_label_->SetText(
-      l10n_util::GetStringUTF16(IDS_ASH_LOGIN_ERROR_AUTHENTICATING));
-  SetUIDisabled(false);
 }
 
 void AuthenticationDialog::CancelAuthAttempt() {
@@ -244,7 +235,7 @@ void AuthenticationDialog::ConfigureChildViews() {
 void AuthenticationDialog::OnAuthSessionInvalid(
     bool user_exists,
     std::unique_ptr<UserContext> user_context,
-    std::optional<AuthenticationError> authentication_error) {
+    absl::optional<AuthenticationError> authentication_error) {
   OnAuthSessionStarted(user_exists, std::move(user_context),
                        authentication_error);
   ValidateAuthFactor();
@@ -253,10 +244,10 @@ void AuthenticationDialog::OnAuthSessionInvalid(
 void AuthenticationDialog::OnAuthSessionStarted(
     bool user_exists,
     std::unique_ptr<UserContext> user_context,
-    std::optional<AuthenticationError> authentication_error) {
+    absl::optional<AuthenticationError> authentication_error) {
   if (authentication_error.has_value()) {
     LOG(ERROR) << "Error starting authsession for in session authentication: "
-               << authentication_error.value().get_cryptohome_error();
+               << authentication_error.value().get_cryptohome_code();
     CancelAuthAttempt();
   } else if (!user_exists) {
     LOG(ERROR) << "Attempting to authenticate a user which does not exist. "

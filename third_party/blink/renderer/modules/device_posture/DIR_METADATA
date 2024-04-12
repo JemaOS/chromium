@@ -1,6 +1,3 @@
-monorail: {
+monorail {
   component: "Blink>FoldableAPIs"
-}
-buganizer_public: {
-  component_id: 1456381
 }

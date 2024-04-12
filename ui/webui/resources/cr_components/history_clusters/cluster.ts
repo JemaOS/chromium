@@ -3,25 +3,23 @@
 // found in the LICENSE file.
 
 import './cluster_menu.js';
-import './history_clusters_shared_style.css.js';
-import './horizontal_carousel.js';
 import './search_query.js';
+import './history_clusters_shared_style.css.js';
 import './shared_vars.css.js';
 import './url_visit.js';
-import '//resources/cr_elements/cr_icons.css.js';
-import '//resources/polymer/v3_0/iron-collapse/iron-collapse.js';
-import '//resources/cr_elements/cr_auto_img/cr_auto_img.js';
+import 'chrome://resources/cr_elements/cr_icons.css.js';
+import 'chrome://resources/polymer/v3_0/iron-collapse/iron-collapse.js';
+import 'chrome://resources/cr_elements/cr_auto_img/cr_auto_img.js';
 
-import {I18nMixin} from '//resources/cr_elements/i18n_mixin.js';
-import {assert} from '//resources/js/assert.js';
-import {loadTimeData} from '//resources/js/load_time_data.js';
-import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {BrowserProxyImpl} from './browser_proxy.js';
 import {getTemplate} from './cluster.html.js';
-import type {Cluster, SearchQuery, URLVisit} from './history_cluster_types.mojom-webui.js';
-import type {PageCallbackRouter} from './history_clusters.mojom-webui.js';
-import {ClusterAction, VisitAction} from './history_clusters.mojom-webui.js';
+import {Cluster, SearchQuery, URLVisit} from './history_cluster_types.mojom-webui.js';
+import {ClusterAction, PageCallbackRouter, VisitAction} from './history_clusters.mojom-webui.js';
 import {MetricsProxyImpl} from './metrics_proxy.js';
 import {insertHighlightedTextWithMatchesIntoElement} from './utils.js';
 
@@ -71,7 +69,7 @@ class HistoryClusterElement extends HistoryClusterElementBase {
       /**
        * Whether the cluster is in the side panel.
        */
-      inSidePanel: {
+      inSidePanel_: {
         type: Boolean,
         value: () => loadTimeData.getBoolean('inSidePanel'),
         reflectToAttribute: true,
@@ -120,7 +118,7 @@ class HistoryClusterElement extends HistoryClusterElementBase {
   query: string;
   private callbackRouter_: PageCallbackRouter;
 
-  inSidePanel: boolean;
+  private inSidePanel_: boolean;
   private onVisitsHiddenListenerId_: number|null = null;
   private onVisitsRemovedListenerId_: number|null = null;
   private unusedLabel_: string;
@@ -193,18 +191,10 @@ class HistoryClusterElement extends HistoryClusterElementBase {
 
   private onOpenAllVisits_() {
     BrowserProxyImpl.getInstance().handler.openVisitUrlsInTabGroup(
-        this.cluster.visits, this.cluster.tabGroupName ?? null);
+        this.cluster.visits);
 
     MetricsProxyImpl.getInstance().recordClusterAction(
         ClusterAction.kOpenedInTabGroup, this.index);
-  }
-
-  private onHideAllVisits_() {
-    this.dispatchEvent(new CustomEvent('hide-visits', {
-      bubbles: true,
-      composed: true,
-      detail: this.cluster.visits,
-    }));
   }
 
   private onRemoveAllVisits_() {
@@ -249,7 +239,7 @@ class HistoryClusterElement extends HistoryClusterElementBase {
    */
   private onBrowserIdle_(): Promise<void> {
     return new Promise(resolve => {
-      requestIdleCallback(() => {
+      window.requestIdleCallback(() => {
         resolve();
       });
     });
@@ -320,7 +310,7 @@ class HistoryClusterElement extends HistoryClusterElementBase {
   private computeRelatedSearches_(): SearchQuery[] {
     return this.cluster.relatedSearches.filter(
         (query: SearchQuery, index: number) => {
-          return query && !(this.inSidePanel && index > 2);
+          return query && !(this.inSidePanel_ && index > 2);
         });
   }
 
@@ -332,7 +322,7 @@ class HistoryClusterElement extends HistoryClusterElementBase {
     // iron-list can't handle our size changing because of loading an image
     // without an explicit event. But we also can't send this until we have
     // updated the image property, so send it on the next idle.
-    requestIdleCallback(() => {
+    window.requestIdleCallback(() => {
       this.dispatchEvent(new CustomEvent('iron-resize', {
         bubbles: true,
         composed: true,

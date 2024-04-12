@@ -71,8 +71,7 @@ history::HistoryService* HistoryServiceFactory::GetForProfileWithoutCreating(
 
 // static
 HistoryServiceFactory* HistoryServiceFactory::GetInstance() {
-  static base::NoDestructor<HistoryServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<HistoryServiceFactory>::get();
 }
 
 // static
@@ -90,21 +89,16 @@ HistoryServiceFactory::GetDefaultFactory() {
 HistoryServiceFactory::HistoryServiceFactory()
     : ProfileKeyedServiceFactory(
           "HistoryService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(BookmarkModelFactory::GetInstance());
 }
 
-HistoryServiceFactory::~HistoryServiceFactory() = default;
+HistoryServiceFactory::~HistoryServiceFactory() {
+}
 
-std::unique_ptr<KeyedService>
-HistoryServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* HistoryServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return BuildHistoryService(context);
+  return BuildHistoryService(context).release();
 }
 
 bool HistoryServiceFactory::ServiceIsNULLWhileTesting() const {

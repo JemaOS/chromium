@@ -6,17 +6,18 @@ package org.chromium.chrome.browser.autofill;
 
 import android.app.Activity;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
 import org.chromium.chrome.browser.autofill.AutofillExpirationDateFixFlowPrompt.AutofillExpirationDateFixFlowPromptDelegate;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.DialogDismissalCause;
 
-/** JNI call glue for AutofillExpirationDateFixFlowPrompt C++ and Java objects. */
+/**
+ * JNI call glue for AutofillExpirationDateFixFlowPrompt C++ and Java objects.
+ */
 @JNINamespace("autofill")
 final class AutofillExpirationDateFixFlowBridge
         implements AutofillExpirationDateFixFlowPromptDelegate {
@@ -27,12 +28,8 @@ final class AutofillExpirationDateFixFlowBridge
     private final String mCardLabel;
     private AutofillExpirationDateFixFlowPrompt mExpirationDateFixFlowPrompt;
 
-    private AutofillExpirationDateFixFlowBridge(
-            long nativeCardExpirationDateFixFlowViewAndroid,
-            String title,
-            String confirmButtonLabel,
-            int iconId,
-            String cardLabel) {
+    private AutofillExpirationDateFixFlowBridge(long nativeCardExpirationDateFixFlowViewAndroid,
+            String title, String confirmButtonLabel, int iconId, String cardLabel) {
         mNativeCardExpirationDateFixFlowViewAndroid = nativeCardExpirationDateFixFlowViewAndroid;
         mTitle = title;
         mConfirmButtonLabel = confirmButtonLabel;
@@ -42,51 +39,41 @@ final class AutofillExpirationDateFixFlowBridge
 
     @CalledByNative
     private static AutofillExpirationDateFixFlowBridge create(
-            long nativeCardExpirationDateFixFlowViewAndroid,
-            String title,
-            String confirmButtonLabel,
-            int iconId,
-            String cardLabel) {
-        return new AutofillExpirationDateFixFlowBridge(
-                nativeCardExpirationDateFixFlowViewAndroid,
-                title,
-                confirmButtonLabel,
-                iconId,
-                cardLabel);
+            long nativeCardExpirationDateFixFlowViewAndroid, String title,
+            String confirmButtonLabel, int iconId, String cardLabel) {
+        return new AutofillExpirationDateFixFlowBridge(nativeCardExpirationDateFixFlowViewAndroid,
+                title, confirmButtonLabel, iconId, cardLabel);
     }
 
     @Override
     public void onPromptDismissed() {
-        AutofillExpirationDateFixFlowBridgeJni.get()
-                .promptDismissed(
-                        mNativeCardExpirationDateFixFlowViewAndroid,
-                        AutofillExpirationDateFixFlowBridge.this);
+        AutofillExpirationDateFixFlowBridgeJni.get().promptDismissed(
+                mNativeCardExpirationDateFixFlowViewAndroid,
+                AutofillExpirationDateFixFlowBridge.this);
         mNativeCardExpirationDateFixFlowViewAndroid = 0;
     }
 
     @Override
     public void onUserAcceptExpirationDate(String month, String year) {
-        AutofillExpirationDateFixFlowBridgeJni.get()
-                .onUserAccept(
-                        mNativeCardExpirationDateFixFlowViewAndroid,
-                        AutofillExpirationDateFixFlowBridge.this,
-                        month,
-                        year);
+        AutofillExpirationDateFixFlowBridgeJni.get().onUserAccept(
+                mNativeCardExpirationDateFixFlowViewAndroid,
+                AutofillExpirationDateFixFlowBridge.this, month, year);
     }
 
     @Override
     public void onUserDismiss() {
-        AutofillExpirationDateFixFlowBridgeJni.get()
-                .onUserDismiss(
-                        mNativeCardExpirationDateFixFlowViewAndroid,
-                        AutofillExpirationDateFixFlowBridge.this);
+        AutofillExpirationDateFixFlowBridgeJni.get().onUserDismiss(
+                mNativeCardExpirationDateFixFlowViewAndroid,
+                AutofillExpirationDateFixFlowBridge.this);
     }
 
     /* no-op. Legal lines aren't set. */
     @Override
     public void onLinkClicked(String url) {}
 
-    /** Shows a prompt for expiration date fix flow. */
+    /**
+     * Shows a prompt for expiration date fix flow.
+     */
     @CalledByNative
     private void show(WindowAndroid windowAndroid) {
         Activity activity = windowAndroid.getActivity().get();
@@ -103,7 +90,9 @@ final class AutofillExpirationDateFixFlowBridge
         mExpirationDateFixFlowPrompt.show(activity, windowAndroid.getModalDialogManager());
     }
 
-    /** Dismisses the prompt without returning any user response. */
+    /**
+     * Dismisses the prompt without returning any user response.
+     */
     @CalledByNative
     private void dismiss() {
         if (mExpirationDateFixFlowPrompt != null) {
@@ -113,18 +102,11 @@ final class AutofillExpirationDateFixFlowBridge
 
     @NativeMethods
     interface Natives {
-        void promptDismissed(
-                long nativeCardExpirationDateFixFlowViewAndroid,
+        void promptDismissed(long nativeCardExpirationDateFixFlowViewAndroid,
                 AutofillExpirationDateFixFlowBridge caller);
-
-        void onUserAccept(
-                long nativeCardExpirationDateFixFlowViewAndroid,
-                AutofillExpirationDateFixFlowBridge caller,
-                String month,
-                String year);
-
-        void onUserDismiss(
-                long nativeCardExpirationDateFixFlowViewAndroid,
+        void onUserAccept(long nativeCardExpirationDateFixFlowViewAndroid,
+                AutofillExpirationDateFixFlowBridge caller, String month, String year);
+        void onUserDismiss(long nativeCardExpirationDateFixFlowViewAndroid,
                 AutofillExpirationDateFixFlowBridge caller);
     }
 }

@@ -6,8 +6,7 @@
  * @fileoverview The browser proxy used to access `PageImageService` from WebUI.
  */
 
-import type {PageImageServiceHandlerRemote} from './page_image_service.mojom-webui.js';
-import {PageImageServiceHandler} from './page_image_service.mojom-webui.js';
+import {PageImageServiceHandler, PageImageServiceHandlerRemote} from './page_image_service.mojom-webui.js';
 
 export class PageImageServiceBrowserProxy {
   handler: PageImageServiceHandlerRemote;

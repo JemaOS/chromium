@@ -59,19 +59,15 @@ AXPlatformNode* AXPlatformNode::FromNativeViewAccessible(
   return nullptr;
 }
 
-struct AXPlatformNodeMac::ObjCStorage {
-  AXPlatformNodeCocoa* __strong native_node;
-};
+AXPlatformNodeMac::AXPlatformNodeMac() = default;
 
-AXPlatformNodeMac::AXPlatformNodeMac()
-    : objc_storage_(std::make_unique<ObjCStorage>()) {}
 AXPlatformNodeMac::~AXPlatformNodeMac() = default;
 
 void AXPlatformNodeMac::Destroy() {
-  if (objc_storage_->native_node) {
-    [objc_storage_->native_node detach];
-    // Also, clear the pointer to make accidental use-after-free impossible.
-    objc_storage_->native_node = nil;
+  if (native_node_) {
+    [native_node_ detach];
+    // Also, nullify smart pointer to make accidental use-after-free impossible.
+    native_node_.reset();
   }
   AXPlatformNodeBase::Destroy();
 }
@@ -87,26 +83,10 @@ bool AXPlatformNodeMac::IsPlatformCheckable() const {
   return AXPlatformNodeBase::IsPlatformCheckable();
 }
 
-AXPlatformNodeCocoa* AXPlatformNodeMac::GetNativeWrapper() const {
-  return objc_storage_->native_node;
-}
-
-AXPlatformNodeCocoa* AXPlatformNodeMac::ReleaseNativeWrapper() {
-  AXPlatformNodeCocoa* native_node = objc_storage_->native_node;
-  objc_storage_->native_node = nil;
-  return native_node;
-}
-
-void AXPlatformNodeMac::SetNativeWrapper(AXPlatformNodeCocoa* native_node) {
-  objc_storage_->native_node = native_node;
-}
-
 gfx::NativeViewAccessible AXPlatformNodeMac::GetNativeViewAccessible() {
-  if (!objc_storage_->native_node) {
-    objc_storage_->native_node =
-        [[AXPlatformNodeCocoa alloc] initWithNode:this];
-  }
-  return objc_storage_->native_node;
+  if (!native_node_)
+    native_node_.reset([[AXPlatformNodeCocoa alloc] initWithNode:this]);
+  return native_node_.get();
 }
 
 void AXPlatformNodeMac::NotifyAccessibilityEvent(ax::mojom::Event event_type) {
@@ -118,9 +98,8 @@ void AXPlatformNodeMac::NotifyAccessibilityEvent(ax::mojom::Event event_type) {
   // regular NSAccessibility notification system.
   if (event_type == ax::mojom::Event::kAlert ||
       event_type == ax::mojom::Event::kLiveRegionChanged) {
-    if (AXAnnouncementSpec* announcement =
-            [objc_storage_->native_node announcementForEvent:event_type]) {
-      [objc_storage_->native_node scheduleLiveRegionAnnouncement:announcement];
+    if (auto announcement = [native_node_ announcementForEvent:event_type]) {
+      [native_node_ scheduleLiveRegionAnnouncement:std::move(announcement)];
     }
     return;
   }
@@ -128,14 +107,14 @@ void AXPlatformNodeMac::NotifyAccessibilityEvent(ax::mojom::Event event_type) {
     ax::mojom::Role role = GetRole();
     if (ui::IsMenuItem(role)) {
       // On Mac, map menu item selection to a focus event.
-      NotifyMacEvent(objc_storage_->native_node, ax::mojom::Event::kFocus);
+      NotifyMacEvent(native_node_, ax::mojom::Event::kFocus);
       return;
     } else if (ui::IsListItem(role)) {
       if (const AXPlatformNodeBase* container = GetSelectionContainer()) {
         if (container->GetRole() == ax::mojom::Role::kListBox &&
             !container->HasState(ax::mojom::State::kMultiselectable) &&
             GetDelegate()->GetFocus() == GetNativeViewAccessible()) {
-          NotifyMacEvent(objc_storage_->native_node, ax::mojom::Event::kFocus);
+          NotifyMacEvent(native_node_, ax::mojom::Event::kFocus);
           return;
         }
       }
@@ -144,14 +123,12 @@ void AXPlatformNodeMac::NotifyAccessibilityEvent(ax::mojom::Event event_type) {
 
   // Otherwise, use mappings between ax::mojom::Event and NSAccessibility
   // notifications from the EventMap above.
-  NotifyMacEvent(objc_storage_->native_node, event_type);
+  NotifyMacEvent(native_node_, event_type);
 }
 
-void AXPlatformNodeMac::AnnounceTextAs(const std::u16string& text,
-                                       AnnouncementType announcement_type) {
+void AXPlatformNodeMac::AnnounceText(const std::u16string& text) {
   PostAnnouncementNotification(base::SysUTF16ToNSString(text),
-                               [objc_storage_->native_node AXWindow],
-                               announcement_type == AnnouncementType::kPolite);
+                               [native_node_ AXWindow], false);
 }
 
 bool IsNameExposedInAXValueForRole(ax::mojom::Role role) {

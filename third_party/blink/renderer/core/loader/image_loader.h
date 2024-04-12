@@ -82,9 +82,8 @@ class CORE_EXPORT ImageLoader : public GarbageCollected<ImageLoader>,
                          bool force_blocking = false);
 
   void ElementDidMoveToNewDocument();
-  void OnAttachLayoutTree();
 
-  Element* GetElement() const { return element_.Get(); }
+  Element* GetElement() const { return element_; }
   bool ImageComplete() const { return image_complete_; }
 
   ImageResourceContent* GetContent() const { return image_content_.Get(); }
@@ -133,7 +132,7 @@ class CORE_EXPORT ImageLoader : public GarbageCollected<ImageLoader>,
 
   bool GetImageAnimationPolicy(mojom::blink::ImageAnimationPolicy&) final;
 
-  ScriptPromiseTyped<IDLUndefined> Decode(ScriptState*, ExceptionState&);
+  ScriptPromise Decode(ScriptState*, ExceptionState&);
 
   // `force_blocking` ensures that the image will block the load event.
   void LoadDeferredImage(bool force_blocking = false,
@@ -165,8 +164,9 @@ class CORE_EXPORT ImageLoader : public GarbageCollected<ImageLoader>,
 
   // Called from the task or from updateFromElement to initiate the load.
   // force_blocking ensures that the image will block the load event.
-  void DoUpdateFromElement(const DOMWrapperWorld* world,
+  void DoUpdateFromElement(scoped_refptr<const DOMWrapperWorld> world,
                            UpdateFromElementBehavior,
+                           base::TimeTicks discovery_time,
                            UpdateType = UpdateType::kAsync,
                            bool force_blocking = false);
 
@@ -190,7 +190,8 @@ class CORE_EXPORT ImageLoader : public GarbageCollected<ImageLoader>,
   void ClearFailedLoadURL();
   void DispatchErrorEvent();
   void CrossSiteOrCSPViolationOccurred(AtomicString);
-  void EnqueueImageLoadingMicroTask(UpdateFromElementBehavior update_behavior);
+  void EnqueueImageLoadingMicroTask(UpdateFromElementBehavior update_behavior,
+                                    base::TimeTicks discovery_time);
 
   KURL ImageSourceToKURL(AtomicString) const;
 
@@ -240,6 +241,12 @@ class CORE_EXPORT ImageLoader : public GarbageCollected<ImageLoader>,
 
   bool image_complete_ : 1;
   bool suppress_error_events_ : 1;
+  // Tracks whether or not an image whose load was deferred was explicitly lazy
+  // (i.e., had developer-supplied `loading=lazy`). This matters because images
+  // that were not explicitly lazy but were deferred via automatic lazy image
+  // loading should continue to block the window load event, whereas explicitly
+  // lazy images should never block the window load event.
+  bool was_deferred_explicitly_ : 1;
 
   LazyImageLoadState lazy_image_load_state_;
 
@@ -265,14 +272,14 @@ class CORE_EXPORT ImageLoader : public GarbageCollected<ImageLoader>,
    public:
     enum State { kPendingMicrotask, kPendingLoad, kDispatched };
 
-    DecodeRequest(ImageLoader*, ScriptPromiseResolverTyped<IDLUndefined>*);
+    DecodeRequest(ImageLoader*, ScriptPromiseResolver*);
     ~DecodeRequest() = default;
 
     void Trace(Visitor*) const;
 
     uint64_t request_id() const { return request_id_; }
     State state() const { return state_; }
-    ScriptPromiseTyped<IDLUndefined> promise() { return resolver_->Promise(); }
+    ScriptPromise promise() { return resolver_->Promise(); }
 
     void Resolve();
     void Reject();
@@ -286,7 +293,7 @@ class CORE_EXPORT ImageLoader : public GarbageCollected<ImageLoader>,
     uint64_t request_id_ = 0;
     State state_ = kPendingMicrotask;
 
-    Member<ScriptPromiseResolverTyped<IDLUndefined>> resolver_;
+    Member<ScriptPromiseResolver> resolver_;
     Member<ImageLoader> loader_;
   };
 

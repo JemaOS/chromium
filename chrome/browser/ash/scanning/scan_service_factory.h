@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -28,7 +28,7 @@ class ScanServiceFactory : public ProfileKeyedServiceFactory {
   static KeyedService* BuildInstanceFor(content::BrowserContext* context);
 
  private:
-  friend base::NoDestructor<ScanServiceFactory>;
+  friend struct base::DefaultSingletonTraits<ScanServiceFactory>;
 
   ScanServiceFactory();
   ~ScanServiceFactory() override;
@@ -39,6 +39,7 @@ class ScanServiceFactory : public ProfileKeyedServiceFactory {
   // BrowserContextKeyedServiceFactory:
   KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
+  bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;
 };
 

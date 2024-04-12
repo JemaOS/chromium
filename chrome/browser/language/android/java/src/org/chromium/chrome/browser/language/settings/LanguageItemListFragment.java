@@ -4,7 +4,7 @@
 
 package org.chromium.chrome.browser.language.settings;
 
-import static org.chromium.components.browser_ui.widget.BrowserUiListMenuUtils.buildMenuListItem;
+import static org.chromium.components.browser_ui.widget.listmenu.BasicListMenu.buildMenuListItem;
 
 import android.app.Activity;
 import android.content.Context;
@@ -27,10 +27,10 @@ import org.chromium.components.browser_ui.settings.FragmentSettingsLauncher;
 import org.chromium.components.browser_ui.settings.SettingsLauncher;
 import org.chromium.components.browser_ui.settings.SettingsUtils;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
-import org.chromium.components.browser_ui.widget.BrowserUiListMenuUtils;
 import org.chromium.components.browser_ui.widget.TintedDrawable;
-import org.chromium.ui.listmenu.ListMenu;
-import org.chromium.ui.listmenu.ListMenuItemProperties;
+import org.chromium.components.browser_ui.widget.listmenu.BasicListMenu;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenu;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuItemProperties;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 
 import java.util.Collection;
@@ -40,8 +40,8 @@ import java.util.Collection;
  * menu and added with the `Add Language` button. Subclasses will override makeFragmentListDelegate
  * to populate the LanguageItem list and provide callbacks for adding and removing items.
  */
-public abstract class LanguageItemListFragment extends Fragment
-        implements FragmentSettingsLauncher {
+public abstract class LanguageItemListFragment
+        extends Fragment implements FragmentSettingsLauncher {
     // Request code for returning from Select Language Fragment
     private static final int REQUEST_CODE_SELECT_LANGUAGE = 1;
 
@@ -50,10 +50,13 @@ public abstract class LanguageItemListFragment extends Fragment
      * {@link LanguageItemListPreference} to make a summary and launch the correct Fragment.
      */
     public interface ListDelegate {
-        /** Return LanguageItems to show in LanguageItemListFragment. */
+        /**
+         * Return LanguageItems to show in LanguageItemListFragment.
+         */
         Collection<LanguageItem> getLanguageItems();
-
-        /** Return class name to launch this LanguageItemListFragment from an Intent. */
+        /**
+         * Return class name to launch this LanguageItemListFragment from an Intent.
+         */
         String getFragmentClassName();
     }
 
@@ -72,20 +75,17 @@ public abstract class LanguageItemListFragment extends Fragment
             menuItems.add(buildMenuListItem(R.string.remove, 0, 0));
 
             // ListMenu.Delegate handles return from three dot menu.
-            ListMenu.Delegate delegate =
-                    (model) -> {
-                        int textId = model.get(ListMenuItemProperties.TITLE_ID);
-                        if (textId == R.string.remove) {
-                            onLanguageRemoved(currentLanguageItem.getCode());
-                            onDataUpdated();
-                            recordRemoveAction();
-                        }
-                    };
+            ListMenu.Delegate delegate = (model) -> {
+                int textId = model.get(ListMenuItemProperties.TITLE_ID);
+                if (textId == R.string.remove) {
+                    onLanguageRemoved(currentLanguageItem.getCode());
+                    onDataUpdated();
+                    recordRemoveAction();
+                }
+            };
             ((LanguageRowViewHolder) holder)
                     .setMenuButtonDelegate(
-                            () ->
-                                    BrowserUiListMenuUtils.getBasicListMenu(
-                                            getContext(), menuItems, delegate));
+                            () -> new BasicListMenu(getContext(), menuItems, delegate));
         }
 
         public void onDataUpdated() {
@@ -123,11 +123,9 @@ public abstract class LanguageItemListFragment extends Fragment
         mRecyclerView.setAdapter(mAdapter);
         mAdapter.onDataUpdated();
         ScrollView scrollView = inflatedView.findViewById(R.id.scroll_view);
-        scrollView
-                .getViewTreeObserver()
-                .addOnScrollChangedListener(
-                        SettingsUtils.getShowShadowOnScrollListener(
-                                scrollView, inflatedView.findViewById(R.id.shadow)));
+        scrollView.getViewTreeObserver().addOnScrollChangedListener(
+                SettingsUtils.getShowShadowOnScrollListener(
+                        scrollView, inflatedView.findViewById(R.id.shadow)));
 
         TextView addLanguageButton = (TextView) inflatedView.findViewById(R.id.add_language);
         final TintedDrawable tintedDrawable =
@@ -136,17 +134,14 @@ public abstract class LanguageItemListFragment extends Fragment
         addLanguageButton.setCompoundDrawablesRelativeWithIntrinsicBounds(
                 tintedDrawable, null, null, null);
 
-        addLanguageButton.setOnClickListener(
-                view -> { // Lambda for View.OnClickListener
-                    recordAddLanguageImpression();
-                    Intent intent =
-                            mSettingsLauncher.createSettingsActivityIntent(
-                                    getActivity(), SelectLanguageFragment.class.getName());
-                    intent.putExtra(
-                            SelectLanguageFragment.INTENT_POTENTIAL_LANGUAGES,
-                            getPotentialLanguageType());
-                    startActivityForResult(intent, REQUEST_CODE_SELECT_LANGUAGE);
-                });
+        addLanguageButton.setOnClickListener(view -> { // Lambda for View.OnClickListener
+            recordAddLanguageImpression();
+            Intent intent = mSettingsLauncher.createSettingsActivityIntent(
+                    getActivity(), SelectLanguageFragment.class.getName());
+            intent.putExtra(
+                    SelectLanguageFragment.INTENT_POTENTIAL_LANGUAGES, getPotentialLanguageType());
+            startActivityForResult(intent, REQUEST_CODE_SELECT_LANGUAGE);
+        });
 
         return inflatedView;
     }
@@ -172,10 +167,14 @@ public abstract class LanguageItemListFragment extends Fragment
      */
     protected abstract LanguageItemListFragment.ListDelegate makeFragmentListDelegate();
 
-    /** Return title for LanguageItemListFragment. */
+    /**
+     * Return title for LanguageItemListFragment.
+     */
     protected abstract String getLanguageListTitle(Context context);
 
-    /** Return the type of potential languages to populate the add language fragment with. */
+    /**
+     * Return the type of potential languages to populate the add language fragment with.
+     */
     protected abstract @LanguagesManager.LanguageListType int getPotentialLanguageType();
 
     /**
@@ -202,9 +201,13 @@ public abstract class LanguageItemListFragment extends Fragment
      */
     protected abstract void recordRemoveAction();
 
-    /** Callback for when a language is added to the LanguageItemList. */
+    /**
+     * Callback for when a language is added to the LanguageItemList.
+     */
     protected abstract void onLanguageAdded(String code);
 
-    /** Callback for when a language is removed to the LanguageItemList. */
+    /**
+     * Callback for when a language is removed to the LanguageItemList.
+     */
     protected abstract void onLanguageRemoved(String code);
 }

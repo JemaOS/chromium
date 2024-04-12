@@ -20,7 +20,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "base/check_op.h"
 #include "base/logging.h"
 #include "base/posix/eintr_wrapper.h"
 #include "build/build_config.h"

@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "third_party/blink/renderer/core/permissions_policy/permissions_policy_parser.h"
+
 #include <map>
 #include <string>
 
 #include "base/ranges/algorithm.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/permissions_policy/origin_with_possible_wildcards.h"
 #include "third_party/blink/public/mojom/permissions_policy/permissions_policy.mojom-blink.h"
@@ -14,9 +15,8 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/loader/empty_clients.h"
-#include "third_party/blink/renderer/core/permissions_policy/permissions_policy_parser.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
+#include "third_party/blink/renderer/platform/testing/histogram_tester.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -107,7 +107,6 @@ class PermissionsPolicyParserTest : public ::testing::Test {
     return PermissionsPolicyParser::ParseHeader(
         feature_policy_header, g_empty_string, origin, logger, logger, context);
   }
-  test::TaskEnvironment task_environment_;
 };
 
 struct OriginWithPossibleWildcardsForTest {
@@ -117,11 +116,10 @@ struct OriginWithPossibleWildcardsForTest {
 
 struct ParsedPolicyDeclarationForTest {
   mojom::blink::PermissionsPolicyFeature feature;
-  std::optional<const char*> self_if_matches;
+  absl::optional<const char*> self_if_matches;
   bool matches_all_origins;
   bool matches_opaque_src;
   std::vector<OriginWithPossibleWildcardsForTest> allowed_origins;
-  std::optional<std::string> reporting_endpoint;
 };
 
 using ParsedPolicyForTest = std::vector<ParsedPolicyDeclarationForTest>;
@@ -197,29 +195,23 @@ class PermissionsPolicyParserParsingTest
                 expected_declaration.matches_all_origins);
       EXPECT_EQ(actual_declaration.matches_opaque_src,
                 expected_declaration.matches_opaque_src);
-      EXPECT_EQ(actual_declaration.reporting_endpoint,
-                expected_declaration.reporting_endpoint);
 
       ASSERT_EQ(actual_declaration.allowed_origins.size(),
                 expected_declaration.allowed_origins.size());
       for (size_t j = 0; j < actual_declaration.allowed_origins.size(); ++j) {
         const url::Origin origin = url::Origin::Create(
             GURL(expected_declaration.allowed_origins[j].origin));
-        EXPECT_EQ(
-            actual_declaration.allowed_origins[j].CSPSourceForTest().scheme,
-            origin.scheme());
-        EXPECT_EQ(actual_declaration.allowed_origins[j].CSPSourceForTest().host,
+        EXPECT_EQ(actual_declaration.allowed_origins[j].csp_source.scheme,
+                  origin.scheme());
+        EXPECT_EQ(actual_declaration.allowed_origins[j].csp_source.host,
                   origin.host());
-        if (actual_declaration.allowed_origins[j].CSPSourceForTest().port !=
+        if (actual_declaration.allowed_origins[j].csp_source.port !=
             url::PORT_UNSPECIFIED) {
-          EXPECT_EQ(
-              actual_declaration.allowed_origins[j].CSPSourceForTest().port,
-              origin.port());
+          EXPECT_EQ(actual_declaration.allowed_origins[j].csp_source.port,
+                    origin.port());
         }
         EXPECT_EQ(
-            actual_declaration.allowed_origins[j]
-                .CSPSourceForTest()
-                .is_host_wildcard,
+            actual_declaration.allowed_origins[j].csp_source.is_host_wildcard,
             expected_declaration.allowed_origins[j].has_subdomain_wildcard);
       }
     }
@@ -292,7 +284,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ true,
                     /* matches_opaque_src */ true,
                     {},
@@ -315,14 +307,14 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ true,
                     /* matches_opaque_src */ true,
                     {},
                 },
                 {
                     mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ false,
                     {{ORIGIN_B, /*has_subdomain_wildcard=*/false},
@@ -353,14 +345,14 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ true,
                     /* matches_opaque_src */ true,
                     {},
                 },
                 {
                     mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ false,
                     {{ORIGIN_B, /*has_subdomain_wildcard=*/false},
@@ -428,7 +420,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ true,
                     {},
@@ -445,7 +437,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ true,
                     {},
@@ -462,7 +454,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ true,
                     /* matches_opaque_src */ true,
                     {},
@@ -480,7 +472,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ false,
                     {{ORIGIN_B, /*has_subdomain_wildcard=*/false},
@@ -499,7 +491,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ true,
                     {{ORIGIN_B, /*has_subdomain_wildcard=*/false}},
@@ -517,7 +509,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ false,
                     {},
@@ -535,7 +527,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ false,
                     {},
@@ -553,7 +545,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ false,
                     {},
@@ -570,7 +562,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ false,
                     {},
@@ -588,7 +580,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ false,
                     {},
@@ -606,7 +598,7 @@ const PermissionsPolicyParserTestCase
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ false,
                     {{ORIGIN_A,
@@ -618,296 +610,20 @@ const PermissionsPolicyParserTestCase
             /* test_name */ "ImproperWildcardsIncluded",
             /* feature_policy_string */
             "fullscreen *://example.com https://foo.*.example.com "
-            "https://*.*.example.com",
+            "https://*.*.example.com https://example.com:*",
             /* permissions_policy_string */
             "fullscreen=(\"*://example.com\" \"https://foo.*.example.com\" "
-            "\"https://*.*.example.com\")",
+            "\"https://*.*.example.com\"  \"https://example.com:*\")",
             /* self_origin */ ORIGIN_A,
             /* src_origin */ ORIGIN_B,
             /* expected_parse_result */
             {
                 {
                     mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
+                    /* self_if_matches */ absl::nullopt,
                     /* matches_all_origins */ false,
                     /* matches_opaque_src */ false,
                     {},
-                },
-            },
-        },
-        {
-            /* test_name */ "AttributeWithLineBreaks",
-            /* feature_policy_string */
-            "geolocation;\n"
-            "fullscreen",
-            /* permissions_policy_string */ NOT_APPLICABLE,
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_B, /*has_subdomain_wildcard=*/false}},
-                },
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_B, /*has_subdomain_wildcard=*/false}},
-                },
-            },
-        },
-        {
-            /* test_name */ "AttributeWithCRLF",
-            /* feature_policy_string */
-            "geolocation;\r\n"
-            "fullscreen",
-            /* permissions_policy_string */ NOT_APPLICABLE,
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_B, /*has_subdomain_wildcard=*/false}},
-                },
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_B, /*has_subdomain_wildcard=*/false}},
-                },
-            },
-        },
-        {
-            /* test_name */ "AlternativeWhitespceBetweenTokens",
-            /* feature_policy_string */
-            "\r\n\r\ngeolocation\t 'self'\f\f" ORIGIN_B "\t",
-            /* permissions_policy_string */ NOT_APPLICABLE,
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ ORIGIN_A,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_B, /*has_subdomain_wildcard=*/false}},
-                },
-            },
-        },
-        {
-            /* test_name */ "ReportingEndpointWithStar",
-            /* feature_policy_string */ NOT_APPLICABLE,
-            /* permissions_policy_string */
-            "fullscreen=*;report-to=endpoint",
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ true,
-                    /* matches_opaque_src */ true,
-                    {},
-                    "endpoint",
-                },
-            },
-        },
-        {
-            /* test_name */ "ReportingEndpointWithList",
-            /* feature_policy_string */ NOT_APPLICABLE,
-            /* permissions_policy_string */
-            "fullscreen=(\"" ORIGIN_B "\" \"" ORIGIN_C "\");report-to=endpoint",
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_B, /*has_subdomain_wildcard=*/false},
-                     {ORIGIN_C, /*has_subdomain_wildcard=*/false}},
-                    "endpoint",
-                },
-            },
-        },
-        {
-            /* test_name */ "ReportingEndpointWithNone",
-            /* feature_policy_string */ NOT_APPLICABLE,
-            /* permissions_policy_string */
-            "fullscreen=();report-to=endpoint",
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {},
-                    "endpoint",
-                },
-            },
-        },
-        {
-            /* test_name */ "ReportingEndpointWithSelf",
-            /* feature_policy_string */ NOT_APPLICABLE,
-            /* permissions_policy_string */
-            "fullscreen=self;report-to=endpoint",
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ ORIGIN_A,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {},
-                    "endpoint",
-                },
-            },
-        },
-        {
-            /* test_name */ "ReportingEndpointWithSingleOrigin",
-            /* feature_policy_string */ NOT_APPLICABLE,
-            /* permissions_policy_string */
-            "fullscreen=\"" ORIGIN_C "\";report-to=endpoint",
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_C, /*has_subdomain_wildcard=*/false}},
-                    "endpoint",
-                },
-            },
-        },
-        {
-            /* test_name */ "InvalidReportingEndpointInList",
-            /* feature_policy_string */ NOT_APPLICABLE,
-            // Note: The reporting endpoint parameter needs to apply to the
-            // entire value for the dictionary entry. In this example, it is
-            // placed on a single inner list item, and should therefore be
-            // ignored.
-            /* permissions_policy_string */
-            "fullscreen=(\"" ORIGIN_C "\";report-to=endpoint)",
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_C, /*has_subdomain_wildcard=*/false}},
-                    /* reporting_endpoint */ std::nullopt,
-                },
-            },
-        },
-        {
-            /* test_name */ "ReportingEndpointsInsideAndOutsideList",
-            /* feature_policy_string */ NOT_APPLICABLE,
-            /* permissions_policy_string */
-            "fullscreen=(\"" ORIGIN_C
-            "\";report-to=endpoint1);report-to=endpoint2",
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_C, /*has_subdomain_wildcard=*/false}},
-                    /* reporting_endpoint */ "endpoint2",
-                },
-            },
-        },
-        // DifferentReportingEndpoints
-        {
-            /* test_name */ "DifferentReportingEndpoints",
-            /* feature_policy_string */ NOT_APPLICABLE,
-            /* permissions_policy_string */
-            "fullscreen=\"" ORIGIN_B "\";report-to=endpoint1,"
-            "geolocation=\"" ORIGIN_C "\";report-to=endpoint2",
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_B, /*has_subdomain_wildcard=*/false}},
-                    "endpoint1",
-                },
-                {
-                    mojom::blink::PermissionsPolicyFeature::kGeolocation,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ false,
-                    /* matches_opaque_src */ false,
-                    {{ORIGIN_C, /*has_subdomain_wildcard=*/false}},
-                    "endpoint2",
-                },
-            },
-        },
-        {
-            /* test_name */ "InvalidReportingEndpointsBool",
-            /* feature_policy_string */ NOT_APPLICABLE,
-            /* permissions_policy_string */
-            "fullscreen=*;report-to",
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ true,
-                    /* matches_opaque_src */ true,
-                    {},
-                    /* reporting_endpoint */ std::nullopt,
-                },
-            },
-        },
-        {
-            /* test_name */ "InvalidReportingEndpointsNumber",
-            /* feature_policy_string */ NOT_APPLICABLE,
-            /* permissions_policy_string */
-            "fullscreen=*;report-to=7",
-            /* self_origin */ ORIGIN_A,
-            /* src_origin */ ORIGIN_B,
-            /* expected_parse_result */
-            {
-                {
-                    mojom::blink::PermissionsPolicyFeature::kFullscreen,
-                    /* self_if_matches */ std::nullopt,
-                    /* matches_all_origins */ true,
-                    /* matches_opaque_src */ true,
-                    {},
-                    /* reporting_endpoint */ std::nullopt,
                 },
             },
         },
@@ -961,7 +677,7 @@ TEST_F(PermissionsPolicyParserParsingTest,
           {
               // allowlist value 'none' is expected.
               mojom::blink::PermissionsPolicyFeature::kGeolocation,
-              /* self_if_matches */ std::nullopt,
+              /* self_if_matches */ absl::nullopt,
               /* matches_all_origins */ false,
               /* matches_opaque_src */ false,
               {},
@@ -1019,7 +735,7 @@ TEST_F(PermissionsPolicyParserParsingTest,
           },
           {
               mojom::blink::PermissionsPolicyFeature::kPayment,
-              /* self_if_matches */ std::nullopt,
+              /* self_if_matches */ absl::nullopt,
               /* matches_all_origins */ true,
               /* matches_opaque_src */ true,
               {},
@@ -1051,14 +767,14 @@ TEST_F(PermissionsPolicyParserParsingTest,
       {
           {
               mojom::blink::PermissionsPolicyFeature::kGeolocation,
-              /* self_if_matches */ std::nullopt,
+              /* self_if_matches */ absl::nullopt,
               /* matches_all_origins */ true,
               /* matches_opaque_src */ true,
               {},
           },
           {
               mojom::blink::PermissionsPolicyFeature::kFullscreen,
-              /* self_if_matches */ std::nullopt,
+              /* self_if_matches */ absl::nullopt,
               /* matches_all_origins */ true,
               /* matches_opaque_src */ true,
               {},
@@ -1096,7 +812,7 @@ TEST_F(PermissionsPolicyParserParsingTest,
       {
           {
               mojom::blink::PermissionsPolicyFeature::kGeolocation,
-              /* self_if_matches */ std::nullopt,
+              /* self_if_matches */ absl::nullopt,
               /* matches_all_origins */ false,
               /* matches_opaque_src */ false,
               {},
@@ -1189,7 +905,7 @@ TEST_F(PermissionsPolicyParserTest, ParseTooLongPolicy) {
 // Test histogram counting the use of permissions policies in header.
 TEST_F(PermissionsPolicyParserTest, HeaderHistogram) {
   const char* histogram_name = "Blink.UseCounter.FeaturePolicy.Header";
-  base::HistogramTester tester;
+  HistogramTester tester;
   PolicyParserMessageBuffer logger;
 
   PermissionsPolicyParser::ParseFeaturePolicyForTest(
@@ -1210,7 +926,7 @@ TEST_F(PermissionsPolicyParserTest, HeaderHistogram) {
 // Test counting the use of each permissions policy only once per header.
 TEST_F(PermissionsPolicyParserTest, HistogramMultiple) {
   const char* histogram_name = "Blink.UseCounter.FeaturePolicy.Header";
-  base::HistogramTester tester;
+  HistogramTester tester;
   PolicyParserMessageBuffer logger;
 
   // If the same feature is listed multiple times, it should only be counted
@@ -1326,20 +1042,22 @@ class FeaturePolicyMutationTest : public testing::Test {
   ParsedPermissionsPolicy test_policy = {
       {mojom::blink::PermissionsPolicyFeature::kFullscreen,
        /*allowed_origins=*/
-       {*blink::OriginWithPossibleWildcards::FromOrigin(url_origin_a_),
-        *blink::OriginWithPossibleWildcards::FromOrigin(url_origin_b_)},
-       /*self_if_matches=*/std::nullopt,
+       {blink::OriginWithPossibleWildcards(url_origin_a_,
+                                           /*has_subdomain_wildcard=*/false),
+        blink::OriginWithPossibleWildcards(url_origin_b_,
+                                           /*has_subdomain_wildcard=*/false)},
+       /*self_if_matches=*/absl::nullopt,
        /*matches_all_origins=*/false,
        /*matches_opaque_src=*/false},
       {mojom::blink::PermissionsPolicyFeature::kGeolocation,
        /*=allowed_origins*/
-       {*blink::OriginWithPossibleWildcards::FromOrigin(url_origin_a_)},
-       /*self_if_matches=*/std::nullopt,
+       {blink::OriginWithPossibleWildcards(url_origin_a_,
+                                           /*has_subdomain_wildcard=*/false)},
+       /*self_if_matches=*/absl::nullopt,
        /*matches_all_origins=*/false,
        /*matches_opaque_src=*/false}};
 
   ParsedPermissionsPolicy empty_policy = {};
-  test::TaskEnvironment task_environment_;
 };
 
 TEST_F(FeaturePolicyMutationTest, TestIsFeatureDeclared) {
@@ -1514,8 +1232,6 @@ class PermissionsPolicyViolationHistogramTest : public testing::Test {
   PermissionsPolicyViolationHistogramTest() = default;
 
   ~PermissionsPolicyViolationHistogramTest() override = default;
-  test::TaskEnvironment task_environment_;
 };
 
 }  // namespace blink
-

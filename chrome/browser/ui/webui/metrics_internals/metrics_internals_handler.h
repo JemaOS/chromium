@@ -43,7 +43,6 @@ class MetricsInternalsHandler : public content::WebUIMessageHandler {
   void HandleFetchUmaSummary(const base::Value::List& args);
   void HandleFetchUmaLogsData(const base::Value::List& args);
   void HandleIsUsingMetricsServiceObserver(const base::Value::List& args);
-
   void OnUmaLogCreatedOrEvent();
 
   // This UMA log observer keeps track of logs since its creation. It is unused

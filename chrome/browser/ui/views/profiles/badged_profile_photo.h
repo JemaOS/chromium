@@ -16,9 +16,9 @@
 // More badges, e.g. for syncing, will be supported in the future (project
 // DICE).
 class BadgedProfilePhoto : public views::View {
-  METADATA_HEADER(BadgedProfilePhoto, views::View)
-
  public:
+  METADATA_HEADER(BadgedProfilePhoto);
+
   enum BadgeType {
     BADGE_TYPE_NONE,
     BADGE_TYPE_SUPERVISOR,

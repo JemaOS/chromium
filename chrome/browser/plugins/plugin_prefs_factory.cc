@@ -16,8 +16,7 @@
 
 // static
 PluginPrefsFactory* PluginPrefsFactory::GetInstance() {
-  static base::NoDestructor<PluginPrefsFactory> instance;
-  return instance.get();
+  return base::Singleton<PluginPrefsFactory>::get();
 }
 
 // static
@@ -37,14 +36,9 @@ PluginPrefsFactory::CreateForTestingProfile(content::BrowserContext* profile) {
 PluginPrefsFactory::PluginPrefsFactory()
     : RefcountedProfileKeyedServiceFactory(
           "PluginPrefs",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
-PluginPrefsFactory::~PluginPrefsFactory() = default;
+PluginPrefsFactory::~PluginPrefsFactory() {}
 
 scoped_refptr<RefcountedKeyedService>
 PluginPrefsFactory::BuildServiceInstanceFor(

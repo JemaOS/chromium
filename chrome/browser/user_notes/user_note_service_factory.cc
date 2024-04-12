@@ -6,8 +6,7 @@
 
 #include <utility>
 
-#include "base/check_is_test.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/user_notes/user_note_service_delegate_impl.h"
 #include "components/user_notes/browser/user_note_service.h"
@@ -21,24 +20,22 @@ namespace user_notes {
 UserNoteService* UserNoteServiceFactory::GetForContext(
     content::BrowserContext* context) {
   auto* instance = GetInstance();
-  if (instance->service_for_testing_) {
-    CHECK_IS_TEST();
-    return instance->service_for_testing_;
-  }
-  return static_cast<UserNoteService*>(
-      instance->GetServiceForBrowserContext(context,
-                                            /*create=*/true));
+  return instance->service_for_testing_
+             ? instance->service_for_testing_.get()
+             : static_cast<UserNoteService*>(
+                   instance->GetServiceForBrowserContext(context,
+                                                         /*create=*/true));
 }
 
 // static
 UserNoteServiceFactory* UserNoteServiceFactory::GetInstance() {
-  static base::NoDestructor<UserNoteServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<UserNoteServiceFactory>::get();
 }
 
 // static
-void UserNoteServiceFactory::SetServiceForTesting(UserNoteService* service) {
-  GetInstance()->service_for_testing_ = service;
+void UserNoteServiceFactory::SetServiceForTesting(
+    std::unique_ptr<UserNoteService> service) {
+  GetInstance()->service_for_testing_ = std::move(service);
 }
 
 UserNoteServiceFactory::UserNoteServiceFactory()
@@ -56,11 +53,10 @@ UserNoteServiceFactory::UserNoteServiceFactory()
 
 UserNoteServiceFactory::~UserNoteServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-UserNoteServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* UserNoteServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   DCHECK(IsUserNotesEnabled());
-  return std::make_unique<UserNoteService>(
+  return new UserNoteService(
       std::make_unique<UserNoteServiceDelegateImpl>(
           Profile::FromBrowserContext(context)),
       std::make_unique<UserNoteStorageImpl>(context->GetPath()));

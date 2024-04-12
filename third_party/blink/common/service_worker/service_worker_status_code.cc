@@ -53,8 +53,6 @@ const char* ServiceWorkerStatusToString(ServiceWorkerStatusCode status) {
       return "Invalid arguments";
     case ServiceWorkerStatusCode::kErrorStorageDisconnected:
       return "Storage operation error";
-    case ServiceWorkerStatusCode::kErrorStorageDataCorrupted:
-      return "Storage data corrupted";
   }
   NOTREACHED();
   return "";

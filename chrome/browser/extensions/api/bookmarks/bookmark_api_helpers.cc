@@ -4,6 +4,8 @@
 
 #include "chrome/browser/extensions/api/bookmarks/bookmark_api_helpers.h"
 
+#include <math.h>  // For floor()
+
 #include <memory>
 #include <utility>
 #include <vector>
@@ -71,20 +73,21 @@ void PopulateBookmarkTreeNode(
     out_bookmark_tree_node->url = node->url().spec();
     base::Time t = node->date_last_used();
     if (!t.is_null()) {
-      out_bookmark_tree_node->date_last_used = t.InMillisecondsSinceUnixEpoch();
+      out_bookmark_tree_node->date_last_used = floor(t.ToDoubleT() * 1000);
     }
   } else {
+    // Javascript Date wants milliseconds since the epoch, ToDoubleT is seconds.
     base::Time t = node->date_folder_modified();
     if (!t.is_null()) {
-      out_bookmark_tree_node->date_group_modified =
-          t.InMillisecondsSinceUnixEpoch();
+      out_bookmark_tree_node->date_group_modified = floor(t.ToDoubleT() * 1000);
     }
   }
 
   out_bookmark_tree_node->title = base::UTF16ToUTF8(node->GetTitle());
   if (!node->date_added().is_null()) {
+    // Javascript Date wants milliseconds since the epoch, ToDoubleT is seconds.
     out_bookmark_tree_node->date_added =
-        node->date_added().InMillisecondsSinceUnixEpoch();
+        floor(node->date_added().ToDoubleT() * 1000);
   }
 
   if (bookmarks::IsDescendantOf(node, managed->managed_node())) {

@@ -4,7 +4,7 @@
 
 package org.chromium.chrome.browser.tasks.tab_management;
 
-import static org.chromium.chrome.browser.tasks.tab_management.TabSwitcherLayout.ZOOMING_DURATION;
+import static org.chromium.chrome.features.start_surface.TabSwitcherAndStartSurfaceLayout.ZOOMING_DURATION;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -21,7 +21,6 @@ import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.util.Pair;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -34,17 +33,18 @@ import android.widget.RelativeLayout;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.chromium.base.Log;
-import org.chromium.chrome.browser.hub.HubFieldTrial;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.tab_ui.R;
 import org.chromium.ui.base.ViewUtils;
-import org.chromium.ui.interpolators.Interpolators;
+import org.chromium.ui.interpolators.BakedBezierInterpolator;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 import org.chromium.ui.resources.dynamics.DynamicResourceLoader;
 import org.chromium.ui.resources.dynamics.DynamicResourceReadyOnceCallback;
@@ -55,20 +55,30 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/** A custom RecyclerView implementation for the tab grid, to handle show/hide logic in class. */
-class TabListRecyclerView extends RecyclerView
-        implements TabListMediator.TabGridAccessibilityHelper {
+/**
+ * A custom RecyclerView implementation for the tab grid, to handle show/hide logic in class.
+ */
+class TabListRecyclerView
+        extends RecyclerView implements TabListMediator.TabGridAccessibilityHelper {
     private static final String TAG = "TabListRecyclerView";
     private static final String SHADOW_VIEW_TAG = "TabListViewShadow";
 
-    // Default values from experimentation.
-    private static final float DEFAULT_DOWNSAMPLING_SCALE = 0.5f;
+    private static final String MAX_DUTY_CYCLE_PARAM = "max-duty-cycle";
     private static final float DEFAULT_MAX_DUTY_CYCLE = 0.2f;
 
     public static final long BASE_ANIMATION_DURATION_MS = 218;
     public static final long FINAL_FADE_IN_DURATION_MS = 50;
 
-    /** An interface to listen to visibility related changes on this {@link RecyclerView}. */
+    /**
+     * Field trial parameter for downsampling scaling factor.
+     */
+    private static final String DOWNSAMPLING_SCALE_PARAM = "downsampling-scale";
+
+    private static final float DEFAULT_DOWNSAMPLING_SCALE = 0.5f;
+
+    /**
+     * An interface to listen to visibility related changes on this {@link RecyclerView}.
+     */
     interface VisibilityListener {
         /**
          * Called before the animation to show the tab list has started.
@@ -76,7 +86,9 @@ class TabListRecyclerView extends RecyclerView
          */
         void startedShowing(boolean isAnimating);
 
-        /** Called when the animation to show the tab list is finished. */
+        /**
+         * Called when the animation to show the tab list is finished.
+         */
         void finishedShowing();
 
         /**
@@ -85,7 +97,9 @@ class TabListRecyclerView extends RecyclerView
          */
         void startedHiding(boolean isAnimating);
 
-        /** Called when the animation to show the tab list is finished. */
+        /**
+         * Called when the animation to show the tab list is finished.
+         */
         void finishedHiding();
     }
 
@@ -111,14 +125,13 @@ class TabListRecyclerView extends RecyclerView
         @Override
         public boolean animateRemove(ViewHolder holder) {
             AnimatorSet scaleAnimator = new AnimatorSet();
-            scaleAnimator.addListener(
-                    new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
-                            holder.itemView.setScaleX(1.0f);
-                            holder.itemView.setScaleY(1.0f);
-                        }
-                    });
+            scaleAnimator.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    holder.itemView.setScaleX(1.0f);
+                    holder.itemView.setScaleY(1.0f);
+                }
+            });
             ObjectAnimator scaleX = ObjectAnimator.ofFloat(holder.itemView, View.SCALE_X, 0.5f);
             ObjectAnimator scaleY = ObjectAnimator.ofFloat(holder.itemView, View.SCALE_Y, 0.5f);
             scaleX.setDuration(BASE_ANIMATION_DURATION_MS);
@@ -136,27 +149,27 @@ class TabListRecyclerView extends RecyclerView
     private VisibilityListener mListener;
     private DynamicResourceLoader mLoader;
     private ViewResourceAdapter mDynamicView;
-    private boolean mBlockTouchInput;
     private boolean mIsDynamicViewRegistered;
+    private long mLastDirtyTime;
     private ImageView mShadowImageView;
     private int mShadowTopOffset;
     private TabListOnScrollListener mScrollListener;
     // It is null when gts-tab animation is disabled or switching from Start surface to GTS.
-    @Nullable private RecyclerView.ItemAnimator mOriginalAnimator;
-    // Null unless item animations are disabled.
-    @Nullable private RecyclerView.ItemAnimator mDisabledAnimatorHolder;
+    @Nullable
+    private RecyclerView.ItemAnimator mOriginalAnimator;
     // Null if there is no runnable to execute on the next layout.
-    @Nullable private Runnable mOnNextLayoutRunnable;
-
+    @Nullable
+    private Runnable mOnNextLayoutRunnable;
     /**
      * Capture is suppressed when animations are not running. Animations are initiated after the
      * completion of {@link DynamicResource#triggerBitmapCapture()}.
      */
     private boolean mSuppressCapture = true;
-
     private int mToolbarHairlineColor;
 
-    /** Basic constructor to use during inflation from xml. */
+    /**
+     * Basic constructor to use during inflation from xml.
+     */
     public TabListRecyclerView(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
 
@@ -183,45 +196,28 @@ class TabListRecyclerView extends RecyclerView
      * @param runnable the runnable that executes on next layout.
      */
     void runAnimationOnNextLayout(Runnable runnable) {
-        // Very fast navigations to/from the tab list may not have time for a layout to reach a
-        // completed state. Since this is primarily used for cancellable or skippable animations
-        // where the runnable will not be serviced downstream, dropping the runnable altogether is
-        // safe for Hub.
-        if (!HubFieldTrial.isHubEnabled()) {
-            assert mOnNextLayoutRunnable == null
-                    : "TabListRecyclerView animation on next layout set multiple times without"
-                            + " running.";
-        }
-        mOnNextLayoutRunnable =
-                () -> {
-                    if (mDynamicView == null) {
-                        runnable.run();
-                        return;
-                    }
-                    DynamicResourceReadyOnceCallback.onNext(
-                            mDynamicView,
-                            resource -> {
-                                mSuppressCapture = false;
-                                runnable.run();
-                            });
-                    mDynamicView.triggerBitmapCapture();
-                };
+        assert mOnNextLayoutRunnable
+                == null
+            : "TabListRecyclerView animation on next layout set multiple times without running.";
+        mOnNextLayoutRunnable = () -> {
+            if (mDynamicView == null) {
+                runnable.run();
+                return;
+            }
+            DynamicResourceReadyOnceCallback.onNext(mDynamicView, resource -> {
+                mSuppressCapture = false;
+                runnable.run();
+            });
+            mDynamicView.triggerBitmapCapture();
+        };
 
         // If the view is detached or won't conduct a new layout then trigger the runnable
         // immediately rather than waiting for it to be attached.
-        // if (!isAttachedToWindow() || !isLayoutRequested()) {
-        if (!isLayoutRequested()) {
+        if (!isAttachedToWindow() || !isLayoutRequested()) {
             Runnable runNow = mOnNextLayoutRunnable;
             mOnNextLayoutRunnable = null;
             runNow.run();
         }
-    }
-
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent e) {
-        if (mBlockTouchInput) return true;
-
-        return super.dispatchTouchEvent(e);
     }
 
     /**
@@ -230,29 +226,6 @@ class TabListRecyclerView extends RecyclerView
      */
     void setVisibilityListener(VisibilityListener listener) {
         mListener = listener;
-    }
-
-    /**
-     * Set whether to block touch inputs. For example, during an animated transition the
-     * TabListRecyclerView may still be visible, but interacting with it could trigger repeat
-     * animations or unexpected state changes.
-     * @param blockTouchInput Whether the touch inputs should be blocked.
-     */
-    void setBlockTouchInput(boolean blockTouchInput) {
-        mBlockTouchInput = blockTouchInput;
-    }
-
-    void setDisableItemAnimations(boolean disable) {
-        if (disable) {
-            ItemAnimator animator = getItemAnimator();
-            if (animator == null) return;
-
-            mDisabledAnimatorHolder = animator;
-            setItemAnimator(null);
-        } else if (mDisabledAnimatorHolder != null) {
-            setItemAnimator(mDisabledAnimatorHolder);
-            mDisabledAnimatorHolder = null;
-        }
     }
 
     void prepareTabSwitcherView() {
@@ -265,13 +238,6 @@ class TabListRecyclerView extends RecyclerView
         setItemAnimator(null);
     }
 
-    void prepareTabSwitcherPaneView() {
-        endAllAnimations();
-        // Ignore the rest of prepareTabSwitcherView since the pane version doesn't use a dynamic
-        // view and the items should already be visible. Don't replace the item animator as
-        // startShowing is skipped for panes meaning the animator would never be re-added.
-    }
-
     /**
      * Start showing the tab list.
      * @param animate Whether the visibility change should be animated.
@@ -280,45 +246,41 @@ class TabListRecyclerView extends RecyclerView
         assert mFadeOutAnimator == null;
         mListener.startedShowing(animate);
 
-        long duration =
-                TabUiFeatureUtilities.isTabToGtsAnimationEnabled(getContext())
-                        ? FINAL_FADE_IN_DURATION_MS
-                        : BASE_ANIMATION_DURATION_MS;
+        long duration = TabUiFeatureUtilities.isTabToGtsAnimationEnabled(getContext())
+                ? FINAL_FADE_IN_DURATION_MS
+                : BASE_ANIMATION_DURATION_MS;
 
         setAlpha(0);
         setVisibility(View.VISIBLE);
         mFadeInAnimator = ObjectAnimator.ofFloat(this, View.ALPHA, 1);
-        mFadeInAnimator.setInterpolator(Interpolators.LINEAR_OUT_SLOW_IN_INTERPOLATOR);
+        mFadeInAnimator.setInterpolator(BakedBezierInterpolator.FADE_IN_CURVE);
         mFadeInAnimator.setDuration(duration);
         mFadeInAnimator.start();
-        mFadeInAnimator.addListener(
-                new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        mFadeInAnimator = null;
-                        mSuppressCapture = true;
-                        mListener.finishedShowing();
-                        // Restore the original value.
-                        // TODO(crbug.com/1315676): Remove the null check after decoupling Start
-                        // surface layout and grid tab switcher layout.
-                        if (mOriginalAnimator != null) {
-                            setItemAnimator(mOriginalAnimator);
-                            mOriginalAnimator = null;
-                        }
-                        setShadowVisibility(computeVerticalScrollOffset() > 0);
-                        if (mDynamicView != null) {
-                            unregisterDynamicView();
-                            mDynamicView.dropCachedBitmap();
-                        }
-                        // TODO(crbug.com/972157): remove this band-aid after we know why GTS is
-                        // invisible.
-                        if (TabUiFeatureUtilities.isTabToGtsAnimationEnabled(getContext())) {
-                            ViewUtils.requestLayout(
-                                    TabListRecyclerView.this,
-                                    "TabListRecyclerView.startShowing.AnimatorListenerAdapter.onAnimationEnd");
-                        }
-                    }
-                });
+        mFadeInAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                mFadeInAnimator = null;
+                mSuppressCapture = true;
+                mListener.finishedShowing();
+                // Restore the original value.
+                // TODO(crbug.com/1315676): Remove the null check after decoupling Start surface
+                // layout and grid tab switcher layout.
+                if (mOriginalAnimator != null) {
+                    setItemAnimator(mOriginalAnimator);
+                    mOriginalAnimator = null;
+                }
+                setShadowVisibility(computeVerticalScrollOffset() > 0);
+                if (mDynamicView != null) {
+                    unregisterDynamicView();
+                    mDynamicView.dropCachedBitmap();
+                }
+                // TODO(crbug.com/972157): remove this band-aid after we know why GTS is invisible.
+                if (TabUiFeatureUtilities.isTabToGtsAnimationEnabled(getContext())) {
+                    ViewUtils.requestLayout(TabListRecyclerView.this,
+                            "TabListRecyclerView.startShowing.AnimatorListenerAdapter.onAnimationEnd");
+                }
+            }
+        });
         if (!animate) mFadeInAnimator.end();
     }
 
@@ -348,9 +310,8 @@ class TabListRecyclerView extends RecyclerView
             int shadowHeight = res.getDimensionPixelSize(R.dimen.toolbar_hairline_height);
             if (getParent() instanceof FrameLayout) {
                 // Add shadow for grid tab switcher.
-                FrameLayout.LayoutParams params =
-                        new FrameLayout.LayoutParams(
-                                LayoutParams.MATCH_PARENT, shadowHeight, Gravity.TOP);
+                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                        LayoutParams.MATCH_PARENT, shadowHeight, Gravity.TOP);
                 mShadowImageView.setLayoutParams(params);
                 mShadowImageView.setTranslationY(mShadowTopOffset);
                 FrameLayout parent = (FrameLayout) getParent();
@@ -361,9 +322,8 @@ class TabListRecyclerView extends RecyclerView
                 View toolbar = parent.getChildAt(0);
                 if (!(toolbar instanceof TabGroupUiToolbarView)) return;
 
-                RelativeLayout.LayoutParams params =
-                        new RelativeLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT, shadowHeight);
+                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, shadowHeight);
                 params.addRule(RelativeLayout.BELOW, toolbar.getId());
                 parent.addView(mShadowImageView, params);
             }
@@ -409,8 +369,18 @@ class TabListRecyclerView extends RecyclerView
         return mResourceId;
     }
 
+    long getLastDirtyTime() {
+        return mLastDirtyTime;
+    }
+
     private float getDownsamplingScale() {
-        return DEFAULT_DOWNSAMPLING_SCALE;
+        String scale = ChromeFeatureList.getFieldTrialParamByFeature(
+                ChromeFeatureList.TAB_TO_GTS_ANIMATION, DOWNSAMPLING_SCALE_PARAM);
+        try {
+            return Float.valueOf(scale);
+        } catch (NumberFormatException e) {
+            return DEFAULT_DOWNSAMPLING_SCALE;
+        }
     }
 
     /**
@@ -418,61 +388,61 @@ class TabListRecyclerView extends RecyclerView
      * The view resource can be obtained by {@link #getResourceId} in compositor layer.
      */
     void createDynamicView(DynamicResourceLoader loader) {
-        // If there is no resource loader it isn't necessary to create a dynamic view.
-        if (loader == null) return;
-
         // TODO(crbug/1409886): Consider reducing capture frequency or only capturing once. There
         // was some discussion about this in crbug/1386265. However, it was punted on due to mid-end
         // devices having difficulty producing thumbnails before the first capture to avoid the
         // transition being jarring. This is exacerbated by multi-thumbnails which need to be
         // assembled from multiple assets.
-        mDynamicView =
-                new ViewResourceAdapter(this) {
-                    private long mSuppressedUntil;
+        mDynamicView = new ViewResourceAdapter(this) {
+            private long mSuppressedUntil;
 
-                    @Override
-                    public boolean isDirty() {
-                        boolean dirty = super.isDirty();
-                        if (SystemClock.elapsedRealtime() < mSuppressedUntil || mSuppressCapture) {
-                            if (dirty) {
-                                Log.d(TAG, "Dynamic View is dirty but suppressed");
-                            }
-                            return false;
-                        }
-                        return dirty;
+            @Override
+            public boolean isDirty() {
+                boolean dirty = super.isDirty();
+                if (dirty) {
+                    mLastDirtyTime = SystemClock.elapsedRealtime();
+                }
+                if (SystemClock.elapsedRealtime() < mSuppressedUntil || mSuppressCapture) {
+                    if (dirty) {
+                        Log.d(TAG, "Dynamic View is dirty but suppressed");
                     }
+                    return false;
+                }
+                return dirty;
+            }
 
-                    @Override
-                    public void triggerBitmapCapture() {
-                        long startTime = SystemClock.elapsedRealtime();
-                        super.triggerBitmapCapture();
-                        long elapsed = SystemClock.elapsedRealtime() - startTime;
-                        if (elapsed == 0) elapsed = 1;
+            @Override
+            public void triggerBitmapCapture() {
+                long startTime = SystemClock.elapsedRealtime();
+                super.triggerBitmapCapture();
+                long elapsed = SystemClock.elapsedRealtime() - startTime;
+                if (elapsed == 0) elapsed = 1;
 
-                        float maxDutyCycle = getMaxDutyCycle();
-                        Log.d(TAG, "MaxDutyCycle = " + getMaxDutyCycle());
-                        assert maxDutyCycle > 0;
-                        assert maxDutyCycle <= 1;
-                        long suppressedFor =
-                                Math.min(
-                                        (long) (elapsed * (1 - maxDutyCycle) / maxDutyCycle),
-                                        ZOOMING_DURATION);
+                float maxDutyCycle = getMaxDutyCycle();
+                Log.d(TAG, "MaxDutyCycle = " + getMaxDutyCycle());
+                assert maxDutyCycle > 0;
+                assert maxDutyCycle <= 1;
+                long suppressedFor = Math.min(
+                        (long) (elapsed * (1 - maxDutyCycle) / maxDutyCycle), ZOOMING_DURATION);
 
-                        mSuppressedUntil = SystemClock.elapsedRealtime() + suppressedFor;
-                        Log.d(
-                                TAG,
-                                "DynamicView: spent %dms on getBitmap, suppress updating for %dms.",
-                                elapsed,
-                                suppressedFor);
-                    }
-                };
+                mSuppressedUntil = SystemClock.elapsedRealtime() + suppressedFor;
+                Log.d(TAG, "DynamicView: spent %dms on getBitmap, suppress updating for %dms.",
+                        elapsed, suppressedFor);
+            }
+        };
         mDynamicView.setDownsamplingScale(getDownsamplingScale());
         assert mLoader == null : "createDynamicView should only be called once";
         mLoader = loader;
     }
 
     private float getMaxDutyCycle() {
-        return DEFAULT_MAX_DUTY_CYCLE;
+        String maxDutyCycle = ChromeFeatureList.getFieldTrialParamByFeature(
+                ChromeFeatureList.TAB_GRID_LAYOUT_ANDROID, MAX_DUTY_CYCLE_PARAM);
+        try {
+            return Float.valueOf(maxDutyCycle);
+        } catch (NumberFormatException e) {
+            return DEFAULT_MAX_DUTY_CYCLE;
+        }
     }
 
     private void registerDynamicView() {
@@ -521,13 +491,9 @@ class TabListRecyclerView extends RecyclerView
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
 
-        // This seems to be dead buggy code pre-Hub, and causes problems post-Hub. The view removal
-        // does not seem to be guaranteed to succeed in #removeViewInLayout().
-        if (!HubFieldTrial.isHubEnabled()) {
-            if (mShadowImageView != null) {
-                removeViewInLayout(mShadowImageView);
-                mShadowImageView = null;
-            }
+        if (mShadowImageView != null) {
+            removeViewInLayout(mShadowImageView);
+            mShadowImageView = null;
         }
 
         if (mScrollListener != null) {
@@ -548,30 +514,27 @@ class TabListRecyclerView extends RecyclerView
             hideAnimation(animate);
             return;
         }
-        DynamicResourceReadyOnceCallback.onNext(
-                mDynamicView,
-                resource -> {
-                    mSuppressCapture = false;
-                    hideAnimation(animate);
-                });
+        DynamicResourceReadyOnceCallback.onNext(mDynamicView, resource -> {
+            mSuppressCapture = false;
+            hideAnimation(animate);
+        });
         mDynamicView.triggerBitmapCapture();
     }
 
     private void hideAnimation(boolean animate) {
         mListener.startedHiding(animate);
         mFadeOutAnimator = ObjectAnimator.ofFloat(this, View.ALPHA, 0);
-        mFadeOutAnimator.setInterpolator(Interpolators.FAST_OUT_LINEAR_IN_INTERPOLATOR);
+        mFadeOutAnimator.setInterpolator(BakedBezierInterpolator.FADE_OUT_CURVE);
         mFadeOutAnimator.setDuration(BASE_ANIMATION_DURATION_MS);
-        mFadeOutAnimator.addListener(
-                new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        mFadeOutAnimator = null;
-                        setVisibility(View.INVISIBLE);
-                        mSuppressCapture = true;
-                        mListener.finishedHiding();
-                    }
-                });
+        mFadeOutAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                mFadeOutAnimator = null;
+                setVisibility(View.INVISIBLE);
+                mSuppressCapture = true;
+                mListener.finishedHiding();
+            }
+        });
         setShadowVisibility(false);
         mFadeOutAnimator.start();
         if (!animate) mFadeOutAnimator.end();
@@ -594,24 +557,6 @@ class TabListRecyclerView extends RecyclerView
     }
 
     /**
-     * @param tabIndex The index in the RecyclerView of the tab.
-     * @param tabId The tab ID of the tab.
-     * @return The {@link Rect} of the thumbnail of the tab in global coordinates.
-     */
-    @NonNull
-    Rect getRectOfTabThumbnail(int tabIndex, int tabId) {
-        SimpleRecyclerViewAdapter.ViewHolder holder =
-                (SimpleRecyclerViewAdapter.ViewHolder) findViewHolderForAdapterPosition(tabIndex);
-        Rect rect = new Rect();
-        if (holder == null || tabIndex == TabModel.INVALID_TAB_INDEX) return rect;
-        assert holder.model.get(TabProperties.TAB_ID) == tabId;
-        ViewLookupCachingFrameLayout root = (ViewLookupCachingFrameLayout) holder.itemView;
-        View v = root.fastFindViewById(R.id.tab_thumbnail);
-        if (v != null) v.getGlobalVisibleRect(rect);
-        return rect;
-    }
-
-    /**
      * @param selectedTabIndex The index in the RecyclerView of the selected tab.
      * @param selectedTabId The tab ID of the selected tab.
      * @return The {@link Rect} of the thumbnail of the current tab, relative to the
@@ -620,8 +565,8 @@ class TabListRecyclerView extends RecyclerView
     @Nullable
     Rect getRectOfCurrentThumbnail(int selectedTabIndex, int selectedTabId) {
         SimpleRecyclerViewAdapter.ViewHolder holder =
-                (SimpleRecyclerViewAdapter.ViewHolder)
-                        findViewHolderForAdapterPosition(selectedTabIndex);
+                (SimpleRecyclerViewAdapter.ViewHolder) findViewHolderForAdapterPosition(
+                        selectedTabIndex);
         if (holder == null || selectedTabIndex == TabModel.INVALID_TAB_INDEX) return null;
         assert holder.model.get(TabProperties.TAB_ID) == selectedTabId;
         ViewLookupCachingFrameLayout root = (ViewLookupCachingFrameLayout) holder.itemView;
@@ -629,9 +574,6 @@ class TabListRecyclerView extends RecyclerView
     }
 
     private Rect getRectOfComponent(View v) {
-        // If called before a thumbnail view exists or for list view then exit with null.
-        if (v == null) return null;
-
         Rect recyclerViewRect = new Rect();
         Rect componentRect = new Rect();
         getGlobalVisibleRect(recyclerViewRect);
@@ -640,6 +582,37 @@ class TabListRecyclerView extends RecyclerView
         // Get the relative position.
         componentRect.offset(-recyclerViewRect.left, -recyclerViewRect.top);
         return componentRect;
+    }
+
+    /**
+     * A structure for holding the a recycler view position and offset.
+     */
+    public static class RecyclerViewPosition {
+        private int mPosition;
+        private int mOffset;
+
+        /**
+         * @param position The position of the first visible item in the recyclerView.
+         * @param offset The scroll offset of the recyclerView;
+         */
+        public RecyclerViewPosition(int position, int offset) {
+            mPosition = position;
+            mOffset = offset;
+        }
+
+        /**
+         * @return the position of the first visible item in the RecyclerView.
+         */
+        public int getPosition() {
+            return mPosition;
+        }
+
+        /**
+         * @return the offset from the first item in the RecyclerView.
+         */
+        public int getOffset() {
+            return mOffset;
+        }
     }
 
     /**
@@ -686,12 +659,8 @@ class TabListRecyclerView extends RecyclerView
             if (child.getLeft() == view.getLeft() && child.getTop() == view.getTop()) {
                 continue;
             }
-            if (isOverlap(
-                    child.getLeft(),
-                    child.getTop(),
-                    view.getLeft() + dX,
-                    view.getTop() + dY,
-                    threshold)) {
+            if (isOverlap(child.getLeft(), child.getTop(), view.getLeft() + dX, view.getTop() + dY,
+                        threshold)) {
                 return i;
             }
         }
@@ -714,26 +683,19 @@ class TabListRecyclerView extends RecyclerView
         if (position == -1) {
             return actions;
         }
+        assert getLayoutManager() instanceof GridLayoutManager;
         GridLayoutManager layoutManager = (GridLayoutManager) getLayoutManager();
         int spanCount = layoutManager.getSpanCount();
         Context context = getContext();
 
-        AccessibilityAction leftAction =
-                new AccessibilityNodeInfo.AccessibilityAction(
-                        R.id.move_tab_left,
-                        context.getString(R.string.accessibility_tab_movement_left));
-        AccessibilityAction rightAction =
-                new AccessibilityNodeInfo.AccessibilityAction(
-                        R.id.move_tab_right,
-                        context.getString(R.string.accessibility_tab_movement_right));
-        AccessibilityAction topAction =
-                new AccessibilityNodeInfo.AccessibilityAction(
-                        R.id.move_tab_up,
-                        context.getString(R.string.accessibility_tab_movement_up));
-        AccessibilityAction downAction =
-                new AccessibilityNodeInfo.AccessibilityAction(
-                        R.id.move_tab_down,
-                        context.getString(R.string.accessibility_tab_movement_down));
+        AccessibilityAction leftAction = new AccessibilityNodeInfo.AccessibilityAction(
+                R.id.move_tab_left, context.getString(R.string.accessibility_tab_movement_left));
+        AccessibilityAction rightAction = new AccessibilityNodeInfo.AccessibilityAction(
+                R.id.move_tab_right, context.getString(R.string.accessibility_tab_movement_right));
+        AccessibilityAction topAction = new AccessibilityNodeInfo.AccessibilityAction(
+                R.id.move_tab_up, context.getString(R.string.accessibility_tab_movement_up));
+        AccessibilityAction downAction = new AccessibilityNodeInfo.AccessibilityAction(
+                R.id.move_tab_down, context.getString(R.string.accessibility_tab_movement_down));
         actions.addAll(
                 new ArrayList<>(Arrays.asList(leftAction, rightAction, topAction, downAction)));
 
@@ -769,6 +731,7 @@ class TabListRecyclerView extends RecyclerView
     @Override
     public Pair<Integer, Integer> getPositionsOfReorderAction(View view, int action) {
         int currentPosition = getChildAdapterPosition(view);
+        assert getLayoutManager() instanceof GridLayoutManager;
         GridLayoutManager layoutManager = (GridLayoutManager) getLayoutManager();
         int spanCount = layoutManager.getSpanCount();
         int targetPosition = -1;
@@ -787,16 +750,16 @@ class TabListRecyclerView extends RecyclerView
 
     @Override
     public boolean isReorderAction(int action) {
-        return action == R.id.move_tab_left
-                || action == R.id.move_tab_right
-                || action == R.id.move_tab_up
-                || action == R.id.move_tab_down;
+        return action == R.id.move_tab_left || action == R.id.move_tab_right
+                || action == R.id.move_tab_up || action == R.id.move_tab_down;
     }
 
+    @VisibleForTesting
     ImageView getShadowImageViewForTesting() {
         return mShadowImageView;
     }
 
+    @VisibleForTesting
     int getToolbarHairlineColorForTesting() {
         return mToolbarHairlineColor;
     }

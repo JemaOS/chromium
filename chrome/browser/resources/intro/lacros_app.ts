@@ -4,17 +4,16 @@
 
 import 'chrome://intro/tangible_sync_style_shared.css.js';
 import 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/cr_elements/cr_hidden_style.css.js';
 import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 import 'chrome://resources/cr_elements/icons.html.js';
 import './strings.m.js';
 
-import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {IntroBrowserProxy, LacrosIntroProfileInfo} from './browser_proxy.js';
-import {IntroBrowserProxyImpl} from './browser_proxy.js';
+import {IntroBrowserProxy, IntroBrowserProxyImpl, LacrosIntroProfileInfo} from './browser_proxy.js';
 import {getTemplate} from './lacros_app.html.js';
 
 const LacrosIntroAppElementBase = WebUiListenerMixin(PolymerElement);
@@ -53,6 +52,11 @@ export class LacrosIntroAppElement extends LacrosIntroAppElementBase {
         type: Boolean,
         value: false,
       },
+
+      isTangibleSyncEnabled_: {
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('isTangibleSyncEnabled'),
+      },
     };
   }
 
@@ -69,6 +73,7 @@ export class LacrosIntroAppElement extends LacrosIntroAppElementBase {
   private subtitle_: string;
   private managementDisclaimer_: string;
   private disableProceedButton_: boolean;
+  private isTangibleSyncEnabled_: boolean;
   private browserProxy_: IntroBrowserProxy =
       IntroBrowserProxyImpl.getInstance();
 
@@ -84,6 +89,10 @@ export class LacrosIntroAppElement extends LacrosIntroAppElementBase {
   private onProceed_() {
     this.disableProceedButton_ = true;
     this.browserProxy_.continueWithAccount();
+  }
+
+  private getTangibleSyncStyleClass_() {
+    return this.isTangibleSyncEnabled_ ? 'tangible-sync-style' : '';
   }
 }
 

@@ -23,16 +23,18 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_SVG_SVG_GRAPHICS_ELEMENT_H_
 
 #include "third_party/blink/renderer/core/core_export.h"
+#include "third_party/blink/renderer/core/svg/svg_element.h"
 #include "third_party/blink/renderer/core/svg/svg_tests.h"
-#include "third_party/blink/renderer/core/svg/svg_transformable_element.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
 namespace blink {
 
+class AffineTransform;
+class SVGAnimatedTransformList;
 class SVGMatrixTearOff;
 class SVGRectTearOff;
 
-class CORE_EXPORT SVGGraphicsElement : public SVGTransformableElement,
-                                       public SVGTests {
+class CORE_EXPORT SVGGraphicsElement : public SVGElement, public SVGTests {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
@@ -44,10 +46,16 @@ class CORE_EXPORT SVGGraphicsElement : public SVGTransformableElement,
   SVGElement* nearestViewportElement() const;
   SVGElement* farthestViewportElement() const;
 
+  AffineTransform LocalCoordinateSpaceTransform(CTMScope) const override;
+  AffineTransform* AnimateMotionTransform() override;
+
   virtual gfx::RectF GetBBox();
   SVGRectTearOff* getBBoxFromJavascript();
 
   bool IsValid() const final { return SVGTests::IsValid(); }
+
+  SVGAnimatedTransformList* transform() { return transform_.Get(); }
+  const SVGAnimatedTransformList* transform() const { return transform_.Get(); }
 
   AffineTransform ComputeCTM(
       CTMScope mode,
@@ -60,16 +68,17 @@ class CORE_EXPORT SVGGraphicsElement : public SVGTransformableElement,
                      Document&,
                      ConstructionType = kCreateSVGElement);
 
-  bool SupportsFocus(UpdateBehavior update_behavior =
-                         UpdateBehavior::kStyleAndLayout) const override {
-    return Element::SupportsFocus(update_behavior) || HasFocusEventListeners();
+  bool SupportsFocus() const override {
+    return Element::SupportsFocus() || HasFocusEventListeners();
   }
 
+  void CollectStyleForPresentationAttribute(
+      const QualifiedName&,
+      const AtomicString&,
+      MutableCSSPropertyValueSet*) override;
   void SvgAttributeChanged(const SvgAttributeChangedParams&) override;
 
-  SVGAnimatedPropertyBase* PropertyFromAttribute(
-      const QualifiedName& attribute_name) const override;
-  void SynchronizeAllSVGAttributes() const override;
+  Member<SVGAnimatedTransformList> transform_;
 
  private:
   bool IsSVGGraphicsElement() const final { return true; }

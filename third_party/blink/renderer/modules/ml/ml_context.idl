@@ -27,13 +27,15 @@ dictionary MLComputeResult {
   [
     RuntimeEnabled=MachineLearningNeuralNetwork,
     CallWith=ScriptState,
-    RaisesException
+    RaisesException,
+    Exposed=Window
   ] Promise<MLComputeResult> compute(
       MLGraph graph, MLNamedArrayBufferViews inputs, MLNamedArrayBufferViews outputs);
 
   [
     RuntimeEnabled=MachineLearningNeuralNetwork,
-    CallWith=ScriptState,
-    RaisesException
-  ] MLBuffer createBuffer(MLBufferDescriptor descriptor);
+    RaisesException,
+    Exposed=DedicatedWorker
+  ] void computeSync(
+      MLGraph graph, MLNamedArrayBufferViews inputs, MLNamedArrayBufferViews outputs);
 };

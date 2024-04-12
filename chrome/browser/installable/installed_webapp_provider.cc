@@ -30,16 +30,15 @@ class InstalledWebappIterator : public content_settings::RuleIterator {
 
   bool HasNext() const override { return index_ < rules_.size(); }
 
-  std::unique_ptr<content_settings::Rule> Next() override {
+  content_settings::Rule Next() override {
     DCHECK(HasNext());
     const GURL& origin = rules_[index_].first;
     ContentSetting setting = rules_[index_].second;
     index_++;
 
-    return std::make_unique<content_settings::Rule>(
+    return content_settings::Rule(
         ContentSettingsPattern::FromURLNoWildcard(origin),
-        ContentSettingsPattern::Wildcard(), base::Value(setting),
-        content_settings::RuleMetaData{});
+        ContentSettingsPattern::Wildcard(), base::Value(setting), {});
   }
 
  private:
@@ -69,8 +68,7 @@ InstalledWebappProvider::~InstalledWebappProvider() {
 
 std::unique_ptr<RuleIterator> InstalledWebappProvider::GetRuleIterator(
     ContentSettingsType content_type,
-    bool incognito,
-    const content_settings::PartitionKey& partition_key) const {
+    bool incognito) const {
   if (incognito)
     return nullptr;
 
@@ -86,15 +84,13 @@ bool InstalledWebappProvider::SetWebsiteSetting(
     const ContentSettingsPattern& secondary_pattern,
     ContentSettingsType content_type,
     base::Value&& value,
-    const content_settings::ContentSettingConstraints& constraints,
-    const content_settings::PartitionKey& partition_key) {
+    const content_settings::ContentSettingConstraints& constraints) {
   // You can't set settings through this provider.
   return false;
 }
 
 void InstalledWebappProvider::ClearAllContentSettingsRules(
-    ContentSettingsType content_type,
-    const content_settings::PartitionKey& partition_key) {
+    ContentSettingsType content_type) {
   // You can't set settings through this provider.
 }
 
@@ -105,6 +101,5 @@ void InstalledWebappProvider::ShutdownOnUIThread() {
 
 void InstalledWebappProvider::Notify(ContentSettingsType content_type) {
   NotifyObservers(ContentSettingsPattern::Wildcard(),
-                  ContentSettingsPattern::Wildcard(), content_type,
-                  /*partition_key=*/nullptr);
+                  ContentSettingsPattern::Wildcard(), content_type);
 }

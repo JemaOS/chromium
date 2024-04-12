@@ -8,7 +8,7 @@ let allTests = [
     assertEq('Cancel', cancelButton.name);
     cancelButton.addEventListener(EventType.FOCUS,
                                   function onFocusTarget(event) {
-      setTimeout(function() {
+      window.setTimeout(function() {
         cancelButton.removeEventListener(EventType.FOCUS, onFocusTarget);
         chrome.test.succeed();
       }, 0);
@@ -45,7 +45,7 @@ let allTests = [
                                   function onFocusStopProp(event) {
       cancelButton.removeEventListener(EventType.FOCUS, onFocusStopProp);
       event.stopPropagation();
-      setTimeout((function() {
+      window.setTimeout((function() {
         rootNode.removeEventListener(EventType.FOCUS, onFocusStopPropRoot);
         chrome.test.succeed();
       }).bind(this), 0);
@@ -71,7 +71,7 @@ let allTests = [
       event.stopPropagation();
       rootNode.removeEventListener(EventType.FOCUS, onFocusCaptureRoot);
       rootNode.removeEventListener(EventType.FOCUS, onFocusCapture);
-      setTimeout(chrome.test.succeed.bind(this), 0);
+      window.setTimeout(chrome.test.succeed.bind(this), 0);
     }, true);
     okButton.focus();
   },
@@ -102,4 +102,4 @@ let allTests = [
   }
 ];
 
-setUpAndRunTabsTests(allTests)
+setUpAndRunTests(allTests)

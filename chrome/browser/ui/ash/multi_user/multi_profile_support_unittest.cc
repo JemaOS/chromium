@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <set>
-#include <string_view>
 #include <vector>
 
 #include "ash/display/screen_orientation_controller.h"
@@ -24,7 +23,7 @@
 #include "ash/wm/desks/desks_controller.h"
 #include "ash/wm/desks/desks_test_util.h"
 #include "ash/wm/mru_window_tracker.h"
-#include "ash/wm/tablet_mode/tablet_mode_controller_test_api.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "ash/wm/tablet_mode/tablet_mode_window_manager.h"
 #include "ash/wm/window_state.h"
 #include "ash/wm/wm_event.h"
@@ -34,6 +33,7 @@
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
@@ -57,7 +57,7 @@
 #include "chromeos/ash/components/install_attributes/stub_install_attributes.h"
 #include "components/account_id/account_id.h"
 #include "components/user_manager/scoped_user_manager.h"
-#include "components/user_manager/user.h"
+#include "components/user_manager/user_info.h"
 #include "components/user_manager/user_manager.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/test/env_test_helper.h"
@@ -279,8 +279,7 @@ class MultiProfileSupportTest : public ChromeAshTestBase {
   aura::Window::Windows windows_;
 
   // Owned by |user_manager_enabler_|.
-  raw_ptr<FakeChromeUserManager, DanglingUntriaged> fake_user_manager_ =
-      nullptr;
+  raw_ptr<FakeChromeUserManager, ExperimentalAsh> fake_user_manager_ = nullptr;
 
   std::unique_ptr<TestingProfileManager> profile_manager_;
 
@@ -396,7 +395,7 @@ std::string MultiProfileSupportTest::GetOwnersOfVisibleWindowsAsString() {
   std::set<AccountId> owners =
       multi_user_window_manager()->GetOwnersOfVisibleWindows();
 
-  std::vector<std::string_view> owner_list;
+  std::vector<base::StringPiece> owner_list;
   for (auto& owner : owners)
     owner_list.push_back(owner.GetUserEmail());
   return base::JoinString(owner_list, " ");
@@ -973,14 +972,14 @@ TEST_F(MultiProfileSupportTest, TabletModeInteraction) {
   EXPECT_FALSE(WindowState::Get(window(0))->IsMaximized());
   EXPECT_FALSE(WindowState::Get(window(1))->IsMaximized());
 
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
 
   EXPECT_TRUE(WindowState::Get(window(0))->IsMaximized());
   EXPECT_TRUE(WindowState::Get(window(1))->IsMaximized());
 
   // Tests that on exiting tablet mode, the window states return to not
   // maximized.
-  ash::TabletModeControllerTestApi().LeaveTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(false);
   EXPECT_FALSE(WindowState::Get(window(0))->IsMaximized());
   EXPECT_FALSE(WindowState::Get(window(1))->IsMaximized());
 }
@@ -1648,7 +1647,7 @@ TEST_F(MultiProfileSupportTest, WindowBoundsAfterTabletMode) {
   window(1)->SetBounds(bounds);
 
   // Enter tablet mode.
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
   // Tests that bounds of both windows are maximized.
   const gfx::Rect maximized_bounds(0, 0, 400,
                                    200 - ShelfConfig::Get()->shelf_size());
@@ -1662,7 +1661,7 @@ TEST_F(MultiProfileSupportTest, WindowBoundsAfterTabletMode) {
                               display::Display::RotationSource::ACTIVE);
   test_api.SetDisplayRotation(display::Display::ROTATE_0,
                               display::Display::RotationSource::ACTIVE);
-  ash::TabletModeControllerTestApi().LeaveTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(false);
 
   // Tests that both windows have the same bounds as when they entered tablet
   // mode.

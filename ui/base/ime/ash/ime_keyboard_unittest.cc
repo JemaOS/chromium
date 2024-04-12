@@ -4,8 +4,6 @@
 
 #include "ui/base/ime/ash/ime_keyboard.h"
 
-#include "base/functional/callback.h"
-#include "base/functional/callback_helpers.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/ime/ash/fake_ime_keyboard.h"
 
@@ -18,13 +16,13 @@ class ImeKeyboardTest : public testing::Test,
                         public ImeKeyboard::Observer {
  public:
   void SetUp() override {
-    ime_keyboard_ = std::make_unique<FakeImeKeyboard>();
-    ime_keyboard_->AddObserver(this);
+    xkey_ = std::make_unique<FakeImeKeyboard>();
+    xkey_->AddObserver(this);
     caps_changed_ = false;
   }
   void TearDown() override {
-    ime_keyboard_->RemoveObserver(this);
-    ime_keyboard_.reset();
+    xkey_->RemoveObserver(this);
+    xkey_.reset();
   }
   void OnCapsLockChanged(bool enabled) override {
     caps_changed_ = true;
@@ -40,33 +38,17 @@ class ImeKeyboardTest : public testing::Test,
     EXPECT_EQ(changed, layout_changed_);
     layout_changed_ = false;
   }
-
-  std::unique_ptr<ImeKeyboard> ime_keyboard_;
+  std::unique_ptr<ImeKeyboard> xkey_;
   bool caps_changed_;
   bool layout_changed_;
 };
 
 // Tests CheckLayoutName() function.
 TEST_F(ImeKeyboardTest, TestObserver) {
-  ime_keyboard_->SetCapsLockEnabled(true);
+  xkey_->SetCapsLockEnabled(true);
   VerifyCapsLockChanged(true);
-  ime_keyboard_->SetCurrentKeyboardLayoutByName("foo", base::DoNothing());
+  xkey_->SetCurrentKeyboardLayoutByName("foo");
   VerifyLayoutChanged(true);
-}
-
-TEST_F(ImeKeyboardTest, IsISOLevel5ShiftAvailable) {
-  ime_keyboard_->SetCurrentKeyboardLayoutByName("us", base::DoNothing());
-  EXPECT_FALSE(ime_keyboard_->IsISOLevel5ShiftAvailable());
-  ime_keyboard_->SetCurrentKeyboardLayoutByName("ca(multix)",
-                                                base::DoNothing());
-  EXPECT_TRUE(ime_keyboard_->IsISOLevel5ShiftAvailable());
-}
-
-TEST_F(ImeKeyboardTest, IsAltGrAvailable) {
-  ime_keyboard_->SetCurrentKeyboardLayoutByName("us", base::DoNothing());
-  EXPECT_FALSE(ime_keyboard_->IsAltGrAvailable());
-  ime_keyboard_->SetCurrentKeyboardLayoutByName("fr", base::DoNothing());
-  EXPECT_TRUE(ime_keyboard_->IsAltGrAvailable());
 }
 
 }  // namespace

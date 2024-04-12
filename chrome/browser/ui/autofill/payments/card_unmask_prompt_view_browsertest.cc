@@ -82,11 +82,10 @@ class TestCardUnmaskPromptController : public CardUnmaskPromptControllerImpl {
   void OnUnmaskPromptAccepted(const std::u16string& cvc,
                               const std::u16string& exp_month,
                               const std::u16string& exp_year,
-                              bool enable_fido_auth,
-                              bool was_checkbox_visible) override {
+                              bool enable_fido_auth) override {
     // Call the original implementation.
     CardUnmaskPromptControllerImpl::OnUnmaskPromptAccepted(
-        cvc, exp_month, exp_year, enable_fido_auth, was_checkbox_visible);
+        cvc, exp_month, exp_year, enable_fido_auth);
 
     // Wait some time and show verification result. An empty message means
     // success is shown.
@@ -158,12 +157,14 @@ class CardUnmaskPromptViewBrowserTest : public DialogBrowserTest {
   // DialogBrowserTest:
   void SetUpOnMainThread() override {
     runner_ = new content::MessageLoopRunner;
+    contents_ = browser()->tab_strip_model()->GetActiveWebContents();
     controller_ =
-        std::make_unique<TestCardUnmaskPromptController>(contents(), runner_);
+        std::make_unique<TestCardUnmaskPromptController>(contents_, runner_);
     delegate_ = std::make_unique<TestCardUnmaskDelegate>();
   }
 
   void TearDownOnMainThread() override {
+    contents_ = nullptr;
     controller_.reset();
     DialogBrowserTest::TearDownOnMainThread();
   }
@@ -176,7 +177,7 @@ class CardUnmaskPromptViewBrowserTest : public DialogBrowserTest {
     CardUnmaskPromptOptions card_unmask_prompt_options =
         CardUnmaskPromptOptions(
             /*challenge_option=*/
-            std::nullopt, AutofillClient::UnmaskCardReason::kAutofill);
+            absl::nullopt, AutofillClient::UnmaskCardReason::kAutofill);
     controller()->ShowPrompt(base::BindOnce(&CreateCardUnmaskPromptView,
                                             base::Unretained(controller()),
                                             base::Unretained(contents())),
@@ -195,9 +196,7 @@ class CardUnmaskPromptViewBrowserTest : public DialogBrowserTest {
 
   void FreeDelegate() { delegate_.reset(); }
 
-  content::WebContents* contents() {
-    return browser()->tab_strip_model()->GetActiveWebContents();
-  }
+  content::WebContents* contents() { return contents_; }
   TestCardUnmaskPromptController* controller() { return controller_.get(); }
   TestCardUnmaskDelegate* delegate() { return delegate_.get(); }
 
@@ -206,6 +205,7 @@ class CardUnmaskPromptViewBrowserTest : public DialogBrowserTest {
   scoped_refptr<content::MessageLoopRunner> runner_;
 
  private:
+  raw_ptr<content::WebContents, DanglingUntriaged> contents_ = nullptr;
   std::unique_ptr<TestCardUnmaskPromptController> controller_;
   std::unique_ptr<TestCardUnmaskDelegate> delegate_;
 };
@@ -241,8 +241,7 @@ IN_PROC_BROWSER_TEST_F(CardUnmaskPromptViewBrowserTest,
   ShowUi(kExpiryExpired);
   controller()->OnUnmaskPromptAccepted(u"123", u"10",
                                        base::ASCIIToUTF16(test::NextYear()),
-                                       /*enable_fido_auth=*/false,
-                                       /*was_checkbox_visible=*/false);
+                                       /*enable_fido_auth=*/false);
   EXPECT_EQ(u"123", delegate()->details().cvc);
   controller()->OnVerificationResult(
       AutofillClient::PaymentsRpcResult::kSuccess);
@@ -267,7 +266,7 @@ IN_PROC_BROWSER_TEST_F(CardUnmaskPromptViewBrowserTest,
   // destroyed before CardUnmaskPromptViewBridge::OnConstrainedWindowClosed() is
   // called.
   FreeDelegate();
-  contents()->Close();
+  browser()->tab_strip_model()->GetActiveWebContents()->Close();
 
   content::RunAllPendingInMessageLoop();
 }

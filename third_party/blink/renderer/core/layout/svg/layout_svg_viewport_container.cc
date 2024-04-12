@@ -22,7 +22,6 @@
 
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_viewport_container.h"
 
-#include "third_party/blink/renderer/core/layout/hit_test_location.h"
 #include "third_party/blink/renderer/core/layout/svg/svg_layout_support.h"
 #include "third_party/blink/renderer/core/layout/svg/transform_helper.h"
 #include "third_party/blink/renderer/core/svg/svg_animated_length.h"
@@ -32,16 +31,18 @@
 namespace blink {
 
 LayoutSVGViewportContainer::LayoutSVGViewportContainer(SVGSVGElement* node)
-    : LayoutSVGContainer(node), is_layout_size_changed_(false) {}
+    : LayoutSVGContainer(node),
+      is_layout_size_changed_(false),
+      needs_transform_update_(true) {}
 
 void LayoutSVGViewportContainer::UpdateLayout() {
   NOT_DESTROYED();
   DCHECK(NeedsLayout());
 
   const auto* svg = To<SVGSVGElement>(GetElement());
-  is_layout_size_changed_ = SelfNeedsFullLayout() && svg->HasRelativeLengths();
+  is_layout_size_changed_ = SelfNeedsLayout() && svg->HasRelativeLengths();
 
-  if (SelfNeedsFullLayout()) {
+  if (SelfNeedsLayout()) {
     SVGLengthContext length_context(svg);
     gfx::RectF old_viewport = viewport_;
     viewport_.SetRect(svg->x()->CurrentValue()->Value(length_context),
@@ -58,19 +59,27 @@ void LayoutSVGViewportContainer::UpdateLayout() {
   LayoutSVGContainer::UpdateLayout();
 }
 
-SVGTransformChange LayoutSVGViewportContainer::UpdateLocalTransform(
-    const gfx::RectF& reference_box) {
+void LayoutSVGViewportContainer::SetNeedsTransformUpdate() {
   NOT_DESTROYED();
+  // The transform paint property relies on the SVG transform being up-to-date
+  // (see: PaintPropertyTreeBuilder::updateTransformForNonRootSVG).
+  SetNeedsPaintPropertyUpdate();
+  needs_transform_update_ = true;
+}
+
+SVGTransformChange LayoutSVGViewportContainer::CalculateLocalTransform(
+    bool bounds_changed) {
+  NOT_DESTROYED();
+  if (!needs_transform_update_)
+    return SVGTransformChange::kNone;
+
   const auto* svg = To<SVGSVGElement>(GetElement());
   SVGTransformChangeDetector change_detector(local_to_parent_transform_);
   local_to_parent_transform_ =
       AffineTransform::Translation(viewport_.x(), viewport_.y()) *
       svg->ViewBoxToViewTransform(viewport_.size());
+  needs_transform_update_ = false;
   return change_detector.ComputeChange(local_to_parent_transform_);
-}
-
-gfx::RectF LayoutSVGViewportContainer::ViewBoxRect() const {
-  return To<SVGSVGElement>(*GetElement()).CurrentViewBoxRect();
 }
 
 bool LayoutSVGViewportContainer::NodeAtPoint(
@@ -86,12 +95,6 @@ bool LayoutSVGViewportContainer::NodeAtPoint(
   }
   return LayoutSVGContainer::NodeAtPoint(result, hit_test_location,
                                          accumulated_offset, phase);
-}
-
-void LayoutSVGViewportContainer::IntersectChildren(
-    HitTestResult& result,
-    const HitTestLocation& location) const {
-  Content().HitTest(result, location, HitTestPhase::kForeground);
 }
 
 void LayoutSVGViewportContainer::StyleDidChange(

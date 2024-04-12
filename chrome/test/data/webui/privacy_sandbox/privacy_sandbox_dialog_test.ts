@@ -7,15 +7,15 @@ import 'chrome://privacy-sandbox-dialog/privacy_sandbox_notice_dialog_app.js';
 import 'chrome://privacy-sandbox-dialog/privacy_sandbox_notice_restricted_dialog_app.js';
 import 'chrome://privacy-sandbox-dialog/privacy_sandbox_combined_dialog_app.js';
 
-import type {PrivacySandboxCombinedDialogAppElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_combined_dialog_app.js';
-import {PrivacySandboxCombinedDialogStep} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_combined_dialog_app.js';
-import type {PrivacySandboxDialogAppElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_dialog_app.js';
+import {PrivacySandboxCombinedDialogAppElement, PrivacySandboxCombinedDialogStep} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_combined_dialog_app.js';
+import {PrivacySandboxDialogAppElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_dialog_app.js';
 import {PrivacySandboxDialogBrowserProxy, PrivacySandboxPromptAction} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_dialog_browser_proxy.js';
-import type {PrivacySandboxDialogConsentStepElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_dialog_consent_step.js';
+import {PrivacySandboxDialogConsentStepElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_dialog_consent_step';
 import {PrivacySandboxDialogMixin} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_dialog_mixin.js';
-import type {PrivacySandboxDialogNoticeStepElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_dialog_notice_step.js';
-import type {PrivacySandboxNoticeDialogAppElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_notice_dialog_app.js';
-import type {PrivacySandboxNoticeRestrictedDialogAppElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_notice_restricted_dialog_app.js';
+import {PrivacySandboxDialogNoticeStepElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_dialog_notice_step';
+import {PrivacySandboxNoticeDialogAppElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_notice_dialog_app.js';
+import {PrivacySandboxNoticeRestrictedDialogAppElement} from 'chrome://privacy-sandbox-dialog/privacy_sandbox_notice_restricted_dialog_app.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {pressAndReleaseKeyOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-interactions.js';
 import {flush, html, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
@@ -89,13 +89,13 @@ async function verifyActionOccured(
 
 function testClickButton(buttonSelector: string, element: HTMLElement|null) {
   const actionButton =
-      element!.shadowRoot!.querySelector<HTMLElement>(buttonSelector);
+      element!.shadowRoot!.querySelector(buttonSelector) as CrButtonElement;
   assertTrue(
       !!actionButton, `the button isn\'t found, selector: ${buttonSelector}`);
   actionButton.click();
 }
 
-suite('Consent', function() {
+suite('PrivacySandboxDialogConsent', function() {
   let page: PrivacySandboxDialogAppElement;
   let browserProxy: TestPrivacySandboxDialogBrowserProxy;
 
@@ -191,7 +191,7 @@ suite('Consent', function() {
   });
 });
 
-suite('Notice', function() {
+suite('PrivacySandboxDialogNotice', function() {
   let page: PrivacySandboxDialogAppElement;
   let browserProxy: TestPrivacySandboxDialogBrowserProxy;
 
@@ -248,7 +248,7 @@ suite('Notice', function() {
   });
 });
 
-suite('Combined', function() {
+suite('PrivacySandboxDialogCombined', function() {
   let page: PrivacySandboxCombinedDialogAppElement;
   let browserProxy: TestPrivacySandboxDialogBrowserProxy;
 
@@ -468,7 +468,7 @@ suite('Combined', function() {
   });
 });
 
-suite('NoticeEEA', function() {
+suite('PrivacySandboxDialogNoticeEEA', function() {
   let page: PrivacySandboxCombinedDialogAppElement;
   let browserProxy: TestPrivacySandboxDialogBrowserProxy;
 
@@ -606,7 +606,7 @@ suite('NoticeEEA', function() {
   });
 });
 
-suite('NoticeROW', function() {
+suite('PrivacySandboxDialogNoticeROW', function() {
   let page: PrivacySandboxNoticeDialogAppElement;
   let browserProxy: TestPrivacySandboxDialogBrowserProxy;
 
@@ -622,9 +622,7 @@ suite('NoticeROW', function() {
     await browserProxy.whenCalled('showDialog');
   });
 
-  // TODO(crbug.com/1432915, crbug.com/1432915): various more button test
-  // issues. Re-enable once resolved.
-  test.skip('moreButton', async function() {
+  test('moreButton', async function() {
     await verifyActionOccured(
         browserProxy, PrivacySandboxPromptAction.NOTICE_SHOWN);
     await flushTasks();
@@ -727,7 +725,7 @@ suite('NoticeROW', function() {
   });
 });
 
-suite('NoticeRestricted', function() {
+suite('PrivacySandboxDialogNoticeRestricted', function() {
   let page: PrivacySandboxNoticeRestrictedDialogAppElement;
   let browserProxy: TestPrivacySandboxDialogBrowserProxy;
 
@@ -744,14 +742,16 @@ suite('NoticeRestricted', function() {
   });
 
   test('validDialog', async function() {
+    // Asserting very basic functionality for now.
+    // TODO(b/277180677): add more tests as functionality is implemented.
     await verifyActionOccured(
-        browserProxy, PrivacySandboxPromptAction.RESTRICTED_NOTICE_SHOWN);
+        browserProxy, PrivacySandboxPromptAction.NOTICE_SHOWN);
     assertTrue(!!page.shadowRoot!.querySelector('div'));
   });
 
   test('settingsClicked', async function() {
     await verifyActionOccured(
-        browserProxy, PrivacySandboxPromptAction.RESTRICTED_NOTICE_SHOWN);
+        browserProxy, PrivacySandboxPromptAction.NOTICE_SHOWN);
     testClickButton('#settingsButton', page);
     await verifyActionOccured(
         browserProxy,
@@ -760,7 +760,7 @@ suite('NoticeRestricted', function() {
 
   test('acknowledgeClicked', async function() {
     await verifyActionOccured(
-        browserProxy, PrivacySandboxPromptAction.RESTRICTED_NOTICE_SHOWN);
+        browserProxy, PrivacySandboxPromptAction.NOTICE_SHOWN);
     testClickButton('#ackButton', page);
     await verifyActionOccured(
         browserProxy, PrivacySandboxPromptAction.RESTRICTED_NOTICE_ACKNOWLEDGE);
@@ -768,11 +768,9 @@ suite('NoticeRestricted', function() {
 
   // TODO(b/277180533): determine whether some of the more button test logic can
   // be shared.
-  // TODO(crbug.com/1432915): various more button test issues. Re-enable once
-  // resolved.
-  test.skip('moreButton', async function() {
+  test('moreButton', async function() {
     await verifyActionOccured(
-        browserProxy, PrivacySandboxPromptAction.RESTRICTED_NOTICE_SHOWN);
+        browserProxy, PrivacySandboxPromptAction.NOTICE_SHOWN);
     await flushTasks();
 
     const scrollable: HTMLElement =
@@ -817,8 +815,7 @@ suite('NoticeRestricted', function() {
     }
 
     await verifyActionOccured(
-        browserProxy,
-        PrivacySandboxPromptAction.RESTRICTED_NOTICE_MORE_BUTTON_CLICKED);
+        browserProxy, PrivacySandboxPromptAction.NOTICE_MORE_BUTTON_CLICKED);
     await page.whenWasScrolledToBottomForTest();
 
     // After scrolling down, the "More" button is hidden and dialog button are
@@ -835,7 +832,7 @@ suite('NoticeRestricted', function() {
   });
 });
 
-suite('Mixin', function() {
+suite('PrivacySandboxDialogMixin', function() {
   const TestElementBase = PrivacySandboxDialogMixin(PolymerElement);
 
   // Create a test element to have more control over size of the element and
@@ -956,12 +953,9 @@ suite('Mixin', function() {
         testElement.wasScrolledToBottom, 'last text element should be visible');
   });
 
-  // The 2 pixels vs 1 pixel choice here is due to intersectionRatio being
-  // sometimes reported as 0.99 instead of 1.
-  // See more at crbug.com/1020466 and b/299120185.
-  test('2px of the last text element not shown', async function() {
+  test('1px of the last text element not shown', async function() {
     container.style.height =
-        `${fullContainerHeight - LAST_BOTTOM_MARGIN - 2}px`;
+        `${fullContainerHeight - LAST_BOTTOM_MARGIN - 1}px`;
     assertTrue(
         doesElemenHaveScrollbar(scrollable), 'content should have a scrollbar');
 

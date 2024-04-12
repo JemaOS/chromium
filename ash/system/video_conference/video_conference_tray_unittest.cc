@@ -16,25 +16,16 @@
 #include "ash/system/status_area_widget_test_helper.h"
 #include "ash/system/tray/system_tray_notifier.h"
 #include "ash/system/unified/unified_system_tray.h"
-#include "ash/system/video_conference/bubble/bubble_view.h"
-#include "ash/system/video_conference/bubble/bubble_view_ids.h"
-#include "ash/system/video_conference/bubble/linux_apps_bubble_view.h"
 #include "ash/system/video_conference/effects/video_conference_tray_effects_manager_types.h"
 #include "ash/system/video_conference/fake_video_conference_tray_controller.h"
 #include "ash/system/video_conference/video_conference_common.h"
 #include "ash/test/ash_test_base.h"
 #include "base/command_line.h"
-#include "base/functional/bind.h"
-#include "base/location.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
-#include "base/time/time.h"
-#include "base/timer/timer.h"
-#include "chromeos/crosapi/mojom/video_conference.mojom-shared.h"
 #include "chromeos/crosapi/mojom/video_conference.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/gfx/geometry/vector2d.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/animation/ink_drop_state.h"
 #include "ui/views/widget/widget.h"
@@ -49,53 +40,12 @@ constexpr char kMicrophoneMuteHistogramName[] =
     "Ash.VideoConferenceTray.MicrophoneMuteButton.Click";
 constexpr char kStopScreenShareHistogramName[] =
     "Ash.VideoConferenceTray.StopScreenShareButton.Click";
-constexpr char kTrayBackgroundViewHistogramName[] =
-    "Ash.StatusArea.TrayBackgroundView.Pressed";
-
-constexpr base::TimeDelta kGetMediaAppsDelayTime = base::Milliseconds(100);
 
 void SetSessionState(session_manager::SessionState state) {
   ash::SessionInfo info;
   info.state = state;
   ash::Shell::Get()->session_controller()->SetSessionInfo(info);
 }
-
-using MediaApps = std::vector<crosapi::mojom::VideoConferenceMediaAppInfoPtr>;
-
-// A customized controller that will mock a delay for `GetMediaApps()`. We might
-// have this delay when getting lacros media apps.
-class DelayVideoConferenceTrayController
-    : public ash::FakeVideoConferenceTrayController {
- public:
-  DelayVideoConferenceTrayController() = default;
-  DelayVideoConferenceTrayController(
-      const DelayVideoConferenceTrayController&) = delete;
-  DelayVideoConferenceTrayController& operator=(
-      const DelayVideoConferenceTrayController&) = delete;
-  ~DelayVideoConferenceTrayController() override = default;
-
-  // ash::FakeVideoConferenceTrayController:
-  void GetMediaApps(base::OnceCallback<void(MediaApps)> ui_callback) override {
-    getting_media_apps_called_++;
-    MediaApps apps;
-    for (auto& app : media_apps()) {
-      apps.push_back(app->Clone());
-    }
-    timer_.Start(
-        FROM_HERE, kGetMediaAppsDelayTime,
-        base::BindOnce(
-            [](base::OnceCallback<void(MediaApps)> ui_callback,
-               MediaApps apps) { std::move(ui_callback).Run(std::move(apps)); },
-            std::move(ui_callback), std::move(apps)));
-  }
-
-  int getting_media_apps_called() { return getting_media_apps_called_; }
-
- private:
-  base::OneShotTimer timer_;
-
-  int getting_media_apps_called_ = 0;
-};
 
 }  // namespace
 
@@ -111,10 +61,9 @@ class VideoConferenceTrayTest : public AshTestBase {
 
   // AshTestBase:
   void SetUp() override {
-    scoped_feature_list_.InitWithFeatures(
-        {features::kVcStopAllScreenShare,
-         features::kFeatureManagementVideoConference},
-        {});
+    scoped_feature_list_.InitAndEnableFeature(features::kVideoConference);
+    base::CommandLine::ForCurrentProcess()->AppendSwitch(
+        switches::kCameraEffectsSupportedByHardware);
 
     // Instantiates a fake controller (the real one is created in
     // ChromeBrowserMainExtraPartsAsh::PreProfileInit() which is not called in
@@ -125,8 +74,6 @@ class VideoConferenceTrayTest : public AshTestBase {
   }
 
   void TearDown() override {
-    num_media_apps_simulated_ = 0;
-
     AshTestBase::TearDown();
     controller_.reset();
   }
@@ -139,10 +86,7 @@ class VideoConferenceTrayTest : public AshTestBase {
   }
 
   // Convenience function to create `num_apps` media apps.
-  void CreateMediaApps(int num_apps,
-                       bool clear_existing_apps = true,
-                       crosapi::mojom::VideoConferenceAppType app_type =
-                           crosapi::mojom::VideoConferenceAppType::kChromeApp) {
+  void CreateMediaApps(int num_apps, bool clear_existing_apps = true) {
     if (clear_existing_apps) {
       controller()->ClearMediaApps();
     }
@@ -157,7 +101,7 @@ class VideoConferenceTrayTest : public AshTestBase {
               /*is_capturing_camera=*/true,
               /*is_capturing_microphone=*/true, /*is_capturing_screen=*/true,
               title,
-              /*url=*/GURL(kMeetTestUrl), /*app_type=*/app_type));
+              /*url=*/GURL(kMeetTestUrl)));
     }
   }
 
@@ -209,26 +153,9 @@ class VideoConferenceTrayTest : public AshTestBase {
     return state;
   }
 
-  // Simulates adding or removing (depending on `add`) a single app that is
-  // capturing camera or mic. `CreateMediaApps()` updates the media state, and
-  // `OnAppUpdated()` is called by the backend when a new app starts capturing.
-  void ModifyAppsCapturing(bool add) {
-    if (add) {
-      CreateMediaApps(/*num_apps=*/++num_media_apps_simulated_,
-                      /*clear_existing_apps=*/false);
-      // `VideoConferenceTrayController::HandleClientUpdate()` is triggered via
-      // mojo, this directly calls `OnAppAdded()`.
-      controller_->OnAppAdded();
-    } else {
-      CreateMediaApps(--num_media_apps_simulated_,
-                      /*clear_existing_apps=*/false);
-    }
-  }
-
   FakeVideoConferenceTrayController* controller() { return controller_.get(); }
 
  private:
-  int num_media_apps_simulated_ = 0;
   base::test::ScopedFeatureList scoped_feature_list_;
   std::unique_ptr<FakeVideoConferenceTrayController> controller_;
 };
@@ -266,44 +193,20 @@ TEST_F(VideoConferenceTrayTest, ClickTrayButton) {
   EXPECT_FALSE(toggle_bubble_button()->toggled());
 }
 
-// Makes sure metrics are recorded for the video conference tray or any nested
-// button being pressed.
-TEST_F(VideoConferenceTrayTest, TrayPressedMetrics) {
-  base::HistogramTester histogram_tester;
-  SetTrayAndButtonsVisible();
-
-  LeftClickOn(toggle_bubble_button());
-  histogram_tester.ExpectTotalCount(kTrayBackgroundViewHistogramName, 1);
-
-  LeftClickOn(camera_icon());
-  histogram_tester.ExpectTotalCount(kTrayBackgroundViewHistogramName, 2);
-
-  LeftClickOn(audio_icon());
-  histogram_tester.ExpectTotalCount(kTrayBackgroundViewHistogramName, 3);
-
-  LeftClickOn(screen_share_icon());
-  histogram_tester.ExpectTotalCount(kTrayBackgroundViewHistogramName, 4);
-}
-
 // Tests that tapping directly on the VideoConferenceTray (not the child toggle
 // buttons) toggles the bubble.
 TEST_F(VideoConferenceTrayTest, ClickTrayBackgroundViewTogglesBubble) {
-  // Make sure all buttons in the tray are visible.
-  SetTrayAndButtonsVisible();
-
   // Tap the body of the TrayBackgroundView, missing all toggle buttons. The
   // bubble should show up.
-  GetEventGenerator()->GestureTapAt(
-      toggle_bubble_button()->GetBoundsInScreen().bottom_right() +
-      gfx::Vector2d(4, 0));
+  video_conference_tray()->PerformAction(ui::GestureEvent(
+      0, 0, 0, base::TimeTicks(), ui::GestureEventDetails(ui::ET_GESTURE_TAP)));
 
   EXPECT_TRUE(video_conference_tray()->GetBubbleView());
   EXPECT_TRUE(toggle_bubble_button()->toggled());
 
   // Tap the body again, it should hide the bubble.
-  GetEventGenerator()->GestureTapAt(
-      toggle_bubble_button()->GetBoundsInScreen().bottom_right() +
-      gfx::Vector2d(4, 0));
+  video_conference_tray()->PerformAction(ui::GestureEvent(
+      0, 0, 0, base::TimeTicks(), ui::GestureEventDetails(ui::ET_GESTURE_TAP)));
 
   EXPECT_FALSE(video_conference_tray()->GetBubbleView());
   EXPECT_FALSE(toggle_bubble_button()->toggled());
@@ -505,13 +408,29 @@ TEST_F(VideoConferenceTrayTest, ClickScreenshareButton) {
   base::HistogramTester histogram_tester;
   SetTrayAndButtonsVisible();
 
-  EXPECT_EQ(controller()->stop_all_screen_share_count(), 0);
+  bool stop_callback_called = false;
+
+  auto stop_callback = base::BindRepeating(
+      [](bool* stop_callback_called) { *stop_callback_called = true; },
+      base::Unretained(&stop_callback_called));
+
+  Shell::Get()->system_tray_notifier()->NotifyScreenAccessStart(
+      stop_callback, base::RepeatingClosure(), std::u16string());
+
   // Click the screen share button should trigger the screen access stop
   // callback.
   LeftClickOn(screen_share_icon());
+  EXPECT_TRUE(stop_callback_called);
   histogram_tester.ExpectBucketCount(kStopScreenShareHistogramName, true, 1);
 
-  EXPECT_EQ(controller()->stop_all_screen_share_count(), 1);
+  stop_callback_called = false;
+  Shell::Get()->system_tray_notifier()->NotifyRemotingScreenShareStart(
+      stop_callback);
+
+  // Click the screen share button should not trigger the remoting share stop
+  // callback.
+  LeftClickOn(screen_share_icon());
+  EXPECT_FALSE(stop_callback_called);
 }
 
 TEST_F(VideoConferenceTrayTest, PrivacyIndicator) {
@@ -569,7 +488,7 @@ TEST_F(VideoConferenceTrayTest, AutoHiddenShelfShownSingleDisplay) {
   auto widget = ForceShelfToAutoHideOnPrimaryDisplay();
   // Update the list of media apps in the mock controller so the
   // VideoConferenceTray sees that a new app has begun capturing.
-  ModifyAppsCapturing(/*add=*/true);
+  CreateMediaApps(/*num_apps=*/1, /*clear_existing_apps=*/true);
 
   // Update the `VideoConferenceMediaState` to force the `VideoConferenceTray`
   // to show. The shelf should also show, since the number of apps capturing has
@@ -596,7 +515,7 @@ TEST_F(VideoConferenceTrayTest, AutoHiddenShelfReShown) {
   auto widget = ForceShelfToAutoHideOnPrimaryDisplay();
   // Update the list of media apps in the mock controller so the
   // VideoConferenceTray sees that a new app has begun capturing.
-  ModifyAppsCapturing(/*add=*/true);
+  CreateMediaApps(/*num_apps=*/1, /*clear_existing_apps=*/true);
 
   // Update the `VideoConferenceMediaState` to force the `VideoConferenceTray`
   // to show. The shelf should also show, since the number of apps capturing has
@@ -614,7 +533,7 @@ TEST_F(VideoConferenceTrayTest, AutoHiddenShelfReShown) {
   EXPECT_EQ(SHELF_AUTO_HIDE_HIDDEN, shelf->GetAutoHideState());
 
   // Add a second app, the shelf should re-show.
-  ModifyAppsCapturing(/*add=*/true);
+  CreateMediaApps(/*num_apps=*/1, /*clear_existing_apps=*/false);
   controller()->UpdateWithMediaState(state);
 
   EXPECT_EQ(SHELF_AUTO_HIDE, shelf->GetVisibilityState());
@@ -633,8 +552,7 @@ TEST_F(VideoConferenceTrayTest, AutoHiddenShelfTimerRestarted) {
   auto widget = ForceShelfToAutoHideOnPrimaryDisplay();
   // Update the list of media apps in the mock controller so the
   // VideoConferenceTray sees that a new app has begun capturing.
-  ModifyAppsCapturing(/*add=*/true);
-
+  CreateMediaApps(/*num_apps=*/1, /*clear_existing_apps=*/true);
   // Update the `VideoConferenceMediaState` to force the `VideoConferenceTray`
   // to show. The shelf should also show, since the number of apps capturing has
   // increased.
@@ -643,7 +561,7 @@ TEST_F(VideoConferenceTrayTest, AutoHiddenShelfTimerRestarted) {
   // Fast forward for 2/3rds of the timer duration, then simulate a second app
   // capturing. The timer should extend for another 6s.
   task_environment()->FastForwardBy(base::Seconds(4));
-  ModifyAppsCapturing(/*add-*/ true);
+  CreateMediaApps(/*num_apps=*/1, /*clear_existing_apps=*/false);
   controller()->UpdateWithMediaState(state);
 
   auto* shelf = Shell::GetPrimaryRootWindowController()->shelf();
@@ -668,8 +586,7 @@ TEST_F(VideoConferenceTrayTest, DecreasedAppCountDoesNotShowShelf) {
   auto widget = ForceShelfToAutoHideOnPrimaryDisplay();
   // Update the list of media apps in the mock controller so the
   // VideoConferenceTray sees that a new app has begun capturing.
-  ModifyAppsCapturing(/*add-*/ true);
-
+  CreateMediaApps(/*num_apps=*/1, /*clear_existing_apps=*/true);
   // Update the `VideoConferenceMediaState` to force the `VideoConferenceTray`
   // to show. The shelf should also show, since the number of apps capturing has
   // increased.
@@ -694,8 +611,7 @@ TEST_F(VideoConferenceTrayTest, DecreasedAppCountDoesNotHideShelf) {
   auto widget = ForceShelfToAutoHideOnPrimaryDisplay();
   // Update the list of media apps in the mock controller so the
   // VideoConferenceTray sees that a new app has begun capturing.
-  ModifyAppsCapturing(/*add-*/ true);
-  ModifyAppsCapturing(/*add-*/ true);
+  CreateMediaApps(/*num_apps=*/2, /*clear_existing_apps=*/true);
   // Update the `VideoConferenceMediaState` to force the `VideoConferenceTray`
   // to show. The shelf should also show, since the number of apps capturing has
   // increased.
@@ -707,7 +623,7 @@ TEST_F(VideoConferenceTrayTest, DecreasedAppCountDoesNotHideShelf) {
 
   // Simulate a decrease in number of apps capturing, the shelf should still be
   // shown.
-  ModifyAppsCapturing(/*add-*/ false);
+  CreateMediaApps(/*num_apps=*/1, /*clear_existing_apps=*/true);
   controller()->UpdateWithMediaState(state);
   // Fast forward the timer to 2/3rds, the shelf should still be shown.
   task_environment()->FastForwardBy(base::Seconds(2));
@@ -721,7 +637,7 @@ TEST_F(VideoConferenceTrayTest, AppCountFromOneToZero) {
   auto widget = ForceShelfToAutoHideOnPrimaryDisplay();
   // Update the list of media apps in the mock controller so the
   // VideoConferenceTray sees that a new app has begun capturing.
-  ModifyAppsCapturing(/*add=*/true);
+  CreateMediaApps(/*num_apps=*/1, /*clear_existing_apps=*/true);
   // Update the `VideoConferenceMediaState` to force the `VideoConferenceTray`
   // to show. The shelf should also show, since the number of apps capturing has
   // increased.
@@ -732,7 +648,7 @@ TEST_F(VideoConferenceTrayTest, AppCountFromOneToZero) {
   ASSERT_EQ(SHELF_AUTO_HIDE_SHOWN, shelf->GetAutoHideState());
 
   // Simulate that no more apps are capturing. The shelf should hide.
-  ModifyAppsCapturing(/*add=*/false);
+  controller()->ClearMediaApps();
   controller()->UpdateWithMediaState(VideoConferenceMediaState());
 
   // To prevent flakiness, wait for the async call to fetch media apps to
@@ -771,7 +687,7 @@ TEST_F(VideoConferenceTrayTest, AutoHiddenShelfTwoDisplays) {
 
   // Update the list of media apps in the mock controller so the
   // VideoConferenceTray sees that a new app has begun capturing.
-  ModifyAppsCapturing(/*add=*/true);
+  CreateMediaApps(/*num_apps=*/1, /*clear_existing_apps=*/true);
 
   // Update the `VideoConferenceMediaState` to force the `VideoConferenceTray`
   // to show. The shelf should also show, since the number of apps capturing has
@@ -800,46 +716,16 @@ TEST_F(VideoConferenceTrayTest, AutoHiddenShelfTwoDisplays) {
 }
 
 // Tests that the `VideoConferenceTray` is visible when a display is connected
-// after a session begins. All the icons should have correct states.
+// after a session begins.
 TEST_F(VideoConferenceTrayTest, MultiDisplayVideoConferenceTrayVisibility) {
-  VideoConferenceMediaState state;
-  state.has_media_app = true;
-  state.has_camera_permission = true;
-  state.has_microphone_permission = true;
-  state.is_capturing_microphone = true;
-  state.is_capturing_screen = true;
-  controller()->UpdateWithMediaState(state);
-
+  SetTrayAndButtonsVisible();
   ASSERT_TRUE(video_conference_tray()->GetVisible());
-
-  // Mute the camera by clicking on the icon.
-  LeftClickOn(camera_icon());
-  ASSERT_TRUE(camera_icon()->toggled());
 
   // Attach a second display, the VideoConferenceTray on the second display
   // should be visible.
   UpdateDisplay("800x700,800x700");
 
   EXPECT_TRUE(GetSecondaryVideoConferenceTray()->GetVisible());
-
-  // All the icons should have correct states.
-  auto* secondary_camera_icon =
-      GetSecondaryVideoConferenceTray()->camera_icon();
-  EXPECT_TRUE(secondary_camera_icon);
-  EXPECT_FALSE(secondary_camera_icon->is_capturing());
-  EXPECT_TRUE(secondary_camera_icon->toggled());
-
-  auto* secondary_microphone_icon =
-      GetSecondaryVideoConferenceTray()->audio_icon();
-  EXPECT_TRUE(secondary_microphone_icon);
-  EXPECT_TRUE(secondary_microphone_icon->is_capturing());
-  EXPECT_FALSE(secondary_microphone_icon->toggled());
-
-  auto* secondary_screen_share_icon =
-      GetSecondaryVideoConferenceTray()->screen_share_icon();
-  EXPECT_TRUE(secondary_screen_share_icon);
-  EXPECT_TRUE(secondary_screen_share_icon->is_capturing());
-  EXPECT_FALSE(secondary_screen_share_icon->toggled());
 }
 
 // Tests that privacy indicators update on secondary displays when a capture
@@ -1056,119 +942,12 @@ TEST_F(VideoConferenceTrayTest, CloseBubbleOnEffectSupportStateChange) {
   LeftClickOn(toggle_bubble_button());
   ASSERT_TRUE(video_conference_tray()->GetBubbleView());
 
-  controller()->GetEffectsManager().NotifyEffectSupportStateChanged(
+  controller()->effects_manager().NotifyEffectSupportStateChanged(
       VcEffectId::kTestEffect, /*is_supported=*/true);
 
   // When there's a change to effect support state, the bubble should be
   // automatically close to update.
   EXPECT_FALSE(video_conference_tray()->GetBubbleView());
-}
-
-TEST_F(VideoConferenceTrayTest, BubbleWithOnlyLinuxApps) {
-  SetTrayAndButtonsVisible();
-
-  // Create 1 non-linux app. We should show `kMainBubbleView`.
-  CreateMediaApps(1, /*clear_existing_apps=*/true);
-  LeftClickOn(toggle_bubble_button());
-  auto* bubble_view = video_conference_tray()->GetBubbleView();
-  ASSERT_TRUE(bubble_view);
-
-  EXPECT_EQ(video_conference::BubbleViewID::kMainBubbleView,
-            bubble_view->GetID());
-
-  // Close the bubble.
-  LeftClickOn(toggle_bubble_button());
-
-  // Create 1 linux app. We should show `kLinuxAppBubbleView`.
-  CreateMediaApps(1, /*clear_existing_apps=*/true,
-                  crosapi::mojom::VideoConferenceAppType::kBorealis);
-  LeftClickOn(toggle_bubble_button());
-  bubble_view = video_conference_tray()->GetBubbleView();
-  ASSERT_TRUE(bubble_view);
-
-  EXPECT_EQ(video_conference::BubbleViewID::kLinuxAppBubbleView,
-            bubble_view->GetID());
-
-  // Close the bubble.
-  LeftClickOn(toggle_bubble_button());
-
-  // Create 1 linux app and 1 non-linux app. We should still show
-  // `kMainBubbleView`.
-  CreateMediaApps(1, /*clear_existing_apps=*/true,
-                  crosapi::mojom::VideoConferenceAppType::kBorealis);
-  CreateMediaApps(1, /*clear_existing_apps=*/false);
-  LeftClickOn(toggle_bubble_button());
-  bubble_view = video_conference_tray()->GetBubbleView();
-  ASSERT_TRUE(bubble_view);
-
-  EXPECT_EQ(video_conference::BubbleViewID::kMainBubbleView,
-            bubble_view->GetID());
-}
-
-// Tests the tray when there's a delay in `GetMediaApps()`.
-class VideoConferenceTrayDelayTest : public VideoConferenceTrayTest {
- public:
-  VideoConferenceTrayDelayTest() = default;
-  VideoConferenceTrayDelayTest(const VideoConferenceTrayDelayTest&) = delete;
-  VideoConferenceTrayDelayTest& operator=(const VideoConferenceTrayDelayTest&) =
-      delete;
-  ~VideoConferenceTrayDelayTest() override = default;
-
-  // AshTestBase:
-  void SetUp() override {
-    scoped_feature_list_.InitAndEnableFeature(
-        features::kFeatureManagementVideoConference);
-
-    // Instantiates a fake controller (the real one is created in
-    // ChromeBrowserMainExtraPartsAsh::PreProfileInit() which is not called in
-    // ash unit tests).
-    delay_controller_ = std::make_unique<DelayVideoConferenceTrayController>();
-
-    AshTestBase::SetUp();
-  }
-
-  DelayVideoConferenceTrayController* delay_controller() {
-    return delay_controller_.get();
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-  std::unique_ptr<DelayVideoConferenceTrayController> delay_controller_;
-};
-
-TEST_F(VideoConferenceTrayDelayTest, OpenBubble) {
-  VideoConferenceMediaState state;
-  state.has_media_app = true;
-  state.has_camera_permission = true;
-  state.has_microphone_permission = true;
-  state.is_capturing_screen = true;
-  delay_controller()->UpdateWithMediaState(state);
-
-  // Clicking the toggle button should construct and open up the bubble.
-  LeftClickOn(toggle_bubble_button());
-
-  // First it should not be visible since `GetMediaApps()` is running.
-  ASSERT_FALSE(video_conference_tray()->GetBubbleView());
-
-  // Bubble should appear after the delay.
-  task_environment()->FastForwardBy(kGetMediaAppsDelayTime);
-
-  EXPECT_TRUE(video_conference_tray()->GetBubbleView());
-  EXPECT_EQ(1, delay_controller()->getting_media_apps_called());
-
-  LeftClickOn(toggle_bubble_button());
-  ASSERT_FALSE(video_conference_tray()->GetBubbleView());
-
-  // Spam clicking the button should only cost one extra call to
-  // `GetMediaApps()`.
-  LeftClickOn(toggle_bubble_button());
-  LeftClickOn(toggle_bubble_button());
-  LeftClickOn(toggle_bubble_button());
-  EXPECT_EQ(2, delay_controller()->getting_media_apps_called());
-
-  // Bubble should appear after the delay.
-  task_environment()->FastForwardBy(kGetMediaAppsDelayTime);
-  EXPECT_TRUE(video_conference_tray()->GetBubbleView());
 }
 
 }  // namespace ash

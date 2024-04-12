@@ -8,6 +8,7 @@
 #include <string>
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "base/observer_list.h"
 #include "base/scoped_observation.h"
 #include "base/values.h"
@@ -17,7 +18,6 @@
 #include "extensions/browser/extension_event_histogram_value.h"
 #include "extensions/browser/extension_function.h"
 #include "extensions/browser/extension_host_registry.h"
-#include "extensions/common/extension_id.h"
 #include "third_party/skia/include/core/SkColor.h"
 
 namespace content {
@@ -96,7 +96,7 @@ class ExtensionActionAPI : public BrowserContextKeyedAPI {
 
   // The DispatchEvent methods forward events to the |context|'s event router.
   void DispatchEventToExtension(content::BrowserContext* context,
-                                const ExtensionId& extension_id,
+                                const std::string& extension_id,
                                 events::HistogramValue histogram_value,
                                 const std::string& event_name,
                                 base::Value::List event_args);
@@ -144,7 +144,9 @@ class ExtensionActionFunction : public ExtensionFunction {
   int tab_id_;
 
   // WebContents for |tab_id_| if one exists.
-  raw_ptr<content::WebContents> contents_;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION content::WebContents* contents_;
 
   // The extension action for the current extension.
   raw_ptr<ExtensionAction> extension_action_;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {FittingType, PdfOcrUserSelection} from './constants.js';
+import {FittingType} from './constants.js';
 
 // Handles events specific to the PDF viewer and logs the corresponding metrics.
 
@@ -44,29 +44,6 @@ export function record(action: UserAction) {
   }
 }
 
-/**
- * Records when the user selects to turn on or off PDF OCR.
- * @param userSelection the new UserSelection.
- */
-export function recordPdfOcrUserSelection(pdfOcrAlwaysActive: boolean) {
-  // Need to divide Object.keys().length by 2 to get the enum size due to enum
-  // reverse mapping in TypeScript.
-  const enumSize = Object.keys(PdfOcrUserSelection).length / 2;
-  const enumValue = pdfOcrAlwaysActive ?
-      PdfOcrUserSelection.TURN_ON_ALWAYS_FROM_MORE_ACTIONS :
-      PdfOcrUserSelection.TURN_OFF_FROM_MORE_ACTIONS;
-  recordEnumeration('Accessibility.PdfOcr.UserSelection', enumValue, enumSize);
-}
-
-/** Records the given enumeration to chrome.metricsPrivate. */
-export function recordEnumeration(
-    enumKey: string, enumValue: number, enumSize: number) {
-  if (!chrome.metricsPrivate) {
-    return;
-  }
-  chrome.metricsPrivate.recordEnumerationValue(enumKey, enumValue, enumSize);
-}
-
 export function resetForTesting() {
   firstActionRecorded.clear();
   actionsMetric = null;
@@ -75,12 +52,10 @@ export function resetForTesting() {
 let actionsMetric: chrome.metricsPrivate.MetricType|null = null;
 const firstActionRecorded: Set<UserAction> = new Set();
 
+// Keep in sync with enums.xml.
+// Do not change the numeric values or reuse them since these numbers are
+// persisted to logs.
 /**
- * Keep in sync with the values for enum ChromePDFViewerActions in
- * tools/metrics/histograms/metadata/pdf/enums.xml.
- * These values are persisted to logs. Entries should not be renumbered, removed
- * or reused.
- *
  * User Actions that can be recorded by calling record.
  * The *_FIRST values are recorded automaticlly,
  * eg. record(...ROTATE) will also record ROTATE_FIRST
@@ -214,11 +189,7 @@ export enum UserAction {
   PROPERTIES_FIRST = 63,
   PROPERTIES = 64,
 
-  // Recorded when the attachment button in the sidenav is clicked.
-  SELECT_SIDENAV_ATTACHMENT_FIRST = 65,
-  SELECT_SIDENAV_ATTACHMENT = 66,
-
-  NUMBER_OF_ACTIONS = 67,
+  NUMBER_OF_ACTIONS = 65,
 }
 
 function createFirstMap(): Map<UserAction, UserAction> {

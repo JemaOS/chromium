@@ -9,13 +9,8 @@
  * @param {string|array} computed  The expected computed value,
  *                                 or an array of permitted computed value.
  *                                 If omitted, defaults to specified.
- * @param {string} titleExtra Additional information to put in test output.
- * @param {object} options  Additional test information, such as a custom
- *                          comparison function required for color tests.
- *                          comparisonFunction is a function that takes two
- *                          arguments, actual and expected and contains asserts.
  */
-function test_computed_value(property, specified, computed, titleExtra, options = {}) {
+function test_computed_value(property, specified, computed, titleExtra) {
   if (!computed)
     computed = specified;
 
@@ -27,12 +22,13 @@ function test_computed_value(property, specified, computed, titleExtra, options 
     target.style[property] = specified;
 
     let readValue = getComputedStyle(target)[property];
-    if (options.comparisonFunction) {
-      options.comparisonFunction(readValue, computed);
-    } else if (Array.isArray(computed)) {
+    if (Array.isArray(computed)) {
       assert_in_array(readValue, computed);
     } else {
-      assert_equals(readValue, computed);
+      if (property == "color")
+        colorValuesAlmostEqual(readValue, computed, 0.0001, 1);
+      else
+        assert_equals(readValue, computed);
     }
     if (readValue !== specified) {
       target.style[property] = '';
@@ -41,6 +37,33 @@ function test_computed_value(property, specified, computed, titleExtra, options 
                     'computed value should round-trip');
     }
   }, `Property ${property} value '${specified}'${titleExtra ? ' ' + titleExtra : ''}`);
+}
+
+function colorValuesAlmostEqual(color1, color2, float_epsilon, integer_epsilon) {
+  // Legacy color formats use integers in [0, 255] and thus will have wider epsilons
+  const epsilon = getNonNumbers(color1).startsWith("rgb") ? integer_epsilon : float_epsilon;
+  // Colors can be split by spaces, commas or the '(' character.
+  const colorElementDividers = /( |\(|,)/;
+  // Return the string stripped of numbers.
+  function getNonNumbers(color) {
+    return color.replace(/[0-9]/g, '');
+  }
+  // Return an array of all numbers in the color.
+  function getNumbers(color) {
+    const result = [];
+    // const entries = color.split(colorElementDividers);
+    color.split(colorElementDividers).forEach(element => {
+      const numberElement = parseFloat(element);
+      if (!isNaN(numberElement)) {
+        result.push(numberElement);
+      }
+    });
+    return result;
+  }
+
+  assert_array_approx_equals(getNumbers(color1), getNumbers(color2), epsilon, "Numeric parameters are approximately equal.");
+  // Assert that the text of the two colors are equal. i.e. colorSpace, colorFunction and format.
+  assert_equals(getNonNumbers(color1), getNonNumbers(color2), "Color format is correct.");
 }
 
 function testComputedValueGreaterOrLowerThan(property, specified, expected, titleExtra) {

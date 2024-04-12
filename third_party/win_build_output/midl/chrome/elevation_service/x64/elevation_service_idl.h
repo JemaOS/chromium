@@ -152,8 +152,8 @@ extern "C"{
 typedef 
 enum ProtectionLevel
     {
-        PROTECTION_NONE	= 0,
-        PROTECTION_PATH_VALIDATION	= 1
+        NONE	= 0,
+        PATH_VALIDATION	= 1
     } 	ProtectionLevel;
 
 

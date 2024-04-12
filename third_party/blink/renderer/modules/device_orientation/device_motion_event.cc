@@ -67,15 +67,14 @@ double DeviceMotionEvent::interval() const {
 }
 
 // static
-ScriptPromiseTyped<V8DeviceOrientationPermissionState>
-DeviceMotionEvent::requestPermission(ScriptState* script_state) {
+ScriptPromise DeviceMotionEvent::requestPermission(ScriptState* script_state) {
   if (!script_state->ContextIsValid())
-    return ScriptPromiseTyped<V8DeviceOrientationPermissionState>();
+    return ScriptPromise();
 
   auto* window = To<LocalDOMWindow>(ExecutionContext::From(script_state));
   if (!window) {
     NOTREACHED();
-    return ScriptPromiseTyped<V8DeviceOrientationPermissionState>();
+    return ScriptPromise();
   }
 
   return DeviceMotionController::From(*window).RequestPermission(script_state);

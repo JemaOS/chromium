@@ -42,17 +42,19 @@ ProfileTokenPolicyWebSigninServiceFactory::GetInstance() {
   return instance.get();
 }
 
-std::unique_ptr<KeyedService> ProfileTokenPolicyWebSigninServiceFactory::
-    BuildServiceInstanceForBrowserContext(
-        content::BrowserContext* context) const {
+KeyedService*
+ProfileTokenPolicyWebSigninServiceFactory::BuildServiceInstanceFor(
+    content::BrowserContext* context) const {
   Profile* profile = static_cast<Profile*>(context);
   BrowserPolicyConnector* connector =
       g_browser_process->browser_policy_connector();
-  return std::make_unique<ProfileTokenPolicyWebSigninService>(
-      profile, g_browser_process->local_state(),
-      connector->device_management_service(),
-      profile->GetProfileCloudPolicyManager(),
-      g_browser_process->shared_url_loader_factory());
+  ProfileTokenPolicyWebSigninService* service =
+      new ProfileTokenPolicyWebSigninService(
+          profile, g_browser_process->local_state(),
+          connector->device_management_service(),
+          profile->GetProfileCloudPolicyManager(),
+          g_browser_process->shared_url_loader_factory());
+  return service;
 }
 
 bool ProfileTokenPolicyWebSigninServiceFactory::

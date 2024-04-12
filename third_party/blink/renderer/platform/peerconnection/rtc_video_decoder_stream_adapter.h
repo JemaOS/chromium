@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "base/functional/callback_forward.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/single_sample_metrics.h"
@@ -33,6 +32,10 @@
 #include "third_party/webrtc/modules/video_coding/include/video_codec_interface.h"
 #include "ui/gfx/color_space.h"
 #include "ui/gfx/geometry/size.h"
+
+namespace base {
+class SequencedThreadTaskRunner;
+}  // namespace base
 
 namespace media {
 class DecoderBuffer;
@@ -116,7 +119,7 @@ class PLATFORM_EXPORT RTCVideoDecoderStreamAdapter
 
   struct PendingBuffer {
     scoped_refptr<media::DecoderBuffer> buffer;
-    std::optional<media::VideoDecoderConfig> new_config;
+    absl::optional<media::VideoDecoderConfig> new_config;
   };
 
   // Called on the worker thread.
@@ -194,7 +197,7 @@ class PLATFORM_EXPORT RTCVideoDecoderStreamAdapter
 
   // Construction parameters.
   const scoped_refptr<base::SequencedTaskRunner> media_task_runner_;
-  const raw_ptr<media::GpuVideoAcceleratorFactories> gpu_factories_;
+  media::GpuVideoAcceleratorFactories* const gpu_factories_;
   base::WeakPtr<media::DecoderFactory> const decoder_factory_;
   gfx::ColorSpace render_color_space_;
   const webrtc::SdpVideoFormat format_;
@@ -237,11 +240,11 @@ class PLATFORM_EXPORT RTCVideoDecoderStreamAdapter
   // If it's true, it indicates the decoder has been initialized successfully.
   bool decoder_configured_ GUARDED_BY(lock_) = false;
   // Current decode callback, if any.
-  raw_ptr<webrtc::DecodedImageCallback> decode_complete_callback_
-      GUARDED_BY(lock_) = nullptr;
+  webrtc::DecodedImageCallback* decode_complete_callback_ GUARDED_BY(lock_) =
+      nullptr;
   // Time since construction.  Cleared when we record that a frame has been
   // successfully decoded.
-  std::optional<base::TimeTicks> start_time_ GUARDED_BY(lock_);
+  absl::optional<base::TimeTicks> start_time_ GUARDED_BY(lock_);
   // Resolution of most recently decoded frame, or the initial resolution if we
   // haven't decoded anything yet.  Since this is updated asynchronously, it's
   // only an approximation of "most recently".

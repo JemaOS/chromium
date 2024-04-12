@@ -49,8 +49,7 @@ class COMPOSITOR_EXPORT RecyclableCompositorMac
   // Update the compositor's surface information, if needed.
   void UpdateSurface(const gfx::Size& size_pixels,
                      float scale_factor,
-                     const gfx::DisplayColorSpaces& display_color_spaces,
-                     int64_t display_id);
+                     const gfx::DisplayColorSpaces& display_color_spaces);
 
  private:
   // Invalidate the compositor's surface information.
@@ -64,6 +63,7 @@ class COMPOSITOR_EXPORT RecyclableCompositorMac
   viz::ParentLocalSurfaceIdAllocator local_surface_id_allocator_;
   gfx::Size size_pixels_;
   float scale_factor_ = 1.f;
+  gfx::DisplayColorSpaces display_color_spaces_;
 
   std::unique_ptr<ui::AcceleratedWidgetMac> accelerated_widget_mac_;
   ui::Compositor compositor_;

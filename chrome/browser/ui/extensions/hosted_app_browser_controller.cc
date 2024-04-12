@@ -226,7 +226,8 @@ void HostedAppBrowserController::OnTabRemoved(content::WebContents* contents) {
 void HostedAppBrowserController::LoadAppIcon(
     bool allow_placeholder_icon) const {
   apps::AppServiceProxyFactory::GetForProfile(browser()->profile())
-      ->LoadIcon(GetExtension()->id(), apps::IconType::kStandard,
+      ->LoadIcon(apps::AppType::kChromeApp, GetExtension()->id(),
+                 apps::IconType::kStandard,
                  extension_misc::EXTENSION_ICON_SMALL, allow_placeholder_icon,
                  base::BindOnce(&HostedAppBrowserController::OnLoadIcon,
                                 weak_ptr_factory_.GetMutableWeakPtr()));

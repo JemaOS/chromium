@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2009-2021 Erik Doernenburg and contributors
+ *  Copyright (c) 2009-2015 Erik Doernenburg and contributors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may
  *  not use these files except in compliance with the License. You may obtain
@@ -15,46 +15,49 @@
  */
 
 #import <objc/runtime.h>
-#import "NSInvocation+OCMAdditions.h"
+#import "OCMockObject.h"
+#import "OCPartialMockObject.h"
 #import "NSMethodSignature+OCMAdditions.h"
 #import "NSObject+OCMAdditions.h"
-#import "OCPartialMockObject.h"
-#import "OCMFunctionsPrivate.h"
+#import "OCMFunctions.h"
 #import "OCMInvocationStub.h"
 
 
 @implementation OCPartialMockObject
 
-#pragma mark Initialisers, description, accessors, etc.
+#pragma mark  Initialisers, description, accessors, etc.
 
 - (id)initWithObject:(NSObject *)anObject
 {
-    if(anObject == nil)
-        [NSException raise:NSInvalidArgumentException format:@"Object cannot be nil."];
-    if([anObject isProxy])
-        [NSException raise:NSInvalidArgumentException format:@"OCMock does not support partially mocking subclasses of NSProxy."];
-    Class const class = [self classToSubclassForObject:anObject];
-    [super initWithClass:class];
-    realObject = [anObject retain];
+    NSParameterAssert(anObject != nil);
+    [self assertClassIsSupported:[anObject class]];
+	[super initWithClass:[anObject class]];
+	realObject = [anObject retain];
     [self prepareObjectForInstanceMethodMocking];
-    return self;
+	return self;
+}
+
+- (void)dealloc
+{
+	[self stopMocking];
+	[realObject release];
+	[super dealloc];
 }
 
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"OCPartialMockObject(%@)", NSStringFromClass(mockedClass)];
+	return [NSString stringWithFormat:@"OCPartialMockObject(%@)", NSStringFromClass(mockedClass)];
 }
 
 - (NSObject *)realObject
 {
-    return realObject;
+	return realObject;
 }
 
-#pragma mark Helper methods
+#pragma mark  Helper methods
 
 - (void)assertClassIsSupported:(Class)class
 {
-    [super assertClassIsSupported:class];
     NSString *classname = NSStringFromClass(class);
     NSString *reason = nil;
     if([classname hasPrefix:@"__NSTagged"] || [classname hasPrefix:@"NSTagged"])
@@ -66,34 +69,17 @@
         [[NSException exceptionWithName:NSInvalidArgumentException reason:reason userInfo:nil] raise];
 }
 
-- (Class)classToSubclassForObject:(id)object
-{
-    if([object observationInfo] != NULL)
-    {
-        // Special treatment for objects that are observed with KVO. The KVO implementation sets
-        // a subclass for such objects and it overrides the -class method to return the original
-        // class. If we base our subclass on the KVO subclass, as returned by object_getClass(),
-        // crashes will occur. So, we take the real class instead. Unfortunately, this removes
-        // any observers set up before.
-        NSLog(@"Warning: Creating a partial mock for %@. This object has observers, which will now stop receiving KVO notifications. If you want to receive KVO notifications, create the partial mock first, and then register the observer.", object);
-        return [object class];
-    }
 
-    return object_getClass(object);
-}
-
-#pragma mark Extending/overriding superclass behaviour
+#pragma mark  Extending/overriding superclass behaviour
 
 - (void)stopMocking
 {
     if(realObject != nil)
     {
-        Class partialMockClass = object_getClass(realObject);
         OCMSetAssociatedMockForObject(nil, realObject);
         object_setClass(realObject, [self mockedClass]);
         [realObject release];
         realObject = nil;
-        OCMDisposeSubclass(partialMockClass);
     }
     [super stopMocking];
 }
@@ -105,51 +91,13 @@
         [self setupForwarderForSelector:[[aStub recordedInvocation] selector]];
 }
 
-- (void)addInvocation:(NSInvocation *)anInvocation
-{
-    // If the mock invokes a method on the real object we end up here a second time, but because
-    // the mock has added the invocation already we do not want to add it again.
-    if((invocationFromMock == nil) || ([anInvocation selector] != [invocationFromMock selector]))
-        [super addInvocation:anInvocation];
-}
-
 - (void)handleUnRecordedInvocation:(NSInvocation *)anInvocation
 {
-    // In the case of an init that is called on a mock we must return the mock instance and
-    // not the realObject if the underlying init returns the realObject because at the call site
-    // ARC will have retained the target and the release/retain count must balance. If we return
-    // the realObject, then realObject will be over released and the mock will leak. Equally if
-    // we are called on the realObject we need to make sure not to return the mock.
-    id targetReceivingInit = nil;
-    if([anInvocation methodIsInInitFamily])
-    {
-        targetReceivingInit = [anInvocation target];
-        [realObject retain];
-    }
-
-    invocationFromMock = anInvocation;
-    [anInvocation invokeWithTarget:realObject];
-    invocationFromMock = nil;
-
-    if(targetReceivingInit)
-    {
-        id returnVal;
-        [anInvocation getReturnValue:&returnVal];
-        if(returnVal == realObject)
-        {
-            [anInvocation setReturnValue:&self];
-            [realObject release];
-            [self retain];
-        }
-#ifndef __clang_analyzer__
-        // see #456 for details
-        [targetReceivingInit release];
-#endif
-    }
+	[anInvocation invokeWithTarget:realObject];
 }
 
 
-#pragma mark Subclass management
+#pragma mark  Subclass management
 
 - (void)prepareObjectForInstanceMethodMocking
 {
@@ -157,11 +105,11 @@
 
     /* dynamically create a subclass and set it as the class of the object */
     Class subclass = OCMCreateSubclass(mockedClass, realObject);
-    object_setClass(realObject, subclass);
+	object_setClass(realObject, subclass);
 
     /* point forwardInvocation: of the object to the implementation in the mock */
-    Method myForwardMethod = class_getInstanceMethod([self mockObjectClass], @selector(forwardInvocationForRealObject:));
-    IMP myForwardIMP = method_getImplementation(myForwardMethod);
+	Method myForwardMethod = class_getInstanceMethod([self mockObjectClass], @selector(forwardInvocationForRealObject:));
+	IMP myForwardIMP = method_getImplementation(myForwardMethod);
     class_addMethod(subclass, @selector(forwardInvocation:), myForwardIMP, method_getTypeEncoding(myForwardMethod));
 
     /* do the same for forwardingTargetForSelector, remember existing imp with alias selector */
@@ -178,12 +126,17 @@
     class_addMethod(subclass, @selector(class), myObjectClassImp, objectClassTypes);
 
     /* Adding forwarder for most instance methods to allow for verify after run */
-    NSArray *methodsNotToForward = @[ @"class", @"forwardingTargetForSelector:", @"methodSignatureForSelector:", @"forwardInvocation:",
-        @"allowsWeakReference", @"retainWeakReference", @"isBlock", @"retainCount", @"retain", @"release", @"autorelease" ];
-    void (^setupForwarderFiltered)(Class, SEL) = ^(Class cls, SEL sel) {
-        if(OCMIsAppleBaseClass(cls) || OCMIsApplePrivateMethod(cls, sel))
+    NSArray *methodBlackList = @[@"class", @"forwardingTargetForSelector:", @"methodSignatureForSelector:", @"forwardInvocation:",
+            @"allowsWeakReference", @"retainWeakReference", @"isBlock"];
+    [NSObject enumerateMethodsInClass:mockedClass usingBlock:^(Class cls, SEL sel) {
+        if((cls == [NSObject class]) || (cls == [NSProxy class]))
             return;
-        if([methodsNotToForward containsObject:NSStringFromSelector(sel)])
+        NSString *className = NSStringFromClass(cls);
+        NSString *selName = NSStringFromSelector(sel);
+        if(([className hasPrefix:@"NS"] || [className hasPrefix:@"UI"]) &&
+           ([selName hasPrefix:@"_"] || [selName hasSuffix:@"_"]))
+            return;
+        if([methodBlackList containsObject:selName])
             return;
         @try
         {
@@ -193,8 +146,7 @@
         {
             // ignore for now
         }
-    };
-    [NSObject enumerateMethodsInClass:mockedClass usingBlock:setupForwarderFiltered];
+    }];
 }
 
 - (void)setupForwarderForSelector:(SEL)sel
@@ -204,9 +156,9 @@
         return;
 
     Method originalMethod = class_getInstanceMethod(mockedClass, sel);
+	IMP originalIMP = method_getImplementation(originalMethod);
+    const char *types = method_getTypeEncoding(originalMethod);
     /* Might be NULL if the selector is forwarded to another class */
-    IMP originalIMP = (originalMethod != NULL) ? method_getImplementation(originalMethod) : NULL;
-    const char *types = (originalMethod != NULL) ? method_getTypeEncoding(originalMethod) : NULL;
     // TODO: check the fallback implementation is actually sufficient
     if(types == NULL)
         types = ([[mockedClass instanceMethodSignatureForSelector:sel] fullObjCTypes]);
@@ -214,7 +166,7 @@
     Class subclass = object_getClass([self realObject]);
     IMP forwarderIMP = [mockedClass instanceMethodForwarderForSelector:sel];
     class_replaceMethod(subclass, sel, forwarderIMP, types);
-    class_addMethod(subclass, aliasSelector, originalIMP, types);
+	class_addMethod(subclass, aliasSelector, originalIMP, types);
 }
 
 
@@ -231,7 +183,7 @@
 
 - (id)forwardingTargetForSelectorForRealObject:(SEL)sel
 {
-    // in here "self" is a reference to the real object, not the mock
+	// in here "self" is a reference to the real object, not the mock
     OCPartialMockObject *mock = OCMGetAssociatedMockForObject(self);
     if(mock == nil)
         [NSException raise:NSInternalInconsistencyException format:@"No partial mock for object %p", self];
@@ -250,36 +202,16 @@
 
 - (void)forwardInvocationForRealObject:(NSInvocation *)anInvocation
 {
-    // in here "self" is a reference to the real object, not the mock
+	// in here "self" is a reference to the real object, not the mock
     OCPartialMockObject *mock = OCMGetAssociatedMockForObject(self);
     if(mock == nil)
         [NSException raise:NSInternalInconsistencyException format:@"No partial mock for object %p", self];
 
-    if([mock handleInvocation:anInvocation] == NO)
+	if([mock handleInvocation:anInvocation] == NO)
     {
         [anInvocation setSelector:OCMAliasForOriginalSelector([anInvocation selector])];
         [anInvocation invoke];
     }
-}
-
-
-#pragma mark Verification handling
-
-- (NSString *)descriptionForVerificationFailureWithMatcher:(OCMInvocationMatcher *)matcher quantifier:(OCMQuantifier *)quantifier invocationCount:(NSUInteger)count
-{
-    SEL matcherSel = [[matcher recordedInvocation] selector];
-    __block BOOL stubbingMightHelp = NO;
-    [NSObject enumerateMethodsInClass:mockedClass usingBlock:^(Class cls, SEL sel) {
-        if(sel == matcherSel)
-            stubbingMightHelp = OCMIsAppleBaseClass(cls) || OCMIsApplePrivateMethod(cls, sel);
-    }];
-
-    NSString *description = [super descriptionForVerificationFailureWithMatcher:matcher quantifier:quantifier invocationCount:count];
-    if(stubbingMightHelp)
-    {
-        description = [description stringByAppendingFormat:@" Adding a stub for the method may resolve the issue, e.g. `OCMStub([mockObject %@]).andForwardToRealObject()`", [matcher description]];
-    }
-    return description;
 }
 
 

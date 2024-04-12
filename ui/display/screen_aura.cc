@@ -13,4 +13,9 @@ gfx::NativeWindow Screen::GetWindowForView(gfx::NativeView view) {
   return view;
 }
 
+Screen* CreateNativeScreen() {
+  NOTREACHED() << "Implementation should be installed at higher level.";
+  return NULL;
+}
+
 }  // namespace display

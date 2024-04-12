@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_POLICY_ENROLLMENT_PSM_RLWE_DMSERVER_CLIENT_IMPL_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -14,7 +13,6 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/sequence_checker.h"
 #include "base/time/time.h"
-#include "chrome/browser/ash/policy/enrollment/auto_enrollment_state.h"
 #include "chrome/browser/ash/policy/enrollment/psm/rlwe_dmserver_client.h"
 #include "components/policy/core/common/cloud/device_management_service.h"
 #include "components/policy/core/common/cloud/dmserver_job_configurations.h"
@@ -38,14 +36,11 @@ class RlweDmserverClientImpl : public RlweDmserverClient {
       private_membership::rlwe::PrivateMembershipRlweOprfResponse;
   using RlweClient = private_membership::rlwe::PrivateMembershipRlweClient;
   using RlweClientFactory = base::RepeatingCallback<std::unique_ptr<RlweClient>(
-      private_membership::rlwe::RlweUseCase,
       const private_membership::rlwe::RlwePlaintextId&)>;
 
   // Creates PSM RLWE client that generates and holds a randomly generated
   // key.
-  static std::unique_ptr<RlweClient> Create(
-      private_membership::rlwe::RlweUseCase use_case,
-      const PlaintextId& plaintext_id);
+  static std::unique_ptr<RlweClient> Create(const PlaintextId& plaintext_id);
 
   // `device_management_service`, `url_loader_factory`.
   // `device_management_service` must outlive RlweDmserverClientImpl.
@@ -73,13 +68,7 @@ class RlweDmserverClientImpl : public RlweDmserverClient {
 
  private:
   // Records PSM execution result, and stops the protocol.
-  void RecordErrorAndStop(ResultHolder result);
-  void RecordErrorAndStop(RlweResult result) {
-    RecordErrorAndStop(ResultHolder(result));
-  }
-  void RecordErrorAndStop(AutoEnrollmentDMServerError error) {
-    RecordErrorAndStop(ResultHolder(error));
-  }
+  void RecordErrorAndStop(RlweResult psm_result);
 
   // Constructs and sends the PSM RLWE OPRF request.
   void SendRlweOprfRequest();
@@ -119,7 +108,7 @@ class RlweDmserverClientImpl : public RlweDmserverClient {
 
   // Unowned by RlweDmserverClientImpl. Its used to communicate with the
   // device management service.
-  const raw_ptr<DeviceManagementService, DanglingUntriaged>
+  const raw_ptr<DeviceManagementService, ExperimentalAsh>
       device_management_service_;
 
   // Its being used for both PSM requests e.g. RLWE OPRF request and RLWE query

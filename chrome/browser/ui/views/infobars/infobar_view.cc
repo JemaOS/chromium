@@ -25,7 +25,6 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/theme_provider.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/base/window_open_disposition_utils.h"
 #include "ui/compositor/layer.h"
 #include "ui/gfx/canvas.h"
@@ -40,7 +39,6 @@
 #include "ui/views/controls/button/label_button_border.h"
 #include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/button/menu_button.h"
-#include "ui/views/controls/highlight_path_generator.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/link.h"
@@ -54,9 +52,11 @@
 
 namespace {
 
+constexpr int kSeparatorHeightDip = 1;
+
 int GetElementSpacing() {
   return ChromeLayoutProvider::Get()->GetDistanceMetric(
-      views::DISTANCE_UNRELATED_CONTROL_HORIZONTAL);
+      DISTANCE_UNRELATED_CONTROL_HORIZONTAL);
 }
 
 gfx::Insets GetCloseButtonSpacing() {
@@ -108,9 +108,7 @@ InfoBarView::InfoBarView(std::unique_ptr<infobars::InfoBarDelegate> delegate)
     // This is the wrong color, but allows the button's size to be computed
     // correctly.  We'll reset this with the correct color in OnThemeChanged().
     views::SetImageFromVectorIconWithColor(
-        close_button.get(),
-        features::IsChromeRefresh2023() ? vector_icons::kCloseChromeRefreshIcon
-                                        : vector_icons::kCloseRoundedIcon,
+        close_button.get(), vector_icons::kCloseRoundedIcon,
         gfx::kPlaceholderColor, gfx::kPlaceholderColor);
     close_button->SetTooltipText(l10n_util::GetStringUTF16(IDS_ACCNAME_CLOSE));
     gfx::Insets close_button_spacing = GetCloseButtonSpacing();
@@ -119,14 +117,7 @@ InfoBarView::InfoBarView(std::unique_ptr<infobars::InfoBarDelegate> delegate)
         gfx::Insets::TLBR(close_button_spacing.top(), 0,
                           close_button_spacing.bottom(), 0));
     close_button_ = AddChildView(std::move(close_button));
-
-    if (features::IsChromeRefresh2023()) {
-      InstallCircleHighlightPathGenerator(close_button_);
-    }
   }
-
-  SetTargetHeight(
-      ChromeLayoutProvider::Get()->GetDistanceMetric(DISTANCE_INFOBAR_HEIGHT));
 }
 
 InfoBarView::~InfoBarView() {
@@ -136,7 +127,18 @@ InfoBarView::~InfoBarView() {
   DCHECK(!menu_runner_.get());
 }
 
-void InfoBarView::Layout(PassKey) {
+void InfoBarView::RecalculateHeight() {
+  // Ensure the infobar is tall enough to display its contents.
+  int height = 0;
+  for (View* child : children()) {
+    const gfx::Insets* const margins = child->GetProperty(views::kMarginsKey);
+    const int margin_height = margins ? margins->height() : 0;
+    height = std::max(height, child->height() + margin_height);
+  }
+  SetTargetHeight(height + kSeparatorHeightDip);
+}
+
+void InfoBarView::Layout() {
   const int spacing = GetElementSpacing();
   int start_x = 0;
   if (icon_) {
@@ -191,12 +193,22 @@ void InfoBarView::ViewHierarchyChanged(
   View::ViewHierarchyChanged(details);
 
   // Anything that needs to happen once after all subclasses add their children.
-  // TODO(330923783): Create a container for info bar subclasses to add children
-  // to, so that we don't have to move the close button to the end every time a
-  // child is added.
-  if (details.is_add && (details.child == this) && close_button_) {
-    ReorderChildView(close_button_, children().size());
+  if (details.is_add && (details.child == this)) {
+    if (close_button_)
+      ReorderChildView(close_button_, children().size());
+    RecalculateHeight();
   }
+}
+
+void InfoBarView::OnPaint(gfx::Canvas* canvas) {
+  views::View::OnPaint(canvas);
+
+  const SkColor color =
+      GetColorProvider()->GetColor(kColorInfoBarContentAreaSeparator);
+  const gfx::RectF local_bounds(GetLocalBounds());
+  const gfx::Vector2d separator_offset(0, kSeparatorHeightDip);
+  canvas->DrawSharpLine(local_bounds.bottom_left() - separator_offset,
+                        local_bounds.bottom_right() - separator_offset, color);
 }
 
 void InfoBarView::OnThemeChanged() {
@@ -210,11 +222,9 @@ void InfoBarView::OnThemeChanged() {
   const SkColor icon_disabled_color =
       cp->GetColor(kColorInfoBarButtonIconDisabled);
   if (close_button_) {
-    views::SetImageFromVectorIconWithColor(
-        close_button_,
-        features::IsChromeRefresh2023() ? vector_icons::kCloseChromeRefreshIcon
-                                        : vector_icons::kCloseRoundedIcon,
-        icon_color, icon_disabled_color);
+    views::SetImageFromVectorIconWithColor(close_button_,
+                                           vector_icons::kCloseRoundedIcon,
+                                           icon_color, icon_disabled_color);
   }
 
   for (views::View* child : children()) {
@@ -227,6 +237,9 @@ void InfoBarView::OnThemeChanged() {
       }
     }
   }
+
+  // Native theme changes can affect font sizes.
+  RecalculateHeight();
 }
 
 void InfoBarView::OnWillChangeFocus(View* focused_before, View* focused_now) {
@@ -364,7 +377,7 @@ void InfoBarView::CloseButtonPressed() {
   RemoveSelf();
 }
 
-BEGIN_METADATA(InfoBarView)
+BEGIN_METADATA(InfoBarView, views::View)
 ADD_READONLY_PROPERTY_METADATA(int, ContentMinimumWidth)
 ADD_READONLY_PROPERTY_METADATA(int, StartX)
 ADD_READONLY_PROPERTY_METADATA(int, EndX)

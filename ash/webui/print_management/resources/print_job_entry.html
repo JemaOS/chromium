@@ -10,7 +10,6 @@
                         experiment launched. */
   :host-context(body.jelly-enabled) {
     --cr-icon-button-focus-outline-color: var(--cros-sys-focus_ring);
-    font: var(--cros-body-2-font);
   }
 
   :host-context(body.jelly-enabled) .list-item:focus-within {
@@ -18,7 +17,7 @@
   }
 
   :host-context(body.jelly-enabled) #numericalProgress {
-    color: var(--cros-sys-primary);
+    color: var(--cros-sys-on_progress_container);
   }
 
   :host-context(body.jelly-enabled) #rowWrapper:active {
@@ -26,8 +25,8 @@
   }
 
   :host-context(body.jelly-enabled) paper-progress {
-    --paper-progress-active-color: var(--cros-sys-primary);
-    --paper-progress-container-color: var(--cros-sys-highlight_shape);
+    --paper-progress-active-color: var(--cros-sys-on_progress_container);
+    --paper-progress-container-color: var(--cros-sys-progress_container);
   }
 
   .collapsed-status {

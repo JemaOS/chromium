@@ -29,7 +29,6 @@
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/webdata_services/web_data_service_factory.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/test_switches.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -37,17 +36,15 @@
 #include "components/autofill/content/browser/content_autofill_driver_factory.h"
 #include "components/autofill/content/browser/test_autofill_manager_injector.h"
 #include "components/autofill/core/browser/autofill_test_utils.h"
-#include "components/autofill/core/browser/browser_autofill_manager.h"
 #include "components/autofill/core/browser/data_model/autofill_profile.h"
 #include "components/autofill/core/browser/data_model/credit_card.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
 #include "components/autofill/core/browser/personal_data_manager_observer.h"
-#include "components/autofill/core/browser/personal_data_manager_test_utils.h"
 #include "components/autofill/core/browser/test_autofill_manager_waiter.h"
 #include "components/autofill/core/browser/validation.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/mojom/autofill_types.mojom-shared.h"
-#include "components/keyed_service/core/service_access_type.h"
+#include "content/public/browser/browser_accessibility_state.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_widget_host_view.h"
@@ -56,7 +53,6 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/prerender_test_util.h"
-#include "content/public/test/scoped_accessibility_mode_override.h"
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/test_utils.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -67,23 +63,13 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/switches.h"
 #include "ui/accessibility/ax_enums.mojom.h"
-#include "ui/accessibility/ax_mode.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
 using base::ASCIIToUTF16;
 using base::UTF16ToASCII;
 using testing::_;
-using testing::MockFunction;
-using testing::Sequence;
-using testing::UnorderedElementsAre;
-using testing::UnorderedElementsAreArray;
 
 namespace autofill {
-namespace {
-
-ACTION_P(InvokeClosure, closure) {
-  closure.Run();
-}
 
 // Default JavaScript code used to submit the forms.
 const char kDocumentClickHandlerSubmitJS[] =
@@ -91,12 +77,50 @@ const char kDocumentClickHandlerSubmitJS[] =
     "  document.getElementById('testform').submit();"
     "};";
 
+// TODO(bondd): PdmChangeWaiter in autofill_uitest_util.cc is a replacement for
+// this class. Remove this class and use helper functions in that file instead.
+class WindowedPersonalDataManagerObserver : public PersonalDataManagerObserver {
+ public:
+  explicit WindowedPersonalDataManagerObserver(Browser* browser)
+      : alerted_(false), has_run_message_loop_(false), browser_(browser) {
+    PersonalDataManagerFactory::GetForProfile(browser_->profile())->
+        AddObserver(this);
+  }
+
+  ~WindowedPersonalDataManagerObserver() override {}
+
+  void Wait() {
+    if (!alerted_) {
+      has_run_message_loop_ = true;
+      content::RunMessageLoop();
+    }
+    PersonalDataManagerFactory::GetForProfile(browser_->profile())->
+        RemoveObserver(this);
+  }
+
+  // PersonalDataManagerObserver:
+  void OnPersonalDataChanged() override {
+    if (has_run_message_loop_) {
+      base::RunLoop::QuitCurrentWhenIdleDeprecated();
+      has_run_message_loop_ = false;
+    }
+    alerted_ = true;
+  }
+
+  void OnInsufficientFormData() override { OnPersonalDataChanged(); }
+
+ private:
+  bool alerted_;
+  bool has_run_message_loop_;
+  raw_ptr<Browser> browser_;
+};
+
 class AutofillTest : public InProcessBrowserTest {
  protected:
   class TestAutofillManager : public BrowserAutofillManager {
    public:
-    explicit TestAutofillManager(ContentAutofillDriver* driver)
-        : BrowserAutofillManager(driver, "en-US") {}
+    TestAutofillManager(ContentAutofillDriver* driver, AutofillClient* client)
+        : BrowserAutofillManager(driver, client, "en-US") {}
 
     [[nodiscard]] testing::AssertionResult WaitForFormsSeen(
         int min_num_awaited_calls) {
@@ -111,7 +135,7 @@ class AutofillTest : public InProcessBrowserTest {
 
   AutofillTest() {
     feature_list_.InitAndEnableFeature(
-        features::kAutofillDetectRemovedFormControls);
+        blink::features::kAutofillDetectRemovedFormControls);
   }
 
   void SetUpOnMainThread() override {
@@ -127,17 +151,12 @@ class AutofillTest : public InProcessBrowserTest {
   }
 
   void TearDownOnMainThread() override {
-    // RunUntilIdle() is necessary because otherwise, under the hood
-    // PasswordFormManager::OnFetchComplete() callback is run after this test is
-    // destroyed meaning that OsCryptImpl will be used instead of OsCryptMocker,
-    // causing this test to fail.
-    base::RunLoop().RunUntilIdle();
     // Make sure to close any showing popups prior to tearing down the UI.
     ContentAutofillDriverFactory::FromWebContents(web_contents())
         ->DriverForFrame(web_contents()->GetPrimaryMainFrame())
-        ->GetAutofillManager()
-        .client()
-        .HideAutofillPopup(PopupHidingReason::kTabGone);
+        ->autofill_manager()
+        ->client()
+        ->HideAutofillPopup(PopupHidingReason::kTabGone);
     test::ReenableSystemServices();
     InProcessBrowserTest::TearDownOnMainThread();
   }
@@ -185,10 +204,9 @@ class AutofillTest : public InProcessBrowserTest {
         autofill_manager_injector_[web_contents()]->WaitForFormsSeen(1));
     // Shortcut explicit save prompts and automatically accept.
     personal_data_manager()->set_auto_accept_address_imports_for_testing(true);
-    TestAutofillManagerWaiter waiter(*autofill_manager(),
-                                     {AutofillManagerEvent::kFormSubmitted});
-    ASSERT_TRUE(
-        content::ExecJs(web_contents(), GetJSToFillForm(data) + submit_js));
+    WindowedPersonalDataManagerObserver observer(browser());
+    ASSERT_TRUE(content::ExecuteScript(web_contents(),
+                                       GetJSToFillForm(data) + submit_js));
     if (simulate_click) {
       // Simulate a mouse click to submit the form because form submissions not
       // triggered by user gestures are ignored.
@@ -196,12 +214,7 @@ class AutofillTest : public InProcessBrowserTest {
           browser()->tab_strip_model()->GetActiveWebContents(), 0,
           blink::WebMouseEvent::Button::kLeft);
     }
-    ASSERT_TRUE(waiter.Wait(1));
-    // Form submission might have triggered an import. The imported data is only
-    // available through the PDM after it has asynchronously updated the
-    // database. Wait for all pending DB tasks to complete.
-    WaitForPendingDBTasks(*WebDataServiceFactory::GetAutofillWebDataForProfile(
-        browser()->profile(), ServiceAccessType::EXPLICIT_ACCESS));
+    observer.Wait();
   }
 
   // Aggregate profiles from forms into Autofill preferences. Returns the number
@@ -219,9 +232,8 @@ class AutofillTest : public InProcessBrowserTest {
         data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     int parsed_profiles = 0;
     for (const auto& line : lines) {
-      if (line.starts_with("#")) {
+      if (base::StartsWith(line, "#", base::CompareCase::SENSITIVE))
         continue;
-      }
 
       std::vector<std::string> fields = base::SplitString(
           line, "|", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
@@ -272,8 +284,8 @@ class AutofillTest : public InProcessBrowserTest {
   }
 
  private:
-  test::AutofillBrowserTestEnvironment autofill_test_environment_;
   base::test::ScopedFeatureList feature_list_;
+  test::AutofillBrowserTestEnvironment autofill_test_environment_;
   TestAutofillManagerInjector<TestAutofillManager> autofill_manager_injector_;
 };
 
@@ -419,12 +431,12 @@ IN_PROC_BROWSER_TEST_F(AutofillTest, ProfileSavedWithValidCountryPhone) {
   for (const AutofillProfile* profile :
        personal_data_manager()->GetProfiles()) {
     actual_phone_numbers.push_back(
-        profile->GetInfo(PHONE_HOME_WHOLE_NUMBER, "en-US"));
+        profile->GetRawInfo(PHONE_HOME_WHOLE_NUMBER));
   }
   // Two valid phone numbers are imported, two invalid ones are removed.
-  EXPECT_THAT(
-      actual_phone_numbers,
-      UnorderedElementsAreArray({u"4088714567", u"+4940808179000", u"", u""}));
+  EXPECT_THAT(actual_phone_numbers,
+              testing::UnorderedElementsAreArray(
+                  {u"408-871-4567", u"+49 40-80-81-79-000", u"", u""}));
 }
 
 // Prepend country codes when formatting phone numbers if:
@@ -461,7 +473,7 @@ IN_PROC_BROWSER_TEST_F(AutofillTest, AppendCountryCodeForAggregatedPhones) {
           : u"08450 777777"};
 
   EXPECT_THAT(actual_phone_numbers,
-              UnorderedElementsAreArray(expected_phone_numbers));
+              testing::UnorderedElementsAreArray(expected_phone_numbers));
 }
 
 // Test that Autofill uses '+' sign for international numbers.
@@ -607,7 +619,7 @@ IN_PROC_BROWSER_TEST_F(AutofillTest, DynamicForm_DiscoverRemovedFormFields) {
 
   // Remove one field via JavaScript and expect that the AutofillManager learns
   // about this.
-  ASSERT_TRUE(content::ExecJs(web_contents(), "RemoveCity();"));
+  ASSERT_TRUE(content::ExecuteScript(web_contents(), "RemoveCity();"));
   EXPECT_TRUE(WaitForFormWithNFields(2))
       << "Waiting for after before field removal";
 }
@@ -642,9 +654,8 @@ class AutofillAccessibilityTest : public AutofillTest {
 
 // Test that autofill available state is correctly set on accessibility node.
 // Test is flaky: https://crbug.com/1239099
-IN_PROC_BROWSER_TEST_F(AutofillAccessibilityTest,
-                       DISABLED_TestAutofillSuggestionAvailability) {
-  content::ScopedAccessibilityModeOverride mode_override(ui::kAXModeComplete);
+IN_PROC_BROWSER_TEST_F(AutofillAccessibilityTest, DISABLED_TestAutofillState) {
+  content::BrowserAccessibilityState::GetInstance()->EnableAccessibility();
 
   // Navigate to url and wait for accessibility notification.
   GURL url =
@@ -658,7 +669,7 @@ IN_PROC_BROWSER_TEST_F(AutofillAccessibilityTest,
   // Focus target form field.
   const std::string focus_name_first_js =
       "document.getElementById('NAME_FIRST').focus();";
-  ASSERT_TRUE(content::ExecJs(web_contents(), focus_name_first_js));
+  ASSERT_TRUE(content::ExecuteScript(web_contents(), focus_name_first_js));
 
   // Assert that autofill is not yet available for target form field.
   // Loop while criteria is not met.
@@ -696,7 +707,7 @@ IN_PROC_BROWSER_TEST_F(AutofillAccessibilityTest,
   ASSERT_TRUE(layout_waiter_two.WaitForNotification());
 
   // Focus target form field.
-  ASSERT_TRUE(content::ExecJs(web_contents(), focus_name_first_js));
+  ASSERT_TRUE(content::ExecuteScript(web_contents(), focus_name_first_js));
 
   // Assert that autofill is now available for target form field.
   // Loop while criteria is not met.
@@ -716,7 +727,7 @@ IN_PROC_BROWSER_TEST_F(AutofillAccessibilityTest,
 // Test is flaky: http://crbug.com/1239099
 IN_PROC_BROWSER_TEST_F(AutofillAccessibilityTest,
                        DISABLED_TestAutocompleteState) {
-  content::ScopedAccessibilityModeOverride mode_override(ui::kAXModeComplete);
+  content::BrowserAccessibilityState::GetInstance()->EnableAccessibility();
   // Navigate to url and wait for accessibility notification
   GURL url =
       embedded_test_server()->GetURL("/autofill/duplicate_profiles_test.html");
@@ -729,7 +740,7 @@ IN_PROC_BROWSER_TEST_F(AutofillAccessibilityTest,
   // Focus target form field.
   const std::string focus_name_first_js =
       "document.getElementById('NAME_FIRST').focus();";
-  ASSERT_TRUE(content::ExecJs(web_contents(), focus_name_first_js));
+  ASSERT_TRUE(content::ExecuteScript(web_contents(), focus_name_first_js));
 
   // Assert that autocomplete is not yet available for target form field.
   // Loop while criteria is not met.
@@ -763,7 +774,7 @@ IN_PROC_BROWSER_TEST_F(AutofillAccessibilityTest,
   ASSERT_TRUE(layout_waiter_two.WaitForNotification());
 
   // Focus target form field.
-  ASSERT_TRUE(content::ExecJs(web_contents(), focus_name_first_js));
+  ASSERT_TRUE(content::ExecuteScript(web_contents(), focus_name_first_js));
 
   // Assert that autocomplete is now available for target form field.
   // Loop while criteria is not met.
@@ -784,8 +795,8 @@ class AutofillTestPrerendering : public InProcessBrowserTest {
  protected:
   class MockAutofillManager : public BrowserAutofillManager {
    public:
-    explicit MockAutofillManager(ContentAutofillDriver* driver)
-        : BrowserAutofillManager(driver, "en-US") {
+    MockAutofillManager(ContentAutofillDriver* driver, AutofillClient* client)
+        : BrowserAutofillManager(driver, client, "en-US") {
       // We need to set these expectations immediately to catch any premature
       // calls while prerendering.
       if (driver->render_frame_host()->GetLifecycleState() ==
@@ -808,7 +819,7 @@ class AutofillTestPrerendering : public InProcessBrowserTest {
   };
 
   void SetUp() override {
-    prerender_helper_.RegisterServerRequestMonitor(embedded_test_server());
+    prerender_helper_.SetUp(embedded_test_server());
     InProcessBrowserTest::SetUp();
   }
 
@@ -858,63 +869,64 @@ IN_PROC_BROWSER_TEST_F(AutofillTestPrerendering, DeferWhilePrerendering) {
 
   int host_id = prerender_helper().AddPrerender(prerender_url);
   auto* rfh = prerender_helper().GetPrerenderedMainFrameHost(host_id);
-  MockAutofillManager* mock = autofill_manager(rfh);
-
-  struct {
-    Sequence seq;
-    MockFunction<void()> check_point;
-    base::RunLoop run_loop;
-  } on_forms_seen;
-  EXPECT_CALL(*mock, OnFormsSeen).Times(0).InSequence(on_forms_seen.seq);
-  EXPECT_CALL(on_forms_seen.check_point, Call).InSequence(on_forms_seen.seq);
-  EXPECT_CALL(*mock, OnFormsSeen)
-      .InSequence(on_forms_seen.seq)
-      .WillOnce(InvokeClosure(on_forms_seen.run_loop.QuitClosure()));
-
-  struct {
-    Sequence seq;
-    MockFunction<void()> check_point;
-    base::RunLoop run_loop;
-  } on_focus_on_form_field_impl;
-  EXPECT_CALL(*mock, OnFocusOnFormFieldImpl)
-      .Times(0)
-      .InSequence(on_focus_on_form_field_impl.seq);
-  EXPECT_CALL(on_focus_on_form_field_impl.check_point, Call)
-      .InSequence(on_focus_on_form_field_impl.seq);
-  EXPECT_CALL(*mock, OnFocusOnFormFieldImpl)
-      .InSequence(on_focus_on_form_field_impl.seq)
-      .WillOnce(
-          InvokeClosure(on_focus_on_form_field_impl.run_loop.QuitClosure()));
-
-  // During prerendering, no events should be fired by AutofillAgent.
   ASSERT_TRUE(content::ExecJs(rfh,
                               "document.querySelector('#NAME_FIRST').focus();",
                               content::EXECUTE_SCRIPT_NO_USER_GESTURE));
-  on_forms_seen.check_point.Call();
-  on_focus_on_form_field_impl.check_point.Call();
-  // Once the prerendered frame becomes active, the enqueued events should be
-  // fired by AutofillAgent.
+
+  // Since the initial prerender page load has finished at this point and we
+  // have issued our programmatic focus, we need to check that the expectations
+  // we set up during render frame creation have been met (i.e., that we did not
+  // issue a calls to the driver for either the forms being seen nor the focus
+  // update).
+  MockAutofillManager* mock = autofill_manager(rfh);
+  testing::Mock::VerifyAndClearExpectations(mock);
+  // Next, we ensure that once we activate, we issue the deferred calls.
+  base::RunLoop run_loop;
+  EXPECT_CALL(*mock, OnFocusOnFormFieldImpl(_, _, _)).Times(1);
+  EXPECT_CALL(*mock, OnFormsSeen(_, _))
+      .Times(1)
+      .WillRepeatedly(
+          testing::InvokeWithoutArgs([&run_loop]() { run_loop.Quit(); }));
+
   prerender_helper().NavigatePrimaryPage(prerender_url);
   EXPECT_EQ(prerender_helper().GetRequestCount(prerender_url), 1);
-  on_forms_seen.run_loop.Run();
-  on_focus_on_form_field_impl.run_loop.Run();
+  run_loop.Run();
 }
 
 // Test fixture for testing that that appropriate form submission events are
 // fired in BrowserAutofillManager.
-class AutofillTestFormSubmission : public InProcessBrowserTest {
+// The parameters indicate whether or not to enable
+// AutofillAllowDuplicateFormSubmissions and
+// AutofillProbableFormSubmissionInBrowser, respectively.
+class AutofillTestFormSubmission
+    : public InProcessBrowserTest,
+      public testing::WithParamInterface<std::tuple<bool, bool>> {
  protected:
   class MockAutofillManager : public BrowserAutofillManager {
    public:
-    explicit MockAutofillManager(ContentAutofillDriver* driver)
-        : BrowserAutofillManager(driver, "en-US") {}
+    MockAutofillManager(ContentAutofillDriver* driver, AutofillClient* client)
+        : BrowserAutofillManager(driver, client, "en-US") {}
     MOCK_METHOD(void,
                 OnFormSubmittedImpl,
                 (const FormData&, bool, mojom::SubmissionSource),
                 (override));
   };
 
-  AutofillTestFormSubmission() = default;
+  AutofillTestFormSubmission() {
+    std::vector<base::test::FeatureRef> enabled;
+    std::vector<base::test::FeatureRef> disabled;
+    if (std::get<0>(GetParam())) {
+      enabled.push_back(features::kAutofillAllowDuplicateFormSubmissions);
+    } else {
+      disabled.push_back(features::kAutofillAllowDuplicateFormSubmissions);
+    }
+    if (std::get<1>(GetParam())) {
+      enabled.push_back(features::kAutofillProbableFormSubmissionInBrowser);
+    } else {
+      disabled.push_back(features::kAutofillProbableFormSubmissionInBrowser);
+    }
+    feature_list_.InitWithFeatures(enabled, disabled);
+  }
 
   void SetUpOnMainThread() override {
     InProcessBrowserTest::SetUpOnMainThread();
@@ -932,7 +944,7 @@ class AutofillTestFormSubmission : public InProcessBrowserTest {
     // Simulate a mouse click to submit the form because form submissions not
     // triggered by user gestures are ignored.
     std::string onclick_js = "document.onclick = function() { " + js + "; };";
-    ASSERT_TRUE(content::ExecJs(web_contents(), onclick_js));
+    ASSERT_TRUE(content::ExecuteScript(web_contents(), onclick_js));
     content::SimulateMouseClick(web_contents(), 0,
                                 blink::WebMouseEvent::Button::kLeft);
   }
@@ -997,17 +1009,20 @@ class AutofillTestFormSubmission : public InProcessBrowserTest {
   }
 
   test::AutofillBrowserTestEnvironment autofill_test_environment_;
+  base::test::ScopedFeatureList feature_list_;
   TestAutofillManagerInjector<MockAutofillManager> autofill_manager_injector_;
 };
 
 // Tests that user-triggered submission triggers a submission event in
 // BrowserAutofillManager.
-IN_PROC_BROWSER_TEST_F(AutofillTestFormSubmission, Submission) {
+IN_PROC_BROWSER_TEST_P(AutofillTestFormSubmission, Submission) {
   base::RunLoop run_loop;
   EXPECT_CALL(
       *autofill_manager(),
       OnFormSubmittedImpl(_, _, mojom::SubmissionSource::FORM_SUBMISSION))
-      .WillRepeatedly(InvokeClosure(run_loop.QuitClosure()));
+      .Times(1)
+      .WillRepeatedly(
+          testing::InvokeWithoutArgs([&run_loop]() { run_loop.Quit(); }));
   ExecuteScript(
       "document.getElementById('name').value = 'Sarah';"
       "document.getElementById('name').select();"
@@ -1017,12 +1032,14 @@ IN_PROC_BROWSER_TEST_F(AutofillTestFormSubmission, Submission) {
 
 // Tests that non-link-click, renderer-initiated navigation triggers a
 // submission event in BrowserAutofillManager.
-IN_PROC_BROWSER_TEST_F(AutofillTestFormSubmission, ProbableSubmission) {
+IN_PROC_BROWSER_TEST_P(AutofillTestFormSubmission, ProbableSubmission) {
   base::RunLoop run_loop;
   EXPECT_CALL(*autofill_manager(),
               OnFormSubmittedImpl(
                   _, _, mojom::SubmissionSource::PROBABLY_FORM_SUBMITTED))
-      .WillRepeatedly(InvokeClosure(run_loop.QuitClosure()));
+      .Times(1)
+      .WillRepeatedly(
+          testing::InvokeWithoutArgs([&run_loop]() { run_loop.Quit(); }));
   // Add a delay before navigating away to avoid race conditions. This is
   // appropriate since we're faking user interaction here.
   ExecuteScript(
@@ -1037,5 +1054,8 @@ IN_PROC_BROWSER_TEST_F(AutofillTestFormSubmission, ProbableSubmission) {
   run_loop.Run();
 }
 
-}  // namespace
+INSTANTIATE_TEST_SUITE_P(AutofillTest,
+                         AutofillTestFormSubmission,
+                         testing::Combine(testing::Bool(), testing::Bool()));
+
 }  // namespace autofill

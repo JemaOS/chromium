@@ -10,7 +10,6 @@
 #include <string>
 
 #include "ash/ash_export.h"
-#include "base/memory/raw_ptr.h"
 #include "ui/aura/window_observer.h"
 
 namespace aura {
@@ -23,8 +22,7 @@ namespace ash {
 // order to restore them when the wallpaper viewer is hidden.
 class ASH_EXPORT WallpaperWindowStateManager : public aura::WindowObserver {
  public:
-  typedef std::map<std::string,
-                   std::set<raw_ptr<aura::Window, SetExperimental>>>
+  typedef std::map<std::string, std::set<aura::Window*>>
       UserIDHashWindowListMap;
 
   WallpaperWindowStateManager();

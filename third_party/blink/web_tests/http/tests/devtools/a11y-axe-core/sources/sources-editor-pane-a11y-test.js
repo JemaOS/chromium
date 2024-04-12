@@ -1,16 +1,6 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-import {TestRunner} from 'test_runner';
-import {AxeCoreTestRunner} from 'axe_core_test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as Common from 'devtools/core/common/common.js';
-import * as UI from 'devtools/ui/legacy/legacy.js';
-import * as Sources from 'devtools/panels/sources/sources.js';
-import * as Persistence from 'devtools/models/persistence/persistence.js';
-import * as Workspace from 'devtools/models/workspace/workspace.js';
 
 (async function() {
   TestRunner.addResult('Tests accessibility in the editor pane in sources panel using the axe-core linter.');
@@ -29,8 +19,10 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
     }
   };
 
+  await TestRunner.loadTestModule('axe_core_test_runner');
+  await TestRunner.loadTestModule('sources_test_runner');
 
-  await UI.ViewManager.ViewManager.instance().showView('sources');
+  await UI.viewManager.showView('sources');
 
   await setup();
   await runTest();
@@ -38,9 +30,9 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
   TestRunner.completeTest();
 
   async function setup() {
-    const projects = Workspace.Workspace.WorkspaceImpl.instance().projectsForType(Workspace.Workspace.projectTypes.FileSystem);
+    const projects = Workspace.workspace.projectsForType(Workspace.projectTypes.FileSystem);
     const snippetsProject = projects.find(
-      project => Persistence.FileSystemWorkspaceBinding.FileSystemWorkspaceBinding.fileSystemType(project) === 'snippets');
+      project => Persistence.FileSystemWorkspaceBinding.fileSystemType(project) === 'snippets');
     const uiSourceCode1 = await snippetsProject.createFile('');
     await Common.Revealer.reveal(uiSourceCode1);
     const uiSourceCode2 = await snippetsProject.createFile('');
@@ -49,7 +41,7 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
 
   async function runTest() {
     // Verify contents of the TabHeader to make sure files are open
-    const tabbedPane = Sources.SourcesPanel.SourcesPanel.instance().sourcesView().editorContainer.tabbedPane;
+    const tabbedPane = UI.panels.sources.sourcesView().editorContainer.tabbedPane;
     const tabs = tabbedPane.tabs;
     TestRunner.addResult('All tabs:');
     tabs.forEach(tab => TestRunner.addResult(tab.title));
@@ -59,8 +51,8 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
   }
 
   async function runA11yTest() {
-    await UI.ViewManager.ViewManager.instance().showView('sources');
-    const element = Sources.SourcesPanel.SourcesPanel.instance().sourcesView().contentElement;
+    await UI.viewManager.showView('sources');
+    const element = UI.panels.sources.sourcesView().contentElement;
     await AxeCoreTestRunner.runValidation(element, NO_REQUIRED_CHILDREN_RULESET);
   }
 })();

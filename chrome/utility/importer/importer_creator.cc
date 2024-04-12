@@ -16,7 +16,7 @@
 #endif
 
 #if BUILDFLAG(IS_MAC)
-#include "base/apple/foundation_util.h"
+#include "base/mac/foundation_util.h"
 #include "chrome/utility/importer/safari_importer.h"
 #endif
 
@@ -41,7 +41,7 @@ scoped_refptr<Importer> CreateImporterByType(ImporterType type) {
 #endif
 #if BUILDFLAG(IS_MAC)
     case TYPE_SAFARI:
-      return new SafariImporter(base::apple::GetUserLibraryPath());
+      return new SafariImporter(base::mac::GetUserLibraryPath());
 #endif
     default:
       NOTREACHED();

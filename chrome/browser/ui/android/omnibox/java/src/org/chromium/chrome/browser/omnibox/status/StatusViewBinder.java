@@ -4,15 +4,14 @@
 
 package org.chromium.chrome.browser.omnibox.status;
 
-import android.content.res.Resources;
-
-import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.status.StatusProperties.StatusIconResource;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor.ViewBinder;
 
-/** StatusViewBinder observes StatusModel changes and triggers StatusView updates. */
+/**
+ * StatusViewBinder observes StatusModel changes and triggers StatusView updates.
+ */
 class StatusViewBinder implements ViewBinder<PropertyModel, StatusView, PropertyKey> {
     StatusViewBinder() {}
 
@@ -27,11 +26,7 @@ class StatusViewBinder implements ViewBinder<PropertyModel, StatusView, Property
         } else if (StatusProperties.SEPARATOR_COLOR.equals(propertyKey)) {
             view.setSeparatorColor(model.get(StatusProperties.SEPARATOR_COLOR));
         } else if (StatusProperties.SHOW_STATUS_ICON.equals(propertyKey)) {
-            applyStatusIconAndTooltipProperties(model, view);
-        } else if (StatusProperties.STATUS_VIEW_TOOLTIP_TEXT.equals(propertyKey)) {
-            applyStatusIconAndTooltipProperties(model, view);
-        } else if (StatusProperties.STATUS_VIEW_HOVER_HIGHLIGHT.equals(propertyKey)) {
-            applyStatusIconAndTooltipProperties(model, view);
+            view.setStatusIconShown(model.get(StatusProperties.SHOW_STATUS_ICON));
         } else if (StatusProperties.SHOW_STATUS_ICON_BACKGROUND.equals(propertyKey)) {
             view.setStatusIconBackgroundVisibility(
                     model.get(StatusProperties.SHOW_STATUS_ICON_BACKGROUND));
@@ -41,7 +36,7 @@ class StatusViewBinder implements ViewBinder<PropertyModel, StatusView, Property
             view.setStatusAccessibilityToast(
                     model.get(StatusProperties.STATUS_ACCESSIBILITY_TOAST_RES));
         } else if (StatusProperties.STATUS_ACCESSIBILITY_DOUBLE_TAP_DESCRIPTION_RES.equals(
-                propertyKey)) {
+                           propertyKey)) {
             view.setStatusAccessibilityDoubleTapDescription(
                     model.get(StatusProperties.STATUS_ACCESSIBILITY_DOUBLE_TAP_DESCRIPTION_RES));
         } else if (StatusProperties.STATUS_ICON_ALPHA.equals(propertyKey)) {
@@ -54,12 +49,8 @@ class StatusViewBinder implements ViewBinder<PropertyModel, StatusView, Property
                 view.setStatusIconResources(null, StatusView.IconTransitionType.CROSSFADE, null);
                 return;
             }
-            view.setStatusIconResources(
-                    res.getDrawable(view.getContext(), view.getResources()),
-                    res.getTransitionType(),
-                    res.getAnimationFinishedCallback());
-        } else if (StatusProperties.TRANSLATION_X.equals(propertyKey)) {
-            view.setTranslationX(model.get(StatusProperties.TRANSLATION_X));
+            view.setStatusIconResources(res.getDrawable(view.getContext(), view.getResources()),
+                    res.getTransitionType(), res.getAnimationFinishedCallback());
         } else if (StatusProperties.VERBOSE_STATUS_TEXT_COLOR.equals(propertyKey)) {
             view.setVerboseStatusTextColor(model.get(StatusProperties.VERBOSE_STATUS_TEXT_COLOR));
         } else if (StatusProperties.VERBOSE_STATUS_TEXT_STRING_RES.equals(propertyKey)) {
@@ -73,19 +64,5 @@ class StatusViewBinder implements ViewBinder<PropertyModel, StatusView, Property
         } else {
             assert false : "Unhandled property update";
         }
-    }
-
-    static void applyStatusIconAndTooltipProperties(PropertyModel model, StatusView statusView) {
-        boolean showIcon = model.get(StatusProperties.SHOW_STATUS_ICON);
-        statusView.setStatusIconShown(showIcon);
-        if (showIcon) {
-            model.set(StatusProperties.STATUS_VIEW_TOOLTIP_TEXT, R.string.accessibility_menu_info);
-            model.set(StatusProperties.STATUS_VIEW_HOVER_HIGHLIGHT, R.drawable.status_view_ripple);
-        } else {
-            model.set(StatusProperties.STATUS_VIEW_TOOLTIP_TEXT, Resources.ID_NULL);
-            model.set(StatusProperties.STATUS_VIEW_HOVER_HIGHLIGHT, Resources.ID_NULL);
-        }
-        statusView.setTooltipText(model.get(StatusProperties.STATUS_VIEW_TOOLTIP_TEXT));
-        statusView.setHoverHighlight(model.get(StatusProperties.STATUS_VIEW_HOVER_HIGHLIGHT));
     }
 }

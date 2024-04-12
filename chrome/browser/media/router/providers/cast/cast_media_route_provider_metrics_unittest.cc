@@ -34,6 +34,20 @@ TEST(CastMediaRouteProviderMetricsTest, RecordAppAvailabilityResult) {
                                base::Milliseconds(333), 1);
 }
 
+TEST(CastMediaRouteProviderMetricsTest, RecordSupportedAppTypesValue) {
+  base::HistogramTester tester;
+
+  RecordLaunchSessionRequestSupportedAppTypes(
+      {ReceiverAppType::kAndroidTv, ReceiverAppType::kWeb});
+  RecordLaunchSessionRequestSupportedAppTypes(
+      {ReceiverAppType::kAndroidTv, ReceiverAppType::kWeb});
+  RecordLaunchSessionRequestSupportedAppTypes({ReceiverAppType::kWeb});
+  tester.ExpectBucketCount(kHistogramCastSupportedAppTypes,
+                           ReceiverAppTypeSet::kWeb, 1);
+  tester.ExpectBucketCount(kHistogramCastSupportedAppTypes,
+                           ReceiverAppTypeSet::kAndroidTvAndWeb, 2);
+}
+
 TEST(CastMediaRouteProviderMetricsTest, RecordLaunchSessionResponseAppType) {
   base::HistogramTester tester;
 

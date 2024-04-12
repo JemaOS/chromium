@@ -9,7 +9,8 @@
 
 #include "chrome/browser/ash/file_system_provider/watcher.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 class ProvidedFileSystemInfo;
 
@@ -39,6 +40,7 @@ class FakeRegistry : public RegistryInterface {
   std::unique_ptr<Watchers> watchers_;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_FAKE_REGISTRY_H_

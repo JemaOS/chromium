@@ -39,7 +39,9 @@ public class BottomSheetFocusHelper extends EmptyBottomSheetObserver {
         mBottomSheetController.addObserver(this);
     }
 
-    /** Sets the {@link WebContentsAccessibility} to be used in tests. */
+    /**
+     *  Sets the {@link WebContentsAccessibility} to be used in tests.
+     */
     @VisibleForTesting
     public void setWebContentsAccessibility(WebContentsAccessibility webContentsAccessibility) {
         mWebContentsAccessibility = webContentsAccessibility;

@@ -13,9 +13,6 @@
 #include "ui/base/dragdrop/drag_drop_types.h"
 #include "ui/base/dragdrop/mojom/drag_drop_types.mojom.h"
 #include "ui/base/dragdrop/os_exchange_data.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/base/ozone_buildflags.h"
 #include "ui/compositor/layer_tree_owner.h"
 #include "ui/gfx/native_widget_types.h"
 #include "ui/views/controls/menu/menu_controller.h"
@@ -34,8 +31,6 @@ const char16_t kTestTopLevelDragData[] = u"test_top_level_drag_data";
 
 // A simple view which can be dragged.
 class TestDragView : public views::View {
-  METADATA_HEADER(TestDragView, views::View)
-
  public:
   TestDragView();
 
@@ -66,13 +61,8 @@ void TestDragView::WriteDragData(const gfx::Point& point,
   data->SetString(kTestNestedDragData);
 }
 
-BEGIN_METADATA(TestDragView)
-END_METADATA
-
 // A simple view to serve as a drop target.
 class TestTargetView : public views::View {
-  METADATA_HEADER(TestTargetView, views::View)
-
  public:
   TestTargetView() = default;
 
@@ -137,8 +127,8 @@ bool TestTargetView::AreDropTypesRequired() {
 }
 
 bool TestTargetView::CanDrop(const OSExchangeData& data) {
-  std::u16string contents = data.GetString().value_or(std::u16string());
-  return contents == kTestNestedDragData;
+  std::u16string contents;
+  return data.GetString(&contents) && contents == kTestNestedDragData;
 }
 
 void TestTargetView::OnDragEntered(const ui::DropTargetEvent& event) {
@@ -166,9 +156,6 @@ void TestTargetView::PerformDrop(
   dropped_ = true;
   output_drag_op = DragOperation::kMove;
 }
-
-BEGIN_METADATA(TestTargetView)
-END_METADATA
 
 }  // namespace
 
@@ -227,7 +214,7 @@ class MenuViewDragAndDropTest : public MenuTestBase,
                    std::unique_ptr<ui::LayerTreeOwner> drag_image_layer_owner);
 
   // The special view in the menu, which supports its own drag and drop.
-  raw_ptr<TestTargetView, DanglingUntriaged> target_view_ = nullptr;
+  raw_ptr<TestTargetView> target_view_ = nullptr;
 
   // Whether or not we have been asked to close on drag complete.
   bool asked_to_close_ = false;
@@ -300,8 +287,8 @@ bool MenuViewDragAndDropTest::AreDropTypesRequired(views::MenuItemView* menu) {
 
 bool MenuViewDragAndDropTest::CanDrop(views::MenuItemView* menu,
                                       const ui::OSExchangeData& data) {
-  std::u16string contents = data.GetString().value_or(std::u16string());
-  return contents == kTestTopLevelDragData;
+  std::u16string contents;
+  return data.GetString(&contents) && contents == kTestTopLevelDragData;
 }
 
 DragOperation MenuViewDragAndDropTest::GetDropOperation(
@@ -418,8 +405,7 @@ void MenuViewDragAndDropTestTestInMenuDrag::StartDrag() {
 // menu automatically once the drag is complete, and does not ask the delegate
 // to stay open.
 // TODO(pkasting): https://crbug.com/939621 Fails on Mac.
-// TODO(crbug.com/1443197): Re-enable this test for linux.
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_MAC)
 #define MAYBE_TestInMenuDrag DISABLED_TestInMenuDrag
 #else
 #define MAYBE_TestInMenuDrag TestInMenuDrag
@@ -512,8 +498,7 @@ void MenuViewDragAndDropTestNestedDrag::StartDrag() {
 // implemented in menu code) will consult the delegate before closing the view
 // after the drag.
 // TODO(pkasting): https://crbug.com/939621 Fails on Mac.
-// TODO(crbug/1523611): Test is failing under ChromeRefresh2023 on wayland.
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_OZONE_WAYLAND)
+#if BUILDFLAG(IS_MAC)
 #define MAYBE_MenuViewDragAndDropNestedDrag \
   DISABLED_MenuViewDragAndDropNestedDrag
 #else

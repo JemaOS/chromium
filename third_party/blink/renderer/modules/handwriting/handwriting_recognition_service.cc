@@ -24,7 +24,7 @@ namespace {
 
 void OnCreateHandwritingRecognizer(
     ScriptState* script_state,
-    ScriptPromiseResolverTyped<HandwritingRecognizer>* resolver,
+    ScriptPromiseResolver* resolver,
     handwriting::mojom::blink::CreateHandwritingRecognizerResult result,
     mojo::PendingRemote<handwriting::mojom::blink::HandwritingRecognizer>
         pending_remote) {
@@ -55,13 +55,15 @@ void OnCreateHandwritingRecognizer(
 
 void OnQueryHandwritingRecognizer(
     ScriptState* script_state,
-    ScriptPromiseResolverTyped<IDLNullable<HandwritingRecognizerQueryResult>>*
-        resolver,
+    ScriptPromiseResolver* resolver,
     handwriting::mojom::blink::QueryHandwritingRecognizerResultPtr
         query_result) {
-  auto* result = mojo::ConvertTo<HandwritingRecognizerQueryResult*>(
-      std::move(query_result));
-  resolver->Resolve(result);
+  if (query_result) {
+    resolver->Resolve(mojo::ConvertTo<HandwritingRecognizerQueryResult*>(
+        std::move(query_result)));
+  } else {
+    resolver->Resolve(v8::Null(script_state->GetIsolate()));
+  }
 }
 
 }  // namespace
@@ -87,8 +89,7 @@ HandwritingRecognitionService& HandwritingRecognitionService::From(
 }
 
 // static
-ScriptPromiseTyped<HandwritingRecognizer>
-HandwritingRecognitionService::createHandwritingRecognizer(
+ScriptPromise HandwritingRecognitionService::createHandwritingRecognizer(
     ScriptState* script_state,
     Navigator& navigator,
     const HandwritingModelConstraint* constraint,
@@ -120,18 +121,16 @@ bool HandwritingRecognitionService::BootstrapMojoConnectionIfNeeded(
   return true;
 }
 
-ScriptPromiseTyped<HandwritingRecognizer>
-HandwritingRecognitionService::CreateHandwritingRecognizer(
+ScriptPromise HandwritingRecognitionService::CreateHandwritingRecognizer(
     ScriptState* script_state,
     const HandwritingModelConstraint* blink_model_constraint,
     ExceptionState& exception_state) {
   if (!BootstrapMojoConnectionIfNeeded(script_state, exception_state)) {
-    return ScriptPromiseTyped<HandwritingRecognizer>();
+    return ScriptPromise();
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<HandwritingRecognizer>>(
-          script_state, exception_state.GetContext());
+  ScriptPromiseResolver* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
   auto promise = resolver->Promise();
 
   auto mojo_model_constraint =
@@ -150,8 +149,7 @@ HandwritingRecognitionService::CreateHandwritingRecognizer(
 }
 
 // static
-ScriptPromiseTyped<IDLNullable<HandwritingRecognizerQueryResult>>
-HandwritingRecognitionService::queryHandwritingRecognizer(
+ScriptPromise HandwritingRecognitionService::queryHandwritingRecognizer(
     ScriptState* script_state,
     Navigator& navigator,
     const HandwritingModelConstraint* constraint,
@@ -160,17 +158,15 @@ HandwritingRecognitionService::queryHandwritingRecognizer(
       .QueryHandwritingRecognizer(script_state, constraint, exception_state);
 }
 
-ScriptPromiseTyped<IDLNullable<HandwritingRecognizerQueryResult>>
-HandwritingRecognitionService::QueryHandwritingRecognizer(
+ScriptPromise HandwritingRecognitionService::QueryHandwritingRecognizer(
     ScriptState* script_state,
     const HandwritingModelConstraint* constraint,
     ExceptionState& exception_state) {
   if (!BootstrapMojoConnectionIfNeeded(script_state, exception_state)) {
-    return ScriptPromiseTyped<IDLNullable<HandwritingRecognizerQueryResult>>();
+    return ScriptPromise();
   }
 
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<
-      IDLNullable<HandwritingRecognizerQueryResult>>>(
+  ScriptPromiseResolver* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
   auto promise = resolver->Promise();
 

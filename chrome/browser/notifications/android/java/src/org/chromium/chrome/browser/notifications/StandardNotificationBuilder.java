@@ -10,7 +10,9 @@ import org.chromium.components.browser_ui.notifications.NotificationMetadata;
 import org.chromium.components.browser_ui.notifications.NotificationWrapper;
 import org.chromium.components.browser_ui.notifications.NotificationWrapperBuilder;
 
-/** Builds a notification using the standard Notification.BigTextStyle layout. */
+/**
+ * Builds a notification using the standard Notification.BigTextStyle layout.
+ */
 public class StandardNotificationBuilder extends NotificationBuilderBase {
     private final Context mContext;
 
@@ -37,30 +39,19 @@ public class StandardNotificationBuilder extends NotificationBuilderBase {
         builder.setLargeIcon(getNormalizedLargeIcon());
         setStatusBarIcon(builder, mSmallIconId, mSmallIconBitmapForStatusBar);
         builder.setContentIntent(mContentIntent);
-        if (mDeleteIntentActionType != NotificationUmaTracker.ActionType.UNKNOWN) {
-            builder.setDeleteIntent(mDeleteIntent, mDeleteIntentActionType);
-        } else {
-            builder.setDeleteIntent(mDeleteIntent);
-        }
+        builder.setDeleteIntent(mDeleteIntent);
         for (Action action : mActions) {
             addActionToBuilder(builder, action);
         }
-        for (Action settingsAction : mSettingsActions) {
-            addActionToBuilder(builder, settingsAction);
+        if (mSettingsAction != null) {
+            addActionToBuilder(builder, mSettingsAction);
         }
         builder.setPriorityBeforeO(mPriority);
         builder.setDefaults(mDefaults);
         if (mVibratePattern != null) builder.setVibrate(mVibratePattern);
         builder.setSilent(mSilent);
-        if (mTimestamp >= 0) {
-            builder.setWhen(mTimestamp);
-            builder.setShowWhen(true);
-        } else {
-            builder.setShowWhen(false);
-        }
-        if (mTimeoutAfterMs > 0) {
-            builder.setTimeoutAfter(mTimeoutAfterMs);
-        }
+        builder.setWhen(mTimestamp);
+        builder.setShowWhen(true);
         builder.setOnlyAlertOnce(!mRenotify);
         setGroupOnBuilder(builder, mOrigin);
         builder.setPublicVersion(createPublicNotification(mContext));

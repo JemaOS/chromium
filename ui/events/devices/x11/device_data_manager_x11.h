@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "ui/events/devices/device_data_manager.h"
-#include "ui/events/devices/keyboard_device.h"
 #include "ui/events/devices/x11/events_devices_x11_export.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/keycodes/keyboard_codes.h"
@@ -287,7 +286,7 @@ class EVENTS_DEVICES_X11_EXPORT DeviceDataManagerX11
  protected:
   // DeviceHotplugEventObserver:
   void OnKeyboardDevicesUpdated(
-      const std::vector<KeyboardDevice>& devices) override;
+      const std::vector<InputDevice>& devices) override;
 
  private:
   // Information about scroll valuators
@@ -320,6 +319,9 @@ class EVENTS_DEVICES_X11_EXPORT DeviceDataManagerX11
   DeviceDataManagerX11();
   ~DeviceDataManagerX11() override;
 
+  // Initialize the XInput related system information.
+  bool InitializeXInputInternal();
+
   void InitializeValuatorsForTest(int deviceid,
                                   int start_valuator,
                                   int end_valuator,
@@ -348,6 +350,9 @@ class EVENTS_DEVICES_X11_EXPORT DeviceDataManagerX11
 
   static const int kMaxXIEventType = 32;
   static const int kMaxSlotNum = 10;
+
+  // Major opcode for the XInput extension. Used to identify XInput events.
+  int xi_opcode_;
 
   // A quick lookup table for determining if events from the pointer device
   // should be processed.
@@ -394,7 +399,7 @@ class EVENTS_DEVICES_X11_EXPORT DeviceDataManagerX11
 
   // Map that stores meta-data for blocked keyboards. This is needed to restore
   // devices when they are re-enabled.
-  std::map<x11::Input::DeviceId, ui::KeyboardDevice> blocked_keyboard_devices_;
+  std::map<x11::Input::DeviceId, ui::InputDevice> blocked_keyboard_devices_;
 
   std::vector<uint8_t> button_map_;
 };

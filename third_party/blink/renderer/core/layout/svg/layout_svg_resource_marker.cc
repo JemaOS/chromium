@@ -27,12 +27,13 @@
 #include "third_party/blink/renderer/core/svg/svg_animated_angle.h"
 #include "third_party/blink/renderer/core/svg/svg_animated_length.h"
 #include "third_party/blink/renderer/core/svg/svg_animated_rect.h"
-#include "third_party/blink/renderer/core/svg/svg_length_context.h"
 
 namespace blink {
 
 LayoutSVGResourceMarker::LayoutSVGResourceMarker(SVGMarkerElement* node)
-    : LayoutSVGResourceContainer(node), is_in_layout_(false) {}
+    : LayoutSVGResourceContainer(node),
+      needs_transform_update_(true),
+      is_in_layout_(false) {}
 
 LayoutSVGResourceMarker::~LayoutSVGResourceMarker() = default;
 
@@ -144,12 +145,18 @@ bool LayoutSVGResourceMarker::ShouldPaint() const {
 
 void LayoutSVGResourceMarker::SetNeedsTransformUpdate() {
   NOT_DESTROYED();
-  LayoutSVGContainer::SetNeedsTransformUpdate();
+  // The transform paint property relies on the SVG transform being up-to-date
+  // (see: PaintPropertyTreeBuilder::updateTransformForNonRootSVG).
+  SetNeedsPaintPropertyUpdate();
+  needs_transform_update_ = true;
 }
 
-SVGTransformChange LayoutSVGResourceMarker::UpdateLocalTransform(
-    const gfx::RectF& reference_box) {
+SVGTransformChange LayoutSVGResourceMarker::CalculateLocalTransform(
+    bool bounds_changed) {
   NOT_DESTROYED();
+  if (!needs_transform_update_)
+    return SVGTransformChange::kNone;
+
   auto* marker = To<SVGMarkerElement>(GetElement());
   DCHECK(marker);
 
@@ -160,6 +167,8 @@ SVGTransformChange LayoutSVGResourceMarker::UpdateLocalTransform(
 
   SVGTransformChangeDetector change_detector(local_to_parent_transform_);
   local_to_parent_transform_ = marker->ViewBoxToViewTransform(viewport_size_);
+
+  needs_transform_update_ = false;
   return change_detector.ComputeChange(local_to_parent_transform_);
 }
 

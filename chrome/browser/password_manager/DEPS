@@ -1,7 +1,5 @@
 include_rules = [
   "+dbus",
-  "+components/device_reauth",
-  "+components/webauthn/android",
 ]
 
 specific_include_rules = {

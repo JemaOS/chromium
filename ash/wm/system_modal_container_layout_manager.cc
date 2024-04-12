@@ -5,6 +5,7 @@
 #include "ash/wm/system_modal_container_layout_manager.h"
 
 #include <cmath>
+#include <memory>
 
 #include "ash/keyboard/ui/keyboard_ui_controller.h"
 #include "ash/public/cpp/shell_window_ids.h"

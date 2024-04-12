@@ -213,13 +213,12 @@
       assert_opacity_equals(1, `Opacity with document timeline`);
 
       anim.timeline = new ViewTimeline( { subject: target });
-      await anim.ready;
+      await waitForNextFrame();
 
       assert_progress_equals(anim, 0.5, `Progress at contain 50%`);
       assert_opacity_equals(0.5, `Opacity at contain 50%`);
 
       anim.timeline = document.timeline;
-      assert_false(anim.pending);
       await waitForNextFrame();
       assert_opacity_equals(1, `Opacity after resetting timeline`);
 
@@ -252,7 +251,7 @@
       assert_progress_equals(
           anim, 0.5, `Progress at contain 50% after effect change`);
       assert_opacity_equals(0.5, `Opacity at contain 50% after effect change`);
-    }, 'Timeline offsets in programmatic keyframes resolved when updating ' +
+    }, 'Timeline offsets in programmetic keyframes resolved when updating ' +
        'the animation effect');
   }
 

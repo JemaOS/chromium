@@ -106,14 +106,12 @@ class DiscardsGraphDumpImpl : public discards::mojom::GraphDump,
   // Ignored.
   void OnIsAudibleChanged(
       const performance_manager::FrameNode* frame_node) override {}
-  void OnIsCapturingMediaStreamChanged(
-      const performance_manager::FrameNode* frame_node) override {}
   // Ignored.
   void OnFirstContentfulPaint(
       const performance_manager::FrameNode* frame_node,
       base::TimeDelta time_since_navigation_start) override {}
   // Ignored.
-  void OnIntersectsViewportChanged(
+  void OnViewportIntersectionChanged(
       const performance_manager::FrameNode* frame_node) override {}
   // Ignored.
   void OnFrameVisibilityChanged(
@@ -135,16 +133,10 @@ class DiscardsGraphDumpImpl : public discards::mojom::GraphDump,
   void OnTypeChanged(const performance_manager::PageNode* page_node,
                      performance_manager::PageType previous_type) override {}
   // Ignored.
-  void OnIsFocusedChanged(
-      const performance_manager::PageNode* page_node) override {}
-  // Ignored.
   void OnIsVisibleChanged(
       const performance_manager::PageNode* page_node) override {}
   // Ignored.
   void OnIsAudibleChanged(
-      const performance_manager::PageNode* page_node) override {}
-  // Ignored.
-  void OnHasPictureInPictureChanged(
       const performance_manager::PageNode* page_node) override {}
   // Ignored.
   void OnLoadingStateChanged(
@@ -181,7 +173,7 @@ class DiscardsGraphDumpImpl : public discards::mojom::GraphDump,
   // Ignored.
   void OnFreezingVoteChanged(
       const performance_manager::PageNode* page_node,
-      std::optional<performance_manager::freezing::FreezingVote>) override {}
+      absl::optional<performance_manager::freezing::FreezingVote>) override {}
   // Ignored.
   void OnPageStateChanged(
       const performance_manager::PageNode* page_node,

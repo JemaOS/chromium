@@ -12,11 +12,11 @@
 #include "ash/style/ash_color_id.h"
 #include "ash/style/ash_color_provider.h"
 #include "ash/wm/gestures/back_gesture/back_gesture_util.h"
+#include "base/functional/callback.h"
 #include "base/i18n/rtl.h"
+#include "base/memory/raw_ptr.h"
 #include "base/timer/timer.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animation_observer.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
@@ -109,8 +109,6 @@ std::unique_ptr<views::Widget> CreateWidget() {
 class BackGestureContextualNudge::ContextualNudgeView
     : public views::View,
       public ui::ImplicitAnimationObserver {
-  METADATA_HEADER(ContextualNudgeView, views::View)
-
  public:
   explicit ContextualNudgeView(base::OnceCallback<void(bool)> callback)
       : callback_(std::move(callback)) {
@@ -171,8 +169,6 @@ class BackGestureContextualNudge::ContextualNudgeView
   // affordance and a label.
   class SuggestionView : public views::View,
                          public ui::ImplicitAnimationObserver {
-    METADATA_HEADER(SuggestionView, views::View)
-
    public:
     explicit SuggestionView(ContextualNudgeView* nudge_view)
         : nudge_view_(nudge_view) {
@@ -229,7 +225,7 @@ class BackGestureContextualNudge::ContextualNudgeView
 
    private:
     // views::View:
-    void Layout(PassKey) override {
+    void Layout() override {
       const gfx::Rect bounds = GetLocalBounds();
       gfx::Rect label_rect(bounds);
       label_rect.ClampToCenteredSize(label_->GetPreferredSize());
@@ -293,9 +289,10 @@ class BackGestureContextualNudge::ContextualNudgeView
       }
     }
 
-    raw_ptr<views::Label> label_ = nullptr;
+    raw_ptr<views::Label, ExperimentalAsh> label_ = nullptr;
     int current_animation_times_ = 0;
-    raw_ptr<ContextualNudgeView> nudge_view_ = nullptr;  // Not owned.
+    raw_ptr<ContextualNudgeView, ExperimentalAsh> nudge_view_ =
+        nullptr;  // Not owned.
   };
 
   // Showing contextual nudge from off screen to its start position.
@@ -335,9 +332,7 @@ class BackGestureContextualNudge::ContextualNudgeView
   }
 
   // views::View:
-  void Layout(PassKey) override {
-    suggestion_view_->SetBoundsRect(GetLocalBounds());
-  }
+  void Layout() override { suggestion_view_->SetBoundsRect(GetLocalBounds()); }
 
   // ui::ImplicitAnimationObserver:
   void OnImplicitAnimationsCompleted() override {
@@ -361,7 +356,7 @@ class BackGestureContextualNudge::ContextualNudgeView
   }
 
   // Created by ContextualNudgeView. Owned by views hierarchy.
-  raw_ptr<SuggestionView> suggestion_view_ = nullptr;
+  raw_ptr<SuggestionView, ExperimentalAsh> suggestion_view_ = nullptr;
 
   // Timer to start show the sliding in animation.
   base::OneShotTimer show_timer_;
@@ -378,12 +373,6 @@ class BackGestureContextualNudge::ContextualNudgeView
   // Count the nudge as shown successfully if |count_as_shown_| is true.
   base::OnceCallback<void(bool)> callback_;
 };
-
-BEGIN_METADATA(BackGestureContextualNudge, ContextualNudgeView)
-END_METADATA
-
-BEGIN_METADATA(BackGestureContextualNudge::ContextualNudgeView, SuggestionView)
-END_METADATA
 
 BackGestureContextualNudge::BackGestureContextualNudge(
     base::OnceCallback<void(bool)> callback) {

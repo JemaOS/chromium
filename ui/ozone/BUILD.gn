@@ -65,6 +65,11 @@ if (ozone_platform_x11) {
   ozone_platform_ui_test_support_deps += [ "platform/x11:test_support" ]
 }
 
+if (ozone_platform_scenic) {
+  ozone_platforms += [ "scenic" ]
+  ozone_platform_deps += [ "platform/scenic" ]
+}
+
 if (ozone_platform_flatland) {
   ozone_platforms += [ "flatland" ]
   ozone_platform_deps += [ "platform/flatland" ]
@@ -123,13 +128,11 @@ component("ozone_base") {
   defines = [ "IS_OZONE_BASE_IMPL" ]
 
   public_deps = [
-    ":drm_modifiers_filter",
     ":ozone_switches",
     "//base",
     "//gpu/vulkan:buildflags",
     "//ipc",
     "//skia",
-    "//ui/base:types",
     "//ui/base/clipboard:clipboard_types",
     "//ui/display",
     "//ui/display/types",
@@ -155,10 +158,6 @@ component("ozone_base") {
     public_deps += [
       "//third_party/fuchsia-sdk/sdk/fidl/fuchsia.images:fuchsia.images_hlcpp",
     ]
-  }
-
-  if (is_linux) {
-    public_deps += [ "//ui/linux:linux_ui" ]
   }
 
   visibility += [
@@ -224,11 +223,8 @@ source_set("platform") {
   # Platforms are always linked into //ui/ozone and can include our headers.
   allow_circular_includes_from = ozone_platform_deps
 
-  # This is used for platform and clipboard tests.
-  visibility += [
-    "//ui/base/clipboard:clipboard_test",
-    "//ui/ozone/platform/*",
-  ]
+  # This is used for platform tests.
+  visibility += [ "//ui/ozone/platform/*" ]
 
   # This can be used for out of tree platforms tests.
   visibility += ozone_external_platform_visibility
@@ -247,7 +243,6 @@ source_set("ozone_switches") {
   visibility += [
     "//chrome/test:browser_tests_runner",
     "//media/mojo/services",
-    "//ui/base/clipboard:clipboard_test",
     "//ui/display:display_unittests",
   ]
 }
@@ -255,18 +250,10 @@ source_set("ozone_switches") {
 component("ozone") {
   visibility = []
   visibility = [ "*" ]
-  public_deps = [ ":platform" ]
-}
-
-source_set("drm_modifiers_filter") {
-  sources = [ "public/drm_modifiers_filter.h" ]
-
-  deps = [
-    "//base",
-    "//ui/gfx/ipc/buffer_types",
+  public_deps = [
+    ":buildflags",
+    ":platform",
   ]
-
-  visibility += [ "//gpu/vulkan" ]
 }
 
 source_set("test_support_internal") {
@@ -471,6 +458,15 @@ test("ozone_integration_tests") {
   ]
 
   deps += ozone_platform_integration_test_deps
+}
+
+buildflag_header("buildflags") {
+  header = "buildflags.h"
+  flags = [
+    "OZONE_PLATFORM_WAYLAND=$ozone_platform_wayland",
+    "OZONE_PLATFORM_X11=$ozone_platform_x11",
+  ]
+  visibility += [ "*" ]
 }
 
 group("unittests") {

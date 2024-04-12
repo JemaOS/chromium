@@ -5,15 +5,14 @@
 #include "chrome/browser/nearby_sharing/fast_initiation/fast_initiation_scanner.h"
 
 #include <stdint.h>
-
-#include <optional>
 #include <vector>
 
 #include "base/time/time.h"
 #include "chrome/browser/nearby_sharing/fast_initiation/constants.h"
-#include "chrome/browser/nearby_sharing/nearby_share_metrics.h"
-#include "components/cross_device/logging/logging.h"
+#include "chrome/browser/nearby_sharing/logging/logging.h"
+#include "chrome/browser/nearby_sharing/nearby_share_metrics_logger.h"
 #include "device/bluetooth/bluetooth_low_energy_scan_filter.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -47,11 +46,9 @@ bool FastInitiationScanner::Factory::IsHardwareSupportAvailable(
   if (factory_instance_)
     return factory_instance_->IsHardwareSupportAvailable();
 
-  // The function only returns correct status when adapter is powered.
-  return adapter->IsPowered() &&
-         adapter->GetLowEnergyScanSessionHardwareOffloadingStatus() ==
-             device::BluetoothAdapter::
-                 LowEnergyScanSessionHardwareOffloadingStatus::kSupported;
+  return adapter->GetLowEnergyScanSessionHardwareOffloadingStatus() ==
+         device::BluetoothAdapter::
+             LowEnergyScanSessionHardwareOffloadingStatus::kSupported;
 }
 
 // static
@@ -93,12 +90,11 @@ void FastInitiationScanner::StartScanning(
       device::BluetoothLowEnergyScanFilter::Range::kNear,
       kBackgroundScanningDeviceFoundTimeout,
       kBackgroundScanningDeviceLostTimeout, {pattern},
-      /*rssi_sampling_period=*/std::nullopt);
+      /*rssi_sampling_period=*/absl::nullopt);
   if (!filter) {
-    CD_LOG(ERROR, Feature::NS)
-        << __func__
-        << ": Failed to start Fast Initiation scanning due to "
-           "failure to create filter.";
+    NS_LOG(ERROR) << __func__
+                  << ": Failed to start Fast Initiation scanning due to "
+                     "failure to create filter.";
     std::move(scanner_invalidated_callback_).Run();
     return;
   }
@@ -109,15 +105,14 @@ void FastInitiationScanner::StartScanning(
 
 void FastInitiationScanner::OnSessionStarted(
     device::BluetoothLowEnergyScanSession* scan_session,
-    std::optional<device::BluetoothLowEnergyScanSession::ErrorCode>
+    absl::optional<device::BluetoothLowEnergyScanSession::ErrorCode>
         error_code) {
   if (error_code) {
-    CD_LOG(WARNING, Feature::NS)
-        << __func__
-        << ": Error, error_code=" << static_cast<int>(error_code.value());
+    NS_LOG(WARNING) << __func__ << ": Error, error_code="
+                    << static_cast<int>(error_code.value());
     std::move(scanner_invalidated_callback_).Run();
   } else {
-    CD_LOG(VERBOSE, Feature::NS) << __func__ << ": Success";
+    NS_LOG(VERBOSE) << __func__ << ": Success";
   }
   RecordNearbyShareBackgroundScanningSessionStarted(/*success=*/!error_code);
 }
@@ -125,7 +120,7 @@ void FastInitiationScanner::OnSessionStarted(
 void FastInitiationScanner::OnDeviceFound(
     device::BluetoothLowEnergyScanSession* scan_session,
     device::BluetoothDevice* device) {
-  CD_LOG(VERBOSE, Feature::NS) << __func__;
+  NS_LOG(VERBOSE) << __func__;
   size_t device_count_prev = detected_devices_.size();
   detected_devices_.insert(device->GetAddress());
 
@@ -140,11 +135,11 @@ void FastInitiationScanner::OnDeviceFound(
 void FastInitiationScanner::OnDeviceLost(
     device::BluetoothLowEnergyScanSession* scan_session,
     device::BluetoothDevice* device) {
-  CD_LOG(VERBOSE, Feature::NS) << __func__;
+  NS_LOG(VERBOSE) << __func__;
   size_t device_count_prev = detected_devices_.size();
   if (detected_devices_.erase(device->GetAddress()) == 0) {
-    CD_LOG(WARNING, Feature::NS)
-        << __func__ << ": Received device lost event for device not in list.";
+    NS_LOG(WARNING) << __func__
+                    << ": Received device lost event for device not in list.";
   }
 
   // Invoke the callback when we go from more than zero devices to zero.
@@ -157,7 +152,7 @@ void FastInitiationScanner::OnDeviceLost(
 
 void FastInitiationScanner::OnSessionInvalidated(
     device::BluetoothLowEnergyScanSession* scan_session) {
-  CD_LOG(VERBOSE, Feature::NS) << __func__;
+  NS_LOG(VERBOSE) << __func__;
   detected_devices_.clear();
   std::move(scanner_invalidated_callback_).Run();
 }

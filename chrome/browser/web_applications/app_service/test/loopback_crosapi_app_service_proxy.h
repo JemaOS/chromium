@@ -59,14 +59,12 @@ class LoopbackCrosapiAppServiceProxy : public crosapi::mojom::AppServiceProxy,
                 apps::IconType icon_type,
                 int32_t size_hint_in_dip,
                 apps::LoadIconCallback callback) override;
-  void AddPreferredAppDeprecated(const std::string& app_id,
-                                 crosapi::mojom::IntentPtr intent) override;
+  void AddPreferredApp(const std::string& app_id,
+                       crosapi::mojom::IntentPtr intent) override;
   void ShowAppManagementPage(const std::string& app_id) override;
   void SetSupportedLinksPreference(const std::string& app_id) override;
   void UninstallSilently(const std::string& app_id,
                          apps::UninstallSource uninstall_source) override;
-  void InstallApp(crosapi::mojom::InstallAppParamsPtr params,
-                  InstallAppCallback callback) override;
 
   // crosapi::mojom::AppPublisher:
   void OnApps(std::vector<apps::AppPtr> deltas) override;

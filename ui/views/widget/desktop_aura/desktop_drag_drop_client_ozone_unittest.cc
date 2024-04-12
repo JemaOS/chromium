@@ -5,11 +5,8 @@
 #include "ui/views/widget/desktop_aura/desktop_drag_drop_client_ozone.h"
 
 #include <memory>
-#include <string>
 #include <utility>
-#include <vector>
 
-#include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/scoped_refptr.h"
@@ -17,7 +14,6 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "testing/gmock/include/gmock/gmock.h"
-#include "third_party/abseil-cpp/absl/types/variant.h"
 #include "ui/aura/client/drag_drop_delegate.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_tree_host.h"
@@ -134,8 +130,7 @@ class FakePlatformWindow : public ui::PlatformWindow, public ui::WmDragHandler {
     ui::WmDropHandler* drop_handler = ui::GetWmDropHandler(*this);
     if (!drop_handler)
       return;
-    drop_handler->OnDragEnter(point, operation, modifiers_);
-    drop_handler->OnDragDataAvailable(std::move(data));
+    drop_handler->OnDragEnter(point, std::move(data), operation, modifiers_);
   }
 
   int OnDragMotion(const gfx::PointF& point, int operation) {
@@ -146,11 +141,11 @@ class FakePlatformWindow : public ui::PlatformWindow, public ui::WmDragHandler {
     return drop_handler->OnDragMotion(point, operation, modifiers_);
   }
 
-  void OnDragDrop() {
+  void OnDragDrop(std::unique_ptr<OSExchangeData> data) {
     ui::WmDropHandler* drop_handler = ui::GetWmDropHandler(*this);
     if (!drop_handler)
       return;
-    drop_handler->OnDragDrop(modifiers_);
+    drop_handler->OnDragDrop(std::move(data), modifiers_);
   }
 
   void OnDragLeave() {
@@ -168,7 +163,7 @@ class FakePlatformWindow : public ui::PlatformWindow, public ui::WmDragHandler {
   void ProcessDrag(std::unique_ptr<OSExchangeData> data, int operation) {
     OnDragEnter(kStartDragLocation, std::move(data), operation);
     int updated_operation = OnDragMotion(kStartDragLocation, operation);
-    OnDragDrop();
+    OnDragDrop(nullptr);
     OnDragLeave();
     CloseDrag(ui::PreferredDragOperation(updated_operation));
   }
@@ -375,15 +370,15 @@ TEST_F(DesktopDragDropClientOzoneTest, ReceiveDrag) {
                                 suggested_operation);
   int updated_operation =
       platform_window_->OnDragMotion(kStartDragLocation, suggested_operation);
-  platform_window_->OnDragDrop();
+  platform_window_->OnDragDrop(nullptr);
   platform_window_->OnDragLeave();
 
   // The |updated_operation| decided through negotiation should be
   // 'ui::DragDropTypes::DRAG_MOVE'.
   EXPECT_EQ(static_cast<int>(operation), updated_operation);
 
-  std::optional<std::u16string> string_data =
-      dragdrop_delegate_->received_data()->GetString();
+  std::u16string string_data;
+  dragdrop_delegate_->received_data()->GetString(&string_data);
   EXPECT_EQ(sample_data, string_data);
 
   EXPECT_EQ(1, dragdrop_delegate_->num_enters());
@@ -472,7 +467,7 @@ TEST_F(DesktopDragDropClientOzoneTest, TargetDestroyedDuringDrag) {
 //
 // See more information in the bug.
 TEST_F(DesktopDragDropClientOzoneTest, Bug1151836) {
-  platform_window_->OnDragDrop();
+  platform_window_->OnDragDrop(nullptr);
 }
 
 namespace {
@@ -481,19 +476,18 @@ class MockDataTransferPolicyController
     : public ui::DataTransferPolicyController {
  public:
   MOCK_METHOD3(IsClipboardReadAllowed,
-               bool(base::optional_ref<const ui::DataTransferEndpoint> data_src,
-                    base::optional_ref<const ui::DataTransferEndpoint> data_dst,
-                    const std::optional<size_t> size));
-  MOCK_METHOD5(
-      PasteIfAllowed,
-      void(base::optional_ref<const ui::DataTransferEndpoint> data_src,
-           base::optional_ref<const ui::DataTransferEndpoint> data_dst,
-           absl::variant<size_t, std::vector<base::FilePath>> pasted_content,
-           content::RenderFrameHost* rfh,
-           base::OnceCallback<void(bool)> callback));
+               bool(const ui::DataTransferEndpoint* const data_src,
+                    const ui::DataTransferEndpoint* const data_dst,
+                    const absl::optional<size_t> size));
+  MOCK_METHOD5(PasteIfAllowed,
+               void(const ui::DataTransferEndpoint* const data_src,
+                    const ui::DataTransferEndpoint* const data_dst,
+                    const absl::optional<size_t> size,
+                    content::RenderFrameHost* rfh,
+                    base::OnceCallback<void(bool)> callback));
   MOCK_METHOD3(DropIfAllowed,
                void(const ui::OSExchangeData* drag_data,
-                    base::optional_ref<const ui::DataTransferEndpoint> data_dst,
+                    const ui::DataTransferEndpoint* data_dst,
                     base::OnceClosure drop_cb));
 };
 
@@ -505,7 +499,7 @@ TEST_F(DesktopDragDropClientOzoneTest, DataLeakPreventionAllowDrop) {
   // Data Leak Prevention stack allows the drop.
   EXPECT_CALL(dtp_controller, DropIfAllowed(testing::_, testing::_, testing::_))
       .WillOnce([&](const ui::OSExchangeData* drag_data,
-                    base::optional_ref<const ui::DataTransferEndpoint> data_dst,
+                    const ui::DataTransferEndpoint* data_dst,
                     base::OnceClosure drop_cb) { std::move(drop_cb).Run(); });
 
   // Set the operation which the destination can accept.
@@ -516,8 +510,8 @@ TEST_F(DesktopDragDropClientOzoneTest, DataLeakPreventionAllowDrop) {
   // The |operation| decided through negotiation should be 'DRAG_COPY'.
   EXPECT_EQ(DragOperation::kCopy, operation);
 
-  std::optional<std::u16string> string_data =
-      dragdrop_delegate_->received_data()->GetString();
+  std::u16string string_data;
+  dragdrop_delegate_->received_data()->GetString(&string_data);
   EXPECT_EQ(u"Test", string_data);
 
   EXPECT_EQ(1, dragdrop_delegate_->num_enters());

@@ -2,11 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/ash/file_manager/file_tasks.h"
-
 #include <cstring>
 #include <memory>
-#include <string_view>
 #include <unordered_map>
 
 #include "ash/webui/file_manager/url_constants.h"
@@ -19,14 +16,10 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/path_service.h"
 #include "base/ranges/algorithm.h"
-#include "base/run_loop.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
 #include "base/test/bind.h"
-#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/test/test_future.h"
-#include "base/threading/thread_restrictions.h"
 #include "build/branding_buildflags.h"
 #include "chrome/browser/apps/app_service/app_launch_params.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
@@ -34,41 +27,30 @@
 #include "chrome/browser/apps/app_service/app_service_test.h"
 #include "chrome/browser/apps/app_service/publishers/app_publisher.h"
 #include "chrome/browser/ash/arc/fileapi/arc_documents_provider_util.h"
-#include "chrome/browser/ash/crosapi/crosapi_manager.h"
-#include "chrome/browser/ash/crosapi/test_controller_ash.h"
-#include "chrome/browser/ash/drive/file_system_util.h"
+#include "chrome/browser/ash/drive/drivefs_test_support.h"
 #include "chrome/browser/ash/file_manager/app_id.h"
 #include "chrome/browser/ash/file_manager/file_manager_browsertest_base.h"
 #include "chrome/browser/ash/file_manager/file_manager_test_util.h"
+#include "chrome/browser/ash/file_manager/file_tasks.h"
 #include "chrome/browser/ash/file_manager/fileapi_util.h"
 #include "chrome/browser/ash/file_manager/filesystem_api_util.h"
-#include "chrome/browser/ash/file_manager/office_file_tasks.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
-#include "chrome/browser/ash/file_manager/url_util.h"
-#include "chrome/browser/ash/file_manager/volume.h"
 #include "chrome/browser/ash/file_manager/volume_manager.h"
 #include "chrome/browser/ash/file_system_provider/fake_extension_provider.h"
+#include "chrome/browser/ash/file_system_provider/fake_provided_file_system.h"
 #include "chrome/browser/ash/file_system_provider/provided_file_system_info.h"
 #include "chrome/browser/ash/file_system_provider/provider_interface.h"
+#include "chrome/browser/ash/file_system_provider/service.h"
 #include "chrome/browser/ash/login/test/logged_in_user_mixin.h"
-#include "chrome/browser/ash/policy/dlp/dlp_files_controller_ash.h"
+#include "chrome/browser/ash/policy/dlp/dlp_files_controller.h"
 #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager_factory.h"
-#include "chrome/browser/chromeos/policy/dlp/test/mock_dlp_rules_manager.h"
-#include "chrome/browser/chromeos/upload_office_to_cloud/upload_office_to_cloud.h"
-#include "chrome/browser/extensions/extension_keeplist_chromeos.h"
-#include "chrome/browser/extensions/extension_service.h"
-#include "chrome/browser/notifications/notification_display_service.h"
-#include "chrome/browser/notifications/notification_display_service_factory.h"
-#include "chrome/browser/policy/profile_policy_connector.h"
+#include "chrome/browser/chromeos/policy/dlp/mock_dlp_rules_manager.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_process.h"
-#include "chrome/browser/ui/webui/ash/cloud_upload/cloud_open_metrics.h"
 #include "chrome/browser/ui/webui/ash/cloud_upload/cloud_upload_dialog.h"
 #include "chrome/browser/ui/webui/ash/cloud_upload/cloud_upload_util.h"
 #include "chrome/browser/ui/webui/ash/office_fallback/office_fallback_ui.h"
@@ -80,17 +62,14 @@
 #include "chrome/browser/web_applications/web_app_sync_bridge.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/extensions/extension_constants.h"
-#include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
-#include "chrome/test/base/chromeos/ash_browser_test_starter.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/mixin_based_in_process_browser_test.h"
-#include "chrome/test/base/ui_test_utils.h"
+#include "chromeos/ash/components/drivefs/fake_drivefs.h"
 #include "chromeos/ash/components/drivefs/mojom/drivefs.mojom.h"
 #include "chromeos/constants/chromeos_features.h"
-#include "chromeos/crosapi/mojom/test_controller.mojom-test-utils.h"
-#include "chromeos/crosapi/mojom/test_controller.mojom.h"
-#include "components/services/app_service/public/cpp/app_types.h"
+#include "components/drive/file_errors.h"
+#include "components/services/app_service/public/cpp/intent_util.h"
 #include "content/public/browser/network_service_instance.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
@@ -98,27 +77,24 @@
 #include "extensions/browser/api/file_handlers/mime_util.h"
 #include "extensions/browser/entry_info.h"
 #include "extensions/browser/extension_registry.h"
-#include "extensions/common/constants.h"
 #include "net/base/mime_util.h"
 #include "services/network/test/test_network_connection_tracker.h"
 #include "storage/browser/file_system/external_mount_points.h"
 #include "storage/browser/file_system/file_system_url.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/common/features.h"
-#include "ui/message_center/public/cpp/notification.h"
 
-namespace file_manager::file_tasks {
-namespace {
-
-using blink::features::kFileHandlingAPI;
-using drive::DriveIntegrationService;
-using drive::util::ConnectionStatus;
-using drive::util::SetDriveConnectionStatusForTesting;
-using extensions::api::file_manager_private::TaskResult;
-using network::TestNetworkConnectionTracker;
 using web_app::kMediaAppId;
 
+namespace file_manager {
+namespace file_tasks {
+namespace {
+
 const char* blockedUrl = "https://blocked.com";
+
+static const char kODFSSampleUrl[] = "https://1drv.ms/123";
+static const char kSampleUserEmail1[] = "user1@gmail.com";
+static const char kSampleUserEmail2[] = "user2@gmail.com";
 
 // A list of file extensions (`/` delimited) representing a selection of files
 // and the app expected to be the default to open these files.
@@ -178,20 +154,47 @@ void VerifyAsyncTask(int* remaining,
   std::move(quit_closure).Run();
 }
 
+// Verifies that all tasks are either blocked or not by DLP, according to
+// |expectation|. Decrements the provided |remaining| integer to provide
+// additional verification that this function is invoked an expected number of
+// times (i.e. even if the callback could be invoked asynchronously).
+void VerifyDlpStatus(int* remaining,
+                     Expectation expectation,
+                     std::unique_ptr<ResultingTasks> resulting_tasks) {
+  ASSERT_TRUE(resulting_tasks) << expectation.file_extensions;
+  --*remaining;
+
+  bool expect_dlp_blocked = expectation.dlp_source_url &&
+                            strcmp(expectation.dlp_source_url, blockedUrl) == 0;
+  EXPECT_EQ(expect_dlp_blocked,
+            base::ranges::all_of(resulting_tasks->tasks,
+                                 &FullTaskDescriptor::is_dlp_blocked));
+}
+
+// Installs a chrome app that handles .tiff.
+scoped_refptr<const extensions::Extension> InstallTiffHandlerChromeApp(
+    Profile* profile) {
+  return test::InstallTestingChromeApp(
+      profile, "extensions/api_test/file_browser/app_file_handler");
+}
+
 // Populates |entries|, |file_urls|, and |dlp_source_urls| based on |test|.
 void ConvertExpectation(const Expectation& test,
                         std::vector<extensions::EntryInfo>& entries,
                         std::vector<GURL>& file_urls,
                         std::vector<std::string>& dlp_source_urls) {
   const base::FilePath prefix = base::FilePath().AppendASCII("file");
-  std::vector<std::string_view> all_extensions = base::SplitStringPiece(
+  std::vector<base::StringPiece> all_extensions = base::SplitStringPiece(
       test.file_extensions, "/", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  for (std::string_view extension : all_extensions) {
+  for (base::StringPiece extension : all_extensions) {
     base::FilePath path = prefix.AddExtension(extension);
     std::string mime_type;
-    base::ScopedAllowBlockingForTesting allow_blocking;
     net::GetMimeTypeFromFile(path, &mime_type);
     if (test.mime_type != nullptr) {
+      // Sniffing isn't used when GetMimeTypeFromFile() succeeds, so there
+      // shouldn't be a hard-coded mime type configured.
+      EXPECT_TRUE(mime_type.empty())
+          << "Did not expect mime match " << mime_type << " for " << path;
       mime_type = test.mime_type;
     } else {
       EXPECT_FALSE(mime_type.empty()) << "No mime type for " << path;
@@ -205,205 +208,12 @@ void ConvertExpectation(const Expectation& test,
   }
 }
 
-// Auxiliary class for abstracting over differences between the crosapi and
-// non-crosapi test variants.
-class TestController {
- public:
-  virtual ~TestController() = default;
-
-  virtual void SetUpInProcessBrowserTestFixture() = 0;
-  virtual void SetUpOnMainThread(InProcessBrowserTest* test_class_obj) {
-    profile_ = test_class_obj->browser()->profile();
-  }
-  virtual void TearDownOnMainThread() { profile_ = nullptr; }
-
-  virtual std::string InstallExtension(const char* path) = 0;
-  virtual void RemoveComponentExtension(const std::string& extension_id) = 0;
-  virtual std::string ExecuteFileTaskAndWaitForDomMessage(
-      const TaskDescriptor& task,
-      const std::vector<storage::FileSystemURL>& files) = 0;
-
- protected:
-  TestController() = default;
-  Profile* profile() { return profile_; }
-
- private:
-  raw_ptr<Profile> profile_ = nullptr;
-};
-
-// Class for letting the (Ash) test observe Lacros DOM messages.
-class DomMessageObserverAsh : public crosapi::mojom::DomMessageObserver {
- public:
-  explicit DomMessageObserverAsh(
-      base::test::TestFuture<std::string>* message_future)
-      : message_future_(message_future) {}
-
-  mojo::PendingRemote<crosapi::mojom::DomMessageObserver> Bind() {
-    return receiver_.BindNewPipeAndPassRemote();
-  }
-
- private:
-  void OnMessage(const std::string& message) override {
-    message_future_->SetValue(message);
-  }
-
-  mojo::Receiver<crosapi::mojom::DomMessageObserver> receiver_{this};
-  raw_ptr<base::test::TestFuture<std::string>> message_future_;
-};
-
-// For testing with crosapi enabled. Makes use of
-// StandaloneBrowserTestController to talk to Lacros.
-class TestControllerLacros : public TestController {
- public:
-  TestControllerLacros() = default;
-  ~TestControllerLacros() override = default;
-
-  void SetUpInProcessBrowserTestFixture() override {
-    if (lacros_starter_.HasLacrosArgument()) {
-      ASSERT_TRUE(lacros_starter_.PrepareEnvironmentForLacros());
-    }
-  }
-
-  void SetUpOnMainThread(InProcessBrowserTest* test_class_obj) override {
-    TestController::SetUpOnMainThread(test_class_obj);
-
-    if (!lacros_starter_.HasLacrosArgument()) {
-      GTEST_SKIP() << "This test needs to run together with Lacros but the "
-                      "--lacros-chrome-path switch is missing.";
-    }
-
-    lacros_starter_.StartLacros(test_class_obj);
-
-    // Wait until StandaloneBrowserTestController binds with TestControllerAsh.
-    CHECK(crosapi::TestControllerAsh::Get());
-    base::test::TestFuture<void> waiter;
-    crosapi::TestControllerAsh::Get()
-        ->on_standalone_browser_test_controller_bound()
-        .Post(FROM_HERE, waiter.GetCallback());
-    ASSERT_TRUE(waiter.Wait())
-        << "Could not bind StandaloneBrowserTestController - make sure that "
-           "the --lacros-chrome-path value points to a test_lacros_chrome "
-           "binary (the last component should not be a directory).";
-
-    lacros_waiter_.emplace(crosapi::TestControllerAsh::Get()
-                               ->GetStandaloneBrowserTestController());
-
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-    // QuickOffice loads from rootfs at /usr/share/chromeos-assets/quickoffce
-    // which does not exist on bots for tests, so load test version.
-    base::FilePath data_dir;
-    CHECK(base::PathService::Get(chrome::DIR_TEST_DATA, &data_dir));
-    lacros_waiter_->InstallComponentExtension(
-        data_dir.Append("chromeos/file_manager/quickoffice").value(),
-        extension_misc::kQuickOfficeComponentExtensionId);
-#endif
-  }
-
-  std::string InstallExtension(const char* path) override {
-    base::FilePath data_dir;
-    CHECK(base::PathService::Get(chrome::DIR_TEST_DATA, &data_dir));
-    return lacros_waiter_->InstallUnpackedExtension(
-        data_dir.Append(path).value());
-  }
-
-  void RemoveComponentExtension(const std::string& extension_id) override {
-    lacros_waiter_->RemoveComponentExtension(extension_id);
-  }
-
-  std::string ExecuteFileTaskAndWaitForDomMessage(
-      const TaskDescriptor& task,
-      const std::vector<storage::FileSystemURL>& files) override {
-    // Extension background page may not have finished loading yet, but the
-    // FileTask machinery will wait for that.
-    base::test::TestFuture<std::string> message;
-    DomMessageObserverAsh observer(&message);
-    lacros_waiter_->ObserveDomMessages(observer.Bind());
-    ExecuteFileTask(profile(), task, files, base::DoNothing());
-    return message.Get();
-  }
-
- private:
-  ::test::AshBrowserTestStarter lacros_starter_;
-  std::optional<crosapi::mojom::StandaloneBrowserTestControllerAsyncWaiter>
-      lacros_waiter_;
-};
-
-// For testing with crosapi disabled.
-class TestControllerAsh : public TestController {
- public:
-  TestControllerAsh() = default;
-  ~TestControllerAsh() override = default;
-
-  void SetUpInProcessBrowserTestFixture() override {}
-
-  void SetUpOnMainThread(InProcessBrowserTest* test_class_obj) override {
-    TestController::SetUpOnMainThread(test_class_obj);
-    test::AddDefaultComponentExtensionsOnMainThread(profile());
-  }
-
-  std::string InstallExtension(const char* path) override {
-    return test::InstallTestingChromeApp(profile(), path)->id();
-  }
-
-  void RemoveComponentExtension(const std::string& extension_id) override {
-    extensions::ExtensionSystem::Get(profile())
-        ->extension_service()
-        ->RemoveComponentExtension(extension_id);
-  }
-
-  std::string ExecuteFileTaskAndWaitForDomMessage(
-      const TaskDescriptor& task,
-      const std::vector<storage::FileSystemURL>& files) override {
-    content::DOMMessageQueue message_queue;
-    ExecuteFileTask(profile(), task, files, base::DoNothing());
-    std::string message;
-    CHECK(message_queue.WaitForMessage(&message));
-    return message;
-  }
-};
-
-// Helper to exit a RunLoop when the given WebContents is destroyed.
-class WebContentsDestroyedWaiter : public content::WebContentsObserver {
- public:
-  WebContentsDestroyedWaiter(
-      content::WebContents* contents,
-      const base::RepeatingClosure& on_web_contents_destroyed)
-      : content::WebContentsObserver(contents),
-        on_web_contents_destroyed_(on_web_contents_destroyed) {}
-  ~WebContentsDestroyedWaiter() override = default;
-
-  // Override from WebContentsObserver.
-  void WebContentsDestroyed() override { on_web_contents_destroyed_.Run(); }
-
-  base::RepeatingClosure on_web_contents_destroyed_;
-};
-
 class FileTasksBrowserTest : public TestProfileTypeMixin<InProcessBrowserTest> {
  public:
-  FileTasksBrowserTest() : TestProfileTypeMixin<InProcessBrowserTest>() {
-    if (GetParam().crosapi_state == TestProfileParam::CrosapiParam::kEnabled) {
-      test_controller_ = std::make_unique<TestControllerLacros>();
-    } else {
-      test_controller_ = std::make_unique<TestControllerAsh>();
-    }
-  }
-
-  void SetUpInProcessBrowserTestFixture() override {
-    TestProfileTypeMixin<
-        InProcessBrowserTest>::SetUpInProcessBrowserTestFixture();
-    test_controller()->SetUpInProcessBrowserTestFixture();
-  }
-
   void SetUpOnMainThread() override {
-    TestProfileTypeMixin<InProcessBrowserTest>::SetUpOnMainThread();
+    test::AddDefaultComponentExtensionsOnMainThread(browser()->profile());
     ash::SystemWebAppManager::GetForTest(browser()->profile())
         ->InstallSystemAppsForTesting();
-    test_controller()->SetUpOnMainThread(this);
-  }
-
-  void TearDownOnMainThread() override {
-    test_controller()->TearDownOnMainThread();
-    TestProfileTypeMixin<InProcessBrowserTest>::TearDownOnMainThread();
   }
 
   // Tests that each of the passed expectations open by default in the expected
@@ -427,17 +237,9 @@ class FileTasksBrowserTest : public TestProfileTypeMixin<InProcessBrowserTest> {
     EXPECT_EQ(0, remaining);
   }
 
-  std::string InstallTiffHandlerChromeApp() {
-    return test_controller()->InstallExtension(
-        "extensions/api_test/file_browser/app_file_handler");
-  }
-
- protected:
-  TestController* test_controller() { return test_controller_.get(); }
-
  private:
-  base::test::ScopedFeatureList feature_list_{kFileHandlingAPI};
-  std::unique_ptr<TestController> test_controller_;
+  base::test::ScopedFeatureList feature_list_{
+      blink::features::kFileHandlingAPI};
 };
 
 }  // namespace
@@ -471,7 +273,7 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ExtensionToMimeMapping) {
       {"cr2"},
       {"dng"},
       {"nef"},
-      {"nrw", false},
+      {"nrw"},
       {"orf"},
       {"raf"},
       {"rw2"},
@@ -508,11 +310,8 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ExtensionToMimeMapping) {
   for (const auto& test : kExpectations) {
     base::FilePath path = prefix.AddExtension(test.file_extension);
 
-    base::ScopedAllowBlockingForTesting allow_blocking;
-    if (test.has_mime) {
-      EXPECT_TRUE(net::GetMimeTypeFromFile(path, &mime_type))
-          << test.file_extension;
-    }
+    EXPECT_EQ(test.has_mime, net::GetMimeTypeFromFile(path, &mime_type))
+        << test.file_extension;
   }
 }
 
@@ -540,11 +339,11 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ImageHandlerChangeDetector) {
       {"cr2", kMediaAppId},
       {"dng", kMediaAppId},
       {"nef", kMediaAppId},
-      {"nrw", kMediaAppId, "image/tiff"},
+      {"nrw", kMediaAppId},
       {"orf", kMediaAppId},
       {"raf", kMediaAppId},
       {"rw2", kMediaAppId},
-      {"NRW", kMediaAppId, "image/tiff"},  // Uppercase extension.
+      {"NRW", kMediaAppId},  // Uppercase extension.
   };
   TestExpectationsAgainstDefaultTasks(expectations);
 }
@@ -591,8 +390,6 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, MultiSelectDefaultHandler) {
 // Check that QuickOffice has a handler installed for common Office doc types.
 // This test only runs with the is_chrome_branded GN flag set because otherwise
 // QuickOffice is not installed.
-// NOTE: For the Crosapi variant, Lacros must be a branded build as well,
-// otherwise the test will fail.
 IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, QuickOffice) {
   std::vector<Expectation> expectations = {
       {"doc", extension_misc::kQuickOfficeComponentExtensionId},
@@ -602,6 +399,7 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, QuickOffice) {
       {"xls", extension_misc::kQuickOfficeComponentExtensionId},
       {"xlsx", extension_misc::kQuickOfficeComponentExtensionId},
   };
+
   TestExpectationsAgainstDefaultTasks(expectations);
 }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -615,22 +413,19 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, MediaAppPreferredOverChromeApps) {
     TestExpectationsAgainstDefaultTasks({{"tiff", kMediaAppId}});
     return;
   }
-
-  std::string extension_id = InstallTiffHandlerChromeApp();
-
+  Profile* profile = browser()->profile();
+  auto extension = InstallTiffHandlerChromeApp(profile);
   TestExpectationsAgainstDefaultTasks({{"tiff", kMediaAppId}});
 
   UpdateDefaultTask(
-      browser()->profile(),
-      TaskDescriptor(extension_id, StringToTaskType("app"), "tiffAction"),
+      profile,
+      TaskDescriptor(extension->id(), StringToTaskType("app"), "tiffAction"),
       {"tiff"}, {"image/tiff"});
-  if (profile_type() == TestProfileType::kIncognito &&
-      GetParam().crosapi_state == TestProfileParam::CrosapiParam::kDisabled) {
-    // If installed in incognito, the installed app is not enabled and we filter
-    // it out.
+  if (profile_type() == TestProfileType::kIncognito) {
+    // In incognito, the installed app is not enabled and we filter it out.
     TestExpectationsAgainstDefaultTasks({{"tiff", kMediaAppId}});
   } else {
-    TestExpectationsAgainstDefaultTasks({{"tiff", extension_id.c_str()}});
+    TestExpectationsAgainstDefaultTasks({{"tiff", extension->id().c_str()}});
   }
 }
 
@@ -640,7 +435,6 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ProvidedFileSystemFileSource) {
     // Provided file systems don't exist in guest.
     return;
   }
-
   // The current test expectation: a GIF file in the provided file system called
   // "readwrite.gif" should open with the MediaApp.
   const char kTestFile[] = "readwrite.gif";
@@ -648,10 +442,8 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ProvidedFileSystemFileSource) {
   int remaining_expectations = 1;
 
   Profile* profile = browser()->profile();
-  base::WeakPtr<Volume> volume = test::InstallFileSystemProviderChromeApp(
-      profile,
-      base::BindOnce(base::IgnoreResult(&TestController::InstallExtension),
-                     base::Unretained(test_controller())));
+  base::WeakPtr<Volume> volume =
+      test::InstallFileSystemProviderChromeApp(profile);
 
   GURL url;
   ASSERT_TRUE(util::ConvertAbsoluteFilePathToFileSystemUrl(
@@ -688,7 +480,7 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ProvidedFileSystemFileSource) {
 }
 
 IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ExecuteWebApp) {
-  auto web_app_info = std::make_unique<web_app::WebAppInstallInfo>();
+  auto web_app_info = std::make_unique<WebAppInstallInfo>();
   web_app_info->start_url = GURL("https://www.example.com/");
   web_app_info->scope = GURL("https://www.example.com/");
   apps::FileHandler handler;
@@ -708,7 +500,7 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ExecuteWebApp) {
   TaskDescriptor task_descriptor;
   if (GetParam().crosapi_state == TestProfileParam::CrosapiParam::kDisabled) {
     // Install a PWA in ash.
-    webapps::AppId app_id =
+    web_app::AppId app_id =
         web_app::test::InstallWebApp(profile, std::move(web_app_info));
     task_descriptor = TaskDescriptor(app_id, TaskType::TASK_TYPE_WEB_APP,
                                      "https://www.example.com/handle_file");
@@ -728,7 +520,7 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ExecuteWebApp) {
   base::RunLoop run_loop;
   web_app::WebAppLaunchProcess::SetOpenApplicationCallbackForTesting(
       base::BindLambdaForTesting(
-          [&run_loop](apps::AppLaunchParams params) {
+          [&run_loop](apps::AppLaunchParams&& params) -> content::WebContents* {
             if (GetParam().crosapi_state ==
                 TestProfileParam::CrosapiParam::kDisabled) {
               EXPECT_EQ(params.override_url,
@@ -742,6 +534,7 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ExecuteWebApp) {
             EXPECT_TRUE(base::EndsWith(params.launch_files.at(1).MaybeAsASCII(),
                                        "bar.png"));
             run_loop.Quit();
+            return nullptr;
           }));
 
   base::FilePath file1 =
@@ -758,7 +551,7 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ExecuteWebApp) {
   std::vector<storage::FileSystemURL> files;
   files.push_back(storage::FileSystemURL::CreateForTest(url1));
   files.push_back(storage::FileSystemURL::CreateForTest(url2));
-  ExecuteFileTask(profile, task_descriptor, files, base::DoNothing());
+  ExecuteFileTask(profile, task_descriptor, files, nullptr, base::DoNothing());
   run_loop.Run();
 }
 
@@ -768,19 +561,64 @@ IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, ExecuteChromeApp) {
     // The app can't install in guest mode.
     return;
   }
-
-  std::string extension_id = InstallTiffHandlerChromeApp();
-
   Profile* const profile = browser()->profile();
-  std::vector<storage::FileSystemURL> files =
-      test::CopyTestFilesIntoMyFiles(profile, {"test_small.tiff"});
+  auto extension = InstallTiffHandlerChromeApp(profile);
 
-  TaskDescriptor task_descriptor(extension_id, TASK_TYPE_FILE_HANDLER,
+  TaskDescriptor task_descriptor(extension->id(), TASK_TYPE_FILE_HANDLER,
                                  "tiffAction");
-  std::string message = test_controller()->ExecuteFileTaskAndWaitForDomMessage(
-      task_descriptor, files);
+
+  base::FilePath path;
+  EXPECT_TRUE(base::PathService::Get(chrome::DIR_TEST_DATA, &path));
+  path = path.AppendASCII("chromeos/file_manager/test_small.tiff");
+  {
+    base::ScopedAllowBlockingForTesting allow_blocking;
+    EXPECT_TRUE(base::PathExists(path));
+  }
+  // Copy the file into My Files.
+  file_manager::test::FolderInMyFiles folder(profile);
+  folder.Add({path});
+  base::FilePath path_in_my_files = folder.files()[0];
+
+  GURL tiff_url;
+  CHECK(util::ConvertAbsoluteFilePathToFileSystemUrl(
+      profile, path_in_my_files, util::GetFileManagerURL(), &tiff_url));
+  std::vector<storage::FileSystemURL> files;
+  files.push_back(storage::FileSystemURL::CreateForTest(tiff_url));
+
+  content::DOMMessageQueue message_queue;
+  ExecuteFileTask(profile, task_descriptor, files, nullptr, base::DoNothing());
+
+  std::string message;
+  ASSERT_TRUE(message_queue.WaitForMessage(&message));
   ASSERT_EQ("\"Received tiffAction with: test_small.tiff\"", message);
 }
+
+IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, IsExtensionInstalled) {
+  if (profile_type() == TestProfileType::kGuest) {
+    // The extension can't install in guest mode.
+    return;
+  }
+  Profile* const profile = browser()->profile();
+  // Install new extension.
+  auto extension = InstallTiffHandlerChromeApp(profile);
+  ASSERT_TRUE(IsExtensionInstalled(profile, extension->id()));
+
+  extensions::ExtensionRegistry* registry =
+      extensions::ExtensionRegistry::Get(profile);
+  // Uninstall extension.
+  registry->RemoveEnabled(extension->id());
+  ASSERT_FALSE(IsExtensionInstalled(profile, extension->id()));
+}
+
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+// This test only runs with the is_chrome_branded GN flag set because otherwise
+// QuickOffice is not installed.
+IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, IsExtensionInstalledQuickOffice) {
+  Profile* const profile = browser()->profile();
+  ASSERT_TRUE(IsExtensionInstalled(
+      profile, extension_misc::kQuickOfficeComponentExtensionId));
+}
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 const TaskDescriptor CreateWebDriveOfficeTask() {
   // The SWA actionId is prefixed with chrome://file-manager/?ACTION_ID.
@@ -799,69 +637,39 @@ const TaskDescriptor CreateOpenInOfficeTask() {
                         full_action_id);
 }
 
-const FileSystemURL CreateOfficeFileSourceURL(Profile* profile) {
+const FileSystemURL CreateTestOfficeFile(Profile* profile) {
   base::FilePath file =
       util::GetMyFilesFolderForProfile(profile).AppendASCII("text.docx");
-  return ash::cloud_upload::FilePathToFileSystemURL(
-      profile, file_manager::util::GetFileManagerFileSystemContext(profile),
-      file);
+  GURL url;
+  CHECK(util::ConvertAbsoluteFilePathToFileSystemUrl(
+      profile, file, util::GetFileManagerURL(), &url));
+  return FileSystemURL::CreateForTest(url);
 }
 
-// These tests only run with the is_chrome_branded GN flag set because otherwise
-// QuickOffice is not installed.
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-// Test that the Fallback dialog can be shown when Quick Office is installed.
-IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, FallbackSucceedsWithQuickOffice) {
-  if (profile_type() == TestProfileType::kIncognito) {
-    GTEST_SKIP()
-        << "There is no AppServiceProxy for incognito profiles as they are "
-           "ephemeral and have no apps persisted inside them.";
-  }
-
+// This test only runs with the is_chrome_branded GN flag set because otherwise
+// QuickOffice is not installed.
+IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, FallbackFailsNoQuickOffice) {
   storage::FileSystemURL test_url;
   Profile* const profile = browser()->profile();
-
-  // GetUserFallbackChoice() returns `True` because the Fallback dialog can be
-  // shown.
-  const TaskDescriptor task = CreateWebDriveOfficeTask();
-  std::vector<FileSystemURL> file_url{test_url};
-  ash::office_fallback::FallbackReason fallback_reason =
-      ash::office_fallback::FallbackReason::kOffline;
-  ash::office_fallback::DialogChoiceCallback callback = base::BindOnce(
-      &OnDialogChoiceReceived, profile, task, file_url, fallback_reason,
-      std::make_unique<ash::cloud_upload::CloudOpenMetrics>(
-          ash::cloud_upload::CloudProvider::kOneDrive, /*file_count=*/1));
-  ASSERT_TRUE(GetUserFallbackChoice(
-      profile, task, file_url, ash::office_fallback::FallbackReason::kOffline,
-      std::move(callback)));
-}
-
-IN_PROC_BROWSER_TEST_P(FileTasksBrowserTest, FallbackFailsNoQuickOffice) {
-  if (profile_type() == TestProfileType::kIncognito) {
-    GTEST_SKIP()
-        << "There is no AppServiceProxy, which is required to check "
-           "QuickOffice is installed, for incognito profiles as they are "
-           "ephemeral and have no apps persisted inside them.";
-  }
-
-  // Uninstall QuickOffice.
-  test_controller()->RemoveComponentExtension(
+  extensions::ExtensionRegistry* registry =
+      extensions::ExtensionRegistry::Get(profile);
+  const extensions::Extension* quick_office = registry->GetInstalledExtension(
       extension_misc::kQuickOfficeComponentExtensionId);
 
+  // Uninstall QuickOffice.
+  registry->RemoveEnabled(extension_misc::kQuickOfficeComponentExtensionId);
   // GetUserFallbackChoice() returns `False` because QuickOffice is not
   // installed.
-  storage::FileSystemURL test_url;
-  Profile* const profile = browser()->profile();
-  const TaskDescriptor task = CreateWebDriveOfficeTask();
-  std::vector<FileSystemURL> file_url{test_url};
-  ash::office_fallback::FallbackReason fallback_reason =
-      ash::office_fallback::FallbackReason::kOffline;
-  ash::office_fallback::DialogChoiceCallback callback = base::BindOnce(
-      &OnDialogChoiceReceived, profile, task, file_url, fallback_reason,
-      std::make_unique<ash::cloud_upload::CloudOpenMetrics>(
-          ash::cloud_upload::CloudProvider::kOneDrive, /*file_count=*/1));
-  ASSERT_FALSE(GetUserFallbackChoice(profile, task, file_url, fallback_reason,
-                                     std::move(callback)));
+  ASSERT_FALSE(GetUserFallbackChoice(
+      profile, CreateWebDriveOfficeTask(), {test_url}, nullptr,
+      ash::office_fallback::FallbackReason::kOffline));
+  // Install QuickOffice.
+  registry->AddEnabled(quick_office);
+  // GetUserFallbackChoice() returns `True` because QuickOffice is installed.
+  ASSERT_TRUE(GetUserFallbackChoice(
+      profile, CreateWebDriveOfficeTask(), {test_url}, nullptr,
+      ash::office_fallback::FallbackReason::kOffline));
 }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
@@ -872,39 +680,33 @@ class FileTasksPolicyBrowserTest : public FileTasksBrowserTest {
   // Tests that fetched tasks are marked as blocked by DLP, if expected.
   void TestExpectationsAgainstDlp(
       const std::vector<Expectation>& expectations) {
+    int remaining = expectations.size();
+
     for (const Expectation& test : expectations) {
       std::vector<extensions::EntryInfo> entries;
       std::vector<GURL> file_urls;
       std::vector<std::string> dlp_source_urls;
       ConvertExpectation(test, entries, file_urls, dlp_source_urls);
 
-      base::test::TestFuture<std::unique_ptr<ResultingTasks>> tasks_future;
+      // task_verifier callback is invoked synchronously from
+      // FindAllTypesOfTasks.
       FindAllTypesOfTasks(browser()->profile(), entries, file_urls,
-                          dlp_source_urls, tasks_future.GetCallback());
-      ASSERT_TRUE(tasks_future.Get()) << test.file_extensions;
-      ResultingTasks& resulting_tasks = *tasks_future.Get();
-
-      // Verifies that all tasks are either blocked or not by DLP, according to
-      // |test|.
-      bool expect_dlp_blocked =
-          test.dlp_source_url && strcmp(test.dlp_source_url, blockedUrl) == 0;
-      EXPECT_EQ(expect_dlp_blocked,
-                base::ranges::all_of(resulting_tasks.tasks,
-                                     &FullTaskDescriptor::is_dlp_blocked));
+                          dlp_source_urls,
+                          base::BindOnce(&VerifyDlpStatus, &remaining, test));
     }
+    EXPECT_EQ(0, remaining);
   }
 
   std::unique_ptr<KeyedService> SetDlpRulesManager(
       content::BrowserContext* context) {
     auto dlp_rules_manager =
-        std::make_unique<testing::NiceMock<policy::MockDlpRulesManager>>(
-            Profile::FromBrowserContext(context));
+        std::make_unique<testing::NiceMock<policy::MockDlpRulesManager>>();
     rules_manager_ = dlp_rules_manager.get();
     return dlp_rules_manager;
   }
 
  protected:
-  raw_ptr<policy::MockDlpRulesManager, DanglingUntriaged> rules_manager_ =
+  raw_ptr<policy::MockDlpRulesManager, ExperimentalAsh> rules_manager_ =
       nullptr;
 };
 
@@ -922,14 +724,12 @@ IN_PROC_BROWSER_TEST_P(FileTasksPolicyBrowserTest, TasksMarkedAsBlocked) {
                           base::Unretained(this)));
   ASSERT_TRUE(policy::DlpRulesManagerFactory::GetForPrimaryProfile());
 
-  auto files_controller =
-      std::make_unique<policy::DlpFilesControllerAsh>(*rules_manager_, profile);
-
-  ON_CALL(*rules_manager_, GetDlpFilesController)
-      .WillByDefault(testing::Return(files_controller.get()));
-
   ON_CALL(*rules_manager_, IsFilesPolicyEnabled)
       .WillByDefault(testing::Return(true));
+  std::unique_ptr<policy::DlpFilesController> files_controller_ =
+      std::make_unique<policy::DlpFilesController>(*rules_manager_);
+  ON_CALL(*rules_manager_, GetDlpFilesController)
+      .WillByDefault(testing::Return(files_controller_.get()));
 
   EXPECT_CALL(*rules_manager_, IsRestrictedDestination)
       .Times(testing::AtLeast(1))
@@ -949,46 +749,31 @@ IN_PROC_BROWSER_TEST_P(FileTasksPolicyBrowserTest, TasksMarkedAsBlocked) {
 }
 
 // |InProcessBrowserTest| which allows a fake user to login. Login a non-managed
-// to ensure |IsEligibleAndEnabledUploadOfficeToCloud| returns the result of
-// |IsUploadOfficeToCloudEnabled|.
+// or Google user to ensure |IsEligibleAndEnabledUploadOfficeToCloud| returns
+// the result of |IsUploadOfficeToCloudEnabled|.
 class TestAccountBrowserTest : public MixinBasedInProcessBrowserTest {
  public:
-  explicit TestAccountBrowserTest(TestAccountType test_account_type) {
-    ash::LoggedInUserMixin::LogInType log_in_type =
-        LogInTypeFor(test_account_type);
-    std::optional<AccountId> account_id = AccountIdFor(test_account_type);
+  TestAccountBrowserTest(TestAccountType test_account_type,
+                         bool is_google_account) {
+    ash::LoggedInUserMixin::LogInType log_in_type;
+    absl::optional<AccountId> account_id;
+    if (is_google_account) {
+      log_in_type = ash::LoggedInUserMixin::LogInType::kRegular;
+      account_id = AccountId::FromUserEmailGaiaId("user@google.com", "12345");
+    } else {
+      log_in_type = LogInTypeFor(test_account_type);
+      account_id = AccountIdFor(test_account_type);
+    }
 
     logged_in_user_mixin_ = std::make_unique<ash::LoggedInUserMixin>(
         &mixin_host_, log_in_type, embedded_test_server(), this,
         /*should_launch_browser=*/true, account_id);
   }
 
-  // Launch Files app and wait for it to open.
-  void LaunchFilesAppAndWait() {
-    GURL files_swa_url = util::GetFileManagerMainPageUrlWithParams(
-        ui::SelectFileDialog::SELECT_NONE, /*title=*/std::u16string(),
-        /*current_directory_url=*/{},
-        /*selection_url=*/GURL(),
-        /*target_name=*/{}, /*file_types=*/{},
-        /*file_type_index=*/0,
-        /*search_query=*/{},
-        /*show_android_picker_apps=*/false,
-        /*volume_filter=*/{});
-    ash::SystemAppLaunchParams params;
-    params.url = files_swa_url;
-    ash::LaunchSystemWebAppAsync(browser()->profile(),
-                                 ash::SystemWebAppType::FILE_MANAGER, params);
-    ui_test_utils::WaitForBrowserToOpen();
-  }
-
  protected:
   void SetUpOnMainThread() override {
     MixinBasedInProcessBrowserTest::SetUpOnMainThread();
     logged_in_user_mixin_->LogInUser();
-
-    // Needed to launch Files app as the dialog's modal parent.
-    ash::SystemWebAppManager::GetForTest(browser()->profile())
-        ->InstallSystemAppsForTesting();
   }
 
  private:
@@ -997,7 +782,8 @@ class TestAccountBrowserTest : public MixinBasedInProcessBrowserTest {
 
 class NonManagedAccount : public TestAccountBrowserTest {
  public:
-  NonManagedAccount() : TestAccountBrowserTest(kNonManaged) {
+  NonManagedAccount()
+      : TestAccountBrowserTest(kNonManaged, /*is_google_account=*/false) {
     feature_list_.InitAndEnableFeature(
         chromeos::features::kUploadOfficeToCloud);
   }
@@ -1005,16 +791,7 @@ class NonManagedAccount : public TestAccountBrowserTest {
   void SetUpOnMainThread() override {
     TestAccountBrowserTest::SetUpOnMainThread();
     app_service_test_.SetUp(browser()->profile());
-
-    auto fake_provider =
-        ash::file_system_provider::FakeExtensionProvider::Create(
-            extension_misc::kODFSExtensionId);
-    const auto kProviderId = fake_provider->GetId();
-    auto* service =
-        ash::file_system_provider::Service::Get(browser()->profile());
-    service->RegisterProvider(std::move(fake_provider));
   }
-
   apps::AppServiceProxy* app_service_proxy() {
     apps::AppServiceProxy* app_service_proxy =
         apps::AppServiceProxyFactory::GetForProfile(browser()->profile());
@@ -1027,128 +804,12 @@ class NonManagedAccount : public TestAccountBrowserTest {
   apps::AppServiceTest app_service_test_;
 };
 
-// Tests that IsEligibleAndEnabledUploadOfficeToCloud() returns true when a
+// Tests that a |IsEligibleAndEnabledUploadOfficeToCloud| returns true when a
 // non-managed user is logged in and |kUploadOfficeToCloud| is enabled.
 IN_PROC_BROWSER_TEST_F(NonManagedAccount,
                        IsEligibleAndEnabledUploadOfficeToCloud) {
-  ASSERT_TRUE(
-      chromeos::IsEligibleAndEnabledUploadOfficeToCloud(browser()->profile()));
+  ASSERT_TRUE(ash::cloud_upload::IsEligibleAndEnabledUploadOfficeToCloud());
 }
-
-class WithEnterpriseFlag : public TestAccountBrowserTest {
- public:
-  explicit WithEnterpriseFlag(bool is_managed)
-      : TestAccountBrowserTest(is_managed ? kEnterprise : kNonManaged) {
-    feature_list_.InitWithFeatures(
-        {chromeos::features::kUploadOfficeToCloud,
-         chromeos::features::kUploadOfficeToCloudForEnterprise},
-        {});
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-class NonManagedAccountWithEnterpriseFlag : public WithEnterpriseFlag {
- public:
-  NonManagedAccountWithEnterpriseFlag()
-      : WithEnterpriseFlag(/*is_managed=*/false) {}
-};
-
-// Tests that IsEligibleAndEnabledUploadOfficeToCloud() returns true when a
-// non-managed user is logged in and both |kUploadOfficeToCloud| and
-// |kUploadOfficeToCloudForEnterprise| are enabled.
-IN_PROC_BROWSER_TEST_F(NonManagedAccountWithEnterpriseFlag,
-                       IsEligibleAndEnabledUploadOfficeToCloud) {
-  ASSERT_TRUE(
-      chromeos::IsEligibleAndEnabledUploadOfficeToCloud(browser()->profile()));
-}
-
-class WithEnterpriseFlagAndPrefs
-    : public WithEnterpriseFlag,
-      public testing::WithParamInterface<
-          std::tuple<std::string_view /* google_workspace_cloud_upload */,
-                     std::string_view /* microsoft_office_cloud_upload */,
-                     bool /* odfs_extension_installed */,
-                     bool /* is_managed */>> {
- public:
-  WithEnterpriseFlagAndPrefs()
-      : WithEnterpriseFlag(/*is_managed=*/std::get<3>(GetParam())) {}
-
-  void SetUpOnMainThread() override {
-    TestAccountBrowserTest::SetUpOnMainThread();
-    app_service_test_.SetUp(browser()->profile());
-
-    if (std::get<2>(GetParam())) {
-      auto fake_provider =
-          ash::file_system_provider::FakeExtensionProvider::Create(
-              extension_misc::kODFSExtensionId);
-      const auto kProviderId = fake_provider->GetId();
-      auto* service =
-          ash::file_system_provider::Service::Get(browser()->profile());
-      service->RegisterProvider(std::move(fake_provider));
-    }
-  }
-
- private:
-  apps::AppServiceTest app_service_test_;
-};
-
-// Tests that GoogleWorkspace and Microsoft365 tasks are only present in the
-// list of file tasks if the corresponding prefs allow it.
-IN_PROC_BROWSER_TEST_P(WithEnterpriseFlagAndPrefs,
-                       GoogleWorkspaceAndMicrosoft365Tasks) {
-  auto* profile = browser()->profile();
-
-  auto [google_workspace_cloud_upload, microsoft_office_cloud_upload,
-        odfs_extension_installed, is_managed] = GetParam();
-  profile->GetPrefs()->SetString(prefs::kGoogleWorkspaceCloudUpload,
-                                 google_workspace_cloud_upload);
-  profile->GetPrefs()->SetString(prefs::kMicrosoftOfficeCloudUpload,
-                                 microsoft_office_cloud_upload);
-
-  for (const auto& extension_group :
-       {WordGroupExtensions(), ExcelGroupExtensions(),
-        PowerPointGroupExtensions()}) {
-    for (const auto& extension : extension_group) {
-      base::FilePath test_file_path =
-          web_app::CreateTestFileWithExtension(extension);
-
-      std::vector<FullTaskDescriptor> tasks =
-          file_manager::test::GetTasksForFile(profile, test_file_path);
-
-      const size_t google_workspace_task_count = base::ranges::count_if(
-          tasks, &IsWebDriveOfficeTask, &FullTaskDescriptor::task_descriptor);
-      EXPECT_EQ(
-          google_workspace_task_count,
-          chromeos::cloud_upload::IsGoogleWorkspaceCloudUploadAllowed(profile)
-              ? 1U
-              : 0U);
-
-      const size_t microsoft_office_task_count = base::ranges::count_if(
-          tasks, &IsOpenInOfficeTask, &FullTaskDescriptor::task_descriptor);
-      EXPECT_EQ(microsoft_office_task_count,
-                chromeos::cloud_upload::IsMicrosoftOfficeCloudUploadAllowed(
-                    profile) &&
-                        (!is_managed || odfs_extension_installed)
-                    ? 1U
-                    : 0U);
-    }
-  }
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    /**/,
-    WithEnterpriseFlagAndPrefs,
-    testing::Combine(
-        testing::Values(chromeos::cloud_upload::kCloudUploadPolicyDisallowed,
-                        chromeos::cloud_upload::kCloudUploadPolicyAllowed,
-                        chromeos::cloud_upload::kCloudUploadPolicyAutomated),
-        testing::Values(chromeos::cloud_upload::kCloudUploadPolicyDisallowed,
-                        chromeos::cloud_upload::kCloudUploadPolicyAllowed,
-                        chromeos::cloud_upload::kCloudUploadPolicyAutomated),
-        testing::Bool(),
-        testing::Bool()));
 
 // Test that the office PWA file handler is hidden from the available file
 // handlers when opening an office file and the |kUploadOfficeToCloud| flag is
@@ -1194,7 +855,8 @@ IN_PROC_BROWSER_TEST_F(NonManagedAccount, OfficePwaHandlerHidden) {
 
 class EnterpriseAccount : public TestAccountBrowserTest {
  public:
-  EnterpriseAccount() : TestAccountBrowserTest(kEnterprise) {
+  EnterpriseAccount()
+      : TestAccountBrowserTest(kEnterprise, /*is_google_account=*/false) {
     feature_list_.InitAndEnableFeature(
         chromeos::features::kUploadOfficeToCloud);
   }
@@ -1203,39 +865,16 @@ class EnterpriseAccount : public TestAccountBrowserTest {
   base::test::ScopedFeatureList feature_list_;
 };
 
-// Tests that IsEligibleAndEnabledUploadOfficeToCloud() returns true when an
+// Tests that a |IsEligibleAndEnabledUploadOfficeToCloud| returns false when an
 // enterprise user is logged in and |kUploadOfficeToCloud| is enabled.
 IN_PROC_BROWSER_TEST_F(EnterpriseAccount,
                        IsEligibleAndEnabledUploadOfficeToCloud) {
-  ASSERT_TRUE(
-      chromeos::IsEligibleAndEnabledUploadOfficeToCloud(browser()->profile()));
-}
-
-class EnterpriseAccountWithEnterpriseFlag : public TestAccountBrowserTest {
- public:
-  EnterpriseAccountWithEnterpriseFlag() : TestAccountBrowserTest(kEnterprise) {
-    feature_list_.InitWithFeatures(
-        {chromeos::features::kUploadOfficeToCloud,
-         chromeos::features::kUploadOfficeToCloudForEnterprise},
-        {});
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-// Tests that IsEligibleAndEnabledUploadOfficeToCloud() returns true when an
-// enterprise user is logged in and both |kUploadOfficeToCloud| and
-// |kUploadOfficeToCloudForEnterprise| are enabled.
-IN_PROC_BROWSER_TEST_F(EnterpriseAccountWithEnterpriseFlag,
-                       IsEligibleAndEnabledUploadOfficeToCloud) {
-  ASSERT_TRUE(
-      chromeos::IsEligibleAndEnabledUploadOfficeToCloud(browser()->profile()));
+  ASSERT_FALSE(ash::cloud_upload::IsEligibleAndEnabledUploadOfficeToCloud());
 }
 
 class ChildAccount : public TestAccountBrowserTest {
  public:
-  ChildAccount() : TestAccountBrowserTest(kChild) {
+  ChildAccount() : TestAccountBrowserTest(kChild, /*is_google_account=*/false) {
     feature_list_.InitAndEnableFeature(
         chromeos::features::kUploadOfficeToCloud);
   }
@@ -1244,71 +883,126 @@ class ChildAccount : public TestAccountBrowserTest {
   base::test::ScopedFeatureList feature_list_;
 };
 
-// Tests that IsEligibleAndEnabledUploadOfficeToCloud() returns false when a
+// Tests that a |IsEligibleAndEnabledUploadOfficeToCloud| returns false when a
 // child user is logged in and |kUploadOfficeToCloud| is enabled.
 IN_PROC_BROWSER_TEST_F(ChildAccount, IsEligibleAndEnabledUploadOfficeToCloud) {
-  ASSERT_FALSE(
-      chromeos::IsEligibleAndEnabledUploadOfficeToCloud(browser()->profile()));
+  ASSERT_FALSE(ash::cloud_upload::IsEligibleAndEnabledUploadOfficeToCloud());
 }
 
-class ChildAccountWithEnterpriseFlag : public TestAccountBrowserTest {
+class GoogleAccount : public TestAccountBrowserTest {
  public:
-  ChildAccountWithEnterpriseFlag() : TestAccountBrowserTest(kChild) {
-    feature_list_.InitWithFeatures(
-        {chromeos::features::kUploadOfficeToCloud,
-         chromeos::features::kUploadOfficeToCloudForEnterprise},
-        {});
+  GoogleAccount()
+      : TestAccountBrowserTest(kTestAccountTypeNotSet,
+                               /*is_google_account=*/true) {
+    feature_list_.InitAndEnableFeature(
+        chromeos::features::kUploadOfficeToCloud);
   }
 
  private:
   base::test::ScopedFeatureList feature_list_;
 };
 
-// Tests that IsEligibleAndEnabledUploadOfficeToCloud() returns false when a
-// child user is logged in and both |kUploadOfficeToCloud| and
-// |kUploadOfficeToCloudForEnterprise| are enabled.
-IN_PROC_BROWSER_TEST_F(ChildAccountWithEnterpriseFlag,
-                       IsEligibleAndEnabledUploadOfficeToCloud) {
-  ASSERT_FALSE(
-      chromeos::IsEligibleAndEnabledUploadOfficeToCloud(browser()->profile()));
+// Tests that a |IsEligibleAndEnabledUploadOfficeToCloud| returns true when a
+// google user is logged in and |kUploadOfficeToCloud| is enabled.
+IN_PROC_BROWSER_TEST_F(GoogleAccount, IsEligibleAndEnabledUploadOfficeToCloud) {
+  ASSERT_TRUE(ash::cloud_upload::IsEligibleAndEnabledUploadOfficeToCloud());
 }
 
 class NonManagedAccountNoFlag : public TestAccountBrowserTest {
  public:
-  NonManagedAccountNoFlag() : TestAccountBrowserTest(kNonManaged) {
-    feature_list_.InitAndDisableFeature(
-        chromeos::features::kUploadOfficeToCloud);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
+  NonManagedAccountNoFlag()
+      : TestAccountBrowserTest(kNonManaged, /*is_google_account=*/false) {}
 };
 
-// Tests that IsEligibleAndEnabledUploadOfficeToCloud() returns false when a
+// Tests that a |IsEligibleAndEnabledUploadOfficeToCloud| returns false when a
 // non-managed user is logged in but |kUploadOfficeToCloud| is disabled.
 IN_PROC_BROWSER_TEST_F(NonManagedAccountNoFlag,
                        IsEligibleAndEnabledUploadOfficeToCloud) {
-  ASSERT_FALSE(
-      chromeos::IsEligibleAndEnabledUploadOfficeToCloud(browser()->profile()));
+  ASSERT_FALSE(ash::cloud_upload::IsEligibleAndEnabledUploadOfficeToCloud());
 }
+
+// TODO(cassycc): move this class to a more appropriate spot.
+// Fake DriveFs specific to the `DriveTest`. Allows a test file to
+// be "added" to the DriveFs via `SetMetadata()`. The `alternate_url` of the
+// file can be retrieved via `GetMetadata()`. This a simplified version of
+// `FakeDriveFs` because the only condition for the file to be in the DriveFs is
+// to have a `alternate_url_` entry.
+class FakeSimpleDriveFs : public drivefs::FakeDriveFs {
+ public:
+  explicit FakeSimpleDriveFs(const base::FilePath& mount_path)
+      : drivefs::FakeDriveFs(mount_path) {}
+
+  // Sets `alternate_url_` which is retrieved later in `GetMetadata()`.
+  void SetMetadata(const base::FilePath& path,
+                   const std::string& alternate_url) {
+    alternate_url_[path] = alternate_url;
+  }
+
+ private:
+  // drivefs::mojom::DriveFs:
+  // This is a simplified version of `FakeDriveFs::SetMetadata()` that just
+  // returns a default `metadata` with the alternate_url set in `SetMetadata`.
+  void GetMetadata(const base::FilePath& path,
+                   GetMetadataCallback callback) override {
+    auto metadata = drivefs::mojom::FileMetadata::New();
+    metadata->alternate_url = alternate_url_[path];
+    // Fill the rest of `metadata` with default values.
+    metadata->content_mime_type = "";
+    const drivefs::mojom::Capabilities& capabilities = {};
+    metadata->capabilities = capabilities.Clone();
+    metadata->folder_feature = {};
+    metadata->available_offline = false;
+    metadata->shared = false;
+    std::move(callback).Run(drive::FILE_ERROR_OK, std::move(metadata));
+  }
+
+  // Each file in this DriveFs has an entry.
+  std::unordered_map<base::FilePath, std::string> alternate_url_;
+};
+
+// TODO(cassycc): move this class to a more appropriate spot
+// Fake DriveFs helper specific to the `DriveTest`. Implements the
+// functions to create a `FakeSimpleDriveFs`.
+class FakeSimpleDriveFsHelper : public drive::FakeDriveFsHelper {
+ public:
+  FakeSimpleDriveFsHelper(Profile* profile, const base::FilePath& mount_path)
+      : drive::FakeDriveFsHelper(profile, mount_path),
+        mount_path_(mount_path),
+        fake_drivefs_(mount_path_) {}
+
+  base::RepeatingCallback<std::unique_ptr<drivefs::DriveFsBootstrapListener>()>
+  CreateFakeDriveFsListenerFactory() {
+    return base::BindRepeating(&drivefs::FakeDriveFs::CreateMojoListener,
+                               base::Unretained(&fake_drivefs_));
+  }
+
+  const base::FilePath& mount_path() { return mount_path_; }
+  FakeSimpleDriveFs& fake_drivefs() { return fake_drivefs_; }
+
+ private:
+  const base::FilePath mount_path_;
+  FakeSimpleDriveFs fake_drivefs_;
+};
 
 // TODO(cassycc or petermarshall) share this class with other test files for
 // testing with a fake DriveFs.
-// Tests the cloud upload/open flow as well as the office fallback flow using a
-// fake DriveFs.
+// Tests the office fallback flow that occurs when
+// a user fails to open an office file from Drive.
 class DriveTest : public TestAccountBrowserTest {
  public:
-  DriveTest() : TestAccountBrowserTest(kNonManaged) {
+  DriveTest()
+      : TestAccountBrowserTest(kNonManaged, /*is_google_account=*/false) {
     feature_list_.InitAndEnableFeature(
         chromeos::features::kUploadOfficeToCloud);
     EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
     drive_mount_point_ = temp_dir_.GetPath();
+    test_file_name_ = "text.docx";
     // Path of test file relative to the DriveFs mount point.
     relative_test_file_path = base::FilePath("/").AppendASCII(test_file_name_);
-    cloud_open_metrics_ = std::make_unique<ash::cloud_upload::CloudOpenMetrics>(
-        ash::cloud_upload::CloudProvider::kGoogleDrive, /*file_count=*/1);
-    cloud_open_metrics_weak_ptr_ = cloud_open_metrics_->GetWeakPtr();
   }
+
+  DriveTest(const DriveTest&) = delete;
+  DriveTest& operator=(const DriveTest&) = delete;
 
   void SetUpInProcessBrowserTestFixture() override {
     // Setup drive integration service.
@@ -1320,23 +1014,19 @@ class DriveTest : public TestAccountBrowserTest {
   }
 
   void TearDown() override {
-    // If cloud_open_metrics_ was `std::move`d into the flow, it should have
-    // been destroyed by the end of the test.
-    if (!cloud_open_metrics_) {
-      ASSERT_TRUE(cloud_open_metrics_weak_ptr_.WasInvalidated());
-    }
     TestAccountBrowserTest::TearDown();
     storage::ExternalMountPoints::GetSystemInstance()->RevokeAllFileSystems();
   }
 
-  DriveIntegrationService* CreateDriveIntegrationService(Profile* profile) {
+  drive::DriveIntegrationService* CreateDriveIntegrationService(
+      Profile* profile) {
     base::ScopedAllowBlockingForTesting allow_blocking;
     fake_drivefs_helpers_[profile] =
-        std::make_unique<test::FakeSimpleDriveFsHelper>(profile,
-                                                        drive_mount_point_);
-    return new DriveIntegrationService(
+        std::make_unique<FakeSimpleDriveFsHelper>(profile, drive_mount_point_);
+    auto* integration_service = new drive::DriveIntegrationService(
         profile, "", drive_mount_point_,
         fake_drivefs_helpers_[profile]->CreateFakeDriveFsListenerFactory());
+    return integration_service;
   }
 
   Profile* profile() { return browser()->profile(); }
@@ -1348,6 +1038,16 @@ class DriveTest : public TestAccountBrowserTest {
   base::FilePath observed_absolute_drive_path() {
     return base::FilePath(
         (drive_mount_point_.value() + relative_test_file_path.value()));
+  }
+
+  void SetConnectionOnline() {
+    network_connection_tracker_ =
+        network::TestNetworkConnectionTracker::CreateInstance();
+    content::SetNetworkConnectionTrackerForTesting(nullptr);
+    content::SetNetworkConnectionTrackerForTesting(
+        network_connection_tracker_.get());
+    network::TestNetworkConnectionTracker::GetInstance()->SetConnectionType(
+        network::mojom::ConnectionType::CONNECTION_WIFI);
   }
 
   // Complete the set up of the fake DriveFs with a test file added.
@@ -1362,49 +1062,42 @@ class DriveTest : public TestAccountBrowserTest {
       EXPECT_TRUE(base::CreateDirectory(drive_mount_point_));
     }
 
-    drivefs::FakeMetadata metadata;
-    metadata.path = relative_test_file_path;
-    metadata.alternate_url = alternate_url_;
     // Add test file to the DriveFs.
     fake_drivefs_helpers_[profile()]->fake_drivefs().SetMetadata(
-        std::move(metadata));
+        relative_test_file_path, alternate_url_);
 
     // Get URL for test file in the DriveFs.
     drive_test_file_url_ = ash::cloud_upload::FilePathToFileSystemURL(
         profile(),
         file_manager::util::GetFileManagerFileSystemContext(profile()),
         observed_absolute_drive_path());
-
-    SetDriveConnectionStatusForTesting(ConnectionStatus::kNoNetwork);
   }
 
  protected:
   const std::string alternate_url_ =
       "https://docs.google.com/document/d/smalldocxid?rtpof=true&usp=drive_fs";
   FileSystemURL drive_test_file_url_;
-  std::unique_ptr<ash::cloud_upload::CloudOpenMetrics> cloud_open_metrics_;
-  base::HistogramTester histogram_;
 
  private:
   base::ScopedTempDir temp_dir_;
   base::FilePath drive_mount_point_;
-  const std::string test_file_name_ = "text.docx";
+  std::string test_file_name_;
   base::FilePath relative_test_file_path;
+  std::unique_ptr<network::TestNetworkConnectionTracker>
+      network_connection_tracker_;
   base::test::ScopedFeatureList feature_list_;
 
   drive::DriveIntegrationServiceFactory::FactoryCallback
       create_drive_integration_service_;
   std::unique_ptr<drive::DriveIntegrationServiceFactory::ScopedFactoryForTest>
       service_factory_for_test_;
-  std::map<Profile*, std::unique_ptr<test::FakeSimpleDriveFsHelper>>
+  std::map<Profile*, std::unique_ptr<FakeSimpleDriveFsHelper>>
       fake_drivefs_helpers_;
-  base::WeakPtr<ash::cloud_upload::CloudOpenMetrics>
-      cloud_open_metrics_weak_ptr_;
 };
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-// Test to check that a DriveFS test file fails to open when the system is
-// offline but is successfully opened with a "try-again" dialog choice after the
+// Test to check that the test file fails to open when the system is offline but
+// is successfully opened with a "try-again" dialog choice after the
 // systems comes online.
 IN_PROC_BROWSER_TEST_F(DriveTest, OfficeFallbackTryAgain) {
   // Add test file to fake DriveFs.
@@ -1412,7 +1105,7 @@ IN_PROC_BROWSER_TEST_F(DriveTest, OfficeFallbackTryAgain) {
 
   // Disable the setup flow for office files because we want the office
   // fallback dialog to run instead.
-  SetWordFileHandlerToFilesSWA(profile(), kActionIdWebDriveOfficeWord);
+  SetOfficeSetupComplete(profile(), true);
 
   const TaskDescriptor web_drive_office_task = CreateWebDriveOfficeTask();
   std::vector<storage::FileSystemURL> file_urls{drive_test_file_url_};
@@ -1423,17 +1116,18 @@ IN_PROC_BROWSER_TEST_F(DriveTest, OfficeFallbackTryAgain) {
       expected_dialog_URL);
   navigation_observer_dialog.StartWatchingNewWebContents();
 
-  // Launches the office fallback dialog as the system is offline.
-  base::test::TestFuture<TaskResult, std::string> executed_future;
-  ExecuteFileTask(profile(), web_drive_office_task, file_urls,
-                  executed_future.GetCallback());
-  ASSERT_EQ(executed_future.Get<0>(), TaskResult::kOpened);
+  // Fails as system is offline and thus will open office fallback dialog.
+  ExecuteFileTask(
+      profile(), web_drive_office_task, file_urls, nullptr,
+      base::BindOnce(
+          [](extensions::api::file_manager_private::TaskResult result,
+             std::string error_message) {}));
 
   // Wait for office fallback dialog to open.
   navigation_observer_dialog.Wait();
   ASSERT_TRUE(navigation_observer_dialog.last_navigation_succeeded());
 
-  SetDriveConnectionStatusForTesting(ConnectionStatus::kConnected);
+  SetConnectionOnline();
 
   // Start watching for the opening of `expected_web_drive_office_url`. The
   // query parameter is concatenated to the URL as office files opened from
@@ -1445,50 +1139,20 @@ IN_PROC_BROWSER_TEST_F(DriveTest, OfficeFallbackTryAgain) {
 
   // Run dialog callback, simulate user choosing to "try-again". Will succeed
   // because system is online.
-  OnDialogChoiceReceived(profile(), web_drive_office_task, file_urls,
-                         ash::office_fallback::FallbackReason::kOffline,
-                         std::move(cloud_open_metrics_),
+  OnDialogChoiceReceived(profile(), web_drive_office_task, file_urls, nullptr,
                          ash::office_fallback::kDialogChoiceTryAgain);
 
   // Wait for file to open in web drive office.
   navigation_observer_office.Wait();
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kDriveOpenSourceVolumeMetric,
-      ash::cloud_upload::OfficeFilesSourceVolume::kGoogleDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kNumberOfFilesToOpenWithGoogleDriveMetric, 1, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kGoogleDrive, 1);
-  histogram_.ExpectUniqueSample(ash::cloud_upload::kDriveOpenSourceVolumeMetric,
-                                VolumeType::VOLUME_TYPE_GOOGLE_DRIVE, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kGoogleDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kOpened, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kDriveErrorMetricName,
-      ash::cloud_upload::OfficeDriveOpenErrors::kSuccess, 1);
 }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
-// Test that ExecuteFileTask() will open a DriveFs office file with a web Drive
-// office task.
+// Test that CloudOpenTask::Execute() will open a DriveFs office file when the
+// cloud provider specified is Google Drive.
 IN_PROC_BROWSER_TEST_F(DriveTest, OpenFileInDrive) {
   // Add test file to fake DriveFs.
   SetUpTest();
 
-  // Disable the setup flow for office files because we the file to open without
-  // any dialogs.
-  SetWordFileHandlerToFilesSWA(profile(), kActionIdWebDriveOfficeWord);
-
-  // Set connection so that fallback dialog isn't triggered.
-  SetDriveConnectionStatusForTesting(ConnectionStatus::kConnected);
-
-  const TaskDescriptor web_drive_office_task = CreateWebDriveOfficeTask();
   std::vector<storage::FileSystemURL> file_urls{drive_test_file_url_};
 
   // Start watching for the opening of `expected_web_drive_office_url`. The
@@ -1499,29 +1163,13 @@ IN_PROC_BROWSER_TEST_F(DriveTest, OpenFileInDrive) {
       expected_web_drive_office_url);
   navigation_observer_office.StartWatchingNewWebContents();
 
-  ExecuteFileTask(profile(), web_drive_office_task, file_urls,
-                  base::DoNothing());
+  auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
+      profile(), file_urls, ash::cloud_upload::CloudProvider::kGoogleDrive,
+      nullptr));
+  task->OpenOrMoveFiles();
 
   // Wait for file to open in web drive office.
   navigation_observer_office.Wait();
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kGoogleDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kNumberOfFilesToOpenWithGoogleDriveMetric, 1, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kDriveOpenSourceVolumeMetric,
-      ash::cloud_upload::OfficeFilesSourceVolume::kGoogleDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kGoogleDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kOpened, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kDriveErrorMetricName,
-      ash::cloud_upload::OfficeDriveOpenErrors::kSuccess, 1);
 }
 
 // Test that the setup flow for office files, that has never been run before,
@@ -1531,7 +1179,7 @@ IN_PROC_BROWSER_TEST_F(DriveTest, FileInDriveOpensSetUpDialog) {
   // Add test file to fake DriveFs.
   SetUpTest();
 
-  SetDriveConnectionStatusForTesting(ConnectionStatus::kConnected);
+  SetConnectionOnline();
 
   // Create a Web Drive Office task to open the file from DriveFs. The file is
   // in the correct location for this task.
@@ -1544,21 +1192,13 @@ IN_PROC_BROWSER_TEST_F(DriveTest, FileInDriveOpensSetUpDialog) {
       expected_dialog_URL);
   navigation_observer_dialog.StartWatchingNewWebContents();
 
-  LaunchFilesAppAndWait();
-
   // Triggers setup flow.
-  ExecuteFileTask(profile(), web_drive_office_task, file_urls,
+  ExecuteFileTask(profile(), web_drive_office_task, file_urls, nullptr,
                   base::DoNothing());
 
   // Wait for setup flow dialog to open.
   navigation_observer_dialog.Wait();
   ASSERT_TRUE(navigation_observer_dialog.last_navigation_succeeded());
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kNumberOfFilesToOpenWithGoogleDriveMetric, 1, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kGoogleDrive, 1);
 }
 
 // Test that the setup flow for office files, that has never been run before,
@@ -1568,13 +1208,13 @@ IN_PROC_BROWSER_TEST_F(DriveTest, FileNotInDriveOpensSetUpDialog) {
   // Set up DriveFs.
   SetUpTest();
 
-  SetDriveConnectionStatusForTesting(ConnectionStatus::kConnected);
+  SetConnectionOnline();
 
   // Create a Web Drive Office task to open the file from DriveFs. The file is
   // not in the correct location for this task and would have to be moved to
   // DriveFs.
   const TaskDescriptor web_drive_office_task = CreateWebDriveOfficeTask();
-  FileSystemURL file_outside_drive = CreateOfficeFileSourceURL(profile());
+  FileSystemURL file_outside_drive = CreateTestOfficeFile(profile());
   std::vector<storage::FileSystemURL> file_urls{file_outside_drive};
 
   // Watch for dialog URL chrome://cloud-upload.
@@ -1583,22 +1223,101 @@ IN_PROC_BROWSER_TEST_F(DriveTest, FileNotInDriveOpensSetUpDialog) {
       expected_dialog_URL);
   navigation_observer_dialog.StartWatchingNewWebContents();
 
-  LaunchFilesAppAndWait();
-
   // Triggers setup flow.
-  ExecuteFileTask(profile(), web_drive_office_task, file_urls,
-                  base::DoNothing());
+  ExecuteFileTask(
+      profile(), web_drive_office_task, file_urls, nullptr,
+      base::BindOnce(
+          [](extensions::api::file_manager_private::TaskResult result,
+             std::string error_message) {}));
 
   // Wait for setup flow dialog to open.
   navigation_observer_dialog.Wait();
   ASSERT_TRUE(navigation_observer_dialog.last_navigation_succeeded());
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kNumberOfFilesToOpenWithGoogleDriveMetric, 1, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kGoogleDrive, 1);
 }
+
+// TODO(cassycc): move this class to a more appropriate spot
+// Fake provided file system implementation specific to the `OneDriveTest`.
+// Overrides the `GetActions` method so the `kOneDriveUrlActionId` and
+// `kUserEmailActionId` actions are hardcoded to return for the test file.
+class FakeProvidedFileSystemOneDrive
+    : public ash::file_system_provider::FakeProvidedFileSystem {
+ public:
+  explicit FakeProvidedFileSystemOneDrive(
+      const ash::file_system_provider::ProvidedFileSystemInfo& file_system_info,
+      const base::FilePath test_path_custom_actions)
+      : FakeProvidedFileSystem(file_system_info),
+        test_path_custom_actions_(test_path_custom_actions) {}
+
+  ash::file_system_provider::AbortCallback GetActions(
+      const std::vector<base::FilePath>& entry_paths,
+      GetActionsCallback callback) override {
+    ash::file_system_provider::Actions actions;
+    for (auto& path : entry_paths) {
+      if (path == test_path_custom_actions_) {
+        actions.push_back(
+            {ash::cloud_upload::kOneDriveUrlActionId, kODFSSampleUrl});
+        actions.push_back(
+            {ash::cloud_upload::kUserEmailActionId, kSampleUserEmail1});
+        break;
+      }
+    }
+    std::move(callback).Run(actions, base::File::FILE_OK);
+    return ash::file_system_provider::AbortCallback();
+  }
+
+ private:
+  const base::FilePath test_path_custom_actions_;
+};
+
+// TODO(cassycc): move this class to a more appropriate spot
+// Fake extension provider specific to the `OneDriveTest`.
+// Implements the functions to create a `FakeProvidedFileSystemOneDrive` with a
+// test file added and passes along the appropriate `callback`.
+class FakeExtensionProviderOneDrive
+    : public ash::file_system_provider::FakeExtensionProvider {
+ public:
+  static std::unique_ptr<ProviderInterface> Create(
+      const extensions::ExtensionId& extension_id,
+      const base::FilePath test_path_within_odfs,
+      std::string test_file_name) {
+    ash::file_system_provider::Capabilities default_capabilities(
+        false, false, false, extensions::SOURCE_NETWORK);
+    return std::unique_ptr<ProviderInterface>(new FakeExtensionProviderOneDrive(
+        extension_id, default_capabilities, test_path_within_odfs,
+        test_file_name));
+  }
+
+  std::unique_ptr<ash::file_system_provider::ProvidedFileSystemInterface>
+  CreateProvidedFileSystem(
+      Profile* profile,
+      const ash::file_system_provider::ProvidedFileSystemInfo& file_system_info)
+      override {
+    DCHECK(profile);
+    std::unique_ptr<FakeProvidedFileSystemOneDrive> fake_provided_file_system =
+        std::make_unique<FakeProvidedFileSystemOneDrive>(
+            file_system_info, test_path_within_odfs_);
+    // Add test file.
+    fake_provided_file_system->AddEntry(
+        test_path_within_odfs_, false, test_file_name_, 0, base::Time::Now(),
+        "application/"
+        "vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "");
+    return fake_provided_file_system;
+  }
+
+ private:
+  FakeExtensionProviderOneDrive(
+      const extensions::ExtensionId& extension_id,
+      const ash::file_system_provider::Capabilities& capabilities,
+      const base::FilePath test_path_within_odfs,
+      std::string test_file_name)
+      : FakeExtensionProvider(extension_id, capabilities),
+        test_path_within_odfs_(test_path_within_odfs),
+        test_file_name_(test_file_name) {}
+
+  const base::FilePath test_path_within_odfs_;
+  std::string test_file_name_;
+};
 
 // Fake app service web app publisher to test when an app is launched.
 class FakeWebAppPublisher : public apps::AppPublisher {
@@ -1617,7 +1336,7 @@ class FakeWebAppPublisher : public apps::AppPublisher {
     ms_web_app->readiness = apps::Readiness::kReady;
     apps.push_back(std::move(ms_web_app));
     Publish(std::move(apps), apps::AppType::kWeb,
-            /*should_notify_initialized=*/false);
+            /*should_notify_initialized=*/true);
   }
 
   void LoadIcon(const std::string& app_id,
@@ -1666,97 +1385,76 @@ class FakeWebAppPublisher : public apps::AppPublisher {
 
 // TODO(cassycc or petermarshall) share this class with other test files for
 // testing with a fake ODFS.
-// Tests the cloud upload/open flow as well as the office fallback flow using a
-// fake ODFS.
-class OneDriveTest : public TestAccountBrowserTest,
-                     public NotificationDisplayService::Observer {
+// Tests the office fallback flow that occurs when a
+// user fails to open an office file from ODFS.
+class OneDriveTest : public TestAccountBrowserTest {
  public:
-  OneDriveTest() : TestAccountBrowserTest(kNonManaged) {
+  OneDriveTest()
+      : TestAccountBrowserTest(kNonManaged, /*is_google_account=*/false) {
     feature_list_.InitAndEnableFeature(
         chromeos::features::kUploadOfficeToCloud);
-    // Relative paths for files on ODFS and Android OneDrive.
-    relative_test_path_1_ = base::FilePath(test_docx_file_name_1_);
-    relative_test_path_2_ = base::FilePath(test_pptx_file_name_2_);
+    test_file_name_ = "text.docx";
+    // Relative path for a file on ODFS and Android OneDrive.
+    relative_test_path_ = base::FilePath(test_file_name_);
     // The path in ODFS is the relative path with "/" prefixed.
-    test_path_within_odfs_1_ =
-        base::FilePath("/").Append(relative_test_path_1_);
-    test_path_within_odfs_2_ =
-        base::FilePath("/").Append(relative_test_path_2_);
-    cloud_open_metrics_ = std::make_unique<ash::cloud_upload::CloudOpenMetrics>(
-        ash::cloud_upload::CloudProvider::kOneDrive, /*file_count=*/1);
-    cloud_open_metrics_weak_ptr_ = cloud_open_metrics_->GetWeakPtr();
+    test_path_within_odfs_ = base::FilePath("/").Append(relative_test_path_);
+    file_system_id_ = "odfs";
+
+    network_connection_tracker_ =
+        network::TestNetworkConnectionTracker::CreateInstance();
   }
 
+  OneDriveTest(const OneDriveTest&) = delete;
+  OneDriveTest& operator=(const OneDriveTest&) = delete;
+
   void TearDown() override {
-    // If cloud_open_metrics_ was `std::move`d into the flow, it should have
-    // been destroyed by the end of the test.
-    if (!cloud_open_metrics_) {
-      ASSERT_TRUE(cloud_open_metrics_weak_ptr_.WasInvalidated());
-    }
     TestAccountBrowserTest::TearDown();
     storage::ExternalMountPoints::GetSystemInstance()->RevokeAllFileSystems();
   }
 
-  // Creates and mounts a fake ODFS with a test file. Installs QuickOffice for
-  // the check in GetUserFallbackChoice() before the dialog can launched.
+  // Creates and mounts fake provided file system for OneDrive with a test file
+  // added. Installs QuickOffice for the check in GetUserFallbackChoice() before
+  // the dialog can launched.
   void SetUpTest() {
     // Install QuickOffice for the check in GetUserFallbackChoice() before
     // the office fallback dialog can launched.
-    test::AddDefaultComponentExtensionsOnMainThread(profile());
+    test::AddDefaultComponentExtensionsOnMainThread(browser()->profile());
 
-    // Create a fake ODFS.
-    provided_file_system_ =
-        test::CreateFakeProvidedFileSystemOneDrive(profile());
+    service_ = ash::file_system_provider::Service::Get(profile());
+    // Set `OneDriveTest::OpenWebAction` as the callback for the
+    // `FakeProvidedFileSystemOneDrive`. The use of `base::Unretained()` is safe
+    // because the class will exist for the duration of the test.
+    service_->RegisterProvider(FakeExtensionProviderOneDrive::Create(
+        extension_misc::kODFSExtensionId, test_path_within_odfs_,
+        test_file_name_));
+    provider_id_ = ash::file_system_provider::ProviderId::CreateFromExtensionId(
+        extension_misc::kODFSExtensionId);
+    ash::file_system_provider::MountOptions options(file_system_id_, "ODFS");
+    EXPECT_EQ(base::File::FILE_OK,
+              service_->MountFileSystem(provider_id_, options));
 
-    // Add test files to the fake ODFS.
-    provided_file_system_->AddEntry(
-        test_path_within_odfs_1_, false, test_docx_file_name_1_, 0,
-        base::Time::Now(),
-        "application/"
-        "vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "");
-    provided_file_system_->AddEntry(
-        test_path_within_odfs_2_, false, test_pptx_file_name_2_, 0,
-        base::Time::Now(),
-        "application/"
-        "vnd.openxmlformats-officedocument.presentationml.presentation",
-        "");
-
-    // Get URLs of test files.
-    odfs_docx_test_file_url_1_ = ash::cloud_upload::FilePathToFileSystemURL(
+    // Get URL for test file in ODFS.
+    odfs_test_file_url_ = ash::cloud_upload::FilePathToFileSystemURL(
         profile(),
         file_manager::util::GetFileManagerFileSystemContext(profile()),
-        AbsoluteOdfsTestPath1());
-    odfs_pptx_test_file_url_2_ = ash::cloud_upload::FilePathToFileSystemURL(
-        profile(),
-        file_manager::util::GetFileManagerFileSystemContext(profile()),
-        AbsoluteOdfsTestPath2());
+        AbsoluteOdfsTestPath());
 
     web_app_publisher_ = std::make_unique<FakeWebAppPublisher>(profile());
 
-    SetNetworkConnected(false);
+    SetConnectionOffline();
   }
 
   Profile* profile() { return browser()->profile(); }
 
-  // A file path on ODFS which represents the fake file 1 in OneDrive. This file
+  // The file path on ODFS which represents the fake file in OneDrive. This file
   // path can be used to open a file directly from ODFS using
   // `OpenOrMoveFiles()`.
-  base::FilePath AbsoluteOdfsTestPath1() {
-    std::optional<ash::file_system_provider::ProvidedFileSystemInfo>
-        odfs_file_system_info = ash::cloud_upload::GetODFSInfo(profile());
-    EXPECT_TRUE(odfs_file_system_info.has_value());
-    return odfs_file_system_info->mount_path().Append(relative_test_path_1_);
-  }
-
-  // A file path on ODFS which represents the fake file 2 in OneDrive. This file
-  // path can be used to open a file directly from ODFS using
-  // `OpenOrMoveFiles()`.
-  base::FilePath AbsoluteOdfsTestPath2() {
-    std::optional<ash::file_system_provider::ProvidedFileSystemInfo>
-        odfs_file_system_info = ash::cloud_upload::GetODFSInfo(profile());
-    EXPECT_TRUE(odfs_file_system_info.has_value());
-    return odfs_file_system_info->mount_path().Append(relative_test_path_1_);
+  base::FilePath AbsoluteOdfsTestPath() {
+    std::vector<ash::file_system_provider::ProvidedFileSystemInfo>
+        file_systems = service_->GetProvidedFileSystemInfoList(provider_id_);
+    // One and only one filesystem should be mounted for the ODFS extension.
+    EXPECT_EQ(file_systems.size(), 1u);
+    return file_systems[0].mount_path().Append(relative_test_path_);
   }
 
   // Filesystem path for Android OneDrive documents provider to the directory
@@ -1777,56 +1475,42 @@ class OneDriveTest : public TestAccountBrowserTest,
 
   base::FilePath AndroidOneDriveMountPathForEmail(std::string user_email) {
     return arc::GetDocumentsProviderMountPath(
-        "com.microsoft.skydrive.content.StorageAccessProvider", user_email);
+        "com.microsoft.skydrive.content.StorageAccessProvider",
+        "pivots%2F" + user_email);
   }
 
-  void SetNetworkConnected(const bool connected) {
+  void SetConnectionOffline() {
     content::SetNetworkConnectionTrackerForTesting(nullptr);
-    content::SetNetworkConnectionTrackerForTesting(connection_tracker_.get());
-    using enum network::mojom::ConnectionType;
-    connection_tracker_->SetConnectionType(connected ? CONNECTION_WIFI
-                                                     : CONNECTION_NONE);
-    SetDriveConnectionStatusForTesting(connected
-                                           ? ConnectionStatus::kConnected
-                                           : ConnectionStatus::kNoNetwork);
+    content::SetNetworkConnectionTrackerForTesting(
+        network_connection_tracker_.get());
+    network::TestNetworkConnectionTracker::GetInstance()->SetConnectionType(
+        network::mojom::ConnectionType::CONNECTION_NONE);
   }
 
-  // Record the notification message shown.
-  void OnNotificationDisplayed(
-      const message_center::Notification& notification,
-      const NotificationCommon::Metadata* const metadata) override {
-    notification_message_ = base::UTF16ToUTF8(notification.message());
+  void SetConnectionOnline() {
+    content::SetNetworkConnectionTrackerForTesting(nullptr);
+    content::SetNetworkConnectionTrackerForTesting(
+        network_connection_tracker_.get());
+    network::TestNetworkConnectionTracker::GetInstance()->SetConnectionType(
+        network::mojom::ConnectionType::CONNECTION_WIFI);
   }
-
-  void OnNotificationClosed(const std::string& notification_id) override {}
-  void OnNotificationDisplayServiceDestroyed(
-      NotificationDisplayService* service) override {}
 
  protected:
-  std::string notification_message_;
-  FileSystemURL odfs_docx_test_file_url_1_;
-  FileSystemURL odfs_pptx_test_file_url_2_;
+  FileSystemURL odfs_test_file_url_;
   std::unique_ptr<FakeWebAppPublisher> web_app_publisher_;
-  base::FilePath relative_test_path_1_;
-  base::FilePath relative_test_path_2_;
-  base::FilePath test_path_within_odfs_1_;
-  base::FilePath test_path_within_odfs_2_;
-  raw_ptr<test::FakeProvidedFileSystemOneDrive,
-          DanglingUntriaged>
-      provided_file_system_;  // Owned by Service.
+  ash::file_system_provider::ProviderId provider_id_;
+  base::FilePath relative_test_path_;
+  base::FilePath test_path_within_odfs_;
   const blink::StorageKey kTestStorageKey =
       blink::StorageKey::CreateFromStringForTesting("chrome://abc");
-  base::HistogramTester histogram_;
-  std::unique_ptr<ash::cloud_upload::CloudOpenMetrics> cloud_open_metrics_;
 
  private:
   base::test::ScopedFeatureList feature_list_;
-  const std::unique_ptr<TestNetworkConnectionTracker> connection_tracker_ =
-      TestNetworkConnectionTracker::CreateInstance();
-  const std::string test_docx_file_name_1_ = "text.docx";
-  const std::string test_pptx_file_name_2_ = "presentation.pptx";
-  base::WeakPtr<ash::cloud_upload::CloudOpenMetrics>
-      cloud_open_metrics_weak_ptr_;
+  std::string file_system_id_;
+  std::unique_ptr<network::TestNetworkConnectionTracker>
+      network_connection_tracker_;
+  raw_ptr<ash::file_system_provider::Service, ExperimentalAsh> service_;
+  std::string test_file_name_;
 };
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -1839,10 +1523,10 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, OfficeFallbackTryAgain) {
 
   // Disable the setup flow for office files because we want the office
   // fallback dialog to run instead.
-  SetWordFileHandlerToFilesSWA(profile(), kActionIdWebDriveOfficeWord);
+  SetOfficeSetupComplete(profile(), true);
 
   const TaskDescriptor open_in_office_task = CreateOpenInOfficeTask();
-  std::vector<storage::FileSystemURL> file_urls{odfs_docx_test_file_url_1_};
+  std::vector<storage::FileSystemURL> file_urls{odfs_test_file_url_};
 
   // Watch for dialog URL chrome://office-fallback.
   GURL expected_dialog_URL(chrome::kChromeUIOfficeFallbackURL);
@@ -1852,11 +1536,12 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, OfficeFallbackTryAgain) {
 
   web_app_publisher_->ClearPastLaunches();
 
-  // Launches the office fallback dialog as the system is offline.
-  base::test::TestFuture<TaskResult, std::string> executed_future;
-  ExecuteFileTask(profile(), open_in_office_task, file_urls,
-                  executed_future.GetCallback());
-  ASSERT_EQ(executed_future.Get<0>(), TaskResult::kOpened);
+  // Fails as system is offline and thus will open office fallback dialog.
+  ExecuteFileTask(
+      profile(), open_in_office_task, file_urls, nullptr,
+      base::BindOnce(
+          [](extensions::api::file_manager_private::TaskResult result,
+             std::string error_message) {}));
 
   // Wait for office fallback dialog to open.
   navigation_observer_dialog.Wait();
@@ -1864,37 +1549,17 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, OfficeFallbackTryAgain) {
 
   CHECK_EQ(0u, web_app_publisher_->GetLaunches().size());
 
-  SetNetworkConnected(true);
+  SetConnectionOnline();
 
   // Run dialog callback, simulate user choosing to "try-again". Will succeed
   // because system is online, and the file doesn't need to be moved.
-  OnDialogChoiceReceived(profile(), open_in_office_task, file_urls,
-                         ash::office_fallback::FallbackReason::kOffline,
-                         std::move(cloud_open_metrics_),
+  OnDialogChoiceReceived(profile(), open_in_office_task, file_urls, nullptr,
                          ash::office_fallback::kDialogChoiceTryAgain);
 
   auto launches = web_app_publisher_->GetLaunches();
   ASSERT_EQ(1u, launches.size());
   CHECK_EQ(launches[0].app_id, web_app::kMicrosoft365AppId);
-  CHECK_EQ(launches[0].intent_url, test::kODFSSampleUrl);
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kNumberOfFilesToOpenWithOneDriveMetric, 1, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kOneDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveOpenSourceVolumeMetric,
-      ash::cloud_upload::OfficeFilesSourceVolume::kMicrosoftOneDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kOpened, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kSuccess, 1);
+  CHECK_EQ(launches[0].intent_url, kODFSSampleUrl);
 }
 
 // Test to check that the test file fails to open when the system is offline and
@@ -1906,10 +1571,10 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, OfficeFallbackCancel) {
 
   // Disable the setup flow for office files because we want the office
   // fallback dialog to run instead.
-  SetWordFileHandlerToFilesSWA(profile(), kActionIdWebDriveOfficeWord);
+  SetOfficeSetupComplete(profile(), true);
 
   const TaskDescriptor open_in_office_task = CreateOpenInOfficeTask();
-  std::vector<storage::FileSystemURL> file_urls{odfs_docx_test_file_url_1_};
+  std::vector<storage::FileSystemURL> file_urls{odfs_test_file_url_};
 
   // Watch for dialog URL chrome://office-fallback.
   GURL expected_dialog_URL(chrome::kChromeUIOfficeFallbackURL);
@@ -1919,11 +1584,12 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, OfficeFallbackCancel) {
 
   web_app_publisher_->ClearPastLaunches();
 
-  // Launches the office fallback dialog as the system is offline.
-  base::test::TestFuture<TaskResult, std::string> executed_future;
-  ExecuteFileTask(profile(), open_in_office_task, file_urls,
-                  executed_future.GetCallback());
-  ASSERT_EQ(executed_future.Get<0>(), TaskResult::kOpened);
+  // Fails as system is offline and thus will open office fallback dialog.
+  ExecuteFileTask(
+      profile(), open_in_office_task, file_urls, nullptr,
+      base::BindOnce(
+          [](extensions::api::file_manager_private::TaskResult result,
+             std::string error_message) {}));
 
   // Wait for office fallback dialog to open.
   navigation_observer_dialog.Wait();
@@ -1931,353 +1597,44 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, OfficeFallbackCancel) {
 
   ASSERT_EQ(0u, web_app_publisher_->GetLaunches().size());
 
-  SetNetworkConnected(true);
+  SetConnectionOnline();
 
   // Run dialog callback, simulate user choosing to "cancel". The file will not
   // open.
-  OnDialogChoiceReceived(profile(), open_in_office_task, file_urls,
-                         ash::office_fallback::FallbackReason::kOffline,
-                         std::move(cloud_open_metrics_),
+  OnDialogChoiceReceived(profile(), open_in_office_task, file_urls, nullptr,
                          ash::office_fallback::kDialogChoiceCancel);
 
   ASSERT_EQ(0u, web_app_publisher_->GetLaunches().size());
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kNumberOfFilesToOpenWithOneDriveMetric, 1, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kOneDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kCancelledAtFallback, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kOffline, 1);
-}
-
-// Test to check that a second office fallback dialog will not launch when one
-// is already being shown.
-IN_PROC_BROWSER_TEST_F(OneDriveTest, CannotGetOfficeFallbackChoice) {
-  // Creates a fake ODFS with a test file.
-  SetUpTest();
-
-  // Disable the setup flow for office files because we want the office
-  // fallback dialog to run instead.
-  SetWordFileHandlerToFilesSWA(profile(), kActionIdWebDriveOfficeWord);
-
-  const TaskDescriptor open_in_office_task = CreateOpenInOfficeTask();
-  std::vector<storage::FileSystemURL> file_urls{odfs_docx_test_file_url_1_};
-
-  // Watch for dialog URL chrome://office-fallback.
-  GURL expected_dialog_URL(chrome::kChromeUIOfficeFallbackURL);
-  content::TestNavigationObserver navigation_observer_dialog(
-      expected_dialog_URL);
-  navigation_observer_dialog.StartWatchingNewWebContents();
-
-  web_app_publisher_->ClearPastLaunches();
-
-  // Launches the first office fallback dialog as the system is offline. Let it
-  // hang waiting for a choice from the user.
-  base::test::TestFuture<TaskResult, std::string> executed_future;
-  ExecuteFileTask(profile(), open_in_office_task, file_urls,
-                  executed_future.GetCallback());
-  ASSERT_EQ(executed_future.Get<0>(), TaskResult::kOpened);
-
-  // Wait for the first office fallback dialog to open.
-  navigation_observer_dialog.Wait();
-  ASSERT_TRUE(navigation_observer_dialog.last_navigation_succeeded());
-
-  // Fails to launch a second office fallback dialog.
-  base::test::TestFuture<TaskResult, std::string> failed_future;
-  ExecuteFileTask(profile(), open_in_office_task, file_urls,
-                  failed_future.GetCallback());
-  ASSERT_EQ(failed_future.Get<0>(), TaskResult::kFailed);
-
-  // Both open file requests will log the CloudProvider metric.
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kOneDrive, 2);
-  // Only the second open file request will complete. Expect that the second
-  // office fallback dialog couldn't be opened.
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kCannotGetFallbackChoice, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kOffline, 1);
-}
-
-// Tests that opening a file from Android OneDrive under a virtual folder that
-// we don't support (Recents, Albums etc...) shows the fallback dialog.
-IN_PROC_BROWSER_TEST_F(
-    OneDriveTest,
-    FailToOpenFileFromAndroidOneDriveDirectoryNotAccessibleToODFS) {
-  // Create a fake ODFS with a test file.
-  SetUpTest();
-
-  const TaskDescriptor open_in_office_task = CreateOpenInOfficeTask();
-
-  // Create file path in Android OneDrive in a virtual folder that is not
-  // supported in ODFS.
-  base::FilePath android_onedrive_path_no_equivalent =
-      AndroidOneDriveMountPathForEmail(test::kSampleUserEmail1)
-          .Append("Shared")
-          .Append(relative_test_path_1_);
-
-  // Create a FileSystemURL from the Android OneDrive file path.
-  FileSystemURL android_onedrive_url = FileSystemURL::CreateForTest(
-      kTestStorageKey, storage::kFileSystemTypeArcDocumentsProvider,
-      android_onedrive_path_no_equivalent);
-
-  // Watch for dialog URL chrome://office-fallback.
-  GURL expected_dialog_URL(chrome::kChromeUIOfficeFallbackURL);
-  content::TestNavigationObserver navigation_observer_dialog(
-      expected_dialog_URL);
-  navigation_observer_dialog.StartWatchingNewWebContents();
-
-  // Attempt to open the file indirectly from Android OneDrive (via ODFS). It
-  // will fail as there is not an equivalent ODFS file path.
-  auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
-      profile(), {android_onedrive_url}, open_in_office_task,
-      ash::cloud_upload::CloudProvider::kOneDrive,
-      std::make_unique<ash::cloud_upload::CloudOpenMetrics>(
-          ash::cloud_upload::CloudProvider::kOneDrive, 1)));
-  task->OpenOrMoveFiles();
-
-  // Wait for office fallback dialog to open.
-  navigation_observer_dialog.Wait();
-  ASSERT_TRUE(navigation_observer_dialog.last_navigation_succeeded());
-
-  // Get the web contents of the fallback dialog.
-  ash::SystemWebDialogDelegate* dialog =
-      ash::SystemWebDialogDelegate::FindInstance(
-          chrome::kChromeUIOfficeFallbackURL);
-  EXPECT_TRUE(dialog);
-  content::WebUI* webui = dialog->GetWebUIForTest();
-  EXPECT_TRUE(webui);
-  content::WebContents* web_contents = webui->GetWebContents();
-  EXPECT_TRUE(web_contents);
-
-  // Wait until the DOM element actually exists at office-fallback.
-  EXPECT_TRUE(base::test::RunUntil([&] {
-    return content::EvalJs(web_contents,
-                           "!!document.querySelector('office-fallback')")
-        .ExtractBool();
-  }));
-
-  EXPECT_TRUE(content::ExecJs(web_contents,
-                              "document.querySelector('office-fallback')"
-                              ".$('#ok-button').click()"));
-
-  base::RunLoop run_loop;
-  WebContentsDestroyedWaiter waiter(web_contents, run_loop.QuitClosure());
-  run_loop.Run();
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kOkAtFallbackAfterOpen, 1);
-  // Expect the conversion to an ODFS equivalent URL to fail.
-  histogram_.ExpectUniqueSample(ash::cloud_upload::kOneDriveErrorMetricName,
-                                ash::cloud_upload::OfficeOneDriveOpenErrors::
-                                    kAndroidOneDriveUnsupportedLocation,
-                                1);
 }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
-// Test to check that a second setup dialog will not launch when one
-// is already being shown.
-IN_PROC_BROWSER_TEST_F(OneDriveTest, CannotShowSetupDialog) {
-  // Doing this before SetUpTest creates a FakeWebAppPublisher which would
-  // intercept Files app launching.
-  LaunchFilesAppAndWait();
-
-  // Creates a fake ODFS with a test file.
-  SetUpTest();
-
-  // Set online status to avoid the office fallback dialog showing.
-  SetNetworkConnected(true);
-
-  const TaskDescriptor open_in_office_task = CreateOpenInOfficeTask();
-  std::vector<storage::FileSystemURL> file_urls{odfs_docx_test_file_url_1_};
-
-  // Watch for dialog URL chrome://cloud-upload.
-  GURL expected_dialog_URL(chrome::kChromeUICloudUploadURL);
-  content::TestNavigationObserver navigation_observer_dialog(
-      expected_dialog_URL);
-  navigation_observer_dialog.StartWatchingNewWebContents();
-
-  web_app_publisher_->ClearPastLaunches();
-
-  // Launches the first setup dialog (file handler dialog). Let it
-  // hang waiting for a choice from the user.
-  base::test::TestFuture<TaskResult, std::string> executed_future;
-  ExecuteFileTask(profile(), open_in_office_task, file_urls,
-                  executed_future.GetCallback());
-  ASSERT_EQ(executed_future.Get<0>(), TaskResult::kOpened);
-
-  // Wait for the first setup dialog to open.
-  navigation_observer_dialog.Wait();
-  ASSERT_TRUE(navigation_observer_dialog.last_navigation_succeeded());
-
-  // Fails to launch a second setup dialog.
-  base::test::TestFuture<TaskResult, std::string> failed_future;
-  ExecuteFileTask(profile(), open_in_office_task, file_urls,
-                  failed_future.GetCallback());
-  ASSERT_EQ(failed_future.Get<0>(), TaskResult::kFailed);
-
-  // Both open file requests will log the CloudProvider metric.
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kOneDrive, 2);
-  // Only the second open file request will complete and with a
-  // kCannotShowSetupDialog TaskResult.
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kCannotShowSetupDialog, 1);
-}
-
-// Test to check that a second move confirmation dialog will not launch when one
-// is already being shown.
-IN_PROC_BROWSER_TEST_F(OneDriveTest, CannotShowMoveConfirmation) {
-  FileSystemURL file_outside_one_drive = CreateOfficeFileSourceURL(profile());
-  std::vector<storage::FileSystemURL> file_urls{file_outside_one_drive};
-
-  // Watch for dialog URL chrome://cloud-upload.
-  GURL expected_dialog_URL(chrome::kChromeUICloudUploadURL);
-  content::TestNavigationObserver navigation_observer_dialog(
-      expected_dialog_URL);
-  navigation_observer_dialog.StartWatchingNewWebContents();
-
-  LaunchFilesAppAndWait();
-
-  // Launches the first move confirmation dialog. Let it
-  // hang waiting for a choice from the user.
-  auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
-      profile(), file_urls, CreateOpenInOfficeTask(),
-      ash::cloud_upload::CloudProvider::kOneDrive,
-      std::move(cloud_open_metrics_)));
-  task->OpenOrMoveFiles();
-
-  // Wait for the first move confirmation dialog to open.
-  navigation_observer_dialog.Wait();
-  ASSERT_TRUE(navigation_observer_dialog.last_navigation_succeeded());
-
-  // Fails to launch a second move confirmation dialog.
-  task->OpenOrMoveFiles();
-
-  // Both open file requests will log the TransferRequired metric.
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kMove, 2);
-  // Only the second open file request will complete and with a
-  // kCannotShowMoveConfirmation TaskResult.
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kCannotShowMoveConfirmation, 1);
-}
-
-// Test that ExecuteFileTask() will open an ODFS office file with the Open In
-// Office task.
+// Test that OpenOrMoveFiles() will open a ODFS office file when the cloud
+// provider specified is OneDrive.
 IN_PROC_BROWSER_TEST_F(OneDriveTest, OpenFileFromODFS) {
   // Creates a fake ODFS with a test file.
   SetUpTest();
 
-  const TaskDescriptor open_in_office_task = CreateOpenInOfficeTask();
-  std::vector<storage::FileSystemURL> file_urls{odfs_docx_test_file_url_1_};
-
-  // Disable the setup flow for office files.
-  SetWordFileHandlerToFilesSWA(profile(), kActionIdWebDriveOfficeWord);
-
-  // Set online status to avoid the office fallback dialog showing.
-  SetNetworkConnected(true);
+  std::vector<storage::FileSystemURL> file_urls{odfs_test_file_url_};
 
   web_app_publisher_->ClearPastLaunches();
 
-  ExecuteFileTask(profile(), open_in_office_task, file_urls, base::DoNothing());
+  // Open file directly from ODFS.
+  auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
+      profile(), file_urls, ash::cloud_upload::CloudProvider::kOneDrive,
+      nullptr));
+  task->OpenOrMoveFiles();
 
   auto launches = web_app_publisher_->GetLaunches();
   ASSERT_EQ(1u, launches.size());
   CHECK_EQ(launches[0].app_id, web_app::kMicrosoft365AppId);
-  CHECK_EQ(launches[0].intent_url, test::kODFSSampleUrl);
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kNumberOfFilesToOpenWithOneDriveMetric, 1, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kOneDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveOpenSourceVolumeMetric,
-      ash::cloud_upload::OfficeFilesSourceVolume::kMicrosoftOneDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kOpened, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kSuccess, 1);
-}
-
-// Test that ExecuteFileTask() will open ODFS office files with the Open In
-// Office task.
-// TODO(b/242685536) add support for multiple files and reenable this test.
-IN_PROC_BROWSER_TEST_F(OneDriveTest, DISABLED_OpenFilesFromODFS) {
-  // Creates a fake ODFS with test files.
-  SetUpTest();
-
-  const TaskDescriptor open_in_office_task = CreateOpenInOfficeTask();
-  std::vector<storage::FileSystemURL> file_urls{odfs_docx_test_file_url_1_,
-                                                odfs_pptx_test_file_url_2_};
-
-  // Disable the setup flow for office files.
-  SetWordFileHandlerToFilesSWA(profile(), kActionIdWebDriveOfficeWord);
-  SetPowerPointFileHandlerToFilesSWA(profile(),
-                                     kActionIdWebDriveOfficePowerPoint);
-
-  // Set online status to avoid the office fallback dialog showing.
-  SetNetworkConnected(true);
-
-  web_app_publisher_->ClearPastLaunches();
-
-  ExecuteFileTask(profile(), open_in_office_task, file_urls, base::DoNothing());
-
-  auto launches = web_app_publisher_->GetLaunches();
-  ASSERT_EQ(2u, launches.size());
-  CHECK_EQ(launches[0].app_id, web_app::kMicrosoft365AppId);
-  CHECK_EQ(launches[0].intent_url, test::kODFSSampleUrl);
-  CHECK_EQ(launches[1].app_id, web_app::kMicrosoft365AppId);
-  CHECK_EQ(launches[1].intent_url, test::kODFSSampleUrl);
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kNumberOfFilesToOpenWithOneDriveMetric, 2, 1);
-  // TODO(b/325514165): Expect 2 CloudProvider, SourceVolume and
-  // TransferRequired metrics once a metric is logged for each file open.
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kOneDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveOpenSourceVolumeMetric,
-      ash::cloud_upload::OfficeFilesSourceVolume::kMicrosoftOneDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kOpened, 2);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kSuccess, 2);
+  CHECK_EQ(launches[0].intent_url, kODFSSampleUrl);
 }
 
 // Test that OpenOrMoveFiles() will open the Move Confirmation dialog when the
 // cloud provider specified is OneDrive but the office file to be opened needs
 // to be moved to ODFS.
 IN_PROC_BROWSER_TEST_F(OneDriveTest, OpenFileNotFromODFS) {
-  FileSystemURL file_outside_one_drive = CreateOfficeFileSourceURL(profile());
+  FileSystemURL file_outside_one_drive = CreateTestOfficeFile(profile());
   std::vector<storage::FileSystemURL> file_urls{file_outside_one_drive};
 
   // Watch for dialog URL chrome://cloud-upload.
@@ -2286,118 +1643,15 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, OpenFileNotFromODFS) {
       expected_dialog_URL);
   navigation_observer_dialog.StartWatchingNewWebContents();
 
-  LaunchFilesAppAndWait();
-
   // Triggers Move Confirmation dialog.
   auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
-      profile(), file_urls, CreateOpenInOfficeTask(),
-      ash::cloud_upload::CloudProvider::kOneDrive,
-      std::move(cloud_open_metrics_)));
+      profile(), file_urls, ash::cloud_upload::CloudProvider::kOneDrive,
+      nullptr));
   task->OpenOrMoveFiles();
 
-  // Wait for Move Confirmation dialog to open.
+  // Wait for setup flow dialog to open.
   navigation_observer_dialog.Wait();
   ASSERT_TRUE(navigation_observer_dialog.last_navigation_succeeded());
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveOpenSourceVolumeMetric,
-      ash::cloud_upload::OfficeFilesSourceVolume::kDownloadsDirectory, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kMove, 1);
-}
-
-// Test that when opening a file from ODFS fails due reauthentication to
-// OneDrive being required, the reauthentication required notification is shown.
-IN_PROC_BROWSER_TEST_F(OneDriveTest,
-                       FailToOpenFileFromODFSReauthenticationRequired) {
-  // Creates a fake ODFS with a test file.
-  SetUpTest();
-  // Ensure the open fails due to reauthentication to OneDrive being required.
-  provided_file_system_->SetGetActionsError(
-      base::File::Error::FILE_ERROR_ACCESS_DENIED);
-  provided_file_system_->SetReauthenticationRequired(true);
-
-  NotificationDisplayService::GetForProfile(profile())->AddObserver(this);
-
-  std::vector<storage::FileSystemURL> file_urls{odfs_docx_test_file_url_1_};
-
-  web_app_publisher_->ClearPastLaunches();
-
-  // Open file directly from ODFS.
-  auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
-      profile(), file_urls, CreateOpenInOfficeTask(),
-      ash::cloud_upload::CloudProvider::kOneDrive,
-      std::move(cloud_open_metrics_)));
-  task->OpenOrMoveFiles();
-  // Expect that there was a notification.
-  EXPECT_FALSE(notification_message_.empty());
-  // Expect that the reauthentication required notification was shown.
-  EXPECT_EQ(notification_message_,
-            ash::cloud_upload::GetReauthenticationRequiredMessage());
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveOpenSourceVolumeMetric,
-      ash::cloud_upload::OfficeFilesSourceVolume::kMicrosoftOneDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kFailedToOpen, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kGetActionsReauthRequired,
-      1);
-
-  NotificationDisplayService::GetForProfile(browser()->profile())
-      ->RemoveObserver(this);
-}
-
-// Test that when opening a file from ODFS fails due an access error that is not
-// because reauthentication to OneDrive is required, the generic error
-// notification is shown.
-IN_PROC_BROWSER_TEST_F(OneDriveTest, FailToOpenFileFromODFSOtherAccessError) {
-  // Creates a fake ODFS with a test file.
-  SetUpTest();
-  // Ensure the open fails due to some access error which is not because
-  // reauthentication to OneDrive is required.
-  provided_file_system_->SetGetActionsError(
-      base::File::Error::FILE_ERROR_ACCESS_DENIED);
-  provided_file_system_->SetReauthenticationRequired(false);
-
-  NotificationDisplayService::GetForProfile(profile())->AddObserver(this);
-
-  std::vector<storage::FileSystemURL> file_urls{odfs_docx_test_file_url_1_};
-
-  web_app_publisher_->ClearPastLaunches();
-
-  // Open file directly from ODFS.
-  auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
-      profile(), file_urls, CreateOpenInOfficeTask(),
-      ash::cloud_upload::CloudProvider::kOneDrive,
-      std::move(cloud_open_metrics_)));
-  task->OpenOrMoveFiles();
-  // Expect that there was a notification.
-  EXPECT_FALSE(notification_message_.empty());
-  // Expect that the reauthentication required notification was shown.
-  EXPECT_EQ(notification_message_, ash::cloud_upload::GetGenericErrorMessage());
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveOpenSourceVolumeMetric,
-      ash::cloud_upload::OfficeFilesSourceVolume::kMicrosoftOneDrive, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kFailedToOpen, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kGetActionsAccessDenied, 1);
-
-  NotificationDisplayService::GetForProfile(browser()->profile())
-      ->RemoveObserver(this);
 }
 
 // Test that OpenOrMoveFiles() will open an Android OneDrive office file via
@@ -2410,8 +1664,8 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, OpenFileFromAndroidOneDriveViaODFS) {
   // Create equivalent file path in Android OneDrive with same email (email
   // matches `FakeProvidedFileSystemOneDrive`).
   base::FilePath android_onedrive_path_same_email =
-      AndroidOneDrivePathToSharedDirectoryForEmail(test::kSampleUserEmail1)
-          .Append(relative_test_path_1_);
+      AndroidOneDrivePathToSharedDirectoryForEmail(kSampleUserEmail1)
+          .Append(relative_test_path_);
 
   // Create a FileSystemURL from the Android OneDrive file path.
   FileSystemURL android_onedrive_url = FileSystemURL::CreateForTest(
@@ -2422,84 +1676,15 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, OpenFileFromAndroidOneDriveViaODFS) {
 
   // Open the file indirectly from Android OneDrive (via ODFS).
   auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
-      profile(), {android_onedrive_url}, CreateOpenInOfficeTask(),
-      ash::cloud_upload::CloudProvider::kOneDrive,
-      std::move(cloud_open_metrics_)));
+      profile(), {android_onedrive_url},
+      ash::cloud_upload::CloudProvider::kOneDrive, nullptr));
   task->OpenOrMoveFiles();
 
   auto launches = web_app_publisher_->GetLaunches();
   ASSERT_EQ(1u, launches.size());
   CHECK_EQ(launches[0].app_id, web_app::kMicrosoft365AppId);
   // Check that the ODFS URL was opened.
-  CHECK_EQ(launches[0].intent_url, test::kODFSSampleUrl);
-
-  // Expect the source volume not to be ODFS. Logged as kUnknown because would
-  // need to actually mount Android OneDrive Documents Provider for
-  // VOLUME_TYPE_DOCUMENTS_PROVIDER to be logged in the test.
-  histogram_.ExpectBucketCount(
-      ash::cloud_upload::kOneDriveOpenSourceVolumeMetric,
-      ash::cloud_upload::OfficeFilesSourceVolume::kMicrosoftOneDrive, 0);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kOpened, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kSuccess, 1);
-}
-
-// Same as OpenFileFromAndroidOneDriveViaODFS test the email account associated
-// with Android OneDrive is the upper case version of the one associated with
-// ODFS.
-IN_PROC_BROWSER_TEST_F(OneDriveTest,
-                       OpenFileFromAndroidOneDriveViaODFSDiffCaseEmail) {
-  // Create a fake ODFS with a test file.
-  SetUpTest();
-
-  // Create equivalent file path in Android OneDrive with an upper case version
-  // of the same email (email matches `FakeProvidedFileSystemOneDrive`).
-  base::FilePath android_onedrive_path_same_email =
-      AndroidOneDrivePathToSharedDirectoryForEmail(
-          test::kSampleUserUpperCaseEmail1)
-          .Append(relative_test_path_1_);
-
-  // Create a FileSystemURL from the Android OneDrive file path.
-  FileSystemURL android_onedrive_url = FileSystemURL::CreateForTest(
-      kTestStorageKey, storage::kFileSystemTypeArcDocumentsProvider,
-      android_onedrive_path_same_email);
-
-  web_app_publisher_->ClearPastLaunches();
-
-  // Open the file indirectly from Android OneDrive (via ODFS).
-  auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
-      profile(), {android_onedrive_url}, CreateOpenInOfficeTask(),
-      ash::cloud_upload::CloudProvider::kOneDrive,
-      std::move(cloud_open_metrics_)));
-  task->OpenOrMoveFiles();
-
-  auto launches = web_app_publisher_->GetLaunches();
-  ASSERT_EQ(1u, launches.size());
-  CHECK_EQ(launches[0].app_id, web_app::kMicrosoft365AppId);
-  // Check that the ODFS URL was opened.
-  CHECK_EQ(launches[0].intent_url, test::kODFSSampleUrl);
-
-  // Expect the source volume not to be ODFS. Logged as kUnknown because would
-  // need to actually mount Android OneDrive Documents Provider for
-  // VOLUME_TYPE_DOCUMENTS_PROVIDER to be logged in the test.
-  histogram_.ExpectBucketCount(
-      ash::cloud_upload::kOneDriveOpenSourceVolumeMetric,
-      ash::cloud_upload::OfficeFilesSourceVolume::kMicrosoftOneDrive, 0);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kOpened, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kSuccess, 1);
+  CHECK_EQ(launches[0].intent_url, kODFSSampleUrl);
 }
 
 // Test that OpenOrMoveFiles() will not open an Android OneDrive office file via
@@ -2515,8 +1700,8 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest,
   // Create equivalent file path in Android OneDrive with different email
   // (email doesn't match `FakeProvidedFileSystemOneDrive`).
   base::FilePath android_onedrive_path_diff_email =
-      AndroidOneDrivePathToSharedDirectoryForEmail(test::kSampleUserEmail2)
-          .Append(relative_test_path_1_);
+      AndroidOneDrivePathToSharedDirectoryForEmail(kSampleUserEmail2)
+          .Append(relative_test_path_);
 
   // Create a FileSystemURL from the Android OneDrive file path.
   FileSystemURL android_onedrive_url = FileSystemURL::CreateForTest(
@@ -2528,23 +1713,12 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest,
   // Attempt to open the file indirectly from Android OneDrive (via ODFS). It
   // will fail as the email accounts don't match.
   auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
-      profile(), {android_onedrive_url}, CreateOpenInOfficeTask(),
-      ash::cloud_upload::CloudProvider::kOneDrive,
-      std::move(cloud_open_metrics_)));
+      profile(), {android_onedrive_url},
+      ash::cloud_upload::CloudProvider::kOneDrive, nullptr));
   task->OpenOrMoveFiles();
 
   auto launches = web_app_publisher_->GetLaunches();
   ASSERT_EQ(0u, launches.size());
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kFailedToOpen, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kEmailsDoNotMatch, 1);
 }
 
 // Test that OpenOrMoveFiles() will not open an Android OneDrive office file
@@ -2558,7 +1732,7 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest,
   // Create file path in Android OneDrive that is in the "Files" directory but
   // doesn't exist on ODFS.
   base::FilePath android_onedrive_path_no_equivalent =
-      AndroidOneDrivePathToSharedDirectoryForEmail(test::kSampleUserEmail1)
+      AndroidOneDrivePathToSharedDirectoryForEmail(kSampleUserEmail1)
           .Append("another_file.docx");
 
   // Create a FileSystemURL from the Android OneDrive file path.
@@ -2571,43 +1745,63 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest,
   // Attempt to open the file indirectly from Android OneDrive (via ODFS). It
   // will fail as there is not an equivalent ODFS file path.
   auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
-      profile(), {android_onedrive_url}, CreateOpenInOfficeTask(),
-      ash::cloud_upload::CloudProvider::kOneDrive,
-      std::move(cloud_open_metrics_)));
+      profile(), {android_onedrive_url},
+      ash::cloud_upload::CloudProvider::kOneDrive, nullptr));
   task->OpenOrMoveFiles();
 
   auto launches = web_app_publisher_->GetLaunches();
   ASSERT_EQ(0u, launches.size());
+}
 
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTransferRequiredMetric,
-      ash::cloud_upload::OfficeFilesTransferRequired::kNotRequired, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveTaskResultMetricName,
-      ash::cloud_upload::OfficeTaskResult::kFailedToOpen, 1);
-  // Expect get actions error for a non-existent path.
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOneDriveErrorMetricName,
-      ash::cloud_upload::OfficeOneDriveOpenErrors::kGetActionsGenericError, 1);
+// Test that OpenOrMoveFiles() will not open an Android OneDrive office file
+// (that doesn't have the expected Url format) via ODFS when the cloud provider
+// specified is OneDrive but the Android OneDrive path does not have an
+// equivalent on ODFS.
+IN_PROC_BROWSER_TEST_F(
+    OneDriveTest,
+    FailToOpenFileFromAndroidOneDriveDirectoryNotAccessibleToODFS) {
+  // Create a fake ODFS with a test file.
+  SetUpTest();
+
+  // Create file path in Android OneDrive for a file that is not accessible to
+  // ODFS. For example, the "Files" folder is accessible to both file systems,
+  // but the "Shared" folder is only accessible to Android OneDrive.
+  base::FilePath android_onedrive_path_no_equivalent =
+      AndroidOneDriveMountPathForEmail(kSampleUserEmail1)
+          .Append("Shared")
+          .Append(relative_test_path_);
+
+  // Create a FileSystemURL from the Android OneDrive file path.
+  FileSystemURL android_onedrive_url = FileSystemURL::CreateForTest(
+      kTestStorageKey, storage::kFileSystemTypeArcDocumentsProvider,
+      android_onedrive_path_no_equivalent);
+
+  web_app_publisher_->ClearPastLaunches();
+
+  // Attempt to open the file indirectly from Android OneDrive (via ODFS). It
+  // will fail as there is not an equivalent ODFS file path.
+  auto task = base::WrapRefCounted(new ash::cloud_upload::CloudOpenTask(
+      profile(), {android_onedrive_url},
+      ash::cloud_upload::CloudProvider::kOneDrive, nullptr));
+  task->OpenOrMoveFiles();
+
+  auto launches = web_app_publisher_->GetLaunches();
+  ASSERT_EQ(0u, launches.size());
 }
 
 // Test that the setup flow for office files, that has never been run before,
 // will be run when an Open in Office task tries to open an office file
 // already in ODFS.
 IN_PROC_BROWSER_TEST_F(OneDriveTest, FileInOneDriveOpensSetUpDialog) {
-  // Do this before SetUpTest creates a FakeWebAppPublisher which would
-  // intercept Files app launching.
-  LaunchFilesAppAndWait();
-
   // Creates a fake ODFS with a test file.
   SetUpTest();
 
-  SetNetworkConnected(true);
+  SetConnectionOnline();
 
   // Create an Open in Office task to open the file from ODFS. The file is in
   // the correct location for this task.
   const TaskDescriptor open_in_office_task = CreateOpenInOfficeTask();
-  std::vector<storage::FileSystemURL> file_urls{odfs_docx_test_file_url_1_};
+  std::vector<storage::FileSystemURL> file_urls{odfs_test_file_url_};
 
   // Watch for dialog URL chrome://cloud-upload.
   GURL expected_dialog_URL(chrome::kChromeUICloudUploadURL);
@@ -2616,29 +1810,24 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, FileInOneDriveOpensSetUpDialog) {
   navigation_observer_dialog.StartWatchingNewWebContents();
 
   // Triggers setup flow.
-  ExecuteFileTask(profile(), open_in_office_task, file_urls, base::DoNothing());
+  ExecuteFileTask(profile(), open_in_office_task, file_urls, nullptr,
+                  base::DoNothing());
 
   // Wait for setup flow dialog to open.
   navigation_observer_dialog.Wait();
   ASSERT_TRUE(navigation_observer_dialog.last_navigation_succeeded());
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kNumberOfFilesToOpenWithOneDriveMetric, 1, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kOneDrive, 1);
 }
 
 // Test that the setup flow for office files, that has never been run before,
 // will be run when an Open in Office task tries to open an office file not
 // already in ODFS.
 IN_PROC_BROWSER_TEST_F(OneDriveTest, FileNotInOneDriveOpensSetUpDialog) {
-  SetNetworkConnected(true);
+  SetConnectionOnline();
 
   // Create an Open in Office task to open the file from ODFS. The file is not
   // in the correct location for this task and would have to be moved to ODFS.
   const TaskDescriptor open_in_office_task = CreateOpenInOfficeTask();
-  FileSystemURL file_outside_one_drive = CreateOfficeFileSourceURL(profile());
+  FileSystemURL file_outside_one_drive = CreateTestOfficeFile(profile());
   std::vector<storage::FileSystemURL> file_urls{file_outside_one_drive};
 
   // Watch for dialog URL chrome://cloud-upload.
@@ -2647,20 +1836,16 @@ IN_PROC_BROWSER_TEST_F(OneDriveTest, FileNotInOneDriveOpensSetUpDialog) {
       expected_dialog_URL);
   navigation_observer_dialog.StartWatchingNewWebContents();
 
-  LaunchFilesAppAndWait();
-
   // Triggers setup flow.
-  ExecuteFileTask(profile(), open_in_office_task, file_urls, base::DoNothing());
+  ExecuteFileTask(
+      profile(), open_in_office_task, file_urls, nullptr,
+      base::BindOnce(
+          [](extensions::api::file_manager_private::TaskResult result,
+             std::string error_message) {}));
 
   // Wait for setup flow dialog to open.
   navigation_observer_dialog.Wait();
   ASSERT_TRUE(navigation_observer_dialog.last_navigation_succeeded());
-
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kNumberOfFilesToOpenWithOneDriveMetric, 1, 1);
-  histogram_.ExpectUniqueSample(
-      ash::cloud_upload::kOpenInitialCloudProviderMetric,
-      ash::cloud_upload::CloudProvider::kOneDrive, 1);
 }
 
 INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_ALL_PROFILE_TYPES_P(
@@ -2668,4 +1853,5 @@ INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_ALL_PROFILE_TYPES_P(
 INSTANTIATE_SYSTEM_WEB_APP_MANAGER_TEST_SUITE_ALL_PROFILE_TYPES_P(
     FileTasksPolicyBrowserTest);
 
-}  // namespace file_manager::file_tasks
+}  // namespace file_tasks
+}  // namespace file_manager

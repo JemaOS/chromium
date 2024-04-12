@@ -12,7 +12,7 @@
 namespace blink {
 
 bool BidiParagraph::SetParagraph(const String& text,
-                                 std::optional<TextDirection> base_direction) {
+                                 absl::optional<TextDirection> base_direction) {
   DCHECK(!text.IsNull());
   DCHECK(!ubidi_);
   ubidi_ = UBidiPtr(ubidi_open());
@@ -43,7 +43,7 @@ bool BidiParagraph::SetParagraph(const String& text,
 
 // static
 template <>
-std::optional<TextDirection> BidiParagraph::BaseDirectionForString(
+absl::optional<TextDirection> BidiParagraph::BaseDirectionForString(
     base::span<const LChar> text,
     bool (*stop_at)(UChar)) {
   for (const LChar ch : text) {
@@ -55,12 +55,12 @@ std::optional<TextDirection> BidiParagraph::BaseDirectionForString(
       break;
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // static
 template <>
-std::optional<TextDirection> BidiParagraph::BaseDirectionForString(
+absl::optional<TextDirection> BidiParagraph::BaseDirectionForString(
     base::span<const UChar> text,
     bool (*stop_at)(UChar)) {
   const UChar* data = text.data();
@@ -82,11 +82,11 @@ std::optional<TextDirection> BidiParagraph::BaseDirectionForString(
       break;
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // static
-std::optional<TextDirection> BidiParagraph::BaseDirectionForString(
+absl::optional<TextDirection> BidiParagraph::BaseDirectionForString(
     const StringView& text,
     bool (*stop_at)(UChar)) {
   return text.Is8Bit() ? BaseDirectionForString(text.Span8(), stop_at)

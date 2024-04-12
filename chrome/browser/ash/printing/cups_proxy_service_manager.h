@@ -5,12 +5,9 @@
 #ifndef CHROME_BROWSER_ASH_PRINTING_CUPS_PROXY_SERVICE_MANAGER_H_
 #define CHROME_BROWSER_ASH_PRINTING_CUPS_PROXY_SERVICE_MANAGER_H_
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/services/cups_proxy/cups_proxy_service.h"
 #include "components/keyed_service/core/keyed_service.h"
-
-class Profile;
 
 namespace ash {
 
@@ -24,20 +21,16 @@ namespace ash {
 // fail, we do not try to restart.
 class CupsProxyServiceManager : public KeyedService {
  public:
-  explicit CupsProxyServiceManager(Profile* profile);
+  CupsProxyServiceManager();
 
   CupsProxyServiceManager(const CupsProxyServiceManager&) = delete;
   CupsProxyServiceManager& operator=(const CupsProxyServiceManager&) = delete;
 
   ~CupsProxyServiceManager() override;
 
-  void Shutdown() override;
-
  private:
   void OnDaemonAvailable(bool daemon_available);
 
-  bool service_was_started_ = false;
-  raw_ptr<Profile> profile_;
   base::WeakPtrFactory<CupsProxyServiceManager> weak_factory_{this};
 };
 

@@ -19,8 +19,7 @@ class GPUComputePassEncoder : public DawnObject<WGPUComputePassEncoder>,
 
  public:
   explicit GPUComputePassEncoder(GPUDevice* device,
-                                 WGPUComputePassEncoder compute_pass_encoder,
-                                 const String& label);
+                                 WGPUComputePassEncoder compute_pass_encoder);
 
   GPUComputePassEncoder(const GPUComputePassEncoder&) = delete;
   GPUComputePassEncoder& operator=(const GPUComputePassEncoder&) = delete;
@@ -28,9 +27,8 @@ class GPUComputePassEncoder : public DawnObject<WGPUComputePassEncoder>,
   // gpu_compute_pass_encoder.idl
   void setBindGroup(uint32_t index,
                     const DawnObject<WGPUBindGroup>* bindGroup) {
-    WGPUBindGroupImpl* bgImpl = bindGroup ? bindGroup->GetHandle() : nullptr;
-    GetProcs().computePassEncoderSetBindGroup(GetHandle(), index, bgImpl, 0,
-                                              nullptr);
+    GetProcs().computePassEncoderSetBindGroup(
+        GetHandle(), index, bindGroup->GetHandle(), 0, nullptr);
   }
   void setBindGroup(uint32_t index,
                     GPUBindGroup* bindGroup,

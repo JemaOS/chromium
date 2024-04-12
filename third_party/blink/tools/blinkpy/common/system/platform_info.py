@@ -63,8 +63,6 @@ class PlatformInfo:
             self.os_version = self._determine_win_version(
                 self._win_version_tuple())
         self.interactive = sys_module.stdin.isatty()
-        self._processor = platform_module.processor() or ""
-
         assert sys.platform != 'cygwin', 'Cygwin is not supported.'
 
     def is_mac(self):
@@ -78,9 +76,6 @@ class PlatformInfo:
 
     def is_freebsd(self):
         return self.os_name == 'freebsd'
-
-    def processor(self):
-        return self._processor
 
     @memoized
     def is_highdpi(self):
@@ -202,7 +197,7 @@ class PlatformInfo:
         major_release = int(mac_version_string.split('.')[0])
         minor_release = int(mac_version_string.split('.')[1])
         if major_release == 10:
-            assert minor_release == 15, 'Unsupported mac OS version: %s' % mac_version_string
+            assert 13 <= minor_release <= 15, 'Unsupported mac OS version: %s' % mac_version_string
             return 'mac{major_release}.{minor_release}'.format(
                 major_release=major_release,
                 minor_release=minor_release,
@@ -210,12 +205,10 @@ class PlatformInfo:
         else:
             assert 11 <= major_release, 'Unsupported mac OS version: %s' % mac_version_string
             return 'mac{major_release}'.format(major_release=min(
-                14, major_release), )
+                13, major_release), )
 
     def _determine_linux_version(self, _):
-        # Assume we only test against one Linux version at a time (see
-        # crbug.com/1468322). Therefore, there's no need to name that version.
-        return 'linux'
+        return 'trusty'
 
     def _determine_win_version(self, win_version_tuple):
         if win_version_tuple[:2] == (10, 0):

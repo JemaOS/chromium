@@ -7,7 +7,7 @@
  * JS for chrome://downloads.
  */
 
-import type {Data} from './downloads.mojom-webui.js';
+import {Data} from './downloads.mojom-webui.js';
 
 export interface MojomData extends Data {
   hideDate: boolean;

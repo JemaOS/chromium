@@ -3,8 +3,9 @@
 // found in the LICENSE file.
 
 import 'chrome://access-code-cast/passcode_input/passcode_input.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
-import type {PasscodeInputElement} from 'chrome://access-code-cast/passcode_input/passcode_input.js';
+import {PasscodeInputElement} from 'chrome://access-code-cast/passcode_input/passcode_input';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
 

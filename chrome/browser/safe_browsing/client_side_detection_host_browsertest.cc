@@ -5,15 +5,11 @@
 #include "chrome/browser/safe_browsing/chrome_client_side_detection_host_delegate.h"
 
 #include "base/run_loop.h"
-#include "base/test/scoped_feature_list.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/safe_browsing/chrome_safe_browsing_blocking_page_factory.h"
 #include "chrome/browser/safe_browsing/chrome_ui_manager_delegate.h"
 #include "chrome/browser/safe_browsing/safe_browsing_service.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
-#include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
-#include "chrome/browser/ui/exclusive_access/exclusive_access_test.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -21,18 +17,16 @@
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/buildflags.h"
 #include "components/safe_browsing/content/browser/client_side_detection_service.h"
-#include "components/safe_browsing/content/browser/client_side_phishing_model.h"
 #include "components/safe_browsing/content/browser/ui_manager.h"
+#include "components/safe_browsing/core/browser/db/test_database_manager.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "components/safe_browsing/core/common/proto/client_model.pb.h"
-#include "components/safe_browsing/core/common/proto/csd.pb.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
-#include "content/public/browser/browser_context.h"
+#include "content/public/browser/browser_thread.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/mock_navigation_handle.h"
 #include "content/public/test/prerender_test_util.h"
 #include "net/dns/mock_host_resolver.h"
-#include "net/http/http_status_code.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -42,30 +36,13 @@ namespace safe_browsing {
 namespace {
 
 using ::testing::_;
+using ::testing::Return;
 using ::testing::StrictMock;
-
-class FakeDelegate : public ClientSideDetectionService::Delegate {
-  PrefService* GetPrefs() override { return nullptr; }
-  scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory()
-      override {
-    return nullptr;
-  }
-  scoped_refptr<network::SharedURLLoaderFactory>
-  GetSafeBrowsingURLLoaderFactory() override {
-    return nullptr;
-  }
-  bool ShouldSendModelToBrowserContext(
-      content::BrowserContext* context) override {
-    return true;
-  }
-};
 
 class FakeClientSideDetectionService : public ClientSideDetectionService {
  public:
   FakeClientSideDetectionService()
-      : ClientSideDetectionService(std::make_unique<FakeDelegate>(),
-                                   nullptr,
-                                   nullptr) {}
+      : ClientSideDetectionService(nullptr, nullptr, nullptr) {}
 
   void SendClientReportPhishingRequest(
       std::unique_ptr<ClientPhishingRequest> verdict,
@@ -85,25 +62,18 @@ class FakeClientSideDetectionService : public ClientSideDetectionService {
     return std::move(saved_callback_);
   }
 
-  void SetModel(std::string client_side_model) {
-    client_side_model_ = client_side_model;
+  void SetModel(const ClientSideModel& model) { model_ = model; }
+
+  CSDModelType GetModelType() override { return CSDModelType::kProtobuf; }
+
+  const std::string& GetModelStr() override {
+    client_side_model_ = model_.SerializeAsString();
+    return client_side_model_;
   }
-
-  CSDModelType GetModelType() override { return CSDModelType::kFlatbuffer; }
-
-  bool IsModelAvailable() override { return true; }
 
   // This is a fake CSD service which will have no TfLite models.
   const base::File& GetVisualTfLiteModel() override {
     return visual_tflite_model_;
-  }
-
-  base::ReadOnlySharedMemoryRegion GetModelSharedMemoryRegion() override {
-    base::MappedReadOnlyRegion mapped_region =
-        base::ReadOnlySharedMemoryRegion::Create(client_side_model_.length());
-    memcpy(mapped_region.mapping.memory(), client_side_model_.data(),
-           client_side_model_.length());
-    return mapped_region.region.Duplicate();
   }
 
   // This is a fake CSD service which will have no thresholds due to no TfLite
@@ -119,6 +89,16 @@ class FakeClientSideDetectionService : public ClientSideDetectionService {
 
   base::WeakPtr<ClientSideDetectionService> GetWeakPtr() {
     return weak_factory_.GetWeakPtr();
+  }
+
+  // Override to always pass pre-classification checks for policy test
+  bool IsPrivateIPAddress(const net::IPAddress& address) const override {
+    return false;
+  }
+
+  // Override to always pass pre-classification checks for policy test
+  bool IsLocalResource(const net::IPAddress& address) const override {
+    return false;
   }
 
  private:
@@ -151,6 +131,27 @@ class MockSafeBrowsingUIManager : public SafeBrowsingUIManager {
   ~MockSafeBrowsingUIManager() override = default;
 };
 
+class MockSafeBrowsingDatabaseManager : public TestSafeBrowsingDatabaseManager {
+ public:
+  MockSafeBrowsingDatabaseManager()
+      : safe_browsing::TestSafeBrowsingDatabaseManager(
+            content::GetUIThreadTaskRunner({}),
+            content::GetIOThreadTaskRunner({})) {}
+
+  MockSafeBrowsingDatabaseManager(const MockSafeBrowsingDatabaseManager&) =
+      delete;
+  MockSafeBrowsingDatabaseManager& operator=(
+      const MockSafeBrowsingDatabaseManager&) = delete;
+
+  MOCK_METHOD2(CheckCsdAllowlistUrl, AsyncMatch(const GURL&, Client*));
+
+  // Override to silence not implemented warnings.
+  bool CanCheckUrl(const GURL& url) const override { return true; }
+
+ protected:
+  ~MockSafeBrowsingDatabaseManager() override = default;
+};
+
 }  // namespace
 
 class ClientSideDetectionHostPrerenderBrowserTest
@@ -167,12 +168,15 @@ class ClientSideDetectionHostPrerenderBrowserTest
       const ClientSideDetectionHostPrerenderBrowserTest&) = delete;
 
   void SetUp() override {
-    prerender_helper_.RegisterServerRequestMonitor(embedded_test_server());
+    prerender_helper_.SetUp(embedded_test_server());
     InProcessBrowserTest::SetUp();
   }
 
   void SetUpOnMainThread() override {
-    set_up_client_side_model();
+    model_.set_version(123);
+    model_.set_max_words_per_term(1);
+    // This model will always trigger.
+    model_.set_threshold_probability(-1);
     host_resolver()->AddRule("*", "127.0.0.1");
     ASSERT_TRUE(embedded_test_server()->Start());
   }
@@ -185,179 +189,48 @@ class ClientSideDetectionHostPrerenderBrowserTest
     return browser()->tab_strip_model()->GetActiveWebContents();
   }
 
-  void set_up_client_side_model() {
-    flatbuffers::FlatBufferBuilder builder(1024);
-    std::vector<flatbuffers::Offset<flat::Hash>> hashes;
-    // Make sure this is sorted.
-    std::vector<std::string> hashes_vector = {
-        "feature1", "feature2", "feature3", "token one", "token two"};
-    for (std::string& feature : hashes_vector) {
-      std::vector<uint8_t> hash_data(feature.begin(), feature.end());
-      hashes.push_back(flat::CreateHashDirect(builder, &hash_data));
-    }
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flat::Hash>>>
-        hashes_flat = builder.CreateVector(hashes);
-
-    std::vector<flatbuffers::Offset<flat::ClientSideModel_::Rule>> rules;
-    std::vector<int32_t> rule_feature1 = {};
-    std::vector<int32_t> rule_feature2 = {0};
-    std::vector<int32_t> rule_feature3 = {0, 1};
-    rules.push_back(
-        flat::ClientSideModel_::CreateRuleDirect(builder, &rule_feature1, 0.5));
-    rules.push_back(
-        flat::ClientSideModel_::CreateRuleDirect(builder, &rule_feature2, 2));
-    rules.push_back(
-        flat::ClientSideModel_::CreateRuleDirect(builder, &rule_feature3, 3));
-    flatbuffers::Offset<
-        flatbuffers::Vector<flatbuffers::Offset<flat::ClientSideModel_::Rule>>>
-        rules_flat = builder.CreateVector(rules);
-
-    std::vector<int32_t> page_terms_vector = {3, 4};
-    flatbuffers::Offset<flatbuffers::Vector<int32_t>> page_term_flat =
-        builder.CreateVector(page_terms_vector);
-
-    std::vector<uint32_t> page_words_vector = {1000U, 2000U, 3000U};
-    flatbuffers::Offset<flatbuffers::Vector<uint32_t>> page_word_flat =
-        builder.CreateVector(page_words_vector);
-
-    std::vector<flatbuffers::Offset<
-        safe_browsing::flat::TfLiteModelMetadata_::Threshold>>
-        thresholds_vector = {};
-    flatbuffers::Offset<flat::TfLiteModelMetadata> tflite_metadata_flat =
-        flat::CreateTfLiteModelMetadataDirect(builder, 0, &thresholds_vector, 0,
-                                              0);
-    flat::ClientSideModelBuilder csd_model_builder(builder);
-    csd_model_builder.add_version(123);
-    // The model will always trigger.
-    csd_model_builder.add_threshold_probability(-1);
-    csd_model_builder.add_hashes(hashes_flat);
-    csd_model_builder.add_rule(rules_flat);
-    csd_model_builder.add_page_term(page_term_flat);
-    csd_model_builder.add_page_word(page_word_flat);
-    csd_model_builder.add_max_words_per_term(2);
-    csd_model_builder.add_murmur_hash_seed(12345U);
-    csd_model_builder.add_max_shingles_per_page(10);
-    csd_model_builder.add_shingle_size(3);
-    csd_model_builder.add_tflite_metadata(tflite_metadata_flat);
-    builder.Finish(csd_model_builder.Finish());
-    flatbuffer_model_str_ = std::string(
-        reinterpret_cast<char*>(builder.GetBufferPointer()), builder.GetSize());
-  }
-
-  std::string client_side_model() { return flatbuffer_model_str_; }
-
- protected:
-  base::test::ScopedFeatureList scoped_feature_list_;
+  ClientSideModel& client_side_model() { return model_; }
 
  private:
+  ClientSideModel model_;
   content::test::PrerenderTestHelper prerender_helper_;
-  std::string flatbuffer_model_str_;
 };
 
-class ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest
-    : public ExclusiveAccessTest {
+class ClientSideDetectionHostPolicyBrowserTest
+    : public InProcessBrowserTest,
+      public ::testing::WithParamInterface<bool> {
  public:
-  ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest()
-      : prerender_helper_(base::BindRepeating(
-            &ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest::
-                GetWebContents,
-            base::Unretained(this))) {}
-  ~ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest() override =
-      default;
-  ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest(
-      const ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest&) =
-      delete;
-  ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest& operator=(
-      const ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest&) =
-      delete;
+  ClientSideDetectionHostPolicyBrowserTest() = default;
+  ~ClientSideDetectionHostPolicyBrowserTest() override = default;
+  ClientSideDetectionHostPolicyBrowserTest(
+      const ClientSideDetectionHostPolicyBrowserTest&) = delete;
+  ClientSideDetectionHostPolicyBrowserTest& operator=(
+      const ClientSideDetectionHostPolicyBrowserTest&) = delete;
 
-  void SetUp() override {
-    prerender_helper_.RegisterServerRequestMonitor(embedded_test_server());
-    InProcessBrowserTest::SetUp();
-  }
+  void SetUp() override { InProcessBrowserTest::SetUp(); }
 
   void SetUpOnMainThread() override {
-    set_up_client_side_model();
+    model_.set_version(123);
+    model_.set_max_words_per_term(1);
+    // This model will always trigger.
+    model_.set_threshold_probability(-1);
     host_resolver()->AddRule("*", "127.0.0.1");
     ASSERT_TRUE(embedded_test_server()->Start());
-  }
-
-  content::test::PrerenderTestHelper& prerender_helper() {
-    return prerender_helper_;
   }
 
   content::WebContents* GetWebContents() {
     return browser()->tab_strip_model()->GetActiveWebContents();
   }
 
-  void set_up_client_side_model() {
-    flatbuffers::FlatBufferBuilder builder(1024);
-    std::vector<flatbuffers::Offset<flat::Hash>> hashes;
-    // Make sure this is sorted.
-    std::vector<std::string> hashes_vector = {
-        "feature1", "feature2", "feature3", "token one", "token two"};
-    for (std::string& feature : hashes_vector) {
-      std::vector<uint8_t> hash_data(feature.begin(), feature.end());
-      hashes.push_back(flat::CreateHashDirect(builder, &hash_data));
-    }
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flat::Hash>>>
-        hashes_flat = builder.CreateVector(hashes);
-
-    std::vector<flatbuffers::Offset<flat::ClientSideModel_::Rule>> rules;
-    std::vector<int32_t> rule_feature1 = {};
-    std::vector<int32_t> rule_feature2 = {0};
-    std::vector<int32_t> rule_feature3 = {0, 1};
-    rules.push_back(
-        flat::ClientSideModel_::CreateRuleDirect(builder, &rule_feature1, 0.5));
-    rules.push_back(
-        flat::ClientSideModel_::CreateRuleDirect(builder, &rule_feature2, 2));
-    rules.push_back(
-        flat::ClientSideModel_::CreateRuleDirect(builder, &rule_feature3, 3));
-    flatbuffers::Offset<
-        flatbuffers::Vector<flatbuffers::Offset<flat::ClientSideModel_::Rule>>>
-        rules_flat = builder.CreateVector(rules);
-
-    std::vector<int32_t> page_terms_vector = {3, 4};
-    flatbuffers::Offset<flatbuffers::Vector<int32_t>> page_term_flat =
-        builder.CreateVector(page_terms_vector);
-
-    std::vector<uint32_t> page_words_vector = {1000U, 2000U, 3000U};
-    flatbuffers::Offset<flatbuffers::Vector<uint32_t>> page_word_flat =
-        builder.CreateVector(page_words_vector);
-
-    std::vector<flatbuffers::Offset<
-        safe_browsing::flat::TfLiteModelMetadata_::Threshold>>
-        thresholds_vector = {};
-    flatbuffers::Offset<flat::TfLiteModelMetadata> tflite_metadata_flat =
-        flat::CreateTfLiteModelMetadataDirect(builder, 0, &thresholds_vector, 0,
-                                              0);
-    flat::ClientSideModelBuilder csd_model_builder(builder);
-    csd_model_builder.add_version(123);
-    // The model will always trigger.
-    csd_model_builder.add_threshold_probability(-1);
-    csd_model_builder.add_hashes(hashes_flat);
-    csd_model_builder.add_rule(rules_flat);
-    csd_model_builder.add_page_term(page_term_flat);
-    csd_model_builder.add_page_word(page_word_flat);
-    csd_model_builder.add_max_words_per_term(2);
-    csd_model_builder.add_murmur_hash_seed(12345U);
-    csd_model_builder.add_max_shingles_per_page(10);
-    csd_model_builder.add_shingle_size(3);
-    csd_model_builder.add_tflite_metadata(tflite_metadata_flat);
-    builder.Finish(csd_model_builder.Finish());
-    flatbuffer_model_str_ = std::string(
-        reinterpret_cast<char*>(builder.GetBufferPointer()), builder.GetSize());
+  void SetPolicy() {
+    browser()->profile()->GetPrefs()->SetBoolean(
+        prefs::kSafeBrowsingCsdPhishingProtectionAllowedByPolicy, GetParam());
   }
 
-  std::string client_side_model() { return flatbuffer_model_str_; }
-
- protected:
-  base::test::ScopedFeatureList scoped_feature_list_{
-      kClientSideDetectionKeyboardPointerLockRequest};
+  ClientSideModel& client_side_model() { return model_; }
 
  private:
-  content::test::PrerenderTestHelper prerender_helper_;
-  std::string flatbuffer_model_str_;
+  ClientSideModel model_;
 };
 
 IN_PROC_BROWSER_TEST_F(ClientSideDetectionHostPrerenderBrowserTest,
@@ -387,8 +260,7 @@ IN_PROC_BROWSER_TEST_F(ClientSideDetectionHostPrerenderBrowserTest,
   fake_csd_service.SetRequestCallback(run_loop.QuitClosure());
 
   // Bypass the pre-classification checks.
-  csd_host->OnPhishingPreClassificationDone(
-      ClientSideDetectionType::TRIGGER_MODELS, /*should_classify=*/true);
+  csd_host->OnPhishingPreClassificationDone(/*should_classify=*/true);
 
   // A prerendered navigation committing should not cancel classification.
   // We simulate the commit of a prerendered navigation to avoid races
@@ -409,8 +281,7 @@ IN_PROC_BROWSER_TEST_F(ClientSideDetectionHostPrerenderBrowserTest,
 
   // Expect an interstitial to be shown.
   EXPECT_CALL(*mock_ui_manager, DisplayBlockingPage(_));
-  std::move(fake_csd_service.saved_callback())
-      .Run(page_url, true, net::HTTP_OK);
+  std::move(fake_csd_service.saved_callback()).Run(page_url, true);
 }
 
 IN_PROC_BROWSER_TEST_F(ClientSideDetectionHostPrerenderBrowserTest,
@@ -446,8 +317,7 @@ IN_PROC_BROWSER_TEST_F(ClientSideDetectionHostPrerenderBrowserTest,
   prerender_helper().NavigatePrimaryPage(prerender_url);
 
   // Bypass the pre-classification checks.
-  csd_host->OnPhishingPreClassificationDone(
-      ClientSideDetectionType::TRIGGER_MODELS, /*should_classify=*/true);
+  csd_host->OnPhishingPreClassificationDone(/*should_classify=*/true);
 
   run_loop.Run();
 
@@ -457,249 +327,68 @@ IN_PROC_BROWSER_TEST_F(ClientSideDetectionHostPrerenderBrowserTest,
 
   // Expect an interstitial to be shown.
   EXPECT_CALL(*mock_ui_manager, DisplayBlockingPage(_));
-  std::move(fake_csd_service.saved_callback())
-      .Run(prerender_url, true, net::HTTP_OK);
+  std::move(fake_csd_service.saved_callback()).Run(prerender_url, true);
 }
 
-IN_PROC_BROWSER_TEST_F(
-    ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest,
-    KeyboardLockTriggersPreclassificationCheck) {
-  if (base::FeatureList::IsEnabled(kClientSideDetectionKillswitch) ||
-      !base::FeatureList::IsEnabled(
-          kClientSideDetectionKeyboardPointerLockRequest)) {
+INSTANTIATE_TEST_SUITE_P(,
+                         ClientSideDetectionHostPolicyBrowserTest,
+                         testing::Bool());
+
+IN_PROC_BROWSER_TEST_P(ClientSideDetectionHostPolicyBrowserTest,
+                       PolicyEnabled) {
+  if (base::FeatureList::IsEnabled(kClientSideDetectionKillswitch)) {
     GTEST_SKIP();
   }
 
-  SetSafeBrowsingState(browser()->profile()->GetPrefs(),
-                       SafeBrowsingState::ENHANCED_PROTECTION);
-
-  base::HistogramTester histogram_tester;
+  // Set CSD-Phishing policy value for test
+  SetPolicy();
 
   FakeClientSideDetectionService fake_csd_service;
   fake_csd_service.SetModel(client_side_model());
+  fake_csd_service.SendModelToRenderers();
 
   scoped_refptr<StrictMock<MockSafeBrowsingUIManager>> mock_ui_manager =
       new StrictMock<MockSafeBrowsingUIManager>();
+  scoped_refptr<StrictMock<MockSafeBrowsingDatabaseManager>>
+      mock_database_manager = new StrictMock<MockSafeBrowsingDatabaseManager>();
 
   std::unique_ptr<ClientSideDetectionHost> csd_host =
       ChromeClientSideDetectionHostDelegate::CreateHost(
           browser()->tab_strip_model()->GetActiveWebContents());
   csd_host->set_client_side_detection_service(fake_csd_service.GetWeakPtr());
   csd_host->set_ui_manager(mock_ui_manager.get());
-  fake_csd_service.SendModelToRenderers();
-
-  const GURL initial_url(embedded_test_server()->GetURL("/title1.html"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), initial_url));
-
-  // TODO(andysjlim): Navigating to initial page alongside the first page logs
-  // the histogram twice. Figure out why.
-  histogram_tester.ExpectTotalCount(
-      "SBClientPhishing.PreClassificationCheckResult", 2);
-
-  EnterActiveTabFullscreen();
-  ASSERT_TRUE(RequestKeyboardLock(/*esc_key_locked=*/true));
-  ASSERT_TRUE(GetExclusiveAccessManager()
-                  ->keyboard_lock_controller()
-                  ->IsKeyboardLockActive());
-
-  // TODO(andysjlim): Preclassification check should trigger one additional
-  // times with the keyboard lock notify, but this is added twice. Investigate
-  // why.
-  histogram_tester.ExpectTotalCount(
-      "SBClientPhishing.PreClassificationCheckResult", 4);
-}
-
-IN_PROC_BROWSER_TEST_F(
-    ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest,
-    PointerLockTriggersPreClassificationCheck) {
-  if (base::FeatureList::IsEnabled(kClientSideDetectionKillswitch) ||
-      !base::FeatureList::IsEnabled(
-          kClientSideDetectionKeyboardPointerLockRequest)) {
-    GTEST_SKIP();
-  }
-  SetWebContentsGrantedSilentPointerLockPermission();
-  SetSafeBrowsingState(browser()->profile()->GetPrefs(),
-                       SafeBrowsingState::ENHANCED_PROTECTION);
-
-  base::HistogramTester histogram_tester;
-
-  FakeClientSideDetectionService fake_csd_service;
-  fake_csd_service.SetModel(client_side_model());
-
-  scoped_refptr<StrictMock<MockSafeBrowsingUIManager>> mock_ui_manager =
-      new StrictMock<MockSafeBrowsingUIManager>();
-
-  std::unique_ptr<ClientSideDetectionHost> csd_host =
-      ChromeClientSideDetectionHostDelegate::CreateHost(
-          browser()->tab_strip_model()->GetActiveWebContents());
-  csd_host->set_client_side_detection_service(fake_csd_service.GetWeakPtr());
-  csd_host->set_ui_manager(mock_ui_manager.get());
-  fake_csd_service.SendModelToRenderers();
-
-  const GURL initial_url(embedded_test_server()->GetURL("/title1.html"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), initial_url));
-
-  // Navigating to initial page logs the histogram twice.
-  histogram_tester.ExpectTotalCount(
-      "SBClientPhishing.PreClassificationCheckResult", 2);
-
-  // The function automatically approves the lock request, but for tests,
-  // functionally, nothing changes.
-  RequestToLockPointer(true, false);
-  EXPECT_TRUE(GetExclusiveAccessManager()
-                  ->pointer_lock_controller()
-                  ->IsPointerLocked());
-
-  // Due to the nature of pointer controller code, we have to manually send a
-  // response to web_contents observer that PointerLockRequest has been sent.
-  csd_host->PointerLockRequested();
-  histogram_tester.ExpectTotalCount(
-      "SBClientPhishing.PreClassificationCheckResult", 3);
-}
-
-IN_PROC_BROWSER_TEST_F(
-    ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest,
-    KeyboardLockClassificationTriggersCSPPPing) {
-  if (base::FeatureList::IsEnabled(kClientSideDetectionKillswitch) ||
-      !base::FeatureList::IsEnabled(
-          kClientSideDetectionKeyboardPointerLockRequest)) {
-    GTEST_SKIP();
-  }
-
-  SetSafeBrowsingState(browser()->profile()->GetPrefs(),
-                       SafeBrowsingState::ENHANCED_PROTECTION);
-
-  base::HistogramTester histogram_tester;
-
-  FakeClientSideDetectionService fake_csd_service;
-  fake_csd_service.SetModel(client_side_model());
-
-  scoped_refptr<StrictMock<MockSafeBrowsingUIManager>> mock_ui_manager =
-      new StrictMock<MockSafeBrowsingUIManager>();
-
-  std::unique_ptr<ClientSideDetectionHost> csd_host =
-      ChromeClientSideDetectionHostDelegate::CreateHost(
-          browser()->tab_strip_model()->GetActiveWebContents());
-  csd_host->set_client_side_detection_service(fake_csd_service.GetWeakPtr());
-  csd_host->set_ui_manager(mock_ui_manager.get());
-  fake_csd_service.SendModelToRenderers();
+  csd_host->set_database_manager(mock_database_manager.get());
 
   base::RunLoop run_loop;
   fake_csd_service.SetRequestCallback(run_loop.QuitClosure());
+  GURL page_url(embedded_test_server()->GetURL("/safe_browsing/malware.html"));
 
-  const GURL initial_url(embedded_test_server()->GetURL("/title1.html"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), initial_url));
-
-  prerender_helper().AddPrerender(initial_url);
-  prerender_helper().NavigatePrimaryPage(initial_url);
-
-  EnterActiveTabFullscreen();
-  ASSERT_TRUE(RequestKeyboardLock(/*esc_key_locked=*/true));
-  ASSERT_TRUE(GetExclusiveAccessManager()
-                  ->keyboard_lock_controller()
-                  ->IsKeyboardLockActive());
-
-  // Bypass the pre-classification check because it would otherwise return
-  // "NO_CLASSIFY_PRIVATE_IP".
-  csd_host->OnPhishingPreClassificationDone(
-      ClientSideDetectionType::KEYBOARD_LOCK_REQUESTED,
-      /*should_classify=*/true);
-
-  run_loop.Run();
-
-  histogram_tester.ExpectTotalCount(
-      "SBClientPhishing.PhishingDetectorResult.KeyboardLockRequested", 1);
-  histogram_tester.ExpectTotalCount(
-      "SBClientPhishing.ClientSideDetectionTypeRequest", 1);
-
-  ASSERT_FALSE(fake_csd_service.saved_callback_is_null());
-
-  EXPECT_EQ(fake_csd_service.saved_request().model_version(), 123);
-
-  // Expect an interstitial to be shown.
-  EXPECT_CALL(*mock_ui_manager, DisplayBlockingPage(_));
-  std::move(fake_csd_service.saved_callback())
-      .Run(initial_url, true, net::HTTP_OK);
-
-  histogram_tester.ExpectTotalCount(
-      "SBClientPhishing.ServerModelDetectsPhishing.KeyboardLockRequested", 1);
-
-  // We do not check whether the keyboard lock is active because the
-  // MockSafeBrowsingUIManager does not do any navigation on the page, but a red
-  // warning page navigation will change the state of WebContents, which
-  // ultimately removes the fullscreen and thus the lock.
-}
-
-IN_PROC_BROWSER_TEST_F(
-    ClientSideDetectionHostPrerenderExclusiveAccessBrowserTest,
-    PointerLockClassificationTriggersCSPPPing) {
-  if (base::FeatureList::IsEnabled(kClientSideDetectionKillswitch) ||
-      !base::FeatureList::IsEnabled(
-          kClientSideDetectionKeyboardPointerLockRequest)) {
-    GTEST_SKIP();
+  if (GetParam()) {
+    // If policy is enabled, pre-classification checks should use
+    // CheckCsdAllowlistUrl. Override CheckCsdAllowlistUrl to allow sending
+    // phishing request.
+    EXPECT_CALL(*mock_database_manager, CheckCsdAllowlistUrl(page_url, _))
+        .WillOnce(Return(AsyncMatch::NO_MATCH));
+  } else {
+    // If policy is disabled, pre-classification check should fail before
+    // CheckCsdAllowlistUrl.
+    EXPECT_CALL(*mock_database_manager, CheckCsdAllowlistUrl(page_url, _))
+        .Times(0);
   }
 
-  SetSafeBrowsingState(browser()->profile()->GetPrefs(),
-                       SafeBrowsingState::ENHANCED_PROTECTION);
+  // Navigate to malicious page
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), page_url));
 
-  base::HistogramTester histogram_tester;
+  if (GetParam()) {
+    run_loop.Run();
+    ASSERT_FALSE(fake_csd_service.saved_callback_is_null());
+    EXPECT_EQ(fake_csd_service.saved_request().model_version(), 123);
 
-  FakeClientSideDetectionService fake_csd_service;
-  fake_csd_service.SetModel(client_side_model());
-
-  scoped_refptr<StrictMock<MockSafeBrowsingUIManager>> mock_ui_manager =
-      new StrictMock<MockSafeBrowsingUIManager>();
-
-  std::unique_ptr<ClientSideDetectionHost> csd_host =
-      ChromeClientSideDetectionHostDelegate::CreateHost(
-          browser()->tab_strip_model()->GetActiveWebContents());
-  csd_host->set_client_side_detection_service(fake_csd_service.GetWeakPtr());
-  csd_host->set_ui_manager(mock_ui_manager.get());
-  fake_csd_service.SendModelToRenderers();
-
-  base::RunLoop run_loop;
-  fake_csd_service.SetRequestCallback(run_loop.QuitClosure());
-
-  const GURL initial_url(embedded_test_server()->GetURL("/title1.html"));
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), initial_url));
-
-  prerender_helper().AddPrerender(initial_url);
-  prerender_helper().NavigatePrimaryPage(initial_url);
-
-  RequestToLockPointer(true, false);
-  ASSERT_TRUE(GetExclusiveAccessManager()
-                  ->pointer_lock_controller()
-                  ->IsPointerLocked());
-
-  // Bypass the pre-classification check because it would otherwise return
-  // "NO_CLASSIFY_PRIVATE_IP".
-  csd_host->OnPhishingPreClassificationDone(
-      ClientSideDetectionType::POINTER_LOCK_REQUESTED,
-      /*should_classify=*/true);
-
-  run_loop.Run();
-
-  histogram_tester.ExpectTotalCount(
-      "SBClientPhishing.PhishingDetectorResult.PointerLockRequested", 1);
-  histogram_tester.ExpectTotalCount(
-      "SBClientPhishing.ClientSideDetectionTypeRequest", 1);
-
-  ASSERT_FALSE(fake_csd_service.saved_callback_is_null());
-
-  EXPECT_EQ(fake_csd_service.saved_request().model_version(), 123);
-
-  // Expect an interstitial to be shown.
-  EXPECT_CALL(*mock_ui_manager, DisplayBlockingPage(_));
-  std::move(fake_csd_service.saved_callback())
-      .Run(initial_url, true, net::HTTP_OK);
-
-  histogram_tester.ExpectTotalCount(
-      "SBClientPhishing.ServerModelDetectsPhishing.PointerLockRequested", 1);
-
-  // We do not check whether the keyboard lock is active because the
-  // MockSafeBrowsingUIManager does not do any navigation on the page, but a red
-  // warning page navigation will change the state of WebContents, which
-  // ultimately removes the fullscreen and thus the lock.
+    // Expect an interstitial to be shown.
+    EXPECT_CALL(*mock_ui_manager, DisplayBlockingPage(_));
+    std::move(fake_csd_service.saved_callback()).Run(page_url, true);
+  } else {
+    ASSERT_TRUE(fake_csd_service.saved_callback_is_null());
+  }
 }
-
 }  // namespace safe_browsing

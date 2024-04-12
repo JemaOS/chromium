@@ -23,10 +23,8 @@ namespace {
 
 class RemoveSuggestionBubbleDialogDelegateView
     : public views::BubbleDialogDelegateView {
-  METADATA_HEADER(RemoveSuggestionBubbleDialogDelegateView,
-                  views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(RemoveSuggestionBubbleDialogDelegateView);
   RemoveSuggestionBubbleDialogDelegateView(
       TemplateURLService* template_url_service,
       views::View* anchor_view,
@@ -104,7 +102,8 @@ class RemoveSuggestionBubbleDialogDelegateView
   base::OnceClosure remove_closure_;
 };
 
-BEGIN_METADATA(RemoveSuggestionBubbleDialogDelegateView)
+BEGIN_METADATA(RemoveSuggestionBubbleDialogDelegateView,
+               views::BubbleDialogDelegateView)
 END_METADATA
 
 }  // namespace

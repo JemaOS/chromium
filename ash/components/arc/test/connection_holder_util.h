@@ -39,7 +39,7 @@ class ReadinessObserver
     std::move(closure_).Run();
   }
 
-  const raw_ptr<ConnectionHolder<InstanceType, HostType>>
+  const raw_ptr<ConnectionHolder<InstanceType, HostType>, ExperimentalAsh>
       holder_;  // Owned by caller
   base::OnceClosure closure_;
 };

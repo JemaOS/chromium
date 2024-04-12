@@ -35,8 +35,8 @@ class MetricsReportingObserverTest : public ::testing::Test {
   }
 
  private:
-  std::unique_ptr<MetricsReportingObserver> observer_;
   raw_ptr<MockMetricsServiceProxy> mock_metrics_service_;
+  std::unique_ptr<MetricsReportingObserver> observer_;
 };
 
 TEST_F(MetricsReportingObserverTest, EnablingMetricsReporting) {
@@ -55,7 +55,7 @@ TEST_F(MetricsReportingObserverTest, DisablingMetricsReporting) {
   EXPECT_CALL(*mock_metrics_service(), SetReportingEnabled(testing::IsFalse()));
   EXPECT_CALL(*mock_metrics_service(), RecreateClientIdIfNecessary).Times(0);
 
-  observer()->OnMetricsReportingChanged(false, std::nullopt);
+  observer()->OnMetricsReportingChanged(false, absl::nullopt);
 }
 
 TEST_F(MetricsReportingObserverTest, DisablingMetricsReportingWithClientId) {
@@ -64,5 +64,5 @@ TEST_F(MetricsReportingObserverTest, DisablingMetricsReportingWithClientId) {
   EXPECT_CALL(*mock_metrics_service(), SetReportingEnabled(testing::IsFalse()));
   EXPECT_CALL(*mock_metrics_service(), RecreateClientIdIfNecessary).Times(0);
 
-  observer()->OnMetricsReportingChanged(false, std::nullopt);
+  observer()->OnMetricsReportingChanged(false, absl::nullopt);
 }

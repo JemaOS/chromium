@@ -36,14 +36,14 @@
         CallWith=ScriptState,
         RaisesException,
         MeasureAs=HidDeviceOpen
-    ] Promise<undefined> open();
+    ] Promise<void> open();
     // Close the connection to the device. The promise is resolved once the
     // device is closed.
-    [CallWith=ScriptState, MeasureAs=HidDeviceClose] Promise<undefined> close();
+    [CallWith=ScriptState, MeasureAs=HidDeviceClose] Promise<void> close();
 
     // Revoke permission to the device. The promise is resolved once the
     // device is forgotten.
-    [CallWith=ScriptState, RaisesException] Promise<undefined> forget();
+    [CallWith=ScriptState, RaisesException] Promise<void> forget();
 
     // Send an output report to the device. Set |reportId| to the first byte of
     // the report and |data| to the remaining bytes. Set |reportId| to zero if
@@ -52,7 +52,7 @@
     [
         CallWith=ScriptState,
         MeasureAs=HidDeviceSendReport
-    ] Promise<undefined> sendReport(
+    ] Promise<void> sendReport(
         [EnforceRange] octet reportId, BufferSource data);
 
     // Send a feature report to the device. Set |reportId| to the first byte of
@@ -62,7 +62,7 @@
     [
         CallWith=ScriptState,
         MeasureAs=HidDeviceSendFeatureReport
-    ] Promise<undefined> sendFeatureReport(
+    ] Promise<void> sendFeatureReport(
         [EnforceRange] octet reportId, BufferSource data);
 
     // Request a feature report from the device. Set |reportId| to the ID of the

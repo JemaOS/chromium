@@ -4,8 +4,6 @@
 
 #include "chrome/browser/metrics/usertype_by_devicetype_metrics_provider.h"
 
-#include <optional>
-
 #include "ash/constants/ash_switches.h"
 #include "ash/public/cpp/login_screen_test_api.h"
 #include "base/logging.h"
@@ -15,16 +13,16 @@
 #include "chrome/browser/ash/app_mode/web_app/web_kiosk_app_manager.h"
 #include "chrome/browser/ash/login/app_mode/kiosk_launch_controller.h"
 #include "chrome/browser/ash/login/app_mode/test/kiosk_test_helpers.h"
-#include "chrome/browser/ash/login/demo_mode/demo_mode_test_utils.h"
 #include "chrome/browser/ash/login/demo_mode/demo_session.h"
+#include "chrome/browser/ash/login/demo_mode/demo_setup_test_utils.h"
 #include "chrome/browser/ash/login/existing_user_controller.h"
+#include "chrome/browser/ash/login/test/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/login/test/logged_in_user_mixin.h"
 #include "chrome/browser/ash/login/test/session_manager_state_waiter.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/ash/ownership/fake_owner_settings_service.h"
 #include "chrome/browser/ash/policy/core/device_local_account.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
-#include "chrome/browser/ash/policy/test_support/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part_ash.h"
 #include "chrome/test/base/fake_gaia_mixin.h"
@@ -35,6 +33,7 @@
 #include "components/policy/core/common/cloud/test/policy_builder.h"
 #include "components/policy/proto/device_management_backend.pb.h"
 #include "content/public/test/browser_test.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -51,21 +50,21 @@ const char kAccountId1[] = "dla1@example.com";
 const char kDisplayName1[] = "display name 1";
 const char kAppInstallUrl[] = "https://app.com/install";
 
-std::optional<em::PolicyData::MarketSegment> GetMarketSegment(
+absl::optional<em::PolicyData::MarketSegment> GetMarketSegment(
     policy::MarketSegment device_segment) {
   switch (device_segment) {
     case policy::MarketSegment::UNKNOWN:
-      return std::nullopt;
+      return absl::nullopt;
     case policy::MarketSegment::EDUCATION:
       return em::PolicyData::ENROLLED_EDUCATION;
     case policy::MarketSegment::ENTERPRISE:
       return em::PolicyData::ENROLLED_ENTERPRISE;
   }
   NOTREACHED();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<em::PolicyData::MetricsLogSegment> GetMetricsLogSegment(
+absl::optional<em::PolicyData::MetricsLogSegment> GetMetricsLogSegment(
     UserSegment user_segment) {
   switch (user_segment) {
     case UserSegment::kK12:
@@ -80,13 +79,13 @@ std::optional<em::PolicyData::MetricsLogSegment> GetMetricsLogSegment(
     case UserSegment::kKioskApp:
     case UserSegment::kManagedGuestSession:
     case UserSegment::kDemoMode:
-      return std::nullopt;
+      return absl::nullopt;
   }
   NOTREACHED();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<AccountId> GetPrimaryAccountId() {
+absl::optional<AccountId> GetPrimaryAccountId() {
   return AccountId::FromUserEmailGaiaId(FakeGaiaMixin::kEnterpriseUser1,
                                         FakeGaiaMixin::kEnterpriseUser1GaiaId);
 }
@@ -160,12 +159,12 @@ class TestCase {
 
   policy::MarketSegment GetDeviceSegment() const { return device_segment_; }
 
-  std::optional<em::PolicyData::MetricsLogSegment> GetMetricsLogSegment()
+  absl::optional<em::PolicyData::MetricsLogSegment> GetMetricsLogSegment()
       const {
     return ::GetMetricsLogSegment(user_segment_);
   }
 
-  std::optional<em::PolicyData::MarketSegment> GetMarketSegment() const {
+  absl::optional<em::PolicyData::MarketSegment> GetMarketSegment() const {
     return ::GetMarketSegment(device_segment_);
   }
 
@@ -277,7 +276,7 @@ class UserTypeByDeviceTypeMetricsProviderTest
     // Add an account with DeviceLocalAccount::Type::TYPE_PUBLIC_SESSION.
     AddPublicSessionToDevicePolicy(kAccountId1);
 
-    std::optional<em::PolicyData::MarketSegment> market_segment =
+    absl::optional<em::PolicyData::MarketSegment> market_segment =
         GetParam().GetMarketSegment();
     if (market_segment) {
       device_policy()->policy_data().set_market_segment(market_segment.value());
@@ -308,7 +307,7 @@ class UserTypeByDeviceTypeMetricsProviderTest
   }
 
   void LogInUser() {
-    std::optional<em::PolicyData::MetricsLogSegment> log_segment =
+    absl::optional<em::PolicyData::MetricsLogSegment> log_segment =
         GetParam().GetMetricsLogSegment();
     if (log_segment) {
       logged_in_user_mixin_.GetUserPolicyMixin()
@@ -332,7 +331,7 @@ class UserTypeByDeviceTypeMetricsProviderTest
     auto* controller = ash::ExistingUserController::current_controller();
     ASSERT_TRUE(controller);
 
-    ash::UserContext user_context(user_manager::UserType::kPublicAccount,
+    ash::UserContext user_context(user_manager::USER_TYPE_PUBLIC_ACCOUNT,
                                   account_id_1_);
     user_context.SetPublicSessionLocale(std::string());
     user_context.SetPublicSessionInputMethod(std::string());
@@ -414,7 +413,7 @@ class UserTypeByDeviceTypeMetricsProviderTest
           kAppInstallUrl,
           policy::DeviceLocalAccount::TYPE_WEB_KIOSK_APP));
   // Not strictly necessary, but makes kiosk tests run much faster.
-  base::AutoReset<bool> skip_splash_wait_override_ =
+  std::unique_ptr<base::AutoReset<bool>> skip_splash_wait_override_ =
       KioskLaunchController::SkipSplashScreenWaitForTesting();
   std::unique_ptr<ScopedDeviceSettings> settings_;
 };

@@ -25,93 +25,53 @@ namespace features {
 // interactive_ui_tests pass on Wayland.
 BASE_DECLARE_FEATURE(kAllowWindowDragUsingSystemDragDrop);
 
-BASE_DECLARE_FEATURE(kAllowEyeDropperWGCScreenCapture);
-
-#if !defined(ANDROID)
-BASE_DECLARE_FEATURE(kCastAppMenuExperiment);
-extern const base::FeatureParam<bool> kCastListedFirst;
-#endif
-
-BASE_DECLARE_FEATURE(kWebAppIconInTitlebar);
+#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
+BASE_DECLARE_FEATURE(kDesktopPWAsAppHomePage);
+#endif  // !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
 
 BASE_DECLARE_FEATURE(kChromeLabs);
-extern const char kChromeLabsActivationParameterName[];
-extern const base::FeatureParam<int> kChromeLabsActivationPercentage;
 
-BASE_DECLARE_FEATURE(kCloseOmniboxPopupOnInactiveAreaClick);
-
-BASE_DECLARE_FEATURE(kDefaultBrowserPromptRefresh);
-
-// Whether to show the default browser info bar prompt.
-extern const base::FeatureParam<bool> kShowDefaultBrowserInfoBar;
-
-// Whether to show the default browser app menu chip prompt.
-extern const base::FeatureParam<bool> kShowDefaultBrowserAppMenuChip;
-
-// Whether to show the updated info bar strings.
-extern const base::FeatureParam<bool> kUpdatedInfoBarCopy;
-
-// Base duration after which the user may be remprompted.
-extern const base::FeatureParam<base::TimeDelta> kRepromptDuration;
-
-// Maximum number of times a user will be prompted. When set to a negative
-// value, the user will be prompted indefinitely.
-extern const base::FeatureParam<int> kMaxPromptCount;
-
-// Exponential backoff multiplier for the reprompt duration.
-extern const base::FeatureParam<int> kRepromptDurationMultiplier;
+BASE_DECLARE_FEATURE(kChromeWhatsNewUI);
 
 BASE_DECLARE_FEATURE(kExtensionsMenuInAppMenu);
-bool IsExtensionMenuInRootAppMenu();
 
 #if !defined(ANDROID)
 BASE_DECLARE_FEATURE(kAccessCodeCastUI);
 #endif
+
+BASE_DECLARE_FEATURE(kDisplayOpenLinkAsProfile);
 
 BASE_DECLARE_FEATURE(kEvDetailsInPageInfo);
 
 #if !BUILDFLAG(IS_ANDROID) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
 BASE_DECLARE_FEATURE(kGetTheMostOutOfChrome);
 
-BASE_DECLARE_FEATURE(kIOSPromoBookmarkBubble);
+BASE_DECLARE_FEATURE(kIOSPromoPasswordBubble);
 
-// This enum lists the possible params for the kIOSPromoBookmarkBubble promo.
-// The first is the launch candidate, the other one is for debugging/testing.
-enum class IOSPromoBookmarkBubbleActivation {
-  kContextual,
-  kAlwaysShowWithBookmarkBubble,
+// This enum lists the possible params for the kIOSPromoPasswordBubble promo.
+// The first two are the launch candidates, the second two are for experimental
+// groups and the last two are for debugging/testing. Direct/indirect refers to
+// the experiment variant (whether showing the user a QR directly or show them a
+// landing page first).
+enum class IOSPromoPasswordBubbleActivation {
+  kContextualDirect,
+  kContextualIndirect,
+  kNonContextualDirect,
+  kNonContextualIndirect,
+  kAlwaysShowWithPasswordBubbleDirect,
+  kAlwaysShowWithPasswordBubbleIndirect,
 };
-extern const base::FeatureParam<IOSPromoBookmarkBubbleActivation>
-    kIOSPromoBookmarkBubbleActivationParam;
-#endif
-
-#if !BUILDFLAG(IS_ANDROID)
-BASE_DECLARE_FEATURE(kHaTSWebUI);
-#endif
-
-#if !BUILDFLAG(IS_ANDROID)
-BASE_DECLARE_FEATURE(kKeyboardAndPointerLockPrompt);
+extern const base::FeatureParam<IOSPromoPasswordBubbleActivation>
+    kIOSPromoPasswordBubbleActivationParam;
 #endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 BASE_DECLARE_FEATURE(kLightweightExtensionOverrideConfirmations);
 #endif
 
-BASE_DECLARE_FEATURE(kPreloadTopChromeWebUI);
-// This enum entry values must be in sync with
-// WebUIContentsPreloadManager::PreloadMode.
-enum class PreloadTopChromeWebUIMode {
-  kPreloadOnWarmup = 0,
-  kPreloadOnMakeContents = 1
-};
-extern const base::FeatureParam<PreloadTopChromeWebUIMode>
-    kPreloadTopChromeWebUIMode;
+BASE_DECLARE_FEATURE(kPowerBookmarksSidePanel);
 
-#if !BUILDFLAG(IS_ANDROID)
-BASE_DECLARE_FEATURE(kPressAndHoldEscToExitBrowserFullscreen);
-#endif
-
-BASE_DECLARE_FEATURE(kResponsiveToolbar);
+BASE_DECLARE_FEATURE(kQuickCommands);
 
 BASE_DECLARE_FEATURE(kScrollableTabStrip);
 extern const char kMinimumTabWidthFeatureParameterName[];
@@ -120,7 +80,6 @@ BASE_DECLARE_FEATURE(kScrollableTabStripWithDragging);
 extern const char kTabScrollingWithDraggingModeName[];
 
 BASE_DECLARE_FEATURE(kSplitTabStrip);
-BASE_DECLARE_FEATURE(kTabStripCollectionStorage);
 
 BASE_DECLARE_FEATURE(kTabScrollingButtonPosition);
 extern const char kTabScrollingButtonPositionParameterName[];
@@ -132,10 +91,6 @@ BASE_DECLARE_FEATURE(kSidePanelWebView);
 
 #if !defined(ANDROID)
 BASE_DECLARE_FEATURE(kSidePanelCompanionDefaultPinned);
-
-BASE_DECLARE_FEATURE(kSidePanelPinning);
-
-bool IsSidePanelPinningEnabled();
 #endif
 
 BASE_DECLARE_FEATURE(kSidePanelJourneysQueryless);
@@ -150,8 +105,10 @@ extern const base::FeatureParam<int> kSideSearchAutoTriggeringReturnCount;
 
 BASE_DECLARE_FEATURE(kTabGroupsCollapseFreezing);
 
+BASE_DECLARE_FEATURE(kTabGroupsNewBadgePromo);
+
 BASE_DECLARE_FEATURE(kTabGroupsSave);
-BASE_DECLARE_FEATURE(kTabGroupsSaveV2);
+BASE_DECLARE_FEATURE(kTabGroupsSaveSyncIntegration);
 
 BASE_DECLARE_FEATURE(kTabHoverCardImages);
 
@@ -177,30 +134,10 @@ extern const char kTabHoverCardImagesCrossfadePreviewAtParameterName[];
 // typically when there are less than 5 or 6 tabs in a browser window.
 extern const char kTabHoverCardAdditionalMaxWidthDelay[];
 
-BASE_DECLARE_FEATURE(kTabOrganization);
-bool IsTabOrganization();
-
-BASE_DECLARE_FEATURE(kMultiTabOrganization);
-
-BASE_DECLARE_FEATURE(kTabReorganization);
-
-// The target (and minimum) interval between proactive nudge triggers. Measured
-// against a clock that only runs while Chrome is in the foreground.
-extern const base::FeatureParam<base::TimeDelta> kTabOrganizationTriggerPeriod;
-
-// The base to use for the trigger logic's exponential backoff.
-extern const base::FeatureParam<double> kTabOrganizationTriggerBackoffBase;
-
-// The minimum score threshold for proactive nudge triggering to occur.
-extern const base::FeatureParam<double> kTabOrganizationTriggerThreshold;
-
-// The maximum sensitivity score for a tab to contribute to trigger scoring.
-extern const base::FeatureParam<double>
-    kTabOrganizationTriggerSensitivityThreshold;
-
-// Enable 'demo mode' for Tab Organization triggering, which triggers much more
-// predictably and frequently.
-extern const base::FeatureParam<bool> KTabOrganizationTriggerDemoMode;
+// When set to 1, reverses the order of elements in the hover card, so that
+// the title and site are on bottom and the tab status and preview image are
+// on top. 0 is the default layout.
+extern const char kTabHoverCardAlternateFormat[];
 
 BASE_DECLARE_FEATURE(kTabSearchChevronIcon);
 
@@ -258,11 +195,7 @@ extern const base::FeatureParam<int>
 // count have been met.
 extern const base::FeatureParam<int> kTabSearchRecentlyClosedTabCountThreshold;
 
-BASE_DECLARE_FEATURE(kTearOffWebAppTabOpensWebAppWindow);
-
-BASE_DECLARE_FEATURE(kToolbarPinning);
-
-bool IsToolbarPinningEnabled();
+BASE_DECLARE_FEATURE(kTabSearchUseMetricsReporter);
 
 // Determines how screenshots of the toolbar uses Software or Hardware drawing.
 // Works on Android 10+.
@@ -274,8 +207,6 @@ BASE_DECLARE_FEATURE(kTopChromeWebUIUsesSpareRenderer);
 BASE_DECLARE_FEATURE(kUpdateTextOptions);
 extern const base::FeatureParam<int> kUpdateTextOptionNumber;
 #endif
-
-BASE_DECLARE_FEATURE(kEnterpriseProfileBadging);
 
 BASE_DECLARE_FEATURE(kWebUIBubblePerProfilePersistence);
 

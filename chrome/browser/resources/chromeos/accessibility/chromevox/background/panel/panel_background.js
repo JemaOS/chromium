@@ -6,11 +6,9 @@
  * @fileoverview Handles logic for the ChromeVox panel that requires state from
  * the background context.
  */
-import {AsyncUtil} from '/common/async_util.js';
-import {constants} from '/common/constants.js';
-import {CursorRange} from '/common/cursors/range.js';
-import {TestImportManager} from '/common/testing/test_import_manager.js';
-
+import {AsyncUtil} from '../../../common/async_util.js';
+import {constants} from '../../../common/constants.js';
+import {CursorRange} from '../../../common/cursors/range.js';
 import {BridgeConstants} from '../../common/bridge_constants.js';
 import {BridgeHelper} from '../../common/bridge_helper.js';
 import {EarconId} from '../../common/earcon_id.js';
@@ -19,12 +17,14 @@ import {ALL_PANEL_MENU_NODE_DATA} from '../../common/panel_menu_data.js';
 import {QueueMode} from '../../common/tts_types.js';
 import {ChromeVox} from '../chromevox.js';
 import {ChromeVoxRange, ChromeVoxRangeObserver} from '../chromevox_range.js';
+import {ChromeVoxState} from '../chromevox_state.js';
 import {Output} from '../output/output.js';
 import {OutputCustomEvent} from '../output/output_types.js';
 
 import {ISearch} from './i_search.js';
 import {ISearchHandler} from './i_search_handler.js';
 import {PanelNodeMenuBackground} from './panel_node_menu_background.js';
+import {PanelTabMenuBackground} from './panel_tab_menu_background.js';
 
 const AutomationNode = chrome.automation.AutomationNode;
 const TARGET = BridgeConstants.PanelBackground.TARGET;
@@ -36,8 +36,6 @@ export class PanelBackground {
   constructor() {
     /** @private {ISearch} */
     this.iSearch_;
-    /** @private {!Promise} */
-    this.menusLoaded_ = Promise.resolve();
     /** @private {AutomationNode} */
     this.savedNode_;
     /** @private {Promise} */
@@ -71,8 +69,14 @@ export class PanelBackground {
         TARGET, Action.DESTROY_I_SEARCH,
         () => PanelBackground.instance.destroyISearch_());
     BridgeHelper.registerHandler(
+        TARGET, Action.FOCUS_TAB,
+        (windowId, tabId) => PanelTabMenuBackground.focusTab(windowId, tabId));
+    BridgeHelper.registerHandler(
         TARGET, Action.GET_ACTIONS_FOR_CURRENT_NODE,
         () => PanelBackground.instance.getActionsForCurrentNode_());
+    BridgeHelper.registerHandler(
+        TARGET, Action.GET_TAB_MENU_DATA,
+        () => PanelTabMenuBackground.getTabMenuData());
     BridgeHelper.registerHandler(
         TARGET, Action.INCREMENTAL_SEARCH,
         (searchStr, dir, opt_nextObject) =>
@@ -103,15 +107,6 @@ export class PanelBackground {
         () => PanelBackground.instance.waitForPanelCollapse_());
   }
 
-  /**
-   * Waits for menus that have already started loading to finish.
-   * If menus have not started loading, resolves immediately.
-   * @return {!Promise}
-   */
-  static waitForMenusLoaded() {
-    return PanelBackground.instance?.menusLoaded_ ?? Promise.resolve();
-  }
-
   /** @private */
   clearSavedNode_() {
     this.savedNode_ = null;
@@ -126,15 +121,12 @@ export class PanelBackground {
     if (!this.savedNode_) {
       return;
     }
-    const promises = [];
     for (const data of ALL_PANEL_MENU_NODE_DATA) {
       const isActivatedMenu = opt_activateMenuTitleId === data.titleId;
       const menuBackground =
           new PanelNodeMenuBackground(data, this.savedNode_, isActivatedMenu);
       menuBackground.populate();
-      promises.push(menuBackground.waitForFinish());
     }
-    this.menusLoaded_ = Promise.all(promises);
   }
 
   /**
@@ -246,7 +238,7 @@ export class PanelBackground {
     if (!node) {
       return;
     }
-    ChromeVoxRange.navigateTo(CursorRange.fromNode(node));
+    ChromeVoxState.instance.navigateToRange(CursorRange.fromNode(node));
   }
 
   /** @override */
@@ -346,5 +338,3 @@ class PanelRangeObserver {
     PanelBridge.onCurrentRangeChanged();
   }
 }
-
-TestImportManager.exportForTesting(PanelBackground);

@@ -7,6 +7,7 @@
 
 #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_query_type.h"
 #include "third_party/blink/renderer/modules/webgpu/dawn_object.h"
+#include "third_party/blink/renderer/platform/bindings/exception_state.h"
 
 namespace blink {
 
@@ -18,9 +19,7 @@ class GPUQuerySet : public DawnObject<WGPUQuerySet> {
  public:
   static GPUQuerySet* Create(GPUDevice* device,
                              const GPUQuerySetDescriptor* webgpu_desc);
-  explicit GPUQuerySet(GPUDevice* device,
-                       WGPUQuerySet querySet,
-                       const String& label);
+  explicit GPUQuerySet(GPUDevice* device, WGPUQuerySet querySet);
 
   GPUQuerySet(const GPUQuerySet&) = delete;
   GPUQuerySet& operator=(const GPUQuerySet&) = delete;

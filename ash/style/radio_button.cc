@@ -23,17 +23,10 @@ RadioButton::RadioButton(int button_width,
                          const std::u16string& label,
                          IconDirection icon_direction,
                          IconType icon_type,
-                         const gfx::Insets& insets,
-                         int image_label_spacing)
-    : OptionButtonBase(button_width,
-                       std::move(callback),
-                       label,
-                       insets,
-                       image_label_spacing),
+                         const gfx::Insets& insets)
+    : OptionButtonBase(button_width, std::move(callback), label, insets),
       icon_direction_(icon_direction),
-      icon_type_(icon_type) {
-  SetAccessibilityProperties(ax::mojom::Role::kRadioButton);
-}
+      icon_type_(icon_type) {}
 
 RadioButton::~RadioButton() = default;
 
@@ -57,7 +50,12 @@ bool RadioButton::IsIconOnTheLeftSide() {
   return icon_direction_ == IconDirection::kLeading;
 }
 
-BEGIN_METADATA(RadioButton)
+void RadioButton::GetAccessibleNodeData(ui::AXNodeData* node_data) {
+  OptionButtonBase::GetAccessibleNodeData(node_data);
+  node_data->role = ax::mojom::Role::kRadioButton;
+}
+
+BEGIN_METADATA(RadioButton, OptionButtonBase)
 END_METADATA
 
 }  // namespace ash

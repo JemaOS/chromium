@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "ash/wallpaper/wallpaper_window_state_manager.h"
-#include "base/memory/raw_ptr.h"
 
 #include "ash/shell.h"
 #include "ash/wm/mru_window_tracker.h"
@@ -23,7 +22,7 @@ void ActivateMruUnminimizedWindowOnActiveDesk() {
   MruWindowTracker::WindowList mru_windows(
       Shell::Get()->mru_window_tracker()->BuildMruWindowList(
           DesksMruType::kActiveDesk));
-  for (aura::Window* window : mru_windows) {
+  for (auto* window : mru_windows) {
     if (WindowState::Get(window)->GetStateType() !=
         chromeos::WindowStateType::kMinimized) {
       WindowState::Get(window)->Activate();
@@ -41,10 +40,9 @@ WallpaperWindowStateManager::~WallpaperWindowStateManager() = default;
 void WallpaperWindowStateManager::MinimizeInactiveWindows(
     const std::string& user_id_hash) {
   if (!base::Contains(user_id_hash_window_list_map_, user_id_hash)) {
-    user_id_hash_window_list_map_[user_id_hash] =
-        std::set<raw_ptr<aura::Window, SetExperimental>>();
+    user_id_hash_window_list_map_[user_id_hash] = std::set<aura::Window*>();
   }
-  std::set<raw_ptr<aura::Window, SetExperimental>>* results =
+  std::set<aura::Window*>* results =
       &user_id_hash_window_list_map_[user_id_hash];
 
   aura::Window* active_window = window_util::GetActiveWindow();
@@ -75,12 +73,11 @@ void WallpaperWindowStateManager::RestoreMinimizedWindows(
     return;
   }
 
-  std::set<raw_ptr<aura::Window, SetExperimental>> removed_windows;
+  std::set<aura::Window*> removed_windows;
   removed_windows.swap(it->second);
   user_id_hash_window_list_map_.erase(it);
 
-  for (std::set<raw_ptr<aura::Window, SetExperimental>>::iterator iter =
-           removed_windows.begin();
+  for (std::set<aura::Window*>::iterator iter = removed_windows.begin();
        iter != removed_windows.end(); ++iter) {
     WindowState::Get(*iter)->Unminimize();
     RemoveObserverIfUnreferenced(*iter);

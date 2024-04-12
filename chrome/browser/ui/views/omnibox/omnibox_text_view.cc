@@ -25,8 +25,6 @@
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/range/range.h"
 #include "ui/gfx/render_text.h"
-#include "ui/views/style/typography.h"
-#include "ui/views/style/typography_provider.h"
 
 namespace {
 
@@ -58,7 +56,7 @@ struct TextStyle {
   int touchable_size_delta = 0;
 
   // The baseline shift. Ignored under touch (text is always baseline-aligned).
-  gfx::BaselineStyle baseline = gfx::BaselineStyle::kNormalBaseline;
+  gfx::BaselineStyle baseline = gfx::NORMAL_BASELINE;
 };
 
 // The new answer layout has separate and different treatment of text styles,
@@ -79,8 +77,8 @@ void ApplyTextStyleForType(SuggestionAnswer::TextStyle text_style,
 
   const gfx::BaselineStyle baseline =
       (text_style == SuggestionAnswer::TextStyle::SUPERIOR)
-          ? gfx::BaselineStyle::kSuperior
-          : gfx::BaselineStyle::kNormalBaseline;
+          ? gfx::SUPERIOR
+          : gfx::NORMAL_BASELINE;
   render_text->ApplyBaselineStyle(baseline, range);
 
   const bool selected =
@@ -274,7 +272,7 @@ std::unique_ptr<gfx::RenderText> OmniboxTextView::CreateRenderText(
   render_text->SetDisplayRect(gfx::Rect(gfx::Size(INT_MAX, 0)));
   render_text->SetCursorEnabled(false);
   render_text->SetElideBehavior(gfx::ELIDE_TAIL);
-  const gfx::FontList& font = views::TypographyProvider::Get().GetFont(
+  const gfx::FontList& font = views::style::GetFont(
       (use_deemphasized_font_ ? CONTEXT_OMNIBOX_DEEMPHASIZED
                               : CONTEXT_OMNIBOX_POPUP),
       kTextStyle);
@@ -313,7 +311,7 @@ void OmniboxTextView::OnStyleChanged() {
   SchedulePaint();
 }
 
-BEGIN_METADATA(OmniboxTextView)
+BEGIN_METADATA(OmniboxTextView, views::View)
 ADD_PROPERTY_METADATA(std::u16string, Text)
 ADD_READONLY_PROPERTY_METADATA(int, LineHeight)
 END_METADATA

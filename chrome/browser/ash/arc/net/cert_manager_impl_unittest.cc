@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/arc/net/cert_manager_impl.h"
 
-#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -16,10 +15,11 @@
 #include "content/public/test/browser_task_environment.h"
 #include "crypto/scoped_test_nss_db.h"
 #include "net/cert/nss_cert_database.h"
+#include "net/cert/pem.h"
 #include "net/cert/scoped_nss_types.h"
 #include "net/cert/x509_util_nss.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/boringssl/src/pki/pem.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace arc {
 
@@ -109,16 +109,16 @@ constexpr char kUserCert[] =
     "-----END CERTIFICATE-----";
 
 class ImportDoneWaiter
-    : public base::test::TestFuture<std::optional<std::string>,
-                                    std::optional<int>> {
+    : public base::test::TestFuture<absl::optional<std::string>,
+                                    absl::optional<int>> {
  public:
   CertManager::ImportPrivateKeyAndCertCallback GetCallback() {
-    return TestFuture::GetCallback<const std::optional<std::string>&,
-                                   const std::optional<int>&>();
+    return TestFuture::GetCallback<const absl::optional<std::string>&,
+                                   const absl::optional<int>&>();
   }
 
-  std::optional<std::string> imported_cert_id() { return Get<0>(); }
-  std::optional<int> imported_slot_id() { return Get<1>(); }
+  absl::optional<std::string> imported_cert_id() { return Get<0>(); }
+  absl::optional<int> imported_slot_id() { return Get<1>(); }
 };
 
 }  // namespace
@@ -175,12 +175,13 @@ TEST_F(CertManagerImplTest, ImportKeyAndCertTest) {
   EXPECT_TRUE(import_future.imported_slot_id().has_value());
 
   // Assert that the imported key and certificate have the same ID.
-  bssl::PEMTokenizer tokenizer(kUserCert, {kCertificatePEMHeader});
+  net::PEMTokenizer tokenizer(kUserCert, {kCertificatePEMHeader});
   EXPECT_TRUE(tokenizer.GetNext());
   std::vector<uint8_t> cert_der(tokenizer.data().begin(),
                                 tokenizer.data().end());
   net::ScopedCERTCertificate cert(
-      net::x509_util::CreateCERTCertificateFromBytes(cert_der));
+      net::x509_util::CreateCERTCertificateFromBytes(cert_der.data(),
+                                                     cert_der.size()));
 
   // Get the certificate ID.
   crypto::ScopedSECItem cert_sec_item(

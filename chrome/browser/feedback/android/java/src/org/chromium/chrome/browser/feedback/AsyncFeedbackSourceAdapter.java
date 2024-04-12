@@ -9,7 +9,6 @@ import android.content.Context;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.task.AsyncTask;
 import org.chromium.base.task.AsyncTask.Status;
-import org.chromium.base.task.TaskTraits;
 
 import java.util.concurrent.ExecutionException;
 
@@ -75,7 +74,6 @@ public abstract class AsyncFeedbackSourceAdapter<Result> implements AsyncFeedbac
     public final void start(Runnable callback) {
         if (mWorker != null) return;
         mWorker = new Worker(callback);
-        // USER_BLOCKING since we eventually .get() this.
-        mWorker.executeWithTaskTraits(TaskTraits.USER_BLOCKING_MAY_BLOCK);
+        mWorker.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 }

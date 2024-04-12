@@ -8,6 +8,8 @@
 #include "base/functional/callback.h"
 #include "components/omnibox/browser/omnibox_event_global_tracker.h"
 #include "components/rlz/rlz_tracker_delegate.h"
+#include "content/public/browser/notification_observer.h"
+#include "content/public/browser/notification_registrar.h"
 
 class Profile;
 
@@ -17,7 +19,8 @@ class PrefRegistrySyncable;
 
 // ChromeRLZTrackerDelegate implements RLZTrackerDelegate abstract interface
 // and provides access to Chrome features.
-class ChromeRLZTrackerDelegate : public rlz::RLZTrackerDelegate {
+class ChromeRLZTrackerDelegate : public rlz::RLZTrackerDelegate,
+                                 public content::NotificationObserver {
  public:
   ChromeRLZTrackerDelegate();
 
@@ -32,6 +35,7 @@ class ChromeRLZTrackerDelegate : public rlz::RLZTrackerDelegate {
   static bool IsGoogleHomepage(Profile* profile);
   static bool IsGoogleInStartpages(Profile* profile);
 
+ private:
   // RLZTrackerDelegate implementation.
   void Cleanup() override;
   bool IsOnUIThread() override;
@@ -45,13 +49,17 @@ class ChromeRLZTrackerDelegate : public rlz::RLZTrackerDelegate {
   bool ClearReferral() override;
   void SetOmniboxSearchCallback(base::OnceClosure callback) override;
   void SetHomepageSearchCallback(base::OnceClosure callback) override;
-  void RunHomepageSearchCallback() override;
   bool ShouldUpdateExistingAccessPointRlz() override;
 
- private:
+  // content::NotificationObserver implementation:
+  void Observe(int type,
+               const content::NotificationSource& source,
+               const content::NotificationDetails& details) override;
+
   // Called when a URL is opened from the Omnibox.
   void OnURLOpenedFromOmnibox(OmniboxLog* log);
 
+  content::NotificationRegistrar registrar_;
   base::OnceClosure on_omnibox_search_callback_;
   base::OnceClosure on_homepage_search_callback_;
 

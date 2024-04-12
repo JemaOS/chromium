@@ -133,7 +133,7 @@ void NotificationMenuController::InitializeNotificationMenuView() {
   notification_menu_view_ = new NotificationMenuView(this, this, app_id_);
   container->AddChildView(notification_menu_view_.get());
 
-  for (message_center::Notification* notification :
+  for (auto* notification :
        message_center::MessageCenter::Get()->FindNotificationsByAppId(
            app_id_)) {
     notification_menu_view_->AddNotificationItemView(*notification);

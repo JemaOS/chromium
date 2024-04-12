@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ash/login/users/avatar/user_image_prefs.h"
 
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 
@@ -16,8 +18,9 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(kUserAvatarCustomizationSelectorsEnabled, true);
 }
 
-bool IsCustomizationSelectorsPrefEnabled(const PrefService* prefs) {
-  return prefs->GetBoolean(
+bool IsCustomizationSelectorsPrefEnabled(Profile* profile) {
+  PrefService* pref_service = profile->GetPrefs();
+  return pref_service->GetBoolean(
       user_image::prefs::kUserAvatarCustomizationSelectorsEnabled);
 }
 

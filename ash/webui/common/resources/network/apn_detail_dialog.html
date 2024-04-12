@@ -1,4 +1,4 @@
-<style include="cr-shared-style md-select cros-color-overrides">
+<style include="cr-shared-style md-select">
   cr-dialog {
     --cr-dialog-width: 416px;
   }
@@ -49,19 +49,9 @@
     --iron-icon-fill-color: var(--cr-secondary-text-color);
     margin-inline-end: 8px;
   }
-
-  .visually-hidden {
-    clip: rect(0 0 0 0);
-    clip-path: inset(50%);
-    height: 1px;
-    overflow: hidden;
-    position: absolute;
-    white-space: nowrap;
-    width: 1px;
-  }
 </style>
 <cr-dialog id="apnDetailDialog" show-on-attach>
-  <div id="apnDetailDialogTitle" slot="title" aria-live="polite">
+  <div id="apnDetailDialogTitle" slot="title">
     [[getDialogTitle_(mode)]]
   </div>
   <div slot="body">
@@ -81,11 +71,11 @@
     </cr-input>
     <cr-expand-button id="advancedSettingsBtn"
         class="advanced-settings cr-row"
-        expanded="{{advancedSettingsExpanded_}}"
-        aria-describedby="apnDetailDialogTitle">
+        expanded="{{advancedSettingsExpanded_}}">
       <div>[[i18n('apnDetailAdvancedSettings')]]</div>
     </cr-expand-button>
     <iron-collapse opened="[[advancedSettingsExpanded_]]">
+      <!-- TODO(b/162365553): Add validation. -->
       <div id="authenticationTypeSelection" class="dropdown-section">
         <div id="authenticationTypeLabel" class="cr-form-field-label">
           [[i18n('apnDetailAuthType')]]
@@ -103,12 +93,12 @@
           </template>
         </select>
       </div>
-      <div id="apnDetailApnTypesLabel" class="cr-form-field-label">
+      <div class="cr-form-field-label">
         [[i18n('apnDetailApnTypes')]]
       </div>
       <div id="checkboxContainer" class="checkbox-section">
         <cr-checkbox id="apnDefaultTypeCheckbox"
-            aria-describedby="apnDetailApnTypesLabel"
+            aria-labelledby="apnDefaultTypelabel"
             disabled="[[isUiElementDisabled_(UiElement.INPUT, mode)]]"
             checked="{{isDefaultApnType_}}">
           <div id="apnDefaultTypelabel" class="checkbox-text-area">
@@ -117,7 +107,7 @@
         </cr-checkbox>
         <cr-checkbox id="apnAttachTypeCheckbox"
             disabled="[[isUiElementDisabled_(UiElement.INPUT, mode)]]"
-            aria-describedby="apnDetailApnTypesLabel"
+            aria-labelledby="apnAttachTypeLabel"
             checked="{{isAttachApnType_}}">
           <div id="apnAttachTypeLabel" class="checkbox-text-area">
             [[i18n('apnDetailApnTypeAttach')]]
@@ -126,7 +116,7 @@
         <template is="dom-if" if="[[shouldShowApnTypeErrorMessage_]]" restamp>
           <div id="defaultApnRequiredInfo" class="default-apn-info">
             <iron-icon icon="cr:info-outline"></iron-icon>
-            <span aria-live="polite">[[i18n('apnDetailDefaultApnRequired')]]</span>
+            <span>[[i18n('apnDetailDefaultApnRequired')]]</span>
           </div>
         </template>
       </div>
@@ -164,19 +154,10 @@
               isDefaultApnType_, isAttachApnType_)]]">
         [[getActionButtonTitle_(mode)]]
       </cr-button>
-      <template is="dom-if" if="[[shouldAnnounceA11yActionButtonState_]]"
-          restamp>
-        <span id="actionButtonEnabledA11yText"
-            class="visually-hidden" role="alert">
-          [[actionButtonEnabledA11yText_]]
-        </span>
-      </template>
     </template>
     <template is="dom-if"
         if="[[isUiElementVisible_(UiElement.DONE_BUTTON, mode)]]" restamp>
       <cr-button id="apnDoneBtn" class="action-button"
-          aria-describedby="apnInput usernameInput
-              authenticationTypeSelection checkboxContainer ipTypeSelection"
           on-click="onCancelClicked_">
         [[i18n('apnDetailDialogDone')]]
       </cr-button>

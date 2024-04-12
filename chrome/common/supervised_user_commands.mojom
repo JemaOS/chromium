@@ -18,4 +18,6 @@ interface SupervisedUserCommands {
   // |request_issued| indicates whether the flow was successfully initiated (not
   // the result of the approval flow).
   RequestUrlAccessLocal() => (bool request_issued);
+  // Send feedback about the decision to block the current URL.
+  Feedback();
 };

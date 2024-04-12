@@ -9,7 +9,6 @@
 #include "third_party/blink/renderer/core/css/properties/longhands.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
-#include "ui/display/screen_info.h"
 
 namespace blink {
 
@@ -40,7 +39,7 @@ class ImageClassifierHelper {
           DarkModeFilter::ElementRole::kBackground);
 
   CORE_EXPORT static DarkModeFilter::ImageType GetImageTypeForTesting(
-      display::ScreenInfo& screen_info,
+      LocalFrame& local_frame,
       const gfx::RectF& dest_rect,
       const gfx::RectF& src_rect);
 };

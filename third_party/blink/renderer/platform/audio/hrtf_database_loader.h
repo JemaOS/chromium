@@ -40,11 +40,9 @@
 #include "third_party/blink/renderer/platform/wtf/ref_counted.h"
 #include "third_party/blink/renderer/platform/wtf/threading_primitives.h"
 
-namespace base {
-class WaitableEvent;
-}  // namespace base
-
 namespace blink {
+
+class WaitableEvent;
 
 // HRTFDatabaseLoader will asynchronously load the default HRTFDatabase in a new
 // thread.
@@ -76,6 +74,8 @@ class PLATFORM_EXPORT HRTFDatabaseLoader final
   // be called from the audio thread.
   HRTFDatabase* Database();
 
+  float DatabaseSampleRate() const { return database_sample_rate_; }
+
  private:
   // Both constructor and destructor must be called from the main thread.
   explicit HRTFDatabaseLoader(float sample_rate);
@@ -89,13 +89,13 @@ class PLATFORM_EXPORT HRTFDatabaseLoader final
   void LoadTask();
   void CleanupTask(base::WaitableEvent*);
 
-  // `lock_` MUST be held when accessing `hrtf_database_` or `thread_` because
+  // |lock_| MUST be held when accessing |hrtf_database_| or |thread_| because
   // it can be accessed by multiple threads (e.g multiple AudioContexts).
   base::Lock lock_;
   std::unique_ptr<HRTFDatabase> hrtf_database_ GUARDED_BY(lock_);
   std::unique_ptr<NonMainThread> thread_ GUARDED_BY(lock_);
 
-  const float database_sample_rate_;
+  float database_sample_rate_;
 };
 
 }  // namespace blink

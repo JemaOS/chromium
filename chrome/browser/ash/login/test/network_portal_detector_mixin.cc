@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/login/test/network_portal_detector_mixin.h"
 
 #include "base/run_loop.h"
-#include "base/strings/stringprintf.h"
 #include "chrome/browser/ash/net/network_portal_detector_test_impl.h"
 #include "chromeos/ash/components/dbus/shill/fake_shill_manager_client.h"
 #include "chromeos/ash/components/dbus/shill/fake_shill_profile_client.h"
@@ -131,12 +130,12 @@ void NetworkPortalDetectorMixin::SetShillDefaultNetwork(
   }
 
   std::string state = StatusToState(status);
-  static constexpr char kJson[] =
+  const std::string json =
       R"({"GUID": "%s", "Type": "%s", "SSID": "wifi_ssid",
           "State": "%s", "Strength": 100, "AutoConnect": true})";
   std::string json_str = base::StringPrintf(
-      kJson, network_guid.c_str(), network_type.c_str(), state.c_str());
-  std::optional<base::Value::Dict> json_dict =
+      json.c_str(), network_guid.c_str(), network_type.c_str(), state.c_str());
+  absl::optional<base::Value::Dict> json_dict =
       chromeos::onc::ReadDictionaryFromJson(json_str);
   CHECK(json_dict.has_value());
   ShillManagerClient::Get()->ConfigureServiceForProfile(

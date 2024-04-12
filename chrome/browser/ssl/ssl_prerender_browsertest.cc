@@ -18,8 +18,8 @@
 #include "components/security_interstitials/content/security_interstitial_page.h"
 #include "components/security_interstitials/content/security_interstitial_tab_helper.h"
 #include "components/security_interstitials/core/controller_client.h"
-#include "content/public/browser/preloading_trigger_type.h"
 #include "content/public/browser/prerender_handle.h"
+#include "content/public/browser/prerender_trigger_type.h"
 #include "content/public/browser/reload_type.h"
 #include "content/public/browser/ssl_host_state_delegate.h"
 #include "content/public/browser/web_contents.h"
@@ -181,9 +181,7 @@ IN_PROC_BROWSER_TEST_F(SSLPrerenderTest, TestNoInterstitialInPrerender) {
 // TODO(bokan): In the future, when prerendering supports cross origin
 // triggering, this test can be more straightforward by using one server for
 // the initial page and another, with bad certs, for the prerendering page.
-// TODO(crbug.com/1464656): the test has been flaky across platforms.
-IN_PROC_BROWSER_TEST_F(SSLPrerenderTest,
-                       DISABLED_TestNoInterstitialInPrerenderSW) {
+IN_PROC_BROWSER_TEST_F(SSLPrerenderTest, TestNoInterstitialInPrerenderSW) {
   auto server = CreateExpiredCertServer(GetChromeTestDataDir());
   ASSERT_TRUE(server->Start());
 
@@ -351,13 +349,11 @@ IN_PROC_BROWSER_TEST_F(SSLPrerenderTest,
     // Prerender the same insecure form.
     std::unique_ptr<content::PrerenderHandle> prerender_handle =
         web_contents()->StartPrerendering(
-            kUrl, content::PreloadingTriggerType::kEmbedder,
+            kUrl, content::PrerenderTriggerType::kEmbedder,
             prerender_utils::kDirectUrlInputMetricSuffix,
             ui::PageTransitionFromInt(ui::PAGE_TRANSITION_TYPED |
                                       ui::PAGE_TRANSITION_FROM_ADDRESS_BAR),
-            content::PreloadingHoldbackStatus::kUnspecified,
-            /*preloading_attempt=*/nullptr, /*url_match_predicate=*/{},
-            /*prerender_navigation_handle_callback=*/{});
+            nullptr);
     ASSERT_TRUE(prerender_handle);
     const int kPrerenderHostId = prerender_helper_.GetHostForUrl(kUrl);
     ASSERT_NE(kPrerenderHostId, content::RenderFrameHost::kNoFrameTreeNodeId);

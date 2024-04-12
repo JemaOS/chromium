@@ -4,7 +4,6 @@
 
 #include "chrome/updater/policy/manager.h"
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -12,8 +11,13 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/time/time.h"
 #include "chrome/updater/constants.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace updater {
+
+UpdatesSuppressedTimes::UpdatesSuppressedTimes() = default;
+
+UpdatesSuppressedTimes::~UpdatesSuppressedTimes() = default;
 
 bool UpdatesSuppressedTimes::operator==(
     const UpdatesSuppressedTimes& other) const {
@@ -60,28 +64,27 @@ class DefaultValuesPolicyManager : public PolicyManagerInterface {
 
   bool HasActiveDevicePolicies() const override;
 
-  std::optional<bool> CloudPolicyOverridesPlatformPolicy() const override;
-  std::optional<base::TimeDelta> GetLastCheckPeriod() const override;
-  std::optional<UpdatesSuppressedTimes> GetUpdatesSuppressedTimes()
+  absl::optional<base::TimeDelta> GetLastCheckPeriod() const override;
+  absl::optional<UpdatesSuppressedTimes> GetUpdatesSuppressedTimes()
       const override;
-  std::optional<std::string> GetDownloadPreference() const override;
-  std::optional<int> GetPackageCacheSizeLimitMBytes() const override;
-  std::optional<int> GetPackageCacheExpirationTimeDays() const override;
-  std::optional<int> GetEffectivePolicyForAppInstalls(
+  absl::optional<std::string> GetDownloadPreferenceGroupPolicy() const override;
+  absl::optional<int> GetPackageCacheSizeLimitMBytes() const override;
+  absl::optional<int> GetPackageCacheExpirationTimeDays() const override;
+  absl::optional<int> GetEffectivePolicyForAppInstalls(
       const std::string& app_id) const override;
-  std::optional<int> GetEffectivePolicyForAppUpdates(
+  absl::optional<int> GetEffectivePolicyForAppUpdates(
       const std::string& app_id) const override;
-  std::optional<std::string> GetTargetVersionPrefix(
+  absl::optional<std::string> GetTargetVersionPrefix(
       const std::string& app_id) const override;
-  std::optional<bool> IsRollbackToTargetVersionAllowed(
+  absl::optional<bool> IsRollbackToTargetVersionAllowed(
       const std::string& app_id) const override;
-  std::optional<std::string> GetProxyMode() const override;
-  std::optional<std::string> GetProxyPacUrl() const override;
-  std::optional<std::string> GetProxyServer() const override;
-  std::optional<std::string> GetTargetChannel(
+  absl::optional<std::string> GetProxyMode() const override;
+  absl::optional<std::string> GetProxyPacUrl() const override;
+  absl::optional<std::string> GetProxyServer() const override;
+  absl::optional<std::string> GetTargetChannel(
       const std::string& app_id) const override;
-  std::optional<std::vector<std::string>> GetForceInstallApps() const override;
-  std::optional<std::vector<std::string>> GetAppsWithPolicy() const override;
+  absl::optional<std::vector<std::string>> GetForceInstallApps() const override;
+  absl::optional<std::vector<std::string>> GetAppsWithPolicy() const override;
 
  private:
   ~DefaultValuesPolicyManager() override;
@@ -99,82 +102,78 @@ std::string DefaultValuesPolicyManager::source() const {
   return kSourceDefaultValuesPolicyManager;
 }
 
-std::optional<bool>
-DefaultValuesPolicyManager::CloudPolicyOverridesPlatformPolicy() const {
-  return std::nullopt;
-}
-
-std::optional<base::TimeDelta> DefaultValuesPolicyManager::GetLastCheckPeriod()
+absl::optional<base::TimeDelta> DefaultValuesPolicyManager::GetLastCheckPeriod()
     const {
   return kDefaultLastCheckPeriod;
 }
 
-std::optional<UpdatesSuppressedTimes>
+absl::optional<UpdatesSuppressedTimes>
 DefaultValuesPolicyManager::GetUpdatesSuppressedTimes() const {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<std::string> DefaultValuesPolicyManager::GetDownloadPreference()
+absl::optional<std::string>
+DefaultValuesPolicyManager::GetDownloadPreferenceGroupPolicy() const {
+  return absl::nullopt;
+}
+
+absl::optional<int> DefaultValuesPolicyManager::GetPackageCacheSizeLimitMBytes()
     const {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int> DefaultValuesPolicyManager::GetPackageCacheSizeLimitMBytes()
-    const {
-  return std::nullopt;
-}
-
-std::optional<int>
+absl::optional<int>
 DefaultValuesPolicyManager::GetPackageCacheExpirationTimeDays() const {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int> DefaultValuesPolicyManager::GetEffectivePolicyForAppInstalls(
+absl::optional<int>
+DefaultValuesPolicyManager::GetEffectivePolicyForAppInstalls(
     const std::string& app_id) const {
   return kInstallPolicyDefault;
 }
 
-std::optional<int> DefaultValuesPolicyManager::GetEffectivePolicyForAppUpdates(
+absl::optional<int> DefaultValuesPolicyManager::GetEffectivePolicyForAppUpdates(
     const std::string& app_id) const {
   return kUpdatePolicyDefault;
 }
 
-std::optional<std::string> DefaultValuesPolicyManager::GetTargetVersionPrefix(
+absl::optional<std::string> DefaultValuesPolicyManager::GetTargetVersionPrefix(
     const std::string& app_id) const {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<bool>
+absl::optional<bool>
 DefaultValuesPolicyManager::IsRollbackToTargetVersionAllowed(
     const std::string& app_id) const {
   return false;
 }
 
-std::optional<std::string> DefaultValuesPolicyManager::GetProxyMode() const {
-  return std::nullopt;
+absl::optional<std::string> DefaultValuesPolicyManager::GetProxyMode() const {
+  return absl::nullopt;
 }
 
-std::optional<std::string> DefaultValuesPolicyManager::GetProxyPacUrl() const {
-  return std::nullopt;
+absl::optional<std::string> DefaultValuesPolicyManager::GetProxyPacUrl() const {
+  return absl::nullopt;
 }
 
-std::optional<std::string> DefaultValuesPolicyManager::GetProxyServer() const {
-  return std::nullopt;
+absl::optional<std::string> DefaultValuesPolicyManager::GetProxyServer() const {
+  return absl::nullopt;
 }
 
-std::optional<std::string> DefaultValuesPolicyManager::GetTargetChannel(
+absl::optional<std::string> DefaultValuesPolicyManager::GetTargetChannel(
     const std::string& app_id) const {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<std::vector<std::string>>
+absl::optional<std::vector<std::string>>
 DefaultValuesPolicyManager::GetForceInstallApps() const {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<std::vector<std::string>>
+absl::optional<std::vector<std::string>>
 DefaultValuesPolicyManager::GetAppsWithPolicy() const {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 scoped_refptr<PolicyManagerInterface> GetDefaultValuesPolicyManager() {

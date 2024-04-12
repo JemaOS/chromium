@@ -6,24 +6,8 @@
 
 namespace ash {
 
-void TestGameDashboardDelegate::GetIsGame(const std::string& app_id,
-                                          IsGameCallback callback) {
-  std::move(callback).Run(app_id == kGameAppId);
-}
-
-std::string TestGameDashboardDelegate::GetArcAppName(
-    const std::string& app_id) const {
-  return std::string();
-}
-
-void TestGameDashboardDelegate::RecordGameWindowOpenedEvent(
-    aura::Window* window) {}
-
-void TestGameDashboardDelegate::ShowResizeToggleMenu(aura::Window* window) {}
-
-ukm::SourceId TestGameDashboardDelegate::GetUkmSourceId(
-    const std::string& app_id) {
-  return 123;
+bool TestGameDashboardDelegate::IsGame(const std::string& app_id) const {
+  return false;
 }
 
 }  // namespace ash

@@ -26,6 +26,7 @@
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_client.h"
 #include "third_party/blink/renderer/platform/loader/static_data_navigation_body_loader.h"
 #include "third_party/blink/renderer/platform/storage/blink_storage_key.h"
+#include "third_party/blink/renderer/platform/testing/histogram_tester.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_loader_mock_factory.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
@@ -59,14 +60,16 @@ class DecodedBodyLoader : public StaticDataNavigationBodyLoader {
       client_->DecodedBodyDataReceived(data, encoding_data, encoded_data);
     }
 
-    void BodyLoadingFinished(base::TimeTicks completion_time,
-                             int64_t total_encoded_data_length,
-                             int64_t total_encoded_body_length,
-                             int64_t total_decoded_body_length,
-                             const std::optional<WebURLError>& error) override {
-      client_->BodyLoadingFinished(completion_time, total_encoded_data_length,
-                                   total_encoded_body_length,
-                                   total_decoded_body_length, error);
+    void BodyLoadingFinished(
+        base::TimeTicks completion_time,
+        int64_t total_encoded_data_length,
+        int64_t total_encoded_body_length,
+        int64_t total_decoded_body_length,
+        bool should_report_corb_blocking,
+        const absl::optional<WebURLError>& error) override {
+      client_->BodyLoadingFinished(
+          completion_time, total_encoded_data_length, total_encoded_body_length,
+          total_decoded_body_length, should_report_corb_blocking, error);
     }
 
    private:
@@ -117,15 +120,6 @@ class DocumentLoaderTest : public testing::TestWithParam<bool> {
         url_test_helpers::ToKURL("http://example.com/foo.html"),
         test::CoreTestDataPath("foo.html"));
     url_test_helpers::RegisterMockedURLLoad(
-        url_test_helpers::ToKURL("http://user:@example.com/foo.html"),
-        test::CoreTestDataPath("foo.html"));
-    url_test_helpers::RegisterMockedURLLoad(
-        url_test_helpers::ToKURL("http://:pass@example.com/foo.html"),
-        test::CoreTestDataPath("foo.html"));
-    url_test_helpers::RegisterMockedURLLoad(
-        url_test_helpers::ToKURL("http://user:pass@example.com/foo.html"),
-        test::CoreTestDataPath("foo.html"));
-    url_test_helpers::RegisterMockedURLLoad(
         url_test_helpers::ToKURL("https://example.com/foo.html"),
         test::CoreTestDataPath("foo.html"));
     url_test_helpers::RegisterMockedURLLoad(
@@ -135,17 +129,17 @@ class DocumentLoaderTest : public testing::TestWithParam<bool> {
         url_test_helpers::ToKURL("http://192.168.1.1/foo.html"),
         test::CoreTestDataPath("foo.html"), WebString::FromUTF8("text/html"),
         URLLoaderMockFactory::GetSingletonInstance(),
-        network::mojom::IPAddressSpace::kPrivate);
+        network::mojom::IPAddressSpace::kLocal);
     url_test_helpers::RegisterMockedURLLoad(
         url_test_helpers::ToKURL("https://192.168.1.1/foo.html"),
         test::CoreTestDataPath("foo.html"), WebString::FromUTF8("text/html"),
         URLLoaderMockFactory::GetSingletonInstance(),
-        network::mojom::IPAddressSpace::kPrivate);
+        network::mojom::IPAddressSpace::kLocal);
     url_test_helpers::RegisterMockedURLLoad(
         url_test_helpers::ToKURL("http://somethinglocal/foo.html"),
         test::CoreTestDataPath("foo.html"), WebString::FromUTF8("text/html"),
         URLLoaderMockFactory::GetSingletonInstance(),
-        network::mojom::IPAddressSpace::kLocal);
+        network::mojom::IPAddressSpace::kLoopback);
   }
 
   void TearDown() override {
@@ -164,7 +158,6 @@ class DocumentLoaderTest : public testing::TestWithParam<bool> {
 
   WebLocalFrameImpl* MainFrame() { return web_view_helper_.LocalMainFrame(); }
 
-  test::TaskEnvironment task_environment_;
   frame_test_helpers::WebViewHelper web_view_helper_;
   base::test::ScopedFeatureList scoped_feature_list_;
 };
@@ -843,25 +836,6 @@ TEST_P(DocumentLoaderTest, DecodedBodyDataWithBlockedParser) {
 
   // DecodedBodyLoader uppercases all data.
   EXPECT_EQ(MainFrame()->GetDocument().Body().TextContent(), "FOO");
-}
-
-TEST_P(DocumentLoaderTest, EmbeddedCredentialsNavigation) {
-  struct TestCase {
-    const char* url;
-    const bool useCounted;
-  } test_cases[] = {{"http://example.com/foo.html", false},
-                    {"http://user:@example.com/foo.html", true},
-                    {"http://:pass@example.com/foo.html", true},
-                    {"http://user:pass@example.com/foo.html", true}};
-  for (const auto& test_case : test_cases) {
-    WebViewImpl* web_view_impl =
-        web_view_helper_.InitializeAndLoad(test_case.url);
-    Document* document =
-        To<LocalFrame>(web_view_impl->GetPage()->MainFrame())->GetDocument();
-    EXPECT_EQ(test_case.useCounted,
-              document->IsUseCounted(
-                  WebFeature::kTopLevelDocumentWithEmbeddedCredentials));
-  }
 }
 
 }  // namespace

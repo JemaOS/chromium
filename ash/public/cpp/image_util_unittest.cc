@@ -7,14 +7,13 @@
 #include <string>
 
 #include "ash/public/cpp/image_util.h"
-#include "ash/public/cpp/test/in_process_data_decoder.h"
+#include "ash/public/cpp/test/in_process_image_decoder.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/location.h"
 #include "base/run_loop.h"
 #include "base/strings/string_piece.h"
-#include "base/task/thread_pool.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_run_loop_timeout.h"
 #include "base/test/task_environment.h"
@@ -24,19 +23,11 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColor.h"
-#include "third_party/skia/include/core/SkRect.h"
-#include "ui/gfx/canvas.h"
 #include "ui/gfx/codec/jpeg_codec.h"
 #include "ui/gfx/codec/png_codec.h"
-#include "ui/gfx/geometry/insets.h"
-#include "ui/gfx/geometry/rect.h"
-#include "ui/gfx/geometry/size.h"
-#include "ui/gfx/image/canvas_image_source.h"
 #include "ui/gfx/image/image.h"
 #include "ui/gfx/image/image_skia.h"
-#include "ui/gfx/image/image_skia_operations.h"
 #include "ui/gfx/image/image_unittest_util.h"
-#include "ui/gfx/skia_util.h"
 
 namespace ash {
 namespace {
@@ -46,6 +37,13 @@ namespace {
 // very long time) if there's a bug in the code where the callback is not being
 // run.
 constexpr base::TimeDelta kDecodeImageTimeout = base::Seconds(3);
+
+gfx::ImageSkia CreateTestImage(int width, int height, SkColor color) {
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(width, height);
+  bitmap.eraseColor(color);
+  return gfx::ImageSkia::CreateFrom1xBitmap(bitmap);
+}
 
 using EncodingFunction =
     base::RepeatingCallback<bool(const SkBitmap&, std::vector<unsigned char>*)>;
@@ -83,29 +81,6 @@ std::string EncodeAsPng(const gfx::ImageSkia& image) {
       }));
 }
 
-// `BorderedImageSource` can be used to generate a test image in conjunction
-// with `gfx::CanvasImageSource::MakeImageSkia`. Images will be of the given
-// size, with one color in the center and borders in a different color, as
-// indicated by `borders`.
-class BorderedImageSource : public gfx::CanvasImageSource {
- public:
-  const SkColor kCenterColor = SK_ColorWHITE;
-  const SkColor kBorderColor = SK_ColorBLACK;
-
-  BorderedImageSource(const gfx::Size& size, const gfx::Insets& borders)
-      : gfx::CanvasImageSource(size), borders_(borders) {}
-
-  void Draw(gfx::Canvas* canvas) override {
-    canvas->DrawColor(kBorderColor);
-    gfx::Rect center(size());
-    center.Inset(borders_);
-    canvas->FillRect(center, kCenterColor);
-  }
-
- private:
-  const gfx::Insets borders_;
-};
-
 }  // namespace
 
 class ImageUtilTest : public ::testing::Test {
@@ -126,16 +101,13 @@ class ImageUtilTest : public ::testing::Test {
         });
   }
 
-  gfx::ImageSkia DecodeImageFile(
-      base::FilePath::StringPieceType file_name,
-      data_decoder::mojom::ImageCodec codec,
-      scoped_refptr<base::SequencedTaskRunner> file_task_runner = nullptr) {
+  gfx::ImageSkia DecodeImageFile(base::FilePath::StringPieceType file_name,
+                                 data_decoder::mojom::ImageCodec codec) {
     base::test::ScopedRunLoopTimeout timeout(FROM_HERE, kDecodeImageTimeout);
     base::RunLoop run_loop;
     gfx::ImageSkia image_out;
     image_util::DecodeImageFile(CreateDecodeImageCallback(run_loop, image_out),
-                                CreateFilePath(file_name), codec,
-                                std::move(file_task_runner));
+                                CreateFilePath(file_name), codec);
     run_loop.Run();
     return image_out;
   }
@@ -152,13 +124,12 @@ class ImageUtilTest : public ::testing::Test {
   }
 
   base::test::TaskEnvironment task_environment_;
-  InProcessDataDecoder decoder_;
+  InProcessImageDecoder decoder_;
   base::ScopedTempDir scoped_temp_dir_;
 };
 
 TEST_F(ImageUtilTest, DecodeImageDataDefaultCodec) {
-  gfx::ImageSkia original_image =
-      gfx::test::CreateImageSkia(200, 100, SK_ColorYELLOW);
+  gfx::ImageSkia original_image = CreateTestImage(200, 100, SK_ColorYELLOW);
   gfx::ImageSkia decoded_image = DecodeImageData(
       data_decoder::mojom::ImageCodec::kDefault, EncodeAsJpeg(original_image));
   EXPECT_TRUE(gfx::test::AreImagesEqual(gfx::Image(decoded_image),
@@ -166,8 +137,7 @@ TEST_F(ImageUtilTest, DecodeImageDataDefaultCodec) {
 }
 
 TEST_F(ImageUtilTest, DecodeImageDataPng) {
-  gfx::ImageSkia original_image =
-      gfx::test::CreateImageSkia(200, 100, SK_ColorYELLOW);
+  gfx::ImageSkia original_image = CreateTestImage(200, 100, SK_ColorYELLOW);
   gfx::ImageSkia decoded_image = DecodeImageData(
       data_decoder::mojom::ImageCodec::kPng, EncodeAsPng(original_image));
   EXPECT_TRUE(gfx::test::AreImagesEqual(gfx::Image(decoded_image),
@@ -181,8 +151,7 @@ TEST_F(ImageUtilTest, DecodeImageDataFailsForInvalidData) {
 }
 
 TEST_F(ImageUtilTest, DecodeImageFileDefaultCodec) {
-  gfx::ImageSkia original_image =
-      gfx::test::CreateImageSkia(200, 100, SK_ColorYELLOW);
+  gfx::ImageSkia original_image = CreateTestImage(200, 100, SK_ColorYELLOW);
   ASSERT_TRUE(base::WriteFile(CreateFilePath("test_image.jpg"),
                               EncodeAsJpeg(original_image)));
   gfx::ImageSkia decoded_image = DecodeImageFile(
@@ -191,21 +160,8 @@ TEST_F(ImageUtilTest, DecodeImageFileDefaultCodec) {
                                         gfx::Image(original_image)));
 }
 
-TEST_F(ImageUtilTest, DecodeImageFileCustomTaskRunner) {
-  gfx::ImageSkia original_image =
-      gfx::test::CreateImageSkia(200, 100, SK_ColorYELLOW);
-  ASSERT_TRUE(base::WriteFile(CreateFilePath("test_image.jpg"),
-                              EncodeAsJpeg(original_image)));
-  gfx::ImageSkia decoded_image = DecodeImageFile(
-      "test_image.jpg", data_decoder::mojom::ImageCodec::kDefault,
-      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}));
-  EXPECT_TRUE(gfx::test::AreImagesEqual(gfx::Image(decoded_image),
-                                        gfx::Image(original_image)));
-}
-
 TEST_F(ImageUtilTest, DecodeImageFilePng) {
-  gfx::ImageSkia original_image =
-      gfx::test::CreateImageSkia(200, 100, SK_ColorYELLOW);
+  gfx::ImageSkia original_image = CreateTestImage(200, 100, SK_ColorYELLOW);
   ASSERT_TRUE(base::WriteFile(CreateFilePath("test_image.png"),
                               EncodeAsPng(original_image)));
   gfx::ImageSkia decoded_image =
@@ -227,10 +183,8 @@ TEST_F(ImageUtilTest, DecodeImageFileFailsForMissingFile) {
 }
 
 TEST_F(ImageUtilTest, DecodeImageFileMultipleFiles) {
-  gfx::ImageSkia original_image_1 =
-      gfx::test::CreateImageSkia(200, 100, SK_ColorYELLOW);
-  gfx::ImageSkia original_image_2 =
-      gfx::test::CreateImageSkia(100, 200, SK_ColorCYAN);
+  gfx::ImageSkia original_image_1 = CreateTestImage(200, 100, SK_ColorYELLOW);
+  gfx::ImageSkia original_image_2 = CreateTestImage(100, 200, SK_ColorCYAN);
   ASSERT_TRUE(base::WriteFile(CreateFilePath("test_image_1.jpg"),
                               EncodeAsJpeg(original_image_1)));
   ASSERT_TRUE(base::WriteFile(CreateFilePath("test_image_2.jpg"),
@@ -246,8 +200,7 @@ TEST_F(ImageUtilTest, DecodeImageFileMultipleFiles) {
 }
 
 TEST_F(ImageUtilTest, DecodeImageFileSameFileMultipleTimes) {
-  gfx::ImageSkia original_image =
-      gfx::test::CreateImageSkia(200, 100, SK_ColorYELLOW);
+  gfx::ImageSkia original_image = CreateTestImage(200, 100, SK_ColorYELLOW);
   ASSERT_TRUE(base::WriteFile(CreateFilePath("test_image.jpg"),
                               EncodeAsJpeg(original_image)));
   gfx::ImageSkia decoded_image = DecodeImageFile(
@@ -255,7 +208,7 @@ TEST_F(ImageUtilTest, DecodeImageFileSameFileMultipleTimes) {
   EXPECT_TRUE(gfx::test::AreImagesEqual(gfx::Image(decoded_image),
                                         gfx::Image(original_image)));
 
-  original_image = gfx::test::CreateImageSkia(100, 200, SK_ColorCYAN);
+  original_image = CreateTestImage(100, 200, SK_ColorCYAN);
   ASSERT_TRUE(base::WriteFile(CreateFilePath("test_image.jpg"),
                               EncodeAsJpeg(original_image)));
   decoded_image = DecodeImageFile("test_image.jpg",
@@ -263,55 +216,5 @@ TEST_F(ImageUtilTest, DecodeImageFileSameFileMultipleTimes) {
   EXPECT_TRUE(gfx::test::AreImagesEqual(gfx::Image(decoded_image),
                                         gfx::Image(original_image)));
 }
-
-struct ResizeAndCropTestCase {
-  gfx::Size target_size;
-  gfx::Insets expected_borders;
-};
-
-using ResizeAndCropTest = testing::TestWithParam<ResizeAndCropTestCase>;
-
-TEST_P(ResizeAndCropTest, ResizeAndCropImage) {
-  const auto& test_case = GetParam();
-
-  auto expected_image =
-      gfx::CanvasImageSource::MakeImageSkia<BorderedImageSource>(
-          test_case.target_size, test_case.expected_borders);
-
-  auto original_image =
-      gfx::CanvasImageSource::MakeImageSkia<BorderedImageSource>(
-          gfx::Size(100, 100), /*borders=*/gfx::Insets(10));
-
-  // The deviation tolerance for the images has to be relatively high here,
-  // because the test resizes images with sharp edges and opposite colors, which
-  // can create significant artifacts. This is more than ok, since an incorrect
-  // pixel will be an opposite color.
-  EXPECT_TRUE(gfx::test::AreImagesClose(
-      gfx::Image(image_util::ResizeAndCropImage(original_image,
-                                                test_case.target_size)),
-      gfx::Image(expected_image), /*max_deviation=*/20));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    All,
-    ResizeAndCropTest,
-    testing::ValuesIn<ResizeAndCropTestCase>({
-        // Case: Shrink, no crop.
-        {gfx::Size(80, 80), gfx::Insets(8)},
-        // Case: Enlarge, no crop.
-        {gfx::Size(110, 110), gfx::Insets(11)},
-        // Case: No scaling, vertical crop.
-        {gfx::Size(100, 80), gfx::Insets::VH(0, 10)},
-        // Case: No scaling, horizontal crop.
-        {gfx::Size(20, 100), gfx::Insets::VH(10, 0)},
-        // Case: No scaling, partial vertical crop.
-        {gfx::Size(100, 90), gfx::Insets::VH(5, 10)},
-        // Case: Shrink, vertical crop.
-        {gfx::Size(90, 70), gfx::Insets::VH(0, 9)},
-        // Case: Enlarge, partial horizontal crop, with some border showing.
-        {gfx::Size(100, 110), gfx::Insets::VH(11, 6)},
-        // Case: No scaling, extreme horizontal crop.
-        {gfx::Size(1, 100), gfx::Insets::VH(10, 0)},
-    }));
 
 }  // namespace ash

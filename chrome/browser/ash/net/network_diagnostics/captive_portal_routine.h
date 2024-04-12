@@ -18,8 +18,7 @@ namespace network_diagnostics {
 // Tests whether the internet connection is trapped behind a captive portal.
 class CaptivePortalRoutine : public NetworkDiagnosticsRoutine {
  public:
-  explicit CaptivePortalRoutine(
-      chromeos::network_diagnostics::mojom::RoutineCallSource source);
+  CaptivePortalRoutine();
   CaptivePortalRoutine(const CaptivePortalRoutine&) = delete;
   CaptivePortalRoutine& operator=(const CaptivePortalRoutine&) = delete;
   ~CaptivePortalRoutine() override;

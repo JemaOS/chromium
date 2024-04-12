@@ -59,9 +59,7 @@ class CrtcController {
   // gbm will pick a modifier as it allocates the bo.
   std::vector<uint64_t> GetFormatModifiers(uint32_t fourcc_format);
 
-  // Returns whether DrmWrapper successfully sets cursor with the given
-  // parameters.
-  [[nodiscard]] bool SetCursor(uint32_t handle, const gfx::Size& size);
+  void SetCursor(uint32_t handle, const gfx::Size& size);
   void MoveCursor(const gfx::Point& location);
 
   // Adds trace records to |context|.
@@ -75,7 +73,8 @@ class CrtcController {
   // TODO(dnicoara) Add support for hardware mirroring (multiple connectors).
   const uint32_t connector_;
 
-  const raw_ref<const HardwareDisplayPlaneManager::CrtcState> state_;
+  const raw_ref<const HardwareDisplayPlaneManager::CrtcState, ExperimentalAsh>
+      state_;
 };
 
 }  // namespace ui

@@ -18,10 +18,10 @@ void TestTabStripModelDelegate::AddTabAt(
     const GURL& url,
     int index,
     bool foreground,
-    std::optional<tab_groups::TabGroupId> group) {}
+    absl::optional<tab_groups::TabGroupId> group) {}
 
-Browser* TestTabStripModelDelegate::CreateNewStripWithTabs(
-    std::vector<NewStripContents> tabs,
+Browser* TestTabStripModelDelegate::CreateNewStripWithContents(
+    std::vector<NewStripContents> contentses,
     const gfx::Rect& window_bounds,
     bool maximize) {
   return nullptr;
@@ -65,9 +65,9 @@ void TestTabStripModelDelegate::MoveTabsToNewWindow(
 void TestTabStripModelDelegate::MoveGroupToNewWindow(
     const tab_groups::TabGroupId& group) {}
 
-std::optional<SessionID> TestTabStripModelDelegate::CreateHistoricalTab(
+absl::optional<SessionID> TestTabStripModelDelegate::CreateHistoricalTab(
     content::WebContents* contents) {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void TestTabStripModelDelegate::CreateHistoricalGroup(
@@ -103,7 +103,8 @@ bool TestTabStripModelDelegate::SupportsReadLater() {
 }
 
 void TestTabStripModelDelegate::CacheWebContents(
-    const std::vector<std::unique_ptr<DetachedWebContents>>& web_contents) {}
+    const std::vector<std::unique_ptr<TabStripModel::DetachedWebContents>>&
+        web_contents) {}
 
 void TestTabStripModelDelegate::FollowSite(content::WebContents* web_contents) {
 }
@@ -116,9 +117,3 @@ bool TestTabStripModelDelegate::IsForWebApp() {
 }
 
 void TestTabStripModelDelegate::CopyURL(content::WebContents* web_contents) {}
-
-void TestTabStripModelDelegate::GoBack(content::WebContents* web_contents) {}
-
-bool TestTabStripModelDelegate::CanGoBack(content::WebContents* web_contents) {
-  return false;
-}

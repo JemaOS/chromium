@@ -14,7 +14,8 @@ namespace ash {
 
 // Interface for dependency injection between SignInFatalErrorScreen and its
 // WebUI representation.
-class SignInFatalErrorView {
+class SignInFatalErrorView
+    : public base::SupportsWeakPtr<SignInFatalErrorView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{
       "signin-fatal-error", "SignInFatalErrorScreen"};
@@ -23,13 +24,10 @@ class SignInFatalErrorView {
   // Shows the contents of the screen.
   virtual void Show(SignInFatalErrorScreen::Error error,
                     const base::Value::Dict& params) = 0;
-
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<SignInFatalErrorView> AsWeakPtr() = 0;
 };
 
-class SignInFatalErrorScreenHandler final : public SignInFatalErrorView,
-                                            public BaseScreenHandler {
+class SignInFatalErrorScreenHandler : public SignInFatalErrorView,
+                                      public BaseScreenHandler {
  public:
   using TView = SignInFatalErrorView;
 
@@ -42,13 +40,10 @@ class SignInFatalErrorScreenHandler final : public SignInFatalErrorView,
  private:
   void Show(SignInFatalErrorScreen::Error error,
             const base::Value::Dict& params) override;
-  base::WeakPtr<SignInFatalErrorView> AsWeakPtr() override;
 
   // BaseScreenHandler:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
-  base::WeakPtrFactory<SignInFatalErrorView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

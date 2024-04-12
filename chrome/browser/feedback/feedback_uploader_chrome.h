@@ -30,7 +30,7 @@ class GoogleServiceAuthError;
 
 namespace feedback {
 
-class FeedbackUploaderChrome final : public FeedbackUploader {
+class FeedbackUploaderChrome : public FeedbackUploader {
  public:
   explicit FeedbackUploaderChrome(content::BrowserContext* context);
 
@@ -38,8 +38,6 @@ class FeedbackUploaderChrome final : public FeedbackUploader {
   FeedbackUploaderChrome& operator=(const FeedbackUploaderChrome&) = delete;
 
   ~FeedbackUploaderChrome() override;
-
-  base::WeakPtr<FeedbackUploader> AsWeakPtr() override;
 
   class Delegate {
    public:
@@ -82,8 +80,6 @@ class FeedbackUploaderChrome final : public FeedbackUploader {
   raw_ptr<Delegate> delegate_ = nullptr;  // Not owned.
 
   raw_ptr<content::BrowserContext> context_ = nullptr;
-
-  base::WeakPtrFactory<FeedbackUploaderChrome> weak_ptr_factory_{this};
 };
 
 }  // namespace feedback

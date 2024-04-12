@@ -4,8 +4,7 @@
 
 #include "chrome/browser/media/webrtc/capture_policy_utils.h"
 
-#include <vector>
-
+#include "base/containers/cxx20_erase_vector.h"
 #include "base/feature_list.h"
 #include "base/ranges/algorithm.h"
 #include "build/build_config.h"
@@ -19,12 +18,9 @@
 #include "components/content_settings/browser/page_specific_content_settings.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings_pattern.h"
-#include "components/content_settings/core/common/pref_names.h"
-#include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/web_contents.h"
-#include "media/base/media_switches.h"
 #include "third_party/blink/public/common/features_generated.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -36,32 +32,7 @@
 #include "ui/base/ui_base_types.h"
 #endif
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/chromeos/policy/multi_screen_capture/multi_screen_capture_policy_service.h"
-#include "chrome/browser/chromeos/policy/multi_screen_capture/multi_screen_capture_policy_service_factory.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
 namespace capture_policy {
-
-// This pref connects to the GetDisplayMediaSetSelectAllScreensAllowedForUrls
-// policy. To avoid dynamic refresh, this pref will not be read directly, but
-// the value will be copied manually to the
-// kManagedAccessToGetAllScreensMediaInSessionAllowedForUrls pref, which is then
-// consumed by content settings to check if access to `getAllScreensMedia` shall
-// be permitted for a given origin.
-// TODO(b/329064666): Remove this pref once the pivot to IWAs is complete.
-const char kManagedAccessToGetAllScreensMediaAllowedForUrls[] =
-    "profile.managed_access_to_get_all_screens_media_allowed_for_urls";
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-
-// This pref connects to the MultiScreenCaptureAllowedForUrls policy and will
-// replace the deprecated GetDisplayMediaSetSelectAllScreensAllowedForUrls
-// policy once the pivot to IWAs is complete.
-const char kManagedMultiScreenCaptureAllowedForUrls[] =
-    "profile.managed_multi_screen_capture_allowed_for_urls";
-
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 namespace {
 
@@ -98,8 +69,8 @@ AllowedScreenCaptureLevel GetAllowedCaptureLevel(
   // properly on all platforms, and since it's not clear that we actually want
   // to support this anyway, turn it off for now.  Note that direct calls into
   // `GetAllowedCaptureLevel(..., PrefService)` will miss this check.
-  if (!base::FeatureList::IsEnabled(media::kDocumentPictureInPictureCapture) &&
-      PictureInPictureWindowManager::IsChildWebContents(
+  // TODO(crbug.com/1410382): Consider turning this back on.
+  if (PictureInPictureWindowManager::IsChildWebContents(
           capturer_web_contents)) {
     return AllowedScreenCaptureLevel::kDisallowed;
   }
@@ -152,31 +123,9 @@ AllowedScreenCaptureLevel GetAllowedCaptureLevel(const GURL& request_origin,
   return AllowedScreenCaptureLevel::kDisallowed;
 }
 
-void RegisterProfilePrefs(PrefRegistrySimple* registry) {
-  registry->RegisterListPref(kManagedAccessToGetAllScreensMediaAllowedForUrls);
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  registry->RegisterListPref(kManagedMultiScreenCaptureAllowedForUrls);
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-}
-
-bool IsGetAllScreensMediaAllowedForAnySite(content::BrowserContext* context) {
-// TODO(b/40272166): Implement for Lacros.
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  chromeos::multi_screen_capture::MultiScreenCapturePolicyService*
-      multi_capture_policy_service = chromeos::multi_screen_capture::
-          MultiScreenCapturePolicyServiceFactory::GetForBrowserContext(context);
-  if (!multi_capture_policy_service) {
-    return false;
-  }
-
-  if (multi_capture_policy_service->GetAllowListSize() > 0u) {
-    return true;
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-// TODO(b/329064666): Remove the checks below once the pivot to IWAs is
-// complete.
-#if BUILDFLAG(IS_CHROMEOS)
+bool IsGetDisplayMediaSetSelectAllScreensAllowedForAnySite(
+    content::BrowserContext* context) {
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
   Profile* profile = Profile::FromBrowserContext(context);
   if (!profile) {
     return false;
@@ -196,9 +145,10 @@ bool IsGetAllScreensMediaAllowedForAnySite(content::BrowserContext* context) {
   if (!host_content_settings_map) {
     return false;
   }
-  ContentSettingsForOneType content_settings =
-      host_content_settings_map->GetSettingsForOneType(
-          ContentSettingsType::ALL_SCREEN_CAPTURE);
+  ContentSettingsForOneType content_settings;
+  host_content_settings_map->GetSettingsForOneType(
+      ContentSettingsType::GET_DISPLAY_MEDIA_SET_SELECT_ALL_SCREENS,
+      &content_settings);
   return base::ranges::any_of(content_settings,
                               [](const ContentSettingPatternSource& source) {
                                 return source.GetContentSetting() ==
@@ -209,25 +159,10 @@ bool IsGetAllScreensMediaAllowedForAnySite(content::BrowserContext* context) {
 #endif
 }
 
-bool IsGetAllScreensMediaAllowed(content::BrowserContext* context,
-                                 const GURL& url) {
-// TODO(b/40272166): Implement for Lacros.
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  chromeos::multi_screen_capture::MultiScreenCapturePolicyService*
-      multi_capture_policy_service = chromeos::multi_screen_capture::
-          MultiScreenCapturePolicyServiceFactory::GetForBrowserContext(context);
-  if (!multi_capture_policy_service) {
-    return false;
-  }
-
-  if (multi_capture_policy_service->IsMultiScreenCaptureAllowed(url)) {
-    return true;
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-  // TODO(b/329064666): Remove the checks below once the pivot to IWAs is
-  // complete.
-#if BUILDFLAG(IS_CHROMEOS)
+bool IsGetDisplayMediaSetSelectAllScreensAllowed(
+    content::BrowserContext* context,
+    const GURL& url) {
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
   Profile* profile = Profile::FromBrowserContext(context);
   if (!profile) {
     return false;
@@ -249,7 +184,8 @@ bool IsGetAllScreensMediaAllowed(content::BrowserContext* context,
   }
   ContentSetting auto_accept_enabled =
       host_content_settings_map->GetContentSetting(
-          url, url, ContentSettingsType::ALL_SCREEN_CAPTURE);
+          url, url,
+          ContentSettingsType::GET_DISPLAY_MEDIA_SET_SELECT_ALL_SCREENS);
   return auto_accept_enabled == ContentSetting::CONTENT_SETTING_ALLOW;
 #else
   // This API is currently only available on ChromeOS and Linux.
@@ -313,11 +249,12 @@ DesktopMediaList::WebContentsFilter GetIncludableWebContentsFilter(
 
 void FilterMediaList(std::vector<DesktopMediaList::Type>& media_types,
                      AllowedScreenCaptureLevel capture_level) {
-  std::erase_if(
+  base::EraseIf(
       media_types, [capture_level](const DesktopMediaList::Type& type) {
         switch (type) {
           case DesktopMediaList::Type::kNone:
-            NOTREACHED_NORETURN();
+            NOTREACHED();
+            return false;
           // SameOrigin is more restrictive than just Tabs, so as long as
           // at least SameOrigin is allowed, these entries should stay.
           // They should be filtered later by the caller.

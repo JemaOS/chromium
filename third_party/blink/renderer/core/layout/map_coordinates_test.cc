@@ -697,7 +697,7 @@ TEST_F(MapCoordinatesTest, FixedPosInIFrameWhenMainFrameScrolled) {
       ScrollOffset(0.0, 1000), mojom::blink::ScrollType::kProgrammatic);
   UpdateAllLifecyclePhasesForTest();
 
-  Element* target = ChildDocument().getElementById(AtomicString("target"));
+  Element* target = ChildDocument().getElementById("target");
   ASSERT_TRUE(target);
   PhysicalOffset mapped_point =
       MapAncestorToLocal(target->GetLayoutObject(), nullptr,
@@ -728,7 +728,7 @@ TEST_F(MapCoordinatesTest, IFrameTransformed) {
       ScrollOffset(0.0, 1000), mojom::blink::ScrollType::kProgrammatic);
   ChildDocument().View()->UpdateAllLifecyclePhasesForTest();
 
-  Element* target = ChildDocument().getElementById(AtomicString("target"));
+  Element* target = ChildDocument().getElementById("target");
   ASSERT_TRUE(target);
   PhysicalOffset mapped_point =
       MapAncestorToLocal(target->GetLayoutObject(), nullptr,
@@ -764,7 +764,7 @@ TEST_F(MapCoordinatesTest, FixedPosInScrolledIFrameWithTransform) {
       ScrollOffset(0.0, 1000), mojom::blink::ScrollType::kProgrammatic);
   UpdateAllLifecyclePhasesForTest();
 
-  Element* target = ChildDocument().getElementById(AtomicString("target"));
+  Element* target = ChildDocument().getElementById("target");
   ASSERT_TRUE(target);
   PhysicalOffset mapped_point =
       MapAncestorToLocal(target->GetLayoutObject(), nullptr,
@@ -1979,11 +1979,19 @@ TEST_F(MapCoordinatesTest, FixedPositionUnderTransformWithScrollOffset) {
                                kIgnoreScrollOffset));
 }
 
+#if BUILDFLAG(IS_FUCHSIA)
+// TODO(crbug.com/1313287): Fix this test on Fuchsia and re-enable.
+#define MAYBE_IgnoreScrollOffsetWithWritingModesAndNonOverlayScrollbar \
+  DISABLED_IgnoreScrollOffsetWithWritingModesAndNonOverlayScrollbar
+#else
+#define MAYBE_IgnoreScrollOffsetWithWritingModesAndNonOverlayScrollbar \
+  IgnoreScrollOffsetWithWritingModesAndNonOverlayScrollbar
+#endif
 // This test verifies that ignoring scroll offset works with writing modes and
 // non-overlay scrollbar.
 TEST_F(MapCoordinatesTest,
-       IgnoreScrollOffsetWithWritingModesAndNonOverlayScrollbar) {
-  USE_NON_OVERLAY_SCROLLBARS_OR_QUIT();
+       MAYBE_IgnoreScrollOffsetWithWritingModesAndNonOverlayScrollbar) {
+  USE_NON_OVERLAY_SCROLLBARS();
 
   SetBodyInnerHTML(R"HTML(
     <style>

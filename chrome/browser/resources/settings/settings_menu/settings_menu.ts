@@ -8,23 +8,21 @@
  */
 import 'chrome://resources/cr_elements/cr_icons.css.js';
 import 'chrome://resources/cr_elements/cr_menu_selector/cr_menu_selector.js';
-import 'chrome://resources/cr_elements/cr_hidden_style.css.js';
 import 'chrome://resources/cr_elements/cr_nav_menu_item_style.css.js';
-import 'chrome://resources/cr_elements/cr_ripple/cr_ripple.js';
 import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 import 'chrome://resources/cr_elements/icons.html.js';
 import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
-import '../settings_vars.css.js';
+import 'chrome://resources/polymer/v3_0/paper-ripple/paper-ripple.js';
 import '../icons.html.js';
+import '../settings_shared.css.js';
 
-import type {CrMenuSelector} from 'chrome://resources/cr_elements/cr_menu_selector/cr_menu_selector.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {CrMenuSelector} from 'chrome://resources/cr_elements/cr_menu_selector/cr_menu_selector.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {PageVisibility} from '../page_visibility.js';
-import type {Route, SettingsRoutes} from '../router.js';
-import {RouteObserverMixin, Router} from '../router.js';
+import {PageVisibility} from '../page_visibility.js';
+import {Route, RouteObserverMixin, Router, SettingsRoutes} from '../router.js';
 
 import {getTemplate} from './settings_menu.html.js';
 
@@ -37,6 +35,8 @@ export interface SettingsMenuElement {
 }
 
 const SettingsMenuElementBase = RouteObserverMixin(PolymerElement);
+
+const JEMAOS_STORE_APPID: string = 'hidnajblbifdkmheebalalchohohmaef';
 
 export class SettingsMenuElement extends SettingsMenuElementBase {
   static get is() {
@@ -54,25 +54,26 @@ export class SettingsMenuElement extends SettingsMenuElementBase {
        */
       pageVisibility: Object,
 
-      showAdvancedFeaturesMainControl_: {
+      storeAppExists_: {
         type: Boolean,
-        value: () => loadTimeData.getBoolean('showAdvancedFeaturesMainControl'),
+        value: true,
+      },
+
+      showExtensionsLink_: {
+        type: Boolean,
+        computed: 'shouldShowExtensionsLink_(pageVisibility, storeAppExists_)',
       },
     };
   }
 
   pageVisibility: PageVisibility;
-  private showAdvancedFeaturesMainControl_: boolean;
+  private storeAppExists_: boolean;
+  private showExtensionsLink_: boolean;
   private routes_: SettingsRoutes;
 
   override ready() {
     super.ready();
     this.routes_ = Router.getInstance().getRoutes();
-  }
-
-  private showExperimentalMenuItem_(): boolean {
-    return this.showAdvancedFeaturesMainControl_ &&
-        (!this.pageVisibility || this.pageVisibility.ai !== false);
   }
 
   override currentRouteChanged(newRoute: Route) {
@@ -137,9 +138,29 @@ export class SettingsMenuElement extends SettingsMenuElementBase {
         route!, /* dynamicParams */ undefined, /* removeSearch */ true);
   }
 
-  private onExtensionsLinkClick_() {
-    chrome.metricsPrivate.recordUserAction(
-        'SettingsMenu_ExtensionsLinkClicked');
+  private onExtensionsLinkClick_(e: Event) {
+    // chrome.metricsPrivate.recordUserAction(
+    //     'SettingsMenu_ExtensionsLinkClicked');
+    if (!loadTimeData.getBoolean('isJemaProfile') || !this.storeAppExists_) {
+      chrome.metricsPrivate.recordUserAction('SettingsMenu_ExtensionsLinkClicked');
+      return;
+    }
+    e.preventDefault();
+    chrome.nativeWindows.create(JEMAOS_STORE_APPID);
+  }
+
+  override connectedCallback() {
+    super.connectedCallback();
+
+    chrome.appManagement.getAppList(apps => {
+      const app = apps.find(app => app.appId === JEMAOS_STORE_APPID);
+      this.storeAppExists_ = !!app;
+    });
+  }
+
+  private shouldShowExtensionsLink_() {
+    const pageVisibility = this.pageVisibility || {};
+    return pageVisibility.extensions && (!loadTimeData.getBoolean('isJemaProfile') || this.storeAppExists_);
   }
 }
 

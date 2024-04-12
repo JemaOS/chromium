@@ -9,10 +9,8 @@ description("Detaching a frame while loading the initial blank page shouldn't ca
 var observer = new MutationObserver(function()
     {
         var frame = document.querySelector('#test');
-        if (frame) {
-            frame.parentNode.removeChild(frame);
-            observer.disconnect();
-        }
+        frame.parentNode.removeChild(frame);
+        observer.disconnect();
     }
 );
 observer.observe(document.body, {childList: true});

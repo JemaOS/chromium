@@ -65,7 +65,8 @@ ElementIdentifier::KnownIdentifiers& ElementIdentifier::GetKnownIdentifiers() {
 }
 
 void PrintTo(ElementIdentifier element_identifier, std::ostream* os) {
-  *os << "ElementIdentifier " << element_identifier.GetName();
+  *os << "ElementIdentifier " << element_identifier.GetRawValue() << " ["
+      << element_identifier.GetName() << "]";
 }
 
 void PrintTo(ElementContext element_context, std::ostream* os) {

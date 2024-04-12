@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session} = await testRunner.startBlank(
       `Tests that browser.Target.setAutoAttach() attaches to pages opened by click on noopener link.`);
 

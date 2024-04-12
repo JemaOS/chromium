@@ -13,6 +13,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/apps/app_info_dialog.h"
 #include "chrome/browser/ui/browser.h"
@@ -165,15 +166,14 @@ AppInfoDialog::AppInfoDialog(Profile* profile, const extensions::Extension* app)
   layout->SetFlexForView(dialog_body_, 1);
 
   auto dialog_footer = AppInfoFooterPanel::CreateFooterPanel(profile, app);
-  if (dialog_footer) {
+  if (dialog_footer)
     dialog_footer_ = AddChildView(std::move(dialog_footer));
-  }
 
   // Close the dialog if the app is uninstalled, unloaded, or if the profile is
   // destroyed.
   StartObservingExtensionRegistry();
 
-  GetLastDialogForTesting() = weak_ptr_factory_.GetWeakPtr();
+  GetLastDialogForTesting() = AsWeakPtr();
 }
 
 AppInfoDialog::~AppInfoDialog() {
@@ -192,9 +192,8 @@ void AppInfoDialog::StartObservingExtensionRegistry() {
 }
 
 void AppInfoDialog::StopObservingExtensionRegistry() {
-  if (extension_registry_) {
+  if (extension_registry_)
     extension_registry_->RemoveObserver(this);
-  }
   extension_registry_ = nullptr;
 }
 
@@ -215,9 +214,8 @@ void AppInfoDialog::OnExtensionUnloaded(
     content::BrowserContext* browser_context,
     const extensions::Extension* extension,
     extensions::UnloadedExtensionReason reason) {
-  if (extension->id() != app_id_) {
+  if (extension->id() != app_id_)
     return;
-  }
 
   Close();
 }
@@ -226,9 +224,8 @@ void AppInfoDialog::OnExtensionUninstalled(
     content::BrowserContext* browser_context,
     const extensions::Extension* extension,
     extensions::UninstallReason reason) {
-  if (extension->id() != app_id_) {
+  if (extension->id() != app_id_)
     return;
-  }
 
   Close();
 }
@@ -239,5 +236,5 @@ void AppInfoDialog::OnShutdown(extensions::ExtensionRegistry* registry) {
   Close();
 }
 
-BEGIN_METADATA(AppInfoDialog)
+BEGIN_METADATA(AppInfoDialog, views::View)
 END_METADATA

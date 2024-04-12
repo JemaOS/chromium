@@ -5,8 +5,7 @@
 #ifndef ASH_COMPONENTS_ARC_COMPAT_MODE_ARC_WINDOW_PROPERTY_UTIL_H_
 #define ASH_COMPONENTS_ARC_COMPAT_MODE_ARC_WINDOW_PROPERTY_UTIL_H_
 
-#include <optional>
-#include <string>
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace views {
 class Widget;
@@ -18,8 +17,8 @@ class Window;
 
 namespace arc {
 
-std::optional<std::string> GetAppId(const aura::Window* window);
-std::optional<std::string> GetAppId(const views::Widget* widget);
+absl::optional<std::string> GetAppId(const aura::Window* window);
+absl::optional<std::string> GetAppId(const views::Widget* widget);
 
 }  // namespace arc
 

@@ -72,7 +72,7 @@ class CertificatesHandler : public content::WebUIMessageHandler,
   void CertificatesRefreshed() override;
 
   // SelectFileDialog::Listener implementation.
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override;
   void FileSelectionCanceled(void* params) override;
@@ -135,7 +135,6 @@ class CertificatesHandler : public content::WebUIMessageHandler,
   void ImportPersonalFileRead(const int* read_errno, const std::string* data);
   void HandleImportPersonalPasswordSelected(const base::Value::List& args);
   void ImportPersonalSlotUnlocked();
-  void ImportPersonalResultReceived(int net_result);
 
   // Import Server certificates from file.  Sequence goes like:
   //  1. user clicks on import button -> HandleImportServer -> launches file

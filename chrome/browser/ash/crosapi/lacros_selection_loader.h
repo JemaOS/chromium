@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_CROSAPI_LACROS_SELECTION_LOADER_H_
 
 #include "base/functional/callback.h"
-#include "chrome/browser/ash/crosapi/browser_loader.h"
 
 namespace base {
 class FilePath;
@@ -28,25 +27,24 @@ class LacrosSelectionLoader {
   using LoadCompletionCallback =
       base::OnceCallback<void(base::Version, const base::FilePath&)>;
 
-  // Loads chrome binary. This must be called only when LacrosSelectionLoader is
-  // idle and has not yet unloaded.
-  // `forced` specifies whether the lacros selection is forced.
-  virtual void Load(LoadCompletionCallback callback, bool forced) = 0;
+  // Loads chrome binary.
+  virtual void Load(LoadCompletionCallback callback) = 0;
 
-  // Unloads chrome binary. Unload can be called anytime, and this request will
-  // stop other tasks. Once Unload is called, LacrosSelectionLoader is no longer
-  // valid.
-  // `callback` will be called on unload completion.
-  virtual void Unload(base::OnceClosure callback) = 0;
+  // Unloads chrome binary.
+  virtual void Unload() = 0;
 
-  // Returns the current unloading/unloaded state.
-  virtual bool IsUnloading() const = 0;
-  virtual bool IsUnloaded() const = 0;
+  // Resets the state. This is called before reloading lacros.
+  // TODO(elkurin): Instead of resetting the state, throw away and recreate
+  // loader instance.
+  virtual void Reset() = 0;
 
   // Calculates version and send it back via `callback`.
   // It may take time since it requires to load/mount lacros binary.
-  virtual void GetVersion(
-      base::OnceCallback<void(const base::Version&)> callback) = 0;
+  virtual void GetVersion(base::OnceCallback<void(base::Version)> callback) = 0;
+
+  // Sets version.
+  // Only implemented for testing class (FakeLacrosSelectionLoader).
+  virtual void SetVersionForTesting(const base::Version& version) {}
 };
 
 }  // namespace crosapi

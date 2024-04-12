@@ -23,10 +23,14 @@ class TestToolbarActionsBarBubbleDelegate::DelegateImpl
 
  private:
   bool ShouldShow() override { return !parent_->shown_; }
+  bool ShouldCloseOnDeactivate() override {
+    return parent_->close_on_deactivate_;
+  }
   std::u16string GetHeadingText() override { return parent_->heading_; }
   std::u16string GetBodyText(bool anchored_to_action) override {
     return parent_->body_;
   }
+  std::u16string GetItemListText() override { return parent_->item_list_; }
   std::u16string GetActionButtonText() override { return parent_->action_; }
   std::u16string GetDismissButtonText() override { return parent_->dismiss_; }
   ui::DialogButton GetDefaultDialogButton() override {
@@ -62,7 +66,8 @@ TestToolbarActionsBarBubbleDelegate::TestToolbarActionsBarBubbleDelegate(
       body_(body),
       action_(action),
       dismiss_(dismiss),
-      default_button_(ui::DIALOG_BUTTON_NONE) {}
+      default_button_(ui::DIALOG_BUTTON_NONE),
+      close_on_deactivate_(true) {}
 
 TestToolbarActionsBarBubbleDelegate::~TestToolbarActionsBarBubbleDelegate() {
   // If the bubble didn't close, it means that it still owns the DelegateImpl,

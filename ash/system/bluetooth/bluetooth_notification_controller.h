@@ -93,7 +93,8 @@ class ASH_EXPORT BluetoothNotificationController
   // Clears any shown pairing notification now that the device has been bonded.
   void NotifyBondedDevice(device::BluetoothDevice* device);
 
-  const raw_ptr<message_center::MessageCenter, DanglingUntriaged>
+  const raw_ptr<message_center::MessageCenter,
+                DanglingUntriaged | ExperimentalAsh>
       message_center_;
 
   // Reference to the underlying BluetoothAdapter object, holding this reference

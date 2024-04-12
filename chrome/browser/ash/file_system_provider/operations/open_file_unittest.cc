@@ -21,7 +21,9 @@
 #include "storage/browser/file_system/async_file_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 namespace {
 
 const char kExtensionId[] = "mbflcebpggnecokmikipoihdbecnjfoj";
@@ -41,7 +43,7 @@ class CallbackLogger {
     Event(const Event&) = delete;
     Event& operator=(const Event&) = delete;
 
-    virtual ~Event() = default;
+    virtual ~Event() {}
 
     int file_handle() { return file_handle_; }
     base::File::Error result() { return result_; }
@@ -51,12 +53,12 @@ class CallbackLogger {
     base::File::Error result_;
   };
 
-  CallbackLogger() = default;
+  CallbackLogger() {}
 
   CallbackLogger(const CallbackLogger&) = delete;
   CallbackLogger& operator=(const CallbackLogger&) = delete;
 
-  virtual ~CallbackLogger() = default;
+  virtual ~CallbackLogger() {}
 
   void OnOpenFile(int file_handle, base::File::Error result) {
     events_.push_back(std::make_unique<Event>(file_handle, result));
@@ -72,8 +74,8 @@ class CallbackLogger {
 
 class FileSystemProviderOperationsOpenFileTest : public testing::Test {
  protected:
-  FileSystemProviderOperationsOpenFileTest() = default;
-  ~FileSystemProviderOperationsOpenFileTest() override = default;
+  FileSystemProviderOperationsOpenFileTest() {}
+  ~FileSystemProviderOperationsOpenFileTest() override {}
 
   void SetUp() override {
     file_system_info_ = ProvidedFileSystemInfo(
@@ -109,14 +111,14 @@ TEST_F(FileSystemProviderOperationsOpenFileTest, Execute) {
   const base::Value* options_as_value = &event_args[0];
   ASSERT_TRUE(options_as_value->is_dict());
 
-  auto options =
-      OpenFileRequestedOptions::FromValue(options_as_value->GetDict());
-  ASSERT_TRUE(options);
-  EXPECT_EQ(kFileSystemId, options->file_system_id);
-  EXPECT_EQ(kRequestId, options->request_id);
-  EXPECT_EQ(kFilePath, options->file_path);
-  EXPECT_EQ(extensions::api::file_system_provider::OpenFileMode::kRead,
-            options->mode);
+  OpenFileRequestedOptions options;
+  ASSERT_TRUE(
+      OpenFileRequestedOptions::Populate(options_as_value->GetDict(), options));
+  EXPECT_EQ(kFileSystemId, options.file_system_id);
+  EXPECT_EQ(kRequestId, options.request_id);
+  EXPECT_EQ(kFilePath, options.file_path);
+  EXPECT_EQ(extensions::api::file_system_provider::OPEN_FILE_MODE_READ,
+            options.mode);
 }
 
 TEST_F(FileSystemProviderOperationsOpenFileTest, Execute_NoListener) {
@@ -198,4 +200,6 @@ TEST_F(FileSystemProviderOperationsOpenFileTest, OnError) {
   ASSERT_EQ(0, event->file_handle());
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

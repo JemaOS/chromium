@@ -8,121 +8,90 @@
  */
 
 import './network_icons.html.js';
-import '//resources/ash/common/cr_elements/cr_hidden_style.css.js';
+import '//resources/cr_elements/cr_hidden_style.css.js';
 import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
 
-import {I18nBehavior, I18nBehaviorInterface} from '//resources/ash/common/i18n_behavior.js';
+import {I18nBehavior} from '//resources/ash/common/i18n_behavior.js';
 import {loadTimeData} from '//resources/ash/common/load_time_data.m.js';
-import {mixinBehaviors, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {HotspotState} from 'chrome://resources/ash/common/hotspot/cros_hotspot_config.mojom-webui.js';
+import {Polymer} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {ActivationStateType, SecurityType} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
 import {ConnectionStateType, DeviceStateType, NetworkType} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/network_types.mojom-webui.js';
 
 import {getTemplate} from './network_icon.html.js';
 import {OncMojo} from './onc_mojo.js';
 
-/**
- * @constructor
- * @extends {PolymerElement}
- * @implements {I18nBehaviorInterface}
- */
-const NetworkIconElementBase = mixinBehaviors([I18nBehavior], PolymerElement);
+Polymer({
+  _template: getTemplate(),
+  is: 'network-icon',
 
-/** @polymer */
-export class NetworkIconElement extends NetworkIconElementBase {
-  static get is() {
-    return 'network-icon';
-  }
+  behaviors: [
+    I18nBehavior,
+  ],
 
-  static get template() {
-    return getTemplate();
-  }
-
-  static get properties() {
-    return {
-      /**
-       * If set, the ONC properties will be used to display the icon. This may
-       * either be the complete set of NetworkProperties or the subset of
-       * NetworkStateProperties.
-       * @type {!OncMojo.NetworkStateProperties|undefined}
-       */
-      networkState: Object,
-
-      /**
-       * If set, hotspot state within this object will be used to update the
-       * hotspot icon.
-       */
-      hotspotInfo: Object,
-
-      /**
-       * If set, the device state for the network type. Otherwise it defaults to
-       * null rather than undefined so that it does not block computed bindings.
-       * @type {?OncMojo.DeviceStateProperties}
-       */
-      deviceState: {
-        type: Object,
-        value: null,
-      },
-
-      /**
-       * If true, the icon is part of a list of networks and may be displayed
-       * differently, e.g. the disconnected image will never be shown for
-       * list items.
-       */
-      isListItem: {
-        type: Boolean,
-        value: false,
-      },
-
-      /**
-       * If true, cellular technology badge is displayed in the network icon.
-       */
-      showTechnologyBadge: {
-        type: Boolean,
-        value: true,
-      },
-
-      /**
-       * This provides an accessibility label that describes the connection
-       * state and signal level. This can be used by other components in a
-       * aria-describedby by referencing this elements id.
-       */
-      ariaLabel: {
-        type: String,
-        reflectToAttribute: true,
-        computed: 'computeAriaLabel_(locale, networkState, hotspotInfo)',
-      },
-
-      /** @private {boolean} */
-      isUserLoggedIn_: {
-        type: Boolean,
-        value() {
-          return loadTimeData.valueExists('isUserLoggedIn') &&
-              loadTimeData.getBoolean('isUserLoggedIn');
-        },
-      },
-
-      /** @private {boolean} */
-      isCellularCarrierLockEnabled_: {
-        type: Boolean,
-        value() {
-          return loadTimeData.valueExists('isCellularCarrierLockEnabled') &&
-              loadTimeData.getBoolean('isCellularCarrierLockEnabled');
-        },
-      },
-    };
-  }
-
-  constructor() {
-    super();
+  properties: {
+    /**
+     * If set, the ONC properties will be used to display the icon. This may
+     * either be the complete set of NetworkProperties or the subset of
+     * NetworkStateProperties.
+     * @type {!OncMojo.NetworkStateProperties|undefined}
+     */
+    networkState: Object,
 
     /**
-     * Number of network icons for different cellular or wifi network signal
-     * strengths.
-     * @private @const {number}
+     * If set, the device state for the network type. Otherwise it defaults to
+     * null rather than undefined so that it does not block computed bindings.
+     * @type {?OncMojo.DeviceStateProperties}
      */
-    this.networkIconCount_ = 5;
-  }
+    deviceState: {
+      type: Object,
+      value: null,
+    },
+
+    /**
+     * If true, the icon is part of a list of networks and may be displayed
+     * differently, e.g. the disconnected image will never be shown for
+     * list items.
+     */
+    isListItem: {
+      type: Boolean,
+      value: false,
+    },
+
+    /**
+     * If true, cellular technology badge is displayed in the network icon.
+     */
+    showTechnologyBadge: {
+      type: Boolean,
+      value: true,
+    },
+
+    /**
+     * This provides an accessibility label that describes the connection state
+     * and signal level. This can be used by other components in a
+     * aria-describedby by referencing this elements id.
+     */
+    ariaLabel: {
+      type: String,
+      reflectToAttribute: true,
+      computed: 'computeAriaLabel_(locale, networkState)',
+    },
+
+    /** @private {boolean} */
+    isUserLoggedIn_: {
+      type: Boolean,
+      value() {
+        return loadTimeData.valueExists('isUserLoggedIn') &&
+            loadTimeData.getBoolean('isUserLoggedIn');
+      },
+    },
+  },
+
+  /**
+   * Number of network icons for different cellular or wifi network signal
+   * strengths.
+   * @private @const
+   */
+  networkIconCount_: 5,
 
   /**
    * @return {string} The name of the svg icon image to show.
@@ -132,20 +101,9 @@ export class NetworkIconElement extends NetworkIconElementBase {
     // NOTE: computeAriaLabel_() follows a very similar logic structure and both
     // functions should be updated together.
 
-    if (!this.networkState && !this.hotspotInfo) {
+    if (!this.networkState) {
       return '';
     }
-
-    if (this.hotspotInfo) {
-      if (this.hotspotInfo.state === HotspotState.kEnabled) {
-        return 'hotspot-on';
-      }
-      if (this.hotspotInfo.state === HotspotState.kEnabling) {
-        return 'hotspot-connecting';
-      }
-      return 'hotspot-off';
-    }
-
     const type = this.networkState.type;
     if (type === NetworkType.kEthernet) {
       return 'ethernet';
@@ -162,10 +120,6 @@ export class NetworkIconElement extends NetworkIconElementBase {
 
     if (this.networkState.type === NetworkType.kCellular &&
         this.networkState.typeState.cellular.simLocked) {
-      if (this.isCellularCarrierLockEnabled_ &&
-          this.networkState.typeState.cellular.simLockType === 'network-pin') {
-        return prefix + 'carrier-locked';
-      }
       return prefix + 'locked';
     }
 
@@ -190,7 +144,7 @@ export class NetworkIconElement extends NetworkIconElementBase {
 
     const strength = OncMojo.getSignalStrength(this.networkState);
     return prefix + this.strengthToIndex_(strength).toString(10);
-  }
+  },
 
   /**
    * @param {string} locale The current local which is passed only to ensure
@@ -203,12 +157,6 @@ export class NetworkIconElement extends NetworkIconElementBase {
   computeAriaLabel_(locale, networkState) {
     // NOTE: getIconClass_() follows a very similar logic structure and both
     // functions should be updated together.
-
-    if (this.hotspotInfo) {
-      // TODO(b/284324373): Finalize aria labels for hotspot and update them
-      // here.
-      return 'hotspot';
-    }
 
     if (!this.networkState) {
       return '';
@@ -272,7 +220,7 @@ export class NetworkIconElement extends NetworkIconElementBase {
     return this.i18nDynamic(
         locale, 'networkIconLabelSignalStrength', networkTypeString,
         strength.toString(10));
-  }
+  },
 
   /**
    * @param {number} strength The signal strength from [0 - 100].
@@ -292,27 +240,27 @@ export class NetworkIconElement extends NetworkIconElementBase {
     const zeroBasedIndex =
         Math.trunc((strength - 1) * (this.networkIconCount_ - 1) / 100);
     return zeroBasedIndex + 1;
-  }
+  },
 
   /**
    * @return {boolean}
    * @private
    */
   showTechnology_() {
-    if (!this.networkState || this.hotspotInfo) {
+    if (!this.networkState) {
       return false;
     }
     return !this.showRoaming_() &&
         OncMojo.connectionStateIsConnected(this.networkState.connectionState) &&
         this.getTechnology_() !== '' && this.showTechnologyBadge;
-  }
+  },
 
   /**
    * @return {string}
    * @private
    */
   getTechnology_() {
-    if (!this.networkState || this.hotspotInfo) {
+    if (!this.networkState) {
       return '';
     }
     if (this.networkState.type === NetworkType.kCellular) {
@@ -323,7 +271,7 @@ export class NetworkIconElement extends NetworkIconElementBase {
       }
     }
     return '';
-  }
+  },
 
   /**
    * @param {string|undefined} networkTechnology
@@ -355,14 +303,14 @@ export class NetworkIconElement extends NetworkIconElementBase {
         return 'badge-5g';
     }
     return '';
-  }
+  },
 
   /**
    * @return {boolean}
    * @private
    */
   showSecure_() {
-    if (!this.networkState || this.hotspotInfo) {
+    if (!this.networkState) {
       return false;
     }
     if (!this.isListItem &&
@@ -372,7 +320,7 @@ export class NetworkIconElement extends NetworkIconElementBase {
     }
     return this.networkState.type === NetworkType.kWiFi &&
         this.networkState.typeState.wifi.security !== SecurityType.kNone;
-  }
+  },
 
   /**
    * @return {boolean}
@@ -384,15 +332,15 @@ export class NetworkIconElement extends NetworkIconElementBase {
     }
     return this.networkState.type === NetworkType.kCellular &&
         this.networkState.typeState.cellular.roaming;
-  }
+  },
 
   /**
    * @return {boolean}
    * @private
    */
   showIcon_() {
-    return !!this.networkState || !!this.hotspotInfo;
-  }
+    return !!this.networkState;
+  },
 
   /**
    * Return true if current network is pSIM, requires activation and user is
@@ -409,7 +357,6 @@ export class NetworkIconElement extends NetworkIconElementBase {
 
     return cellularProperties.activationState ==
         ActivationStateType.kNotActivated;
-  }
-}
+  },
 
-customElements.define(NetworkIconElement.is, NetworkIconElement);
+});

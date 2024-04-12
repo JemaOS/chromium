@@ -440,11 +440,11 @@ class FakeWebUsbService {
     }
   }
 
-  getPermission(options) {
+  getPermission(deviceFilters) {
     return new Promise(resolve => {
       if (navigator.usb.test.onrequestdevice) {
         navigator.usb.test.onrequestdevice(
-            new USBDeviceRequestEvent(options, resolve));
+            new USBDeviceRequestEvent(deviceFilters, resolve));
       } else {
         resolve({ result: null });
       }
@@ -457,9 +457,8 @@ class FakeWebUsbService {
 }
 
 class USBDeviceRequestEvent {
-  constructor(options, resolve) {
-    this.filters = convertMojoDeviceFilters(options.filters);
-    this.exclusionFilters = convertMojoDeviceFilters(options.exclusionFilters);
+  constructor(deviceFilters, resolve) {
+    this.filters = convertMojoDeviceFilters(deviceFilters);
     this.resolveFunc_ = resolve;
   }
 

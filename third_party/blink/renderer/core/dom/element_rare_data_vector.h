@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,7 +13,6 @@
 #include "third_party/blink/renderer/core/dom/pseudo_element_data.h"
 #include "third_party/blink/renderer/platform/heap/trace_traits.h"
 #include "third_party/blink/renderer/platform/region_capture_crop_id.h"
-#include "third_party/blink/renderer/platform/restriction_target_id.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
 namespace blink {
@@ -37,10 +36,9 @@ class DisplayLockContext;
 class ContainerQueryData;
 class ResizeObserver;
 class ResizeObservation;
-class StyleScopeData;
 class CustomElementDefinition;
 class PopoverData;
-class OutOfFlowData;
+class CSSToggleMap;
 class HTMLElement;
 
 enum class ElementFlags;
@@ -86,20 +84,18 @@ class CORE_EXPORT ElementRareDataVector final : public NodeRareData {
     kResizeObserverData = 17,
     kCustomElementDefinition = 18,
     kPopoverData = 19,
-    kPartNamesMap = 20,
-    kNonce = 21,
-    kIsValue = 22,
-    kSavedLayerScrollOffset = 23,
-    kAnchorPositionScrollData = 24,
-    kAnchorElementObserver = 25,
-    kImplicitlyAnchoredElementCount = 26,
-    kLastRememberedBlockSize = 27,
-    kLastRememberedInlineSize = 28,
-    kRestrictionTargetId = 29,
-    kStyleScopeData = 30,
-    kOutOfFlowData = 31,
+    kToggleMap = 20,
+    kPartNamesMap = 21,
+    kNonce = 22,
+    kIsValue = 23,
+    kSavedLayerScrollOffset = 24,
+    kAnchorScrollData = 25,
+    kAnchorElementObserver = 26,
+    kImplicitlyAnchoredElementCount = 27,
+    kLastRememberedBlockSize = 28,
+    kLastRememberedInlineSize = 29,
 
-    kNumFields = 32,
+    kNumFields = 30,
   };
 
   ElementRareDataField* GetField(FieldId field_id) const;
@@ -159,7 +155,7 @@ class CORE_EXPORT ElementRareDataVector final : public NodeRareData {
   }
 
   template <typename T>
-  void SetOptionalField(FieldId field_id, std::optional<T> data) {
+  void SetOptionalField(FieldId field_id, absl::optional<T> data) {
     if (data) {
       SetWrappedField<T>(field_id, *data);
     } else {
@@ -168,11 +164,11 @@ class CORE_EXPORT ElementRareDataVector final : public NodeRareData {
   }
 
   template <typename T>
-  std::optional<T> GetOptionalField(FieldId field_id) const {
+  absl::optional<T> GetOptionalField(FieldId field_id) const {
     if (auto* value = GetWrappedField<T>(field_id)) {
       return *value;
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
  public:
@@ -254,26 +250,11 @@ class CORE_EXPORT ElementRareDataVector final : public NodeRareData {
   ContainerQueryData* GetContainerQueryData() const;
   void ClearContainerQueryData();
 
-  StyleScopeData& EnsureStyleScopeData();
-  StyleScopeData* GetStyleScopeData() const;
-
-  OutOfFlowData& EnsureOutOfFlowData();
-  OutOfFlowData* GetOutOfFlowData() const;
-
   // Returns the crop-ID if one was set, or nullptr otherwise.
   const RegionCaptureCropId* GetRegionCaptureCropId() const;
   // Sets a crop-ID on the item. Must be called at most once. Cannot be used
   // to unset a previously set crop-ID.
   void SetRegionCaptureCropId(std::unique_ptr<RegionCaptureCropId> crop_id);
-
-  // Returns the ID backing a RestrictionTarget if one was set on the Element,
-  // or nullptr otherwise.
-  const RestrictionTargetId* GetRestrictionTargetId() const;
-  // Returns the ID backing a RestrictionTarget if one was set on the Element,
-  // or nullptr otherwise.
-  // Sets an ID backing a RestrictionTarget associated with the Element.
-  // Must be called at most once. Cannot be used to unset a previously set IDs.
-  void SetRestrictionTargetId(std::unique_ptr<RestrictionTargetId> id);
 
   using ResizeObserverDataMap =
       HeapHashMap<Member<ResizeObserver>, Member<ResizeObservation>>;
@@ -283,14 +264,17 @@ class CORE_EXPORT ElementRareDataVector final : public NodeRareData {
   void SetCustomElementDefinition(CustomElementDefinition* definition);
   CustomElementDefinition* GetCustomElementDefinition() const;
 
-  void SetLastRememberedBlockSize(std::optional<LayoutUnit> size);
-  void SetLastRememberedInlineSize(std::optional<LayoutUnit> size);
-  std::optional<LayoutUnit> LastRememberedBlockSize() const;
-  std::optional<LayoutUnit> LastRememberedInlineSize() const;
+  void SetLastRememberedBlockSize(absl::optional<LayoutUnit> size);
+  void SetLastRememberedInlineSize(absl::optional<LayoutUnit> size);
+  absl::optional<LayoutUnit> LastRememberedBlockSize() const;
+  absl::optional<LayoutUnit> LastRememberedInlineSize() const;
 
   PopoverData* GetPopoverData() const;
   PopoverData& EnsurePopoverData();
   void RemovePopoverData();
+
+  CSSToggleMap* GetToggleMap() const;
+  CSSToggleMap& EnsureToggleMap(Element* owner_element);
 
   bool HasElementFlag(ElementFlags mask) const {
     return element_flags_ & static_cast<uint16_t>(mask);
@@ -314,9 +298,9 @@ class CORE_EXPORT ElementRareDataVector final : public NodeRareData {
     ClearElementFlag(ElementFlags::kTabIndexWasSetExplicitly);
   }
 
-  AnchorPositionScrollData* GetAnchorPositionScrollData() const;
-  void RemoveAnchorPositionScrollData();
-  AnchorPositionScrollData& EnsureAnchorPositionScrollData(Element*);
+  AnchorScrollData* GetAnchorScrollData() const;
+  void RemoveAnchorScrollData();
+  AnchorScrollData& EnsureAnchorScrollData(Element*);
 
   AnchorElementObserver& EnsureAnchorElementObserver(HTMLElement*);
   AnchorElementObserver* GetAnchorElementObserver() const;
@@ -334,10 +318,6 @@ class CORE_EXPORT ElementRareDataVector final : public NodeRareData {
   }
   void SetScrollbarPseudoElementStylesDependOnFontMetrics(bool value) {
     scrollbar_pseudo_element_styles_depend_on_font_metrics_ = value;
-  }
-  void SetHasBeenExplicitlyScrolled() { has_been_explicitly_scrolled_ = true; }
-  bool HasBeenExplicitlyScrolled() const {
-    return has_been_explicitly_scrolled_;
   }
 
   FocusgroupFlags GetFocusgroupFlags() const { return focusgroup_flags_; }
@@ -430,7 +410,6 @@ class CORE_EXPORT ElementRareDataVector final : public NodeRareData {
   unsigned did_attach_internals_ : 1;
   unsigned has_undo_stack_ : 1;
   unsigned scrollbar_pseudo_element_styles_depend_on_font_metrics_ : 1;
-  unsigned has_been_explicitly_scrolled_ : 1;
   HasInvalidationFlags has_invalidation_flags_;
   FocusgroupFlags focusgroup_flags_ = FocusgroupFlags::kNone;
 };

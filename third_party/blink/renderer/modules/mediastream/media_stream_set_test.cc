@@ -20,7 +20,6 @@
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_component_impl.h"
 #include "third_party/blink/renderer/platform/testing/io_task_runner_testing_platform_support.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 using testing::_;
 
@@ -42,8 +41,7 @@ class MockLocalMediaStreamVideoSource : public blink::MediaStreamVideoSource {
   void StartSourceImpl(
       VideoCaptureDeliverFrameCB frame_callback,
       EncodedVideoFrameCB encoded_frame_callback,
-      VideoCaptureSubCaptureTargetVersionCB sub_capture_target_version_callback,
-      VideoCaptureNotifyFrameDroppedCB frame_dropped_callback) override {}
+      VideoCaptureCropVersionCB crop_version_callback) override {}
 
   void StopSourceImpl() override {}
 
@@ -58,7 +56,6 @@ class MediaStreamSetTest : public testing::Test {
  protected:
   // Required as persistent member to prevent the garbage collector from
   // removing the object before the test ended.
-  test::TaskEnvironment task_environment_;
   Persistent<MediaStreamSet> media_stream_set_;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform_;
 };
@@ -81,9 +78,9 @@ MediaStreamComponent* MakeMockVideoComponent() {
 }
 
 // This test checks if |MediaStreamSet| calls the initialized callback if used
-// for getAllScreensMedia with a single stream requested, i.e. one descriptor
+// for getDisplayMediaSet with a single stream requested, i.e. one descriptor
 // with one video source passed in the constructor.
-TEST_F(MediaStreamSetTest, GetAllScreensMediaSingleMediaStreamInitialized) {
+TEST_F(MediaStreamSetTest, GetDisplayMediaSetSingleMediaStreamInitialized) {
   V8TestingScope v8_scope;
   MediaStreamComponentVector audio_component_vector;
   MediaStreamComponentVector video_component_vector = {
@@ -95,7 +92,7 @@ TEST_F(MediaStreamSetTest, GetAllScreensMediaSingleMediaStreamInitialized) {
   base::RunLoop run_loop;
   media_stream_set_ = MakeGarbageCollected<MediaStreamSet>(
       v8_scope.GetExecutionContext(), descriptors,
-      UserMediaRequestType::kAllScreensMedia,
+      UserMediaRequestType::kDisplayMediaSet,
       base::BindLambdaForTesting([&run_loop](MediaStreamVector streams) {
         EXPECT_EQ(streams.size(), 1u);
         run_loop.Quit();
@@ -104,9 +101,9 @@ TEST_F(MediaStreamSetTest, GetAllScreensMediaSingleMediaStreamInitialized) {
 }
 
 // This test checks if |MediaStreamSet| calls the initialized callback if used
-// for getAllScreensMedia with a multiple streams requested, i.e.
+// for getDisplayMediaSet with a multiple streams requested, i.e.
 // multiple descriptors with one video source each passed in the constructor.
-TEST_F(MediaStreamSetTest, GetAllScreensMediaMultipleMediaStreamsInitialized) {
+TEST_F(MediaStreamSetTest, GetDisplayMediaSetMultipleMediaStreamsInitialized) {
   V8TestingScope v8_scope;
   MediaStreamComponentVector audio_component_vector;
   MediaStreamComponentVector video_component_vector = {
@@ -119,7 +116,7 @@ TEST_F(MediaStreamSetTest, GetAllScreensMediaMultipleMediaStreamsInitialized) {
   base::RunLoop run_loop;
   media_stream_set_ = MakeGarbageCollected<MediaStreamSet>(
       v8_scope.GetExecutionContext(), descriptors,
-      UserMediaRequestType::kAllScreensMedia,
+      UserMediaRequestType::kDisplayMediaSet,
       base::BindLambdaForTesting([&run_loop](MediaStreamVector streams) {
         EXPECT_EQ(streams.size(), 4u);
         run_loop.Quit();
@@ -128,15 +125,15 @@ TEST_F(MediaStreamSetTest, GetAllScreensMediaMultipleMediaStreamsInitialized) {
 }
 
 // This test checks if |MediaStreamSet| calls the initialized callback if used
-// for getAllScreensMedia with a no streams requested, i.e.
+// for getDisplayMediaSet with a no streams requested, i.e.
 // an empty descriptors list.
-TEST_F(MediaStreamSetTest, GetAllScreensMediaNoMediaStreamInitialized) {
+TEST_F(MediaStreamSetTest, GetDisplayMediaSetNoMediaStreamInitialized) {
   V8TestingScope v8_scope;
   MediaStreamDescriptorVector descriptors;
   base::RunLoop run_loop;
   media_stream_set_ = MakeGarbageCollected<MediaStreamSet>(
       v8_scope.GetExecutionContext(), descriptors,
-      UserMediaRequestType::kAllScreensMedia,
+      UserMediaRequestType::kDisplayMediaSet,
       base::BindLambdaForTesting([&run_loop](MediaStreamVector streams) {
         EXPECT_TRUE(streams.empty());
         run_loop.Quit();

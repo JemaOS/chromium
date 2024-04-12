@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 """Web test-specific impl of the unexpected passes' queries module."""
 
-import datetime
 import os
 import posixpath
 import typing
@@ -54,7 +53,7 @@ RESULTS_SUBQUERY = """\
   )"""
 
 FINAL_SELECTOR_QUERY = """\
-SELECT id, test_id, status, duration, step_name, timeout, typ_tags, expectation_files
+SELECT *
 FROM results
 WHERE
   "Failure" IN UNNEST(typ_expectations)
@@ -190,13 +189,12 @@ ACTIVE_INTERNAL_BUILDER_SUBQUERY = """\
 KNOWN_TEST_ID_PREFIXES = [
     'ninja://:blink_web_tests/',
     'ninja://:blink_wpt_tests/',
-    'ninja://:chrome_wpt_tests/',
     'ninja://:webgpu_blink_web_tests/',
 ]
 
 # The default timeout of most web tests is 6 seconds, so use that if we happen
 # to get a result that doesn't report its own timeout.
-DEFAULT_TIMEOUT = datetime.timedelta(seconds=6)
+DEFAULT_TIMEOUT = 6
 
 
 class WebTestBigQueryQuerier(queries_module.BigQueryQuerier):
@@ -209,12 +207,8 @@ class WebTestBigQueryQuerier(queries_module.BigQueryQuerier):
         # pytype to treat this as the correct type during its static analysis,
         # which doesn't set the the data type.
         result = typing.cast(data_types.WebTestResult, result)
-        duration = float(json_result['duration'])
-        duration = datetime.timedelta(seconds=duration)
-        timeout = json_result['timeout']
-        timeout = (datetime.timedelta(
-            seconds=float(timeout)) if timeout else DEFAULT_TIMEOUT)
-        result.SetDuration(duration, timeout)
+        result.SetDuration(json_result['duration'], json_result['timeout']
+                           or DEFAULT_TIMEOUT)
         return result
 
     def _GetRelevantExpectationFilesForQueryResult(
@@ -235,7 +229,7 @@ class WebTestBigQueryQuerier(queries_module.BigQueryQuerier):
     def _ShouldSkipOverResult(self,
                               result: queries_module.QueryResult) -> bool:
         # WebGPU web tests are currently unsupported for various reasons.
-        return 'wpt_internal/webgpu/' in result['test_id']
+        return 'webgpu/' in result['test_id']
 
     def _GetQueryGeneratorForBuilder(
             self, builder: common_data_types.BuilderEntry

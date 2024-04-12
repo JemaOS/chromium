@@ -10,6 +10,7 @@
 #include <cmath>
 
 #include "third_party/blink/renderer/bindings/modules/v8/v8_xr_render_state_init.h"
+#include "third_party/blink/renderer/modules/xr/xr_layer.h"
 #include "third_party/blink/renderer/modules/xr/xr_webgl_layer.h"
 
 namespace blink {
@@ -21,7 +22,7 @@ namespace {
 constexpr double kMinFieldOfView = 0.01;
 constexpr double kMaxFieldOfView = 3.13;
 constexpr double kDefaultFieldOfView = M_PI * 0.5;
-}  // namespace
+}  // anonymous namespace
 
 XRRenderState::XRRenderState(bool immersive) : immersive_(immersive) {
   if (!immersive_)
@@ -30,20 +31,18 @@ XRRenderState::XRRenderState(bool immersive) : immersive_(immersive) {
 
 void XRRenderState::Update(const XRRenderStateInit* init) {
   if (init->hasDepthNear()) {
-    depth_near_ = std::max(0.0, init->depthNear());
+    depth_near_ = init->depthNear();
   }
   if (init->hasDepthFar()) {
-    depth_far_ = std::max(0.0, init->depthFar());
+    depth_far_ = init->depthFar();
   }
   if (init->hasBaseLayer()) {
     base_layer_ = init->baseLayer();
-    layers_ = MakeGarbageCollected<FrozenArray<XRLayer>>();
+    layers_.clear();
   }
   if (init->hasLayers()) {
     base_layer_ = nullptr;
-    layers_ = init->layers()
-                  ? MakeGarbageCollected<FrozenArray<XRLayer>>(*init->layers())
-                  : MakeGarbageCollected<FrozenArray<XRLayer>>();
+    layers_ = *init->layers();
   }
   if (init->hasInlineVerticalFieldOfView()) {
     double fov = init->inlineVerticalFieldOfView();
@@ -62,9 +61,9 @@ HTMLCanvasElement* XRRenderState::output_canvas() const {
   return nullptr;
 }
 
-std::optional<double> XRRenderState::inlineVerticalFieldOfView() const {
+absl::optional<double> XRRenderState::inlineVerticalFieldOfView() const {
   if (immersive_)
-    return std::nullopt;
+    return absl::nullopt;
   return inline_vertical_fov_;
 }
 

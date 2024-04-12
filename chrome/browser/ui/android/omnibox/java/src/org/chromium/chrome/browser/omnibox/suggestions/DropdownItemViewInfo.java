@@ -6,7 +6,6 @@ package org.chromium.chrome.browser.omnibox.suggestions;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.components.omnibox.GroupsProto.GroupConfig;
 import org.chromium.ui.modelutil.MVCListAdapter;
 import org.chromium.ui.modelutil.PropertyModel;
 
@@ -15,14 +14,12 @@ import org.chromium.ui.modelutil.PropertyModel;
 public class DropdownItemViewInfo extends MVCListAdapter.ListItem {
     /** Processor managing the item. */
     public final DropdownItemProcessor processor;
-
     /** Group ID this ViewInfo belongs to. */
-    public final GroupConfig groupConfig;
+    public final int groupId;
 
-    public DropdownItemViewInfo(
-            DropdownItemProcessor processor, PropertyModel model, GroupConfig groupConfig) {
+    public DropdownItemViewInfo(DropdownItemProcessor processor, PropertyModel model, int groupId) {
         super(processor.getViewTypeId(), model);
         this.processor = processor;
-        this.groupConfig = groupConfig;
+        this.groupId = groupId;
     }
 }

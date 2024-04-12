@@ -54,7 +54,7 @@ struct DialInternalMessage {
                                                    std::string* error);
 
   DialInternalMessage(DialInternalMessageType type,
-                      std::optional<base::Value> body,
+                      absl::optional<base::Value> body,
                       const std::string& client_id,
                       int sequence_number);
 
@@ -64,7 +64,7 @@ struct DialInternalMessage {
   ~DialInternalMessage();
 
   DialInternalMessageType type;
-  std::optional<base::Value> body;
+  absl::optional<base::Value> body;
   std::string client_id;
   int sequence_number;
 };
@@ -78,7 +78,7 @@ struct CustomDialLaunchMessageBody {
   CustomDialLaunchMessageBody();
   CustomDialLaunchMessageBody(
       bool do_launch,
-      const std::optional<std::string>& launch_parameter);
+      const absl::optional<std::string>& launch_parameter);
   CustomDialLaunchMessageBody(const CustomDialLaunchMessageBody& other);
   ~CustomDialLaunchMessageBody();
 
@@ -88,7 +88,7 @@ struct CustomDialLaunchMessageBody {
   // If |do_launch| is |true|, optional launch parameter to include with the
   // launch (POST) request. This overrides the launch parameter that was
   // specified in the MediaSource (if any).
-  std::optional<std::string> launch_parameter;
+  absl::optional<std::string> launch_parameter;
 };
 
 class DialInternalMessageUtil final {
@@ -146,7 +146,7 @@ class DialInternalMessageUtil final {
       const std::string& client_id,
       int sequence_number,
       const std::string& error_message,
-      std::optional<int> http_error_code = std::nullopt) const;
+      absl::optional<int> http_error_code = absl::nullopt) const;
 
  private:
   base::Value::Dict CreateReceiver(const MediaSinkInternal& sink) const;

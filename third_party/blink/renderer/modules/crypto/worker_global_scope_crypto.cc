@@ -35,25 +35,24 @@
 
 namespace blink {
 
-WorkerGlobalScopeCrypto::WorkerGlobalScopeCrypto(
-    WorkerGlobalScope& worker_scope)
-    : Supplement(worker_scope) {}
+WorkerGlobalScopeCrypto::WorkerGlobalScopeCrypto() : Supplement(nullptr) {}
 
 const char WorkerGlobalScopeCrypto::kSupplementName[] =
     "WorkerGlobalScopeCrypto";
 
 WorkerGlobalScopeCrypto& WorkerGlobalScopeCrypto::From(
-    WorkerGlobalScope& context) {
+    Supplementable<WorkerGlobalScope>& context) {
   WorkerGlobalScopeCrypto* supplement =
       Supplement<WorkerGlobalScope>::From<WorkerGlobalScopeCrypto>(context);
   if (!supplement) {
-    supplement = MakeGarbageCollected<WorkerGlobalScopeCrypto>(context);
+    supplement = MakeGarbageCollected<WorkerGlobalScopeCrypto>();
     ProvideTo(context, supplement);
   }
   return *supplement;
 }
 
-Crypto* WorkerGlobalScopeCrypto::crypto(WorkerGlobalScope& context) {
+Crypto* WorkerGlobalScopeCrypto::crypto(
+    Supplementable<WorkerGlobalScope>& context) {
   return WorkerGlobalScopeCrypto::From(context).crypto();
 }
 

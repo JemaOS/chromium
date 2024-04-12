@@ -21,31 +21,22 @@ AutocompleteActionPredictor* AutocompleteActionPredictorFactory::GetForProfile(
 // static
 AutocompleteActionPredictorFactory*
     AutocompleteActionPredictorFactory::GetInstance() {
-  static base::NoDestructor<AutocompleteActionPredictorFactory> instance;
-  return instance.get();
+  return base::Singleton<AutocompleteActionPredictorFactory>::get();
 }
 
 AutocompleteActionPredictorFactory::AutocompleteActionPredictorFactory()
     : ProfileKeyedServiceFactory(
           "AutocompleteActionPredictor",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HistoryServiceFactory::GetInstance());
   DependsOn(PredictorDatabaseFactory::GetInstance());
 }
 
-AutocompleteActionPredictorFactory::~AutocompleteActionPredictorFactory() =
-    default;
+AutocompleteActionPredictorFactory::~AutocompleteActionPredictorFactory() {}
 
-std::unique_ptr<KeyedService>
-AutocompleteActionPredictorFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AutocompleteActionPredictorFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<AutocompleteActionPredictor>(
-      static_cast<Profile*>(profile));
+  return new AutocompleteActionPredictor(static_cast<Profile*>(profile));
 }
 
 }  // namespace predictors

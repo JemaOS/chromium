@@ -9,8 +9,7 @@
 
 #include <math.h>
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_readable_stream.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_writable_stream.h"
@@ -57,9 +56,9 @@ v8::Local<v8::Promise> PromiseRejectInternal(ScriptState* script_state,
 
 class DefaultSizeAlgorithm final : public StrategySizeAlgorithm {
  public:
-  std::optional<double> Run(ScriptState*,
-                            v8::Local<v8::Value>,
-                            ExceptionState&) override {
+  absl::optional<double> Run(ScriptState*,
+                             v8::Local<v8::Value>,
+                             ExceptionState&) override {
     return 1;
   }
 };
@@ -69,9 +68,9 @@ class JavaScriptSizeAlgorithm final : public StrategySizeAlgorithm {
   JavaScriptSizeAlgorithm(v8::Isolate* isolate, v8::Local<v8::Function> size)
       : function_(isolate, size) {}
 
-  std::optional<double> Run(ScriptState* script_state,
-                            v8::Local<v8::Value> chunk,
-                            ExceptionState& exception_state) override {
+  absl::optional<double> Run(ScriptState* script_state,
+                             v8::Local<v8::Value> chunk,
+                             ExceptionState& exception_state) override {
     auto* isolate = script_state->GetIsolate();
     auto context = script_state->GetContext();
     v8::TryCatch trycatch(isolate);
@@ -84,7 +83,7 @@ class JavaScriptSizeAlgorithm final : public StrategySizeAlgorithm {
     v8::Local<v8::Value> result;
     if (!result_maybe.ToLocal(&result)) {
       exception_state.RethrowV8Exception(trycatch.Exception());
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     // This conversion to double comes from the EnqueueValueWithSize
@@ -94,7 +93,7 @@ class JavaScriptSizeAlgorithm final : public StrategySizeAlgorithm {
     v8::Local<v8::Number> number;
     if (!number_maybe.ToLocal(&number)) {
       exception_state.RethrowV8Exception(trycatch.Exception());
-      return std::nullopt;
+      return absl::nullopt;
     }
     return number->Value();
   }

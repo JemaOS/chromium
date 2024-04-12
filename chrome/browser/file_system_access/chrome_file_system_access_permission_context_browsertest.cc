@@ -10,7 +10,6 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/test/test_file_util.h"
-#include "base/test/test_future.h"
 #include "chrome/browser/apps/platform_apps/app_browsertest_util.h"
 #include "chrome/browser/file_system_access/file_system_access_permission_request_manager.h"
 #include "chrome/browser/profiles/profile.h"
@@ -23,7 +22,6 @@
 #include "content/public/test/file_system_chooser_test_helpers.h"
 #include "content/public/test/prerender_test_util.h"
 #include "content/public/test/test_utils.h"
-#include "content/public/test/update_user_activation_state_interceptor.h"
 #include "extensions/test/extension_test_message_listener.h"
 #include "net/dns/mock_host_resolver.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -97,7 +95,7 @@ class ChromeFileSystemAccessPermissionContextPrerenderingBrowserTest
     ASSERT_TRUE(
         temp_dir_.CreateUniqueTempDirUnderPath(base::GetTempDirForTesting()));
 
-    prerender_test_helper_.RegisterServerRequestMonitor(embedded_test_server());
+    prerender_test_helper_.SetUp(embedded_test_server());
     InProcessBrowserTest::SetUp();
   }
 
@@ -133,53 +131,6 @@ class ChromeFileSystemAccessPermissionContextPrerenderingBrowserTest
   base::ScopedTempDir temp_dir_;
 };
 
-// Tests that subscribers are notified of file creation events originating from
-// `window.showSaveFilePicker()`.
-IN_PROC_BROWSER_TEST_F(
-    ChromeFileSystemAccessPermissionContextPrerenderingBrowserTest,
-    NotifyFileCreatedFromShowSaveFilePicker) {
-  // Install fake file picker factory.
-  const base::FilePath expected_file_path = CreateTestFile("");
-  ui::SelectFileDialog::SetFactory(
-      std::make_unique<content::FakeSelectFileDialogFactory>(
-          std::vector<base::FilePath>{expected_file_path}));
-
-  // Initialize permission context.
-  Profile* const profile = browser()->profile();
-  TestFileSystemAccessPermissionContext permission_context(profile);
-  content::SetFileSystemAccessPermissionContext(profile, &permission_context);
-  FileSystemAccessPermissionRequestManager::FromWebContents(GetWebContents())
-      ->set_auto_response_for_test(permissions::PermissionAction::GRANTED);
-
-  // Subscribe to be notified of file creation events.
-  base::test::TestFuture<const GURL&, const storage::FileSystemURL&>
-      file_created_from_show_save_file_picker_future;
-  base::CallbackListSubscription
-      file_created_from_show_save_file_picker_subscription_ =
-          permission_context.AddFileCreatedFromShowSaveFilePickerCallback(
-              file_created_from_show_save_file_picker_future
-                  .GetRepeatingCallback());
-
-  // Navigate web contents.
-  const GURL expected_url = embedded_test_server()->GetURL("/empty.html");
-  ASSERT_NE(ui_test_utils::NavigateToURL(browser(), expected_url), nullptr);
-
-  // Invoke `window.showSaveFilePicker()` from web contents. Note that because
-  // a fake file picker factory was installed, this should result in the
-  // `expected_file_path` being picked without the need for user interaction.
-  ASSERT_TRUE(content::ExecJs(GetWebContents(),
-                              "(() => { self.showSaveFilePicker({}); })()"));
-
-  // Wait for and verify details of the file creation event.
-  auto [file_picker_binding_context, url] =
-      file_created_from_show_save_file_picker_future.Take();
-  EXPECT_EQ(file_picker_binding_context, expected_url);
-  EXPECT_EQ(url.path(), expected_file_path);
-
-  // Uninstall fake file picker factory.
-  ui::SelectFileDialog::SetFactory(nullptr);
-}
-
 // Tests that PerformAfterWriteChecks() that is called by
 // 'FileSystemWritableFileStream.close()' works with the RenderFrameHost in an
 // active state, not the prerendered RenderFrameHost.
@@ -188,8 +139,7 @@ IN_PROC_BROWSER_TEST_F(
     PerformAfterWriteChecks) {
   const base::FilePath test_file = CreateTestFile("");
   ui::SelectFileDialog::SetFactory(
-      std::make_unique<content::FakeSelectFileDialogFactory>(
-          std::vector<base::FilePath>{test_file}));
+      new content::FakeSelectFileDialogFactory({test_file}));
 
   TestFileSystemAccessPermissionContext permission_context(
       browser()->profile());

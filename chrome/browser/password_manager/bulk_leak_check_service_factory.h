@@ -24,7 +24,7 @@ class BulkLeakCheckServiceFactory : public ProfileKeyedServiceFactory {
       Profile* profile);
 
  private:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

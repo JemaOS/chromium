@@ -5,9 +5,9 @@
 package org.chromium.chrome.browser.bookmarks;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.accessibility.AccessibilityManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,7 +18,6 @@ import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.bookmarks.BookmarkUiPrefs.BookmarkRowDisplayPref;
 import org.chromium.chrome.browser.commerce.PriceTrackingUtils;
 import org.chromium.chrome.browser.commerce.ShoppingFeatures;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -29,25 +28,22 @@ import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.bottomsheet.EmptyBottomSheetObserver;
 import org.chromium.components.commerce.core.ShoppingService;
-import org.chromium.components.favicon.LargeIconBridge;
 import org.chromium.components.feature_engagement.FeatureConstants;
-import org.chromium.components.image_fetcher.ImageFetcherConfig;
-import org.chromium.components.image_fetcher.ImageFetcherFactory;
 import org.chromium.components.power_bookmarks.PowerBookmarkMeta;
-import org.chromium.components.signin.identitymanager.IdentityManager;
-import org.chromium.ui.accessibility.AccessibilityState;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
+import org.chromium.ui.widget.ViewLookupCachingFrameLayout;
 
 /** Coordinates the bottom-sheet saveflow. */
 public class BookmarkSaveFlowCoordinator {
-    private static final int AUTO_DISMISS_TIME_MS = 10000;
+    private static final int AUTODISMISS_TIME_MS = 6000;
 
     private final Context mContext;
-    private final PropertyModel mPropertyModel;
-    private final PropertyModelChangeProcessor<PropertyModel, ? extends View, PropertyKey>
-            mChangeProcessor;
+    private final PropertyModel mPropertyModel =
+            new PropertyModel(BookmarkSaveFlowProperties.ALL_PROPERTIES);
+    private final PropertyModelChangeProcessor<PropertyModel, ViewLookupCachingFrameLayout,
+            PropertyKey> mChangeProcessor;
     private final DestroyChecker mDestroyChecker;
     private final Profile mProfile;
 
@@ -60,121 +56,60 @@ public class BookmarkSaveFlowCoordinator {
     private boolean mClosedViaRunnable;
 
     /**
-     * @param context The {@link Context} associated with this coordinator.
+     * @param context The {@link Context} associated with this cooridnator.
      * @param bottomSheetController Allows displaying content in the bottom sheet.
-     * @param shoppingService Allows un/subscribing for product updates, used for price-tracking.
+     * @param shoppingService Allows un/subscribing for product updates, used for
+     *         price-tracking.
      * @param userEducationHelper A means of triggering IPH.
-     * @param profile The current chrome profile.
-     * @param identityManager The {@link IdentityManager} which supplies the account data.
      */
-    public BookmarkSaveFlowCoordinator(
-            @NonNull Context context,
-            @NonNull BottomSheetController bottomSheetController,
-            @NonNull ShoppingService shoppingService,
-            @NonNull UserEducationHelper userEducationHelper,
-            @NonNull Profile profile,
-            @NonNull IdentityManager identityManager) {
+    public BookmarkSaveFlowCoordinator(@NonNull Context context,
+            @NonNull BottomSheetController bottomSheetController, ShoppingService shoppingService,
+            @NonNull UserEducationHelper userEducationHelper, Profile profile) {
         mContext = context;
         mBottomSheetController = bottomSheetController;
         mUserEducationHelper = userEducationHelper;
-        mBookmarkModel = BookmarkModel.getForProfile(profile);
-        assert mBookmarkModel != null;
+        mBookmarkModel = BookmarkModel.getForProfile(Profile.getLastUsedRegularProfile());
         mDestroyChecker = new DestroyChecker();
         mProfile = profile;
 
-        if (BookmarkFeatures.isAndroidImprovedBookmarksEnabled()) {
-            mPropertyModel = new PropertyModel(ImprovedBookmarkSaveFlowProperties.ALL_KEYS);
-            mBookmarkSaveFlowView =
-                    LayoutInflater.from(mContext)
-                            .inflate(R.layout.improved_bookmark_save_flow, /* root= */ null);
-            mChangeProcessor =
-                    PropertyModelChangeProcessor.create(
-                            mPropertyModel,
-                            (ImprovedBookmarkSaveFlowView) mBookmarkSaveFlowView,
-                            ImprovedBookmarkSaveFlowViewBinder::bind);
-        } else {
-            mPropertyModel = new PropertyModel(BookmarkSaveFlowProperties.ALL_KEYS);
-            mBookmarkSaveFlowView =
-                    LayoutInflater.from(mContext)
-                            .inflate(R.layout.bookmark_save_flow, /* root= */ null);
-            mChangeProcessor =
-                    PropertyModelChangeProcessor.create(
-                            mPropertyModel,
-                            mBookmarkSaveFlowView,
-                            new BookmarkSaveFlowViewBinder());
-        }
-
-        Resources res = mContext.getResources();
-        BookmarkImageFetcher bookmarkImageFetcher =
-                new BookmarkImageFetcher(
-                        context,
-                        mBookmarkModel,
-                        ImageFetcherFactory.createImageFetcher(
-                                ImageFetcherConfig.DISK_CACHE_ONLY, mProfile.getProfileKey()),
-                        new LargeIconBridge(mProfile),
-                        BookmarkUtils.getRoundedIconGenerator(
-                                mContext, BookmarkRowDisplayPref.VISUAL),
-                        res.getDimensionPixelSize(R.dimen.improved_bookmark_save_flow_image_size),
-                        BookmarkUtils.getFaviconDisplaySize(res));
-
-        mMediator =
-                new BookmarkSaveFlowMediator(
-                        mBookmarkModel,
-                        mPropertyModel,
-                        mContext,
-                        this::close,
-                        shoppingService,
-                        bookmarkImageFetcher,
-                        mProfile,
-                        identityManager);
+        mBookmarkSaveFlowView = LayoutInflater.from(mContext).inflate(
+                org.chromium.chrome.R.layout.bookmark_save_flow, /*root=*/null);
+        mMediator = new BookmarkSaveFlowMediator(
+                mBookmarkModel, mPropertyModel, mContext, this::close, shoppingService);
+        mChangeProcessor = PropertyModelChangeProcessor.create(mPropertyModel,
+                (ViewLookupCachingFrameLayout) mBookmarkSaveFlowView,
+                new BookmarkSaveFlowViewBinder());
     }
 
     /**
      * Shows the save flow for a normal bookmark.
-     *
      * @param bookmarkId The {@link BookmarkId} which was saved.
      */
     public void show(BookmarkId bookmarkId) {
-        show(
-                bookmarkId,
-                /* fromExplicitTrackUi= */ false,
-                /* wasBookmarkMoved= */ false,
-                /* isNewBookmark= */ false);
+        show(bookmarkId, /*fromExplicitTrackUi=*/false, /*wasBookmarkMoved=*/false,
+                /*isNewBookmark=*/false);
     }
 
     /**
      * Shows the bookmark save flow sheet.
-     *
      * @param bookmarkId The {@link BookmarkId} which was saved.
      * @param fromExplicitTrackUi Whether the bookmark was added via a dedicated tracking entry
-     *     point. This will change the UI of the bookmark save flow, either adding type-specific
-     *     text (e.g. price tracking text) or adding UI bits to allow users to upgrade a regular
-     *     bookmark. This will be false when adding a normal bookmark.
-     * @param wasBookmarkMoved Whether the save flow is shown as a result of a moved bookmark.
+     *         point. This will change the UI of the bookmark save flow, either adding type-specific
+     *         text (e.g. price tracking text) or adding UI bits to allow users to upgrade a regular
+     *         bookmark. This will be false when adding a normal bookmark.
+     * @param wasBookmarkMoved Whether the save flow is shown as a reslult of a moved bookmark.
      * @param isNewBookmark Whether the bookmark is newly created.
      */
-    public void show(
-            BookmarkId bookmarkId,
-            boolean fromExplicitTrackUi,
-            boolean wasBookmarkMoved,
+    public void show(BookmarkId bookmarkId, boolean fromExplicitTrackUi, boolean wasBookmarkMoved,
             boolean isNewBookmark) {
-        mBookmarkModel.finishLoadingBookmarkModel(
-                () -> {
-                    show(
-                            bookmarkId,
-                            fromExplicitTrackUi,
-                            wasBookmarkMoved,
-                            isNewBookmark,
-                            mBookmarkModel.getPowerBookmarkMeta(bookmarkId));
-                });
+        mBookmarkModel.finishLoadingBookmarkModel(() -> {
+            show(bookmarkId, fromExplicitTrackUi, wasBookmarkMoved, isNewBookmark,
+                    mBookmarkModel.getPowerBookmarkMeta(bookmarkId));
+        });
     }
 
-    void show(
-            BookmarkId bookmarkId,
-            boolean fromExplicitTrackUi,
-            boolean wasBookmarkMoved,
-            boolean isNewBookmark,
-            @Nullable PowerBookmarkMeta meta) {
+    void show(BookmarkId bookmarkId, boolean fromExplicitTrackUi, boolean wasBookmarkMoved,
+            boolean isNewBookmark, @Nullable PowerBookmarkMeta meta) {
         mDestroyChecker.checkNotDestroyed();
         mBottomSheetContent = new BookmarkSaveFlowBottomSheetContent(mBookmarkSaveFlowView);
         // Order matters here: Calling show on the mediator first allows the height to be fully
@@ -183,34 +118,31 @@ public class BookmarkSaveFlowCoordinator {
         boolean shown =
                 mBottomSheetController.requestShowContent(mBottomSheetContent, /* animate= */ true);
 
-        if (!AccessibilityState.isTouchExplorationEnabled()) {
+        AccessibilityManager am =
+                (AccessibilityManager) mContext.getSystemService(Context.ACCESSIBILITY_SERVICE);
+        if (!am.isTouchExplorationEnabled()) {
             setupAutodismiss();
         }
 
-        if (ShoppingFeatures.isShoppingListEligible(mProfile)) {
-            PriceTrackingUtils.isBookmarkPriceTracked(
-                    mProfile,
-                    bookmarkId.getId(),
-                    (isTracked) -> {
-                        if (isTracked) return;
+        if (ShoppingFeatures.isShoppingListEligible()) {
+            PriceTrackingUtils.isBookmarkPriceTracked(mProfile, bookmarkId.getId(), (isTracked) -> {
+                if (isTracked) return;
 
-                        if (shown) {
-                            showShoppingSaveFlowIPH();
-                        } else {
-                            mBottomSheetController.addObserver(
-                                    new EmptyBottomSheetObserver() {
-                                        @Override
-                                        public void onSheetContentChanged(
-                                                BottomSheetContent newContent) {
-                                            if (newContent == mBottomSheetContent) {
-                                                showShoppingSaveFlowIPH();
-                                            }
+                if (shown) {
+                    showShoppingSaveFlowIPH();
+                } else {
+                    mBottomSheetController.addObserver(new EmptyBottomSheetObserver() {
+                        @Override
+                        public void onSheetContentChanged(BottomSheetContent newContent) {
+                            if (newContent == mBottomSheetContent) {
+                                showShoppingSaveFlowIPH();
+                            }
 
-                                            mBottomSheetController.removeObserver(this);
-                                        }
-                                    });
+                            mBottomSheetController.removeObserver(this);
                         }
                     });
+                }
+            });
         }
     }
 
@@ -220,11 +152,9 @@ public class BookmarkSaveFlowCoordinator {
      */
     private void showShoppingSaveFlowIPH() {
         mUserEducationHelper.requestShowIPH(
-                new IPHCommandBuilder(
-                                mBookmarkSaveFlowView.getResources(),
-                                FeatureConstants.SHOPPING_LIST_SAVE_FLOW_FEATURE,
-                                R.string.iph_shopping_list_save_flow,
-                                R.string.iph_shopping_list_save_flow)
+                new IPHCommandBuilder(mBookmarkSaveFlowView.getResources(),
+                        FeatureConstants.SHOPPING_LIST_SAVE_FLOW_FEATURE,
+                        R.string.iph_shopping_list_save_flow, R.string.iph_shopping_list_save_flow)
                         .setAnchorView(
                                 mBookmarkSaveFlowView.findViewById(R.id.bookmark_select_folder))
                         .build());
@@ -237,10 +167,11 @@ public class BookmarkSaveFlowCoordinator {
     }
 
     private void setupAutodismiss() {
-        PostTask.postDelayedTask(TaskTraits.UI_USER_VISIBLE, this::close, AUTO_DISMISS_TIME_MS);
+        PostTask.postDelayedTask(TaskTraits.UI_USER_VISIBLE, this::close, AUTODISMISS_TIME_MS);
     }
 
     private void destroy() {
+        mDestroyChecker.checkNotDestroyed();
         mDestroyChecker.destroy();
 
         // The bottom sheet was closed by a means other than one of the edit actions.
@@ -330,6 +261,7 @@ public class BookmarkSaveFlowCoordinator {
         }
     }
 
+    @VisibleForTesting
     View getViewForTesting() {
         return mBookmarkSaveFlowView;
     }

@@ -1,23 +1,13 @@
 {
   "layers": [
     {
-      "name": "Scrolling background of LayoutView #document",
+      "name": "Scrolling background of LayoutNGView #document",
       "bounds": [1008, 1016],
       "contentsOpaque": true,
-      "backgroundColor": "#FFFFFF"
-    },
-    {
-      "name": "LayoutNGBlockFlow DIV id='target'",
-      "bounds": [585, 235],
+      "backgroundColor": "#FFFFFF",
       "invalidations": [
-        [0, 0, 585, 235]
+        [8, 8, 1000, 1000]
       ]
-    },
-    {
-      "name": "LayoutNGBlockFlow DIV id='target'",
-      "position": [8, 8],
-      "bounds": [1000, 1000],
-      "drawsContent": false
     },
     {
       "name": "HorizontalScrollbar",
@@ -32,7 +22,7 @@
       "contentsOpaque": true
     },
     {
-      "name": "Scroll corner of LayoutView #document",
+      "name": "Scroll corner of LayoutNGView #document",
       "position": [585, 235],
       "bounds": [15, 15],
       "invalidations": [
@@ -44,23 +34,13 @@
 {
   "layers": [
     {
-      "name": "Scrolling background of LayoutView #document",
+      "name": "Scrolling background of LayoutNGView #document",
       "bounds": [1008, 1016],
       "contentsOpaque": true,
-      "backgroundColor": "#FFFFFF"
-    },
-    {
-      "name": "LayoutNGBlockFlow DIV id='target'",
-      "bounds": [385, 235],
+      "backgroundColor": "#FFFFFF",
       "invalidations": [
-        [0, 0, 385, 235]
+        [8, 8, 1000, 1000]
       ]
-    },
-    {
-      "name": "LayoutNGBlockFlow DIV id='target'",
-      "position": [8, 8],
-      "bounds": [1000, 1000],
-      "drawsContent": false
     },
     {
       "name": "HorizontalScrollbar",
@@ -75,7 +55,7 @@
       "contentsOpaque": true
     },
     {
-      "name": "Scroll corner of LayoutView #document",
+      "name": "Scroll corner of LayoutNGView #document",
       "position": [385, 235],
       "bounds": [15, 15],
       "invalidations": [
@@ -87,23 +67,13 @@
 {
   "layers": [
     {
-      "name": "Scrolling background of LayoutView #document",
+      "name": "Scrolling background of LayoutNGView #document",
       "bounds": [1008, 1016],
       "contentsOpaque": true,
-      "backgroundColor": "#FFFFFF"
-    },
-    {
-      "name": "LayoutNGBlockFlow DIV id='target'",
-      "bounds": [385, 585],
+      "backgroundColor": "#FFFFFF",
       "invalidations": [
-        [0, 0, 385, 585]
+        [8, 8, 1000, 1000]
       ]
-    },
-    {
-      "name": "LayoutNGBlockFlow DIV id='target'",
-      "position": [8, 8],
-      "bounds": [1000, 1000],
-      "drawsContent": false
     },
     {
       "name": "HorizontalScrollbar",
@@ -118,7 +88,7 @@
       "contentsOpaque": true
     },
     {
-      "name": "Scroll corner of LayoutView #document",
+      "name": "Scroll corner of LayoutNGView #document",
       "position": [385, 585],
       "bounds": [15, 15],
       "invalidations": [
@@ -130,23 +100,13 @@
 {
   "layers": [
     {
-      "name": "Scrolling background of LayoutView #document",
+      "name": "Scrolling background of LayoutNGView #document",
       "bounds": [1008, 1016],
       "contentsOpaque": true,
-      "backgroundColor": "#FFFFFF"
-    },
-    {
-      "name": "LayoutNGBlockFlow DIV id='target'",
-      "bounds": [785, 585],
+      "backgroundColor": "#FFFFFF",
       "invalidations": [
-        [0, 0, 785, 585]
+        [8, 8, 1000, 1000]
       ]
-    },
-    {
-      "name": "LayoutNGBlockFlow DIV id='target'",
-      "position": [8, 8],
-      "bounds": [1000, 1000],
-      "drawsContent": false
     },
     {
       "name": "HorizontalScrollbar",
@@ -161,7 +121,7 @@
       "contentsOpaque": true
     },
     {
-      "name": "Scroll corner of LayoutView #document",
+      "name": "Scroll corner of LayoutNGView #document",
       "position": [785, 585],
       "bounds": [15, 15],
       "invalidations": [

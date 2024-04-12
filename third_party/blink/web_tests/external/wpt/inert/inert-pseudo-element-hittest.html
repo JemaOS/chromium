@@ -36,9 +36,8 @@ async function mouseDownAndGetEvents(test) {
         }, { once: true, capture: true });
     }
 
-    let targetRect = target.getBoundingClientRect();
     await new test_driver.Actions()
-        .pointerMove(targetRect.x + 1, targetRect.y + 1, { origin: "viewport" })
+        .pointerMove(0, 0, { origin: target })
         .pointerDown()
         .send();
     test.add_cleanup(() => test_driver.click(document.body));

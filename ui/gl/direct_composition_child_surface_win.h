@@ -18,10 +18,8 @@ namespace gl {
 
 class GL_EXPORT DirectCompositionChildSurfaceWin : public GLSurfaceEGL {
  public:
-  DirectCompositionChildSurfaceWin(
-      GLDisplayEGL* display,
-      Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device,
-      bool use_angle_texture_offset);
+  DirectCompositionChildSurfaceWin(GLDisplayEGL* display,
+                                   bool use_angle_texture_offset);
 
   DirectCompositionChildSurfaceWin(const DirectCompositionChildSurfaceWin&) =
       delete;
@@ -80,6 +78,9 @@ class GL_EXPORT DirectCompositionChildSurfaceWin : public GLSurfaceEGL {
   // to it. Returns false if this fails.
   bool ReleaseDrawTexture(bool will_discard);
 
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> GetOffscreenTexture();
+  void CopyOffscreenTextureToDrawTexture();
+
   gfx::Size size_ = gfx::Size(1, 1);
   bool enable_dc_layers_ = false;
   bool has_alpha_ = true;
@@ -107,6 +108,11 @@ class GL_EXPORT DirectCompositionChildSurfaceWin : public GLSurfaceEGL {
   Microsoft::WRL::ComPtr<IDCompositionSurface> dcomp_surface_;
   Microsoft::WRL::ComPtr<IDXGISwapChain1> swap_chain_;
   Microsoft::WRL::ComPtr<ID3D11Texture2D> draw_texture_;
+  POINT dcomp_update_offset_ = {};
+
+  // Used only for kDirectCompositionVerifyDrawOffset to
+  // verify a draw offset bug.
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> offscreen_texture_;
 
   const bool use_angle_texture_offset_;
 };

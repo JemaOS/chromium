@@ -32,7 +32,8 @@ public class ShadowProfile {
     }
 
     @Implementation
-    public static @Nullable Profile fromWebContents(WebContents webContents) {
+    @Nullable
+    public static Profile fromWebContents(WebContents webContents) {
         return sProfile;
     }
 }

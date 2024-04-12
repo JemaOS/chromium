@@ -46,12 +46,6 @@
                 "domain": "DOMStorage"
             },
             {
-                "domain": "EventBreakpoints"
-            },
-            {
-                "domain": "Storage"
-            },
-            {
                 "domain": "IndexedDB",
                 "async": ["requestDatabaseNames", "requestDatabase", "requestData", "getMetadata", "deleteObjectStoreEntries", "clearObjectStore", "deleteDatabase"]
             },
@@ -79,10 +73,9 @@
             {
                 "domain": "Page",
                 "exclude": ["getNavigationHistory", "navigateToHistoryEntry", "resetNavigationHistory", "captureScreenshot", "screencastFrameAck", "handleJavaScriptDialog", "setColorPickerEnabled",
-                            "getAppManifest", "setControlNavigations", "processNavigation", "printToPDF", "bringToFront", "setDownloadBehavior", "navigate", "crash", "close", "setWebLifecycleState", "captureSnapshot", "getInstallabilityErrors", "getManifestIcons", "getAppId", "setSPCTransactionMode", "setRPHRegistrationMode", "setPrerenderingAllowed"],
+                            "getAppManifest", "setControlNavigations", "processNavigation", "printToPDF", "bringToFront", "setDownloadBehavior", "navigate", "crash", "close", "setWebLifecycleState", "captureSnapshot", "getInstallabilityErrors", "getManifestIcons", "getAppId", "setSPCTransactionMode", "setRPHRegistrationMode"],
                 "async": ["getResourceContent", "searchInResource", "createIsolatedWorld"],
-                "exclude_events": ["screencastFrame", "screencastVisibilityChanged", "colorPicked", "interstitialShown", "interstitialHidden",
-                                   "javascriptDialogOpening", "javascriptDialogClosed", "navigationRequested", "frameStartedLoading", "frameStoppedLoading"]
+                "exclude_events": ["screencastFrame", "screencastVisibilityChanged", "colorPicked", "interstitialShown", "interstitialHidden", "javascriptDialogOpening", "javascriptDialogClosed", "navigationRequested"]
             },
             {
                 "domain": "Performance"

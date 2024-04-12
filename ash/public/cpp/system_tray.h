@@ -7,9 +7,7 @@
 
 #include <string>
 
-#include "ash/ash_export.h"
-
-#include "base/memory/raw_ptr.h"
+#include "ash/public/cpp/ash_public_export.h"
 
 namespace ash {
 
@@ -26,7 +24,7 @@ class PhoneHubManager;
 }
 
 // Public interface to control the system tray bubble in ash.
-class ASH_EXPORT SystemTray {
+class ASH_PUBLIC_EXPORT SystemTray {
  public:
   static SystemTray* Get();
 
@@ -121,8 +119,8 @@ class ASH_EXPORT SystemTray {
       phonehub::PhoneHubManager* phone_hub_manager) = 0;
 
  protected:
-  SystemTray() = default;
-  virtual ~SystemTray() = default;
+  SystemTray();
+  virtual ~SystemTray();
 };
 
 }  // namespace ash

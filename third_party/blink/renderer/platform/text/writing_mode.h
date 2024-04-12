@@ -47,9 +47,7 @@ enum class WritingMode : uint8_t {
   kVerticalLr = 2,
   // sideways-rl and sideways-lr are only supported by LayoutNG.
   kSidewaysRl = 3,
-  kSidewaysLr = 4,
-
-  kMaxWritingMode = kSidewaysLr,
+  kSidewaysLr = 4
 };
 
 // Lines have horizontal orientation; modes horizontal-tb.

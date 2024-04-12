@@ -14,10 +14,10 @@ CookiesGetAllSignal::CookiesGetAllSignal(
     const std::string& domain,
     const std::string& name,
     const std::string& path,
-    std::optional<bool> secure,
+    absl::optional<bool> secure,
     const std::string& store_id,
     const std::string& url,
-    std::optional<bool> is_session)
+    absl::optional<bool> is_session)
     : ExtensionSignal(extension_id),
       domain_(domain),
       name_(name),

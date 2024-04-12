@@ -88,9 +88,8 @@ HTMLElement* ScriptCustomElementDefinition::CreateAutonomousCustomElementSync(
   ScriptState::Scope scope(script_state_);
   v8::Isolate* isolate = script_state_->GetIsolate();
 
-  ExceptionState exception_state(
-      isolate, ExceptionContextType::kConstructorOperationInvoke,
-      "CustomElement");
+  ExceptionState exception_state(isolate, ExceptionState::kConstructionContext,
+                                 "CustomElement");
 
   // Create an element with the synchronous custom elements flag set.
   // https://dom.spec.whatwg.org/#concept-create-element
@@ -174,7 +173,8 @@ Element* ScriptCustomElementDefinition::CallConstructor() {
     return nullptr;
   }
 
-  return V8Element::ToWrappable(constructor_->GetIsolate(), result.V8Value());
+  return V8Element::ToImplWithTypeCheck(constructor_->GetIsolate(),
+                                        result.V8Value());
 }
 
 v8::Local<v8::Object> ScriptCustomElementDefinition::Constructor() const {
@@ -187,31 +187,31 @@ ScriptValue ScriptCustomElementDefinition::GetConstructorForScript() {
 }
 
 bool ScriptCustomElementDefinition::HasConnectedCallback() const {
-  return connected_callback_ != nullptr;
+  return connected_callback_;
 }
 
 bool ScriptCustomElementDefinition::HasDisconnectedCallback() const {
-  return disconnected_callback_ != nullptr;
+  return disconnected_callback_;
 }
 
 bool ScriptCustomElementDefinition::HasAdoptedCallback() const {
-  return adopted_callback_ != nullptr;
+  return adopted_callback_;
 }
 
 bool ScriptCustomElementDefinition::HasFormAssociatedCallback() const {
-  return form_associated_callback_ != nullptr;
+  return form_associated_callback_;
 }
 
 bool ScriptCustomElementDefinition::HasFormResetCallback() const {
-  return form_reset_callback_ != nullptr;
+  return form_reset_callback_;
 }
 
 bool ScriptCustomElementDefinition::HasFormDisabledCallback() const {
-  return form_disabled_callback_ != nullptr;
+  return form_disabled_callback_;
 }
 
 bool ScriptCustomElementDefinition::HasFormStateRestoreCallback() const {
-  return form_state_restore_callback_ != nullptr;
+  return form_state_restore_callback_;
 }
 
 void ScriptCustomElementDefinition::RunConnectedCallback(Element& element) {

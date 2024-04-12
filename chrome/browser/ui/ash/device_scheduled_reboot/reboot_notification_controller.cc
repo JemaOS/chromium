@@ -140,7 +140,7 @@ bool RebootNotificationController::ShouldNotifyUser() const {
 }
 
 void RebootNotificationController::HandleNotificationClick(
-    std::optional<int> button_index) const {
+    absl::optional<int> button_index) const {
   // Only request restart when the button is clicked, i.e. ignore the clicks
   // on the body of the notification.
   if (!button_index)

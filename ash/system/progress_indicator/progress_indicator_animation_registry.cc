@@ -12,14 +12,11 @@ namespace {
 // Type aliases ----------------------------------------------------------------
 
 template <typename AnimationType>
-using KeyedAnimationMap =
-    std::map<ProgressIndicatorAnimationRegistry::AnimationKey,
-             std::unique_ptr<AnimationType>>;
+using KeyedAnimationMap = std::map<const void*, std::unique_ptr<AnimationType>>;
 
 template <typename CallbackListType>
 using KeyedAnimationChangedCallbackListMap =
-    std::map<ProgressIndicatorAnimationRegistry::AnimationKey,
-             CallbackListType>;
+    std::map<const void*, CallbackListType>;
 
 // Helpers ---------------------------------------------------------------------
 
@@ -30,7 +27,7 @@ void NotifyAnimationChangedForKey(
     KeyedAnimationMap<AnimationType>* animations_by_key,
     KeyedAnimationChangedCallbackListMap<CallbackListType>*
         animation_changed_callback_lists_by_key,
-    ProgressIndicatorAnimationRegistry::AnimationKey key) {
+    const void* key) {
   auto callback_lists_it = animation_changed_callback_lists_by_key->find(key);
   if (callback_lists_it == animation_changed_callback_lists_by_key->end())
     return;
@@ -47,7 +44,7 @@ template <typename CallbackListType>
 base::CallbackListSubscription AddAnimationChangedCallbackForKey(
     KeyedAnimationChangedCallbackListMap<CallbackListType>*
         animation_changed_callback_lists_by_key,
-    ProgressIndicatorAnimationRegistry::AnimationKey key,
+    const void* key,
     typename CallbackListType::CallbackType callback) {
   auto it = animation_changed_callback_lists_by_key->find(key);
 
@@ -62,15 +59,19 @@ base::CallbackListSubscription AddAnimationChangedCallbackForKey(
     it->second.set_removal_callback(base::BindRepeating(
         [](KeyedAnimationChangedCallbackListMap<CallbackListType>*
                animation_changed_callback_lists_by_key,
-           ProgressIndicatorAnimationRegistry::AnimationKey key) {
+           MayBeDangling<const void> key) {
           auto it = animation_changed_callback_lists_by_key->find(key);
           if (it != animation_changed_callback_lists_by_key->end() &&
               it->second.empty()) {
             animation_changed_callback_lists_by_key->erase(it);
           }
         },
-        // `base::Unretained()` is safe because this object owns the callback.
-        base::Unretained(animation_changed_callback_lists_by_key), key));
+        // base::Unretained is safe, because this object is owning the callback.
+        base::Unretained(animation_changed_callback_lists_by_key),
+        // TODO(b/265440023) `key` may be a pointer to freed memory. Consider
+        // using base::IdType instead of void* to key the
+        // ProgressIndicatorAnimationRegistry.
+        base::UnsafeDangling(key)));
   }
 
   return it->second.Add(std::move(callback));
@@ -82,7 +83,7 @@ base::CallbackListSubscription AddAnimationChangedCallbackForKey(
 template <typename AnimationType>
 AnimationType* GetAnimationForKey(
     KeyedAnimationMap<AnimationType>* animations_by_key,
-    ProgressIndicatorAnimationRegistry::AnimationKey key) {
+    const void* key) {
   auto it = animations_by_key->find(key);
   return it != animations_by_key->end() ? it->second.get() : nullptr;
 }
@@ -95,7 +96,7 @@ AnimationType* SetAnimationForKey(
     KeyedAnimationMap<AnimationType>* animations_by_key,
     KeyedAnimationChangedCallbackListMap<CallbackListType>*
         animation_changed_callback_lists_by_key,
-    ProgressIndicatorAnimationRegistry::AnimationKey key,
+    const void* key,
     std::unique_ptr<AnimationType> animation) {
   AnimationType* animation_ptr = animation.get();
   if (animation) {
@@ -123,15 +124,9 @@ ProgressIndicatorAnimationRegistry::ProgressIndicatorAnimationRegistry() =
 ProgressIndicatorAnimationRegistry::~ProgressIndicatorAnimationRegistry() =
     default;
 
-// static
-ProgressIndicatorAnimationRegistry::AnimationKey
-ProgressIndicatorAnimationRegistry::AsAnimationKey(const void* ptr) {
-  return reinterpret_cast<intptr_t>(ptr);
-}
-
 base::CallbackListSubscription ProgressIndicatorAnimationRegistry::
     AddProgressIconAnimationChangedCallbackForKey(
-        AnimationKey key,
+        const void* key,
         ProgressIconAnimationChangedCallbackList::CallbackType callback) {
   return AddAnimationChangedCallbackForKey(
       &icon_animation_changed_callback_lists_by_key_, key, std::move(callback));
@@ -139,7 +134,7 @@ base::CallbackListSubscription ProgressIndicatorAnimationRegistry::
 
 base::CallbackListSubscription ProgressIndicatorAnimationRegistry::
     AddProgressRingAnimationChangedCallbackForKey(
-        AnimationKey key,
+        const void* key,
         ProgressRingAnimationChangedCallbackList::CallbackType callback) {
   return AddAnimationChangedCallbackForKey(
       &ring_animation_changed_callback_lists_by_key_, key, std::move(callback));
@@ -147,19 +142,19 @@ base::CallbackListSubscription ProgressIndicatorAnimationRegistry::
 
 ProgressIconAnimation*
 ProgressIndicatorAnimationRegistry::GetProgressIconAnimationForKey(
-    AnimationKey key) {
+    const void* key) {
   return GetAnimationForKey(&icon_animations_by_key_, key);
 }
 
 ProgressRingAnimation*
 ProgressIndicatorAnimationRegistry::GetProgressRingAnimationForKey(
-    AnimationKey key) {
+    const void* key) {
   return GetAnimationForKey(&ring_animations_by_key_, key);
 }
 
 ProgressIconAnimation*
 ProgressIndicatorAnimationRegistry::SetProgressIconAnimationForKey(
-    AnimationKey key,
+    const void* key,
     std::unique_ptr<ProgressIconAnimation> animation) {
   return SetAnimationForKey(&icon_animations_by_key_,
                             &icon_animation_changed_callback_lists_by_key_, key,
@@ -168,7 +163,7 @@ ProgressIndicatorAnimationRegistry::SetProgressIconAnimationForKey(
 
 ProgressRingAnimation*
 ProgressIndicatorAnimationRegistry::SetProgressRingAnimationForKey(
-    AnimationKey key,
+    const void* key,
     std::unique_ptr<ProgressRingAnimation> animation) {
   return SetAnimationForKey(&ring_animations_by_key_,
                             &ring_animation_changed_callback_lists_by_key_, key,
@@ -176,31 +171,31 @@ ProgressIndicatorAnimationRegistry::SetProgressRingAnimationForKey(
 }
 
 void ProgressIndicatorAnimationRegistry::EraseAllAnimations() {
-  EraseAllAnimationsForKeyIf([](AnimationKey key) { return true; });
+  EraseAllAnimationsForKeyIf(
+      base::BindRepeating([](const void* key) { return true; }));
 }
 
 void ProgressIndicatorAnimationRegistry::EraseAllAnimationsForKey(
-    AnimationKey key) {
+    const void* key) {
   SetProgressIconAnimationForKey(key, nullptr);
   SetProgressRingAnimationForKey(key, nullptr);
 }
 
 void ProgressIndicatorAnimationRegistry::EraseAllAnimationsForKeyIf(
-    base::FunctionRef<bool(AnimationKey key)> predicate) {
-  std::set<AnimationKey> keys_to_erase;
-  for (const auto& [key, _] : icon_animations_by_key_) {
-    if (predicate(key)) {
+    base::RepeatingCallback<bool(const void* key)> predicate) {
+  std::set<const void*> keys_to_erase;
+  for (const auto& icon_animation_by_key : icon_animations_by_key_) {
+    const void* key = icon_animation_by_key.first;
+    if (predicate.Run(key))
       keys_to_erase.insert(key);
-    }
   }
-  for (const auto& [key, _] : ring_animations_by_key_) {
-    if (predicate(key)) {
+  for (const auto& ring_animation_by_key : ring_animations_by_key_) {
+    const void* key = ring_animation_by_key.first;
+    if (predicate.Run(key))
       keys_to_erase.insert(key);
-    }
   }
-  for (AnimationKey key : keys_to_erase) {
+  for (const void* key : keys_to_erase)
     EraseAllAnimationsForKey(key);
-  }
 }
 
 }  // namespace ash

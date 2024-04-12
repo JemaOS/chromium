@@ -97,7 +97,7 @@ MediaElementAudioSourceNode::GetMediaElementAudioSourceHandler() const {
 }
 
 HTMLMediaElement* MediaElementAudioSourceNode::mediaElement() const {
-  return media_element_.Get();
+  return media_element_;
 }
 
 void MediaElementAudioSourceNode::SetFormat(uint32_t number_of_channels,

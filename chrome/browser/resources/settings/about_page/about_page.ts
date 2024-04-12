@@ -8,7 +8,7 @@
  */
 
 import '../icons.html.js';
-import '/shared/settings/prefs/prefs.js';
+import 'chrome://resources/cr_components/settings_prefs/prefs.js';
 // <if expr="not chromeos_ash">
 import '../relaunch_confirmation_dialog.js';
 // </if>
@@ -25,10 +25,7 @@ import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
-// <if expr="_google_chrome">
-import {OpenWindowProxyImpl} from 'chrome://resources/js/open_window_proxy.js';
-// </if>
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {sanitizeInnerHtml} from 'chrome://resources/js/parse_html_subset.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
@@ -41,18 +38,13 @@ import {Router} from '../router.js';
 // </if>
 
 import {getTemplate} from './about_page.html.js';
-import type {AboutPageBrowserProxy, UpdateStatusChangedEvent} from './about_page_browser_proxy.js';
-import {AboutPageBrowserProxyImpl, UpdateStatus} from './about_page_browser_proxy.js';
+import {AboutPageBrowserProxy, AboutPageBrowserProxyImpl, UpdateStatus, UpdateStatusChangedEvent} from './about_page_browser_proxy.js';
 // clang-format off
 // <if expr="_google_chrome and is_macosx">
-import type {PromoteUpdaterStatus} from './about_page_browser_proxy.js';
+import {PromoteUpdaterStatus} from './about_page_browser_proxy.js';
 // </if>
 // clang-format on
 
-// <if expr="_google_chrome">
-export const ABOUT_PAGE_PRIVACY_POLICY_URL: string =
-    'https://policies.google.com/privacy';
-// </if>
 
 const SettingsAboutPageElementBase =
     RelaunchMixin(WebUiListenerMixin(I18nMixin(PolymerElement)));
@@ -86,17 +78,6 @@ export class SettingsAboutPageElement extends SettingsAboutPageElementBase {
         type: Boolean,
         value() {
           return loadTimeData.getBoolean('isManaged');
-        },
-      },
-
-      /**
-       * The name of the icon to display in the management card.
-       * Should only be read if isManaged_ is true.
-       */
-      managedByIcon_: {
-        type: String,
-        value() {
-          return loadTimeData.getString('managedByIcon');
         },
       },
 
@@ -349,7 +330,7 @@ export class SettingsAboutPageElement extends SettingsAboutPageElementBase {
   }
 
   private onManagementPageClick_() {
-    window.location.href = loadTimeData.getString('managementPageUrl');
+    window.location.href = 'chrome://management';
   }
 
   private onProductLogoClick_() {
@@ -363,16 +344,11 @@ export class SettingsAboutPageElement extends SettingsAboutPageElementBase {
         });
   }
 
-  // <if expr="_google_chrome">
   private onReportIssueClick_() {
     this.aboutBrowserProxy_.openFeedbackDialog();
   }
 
-  private onPrivacyPolicyClick_() {
-    OpenWindowProxyImpl.getInstance().openUrl(ABOUT_PAGE_PRIVACY_POLICY_URL);
-  }
-
-
+  // <if expr="_google_chrome">
   private onGetTheMostOutOfChromeClick_() {
     Router.getInstance().navigateTo(routes.GET_MOST_CHROME);
   }

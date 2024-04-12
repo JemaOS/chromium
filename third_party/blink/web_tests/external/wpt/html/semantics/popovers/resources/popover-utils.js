@@ -1,19 +1,10 @@
 function waitForRender() {
   return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
-
-function waitForTick() {
-  return new Promise(resolve => step_timeout(resolve, 0));
-}
-
 async function clickOn(element) {
+  const actions = new test_driver.Actions();
   await waitForRender();
-  let rect = element.getBoundingClientRect();
-  let actions = new test_driver.Actions();
-  // FIXME: Switch to pointerMove(0, 0, {origin: element}) once
-  // https://github.com/web-platform-tests/wpt/issues/41257 is fixed.
-  await actions
-      .pointerMove(Math.round(rect.x + rect.width / 2), Math.round(rect.y + rect.height / 2), {})
+  await actions.pointerMove(0, 0, {origin: element})
       .pointerDown({button: actions.ButtonType.LEFT})
       .pointerUp({button: actions.ButtonType.LEFT})
       .send();
@@ -22,29 +13,30 @@ async function clickOn(element) {
 async function sendTab() {
   await waitForRender();
   const kTab = '\uE004';
-  await new test_driver.send_keys(document.activeElement || document.documentElement, kTab);
+  await new test_driver.send_keys(document.body,kTab);
   await waitForRender();
 }
-async function sendShiftTab() {
+// Waiting for crbug.com/893480:
+// async function sendShiftTab() {
+//   await waitForRender();
+//   const kShift = '\uE008';
+//   const kTab = '\uE004';
+//   await new test_driver.Actions()
+//     .keyDown(kShift)
+//     .keyDown(kTab)
+//     .keyUp(kTab)
+//     .keyUp(kShift)
+//     .send();
+//   await waitForRender();
+// }
+async function sendEscape(element) {
   await waitForRender();
-  const kShift = '\uE008';
-  const kTab = '\uE004';
-  await new test_driver.Actions()
-    .keyDown(kShift)
-    .keyDown(kTab)
-    .keyUp(kTab)
-    .keyUp(kShift)
-    .send();
-  await waitForRender();
-}
-async function sendEscape() {
-  await waitForRender();
-  await new test_driver.send_keys(document.activeElement || document.documentElement,'\uE00C'); // Escape
+  await new test_driver.send_keys(element ? element : document.body,'\uE00C'); // Escape
   await waitForRender();
 }
 async function sendEnter() {
   await waitForRender();
-  await new test_driver.send_keys(document.activeElement || document.documentElement,'\uE007'); // Enter
+  await new test_driver.send_keys(document.body,'\uE007'); // Enter
   await waitForRender();
 }
 function isElementVisible(el) {
@@ -54,35 +46,33 @@ async function finishAnimations(popover) {
   popover.getAnimations({subtree: true}).forEach(animation => animation.finish());
   await waitForRender();
 }
-let mousemoveInfo;
+let mouseOverStarted;
 function mouseOver(element) {
-  mousemoveInfo?.controller?.abort();
-  const controller = new AbortController();
-  mousemoveInfo = {element, controller, moved: false, started: performance.now()};
+  mouseOverStarted = performance.now();
   return (new test_driver.Actions())
     .pointerMove(0, 0, {origin: element})
-    .send()
-    .then(() => {
-      document.addEventListener("mousemove", (e) => {mousemoveInfo.moved = true;}, {signal: controller.signal});
-    })
+    .send();
 }
 function msSinceMouseOver() {
-  return performance.now() - mousemoveInfo.started;
-}
-function assertMouseStillOver(element) {
-  assert_equals(mousemoveInfo.element, element, 'Broken test harness');
-  assert_false(mousemoveInfo.moved,'Broken test harness');
+  return performance.now() - mouseOverStarted;
 }
 async function waitForHoverTime(hoverWaitTimeMs) {
   await new Promise(resolve => step_timeout(resolve,hoverWaitTimeMs));
   await waitForRender();
 };
-async function mouseHover(element,hoverWaitTimeMs) {
-  await mouseOver(element);
-  await waitForHoverTime(hoverWaitTimeMs);
-  assertMouseStillOver(element);
+async function blessTopLayer(visibleElement) {
+  // The normal "bless" function doesn't work well when there are top layer
+  // elements blocking clicks. Additionally, since the normal test_driver.bless
+  // function just adds a button to the main document and clicks it, we can't
+  // call that in the presence of open popovers, since that click will close them.
+  const button = document.createElement('button');
+  button.innerHTML = "Click me to activate";
+  visibleElement.appendChild(button);
+  let wait_click = new Promise(resolve => button.addEventListener("click", resolve, {once: true}));
+  await test_driver.click(button);
+  await wait_click;
+  button.remove();
 }
-
 // This is a "polyfill" of sorts for the `defaultopen` attribute.
 // It can be called before window.load is complete, and it will
 // show defaultopen popovers according to the rules previously part
@@ -142,10 +132,10 @@ function assertIsFunctionalPopover(popover, checkVisibility) {
   assertPopoverVisibility(popover, /*isPopover*/true, /*expectedVisibility*/false, 'A popover should start out hidden');
   popover.showPopover();
   if (checkVisibility) assertPopoverVisibility(popover, /*isPopover*/true, /*expectedVisibility*/true, 'After showPopover(), a popover should be visible');
-  popover.showPopover(); // Calling showPopover on a showing popover should not throw.
+  assert_throws_dom("InvalidStateError",() => popover.showPopover(),'Calling showPopover on a showing popover should throw InvalidStateError');
   popover.hidePopover();
   if (checkVisibility) assertPopoverVisibility(popover, /*isPopover*/true, /*expectedVisibility*/false, 'After hidePopover(), a popover should be hidden');
-  popover.hidePopover(); // Calling hidePopover on a hidden popover should not throw.
+  assert_throws_dom("InvalidStateError",() => popover.hidePopover(),'Calling hidePopover on a hidden popover should throw InvalidStateError');
   popover.togglePopover();
   if (checkVisibility) assertPopoverVisibility(popover, /*isPopover*/true, /*expectedVisibility*/true, 'After togglePopover() on hidden popover, it should be visible');
   popover.togglePopover();
@@ -161,7 +151,7 @@ function assertIsFunctionalPopover(popover, checkVisibility) {
   const parent = popover.parentElement;
   popover.remove();
   assert_throws_dom("InvalidStateError",() => popover.showPopover(),'Calling showPopover on a disconnected popover should throw InvalidStateError');
-  popover.hidePopover(); // Calling hidePopover on a disconnected popover should not throw.
+  assert_throws_dom("InvalidStateError",() => popover.hidePopover(),'Calling hidePopover on a disconnected popover should throw InvalidStateError');
   assert_throws_dom("InvalidStateError",() => popover.togglePopover(),'Calling hidePopover on a disconnected popover should throw InvalidStateError');
   parent.appendChild(popover);
 }

@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import 'chrome://diagnostics/strings.m.js';
-import 'chrome://webui-test/chromeos/mojo_webui_test_support.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
 import {fakeTouchDevices} from 'chrome://diagnostics/fake_data.js';
 import {FakeInputDataProvider} from 'chrome://diagnostics/fake_input_data_provider.js';
@@ -58,7 +58,7 @@ suite('inputCardTestSuite', function() {
   let provider = null;
 
   setup(() => {
-    document.body.innerHTML = window.trustedTypes.emptyHTML;
+    document.body.innerHTML = '';
 
     provider = new FakeInputDataProvider();
     setInputDataProviderForTesting(provider);

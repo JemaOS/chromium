@@ -71,8 +71,8 @@ class SVGNumberOptionalNumber final : public SVGPropertyBase {
   }
   AnimatedPropertyType GetType() const override { return ClassType(); }
 
-  SVGNumber* FirstNumber() const { return first_number_.Get(); }
-  SVGNumber* SecondNumber() const { return second_number_.Get(); }
+  SVGNumber* FirstNumber() const { return first_number_; }
+  SVGNumber* SecondNumber() const { return second_number_; }
 
   void Trace(Visitor*) const override;
 

@@ -40,10 +40,10 @@ double GetDoubleFromDictionary(const base::Value::Dict* dictionary,
                                double default_value) {
   if (!dictionary)
     return default_value;
-  std::optional<double> double_value = dictionary->FindDouble(name);
+  absl::optional<double> double_value = dictionary->FindDouble(name);
   if (double_value)
     return *double_value;
-  std::optional<int> int_value = dictionary->FindInt(name);
+  absl::optional<int> int_value = dictionary->FindInt(name);
   if (int_value)
     return *int_value;
   return default_value;
@@ -207,22 +207,12 @@ bool ArcTracingEvent::AppendChild(std::unique_ptr<ArcTracingEvent> child) {
 }
 
 bool ArcTracingEvent::Validate() const {
-  const std::string name = GetName();
-  if (GetCategory().empty() || name.empty()) {
+  if (!GetPid() || GetCategory().empty() || GetName().empty())
     return false;
-  }
-  if (name == "ActiveProcesses") {
-    // Does not have pid or tid, so will not pass below checks.
-    return true;
-  }
-  if (!GetPid()) {
-    return false;
-  }
 
   switch (GetPhase()) {
     case TRACE_EVENT_PHASE_COMPLETE:
     case TRACE_EVENT_PHASE_COUNTER:
-    case TRACE_EVENT_PHASE_INSTANT:
       if (!GetTid())
         return false;
       break;

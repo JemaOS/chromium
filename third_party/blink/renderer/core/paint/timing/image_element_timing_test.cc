@@ -9,10 +9,8 @@
 #include "third_party/blink/renderer/core/layout/layout_image.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_image.h"
 #include "third_party/blink/renderer/core/loader/resource/image_resource_content.h"
-#include "third_party/blink/renderer/core/paint/timing/media_record_id.h"
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/testing/paint_test_configurations.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
 #include "third_party/skia/include/core/SkImage.h"
 #include "third_party/skia/include/core/SkSurface.h"
@@ -62,9 +60,11 @@ class ImageElementTimingTest : public testing::Test,
     return nullptr;
   }
 
-  bool ImagesNotifiedContains(MediaRecordIdHash record_id_hash) {
+  bool ImagesNotifiedContains(
+      const std::pair<const LayoutObject*, const ImageResourceContent*>&
+          record_id) {
     return ImageElementTiming::From(*GetDoc()->domWindow())
-        .images_notified_.Contains(record_id_hash);
+        .images_notified_.Contains(record_id);
   }
 
   unsigned ImagesNotifiedSize() {
@@ -80,7 +80,7 @@ class ImageElementTimingTest : public testing::Test,
   }
 
   LayoutObject* GetLayoutObjectById(const char* id) {
-    return GetDoc()->getElementById(AtomicString(id))->GetLayoutObject();
+    return GetDoc()->getElementById(id)->GetLayoutObject();
   }
 
   void UpdateAllLifecyclePhases() {
@@ -91,7 +91,6 @@ class ImageElementTimingTest : public testing::Test,
         ->UpdateAllLifecyclePhasesForTest();
   }
 
-  test::TaskEnvironment task_environment_;
   frame_test_helpers::WebViewHelper web_view_helper_;
   WebURL base_url_;
 
@@ -100,7 +99,7 @@ class ImageElementTimingTest : public testing::Test,
     sk_sp<SkColorSpace> src_rgb_color_space = SkColorSpace::MakeSRGB();
     SkImageInfo raster_image_info =
         SkImageInfo::MakeN32Premul(width, height, src_rgb_color_space);
-    sk_sp<SkSurface> surface(SkSurfaces::Raster(raster_image_info));
+    sk_sp<SkSurface> surface(SkSurface::MakeRaster(raster_image_info));
     sk_sp<SkImage> image = surface->makeImageSnapshot();
     ImageResourceContent* original_image_content =
         ImageResourceContent::CreateLoaded(
@@ -160,7 +159,7 @@ TEST_P(ImageElementTimingTest, IgnoresUnmarkedElement) {
   ASSERT_TRUE(layout_image);
   UpdateAllLifecyclePhases();
   EXPECT_FALSE(ImagesNotifiedContains(
-      MediaRecordId::GenerateHash(layout_image, layout_image->CachedImage())));
+      std::make_pair(layout_image, layout_image->CachedImage())));
 }
 
 TEST_P(ImageElementTimingTest, ImageInsideSVG) {
@@ -180,7 +179,7 @@ TEST_P(ImageElementTimingTest, ImageInsideSVG) {
 
   // |layout_image| should have had its paint notified to ImageElementTiming.
   EXPECT_TRUE(ImagesNotifiedContains(
-      MediaRecordId::GenerateHash(layout_image, layout_image->CachedImage())));
+      std::make_pair(layout_image, layout_image->CachedImage())));
 }
 
 TEST_P(ImageElementTimingTest, ImageInsideNonRenderedSVG) {
@@ -215,9 +214,9 @@ TEST_P(ImageElementTimingTest, ImageRemoved) {
   ASSERT_TRUE(layout_image);
   UpdateAllLifecyclePhases();
   EXPECT_TRUE(ImagesNotifiedContains(
-      MediaRecordId::GenerateHash(layout_image, layout_image->CachedImage())));
+      std::make_pair(layout_image, layout_image->CachedImage())));
 
-  GetDoc()->getElementById(AtomicString("target"))->remove();
+  GetDoc()->getElementById("target")->remove();
   // |layout_image| should no longer be part of |images_notified| since it will
   // be destroyed.
   EXPECT_EQ(ImagesNotifiedSize(), 0u);
@@ -235,10 +234,10 @@ TEST_P(ImageElementTimingTest, SVGImageRemoved) {
   LayoutSVGImage* layout_image = SetSVGImageResource("target", 5, 5);
   ASSERT_TRUE(layout_image);
   UpdateAllLifecyclePhases();
-  EXPECT_TRUE(ImagesNotifiedContains(MediaRecordId::GenerateHash(
+  EXPECT_TRUE(ImagesNotifiedContains(std::make_pair(
       layout_image, layout_image->ImageResource()->CachedImage())));
 
-  GetDoc()->getElementById(AtomicString("target"))->remove();
+  GetDoc()->getElementById("target")->remove();
   // |layout_image| should no longer be part of |images_notified| since it will
   // be destroyed.
   EXPECT_EQ(ImagesNotifiedSize(), 0u);
@@ -262,10 +261,9 @@ TEST_P(ImageElementTimingTest, BackgroundImageRemoved) {
       object->Style()->BackgroundLayers().GetImage()->CachedImage();
   UpdateAllLifecyclePhases();
   EXPECT_EQ(ImagesNotifiedSize(), 1u);
-  EXPECT_TRUE(
-      ImagesNotifiedContains(MediaRecordId::GenerateHash(object, content)));
+  EXPECT_TRUE(ImagesNotifiedContains(std::make_pair(object, content)));
 
-  GetDoc()->getElementById(AtomicString("target"))->remove();
+  GetDoc()->getElementById("target")->remove();
   EXPECT_EQ(ImagesNotifiedSize(), 0u);
 }
 

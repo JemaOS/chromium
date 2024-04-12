@@ -11,7 +11,8 @@
 namespace ash {
 
 // Interface between auto-enrollment check screen and its representation.
-class AutoEnrollmentCheckScreenView {
+class AutoEnrollmentCheckScreenView
+    : public base::SupportsWeakPtr<AutoEnrollmentCheckScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{
       "auto-enrollment-check", "AutoEnrollmentCheckScreen"};
@@ -19,7 +20,6 @@ class AutoEnrollmentCheckScreenView {
   virtual ~AutoEnrollmentCheckScreenView() = default;
 
   virtual void Show() = 0;
-  virtual base::WeakPtr<AutoEnrollmentCheckScreenView> AsWeakPtr() = 0;
 };
 
 }  // namespace ash

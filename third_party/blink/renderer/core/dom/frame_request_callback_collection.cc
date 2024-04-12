@@ -38,7 +38,7 @@ void FrameRequestCallbackCollection::CancelFrameCallback(CallbackId id) {
       frame_callbacks_.EraseAt(i);
       DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT(
           "CancelAnimationFrame", inspector_animation_frame_event::Data,
-          context_.Get(), id);
+          context_, id);
       return;
     }
   }
@@ -48,7 +48,7 @@ void FrameRequestCallbackCollection::CancelFrameCallback(CallbackId id) {
       probe::BreakableLocation(context_, "cancelAnimationFrame");
       DEVTOOLS_TIMELINE_TRACE_EVENT_INSTANT(
           "CancelAnimationFrame", inspector_animation_frame_event::Data,
-          context_.Get(), id);
+          context_, id);
       callback->SetIsCancelled(true);
       // will be removed at the end of ExecuteCallbacks()
       return;

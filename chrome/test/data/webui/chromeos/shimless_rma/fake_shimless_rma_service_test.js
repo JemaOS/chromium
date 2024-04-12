@@ -4,7 +4,8 @@
 
 import {fakeCalibrationComponentsWithFails} from 'chrome://shimless-rma/fake_data.js';
 import {FakeShimlessRmaService} from 'chrome://shimless-rma/fake_shimless_rma_service.js';
-import {CalibrationComponentStatus, CalibrationObserverRemote, CalibrationOverallStatus, CalibrationSetupInstruction, CalibrationStatus, ComponentRepairStatus, ComponentType, ErrorObserverRemote, FinalizationError, FinalizationObserverRemote, FinalizationStatus, HardwareVerificationStatusObserverRemote, HardwareWriteProtectionStateObserverRemote, OsUpdateObserverRemote, OsUpdateOperation, PowerCableStateObserverRemote, ProvisioningError, ProvisioningObserverRemote, ProvisioningStatus, RmadErrorCode, ShutdownMethod, State, UpdateErrorCode, UpdateRoFirmwareObserverRemote, UpdateRoFirmwareStatus, WriteProtectDisableCompleteAction} from 'chrome://shimless-rma/shimless_rma.mojom-webui.js';
+import {CalibrationComponentStatus, CalibrationObserverRemote, CalibrationOverallStatus, CalibrationSetupInstruction, CalibrationStatus, ComponentRepairStatus, ComponentType, ErrorObserverRemote, FinalizationError, FinalizationObserverRemote, FinalizationStatus, HardwareVerificationStatusObserverRemote, HardwareWriteProtectionStateObserverRemote, OsUpdateObserverRemote, OsUpdateOperation, PowerCableStateObserverRemote, ProvisioningError, ProvisioningObserverRemote, ProvisioningStatus, RmadErrorCode, ShutdownMethod, State, UpdateErrorCode, UpdateRoFirmwareObserverRemote, UpdateRoFirmwareStatus, WriteProtectDisableCompleteAction} from 'chrome://shimless-rma/shimless_rma_types.js';
+
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 
 suite('fakeShimlessRmaServiceTestSuite', function() {
@@ -484,18 +485,18 @@ suite('fakeShimlessRmaServiceTestSuite', function() {
     });
   });
 
-  test('GetCustomLabelListDefaultUndefined', () => {
-    return service.getCustomLabelList().then((customLabels) => {
-      assertEquals(customLabels, undefined);
+  test('GetWhiteLabelListDefaultUndefined', () => {
+    return service.getWhiteLabelList().then((whiteLabels) => {
+      assertEquals(whiteLabels, undefined);
     });
   });
 
-  test('SetGetCustomLabelListResultUpdatesResult', () => {
-    const customLabelList =
-        ['Custom-label 10', 'Custom-label 0', 'Custom-label 9999'];
-    service.setGetCustomLabelListResult(customLabelList);
-    return service.getCustomLabelList().then((customLabels) => {
-      assertDeepEquals(customLabels.customLabels, customLabelList);
+  test('SetGetWhiteLabelListResultUpdatesResult', () => {
+    const whiteLabelList =
+        ['White-label 10', 'White-label 0', 'White-label 9999'];
+    service.setGetWhiteLabelListResult(whiteLabelList);
+    return service.getWhiteLabelList().then((whiteLabels) => {
+      assertDeepEquals(whiteLabels.whiteLabels, whiteLabelList);
     });
   });
 
@@ -541,17 +542,17 @@ suite('fakeShimlessRmaServiceTestSuite', function() {
     });
   });
 
-  test('GetOriginalCustomLabelDefaultUndefined', () => {
-    return service.getOriginalCustomLabel().then((customLabel) => {
-      assertEquals(customLabel, undefined);
+  test('GetOriginalWhiteLabelDefaultUndefined', () => {
+    return service.getOriginalWhiteLabel().then((whiteLabel) => {
+      assertEquals(whiteLabel, undefined);
     });
   });
 
-  test('SetGetOriginalCustomLabelResultUpdatesResult', () => {
-    const expectedCustomLabel = 1;
-    service.setGetOriginalCustomLabelResult(expectedCustomLabel);
-    return service.getOriginalCustomLabel().then((customLabel) => {
-      assertEquals(customLabel.customLabelIndex, expectedCustomLabel);
+  test('SetGetOriginalWhiteLabelResultUpdatesResult', () => {
+    const expectedWhiteLabel = 1;
+    service.setGetOriginalWhiteLabelResult(expectedWhiteLabel);
+    return service.getOriginalWhiteLabel().then((whiteLabel) => {
+      assertEquals(whiteLabel.whiteLabelIndex, expectedWhiteLabel);
     });
   });
 
@@ -576,8 +577,7 @@ suite('fakeShimlessRmaServiceTestSuite', function() {
     ];
     service.setStates(states);
 
-    return service
-        .setDeviceInformation('serial number', 1, 2, 3, '123-456-789', false, 1)
+    return service.setDeviceInformation('serial number', 1, 2, 3, '123-456-789')
         .then(({stateResult: {state, error}}) => {
           assertEquals(state, State.kChooseDestination);
           assertEquals(error, RmadErrorCode.kOk);

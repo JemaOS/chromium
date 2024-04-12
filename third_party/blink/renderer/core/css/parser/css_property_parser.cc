@@ -6,7 +6,7 @@
 
 #include "third_party/blink/renderer/core/css/css_pending_substitution_value.h"
 #include "third_party/blink/renderer/core/css/css_unicode_range_value.h"
-#include "third_party/blink/renderer/core/css/css_unparsed_declaration_value.h"
+#include "third_party/blink/renderer/core/css/css_variable_reference_value.h"
 #include "third_party/blink/renderer/core/css/hash_tools.h"
 #include "third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.h"
 #include "third_party/blink/renderer/core/css/parser/css_parser_local_context.h"
@@ -51,15 +51,10 @@ bool IsPropertyAllowedInRule(const CSSProperty& property,
   switch (rule_type) {
     case StyleRule::kStyle:
       return true;
-    case StyleRule::kPage:
-      // TODO(sesse): Limit the allowed properties here.
-      // https://www.w3.org/TR/css-page-3/#page-property-list
-      // https://www.w3.org/TR/css-page-3/#margin-property-list
-      return true;
     case StyleRule::kKeyframe:
       return property.IsValidForKeyframe();
-    case StyleRule::kPositionTry:
-      return property.IsValidForPositionTry();
+    case StyleRule::kTry:
+      return property.IsValidForPositionFallback();
     default:
       NOTREACHED();
       return false;
@@ -194,15 +189,11 @@ bool CSSPropertyParser::ParseValueStart(CSSPropertyID unresolved_property,
   if (CSSVariableParser::ContainsValidVariableReferences(original_range)) {
     StringView text =
         CSSVariableParser::StripTrailingWhitespaceAndComments(value_.text);
-    if (text.length() > CSSVariableData::kMaxVariableBytes) {
-      return false;
-    }
-
     bool is_animation_tainted = false;
-    auto* variable = MakeGarbageCollected<CSSUnparsedDeclarationValue>(
+    auto* variable = MakeGarbageCollected<CSSVariableReferenceValue>(
         CSSVariableData::Create({original_range, text}, is_animation_tainted,
                                 true),
-        context_);
+        *context_);
 
     if (is_shorthand) {
       const cssvalue::CSSPendingSubstitutionValue& pending_value =
@@ -354,6 +345,14 @@ static CSSPropertyID UnresolvedCSSPropertyID(
 }
 
 CSSPropertyID UnresolvedCSSPropertyID(const ExecutionContext* execution_context,
+                                      const String& string) {
+  return WTF::VisitCharacters(string, [&](const auto* chars, unsigned length) {
+    return UnresolvedCSSPropertyID(execution_context, chars, length,
+                                   kHTMLStandardMode);
+  });
+}
+
+CSSPropertyID UnresolvedCSSPropertyID(const ExecutionContext* execution_context,
                                       StringView string,
                                       CSSParserMode mode) {
   return WTF::VisitCharacters(string, [&](const auto* chars, unsigned length) {
@@ -405,9 +404,8 @@ bool CSSPropertyParser::ConsumeCSSWideKeyword(CSSPropertyID unresolved_property,
   }
 
   if (value->IsRevertValue() || value->IsRevertLayerValue()) {
-    // Declarations in @position-try are not cascaded and cannot be
-    // reverted.
-    if (rule_type == StyleRule::kPositionTry) {
+    // Declarations in @try are not cascaded and cannot be reverted.
+    if (rule_type == StyleRule::kTry) {
       return false;
     }
   }
@@ -436,8 +434,8 @@ bool CSSPropertyParser::ParseFontFaceDescriptor(
   if (id == AtRuleDescriptorID::Invalid) {
     return false;
   }
-  CSSValue* parsed_value =
-      AtRuleDescriptorParser::ParseFontFaceDescriptor(id, value_, *context_);
+  CSSValue* parsed_value = AtRuleDescriptorParser::ParseFontFaceDescriptor(
+      id, value_.range, *context_);
   if (!parsed_value) {
     return false;
   }

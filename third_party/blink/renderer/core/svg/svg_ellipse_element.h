@@ -55,12 +55,6 @@ class SVGEllipseElement final : public SVGGeometryElement {
 
   LayoutObject* CreateLayoutObject(const ComputedStyle&) override;
 
-  SVGAnimatedPropertyBase* PropertyFromAttribute(
-      const QualifiedName& attribute_name) const override;
-  void SynchronizeAllSVGAttributes() const override;
-  void CollectExtraStyleForPresentationAttribute(
-      MutableCSSPropertyValueSet* style) override;
-
   Member<SVGAnimatedLength> cx_;
   Member<SVGAnimatedLength> cy_;
   Member<SVGAnimatedLength> rx_;

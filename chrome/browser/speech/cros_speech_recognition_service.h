@@ -73,8 +73,7 @@ class CrosSpeechRecognitionService
       media::mojom::SpeechRecognitionOptionsPtr options,
       const base::FilePath& binary_path,
       const base::flat_map<std::string, base::FilePath>& config_paths,
-      const std::string& primary_language_name,
-      const bool mask_offensive_words);
+      const std::string& primary_language_name);
 
   void CreateAudioSourceFetcherForServerBasedRecognitionOnIOThread(
       mojo::PendingReceiver<media::mojom::AudioSourceFetcher> fetcher_receiver,

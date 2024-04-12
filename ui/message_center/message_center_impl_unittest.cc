@@ -7,7 +7,6 @@
 #include <memory>
 #include <utility>
 
-#include "ash/constants/ash_features.h"
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/memory/raw_ptr.h"
@@ -17,7 +16,6 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/current_thread.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_mock_time_task_runner.h"
 #include "build/build_config.h"
@@ -123,8 +121,8 @@ class TestDelegate : public NotificationDelegate {
   TestDelegate(const TestDelegate&) = delete;
   TestDelegate& operator=(const TestDelegate&) = delete;
 
-  void Click(const std::optional<int>& button_index,
-             const std::optional<std::u16string>& reply) override {
+  void Click(const absl::optional<int>& button_index,
+             const absl::optional<std::u16string>& reply) override {
     if (button_index) {
       if (!reply) {
         log_ += "ButtonClick_";
@@ -157,8 +155,8 @@ class DeleteOnCloseDelegate : public NotificationDelegate {
     // Removing the same notification inside Close should be a noop.
     message_center_->RemoveNotification(notification_id_, false /* by_user */);
   }
-  void Click(const std::optional<int>& button_index,
-             const std::optional<std::u16string>& reply) override {}
+  void Click(const absl::optional<int>& button_index,
+             const absl::optional<std::u16string>& reply) override {}
 
  private:
   ~DeleteOnCloseDelegate() override = default;
@@ -168,7 +166,7 @@ class DeleteOnCloseDelegate : public NotificationDelegate {
 };
 
 // The default app id used to create simple notifications.
-const char kDefaultAppId[] = "app1";
+const std::string kDefaultAppId = "app1";
 
 }  // anonymous namespace
 
@@ -347,43 +345,21 @@ class PopupNotificationBlocker : public ToggledNotificationBlocker {
   const NotifierId allowed_notifier_;
 };
 
-class NearTotalNotificationBlocker : public PopupNotificationBlocker {
+class TotalNotificationBlocker : public PopupNotificationBlocker {
  public:
-  NearTotalNotificationBlocker(MessageCenter* message_center,
-                               const NotifierId& allowed_notifier)
+  TotalNotificationBlocker(MessageCenter* message_center,
+                           const NotifierId& allowed_notifier)
       : PopupNotificationBlocker(message_center, allowed_notifier) {}
-
-  NearTotalNotificationBlocker(const NearTotalNotificationBlocker&) = delete;
-  NearTotalNotificationBlocker& operator=(const NearTotalNotificationBlocker&) =
-      delete;
-
-  ~NearTotalNotificationBlocker() override = default;
-
-  // NotificationBlocker overrides:
-  bool ShouldShowNotification(const Notification& notification) const override {
-    return (notification.notifier_id() == allowed_notifier_) ||
-           ToggledNotificationBlocker::ShouldShowNotification(notification);
-  }
-};
-
-class TotalNotificationBlocker : public NotificationBlocker {
- public:
-  explicit TotalNotificationBlocker(MessageCenter* message_center)
-      : NotificationBlocker(message_center) {}
 
   TotalNotificationBlocker(const TotalNotificationBlocker&) = delete;
   TotalNotificationBlocker& operator=(const TotalNotificationBlocker&) = delete;
 
   ~TotalNotificationBlocker() override = default;
 
-  // NotificationBlocker:
+  // NotificationBlocker overrides:
   bool ShouldShowNotification(const Notification& notification) const override {
-    return false;
-  }
-
-  bool ShouldShowNotificationAsPopup(
-      const Notification& notification) const override {
-    return false;
+    return (notification.notifier_id() == allowed_notifier_) ||
+           ToggledNotificationBlocker::ShouldShowNotification(notification);
   }
 };
 
@@ -586,9 +562,7 @@ TEST_F(MessageCenterImplTest, NotificationBlocker) {
   // Multiple blockers to verify the case that one blocker blocks but another
   // doesn't.
   ToggledNotificationBlocker blocker1(message_center());
-  blocker1.Init();
   ToggledNotificationBlocker blocker2(message_center());
-  blocker2.Init();
 
   message_center()->AddNotification(std::make_unique<Notification>(
       NOTIFICATION_TYPE_SIMPLE, "id1", u"title", u"message",
@@ -637,54 +611,11 @@ TEST_F(MessageCenterImplTest, NotificationBlocker) {
   EXPECT_EQ(2u, message_center()->GetVisibleNotifications().size());
 }
 
-TEST_F(MessageCenterImplTest, MarkPopupAsShownWhileBlocked) {
-  const std::string kMarkedId = "id1";
-  const std::string kNotMarkedId = "id2";
-
-  ToggledNotificationBlocker blocker(message_center());
-  blocker.Init();
-
-  message_center()->AddNotification(CreateSimpleNotification(kMarkedId));
-  message_center()->AddNotification(CreateSimpleNotification(kNotMarkedId));
-
-  EXPECT_EQ(message_center()->GetPopupNotifications().size(), 2u);
-  EXPECT_EQ(message_center()->GetVisibleNotifications().size(), 2u);
-
-  // Block all notifications. There should be no popups or visible
-  // notifications.
-  blocker.SetPopupNotificationsEnabled(false);
-  blocker.SetNotificationsEnabled(false);
-  EXPECT_TRUE(message_center()->GetPopupNotifications().empty());
-  EXPECT_TRUE(message_center()->GetVisibleNotifications().empty());
-  EXPECT_EQ(message_center()->GetNotifications().size(), 2u);
-
-  // Mark one notification as being shown as a popup, so that when blocking ends
-  // it will not be displayed.
-  message_center()->MarkSinglePopupAsShown(kMarkedId, false);
-
-  // Stop blocking notifications, which should cause notifications to show as
-  // popups and in notifications center depending on their state.
-  blocker.SetPopupNotificationsEnabled(true);
-  blocker.SetNotificationsEnabled(true);
-
-  // Only the notification we did not mark should show as a popup.
-  NotificationList::PopupNotifications popups =
-      message_center()->GetPopupNotifications();
-  EXPECT_EQ(popups.size(), 1u);
-  EXPECT_TRUE(PopupNotificationsContain(popups, kNotMarkedId));
-
-  // Both notifications should be visible.
-  EXPECT_EQ(message_center()->GetNotifications().size(), 2u);
-  EXPECT_EQ(message_center()->GetVisibleNotifications().size(), 2u);
-}
-
 TEST_F(MessageCenterImplTest, VisibleNotificationsWithoutBlocker) {
   NotifierId notifier_id1(NotifierType::APPLICATION, /*id=*/"app1");
   NotifierId notifier_id2(NotifierType::APPLICATION, /*id=*/"app2");
-  NearTotalNotificationBlocker blocker_1(message_center(), notifier_id1);
-  blocker_1.Init();
-  NearTotalNotificationBlocker blocker_2(message_center(), notifier_id2);
-  blocker_2.Init();
+  TotalNotificationBlocker blocker_1(message_center(), notifier_id1);
+  TotalNotificationBlocker blocker_2(message_center(), notifier_id2);
 
   message_center()->AddNotification(std::make_unique<Notification>(
       NOTIFICATION_TYPE_SIMPLE, "id1", u"title", u"message",
@@ -716,11 +647,8 @@ TEST_F(MessageCenterImplTest, PopupsWithoutBlocker) {
   NotifierId notifier_id2(NotifierType::APPLICATION, "app2");
   NotifierId notifier_id3(NotifierType::APPLICATION, "app3");
   PopupNotificationBlocker blocker_1(message_center(), notifier_id1);
-  blocker_1.Init();
   PopupNotificationBlocker blocker_2(message_center(), notifier_id2);
-  blocker_2.Init();
   PopupNotificationBlocker blocker_3(message_center(), notifier_id3);
-  blocker_3.Init();
 
   message_center()->AddNotification(std::make_unique<Notification>(
       NOTIFICATION_TYPE_SIMPLE, "id1", u"title", u"message",
@@ -760,7 +688,6 @@ TEST_F(MessageCenterImplTest, PopupsWithoutBlocker) {
 TEST_F(MessageCenterImplTest, NotificationsDuringBlocked) {
   NotifierId notifier_id(NotifierType::APPLICATION, "app1");
   ToggledNotificationBlocker blocker(message_center());
-  blocker.Init();
 
   message_center()->AddNotification(std::make_unique<Notification>(
       NOTIFICATION_TYPE_SIMPLE, "id1", u"title", u"message",
@@ -793,7 +720,6 @@ TEST_F(MessageCenterImplTest, NotificationsDuringBlocked) {
 TEST_F(MessageCenterImplTest, GetNotifications) {
   NotifierId notifier_id(NotifierType::APPLICATION, "app1");
   ToggledNotificationBlocker blocker(message_center());
-  blocker.Init();
 
   // Create a notification without any blockers.
   message_center()->AddNotification(std::make_unique<Notification>(
@@ -843,7 +769,6 @@ TEST_F(MessageCenterImplTest, NotificationBlockerAllowsPopups) {
   NotifierId notifier_id1(NotifierType::APPLICATION, "app1");
   NotifierId notifier_id2(NotifierType::APPLICATION, "app2");
   PopupNotificationBlocker blocker(message_center(), notifier_id2);
-  blocker.Init();
 
   message_center()->AddNotification(std::make_unique<Notification>(
       NOTIFICATION_TYPE_SIMPLE, "id1", u"title", u"message",
@@ -888,14 +813,13 @@ TEST_F(MessageCenterImplTest, NotificationBlockerAllowsPopups) {
   EXPECT_EQ(4u, message_center()->GetVisibleNotifications().size());
 }
 
-// NearTotalNotificationBlocker suppresses showing notifications even from the
-// list. This would provide the feature to 'separated' message centers
-// per-profile for ChromeOS multi-login.
-TEST_F(MessageCenterImplTest, NearTotalNotificationBlocker) {
+// TotalNotificationBlocker suppresses showing notifications even from the list.
+// This would provide the feature to 'separated' message centers per-profile for
+// ChromeOS multi-login.
+TEST_F(MessageCenterImplTest, TotalNotificationBlocker) {
   NotifierId notifier_id1(NotifierType::APPLICATION, "app1");
   NotifierId notifier_id2(NotifierType::APPLICATION, "app2");
-  NearTotalNotificationBlocker blocker(message_center(), notifier_id2);
-  blocker.Init();
+  TotalNotificationBlocker blocker(message_center(), notifier_id2);
 
   message_center()->AddNotification(std::make_unique<Notification>(
       NOTIFICATION_TYPE_SIMPLE, "id1", u"title", u"message",
@@ -957,118 +881,11 @@ TEST_F(MessageCenterImplTest, NearTotalNotificationBlocker) {
   EXPECT_EQ(0u, message_center()->NotificationCount());
 }
 
-// Tests that notification state is updated when a notification blocker is
-// added.
-TEST_F(MessageCenterImplTest, NotificationsUpdatedWhenBlockerAdded) {
-  // Add a notification and display it as a popup.
-  NotifierId notifier_id1(NotifierType::APPLICATION, "app1");
-  message_center()->AddNotification(
-      CreateSimpleNotificationWithNotifierId("id1", notifier_id1.id));
-  message_center()->DisplayedNotification("id1", DISPLAY_SOURCE_POPUP);
-
-  // Verify that it is not blocked.
-  ASSERT_EQ(1u, message_center()->NotificationCount());
-  NotificationList::Notifications notifications =
-      message_center()->GetVisibleNotifications();
-  ASSERT_TRUE(NotificationsContain(notifications, "id1"));
-  NotificationList::PopupNotifications popups =
-      message_center()->GetPopupNotifications();
-  ASSERT_EQ(1u, popups.size());
-  ASSERT_TRUE(PopupNotificationsContain(popups, "id1"));
-
-  // Create a `NotificationBlocker` that blocks all notifications (even popups).
-  TotalNotificationBlocker blocker(message_center());
-  blocker.Init();
-
-  // Verify that "id1" is now blocked.
-  EXPECT_EQ(0u, message_center()->NotificationCount());
-  EXPECT_FALSE(
-      NotificationsContain(message_center()->GetVisibleNotifications(), "id1"));
-  popups = message_center()->GetPopupNotifications();
-  EXPECT_EQ(0u, popups.size());
-  EXPECT_FALSE(PopupNotificationsContain(popups, "id1"));
-}
-
-// Tests that notification state is updated when a notification blocker is
-// removed.
-TEST_F(MessageCenterImplTest, NotificationsUpdatedWhenBlockerRemoved) {
-  // Add two notifications and display them as popups.
-  NotifierId notifier_id1(NotifierType::APPLICATION, "app1");
-  NotifierId notifier_id2(NotifierType::APPLICATION, "app2");
-  message_center()->AddNotification(
-      CreateSimpleNotificationWithNotifierId("id1", notifier_id1.id));
-  message_center()->AddNotification(
-      CreateSimpleNotificationWithNotifierId("id2", notifier_id2.id));
-  message_center()->DisplayedNotification("id1", DISPLAY_SOURCE_POPUP);
-  message_center()->DisplayedNotification("id2", DISPLAY_SOURCE_POPUP);
-
-  // Verify that they are not blocked.
-  ASSERT_EQ(2u, message_center()->NotificationCount());
-  NotificationList::Notifications notifications =
-      message_center()->GetVisibleNotifications();
-  ASSERT_TRUE(NotificationsContain(notifications, "id1"));
-  ASSERT_TRUE(NotificationsContain(notifications, "id2"));
-  NotificationList::PopupNotifications popups =
-      message_center()->GetPopupNotifications();
-  ASSERT_EQ(2u, popups.size());
-  ASSERT_TRUE(PopupNotificationsContain(popups, "id1"));
-  ASSERT_TRUE(PopupNotificationsContain(popups, "id2"));
-
-  {
-    // Block all notifications, including popups (except those from
-    // `notifier_id2`).
-    NearTotalNotificationBlocker blocker(message_center(), notifier_id2);
-    blocker.Init();
-    blocker.SetNotificationsEnabled(false);
-    blocker.SetPopupNotificationsEnabled(false);
-
-    // Verify that "id1" is blocked and "id2" is not.
-    ASSERT_EQ(1u, message_center()->NotificationCount());
-    ASSERT_FALSE(NotificationsContain(
-        message_center()->GetVisibleNotifications(), "id1"));
-    ASSERT_TRUE(NotificationsContain(
-        message_center()->GetVisibleNotifications(), "id2"));
-    popups = message_center()->GetPopupNotifications();
-    ASSERT_EQ(1u, popups.size());
-    ASSERT_FALSE(PopupNotificationsContain(popups, "id1"));
-    ASSERT_TRUE(PopupNotificationsContain(popups, "id2"));
-
-    // Add a third notification.
-    message_center()->AddNotification(
-        CreateSimpleNotificationWithNotifierId("id3", notifier_id1.id));
-    message_center()->DisplayedNotification("id3", DISPLAY_SOURCE_POPUP);
-
-    // Verify that "id3" is blocked.
-    ASSERT_EQ(1u, message_center()->NotificationCount());
-    ASSERT_FALSE(NotificationsContain(
-        message_center()->GetVisibleNotifications(), "id3"));
-    popups = message_center()->GetPopupNotifications();
-    ASSERT_EQ(1u, popups.size());
-    ASSERT_FALSE(PopupNotificationsContain(popups, "id3"));
-
-    // Remove the blocker (it is removed in its dtor, which is called when
-    // exiting this scope).
-  }
-
-  // Verify that the notifications are not blocked, and in particular that "id2"
-  // is now shown as a popup since it didn't initially get to show as a popup.
-  EXPECT_EQ(3u, message_center()->NotificationCount());
-  notifications = message_center()->GetVisibleNotifications();
-  EXPECT_TRUE(NotificationsContain(notifications, "id1"));
-  EXPECT_TRUE(NotificationsContain(notifications, "id2"));
-  EXPECT_TRUE(NotificationsContain(notifications, "id3"));
-  popups = message_center()->GetPopupNotifications();
-  EXPECT_EQ(2u, popups.size());
-  EXPECT_TRUE(PopupNotificationsContain(popups, "id2"));
-  EXPECT_TRUE(PopupNotificationsContain(popups, "id3"));
-}
-
 TEST_F(MessageCenterImplTest, RemoveAllNotifications) {
   NotifierId notifier_id1(NotifierType::APPLICATION, "app1");
   NotifierId notifier_id2(NotifierType::APPLICATION, "app2");
 
-  NearTotalNotificationBlocker blocker(message_center(), notifier_id1);
-  blocker.Init();
+  TotalNotificationBlocker blocker(message_center(), notifier_id1);
   blocker.SetNotificationsEnabled(false);
 
   // Notification 1: Visible, non-pinned
@@ -1104,8 +921,7 @@ TEST_F(MessageCenterImplTest, RemoveAllNotificationsWithPinned) {
   NotifierId notifier_id1(NotifierType::APPLICATION, "app1");
   NotifierId notifier_id2(NotifierType::APPLICATION, "app2");
 
-  NearTotalNotificationBlocker blocker(message_center(), notifier_id1);
-  blocker.Init();
+  TotalNotificationBlocker blocker(message_center(), notifier_id1);
   blocker.SetNotificationsEnabled(false);
 
   // Notification 1: Visible, non-pinned
@@ -1253,8 +1069,7 @@ TEST_F(MessageCenterImplTest, RemoveNonVisibleNotification) {
 
   // Add a blocker to block all notifications.
   NotifierId allowed_notifier_id(NotifierType::APPLICATION, "notifier");
-  NearTotalNotificationBlocker blocker(message_center(), allowed_notifier_id);
-  blocker.Init();
+  TotalNotificationBlocker blocker(message_center(), allowed_notifier_id);
   blocker.SetNotificationsEnabled(false);
   EXPECT_EQ(0u, message_center()->GetVisibleNotifications().size());
 
@@ -1357,7 +1172,7 @@ TEST_F(MessageCenterImplTest, FindNotificationsByAppId) {
   }
 
   for (std::string app_id : {app_id1, app_id2}) {
-    for (Notification* notification :
+    for (auto* notification :
          message_center()->FindNotificationsByAppId(app_id)) {
       EXPECT_EQ(app_id, notification->notifier_id().id);
     }
@@ -1646,177 +1461,6 @@ TEST_F(MessageCenterImplTest, ButtonClickWithReplyOnLockScreen) {
   EXPECT_FALSE(lock_screen_controller()->HasPendingCallback());
   EXPECT_FALSE(lock_screen_controller()->IsScreenLocked());
 }
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-class NotificationLimitMessageCenterImplTest : public MessageCenterImplTest {
- public:
-  NotificationLimitMessageCenterImplTest() = default;
-
-  NotificationLimitMessageCenterImplTest(
-      const NotificationLimitMessageCenterImplTest&) = delete;
-  NotificationLimitMessageCenterImplTest& operator=(
-      const NotificationLimitMessageCenterImplTest&) = delete;
-
-  ~NotificationLimitMessageCenterImplTest() override = default;
-
-  // MessageCenterImplTest:
-  void SetUp() override {
-    scoped_feature_list_.InitAndEnableFeature(
-        ash::features::kNotificationLimit);
-    MessageCenterImplTest::SetUp();
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-// Tests that the notification limit is respected, and the oldest notification
-// (when priorities are equal) is removed first.
-TEST_F(NotificationLimitMessageCenterImplTest, NotificationLimit) {
-  // Add to notifications until the limit is met.
-  size_t notifications_submitted = 0;
-  while (notifications_submitted <=
-         message_center()->GetNotifications().size()) {
-    message_center()->AddNotification(CreateSimpleNotification(
-        base::NumberToString(notifications_submitted++)));
-  }
-
-  // The oldest notification should have been removed, so the last notification
-  // will be the second one submitted.
-  EXPECT_EQ(base::NumberToString(1),
-            (*message_center()->GetNotifications().rbegin())->id());
-
-  size_t number_of_notifications = message_center()->GetNotifications().size();
-
-  // Add one more, the limit should be respected.
-  message_center()->AddNotification(CreateSimpleNotification(
-      base::NumberToString(notifications_submitted++)));
-
-  EXPECT_EQ(number_of_notifications,
-            message_center()->GetNotifications().size());
-
-  auto notifications = message_center()->GetNotifications();
-}
-
-// Tests that the oldest, lowest priority notification is removed first.
-TEST_F(NotificationLimitMessageCenterImplTest,
-       NotificationLimitWithPriorities) {
-  // Add notifications so that the first few are chronologically in this order.
-  // {`SYSTEM_PRIORITY`, `SYSTEM_PRIORITY`, `MIN_PRIORITY`, `MAX_PRIORITY`,
-  // `DEFAULT_PRIORITY`}
-
-  std::string fourth_removed_notification_id = "oldest_system_priority";
-  auto oldest_system_priority_notification =
-      CreateSimpleNotification(fourth_removed_notification_id);
-  oldest_system_priority_notification->set_priority(
-      NotificationPriority ::SYSTEM_PRIORITY);
-  message_center()->AddNotification(
-      std::move(oldest_system_priority_notification));
-
-  std::string last_removed_notification_id = "second_oldest_system_priority";
-  auto second_oldest_system_priority_notification =
-      CreateSimpleNotification(last_removed_notification_id);
-  second_oldest_system_priority_notification->set_priority(
-      NotificationPriority ::SYSTEM_PRIORITY);
-  message_center()->AddNotification(
-      std::move(second_oldest_system_priority_notification));
-
-  std::string first_removed_notification_id =
-      "oldest_min_priority_notification";
-  auto oldest_min_priority_notification =
-      CreateSimpleNotification(first_removed_notification_id);
-  oldest_min_priority_notification->set_priority(
-      NotificationPriority ::MIN_PRIORITY);
-  message_center()->AddNotification(
-      std::move(oldest_min_priority_notification));
-
-  std::string third_removed_notification_id =
-      "oldest_max_priority_notification";
-  auto oldest_max_priority_notification =
-      CreateSimpleNotification(third_removed_notification_id);
-  oldest_max_priority_notification->set_priority(
-      NotificationPriority ::MAX_PRIORITY);
-  message_center()->AddNotification(
-      std::move(oldest_max_priority_notification));
-
-  std::string second_removed_notification_id =
-      "oldest_default_priority_notification";
-  auto oldest_default_priority_notification =
-      CreateSimpleNotification(second_removed_notification_id);
-  oldest_default_priority_notification->set_priority(
-      NotificationPriority ::DEFAULT_PRIORITY);
-  message_center()->AddNotification(
-      std::move(oldest_default_priority_notification));
-
-  size_t notifications_submitted = 5;
-  // Start adding more `SYSTEM_PRIORITY` notifications until the max is hit,
-  // then incrementally add more and ensure the notifications are deleted as
-  // expected.
-  while (notifications_submitted <=
-         message_center()->GetNotifications().size()) {
-    auto notification = CreateSimpleNotification(
-        base::NumberToString(notifications_submitted++));
-    notification->set_priority(NotificationPriority::SYSTEM_PRIORITY);
-    message_center()->AddNotification(std::move(notification));
-  }
-
-  EXPECT_FALSE(
-      message_center()->FindNotificationById(first_removed_notification_id));
-  EXPECT_TRUE(
-      message_center()->FindNotificationById(second_removed_notification_id));
-  EXPECT_TRUE(
-      message_center()->FindNotificationById(fourth_removed_notification_id));
-  EXPECT_TRUE(
-      message_center()->FindNotificationById(last_removed_notification_id));
-  EXPECT_TRUE(
-      message_center()->FindNotificationById(third_removed_notification_id));
-
-  auto notification =
-      CreateSimpleNotification(base::NumberToString(notifications_submitted++));
-  notification->set_priority(NotificationPriority::SYSTEM_PRIORITY);
-  message_center()->AddNotification(std::move(notification));
-
-  EXPECT_FALSE(
-      message_center()->FindNotificationById(second_removed_notification_id));
-  EXPECT_TRUE(
-      message_center()->FindNotificationById(last_removed_notification_id));
-  EXPECT_TRUE(
-      message_center()->FindNotificationById(third_removed_notification_id));
-  EXPECT_TRUE(
-      message_center()->FindNotificationById(fourth_removed_notification_id));
-
-  notification =
-      CreateSimpleNotification(base::NumberToString(notifications_submitted++));
-  notification->set_priority(NotificationPriority::SYSTEM_PRIORITY);
-  message_center()->AddNotification(std::move(notification));
-
-  EXPECT_FALSE(
-      message_center()->FindNotificationById(third_removed_notification_id));
-  EXPECT_TRUE(
-      message_center()->FindNotificationById(last_removed_notification_id));
-  EXPECT_TRUE(
-      message_center()->FindNotificationById(fourth_removed_notification_id));
-
-  notification =
-      CreateSimpleNotification(base::NumberToString(notifications_submitted++));
-  notification->set_priority(NotificationPriority::SYSTEM_PRIORITY);
-  message_center()->AddNotification(std::move(notification));
-
-  EXPECT_FALSE(
-      message_center()->FindNotificationById(fourth_removed_notification_id));
-  EXPECT_TRUE(
-      message_center()->FindNotificationById(last_removed_notification_id));
-
-  notification =
-      CreateSimpleNotification(base::NumberToString(notifications_submitted++));
-  notification->set_priority(NotificationPriority::SYSTEM_PRIORITY);
-  message_center()->AddNotification(std::move(notification));
-
-  EXPECT_FALSE(
-      message_center()->FindNotificationById(last_removed_notification_id));
-}
-
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 }  // namespace internal
 }  // namespace message_center

@@ -68,6 +68,7 @@ bool DragDropCaptureDelegate::TakeCapture(
   if (!tracker.Contains(capture_window)) {
     // This means the drag was cancelled during event transfer.
     // See: crbug.com/1297209.
+    gesture_recognizer->CleanupStateForConsumer(capture_window);
     return false;
   }
   drag_drop_tracker_->TakeCapture();
@@ -76,22 +77,17 @@ bool DragDropCaptureDelegate::TakeCapture(
 
 aura::Window* DragDropCaptureDelegate::GetTarget(
     const ui::LocatedEvent& event) {
-  return drag_drop_tracker_ ? drag_drop_tracker_->GetTarget(event) : nullptr;
+  return drag_drop_tracker_->GetTarget(event);
 }
 
 std::unique_ptr<ui::LocatedEvent> DragDropCaptureDelegate::ConvertEvent(
     aura::Window* target,
     const ui::LocatedEvent& event) {
-  return drag_drop_tracker_ ? drag_drop_tracker_->ConvertEvent(target, event)
-                            : nullptr;
+  return drag_drop_tracker_->ConvertEvent(target, event);
 }
 
 aura::Window* DragDropCaptureDelegate::capture_window() {
-  return drag_drop_tracker_ ? drag_drop_tracker_->capture_window() : nullptr;
-}
-
-void DragDropCaptureDelegate::ReleaseCapture() {
-  drag_drop_tracker_.reset();
+  return drag_drop_tracker_->capture_window();
 }
 
 }  // namespace ash

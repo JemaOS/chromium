@@ -50,6 +50,8 @@ export function addTextItemToMenu(
 
 /**
  * Clear all the items in the menu except the header.
+ *
+ * @param menu The menu to clean.
  */
 export function clearMenu(menu: ParentNode): void {
   const toBeRemoved = [];
@@ -125,7 +127,7 @@ export function toAspectRatioAriaLabel(aspectRatioSet: AspectRatioSet): string {
 /**
  * Gets the string with I18n from given video resolution level.
  */
-export function toVideoResolutionOptionLabel(level: VideoResolutionLevel):
+export function toVideoResoloutionOptionLabel(level: VideoResolutionLevel):
     string {
   let label;
   switch (level) {

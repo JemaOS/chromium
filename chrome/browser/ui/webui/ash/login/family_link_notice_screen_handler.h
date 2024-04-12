@@ -14,7 +14,8 @@ namespace ash {
 
 // Interface for dependency injection between FamilyLinkNoticeScreen and its
 // WebUI representation.
-class FamilyLinkNoticeView {
+class FamilyLinkNoticeView
+    : public base::SupportsWeakPtr<FamilyLinkNoticeView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{
       "family-link-notice", "FamilyLinkNoticeScreen"};
@@ -32,13 +33,10 @@ class FamilyLinkNoticeView {
 
   // Set enterprise domain to be displayed.
   virtual void SetDomain(const std::string& value) = 0;
-
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<FamilyLinkNoticeView> AsWeakPtr() = 0;
 };
 
-class FamilyLinkNoticeScreenHandler final : public FamilyLinkNoticeView,
-                                            public BaseScreenHandler {
+class FamilyLinkNoticeScreenHandler : public FamilyLinkNoticeView,
+                                      public BaseScreenHandler {
  public:
   using TView = FamilyLinkNoticeView;
 
@@ -55,13 +53,10 @@ class FamilyLinkNoticeScreenHandler final : public FamilyLinkNoticeView,
   void SetIsNewGaiaAccount(bool value) override;
   void SetDisplayEmail(const std::string& value) override;
   void SetDomain(const std::string& value) override;
-  base::WeakPtr<FamilyLinkNoticeView> AsWeakPtr() override;
 
   // BaseScreenHandler:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
-  base::WeakPtrFactory<FamilyLinkNoticeView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

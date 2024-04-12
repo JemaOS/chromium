@@ -20,9 +20,8 @@ namespace blink {
 constexpr static double kApproxDoubleInfinityAngle = 2867080569122160;
 
 double CSSValueClampingUtils::ClampDouble(double value) {
-  // https://www.w3.org/TR/css-values-4/#top-level-calculation
   if (std::isnan(value)) {
-    value = 0;
+    value = std::numeric_limits<double>::max();
   }
   return ClampTo<double>(value);
 }

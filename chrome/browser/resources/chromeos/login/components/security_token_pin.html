@@ -17,24 +17,12 @@ found in the LICENSE file.
     --cr-icon-button-margin-start: 5px;
   }
 
-  :host-context(.jelly-enabled) #pinKeyboard {
-    --pin-keyboard-number-color: var(--oobe-text-color);
-  }
-
   #errorContainer {
     color: var(--cros-icon-color-red);
     font-size: 12px;
     padding: 4px 0 0;
     text-align: center;
     width: 100%;
-  }
-
-  :host-context(.jelly-enabled) #errorContainer {
-    color: var(--cros-sys-error);
-    font-family: var(--oobe-security-token-pin-font-family);
-    font-size: var(--oobe-security-token-pin-font-size);
-    font-weight: var(--oobe-security-token-pin-font-weight);
-    line-height: var(--oobe-security-token-pin-line-height);
   }
 
   #errorIcon {
@@ -47,10 +35,6 @@ found in the LICENSE file.
   [invisible] {
     visibility: hidden;
   }
-
-  :host-context(.jelly-enabled) iron-icon[icon='cr:error-outline'] {
-    color: var(--cros-sys-error);
-  }
 </style>
 <oobe-adaptive-dialog class="gaia-dialog" role="dialog" id="dialog"
     aria-describedby="description"
@@ -60,35 +44,35 @@ found in the LICENSE file.
     [[i18nDynamic(locale, 'securityTokenPinDialogTitle')]]
   </h1>
   <div slot="subtitle" id="subtitle">
-    <span id="description" hidden="[[processingCompletion]]">
+    <span id="description" hidden="[[processingCompletion_]]">
       [[i18nDynamic(locale, 'securityTokenPinDialogSubtitle')]]
     </span>
   </div>
   <paper-progress slot="progress" id="progress"
-      hidden="[[!processingCompletion]]"
-      indeterminate="[[processingCompletion]]">
+      hidden="[[!processingCompletion_]]"
+      indeterminate="[[processingCompletion_]]">
   </paper-progress>
   <div slot="content" class="content-centered">
-    <div id="pinKeyboardContainer" hidden="[[processingCompletion]]">
+    <div id="pinKeyboardContainer" hidden="[[processingCompletion_]]">
       <pin-keyboard id="pinKeyboard" allow-non-digit
-          has-error="[[isErrorLabelVisible(parameters, userEdited)]]"
-          aria-label="[[getLabel(parameters, userEdited)]]"
-          on-pin-change="onPinChange" on-submit="onSubmit"
-          disabled="[[!canEdit]]">
+          has-error="[[isErrorLabelVisible_(parameters, userEdited_)]]"
+          aria-label="[[getLabel_(parameters, userEdited_)]]"
+          on-pin-change="onPinChange_" on-submit="onSubmit_"
+          disabled="[[!canEdit_]]">
         <div id="errorContainer" role="alert" problem
-            invisible$="[[!isLabelVisible(parameters, userEdited)]]">
+            invisible$="[[!isLabelVisible_(parameters, userEdited_)]]">
           <iron-icon id="errorIcon" icon="cr:error-outline"></iron-icon>
-          <span id="error">[[getLabel(parameters, userEdited)]]</span>
+          <span id="error">[[getLabel_(parameters, userEdited_)]]</span>
         </div>
       </pin-keyboard>
     </div>
   </div>
   <div slot="back-navigation">
-    <oobe-back-button id="back" on-click="onBackClicked">
+    <oobe-back-button id="back" on-click="onBackClicked_">
     </oobe-back-button>
   </div>
   <div slot="bottom-buttons">
-    <oobe-next-button id="submit" on-click="onSubmit"
-        disabled="[[!canSubmit]]"></oobe-next-button>
+    <oobe-next-button id="submit" on-click="onSubmit_"
+        disabled="[[!canSubmit_]]"></oobe-next-button>
   </div>
 </oobe-adaptive-dialog>

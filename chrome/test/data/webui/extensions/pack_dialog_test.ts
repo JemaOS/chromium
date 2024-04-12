@@ -6,7 +6,7 @@
 
 import 'chrome://extensions/extensions.js';
 
-import type {ExtensionsPackDialogAlertElement, ExtensionsPackDialogElement, PackDialogDelegate} from 'chrome://extensions/extensions.js';
+import {ExtensionsPackDialogAlertElement, ExtensionsPackDialogElement, PackDialogDelegate} from 'chrome://extensions/extensions.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -14,6 +14,18 @@ import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
 
 import {isElementVisible} from './test_util.js';
+
+const extension_pack_dialog_tests = {
+  suiteName: 'ExtensionPackDialogTests',
+  TestNames: {
+    Interaction: 'Interaction',
+    PackSuccess: 'PackSuccess',
+    PackWarning: 'PackWarning',
+    PackError: 'PackError',
+  },
+};
+
+Object.assign(window, {extension_pack_dialog_tests});
 
 class MockDelegate implements PackDialogDelegate {
   rootPromise: PromiseResolver<string>|null = null;
@@ -43,7 +55,7 @@ class MockDelegate implements PackDialogDelegate {
   }
 }
 
-suite('ExtensionPackDialogTests', function() {
+suite(extension_pack_dialog_tests.suiteName, function() {
   let packDialog: ExtensionsPackDialogElement;
   let mockDelegate: MockDelegate;
 
@@ -55,7 +67,7 @@ suite('ExtensionPackDialogTests', function() {
     document.body.appendChild(packDialog);
   });
 
-  test('Interaction', function() {
+  test(extension_pack_dialog_tests.TestNames.Interaction, function() {
     const dialogElement = packDialog.$.dialog.getNative();
 
     assertTrue(isElementVisible(dialogElement));
@@ -92,7 +104,7 @@ suite('ExtensionPackDialogTests', function() {
     });
   });
 
-  test('PackSuccess', function() {
+  test(extension_pack_dialog_tests.TestNames.PackSuccess, function() {
     const dialogElement = packDialog.$.dialog.getNative();
     let packDialogAlert: ExtensionsPackDialogAlertElement;
     let alertElement: HTMLDialogElement;
@@ -143,7 +155,7 @@ suite('ExtensionPackDialogTests', function() {
         });
   });
 
-  test('PackError', function() {
+  test(extension_pack_dialog_tests.TestNames.PackError, function() {
     const dialogElement = packDialog.$.dialog.getNative();
     let packDialogAlert: ExtensionsPackDialogAlertElement;
     let alertElement: HTMLDialogElement;
@@ -192,7 +204,7 @@ suite('ExtensionPackDialogTests', function() {
         });
   });
 
-  test('PackWarning', function() {
+  test(extension_pack_dialog_tests.TestNames.PackWarning, function() {
     const dialogElement = packDialog.$.dialog.getNative();
     let packDialogAlert: ExtensionsPackDialogAlertElement;
     let alertElement: HTMLDialogElement;

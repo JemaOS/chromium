@@ -12,12 +12,10 @@
 #include <utility>
 #include <vector>
 
-#include "ash/components/arc/arc_prefs.h"
 #include "ash/components/arc/session/arc_bridge_service.h"
 #include "ash/components/arc/session/arc_service_manager.h"
 #include "ash/components/arc/test/connection_holder_util.h"
 #include "ash/components/arc/test/fake_file_system_instance.h"
-#include "ash/constants/ash_switches.h"
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
@@ -26,40 +24,31 @@
 #include "base/ranges/algorithm.h"
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/test/scoped_command_line.h"
 #include "base/test/scoped_running_on_chromeos.h"
 #include "chrome/browser/ash/arc/fileapi/arc_file_system_operation_runner.h"
 #include "chrome/browser/ash/arc/fileapi/arc_media_view_util.h"
 #include "chrome/browser/ash/drive/file_system_util.h"
+#include "chrome/browser/ash/file_manager/fake_disk_mount_manager.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
-#include "chrome/browser/ash/file_manager/volume.h"
 #include "chrome/browser/ash/file_manager/volume_manager_observer.h"
 #include "chrome/browser/ash/file_system_provider/fake_extension_provider.h"
 #include "chrome/browser/ash/file_system_provider/service.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
-#include "chrome/common/chrome_features.h"
-#include "chrome/common/pref_names.h"
-#include "chrome/test/base/scoped_testing_local_state.h"
-#include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chromeos/ash/components/dbus/cros_disks/cros_disks_client.h"
 #include "chromeos/ash/components/disks/disk.h"
 #include "chromeos/ash/components/disks/disk_mount_manager.h"
-#include "chromeos/ash/components/disks/fake_disk_mount_manager.h"
 #include "chromeos/components/disks/disks_prefs.h"
 #include "chromeos/dbus/power/fake_power_manager_client.h"
 #include "chromeos/dbus/power_manager/suspend.pb.h"
-#include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "components/storage_monitor/storage_info.h"
-#include "components/user_manager/scoped_user_manager.h"
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
 #include "content/public/test/browser_task_environment.h"
 #include "extensions/browser/extension_registry.h"
 #include "services/device/public/mojom/mtp_storage_info.mojom.h"
-#include "storage/browser/file_system/external_mount_points.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace file_manager {
@@ -69,12 +58,12 @@ using ::ash::MountError;
 using ::ash::MountType;
 using ::ash::disks::Disk;
 using ::ash::disks::DiskMountManager;
-using ::ash::disks::FakeDiskMountManager;
 using base::FilePath;
 
 std::vector<std::string> arc_volume_ids = {
-    arc::kImagesRootId, arc::kVideosRootId, arc::kAudioRootId,
-    arc::kDocumentsRootId, "android_files:0"};
+    arc::kImagesRootDocumentId, arc::kVideosRootDocumentId,
+    arc::kAudioRootDocumentId, arc::kDocumentsRootDocumentId,
+    "android_files:0"};
 
 class LoggingObserver : public VolumeManagerObserver {
  public:
@@ -254,6 +243,15 @@ class LoggingObserver : public VolumeManagerObserver {
   std::vector<Event> events_;
 };
 
+class FakeUser : public user_manager::User {
+ public:
+  explicit FakeUser(const AccountId& account_id) : User(account_id) {}
+
+  user_manager::UserType GetType() const override {
+    return user_manager::USER_TYPE_REGULAR;
+  }
+};
+
 }  // namespace
 
 std::unique_ptr<KeyedService> CreateFileSystemOperationRunnerForTesting(
@@ -267,8 +265,10 @@ class VolumeManagerTest : public testing::Test {
   // Helper class that contains per-profile objects.
   class ProfileEnvironment {
    public:
-    ProfileEnvironment(std::unique_ptr<TestingProfile> profile,
-                       DiskMountManager* disk_manager)
+    ProfileEnvironment(chromeos::PowerManagerClient* power_manager_client,
+                       DiskMountManager* disk_manager,
+                       std::unique_ptr<TestingProfile> profile =
+                           std::make_unique<TestingProfile>())
         : profile_(std::move(profile)),
           extension_registry_(
               std::make_unique<extensions::ExtensionRegistry>(profile_.get())),
@@ -284,18 +284,33 @@ class VolumeManagerTest : public testing::Test {
           volume_manager_(std::make_unique<VolumeManager>(
               profile_.get(),
               drive_integration_service_.get(),  // DriveIntegrationService
-              chromeos::PowerManagerClient::Get(),
+              power_manager_client,
               disk_manager,
               file_system_provider_service_.get(),
               base::BindRepeating(&ProfileEnvironment::GetFakeMtpStorageInfo,
-                                  base::Unretained(this)))) {}
+                                  base::Unretained(this)))),
+          account_id_(
+              AccountId::FromUserEmailGaiaId(profile_->GetProfileUserName(),
+                                             "id")),
+          user_(account_id_) {
+      ash::ProfileHelper::Get()->SetProfileToUserMappingForTesting(&user_);
+      ash::ProfileHelper::Get()->SetUserToProfileMappingForTesting(
+          &user_, profile_.get());
+    }
+
+    void LoginUser() {
+      ash::ProfileHelper::Get()->SetAlwaysReturnPrimaryUserForTesting(true);
+      ash::FakeChromeUserManager* fake_user_manager =
+          static_cast<ash::FakeChromeUserManager*>(
+              user_manager::UserManager::Get());
+      fake_user_manager->AddUser(account_id_);
+      fake_user_manager->LoginUser(account_id_);
+    }
 
     ~ProfileEnvironment() {
       // In production, KeyedServices have Shutdown() called before destruction.
       volume_manager_->Shutdown();
       drive_integration_service_->Shutdown();
-      file_system_provider_service_->Shutdown();
-      extension_registry_->Shutdown();
     }
 
     Profile* profile() const { return profile_.get(); }
@@ -314,58 +329,59 @@ class VolumeManagerTest : public testing::Test {
         file_system_provider_service_;
     std::unique_ptr<drive::DriveIntegrationService> drive_integration_service_;
     std::unique_ptr<VolumeManager> volume_manager_;
+    AccountId account_id_;
+    FakeUser user_;
   };
 
   void SetUp() override {
-    // Some test cases exercises the "MyFiles" directory.
-    scoped_command_line_.GetProcessCommandLine()->AppendSwitch(
-        ash::switches::kUseMyFilesInUserDataDirForTesting);
+    // Set up an Arc service manager with a fake file system. This must be done
+    // before initializing VolumeManager() to make its dependency
+    // DocumentsProviderRootManager work.
+    std::unique_ptr<TestingProfile> profile =
+        std::make_unique<TestingProfile>();
+    arc_service_manager_ = std::make_unique<arc::ArcServiceManager>();
+    arc_service_manager_->set_browser_context(profile.get());
+    arc::ArcFileSystemOperationRunner::GetFactory()->SetTestingFactoryAndUse(
+        profile.get(),
+        base::BindRepeating(&CreateFileSystemOperationRunnerForTesting));
+    arc_service_manager_->arc_bridge_service()->file_system()->SetInstance(
+        &file_system_instance_);
+    arc::WaitForInstanceReady(
+        arc_service_manager_->arc_bridge_service()->file_system());
+    ASSERT_TRUE(file_system_instance_.InitCalled());
 
     chromeos::PowerManagerClient::InitializeFake();
     disk_mount_manager_ = std::make_unique<FakeDiskMountManager>();
-    fake_user_manager_.Reset(std::make_unique<ash::FakeChromeUserManager>());
-
-    primary_profile_ = std::make_unique<ProfileEnvironment>(
-        AddLoggedInUser(AccountId::FromUserEmail("primary@test")),
-        disk_mount_manager_.get());
+    main_profile_ = std::make_unique<ProfileEnvironment>(
+        chromeos::PowerManagerClient::Get(), disk_mount_manager_.get(),
+        std::move(profile));
   }
 
   void TearDown() override {
-    task_environment_.RunUntilIdle();
-    primary_profile_.reset();
-
+    main_profile_.reset();
     disk_mount_manager_.reset();
+    arc_service_manager_->arc_bridge_service()->file_system()->CloseInstance(
+        &file_system_instance_);
     chromeos::PowerManagerClient::Shutdown();
-
-    // ExternalMountPoints instance for the system is global singleton,
-    // so some states can be leaked to another test. Revoke all of them
-    // explicitly.
-    storage::ExternalMountPoints::GetSystemInstance()->RevokeAllFileSystems();
+    task_environment_.RunUntilIdle();
   }
 
-  virtual std::unique_ptr<TestingProfile> AddLoggedInUser(
-      const AccountId& account_id) {
-    fake_user_manager_->AddUser(account_id);
-    fake_user_manager_->LoginUser(account_id);
-    std::unique_ptr<TestingProfile> profile =
-        std::make_unique<TestingProfile>();
-    ash::ProfileHelper::Get()->SetUserToProfileMappingForTesting(
-        fake_user_manager_->FindUserAndModify(account_id), profile.get());
-    return profile;
+  void EnableArcForProfile() {
+    base::CommandLine::ForCurrentProcess()->InitFromArgv(
+        {"", "--arc-availability=officially-supported"});
+    main_profile_->LoginUser();
   }
 
-  // Accessors to the primary profile.
-  Profile* profile() const { return primary_profile_->profile(); }
+  Profile* profile() const { return main_profile_->profile(); }
   VolumeManager* volume_manager() const {
-    return primary_profile_->volume_manager();
+    return main_profile_->volume_manager();
   }
 
-  base::test::ScopedCommandLine scoped_command_line_;
   content::BrowserTaskEnvironment task_environment_;
   std::unique_ptr<FakeDiskMountManager> disk_mount_manager_;
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_;
-  std::unique_ptr<ProfileEnvironment> primary_profile_;
+  std::unique_ptr<ProfileEnvironment> main_profile_;
+  arc::FakeFileSystemInstance file_system_instance_;
+  std::unique_ptr<arc::ArcServiceManager> arc_service_manager_;
 };
 
 TEST(VolumeTest, CreateForRemovable) {
@@ -423,7 +439,6 @@ TEST_F(VolumeManagerTest, OnDriveFileSystemUnmountWithoutMount) {
   ASSERT_EQ(0U, observer.events().size());
   volume_manager()->RemoveObserver(&observer);
 }
-
 TEST_F(VolumeManagerTest, OnBootDeviceDiskEvent) {
   LoggingObserver observer;
   volume_manager()->AddObserver(&observer);
@@ -1013,29 +1028,28 @@ TEST_F(VolumeManagerTest, OnExternalStorageDisabledChanged) {
 }
 
 TEST_F(VolumeManagerTest, ExternalStorageDisabledPolicyMultiProfile) {
-  auto secondary = std::make_unique<ProfileEnvironment>(
-      AddLoggedInUser(AccountId::FromUserEmail("secondary@test")),
-      disk_mount_manager_.get());
+  ProfileEnvironment secondary(chromeos::PowerManagerClient::Get(),
+                               disk_mount_manager_.get());
   volume_manager()->Initialize();
-  secondary->volume_manager()->Initialize();
+  secondary.volume_manager()->Initialize();
 
   // Simulates the case that the main profile has kExternalStorageDisabled set
   // as false, and the secondary profile has the config set to true.
   profile()->GetPrefs()->SetBoolean(disks::prefs::kExternalStorageDisabled,
                                     false);
-  secondary->profile()->GetPrefs()->SetBoolean(
+  secondary.profile()->GetPrefs()->SetBoolean(
       disks::prefs::kExternalStorageDisabled, true);
 
   LoggingObserver main_observer, secondary_observer;
   volume_manager()->AddObserver(&main_observer);
-  secondary->volume_manager()->AddObserver(&secondary_observer);
+  secondary.volume_manager()->AddObserver(&secondary_observer);
 
   // Add 1 disk.
   std::unique_ptr<const Disk> media_disk =
       Disk::Builder().SetDevicePath("device1").SetHasMedia(true).Build();
   volume_manager()->OnAutoMountableDiskEvent(DiskMountManager::DISK_ADDED,
                                              *media_disk);
-  secondary->volume_manager()->OnAutoMountableDiskEvent(
+  secondary.volume_manager()->OnAutoMountableDiskEvent(
       DiskMountManager::DISK_ADDED, *media_disk);
 
   // The profile with external storage enabled should have mounted the volume.
@@ -1059,7 +1073,7 @@ TEST_F(VolumeManagerTest, ExternalStorageDisabledPolicyMultiProfile) {
   EXPECT_FALSE(has_volume_mounted);
 
   volume_manager()->RemoveObserver(&main_observer);
-  secondary->volume_manager()->RemoveObserver(&secondary_observer);
+  secondary.volume_manager()->RemoveObserver(&secondary_observer);
 }
 
 TEST_F(VolumeManagerTest, OnExternalStorageReadOnlyChanged) {
@@ -1330,49 +1344,10 @@ TEST_F(VolumeManagerTest, OnRenameEvent_CompletedFailed) {
   volume_manager()->RemoveObserver(&observer);
 }
 
-// Test fixture for VolumeManager tests with ARC enabled.
-class VolumeManagerArcTest : public VolumeManagerTest {
- public:
-  void SetUp() override {
-    scoped_command_line_.GetProcessCommandLine()->AppendSwitchASCII(
-        ash::switches::kArcAvailability, "officially-supported");
-    VolumeManagerTest::SetUp();
-  }
+TEST_F(VolumeManagerTest, OnArcPlayStoreEnabledChanged_Enabled) {
+  // Setup to pass IsArcAllowedForProfile() DCHECK.
+  EnableArcForProfile();
 
-  void TearDown() override {
-    arc_service_manager_->arc_bridge_service()->file_system()->CloseInstance(
-        &file_system_instance_);
-    arc_service_manager_->set_browser_context(nullptr);
-    VolumeManagerTest::TearDown();
-  }
-
-  std::unique_ptr<TestingProfile> AddLoggedInUser(
-      const AccountId& account_id) override {
-    auto profile = VolumeManagerTest::AddLoggedInUser(account_id);
-
-    // Set up an Arc service manager with a fake file system. This must be done
-    // before initializing VolumeManager() to make its dependency
-    // DocumentsProviderRootManager work.
-    CHECK(!arc_service_manager_);
-    arc_service_manager_ = std::make_unique<arc::ArcServiceManager>();
-    arc_service_manager_->set_browser_context(profile.get());
-    arc::ArcFileSystemOperationRunner::GetFactory()->SetTestingFactoryAndUse(
-        profile.get(),
-        base::BindRepeating(&CreateFileSystemOperationRunnerForTesting));
-    arc_service_manager_->arc_bridge_service()->file_system()->SetInstance(
-        &file_system_instance_);
-    arc::WaitForInstanceReady(
-        arc_service_manager_->arc_bridge_service()->file_system());
-    EXPECT_TRUE(file_system_instance_.InitCalled());
-    return profile;
-  }
-
- private:
-  arc::FakeFileSystemInstance file_system_instance_;
-  std::unique_ptr<arc::ArcServiceManager> arc_service_manager_;
-};
-
-TEST_F(VolumeManagerArcTest, OnArcPlayStoreEnabledChanged_Enabled) {
   LoggingObserver observer;
   volume_manager()->AddObserver(&observer);
 
@@ -1380,7 +1355,7 @@ TEST_F(VolumeManagerArcTest, OnArcPlayStoreEnabledChanged_Enabled) {
 
   ASSERT_EQ(5U, observer.events().size());
 
-  size_t index = 0;
+  unsigned index = 0;
   for (const auto& event : observer.events()) {
     EXPECT_EQ(LoggingObserver::Event::VOLUME_MOUNTED, event.type);
     EXPECT_EQ(ash::MountError::kSuccess, event.mount_error);
@@ -1396,7 +1371,10 @@ TEST_F(VolumeManagerArcTest, OnArcPlayStoreEnabledChanged_Enabled) {
   volume_manager()->RemoveObserver(&observer);
 }
 
-TEST_F(VolumeManagerArcTest, OnArcPlayStoreEnabledChanged_Disabled) {
+TEST_F(VolumeManagerTest, OnArcPlayStoreEnabledChanged_Disabled) {
+  // Setup to pass IsArcAllowedForProfile() DCHECK.
+  EnableArcForProfile();
+
   // Need to enable it first before disabling it, otherwise
   // it will be no-op.
   volume_manager()->OnArcPlayStoreEnabledChanged(true);
@@ -1408,7 +1386,7 @@ TEST_F(VolumeManagerArcTest, OnArcPlayStoreEnabledChanged_Disabled) {
 
   ASSERT_EQ(5U, observer.events().size());
 
-  size_t index = 0;
+  unsigned index = 0;
   for (const auto& event : observer.events()) {
     EXPECT_EQ(LoggingObserver::Event::VOLUME_UNMOUNTED, event.type);
     EXPECT_EQ(ash::MountError::kSuccess, event.mount_error);
@@ -1422,115 +1400,6 @@ TEST_F(VolumeManagerArcTest, OnArcPlayStoreEnabledChanged_Disabled) {
   }
 
   volume_manager()->RemoveObserver(&observer);
-}
-
-TEST_F(VolumeManagerArcTest, ShouldAlwaysMountAndroidVolumesInFilesForTesting) {
-  base::test::ScopedCommandLine command_line;
-  command_line.GetProcessCommandLine()->AppendSwitch(
-      ash::switches::kArcForceMountAndroidVolumesInFiles);
-
-  LoggingObserver observer;
-  volume_manager()->AddObserver(&observer);
-
-  // Volumes are mounted even when Play Store is not enabled for the profile.
-  volume_manager()->OnArcPlayStoreEnabledChanged(false);
-
-  ASSERT_EQ(5U, observer.events().size());
-
-  size_t index = 0;
-  for (const auto& event : observer.events()) {
-    EXPECT_EQ(LoggingObserver::Event::VOLUME_MOUNTED, event.type);
-    EXPECT_EQ(ash::MountError::kSuccess, event.mount_error);
-    if (index < 4) {
-      EXPECT_EQ(arc::GetMediaViewVolumeId(arc_volume_ids[index]),
-                event.volume_id);
-    } else {
-      EXPECT_EQ(arc_volume_ids[index], event.volume_id);
-    }
-    index++;
-  }
-
-  // No volume-related event happens after Play Store preference changes,
-  // because volumes are just kept being mounted.
-  volume_manager()->OnArcPlayStoreEnabledChanged(true);
-  volume_manager()->OnArcPlayStoreEnabledChanged(false);
-  ASSERT_EQ(5U, observer.events().size());
-
-  volume_manager()->RemoveObserver(&observer);
-}
-
-// Tests VolumeManager with the LocalUserFilesAllowed policy.
-class VolumeManagerLocalUserFilesTest : public VolumeManagerArcTest {
- public:
-  VolumeManagerLocalUserFilesTest()
-      : scoped_testing_local_state_(TestingBrowserProcess::GetGlobal()) {}
-
-  void SetUp() override {
-    scoped_feature_list_.InitAndEnableFeature(features::kSkyVault);
-    VolumeManagerArcTest::SetUp();
-  }
-
-  void TearDown() override { VolumeManagerArcTest::TearDown(); }
-
-  void SetLocalUserFilesPolicy(bool allowed) {
-    scoped_testing_local_state_.Get()->SetBoolean(prefs::kLocalUserFilesAllowed,
-                                                  allowed);
-  }
-
-  bool ContainsDownloads() {
-    std::vector<base::WeakPtr<Volume>> volume_list =
-        volume_manager()->GetVolumeList();
-    if (volume_list.size() == 0u) {
-      return false;
-    }
-    auto volume = base::ranges::find(volume_list, "downloads:MyFiles",
-                                     &Volume::volume_id);
-    return volume != volume_list.end() &&
-           (*volume)->type() == VOLUME_TYPE_DOWNLOADS_DIRECTORY;
-  }
-
-  bool ContainsPlayFiles() {
-    std::vector<base::WeakPtr<Volume>> volume_list =
-        volume_manager()->GetVolumeList();
-    if (volume_list.size() == 0u) {
-      return false;
-    }
-    auto volume =
-        base::ranges::find(volume_list, "android_files:0", &Volume::volume_id);
-    return volume != volume_list.end() &&
-           (*volume)->type() == VOLUME_TYPE_ANDROID_FILES;
-  }
-
- private:
-  ScopedTestingLocalState scoped_testing_local_state_;
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-// Tests that VolumeManager removes local volumes when the policy is set to
-// false, and adds them when set to true.
-TEST_F(VolumeManagerLocalUserFilesTest, DisableEnable) {
-  // Enable ARC.
-  profile()->GetPrefs()->SetBoolean(arc::prefs::kArcEnabled, true);
-  // Emulate running inside ChromeOS.
-  base::test::ScopedRunningOnChromeOS running_on_chromeos;
-  volume_manager()->Initialize();  // Adds "Downloads" and "Play Files"
-  EXPECT_TRUE(ContainsDownloads());
-  EXPECT_TRUE(ContainsPlayFiles());
-
-  // Setting the policy to false removes local volumes.
-  SetLocalUserFilesPolicy(/*allowed=*/false);
-  EXPECT_FALSE(ContainsDownloads());
-  EXPECT_FALSE(ContainsPlayFiles());
-
-  // Setting the policy to true adds local volumes.
-  SetLocalUserFilesPolicy(/*allowed=*/true);
-  EXPECT_TRUE(ContainsDownloads());
-  EXPECT_TRUE(ContainsPlayFiles());
-
-  // Another update with the same value shouldn't do anything.
-  SetLocalUserFilesPolicy(/*allowed=*/true);
-  EXPECT_TRUE(ContainsDownloads());
-  EXPECT_TRUE(ContainsPlayFiles());
 }
 
 }  // namespace file_manager

@@ -7,7 +7,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -32,13 +31,13 @@
 #include "content/public/browser/browser_thread.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/features/behavior_feature.h"
 #include "extensions/common/features/feature.h"
 #include "extensions/common/features/feature_provider.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/cert/x509_certificate.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
 #include "chromeos/lacros/lacros_service.h"
@@ -194,7 +193,7 @@ class ExtensionPlatformKeysService::GenerateKeyTask : public Task {
   };
 
   GenerateKeyTask(platform_keys::TokenId token_id,
-                  extensions::ExtensionId extension_id,
+                  std::string extension_id,
                   GenerateKeyCallback callback,
                   ExtensionPlatformKeysService* service)
       : token_id_(token_id),
@@ -219,7 +218,7 @@ class ExtensionPlatformKeysService::GenerateKeyTask : public Task {
 
   platform_keys::TokenId token_id_;
   std::vector<uint8_t> public_key_spki_der_;
-  const extensions::ExtensionId extension_id_;
+  const std::string extension_id_;
   GenerateKeyCallback callback_;
   std::unique_ptr<platform_keys::ExtensionKeyPermissionsService>
       extension_key_permissions_service_;
@@ -293,7 +292,7 @@ class ExtensionPlatformKeysService::GenerateKeyTask : public Task {
                                         crosapi::mojom::KeystoreError error) {
     if (!is_error) {
       std::move(callback_).Run(std::move(public_key_spki_der_),
-                               /*error=*/std::nullopt);
+                               /*error=*/absl::nullopt);
       DoStep();
       return;
     }
@@ -409,7 +408,7 @@ class ExtensionPlatformKeysService::SignTask : public Task {
   // multiple times, also updates the permission to prevent any future signing
   // operation of that extension using that same key. If an error occurs, an
   // error status is passed to |callback|.
-  SignTask(std::optional<platform_keys::TokenId> token_id,
+  SignTask(absl::optional<platform_keys::TokenId> token_id,
            std::vector<uint8_t> data,
            std::vector<uint8_t> public_key_spki_der,
            platform_keys::KeyType key_type,
@@ -484,8 +483,8 @@ class ExtensionPlatformKeysService::SignTask : public Task {
   void CheckSignPermissions() {
     const extensions::Extension* extension =
         extensions::ExtensionRegistry::Get(service_->browser_context_)
-            ->enabled_extensions()
-            .GetByID(extension_id_);
+            ->GetExtensionById(extension_id_,
+                               extensions::ExtensionRegistry::ENABLED);
     if (service_->IsUsingSigninProfile() && IsExtensionAllowlisted(extension)) {
       DoStep();
       return;
@@ -558,7 +557,7 @@ class ExtensionPlatformKeysService::SignTask : public Task {
       case KeystoreBinaryResult::Tag::kBlob:
         std::move(callback_).Run(
             /*signature=*/std::move(result->get_blob()),
-            /*error=*/std::nullopt);
+            /*error=*/absl::nullopt);
         break;
     }
     DoStep();
@@ -566,12 +565,12 @@ class ExtensionPlatformKeysService::SignTask : public Task {
 
   Step next_step_ = Step::GET_EXTENSION_PERMISSIONS;
 
-  std::optional<platform_keys::TokenId> token_id_;
+  absl::optional<platform_keys::TokenId> token_id_;
   const std::vector<uint8_t> data_;
   const std::vector<uint8_t> public_key_spki_der_;
 
   KeystoreSigningScheme signing_scheme_;
-  const extensions::ExtensionId extension_id_;
+  const std::string extension_id_;
   SignCallback callback_;
   std::unique_ptr<platform_keys::ExtensionKeyPermissionsService>
       extension_key_permissions_service_;
@@ -862,7 +861,7 @@ class ExtensionPlatformKeysService::SelectTask : public Task {
       selection->assign(matches_.begin(), matches_.end());
     }
 
-    std::move(callback_).Run(std::move(selection), /*error=*/std::nullopt);
+    std::move(callback_).Run(std::move(selection), /*error=*/absl::nullopt);
     DoStep();
   }
 
@@ -875,7 +874,7 @@ class ExtensionPlatformKeysService::SelectTask : public Task {
   platform_keys::ClientCertificateRequest request_;
   std::unique_ptr<net::CertificateList> input_client_certificates_;
   const bool interactive_;
-  const extensions::ExtensionId extension_id_;
+  const std::string extension_id_;
   SelectCertificatesCallback callback_;
   const raw_ptr<content::WebContents> web_contents_;
   std::unique_ptr<platform_keys::ExtensionKeyPermissionsService>
@@ -923,9 +922,8 @@ void ExtensionPlatformKeysService::GenerateRSAKey(
     // TODO(https://crbug.com/1252410): Remove this code with M-100.
     const int kSoftwareBackedRsaMinVersion = 16;
     if (!chromeos::LacrosService::Get() ||
-        (chromeos::LacrosService::Get()
-             ->GetInterfaceVersion<KeystoreService>() <
-         kSoftwareBackedRsaMinVersion)) {
+        (chromeos::LacrosService::Get()->GetInterfaceVersion(
+             KeystoreService::Uuid_) < kSoftwareBackedRsaMinVersion)) {
       std::move(callback).Run(
           /*public_key_spki_der=*/std::vector<uint8_t>(),
           crosapi::mojom::KeystoreError::kUnsupportedKeyType);
@@ -969,7 +967,7 @@ bool ExtensionPlatformKeysService::IsUsingSigninProfile() {
 }
 
 void ExtensionPlatformKeysService::SignDigest(
-    std::optional<platform_keys::TokenId> token_id,
+    absl::optional<platform_keys::TokenId> token_id,
     std::vector<uint8_t> data,
     std::vector<uint8_t> public_key_spki_der,
     platform_keys::KeyType key_type,
@@ -990,7 +988,7 @@ void ExtensionPlatformKeysService::SignDigest(
 }
 
 void ExtensionPlatformKeysService::SignRSAPKCS1Raw(
-    std::optional<platform_keys::TokenId> token_id,
+    absl::optional<platform_keys::TokenId> token_id,
     std::vector<uint8_t> data,
     std::vector<uint8_t> public_key_spki_der,
     std::string extension_id,

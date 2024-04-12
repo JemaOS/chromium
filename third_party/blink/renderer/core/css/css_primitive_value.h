@@ -129,8 +129,6 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
     kIcs,
     kLhs,
     kRlhs,
-    kCaps,
-    kRcaps,
     kUserUnits,  // The SVG term for unitless lengths
     // Angle units
     kDegrees,
@@ -148,9 +146,8 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
     kDotsPerInch,
     kDotsPerCentimeter,
     // Other units
-    kFlex,
+    kFraction,
     kInteger,
-    kIdent,
 
     // This value is used to handle quirky margins in reflow roots (body, td,
     // and th) like WinIE. The basic idea is that a stylesheet can use the value
@@ -166,8 +163,6 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
     kUnitTypePercentage,
     kUnitTypeFontSize,
     kUnitTypeFontXSize,
-    kUnitTypeFontCapitalHeight,
-    kUnitTypeRootFontCapitalHeight,
     kUnitTypeRootFontSize,
     kUnitTypeRootFontXSize,
     kUnitTypeRootFontZeroCharacterWidth,
@@ -236,9 +231,6 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
     static_assert(kUnitTypeZeroCharacterWidth < kSize, "ch unit supported");
     static_assert(kUnitTypeRootFontZeroCharacterWidth < kSize,
                   "rch unit supported");
-    static_assert(kUnitTypeFontCapitalHeight < kSize, "cap unit supported");
-    static_assert(kUnitTypeRootFontCapitalHeight < kSize,
-                  "rcap unit supported");
     static_assert(kUnitTypeViewportWidth < kSize, "vw unit supported");
     static_assert(kUnitTypeViewportHeight < kSize, "vh unit supported");
     static_assert(kUnitTypeViewportInlineSize < kSize, "vi unit supported");
@@ -311,16 +303,13 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
            type == UnitType::kChs || type == UnitType::kIcs ||
            type == UnitType::kLhs || type == UnitType::kRexs ||
            type == UnitType::kRchs || type == UnitType::kRics ||
-           type == UnitType::kRlhs || type == UnitType::kCaps ||
-           type == UnitType::kRcaps || IsViewportPercentageLength(type) ||
+           type == UnitType::kRlhs || IsViewportPercentageLength(type) ||
            IsContainerPercentageLength(type);
   }
   bool IsLength() const;
   bool IsNumber() const;
   bool IsInteger() const;
   bool IsPercentage() const;
-  // Is this a percentage *or* a calc() with a percentage?
-  bool HasPercentage() const;
   bool IsPx() const;
   static bool IsTime(UnitType unit) {
     return unit == UnitType::kSeconds || unit == UnitType::kMilliseconds;
@@ -336,7 +325,7 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
            type <= UnitType::kDotsPerCentimeter;
   }
   bool IsResolution() const;
-  static bool IsFlex(UnitType unit) { return unit == UnitType::kFlex; }
+  static bool IsFlex(UnitType unit) { return unit == UnitType::kFraction; }
   bool IsFlex() const;
 
   // https://drafts.css-houdini.org/css-properties-values-api-1/#computationally-independent
@@ -356,9 +345,6 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
   double ComputeDegrees() const;
   double ComputeSeconds() const;
   double ComputeDotsPerPixel() const;
-
-  double ComputeDegrees(const CSSLengthResolver&) const;
-  double ComputeSeconds(const CSSLengthResolver&) const;
 
   // Computes a length in pixels, resolving relative lengths
   template <typename T>
@@ -388,12 +374,7 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
   }
 
   template <typename T>
-  inline T ConvertTo(const CSSLengthResolver&)
-      const;  // Defined in CSSPrimitiveValueMappings.h
-
-  int ComputeInteger(const CSSLengthResolver&) const;
-  double ComputeNumber(const CSSLengthResolver&) const;
-  double ComputePercentage(const CSSLengthResolver&) const;
+  inline T ConvertTo() const;  // Defined in CSSPrimitiveValueMappings.h
 
   static const char* UnitTypeToString(UnitType);
   static UnitType StringToUnitType(StringView string) {
@@ -424,12 +405,6 @@ class CORE_EXPORT CSSPrimitiveValue : public CSSValue {
   static UnitType StringToUnitType(const UChar*, unsigned length);
 
   double ComputeLengthDouble(const CSSLengthResolver&) const;
-
- protected:
-  bool IsResolvableLength() const;
-
- private:
-  bool InvolvesLayout() const;
 };
 
 using CSSLengthArray = CSSPrimitiveValue::CSSLengthArray;

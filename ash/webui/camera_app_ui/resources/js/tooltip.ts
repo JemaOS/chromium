@@ -4,57 +4,105 @@
 
 import {assert} from './assert.js';
 import * as dom from './dom.js';
-import {TextTooltip} from './lit/components/text-tooltip.js';
 
 /**
  * Wrapper element that shows tooltip.
  */
-let tooltipElement: TextTooltip|null = null;
+let wrapper: HTMLElement|null = null;
 
 /**
- * Hides the shown tooltip.
+ * Hovered element whose tooltip to be shown.
+ */
+let hovered: HTMLElement|null = null;
+
+/**
+ * Name of event triggered for positioning tooltip.
+ */
+export const TOOLTIP_POSITION_EVENT_NAME = 'tooltipposition';
+
+/**
+ * Positions tooltip relative to UI.
+ *
+ * @param rect UI's reference region.
+ */
+export function position(rect: DOMRectReadOnly): void {
+  assert(wrapper !== null);
+
+  const [edgeMargin, elementMargin] = [5, 8];
+  let tooltipTop = rect.top - wrapper.offsetHeight - elementMargin;
+  if (tooltipTop < edgeMargin) {
+    tooltipTop = rect.bottom + elementMargin;
+  }
+  wrapper.style.top = tooltipTop + 'px';
+
+  // Center over the hovered element but avoid touching edges.
+  const hoveredCenter = rect.left + rect.width / 2;
+  const left = Math.min(
+      Math.max(hoveredCenter - wrapper.clientWidth / 2, edgeMargin),
+      document.body.offsetWidth - wrapper.offsetWidth - edgeMargin);
+  wrapper.style.left = Math.round(left) + 'px';
+}
+
+/**
+ * Hides the shown tooltip if any.
  */
 export function hide(): void {
-  assert(tooltipElement !== null);
+  assert(wrapper !== null);
 
-  tooltipElement.anchorTarget = null;
-  tooltipElement.target = null;
+  if (hovered) {
+    hovered = null;
+    wrapper.textContent = '';
+    wrapper.classList.remove('visible');
+  }
+}
+
+/**
+ * Shows a tooltip over the hovered element.
+ *
+ * @param element Hovered element whose tooltip to be shown.
+ */
+function show(element: HTMLElement) {
+  assert(wrapper !== null);
+
+  hide();
+  let message = element.getAttribute('aria-label');
+  if (element instanceof HTMLInputElement) {
+    if (element.hasAttribute('tooltip-true') && element.checked) {
+      message = element.getAttribute('tooltip-true');
+    }
+    if (element.hasAttribute('tooltip-false') && !element.checked) {
+      message = element.getAttribute('tooltip-false');
+    }
+  }
+  wrapper.textContent = message;
+  hovered = element;
+  const positionEvent =
+      new CustomEvent(TOOLTIP_POSITION_EVENT_NAME, {cancelable: true});
+  const doDefault = hovered.dispatchEvent(positionEvent);
+  if (doDefault) {
+    position(hovered.getBoundingClientRect());
+  }
+  wrapper.classList.add('visible');
 }
 
 /**
  * Sets up tooltips for elements.
  *
  * @param elements Elements whose tooltips to be shown.
+ * @return Elements whose tooltips have been set up.
  */
-export function setupElements(elements: HTMLElement[]): void {
+export function setup(elements: HTMLElement[]): HTMLElement[] {
+  wrapper = dom.get('#tooltip', HTMLElement);
   for (const el of elements) {
-    function hideHandler() {
-      assert(tooltipElement !== null);
-      if (tooltipElement.target === el) {
+    function handler() {
+      // Handler hides tooltip only when it's for the element.
+      if (el === hovered) {
         hide();
       }
     }
-    function showHandler() {
-      assert(tooltipElement !== null);
-      let anchor = el;
-      const selector = el.dataset['tooltipAnchor'];
-      if (selector !== undefined) {
-        anchor = dom.getFrom(el, selector, HTMLElement);
-      }
-      tooltipElement.target = el;
-      tooltipElement.anchorTarget = anchor;
-    }
-    el.addEventListener('mouseleave', hideHandler);
-    el.addEventListener('click', hideHandler);
-    el.addEventListener('blur', hideHandler);
-    el.addEventListener('mouseenter', showHandler);
-    el.addEventListener('focus', showHandler);
+    el.addEventListener('mouseout', handler);
+    el.addEventListener('click', handler);
+    el.addEventListener('mouseover', () => show(el));
   }
-}
-
-/**
- *  Initializes the tooltips. This should be called before other methods.
- */
-export function init(): void {
-  tooltipElement = dom.get('text-tooltip', TextTooltip);
+  return elements;
 }

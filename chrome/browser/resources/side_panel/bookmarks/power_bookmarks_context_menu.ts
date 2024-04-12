@@ -4,22 +4,18 @@
 
 import '../strings.m.js';
 import './icons.html.js';
-import '//bookmarks-side-panel.top-chrome/shared/sp_shared_style.css.js';
 import '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import '//resources/cr_elements/icons.html.js';
 
-import type {BrowserProxy} from '//resources/cr_components/commerce/browser_proxy.js';
-import {BrowserProxyImpl} from '//resources/cr_components/commerce/browser_proxy.js';
-import type {CrActionMenuElement} from '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {CrActionMenuElement} from '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import type {DomRepeatEvent} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {afterNextRender, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {afterNextRender, DomRepeatEvent, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {ActionSource} from './bookmarks.mojom-webui.js';
-import type {BookmarksApiProxy} from './bookmarks_api_proxy.js';
-import {BookmarksApiProxyImpl} from './bookmarks_api_proxy.js';
+import {BookmarksApiProxy, BookmarksApiProxyImpl} from './bookmarks_api_proxy.js';
+import {ShoppingListApiProxy, ShoppingListApiProxyImpl} from './commerce/shopping_list_api_proxy.js';
 import {getTemplate} from './power_bookmarks_context_menu.html.js';
 import {editingDisabledByPolicy} from './power_bookmarks_service.js';
 
@@ -66,49 +62,31 @@ export class PowerBookmarksContextMenuElement extends PolymerElement {
 
   private bookmarksApi_: BookmarksApiProxy =
       BookmarksApiProxyImpl.getInstance();
-  private shoppingServiceApi_: BrowserProxy = BrowserProxyImpl.getInstance();
+  private shoppingListApi_: ShoppingListApiProxy =
+      ShoppingListApiProxyImpl.getInstance();
   private bookmarks_: chrome.bookmarks.BookmarkTreeNode[] = [];
   private priceTracked_: boolean;
   private priceTrackingEligible_: boolean;
 
   showAt(
       event: MouseEvent, bookmarks: chrome.bookmarks.BookmarkTreeNode[],
-      priceTracked: boolean, priceTrackingEligible: boolean,
-      onShown: Function = () => {}) {
+      priceTracked: boolean, priceTrackingEligible: boolean) {
     this.bookmarks_ = bookmarks;
     this.priceTracked_ = priceTracked;
     this.priceTrackingEligible_ = priceTrackingEligible;
     const target = event.target as HTMLElement;
     afterNextRender(this, () => {
       this.$.menu.showAt(target);
-      onShown();
     });
   }
 
   showAtPosition(
       event: MouseEvent, bookmarks: chrome.bookmarks.BookmarkTreeNode[],
-      priceTracked: boolean, priceTrackingEligible: boolean,
-      onShown: Function = () => {}) {
+      priceTracked: boolean, priceTrackingEligible: boolean) {
     this.bookmarks_ = bookmarks;
     this.priceTracked_ = priceTracked;
     this.priceTrackingEligible_ = priceTrackingEligible;
-    const menuMargin = 20;
-    const doc = document.scrollingElement!;
-    const minX = doc.scrollLeft + menuMargin;
-    const maxX = doc.scrollLeft + doc.clientWidth - menuMargin;
-    afterNextRender(this, () => {
-      this.$.menu.showAtPosition({
-        top: event.clientY,
-        left: event.clientX,
-        minX: minX,
-        maxX: maxX,
-      });
-      onShown();
-    });
-  }
-
-  isOpen(): boolean {
-    return this.$.menu.open;
+    this.$.menu.showAtPosition({top: event.clientY, left: event.clientX});
   }
 
   private getMenuItemsForBookmarks_(): MenuItem[] {
@@ -140,8 +118,7 @@ export class PowerBookmarksContextMenuElement extends PolymerElement {
       },
     ];
 
-    if (!loadTimeData.getBoolean('incognitoMode') &&
-        loadTimeData.getBoolean('isIncognitoModeAvailable')) {
+    if (!loadTimeData.getBoolean('incognitoMode')) {
       menuItems.push({
         id: MenuItemId.OPEN_INCOGNITO,
         label: bookmarkCount < 2 ?
@@ -257,19 +234,6 @@ export class PowerBookmarksContextMenuElement extends PolymerElement {
     this.dispatchEvent(new CustomEvent('disabled-feature'));
   }
 
-  /**
-   * Close the menu on mousedown so clicks can propagate to the underlying UI.
-   * This allows the user to right click the list while a context menu is
-   * showing and get another context menu.
-   */
-  private onMousedown_(e: Event): void {
-    if ((e.composedPath()[0] as HTMLElement).tagName !== 'DIALOG') {
-      return;
-    }
-
-    this.$.menu.close();
-  }
-
   private onMenuItemClicked_(event: DomRepeatEvent<MenuItem>) {
     event.preventDefault();
     event.stopPropagation();
@@ -318,12 +282,12 @@ export class PowerBookmarksContextMenuElement extends PolymerElement {
           this.dispatchDisabledFeatureEvent_();
         } else {
           if (this.priceTracked_) {
-            this.shoppingServiceApi_.untrackPriceForBookmark(
+            this.shoppingListApi_.untrackPriceForBookmark(
                 BigInt(this.bookmarks_[0]!.id));
             chrome.metricsPrivate.recordUserAction(
                 'Commerce.PriceTracking.SidePanel.Untrack.ContextMenu');
           } else {
-            this.shoppingServiceApi_.trackPriceForBookmark(
+            this.shoppingListApi_.trackPriceForBookmark(
                 BigInt(this.bookmarks_[0]!.id));
             chrome.metricsPrivate.recordUserAction(
                 'Commerce.PriceTracking.SidePanel.Track.ContextMenu');

@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/net/network_diagnostics/video_conferencing_routine.h"
 
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -16,6 +15,7 @@
 #include "content/public/browser/storage_partition.h"
 #include "net/base/net_errors.h"
 #include "services/network/public/mojom/network_context.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace network_diagnostics {
@@ -32,10 +32,8 @@ const char kDefaultStunServer[] = "stun.l.google.com";
 const char kSupportDetails[] = "https://support.google.com/a/answer/1279090";
 const base::TimeDelta kTimeoutAfterHostResolution = base::Seconds(10);
 
-VideoConferencingRoutine::VideoConferencingRoutine(
-    mojom::RoutineCallSource source)
-    : NetworkDiagnosticsRoutine(source),
-      stun_server_hostname_(kDefaultStunServer),
+VideoConferencingRoutine::VideoConferencingRoutine()
+    : stun_server_hostname_(kDefaultStunServer),
       udp_prober_getter_callback_(base::BindRepeating(
           &VideoConferencingRoutine::CreateAndExecuteUdpProber)),
       tls_prober_getter_callback_(base::BindRepeating(
@@ -45,10 +43,8 @@ VideoConferencingRoutine::VideoConferencingRoutine(
       media_hostnames_(util::GetDefaultMediaUrls()) {}
 
 VideoConferencingRoutine::VideoConferencingRoutine(
-    mojom::RoutineCallSource source,
     const std::string& stun_server_hostname)
-    : NetworkDiagnosticsRoutine(source),
-      stun_server_hostname_(stun_server_hostname),
+    : stun_server_hostname_(stun_server_hostname),
       udp_prober_getter_callback_(base::BindRepeating(
           &VideoConferencingRoutine::CreateAndExecuteUdpProber)),
       tls_prober_getter_callback_(base::BindRepeating(
@@ -68,7 +64,7 @@ void VideoConferencingRoutine::Run() {
 }
 
 void VideoConferencingRoutine::AnalyzeResultsAndExecuteCallback() {
-  std::optional<std::string> support_details = kSupportDetails;
+  absl::optional<std::string> support_details = kSupportDetails;
   set_verdict(mojom::RoutineVerdict::kProblem);
   if (!open_udp_port_found_) {
     problems_.push_back(mojom::VideoConferencingProblem::kUdpFailure);
@@ -81,7 +77,7 @@ void VideoConferencingRoutine::AnalyzeResultsAndExecuteCallback() {
   }
   if (problems_.empty()) {
     set_verdict(mojom::RoutineVerdict::kNoProblem);
-    support_details = std::nullopt;
+    support_details = absl::nullopt;
   }
   set_problems(mojom::RoutineProblems::NewVideoConferencingProblems(problems_));
   ExecuteCallback();
@@ -126,7 +122,7 @@ network::mojom::NetworkContext* VideoConferencingRoutine::GetNetworkContext() {
 }
 
 std::unique_ptr<UdpProber> VideoConferencingRoutine::CreateAndExecuteUdpProber(
-    network::NetworkContextGetter network_context_getter,
+    UdpProber::NetworkContextGetter network_context_getter,
     net::HostPortPair host_port_pair,
     base::span<const uint8_t> data,
     net::NetworkTrafficAnnotationTag tag,
@@ -138,7 +134,7 @@ std::unique_ptr<UdpProber> VideoConferencingRoutine::CreateAndExecuteUdpProber(
 }
 
 std::unique_ptr<TlsProber> VideoConferencingRoutine::CreateAndExecuteTlsProber(
-    network::NetworkContextGetter network_context_getter,
+    TlsProber::NetworkContextGetter network_context_getter,
     net::HostPortPair host_port_pair,
     bool negotiate_tls,
     TlsProber::TlsProbeCompleteCallback callback) {

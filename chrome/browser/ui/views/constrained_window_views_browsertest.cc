@@ -7,7 +7,6 @@
 #include "build/build_config.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/tab_modal_confirm_dialog_views.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -35,9 +34,8 @@ class TestDialog : public views::DialogDelegateView {
     SetModalType(ui::MODAL_TYPE_CHILD);
     // Dialogs that take focus must have a name and role to pass accessibility
     // checks.
-    GetViewAccessibility().SetRole(ax::mojom::Role::kDialog);
-    GetViewAccessibility().SetName("Test dialog",
-                                   ax::mojom::NameFrom::kAttribute);
+    GetViewAccessibility().OverrideRole(ax::mojom::Role::kDialog);
+    GetViewAccessibility().OverrideName("Test dialog");
   }
 
   TestDialog(const TestDialog&) = delete;
@@ -69,9 +67,8 @@ class ConstrainedWindowViewTest : public InProcessBrowserTest {
 
 }  // namespace
 
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_MAC)
 // Unexpected multiple focus managers on MacViews: http://crbug.com/824551
-// TODO(crbug.com/1509159):  Enable for Linux after resolving failure.
 #define MAYBE_FocusTest DISABLED_FocusTest
 #else
 #define MAYBE_FocusTest FocusTest
@@ -149,8 +146,7 @@ IN_PROC_BROWSER_TEST_F(ConstrainedWindowViewTest, TabCloseTest) {
 // shown when its tab is selected again.
 // Flaky on ASAN builds (https://crbug.com/997634)
 // Flaky on Mac (https://crbug.com/1385896)
-// Fails on Linux (https://crbug.com/1509135)
-#if defined(ADDRESS_SANITIZER) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#if defined(ADDRESS_SANITIZER) || BUILDFLAG(IS_MAC)
 #define MAYBE_TabSwitchTest DISABLED_TabSwitchTest
 #else
 #define MAYBE_TabSwitchTest TabSwitchTest
@@ -195,11 +191,12 @@ IN_PROC_BROWSER_TEST_F(ConstrainedWindowViewTest, MAYBE_TabMoveTest) {
   // Move the tab to a second browser window; but first create another tab.
   // That prevents the first browser window from closing when its tab is moved.
   chrome::NewTab(browser());
-  std::unique_ptr<tabs::TabModel> detached_tab =
-      browser()->tab_strip_model()->DetachTabAtForInsertion(
+  std::unique_ptr<content::WebContents> owned_web_contents =
+      browser()->tab_strip_model()->DetachWebContentsAtForInsertion(
           browser()->tab_strip_model()->GetIndexOfWebContents(web_contents));
   Browser* browser2 = CreateBrowser(browser()->profile());
-  browser2->tab_strip_model()->AppendTab(std::move(detached_tab), true);
+  browser2->tab_strip_model()->AppendWebContents(std::move(owned_web_contents),
+                                                 true);
   EXPECT_TRUE(dialog->GetWidget()->IsVisible());
 
   // Close the first browser.

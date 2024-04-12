@@ -3,22 +3,20 @@
 // found in the LICENSE file.
 
 #import "ui/base/cocoa/nsmenuitem_additions.h"
-#include "base/apple/foundation_util.h"
 
 #include <Carbon/Carbon.h>
 
-#include "base/apple/bridging.h"
-#include "base/apple/scoped_cftyperef.h"
 #include "base/check.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "ui/events/keycodes/keyboard_code_conversion_mac.h"
 
-namespace ui::cocoa {
+namespace ui {
+namespace cocoa {
 
 namespace {
 bool g_is_input_source_command_qwerty = false;
 bool g_is_input_source_dvorak_right_or_left = false;
 bool g_is_input_source_command_hebrew = false;
-bool g_is_input_source_command_arabic = false;
 }  // namespace
 
 void SetIsInputSourceCommandQwertyForTesting(bool is_command_qwerty) {
@@ -31,10 +29,6 @@ void SetIsInputSourceDvorakRightOrLeftForTesting(bool is_dvorak_right_or_left) {
 
 void SetIsInputSourceCommandHebrewForTesting(bool is_command_hebrew) {
   g_is_input_source_command_hebrew = is_command_hebrew;
-}
-
-void SetIsInputSourceCommandArabicForTesting(bool is_command_arabic) {
-  g_is_input_source_command_arabic = is_command_arabic;
 }
 
 bool IsKeyboardLayoutCommandQwerty(NSString* layout_id) {
@@ -55,11 +49,6 @@ bool IsKeyboardLayoutCommandHebrew(NSString* layout_id) {
   return [layout_id hasPrefix:@"com.apple.keylayout.Hebrew"];
 }
 
-bool IsKeyboardLayoutCommandArabic(NSString* layout_id) {
-  return [layout_id hasPrefix:@"com.apple.keylayout.ArabicPC"] ||
-         [layout_id hasPrefix:@"com.apple.keylayout.Arabic-AZERTY"];
-}
-
 NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
   NSUInteger eventModifierMask =
       NSEventModifierFlagCommand | NSEventModifierFlagControl |
@@ -67,15 +56,13 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
 
   // If `event` isn't a function key press or it's not a character key press
   // (e.g. it's a flags change), we can simply return the mask.
-  if ((event.modifierFlags & NSEventModifierFlagFunction) == 0 ||
-      event.type != NSEventTypeKeyDown) {
+  if (([event modifierFlags] & NSEventModifierFlagFunction) == 0 ||
+      [event type] != NSEventTypeKeyDown)
     return eventModifierMask;
-  }
 
-  NSString* eventString = event.charactersIgnoringModifiers;
-  if (eventString.length == 0) {
+  NSString* eventString = [event charactersIgnoringModifiers];
+  if ([eventString length] == 0)
     return eventModifierMask;
-  }
 
   // "Up arrow", home, and other "function" key events include
   // NSEventModifierFlagFunction in their flags even though the user isn't
@@ -90,7 +77,8 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
   return eventModifierMask;
 }
 
-}  // namespace ui::cocoa
+}  // namespace cocoa
+}  // namespace ui
 
 @interface KeyboardInputSourceListener : NSObject
 @end
@@ -99,7 +87,7 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
 
 - (instancetype)init {
   if (self = [super init]) {
-    [NSNotificationCenter.defaultCenter
+    [[NSNotificationCenter defaultCenter]
         addObserver:self
            selector:@selector(inputSourceDidChange:)
                name:NSTextInputContextKeyboardSelectionDidChangeNotification
@@ -110,23 +98,21 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
 }
 
 - (void)dealloc {
-  [NSNotificationCenter.defaultCenter removeObserver:self];
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [super dealloc];
 }
 
 - (void)updateInputSource {
-  base::apple::ScopedCFTypeRef<TISInputSourceRef> inputSource(
+  base::ScopedCFTypeRef<TISInputSourceRef> inputSource(
       TISCopyCurrentKeyboardInputSource());
-  NSString* layoutId = base::apple::CFToNSPtrCast(
-      base::apple::CFCast<CFStringRef>(TISGetInputSourceProperty(
-          inputSource.get(), kTISPropertyInputSourceID)));
+  NSString* layoutId = (NSString*)TISGetInputSourceProperty(
+      inputSource.get(), kTISPropertyInputSourceID);
   ui::cocoa::g_is_input_source_command_qwerty =
       ui::cocoa::IsKeyboardLayoutCommandQwerty(layoutId);
   ui::cocoa::g_is_input_source_dvorak_right_or_left =
       ui::cocoa::IsKeyboardLayoutDvorakRightOrLeft(layoutId);
   ui::cocoa::g_is_input_source_command_hebrew =
       ui::cocoa::IsKeyboardLayoutCommandHebrew(layoutId);
-  ui::cocoa::g_is_input_source_command_arabic =
-      ui::cocoa::IsKeyboardLayoutCommandArabic(layoutId);
 }
 
 - (void)inputSourceDidChange:(NSNotification*)notification {
@@ -141,7 +127,7 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
   if (![self isEnabled])
     return NO;
 
-  DCHECK(event.type == NSEventTypeKeyDown);
+  DCHECK([event type] == NSEventTypeKeyDown);
   // In System Preferences->Keyboard->Keyboard Shortcuts, it is possible to add
   // arbitrary keyboard shortcuts to applications. It is not documented how this
   // works in detail, but |NSMenuItem| has a method |userKeyEquivalent| that
@@ -154,9 +140,9 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
   // Menu item key equivalents are nearly all stored without modifiers. The
   // exception is shift, which is included in the key and not in the modifiers
   // for printable characters (but not for stuff like arrow keys etc).
-  NSString* eventString = event.charactersIgnoringModifiers;
+  NSString* eventString = [event charactersIgnoringModifiers];
   NSUInteger eventModifiers =
-      event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask;
+      [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
 
   // cmd-opt-a gives some weird char as characters and "a" as
   // charactersWithoutModifiers with an US layout, but an "a" as characters and
@@ -164,9 +150,9 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
   // Cocoa! Instead of getting the current layout from Text Input Services,
   // and then requesting the kTISPropertyUnicodeKeyLayoutData and looking in
   // there, let's go with a pragmatic hack.
-  bool useEventCharacters = eventString.length == 0;
-  NSString* eventCharacters = event.characters;
-  if (eventString.length > 0 && eventCharacters.length > 0) {
+  bool useEventCharacters = [eventString length] == 0;
+  NSString* eventCharacters = [event characters];
+  if ([eventString length] > 0 && [eventCharacters length] > 0) {
     if ([eventString characterAtIndex:0] > 0x7f &&
         [eventCharacters characterAtIndex:0] <= 0x7f) {
       useEventCharacters = true;
@@ -182,14 +168,6 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
       // triggers -[NSApplication terminate:], the selector associated with
       // Chrome -> Quit. We handle this special case here.
       useEventCharacters = true;
-    } else if (ui::cocoa::g_is_input_source_command_arabic &&
-               [eventString isEqualToString:@"{"] &&
-               [eventCharacters isEqualToString:@"V"]) {
-      // Similar problem of our hack not working for the "V" key in certain
-      // Arabic layouts. In this case, the first char of eventString ("{") is
-      // not < 0x7f, so the hack doesn't choose eventCharacters (which is
-      // "V"). This causes ⇧⌘V not to match Paste and Match Style.
-      useEventCharacters = true;
     }
   }
   if (useEventCharacters) {
@@ -199,22 +177,20 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
     // uppercase. Otherwise, if only Caps Lock is down, ensure the shortcut
     // string is lowercase.
     if (eventModifiers & NSEventModifierFlagShift) {
-      eventString = eventString.uppercaseString;
+      eventString = [eventString uppercaseString];
     } else if (eventModifiers & NSEventModifierFlagCapsLock) {
-      eventString = eventString.lowercaseString;
+      eventString = [eventString lowercaseString];
     }
   }
 
-  if (eventString.length == 0 || self.keyEquivalent.length == 0) {
+  if ([eventString length] == 0 || [[self keyEquivalent] length] == 0)
     return NO;
-  }
 
   // Turns out esc never fires unless cmd or ctrl is down.
-  if (event.keyCode == kVK_Escape &&
+  if ([event keyCode] == kVK_Escape &&
       (eventModifiers &
-       (NSEventModifierFlagControl | NSEventModifierFlagCommand)) == 0) {
+       (NSEventModifierFlagControl | NSEventModifierFlagCommand)) == 0)
     return NO;
-  }
 
   // From the |NSMenuItem setKeyEquivalent:| documentation:
   //
@@ -223,7 +199,7 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
   // NSText.h as 0x08) and for the Forward Delete key, use NSDeleteCharacter
   // (defined in NSText.h as 0x7F). Note that these are not the same characters
   // you get from an NSEvent key-down event when pressing those keys.
-  if ([self.keyEquivalent characterAtIndex:0] == NSBackspaceCharacter &&
+  if ([[self keyEquivalent] characterAtIndex:0] == NSBackspaceCharacter &&
       [eventString characterAtIndex:0] == NSDeleteCharacter) {
     unichar chr = NSBackspaceCharacter;
     eventString = [NSString stringWithCharacters:&chr length:1];
@@ -231,7 +207,7 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
     // Make sure "shift" is not removed from modifiers below.
     eventModifiers |= NSEventModifierFlagFunction;
   }
-  if ([self.keyEquivalent characterAtIndex:0] == NSDeleteCharacter &&
+  if ([[self keyEquivalent] characterAtIndex:0] == NSDeleteCharacter &&
       [eventString characterAtIndex:0] == NSDeleteFunctionKey) {
     unichar chr = NSDeleteCharacter;
     eventString = [NSString stringWithCharacters:&chr length:1];
@@ -285,8 +261,8 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
     // Clear shift key for printable characters, excluding tab.
     if ((eventModifiers &
          (NSEventModifierFlagNumericPad | NSEventModifierFlagFunction)) == 0 &&
-        [self.keyEquivalent characterAtIndex:0] != '\r' &&
-        [self.keyEquivalent characterAtIndex:0] != '\x9') {
+        [[self keyEquivalent] characterAtIndex:0] != '\r' &&
+        [[self keyEquivalent] characterAtIndex:0] != '\x9') {
       eventModifiers &= ~NSEventModifierFlagShift;
     }
   }
@@ -294,20 +270,8 @@ NSUInteger ModifierMaskForKeyEvent(NSEvent* event) {
   // Clear all non-interesting modifiers
   eventModifiers &= ui::cocoa::ModifierMaskForKeyEvent(event);
 
-  return [eventString isEqualToString:self.keyEquivalent] &&
-         eventModifiers == self.keyEquivalentModifierMask;
-}
-
-- (void)cr_setKeyEquivalent:(NSString*)aString
-               modifierMask:(NSEventModifierFlags)mask {
-  DCHECK(aString);
-  self.keyEquivalent = aString;
-  self.keyEquivalentModifierMask = mask;
-}
-
-- (void)cr_clearKeyEquivalent {
-  self.keyEquivalent = @"";
-  self.keyEquivalentModifierMask = 0;
+  return [eventString isEqualToString:[self keyEquivalent]] &&
+         eventModifiers == [self keyEquivalentModifierMask];
 }
 
 @end

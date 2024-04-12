@@ -41,10 +41,11 @@ class GuestOsMimeTypesServiceTest : public testing::Test {
 
   Profile* profile() { return &profile_; }
 
-  void UpdateMimeTypes(const std::vector<std::string>& file_extensions,
-                       const std::vector<std::string>& mime_types,
-                       const std::string& vm_name,
-                       const std::string& container_name) {
+  MimeTypes CreateMimeTypesProto(
+      const std::vector<std::string>& file_extensions,
+      const std::vector<std::string>& mime_types,
+      const std::string& vm_name,
+      const std::string& container_name) {
     CHECK_EQ(file_extensions.size(), mime_types.size());
     MimeTypes mime_types_list;
     mime_types_list.set_vm_name(vm_name);
@@ -53,8 +54,7 @@ class GuestOsMimeTypesServiceTest : public testing::Test {
       (*mime_types_list.mutable_mime_type_mappings())[file_extensions[i]] =
           mime_types[i];
     }
-    service_->UpdateMimeTypes(mime_types_list);
-    task_environment_.RunUntilIdle();
+    return mime_types_list;
   }
 
   std::string GetMimeType(const std::string& filename) {
@@ -87,7 +87,8 @@ TEST_F(GuestOsMimeTypesServiceTest, SetAndGetMimeTypes) {
   // Mime types not registered yet.
   EXPECT_EQ("", GetMimeType("test.foo"));
 
-  UpdateMimeTypes(file_extensions, mime_types, kTestVmName, kTestContainerName);
+  service()->UpdateMimeTypes(CreateMimeTypesProto(
+      file_extensions, mime_types, kTestVmName, kTestContainerName));
 
   EXPECT_EQ("x/foo", GetMimeType("test.foo"));
   EXPECT_EQ("x/bar", GetMimeType("test.bar"));
@@ -110,9 +111,12 @@ TEST_F(GuestOsMimeTypesServiceTest, SetAndGetMimeTypes) {
 // Test that UpdateMimeTypes doesn't clobber MIME types from different VMs or
 // containers.
 TEST_F(GuestOsMimeTypesServiceTest, MultipleContainers) {
-  UpdateMimeTypes({"foo"}, {"foo/mime"}, "vm 1", "container 1");
-  UpdateMimeTypes({"bar"}, {"bar/mime"}, "vm 1", "container 2");
-  UpdateMimeTypes({"foobar"}, {"foobar/mime"}, "vm 2", "container 1");
+  service()->UpdateMimeTypes(
+      CreateMimeTypesProto({"foo"}, {"foo/mime"}, "vm 1", "container 1"));
+  service()->UpdateMimeTypes(
+      CreateMimeTypesProto({"bar"}, {"bar/mime"}, "vm 1", "container 2"));
+  service()->UpdateMimeTypes(
+      CreateMimeTypesProto({"foobar"}, {"foobar/mime"}, "vm 2", "container 1"));
 
   EXPECT_EQ("foo/mime", service()->GetMimeType(base::FilePath("test.foo"),
                                                "vm 1", "container 1"));
@@ -130,7 +134,8 @@ TEST_F(GuestOsMimeTypesServiceTest, MultipleContainers) {
 
   // Clobber bar with bar2 and ensure the old association is gone and new one is
   // there.
-  UpdateMimeTypes({"bar2"}, {"bar2/mime"}, "vm 1", "container 2");
+  service()->UpdateMimeTypes(
+      CreateMimeTypesProto({"bar2"}, {"bar2/mime"}, "vm 1", "container 2"));
   EXPECT_EQ("bar2/mime", service()->GetMimeType(base::FilePath("test.bar2"),
                                                 "vm 1", "container 2"));
   EXPECT_EQ("", service()->GetMimeType(base::FilePath("test.bar"), "vm 1",
@@ -140,9 +145,12 @@ TEST_F(GuestOsMimeTypesServiceTest, MultipleContainers) {
 // Test that ClearMimeTypes works, and only removes apps from the
 // specified VM.
 TEST_F(GuestOsMimeTypesServiceTest, ClearMimeTypes) {
-  UpdateMimeTypes({"foo"}, {"foo/mime"}, "vm 1", "container 1");
-  UpdateMimeTypes({"bar"}, {"bar/mime"}, "vm 1", "container 2");
-  UpdateMimeTypes({"foobar"}, {"foobar/mime"}, "vm 2", "container 1");
+  service()->UpdateMimeTypes(
+      CreateMimeTypesProto({"foo"}, {"foo/mime"}, "vm 1", "container 1"));
+  service()->UpdateMimeTypes(
+      CreateMimeTypesProto({"bar"}, {"bar/mime"}, "vm 1", "container 2"));
+  service()->UpdateMimeTypes(
+      CreateMimeTypesProto({"foobar"}, {"foobar/mime"}, "vm 2", "container 1"));
 
   EXPECT_EQ("foo/mime", service()->GetMimeType(base::FilePath("test.foo"),
                                                "vm 1", "container 1"));
@@ -170,7 +178,8 @@ TEST_F(GuestOsMimeTypesServiceTest, SetMimeTypesAndGetExtensionTypes) {
   std::vector<std::string> result = GetExtensionTypesFromMimeTypes({"x/foo"});
   EXPECT_EQ(0u, result.size());
 
-  UpdateMimeTypes(file_extensions, mime_types, kTestVmName, kTestContainerName);
+  service()->UpdateMimeTypes(CreateMimeTypesProto(
+      file_extensions, mime_types, kTestVmName, kTestContainerName));
   result = GetExtensionTypesFromMimeTypes({"x/foo"});
   EXPECT_EQ(1u, result.size());
   EXPECT_EQ("foo", result[0]);

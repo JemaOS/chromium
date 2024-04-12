@@ -16,12 +16,12 @@
 #include <shellapi.h>
 #include <shlobj.h>
 
-#include <optional>
 #include <string>
 
+// TODO(crbug.com/1128529): remove the dependencies on //base/ to reduce the
+// code size.
 #include "base/check.h"
 #include "base/command_line.h"
-#include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
@@ -31,13 +31,12 @@
 #include "base/strings/sys_string_conversions.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
-#include "base/types/expected_macros.h"
 #include "base/win/scoped_com_initializer.h"
 #include "base/win/scoped_localalloc.h"
 #include "base/win/windows_version.h"
 #include "chrome/installer/util/lzma_util.h"
+#include "chrome/installer/util/util_constants.h"
 #include "chrome/updater/constants.h"
-#include "chrome/updater/tag.h"
 #include "chrome/updater/updater_branding.h"
 #include "chrome/updater/updater_scope.h"
 #include "chrome/updater/util/util.h"
@@ -45,6 +44,8 @@
 #include "chrome/updater/win/installer/configuration.h"
 #include "chrome/updater/win/installer/installer_constants.h"
 #include "chrome/updater/win/installer/pe_resource.h"
+#include "chrome/updater/win/tag_extractor.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace updater {
 
@@ -53,15 +54,18 @@ using PathString = StackString<MAX_PATH>;
 namespace {
 
 // Returns the tag if the tag can be extracted. The tag is read from the
-// program file image used to create this process. The implementation of this
-// function only handles UTF8 tags.
+// program file image used to create this process. Google is using UTF8 tags but
+// other embedders could use UTF16. The UTF16 tag not only uses a different
+// character width, but the tag is inserted in a different way.]
+// The implementation of this function only handles UTF8 tags.
 std::string ExtractTag() {
   PathString path;
   return (::GetModuleFileName(nullptr, path.get(), path.capacity()) > 0 &&
           ::GetLastError() == ERROR_SUCCESS)
-             ? tagging::BinaryReadTagString(base::FilePath(path.get()))
+             ? ExtractTagFromFile(path.get(), TagEncoding::kUtf8)
              : std::string();
 }
+
 }  // namespace
 
 // This structure passes data back and forth for the processing
@@ -159,24 +163,6 @@ BOOL CALLBACK OnResourceFound(HMODULE module,
   return TRUE;
 }
 
-std::optional<base::FilePath> FindOfflineDir(
-    const base::FilePath& unpack_path) {
-  const base::FilePath base_offline_dir =
-      unpack_path.Append(L"bin").Append(L"Offline");
-  if (!base::PathExists(base_offline_dir)) {
-    return std::nullopt;
-  }
-  base::FileEnumerator file_enumerator(base_offline_dir, false,
-                                       base::FileEnumerator::DIRECTORIES);
-  for (base::FilePath path = file_enumerator.Next(); !path.empty();
-       path = file_enumerator.Next()) {
-    if (IsGuid(path.BaseName().value())) {
-      return path;
-    }
-  }
-  return std::nullopt;
-}
-
 // Finds and writes to disk resources of type 'B7' (7zip archive). Returns false
 // if there is a problem in writing any resource to disk.
 ProcessExitResult UnpackBinaryResources(const Configuration& configuration,
@@ -202,58 +188,68 @@ ProcessExitResult UnpackBinaryResources(const Configuration& configuration,
   return exit_code;
 }
 
-ProcessExitResult BuildInstallerCommandLineArgumentsInternal(
-    wchar_t* cmd_line_args,
-    size_t cmd_line_args_capacity,
-    base::CommandLine args = GetCommandLineLegacyCompatible()) {
+ProcessExitResult BuildCommandLineArguments(const wchar_t* cmd_line,
+                                            wchar_t* cmd_line_args,
+                                            size_t cmd_line_args_capacity) {
+  CHECK(cmd_line);
   CHECK(cmd_line_args);
   CHECK(cmd_line_args_capacity);
 
   *cmd_line_args = '\0';
+  CommandString args;
 
-  // Use the tag from the --tag/--install command line argument if such argument
-  // exists. Otherwise, try extracting a tag embedded in the program image of
-  // the meta installer.
-  if (args.GetSwitchValueASCII(kTagSwitch).empty() &&
-      args.GetSwitchValueASCII(kInstallSwitch).empty()) {
+  // Append the command line arguments in `cmd_line` first.
+  int num_args = 0;
+  base::win::ScopedLocalAllocTyped<wchar_t*> argv(
+      ::CommandLineToArgvW(cmd_line, &num_args));
+  for (int i = 1; i != num_args; ++i) {
+    if (!args.append(L" ") ||
+        !args.append(
+            base::CommandLine::QuoteForCommandLineToArgvW(argv.get()[i])
+                .c_str())) {
+      return ProcessExitResult(COMMAND_STRING_OVERFLOW);
+    }
+  }
+
+  // Handle the tag. Use the tag from the --tag command line argument if such
+  // argument exists. If --tag is present in `argv`, then it is going to be
+  // handed over to the updater, along with the other arguments. Otherwise, try
+  // extracting a tag embedded in the program image of the meta installer.
+  if (![&argv, num_args]() {
+        // Returns true if the --tag argument is present on the command line.
+        constexpr wchar_t kTagSwitch[] = L"--tag=";
+        for (int i = 1; i != num_args; ++i) {
+          if (memcmp(argv.get()[i], kTagSwitch, sizeof(kTagSwitch)) == 0) {
+            return true;
+          }
+        }
+        return false;
+      }()) {
     const std::string tag = ExtractTag();
     if (!tag.empty()) {
-      args.AppendSwitchASCII(kTagSwitch, tag.c_str());
+      if (!args.append(L" --tag=") ||
+          !args.append(base::SysUTF8ToWide(tag).c_str())) {
+        return ProcessExitResult(COMMAND_STRING_OVERFLOW);
+      }
     }
   }
 
   // If there is nothing, return an error.
-  if (args.GetSwitches().size() == 0 && args.GetArgs().size() == 0) {
+  if (!args.length()) {
     return ProcessExitResult(INVALID_OPTION);
   }
 
   // Append logging-related arguments for debugging purposes.
-  if (!args.HasSwitch(kEnableLoggingSwitch)) {
-    args.AppendSwitch(kEnableLoggingSwitch);
-  }
-
-  if (!args.HasSwitch(kLoggingModuleSwitch)) {
-    args.AppendSwitchASCII(kLoggingModuleSwitch, kLoggingModuleSwitchValue);
-  }
-
-  std::wstring args_str = args.GetArgumentsString();
-  if (args_str.size() >= cmd_line_args_capacity) {
+  if (!args.append(
+          base::SysUTF8ToWide(base::StrCat({" --", kEnableLoggingSwitch, " --",
+                                            kLoggingModuleSwitch, "=",
+                                            kLoggingModuleSwitchValue}))
+              .c_str())) {
     return ProcessExitResult(COMMAND_STRING_OVERFLOW);
   }
 
-  SafeStrCopy(cmd_line_args, cmd_line_args_capacity, args_str.c_str());
+  SafeStrCopy(cmd_line_args, cmd_line_args_capacity, args.get());
   return ProcessExitResult(SUCCESS_EXIT_CODE);
-}
-
-ProcessExitResult BuildInstallerCommandLineArguments(
-    const wchar_t* cmd_line,
-    wchar_t* cmd_line_args,
-    size_t cmd_line_args_capacity) {
-  CHECK(cmd_line);
-
-  return BuildInstallerCommandLineArgumentsInternal(
-      cmd_line_args, cmd_line_args_capacity,
-      base::CommandLine::FromString(cmd_line));
 }
 
 // Executes updater.exe, waits for it to finish and returns the exit code.
@@ -290,14 +286,13 @@ ProcessExitResult HandleRunElevated(const base::CommandLine& command_line) {
   // updater.exe must happen from a secure directory.
   base::CommandLine elevated_command_line = command_line;
   elevated_command_line.AppendSwitchASCII(kCmdLineExpectElevated, {});
-  ASSIGN_OR_RETURN(DWORD result,
-                   RunElevated(command_line.GetProgram(),
-                               elevated_command_line.GetArgumentsString()),
-                   [](HRESULT error) {
-                     return ProcessExitResult(
-                         RUN_SETUP_FAILED_COULD_NOT_CREATE_PROCESS, error);
-                   });
-  return ProcessExitResult(result);
+  HResultOr<DWORD> result = RunElevated(
+      command_line.GetProgram(), elevated_command_line.GetArgumentsString());
+
+  return result.has_value()
+             ? ProcessExitResult(result.value())
+             : ProcessExitResult(RUN_SETUP_FAILED_COULD_NOT_CREATE_PROCESS,
+                                 result.error());
 }
 
 ProcessExitResult HandleRunDeElevated(const base::CommandLine& command_line) {
@@ -315,7 +310,7 @@ ProcessExitResult HandleRunDeElevated(const base::CommandLine& command_line) {
 
   // Deelevate the metainstaller.
   HRESULT hr =
-      RunDeElevated(command_line.GetProgram().value(), [&command_line] {
+      RunDeElevated(command_line.GetProgram().value(), [&command_line]() {
         base::CommandLine de_elevate_command_line = command_line;
         de_elevate_command_line.AppendSwitch(kCmdLineExpectDeElevated);
         return de_elevate_command_line.GetArgumentsString();
@@ -334,8 +329,8 @@ ProcessExitResult InstallerMain(HMODULE module) {
   }
 
   CommandString cmd_line_args;
-  ProcessExitResult args_result = BuildInstallerCommandLineArgumentsInternal(
-      cmd_line_args.get(), cmd_line_args.capacity());
+  ProcessExitResult args_result = BuildCommandLineArguments(
+      ::GetCommandLineW(), cmd_line_args.get(), cmd_line_args.capacity());
   if (args_result.exit_code != SUCCESS_EXIT_CODE) {
     return args_result;
   }
@@ -373,6 +368,8 @@ ProcessExitResult InstallerMain(HMODULE module) {
     return HandleRunDeElevated(command_line);
   }
 
+  // TODO(crbug.com/1379164) - simplify the command line handling to avoid
+  // mutating the command line of the process to make logging work.
   base::CommandLine::Init(0, nullptr);
   *base::CommandLine::ForCurrentProcess() = command_line;
   InitLogging(scope);
@@ -393,9 +390,9 @@ ProcessExitResult InstallerMain(HMODULE module) {
 
   // First get a path where we can extract the resource payload, which is
   // a compressed LZMA archive of a single file.
-  std::optional<base::ScopedTempDir> base_path_owner = CreateSecureTempDir();
+  absl::optional<base::ScopedTempDir> base_path_owner = CreateSecureTempDir();
   if (!base_path_owner) {
-    return ProcessExitResult(TEMP_DIR_FAILED);
+    return ProcessExitResult(static_cast<DWORD>(installer::TEMP_DIR_FAILED));
   }
 
   PathString base_path;
@@ -409,9 +406,9 @@ ProcessExitResult InstallerMain(HMODULE module) {
                                     &compressed_archive);
 
   // Create a temp folder where the archives are unpacked.
-  std::optional<base::ScopedTempDir> temp_path = CreateSecureTempDir();
+  absl::optional<base::ScopedTempDir> temp_path = CreateSecureTempDir();
   if (!temp_path) {
-    return ProcessExitResult(TEMP_DIR_FAILED);
+    return ProcessExitResult(static_cast<DWORD>(installer::TEMP_DIR_FAILED));
   }
 
   const base::FilePath unpack_path = temp_path->GetPath();
@@ -421,7 +418,7 @@ ProcessExitResult InstallerMain(HMODULE module) {
       UnPackArchive(base::FilePath(compressed_archive.get()), unpack_path,
                     /*output_file=*/nullptr);
   if (unpack_status != UNPACK_NO_ERROR) {
-    return ProcessExitResult(UNPACKING_FAILED);
+    return ProcessExitResult(static_cast<DWORD>(installer::UNPACKING_FAILED));
   }
 
   // Unpack the uncompressed archive to extract the updater files.
@@ -430,7 +427,7 @@ ProcessExitResult InstallerMain(HMODULE module) {
   unpack_status =
       UnPackArchive(uncompressed_archive, unpack_path, /*output_file=*/nullptr);
   if (unpack_status != UNPACK_NO_ERROR) {
-    return ProcessExitResult(UNPACKING_FAILED);
+    return ProcessExitResult(static_cast<DWORD>(installer::UNPACKING_FAILED));
   }
 
   // While unpacking the binaries, we paged in a whole bunch of memory that
@@ -438,19 +435,6 @@ ProcessExitResult InstallerMain(HMODULE module) {
   // setup.
   ::SetProcessWorkingSetSize(::GetCurrentProcess(), static_cast<SIZE_T>(-1),
                              static_cast<SIZE_T>(-1));
-
-  // Determine if an offlinedir is embedded and, if it is, add an
-  // --offlinedir={GUID} switch to indicate that an offline install should
-  // be performed.
-  const std::optional<base::FilePath> offline_dir = FindOfflineDir(unpack_path);
-  if (offline_dir.has_value()) {
-    if (!cmd_line_args.append(L" --") ||
-        !cmd_line_args.append(base::SysUTF8ToWide(kOfflineDirSwitch).c_str()) ||
-        !cmd_line_args.append(L"=") ||
-        !cmd_line_args.append(offline_dir->BaseName().value().c_str())) {
-      return ProcessExitResult(COMMAND_STRING_OVERFLOW);
-    }
-  }
 
   PathString setup_path;
   if (!setup_path.assign(unpack_path.value().c_str()) ||

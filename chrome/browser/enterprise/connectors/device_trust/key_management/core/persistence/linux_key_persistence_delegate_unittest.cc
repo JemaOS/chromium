@@ -5,7 +5,6 @@
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/persistence/linux_key_persistence_delegate.h"
 
 #include <string>
-#include <string_view>
 
 #include "base/base64.h"
 #include "base/files/file_path.h"
@@ -59,7 +58,7 @@ constexpr char kInvalidTrustLevelKeyFileContent[] =
     "WTQn4FZnjucsKdj2YrUkcG42LWoC2WorIp8BETdwYr2OhGAVBmSVpg9iyi5gtZ9JGZzMceWOJ"
     "\",\"trustLevel\":100}";
 
-std::vector<uint8_t> ParseKeyWrapped(std::string_view encoded_wrapped) {
+std::vector<uint8_t> ParseKeyWrapped(base::StringPiece encoded_wrapped) {
   std::string decoded_key;
   if (!base::Base64Decode(encoded_wrapped, &decoded_key)) {
     return std::vector<uint8_t>();
@@ -109,7 +108,7 @@ class LinuxKeyPersistenceDelegateTest : public testing::Test {
     return scoped_dir_.GetPath().Append(kFileName);
   }
 
-  bool CreateFile(std::string_view content) {
+  bool CreateFile(base::StringPiece content) {
     return base::WriteFile(GetKeyFilePath(), content);
   }
 
@@ -210,12 +209,8 @@ TEST_F(LinuxKeyPersistenceDelegateTest, StoreKeyPair_ValidHWKeyPair) {
 TEST_F(LinuxKeyPersistenceDelegateTest, LoadKeyPair_NoKeyFile) {
   base::HistogramTester histogram_tester;
 
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_.LoadKeyPair(KeyStorageType::kPermanent, &result);
-
+  auto key_pair = persistence_delegate_.LoadKeyPair();
   EXPECT_FALSE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kNotFound);
 
   // Should expect a metric for failure in reading from the persistence storage
   // for the load key pair operation.
@@ -229,13 +224,7 @@ TEST_F(LinuxKeyPersistenceDelegateTest, LoadKeyPair_ValidOSKeyFile) {
   base::HistogramTester histogram_tester;
 
   ASSERT_TRUE(CreateFile(kValidOSKeyFileContent));
-
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_.LoadKeyPair(KeyStorageType::kPermanent, &result);
-
-  ASSERT_TRUE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kSuccess);
+  auto key_pair = persistence_delegate_.LoadKeyPair();
   ValidateSigningKey(key_pair.get(), BPKUR::CHROME_BROWSER_OS_KEY);
 
   // Should expect no failure metrics.
@@ -249,13 +238,8 @@ TEST_F(LinuxKeyPersistenceDelegateTest, LoadKeyPair_ValidHWKeyFile) {
   base::HistogramTester histogram_tester;
 
   ASSERT_TRUE(CreateFile(kValidHWKeyFileContent));
-
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_.LoadKeyPair(KeyStorageType::kPermanent, &result);
-
+  auto key_pair = persistence_delegate_.LoadKeyPair();
   EXPECT_FALSE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kMalformedKey);
 
   // Should expect an invalid trust level metric for the load key pair
   // operation.
@@ -269,13 +253,8 @@ TEST_F(LinuxKeyPersistenceDelegateTest, LoadKeyPair_InvalidTrustLevel) {
   base::HistogramTester histogram_tester;
 
   ASSERT_TRUE(CreateFile(kInvalidTrustLevelKeyFileContent));
-
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_.LoadKeyPair(KeyStorageType::kPermanent, &result);
-
+  auto key_pair = persistence_delegate_.LoadKeyPair();
   EXPECT_FALSE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kMalformedKey);
 
   // Should expect an invalid trust level metric for the load key pair
   // operation.
@@ -290,14 +269,10 @@ TEST_F(LinuxKeyPersistenceDelegateTest, LoadKeyPair_MissingSigningKey) {
   base::HistogramTester histogram_tester;
 
   const char file_content[] = "{\"trustLevel\":2}";
+
   ASSERT_TRUE(CreateFile(file_content));
-
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_.LoadKeyPair(KeyStorageType::kPermanent, &result);
-
+  auto key_pair = persistence_delegate_.LoadKeyPair();
   EXPECT_FALSE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kMalformedKey);
 
   // Should expect an invalid signing key metric for the load key pair
   // operation.
@@ -313,14 +288,10 @@ TEST_F(LinuxKeyPersistenceDelegateTest, LoadKeyPair_MissingTrustLevel) {
 
   const std::string file_content =
       base::StringPrintf("{\"signingKey\":\"%s\"}", kValidKeyWrappedBase64);
+
   ASSERT_TRUE(CreateFile(file_content));
-
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_.LoadKeyPair(KeyStorageType::kPermanent, &result);
-
+  auto key_pair = persistence_delegate_.LoadKeyPair();
   EXPECT_FALSE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kMalformedKey);
 
   // Should expect a missing trust level metric for the load key pair
   // operation.
@@ -335,14 +306,10 @@ TEST_F(LinuxKeyPersistenceDelegateTest, LoadKeyPair_InvalidContent) {
   base::HistogramTester histogram_tester;
 
   const char file_content[] = "just some text";
+
   ASSERT_TRUE(CreateFile(file_content));
-
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_.LoadKeyPair(KeyStorageType::kPermanent, &result);
-
+  auto key_pair = persistence_delegate_.LoadKeyPair();
   EXPECT_FALSE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kMalformedKey);
 
   // Should expect an invalid signing key pair format metric for the load key
   // pair operation.
@@ -359,14 +326,10 @@ TEST_F(LinuxKeyPersistenceDelegateTest, LoadKeyPair_TrailingGibberish) {
   const std::string file_content = base::StringPrintf(
       "{\"signingKey\":\"%s\",\"trustLevel\":2}someother random content",
       kValidKeyWrappedBase64);
+
   ASSERT_TRUE(CreateFile(file_content));
-
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_.LoadKeyPair(KeyStorageType::kPermanent, &result);
-
+  auto key_pair = persistence_delegate_.LoadKeyPair();
   EXPECT_FALSE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kMalformedKey);
 
   // Should expect an invalid signing key pair format metric for the load key
   // pair operation.
@@ -382,14 +345,10 @@ TEST_F(LinuxKeyPersistenceDelegateTest, LoadKeyPair_KeyNotBase64) {
 
   const std::string file_content = base::StringPrintf(
       "{\"signingKey\":\"%s\",\"trustLevel\":2}", kInvalidBase64String);
+
   ASSERT_TRUE(CreateFile(file_content));
-
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_.LoadKeyPair(KeyStorageType::kPermanent, &result);
-
+  auto key_pair = persistence_delegate_.LoadKeyPair();
   EXPECT_FALSE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kMalformedKey);
 
   // Should expect a signing key decoding failure metric for the load key pair
   // operation.
@@ -407,12 +366,7 @@ TEST_F(LinuxKeyPersistenceDelegateTest, StoreAndLoadKeyPair) {
   auto wrapped = ParseKeyWrapped(kValidKeyWrappedBase64);
   EXPECT_TRUE(persistence_delegate_.StoreKeyPair(trust_level, wrapped));
 
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_.LoadKeyPair(KeyStorageType::kPermanent, &result);
-
-  ASSERT_TRUE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kSuccess);
+  auto key_pair = persistence_delegate_.LoadKeyPair();
   ValidateSigningKey(key_pair.get(), trust_level);
 
   // Should expect no failure metrics.
@@ -430,16 +384,6 @@ TEST_F(LinuxKeyPersistenceDelegateTest, CreateKeyPair) {
   // Should expect no failure metrics.
   histogram_tester.ExpectTotalCount(
       base::StringPrintf(kErrorHistogramFormat, "CreateKeyPair"), 0);
-}
-
-// TODO(b/290068350): Add test coverage for this method.
-TEST_F(LinuxKeyPersistenceDelegateTest, PromoteTemporaryKeyPair) {
-  EXPECT_TRUE(persistence_delegate_.PromoteTemporaryKeyPair());
-}
-
-// TODO(b/290068350): Add test coverage for this method.
-TEST_F(LinuxKeyPersistenceDelegateTest, DeleteKeyPair) {
-  EXPECT_TRUE(persistence_delegate_.DeleteKeyPair(KeyStorageType::kTemporary));
 }
 
 }  // namespace enterprise_connectors

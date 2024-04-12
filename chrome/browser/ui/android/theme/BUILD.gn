@@ -10,12 +10,10 @@ android_library("java") {
     "java/src/org/chromium/chrome/browser/theme/ThemeUtils.java",
     "java/src/org/chromium/chrome/browser/theme/TopUiThemeColorProvider.java",
     "java/src/org/chromium/chrome/browser/ui/theme/BrandedColorScheme.java",
-    "java/src/org/chromium/chrome/browser/ui/theme/ChromeSemanticColorUtils.java",
   ]
   deps = [
     ":java_resources",
     "//base:base_java",
-    "//chrome/browser/android/lifecycle:java",
     "//chrome/browser/flags:java",
     "//chrome/browser/tab:java",
     "//chrome/browser/ui/android/native_page:java",
@@ -33,7 +31,10 @@ android_library("java") {
 }
 
 android_resources("java_resources") {
-  sources = [ "java/res/values/colors.xml" ]
+  sources = [
+    "java/res/values/colors.xml",
+    "java/res/values/values.xml",
+  ]
   deps = [
     "//components/browser_ui/styles/android:java_resources",
     "//components/browser_ui/widget/android:java_resources",

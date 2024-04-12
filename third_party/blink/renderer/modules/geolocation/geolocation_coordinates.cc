@@ -27,28 +27,28 @@
 
 namespace blink {
 
-std::optional<double> GeolocationCoordinates::altitude() const {
+absl::optional<double> GeolocationCoordinates::altitude() const {
   if (can_provide_altitude_)
     return altitude_;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<double> GeolocationCoordinates::altitudeAccuracy() const {
+absl::optional<double> GeolocationCoordinates::altitudeAccuracy() const {
   if (can_provide_altitude_accuracy_)
     return altitude_accuracy_;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<double> GeolocationCoordinates::heading() const {
+absl::optional<double> GeolocationCoordinates::heading() const {
   if (can_provide_heading_)
     return heading_;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<double> GeolocationCoordinates::speed() const {
+absl::optional<double> GeolocationCoordinates::speed() const {
   if (can_provide_speed_)
     return speed_;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace blink

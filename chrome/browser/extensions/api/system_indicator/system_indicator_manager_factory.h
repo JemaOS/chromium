@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_API_SYSTEM_INDICATOR_SYSTEM_INDICATOR_MANAGER_FACTORY_H__
 #define CHROME_BROWSER_EXTENSIONS_API_SYSTEM_INDICATOR_SYSTEM_INDICATOR_MANAGER_FACTORY_H__
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -24,13 +24,13 @@ class SystemIndicatorManagerFactory : public ProfileKeyedServiceFactory {
   static SystemIndicatorManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<SystemIndicatorManagerFactory>;
+  friend struct base::DefaultSingletonTraits<SystemIndicatorManagerFactory>;
 
   SystemIndicatorManagerFactory();
   ~SystemIndicatorManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

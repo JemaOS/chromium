@@ -25,7 +25,8 @@ public class DownloadSharedPreferenceEntry {
 
     // Current version of the DownloadSharedPreferenceEntry. When changing the SharedPreference,
     // we need to change the version number too.
-    @VisibleForTesting static final int VERSION = 7;
+    @VisibleForTesting
+    static final int VERSION = 7;
 
     public final int notificationId;
     public final OTRProfileID otrProfileID; // The OTRProfileID of download.
@@ -40,13 +41,8 @@ public class DownloadSharedPreferenceEntry {
     static final DownloadSharedPreferenceEntry INVALID_ENTRY =
             new DownloadSharedPreferenceEntry(new ContentId(), -1, null, false, "", false, false);
 
-    DownloadSharedPreferenceEntry(
-            ContentId id,
-            int notificationId,
-            OTRProfileID otrProfileID,
-            boolean canDownloadWhileMetered,
-            String fileName,
-            boolean isAutoResumable,
+    DownloadSharedPreferenceEntry(ContentId id, int notificationId, OTRProfileID otrProfileID,
+            boolean canDownloadWhileMetered, String fileName, boolean isAutoResumable,
             boolean isTransient) {
         this.notificationId = notificationId;
         this.otrProfileID = otrProfileID;
@@ -123,13 +119,8 @@ public class DownloadSharedPreferenceEntry {
         if (!isValidGUID(stringGuid)) return INVALID_ENTRY;
 
         return new DownloadSharedPreferenceEntry(
-                LegacyHelpers.buildLegacyContentId(false, stringGuid),
-                notificationId,
-                otrProfileID,
-                metered,
-                stringFileName,
-                true,
-                false);
+                LegacyHelpers.buildLegacyContentId(false, stringGuid), notificationId, otrProfileID,
+                metered, stringFileName, true, false);
     }
 
     static DownloadSharedPreferenceEntry parseFromVersion2(String string) {
@@ -161,13 +152,8 @@ public class DownloadSharedPreferenceEntry {
         if (!isValidGUID(stringGuid)) return INVALID_ENTRY;
 
         return new DownloadSharedPreferenceEntry(
-                LegacyHelpers.buildLegacyContentId(false, stringGuid),
-                notificationId,
-                otrProfileID,
-                metered,
-                stringFileName,
-                true,
-                false);
+                LegacyHelpers.buildLegacyContentId(false, stringGuid), notificationId, otrProfileID,
+                metered, stringFileName, true, false);
     }
 
     static DownloadSharedPreferenceEntry parseFromVersion3(String string) {
@@ -210,13 +196,8 @@ public class DownloadSharedPreferenceEntry {
         boolean isOfflinePage = itemType == itemTypeOfflinePage;
 
         return new DownloadSharedPreferenceEntry(
-                LegacyHelpers.buildLegacyContentId(isOfflinePage, stringGuid),
-                notificationId,
-                otrProfileID,
-                metered,
-                stringFileName,
-                true,
-                false);
+                LegacyHelpers.buildLegacyContentId(isOfflinePage, stringGuid), notificationId,
+                otrProfileID, metered, stringFileName, true, false);
     }
 
     static DownloadSharedPreferenceEntry parseFromVersion4(String string) {
@@ -261,13 +242,8 @@ public class DownloadSharedPreferenceEntry {
         boolean isOfflinePage = itemType == itemTypeOfflinePage;
 
         return new DownloadSharedPreferenceEntry(
-                LegacyHelpers.buildLegacyContentId(isOfflinePage, stringGuid),
-                notificationId,
-                otrProfileID,
-                metered,
-                stringFileName,
-                autoResume,
-                false);
+                LegacyHelpers.buildLegacyContentId(isOfflinePage, stringGuid), notificationId,
+                otrProfileID, metered, stringFileName, autoResume, false);
     }
 
     static DownloadSharedPreferenceEntry parseFromVersion5(String string) {
@@ -302,14 +278,8 @@ public class DownloadSharedPreferenceEntry {
         if (!isValidGUID(stringGuid)) return INVALID_ENTRY;
         if (TextUtils.isEmpty(stringNamespace)) return INVALID_ENTRY;
 
-        return new DownloadSharedPreferenceEntry(
-                new ContentId(stringNamespace, stringGuid),
-                notificationId,
-                otrProfileID,
-                metered,
-                stringFileName,
-                autoResume,
-                false);
+        return new DownloadSharedPreferenceEntry(new ContentId(stringNamespace, stringGuid),
+                notificationId, otrProfileID, metered, stringFileName, autoResume, false);
     }
 
     static DownloadSharedPreferenceEntry parseFromVersion6(String string) {
@@ -347,14 +317,8 @@ public class DownloadSharedPreferenceEntry {
         if (TextUtils.isEmpty(stringId)) return INVALID_ENTRY;
         if (TextUtils.isEmpty(stringNamespace)) return INVALID_ENTRY;
 
-        return new DownloadSharedPreferenceEntry(
-                new ContentId(stringNamespace, stringId),
-                notificationId,
-                otrProfileID,
-                metered,
-                stringFileName,
-                autoResume,
-                isTransient);
+        return new DownloadSharedPreferenceEntry(new ContentId(stringNamespace, stringId),
+                notificationId, otrProfileID, metered, stringFileName, autoResume, isTransient);
     }
 
     static DownloadSharedPreferenceEntry parseFromVersion7(String string) {
@@ -402,14 +366,8 @@ public class DownloadSharedPreferenceEntry {
         }
         if (version != 7) return INVALID_ENTRY;
 
-        return new DownloadSharedPreferenceEntry(
-                new ContentId(stringNamespace, stringId),
-                notificationId,
-                otrProfileID,
-                metered,
-                stringFileName,
-                autoResume,
-                isTransient);
+        return new DownloadSharedPreferenceEntry(new ContentId(stringNamespace, stringId),
+                notificationId, otrProfileID, metered, stringFileName, autoResume, isTransient);
     }
 
     /**
@@ -424,7 +382,7 @@ public class DownloadSharedPreferenceEntry {
         serialized += id.id + ",";
         serialized +=
                 (otrProfileID != null ? OTRProfileID.serialize(otrProfileID) : NO_OTR_PROFILE_ID)
-                        + ",";
+                + ",";
         serialized += (canDownloadWhileMetered ? "1" : "0") + ",";
         serialized += (isAutoResumable ? "1" : "0") + ",";
         serialized += (isTransient ? "1" : "0") + ",";
@@ -453,18 +411,19 @@ public class DownloadSharedPreferenceEntry {
         }
     }
 
-    /** Build a download item from this object. */
+    /**
+     * Build a download item from this object.
+     */
     DownloadItem buildDownloadItem() {
-        DownloadInfo info =
-                new DownloadInfo.Builder()
-                        .setDownloadGuid(id.id)
-                        .setIsOfflinePage(LegacyHelpers.isLegacyOfflinePage(id))
-                        .setFileName(fileName)
-                        .setOTRProfileId(otrProfileID)
-                        .setBytesReceived(DownloadManagerService.UNKNOWN_BYTES_RECEIVED)
-                        .setContentId(id)
-                        .setIsTransient(isTransient)
-                        .build();
+        DownloadInfo info = new DownloadInfo.Builder()
+                                    .setDownloadGuid(id.id)
+                                    .setIsOfflinePage(LegacyHelpers.isLegacyOfflinePage(id))
+                                    .setFileName(fileName)
+                                    .setOTRProfileId(otrProfileID)
+                                    .setBytesReceived(DownloadManagerService.UNKNOWN_BYTES_RECEIVED)
+                                    .setContentId(id)
+                                    .setIsTransient(isTransient)
+                                    .build();
         return new DownloadItem(false, info);
     }
 
@@ -474,13 +433,11 @@ public class DownloadSharedPreferenceEntry {
             return false;
         }
         final DownloadSharedPreferenceEntry other = (DownloadSharedPreferenceEntry) object;
-        return id.equals(other.id)
-                && TextUtils.equals(fileName, other.fileName)
+        return id.equals(other.id) && TextUtils.equals(fileName, other.fileName)
                 && notificationId == other.notificationId
                 && OTRProfileID.areEqual(otrProfileID, other.otrProfileID)
                 && canDownloadWhileMetered == other.canDownloadWhileMetered
-                && isAutoResumable == other.isAutoResumable
-                && isTransient == other.isTransient;
+                && isAutoResumable == other.isAutoResumable && isTransient == other.isTransient;
     }
 
     @Override

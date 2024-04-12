@@ -34,17 +34,14 @@ class TestWithBrowserView : public BrowserWithTestWindowTest {
   // BrowserWithTestWindowTest overrides:
   void SetUp() override;
   void TearDown() override;
-  TestingProfile* CreateProfile(const std::string& profile_name) override;
+  TestingProfile* CreateProfile() override;
   std::unique_ptr<BrowserWindow> CreateBrowserWindow() override;
   TestingProfile::TestingFactories GetTestingFactories() override;
 
   BrowserView* browser_view() { return browser_view_; }
 
  private:
-  // The BrowserWindow created because GetBrowserWindow was overridden to return
-  // nil. While it's not actually "owned" by this code, this code is responsible
-  // for ensuring it gets cleaned up.
-  raw_ptr<BrowserView> browser_view_;
+  raw_ptr<BrowserView> browser_view_;  // Not owned.
   base::test::ScopedFeatureList feature_list_;
 };
 

@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {PrintPreviewModelElement, PrintPreviewSidebarElement} from 'chrome://print/print_preview.js';
-import {NativeLayerImpl} from 'chrome://print/print_preview.js';
+import {NativeLayerImpl, PrintPreviewModelElement, PrintPreviewSidebarElement} from 'chrome://print/print_preview.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
 import {fakeDataBind} from 'chrome://webui-test/polymer_test_util.js';
 
@@ -15,7 +14,18 @@ import {NativeLayerStub} from './native_layer_stub.js';
 import {getCddTemplate} from './print_preview_test_utils.js';
 
 
-suite('PrintPreviewSidebarTest', function() {
+const print_preview_sidebar_test = {
+  suiteName: 'PrintPreviewSidebarTest',
+  TestNames: {
+    SettingsSectionsVisibilityChange: 'settings sections visibility change',
+    SheetCountWithDuplex: 'sheet count with duplex',
+    SheetCountWithCopies: 'sheet count with copies',
+  },
+};
+
+Object.assign(window, {print_preview_sidebar_test: print_preview_sidebar_test});
+
+suite(print_preview_sidebar_test.suiteName, function() {
   let sidebar: PrintPreviewSidebarElement;
 
   let model: PrintPreviewModelElement;
@@ -47,7 +57,8 @@ suite('PrintPreviewSidebarTest', function() {
   });
 
   test(
-      'SettingsSectionsVisibilityChange', function() {
+      print_preview_sidebar_test.TestNames.SettingsSectionsVisibilityChange,
+      function() {
         const moreSettingsElement =
             sidebar.shadowRoot!.querySelector('print-preview-more-settings')!;
         moreSettingsElement.$.label.click();
@@ -71,7 +82,7 @@ suite('PrintPreviewSidebarTest', function() {
 
   // Tests that number of sheets is correctly calculated if duplex setting is
   // enabled.
-  test('SheetCountWithDuplex', function() {
+  test(print_preview_sidebar_test.TestNames.SheetCountWithDuplex, function() {
     const header = sidebar.shadowRoot!.querySelector('print-preview-header')!;
     assertEquals(1, header.sheetCount);
     sidebar.setSetting('pages', [1, 2, 3]);
@@ -84,7 +95,7 @@ suite('PrintPreviewSidebarTest', function() {
 
   // Tests that number of sheets is correctly calculated if multiple copies
   // setting is enabled.
-  test('SheetCountWithCopies', function() {
+  test(print_preview_sidebar_test.TestNames.SheetCountWithCopies, function() {
     const header = sidebar.shadowRoot!.querySelector('print-preview-header')!;
     assertEquals(1, header.sheetCount);
     sidebar.setSetting('copies', 4);

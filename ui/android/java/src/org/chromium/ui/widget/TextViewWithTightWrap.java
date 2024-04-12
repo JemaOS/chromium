@@ -15,7 +15,9 @@ import android.widget.TextView;
  * calculation in the overwritten OnMeasure() method.
  */
 public class TextViewWithTightWrap extends TextView {
-    /** Constructing TextViewWithTightWrap programmatically is similar to a normal TextView. */
+    /**
+     * Constructing TextViewWithTightWrap programmatically is similar to a normal TextView.
+     */
     public TextViewWithTightWrap(Context context) {
         super(context);
     }

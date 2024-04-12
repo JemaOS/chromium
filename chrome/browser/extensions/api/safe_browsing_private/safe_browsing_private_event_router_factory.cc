@@ -25,8 +25,7 @@ SafeBrowsingPrivateEventRouterFactory::GetForProfile(
 // static
 SafeBrowsingPrivateEventRouterFactory*
 SafeBrowsingPrivateEventRouterFactory::GetInstance() {
-  static base::NoDestructor<SafeBrowsingPrivateEventRouterFactory> instance;
-  return instance.get();
+  return base::Singleton<SafeBrowsingPrivateEventRouterFactory>::get();
 }
 
 SafeBrowsingPrivateEventRouterFactory::SafeBrowsingPrivateEventRouterFactory()
@@ -46,12 +45,11 @@ SafeBrowsingPrivateEventRouterFactory::SafeBrowsingPrivateEventRouterFactory()
 }
 
 SafeBrowsingPrivateEventRouterFactory::
-    ~SafeBrowsingPrivateEventRouterFactory() = default;
+    ~SafeBrowsingPrivateEventRouterFactory() {}
 
-std::unique_ptr<KeyedService>
-SafeBrowsingPrivateEventRouterFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SafeBrowsingPrivateEventRouterFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<SafeBrowsingPrivateEventRouter>(context);
+  return new SafeBrowsingPrivateEventRouter(context);
 }
 
 bool SafeBrowsingPrivateEventRouterFactory::ServiceIsCreatedWithBrowserContext()

@@ -12,13 +12,10 @@
 namespace gl {
 
 // Restores the texture binding that the passed-in target had at this object's
-// creation when this object is destroyed. If a non-zero `new_binding` is passed
-// in, binds `target` to it at construction time.
+// creation when this object is destroyed.
 class GL_EXPORT ScopedRestoreTexture {
  public:
-  ScopedRestoreTexture(gl::GLApi* api,
-                       GLenum target,
-                       GLuint new_binding = 0);
+  ScopedRestoreTexture(gl::GLApi* api, GLenum target);
 
   ScopedRestoreTexture(const ScopedRestoreTexture&) = delete;
   ScopedRestoreTexture& operator=(const ScopedRestoreTexture&) = delete;

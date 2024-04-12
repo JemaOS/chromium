@@ -5,9 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CONTENT_CAPTURE_CONTENT_CAPTURE_TASK_HISTOGRAM_REPORTER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CONTENT_CAPTURE_CONTENT_CAPTURE_TASK_HISTOGRAM_REPORTER_H_
 
-#include <optional>
-
 #include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/instrumentation/histogram.h"
 #include "third_party/blink/renderer/platform/wtf/ref_counted.h"
@@ -53,11 +52,11 @@ class CORE_EXPORT ContentCaptureTaskHistogramReporter
   void MayRecordTaskRunsPerCapture();
 
   // The time of first content change since the last content captured.
-  std::optional<base::TimeTicks> content_change_time_;
+  absl::optional<base::TimeTicks> content_change_time_;
   // The copy of |content_change_time| after the content has been captured; we
   // need to record the time the content has been sent, |content_change_time_|
   // shall be released for the next content change.
-  std::optional<base::TimeTicks> captured_content_change_time_;
+  absl::optional<base::TimeTicks> captured_content_change_time_;
   // The time to start capturing content.
   base::TimeTicks capture_content_start_time_;
   // The time to start sending content.

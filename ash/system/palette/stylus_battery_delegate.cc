@@ -47,9 +47,8 @@ SkColor StylusBatteryDelegate::GetColorForBatteryLevel() const {
       AshColorProvider::ContentLayerType::kIconColorPrimary);
 }
 
-gfx::ImageSkia StylusBatteryDelegate::GetBatteryImage(
-    const ui::ColorProvider* color_provider) const {
-  PowerStatus::BatteryImageInfo info(GetColorForBatteryLevel());
+gfx::ImageSkia StylusBatteryDelegate::GetBatteryImage() const {
+  PowerStatus::BatteryImageInfo info;
   info.charge_percent = battery_level_.value_or(0);
 
   if (IsBatteryCharging()) {
@@ -57,8 +56,9 @@ gfx::ImageSkia StylusBatteryDelegate::GetBatteryImage(
     info.badge_outline = &kUnifiedMenuBatteryBoltOutlineMaskIcon;
   }
 
+  const SkColor icon_fg_color = GetColorForBatteryLevel();
   return PowerStatus::GetBatteryImage(info, kUnifiedTrayBatteryIconSize,
-                                      color_provider);
+                                      icon_fg_color);
 }
 
 gfx::ImageSkia StylusBatteryDelegate::GetBatteryStatusUnknownImage() const {

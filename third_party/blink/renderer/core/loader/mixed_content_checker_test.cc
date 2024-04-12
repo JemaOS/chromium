@@ -22,21 +22,18 @@
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_client_settings_object.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_response.h"
 #include "third_party/blink/renderer/platform/loader/mixed_content.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 
 namespace blink {
 
-// Tests that `blink::MixedContentChecker::IsMixedContent` correctly detects or
-// ignores many cases where there is or there is not mixed content respectively.
+// Tests that MixedContentChecker::isMixedContent correctly detects or ignores
+// many cases where there is or there is not mixed content, respectively.
 // Note: Renderer side version of
-// `content::MixedContentCheckerTest::IsMixedContent`.
-// Must be kept in sync manually!
-// LINT.IfChange
+// MixedContentNavigationThrottleTest.IsMixedContent. Must be kept in sync
+// manually!
 TEST(MixedContentCheckerTest, IsMixedContent) {
-  test::TaskEnvironment task_environment;
   struct TestCase {
     const char* origin;
     const char* target;
@@ -80,10 +77,8 @@ TEST(MixedContentCheckerTest, IsMixedContent) {
                                     security_origin.get(), target_url));
   }
 }
-// LINT.ThenChange(content/browser/renderer_host/mixed_content_checker_unittest.cc)
 
 TEST(MixedContentCheckerTest, ContextTypeForInspector) {
-  test::TaskEnvironment task_environment;
   auto dummy_page_holder = std::make_unique<DummyPageHolder>(gfx::Size(1, 1));
   dummy_page_holder->GetFrame().Loader().CommitNavigation(
       WebNavigationParams::CreateWithHTMLBufferForTesting(
@@ -124,7 +119,6 @@ TEST(MixedContentCheckerTest, ContextTypeForInspector) {
 }
 
 TEST(MixedContentCheckerTest, HandleCertificateError) {
-  test::TaskEnvironment task_environment;
   auto dummy_page_holder = std::make_unique<DummyPageHolder>(
       gfx::Size(1, 1), nullptr, MakeGarbageCollected<EmptyLocalFrameClient>());
 
@@ -162,7 +156,6 @@ TEST(MixedContentCheckerTest, HandleCertificateError) {
 }
 
 TEST(MixedContentCheckerTest, DetectMixedForm) {
-  test::TaskEnvironment task_environment;
   KURL main_resource_url(NullURL(), "https://example.test/");
   auto dummy_page_holder = std::make_unique<DummyPageHolder>(
       gfx::Size(1, 1), nullptr, MakeGarbageCollected<EmptyLocalFrameClient>());
@@ -193,7 +186,6 @@ TEST(MixedContentCheckerTest, DetectMixedForm) {
 }
 
 TEST(MixedContentCheckerTest, DetectMixedFavicon) {
-  test::TaskEnvironment task_environment;
   KURL main_resource_url("https://example.test/");
   auto dummy_page_holder = std::make_unique<DummyPageHolder>(
       gfx::Size(1, 1), nullptr, MakeGarbageCollected<EmptyLocalFrameClient>());
@@ -220,21 +212,23 @@ TEST(MixedContentCheckerTest, DetectMixedFavicon) {
   EXPECT_TRUE(MixedContentChecker::ShouldBlockFetch(
       &dummy_page_holder->GetFrame(), mojom::blink::RequestContextType::FAVICON,
       network::mojom::blink::IPAddressSpace::kPublic, http_favicon_url,
-      ResourceRequest::RedirectStatus::kNoRedirect, http_favicon_url, String(),
-      ReportingDisposition::kSuppressReporting, *notifier_remote));
+      ResourceRequest::RedirectStatus::kNoRedirect, http_favicon_url,
+      absl::optional<String>(), ReportingDisposition::kSuppressReporting,
+      *notifier_remote));
 
   // Test that a secure favicon is not blocked.
   EXPECT_FALSE(MixedContentChecker::ShouldBlockFetch(
       &dummy_page_holder->GetFrame(), mojom::blink::RequestContextType::FAVICON,
       network::mojom::blink::IPAddressSpace::kPublic, https_favicon_url,
-      ResourceRequest::RedirectStatus::kNoRedirect, https_favicon_url, String(),
-      ReportingDisposition::kSuppressReporting, *notifier_remote));
+      ResourceRequest::RedirectStatus::kNoRedirect, https_favicon_url,
+      absl::optional<String>(), ReportingDisposition::kSuppressReporting,
+      *notifier_remote));
 
   EXPECT_TRUE(MixedContentChecker::ShouldBlockFetch(
       &dummy_page_holder->GetFrame(), mojom::blink::RequestContextType::FAVICON,
       network::mojom::blink::IPAddressSpace::kPublic,
       http_ip_address_favicon_url, ResourceRequest::RedirectStatus::kNoRedirect,
-      http_ip_address_favicon_url, String(),
+      http_ip_address_favicon_url, absl::optional<String>(),
       ReportingDisposition::kSuppressReporting, *notifier_remote));
 
   EXPECT_FALSE(MixedContentChecker::ShouldBlockFetch(
@@ -242,12 +236,11 @@ TEST(MixedContentCheckerTest, DetectMixedFavicon) {
       network::mojom::blink::IPAddressSpace::kPublic,
       http_local_ip_address_favicon_url,
       ResourceRequest::RedirectStatus::kNoRedirect,
-      http_local_ip_address_favicon_url, String(),
+      http_local_ip_address_favicon_url, absl::optional<String>(),
       ReportingDisposition::kSuppressReporting, *notifier_remote));
 }
 
 TEST(MixedContentCheckerTest, DetectUpgradeableMixedContent) {
-  test::TaskEnvironment task_environment;
   KURL main_resource_url("https://example.test/");
   auto dummy_page_holder = std::make_unique<DummyPageHolder>(
       gfx::Size(1, 1), nullptr, MakeGarbageCollected<EmptyLocalFrameClient>());
@@ -270,7 +263,8 @@ TEST(MixedContentCheckerTest, DetectUpgradeableMixedContent) {
       &dummy_page_holder->GetFrame(), mojom::blink::RequestContextType::AUDIO,
       network::mojom::blink::IPAddressSpace::kPublic, http_ip_address_audio_url,
       ResourceRequest::RedirectStatus::kNoRedirect, http_ip_address_audio_url,
-      String(), ReportingDisposition::kSuppressReporting, *notifier_remote);
+      absl::optional<String>(), ReportingDisposition::kSuppressReporting,
+      *notifier_remote);
 
 #if BUILDFLAG(IS_FUCHSIA) && BUILDFLAG(ENABLE_CAST_RECEIVER)
   // Mixed Content from an insecure IP address is not blocked for Fuchsia Cast
@@ -314,7 +308,6 @@ class TestFetchClientSettingsObject : public FetchClientSettingsObject {
 
 TEST(MixedContentCheckerTest,
      NotAutoupgradedMixedContentHasUpgradeIfInsecureSet) {
-  test::TaskEnvironment task_environment;
   ResourceRequest request;
   request.SetUrl(KURL("https://example.test"));
   request.SetRequestContext(mojom::blink::RequestContextType::AUDIO);
@@ -331,7 +324,6 @@ TEST(MixedContentCheckerTest,
 }
 
 TEST(MixedContentCheckerTest, AutoupgradedMixedContentHasUpgradeIfInsecureSet) {
-  test::TaskEnvironment task_environment;
   ResourceRequest request;
   request.SetUrl(KURL("http://example.test"));
   request.SetRequestContext(mojom::blink::RequestContextType::AUDIO);
@@ -349,7 +341,6 @@ TEST(MixedContentCheckerTest, AutoupgradedMixedContentHasUpgradeIfInsecureSet) {
 
 TEST(MixedContentCheckerTest,
      AutoupgradeMixedContentWithLiteralLocalIpAddress) {
-  test::TaskEnvironment task_environment;
   ResourceRequest request;
   request.SetUrl(KURL("http://127.0.0.1/"));
   request.SetRequestContext(mojom::blink::RequestContextType::AUDIO);
@@ -367,7 +358,6 @@ TEST(MixedContentCheckerTest,
 
 TEST(MixedContentCheckerTest,
      NotAutoupgradeMixedContentWithLiteralNonLocalIpAddress) {
-  test::TaskEnvironment task_environment;
   ResourceRequest request;
   request.SetUrl(KURL("http://8.8.8.8/"));
   request.SetRequestContext(mojom::blink::RequestContextType::AUDIO);

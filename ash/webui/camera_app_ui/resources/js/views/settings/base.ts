@@ -10,12 +10,11 @@ import {View} from '../view.js';
  * Base controller of settings view.
  */
 export class BaseSettings extends View {
+  /**
+   * @param name Name of the view.
+   */
   constructor(name: ViewName) {
-    super(name, {
-      dismissByEsc: true,
-      dismissByBackgroundClick: true,
-      dismissOnStopStreaming: true,
-    });
+    super(name, {dismissByEsc: true, dismissByBackgroundClick: true});
 
     dom.getFrom(this.root, '.menu-header button', HTMLButtonElement)
         .addEventListener('click', () => this.leave());

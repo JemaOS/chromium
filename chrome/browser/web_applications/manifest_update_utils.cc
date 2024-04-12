@@ -11,11 +11,10 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/web_applications/web_app.h"
-#include "chrome/browser/web_applications/web_app_constants.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_install_utils.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
 #include "chrome/common/chrome_features.h"
-#include "components/webapps/common/web_app_id.h"
 #include "third_party/blink/public/common/features.h"
 #include "ui/gfx/skia_util.h"
 
@@ -57,8 +56,6 @@ std::ostream& operator<<(std::ostream& os, ManifestUpdateResult result) {
       return os << "kAppIsIsolatedWebApp";
     case ManifestUpdateResult::kCancelledDueToMainFrameNavigation:
       return os << "kCancelledDueToMainFrameNavigation";
-    case ManifestUpdateResult::kShortcutIgnoresManifest:
-      return os << "kkShortcutIgnoresManifest";
   }
 }
 
@@ -133,7 +130,7 @@ ManifestUpdateResult FinalResultFromManifestUpdateCheckResult(
   }
 }
 
-std::optional<AppIconIdentityChange> CompareIdentityIconBitmaps(
+absl::optional<AppIconIdentityChange> CompareIdentityIconBitmaps(
     const IconBitmaps& existing_app_icon_bitmaps,
     const IconBitmaps& new_app_icon_bitmaps) {
   for (IconPurpose purpose : kIconPurposes) {
@@ -161,7 +158,7 @@ std::optional<AppIconIdentityChange> CompareIdentityIconBitmaps(
       }
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void RecordIconDownloadMetrics(IconsDownloadedResult result,
@@ -188,8 +185,7 @@ bool CanWebAppSilentlyUpdateIdentity(const WebApp& web_app) {
   // WebAppChromeOsData::oem_installed will be migrated to
   // WebAppManagement::kOem eventually.
   return web_app.IsPreinstalledApp() || web_app.IsKioskInstalledApp() ||
-         web_app.GetSources().HasAny(
-             {WebAppManagement::kOem, WebAppManagement::kApsDefault});
+         web_app.GetSources().test(WebAppManagement::kOem);
 }
 
 bool CanShowIdentityUpdateConfirmationDialog(const WebAppRegistrar& registrar,
@@ -325,18 +321,8 @@ ManifestDataChanges GetManifestDataChanges(
             new_install_info.shortcuts_menu_icon_bitmaps) {
       return true;
     }
-    if (existing_web_app.scope_extensions() !=
-        new_install_info.scope_extensions) {
-      return true;
-    }
-    if (new_install_info.validated_scope_extensions.has_value() &&
-        existing_web_app.validated_scope_extensions() !=
-            new_install_info.validated_scope_extensions.value()) {
-      return true;
-    }
-    if (existing_web_app.tab_strip() != new_install_info.tab_strip) {
-      return true;
-    }
+    // TODO(crbug.com/897314): Check changes to tab_strip field once
+    // icons are stored.
     // TODO(crbug.com/926083): Check more manifest fields.
     return false;
   }();

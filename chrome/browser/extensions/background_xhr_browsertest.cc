@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <utility>
-#include <vector>
 
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
@@ -12,7 +10,6 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
-#include "base/threading/thread_restrictions.h"
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/extensions/extension_with_management_policy_apitest.h"
@@ -27,7 +24,6 @@
 #include "content/public/browser/storage_partition.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
-#include "extensions/browser/process_manager.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_urls.h"
 #include "extensions/test/extension_test_message_listener.h"
@@ -35,12 +31,9 @@
 #include "extensions/test/test_extension_dir.h"
 #include "net/base/url_util.h"
 #include "net/dns/mock_host_resolver.h"
-#include "net/ssl/client_cert_identity.h"
-#include "net/ssl/client_cert_identity_test_util.h"
 #include "net/ssl/client_cert_store.h"
 #include "net/ssl/ssl_server_config.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
-#include "net/test/test_data_directory.h"
 #include "services/network/public/cpp/network_switches.h"
 #include "url/gurl.h"
 
@@ -48,23 +41,8 @@ namespace extensions {
 
 namespace {
 
-class FakeClientCertStore : public net::ClientCertStore {
- public:
-  void GetClientCerts(const net::SSLCertRequestInfo& cert_request_info,
-                      ClientCertListCallback callback) override {
-    base::ScopedAllowBlockingForTesting allow_blocking;
-    std::unique_ptr<net::FakeClientCertIdentity> identity =
-        net::FakeClientCertIdentity::CreateFromCertAndKeyFiles(
-            net::GetTestCertsDirectory(), "client_1.pem", "client_1.pk8");
-    EXPECT_TRUE(identity.get());
-    std::vector<std::unique_ptr<net::ClientCertIdentity>> identities;
-    identities.push_back(std::move(identity));
-    std::move(callback).Run(std::move(identities));
-  }
-};
-
-std::unique_ptr<net::ClientCertStore> CreateFakeClientCertStore() {
-  return std::make_unique<FakeClientCertStore>();
+std::unique_ptr<net::ClientCertStore> CreateNullCertStore() {
+  return nullptr;
 }
 
 }  // namespace
@@ -97,11 +75,11 @@ class BackgroundXhrTest : public ExtensionBrowserTest {
 // Test that fetching a URL using TLS client auth doesn't crash, hang, or
 // prompt.
 IN_PROC_BROWSER_TEST_F(BackgroundXhrTest, TlsClientAuth) {
-  // Install a FakeClientCertStore so the client auth prompt isn't bypassed due
+  // Install a null ClientCertStore so the client auth prompt isn't bypassed due
   // to the system certificate store returning no certificates.
   ProfileNetworkContextServiceFactory::GetForContext(browser()->profile())
       ->set_client_cert_store_factory_for_testing(
-          base::BindRepeating(&CreateFakeClientCertStore));
+          base::BindRepeating(&CreateNullCertStore));
 
   // Launch HTTPS server.
   net::EmbeddedTestServer https_server(net::EmbeddedTestServer::TYPE_HTTPS);
@@ -153,7 +131,7 @@ class BackgroundXhrPolicyTest : public ExtensionApiTestWithManagementPolicy {
 
     std::string json;
     EXPECT_TRUE(message_queue.WaitForMessage(&json));
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         base::JSONReader::Read(json, base::JSON_ALLOW_TRAILING_COMMAS);
     EXPECT_TRUE(value->is_string());
     std::string trimmed_result;

@@ -14,7 +14,7 @@ import {isAmbientModeAllowed, isPersonalizationJellyEnabled, isRgbKeyboardSuppor
 import {getTemplate} from './personalization_main_element.html.js';
 import {WithPersonalizationStore} from './personalization_store.js';
 
-export class PersonalizationMainElement extends WithPersonalizationStore {
+export class PersonalizationMain extends WithPersonalizationStore {
   static get is() {
     return 'personalization-main';
   }
@@ -29,7 +29,7 @@ export class PersonalizationMainElement extends WithPersonalizationStore {
       shouldShowAmbientPreview_: {
         type: Boolean,
         value() {
-          return isAmbientModeAllowed() || isPersonalizationJellyEnabled();
+          return isAmbientModeAllowed();
         },
       },
       isRgbKeyboardSupported_: {
@@ -46,7 +46,7 @@ export class PersonalizationMainElement extends WithPersonalizationStore {
 
   override connectedCallback() {
     super.connectedCallback();
-    this.watch<PersonalizationMainElement['shouldShowTimeOfDayBanner_']>(
+    this.watch<PersonalizationMain['shouldShowTimeOfDayBanner_']>(
         'shouldShowTimeOfDayBanner_',
         state => state.ambient.shouldShowTimeOfDayBanner);
     this.updateFromStore();
@@ -55,5 +55,4 @@ export class PersonalizationMainElement extends WithPersonalizationStore {
   }
 }
 
-customElements.define(
-    PersonalizationMainElement.is, PersonalizationMainElement);
+customElements.define(PersonalizationMain.is, PersonalizationMain);

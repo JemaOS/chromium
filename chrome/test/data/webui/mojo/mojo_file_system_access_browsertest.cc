@@ -59,6 +59,7 @@ class MojoFileSystemAccessUI : public ui::MojoWebUIController,
             web_ui->GetWebContents()->GetBrowserContext(), kTestWebUIHost);
     data_source->SetDefaultResource(
         IDR_WEBUI_MOJO_MOJO_FILE_SYSTEM_ACCESS_TEST_HTML);
+    data_source->DisableContentSecurityPolicy();
     data_source->AddResourcePath(
         "mojo_file_system_access_test.mojom-webui.js",
         IDR_WEBUI_MOJO_MOJO_FILE_SYSTEM_ACCESS_TEST_MOJOM_WEBUI_JS);
@@ -95,13 +96,13 @@ class MojoFileSystemAccessUI : public ui::MojoWebUIController,
         ->ResolveTransferToken(
             std::move(token),
             base::BindLambdaForTesting(
-                [&](std::optional<storage::FileSystemURL> url) {
+                [&](absl::optional<storage::FileSystemURL> url) {
                   resolved_url_ = url;
                   run_loop_.Quit();
                 }));
   }
 
-  const std::optional<storage::FileSystemURL>& WaitForResolvedURL() {
+  const absl::optional<storage::FileSystemURL>& WaitForResolvedURL() {
     run_loop_.Run();
     return resolved_url_;
   }
@@ -110,7 +111,7 @@ class MojoFileSystemAccessUI : public ui::MojoWebUIController,
 
  private:
   mojo::Receiver<::test::mojom::MojoFileSystemAccessTest> receiver_;
-  std::optional<storage::FileSystemURL> resolved_url_;
+  absl::optional<storage::FileSystemURL> resolved_url_;
   base::RunLoop run_loop_;
 };
 
@@ -124,6 +125,7 @@ class OrdinaryMojoWebUI : public ui::MojoWebUIController {
     content::WebUIDataSource* data_source =
         content::WebUIDataSource::CreateAndAdd(
             web_ui->GetWebContents()->GetBrowserContext(), kOrdinaryWebUIHost);
+    data_source->DisableContentSecurityPolicy();
     data_source->SetDefaultResource(
         IDR_WEBUI_MOJO_MOJO_JS_INTERFACE_BROKER_TEST_BUZ_HTML);
   }
@@ -240,8 +242,7 @@ IN_PROC_BROWSER_TEST_F(MojoFileSystemAccessBrowserTest, CanResolveFilePath) {
 
   // In WebUI, open test file and pass it to WebUIController.
   ui::SelectFileDialog::SetFactory(
-      std::make_unique<SelectPredeterminedFileDialogFactory>(
-          std::vector<base::FilePath>{temp_file}));
+      new SelectPredeterminedFileDialogFactory({temp_file}));
 
   EXPECT_EQ(true,
             content::EvalJs(
@@ -261,7 +262,7 @@ IN_PROC_BROWSER_TEST_F(MojoFileSystemAccessBrowserTest, CanResolveFilePath) {
   // Reload the page to trigger RenderFrameHost reuse. The API should remain
   // available.
   content::TestNavigationObserver observer(web_contents, 1);
-  EXPECT_TRUE(content::ExecJs(web_contents, "location.reload()"));
+  EXPECT_TRUE(content::ExecuteScript(web_contents, "location.reload()"));
   observer.Wait();
   EXPECT_EQ(true, content::EvalJs(
                       web_contents,

@@ -20,7 +20,7 @@ LocalSVGResource* SVGTreeScopeResources::ResourceForId(const AtomicString& id) {
   auto& entry = resources_.insert(id, nullptr).stored_value->value;
   if (!entry)
     entry = MakeGarbageCollected<LocalSVGResource>(*tree_scope_, id);
-  return entry.Get();
+  return entry;
 }
 
 LocalSVGResource* SVGTreeScopeResources::ExistingResourceForId(
@@ -30,7 +30,7 @@ LocalSVGResource* SVGTreeScopeResources::ExistingResourceForId(
   auto it = resources_.find(id);
   if (it == resources_.end())
     return nullptr;
-  return it->value.Get();
+  return it->value;
 }
 
 void SVGTreeScopeResources::ProcessCustomWeakness(const LivenessBroker& info) {

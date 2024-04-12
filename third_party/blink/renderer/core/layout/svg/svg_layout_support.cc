@@ -25,7 +25,6 @@
 #include "third_party/blink/renderer/core/layout/svg/svg_layout_support.h"
 
 #include "third_party/blink/renderer/core/layout/geometry/transform_state.h"
-#include "third_party/blink/renderer/core/layout/hit_test_location.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_inline_text.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_resource_clipper.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_resource_masker.h"
@@ -33,10 +32,12 @@
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_transformable_container.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_viewport_container.h"
 #include "third_party/blink/renderer/core/layout/svg/svg_resources.h"
+#include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/outline_painter.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
+#include "third_party/blink/renderer/core/style/shape_clip_path_operation.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
-#include "third_party/blink/renderer/core/svg/svg_length_functions.h"
+#include "third_party/blink/renderer/core/svg/svg_length_context.h"
 #include "third_party/blink/renderer/platform/graphics/stroke_data.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/clear_collection_scope.h"
 #include "third_party/blink/renderer/platform/wtf/math_extras.h"
@@ -190,9 +191,6 @@ void SVGLayoutSupport::MapLocalToAncestor(const LayoutObject* object,
                                           const LayoutBoxModelObject* ancestor,
                                           TransformState& transform_state,
                                           MapCoordinatesFlags flags) {
-  if (object == ancestor) {
-    return;
-  }
   transform_state.ApplyTransform(object->LocalToSVGParentTransform());
 
   LayoutObject* parent = object->Parent();
@@ -201,8 +199,9 @@ void SVGLayoutSupport::MapLocalToAncestor(const LayoutObject* object,
   // localToBorderBoxTransform to map an element from SVG viewport coordinates
   // to CSS box coordinates.
   // LayoutSVGRoot's mapLocalToAncestor method expects CSS box coordinates.
-  if (auto* svg_root = DynamicTo<LayoutSVGRoot>(*parent)) {
-    transform_state.ApplyTransform(svg_root->LocalToBorderBoxTransform());
+  if (parent->IsSVGRoot()) {
+    transform_state.ApplyTransform(
+        To<LayoutSVGRoot>(parent)->LocalToBorderBoxTransform());
   }
 
   parent->MapLocalToAncestor(ancestor, transform_state, flags);
@@ -231,12 +230,10 @@ void SVGLayoutSupport::MapAncestorToLocal(const LayoutObject& object,
 bool SVGLayoutSupport::LayoutSizeOfNearestViewportChanged(
     const LayoutObject* start) {
   for (; start; start = start->Parent()) {
-    if (auto* svg_root = DynamicTo<LayoutSVGRoot>(*start)) {
-      return svg_root->IsLayoutSizeChanged();
-    }
-    if (auto* svg_viewport = DynamicTo<LayoutSVGViewportContainer>(*start)) {
-      return svg_viewport->IsLayoutSizeChanged();
-    }
+    if (start->IsSVGRoot())
+      return To<LayoutSVGRoot>(start)->IsLayoutSizeChanged();
+    if (start->IsSVGViewportContainer())
+      return To<LayoutSVGViewportContainer>(start)->IsLayoutSizeChanged();
   }
   NOTREACHED();
   return false;
@@ -244,16 +241,14 @@ bool SVGLayoutSupport::LayoutSizeOfNearestViewportChanged(
 
 bool SVGLayoutSupport::ScreenScaleFactorChanged(const LayoutObject* ancestor) {
   for (; ancestor; ancestor = ancestor->Parent()) {
-    if (auto* svg_root = DynamicTo<LayoutSVGRoot>(*ancestor)) {
-      return svg_root->DidScreenScaleFactorChange();
-    }
-    if (auto* svg_transformable =
-            DynamicTo<LayoutSVGTransformableContainer>(*ancestor)) {
-      return svg_transformable->DidScreenScaleFactorChange();
-    }
-    if (auto* svg_viewport = DynamicTo<LayoutSVGViewportContainer>(*ancestor)) {
-      return svg_viewport->DidScreenScaleFactorChange();
-    }
+    if (ancestor->IsSVGRoot())
+      return To<LayoutSVGRoot>(ancestor)->DidScreenScaleFactorChange();
+    if (ancestor->IsSVGTransformableContainer())
+      return To<LayoutSVGTransformableContainer>(ancestor)
+          ->DidScreenScaleFactorChange();
+    if (ancestor->IsSVGViewportContainer())
+      return To<LayoutSVGViewportContainer>(ancestor)
+          ->DidScreenScaleFactorChange();
   }
   NOTREACHED();
   return false;
@@ -292,15 +287,15 @@ void SVGLayoutSupport::AdjustWithClipPathAndMask(
 gfx::RectF SVGLayoutSupport::ExtendTextBBoxWithStroke(
     const LayoutObject& layout_object,
     const gfx::RectF& text_bounds) {
-  DCHECK(layout_object.IsSVGText() || layout_object.IsSVGInline());
+  DCHECK(layout_object.IsNGSVGText() || layout_object.IsSVGInline());
   gfx::RectF bounds = text_bounds;
   const ComputedStyle& style = layout_object.StyleRef();
   if (style.HasStroke()) {
-    const SVGViewportResolver viewport_resolver(layout_object);
+    SVGLengthContext length_context(To<SVGElement>(layout_object.GetNode()));
     // TODO(fs): This approximation doesn't appear to be conservative enough
     // since while text (usually?) won't have caps it could have joins and thus
     // miters.
-    bounds.Outset(ValueForLength(style.StrokeWidth(), viewport_resolver));
+    bounds.Outset(length_context.ValueForLength(style.StrokeWidth()));
   }
   return bounds;
 }
@@ -308,21 +303,41 @@ gfx::RectF SVGLayoutSupport::ExtendTextBBoxWithStroke(
 gfx::RectF SVGLayoutSupport::ComputeVisualRectForText(
     const LayoutObject& layout_object,
     const gfx::RectF& text_bounds) {
-  DCHECK(layout_object.IsSVGText() || layout_object.IsSVGInline());
+  DCHECK(layout_object.IsNGSVGText() || layout_object.IsSVGInline());
   gfx::RectF visual_rect = ExtendTextBBoxWithStroke(layout_object, text_bounds);
   if (const ShadowList* text_shadow = layout_object.StyleRef().TextShadow())
     text_shadow->AdjustRectForShadow(visual_rect);
   return visual_rect;
 }
 
+bool SVGLayoutSupport::IntersectsClipPath(const LayoutObject& object,
+                                          const gfx::RectF& reference_box,
+                                          const HitTestLocation& location) {
+  ClipPathOperation* clip_path_operation = object.StyleRef().ClipPath();
+  if (!clip_path_operation)
+    return true;
+  if (clip_path_operation->GetType() == ClipPathOperation::kShape) {
+    ShapeClipPathOperation& clip_path =
+        To<ShapeClipPathOperation>(*clip_path_operation);
+    float zoom = object.StyleRef().EffectiveZoom();
+    return clip_path.GetPath(gfx::ScaleRect(reference_box, zoom), zoom)
+        .Transform(AffineTransform::MakeScale(1.f / zoom))
+        .Contains(location.TransformedPoint());
+  }
+  DCHECK_EQ(clip_path_operation->GetType(), ClipPathOperation::kReference);
+  SVGResourceClient* client = SVGResources::GetClient(object);
+  auto* clipper = GetSVGResourceAsType(
+      *client, To<ReferenceClipPathOperation>(*clip_path_operation));
+  return !clipper || clipper->HitTestClipContent(reference_box, location);
+}
+
 DashArray SVGLayoutSupport::ResolveSVGDashArray(
     const SVGDashArray& svg_dash_array,
     const ComputedStyle& style,
-    const SVGViewportResolver& viewport_resolver) {
+    const SVGLengthContext& length_context) {
   DashArray dash_array;
-  for (const Length& dash_length : svg_dash_array.data) {
-    dash_array.push_back(ValueForLength(dash_length, viewport_resolver, style));
-  }
+  for (const Length& dash_length : svg_dash_array.data)
+    dash_array.push_back(length_context.ValueForLength(dash_length, style));
   return dash_array;
 }
 
@@ -333,17 +348,16 @@ void SVGLayoutSupport::ApplyStrokeStyleToStrokeData(StrokeData& stroke_data,
   DCHECK(object.GetNode());
   DCHECK(object.GetNode()->IsSVGElement());
 
-  const SVGViewportResolver viewport_resolver(object);
-  stroke_data.SetThickness(
-      ValueForLength(style.StrokeWidth(), viewport_resolver));
+  SVGLengthContext length_context(To<SVGElement>(object.GetNode()));
+  stroke_data.SetThickness(length_context.ValueForLength(style.StrokeWidth()));
   stroke_data.SetLineCap(style.CapStyle());
   stroke_data.SetLineJoin(style.JoinStyle());
   stroke_data.SetMiterLimit(style.StrokeMiterLimit());
 
   DashArray dash_array =
-      ResolveSVGDashArray(*style.StrokeDashArray(), style, viewport_resolver);
+      ResolveSVGDashArray(*style.StrokeDashArray(), style, length_context);
   float dash_offset =
-      ValueForLength(style.StrokeDashOffset(), viewport_resolver, style);
+      length_context.ValueForLength(style.StrokeDashOffset(), style);
   // Apply scaling from 'pathLength'.
   if (dash_scale_factor != 1) {
     DCHECK_GE(dash_scale_factor, 0);
@@ -357,13 +371,14 @@ void SVGLayoutSupport::ApplyStrokeStyleToStrokeData(StrokeData& stroke_data,
 bool SVGLayoutSupport::IsLayoutableTextNode(const LayoutObject* object) {
   DCHECK(object->IsText());
   // <br> is marked as text, but is not handled by the SVG layout code-path.
-  const auto* svg_inline_text = DynamicTo<LayoutSVGInlineText>(object);
-  return svg_inline_text && !svg_inline_text->HasEmptyText();
+  return object->IsSVGInlineText() &&
+         !To<LayoutSVGInlineText>(object)->HasEmptyText();
 }
 
 bool SVGLayoutSupport::WillIsolateBlendingDescendantsForStyle(
     const ComputedStyle& style) {
-  return style.HasGroupingProperty(style.BoxReflect()) || style.HasMaskForSVG();
+  return style.HasGroupingProperty(style.BoxReflect()) ||
+         style.MaskerResource();
 }
 
 bool SVGLayoutSupport::WillIsolateBlendingDescendantsForObject(
@@ -376,9 +391,8 @@ bool SVGLayoutSupport::WillIsolateBlendingDescendantsForObject(
 }
 
 bool SVGLayoutSupport::IsIsolationRequired(const LayoutObject* object) {
-  if (object->StyleRef().HasMaskForSVG()) {
+  if (object->StyleRef().MaskerResource())
     return true;
-  }
   return WillIsolateBlendingDescendantsForObject(object) &&
          object->HasNonIsolatedBlendingDescendants();
 }
@@ -439,7 +453,7 @@ static SearchCandidate SearchTreeForFindClosestLayoutSVGText(
   // containers that could contain LayoutSVGTexts that are closer.
   for (LayoutObject* child = layout_object->SlowLastChild(); child;
        child = child->PreviousSibling()) {
-    if (child->IsSVGText()) {
+    if (child->IsNGSVGText()) {
       double distance = DistanceToChildLayoutObject(child, point);
       if (distance >= closest_text.distance)
         continue;

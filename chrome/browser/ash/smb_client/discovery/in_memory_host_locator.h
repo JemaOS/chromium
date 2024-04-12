@@ -7,7 +7,8 @@
 
 #include "chrome/browser/ash/smb_client/discovery/host_locator.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 // HostLocator implementation that uses a map as the source for hosts. New hosts
 // can be registered through AddHost().
@@ -42,6 +43,7 @@ class InMemoryHostLocator : public HostLocator {
   bool should_run_synchronously_ = true;
 };
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_SMB_CLIENT_DISCOVERY_IN_MEMORY_HOST_LOCATOR_H_

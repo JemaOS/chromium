@@ -21,7 +21,6 @@
 #include "components/crash/content/browser/error_reporting/mock_crash_endpoint.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "extensions/browser/extension_host.h"
 #include "extensions/browser/process_manager.h"
 #include "extensions/common/switches.h"
@@ -90,10 +89,10 @@ class CrashReportPrivateApiTest : public ExtensionApiTest {
   }
 
  protected:
-  const std::optional<MockCrashEndpoint::Report>& last_report() {
+  const absl::optional<MockCrashEndpoint::Report>& last_report() {
     return crash_endpoint_->last_report();
   }
-  raw_ptr<const Extension, DanglingUntriaged> extension_;
+  raw_ptr<const Extension, ExperimentalAsh> extension_;
   std::unique_ptr<MockCrashEndpoint> crash_endpoint_;
   std::unique_ptr<ScopedMockChromeJsErrorReportProcessor> processor_;
 };
@@ -108,7 +107,7 @@ IN_PROC_BROWSER_TEST_F(CrashReportPrivateApiTest, Basic) {
   )";
   ExecuteScriptInBackgroundPage(extension_->id(), kTestScript);
 
-  const std::optional<MockCrashEndpoint::Report>& report = last_report();
+  const absl::optional<MockCrashEndpoint::Report>& report = last_report();
   ASSERT_TRUE(report);
   EXPECT_THAT(
       report->query,
@@ -143,7 +142,7 @@ IN_PROC_BROWSER_TEST_F(CrashReportPrivateApiTest, ExtraParamsAndStackTrace) {
   )-";
   ExecuteScriptInBackgroundPage(extension_->id(), kTestScript);
 
-  const std::optional<MockCrashEndpoint::Report>& report = last_report();
+  const absl::optional<MockCrashEndpoint::Report>& report = last_report();
   ASSERT_TRUE(report);
   // The product name is escaped twice. The first time, it becomes
   // "Chrome%20(Chrome%20OS)" and then the second escapes the '%' into '%25'.
@@ -181,7 +180,7 @@ IN_PROC_BROWSER_TEST_F(CrashReportPrivateApiTest, StackTraceWithErrorMessage) {
   )";
   ExecuteScriptInBackgroundPage(extension_->id(), kTestScript);
 
-  const std::optional<MockCrashEndpoint::Report>& report = last_report();
+  const absl::optional<MockCrashEndpoint::Report>& report = last_report();
   ASSERT_TRUE(report);
   EXPECT_THAT(
       report->query,
@@ -216,7 +215,7 @@ IN_PROC_BROWSER_TEST_F(CrashReportPrivateApiTest, RedactMessage) {
   )";
   ExecuteScriptInBackgroundPage(extension_->id(), kTestScript);
 
-  const std::optional<MockCrashEndpoint::Report>& report = last_report();
+  const absl::optional<MockCrashEndpoint::Report>& report = last_report();
   ASSERT_TRUE(report);
   EXPECT_THAT(
       report->query,
@@ -256,7 +255,7 @@ IN_PROC_BROWSER_TEST_F(CrashReportPrivateApiTest, SuppressedIfDevtoolsOpen) {
             chrome.runtime.lastError.message : "")
       });
   )";
-  const std::optional<MockCrashEndpoint::Report>& report = last_report();
+  const absl::optional<MockCrashEndpoint::Report>& report = last_report();
 
   // Ensure error is not reported since devtools is open.
   EXPECT_EQ("", ExecuteScriptInBackgroundPage(extension_->id(), kTestScript));
@@ -289,8 +288,8 @@ IN_PROC_BROWSER_TEST_F(CrashReportPrivateApiTest, CalledFromWebContentsInTab) {
   )";
   // Run the script in the |web_content| that has loaded |extension_| instead of
   // |ExecuteScriptInBackgroundPage| so
-  // |chrome::FindBrowserWithTab(web_contents)| is not |nullptr|.
-  EXPECT_EQ(true, ExecJs(web_content, kTestScript));
+  // |chrome::FindBrowserWithWebContents(web_contents)| is not |nullptr|.
+  EXPECT_EQ(true, ExecuteScript(web_content, kTestScript));
 
   auto report = crash_endpoint_->WaitForReport();
   EXPECT_THAT(
@@ -328,9 +327,9 @@ IN_PROC_BROWSER_TEST_P(CrashReportPrivateCalledFromSwaTest,
   ASSERT_TRUE(embedded_test_server()->Started());
   // Create and launch a test web app, opens in an app window.
   GURL start_url = embedded_test_server()->GetURL("/test_app.html");
-  auto web_app_info = std::make_unique<web_app::WebAppInstallInfo>();
+  auto web_app_info = std::make_unique<WebAppInstallInfo>();
   web_app_info->start_url = start_url;
-  webapps::AppId app_id =
+  web_app::AppId app_id =
       web_app::test::InstallWebApp(profile(), std::move(web_app_info));
   Browser* app_browser = web_app::LaunchWebAppBrowserAndWait(profile(), app_id);
 
@@ -348,7 +347,7 @@ IN_PROC_BROWSER_TEST_P(CrashReportPrivateCalledFromSwaTest,
       },
       () => window.domAutomationController.send(""));
   )";
-  EXPECT_EQ(true, ExecJs(web_content, kTestScript));
+  EXPECT_EQ(true, ExecuteScript(web_content, kTestScript));
 
   auto report = endpoint.WaitForReport();
 
@@ -385,7 +384,7 @@ IN_PROC_BROWSER_TEST_P(CrashReportPrivateCalledFromSwaTest,
       },
       () => window.domAutomationController.send(""));
   )";
-  EXPECT_EQ(true, ExecJs(web_content, kTestScript));
+  EXPECT_EQ(true, ExecuteScript(web_content, kTestScript));
 
   auto report = endpoint.WaitForReport();
 

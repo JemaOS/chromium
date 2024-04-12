@@ -10,7 +10,6 @@
 #include "ash/constants/notifier_catalogs.h"
 #include "ash/public/cpp/ash_public_export.h"
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr_exclusion.h"
 #include "base/time/time.h"
 #include "ui/gfx/paint_vector_icon.h"
 
@@ -60,9 +59,7 @@ struct ASH_PUBLIC_EXPORT ToastData {
   bool show_on_all_root_windows = false;
   // TODO(b/259100049): We should turn this into a `OnceClosure`.
   base::RepeatingClosure dismiss_callback;
-  // RAW_PTR_EXCLUSION: Never allocated by PartitionAlloc (always points to a
-  // global), so there is no benefit to using a raw_ptr, only cost.
-  RAW_PTR_EXCLUSION const gfx::VectorIcon* leading_icon;
+  const gfx::VectorIcon* leading_icon;
   base::OnceClosure expired_callback;
   base::TimeTicks time_created;
   base::TimeTicks time_start_showing;

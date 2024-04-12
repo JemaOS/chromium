@@ -136,12 +136,15 @@ KURL NormalizeValue(const String& key,
 ImportMap* ImportMap::Parse(const String& input,
                             const KURL& base_url,
                             ConsoleLogger& logger,
-                            std::optional<ImportMapError>* error_to_rethrow) {
+                            absl::optional<ImportMapError>* error_to_rethrow) {
   DCHECK(error_to_rethrow);
 
   // <spec step="1">Let parsed be the result of parsing JSON into Infra values
   // given input.</spec>
-  std::unique_ptr<JSONValue> parsed = ParseJSON(input);
+  // TODO(crbug.com/1264024): Deprecate JSON comments here, if possible.
+  bool has_comments = false;
+  std::unique_ptr<JSONValue> parsed = ParseJSONWithCommentsDeprecated(
+      input, /*opt_error=*/nullptr, &has_comments);
 
   if (!parsed) {
     *error_to_rethrow =
@@ -149,6 +152,8 @@ ImportMap* ImportMap::Parse(const String& input,
                        "Failed to parse import map: invalid JSON");
     return MakeGarbageCollected<ImportMap>();
   }
+
+  UMA_HISTOGRAM_BOOLEAN("Blink.ImportMap.HasJSONComments", has_comments);
 
   // <spec step="2">If parsed is not a map, then throw a TypeError indicating
   // that the top-level value must be a JSON object.</spec>
@@ -343,7 +348,7 @@ ImportMap::SpecifierMap ImportMap::SortAndNormalizeSpecifierMap(
 }
 
 // <specdef href="https://wicg.github.io/import-maps/#resolve-an-imports-match">
-std::optional<ImportMap::MatchResult> ImportMap::MatchPrefix(
+absl::optional<ImportMap::MatchResult> ImportMap::MatchPrefix(
     const ParsedSpecifier& parsed_specifier,
     const SpecifierMap& specifier_map) const {
   const String key = parsed_specifier.GetImportMapKeyString();
@@ -358,7 +363,7 @@ std::optional<ImportMap::MatchResult> ImportMap::MatchPrefix(
   // "most-specific wins", i.e. when there are multiple matching keys,
   // choose the longest.
   // https://github.com/WICG/import-maps/issues/102
-  std::optional<MatchResult> best_match;
+  absl::optional<MatchResult> best_match;
 
   // <spec step="1">For each specifierKey → resolutionResult of
   // specifierMap,</spec>
@@ -389,9 +394,9 @@ ImportMap::ImportMap(SpecifierMap&& imports, ScopeType&& scopes)
 
 // <specdef
 // href="https://wicg.github.io/import-maps/#resolve-a-module-specifier">
-std::optional<KURL> ImportMap::Resolve(const ParsedSpecifier& parsed_specifier,
-                                       const KURL& base_url,
-                                       String* debug_message) const {
+absl::optional<KURL> ImportMap::Resolve(const ParsedSpecifier& parsed_specifier,
+                                        const KURL& base_url,
+                                        String* debug_message) const {
   DCHECK(debug_message);
 
   // <spec step="8">For each scopePrefix → scopeImports of importMap’s
@@ -404,7 +409,7 @@ std::optional<KURL> ImportMap::Resolve(const ParsedSpecifier& parsed_specifier,
          base_url.GetString().StartsWith(entry.first))) {
       // <spec step="8.1.1">Let scopeImportsMatch be the result of resolving an
       // imports match given normalizedSpecifier and scopeImports.</spec>
-      std::optional<KURL> scope_match =
+      absl::optional<KURL> scope_match =
           ResolveImportsMatch(parsed_specifier, entry.second, debug_message);
 
       // <spec step="8.1.2">If scopeImportsMatch is not null, then return
@@ -423,7 +428,7 @@ std::optional<KURL> ImportMap::Resolve(const ParsedSpecifier& parsed_specifier,
 }
 
 // <specdef href="https://wicg.github.io/import-maps/#resolve-an-imports-match">
-std::optional<KURL> ImportMap::ResolveImportsMatch(
+absl::optional<KURL> ImportMap::ResolveImportsMatch(
     const ParsedSpecifier& parsed_specifier,
     const SpecifierMap& specifier_map,
     String* debug_message) const {
@@ -442,7 +447,7 @@ std::optional<KURL> ImportMap::ResolveImportsMatch(
     *debug_message = "Import Map: \"" + key +
                      "\" skips prefix match because of non-special URL scheme";
 
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Step 1.2.
@@ -453,7 +458,7 @@ std::optional<KURL> ImportMap::ResolveImportsMatch(
   // <spec step="2">Return null.</spec>
   *debug_message = "Import Map: \"" + key +
                    "\" matches with no entries and thus is not mapped.";
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // <specdef href="https://wicg.github.io/import-maps/#resolve-an-imports-match">
@@ -524,7 +529,7 @@ static void SpecifierMapToString(StringBuilder& builder,
     builder.Append(it.key.EncodeForDebugging());
     builder.Append(":");
     if (it.value.IsValid())
-      builder.Append(it.value.GetString().GetString().EncodeForDebugging());
+      builder.Append(it.value.GetString().EncodeForDebugging());
     else
       builder.Append("null");
   }

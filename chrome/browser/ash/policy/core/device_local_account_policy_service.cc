@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/policy/core/device_local_account_policy_service.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -24,7 +23,6 @@
 #include "base/task/thread_pool.h"
 #include "chrome/browser/ash/policy/core/device_local_account.h"
 #include "chrome/browser/ash/policy/core/device_local_account_policy_store.h"
-#include "chrome/browser/ash/policy/core/file_util.h"
 #include "chrome/browser/ash/policy/external_data/device_local_account_external_data_service.h"
 #include "chrome/browser/ash/policy/invalidation/affiliated_cloud_policy_invalidator.h"
 #include "chrome/browser/ash/settings/device_settings_service.h"
@@ -42,11 +40,18 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/network_service_instance.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace policy {
 
 namespace {
+
+// Get the subdirectory of the force-installed extension cache and the component
+// policy cache used for |account_id|.
+std::string GetCacheSubdirectoryForAccountID(const std::string& account_id) {
+  return base::HexEncode(account_id.c_str(), account_id.size());
+}
 
 // Cleans up the cache directory by removing subdirectories that are not found
 // in |subdirectories_to_keep|. Only caches whose cache directory is found in
@@ -58,9 +63,8 @@ void DeleteOrphanedCaches(const base::FilePath& cache_root_dir,
   for (base::FilePath path = enumerator.Next(); !path.empty();
        path = enumerator.Next()) {
     const std::string subdirectory(path.BaseName().MaybeAsASCII());
-    if (!base::Contains(subdirectories_to_keep, subdirectory)) {
+    if (!base::Contains(subdirectories_to_keep, subdirectory))
       base::DeletePathRecursively(path);
-    }
   }
 }
 
@@ -70,10 +74,9 @@ void DeleteOrphanedCaches(const base::FilePath& cache_root_dir,
 void DeleteObsoleteExtensionCache(const std::string& account_id_to_delete) {
   const base::FilePath path =
       base::PathService::CheckedGet(ash::DIR_DEVICE_LOCAL_ACCOUNT_EXTENSIONS)
-          .Append(GetUniqueSubDirectoryForAccountID(account_id_to_delete));
-  if (base::DirectoryExists(path)) {
+          .Append(GetCacheSubdirectoryForAccountID(account_id_to_delete));
+  if (base::DirectoryExists(path))
     base::DeletePathRecursively(path);
-  }
 }
 
 }  // namespace
@@ -118,11 +121,7 @@ DeviceLocalAccountPolicyService::~DeviceLocalAccountPolicyService() {
 }
 
 void DeviceLocalAccountPolicyService::Shutdown() {
-  session_manager_client_ = nullptr;
-  device_settings_service_ = nullptr;
-  cros_settings_ = nullptr;
   device_management_service_ = nullptr;
-
   DeleteBrokers(&policy_brokers_);
 }
 
@@ -141,9 +140,8 @@ void DeviceLocalAccountPolicyService::Connect(
 DeviceLocalAccountPolicyBroker*
 DeviceLocalAccountPolicyService::GetBrokerForUser(const std::string& user_id) {
   PolicyBrokerMap::iterator entry = policy_brokers_.find(user_id);
-  if (entry == policy_brokers_.end()) {
+  if (entry == policy_brokers_.end())
     return nullptr;
-  }
 
   return entry->second.get();
 }
@@ -240,9 +238,8 @@ void DeviceLocalAccountPolicyService::UpdateAccountListIfNonePending() {
   // Avoid unnecessary calls to UpdateAccountList(): If an earlier call is still
   // pending (because the |cros_settings_| are not trusted yet), the updated
   // account list will be processed by that call when it eventually runs.
-  if (!waiting_for_cros_settings_) {
+  if (!waiting_for_cros_settings_)
     UpdateAccountList();
-  }
 }
 
 void DeviceLocalAccountPolicyService::UpdateAccountList() {
@@ -292,7 +289,7 @@ void DeviceLocalAccountPolicyService::UpdateAccountList() {
                   device_local_account.account_id, store.get());
       broker = std::make_unique<DeviceLocalAccountPolicyBroker>(
           device_local_account,
-          component_policy_cache_root_.Append(GetUniqueSubDirectoryForAccountID(
+          component_policy_cache_root_.Append(GetCacheSubdirectoryForAccountID(
               device_local_account.account_id)),
           std::move(store), external_data_manager,
           base::BindRepeating(
@@ -315,7 +312,7 @@ void DeviceLocalAccountPolicyService::UpdateAccountList() {
     }
 
     subdirectories_to_keep.insert(
-        GetUniqueSubDirectoryForAccountID(device_local_account.account_id));
+        GetCacheSubdirectoryForAccountID(device_local_account.account_id));
   }
 
   if (orphan_extension_cache_deletion_state_ == NOT_STARTED) {
@@ -363,9 +360,8 @@ void DeviceLocalAccountPolicyService::UpdateAccountList() {
       base::BindOnce(&DeleteOrphanedCaches, component_policy_cache_root_,
                      subdirectories_to_keep));
 
-  for (auto& observer : observers_) {
+  for (auto& observer : observers_)
     observer.OnDeviceLocalAccountsChanged();
-  }
 }
 
 void DeviceLocalAccountPolicyService::DeleteBrokers(PolicyBrokerMap* map) {
@@ -383,9 +379,8 @@ void DeviceLocalAccountPolicyService::DeleteBrokers(PolicyBrokerMap* map) {
 
 void DeviceLocalAccountPolicyService::NotifyPolicyUpdated(
     const std::string& user_id) {
-  for (auto& observer : observers_) {
+  for (auto& observer : observers_)
     observer.OnPolicyUpdated(user_id);
-  }
 }
 
 }  // namespace policy

@@ -5,8 +5,8 @@
 /**
  * @fileoverview Polymer element for network configuration input fields.
  */
-import '//resources/ash/common/cr_elements/cr_input/cr_input.js';
-import '//resources/ash/common/cr_elements/cr_shared_vars.css.js';
+import '//resources/cr_elements/cr_input/cr_input.js';
+import '//resources/cr_elements/cr_shared_vars.css.js';
 import './cr_policy_network_indicator_mojo.js';
 import './network_shared.css.js';
 
@@ -33,9 +33,14 @@ Polymer({
       reflectToAttribute: true,
     },
 
-    invalid: {
+    readonly: {
       type: Boolean,
-      value: false,
+      reflectToAttribute: true,
+    },
+
+    value: {
+      type: String,
+      notify: true,
     },
   },
 

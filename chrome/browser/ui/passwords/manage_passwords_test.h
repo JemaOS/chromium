@@ -22,16 +22,6 @@
 
 class ManagePasswordsUIController;
 
-enum class SyncConfiguration {
-  // There is no sync consent and no sync types are synced.
-  kNotSyncing = 0,
-  // There is sync consent.
-  kSyncing = 1,
-  // There is no sync consent, but passwords are saved in the account storage.
-  kAccountStorageOnly = 2,
-  kMaxValue = kAccountStorageOnly,
-};
-
 // Test class for the various password management view bits and pieces. Provides
 // some helper methods to poke at the bubble, icon, and controller's state.
 class ManagePasswordsTest : public InteractiveBrowserTest {
@@ -51,8 +41,7 @@ class ManagePasswordsTest : public InteractiveBrowserTest {
   void ExecuteManagePasswordsCommand();
 
   // Put the controller, icon, and bubble into a managing-password state.
-  // TODO(1518786): Make password form url stable without having to override it.
-  void SetupManagingPasswords(const GURL& password_form_url = GURL());
+  void SetupManagingPasswords();
 
   // Put the controller, icon, and bubble into the confirmation state.
   void SetupAutomaticPassword();
@@ -76,9 +65,8 @@ class ManagePasswordsTest : public InteractiveBrowserTest {
   void SetupMovingPasswords();
 
   // Always configures a signed-in user, and when |is_enabled| is true, it also
-  // configures the Sync service to sync passwords. |is_account_storage_enabled|
-  // enables account storage for the user.
-  void ConfigurePasswordSync(SyncConfiguration configuration);
+  // configures the Sync service to sync passwords.
+  void ConfigurePasswordSync(bool is_enabled);
 
   // Get samples for |histogram|.
   std::unique_ptr<base::HistogramSamples> GetSamples(const char* histogram);
@@ -87,6 +75,9 @@ class ManagePasswordsTest : public InteractiveBrowserTest {
 
   // Get the UI controller for the current WebContents.
   ManagePasswordsUIController* GetController();
+
+  MOCK_METHOD1(OnChooseCredential,
+               void(const password_manager::CredentialInfo&));
 
  private:
   std::unique_ptr<password_manager::PasswordFormManager> CreateFormManager();

@@ -21,8 +21,7 @@ void TestPrefServiceProvider::CreateSigninPrefsIfNeeded() {
     return;
 
   auto pref_service = std::make_unique<TestingPrefServiceSimple>();
-  RegisterSigninProfilePrefs(pref_service->registry(), /*country=*/"",
-                             /**for_test=*/true);
+  RegisterSigninProfilePrefs(pref_service->registry(), true /* for_test */);
   signin_prefs_ = std::move(pref_service);
 }
 
@@ -38,17 +37,15 @@ PrefService* TestPrefServiceProvider::GetSigninPrefs() {
 
 void TestPrefServiceProvider::CreateUserPrefs(const AccountId& account_id) {
   auto pref_service = std::make_unique<TestingPrefServiceSimple>();
-  RegisterUserProfilePrefs(pref_service->registry(), /*country=*/"",
-                           /*for_test=*/true);
+  RegisterUserProfilePrefs(pref_service->registry(), true /* for_test */);
   SetUserPrefs(account_id, std::move(pref_service));
 }
 
 void TestPrefServiceProvider::SetUserPrefs(
     const AccountId& account_id,
     std::unique_ptr<PrefService> pref_service) {
-  const auto pair =
-      user_prefs_map_.emplace(account_id, std::move(pref_service));
-  DCHECK(pair.second);
+  DCHECK(user_prefs_map_.find(account_id) == user_prefs_map_.end());
+  user_prefs_map_[account_id] = std::move(pref_service);
 }
 
 PrefService* TestPrefServiceProvider::GetUserPrefs(

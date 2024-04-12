@@ -14,6 +14,8 @@ This presubmit checks for the following:
     instead.
 """
 
+USE_PYTHON3 = True
+
 import re
 
 NEW_NOTIFICATION_BUILDER_RE = re.compile(
@@ -80,6 +82,7 @@ def _CheckNotificationConstructors(input_api, output_api):
 def _CheckAlertDialogBuilder(input_api, output_api):
   # In general, preference and FRE related UIs are not relevant to VR mode.
   files_to_skip = (
+      BROWSER_ROOT + 'autofill/AutofillPopupBridge.java',
       BROWSER_ROOT + 'autofill/prefeditor/EditorDialog.java',
       BROWSER_ROOT + 'browserservices/ClearDataDialogActivity.java',
       BROWSER_ROOT + 'browsing_data/ConfirmImportantSitesDialogFragment.java',
@@ -90,14 +93,6 @@ def _CheckAlertDialogBuilder(input_api, output_api):
       BROWSER_ROOT + 'init/LaunchFailedActivity.java',
       BROWSER_ROOT + 'password_manager/AccountChooserDialog.java',
       BROWSER_ROOT + 'password_manager/AutoSigninFirstRunDialog.java',
-      # TODO(https://crbug.com/1505284): Tentatively suppressed.
-      (BROWSER_ROOT +
-       'password_manager/settings/ExportErrorDialogFragment.java'),
-      (BROWSER_ROOT +
-       'password_manager/settings/ExportWarningDialogFragment.java'),
-      (BROWSER_ROOT +
-       'password_manager/settings/ProgressBarDialogFragment.java'),
-      # end of https://crbug.com/1505284
       BROWSER_ROOT + r'settings[\\\/].*',
       BROWSER_ROOT + 'site_settings/AddExceptionPreference.java',
       BROWSER_ROOT + 'site_settings/ChosenObjectSettings.java',
@@ -152,6 +147,7 @@ def _CheckAlertDialogBuilder(input_api, output_api):
 
 def _CheckCompatibleAlertDialogBuilder(input_api, output_api):
   files_to_skip = (
+      BROWSER_ROOT + 'autofill/AutofillPopupBridge.java',
       BROWSER_ROOT + 'autofill/keyboard_accessory/'
                      'AutofillKeyboardAccessoryBridge.java',
       BROWSER_ROOT + 'dom_distiller/DistilledPagePrefsView.java',

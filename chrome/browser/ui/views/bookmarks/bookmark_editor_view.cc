@@ -72,7 +72,7 @@ BookmarkEditorView::BookmarkEditorView(
   DCHECK(profile);
   DCHECK(bb_model_);
   DCHECK(expanded_state_tracker_);
-  DCHECK(!bb_model_->client()->IsNodeManaged(parent));
+  DCHECK(bb_model_->client()->CanBeEditedByUser(parent));
   SetCanResize(true);
   SetModalType(ui::MODAL_TYPE_WINDOW);
   SetShowCloseButton(false);
@@ -223,20 +223,23 @@ void BookmarkEditorView::ShowContextMenuForViewImpl(
                                   source_type);
 }
 
-void BookmarkEditorView::BookmarkNodeMoved(const BookmarkNode* old_parent,
+void BookmarkEditorView::BookmarkNodeMoved(BookmarkModel* model,
+                                           const BookmarkNode* old_parent,
                                            size_t old_index,
                                            const BookmarkNode* new_parent,
                                            size_t new_index) {
   Reset();
 }
 
-void BookmarkEditorView::BookmarkNodeAdded(const BookmarkNode* parent,
+void BookmarkEditorView::BookmarkNodeAdded(BookmarkModel* model,
+                                           const BookmarkNode* parent,
                                            size_t index,
                                            bool added_by_user) {
   Reset();
 }
 
 void BookmarkEditorView::BookmarkNodeRemoved(
+    BookmarkModel* model,
     const BookmarkNode* parent,
     size_t index,
     const BookmarkNode* node,
@@ -252,11 +255,13 @@ void BookmarkEditorView::BookmarkNodeRemoved(
 }
 
 void BookmarkEditorView::BookmarkAllUserNodesRemoved(
+    BookmarkModel* model,
     const std::set<GURL>& removed_urls) {
   Reset();
 }
 
 void BookmarkEditorView::BookmarkNodeChildrenReordered(
+    BookmarkModel* model,
     const BookmarkNode* node) {
   Reset();
 }
@@ -438,7 +443,7 @@ void BookmarkEditorView::CreateNodes(const BookmarkNode* bb_node,
                                      BookmarkEditorView::EditorNode* b_node) {
   for (const auto& child_bb_node : bb_node->children()) {
     if (child_bb_node->IsVisible() && child_bb_node->is_folder() &&
-        !bb_model_->client()->IsNodeManaged(child_bb_node.get())) {
+        bb_model_->client()->CanBeEditedByUser(child_bb_node.get())) {
       EditorNode* new_b_node = b_node->Add(std::make_unique<EditorNode>(
           child_bb_node->GetTitle(), child_bb_node->id()));
       new_b_node->SetPlaceholderAccessibleTitle(
@@ -605,6 +610,6 @@ void BookmarkEditorView::EditorTreeModel::SetTitle(
     ui::TreeNodeModel<EditorNode>::SetTitle(node, title);
 }
 
-BEGIN_METADATA(BookmarkEditorView)
+BEGIN_METADATA(BookmarkEditorView, views::DialogDelegateView)
 ADD_READONLY_PROPERTY_METADATA(GURL, InputURL)
 END_METADATA

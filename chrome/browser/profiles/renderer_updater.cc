@@ -12,6 +12,7 @@
 #include "chrome/browser/content_settings/content_settings_manager_delegate.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/renderer_configuration.mojom.h"
 #include "components/content_settings/common/content_settings_manager.mojom.h"
@@ -48,6 +49,9 @@ RendererUpdater::RendererUpdater(Profile* profile)
           BoundSessionCookieRefreshServiceFactory::GetForProfile(profile))
 #endif
 {
+  identity_manager_observation_.Observe(
+      IdentityManagerFactory::GetForProfile(original_profile_));
+
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   oauth2_login_manager_ =
       ash::OAuth2LoginManagerFactory::GetForProfile(original_profile_);
@@ -61,9 +65,8 @@ RendererUpdater::RendererUpdater(Profile* profile)
   if (bound_session_cookie_refresh_service_) {
     // `base::Unretained` is safe as `this` deregister itself on destruction.
     bound_session_cookie_refresh_service_
-        ->SetRendererBoundSessionThrottlerParamsUpdaterDelegate(
-            base::BindRepeating(&RendererUpdater::UpdateAllRenderers,
-                                base::Unretained(this)));
+        ->SetRendererBoundSessionParamsUpdaterDelegate(base::BindRepeating(
+            &RendererUpdater::UpdateAllRenderers, base::Unretained(this)));
   }
 #endif
 
@@ -96,7 +99,7 @@ RendererUpdater::~RendererUpdater() {
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
   if (bound_session_cookie_refresh_service_) {
     bound_session_cookie_refresh_service_
-        ->SetRendererBoundSessionThrottlerParamsUpdaterDelegate(
+        ->SetRendererBoundSessionParamsUpdaterDelegate(
             base::RepeatingClosure());
   }
 #endif
@@ -108,6 +111,7 @@ void RendererUpdater::Shutdown() {
   oauth2_login_manager_->RemoveObserver(this);
   oauth2_login_manager_ = nullptr;
 #endif
+  identity_manager_observation_.Reset();
 }
 
 void RendererUpdater::InitializeRenderer(
@@ -131,20 +135,20 @@ void RendererUpdater::InitializeRenderer(
       render_process_host,
       content_settings_manager.InitWithNewPipeAndPassReceiver(),
       std::make_unique<chrome::ContentSettingsManagerDelegate>());
-  mojo::PendingRemote<chrome::mojom::BoundSessionRequestThrottledHandler>
-      bound_session_request_throttled_handler;
+  mojo::PendingRemote<chrome::mojom::BoundSessionRequestThrottledListener>
+      bound_session_request_throttled_listener;
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
   if (bound_session_cookie_refresh_service_) {
     bound_session_cookie_refresh_service_
-        ->AddBoundSessionRequestThrottledHandlerReceiver(
-            bound_session_request_throttled_handler
+        ->AddBoundSessionRequestThrottledListenerReceiver(
+            bound_session_request_throttled_listener
                 .InitWithNewPipeAndPassReceiver());
   }
 #endif
   renderer_configuration->SetInitialConfiguration(
       is_off_the_record_, std::move(chromeos_listener_receiver),
       std::move(content_settings_manager),
-      std::move(bound_session_request_throttled_handler));
+      std::move(bound_session_request_throttled_listener));
 
   renderer_configuration->SetConfiguration(CreateRendererDynamicParams());
 }
@@ -198,14 +202,22 @@ void RendererUpdater::OnSessionRestoreStateChanged(
 }
 #endif
 
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-chrome::mojom::BoundSessionThrottlerParamsPtr
-RendererUpdater::GetBoundSessionThrottlerParams() const {
-  if (bound_session_cookie_refresh_service_) {
-    return bound_session_cookie_refresh_service_
-        ->GetBoundSessionThrottlerParams();
+void RendererUpdater::OnPrimaryAccountChanged(
+    const signin::PrimaryAccountChangeEvent& event) {
+  if (event.GetEventTypeFor(signin::ConsentLevel::kSync) ==
+      signin::PrimaryAccountChangeEvent::Type::kNone) {
+    return;
   }
-  return chrome::mojom::BoundSessionThrottlerParamsPtr();
+  UpdateAllRenderers();
+}
+
+#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
+chrome::mojom::BoundSessionParamsPtr RendererUpdater::GetBoundSessionParams()
+    const {
+  if (bound_session_cookie_refresh_service_) {
+    return bound_session_cookie_refresh_service_->GetBoundSessionParams();
+  }
+  return chrome::mojom::BoundSessionParamsPtr();
 }
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 
@@ -227,7 +239,7 @@ chrome::mojom::DynamicParamsPtr RendererUpdater::CreateRendererDynamicParams()
     const {
   return chrome::mojom::DynamicParams::New(
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-      GetBoundSessionThrottlerParams(),
+      GetBoundSessionParams(),
 #endif
       force_google_safesearch_.GetValue(), force_youtube_restrict_.GetValue(),
       allowed_domains_for_apps_.GetValue());

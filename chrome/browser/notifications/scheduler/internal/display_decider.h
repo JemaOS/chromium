@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/notifications/scheduler/public/notification_scheduler_types.h"
 
 namespace base {
@@ -32,9 +31,8 @@ struct SchedulerConfig;
 // All operations should be done on the main thread.
 class DisplayDecider {
  public:
-  using Notifications = std::map<
-      SchedulerClientType,
-      std::vector<raw_ptr<const NotificationEntry, VectorExperimental>>>;
+  using Notifications =
+      std::map<SchedulerClientType, std::vector<const NotificationEntry*>>;
   using ClientStates = std::map<SchedulerClientType, const ClientState*>;
   using Results = std::set<std::string>;
 

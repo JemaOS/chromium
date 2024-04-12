@@ -49,7 +49,7 @@ class MODULES_EXPORT MediaStreamTrackProcessor : public ScriptWrappable {
   // exist.
   void CloseSources();
 
-  MediaStreamTrack* InputTrack() { return input_track_.Get(); }
+  MediaStreamTrack* InputTrack() { return input_track_; }
 
   void Trace(Visitor* visitor) const override;
 

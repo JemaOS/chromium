@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
-#include <utility>
-
 #include "ui/views/view_targeter.h"
 
 #include "ui/events/event_target.h"
@@ -16,11 +13,6 @@ namespace views {
 
 ViewTargeter::ViewTargeter(ViewTargeterDelegate* delegate)
     : delegate_(delegate) {
-  DCHECK(delegate_);
-}
-
-ViewTargeter::ViewTargeter(std::unique_ptr<ViewTargeterDelegate> delegate)
-    : owned_delegate_(std::move(delegate)), delegate_(owned_delegate_.get()) {
   DCHECK(delegate_);
 }
 

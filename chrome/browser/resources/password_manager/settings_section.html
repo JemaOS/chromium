@@ -44,11 +44,6 @@
     border-bottom-left-radius: inherit;
     border-bottom-right-radius: inherit;
   }
-
-  /* Hide the default icon element.*/
-  cr-link-row[hide-icon]::part(icon) {
-    display: none;
-  }
 </style>
 <h2 class="page-title">$i18n{settings}</h2>
 <div class="card">
@@ -86,23 +81,14 @@
       </pref-toggle-button>
     </template>
   </if>
+  <template is="dom-if" if="[[isEligibleForAccountStorage]]">
     <pref-toggle-button id="accountStorageToggle" class="hr"
-        hidden="[[!isEligibleForAccountStorage]]"
         label="$i18n{accountStorageToggleLabel}"
-        sub-label="[[getToggleSubLabelForAccountStorageOptIn_(accountEmail)]]"
+        sub-label="[[accountEmail]]"
         checked="[[isAccountStoreUser]]"
         change-requires-validation
         on-validate-and-change-pref="changeAccountStorageOptIn_">
     </pref-toggle-button>
-  <template is="dom-if"
-      if="[[shouldShowMovePasswordsEntry_(isAccountStoreUser, passwordsOnDevice_)]]"
-      restamp>
-    <cr-link-row class="cr-row" non-clickable label="[[movePasswordsLabel_]]"
-        sub-label="$i18n{movePasswordsInSettingsSubLabel}" hide-icon>
-      <cr-button id="movePasswordsButton" on-click="onMovePasswordsClicked_">
-          $i18n{moveSinglePasswordButton}
-      </cr-button>
-    </cr-link-row>
   </template>
   <cr-link-row id="trustedVaultBanner" class="cr-row"
       label="[[getTrustedVaultBannerTitle_(trustedVaultBannerState_)]]"
@@ -120,24 +106,12 @@
   <template is="dom-if" if="[[hasPasswordsToExport_]]" restamp>
     <passwords-exporter></passwords-exporter>
   </template>
-  <template is="dom-if" if="[[canAddShortcut_]]"
-      on-dom-change="onShortcutBannerDomChanged_" restamp>
+  <template is="dom-if" if="[[canAddShortcut_]]">
     <cr-link-row id="addShortcutBanner" class="cr-row settings-cr-link-row"
         on-click="onAddShortcutClick_" label="$i18n{addShortcut}"
         sub-label="$i18n{addShortcutDescription}" role-description="button">
     </cr-link-row>
   </template>
-  <if expr="is_macosx">
-    <template is="dom-if" if="[[createPasskeysInICloudKeychainToggleVisible_]]"
-              restamp>
-      <pref-toggle-button id="createPasskeysInICloudKeychainRow" class="hr"
-          label="$i18n{createPasskeysInICloudKeychainLabel}"
-          sub-label="$i18n{createPasskeysInICloudKeychainSubLabel}"
-          on-click="onCreatePasskeysInICloudKeychainClick_"
-          pref="{{prefs.webauthn.create_in_icloud_keychain}}">
-      </pref-link-row>
-    </template>
-  </if>
   <if expr="is_win or is_macosx">
     <template is="dom-if" if="[[hasPasskeys_]]" restamp>
       <cr-link-row id="managePasskeysRow" external
@@ -147,35 +121,26 @@
     </template>
   </if>
 </div>
-<div hidden="[[!blockedSites_.length]]">
-  <h3 id="blockedSitesTitle" class="page-title">$i18n{blockedSitesTitle}</h3>
-  <div class="card" id="blockedSites">
-    <div class="flex-centered single-line-label">
-      <div id="blockedSitesHeader" class="cr-secondary-text label">
-        $i18n{blockedSitesDescription}
-      </div>
-    </div>
-    <div id="blockedSitesList" class="hr">
-      <template is="dom-repeat" items="[[blockedSites_]]">
-        <div class="flex-centered">
-          <site-favicon class="favicon" domain="[[item.urls.link]]">
-          </site-favicon>
-          <div class="blocked-site-content flex-centered" first$="[[!index]]">
-            <div class="label site-url">[[item.urls.shown]]</div>
-            <cr-icon-button class="icon-clear" id="removeBlockedValueButton"
-                on-click="onRemoveBlockedSiteClick_"
-                title="$i18n{deletePassword}"
-                aria-label="[[getAriaLabelForBlockedSite_(item)]]">
-            </cr-icon-button>
-          </div>
-        </div>
-      </template>
+<h3 id="blockedSitesTitle" class="page-title">$i18n{blockedSitesTitle}</h3>
+<div class="card" id="blockedSites">
+  <div class="flex-centered single-line-label">
+    <div id="blockedSitesHeader" class="cr-secondary-text label">
+      [[getBlockedSitesDescription_(blockedSites_)]]
     </div>
   </div>
+  <div id="blockedSitesList" class="hr" hidden="[[!blockedSites_.length]]">
+    <template is="dom-repeat" items="[[blockedSites_]]">
+      <div class="flex-centered">
+        <site-favicon class="favicon" domain="[[item.urls.link]]">
+        </site-favicon>
+        <div class="blocked-site-content flex-centered" first$="[[!index]]">
+          <div class="label site-url">[[item.urls.shown]]</div>
+          <cr-icon-button class="icon-clear" id="removeBlockedValueButton"
+              on-click="onRemoveBlockedSiteClick_" title="$i18n{deletePassword}"
+              aria-label="[[getAriaLabelForBlockedSite_(item)]]">
+          </cr-icon-button>
+        </div>
+      </div>
+    </template>
+  </div>
 </div>
-<template is="dom-if" if="[[showMovePasswordsDialog_]]" restamp>
-  <move-passwords-dialog on-close="onMovePasswordsDialogClose_"
-      id="movePasswordsDialog" passwords="[[passwordsOnDevice_]]"
-      trigger="[[getMovePasswordsDialogTrigger_()]]">
-  </move-passwords-dialog>
-</template>

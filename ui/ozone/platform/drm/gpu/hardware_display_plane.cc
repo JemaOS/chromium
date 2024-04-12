@@ -193,14 +193,11 @@ void HardwareDisplayPlane::InitializeProperties(DrmDevice* drm) {
                         &properties_.in_formats);
   GetDrmPropertyForName(drm, props.get(), "IN_FENCE_FD",
                         &properties_.in_fence_fd);
+  GetDrmPropertyForName(drm, props.get(), "PLANE_CTM", &properties_.plane_ctm);
   GetDrmPropertyForName(drm, props.get(), "COLOR_ENCODING",
                         &properties_.plane_color_encoding);
   GetDrmPropertyForName(drm, props.get(), "COLOR_RANGE",
                         &properties_.plane_color_range);
-  if (display::features::IsPanelSelfRefresh2Enabled()) {
-    GetDrmPropertyForName(drm, props.get(), "FB_DAMAGE_CLIPS",
-                          &properties_.plane_fb_damage_clips);
-  }
 }
 
 }  // namespace ui

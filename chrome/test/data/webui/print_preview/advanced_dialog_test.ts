@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {PrintPreviewAdvancedSettingsDialogElement, PrintPreviewModelElement} from 'chrome://print/print_preview.js';
-import {Destination, DestinationOrigin} from 'chrome://print/print_preview.js';
+import {Destination, DestinationOrigin, PrintPreviewAdvancedSettingsDialogElement, PrintPreviewModelElement} from 'chrome://print/print_preview.js';
 import {keyEventOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-interactions.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -12,7 +11,21 @@ import {eventToPromise} from 'chrome://webui-test/test_util.js';
 
 import {getCddTemplateWithAdvancedSettings} from './print_preview_test_utils.js';
 
-suite('AdvancedDialogTest', function() {
+const advanced_dialog_test = {
+  suiteName: 'AdvancedDialogTest',
+  TestNames: {
+    AdvancedSettings1Option: 'advanced settings 1 option',
+    AdvancedSettings2Options: 'advanced settings 2 options',
+    AdvancedSettingsApply: 'advanced settings apply',
+    AdvancedSettingsApplyWithEnter: 'advanced settings apply with enter',
+    AdvancedSettingsClose: 'advanced settings close',
+    AdvancedSettingsFilter: 'advanced settings filter',
+  },
+};
+
+Object.assign(window, {advanced_dialog_test: advanced_dialog_test});
+
+suite(advanced_dialog_test.suiteName, function() {
   let dialog: PrintPreviewAdvancedSettingsDialogElement;
   let destination: Destination;
   const printerId: string = 'FooDevice';
@@ -81,14 +94,14 @@ suite('AdvancedDialogTest', function() {
 
   // Tests that the search box does not appear when there is only one option,
   // and that the vendor item is correctly displayed.
-  test('AdvancedSettings1Option', function() {
+  test(advanced_dialog_test.TestNames.AdvancedSettings1Option, function() {
     setupDialog(1);
     verifyListWithItemCount(1);
   });
 
   // Tests that the search box appears when there are two options, and that
   // the items are correctly displayed.
-  test('AdvancedSettings2Options', function() {
+  test(advanced_dialog_test.TestNames.AdvancedSettings2Options, function() {
     setupDialog(2);
     verifyListWithItemCount(2);
   });
@@ -96,7 +109,7 @@ suite('AdvancedDialogTest', function() {
   // Tests that the advanced settings dialog correctly updates the settings
   // value for vendor items when the apply button is clicked.
   test(
-      'AdvancedSettingsApply', function() {
+      advanced_dialog_test.TestNames.AdvancedSettingsApply, function() {
         setupDialog(3);
         setItemValues();
 
@@ -120,7 +133,8 @@ suite('AdvancedDialogTest', function() {
   // Tests that the advanced settings dialog updates the settings value for
   // vendor items if Enter is pressed on a cr-input.
   test(
-      'AdvancedSettingsApplyWithEnter', function() {
+      advanced_dialog_test.TestNames.AdvancedSettingsApplyWithEnter,
+      function() {
         setupDialog(3);
         setItemValues();
 
@@ -149,7 +163,7 @@ suite('AdvancedDialogTest', function() {
   // Tests that the advanced settings dialog does not update the settings
   // value for vendor items when the close button is clicked.
   test(
-      'AdvancedSettingsClose', function() {
+      advanced_dialog_test.TestNames.AdvancedSettingsClose, function() {
         setupDialog(3);
         setItemValues();
 
@@ -172,7 +186,7 @@ suite('AdvancedDialogTest', function() {
   // Tests that the dialog correctly shows and hides settings based on the
   // value of the search query.
   test(
-      'AdvancedSettingsFilter', function() {
+      advanced_dialog_test.TestNames.AdvancedSettingsFilter, function() {
         setupDialog(3);
         const searchBox = dialog.$.searchBox;
         const items = dialog.shadowRoot!.querySelectorAll(

@@ -41,11 +41,11 @@ export function start(): Promise<void> {
 
     let tickCounter = state.get(state.State.TIMER_10SEC) ? 10 : 3;
     const sounds = new Map([
-      [1, 'tickFinal'],
-      [2, 'tickIncrement'],
-      [3, 'tickIncrement'],
-      [tickCounter, 'tickStart'],
-    ] as const);
+      [1, '#sound-tick-final'],
+      [2, '#sound-tick-inc'],
+      [3, '#sound-tick-inc'],
+      [tickCounter, '#sound-tick-start'],
+    ]);
 
     function onTimerTick() {
       if (tickCounter === 0) {
@@ -53,10 +53,12 @@ export function start(): Promise<void> {
       } else {
         const sound = sounds.get(tickCounter);
         if (sound !== undefined) {
-          play(sound);
+          // Not waiting for audio to finish playing.
+          void play(dom.get(sound, HTMLAudioElement));
         }
         tickMsg.textContent = tickCounter + '';
-        animate.play(tickMsg);
+        // Not waiting for animation to finish playing.
+        void animate.play(tickMsg);
         tickTimeout = setTimeout(onTimerTick, 1000);
         tickCounter--;
       }
@@ -70,6 +72,8 @@ export function start(): Promise<void> {
  * Cancels active timer ticking if applicable.
  */
 export function cancel(): void {
-  doCancel?.();
-  doCancel = null;
+  if (doCancel) {
+    doCancel();
+    doCancel = null;
+  }
 }

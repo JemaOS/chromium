@@ -71,7 +71,6 @@
 #include "third_party/blink/renderer/core/html_element_factory.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input_type_names.h"
-#include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/svg/svg_image_element.h"
@@ -83,8 +82,6 @@
 #include "third_party/blink/renderer/platform/wtf/text/unicode.h"
 
 namespace blink {
-
-using mojom::blink::FormControlType;
 
 namespace {
 
@@ -197,19 +194,10 @@ static bool HasEditableLevel(const Node& node, EditableLevel editable_level) {
   for (const Node& ancestor : NodeTraversal::InclusiveAncestorsOf(node)) {
     if (!(ancestor.IsHTMLElement() || ancestor.IsDocumentNode()))
       continue;
-    // An inert subtree should not contain any content or controls which are
-    // critical to understanding or using aspects of the page which are not in
-    // the inert state. Content in an inert subtree will not be perceivable by
-    // all users, or interactive. See
-    // https://html.spec.whatwg.org/multipage/interaction.html#the-inert-attribute.
-    // To prevent the invisible inert element being overlooked, the
-    // inert attribute of the element is initially assessed. See
-    // https://issues.chromium.org/issues/41490809.
-    if (RuntimeEnabledFeatures::InertElementNonEditableEnabled()) {
-      const Element* element = DynamicTo<Element>(ancestor);
-      if (element && element->IsInertRoot()) {
-        return false;
-      }
+
+    if (auto* element = DynamicTo<Element>(&ancestor)) {
+      if (element->editContext())
+          return true;
     }
 
     const ComputedStyle* style = ancestor.GetComputedStyle();
@@ -520,32 +508,16 @@ PositionTemplate<Strategy> FirstEditablePositionAfterPositionInRootAlgorithm(
       !editable_position.AnchorNode()->IsDescendantOf(&highest_root))
     return PositionTemplate<Strategy>();
 
-  // If `non_editable_node` is the last child of
-  // `editable_position.AnchorNode()`, obtain the next sibling position.
-  // - If we do not obtain the next sibling position, we will be unable to
-  //   access the next paragraph within the `InsertListCommand::DoApply` while
-  //   loop. See http://crbug.com/571420 for more details.
-  // - If `non_editable_node` is not the last child, we will bypass the next
-  //   editable sibling position. See http://crbug.com/1334557 for more details.
-  bool need_obtain_next =
-      RuntimeEnabledFeatures::GetNextSiblingPositionWhenLastChildEnabled()
-          ? non_editable_node && editable_position.AnchorNode() &&
-                non_editable_node == editable_position.AnchorNode()->lastChild()
-          : non_editable_node && non_editable_node->IsDescendantOf(
-                                     editable_position.AnchorNode());
-  if (need_obtain_next) {
+  // If |editablePosition| has the non-editable child skipped, get the next
+  // sibling position. If not, we can't get the next paragraph in
+  // InsertListCommand::doApply's while loop. See http://crbug.com/571420
+  if (non_editable_node &&
+      non_editable_node->IsDescendantOf(editable_position.AnchorNode())) {
     // Make sure not to move out of |highest_root|
     const PositionTemplate<Strategy> boundary =
         PositionTemplate<Strategy>::LastPositionInNode(highest_root);
-    // `NextVisuallyDistinctCandidate` is similar to `NextCandidate`, but
-    // it skips the next visually equivalent of `editable_position`.
-    // `editable_position` is already "visually distinct" relative to
-    // `position`, so use `NextCandidate` here.
-    // See http://crbug.com/1406207 for more details.
     const PositionTemplate<Strategy> next_candidate =
-        RuntimeEnabledFeatures::NextSiblingPositionUseNextCandidateEnabled()
-            ? NextCandidate(editable_position)
-            : NextVisuallyDistinctCandidate(editable_position);
+        NextVisuallyDistinctCandidate(editable_position);
     editable_position = next_candidate.IsNotNull()
                             ? std::min(boundary, next_candidate)
                             : boundary;
@@ -1174,8 +1146,7 @@ static HTMLSpanElement* CreateTabSpanElement(Document& document,
                                              Text* tab_text_node) {
   // Make the span to hold the tab.
   auto* span_element = MakeGarbageCollected<HTMLSpanElement>(document);
-  span_element->setAttribute(html_names::kStyleAttr,
-                             AtomicString("white-space:pre"));
+  span_element->setAttribute(html_names::kStyleAttr, "white-space:pre");
 
   // Add tab text to that span.
   if (!tab_text_node)
@@ -1335,7 +1306,7 @@ bool IsMailHTMLBlockquoteElement(const Node* node) {
     return false;
 
   return element->HasTagName(html_names::kBlockquoteTag) &&
-         element->getAttribute(html_names::kTypeAttr) == "cite";
+         element->getAttribute("type") == "cite";
 }
 
 bool ElementCannotHaveEndTag(const Node& node) {
@@ -1475,11 +1446,10 @@ bool IsRenderedAsNonInlineTableImageOrHR(const Node* node) {
   if (!node)
     return false;
   LayoutObject* layout_object = node->GetLayoutObject();
-  if (!layout_object || layout_object->IsInline()) {
-    return false;
-  }
-  return layout_object->IsTable() || layout_object->IsImage() ||
-         layout_object->IsHR();
+  return layout_object &&
+         ((layout_object->IsTable() && !layout_object->IsInline()) ||
+          (layout_object->IsImage() && !layout_object->IsInline()) ||
+          layout_object->IsHR());
 }
 
 bool IsNonTableCellHTMLBlockElement(const Node* node) {
@@ -1509,8 +1479,8 @@ bool IsBlockFlowElement(const Node& node) {
 bool IsInPasswordField(const Position& position) {
   TextControlElement* text_control = EnclosingTextControl(position);
   auto* html_input_element = DynamicTo<HTMLInputElement>(text_control);
-  return html_input_element && html_input_element->FormControlType() ==
-                                   FormControlType::kInputPassword;
+  return html_input_element &&
+         html_input_element->type() == input_type_names::kPassword;
 }
 
 // If current position is at grapheme boundary, return 0; otherwise, return the
@@ -1545,6 +1515,17 @@ gfx::QuadF LocalToAbsoluteQuadOf(const LocalCaretRect& caret_rect) {
   return caret_rect.layout_object->LocalRectToAbsoluteQuad(caret_rect.rect);
 }
 
+InputEvent::EventCancelable InputTypeIsCancelable(
+    InputEvent::InputType input_type) {
+  using InputType = InputEvent::InputType;
+  switch (input_type) {
+    case InputType::kInsertCompositionText:
+      return InputEvent::EventCancelable::kNotCancelable;
+    default:
+      return InputEvent::EventCancelable::kIsCancelable;
+  }
+}
+
 const StaticRangeVector* TargetRangesForInputEvent(const Node& node) {
   // TODO(editing-dev): The use of UpdateStyleAndLayout
   // needs to be audited. see http://crbug.com/590369 for more details.
@@ -1571,7 +1552,8 @@ DispatchEventResult DispatchBeforeInputInsertText(
   // TODO(editing-dev): Pass appropriate |ranges| after it's defined on spec.
   // http://w3c.github.io/editing/input-events.html#dom-inputevent-inputtype
   InputEvent* before_input_event = InputEvent::CreateBeforeInput(
-      input_type, data, InputEvent::EventIsComposing::kNotComposing,
+      input_type, data, InputTypeIsCancelable(input_type),
+      InputEvent::EventIsComposing::kNotComposing,
       ranges ? ranges : TargetRangesForInputEvent(*target));
   return target->DispatchEvent(*before_input_event);
 }
@@ -1583,8 +1565,8 @@ DispatchEventResult DispatchBeforeInputEditorCommand(
   if (!target)
     return DispatchEventResult::kNotCanceled;
   InputEvent* before_input_event = InputEvent::CreateBeforeInput(
-      input_type, g_null_atom, InputEvent::EventIsComposing::kNotComposing,
-      ranges);
+      input_type, g_null_atom, InputTypeIsCancelable(input_type),
+      InputEvent::EventIsComposing::kNotComposing, ranges);
   return target->DispatchEvent(*before_input_event);
 }
 
@@ -1605,14 +1587,16 @@ DispatchEventResult DispatchBeforeInputDataTransfer(
 
   if (IsRichlyEditable(*target) || !data_transfer) {
     before_input_event = InputEvent::CreateBeforeInput(
-        input_type, data_transfer, InputEvent::EventIsComposing::kNotComposing,
+        input_type, data_transfer, InputTypeIsCancelable(input_type),
+        InputEvent::EventIsComposing::kNotComposing,
         TargetRangesForInputEvent(*target));
   } else {
     const String& data = data_transfer->getData(kMimeTypeTextPlain);
     // TODO(editing-dev): Pass appropriate |ranges| after it's defined on spec.
     // http://w3c.github.io/editing/input-events.html#dom-inputevent-inputtype
     before_input_event = InputEvent::CreateBeforeInput(
-        input_type, data, InputEvent::EventIsComposing::kNotComposing,
+        input_type, data, InputTypeIsCancelable(input_type),
+        InputEvent::EventIsComposing::kNotComposing,
         TargetRangesForInputEvent(*target));
   }
   return target->DispatchEvent(*before_input_event);
@@ -1664,7 +1648,8 @@ static scoped_refptr<Image> ImageFromNode(const Node& node) {
 
   if (layout_object->IsCanvas()) {
     return To<HTMLCanvasElement>(const_cast<Node&>(node))
-        .Snapshot(FlushReason::kClipboard, kFrontBuffer);
+        .Snapshot(CanvasResourceProvider::FlushReason::kClipboard,
+                  kFrontBuffer);
   }
 
   if (!layout_object->IsImage())
@@ -1690,14 +1675,6 @@ AtomicString GetUrlStringFromNode(const Node& node) {
   return AtomicString();
 }
 
-void WriteImageToClipboard(SystemClipboard& system_clipboard,
-                           const scoped_refptr<Image>& image,
-                           const KURL& url_string,
-                           const String& title) {
-  system_clipboard.WriteImageWithTag(image.get(), url_string, title);
-  system_clipboard.CommitWrite();
-}
-
 void WriteImageNodeToClipboard(SystemClipboard& system_clipboard,
                                const Node& node,
                                const String& title) {
@@ -1706,7 +1683,8 @@ void WriteImageNodeToClipboard(SystemClipboard& system_clipboard,
     return;
   const KURL url_string = node.GetDocument().CompleteURL(
       StripLeadingAndTrailingHTMLSpaces(GetUrlStringFromNode(node)));
-  WriteImageToClipboard(system_clipboard, image, url_string, title);
+  system_clipboard.WriteImageWithTag(image.get(), url_string, title);
+  system_clipboard.CommitWrite();
 }
 
 Element* FindEventTargetFrom(LocalFrame& frame,

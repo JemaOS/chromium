@@ -12,6 +12,7 @@
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/view.h"
 
+class OmniboxEditModel;
 class OmniboxPopupViewViews;
 class OmniboxSuggestionRowButton;
 
@@ -21,19 +22,16 @@ class Button;
 
 // A view to contain the button row within a result view.
 class OmniboxSuggestionButtonRowView : public views::View {
-  METADATA_HEADER(OmniboxSuggestionButtonRowView, views::View)
-
  public:
-  explicit OmniboxSuggestionButtonRowView(OmniboxPopupViewViews* popup_view,
+  METADATA_HEADER(OmniboxSuggestionButtonRowView);
+  explicit OmniboxSuggestionButtonRowView(OmniboxPopupViewViews* view,
+                                          OmniboxEditModel* model,
                                           int model_index);
   OmniboxSuggestionButtonRowView(const OmniboxSuggestionButtonRowView&) =
       delete;
   OmniboxSuggestionButtonRowView& operator=(
       const OmniboxSuggestionButtonRowView&) = delete;
   ~OmniboxSuggestionButtonRowView() override;
-
-  // views::View:
-  void Layout(PassKey) override;
 
   // Called when the theme state may have changed.
   void SetThemeState(OmniboxPartState theme_state);
@@ -62,13 +60,15 @@ class OmniboxSuggestionButtonRowView : public views::View {
   void SetPillButtonVisibility(OmniboxSuggestionRowButton* button,
                                OmniboxPopupSelection::LineState state);
 
-  void ButtonPressed(const OmniboxPopupSelection selection,
+  void ButtonPressed(OmniboxPopupSelection::LineState state,
                      const ui::Event& event);
 
-  const raw_ptr<OmniboxPopupViewViews> popup_view_;
+  const raw_ptr<OmniboxPopupViewViews> popup_contents_view_;
+  raw_ptr<OmniboxEditModel> model_;
   size_t const model_index_;
 
   raw_ptr<OmniboxSuggestionRowButton> keyword_button_ = nullptr;
+  raw_ptr<OmniboxSuggestionRowButton> tab_switch_button_ = nullptr;
 
   std::vector<raw_ptr<OmniboxSuggestionRowButton>> action_buttons_;
 

@@ -2,20 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as SourcesModule from 'devtools/panels/sources/sources.js';
-
 (async function() {
   TestRunner.addResult(`Tests UISourceCode display name.\n`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
 
   async function dumpUISourceCodeDisplayName(url) {
     var uiSourceCode = await SourcesTestRunner.addScriptUISourceCode(url, '');
     TestRunner.addResult(
         'UISourceCode display name for url "' + url + '" is "' +
-        SourcesModule.TabbedEditorContainer.TabbedEditorContainer.prototype.titleForFile(uiSourceCode) + '".');
+        Sources.TabbedEditorContainer.prototype.titleForFile(uiSourceCode) + '".');
   }
 
   const baseURL = 'http://localhost:8080/folder/';

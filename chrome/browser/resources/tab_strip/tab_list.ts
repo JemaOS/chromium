@@ -6,22 +6,19 @@ import './strings.m.js';
 import './tab.js';
 import './tab_group.js';
 
-import {ColorChangeUpdater} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {startColorChangeUpdater} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {CustomElement} from 'chrome://resources/js/custom_element.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
 import {FocusOutlineManager} from 'chrome://resources/js/focus_outline_manager.js';
-import {isRTL} from 'chrome://resources/js/util.js';
+import {isRTL} from 'chrome://resources/js/util_ts.js';
 
-import type {DragManagerDelegate} from './drag_manager.js';
-import {DragManager} from './drag_manager.js';
+import {DragManager, DragManagerDelegate} from './drag_manager.js';
 import {isTabElement, TabElement} from './tab.js';
-import type {TabGroupElement} from './tab_group.js';
-import {isDragHandle, isTabGroupElement} from './tab_group.js';
+import {isDragHandle, isTabGroupElement, TabGroupElement} from './tab_group.js';
 import {getTemplate} from './tab_list.html.js';
-import type {Tab, TabGroupVisualData} from './tab_strip.mojom-webui.js';
-import type {TabsApiProxy} from './tabs_api_proxy.js';
-import {TabsApiProxyImpl} from './tabs_api_proxy.js';
+import {Tab, TabGroupVisualData} from './tab_strip.mojom-webui.js';
+import {TabsApiProxy, TabsApiProxyImpl} from './tabs_api_proxy.js';
 
 /**
  * The amount of padding to leave between the edge of the screen and the active
@@ -265,7 +262,7 @@ export class TabListElement extends CustomElement implements
     const dragManager = new DragManager(this);
     dragManager.startObserving();
 
-    ColorChangeUpdater.forDocument().start();
+    startColorChangeUpdater();
   }
 
   private addAnimationPromise_(promise: Promise<void>) {
@@ -665,8 +662,7 @@ export class TabListElement extends CustomElement implements
   }
 
   placeTabElement(
-      element: TabElement, index: number, pinned: boolean,
-      groupId: string|null) {
+      element: TabElement, index: number, pinned: boolean, groupId?: string) {
     const isInserting = !element.isConnected;
 
     const previousIndex = isInserting ? -1 : this.getIndexOfTab(element);
@@ -783,8 +779,7 @@ export class TabListElement extends CustomElement implements
   }
 
   private updateTabElementDomPosition_(
-      element: TabElement, index: number, pinned: boolean,
-      groupId: string|null) {
+      element: TabElement, index: number, pinned: boolean, groupId?: string) {
     // Remove the element if it already exists in the DOM. This simplifies
     // the way indices work as it does not have to count its old index in
     // the initial layout of the DOM.

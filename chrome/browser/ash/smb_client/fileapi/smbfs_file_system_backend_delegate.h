@@ -11,7 +11,8 @@
 
 class Profile;
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 class SmbFsAsyncFileUtil;
 
@@ -42,6 +43,7 @@ class SmbFsFileSystemBackendDelegate : public FileSystemBackendDelegate {
   std::unique_ptr<SmbFsAsyncFileUtil> async_file_util_;
 };
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_SMB_CLIENT_FILEAPI_SMBFS_FILE_SYSTEM_BACKEND_DELEGATE_H_

@@ -36,9 +36,12 @@ bool InSameTransformCompositingBoundary(
   if (composited_ancestor1 != composited_ancestor2) {
     return false;
   }
-  // There may be indirectly composited scroll translations below the common
-  // nearest directly composited ancestor. Check if t1 and t2 have the same
-  // nearest composited scroll translation.
+  if (!RuntimeEnabledFeatures::CompositeScrollAfterPaintEnabled()) {
+    return true;
+  }
+  // In CompositeScrollAfterPaint, there may be indirectly composited scroll
+  // translations below the common nearest directly composited ancestor.
+  // Check if t1 and t2 have the same nearest composited scroll translation.
   const auto& scroll_translation1 = t1.NearestScrollTranslationNode();
   const auto& scroll_translation2 = t2.NearestScrollTranslationNode();
   if (&scroll_translation1 == &scroll_translation2) {
@@ -83,7 +86,7 @@ bool PropertyTreeStateOrAlias::Changed(
          Effect().Changed(change, relative_to, &Transform());
 }
 
-std::optional<PropertyTreeState> PropertyTreeState::CanUpcastWith(
+absl::optional<PropertyTreeState> PropertyTreeState::CanUpcastWith(
     const PropertyTreeState& guest,
     IsCompositedScrollFunction is_composited_scroll) const {
   // A number of criteria need to be met:
@@ -105,11 +108,11 @@ std::optional<PropertyTreeState> PropertyTreeState::CanUpcastWith(
   } else {
     if (!InSameTransformCompositingBoundary(Transform(), guest.Transform(),
                                             is_composited_scroll)) {
-      return std::nullopt;
+      return absl::nullopt;
     }
     if (Transform().IsBackfaceHidden() !=
         guest.Transform().IsBackfaceHidden()) {
-      return std::nullopt;
+      return absl::nullopt;
     }
     upcast_transform =
         &Transform().LowestCommonAncestor(guest.Transform()).Unalias();
@@ -125,7 +128,7 @@ std::optional<PropertyTreeState> PropertyTreeState::CanUpcastWith(
         !ClipChainInTransformCompositingBoundary(guest.Clip(), *upcast_clip,
                                                  *upcast_transform,
                                                  is_composited_scroll)) {
-      return std::nullopt;
+      return absl::nullopt;
     }
   }
 

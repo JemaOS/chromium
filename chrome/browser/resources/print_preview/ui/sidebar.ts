@@ -15,7 +15,6 @@ import './duplex_settings.js';
 import './header.js';
 import './layout_settings.js';
 import './media_size_settings.js';
-import './media_type_settings.js';
 import './margins_settings.js';
 import './more_settings.js';
 import './other_options_settings.js';
@@ -37,12 +36,11 @@ import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {DarkModeMixin} from '../dark_mode_mixin.js';
-import type {Destination} from '../data/destination.js';
-import type {Error} from '../data/state.js';
-import {State} from '../data/state.js';
+import {Destination} from '../data/destination.js';
+import {Error, State} from '../data/state.js';
 import {MetricsContext, PrintSettingsUiBucket} from '../metrics.js';
 
-import type {DestinationState, PrintPreviewDestinationSettingsElement} from './destination_settings.js';
+import {DestinationState, PrintPreviewDestinationSettingsElement} from './destination_settings.js';
 import {SettingsMixin} from './settings_mixin.js';
 import {getTemplate} from './sidebar.html.js';
 
@@ -135,13 +133,6 @@ export class PrintPreviewSidebarElement extends PrintPreviewSidebarElementBase {
             'settings.duplex.available, settings.otherOptions.available, ' +
             'settings.vendorItems.available)',
       },
-
-      // <if expr="is_chromeos">
-      isPinValid_: {
-        type: Boolean,
-        value: true,
-      },
-      // </if>
     };
   }
 
@@ -158,9 +149,6 @@ export class PrintPreviewSidebarElement extends PrintPreviewSidebarElementBase {
   private settingsExpandedByUser_: boolean;
   private sheetCount_: number;
   private shouldShowMoreSettings_: boolean;
-  // <if expr="is_chromeos">
-  private isPinValid_: boolean;
-  // </if>
 
   /**
    * @param defaultPrinter The system default printer ID.
@@ -176,14 +164,11 @@ export class PrintPreviewSidebarElement extends PrintPreviewSidebarElementBase {
       pdfPrinterDisabled: boolean, isDriveMounted: boolean) {
     this.isInAppKioskMode_ = appKioskMode;
     pdfPrinterDisabled = this.isInAppKioskMode_ || pdfPrinterDisabled;
-
-    // 'Save to Google Drive' is almost the same as PDF printing. The only
-    // difference is the default location shown in the file picker when user
-    // clicks 'Save'. Therefore, we should disable the 'Save to Google Drive'
-    // destination if the user should be blocked from using PDF printing.
-    const saveToDriveDisabled = pdfPrinterDisabled || !isDriveMounted;
+    // If PDF printing is disabled, then Save to Drive also needs to be disabled
+    // on Chrome OS.
+    isDriveMounted = !pdfPrinterDisabled && isDriveMounted;
     this.$.destinationSettings.init(
-        defaultPrinter, pdfPrinterDisabled, saveToDriveDisabled,
+        defaultPrinter, pdfPrinterDisabled, isDriveMounted,
         serializedDestinationSelectionRulesStr);
   }
 

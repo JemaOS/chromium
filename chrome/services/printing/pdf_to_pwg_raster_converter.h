@@ -27,7 +27,6 @@ class PdfToPwgRasterConverter
                const PdfRenderSettings& pdf_settings,
                const PwgRasterSettings& pwg_raster_settings,
                ConvertCallback callback) override;
-  void SetUseSkiaRendererPolicy(bool use_skia) override;
 };
 
 }  // namespace printing

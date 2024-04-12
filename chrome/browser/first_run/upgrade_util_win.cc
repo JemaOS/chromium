@@ -17,7 +17,6 @@
 #include <string>
 
 #include "base/base_paths.h"
-#include "base/check.h"
 #include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -34,7 +33,6 @@
 #include "base/win/windows_version.h"
 #include "build/branding_buildflags.h"
 #include "chrome/browser/browser_process.h"
-#include "chrome/browser/chrome_process_singleton.h"
 #include "chrome/browser/first_run/upgrade_util.h"
 #include "chrome/browser/shell_integration.h"
 #include "chrome/browser/win/browser_util.h"
@@ -47,7 +45,7 @@
 #include "ui/base/ui_base_switches.h"
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-#include "chrome/updater/app/server/win/updater_legacy_idl.h"
+#include "google_update/google_update_idl.h"
 #endif
 
 namespace {
@@ -65,31 +63,16 @@ bool InvokeGoogleUpdateForRename() {
   // events below try to shine a light on each steps. crbug.com/1252004
   TRACE_EVENT0("startup", "upgrade_util::InvokeGoogleUpdateForRename");
 
-  // Chrome queries for the SxS IIDs first, with a fallback to the legacy IID,
-  // to make sure that marshaling loads the proxy/stub from the correct (HKLM)
-  // hive.
   Microsoft::WRL::ComPtr<IProcessLauncher> ipl;
   {
     TRACE_EVENT0("startup", "InvokeGoogleUpdateForRename CoCreateInstance");
-    Microsoft::WRL::ComPtr<IUnknown> unknown;
     HRESULT hr = ::CoCreateInstance(__uuidof(ProcessLauncherClass), nullptr,
-                                    CLSCTX_ALL, IID_PPV_ARGS(&unknown));
+                                    CLSCTX_ALL, IID_PPV_ARGS(&ipl));
     if (FAILED(hr)) {
       TRACE_EVENT0("startup",
                    "InvokeGoogleUpdateForRename CoCreateInstance failed");
       LOG(ERROR) << "CoCreate ProcessLauncherClass failed; hr = " << std::hex
                  << hr;
-      return false;
-    }
-    hr = unknown.CopyTo(__uuidof(IProcessLauncherSystem),
-                        IID_PPV_ARGS_Helper(&ipl));
-    if (FAILED(hr)) {
-      hr = unknown.As(&ipl);
-    }
-    if (FAILED(hr)) {
-      TRACE_EVENT0("startup",
-                   "InvokeGoogleUpdateForRename QueryInterface failed");
-      LOG(ERROR) << "QueryInterface failed; hr = " << std::hex << hr;
       return false;
     }
   }
@@ -177,10 +160,6 @@ bool SwapNewChromeExeIfPresent() {
 
   TRACE_EVENT0("startup", "upgrade_util::SwapNewChromeExeIfPresent");
 
-  // Renaming the chrome executable requires the process singleton to avoid
-  // any race condition.
-  CHECK(ChromeProcessSingleton::IsSingletonInstance());
-
   // If this is a system-level install, ask Google Update to launch an elevated
   // process to rename Chrome executables.
   if (install_static::IsSystemInstall())
@@ -240,10 +219,6 @@ bool DoUpgradeTasks(const base::CommandLine& command_line) {
   TRACE_EVENT0("startup", "upgrade_util::DoUpgradeTasks");
   // If there is no other instance already running then check if there is a
   // pending update and complete it by performing the swap and then relaunch.
-
-  // Upgrade tasks require the process singleton to avoid any race condition.
-  CHECK(ChromeProcessSingleton::IsSingletonInstance());
-
   bool did_swap = false;
   if (!browser_util::IsBrowserAlreadyRunning())
     did_swap = SwapNewChromeExeIfPresent();

@@ -25,8 +25,7 @@ class HasSecureWiFiConnectionRoutineTest : public ::testing::Test {
  public:
   HasSecureWiFiConnectionRoutineTest() {
     has_secure_wifi_connection_routine_ =
-        std::make_unique<HasSecureWiFiConnectionRoutine>(
-            mojom::RoutineCallSource::kDiagnosticsUI);
+        std::make_unique<HasSecureWiFiConnectionRoutine>();
   }
 
   HasSecureWiFiConnectionRoutineTest(

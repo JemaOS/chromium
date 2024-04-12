@@ -116,7 +116,7 @@ void SchedulerHelper::ReclaimMemory() {
   sequence_manager_->ReclaimMemory();
 }
 
-std::optional<base::sequence_manager::WakeUp> SchedulerHelper::GetNextWakeUp()
+absl::optional<base::sequence_manager::WakeUp> SchedulerHelper::GetNextWakeUp()
     const {
   CheckOnValidThread();
   DCHECK(sequence_manager_);
@@ -160,6 +160,14 @@ base::TimeTicks SchedulerHelper::NowTicks() const {
     return sequence_manager_->NowTicks();
   // We may need current time for tracing when shutting down worker thread.
   return base::TimeTicks::Now();
+}
+
+void SchedulerHelper::SetTimerSlack(base::TimerSlack timer_slack) {
+  if (sequence_manager_) {
+    static_cast<base::sequence_manager::internal::SequenceManagerImpl*>(
+        sequence_manager_)
+        ->SetTimerSlack(timer_slack);
+  }
 }
 
 bool SchedulerHelper::HasCPUTimingForEachTask() const {

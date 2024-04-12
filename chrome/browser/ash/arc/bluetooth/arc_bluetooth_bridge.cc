@@ -12,7 +12,6 @@
 #include <sys/socket.h>
 
 #include <iomanip>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -57,6 +56,7 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/platform/platform_handle.h"
 #include "mojo/public/cpp/system/platform_handle.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 // Enable VLOG level 1.
 #undef ENABLED_VLOG_LEVEL
@@ -152,12 +152,12 @@ arc::mojom::BluetoothGattStatus ConvertGattErrorCodeToStatus(
 // Example of identifier: /org/bluez/hci0/dev_E0_CF_65_8C_86_1A/service001a
 // Convert the last 4 characters of |identifier| to an
 // int, by interpreting them as hexadecimal digits.
-std::optional<uint16_t> ConvertGattIdentifierToId(
+absl::optional<uint16_t> ConvertGattIdentifierToId(
     const std::string identifier) {
   uint32_t result;
   if (identifier.size() < 4 ||
       !base::HexStringToUInt(identifier.substr(identifier.size() - 4), &result))
-    return std::nullopt;
+    return absl::nullopt;
   return result;
 }
 
@@ -167,7 +167,7 @@ template <class RemoteGattAttribute>
 arc::mojom::BluetoothGattDBElementPtr CreateGattDBElement(
     const arc::mojom::BluetoothGattDBAttributeType type,
     const RemoteGattAttribute* attribute) {
-  std::optional<uint16_t> id =
+  absl::optional<uint16_t> id =
       ConvertGattIdentifierToId(attribute->GetIdentifier());
   if (!id)
     return nullptr;
@@ -210,7 +210,7 @@ void OnGattOperationError(arc::ArcBluetoothBridge::GattStatusCallback callback,
 // ReadGattDescriptor.
 void OnGattRead(
     arc::ArcBluetoothBridge::GattReadCallback callback,
-    std::optional<device::BluetoothGattService::GattErrorCode> error_code,
+    absl::optional<device::BluetoothGattService::GattErrorCode> error_code,
     const std::vector<uint8_t>& result) {
   arc::mojom::BluetoothGattValuePtr gattValue =
       arc::mojom::BluetoothGattValue::New();
@@ -231,7 +231,7 @@ void OnGattServerRead(
     arc::mojom::BluetoothGattStatus status,
     const std::vector<uint8_t>& value) {
   if (status == arc::mojom::BluetoothGattStatus::GATT_SUCCESS) {
-    std::move(callback).Run(/*error_code=*/std::nullopt, value);
+    std::move(callback).Run(/*error_code=*/absl::nullopt, value);
   } else {
     std::move(callback).Run(BluetoothGattService::GattErrorCode::kFailed,
                             /*value=*/std::vector<uint8_t>());
@@ -255,12 +255,12 @@ bool IsGattOffsetValid(int offset) {
 
 // This is needed because Android only support UUID 16 bits in service data
 // section in advertising data
-std::optional<uint16_t> GetUUID16(const BluetoothUUID& uuid) {
+absl::optional<uint16_t> GetUUID16(const BluetoothUUID& uuid) {
   // Convert xxxxyyyy-xxxx-xxxx-xxxx-xxxxxxxxxxxx to int16 yyyy
   uint32_t result;
   if (uuid.canonical_value().size() < 8 ||
       !base::HexStringToUInt(uuid.canonical_value().substr(4, 4), &result))
-    return std::nullopt;
+    return absl::nullopt;
   return result;
 }
 
@@ -417,14 +417,14 @@ void ArcBluetoothBridge::DeviceChanged(BluetoothAdapter* adapter,
     return;
 
   std::string addr = device->GetAddress();
-  if (IsDiscoveringOrScanning() && discovered_devices_.insert(addr).second) {
+  if (discovered_devices_.insert(addr).second) {
     auto* bluetooth_instance = ARC_GET_INSTANCE_FOR_METHOD(
         arc_bridge_service_->bluetooth(), OnDeviceFound);
     if (bluetooth_instance) {
       bluetooth_instance->OnDeviceFound(
           GetDeviceProperties(mojom::BluetoothPropertyType::ALL, device));
     }
-  } else if (discovered_devices_.contains(addr)) {
+  } else {
     auto* bluetooth_instance = ARC_GET_INSTANCE_FOR_METHOD(
         arc_bridge_service_->bluetooth(), OnDevicePropertiesChanged);
     if (bluetooth_instance) {
@@ -561,15 +561,10 @@ void ArcBluetoothBridge::DeviceAdvertisementReceived(
   mojom::BluetoothAddressPtr addr =
       mojom::BluetoothAddress::From(device->GetAddress());
 
-  if ((IsDiscoveringOrScanning() &&
-       scanned_devices_.insert(device->GetAddress()).second) ||
-      scanned_devices_.contains(device->GetAddress())) {
-    auto* bluetooth_instance = ARC_GET_INSTANCE_FOR_METHOD(
-        arc_bridge_service_->bluetooth(), OnLEDeviceFound);
-    if (bluetooth_instance) {
-      bluetooth_instance->OnLEDeviceFound(std::move(addr), rssi, eir);
-    }
-  }
+  auto* bluetooth_instance = ARC_GET_INSTANCE_FOR_METHOD(
+      arc_bridge_service_->bluetooth(), OnLEDeviceFound);
+  if (bluetooth_instance)
+    bluetooth_instance->OnLEDeviceFound(std::move(addr), rssi, eir);
 }
 
 void ArcBluetoothBridge::DeviceConnectedStateChanged(BluetoothAdapter* adapter,
@@ -615,11 +610,6 @@ void ArcBluetoothBridge::OnGetServiceRecordsFinished(
     mojom::BluetoothAddressPtr remote_addr,
     const BluetoothUUID& target_uuid,
     const std::vector<bluez::BluetoothServiceRecordBlueZ>& records_bluez) {
-  // TODO(b/288866953): ARCVM crashes if records are empty
-  if (records_bluez.size() == 0) {
-    return;
-  }
-
   auto* sdp_bluetooth_instance = ARC_GET_INSTANCE_FOR_METHOD(
       arc_bridge_service_->bluetooth(), OnGetSdpRecords);
   if (!sdp_bluetooth_instance) {
@@ -712,26 +702,6 @@ void ArcBluetoothBridge::GattDiscoveryCompleteForService(
   // Placeholder for GATT client functionality
 }
 
-void ArcBluetoothBridge::GattNeedsDiscovery(BluetoothDevice* device) {
-  if (!arc_bridge_service_->bluetooth()->IsConnected()) {
-    return;
-  }
-
-  // This is a bit of a misnomer from ARC side: OnServiceChanged needs to be
-  // called when we get the signal that something is changed on the peer side,
-  // so ARC can start to re-discover everything again.
-  // However, the GattServiceChanged below indicates we have updated a service,
-  // so it doesn't actually mean ARC needs to re-discover everything.
-  auto* btle_instance = ARC_GET_INSTANCE_FOR_METHOD(
-      arc_bridge_service_->bluetooth(), OnServiceChanged);
-  if (!btle_instance) {
-    return;
-  }
-  btle_instance->OnServiceChanged(
-      mojom::BluetoothAddress::From(device->GetAddress()));
-}
-
-// TODO(b/284429795) This is wrong. See GattNeedsDiscovery above.
 void ArcBluetoothBridge::GattServiceChanged(
     BluetoothAdapter* adapter,
     BluetoothRemoteGattService* service) {
@@ -793,13 +763,13 @@ void ArcBluetoothBridge::GattCharacteristicValueChanged(
   if (!btle_instance)
     return;
 
-  const std::optional<uint16_t> char_inst_id =
+  const absl::optional<uint16_t> char_inst_id =
       ConvertGattIdentifierToId(characteristic->GetIdentifier());
   if (!char_inst_id)
     return;
 
   BluetoothRemoteGattService* service = characteristic->GetService();
-  const std::optional<uint16_t> service_inst_id =
+  const absl::optional<uint16_t> service_inst_id =
       ConvertGattIdentifierToId(service->GetIdentifier());
   if (!service_inst_id)
     return;
@@ -1029,7 +999,7 @@ void ArcBluetoothBridge::OnDeviceLost(
 
 void ArcBluetoothBridge::OnSessionStarted(
     device::BluetoothLowEnergyScanSession* scan_session,
-    std::optional<device::BluetoothLowEnergyScanSession::ErrorCode>
+    absl::optional<device::BluetoothLowEnergyScanSession::ErrorCode>
         error_code) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
@@ -1163,7 +1133,7 @@ void ArcBluetoothBridge::SetAdapterProperty(
 
   if (property->is_discovery_timeout()) {
     uint32_t discovery_timeout = property->get_discovery_timeout();
-    discoverable_off_timeout_ = std::make_optional(discovery_timeout);
+    discoverable_off_timeout_ = absl::make_optional(discovery_timeout);
     OnSetAdapterProperty(mojom::BluetoothStatus::SUCCESS, std::move(property));
   } else if (property->is_bdname()) {
     auto property_clone = property.Clone();
@@ -1240,7 +1210,6 @@ void ArcBluetoothBridge::StartLEScanImpl() {
   if (le_scan_session_) {
     LOG(ERROR) << "Discovery session for LE scan already running.";
     StartLEScanOffTimer();
-    scanned_devices_.clear();
     discovery_queue_.Pop();
     return;
   }
@@ -1280,10 +1249,6 @@ void ArcBluetoothBridge::StartLEScanOffTimer() {
 
 void ArcBluetoothBridge::ResetLEScanSession() {
   le_scan_session_ = nullptr;
-}
-
-bool ArcBluetoothBridge::IsDiscoveringOrScanning() {
-  return discovery_session_ || le_scan_session_;
 }
 
 void ArcBluetoothBridge::StopLEScanImpl() {
@@ -1358,7 +1323,6 @@ void ArcBluetoothBridge::OnLEScanStarted(
 
   StartLEScanOffTimer();
   le_scan_session_ = std::move(session);
-  scanned_devices_.clear();
 
   // Android doesn't need a callback for discovery started event for a LE scan.
   discovery_queue_.Pop();
@@ -1468,7 +1432,7 @@ void ArcBluetoothBridge::OnGattConnectStateChanged(
 void ArcBluetoothBridge::OnGattConnect(
     mojom::BluetoothAddressPtr addr,
     std::unique_ptr<BluetoothGattConnection> connection,
-    std::optional<BluetoothDevice::ConnectErrorCode> error_code) {
+    absl::optional<BluetoothDevice::ConnectErrorCode> error_code) {
   if (error_code.has_value()) {
     LOG(WARNING) << "GattConnectError: error_code = " << error_code.value();
     OnGattDisconnected(std::move(addr));
@@ -1618,12 +1582,12 @@ void ArcBluetoothBridge::GetGattDB(mojom::BluetoothAddressPtr remote_addr) {
     const auto& characteristics = service->GetCharacteristics();
     if (characteristics.size() > 0) {
       const auto& descriptors = characteristics.back()->GetDescriptors();
-      const std::optional<uint16_t> start_handle =
+      const absl::optional<uint16_t> start_handle =
           ConvertGattIdentifierToId(characteristics.front()->GetIdentifier());
       if (!start_handle)
         continue;
 
-      const std::optional<uint16_t> end_handle = ConvertGattIdentifierToId(
+      const absl::optional<uint16_t> end_handle = ConvertGattIdentifierToId(
           descriptors.size() > 0 ? descriptors.back()->GetIdentifier()
                                  : characteristics.back()->GetIdentifier());
       if (!end_handle)
@@ -2016,10 +1980,11 @@ void ArcBluetoothBridge::AddService(mojom::BluetoothGattServiceIDPtr service_id,
     std::move(callback).Run(kInvalidGattAttributeHandle);
     return;
   }
-
   base::WeakPtr<BluetoothLocalGattService> service =
-      bluetooth_adapter_->CreateLocalGattService(
-          service_id->id->uuid, service_id->is_primary, this /* delegate */);
+      BluetoothLocalGattService::Create(
+          bluetooth_adapter_.get(), service_id->id->uuid,
+          service_id->is_primary, nullptr /* included_service */,
+          this /* delegate */);
   std::move(callback).Run(CreateGattAttributeHandle(service.get()));
 }
 
@@ -2029,10 +1994,7 @@ void ArcBluetoothBridge::AddCharacteristic(int32_t service_handle,
                                            int32_t permissions,
                                            AddCharacteristicCallback callback) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-
-  auto gatt_id = gatt_identifier_.find(service_handle);
-  DCHECK(gatt_id != gatt_identifier_.end());
-
+  DCHECK(gatt_identifier_.find(service_handle) != gatt_identifier_.end());
   if (!IsGattServerAttributeHandleAvailable(1)) {
     std::move(callback).Run(kInvalidGattAttributeHandle);
     return;
@@ -2041,14 +2003,10 @@ void ArcBluetoothBridge::AddCharacteristic(int32_t service_handle,
   const auto& [bluez_properties, bluez_permissions] =
       floss::BluetoothGattCharacteristicFloss::ConvertPropsAndPermsFromFloss(
           static_cast<uint8_t>(properties), static_cast<uint16_t>(permissions));
-
-  auto* service = bluetooth_adapter_->GetGattService(gatt_id->second);
-  if (!service) {
-    return;
-  }
-
   base::WeakPtr<BluetoothLocalGattCharacteristic> characteristic =
-      service->CreateCharacteristic(uuid, bluez_properties, bluez_permissions);
+      BluetoothLocalGattCharacteristic::Create(
+          uuid, bluez_properties, bluez_permissions,
+          bluetooth_adapter_->GetGattService(gatt_identifier_[service_handle]));
   int32_t characteristic_handle =
       CreateGattAttributeHandle(characteristic.get());
   last_characteristic_[service_handle] = characteristic_handle;
@@ -2638,7 +2596,7 @@ ArcBluetoothBridge::GetDeviceProperties(mojom::BluetoothPropertyType type,
   }
   if (type == mojom::BluetoothPropertyType::ALL ||
       type == mojom::BluetoothPropertyType::REMOTE_RSSI) {
-    std::optional<int8_t> rssi = device->GetInquiryRSSI();
+    absl::optional<int8_t> rssi = device->GetInquiryRSSI();
     if (rssi.has_value()) {
       properties.push_back(
           mojom::BluetoothProperty::NewRemoteRssi(rssi.value()));
@@ -2783,7 +2741,7 @@ ArcBluetoothBridge::GetAdvertisingData(const BluetoothDevice* device) const {
 
   // Service Data
   for (const BluetoothUUID& uuid : device->GetServiceDataUUIDs()) {
-    std::optional<uint16_t> uuid16 = GetUUID16(uuid);
+    absl::optional<uint16_t> uuid16 = GetUUID16(uuid);
     if (!uuid16)
       continue;
 

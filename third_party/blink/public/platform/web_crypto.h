@@ -58,11 +58,6 @@ enum WebCryptoErrorType {
   kWebCryptoErrorTypeOperation,
 };
 
-enum WebCryptoWarningType {
-  kWebCryptoWarningTypeNone,
-  kWebCryptoWarningTypeDeriveBitsTruncated,
-};
-
 class BLINK_PLATFORM_EXPORT WebCryptoResult {
  public:
   WebCryptoResult(const WebCryptoResult& o) { Assign(o); }
@@ -94,8 +89,6 @@ class BLINK_PLATFORM_EXPORT WebCryptoResult {
   // This method can be called from any thread.
   bool Cancelled() const;
 
-  void SetWarning(WebCryptoWarningType code);
-
 #if INSIDE_BLINK
   WebCryptoResult(CryptoResult*, scoped_refptr<CryptoResultCancel>);
 #endif
@@ -104,10 +97,8 @@ class BLINK_PLATFORM_EXPORT WebCryptoResult {
   void Reset();
   void Assign(const WebCryptoResult&);
 
-  WebPrivatePtrForGC<CryptoResult, WebPrivatePtrDestruction::kCrossThread>
-      impl_;
-  WebPrivatePtrForRefCounted<CryptoResultCancel,
-                             WebPrivatePtrDestruction::kCrossThread>
+  WebPrivatePtr<CryptoResult, kWebPrivatePtrDestructionCrossThread> impl_;
+  WebPrivatePtr<CryptoResultCancel, kWebPrivatePtrDestructionCrossThread>
       cancel_;
 };
 

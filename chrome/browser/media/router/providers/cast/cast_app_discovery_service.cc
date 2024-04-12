@@ -250,7 +250,8 @@ bool CastAppDiscoveryServiceImpl::ShouldRefreshAppAvailability(
       return true;
   }
 
-  NOTREACHED_NORETURN();
+  NOTREACHED();
+  return false;
 }
 
 }  // namespace media_router

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SIGNIN_SIGNIN_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_SIGNIN_SIGNIN_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "chrome/browser/signin/signin_manager.h"
@@ -18,13 +18,13 @@ class SigninManagerFactory : public ProfileKeyedServiceFactory {
   static SigninManager* GetForProfile(Profile* profile);
 
  private:
-  friend base::NoDestructor<SigninManagerFactory>;
+  friend struct base::DefaultSingletonTraits<SigninManagerFactory>;
 
   SigninManagerFactory();
   ~SigninManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;

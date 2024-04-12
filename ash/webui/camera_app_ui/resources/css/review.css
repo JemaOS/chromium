@@ -3,11 +3,12 @@
  * found in the LICENSE file. */
 
 .review-views {
-  background: var(--cros-sys-app_base);
+  background: var(--grey-900);
 }
 
 .review-frame {
   align-items: center;
+  border: 1px solid rgba(var(--grey-200-rgb), 0.38);
   bottom: calc(var(--bottom-line) * 2);
   display: flex;
   justify-content: center;
@@ -41,8 +42,8 @@
   left: calc(var(--left-line) * 2);
 }
 
-.review-views .button-group button[i18n-text=label_share] svg-wrapper {
-  color: var(--cros-sys-on_primary_container);
+.review-views .button-group button[i18n-text=label_share]::before {
+  content: url(/images/review_share.svg);
   display: inline-block;
   line-height: normal;
   margin-inline-end: 5px;
@@ -56,24 +57,16 @@
 }
 
 .review-views .review-intent-button-group>button {
-  height: 60px;
-  margin-bottom: 20px;
-  margin-top: 20px;
-  width: 60px;
+  height: 72px;
+  margin-bottom: 2px;
+  margin-top: 2px;
+  width: 72px;
 }
 
 .review-views .review-intent-button-group button[i18n-label=confirm_review_button] {
-  background: var(--cros-sys-primary);
-
-  :is(svg-wrapper) {
-    color: var(--cros-sys-on_primary);
-  }
+  background-image: url(/images/camera_intent_result_confirm.svg);
 }
 
 .review-views .review-intent-button-group button[i18n-label=cancel_review_button] {
-  background: var(--cros-sys-inverse_surface);
-
-  :is(svg-wrapper) {
-    color: var(--cros-sys-secondary_container);
-  }
+  background-image: url(/images/camera_intent_result_cancel.svg);
 }

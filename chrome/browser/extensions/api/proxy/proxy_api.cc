@@ -7,7 +7,6 @@
 #include "chrome/browser/extensions/api/proxy/proxy_api.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/json/json_writer.h"
@@ -19,6 +18,7 @@
 #include "chrome/browser/extensions/event_router_forwarder.h"
 #include "components/proxy_config/proxy_config_dictionary.h"
 #include "net/base/net_errors.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace extensions {
 
@@ -72,10 +72,13 @@ void ProxyEventRouter::OnPACScriptError(EventRouterForwarder* event_router,
   base::Value::Dict dict;
   dict.Set(kProxyEventFatalKey, false);
   dict.Set(kProxyEventErrorKey, net::ErrorToString(net::ERR_PAC_SCRIPT_FAILED));
-  std::string error_msg = base::UTF16ToUTF8(error);
+  std::string error_msg;
   if (line_number != -1) {
-    error_msg =
-        base::StringPrintf("line: %d: %s", line_number, error_msg.c_str());
+    base::SStringPrintf(&error_msg,
+                        "line: %d: %s",
+                        line_number, base::UTF16ToUTF8(error).c_str());
+  } else {
+    error_msg = base::UTF16ToUTF8(error);
   }
   dict.Set(kProxyEventDetailsKey, error_msg);
   args.Append(base::Value(std::move(dict)));
@@ -95,7 +98,7 @@ ProxyPrefTransformer::ProxyPrefTransformer() = default;
 
 ProxyPrefTransformer::~ProxyPrefTransformer() = default;
 
-std::optional<base::Value> ProxyPrefTransformer::ExtensionToBrowserPref(
+absl::optional<base::Value> ProxyPrefTransformer::ExtensionToBrowserPref(
     const base::Value& extension_pref,
     std::string& error,
     bool& bad_message) {
@@ -127,21 +130,21 @@ std::optional<base::Value> ProxyPrefTransformer::ExtensionToBrowserPref(
           config, &proxy_rules_string, &error, &bad_message) ||
       !proxy_api_helpers::GetBypassListFromExtensionPref(
           config, &bypass_list, &error, &bad_message)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
-  std::optional<base::Value::Dict> result =
+  absl::optional<base::Value::Dict> result =
       proxy_api_helpers::CreateProxyConfigDict(
           mode_enum, pac_mandatory, pac_url, pac_data, proxy_rules_string,
           bypass_list, &error);
 
   if (!result)
-    return std::nullopt;
+    return absl::nullopt;
 
   return base::Value(std::move(*result));
 }
 
-std::optional<base::Value> ProxyPrefTransformer::BrowserToExtensionPref(
+absl::optional<base::Value> ProxyPrefTransformer::BrowserToExtensionPref(
     const base::Value& browser_pref,
     bool is_incognito_profile) {
   CHECK(browser_pref.is_dict());
@@ -153,7 +156,7 @@ std::optional<base::Value> ProxyPrefTransformer::BrowserToExtensionPref(
   ProxyPrefs::ProxyMode mode;
   if (!config.GetMode(&mode)) {
     LOG(ERROR) << "Cannot determine proxy mode.";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Build a new ProxyConfig instance as defined in the extension API.
@@ -172,20 +175,20 @@ std::optional<base::Value> ProxyPrefTransformer::BrowserToExtensionPref(
       // A PAC URL either point to a PAC script or contain a base64 encoded
       // PAC script. In either case we build a PacScript dictionary as defined
       // in the extension API.
-      std::optional<base::Value::Dict> pac_dict =
+      absl::optional<base::Value::Dict> pac_dict =
           proxy_api_helpers::CreatePacScriptDict(config);
       if (!pac_dict)
-        return std::nullopt;
+        return absl::nullopt;
       extension_pref.Set(proxy_api_constants::kProxyConfigPacScript,
                          std::move(*pac_dict));
       break;
     }
     case ProxyPrefs::MODE_FIXED_SERVERS: {
       // Build ProxyRules dictionary according to the extension API.
-      std::optional<base::Value::Dict> proxy_rules_dict =
+      absl::optional<base::Value::Dict> proxy_rules_dict =
           proxy_api_helpers::CreateProxyRulesDict(config);
       if (!proxy_rules_dict)
-        return std::nullopt;
+        return absl::nullopt;
       extension_pref.Set(proxy_api_constants::kProxyConfigRules,
                          std::move(*proxy_rules_dict));
       break;

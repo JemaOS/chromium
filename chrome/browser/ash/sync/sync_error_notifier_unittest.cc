@@ -9,11 +9,13 @@
 #include "ash/constants/ash_features.h"
 #include "base/functional/bind.h"
 #include "base/test/scoped_feature_list.h"
+#include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/notifications/notification_display_service_tester.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service_factory.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "components/sync/test/test_sync_service.h"
+#include "components/user_manager/scoped_user_manager.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/message_center/public/cpp/notification.h"
 
@@ -76,7 +78,7 @@ class SyncErrorNotifierTest : public BrowserWithTestWindowTest {
 
  protected:
   void ExpectNotificationShown(bool expected_notification) {
-    std::optional<message_center::Notification> notification =
+    absl::optional<message_center::Notification> notification =
         display_service_->GetNotification(kNotificationId);
     if (expected_notification) {
       ASSERT_TRUE(notification);
@@ -91,25 +93,27 @@ class SyncErrorNotifierTest : public BrowserWithTestWindowTest {
   syncer::TestSyncService service_;
   FakeLoginUI login_ui_;
   std::unique_ptr<NotificationDisplayServiceTester> display_service_;
+  user_manager::ScopedUserManager scoped_user_manager_{
+      std::make_unique<ash::FakeChromeUserManager>()};
 };
 
 TEST_F(SyncErrorNotifierTest, NoNotificationWhenNoPassphrase) {
   service_.SetPassphraseRequiredForPreferredDataTypes(false);
-  service_.SetInitialSyncFeatureSetupComplete(true);
+  service_.SetFirstSetupComplete(true);
   error_notifier_->OnStateChanged(&service_);
   ExpectNotificationShown(false);
 }
 
 TEST_F(SyncErrorNotifierTest, NotificationShownWhenBrowserSyncEnabled) {
   service_.SetPassphraseRequiredForPreferredDataTypes(true);
-  service_.SetInitialSyncFeatureSetupComplete(true);
+  service_.SetFirstSetupComplete(true);
   error_notifier_->OnStateChanged(&service_);
   ExpectNotificationShown(true);
 }
 
 TEST_F(SyncErrorNotifierTest, NotificationShownOnce) {
   service_.SetPassphraseRequiredForPreferredDataTypes(true);
-  service_.SetInitialSyncFeatureSetupComplete(true);
+  service_.SetFirstSetupComplete(true);
   error_notifier_->OnStateChanged(&service_);
   ExpectNotificationShown(true);
 

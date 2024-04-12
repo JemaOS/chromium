@@ -4,7 +4,6 @@
 
 #include "third_party/blink/renderer/core/html/client_hints_util.h"
 
-#include "base/containers/contains.h"
 #include "services/network/public/cpp/client_hints.h"
 #include "third_party/blink/public/common/client_hints/client_hints.h"
 #include "third_party/blink/public/common/permissions_policy/origin_with_possible_wildcards.h"
@@ -29,7 +28,8 @@ void UpdateWindowPermissionsPolicyWithDelegationSupportForClientHints(
   // If it's not http-equiv="accept-ch" and it's not a preload-or-sync-parser
   // visible meta tag, then we need to warn the dev that js injected the tag.
   if (type != network::MetaCHType::HttpEquivAcceptCH && !is_doc_preloader &&
-      !is_sync_parser && local_dom_window) {
+      !is_sync_parser && local_dom_window &&
+      RuntimeEnabledFeatures::ClientHintThirdPartyDelegationEnabled()) {
     AuditsIssue::ReportClientHintIssue(
         local_dom_window, ClientHintIssueReason::kMetaTagModifiedHTML);
   }
@@ -40,7 +40,8 @@ void UpdateWindowPermissionsPolicyWithDelegationSupportForClientHints(
   if (!client_hints_preferences.UpdateFromMetaCH(
           header_value, url, context, type, is_doc_preloader, is_sync_parser) ||
       type == network::MetaCHType::HttpEquivAcceptCH ||
-      !(is_doc_preloader || is_sync_parser) || !local_dom_window) {
+      !(is_doc_preloader || is_sync_parser) || !local_dom_window ||
+      !RuntimeEnabledFeatures::ClientHintThirdPartyDelegationEnabled()) {
     return;
   }
 
@@ -69,11 +70,9 @@ void UpdateWindowPermissionsPolicyWithDelegationSupportForClientHints(
     std::set<blink::OriginWithPossibleWildcards> origin_set(
         allow_list.AllowedOrigins().begin(), allow_list.AllowedOrigins().end());
     for (const auto& origin : pair.second) {
-      if (auto origin_with_possible_wildcards =
-              blink::OriginWithPossibleWildcards::FromOrigin(origin);
-          origin_with_possible_wildcards.has_value()) {
-        origin_set.insert(*origin_with_possible_wildcards);
-      }
+      origin_set.insert(
+          blink::OriginWithPossibleWildcards(origin,
+                                             /*has_subdomain_wildcard=*/false));
     }
     auto declaration = ParsedPermissionsPolicyDeclaration(
         policy_name,
@@ -94,7 +93,8 @@ void UpdateWindowPermissionsPolicyWithDelegationSupportForClientHints(
 void UpdateIFrameContainerPolicyWithDelegationSupportForClientHints(
     ParsedPermissionsPolicy& container_policy,
     LocalDOMWindow* local_dom_window) {
-  if (!local_dom_window ||
+  if (!RuntimeEnabledFeatures::ClientHintThirdPartyDelegationEnabled() ||
+      !local_dom_window ||
       !local_dom_window->GetSecurityContext().GetPermissionsPolicy()) {
     return;
   }
@@ -106,8 +106,8 @@ void UpdateIFrameContainerPolicyWithDelegationSupportForClientHints(
            ParsedPermissionsPolicyDeclaration>
       feature_to_container_policy;
   for (const auto& candidate_policy : container_policy) {
-    if (!base::Contains(feature_to_container_policy,
-                        candidate_policy.feature)) {
+    if (feature_to_container_policy.find(candidate_policy.feature) ==
+        feature_to_container_policy.end()) {
       feature_to_container_policy[candidate_policy.feature] = candidate_policy;
     }
   }

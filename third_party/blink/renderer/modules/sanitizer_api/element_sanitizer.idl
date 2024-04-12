@@ -9,7 +9,6 @@ dictionary ElementSetHTMLOptions {
 };
 
 [
-  RuntimeEnabled=SanitizerAPI,
   SecureContext,
   ImplementedAs=ElementSanitizer
 ] partial interface Element {

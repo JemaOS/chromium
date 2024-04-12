@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "ash/system/diagnostics/log_test_helpers.h"
@@ -16,8 +15,10 @@
 #include "base/logging.h"
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_split.h"
 #include "base/strings/stringprintf.h"
+
 #include "base/test/task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -90,7 +91,7 @@ TEST_F(KeyboardInputLogTest, Basic) {
 
   const std::vector<std::string> log_lines = GetLogLines(log.GetLogContents());
   ASSERT_EQ(3u, log_lines.size());
-  EXPECT_TRUE(std::string_view(log_lines[0]).find(keyboard_name));
+  EXPECT_TRUE(base::StringPiece(log_lines[0]).find(keyboard_name));
   EXPECT_EQ(GetExpectedKeyPressLogLine(key_press_1), log_lines[1]);
   EXPECT_EQ(GetExpectedKeyPressLogLine(key_press_2), log_lines[2]);
   EXPECT_FALSE(log.KeyboardHasBeenAdded(keyboard_id));
@@ -127,9 +128,9 @@ TEST_F(KeyboardInputLogTest, MultipleKeyboardsInLog) {
 
   const std::vector<std::string> log_lines = GetLogLines(log.GetLogContents());
   ASSERT_EQ(4u, log_lines.size());
-  EXPECT_TRUE(std::string_view(log_lines[0]).find(keyboard_1_name));
+  EXPECT_TRUE(base::StringPiece(log_lines[0]).find(keyboard_1_name));
   EXPECT_EQ(GetExpectedKeyPressLogLine(keyboard_1_key_press), log_lines[1]);
-  EXPECT_TRUE(std::string_view(log_lines[2]).find(keyboard_2_name));
+  EXPECT_TRUE(base::StringPiece(log_lines[2]).find(keyboard_2_name));
   EXPECT_EQ(GetExpectedKeyPressLogLine(keyboard_2_key_press), log_lines[3]);
   EXPECT_FALSE(log.KeyboardHasBeenAdded(keyboard_1_id));
   EXPECT_FALSE(log.KeyboardHasBeenAdded(keyboard_2_id));
@@ -154,7 +155,7 @@ TEST_F(KeyboardInputLogTest, DuplicateKeyPressesNotStored) {
   task_environment_.RunUntilIdle();
   const std::vector<std::string> log_lines = GetLogLines(log.GetLogContents());
   ASSERT_EQ(2u, log_lines.size());
-  EXPECT_TRUE(std::string_view(log_lines[0]).find(keyboard_name));
+  EXPECT_TRUE(base::StringPiece(log_lines[0]).find(keyboard_name));
   EXPECT_EQ(GetExpectedKeyPressLogLine(key_press_1), log_lines[1]);
   EXPECT_FALSE(log.KeyboardHasBeenAdded(keyboard_id));
 }

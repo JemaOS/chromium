@@ -4,8 +4,6 @@
 
 #include "ash/webui/diagnostics_ui/backend/system/system_routine_controller.h"
 
-#include <optional>
-
 #include "ash/constants/ash_features.h"
 #include "ash/system/diagnostics/diagnostics_log_controller.h"
 #include "ash/system/diagnostics/routine_log.h"
@@ -28,6 +26,7 @@
 #include "chromeos/ash/services/cros_healthd/public/mojom/nullable_primitives.mojom.h"
 #include "content/public/browser/device_service.h"
 #include "services/device/public/mojom/wake_lock_provider.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash::diagnostics {
 
@@ -323,7 +322,6 @@ void SystemRoutineController::ExecuteRoutine(mojom::RoutineType routine_type) {
     case mojom::RoutineType::kMemory:
       AcquireWakeLock();
       diagnostics_service_->RunMemoryRoutine(
-          std::nullopt,
           base::BindOnce(&SystemRoutineController::OnRoutineStarted,
                          weak_factory_.GetWeakPtr(), routine_type));
       memory_routine_start_timestamp_ = base::Time::Now();
@@ -615,7 +613,7 @@ void SystemRoutineController::OnPowerRoutineJsonParsed(
     return;
   }
 
-  std::optional<double> charge_percent_opt =
+  absl::optional<double> charge_percent_opt =
       routine_type == mojom::RoutineType::kBatteryCharge
           ? result_details_dict->FindDouble(kChargePercentKey)
           : result_details_dict->FindDouble(kDischargePercentKey);

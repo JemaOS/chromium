@@ -21,9 +21,9 @@ TEST_F(LayoutSVGContainerTest, TransformAffectsVectorEffect) {
 
   auto* svg = GetLayoutObjectByElementId("svg");
   auto* g = GetLayoutObjectByElementId("g");
-  auto* rect_element = GetElementById("rect");
+  auto* rect_element = GetDocument().getElementById("rect");
   auto* rect = rect_element->GetLayoutObject();
-  auto* text_element = GetElementById("text");
+  auto* text_element = GetDocument().getElementById("text");
   auto* text = text_element->GetLayoutObject();
 
   EXPECT_FALSE(svg->TransformAffectsVectorEffect());
@@ -45,13 +45,13 @@ TEST_F(LayoutSVGContainerTest, TransformAffectsVectorEffect) {
   EXPECT_FALSE(text->TransformAffectsVectorEffect());
 
   rect_element->setAttribute(svg_names::kVectorEffectAttr,
-                             AtomicString("non-scaling-stroke"));
+                             "non-scaling-stroke");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_TRUE(g->TransformAffectsVectorEffect());
   EXPECT_TRUE(rect->TransformAffectsVectorEffect());
   EXPECT_FALSE(text->TransformAffectsVectorEffect());
 
-  text_element->setAttribute(svg_names::kXAttr, AtomicString("20"));
+  text_element->setAttribute(svg_names::kXAttr, "20");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_TRUE(g->TransformAffectsVectorEffect());
   EXPECT_TRUE(rect->TransformAffectsVectorEffect());
@@ -74,7 +74,7 @@ TEST_F(LayoutSVGContainerTest, TransformAffectsVectorEffectNestedSVG) {
   auto* svg = GetLayoutObjectByElementId("svg");
   auto* g = GetLayoutObjectByElementId("g");
   auto* nested_svg = GetLayoutObjectByElementId("nested-svg");
-  auto* rect_element = GetElementById("rect");
+  auto* rect_element = GetDocument().getElementById("rect");
   auto* rect = rect_element->GetLayoutObject();
 
   EXPECT_FALSE(svg->TransformAffectsVectorEffect());
@@ -130,23 +130,21 @@ TEST_F(LayoutSVGContainerTest, PatternWithContentVisibility) {
     </svg>
   )HTML");
 
-  auto* pattern = GetElementById("pattern");
-  auto* polygon = GetElementById("polygon");
+  auto* pattern = GetDocument().getElementById("pattern");
+  auto* polygon = GetDocument().getElementById("polygon");
 
-  pattern->setAttribute(
-      svg_names::kStyleAttr,
-      AtomicString("contain: strict; content-visibility: hidden"));
+  pattern->setAttribute("style", "contain: strict; content-visibility: hidden");
 
   UpdateAllLifecyclePhasesForTest();
 
-  polygon->setAttribute(svg_names::kPointsAttr, AtomicString("0,0 2,5 0,10"));
+  polygon->setAttribute("points", "0,0 2,5 0,10");
 
   // This shouldn't cause a DCHECK, even though the pattern needs layout because
   // it's under a content-visibility: hidden subtree.
   UpdateAllLifecyclePhasesForTest();
 
   EXPECT_TRUE(pattern->GetLayoutObject()->NeedsLayout());
-  EXPECT_FALSE(pattern->GetLayoutObject()->SelfNeedsFullLayout());
+  EXPECT_FALSE(pattern->GetLayoutObject()->SelfNeedsLayout());
 }
 
 }  // namespace blink

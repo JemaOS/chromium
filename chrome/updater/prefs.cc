@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -30,6 +29,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/prefs/pref_service_factory.h"
 #include "components/update_client/update_client.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace updater {
 
@@ -53,7 +53,9 @@ std::unique_ptr<PrefService> CreatePrefService(
     const base::FilePath& prefs_dir,
     scoped_refptr<PrefRegistrySimple> pref_registry,
     const base::TimeDelta& wait_period) {
+  constexpr base::TimeDelta kRetryWait = base::Milliseconds(10);
   const auto deadline(base::TimeTicks::Now() + wait_period);
+
   do {
     PrefServiceFactory pref_service_factory;
     pref_service_factory.set_user_prefs(base::MakeRefCounted<JsonPrefStore>(
@@ -75,23 +77,23 @@ std::unique_ptr<PrefService> CreatePrefService(
     VLOG(1) << "pref service init failed: "
             << pref_service->GetInitializationStatus();
 
-    base::PlatformThread::Sleep(base::Milliseconds(10));
+    // Sleep before trying again.
+    base::PlatformThread::Sleep(kRetryWait);
   } while (base::TimeTicks::Now() < deadline);
+
   return nullptr;
 }
 
 }  // namespace
 
-UpdaterPrefsImpl::UpdaterPrefsImpl(const base::FilePath& prefs_dir,
-                                   std::unique_ptr<ScopedLock> lock,
+UpdaterPrefsImpl::UpdaterPrefsImpl(std::unique_ptr<ScopedLock> lock,
                                    std::unique_ptr<PrefService> prefs)
-    : prefs_dir_(prefs_dir), lock_(std::move(lock)), prefs_(std::move(prefs)) {
-  VLOG(1) << __func__ << (lock_.get() ? " (global): " : " (local): ")
-          << prefs_dir_;
+    : lock_(std::move(lock)), prefs_(std::move(prefs)) {
+  VLOG(1) << __func__;
 }
 
 UpdaterPrefsImpl::~UpdaterPrefsImpl() {
-  VLOG(1) << __func__ << ": " << prefs_dir_;
+  VLOG(1) << __func__;
 }
 
 PrefService* UpdaterPrefsImpl::GetPrefService() const {
@@ -132,14 +134,12 @@ void UpdaterPrefsImpl::SetMigratedLegacyUpdaters() {
 
 int UpdaterPrefsImpl::CountServerStarts() {
   int starts = prefs_->GetInteger(kPrefServerStarts);
-  if (starts <= kMaxServerStartsBeforeFirstReg) {
+  if (starts <= kMaxServerStartsBeforeFirstReg)
     prefs_->SetInteger(kPrefServerStarts, ++starts);
-  }
   return starts;
 }
 
 scoped_refptr<GlobalPrefs> CreateGlobalPrefs(UpdaterScope scope) {
-  VLOG(2) << __func__;
   if (WrongUser(scope)) {
     VLOG(0) << "Current user is incompatible with scope " << scope
             << "; GlobalPrefs will not be created.";
@@ -154,11 +154,12 @@ scoped_refptr<GlobalPrefs> CreateGlobalPrefs(UpdaterScope scope) {
     return nullptr;
   }
 
-  const std::optional<base::FilePath> global_prefs_dir =
+  const absl::optional<base::FilePath> global_prefs_dir =
       GetInstallDirectory(scope);
   if (!global_prefs_dir || !base::CreateDirectory(*global_prefs_dir)) {
     return nullptr;
   }
+  VLOG(1) << "global_prefs_dir: " << global_prefs_dir;
 
   auto pref_registry = base::MakeRefCounted<PrefRegistrySimple>();
   update_client::RegisterPrefs(pref_registry.get());
@@ -175,13 +176,12 @@ scoped_refptr<GlobalPrefs> CreateGlobalPrefs(UpdaterScope scope) {
     return nullptr;
   }
 
-  return base::MakeRefCounted<UpdaterPrefsImpl>(
-      *global_prefs_dir, std::move(lock), std::move(pref_service));
+  return base::MakeRefCounted<UpdaterPrefsImpl>(std::move(lock),
+                                                std::move(pref_service));
 }
 
 scoped_refptr<LocalPrefs> CreateLocalPrefs(UpdaterScope scope) {
-  VLOG(2) << __func__;
-  const std::optional<base::FilePath> local_prefs_dir =
+  const absl::optional<base::FilePath> local_prefs_dir =
       GetVersionedInstallDirectory(scope);
   if (!local_prefs_dir || !base::CreateDirectory(*local_prefs_dir)) {
     return nullptr;
@@ -198,7 +198,7 @@ scoped_refptr<LocalPrefs> CreateLocalPrefs(UpdaterScope scope) {
     return nullptr;
   }
 
-  return base::MakeRefCounted<UpdaterPrefsImpl>(*local_prefs_dir, nullptr,
+  return base::MakeRefCounted<UpdaterPrefsImpl>(nullptr,
                                                 std::move(pref_service));
 }
 

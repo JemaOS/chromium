@@ -7,7 +7,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,6 +19,7 @@
 #include "build/build_config.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/account_consistency_mode_manager.h"
@@ -35,6 +35,7 @@
 #include "extensions/common/permissions/permission_set.h"
 #include "extensions/common/permissions/permissions_data.h"
 #include "google_apis/gaia/gaia_urls.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace extensions {
@@ -65,19 +66,19 @@ void IdentityAPI::SetGaiaIdForExtension(const std::string& extension_id,
                                         base::Value(gaia_id));
 }
 
-std::optional<std::string> IdentityAPI::GetGaiaIdForExtension(
+absl::optional<std::string> IdentityAPI::GetGaiaIdForExtension(
     const std::string& extension_id) {
   std::string gaia_id;
   if (!extension_prefs_->ReadPrefAsString(extension_id, kIdentityGaiaIdPref,
                                           &gaia_id)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return gaia_id;
 }
 
 void IdentityAPI::EraseGaiaIdForExtension(const std::string& extension_id) {
   extension_prefs_->UpdateExtensionPref(extension_id, kIdentityGaiaIdPref,
-                                        std::nullopt);
+                                        absl::nullopt);
 }
 
 void IdentityAPI::EraseStaleGaiaIdsForAllExtensions() {
@@ -88,13 +89,23 @@ void IdentityAPI::EraseStaleGaiaIdsForAllExtensions() {
   std::vector<CoreAccountInfo> accounts =
       identity_manager_->GetAccountsWithRefreshTokens();
   for (const ExtensionId& extension_id : extension_prefs_->GetExtensions()) {
-    std::optional<std::string> gaia_id = GetGaiaIdForExtension(extension_id);
+    absl::optional<std::string> gaia_id = GetGaiaIdForExtension(extension_id);
     if (!gaia_id)
       continue;
     if (!base::Contains(accounts, *gaia_id, &CoreAccountInfo::gaia)) {
       EraseGaiaIdForExtension(extension_id);
     }
   }
+}
+
+void IdentityAPI::SetConsentResult(const std::string& result,
+                                   const std::string& window_id) {
+  on_set_consent_result_callback_list_.Notify(result, window_id);
+}
+
+base::CallbackListSubscription IdentityAPI::RegisterOnSetConsentResultCallback(
+    const base::RepeatingCallback<OnSetConsentResultSignature>& callback) {
+  return on_set_consent_result_callback_list_.Add(callback);
 }
 
 void IdentityAPI::Shutdown() {

@@ -22,7 +22,6 @@
     {
       name: "MutationEvents",
       ImplementedAs: "MutationEvent",
-      RuntimeEnabled: "MutationEvents",
     },
     {
       name: "SVGEvents",

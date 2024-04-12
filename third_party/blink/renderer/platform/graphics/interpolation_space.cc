@@ -33,7 +33,7 @@
 #include "third_party/blink/renderer/platform/graphics/interpolation_space.h"
 
 #include "base/notreached.h"
-#include "cc/paint/color_filter.h"
+#include "third_party/skia/include/core/SkColorFilter.h"
 
 namespace blink {
 
@@ -41,7 +41,7 @@ namespace interpolation_space_utilities {
 
 namespace {
 
-sk_sp<cc::ColorFilter> GetConversionFilter(
+sk_sp<SkColorFilter> GetConversionFilter(
     InterpolationSpace dst_interpolation_space,
     InterpolationSpace src_interpolation_space) {
   // Identity.
@@ -50,9 +50,9 @@ sk_sp<cc::ColorFilter> GetConversionFilter(
 
   switch (dst_interpolation_space) {
     case kInterpolationSpaceLinear:
-      return cc::ColorFilter::MakeSRGBToLinearGamma();
+      return SkColorFilters::SRGBToLinearGamma();
     case kInterpolationSpaceSRGB:
-      return cc::ColorFilter::MakeLinearToSRGBGamma();
+      return SkColorFilters::LinearToSRGBGamma();
   }
 
   NOTREACHED();
@@ -64,15 +64,15 @@ sk_sp<cc::ColorFilter> GetConversionFilter(
 Color ConvertColor(const Color& src_color,
                    InterpolationSpace dst_interpolation_space,
                    InterpolationSpace src_interpolation_space) {
-  sk_sp<cc::ColorFilter> conversion_filter =
+  sk_sp<SkColorFilter> conversion_filter =
       GetConversionFilter(dst_interpolation_space, src_interpolation_space);
-  return conversion_filter
-             ? Color::FromSkColor4f(
-                   conversion_filter->FilterColor(src_color.toSkColor4f()))
-             : src_color;
+  // TODO(https://crbug.com/1351544): This should be SkColor4f and not Color.
+  return conversion_filter ? Color::FromRGBA32(conversion_filter->filterColor(
+                                 src_color.Rgb()))
+                           : src_color;
 }
 
-sk_sp<cc::ColorFilter> CreateInterpolationSpaceFilter(
+sk_sp<SkColorFilter> CreateInterpolationSpaceFilter(
     InterpolationSpace src_interpolation_space,
     InterpolationSpace dst_interpolation_space) {
   return GetConversionFilter(dst_interpolation_space, src_interpolation_space);

@@ -4,34 +4,15 @@
 
  /* #css_wrapper_metadata_start
  * #type=style
- * #import=chrome://resources/ash/common/cr_elements/cr_shared_style.css.js
- * #import=chrome://resources/ash/common/cr_elements/cr_shared_vars.css.js
- * #import=chrome://resources/ash/common/cr_elements/cros_color_overrides.css.js
+ * #import=chrome://resources/cr_elements/cr_shared_style.css.js
+ * #import=chrome://resources/cr_elements/cr_shared_vars.css.js
+ * #import=chrome://resources/cr_elements/chromeos/cros_color_overrides.css.js
  * #include=cr-shared-style cros-color-overrides
  * #css_wrapper_metadata_end */
 
-:host {
-  /* Margin on hover for responsive layout adjusts based on padded-left minus
-     16px to align left. */
-  --active-status-hover-margin: calc(var(--padded-left) - 16px);
-}
-
-:host-context(body.jelly-enabled) .main-container {
-  display: flex;
-  flex-flow: column;
-  height: 100%;
-}
-
-:host-context(body.jelly-enabled) .margin-border {
-  margin-inline: 16px;
-}
-
 :host-context(body.jelly-enabled) .data-container {
   background-color: var(--cros-sys-app_base);
-  border-radius: 16px 16px 0 0;
-  flex: 1 1 auto;
-  margin-inline: 16px;
-  padding-inline: 16px;
+  border-radius: 8px;
 }
 
 :host-context(body.jelly-enabled) .file-icon-blue {
@@ -59,45 +40,7 @@
 }
 
 :host-context(body.jelly-enabled) #headerContainer {
-  align-items: center;
   border-bottom: none;
-  display: flex;
-  flex: 0 1 auto;
-  height: 64px;
-  margin: 8px 32px;
-  padding: 0;
-}
-
-/** TODO(b/293601228): Remove CSS rules for cr-button once the element is
-    replaced with cros-button which already handles this styling. **/
-:host-context(body.jelly-enabled) cr-button {
-  --iron-icon-height: 20px;
-  --iron-icon-width: 20px;
-  border-radius: 18px;
-  gap: unset;
-  height: 36px;
-  padding: unset;
-  padding-inline: 16px;
-  margin: 0;
-}
-
-:host-context(body.jelly-enabled) cr-button:has(> iron-icon[
-    slot="prefix-icon"]) {
-  padding-inline: 12px 16px;
-}
-
-:host-context(body.jelly-enabled) cr-button > iron-icon[
-    slot="prefix-icon"] {
-  padding-inline: 0 8px;
-}
-
-:host-context(body.jelly-enabled) cr-button:has(> iron-icon[
-    slot="suffix-icon"]) {
-  padding-inline: 16px 12px;
-}
-
-:host-context(body.jelly-enabled) cr-button > iron-icon[slot="suffix-icon"] {
-  padding-inline: 8px 0;
 }
 
 .flex-center {
@@ -175,14 +118,19 @@
 
 #activeStatusContainer:hover {
   background-color: rgba(var(--google-blue-600-rgb), 0.06);
-  border-radius: 16px;
-  margin-inline-start: 16px;
-  padding-inline-start: 16px;
 }
 
 @media (min-width: 600px) and (max-width: 767px) {
-  :host {
-    --padded-left: 32px;
+  :host-context(body.jelly-enabled) #headerContainer {
+    margin: 0 20px;
+  }
+
+  :host-context(body.jelly-enabled) .data-container {
+    padding: 0 20px;
+  }
+
+  :host-context(body.jelly-enabled) .margin-border {
+    margin: 0 20px;
   }
 
   .date-column {
@@ -197,12 +145,12 @@
     width: 224px;
   }
 
-  :host-context(body:not(.jelly-enabled)) .margin-border {
-    margin-inline: 40px;
+  .margin-border {
+    margin: 0px 40px 0px 40px;
   }
 
   .padded-left {
-    margin-inline-start: var(--padded-left);
+    margin-inline-start: 32px;
   }
 
   .printer-name-column {
@@ -214,13 +162,23 @@
   }
 
   #activeStatusContainer:hover {
-    margin-inline-start: var(--active-status-hover-margin);
+    border-radius: 16px;
+    margin-inline-start: 16px;
+    padding-left: 16px;
   }
 }
 
 @media (min-width: 768px) and (max-width: 959px) {
-  :host {
-    --padded-left: 40px;
+  :host-context(body.jelly-enabled) #headerContainer {
+    margin: 0 20px;
+  }
+
+  :host-context(body.jelly-enabled) .data-container {
+    padding: 0 20px;
+  }
+
+  :host-context(body.jelly-enabled) .margin-border {
+    margin: 0 20px;
   }
 
   .date-column {
@@ -235,12 +193,12 @@
     width: 264px;
   }
 
-  :host-context(body:not(.jelly-enabled)) .margin-border {
-    margin-inline: 40px;
+  .margin-border {
+    margin: 0px 40px 0px 40px;
   }
 
   .padded-left {
-    margin-inline-start: var(--padded-left);
+    margin-inline-start: 40px;
   }
 
   .printer-name-column {
@@ -252,13 +210,23 @@
   }
 
   #activeStatusContainer:hover {
-    margin-inline-start: var(--active-status-hover-margin);
+    border-radius: 16px;
+    margin-inline-start: 16px;
+    padding-left: 16px;
   }
 }
 
 @media (min-width: 960px) and (max-width: 1279px) {
-  :host {
-    --padded-left: 48px;
+  :host-context(body.jelly-enabled) #headerContainer {
+    margin: 0 32px;
+  }
+
+  :host-context(body.jelly-enabled) .data-container {
+    padding: 0 32px;
+  }
+
+  :host-context(body.jelly-enabled) .margin-border {
+    margin: 0 32px;
   }
 
   .date-column {
@@ -274,11 +242,11 @@
   }
 
   .margin-border {
-    margin-inline: 64px;
+    margin: 0px 64px 0px 64px;
   }
 
   .padded-left {
-    margin-inline-start: var(--padded-left);
+    margin-inline-start: 48px;
   }
 
   .printer-name-column {
@@ -290,13 +258,23 @@
   }
 
   #activeStatusContainer:hover {
-    margin-inline-start: var(--active-status-hover-margin);
+    border-radius: 16px;
+    margin-inline-start: 16px;
+    padding-left: 16px;
   }
 }
 
 @media (min-width: 1280px) {
-  :host {
-    --padded-left: 56px;
+  :host-context(body.jelly-enabled) #headerContainer {
+    margin: 0 72px;
+  }
+
+  :host-context(body.jelly-enabled) .data-container {
+    padding: 0 72px;
+  }
+
+  :host-context(body.jelly-enabled) .margin-border {
+    margin: 0 72px;
   }
 
   .date-column {
@@ -311,12 +289,12 @@
     width: 356px;
   }
 
-  :host-context(body:not(.jelly-enabled)) .margin-border {
-    margin-inline: 144px;
+  .margin-border {
+    margin: 0px 144px 0px 144px;
   }
 
   .padded-left {
-    margin-inline-start: var(--padded-left);
+    margin-inline-start: 56px;
   }
 
   .printer-name-column {
@@ -328,6 +306,8 @@
   }
 
   #activeStatusContainer:hover {
-    margin-inline-start: var(--active-status-hover-margin);
+    border-radius: 16px;
+    margin-inline-start: 16px;
+    padding-left: 16px;
   }
 }

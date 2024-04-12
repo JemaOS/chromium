@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as SourcesModule from 'devtools/panels/sources/sources.js';
-
 (async function() {
   TestRunner.addResult(`Tests that call stack sidebar contains correct labels for async await functions.\n`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.evaluateInPagePromise(`
       async function foo()
@@ -38,12 +34,12 @@ import * as SourcesModule from 'devtools/panels/sources/sources.js';
       .then(() => SourcesTestRunner.runTestFunctionAndWaitUntilPausedPromise())
       .then(
           () => TestRunner.addSnifferPromise(
-              SourcesModule.CallStackSidebarPane.CallStackSidebarPane.prototype, 'updatedForTest'))
+              Sources.CallStackSidebarPane.prototype, 'updatedForTest'))
       .then(() => dumpCallStackSidebarPane())
       .then(() => SourcesTestRunner.completeDebuggerTest());
 
   function dumpCallStackSidebarPane() {
-    var pane = SourcesModule.CallStackSidebarPane.CallStackSidebarPane.instance();
+    var pane = Sources.CallStackSidebarPane.instance();
     for (var element of pane.contentElement.querySelectorAll('.call-frame-item'))
       TestRunner.addResult(element.deepTextContent().replace(/VM\d+/g, 'VM'));
   }

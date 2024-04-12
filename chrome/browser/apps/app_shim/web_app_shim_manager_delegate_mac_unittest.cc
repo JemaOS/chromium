@@ -4,8 +4,6 @@
 
 #include "chrome/browser/apps/app_shim/web_app_shim_manager_delegate_mac.h"
 
-#include <optional>
-
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/test/bind.h"
@@ -20,6 +18,7 @@
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace web_app {
@@ -69,8 +68,7 @@ class MockDelegate : public apps::AppShimManager::Delegate {
               LaunchShim,
               (Profile*,
                const std::string&,
-               LaunchShimUpdateBehavior,
-               ShimLaunchMode,
+               bool,
                apps::ShimLaunchedCallback,
                apps::ShimTerminatedCallback),
               (override));
@@ -138,8 +136,8 @@ class WebAppShimManagerDelegateTest : public WebAppTest {
  protected:
   apps::AppLaunchParams CreateLaunchParams(
       const std::vector<base::FilePath>& launch_files,
-      const std::optional<GURL>& url_handler_launch_url,
-      const std::optional<GURL>& protocol_handler_launch_url,
+      const absl::optional<GURL>& url_handler_launch_url,
+      const absl::optional<GURL>& protocol_handler_launch_url,
       const GURL& override_url) {
     apps::AppLaunchParams params(app_id_,
                                  apps::LaunchContainer::kLaunchContainerWindow,
@@ -153,8 +151,8 @@ class WebAppShimManagerDelegateTest : public WebAppTest {
     return params;
   }
 
-  void ValidateOptionalGURL(const std::optional<GURL>& actual,
-                            const std::optional<GURL>& expected) {
+  void ValidateOptionalGURL(const absl::optional<GURL>& actual,
+                            const absl::optional<GURL>& expected) {
     ASSERT_EQ(actual.has_value(), expected.has_value());
     if (actual.has_value()) {
       EXPECT_EQ(actual.value(), expected.value());
@@ -181,15 +179,15 @@ class WebAppShimManagerDelegateTest : public WebAppTest {
               expected_results.protocol_handler_launch_url);
   }
 
-  const webapps::AppId& AppId() const { return app_id_; }
+  const AppId& AppId() const { return app_id_; }
 
  private:
-  webapps::AppId app_id_;
+  web_app::AppId app_id_;
 };
 
 TEST_F(WebAppShimManagerDelegateTest, LaunchApp) {
   apps::AppLaunchParams expected_results = CreateLaunchParams(
-      std::vector<base::FilePath>(), std::nullopt, std::nullopt, GURL());
+      std::vector<base::FilePath>(), absl::nullopt, absl::nullopt, GURL());
 
   std::unique_ptr<MockDelegate> delegate = std::make_unique<MockDelegate>();
   WebAppShimManagerDelegate shim_manager(std::move(delegate));
@@ -210,7 +208,7 @@ TEST_F(WebAppShimManagerDelegateTest, LaunchApp_ProtocolWebPrefix) {
   GURL protocol_handler_launch_url("web+test://test");
 
   apps::AppLaunchParams expected_results =
-      CreateLaunchParams(std::vector<base::FilePath>(), std::nullopt,
+      CreateLaunchParams(std::vector<base::FilePath>(), absl::nullopt,
                          protocol_handler_launch_url, GURL());
   expected_results.launch_source = apps::LaunchSource::kFromProtocolHandler;
 
@@ -233,7 +231,7 @@ TEST_F(WebAppShimManagerDelegateTest, LaunchApp_ProtocolMailTo) {
   GURL protocol_handler_launch_url("mailto://test@test.com");
 
   apps::AppLaunchParams expected_results =
-      CreateLaunchParams(std::vector<base::FilePath>(), std::nullopt,
+      CreateLaunchParams(std::vector<base::FilePath>(), absl::nullopt,
                          protocol_handler_launch_url, GURL());
   expected_results.launch_source = apps::LaunchSource::kFromProtocolHandler;
 
@@ -256,8 +254,8 @@ TEST_F(WebAppShimManagerDelegateTest, LaunchApp_ProtocolFile) {
   GURL protocol_handler_launch_url("file:///test_app_path/test_app_file.txt");
 
   apps::AppLaunchParams expected_results = CreateLaunchParams(
-      {base::FilePath("/test_app_path/test_app_file.txt")}, std::nullopt,
-      std::nullopt, GURL("https://testpwa.com/files-txt"));
+      {base::FilePath("/test_app_path/test_app_file.txt")}, absl::nullopt,
+      absl::nullopt, GURL("https://testpwa.com/files-txt"));
 
   std::unique_ptr<MockDelegate> delegate = std::make_unique<MockDelegate>();
   WebAppShimManagerDelegate shim_manager(std::move(delegate));
@@ -278,7 +276,7 @@ TEST_F(WebAppShimManagerDelegateTest, LaunchApp_ProtocolDisallowed) {
   GURL protocol_handler_launch_url("https://www.test.com/");
 
   apps::AppLaunchParams expected_results = CreateLaunchParams(
-      std::vector<base::FilePath>(), std::nullopt, std::nullopt, GURL());
+      std::vector<base::FilePath>(), absl::nullopt, absl::nullopt, GURL());
 
   std::unique_ptr<MockDelegate> delegate = std::make_unique<MockDelegate>();
   WebAppShimManagerDelegate shim_manager(std::move(delegate));
@@ -301,7 +299,7 @@ TEST_F(WebAppShimManagerDelegateTest, LaunchApp_FileFullPath) {
   base::FilePath test_path(kTestPath);
 
   apps::AppLaunchParams expected_results =
-      CreateLaunchParams({test_path}, std::nullopt, std::nullopt,
+      CreateLaunchParams({test_path}, absl::nullopt, absl::nullopt,
                          GURL("https://testpwa.com/files-txt"));
 
   std::unique_ptr<MockDelegate> delegate = std::make_unique<MockDelegate>();
@@ -324,7 +322,7 @@ TEST_F(WebAppShimManagerDelegateTest, LaunchApp_FileRelativePath) {
   base::FilePath test_path(kTestPath);
 
   apps::AppLaunchParams expected_results =
-      CreateLaunchParams({test_path}, std::nullopt, std::nullopt,
+      CreateLaunchParams({test_path}, absl::nullopt, absl::nullopt,
                          GURL("https://testpwa.com/files-txt"));
 
   std::unique_ptr<MockDelegate> delegate = std::make_unique<MockDelegate>();
@@ -382,8 +380,8 @@ TEST_F(WebAppShimManagerDelegateTest, LaunchApp_ProtocolAndFileHandlerMixed) {
       FILE_PATH_LITERAL("test_app_path/test_app_file.txt");
   base::FilePath test_path(kTestPath);
 
-  apps::AppLaunchParams expected_results =
-      CreateLaunchParams({}, std::nullopt, protocol_handler_launch_url, GURL());
+  apps::AppLaunchParams expected_results = CreateLaunchParams(
+      {}, absl::nullopt, protocol_handler_launch_url, GURL());
   expected_results.launch_source = apps::LaunchSource::kFromProtocolHandler;
 
   std::unique_ptr<MockDelegate> delegate = std::make_unique<MockDelegate>();
@@ -408,8 +406,8 @@ TEST_F(WebAppShimManagerDelegateTest,
       FILE_PATH_LITERAL("test_app_path/test_app_file.txt");
   base::FilePath test_path(kTestPath);
 
-  apps::AppLaunchParams expected_results =
-      CreateLaunchParams({}, std::nullopt, protocol_handler_launch_url, GURL());
+  apps::AppLaunchParams expected_results = CreateLaunchParams(
+      {}, absl::nullopt, protocol_handler_launch_url, GURL());
   expected_results.launch_source = apps::LaunchSource::kFromProtocolHandler;
 
   std::unique_ptr<MockDelegate> delegate = std::make_unique<MockDelegate>();
@@ -429,8 +427,9 @@ TEST_F(WebAppShimManagerDelegateTest,
 
 TEST_F(WebAppShimManagerDelegateTest, LaunchApp_OverrideUrl) {
   GURL override_url("index.html");
-  apps::AppLaunchParams expected_results = CreateLaunchParams(
-      std::vector<base::FilePath>(), std::nullopt, std::nullopt, override_url);
+  apps::AppLaunchParams expected_results =
+      CreateLaunchParams(std::vector<base::FilePath>(), absl::nullopt,
+                         absl::nullopt, override_url);
 
   std::unique_ptr<MockDelegate> delegate = std::make_unique<MockDelegate>();
   WebAppShimManagerDelegate shim_manager(std::move(delegate));
@@ -486,7 +485,7 @@ TEST_F(WebAppShimManagerDelegateTest, GetAppShortcutsMenuItemInfos) {
     shortcut_info3.url = GURL("https://anothersite.com");
     web_app_info->shortcuts_menu_item_infos.push_back(shortcut_info3);
 
-    webapps::AppId shortcut_app_id =
+    web_app::AppId shortcut_app_id =
         web_app::test::InstallWebApp(profile(), std::move(web_app_info));
     auto shortcut_menu_items =
         shim_manager.GetAppShortcutsMenuItemInfos(profile(), shortcut_app_id);

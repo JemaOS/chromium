@@ -7,12 +7,19 @@
 #include "base/ranges/algorithm.h"
 #include "base/test/test_reg_util_win.h"
 #include "build/branding_buildflags.h"
+#include "chrome/browser/chrome_for_testing/buildflags.h"
 #include "chrome/chrome_elf/nt_registry/nt_registry.h"
 #include "chrome/install_static/install_details.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace install_static {
 namespace {
+
+inline bool EndsWith(const std::wstring& value, const std::wstring& ending) {
+  if (ending.size() > value.size())
+    return false;
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 const wchar_t kPolicyRegistryKey[] = L"SOFTWARE\\Policies\\Google\\Chrome";
@@ -51,7 +58,7 @@ TEST(UserDataDir, EmptyResultsInDefault) {
 
   install_static::GetUserDataDirectoryImpl(L"", kFakeInstallConstants, &result,
                                            &invalid);
-  EXPECT_TRUE(result.ends_with(kUserDataDirNameSuffix));
+  EXPECT_TRUE(EndsWith(result, kUserDataDirNameSuffix));
   EXPECT_EQ(std::wstring(), invalid);
 }
 
@@ -60,7 +67,7 @@ TEST(UserDataDir, InvalidResultsInDefault) {
 
   install_static::GetUserDataDirectoryImpl(L"<>|:", kFakeInstallConstants,
                                            &result, &invalid);
-  EXPECT_TRUE(result.ends_with(kUserDataDirNameSuffix));
+  EXPECT_TRUE(EndsWith(result, kUserDataDirNameSuffix));
   EXPECT_EQ(L"<>|:", invalid);
 }
 
@@ -82,7 +89,7 @@ TEST(UserDataDir, RegistrySettingsInHKLMOverrides) {
   install_static::GetUserDataDirectoryImpl(L"xxx", kFakeInstallConstants,
                                            &result, &invalid);
 
-  EXPECT_TRUE(result.ends_with(L"\\yyy"));
+  EXPECT_TRUE(EndsWith(result, L"\\yyy"));
   EXPECT_EQ(std::wstring(), invalid);
 }
 
@@ -104,7 +111,7 @@ TEST(UserDataDir, RegistrySettingsInHKCUOverrides) {
   install_static::GetUserDataDirectoryImpl(L"xxx", kFakeInstallConstants,
                                            &result, &invalid);
 
-  EXPECT_TRUE(result.ends_with(L"\\yyy"));
+  EXPECT_TRUE(EndsWith(result, L"\\yyy"));
   EXPECT_EQ(std::wstring(), invalid);
 }
 
@@ -133,7 +140,7 @@ TEST(UserDataDir, RegistrySettingsInHKLMTakesPrecedenceOverHKCU) {
   install_static::GetUserDataDirectoryImpl(L"xxx", kFakeInstallConstants,
                                            &result, &invalid);
 
-  EXPECT_TRUE(result.ends_with(L"\\111"));
+  EXPECT_TRUE(EndsWith(result, L"\\111"));
   EXPECT_EQ(std::wstring(), invalid);
 }
 
@@ -156,7 +163,7 @@ TEST(UserDataDir, RegistrySettingWithPathExpansionHKCU) {
   EXPECT_EQ(std::wstring::npos, result.find(L"${windows}"));
   std::wstring upper;
   base::ranges::transform(result, std::back_inserter(upper), toupper);
-  EXPECT_TRUE(upper.ends_with(L"\\WINDOWS"));
+  EXPECT_TRUE(EndsWith(upper, L"\\WINDOWS"));
   EXPECT_EQ(std::wstring(), invalid);
 }
 

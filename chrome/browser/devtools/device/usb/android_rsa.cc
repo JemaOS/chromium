@@ -7,13 +7,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <numeric>
 
 #include <limits>
 #include <memory>
 
 #include "base/base64.h"
-#include "base/containers/span.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/pref_names.h"
 #include "components/sync_preferences/pref_service_syncable.h"
@@ -138,7 +136,7 @@ uint64_t BnGuess(uint32_t* a, uint32_t* b, uint64_t from, uint64_t to) {
   if (from + 1 >= to)
     return from;
 
-  uint64_t guess = std::midpoint(from, to);
+  uint64_t guess = (from + to) / 2;
   uint32_t* t = BnMul(b, static_cast<uint32_t>(guess));
   int result = BnCompare(a, t);
   BnFree(t);
@@ -208,7 +206,7 @@ std::unique_ptr<crypto::RSAPrivateKey> AndroidRSAPrivateKey(Profile* profile) {
       return nullptr;
 
     std::string key_string(key_info.begin(), key_info.end());
-    encoded_key = base::Base64Encode(key_string);
+    base::Base64Encode(key_string, &encoded_key);
     profile->GetPrefs()->SetString(prefs::kDevToolsAdbKey,
                                    encoded_key);
   }
@@ -264,7 +262,10 @@ std::string AndroidRSAPublicKey(crypto::RSAPrivateKey* key) {
   BnFree(r);
   BnFree(rr);
 
-  return base::Base64Encode(base::byte_span_from_ref(pkey));
+  std::string output;
+  std::string input(reinterpret_cast<char*>(&pkey), sizeof(pkey));
+  base::Base64Encode(input, &output);
+  return output;
 }
 
 std::string AndroidRSASign(crypto::RSAPrivateKey* key,

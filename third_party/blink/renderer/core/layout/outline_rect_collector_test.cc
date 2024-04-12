@@ -7,12 +7,10 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_rect.h"
 #include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
 TEST(OutlineRectCollectorTest, Empty) {
-  test::TaskEnvironment task_environment;
   UnionOutlineRectCollector u;
   VectorOutlineRectCollector v;
 
@@ -21,7 +19,6 @@ TEST(OutlineRectCollectorTest, Empty) {
 }
 
 TEST(OutlineRectCollectorTest, AddRect) {
-  test::TaskEnvironment task_environment;
   Vector<Vector<PhysicalRect>> tests = {
       Vector<PhysicalRect>{
           PhysicalRect(-1, -1, 10, 10), PhysicalRect(10, 20, 30, 40),
@@ -55,7 +52,6 @@ TEST(OutlineRectCollectorTest, AddRect) {
 }
 
 TEST(OutlineRectCollectorTest, CombineWithOffset) {
-  test::TaskEnvironment task_environment;
   UnionOutlineRectCollector u;
   VectorOutlineRectCollector v;
 

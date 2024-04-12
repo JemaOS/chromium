@@ -10,7 +10,6 @@ import android.os.Bundle;
 public class WebApkMetaDataUtils {
     /**
      * Extracts long value from the WebAPK's meta data.
-     *
      * @param metaData WebAPK meta data to extract the long from.
      * @param name Name of the <meta-data> tag to extract the value from.
      * @param defaultValue Value to return if long value could not be extracted.

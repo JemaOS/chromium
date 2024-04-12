@@ -4,7 +4,9 @@
 
 // https://github.com/WICG/ScrollToTextFragment
 
-dictionary TextDirectiveOptions {
+[
+  RuntimeEnabled=TextFragmentAPI
+] dictionary TextDirectiveOptions {
     DOMString prefix;
     DOMString textStart;
     DOMString textEnd;

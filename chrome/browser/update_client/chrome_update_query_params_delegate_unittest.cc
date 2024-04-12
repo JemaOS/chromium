@@ -4,13 +4,15 @@
 
 #include <string>
 
-#include "base/strings/strcat.h"
+#include "base/strings/stringprintf.h"
 #include "base/system/sys_info.h"
 #include "chrome/browser/update_client/chrome_update_query_params_delegate.h"
 #include "chrome/common/channel_info.h"
 #include "components/update_client/update_query_params.h"
 #include "components/version_info/version_info.h"
 #include "testing/gtest/include/gtest/gtest.h"
+
+using base::StringPrintf;
 
 namespace {
 
@@ -25,27 +27,29 @@ void TestParams(update_client::UpdateQueryParams::ProdId prod_id) {
 
   EXPECT_TRUE(Contains(
       params,
-      base::StrCat({"os=", update_client::UpdateQueryParams::GetOS()})));
+      StringPrintf("os=%s", update_client::UpdateQueryParams::GetOS())));
   EXPECT_TRUE(Contains(
       params,
-      base::StrCat({"arch=", update_client::UpdateQueryParams::GetArch()})));
-  EXPECT_TRUE(Contains(
-      params, base::StrCat({"os_arch=",
-                            base::SysInfo().OperatingSystemArchitecture()})));
+      StringPrintf("arch=%s", update_client::UpdateQueryParams::GetArch())));
   EXPECT_TRUE(Contains(
       params,
-      base::StrCat({"prod=", update_client::UpdateQueryParams::GetProdIdString(
-                                 prod_id)})));
+      StringPrintf("os_arch=%s",
+                   base::SysInfo().OperatingSystemArchitecture().c_str())));
+  EXPECT_TRUE(Contains(
+      params, StringPrintf(
+                  "prod=%s",
+                  update_client::UpdateQueryParams::GetProdIdString(prod_id))));
   EXPECT_TRUE(Contains(
       params,
-      base::StrCat({"prodchannel=", chrome::GetChannelName(
-                                        chrome::WithExtendedStable(true))})));
+      StringPrintf(
+          "prodchannel=%s",
+          chrome::GetChannelName(chrome::WithExtendedStable(true)).c_str())));
+  EXPECT_TRUE(
+      Contains(params, StringPrintf("prodversion=%s",
+                                    version_info::GetVersionNumber().c_str())));
   EXPECT_TRUE(Contains(
       params,
-      base::StrCat({"prodversion=", version_info::GetVersionNumber()})));
-  EXPECT_TRUE(Contains(
-      params,
-      base::StrCat({"lang=", ChromeUpdateQueryParamsDelegate::GetLang()})));
+      StringPrintf("lang=%s", ChromeUpdateQueryParamsDelegate::GetLang())));
 }
 
 TEST(ChromeUpdateQueryParamsDelegateTest, GetParams) {

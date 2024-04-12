@@ -38,8 +38,6 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier.h"
 
 namespace base {
-template <typename T>
-class HeapArray;
 template <typename, typename>
 class RefCountedThreadSafe;
 class TimeDelta;
@@ -101,16 +99,6 @@ template <typename T>
 struct CrossThreadCopier<base::WeakPtr<T>>
     : public CrossThreadCopierPassThrough<base::WeakPtr<T>> {
   STATIC_ONLY(CrossThreadCopier);
-};
-
-template <typename T, wtf_size_t inlineCapacity, typename Allocator>
-struct CrossThreadCopier<
-    Vector<base::HeapArray<T>, inlineCapacity, Allocator>> {
-  STATIC_ONLY(CrossThreadCopier);
-  using Type = Vector<base::HeapArray<T>, inlineCapacity, Allocator>;
-  static Type Copy(Type pointer) {
-    return pointer;  // This is in fact a move.
-  }
 };
 
 }  // namespace WTF

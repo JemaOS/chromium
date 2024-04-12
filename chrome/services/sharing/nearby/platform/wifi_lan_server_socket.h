@@ -6,11 +6,9 @@
 #define CHROME_SERVICES_SHARING_NEARBY_PLATFORM_WIFI_LAN_SERVER_SOCKET_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/containers/flat_set.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "chrome/services/sharing/nearby/platform/wifi_lan_socket.h"
 #include "chromeos/ash/services/nearby/public/mojom/firewall_hole.mojom.h"
@@ -19,6 +17,7 @@
 #include "mojo/public/cpp/system/data_pipe.h"
 #include "net/base/ip_endpoint.h"
 #include "services/network/public/mojom/tcp_socket.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/nearby/src/internal/platform/implementation/wifi_lan.h"
 
 namespace base {
@@ -71,15 +70,15 @@ class WifiLanServerSocket : public api::WifiLanServerSocket {
   /*==========================================================================*/
   // Accept() helpers: Accept connection from remote TCP socket.
   /*==========================================================================*/
-  void DoAccept(std::optional<WifiLanSocket::ConnectedSocketParameters>*
+  void DoAccept(absl::optional<WifiLanSocket::ConnectedSocketParameters>*
                     connected_socket_parameters,
                 base::WaitableEvent* accept_waitable_event);
   void OnAccepted(
-      std::optional<WifiLanSocket::ConnectedSocketParameters>*
+      absl::optional<WifiLanSocket::ConnectedSocketParameters>*
           connected_socket_parameters,
       base::WaitableEvent* accept_waitable_event,
       int32_t net_result,
-      const std::optional<net::IPEndPoint>& remote_addr,
+      const absl::optional<net::IPEndPoint>& remote_addr,
       mojo::PendingRemote<network::mojom::TCPConnectedSocket> connected_socket,
       mojo::ScopedDataPipeConsumerHandle receive_stream,
       mojo::ScopedDataPipeProducerHandle send_stream);
@@ -113,8 +112,7 @@ class WifiLanServerSocket : public api::WifiLanServerSocket {
   mojo::SharedRemote<sharing::mojom::FirewallHole> firewall_hole_;
 
   // Track all pending accept tasks in case Close() is called while waiting.
-  base::flat_set<raw_ptr<base::WaitableEvent, CtnExperimental>>
-      pending_accept_waitable_events_;
+  base::flat_set<base::WaitableEvent*> pending_accept_waitable_events_;
 };
 
 }  // namespace chrome

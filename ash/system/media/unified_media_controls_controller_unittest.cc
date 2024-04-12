@@ -7,7 +7,9 @@
 #include "ash/system/media/unified_media_controls_view.h"
 #include "ash/test/ash_test_base.h"
 #include "base/ranges/algorithm.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
+#include "media/base/media_switches.h"
 #include "services/media_session/public/cpp/test/test_media_controller.h"
 #include "services/media_session/public/mojom/media_session.mojom.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -52,6 +54,7 @@ class UnifiedMediaControlsControllerTest : public AshTestBase {
   ~UnifiedMediaControlsControllerTest() override = default;
 
   void SetUp() override {
+    feature_list_.InitAndEnableFeature(media::kGlobalMediaControlsForChromeOS);
     AshTestBase::SetUp();
 
     mock_delegate_ = std::make_unique<MockMediaControlsDelegate>();
@@ -169,6 +172,8 @@ class UnifiedMediaControlsControllerTest : public AshTestBase {
     controller_->MediaSessionActionsChanged(
         std::vector<MediaSessionAction>(actions_.begin(), actions_.end()));
   }
+
+  base::test::ScopedFeatureList feature_list_;
 
   std::unique_ptr<views::Widget> widget_;
   std::unique_ptr<UnifiedMediaControlsController> controller_;
@@ -397,7 +402,7 @@ TEST_F(UnifiedMediaControlsControllerTest,
   EXPECT_TRUE(delegate()->IsControlsVisible());
   EXPECT_FALSE(IsMediaControlsInEmptyState());
 
-  controller()->MediaSessionChanged(std::nullopt);
+  controller()->MediaSessionChanged(absl::nullopt);
   EXPECT_FALSE(IsMediaControlsInEmptyState());
 
   // Still in normal state since we are within waiting delay time frame.
@@ -411,7 +416,7 @@ TEST_F(UnifiedMediaControlsControllerTest,
   EXPECT_FALSE(IsMediaControlsInEmptyState());
 
   // Hide controls timer expired, controls should be in empty state.
-  controller()->MediaSessionChanged(std::nullopt);
+  controller()->MediaSessionChanged(absl::nullopt);
   task_environment()->FastForwardBy(base::Milliseconds(kFreezeControlsTime));
   EXPECT_TRUE(IsMediaControlsInEmptyState());
   EXPECT_TRUE(delegate()->IsControlsVisible());
@@ -442,7 +447,7 @@ TEST_F(UnifiedMediaControlsControllerTest, MediaControlsEmptyState) {
     EXPECT_TRUE(button->GetEnabled());
 
   // Media controls should be in empty state after getting empty session.
-  controller()->MediaSessionChanged(std::nullopt);
+  controller()->MediaSessionChanged(absl::nullopt);
   task_environment()->FastForwardBy(base::Milliseconds(kFreezeControlsTime));
 
   EXPECT_TRUE(IsMediaControlsInEmptyState());
@@ -493,7 +498,7 @@ TEST_F(UnifiedMediaControlsControllerTest, MediaControlsEmptyStateWithArtwork) {
   EXPECT_TRUE(artwork_view()->GetVisible());
   EXPECT_EQ(artwork_view()->background(), nullptr);
 
-  controller()->MediaSessionChanged(std::nullopt);
+  controller()->MediaSessionChanged(absl::nullopt);
   task_environment()->FastForwardBy(base::Milliseconds(kFreezeControlsTime));
 
   // Artwork view should still be visible and have an background in empty state.
@@ -530,7 +535,7 @@ TEST_F(UnifiedMediaControlsControllerTest, FreezeControlsWhenUpdateSession) {
   EXPECT_EQ(artist_label()->GetText(), init_metadata.artist);
   EXPECT_FALSE(artwork_view()->GetVisible());
 
-  controller()->MediaSessionChanged(std::nullopt);
+  controller()->MediaSessionChanged(absl::nullopt);
 
   // Test that metadata update is ignored when we waiting for new session.
   media_session::MediaMetadata metadata;

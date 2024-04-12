@@ -114,11 +114,11 @@ class NotificationPermissionContext
 
   // PermissionContextBase implementation.
   void DecidePermission(
-      permissions::PermissionRequestData request_data,
+      const permissions::PermissionRequestID& id,
+      const GURL& requesting_origin,
+      const GURL& embedding_origin,
+      bool user_gesture,
       permissions::BrowserPermissionCallback callback) override;
-  void UpdateTabContext(const permissions::PermissionRequestID& id,
-                        const GURL& requesting_frame,
-                        bool allowed) override;
 
   base::WeakPtrFactory<NotificationPermissionContext> weak_factory_ui_thread_{
       this};

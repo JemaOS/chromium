@@ -58,8 +58,6 @@ QueueName MainThreadTaskQueue::NameForQueueType(
       return QueueName::FRAME_LOADING_CONTROL_TQ;
     case MainThreadTaskQueue::QueueType::kV8:
       return QueueName::V8_TQ;
-    case MainThreadTaskQueue::QueueType::kV8LowPriority:
-      return QueueName::V8_LOW_PRIORITY_TQ;
     case MainThreadTaskQueue::QueueType::kInput:
       return QueueName::INPUT_TQ;
     case MainThreadTaskQueue::QueueType::kDetached:
@@ -99,7 +97,6 @@ bool MainThreadTaskQueue::IsPerFrameTaskQueue(
     case MainThreadTaskQueue::QueueType::kCompositor:
     case MainThreadTaskQueue::QueueType::kTest:
     case MainThreadTaskQueue::QueueType::kV8:
-    case MainThreadTaskQueue::QueueType::kV8LowPriority:
     case MainThreadTaskQueue::QueueType::kInput:
     case MainThreadTaskQueue::QueueType::kDetached:
     case MainThreadTaskQueue::QueueType::kNonWaking:
@@ -128,7 +125,10 @@ MainThreadTaskQueue::MainThreadTaskQueue(
       agent_group_scheduler_(params.agent_group_scheduler),
       frame_scheduler_(params.frame_scheduler) {
   task_runner_with_default_task_type_ =
-      WrapTaskRunner(task_queue_->task_runner());
+      base::FeatureList::IsEnabled(
+          features::kUseBlinkSchedulerTaskRunnerWithCustomDeleter)
+          ? WrapTaskRunner(task_queue_->task_runner())
+          : task_queue_->task_runner();
   // Throttling needs |should_notify_observers| to get task timing.
   DCHECK(!params.queue_traits.can_be_throttled || spec.should_notify_observers)
       << "Throttled queue is not supported with |!should_notify_observers|";
@@ -136,7 +136,7 @@ MainThreadTaskQueue::MainThreadTaskQueue(
             web_scheduling_queue_type_.has_value());
   DCHECK_EQ(web_scheduling_priority_.has_value(),
             queue_type_ == QueueType::kWebScheduling);
-  if (spec.should_notify_observers) {
+  if (task_queue_->HasImpl() && spec.should_notify_observers) {
     if (params.queue_traits.can_be_throttled) {
       throttler_.emplace(task_queue_.get(),
                          main_thread_scheduler_->GetTickClock());
@@ -161,9 +161,8 @@ MainThreadTaskQueue::~MainThreadTaskQueue() {
 void MainThreadTaskQueue::OnTaskStarted(
     const base::sequence_manager::Task& task,
     const base::sequence_manager::TaskQueue::TaskTiming& task_timing) {
-  if (main_thread_scheduler_) {
+  if (main_thread_scheduler_)
     main_thread_scheduler_->OnTaskStarted(this, task, task_timing);
-  }
 }
 
 void MainThreadTaskQueue::OnTaskCompleted(
@@ -200,29 +199,24 @@ void MainThreadTaskQueue::OnTaskRunTimeReported(
   }
 }
 
-void MainThreadTaskQueue::DetachTaskQueue() {
-  // The task queue was already shut down, which happens in tests if the
-  // `agent_group_scheduler_` is GCed after the task queue impl is unregistered.
-  //
-  // TODO(crbug.com/1143007): AgentGroupSchedulerImpl should probably not be
-  // detaching shut down task queues.
-  if (!task_queue_) {
-    return;
-  }
-  // `main_thread_scheduler_` can be null in tests.
-  if (!main_thread_scheduler_) {
-    return;
-  }
+void MainThreadTaskQueue::DetachFromMainThreadScheduler() {
+  weak_ptr_factory_.InvalidateWeakPtrs();
 
-  task_queue_->ResetThrottler();
-  throttler_.reset();
+  // Frame has already been detached.
+  if (!main_thread_scheduler_)
+    return;
 
-  // Detach from the underlying scheduler and transfer control to the main
-  // thread scheduler.
-  agent_group_scheduler_ = nullptr;
-  frame_scheduler_ = nullptr;
+  task_queue_->SetOnTaskStartedHandler(
+      base::BindRepeating(&MainThreadSchedulerImpl::OnTaskStarted,
+                          main_thread_scheduler_->GetWeakPtr(), nullptr));
+  task_queue_->SetOnTaskCompletedHandler(
+      base::BindRepeating(&MainThreadSchedulerImpl::OnTaskCompleted,
+                          main_thread_scheduler_->GetWeakPtr(), nullptr));
   on_ipc_task_posted_callback_handle_.reset();
-  main_thread_scheduler_->OnDetachTaskQueue(*this);
+  task_queue_->SetTaskExecutionTraceLogger(
+      internal::TaskQueueImpl::TaskExecutionTraceLogger());
+
+  ClearReferencesToSchedulers();
 }
 
 void MainThreadTaskQueue::SetOnIPCTaskPosted(
@@ -239,14 +233,9 @@ void MainThreadTaskQueue::DetachOnIPCTaskPostedWhileInBackForwardCache() {
 }
 
 void MainThreadTaskQueue::ShutdownTaskQueue() {
-  if (main_thread_scheduler_) {
-    main_thread_scheduler_->OnShutdownTaskQueue(this);
-  }
-  main_thread_scheduler_ = nullptr;
-  agent_group_scheduler_ = nullptr;
-  frame_scheduler_ = nullptr;
+  ClearReferencesToSchedulers();
   throttler_.reset();
-  task_queue_.reset();
+  task_queue_->ShutdownTaskQueue();
 }
 
 AgentGroupScheduler* MainThreadTaskQueue::GetAgentGroupScheduler() {
@@ -264,10 +253,16 @@ AgentGroupScheduler* MainThreadTaskQueue::GetAgentGroupScheduler() {
   return nullptr;
 }
 
-FrameSchedulerImpl* MainThreadTaskQueue::GetFrameScheduler() const {
-  if (!task_queue_) {
-    return frame_scheduler_;
+void MainThreadTaskQueue::ClearReferencesToSchedulers() {
+  if (main_thread_scheduler_) {
+    main_thread_scheduler_->OnShutdownTaskQueue(this);
   }
+  main_thread_scheduler_ = nullptr;
+  agent_group_scheduler_ = nullptr;
+  frame_scheduler_ = nullptr;
+}
+
+FrameSchedulerImpl* MainThreadTaskQueue::GetFrameScheduler() const {
   DCHECK(task_queue_->task_runner()->BelongsToCurrentThread());
   return frame_scheduler_;
 }
@@ -279,19 +274,14 @@ void MainThreadTaskQueue::SetFrameSchedulerForTest(
 
 void MainThreadTaskQueue::SetWebSchedulingPriority(
     WebSchedulingPriority priority) {
-  if (web_scheduling_priority_ == priority) {
+  if (web_scheduling_priority_ == priority)
     return;
-  }
   web_scheduling_priority_ = priority;
-  if (frame_scheduler_) {
-    frame_scheduler_->OnWebSchedulingTaskQueuePriorityChanged(this);
-  }
+  frame_scheduler_->OnWebSchedulingTaskQueuePriorityChanged(this);
 }
 
 void MainThreadTaskQueue::OnWebSchedulingTaskQueueDestroyed() {
-  if (frame_scheduler_) {
-    frame_scheduler_->OnWebSchedulingTaskQueueDestroyed(this);
-  }
+  frame_scheduler_->OnWebSchedulingTaskQueueDestroyed(this);
 }
 
 bool MainThreadTaskQueue::IsThrottled() const {
@@ -305,7 +295,7 @@ bool MainThreadTaskQueue::IsThrottled() const {
 
 MainThreadTaskQueue::ThrottleHandle MainThreadTaskQueue::Throttle() {
   DCHECK(CanBeThrottled());
-  return ThrottleHandle(*this);
+  return ThrottleHandle(AsWeakPtr());
 }
 
 void MainThreadTaskQueue::AddToBudgetPool(base::TimeTicks now,
@@ -348,14 +338,20 @@ void MainThreadTaskQueue::QueueTraits::WriteIntoTrace(
 
 scoped_refptr<base::SingleThreadTaskRunner>
 MainThreadTaskQueue::CreateTaskRunner(TaskType task_type) {
-  CHECK(task_queue_);
-  return WrapTaskRunner(
-      task_queue_->CreateTaskRunner(static_cast<int>(task_type)));
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner =
+      task_queue_->CreateTaskRunner(static_cast<int>(task_type));
+  if (base::FeatureList::IsEnabled(
+          features::kUseBlinkSchedulerTaskRunnerWithCustomDeleter)) {
+    return WrapTaskRunner(std::move(task_runner));
+  }
+  return task_runner;
 }
 
 scoped_refptr<BlinkSchedulerSingleThreadTaskRunner>
 MainThreadTaskQueue::WrapTaskRunner(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner) {
+  DCHECK(base::FeatureList::IsEnabled(
+      features::kUseBlinkSchedulerTaskRunnerWithCustomDeleter));
   // We need to pass the cleanup task runner to task task queues that may stop
   // running tasks before the main thread shuts down as a backup for object
   // deleter tasks.

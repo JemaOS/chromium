@@ -6,8 +6,7 @@
 
 import './pdf_print_wrapper.js';
 
-import type {BrowserApi} from './browser_api.js';
-import {createBrowserApiForPrintPreview} from './browser_api.js';
+import {BrowserApi, createBrowserApiForPrintPreview} from './browser_api.js';
 
 /**
  * Stores any pending messages received which should be passed to the

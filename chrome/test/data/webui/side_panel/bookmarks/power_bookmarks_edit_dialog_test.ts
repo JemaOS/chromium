@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
 import 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_edit_dialog.js';
 
 import {BookmarksApiProxyImpl} from 'chrome://bookmarks-side-panel.top-chrome/bookmarks_api_proxy.js';
-import type {PowerBookmarksEditDialogElement} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_edit_dialog.js';
+import {PowerBookmarksEditDialogElement} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_edit_dialog.js';
 import {PowerBookmarksService} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_service.js';
-import type {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
+import {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
-import {eventToPromise} from 'chrome://webui-test/test_util.js';
 
 import {TestBookmarksApiProxy} from './test_bookmarks_api_proxy.js';
 import {TestPowerBookmarksDelegate} from './test_power_bookmarks_delegate.js';
@@ -71,7 +71,7 @@ suite('SidePanelPowerBookmarksEditDialogTest', () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
 
     bookmarksApi = new TestBookmarksApiProxy();
-    bookmarksApi.setFolders(structuredClone(folders));
+    bookmarksApi.setFolders(JSON.parse(JSON.stringify(folders)));
     BookmarksApiProxyImpl.setInstance(bookmarksApi);
 
     delegate = new TestPowerBookmarksDelegate();
@@ -155,9 +155,6 @@ suite('SidePanelPowerBookmarksEditDialogTest', () => {
     const nameInput: CrInputElement =
         powerBookmarksEditDialog.shadowRoot!.querySelector('#nameInput')!;
     nameInput.inputElement.value = 'Modified value';
-    nameInput.inputElement.dispatchEvent(
-        new CustomEvent('input', {composed: true, bubbles: true}));
-    await eventToPromise('value-changed', nameInput);
 
     const saveButton: HTMLElement =
         powerBookmarksEditDialog.shadowRoot!.querySelector('.action-button')!;
@@ -169,42 +166,5 @@ suite('SidePanelPowerBookmarksEditDialogTest', () => {
     // Adding a new folder should automatically select that folder.
     assertEquals(savedParent, 'tmp_new_folder_0');
     assertEquals(savedNewFolderCount, 1);
-  });
-
-  test('DoesNotSaveInvalidUrls', async () => {
-    let saveCount = 0;
-    powerBookmarksEditDialog.addEventListener('save', (() => {
-                                                        saveCount++;
-                                                      }) as EventListener);
-
-    const topLevelBookmarks = service.getTopLevelBookmarks();
-    powerBookmarksEditDialog.showDialog(
-        [],
-        topLevelBookmarks,
-        [topLevelBookmarks[3]!],
-        false,
-    );
-
-    const newFolderButton: HTMLElement =
-        powerBookmarksEditDialog.shadowRoot!.querySelector('#newFolderButton')!;
-    newFolderButton.click();
-
-    const urlInput: CrInputElement =
-        powerBookmarksEditDialog.shadowRoot!.querySelector('#urlInput')!;
-    urlInput.inputElement.value = 'notavalidurl.2';
-    urlInput.inputElement.dispatchEvent(
-        new CustomEvent('input', {composed: true, bubbles: true}));
-    await eventToPromise('value-changed', urlInput);
-
-    const saveButton: HTMLElement =
-        powerBookmarksEditDialog.shadowRoot!.querySelector('.action-button')!;
-    saveButton.click();
-
-    // Wait for the urlInput to update for validation, and wait one more cycle
-    // to ensure we catch the save event if it occurs.
-    await urlInput.updateComplete;
-    await new Promise(resolve => setTimeout(resolve, 1));
-
-    assertEquals(saveCount, 0);
   });
 });

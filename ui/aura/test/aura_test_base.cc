@@ -11,7 +11,6 @@
 #include "ui/aura/window.h"
 #include "ui/base/ime/init/input_method_initializer.h"
 #include "ui/base/ui_base_switches.h"
-#include "ui/display/types/display_constants.h"
 #include "ui/events/event_dispatcher.h"
 #include "ui/events/event_sink.h"
 #include "ui/events/gesture_detection/gesture_configuration.h"
@@ -94,8 +93,7 @@ void AuraTestBase::RunAllPendingInMessageLoop() {
 }
 
 void AuraTestBase::ParentWindow(Window* window) {
-  client::ParentWindowWithContext(window, root_window(), gfx::Rect(),
-                                  display::kInvalidDisplayId);
+  client::ParentWindowWithContext(window, root_window(), gfx::Rect());
 }
 
 bool AuraTestBase::DispatchEventUsingWindowDispatcher(ui::Event* event) {

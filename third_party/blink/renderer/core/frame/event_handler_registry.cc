@@ -13,7 +13,6 @@
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
-#include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/scrolling/scrolling_coordinator.h"
 #include "third_party/blink/renderer/platform/heap/thread_state_scopes.h"
 #include "third_party/blink/renderer/platform/heap/visitor.h"
@@ -189,10 +188,9 @@ void EventHandlerRegistry::DidMoveIntoPage(EventTarget& target) {
       continue;
     for (wtf_size_t count = listeners->size(); count > 0; --count) {
       EventHandlerClass handler_class;
-      if (!EventTypeToClass(event_types[i], (*listeners)[count - 1]->Options(),
-                            &handler_class)) {
+      if (!EventTypeToClass(event_types[i], (*listeners)[count - 1].Options(),
+                            &handler_class))
         continue;
-      }
 
       DidAddEventHandler(target, handler_class);
     }

@@ -8,8 +8,8 @@
 
 #include "ash/shell.h"
 #include "ash/style/ash_color_id.h"
-#include "ash/style/color_palette_controller.h"
-#include "base/check_is_test.h"
+#include "ash/style/color_util.h"
+#include "ash/style/dark_light_mode_controller_impl.h"
 #include "base/check_op.h"
 #include "ui/chromeos/styles/cros_styles.h"
 #include "ui/color/color_id.h"
@@ -28,6 +28,13 @@ constexpr float kDarkInkDropOpacity = 0.06f;
 
 AshColorProvider* g_instance = nullptr;
 
+bool IsDarkModeEnabled() {
+  // May be null in unit tests.
+  if (!Shell::HasInstance())
+    return true;
+  return Shell::Get()->dark_light_mode_controller()->IsDarkModeEnabled();
+}
+
 }  // namespace
 
 AshColorProvider::AshColorProvider() {
@@ -43,6 +50,31 @@ AshColorProvider::~AshColorProvider() {
 // static
 AshColorProvider* AshColorProvider::Get() {
   return g_instance;
+}
+
+SkColor AshColorProvider::GetBaseLayerColor(BaseLayerType type) const {
+  // TODO(crbug.com/1350510): Delete this function after all clients migrate.
+  auto* color_provider = GetColorProvider();
+  DCHECK(color_provider);
+
+  switch (type) {
+    case BaseLayerType::kTransparent20:
+      return color_provider->GetColor(kColorAshShieldAndBase20);
+    case BaseLayerType::kTransparent40:
+      return color_provider->GetColor(kColorAshShieldAndBase40);
+    case BaseLayerType::kTransparent60:
+      return color_provider->GetColor(kColorAshShieldAndBase60);
+    case BaseLayerType::kTransparent80:
+      return color_provider->GetColor(kColorAshShieldAndBase80);
+    case BaseLayerType::kInvertedTransparent80:
+      return color_provider->GetColor(kColorAshInvertedShieldAndBase80);
+    case BaseLayerType::kTransparent90:
+      return color_provider->GetColor(kColorAshShieldAndBase90);
+    case BaseLayerType::kTransparent95:
+      return color_provider->GetColor(kColorAshShieldAndBase95);
+    case BaseLayerType::kOpaque:
+      return color_provider->GetColor(kColorAshShieldAndBaseOpaque);
+  }
 }
 
 SkColor AshColorProvider::GetControlsLayerColor(ControlsLayerType type) const {
@@ -176,15 +208,9 @@ std::pair<SkColor, float> AshColorProvider::GetInkDropBaseColorAndOpacity(
 }
 
 SkColor AshColorProvider::GetBackgroundColor() const {
-  const auto default_color =
-      GetColorProvider()->GetColor(kColorAshShieldAndBaseOpaque);
-  if (!Shell::HasInstance()) {
-    CHECK_IS_TEST();
-    return default_color;
-  }
-  return Shell::Get()
-      ->color_palette_controller()
-      ->GetUserWallpaperColorOrDefault(default_color);
+  return ColorUtil::GetBackgroundThemedColor(
+      GetColorProvider()->GetColor(kColorAshShieldAndBaseOpaque),
+      IsDarkModeEnabled());
 }
 
 ui::ColorProvider* AshColorProvider::GetColorProvider() const {

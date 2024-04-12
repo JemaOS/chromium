@@ -24,24 +24,15 @@ using ::testing::Eq;
 namespace {
 class ChromeWebContentsMenuHelperUnitTest : public BrowserWithTestWindowTest {
  protected:
-  void TearDown() override {
-    pref_service_ = nullptr;
-    BrowserWithTestWindowTest::TearDown();
-  }
-
-  TestingProfile* CreateProfile(const std::string& profile_name) override {
+  TestingProfile* CreateProfile() override {
     std::unique_ptr<sync_preferences::TestingPrefServiceSyncable> prefs(
         new sync_preferences::TestingPrefServiceSyncable);
     RegisterUserProfilePrefs(prefs->registry());
     pref_service_ = prefs.get();
 
-    auto* profile = profile_manager()->CreateTestingProfile(
-        profile_name, std::move(prefs), std::u16string(), 0,
+    return profile_manager()->CreateTestingProfile(
+        "test_profile", std::move(prefs), std::u16string(), 0,
         TestingProfile::TestingFactories());
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-    OnUserProfileCreated(profile_name, profile);
-#endif
-    return profile;
   }
 
   sync_preferences::PrefServiceSyncable* pref_service() {

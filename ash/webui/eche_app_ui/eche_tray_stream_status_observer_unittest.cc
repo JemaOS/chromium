@@ -6,7 +6,6 @@
 #include <memory>
 
 #include "ash/constants/ash_features.h"
-#include "ash/public/cpp/ash_web_view.h"
 #include "ash/system/eche/eche_tray.h"
 #include "ash/system/status_area_widget_test_helper.h"
 #include "ash/test/ash_test_base.h"
@@ -15,9 +14,9 @@
 #include "ash/webui/eche_app_ui/eche_connection_status_handler.h"
 #include "ash/webui/eche_app_ui/eche_stream_status_change_handler.h"
 #include "ash/webui/eche_app_ui/fake_feature_status_provider.h"
-#include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/scoped_feature_list.h"
+#include "chromeos/ash/components/phonehub/fake_phone_hub_manager.h"
 #include "chromeos/ash/components/test/ash_test_suite.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/gfx/image/image.h"
@@ -38,8 +37,6 @@ void ResetUnloadWebContent() {
 }
 
 void GracefulGoBackFunction() {}
-
-void BubbleShownFunction(AshWebView* view) {}
 
 }  // namespace
 
@@ -99,7 +96,7 @@ class EcheTrayStreamStatusObserverTest : public AshTestBase {
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
-  raw_ptr<EcheTray, DanglingUntriaged> eche_tray_ = nullptr;
+  raw_ptr<EcheTray, ExperimentalAsh> eche_tray_ = nullptr;
   std::unique_ptr<EcheConnectionStatusHandler> connection_status_handler_;
   std::unique_ptr<AppsLaunchInfoProvider> apps_launch_info_provider_;
   std::unique_ptr<EcheStreamStatusChangeHandler> stream_status_change_handler_;
@@ -115,8 +112,7 @@ TEST_F(EcheTrayStreamStatusObserverTest, LaunchBubble) {
                eche_app::mojom::ConnectionStatus::kConnectionStatusDisconnected,
                eche_app::mojom::AppStreamLaunchEntryPoint::APPS_LIST,
                base::BindOnce(&GracefulCloseFunction),
-               base::BindRepeating(&GracefulGoBackFunction),
-               base::BindRepeating(&BubbleShownFunction));
+               base::BindRepeating(&GracefulGoBackFunction));
 
   // Wait for Eche Tray to load Eche Web to complete.
   base::RunLoop().RunUntilIdle();
@@ -136,8 +132,7 @@ TEST_F(EcheTrayStreamStatusObserverTest, OnStartStreaming) {
                eche_app::mojom::ConnectionStatus::kConnectionStatusDisconnected,
                eche_app::mojom::AppStreamLaunchEntryPoint::APPS_LIST,
                base::BindOnce(&GracefulCloseFunction),
-               base::BindRepeating(&GracefulGoBackFunction),
-               base::BindRepeating(&BubbleShownFunction));
+               base::BindRepeating(&GracefulGoBackFunction));
 
   // Wait for Eche Tray to load Eche Web to complete.
   base::RunLoop().RunUntilIdle();
@@ -159,8 +154,7 @@ TEST_F(EcheTrayStreamStatusObserverTest, OnStreamStatusChanged) {
                eche_app::mojom::ConnectionStatus::kConnectionStatusDisconnected,
                eche_app::mojom::AppStreamLaunchEntryPoint::APPS_LIST,
                base::BindOnce(&GracefulCloseFunction),
-               base::BindRepeating(&GracefulGoBackFunction),
-               base::BindRepeating(&BubbleShownFunction));
+               base::BindRepeating(&GracefulGoBackFunction));
   OnStreamStatusChanged(mojom::StreamStatus::kStreamStatusStarted);
 
   // Wait for Eche Tray to load Eche Web to complete.
@@ -184,8 +178,7 @@ TEST_F(EcheTrayStreamStatusObserverTest,
                eche_app::mojom::ConnectionStatus::kConnectionStatusDisconnected,
                eche_app::mojom::AppStreamLaunchEntryPoint::APPS_LIST,
                base::BindOnce(&GracefulCloseFunction),
-               base::BindRepeating(&GracefulGoBackFunction),
-               base::BindRepeating(&BubbleShownFunction));
+               base::BindRepeating(&GracefulGoBackFunction));
   OnStreamStatusChanged(mojom::StreamStatus::kStreamStatusStarted);
 
   // Wait for Eche Tray to load Eche Web to complete.
@@ -210,8 +203,7 @@ TEST_F(EcheTrayStreamStatusObserverTest,
                eche_app::mojom::ConnectionStatus::kConnectionStatusDisconnected,
                eche_app::mojom::AppStreamLaunchEntryPoint::APPS_LIST,
                base::BindOnce(&GracefulCloseFunction),
-               base::BindRepeating(&GracefulGoBackFunction),
-               base::BindRepeating(&BubbleShownFunction));
+               base::BindRepeating(&GracefulGoBackFunction));
   OnStreamStatusChanged(mojom::StreamStatus::kStreamStatusStarted);
 
   // Wait for Eche Tray to load Eche Web to complete.
@@ -236,8 +228,7 @@ TEST_F(EcheTrayStreamStatusObserverTest,
                eche_app::mojom::ConnectionStatus::kConnectionStatusDisconnected,
                eche_app::mojom::AppStreamLaunchEntryPoint::APPS_LIST,
                base::BindOnce(&GracefulCloseFunction),
-               base::BindRepeating(&GracefulGoBackFunction),
-               base::BindRepeating(&BubbleShownFunction));
+               base::BindRepeating(&GracefulGoBackFunction));
   OnStreamStatusChanged(mojom::StreamStatus::kStreamStatusStarted);
 
   // Wait for Eche Tray to load Eche Web to complete.

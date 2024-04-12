@@ -18,22 +18,15 @@ NotificationMetricsLoggerFactory::GetForBrowserContext(
 // static
 NotificationMetricsLoggerFactory*
 NotificationMetricsLoggerFactory::GetInstance() {
-  static base::NoDestructor<NotificationMetricsLoggerFactory> instance;
-  return instance.get();
+  return base::Singleton<NotificationMetricsLoggerFactory>::get();
 }
 
 NotificationMetricsLoggerFactory::NotificationMetricsLoggerFactory()
     : ProfileKeyedServiceFactory(
           "NotificationMetricsLogger",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
-std::unique_ptr<KeyedService>
-NotificationMetricsLoggerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* NotificationMetricsLoggerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<NotificationMetricsLogger>();
+  return new NotificationMetricsLogger();
 }

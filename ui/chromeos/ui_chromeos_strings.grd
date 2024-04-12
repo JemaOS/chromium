@@ -177,11 +177,14 @@
     <file path="translations/ui_chromeos_strings_zh-HK.xtb" lang="zh-HK" />
     <file path="translations/ui_chromeos_strings_zh-TW.xtb" lang="zh-TW" />
     <file path="translations/ui_chromeos_strings_zu.xtb" lang="zu" />
+    <file path="../../jemaos/i18n/ui/chromeos/translations/ui_chromeos_strings_zh-CN.xtb" lang="zh-CN" />
   </translations>
   <release seq="1">
     <messages fallback_to_english="true">
       <!-- Files app strings. It's shared with ARC++ (//ash/components/arc). -->
       <part file="file_manager_strings.grdp" />
+      <part file="../../jemaos/i18n/ui/chromeos/file_manager_strings.override.grdp" />
+      <part file="../../jemaos/i18n/ui/chromeos/file_manager_strings.grdp" />
 
       <!-- Default user profile images. -->
       <!-- User Image default image accessible descriptions -->
@@ -635,9 +638,6 @@
       <!-- Input method strings. -->
       <message name="IDS_CHROMEOS_IME_INFOLIST_WINDOW_TITLE" desc="The title of the infolist window where the meanings and the usages of words are displayed.">
         Information
-      </message>
-      <message name="IDS_CHROMEOS_DIACRITIC_NUDGE_TEXT">
-      Want keys to repeat? Turn off accent marks in Keyboard Settings
       </message>
       <message name="IDS_CHROMEOS_IME_CHINESE_QUICK_SETTINGS_CHINESE" desc="It is the description of whether the current input method is Chinese.">
         Input language is Chinese
@@ -1436,9 +1436,6 @@
       <message name="IDS_NETWORK_LIST_UPDATED_CELLULAR_SIM_CARD_LOCKED" desc="Text in the network list element when a Cellular network's SIM card is locked. Used when updated cellular activation flag in on.">
         Locked
       </message>
-      <message name="IDS_NETWORK_LIST_UPDATED_CELLULAR_SIM_CARD_CARRIER_LOCKED" desc="Text in the network list element when a Cellular network's SIM card is locked to a specific carrier. Used when updated cellular activation flag in on.">
-        Locked by another mobile provider
-      </message>
       <message name="IDS_NETWORK_LIST_NOT_CONNECTED" desc="Text in the network list element when there is a network for the type, but it is not connected or connecting.">
         Not connected
       </message>
@@ -1591,9 +1588,6 @@
       </message>
       <message name="IDS_NETWORK_LIST_SIM_CARD_LOCKED" desc="Text in the network list element when a Cellular network's SIM card is locked.">
         Your SIM is locked
-      </message>
-      <message name="IDS_NETWORK_LIST_SIM_CARD_CARRIER_LOCKED" desc="Text in the network list element when a Cellular network's SIM card is carrier locked.">
-        Mobile network provider is locked. Contact your provider for support.
       </message>
       <message name="IDS_WIFI_NETWORK_STATUS_SECURED" desc="a11y label used when a Wi-Fi network is secured.">
         Secured
@@ -1779,9 +1773,6 @@
       <message name="IDS_SETTINGS_INTERNET_NETWORK_SETTING_MANAGED_BY_ADMIN_TOOLTIP" desc="Text displayed in the controlled settings bubble when a setting's value is managed by policy.">
         This setting is managed by your administrator.
       </message>
-      <message name="IDS_SUPPRESS_TEXT_MESSAGES" desc="Text displayed for a toggle button allowing user to show or hide text messages">
-        Show text messages
-      </message>
 
       <!-- Settings > Internet > SIM lock/unlock dialog -->
       <message name="IDS_SETTINGS_INTERNET_NETWORK_SIM_CHANGE_PIN" desc="Settings > Internet > Network details > Lock/unlock SIM card: Label for buton to change the PIN.">
@@ -1963,6 +1954,9 @@
       <message name="IDS_SETTINGS_INTERNET_NETWORK_AUTO_CONNECT" desc="Settings > Internet > Network details: Label for the checkbox determining whether to automatically connect to the network.">
         Automatically connect to this network
       </message>
+
+      <part file="../../jemaos/i18n/ui/chromeos/ui_chromeos_strings.override.grdp" />
+
     </messages>
   </release>
 </grit>

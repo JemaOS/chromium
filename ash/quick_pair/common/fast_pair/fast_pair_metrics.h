@@ -23,8 +23,7 @@ class Device;
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused. The numbers here correspond to the
 // ordering of the flow. This enum should be kept in sync with the
-// FastPairEngagementFlowEvent enum in
-// //tools/metrics/histograms/metadata/bluetooth/enums.xml.
+// FastPairEngagementFlowEvent enum in src/tools/metrics/histograms/enums.xml.
 enum COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairEngagementFlowEvent {
   kDiscoveryUiShown = 1,
   kDiscoveryUiDismissed = 11,
@@ -48,7 +47,7 @@ enum COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairEngagementFlowEvent {
 // numeric values should never be reused. The numbers here correspond to the
 // ordering of the flow. This enum should be kept in sync with the
 // FastPairRetroactiveEngagementFlowEvent enum in
-// //tools/metrics/histograms/metadata/bluetooth/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum COMPONENT_EXPORT(QUICK_PAIR_COMMON)
     FastPairRetroactiveEngagementFlowEvent {
       kAssociateAccountUiShown = 1,
@@ -67,7 +66,7 @@ enum COMPONENT_EXPORT(QUICK_PAIR_COMMON)
 // numeric values should never be reused. The numbers here correspond to the
 // ordering of the flow. This enum should be kept in sync with the
 // FastPairInitialSuccessFunnelEvent enum in
-// //tools/metrics/histograms/metadata/fastpair/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON)
     FastPairInitialSuccessFunnelEvent {
       kNotificationsClicked = 0,
@@ -87,7 +86,7 @@ enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON)
 // numeric values should never be reused. The numbers here correspond to the
 // ordering of the flow. This enum should be kept in sync with the
 // FastPairSubsequentSuccessFunnelEvent enum in
-// //tools/metrics/histograms/metadata/fastpair/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON)
     FastPairSubsequentSuccessFunnelEvent {
       kNotificationsClicked = 0,
@@ -101,7 +100,7 @@ enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON)
 // numeric values should never be reused. The numbers here correspond to the
 // ordering of the flow. This enum should be kept in sync with the
 // FastPairRetroactiveSuccessFunnelEvent enum in
-// //tools/metrics/histograms/metadata/fastpair/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON)
     FastPairRetroactiveSuccessFunnelEvent {
       kDeviceDetected = 0,
@@ -119,7 +118,7 @@ enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON)
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused. This enum should be kept in sync
 // with the FastPairInitializePairingProcessEvent enum in
-// //tools/metrics/histograms/metadata/fastpair/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON)
     FastPairInitializePairingProcessEvent {
       kInitializationStarted = 0,
@@ -134,7 +133,7 @@ enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON)
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused. This enum should be kept in sync
 // with the FastPairPairingMethod enum in
-// //tools/metrics/histograms/metadata/bluetooth/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) PairingMethod {
   kFastPair = 0,
   kSystemPairingUi = 1,
@@ -144,7 +143,7 @@ enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) PairingMethod {
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused. This enum should be kept in sync
 // with the FastPairHandshakeFailureReason enum in
-// //tools/metrics/histograms/metadata/bluetooth/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) HandshakeFailureReason {
   kFailedGattInit = 0,
   kFailedCreateEncryptor = 1,
@@ -156,8 +155,7 @@ enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) HandshakeFailureReason {
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused. This enum should be kept in sync
-// with the FastPairVersion enum in
-// //tools/metrics/histograms/metadata/bluetooth/enums.xml.
+// with the FastPairVersion enum in src/tools/metrics/histograms/enums.xml.
 enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairVersion {
   kVersion1 = 0,
   kVersion2 = 1,
@@ -167,7 +165,7 @@ enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairVersion {
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused. This enum should be kept in sync
 // with the FastPairHandshakeSteps enum in
-// //tools/metrics/histograms/metadata/bluetooth/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairHandshakeSteps {
   kHandshakeStarted = 0,
   kGattInitalized = 1,
@@ -179,7 +177,7 @@ enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairHandshakeSteps {
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused. This enum should be kept in sync
 // with the FastPairGattConnectionSteps enum in
-// //tools/metrics/histograms/metadata/fastpair/enums.xml.
+// src/tools/metrics/histograms/enums.xml.
 enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairGattConnectionSteps {
   kConnectionStarted = 0,
   kConnectionReady = 1,
@@ -191,8 +189,8 @@ enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairGattConnectionSteps {
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused. This enum should be kept in sync
-// with the FastPairProtocolPairingSteps enum in
-// //tools/metrics/histograms/metadata/bluetooth/enums.xml.
+// with the FastPairHandshakeSteps enum in
+// src/tools/metrics/histograms/enums.xml.
 enum class COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairProtocolPairingSteps {
   kPairingStarted = 0,
   kExhaustedRetries = 1,

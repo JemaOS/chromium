@@ -6,32 +6,24 @@
 
 #include "base/time/time.h"
 #include "ui/aura/window.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/wm/public/activation_change_observer.h"
-#include "ui/wm/public/tooltip_client.h"
 #include "ui/wm/public/tooltip_observer.h"
 
 namespace views::corewm::test {
 
 TooltipControllerTestHelper::TooltipControllerTestHelper(
-    aura::Window* root_window)
-    : root_window_(root_window),
-      controller_(
-          static_cast<TooltipController*>(wm::GetTooltipClient(root_window))) {
-  CHECK(root_window_);
-  root_window_->AddObserver(this);
+    TooltipController* controller)
+    : controller_(controller) {
   SkipTooltipShowDelay(true);
 }
 
-TooltipControllerTestHelper::~TooltipControllerTestHelper() {
-  if (root_window_) {
-    root_window_->RemoveObserver(this);
-  }
-}
+TooltipControllerTestHelper::~TooltipControllerTestHelper() = default;
 
 bool TooltipControllerTestHelper::UseServerSideTooltip() {
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
-  return true;
+  return ui::OzonePlatform::GetInstance()
+      ->GetPlatformRuntimeProperties()
+      .supports_tooltip;
 #else
   return false;
 #endif
@@ -103,24 +95,6 @@ void TooltipControllerTestHelper::MockWindowActivated(aura::Window* window,
       gained_active, lost_active);
 }
 
-void TooltipControllerTestHelper::OnWindowPropertyChanged(aura::Window* window,
-                                                          const void* key,
-                                                          intptr_t old) {
-  if (window != root_window_ || key != wm::kRootWindowTooltipClientKey) {
-    return;
-  }
-
-  controller_ = static_cast<TooltipController*>(wm::GetTooltipClient(window));
-}
-
-void TooltipControllerTestHelper::OnWindowDestroyed(aura::Window* window) {
-  if (window != root_window_) {
-    return;
-  }
-
-  root_window_ = nullptr;
-}
-
 TooltipTestView::TooltipTestView() = default;
 
 TooltipTestView::~TooltipTestView() = default;
@@ -128,8 +102,5 @@ TooltipTestView::~TooltipTestView() = default;
 std::u16string TooltipTestView::GetTooltipText(const gfx::Point& p) const {
   return tooltip_text_;
 }
-
-BEGIN_METADATA(TooltipTestView)
-END_METADATA
 
 }  // namespace views::corewm::test

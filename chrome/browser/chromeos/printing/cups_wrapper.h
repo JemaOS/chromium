@@ -30,9 +30,6 @@ class CupsWrapper {
 
   static std::unique_ptr<CupsWrapper> Create();
 
-  using CupsWrapperFactory = base::RepeatingCallback<decltype(Create)>;
-  static void SetCupsWrapperFactoryForTesting(CupsWrapperFactory factory);
-
   virtual ~CupsWrapper();
 
   // Queries CUPS for the current jobs for the given |printer_ids|. Passes

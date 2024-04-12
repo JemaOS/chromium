@@ -10,10 +10,9 @@
 
 namespace video_conference {
 
-const char* kSkipAppIds[3] = {
+const char* kSkipAppIds[2] = {
     "behllobkkfkfnphdnhnkndlbkcpglgmj",  // TestExtensionID
     "mecfefiddjlmabpeilblgegnbioikfmp",  // SigninProfileTestExtensionID
-    "feedback",  // Chrome Feedback tool chrome://feedback/.
 };
 
 bool ShouldSkipId(const std::string& id) {

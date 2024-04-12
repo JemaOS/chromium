@@ -16,13 +16,10 @@ class ExecutionContext;
 class ExceptionState;
 class ScriptState;
 class ScriptValue;
-class V8PermissionState;
 
 void ConnectToPermissionService(
     ExecutionContext*,
     mojo::PendingReceiver<mojom::blink::PermissionService>);
-
-V8PermissionState ToV8PermissionState(mojom::blink::PermissionStatus);
 
 String PermissionStatusToString(mojom::blink::PermissionStatus);
 

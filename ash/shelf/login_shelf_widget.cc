@@ -75,7 +75,7 @@ class LoginShelfWidget::LoginShelfWidgetDelegate
   }
 
  private:
-  const raw_ptr<Shelf> shelf_ = nullptr;
+  const base::raw_ptr<Shelf> shelf_ = nullptr;
 
   // When true, the default focus of the shelf is the last focusable child.
   bool default_last_focusable_child_ = false;

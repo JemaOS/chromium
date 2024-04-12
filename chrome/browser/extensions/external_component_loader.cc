@@ -18,15 +18,35 @@
 #include "extensions/common/manifest.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/chromeos/upload_office_to_cloud/upload_office_to_cloud.h"
 #include "chrome/browser/policy/profile_policy_connector.h"
-#include "chrome/browser/profiles/profile_manager.h"
-#include "chromeos/constants/chromeos_features.h"
 #endif
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/crosapi/browser_util.h"
-#endif
+#include "base/strings/stringprintf.h"
+#include "jemaos/switches/services/services_switches.h"
+
+namespace {
+
+void AddJemaOSExtensions(base::Value::Dict& prefs) {
+  const char update_url_template[] =
+    "%s/update/%s/updates.xml";
+  std::vector<std::string> preinstalled_apps = {
+    "hidnajblbifdkmheebalalchohohmaef",  // system controller
+    "iakadpgajjigiaojnbdmodlngmbkfhag",  // start arc settings
+    "mofiofjpikncjaigmdlblhojbnkabako",  // store
+    // "fogdcaodknbhigpklbhepedofamkfbln", // rdp
+    "nfglebjgiflmmcdddkbcbgmdkomlfcpa",  // rime
+  };
+  const std::string base_update_url =
+    jemaos::switches::GetJemaOSWebStoreUpdateUrl();
+  std::string update_url;
+  for (const auto& app_id : preinstalled_apps) {
+    base::SStringPrintf(&update_url, update_url_template,
+        base_update_url.c_str(), app_id.c_str());
+    prefs.SetByDottedPath(app_id + ".external_update_url", update_url);
+  }
+}
+
+}  // namespace
 
 namespace extensions {
 
@@ -48,27 +68,10 @@ void ExternalComponentLoader::StartLoading() {
       AddExternalExtension(extension_misc::kAssessmentAssistantExtensionId,
                            prefs);
     }
-
-    if (chromeos::cloud_upload::IsMicrosoftOfficeOneDriveIntegrationAllowed(
-            profile_)) {
-      // Do not load in Ash if Lacros is enabled, otherwise all messages will be
-      // routed to the extension in Ash.
-      bool should_load = false;
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-      // In Ash, suppress loading if Lacros is enabled, as the extension is
-      // expected to be loaded in Lacros.
-      should_load = !crosapi::browser_util::IsLacrosEnabled();
-#elif BUILDFLAG(IS_CHROMEOS_LACROS)
-      // In Lacros, only load in the primary profile (fileSystemProvider
-      // extensions in other profiles won't work).
-      should_load = profile_ == ProfileManager::GetPrimaryUserProfile();
-#endif
-      if (should_load) {
-        AddExternalExtension(extension_misc::kODFSExtensionId, prefs);
-      }
-    }
   }
 #endif
+
+  AddJemaOSExtensions(prefs);
 
   LoadFinished(std::move(prefs));
 }

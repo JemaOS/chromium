@@ -22,7 +22,6 @@
 #include "chrome/browser/extensions/api/tabs/tabs_api.h"
 #include "chrome/browser/extensions/api/tabs/tabs_constants.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/session_sync_service_factory.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/common/chrome_paths.h"
@@ -204,6 +203,8 @@ void ExtensionSessionsTest::CreateSessionModels() {
   sync_sessions::SessionSyncService* service =
       SessionSyncServiceFactory::GetForProfile(browser()->profile());
 
+  service->ProxyTabsStateChanged(syncer::DataTypeController::RUNNING);
+
   base::test::TestFuture<std::unique_ptr<syncer::DataTypeActivationResponse>>
       sync_start_future;
   service->GetControllerDelegate()->OnSyncStarting(
@@ -384,25 +385,28 @@ IN_PROC_BROWSER_TEST_F(ExtensionSessionsTest, GetRecentlyClosedMaxResults) {
   }
 
   {
-    std::optional<base::Value> result = utils::RunFunctionAndReturnSingleResult(
-        CreateFunction<SessionsGetRecentlyClosedFunction>(true).get(), "[]",
-        browser()->profile());
+    absl::optional<base::Value> result =
+        utils::RunFunctionAndReturnSingleResult(
+            CreateFunction<SessionsGetRecentlyClosedFunction>(true).get(), "[]",
+            browser()->profile());
     ASSERT_TRUE(result);
     ASSERT_TRUE(result->is_list());
     EXPECT_EQ(kTabCount, result->GetList().size());
   }
   {
-    std::optional<base::Value> result = utils::RunFunctionAndReturnSingleResult(
-        CreateFunction<SessionsGetRecentlyClosedFunction>(true).get(),
-        "[{\"maxResults\": 0}]", browser()->profile());
+    absl::optional<base::Value> result =
+        utils::RunFunctionAndReturnSingleResult(
+            CreateFunction<SessionsGetRecentlyClosedFunction>(true).get(),
+            "[{\"maxResults\": 0}]", browser()->profile());
     ASSERT_TRUE(result);
     ASSERT_TRUE(result->is_list());
     EXPECT_EQ(0u, result->GetList().size());
   }
   {
-    std::optional<base::Value> result = utils::RunFunctionAndReturnSingleResult(
-        CreateFunction<SessionsGetRecentlyClosedFunction>(true).get(),
-        "[{\"maxResults\": 2}]", browser()->profile());
+    absl::optional<base::Value> result =
+        utils::RunFunctionAndReturnSingleResult(
+            CreateFunction<SessionsGetRecentlyClosedFunction>(true).get(),
+            "[{\"maxResults\": 2}]", browser()->profile());
     ASSERT_TRUE(result);
     ASSERT_TRUE(result->is_list());
     EXPECT_EQ(2u, result->GetList().size());

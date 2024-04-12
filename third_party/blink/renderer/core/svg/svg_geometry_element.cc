@@ -61,7 +61,9 @@ SVGGeometryElement::SVGGeometryElement(const QualifiedName& tag_name,
                                        Document& document,
                                        ConstructionType construction_type)
     : SVGGraphicsElement(tag_name, document, construction_type),
-      path_length_(MakeGarbageCollected<SVGAnimatedPathLength>(this)) {}
+      path_length_(MakeGarbageCollected<SVGAnimatedPathLength>(this)) {
+  AddToPropertyMap(path_length_);
+}
 
 void SVGGeometryElement::SvgAttributeChanged(
     const SvgAttributeChangedParams& params) {
@@ -245,27 +247,11 @@ void SVGGeometryElement::GeometryAttributeChanged() {
     layout_object->SetNeedsShapeUpdate();
     MarkForLayoutAndParentResourceInvalidation(*layout_object);
   }
-  NotifyResourceClients();
 }
 
 LayoutObject* SVGGeometryElement::CreateLayoutObject(const ComputedStyle&) {
   // By default, any subclass is expected to do path-based drawing.
   return MakeGarbageCollected<LayoutSVGPath>(this);
-}
-
-SVGAnimatedPropertyBase* SVGGeometryElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kPathLengthAttr) {
-    return path_length_.Get();
-  } else {
-    return SVGGraphicsElement::PropertyFromAttribute(attribute_name);
-  }
-}
-
-void SVGGeometryElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{path_length_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGGraphicsElement::SynchronizeAllSVGAttributes();
 }
 
 }  // namespace blink

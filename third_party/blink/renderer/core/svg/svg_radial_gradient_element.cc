@@ -65,7 +65,14 @@ SVGRadialGradientElement::SVGRadialGradientElement(Document& document)
           this,
           svg_names::kFrAttr,
           SVGLengthMode::kOther,
-          SVGLength::Initial::kPercent0)) {}
+          SVGLength::Initial::kPercent0)) {
+  AddToPropertyMap(cx_);
+  AddToPropertyMap(cy_);
+  AddToPropertyMap(r_);
+  AddToPropertyMap(fx_);
+  AddToPropertyMap(fy_);
+  AddToPropertyMap(fr_);
+}
 
 void SVGRadialGradientElement::Trace(Visitor* visitor) const {
   visitor->Trace(cx_);
@@ -85,7 +92,7 @@ void SVGRadialGradientElement::SvgAttributeChanged(
       attr_name == svg_names::kRAttr || attr_name == svg_names::kFrAttr) {
     SVGElement::InvalidationGuard invalidation_guard(this);
     UpdateRelativeLengthsInformation();
-    InvalidateGradient();
+    InvalidateGradient(layout_invalidation_reason::kAttributeChanged);
     return;
   }
 
@@ -185,32 +192,6 @@ bool SVGRadialGradientElement::SelfHasRelativeLengths() const {
          r_->CurrentValue()->IsRelative() ||
          fx_->CurrentValue()->IsRelative() ||
          fy_->CurrentValue()->IsRelative() || fr_->CurrentValue()->IsRelative();
-}
-
-SVGAnimatedPropertyBase* SVGRadialGradientElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kCxAttr) {
-    return cx_.Get();
-  } else if (attribute_name == svg_names::kCyAttr) {
-    return cy_.Get();
-  } else if (attribute_name == svg_names::kRAttr) {
-    return r_.Get();
-  } else if (attribute_name == svg_names::kFxAttr) {
-    return fx_.Get();
-  } else if (attribute_name == svg_names::kFyAttr) {
-    return fy_.Get();
-  } else if (attribute_name == svg_names::kFrAttr) {
-    return fr_.Get();
-  } else {
-    return SVGGradientElement::PropertyFromAttribute(attribute_name);
-  }
-}
-
-void SVGRadialGradientElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{cx_.Get(), cy_.Get(), r_.Get(),
-                                   fx_.Get(), fy_.Get(), fr_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGGradientElement::SynchronizeAllSVGAttributes();
 }
 
 }  // namespace blink

@@ -13,7 +13,7 @@ class SimpleFactoryKey;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace download {
@@ -36,7 +36,7 @@ class BackgroundDownloadServiceFactory : public SimpleKeyedServiceFactory {
       const BackgroundDownloadServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<BackgroundDownloadServiceFactory>;
+  friend struct base::DefaultSingletonTraits<BackgroundDownloadServiceFactory>;
 
   BackgroundDownloadServiceFactory();
   ~BackgroundDownloadServiceFactory() override;

@@ -34,7 +34,7 @@ void BorealisAppUninstaller::Uninstall(std::string app_id,
     return;
   }
 
-  std::optional<guest_os::GuestOsRegistryService::Registration> registration =
+  absl::optional<guest_os::GuestOsRegistryService::Registration> registration =
       guest_os::GuestOsRegistryServiceFactory::GetForProfile(profile_)
           ->GetRegistration(app_id);
   if (!registration.has_value()) {
@@ -43,14 +43,14 @@ void BorealisAppUninstaller::Uninstall(std::string app_id,
     std::move(callback).Run(UninstallResult::kError);
     return;
   }
-  std::optional<int> uninstall_app_id = ParseSteamGameId(registration->Exec());
+  absl::optional<int> uninstall_app_id = GetBorealisAppId(registration->Exec());
   if (!uninstall_app_id.has_value()) {
     LOG(ERROR) << "Couldn't retrieve the borealis app id from the exec "
                   "information provided";
     std::move(callback).Run(UninstallResult::kError);
     return;
   }
-  std::optional<guest_os::GuestOsRegistryService::Registration> main_app =
+  absl::optional<guest_os::GuestOsRegistryService::Registration> main_app =
       guest_os::GuestOsRegistryServiceFactory::GetForProfile(profile_)
           ->GetRegistration(kClientAppId);
   if (!main_app.has_value()) {

@@ -33,13 +33,6 @@ class HatsNotificationController : public message_center::NotificationDelegate,
  public:
   static const char kNotificationId[];
 
-  HatsNotificationController(
-      Profile* profile,
-      const HatsConfig& config,
-      const base::flat_map<std::string, std::string>& product_specific_data,
-      const std::u16string title,
-      const std::u16string body);
-
   // |product_specific_data| is meant to allow attaching extra runtime data that
   // is specific to the survey, e.g. a survey about the log-in experience might
   // include the last used authentication method.
@@ -75,8 +68,6 @@ class HatsNotificationController : public message_center::NotificationDelegate,
   FRIEND_TEST_ALL_PREFIXES(
       HatsNotificationControllerTest,
       Disconnected_RemoveNotification_Connected_AddNotification);
-  FRIEND_TEST_ALL_PREFIXES(HatsNotificationControllerTest,
-                           DismissNotification_OptOutShouldUpdatePref);
 
   ~HatsNotificationController() override;
 
@@ -96,8 +87,8 @@ class HatsNotificationController : public message_center::NotificationDelegate,
 
   // NotificationDelegate overrides:
   void Close(bool by_user) override;
-  void Click(const std::optional<int>& button_index,
-             const std::optional<std::u16string>& reply) override;
+  void Click(const absl::optional<int>& button_index,
+             const absl::optional<std::u16string>& reply) override;
 
   // NetworkStateHandlerObserver override:
   void PortalStateChanged(const NetworkState* default_network,
@@ -115,15 +106,12 @@ class HatsNotificationController : public message_center::NotificationDelegate,
       const std::string& user_locale,
       const base::flat_map<std::string, std::string>& product_specific_data);
   void UpdateLastInteractionTime();
-  void UpdateLastSurveyInteractionTime();
   void ShowDialog(const std::string& site_context);
 
-  const raw_ptr<Profile, DanglingUntriaged> profile_;
-  const raw_ref<const HatsConfig> hats_config_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
+  const raw_ref<const HatsConfig, ExperimentalAsh> hats_config_;
   base::flat_map<std::string, std::string> product_specific_data_;
   std::unique_ptr<message_center::Notification> notification_;
-  const std::u16string title_;
-  const std::u16string body_;
 
   HatsState state_ = HatsState::kDeviceSelected;
 

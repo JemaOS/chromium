@@ -4,25 +4,19 @@
 
 #include "chrome/browser/renderer_context_menu/render_view_context_menu_browsertest_util.h"
 
-#include <utility>
-
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
-#include "base/functional/callback_helpers.h"
 #include "base/location.h"
 #include "base/run_loop.h"
 #include "base/task/single_thread_task_runner.h"
+#include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/renderer_context_menu/render_view_context_menu.h"
+#include "content/public/test/test_utils.h"
 
-ContextMenuNotificationObserver::ContextMenuNotificationObserver(
-    int command_to_execute)
-    : ContextMenuNotificationObserver(command_to_execute,
-                                      /*event_flags=*/0,
-                                      /*callback=*/base::NullCallback()) {}
 ContextMenuNotificationObserver::ContextMenuNotificationObserver(
     int command_to_execute,
     int event_flags,
-    MenuShownCallback callback)
+    base::OnceCallback<void(RenderViewContextMenu*)> callback)
     : command_to_execute_(command_to_execute),
       event_flags_(event_flags),
       callback_(std::move(callback)) {
@@ -30,7 +24,8 @@ ContextMenuNotificationObserver::ContextMenuNotificationObserver(
       &ContextMenuNotificationObserver::MenuShown, base::Unretained(this)));
 }
 
-ContextMenuNotificationObserver::~ContextMenuNotificationObserver() = default;
+ContextMenuNotificationObserver::~ContextMenuNotificationObserver() {
+}
 
 void ContextMenuNotificationObserver::MenuShown(
     RenderViewContextMenu* context_menu) {
@@ -44,9 +39,8 @@ void ContextMenuNotificationObserver::ExecuteCommand(
     RenderViewContextMenu* context_menu) {
   context_menu->ExecuteCommand(command_to_execute_, event_flags_);
   context_menu->Cancel();
-  if (callback_) {
-    std::move(callback_).Run(context_menu);
-  }
+  if (!callback_.is_null())
+    std::move(callback_).Run(std::move(context_menu));
 }
 
 ContextMenuWaiter::ContextMenuWaiter() {
@@ -55,14 +49,15 @@ ContextMenuWaiter::ContextMenuWaiter() {
 }
 
 ContextMenuWaiter::ContextMenuWaiter(int command_to_execute)
-    : ContextMenuWaiter(command_to_execute, base::NullCallback()) {}
+    : ContextMenuWaiter() {
+  maybe_command_to_execute_ = command_to_execute;
+}
 
 ContextMenuWaiter::ContextMenuWaiter(int command_to_execute,
                                      base::OnceClosure before_execute)
-    : maybe_command_to_execute_(command_to_execute),
-      before_execute_(std::move(before_execute)) {
-  RenderViewContextMenu::RegisterMenuShownCallbackForTesting(
-      base::BindOnce(&ContextMenuWaiter::MenuShown, base::Unretained(this)));
+    : ContextMenuWaiter() {
+  maybe_command_to_execute_ = command_to_execute;
+  before_execute_ = std::move(before_execute);
 }
 
 ContextMenuWaiter::~ContextMenuWaiter() = default;

@@ -5,12 +5,12 @@
 #ifndef CHROME_BROWSER_ASH_LOGIN_HWID_CHECKER_H_
 #define CHROME_BROWSER_ASH_LOGIN_HWID_CHECKER_H_
 
-#include <string_view>
+#include "base/strings/string_piece_forward.h"
 
 namespace ash {
 
 // Checks if given HWID correct.
-bool IsHWIDCorrect(std::string_view hwid);
+bool IsHWIDCorrect(base::StringPiece hwid);
 
 // Checks if current machine has correct HWID.
 bool IsMachineHWIDCorrect();

@@ -26,7 +26,10 @@ class ScriptPromiseResolver::ExceptionStateScope final : public ExceptionState {
   explicit ExceptionStateScope(ScriptPromiseResolver* resolver)
       : ExceptionState(resolver->script_state_->GetIsolate(),
                        resolver->exception_context_),
-        resolver_(resolver) {}
+        resolver_(resolver) {
+    CHECK_NE(resolver->exception_context_.GetContext(),
+             ExceptionContext::Context::kEmpty);
+  }
   ~ExceptionStateScope() {
     DCHECK(HadException());
     resolver_->Reject(GetException());
@@ -37,26 +40,30 @@ class ScriptPromiseResolver::ExceptionStateScope final : public ExceptionState {
   ScriptPromiseResolver* resolver_;
 };
 
+ScriptPromiseResolver::ScriptPromiseResolver(ScriptState* script_state)
+    : ExecutionContextLifecycleObserver(ExecutionContext::From(script_state)),
+      state_(kPending),
+      script_state_(script_state),
+      resolver_(script_state) {
+  if (GetExecutionContext()->IsContextDestroyed()) {
+    state_ = kDetached;
+    resolver_.Clear();
+  }
+}
+
 ScriptPromiseResolver::ScriptPromiseResolver(
     ScriptState* script_state,
     const ExceptionContext& exception_context)
-    : resolver_(script_state->GetIsolate(),
-                v8::Promise::Resolver::New(script_state->GetContext())
-                    .ToLocalChecked()),
-      state_(kPending),
-      script_state_(script_state),
-      exception_context_(exception_context) {
-  if (!GetExecutionContext()) {
-    state_ = kDetached;
-    resolver_.Reset();
-  }
-  script_url_ = GetCurrentScriptUrl(script_state->GetIsolate());
+    : ScriptPromiseResolver(script_state) {
+  exception_context_ = exception_context;
+  class_like_name_ = exception_context.GetClassName();
+  property_like_name_ = exception_context.GetPropertyName();
 }
 
 ScriptPromiseResolver::~ScriptPromiseResolver() = default;
 
-#if DCHECK_IS_ON()
 void ScriptPromiseResolver::Dispose() {
+#if DCHECK_IS_ON()
   // This assertion fails if:
   //  - promise() is called at least once and
   //  - this resolver is destructed before it is resolved, rejected,
@@ -77,27 +84,8 @@ void ScriptPromiseResolver::Dispose() {
         << "ScriptPromiseResolver was not properly detached; created at\n"
         << create_stack_trace_.ToString();
   }
-}
 #endif
-
-void ScriptPromiseResolver::Reject(DOMException* value) {
-  Reject<DOMException>(value);
-}
-
-void ScriptPromiseResolver::Reject(v8::Local<v8::Value> value) {
-  Reject<IDLAny>(value);
-}
-
-void ScriptPromiseResolver::Reject(const ScriptValue& value) {
-  Reject<IDLAny>(value);
-}
-
-void ScriptPromiseResolver::Reject(const char* value) {
-  Reject<IDLString>(value);
-}
-
-void ScriptPromiseResolver::Reject(bool value) {
-  Reject<IDLBoolean>(value);
+  deferred_resolve_task_.Cancel();
 }
 
 void ScriptPromiseResolver::Reject(ExceptionState& exception_state) {
@@ -109,100 +97,82 @@ void ScriptPromiseResolver::Reject(ExceptionState& exception_state) {
 void ScriptPromiseResolver::RejectWithDOMException(
     DOMExceptionCode exception_code,
     const String& message) {
-  ScriptState::Scope scope(script_state_.Get());
   ExceptionStateScope(this).ThrowDOMException(exception_code, message);
 }
 
 void ScriptPromiseResolver::RejectWithSecurityError(
     const String& sanitized_message,
     const String& unsanitized_message) {
-  ScriptState::Scope scope(script_state_.Get());
   ExceptionStateScope(this).ThrowSecurityError(sanitized_message,
                                                unsanitized_message);
 }
 
 void ScriptPromiseResolver::RejectWithTypeError(const String& message) {
-  ScriptState::Scope scope(script_state_.Get());
   ExceptionStateScope(this).ThrowTypeError(message);
 }
 
 void ScriptPromiseResolver::RejectWithRangeError(const String& message) {
-  ScriptState::Scope scope(script_state_.Get());
   ExceptionStateScope(this).ThrowRangeError(message);
 }
 
 void ScriptPromiseResolver::RejectWithWasmCompileError(const String& message) {
-  ScriptState::Scope scope(script_state_.Get());
   ExceptionStateScope(this).ThrowWasmCompileError(message);
 }
 
 void ScriptPromiseResolver::Detach() {
   if (state_ == kDetached)
     return;
+  deferred_resolve_task_.Cancel();
   state_ = kDetached;
-  resolver_.Reset();
+  resolver_.Clear();
   value_.Reset();
+  keep_alive_.Clear();
 }
 
-void ScriptPromiseResolver::NotifyResolveOrReject() {
-  if (GetExecutionContext()->IsContextPaused()) {
-    ScheduleResolveOrReject();
+void ScriptPromiseResolver::KeepAliveWhilePending() {
+  // keepAliveWhilePending() will be called twice if the resolver
+  // is created in a suspended execution context and the resolver
+  // is then resolved/rejected while in that suspended state.
+  if (state_ == kDetached || keep_alive_)
     return;
-  }
-  // TODO(esprehn): This is a hack, instead we should CHECK that
-  // script is allowed, and v8 should be running the entry hooks below and
-  // crashing if script is forbidden. We should then audit all users of
-  // ScriptPromiseResolver and the related specs and switch to an async
-  // resolve.
-  // See: http://crbug.com/663476
-  if (ScriptForbiddenScope::IsScriptForbidden()) {
-    ScheduleResolveOrReject();
-    return;
-  }
-  ResolveOrRejectImmediately();
+
+  // Keep |this| around while the promise is Pending;
+  // see detach() for the dual operation.
+  keep_alive_ = this;
 }
 
 void ScriptPromiseResolver::ResolveOrRejectImmediately() {
   DCHECK(!GetExecutionContext()->IsContextDestroyed());
   DCHECK(!GetExecutionContext()->IsContextPaused());
 
-  probe::WillHandlePromise(GetExecutionContext(), script_state_,
-                           state_ == kResolving,
-                           exception_context_.GetClassName(),
-                           exception_context_.GetPropertyName(), script_url_);
-
-  v8::MicrotasksScope microtasks_scope(
-      script_state_->GetIsolate(), ToMicrotaskQueue(script_state_),
-      v8::MicrotasksScope::kDoNotRunMicrotasks);
-  auto resolver = resolver_.Get(script_state_->GetIsolate());
-  if (state_ == kResolving) {
-    std::ignore = resolver->Resolve(script_state_->GetContext(),
-                                    value_.Get(script_state_->GetIsolate()));
-  } else {
-    DCHECK_EQ(state_, kRejecting);
-    std::ignore = resolver->Reject(script_state_->GetContext(),
-                                   value_.Get(script_state_->GetIsolate()));
+  probe::WillHandlePromise(GetExecutionContext(), state_ == kResolving,
+                           class_like_name_, property_like_name_);
+  {
+    if (state_ == kResolving) {
+      resolver_.Resolve(value_.Get(script_state_->GetIsolate()));
+    } else {
+      DCHECK_EQ(state_, kRejecting);
+      resolver_.Reject(value_.Get(script_state_->GetIsolate()));
+    }
   }
-
   Detach();
 }
 
 void ScriptPromiseResolver::ScheduleResolveOrReject() {
-  GetExecutionContext()
-      ->GetTaskRunner(TaskType::kMicrotask)
-      ->PostTask(FROM_HERE,
-                 WTF::BindOnce(&ScriptPromiseResolver::ResolveOrRejectDeferred,
-                               WrapPersistent(this)));
+  deferred_resolve_task_ = PostCancellableTask(
+      *GetExecutionContext()->GetTaskRunner(TaskType::kMicrotask), FROM_HERE,
+      WTF::BindOnce(&ScriptPromiseResolver::ResolveOrRejectDeferred,
+                    WrapPersistent(this)));
 }
 
 void ScriptPromiseResolver::ResolveOrRejectDeferred() {
   DCHECK(state_ == kResolving || state_ == kRejecting);
-  if (!GetExecutionContext()) {
+  if (!GetScriptState()->ContextIsValid()) {
     Detach();
     return;
   }
 
-  ScriptState::Scope scope(script_state_.Get());
+  ScriptState::Scope scope(script_state_);
   ResolveOrRejectImmediately();
 }
 
@@ -210,14 +180,7 @@ void ScriptPromiseResolver::Trace(Visitor* visitor) const {
   visitor->Trace(script_state_);
   visitor->Trace(resolver_);
   visitor->Trace(value_);
-}
-
-ExecutionContext* ScriptPromiseResolver::GetExecutionContext() {
-  if (!GetScriptState()->ContextIsValid()) {
-    return nullptr;
-  }
-  auto* execution_context = ExecutionContext::From(script_state_);
-  return execution_context->IsContextDestroyed() ? nullptr : execution_context;
+  ExecutionContextLifecycleObserver::Trace(visitor);
 }
 
 }  // namespace blink

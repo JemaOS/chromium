@@ -11,14 +11,8 @@
 
 namespace blink {
 
-class CullRectUpdaterTest
-    : public PaintControllerPaintTestBase,
-      public testing::WithParamInterface<bool>,
-      private ScopedDynamicScrollCullRectExpansionForTest {
+class CullRectUpdaterTest : public PaintControllerPaintTest {
  protected:
-  CullRectUpdaterTest()
-      : ScopedDynamicScrollCullRectExpansionForTest(GetParam()) {}
-
   CullRect GetCullRect(const char* id) {
     return GetLayoutObjectByElementId(id)->FirstFragment().GetCullRect();
   }
@@ -38,7 +32,9 @@ class CullRectUpdaterTest
   }
 };
 
-INSTANTIATE_TEST_SUITE_P(All, CullRectUpdaterTest, testing::Bool());
+INSTANTIATE_TEST_SUITE_P(All,
+                         CullRectUpdaterTest,
+                         ::testing::Values(0, kScrollUnification));
 
 TEST_P(CullRectUpdaterTest, SimpleCullRect) {
   SetBodyInnerHTML(R"HTML(
@@ -103,7 +99,7 @@ TEST_P(CullRectUpdaterTest, VerticalRLWritingModeScrollDiv) {
     </div>
   )HTML");
 
-  GetDocument().getElementById(AtomicString("scroller"))->scrollTo(-5000, 0);
+  GetDocument().getElementById("scroller")->scrollTo(-5000, 0);
   UpdateAllLifecyclePhasesForTest();
 
   // Similar to the previous test case.
@@ -127,17 +123,14 @@ TEST_P(CullRectUpdaterTest, ScaledCullRect) {
 TEST_P(CullRectUpdaterTest, ScaledCullRectUnderCompositedScroller) {
   SetBodyInnerHTML(R"HTML(
     <div style='width: 200px; height: 300px; overflow: scroll; background: blue;
-                transform: scaleX(2) scaleY(0.75); transform-origin: 0 0'>
+                transform: scaleX(2) scaleY(0.75)'>
       <div id='target' style='height: 400px; position: relative'></div>
-      <div style='width: 10000px; height: 9600px'></div>
+      <div style='width: 10000px; height: 10000px'></div>
     </div>
   )HTML");
 
-  // The expansion is calculated based on 4000 / max(scaleX, scaleY).
-  EXPECT_EQ(RuntimeEnabledFeatures::DynamicScrollCullRectExpansionEnabled()
-                ? gfx::Rect(0, 0, 1200, 1300)
-                : gfx::Rect(0, 0, 2200, 2300),
-            GetCullRect("target").Rect());
+  // The expansion is 4000 / max(scaleX, scaleY).
+  EXPECT_EQ(gfx::Rect(0, 0, 2200, 2300), GetCullRect("target").Rect());
 }
 
 TEST_P(CullRectUpdaterTest, ScaledAndRotatedCullRect) {
@@ -166,14 +159,8 @@ TEST_P(CullRectUpdaterTest, ScaledAndRotatedCullRectUnderCompositedScroller) {
 
   // The expansion 6599 is 4000 * max_dimension(1x1 rect projected from screen
   // to local).
-  EXPECT_EQ(RuntimeEnabledFeatures::DynamicScrollCullRectExpansionEnabled()
-                ? gfx::Rect(-6599, -6599, 16697, 16797)
-                : gfx::Rect(0, 0, 6799, 6899),
-            GetCullRect("target").Rect());
-  EXPECT_EQ(RuntimeEnabledFeatures::DynamicScrollCullRectExpansionEnabled()
-                ? gfx::Rect(-6599, -6599, 16697, 16797)
-                : gfx::Rect(0, 0, 6799, 6899),
-            GetContentsCullRect("target").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 6799, 6899), GetCullRect("target").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 6799, 6899), GetContentsCullRect("target").Rect());
 }
 
 // This is a testcase for https://crbug.com/1227907 where repeated cull rect
@@ -195,10 +182,8 @@ TEST_P(CullRectUpdaterTest, OptimizeNonCompositedTransformUpdate) {
   EXPECT_EQ(gfx::Rect(0, 0, 800, 600), GetCullRect("target").Rect());
 
   // On subsequent paints, fall back to an infinite cull rect.
-  GetDocument()
-      .getElementById(AtomicString("target"))
-      ->setAttribute(html_names::kStyleAttr,
-                     AtomicString("transform: rotate(10deg);"));
+  GetDocument().getElementById("target")->setAttribute(
+      html_names::kStyleAttr, "transform: rotate(10deg);");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_TRUE(GetCullRect("target").IsInfinite());
 }
@@ -331,7 +316,7 @@ TEST_P(CullRectUpdaterTest, NonCompositedScrollingLayerCullRect) {
   )HTML");
 
   // See ScrollingLayerCullRect for the calculation.
-  EXPECT_EQ(gfx::Rect(0, 0, 195, 4193), GetCullRect("target").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 195, 193), GetCullRect("target").Rect());
 }
 
 TEST_P(CullRectUpdaterTest, ClippedBigLayer) {
@@ -461,11 +446,11 @@ TEST_P(CullRectUpdaterTest, AbsolutePositionUnderNonContainingStackingContext) {
     </div>
   )HTML");
 
-  EXPECT_EQ(gfx::Rect(0, 0, 500, 500), GetCullRect("absolute").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 200, 200), GetCullRect("absolute").Rect());
 
-  GetDocument().getElementById(AtomicString("scroller"))->scrollTo(200, 200);
+  GetDocument().getElementById("scroller")->scrollTo(200, 200);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(0, 0, 500, 500), GetCullRect("absolute").Rect());
+  EXPECT_EQ(gfx::Rect(200, 200, 200, 200), GetCullRect("absolute").Rect());
 }
 
 TEST_P(CullRectUpdaterTest, StackedChildOfNonStackingContextScroller) {
@@ -476,7 +461,7 @@ TEST_P(CullRectUpdaterTest, StackedChildOfNonStackingContextScroller) {
     </div>
   )HTML");
 
-  auto* scroller = GetDocument().getElementById(AtomicString("scroller"));
+  auto* scroller = GetDocument().getElementById("scroller");
 
   EXPECT_EQ(gfx::Rect(0, 0, 200, 4200), GetContentsCullRect("scroller").Rect());
   EXPECT_EQ(gfx::Rect(0, 0, 200, 4200), GetCullRect("child").Rect());
@@ -515,42 +500,42 @@ TEST_P(CullRectUpdaterTest, ContentsCullRectCoveringWholeContentsRect) {
   SetPreferCompositingToLCDText(true);
   SetBodyInnerHTML(R"HTML(
     <div id="scroller" style="width: 400px; height: 400px; overflow: scroll">
-      <div style="height: 7000px"></div>
+      <div style="width: 600px; height: 7000px"></div>
       <div id="child" style="will-change: transform; height: 20px"></div>
     </div>
   )HTML");
 
-  EXPECT_EQ(gfx::Rect(0, 0, 400, 4400), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -7000, 8400, 4400), GetCullRect("child").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 600, 4400), GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -7000, 8600, 4400), GetCullRect("child").Rect());
 
-  auto* scroller = GetDocument().getElementById(AtomicString("scroller"));
+  auto* scroller = GetDocument().getElementById("scroller");
   scroller->scrollTo(0, 2500);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(0, 0, 400, 6900), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -7000, 8400, 6900), GetCullRect("child").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 600, 6900), GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -7000, 8600, 6900), GetCullRect("child").Rect());
 
   scroller->scrollTo(0, 2800);
   UpdateAllLifecyclePhasesForTest();
   // Cull rects are not updated with a small scroll delta.
-  EXPECT_EQ(gfx::Rect(0, 0, 400, 6900), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -7000, 8400, 6900), GetCullRect("child").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 600, 6900), GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -7000, 8600, 6900), GetCullRect("child").Rect());
 
   scroller->scrollTo(0, 3100);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(0, 0, 400, 7020), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -7000, 8400, 7020), GetCullRect("child").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 600, 7020), GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -7000, 8600, 7020), GetCullRect("child").Rect());
 
   // We will use the same cull rects that cover the whole contents on further
   // scroll.
   scroller->scrollTo(0, 4000);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(0, 0, 400, 7020), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -7000, 8400, 7020), GetCullRect("child").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 600, 7020), GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -7000, 8600, 7020), GetCullRect("child").Rect());
 
   scroller->scrollTo(0, 0);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(0, 0, 400, 7020), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -7000, 8400, 7020), GetCullRect("child").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 600, 7020), GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -7000, 8600, 7020), GetCullRect("child").Rect());
 }
 
 TEST_P(CullRectUpdaterTest, SVGForeignObject) {
@@ -572,7 +557,7 @@ TEST_P(CullRectUpdaterTest, SVGForeignObject) {
   EXPECT_FALSE(foreign->DescendantNeedsCullRectUpdate());
   EXPECT_FALSE(svg->DescendantNeedsCullRectUpdate());
 
-  GetDocument().getElementById(AtomicString("scroller"))->scrollTo(0, 500);
+  GetDocument().getElementById("scroller")->scrollTo(0, 500);
   UpdateAllLifecyclePhasesForTest();
   EXPECT_FALSE(child->NeedsCullRectUpdate());
   EXPECT_FALSE(foreign->DescendantNeedsCullRectUpdate());
@@ -601,9 +586,8 @@ TEST_P(CullRectUpdaterTest, LayerUnderSVGHiddenContainer) {
 
   EXPECT_FALSE(GetCullRect("svg1").Rect().IsEmpty());
 
-  GetDocument()
-      .getElementById(AtomicString("defs"))
-      ->appendChild(GetDocument().getElementById(AtomicString("div")));
+  GetDocument().getElementById("defs")->appendChild(
+      GetDocument().getElementById("div"));
   // This should not crash.
   UpdateAllLifecyclePhasesForTest();
   EXPECT_FALSE(GetLayoutObjectByElementId("svg1"));
@@ -631,16 +615,16 @@ TEST_P(CullRectUpdaterTest, UpdateOnCompositedScrollingStatusChange) {
     <div>
   )HTML");
 
-  EXPECT_EQ(gfx::Rect(100, 1000), GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(100, 100), GetContentsCullRect("scroller").Rect());
 
-  auto* scroller = GetDocument().getElementById(AtomicString("scroller"));
+  auto* scroller = GetDocument().getElementById("scroller");
   scroller->SetInlineStyleProperty(CSSPropertyID::kBackgroundColor, "yellow");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_EQ(gfx::Rect(100, 1000), GetContentsCullRect("scroller").Rect());
 
   scroller->RemoveInlineStyleProperty(CSSPropertyID::kBackgroundColor);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(100, 1000), GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(100, 100), GetContentsCullRect("scroller").Rect());
 }
 
 TEST_P(CullRectUpdaterTest, StickyPositionInCompositedScroller) {
@@ -666,7 +650,7 @@ TEST_P(CullRectUpdaterTest, StickyPositionInCompositedScroller) {
   // 2nd and the 4th scrolls, but not in the 1st and the 3rd scrolls). `sticky2`
   // always uses expanded cull rect from the contents cull rect of the
   // additional clip.
-  auto* scroller = GetDocument().getElementById(AtomicString("scroller"));
+  auto* scroller = GetDocument().getElementById("scroller");
   scroller->scrollBy(0, 300);
   UpdateAllLifecyclePhasesForTest();
   EXPECT_EQ(gfx::Rect(0, 0, 300, 4300), GetContentsCullRect("scroller").Rect());
@@ -714,43 +698,47 @@ TEST_P(CullRectUpdaterTest, StickyPositionInNonCompositedScroller) {
     </div>
   )HTML");
 
-  EXPECT_EQ(gfx::Rect(0, 0, 300, 4300), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -600, 8300, 4300), GetCullRect("sticky1").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -4000, 8300, 8200), GetCullRect("sticky2").Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 300, 300), GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -4600, 8300, 8300), GetCullRect("sticky1").Rect());
+  EXPECT_EQ(gfx::Rect(), GetCullRect("sticky2").Rect());
 
   // All cull rects should be updated on each non-composited scroll.
   // We always composite and expand cull rect for sticky elements regardless
   // whether the scroller is composited.
-  auto* scroller = GetDocument().getElementById(AtomicString("scroller"));
+  auto* scroller = GetDocument().getElementById("scroller");
   scroller->scrollBy(0, 300);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(0, 0, 300, 4300), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -600, 8300, 4300), GetCullRect("sticky1").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -4000, 8300, 8200), GetCullRect("sticky2").Rect());
+  EXPECT_EQ(gfx::Rect(0, 300, 300, 300),
+            GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -4600, 8300, 8300), GetCullRect("sticky1").Rect());
+  EXPECT_EQ(gfx::Rect(), GetCullRect("sticky2").Rect());
 
   scroller->scrollBy(0, 300);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(0, 0, 300, 4900), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -610, 8300, 4900), GetCullRect("sticky1").Rect());
+  EXPECT_EQ(gfx::Rect(0, 600, 300, 300),
+            GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -4010, 8300, 8300), GetCullRect("sticky1").Rect());
   EXPECT_EQ(gfx::Rect(-4000, -4200, 8300, 8200), GetCullRect("sticky2").Rect());
 
   scroller->scrollBy(0, 300);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(0, 0, 300, 4900), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -610, 8300, 4900), GetCullRect("sticky1").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -4200, 8300, 8200), GetCullRect("sticky2").Rect());
+  EXPECT_EQ(gfx::Rect(0, 900, 300, 300),
+            GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -4010, 8300, 8300), GetCullRect("sticky1").Rect());
+  EXPECT_EQ(gfx::Rect(), GetCullRect("sticky2").Rect());
 
   scroller->scrollBy(0, 300);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(0, 0, 300, 5500), GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -1210, 8300, 5500), GetCullRect("sticky1").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -4300, 8300, 8200), GetCullRect("sticky2").Rect());
+  EXPECT_EQ(gfx::Rect(0, 1200, 300, 300),
+            GetContentsCullRect("scroller").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -4010, 8300, 8300), GetCullRect("sticky1").Rect());
+  EXPECT_EQ(gfx::Rect(), GetCullRect("sticky2").Rect());
 
   scroller->scrollBy(0, 6000);
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(gfx::Rect(0, 3200, 300, 7650),
+  EXPECT_EQ(gfx::Rect(0, 7200, 300, 300),
             GetContentsCullRect("scroller").Rect());
-  EXPECT_EQ(gfx::Rect(-4000, -4010, 8300, 7650), GetCullRect("sticky1").Rect());
+  EXPECT_EQ(gfx::Rect(-4000, -4010, 8300, 8300), GetCullRect("sticky1").Rect());
   EXPECT_EQ(gfx::Rect(), GetCullRect("sticky2").Rect());
 }
 
@@ -833,10 +821,7 @@ TEST_P(CullRectUpdaterTest, OverriddenCullRectWithoutExpansion) {
   EXPECT_EQ(gfx::Rect(0, 0, 800, 600), GetCullRect(clip).Rect());
   EXPECT_EQ(gfx::Rect(0, 0, 300, 300), GetContentsCullRect(clip).Rect());
   EXPECT_EQ(gfx::Rect(0, 0, 300, 300), GetCullRect(scroller).Rect());
-  EXPECT_EQ(RuntimeEnabledFeatures::DynamicScrollCullRectExpansionEnabled()
-                ? gfx::Rect(0, 0, 1300, 2000)
-                : gfx::Rect(0, 0, 2000, 2000),
-            GetContentsCullRect(scroller).Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 2000, 2000), GetContentsCullRect(scroller).Rect());
 
   {
     const bool disable_expansion = true;
@@ -853,10 +838,7 @@ TEST_P(CullRectUpdaterTest, OverriddenCullRectWithoutExpansion) {
   EXPECT_EQ(gfx::Rect(0, 0, 800, 600), GetCullRect(clip).Rect());
   EXPECT_EQ(gfx::Rect(0, 0, 300, 300), GetContentsCullRect(clip).Rect());
   EXPECT_EQ(gfx::Rect(0, 0, 300, 300), GetCullRect(scroller).Rect());
-  EXPECT_EQ(RuntimeEnabledFeatures::DynamicScrollCullRectExpansionEnabled()
-                ? gfx::Rect(0, 0, 1300, 2000)
-                : gfx::Rect(0, 0, 2000, 2000),
-            GetContentsCullRect(scroller).Rect());
+  EXPECT_EQ(gfx::Rect(0, 0, 2000, 2000), GetContentsCullRect(scroller).Rect());
 }
 
 TEST_P(CullRectUpdaterTest, ViewScrollNeedsCullRectUpdate) {
@@ -893,43 +875,6 @@ TEST_P(CullRectUpdaterTest, ViewScrollNeedsCullRectUpdate) {
   EXPECT_EQ(gfx::Rect(0, 0, 800, 5016), GetContentsCullRect(layer).Rect());
 }
 
-// The test doesn't apply on Android or iOS where the LayoutObject of <select>
-// doesn't scroll.
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-TEST_P(CullRectUpdaterTest, SelectDoesntExpandCullRect) {
-  SetBodyInnerHTML(R"HTML(
-    <select id="select" style="height: 50px; font-size: 20px" size="3">
-      <option>a</option>
-      <option>b</option>
-      <option>c</option>
-      <option>d</option>
-      <option>e</option>
-    </select>
-  )HTML");
-
-  const PaintLayer* layer = GetPaintLayerByElementId("select");
-  ASSERT_TRUE(layer->GetScrollableArea());
-  gfx::Rect contents_cull_rect = GetContentsCullRect(*layer).Rect();
-  EXPECT_LE(contents_cull_rect.height(), 50);
-}
-#endif
-
-TEST_P(CullRectUpdaterTest, InputDoesntExpandCullRect) {
-  SetBodyInnerHTML(R"HTML(
-    <input id="input" style="font-size: 20px; width: 100px; height: 20px"
-           value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">
-  )HTML");
-
-  const LayoutObject* editor =
-      GetLayoutObjectByElementId("input")->SlowFirstChild();
-  ASSERT_TRUE(editor);
-  ASSERT_TRUE(editor->HasLayer());
-  const PaintLayer* layer = To<LayoutBoxModelObject>(editor)->Layer();
-  ASSERT_TRUE(layer->GetScrollableArea());
-  gfx::Rect contents_cull_rect = GetContentsCullRect(*layer).Rect();
-  EXPECT_LE(contents_cull_rect.width(), 100);
-}
-
 class CullRectUpdateOnPaintPropertyChangeTest : public CullRectUpdaterTest {
  protected:
   void Check(const String& old_style,
@@ -950,31 +895,31 @@ class CullRectUpdateOnPaintPropertyChangeTest : public CullRectUpdaterTest {
         << old_style << " -> " << new_style;
   }
 
-  void TestTargetChange(const char* old_style,
-                        const char* new_style,
+  void TestTargetChange(const AtomicString& old_style,
+                        const AtomicString& new_style,
                         bool expected_needs_repaint,
                         bool expected_needs_cull_rect_update,
                         bool expected_needs_repaint_after_cull_rect_update) {
     SetBodyInnerHTML(html_);
-    auto* target = GetDocument().getElementById(AtomicString("target"));
-    target->setAttribute(html_names::kStyleAttr, AtomicString(old_style));
+    auto* target = GetDocument().getElementById("target");
+    target->setAttribute(html_names::kStyleAttr, old_style);
     UpdateAllLifecyclePhasesForTest();
-    target->setAttribute(html_names::kStyleAttr, AtomicString(new_style));
+    target->setAttribute(html_names::kStyleAttr, new_style);
     Check(old_style, new_style, expected_needs_repaint,
           expected_needs_cull_rect_update,
           expected_needs_repaint_after_cull_rect_update);
   }
 
-  void TestChildChange(const char* old_style,
-                       const char* new_style,
+  void TestChildChange(const AtomicString& old_style,
+                       const AtomicString& new_style,
                        bool expected_needs_repaint,
                        bool expected_needs_cull_rect_update,
                        bool expected_needs_repaint_after_cull_rect_update) {
     SetBodyInnerHTML(html_);
-    auto* child = GetDocument().getElementById(AtomicString("child"));
-    child->setAttribute(html_names::kStyleAttr, AtomicString(old_style));
+    auto* child = GetDocument().getElementById("child");
+    child->setAttribute(html_names::kStyleAttr, old_style);
     UpdateAllLifecyclePhasesForTest();
-    child->setAttribute(html_names::kStyleAttr, AtomicString(new_style));
+    child->setAttribute(html_names::kStyleAttr, new_style);
     Check(old_style, new_style, expected_needs_repaint,
           expected_needs_cull_rect_update,
           expected_needs_repaint_after_cull_rect_update);
@@ -986,7 +931,7 @@ class CullRectUpdateOnPaintPropertyChangeTest : public CullRectUpdaterTest {
                         bool expected_needs_cull_rect_update,
                         bool expected_needs_repaint_after_cull_rect_update) {
     SetBodyInnerHTML(html_);
-    auto* target = GetDocument().getElementById(AtomicString("target"));
+    auto* target = GetDocument().getElementById("target");
     target->scrollTo(old_scroll_offset.x(), old_scroll_offset.y()),
         UpdateAllLifecyclePhasesForTest();
     target->scrollTo(new_scroll_offset.x(), new_scroll_offset.y()),
@@ -1015,7 +960,7 @@ class CullRectUpdateOnPaintPropertyChangeTest : public CullRectUpdaterTest {
 
 INSTANTIATE_TEST_SUITE_P(All,
                          CullRectUpdateOnPaintPropertyChangeTest,
-                         testing::Bool());
+                         ::testing::Values(0, kScrollUnification));
 
 TEST_P(CullRectUpdateOnPaintPropertyChangeTest, Opacity) {
   TestTargetChange("opacity: 0.2", "opacity: 0.8", false, false, false);
@@ -1102,23 +1047,7 @@ TEST_P(CullRectUpdateOnPaintPropertyChangeTest, SmallContentsScroll) {
 }
 
 TEST_P(CullRectUpdateOnPaintPropertyChangeTest,
-       LargeContentsScrollSmallDeltaOrNotExposingNewContents1) {
-  html_ = html_ + "<style>#child { width: auto; height: 10000px; }</style>";
-  // Scroll offset changes that are small or won't expose new contents don't
-  // need cull rect update.
-  bool needs_cull_rect_update = false;
-  TestTargetScroll(ScrollOffset(), ScrollOffset(0, 200), false,
-                   needs_cull_rect_update, false);
-  TestTargetScroll(ScrollOffset(0, 200), ScrollOffset(), false,
-                   needs_cull_rect_update, false);
-  TestTargetScroll(ScrollOffset(0, 2000), ScrollOffset(), false,
-                   needs_cull_rect_update, false);
-  TestTargetScroll(ScrollOffset(0, 7000), ScrollOffset(0, 8000), false,
-                   needs_cull_rect_update, false);
-}
-
-TEST_P(CullRectUpdateOnPaintPropertyChangeTest,
-       LargeContentsScrollSmallDeltaOrNotExposingNewContents2) {
+       LargeContentsScrollSmallDeltaOrNotExposingNewContents) {
   html_ = html_ + "<style>#child { width: 10000px; height: 10000px; }</style>";
   // Scroll offset changes that are small or won't expose new contents don't
   // need cull rect update.
@@ -1129,7 +1058,7 @@ TEST_P(CullRectUpdateOnPaintPropertyChangeTest,
                    needs_cull_rect_update, false);
   TestTargetScroll(ScrollOffset(2000, 2000), ScrollOffset(), false,
                    needs_cull_rect_update, false);
-  TestTargetScroll(ScrollOffset(7000, 7000), ScrollOffset(7500, 7500), false,
+  TestTargetScroll(ScrollOffset(7000, 7000), ScrollOffset(8000, 8000), false,
                    needs_cull_rect_update, false);
 }
 

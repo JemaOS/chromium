@@ -28,7 +28,8 @@
 namespace updater {
 namespace {
 
-bool ShouldSkipCheck(scoped_refptr<Configurator> config) {
+bool ShouldSkipCheck(scoped_refptr<Configurator> config,
+                     scoped_refptr<updater::PersistedData> persisted_data) {
   // To spread out synchronized load, sometimes use a higher delay.
   const base::TimeDelta check_delay =
       config->NextCheckDelay() * (base::RandDouble() < 0.1 ? 1.2 : 1);
@@ -41,8 +42,7 @@ bool ShouldSkipCheck(scoped_refptr<Configurator> config) {
 
   // Skip if the most recent check was too recent (and not in the future).
   const base::TimeDelta time_since_update =
-      base::Time::NowFromSystemTime() -
-      config->GetUpdaterPersistedData()->GetLastChecked();
+      base::Time::NowFromSystemTime() - persisted_data->GetLastChecked();
   if (time_since_update.is_positive() && time_since_update < check_delay) {
     VLOG(0) << "Skipping checking for updates: last update was "
             << time_since_update.InMinutes()
@@ -51,7 +51,18 @@ bool ShouldSkipCheck(scoped_refptr<Configurator> config) {
   }
 
   // Skip if the updater is in the update suppression period.
-  return config->GetPolicyService()->AreUpdatesSuppressedNow();
+  PolicyStatus<UpdatesSuppressedTimes> suppression =
+      config->GetPolicyService()->GetUpdatesSuppressedTimes();
+  if (suppression && suppression.policy().valid()) {
+    base::Time::Exploded now;
+    base::Time::Now().LocalExplode(&now);
+    if (suppression.policy().contains(now.hour, now.minute)) {
+      VLOG(0) << "Skipping checking for updates: in update suppression period.";
+      return true;
+    }
+  }
+
+  return false;
 }
 
 }  // namespace
@@ -62,6 +73,9 @@ CheckForUpdatesTask::CheckForUpdatesTask(
     base::OnceCallback<void(UpdateService::Callback)> update_checker)
     : config_(config),
       update_checker_(std::move(update_checker)),
+      persisted_data_(
+          base::MakeRefCounted<PersistedData>(scope,
+                                              config_->GetPrefService())),
       update_client_(update_client::UpdateClientFactory(config_)) {}
 
 CheckForUpdatesTask::~CheckForUpdatesTask() = default;
@@ -69,7 +83,7 @@ CheckForUpdatesTask::~CheckForUpdatesTask() = default;
 void CheckForUpdatesTask::Run(base::OnceClosure callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (ShouldSkipCheck(config_)) {
+  if (ShouldSkipCheck(config_, persisted_data_)) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, std::move(callback));
     return;

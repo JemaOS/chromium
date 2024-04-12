@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startBlank('Tests that passing initial virtual time works.');
 
   await dp.Emulation.setVirtualTimePolicy({policy: 'pause', initialVirtualTime: 1234567890});

@@ -34,7 +34,6 @@
 #include "printing/buildflags/buildflags.h"
 #include "services/network/public/cpp/network_quality_tracker.h"
 #include "services/network/public/mojom/network_service.mojom-forward.h"
-#include "services/screen_ai/buildflags/buildflags.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/upgrade_detector/build_state.h"
@@ -42,7 +41,6 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/application_status_listener.h"
-#include "chrome/browser/accessibility/accessibility_prefs/android/accessibility_prefs_controller.h"
 #endif  // BUILDFLAG(IS_ANDROID)
 
 class BatteryMetrics;
@@ -50,7 +48,6 @@ class ChromeMetricsServicesManagerClient;
 class DevToolsAutoOpener;
 class RemoteDebuggingServer;
 class PrefRegistrySimple;
-class SearchEngineChoiceProfileTagger;
 class SecureOriginPrefsObserver;
 class SiteIsolationPrefsObserver;
 class SystemNotificationHelper;
@@ -60,20 +57,12 @@ namespace breadcrumbs {
 class ApplicationBreadcrumbsLogger;
 }  // namespace breadcrumbs
 
-namespace embedder_support {
-class OriginTrialsSettingsStorage;
-}  // namespace embedder_support
-
 namespace extensions {
 class ChromeExtensionsBrowserClient;
 }
 
 namespace gcm {
 class GCMDriver;
-}
-
-namespace os_crypt_async {
-class OSCryptAsync;
 }
 
 namespace policy {
@@ -86,12 +75,9 @@ class WebRtcEventLogManager;
 }  // namespace webrtc_event_logging
 
 namespace speech {
-class SodaInstaller;
+class SodaInstallerImpl;
+class SodaInstallerImplChromeOS;
 }  // namespace speech
-
-namespace screen_ai {
-class ScreenAIInstallState;
-}  // namespace screen_ai
 
 // Real implementation of BrowserProcess that creates and returns the services.
 class BrowserProcessImpl : public BrowserProcess,
@@ -153,17 +139,18 @@ class BrowserProcessImpl : public BrowserProcess,
   // BrowserProcess implementation.
   void EndSession() override;
   void FlushLocalStateAndReply(base::OnceClosure reply) override;
+  device::GeolocationManager* geolocation_manager() override;
   metrics_services_manager::MetricsServicesManager* GetMetricsServicesManager()
       override;
   metrics::MetricsService* metrics_service() override;
+  void SetGeolocationManager(
+      std::unique_ptr<device::GeolocationManager> geolocation_manager) override;
   // TODO(qinmin): Remove this method as callers can retrieve the global
   // instance from SystemNetworkContextManager directly.
   SystemNetworkContextManager* system_network_context_manager() override;
   scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory()
       override;
   network::NetworkQualityTracker* network_quality_tracker() override;
-  embedder_support::OriginTrialsSettingsStorage*
-  GetOriginTrialsSettingsStorage() override;
   ProfileManager* profile_manager() override;
   PrefService* local_state() override;
   variations::VariationsService* variations_service() override;
@@ -220,11 +207,9 @@ class BrowserProcessImpl : public BrowserProcess,
 
 #if !BUILDFLAG(IS_ANDROID)
   SerialPolicyAllowedPorts* serial_policy_allowed_ports() override;
+  HidPolicyAllowedDevices* hid_policy_allowed_devices() override;
   HidSystemTrayIcon* hid_system_tray_icon() override;
-  UsbSystemTrayIcon* usb_system_tray_icon() override;
 #endif
-
-  os_crypt_async::OSCryptAsync* os_crypt_async() override;
 
   BuildState* GetBuildState() override;
 
@@ -273,21 +258,17 @@ class BrowserProcessImpl : public BrowserProcess,
   bool created_profile_manager_ = false;
   std::unique_ptr<ProfileManager> profile_manager_;
 
+  std::unique_ptr<device::GeolocationManager> geolocation_manager_;
+
   const std::unique_ptr<PrefService> local_state_;
 
   // |metrics_services_manager_| owns this.
-  raw_ptr<ChromeMetricsServicesManagerClient, AcrossTasksDanglingUntriaged>
+  raw_ptr<ChromeMetricsServicesManagerClient, DanglingUntriaged>
       metrics_services_manager_client_ = nullptr;
 
   // Must be destroyed before |local_state_|.
   std::unique_ptr<metrics_services_manager::MetricsServicesManager>
       metrics_services_manager_;
-
-#if BUILDFLAG(IS_ANDROID)
-  // Must be destroyed before |local_state_|.
-  std::unique_ptr<accessibility::AccessibilityPrefsController>
-      accessibility_prefs_controller_;
-#endif
 
   std::unique_ptr<network::NetworkQualityTracker> network_quality_tracker_;
 
@@ -296,9 +277,6 @@ class BrowserProcessImpl : public BrowserProcess,
   std::unique_ptr<
       network::NetworkQualityTracker::RTTAndThroughputEstimatesObserver>
       network_quality_observer_;
-
-  std::unique_ptr<embedder_support::OriginTrialsSettingsStorage>
-      origin_trials_settings_storage_;
 
   bool created_icon_manager_ = false;
   std::unique_ptr<IconManager> icon_manager_;
@@ -321,7 +299,7 @@ class BrowserProcessImpl : public BrowserProcess,
 #endif
 
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
-  std::unique_ptr<printing::PrintPreviewDialogController>
+  scoped_refptr<printing::PrintPreviewDialogController>
       print_preview_dialog_controller_;
 
   std::unique_ptr<printing::BackgroundPrintingManager>
@@ -405,18 +383,17 @@ class BrowserProcessImpl : public BrowserProcess,
   // but some users of component updater only install per-user.
   std::unique_ptr<component_updater::ComponentUpdateService> component_updater_;
 
-#if !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
   // Used to create a singleton instance of SodaInstallerImpl, which can be
   // retrieved using speech::SodaInstaller::GetInstance().
   // SodaInstallerImpl depends on ComponentUpdateService, so define it here
   // to ensure that SodaInstallerImpl gets destructed first.
-  std::unique_ptr<speech::SodaInstaller> soda_installer_impl_;
+  std::unique_ptr<speech::SodaInstallerImpl> soda_installer_impl_;
 #endif
 
-#if BUILDFLAG(ENABLE_SCREEN_AI_SERVICE)
-  // Used to download Screen AI on demand and keep track of the library
-  // availability.
-  std::unique_ptr<screen_ai::ScreenAIInstallState> screen_ai_download_;
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  // Chrome OS has a different implementation of SodaInstaller.
+  std::unique_ptr<speech::SodaInstallerImplChromeOS> soda_installer_impl_;
 #endif
 
   std::unique_ptr<BrowserProcessPlatformPart> platform_part_;
@@ -445,13 +422,10 @@ class BrowserProcessImpl : public BrowserProcess,
   base::OnceClosure quit_closure_;
 
   std::unique_ptr<SerialPolicyAllowedPorts> serial_policy_allowed_ports_;
+  std::unique_ptr<HidPolicyAllowedDevices> hid_policy_allowed_devices_;
   std::unique_ptr<HidSystemTrayIcon> hid_system_tray_icon_;
-  std::unique_ptr<UsbSystemTrayIcon> usb_system_tray_icon_;
 
   BuildState build_state_;
-
-  std::unique_ptr<SearchEngineChoiceProfileTagger>
-      search_engine_choice_profile_tagger_;
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
@@ -462,8 +436,6 @@ class BrowserProcessImpl : public BrowserProcess,
   // breadcrumbs logging is disabled.
   std::unique_ptr<breadcrumbs::ApplicationBreadcrumbsLogger>
       application_breadcrumbs_logger_;
-
-  std::unique_ptr<os_crypt_async::OSCryptAsync> os_crypt_async_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 };

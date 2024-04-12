@@ -48,9 +48,10 @@ public class Snackbar {
      */
     public static final int TYPE_PERSISTENT = 2;
 
-    /** UMA Identifiers of features using snackbar. See SnackbarIdentifier enum in histograms. */
+    /**
+     * UMA Identifiers of features using snackbar. See SnackbarIdentifier enum in histograms.
+     */
     public static final int UMA_TEST_SNACKBAR = -2;
-
     public static final int UMA_UNKNOWN = -1;
     public static final int UMA_BOOKMARK_ADDED = 0;
     public static final int UMA_BOOKMARK_DELETE_UNDO = 1;
@@ -113,9 +114,6 @@ public class Snackbar {
     public static final int UMA_CREATOR_UNFOLLOW_SUCCESS = 58;
     public static final int UMA_CREATOR_UNFOLLOW_FAILURE = 59;
     public static final int UMA_QUICK_DELETE = 60;
-    public static final int UMA_AUTO_TRANSLATE = 61;
-    public static final int UMA_BOOKMARK_MOVED = 62;
-    public static final int UMA_CLEAR_BROWSING_DATA = 63;
 
     private @Nullable SnackbarController mController;
     private CharSequence mText;
@@ -130,7 +128,8 @@ public class Snackbar {
     private Drawable mProfileImage;
     private int mType;
     private int mIdentifier = UMA_UNKNOWN;
-    private @Theme int mTheme = Theme.BASIC;
+    @Theme
+    private int mTheme = Theme.BASIC;
 
     @IntDef({Theme.BASIC, Theme.GOOGLE})
     @Retention(RetentionPolicy.SOURCE)
@@ -228,7 +227,9 @@ public class Snackbar {
         return this;
     }
 
-    /** Sets the background color for the snackbar. If 0, the snackbar will use default color. */
+    /**
+     * Sets the background color for the snackbar. If 0, the snackbar will use default color.
+     */
     // TODO(fgorski): Clean up background color and text appearance -- transition all the consumers
     // to the Theme based styling.
     public Snackbar setBackgroundColor(int color) {
@@ -294,12 +295,16 @@ public class Snackbar {
         return mIdentifier;
     }
 
-    /** If method returns zero, then default color for snackbar will be used. */
+    /**
+     * If method returns zero, then default color for snackbar will be used.
+     */
     int getBackgroundColor() {
         return mBackgroundColor;
     }
 
-    /** If method returns zero, then default text appearance for snackbar will be used. */
+    /**
+     * If method returns zero, then default text appearance for snackbar will be used.
+     */
     int getTextAppearance() {
         return mTextApperanceResId;
     }
@@ -313,7 +318,9 @@ public class Snackbar {
         return mTheme;
     }
 
-    /** If method returns null, then no profileImage will be shown in snackbar. */
+    /**
+     * If method returns null, then no profileImage will be shown in snackbar.
+     */
     Drawable getProfileImage() {
         return mProfileImage;
     }
@@ -333,14 +340,17 @@ public class Snackbar {
     }
 
     /** So tests can trigger a press on a Snackbar. */
+    @VisibleForTesting
     public Object getActionDataForTesting() {
         return mActionData;
     }
 
+    @VisibleForTesting
     public int getIdentifierForTesting() {
         return mIdentifier;
     }
 
+    @VisibleForTesting
     public CharSequence getTextForTesting() {
         return mText;
     }

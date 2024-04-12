@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_LOCATION_ICON_VIEW_H_
 #define CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_LOCATION_ICON_VIEW_H_
 
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/views/location_bar/icon_label_bubble_view.h"
 #include "components/omnibox/browser/location_bar_model.h"
@@ -24,9 +22,9 @@ enum SecurityLevel;
 // page security status (after navigation has completed), or extension name (if
 // the URL is a chrome-extension:// URL).
 class LocationIconView : public IconLabelBubbleView {
-  METADATA_HEADER(LocationIconView, IconLabelBubbleView)
-
  public:
+  METADATA_HEADER(LocationIconView);
+
   class Delegate {
    public:
     using IconFetchedCallback =
@@ -60,11 +58,6 @@ class LocationIconView : public IconLabelBubbleView {
     // Gets an icon for the location bar icon chip.
     virtual ui::ImageModel GetLocationIcon(
         IconFetchedCallback on_icon_fetched) const = 0;
-
-    // Gets an optional background color override for the location bar icon
-    // chip.
-    virtual std::optional<ui::ColorId> GetLocationIconBackgroundColorOverride()
-        const;
   };
 
   LocationIconView(const gfx::FontList& font_list,
@@ -90,11 +83,9 @@ class LocationIconView : public IconLabelBubbleView {
   int GetMinimumLabelTextWidth() const;
 
   // Updates the icon's ink drop mode, focusable behavior, text and security
-  // status. `suppress_animations` indicates whether this update should suppress
+  // status. |suppress_animations| indicates whether this update should suppress
   // the text change animation (e.g. when swapping tabs).
-  // `force_hide_background` hides the background color. This is useful in
-  // situations like where the popup is shown.
-  void Update(bool suppress_animations, bool force_hide_background = false);
+  void Update(bool suppress_animations);
 
   // Returns text to be placed in the view.
   // - For secure/insecure pages, returns text describing the URL's security
@@ -117,6 +108,7 @@ class LocationIconView : public IconLabelBubbleView {
   // IconLabelBubbleView:
   bool IsTriggerableEvent(const ui::Event& event) override;
   void UpdateBorder() override;
+  int GetInternalSpacing() const override;
 
  private:
   // Returns what the minimum size would be if the preferred size were |size|.

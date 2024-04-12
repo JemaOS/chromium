@@ -18,11 +18,9 @@
 #include "base/rand_util.h"
 #include "base/ranges/algorithm.h"
 #include "base/run_loop.h"
-#include "base/scoped_multi_source_observation.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/test/gtest_util.h"
 #include "base/test/icu_test_util.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/time/time.h"
@@ -35,8 +33,6 @@
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/metadata/metadata_types.h"
 #include "ui/compositor/compositor.h"
 #include "ui/compositor/compositor_switches.h"
@@ -64,9 +60,7 @@
 #include "ui/views/test/ax_event_counter.h"
 #include "ui/views/test/view_metadata_test_utils.h"
 #include "ui/views/test/views_test_base.h"
-#include "ui/views/test/views_test_utils.h"
 #include "ui/views/test/widget_test.h"
-#include "ui/views/view_class_properties.h"
 #include "ui/views/view_observer.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/views_features.h"
@@ -75,14 +69,7 @@
 #include "ui/views/widget/unique_widget_ptr.h"
 #include "ui/views/window/dialog_delegate.h"
 
-using ::testing::_;
-using ::testing::ElementsAre;
-using ::testing::Eq;
-using ::testing::IsNull;
-using ::testing::Mock;
-using ::testing::Pointee;
-using ::testing::StrictMock;
-using ::testing::WithArg;
+using testing::ElementsAre;
 
 namespace {
 
@@ -122,8 +109,7 @@ const ui::Layer* NextLayer(const ui::Layer* layer) {
   const ui::Layer* parent = layer->parent();
   if (!parent)
     return nullptr;
-  const std::vector<raw_ptr<ui::Layer, VectorExperimental>> children =
-      parent->children();
+  const std::vector<ui::Layer*> children = parent->children();
   const auto i = base::ranges::find(children, layer) + 1;
   return (i == children.cend()) ? parent : FirstLayer(*i);
 }
@@ -226,15 +212,9 @@ using ViewTest = ViewsTestBase;
 
 // A derived class for testing purpose.
 class TestView : public View {
-  METADATA_HEADER(TestView, View)
-
  public:
   TestView() = default;
-  ~TestView() override {
-    if (destruction_callback_) {
-      std::move(destruction_callback_).Run();
-    }
-  }
+  ~TestView() override = default;
 
   // Reset all test state
   void Reset() {
@@ -246,7 +226,6 @@ class TestView : public View {
     received_mouse_exit_ = false;
     did_paint_ = false;
     accelerator_count_map_.clear();
-    destruction_callback_.Reset();
   }
 
   // Exposed as public for testing.
@@ -254,13 +233,9 @@ class TestView : public View {
 
   void DoBlur() { views::View::Blur(); }
 
-  void Layout(PassKey) override {
+  void Layout() override {
     did_layout_ = true;
-    LayoutSuperclass<View>(this);
-  }
-
-  void SetDestructionCallback(base::OnceClosure destruction_callback) {
-    destruction_callback_ = std::move(destruction_callback);
+    View::Layout();
   }
 
   void OnBoundsChanged(const gfx::Rect& previous_bounds) override;
@@ -304,82 +279,19 @@ class TestView : public View {
 
   // Accessibility events
   ax::mojom::Event last_a11y_event_ = ax::mojom::Event::kNone;
-
-  base::OnceClosure destruction_callback_;
 };
 
-void TestView::OnBoundsChanged(const gfx::Rect& previous_bounds) {
-  did_change_bounds_ = true;
-  new_bounds_ = bounds();
-}
-
-bool TestView::OnMousePressed(const ui::MouseEvent& event) {
-  last_mouse_event_type_ = event.type();
-  location_.SetPoint(event.x(), event.y());
-  if (delete_on_pressed_) {
-    delete this;
-  }
-  return true;
-}
-
-bool TestView::OnMouseDragged(const ui::MouseEvent& event) {
-  last_mouse_event_type_ = event.type();
-  location_.SetPoint(event.x(), event.y());
-  return true;
-}
-
-void TestView::OnMouseReleased(const ui::MouseEvent& event) {
-  last_mouse_event_type_ = event.type();
-  location_.SetPoint(event.x(), event.y());
-}
-
-void TestView::OnMouseEntered(const ui::MouseEvent& event) {
-  received_mouse_enter_ = true;
-}
-
-void TestView::OnMouseExited(const ui::MouseEvent& event) {
-  received_mouse_exit_ = true;
-}
-
-void TestView::OnPaint(gfx::Canvas* canvas) {
-  did_paint_ = true;
-}
-
-void TestView::OnDidSchedulePaint(const gfx::Rect& rect) {
-  scheduled_paint_rects_.push_back(rect);
-  View::OnDidSchedulePaint(rect);
-}
-
-bool TestView::AcceleratorPressed(const ui::Accelerator& accelerator) {
-  accelerator_count_map_[accelerator]++;
-  return true;
-}
-
-void TestView::OnThemeChanged() {
-  View::OnThemeChanged();
-  native_theme_ = GetNativeTheme();
-}
-
-void TestView::OnAccessibilityEvent(ax::mojom::Event event_type) {
-  last_a11y_event_ = event_type;
-}
-
-BEGIN_METADATA(TestView)
-END_METADATA
-
 class A11yTestView : public TestView {
-  METADATA_HEADER(A11yTestView, TestView)
-
  public:
   // Convenience constructor to test `View::SetAccessibilityProperties`
   explicit A11yTestView(
-      std::optional<ax::mojom::Role> role = std::nullopt,
-      std::optional<std::u16string> name = std::nullopt,
-      std::optional<std::u16string> description = std::nullopt,
-      std::optional<std::u16string> role_description = std::nullopt,
-      std::optional<ax::mojom::NameFrom> name_from = std::nullopt,
-      std::optional<ax::mojom::DescriptionFrom> description_from =
-          std::nullopt) {
+      absl::optional<ax::mojom::Role> role = absl::nullopt,
+      absl::optional<std::u16string> name = absl::nullopt,
+      absl::optional<std::u16string> description = absl::nullopt,
+      absl::optional<std::u16string> role_description = absl::nullopt,
+      absl::optional<ax::mojom::NameFrom> name_from = absl::nullopt,
+      absl::optional<ax::mojom::DescriptionFrom> description_from =
+          absl::nullopt) {
     SetAccessibilityProperties(
         std::move(role), std::move(name), std::move(description),
         std::move(role_description), std::move(name_from),
@@ -400,21 +312,18 @@ class A11yTestView : public TestView {
     }
   }
 
-  void SetAccessibleNamePrefix(std::optional<std::u16string> name_prefix) {
+  void SetAccessibleNamePrefix(absl::optional<std::u16string> name_prefix) {
     name_prefix_ = std::move(name_prefix);
   }
 
-  void SetAccessibleNameFrom(std::optional<ax::mojom::NameFrom> name_from) {
+  void SetAccessibleNameFrom(absl::optional<ax::mojom::NameFrom> name_from) {
     name_from_ = std::move(name_from);
   }
 
  private:
-  std::optional<std::u16string> name_prefix_;
-  std::optional<ax::mojom::NameFrom> name_from_;
+  absl::optional<std::u16string> name_prefix_;
+  absl::optional<ax::mojom::NameFrom> name_from_;
 };
-
-BEGIN_METADATA(A11yTestView)
-END_METADATA
 
 ////////////////////////////////////////////////////////////////////////////////
 // Metadata
@@ -471,42 +380,8 @@ TEST_F(ViewTest, SizeToPreferredSizeInducesLayout) {
   EXPECT_TRUE(example_view.did_layout_);
 }
 
-namespace {
-
-// A view that provides direct and indirect ways to trigger
-// `LayoutSuperclass<>()`.
-class SuperclassLayoutTestView : public TestView {
- public:
-  int layout_count() const { return layout_count_; }
-
-  void AttemptSuperclassLayout() {
-    ++layout_count_;
-    LayoutSuperclass<TestView>(this);
-  }
-
-  void Layout(PassKey) override { AttemptSuperclassLayout(); }
-
- private:
-  int layout_count_ = 0;
-};
-
-}  // namespace
-
-// Verifies that LayoutSuperclass<>() can only be invoked while layout is
-// occurring.
-TEST_F(ViewTest, CannotLayoutSuperclassOutsideLayout) {
-  // Construction should not automatically attempt layout.
-  SuperclassLayoutTestView view;
-  EXPECT_EQ(0, view.layout_count());
-
-  // Triggering layout through the standard method should attempt superclass
-  // layout, which should succeed.
-  view.InvalidateLayout();
-  test::RunScheduledLayout(&view);
-  EXPECT_EQ(1, view.layout_count());
-
-  // Attempting superclass layout outside that flow should checkfail.
-  EXPECT_CHECK_DEATH(view.AttemptSuperclassLayout());
+void TestView::OnAccessibilityEvent(ax::mojom::Event event_type) {
+  last_a11y_event_ = event_type;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -635,8 +510,8 @@ TEST_F(ViewTest, SetAccessibilityPropertiesRoleRolenameNameDescription) {
 
 TEST_F(ViewTest, SetAccessibilityPropertiesRoleAndRoleDescription) {
   A11yTestView v(ax::mojom::Role::kButton,
-                 /*name*/ std::nullopt,
-                 /*description*/ std::nullopt, u"Super Button");
+                 /*name*/ absl::nullopt,
+                 /*description*/ absl::nullopt, u"Super Button");
   ui::AXNodeData data = ui::AXNodeData();
   v.GetAccessibleNodeData(&data);
   EXPECT_EQ(v.GetAccessibleRole(), ax::mojom::Role::kButton);
@@ -1035,6 +910,11 @@ TEST_F(ViewTest, OnBoundsChangedFiresA11yEvent) {
   EXPECT_EQ(v.last_a11y_event_, ax::mojom::Event::kLocationChanged);
 }
 
+void TestView::OnBoundsChanged(const gfx::Rect& previous_bounds) {
+  did_change_bounds_ = true;
+  new_bounds_ = bounds();
+}
+
 TEST_F(ViewTest, OnBoundsChanged) {
   TestView v;
 
@@ -1085,6 +965,33 @@ TEST_F(ViewTest, OnStateChangedFiresA11yEvent) {
 ////////////////////////////////////////////////////////////////////////////////
 // MouseEvent
 ////////////////////////////////////////////////////////////////////////////////
+
+bool TestView::OnMousePressed(const ui::MouseEvent& event) {
+  last_mouse_event_type_ = event.type();
+  location_.SetPoint(event.x(), event.y());
+  if (delete_on_pressed_)
+    delete this;
+  return true;
+}
+
+bool TestView::OnMouseDragged(const ui::MouseEvent& event) {
+  last_mouse_event_type_ = event.type();
+  location_.SetPoint(event.x(), event.y());
+  return true;
+}
+
+void TestView::OnMouseReleased(const ui::MouseEvent& event) {
+  last_mouse_event_type_ = event.type();
+  location_.SetPoint(event.x(), event.y());
+}
+
+void TestView::OnMouseEntered(const ui::MouseEvent& event) {
+  received_mouse_enter_ = true;
+}
+
+void TestView::OnMouseExited(const ui::MouseEvent& event) {
+  received_mouse_exit_ = true;
+}
 
 TEST_F(ViewTest, MouseEvent) {
   auto view1 = std::make_unique<TestView>();
@@ -1212,6 +1119,10 @@ TEST_F(ViewTest, DetectReturnFormDrag) {
 // Painting
 ////////////////////////////////////////////////////////////////////////////////
 
+void TestView::OnPaint(gfx::Canvas* canvas) {
+  did_paint_ = true;
+}
+
 namespace {
 
 // Helper class to create a Widget with standard parameters that is closed when
@@ -1227,12 +1138,7 @@ class ScopedTestPaintWidget {
   ScopedTestPaintWidget(const ScopedTestPaintWidget&) = delete;
   ScopedTestPaintWidget& operator=(const ScopedTestPaintWidget&) = delete;
 
-  ~ScopedTestPaintWidget() {
-    // Widget is self-owning, and CloseNow() destroys the Widget, so this method
-    // has to pull the raw Widget* out of the raw_ptr to avoid the raw_ptr
-    // dangling after the Widget is destroyed.
-    widget_.ExtractAsDangling()->CloseNow();
-  }
+  ~ScopedTestPaintWidget() { widget_->CloseNow(); }
 
   Widget* operator->() { return widget_; }
 
@@ -1966,8 +1872,6 @@ TEST_F(ViewTest, PaintInPromotedToLayer) {
 
 // A derived class for testing paint.
 class TestPaintView : public TestView {
-  METADATA_HEADER(TestPaintView, TestView)
-
  public:
   TestPaintView() = default;
   ~TestPaintView() override = default;
@@ -1983,9 +1887,6 @@ class TestPaintView : public TestView {
  private:
   gfx::Rect canvas_bounds_;
 };
-
-BEGIN_METADATA(TestPaintView)
-END_METADATA
 
 TEST_F(ViewTest, PaintLocalBounds) {
   ScopedTestPaintWidget widget(CreateParams(Widget::InitParams::TYPE_POPUP));
@@ -2014,6 +1915,11 @@ TEST_F(ViewTest, PaintLocalBounds) {
   // Check that the canvas produced by |v1| for paint contains all of |v1|'s
   // visible bounds.
   EXPECT_TRUE(v1->canvas_bounds().Contains(v1->GetVisibleBounds()));
+}
+
+void TestView::OnDidSchedulePaint(const gfx::Rect& rect) {
+  scheduled_paint_rects_.push_back(rect);
+  View::OnDidSchedulePaint(rect);
 }
 
 namespace {
@@ -2840,6 +2746,10 @@ TEST_F(ViewPaintOptimizationTest, PaintDirtyViewsOnly) {
 ////////////////////////////////////////////////////////////////////////////////
 // Accelerators
 ////////////////////////////////////////////////////////////////////////////////
+bool TestView::AcceleratorPressed(const ui::Accelerator& accelerator) {
+  accelerator_count_map_[accelerator]++;
+  return true;
+}
 
 namespace {
 
@@ -3087,8 +2997,6 @@ TEST_F(ViewTest, ViewInHiddenWidgetWithAccelerator) {
 // Native view hierachy
 ////////////////////////////////////////////////////////////////////////////////
 class ToplevelWidgetObserverView : public View {
-  METADATA_HEADER(ToplevelWidgetObserverView, View)
-
  public:
   ToplevelWidgetObserverView() = default;
 
@@ -3116,9 +3024,6 @@ class ToplevelWidgetObserverView : public View {
  private:
   raw_ptr<Widget> toplevel_ = nullptr;
 };
-
-BEGIN_METADATA(ToplevelWidgetObserverView)
-END_METADATA
 
 // Test that
 // a) a view can track the current top level widget by overriding
@@ -3167,8 +3072,6 @@ TEST_F(ViewTest, NativeViewHierarchyChanged) {
 ////////////////////////////////////////////////////////////////////////////////
 
 class TransformPaintView : public TestView {
-  METADATA_HEADER(TransformPaintView, TestView)
-
  public:
   TransformPaintView() = default;
 
@@ -3190,9 +3093,6 @@ class TransformPaintView : public TestView {
  private:
   gfx::Rect scheduled_paint_rect_;
 };
-
-BEGIN_METADATA(TransformPaintView)
-END_METADATA
 
 TEST_F(ViewTest, TransformPaint) {
   auto view1 = std::make_unique<TransformPaintView>();
@@ -3395,8 +3295,6 @@ TEST_F(ViewTest, TransformVisibleBound) {
 // OnVisibleBoundsChanged()
 
 class VisibleBoundsView : public View {
-  METADATA_HEADER(VisibleBoundsView, View)
-
  public:
   VisibleBoundsView() = default;
 
@@ -3419,9 +3317,6 @@ class VisibleBoundsView : public View {
 
   bool received_notification_ = false;
 };
-
-BEGIN_METADATA(VisibleBoundsView)
-END_METADATA
 
 TEST_F(ViewTest, OnVisibleBoundsChanged) {
   gfx::Rect viewport_bounds(0, 0, 100, 100);
@@ -3897,8 +3792,6 @@ TEST_F(ViewTest, ConvertRectWithTransform) {
 }
 
 class ObserverView : public View {
-  METADATA_HEADER(ObserverView, View)
-
  public:
   ObserverView();
 
@@ -3907,13 +3800,16 @@ class ObserverView : public View {
 
   ~ObserverView() override;
 
-  void ForgetOldDetails();
+  void ResetTestState();
 
-  std::optional<ViewHierarchyChangedDetails> add_details() {
+  bool has_add_details() const { return has_add_details_; }
+  bool has_remove_details() const { return has_remove_details_; }
+
+  const ViewHierarchyChangedDetails& add_details() const {
     return add_details_;
   }
 
-  std::optional<ViewHierarchyChangedDetails> remove_details() {
+  const ViewHierarchyChangedDetails& remove_details() const {
     return remove_details_;
   }
 
@@ -3922,161 +3818,167 @@ class ObserverView : public View {
   void ViewHierarchyChanged(
       const ViewHierarchyChangedDetails& details) override;
 
-  std::optional<ViewHierarchyChangedDetails> add_details_;
-  std::optional<ViewHierarchyChangedDetails> remove_details_;
+  bool has_add_details_ = false;
+  bool has_remove_details_ = false;
+  ViewHierarchyChangedDetails add_details_;
+  ViewHierarchyChangedDetails remove_details_;
 };
 
 ObserverView::ObserverView() = default;
 
 ObserverView::~ObserverView() = default;
 
-void ObserverView::ForgetOldDetails() {
-  add_details_.reset();
-  remove_details_.reset();
+void ObserverView::ResetTestState() {
+  has_add_details_ = false;
+  has_remove_details_ = false;
+  add_details_ = ViewHierarchyChangedDetails();
+  remove_details_ = ViewHierarchyChangedDetails();
 }
 
 void ObserverView::ViewHierarchyChanged(
     const ViewHierarchyChangedDetails& details) {
-  (details.is_add ? add_details_ : remove_details_).emplace(details);
-}
-
-BEGIN_METADATA(ObserverView)
-END_METADATA
-
-using ViewHierarchyChangedTest = ViewTest;
-
-void ForgetAllOldDetails(std::vector<ObserverView*> views) {
-  for (auto* view : views) {
-    view->ForgetOldDetails();
+  if (details.is_add) {
+    has_add_details_ = true;
+    add_details_ = details;
+  } else {
+    has_remove_details_ = true;
+    remove_details_ = details;
   }
 }
 
-TEST_F(ViewHierarchyChangedTest, ParentReceivesAdd) {
-  auto parent = std::make_unique<ObserverView>();
-  auto* child = parent->AddChildView(std::make_unique<ObserverView>());
+// Verifies that the ViewHierarchyChanged() notification is sent correctly when
+// a child view is added or removed to all the views in the hierarchy (up and
+// down).
+// The tree looks like this:
+// v1
+// +-- v2(view2)
+//     +-- v3
+//     +-- v4 (starts here, then get reparented to v1)
+TEST_F(ViewTest, ViewHierarchyChanged) {
+  auto view1 = std::make_unique<ObserverView>();
+  ObserverView* v1 = view1.get();
 
-  ASSERT_TRUE(parent->add_details().has_value());
-  EXPECT_FALSE(parent->remove_details().has_value());
-  EXPECT_EQ(parent.get(), parent->add_details()->parent);
-  EXPECT_EQ(child, parent->add_details()->child);
-  EXPECT_EQ(nullptr, parent->add_details()->move_view);
+  auto view3 = std::make_unique<ObserverView>();
 
-  ForgetAllOldDetails({parent.get(), child});
-}
+  auto view2 = std::make_unique<ObserverView>();
+  ObserverView* v3 = view2->AddChildView(std::move(view3));
 
-TEST_F(ViewHierarchyChangedTest, ChildReceivesAdd) {
-  auto parent = std::make_unique<ObserverView>();
-  auto* child = parent->AddChildView(std::make_unique<ObserverView>());
+  // Make sure both |view2| and |v3| receive the ViewHierarchyChanged()
+  // notification.
+  EXPECT_TRUE(view2->has_add_details());
+  EXPECT_FALSE(view2->has_remove_details());
+  EXPECT_EQ(view2.get(), view2->add_details().parent);
+  EXPECT_EQ(v3, view2->add_details().child);
+  EXPECT_EQ(nullptr, view2->add_details().move_view);
 
-  ASSERT_TRUE(child->add_details().has_value());
-  EXPECT_FALSE(child->remove_details().has_value());
-  EXPECT_EQ(parent.get(), child->add_details()->parent);
-  EXPECT_EQ(child, child->add_details()->child);
-  EXPECT_EQ(nullptr, child->add_details()->move_view);
+  EXPECT_TRUE(v3->has_add_details());
+  EXPECT_FALSE(v3->has_remove_details());
+  EXPECT_EQ(view2.get(), v3->add_details().parent);
+  EXPECT_EQ(v3, v3->add_details().child);
+  EXPECT_EQ(nullptr, v3->add_details().move_view);
 
-  ForgetAllOldDetails({parent.get(), child});
-}
+  // Reset everything to the initial state.
+  view2->ResetTestState();
+  v3->ResetTestState();
 
-TEST_F(ViewHierarchyChangedTest, HierarchyReceivesAdd) {
-  auto child = std::make_unique<ObserverView>();
-  auto* grandchild = child->AddChildView(std::make_unique<ObserverView>());
+  // Add |view2| to |view1|.
+  ObserverView* v2 = view1->AddChildView(std::move(view2));
 
-  ForgetAllOldDetails({child.get(), grandchild});
+  // Verifies that |v2| is the child view *added* and the parent view is
+  // |v1|. Make sure all the views (v1, v2, v3) received _that_ information.
+  EXPECT_TRUE(v1->has_add_details());
+  EXPECT_FALSE(v1->has_remove_details());
+  EXPECT_EQ(v1, view1->add_details().parent);
+  EXPECT_EQ(v2, view1->add_details().child);
+  EXPECT_EQ(nullptr, view1->add_details().move_view);
 
-  auto parent = std::make_unique<ObserverView>();
-  auto* weak_child = parent->AddChildView(std::move(child));
+  EXPECT_TRUE(v2->has_add_details());
+  EXPECT_FALSE(v2->has_remove_details());
+  EXPECT_EQ(v1, v2->add_details().parent);
+  EXPECT_EQ(v2, v2->add_details().child);
+  EXPECT_EQ(nullptr, v2->add_details().move_view);
 
-  for (auto* view : {parent.get(), weak_child, grandchild}) {
-    ASSERT_TRUE(view->add_details().has_value());
-    EXPECT_FALSE(view->remove_details().has_value());
-    EXPECT_EQ(parent.get(), view->add_details()->parent);
-    EXPECT_EQ(weak_child, view->add_details()->child);
-    EXPECT_EQ(nullptr, view->add_details()->move_view);
-  }
+  EXPECT_TRUE(v3->has_add_details());
+  EXPECT_FALSE(v3->has_remove_details());
+  EXPECT_EQ(v1, v3->add_details().parent);
+  EXPECT_EQ(v2, v3->add_details().child);
+  EXPECT_EQ(nullptr, v3->add_details().move_view);
 
-  ForgetAllOldDetails({parent.get(), weak_child, grandchild});
-}
+  v1->ResetTestState();
+  v2->ResetTestState();
+  v3->ResetTestState();
 
-TEST_F(ViewHierarchyChangedTest, HierarchyReceivesRemove) {
-  auto parent = std::make_unique<ObserverView>();
-  auto* weak_child = parent->AddChildView(std::make_unique<ObserverView>());
-  auto* grandchild = weak_child->AddChildView(std::make_unique<ObserverView>());
+  view2 = view1->RemoveChildViewT(v2);
 
-  ForgetAllOldDetails({parent.get(), weak_child, grandchild});
+  // view2 now owns v2 from here.
+  // Verifies that |view2| is the child view *removed* and the parent view is
+  // |v1|. Make sure all the views (v1, v2, v3) received _that_ information.
+  EXPECT_FALSE(v1->has_add_details());
+  EXPECT_TRUE(v1->has_remove_details());
+  EXPECT_EQ(v1, v1->remove_details().parent);
+  EXPECT_EQ(v2, v1->remove_details().child);
+  EXPECT_EQ(nullptr, v1->remove_details().move_view);
 
-  auto child = parent->RemoveChildViewT(weak_child);
+  EXPECT_FALSE(v2->has_add_details());
+  EXPECT_TRUE(v2->has_remove_details());
+  EXPECT_EQ(v1, view2->remove_details().parent);
+  EXPECT_EQ(v2, view2->remove_details().child);
+  EXPECT_EQ(nullptr, view2->remove_details().move_view);
 
-  // The parent and child both receive a remove:
-  for (auto* view : {parent.get(), weak_child}) {
-    EXPECT_FALSE(view->add_details().has_value());
-    ASSERT_TRUE(view->remove_details().has_value());
-    EXPECT_EQ(parent.get(), view->remove_details()->parent);
-    EXPECT_EQ(weak_child, view->remove_details()->child);
-    EXPECT_EQ(nullptr, view->remove_details()->move_view);
-  }
+  EXPECT_FALSE(v3->has_add_details());
+  EXPECT_TRUE(v3->has_remove_details());
+  EXPECT_EQ(v1, v3->remove_details().parent);
+  EXPECT_EQ(v3, v3->remove_details().child);
+  EXPECT_EQ(nullptr, v3->remove_details().move_view);
 
-  // The grandchild also receives a remove, but the removed view is marked as
-  // the *grandchild*, not as the child.
-  // TODO(ellyjones): Why does that happen? It seems like either:
-  // a) The grandchild should receive no notification,
-  // b) The grandchild should receive a notification with parent == parent and
-  //    child == child (same as the other two views receive), or
-  // c) The grandchild should receive a notification with parent == child and
-  //    child == grandchild
-  EXPECT_FALSE(grandchild->add_details().has_value());
-  ASSERT_TRUE(grandchild->remove_details().has_value());
-  EXPECT_EQ(parent.get(), grandchild->remove_details()->parent);
-  EXPECT_EQ(grandchild, grandchild->remove_details()->child);
-  EXPECT_EQ(nullptr, grandchild->remove_details()->move_view);
+  // Verifies notifications when reparenting a view.
+  // Add |v4| to |view2|.
+  auto* v4 = view2->AddChildView(std::make_unique<ObserverView>());
 
-  ForgetAllOldDetails({parent.get(), weak_child, grandchild});
-}
+  // Reset everything to the initial state.
+  v1->ResetTestState();
+  v2->ResetTestState();
+  v3->ResetTestState();
+  v4->ResetTestState();
 
-TEST_F(ViewHierarchyChangedTest, HierarchyReceivesMove) {
-  auto new_parent = std::make_unique<ObserverView>();
-  auto old_parent = std::make_unique<ObserverView>();
-  auto* sibling = old_parent->AddChildView(std::make_unique<ObserverView>());
-  auto* child = old_parent->AddChildView(std::make_unique<ObserverView>());
+  // Reparent |v4| to |view1|.
+  v1->AddChildView(v4);
 
-  ForgetAllOldDetails({new_parent.get(), old_parent.get(), sibling, child});
+  // Verifies that all views receive the correct information for all the child,
+  // parent and move views.
 
-  new_parent->AddChildView(child);
+  // |v1| is the new parent, |v4| is the child for add, |v2| is the old parent.
+  EXPECT_TRUE(v1->has_add_details());
+  EXPECT_FALSE(v1->has_remove_details());
+  EXPECT_EQ(v1, view1->add_details().parent);
+  EXPECT_EQ(v4, view1->add_details().child);
+  EXPECT_EQ(v2, view1->add_details().move_view);
 
-  // The new parent receives an add:
-  ASSERT_TRUE(new_parent->add_details().has_value());
-  EXPECT_FALSE(new_parent->remove_details().has_value());
-  EXPECT_EQ(new_parent.get(), new_parent->add_details()->parent);
-  EXPECT_EQ(child, new_parent->add_details()->child);
-  EXPECT_EQ(old_parent.get(), new_parent->add_details()->move_view);
+  // |v2| is the old parent, |v4| is the child for remove, |v1| is the new
+  // parent.
+  EXPECT_FALSE(v2->has_add_details());
+  EXPECT_TRUE(v2->has_remove_details());
+  EXPECT_EQ(v2, view2->remove_details().parent);
+  EXPECT_EQ(v4, view2->remove_details().child);
+  EXPECT_EQ(v1, view2->remove_details().move_view);
 
-  // The old parent receives a remove:
-  EXPECT_FALSE(old_parent->add_details().has_value());
-  ASSERT_TRUE(old_parent->remove_details().has_value());
-  EXPECT_EQ(old_parent.get(), old_parent->remove_details()->parent);
-  EXPECT_EQ(child, old_parent->remove_details()->child);
-  EXPECT_EQ(new_parent.get(), old_parent->remove_details()->move_view);
+  // |v3| is not impacted by this operation, and hence receives no notification.
+  EXPECT_FALSE(v3->has_add_details());
+  EXPECT_FALSE(v3->has_remove_details());
 
-  // The sibling is not affected and receives neither:
-  EXPECT_FALSE(sibling->add_details().has_value());
-  EXPECT_FALSE(sibling->remove_details().has_value());
-
-  // The reparented child receives a remove from the old parent and an add to
-  // the new parent:
-  ASSERT_TRUE(child->remove_details().has_value());
-  EXPECT_EQ(old_parent.get(), child->remove_details()->parent);
-  EXPECT_EQ(child, child->remove_details()->child);
-  EXPECT_EQ(new_parent.get(), child->remove_details()->move_view);
-  ASSERT_TRUE(child->add_details().has_value());
-  EXPECT_EQ(new_parent.get(), child->add_details()->parent);
-  EXPECT_EQ(child, child->add_details()->child);
-  EXPECT_EQ(old_parent.get(), child->add_details()->move_view);
-
-  ForgetAllOldDetails({old_parent.get(), new_parent.get(), sibling, child});
+  // |v4| is the reparented child, so it receives notifications for the remove
+  // and then the add. |view2| is its old parent, |v1| is its new parent.
+  EXPECT_TRUE(v4->has_remove_details());
+  EXPECT_TRUE(v4->has_add_details());
+  EXPECT_EQ(v2, v4->remove_details().parent);
+  EXPECT_EQ(v1, v4->add_details().parent);
+  EXPECT_EQ(v4, v4->add_details().child);
+  EXPECT_EQ(v4, v4->remove_details().child);
+  EXPECT_EQ(v1, v4->remove_details().move_view);
+  EXPECT_EQ(v2, v4->add_details().move_view);
 }
 
 class WidgetObserverView : public View {
-  METADATA_HEADER(WidgetObserverView, View)
-
  public:
   WidgetObserverView();
 
@@ -4116,9 +4018,6 @@ void WidgetObserverView::AddedToWidget() {
 void WidgetObserverView::RemovedFromWidget() {
   ++removed_from_widget_count_;
 }
-
-BEGIN_METADATA(WidgetObserverView)
-END_METADATA
 
 // Verifies that AddedToWidget and RemovedFromWidget are called for a view when
 // it is added to hierarchy.
@@ -4618,7 +4517,7 @@ class TestingLayerViewObserver : public ViewObserver {
 
  private:
   // ViewObserver:
-  void OnViewLayerBoundsSet(View* view) override {
+  void OnLayerTargetBoundsChanged(View* view) override {
     last_layer_bounds_ = view->layer()->bounds();
   }
 
@@ -4654,7 +4553,7 @@ class ViewLayerTest : public ViewsTestBase {
   }
 
   void TearDown() override {
-    widget_.ExtractAsDangling()->CloseNow();
+    widget_->CloseNow();
     ViewsTestBase::TearDown();
   }
 
@@ -5088,8 +4987,6 @@ TEST_F(ViewLayerTest, OrphanLayerAfterViewRemove) {
 }
 
 class PaintTrackingView : public View {
-  METADATA_HEADER(PaintTrackingView, View)
-
  public:
   PaintTrackingView() = default;
 
@@ -5104,9 +5001,6 @@ class PaintTrackingView : public View {
  private:
   bool painted_ = false;
 };
-
-BEGIN_METADATA(PaintTrackingView)
-END_METADATA
 
 // Makes sure child views with layers aren't painted when paint starts at an
 // ancestor.
@@ -5290,8 +5184,7 @@ TEST_F(ViewLayerTest, RecreateLayerZOrder) {
   v2->SetPaintToLayer();
 
   // Test the initial z-order.
-  const std::vector<raw_ptr<ui::Layer, VectorExperimental>>& child_layers_pre =
-      v->layer()->children();
+  const std::vector<ui::Layer*>& child_layers_pre = v->layer()->children();
   ASSERT_EQ(2u, child_layers_pre.size());
   EXPECT_EQ(v1->layer(), child_layers_pre[0]);
   EXPECT_EQ(v2->layer(), child_layers_pre[1]);
@@ -5300,8 +5193,7 @@ TEST_F(ViewLayerTest, RecreateLayerZOrder) {
 
   // Test the new layer order. We expect: |v1| |v1_old_layer| |v2|.
   // for |v1| and |v2|.
-  const std::vector<raw_ptr<ui::Layer, VectorExperimental>>& child_layers_post =
-      v->layer()->children();
+  const std::vector<ui::Layer*>& child_layers_post = v->layer()->children();
   ASSERT_EQ(3u, child_layers_post.size());
   EXPECT_EQ(v1->layer(), child_layers_post[0]);
   EXPECT_EQ(v1_old_layer.get(), child_layers_post[1]);
@@ -5321,8 +5213,7 @@ TEST_F(ViewLayerTest, RecreateLayerZOrderWidgetParent) {
   ui::Layer* root_layer = GetRootLayer();
 
   // Test the initial z-order.
-  const std::vector<raw_ptr<ui::Layer, VectorExperimental>>& child_layers_pre =
-      root_layer->children();
+  const std::vector<ui::Layer*>& child_layers_pre = root_layer->children();
   ASSERT_EQ(2u, child_layers_pre.size());
   EXPECT_EQ(v1->layer(), child_layers_pre[0]);
   EXPECT_EQ(v2->layer(), child_layers_pre[1]);
@@ -5330,8 +5221,7 @@ TEST_F(ViewLayerTest, RecreateLayerZOrderWidgetParent) {
   std::unique_ptr<ui::Layer> v1_old_layer(v1->RecreateLayer());
 
   // Test the new layer order. We expect: |v1| |v1_old_layer| |v2|.
-  const std::vector<raw_ptr<ui::Layer, VectorExperimental>>& child_layers_post =
-      root_layer->children();
+  const std::vector<ui::Layer*>& child_layers_post = root_layer->children();
   ASSERT_EQ(3u, child_layers_post.size());
   EXPECT_EQ(v1->layer(), child_layers_post[0]);
   EXPECT_EQ(v1_old_layer.get(), child_layers_post[1]);
@@ -5704,8 +5594,6 @@ TEST_F(ViewLayerTest, LayerBeneathMovedWithView) {
 namespace {
 
 class PaintLayerView : public View {
-  METADATA_HEADER(PaintLayerView, View)
-
  public:
   PaintLayerView() = default;
 
@@ -5724,9 +5612,6 @@ class PaintLayerView : public View {
  private:
   std::unique_ptr<PaintInfo> last_paint_info_;
 };
-
-BEGIN_METADATA(PaintLayerView)
-END_METADATA
 
 }  // namespace
 
@@ -5870,6 +5755,11 @@ TEST_F(ViewTest, FocusableAssertions) {
 // NativeTheme
 ////////////////////////////////////////////////////////////////////////////////
 
+void TestView::OnThemeChanged() {
+  View::OnThemeChanged();
+  native_theme_ = GetNativeTheme();
+}
+
 TEST_F(ViewTest, OnThemeChanged) {
   auto test_view = std::make_unique<TestView>();
   EXPECT_FALSE(test_view->native_theme_);
@@ -5968,8 +5858,6 @@ class WidgetWithCustomTheme : public Widget {
 
 // See comment above test for details.
 class ViewThatAddsViewInOnThemeChanged : public View {
-  METADATA_HEADER(ViewThatAddsViewInOnThemeChanged, View)
-
  public:
   ViewThatAddsViewInOnThemeChanged() { SetPaintToLayer(); }
 
@@ -5994,9 +5882,6 @@ class ViewThatAddsViewInOnThemeChanged : public View {
  private:
   bool on_native_theme_changed_called_ = false;
 };
-
-BEGIN_METADATA(ViewThatAddsViewInOnThemeChanged)
-END_METADATA
 
 // Creates and adds a new child view to |parent| that has a layer.
 void AddViewWithChildLayer(View* parent) {
@@ -6031,8 +5916,6 @@ TEST_F(ViewTest, CrashOnAddFromFromOnThemeChanged) {
 
 // A View that removes its Layer when hidden.
 class NoLayerWhenHiddenView : public View {
-  METADATA_HEADER(NoLayerWhenHiddenView, View)
-
  public:
   using RemovedFromWidgetCallback = base::OnceCallback<void()>;
   explicit NoLayerWhenHiddenView(RemovedFromWidgetCallback removed_from_widget)
@@ -6063,9 +5946,6 @@ class NoLayerWhenHiddenView : public View {
   bool was_hidden_ = false;
   RemovedFromWidgetCallback removed_from_widget_;
 };
-
-BEGIN_METADATA(NoLayerWhenHiddenView)
-END_METADATA
 
 // Test that Views can safely manipulate Layers during Widget closure.
 TEST_F(ViewTest, DestroyLayerInClose) {
@@ -6098,8 +5978,6 @@ TEST_F(ViewTest, DestroyLayerInClose) {
 
 // A View that keeps the children with a special ID above other children.
 class OrderableView : public View {
-  METADATA_HEADER(OrderableView, View)
-
  public:
   // ID used by the children that are stacked above other children.
   static constexpr int VIEW_ID_RAISED = 1000;
@@ -6120,9 +5998,6 @@ class OrderableView : public View {
   }
 };
 
-BEGIN_METADATA(OrderableView)
-END_METADATA
-
 TEST_F(ViewTest, ChildViewZOrderChanged) {
   const size_t kNumChildren = 4;
   auto view = std::make_unique<OrderableView>();
@@ -6130,8 +6005,7 @@ TEST_F(ViewTest, ChildViewZOrderChanged) {
   for (size_t i = 0; i < kNumChildren; ++i)
     AddViewWithChildLayer(view.get());
   View::Views children = view->GetChildrenInZOrder();
-  const std::vector<raw_ptr<ui::Layer, VectorExperimental>>& layers =
-      view->layer()->children();
+  const std::vector<ui::Layer*>& layers = view->layer()->children();
   ASSERT_EQ(kNumChildren, children.size());
   ASSERT_EQ(kNumChildren, layers.size());
   for (size_t i = 0; i < kNumChildren; ++i) {
@@ -6173,8 +6047,7 @@ TEST_F(ViewTest, AttachChildViewWithComplicatedLayers) {
   // grand_child_view has layer.
   View* grand_child_view = child_view2->AddChildView(std::make_unique<View>());
   grand_child_view->SetPaintToLayer();
-  const std::vector<raw_ptr<ui::Layer, VectorExperimental>>& layers =
-      parent_view->layer()->children();
+  const std::vector<ui::Layer*>& layers = parent_view->layer()->children();
   EXPECT_EQ(2u, layers.size());
   EXPECT_EQ(layers[0], grand_child_view->layer());
   EXPECT_EQ(layers[1], child_view1->layer());
@@ -6183,8 +6056,8 @@ TEST_F(ViewTest, AttachChildViewWithComplicatedLayers) {
   // should not change.
   OrderableView* parent_view_ptr =
       grand_parent_view->AddChildView(std::move(parent_view));
-  const std::vector<raw_ptr<ui::Layer, VectorExperimental>>&
-      layers_after_attached = parent_view_ptr->layer()->children();
+  const std::vector<ui::Layer*>& layers_after_attached =
+      parent_view_ptr->layer()->children();
   EXPECT_EQ(2u, layers_after_attached.size());
   EXPECT_EQ(layers_after_attached[0], grand_child_view->layer());
   EXPECT_EQ(layers_after_attached[1], child_view1->layer());
@@ -6392,17 +6265,14 @@ TEST_F(ViewTest, InsertAfterInFocusList) {
 // Observer tests.
 ////////////////////////////////////////////////////////////////////////////////
 
-class TestViewObserver : public ViewObserver {
+class ViewObserverTest : public ViewTest, public ViewObserver {
  public:
-  explicit TestViewObserver(std::vector<View*> views) {
-    for (auto* view : views) {
-      observations_.AddObservation(view);
-    }
-  }
+  ViewObserverTest() = default;
 
-  void AddObservation(View* view) { observations_.AddObservation(view); }
+  ViewObserverTest(const ViewObserverTest&) = delete;
+  ViewObserverTest& operator=(const ViewObserverTest&) = delete;
 
-  ~TestViewObserver() override = default;
+  ~ViewObserverTest() override = default;
 
   // ViewObserver:
   void OnChildViewAdded(View* parent, View* child) override {
@@ -6427,21 +6297,22 @@ class TestViewObserver : public ViewObserver {
     view_reordered_ = view;
   }
 
-  void OnViewHierarchyWillBeDeleted(View* observed_view) override {
-    on_view_hierarchy_will_be_deleted_called_ = true;
-    if (verify_on_view_hierarchy_will_be_deleted_callback_) {
-      std::move(verify_on_view_hierarchy_will_be_deleted_callback_).Run();
-    }
+  void reset() {
+    child_view_added_times_ = 0;
+    child_view_removed_times_ = 0;
+    child_view_added_ = nullptr;
+    child_view_added_parent_ = nullptr;
+    child_view_removed_ = nullptr;
+    child_view_removed_parent_ = nullptr;
+    view_visibility_changed_ = nullptr;
+    view_bounds_changed_ = nullptr;
+    view_reordered_ = nullptr;
   }
 
-  void OnViewIsDeleting(View* observed_view) override {
-    observations_.RemoveObservation(observed_view);
-  }
-
-  void SetVerifyOnViewHierarchyWillBeDeletedCallback(
-      base::OnceClosure verify_on_view_hierarchy_will_be_deleted_callback) {
-    verify_on_view_hierarchy_will_be_deleted_callback_ =
-        std::move(verify_on_view_hierarchy_will_be_deleted_callback);
+  std::unique_ptr<View> NewView() {
+    auto view = std::make_unique<View>();
+    view->AddObserver(this);
+    return view;
   }
 
   int child_view_added_times() { return child_view_added_times_; }
@@ -6450,11 +6321,6 @@ class TestViewObserver : public ViewObserver {
   const View* child_view_added_parent() const {
     return child_view_added_parent_;
   }
-
-  bool has_on_view_hierarchy_will_be_deleted_called() {
-    return on_view_hierarchy_will_be_deleted_called_;
-  }
-
   const View* child_view_removed() const { return child_view_removed_; }
   const View* child_view_removed_parent() const {
     return child_view_removed_parent_;
@@ -6469,12 +6335,8 @@ class TestViewObserver : public ViewObserver {
   const View* view_reordered() const { return view_reordered_; }
 
  private:
-  base::ScopedMultiSourceObservation<View, ViewObserver> observations_{this};
-
   int child_view_added_times_ = 0;
   int child_view_removed_times_ = 0;
-  bool on_view_hierarchy_will_be_deleted_called_ = false;
-  base::OnceClosure verify_on_view_hierarchy_will_be_deleted_callback_;
 
   raw_ptr<View> child_view_added_parent_ = nullptr;
   raw_ptr<View> child_view_added_ = nullptr;
@@ -6486,191 +6348,87 @@ class TestViewObserver : public ViewObserver {
   raw_ptr<View> view_reordered_ = nullptr;
 };
 
-using ViewObserverTest = ViewTest;
-
-TEST_F(ViewObserverTest, ViewHierarchyWillBeDeleted) {
-  TestViewObserver observer({});
-  {
-    auto parent = std::make_unique<View>();
-    View* main_view = parent->AddChildView(std::make_unique<View>());
-    TestView* child_view =
-        main_view->AddChildView(std::make_unique<TestView>());
-    observer.AddObservation(main_view);
-    child_view->SetDestructionCallback(base::BindOnce(
-        [](TestViewObserver& observer) {
-          EXPECT_TRUE(observer.has_on_view_hierarchy_will_be_deleted_called());
-        },
-        std::ref(observer)));
-    observer.SetVerifyOnViewHierarchyWillBeDeletedCallback(base::BindOnce(
-        [](View* main_view, View* parent_view) {
-          EXPECT_EQ(parent_view->children().size(), 1u);
-          EXPECT_EQ(main_view->children().size(), 1u);
-        },
-        base::Unretained(main_view), base::Unretained(parent.get())));
-  }
-}
-
 TEST_F(ViewObserverTest, ViewParentChanged) {
-  auto parent1 = std::make_unique<View>();
-  auto parent2 = std::make_unique<View>();
-  auto child = std::make_unique<View>();
-  View* weak_child = child.get();
+  std::unique_ptr<View> parent1 = NewView();
+  std::unique_ptr<View> parent2 = NewView();
+  std::unique_ptr<View> child_view = NewView();
 
-  {
-    TestViewObserver observer({parent1.get(), parent2.get(), weak_child});
-    parent1->AddChildView(std::move(child));
-    EXPECT_EQ(0, observer.child_view_removed_times());
-    EXPECT_EQ(1, observer.child_view_added_times());
-    EXPECT_EQ(weak_child, observer.child_view_added());
-    EXPECT_EQ(weak_child->parent(), observer.child_view_added_parent());
-    EXPECT_EQ(weak_child->parent(), parent1.get());
-  }
+  parent1->AddChildView(child_view.get());
+  EXPECT_EQ(0, child_view_removed_times());
+  EXPECT_EQ(1, child_view_added_times());
+  EXPECT_EQ(child_view.get(), child_view_added());
+  EXPECT_EQ(child_view->parent(), child_view_added_parent());
+  EXPECT_EQ(child_view->parent(), parent1.get());
+  reset();
 
   // Removed from parent1, added to parent2
-  {
-    TestViewObserver observer({parent1.get(), parent2.get(), weak_child});
-    parent2->AddChildView(parent1->RemoveChildViewT(weak_child));
-    EXPECT_EQ(1, observer.child_view_removed_times());
-    EXPECT_EQ(1, observer.child_view_added_times());
-    EXPECT_EQ(weak_child, observer.child_view_removed());
-    EXPECT_EQ(parent1.get(), observer.child_view_removed_parent());
-    EXPECT_EQ(weak_child, observer.child_view_added());
-    EXPECT_EQ(weak_child->parent(), parent2.get());
-  }
+  parent1->RemoveChildView(child_view.get());
+  parent2->AddChildView(child_view.get());
+  EXPECT_EQ(1, child_view_removed_times());
+  EXPECT_EQ(1, child_view_added_times());
+  EXPECT_EQ(child_view.get(), child_view_removed());
+  EXPECT_EQ(parent1.get(), child_view_removed_parent());
+  EXPECT_EQ(child_view.get(), child_view_added());
+  EXPECT_EQ(child_view->parent(), parent2.get());
 
-  {
-    TestViewObserver observer({parent1.get(), parent2.get(), weak_child});
-    child = parent2->RemoveChildViewT(weak_child);
-    EXPECT_EQ(1, observer.child_view_removed_times());
-    EXPECT_EQ(0, observer.child_view_added_times());
-    EXPECT_EQ(weak_child, observer.child_view_removed());
-    EXPECT_EQ(parent2.get(), observer.child_view_removed_parent());
-  }
+  reset();
+
+  parent2->RemoveChildView(child_view.get());
+  EXPECT_EQ(1, child_view_removed_times());
+  EXPECT_EQ(0, child_view_added_times());
+  EXPECT_EQ(child_view.get(), child_view_removed());
+  EXPECT_EQ(parent2.get(), child_view_removed_parent());
 }
 
 TEST_F(ViewObserverTest, ViewVisibilityChanged) {
-  auto parent = std::make_unique<View>();
-  View* weak_child = parent->AddChildView(std::make_unique<View>());
+  std::unique_ptr<View> parent(new View);
+  View* view = parent->AddChildView(NewView());
 
   // Ensure setting |view| itself not visible calls the observer.
-  {
-    TestViewObserver observer({weak_child});
-    weak_child->SetVisible(false);
-    EXPECT_EQ(weak_child, observer.view_visibility_changed());
-    EXPECT_EQ(weak_child, observer.view_visibility_changed_starting());
-  }
+  view->SetVisible(false);
+  EXPECT_EQ(view, view_visibility_changed());
+  EXPECT_EQ(view, view_visibility_changed_starting());
+  reset();
 
   // Ditto for setting it visible.
-  {
-    TestViewObserver observer({weak_child});
-    weak_child->SetVisible(true);
-    EXPECT_EQ(weak_child, observer.view_visibility_changed());
-    EXPECT_EQ(weak_child, observer.view_visibility_changed_starting());
-  }
+  view->SetVisible(true);
+  EXPECT_EQ(view, view_visibility_changed());
+  EXPECT_EQ(view, view_visibility_changed_starting());
+  reset();
 
   // Ensure setting |parent| not visible also calls the
   // observer. |view->GetVisible()| should still return true however.
-  {
-    TestViewObserver observer({weak_child});
-    parent->SetVisible(false);
-    EXPECT_EQ(weak_child, observer.view_visibility_changed());
-    EXPECT_EQ(parent.get(), observer.view_visibility_changed_starting());
-  }
+  parent->SetVisible(false);
+  EXPECT_EQ(view, view_visibility_changed());
+  EXPECT_EQ(parent.get(), view_visibility_changed_starting());
 }
 
 TEST_F(ViewObserverTest, ViewBoundsChanged) {
-  auto view = std::make_unique<View>();
+  std::unique_ptr<View> view = NewView();
+  gfx::Rect bounds(2, 2, 2, 2);
+  view->SetBoundsRect(bounds);
+  EXPECT_EQ(view.get(), view_bounds_changed());
+  EXPECT_EQ(bounds, view->bounds());
 
-  {
-    TestViewObserver observer({view.get()});
-    gfx::Rect bounds(2, 2, 2, 2);
-    view->SetBoundsRect(bounds);
-    EXPECT_EQ(view.get(), observer.view_bounds_changed());
-    EXPECT_EQ(bounds, view->bounds());
-  }
+  reset();
 
-  {
-    TestViewObserver observer({view.get()});
-    gfx::Rect new_bounds(1, 1, 1, 1);
-    view->SetBoundsRect(new_bounds);
-    EXPECT_EQ(view.get(), observer.view_bounds_changed());
-    EXPECT_EQ(new_bounds, view->bounds());
-  }
+  gfx::Rect new_bounds(1, 1, 1, 1);
+  view->SetBoundsRect(new_bounds);
+  EXPECT_EQ(view.get(), view_bounds_changed());
+  EXPECT_EQ(new_bounds, view->bounds());
 }
 
 TEST_F(ViewObserverTest, ChildViewReordered) {
-  auto parent = std::make_unique<View>();
-  parent->AddChildView(std::make_unique<View>());
-  auto* child = parent->AddChildView(std::make_unique<View>());
-
-  {
-    TestViewObserver observer({parent.get()});
-    parent->ReorderChildView(child, 0);
-    EXPECT_EQ(child, observer.view_reordered());
-  }
-}
-
-class MockViewObserver : public ViewObserver {
- public:
-  // ViewObserver:
-  MOCK_METHOD(void,
-              OnViewPropertyChanged,
-              (View * observed_view, const void* key, int64_t old_value),
-              (override));
-};
-
-ACTION_TEMPLATE(ExpectThatViewProperty,
-                HAS_1_TEMPLATE_PARAMS(typename, T),
-                AND_1_VALUE_PARAMS(Matcher)) {
-  EXPECT_THAT(ui::ClassPropertyCaster<T*>::FromInt64(arg0), Matcher);
-}
-
-TEST_F(ViewObserverTest, ViewPropertyChanged) {
-  auto view = std::make_unique<View>();
-
-  // Observe `view`.
-  StrictMock<MockViewObserver> view_observer;
-  base::ScopedObservation<View, ViewObserver> view_observation(&view_observer);
-  view_observation.Observe(view.get());
-
-  constexpr auto kNewValue = gfx::Insets::TLBR(1, 2, 3, 4);
-
-  // Expect that setting `kNewValue` to the `kMarginsKey` will notify observers.
-  // Because a property at `kMarginsKey` was not previously set, the `old_value`
-  // should be a `nullptr`.
-  EXPECT_CALL(
-      view_observer,
-      OnViewPropertyChanged(Eq(view.get()), Eq(kMarginsKey), /*old_value*/ _))
-      .WillOnce(WithArg<2>(ExpectThatViewProperty<gfx::Insets>(IsNull())));
-
-  // Set `kNewValue` to `kMarginsKey` and verify expectations.
-  view->SetProperty(kMarginsKey, kNewValue);
-  Mock::VerifyAndClearExpectations(&view_observer);
-  EXPECT_THAT(view->GetProperty(kMarginsKey), Pointee(Eq(kNewValue)));
-
-  constexpr auto kPreviousValue = kNewValue;
-  constexpr auto kAnotherNewValue = gfx::Insets::TLBR(5, 6, 7, 8);
-
-  // Expect that setting `kAnotherNewValue` to the `kMarginsKey` will notify
-  // observers. Because a property at `kMarginsKey` was previously set, the
-  // `old_value` should point to the `kPreviousValue`.
-  EXPECT_CALL(
-      view_observer,
-      OnViewPropertyChanged(Eq(view.get()), Eq(kMarginsKey), /*old_value=*/_))
-      .WillOnce(WithArg<2>(
-          ExpectThatViewProperty<gfx::Insets>(Pointee(Eq(kPreviousValue)))));
-
-  // Set `kAnotherNewValue` to `kMarginsKey` and verify expectations.
-  view->SetProperty(kMarginsKey, kAnotherNewValue);
-  Mock::VerifyAndClearExpectations(&view_observer);
-  EXPECT_THAT(view->GetProperty(kMarginsKey), Pointee(Eq(kAnotherNewValue)));
+  std::unique_ptr<View> view = NewView();
+  view->AddChildView(NewView());
+  View* child_view2 = view->AddChildView(NewView());
+  view->ReorderChildView(child_view2, 0);
+  EXPECT_EQ(child_view2, view_reordered());
 }
 
 // Provides a simple parent view implementation which tracks layer change
 // notifications from child views.
 class TestParentView : public View {
-  METADATA_HEADER(TestParentView, View)
-
  public:
   TestParentView() = default;
 
@@ -6703,120 +6461,27 @@ class TestParentView : public View {
   int layer_change_count_ = 0;
 };
 
-BEGIN_METADATA(TestParentView)
-END_METADATA
-
 // Tests the following cases.
 // 1. We receive the OnChildLayerChanged() notification when a layer change
 //    occurs in a child view.
 // 2. We don't receive two layer changes when a child with an existing layer
 //    creates a new layer.
 TEST_F(ViewObserverTest, ChildViewLayerNotificationTest) {
-  auto parent = std::make_unique<TestParentView>();
-  auto* child = parent->AddChildView(std::make_unique<View>());
+  std::unique_ptr<TestParentView> parent_view(new TestParentView);
+  std::unique_ptr<View> child_view = NewView();
+  parent_view->AddChildView(child_view.get());
 
-  EXPECT_FALSE(parent->received_layer_change_notification());
-  EXPECT_EQ(0, parent->layer_change_count());
+  EXPECT_FALSE(parent_view->received_layer_change_notification());
+  EXPECT_EQ(0, parent_view->layer_change_count());
 
-  child->SetPaintToLayer(ui::LAYER_TEXTURED);
-  EXPECT_TRUE(parent->received_layer_change_notification());
-  EXPECT_EQ(1, parent->layer_change_count());
+  child_view->SetPaintToLayer(ui::LAYER_TEXTURED);
+  EXPECT_TRUE(parent_view->received_layer_change_notification());
+  EXPECT_EQ(1, parent_view->layer_change_count());
 
-  parent->Reset();
-  child->SetPaintToLayer(ui::LAYER_SOLID_COLOR);
-  EXPECT_TRUE(parent->received_layer_change_notification());
-  EXPECT_EQ(1, parent->layer_change_count());
-}
-
-namespace {
-
-// This view always resizes the associated layer when bounds change.
-class LayerResizingView : public View {
-  METADATA_HEADER(LayerResizingView, View)
-
- public:
-  explicit LayerResizingView(ui::Layer* layer) : layer_(layer) {}
-
- private:
-  void OnBoundsChanged(const gfx::Rect& previous_bounds) override {
-    // Drop the coordinate since the layer should always be aligned.
-    gfx::Rect layer_rect = gfx::Rect(size());
-    layer_->SetBounds(layer_rect);
-  }
-
-  raw_ptr<ui::Layer> layer_;
-};
-
-BEGIN_METADATA(LayerResizingView)
-END_METADATA
-
-}  // namespace
-
-// Confirms that the size of a View and the size of a region-attached layer stay
-// in sync.
-TEST(ViewTestUnfixtured, ViewLayerSizeStayInSync) {
-  // Make a layer with implicit animations.
-  std::unique_ptr<ui::Layer> region_layer = std::make_unique<ui::Layer>();
-  region_layer->SetAnimator(ui::LayerAnimator::CreateImplicitAnimator());
-
-  // Make a view, attach the layer to a region. The view keeps the bounds of the
-  // layer in sync. See implementation of LayerResizingView::OnBoundsChanged().
-  std::unique_ptr<View> view_owned =
-      std::make_unique<LayerResizingView>(region_layer.get());
-  view_owned->SetPaintToLayer(ui::LAYER_SOLID_COLOR);
-  view_owned->AddLayerToRegion(region_layer.get(), views::LayerRegion::kBelow);
-  raw_ptr<View> view = view_owned.get();
-
-  // Make a parent view. All it does is keep the child view the same size.
-  std::unique_ptr<View> parent_view = std::make_unique<View>();
-  parent_view->AddChildView(std::move(view_owned));
-  parent_view->SetUseDefaultFillLayout(true);
-
-  // Initial conditions: everything has 0 width.
-  EXPECT_EQ(0, view->width());
-  EXPECT_EQ(0, region_layer->bounds().width());
-  EXPECT_EQ(0, region_layer->GetTargetBounds().width());
-
-  // Setting bounds on the parent view will propagate the size to the child
-  // view. The child view then propagates the size to its layer. Note that the
-  // layer's bounds are not immediately updated as the animation has not yet
-  // started. Instead, the layer's target bounds is updated.
-  gfx::Rect bounds = gfx::Rect(0, 0, 60, 80);
-  parent_view->SetBoundsRect(bounds);
-  EXPECT_EQ(60, view->width());
-  EXPECT_EQ(0, region_layer->bounds().width());
-  EXPECT_EQ(60, region_layer->GetTargetBounds().width());
-
-  // Now we move the parent view without changing the size. This does not
-  // propagate a size change to the child view. However, it does cause the layer
-  // to reset its target bounds to its current bounds.
-  gfx::Rect new_bounds = bounds;
-  new_bounds.set_x(10);
-  parent_view->SetBoundsRect(new_bounds);
-  EXPECT_EQ(60, view->width());
-  EXPECT_EQ(0, region_layer->bounds().width());
-
-  // This is the expected behavior: target bounds does not change.
-  // EXPECT_EQ(60, region_layer->GetTargetBounds().width());
-
-  // This is the broken behavior: target bounds is set to the current value of
-  // bounds.
-  EXPECT_EQ(0, region_layer->GetTargetBounds().width());
-
-  view = nullptr;
-}
-
-using BaseActionViewInterfaceTest = ViewsTestBase;
-
-TEST_F(BaseActionViewInterfaceTest, TestActionChanged) {
-  auto action_view = std::make_unique<View>();
-  std::unique_ptr<actions::ActionItem> action_item =
-      actions::ActionItem::Builder().SetActionId(0).SetEnabled(false).Build();
-  action_view->GetActionViewInterface()->ActionItemChangedImpl(
-      action_item.get());
-  // Test some properties to ensure that the right ActionViewInterface is linked
-  // to the view.
-  EXPECT_FALSE(action_view->GetEnabled());
+  parent_view->Reset();
+  child_view->SetPaintToLayer(ui::LAYER_SOLID_COLOR);
+  EXPECT_TRUE(parent_view->received_layer_change_notification());
+  EXPECT_EQ(1, parent_view->layer_change_count());
 }
 
 }  // namespace views

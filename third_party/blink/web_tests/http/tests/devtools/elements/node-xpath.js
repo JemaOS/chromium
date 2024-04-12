@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
-import * as ElementsModule from 'devtools/panels/elements/elements.js';
-
 (async function() {
   TestRunner.addResult(`Tests node xPath construction\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.navigatePromise('resources/node-xpath.xhtml');
 
@@ -30,8 +26,8 @@ import * as ElementsModule from 'devtools/panels/elements/elements.js';
 
   function dumpNodeData(node, prefix) {
     var result = prefix + '\'' + node.nodeName() + '\':\'' + node.nodeValue() + '\' - \'' +
-        ElementsModule.DOMPath.xPath(node, true) + '\' - \'' +
-        ElementsModule.DOMPath.xPath(node, false) + '\'';
+        Elements.DOMPath.xPath(node, true) + '\' - \'' +
+        Elements.DOMPath.xPath(node, false) + '\'';
     TestRunner.addResult(result.replace(/\r?\n/g, '\\n'));
   }
 })();

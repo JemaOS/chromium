@@ -27,7 +27,6 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
 #include "third_party/blink/renderer/core/css/resolver/match_result.h"
-#include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
 #include "third_party/blink/renderer/platform/heap/forward.h"
@@ -50,27 +49,17 @@ class CORE_EXPORT CachedMatchedProperties final
   Vector<UntracedMember<CSSPropertyValueSet>> matched_properties;
   Vector<MatchedProperties::Data> matched_properties_types;
 
-  // Note that we don't cache the original ComputedStyle instance. It may be
-  // further modified. The ComputedStyle in the cache is really just a holder
-  // for the substructures and never used as-is.
-  Member<const ComputedStyle> computed_style;
-  Member<const ComputedStyle> parent_computed_style;
+  scoped_refptr<const ComputedStyle> computed_style;
+  scoped_refptr<const ComputedStyle> parent_computed_style;
 
-  CachedMatchedProperties(const ComputedStyle* style,
-                          const ComputedStyle* parent_style,
-                          const MatchedPropertiesVector&);
-
-  void Set(const ComputedStyle* style,
-           const ComputedStyle* parent_style,
+  void Set(scoped_refptr<const ComputedStyle>&& style,
+           scoped_refptr<const ComputedStyle>&& parent_style,
            const MatchedPropertiesVector&);
   void Clear();
 
   bool DependenciesEqual(const StyleResolverState&);
 
-  void Trace(Visitor* visitor) const {
-    visitor->Trace(computed_style);
-    visitor->Trace(parent_computed_style);
-  }
+  void Trace(Visitor*) const {}
 
   bool operator==(const MatchedPropertiesVector& properties);
   bool operator!=(const MatchedPropertiesVector& properties);
@@ -100,8 +89,6 @@ class CORE_EXPORT MatchedPropertiesCache {
    private:
     friend class MatchedPropertiesCache;
     friend class MatchedPropertiesCacheTestKey;
-    friend std::ostream& operator<<(std::ostream&,
-                                    MatchedPropertiesCache::Key&);
 
     Key(const MatchResult&, unsigned hash);
 
@@ -110,7 +97,9 @@ class CORE_EXPORT MatchedPropertiesCache {
   };
 
   const CachedMatchedProperties* Find(const Key&, const StyleResolverState&);
-  void Add(const Key&, const ComputedStyle*, const ComputedStyle* parent_style);
+  void Add(const Key&,
+           scoped_refptr<const ComputedStyle>&&,
+           scoped_refptr<const ComputedStyle>&& parent_style);
 
   void Clear();
   void ClearViewportDependent();
@@ -131,9 +120,6 @@ class CORE_EXPORT MatchedPropertiesCache {
 
   Cache cache_;
 };
-
-// For debugging only.
-std::ostream& operator<<(std::ostream&, MatchedPropertiesCache::Key&);
 
 }  // namespace blink
 

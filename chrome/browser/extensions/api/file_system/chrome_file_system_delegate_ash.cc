@@ -12,7 +12,6 @@
 #include "base/functional/callback.h"
 #include "base/path_service.h"
 #include "chrome/browser/ash/file_manager/volume_manager.h"
-#include "chrome/browser/ash/fileapi/file_system_backend.h"
 #include "chrome/browser/profiles/profile.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/child_process_security_policy.h"
@@ -26,6 +25,7 @@
 #include "extensions/browser/extension_util.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
+#include "storage/browser/file_system/file_system_backend.h"
 #include "storage/browser/file_system/file_system_context.h"
 #include "storage/browser/file_system/file_system_url.h"
 #include "storage/browser/file_system/isolated_context.h"
@@ -91,7 +91,8 @@ void OnConsentReceived(content::BrowserContext* browser_context,
   scoped_refptr<storage::FileSystemContext> file_system_context =
       util::GetStoragePartitionForExtensionId(origin.host(), browser_context)
           ->GetFileSystemContext();
-  auto* const backend = ash::FileSystemBackend::Get(*file_system_context);
+  storage::ExternalFileSystemBackend* const backend =
+      file_system_context->external_backend();
   DCHECK(backend);
 
   base::FilePath virtual_path;
@@ -224,7 +225,8 @@ void ChromeFileSystemDelegateAsh::RequestFileSystem(
   scoped_refptr<storage::FileSystemContext> file_system_context =
       util::GetStoragePartitionForExtensionId(extension.id(), browser_context)
           ->GetFileSystemContext();
-  auto* const backend = ash::FileSystemBackend::Get(*file_system_context);
+  storage::ExternalFileSystemBackend* const backend =
+      file_system_context->external_backend();
   DCHECK(backend);
 
   base::FilePath virtual_path;

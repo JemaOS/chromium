@@ -12,10 +12,14 @@ build_webui("build") {
   grd_prefix = "feedback"
 
   static_files = [
+    "css/common.css",
+    "css/feedback.css",
     "css/feedback_shared_styles.css",
     "css/feedback_shared_vars.css",
-    "feedback.html",
+    "css/logs_map_page.css",
     "html/autofill_metadata_info.html",
+    "html/default.html",
+    "html/sys_info.html",
     "images/2x/button_butter_bar_close_hover.png",
     "images/2x/button_butter_bar_close.png",
     "images/2x/button_butter_bar_close_pressed.png",
@@ -24,44 +28,27 @@ build_webui("build") {
     "images/button_butter_bar_close_pressed.png",
   ]
 
-  web_component_files = [
-    "app.ts",
-    "autofill_metadata_app.ts",
-  ]
+  if (is_chromeos_ash) {
+    static_files += [
+      "css/assistant_logs_info.css",
+      "html/assistant_logs_info.html",
+      "html/bluetooth_logs_info.html",
+    ]
+  }
 
   non_web_component_files = [
-    "js/feedback_browser_proxy.ts",
-    "js/feedback_regexes.ts",
+    "js/autofill_metadata.ts",
+    "js/feedback.ts",
     "js/feedback_util.ts",
     "js/logs_map_page.ts",
     "js/questionnaire.ts",
+    "js/sys_info.ts",
     "js/take_screenshot.ts",
   ]
 
-  css_files = [
-    "css/about_sys.css",
-    "css/logs_map_page.css",
-    "feedback_shared_styles.css",
-    "feedback_shared_vars.css",
-  ]
-
-  if (is_chromeos_ash) {
-    non_web_component_files += [ "js/jelly_colors.ts" ]
-  }
-
-  ts_composite = true
   ts_definitions = [
     "//tools/typescript/definitions/feedback_private.d.ts",
     "//tools/typescript/definitions/chrome_send.d.ts",
   ]
-  ts_deps = [
-    "//third_party/polymer/v3_0:library",
-    "//ui/webui/resources/cr_elements:build_ts",
-    "//ui/webui/resources/js:build_ts",
-  ]
-  if (is_chromeos_ash) {
-    ts_deps +=
-        [ "//ui/webui/resources/cr_components/color_change_listener:build_ts" ]
-  }
-  webui_context_type = "trusted"
+  ts_deps = [ "//ui/webui/resources/js:build_ts" ]
 }

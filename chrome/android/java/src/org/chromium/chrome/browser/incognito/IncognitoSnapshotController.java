@@ -9,6 +9,7 @@ import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 
+import org.chromium.base.FeatureList;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 
@@ -22,8 +23,6 @@ public abstract class IncognitoSnapshotController {
 
     /**
      * @param window The {@link Window} on which the snapshot capability needs to be controlled.
-     * @param isShowingIncognitoSupplier {@link Supplier<Boolean>} which indicates whether we are
-     *     showing Incognito or not currently.
      */
     protected IncognitoSnapshotController(
             @NonNull Window window, @NonNull Supplier<Boolean> isShowingIncognitoSupplier) {
@@ -31,17 +30,19 @@ public abstract class IncognitoSnapshotController {
         mIsShowingIncognitoSupplier = isShowingIncognitoSupplier;
     }
 
-    /** Sets the attributes flags to secure if there is an incognito tab visible. */
+    /**
+     * Sets the attributes flags to secure if there is an incognito tab visible.
+     */
     protected void updateIncognitoTabSnapshotState() {
         assert mIsShowingIncognitoSupplier != null : "Supplier not found!";
 
         WindowManager.LayoutParams attributes = mWindow.getAttributes();
-        boolean currentSecureState =
-                (attributes.flags & WindowManager.LayoutParams.FLAG_SECURE)
-                        == WindowManager.LayoutParams.FLAG_SECURE;
+        boolean currentSecureState = (attributes.flags & WindowManager.LayoutParams.FLAG_SECURE)
+                == WindowManager.LayoutParams.FLAG_SECURE;
 
         boolean expectedSecureState = mIsShowingIncognitoSupplier.get();
-        if (ChromeFeatureList.sIncognitoScreenshot.isEnabled()) {
+        if (FeatureList.isInitialized()
+                && ChromeFeatureList.isEnabled(ChromeFeatureList.INCOGNITO_SCREENSHOT)) {
             expectedSecureState = false;
         }
         if (currentSecureState == expectedSecureState) return;

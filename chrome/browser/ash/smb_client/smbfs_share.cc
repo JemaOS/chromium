@@ -19,7 +19,8 @@
 #include "crypto/sha2.h"
 #include "storage/browser/file_system/external_mount_points.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 namespace {
 
@@ -345,4 +346,5 @@ std::string SmbFsShare::GenerateStableMountIdInput() const {
   return base::JoinString(mount_id_hash_components, kMountIdHashSeparator);
 }
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

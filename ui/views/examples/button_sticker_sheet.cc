@@ -62,7 +62,7 @@ std::vector<std::unique_ptr<MdTextButton>> MakeButtonsInState(
   const std::u16string button_text = u"Button";
   auto primary = std::make_unique<views::MdTextButton>(
       Button::PressedCallback(), button_text);
-  primary->SetStyle(ui::ButtonStyle::kProminent);
+  primary->SetProminent(true);
   primary->SetState(state);
   buttons.push_back(std::move(primary));
 

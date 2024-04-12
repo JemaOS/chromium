@@ -2,12 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
 (async function() {
   TestRunner.addResult('Tests that console logging dumps proper messages.\n');
 
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
   await TestRunner.showPanel('console');
 
   await TestRunner.evaluateInPagePromise(`
@@ -25,7 +23,9 @@ import {ConsoleTestRunner} from 'console_test_runner';
   `);
   await TestRunner.showPanel('elements');
 
-  TestRunner.evaluateInPage('logToConsole()', onLoggedToConsole);
+  TestRunner.loadLegacyModule('elements').then(function() {
+    TestRunner.evaluateInPage('logToConsole()', onLoggedToConsole);
+  });
 
   function onLoggedToConsole() {
     ConsoleTestRunner.waitForRemoteObjectsConsoleMessages(onRemoteObjectsLoaded);

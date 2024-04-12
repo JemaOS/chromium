@@ -78,10 +78,7 @@ class SharingImpl : public mojom::Sharing {
     kFirewallHoleFactory = 7,
     kTcpSocketFactory = 8,
     kNearbyPresence = 9,
-    kNearbyShareDecoder = 10,
-    kQuickStartDecoder = 11,
-    kNearbyPresenceCredentialStorage = 12,
-    kMaxValue = kNearbyPresenceCredentialStorage
+    kMaxValue = kNearbyPresence
   };
 
   void DoShutDown(bool is_expected);

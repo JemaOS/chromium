@@ -110,14 +110,6 @@ struct Image {
   Buffer data_argb;
 };
 
-struct MonitorScale {
-  int x_px;
-  int y_px;
-  int width_px;
-  int height_px;
-  float scale;
-};
-
 class QtInterface {
  public:
   class Delegate {
@@ -126,7 +118,6 @@ class QtInterface {
 
     virtual void FontChanged() = 0;
     virtual void ThemeChanged() = 0;
-    virtual void ScaleFactorMaybeChanged() = 0;
   };
 
   QtInterface() = default;
@@ -134,10 +125,7 @@ class QtInterface {
   QtInterface& operator=(const QtInterface&) = delete;
   virtual ~QtInterface() = default;
 
-  // Returns the size of `monitors`.  `monitors` will be valid while this class
-  // is alive until the next call to `GetMonitorConfig()`.
-  virtual size_t GetMonitorConfig(MonitorScale** monitors,
-                                  float* primary_scale) = 0;
+  virtual double GetScaleFactor() const = 0;
   virtual FontRenderParams GetFontRenderParams() const = 0;
   virtual FontDescription GetFontDescription() const = 0;
   virtual Image GetIconForContentType(const String& content_type,

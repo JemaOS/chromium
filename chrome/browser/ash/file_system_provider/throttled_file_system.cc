@@ -14,7 +14,8 @@
 #include "base/functional/bind.h"
 #include "chrome/browser/ash/file_system_provider/queue.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 ThrottledFileSystem::ThrottledFileSystem(
     std::unique_ptr<ProvidedFileSystemInterface> file_system)
@@ -26,7 +27,8 @@ ThrottledFileSystem::ThrottledFileSystem(
                         : new Queue(std::numeric_limits<size_t>::max()));
 }
 
-ThrottledFileSystem::~ThrottledFileSystem() = default;
+ThrottledFileSystem::~ThrottledFileSystem() {
+}
 
 AbortCallback ThrottledFileSystem::RequestUnmount(
     storage::AsyncFileUtil::StatusCallback callback) {
@@ -132,12 +134,6 @@ AbortCallback ThrottledFileSystem::WriteFile(
                                  std::move(callback));
 }
 
-AbortCallback ThrottledFileSystem::FlushFile(
-    int file_handle,
-    storage::AsyncFileUtil::StatusCallback callback) {
-  return file_system_->FlushFile(file_handle, std::move(callback));
-}
-
 AbortCallback ThrottledFileSystem::MoveEntry(
     const base::FilePath& source_path,
     const base::FilePath& target_path,
@@ -217,11 +213,6 @@ base::WeakPtr<ProvidedFileSystemInterface> ThrottledFileSystem::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }
 
-std::unique_ptr<ScopedUserInteraction>
-ThrottledFileSystem::StartUserInteraction() {
-  return file_system_->StartUserInteraction();
-}
-
 void ThrottledFileSystem::Abort(int queue_token) {
   open_queue_->Abort(queue_token);
 }
@@ -257,4 +248,5 @@ void ThrottledFileSystem::OnCloseFileCompleted(
   std::move(callback).Run(result);
 }
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

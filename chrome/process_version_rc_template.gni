@@ -45,6 +45,9 @@ template("process_version_rc_template") {
     "//chrome/VERSION",
     branding_file_path,
     lastchange_file,
+    #//---***JEMAOS BEGIN***---
+    "//jemaos/BRANDING",
+    #//---***JEMAOS END***---
   ]
   if (defined(invoker.sources)) {
     _sources += invoker.sources

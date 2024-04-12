@@ -5,9 +5,7 @@
 #include "ash/components/arc/net/passpoint_dialog_view.h"
 
 #include <memory>
-#include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "ash/components/arc/compat_mode/overlay_dialog.h"
@@ -19,8 +17,8 @@
 #include "base/time/time.h"
 #include "chromeos/ash/components/network/network_event_log.h"
 #include "components/strings/grit/components_strings.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/ui_base_types.h"
 #include "ui/chromeos/devicetype_utils.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/views/accessibility/view_accessibility.h"
@@ -28,8 +26,6 @@
 #include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/styled_label.h"
 #include "ui/views/layout/layout_provider.h"
-#include "ui/views/style/typography.h"
-#include "ui/views/style/typography_provider.h"
 #include "url/gurl.h"
 
 namespace {
@@ -53,10 +49,10 @@ constexpr base::TimeDelta kDialogExpiration = base::Days(365);
 // |subscription_expiration_time_ms| is in the format of number of milliseconds
 // since January 1, 1970, 00:00:00 GMT. Expiration time of int64_min means no
 // expiry date based on Android's behavior.
-std::optional<base::Time> GetTimeFromSubscriptionExpirationMs(
+absl::optional<base::Time> GetTimeFromSubscriptionExpirationMs(
     int64_t subscription_expiration_time_ms) {
   if (subscription_expiration_time_ms == std::numeric_limits<int64_t>::min()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return base::Time::UnixEpoch() +
          base::Milliseconds(subscription_expiration_time_ms);
@@ -64,7 +60,7 @@ std::optional<base::Time> GetTimeFromSubscriptionExpirationMs(
 
 // Returns true if the expiration time is within |kDialogExpiration| and is
 // still valid.
-bool IsExpiring(std::optional<base::Time> subscription_expiration_time) {
+bool IsExpiring(absl::optional<base::Time> subscription_expiration_time) {
   if (!subscription_expiration_time.has_value()) {
     return false;
   }
@@ -81,8 +77,7 @@ namespace arc {
 PasspointDialogView::PasspointDialogView(
     mojom::PasspointApprovalRequestPtr request,
     PasspointDialogCallback callback)
-    : app_name_(base::UTF8ToUTF16(request->app_name)),
-      callback_(std::move(callback)) {
+    : callback_(std::move(callback)) {
   views::LayoutProvider* provider = views::LayoutProvider::Get();
   SetOrientation(views::BoxLayout::Orientation::kVertical);
   SetMainAxisAlignment(views::BoxLayout::MainAxisAlignment::kStart);
@@ -103,16 +98,16 @@ PasspointDialogView::PasspointDialogView(
   AddChildView(
       views::Builder<views::Label>()
           .SetText(l10n_util::GetStringFUTF16(
-              IDS_ASH_ARC_PASSPOINT_APP_APPROVAL_TITLE, app_name_))
+              IDS_ASH_ARC_PASSPOINT_APP_APPROVAL_TITLE,
+              base::UTF8ToUTF16(request->app_name)))
           .SetTextContext(views::style::CONTEXT_DIALOG_TITLE)
           .SetMultiLine(true)
           .SetHorizontalAlignment(gfx::ALIGN_LEFT)
           .SetAllowCharacterBreak(true)
-          .SetFontList(
-              views::TypographyProvider::Get()
-                  .GetFont(views::style::TextContext::CONTEXT_DIALOG_TITLE,
+          .SetFontList(views::style::GetFont(
+                           views::style::TextContext::CONTEXT_DIALOG_TITLE,
                            views::style::TextStyle::STYLE_PRIMARY)
-                  .DeriveWithWeight(gfx::Font::Weight::MEDIUM))
+                           .DeriveWithWeight(gfx::Font::Weight::MEDIUM))
           .Build());
 
   AddChildView(
@@ -133,14 +128,6 @@ gfx::Size PasspointDialogView::CalculatePreferredSize() const {
   return size;
 }
 
-void PasspointDialogView::AddedToWidget() {
-  auto& view_ax = GetWidget()->GetRootView()->GetViewAccessibility();
-  view_ax.SetRole(ax::mojom::Role::kDialog);
-  view_ax.SetName(l10n_util::GetStringFUTF16(
-                      IDS_ASH_ARC_PASSPOINT_APP_APPROVAL_TITLE, app_name_),
-                  ax::mojom::NameFrom::kAttribute);
-}
-
 int PasspointDialogView::GetLabelWidth() {
   return width() - kDialogBorderMargin[1] - kDialogBorderMargin[3];
 }
@@ -158,7 +145,6 @@ std::unique_ptr<views::View> PasspointDialogView::MakeBaseLabelView(
           .SetHorizontalAlignment(gfx::ALIGN_LEFT)
           .SetAutoColorReadabilityEnabled(false)
           .Build();
-  styled_label->set_use_legacy_preferred_size(true);
 
   if (!is_expiring) {
     std::vector<size_t> offsets;
@@ -178,7 +164,7 @@ std::unique_ptr<views::View> PasspointDialogView::MakeBaseLabelView(
 }
 
 std::unique_ptr<views::View> PasspointDialogView::MakeSubscriptionLabelView(
-    std::string_view friendly_name) {
+    base::StringPiece friendly_name) {
   std::vector<size_t> offsets;
   const std::u16string learn_more = l10n_util::GetStringUTF16(
       IDS_ASH_ARC_PASSPOINT_APP_APPROVAL_LEARN_MORE_LABEL);
@@ -187,26 +173,23 @@ std::unique_ptr<views::View> PasspointDialogView::MakeSubscriptionLabelView(
       {ui::GetChromeOSDeviceName(), base::UTF8ToUTF16(friendly_name),
        learn_more},
       &offsets);
-  std::unique_ptr<views::StyledLabel> styled_label =
-      views::Builder<views::StyledLabel>()
-          .CopyAddressTo(&body_subscription_text_)
-          .SetText(label)
-          .SizeToFit(GetLabelWidth())
-          .SetHorizontalAlignment(gfx::ALIGN_LEFT)
-          .SetAutoColorReadabilityEnabled(false)
-          .AddStyleRange(
-              gfx::Range(offsets.back(), offsets.back() + learn_more.length()),
-              views::StyledLabel::RangeStyleInfo::CreateForLink(
-                  base::BindRepeating(&PasspointDialogView::OnLearnMoreClicked,
-                                      weak_factory_.GetWeakPtr())))
-          .Build();
-  styled_label->set_use_legacy_preferred_size(true);
-  return styled_label;
+  return views::Builder<views::StyledLabel>()
+      .CopyAddressTo(&body_subscription_text_)
+      .SetText(label)
+      .SizeToFit(GetLabelWidth())
+      .SetHorizontalAlignment(gfx::ALIGN_LEFT)
+      .SetAutoColorReadabilityEnabled(false)
+      .AddStyleRange(
+          gfx::Range(offsets.back(), offsets.back() + learn_more.length()),
+          views::StyledLabel::RangeStyleInfo::CreateForLink(
+              base::BindRepeating(&PasspointDialogView::OnLearnMoreClicked,
+                                  weak_factory_.GetWeakPtr())))
+      .Build();
 }
 
 std::unique_ptr<views::View> PasspointDialogView::MakeContentsView(
     bool is_expiring,
-    std::string_view friendly_name) {
+    base::StringPiece friendly_name) {
   views::LayoutProvider* provider = views::LayoutProvider::Get();
   std::unique_ptr<views::BoxLayoutView> contents =
       views::Builder<views::BoxLayoutView>()
@@ -239,7 +222,7 @@ std::unique_ptr<views::View> PasspointDialogView::MakeButtonsView() {
                   weak_factory_.GetWeakPtr(), /*allow=*/false))
               .SetText(l10n_util::GetStringUTF16(
                   IDS_ASH_ARC_PASSPOINT_APP_APPROVAL_DONT_ALLOW_BUTTON))
-              .SetStyle(ui::ButtonStyle::kDefault)
+              .SetProminent(false)
               .SetIsDefault(false),
           views::Builder<views::MdTextButton>()  // Allow button.
               .CopyAddressTo(&allow_button_)
@@ -248,7 +231,7 @@ std::unique_ptr<views::View> PasspointDialogView::MakeButtonsView() {
                   weak_factory_.GetWeakPtr(), /*allow=*/true))
               .SetText(l10n_util::GetStringUTF16(
                   IDS_ASH_ARC_PASSPOINT_APP_APPROVAL_ALLOW_BUTTON))
-              .SetStyle(ui::ButtonStyle::kProminent)
+              .SetProminent(true)
               .SetIsDefault(true))
       .Build();
 }

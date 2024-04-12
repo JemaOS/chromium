@@ -82,10 +82,7 @@ class MockMessageCenter : public message_center::FakeMessageCenter {
     return visible_notifications_;
   }
 
-  void SetQuietMode(
-      bool in_quiet_mode,
-      message_center::QuietModeSourceType type =
-          message_center::QuietModeSourceType::kUserAction) override {
+  void SetQuietMode(bool in_quiet_mode) override {
     if (in_quiet_mode != in_quiet_mode_) {
       in_quiet_mode_ = in_quiet_mode;
       for (auto& observer : observer_list())
@@ -115,7 +112,7 @@ class FakeArcNotificationManagerDelegate
   ~FakeArcNotificationManagerDelegate() override = default;
 
   // ArcNotificationManagerDelegate:
-  bool IsManagedGuestSessionOrKiosk() const override { return false; }
+  bool IsPublicSessionOrKiosk() const override { return false; }
   void ShowMessageCenter() override {}
   void HideMessageCenter() override {}
 };

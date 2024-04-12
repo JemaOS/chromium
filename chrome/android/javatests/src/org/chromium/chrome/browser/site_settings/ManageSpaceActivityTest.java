@@ -13,13 +13,14 @@ import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import android.content.Intent;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.test.InstrumentationRegistry;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.espresso.Espresso;
 import androidx.test.espresso.assertion.ViewAssertions;
 import androidx.test.filters.MediumTest;
 import androidx.test.filters.SmallTest;
-import androidx.test.platform.app.InstrumentationRegistry;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -37,7 +38,9 @@ import org.chromium.chrome.test.R;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
 import org.chromium.net.test.EmbeddedTestServer;
 
-/** Tests for ManageSpaceActivity. */
+/**
+ * Tests for ManageSpaceActivity.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 public class ManageSpaceActivityTest {
@@ -51,18 +54,22 @@ public class ManageSpaceActivityTest {
         if (!mActivityTestRule.getName().equals("testClearUnimporantWithoutChromeStart")) {
             mActivityTestRule.startMainActivityOnBlankPage();
         }
-        mTestServer =
-                EmbeddedTestServer.createAndStartServer(
-                        ApplicationProvider.getApplicationContext());
+        mTestServer = EmbeddedTestServer.createAndStartServer(
+                ApplicationProvider.getApplicationContext());
+    }
+
+    @After
+    public void tearDown() {
+        mTestServer.stopAndDestroyServer();
     }
 
     private ManageSpaceActivity startManageSpaceActivity() {
         Intent intent =
-                new Intent(ApplicationProvider.getApplicationContext(), ManageSpaceActivity.class);
+                new Intent(InstrumentationRegistry.getTargetContext(), ManageSpaceActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        return (ManageSpaceActivity)
-                InstrumentationRegistry.getInstrumentation().startActivitySync(intent);
+        return (ManageSpaceActivity) InstrumentationRegistry.getInstrumentation().startActivitySync(
+                intent);
     }
 
     public void waitForClearButtonEnabled(final ManageSpaceActivity activity) {
@@ -115,10 +122,7 @@ public class ManageSpaceActivityTest {
 
         // Now we set the origin as important, and check that we don't clear it.
         TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    BrowsingDataBridge.getForProfile(mActivityTestRule.getProfile(false))
-                            .markOriginAsImportantForTesting(serverOrigin);
-                });
+                () -> { BrowsingDataBridge.markOriginAsImportantForTesting(serverOrigin); });
 
         ManageSpaceActivity manageSpaceActivity = startManageSpaceActivity();
         // Click 'clear' in the CBD screen.

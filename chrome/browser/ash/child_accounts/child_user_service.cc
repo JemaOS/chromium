@@ -105,11 +105,11 @@ void ChildUserService::ResumeWebActivity(const std::string& app_service_id) {
   NOTIMPLEMENTED();
 }
 
-std::optional<base::TimeDelta> ChildUserService::GetTimeLimitForApp(
+absl::optional<base::TimeDelta> ChildUserService::GetTimeLimitForApp(
     const std::string& app_service_id,
     apps::AppType app_type) {
   if (!app_time_controller_)
-    return std::nullopt;
+    return absl::nullopt;
 
   return app_time_controller_->GetTimeLimitForApp(app_service_id, app_type);
 }

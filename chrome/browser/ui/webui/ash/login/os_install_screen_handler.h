@@ -5,10 +5,9 @@
 #ifndef CHROME_BROWSER_UI_WEBUI_ASH_LOGIN_OS_INSTALL_SCREEN_HANDLER_H_
 #define CHROME_BROWSER_UI_WEBUI_ASH_LOGIN_OS_INSTALL_SCREEN_HANDLER_H_
 
-#include <optional>
-
 #include "chrome/browser/ui/webui/ash/login/base_screen_handler.h"
 #include "chromeos/ash/components/dbus/os_install/os_install_client.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class TimeDelta;
@@ -24,7 +23,7 @@ class OsInstallScreen;
 
 // Interface for dependency injection between OsInstallScreen and its
 // WebUI representation.
-class OsInstallScreenView {
+class OsInstallScreenView : public base::SupportsWeakPtr<OsInstallScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"os-install",
                                                        "OsInstallScreen"};
@@ -38,11 +37,10 @@ class OsInstallScreenView {
   virtual void SetStatus(OsInstallClient::Status status) = 0;
   virtual void SetServiceLogs(const std::string& service_log) = 0;
   virtual void UpdateCountdownStringWithTime(base::TimeDelta time_left) = 0;
-  virtual base::WeakPtr<OsInstallScreenView> AsWeakPtr() = 0;
 };
 
-class OsInstallScreenHandler final : public BaseScreenHandler,
-                                     public OsInstallScreenView {
+class OsInstallScreenHandler : public BaseScreenHandler,
+                               public OsInstallScreenView {
  public:
   using TView = OsInstallScreenView;
 
@@ -56,13 +54,16 @@ class OsInstallScreenHandler final : public BaseScreenHandler,
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
 
+  void GetAdditionalParameters(base::Value::Dict* parameters) override;
+  void DeclareJemaInstallerLocalizedValues(
+      ::login::LocalizedValuesBuilder* builder);
+
   // OsInstallScreenView:
   void Show() override;
   void ShowStep(const char* step) override;
   void SetStatus(OsInstallClient::Status status) override;
   void SetServiceLogs(const std::string& service_log) override;
   void UpdateCountdownStringWithTime(base::TimeDelta time_left) override;
-  base::WeakPtr<OsInstallScreenView> AsWeakPtr() override;
 
   base::WeakPtrFactory<OsInstallScreenHandler> weak_factory_{this};
 };

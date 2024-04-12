@@ -27,6 +27,7 @@
 #include "chrome/common/extensions/extension_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/constrained_window/constrained_window_views.h"
+#include "components/supervised_user/core/common/buildflags.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/page_navigator.h"
 #include "extensions/common/constants.h"
@@ -62,6 +63,11 @@ namespace {
 // Time delay before the install button is enabled after initial display.
 int g_install_delay_in_ms = 500;
 
+// The name of the histogram that records decision made by user on the cloud
+// extension request dialog.
+constexpr char kCloudExtensionRequestMetricsName[] =
+    "Enterprise.CloudExtensionRequestDialogAction";
+
 // These values are logged to UMA. Entries should not be renumbered and numeric
 // values should never be reused. Please keep in sync with "BooleanSent" in
 // src/tools/metrics/histograms/enums.xml.
@@ -78,9 +84,8 @@ enum class CloudExtensionRequestMetricEvent {
 // With screen readers, this will handle conveying the information properly
 // (i.e., "Rated 4.2 stars by 379 reviews" rather than "image image...379").
 class RatingsView : public views::View {
-  METADATA_HEADER(RatingsView, views::View)
-
  public:
+  METADATA_HEADER(RatingsView);
   RatingsView(double rating, int rating_count)
       : rating_(rating), rating_count_(rating_count) {
     SetID(ExtensionInstallDialogView::kRatingsViewId);
@@ -111,16 +116,15 @@ class RatingsView : public views::View {
   int rating_count_;
 };
 
-BEGIN_METADATA(RatingsView)
+BEGIN_METADATA(RatingsView, views::View)
 END_METADATA
 
 // A custom view for the ratings star image that will be ignored by screen
 // readers (since the RatingsView handles the context).
 class RatingStar : public views::ImageView {
-  METADATA_HEADER(RatingStar, views::ImageView)
-
  public:
-  explicit RatingStar(const ui::ImageModel& image) { SetImage(image); }
+  METADATA_HEADER(RatingStar);
+  explicit RatingStar(const gfx::ImageSkia& image) { SetImage(image); }
   RatingStar(const RatingStar&) = delete;
   RatingStar& operator=(const RatingStar&) = delete;
   ~RatingStar() override = default;
@@ -131,15 +135,14 @@ class RatingStar : public views::ImageView {
   }
 };
 
-BEGIN_METADATA(RatingStar)
+BEGIN_METADATA(RatingStar, views::ImageView)
 END_METADATA
 
 // A custom view for the ratings label that will be ignored by screen readers
 // (since the RatingsView handles the context).
 class RatingLabel : public views::Label {
-  METADATA_HEADER(RatingLabel, views::Label)
-
  public:
+  METADATA_HEADER(RatingLabel);
   RatingLabel(const std::u16string& text, int text_context)
       : views::Label(text, text_context, views::style::STYLE_PRIMARY) {}
   RatingLabel(const RatingLabel&) = delete;
@@ -152,13 +155,12 @@ class RatingLabel : public views::Label {
   }
 };
 
-BEGIN_METADATA(RatingLabel)
+BEGIN_METADATA(RatingLabel, views::Label)
 END_METADATA
 
 void AddResourceIcon(const gfx::ImageSkia* skia_image, void* data) {
   views::View* parent = static_cast<views::View*>(data);
-  parent->AddChildView(
-      new RatingStar(ui::ImageModel::FromImageSkia(*skia_image)));
+  parent->AddChildView(new RatingStar(*skia_image));
 }
 
 void ShowExtensionInstallDialogImpl(
@@ -175,9 +177,8 @@ void ShowExtensionInstallDialogImpl(
 
 // A custom scrollable view implementation for the dialog.
 class CustomScrollableView : public views::View {
-  METADATA_HEADER(CustomScrollableView, views::View)
-
  public:
+  METADATA_HEADER(CustomScrollableView);
   explicit CustomScrollableView(ExtensionInstallDialogView* parent)
       : parent_(parent) {}
   CustomScrollableView(const CustomScrollableView&) = delete;
@@ -196,7 +197,7 @@ class CustomScrollableView : public views::View {
   raw_ptr<ExtensionInstallDialogView> parent_;
 };
 
-BEGIN_METADATA(CustomScrollableView)
+BEGIN_METADATA(CustomScrollableView, views::View)
 END_METADATA
 
 // Represents one section in the scrollable info area, which could be a block of
@@ -231,8 +232,6 @@ void AddPermissions(ExtensionInstallPrompt::Prompt* prompt,
 // requesting an extension.
 class ExtensionInstallDialogView::ExtensionJustificationView
     : public views::View {
-  METADATA_HEADER(ExtensionJustificationView, views::View)
-
  public:
   explicit ExtensionJustificationView(TextfieldController* controller) {
     SetLayoutManager(std::make_unique<views::BoxLayout>(
@@ -314,9 +313,6 @@ class ExtensionInstallDialogView::ExtensionJustificationView
   raw_ptr<views::Label> justification_text_length_;
 };
 
-BEGIN_METADATA(ExtensionInstallDialogView, ExtensionJustificationView)
-END_METADATA
-
 ExtensionInstallDialogView::ExtensionInstallDialogView(
     std::unique_ptr<ExtensionInstallPromptShowParams> show_params,
     ExtensionInstallPrompt::DoneCallback done_callback,
@@ -346,10 +342,12 @@ ExtensionInstallDialogView::ExtensionInstallDialogView(
       ExtensionInstallPrompt::PromptType::EXTENSION_REQUEST_PROMPT)
     default_button = ui::DIALOG_BUTTON_OK;
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
   // When we require parent permission next, we
   // set the default button to OK.
   if (prompt_->requires_parent_permission())
     default_button = ui::DIALOG_BUTTON_OK;
+#endif
 
   SetModalType(ui::MODAL_TYPE_WINDOW);
   set_fixed_width(views::LayoutProvider::Get()->GetDistanceMetric(
@@ -379,6 +377,9 @@ ExtensionInstallDialogView::ExtensionInstallDialogView(
   set_close_on_deactivate(false);
   SetShowCloseButton(false);
   CreateContents();
+
+  UMA_HISTOGRAM_ENUMERATION("Extensions.InstallPrompt.Type2", prompt_->type(),
+                            ExtensionInstallPrompt::NUM_PROMPT_TYPES);
 }
 
 ExtensionInstallDialogView::~ExtensionInstallDialogView() {
@@ -416,11 +417,8 @@ void ExtensionInstallDialogView::ResizeWidget() {
 
 void ExtensionInstallDialogView::VisibilityChanged(views::View* starting_from,
                                                    bool is_visible) {
-  // VisibilityChanged() might spuriously fire more than once on some platforms,
-  // for example, when Widget::Show() and Widget::Activate() are called
-  // sequentially. Timers should be started only at the first notification of
-  // visibility change.
-  if (is_visible && !install_result_timer_) {
+  if (is_visible) {
+    DCHECK(!install_result_timer_);
     install_result_timer_ = base::ElapsedTimer();
 
     if (!install_button_enabled_) {
@@ -462,7 +460,7 @@ void ExtensionInstallDialogView::AddedToWidget() {
   gfx::Size size(image->width(), image->height());
   size.SetToMin(gfx::Size(icon_size, icon_size));
   icon->SetImageSize(size);
-  icon->SetImage(ui::ImageModel::FromImageSkia(*image));
+  icon->SetImage(*image);
 
   layout->AddRows(1, views::TableLayout::kFixedSize);
   title_container->AddChildView(std::move(icon));
@@ -519,6 +517,8 @@ void ExtensionInstallDialogView::OnDialogCanceled() {
   // being uninstalled).
   extension_registry_observation_.Reset();
 
+  UpdateInstallResultHistogram(false);
+  UpdateEnterpriseCloudExtensionRequestDialogActionHistogram(false);
   prompt_->OnDialogCanceled();
   std::move(done_callback_)
       .Run(ExtensionInstallPrompt::DoneCallbackPayload(
@@ -538,6 +538,8 @@ void ExtensionInstallDialogView::OnDialogAccepted() {
       ExtensionInstallPrompt::PromptType::EXTENSION_REQUEST_PROMPT;
   DCHECK(expect_justification == !!justification_view_);
 
+  UpdateInstallResultHistogram(true);
+  UpdateEnterpriseCloudExtensionRequestDialogActionHistogram(true);
   prompt_->OnDialogAccepted();
 
   // Permissions are withheld at installation when the prompt specifies it and
@@ -641,8 +643,33 @@ void ExtensionInstallDialogView::CreateContents() {
       provider->GetDistanceMetric(views::DISTANCE_RELATED_CONTROL_VERTICAL)));
 
   std::vector<ExtensionInfoSection> sections;
-  if (prompt_->GetPermissionCount() > 0) {
-    AddPermissions(prompt_.get(), sections, content_width);
+  if (prompt_->ShouldShowPermissions()) {
+    bool has_permissions = prompt_->GetPermissionCount() > 0;
+    if (has_permissions) {
+      AddPermissions(prompt_.get(), sections, content_width);
+    } else {
+      sections.push_back(
+          {l10n_util::GetStringUTF16(IDS_EXTENSION_NO_SPECIAL_PERMISSIONS),
+           nullptr});
+    }
+  }
+
+  if (prompt_->GetRetainedFileCount()) {
+    std::vector<std::u16string> details;
+    for (size_t i = 0; i < prompt_->GetRetainedFileCount(); ++i) {
+      details.push_back(prompt_->GetRetainedFile(i));
+    }
+    sections.push_back({prompt_->GetRetainedFilesHeading(),
+                        std::make_unique<ExpandableContainerView>(details)});
+  }
+
+  if (prompt_->GetRetainedDeviceCount()) {
+    std::vector<std::u16string> details;
+    for (size_t i = 0; i < prompt_->GetRetainedDeviceCount(); ++i) {
+      details.push_back(prompt_->GetRetainedDeviceMessageString(i));
+    }
+    sections.push_back({prompt_->GetRetainedDevicesHeading(),
+                        std::make_unique<ExpandableContainerView>(details)});
   }
 
   if (sections.empty() &&
@@ -716,7 +743,37 @@ void ExtensionInstallDialogView::EnableInstallButton() {
   DialogModelChanged();
 }
 
-BEGIN_METADATA(ExtensionInstallDialogView)
+void ExtensionInstallDialogView::UpdateInstallResultHistogram(bool accepted)
+    const {
+  // Only update histograms if |install_result_timer_| was initialized in
+  // |VisibilityChanged|.
+  if (prompt_->type() == ExtensionInstallPrompt::INSTALL_PROMPT &&
+      install_result_timer_) {
+    if (accepted) {
+      UmaHistogramMediumTimes("Extensions.InstallPrompt.TimeToInstall",
+                              install_result_timer_->Elapsed());
+    } else {
+      UmaHistogramMediumTimes("Extensions.InstallPrompt.TimeToCancel",
+                              install_result_timer_->Elapsed());
+    }
+  }
+}
+
+void ExtensionInstallDialogView::
+    UpdateEnterpriseCloudExtensionRequestDialogActionHistogram(
+        bool accepted) const {
+  if (prompt_->type() == ExtensionInstallPrompt::EXTENSION_REQUEST_PROMPT) {
+    if (accepted) {
+      base::UmaHistogramEnumeration(kCloudExtensionRequestMetricsName,
+                                    CloudExtensionRequestMetricEvent::kSent);
+    } else {
+      base::UmaHistogramEnumeration(kCloudExtensionRequestMetricsName,
+                                    CloudExtensionRequestMetricEvent::kNotSent);
+    }
+  }
+}
+
+BEGIN_METADATA(ExtensionInstallDialogView, views::BubbleDialogDelegateView)
 END_METADATA
 
 // static

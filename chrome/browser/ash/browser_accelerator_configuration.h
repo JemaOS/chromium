@@ -9,7 +9,6 @@
 #include "ash/public/cpp/accelerator_configuration.h"
 #include "ash/public/mojom/accelerator_configuration.mojom.h"
 #include "ash/public/mojom/accelerator_info.mojom.h"
-#include "base/types/optional_ref.h"
 #include "ui/base/accelerators/accelerator.h"
 
 #include <vector>
@@ -32,8 +31,8 @@ class ASH_EXPORT BrowserAcceleratorConfiguration
   ~BrowserAcceleratorConfiguration() override;
 
   // AcceleratorConfiguration:
-  base::optional_ref<const std::vector<ui::Accelerator>>
-  GetAcceleratorsForAction(AcceleratorActionId action_id) override;
+  const std::vector<ui::Accelerator>& GetAcceleratorsForAction(
+      AcceleratorActionId action_id) override;
   bool IsMutable() const override;
   bool IsDeprecated(const ui::Accelerator& accelerator) const override;
   mojom::AcceleratorConfigResult AddUserAccelerator(

@@ -16,7 +16,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * Creates ClassLoader for .dex file in a remote Context's APK. Non static for the sake of tests.
+ * Creates ClassLoader for .dex file in a remote Context's APK.
+ * Non static for the sake of tests.
  */
 public class DexLoader {
     private static final int BUFFER_SIZE = 16 * 1024;
@@ -42,13 +43,12 @@ public class DexLoader {
 
     /**
      * Creates ClassLoader for .dex file in {@link remoteContext}'s APK.
-     *
      * @param remoteContext The context with the APK with the .dex file.
      * @param dexName The name of the .dex file in the APK.
      * @param canaryClassName Name of class in the .dex file. Used for testing the ClassLoader
-     *     before returning it.
-     * @param localDexDir Writable directory for caching data to speed up future calls to {@link
-     *     #load()}.
+     *                        before returning it.
+     * @param localDexDir Writable directory for caching data to speed up future calls to
+     *                    {@link #load()}.
      * @return The ClassLoader. Returns null on an error.
      */
     public ClassLoader load(
@@ -78,7 +78,6 @@ public class DexLoader {
 
     /**
      * Deletes any files cached by {@link #load()}.
-     *
      * @param localDexDir Cache directory passed to {@link #load()}.
      */
     public void deleteCachedDexes(File localDexDir) {
@@ -87,7 +86,6 @@ public class DexLoader {
 
     /**
      * Extracts an asset from {@link context}'s APK to a file.
-     *
      * @param context
      * @param assetName Name of the asset to extract.
      * @param destFile File to extract the asset to.
@@ -126,9 +124,8 @@ public class DexLoader {
 
     /**
      * Tries to create ClassLoader with the given .dex file and optimized dex directory.
-     *
      * @param canaryClassName Name of class in the .dex file. Used for testing the ClassLoader
-     *     before returning it.
+     *                        before returning it.
      * @param dexFile .dex file to create ClassLoader for.
      * @param optimizedDir Directory for storing the optimized dex file.
      * @return The ClassLoader. Returns null on an error.
@@ -136,23 +133,15 @@ public class DexLoader {
     private static ClassLoader tryCreatingClassLoader(
             String canaryClassName, File dexFile, File optimizedDir) {
         try {
-            ClassLoader loader =
-                    new BaseDexClassLoader(
-                            dexFile.getPath(),
-                            optimizedDir,
-                            null,
-                            ClassLoader.getSystemClassLoader());
+            ClassLoader loader = new BaseDexClassLoader(
+                    dexFile.getPath(), optimizedDir, null, ClassLoader.getSystemClassLoader());
             // Loading {@link canaryClassName} will throw an exception if the .dex file cannot be
             // loaded.
             loader.loadClass(canaryClassName);
             return loader;
         } catch (Exception e) {
             String optimizedDirPath = (optimizedDir == null) ? null : optimizedDir.getPath();
-            Log.w(
-                    TAG,
-                    "Could not load dex from "
-                            + dexFile.getPath()
-                            + " with optimized directory "
+            Log.w(TAG, "Could not load dex from " + dexFile.getPath() + " with optimized directory "
                             + optimizedDirPath);
             e.printStackTrace();
             return null;

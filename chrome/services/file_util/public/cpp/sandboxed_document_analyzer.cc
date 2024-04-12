@@ -21,17 +21,13 @@ namespace {
 // either `success_callback` or `failure_callback`.
 void PrepareFileToAnalyze(
     base::FilePath file_path,
-    base::OnceCallback<void(SandboxedDocumentAnalyzer::WrappedFilePtr)>
-        success_callback,
+    base::OnceCallback<void(base::File)> success_callback,
     base::OnceCallback<void(std::string)> failure_callback) {
   DCHECK(!content::BrowserThread::CurrentlyOn(content::BrowserThread::UI));
-  SandboxedDocumentAnalyzer::WrappedFilePtr file(
-      new base::File(file_path, base::File::FLAG_OPEN | base::File::FLAG_READ |
-                                    base::File::FLAG_WIN_SHARE_DELETE),
-      base::OnTaskRunnerDeleter(
-          base::SequencedTaskRunner::GetCurrentDefault()));
+  base::File file(file_path, base::File::FLAG_OPEN | base::File::FLAG_READ |
+                                 base::File::FLAG_WIN_SHARE_DELETE);
 
-  if (!file->IsValid()) {
+  if (!file.IsValid()) {
     content::GetUIThreadTaskRunner({})->PostTask(
         FROM_HERE,
         base::BindOnce(std::move(failure_callback), "Could not open file"));
@@ -65,10 +61,7 @@ SandboxedDocumentAnalyzer::SandboxedDocumentAnalyzer(
     : target_file_path_(target_document_path),
       tmp_file_path_(tmp_document_path),
       callback_(std::move(callback)),
-      service_(std::move(service)),
-      file_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
-          {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
-           base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN})) {
+      service_(std::move(service)) {
   DCHECK(callback_);
   DCHECK(!target_file_path_.value().empty());
   DCHECK(!tmp_file_path_.value().empty());
@@ -82,8 +75,10 @@ SandboxedDocumentAnalyzer::SandboxedDocumentAnalyzer(
 void SandboxedDocumentAnalyzer::Start() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
-  file_task_runner_->PostTask(
+  base::ThreadPool::PostTask(
       FROM_HERE,
+      {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
+       base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
       base::BindOnce(
           &PrepareFileToAnalyze, tmp_file_path_,
           base::BindOnce(&SandboxedDocumentAnalyzer::AnalyzeDocument,
@@ -94,13 +89,12 @@ void SandboxedDocumentAnalyzer::Start() {
 
 SandboxedDocumentAnalyzer::~SandboxedDocumentAnalyzer() = default;
 
-void SandboxedDocumentAnalyzer::AnalyzeDocument(
-    SandboxedDocumentAnalyzer::WrappedFilePtr file) {
+void SandboxedDocumentAnalyzer::AnalyzeDocument(base::File file) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
   if (remote_analyzer_) {
     remote_analyzer_->AnalyzeDocument(
-        std::move(*file), target_file_path_,
+        std::move(file), target_file_path_,
         base::BindOnce(&SandboxedDocumentAnalyzer::AnalyzeDocumentDone,
                        GetWeakPtr()));
   } else {

@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "base/gtest_prod_util.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "chrome/browser/sessions/session_service.h"
@@ -58,7 +58,7 @@ class SessionServiceFactory : public ProfileKeyedServiceFactory {
   static SessionServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<SessionServiceFactory>;
+  friend struct base::DefaultSingletonTraits<SessionServiceFactory>;
   FRIEND_TEST_ALL_PREFIXES(SessionCrashedInfoBarDelegateUnitTest,
                            DetachingTabWithCrashedInfoBar);
 
@@ -66,7 +66,7 @@ class SessionServiceFactory : public ProfileKeyedServiceFactory {
   ~SessionServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;

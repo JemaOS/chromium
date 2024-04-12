@@ -4,17 +4,14 @@
 
 #include "ash/system/tray/tray_item_view.h"
 
-#include <optional>
-
 #include "ash/constants/ash_features.h"
 #include "ash/public/cpp/shelf_types.h"
 #include "ash/shelf/shelf.h"
-#include "ash/system/status_area_animation_controller.h"
 #include "ash/system/tray/tray_constants.h"
 #include "base/metrics/histogram_functions.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/accessibility/ax_node_data.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/compositor/compositor.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animator.h"
@@ -52,14 +49,14 @@ void RecordAnimationSmoothness(const std::string& histogram_name,
 
 void SetupThroughputTrackerForAnimationSmoothness(
     views::Widget* widget,
-    std::optional<ui::ThroughputTracker>& tracker,
+    absl::optional<ui::ThroughputTracker>& tracker,
     const char* histogram_name) {
   // Return if `tracker` is already running; `widget` may not exist in tests.
   if (tracker || !widget)
     return;
 
   tracker.emplace(widget->GetCompositor()->RequestNewThroughputTracker());
-  tracker->Start(ash::metrics_util::ForSmoothnessV3(
+  tracker->Start(ash::metrics_util::ForSmoothness(
       base::BindRepeating(&RecordAnimationSmoothness, histogram_name)));
 }
 
@@ -72,9 +69,6 @@ void IconizedLabel::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   node_data->role = ax::mojom::Role::kStaticText;
   node_data->SetNameChecked(custom_accessible_name_);
 }
-
-BEGIN_METADATA(IconizedLabel)
-END_METADATA
 
 TrayItemView::TrayItemView(Shelf* shelf)
     : views::AnimationDelegateViews(this), shelf_(shelf) {
@@ -122,10 +116,6 @@ void TrayItemView::DestroyImageView() {
   image_view_ = nullptr;
 }
 
-void TrayItemView::UpdateLabelOrImageViewColor(bool active) {
-  is_active_ = active;
-}
-
 base::ScopedClosureRunner TrayItemView::DisableAnimation() {
   if (layer()->GetAnimator()->is_animating()) {
     layer()->GetAnimator()->StopAnimating();
@@ -159,9 +149,9 @@ void TrayItemView::SetVisible(bool visible) {
     observer.OnTrayItemVisibilityAboutToChange(target_visible_);
   }
   views::View::SetVisible(visible);
-  // During startup TrayItemViews are often SetVisible(false) before they are
-  // attached to a widget. Don't bother constructing animations for them.
-  if (!GetWidget()) {
+  if (!GetWidget() ||
+      ui::ScopedAnimationDurationScaleMode::duration_multiplier() ==
+          ui::ScopedAnimationDurationScaleMode::ZERO_DURATION) {
     return;
   }
   PerformVisibilityAnimation(visible);
@@ -182,18 +172,14 @@ void TrayItemView::PerformVisibilityAnimation(bool visible) {
   }
 
   // Immediately progress to the end of the animation if animation is disabled.
-  // NOTE: `ScreenRotationAnimator` can set animations to ZERO_DURATION.
-  if (!ShouldVisibilityChangeBeAnimated() ||
-      ui::ScopedAnimationDurationScaleMode::duration_multiplier() ==
-          ui::ScopedAnimationDurationScaleMode::ZERO_DURATION) {
-    // Tray items need to stay visible if the notification center tray's hide
-    // animation is going to run, so don't hide the tray item here.
+  if (!IsAnimationEnabled()) {
+    // Tray items need to stay visible during the notification center tray's
+    // hide animation, so don't do anything here.
     // `StatusAreaAnimationController` will call `ImmediatelyUpdateVisibility()`
     // once the hide animation is over to ensure that all tray items are given a
-    // chance to properly update their visibilities.
-    if (!target_visible_ && shelf_->status_area_widget()
-                                ->animation_controller()
-                                ->is_hide_animation_scheduled()) {
+    // chance to properly update their visibilities. Only applicable when the
+    // QS revamp is enabled.
+    if (features::IsQsRevampEnabled() && !target_visible_) {
       return;
     }
     animation_->SetSlideDuration(base::TimeDelta());
@@ -203,14 +189,14 @@ void TrayItemView::PerformVisibilityAnimation(bool visible) {
 
   if (target_visible_) {
     SetupThroughputTrackerForAnimationSmoothness(
-        GetWidget(), show_throughput_tracker_,
+        GetWidget(), throughput_tracker_,
         kShowAnimationSmoothnessHistogramName);
     animation_->SetSlideDuration(base::Milliseconds(400));
     animation_->Show();
     AnimationProgressed(animation_.get());
   } else {
     SetupThroughputTrackerForAnimationSmoothness(
-        GetWidget(), hide_throughput_tracker_,
+        GetWidget(), throughput_tracker_,
         kHideAnimationSmoothnessHistogramName);
     animation_->SetSlideDuration(base::Milliseconds(100));
     animation_->Hide();
@@ -234,9 +220,6 @@ gfx::Size TrayItemView::CalculatePreferredSize() const {
   gfx::Size size = views::View::CalculatePreferredSize();
   if (image_view_) {
     size = gfx::Size(kUnifiedTrayIconSize, kUnifiedTrayIconSize);
-    // Some TrayItemViews have slightly larger icons (e.g. Ethernet with VPN
-    // badge).
-    size.SetToMax(image_view_->CalculatePreferredSize());
   }
 
   if (!animation_.get() || !animation_->is_animating() ||
@@ -257,6 +240,10 @@ gfx::Size TrayItemView::CalculatePreferredSize() const {
 
 int TrayItemView::GetHeightForWidth(int width) const {
   return GetPreferredSize().height();
+}
+
+const char* TrayItemView::GetClassName() const {
+  return "TrayItemView";
 }
 
 void TrayItemView::ChildPreferredSizeChanged(views::View* child) {
@@ -302,16 +289,10 @@ void TrayItemView::AnimationEnded(const gfx::Animation* animation) {
   views::View::SetVisible(target_visible_);
   layer()->SetOpacity(target_visible_ ? 1.0 : 0.0);
 
-  if (show_throughput_tracker_) {
-    // Reset `show_throughput_tracker_` to reset animation metrics recording.
-    show_throughput_tracker_->Stop();
-    show_throughput_tracker_.reset();
-  }
-
-  if (hide_throughput_tracker_) {
-    // Reset `hide_throughput_tracker_` to reset animation metrics recording.
-    hide_throughput_tracker_->Stop();
-    hide_throughput_tracker_.reset();
+  if (throughput_tracker_) {
+    // Reset `throughput_tracker_` to reset animation metrics recording.
+    throughput_tracker_->Stop();
+    throughput_tracker_.reset();
   }
 
   if (animation_idle_closure_) {
@@ -355,8 +336,5 @@ double TrayItemView::GetItemScaleProgressFromAnimationProgress(
   return (animation_value - kAnimatingOutEndValue) *
          (1 / (1 - kAnimatingOutEndValue));
 }
-
-BEGIN_METADATA(TrayItemView)
-END_METADATA
 
 }  // namespace ash

@@ -7,12 +7,11 @@
   }
 
   #container {
-    background-color: var(--cros-sys-app_base);
+    background-color: var(--cr-card-background-color);
     box-sizing: border-box;
-    color: var(--cros-sys-on_surface_variant);
+    color: var(--cros-text-color-secondary);
     display: flex;
     flex-direction: column;
-    font-family: var(--cros-font-family-google-sans);
     font-size: 13px;
     height: 100%;
     line-height: 16px;
@@ -60,11 +59,12 @@
     </start-setup-page>
   </iron-pages>
   <div class="flex"></div>
-  <button-bar id="buttonBar"
-      forward-button-text-id="[[forwardButtonTextId]]"
-      backward-button-text-id="[[backwardButtonTextId]]"
-      cancel-button-text-id="[[cancelButtonTextId]]"
-      should-show-shadow="[[isScrolledToBottom_]]"
-      forward-button-disabled="[[forwardButtonDisabled]]">
+  <button-bar forward-button-hidden="[[!forwardButtonTextId]]"
+      backward-button-hidden="[[!backwardButtonTextId]]"
+      cancel-button-hidden="[[!cancelButtonTextId]]"
+      should-show-shadow="[[isScrolledToBottom_]]">
+    <slot name="backward-button" slot="backward-button"></slot>
+    <slot name="cancel-button" slot="cancel-button"></slot>
+    <slot name="forward-button" slot="forward-button"></slot>
   </button-bar>
 </div>

@@ -16,7 +16,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/user_manager/known_user.h"
 
-namespace ash::legacy {
+namespace ash {
 namespace {
 
 // Possible values for the `kQuickUnlockModeAllowlist` policy.
@@ -64,25 +64,24 @@ std::string GetUserSalt(const AccountId& account_id) {
 }  // namespace
 
 CryptohomePinEngine::CryptohomePinEngine(ash::AuthPerformer* auth_performer)
-    : auth_performer_(auth_performer),
-      auth_factor_editor_(ash::UserDataAuthClient::Get()) {}
+    : auth_performer_(auth_performer) {}
 
 CryptohomePinEngine::~CryptohomePinEngine() = default;
 
-std::optional<bool> CryptohomePinEngine::IsCryptohomePinDisabledByPolicy(
+absl::optional<bool> CryptohomePinEngine::IsCryptohomePinDisabledByPolicy(
     const AccountId& account_id,
     CryptohomePinEngine::Purpose purpose) const {
   Profile* profile =
       ash::ProfileHelper::Get()->GetProfileByAccountId(account_id);
 
   if (!profile) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   auto* pref_service = profile->GetPrefs();
 
   if (!pref_service) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   if (purpose == CryptohomePinEngine::Purpose::kAny) {
@@ -96,11 +95,11 @@ std::optional<bool> CryptohomePinEngine::IsCryptohomePinDisabledByPolicy(
 
 bool CryptohomePinEngine::ShouldSkipSetupBecauseOfPolicy(
     const AccountId& account_id) const {
-  std::optional<bool> is_pin_disabled = IsCryptohomePinDisabledByPolicy(
+  absl::optional<bool> is_pin_disabled = IsCryptohomePinDisabledByPolicy(
       account_id, CryptohomePinEngine::Purpose::kAny);
   bool result = is_pin_disabled.has_value() ? is_pin_disabled.value() : false;
-  result = result ||
-           chrome_user_manager_util::IsManagedGuestSessionOrEphemeralLogin();
+  result =
+      result || chrome_user_manager_util::IsPublicSessionOrEphemeralLogin();
   return result;
 }
 
@@ -141,7 +140,7 @@ void CryptohomePinEngine::CheckCryptohomePinFactor(
 void CryptohomePinEngine::OnGetAuthFactorsConfiguration(
     IsPinAuthAvailableCallback callback,
     std::unique_ptr<UserContext> user_context,
-    std::optional<AuthenticationError> error) {
+    absl::optional<AuthenticationError> error) {
   if (error.has_value()) {
     std::move(callback).Run(false, std::move(user_context));
     return;
@@ -159,4 +158,4 @@ void CryptohomePinEngine::OnGetAuthFactorsConfiguration(
   std::move(callback).Run(true, std::move(user_context));
 }
 
-}  // namespace ash::legacy
+}  // namespace ash

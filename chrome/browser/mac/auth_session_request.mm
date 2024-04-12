@@ -23,7 +23,7 @@
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/navigation_throttle.h"
 #include "content/public/browser/web_contents.h"
-#include "net/base/apple/url_conversions.h"
+#include "net/base/mac/url_conversions.h"
 #include "url/url_canon.h"
 
 namespace {
@@ -87,7 +87,7 @@ class AuthNavigationThrottle : public content::NavigationThrottle {
 }  // namespace
 
 AuthSessionRequest::~AuthSessionRequest() {
-  std::string uuid = base::SysNSStringToUTF8(request_.UUID.UUIDString);
+  std::string uuid = base::SysNSStringToUTF8(request_.get().UUID.UUIDString);
 
   auto iter = GetMap().find(uuid);
   if (iter == GetMap().end())
@@ -105,7 +105,7 @@ void AuthSessionRequest::StartNewAuthSession(
   // Canonicalize the scheme so that it will compare correctly to the GURLs that
   // are visited later. Bail if it is invalid.
   NSString* raw_scheme = request.callbackURLScheme;
-  std::optional<std::string> canonical_scheme =
+  absl::optional<std::string> canonical_scheme =
       CanonicalizeScheme(base::SysNSStringToUTF8(raw_scheme));
   if (!canonical_scheme) {
     error_string =
@@ -167,7 +167,7 @@ void AuthSessionRequest::CancelAuthSession(
 }
 
 // static
-std::optional<std::string> AuthSessionRequest::CanonicalizeScheme(
+absl::optional<std::string> AuthSessionRequest::CanonicalizeScheme(
     std::string scheme) {
   url::RawCanonOutputT<char> canon_output;
   url::Component component;
@@ -175,7 +175,7 @@ std::optional<std::string> AuthSessionRequest::CanonicalizeScheme(
       scheme.data(), url::Component(0, static_cast<int>(scheme.size())),
       &canon_output, &component);
   if (!result)
-    return std::nullopt;
+    return absl::nullopt;
 
   return std::string(canon_output.data() + component.begin, component.len);
 }
@@ -211,7 +211,7 @@ AuthSessionRequest::AuthSessionRequest(
     : content::WebContentsObserver(web_contents),
       content::WebContentsUserData<AuthSessionRequest>(*web_contents),
       browser_(browser),
-      request_(request),
+      request_(request, base::scoped_policy::RETAIN),
       scheme_(scheme) {
   std::string uuid = base::SysNSStringToUTF8(request.UUID.UUIDString);
   GetMap()[uuid] = this;
@@ -346,7 +346,7 @@ void AuthSessionRequest::WebContentsDestroyed() {
 WEB_CONTENTS_USER_DATA_KEY_IMPL(AuthSessionRequest);
 
 std::unique_ptr<content::NavigationThrottle> MaybeCreateAuthSessionThrottleFor(
-    content::NavigationHandle* handle) {
+    content::NavigationHandle* handle) API_AVAILABLE(macos(10.15)) {
   AuthSessionRequest* request =
       AuthSessionRequest::FromWebContents(handle->GetWebContents());
   if (!request)

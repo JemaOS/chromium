@@ -31,10 +31,19 @@
 namespace payments {
 namespace {
 
-class BorderedRowView : public views::View {
-  METADATA_HEADER(BorderedRowView, views::View)
+// Records UMA metric for the authentication dialog result.
+void RecordAuthenticationDialogResult(
+    const SecurePaymentConfirmationAuthenticationDialogResult result) {
+  base::UmaHistogramEnumeration(
+      "PaymentRequest.SecurePaymentConfirmation.Funnel."
+      "AuthenticationDialogResult",
+      result);
+}
 
+class BorderedRowView : public views::View {
  public:
+  METADATA_HEADER(BorderedRowView);
+
   void OnThemeChanged() override {
     View::OnThemeChanged();
     SetBorder(views::CreateSolidSidedBorder(
@@ -43,7 +52,7 @@ class BorderedRowView : public views::View {
   }
 };
 
-BEGIN_METADATA(BorderedRowView)
+BEGIN_METADATA(BorderedRowView, views::View)
 END_METADATA
 
 }  // namespace
@@ -113,6 +122,9 @@ void SecurePaymentConfirmationDialogView::ShowDialog(
 
 void SecurePaymentConfirmationDialogView::OnDialogAccepted() {
   std::move(verify_callback_).Run();
+  RecordAuthenticationDialogResult(
+      SecurePaymentConfirmationAuthenticationDialogResult::kAccepted);
+
   if (observer_for_test_) {
     observer_for_test_->OnConfirmButtonPressed();
     observer_for_test_->OnDialogClosed();
@@ -121,6 +133,9 @@ void SecurePaymentConfirmationDialogView::OnDialogAccepted() {
 
 void SecurePaymentConfirmationDialogView::OnDialogCancelled() {
   std::move(cancel_callback_).Run();
+  RecordAuthenticationDialogResult(
+      SecurePaymentConfirmationAuthenticationDialogResult::kCanceled);
+
   if (observer_for_test_) {
     observer_for_test_->OnCancelButtonPressed();
     observer_for_test_->OnDialogClosed();
@@ -134,6 +149,8 @@ void SecurePaymentConfirmationDialogView::OnDialogClosed() {
   // in the latter the opt-out callback will trigger from OnOptOutClicked.
   if (!model_->opt_out_clicked()) {
     std::move(cancel_callback_).Run();
+    RecordAuthenticationDialogResult(
+        SecurePaymentConfirmationAuthenticationDialogResult::kClosed);
   }
 
   if (observer_for_test_) {
@@ -145,7 +162,10 @@ void SecurePaymentConfirmationDialogView::OnOptOutClicked() {
   if (observer_for_test_) {
     observer_for_test_->OnOptOutClicked();
   }
+
   std::move(opt_out_callback_).Run();
+  RecordAuthenticationDialogResult(
+      SecurePaymentConfirmationAuthenticationDialogResult::kOptOut);
 }
 
 void SecurePaymentConfirmationDialogView::OnModelUpdated() {
@@ -180,7 +200,7 @@ void SecurePaymentConfirmationDialogView::OnModelUpdated() {
       gfx::ImageSkia image =
           gfx::ImageSkia::CreateFrom1xBitmap(*model_->instrument_icon())
               .DeepCopy();
-      image_view->SetImage(ui::ImageModel::FromImageSkia(image));
+      image_view->SetImage(image);
     }
     if (model_->instrument_icon()->drawsNothing()) {
       image_view->SetImage(ui::ImageModel::FromVectorIcon(
@@ -400,7 +420,7 @@ std::unique_ptr<views::View> SecurePaymentConfirmationDialogView::CreateRowView(
   return row;
 }
 
-BEGIN_METADATA(SecurePaymentConfirmationDialogView)
+BEGIN_METADATA(SecurePaymentConfirmationDialogView, views::DialogDelegateView)
 END_METADATA
 
 }  // namespace payments

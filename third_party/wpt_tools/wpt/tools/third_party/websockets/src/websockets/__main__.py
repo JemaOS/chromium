@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import argparse
 import asyncio
 import os
@@ -8,10 +6,8 @@ import sys
 import threading
 from typing import Any, Set
 
-from .exceptions import ConnectionClosed
-from .frames import Close
-from .legacy.client import connect
-from .version import version as websockets_version
+from .client import connect
+from .exceptions import ConnectionClosed, format_close
 
 
 if sys.platform == "win32":
@@ -47,17 +43,16 @@ if sys.platform == "win32":
 
 
 def exit_from_event_loop_thread(
-    loop: asyncio.AbstractEventLoop,
-    stop: asyncio.Future[None],
+    loop: asyncio.AbstractEventLoop, stop: "asyncio.Future[None]"
 ) -> None:
     loop.stop()
     if not stop.done():
         # When exiting the thread that runs the event loop, raise
         # KeyboardInterrupt in the main thread to exit the program.
-        if sys.platform == "win32":
-            ctrl_c = signal.CTRL_C_EVENT
-        else:
-            ctrl_c = signal.SIGINT
+        try:
+            ctrl_c = signal.CTRL_C_EVENT  # Windows
+        except AttributeError:
+            ctrl_c = signal.SIGINT  # POSIX
         os.kill(os.getpid(), ctrl_c)
 
 
@@ -96,8 +91,8 @@ def print_over_input(string: str) -> None:
 async def run_client(
     uri: str,
     loop: asyncio.AbstractEventLoop,
-    inputs: asyncio.Queue[str],
-    stop: asyncio.Future[None],
+    inputs: "asyncio.Queue[str]",
+    stop: "asyncio.Future[None]",
 ) -> None:
     try:
         websocket = await connect(uri)
@@ -110,8 +105,8 @@ async def run_client(
 
     try:
         while True:
-            incoming: asyncio.Future[Any] = asyncio.create_task(websocket.recv())
-            outgoing: asyncio.Future[Any] = asyncio.create_task(inputs.get())
+            incoming: asyncio.Future[Any] = asyncio.ensure_future(websocket.recv())
+            outgoing: asyncio.Future[Any] = asyncio.ensure_future(inputs.get())
             done: Set[asyncio.Future[Any]]
             pending: Set[asyncio.Future[Any]]
             done, pending = await asyncio.wait(
@@ -144,8 +139,7 @@ async def run_client(
 
     finally:
         await websocket.close()
-        assert websocket.close_code is not None and websocket.close_reason is not None
-        close_status = Close(websocket.close_code, websocket.close_reason)
+        close_status = format_close(websocket.close_code, websocket.close_reason)
 
         print_over_input(f"Connection closed: {close_status}.")
 
@@ -153,24 +147,6 @@ async def run_client(
 
 
 def main() -> None:
-    # Parse command line arguments.
-    parser = argparse.ArgumentParser(
-        prog="python -m websockets",
-        description="Interactive WebSocket client.",
-        add_help=False,
-    )
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--version", action="store_true")
-    group.add_argument("uri", metavar="<uri>", nargs="?")
-    args = parser.parse_args()
-
-    if args.version:
-        print(f"websockets {websockets_version}")
-        return
-
-    if args.uri is None:
-        parser.error("the following arguments are required: <uri>")
-
     # If we're on Windows, enable VT100 terminal support.
     if sys.platform == "win32":
         try:
@@ -188,22 +164,26 @@ def main() -> None:
     except ImportError:  # Windows has no `readline` normally
         pass
 
+    # Parse command line arguments.
+    parser = argparse.ArgumentParser(
+        prog="python -m websockets",
+        description="Interactive WebSocket client.",
+        add_help=False,
+    )
+    parser.add_argument("uri", metavar="<uri>")
+    args = parser.parse_args()
+
     # Create an event loop that will run in a background thread.
     loop = asyncio.new_event_loop()
 
-    # Due to zealous removal of the loop parameter in the Queue constructor,
-    # we need a factory coroutine to run in the freshly created event loop.
-    async def queue_factory() -> asyncio.Queue[str]:
-        return asyncio.Queue()
-
     # Create a queue of user inputs. There's no need to limit its size.
-    inputs: asyncio.Queue[str] = loop.run_until_complete(queue_factory())
+    inputs: asyncio.Queue[str] = asyncio.Queue(loop=loop)
 
     # Create a stop condition when receiving SIGINT or SIGTERM.
     stop: asyncio.Future[None] = loop.create_future()
 
     # Schedule the task that will manage the connection.
-    loop.create_task(run_client(args.uri, loop, inputs, stop))
+    asyncio.ensure_future(run_client(args.uri, loop, inputs, stop), loop=loop)
 
     # Start the event loop in a background thread.
     thread = threading.Thread(target=loop.run_forever)
@@ -220,10 +200,6 @@ def main() -> None:
 
     # Wait for the event loop to terminate.
     thread.join()
-
-    # For reasons unclear, even though the loop is closed in the thread,
-    # it still thinks it's running here.
-    loop.close()
 
 
 if __name__ == "__main__":

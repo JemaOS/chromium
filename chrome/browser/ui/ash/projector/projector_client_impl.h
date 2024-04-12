@@ -33,8 +33,8 @@ class SpeechRecognitionRecognizerClientImpl;
 class ProjectorClientImpl : public ash::ProjectorClient,
                             public SpeechRecognizerDelegate,
                             public ash::ProjectorAnnotatorController,
-                            drive::DriveIntegrationService::Observer,
-                            session_manager::SessionManagerObserver {
+                            public drive::DriveIntegrationServiceObserver,
+                            public session_manager::SessionManagerObserver {
  public:
   // RecordingOverlayViewImpl calls this function to initialize the annotator
   // tool.
@@ -69,7 +69,7 @@ class ProjectorClientImpl : public ash::ProjectorClient,
   void OnSpeechResult(
       const std::u16string& text,
       bool is_final,
-      const std::optional<media::SpeechRecognitionResult>& timing) override;
+      const absl::optional<media::SpeechRecognitionResult>& timing) override;
   // This class is not utilizing the information about sound level.
   void OnSpeechSoundLevelChanged(int16_t level) override {}
   void OnSpeechRecognitionStateChanged(
@@ -82,7 +82,7 @@ class ProjectorClientImpl : public ash::ProjectorClient,
   void Redo() override;
   void Clear() override;
 
-  // DriveIntegrationService::Observer implementation.
+  // drive::DriveIntegrationServiceObserver:
   void OnFileSystemMounted() override;
   void OnFileSystemBeingUnmounted() override;
   void OnFileSystemMountFailed() override;
@@ -90,8 +90,8 @@ class ProjectorClientImpl : public ash::ProjectorClient,
   // session_manager::SessionManagerObserver:
   void OnUserSessionStarted(bool is_primary_user) override;
 
-  // Maybe observe the Drive integration service of active profile when
-  // ActiveUserChanged and OnUserProfileLoaded.
+  // Maybe reset |drive_observation_| and observe the Drive integration service
+  // of active profile when ActiveUserChanged and OnUserProfileLoaded.
   void MaybeSwitchDriveIntegrationServiceObservation();
 
  private:
@@ -104,7 +104,7 @@ class ProjectorClientImpl : public ash::ProjectorClient,
   // Called when app registry becomes ready.
   void SetAppIsDisabled(bool disabled);
 
-  const raw_ptr<ash::ProjectorController> controller_;
+  const raw_ptr<ash::ProjectorController, ExperimentalAsh> controller_;
   SpeechRecognizerStatus recognizer_status_ =
       SpeechRecognizerStatus::SPEECH_RECOGNIZER_OFF;
   std::unique_ptr<SpeechRecognitionRecognizerClientImpl> speech_recognizer_;
@@ -114,6 +114,10 @@ class ProjectorClientImpl : public ash::ProjectorClient,
       session_observation_{this};
 
   PrefChangeRegistrar pref_change_registrar_;
+
+  base::ScopedObservation<drive::DriveIntegrationService,
+                          drive::DriveIntegrationServiceObserver>
+      drive_observation_{this};
 
   ProjectorDriveFsProvider drive_helper_;
 

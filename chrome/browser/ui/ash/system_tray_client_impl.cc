@@ -6,7 +6,6 @@
 
 #include <cstdio>
 #include <memory>
-#include <string_view>
 
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_switches.h"
@@ -16,10 +15,7 @@
 #include "ash/public/cpp/new_window_delegate.h"
 #include "ash/public/cpp/system_tray.h"
 #include "ash/public/cpp/update_types.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
-#include "ash/webui/settings/public/constants/setting.mojom.h"
 #include "base/command_line.h"
-#include "base/i18n/time_formatting.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
@@ -28,7 +24,7 @@
 #include "base/notreached.h"
 #include "base/strings/escape.h"
 #include "base/strings/strcat.h"
-#include "base/trace_event/trace_event.h"
+#include "base/strings/stringprintf.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/apps/app_service/launch_utils.h"
@@ -42,7 +38,7 @@
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ash/set_time_dialog.h"
 #include "chrome/browser/ash/system/system_clock.h"
-#include "chrome/browser/ash/system_web_apps/apps/personalization_app/personalization_app_metrics.h"
+#include "chrome/browser/ash/web_applications/personalization_app/personalization_app_metrics.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
 #include "chrome/browser/chromeos/extensions/vpn_provider/vpn_service_factory.h"
@@ -60,6 +56,8 @@
 #include "chrome/browser/ui/webui/ash/internet_config_dialog.h"
 #include "chrome/browser/ui/webui/ash/internet_detail_dialog.h"
 #include "chrome/browser/ui/webui/ash/multidevice_setup/multidevice_setup_dialog.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/setting.mojom.h"
 #include "chrome/browser/upgrade_detector/upgrade_detector.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chrome/common/channel_info.h"
@@ -73,17 +71,15 @@
 #include "chromeos/ash/components/network/network_util.h"
 #include "chromeos/ash/components/network/onc/network_onc_utils.h"
 #include "chromeos/ash/components/network/tether_constants.h"
-#include "chromeos/ash/components/phonehub/util/histogram_util.h"
 #include "components/prefs/pref_service.h"
 #include "components/services/app_service/public/cpp/app_launch_util.h"
 #include "components/session_manager/core/session_manager.h"
 #include "components/session_manager/core/session_manager_observer.h"
 #include "components/user_manager/user_manager.h"
 #include "third_party/cros_system_api/dbus/shill/dbus-constants.h"
-#include "third_party/icu/source/i18n/unicode/timezone.h"
 #include "ui/events/event_constants.h"
 #include "url/gurl.h"
-
+#include "jemaos/switches/urls/urls_constants.h"
 using session_manager::SessionManager;
 using session_manager::SessionState;
 
@@ -177,9 +173,21 @@ bool IsAppInstalled(std::string app_id) {
 }
 
 void OpenInBrowser(const GURL& event_url) {
-  ShowSingletonTabOverwritingNTP(ProfileManager::GetActiveUserProfile(),
-                                 event_url,
-                                 NavigateParams::IGNORE_AND_NAVIGATE);
+  if (crosapi::browser_util::IsLacrosPrimaryBrowser()) {
+    auto* browser_manager = crosapi::BrowserManager::Get();
+    browser_manager->SwitchToTab(
+        event_url,
+        /*path_behavior=*/NavigateParams::IGNORE_AND_NAVIGATE);
+    return;
+  }
+
+  // Lacros is not the primary browser, so use this workaround.
+  chrome::ScopedTabbedBrowserDisplayer displayer(
+      ProfileManager::GetActiveUserProfile());
+  NavigateParams params(
+      GetSingletonTabNavigateParams(displayer.browser(), event_url));
+  params.path_behavior = NavigateParams::IGNORE_AND_NAVIGATE;
+  ShowSingletonTabOverwritingNTP(displayer.browser(), &params);
 }
 
 ash::ManagementDeviceMode GetManagementDeviceMode(
@@ -223,8 +231,8 @@ class SystemTrayClientImpl::EnterpriseAccountObserver
   ~EnterpriseAccountObserver() override = default;
 
  private:
-  const raw_ptr<SystemTrayClientImpl> owner_;
-  raw_ptr<Profile> profile_ = nullptr;
+  const raw_ptr<SystemTrayClientImpl, ExperimentalAsh> owner_;
+  raw_ptr<Profile, ExperimentalAsh> profile_ = nullptr;
 
   base::ScopedObservation<user_manager::UserManager,
                           user_manager::UserManager::UserSessionStateObserver>
@@ -242,12 +250,7 @@ class SystemTrayClientImpl::EnterpriseAccountObserver
   }
 
   // session_manager::SessionManagerObserver:
-  void OnSessionStateChanged() override {
-    TRACE_EVENT0("ui",
-                 "SystemTrayClientImpl::EnterpriseAccountObserver::"
-                 "OnSessionStateChanged");
-    UpdateProfile();
-  }
+  void OnSessionStateChanged() override { UpdateProfile(); }
 
   // policy::CloudPolicyStore::Observer
   void OnStoreLoaded(policy::CloudPolicyStore* store) override {
@@ -379,12 +382,6 @@ void SystemTrayClientImpl::ShowSettings(int64_t display_id) {
       ProfileManager::GetActiveUserProfile(), display_id);
 }
 
-void SystemTrayClientImpl::ShowAccountSettings() {
-  // The "Accounts" section is called "People" for historical reasons.
-  ShowSettingsSubPageForActiveUser(
-      chromeos::settings::mojom::kPeopleSectionPath);
-}
-
 void SystemTrayClientImpl::ShowBluetoothSettings() {
   base::RecordAction(base::UserMetricsAction("ShowBluetoothSettingsPage"));
   ShowSettingsSubPageForActiveUser(
@@ -399,7 +396,7 @@ void SystemTrayClientImpl::ShowBluetoothSettings(const std::string& device_id) {
 }
 
 void SystemTrayClientImpl::ShowBluetoothPairingDialog(
-    std::optional<std::string_view> device_address) {
+    absl::optional<base::StringPiece> device_address) {
   if (ash::BluetoothPairingDialog::ShowDialog(device_address)) {
     base::RecordAction(
         base::UserMetricsAction("StatusArea_Bluetooth_Connect_Unknown"));
@@ -410,9 +407,7 @@ void SystemTrayClientImpl::ShowDateSettings() {
   base::RecordAction(base::UserMetricsAction("ShowDateOptions"));
   // Everybody can change the time zone (even though it is a device setting).
   ShowSettingsSubPageForActiveUser(
-      ash::features::IsOsSettingsRevampWayfindingEnabled()
-          ? chromeos::settings::mojom::kSystemPreferencesSectionPath
-          : chromeos::settings::mojom::kDateAndTimeSectionPath);
+      chromeos::settings::mojom::kDateAndTimeSectionPath);
 }
 
 void SystemTrayClientImpl::ShowSetTimeDialog() {
@@ -452,14 +447,6 @@ void SystemTrayClientImpl::ShowPrivacyAndSecuritySettings() {
 void SystemTrayClientImpl::ShowPrivacyHubSettings() {
   ShowSettingsSubPageForActiveUser(
       chromeos::settings::mojom::kPrivacyHubSubpagePath);
-}
-
-void SystemTrayClientImpl::ShowSpeakOnMuteDetectionSettings() {
-  ShowSettingsSubPageForActiveUser(
-      std::string(chromeos::settings::mojom::kPrivacyHubSubpagePath) +
-      "?settingId=" +
-      base::NumberToString(static_cast<int32_t>(
-          chromeos::settings::mojom::Setting::kSpeakOnMuteDetectionOnOff)));
 }
 
 void SystemTrayClientImpl::ShowSmartPrivacySettings() {
@@ -526,31 +513,33 @@ void SystemTrayClientImpl::ShowAccessibilitySettings() {
           : chromeos::settings::mojom::kAccessibilitySectionPath);
 }
 
-void SystemTrayClientImpl::ShowColorCorrectionSettings() {
-  if (user_manager::UserManager::Get()->IsLoggedInAsAnyKioskApp()) {
-    // TODO(b/259370808): Color correction settings subpage not available in
-    // Kiosk.
-    return;
-  }
-  ShowSettingsSubPageForActiveUser(
-      chromeos::settings::mojom::kDisplayAndMagnificationSubpagePath);
-}
-
 void SystemTrayClientImpl::ShowGestureEducationHelp() {
   base::RecordAction(base::UserMetricsAction("ShowGestureEducationHelp"));
   Profile* profile = ProfileManager::GetActiveUserProfile();
   if (!profile)
     return;
 
+  /*
   ash::SystemAppLaunchParams params;
   params.url = GURL(chrome::kChromeOSGestureEducationHelpURL);
   params.launch_source = apps::LaunchSource::kFromOtherApp;
   ash::LaunchSystemWebAppAsync(profile, ash::SystemWebAppType::HELP, params);
+  */
+  chrome::ScopedTabbedBrowserDisplayer displayer(profile);
+  ShowSingletonTab(displayer.browser(), GURL(jemaos::constants::kJemaNewGestureHelpURL));
 }
 
 void SystemTrayClientImpl::ShowPaletteHelp() {
-  ShowSingletonTab(ProfileManager::GetActiveUserProfile(),
-                   GURL(chrome::kChromePaletteHelpURL));
+  if (crosapi::browser_util::IsLacrosPrimaryBrowser()) {
+    crosapi::BrowserManager::Get()->SwitchToTab(
+        GURL(chrome::kChromePaletteHelpURL),
+        /*path_behavior=*/NavigateParams::RESPECT);
+    return;
+  }
+
+  chrome::ScopedTabbedBrowserDisplayer displayer(
+      ProfileManager::GetActiveUserProfile());
+  ShowSingletonTab(displayer.browser(), GURL(chrome::kChromePaletteHelpURL));
 }
 
 void SystemTrayClientImpl::ShowPaletteSettings() {
@@ -568,7 +557,7 @@ void SystemTrayClientImpl::ShowEnterpriseInfo() {
   }
 
   // Otherwise show enterprise management info page.
-  if (crosapi::browser_util::IsLacrosEnabled()) {
+  if (crosapi::browser_util::IsLacrosPrimaryBrowser()) {
     crosapi::BrowserManager::Get()->SwitchToTab(
         GURL(chrome::kChromeUIManagementURL),
         /*path_behavior=*/NavigateParams::RESPECT);
@@ -617,11 +606,6 @@ void SystemTrayClientImpl::ShowSettingsCellularSetup(bool show_psim_flow) {
   ShowSettingsSubPageForActiveUser(page);
 }
 
-void SystemTrayClientImpl::ShowMobileDataSubpage() {
-  ShowSettingsSubPageForActiveUser(
-      chromeos::settings::mojom::kCellularNetworksSubpagePath);
-}
-
 void SystemTrayClientImpl::ShowThirdPartyVpnCreate(
     const std::string& extension_id) {
   Profile* profile = ProfileManager::GetPrimaryUserProfile();
@@ -656,21 +640,8 @@ void SystemTrayClientImpl::ShowSettingsSimUnlock() {
   ShowSettingsSubPageForActiveUser(page);
 }
 
-void SystemTrayClientImpl::ShowApnSubpage(const std::string& network_id) {
-  CHECK(ash::features::IsApnRevampEnabled());
-  std::string page = chromeos::settings::mojom::kApnSubpagePath +
-                     std::string("?guid=") +
-                     base::EscapeUrlEncodedData(network_id, /*use_plus=*/true);
-  ShowSettingsSubPageForActiveUser(page);
-}
-
 void SystemTrayClientImpl::ShowNetworkSettings(const std::string& network_id) {
   ShowNetworkSettingsHelper(network_id, false /* show_configure */);
-}
-
-void SystemTrayClientImpl::ShowHotspotSubpage() {
-  ShowSettingsSubPageForActiveUser(
-      chromeos::settings::mojom::kHotspotSubpagePath);
 }
 
 void SystemTrayClientImpl::ShowNetworkSettingsHelper(
@@ -737,7 +708,7 @@ void SystemTrayClientImpl::ShowAccessCodeCastingDialog(
 }
 
 void SystemTrayClientImpl::ShowCalendarEvent(
-    const std::optional<GURL>& event_url,
+    const absl::optional<GURL>& event_url,
     const base::Time& date,
     bool& opened_pwa,
     GURL& final_event_url) {
@@ -757,9 +728,14 @@ void SystemTrayClientImpl::ShowCalendarEvent(
     official_url = event_url->ReplaceComponents(replacements);
   } else {
     // No event URL provided, so fall back on opening calendar with `date`.
-    official_url = GURL(kOfficialCalendarUrlPrefix +
-                        base::UnlocalizedTimeFormatWithPattern(
-                            date, "'r/week/'y/M/d", icu::TimeZone::getGMT()));
+    std::string calendar_url_str = kOfficialCalendarUrlPrefix;
+    base::Time::Exploded date_exp;
+    date.UTCExplode(&date_exp);
+    std::string date_url =
+        base::StringPrintf("r/week/%d/%d/%d", date_exp.year, date_exp.month,
+                           date_exp.day_of_month);
+    calendar_url_str.append(date_url);
+    official_url = GURL(calendar_url_str);
   }
 
   // Return the URL we actually opened.
@@ -810,40 +786,10 @@ void SystemTrayClientImpl::ShowChannelInfoGiveFeedback() {
 }
 
 void SystemTrayClientImpl::ShowAudioSettings() {
+  DCHECK(ash::features::IsAudioSettingsPageEnabled());
   base::RecordAction(base::UserMetricsAction("ShowAudioSettingsPage"));
   ShowSettingsSubPageForActiveUser(
       chromeos::settings::mojom::kAudioSubpagePath);
-}
-
-void SystemTrayClientImpl::ShowGraphicsTabletSettings() {
-  DCHECK(ash::features::IsPeripheralCustomizationEnabled());
-  base::RecordAction(base::UserMetricsAction("ShowGraphicsTabletSettingsPage"));
-  ShowSettingsSubPageForActiveUser(
-      chromeos::settings::mojom::kGraphicsTabletSubpagePath);
-}
-
-void SystemTrayClientImpl::ShowMouseSettings() {
-  DCHECK(ash::features::IsPeripheralCustomizationEnabled());
-  base::RecordAction(base::UserMetricsAction("ShowMouseSettingsPage"));
-  ShowSettingsSubPageForActiveUser(
-      chromeos::settings::mojom::kPerDeviceMouseSubpagePath);
-}
-
-void SystemTrayClientImpl::ShowTouchpadSettings() {
-  DCHECK(ash::features::IsInputDeviceSettingsSplitEnabled());
-  base::RecordAction(base::UserMetricsAction("ShowTouchpadSettingsPage"));
-  ShowSettingsSubPageForActiveUser(
-      chromeos::settings::mojom::kPerDeviceTouchpadSubpagePath);
-}
-
-void SystemTrayClientImpl::ShowRemapKeysSubpage(int device_id) {
-  DCHECK(ash::features::IsInputDeviceSettingsSplitEnabled());
-  base::RecordAction(base::UserMetricsAction("ShowRemapKeysSettingsSubpage"));
-  ShowSettingsSubPageForActiveUser(base::StrCat({
-      chromeos::settings::mojom::kPerDeviceKeyboardRemapKeysSubpagePath,
-      "?keyboardId=",
-      base::NumberToString(device_id),
-  }));
 }
 
 void SystemTrayClientImpl::ShowEolInfoPage() {
@@ -963,6 +909,8 @@ void SystemTrayClientImpl::UpdateDeviceEnterpriseInfo() {
   ash::DeviceEnterpriseInfo device_enterprise_info;
   device_enterprise_info.enterprise_domain_manager =
       connector->GetEnterpriseDomainManager();
+  device_enterprise_info.active_directory_managed =
+      connector->IsActiveDirectoryManaged();
   device_enterprise_info.management_device_mode =
       GetManagementDeviceMode(connector);
   if (!last_device_enterprise_info_) {

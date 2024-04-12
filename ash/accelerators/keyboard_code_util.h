@@ -37,10 +37,6 @@ ASH_EXPORT std::u16string GetStringForKeyboardCode(
 ASH_EXPORT const gfx::VectorIcon* GetVectorIconForKeyboardCode(
     ui::KeyboardCode key_code);
 
-// Returns the corresponding vector icon for search or launcher key depending on
-// the keyboard layout and whether the assistant is enabled or not.
-ASH_EXPORT const gfx::VectorIcon* GetSearchOrLauncherVectorIcon();
-
 }  // namespace ash
 
 #endif

@@ -84,12 +84,12 @@ CSSMathSum* CSSMathSum::Create(CSSNumericValueVector values,
   return result;
 }
 
-std::optional<CSSNumericSumValue> CSSMathSum::SumValue() const {
+absl::optional<CSSNumericSumValue> CSSMathSum::SumValue() const {
   CSSNumericSumValue sum;
   for (const auto& value : NumericValues()) {
     const auto child_sum = value->SumValue();
     if (!child_sum.has_value()) {
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     // Collect like-terms
@@ -104,7 +104,7 @@ std::optional<CSSNumericSumValue> CSSMathSum::SumValue() const {
   }
 
   if (!CanCreateNumericTypeFromSumValue(sum)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return sum;

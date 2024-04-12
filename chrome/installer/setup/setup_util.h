@@ -12,7 +12,6 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -20,6 +19,7 @@
 #include "base/win/windows_types.h"
 #include "chrome/installer/util/lzma_util.h"
 #include "chrome/installer/util/util_constants.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class WorkItemList;
 
@@ -89,10 +89,10 @@ base::FilePath FindArchiveToPatch(const InstallationState& original_state,
 bool DeleteFileFromTempProcess(const base::FilePath& path,
                                uint32_t delay_before_delete_ms);
 
-// Drops the thread down to background processing mode on supported OSes if it
+// Drops the process down to background processing mode on supported OSes if it
 // was launched below the normal process priority. Returns true when background
 // processing mode is entered.
-bool AdjustThreadPriority();
+bool AdjustProcessPriority();
 
 // Returns true if |install_status| represents a successful uninstall code.
 bool IsUninstallSuccess(InstallStatus install_status);
@@ -139,13 +139,13 @@ base::Time GetConsoleSessionStartTime();
 // Returns a DM token decoded from the base-64 `encoded_token`, or null in case
 // of a decoding error.  The returned DM token is an opaque binary blob and
 // should not be treated as an ASCII or UTF-8 string.
-std::optional<std::string> DecodeDMTokenSwitchValue(
+absl::optional<std::string> DecodeDMTokenSwitchValue(
     const std::wstring& encoded_token);
 
 // Returns a nonce decoded from the base-64 `encoded_nonce`, or null in case
 // of a decoding error.  The returned nonce is an opaque binary blob and
 // should not be treated as an ASCII or UTF-8 string.
-std::optional<std::string> DecodeNonceSwitchValue(
+absl::optional<std::string> DecodeNonceSwitchValue(
     const std::string& encoded_nonce);
 
 // Saves a DM token to a global location on the machine accessible to all

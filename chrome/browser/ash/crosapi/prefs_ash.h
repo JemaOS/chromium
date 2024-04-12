@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -27,6 +26,7 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote_set.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PrefService;
 class PrefChangeRegistrar;
@@ -74,22 +74,14 @@ class PrefsAsh : public mojom::Prefs,
 
  private:
   FRIEND_TEST_ALL_PREFIXES(PrefsAshTest, LocalStatePrefs);
-  FRIEND_TEST_ALL_PREFIXES(PrefsAshTest, CrosSettingsPrefs);
-
-  enum class AshPrefSource {
-    kNormal = 0,
-    kExtensionControlled = 1,
-    kCrosSettings = 2,
-  };
 
   struct State {
-    raw_ptr<PrefService, DanglingUntriaged> pref_service;
-    raw_ptr<PrefChangeRegistrar> registrar;
-    AshPrefSource pref_source;
+    PrefService* pref_service;
+    PrefChangeRegistrar* registrar;
+    bool is_extension_controlled_pref;
     std::string path;
   };
-  std::optional<State> GetState(mojom::PrefPath path);
-  const base::Value* GetValueForState(std::optional<State> state);
+  absl::optional<State> GetState(mojom::PrefPath path);
 
   void OnPrefChanged(mojom::PrefPath path);
   void OnDisconnect(mojom::PrefPath path, mojo::RemoteSetElementId id);
@@ -100,15 +92,11 @@ class PrefsAsh : public mojom::Prefs,
   void OnAppTerminating();
 
   // In production, owned by g_browser_process, which outlives this object.
-  const raw_ptr<PrefService, DanglingUntriaged> local_state_;
+  const raw_ptr<PrefService, ExperimentalAsh> local_state_;
 
   PrefChangeRegistrar local_state_registrar_;
   std::unique_ptr<PrefChangeRegistrar> profile_prefs_registrar_;
   PrefChangeRegistrar extension_prefs_registrar_;
-
-  // CrosSettings doesn't support PrefService and therefore also doesn't support
-  // PrefChangeRegistrar, so track these separately.
-  std::map<mojom::PrefPath, base::CallbackListSubscription> cros_settings_subs_;
 
   // This class supports any number of connections.
   mojo::ReceiverSet<mojom::Prefs> receivers_;

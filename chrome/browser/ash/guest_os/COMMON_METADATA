@@ -1,5 +1,7 @@
-# Please use buganizer to file bugs.
-# Previous monorail components have been migrated to buganizer.
+monorail: {
+  project: "chromium"
+  component: "UI>Shell>Containers"
+}
 buganizer: {
   component_id: 658562   # ChromeOS > Software > Guest OS
 }

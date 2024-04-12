@@ -109,7 +109,7 @@ GcmRegisterFunction::GcmRegisterFunction() {}
 GcmRegisterFunction::~GcmRegisterFunction() {}
 
 ExtensionFunction::ResponseAction GcmRegisterFunction::Run() {
-  std::optional<api::gcm::Register::Params> params =
+  absl::optional<api::gcm::Register::Params> params =
       api::gcm::Register::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -159,7 +159,7 @@ GcmSendFunction::GcmSendFunction() {}
 GcmSendFunction::~GcmSendFunction() {}
 
 ExtensionFunction::ResponseAction GcmSendFunction::Run() {
-  std::optional<api::gcm::Send::Params> params =
+  absl::optional<api::gcm::Send::Params> params =
       api::gcm::Send::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   EXTENSION_FUNCTION_VALIDATE(

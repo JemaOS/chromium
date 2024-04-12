@@ -73,30 +73,20 @@ const gfx::VectorIcon* GetVectorIcon(
   }
 }
 
-// foreground_color_id is only set for CastDeviceEntryViewAsh.
-std::unique_ptr<views::ImageView> CreateIconView(
-    const gfx::VectorIcon* icon,
-    std::optional<ui::ColorId> foreground_color_id = std::nullopt) {
+std::unique_ptr<views::ImageView> CreateIconView(const gfx::VectorIcon* icon) {
   auto icon_view = std::make_unique<views::ImageView>();
-  if (foreground_color_id.has_value()) {
-    icon_view->SetImage(ui::ImageModel::FromVectorIcon(
-        *icon, foreground_color_id.value(), kDeviceIconSize));
-  } else {
-    icon_view->SetImage(ui::ImageModel::FromVectorIcon(
-        *icon, gfx::kPlaceholderColor, kDeviceIconSize));
-  }
+  icon_view->SetImage(ui::ImageModel::FromVectorIcon(
+      *icon, gfx::kPlaceholderColor, kDeviceIconSize));
   icon_view->SetBorder(views::CreateEmptyBorder(kDeviceIconBorder));
   return icon_view;
 }
 
-// foreground_color_id is only set for CastDeviceEntryViewAsh.
 std::unique_ptr<views::View> CreateIconView(
-    global_media_controls::mojom::IconType icon,
-    std::optional<ui::ColorId> foreground_color_id = std::nullopt) {
+    global_media_controls::mojom::IconType icon) {
   if (icon == global_media_controls::mojom::IconType::kThrobber) {
     return media_router::CreateThrobber();
   }
-  return CreateIconView(GetVectorIcon(icon), foreground_color_id);
+  return CreateIconView(GetVectorIcon(icon));
 }
 
 std::unique_ptr<views::ImageView> GetAudioDeviceIcon() {
@@ -110,9 +100,6 @@ DeviceEntryUI::DeviceEntryUI(const std::string& raw_device_id,
                              const gfx::VectorIcon* icon,
                              const std::string& subtext)
     : raw_device_id_(raw_device_id), device_name_(device_name), icon_(icon) {}
-
-///////////////////////////////////////////////////////////////////////////////
-// AudioDeviceEntryView:
 
 AudioDeviceEntryView::AudioDeviceEntryView(PressedCallback callback,
                                            SkColor foreground_color,
@@ -170,9 +157,6 @@ DeviceEntryUIType AudioDeviceEntryView::GetType() const {
   return DeviceEntryUIType::kAudio;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// CastDeviceEntryView:
-
 CastDeviceEntryView::CastDeviceEntryView(
     base::RepeatingClosure callback,
     SkColor foreground_color,
@@ -222,38 +206,9 @@ std::string CastDeviceEntryView::GetStatusTextForTest() const {
   return device_->status_text;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// CastDeviceEntryViewAsh:
-
-CastDeviceEntryViewAsh::CastDeviceEntryViewAsh(
-    PressedCallback callback,
-    ui::ColorId foreground_color_id,
-    ui::ColorId background_color_id,
-    const global_media_controls::mojom::DevicePtr& device)
-    : DeviceEntryUI(device->id, device->name, GetVectorIcon(device->icon)),
-      HoverButton(std::move(callback),
-                  CreateIconView(device->icon, foreground_color_id),
-                  base::UTF8ToUTF16(device->name)),
-      device_(device->Clone()) {
-  SetFocusBehavior(views::View::FocusBehavior::ALWAYS);
-  views::InkDrop::Get(this)->SetMode(views::InkDropHost::InkDropMode::ON);
-  views::InkDrop::Get(this)->SetBaseColorId(background_color_id);
-  SetHasInkDropActionOnClick(true);
-  SetPreferredSize(kDeviceEntryViewSize);
-}
-
-CastDeviceEntryViewAsh::~CastDeviceEntryViewAsh() = default;
-
-DeviceEntryUIType CastDeviceEntryViewAsh::GetType() const {
-  return DeviceEntryUIType::kCast;
-}
-
-BEGIN_METADATA(AudioDeviceEntryView)
+BEGIN_METADATA(AudioDeviceEntryView, HoverButton)
 ADD_PROPERTY_METADATA(bool, Highlighted)
 END_METADATA
 
-BEGIN_METADATA(CastDeviceEntryView)
-END_METADATA
-
-BEGIN_METADATA(CastDeviceEntryViewAsh)
+BEGIN_METADATA(CastDeviceEntryView, HoverButton)
 END_METADATA

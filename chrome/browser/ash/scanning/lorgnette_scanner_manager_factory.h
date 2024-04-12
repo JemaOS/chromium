@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -28,7 +28,7 @@ class LorgnetteScannerManagerFactory : public ProfileKeyedServiceFactory {
   static LorgnetteScannerManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<LorgnetteScannerManagerFactory>;
+  friend struct base::DefaultSingletonTraits<LorgnetteScannerManagerFactory>;
 
   LorgnetteScannerManagerFactory();
   ~LorgnetteScannerManagerFactory() override;
@@ -39,7 +39,7 @@ class LorgnetteScannerManagerFactory : public ProfileKeyedServiceFactory {
       const LorgnetteScannerManagerFactory&) = delete;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;

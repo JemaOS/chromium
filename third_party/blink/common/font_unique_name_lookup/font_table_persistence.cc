@@ -4,9 +4,6 @@
 
 #include "third_party/blink/public/common/font_unique_name_lookup/font_table_persistence.h"
 
-#include <optional>
-
-#include "base/containers/span.h"
 #include "base/hash/hash.h"
 #include "base/pickle.h"
 #include "base/threading/scoped_blocking_call.h"
@@ -39,40 +36,37 @@ bool LoadFromFile(base::FilePath file_path,
     }
   }
 
-  base::Pickle pickle =
-      base::Pickle::WithUnownedBuffer(base::as_byte_span(file_contents));
-  base::PickleIterator pickle_iterator(pickle);
+  base::PickleIterator pickle_iterator(
+      base::Pickle(file_contents.data(), file_contents.size()));
 
   uint32_t checksum = 0;
   if (!pickle_iterator.ReadUInt32(&checksum)) {
     return false;
   }
 
-  std::optional<base::span<const uint8_t>> read_result =
-      pickle_iterator.ReadData();
-  if (!read_result.has_value()) {
-    return false;
-  }
-  base::span<const uint8_t> proto = read_result.value();
-  if (proto.empty()) {
+  const char* proto_data = nullptr;
+  size_t proto_length = 0;
+
+  if (!pickle_iterator.ReadData(&proto_data, &proto_length) || !proto_data ||
+      proto_length == 0) {
     return false;
   }
 
-  if (checksum != base::PersistentHash(proto)) {
+  if (checksum != base::PersistentHash(proto_data, proto_length)) {
     return false;
   }
 
   blink::FontUniqueNameTable font_table;
-  if (!font_table.ParseFromArray(proto.data(), proto.size())) {
+  if (!font_table.ParseFromArray(proto_data, proto_length)) {
     return false;
   }
 
-  *name_table_region = base::ReadOnlySharedMemoryRegion::Create(proto.size());
+  *name_table_region = base::ReadOnlySharedMemoryRegion::Create(proto_length);
   if (!name_table_region->IsValid() || !name_table_region->mapping.size()) {
     return false;
   }
 
-  name_table_region->mapping.GetMemoryAsSpan<uint8_t>().copy_from(proto);
+  memcpy(name_table_region->mapping.memory(), proto_data, proto_length);
 
   return true;
 }
@@ -90,8 +84,8 @@ bool PersistToFile(const base::MappedReadOnlyRegion& name_table_region,
   }
 
   base::Pickle pickle;
-  uint32_t checksum = base::PersistentHash(
-      name_table_region.mapping.GetMemoryAsSpan<const uint8_t>());
+  uint32_t checksum = base::PersistentHash(name_table_region.mapping.memory(),
+                                           name_table_region.mapping.size());
   pickle.WriteUInt32(checksum);
   pickle.WriteData(static_cast<char*>(name_table_region.mapping.memory()),
                    name_table_region.mapping.size());

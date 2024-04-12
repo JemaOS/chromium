@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_SESSIONS_SESSION_SERVICE_BASE_H_
 
 #include <map>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -26,6 +25,7 @@
 #include "components/sessions/core/session_service_commands.h"
 #include "components/sessions/core/tab_restore_service_client.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/ui_base_types.h"
 
 class Profile;
@@ -223,7 +223,7 @@ class SessionServiceBase : public sessions::CommandStorageManagerDelegate,
   virtual void BuildCommandsForTab(SessionID window_id,
                                    content::WebContents* tab,
                                    int index_in_window,
-                                   std::optional<tab_groups::TabGroupId> group,
+                                   absl::optional<tab_groups::TabGroupId> group,
                                    bool is_pinned,
                                    IdToRange* tab_to_available_range);
 

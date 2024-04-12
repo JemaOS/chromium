@@ -35,7 +35,8 @@ namespace detokenizer {
 
 constexpr int kOutputValuesInd = 0;
 // Initializes text encoder object from serialized parameters.
-void* Initialize(TfLiteContext* /*context*/, const char* /*buffer*/,
+void* Initialize(TfLiteContext* /*context*/,
+                 const char* /*buffer*/,
                  size_t /*length*/) {
   return nullptr;
 }

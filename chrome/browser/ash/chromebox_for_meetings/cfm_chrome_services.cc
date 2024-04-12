@@ -9,6 +9,7 @@
 #include "chrome/browser/ash/chromebox_for_meetings/diagnostics/diagnostics_service.h"
 #include "chrome/browser/ash/chromebox_for_meetings/external_display_brightness/external_display_brightness_service.h"
 #include "chrome/browser/ash/chromebox_for_meetings/logger/cfm_logger_service.h"
+#include "chrome/browser/ash/chromebox_for_meetings/network_settings/network_settings_service.h"
 #include "chrome/browser/ash/chromebox_for_meetings/xu_camera/xu_camera_service.h"
 #include "chromeos/ash/components/chromebox_for_meetings/features.h"
 #include "chromeos/ash/components/dbus/chromebox_for_meetings/cfm_hotline_client.h"
@@ -25,6 +26,7 @@ void InitializeCfmServices() {
   CfmLoggerService::Initialize();
   DeviceInfoService::Initialize();
   DiagnosticsService::Initialize();
+  NetworkSettingsService::Initialize();
   XuCameraService::Initialize();
   ExternalDisplayBrightnessService::Initialize();
 }
@@ -37,6 +39,7 @@ void ShutdownCfmServices() {
 
   ExternalDisplayBrightnessService::Shutdown();
   XuCameraService::Shutdown();
+  NetworkSettingsService::Shutdown();
   DiagnosticsService::Shutdown();
   DeviceInfoService::Shutdown();
   CfmLoggerService::Shutdown();

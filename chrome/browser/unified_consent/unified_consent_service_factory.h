@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_UNIFIED_CONSENT_UNIFIED_CONSENT_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_UNIFIED_CONSENT_UNIFIED_CONSENT_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -30,13 +30,13 @@ class UnifiedConsentServiceFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<UnifiedConsentServiceFactory>;
+  friend struct base::DefaultSingletonTraits<UnifiedConsentServiceFactory>;
 
   UnifiedConsentServiceFactory();
   ~UnifiedConsentServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;

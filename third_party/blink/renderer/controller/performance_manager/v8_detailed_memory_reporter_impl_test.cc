@@ -50,18 +50,14 @@ class MemoryUsageChecker {
     }
     EXPECT_EQ(expected_context_count_, actual_context_count);
     called_ = true;
-    loop_.Quit();
+    test::ExitRunLoop();
   }
-
-  void Run() { loop_.Run(); }
-
   bool IsCalled() { return called_; }
 
  private:
   size_t expected_isolate_count_;
   size_t expected_context_count_;
   bool called_ = false;
-  base::RunLoop loop_;
 };
 
 class CanvasMemoryUsageChecker {
@@ -81,16 +77,14 @@ class CanvasMemoryUsageChecker {
     }
     EXPECT_EQ(1u, actual_context_count);
     called_ = true;
-    loop_.Quit();
+    test::ExitRunLoop();
   }
-  void Run() { loop_.Run(); }
   bool IsCalled() { return called_; }
 
  private:
   size_t canvas_width_ = 0;
   size_t canvas_height_ = 0;
   bool called_ = false;
-  base::RunLoop loop_;
 };
 
 }  // anonymous namespace
@@ -130,6 +124,7 @@ TEST_F(V8DetailedMemoryReporterImplTest, GetV8MemoryUsage) {
       </body>)HTML");
 
   test::RunPendingTasks();
+
   // Ensure that main frame and subframe are loaded before measuring memory
   // usage.
   EXPECT_TRUE(ConsoleMessages().Contains("main loaded"));
@@ -145,13 +140,12 @@ TEST_F(V8DetailedMemoryReporterImplTest, GetV8MemoryUsage) {
       V8DetailedMemoryReporterImpl::Mode::EAGER,
       WTF::BindOnce(&MemoryUsageChecker::Callback, WTF::Unretained(&checker)));
 
-  checker.Run();
+  test::EnterRunLoop();
 
   EXPECT_TRUE(checker.IsCalled());
 }
 
 TEST_F(V8DetailedMemoryReporterImplWorkerTest, GetV8MemoryUsage) {
-  base::RunLoop loop;
   const String source_code = R"JS(
     globalThis.root = {
       array: new Uint8Array(1000000)
@@ -169,7 +163,7 @@ TEST_F(V8DetailedMemoryReporterImplWorkerTest, GetV8MemoryUsage) {
   reporter.GetV8MemoryUsage(
       V8DetailedMemoryReporterImpl::Mode::EAGER,
       WTF::BindOnce(&MemoryUsageChecker::Callback, WTF::Unretained(&checker)));
-  checker.Run();
+  test::EnterRunLoop();
   EXPECT_TRUE(checker.IsCalled());
 }
 
@@ -212,7 +206,9 @@ TEST_F(V8DetailedMemoryReporterImplTest, CanvasMemoryUsage) {
   reporter.GetV8MemoryUsage(V8DetailedMemoryReporterImpl::Mode::EAGER,
                             WTF::BindOnce(&CanvasMemoryUsageChecker::Callback,
                                           WTF::Unretained(&checker)));
-  checker.Run();
+
+  test::EnterRunLoop();
+
   EXPECT_TRUE(checker.IsCalled());
 }
 

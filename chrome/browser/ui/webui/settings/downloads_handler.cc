@@ -19,7 +19,6 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/shell_dialogs/selected_file_info.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/file_manager/path_util.h"
@@ -111,15 +110,15 @@ void DownloadsHandler::HandleSelectDownloadLocation(
       web_ui()->GetWebContents()->GetTopLevelNativeWindow(), nullptr);
 }
 
-void DownloadsHandler::FileSelected(const ui::SelectedFileInfo& file,
+void DownloadsHandler::FileSelected(const base::FilePath& path,
                                     int index,
                                     void* params) {
   select_folder_dialog_ = nullptr;
 
   base::RecordAction(UserMetricsAction("Options_SetDownloadDirectory"));
   PrefService* pref_service = profile_->GetPrefs();
-  pref_service->SetFilePath(prefs::kDownloadDefaultDirectory, file.path());
-  pref_service->SetFilePath(prefs::kSaveFileDefaultDirectory, file.path());
+  pref_service->SetFilePath(prefs::kDownloadDefaultDirectory, path);
+  pref_service->SetFilePath(prefs::kSaveFileDefaultDirectory, path);
 }
 
 void DownloadsHandler::FileSelectionCanceled(void* params) {

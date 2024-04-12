@@ -4,6 +4,7 @@
 
 #import "chrome/browser/renderer_host/chrome_render_widget_host_view_mac_history_swiper.h"
 
+#include "base/mac/scoped_nsobject.h"
 #import "chrome/browser/ui/cocoa/test/cocoa_test_helper.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
@@ -39,8 +40,8 @@ class MacHistorySwiperTest : public CocoaTest {
       got_backwards_hint_ = true;
     }] backwardsSwipeNavigationLikely];
 
-    HistorySwiper* historySwiper =
-        [[HistorySwiper alloc] initWithDelegate:mockDelegate];
+    base::scoped_nsobject<HistorySwiper> historySwiper(
+        [[HistorySwiper alloc] initWithDelegate:mockDelegate]);
     id mockHistorySwiper = [OCMockObject partialMockForObject:historySwiper];
     [[[mockHistorySwiper stub] andReturnBool:YES]
         browserCanNavigateInDirection:history_swiper::kForwards
@@ -75,7 +76,7 @@ class MacHistorySwiperTest : public CocoaTest {
         magic_mouse_history_swipe_ = true;
     }] initiateMagicMouseHistorySwipe:NO event:[OCMArg any]];
 
-    historySwiper_ = mockHistorySwiper;
+    historySwiper_ = [mockHistorySwiper retain];
 
     begin_count_ = 0;
     end_count_ = 0;
@@ -83,6 +84,12 @@ class MacHistorySwiperTest : public CocoaTest {
     navigated_left_ = false;
     magic_mouse_history_swipe_ = false;
     got_backwards_hint_ = false;
+  }
+
+  void TearDown() override {
+    [view_ release];
+    [historySwiper_ release];
+    CocoaTest::TearDown();
   }
 
   // These methods send all 3 types of events: gesture, scroll, and touch.
@@ -98,8 +105,8 @@ class MacHistorySwiperTest : public CocoaTest {
   void sendBeginGestureEventInMiddle();
   void sendEndGestureEventAtPoint(NSPoint point);
 
-  HistorySwiper* __strong historySwiper_;
-  NSView* __strong view_;
+  HistorySwiper* historySwiper_;
+  NSView* view_;
   int begin_count_;
   int end_count_;
   bool navigated_right_;

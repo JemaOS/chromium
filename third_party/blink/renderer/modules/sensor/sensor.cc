@@ -120,15 +120,15 @@ bool Sensor::hasReading() const {
   return sensor_proxy_->GetReading().timestamp() != 0.0;
 }
 
-std::optional<DOMHighResTimeStamp> Sensor::timestamp(
+absl::optional<DOMHighResTimeStamp> Sensor::timestamp(
     ScriptState* script_state) const {
   if (!hasReading()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   LocalDOMWindow* window = LocalDOMWindow::From(script_state);
   if (!window) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   WindowPerformance* performance = DOMWindowPerformance::performance(*window);
@@ -144,7 +144,7 @@ void Sensor::Trace(Visitor* visitor) const {
   visitor->Trace(sensor_proxy_);
   ActiveScriptWrappable::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
 }
 
 bool Sensor::HasPendingActivity() const {
@@ -186,14 +186,8 @@ void Sensor::InitSensorProxyIfNeeded() {
 }
 
 void Sensor::ContextDestroyed() {
-  // We do not use IsIdleOrErrored() here because we also want to call
-  // Deactivate() if |pending_error_notification_| is active (see
-  // https://crbug.com/324301018).
-  if (state_ != SensorState::kIdle) {
+  if (!IsIdleOrErrored())
     Deactivate();
-  }
-
-  state_ = SensorState::kIdle;
 
   if (sensor_proxy_)
     sensor_proxy_->Detach();

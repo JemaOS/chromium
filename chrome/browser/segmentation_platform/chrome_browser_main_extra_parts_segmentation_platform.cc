@@ -17,9 +17,7 @@ void ChromeBrowserMainExtraPartsSegmentationPlatform::PreCreateThreads() {
 }
 
 void ChromeBrowserMainExtraPartsSegmentationPlatform::PreProfileInit() {
-  segmentation_platform::UkmDatabaseClientHolder::GetClientInstance(nullptr)
-      .PreProfileInit(
-          /*in_memory_database=*/false);
+  segmentation_platform::UkmDatabaseClient::GetInstance().PreProfileInit();
 }
 
 void ChromeBrowserMainExtraPartsSegmentationPlatform::PostProfileInit(
@@ -36,6 +34,5 @@ void ChromeBrowserMainExtraPartsSegmentationPlatform::PostProfileInit(
 }
 
 void ChromeBrowserMainExtraPartsSegmentationPlatform::PostMainMessageLoopRun() {
-  segmentation_platform::UkmDatabaseClientHolder::GetClientInstance(nullptr)
-      .PostMessageLoopRun();
+  segmentation_platform::UkmDatabaseClient::GetInstance().PostMessageLoopRun();
 }

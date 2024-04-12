@@ -5,14 +5,11 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_MEDIASTREAM_MOCK_MEDIA_STREAM_VIDEO_SOURCE_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_MEDIASTREAM_MOCK_MEDIA_STREAM_VIDEO_SOURCE_H_
 
-#include "build/build_config.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/web/modules/mediastream/media_stream_video_source.h"
-#include "third_party/blink/renderer/modules/mediastream/sub_capture_target.h"
+
+#include "testing/gmock/include/gmock/gmock.h"
 
 namespace blink {
-
-class DOMException;
 
 class MockMediaStreamVideoSource : public blink::MediaStreamVideoSource {
  public:
@@ -30,20 +27,17 @@ class MockMediaStreamVideoSource : public blink::MediaStreamVideoSource {
   MOCK_METHOD1(DoSetMutedState, void(bool muted_state));
   MOCK_METHOD0(OnEncodedSinkEnabled, void());
   MOCK_METHOD0(OnEncodedSinkDisabled, void());
-  MOCK_METHOD0(OnRequestKeyFrame, void());
   MOCK_METHOD0(OnRequestRefreshFrame, void());
   MOCK_METHOD1(OnCapturingLinkSecured, void(bool));
   MOCK_METHOD1(OnSourceCanDiscardAlpha, void(bool can_discard_alpha));
   MOCK_CONST_METHOD0(SupportsEncodedOutput, bool());
-  MOCK_METHOD4(
-      ApplySubCaptureTarget,
-      void(
-          SubCaptureTarget::Type,
-          const base::Token&,
-          uint32_t,
-          base::OnceCallback<void(media::mojom::ApplySubCaptureTargetResult)>));
-  MOCK_METHOD0(GetNextSubCaptureTargetVersion, std::optional<uint32_t>());
-  MOCK_METHOD(uint32_t, GetSubCaptureTargetVersion, (), (const, override));
+  MOCK_METHOD1(OnFrameDropped, void(media::VideoCaptureFrameDropReason));
+  MOCK_METHOD3(Crop,
+               void(const base::Token&,
+                    uint32_t,
+                    base::OnceCallback<void(media::mojom::CropRequestResult)>));
+  MOCK_METHOD0(GetNextCropVersion, absl::optional<uint32_t>());
+  MOCK_METHOD(uint32_t, GetCropVersion, (), (const, override));
 
   // Simulate that the underlying source start successfully.
   void StartMockedSource();
@@ -65,16 +59,11 @@ class MockMediaStreamVideoSource : public blink::MediaStreamVideoSource {
   // destroyed before the frame has been delivered.
   void DeliverEncodedVideoFrame(scoped_refptr<EncodedVideoFrame> frame);
 
-  // Signal that a frame was dropped. It's up to the caller to make sure
-  // MockMediaStreamVideoSource is not destroyed before the frame drop has
-  // happened on the video task runner.
-  void DropFrame(media::VideoCaptureFrameDropReason reason);
-
-  // Send |sub_capture_target_version| to all registered tracks on the video
-  // task runner. It's up to the caller to keep MockMediaStreamVideoSource alive
-  // until the sub_capture_target_version_callback (registered with
-  // MediaStreamVideoSource::AddTrack) has completed.
-  void DeliverNewSubCaptureTargetVersion(uint32_t sub_capture_target_version);
+  // Send |crop_version| to all registered tracks on the video task runner. It's
+  // up to the caller to keep MockMediaStreamVideoSource alive until the
+  // crop_version_callback (registered with MediaStreamVideoSource::AddTrack)
+  // has completed.
+  void DeliverNewCropVersion(uint32_t crop_version);
 
   const media::VideoCaptureFormat& start_format() const { return format_; }
   int max_requested_height() const { return format_.frame_size.height(); }
@@ -86,19 +75,6 @@ class MockMediaStreamVideoSource : public blink::MediaStreamVideoSource {
     DoSetMutedState(muted_state);
   }
 
-#if !BUILDFLAG(IS_ANDROID)
-  MOCK_METHOD(
-      void,
-      SendWheel,
-      (double, double, int, int, base::OnceCallback<void(DOMException*)>),
-      (override));
-
-  MOCK_METHOD(void,
-              SetZoomLevel,
-              (int, base::OnceCallback<void(DOMException*)>),
-              (override));
-#endif  // !BUILDFLAG(IS_ANDROID)
-
   void EnableStopForRestart() { can_stop_for_restart_ = true; }
   void DisableStopForRestart() { can_stop_for_restart_ = false; }
 
@@ -109,7 +85,6 @@ class MockMediaStreamVideoSource : public blink::MediaStreamVideoSource {
   bool is_suspended() { return is_suspended_; }
 
   // Implements blink::MediaStreamVideoSource.
-  void RequestKeyFrame() override;
   void RequestRefreshFrame() override;
   void OnHasConsumers(bool has_consumers) override;
   base::WeakPtr<MediaStreamVideoSource> GetWeakPtr() override;
@@ -122,10 +97,9 @@ class MockMediaStreamVideoSource : public blink::MediaStreamVideoSource {
   void StartSourceImpl(
       VideoCaptureDeliverFrameCB frame_callback,
       EncodedVideoFrameCB encoded_frame_callback,
-      VideoCaptureSubCaptureTargetVersionCB sub_capture_target_version_callback,
-      VideoCaptureNotifyFrameDroppedCB frame_dropped_callback) override;
+      VideoCaptureCropVersionCB crop_version_callback) override;
   void StopSourceImpl() override;
-  std::optional<media::VideoCaptureFormat> GetCurrentFormat() const override;
+  absl::optional<media::VideoCaptureFormat> GetCurrentFormat() const override;
   void StopSourceForRestartImpl() override;
   void RestartSourceImpl(const media::VideoCaptureFormat& new_format) override;
 
@@ -140,8 +114,7 @@ class MockMediaStreamVideoSource : public blink::MediaStreamVideoSource {
   bool is_suspended_ = false;
   blink::VideoCaptureDeliverFrameCB frame_callback_;
   EncodedVideoFrameCB encoded_frame_callback_;
-  VideoCaptureSubCaptureTargetVersionCB sub_capture_target_version_callback_;
-  VideoCaptureNotifyFrameDroppedCB frame_dropped_callback_;
+  VideoCaptureCropVersionCB crop_version_callback_;
 
   base::WeakPtrFactory<MediaStreamVideoSource> weak_factory_{this};
 };

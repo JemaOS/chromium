@@ -17,8 +17,6 @@ enum ScrollType {
   // SetScrollOffset called with kSequencedScroll should not abort the smooth
   // scroll sequence.
   kSequenced,
-  // Scrolls that are triggered by the CSS scroll-start property.
-  kScrollStart,
 };
 
 // The scroll behavior set through 'scroll-behavior' CSS property.

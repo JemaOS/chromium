@@ -3,20 +3,15 @@
 // found in the LICENSE file.
 
 import 'chrome://shortcut-customization/js/text_accelerator.js';
-import 'chrome://webui-test/chromeos/mojo_webui_test_support.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
-import {ShortcutInputKeyElement} from 'chrome://resources/ash/common/shortcut_input_ui/shortcut_input_key.js';
-import {KeyInputState} from 'chrome://resources/ash/common/shortcut_input_ui/shortcut_utils.js';
-import {strictQuery} from 'chrome://resources/ash/common/typescript_utils/strict_query.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {mojoString16ToString, stringToMojoString16} from 'chrome://resources/js/mojo_type_util.js';
 import {IronIconElement} from 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
-import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {AcceleratorLookupManager} from 'chrome://shortcut-customization/js/accelerator_lookup_manager.js';
-import {fakeAcceleratorConfig, fakeLayoutInfo} from 'chrome://shortcut-customization/js/fake_data.js';
-import {AcceleratorSource, LayoutStyle, TextAcceleratorPart, TextAcceleratorPartType} from 'chrome://shortcut-customization/js/shortcut_types.js';
+import {InputKeyElement, KeyInputState} from 'chrome://shortcut-customization/js/input_key.js';
+import {mojoString16ToString, stringToMojoString16} from 'chrome://shortcut-customization/js/mojo_utils.js';
+import {TextAcceleratorPart, TextAcceleratorPartType} from 'chrome://shortcut-customization/js/shortcut_types.js';
 import {TextAcceleratorElement} from 'chrome://shortcut-customization/js/text_accelerator.js';
-import {assertEquals} from 'chrome://webui-test/chai_assert.js';
+import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 import {isVisible} from 'chrome://webui-test/test_util.js';
 
@@ -28,28 +23,14 @@ function createTextAcceleratorPart(
 
 suite('textAcceleratorTest', function() {
   let textAccelElement: TextAcceleratorElement|null = null;
-  let manager: AcceleratorLookupManager|null = null;
-
-  setup(() => {
-    // Set up manager.
-    manager = AcceleratorLookupManager.getInstance();
-    manager.setAcceleratorLookup(fakeAcceleratorConfig);
-    manager.setAcceleratorLayoutLookup(fakeLayoutInfo);
-  });
-
-  teardown(() => {
-    if (manager) {
-      manager.reset();
-    }
-  });
 
   function getTextPartsContainer(): HTMLElement {
     return textAccelElement!.shadowRoot!.querySelector('.parts-container') as
         HTMLElement;
   }
 
-  function getAllInputKeys(): NodeListOf<ShortcutInputKeyElement> {
-    return getTextPartsContainer().querySelectorAll('shortcut-input-key');
+  function getAllInputKeys(): NodeListOf<InputKeyElement> {
+    return getTextPartsContainer().querySelectorAll('input-key');
   }
 
   function getAllPlainTextParts(): NodeListOf<HTMLSpanElement> {
@@ -60,9 +41,9 @@ suite('textAcceleratorTest', function() {
     return getTextPartsContainer().querySelectorAll('#delimiter-icon');
   }
 
-  function getLockIcon(): HTMLDivElement {
-    return strictQuery(
-        '.lock-icon-container', textAccelElement!.shadowRoot, HTMLDivElement);
+  function getLockIcon(): IronIconElement {
+    return textAccelElement!.shadowRoot!.querySelector('#lock') as
+        IronIconElement;
   }
 
   setup(() => {
@@ -76,14 +57,10 @@ suite('textAcceleratorTest', function() {
     textAccelElement = null;
   });
 
-  function initTextAcceleratorElement(
-      parts: TextAcceleratorPart[] = [], source: AcceleratorSource,
-      action: number, displayLockIcon: boolean): Promise<void> {
+  function initTextAcceleratorElement(parts: TextAcceleratorPart[] = []):
+      Promise<void> {
     textAccelElement = document.createElement('text-accelerator');
     textAccelElement.parts = parts;
-    textAccelElement.source = source;
-    textAccelElement.action = action;
-    textAccelElement.displayLockIcon = displayLockIcon;
     document.body.appendChild(textAccelElement);
     return flushTasks();
   }
@@ -92,8 +69,7 @@ suite('textAcceleratorTest', function() {
   test('TextAcceleratorPartsSingleModifier', async () => {
     const ctrlKey =
         createTextAcceleratorPart('ctrl', TextAcceleratorPartType.kModifier);
-    await initTextAcceleratorElement(
-        [ctrlKey], AcceleratorSource.kAmbient, 0, false);
+    await initTextAcceleratorElement([ctrlKey]);
     assertEquals(1, getTextPartsContainer().children.length);
     assertEquals(1, textAccelElement!.parts.length);
     const inputKey = getAllInputKeys()[0];
@@ -103,8 +79,7 @@ suite('textAcceleratorTest', function() {
 
   test('TextAcceleratorPartsSingleKey', async () => {
     const bKey = createTextAcceleratorPart('b', TextAcceleratorPartType.kKey);
-    await initTextAcceleratorElement(
-        [bKey], AcceleratorSource.kAmbient, 0, false);
+    await initTextAcceleratorElement([bKey]);
     assertEquals(1, getTextPartsContainer().children.length);
     assertEquals(1, textAccelElement!.parts.length);
     const inputKey = getAllInputKeys()[0];
@@ -115,8 +90,7 @@ suite('textAcceleratorTest', function() {
   test('TextAcceleratorPartsPlainText', async () => {
     const plainText = createTextAcceleratorPart(
         'Some text', TextAcceleratorPartType.kPlainText);
-    await initTextAcceleratorElement(
-        [plainText], AcceleratorSource.kAmbient, 0, false);
+    await initTextAcceleratorElement([plainText]);
     assertEquals(1, getTextPartsContainer().children.length);
     const part = getAllPlainTextParts()[0];
     assertEquals(1, textAccelElement!.parts.length);
@@ -126,8 +100,7 @@ suite('textAcceleratorTest', function() {
   test('TextAcceleratorPartsDelimiter', async () => {
     const delimiter =
         createTextAcceleratorPart('+', TextAcceleratorPartType.kDelimiter);
-    await initTextAcceleratorElement(
-        [delimiter], AcceleratorSource.kAmbient, 0, false);
+    await initTextAcceleratorElement([delimiter]);
     assertEquals(1, getTextPartsContainer().children.length);
     const delimiterPart = getAllDelimiterParts()[0];
     assertEquals(1, textAccelElement!.parts.length);
@@ -142,9 +115,7 @@ suite('textAcceleratorTest', function() {
         'Some text', TextAcceleratorPartType.kPlainText);
     const delimiter =
         createTextAcceleratorPart('+', TextAcceleratorPartType.kDelimiter);
-    await initTextAcceleratorElement(
-        [ctrlKey, bKey, plainText, delimiter], AcceleratorSource.kAmbient, 0,
-        false);
+    await initTextAcceleratorElement([ctrlKey, bKey, plainText, delimiter]);
     assertEquals(4, getTextPartsContainer().children.length);
     assertEquals(4, textAccelElement!.parts.length);
 
@@ -161,46 +132,19 @@ suite('textAcceleratorTest', function() {
     assertEquals(delimiterPart!.icon, 'shortcut-customization-keys:plus');
   });
 
-  test('LockIconVisibilityBasedOnProperties', async () => {
-    const scenarios = [
-      {customizationEnabled: true, displayLockIcon: true},
-      {customizationEnabled: true, displayLockIcon: false},
-      {customizationEnabled: false, displayLockIcon: false},
-    ];
-    // Prepare all test cases by looping the fakeLayoutInfo.
-    const testCases = [];
-    for (const layoutInfo of fakeLayoutInfo) {
-      // If it's not text-accelerator, break the loop early.
-      if (layoutInfo.style === LayoutStyle.kDefault) {
-        continue;
-      }
-      for (const scenario of scenarios) {
-        // replicate getSubcategory() logic.
-        const subcategory = manager!.getAcceleratorSubcategory(
-            layoutInfo.source, layoutInfo.action);
-        const subcategoryIsUnlocked =
-            !manager!.isSubcategoryLocked(subcategory);
-        // replicate shouldShowLockIcon() logic.
-        const expectLockIconVisible = scenario.customizationEnabled &&
-            !scenario.displayLockIcon && subcategoryIsUnlocked;
-        testCases.push({
-          ...scenario,
-          layoutInfo: layoutInfo,
-          expectLockIconVisible: expectLockIconVisible,
-        });
-      }
-    }
-    // Verify lock icon show/hide based on properties.
-    for (const testCase of testCases) {
-      loadTimeData.overrideValues(
-          {isCustomizationAllowed: testCase.customizationEnabled});
-      const ctrlKey =
-          createTextAcceleratorPart('ctrl', TextAcceleratorPartType.kModifier);
-      await initTextAcceleratorElement(
-          [ctrlKey], testCase.layoutInfo.source, testCase.layoutInfo.action,
-          testCase.displayLockIcon);
-      await flush();
-      assertEquals(testCase.expectLockIconVisible, isVisible(getLockIcon()));
-    }
+  test('LockIconPresentWhenCustomizationEnabled', async () => {
+    loadTimeData.overrideValues({isCustomizationEnabled: true});
+    const ctrlKey =
+        createTextAcceleratorPart('ctrl', TextAcceleratorPartType.kModifier);
+    await initTextAcceleratorElement([ctrlKey]);
+    assertTrue(isVisible(getLockIcon()));
+  });
+
+  test('LockIconHiddenWhenCustomizationDisabled', async () => {
+    loadTimeData.overrideValues({isCustomizationEnabled: false});
+    const ctrlKey =
+        createTextAcceleratorPart('ctrl', TextAcceleratorPartType.kModifier);
+    await initTextAcceleratorElement([ctrlKey]);
+    assertFalse(isVisible(getLockIcon()));
   });
 });

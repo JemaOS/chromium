@@ -9,6 +9,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features.h"
+#include "third_party/blink/renderer/platform/scheduler/public/page_lifecycle_state.h"
 
 namespace blink {
 
@@ -62,7 +63,7 @@ class MemoryPurgeManagerTest : public testing::Test {
 TEST_F(MemoryPurgeManagerTest, PageFrozenInBackgroundedRenderer) {
   memory_purge_manager_.SetPurgeDisabledForTesting(true);
 
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
   memory_purge_manager_.SetRendererBackgrounded(true);
   memory_purge_manager_.OnPageFrozen();
   FastForwardBy(base::Seconds(1));
@@ -74,7 +75,7 @@ TEST_F(MemoryPurgeManagerTest, PageFrozenInBackgroundedRenderer) {
 TEST_F(MemoryPurgeManagerTest, PageFrozenInForegroundedRenderer) {
   memory_purge_manager_.SetPurgeDisabledForTesting(true);
 
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
   memory_purge_manager_.SetRendererBackgrounded(false);
   memory_purge_manager_.OnPageFrozen();
   FastForwardBy(base::Minutes(0));
@@ -84,7 +85,7 @@ TEST_F(MemoryPurgeManagerTest, PageFrozenInForegroundedRenderer) {
 TEST_F(MemoryPurgeManagerTest, PageResumedUndoMemoryPressureSuppression) {
   memory_purge_manager_.SetPurgeDisabledForTesting(true);
 
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
 
   memory_purge_manager_.SetRendererBackgrounded(true);
   memory_purge_manager_.OnPageFrozen();
@@ -95,7 +96,7 @@ TEST_F(MemoryPurgeManagerTest, PageResumedUndoMemoryPressureSuppression) {
   memory_purge_manager_.OnPageResumed();
   EXPECT_FALSE(base::MemoryPressureListener::AreNotificationsSuppressed());
 
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/false);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kActive);
 }
 
 TEST_F(MemoryPurgeManagerTest, PageFrozenPurgeMemoryAllPagesFrozenDisabled) {
@@ -103,9 +104,9 @@ TEST_F(MemoryPurgeManagerTest, PageFrozenPurgeMemoryAllPagesFrozenDisabled) {
 
   memory_purge_manager_.SetRendererBackgrounded(true);
 
-  memory_purge_manager_.OnPageCreated();
-  memory_purge_manager_.OnPageCreated();
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
 
   memory_purge_manager_.OnPageFrozen();
   FastForwardBy(MemoryPurgeManager::kFreezePurgeDelay);
@@ -125,21 +126,21 @@ TEST_F(MemoryPurgeManagerTest, PageFrozenPurgeMemoryAllPagesFrozenDisabled) {
   memory_purge_manager_.OnPageResumed();
   EXPECT_FALSE(base::MemoryPressureListener::AreNotificationsSuppressed());
 
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/false);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kActive);
   EXPECT_FALSE(base::MemoryPressureListener::AreNotificationsSuppressed());
 
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
   EXPECT_FALSE(base::MemoryPressureListener::AreNotificationsSuppressed());
 
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/false);
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/true);
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/true);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kActive);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kFrozen);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kFrozen);
 }
 
 TEST_F(MemoryPurgeManagerTest, MemoryPurgeAfterFreeze) {
   memory_purge_manager_.SetPurgeDisabledForTesting(true);
 
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
 
   memory_purge_manager_.SetRendererBackgrounded(true);
   memory_purge_manager_.OnPageFrozen();
@@ -149,13 +150,13 @@ TEST_F(MemoryPurgeManagerTest, MemoryPurgeAfterFreeze) {
   FastForwardBy(MemoryPurgeManager::kFreezePurgeDelay);
   EXPECT_EQ(1U, MemoryPressureCount());
 
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/true);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kFrozen);
 }
 
 TEST_F(MemoryPurgeManagerTest, CancelMemoryPurgeAfterFreeze) {
   memory_purge_manager_.SetPurgeDisabledForTesting(true);
 
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
 
   memory_purge_manager_.SetRendererBackgrounded(true);
   memory_purge_manager_.OnPageFrozen();
@@ -167,25 +168,44 @@ TEST_F(MemoryPurgeManagerTest, CancelMemoryPurgeAfterFreeze) {
   FastForwardBy(base::Seconds(0));
   EXPECT_EQ(0U, MemoryPressureCount());
 
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/false);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kActive);
 }
 
 TEST_F(MemoryPurgeManagerTest, MemoryPurgeWithDelayNewActivePageCreated) {
   memory_purge_manager_.SetPurgeDisabledForTesting(true);
 
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
 
   memory_purge_manager_.SetRendererBackgrounded(true);
   memory_purge_manager_.OnPageFrozen();
   EXPECT_EQ(0U, MemoryPressureCount());
 
   // Some page is sill frozen, keep going.
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
   FastForwardBy(MemoryPurgeManager::kFreezePurgeDelay);
   EXPECT_EQ(1U, MemoryPressureCount());
 
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/true);
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/false);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kFrozen);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kActive);
+}
+
+TEST_F(MemoryPurgeManagerTest, MemoryPurgeWithDelayNewFrozenPageCreated) {
+  memory_purge_manager_.SetPurgeDisabledForTesting(true);
+
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
+
+  memory_purge_manager_.SetRendererBackgrounded(true);
+  memory_purge_manager_.OnPageFrozen();
+  FastForwardBy(MemoryPurgeManager::kFreezePurgeDelay / 2);
+  EXPECT_EQ(0U, MemoryPressureCount());
+
+  // All pages are still frozen and the memory purge should occur.
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kFrozen);
+  FastForwardBy(MemoryPurgeManager::kFreezePurgeDelay);
+  EXPECT_EQ(1U, MemoryPressureCount());
+
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kFrozen);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kFrozen);
 }
 
 TEST_F(MemoryPurgeManagerTest, PurgeRendererMemoryWhenBackgroundedEnabled) {
@@ -223,7 +243,7 @@ TEST_F(MemoryPurgeManagerTest,
 TEST_F(MemoryPurgeManagerTest, PageFrozenAndResumedWhileBackgrounded) {
   memory_purge_manager_.SetPurgeDisabledForTesting(true);
 
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
 
   memory_purge_manager_.SetRendererBackgrounded(true);
   memory_purge_manager_.OnPageFrozen();
@@ -236,18 +256,18 @@ TEST_F(MemoryPurgeManagerTest, PageFrozenAndResumedWhileBackgrounded) {
   // even though there are no frozen pages.
   EXPECT_EQ(1U, MemoryPressureCount());
 
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/false);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kActive);
 }
 
 TEST_F(MemoryPurgeManagerTest, NoMemoryPurgeIfNoPage) {
   memory_purge_manager_.SetPurgeDisabledForTesting(true);
 
   memory_purge_manager_.SetRendererBackgrounded(true);
-  memory_purge_manager_.OnPageCreated();
+  memory_purge_manager_.OnPageCreated(PageLifecycleState::kActive);
 
   memory_purge_manager_.SetRendererBackgrounded(true);
   memory_purge_manager_.OnPageFrozen();
-  memory_purge_manager_.OnPageDestroyed(/* frozen=*/true);
+  memory_purge_manager_.OnPageDestroyed(PageLifecycleState::kFrozen);
 
   FastForwardBy(base::Minutes(0));
   EXPECT_EQ(0U, MemoryPressureCount());

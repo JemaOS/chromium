@@ -39,7 +39,7 @@ struct Environment {
       : task_environment((base::CommandLine::Init(0, nullptr),
                           TestTimeouts::Initialize(),
                           base::test::TaskEnvironment::MainThreadType::UI)) {
-    logging::SetMinLogLevel(logging::LOGGING_FATAL);
+    logging::SetMinLogLevel(logging::LOG_FATAL);
 
     // Some platforms require discardable memory to use bitmap fonts.
     base::DiscardableMemoryAllocator::SetInstance(
@@ -93,10 +93,7 @@ enum class RenderTextAPI {
   kSetDisplayRect,
   kGetSubstringBounds,
   kGetCursorSpan,
-  kSetTruncateLength,
-  kSetFillStyle,
-  kSetStrokeWidth,
-  kMaxValue = kSetStrokeWidth
+  kMaxValue = kGetCursorSpan
 };
 
 gfx::DirectionalityMode ConsumeDirectionalityMode(FuzzedDataProvider* fdp) {
@@ -227,17 +224,6 @@ gfx::Range ConsumeRange(FuzzedDataProvider* fdp, size_t max) {
   size_t start = fdp->ConsumeIntegralInRange<size_t>(0, max);
   size_t end = fdp->ConsumeIntegralInRange<size_t>(start, max);
   return gfx::Range(start, end);
-}
-
-cc::PaintFlags::Style ConsumeFillStyle(FuzzedDataProvider* fdp) {
-  switch (fdp->ConsumeIntegralInRange(0, 2)) {
-    case 0:
-      return cc::PaintFlags::kFill_Style;
-    case 1:
-      return cc::PaintFlags::kStroke_Style;
-    default:
-      return cc::PaintFlags::kFill_Style;
-  }
 }
 
 // Eliding behaviors are not all fully supported by RenderText. Ignore
@@ -435,16 +421,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
         render_text->GetCursorSpan(
             ConsumeRange(&fdp, render_text->text().length()));
-        break;
-      case RenderTextAPI::kSetTruncateLength:
-        render_text->set_truncate_length(fdp.ConsumeIntegral<uint32_t>());
-        break;
-      case RenderTextAPI::kSetFillStyle:
-        render_text->SetFillStyle(ConsumeFillStyle(&fdp));
-        break;
-      case RenderTextAPI::kSetStrokeWidth:
-        render_text->SetStrokeWidth(
-            fdp.ConsumeFloatingPointInRange(0.0f, 5.0f));
         break;
     }
   }

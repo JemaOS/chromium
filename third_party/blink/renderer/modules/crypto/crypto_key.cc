@@ -167,7 +167,8 @@ ScriptValue CryptoKey::usages(ScriptState* script_state) {
 
   return ScriptValue(
       script_state->GetIsolate(),
-      ToV8Traits<IDLSequence<IDLString>>::ToV8(script_state, result));
+      ToV8Traits<IDLSequence<IDLString>>::ToV8(script_state, result)
+          .ToLocalChecked());
 }
 
 bool CryptoKey::CanBeUsedForAlgorithm(const WebCryptoAlgorithm& algorithm,

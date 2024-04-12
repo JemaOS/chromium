@@ -26,6 +26,7 @@
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
 #include "third_party/blink/renderer/modules/sanitizer_api/sanitizer_config.pb.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+#include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/testing/blink_fuzzer_test_support.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
@@ -115,7 +116,7 @@ void TextProtoFuzzer(const SanitizerConfigProto& proto,
   static size_t counter = 0;
   if (counter++ > 1000) {
     counter = 0;
-    script_state->GetIsolate()->RequestGarbageCollectionForTesting(
+    V8PerIsolateData::MainThreadIsolate()->RequestGarbageCollectionForTesting(
         v8::Isolate::kFullGarbageCollection);
   }
 }

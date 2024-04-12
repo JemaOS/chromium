@@ -8,7 +8,9 @@ import org.junit.rules.ExternalResource;
 
 import org.chromium.chrome.browser.layouts.animation.CompositorAnimationHandler;
 
-/** JUnit 4 rule that disables animations in CompositorAnimationHandler for tests. */
+/**
+ * JUnit 4 rule that disables animations in CompositorAnimationHandler for tests.
+ */
 public class DisableChromeAnimations extends ExternalResource {
     private boolean mOldTestingMode;
 

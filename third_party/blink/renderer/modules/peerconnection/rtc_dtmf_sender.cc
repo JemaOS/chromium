@@ -182,7 +182,7 @@ void RTCDTMFSender::ContextDestroyed() {
 }
 
 void RTCDTMFSender::Trace(Visitor* visitor) const {
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   RtcDtmfSenderHandler::Client::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }

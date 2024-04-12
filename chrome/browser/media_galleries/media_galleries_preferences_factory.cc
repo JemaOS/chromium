@@ -18,27 +18,19 @@ MediaGalleriesPreferencesFactory::GetForProfile(Profile* profile) {
 // static
 MediaGalleriesPreferencesFactory*
 MediaGalleriesPreferencesFactory::GetInstance() {
-  static base::NoDestructor<MediaGalleriesPreferencesFactory> instance;
-  return instance.get();
+  return base::Singleton<MediaGalleriesPreferencesFactory>::get();
 }
 
 MediaGalleriesPreferencesFactory::MediaGalleriesPreferencesFactory()
     : ProfileKeyedServiceFactory(
           "MediaGalleriesPreferences",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
-MediaGalleriesPreferencesFactory::~MediaGalleriesPreferencesFactory() = default;
+MediaGalleriesPreferencesFactory::~MediaGalleriesPreferencesFactory() {}
 
-std::unique_ptr<KeyedService>
-MediaGalleriesPreferencesFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* MediaGalleriesPreferencesFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<MediaGalleriesPreferences>(
-      static_cast<Profile*>(profile));
+  return new MediaGalleriesPreferences(static_cast<Profile*>(profile));
 }
 
 void MediaGalleriesPreferencesFactory::RegisterProfilePrefs(

@@ -20,7 +20,7 @@
 #include "components/performance_manager/public/user_tuning/prefs.h"
 
 class QuitRunLoopOnPowerStateChangeObserver
-    : public performance_manager::user_tuning::BatterySaverModeManager::
+    : public performance_manager::user_tuning::UserPerformanceTuningManager::
           Observer {
  public:
   explicit QuitRunLoopOnPowerStateChangeObserver(
@@ -37,7 +37,7 @@ class QuitRunLoopOnPowerStateChangeObserver
 
 namespace {
 
-constexpr char kMemorySaverModeActiveKey[] = "high_efficiency_mode_active";
+constexpr char kHighEfficiencyModeActiveKey[] = "high_efficiency_mode_active";
 constexpr char kBatterySaverModeStateKey[] = "battery_saver_state";
 constexpr char kBatterySaverModeActiveKey[] = "battery_saver_mode_active";
 constexpr char kBatterySaverModeDisabledForSessionKey[] =
@@ -58,7 +58,11 @@ class PerformanceLogSourceTest : public BrowserWithTestWindowTest {
 
   ~PerformanceLogSourceTest() override = default;
 
-  void SetUp() override { environment_.SetUp(local_state_); }
+  void SetUp() override {
+    environment_.SetUp(local_state_);
+    tuning_manager_ = performance_manager::user_tuning::
+        UserPerformanceTuningManager::GetInstance();
+  }
 
   void TearDown() override {
     base::PowerMonitor::ShutdownForTesting();
@@ -88,10 +92,10 @@ class PerformanceLogSourceTest : public BrowserWithTestWindowTest {
         static_cast<int>(mode));
   }
 
-  void SetMemorySaverModeEnabled(bool enabled) {
+  void SetHighEfficiencyModeEnabled(bool enabled) {
     performance_manager::user_tuning::UserPerformanceTuningManager::
         GetInstance()
-            ->SetMemorySaverModeEnabled(enabled);
+            ->SetHighEfficiencyModeEnabled(enabled);
   }
 
   void SetOnBatteryPower(bool on_battery_power) {
@@ -99,28 +103,28 @@ class PerformanceLogSourceTest : public BrowserWithTestWindowTest {
     std::unique_ptr<QuitRunLoopOnPowerStateChangeObserver> observer =
         std::make_unique<QuitRunLoopOnPowerStateChangeObserver>(
             run_loop.QuitClosure());
-    performance_manager::user_tuning::BatterySaverModeManager::GetInstance()
-        ->AddObserver(observer.get());
+    tuning_manager_->AddObserver(observer.get());
     environment_.power_monitor_source()->SetOnBatteryPower(on_battery_power);
     run_loop.Run();
-    performance_manager::user_tuning::BatterySaverModeManager::GetInstance()
-        ->RemoveObserver(observer.get());
+    tuning_manager_->RemoveObserver(observer.get());
   }
 
   ScopedTestingLocalState testing_local_state_;
   performance_manager::user_tuning::TestUserPerformanceTuningManagerEnvironment
       environment_;
   raw_ptr<TestingPrefServiceSimple> local_state_ = nullptr;
+  raw_ptr<performance_manager::user_tuning::UserPerformanceTuningManager>
+      tuning_manager_ = nullptr;
 };
 
-TEST_F(PerformanceLogSourceTest, CheckMemorySaverModeLogs) {
-  SetMemorySaverModeEnabled(true);
+TEST_F(PerformanceLogSourceTest, CheckHighEfficiencyModeLogs) {
+  SetHighEfficiencyModeEnabled(true);
   auto response = GetPerformanceLogs();
-  EXPECT_EQ("true", response->at(kMemorySaverModeActiveKey));
+  EXPECT_EQ("true", response->at(kHighEfficiencyModeActiveKey));
 
-  SetMemorySaverModeEnabled(false);
+  SetHighEfficiencyModeEnabled(false);
   response = GetPerformanceLogs();
-  EXPECT_EQ("false", response->at(kMemorySaverModeActiveKey));
+  EXPECT_EQ("false", response->at(kHighEfficiencyModeActiveKey));
 }
 
 TEST_F(PerformanceLogSourceTest, CheckBatterySaverModeLogs) {

@@ -63,7 +63,8 @@ class ArcWallpaperServiceTest : public testing::Test {
  public:
   ArcWallpaperServiceTest()
       : task_environment_(std::make_unique<content::BrowserTaskEnvironment>()),
-        fake_user_manager_(std::make_unique<ash::FakeChromeUserManager>()) {}
+        user_manager_(new ash::FakeChromeUserManager()),
+        user_manager_enabler_(base::WrapUnique(user_manager_.get())) {}
 
   ArcWallpaperServiceTest(const ArcWallpaperServiceTest&) = delete;
   ArcWallpaperServiceTest& operator=(const ArcWallpaperServiceTest&) = delete;
@@ -81,9 +82,9 @@ class ArcWallpaperServiceTest : public testing::Test {
         prefs::kDeviceWallpaperImageFilePath, std::string());
 
     // User
-    fake_user_manager_->AddUser(user_manager::StubAccountId());
-    fake_user_manager_->LoginUser(user_manager::StubAccountId());
-    ASSERT_TRUE(fake_user_manager_->GetPrimaryUser());
+    user_manager_->AddUser(user_manager::StubAccountId());
+    user_manager_->LoginUser(user_manager::StubAccountId());
+    ASSERT_TRUE(user_manager_->GetPrimaryUser());
 
     // Wallpaper
     wallpaper_controller_client_ = std::make_unique<
@@ -110,7 +111,6 @@ class ArcWallpaperServiceTest : public testing::Test {
   void TearDown() override {
     arc_service_manager_.arc_bridge_service()->wallpaper()->CloseInstance(
         wallpaper_instance_.get());
-    arc_service_manager_.set_browser_context(nullptr);
     wallpaper_instance_.reset();
 
     wallpaper_controller_client_.reset();
@@ -119,20 +119,20 @@ class ArcWallpaperServiceTest : public testing::Test {
   }
 
  protected:
-  raw_ptr<arc::ArcWallpaperService, DanglingUntriaged> service_ = nullptr;
+  raw_ptr<arc::ArcWallpaperService, ExperimentalAsh> service_ = nullptr;
   std::unique_ptr<arc::FakeWallpaperInstance> wallpaper_instance_;
   std::unique_ptr<WallpaperControllerClientImpl> wallpaper_controller_client_;
   TestWallpaperController test_wallpaper_controller_;
 
  private:
   std::unique_ptr<content::BrowserTaskEnvironment> task_environment_;
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_;
+  const raw_ptr<ash::FakeChromeUserManager, ExperimentalAsh> user_manager_ =
+      nullptr;
+  user_manager::ScopedUserManager user_manager_enabler_;
   arc::ArcServiceManager arc_service_manager_;
-  TestingPrefServiceSimple pref_service_;
-  // testing_profile_ needs to be deleted before arc_service_manager_ and
-  // pref_service_.
+  // testing_profile_ needs to be deleted before arc_service_manager_.
   TestingProfile testing_profile_;
+  TestingPrefServiceSimple pref_service_;
 };
 
 }  // namespace

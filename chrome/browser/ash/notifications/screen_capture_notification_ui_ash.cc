@@ -30,7 +30,7 @@ gfx::NativeViewId ScreenCaptureNotificationUIAsh::OnStarted(
   ash::Shell::Get()->system_tray_notifier()->NotifyScreenAccessStart(
       base::BindRepeating(
           &ScreenCaptureNotificationUIAsh::ProcessStopRequestFromUI,
-          weak_ptr_factory_.GetWeakPtr()),
+          base::Unretained(this)),
       source_callback ? base::BindRepeating(std::move(source_callback),
                                             content::DesktopMediaID())
                       : base::RepeatingClosure(),
@@ -48,8 +48,6 @@ void ScreenCaptureNotificationUIAsh::ProcessStopRequestFromUI() {
 
 // static
 std::unique_ptr<ScreenCaptureNotificationUI>
-ScreenCaptureNotificationUI::Create(
-    const std::u16string& text,
-    content::WebContents* capturing_web_contents) {
+ScreenCaptureNotificationUI::Create(const std::u16string& text) {
   return std::make_unique<ash::ScreenCaptureNotificationUIAsh>(text);
 }

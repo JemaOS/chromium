@@ -87,7 +87,9 @@ bool Partitioner::Partition(const Eigen::Ref<const Eigen::MatrixXf>& queries,
   return true;
 }
 
-int Partitioner::NumPartitions() const { return leaves_.rows(); }
+int Partitioner::NumPartitions() const {
+  return leaves_.rows();
+}
 
 bool NoOpPartitioner::Partition(
     const Eigen::Ref<const Eigen::MatrixXf>& queries,
@@ -108,7 +110,9 @@ bool NoOpPartitioner::Partition(
   return true;
 }
 
-int NoOpPartitioner::NumPartitions() const { return 1; }
+int NoOpPartitioner::NumPartitions() const {
+  return 1;
+}
 
 }  // namespace core
 }  // namespace scann_ondevice

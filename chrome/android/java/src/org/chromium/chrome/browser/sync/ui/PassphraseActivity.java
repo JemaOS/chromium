@@ -17,27 +17,20 @@ import androidx.fragment.app.FragmentTransaction;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.init.ChromeBrowserInitializer;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.sync.SyncErrorNotifier;
-import org.chromium.chrome.browser.sync.SyncServiceFactory;
+import org.chromium.chrome.browser.sync.SyncService;
 import org.chromium.components.signin.base.CoreAccountInfo;
 import org.chromium.components.signin.identitymanager.ConsentLevel;
-import org.chromium.components.signin.identitymanager.IdentityManager;
-import org.chromium.components.sync.SyncService;
 
 /**
- * This activity is used for requesting a sync passphrase from the user. Typically, this will be the
- * target of an Android notification.
+ * This activity is used for requesting a sync passphrase from the user. Typically,
+ * this will be the target of an Android notification.
  */
 public class PassphraseActivity extends AppCompatActivity
-        implements PassphraseDialogFragment.Delegate, FragmentManager.OnBackStackChangedListener {
+        implements PassphraseDialogFragment.Listener, FragmentManager.OnBackStackChangedListener {
     public static final String FRAGMENT_PASSPHRASE = "passphrase_fragment";
     public static final String FRAGMENT_SPINNER = "spinner_fragment";
-
-    private Profile mProfile;
-    private IdentityManager mIdentityManager;
-    private SyncService mSyncService;
 
     private SyncService.SyncStateChangedListener mSyncStateChangedListener;
 
@@ -49,26 +42,24 @@ public class PassphraseActivity extends AppCompatActivity
         // During a normal user flow the ChromeTabbedActivity would start the Chrome browser
         // process and this wouldn't be necessary.
         ChromeBrowserInitializer.getInstance().handleSynchronousStartup();
-        mProfile = ProfileManager.getLastUsedRegularProfile();
-        mIdentityManager = IdentityServicesProvider.get().getIdentityManager(mProfile);
-        mSyncService = SyncServiceFactory.getForProfile(mProfile);
-        assert mSyncService != null;
+        assert SyncService.get() != null;
         getSupportFragmentManager().addOnBackStackChangedListener(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        Account account =
-                CoreAccountInfo.getAndroidAccountFrom(
-                        mIdentityManager.getPrimaryAccountInfo(ConsentLevel.SIGNIN));
+        Account account = CoreAccountInfo.getAndroidAccountFrom(
+                IdentityServicesProvider.get()
+                        .getIdentityManager(Profile.getLastUsedRegularProfile())
+                        .getPrimaryAccountInfo(ConsentLevel.SYNC));
         if (account == null) {
             finish();
             return;
         }
 
         if (!isShowingDialog(FRAGMENT_PASSPHRASE)) {
-            if (mSyncService.isEngineInitialized()) {
+            if (SyncService.get().isEngineInitialized()) {
                 displayPassphraseDialog();
             } else {
                 addSyncStateChangedListener();
@@ -89,22 +80,21 @@ public class PassphraseActivity extends AppCompatActivity
         if (mSyncStateChangedListener != null) {
             return;
         }
-        mSyncStateChangedListener =
-                new SyncService.SyncStateChangedListener() {
-                    @Override
-                    public void syncStateChanged() {
-                        if (mSyncService.isEngineInitialized()) {
-                            removeSyncStateChangedListener();
-                            displayPassphraseDialog();
-                        }
-                    }
-                };
-        mSyncService.addSyncStateChangedListener(mSyncStateChangedListener);
+        mSyncStateChangedListener = new SyncService.SyncStateChangedListener() {
+            @Override
+            public void syncStateChanged() {
+                if (SyncService.get().isEngineInitialized()) {
+                    removeSyncStateChangedListener();
+                    displayPassphraseDialog();
+                }
+            }
+        };
+        SyncService.get().addSyncStateChangedListener(mSyncStateChangedListener);
     }
 
     private void removeSyncStateChangedListener() {
         if (mSyncStateChangedListener != null) {
-            mSyncService.removeSyncStateChangedListener(mSyncStateChangedListener);
+            SyncService.get().removeSyncStateChangedListener(mSyncStateChangedListener);
             mSyncStateChangedListener = null;
         }
     }
@@ -114,7 +104,7 @@ public class PassphraseActivity extends AppCompatActivity
     }
 
     private void displayPassphraseDialog() {
-        assert mSyncService.isEngineInitialized();
+        assert SyncService.get().isEngineInitialized();
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
         ft.addToBackStack(null);
         PassphraseDialogFragment.newInstance(null).show(ft, FRAGMENT_PASSPHRASE);
@@ -127,10 +117,12 @@ public class PassphraseActivity extends AppCompatActivity
         dialog.show(ft, FRAGMENT_SPINNER);
     }
 
-    /** Callback for {@link PassphraseDialogFragment.Delegate} */
+    /**
+     * Callback for PassphraseDialogFragment.Listener
+     */
     @Override
     public boolean onPassphraseEntered(String passphrase) {
-        if (!passphrase.isEmpty() && mSyncService.setDecryptionPassphrase(passphrase)) {
+        if (!passphrase.isEmpty() && SyncService.get().setDecryptionPassphrase(passphrase)) {
             // The passphrase was correct - close this activity.
             finish();
             return true;
@@ -141,13 +133,8 @@ public class PassphraseActivity extends AppCompatActivity
     @Override
     public void onPassphraseCanceled() {
         // Re add the notification.
-        SyncErrorNotifier.getForProfile(mProfile).syncStateChanged();
+        SyncErrorNotifier.get().syncStateChanged();
         finish();
-    }
-
-    @Override
-    public Profile getProfile() {
-        return mProfile;
     }
 
     @Override
@@ -157,7 +144,9 @@ public class PassphraseActivity extends AppCompatActivity
         }
     }
 
-    /** Dialog shown while sync is loading. */
+    /**
+     * Dialog shown while sync is loading.
+     */
     public static class SpinnerDialogFragment extends DialogFragment {
         @Override
         public Dialog onCreateDialog(Bundle savedInstanceState) {

@@ -9,5 +9,4 @@ dictionary MediaMetadataInit {
     DOMString artist = "";
     DOMString album = "";
     sequence<MediaImage> artwork = [];
-    sequence<ChapterInformationInit> chapterInfo = [];
 };

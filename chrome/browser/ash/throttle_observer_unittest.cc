@@ -14,13 +14,15 @@ namespace ash {
 
 constexpr const char kObserverName[] = "TestObserver";
 
-class ThrottleObserverTest : public testing::Test {
+class ThrottleObserverTest
+    : public testing::Test,
+      public base::SupportsWeakPtr<ThrottleObserverTest> {
  public:
   ThrottleObserverTest() {
     observer_.StartObserving(
         nullptr /* content::BrowserContext* */,
         base::BindRepeating(&ThrottleObserverTest::OnObserverStateChanged,
-                            weak_ptr_factory_.GetWeakPtr()));
+                            AsWeakPtr()));
   }
 
   ThrottleObserverTest(const ThrottleObserverTest&) = delete;
@@ -35,7 +37,6 @@ class ThrottleObserverTest : public testing::Test {
  private:
   ThrottleObserver observer_{kObserverName};
   size_t notify_count_{0};
-  base::WeakPtrFactory<ThrottleObserverTest> weak_ptr_factory_{this};
 };
 
 // Tests that ThrottleObserver can be constructed and destructed.

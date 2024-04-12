@@ -16,6 +16,7 @@
 #include "chrome/browser/profiles/profile_attributes_init_params.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
+#include "chrome/common/extensions/extension_constants.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile_manager.h"
@@ -25,14 +26,13 @@
 #include "components/policy/core/common/policy_map.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "content/public/test/browser_task_environment.h"
+#include "extensions/browser/pref_names.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/enterprise/reporting/reporting_delegate_factory_android.h"
 #else
 #include "chrome/browser/enterprise/reporting/reporting_delegate_factory_desktop.h"
-#include "chrome/common/extensions/extension_constants.h"
-#include "extensions/browser/pref_names.h"
 #endif  // BUILDFLAG(IS_ANDROID)
 
 using ::testing::NiceMock;
@@ -94,7 +94,7 @@ class ProfileReportGeneratorTest : public ::testing::Test {
         kProfile, {}, kProfile16, 0,
         IdentityTestEnvironmentProfileAdaptor::
             GetIdentityTestEnvironmentFactories(),
-        /*is_supervised_profile=*/false, std::nullopt,
+        /*is_supervised_profile=*/false, absl::nullopt,
         std::move(policy_service_));
   }
 
@@ -110,7 +110,7 @@ class ProfileReportGeneratorTest : public ::testing::Test {
   void InitPolicyMap() {
     policy_map_.Set("kPolicyName1", policy::POLICY_LEVEL_MANDATORY,
                     policy::POLICY_SCOPE_USER, policy::POLICY_SOURCE_CLOUD,
-                    base::Value(true), nullptr);
+                    base::Value(base::Value::List()), nullptr);
     policy_map_.Set("kPolicyName2", policy::POLICY_LEVEL_RECOMMENDED,
                     policy::POLICY_SCOPE_MACHINE, policy::POLICY_SOURCE_MERGED,
                     base::Value(true), nullptr);
@@ -135,32 +135,32 @@ class ProfileReportGeneratorTest : public ::testing::Test {
     return report;
   }
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if !BUILDFLAG(IS_ANDROID)
   void SetExtensionToPendingList(const std::vector<std::string>& ids) {
-    base::Value::Dict id_values;
+    std::unique_ptr<base::Value> id_values =
+        std::make_unique<base::Value>(base::Value::Type::DICT);
     for (const auto& id : ids) {
-      id_values.Set(
-          id,
-          base::Value::Dict()
-              .Set(extension_misc::kExtensionRequestTimestamp,
-                   ::base::TimeToValue(
-                       base::Time::FromMillisecondsSinceUnixEpoch(kFakeTime)))
-              .Set(extension_misc::kExtensionWorkflowJustification,
-                   base::Value(kJustification)));
+      base::Value request_data(base::Value::Type::DICT);
+      request_data.SetKey(
+          extension_misc::kExtensionRequestTimestamp,
+          ::base::TimeToValue(base::Time::FromJavaTime(kFakeTime)));
+      request_data.SetKey(extension_misc::kExtensionWorkflowJustification,
+                          base::Value(kJustification));
+      id_values->SetKey(id, std::move(request_data));
     }
     profile()->GetTestingPrefService()->SetUserPref(
         prefs::kCloudExtensionRequestIds, std::move(id_values));
   }
 
   void SetExtensionSettings(const std::string& settings_string) {
-    std::optional<base::Value> settings =
+    absl::optional<base::Value> settings =
         base::JSONReader::Read(settings_string);
     ASSERT_TRUE(settings.has_value());
     profile()->GetTestingPrefService()->SetManagedPref(
         extensions::pref_names::kExtensionManagement,
         base::Value::ToUniquePtrValue(std::move(*settings)));
   }
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+#endif  // !BUILDFLAG(IS_ANDROID)
 
   TestingProfile* profile() { return profile_; }
   TestingProfileManager* profile_manager() { return &profile_manager_; }
@@ -232,6 +232,7 @@ TEST_F(ProfileReportGeneratorTest, ProfileIdObfuscate) {
   EXPECT_NE(report->id(), report3->id());
 }
 
+#if !BUILDFLAG(IS_ANDROID)
 TEST_F(ProfileReportGeneratorTest, PoliciesDisabled) {
   // Users' profile info is collected by default.
   std::unique_ptr<em::ChromeUserProfileInfo> report = GenerateReport();
@@ -249,26 +250,6 @@ TEST_F(ProfileReportGeneratorTest, PoliciesDisabled) {
   EXPECT_EQ(2, report->chrome_policies_size());
 }
 
-TEST_F(ProfileReportGeneratorTest, PoliciesHidden) {
-  std::unique_ptr<em::ChromeUserProfileInfo> report = GenerateReport();
-
-  for (const auto& policy : report->chrome_policies()) {
-    EXPECT_EQ("true", policy.value());
-  }
-
-  generator_.set_is_machine_scope(false);
-  report = GenerateReport();
-
-  for (const auto& policy : report->chrome_policies()) {
-    if (policy.scope() == em::Policy_PolicyScope_SCOPE_MACHINE) {
-      EXPECT_EQ("\"********\"", policy.value());
-    } else {
-      EXPECT_EQ("true", policy.value());
-    }
-  }
-}
-
-#if BUILDFLAG(ENABLE_EXTENSIONS)
 TEST_F(ProfileReportGeneratorTest, PendingRequest) {
   profile()->GetTestingPrefService()->SetManagedPref(
       prefs::kCloudExtensionRequestEnabled,
@@ -343,6 +324,6 @@ TEST_F(ProfileReportGeneratorTest, TooManyRequests) {
               report2->extension_requests(id).id());
 }
 
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 }  // namespace enterprise_reporting

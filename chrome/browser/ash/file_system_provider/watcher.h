@@ -14,7 +14,8 @@
 #include "storage/browser/file_system/watcher_manager.h"
 #include "url/gurl.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 struct Watcher;
 struct Subscriber;
@@ -79,6 +80,7 @@ struct Watcher {
   std::string last_tag;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_WATCHER_H_

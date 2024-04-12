@@ -5,10 +5,9 @@
 #ifndef CHROME_BROWSER_UPGRADE_DETECTOR_GET_INSTALLED_VERSION_H_
 #define CHROME_BROWSER_UPGRADE_DETECTOR_GET_INSTALLED_VERSION_H_
 
-#include <optional>
-
 #include "base/functional/callback_forward.h"
 #include "base/version.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 struct InstalledAndCriticalVersion {
   explicit InstalledAndCriticalVersion(base::Version the_installed_version);
@@ -26,7 +25,7 @@ struct InstalledAndCriticalVersion {
   // An optional critical version, indicating a minimum version that must be
   // running. A running version lower than this is presumed to have a critical
   // flaw sufficiently important that it must be updated as soon as possible.
-  std::optional<base::Version> critical_version;
+  absl::optional<base::Version> critical_version;
 };
 
 // A platform-specific function that invokes a callback with the currently

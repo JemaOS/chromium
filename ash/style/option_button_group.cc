@@ -22,18 +22,15 @@ OptionButtonGroup::OptionButtonGroup(int group_width)
     : OptionButtonGroup(group_width,
                         kDefaultInsideBorderInsets,
                         kDefaultChildSpacing,
-                        OptionButtonBase::kDefaultPadding,
-                        OptionButtonBase::kImageLabelSpacingDP) {}
+                        OptionButtonBase::kDefaultPadding) {}
 
 OptionButtonGroup::OptionButtonGroup(int group_width,
                                      const gfx::Insets& inside_border_insets,
                                      int between_child_spacing,
-                                     const gfx::Insets& option_button_padding,
-                                     int image_label_spacing)
+                                     const gfx::Insets& option_button_padding)
     : group_width_(group_width),
       inside_border_insets_(inside_border_insets),
-      button_padding_(option_button_padding),
-      image_label_spacing_(image_label_spacing) {
+      button_padding_(option_button_padding) {
   SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical, inside_border_insets,
       between_child_spacing));
@@ -52,7 +49,7 @@ void OptionButtonGroup::SelectButtonAtIndex(size_t index) {
 std::vector<OptionButtonBase*> OptionButtonGroup::GetSelectedButtons() {
   std::vector<OptionButtonBase*> selected_buttons;
 
-  for (ash::OptionButtonBase* button : buttons_) {
+  for (auto* button : buttons_) {
     if (button->selected())
       selected_buttons.push_back(button);
   }
@@ -63,12 +60,11 @@ std::vector<OptionButtonBase*> OptionButtonGroup::GetSelectedButtons() {
 void OptionButtonGroup::OnEnableChanged() {
   const bool enabled = GetEnabled();
 
-  for (ash::OptionButtonBase* button : buttons_) {
+  for (auto* button : buttons_)
     button->SetEnabled(enabled);
-  }
 }
 
-BEGIN_METADATA(OptionButtonGroup)
+BEGIN_METADATA(OptionButtonGroup, views::View)
 END_METADATA
 
 }  // namespace ash

@@ -17,6 +17,7 @@ import static org.chromium.chrome.browser.browserservices.ui.TrustedWebActivityM
 import static org.chromium.chrome.browser.browserservices.ui.TrustedWebActivityModel.DISCLOSURE_STATE_NOT_SHOWN;
 import static org.chromium.chrome.browser.browserservices.ui.TrustedWebActivityModel.DISCLOSURE_STATE_SHOWN;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -44,7 +45,9 @@ import org.chromium.chrome.browser.webapps.WebappRegistry;
 import org.chromium.chrome.test.util.browser.webapps.WebApkIntentDataProviderBuilder;
 import org.chromium.components.webapk.lib.common.WebApkConstants;
 
-/** Tests for WebappDisclosureController */
+/**
+ * Tests for WebappDisclosureController
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 // TODO(crbug.com/1210371): Change to use paused looper. See crbug for details.
@@ -54,9 +57,11 @@ public class WebappDisclosureControllerTest {
     private static final String BOUND_PACKAGE = WebApkConstants.WEBAPK_PACKAGE_PREFIX + ".bound";
     private static final String SCOPE = "https://www.example.com";
 
-    @Mock public CurrentPageVerifier mCurrentPageVerifier;
+    @Mock
+    public CurrentPageVerifier mCurrentPageVerifier;
 
-    @Captor public ArgumentCaptor<Runnable> mVerificationObserverCaptor;
+    @Captor
+    public ArgumentCaptor<Runnable> mVerificationObserverCaptor;
 
     public TrustedWebActivityModel mModel = new TrustedWebActivityModel();
 
@@ -71,16 +76,18 @@ public class WebappDisclosureControllerTest {
                 .addVerificationObserver(mVerificationObserverCaptor.capture());
     }
 
+    @After
+    public void tearDown() {
+        PostTask.resetPrenativeThreadPoolExecutorForTesting();
+    }
+
     private WebappDisclosureController buildControllerForWebApk(String webApkPackageName) {
         BrowserServicesIntentDataProvider intentDataProvider =
                 new WebApkIntentDataProviderBuilder(webApkPackageName, "https://pwa.rocks/")
                         .build();
-        return new WebappDisclosureController(
-                intentDataProvider,
-                mock(WebappDeferredStartupWithStorageHandler.class),
-                mModel,
-                mock(ActivityLifecycleDispatcher.class),
-                mCurrentPageVerifier);
+        return new WebappDisclosureController(intentDataProvider,
+                mock(WebappDeferredStartupWithStorageHandler.class), mModel,
+                mock(ActivityLifecycleDispatcher.class), mCurrentPageVerifier);
     }
 
     private WebappDataStorage registerStorageForWebApk(String packageName) {
@@ -95,7 +102,7 @@ public class WebappDisclosureControllerTest {
         setVerificationStatus(VerificationStatus.SUCCESS);
 
         // Simulates the case that shows the disclosure when creating a new storage.
-        controller.onDeferredStartupWithStorage(storage, /* didCreateStorage= */ true);
+        controller.onDeferredStartupWithStorage(storage, true /* didCreateStorage */);
         assertTrue(storage.shouldShowDisclosure());
         assertSnackbarShown();
 
@@ -134,7 +141,7 @@ public class WebappDisclosureControllerTest {
 
         // Simulate that starting with existing storage will not cause the disclosure to show.
         assertFalse(storage.shouldShowDisclosure());
-        controller.onDeferredStartupWithStorage(storage, /* didCreateStorage= */ false);
+        controller.onDeferredStartupWithStorage(storage, false /* didCreateStorage */);
         assertSnackbarNotShown();
 
         storage.delete();
@@ -145,7 +152,7 @@ public class WebappDisclosureControllerTest {
         WebappDataStorage storage = registerStorageForWebApk(packageName);
 
         // Try to show the disclosure the first time.
-        controller.onDeferredStartupWithStorage(storage, /* didCreateStorage= */ true);
+        controller.onDeferredStartupWithStorage(storage, true /* didCreateStorage */);
         assertSnackbarNotShown();
 
         // Try to the disclosure again this time emulating a restart.
@@ -207,7 +214,7 @@ public class WebappDisclosureControllerTest {
         WebappDataStorage storage = registerStorageForWebApk(UNBOUND_PACKAGE);
 
         setVerificationStatus(VerificationStatus.FAILURE);
-        controller.onDeferredStartupWithStorage(storage, /* didCreateStorage= */ true);
+        controller.onDeferredStartupWithStorage(storage, true /* didCreateStorage */);
         assertTrue(storage.shouldShowDisclosure());
 
         assertSnackbarNotShown();

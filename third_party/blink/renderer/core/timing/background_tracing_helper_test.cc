@@ -6,7 +6,6 @@
 
 #include "base/hash/md5_constexpr.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -40,7 +39,6 @@ class BackgroundTracingHelperTest : public testing::Test {
     return BackgroundTracingHelper::ParseBackgroundTracingPerformanceMarkHashes(
         allow_list, allow_listed_hashes);
   }
-  test::TaskEnvironment task_environment_;
 };
 
 TEST_F(BackgroundTracingHelperTest, GetSequenceNumberPos) {

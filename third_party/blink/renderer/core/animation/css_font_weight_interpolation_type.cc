@@ -31,20 +31,19 @@ class InheritedFontWeightChecker
 
 InterpolationValue CSSFontWeightInterpolationType::CreateFontWeightValue(
     FontSelectionValue font_weight) const {
-  return InterpolationValue(
-      MakeGarbageCollected<InterpolableNumber>(font_weight));
+  return InterpolationValue(std::make_unique<InterpolableNumber>(font_weight));
 }
 
 InterpolationValue CSSFontWeightInterpolationType::MaybeConvertNeutral(
     const InterpolationValue&,
     ConversionCheckers&) const {
-  return InterpolationValue(MakeGarbageCollected<InterpolableNumber>(0));
+  return InterpolationValue(std::make_unique<InterpolableNumber>(0));
 }
 
 InterpolationValue CSSFontWeightInterpolationType::MaybeConvertInitial(
     const StyleResolverState&,
     ConversionCheckers& conversion_checkers) const {
-  return CreateFontWeightValue(kNormalWeightValue);
+  return CreateFontWeightValue(NormalWeightValue());
 }
 
 InterpolationValue CSSFontWeightInterpolationType::MaybeConvertInherit(
@@ -55,7 +54,7 @@ InterpolationValue CSSFontWeightInterpolationType::MaybeConvertInherit(
   FontSelectionValue inherited_font_weight =
       state.ParentStyle()->GetFontWeight();
   conversion_checkers.push_back(
-      MakeGarbageCollected<InheritedFontWeightChecker>(inherited_font_weight));
+      std::make_unique<InheritedFontWeightChecker>(inherited_font_weight));
   return CreateFontWeightValue(inherited_font_weight);
 }
 
@@ -70,8 +69,7 @@ InterpolationValue CSSFontWeightInterpolationType::MaybeConvertValue(
     CSSValueID keyword = identifier_value->GetValueID();
     if (keyword == CSSValueID::kBolder || keyword == CSSValueID::kLighter) {
       conversion_checkers.push_back(
-          MakeGarbageCollected<InheritedFontWeightChecker>(
-              inherited_font_weight));
+          std::make_unique<InheritedFontWeightChecker>(inherited_font_weight));
     }
   }
   return CreateFontWeightValue(StyleBuilderConverterBase::ConvertFontWeight(
@@ -90,7 +88,7 @@ void CSSFontWeightInterpolationType::ApplyStandardPropertyValue(
     StyleResolverState& state) const {
   state.GetFontBuilder().SetWeight(FontSelectionValue(
       ClampTo(To<InterpolableNumber>(interpolable_value).Value(),
-              kMinWeightValue, kMaxWeightValue)));
+              MinWeightValue(), MaxWeightValue())));
 }
 
 }  // namespace blink

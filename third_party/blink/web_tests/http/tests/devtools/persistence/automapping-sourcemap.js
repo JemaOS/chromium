@@ -2,14 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {BindingsTestRunner} from 'bindings_test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as Workspace from 'devtools/models/workspace/workspace.js';
-
 (async function() {
   TestRunner.addResult(`Verify that sourcemap sources are mapped with non-exact match.\n`);
+  await TestRunner.loadTestModule('bindings_test_runner');
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.addStylesheetTag('./resources/s.css');
 
@@ -29,7 +25,7 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
   }
 
   function onFileSystemCreated() {
-    var automappingTest = new BindingsTestRunner.AutomappingTest(Workspace.Workspace.WorkspaceImpl.instance());
+    var automappingTest = new BindingsTestRunner.AutomappingTest(Workspace.workspace);
     automappingTest.waitUntilMappingIsStabilized().then(TestRunner.completeTest.bind(TestRunner));
   }
 

@@ -11,7 +11,6 @@
 #include "ui/accessibility/ax_base_export.h"
 #include "ui/accessibility/ax_enums.mojom-forward.h"
 #include "ui/accessibility/ax_node_data.h"
-#include "ui/accessibility/ax_node_id_forward.h"
 #include "ui/accessibility/ax_tree_id.h"
 #include "ui/gfx/geometry/rect.h"
 
@@ -34,13 +33,13 @@ struct AX_BASE_EXPORT AXActionData {
   ax::mojom::Action action;
 
   // The ID of the tree that this action should be performed on.
-  AXTreeID target_tree_id = AXTreeIDUnknown();
+  ui::AXTreeID target_tree_id = ui::AXTreeIDUnknown();
 
   // The source extension id (if any) of this action.
   std::string source_extension_id;
 
   // The ID of the node that this action should be performed on.
-  AXNodeID target_node_id = -1;
+  int target_node_id = -1;
 
   // The request id of this action tracked by the client.
   int request_id = -1;
@@ -91,10 +90,6 @@ struct AX_BASE_EXPORT AXActionData {
   // The behavior to use for a SCROLL_TO_MAKE_VISIBLE. This controls whether or
   // not the viewport is scrolled when the node is already visible.
   ax::mojom::ScrollBehavior scroll_behavior;
-
-  // The child tree that needs to be stitched at `target_node_id`. Only used by
-  // `ax::mojom::Action::kStitchChildTree`.
-  AXTreeID child_tree_id = AXTreeIDUnknown();
 };
 
 }  // namespace ui

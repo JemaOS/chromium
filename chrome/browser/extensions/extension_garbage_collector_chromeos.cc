@@ -82,10 +82,8 @@ void ExtensionGarbageCollectorChromeOS::GarbageCollectSharedExtensions() {
             FROM_HERE,
             base::BindOnce(
                 &GarbageCollectExtensionsOnFileThread,
-                ExtensionAssetsManagerChromeOS::GetSharedInstallDir(), paths,
-                // No need to process unpacked because shared extensions can't
-                // be unpacked.
-                /*unpacked=*/false))) {
+                ExtensionAssetsManagerChromeOS::GetSharedInstallDir(),
+                paths))) {
       NOTREACHED();
     }
   }

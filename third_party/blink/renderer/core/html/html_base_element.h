@@ -34,7 +34,7 @@ class CORE_EXPORT HTMLBaseElement final : public HTMLElement {
  public:
   explicit HTMLBaseElement(Document&);
 
-  String href() const;
+  KURL href() const;
   void setHref(const AtomicString&);
 
  private:

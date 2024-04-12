@@ -47,18 +47,18 @@ class HTMLMetaElementTest : public PageTestBase,
   }
 
  protected:
-  HTMLMetaElement* CreateColorSchemeMeta(const char* content) {
+  HTMLMetaElement* CreateColorSchemeMeta(const AtomicString& content) {
     auto* meta = MakeGarbageCollected<HTMLMetaElement>(GetDocument(),
                                                        CreateElementFlags());
-    meta->setAttribute(html_names::kNameAttr, AtomicString("color-scheme"));
-    meta->setAttribute(html_names::kContentAttr, AtomicString(content));
+    meta->setAttribute(html_names::kNameAttr, "color-scheme");
+    meta->setAttribute(html_names::kContentAttr, content);
     return meta;
   }
 
-  void SetColorScheme(const char* content) {
+  void SetColorScheme(const AtomicString& content) {
     auto* meta = To<HTMLMetaElement>(GetDocument().head()->firstChild());
     ASSERT_TRUE(meta);
-    meta->setAttribute(html_names::kContentAttr, AtomicString(content));
+    meta->setAttribute(html_names::kContentAttr, content);
   }
 
   void ExpectPageColorSchemes(ColorSchemeFlags expected) const {
@@ -97,38 +97,6 @@ TEST_F(HTMLMetaElementTest, ViewportFit_Invalid) {
             LoadTestPageAndReturnViewportFit("invalid"));
 }
 
-// TODO(https://crbug.com/1430288) remove after data collected (end of '23)
-TEST_F(HTMLMetaElementTest, ViewportFit_Auto_NotUseCounted) {
-  EXPECT_EQ(mojom::ViewportFit::kAuto,
-            LoadTestPageAndReturnViewportFit("auto"));
-  EXPECT_FALSE(GetDocument().IsUseCounted(WebFeature::kViewportFitContain));
-  EXPECT_FALSE(GetDocument().IsUseCounted(WebFeature::kViewportFitCover));
-  // TODO(https://crbug.com/1430288) remove tracking this union of features
-  // after data collected (end of '23)
-  EXPECT_FALSE(GetDocument().IsUseCounted(
-      WebFeature::kViewportFitCoverOrSafeAreaInsetBottom));
-}
-
-TEST_F(HTMLMetaElementTest, ViewportFit_Contain_IsUseCounted) {
-  EXPECT_EQ(mojom::ViewportFit::kContain,
-            LoadTestPageAndReturnViewportFit("contain"));
-  EXPECT_FALSE(GetDocument().IsUseCounted(WebFeature::kViewportFitCover));
-  EXPECT_FALSE(GetDocument().IsUseCounted(
-      WebFeature::kViewportFitCoverOrSafeAreaInsetBottom));
-  EXPECT_TRUE(GetDocument().IsUseCounted(WebFeature::kViewportFitContain));
-}
-
-// TODO(https://crbug.com/1430288) remove after data collected (end of '23)
-TEST_F(HTMLMetaElementTest, ViewportFit_Cover_IsUseCounted) {
-  EXPECT_EQ(mojom::ViewportFit::kCover,
-            LoadTestPageAndReturnViewportFit("cover"));
-  EXPECT_TRUE(GetDocument().IsUseCounted(WebFeature::kViewportFitCover));
-  // TODO(https://crbug.com/1430288) remove tracking this union of features
-  // after data collected (end of '23)
-  EXPECT_TRUE(GetDocument().IsUseCounted(
-      WebFeature::kViewportFitCoverOrSafeAreaInsetBottom));
-}
-
 TEST_F(HTMLMetaElementTest, ColorSchemeProcessing_FirstWins) {
   GetDocument().head()->setInnerHTML(R"HTML(
     <meta name="color-scheme" content="dark">
@@ -146,7 +114,7 @@ TEST_F(HTMLMetaElementTest, ColorSchemeProcessing_Remove) {
 
   ExpectPageColorSchemes(static_cast<ColorSchemeFlags>(ColorSchemeFlag::kDark));
 
-  GetDocument().getElementById(AtomicString("first-meta"))->remove();
+  GetDocument().getElementById("first-meta")->remove();
 
   ExpectPageColorSchemes(
       static_cast<ColorSchemeFlags>(ColorSchemeFlag::kLight));
@@ -185,9 +153,8 @@ TEST_F(HTMLMetaElementTest, ColorSchemeProcessing_SetAttribute) {
 
   ExpectPageColorSchemes(static_cast<ColorSchemeFlags>(ColorSchemeFlag::kDark));
 
-  GetDocument()
-      .getElementById(AtomicString("meta"))
-      ->setAttribute(html_names::kContentAttr, AtomicString("light"));
+  GetDocument().getElementById("meta")->setAttribute(html_names::kContentAttr,
+                                                     "light");
 
   ExpectPageColorSchemes(
       static_cast<ColorSchemeFlags>(ColorSchemeFlag::kLight));
@@ -200,9 +167,8 @@ TEST_F(HTMLMetaElementTest, ColorSchemeProcessing_RemoveContentAttribute) {
 
   ExpectPageColorSchemes(static_cast<ColorSchemeFlags>(ColorSchemeFlag::kDark));
 
-  GetDocument()
-      .getElementById(AtomicString("meta"))
-      ->removeAttribute(html_names::kContentAttr);
+  GetDocument().getElementById("meta")->removeAttribute(
+      html_names::kContentAttr);
 
   ExpectPageColorSchemes(
       static_cast<ColorSchemeFlags>(ColorSchemeFlag::kNormal));
@@ -215,9 +181,7 @@ TEST_F(HTMLMetaElementTest, ColorSchemeProcessing_RemoveNameAttribute) {
 
   ExpectPageColorSchemes(static_cast<ColorSchemeFlags>(ColorSchemeFlag::kDark));
 
-  GetDocument()
-      .getElementById(AtomicString("meta"))
-      ->removeAttribute(html_names::kNameAttr);
+  GetDocument().getElementById("meta")->removeAttribute(html_names::kNameAttr);
 
   ExpectPageColorSchemes(
       static_cast<ColorSchemeFlags>(ColorSchemeFlag::kNormal));

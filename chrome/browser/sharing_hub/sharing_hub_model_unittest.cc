@@ -25,7 +25,9 @@ class SharingHubModelTest : public ::testing::Test {
   }
 
   std::vector<sharing_hub::SharingHubAction> GetFirstPartyActions() {
-    return model_.GetFirstPartyActionList(test_web_contents_.get());
+    std::vector<sharing_hub::SharingHubAction> actions;
+    model_.GetFirstPartyActionList(test_web_contents_.get(), &actions);
+    return actions;
   }
 
  private:

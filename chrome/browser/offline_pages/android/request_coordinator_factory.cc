@@ -7,7 +7,7 @@
 #include <memory>
 
 #include "base/memory/raw_ptr.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
 #include "chrome/browser/browser_process.h"
@@ -78,8 +78,7 @@ RequestCoordinatorFactory::RequestCoordinatorFactory()
 
 // static
 RequestCoordinatorFactory* RequestCoordinatorFactory::GetInstance() {
-  static base::NoDestructor<RequestCoordinatorFactory> instance;
-  return instance.get();
+  return base::Singleton<RequestCoordinatorFactory>::get();
 }
 
 // static
@@ -89,8 +88,7 @@ RequestCoordinator* RequestCoordinatorFactory::GetForBrowserContext(
       GetInstance()->GetServiceForBrowserContext(context, true));
 }
 
-std::unique_ptr<KeyedService>
-RequestCoordinatorFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* RequestCoordinatorFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   std::unique_ptr<OfflinerPolicy> policy(new OfflinerPolicy());
   std::unique_ptr<Offliner> offliner;
@@ -116,10 +114,12 @@ RequestCoordinatorFactory::BuildServiceInstanceForBrowserContext(
       scheduler(new android::BackgroundSchedulerBridge());
   network::NetworkQualityTracker* network_quality_tracker =
       g_browser_process->network_quality_tracker();
-  return std::make_unique<RequestCoordinator>(
+  RequestCoordinator* request_coordinator = new RequestCoordinator(
       std::move(policy), std::move(offliner), std::move(queue),
       std::move(scheduler), network_quality_tracker,
       std::make_unique<ActiveTabInfo>(profile));
+
+  return request_coordinator;
 }
 
 }  // namespace offline_pages

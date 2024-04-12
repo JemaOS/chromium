@@ -46,30 +46,11 @@ class CORE_EXPORT FirstLetterPseudoElement final : public PseudoElement {
   void Trace(Visitor*) const override;
 
   static LayoutText* FirstLetterTextLayoutObject(const Element&);
-
-  enum class Punctuation {
-    // No punctuation seen in preceding text nodes
-    kNotSeen,
-    // Consecutive punctuation seen in preceding text nodes with no spaces after
-    kSeen,
-    // Punctuation seen in preceding text nodes, with trailing spaces. For
-    // signaling that we should stop looking for first letter text.
-    kDisallow,
-  };
-
-  // |punctuation| is used to validate combinations of ::first-letter text and
-  // punctuation that spans across text nodes. Punctuation is initially set to
-  // Punctuation::kNotSeen and is updated to Punctuation::kSeen if the text ends
-  // with punctuation, but did not otherwise include valid ::first-letter text.
-  // If the out value of |punctuation| is Punctuation::kDisallow, it's a signal
-  // that we should continue to look for ::first-letter text.
-  static unsigned FirstLetterLength(const String&,
-                                    bool preserve_breaks,
-                                    Punctuation& punctuation);
+  static unsigned FirstLetterLength(const String&);
 
   void ClearRemainingTextLayoutObject();
   LayoutTextFragment* RemainingTextLayoutObject() const {
-    return remaining_text_layout_object_.Get();
+    return remaining_text_layout_object_;
   }
 
   void UpdateTextFragments();
@@ -81,7 +62,7 @@ class CORE_EXPORT FirstLetterPseudoElement final : public PseudoElement {
  private:
   LayoutObject* CreateLayoutObject(const ComputedStyle&) override;
 
-  const ComputedStyle* CustomStyleForLayoutObject(
+  scoped_refptr<const ComputedStyle> CustomStyleForLayoutObject(
       const StyleRecalcContext&) override;
 
   void AttachFirstLetterTextLayoutObjects(LayoutText* first_letter_text);

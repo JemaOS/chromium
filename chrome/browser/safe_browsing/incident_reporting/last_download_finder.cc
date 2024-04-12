@@ -44,7 +44,7 @@ namespace {
 
 // Returns the end time of a download represented by a DownloadRow.
 int64_t GetEndTime(const history::DownloadRow& row) {
-  return row.end_time.InMillisecondsSinceUnixEpoch();
+  return row.end_time.ToJavaTime();
 }
 
 // Returns the end time of a download represented by a DownloadDetails.
@@ -214,13 +214,11 @@ void PopulateDetailsFromRow(const history::DownloadRow& download,
   language::ConvertToActualUILocale(&pref_locale);
   download_request->set_locale(pref_locale);
 
-  details->set_download_time_msec(
-      download.end_time.InMillisecondsSinceUnixEpoch());
+  details->set_download_time_msec(download.end_time.ToJavaTime());
   // Opened time is unknown for now, so use the download time if the file was
   // opened in Chrome.
   if (download.opened)
-    details->set_open_time_msec(
-        download.end_time.InMillisecondsSinceUnixEpoch());
+    details->set_open_time_msec(download.end_time.ToJavaTime());
 }
 
 // Populates the |details| protobuf with information pertaining to the

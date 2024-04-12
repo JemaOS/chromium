@@ -36,6 +36,8 @@
 #include "third_party/blink/public/common/frame/delegated_capability_request_token.h"
 #include "third_party/blink/public/common/frame/history_user_activation_state.h"
 #include "third_party/blink/public/common/metrics/post_message_counter.h"
+#include "third_party/blink/public/common/performance/performance_timeline_constants.h"
+#include "third_party/blink/public/common/scheduler/task_attribution_id.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_value.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -47,8 +49,6 @@
 #include "third_party/blink/renderer/core/frame/dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/use_counter_impl.h"
-#include "third_party/blink/renderer/core/frame/window_event_handlers.h"
-#include "third_party/blink/renderer/core/frame/window_or_worker_global_scope.h"
 #include "third_party/blink/renderer/core/html/closewatcher/close_watcher.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
@@ -59,13 +59,11 @@
 #include "third_party/blink/renderer/platform/supplementable.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
-#include "third_party/blink/renderer/platform/wtf/uuid.h"
 
 namespace blink {
 
 class BarProp;
 class CSSStyleDeclaration;
-class ComputedAccessibleNode;
 class CustomElementRegistry;
 class Document;
 class DocumentInit;
@@ -86,6 +84,7 @@ class NavigationApi;
 class Navigator;
 class Screen;
 class ScriptController;
+class ScriptPromise;
 class ScriptState;
 class ScrollToOptions;
 class SecurityOrigin;
@@ -98,10 +97,6 @@ class V8VoidFunction;
 struct WebPictureInPictureWindowOptions;
 class WindowAgent;
 
-namespace scheduler {
-class TaskAttributionInfo;
-}
-
 enum PageTransitionEventPersistence {
   kPageTransitionEventNotPersisted = 0,
   kPageTransitionEventPersisted = 1
@@ -111,8 +106,6 @@ enum PageTransitionEventPersistence {
 // please ping dcheng@chromium.org first. You probably don't want to do that.
 class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
                                          public ExecutionContext,
-                                         public WindowOrWorkerGlobalScope,
-                                         public WindowEventHandlers,
                                          public Supplementable<LocalDOMWindow> {
   USING_PRE_FINALIZER(LocalDOMWindow, Dispose);
 
@@ -140,11 +133,7 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
     return token_;
   }
 
-  LocalFrame* GetFrame() const {
-    // UnsafeTo<> is safe here because DOMWindow's frame can only change to
-    // nullptr, and it was constructed with a LocalFrame in the constructor.
-    return UnsafeTo<LocalFrame>(DOMWindow::GetFrame());
-  }
+  LocalFrame* GetFrame() const { return To<LocalFrame>(DOMWindow::GetFrame()); }
 
   ScriptController& GetScriptController() const { return *script_controller_; }
 
@@ -179,6 +168,7 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   ResourceFetcher* Fetcher() final;
   bool CanExecuteScripts(ReasonForCallingCanExecuteScripts) final;
   void ExceptionThrown(ErrorEvent*) final;
+  void AddInspectorIssue(mojom::blink::InspectorIssueInfoPtr) final;
   void AddInspectorIssue(AuditsIssue) final;
   EventTarget* ErrorEventTarget() final { return this; }
   String OutgoingReferrer() const final;
@@ -193,7 +183,6 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   void ReportPermissionsPolicyViolation(
       mojom::blink::PermissionsPolicyFeature,
       mojom::blink::PolicyDisposition,
-      const std::optional<String>& reporting_endpoint,
       const String& message = g_empty_string) const final;
   void ReportDocumentPolicyViolation(
       mojom::blink::DocumentPolicyFeature,
@@ -331,8 +320,8 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   void moveBy(int x, int y) const;
   void moveTo(int x, int y) const;
 
-  void resizeBy(int x, int y, ExceptionState&) const;
-  void resizeTo(int width, int height, ExceptionState&) const;
+  void resizeBy(int x, int y) const;
+  void resizeTo(int width, int height) const;
 
   MediaQueryList* matchMedia(const String&);
 
@@ -342,9 +331,7 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
       const String& pseudo_elt = String()) const;
 
   // Acessibility Object Model
-  ScriptPromiseTyped<ComputedAccessibleNode> getComputedAccessibleNode(
-      ScriptState*,
-      Element*);
+  ScriptPromise getComputedAccessibleNode(ScriptState*, Element*);
 
   // WebKit animation extensions
   int requestAnimationFrame(V8FrameRequestCallback*);
@@ -369,15 +356,11 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   void releaseEvents() {}
   External* external();
 
-  bool isSecureContext() const;  // NOLINT(bugprone-virtual-near-miss)
+  bool isSecureContext() const;
 
   DEFINE_ATTRIBUTE_EVENT_LISTENER(search, kSearch)
 
   DEFINE_ATTRIBUTE_EVENT_LISTENER(orientationchange, kOrientationchange)
-
-  DEFINE_ATTRIBUTE_EVENT_LISTENER(pageswap, kPageswap)
-
-  DEFINE_ATTRIBUTE_EVENT_LISTENER(pagereveal, kPagereveal)
 
   void RegisterEventListenerObserver(EventListenerObserver*);
 
@@ -430,7 +413,8 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   void EnqueueNonPersistedPageshowEvent();
   void EnqueueHashchangeEvent(const String& old_url, const String& new_url);
   void DispatchPopstateEvent(scoped_refptr<SerializedScriptValue>,
-                             scheduler::TaskAttributionInfo* parent_task);
+                             absl::optional<scheduler::TaskAttributionId>
+                                 soft_navigation_heuristics_task_id);
   void DispatchWindowLoadEvent();
   void DocumentWasClosed();
 
@@ -509,8 +493,7 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
 
   // Called when a network request buffered an additional `num_bytes` while this
   // frame is in back-forward cache.
-  void DidBufferLoadWhileInBackForwardCache(bool update_process_wide_count,
-                                            size_t num_bytes);
+  void DidBufferLoadWhileInBackForwardCache(size_t num_bytes);
 
   // Whether the window is credentialless or not.
   bool credentialless() const;
@@ -520,12 +503,11 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   Fence* fence();
 
   CloseWatcher::WatcherStack* closewatcher_stack() {
-    return closewatcher_stack_.Get();
+    return closewatcher_stack_;
   }
 
-  void GenerateNewNavigationId();
-
-  String GetNavigationId() const { return navigation_id_; }
+  void IncrementNavigationId() { navigation_id_++; }
+  uint32_t GetNavigationId() const { return navigation_id_; }
 
   NavigationApi* navigation();
 
@@ -541,9 +523,8 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   // given window, it cannot be taken away.
   void SetHasStorageAccess();
 
-  // https://html.spec.whatwg.org/multipage/browsing-the-web.html#has-been-revealed
-  bool HasBeenRevealed() const { return has_been_revealed_; }
-  void SetHasBeenRevealed(bool revealed);
+  bool HadActivationlessPaymentRequest() const;
+  void SetHadActivationlessPaymentRequest();
 
  protected:
   // EventTarget overrides.
@@ -558,14 +539,12 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
  private:
   class NetworkStateObserver;
 
-  // Intentionally private to prevent redundant checks.
+  // Intentionally private to prevent redundant checks when the type is
+  // already LocalDOMWindow.
   bool IsLocalDOMWindow() const override { return true; }
+  bool IsRemoteDOMWindow() const override { return false; }
 
   bool HasInsecureContextInAncestors() const override;
-
-  Document& GetDocumentForWindowEventHandler() const override {
-    return *document();
-  }
 
   void Dispose();
 
@@ -614,7 +593,7 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   Member<Event> current_event_;
 
   // Store TrustedTypesPolicyFactory, per DOMWrapperWorld.
-  mutable HeapHashMap<Member<const DOMWrapperWorld>,
+  mutable HeapHashMap<scoped_refptr<const DOMWrapperWorld>,
                       Member<TrustedTypePolicyFactory>>
       trusted_types_map_;
 
@@ -684,9 +663,9 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   bool is_picture_in_picture_window_ = false;
 
   // The navigation id of a document is to identify navigation of special types
-  // like bfcache navigation or soft navigation. It changes when navigations
+  // like bfcache navigation or soft navigation. It increments when navigations
   // of these types occur.
-  String navigation_id_;
+  uint32_t navigation_id_ = kNavigationIdDefaultValue;
 
   // Records whether this window has obtained storage access. It cannot be
   // revoked once set to true.
@@ -697,9 +676,6 @@ class CORE_EXPORT LocalDOMWindow final : public DOMWindow,
   // TODO(crbug.com/1439565): Move this bit to a new payments-specific
   // per-LocalDOMWindow class in the payments module.
   bool had_activationless_payment_request_ = false;
-
-  // https://html.spec.whatwg.org/multipage/browsing-the-web.html#has-been-revealed
-  bool has_been_revealed_ = false;
 };
 
 template <>

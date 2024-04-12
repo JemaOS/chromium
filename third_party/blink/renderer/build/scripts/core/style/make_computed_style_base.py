@@ -29,12 +29,9 @@ ALIGNMENT_ORDER = [
     'ScaleTransformOperation',
     'RotateTransformOperation',
     'TranslateTransformOperation',
-    'NGGridTrackList',
-    'StyleHighlightData',
-    'FilterOperations',
-    'DynamicRangeLimit',
+    'GridTrackList',
     'ComputedGridTrackList',
-    'std::optional<gfx::Size>',
+    'absl::optional<gfx::Size>',
     'double',
     # Aligns like a pointer (can be 32 or 64 bits)
     'NamedGridLinesMap',
@@ -46,9 +43,9 @@ ALIGNMENT_ORDER = [
     'Vector<TimelineAxis>',
     'Vector<TimelineInset>',
     'GridPosition',
-    'ScrollStartData',
     'AtomicString',
     'scoped_refptr',
+    'Persistent',
     'std::unique_ptr',
     'Vector<String>',
     'Font',
@@ -56,16 +53,12 @@ ALIGNMENT_ORDER = [
     'NinePieceImage',
     'SVGPaint',
     'IntrinsicLength',
-    'TextBoxEdge',
     'TextDecorationThickness',
     'StyleAspectRatio',
-    'StyleIntrinsicLength',
-    'std::optional<StyleScrollbarColor>',
-    'std::optional<StyleOverflowClipMargin>',
-    # Compressed builds a Member can be 32 bits, vs. a pointer will be 64.
-    'Member',
+    'absl::optional<StyleIntrinsicLength>',
+    'absl::optional<StyleOverflowClipMargin>',
     # Aligns like float
-    'std::optional<Length>',
+    'absl::optional<Length>',
     'StyleInitialLetter',
     'StyleOffsetRotation',
     'TransformOrigin',
@@ -95,7 +88,6 @@ ALIGNMENT_ORDER = [
     'size_t',
     'wtf_size_t',
     'int',
-    'InsetArea',
     # Aligns like short
     'unsigned short',
     'short',
@@ -171,7 +163,7 @@ def _create_groups(properties):
         # The flag field for this property, if any, should not be part of
         # the same group as the property; since it is not inherited
         # (you cannot inherit the inherit flag), that would always preclude
-        # copy-on-write for the group when calling the inheriting constructor.
+        # copy-on-write for the group in InheritFrom().
         if flag_field is not None:
             root_group_dict[None].append(flag_field)
 
@@ -338,7 +330,7 @@ def _create_property_field(property_):
         size=size,
         default_value=property_.default_value,
         derived_from=property_.derived_from,
-        reset_on_new_style=property_.reset_on_new_style,
+        custom_copy=property_.custom_copy,
         custom_compare=property_.custom_compare,
         mutable=property_.mutable,
         getter_method_name=property_.getter,
@@ -370,7 +362,7 @@ def _create_inherited_flag_field(property_):
         size=1,
         default_value='true',
         derived_from=None,
-        reset_on_new_style=False,
+        custom_copy=False,
         custom_compare=False,
         mutable=False,
         getter_method_name=name_source.to_function_name(),
@@ -653,9 +645,7 @@ class ComputedStyleBaseWriter(json5_generator.Writer):
             'computed_style_base.cc':
             self.generate_base_computed_style_cpp,
             'computed_style_base_constants.h':
-            self.generate_base_computed_style_constants_h,
-            'computed_style_base_constants.cc':
-            self.generate_base_computed_style_constants_cc,
+            self.generate_base_computed_style_constants,
         }
 
     @template_expander.use_jinja(
@@ -692,16 +682,7 @@ class ComputedStyleBaseWriter(json5_generator.Writer):
 
     @template_expander.use_jinja(
         'core/style/templates/computed_style_base_constants.h.tmpl')
-    def generate_base_computed_style_constants_h(self):
-        return {
-            'input_files': self._input_files,
-            'properties': self._properties,
-            'enums': self._generated_enums,
-        }
-
-    @template_expander.use_jinja(
-        'core/style/templates/computed_style_base_constants.cc.tmpl')
-    def generate_base_computed_style_constants_cc(self):
+    def generate_base_computed_style_constants(self):
         return {
             'input_files': self._input_files,
             'properties': self._properties,

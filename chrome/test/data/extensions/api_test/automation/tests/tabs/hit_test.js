@@ -26,4 +26,4 @@ var allTests = [
   }
 ];
 
-setUpAndRunTabsTests(allTests, 'hit_test.html');
+setUpAndRunTests(allTests, 'hit_test.html');

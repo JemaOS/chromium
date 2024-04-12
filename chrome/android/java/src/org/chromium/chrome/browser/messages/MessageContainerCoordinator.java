@@ -23,7 +23,8 @@ import org.chromium.ui.base.ViewUtils;
  * and control the visibility of browser control when message is being shown.
  */
 public class MessageContainerCoordinator implements BrowserControlsStateProvider.Observer {
-    @Nullable private MessageContainer mContainer;
+    @Nullable
+    private MessageContainer mContainer;
     private BrowserControlsManager mControlsManager;
 
     /** The list of observers for the message container. */
@@ -78,8 +79,8 @@ public class MessageContainerCoordinator implements BrowserControlsStateProvider
      * The {@link MessageContainer} view should be laid out for this method to return a meaningful
      * value.
      *
-     * @return The maximum translation Y value the message banner can have as a result of
-     *         the gestures. Positive values mean the message banner can be translated
+     * @return The maximum translation Y value the message banner can have as a result of the
+     *         animations or the gestures. Positive values mean the message banner can be translated
      *         upward from the top of the MessagesContainer.
      */
     public int getMessageMaxTranslation() {
@@ -90,22 +91,9 @@ public class MessageContainerCoordinator implements BrowserControlsStateProvider
         return messageHeightWithShadow + getContainerTopOffset();
     }
 
-    /**
-     * @return The available offset between message's top side and app's top edge.
-     */
-    public int getMessageTopOffset() {
-        // The top offset is message shadow + controls height (adjusted for
-        // Message container offsets)
-        return getContainerTopOffset() + mContainer.getMessageShadowTopMargin();
-    }
-
     @Override
-    public void onControlsOffsetChanged(
-            int topOffset,
-            int topControlsMinHeightOffset,
-            int bottomOffset,
-            int bottomControlsMinHeightOffset,
-            boolean needsAnimate) {
+    public void onControlsOffsetChanged(int topOffset, int topControlsMinHeightOffset,
+            int bottomOffset, int bottomControlsMinHeightOffset, boolean needsAnimate) {
         updateMargins();
     }
 

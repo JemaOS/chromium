@@ -110,7 +110,7 @@ class MediaKeys::PendingAction final
 
   DOMArrayBuffer* Data() const {
     DCHECK_EQ(Type::kSetServerCertificate, type_);
-    return data_.Get();
+    return data_;
   }
 
   const String& StringData() const {
@@ -161,10 +161,10 @@ class MediaKeys::PendingAction final
 class SetCertificateResultPromise
     : public ContentDecryptionModuleResultPromise {
  public:
-  SetCertificateResultPromise(ScriptPromiseResolverTyped<IDLBoolean>* resolver,
+  SetCertificateResultPromise(ScriptState* script_state,
                               const MediaKeysConfig& config,
                               MediaKeys* media_keys)
-      : ContentDecryptionModuleResultPromise(resolver,
+      : ContentDecryptionModuleResultPromise(script_state,
                                              config,
                                              EmeApiType::kSetServerCertificate),
         media_keys_(media_keys) {}
@@ -176,7 +176,7 @@ class SetCertificateResultPromise
     if (!IsValidToFulfillPromise())
       return;
 
-    Resolve<IDLBoolean>(true);
+    Resolve(true);
   }
 
   void CompleteWithError(WebContentDecryptionModuleException exception_code,
@@ -190,7 +190,7 @@ class SetCertificateResultPromise
     // false." So convert any NOTSUPPORTEDERROR into resolving with false.
     if (exception_code ==
         kWebContentDecryptionModuleExceptionNotSupportedError) {
-      Resolve<IDLBoolean>(false);
+      Resolve(false);
       return;
     }
 
@@ -214,12 +214,11 @@ class SetCertificateResultPromise
 class GetStatusForPolicyResultPromise
     : public ContentDecryptionModuleResultPromise {
  public:
-  GetStatusForPolicyResultPromise(
-      ScriptPromiseResolverTyped<V8MediaKeyStatus>* resolver,
-      const MediaKeysConfig& config,
-      WebString min_hdcp_version,
-      MediaKeys* media_keys)
-      : ContentDecryptionModuleResultPromise(resolver,
+  GetStatusForPolicyResultPromise(ScriptState* script_state,
+                                  const MediaKeysConfig& config,
+                                  WebString min_hdcp_version,
+                                  MediaKeys* media_keys)
+      : ContentDecryptionModuleResultPromise(script_state,
                                              config,
                                              EmeApiType::kGetStatusForPolicy),
         media_keys_(media_keys),
@@ -254,8 +253,7 @@ class GetStatusForPolicyResultPromise
       }
     }
 
-    Resolve<V8MediaKeyStatus>(
-        EncryptedMediaUtils::ConvertKeyStatusToString(key_status));
+    Resolve(EncryptedMediaUtils::ConvertKeyStatusToString(key_status));
   }
 
   void Trace(Visitor* visitor) const override {
@@ -335,7 +333,7 @@ MediaKeySession* MediaKeys::createSession(ScriptState* script_state,
                                                config_);
 }
 
-ScriptPromiseTyped<IDLBoolean> MediaKeys::setServerCertificate(
+ScriptPromise MediaKeys::setServerCertificate(
     ScriptState* script_state,
     const DOMArrayPiece& server_certificate,
     ExceptionState& exception_state) {
@@ -343,7 +341,7 @@ ScriptPromiseTyped<IDLBoolean> MediaKeys::setServerCertificate(
   if (!GetExecutionContext()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidAccessError,
                                       "The context provided is invalid.");
-    return ScriptPromiseTyped<IDLBoolean>();
+    return ScriptPromise();
   }
 
   // From https://w3c.github.io/encrypted-media/#setServerCertificate
@@ -360,7 +358,7 @@ ScriptPromiseTyped<IDLBoolean> MediaKeys::setServerCertificate(
   //    with a new a newly created TypeError.
   if (!server_certificate.ByteLength()) {
     exception_state.ThrowTypeError("The serverCertificate parameter is empty.");
-    return ScriptPromiseTyped<IDLBoolean>();
+    return ScriptPromise();
   }
 
   // 3. Let certificate be a copy of the contents of the serverCertificate
@@ -369,12 +367,10 @@ ScriptPromiseTyped<IDLBoolean> MediaKeys::setServerCertificate(
       server_certificate.Data(), server_certificate.ByteLength());
 
   // 4. Let promise be a new promise.
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<IDLBoolean>>(
-      script_state);
-  auto promise = resolver->Promise();
   SetCertificateResultPromise* result =
-      MakeGarbageCollected<SetCertificateResultPromise>(resolver, config_,
+      MakeGarbageCollected<SetCertificateResultPromise>(script_state, config_,
                                                         this);
+  ScriptPromise promise = result->Promise();
 
   // 5. Run the following steps asynchronously. See SetServerCertificateTask().
   pending_actions_.push_back(PendingAction::CreatePendingSetServerCertificate(
@@ -414,7 +410,7 @@ void MediaKeys::SetServerCertificateTask(
   // (These are handled by Chromium and the CDM.)
 }
 
-ScriptPromiseTyped<V8MediaKeyStatus> MediaKeys::getStatusForPolicy(
+ScriptPromise MediaKeys::getStatusForPolicy(
     ScriptState* script_state,
     const MediaKeysPolicy* media_keys_policy,
     ExceptionState& exception_state) {
@@ -422,7 +418,7 @@ ScriptPromiseTyped<V8MediaKeyStatus> MediaKeys::getStatusForPolicy(
   if (!GetExecutionContext()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidAccessError,
                                       "The context provided is invalid.");
-    return ScriptPromiseTyped<V8MediaKeyStatus>();
+    return ScriptPromise();
   }
 
   // TODO(xhwang): Pass MediaKeysPolicy classes all the way to Chromium when
@@ -430,13 +426,10 @@ ScriptPromiseTyped<V8MediaKeyStatus> MediaKeys::getStatusForPolicy(
   String min_hdcp_version = media_keys_policy->minHdcpVersion();
 
   // Let promise be a new promise.
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<V8MediaKeyStatus>>(
-          script_state);
   GetStatusForPolicyResultPromise* result =
       MakeGarbageCollected<GetStatusForPolicyResultPromise>(
-          resolver, config_, min_hdcp_version, this);
-  auto promise = resolver->Promise();
+          script_state, config_, min_hdcp_version, this);
+  ScriptPromise promise = result->Promise();
 
   // Run the following steps asynchronously. See GetStatusForPolicyTask().
   pending_actions_.push_back(

@@ -9,7 +9,7 @@ if ('ServiceWorkerGlobalScope' in self) {
   self.selfFrameId = 0;
 }
 
-var getURL = chrome.runtime.getURL;
+var getURL = chrome.extension.getURL;
 var deepEq = chrome.test.checkDeepEq;
 var expectedEventData;
 var capturedEventData;

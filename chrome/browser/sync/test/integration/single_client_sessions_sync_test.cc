@@ -17,11 +17,11 @@
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/session_sync_service_factory.h"
-#include "chrome/browser/sync/test/integration/history_helper.h"
 #include "chrome/browser/sync/test/integration/session_hierarchy_match_checker.h"
 #include "chrome/browser/sync/test/integration/sessions_helper.h"
 #include "chrome/browser/sync/test/integration/sync_service_impl_harness.h"
 #include "chrome/browser/sync/test/integration/sync_test.h"
+#include "chrome/browser/sync/test/integration/typed_urls_helper.h"
 #include "chrome/browser/sync/test/integration/updated_progress_marker_checker.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
@@ -33,7 +33,6 @@
 #include "components/history/core/browser/history_types.h"
 #include "components/sessions/core/session_types.h"
 #include "components/signin/public/identity_manager/account_info.h"
-#include "components/signin/public/identity_manager/accounts_in_cookie_jar_info.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/sync/base/time.h"
 #include "components/sync/engine/cycle/entity_change_metric_recording.h"
@@ -58,7 +57,6 @@
 namespace {
 
 using fake_server::SessionsHierarchy;
-using history_helper::GetUrlFromClient;
 using sessions_helper::CheckInitialState;
 using sessions_helper::CloseTab;
 using sessions_helper::ExecJs;
@@ -77,6 +75,7 @@ using sessions_helper::WindowsMatch;
 using sync_sessions::SessionSyncTestHelper;
 using testing::IsEmpty;
 using testing::UnorderedElementsAre;
+using typed_urls_helper::GetUrlFromClient;
 
 static const char* kBaseFragmentURL =
     "data:text/html,<html><title>Fragment</title><body></body></html>";
@@ -116,7 +115,7 @@ class IsHistoryURLSyncedChecker : public SingleClientStatusChangeChecker {
 
  private:
   const std::string url_;
-  const raw_ptr<fake_server::FakeServer> fake_server_;
+  raw_ptr<fake_server::FakeServer> fake_server_;
 };
 
 class IsIconURLSyncedChecker : public SingleClientStatusChangeChecker {
@@ -156,7 +155,7 @@ class IsIconURLSyncedChecker : public SingleClientStatusChangeChecker {
  private:
   const std::string page_url_;
   const std::string icon_url_;
-  const raw_ptr<fake_server::FakeServer> fake_server_;
+  raw_ptr<fake_server::FakeServer> fake_server_;
 };
 
 // Checker to block until the history DB for |profile| does / does not have a
@@ -268,22 +267,19 @@ class SingleClientSessionsSyncTest : public SyncTest {
   // Simulates receiving list of accounts in the cookie jar from ListAccounts
   // endpoint. Adds |account_ids| into signed in accounts, notifies
   // SyncServiceImpl and waits for change to propagate to sync engine.
-  void UpdateCookieJarAccountsAndWait(std::vector<CoreAccountInfo> accounts,
+  void UpdateCookieJarAccountsAndWait(std::vector<CoreAccountId> account_ids,
                                       bool expected_cookie_jar_mismatch) {
-    signin::AccountsInCookieJarInfo cookies;
-    cookies.accounts_are_fresh = true;
-    for (const CoreAccountInfo& account : accounts) {
-      cookies.signed_in_accounts.emplace_back();
-      cookies.signed_in_accounts.back().id = account.account_id;
-      cookies.signed_in_accounts.back().gaia_id = account.gaia;
-      cookies.signed_in_accounts.back().email = account.email;
+    std::vector<gaia::ListedAccount> accounts;
+    for (const CoreAccountId& account_id : account_ids) {
+      gaia::ListedAccount signed_in_account;
+      signed_in_account.id = account_id;
+      accounts.push_back(signed_in_account);
     }
     base::RunLoop run_loop;
     EXPECT_EQ(expected_cookie_jar_mismatch,
-              GetClient(0)->service()->HasCookieJarMismatch(
-                  cookies.signed_in_accounts));
+              GetClient(0)->service()->HasCookieJarMismatch(accounts));
     GetClient(0)->service()->OnAccountsInCookieUpdatedWithCallback(
-        cookies, run_loop.QuitClosure());
+        accounts, run_loop.QuitClosure());
     run_loop.Run();
   }
 
@@ -354,6 +350,43 @@ IN_PROC_BROWSER_TEST_F(SingleClientSessionsSyncTest, NavigateInTab) {
 
   EXPECT_THAT(GetFakeServer()->GetCommittedHistoryURLs(),
               UnorderedElementsAre(url1.spec(), url2.spec()));
+}
+
+IN_PROC_BROWSER_TEST_F(SingleClientSessionsSyncTest,
+                       JavascriptHistoryReplaceState) {
+  const std::string url1 =
+      embedded_test_server()->GetURL("/sync/simple.html").spec();
+  const std::string url2 =
+      embedded_test_server()->GetURL("/replaced_history.html").spec();
+
+  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
+  ASSERT_TRUE(CheckInitialState(0));
+
+  ASSERT_TRUE(OpenTab(0, GURL(url1)));
+  WaitForHierarchyOnServer(SessionsHierarchy({{url1}}));
+
+  ASSERT_TRUE(
+      ExecJs(/*browser_index=*/0, /*tab_index=*/0,
+             base::StringPrintf("history.replaceState({}, 'page 2', '%s')",
+                                url2.c_str())));
+
+  WaitForHierarchyOnServer(SessionsHierarchy({{url2}}));
+
+  // Fetch the tab from the server for further verification.
+  const std::vector<sync_pb::SyncEntity> entities =
+      GetFakeServer()->GetSyncEntitiesByModelType(syncer::SESSIONS);
+  const sync_pb::TabNavigation* tab_navigation = nullptr;
+  for (const sync_pb::SyncEntity& entity : entities) {
+    if (entity.specifics().session().tab().navigation_size() == 1 &&
+        entity.specifics().session().tab().navigation(0).virtual_url() ==
+            url2) {
+      tab_navigation = &entity.specifics().session().tab().navigation(0);
+    }
+  }
+
+  ASSERT_NE(nullptr, tab_navigation);
+  EXPECT_TRUE(tab_navigation->has_replaced_navigation());
+  EXPECT_EQ(url1, tab_navigation->replaced_navigation().first_committed_url());
 }
 
 IN_PROC_BROWSER_TEST_F(SingleClientSessionsSyncTest,
@@ -630,7 +663,6 @@ IN_PROC_BROWSER_TEST_F(SingleClientSessionsSyncTest, OpenNewWindow) {
 IN_PROC_BROWSER_TEST_F(SingleClientSessionsSyncTest,
                        GarbageCollectionOfForeignSessions) {
   const std::string kForeignSessionTag = "ForeignSessionTag";
-  const std::string kForeignClientName = "ForeignClientName";
   const SessionID kWindowId = SessionID::FromSerializedValue(5);
   const SessionID kTabId1 = SessionID::FromSerializedValue(1);
   const SessionID kTabId2 = SessionID::FromSerializedValue(2);
@@ -646,7 +678,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientSessionsSyncTest,
   // that such tabs are also subject to garbage collection.
   sync_pb::SessionSpecifics header =
       SessionSyncTestHelper::BuildHeaderSpecificsWithoutWindows(
-          kForeignSessionTag, kForeignClientName);
+          kForeignSessionTag);
   SessionSyncTestHelper::AddWindowSpecifics(kWindowId, {kTabId1}, &header);
 
   for (const sync_pb::SessionSpecifics& specifics : {tab1, tab2, header}) {
@@ -762,7 +794,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientSessionsSyncTest, CorruptForeignTabUpdate) {
           /*last_modified_time=*/0));
 
   // Mimic a browser restart by forcing a refresh to get updates.
-  GetSyncService(0)->TriggerRefresh({syncer::SESSIONS});
+  GetSyncService(0)->TriggerRefresh(syncer::SESSIONS);
   EXPECT_TRUE(UpdatedProgressMarkerChecker(GetSyncService(0)).Wait());
 
   // Foreign data should be empty.
@@ -829,8 +861,9 @@ IN_PROC_BROWSER_TEST_F(SingleClientSessionsSyncTest, CookieJarMismatch) {
   // Updating the cookie jar has to travel to the sync engine. It is possible
   // something is already running or scheduled to run on the sync thread. We
   // want to block here until we know the cookie jar stats have been updated.
-  UpdateCookieJarAccountsAndWait({GetClient(0)->service()->GetAccountInfo()},
-                                 /*expected_cookie_jar_mismatch=*/false);
+  UpdateCookieJarAccountsAndWait(
+      {GetClient(0)->service()->GetAccountInfo().account_id},
+      /*expected_cookie_jar_mismatch=*/false);
 
   // Trigger a sync and wait for it.
   GURL url2 =
@@ -899,7 +932,6 @@ class SingleClientSessionsSyncTestWithFaviconTestServer
 IN_PROC_BROWSER_TEST_F(SingleClientSessionsSyncTestWithFaviconTestServer,
                        MAYBE_ShouldDeleteOnDemandIconsOnSessionsDisabled) {
   const std::string kForeignSessionTag = "ForeignSessionTag";
-  const std::string kForeignClientName = "ForeignClientName";
   const SessionID kWindowId = SessionID::FromSerializedValue(5);
   const SessionID kTabId = SessionID::FromSerializedValue(1);
   const base::Time kLastModifiedTime = base::Time::Now();
@@ -910,7 +942,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientSessionsSyncTestWithFaviconTestServer,
       helper.BuildTabSpecifics(kForeignSessionTag, kWindowId, kTabId);
   sync_pb::SessionSpecifics header =
       SessionSyncTestHelper::BuildHeaderSpecificsWithoutWindows(
-          kForeignSessionTag, kForeignClientName);
+          kForeignSessionTag);
   SessionSyncTestHelper::AddWindowSpecifics(kWindowId, {kTabId}, &header);
   for (const sync_pb::SessionSpecifics& specifics : {tab, header}) {
     sync_pb::EntitySpecifics entity;

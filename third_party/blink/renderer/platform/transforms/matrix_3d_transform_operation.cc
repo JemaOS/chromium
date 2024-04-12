@@ -33,7 +33,7 @@
 
 namespace blink {
 
-TransformOperation* Matrix3DTransformOperation::Accumulate(
+scoped_refptr<TransformOperation> Matrix3DTransformOperation::Accumulate(
     const TransformOperation& other_op) {
   DCHECK(other_op.IsSameType(*this));
   const auto& other = To<Matrix3DTransformOperation>(other_op);
@@ -42,10 +42,10 @@ TransformOperation* Matrix3DTransformOperation::Accumulate(
   if (!result.Accumulate(other.matrix_))
     return nullptr;
 
-  return MakeGarbageCollected<Matrix3DTransformOperation>(result);
+  return Matrix3DTransformOperation::Create(result);
 }
 
-TransformOperation* Matrix3DTransformOperation::Blend(
+scoped_refptr<TransformOperation> Matrix3DTransformOperation::Blend(
     const TransformOperation* from,
     double progress,
     bool blend_to_identity) {
@@ -62,13 +62,14 @@ TransformOperation* Matrix3DTransformOperation::Blend(
   if (!to_t.Blend(from_t, progress))
     return nullptr;
 
-  return MakeGarbageCollected<Matrix3DTransformOperation>(to_t);
+  return Matrix3DTransformOperation::Create(to_t);
 }
 
-TransformOperation* Matrix3DTransformOperation::Zoom(double factor) {
+scoped_refptr<TransformOperation> Matrix3DTransformOperation::Zoom(
+    double factor) {
   gfx::Transform result = matrix_;
   result.Zoom(factor);
-  return MakeGarbageCollected<Matrix3DTransformOperation>(result);
+  return Create(result);
 }
 
 }  // namespace blink

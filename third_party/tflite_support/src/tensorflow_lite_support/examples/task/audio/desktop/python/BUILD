@@ -1,6 +1,5 @@
-# Placeholder: load py_binary
-
 package(
+    default_applicable_licenses = ["//tensorflow_lite_support:license"],
     licenses = ["notice"],  # Apache 2.0
 )
 
@@ -14,7 +13,6 @@ py_binary(
     srcs = ["audio_classifier_demo.py"],
     data = ["//tensorflow_lite_support/examples/task/audio/desktop:audio_classifier_demo"],
     deps = [
-        # build rule placeholder: tensorflow dep,
         "@absl_py//absl:app",
         "@absl_py//absl/flags",
     ],

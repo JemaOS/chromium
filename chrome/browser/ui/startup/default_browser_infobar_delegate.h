@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_UI_STARTUP_DEFAULT_BROWSER_INFOBAR_DELEGATE_H_
 
 #include "base/memory/raw_ptr.h"
-#include "base/types/pass_key.h"
 #include "chrome/browser/shell_integration.h"
 #include "components/infobars/content/content_infobar_manager.h"
 #include "components/infobars/core/confirm_infobar_delegate.h"
@@ -22,16 +21,15 @@ class DefaultBrowserInfoBarDelegate : public ConfirmInfoBarDelegate {
  public:
   // Creates a default browser infobar and delegate and adds the infobar to
   // |infobar_manager|.
-  static infobars::InfoBar* Create(
-      infobars::ContentInfoBarManager* infobar_manager,
-      Profile* profile);
+  static void Create(infobars::ContentInfoBarManager* infobar_manager,
+                     Profile* profile);
 
   DefaultBrowserInfoBarDelegate(const DefaultBrowserInfoBarDelegate&) = delete;
   DefaultBrowserInfoBarDelegate& operator=(
       const DefaultBrowserInfoBarDelegate&) = delete;
 
-  DefaultBrowserInfoBarDelegate(base::PassKey<DefaultBrowserInfoBarDelegate>,
-                                Profile* profile);
+ protected:
+  explicit DefaultBrowserInfoBarDelegate(Profile* profile);
   ~DefaultBrowserInfoBarDelegate() override;
 
  private:

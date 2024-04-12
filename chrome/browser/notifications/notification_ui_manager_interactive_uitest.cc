@@ -19,6 +19,7 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/permissions/permission_result.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -70,10 +71,8 @@ class NotificationUIManagerInteractiveUITest : public InProcessBrowserTest {
   // Executes |script| and stores the result as a string in |result|. A boolean
   // will be returned, indicating whether the script was executed successfully.
   bool RunScript(const std::string& script, std::string* result) const {
-    *result =
-        content::EvalJs(GetActiveWebContents()->GetPrimaryMainFrame(), script)
-            .ExtractString();
-    return true;
+    return content::ExecuteScriptAndExtractString(
+        GetActiveWebContents()->GetPrimaryMainFrame(), script, result);
   }
 
   GURL TestPageUrl() const {
@@ -113,8 +112,8 @@ IN_PROC_BROWSER_TEST_F(NotificationUIManagerInteractiveUITest,
   const message_center::Notification* notification =
       manager()->FindById(*ids.begin(), profile_id);
   ASSERT_TRUE(notification);
-  notification->delegate()->Click(/*button_index=*/std::nullopt,
-                                  /*reply=*/std::nullopt);
+  notification->delegate()->Click(/*button_index=*/absl::nullopt,
+                                  /*reply=*/absl::nullopt);
 
   ASSERT_TRUE(RunScript("GetMessageFromWorker()", &script_result));
   EXPECT_EQ("action_close", script_result);

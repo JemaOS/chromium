@@ -5,7 +5,6 @@
 #include "third_party/blink/renderer/core/css/css_test_helpers.h"
 
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_css_style_sheet_init.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_property_definition.h"
 #include "third_party/blink/renderer/core/css/css_custom_ident_value.h"
 #include "third_party/blink/renderer/core/css/css_numeric_literal_value.h"
@@ -73,16 +72,6 @@ CSSStyleSheet* CreateStyleSheet(Document& document) {
       document, NullURL(), TextPosition::MinimumPosition(), UTF8Encoding());
 }
 
-RuleSet* CreateRuleSet(Document& document, String text) {
-  DummyExceptionStateForTesting exception_state;
-  auto* init = CSSStyleSheetInit::Create();
-  auto* media_query_evaluator =
-      MakeGarbageCollected<MediaQueryEvaluator>(document.GetFrame());
-  auto* sheet = CSSStyleSheet::Create(document, init, exception_state);
-  sheet->replaceSync(text, exception_state);
-  return &sheet->Contents()->EnsureRuleSet(*media_query_evaluator);
-}
-
 PropertyRegistration* CreatePropertyRegistration(const String& name,
                                                  String syntax,
                                                  const CSSValue* initial_value,
@@ -104,7 +93,7 @@ PropertyRegistration* CreateLengthRegistration(const String& name, int px) {
 void RegisterProperty(Document& document,
                       const String& name,
                       const String& syntax,
-                      const std::optional<String>& initial_value,
+                      const absl::optional<String>& initial_value,
                       bool is_inherited) {
   DummyExceptionStateForTesting exception_state;
   RegisterProperty(document, name, syntax, initial_value, is_inherited,
@@ -115,7 +104,7 @@ void RegisterProperty(Document& document,
 void RegisterProperty(Document& document,
                       const String& name,
                       const String& syntax,
-                      const std::optional<String>& initial_value,
+                      const absl::optional<String>& initial_value,
                       bool is_inherited,
                       ExceptionState& exception_state) {
   DCHECK(!initial_value || !initial_value.value().IsNull());
@@ -133,7 +122,7 @@ void RegisterProperty(Document& document,
 void DeclareProperty(Document& document,
                      const String& name,
                      const String& syntax,
-                     const std::optional<String>& initial_value,
+                     const absl::optional<String>& initial_value,
                      bool is_inherited) {
   StringBuilder builder;
   builder.Append("@property ");
@@ -181,8 +170,8 @@ scoped_refptr<CSSVariableData> CreateVariableData(String s) {
                                  needs_variable_resolution);
 }
 
-const CSSValue* CreateCustomIdent(const char* s) {
-  return MakeGarbageCollected<CSSCustomIdentValue>(AtomicString(s));
+const CSSValue* CreateCustomIdent(AtomicString s) {
+  return MakeGarbageCollected<CSSCustomIdentValue>(s);
 }
 
 const CSSValue* ParseLonghand(Document& document,
@@ -232,14 +221,12 @@ const CSSValue* ParseValue(Document& document, String syntax, String value) {
 
 CSSSelectorList* ParseSelectorList(const String& string) {
   return ParseSelectorList(string, CSSNestingType::kNone,
-                           /*parent_rule_for_nesting=*/nullptr,
-                           /*is_within_scope=*/false);
+                           /*parent_rule_for_nesting=*/nullptr);
 }
 
 CSSSelectorList* ParseSelectorList(const String& string,
                                    CSSNestingType nesting_type,
-                                   const StyleRule* parent_rule_for_nesting,
-                                   bool is_within_scope) {
+                                   const StyleRule* parent_rule_for_nesting) {
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
   auto* sheet = MakeGarbageCollected<StyleSheetContents>(context);
@@ -248,58 +235,8 @@ CSSSelectorList* ParseSelectorList(const String& string,
   CSSParserTokenRange range(tokens);
   HeapVector<CSSSelector> arena;
   base::span<CSSSelector> vector = CSSSelectorParser::ParseSelector(
-      range, context, nesting_type, parent_rule_for_nesting, is_within_scope,
-      /* semicolon_aborts_nested_selector */ false, sheet, arena);
+      range, context, nesting_type, parent_rule_for_nesting, sheet, arena);
   return CSSSelectorList::AdoptSelectorVector(vector);
-}
-
-StyleRule* MakeSignalingRule(StyleRule&& style_rule,
-                             CSSSelector::Signal signal) {
-  HeapVector<CSSSelector> selectors;
-  const CSSSelector* selector = style_rule.FirstSelector();
-  CHECK(selector);
-  while (true) {
-    selectors.push_back(*selector);
-    selectors.back().SetSignal(signal);
-    if (selector->IsLastInSelectorList()) {
-      break;
-    }
-    ++selector;
-  }
-  return StyleRule::Create(selectors, std::move(style_rule));
-}
-
-StyleRule* MakeInvisibleRule(StyleRule&& style_rule) {
-  HeapVector<CSSSelector> selectors;
-  const CSSSelector* selector = style_rule.FirstSelector();
-  CHECK(selector);
-  while (true) {
-    selectors.push_back(*selector);
-    selectors.back().SetInvisible();
-    if (selector->IsLastInSelectorList()) {
-      break;
-    }
-    ++selector;
-  }
-  return StyleRule::Create(selectors, std::move(style_rule));
-}
-
-StyleRule* ParseSignalingRule(Document& document,
-                              String text,
-                              CSSSelector::Signal signal) {
-  auto* style_rule = DynamicTo<StyleRule>(ParseRule(document, text));
-  if (!style_rule) {
-    return nullptr;
-  }
-  return MakeSignalingRule(std::move(*style_rule), signal);
-}
-
-StyleRule* ParseInvisibleRule(Document& document, String text) {
-  auto* style_rule = DynamicTo<StyleRule>(ParseRule(document, text));
-  if (!style_rule) {
-    return nullptr;
-  }
-  return MakeInvisibleRule(std::move(*style_rule));
 }
 
 }  // namespace css_test_helpers

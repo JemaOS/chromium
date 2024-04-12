@@ -10,7 +10,6 @@
 
 #include "base/cfi_buildflags.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
@@ -22,12 +21,12 @@
 #include "media/base/mock_audio_renderer_sink.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/public/common/page/browsing_context_group_info.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/platform/audio/web_audio_device_source_type.h"
 #include "third_party/blink/public/platform/modules/mediastream/web_media_stream_audio_renderer.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/scheduler/test/renderer_scheduler_test_support.h"
+#include "third_party/blink/public/platform/scheduler/web_thread_scheduler.h"
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/web/web_heap.h"
 #include "third_party/blink/public/web/web_local_frame.h"
@@ -35,10 +34,6 @@
 #include "third_party/blink/public/web/web_view.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_component.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_descriptor.h"
-#include "third_party/blink/renderer/platform/scheduler/public/agent_group_scheduler.h"
-#include "third_party/blink/renderer/platform/scheduler/public/main_thread_scheduler.h"
-#include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/testing_platform_support.h"
 #include "third_party/blink/renderer/platform/webrtc/webrtc_source.h"
 #include "third_party/webrtc/api/media_stream_interface.h"
@@ -141,25 +136,21 @@ class WebRtcAudioRendererTest : public testing::Test {
   WebRtcAudioRendererTest()
       : source_(new MockAudioRendererSource()),
         agent_group_scheduler_(
-            std::make_unique<blink::scheduler::WebAgentGroupScheduler>(
-                ThreadScheduler::Current()
-                    ->ToMainThreadScheduler()
-                    ->CreateAgentGroupScheduler())),
+            blink::scheduler::WebThreadScheduler::MainThreadScheduler()
+                .CreateWebAgentGroupScheduler()),
         web_view_(blink::WebView::Create(
             /*client=*/nullptr,
             /*is_hidden=*/false,
             /*is_prerendering=*/false,
             /*is_inside_portal=*/false,
-            /*fenced_frame_mode=*/std::nullopt,
+            /*fenced_frame_mode=*/absl::nullopt,
             /*compositing_enabled=*/false,
             /*widgets_never_composited=*/false,
             /*opener=*/nullptr,
             mojo::NullAssociatedReceiver(),
             *agent_group_scheduler_,
-            /*session_storage_namespace_id=*/std::string(),
-            /*page_base_background_color=*/std::nullopt,
-            blink::BrowsingContextGroupInfo::CreateUnique(),
-            /*color_provider_colors=*/nullptr)),
+            /*session_storage_namespace_id=*/base::EmptyString(),
+            /*page_base_background_color=*/absl::nullopt)),
         web_local_frame_(blink::WebLocalFrame::CreateMainFrame(
             web_view_,
             &web_local_frame_client_,
@@ -182,7 +173,7 @@ class WebRtcAudioRendererTest : public testing::Test {
     EXPECT_CALL(
         *audio_device_factory_platform_,
         MockNewAudioRendererSink(blink::WebAudioDeviceSourceType::kWebRtc,
-                                 web_local_frame_.get(), _))
+                                 web_local_frame_, _))
         .Times(testing::AtLeast(1))
         .WillRepeatedly(DoAll(SaveArg<2>(&params), InvokeWithoutArgs([&]() {
                                 EXPECT_EQ(params.device_id, device_id.Utf8());
@@ -213,7 +204,7 @@ class WebRtcAudioRendererTest : public testing::Test {
                     int,
                     const base::UnguessableToken&,
                     const std::string&,
-                    const std::optional<base::UnguessableToken>&));
+                    const absl::optional<base::UnguessableToken>&));
 
   media::MockAudioRendererSink* mock_sink() {
     return audio_device_factory_platform_->mock_sink();
@@ -236,14 +227,13 @@ class WebRtcAudioRendererTest : public testing::Test {
 
   blink::ScopedTestingPlatformSupport<AudioDeviceFactoryTestingPlatformSupport>
       audio_device_factory_platform_;
-  test::TaskEnvironment task_environment_;
   std::unique_ptr<MockAudioRendererSource> source_;
   Persistent<MediaStreamDescriptor> stream_descriptor_;
   std::unique_ptr<blink::scheduler::WebAgentGroupScheduler>
       agent_group_scheduler_;
-  raw_ptr<WebView, DanglingUntriaged> web_view_ = nullptr;
+  WebView* web_view_ = nullptr;
   WebLocalFrameClient web_local_frame_client_;
-  raw_ptr<WebLocalFrame> web_local_frame_ = nullptr;
+  WebLocalFrame* web_local_frame_ = nullptr;
   scoped_refptr<blink::WebRtcAudioRenderer> renderer_;
   scoped_refptr<blink::WebMediaStreamAudioRenderer> renderer_proxy_;
 };

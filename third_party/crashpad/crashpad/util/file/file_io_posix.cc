@@ -24,7 +24,6 @@
 #include <algorithm>
 #include <limits>
 
-#include "base/check_op.h"
 #include "base/files/file_path.h"
 #include "base/logging.h"
 #include "base/notreached.h"

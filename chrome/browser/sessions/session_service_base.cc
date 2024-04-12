@@ -19,6 +19,7 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/apps/app_service/web_contents_app_id_utils.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sessions/session_service_log.h"
 #include "chrome/browser/sessions/session_service_utils.h"
@@ -39,17 +40,12 @@
 #include "components/sessions/core/session_types.h"
 #include "content/public/browser/navigation_details.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/notification_service.h"
 #include "content/public/browser/session_storage_namespace.h"
 
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/app_controller_mac.h"
 #endif
-
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/ui/web_applications/app_browser_controller.h"
-#include "chrome/browser/web_applications/web_app_provider.h"
-#include "chrome/browser/web_applications/web_app_registrar.h"
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 using base::Time;
 using content::NavigationEntry;
@@ -281,7 +277,7 @@ void SessionServiceBase::TabRestored(WebContents* tab, bool pinned) {
   if (!ShouldTrackChangesToWindow(session_tab_helper->window_id()))
     return;
 
-  BuildCommandsForTab(session_tab_helper->window_id(), tab, -1, std::nullopt,
+  BuildCommandsForTab(session_tab_helper->window_id(), tab, -1, absl::nullopt,
                       pinned, nullptr);
   command_storage_manager()->StartSaveTimer();
 }
@@ -507,7 +503,7 @@ void SessionServiceBase::BuildCommandsForTab(
     SessionID window_id,
     WebContents* tab,
     int index_in_window,
-    std::optional<tab_groups::TabGroupId> group,
+    absl::optional<tab_groups::TabGroupId> group,
     bool is_pinned,
     IdToRange* tab_to_available_range) {
   DCHECK(tab);
@@ -628,21 +624,19 @@ void SessionServiceBase::BuildCommandsForBrowser(
   TabStripModel* tab_strip = browser->tab_strip_model();
   if (tab_strip->SupportsTabGroups()) {
     TabGroupModel* group_model = tab_strip->group_model();
-    const tab_groups::SavedTabGroupKeyedService* const
-        saved_tab_group_keyed_service =
-            base::FeatureList::IsEnabled(features::kTabGroupsSave)
-                ? tab_groups::SavedTabGroupServiceFactory::GetForProfile(
-                      browser->profile())
-                : nullptr;
+    const SavedTabGroupKeyedService* const saved_tab_group_keyed_service =
+        base::FeatureList::IsEnabled(features::kTabGroupsSave)
+            ? SavedTabGroupServiceFactory::GetForProfile(browser->profile())
+            : nullptr;
 
     for (const tab_groups::TabGroupId& group_id :
          group_model->ListTabGroups()) {
       const tab_groups::TabGroupVisualData* visual_data =
           group_model->GetTabGroup(group_id)->visual_data();
 
-      std::optional<std::string> saved_guid;
+      absl::optional<std::string> saved_guid;
       if (saved_tab_group_keyed_service) {
-        const tab_groups::SavedTabGroup* const saved_group =
+        const SavedTabGroup* const saved_group =
             saved_tab_group_keyed_service->model()->Get(group_id);
         if (saved_group) {
           saved_guid = saved_group->saved_guid().AsLowercaseString();
@@ -658,7 +652,7 @@ void SessionServiceBase::BuildCommandsForBrowser(
   for (int i = 0; i < tab_strip->count(); ++i) {
     WebContents* tab = tab_strip->GetWebContentsAt(i);
     DCHECK(tab);
-    const std::optional<tab_groups::TabGroupId> group_id =
+    const absl::optional<tab_groups::TabGroupId> group_id =
         tab_strip->GetTabGroupForTab(i);
     BuildCommandsForTab(browser->session_id(), tab, i, group_id,
                         tab_strip->IsTabPinned(i), tab_to_available_range);
@@ -671,7 +665,7 @@ void SessionServiceBase::BuildCommandsFromBrowsers(
     IdToRange* tab_to_available_range,
     std::set<SessionID>* windows_to_track) {
   DCHECK(is_saving_enabled_);
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     // Make sure the browser has tabs and a window. Browser's destructor
     // removes itself from the BrowserList. When a browser is closed the
     // destructor is not necessarily run immediately. This means it's possible
@@ -725,22 +719,6 @@ bool SessionServiceBase::ShouldTrackBrowser(Browser* browser) const {
       !browser->is_trusted_source()) {
     return false;
   }
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // Windows that are auto-started and prevented from closing are exempted from
-  // tracking for session restore to prevent multiple unclosable open instances
-  // of the same app.
-  web_app::AppBrowserController* app_controller = browser->app_controller();
-  web_app::WebAppProvider* provider =
-      web_app::WebAppProvider::GetForWebApps(profile());
-  // Checking for close prevention does not require an `AppLock` and
-  // therefore `registrar_unsafe()` is safe to use.
-  if (app_controller && provider &&
-      provider->registrar_unsafe().IsPreventCloseEnabled(
-          app_controller->app_id())) {
-    return false;
-  }
-#endif  // #if BUILDFLAG(IS_CHROMEOS)
 
   return ShouldRestoreWindowOfType(WindowTypeForBrowserType(browser->type()));
 }

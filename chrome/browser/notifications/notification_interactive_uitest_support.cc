@@ -4,8 +4,6 @@
 
 #include "chrome/browser/notifications/notification_interactive_uitest_support.h"
 
-#include <vector>
-
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
@@ -63,8 +61,8 @@ class MessageCenterChangeObserver::Impl
 
   void OnNotificationClicked(
       const std::string& notification_id,
-      const std::optional<int>& button_index,
-      const std::optional<std::u16string>& reply) override {
+      const absl::optional<int>& button_index,
+      const absl::optional<std::u16string>& reply) override {
     OnMessageCenterChanged();
   }
 
@@ -151,11 +149,12 @@ std::string NotificationsTest::CreateNotification(Browser* browser,
       body, replace_id, onclick);
 
   MessageCenterChangeObserver observer;
-  std::string result =
-      content::EvalJs(GetActiveWebContents(browser), script).ExtractString();
-  if (result != "-1" && wait_for_new_balloon) {
-    EXPECT_TRUE(observer.Wait());
-  }
+  std::string result;
+  bool success = content::ExecuteScriptAndExtractString(
+      GetActiveWebContents(browser), script, &result);
+  if (success && result != "-1" && wait_for_new_balloon)
+    success = observer.Wait();
+  EXPECT_TRUE(success);
 
   return result;
 }
@@ -170,10 +169,13 @@ std::string NotificationsTest::CreateSimpleNotification(
 std::string NotificationsTest::RequestAndRespondToPermission(
     Browser* browser,
     permissions::PermissionRequestManager::AutoResponseType bubble_response) {
+  std::string result;
   content::WebContents* web_contents = GetActiveWebContents(browser);
   permissions::PermissionRequestManager::FromWebContents(web_contents)
       ->set_auto_response_for_test(bubble_response);
-  return content::EvalJs(web_contents, "requestPermission();").ExtractString();
+  EXPECT_TRUE(content::ExecuteScriptAndExtractString(
+      web_contents, "requestPermission();", &result));
+  return result;
 }
 
 bool NotificationsTest::RequestAndAcceptPermission(Browser* browser) {
@@ -198,16 +200,20 @@ bool NotificationsTest::RequestPermissionAndWait(Browser* browser) {
   content::WebContents* web_contents = GetActiveWebContents(browser);
   EXPECT_TRUE(ui_test_utils::NavigateToURL(browser, GetTestPageURL()));
   permissions::PermissionRequestObserver observer(web_contents);
-  EXPECT_EQ("requested",
-            content::EvalJs(web_contents, "requestPermissionAndRespond();"));
+  std::string result;
+  EXPECT_TRUE(content::ExecuteScriptAndExtractString(
+      web_contents, "requestPermissionAndRespond();", &result));
+  EXPECT_EQ("requested", result);
   observer.Wait();
   return observer.request_shown();
 }
 
 std::string NotificationsTest::QueryPermissionStatus(Browser* browser) {
+  std::string result;
   content::WebContents* web_contents = GetActiveWebContents(browser);
-  return content::EvalJs(web_contents, "queryPermissionStatus();")
-      .ExtractString();
+  EXPECT_TRUE(content::ExecuteScriptAndExtractString(
+      web_contents, "queryPermissionStatus();", &result));
+  return result;
 }
 
 bool NotificationsTest::CancelNotification(const char* notification_id,
@@ -216,23 +222,27 @@ bool NotificationsTest::CancelNotification(const char* notification_id,
       base::StringPrintf("cancelNotification('%s');", notification_id);
 
   MessageCenterChangeObserver observer;
-  std::string result =
-      content::EvalJs(GetActiveWebContents(browser), script).ExtractString();
-  if (result != "1") {
+  std::string result;
+  bool success = content::ExecuteScriptAndExtractString(
+      GetActiveWebContents(browser), script, &result);
+  if (!success || result != "1")
     return false;
-  }
   return observer.Wait();
 }
 
 void NotificationsTest::GetDisabledContentSettings(
     ContentSettingsForOneType* settings) {
-  *settings = HostContentSettingsMapFactory::GetForProfile(browser()->profile())
-                  ->GetSettingsForOneType(ContentSettingsType::NOTIFICATIONS);
+  HostContentSettingsMapFactory::GetForProfile(browser()->profile())
+      ->GetSettingsForOneType(ContentSettingsType::NOTIFICATIONS, settings);
 
-  std::erase_if(*settings, [](const ContentSettingPatternSource& setting) {
-    return setting.GetContentSetting() != CONTENT_SETTING_BLOCK ||
-           setting.source.compare("preference") != 0;
-  });
+  for (auto it = settings->begin(); it != settings->end();) {
+    if (it->GetContentSetting() != CONTENT_SETTING_BLOCK ||
+        it->source.compare("preference") != 0) {
+      it = settings->erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 bool NotificationsTest::CheckOriginInSetting(

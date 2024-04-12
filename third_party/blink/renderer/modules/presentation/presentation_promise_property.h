@@ -13,7 +13,8 @@ namespace blink {
 class PresentationAvailability;
 
 using PresentationAvailabilityProperty =
-    ScriptPromiseProperty<PresentationAvailability, DOMException>;
+    ScriptPromiseProperty<Member<PresentationAvailability>,
+                          Member<DOMException>>;
 
 }  // namespace blink
 

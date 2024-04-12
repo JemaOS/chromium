@@ -8,31 +8,30 @@ import 'chrome://settings/lazy_load.js';
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {CrExpandButtonElement, CrInputElement, SettingsSyncEncryptionOptionsElement, SettingsSyncPageElement} from 'chrome://settings/lazy_load.js';
+import {CrInputElement, SettingsSyncEncryptionOptionsElement, SettingsSyncPageElement} from 'chrome://settings/lazy_load.js';
 // <if expr="not chromeos_ash">
-import type {CrDialogElement} from 'chrome://settings/lazy_load.js';
+import {CrDialogElement} from 'chrome://settings/lazy_load.js';
 // </if>
-import type {IronCollapseElement} from 'chrome://settings/lazy_load.js';
-import type {CrButtonElement, CrRadioButtonElement, CrRadioGroupElement} from 'chrome://settings/settings.js';
-import {MetricsBrowserProxyImpl} from 'chrome://settings/settings.js';
-import {OpenWindowProxyImpl, PageStatus, Router, routes, StatusAction, SyncBrowserProxyImpl} from 'chrome://settings/settings.js';
+
+import {CrButtonElement, CrRadioButtonElement, CrRadioGroupElement, PageStatus, Router, routes, StatusAction, SyncBrowserProxyImpl} from 'chrome://settings/settings.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {flushTasks, waitBeforeNextRender} from 'chrome://webui-test/polymer_test_util.js';
-import {TestOpenWindowProxy} from 'chrome://webui-test/test_open_window_proxy.js';
-import {isChildVisible, microtasksFinished, eventToPromise} from 'chrome://webui-test/test_util.js';
+import {waitBeforeNextRender} from 'chrome://webui-test/polymer_test_util.js';
+
+// <if expr="not chromeos_ash">
+import {eventToPromise} from 'chrome://webui-test/test_util.js';
+// </if>
 
 // <if expr="not chromeos_ash">
 import {simulateStoredAccounts} from './sync_test_util.js';
 // </if>
 
-import type {SyncRoutes} from './sync_test_util.js';
-import {getSyncAllPrefs, setupRouterWithSyncRoutes} from './sync_test_util.js';
-import {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
+import {getSyncAllPrefs, setupRouterWithSyncRoutes, SyncRoutes} from './sync_test_util.js';
+
 import {TestSyncBrowserProxy} from './test_sync_browser_proxy.js';
 
 // clang-format on
 
-suite('SyncSettings', function() {
+suite('SyncSettingsTests', function() {
   let syncPage: SettingsSyncPageElement;
   let browserProxy: TestSyncBrowserProxy;
   let encryptionElement: SettingsSyncEncryptionOptionsElement;
@@ -157,18 +156,9 @@ suite('SyncSettings', function() {
         syncPage.shadowRoot!.querySelector<HTMLElement>(
                                 '#sync-separator')!.hidden);
     assertTrue(otherItems.classList.contains('list-frame'));
-    assertEquals(otherItems.querySelectorAll('cr-expand-button').length, 1);
-
-    assertTrue(isChildVisible(syncPage, '#sync-advanced-row'));
-    // <if expr="chromeos_lacros">
-    assertTrue(isChildVisible(syncPage, '#os-sync-device-row'));
-    // </if>
-    // TODO(crbug.com/324091979): Remove once crbug.com/324091979 launched.
-    assertFalse(isChildVisible(syncPage, '#activityControlsLinkRowV1'));
-
-    assertTrue(isChildVisible(syncPage, '#activityControlsLinkRowV2'));
-    assertFalse(isChildVisible(syncPage, '#personalizationExpandButton'));
-    assertTrue(isChildVisible(syncPage, '#syncDashboardLink'));
+    assertEquals(
+        otherItems.querySelectorAll(':scope > cr-expand-button').length, 1);
+    assertEquals(otherItems.querySelectorAll(':scope > cr-link-row').length, 3);
 
     // Test sync paused state.
     syncPage.syncStatus = {
@@ -248,17 +238,15 @@ suite('SyncSettings', function() {
     assertTrue(spinnerPage.hidden);
   });
 
-  test('EncryptionExpandButton', async function() {
+  test('EncryptionExpandButton', function() {
     const encryptionDescription =
-        syncPage.shadowRoot!.querySelector<CrExpandButtonElement>(
-            '#encryptionDescription');
-    assertTrue(!!encryptionDescription);
+        syncPage.shadowRoot!.querySelector<HTMLElement>(
+            '#encryptionDescription')!;
     const encryptionCollapse = syncPage.$.encryptionCollapse;
 
     // No encryption with custom passphrase.
     assertFalse(encryptionCollapse.opened);
     encryptionDescription.click();
-    await encryptionDescription.updateComplete;
     assertTrue(encryptionCollapse.opened);
 
     // Push sync prefs with |prefs.encryptAllData| unchanged. The encryption
@@ -268,7 +256,6 @@ suite('SyncSettings', function() {
     assertTrue(encryptionCollapse.opened);
 
     encryptionDescription.click();
-    await encryptionDescription.updateComplete;
     assertFalse(encryptionCollapse.opened);
 
     // Data encrypted with custom passphrase.
@@ -292,7 +279,7 @@ suite('SyncSettings', function() {
     assertTrue(encryptionCollapse.opened);
   });
 
-  test('RadioBoxesEnabledWhenUnencrypted', async () => {
+  test('RadioBoxesEnabledWhenUnencrypted', function() {
     // Verify that the encryption radio boxes are enabled.
     assertFalse(encryptionRadioGroup.disabled);
     assertEquals(encryptWithGoogle.getAttribute('aria-disabled'), 'false');
@@ -305,7 +292,7 @@ suite('SyncSettings', function() {
         !!encryptionElement.shadowRoot!.querySelector('#create-password-box'));
 
     encryptWithPassphrase.click();
-    await eventToPromise('selected-changed', encryptionRadioGroup);
+    flush();
 
     assertTrue(
         !!encryptionElement.shadowRoot!.querySelector('#create-password-box'));
@@ -316,8 +303,7 @@ suite('SyncSettings', function() {
 
     // Test that a sync prefs update does not reset the selection.
     webUIListenerCallback('sync-prefs-changed', getSyncAllPrefs());
-    // Wait for a timeout so that the check below catches any incorrect reset.
-    await microtasksFinished();
+    flush();
     assertTrue(encryptWithPassphrase.checked);
   });
 
@@ -345,9 +331,9 @@ suite('SyncSettings', function() {
     assertFalse(encryptWithPassphrase.checked);
   });
 
-  test('SaveButtonDisabledWhenPassphraseOrConfirmationEmpty', async () => {
+  test('SaveButtonDisabledWhenPassphraseOrConfirmationEmpty', function() {
     encryptWithPassphrase.click();
-    await eventToPromise('selected-changed', encryptionRadioGroup);
+    flush();
 
     assertTrue(
         !!encryptionElement.shadowRoot!.querySelector('#create-password-box'));
@@ -363,32 +349,20 @@ suite('SyncSettings', function() {
 
     passphraseInput.value = '';
     passphraseConfirmationInput.value = '';
-    await Promise.all([
-      passphraseInput.updateComplete,
-      passphraseConfirmationInput.updateComplete,
-    ]);
     assertTrue(saveNewPassphrase.disabled);
 
     passphraseInput.value = 'foo';
     passphraseConfirmationInput.value = '';
-    await Promise.all([
-      passphraseInput.updateComplete,
-      passphraseConfirmationInput.updateComplete,
-    ]);
     assertTrue(saveNewPassphrase.disabled);
 
     passphraseInput.value = 'foo';
     passphraseConfirmationInput.value = 'bar';
-    await Promise.all([
-      passphraseInput.updateComplete,
-      passphraseConfirmationInput.updateComplete,
-    ]);
     assertFalse(saveNewPassphrase.disabled);
   });
 
-  test('CreatingPassphraseMismatchedPassphrase', async () => {
+  test('CreatingPassphraseMismatchedPassphrase', function() {
     encryptWithPassphrase.click();
-    await eventToPromise('selected-changed', encryptionRadioGroup);
+    flush();
 
     assertTrue(
         !!encryptionElement.shadowRoot!.querySelector('#create-password-box'));
@@ -405,10 +379,6 @@ suite('SyncSettings', function() {
             '#passphraseConfirmationInput')!;
     passphraseInput.value = 'foo';
     passphraseConfirmationInput.value = 'bar';
-    await Promise.all([
-      passphraseInput.updateComplete,
-      passphraseConfirmationInput.updateComplete,
-    ]);
 
     saveNewPassphrase!.click();
     flush();
@@ -419,7 +389,7 @@ suite('SyncSettings', function() {
 
   test('CreatingPassphraseValidPassphrase', async function() {
     encryptWithPassphrase.click();
-    await eventToPromise('selected-changed', encryptionRadioGroup);
+    flush();
 
     assertTrue(
         !!encryptionElement.shadowRoot!.querySelector('#create-password-box'));
@@ -437,10 +407,6 @@ suite('SyncSettings', function() {
     passphraseInput.value = 'foo';
     passphraseConfirmationInput.value = 'foo';
     browserProxy.encryptionPassphraseSuccess = true;
-    await Promise.all([
-      passphraseInput.updateComplete,
-      passphraseConfirmationInput.updateComplete,
-    ]);
     saveNewPassphrase!.click();
 
     const passphrase = await browserProxy.whenCalled('setEncryptionPassphrase');
@@ -519,7 +485,7 @@ suite('SyncSettings', function() {
 
   test(
       'ExistingPassphraseSubmitButtonDisabledWhenExistingPassphraseEmpty',
-      async () => {
+      function() {
         const prefs = getSyncAllPrefs();
         prefs.encryptAllData = true;
         prefs.passphraseRequired = true;
@@ -528,18 +494,15 @@ suite('SyncSettings', function() {
 
         const existingPassphraseInput =
             syncPage.shadowRoot!.querySelector<CrInputElement>(
-                '#existingPassphraseInput');
-        assertTrue(!!existingPassphraseInput);
+                '#existingPassphraseInput')!;
         const submitExistingPassphrase =
             syncPage.shadowRoot!.querySelector<CrButtonElement>(
                 '#submitExistingPassphrase')!;
 
         existingPassphraseInput.value = '';
-        await existingPassphraseInput.updateComplete;
         assertTrue(submitExistingPassphrase.disabled);
 
         existingPassphraseInput.value = 'foo';
-        await existingPassphraseInput.updateComplete;
         assertFalse(submitExistingPassphrase.disabled);
       });
 
@@ -554,14 +517,13 @@ suite('SyncSettings', function() {
         syncPage.shadowRoot!.querySelector<CrInputElement>(
             '#existingPassphraseInput');
     assertTrue(!!existingPassphraseInput);
-    existingPassphraseInput.value = 'wrong';
+    existingPassphraseInput!.value = 'wrong';
     browserProxy.decryptionPassphraseSuccess = false;
 
     const submitExistingPassphrase =
         syncPage.shadowRoot!.querySelector<CrButtonElement>(
             '#submitExistingPassphrase');
     assertTrue(!!submitExistingPassphrase);
-    await existingPassphraseInput.updateComplete;
     submitExistingPassphrase!.click();
 
     const passphrase = await browserProxy.whenCalled('setDecryptionPassphrase');
@@ -588,7 +550,6 @@ suite('SyncSettings', function() {
         syncPage.shadowRoot!.querySelector<CrButtonElement>(
             '#submitExistingPassphrase');
     assertTrue(!!submitExistingPassphrase);
-    await existingPassphraseInput.updateComplete;
     submitExistingPassphrase!.click();
 
     const passphrase = await browserProxy.whenCalled('setDecryptionPassphrase');
@@ -601,7 +562,6 @@ suite('SyncSettings', function() {
     webUIListenerCallback('sync-prefs-changed', newPrefs);
 
     flush();
-    await eventToPromise('selected-changed', encryptionRadioGroup);
 
     // Verify that the encryption radio boxes are shown but disabled.
     assertTrue(encryptionRadioGroup.disabled);
@@ -650,7 +610,7 @@ suite('SyncSettings', function() {
   // This test checks whether the passphrase encryption options are
   // disabled. This is important for supervised accounts. Because sync
   // is required for supervision, passphrases should remain disabled.
-  test('DisablingSyncPassphrase', async () => {
+  test('DisablingSyncPassphrase', function() {
     // We initialize a new SyncPrefs object for each case, because
     // otherwise the webUIListener doesn't update.
 
@@ -663,8 +623,7 @@ suite('SyncSettings', function() {
       supervisedUser: false,
       statusAction: StatusAction.NO_ACTION,
     };
-    await microtasksFinished();
-
+    flush();
     assertFalse(encryptionRadioGroup.disabled);
     assertEquals(encryptWithGoogle.getAttribute('aria-disabled'), 'false');
     assertEquals(encryptWithPassphrase.getAttribute('aria-disabled'), 'false');
@@ -680,7 +639,7 @@ suite('SyncSettings', function() {
       supervisedUser: false,
       statusAction: StatusAction.NO_ACTION,
     };
-    await microtasksFinished();
+    flush();
     assertTrue(encryptionRadioGroup.disabled);
     assertEquals(encryptWithGoogle.getAttribute('aria-disabled'), 'true');
     assertEquals(encryptWithPassphrase.getAttribute('aria-disabled'), 'true');
@@ -694,7 +653,7 @@ suite('SyncSettings', function() {
       supervisedUser: true,
       statusAction: StatusAction.NO_ACTION,
     };
-    await microtasksFinished();
+    flush();
     assertTrue(encryptionRadioGroup.disabled);
     assertEquals(encryptWithGoogle.getAttribute('aria-disabled'), 'true');
     assertEquals(encryptWithPassphrase.getAttribute('aria-disabled'), 'true');
@@ -709,7 +668,7 @@ suite('SyncSettings', function() {
       supervisedUser: true,
       statusAction: StatusAction.NO_ACTION,
     };
-    await microtasksFinished();
+    flush();
     assertTrue(encryptionRadioGroup.disabled);
     assertEquals(encryptWithGoogle.getAttribute('aria-disabled'), 'true');
     assertEquals(encryptWithPassphrase.getAttribute('aria-disabled'), 'true');
@@ -863,13 +822,11 @@ suite('SyncSettings', function() {
     const existingPassphraseInput =
         syncPage.shadowRoot!.querySelector<CrInputElement>(
             '#existingPassphraseInput');
-    assertTrue(!!existingPassphraseInput);
-    existingPassphraseInput.value = 'right';
+    existingPassphraseInput!.value = 'right';
     browserProxy.decryptionPassphraseSuccess = true;
     const submitExistingPassphrase =
         syncPage.shadowRoot!.querySelector<CrButtonElement>(
             '#submitExistingPassphrase');
-    await existingPassphraseInput.updateComplete;
     submitExistingPassphrase!.click();
 
     await browserProxy.whenCalled('setDecryptionPassphrase');
@@ -903,7 +860,7 @@ suite('SyncSettings', function() {
 
     // Create and submit a new passphrase.
     encryptWithPassphrase.click();
-    await eventToPromise('selected-changed', encryptionRadioGroup);
+    flush();
     const passphraseInput =
         encryptionElement.shadowRoot!.querySelector<CrInputElement>(
             '#passphraseInput')!;
@@ -916,10 +873,6 @@ suite('SyncSettings', function() {
     const saveNewPassphrase =
         encryptionElement.shadowRoot!.querySelector<CrButtonElement>(
             '#saveNewPassphrase');
-    await Promise.all([
-      passphraseInput.updateComplete,
-      passphraseConfirmationInput.updateComplete,
-    ]);
     saveNewPassphrase!.click();
 
     await browserProxy.whenCalled('setEncryptionPassphrase');
@@ -998,132 +951,4 @@ suite('SyncSettings', function() {
         !!syncPage.shadowRoot!.querySelector('settings-sync-account-control'));
   });
   // </if>
-});
-
-suite('EEAChoiceCountry', function() {
-  let syncPage: SettingsSyncPageElement;
-  let openWindowProxy: TestOpenWindowProxy;
-  let metricsBrowserProxy: TestMetricsBrowserProxy;
-
-  suiteSetup(function() {
-    loadTimeData.overrideValues({
-      signinAllowed: true,
-      isEeaChoiceCountry: true,
-    });
-  });
-
-  setup(function() {
-    metricsBrowserProxy = new TestMetricsBrowserProxy();
-    MetricsBrowserProxyImpl.setInstance(metricsBrowserProxy);
-    openWindowProxy = new TestOpenWindowProxy();
-    OpenWindowProxyImpl.setInstance(openWindowProxy);
-
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    syncPage = document.createElement('settings-sync-page');
-    document.body.appendChild(syncPage);
-
-    // Start with Sync All with no encryption selected. Also, ensure
-    // that this is not a supervised user, so that Sync Passphrase is
-    // enabled.
-    webUIListenerCallback('sync-prefs-changed', getSyncAllPrefs());
-    syncPage.set('syncStatus', {
-      signedIn: true,
-      supervisedUser: false,
-      statusAction: StatusAction.NO_ACTION,
-    });
-    flush();
-  });
-
-  teardown(function() {
-    syncPage.remove();
-  });
-
-  test('personalizationControlsVisibility', function() {
-    // TODO(crbug.com/324091979): Remove once crbug.com/324091979 launched.
-    assertFalse(isChildVisible(syncPage, '#activityControlsLinkRowV1'));
-
-    assertFalse(isChildVisible(syncPage, '#activityControlsLinkRowV2'));
-    assertTrue(isChildVisible(syncPage, '#personalizationExpandButton'));
-  });
-
-  test('personalizationCollapse', async function() {
-    // The collapse is collapsed by default.
-    const personalizationCollapse =
-        syncPage.shadowRoot!.querySelector<IronCollapseElement>(
-            '#personalizationCollapse');
-    assertTrue(!!personalizationCollapse);
-    assertFalse(personalizationCollapse.opened);
-
-    // Clicking the expand-button expands the collapse.
-    const expandButton = syncPage.shadowRoot!.querySelector<HTMLElement>(
-        '#personalizationExpandButton');
-    assertTrue(!!expandButton);
-    expandButton.click();
-    await flushTasks();
-    assertTrue(personalizationCollapse.opened);
-
-    // Clicking the expand-button again collapses the collapse.
-    expandButton.click();
-    await flushTasks();
-    assertFalse(personalizationCollapse.opened);
-  });
-
-  test('linkedServicesClick', async function() {
-    // The linkedServices row is only visible when the collapse is expanded.
-    const expandButton = syncPage.shadowRoot!.querySelector<HTMLElement>(
-        '#personalizationExpandButton');
-    assertTrue(!!expandButton);
-    expandButton.click();
-    await flushTasks();
-
-    const linkedServicesLinkRow =
-        syncPage.shadowRoot!.querySelector<HTMLElement>(
-            '#linkedServicesLinkRow');
-    assertTrue(!!linkedServicesLinkRow);
-    linkedServicesLinkRow.click();
-    assertEquals(
-        'Sync_OpenLinkedServicesPage',
-        await metricsBrowserProxy.whenCalled('recordAction'));
-    const url = await openWindowProxy.whenCalled('openUrl');
-    assertEquals(loadTimeData.getString('linkedServicesUrl'), url);
-  });
-});
-
-// TODO(crbug.com/324091979): Remove once crbug.com/324091979 launched.
-suite('LinkedServicesDisabled', function() {
-  let syncPage: SettingsSyncPageElement;
-
-  suiteSetup(function() {
-    loadTimeData.overrideValues({
-      signinAllowed: true,
-      enableLinkedServicesSetting: false,
-    });
-  });
-
-  setup(function() {
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    syncPage = document.createElement('settings-sync-page');
-    document.body.appendChild(syncPage);
-
-    // Start with Sync All with no encryption selected. Also, ensure
-    // that this is not a supervised user, so that Sync Passphrase is
-    // enabled.
-    webUIListenerCallback('sync-prefs-changed', getSyncAllPrefs());
-    syncPage.set('syncStatus', {
-      signedIn: true,
-      supervisedUser: false,
-      statusAction: StatusAction.NO_ACTION,
-    });
-    flush();
-  });
-
-  teardown(function() {
-    syncPage.remove();
-  });
-
-  test('personalizationControlsVisibility', function() {
-    assertTrue(isChildVisible(syncPage, '#activityControlsLinkRowV1'));
-    assertFalse(isChildVisible(syncPage, '#activityControlsLinkRowV2'));
-    assertFalse(isChildVisible(syncPage, '#personalizationExpandButton'));
-  });
 });

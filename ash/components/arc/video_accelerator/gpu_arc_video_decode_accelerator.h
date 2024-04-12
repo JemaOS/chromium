@@ -6,7 +6,6 @@
 #define ASH_COMPONENTS_ARC_VIDEO_ACCELERATOR_GPU_ARC_VIDEO_DECODE_ACCELERATOR_H_
 
 #include <memory>
-#include <optional>
 #include <queue>
 #include <utility>
 #include <vector>
@@ -21,6 +20,7 @@
 #include "media/video/video_decode_accelerator.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace arc {
 
@@ -55,10 +55,12 @@ class GpuArcVideoDecodeAccelerator
   void NotifyInitializationComplete(media::DecoderStatus status) override;
   void ProvidePictureBuffers(uint32_t requested_num_of_buffers,
                              media::VideoPixelFormat format,
+                             uint32_t textures_per_buffer,
                              const gfx::Size& dimensions,
                              uint32_t texture_target) override;
   void ProvidePictureBuffersWithVisibleRect(uint32_t requested_num_of_buffers,
                                             media::VideoPixelFormat format,
+                                            uint32_t textures_per_buffer,
                                             const gfx::Size& dimensions,
                                             const gfx::Rect& visible_rect,
                                             uint32_t texture_target) override;
@@ -207,7 +209,7 @@ class GpuArcVideoDecodeAccelerator
 
   scoped_refptr<DecoderProtectedBufferManager> protected_buffer_manager_;
 
-  std::optional<bool> secure_mode_ = std::nullopt;
+  absl::optional<bool> secure_mode_ = absl::nullopt;
   size_t output_buffer_count_ = 0;
 
   // When the client resets VDA during requesting new buffers, then VDA will
@@ -227,7 +229,7 @@ class GpuArcVideoDecodeAccelerator
   // |protected_buffer_manager_|. Also, when set, we queue incoming Decode()
   // requests in |decode_requests_waiting_for_first_secure_buffer_| for later
   // use.
-  std::optional<int32_t> first_input_waiting_on_secure_buffer_;
+  absl::optional<int32_t> first_input_waiting_on_secure_buffer_;
   std::queue<std::pair<int32_t, base::OnceClosure>>
       decode_requests_waiting_for_first_secure_buffer_;
 

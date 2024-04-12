@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_SHARING_SHARING_DEVICE_REGISTRATION_H_
 #define CHROME_BROWSER_SHARING_SHARING_DEVICE_REGISTRATION_H_
 
-#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -15,6 +14,7 @@
 #include "components/gcm_driver/instance_id/instance_id.h"
 #include "components/sync/protocol/device_info_specifics.pb.h"
 #include "components/sync_device_info/device_info.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PrefService;
 
@@ -38,7 +38,7 @@ class SharingDeviceRegistration {
       base::OnceCallback<void(SharingDeviceRegistrationResult)>;
   using TargetInfoCallback = base::OnceCallback<void(
       SharingDeviceRegistrationResult,
-      std::optional<syncer::DeviceInfo::SharingTargetInfo>)>;
+      absl::optional<syncer::DeviceInfo::SharingTargetInfo>)>;
 
   SharingDeviceRegistration(PrefService* pref_service,
                             SharingSyncPreference* prefs,
@@ -99,16 +99,17 @@ class SharingDeviceRegistration {
 
   void OnVapidTargetInfoRetrieved(
       RegistrationCallback callback,
-      std::optional<std::string> authorized_entity,
+      absl::optional<std::string> authorized_entity,
       SharingDeviceRegistrationResult result,
-      std::optional<syncer::DeviceInfo::SharingTargetInfo> vapid_target_info);
+      absl::optional<syncer::DeviceInfo::SharingTargetInfo> vapid_target_info);
 
   void OnSharingTargetInfoRetrieved(
       RegistrationCallback callback,
-      std::optional<std::string> authorized_entity,
-      std::optional<syncer::DeviceInfo::SharingTargetInfo> vapid_target_info,
+      absl::optional<std::string> authorized_entity,
+      absl::optional<syncer::DeviceInfo::SharingTargetInfo> vapid_target_info,
       SharingDeviceRegistrationResult result,
-      std::optional<syncer::DeviceInfo::SharingTargetInfo> sharing_target_info);
+      absl::optional<syncer::DeviceInfo::SharingTargetInfo>
+          sharing_target_info);
 
   void OnVapidFCMTokenDeleted(RegistrationCallback callback,
                               SharingDeviceRegistrationResult result);
@@ -120,7 +121,7 @@ class SharingDeviceRegistration {
                          instance_id::InstanceID::Result result);
 
   // Returns the authorization entity for FCM registration.
-  std::optional<std::string> GetAuthorizationEntity() const;
+  absl::optional<std::string> GetAuthorizationEntity() const;
 
   // Computes and returns a set of all enabled features on the device.
   // |supports_vapid|: If set to true, then enabled features with VAPID suffix
@@ -134,7 +135,7 @@ class SharingDeviceRegistration {
   raw_ptr<VapidKeyManager> vapid_key_manager_;
   raw_ptr<instance_id::InstanceIDDriver> instance_id_driver_;
   raw_ptr<syncer::SyncService> sync_service_;
-  std::optional<std::set<sync_pb::SharingSpecificFields_EnabledFeatures>>
+  absl::optional<std::set<sync_pb::SharingSpecificFields_EnabledFeatures>>
       enabled_features_testing_value_;
 
   base::WeakPtrFactory<SharingDeviceRegistration> weak_ptr_factory_{this};

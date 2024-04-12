@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -70,9 +70,6 @@ class BasicCrossThreadHandle {
     return ref_.Get();
   }
 
-  // Clears the stored object.
-  void Clear() { ref_.Clear(); }
-
  private:
   template <typename U, typename V>
   friend class blink::BasicUnwrappingCrossThreadHandle;
@@ -109,9 +106,6 @@ class BasicUnwrappingCrossThreadHandle final
 
   // Re-expose the actual getter for the underlying object.
   using Base::GetOnCreationThread;
-
-  // Re-expose the clear method for the underlying object.
-  using Base::Clear;
 
   // Returns whether a value is set.  May only be accessed on the thread the
   // original CrossThreadHandle object was created.

@@ -50,10 +50,10 @@ FontMetadata* FontMetadata::Create(const FontEnumerationEntry& entry) {
   return MakeGarbageCollected<FontMetadata>(entry);
 }
 
-ScriptPromiseTyped<Blob> FontMetadata::blob(ScriptState* script_state) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<Blob>>(script_state);
-  auto promise = resolver->Promise();
+ScriptPromise FontMetadata::blob(ScriptState* script_state) {
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   ExecutionContext::From(script_state)
       ->GetTaskRunner(TaskType::kFontLoading)
@@ -69,7 +69,7 @@ void FontMetadata::Trace(blink::Visitor* visitor) const {
 }
 
 // static
-void FontMetadata::BlobImpl(ScriptPromiseResolverTyped<Blob>* resolver,
+void FontMetadata::BlobImpl(ScriptPromiseResolver* resolver,
                             const String& postscriptName) {
   if (!resolver->GetScriptState()->ContextIsValid())
     return;
@@ -77,7 +77,7 @@ void FontMetadata::BlobImpl(ScriptPromiseResolverTyped<Blob>* resolver,
   SetUpFontUniqueLookupIfNecessary();
 
   FontDescription description;
-  const SimpleFontData* font_data =
+  scoped_refptr<SimpleFontData> font_data =
       FontCache::Get().GetFontData(description, AtomicString(postscriptName),
                                    AlternateFontName::kLocalUniqueFace);
   if (!font_data) {

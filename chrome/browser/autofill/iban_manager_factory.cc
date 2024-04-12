@@ -4,7 +4,7 @@
 
 #include "chrome/browser/autofill/iban_manager_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/autofill/core/browser/iban_manager.h"
@@ -12,34 +12,28 @@
 namespace autofill {
 
 // static
-IbanManager* IbanManagerFactory::GetForProfile(Profile* profile) {
-  return static_cast<IbanManager*>(
+IBANManager* IBANManagerFactory::GetForProfile(Profile* profile) {
+  return static_cast<IBANManager*>(
       GetInstance()->GetServiceForBrowserContext(profile, true));
 }
 
 // static
-IbanManagerFactory* IbanManagerFactory::GetInstance() {
-  static base::NoDestructor<IbanManagerFactory> instance;
-  return instance.get();
+IBANManagerFactory* IBANManagerFactory::GetInstance() {
+  return base::Singleton<IBANManagerFactory>::get();
 }
 
-IbanManagerFactory::IbanManagerFactory()
+IBANManagerFactory::IBANManagerFactory()
     : ProfileKeyedServiceFactory(
-          "IbanManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          "IBANManager",
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(PersonalDataManagerFactory::GetInstance());
 }
 
-IbanManagerFactory::~IbanManagerFactory() = default;
+IBANManagerFactory::~IBANManagerFactory() = default;
 
-KeyedService* IbanManagerFactory::BuildServiceInstanceFor(
+KeyedService* IBANManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  IbanManager* service = new IbanManager(
+  IBANManager* service = new IBANManager(
       PersonalDataManagerFactory::GetForBrowserContext(context));
   return service;
 }

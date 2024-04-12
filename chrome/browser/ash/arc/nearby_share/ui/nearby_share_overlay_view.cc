@@ -41,7 +41,7 @@ void NearbyShareOverlayView::AddedToWidget() {
     return;
 
   auto& view_ax = GetWidget()->GetRootView()->GetViewAccessibility();
-  view_ax.SetIsIgnored(true);
+  view_ax.OverrideIsIgnored(true);
 }
 
 NearbyShareOverlayView::NearbyShareOverlayView(views::View* child_view)
@@ -59,7 +59,7 @@ NearbyShareOverlayView::NearbyShareOverlayView(views::View* child_view)
   }
 }
 
-BEGIN_METADATA(NearbyShareOverlayView)
+BEGIN_METADATA(NearbyShareOverlayView, views::FlexLayoutView)
 END_METADATA
 
 }  // namespace arc

@@ -38,9 +38,8 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/login/users/chrome_user_manager_impl.h"
+#include "chrome/browser/ash/login/users/scoped_test_user_manager.h"
 #include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
-#include "components/user_manager/scoped_user_manager.h"
 #endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -172,13 +171,12 @@ class ProfileSigninConfirmationHelperTest : public testing::Test {
   base::ScopedTempDir profile_dir_;
   content::BrowserTaskEnvironment task_environment_;
   std::unique_ptr<TestingProfile> profile_;
-  const raw_ptr<TestingPrefStoreWithCustomReadError> user_prefs_;
-  const raw_ptr<BookmarkModel> model_;
+  raw_ptr<TestingPrefStoreWithCustomReadError> user_prefs_;
+  raw_ptr<BookmarkModel> model_;
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   ash::ScopedCrosSettingsTestHelper cros_settings_test_helper_;
-  user_manager::ScopedUserManager test_user_manager_{
-      ChromeUserManagerImpl::CreateChromeUserManager()};
+  ash::ScopedTestUserManager test_user_manager_;
 #endif
 };
 

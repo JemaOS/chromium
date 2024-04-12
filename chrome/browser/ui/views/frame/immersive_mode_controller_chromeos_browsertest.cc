@@ -4,12 +4,14 @@
 
 #include "chrome/browser/ui/views/frame/immersive_mode_controller_chromeos.h"
 
+#include "ash/public/cpp/test/shell_test_api.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/test_mock_time_task_runner.h"
 #include "build/build_config.h"
 #include "chrome/browser/profiles/profile_io_data.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
+#include "chrome/browser/ui/exclusive_access/exclusive_access_test.h"
 #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
 #include "chrome/browser/ui/views/frame/browser_non_client_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_non_client_frame_view_chromeos.h"
@@ -27,7 +29,6 @@
 #include "chromeos/ui/frame/caption_buttons/frame_caption_button_container_view.h"
 #include "chromeos/ui/frame/immersive/immersive_fullscreen_controller_test_api.h"
 #include "components/permissions/request_type.h"
-#include "content/public/browser/notification_service.h"
 #include "content/public/test/browser_test.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/events/base_event_utils.h"
@@ -56,7 +57,7 @@ class ImmersiveModeControllerChromeosWebAppBrowserTest
     ASSERT_TRUE(https_server_.Start());
 
     const GURL app_url = GetAppUrl();
-    auto web_app_info = std::make_unique<web_app::WebAppInstallInfo>();
+    auto web_app_info = std::make_unique<WebAppInstallInfo>();
     web_app_info->start_url = app_url;
     web_app_info->scope = app_url.GetWithoutFilename();
     web_app_info->theme_color = SK_ColorBLUE;
@@ -92,6 +93,16 @@ class ImmersiveModeControllerChromeosWebAppBrowserTest
     return view->ConvertRectToWidget(view->GetLocalBounds());
   }
 
+  // Toggle the browser's fullscreen state.
+  void ToggleFullscreen() {
+    // The fullscreen change notification is sent asynchronously. The
+    // notification is used to trigger changes in whether the shelf is auto
+    // hidden.
+    FullscreenNotificationObserver waiter(browser());
+    chrome::ToggleFullscreenMode(browser());
+    waiter.Wait();
+  }
+
   // Attempt revealing the top-of-window views.
   void AttemptReveal() {
     if (!revealed_lock_.get()) {
@@ -120,9 +131,9 @@ class ImmersiveModeControllerChromeosWebAppBrowserTest
   }
 
  private:
-  webapps::AppId app_id;
-  raw_ptr<Browser, DanglingUntriaged> browser_ = nullptr;
-  raw_ptr<ImmersiveModeController, DanglingUntriaged> controller_ = nullptr;
+  web_app::AppId app_id;
+  raw_ptr<Browser, ExperimentalAsh> browser_ = nullptr;
+  raw_ptr<ImmersiveModeController, ExperimentalAsh> controller_ = nullptr;
 
   std::unique_ptr<ImmersiveRevealedLock> revealed_lock_;
 
@@ -150,7 +161,7 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
   // The window header should be above the web contents.
   int header_height = GetBoundsInWidget(contents_web_view).y();
 
-  EnterImmersiveFullscreenMode(browser());
+  ToggleFullscreen();
   EXPECT_TRUE(browser_view()->GetWidget()->IsFullscreen());
   EXPECT_TRUE(controller()->IsEnabled());
   EXPECT_FALSE(controller()->IsRevealed());
@@ -181,7 +192,7 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
 
   // Exit immersive fullscreen. The web contents should be back below the window
   // header.
-  ExitImmersiveFullscreenMode(browser());
+  ToggleFullscreen();
   EXPECT_FALSE(browser_view()->GetWidget()->IsFullscreen());
   EXPECT_FALSE(controller()->IsEnabled());
   EXPECT_FALSE(tabstrip->GetVisible());
@@ -191,15 +202,10 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
 
 // Verify the immersive mode status is as expected in tablet mode (titlebars are
 // autohidden in tablet mode).
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-// TODO(b/40946296): Port and enable when bug is fixed.
-#define MAYBE_ImmersiveModeStatusTabletMode \
-  DISABLED_ImmersiveModeStatusTabletMode
-#else
-#define MAYBE_ImmersiveModeStatusTabletMode ImmersiveModeStatusTabletMode
-#endif
+
+// Crashes on Linux Chromium OS ASan LSan Tests.  http://crbug.com/1091606
 IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
-                       MAYBE_ImmersiveModeStatusTabletMode) {
+                       DISABLED_ImmersiveModeStatusTabletMode) {
   LaunchAppBrowser();
   ASSERT_FALSE(controller()->IsEnabled());
 
@@ -207,7 +213,8 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
   // Verify that after entering tablet mode, immersive mode is enabled, and the
   // the associated window's top inset is 0 (the top of the window is not
   // visible).
-  EnterTabletMode();
+  ASSERT_NO_FATAL_FAILURE(
+      ash::ShellTestApi().SetTabletModeEnabledForTest(true));
   EXPECT_TRUE(controller()->IsEnabled());
   EXPECT_EQ(0, aura_window->GetProperty(aura::client::kTopViewInset));
 
@@ -222,22 +229,25 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
 
   // Verify that immersive mode remains if fullscreen is toggled while in tablet
   // mode.
-  ui_test_utils::ToggleFullscreenModeAndWait(browser());
+  ToggleFullscreen();
   EXPECT_TRUE(controller()->IsEnabled());
-  ExitTabletMode();
+  ASSERT_NO_FATAL_FAILURE(
+      ash::ShellTestApi().SetTabletModeEnabledForTest(false));
   EXPECT_TRUE(controller()->IsEnabled());
 
   // Verify that immersive mode remains if the browser was fullscreened when
   // entering tablet mode.
-  EnterTabletMode();
+  ASSERT_NO_FATAL_FAILURE(
+      ash::ShellTestApi().SetTabletModeEnabledForTest(true));
   EXPECT_TRUE(controller()->IsEnabled());
 
   // Verify that if the browser is not fullscreened, upon exiting tablet mode,
   // immersive mode is not enabled, and the associated window's top inset is
   // greater than 0 (the top of the window is visible).
-  ui_test_utils::ToggleFullscreenModeAndWait(browser());
+  ToggleFullscreen();
   EXPECT_TRUE(controller()->IsEnabled());
-  ExitTabletMode();
+  ASSERT_NO_FATAL_FAILURE(
+      ash::ShellTestApi().SetTabletModeEnabledForTest(false));
   EXPECT_FALSE(controller()->IsEnabled());
 
   EXPECT_GT(aura_window->GetProperty(aura::client::kTopViewInset), 0);
@@ -245,8 +255,15 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
 
 // Verify that the frame layout is as expected when using immersive mode in
 // tablet mode.
+// Fails on Linux Chromium OS.
+// TODO(crbug.com/1191327): reenable the test.
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_FrameLayoutToggleTabletMode DISABLED_FrameLayoutToggleTabletMode
+#else
+#define MAYBE_FrameLayoutToggleTabletMode FrameLayoutToggleTabletMode
+#endif
 IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
-                       FrameLayoutToggleTabletMode) {
+                       MAYBE_FrameLayoutToggleTabletMode) {
   LaunchAppBrowser();
   ASSERT_FALSE(controller()->IsEnabled());
   BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
@@ -261,16 +278,16 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
   EXPECT_TRUE(frame_test_api.size_button()->GetVisible());
 
   // Verify the size button is hidden in tablet mode.
-  EnterTabletMode();
+  ash::ShellTestApi().SetTabletModeEnabledForTest(true);
   frame_test_api.EndAnimations();
 
-  EXPECT_FALSE(frame_test_api.size_button()->GetVisible());
+  EXPECT_TRUE(frame_test_api.size_button()->GetVisible());
 
   VerifyButtonsInImmersiveMode(browser_view);
 
   // Verify the size button is visible in clamshell mode, and that it does not
   // cover the other two buttons.
-  ExitTabletMode();
+  ash::ShellTestApi().SetTabletModeEnabledForTest(false);
   frame_test_api.EndAnimations();
 
   EXPECT_TRUE(frame_test_api.size_button()->GetVisible());
@@ -287,7 +304,7 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
 IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
                        FrameLayoutStartInTabletMode) {
   // Start in tablet mode
-  EnterTabletMode();
+  ash::ShellTestApi().SetTabletModeEnabledForTest(true);
 
   // Launch app window while in tablet mode
   LaunchAppBrowser(false);
@@ -304,7 +321,7 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
 
   // Verify the size button is visible in clamshell mode, and that it does not
   // cover the other two buttons.
-  ExitTabletMode();
+  ash::ShellTestApi().SetTabletModeEnabledForTest(false);
   VerifyButtonsInImmersiveMode(browser_view);
 }
 
@@ -314,14 +331,8 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
 // but still drawn. In this case, we should have a null anchor view so that the
 // bubble gets placed in the default top left corner. Regression test for
 // https://crbug.com/1087143.
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-// TODO(crbug.com/329759044): Enable when bug is fixed.
-#define MAYBE_PermissionsBubbleAnchor DISABLED_PermissionsBubbleAnchor
-#else
-#define MAYBE_PermissionsBubbleAnchor PermissionsBubbleAnchor
-#endif
 IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
-                       MAYBE_PermissionsBubbleAnchor) {
+                       PermissionsBubbleAnchor) {
   LaunchAppBrowser();
   auto test_api =
       std::make_unique<test::PermissionRequestManagerTestApi>(browser());

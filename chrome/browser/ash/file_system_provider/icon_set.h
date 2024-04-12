@@ -9,7 +9,8 @@
 
 #include "url/gurl.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 // Holds urls to icons with multiple dimensions.
 // TODO(mtomasz): Move this to chrome/browser/ash so it can be reused
@@ -40,6 +41,7 @@ class IconSet {
   std::map<IconSize, GURL> icons_;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_ICON_SET_H_

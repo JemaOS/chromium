@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
 (async function() {
   TestRunner.addResult(`Verifies that property value editing triggers style update in rendering engine.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <div id="inspected" style="font-size: 19px"></div>
@@ -16,7 +14,7 @@ import {ElementsTestRunner} from 'elements_test_runner';
 
   function testEmulateKeypress() {
     var treeElement = ElementsTestRunner.getMatchedStylePropertyTreeItem('font-size');
-    treeElement.startEditingValue();
+    treeElement.startEditing(treeElement.valueElement);
     var selection = treeElement.valueElement.getComponentSelection();
     var range = selection.getRangeAt(0);
     var newRange = document.createRange();

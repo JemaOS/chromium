@@ -18,16 +18,12 @@
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/chrome_signin_client_factory.h"
 #include "chrome/browser/signin/chrome_signin_client_test_util.h"
-#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/search_test_utils.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/search_engines/template_url_service.h"
-#include "components/supervised_user/core/browser/supervised_user_preferences.h"
-#include "components/supervised_user/core/browser/supervised_user_service.h"
-#include "components/supervised_user/core/browser/supervised_user_url_filter.h"
 #include "components/supervised_user/core/common/buildflags.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_frame_host.h"
@@ -38,6 +34,14 @@
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/test_utils.h"
 #include "url/gurl.h"
+
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+#include "base/test/scoped_feature_list.h"
+#include "chrome/browser/supervised_user/supervised_user_service.h"
+#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
+#include "components/supervised_user/core/browser/supervised_user_url_filter.h"
+#include "components/supervised_user/core/common/features.h"
+#endif
 
 namespace search {
 
@@ -121,10 +125,7 @@ class SearchTest : public BrowserWithTestWindowTest {
       {"Remote NTP -> Regular", "https://foo.com/newtab", true,
        "https://foo.com/other", false, false, false, false},
       {"SRP -> SRP", "https://foo.com/url", false, "https://foo.com/url", false,
-       true,
-       !content::WillSameSiteNavigationChangeRenderFrameHosts(
-           /*is_main_frame=*/true),
-       true},
+       true, !content::WillSameSiteNavigationsChangeRenderFrameHosts(), true},
       {"SRP -> Regular", "https://foo.com/url", false, "https://foo.com/other",
        false, !content::CanSameSiteMainFrameNavigationsChangeSiteInstances(),
        !content::CanSameSiteMainFrameNavigationsChangeSiteInstances(), true},
@@ -356,11 +357,44 @@ TEST_F(SearchTest, UseLocalNTPIfNTPURLIsNotSet) {
   EXPECT_EQ(chrome::kChromeUINewTabPageThirdPartyURL, new_tab_url);
 }
 
-TEST_F(SearchTest, UseLocalNTPIfNTPURLIsBlockedForSupervisedUser) {
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+TEST_F(SearchTest,
+       UseLocalNTPIfNTPURLIsBlockedForSupervisedUserWithoutFiltering) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(
+      supervised_user::kFilterWebsitesForSupervisedUsersOnDesktopAndIOS);
+
   // Mark the profile as supervised, otherwise the URL filter won't be checked.
   profile()->SetIsSupervisedProfile();
   // Block access to foo.com in the URL filter.
-  supervised_user::SupervisedUserService* supervised_user_service =
+  SupervisedUserService* supervised_user_service =
+      SupervisedUserServiceFactory::GetForProfile(profile());
+  supervised_user::SupervisedUserURLFilter* url_filter =
+      supervised_user_service->GetURLFilter();
+  std::map<std::string, bool> hosts;
+  hosts["foo.com"] = false;
+  url_filter->SetManualHosts(std::move(hosts));
+
+  if (supervised_user_service->IsURLFilteringEnabled()) {
+    EXPECT_EQ(chrome::kChromeUINewTabPageThirdPartyURL,
+              GetNewTabPageURL(profile()));
+    GURL new_tab_url(chrome::kChromeUINewTabURL);
+    EXPECT_TRUE(HandleNewTabURLRewrite(&new_tab_url, profile()));
+    EXPECT_EQ(chrome::kChromeUINewTabPageThirdPartyURL, new_tab_url);
+  } else {
+    EXPECT_EQ("https://foo.com/newtab", GetNewTabPageURL(profile()));
+  }
+}
+
+TEST_F(SearchTest, UseLocalNTPIfNTPURLIsBlockedForSupervisedUserWithFiltering) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      supervised_user::kFilterWebsitesForSupervisedUsersOnDesktopAndIOS);
+
+  // Mark the profile as supervised, otherwise the URL filter won't be checked.
+  profile()->SetIsSupervisedProfile();
+  // Block access to foo.com in the URL filter.
+  SupervisedUserService* supervised_user_service =
       SupervisedUserServiceFactory::GetForProfile(profile());
   supervised_user::SupervisedUserURLFilter* url_filter =
       supervised_user_service->GetURLFilter();
@@ -374,6 +408,7 @@ TEST_F(SearchTest, UseLocalNTPIfNTPURLIsBlockedForSupervisedUser) {
   EXPECT_TRUE(HandleNewTabURLRewrite(&new_tab_url, profile()));
   EXPECT_EQ(chrome::kChromeUINewTabPageThirdPartyURL, new_tab_url);
 }
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
 TEST_F(SearchTest, IsNTPOrRelatedURL) {
   GURL invalid_url;

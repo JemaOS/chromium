@@ -48,7 +48,7 @@ bool RunCrashReporter(const std::vector<std::string>& args, int stdin_fd) {
 void RunJavaCrashReporter(const std::string& crash_type,
                           base::ScopedFD pipe,
                           std::vector<std::string> args,
-                          std::optional<base::TimeDelta> uptime) {
+                          absl::optional<base::TimeDelta> uptime) {
   args.push_back("--arc_java_crash=" + crash_type);
   if (uptime) {
     args.push_back(
@@ -134,9 +134,10 @@ ArcCrashCollectorBridge::~ArcCrashCollectorBridge() {
   arc_bridge_service_->crash_collector()->SetHost(nullptr);
 }
 
-void ArcCrashCollectorBridge::DumpCrash(const std::string& type,
-                                        mojo::ScopedHandle pipe,
-                                        std::optional<base::TimeDelta> uptime) {
+void ArcCrashCollectorBridge::DumpCrash(
+    const std::string& type,
+    mojo::ScopedHandle pipe,
+    absl::optional<base::TimeDelta> uptime) {
   base::ThreadPool::PostTask(
       FROM_HERE, {base::WithBaseSyncPrimitives()},
       base::BindOnce(&RunJavaCrashReporter, type,
@@ -170,7 +171,7 @@ void ArcCrashCollectorBridge::SetBuildProperties(
     const std::string& device,
     const std::string& board,
     const std::string& cpu_abi,
-    const std::optional<std::string>& fingerprint) {
+    const absl::optional<std::string>& fingerprint) {
   device_ = device;
   board_ = board;
   cpu_abi_ = cpu_abi;

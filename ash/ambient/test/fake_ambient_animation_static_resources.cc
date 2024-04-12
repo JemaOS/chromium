@@ -4,10 +4,8 @@
 
 #include "ash/ambient/test/fake_ambient_animation_static_resources.h"
 
-#include <string_view>
 #include <utility>
 
-#include "ash/webui/personalization_app/mojom/personalization_app.mojom-shared.h"
 #include "base/check.h"
 #include "base/notreached.h"
 #include "cc/paint/skottie_wrapper.h"
@@ -15,8 +13,8 @@
 
 namespace ash {
 
-FakeAmbientAnimationStaticResources::FakeAmbientAnimationStaticResources()
-    : ui_settings_(personalization_app::mojom::AmbientTheme::kFeelTheBreeze) {}
+FakeAmbientAnimationStaticResources::FakeAmbientAnimationStaticResources() =
+    default;
 
 FakeAmbientAnimationStaticResources::~FakeAmbientAnimationStaticResources() =
     default;
@@ -29,7 +27,7 @@ void FakeAmbientAnimationStaticResources::SetSkottieWrapper(
 }
 
 void FakeAmbientAnimationStaticResources::SetStaticImageAsset(
-    std::string_view asset_id,
+    base::StringPiece asset_id,
     gfx::ImageSkia image) {
   images_[std::string(asset_id)] = std::move(image);
 }
@@ -41,14 +39,13 @@ FakeAmbientAnimationStaticResources::GetSkottieWrapper() const {
 }
 
 gfx::ImageSkia FakeAmbientAnimationStaticResources::GetStaticImageAsset(
-    std::string_view asset_id) const {
+    base::StringPiece asset_id) const {
   auto iter = images_.find(std::string(asset_id));
   return iter == images_.end() ? gfx::ImageSkia() : iter->second;
 }
 
-const AmbientUiSettings& FakeAmbientAnimationStaticResources::GetUiSettings()
-    const {
-  return ui_settings_;
+AmbientTheme FakeAmbientAnimationStaticResources::GetAmbientTheme() const {
+  return ambient_theme_;
 }
 
 }  // namespace ash

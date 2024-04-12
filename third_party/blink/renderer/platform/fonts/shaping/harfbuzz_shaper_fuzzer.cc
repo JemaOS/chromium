@@ -5,11 +5,11 @@
 #include "base/command_line.h"
 #include "third_party/blink/renderer/platform/fonts/font.h"
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
+#include "third_party/blink/renderer/platform/fonts/ng_text_fragment_paint_info.h"
 #include "third_party/blink/renderer/platform/fonts/shaping/caching_word_shaper.h"
 #include "third_party/blink/renderer/platform/fonts/shaping/harfbuzz_shaper.h"
 #include "third_party/blink/renderer/platform/fonts/shaping/shape_result_bloberizer.h"
 #include "third_party/blink/renderer/platform/fonts/shaping/shape_result_view.h"
-#include "third_party/blink/renderer/platform/fonts/text_fragment_paint_info.h"
 #include "third_party/blink/renderer/platform/fonts/text_run_paint_info.h"
 #include "third_party/blink/renderer/platform/testing/blink_fuzzer_test_support.h"
 
@@ -47,12 +47,13 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   String string(reinterpret_cast<const UChar*>(data),
                 std::min(kMaxInputLength, size / sizeof(UChar)));
   HarfBuzzShaper shaper(string);
-  const ShapeResult* result = shaper.Shape(&font, TextDirection::kLtr);
+  scoped_refptr<ShapeResult> result = shaper.Shape(&font, TextDirection::kLtr);
 
   // BloberizeNG
-  ShapeResultView* result_view = ShapeResultView::Create(result);
-  TextFragmentPaintInfo text_info{StringView(string), 0, string.length(),
-                                  result_view};
+  scoped_refptr<ShapeResultView> result_view =
+      ShapeResultView::Create(result.get());
+  NGTextFragmentPaintInfo text_info{StringView(string), 0, string.length(),
+                                    result_view.get()};
   ShapeResultBloberizer::FillGlyphsNG bloberizer_ng(
       font.GetFontDescription(), text_info.text, text_info.from, text_info.to,
       text_info.shape_result, ShapeResultBloberizer::Type::kEmitText);

@@ -85,7 +85,8 @@ class ASH_EXPORT LockScreenActionBackgroundController {
   // state and notify observers of background state changes.
   void UpdateState(LockScreenActionBackgroundState state);
 
-  raw_ptr<aura::Window, DanglingUntriaged> parent_window_ = nullptr;
+  raw_ptr<aura::Window, DanglingUntriaged | ExperimentalAsh> parent_window_ =
+      nullptr;
 
  private:
   LockScreenActionBackgroundState state_ =

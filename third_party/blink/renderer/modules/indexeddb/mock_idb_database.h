@@ -13,12 +13,8 @@
 #include "third_party/blink/public/mojom/indexeddb/indexeddb.mojom-blink.h"
 
 namespace blink {
-class AbstrackMockIDBDatabase {
-  virtual void OnDisconnect() = 0;
-};
 
-class MockIDBDatabase : public testing::StrictMock<mojom::blink::IDBDatabase>,
-                        public testing::StrictMock<AbstrackMockIDBDatabase> {
+class MockIDBDatabase : public testing::StrictMock<mojom::blink::IDBDatabase> {
  public:
   MOCK_METHOD(void,
               RenameObjectStore,
@@ -35,6 +31,7 @@ class MockIDBDatabase : public testing::StrictMock<mojom::blink::IDBDatabase>,
        mojom::blink::IDBTransactionMode,
        mojom::blink::IDBTransactionDurability),
       (override));
+  MOCK_METHOD(void, Close, (), (override));
   MOCK_METHOD(void, VersionChangeIgnored, (), (override));
   MOCK_METHOD(void, Abort, (int64_t transaction_id), (override));
   MOCK_METHOD(void,
@@ -80,6 +77,15 @@ class MockIDBDatabase : public testing::StrictMock<mojom::blink::IDBDatabase>,
                GetAllCallback),
               (override));
   MOCK_METHOD(void,
+              BatchGetAll,
+              (int64_t transaction_id,
+               int64_t object_store_id,
+               int64_t index_id,
+               Vector<mojom::blink::IDBKeyRangePtr> key_ranges,
+               uint32_t max_count,
+               BatchGetAllCallback),
+              (override));
+  MOCK_METHOD(void,
               SetIndexKeys,
               (int64_t transaction_id,
                int64_t object_store_id,
@@ -109,29 +115,28 @@ class MockIDBDatabase : public testing::StrictMock<mojom::blink::IDBDatabase>,
                int64_t object_store_id,
                int64_t index_id,
                mojom::blink::IDBKeyRangePtr,
-               CountCallback),
+               mojo::PendingAssociatedRemote<mojom::blink::IDBCallbacks>),
               (override));
   MOCK_METHOD(void,
               DeleteRange,
               (int64_t transaction_id,
                int64_t object_store_id,
                mojom::blink::IDBKeyRangePtr,
-               DeleteRangeCallback),
+               mojo::PendingAssociatedRemote<mojom::blink::IDBCallbacks>),
               (override));
   MOCK_METHOD(void,
               GetKeyGeneratorCurrentNumber,
               (int64_t transaction_id,
                int64_t object_store_id,
-               GetKeyGeneratorCurrentNumberCallback),
+               mojo::PendingAssociatedRemote<mojom::blink::IDBCallbacks>),
               (override));
   MOCK_METHOD(void,
               Clear,
-              (int64_t transaction_id, int64_t object_store_id, ClearCallback),
+              (int64_t transaction_id,
+               int64_t object_store_id,
+               mojo::PendingAssociatedRemote<mojom::blink::IDBCallbacks>),
               (override));
   MOCK_METHOD(void, DidBecomeInactive, (), (override));
-
-  // AbstrackMockIDBDatabase::OnDisconnect()
-  MOCK_METHOD(void, OnDisconnect, (), (override));
 
   void Bind(mojo::PendingAssociatedReceiver<mojom::blink::IDBDatabase>);
   mojo::PendingAssociatedRemote<mojom::blink::IDBDatabase>

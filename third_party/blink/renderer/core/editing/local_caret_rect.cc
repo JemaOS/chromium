@@ -35,9 +35,9 @@
 #include "third_party/blink/renderer/core/editing/ng_flat_tree_shorthands.h"
 #include "third_party/blink/renderer/core/editing/position_with_affinity.h"
 #include "third_party/blink/renderer/core/editing/visible_position.h"
-#include "third_party/blink/renderer/core/layout/inline/caret_rect.h"
-#include "third_party/blink/renderer/core/layout/inline/inline_caret_position.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_caret_position.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_caret_rect.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 
 namespace blink {
@@ -50,7 +50,7 @@ namespace {
 //  - A position before/after atomic inline element. Note: This function
 //    doesn't check whether anchor node is atomic inline level or not.
 template <typename Strategy>
-PositionWithAffinityTemplate<Strategy> AdjustForInlineCaretPosition(
+PositionWithAffinityTemplate<Strategy> AdjustForNGCaretPosition(
     const PositionWithAffinityTemplate<Strategy>& position_with_affinity) {
   switch (position_with_affinity.GetPosition().AnchorType()) {
     case PositionAnchorType::kAfterAnchor:
@@ -101,16 +101,15 @@ LocalCaretRect LocalCaretRectOfPositionTemplate(
   const PositionWithAffinityTemplate<Strategy>& adjusted =
       ComputeInlineAdjustedPosition(position, rule);
   if (adjusted.IsNotNull()) {
-    if (auto caret_position = ComputeInlineCaretPosition(
-            AdjustForInlineCaretPosition(adjusted))) {
+    if (auto caret_position =
+            ComputeNGCaretPosition(AdjustForNGCaretPosition(adjusted)))
       return ComputeLocalCaretRect(caret_position);
-    }
   }
 
   // If the caret is in an empty `LayoutBlockFlow`, and if it is block-
   // fragmented, set the first fragment to prevent rendering multiple carets in
   // following fragments.
-  const PhysicalBoxFragment* root_box_fragment = nullptr;
+  const NGPhysicalBoxFragment* root_box_fragment = nullptr;
   if (position.GetPosition().IsOffsetInAnchor() &&
       !position.GetPosition().OffsetInContainerNode()) {
     if (const auto* block_flow = DynamicTo<LayoutBlockFlow>(layout_object)) {
@@ -122,7 +121,7 @@ LocalCaretRect LocalCaretRectOfPositionTemplate(
   }
 
   return LocalCaretRect(layout_object,
-                        layout_object->LocalCaretRect(
+                        layout_object->PhysicalLocalCaretRect(
                             position.GetPosition().ComputeEditingOffset(),
                             extra_width_to_end_of_line),
                         root_box_fragment);
@@ -145,9 +144,8 @@ LocalCaretRect LocalSelectionRectOfPositionTemplate(
     return LocalCaretRect();
 
   if (auto caret_position =
-          ComputeInlineCaretPosition(AdjustForInlineCaretPosition(adjusted))) {
+          ComputeNGCaretPosition(AdjustForNGCaretPosition(adjusted)))
     return ComputeLocalSelectionRect(caret_position);
-  }
 
   return LocalCaretRect();
 }

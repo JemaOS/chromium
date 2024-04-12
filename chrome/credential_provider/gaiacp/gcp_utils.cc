@@ -9,10 +9,7 @@
 #include <windows.h>
 #include <winsock2.h>
 #include <winternl.h>
-
 #include <string>
-#include <string_view>
-
 #include "base/values.h"
 
 #define _NTDEF_  // Prevent redefition errors, must come after <winternl.h>
@@ -24,12 +21,12 @@
 #include <stdlib.h>
 #include <wbemidl.h>
 
-#include <algorithm>
 #include <iomanip>
 #include <memory>
 
 #include "base/base64.h"
 #include "base/command_line.h"
+#include "base/cxx17_backports.h"
 #include "base/files/file.h"
 #include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
@@ -38,7 +35,6 @@
 #include "base/json/json_writer.h"
 #include "base/no_destructor.h"
 #include "base/path_service.h"
-#include "base/strings/strcat_win.h"
 #include "base/strings/string_number_conversions_win.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
@@ -74,14 +70,10 @@ constexpr wchar_t kDefaultMdmUrl[] =
 
 constexpr int kMaxNumConsecutiveUploadDeviceFailures = 3;
 
-// The following staleness time limits are set to 5 days to prevent file fetch
-// operations unnecessarily by GCPW when machine is offline during weekends and
-// holidays. These files are also updated by GCPW extension Windows NT service
-// regularly when the device is online.
 constexpr base::TimeDelta kMaxTimeDeltaSinceLastUserPolicyRefresh =
-    base::Days(5);
+    base::Days(1);
 constexpr base::TimeDelta kMaxTimeDeltaSinceLastExperimentsFetch =
-    base::Days(5);
+    base::Days(1);
 
 constexpr wchar_t kGcpwExperimentsDirectory[] = L"Experiments";
 constexpr wchar_t kGcpwUserExperimentsFileName[] = L"ExperimentsFetchResponse";
@@ -707,7 +699,7 @@ HRESULT GetPathToDllFromHandle(HINSTANCE dll_handle,
     return hr;
   }
 
-  *path_to_dll = base::FilePath(std::wstring_view(path, length));
+  *path_to_dll = base::FilePath(base::WStringPiece(path, length));
   return S_OK;
 }
 
@@ -739,7 +731,8 @@ HRESULT GetEntryPointArgumentForRunDll(HINSTANCE dll_handle,
     return hr;
   }
 
-  *entrypoint_arg = base::StrCat({L"\"", short_path, L"\",", entrypoint});
+  *entrypoint_arg =
+      std::wstring(base::StringPrintf(L"\"%ls\",%ls", short_path, entrypoint));
 
   // In tests, the current module is the unittest exe, not the real dll.
   // The unittest exe does not expose entrypoints, so return S_FALSE as a hint
@@ -956,22 +949,21 @@ std::wstring GetSelectedLanguage() {
   return GetLanguageSelector().matched_candidate();
 }
 
-void SecurelyClearDictionaryValue(base::optional_ref<base::Value::Dict> dict) {
-  SecurelyClearDictionaryValueWithKey(dict, kKeyPassword);
+void SecurelyClearDictionaryValue(absl::optional<base::Value>* value) {
+  SecurelyClearDictionaryValueWithKey(value, kKeyPassword);
 }
 
-void SecurelyClearDictionaryValueWithKey(
-    base::optional_ref<base::Value::Dict> dict,
-    const std::string& password_key) {
-  if (!dict.has_value()) {
+void SecurelyClearDictionaryValueWithKey(absl::optional<base::Value>* value,
+                                         const std::string& password_key) {
+  if (!value || !(*value) || !((*value)->is_dict()))
     return;
+
+  const std::string* password_value = (*value)->FindStringKey(password_key);
+  if (password_value) {
+    SecurelyClearString(*const_cast<std::string*>(password_value));
   }
 
-  if (auto* password_value = dict->FindString(password_key)) {
-    SecurelyClearString(*password_value);
-  }
-
-  dict->clear();
+  (*value).reset();
 }
 
 void SecurelyClearString(std::wstring& str) {
@@ -993,26 +985,33 @@ std::string SearchForKeyInStringDictUTF8(
     const std::initializer_list<base::StringPiece>& path) {
   DCHECK_GT(path.size(), 0UL);
 
-  std::optional<base::Value::Dict> json_obj =
-      base::JSONReader::ReadDict(json_string, base::JSON_ALLOW_TRAILING_COMMAS);
-  if (!json_obj) {
+  absl::optional<base::Value> json_obj =
+      base::JSONReader::Read(json_string, base::JSON_ALLOW_TRAILING_COMMAS);
+  if (!json_obj || !json_obj->is_dict()) {
     LOGFN(ERROR) << "base::JSONReader::Read failed to translate to JSON";
     return std::string();
   }
   const std::string* value =
-      json_obj->FindStringByDottedPath(base::JoinString(path, "."));
+      json_obj->GetDict().FindStringByDottedPath(base::JoinString(path, "."));
   return value ? *value : std::string();
 }
 
-std::wstring GetDictString(const base::Value::Dict& dict, const char* name) {
+std::wstring GetDictString(const base::Value& dict, const char* name) {
   DCHECK(name);
-  const std::string* value = dict.FindString(name);
+  DCHECK(dict.is_dict());
+  const std::string* value = dict.GetDict().FindString(name);
   return value ? base::UTF8ToWide(*value) : std::wstring();
 }
 
-std::string GetDictStringUTF8(const base::Value::Dict& dict, const char* name) {
+std::wstring GetDictString(const std::unique_ptr<base::Value>& dict,
+                           const char* name) {
+  return GetDictString(*dict, name);
+}
+
+std::string GetDictStringUTF8(const base::Value& dict, const char* name) {
   DCHECK(name);
-  const std::string* value = dict.FindString(name);
+  DCHECK(dict.is_dict());
+  const std::string* value = dict.GetDict().FindString(name);
   return value ? *value : std::string();
 }
 
@@ -1023,14 +1022,15 @@ HRESULT SearchForListInStringDictUTF8(
     std::vector<std::string>* output) {
   DCHECK_GT(path.size(), 0UL);
 
-  std::optional<base::Value::Dict> json_obj =
-      base::JSONReader::ReadDict(json_string, base::JSON_ALLOW_TRAILING_COMMAS);
-  if (!json_obj) {
+  absl::optional<base::Value> json_obj =
+      base::JSONReader::Read(json_string, base::JSON_ALLOW_TRAILING_COMMAS);
+  if (!json_obj || !json_obj->is_dict()) {
     LOGFN(ERROR) << "base::JSONReader::Read failed to translate to JSON";
     return E_FAIL;
   }
 
-  auto* value = json_obj->FindListByDottedPath(base::JoinString(path, "."));
+  auto* value =
+      json_obj->GetDict().FindListByDottedPath(base::JoinString(path, "."));
   if (value) {
     for (const base::Value& entry_val : *value) {
       const base::Value::Dict& entry = entry_val.GetDict();
@@ -1043,6 +1043,11 @@ HRESULT SearchForListInStringDictUTF8(
     }
   }
   return S_OK;
+}
+
+std::string GetDictStringUTF8(const std::unique_ptr<base::Value>& dict,
+                              const char* name) {
+  return GetDictStringUTF8(*dict, name);
 }
 
 base::FilePath::StringType GetInstallParentDirectoryName() {
@@ -1070,10 +1075,13 @@ base::Version GetMinimumSupportedChromeVersion() {
 }
 
 bool ExtractKeysFromDict(
-    const base::Value::Dict& dict,
+    const base::Value& dict,
     const std::vector<std::pair<std::string, std::string*>>& needed_outputs) {
+  if (!dict.is_dict())
+    return false;
+
   for (const std::pair<std::string, std::string*>& output : needed_outputs) {
-    const std::string* output_value = dict.FindString(output.first);
+    const std::string* output_value = dict.FindStringKey(output.first);
     if (!output_value) {
       LOGFN(ERROR) << "Could not extract value '" << output.first
                    << "' from server response";
@@ -1197,20 +1205,20 @@ void GetOsVersion(std::string* version) {
 
 HRESULT GenerateDeviceId(std::string* device_id) {
   // Build the json data encapsulating different device ids.
-  base::Value::Dict device_ids_dict;
+  base::Value device_ids_dict(base::Value::Type::DICT);
 
   // Add the serial number to the dictionary.
   std::wstring serial_number = GetSerialNumber();
-  if (!serial_number.empty()) {
-    device_ids_dict.Set("serial_number", base::WideToUTF8(serial_number));
-  }
+  if (!serial_number.empty())
+    device_ids_dict.SetStringKey("serial_number",
+                                 base::WideToUTF8(serial_number));
 
   // Add machine_guid to the dictionary.
   std::wstring machine_guid;
   HRESULT hr = GetMachineGuid(&machine_guid);
-  if (SUCCEEDED(hr) && !machine_guid.empty()) {
-    device_ids_dict.Set("machine_guid", base::WideToUTF8(machine_guid));
-  }
+  if (SUCCEEDED(hr) && !machine_guid.empty())
+    device_ids_dict.SetStringKey("machine_guid",
+                                 base::WideToUTF8(machine_guid));
 
   std::string device_id_str;
   bool json_write_result =
@@ -1221,7 +1229,7 @@ HRESULT GenerateDeviceId(std::string* device_id) {
   }
 
   // Store the base64encoded device id json blob in the output.
-  *device_id = base::Base64Encode(device_id_str);
+  base::Base64Encode(device_id_str, device_id);
   return S_OK;
 }
 

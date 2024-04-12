@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_CHROMEOS_EXTENSIONS_TELEMETRY_API_TELEMETRY_TELEMETRY_API_CONVERTERS_H_
 #define CHROME_BROWSER_CHROMEOS_EXTENSIONS_TELEMETRY_API_TELEMETRY_TELEMETRY_API_CONVERTERS_H_
 
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -15,7 +14,9 @@
 #include "chromeos/services/network_config/public/mojom/network_types.mojom-forward.h"
 #include "chromeos/services/network_health/public/mojom/network_health_types.mojom-forward.h"
 
-namespace chromeos::converters::telemetry {
+namespace chromeos {
+
+namespace converters {
 
 // This file contains helper functions used by telemetry_api.cc to convert its
 // types to/from telemetry service types.
@@ -50,15 +51,8 @@ chromeos::api::os_telemetry::BatteryInfo UncheckedConvertPtr(
     crosapi::mojom::ProbeBatteryInfoPtr input,
     bool has_serial_number_permission);
 
-// The `mac_address` field should be converted iff `has_mac_address_permission`
-// is true.
 chromeos::api::os_telemetry::NetworkInfo UncheckedConvertPtr(
-    chromeos::network_health::mojom::NetworkPtr input,
-    bool has_mac_address_permission);
-
-chromeos::api::os_telemetry::InternetConnectivityInfo UncheckedConvertPtr(
-    chromeos::network_health::mojom::NetworkHealthStatePtr input,
-    bool has_mac_address_permission);
+    chromeos::network_health::mojom::NetworkPtr input);
 
 chromeos::api::os_telemetry::NonRemovableBlockDeviceInfo UncheckedConvertPtr(
     crosapi::mojom::ProbeNonRemovableBlockDeviceInfoPtr);
@@ -90,26 +84,6 @@ chromeos::api::os_telemetry::FwupdFirmwareVersionInfo UncheckedConvertPtr(
 chromeos::api::os_telemetry::UsbBusInfo UncheckedConvertPtr(
     crosapi::mojom::ProbeUsbBusInfoPtr input);
 
-// `serial_number` field should be converted iff `has_serial_number_permission`
-// is true.
-chromeos::api::os_telemetry::VpdInfo UncheckedConvertPtr(
-    crosapi::mojom::ProbeCachedVpdInfoPtr input,
-    bool has_serial_number_permission);
-
-chromeos::api::os_telemetry::DisplayInfo UncheckedConvertPtr(
-    crosapi::mojom::ProbeDisplayInfoPtr input);
-
-chromeos::api::os_telemetry::EmbeddedDisplayInfo UncheckedConvertPtr(
-    crosapi::mojom::ProbeEmbeddedDisplayInfoPtr input);
-
-chromeos::api::os_telemetry::ExternalDisplayInfo UncheckedConvertPtr(
-    crosapi::mojom::ProbeExternalDisplayInfoPtr input);
-
-chromeos::api::os_telemetry::ThermalInfo UncheckedConvertPtr(
-    crosapi::mojom::ProbeThermalInfoPtr input);
-
-chromeos::api::os_telemetry::ThermalSensorInfo UncheckedConvertPtr(
-    crosapi::mojom::ProbeThermalSensorInfoPtr input);
 }  // namespace unchecked
 
 chromeos::api::os_telemetry::CpuArchitectureEnum Convert(
@@ -133,12 +107,6 @@ chromeos::api::os_telemetry::UsbVersion Convert(
 chromeos::api::os_telemetry::UsbSpecSpeed Convert(
     crosapi::mojom::ProbeUsbSpecSpeed input);
 
-chromeos::api::os_telemetry::DisplayInputType Convert(
-    crosapi::mojom::ProbeDisplayInputType input);
-
-chromeos::api::os_telemetry::ThermalSensorSource Convert(
-    crosapi::mojom::ProbeThermalSensorSource input);
-
 template <class OutputT, class InputT>
 std::vector<OutputT> ConvertPtrVector(std::vector<InputT> input) {
   std::vector<OutputT> output;
@@ -149,17 +117,14 @@ std::vector<OutputT> ConvertPtrVector(std::vector<InputT> input) {
   return output;
 }
 
-template <class InputT,
-          class... Types,
-          class OutputT = decltype(unchecked::UncheckedConvertPtr(
-              std::declval<InputT>(),
-              std::declval<Types>()...)),
-          class = std::enable_if_t<std::is_default_constructible_v<OutputT>>>
+template <class OutputT, class InputT, class... Types>
 OutputT ConvertPtr(InputT input, Types... args) {
-  return (input) ? unchecked::UncheckedConvertPtr(std::move(input), args...)
-                 : OutputT();
+  return (!input.is_null())
+             ? unchecked::UncheckedConvertPtr(std::move(input), args...)
+             : OutputT();
 }
 
-}  // namespace chromeos::converters::telemetry
+}  // namespace converters
+}  // namespace chromeos
 
 #endif  // CHROME_BROWSER_CHROMEOS_EXTENSIONS_TELEMETRY_API_TELEMETRY_TELEMETRY_API_CONVERTERS_H_

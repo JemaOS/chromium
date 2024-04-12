@@ -34,9 +34,7 @@ struct WaylandOverlayConfig {
   int z_order = 0;
 
   // Specifies how the buffer is to be transformed during composition.
-  // Note: A |gfx::OverlayTransform| transforms the buffer within its bounds and
-  // does not affect |bounds_rect|.
-  absl::variant<gfx::OverlayTransform, gfx::Transform> transform =
+  gfx::OverlayTransform transform =
       gfx::OverlayTransform::OVERLAY_TRANSFORM_NONE;
 
   // Specifies if alpha blending, with premultiplied alpha should be applied at
@@ -64,8 +62,8 @@ struct WaylandOverlayConfig {
   // This sets the source rectangle of Wayland Viewport.
   gfx::RectF crop_rect = {1.f, 1.f};
 
-  // Damage in viz::Display space, the same space as |bounds_rect|. Optional
-  // to hint a partial swap.
+  // Describes the changed region of the buffer. Optional to hint a partial
+  // swap.
   gfx::Rect damage_region;
 
   // Opacity of the overlay independent of buffer alpha.
@@ -78,19 +76,19 @@ struct WaylandOverlayConfig {
   gfx::GpuFenceHandle access_fence_handle;
 
   // Specifies the color space data of the wayland config.
-  std::optional<gfx::ColorSpace> color_space;
+  absl::optional<gfx::ColorSpace> color_space;
 
   // Specifies rounded clip bounds of the overlay if delegated composition is
   // supported and enabled.
-  std::optional<gfx::RRectF> rounded_clip_bounds;
+  absl::optional<gfx::RRectF> rounded_clip_bounds;
 
   // Optional: background color of this overlay plane.
-  std::optional<SkColor4f> background_color;
+  absl::optional<SkColor4f> background_color;
 
   // Optional: clip rect for this overlay.
-  std::optional<gfx::Rect> clip_rect;
+  absl::optional<gfx::Rect> clip_rect;
 };
 
 }  // namespace wl
 
-#endif  // UI_OZONE_PLATFORM_WAYLAND_COMMON_WAYLAND_OVERLAY_CONFIG_H_
+#endif  // COMPONENTS_VIZ_COMMON_QUADS_COMPOSITOR_FRAME_H_

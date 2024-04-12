@@ -32,10 +32,7 @@ IcuEnvironment* test_case = new IcuEnvironment();
 DEFINE_PROTO_FUZZER(const json_proto::JsonValue& json_value) {
   json_proto::JsonProtoConverter converter;
   std::string native_input = converter.Convert(json_value);
-  FirstPartySetsOverridesPolicyHandler fps_handler(
-      policy::key::kFirstPartySetsOverrides, policy::GetChromeSchema());
-  FirstPartySetsOverridesPolicyHandler rws_handler(
-      policy::key::kRelatedWebsiteSetsOverrides, policy::GetChromeSchema());
+  FirstPartySetsOverridesPolicyHandler handler(policy::GetChromeSchema());
 
   if (getenv("LPM_DUMP_NATIVE_INPUT"))
     std::cout << native_input << std::endl;
@@ -47,15 +44,8 @@ DEFINE_PROTO_FUZZER(const json_proto::JsonValue& json_value) {
                  policy::PolicySource::POLICY_SOURCE_ENTERPRISE_DEFAULT,
                  base::JSONReader::Read(native_input),
                  /*external_data_fetcher=*/nullptr);
-  policy_map.Set(policy::key::kRelatedWebsiteSetsOverrides,
-                 policy::PolicyLevel::POLICY_LEVEL_MANDATORY,
-                 policy::PolicyScope::POLICY_SCOPE_MACHINE,
-                 policy::PolicySource::POLICY_SOURCE_ENTERPRISE_DEFAULT,
-                 base::JSONReader::Read(native_input),
-                 /*external_data_fetcher=*/nullptr);
   policy::PolicyErrorMap errors;
-  fps_handler.CheckPolicySettings(policy_map, &errors);
-  rws_handler.CheckPolicySettings(policy_map, &errors);
+  handler.CheckPolicySettings(policy_map, &errors);
 }
 
 }  // namespace first_party_sets

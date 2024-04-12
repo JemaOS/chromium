@@ -20,7 +20,7 @@ void CompositorMetricsHelper::RecordTaskMetrics(
   if (ShouldDiscardTask(task, task_timing))
     return;
 
-  // Any needed metrics should be recorded here.
+  MetricsHelper::RecordCommonTaskMetrics(task, task_timing);
 }
 
 }  // namespace scheduler

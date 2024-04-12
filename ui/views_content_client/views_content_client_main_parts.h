@@ -11,10 +11,6 @@
 #include "build/build_config.h"
 #include "content/public/browser/browser_main_parts.h"
 
-#if BUILDFLAG(IS_APPLE)
-#include "ui/display/screen.h"
-#endif
-
 namespace base {
 class RunLoop;
 }
@@ -47,8 +43,6 @@ class ViewsContentClientMainParts : public content::BrowserMainParts {
 
   // content::BrowserMainParts:
   int PreMainMessageLoopRun() override;
-  void WillRunMainMessageLoop(
-      std::unique_ptr<base::RunLoop>& run_loop) override;
   void PostMainMessageLoopRun() override;
 
   content::ShellBrowserContext* browser_context() {
@@ -68,10 +62,6 @@ class ViewsContentClientMainParts : public content::BrowserMainParts {
 #endif
 
  private:
-#if BUILDFLAG(IS_APPLE)
-  display::ScopedNativeScreen desktop_screen_;
-#endif
-
   std::unique_ptr<content::ShellBrowserContext> browser_context_;
 
   std::unique_ptr<views::TestViewsDelegate> views_delegate_;

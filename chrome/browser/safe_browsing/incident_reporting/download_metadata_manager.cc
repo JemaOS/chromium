@@ -11,9 +11,6 @@
 #include <memory>
 #include <utility>
 
-#include "base/check.h"
-#include "base/check_op.h"
-#include "base/debug/dump_without_crashing.h"
 #include "base/files/file.h"
 #include "base/files/file_util.h"
 #include "base/files/important_file_writer.h"
@@ -34,6 +31,27 @@
 namespace safe_browsing {
 
 namespace {
+
+// Histogram bucket values for metadata read operations. Do not reorder.
+enum MetadataReadResult {
+  READ_SUCCESS = 0,
+  OPEN_FAILURE = 1,
+  NOT_FOUND = 2,
+  GET_INFO_FAILURE = 3,
+  FILE_TOO_BIG = 4,
+  READ_FAILURE = 5,
+  PARSE_FAILURE = 6,
+  MALFORMED_DATA = 7,
+  NUM_READ_RESULTS
+};
+
+// Histogram bucket values for metadata write operations. Do not reorder.
+enum MetadataWriteResult {
+  WRITE_SUCCESS = 0,
+  SERIALIZATION_FAILURE = 1,
+  WRITE_FAILURE = 2,
+  NUM_WRITE_RESULTS
+};
 
 // The name of the metadata file in the profile directory.
 const base::FilePath::CharType kDownloadMetadataBasename[] =
@@ -116,33 +134,62 @@ void ReadMetadataInBackground(const base::FilePath& metadata_path,
                               DownloadMetadata* metadata) {
   using base::File;
   DCHECK(metadata);
+  MetadataReadResult result = NUM_READ_RESULTS;
   File metadata_file(metadata_path, File::FLAG_OPEN | File::FLAG_READ);
-  base::File::Info info;
-  if (metadata_file.IsValid() && metadata_file.GetInfo(&info) &&
-      info.size <= INT_MAX) {
-    const int size = static_cast<int>(info.size);
-    std::unique_ptr<char[]> file_data(new char[info.size]);
-    if (metadata_file.Read(0, file_data.get(), size) &&
-        metadata->ParseFromArray(file_data.get(), size) &&
-        MetadataIsValid(*metadata)) {
-      return;
+  if (metadata_file.IsValid()) {
+    base::File::Info info;
+    if (metadata_file.GetInfo(&info)) {
+      if (info.size <= INT_MAX) {
+        const int size = static_cast<int>(info.size);
+        std::unique_ptr<char[]> file_data(new char[info.size]);
+        if (metadata_file.Read(0, file_data.get(), size)) {
+          if (!metadata->ParseFromArray(file_data.get(), size))
+            result = PARSE_FAILURE;
+          else if (!MetadataIsValid(*metadata))
+            result = MALFORMED_DATA;
+          else
+            result = READ_SUCCESS;
+        } else {
+          result = READ_FAILURE;
+        }
+      } else {
+        result = FILE_TOO_BIG;
+      }
+    } else {
+      result = GET_INFO_FAILURE;
     }
+  } else if (metadata_file.error_details() != File::FILE_ERROR_NOT_FOUND) {
+    result = OPEN_FAILURE;
+  } else {
+    result = NOT_FOUND;
   }
-  metadata->Clear();
+  if (result != READ_SUCCESS)
+    metadata->Clear();
+  UMA_HISTOGRAM_ENUMERATION(
+      "SBIRS.DownloadMetadata.ReadResult", result, NUM_READ_RESULTS);
 }
 
 // Writes |download_metadata| to |metadata_path|.
 void WriteMetadataInBackground(const base::FilePath& metadata_path,
                                DownloadMetadata* download_metadata) {
+  MetadataWriteResult result = NUM_WRITE_RESULTS;
   std::string file_data;
   if (download_metadata->SerializeToString(&file_data)) {
-    base::ImportantFileWriter::WriteFileAtomically(metadata_path, file_data);
+    result =
+        base::ImportantFileWriter::WriteFileAtomically(metadata_path, file_data)
+            ? WRITE_SUCCESS
+            : WRITE_FAILURE;
+  } else {
+    result = SERIALIZATION_FAILURE;
   }
+  UMA_HISTOGRAM_ENUMERATION(
+      "SBIRS.DownloadMetadata.WriteResult", result, NUM_WRITE_RESULTS);
 }
 
 // Deletes |metadata_path|.
 void DeleteMetadataInBackground(const base::FilePath& metadata_path) {
-  base::DeleteFile(metadata_path);
+  bool success = base::DeleteFile(metadata_path);
+  UMA_HISTOGRAM_BOOLEAN("SBIRS.DownloadMetadata.DeleteSuccess", success);
 }
 
 // Runs |callback| with the DownloadDetails in |download_metadata|.
@@ -203,7 +250,6 @@ class DownloadMetadataManager::ManagerContext
   void OnDownloadUpdated(download::DownloadItem* download) override;
   void OnDownloadOpened(download::DownloadItem* download) override;
   void OnDownloadRemoved(download::DownloadItem* download) override;
-  void OnDownloadDestroyed(download::DownloadItem* download) override;
 
  private:
   enum State {
@@ -213,12 +259,6 @@ class DownloadMetadataManager::ManagerContext
     // The context is waiting for the metadata file to be loaded and its
     // corresponding DownloadManager has gone away.
     DETACHED_WAIT,
-
-    // The context is waiting for observed DownloadItems to be destroyed. This
-    // state is a debugging aid to understand why an instance seems to be
-    // observing a DownloadItem that is not present in the DownloadManager's
-    // collection; see https://crbug.com/40072145.
-    DETACHED_OBSERVING,
 
     // The context has loaded the metadata file.
     LOAD_COMPLETE,
@@ -398,9 +438,8 @@ DownloadMetadataManager::ManagerContext::ManagerContext(
   // Observe all pre-existing items in the manager.
   content::DownloadManager::DownloadVector items;
   download_manager->GetAllDownloads(&items);
-  for (download::DownloadItem* download_item : items) {
+  for (auto* download_item : items)
     download_item->AddObserver(this);
-  }
 
   // Start the asynchronous task to read the persistent metadata.
   ReadMetadata();
@@ -411,22 +450,16 @@ void DownloadMetadataManager::ManagerContext::Detach(
   // Stop observing all items belonging to the manager.
   content::DownloadManager::DownloadVector items;
   download_manager->GetAllDownloads(&items);
-  for (download::DownloadItem* download_item : items) {
+  for (auto* download_item : items)
     download_item->RemoveObserver(this);
-  }
 
-  // Keep the instance alive if there is pending work to do.
-  if (!get_details_callbacks_.empty() || !pending_items_.empty()) {
-    // Next state transition in OnMetadataReady.
-    state_ = DETACHED_WAIT;
-  } else if (IsInObserverList()) {
-    // This should never happen, but somehow does. Keep the instance alive until
-    // it observes destruction of the last DownloadItem; see
-    // OnDownloadDestroyed.
-    state_ = DETACHED_OBSERVING;
-  } else {
-    // No outstanding work, so delete the instance at once.
+  // Delete the instance immediately if there's no work to process after a
+  // pending read completes.
+  if (get_details_callbacks_.empty() && pending_items_.empty()) {
     delete this;
+  } else {
+    // delete the instance in OnMetadataReady.
+    state_ = DETACHED_WAIT;
   }
 }
 
@@ -450,7 +483,6 @@ void DownloadMetadataManager::ManagerContext::SetRequest(
 void DownloadMetadataManager::ManagerContext::GetDownloadDetails(
     GetDownloadDetailsCallback callback) {
   if (state_ != LOAD_COMPLETE) {
-    CHECK_EQ(state_, WAITING_FOR_LOAD);
     get_details_callbacks_.push_back(std::move(callback));
   } else {
     std::move(callback).Run(
@@ -463,12 +495,6 @@ void DownloadMetadataManager::ManagerContext::GetDownloadDetails(
 
 void DownloadMetadataManager::ManagerContext::OnDownloadUpdated(
     download::DownloadItem* download) {
-  if (state_ == DETACHED_OBSERVING) {
-    // How could the context be notified after removing itself as an observer of
-    // all download items? https://crbug.com/40072145.
-    base::debug::DumpWithoutCrashing();
-    return;
-  }
   // Persist metadata for this download if it has just completed.
   if (download->GetState() == download::DownloadItem::COMPLETE) {
     // Ignore downloads we don't have a ClientDownloadRequest for.
@@ -481,52 +507,19 @@ void DownloadMetadataManager::ManagerContext::OnDownloadUpdated(
 
 void DownloadMetadataManager::ManagerContext::OnDownloadOpened(
     download::DownloadItem* download) {
-  if (state_ == DETACHED_OBSERVING) {
-    // How could the context be notified after removing itself as an observer of
-    // all download items? https://crbug.com/40072145.
-    base::debug::DumpWithoutCrashing();
-    return;
-  }
   const base::Time now = base::Time::Now();
-  if (state_ != LOAD_COMPLETE) {
-    CHECK_EQ(state_, WAITING_FOR_LOAD);
+  if (state_ != LOAD_COMPLETE)
     pending_items_[download->GetId()].last_opened_time = now;
-  } else if (HasMetadataFor(download)) {
+  else if (HasMetadataFor(download))
     UpdateLastOpenedTime(now);
-  }
 }
 
 void DownloadMetadataManager::ManagerContext::OnDownloadRemoved(
     download::DownloadItem* download) {
-  if (state_ == DETACHED_OBSERVING) {
-    // How could the context be notified after removing itself as an observer of
-    // all download items? https://crbug.com/40072145.
-    base::debug::DumpWithoutCrashing();
-    return;
-  }
-  download->RemoveObserver(this);
-
-  if (state_ != LOAD_COMPLETE) {
-    CHECK_EQ(state_, WAITING_FOR_LOAD);
+  if (state_ != LOAD_COMPLETE)
     pending_items_[download->GetId()].removed = true;
-  } else if (HasMetadataFor(download)) {
+  else if (HasMetadataFor(download))
     RemoveMetadata();
-  }
-}
-
-void DownloadMetadataManager::ManagerContext::OnDownloadDestroyed(
-    download::DownloadItem* download) {
-  if (state_ == DETACHED_OBSERVING) {
-    // How could the context be notified after removing itself as an observer of
-    // all download items? https://crbug.com/40072145.
-    base::debug::DumpWithoutCrashing();
-  }
-  download->RemoveObserver(this);
-  if (state_ == DETACHED_OBSERVING && !IsInObserverList()) {
-    // This instance is no longer observing any download items, so it can safely
-    // be destroyed.
-    delete this;
-  }
 }
 
 DownloadMetadataManager::ManagerContext::~ManagerContext() {
@@ -552,7 +545,7 @@ void DownloadMetadataManager::ManagerContext::CommitRequest(
   download_metadata_->mutable_download()->set_allocated_download(
       request.release());
   download_metadata_->mutable_download()->set_download_time_msec(
-      item->GetEndTime().InMillisecondsSinceUnixEpoch());
+      item->GetEndTime().ToJavaTime());
   // Persist it.
   WriteMetadata();
   // Run callbacks (only present in case of a transition to LOAD_COMPLETE).
@@ -612,8 +605,7 @@ void DownloadMetadataManager::ManagerContext::RunCallbacks() {
 bool DownloadMetadataManager::ManagerContext::HasMetadataFor(
     const download::DownloadItem* item) const {
   // There must not be metadata if the load is not complete.
-  DCHECK(state_ == LOAD_COMPLETE ||
-         (state_ == WAITING_FOR_LOAD && !download_metadata_));
+  DCHECK(state_ == LOAD_COMPLETE || !download_metadata_);
   return (download_metadata_ &&
           download_metadata_->download_id() == item->GetId());
 }
@@ -621,7 +613,6 @@ bool DownloadMetadataManager::ManagerContext::HasMetadataFor(
 void DownloadMetadataManager::ManagerContext::OnMetadataReady(
     std::unique_ptr<DownloadMetadata> download_metadata) {
   DCHECK_NE(state_, LOAD_COMPLETE);
-  DCHECK_NE(state_, DETACHED_OBSERVING);
 
   const bool is_detached = (state_ == DETACHED_WAIT);
 
@@ -650,24 +641,15 @@ void DownloadMetadataManager::ManagerContext::OnMetadataReady(
   // Run callbacks.
   RunCallbacks();
 
-  // Delete the context now if it has been detached and is no longer observing
-  // any download items.
-  if (is_detached) {
-    if (IsInObserverList()) {
-      // This should never happen, but somehow does. Keep the instance alive
-      // until it observes destruction of the last DownloadItem; see
-      // OnDownloadDestroyed.
-      state_ = DETACHED_OBSERVING;
-    } else {
-      delete this;
-    }
-  }
+  // Delete the context now if it has been detached.
+  if (is_detached)
+    delete this;
 }
 
 void DownloadMetadataManager::ManagerContext::UpdateLastOpenedTime(
     const base::Time& last_opened_time) {
   download_metadata_->mutable_download()->set_open_time_msec(
-      last_opened_time.InMillisecondsSinceUnixEpoch());
+      last_opened_time.ToJavaTime());
   WriteMetadata();
 }
 

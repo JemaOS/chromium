@@ -5,6 +5,7 @@
 #include "chrome/browser/ui/views/location_bar/intent_picker_view.h"
 
 #include "chrome/app/vector_icons/vector_icons.h"
+#include "chrome/browser/apps/intent_helper/intent_picker_helpers.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/bookmarks/bookmark_utils.h"
 #include "chrome/browser/ui/browser.h"
@@ -32,7 +33,7 @@ IntentPickerView::IntentPickerView(
                          "IntentPicker"),
       browser_(browser) {
   SetAccessibilityProperties(
-      /*role*/ std::nullopt,
+      /*role*/ absl::nullopt,
       l10n_util::GetStringUTF16(IDS_TOOLTIP_INTENT_PICKER_ICON));
 }
 
@@ -51,12 +52,8 @@ void IntentPickerView::OnExecuting(
     PageActionIconView::ExecuteSource execute_source) {
   DCHECK(GetShowIcon());
   content::WebContents* web_contents = GetWebContents();
-  CHECK(web_contents);
   const GURL& url = chrome::GetURLToBookmark(web_contents);
-  IntentPickerTabHelper* intent_picker_tab_helper =
-      IntentPickerTabHelper::FromWebContents(web_contents);
-  CHECK(intent_picker_tab_helper);
-  intent_picker_tab_helper->ShowIntentPickerBubbleOrLaunchApp(url);
+  apps::ShowIntentPickerOrLaunchApp(web_contents, url);
 }
 
 views::BubbleDialogDelegate* IntentPickerView::GetBubble() const {
@@ -82,6 +79,6 @@ const gfx::VectorIcon& IntentPickerView::GetVectorIcon() const {
              : kOpenInNewIcon;
 }
 
-BEGIN_METADATA(IntentPickerView)
+BEGIN_METADATA(IntentPickerView, PageActionIconView)
 ADD_READONLY_PROPERTY_METADATA(bool, ShowIcon)
 END_METADATA

@@ -10,12 +10,9 @@
 #include "base/memory/ptr_util.h"
 #include "third_party/blink/renderer/core/animation/path_interpolation_functions.h"
 #include "third_party/blink/renderer/core/css/css_path_value.h"
-#include "third_party/blink/renderer/core/css/css_value_list.h"
 #include "third_party/blink/renderer/core/css/resolver/style_resolver_state.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
-#include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/style/shape_clip_path_operation.h"
-#include "third_party/blink/renderer/core/style/shape_offset_path_operation.h"
 
 namespace blink {
 
@@ -28,13 +25,8 @@ const StylePath* GetPath(const CSSProperty& property,
   switch (property.PropertyID()) {
     case CSSPropertyID::kD:
       return style.D();
-    case CSSPropertyID::kOffsetPath: {
-      auto* shape = DynamicTo<ShapeOffsetPathOperation>(style.OffsetPath());
-      if (!shape) {
-        return nullptr;
-      }
-      return DynamicTo<StylePath>(shape->GetBasicShape());
-    }
+    case CSSPropertyID::kOffsetPath:
+      return DynamicTo<StylePath>(style.OffsetPath());
     case CSSPropertyID::kClipPath: {
       auto* shape = DynamicTo<ShapeClipPathOperation>(style.ClipPath());
       if (!shape)
@@ -56,14 +48,10 @@ void SetPath(const CSSProperty& property,
       builder.SetD(std::move(path));
       return;
     case CSSPropertyID::kOffsetPath:
-      // TODO(sakhapov): handle coord box.
-      builder.SetOffsetPath(MakeGarbageCollected<ShapeOffsetPathOperation>(
-          std::move(path), CoordBox::kBorderBox));
+      builder.SetOffsetPath(std::move(path));
       return;
     case CSSPropertyID::kClipPath:
-      // TODO(pdr): Handle geometry box.
-      builder.SetClipPath(MakeGarbageCollected<ShapeClipPathOperation>(
-          std::move(path), GeometryBox::kBorderBox));
+      builder.SetClipPath(ShapeClipPathOperation::Create(std::move(path)));
       return;
     default:
       NOTREACHED();
@@ -127,7 +115,7 @@ InterpolationValue CSSPathInterpolationType::MaybeConvertInherit(
   if (!state.ParentStyle())
     return nullptr;
 
-  conversion_checkers.push_back(MakeGarbageCollected<InheritedPathChecker>(
+  conversion_checkers.push_back(std::make_unique<InheritedPathChecker>(
       CssProperty(), GetPath(CssProperty(), *state.ParentStyle())));
   return PathInterpolationFunctions::ConvertValue(
       GetPath(CssProperty(), *state.ParentStyle()),
@@ -138,15 +126,10 @@ InterpolationValue CSSPathInterpolationType::MaybeConvertValue(
     const CSSValue& value,
     const StyleResolverState*,
     ConversionCheckers&) const {
-  const cssvalue::CSSPathValue* path_value = nullptr;
-  if (const auto* list = DynamicTo<CSSValueList>(value)) {
-    path_value = DynamicTo<cssvalue::CSSPathValue>(list->First());
-  } else {
-    path_value = DynamicTo<cssvalue::CSSPathValue>(value);
-  }
-  if (!path_value) {
+  auto* path_value = DynamicTo<cssvalue::CSSPathValue>(value);
+  if (!path_value)
     return nullptr;
-  }
+
   return PathInterpolationFunctions::ConvertValue(
       path_value->GetStylePath(), PathInterpolationFunctions::kForceAbsolute);
 }

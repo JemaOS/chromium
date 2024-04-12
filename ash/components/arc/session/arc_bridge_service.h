@@ -8,20 +8,14 @@
 #include "ash/components/arc/session/connection_holder.h"
 #include "base/observer_list.h"
 
-namespace chromeos::payments::mojom {
-class PaymentAppInstance;
-}  // namespace chromeos::payments::mojom
-namespace ax::android::mojom {
-class AccessibilityHelperInstance;
-class AccessibilityHelperHost;
-}  // namespace ax::android::mojom
-
 namespace arc {
 
 namespace mojom {
 
 // Instead of including ash/components/arc/mojom/arc_bridge.mojom.h, list all
 // the instance classes here for faster build.
+class AccessibilityHelperHost;
+class AccessibilityHelperInstance;
 class AdbdMonitorHost;
 class AdbdMonitorInstance;
 class AppHost;
@@ -40,7 +34,6 @@ class BootPhaseMonitorHost;
 class BootPhaseMonitorInstance;
 class CameraHost;
 class CameraInstance;
-class ChromeFeatureFlagsInstance;
 class CastReceiverInstance;
 class ClipboardHost;
 class ClipboardInstance;
@@ -68,6 +61,7 @@ class KeymasterHost;
 class KeymasterInstance;
 class KioskHost;
 class KioskInstance;
+class LockScreenInstance;
 class MediaSessionInstance;
 class MemoryInstance;
 class MetricsHost;
@@ -82,6 +76,7 @@ class ObbMounterHost;
 class ObbMounterInstance;
 class OemCryptoHost;
 class OemCryptoInstance;
+class PaymentAppInstance;
 class PipHost;
 class PipInstance;
 class PolicyHost;
@@ -94,6 +89,7 @@ class PrivacyItemsHost;
 class PrivacyItemsInstance;
 class ProcessInstance;
 class PropertyInstance;
+class RotationLockInstance;
 class ScreenCaptureHost;
 class ScreenCaptureInstance;
 class SharesheetHost;
@@ -158,8 +154,8 @@ class ArcBridgeService {
   void ObserveBeforeArcBridgeClosed();
   void ObserveAfterArcBridgeClosed();
 
-  ConnectionHolder<ax::android::mojom::AccessibilityHelperInstance,
-                   ax::android::mojom::AccessibilityHelperHost>*
+  ConnectionHolder<mojom::AccessibilityHelperInstance,
+                   mojom::AccessibilityHelperHost>*
   accessibility_helper() {
     return &accessibility_helper_;
   }
@@ -197,9 +193,6 @@ class ArcBridgeService {
   }
   ConnectionHolder<mojom::CastReceiverInstance>* cast_receiver() {
     return &cast_receiver_;
-  }
-  ConnectionHolder<mojom::ChromeFeatureFlagsInstance>* chrome_feature_flags() {
-    return &chrome_feature_flags_;
   }
   ConnectionHolder<mojom::ClipboardInstance, mojom::ClipboardHost>*
   clipboard() {
@@ -259,6 +252,9 @@ class ArcBridgeService {
   ConnectionHolder<mojom::KioskInstance, mojom::KioskHost>* kiosk() {
     return &kiosk_;
   }
+  ConnectionHolder<mojom::LockScreenInstance>* lock_screen() {
+    return &lock_screen_;
+  }
   ConnectionHolder<mojom::MediaSessionInstance>* media_session() {
     return &media_session_;
   }
@@ -282,8 +278,7 @@ class ArcBridgeService {
   oemcrypto() {
     return &oemcrypto_;
   }
-  ConnectionHolder<chromeos::payments::mojom::PaymentAppInstance>*
-  payment_app() {
+  ConnectionHolder<mojom::PaymentAppInstance>* payment_app() {
     return &payment_app_;
   }
   ConnectionHolder<mojom::PipInstance, mojom::PipHost>* pip() { return &pip_; }
@@ -303,6 +298,9 @@ class ArcBridgeService {
   }
   ConnectionHolder<mojom::ProcessInstance>* process() { return &process_; }
   ConnectionHolder<mojom::PropertyInstance>* property() { return &property_; }
+  ConnectionHolder<mojom::RotationLockInstance>* rotation_lock() {
+    return &rotation_lock_;
+  }
   ConnectionHolder<mojom::ScreenCaptureInstance, mojom::ScreenCaptureHost>*
   screen_capture() {
     return &screen_capture_;
@@ -347,8 +345,8 @@ class ArcBridgeService {
  private:
   base::ObserverList<Observer> observer_list_;
 
-  ConnectionHolder<ax::android::mojom::AccessibilityHelperInstance,
-                   ax::android::mojom::AccessibilityHelperHost>
+  ConnectionHolder<mojom::AccessibilityHelperInstance,
+                   mojom::AccessibilityHelperHost>
       accessibility_helper_;
   ConnectionHolder<mojom::AdbdMonitorInstance, mojom::AdbdMonitorHost>
       adbd_monitor_;
@@ -363,7 +361,6 @@ class ArcBridgeService {
       boot_phase_monitor_;
   ConnectionHolder<mojom::CameraInstance, mojom::CameraHost> camera_;
   ConnectionHolder<mojom::CastReceiverInstance> cast_receiver_;
-  ConnectionHolder<mojom::ChromeFeatureFlagsInstance> chrome_feature_flags_;
   ConnectionHolder<mojom::ClipboardInstance, mojom::ClipboardHost> clipboard_;
   ConnectionHolder<mojom::CompatibilityModeInstance> compatibility_mode_;
   ConnectionHolder<mojom::CrashCollectorInstance, mojom::CrashCollectorHost>
@@ -388,6 +385,7 @@ class ArcBridgeService {
   ConnectionHolder<mojom::keymint::KeyMintInstance, mojom::keymint::KeyMintHost>
       keymint_;
   ConnectionHolder<mojom::KioskInstance, mojom::KioskHost> kiosk_;
+  ConnectionHolder<mojom::LockScreenInstance> lock_screen_;
   ConnectionHolder<mojom::MediaSessionInstance> media_session_;
   ConnectionHolder<mojom::MemoryInstance> memory_;
   ConnectionHolder<mojom::MetricsInstance, mojom::MetricsHost> metrics_;
@@ -398,7 +396,7 @@ class ArcBridgeService {
   ConnectionHolder<mojom::ObbMounterInstance, mojom::ObbMounterHost>
       obb_mounter_;
   ConnectionHolder<mojom::OemCryptoInstance, mojom::OemCryptoHost> oemcrypto_;
-  ConnectionHolder<chromeos::payments::mojom::PaymentAppInstance> payment_app_;
+  ConnectionHolder<mojom::PaymentAppInstance> payment_app_;
   ConnectionHolder<mojom::PipInstance, mojom::PipHost> pip_;
   ConnectionHolder<mojom::PolicyInstance, mojom::PolicyHost> policy_;
   ConnectionHolder<mojom::PowerInstance, mojom::PowerHost> power_;
@@ -408,6 +406,7 @@ class ArcBridgeService {
       privacy_items_;
   ConnectionHolder<mojom::ProcessInstance> process_;
   ConnectionHolder<mojom::PropertyInstance> property_;
+  ConnectionHolder<mojom::RotationLockInstance> rotation_lock_;
   ConnectionHolder<mojom::ScreenCaptureInstance, mojom::ScreenCaptureHost>
       screen_capture_;
   ConnectionHolder<mojom::SharesheetInstance, mojom::SharesheetHost>

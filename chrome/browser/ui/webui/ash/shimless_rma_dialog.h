@@ -25,7 +25,7 @@ class ShimlessRmaDialog : public SystemWebDialogDelegate,
   ShimlessRmaDialog& operator=(const ShimlessRmaDialog&) = delete;
 
   // SystemWebDialogDelegate
-  std::string Id() override;
+  const std::string& Id() override;
   void AdjustWidgetInitParams(views::Widget::InitParams* params) override;
 
   // ui::WebDialogDelegate

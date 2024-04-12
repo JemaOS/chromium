@@ -60,11 +60,11 @@ XRViewport* XRView::Viewport(double framebuffer_scale) {
         viewport.height() * scale);
   }
 
-  return viewport_.Get();
+  return viewport_;
 }
 
 XRFrame* XRView::frame() const {
-  return frame_.Get();
+  return frame_;
 }
 
 XRSession* XRView::session() const {
@@ -79,7 +79,7 @@ DOMFloat32Array* XRView::projectionMatrix() const {
     return nullptr;
   }
 
-  return projection_matrix_.Get();
+  return projection_matrix_;
 }
 
 XRViewData::XRViewData(const device::mojom::blink::XRViewPtr& view,
@@ -191,14 +191,14 @@ void XRViewData::SetMojoFromView(const gfx::Transform& mojo_from_view) {
 }
 
 XRRigidTransform* XRView::refSpaceFromView() const {
-  return ref_space_from_view_.Get();
+  return ref_space_from_view_;
 }
 
-std::optional<double> XRView::recommendedViewportScale() const {
+absl::optional<double> XRView::recommendedViewportScale() const {
   return view_data_->recommendedViewportScale();
 }
 
-void XRView::requestViewportScale(std::optional<double> scale) {
+void XRView::requestViewportScale(absl::optional<double> scale) {
   view_data_->requestViewportScale(scale);
 }
 
@@ -242,11 +242,11 @@ void XRView::Trace(Visitor* visitor) const {
   ScriptWrappable::Trace(visitor);
 }
 
-std::optional<double> XRViewData::recommendedViewportScale() const {
+absl::optional<double> XRViewData::recommendedViewportScale() const {
   return recommended_viewport_scale_;
 }
 
-void XRViewData::requestViewportScale(std::optional<double> scale) {
+void XRViewData::requestViewportScale(absl::optional<double> scale) {
   if (!scale)
     return;
 

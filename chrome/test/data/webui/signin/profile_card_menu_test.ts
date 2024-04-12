@@ -4,15 +4,13 @@
 
 import 'chrome://profile-picker/profile_picker.js';
 
-import type {ProfileCardMenuElement, ProfileState, Statistics, StatisticsResult} from 'chrome://profile-picker/profile_picker.js';
-import {ManageProfilesBrowserProxyImpl} from 'chrome://profile-picker/profile_picker.js';
+import {ManageProfilesBrowserProxyImpl, ProfileCardMenuElement, ProfileState, Statistics, StatisticsResult} from 'chrome://profile-picker/profile_picker.js';
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {
-  // <if expr="chromeos_lacros">
-  waitAfterNextRender,
-  // </if>
-  waitBeforeNextRender} from 'chrome://webui-test/polymer_test_util.js';
+import {waitBeforeNextRender} from 'chrome://webui-test/polymer_test_util.js';
+// <if expr="chromeos_lacros">
+import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
+// </if>
 
 import {TestManageProfilesBrowserProxy} from './test_manage_profiles_browser_proxy.js';
 
@@ -95,7 +93,6 @@ suite('ProfileCardMenuTest', function() {
     assertTrue(dialog.open);
     dialog.querySelector<HTMLElement>('.cancel-button')!.click();
     assertFalse(dialog.open);
-    assertEquals(browserProxy.getCallCount('closeProfileStatistics'), 1);
     assertEquals(browserProxy.getCallCount('removeProfile'), 0);
   });
 
@@ -109,7 +106,6 @@ suite('ProfileCardMenuTest', function() {
     await browserProxy.whenCalled('removeProfile');
     webUIListenerCallback('profile-removed', 'profilePath');
     assertFalse(dialog.open);
-    assertEquals(browserProxy.getCallCount('closeProfileStatistics'), 0);
   });
 
   // The profile info in the remove confirmation dialog is displayed correctly.
@@ -159,7 +155,7 @@ suite('ProfileCardMenuTest', function() {
 
     const statisticsCountElements =
         dialog.querySelector('.statistics')!.querySelectorAll<HTMLElement>(
-            '.count');
+            '.count')!;
     for (let i = 0; i < statisticsDataTypes.length; i++) {
       assertEquals(
           statisticsCountElements[i]!.innerText,
@@ -187,7 +183,7 @@ suite('ProfileCardMenuTest', function() {
 
     const statisticsCountElements =
         dialog.querySelector('.statistics')!.querySelectorAll<HTMLElement>(
-            '.count');
+            '.count')!;
     assertNotEquals(
         statisticsCountElements[statisticsDataTypes.indexOf('BrowsingHistory')]!
             .innerText,

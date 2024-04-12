@@ -16,15 +16,17 @@ limitations under the License.
 package org.tensorflow.lite.support.label.ops;
 
 import android.content.Context;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.tensorflow.lite.support.common.FileUtil;
 import org.tensorflow.lite.support.common.internal.SupportPreconditions;
 import org.tensorflow.lite.support.label.TensorLabel;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Labels TensorBuffer with axisLabels for outputs.
@@ -33,42 +35,42 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
  * a pair of the label name and the corresponding TensorBuffer value.
  */
 public class LabelAxisOp {
-  // Axis and its corresponding label names.
-  private final Map<Integer, List<String>> axisLabels;
-
-  protected LabelAxisOp(Builder builder) {
-    axisLabels = builder.axisLabels;
-  }
-
-  public TensorLabel apply(@NonNull TensorBuffer buffer) {
-    SupportPreconditions.checkNotNull(buffer, "Tensor buffer cannot be null.");
-    return new TensorLabel(axisLabels, buffer);
-  }
-
-  /** The inner builder class to build a LabelTensor Operator. */
-  public static class Builder {
+    // Axis and its corresponding label names.
     private final Map<Integer, List<String>> axisLabels;
 
-    protected Builder() {
-      axisLabels = new HashMap<>();
+    protected LabelAxisOp(Builder builder) {
+        axisLabels = builder.axisLabels;
     }
 
-    public Builder addAxisLabel(@NonNull Context context, int axis, @NonNull String filePath)
-        throws IOException {
-      SupportPreconditions.checkNotNull(context, "Context cannot be null.");
-      SupportPreconditions.checkNotNull(filePath, "File path cannot be null.");
-      List<String> labels = FileUtil.loadLabels(context, filePath);
-      axisLabels.put(axis, labels);
-      return this;
+    public TensorLabel apply(@NonNull TensorBuffer buffer) {
+        SupportPreconditions.checkNotNull(buffer, "Tensor buffer cannot be null.");
+        return new TensorLabel(axisLabels, buffer);
     }
 
-    public Builder addAxisLabel(int axis, @NonNull List<String> labels) {
-      axisLabels.put(axis, labels);
-      return this;
-    }
+    /** The inner builder class to build a LabelTensor Operator. */
+    public static class Builder {
+        private final Map<Integer, List<String>> axisLabels;
 
-    public LabelAxisOp build() {
-      return new LabelAxisOp(this);
+        protected Builder() {
+            axisLabels = new HashMap<>();
+        }
+
+        public Builder addAxisLabel(@NonNull Context context, int axis, @NonNull String filePath)
+                throws IOException {
+            SupportPreconditions.checkNotNull(context, "Context cannot be null.");
+            SupportPreconditions.checkNotNull(filePath, "File path cannot be null.");
+            List<String> labels = FileUtil.loadLabels(context, filePath);
+            axisLabels.put(axis, labels);
+            return this;
+        }
+
+        public Builder addAxisLabel(int axis, @NonNull List<String> labels) {
+            axisLabels.put(axis, labels);
+            return this;
+        }
+
+        public LabelAxisOp build() {
+            return new LabelAxisOp(this);
+        }
     }
-  }
 }

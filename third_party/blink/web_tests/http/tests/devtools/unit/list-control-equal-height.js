@@ -1,7 +1,3 @@
-
-import {TestRunner} from 'test_runner';
-
-import * as UI from 'devtools/ui/legacy/legacy.js';
 (async function() {
   TestRunner.addResult('Test ListControl rendering and selection for equal height items case.');
 
@@ -40,10 +36,10 @@ import * as UI from 'devtools/ui/legacy/legacy.js';
   }
 
   var delegate = new Delegate();
-  var model = new UI.ListModel.ListModel();
-  var list = new UI.ListControl.ListControl(model, delegate, UI.ListControl.ListMode.EqualHeightItems);
+  var model = new UI.ListModel();
+  var list = new UI.ListControl(model, delegate, UI.ListMode.EqualHeightItems);
   list.element.style.height = '73px';
-  UI.InspectorView.InspectorView.instance().element.appendChild(list.element);
+  UI.inspectorView.element.appendChild(list.element);
 
   function dumpList()
   {
@@ -211,7 +207,7 @@ import * as UI from 'devtools/ui/legacy/legacy.js';
   list.onKeyDown(TestRunner.createKeyEvent('ArrowDown'));
   dumpList();
 
-  var newModel = new UI.ListModel.ListModel([5, 6, 7]);
+  var newModel = new UI.ListModel([5, 6, 7]);
   TestRunner.addResult('Replacing model with [5-7]');
   list.setModel(newModel);
   dumpList();

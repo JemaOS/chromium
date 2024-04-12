@@ -24,7 +24,6 @@
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "v8/include/v8.h"
 
@@ -77,9 +76,9 @@ class StreamCreator {
     mock_client_ = MakeGarbageCollected<StrictMock<MockClient>>();
     auto* outgoing_stream = MakeGarbageCollected<OutgoingStream>(
         script_state, mock_client_, std::move(data_pipe_producer));
-    ExceptionState exception_state(
-        scope.GetIsolate(), ExceptionContextType::kConstructorOperationInvoke,
-        "OutgoingStream");
+    ExceptionState exception_state(scope.GetIsolate(),
+                                   ExceptionState::kConstructionContext,
+                                   "OutgoingStream");
     outgoing_stream->Init(exception_state);
     CHECK(!exception_state.HadException());
     return outgoing_stream;
@@ -121,7 +120,6 @@ class StreamCreator {
 };
 
 TEST(OutgoingStreamTest, Create) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
   auto* outgoing_stream = stream_creator.Create(scope);
@@ -131,7 +129,6 @@ TEST(OutgoingStreamTest, Create) {
 }
 
 TEST(OutgoingStreamTest, WriteArrayBuffer) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
   auto* outgoing_stream = stream_creator.Create(scope);
@@ -151,7 +148,6 @@ TEST(OutgoingStreamTest, WriteArrayBuffer) {
 }
 
 TEST(OutgoingStreamTest, WriteArrayBufferView) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
   auto* outgoing_stream = stream_creator.Create(scope);
@@ -177,7 +173,6 @@ bool IsAllNulls(base::span<const uint8_t> data) {
 }
 
 TEST(OutgoingStreamTest, AsyncWrite) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
   // Set a large pipe capacity, so any platform-specific excess is dwarfed in
@@ -237,7 +232,6 @@ TEST(OutgoingStreamTest, AsyncWrite) {
 
 // Writing immediately followed by closing should not lose data.
 TEST(OutgoingStreamTest, WriteThenClose) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
 
@@ -277,7 +271,6 @@ TEST(OutgoingStreamTest, WriteThenClose) {
 }
 
 TEST(OutgoingStreamTest, DataPipeClosed) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
 
@@ -297,7 +290,7 @@ TEST(OutgoingStreamTest, DataPipeClosed) {
   closed_tester.WaitUntilSettled();
   EXPECT_TRUE(closed_tester.IsRejected());
 
-  DOMException* closed_exception = V8DOMException::ToWrappable(
+  DOMException* closed_exception = V8DOMException::ToImplWithTypeCheck(
       scope.GetIsolate(), closed_tester.Value().V8Value());
   ASSERT_TRUE(closed_exception);
   EXPECT_EQ(closed_exception->name(), "NetworkError");
@@ -313,7 +306,7 @@ TEST(OutgoingStreamTest, DataPipeClosed) {
 
   EXPECT_TRUE(write_tester.IsRejected());
 
-  DOMException* write_exception = V8DOMException::ToWrappable(
+  DOMException* write_exception = V8DOMException::ToImplWithTypeCheck(
       scope.GetIsolate(), write_tester.Value().V8Value());
   ASSERT_TRUE(write_exception);
   EXPECT_EQ(write_exception->name(), "NetworkError");
@@ -322,7 +315,6 @@ TEST(OutgoingStreamTest, DataPipeClosed) {
 }
 
 TEST(OutgoingStreamTest, DataPipeClosedDuringAsyncWrite) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
 
@@ -353,7 +345,7 @@ TEST(OutgoingStreamTest, DataPipeClosedDuringAsyncWrite) {
 
   EXPECT_TRUE(write_tester.IsRejected());
 
-  DOMException* write_exception = V8DOMException::ToWrappable(
+  DOMException* write_exception = V8DOMException::ToImplWithTypeCheck(
       scope.GetIsolate(), write_tester.Value().V8Value());
   ASSERT_TRUE(write_exception);
   EXPECT_EQ(write_exception->name(), "NetworkError");
@@ -364,7 +356,7 @@ TEST(OutgoingStreamTest, DataPipeClosedDuringAsyncWrite) {
 
   EXPECT_TRUE(closed_tester.IsRejected());
 
-  DOMException* closed_exception = V8DOMException::ToWrappable(
+  DOMException* closed_exception = V8DOMException::ToImplWithTypeCheck(
       scope.GetIsolate(), write_tester.Value().V8Value());
   ASSERT_TRUE(closed_exception);
   EXPECT_EQ(closed_exception->name(), "NetworkError");
@@ -373,7 +365,6 @@ TEST(OutgoingStreamTest, DataPipeClosedDuringAsyncWrite) {
 }
 
 TEST(OutgoingStreamTest, Abort) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
   ScriptState* script_state = scope.GetScriptState();
@@ -392,7 +383,6 @@ TEST(OutgoingStreamTest, Abort) {
 }
 
 TEST(OutgoingStreamTest, AbortWithWebTransportError) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
   ScriptState* script_state = scope.GetScriptState();
@@ -406,7 +396,7 @@ TEST(OutgoingStreamTest, AbortWithWebTransportError) {
 
   v8::Local<v8::Value> error =
       WebTransportError::Create(isolate,
-                                /*stream_error_code=*/std::nullopt, "foobar",
+                                /*stream_error_code=*/absl::nullopt, "foobar",
                                 WebTransportError::Source::kStream);
 
   auto* writer =
@@ -415,7 +405,6 @@ TEST(OutgoingStreamTest, AbortWithWebTransportError) {
 }
 
 TEST(OutgoingStreamTest, AbortWithWebTransportErrorWithCode) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
   ScriptState* script_state = scope.GetScriptState();
@@ -437,7 +426,6 @@ TEST(OutgoingStreamTest, AbortWithWebTransportErrorWithCode) {
 }
 
 TEST(OutgoingStreamTest, CloseAndConnectionError) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   StreamCreator stream_creator;
   ScriptState* script_state = scope.GetScriptState();

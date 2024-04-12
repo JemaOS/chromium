@@ -8,7 +8,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -37,6 +36,7 @@
 #include "extensions/common/file_util.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_url_handlers.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using content::BrowserThread;
 
@@ -57,10 +57,10 @@ class ExtensionAssetsManagerHelper {
   struct PendingInstallInfo {
     base::FilePath unpacked_extension_root;
     base::FilePath local_install_dir;
-    raw_ptr<Profile> profile;
+    raw_ptr<Profile, ExperimentalAsh> profile;
     ExtensionAssetsManager::InstallExtensionCallback callback;
   };
-  using PendingInstallList = std::vector<PendingInstallInfo>;
+  typedef std::vector<PendingInstallInfo> PendingInstallList;
 
   ExtensionAssetsManagerHelper(const ExtensionAssetsManagerHelper&) = delete;
   ExtensionAssetsManagerHelper& operator=(const ExtensionAssetsManagerHelper&) =
@@ -108,14 +108,14 @@ class ExtensionAssetsManagerHelper {
  private:
   friend struct base::DefaultSingletonTraits<ExtensionAssetsManagerHelper>;
 
-  ExtensionAssetsManagerHelper() = default;
-  ~ExtensionAssetsManagerHelper() = default;
+  ExtensionAssetsManagerHelper() {}
+  ~ExtensionAssetsManagerHelper() {}
 
   // Extension ID + version pair.
-  using InstallItem = std::pair<std::string, std::string>;
+  typedef std::pair<std::string, std::string> InstallItem;
 
   // Queue of pending installs in progress.
-  using InstallQueue = std::map<InstallItem, std::vector<PendingInstallInfo>>;
+  typedef std::map<InstallItem, std::vector<PendingInstallInfo> > InstallQueue;
 
   InstallQueue install_queue_;
 };
@@ -175,16 +175,15 @@ void ExtensionAssetsManagerChromeOS::InstallExtension(
 void ExtensionAssetsManagerChromeOS::UninstallExtension(
     const std::string& id,
     const std::string& profile_user_name,
-    const base::FilePath& extensions_install_dir,
-    const base::FilePath& extension_dir_to_delete,
+    const base::FilePath& local_install_dir,
+    const base::FilePath& extension_root,
     const base::FilePath& profile_dir) {
-  if (extensions_install_dir.IsParent(extension_dir_to_delete)) {
-    file_util::UninstallExtension(profile_dir, extensions_install_dir,
-                                  extension_dir_to_delete);
+  if (local_install_dir.IsParent(extension_root)) {
+    file_util::UninstallExtension(profile_dir, local_install_dir, id);
     return;
   }
 
-  if (GetSharedInstallDir().IsParent(extension_dir_to_delete)) {
+  if (GetSharedInstallDir().IsParent(extension_root)) {
     // In some test extensions installed outside local_install_dir emulate
     // previous behavior that just do nothing in this case.
     content::GetUIThreadTaskRunner({})->PostTask(
@@ -538,7 +537,7 @@ bool ExtensionAssetsManagerChromeOS::CleanUpExtension(
         if (!extension_prefs || extension_prefs->pref_service()->ReadOnly())
           return false;
 
-        std::optional<ExtensionInfo> info =
+        absl::optional<ExtensionInfo> info =
             extension_prefs->GetInstalledExtensionInfo(id);
         if (!info || info->extension_path != base::FilePath(*shared_path)) {
           info = extension_prefs->GetDelayedInstallInfo(id);

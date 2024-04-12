@@ -8,7 +8,6 @@
 #include "base/command_line.h"
 #include "build/build_config.h"
 #include "chrome/browser/apps/platform_apps/app_browsertest_util.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_finder.h"
@@ -147,7 +146,6 @@ IN_PROC_BROWSER_TEST_P(AcceleratorCommandsFullscreenBrowserTest,
   views::Widget::InitParams params;
   params.delegate = new views::WidgetDelegateView;
   params.delegate->SetCanMaximize(true);
-  params.delegate->SetCanFullscreen(true);
   params.ownership = views::Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
   views::Widget misc_widget;
   widget = &misc_widget;

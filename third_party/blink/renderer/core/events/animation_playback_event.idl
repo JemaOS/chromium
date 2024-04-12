@@ -5,6 +5,7 @@
 // https://drafts.csswg.org/web-animations/#the-animationplaybackevent-interface
 
 [
+    RuntimeEnabled=WebAnimationsAPI,
     Exposed=Window
 ] interface AnimationPlaybackEvent : Event {
     constructor(DOMString type, optional AnimationPlaybackEventInit eventInitDict = {});

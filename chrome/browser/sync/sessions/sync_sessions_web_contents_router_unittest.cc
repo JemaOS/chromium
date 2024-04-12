@@ -49,7 +49,7 @@ class SyncSessionsWebContentsRouterTest
   SyncSessionsWebContentsRouter* router() { return router_; }
 
  private:
-  raw_ptr<SyncSessionsWebContentsRouter, DanglingUntriaged> router_ = nullptr;
+  raw_ptr<SyncSessionsWebContentsRouter> router_;
 };
 
 // Disabled on android due to complexity of creating a full TabAndroid object

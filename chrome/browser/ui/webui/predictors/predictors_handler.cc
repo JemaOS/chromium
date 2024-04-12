@@ -48,21 +48,23 @@ void PredictorsHandler::RequestAutocompleteActionPredictorDb(
     const base::Value::List& args) {
   AllowJavascript();
   const bool enabled = !!autocomplete_action_predictor_;
-  auto dict = base::Value::Dict().Set("enabled", enabled);
+  base::Value::Dict dict;
+  dict.Set("enabled", enabled);
   if (enabled) {
     base::Value::List db;
     for (AutocompleteActionPredictor::DBCacheMap::const_iterator it =
              autocomplete_action_predictor_->db_cache_.begin();
          it != autocomplete_action_predictor_->db_cache_.end();
          ++it) {
-      db.Append(
-          base::Value::Dict()
-              .Set("user_text", it->first.user_text)
-              .Set("url", it->first.url.spec())
-              .Set("hit_count", it->second.number_of_hits)
-              .Set("miss_count", it->second.number_of_misses)
-              .Set("confidence", autocomplete_action_predictor_
-                                     ->CalculateConfidenceForDbEntry(it)));
+      base::Value::Dict entry;
+      entry.Set("user_text", it->first.user_text);
+      entry.Set("url", it->first.url.spec());
+      entry.Set("hit_count", it->second.number_of_hits);
+      entry.Set("miss_count", it->second.number_of_misses);
+      entry.Set(
+          "confidence",
+          autocomplete_action_predictor_->CalculateConfidenceForDbEntry(it));
+      db.Append(std::move(entry));
     }
     dict.Set("db", std::move(db));
   }
@@ -74,7 +76,8 @@ void PredictorsHandler::RequestResourcePrefetchPredictorDb(
     const base::Value::List& args) {
   AllowJavascript();
   const bool enabled = (loading_predictor_ != nullptr);
-  auto dict = base::Value::Dict().Set("enabled", enabled);
+  base::Value::Dict dict;
+  dict.Set("enabled", enabled);
 
   if (enabled) {
     auto* resource_prefetch_predictor =
@@ -101,21 +104,22 @@ void PredictorsHandler::AddOriginDataMapToListValue(
     const std::map<std::string, predictors::OriginData>& data_map,
     base::Value::List* db) const {
   for (const auto& p : data_map) {
-    auto main = base::Value::Dict().Set("main_frame_host", p.first);
+    base::Value::Dict main;
+    main.Set("main_frame_host", p.first);
     base::Value::List origins;
     for (const predictors::OriginStat& o : p.second.origins()) {
-      origins.Append(
-          base::Value::Dict()
-              .Set("origin", o.origin())
-              .Set("number_of_hits", static_cast<int>(o.number_of_hits()))
-              .Set("number_of_misses", static_cast<int>(o.number_of_misses()))
-              .Set("consecutive_misses",
-                   static_cast<int>(o.consecutive_misses()))
-              .Set("position", o.average_position())
-              .Set("always_access_network", o.always_access_network())
-              .Set("accessed_network", o.accessed_network())
-              .Set("score",
-                   ResourcePrefetchPredictorTables::ComputeOriginScore(o)));
+      base::Value::Dict origin;
+      origin.Set("origin", o.origin());
+      origin.Set("number_of_hits", static_cast<int>(o.number_of_hits()));
+      origin.Set("number_of_misses", static_cast<int>(o.number_of_misses()));
+      origin.Set("consecutive_misses",
+                 static_cast<int>(o.consecutive_misses()));
+      origin.Set("position", o.average_position());
+      origin.Set("always_access_network", o.always_access_network());
+      origin.Set("accessed_network", o.accessed_network());
+      origin.Set("score",
+                 ResourcePrefetchPredictorTables::ComputeOriginScore(o));
+      origins.Append(std::move(origin));
     }
     main.Set("origins", std::move(origins));
     db->Append(std::move(main));

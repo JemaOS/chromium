@@ -20,7 +20,6 @@
 #include <lib/zx/process.h>
 #include <zircon/processargs.h>
 
-#include "base/check_op.h"
 #include "base/fuchsia/fuchsia_logging.h"
 #include "base/logging.h"
 #include "client/client_argv_handling.h"

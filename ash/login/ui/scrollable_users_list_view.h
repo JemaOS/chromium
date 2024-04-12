@@ -15,7 +15,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "third_party/skia/include/core/SkColor.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/controls/scroll_view.h"
 
 namespace views {
@@ -30,8 +29,6 @@ namespace ash {
 // bottom. Can be styled with LayoutParams that define spacing and sizing.
 class ASH_EXPORT ScrollableUsersListView : public views::ScrollView,
                                            public WallpaperControllerObserver {
-  METADATA_HEADER(ScrollableUsersListView, views::ScrollView)
-
  public:
   // TestApi is used for tests to get internal implementation details.
   class ASH_EXPORT TestApi {
@@ -39,11 +36,10 @@ class ASH_EXPORT ScrollableUsersListView : public views::ScrollView,
     explicit TestApi(ScrollableUsersListView* view);
     ~TestApi();
 
-    const std::vector<raw_ptr<LoginUserView, VectorExperimental>>& user_views()
-        const;
+    const std::vector<LoginUserView*>& user_views() const;
 
    private:
-    const raw_ptr<ScrollableUsersListView> view_;
+    const raw_ptr<ScrollableUsersListView, ExperimentalAsh> view_;
   };
 
   // TODO(jdufault): Pass AccountId or LoginUserView* instead of index.
@@ -77,7 +73,7 @@ class ASH_EXPORT ScrollableUsersListView : public views::ScrollView,
   void UpdateUserViewHostLayoutInsets();
 
   // views::View:
-  void Layout(PassKey) override;
+  void Layout() override;
   void OnPaintBackground(gfx::Canvas* canvas) override;
   void OnThemeChanged() override;
 
@@ -102,12 +98,12 @@ class ASH_EXPORT ScrollableUsersListView : public views::ScrollView,
   const LoginDisplayStyle display_style_;
 
   // The view which contains all of the user views.
-  raw_ptr<views::View> user_view_host_ = nullptr;
+  raw_ptr<views::View, ExperimentalAsh> user_view_host_ = nullptr;
 
   // Layout for |user_view_host_|.
-  raw_ptr<views::BoxLayout> user_view_host_layout_ = nullptr;
+  raw_ptr<views::BoxLayout, ExperimentalAsh> user_view_host_layout_ = nullptr;
 
-  std::vector<raw_ptr<LoginUserView, VectorExperimental>> user_views_;
+  std::vector<LoginUserView*> user_views_;
 
   GradientParams gradient_params_;
 

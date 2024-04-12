@@ -14,9 +14,11 @@ import static org.chromium.chrome.browser.keyboard_accessory.sheet_component.Acc
 
 import androidx.annotation.Nullable;
 import androidx.annotation.Px;
+import androidx.annotation.VisibleForTesting;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager.widget.ViewPager;
 
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.keyboard_accessory.AccessorySheetTrigger;
 import org.chromium.chrome.browser.keyboard_accessory.ManualFillingMetricsRecorder;
 import org.chromium.chrome.browser.keyboard_accessory.data.KeyboardAccessoryData;
@@ -46,7 +48,9 @@ class AccessorySheetMediator implements PropertyObservable.PropertyObserver<Prop
         mModel = model;
         mModel.addObserver(this);
         mSheetVisibilityDelegate = sheetVisibilityDelegate;
-        mModel.set(SHOW_KEYBOARD_CALLBACK, this::onKeyboardRequested);
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_KEYBOARD_ACCESSORY)) {
+            mModel.set(SHOW_KEYBOARD_CALLBACK, this::onKeyboardRequested);
+        }
     }
 
     @Nullable
@@ -55,6 +59,7 @@ class AccessorySheetMediator implements PropertyObservable.PropertyObserver<Prop
         return mModel.get(TABS).get(mModel.get(ACTIVE_TAB_INDEX));
     }
 
+    @VisibleForTesting
     PropertyModel getModelForTesting() {
         return mModel;
     }
@@ -90,8 +95,8 @@ class AccessorySheetMediator implements PropertyObservable.PropertyObserver<Prop
     }
 
     void setActiveTab(int position) {
-        assert position < mModel.get(TABS).size() || position >= 0
-                : position + " is not a valid tab index!";
+        assert position < mModel.get(TABS).size()
+                || position >= 0 : position + " is not a valid tab index!";
         mModel.set(ACTIVE_TAB_INDEX, position);
     }
 
@@ -113,10 +118,8 @@ class AccessorySheetMediator implements PropertyObservable.PropertyObserver<Prop
             }
             return;
         }
-        if (propertyKey == ACTIVE_TAB_INDEX
-                || propertyKey == AccessorySheetProperties.HEIGHT
-                || propertyKey == TOP_SHADOW_VISIBLE
-                || propertyKey == PAGE_CHANGE_LISTENER
+        if (propertyKey == ACTIVE_TAB_INDEX || propertyKey == AccessorySheetProperties.HEIGHT
+                || propertyKey == TOP_SHADOW_VISIBLE || propertyKey == PAGE_CHANGE_LISTENER
                 || propertyKey == SHOW_KEYBOARD_CALLBACK) {
             return;
         }

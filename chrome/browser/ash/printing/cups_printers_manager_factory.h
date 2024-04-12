@@ -14,7 +14,7 @@ class BrowserContext;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace ash {
@@ -37,13 +37,13 @@ class CupsPrintersManagerFactory : public ProfileKeyedServiceFactory {
   CupsPrintersManagerProxy* GetProxy();
 
  private:
-  friend base::NoDestructor<CupsPrintersManagerFactory>;
+  friend struct base::DefaultSingletonTraits<CupsPrintersManagerFactory>;
 
   CupsPrintersManagerFactory();
   ~CupsPrintersManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   void BrowserContextShutdown(content::BrowserContext* context) override;
   bool ServiceIsCreatedWithBrowserContext() const override;

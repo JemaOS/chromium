@@ -38,9 +38,9 @@
 namespace blink {
 
 DocumentLoadTiming::DocumentLoadTiming(DocumentLoader& document_loader)
-    : user_timing_mark_fully_loaded_(std::nullopt),
-      user_timing_mark_fully_visible_(std::nullopt),
-      user_timing_mark_interactive_(std::nullopt),
+    : user_timing_mark_fully_loaded_(absl::nullopt),
+      user_timing_mark_fully_visible_(absl::nullopt),
+      user_timing_mark_interactive_(absl::nullopt),
       clock_(base::DefaultClock::GetInstance()),
       tick_clock_(base::DefaultTickClock::GetInstance()),
       document_loader_(document_loader),
@@ -73,8 +73,7 @@ void DocumentLoadTiming::NotifyDocumentTimingChanged() {
 
 void DocumentLoadTiming::EnsureReferenceTimesSet() {
   if (reference_wall_time_.is_zero()) {
-    reference_wall_time_ =
-        base::Seconds(clock_->Now().InSecondsFSinceUnixEpoch());
+    reference_wall_time_ = base::Seconds(clock_->Now().ToDoubleT());
   }
   if (reference_monotonic_time_.is_null())
     reference_monotonic_time_ = tick_clock_->NowTicks();
@@ -126,9 +125,8 @@ void DocumentLoadTiming::MarkNavigationStart() {
 void DocumentLoadTiming::WriteNavigationStartDataIntoTracedValue(
     perfetto::TracedValue context) const {
   auto dict = std::move(context).WriteDictionary();
-  dict.Add("documentLoaderURL", document_loader_
-                                    ? document_loader_->Url().GetString()
-                                    : g_empty_string);
+  dict.Add("documentLoaderURL",
+           document_loader_ ? document_loader_->Url().GetString() : "");
   dict.Add("isLoadingMainFrame",
            GetFrame() ? GetFrame()->IsMainFrame() : false);
   dict.Add("isOutermostMainFrame",
@@ -290,12 +288,6 @@ void DocumentLoadTiming::SetActivationStart(base::TimeTicks activation_start) {
   TRACE_EVENT_MARK_WITH_TIMESTAMP1("blink.user_timing", "activationtart",
                                    activation_start, "frame",
                                    GetFrameIdForTracing(GetFrame()));
-  NotifyDocumentTimingChanged();
-}
-
-void DocumentLoadTiming::SetCriticalCHRestart(
-    base::TimeTicks critical_ch_restart) {
-  critical_ch_restart_ = critical_ch_restart;
   NotifyDocumentTimingChanged();
 }
 

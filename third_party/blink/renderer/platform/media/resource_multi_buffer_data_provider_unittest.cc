@@ -9,10 +9,8 @@
 #include <string>
 #include <utility>
 
-#include "base/containers/contains.h"
 #include "base/format_macros.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
@@ -57,8 +55,8 @@ static bool CorrectAcceptEncoding(const WebURLRequest& request) {
                           .HttpHeaderField(WebString::FromUTF8(
                               net::HttpRequestHeaders::kAcceptEncoding))
                           .Utf8();
-  return (base::Contains(value, "identity;q=1")) &&
-         (base::Contains(value, "*;q=0"));
+  return (value.find("identity;q=1") != std::string::npos) &&
+         (value.find("*;q=0") != std::string::npos);
 }
 
 class ResourceMultiBufferDataProviderTest : public testing::Test {
@@ -203,9 +201,8 @@ class ResourceMultiBufferDataProviderTest : public testing::Test {
   std::unique_ptr<WebAssociatedURLLoader> CreateUrlLoader(
       const WebAssociatedURLLoaderOptions& options) {
     auto url_loader = std::make_unique<NiceMock<MockWebAssociatedURLLoader>>();
-    EXPECT_CALL(
-        *url_loader.get(),
-        LoadAsynchronously(Truly(CorrectAcceptEncoding), loader_.get()));
+    EXPECT_CALL(*url_loader.get(),
+                LoadAsynchronously(Truly(CorrectAcceptEncoding), loader_));
     return url_loader;
   }
 
@@ -219,7 +216,7 @@ class ResourceMultiBufferDataProviderTest : public testing::Test {
   scoped_refptr<UrlData> url_data_;
   scoped_refptr<UrlData> redirected_to_;
   // The loader is owned by the UrlData above.
-  raw_ptr<ResourceMultiBufferDataProvider> loader_;
+  ResourceMultiBufferDataProvider* loader_;
 
   uint8_t data_[kDataSize];
 };

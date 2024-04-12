@@ -4,8 +4,7 @@
 
 package org.chromium.chrome.browser.browserservices.digitalgoods;
 
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.url.GURL;
 
@@ -17,7 +16,8 @@ import org.chromium.url.GURL;
 public class SiteIsolator {
     private SiteIsolator() {}
 
-    public static void startIsolatingSite(Profile profile, GURL url) {
+    public static void startIsolatingSite(GURL url) {
+        Profile profile = Profile.getLastUsedRegularProfile();
         SiteIsolatorJni.get().startIsolatingSite(profile, url);
     }
 

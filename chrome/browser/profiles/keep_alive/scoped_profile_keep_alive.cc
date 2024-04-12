@@ -5,7 +5,6 @@
 #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
 
 #include "base/feature_list.h"
-#include "base/memory/weak_ptr.h"
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
@@ -15,13 +14,13 @@
 
 ScopedProfileKeepAlive::ScopedProfileKeepAlive(const Profile* profile,
                                                ProfileKeepAliveOrigin origin)
-    : profile_(profile->GetWeakPtr()), origin_(origin) {
+    : profile_(profile), origin_(origin) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   DCHECK(profile_);
   // |profile_manager| can be nullptr in tests.
   auto* profile_manager = g_browser_process->profile_manager();
   if (profile_manager)
-    profile_manager->AddKeepAlive(profile_.get(), origin_);
+    profile_manager->AddKeepAlive(profile_, origin_);
 }
 
 ScopedProfileKeepAlive::~ScopedProfileKeepAlive() {
@@ -43,7 +42,7 @@ ScopedProfileKeepAlive::~ScopedProfileKeepAlive() {
 
 // static
 void ScopedProfileKeepAlive::RemoveKeepAliveOnUIThread(
-    base::WeakPtr<const Profile> profile,
+    const Profile* profile,
     ProfileKeepAliveOrigin origin) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   // |g_browser_process| could be nullptr if this is called during shutdown,
@@ -59,11 +58,5 @@ void ScopedProfileKeepAlive::RemoveKeepAliveOnUIThread(
   auto* profile_manager = g_browser_process->profile_manager();
   if (!profile_manager)
     return;
-  // TODO(https://crbug.com/1511741): |profile| was unexpectedly destroyed
-  // early. Convert this to CHECK(profile) once the root cause is fixed.
-  if (!profile) {
-    DUMP_WILL_BE_NOTREACHED_NORETURN();
-    return;
-  }
-  profile_manager->RemoveKeepAlive(profile.get(), origin);
+  profile_manager->RemoveKeepAlive(profile, origin);
 }

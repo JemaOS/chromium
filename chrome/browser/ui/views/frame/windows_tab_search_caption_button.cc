@@ -34,5 +34,5 @@ WindowsTabSearchCaptionButton::WindowsTabSearchCaptionButton(
 
 WindowsTabSearchCaptionButton::~WindowsTabSearchCaptionButton() = default;
 
-BEGIN_METADATA(WindowsTabSearchCaptionButton)
+BEGIN_METADATA(WindowsTabSearchCaptionButton, WindowsCaptionButton)
 END_METADATA

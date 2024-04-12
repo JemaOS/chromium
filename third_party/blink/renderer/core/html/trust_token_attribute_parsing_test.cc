@@ -9,16 +9,17 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/platform/json/json_parser.h"
 #include "third_party/blink/renderer/platform/json/json_values.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
-namespace blink::internal {
+namespace blink {
+namespace internal {
 namespace {
 
 network::mojom::blink::TrustTokenParamsPtr NetworkParamsToBlinkParams(
     network::mojom::TrustTokenParamsPtr params) {
   auto ret = network::mojom::blink::TrustTokenParams::New();
+  ret->version = params->version;
   ret->operation = params->operation;
   ret->refresh_policy = params->refresh_policy;
   for (const url::Origin& issuer : params->issuers) {
@@ -72,6 +73,7 @@ TEST_P(TrustTokenAttributeParsingSuccess, Roundtrip) {
   // well with the "issuers" field's members' type of
   // scoped_refptr<blink::SecurityOrigin>: in particular, the method does an
   // address-to-address comparison of the pointers.
+  EXPECT_EQ(result->version, expectation->version);
   EXPECT_EQ(result->operation, expectation->operation);
   EXPECT_EQ(result->refresh_policy, expectation->refresh_policy);
 
@@ -86,7 +88,6 @@ TEST_P(TrustTokenAttributeParsingSuccess, Roundtrip) {
 }
 
 TEST(TrustTokenAttributeParsing, NotADictionary) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     3
   )");
@@ -95,7 +96,6 @@ TEST(TrustTokenAttributeParsing, NotADictionary) {
 }
 
 TEST(TrustTokenAttributeParsing, MissingVersion) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "operation" : "token-request" }
   )");
@@ -104,7 +104,6 @@ TEST(TrustTokenAttributeParsing, MissingVersion) {
 }
 
 TEST(TrustTokenAttributeParsing, MissingOperation) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": 1 }
   )");
@@ -113,7 +112,6 @@ TEST(TrustTokenAttributeParsing, MissingOperation) {
 }
 
 TEST(TrustTokenAttributeParsing, TypeUnsafeVersion) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "operation": "token-request",
       "version": "unsafe-version" }
@@ -123,7 +121,6 @@ TEST(TrustTokenAttributeParsing, TypeUnsafeVersion) {
 }
 
 TEST(TrustTokenAttributeParsing, TypeUnsafeOperation) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": 1,
       "operation": 3 }
@@ -133,7 +130,6 @@ TEST(TrustTokenAttributeParsing, TypeUnsafeOperation) {
 }
 
 TEST(TrustTokenAttributeParsing, InvalidVersion) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": 2,
       "operation": "token-request" }
@@ -143,7 +139,6 @@ TEST(TrustTokenAttributeParsing, InvalidVersion) {
 }
 
 TEST(TrustTokenAttributeParsing, NegativeVersionNumber) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": -1,
       "operation": "token-request" }
@@ -153,7 +148,6 @@ TEST(TrustTokenAttributeParsing, NegativeVersionNumber) {
 }
 
 TEST(TrustTokenAttributeParsing, InvalidOperation) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": 1,
       "operation": "not a valid type" }
@@ -163,7 +157,6 @@ TEST(TrustTokenAttributeParsing, InvalidOperation) {
 }
 
 TEST(TrustTokenAttributeParsing, TypeUnsafeRefreshPolicy) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": 1,
       "operation": "token-request",
@@ -174,7 +167,6 @@ TEST(TrustTokenAttributeParsing, TypeUnsafeRefreshPolicy) {
 }
 
 TEST(TrustTokenAttributeParsing, InvalidRefreshPolicy) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": 1,
       "operation": "token-request",
@@ -185,7 +177,6 @@ TEST(TrustTokenAttributeParsing, InvalidRefreshPolicy) {
 }
 
 TEST(TrustTokenAttributeParsing, NonListIssuers) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": 1,
       "operation": "token-request",
@@ -196,7 +187,6 @@ TEST(TrustTokenAttributeParsing, NonListIssuers) {
 }
 
 TEST(TrustTokenAttributeParsing, EmptyIssuers) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": 1,
       "operation": "token-request",
@@ -207,7 +197,6 @@ TEST(TrustTokenAttributeParsing, EmptyIssuers) {
 }
 
 TEST(TrustTokenAttributeParsing, WrongListTypeIssuers) {
-  test::TaskEnvironment task_environment;
   JSONParseError err;
   auto json = ParseJSON(R"(
     { "version": 1,
@@ -221,7 +210,6 @@ TEST(TrustTokenAttributeParsing, WrongListTypeIssuers) {
 
 // Test that the parser requires each member of |issuers| be a valid origin.
 TEST(TrustTokenAttributeParsing, NonUrlIssuer) {
-  test::TaskEnvironment task_environment;
   JSONParseError err;
   auto json = ParseJSON(R"(
     { "version": 1,
@@ -236,7 +224,6 @@ TEST(TrustTokenAttributeParsing, NonUrlIssuer) {
 // Test that the parser requires that each member of |issuers| be a potentially
 // trustworthy origin.
 TEST(TrustTokenAttributeParsing, InsecureIssuer) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": 1,
       "operation": "token-request",
@@ -250,7 +237,6 @@ TEST(TrustTokenAttributeParsing, InsecureIssuer) {
 // Test that the parser requires that each member of |issuers| be a HTTP or
 // HTTPS origin.
 TEST(TrustTokenAttributeParsing, NonHttpNonHttpsIssuer) {
-  test::TaskEnvironment task_environment;
   auto json = ParseJSON(R"(
     { "version": 1,
       "operation": "token-request",
@@ -260,4 +246,5 @@ TEST(TrustTokenAttributeParsing, NonHttpNonHttpsIssuer) {
   ASSERT_FALSE(TrustTokenParamsFromJson(std::move(json)));
 }
 
-}  // namespace blink::internal
+}  // namespace internal
+}  // namespace blink

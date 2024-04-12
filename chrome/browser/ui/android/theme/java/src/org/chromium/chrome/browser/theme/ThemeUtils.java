@@ -6,14 +6,16 @@ package org.chromium.chrome.browser.theme;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.graphics.Color;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.ColorRes;
 import androidx.annotation.Nullable;
 import androidx.appcompat.content.res.AppCompatResources;
-import androidx.core.content.ContextCompat;
+import androidx.core.content.res.ResourcesCompat;
 
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
@@ -23,25 +25,26 @@ import org.chromium.content_public.browser.RenderWidgetHostView;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.util.ColorUtils;
 
-/** Utility methods for theme colors. */
+/**
+ * Utility methods for theme colors.
+ */
 public class ThemeUtils {
+    private static final String TAG = "ThemeUtils";
     private static final float LOCATION_BAR_TRANSPARENT_BACKGROUND_ALPHA = 0.2f;
 
     /**
      * The background color to use for a given {@link Tab}. This will either be the color specified
      * by the associated web content or a default color if not specified.
-     *
      * @param tab {@link Tab} object to get the background color for.
      * @return The background color of {@link Tab}.
      */
-    public static @ColorInt int getBackgroundColor(Tab tab) {
+    public static int getBackgroundColor(Tab tab) {
         if (tab.isNativePage()) return tab.getNativePage().getBackgroundColor();
 
         WebContents tabWebContents = tab.getWebContents();
         RenderWidgetHostView rwhv =
                 tabWebContents == null ? null : tabWebContents.getRenderWidgetHostView();
-        @ColorInt
-        int backgroundColor = rwhv != null ? rwhv.getBackgroundColor() : Color.TRANSPARENT;
+        final int backgroundColor = rwhv != null ? rwhv.getBackgroundColor() : Color.TRANSPARENT;
         if (backgroundColor != Color.TRANSPARENT) return backgroundColor;
         return ChromeColors.getPrimaryBackgroundColor(tab.getContext(), false);
     }
@@ -57,13 +60,11 @@ public class ThemeUtils {
             Context context, @Nullable Tab tab, @ColorInt int backgroundColor) {
         boolean isIncognito = tab != null && tab.isIncognito();
         @ColorInt
-        int defaultColor =
-                getTextBoxColorForToolbarBackgroundInNonNativePage(
-                        context, backgroundColor, isIncognito);
+        int defaultColor = getTextBoxColorForToolbarBackgroundInNonNativePage(
+                context, backgroundColor, isIncognito);
         NativePage nativePage = tab != null ? tab.getNativePage() : null;
-        return nativePage != null
-                ? nativePage.getToolbarTextBoxBackgroundColor(defaultColor)
-                : defaultColor;
+        return nativePage != null ? nativePage.getToolbarTextBoxBackgroundColor(defaultColor)
+                                  : defaultColor;
     }
 
     /**
@@ -75,15 +76,22 @@ public class ThemeUtils {
      */
     public static @ColorInt int getTextBoxColorForToolbarBackgroundInNonNativePage(
             Context context, @ColorInt int color, boolean isIncognito) {
-        // Text box color on default toolbar background in incognito mode is a pre-defined color.
+        // Text box color on default toolbar background in incognito mode is a pre-defined
+        // color. We calculate the equivalent opaque color from the pre-defined translucent color.
         if (isIncognito) {
-            return context.getColor(R.color.toolbar_text_box_background_incognito);
+            final int overlayColor =
+                    context.getColor(R.color.toolbar_text_box_background_incognito);
+            final float overlayColorAlpha = Color.alpha(overlayColor) / 255f;
+            final int overlayColorOpaque = overlayColor & 0xFF000000;
+            return ColorUtils.getColorWithOverlay(color, overlayColorOpaque, overlayColorAlpha);
         }
 
         // Text box color on default toolbar background in standard mode is a pre-defined
         // color instead of a calculated color.
         if (ThemeUtils.isUsingDefaultToolbarColor(context, false, color)) {
-            float tabElevation = context.getResources().getDimension(R.dimen.default_elevation_4);
+            float tabElevation = ChromeFeatureList.sBaselineGm3SurfaceColors.isEnabled()
+                    ? context.getResources().getDimension(R.dimen.default_elevation_4)
+                    : context.getResources().getDimension(R.dimen.toolbar_text_box_elevation);
             return ChromeColors.getSurfaceColor(context, tabElevation);
         }
 
@@ -114,9 +122,8 @@ public class ThemeUtils {
     public static @ColorRes int getThemedToolbarIconTintRes(boolean useLight) {
         // Light toolbar theme colors may be used in night mode, so use toolbar_icon_tint_dark which
         // is not overridden in night- resources.
-        return useLight
-                ? R.color.default_icon_color_light_tint_list
-                : R.color.default_icon_color_dark_tint_list;
+        return useLight ? R.color.default_icon_color_light_tint_list
+                        : R.color.default_icon_color_dark_tint_list;
     }
 
     /**
@@ -128,9 +135,8 @@ public class ThemeUtils {
      */
     public static ColorStateList getThemedToolbarIconTint(
             Context context, @BrandedColorScheme int brandedColorScheme) {
-        // A focused activity uses the default (primary) icon tint.
-        return getThemedToolbarIconTintForActivityState(
-                context, brandedColorScheme, /* isActivityFocused= */ true);
+        return AppCompatResources.getColorStateList(
+                context, getThemedToolbarIconTintRes(brandedColorScheme));
     }
 
     /**
@@ -141,54 +147,10 @@ public class ThemeUtils {
      */
     public static @ColorRes int getThemedToolbarIconTintRes(
             @BrandedColorScheme int brandedColorScheme) {
-        // A focused activity uses the default (primary) icon tint.
-        return getThemedToolbarIconTintResForActivityState(
-                brandedColorScheme, /* isActivityFocused= */ true);
-    }
-
-    /**
-     * Returns the themed toolbar icon tint list, taking the activity focus state into account. The
-     * activity focus state is relevant only when the desktop windowing mode is active, where a
-     * different tint is used for an unfocused activity.
-     *
-     * @param context The context to retrieve the resources from.
-     * @param brandedColorScheme The {@link BrandedColorScheme}.
-     * @param isActivityFocused Whether the activity containing the toolbar is focused, {@code true}
-     *     if focused, {@code false} otherwise.
-     * @return Icon tint list.
-     */
-    public static ColorStateList getThemedToolbarIconTintForActivityState(
-            Context context,
-            @BrandedColorScheme int brandedColorScheme,
-            boolean isActivityFocused) {
-        return AppCompatResources.getColorStateList(
-                context,
-                getThemedToolbarIconTintResForActivityState(brandedColorScheme, isActivityFocused));
-    }
-
-    /**
-     * Returns the themed toolbar icon tint resource, taking the activity focus state into account.
-     * The activity focus state is relevant only when the desktop windowing mode is active, where a
-     * different tint is used for an unfocused activity.
-     *
-     * @param brandedColorScheme The {@link BrandedColorScheme}.
-     * @param isActivityFocused Whether the activity containing the toolbar is focused, {@code true}
-     *     if focused, {@code false} otherwise.
-     * @return Icon tint resource.
-     */
-    public static @ColorRes int getThemedToolbarIconTintResForActivityState(
-            @BrandedColorScheme int brandedColorScheme, boolean isActivityFocused) {
-        // TODO(crbug.com/328054353): Update unfocused activity tint once finalized.
         @ColorRes
-        int colorId =
-                isActivityFocused
-                        ? R.color.default_icon_color_tint_list
-                        : R.color.toolbar_icon_unfocused_activity_tint_list;
+        int colorId = R.color.default_icon_color_tint_list;
         if (brandedColorScheme == BrandedColorScheme.INCOGNITO) {
-            colorId =
-                    isActivityFocused
-                            ? R.color.default_icon_color_light_tint_list
-                            : R.color.toolbar_icon_unfocused_activity_incognito_color;
+            colorId = R.color.default_icon_color_light_tint_list;
         } else if (brandedColorScheme == BrandedColorScheme.LIGHT_BRANDED_THEME) {
             colorId = R.color.default_icon_color_dark_tint_list;
         } else if (brandedColorScheme == BrandedColorScheme.DARK_BRANDED_THEME) {
@@ -199,14 +161,13 @@ public class ThemeUtils {
 
     /**
      * Test if the toolbar is using the default color.
-     *
      * @param context The context to get the toolbar surface color.
      * @param isIncognito Whether to retrieve the default theme color for incognito mode.
      * @param color The color that the toolbar is using.
      * @return If the color is the default toolbar color.
      */
     public static boolean isUsingDefaultToolbarColor(
-            Context context, boolean isIncognito, @ColorInt int color) {
+            Context context, boolean isIncognito, int color) {
         return color == ChromeColors.getDefaultThemeColor(context, isIncognito);
     }
 
@@ -219,23 +180,15 @@ public class ThemeUtils {
      */
     public static @ColorInt int getToolbarHairlineColor(
             Context context, @ColorInt int toolbarColor, boolean isIncognito) {
-        // Hairline is not shown when the toolbar is in an expansion animation, which should be the
-        // primary time when there's transparency in the toolbar color. Our color here doesn't
-        // really matter, but we need to guard against calling #overlayColor as it does not accept
-        // transparent colors. Similarly, the check in #isUsingDefaultToolbarColor does not work
-        // when there's any transparency.
-        if (Color.alpha(toolbarColor) < 255) {
-            return Color.TRANSPARENT;
-        }
-
+        final Resources res = context.getResources();
         if (isUsingDefaultToolbarColor(context, isIncognito, toolbarColor)) {
-            return isIncognito
-                    ? ContextCompat.getColor(context, R.color.divider_line_bg_color_light)
-                    : SemanticColorUtils.getDividerLineBgColor(context);
+            return isIncognito ? res.getColor(R.color.divider_line_bg_color_light)
+                               : SemanticColorUtils.getDividerLineBgColor(context);
         }
 
-        @ColorInt
-        int hairlineColor = ContextCompat.getColor(context, R.color.toolbar_hairline_overlay);
-        return ColorUtils.overlayColor(toolbarColor, hairlineColor);
+        final float alpha = ResourcesCompat.getFloat(res, R.dimen.toolbar_hairline_overlay_alpha);
+        final int hairlineColorOpaque =
+                res.getColor(R.color.toolbar_hairline_overlay_opaque) & 0xFF000000;
+        return ColorUtils.getColorWithOverlay(toolbarColor, hairlineColorOpaque, alpha);
     }
 }

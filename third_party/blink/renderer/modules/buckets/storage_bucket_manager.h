@@ -35,35 +35,42 @@ class MODULES_EXPORT StorageBucketManager final
   explicit StorageBucketManager(NavigatorBase& navigator);
   ~StorageBucketManager() override = default;
 
-  ScriptPromiseTyped<StorageBucket> open(ScriptState* script_state,
-                                         const String& name,
-                                         const StorageBucketOptions* options,
-                                         ExceptionState& exception_state);
-  ScriptPromiseTyped<IDLSequence<IDLString>> keys(
-      ScriptState* script_state,
-      ExceptionState& exception_state);
-  ScriptPromiseTyped<IDLUndefined> Delete(ScriptState* script_state,
-                                          const String& name,
-                                          ExceptionState& exception_state);
+  ScriptPromise open(ScriptState* script_state,
+                     const String& name,
+                     const StorageBucketOptions* options,
+                     ExceptionState& exception_state);
+  ScriptPromise keys(ScriptState* script_state,
+                     ExceptionState& exception_state);
+  ScriptPromise Delete(ScriptState* script_state,
+                       const String& name,
+                       ExceptionState& exception_state);
 
   // GarbageCollected
   void Trace(Visitor*) const override;
 
   // These are not exposed to the web applications and only used by DevTools.
-  StorageBucket* GetBucketForDevtools(ScriptState* script_state,
-                                      const String& name);
+  void GetBucketForDevtools(ScriptState* script_state,
+                            const String& name,
+                            base::OnceCallback<void(StorageBucket*)> callback);
 
  private:
+  void DidGetBucketForDevtools(
+      ScriptState* script_state,
+      const String& name,
+      base::OnceCallback<void(StorageBucket*)> callback,
+      mojo::PendingRemote<mojom::blink::BucketHost> bucket_remote,
+      mojom::blink::BucketError);
+
   mojom::blink::BucketManagerHost* GetBucketManager(ScriptState* script_state);
 
-  void DidOpen(ScriptPromiseResolverTyped<StorageBucket>* resolver,
+  void DidOpen(ScriptPromiseResolver* resolver,
                const String& name,
                mojo::PendingRemote<mojom::blink::BucketHost> bucket_remote,
                mojom::blink::BucketError error);
-  void DidGetKeys(ScriptPromiseResolverTyped<IDLSequence<IDLString>>* resolver,
+  void DidGetKeys(ScriptPromiseResolver* resolver,
                   const Vector<String>& keys,
                   bool success);
-  void DidDelete(ScriptPromiseResolverTyped<IDLUndefined>*, bool success);
+  void DidDelete(ScriptPromiseResolver* resolver, bool success);
 
   HeapMojoRemote<mojom::blink::BucketManagerHost> manager_remote_;
 

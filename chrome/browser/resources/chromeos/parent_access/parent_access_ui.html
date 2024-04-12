@@ -1,10 +1,11 @@
-<style include="cros-color-overrides">
+<style>
   html,
   body {
     height: 100%;
   }
 
   #webviewDiv {
+    background-color: var(--cros-bg-color-elevation-1);
     height: 100vh;
   }
 
@@ -38,19 +39,15 @@
     width: 100%;
   }
 </style>
-
-<parent-access-template>
-  <span slot="main">
-    <div id="webviewDiv" role="dialog"
-        aria-label="$i18n{pageTitle}">
-      <webview id="webview" hidden$="[[webviewLoading]]"></webview>
-      <div class="spinner-container" hidden$="[[!webviewLoading]]">
-        <paper-spinner-lite class="spinner" active="[[webviewLoading]]">
-        </paper-spinner-lite>
-        <div aria-live="polite" aria-label$="$i18n{webviewLoadingMessage}">
-          $i18n{webviewLoadingMessage}
-        </div>
-      </div>
+</div>
+<div id="webviewDiv" role="dialog"
+    aria-label="$i18n{pageTitle}">    
+  <webview id="webview" hidden$="[[webviewLoading]]"></webview>
+  <div class="spinner-container" hidden$="[[!webviewLoading]]">
+    <paper-spinner-lite class="spinner" active="[[webviewLoading]]">
+    </paper-spinner-lite>
+    <div aria-live="polite" aria-label$="$i18n{webviewLoadingMessage}">
+      $i18n{webviewLoadingMessage}
     </div>
-  </span>
-</parent-access-template>
+  </div>
+</div>

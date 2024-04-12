@@ -52,9 +52,9 @@ void ChromeSupervisedUserWebContentHandlerBase::CleanUpInfoBarOnMainFrame() {
     details.previous_main_frame_url =
         controller.GetLastCommittedEntry()->GetURL();
   }
-  // Copy the infobars to allow safe iteration while removing elements.
-  const auto infobars = manager->infobars();
-  for (infobars::InfoBar* infobar : infobars) {
+  for (int i = manager->infobar_count() - 1; i >= 0; --i) {
+    infobars::InfoBar* infobar = manager->infobar_at(i);
+
     if (infobar->delegate()->ShouldExpire(
             infobars::ContentInfoBarManager::
                 NavigationDetailsFromLoadCommittedDetails(details))) {

@@ -39,10 +39,9 @@ content::BrowserContext* HelpAppManagerFactory::GetBrowserContextToUse(
   return context;
 }
 
-std::unique_ptr<KeyedService>
-HelpAppManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* HelpAppManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<HelpAppManager>(
+  return new HelpAppManager(
       local_search_service::LocalSearchServiceProxyFactory::
           GetForBrowserContext(context));
 }

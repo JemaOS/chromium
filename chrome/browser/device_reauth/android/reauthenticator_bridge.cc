@@ -10,47 +10,41 @@
 #include "base/functional/callback.h"
 #include "chrome/browser/device_reauth/android/jni_headers/ReauthenticatorBridge_jni.h"
 #include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
-#include "chrome/browser/profiles/profile_manager.h"
 #include "components/password_manager/core/browser/password_manager_util.h"
 
 static jlong JNI_ReauthenticatorBridge_Create(
     JNIEnv* env,
     const base::android::JavaParamRef<jobject>& java_bridge,
-    jint source) {
+    jint requester) {
   return reinterpret_cast<intptr_t>(
-      new ReauthenticatorBridge(java_bridge, source));
+      new ReauthenticatorBridge(java_bridge, requester));
 }
 
 ReauthenticatorBridge::ReauthenticatorBridge(
     const base::android::JavaParamRef<jobject>& java_bridge,
-    jint source)
-    : java_bridge_(java_bridge) {
-  device_reauth::DeviceAuthParams params(
-      base::Seconds(0), static_cast<device_reauth::DeviceAuthSource>(source));
-
-  // TODO(crbug.com/1479361): Replace GetLastUsedProfile() when Android starts
-  // supporting multiple profiles.
-  authenticator_ = ChromeDeviceAuthenticatorFactory::GetForProfile(
-      ProfileManager::GetLastUsedProfile(), params);
+    jint requester)
+    : java_bridge_(java_bridge),
+      requester_(static_cast<device_reauth::DeviceAuthRequester>(requester)) {
+  authenticator_ = ChromeDeviceAuthenticatorFactory::GetDeviceAuthenticator();
 }
 
 ReauthenticatorBridge::~ReauthenticatorBridge() {
   if (authenticator_) {
-    authenticator_->Cancel();
+    authenticator_->Cancel(requester_);
   }
 }
 
-bool ReauthenticatorBridge::CanUseAuthenticationWithBiometric(JNIEnv* env) {
-  return authenticator_ && authenticator_->CanAuthenticateWithBiometrics();
+bool ReauthenticatorBridge::CanUseAuthentication(JNIEnv* env) {
+  if (!authenticator_) {
+    return false;
+  }
+  return requester_ == device_reauth::DeviceAuthRequester::kIncognitoReauthPage
+             ? authenticator_->CanAuthenticateWithBiometricOrScreenLock()
+             : authenticator_->CanAuthenticateWithBiometrics();
 }
 
-bool ReauthenticatorBridge::CanUseAuthenticationWithBiometricOrScreenLock(
-    JNIEnv* env) {
-  return authenticator_ &&
-         authenticator_->CanAuthenticateWithBiometricOrScreenLock();
-}
-
-void ReauthenticatorBridge::Reauthenticate(JNIEnv* env) {
+void ReauthenticatorBridge::Reauthenticate(JNIEnv* env,
+                                           bool use_last_valid_auth) {
   if (!authenticator_) {
     return;
   }
@@ -58,9 +52,11 @@ void ReauthenticatorBridge::Reauthenticate(JNIEnv* env) {
   // `this` notifies the authenticator when it is destructed, resulting in
   // the callback being reset by the authenticator. Therefore, it is safe
   // to use base::Unretained.
-  authenticator_->AuthenticateWithMessage(
-      u"", base::BindOnce(&ReauthenticatorBridge::OnReauthenticationCompleted,
-                          base::Unretained(this)));
+  authenticator_->Authenticate(
+      requester_,
+      base::BindOnce(&ReauthenticatorBridge::OnReauthenticationCompleted,
+                     base::Unretained(this)),
+      use_last_valid_auth);
 }
 
 void ReauthenticatorBridge::OnReauthenticationCompleted(bool auth_succeeded) {

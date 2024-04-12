@@ -111,8 +111,7 @@ enum class CrostiniResult {
   STOP_VM_NO_RESPONSE = 76,
   SIGNAL_NOT_CONNECTED = 77,
   INSTALL_TERMINA_CANCELLED = 78,
-  START_TIMED_OUT = 79,
-  kMaxValue = START_TIMED_OUT,
+  kMaxValue = INSTALL_TERMINA_CANCELLED,
   // When adding a new value, check you've followed the steps in the comment at
   // the top of this enum.
 };
@@ -166,7 +165,6 @@ enum class ContainerVersion {
   STRETCH,
   BUSTER,
   BULLSEYE,
-  BOOKWORM,
 };
 
 struct VmInfo {
@@ -285,8 +283,7 @@ enum class ContainerOsVersion {
   kDebianOther = 3,
   kOtherOs = 4,
   kDebianBullseye = 5,
-  kDebianBookworm = 6,
-  kMaxValue = kDebianBookworm,
+  kMaxValue = kDebianBullseye,
 };
 
 #endif  // CHROME_BROWSER_ASH_CROSTINI_CROSTINI_SIMPLE_TYPES_H_

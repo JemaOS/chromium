@@ -57,8 +57,9 @@ class SearchAndAssistantEnabledChecker {
   void OnJsonParsed(data_decoder::DataDecoder::ValueOrError response);
 
   std::unique_ptr<network::SimpleURLLoader> url_loader_;
-  raw_ptr<network::mojom::URLLoaderFactory> url_loader_factory_;
-  const raw_ptr<Delegate> delegate_;
+  raw_ptr<network::mojom::URLLoaderFactory, ExperimentalAsh>
+      url_loader_factory_;
+  const raw_ptr<Delegate, ExperimentalAsh> delegate_;
 
   base::WeakPtrFactory<SearchAndAssistantEnabledChecker> weak_factory_{this};
 };

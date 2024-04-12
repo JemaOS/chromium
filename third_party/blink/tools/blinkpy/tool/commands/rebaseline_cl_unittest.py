@@ -66,34 +66,22 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
                 'port_name': 'test-win-win7',
                 'specifiers': ['Win7', 'Release'],
                 'is_try_builder': True,
-                'steps': {
-                    'blink_web_tests (with patch)': {},
-                },
             },
             'MOCK Try Linux': {
                 'port_name': 'test-linux-trusty',
                 'specifiers': ['Trusty', 'Release'],
                 'is_try_builder': True,
-                'steps': {
-                    'blink_web_tests (with patch)': {},
-                },
             },
             'MOCK Try Mac': {
                 'port_name': 'test-mac-mac10.11',
                 'specifiers': ['Mac10.11', 'Release'],
                 'is_try_builder': True,
-                'steps': {
-                    'blink_web_tests (with patch)': {},
-                },
             },
             'MOCK Try Linux (CQ duplicate)': {
                 'port_name': 'test-linux-trusty',
                 'specifiers': ['Trusty', 'Release'],
                 'is_try_builder': True,
                 'is_cq_builder': True,
-                'steps': {
-                    'blink_web_tests (with patch)': {},
-                },
             },
         })
 
@@ -218,6 +206,9 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
                 test, self.mac_port.BASELINE_SUFFIX, '.' + suffix)
             self._write(baseline_name, 'contents')
 
+        self.mac_port.host.filesystem.write_text_file(
+            '/test.checkout/web_tests/external/wpt/MANIFEST.json', '{}')
+
     def tearDown(self):
         BaseTestCase.tearDown(self)
         LoggingTestCase.tearDown(self)
@@ -228,13 +219,14 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
             'dry_run': False,
             'only_changed_tests': False,
             'trigger_jobs': True,
+            'fill_missing': None,
             'optimize': True,
             'results_directory': None,
             'test_name_file': None,
             'verbose': False,
             'builders': [],
             'patchset': None,
-            'manifest_update': False,
+            'flag_specific': None,
         }
         options.update(kwargs)
         return optparse.Values(options)
@@ -245,21 +237,12 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
         exit_code = self.command.execute(self.command_options(), [], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 3 suites.\n',
-            'INFO: Rebaselining 5 tests.\n',
-            "INFO: Copied baselines for 'one/flaky-fail.html' (wav) (1/5)\n",
-            "INFO: Copied baselines for 'one/missing.html' (png) (2/5)\n",
-            "INFO: Copied baselines for 'one/slow-fail.html' (txt) (3/5)\n",
-            "INFO: Copied baselines for 'one/text-fail.html' (txt) (4/5)\n",
-            "INFO: Copied baselines for 'two/image-fail.html' (png) (5/5)\n",
-            "INFO: Downloaded baselines for 'one/flaky-fail.html' (1/5)\n",
-            "INFO: Downloaded baselines for 'one/missing.html' (2/5)\n",
-            "INFO: Downloaded baselines for 'one/slow-fail.html' (3/5)\n",
-            "INFO: Downloaded baselines for 'one/text-fail.html' (4/5)\n",
-            "INFO: Downloaded baselines for 'two/image-fail.html' (5/5)\n",
-            'INFO: Staging 0 baselines with git.\n',
+            'INFO: Rebaselining one/flaky-fail.html\n',
+            'INFO: Rebaselining one/missing.html\n',
+            'INFO: Rebaselining one/slow-fail.html\n',
+            'INFO: Rebaselining one/text-fail.html\n',
+            'INFO: Rebaselining two/image-fail.html\n',
         ])
 
     def test_execute_with_explicit_dir(self):
@@ -267,19 +250,11 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
                                          self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 3 suites.\n',
-            'INFO: Rebaselining 4 tests.\n',
-            "INFO: Copied baselines for 'one/flaky-fail.html' (wav) (1/4)\n",
-            "INFO: Copied baselines for 'one/missing.html' (png) (2/4)\n",
-            "INFO: Copied baselines for 'one/slow-fail.html' (txt) (3/4)\n",
-            "INFO: Copied baselines for 'one/text-fail.html' (txt) (4/4)\n",
-            "INFO: Downloaded baselines for 'one/flaky-fail.html' (1/4)\n",
-            "INFO: Downloaded baselines for 'one/missing.html' (2/4)\n",
-            "INFO: Downloaded baselines for 'one/slow-fail.html' (3/4)\n",
-            "INFO: Downloaded baselines for 'one/text-fail.html' (4/4)\n",
-            'INFO: Staging 0 baselines with git.\n',
+            'INFO: Rebaselining one/flaky-fail.html\n',
+            'INFO: Rebaselining one/missing.html\n',
+            'INFO: Rebaselining one/slow-fail.html\n',
+            'INFO: Rebaselining one/text-fail.html\n',
         ])
 
     def test_execute_basic_dry_run(self):
@@ -306,54 +281,20 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
             # one/slow-fail.html
             #
 
-            one/not-a-test.html
+            one/does-not-exist.html
             one/text-fail.html
                 two/   '''))
         exit_code = self.command.execute(
             self.command_options(test_name_file=test_name_file), [], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 3 suites.\n',
             'INFO: Reading list of tests to rebaseline from %s\n' %
             test_name_file,
-            "WARNING: 'one/not-a-test.html' does not represent any tests "
-            'and may be misspelled.\n',
-            'INFO: Rebaselining 4 tests.\n',
-            "INFO: Copied baselines for 'one/flaky-fail.html' (wav) (1/4)\n",
-            "INFO: Copied baselines for 'one/missing.html' (png) (2/4)\n",
-            "INFO: Copied baselines for 'one/text-fail.html' (txt) (3/4)\n",
-            "INFO: Copied baselines for 'two/image-fail.html' (png) (4/4)\n",
-            "INFO: Downloaded baselines for 'one/flaky-fail.html' (1/4)\n",
-            "INFO: Downloaded baselines for 'one/missing.html' (2/4)\n",
-            "INFO: Downloaded baselines for 'one/text-fail.html' (3/4)\n",
-            "INFO: Downloaded baselines for 'two/image-fail.html' (4/4)\n",
-            'INFO: Staging 0 baselines with git.\n',
-        ])
-
-    def test_execute_with_tests_missing_locally(self):
-        self._remove('one/text-fail.html')
-        exit_code = self.command.execute(self.command_options(), [], self.tool)
-        self.assertEqual(exit_code, 0)
-        self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
-            'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 3 suites.\n',
-            'WARNING: Skipping rebaselining for 1 test missing from the local '
-            'checkout:\n',
-            'WARNING:   one/text-fail.html\n',
-            'WARNING: You may want to rebase or trigger new builds.\n',
-            'INFO: Rebaselining 4 tests.\n',
-            "INFO: Copied baselines for 'one/flaky-fail.html' (wav) (1/4)\n",
-            "INFO: Copied baselines for 'one/missing.html' (png) (2/4)\n",
-            "INFO: Copied baselines for 'one/slow-fail.html' (txt) (3/4)\n",
-            "INFO: Copied baselines for 'two/image-fail.html' (png) (4/4)\n",
-            "INFO: Downloaded baselines for 'one/flaky-fail.html' (1/4)\n",
-            "INFO: Downloaded baselines for 'one/missing.html' (2/4)\n",
-            "INFO: Downloaded baselines for 'one/slow-fail.html' (3/4)\n",
-            "INFO: Downloaded baselines for 'two/image-fail.html' (4/4)\n",
-            'INFO: Staging 0 baselines with git.\n',
+            'INFO: Rebaselining one/flaky-fail.html\n',
+            'INFO: Rebaselining one/missing.html\n',
+            'INFO: Rebaselining one/text-fail.html\n',
+            'INFO: Rebaselining two/image-fail.html\n',
         ])
 
     def test_execute_with_no_issue_number_aborts(self):
@@ -383,7 +324,6 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
         exit_code = self.command.execute(self.command_options(), [], self.tool)
         self.assertEqual(exit_code, 1)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: No finished builds.\n',
             'INFO: Scheduled or started builds:\n',
             'INFO:   BUILDER              NUMBER  STATUS    BUCKET\n',
@@ -415,7 +355,6 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
             self.command_options(trigger_jobs=False), [], self.tool)
         self.assertEqual(exit_code, 1)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             "ERROR: Aborted: no try jobs and '--no-trigger-jobs' or "
             "'--dry-run' passed.\n",
         ])
@@ -423,7 +362,6 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
                                          [], self.tool)
         self.assertEqual(exit_code, 1)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             "ERROR: Aborted: no try jobs and '--no-trigger-jobs' or "
             "'--dry-run' passed.\n",
         ])
@@ -438,7 +376,6 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
         exit_code = self.command.execute(self.command_options(), [], self.tool)
         self.assertEqual(exit_code, 1)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: Finished builds:\n',
             'INFO:   BUILDER              NUMBER  STATUS    BUCKET\n',
             'INFO:   MOCK Try Mac         4000    FAILURE   try   \n',
@@ -469,7 +406,6 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
         exit_code = self.command.execute(self.command_options(), [], self.tool)
         self.assertEqual(exit_code, 1)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: Finished builds:\n',
             'INFO:   BUILDER              NUMBER  STATUS    BUCKET\n',
             'INFO:   MOCK Try Win         5000    FAILURE   try   \n',
@@ -477,16 +413,31 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
             'INFO:   BUILDER              NUMBER  STATUS    BUCKET\n',
             'INFO:   MOCK Try Linux       6000    SCHEDULED try   \n',
             'INFO:   MOCK Try Mac         4000    STARTED   try   \n',
-            'INFO: Fetching test results for 1 suite.\n',
             'WARNING: Some builders have no results:\n',
             'WARNING:   MOCK Try Linux\n',
             'WARNING:   MOCK Try Mac\n',
-            'INFO: Would you like to continue?\n'
-            'Note: This will try to fill in missing results '
-            'with available results.\n'
-            'This is generally not suggested unless the results are '
-            'platform agnostic.\n',
-            'INFO: Aborting. Please retry builders with no results.\n',
+            'INFO: Would you like to continue?\n',
+            'INFO: Aborting.\n',
+        ])
+
+    def test_execute_with_canceled_job(self):
+        builds = {
+            Build('MOCK Try Win', 5000, 'Build-1'):
+            TryJobStatus('COMPLETED', 'FAILURE'),
+            Build('MOCK Try Mac', 4000, 'Build-2'):
+            TryJobStatus('COMPLETED', 'FAILURE'),
+            Build('MOCK Try Linux', 6000, 'Build-3'):
+            TryJobStatus('COMPLETED', 'CANCELED'),
+        }
+        self.command.git_cl = MockGitCL(self.tool, builds)
+        exit_code = self.command.execute(self.command_options(), [], self.tool)
+        self.assertEqual(exit_code, 1)
+        self.assertLog([
+            'INFO: All builds finished.\n',
+            'WARNING: Some builders have no results:\n',
+            'WARNING:   MOCK Try Linux\n',
+            'INFO: Would you like to continue?\n',
+            'INFO: Aborting.\n',
         ])
 
     def test_execute_with_passing_jobs(self):
@@ -502,51 +453,12 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
         exit_code = self.command.execute(self.command_options(), [], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 1 suite.\n',
-            'INFO: Rebaselining 5 tests.\n',
-            "INFO: Copied baselines for 'one/flaky-fail.html' (wav) (1/5)\n",
-            "INFO: Copied baselines for 'one/missing.html' (png) (2/5)\n",
-            "INFO: Copied baselines for 'one/slow-fail.html' (txt) (3/5)\n",
-            "INFO: Copied baselines for 'one/text-fail.html' (txt) (4/5)\n",
-            "INFO: Copied baselines for 'two/image-fail.html' (png) (5/5)\n",
-            "INFO: Downloaded baselines for 'one/flaky-fail.html' (1/5)\n",
-            "INFO: Downloaded baselines for 'one/missing.html' (2/5)\n",
-            "INFO: Downloaded baselines for 'one/slow-fail.html' (3/5)\n",
-            "INFO: Downloaded baselines for 'one/text-fail.html' (4/5)\n",
-            "INFO: Downloaded baselines for 'two/image-fail.html' (5/5)\n",
-            'INFO: Staging 0 baselines with git.\n',
-        ])
-
-    def test_execute_with_only_unrelated_failing_suites(self):
-        """A build without web test failures should not be treated as missing.
-
-        The build may still fail because of other non-web test suites.
-
-        See Also:
-            crbug.com/1475247#c1
-        """
-        builds = {
-            Build('MOCK Try Win', 5000, 'Build-1'):
-            TryJobStatus('COMPLETED', 'FAILURE'),
-            Build('MOCK Try Mac', 4000, 'Build-2'):
-            TryJobStatus('COMPLETED', 'FAILURE'),
-            Build('MOCK Try Linux', 6000, 'Build-3'):
-            TryJobStatus('COMPLETED', 'FAILURE'),
-        }
-        for build in builds:
-            self.tool.results_fetcher.set_results(
-                build,
-                WebTestResults([], step_name='blink_web_tests (with patch)'))
-        self.command.git_cl = MockGitCL(self.tool, builds)
-        exit_code = self.command.execute(self.command_options(), [], self.tool)
-        self.assertEqual(exit_code, 0)
-        self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
-            'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 3 suites.\n',
-            'INFO: No tests to rebaseline.\n',
+            'INFO: Rebaselining one/flaky-fail.html\n',
+            'INFO: Rebaselining one/missing.html\n',
+            'INFO: Rebaselining one/slow-fail.html\n',
+            'INFO: Rebaselining one/text-fail.html\n',
+            'INFO: Rebaselining two/image-fail.html\n'
         ])
 
     def test_execute_with_no_trigger_jobs_option(self):
@@ -561,20 +473,14 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
             self.command_options(trigger_jobs=False), [], self.tool)
         self.assertEqual(exit_code, 1)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: Finished builds:\n',
             'INFO:   BUILDER              NUMBER  STATUS    BUCKET\n',
             'INFO:   MOCK Try Mac         4000    FAILURE   try   \n',
             'INFO:   MOCK Try Win         5000    FAILURE   try   \n',
-            'INFO: Fetching test results for 2 suites.\n',
             'WARNING: Some builders have no results:\n',
             'WARNING:   MOCK Try Linux\n',
-            'INFO: Would you like to continue?\n'
-            'Note: This will try to fill in missing results '
-            'with available results.\n'
-            'This is generally not suggested unless the results are '
-            'platform agnostic.\n',
-            'INFO: Aborting. Please retry builders with no results.\n',
+            'INFO: Would you like to continue?\n',
+            'INFO: Aborting.\n',
         ])
         self.assertEqual(self.command.git_cl.calls, [])
 
@@ -585,15 +491,9 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
             self.command_options(only_changed_tests=True), [], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 3 suites.\n',
-            'INFO: Rebaselining 2 tests.\n',
-            "INFO: Copied baselines for 'one/flaky-fail.html' (wav) (1/2)\n",
-            "INFO: Copied baselines for 'one/text-fail.html' (txt) (2/2)\n",
-            "INFO: Downloaded baselines for 'one/flaky-fail.html' (1/2)\n",
-            "INFO: Downloaded baselines for 'one/text-fail.html' (2/2)\n",
-            'INFO: Staging 0 baselines with git.\n',
+            'INFO: Rebaselining one/flaky-fail.html\n',
+            'INFO: Rebaselining one/text-fail.html\n',
         ])
 
     def test_execute_with_test_that_fails_on_retry(self):
@@ -609,13 +509,8 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
         exit_code = self.command.execute(self.command_options(), [], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 3 suites.\n',
-            'INFO: Rebaselining 1 test.\n',
-            "INFO: Copied baselines for 'one/text-fail.html' (txt) (1/1)\n",
-            "INFO: Downloaded baselines for 'one/text-fail.html' (1/1)\n",
-            'INFO: Staging 0 baselines with git.\n',
+            'INFO: Rebaselining one/text-fail.html\n',
         ])
 
     def test_execute_with_no_retry_summary_downloaded(self):
@@ -626,22 +521,13 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
         exit_code = self.command.execute(self.command_options(), [], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 3 suites.\n',
             'WARNING: No retry summary available for ("MOCK Try Win", "blink_web_tests").\n',
-            'INFO: Rebaselining 5 tests.\n',
-            "INFO: Copied baselines for 'one/flaky-fail.html' (wav) (1/5)\n",
-            "INFO: Copied baselines for 'one/missing.html' (png) (2/5)\n",
-            "INFO: Copied baselines for 'one/slow-fail.html' (txt) (3/5)\n",
-            "INFO: Copied baselines for 'one/text-fail.html' (txt) (4/5)\n",
-            "INFO: Copied baselines for 'two/image-fail.html' (png) (5/5)\n",
-            "INFO: Downloaded baselines for 'one/flaky-fail.html' (1/5)\n",
-            "INFO: Downloaded baselines for 'one/missing.html' (2/5)\n",
-            "INFO: Downloaded baselines for 'one/slow-fail.html' (3/5)\n",
-            "INFO: Downloaded baselines for 'one/text-fail.html' (4/5)\n",
-            "INFO: Downloaded baselines for 'two/image-fail.html' (5/5)\n",
-            'INFO: Staging 0 baselines with git.\n',
+            'INFO: Rebaselining one/flaky-fail.html\n',
+            'INFO: Rebaselining one/missing.html\n',
+            'INFO: Rebaselining one/slow-fail.html\n',
+            'INFO: Rebaselining one/text-fail.html\n',
+            'INFO: Rebaselining two/image-fail.html\n',
         ])
 
     def test_rebaseline_command_invocations(self):
@@ -718,44 +604,30 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
         ])
 
     def test_execute_missing_results_with_no_fill_missing_prompts(self):
-        build = Build('MOCK Try Win', 5000, 'Build-1')
-        self.builds[build] = TryJobStatus.from_bb_status('CANCELED')
+        self.tool.results_fetcher.set_results(
+            Build('MOCK Try Win', 5000, 'Build-1'), WebTestResults([]),
+            'blink_web_tests (with patch)')
         exit_code = self.command.execute(self.command_options(), [], self.tool)
         self.assertEqual(exit_code, 1)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
-            'WARNING: Some builds have incomplete results:\n',
-            'WARNING:   "MOCK Try Win" build 5000\n',
-            'WARNING: Examples of incomplete results include:\n',
-            'WARNING:   * Shard terminated the harness after timing out.\n',
-            'WARNING:   * Harness exited early due to excessive unexpected failures.\n',
-            'WARNING:   * Build failed on a non-test step.\n',
-            'WARNING: Please consider retrying the failed builders or '
-            'giving the builders more shards.\n',
-            'WARNING: See https://chromium.googlesource.com/chromium/src/+/'
-            'HEAD/docs/testing/web_test_expectations.md#handle-bot-timeouts\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 2 suites.\n',
-            'INFO: Would you like to continue?\n'
-            'Note: This will try to fill in missing results '
-            'with available results.\n'
-            'This is generally not suggested unless the results are '
-            'platform agnostic.\n',
-            'INFO: Aborting. Please retry builders with no results.\n',
+            'WARNING: Some builders have no results:\n',
+            'WARNING:   MOCK Try Win\n',
+            'INFO: Would you like to continue?\n',
+            'INFO: Aborting.\n',
         ])
 
     def test_execute_interrupted_results_with_fill_missing(self):
         build = Build('MOCK Try Win', 5000, 'Build-1')
         self.builds[build] = TryJobStatus.from_bb_status('INFRA_FAILURE')
-        self.tool.user.set_canned_responses(['y'])
+        self.tool.user.set_canned_responses(['y', 'n'])
         exit_code = self.command.execute(self.command_options(),
                                          ['one/flaky-fail.html'], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
-            'WARNING: Some builds have incomplete results:\n',
+            'WARNING: Some builds have infrastructure failures:\n',
             'WARNING:   "MOCK Try Win" build 5000\n',
-            'WARNING: Examples of incomplete results include:\n',
+            'WARNING: Examples of infrastructure failures include:\n',
             'WARNING:   * Shard terminated the harness after timing out.\n',
             'WARNING:   * Harness exited early due to excessive unexpected failures.\n',
             'WARNING:   * Build failed on a non-test step.\n',
@@ -764,16 +636,14 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
             'WARNING: See https://chromium.googlesource.com/chromium/src/+/'
             'HEAD/docs/testing/web_test_expectations.md#handle-bot-timeouts\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 2 suites.\n',
-            'INFO: Would you like to continue?\n'
-            'Note: This will try to fill in missing results '
-            'with available results.\n'
-            'This is generally not suggested unless the results are '
-            'platform agnostic.\n',
-            'INFO: Rebaselining 1 test.\n',
-            "INFO: Copied baselines for 'one/flaky-fail.html' (wav) (1/1)\n",
-            "INFO: Downloaded baselines for 'one/flaky-fail.html' (1/1)\n",
-            'INFO: Staging 0 baselines with git.\n',
+            'INFO: Would you like to continue?\n',
+            'INFO: Would you like to try to fill in missing results '
+            'with available results?\n'
+            'Note: This is generally not suggested unless the results '
+            'are platform agnostic.\n',
+            'INFO: Please rebaseline again for builders '
+            'with incomplete results later.\n',
+            'INFO: Rebaselining one/flaky-fail.html\n',
         ])
 
     def test_detect_reftest_failure(self):
@@ -783,18 +653,16 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
             ['two/image-fail.html'], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 1 build from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 1 suite.\n',
-            'INFO: Rebaselining 1 test.\n',
-            "INFO: Downloaded baselines for 'two/image-fail.html' (1/1)\n",
+            'INFO: Rebaselining two/image-fail.html\n',
             'WARNING: Some test failures should be suppressed in '
             'TestExpectations instead of being rebaselined.\n',
             'WARNING: Consider adding the following lines to '
             '/mock-checkout/third_party/blink/web_tests/TestExpectations:\n'
-            '[ Trusty ] two/image-fail.html [ Failure ]  # Reftest image failure\n',
-            'INFO: Staging 0 baselines with git.\n',
+            '[ Trusty ] two/image-fail.html [ Failure ]  # Reftest failure\n',
         ])
+        self._mock_copier.find_baselines_to_copy.assert_not_called()
+        self.tool.main.assert_not_called()
         self.assertFalse(
             self.tool.filesystem.exists(
                 self._expand('platform/test-linux-trusty/'
@@ -817,18 +685,13 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
                                          ['one/flaky-fail.html'], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 3 builds from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 3 suites.\n',
-            'INFO: Rebaselining 1 test.\n',
-            "INFO: Copied baselines for 'one/flaky-fail.html' (wav) (1/1)\n",
-            "INFO: Downloaded baselines for 'one/flaky-fail.html' (1/1)\n",
+            'INFO: Rebaselining one/flaky-fail.html\n',
             'WARNING: Some test failures should be suppressed in '
             'TestExpectations instead of being rebaselined.\n',
             'WARNING: Consider adding the following lines to '
             '/mock-checkout/third_party/blink/web_tests/TestExpectations:\n'
             '[ Mac10.11 ] one/flaky-fail.html [ Failure ]  # Flaky output\n',
-            'INFO: Staging 0 baselines with git.\n',
         ])
         self.assertFalse(
             self.tool.filesystem.exists(
@@ -870,13 +733,8 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
                 ['two/image-fail.html'], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 1 build from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 1 suite.\n',
-            'INFO: Rebaselining 1 test.\n',
-            "INFO: Copied baselines for 'two/image-fail.html' (png) (1/1)\n",
-            "INFO: Downloaded baselines for 'two/image-fail.html' (1/1)\n",
-            'INFO: Staging 0 baselines with git.\n',
+            'INFO: Rebaselining two/image-fail.html\n',
         ])
         # Image diffing is relatively expensive. Verify that the minimal number
         # of calls is made to get all mutual differences.
@@ -918,18 +776,13 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
                 ['two/image-fail.html'], self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 1 build from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 1 suite.\n',
-            'INFO: Rebaselining 1 test.\n',
-            "INFO: Copied baselines for 'two/image-fail.html' (png) (1/1)\n",
-            "INFO: Downloaded baselines for 'two/image-fail.html' (1/1)\n",
+            'INFO: Rebaselining two/image-fail.html\n',
             'WARNING: Some test failures should be suppressed in '
             'TestExpectations instead of being rebaselined.\n',
             'WARNING: Consider adding the following lines to '
             '/mock-checkout/third_party/blink/web_tests/TestExpectations:\n'
             '[ Mac10.11 ] two/image-fail.html [ Failure ]  # Flaky output\n',
-            'INFO: Staging 0 baselines with git.\n',
         ])
         self.assertEqual(diff_image.call_count, 1)
         self.assertFalse(
@@ -943,6 +796,22 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
             'maxDifference': 1,
         }
         return b'diff', stats, None
+
+    def test_execute_missing_results_with_fill_missing_continues(self):
+        self.tool.results_fetcher.set_results(
+            Build('MOCK Try Win', 5000, 'Build-1'), WebTestResults([]),
+            'blink_web_tests (with patch)')
+        exit_code = self.command.execute(
+            self.command_options(fill_missing=True), ['one/flaky-fail.html'],
+            self.tool)
+        self.assertEqual(exit_code, 0)
+        self.assertLog([
+            'INFO: All builds finished.\n',
+            'WARNING: Some builders have no results:\n',
+            'WARNING:   MOCK Try Win\n', 'INFO: For one/flaky-fail.html:\n',
+            'INFO: Using "MOCK Try Linux" build 6000 for test-win-win7.\n',
+            'INFO: Rebaselining one/flaky-fail.html\n'
+        ])
 
     def test_fill_in_missing_results(self):
         test_baseline_set = TestBaselineSet(self.tool.builders)
@@ -959,146 +828,63 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
                 (Build('MOCK Try Win', 200), 'test-win-win7'),
                 (Build('MOCK Try Linux', 100), 'test-mac-mac10.11'),
             ])
-
-    def test_fill_in_missing_results_with_skipped_test(self):
-        test_baseline_set = TestBaselineSet(self.tool.builders)
-        test_baseline_set.add('one/flaky-fail.html',
-                              Build('MOCK Try Linux', 100),
-                              'blink_web_tests (with patch)')
-        self.tool.filesystem.write_text_file(
-            self.mac_port.path_to_never_fix_tests_file(),
-            textwrap.dedent("""\
-                # tags: [ Linux Mac Win ]
-                # results: [ Skip ]
-                [ Win ] one/flaky-fail.html [ Skip ]
-                """))
-        self.command.fill_in_missing_results(test_baseline_set)
-        self.assertEqual(
-            test_baseline_set.build_port_pairs('one/flaky-fail.html'), [
-                (Build('MOCK Try Linux', 100), 'test-linux-trusty'),
-                (Build('MOCK Try Linux', 100), 'test-mac-mac10.11'),
-            ])
+        self.assertLog([
+            'INFO: For one/flaky-fail.html:\n',
+            'INFO: Using "MOCK Try Linux" build 100 for test-mac-mac10.11.\n',
+        ])
 
     def test_fill_in_missing_results_prefers_build_with_same_os_type(self):
         self.tool.builders = BuilderList({
-            'MOCK Linux Trusty': {
-                'port_name': 'test-linux-trusty',
-                'specifiers': ['Trusty', 'Release'],
+            'MOCK Foo12': {
+                'port_name': 'foo-foo12',
+                'specifiers': ['Foo12', 'Release'],
                 'is_try_builder': True,
-                'steps': {
-                    'blink_web_tests (with patch)': {},
-                },
             },
-            'MOCK Linux Precise': {
-                'port_name': 'test-linux-precise',
-                'specifiers': ['Precise', 'Release'],
+            'MOCK Foo45': {
+                'port_name': 'foo-foo45',
+                'specifiers': ['Foo45', 'Release'],
                 'is_try_builder': True,
-                'steps': {
-                    'blink_web_tests (with patch)': {},
-                },
             },
-            'MOCK Mac10.11': {
-                'port_name': 'test-mac-mac10.11',
-                'specifiers': ['Mac10.11', 'Release'],
+            'MOCK Bar3': {
+                'port_name': 'bar-bar3',
+                'specifiers': ['Bar3', 'Release'],
                 'is_try_builder': True,
-                'steps': {
-                    'blink_web_tests (with patch)': {},
-                },
             },
-            'MOCK Mac10.10': {
-                'port_name': 'test-mac-mac10.10',
-                'specifiers': ['Mac10.10', 'Release'],
+            'MOCK Bar4': {
+                'port_name': 'bar-bar4',
+                'specifiers': ['Bar4', 'Release'],
                 'is_try_builder': True,
-                'steps': {
-                    'blink_web_tests (with patch)': {},
-                },
             },
         })
         test_baseline_set = TestBaselineSet(self.tool.builders)
-        test_baseline_set.add('one/flaky-fail.html',
-                              Build('MOCK Linux Trusty', 100),
-                              'blink_web_tests (with patch)')
-        test_baseline_set.add('one/flaky-fail.html',
-                              Build('MOCK Mac10.10',
-                                    200), 'blink_web_tests (with patch)')
+        test_baseline_set.add('one/flaky-fail.html', Build('MOCK Foo12', 100))
+        test_baseline_set.add('one/flaky-fail.html', Build('MOCK Bar4', 200))
         self.command.fill_in_missing_results(test_baseline_set)
         self.assertEqual(
             sorted(test_baseline_set.build_port_pairs('one/flaky-fail.html')),
             [
-                (Build('MOCK Linux Trusty', 100), 'test-linux-precise'),
-                (Build('MOCK Linux Trusty', 100), 'test-linux-trusty'),
-                (Build('MOCK Mac10.10', 200), 'test-mac-mac10.10'),
-                (Build('MOCK Mac10.10', 200), 'test-mac-mac10.11'),
+                (Build('MOCK Bar4', 200), 'bar-bar3'),
+                (Build('MOCK Bar4', 200), 'bar-bar4'),
+                (Build('MOCK Foo12', 100), 'foo-foo12'),
+                (Build('MOCK Foo12', 100), 'foo-foo45'),
             ])
-
-    def test_fill_in_missing_results_partition_by_steps(self):
-        self.tool.builders = BuilderList({
-            'MOCK Linux Trusty': {
-                'port_name': 'test-linux-trusty',
-                'specifiers': ['Trusty', 'Release'],
-                'is_try_builder': True,
-                'steps': {
-                    'blink_web_tests (with patch)': {},
-                    'blink_wpt_tests (with patch)': {},
-                },
-            },
-            'MOCK Linux Precise': {
-                'port_name': 'test-linux-precise',
-                'specifiers': ['Precise', 'Release'],
-                'is_try_builder': True,
-                'steps': {
-                    'blink_web_tests (with patch)': {},
-                    'blink_wpt_tests (with patch)': {},
-                },
-            },
-        })
-        test_baseline_set = TestBaselineSet(self.tool.builders)
-        test_baseline_set.add('one/flaky-fail.html',
-                              Build('MOCK Linux Trusty', 100),
-                              'blink_web_tests (with patch)')
-        test_baseline_set.add('two/image-fail.html',
-                              Build('MOCK Linux Precise', 200),
-                              'blink_wpt_tests (with patch)')
-        self.command.fill_in_missing_results(test_baseline_set)
-        self.assertEqual(
-            sorted(test_baseline_set.runs_for_test('one/flaky-fail.html')),
-            [
-                # Do not add this test to `blink_wpt_tests`.
-                (Build('MOCK Linux Trusty', 100),
-                 'blink_web_tests (with patch)', 'test-linux-precise'),
-                (Build('MOCK Linux Trusty', 100),
-                 'blink_web_tests (with patch)', 'test-linux-trusty'),
-            ])
-        self.assertEqual(
-            sorted(test_baseline_set.runs_for_test('two/image-fail.html')),
-            [
-                # Do not add this test to `blink_web_tests`.
-                (Build('MOCK Linux Precise', 200),
-                 'blink_wpt_tests (with patch)', 'test-linux-precise'),
-                (Build('MOCK Linux Precise', 200),
-                 'blink_wpt_tests (with patch)', 'test-linux-trusty'),
-            ])
+        self.assertLog([
+            'INFO: For one/flaky-fail.html:\n',
+            'INFO: Using "MOCK Bar4" build 200 for bar-bar3.\n',
+            'INFO: Using "MOCK Foo12" build 100 for foo-foo45.\n',
+        ])
 
     def test_explicit_builder_list(self):
         builders = ['MOCK Try Linux', 'MOCK Try Mac']
         options = self.command_options(builders=builders)
         exit_code = self.command.execute(options, [], self.tool)
         self.assertLog([
-            'INFO: Fetching status for 2 builds from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 2 suites.\n',
-            'INFO: Rebaselining 5 tests.\n',
-            "INFO: Copied baselines for 'one/flaky-fail.html' (wav) (1/5)\n",
-            "INFO: Copied baselines for 'one/missing.html' (png) (2/5)\n",
-            "INFO: Copied baselines for 'one/slow-fail.html' (txt) (3/5)\n",
-            "INFO: Copied baselines for 'one/text-fail.html' (txt) (4/5)\n",
-            "INFO: Copied baselines for 'two/image-fail.html' (png) (5/5)\n",
-            "INFO: Downloaded baselines for 'one/flaky-fail.html' (1/5)\n",
-            "INFO: Downloaded baselines for 'one/missing.html' (2/5)\n",
-            "INFO: Downloaded baselines for 'one/slow-fail.html' (3/5)\n",
-            "INFO: Downloaded baselines for 'one/text-fail.html' (4/5)\n",
-            "INFO: Downloaded baselines for 'two/image-fail.html' (5/5)\n",
-            'INFO: Staging 0 baselines with git.\n',
+            'INFO: Rebaselining one/flaky-fail.html\n',
+            'INFO: Rebaselining one/missing.html\n',
+            'INFO: Rebaselining one/slow-fail.html\n',
+            'INFO: Rebaselining one/text-fail.html\n',
+            'INFO: Rebaselining two/image-fail.html\n',
         ])
         self.assertEqual(exit_code, 0)
         self.assertEqual(self.command.selected_try_bots, frozenset(builders))
@@ -1125,13 +911,8 @@ class RebaselineCLTest(BaseTestCase, LoggingTestCase):
                                          self.tool)
         self.assertEqual(exit_code, 0)
         self.assertLog([
-            'INFO: Fetching status for 1 build from https://crrev.com/c/1234.\n',
             'INFO: All builds finished.\n',
-            'INFO: Fetching test results for 1 suite.\n',
-            'INFO: Rebaselining 1 test.\n',
-            "INFO: Copied baselines for 'one/text-fail.html' (txt) (1/1)\n",
-            "INFO: Downloaded baselines for 'one/text-fail.html' (1/1)\n",
-            'INFO: Staging 0 baselines with git.\n',
+            'INFO: Rebaselining one/text-fail.html\n',
         ])
         self.assertRegex(
             self._read('flag-specific/disable-site-isolation-trials/'

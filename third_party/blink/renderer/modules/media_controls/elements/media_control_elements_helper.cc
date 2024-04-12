@@ -104,7 +104,7 @@ HTMLDivElement* MediaControlElementsHelper::CreateDivWithId(
     ContainerNode* parent) {
   DCHECK(parent);
   auto* element = MakeGarbageCollected<HTMLDivElement>(parent->GetDocument());
-  element->SetIdAttribute(id);
+  element->setAttribute("id", id);
   parent->ParserAppendChild(element);
   return element;
 }

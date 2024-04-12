@@ -7,11 +7,8 @@
 
 #include "base/types/pass_key.h"
 #include "cc/paint/paint_flags.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_font_stretch.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_canvas_text_rendering.h"
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
 #include "third_party/blink/renderer/core/css/css_value.h"
-#include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_style.h"
 #include "third_party/blink/renderer/modules/canvas/canvas2d/clip_list.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/fonts/font.h"
@@ -30,6 +27,7 @@ class CanvasRenderingContext2D;
 class CanvasFilter;
 class CanvasGradient;
 class CanvasPattern;
+class CanvasStyle;
 class CSSValue;
 class Element;
 
@@ -51,8 +49,8 @@ class MODULES_EXPORT CanvasRenderingContext2DState final
   // 'states', we use the kExtraState for that.
   enum class SaveType {
     kSaveRestore,
-    kBeginEndLayerOneSave,
-    kBeginEndLayerTwoSaves,
+    kBeginEndLayer,
+    kInternalLayer,
     kInitial
   };
 
@@ -91,7 +89,7 @@ class MODULES_EXPORT CanvasRenderingContext2DState final
 
   void SetTransform(const AffineTransform&);
   void ResetTransform();
-  const AffineTransform& GetTransform() const { return transform_; }
+  AffineTransform GetTransform() const { return transform_; }
   bool IsTransformInvertible() const { return is_transform_invertible_; }
 
   void ClipPath(const SkPath&, AntiAliasingMode);
@@ -120,7 +118,7 @@ class MODULES_EXPORT CanvasRenderingContext2DState final
   }
   const String& UnparsedCSSFilter() const { return unparsed_css_filter_; }
   void SetCanvasFilter(CanvasFilter* filter_value);
-  CanvasFilter* GetCanvasFilter() const { return canvas_filter_.Get(); }
+  CanvasFilter* GetCanvasFilter() const { return canvas_filter_; }
   sk_sp<PaintFilter> GetFilter(Element*,
                                gfx::Size canvas_size,
                                CanvasRenderingContext2D*);
@@ -136,54 +134,28 @@ class MODULES_EXPORT CanvasRenderingContext2DState final
   void ClearResolvedFilter();
   void ValidateFilterState() const;
 
-  void SetStrokeColor(Color color) {
-    if (stroke_style_.SetColor(color)) {
-      stroke_style_.ApplyColorToFlags(stroke_flags_, global_alpha_);
-    }
-  }
-  void SetStrokePattern(CanvasPattern* pattern) {
-    stroke_style_.SetPattern(pattern);
-  }
-  void SetStrokeGradient(CanvasGradient* gradient) {
-    stroke_style_.SetGradient(gradient);
-  }
-  const CanvasStyle& StrokeStyle() const { return stroke_style_; }
+  void SetStrokeColor(Color color);
+  void SetStrokePattern(CanvasPattern* pattern);
+  void SetStrokeGradient(CanvasGradient* gradient);
+  void SetStrokeStyle(CanvasStyle*);
+  CanvasStyle* StrokeStyle() const { return stroke_style_.Get(); }
 
-  void SetFillColor(Color color) {
-    if (fill_style_.SetColor(color)) {
-      fill_style_.ApplyColorToFlags(fill_flags_, global_alpha_);
-    }
-  }
-  void SetFillPattern(CanvasPattern* pattern) {
-    fill_style_.SetPattern(pattern);
-  }
-  void SetFillGradient(CanvasGradient* gradient) {
-    fill_style_.SetGradient(gradient);
-  }
-  const CanvasStyle& FillStyle() const { return fill_style_; }
+  void SetFillColor(Color color);
+  void SetFillPattern(CanvasPattern* pattern);
+  void SetFillGradient(CanvasGradient* gradient);
+  void SetFillStyle(CanvasStyle*);
+  CanvasStyle* FillStyle() const { return fill_style_.Get(); }
 
   // Prefer to use Style() over StrokeStyle() and FillStyle()
   // if properties of CanvasStyle are concerned
-  const CanvasStyle& Style(PaintType type) const {
-    // Using DCHECK below because this is a critical hotspot.
-    DCHECK(type != kImagePaintType);
-    return type == kStrokePaintType ? stroke_style_ : fill_style_;
-  }
+  CanvasStyle* Style(PaintType) const;
 
   // Check the pattern in StrokeStyle or FillStyle depending on the PaintType
-  bool HasPattern(PaintType type) const {
-    CanvasPattern* pattern = Style(type).GetCanvasPattern();
-    return pattern != nullptr && pattern->GetPattern() != nullptr;
-  }
+  bool HasPattern(PaintType) const;
 
   // Only to be used if the CanvasRenderingContext2DState has Pattern
   // Pattern is in either StrokeStyle or FillStyle depending on the PaintType
-  bool PatternIsAccelerated(PaintType type) const {
-    // Using DCHECK here because condition is somewhat tautological and
-    // provides little added value to Release builds
-    DCHECK(HasPattern(type));
-    return Style(type).GetCanvasPattern()->GetPattern()->IsTextureBacked();
-  }
+  bool PatternIsAccelerated(PaintType) const;
 
   enum Direction { kDirectionInherit, kDirectionRTL, kDirectionLTR };
 
@@ -202,18 +174,16 @@ class MODULES_EXPORT CanvasRenderingContext2DState final
   void SetWordSpacing(const String& word_spacing);
   String GetWordSpacing() const { return parsed_word_spacing_; }
 
-  void SetTextRendering(V8CanvasTextRendering text_rendering,
+  void SetTextRendering(TextRenderingMode text_rendering,
                         FontSelector* selector);
-  V8CanvasTextRendering GetTextRendering() const {
-    return text_rendering_mode_;
-  }
+  TextRenderingMode GetTextRendering() const { return text_rendering_mode_; }
 
   void SetFontKerning(FontDescription::Kerning font_kerning,
                       FontSelector* selector);
   FontDescription::Kerning GetFontKerning() const { return font_kerning_; }
 
-  void SetFontStretch(V8CanvasFontStretch font_stretch, FontSelector* selector);
-  V8CanvasFontStretch GetFontStretch() const { return font_stretch_; }
+  void SetFontStretch(FontSelectionValue font_stretch, FontSelector* selector);
+  FontSelectionValue GetFontStretch() const { return font_stretch_; }
 
   void SetFontVariantCaps(FontDescription::FontVariantCaps font_kerning,
                           FontSelector* selector);
@@ -285,15 +255,15 @@ class MODULES_EXPORT CanvasRenderingContext2DState final
                                  ImageType = kNoImage) const;
 
   SaveType GetSaveType() const { return save_type_; }
-  bool IsLayerSaveType() const {
-    return save_type_ == SaveType::kBeginEndLayerOneSave ||
-           save_type_ == SaveType::kBeginEndLayerTwoSaves;
-  }
 
   sk_sp<PaintFilter>& ShadowAndForegroundImageFilter() const;
 
  private:
+  using PassKey = base::PassKey<CanvasRenderingContext2DState>;
+
   void UpdateLineDash() const;
+  void UpdateStrokeStyle() const;
+  void UpdateFillStyle() const;
   void UpdateFilterQuality() const;
   void UpdateFilterQuality(cc::PaintFlags::FilterQuality) const;
   void ShadowParameterChanged();
@@ -304,8 +274,8 @@ class MODULES_EXPORT CanvasRenderingContext2DState final
 
   String unparsed_stroke_color_;
   String unparsed_fill_color_;
-  CanvasStyle stroke_style_;
-  CanvasStyle fill_style_;
+  Member<CanvasStyle> stroke_style_;
+  Member<CanvasStyle> fill_style_;
 
   mutable cc::PaintFlags stroke_flags_;
   mutable cc::PaintFlags fill_flags_;
@@ -354,10 +324,9 @@ class MODULES_EXPORT CanvasRenderingContext2DState final
   CSSPrimitiveValue::UnitType word_spacing_unit_{
       CSSPrimitiveValue::UnitType::kPixels};
   String parsed_word_spacing_;
-  V8CanvasTextRendering text_rendering_mode_{
-      V8CanvasTextRendering::Enum::kAuto};
+  TextRenderingMode text_rendering_mode_{TextRenderingMode::kAutoTextRendering};
   FontDescription::Kerning font_kerning_{FontDescription::kAutoKerning};
-  V8CanvasFontStretch font_stretch_{V8CanvasFontStretch::Enum::kNormal};
+  FontSelectionValue font_stretch_{NormalWidthValue()};
   FontDescription::FontVariantCaps font_variant_caps_{
       FontDescription::kCapsNormal};
 
@@ -367,6 +336,8 @@ class MODULES_EXPORT CanvasRenderingContext2DState final
   bool has_complex_clip_ : 1;
   bool letter_spacing_is_set_ : 1;
   bool word_spacing_is_set_ : 1;
+  mutable bool fill_style_dirty_ : 1;
+  mutable bool stroke_style_dirty_ : 1;
   mutable bool line_dash_dirty_ : 1;
 
   bool image_smoothing_enabled_;
@@ -378,7 +349,7 @@ class MODULES_EXPORT CanvasRenderingContext2DState final
 };
 
 ALWAYS_INLINE bool CanvasRenderingContext2DState::ShouldDrawShadows() const {
-  return (!shadow_color_.IsFullyTransparent()) &&
+  return (!shadow_color_.IsTransparent()) &&
          (shadow_blur_ || !shadow_offset_.IsZero());
 }
 

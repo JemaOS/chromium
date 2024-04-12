@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/attestation/enrollment_certificate_uploader_impl.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/check.h"
@@ -24,6 +23,7 @@
 #include "components/policy/core/common/cloud/cloud_policy_client.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash::attestation {
 
@@ -153,7 +153,7 @@ void EnrollmentCertificateUploaderImpl::OnGetFeaturesReady(
       /*request_origin=*/std::string(),  // Not used.
       /*force_new_key=*/true, key_crypto_type,
       /*key_name=*/kEnterpriseEnrollmentKey,
-      /*profile_specific_data=*/std::nullopt,
+      /*profile_specific_data=*/absl::nullopt,
       /*callback=*/std::move(callback));
 }
 

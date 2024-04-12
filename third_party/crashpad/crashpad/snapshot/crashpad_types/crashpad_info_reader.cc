@@ -16,9 +16,9 @@
 
 #include <type_traits>
 
-#include "base/types/cxx23_to_underlying.h"
 #include "build/build_config.h"
 #include "client/crashpad_info.h"
+#include "util/misc/as_underlying_type.h"
 
 #if BUILDFLAG(IS_WIN)
 #include "util/win/traits.h"
@@ -33,13 +33,13 @@ namespace crashpad {
 namespace {
 
 void UnsetIfNotValidTriState(TriState* value) {
-  switch (base::to_underlying(*value)) {
-    case base::to_underlying(TriState::kUnset):
-    case base::to_underlying(TriState::kEnabled):
-    case base::to_underlying(TriState::kDisabled):
+  switch (AsUnderlyingType(*value)) {
+    case AsUnderlyingType(TriState::kUnset):
+    case AsUnderlyingType(TriState::kEnabled):
+    case AsUnderlyingType(TriState::kDisabled):
       return;
   }
-  LOG(WARNING) << "Unsetting invalid TriState " << base::to_underlying(*value);
+  LOG(WARNING) << "Unsetting invalid TriState " << AsUnderlyingType(*value);
   *value = TriState::kUnset;
 }
 

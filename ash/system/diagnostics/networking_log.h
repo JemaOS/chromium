@@ -11,7 +11,6 @@
 #include "ash/ash_export.h"
 #include "ash/system/diagnostics/async_log.h"
 #include "ash/webui/diagnostics_ui/mojom/network_health_provider.mojom.h"
-#include "base/gtest_prod_util.h"
 
 namespace ash {
 namespace diagnostics {

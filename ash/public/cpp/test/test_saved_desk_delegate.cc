@@ -28,29 +28,21 @@ desks_storage::DeskModel* TestSavedDeskDelegate::GetDeskModel() {
   return desk_model_;
 }
 
-desks_storage::AdminTemplateService*
-TestSavedDeskDelegate::GetAdminTemplateService() {
-  return admin_template_service_;
+bool TestSavedDeskDelegate::IsIncognitoWindow(aura::Window* window) const {
+  return false;
 }
 
-bool TestSavedDeskDelegate::IsWindowPersistable(aura::Window* window) const {
-  return true;
-}
-
-std::optional<gfx::ImageSkia>
+absl::optional<gfx::ImageSkia>
 TestSavedDeskDelegate::MaybeRetrieveIconForSpecialIdentifier(
     const std::string& identifier,
     const ui::ColorProvider* color_provider) const {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void TestSavedDeskDelegate::GetFaviconForUrl(
     const std::string& page_url,
-    uint64_t lacros_profile_id,
     base::OnceCallback<void(const gfx::ImageSkia&)> callback,
-    base::CancelableTaskTracker* tracker) const {
-  std::move(callback).Run(gfx::ImageSkia());
-}
+    base::CancelableTaskTracker* tracker) const {}
 
 void TestSavedDeskDelegate::GetIconForAppId(
     const std::string& app_id,

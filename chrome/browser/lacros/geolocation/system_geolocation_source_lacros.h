@@ -6,13 +6,10 @@
 #define CHROME_BROWSER_LACROS_GEOLOCATION_SYSTEM_GEOLOCATION_SOURCE_LACROS_H_
 
 #include <memory>
-#include <string>
 
 #include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
-#include "chromeos/crosapi/mojom/geolocation.mojom.h"
 #include "chromeos/crosapi/mojom/prefs.mojom.h"
-#include "chromeos/lacros/crosapi_pref_observer.h"
 #include "chromeos/lacros/lacros_service.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -20,14 +17,13 @@
 #include "services/device/public/cpp/geolocation/system_geolocation_source.h"
 
 namespace device {
-class GeolocationSystemPermissionManager;
+class GeolocationManager;
 }
 
 // The SystemGeolocationSource is responsible for listening to geolocation
-// permissions from the operation system and allows the
-// GeolocationSystemPermissionManager to access it in a platform agnostic
-// manner. This concrete implementation is to be used within lacros browser. It
-// listens to permission changes in ash.
+// permissions from the operation system and allows the GeolocationManager to
+// access it in a platform agnostic manner. This concrete implementation is to
+// be used within lacros browser. It listens to permission changes in ash.
 //
 // Note on sequencing:
 // There is a race condition as OnPrefChanged is called asynchronously from the
@@ -52,13 +48,12 @@ class SystemGeolocationSourceLacros : public device::SystemGeolocationSource,
   SystemGeolocationSourceLacros();
   ~SystemGeolocationSourceLacros() override;
 
-  static std::unique_ptr<device::GeolocationSystemPermissionManager>
-  CreateGeolocationSystemPermissionManagerOnLacros();
+  static std::unique_ptr<device::GeolocationManager>
+  CreateGeolocationManagerOnLacros();
 
   // device::SystemGeolocationSource
   void RegisterPermissionUpdateCallback(
       PermissionUpdateCallback callback) override;
-  void OpenSystemPermissionSetting() override;
 
   // crosapi::mojom::PrefObserver
   // This is called from the receiver and all calls are scheduled under the
@@ -70,7 +65,7 @@ class SystemGeolocationSourceLacros : public device::SystemGeolocationSource,
   device::LocationSystemPermissionStatus current_status_ =
       device::LocationSystemPermissionStatus::kNotDetermined;
   // Receives mojo messages from ash.
-  std::unique_ptr<CrosapiPrefObserver> crosapi_pref_observer_;
+  mojo::Receiver<crosapi::mojom::PrefObserver> receiver_{this};
   base::WeakPtrFactory<SystemGeolocationSourceLacros> weak_factory_{this};
 };
 

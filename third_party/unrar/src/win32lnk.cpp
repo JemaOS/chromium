@@ -40,8 +40,7 @@ bool CreateReparsePoint(CommandData *Cmd,const wchar *Name,FileHeader *hd)
     PrivSet=true;
   }
 
-  const DWORD BufSize =
-      sizeof(REPARSE_DATA_BUFFER) + 2 * NM * sizeof(wchar) + 1024;
+  const DWORD BufSize=sizeof(REPARSE_DATA_BUFFER)+2*NM+1024;
   Array<byte> Buf(BufSize);
   REPARSE_DATA_BUFFER *rdb=(REPARSE_DATA_BUFFER *)&Buf[0];
 
@@ -72,36 +71,20 @@ bool CreateReparsePoint(CommandData *Cmd,const wchar *Name,FileHeader *hd)
       !IsRelativeSymlinkSafe(Cmd,hd->FileName,Name,hd->RedirName)))
     return false;
 
-  CreatePath(Name, true, Cmd->DisableNames);
-
-  // Overwrite prompt was already issued and confirmed earlier, so we can
-  // remove existing symlink or regular file here. PrepareToDelete was also
-  // called earlier inside of uiAskReplaceEx.
-  if (FileExist(Name)) {
-    if (IsDir(GetFileAttr(Name))) {
-      DelDir(Name);
-    } else {
-      DelFile(Name);
-    }
-  }
+  CreatePath(Name,true);
 
   // 'DirTarget' check is important for Unix symlinks to directories.
   // Unix symlinks do not have their own 'directory' attribute.
   if (hd->Dir || hd->DirTarget)
   {
-    if (!CreateDirectory(Name, NULL)) {
-      uiMsg(UIERROR_DIRCREATE, UINULL, Name);
-      ErrHandler.SetErrorCode(RARX_CREATE);
+    if (!CreateDirectory(Name,NULL))
       return false;
-    }
   }
   else
   {
     HANDLE hFile=CreateFile(Name,GENERIC_WRITE,0,NULL,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,NULL);
-    if (hFile == INVALID_HANDLE_VALUE) {
-      ErrHandler.CreateErrorMsg(Name);
+    if (hFile == INVALID_HANDLE_VALUE)
       return false;
-    }
     CloseHandle(hFile);
   }
 
@@ -154,11 +137,8 @@ bool CreateReparsePoint(CommandData *Cmd,const wchar *Name,FileHeader *hd)
   HANDLE hFile=CreateFile(Name,GENERIC_READ|GENERIC_WRITE,0,NULL,
                OPEN_EXISTING,FILE_FLAG_OPEN_REPARSE_POINT| 
                FILE_FLAG_BACKUP_SEMANTICS,NULL);
-  if (hFile == INVALID_HANDLE_VALUE) {
-    ErrHandler.CreateErrorMsg(Name);
-    ErrHandler.SetErrorCode(RARX_CREATE);
+  if (hFile==INVALID_HANDLE_VALUE)
     return false;
-  }
 
   DWORD Returned;
   if (!DeviceIoControl(hFile,FSCTL_SET_REPARSE_POINT,rdb, 

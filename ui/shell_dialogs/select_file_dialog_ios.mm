@@ -8,22 +8,22 @@
 #import <UIKit/UIKit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
-#include "base/apple/foundation_util.h"
+#include "base/mac/foundation_util.h"
 #include "base/memory/weak_ptr.h"
 #include "base/notreached.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/sys_string_conversions.h"
 #include "ui/shell_dialogs/select_file_policy.h"
-#include "ui/shell_dialogs/selected_file_info.h"
 
 @interface NativeFileDialog : NSObject <UIDocumentPickerDelegate> {
  @private
   base::WeakPtr<ui::SelectFileDialogImpl> _dialog;
-  UIViewController* __weak _viewController;
+  UIViewController* _viewController;
   bool _allowMultipleFiles;
   void* _params;
-  UIDocumentPickerViewController* __strong _documentPickerController;
-  NSArray<UTType*>* __strong _fileUTTypeLists;
+  base::scoped_nsobject<UIDocumentPickerViewController>
+      _documentPickerController;
+  base::scoped_nsobject<NSArray<UTType*>> _fileUTTypeLists;
   bool _allowsOtherFileTypes;
 }
 
@@ -34,7 +34,7 @@
                fileUTTypeLists:(NSArray<UTType*>*)fileUTTypeLists
           allowsOtherFileTypes:(bool)allowsOtherFileTypes;
 - (void)dealloc;
-- (void)showFilePickerMenu:(BOOL)directory;
+- (void)showFilePickerMenu;
 - (void)documentPicker:(UIDocumentPickerViewController*)controller
     didPickDocumentsAtURLs:(NSArray<NSURL*>*)urls;
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController*)controller;
@@ -55,25 +55,23 @@
   _viewController = viewController;
   _allowMultipleFiles = allowMultipleFiles;
   _params = params;
-  _fileUTTypeLists = fileUTTypeLists;
+  _fileUTTypeLists.reset([fileUTTypeLists retain]);
   _allowsOtherFileTypes = allowsOtherFileTypes;
   return self;
 }
 
 - (void)dealloc {
-  _documentPickerController.delegate = nil;
+  [_documentPickerController setDelegate:nil];
+  [super dealloc];
 }
 
-- (void)showFilePickerMenu:(BOOL)directory {
-  NSArray* documentTypes = directory ? @[ UTTypeFolder ] : @[ UTTypeItem ];
-  if (!directory && !_allowsOtherFileTypes) {
-    documentTypes = _fileUTTypeLists;
-  }
-  _documentPickerController = [[UIDocumentPickerViewController alloc]
-      initForOpeningContentTypes:documentTypes];
-  _documentPickerController.allowsMultipleSelection = _allowMultipleFiles;
-
-  _documentPickerController.delegate = self;
+- (void)showFilePickerMenu {
+  NSArray* documentTypes =
+      _allowsOtherFileTypes ? @[ UTTypeItem ] : _fileUTTypeLists;
+  _documentPickerController.reset([[UIDocumentPickerViewController alloc]
+      initForOpeningContentTypes:documentTypes]);
+  [_documentPickerController setAllowsMultipleSelection:_allowMultipleFiles];
+  [_documentPickerController setDelegate:self];
 
   UIViewController* currentViewController = _viewController;
   [currentViewController presentViewController:_documentPickerController
@@ -92,7 +90,7 @@
       continue;
     }
     NSString* path = url.path;
-    paths.push_back(base::apple::NSStringToFilePath(path));
+    paths.push_back(base::mac::NSStringToFilePath(path));
   }
   _dialog->FileWasSelected(_params, _allowMultipleFiles, false, paths, 0);
 }
@@ -136,10 +134,9 @@ void SelectFileDialogImpl::FileWasSelected(
     listener_->FileSelectionCanceled(params);
   } else {
     if (is_multi) {
-      listener_->MultiFilesSelected(FilePathListToSelectedFileInfoList(files),
-                                    params);
+      listener_->MultiFilesSelected(files, params);
     } else {
-      listener_->FileSelected(SelectedFileInfo(files[0]), index, params);
+      listener_->FileSelected(files[0], index, params);
     }
   }
 }
@@ -157,9 +154,10 @@ void SelectFileDialogImpl::SelectFileImpl(
   has_multiple_file_type_choices_ =
       SelectFileDialog::SELECT_OPEN_MULTI_FILE == type;
   bool allows_other_file_types = false;
-  bool directory = SelectFileDialog::SELECT_UPLOAD_FOLDER == type;
-  NSMutableArray<UTType*>* file_uttype_lists = [NSMutableArray array];
-  for (const auto& ext_list : file_types->extensions) {
+  NSMutableArray /*<UTType*>*/* file_uttype_lists = [NSMutableArray array];
+  for (size_t i = 0; i < file_types->extensions.size(); ++i) {
+    const std::vector<base::FilePath::StringType>& ext_list =
+        file_types->extensions[i];
     for (const base::FilePath::StringType& ext : ext_list) {
       UTType* uttype =
           [UTType typeWithFilenameExtension:base::SysUTF8ToNSString(ext)];
@@ -176,15 +174,15 @@ void SelectFileDialogImpl::SelectFileImpl(
     allows_other_file_types = true;
   }
 
-  UIViewController* controller = gfx_window.Get().rootViewController;
-  native_file_dialog_ =
-      [[NativeFileDialog alloc] initWithDialog:weak_factory_.GetWeakPtr()
-                                viewController:controller
-                            allowMultipleFiles:has_multiple_file_type_choices_
-                                        params:params
-                               fileUTTypeLists:file_uttype_lists
-                          allowsOtherFileTypes:allows_other_file_types];
-  [native_file_dialog_ showFilePickerMenu:directory];
+  UIViewController* controller = gfx_window.rootViewController;
+  native_file_dialog_.reset([[NativeFileDialog alloc]
+            initWithDialog:weak_factory_.GetWeakPtr()
+            viewController:controller
+        allowMultipleFiles:has_multiple_file_type_choices_
+                    params:params
+           fileUTTypeLists:file_uttype_lists
+      allowsOtherFileTypes:allows_other_file_types]);
+  [native_file_dialog_ showFilePickerMenu];
 }
 
 SelectFileDialogImpl::~SelectFileDialogImpl() {

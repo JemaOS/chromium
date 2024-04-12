@@ -9,12 +9,16 @@
 #include "base/memory/raw_ptr.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/web_applications/policy/web_app_policy_constants.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/testing_profile.h"
-#include "components/account_id/account_id.h"
+#include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "components/profile_metrics/browser_profile_type.h"
+#include "components/user_manager/fake_user_manager.h"
+#include "components/user_manager/scoped_user_manager.h"
+#include "content/public/test/browser_task_environment.h"
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/web_contents_tester.h"
 #include "url/gurl.h"
@@ -133,11 +137,11 @@ TEST_F(DeviceAPIServiceTest, IncognitoProfile) {
 
 class DeviceAPIServiceRegularUserTest : public DeviceAPIServiceTest {
  public:
-  DeviceAPIServiceRegularUserTest() = default;
+  DeviceAPIServiceRegularUserTest()
+      : fake_user_manager_(new user_manager::FakeUserManager()),
+        scoped_user_manager_(base::WrapUnique(fake_user_manager_.get())) {}
 
   void LoginRegularUser(bool is_affiliated) {
-    fake_user_manager_ = static_cast<ash::FakeChromeUserManager*>(
-        user_manager::UserManager::Get());
     const user_manager::User* user =
         fake_user_manager()->AddUserWithAffiliation(account_id(),
                                                     is_affiliated);
@@ -145,12 +149,13 @@ class DeviceAPIServiceRegularUserTest : public DeviceAPIServiceTest {
                                       user->username_hash(), false, false);
   }
 
-  ash::FakeChromeUserManager* fake_user_manager() const {
+  user_manager::FakeUserManager* fake_user_manager() const {
     return fake_user_manager_;
   }
 
  private:
-  raw_ptr<ash::FakeChromeUserManager, DanglingUntriaged> fake_user_manager_;
+  raw_ptr<user_manager::FakeUserManager, ExperimentalAsh> fake_user_manager_;
+  user_manager::ScopedUserManager scoped_user_manager_;
 };
 
 TEST_F(DeviceAPIServiceRegularUserTest, ReportErrorForUnaffiliatedUser) {
@@ -167,26 +172,6 @@ TEST_F(DeviceAPIServiceRegularUserTest, ReportErrorForDisallowedOrigin) {
 
   VerifyErrorMessageResultForAllDeviceAttributesAPIs();
   ASSERT_TRUE(remote()->is_connected());
-}
-
-TEST_F(DeviceAPIServiceRegularUserTest, ConnectsForTrustedApps) {
-  TryCreatingService(GURL(kTrustedUrl));
-  remote()->FlushForTesting();
-  ASSERT_TRUE(remote()->is_connected());
-}
-
-TEST_F(DeviceAPIServiceRegularUserTest, DoesNotConnectForUntrustedApps) {
-  TryCreatingService(GURL(kUntrustedUrl));
-  remote()->FlushForTesting();
-  ASSERT_FALSE(remote()->is_connected());
-}
-
-TEST_F(DeviceAPIServiceRegularUserTest, DisconnectWhenTrustRevoked) {
-  TryCreatingService(GURL(kTrustedUrl));
-  remote()->FlushForTesting();
-  RemoveTrustedApp();
-  remote()->FlushForTesting();
-  ASSERT_FALSE(remote()->is_connected());
 }
 
 class DeviceAPIServiceWithKioskUserTest : public DeviceAPIServiceTest {
@@ -213,11 +198,6 @@ class DeviceAPIServiceWithKioskUserTest : public DeviceAPIServiceTest {
     fake_user_manager()->LoginUser(account_id());
   }
 
-  void LoginChromeAppKioskUser() {
-    fake_user_manager()->AddKioskAppUser(account_id());
-    fake_user_manager()->LoginUser(account_id());
-  }
-
   ash::FakeChromeUserManager* fake_user_manager() const {
     return fake_user_manager_;
   }
@@ -225,7 +205,7 @@ class DeviceAPIServiceWithKioskUserTest : public DeviceAPIServiceTest {
   ash::WebKioskAppManager* app_manager() const { return app_manager_.get(); }
 
  private:
-  raw_ptr<ash::FakeChromeUserManager, DanglingUntriaged> fake_user_manager_;
+  raw_ptr<ash::FakeChromeUserManager, ExperimentalAsh> fake_user_manager_;
   user_manager::ScopedUserManager scoped_user_manager_;
   std::unique_ptr<ash::WebKioskAppManager> app_manager_;
   base::test::ScopedCommandLine command_line_;
@@ -259,12 +239,50 @@ TEST_F(DeviceAPIServiceWithKioskUserTest,
   ASSERT_FALSE(remote()->is_connected());
 }
 
-// The service should be disabled if a non-PWA kiosk user is logged in.
-TEST_F(DeviceAPIServiceWithKioskUserTest,
-       DisableServiceInChromeAppKioskSession) {
-  LoginChromeAppKioskUser();
+class DeviceAPIServiceWithFeatureFlagTest
+    : public DeviceAPIServiceRegularUserTest {
+ public:
+  DeviceAPIServiceWithFeatureFlagTest() {
+    scoped_feature_list_.InitAndEnableFeature(
+        features::kEnableRestrictedWebApis);
+  }
 
-  TryCreatingService(GURL(kKioskAppUrl));
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+TEST_F(DeviceAPIServiceWithFeatureFlagTest, ConnectsForTrustedApps) {
+  TryCreatingService(GURL(kTrustedUrl));
+  remote()->FlushForTesting();
+  ASSERT_TRUE(remote()->is_connected());
+}
+
+TEST_F(DeviceAPIServiceWithFeatureFlagTest, DoesNotConnectForUntrustedApps) {
+  TryCreatingService(GURL(kUntrustedUrl));
+  remote()->FlushForTesting();
+  ASSERT_FALSE(remote()->is_connected());
+}
+
+TEST_F(DeviceAPIServiceWithFeatureFlagTest, DisconnectWhenTrustRevoked) {
+  TryCreatingService(GURL(kTrustedUrl));
+  remote()->FlushForTesting();
+  RemoveTrustedApp();
+  remote()->FlushForTesting();
+  ASSERT_FALSE(remote()->is_connected());
+}
+
+class DeviceAPIServiceWithoutFeatureFlagTest
+    : public DeviceAPIServiceRegularUserTest {
+ public:
+  DeviceAPIServiceWithoutFeatureFlagTest() {
+    scoped_feature_list_.InitAndDisableFeature(
+        features::kEnableRestrictedWebApis);
+  }
+
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+TEST_F(DeviceAPIServiceWithoutFeatureFlagTest, DoesNotConnectWhenFlagOff) {
+  TryCreatingService(GURL(kTrustedUrl));
   remote()->FlushForTesting();
   ASSERT_FALSE(remote()->is_connected());
 }

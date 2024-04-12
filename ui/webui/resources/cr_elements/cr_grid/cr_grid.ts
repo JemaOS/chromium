@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert} from '//resources/js/assert.js';
-import {hasKeyModifiers} from '//resources/js/util.js';
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
-import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
+import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {getCss} from './cr_grid.css.js';
-import {getHtml} from './cr_grid.html.js';
+import {getTemplate} from './cr_grid.html.js';
 
 // Displays children in a two-dimensional grid and supports focusing children
 // with arrow keys.
@@ -19,64 +15,43 @@ export interface CrGridElement {
   };
 }
 
-export class CrGridElement extends CrLitElement {
+export class CrGridElement extends PolymerElement {
   static get is() {
     return 'cr-grid';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
-      columns: {type: Number},
-      disableArrowNavigation: {type: Boolean},
-      focusSelector: {type: String},
-      ignoreModifiedKeyEvents: {type: Boolean},
+      columns: {
+        type: Number,
+        observer: 'onColumnsChange_',
+      },
+      disableArrowNavigation: Boolean,
     };
   }
 
-  columns: number = 1;
   disableArrowNavigation: boolean = false;
-  focusSelector?: string;
-  ignoreModifiedKeyEvents: boolean = false;
+  columns: number = 1;
 
-  override updated(changedProperties: PropertyValues<this>) {
-    super.updated(changedProperties);
-
-    if (changedProperties.has('columns')) {
-      this.style.setProperty('--cr-grid-columns', String(this.columns));
-    }
+  private onColumnsChange_() {
+    this.updateStyles({'--cr-grid-columns': this.columns});
   }
 
-  private getSlottedParent_(element: HTMLElement): HTMLElement {
-    let parent = element;
-
-    while (parent.assignedSlot !== this.$.items &&
-           parent.parentElement !== null) {
-      parent = parent.parentElement;
-    }
-
-    assert(parent);
-    return parent;
-  }
-
-  protected onKeyDown_(e: KeyboardEvent) {
+  private onKeyDown_(e: KeyboardEvent) {
     if (!this.disableArrowNavigation &&
         ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+      e.preventDefault();
       const items =
           (this.$.items.assignedElements() as HTMLElement[]).filter(el => {
             return !!(
                 el.offsetWidth || el.offsetHeight ||
                 el.getClientRects().length);
           });
-      const currentIndex =
-          items.indexOf(this.getSlottedParent_(e.target as HTMLElement));
+      const currentIndex = items.indexOf(e.target as HTMLElement);
       const isRtl = window.getComputedStyle(this)['direction'] === 'rtl';
       const bottomRowColumns = items.length % this.columns;
       const direction = ['ArrowRight', 'ArrowDown'].includes(e.key) ? 1 : -1;
@@ -87,12 +62,6 @@ export class CrGridElement extends CrLitElement {
       switch (e.key) {
         case 'ArrowLeft':
         case 'ArrowRight':
-          // Ignores keys likely to be browse shortcuts (like Alt+Left for
-          // back).
-          if (this.ignoreModifiedKeyEvents && hasKeyModifiers(e)) {
-            return;
-          }
-
           delta = direction * (isRtl ? -1 : 1);
           break;
         case 'ArrowUp':
@@ -111,14 +80,8 @@ export class CrGridElement extends CrLitElement {
         delta += bottomRowColumns;
       }
 
-      e.preventDefault();
       const newIndex = (items.length + currentIndex + delta) % items.length;
-      const item = items[newIndex]!;
-      const toFocus = this.focusSelector ?
-          item.querySelector<HTMLElement>(this.focusSelector) :
-          item;
-      assert(toFocus);
-      toFocus.focus();
+      items[newIndex]!.focus();
     }
 
     if (['Enter', ' '].includes(e.key)) {

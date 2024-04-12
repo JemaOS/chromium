@@ -165,8 +165,8 @@ std::string GetAppName(Profile* profile, const std::string& app_id) {
   // TODO(crbug.com/1194370): Remove once Chrome Apps are gone or Lacros
   // launches, as note-taking Chrome Apps will not be supported in Lacros.
   const extensions::Extension* chrome_app =
-      extensions::ExtensionRegistry::Get(profile)->enabled_extensions().GetByID(
-          app_id);
+      extensions::ExtensionRegistry::Get(profile)->GetExtensionById(
+          app_id, extensions::ExtensionRegistry::ENABLED);
   DCHECK(chrome_app) << "app_id must be a valid app";
   name = chrome_app->name();
 
@@ -401,7 +401,7 @@ void NoteTakingHelper::LaunchAppForNewNote(Profile* profile) {
 }
 
 void NoteTakingHelper::OnIntentFiltersUpdated(
-    const std::optional<std::string>& package_name) {
+    const absl::optional<std::string>& package_name) {
   if (play_store_enabled_)
     UpdateAndroidApps();
 }
@@ -663,8 +663,8 @@ NoteTakingHelper::LaunchResult NoteTakingHelper::LaunchAppInternal(
   // Chrome app.
   const extensions::ExtensionRegistry* extension_registry =
       extensions::ExtensionRegistry::Get(profile);
-  const extensions::Extension* app =
-      extension_registry->enabled_extensions().GetByID(app_id);
+  const extensions::Extension* app = extension_registry->GetExtensionById(
+      app_id, extensions::ExtensionRegistry::ENABLED);
   if (!app) {
     LOG(WARNING) << "Failed to find note-taking app " << app_id;
     return LaunchResult::CHROME_APP_MISSING;

@@ -61,9 +61,7 @@ void ProgressBarExample::CreateExampleView(View* container) {
 
   container->AddChildView(
       std::make_unique<Label>(GetStringUTF16(IDS_PROGRESS_LOADER_SHORT_LABEL)));
-  auto* short_bar = container->AddChildView(std::make_unique<ProgressBar>());
-  short_bar->SetValue(-1);
-  short_bar->SetPreferredHeight(2);
+  container->AddChildView(std::make_unique<ProgressBar>(2))->SetValue(-1);
 }
 
 void ProgressBarExample::ButtonPressed(double step) {

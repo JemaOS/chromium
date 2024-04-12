@@ -5,8 +5,7 @@
 # found in the LICENSE file.
 
 # - Downloads all dependencies listed in package.json
-# - Makes Chromium specific modifications. To make further changes, see
-#   /third_party/polymer/README.chromium.
+# - Makes Chromium specific modifications.
 # - Places the final output in components-chromium/
 
 check_dep() {
@@ -84,10 +83,8 @@ find components-chromium/ -name '*.js' -exec sed -i \
 
 # Undo any changes in paper-ripple, since Chromium's implementation is a fork of
 # the original paper-ripple.
-echo 'Undo changes in paper-ripple and PaperRippleMixin'
+echo 'Undo changes in paper-ripple.'
 git checkout -- components-chromium/paper-ripple/
-git checkout -- components-chromium/paper-behaviors/paper-ripple-mixin.js
-git checkout -- components-chromium/paper-behaviors/paper-ripple-mixin.d.ts
 
 new=$(git status --porcelain components-chromium | grep '^??' | \
       cut -d' ' -f2 | egrep '\.(js|css)$' || true)

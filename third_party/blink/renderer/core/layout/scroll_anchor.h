@@ -56,11 +56,11 @@ class CORE_EXPORT ScrollAnchor final {
   void SetScroller(ScrollableArea*);
 
   // Returns true if the underlying scroller is set.
-  bool HasScroller() const { return scroller_ != nullptr; }
+  bool HasScroller() const { return scroller_; }
 
   // The LayoutObject we are currently anchored to. Lazily computed during
   // notifyBeforeLayout() and cached until the next call to clear().
-  LayoutObject* AnchorObject() const { return anchor_object_.Get(); }
+  LayoutObject* AnchorObject() const { return anchor_object_; }
 
   // Called when the scroller attached to this anchor is being destroyed.
   void Dispose();
@@ -104,9 +104,6 @@ class CORE_EXPORT ScrollAnchor final {
 
   // Notifies us that an object will be removed from the layout tree.
   void NotifyRemoved(LayoutObject*);
-
-  // This anchor is not active because we are applying scroll-start.
-  void CancelAdjustment() { queued_ = false; }
 
  private:
   enum WalkStatus { kSkip = 0, kConstrain, kContinue, kReturn };

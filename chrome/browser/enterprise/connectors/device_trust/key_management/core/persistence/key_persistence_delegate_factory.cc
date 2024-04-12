@@ -4,7 +4,7 @@
 
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/persistence/key_persistence_delegate_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "base/notreached.h"
 #include "build/build_config.h"
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/persistence/key_persistence_delegate.h"
@@ -21,8 +21,8 @@ namespace enterprise_connectors {
 
 namespace {
 
-std::optional<KeyPersistenceDelegateFactory*>& GetTestInstanceStorage() {
-  static std::optional<KeyPersistenceDelegateFactory*> storage;
+absl::optional<KeyPersistenceDelegateFactory*>& GetTestInstanceStorage() {
+  static absl::optional<KeyPersistenceDelegateFactory*> storage;
   return storage;
 }
 
@@ -30,13 +30,12 @@ std::optional<KeyPersistenceDelegateFactory*>& GetTestInstanceStorage() {
 
 // static
 KeyPersistenceDelegateFactory* KeyPersistenceDelegateFactory::GetInstance() {
-  std::optional<KeyPersistenceDelegateFactory*>& test_instance =
+  absl::optional<KeyPersistenceDelegateFactory*>& test_instance =
       GetTestInstanceStorage();
   if (test_instance.has_value() && test_instance.value()) {
     return test_instance.value();
   }
-  static base::NoDestructor<KeyPersistenceDelegateFactory> instance;
-  return instance.get();
+  return base::Singleton<KeyPersistenceDelegateFactory>::get();
 }
 
 std::unique_ptr<KeyPersistenceDelegate>

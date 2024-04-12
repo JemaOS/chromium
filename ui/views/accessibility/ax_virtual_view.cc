@@ -16,7 +16,6 @@
 #include "base/ranges/algorithm.h"
 #include "build/build_config.h"
 #include "ui/accessibility/ax_action_data.h"
-#include "ui/accessibility/ax_role_properties.h"
 #include "ui/accessibility/ax_tree_data.h"
 #include "ui/accessibility/platform/ax_platform_node.h"
 #include "ui/base/layout.h"
@@ -185,14 +184,14 @@ bool AXVirtualView::Contains(const AXVirtualView* view) const {
   return false;
 }
 
-std::optional<size_t> AXVirtualView::GetIndexOf(
+absl::optional<size_t> AXVirtualView::GetIndexOf(
     const AXVirtualView* view) const {
   DCHECK(view);
   const auto iter =
       base::ranges::find(children_, view, &std::unique_ptr<AXVirtualView>::get);
-  return iter != children_.end()
-             ? std::make_optional(static_cast<size_t>(iter - children_.begin()))
-             : std::nullopt;
+  return iter != children_.end() ? absl::make_optional(static_cast<size_t>(
+                                       iter - children_.begin()))
+                                 : absl::nullopt;
 }
 
 const char* AXVirtualView::GetViewClassName() const {
@@ -206,12 +205,6 @@ gfx::NativeViewAccessible AXVirtualView::GetNativeObject() const {
 
 void AXVirtualView::NotifyAccessibilityEvent(ax::mojom::Event event_type) {
   DCHECK(ax_platform_node_);
-  if (event_type == ax::mojom::Event::kAlert) {
-    CHECK(ui::IsAlert(GetRole()))
-        << "On some platforms, the alert event does not work correctly unless "
-           "it is fired on an object with an alert role. Role was "
-        << GetRole();
-  }
   if (GetOwnerView()) {
     const ViewAccessibility::AccessibilityEventsCallback& events_callback =
         GetOwnerView()->GetViewAccessibility().accessibility_events_callback();
@@ -316,7 +309,7 @@ gfx::NativeViewAccessible AXVirtualView::GetNativeViewAccessible() {
 
 gfx::NativeViewAccessible AXVirtualView::GetParent() const {
   if (parent_view_) {
-    if (!parent_view_->GetIsIgnored())
+    if (!parent_view_->IsIgnored())
       return parent_view_->GetNativeObject();
     return GetDelegate()->GetParent();
   }
@@ -455,8 +448,8 @@ std::vector<int32_t> AXVirtualView::GetColHeaderNodeIds(int col_index) const {
   return GetDelegate()->GetColHeaderNodeIds(col_index);
 }
 
-std::optional<int32_t> AXVirtualView::GetCellId(int row_index,
-                                                int col_index) const {
+absl::optional<int32_t> AXVirtualView::GetCellId(int row_index,
+                                                 int col_index) const {
   return GetDelegate()->GetCellId(row_index, col_index);
 }
 

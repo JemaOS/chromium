@@ -8,7 +8,6 @@
 #include <memory>
 
 #include "base/functional/callback.h"
-#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "components/permissions/permission_actions_history.h"
 #include "components/permissions/permission_ui_selector.h"
@@ -29,8 +28,9 @@ class PredictionBasedPermissionUiSelector
     : public permissions::PermissionUiSelector {
  public:
   enum class PredictionSource {
-    USE_SERVER_SIDE,  // url based cpss v2
-    USE_ONDEVICE,     // on device cpss v1
+    USE_SERVER_SIDE,
+    USE_ONDEVICE,
+    USE_ANY,
     USE_NONE,
   };
   using PredictionGrantLikelihood =
@@ -53,10 +53,10 @@ class PredictionBasedPermissionUiSelector
   bool IsPermissionRequestSupported(
       permissions::RequestType request_type) override;
 
-  std::optional<PredictionGrantLikelihood> PredictedGrantLikelihoodForUKM()
+  absl::optional<PredictionGrantLikelihood> PredictedGrantLikelihoodForUKM()
       override;
 
-  std::optional<bool> WasSelectorDecisionHeldback() override;
+  absl::optional<bool> WasSelectorDecisionHeldback() override;
 
  private:
   FRIEND_TEST_ALL_PREFIXES(PredictionBasedPermissionUiSelectorTest,
@@ -72,7 +72,7 @@ class PredictionBasedPermissionUiSelector
       permissions::RequestType request_type,
       bool lookup_succesful,
       bool response_from_cache,
-      const std::optional<permissions::GeneratePredictionsResponse>& response);
+      const absl::optional<permissions::GeneratePredictionsResponse>& response);
   PredictionSource GetPredictionTypeToUse(
       permissions::RequestType request_type);
 
@@ -81,16 +81,16 @@ class PredictionBasedPermissionUiSelector
   }
 
   void OnModelExecutionComplete(
-      const std::optional<permissions::GeneratePredictionsResponse>& result);
+      const absl::optional<permissions::GeneratePredictionsResponse>& result);
 
   bool ShouldHoldBack(bool is_on_device, permissions::RequestType request_type);
 
   raw_ptr<Profile> profile_;
   std::unique_ptr<PredictionServiceRequest> request_;
-  std::optional<PredictionGrantLikelihood> last_request_grant_likelihood_;
-  std::optional<bool> was_decision_held_back_;
+  absl::optional<PredictionGrantLikelihood> last_request_grant_likelihood_;
+  absl::optional<bool> was_decision_held_back_;
 
-  std::optional<PredictionGrantLikelihood> likelihood_override_for_testing_;
+  absl::optional<PredictionGrantLikelihood> likelihood_override_for_testing_;
 
   DecisionMadeCallback callback_;
 

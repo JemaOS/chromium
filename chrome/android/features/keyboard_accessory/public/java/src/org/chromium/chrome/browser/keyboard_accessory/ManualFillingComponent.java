@@ -11,12 +11,9 @@ import android.view.ViewGroup;
 import androidx.annotation.Px;
 
 import org.chromium.base.supplier.ObservableSupplier;
-import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.keyboard_accessory.data.KeyboardAccessoryData;
 import org.chromium.chrome.browser.keyboard_accessory.data.PropertyProvider;
-import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
 import org.chromium.components.autofill.AutofillDelegate;
 import org.chromium.components.autofill.AutofillSuggestion;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
@@ -26,7 +23,9 @@ import org.chromium.ui.AsyncViewStub;
 import org.chromium.ui.DropdownPopupWindow;
 import org.chromium.ui.base.WindowAndroid;
 
-/** This component handles the new, non-popup filling UI. */
+/**
+ * This component handles the new, non-popup filling UI.
+ */
 public interface ManualFillingComponent extends BackPressHandler {
     /**
      * Observers are added with {@link #addObserver} and removed with {@link #removeObserver}.
@@ -88,28 +87,22 @@ public interface ManualFillingComponent extends BackPressHandler {
     }
 
     /**
-     * Initializes the manual filling component. Calls to this class are NoOps until this method is
-     * called.
-     *
-     * @param windowAndroid The window needed to listen to the keyboard and to connect to activity.
-     * @param profile The {@link Profile} associated with the data.
+     * Initializes the manual filling component. Calls to this class are NoOps until this method
+     * is called.
+     * @param windowAndroid The window needed to listen to the keyboard and to connect to
+     *         activity.
      * @param sheetController A {@link BottomSheetController} to show the UI in.
      * @param keyboardDelegate A {@link SoftKeyboardDelegate} to control only the system keyboard.
      * @param backPressManager A {@link BackPressManager} to register {@link BackPressHandler}.
-     * @param edgeToEdgeControllerSupplier A {@link Supplier<EdgeToEdgeController>}.
      * @param barStub The {@link AsyncViewStub} used to inflate the keyboard accessory bar.
      */
-    void initialize(
-            WindowAndroid windowAndroid,
-            Profile profile,
-            BottomSheetController sheetController,
-            SoftKeyboardDelegate keyboardDelegate,
-            BackPressManager backPressManager,
-            Supplier<EdgeToEdgeController> edgeToEdgeControllerSupplier,
-            AsyncViewStub sheetStub,
-            AsyncViewStub barStub);
+    void initialize(WindowAndroid windowAndroid, BottomSheetController sheetController,
+            SoftKeyboardDelegate keyboardDelegate, BackPressManager backPressManager,
+            AsyncViewStub sheetStub, AsyncViewStub barStub);
 
-    /** Cleans up the manual UI by destroying the accessory bar and its bottom sheet. */
+    /**
+     * Cleans up the manual UI by destroying the accessory bar and its bottom sheet.
+     */
     void destroy();
 
     /**
@@ -118,7 +111,9 @@ public interface ManualFillingComponent extends BackPressHandler {
      */
     boolean onBackPressed();
 
-    /** Ensures that keyboard accessory and keyboard are hidden and reset. */
+    /**
+     * Ensures that keyboard accessory and keyboard are hidden and reset.
+     */
     void dismiss();
 
     /**
@@ -134,9 +129,7 @@ public interface ManualFillingComponent extends BackPressHandler {
      * @param sheetType The type of sheet to instantiate and to provide data for.
      * @param sheetDataProvider The {@link PropertyProvider} the tab will get its data from.
      */
-    void registerSheetDataProvider(
-            WebContents webContents,
-            @AccessoryTabType int sheetType,
+    void registerSheetDataProvider(WebContents webContents, @AccessoryTabType int sheetType,
             PropertyProvider<KeyboardAccessoryData.AccessorySheetData> sheetDataProvider);
 
     /**
@@ -153,8 +146,7 @@ public interface ManualFillingComponent extends BackPressHandler {
      * @param webContents The {@link WebContents} the provided data is meant for.
      * @param actionProvider The {@link PropertyProvider} providing actions.
      */
-    void registerActionProvider(
-            WebContents webContents,
+    void registerActionProvider(WebContents webContents,
             PropertyProvider<KeyboardAccessoryData.Action[]> actionProvider);
 
     /**
@@ -183,7 +175,9 @@ public interface ManualFillingComponent extends BackPressHandler {
      */
     void swapSheetWithKeyboard();
 
-    /** Hides the sheet until undone with {@link #show()}. */
+    /**
+     * Hides the sheet until undone with {@link #show()}.
+     */
     void hide();
 
     /**
@@ -192,10 +186,14 @@ public interface ManualFillingComponent extends BackPressHandler {
      */
     void showAccessorySheetTab(@AccessoryTabType int tabType);
 
-    /** Notifies the component that the activity it's living in was resumed. */
+    /**
+     * Notifies the component that the activity it's living in was resumed.
+     */
     void onResume();
 
-    /** Notifies the component that the activity it's living in was paused. */
+    /**
+     * Notifies the component that the activity it's living in was paused.
+     */
     void onPause();
 
     /**
@@ -225,14 +223,11 @@ public interface ManualFillingComponent extends BackPressHandler {
 
     /**
      * Show a confimation dialog.
-     *
      * @param title A title of the confirmation dialog.
      * @param message The message of the confirmation dialog.
      * @param confirmedCallback A {@link Runnable} to trigger upon confirmation.
-     * @param declinedCallback A {@link Runnable} to trigger upon rejection.
      */
-    void confirmOperation(
-            String title, String message, Runnable confirmedCallback, Runnable declinedCallback);
+    void confirmOperation(String title, String message, Runnable confirmedCallback);
 
     /**
      * Returns the amount that the keyboard will be extended by the filling component when shown.

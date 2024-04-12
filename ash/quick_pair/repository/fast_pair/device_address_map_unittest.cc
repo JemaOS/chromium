@@ -4,8 +4,6 @@
 
 #include "ash/quick_pair/repository/fast_pair/device_address_map.h"
 
-#include <optional>
-
 #include "ash/quick_pair/common/device.h"
 #include "ash/quick_pair/common/protocol.h"
 #include "ash/shell.h"
@@ -15,6 +13,7 @@
 #include "device/bluetooth/bluetooth_adapter_factory.h"
 #include "device/bluetooth/test/mock_bluetooth_adapter.h"
 #include "device/bluetooth/test/mock_bluetooth_device.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -53,7 +52,7 @@ TEST_F(DeviceAddressMapTest, SaveModelIdForDeviceValid) {
   device_->set_classic_address(kTestClassicAddress);
 
   EXPECT_TRUE(device_address_map_->SaveModelIdForDevice(device_));
-  std::optional<const std::string> model_id =
+  absl::optional<const std::string> model_id =
       device_address_map_->GetModelIdForMacAddress(kTestClassicAddress);
   EXPECT_TRUE(model_id);
   EXPECT_EQ(model_id.value(), kTestModelId);
@@ -62,7 +61,7 @@ TEST_F(DeviceAddressMapTest, SaveModelIdForDeviceValid) {
 TEST_F(DeviceAddressMapTest, SaveModelIdForDeviceInvalidDeviceNotFound) {
   // Device has no classic address set.
   EXPECT_FALSE(device_address_map_->SaveModelIdForDevice(device_));
-  std::optional<const std::string> model_id =
+  absl::optional<const std::string> model_id =
       device_address_map_->GetModelIdForMacAddress(kTestClassicAddress);
   EXPECT_FALSE(model_id);
 }
@@ -148,7 +147,7 @@ TEST_F(DeviceAddressMapTest, GetModelIdForMacAddressValid) {
 
   EXPECT_TRUE(device_address_map_->SaveModelIdForDevice(device_));
 
-  std::optional<const std::string> model_id =
+  absl::optional<const std::string> model_id =
       device_address_map_->GetModelIdForMacAddress(kTestClassicAddress);
   EXPECT_TRUE(model_id);
   EXPECT_EQ(model_id.value(), kTestModelId);
@@ -156,7 +155,7 @@ TEST_F(DeviceAddressMapTest, GetModelIdForMacAddressValid) {
 
 TEST_F(DeviceAddressMapTest, GetModelIdForMacAddressInvalidUninitialized) {
   // Don't initialize the dictionary with any results.
-  std::optional<const std::string> model_id =
+  absl::optional<const std::string> model_id =
       device_address_map_->GetModelIdForMacAddress(kTestClassicAddress);
   EXPECT_FALSE(model_id);
 }
@@ -167,7 +166,7 @@ TEST_F(DeviceAddressMapTest, GetModelIdForMacAddressInvalidNotAdded) {
 
   EXPECT_TRUE(device_address_map_->SaveModelIdForDevice(device_));
 
-  std::optional<const std::string> model_id =
+  absl::optional<const std::string> model_id =
       device_address_map_->GetModelIdForMacAddress("not found id");
   EXPECT_FALSE(model_id);
 }
@@ -245,7 +244,7 @@ TEST_F(DeviceAddressMapTest, LoadPersistedIdRecordFromPrefs) {
   // A new/restarted DeviceAddressMap instance should load persisted ID records
   // from prefs.
   DeviceAddressMap new_device_address_map = DeviceAddressMap();
-  std::optional<const std::string> model_id =
+  absl::optional<const std::string> model_id =
       new_device_address_map.GetModelIdForMacAddress(kTestClassicAddress);
   EXPECT_TRUE(model_id);
   EXPECT_EQ(model_id.value(), kTestModelId);

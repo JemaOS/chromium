@@ -5,7 +5,6 @@
 #include "chrome/browser/extensions/api/permissions/permissions_api.h"
 
 #include <memory>
-#include <optional>
 
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
@@ -15,9 +14,9 @@
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_service_test_with_install.h"
 #include "chrome/browser/extensions/extension_util.h"
-#include "chrome/browser/extensions/permissions/permissions_test_util.h"
-#include "chrome/browser/extensions/permissions/permissions_updater.h"
-#include "chrome/browser/extensions/permissions/scripting_permissions_modifier.h"
+#include "chrome/browser/extensions/permissions_test_util.h"
+#include "chrome/browser/extensions/permissions_updater.h"
+#include "chrome/browser/extensions/scripting_permissions_modifier.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/crx_file/id_util.h"
 #include "extensions/browser/api_test_utils.h"
@@ -80,7 +79,7 @@ bool RunRequestFunction(
   auto function = base::MakeRefCounted<PermissionsRequestFunction>();
   function->set_user_gesture(true);
   function->set_extension(&extension);
-  std::optional<base::Value> result =
+  absl::optional<base::Value> result =
       api_test_utils::RunFunctionAndReturnSingleResult(
           function.get(), args, browser_context,
           api_test_utils::FunctionMode::kNone);
@@ -154,8 +153,7 @@ class PermissionsAPIUnitTest : public ExtensionServiceTestWithInstall {
   // ExtensionServiceTestBase:
   void SetUp() override {
     ExtensionServiceTestWithInstall::SetUp();
-    dialog_action_ = PermissionsRequestFunction::SetDialogActionForTests(
-        PermissionsRequestFunction::DialogAction::kAutoConfirm);
+    PermissionsRequestFunction::SetAutoConfirmForTests(true);
     InitializeEmptyExtensionService();
     browser_window_ = std::make_unique<TestBrowserWindow>();
     Browser::CreateParams params(profile(), true);
@@ -165,16 +163,14 @@ class PermissionsAPIUnitTest : public ExtensionServiceTestWithInstall {
   }
   // ExtensionServiceTestBase:
   void TearDown() override {
-    dialog_action_.reset();
     browser_.reset();
     browser_window_.reset();
+    PermissionsRequestFunction::ResetAutoConfirmForTests();
     ExtensionServiceTestWithInstall::TearDown();
   }
 
   std::unique_ptr<TestBrowserWindow> browser_window_;
   std::unique_ptr<Browser> browser_;
-  std::optional<base::AutoReset<PermissionsRequestFunction::DialogAction>>
-      dialog_action_;
 };
 
 TEST_F(PermissionsAPIUnitTest, Contains) {
@@ -492,9 +488,7 @@ TEST_F(PermissionsAPIUnitTest, ReRequestingWithheldOptionalPermissions) {
   EXPECT_TRUE(
       permissions_data->active_permissions().effective_hosts().is_empty());
 
-  auto dialog_action_reset =
-      PermissionsRequestFunction::SetDialogActionForTests(
-          PermissionsRequestFunction::DialogAction::kAutoReject);
+  PermissionsRequestFunction::SetAutoConfirmForTests(false);
   {
     std::unique_ptr<const PermissionSet> prompted_permissions;
     EXPECT_FALSE(RunRequestFunction(
@@ -621,9 +615,7 @@ TEST_F(PermissionsAPIUnitTest, RequestingAlreadyGrantedWithheldPermissions) {
   // Request the already-granted host permission. The function should succeed
   // (without even prompting the user), and the permission should (still) be
   // granted.
-  auto dialog_action_reset =
-      PermissionsRequestFunction::SetDialogActionForTests(
-          PermissionsRequestFunction::DialogAction::kAutoReject);
+  PermissionsRequestFunction::SetAutoConfirmForTests(false);
 
   std::unique_ptr<const PermissionSet> prompted_permissions;
   EXPECT_TRUE(RunRequestFunction(*extension, profile(),

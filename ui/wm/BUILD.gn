@@ -40,8 +40,6 @@ component("wm") {
     "core/focus_rules.h",
     "core/native_cursor_manager.h",
     "core/native_cursor_manager_delegate.h",
-    "core/scoped_animation_disabler.cc",
-    "core/scoped_animation_disabler.h",
     "core/shadow_controller.cc",
     "core/shadow_controller.h",
     "core/shadow_controller_delegate.h",
@@ -80,7 +78,6 @@ component("wm") {
     "//ui/base",
     "//ui/base/cursor",
     "//ui/base/cursor/mojom:cursor_type",
-    "//ui/color",
     "//ui/compositor",
     "//ui/display",
     "//ui/events",
@@ -90,13 +87,11 @@ component("wm") {
   ]
 
   deps = [
-    "//cc/paint",
     "//skia",
     "//ui/base/ime",
     "//ui/compositor_extra",
     "//ui/events/platform",
     "//ui/gfx/animation",
-    "//ui/lottie",
     "//ui/resources",
   ]
 
@@ -178,7 +173,6 @@ test("wm_unittests") {
     "//ui/events/platform",
     "//ui/gfx",
     "//ui/gfx:gfx_skia",
-    "//ui/gfx:test_support",
     "//ui/gfx/animation",
     "//ui/gfx/geometry",
     "//ui/gfx/geometry:geometry_skia",

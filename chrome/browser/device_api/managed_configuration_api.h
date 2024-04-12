@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_DEVICE_API_MANAGED_CONFIGURATION_API_H_
 #define CHROME_BROWSER_DEVICE_API_MANAGED_CONFIGURATION_API_H_
 
-#include <optional>
-
 #include "base/files/file_path.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -16,6 +14,7 @@
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "services/data_decoder/public/cpp/data_decoder.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/origin.h"
 
 class Profile;
@@ -33,7 +32,7 @@ class ManagedConfigurationAPI : public KeyedService {
   class Observer : public base::CheckedObserver {
    public:
     virtual void OnManagedConfigurationChanged() = 0;
-    virtual const url::Origin& GetOrigin() const = 0;
+    virtual const url::Origin& GetOrigin() = 0;
   };
 
   static const char kOriginKey[];
@@ -42,8 +41,6 @@ class ManagedConfigurationAPI : public KeyedService {
 
   explicit ManagedConfigurationAPI(Profile* profile);
   ~ManagedConfigurationAPI() override;
-  ManagedConfigurationAPI(const ManagedConfigurationAPI&) = delete;
-  ManagedConfigurationAPI& operator=(const ManagedConfigurationAPI&) = delete;
 
   static void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
 
@@ -52,7 +49,7 @@ class ManagedConfigurationAPI : public KeyedService {
   void GetOriginPolicyConfiguration(
       const url::Origin& origin,
       const std::vector<std::string>& keys,
-      base::OnceCallback<void(std::optional<base::Value::Dict>)> callback);
+      base::OnceCallback<void(absl::optional<base::Value::Dict>)> callback);
 
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
@@ -82,7 +79,7 @@ class ManagedConfigurationAPI : public KeyedService {
   void ProcessDecodedConfiguration(
       const url::Origin& origin,
       const std::string& url_hash,
-      data_decoder::DataDecoder::ValueOrError result);
+      const data_decoder::DataDecoder::ValueOrError result);
 
   // Sends an operation to set the configured value on FILE thread.
   void PostStoreConfiguration(const url::Origin& origin,
@@ -114,7 +111,7 @@ class ManagedConfigurationAPI : public KeyedService {
   // loaded).
   std::set<url::Origin> managed_origins_;
 
-  std::set<raw_ptr<Observer, SetExperimental>> unmanaged_observers_;
+  std::set<Observer*> unmanaged_observers_;
 
   // Observes changes to WebAppInstallForceList.
   std::unique_ptr<PrefChangeRegistrar> pref_change_registrar_;

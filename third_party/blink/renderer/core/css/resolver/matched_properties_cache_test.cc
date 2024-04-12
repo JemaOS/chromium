@@ -20,23 +20,23 @@ class MatchedPropertiesCacheTestKey {
   STACK_ALLOCATED();
 
  public:
-  explicit MatchedPropertiesCacheTestKey(
-      String block_text,
-      unsigned hash,
-      const TreeScope& tree_scope,
-      const AddMatchedPropertiesOptions& options =
-          AddMatchedPropertiesOptions())
-      : key_(ParseBlock(block_text, tree_scope, options), hash) {}
+  explicit MatchedPropertiesCacheTestKey(String block_text,
+                                         unsigned hash,
+                                         const TreeScope& tree_scope)
+      : key_(ParseBlock(block_text, tree_scope), hash) {}
 
   const MatchedPropertiesCache::Key& InnerKey() const { return key_; }
 
  private:
   const MatchResult& ParseBlock(String block_text,
-                                const TreeScope& tree_scope,
-                                const AddMatchedPropertiesOptions& options) {
+                                const TreeScope& tree_scope) {
+    result_.FinishAddingUARules();
+    result_.FinishAddingUserRules();
+    result_.FinishAddingPresentationalHints();
     auto* set = css_test_helpers::ParseDeclarationBlock(block_text);
     result_.BeginAddingAuthorRulesForTreeScope(tree_scope);
-    result_.AddMatchedProperties(set, CascadeOrigin::kAuthor, options);
+    result_.AddMatchedProperties(set);
+    result_.FinishAddingAuthorRulesForTreeScope();
     return result_;
   }
 
@@ -64,12 +64,11 @@ class MatchedPropertiesCacheTestCache {
     cache_.Add(key.InnerKey(), &style, &parent_style);
   }
 
-  const CachedMatchedProperties* Find(
-      const TestKey& key,
-      const ComputedStyle& style,
-      const ComputedStyle& parent_style,
-      const StyleRecalcContext* style_recalc_context = nullptr) {
-    StyleResolverState state(document_, *document_.body(), style_recalc_context,
+  const CachedMatchedProperties* Find(const TestKey& key,
+                                      const ComputedStyle& style,
+                                      const ComputedStyle& parent_style) {
+    StyleResolverState state(document_, *document_.body(),
+                             nullptr /* StyleRecalcContext */,
                              StyleRequest(&parent_style));
     state.SetStyle(style);
     return cache_.Find(key.InnerKey(), state);
@@ -154,7 +153,8 @@ TEST_F(MatchedPropertiesCacheTest, EnsuredInDisplayNone) {
   const auto& parent = InitialStyle();
   ComputedStyleBuilder ensured_parent_builder = CreateStyleBuilder();
   ensured_parent_builder.SetIsEnsuredInDisplayNone();
-  const auto* ensured_parent = ensured_parent_builder.TakeStyle();
+  scoped_refptr<const ComputedStyle> ensured_parent =
+      ensured_parent_builder.TakeStyle();
 
   TestKey key1("display:block", 1, GetDocument());
 
@@ -174,19 +174,17 @@ TEST_F(MatchedPropertiesCacheTest, EnsuredOutsideFlatTree) {
   const auto& parent = InitialStyle();
   auto builder = CreateStyleBuilder();
   builder.SetIsEnsuredOutsideFlatTree();
-  const auto* ensured_style = builder.TakeStyle();
+  auto ensured_style = builder.TakeStyle();
 
   TestKey key1("display:block", 1, GetDocument());
-  StyleRecalcContext context;
-  context.is_outside_flat_tree = true;
 
   cache.Add(key1, style, parent);
   EXPECT_TRUE(cache.Find(key1, style, parent));
-  EXPECT_TRUE(cache.Find(key1, *ensured_style, parent, &context));
+  EXPECT_TRUE(cache.Find(key1, *ensured_style, parent));
 
   cache.Add(key1, *ensured_style, parent);
   EXPECT_FALSE(cache.Find(key1, style, parent));
-  EXPECT_TRUE(cache.Find(key1, *ensured_style, parent, &context));
+  EXPECT_TRUE(cache.Find(key1, *ensured_style, parent));
 }
 
 TEST_F(MatchedPropertiesCacheTest, EnsuredOutsideFlatTreeAndDisplayNone) {
@@ -197,22 +195,19 @@ TEST_F(MatchedPropertiesCacheTest, EnsuredOutsideFlatTreeAndDisplayNone) {
 
   auto builder = CreateStyleBuilder();
   builder.SetIsEnsuredInDisplayNone();
-  const auto* parent_none = builder.TakeStyle();
+  auto parent_none = builder.TakeStyle();
 
   builder = CreateStyleBuilder();
   builder.SetIsEnsuredOutsideFlatTree();
-  const auto* style_flat = builder.TakeStyle();
-
-  StyleRecalcContext context;
-  context.is_outside_flat_tree = true;
+  auto style_flat = builder.TakeStyle();
 
   TestKey key1("display:block", 1, GetDocument());
 
   cache.Add(key1, style, *parent_none);
-  EXPECT_TRUE(cache.Find(key1, *style_flat, parent, &context));
+  EXPECT_TRUE(cache.Find(key1, *style_flat, parent));
 
   cache.Add(key1, *style_flat, parent);
-  EXPECT_TRUE(cache.Find(key1, style, *parent_none, &context));
+  EXPECT_TRUE(cache.Find(key1, style, *parent_none));
 }
 
 TEST_F(MatchedPropertiesCacheTest, WritingModeDependency) {
@@ -223,8 +218,8 @@ TEST_F(MatchedPropertiesCacheTest, WritingModeDependency) {
   auto parent_builder_b = CreateStyleBuilder();
   parent_builder_b.SetWritingMode(WritingMode::kVerticalRl);
 
-  const auto* parent_a = parent_builder_a.TakeStyle();
-  const auto* parent_b = parent_builder_b.TakeStyle();
+  auto parent_a = parent_builder_a.TakeStyle();
+  auto parent_b = parent_builder_b.TakeStyle();
 
   const auto& style_a = InitialStyle();
   const auto& style_b = InitialStyle();
@@ -245,8 +240,8 @@ TEST_F(MatchedPropertiesCacheTest, DirectionDependency) {
   auto parent_builder_b = CreateStyleBuilder();
   parent_builder_b.SetDirection(TextDirection::kRtl);
 
-  const auto* parent_a = parent_builder_a.TakeStyle();
-  const auto* parent_b = parent_builder_b.TakeStyle();
+  auto parent_a = parent_builder_a.TakeStyle();
+  auto parent_b = parent_builder_b.TakeStyle();
 
   const auto& style_a = InitialStyle();
   const auto& style_b = InitialStyle();
@@ -264,11 +259,11 @@ TEST_F(MatchedPropertiesCacheTest, ColorSchemeDependency) {
 
   auto builder = CreateStyleBuilder();
   builder.SetDarkColorScheme(false);
-  const auto* parent_a = builder.TakeStyle();
+  auto parent_a = builder.TakeStyle();
 
   builder = CreateStyleBuilder();
   builder.SetDarkColorScheme(true);
-  const auto* parent_b = builder.TakeStyle();
+  auto parent_b = builder.TakeStyle();
 
   const auto& style_a = InitialStyle();
   const auto& style_b = InitialStyle();
@@ -286,19 +281,17 @@ TEST_F(MatchedPropertiesCacheTest, VariableDependency) {
 
   auto parent_builder_a = CreateStyleBuilder();
   auto parent_builder_b = CreateStyleBuilder();
-  parent_builder_a.SetVariableData(AtomicString("--x"),
-                                   CreateVariableData("1px"), true);
-  parent_builder_b.SetVariableData(AtomicString("--x"),
-                                   CreateVariableData("2px"), true);
-  const auto* parent_a = parent_builder_a.TakeStyle();
-  const auto* parent_b = parent_builder_b.TakeStyle();
+  parent_builder_a.SetVariableData("--x", CreateVariableData("1px"), true);
+  parent_builder_b.SetVariableData("--x", CreateVariableData("2px"), true);
+  auto parent_a = parent_builder_a.TakeStyle();
+  auto parent_b = parent_builder_b.TakeStyle();
 
   auto style_builder_a = CreateStyleBuilder();
   auto style_builder_b = CreateStyleBuilder();
   style_builder_a.SetHasVariableReferenceFromNonInheritedProperty();
   style_builder_b.SetHasVariableReferenceFromNonInheritedProperty();
-  const auto* style_a = style_builder_a.TakeStyle();
-  const auto* style_b = style_builder_b.TakeStyle();
+  auto style_a = style_builder_a.TakeStyle();
+  auto style_b = style_builder_b.TakeStyle();
 
   TestKey key("top:var(--x)", 1, GetDocument());
   cache.Add(key, *style_a, *parent_a);
@@ -317,8 +310,8 @@ TEST_F(MatchedPropertiesCacheTest, VariableDependencyNoVars) {
   auto style_builder_b = CreateStyleBuilder();
   style_builder_a.SetHasVariableReferenceFromNonInheritedProperty();
   style_builder_b.SetHasVariableReferenceFromNonInheritedProperty();
-  const auto* style_a = style_builder_a.TakeStyle();
-  const auto* style_b = style_builder_b.TakeStyle();
+  auto style_a = style_builder_a.TakeStyle();
+  auto style_b = style_builder_b.TakeStyle();
 
   TestKey key("top:var(--x)", 1, GetDocument());
 
@@ -334,12 +327,10 @@ TEST_F(MatchedPropertiesCacheTest, NoVariableDependency) {
 
   auto parent_builder_a = CreateStyleBuilder();
   auto parent_builder_b = CreateStyleBuilder();
-  parent_builder_a.SetVariableData(AtomicString("--x"),
-                                   CreateVariableData("1px"), true);
-  parent_builder_b.SetVariableData(AtomicString("--x"),
-                                   CreateVariableData("2px"), true);
-  const auto* parent_a = parent_builder_a.TakeStyle();
-  const auto* parent_b = parent_builder_b.TakeStyle();
+  parent_builder_a.SetVariableData("--x", CreateVariableData("1px"), true);
+  parent_builder_b.SetVariableData("--x", CreateVariableData("2px"), true);
+  auto parent_a = parent_builder_a.TakeStyle();
+  auto parent_b = parent_builder_b.TakeStyle();
   const auto& style_a = InitialStyle();
   const auto& style_b = InitialStyle();
 
@@ -351,59 +342,6 @@ TEST_F(MatchedPropertiesCacheTest, NoVariableDependency) {
   EXPECT_TRUE(cache.Find(key, style_a, *parent_a));
   EXPECT_TRUE(cache.Find(key, style_b, *parent_a));
   EXPECT_TRUE(cache.Find(key, style_b, *parent_b));
-}
-
-TEST_F(MatchedPropertiesCacheTest, Signaling) {
-  TestCache cache(GetDocument());
-
-  const ComputedStyle& parent_style = InitialStyle();
-  const ComputedStyle& style = InitialStyle();
-
-  TestKey key_non_signaling("top:1px", /* hash */ 1, GetDocument(),
-                            {.signal = CSSSelector::Signal::kNone});
-  TestKey key_signaling("top:1px", /* hash */ 1, GetDocument(),
-                        {.signal = CSSSelector::Signal::kBareDeclarationShift});
-
-  cache.Add(key_non_signaling, style, parent_style);
-
-  // We must not find a non-signaling entry in the cache using a signaling key,
-  // because a cache hit in that situation skips the cascade, which prevents
-  // any actual use-counting from happening.
-  EXPECT_FALSE(cache.Find(key_signaling, style, parent_style));
-}
-
-TEST_F(MatchedPropertiesCacheTest, InvisibleRuleInCache) {
-  TestCache cache(GetDocument());
-
-  const ComputedStyle& parent_style = InitialStyle();
-  const ComputedStyle& style = InitialStyle();
-
-  TestKey key_non_invisible("top:1px", /* hash */ 1, GetDocument(),
-                            {.is_invisible = false});
-  TestKey key_invisible("top:1px", /* hash */ 1, GetDocument(),
-                        {.is_invisible = true});
-
-  cache.Add(key_invisible, style, parent_style);
-
-  EXPECT_TRUE(cache.Find(key_invisible, style, parent_style));
-  EXPECT_FALSE(cache.Find(key_non_invisible, style, parent_style));
-}
-
-TEST_F(MatchedPropertiesCacheTest, NonInvisibleRuleInCache) {
-  TestCache cache(GetDocument());
-
-  const ComputedStyle& parent_style = InitialStyle();
-  const ComputedStyle& style = InitialStyle();
-
-  TestKey key_non_invisible("top:1px", /* hash */ 1, GetDocument(),
-                            {.is_invisible = false});
-  TestKey key_invisible("top:1px", /* hash */ 1, GetDocument(),
-                        {.is_invisible = true});
-
-  cache.Add(key_non_invisible, style, parent_style);
-
-  EXPECT_FALSE(cache.Find(key_invisible, style, parent_style));
-  EXPECT_TRUE(cache.Find(key_non_invisible, style, parent_style));
 }
 
 }  // namespace blink

@@ -13,17 +13,14 @@
 #include "chrome/browser/fast_checkout/fast_checkout_accessibility_service_impl.h"
 #include "chrome/browser/fast_checkout/fast_checkout_capabilities_fetcher_factory.h"
 #include "chrome/browser/fast_checkout/fast_checkout_delegate_impl.h"
+#include "chrome/browser/fast_checkout/fast_checkout_enums.h"
 #include "chrome/browser/fast_checkout/fast_checkout_personal_data_helper_impl.h"
 #include "chrome/browser/fast_checkout/fast_checkout_trigger_validator_impl.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
-#include "components/autofill/content/browser/content_autofill_driver.h"
 #include "components/autofill/core/browser/data_model/autofill_profile.h"
 #include "components/autofill/core/browser/data_model/credit_card.h"
-#include "components/autofill/core/browser/payments/credit_card_cvc_authenticator.h"
-#include "components/autofill/core/browser/ui/fast_checkout_enums.h"
 #include "components/autofill/core/common/dense_set.h"
-#include "components/autofill/core/common/mojom/autofill_types.mojom-shared.h"
 #include "components/autofill/core/common/signatures.h"
 #include "content/public/browser/web_contents_user_data.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
@@ -31,12 +28,7 @@
 #include "url/gurl.h"
 
 namespace {
-using ::autofill::FastCheckoutRunOutcome;
-using ::autofill::FastCheckoutTriggerOutcome;
-using ::autofill::FastCheckoutUIState;
-
-constexpr base::TimeDelta kSleepBetweenTriggerFormExtractionCalls =
-    base::Seconds(1);
+constexpr base::TimeDelta kSleepBetweenTriggerReparseCalls = base::Seconds(1);
 constexpr base::TimeDelta kTimeout = base::Minutes(30);
 
 constexpr auto kSupportedFormTypes = base::MakeFixedFlatSet<autofill::FormType>(
@@ -45,7 +37,8 @@ constexpr auto kSupportedFormTypes = base::MakeFixedFlatSet<autofill::FormType>(
 constexpr auto kAddressFieldTypes =
     base::MakeFixedFlatSet<autofill::FieldTypeGroup>(
         {autofill::FieldTypeGroup::kName, autofill::FieldTypeGroup::kEmail,
-         autofill::FieldTypeGroup::kPhone, autofill::FieldTypeGroup::kAddress});
+         autofill::FieldTypeGroup::kPhoneHome,
+         autofill::FieldTypeGroup::kAddressHome});
 
 bool IsVisibleTextField(const autofill::AutofillField& field) {
   return field.IsFocusable() && field.IsTextInputElement();
@@ -68,7 +61,8 @@ autofill::AutofillField* GetFieldToFill(
 
 bool IsNameOrAddress(autofill::FieldTypeGroup type_group) {
   return type_group == autofill::FieldTypeGroup::kName ||
-         type_group == autofill::FieldTypeGroup::kAddress;
+         type_group == autofill::FieldTypeGroup::kAddressHome ||
+         type_group == autofill::FieldTypeGroup::kAddressBilling;
 }
 
 // Returns `true` if `form` is considered an address form containing only an
@@ -140,11 +134,10 @@ FastCheckoutClientImpl::FastCheckoutClientImpl(
           }),
           base::BindRepeating([](autofill::AutofillManager& manager,
                                  autofill::FormGlobalId form,
-                                 autofill::FieldGlobalId field,
-                                 const autofill::FormData& form_data) {
+                                 autofill::FieldGlobalId field) {
             return GetDelegate(manager) &&
-                   GetDelegate(manager)->IntendsToShowFastCheckout(
-                       manager, form, field, form_data);
+                   GetDelegate(manager)->IntendsToShowFastCheckout(manager,
+                                                                   form, field);
           }),
           base::Seconds(1)) {
   driver_factory_observation_.Observe(
@@ -161,10 +154,11 @@ void FastCheckoutClientImpl::OnContentAutofillDriverFactoryDestroyed(
 void FastCheckoutClientImpl::OnContentAutofillDriverCreated(
     autofill::ContentAutofillDriverFactory& factory,
     autofill::ContentAutofillDriver& driver) {
-  auto& manager = static_cast<autofill::BrowserAutofillManager&>(
-      driver.GetAutofillManager());
-  manager.set_fast_checkout_delegate(std::make_unique<FastCheckoutDelegateImpl>(
-      &autofill_client_->GetWebContents(), this, &manager));
+  auto* manager =
+      static_cast<autofill::BrowserAutofillManager*>(driver.autofill_manager());
+  manager->set_fast_checkout_delegate(
+      std::make_unique<FastCheckoutDelegateImpl>(
+          &autofill_client_->GetWebContents(), this, manager));
 }
 
 bool FastCheckoutClientImpl::TryToStart(
@@ -183,6 +177,10 @@ bool FastCheckoutClientImpl::TryToStart(
   FastCheckoutTriggerOutcome trigger_outcome = trigger_validator_->ShouldRun(
       form, field, fast_checkout_ui_state_, is_running_, *autofill_manager);
 
+  if (trigger_outcome != FastCheckoutTriggerOutcome::kUnsupportedFieldType) {
+    base::UmaHistogramEnumeration(kUmaKeyFastCheckoutTriggerOutcome,
+                                  trigger_outcome);
+  }
   if (trigger_outcome != FastCheckoutTriggerOutcome::kSuccess) {
     return false;
   }
@@ -261,17 +259,17 @@ void FastCheckoutClientImpl::InternalStop(bool allow_further_runs) {
   is_running_ = false;
   form_filling_states_.clear();
   form_signatures_to_fill_.clear();
-  selected_autofill_profile_guid_ = std::nullopt;
-  selected_credit_card_id_ = std::nullopt;
+  selected_autofill_profile_guid_ = absl::nullopt;
+  selected_credit_card_id_ = absl::nullopt;
   timeout_timer_.AbandonAndStop();
-  credit_card_form_global_id_ = std::nullopt;
+  credit_card_form_global_id_ = absl::nullopt;
   run_id_ = 0;
   // Reset UI related state.
   fast_checkout_controller_.reset();
   // Reset personal data manager observation.
   personal_data_manager_observation_.Reset();
   // Reset `autofill_manager_` and related objects.
-  form_extraction_timer_.AbandonAndStop();
+  reparse_timer_.AbandonAndStop();
   autofill_manager_observation_.Reset();
   autofill_manager_.reset();
 
@@ -323,8 +321,8 @@ void FastCheckoutClientImpl::OnOptionsSelected(
                                       FastCheckoutRunOutcome::kTimeout,
                                       /*allow_further_runs=*/true));
   TryToFillForms();
-  autofill_manager_->TriggerFormExtractionInAllFrames(
-      base::BindOnce(&FastCheckoutClientImpl::OnTriggerFormExtractionFinished,
+  autofill_manager_->TriggerReparseInAllFrames(
+      base::BindOnce(&FastCheckoutClientImpl::OnTriggerReparseFinished,
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
@@ -382,19 +380,20 @@ void FastCheckoutClientImpl::OnAfterLoadedServerPredictions(
   TryToFillForms();
 }
 
-void FastCheckoutClientImpl::OnTriggerFormExtractionFinished(bool success) {
-  if (!form_extraction_timer_.IsRunning()) {
-    // Trigger form (re-)extraction in all frames continuously until the run
-    // stops. That will eventually trigger this
-    // (`OnAfterLoadedServerPredictions()`) method.
-    form_extraction_timer_.Start(
-        FROM_HERE, kSleepBetweenTriggerFormExtractionCalls,
+void FastCheckoutClientImpl::OnTriggerReparseFinished(bool success) {
+  // `success == true` if `TriggerReparseInAllFrames()` was not called multiple
+  // times in parallel, potentially by another actor.
+  DCHECK(success);
+  if (!reparse_timer_.IsRunning()) {
+    // Trigger reparse in all frames continuously until the run stops. That will
+    // eventually trigger this (`OnAfterLoadedServerPredictions()`) method.
+    reparse_timer_.Start(
+        FROM_HERE, kSleepBetweenTriggerReparseCalls,
         base::BindOnce(
-            &autofill::AutofillManager::TriggerFormExtractionInAllFrames,
+            &autofill::AutofillManager::TriggerReparseInAllFrames,
             autofill_manager_,
-            base::BindOnce(
-                &FastCheckoutClientImpl::OnTriggerFormExtractionFinished,
-                weak_ptr_factory_.GetWeakPtr())));
+            base::BindOnce(&FastCheckoutClientImpl::OnTriggerReparseFinished,
+                           weak_ptr_factory_.GetWeakPtr())));
   }
 }
 
@@ -414,14 +413,12 @@ void FastCheckoutClientImpl::TryToFillForms() {
         form_filling_states_[std::make_pair(form->form_signature(),
                                             autofill::FormType::kAddressForm)] =
             FillingState::kFilling;
-        auto* bam = static_cast<autofill::BrowserAutofillManager*>(
-            autofill_manager_.get());
-        bam->SetFastCheckoutRunId(autofill::FieldTypeGroup::kAddress, run_id_);
-        bam->FillOrPreviewProfileForm(
-            autofill::mojom::ActionPersistence::kFill, form->ToFormData(),
-            *field, *autofill_profile,
-            autofill::AutofillTriggerDetails(
-                autofill::AutofillTriggerSource::kFastCheckout));
+        static_cast<autofill::BrowserAutofillManager*>(autofill_manager_.get())
+            ->SetFastCheckoutRunId(autofill::FieldTypeGroup::kAddressHome,
+                                   run_id_);
+        autofill_manager_->FillProfileForm(
+            *autofill_profile, form->ToFormData(), *field,
+            autofill::AutofillTriggerSource::kFastCheckout);
       }
     }
 
@@ -441,8 +438,7 @@ void FastCheckoutClientImpl::TryToFillForms() {
               *credit_card,
               autofill::AutofillClient::UnmaskCardReason::kAutofill,
               weak_ptr_factory_.GetWeakPtr(),
-              cvc_authenticator->GetAsFullCardRequestUIDelegate(),
-              autofill_client_->GetLastCommittedPrimaryMainFrameOrigin());
+              cvc_authenticator->GetAsFullCardRequestUIDelegate());
         }
       }
     }
@@ -457,13 +453,11 @@ void FastCheckoutClientImpl::FillCreditCardForm(
   form_filling_states_[std::make_pair(form.form_signature(),
                                       autofill::FormType::kCreditCardForm)] =
       FillingState::kFilling;
-  auto* bam =
-      static_cast<autofill::BrowserAutofillManager*>(autofill_manager_.get());
-  bam->SetFastCheckoutRunId(autofill::FieldTypeGroup::kCreditCard, run_id_);
-  bam->FillOrPreviewCreditCardForm(
-      autofill::mojom::ActionPersistence::kFill, form.ToFormData(), field,
-      credit_card, cvc,
-      {.trigger_source = autofill::AutofillTriggerSource::kFastCheckout});
+  static_cast<autofill::BrowserAutofillManager*>(autofill_manager_.get())
+      ->SetFastCheckoutRunId(autofill::FieldTypeGroup::kCreditCard, run_id_);
+  autofill_manager_->FillCreditCardForm(
+      form.ToFormData(), field, credit_card, cvc,
+      autofill::AutofillTriggerSource::kFastCheckout);
 }
 
 autofill::AutofillProfile*
@@ -524,7 +518,7 @@ void FastCheckoutClientImpl::OnFullCardRequestSucceeded(
   }
   if (!autofill_manager_->form_structures().contains(
           credit_card_form_global_id_.value())) {
-    credit_card_form_global_id_ = std::nullopt;
+    credit_card_form_global_id_ = absl::nullopt;
     return;
   }
   const std::unique_ptr<autofill::FormStructure>& form =
@@ -534,7 +528,7 @@ void FastCheckoutClientImpl::OnFullCardRequestSucceeded(
           GetFieldToFill(form->fields(), /*is_credit_card_form=*/true)) {
     FillCreditCardForm(*form, *field, card, cvc);
   }
-  credit_card_form_global_id_ = std::nullopt;
+  credit_card_form_global_id_ = absl::nullopt;
 }
 
 void FastCheckoutClientImpl::OnFullCardRequestFailed(
@@ -675,12 +669,13 @@ void FastCheckoutClientImpl::OnNavigation(const GURL& url,
   }
 }
 
-FastCheckoutTriggerOutcome FastCheckoutClientImpl::CanRun(
+bool FastCheckoutClientImpl::IsSupported(
     const autofill::FormData& form,
     const autofill::FormFieldData& field,
     const autofill::AutofillManager& autofill_manager) const {
   return trigger_validator_->ShouldRun(form, field, fast_checkout_ui_state_,
-                                       is_running_, autofill_manager);
+                                       is_running_, autofill_manager) ==
+         FastCheckoutTriggerOutcome::kSuccess;
 }
 
 bool FastCheckoutClientImpl::IsNotShownYet() const {

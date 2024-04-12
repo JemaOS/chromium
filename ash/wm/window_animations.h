@@ -16,7 +16,6 @@ class Window;
 }
 
 namespace ui {
-class Layer;
 class LayerTreeOwner;
 }
 

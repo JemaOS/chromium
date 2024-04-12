@@ -21,7 +21,8 @@ class ConcatMenuModel : public ui::MenuModel {
 
   ~ConcatMenuModel() override;
 
-  // ui::MenuModel:
+  // MenuModel:
+  bool HasIcons() const override;
   size_t GetItemCount() const override;
   ItemType GetTypeAt(size_t index) const override;
   ui::MenuSeparatorType GetSeparatorTypeAt(size_t index) const override;

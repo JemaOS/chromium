@@ -48,6 +48,10 @@ GURL TestWebDialogDelegate::GetDialogContentURL() const {
   return url_;
 }
 
+void TestWebDialogDelegate::GetWebUIMessageHandlers(
+    std::vector<WebUIMessageHandler*>* handlers) const {
+}
+
 void TestWebDialogDelegate::GetDialogSize(gfx::Size* size) const {
   *size = size_;
 }

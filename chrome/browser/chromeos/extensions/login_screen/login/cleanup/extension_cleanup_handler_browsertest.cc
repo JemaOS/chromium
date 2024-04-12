@@ -9,11 +9,11 @@
 
 #include "ash/constants/ash_switches.h"
 #include "base/path_service.h"
+#include "chrome/browser/ash/login/test/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/login/test/session_manager_state_waiter.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/ash/policy/core/device_local_account.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
-#include "chrome/browser/ash/policy/test_support/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/extensions/chrome_test_extension_loader.h"
 #include "chrome/browser/extensions/component_loader.h"
@@ -134,11 +134,12 @@ class ExtensionCleanupHandlerTest : public policy::DevicePolicyCrosBrowserTest {
     extensions::ExtensionService* extension_service =
         extensions::ExtensionSystem::Get(GetActiveUserProfile())
             ->extension_service();
-    base::Value::Dict manifest(base::Value::Dict()
+    base::Value::Dict manifest(extensions::DictionaryBuilder()
                                    .Set("name", "Foo")
                                    .Set("description", "Bar")
                                    .Set("manifest_version", 2)
-                                   .Set("version", "1.0"));
+                                   .Set("version", "1.0")
+                                   .Build());
 
     auto observer = GetTestExtensionRegistryObserver(extension_id);
     scoped_refptr<const extensions::Extension> extension =
@@ -199,14 +200,8 @@ class ExtensionCleanupHandlerTest : public policy::DevicePolicyCrosBrowserTest {
   ExtensionForceInstallMixin extension_force_install_mixin_{&mixin_host_};
 };
 
-// TODO(crbug.com/1518529): Disable flaky test.
-#if BUILDFLAG(IS_CHROMEOS) && defined(ADDRESS_SANITIZER)
-#define MAYBE_CleanupWithExemptExtensions DISABLED_CleanupWithExemptExtensions
-#else
-#define MAYBE_CleanupWithExemptExtensions CleanupWithExemptExtensions
-#endif
 IN_PROC_BROWSER_TEST_F(ExtensionCleanupHandlerTest,
-                       MAYBE_CleanupWithExemptExtensions) {
+                       CleanupWithExemptExtensions) {
   SetUpDeviceLocalAccountPolicy();
   WaitForSessionStart();
   WaitForComponentExtensionsInstall();

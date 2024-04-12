@@ -12,7 +12,7 @@
 
 #include "base/check_op.h"
 #include "third_party/blink/public/common/common_export.h"
-#include "third_party/blink/public/mojom/indexeddb/indexeddb.mojom-shared.h"
+#include "third_party/blink/public/common/indexeddb/web_idb_types.h"
 
 namespace blink {
 
@@ -33,7 +33,6 @@ class BLINK_COMMON_EXPORT IndexedDBKey {
   IndexedDBKey(double number,
                mojom::IDBKeyType type);  // must be date or number
   IndexedDBKey(const IndexedDBKey& other);
-  IndexedDBKey(IndexedDBKey&& other);
   ~IndexedDBKey();
   IndexedDBKey& operator=(const IndexedDBKey& other);
 

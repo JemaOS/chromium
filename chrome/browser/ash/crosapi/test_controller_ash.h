@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include "ash/wm/splitview/split_view_types.h"
 #include "base/one_shot_event.h"
 #include "chrome/browser/ash/crosapi/crosapi_ash.h"
 #include "chromeos/crosapi/mojom/test_controller.mojom.h"
@@ -20,24 +19,13 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "ui/base/models/simple_menu_model.h"
 
-namespace mojo {
-template <>
-struct TypeConverter<ash::SnapPosition, crosapi::mojom::SnapPosition> {
-  static ash::SnapPosition Convert(crosapi::mojom::SnapPosition position);
-};
-}  // namespace mojo
-
 namespace crosapi {
 
 // This class is the ash-chrome implementation of the TestController interface.
 // This class must only be used from the main thread.
-// There can only be one instance of this class created.
 class TestControllerAsh : public mojom::TestController,
                           public CrosapiAsh::TestControllerReceiver {
  public:
-  // Returns the single instance of this class, if it exists.
-  static TestControllerAsh* Get();
-
   TestControllerAsh();
   TestControllerAsh(const TestControllerAsh&) = delete;
   TestControllerAsh& operator=(const TestControllerAsh&) = delete;
@@ -127,49 +115,10 @@ class TestControllerAsh : public mojom::TestController,
                 mojo::PendingRemote<crosapi::mojom::TtsUtteranceClient>
                     utterance_client) override;
 
-  void IsSavedDeskStorageReady(
-      IsSavedDeskStorageReadyCallback callback) override;
-
-  void SetAssistiveTechnologyEnabled(mojom::AssistiveTechnologyType at_type,
-                                     bool enabled) override;
-
-  void GetAppListItemAttributes(
-      const std::string& item_id,
-      GetAppListItemAttributesCallback callback) override;
-
-  void SetAppListItemAttributes(
-      const std::string& item_id,
-      mojom::AppListItemAttributesPtr attributes,
-      SetAppListItemAttributesCallback callback) override;
-
-  void CloseAllAshBrowserWindowsAndConfirm(
-      CloseAllAshBrowserWindowsAndConfirmCallback callback) override;
-
-  void CheckAtLeastOneAshBrowserWindowOpen(
-      CheckAtLeastOneAshBrowserWindowOpenCallback callback) override;
-
-  void GetAllOpenTabURLs(GetAllOpenTabURLsCallback callback) override;
-
-  void SetAlmanacEndpointUrlForTesting(
-      const std::optional<std::string>& url_override,
-      SetAlmanacEndpointUrlForTestingCallback callback) override;
-
-  void IsToastShown(const std::string& toast_id,
-                    IsToastShownCallback callback) override;
-
-  void SnapWindow(const std::string& window_id,
-                  mojom::SnapPosition position,
-                  SnapWindowCallback callback) override;
-
-  void IsShelfVisible(IsShelfVisibleCallback callback) override;
-
-  void SetAppInstallDialogAutoAccept(
-      bool auto_accept,
-      SetAppInstallDialogAutoAcceptCallback callback) override;
-
-  mojom::StandaloneBrowserTestController* GetStandaloneBrowserTestController() {
+  mojo::Remote<mojom::StandaloneBrowserTestController>&
+  GetStandaloneBrowserTestController() {
     DCHECK(standalone_browser_test_controller_.is_bound());
-    return standalone_browser_test_controller_.get();
+    return standalone_browser_test_controller_;
   }
 
   // Signals when standalone browser test controller becomes bound.
@@ -181,8 +130,6 @@ class TestControllerAsh : public mojom::TestController,
  private:
   class OverviewWaiter;
   class AshUtteranceEventDelegate;
-  class SelfOwnedAshBrowserWindowCloser;
-  class SelfOwnedAshBrowserWindowOpenWaiter;
 
   // Called when a Tts utterance is finished.
   void OnAshUtteranceFinished(int utterance_id);

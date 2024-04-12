@@ -4,11 +4,8 @@
 
 #include "chrome/browser/extensions/api/developer_private/entry_picker.h"
 
-#include <optional>
-
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
-#include "base/no_destructor.h"
 #include "base/strings/string_util.h"
 #include "chrome/browser/extensions/api/developer_private/developer_private_api.h"
 #include "chrome/browser/platform_util.h"
@@ -17,16 +14,11 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
-#include "ui/shell_dialogs/selected_file_info.h"
 
 namespace {
 
 bool g_skip_picker_for_test = false;
-
-std::optional<ui::SelectedFileInfo>& FileToBePickedForTest() {
-  static base::NoDestructor<std::optional<ui::SelectedFileInfo>> file;
-  return *file;
-}
+base::FilePath* g_path_to_be_picked_for_test = nullptr;
 
 }  // namespace
 
@@ -43,11 +35,11 @@ EntryPicker::EntryPicker(EntryPickerClient* client,
                          int file_type_index)
     : client_(client) {
   if (g_skip_picker_for_test) {
-    if (FileToBePickedForTest().has_value()) {  // IN-TEST
+    if (g_path_to_be_picked_for_test) {
       content::GetUIThreadTaskRunner({})->PostTask(
           FROM_HERE,
           base::BindOnce(&EntryPicker::FileSelected, base::Unretained(this),
-                         FileToBePickedForTest().value(), 1,  // IN-TEST
+                         *g_path_to_be_picked_for_test, 1,
                          static_cast<void*>(nullptr)));
     } else {
       content::GetUIThreadTaskRunner({})->PostTask(
@@ -75,16 +67,12 @@ EntryPicker::EntryPicker(EntryPickerClient* client,
                                   nullptr);
 }
 
-EntryPicker::~EntryPicker() {
-  if (select_file_dialog_) {
-    select_file_dialog_->ListenerDestroyed();
-  }
-}
+EntryPicker::~EntryPicker() {}
 
-void EntryPicker::FileSelected(const ui::SelectedFileInfo& file,
+void EntryPicker::FileSelected(const base::FilePath& path,
                                int index,
                                void* params) {
-  client_->FileSelected(file.path());
+  client_->FileSelected(path);
   delete this;
 }
 
@@ -93,17 +81,24 @@ void EntryPicker::FileSelectionCanceled(void* params) {
   delete this;
 }
 
+void EntryPicker::MultiFilesSelected(const std::vector<base::FilePath>& files,
+                                     void* params) {
+  NOTREACHED();
+  client_->FileSelectionCanceled();
+  delete this;
+}
+
 // static
 void EntryPicker::SkipPickerAndAlwaysSelectPathForTest(
-    const base::FilePath& path) {
+    base::FilePath* path) {
   g_skip_picker_for_test = true;
-  FileToBePickedForTest().emplace(path, path);  // IN-TEST
+  g_path_to_be_picked_for_test = path;
 }
 
 // static
 void EntryPicker::SkipPickerAndAlwaysCancelForTest() {
   g_skip_picker_for_test = true;
-  FileToBePickedForTest().reset();  // IN-TEST
+  g_path_to_be_picked_for_test = nullptr;
 }
 
 // static

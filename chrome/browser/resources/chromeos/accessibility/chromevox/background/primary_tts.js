@@ -5,10 +5,8 @@
 /**
  * @fileoverview Default implementation for TTS in the background context.
  */
-import {constants} from '/common/constants.js';
-import {LocalStorage} from '/common/local_storage.js';
-import {TestImportManager} from '/common/testing/test_import_manager.js';
-
+import {constants} from '../../common/constants.js';
+import {LocalStorage} from '../../common/local_storage.js';
 import {Msgs} from '../common/msgs.js';
 import {PanelCommand, PanelCommandType} from '../common/panel_command.js';
 import {SettingsManager} from '../common/settings_manager.js';
@@ -715,9 +713,11 @@ export class PrimaryTts extends AbstractTts {
     return match => {
       const retain =
           this.retainPunctuation_.indexOf(match) !== -1 ? match : ' ';
-      return clear ?
-          retain :
-          ' ' + Msgs.getMsgWithCount(ttsTypes.CharacterDictionary[match], 1) +
+      return clear ? retain :
+                     ' ' +
+              (new goog.i18n.MessageFormat(
+                   Msgs.getMsg(ttsTypes.CharacterDictionary[match])))
+                  .format({'COUNT': 1}) +
               retain + ' ';
     };
   }
@@ -749,9 +749,7 @@ export class PrimaryTts extends AbstractTts {
       properties.lang = chrome.i18n.getUILanguage();
     }
 
-    const phoneticText = text.length === 1 ?
-        PhoneticData.forCharacter(text, properties.lang) :
-        PhoneticData.forText(text, properties.lang);
+    const phoneticText = PhoneticData.forCharacter(text, properties.lang);
     if (phoneticText) {
       properties.delay = true;
       this.speak(phoneticText, ttsTypes.QueueMode.QUEUE, properties);
@@ -763,7 +761,7 @@ export class PrimaryTts extends AbstractTts {
    * @private
    */
   clearTimeout_() {
-    if (this.timeoutId_ !== undefined) {
+    if (goog.isDef(this.timeoutId_)) {
       clearTimeout(this.timeoutId_);
       this.timeoutId_ = undefined;
     }
@@ -880,5 +878,3 @@ PrimaryTts.ALLOWED_PROPERTIES_ = [
 
 /** @private {RegExp} */
 PrimaryTts.SKIP_WHITESPACE_ = /^[\s\u00a0]*$/;
-
-TestImportManager.exportForTesting(PrimaryTts);

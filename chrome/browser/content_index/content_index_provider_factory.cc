@@ -19,19 +19,13 @@ ContentIndexProviderImpl* ContentIndexProviderFactory::GetForProfile(
 
 // static
 ContentIndexProviderFactory* ContentIndexProviderFactory::GetInstance() {
-  static base::NoDestructor<ContentIndexProviderFactory> instance;
-  return instance.get();
+  return base::Singleton<ContentIndexProviderFactory>::get();
 }
 
 ContentIndexProviderFactory::ContentIndexProviderFactory()
     : ProfileKeyedServiceFactory(
           "ContentIndexProvider",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(OfflineContentAggregatorFactory::GetInstance());
   DependsOn(ukm::UkmBackgroundRecorderFactory::GetInstance());
   DependsOn(site_engagement::SiteEngagementServiceFactory::GetInstance());
@@ -39,9 +33,7 @@ ContentIndexProviderFactory::ContentIndexProviderFactory()
 
 ContentIndexProviderFactory::~ContentIndexProviderFactory() = default;
 
-std::unique_ptr<KeyedService>
-ContentIndexProviderFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ContentIndexProviderFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<ContentIndexProviderImpl>(
-      Profile::FromBrowserContext(context));
+  return new ContentIndexProviderImpl(Profile::FromBrowserContext(context));
 }

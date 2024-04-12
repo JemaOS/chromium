@@ -26,9 +26,10 @@ void FtrlRanker::AddExpert(std::unique_ptr<Ranker> ranker) {
 }
 
 void FtrlRanker::Start(const std::u16string& query,
+                       ResultsMap& results,
                        CategoriesList& categories) {
   for (auto& ranker : rankers_)
-    ranker->Start(query, categories);
+    ranker->Start(query, results, categories);
 
   ftrl_->Clear();
 }
@@ -132,6 +133,7 @@ BestResultCategoryRanker::BestResultCategoryRanker() = default;
 BestResultCategoryRanker::~BestResultCategoryRanker() = default;
 
 void BestResultCategoryRanker::Start(const std::u16string& query,
+                                     ResultsMap& results,
                                      CategoriesList& categories) {
   current_category_scores_.clear();
   for (const auto& category : categories)

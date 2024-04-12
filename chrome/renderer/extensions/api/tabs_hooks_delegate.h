@@ -5,7 +5,8 @@
 #ifndef CHROME_RENDERER_EXTENSIONS_API_TABS_HOOKS_DELEGATE_H_
 #define CHROME_RENDERER_EXTENSIONS_API_TABS_HOOKS_DELEGATE_H_
 
-#include "base/memory/raw_ptr.h"
+#include <vector>
+
 #include "extensions/renderer/bindings/api_binding_hooks_delegate.h"
 #include "extensions/renderer/bindings/api_signature.h"
 #include "v8/include/v8.h"
@@ -29,7 +30,7 @@ class TabsHooksDelegate : public APIBindingHooksDelegate {
       const std::string& method_name,
       const APISignature* signature,
       v8::Local<v8::Context> context,
-      v8::LocalVector<v8::Value>* arguments,
+      std::vector<v8::Local<v8::Value>>* arguments,
       const APITypeReferenceMap& refs) override;
 
  private:
@@ -46,8 +47,7 @@ class TabsHooksDelegate : public APIBindingHooksDelegate {
 
   // The messaging service to handle connect() and sendMessage() calls.
   // Guaranteed to outlive this object.
-  const raw_ptr<NativeRendererMessagingService, DanglingUntriaged>
-      messaging_service_;
+  NativeRendererMessagingService* const messaging_service_;
 };
 
 }  // namespace extensions

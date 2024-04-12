@@ -5,7 +5,6 @@
 #include "chrome/browser/android/customtabs/tab_interaction_recorder_android.h"
 
 #include <memory>
-#include <string>
 
 #include "base/android/jni_android.h"
 #include "base/functional/bind.h"
@@ -39,7 +38,7 @@ AutofillManager* GetAutofillManager(RenderFrameHost* render_frame_host) {
       autofill::ContentAutofillDriver::GetForRenderFrameHost(render_frame_host);
   if (!autofill_driver)
     return nullptr;
-  return &autofill_driver->GetAutofillManager();
+  return autofill_driver->autofill_manager();
 }
 }  // namespace
 
@@ -57,28 +56,20 @@ AutofillObserverImpl::~AutofillObserverImpl() {
   Invalidate();
 }
 
-void AutofillObserverImpl::OnFormSubmitted(autofill::AutofillManager&,
-                                           autofill::FormGlobalId) {
+void AutofillObserverImpl::OnFormSubmitted(autofill::AutofillManager&) {
   OnFormInteraction();
 }
 
-void AutofillObserverImpl::OnAfterSelectControlDidChange(
-    autofill::AutofillManager&,
-    autofill::FormGlobalId,
-    autofill::FieldGlobalId) {
+void AutofillObserverImpl::OnSelectControlDidChange(
+    autofill::AutofillManager&) {
   OnFormInteraction();
 }
 
-void AutofillObserverImpl::OnAfterTextFieldDidChange(autofill::AutofillManager&,
-                                                     autofill::FormGlobalId,
-                                                     autofill::FieldGlobalId,
-                                                     const std::u16string&) {
+void AutofillObserverImpl::OnTextFieldDidChange(autofill::AutofillManager&) {
   OnFormInteraction();
 }
 
-void AutofillObserverImpl::OnAfterTextFieldDidScroll(autofill::AutofillManager&,
-                                                     autofill::FormGlobalId,
-                                                     autofill::FieldGlobalId) {
+void AutofillObserverImpl::OnTextFieldDidScroll(autofill::AutofillManager&) {
   OnFormInteraction();
 }
 

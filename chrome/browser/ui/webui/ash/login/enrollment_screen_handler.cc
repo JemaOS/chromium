@@ -12,10 +12,10 @@
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/logging.h"
-#include "base/system/sys_info.h"
-#include "base/uuid.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/values.h"
 #include "build/build_config.h"
+#include "chrome/browser/ash/authpolicy/authpolicy_helper.h"
 #include "chrome/browser/ash/login/help_app_launcher.h"
 #include "chrome/browser/ash/login/oobe_screen.h"
 #include "chrome/browser/ash/login/signin_partition_manager.h"
@@ -30,7 +30,7 @@
 #include "chrome/browser/browser_process_platform_part.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/webui/ash/login/cookie_waiter.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/login/localized_values_builder.h"
 #include "components/policy/core/browser/cloud/message_util.h"
@@ -47,6 +47,7 @@ namespace {
 
 // Enrollment step names.
 const char kEnrollmentStepSignin[] = "signin";
+const char kEnrollmentStepAdJoin[] = "ad-join";
 const char kEnrollmentStepSuccess[] = "success";
 const char kEnrollmentStepWorking[] = "working";
 const char kEnrollmentStepTPMChecking[] = "tpm-checking";
@@ -57,14 +58,17 @@ const char kEnrollmentModeUIForced[] = "forced";
 const char kEnrollmentModeUIManual[] = "manual";
 const char kEnrollmentModeUIRecovery[] = "recovery";
 
+constexpr char kActiveDirectoryJoinHistogram[] =
+    "Enterprise.ActiveDirectoryJoin";
+
 constexpr char kOAUTHCodeCookie[] = "oauth_code";
 
 // Converts `mode` to a mode identifier for the UI.
 std::string EnrollmentModeToUIMode(policy::EnrollmentConfig::Mode mode) {
   switch (mode) {
     case policy::EnrollmentConfig::MODE_NONE:
-    case policy::EnrollmentConfig::DEPRECATED_MODE_ENROLLED_ROLLBACK:
-    case policy::EnrollmentConfig::DEPRECATED_MODE_OFFLINE_DEMO:
+    case policy::EnrollmentConfig::OBSOLETE_MODE_ENROLLED_ROLLBACK:
+    case policy::EnrollmentConfig::MODE_OFFLINE_DEMO_DEPRECATED:
       break;
     case policy::EnrollmentConfig::MODE_MANUAL:
     case policy::EnrollmentConfig::MODE_MANUAL_REENROLLMENT:
@@ -73,6 +77,7 @@ std::string EnrollmentModeToUIMode(policy::EnrollmentConfig::Mode mode) {
     case policy::EnrollmentConfig::MODE_ATTESTATION:
       return kEnrollmentModeUIManual;
     case policy::EnrollmentConfig::MODE_LOCAL_FORCED:
+    case policy::EnrollmentConfig::MODE_JEMA_LOCAL_FORCED:
     case policy::EnrollmentConfig::MODE_SERVER_FORCED:
     case policy::EnrollmentConfig::MODE_ATTESTATION_LOCAL_FORCED:
     case policy::EnrollmentConfig::MODE_ATTESTATION_SERVER_FORCED:
@@ -91,6 +96,47 @@ std::string EnrollmentModeToUIMode(policy::EnrollmentConfig::Mode mode) {
   return kEnrollmentModeUIManual;
 }
 
+constexpr struct {
+  const char* id;
+  int title_id;
+  int subtitle_id;
+  authpolicy::KerberosEncryptionTypes encryption_types;
+} kEncryptionTypes[] = {
+    {"strong", IDS_AD_ENCRYPTION_STRONG_TITLE,
+     IDS_AD_ENCRYPTION_STRONG_SUBTITLE,
+     authpolicy::KerberosEncryptionTypes::ENC_TYPES_STRONG},
+    {"all", IDS_AD_ENCRYPTION_ALL_TITLE, IDS_AD_ENCRYPTION_ALL_SUBTITLE,
+     authpolicy::KerberosEncryptionTypes::ENC_TYPES_ALL},
+    {"legacy", IDS_AD_ENCRYPTION_LEGACY_TITLE,
+     IDS_AD_ENCRYPTION_LEGACY_SUBTITLE,
+     authpolicy::KerberosEncryptionTypes::ENC_TYPES_LEGACY}};
+
+base::Value::List GetEncryptionTypesList() {
+  const authpolicy::KerberosEncryptionTypes default_types =
+      authpolicy::KerberosEncryptionTypes::ENC_TYPES_STRONG;
+  base::Value::List encryption_list;
+  for (const auto& enc_types : kEncryptionTypes) {
+    base::Value::Dict enc_option;
+    enc_option.Set("title", l10n_util::GetStringUTF16(enc_types.title_id));
+    enc_option.Set("subtitle",
+                   l10n_util::GetStringUTF16(enc_types.subtitle_id));
+    enc_option.Set("value", enc_types.id);
+    enc_option.Set("selected", default_types == enc_types.encryption_types);
+    encryption_list.Append(std::move(enc_option));
+  }
+  return encryption_list;
+}
+
+authpolicy::KerberosEncryptionTypes TranslateEncryptionTypesString(
+    const std::string& string_id) {
+  for (const auto& enc_types : kEncryptionTypes) {
+    if (enc_types.id == string_id)
+      return enc_types.encryption_types;
+  }
+  NOTREACHED();
+  return authpolicy::KerberosEncryptionTypes::ENC_TYPES_STRONG;
+}
+
 std::string GetFlowString(EnrollmentScreenView::FlowType type) {
   switch (type) {
     case EnrollmentScreenView::FlowType::kEnterprise:
@@ -101,8 +147,6 @@ std::string GetFlowString(EnrollmentScreenView::FlowType type) {
       return "enterpriseLicense";
     case EnrollmentScreenView::FlowType::kEducationLicense:
       return "educationLicense";
-    case EnrollmentScreenView::FlowType::kDeviceEnrollment:
-      return "deviceEnrollment";
   }
 }
 
@@ -125,9 +169,9 @@ std::string GetGaiaButtonsTypeString(
   switch (type) {
     case EnrollmentScreenView::GaiaButtonsType::kDefault:
       return "default";
-    case EnrollmentScreenView::GaiaButtonsType::kEnterprisePreferred:
+    case EnrollmentScreenView::GaiaButtonsType::kEnterprisePreffered:
       return "enterprise-preferred";
-    case EnrollmentScreenView::GaiaButtonsType::kKioskPreferred:
+    case EnrollmentScreenView::GaiaButtonsType::kKioskPreffered:
       return "kiosk-preferred";
   }
 }
@@ -210,13 +254,105 @@ void EnrollmentScreenHandler::ShowUserError(const std::string& email) {
         l10n_util::GetStringFUTF8(
             IDS_ENTERPRISE_ENROLLMENT_CONSUMER_ACCOUNT_WITH_EDU_PACKAGED_LICENSE_ACCOUNT_CHECK,
             base::ASCIIToUTF16(email)),
-        /*retry=*/true);
+        true);
   } else {
     ShowErrorMessage(
         l10n_util::GetStringFUTF8(
             IDS_ENTERPRISE_ENROLLMENT_CONSUMER_ACCOUNT_WITH_PACKAGED_LICENSE_ACCOUNT_CHECK,
             base::ASCIIToUTF16(email)),
-        /*retry=*/true);
+        true);
+  }
+}
+
+void EnrollmentScreenHandler::ShowActiveDirectoryScreen(
+    const std::string& domain_join_config,
+    const std::string& machine_name,
+    const std::string& username,
+    authpolicy::ErrorType error) {
+  if (active_directory_join_type_ == ActiveDirectoryDomainJoinType::COUNT) {
+    active_directory_join_type_ =
+        ActiveDirectoryDomainJoinType::WITHOUT_CONFIGURATION;
+  }
+
+  if (!domain_join_config.empty()) {
+    active_directory_domain_join_config_ = domain_join_config;
+    active_directory_join_type_ =
+        ActiveDirectoryDomainJoinType::NOT_USING_CONFIGURATION;
+  }
+  switch (error) {
+    case authpolicy::ERROR_NONE: {
+      CallExternalAPI("setAdJoinParams", std::string() /* machineName */,
+                      std::string() /* userName */,
+                      static_cast<int>(ActiveDirectoryErrorState::NONE),
+                      !active_directory_domain_join_config_
+                           .empty() /* show_unlock_password */);
+      ShowStep(kEnrollmentStepAdJoin);
+      return;
+    }
+    case authpolicy::ERROR_NETWORK_PROBLEM:
+      // Could be a network problem, but could also be a misspelled domain name.
+      ShowError(IDS_AD_AUTH_NETWORK_ERROR, true);
+      return;
+    case authpolicy::ERROR_PARSE_UPN_FAILED:
+    case authpolicy::ERROR_BAD_USER_NAME:
+      CallExternalAPI("setAdJoinParams", machine_name, username,
+                      static_cast<int>(ActiveDirectoryErrorState::BAD_USERNAME),
+                      false /* show_unlock_password */);
+      ShowStep(kEnrollmentStepAdJoin);
+      return;
+    case authpolicy::ERROR_BAD_PASSWORD:
+      CallExternalAPI(
+          "setAdJoinParams", machine_name, username,
+          static_cast<int>(ActiveDirectoryErrorState::BAD_AUTH_PASSWORD),
+          false /* show_unlock_password */);
+      ShowStep(kEnrollmentStepAdJoin);
+      return;
+    case authpolicy::ERROR_MACHINE_NAME_TOO_LONG:
+      CallExternalAPI(
+          "setAdJoinParams", machine_name, username,
+          static_cast<int>(ActiveDirectoryErrorState::MACHINE_NAME_TOO_LONG),
+          false /* show_unlock_password */);
+      ShowStep(kEnrollmentStepAdJoin);
+      return;
+    case authpolicy::ERROR_INVALID_MACHINE_NAME:
+      CallExternalAPI(
+          "setAdJoinParams", machine_name, username,
+          static_cast<int>(ActiveDirectoryErrorState::MACHINE_NAME_INVALID),
+          false /* show_unlock_password */);
+      ShowStep(kEnrollmentStepAdJoin);
+      return;
+    case authpolicy::ERROR_PASSWORD_EXPIRED:
+      ShowError(IDS_AD_PASSWORD_EXPIRED, true);
+      return;
+    case authpolicy::ERROR_JOIN_ACCESS_DENIED:
+      ShowError(IDS_AD_USER_DENIED_TO_JOIN_DEVICE, true);
+      return;
+    case authpolicy::ERROR_USER_HIT_JOIN_QUOTA:
+      ShowError(IDS_AD_USER_HIT_JOIN_QUOTA, true);
+      return;
+    case authpolicy::ERROR_OU_DOES_NOT_EXIST:
+      ShowError(IDS_AD_OU_DOES_NOT_EXIST, true);
+      return;
+    case authpolicy::ERROR_OU_ACCESS_DENIED:
+      ShowError(IDS_AD_OU_ACCESS_DENIED, true);
+      return;
+    case authpolicy::ERROR_SETTING_OU_FAILED:
+      ShowError(IDS_AD_OU_SETTING_FAILED, true);
+      return;
+    case authpolicy::ERROR_KDC_DOES_NOT_SUPPORT_ENCRYPTION_TYPE:
+      ShowError(IDS_AD_NOT_SUPPORTED_ENCRYPTION, true);
+      return;
+#if !defined(ARCH_CPU_X86_64)
+    // Currently, the Active Directory integration is only supported on x86_64
+    // systems. (see https://crbug.com/676602)
+    case authpolicy::ERROR_DBUS_FAILURE:
+      ShowError(IDS_AD_BOARD_NOT_SUPPORTED, true);
+      return;
+#endif
+    default:
+      LOG(ERROR) << "Unhandled error code: " << error;
+      ShowError(IDS_AD_DOMAIN_JOIN_UNKNOWN_ERROR, true);
+      return;
   }
 }
 
@@ -262,15 +398,14 @@ void EnrollmentScreenHandler::ShowAuthError(
     case GoogleServiceAuthError::UNEXPECTED_SERVICE_RESPONSE:
     case GoogleServiceAuthError::SERVICE_ERROR:
     case GoogleServiceAuthError::SCOPE_LIMITED_UNRECOVERABLE_ERROR:
-    case GoogleServiceAuthError::CHALLENGE_RESPONSE_REQUIRED:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_AUTH_FATAL_ERROR, /*retry=*/false);
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_AUTH_FATAL_ERROR, false);
       return;
     case GoogleServiceAuthError::USER_NOT_SIGNED_UP:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_AUTH_ACCOUNT_ERROR, /*retry=*/true);
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_AUTH_ACCOUNT_ERROR, true);
       return;
     case GoogleServiceAuthError::CONNECTION_FAILED:
     case GoogleServiceAuthError::SERVICE_UNAVAILABLE:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_AUTH_NETWORK_ERROR, /*retry=*/true);
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_AUTH_NETWORK_ERROR, true);
       return;
     case GoogleServiceAuthError::NUM_STATES:
       break;
@@ -279,15 +414,13 @@ void EnrollmentScreenHandler::ShowAuthError(
 }
 
 void EnrollmentScreenHandler::ShowOtherError(
-    EnrollmentLauncher::OtherError error) {
+    EnterpriseEnrollmentHelper::OtherError error) {
   switch (error) {
-    case EnrollmentLauncher::OTHER_ERROR_DOMAIN_MISMATCH:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_LOCK_WRONG_USER,
-                /*retry=*/true);
+    case EnterpriseEnrollmentHelper::OTHER_ERROR_DOMAIN_MISMATCH:
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_LOCK_WRONG_USER, true);
       return;
-    case EnrollmentLauncher::OTHER_ERROR_FATAL:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_FATAL_ENROLLMENT_ERROR,
-                /*retry=*/true);
+    case EnterpriseEnrollmentHelper::OTHER_ERROR_FATAL:
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_FATAL_ENROLLMENT_ERROR, true);
       return;
   }
   NOTREACHED();
@@ -297,59 +430,50 @@ void EnrollmentScreenHandler::Shutdown() {
   shutdown_ = true;
 }
 
-base::WeakPtr<EnrollmentScreenView> EnrollmentScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 void EnrollmentScreenHandler::ShowEnrollmentStatus(
     policy::EnrollmentStatus status) {
-  switch (status.enrollment_code()) {
-    case policy::EnrollmentStatus::Code::kSuccess:
+  switch (status.status()) {
+    case policy::EnrollmentStatus::SUCCESS:
       ShowEnrollmentSuccessScreen();
       return;
-    case policy::EnrollmentStatus::Code::kNoStateKeys:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_NO_STATE_KEYS,
-                /*retry=*/false);
+    case policy::EnrollmentStatus::NO_STATE_KEYS:
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_NO_STATE_KEYS, false);
       return;
-    case policy::EnrollmentStatus::Code::kRegistrationFailed:
+    case policy::EnrollmentStatus::REGISTRATION_FAILED:
       // Some special cases for generating a nicer message that's more helpful.
       switch (status.client_status()) {
         case policy::DM_STATUS_SERVICE_MANAGEMENT_NOT_SUPPORTED:
           if (policy::EnrollmentRequisitionManager::IsRemoraRequisition()) {
-            ShowError(IDS_ENTERPRISE_ENROLLMENT_ACCOUNT_ERROR_MEETS,
-                      /*retry=*/true);
+            ShowError(IDS_ENTERPRISE_ENROLLMENT_ACCOUNT_ERROR_MEETS, true);
           } else {
-            ShowError(IDS_ENTERPRISE_ENROLLMENT_ACCOUNT_ERROR, /*retry=*/true);
+            ShowError(IDS_ENTERPRISE_ENROLLMENT_ACCOUNT_ERROR, true);
           }
           break;
         case policy::DM_STATUS_SERVICE_MISSING_LICENSES:
           if (policy::EnrollmentRequisitionManager::IsRemoraRequisition()) {
             ShowError(IDS_ENTERPRISE_ENROLLMENT_MISSING_LICENSES_ERROR_MEETS,
-                      /*retry=*/true);
+                      true);
           } else {
-            ShowError(IDS_ENTERPRISE_ENROLLMENT_MISSING_LICENSES_ERROR,
-                      /*retry=*/true);
+            ShowError(IDS_ENTERPRISE_ENROLLMENT_MISSING_LICENSES_ERROR, true);
           }
           break;
         case policy::DM_STATUS_SERVICE_DEPROVISIONED:
-          ShowError(IDS_ENTERPRISE_ENROLLMENT_DEPROVISIONED_ERROR,
-                    /*retry=*/true);
+          ShowError(IDS_ENTERPRISE_ENROLLMENT_DEPROVISIONED_ERROR, true);
           break;
         case policy::DM_STATUS_SERVICE_DOMAIN_MISMATCH:
-          ShowError(IDS_ENTERPRISE_ENROLLMENT_DOMAIN_MISMATCH_ERROR,
-                    /*retry=*/true);
+          ShowError(IDS_ENTERPRISE_ENROLLMENT_DOMAIN_MISMATCH_ERROR, true);
           break;
         case policy::DM_STATUS_SERVICE_CONSUMER_ACCOUNT_WITH_PACKAGED_LICENSE:
           if (features::IsEducationEnrollmentOobeFlowEnabled() &&
               config_.license_type == policy::LicenseType::kEducation) {
             ShowError(
                 IDS_ENTERPRISE_ENROLLMENT_CONSUMER_ACCOUNT_WITH_EDU_PACKAGED_LICENSE,
-                /*retry=*/true);
+                true);
             break;
           } else {
             ShowError(
                 IDS_ENTERPRISE_ENROLLMENT_CONSUMER_ACCOUNT_WITH_PACKAGED_LICENSE,
-                /*retry=*/true);
+                true);
             break;
           }
 
@@ -357,23 +481,23 @@ void EnrollmentScreenHandler::ShowEnrollmentStatus(
             DM_STATUS_SERVICE_ENTERPRISE_ACCOUNT_IS_NOT_ELIGIBLE_TO_ENROLL:
           ShowError(
               IDS_ENTERPRISE_ENROLLMENT_ENTERPRISE_ACCOUNT_IS_NOT_ELIGIBLE_TO_ENROLL,
-              /*retry=*/true);
+              true);
           break;
         case policy::DM_STATUS_SERVICE_ENTERPRISE_TOS_HAS_NOT_BEEN_ACCEPTED:
           if (policy::EnrollmentRequisitionManager::IsRemoraRequisition()) {
             ShowError(
                 IDS_ENTERPRISE_ENROLLMENT_ENTERPRISE_TOS_HAS_NOT_BEEN_ACCEPTED_MEETS,
-                /*retry=*/true);
+                true);
           } else {
             ShowError(
                 IDS_ENTERPRISE_ENROLLMENT_ENTERPRISE_TOS_HAS_NOT_BEEN_ACCEPTED,
-                /*retry=*/true);
+                true);
           }
           break;
         case policy::DM_STATUS_SERVICE_ILLEGAL_ACCOUNT_FOR_PACKAGED_EDU_LICENSE:
           ShowError(
               IDS_ENTERPRISE_ENROLLMENT_ILLEGAL_ACCOUNT_FOR_PACKAGED_EDU_LICENSE,
-              /*retry=*/true);
+              true);
           break;
         case policy::DM_STATUS_SERVICE_INVALID_PACKAGED_DEVICE_FOR_KIOSK:
           ShowError(IDS_ENTERPRISE_ENROLLMENT_INVALID_PACKAGED_DEVICE_FOR_KIOSK,
@@ -384,44 +508,40 @@ void EnrollmentScreenHandler::ShowEnrollmentStatus(
               l10n_util::GetStringFUTF8(
                   IDS_ENTERPRISE_ENROLLMENT_STATUS_REGISTRATION_FAILED,
                   policy::FormatDeviceManagementStatus(status.client_status())),
-              /*retry=*/true);
+              true);
       }
       return;
-    case policy::EnrollmentStatus::Code::kRobotAuthFetchFailed:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_ROBOT_AUTH_FETCH_FAILED,
-                /*retry=*/true);
+    case policy::EnrollmentStatus::ROBOT_AUTH_FETCH_FAILED:
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_ROBOT_AUTH_FETCH_FAILED, true);
       return;
-    case policy::EnrollmentStatus::Code::kRobotRefreshFetchFailed:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_ROBOT_REFRESH_FETCH_FAILED,
-                /*retry=*/true);
+    case policy::EnrollmentStatus::ROBOT_REFRESH_FETCH_FAILED:
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_ROBOT_REFRESH_FETCH_FAILED, true);
       return;
-    case policy::EnrollmentStatus::Code::kRobotRefreshStoreFailed:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_ROBOT_REFRESH_STORE_FAILED,
-                /*retry=*/true);
+    case policy::EnrollmentStatus::ROBOT_REFRESH_STORE_FAILED:
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_ROBOT_REFRESH_STORE_FAILED, true);
       return;
-    case policy::EnrollmentStatus::Code::kRegistrationBadMode:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_REGISTRATION_BAD_MODE,
-                /*retry=*/false);
+    case policy::EnrollmentStatus::REGISTRATION_BAD_MODE:
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_REGISTRATION_BAD_MODE, false);
       return;
-    case policy::EnrollmentStatus::Code::kRegistrationCertFetchFailed:
+    case policy::EnrollmentStatus::REGISTRATION_CERT_FETCH_FAILED:
       ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_REGISTRATION_CERT_FETCH_FAILED,
-                /*retry=*/true);
+                true);
       return;
-    case policy::EnrollmentStatus::Code::kPolicyFetchFailed:
+    case policy::EnrollmentStatus::POLICY_FETCH_FAILED:
       ShowErrorMessage(
           l10n_util::GetStringFUTF8(
               IDS_ENTERPRISE_ENROLLMENT_STATUS_POLICY_FETCH_FAILED,
               policy::FormatDeviceManagementStatus(status.client_status())),
-          /*retry=*/true);
+          true);
       return;
-    case policy::EnrollmentStatus::Code::kValidationFailed:
+    case policy::EnrollmentStatus::VALIDATION_FAILED:
       ShowErrorMessage(
           l10n_util::GetStringFUTF8(
               IDS_ENTERPRISE_ENROLLMENT_STATUS_VALIDATION_FAILED,
               policy::FormatValidationStatus(status.validation_status())),
-          /*retry=*/true);
+          true);
       return;
-    case policy::EnrollmentStatus::Code::kLockError:
+    case policy::EnrollmentStatus::LOCK_ERROR:
       switch (status.lock_status()) {
         case InstallAttributes::LOCK_SUCCESS:
         case InstallAttributes::LOCK_NOT_READY:
@@ -429,52 +549,51 @@ void EnrollmentScreenHandler::ShowEnrollmentStatus(
           // LOCK_NOT_READY is transient, if retries are given up, LOCK_TIMEOUT
           // is reported instead.  This piece of code is unreached.
           LOG(FATAL) << "Invalid lock status.";
+          return;
         case InstallAttributes::LOCK_TIMEOUT:
-          ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_LOCK_TIMEOUT,
-                    /*retry=*/false);
+          ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_LOCK_TIMEOUT, false);
           return;
         case InstallAttributes::LOCK_BACKEND_INVALID:
         case InstallAttributes::LOCK_ALREADY_LOCKED:
         case InstallAttributes::LOCK_SET_ERROR:
         case InstallAttributes::LOCK_FINALIZE_ERROR:
         case InstallAttributes::LOCK_READBACK_ERROR:
-          ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_LOCK_ERROR,
-                    /*retry=*/false);
+          ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_LOCK_ERROR, false);
           return;
         case InstallAttributes::LOCK_WRONG_DOMAIN:
-          ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_LOCK_WRONG_USER,
-                    /*retry=*/true);
+          ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_LOCK_WRONG_USER, true);
           return;
         case InstallAttributes::LOCK_WRONG_MODE:
-          ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_LOCK_WRONG_MODE,
-                    /*retry=*/true);
+          ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_LOCK_WRONG_MODE, true);
           return;
       }
       NOTREACHED();
       return;
-    case policy::EnrollmentStatus::Code::kStoreError:
+    case policy::EnrollmentStatus::STORE_ERROR:
       ShowErrorMessage(
           l10n_util::GetStringFUTF8(
               IDS_ENTERPRISE_ENROLLMENT_STATUS_STORE_ERROR,
               policy::FormatStoreStatus(status.store_status(),
                                         status.validation_status())),
-          /*retry=*/true);
+          true);
       return;
-    case policy::EnrollmentStatus::Code::kAttributeUpdateFailed:
-      ShowErrorForDevice(IDS_ENTERPRISE_ENROLLMENT_ATTRIBUTE_ERROR,
-                         /*retry=*/false);
+    case policy::EnrollmentStatus::ATTRIBUTE_UPDATE_FAILED:
+      ShowErrorForDevice(IDS_ENTERPRISE_ENROLLMENT_ATTRIBUTE_ERROR, false);
       return;
-    case policy::EnrollmentStatus::Code::kNoMachineIdentification:
+    case policy::EnrollmentStatus::NO_MACHINE_IDENTIFICATION:
       ShowError(IDS_ENTERPRISE_ENROLLMENT_STATUS_NO_MACHINE_IDENTIFICATION,
-                /*retry=*/false);
+                false);
       return;
-    case policy::EnrollmentStatus::Code::kDmTokenStoreFailed:
+    case policy::EnrollmentStatus::ACTIVE_DIRECTORY_POLICY_FETCH_FAILED:
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_ERROR_ACTIVE_DIRECTORY_POLICY_FETCH,
+                false);
+      return;
+    case policy::EnrollmentStatus::DM_TOKEN_STORE_FAILED:
       ShowError(IDS_ENTERPRISE_ENROLLMENT_ERROR_SAVE_DEVICE_CONFIGURATION,
-                /*retry=*/false);
+                false);
       return;
-    case policy::EnrollmentStatus::Code::kMayNotBlockDevMode:
-      ShowError(IDS_ENTERPRISE_ENROLLMENT_ERROR_MAY_NOT_BLOCK_DEV_MODE,
-                /*retry=*/false);
+    case policy::EnrollmentStatus::MAY_NOT_BLOCK_DEV_MODE:
+      ShowError(IDS_ENTERPRISE_ENROLLMENT_ERROR_MAY_NOT_BLOCK_DEV_MODE, false);
       return;
   }
   NOTREACHED();
@@ -509,7 +628,7 @@ void EnrollmentScreenHandler::DeclareLocalizedValues(
                IDS_ENTERPRISE_ENROLLMENT_ENROLL_ENTERPRISE);
   builder->Add("kioskEnrollmentButton", IDS_ENTERPRISE_ENROLLMENT_ENROLL_KIOSK);
 
-  builder->Add("enrollmentInProgress",
+  builder->Add("enollmentInProgress",
                IDS_ENTERPRISE_ENROLLMENT_SCREEN_PROGRESS_LABEL);
   builder->Add("oauthEnrollRetry", IDS_ENTERPRISE_ENROLLMENT_RETRY);
   builder->Add("oauthEnrollManualEnrollment",
@@ -564,26 +683,54 @@ void EnrollmentScreenHandler::DeclareLocalizedValues(
   builder->Add("TPMCheckSubtitle", IDS_TPM_CHECK_SUBTITLE);
   builder->Add("cancelButton", IDS_CANCEL);
 
-  // Skip Confirmation Dialogue strings.
+  // Skip Confirmation Dialogue strings
   builder->Add("skipConfirmationDialogTitle", IDS_SKIP_ENROLLMENT_DIALOG_TITLE);
   builder->Add("skipConfirmationDialogText", IDS_SKIP_ENROLLMENT_DIALOG_TEXT);
   builder->Add("skipConfirmationDialogEducationTitle",
                IDS_SKIP_ENROLLMENT_DIALOG_EDUCATION_TITLE);
   builder->Add("skipConfirmationDialogEducationText",
                IDS_SKIP_ENROLLMENT_DIALOG_EDUCATION_TEXT);
-  builder->Add("skipConfirmationGoBackButton",
+  builder->Add("skipConfirmationgoBackButton",
                IDS_SKIP_ENROLLMENT_DIALOG_GO_BACK_BUTTON);
   builder->Add("skipConfirmationSkipButton",
                IDS_SKIP_ENROLLMENT_DIALOG_SKIP_BUTTON);
+
+  /* Active Directory strings */
+  builder->Add("oauthEnrollAdMachineNameInput", IDS_AD_DEVICE_NAME_INPUT_LABEL);
+  builder->Add("oauthEnrollAdDomainJoinWelcomeMessage",
+               IDS_AD_DOMAIN_JOIN_WELCOME_MESSAGE);
+  builder->Add("adAuthLoginUsername", IDS_AD_AUTH_LOGIN_USER);
+  builder->Add("adLoginInvalidUsername", IDS_AD_INVALID_USERNAME);
+  builder->Add("adLoginPassword", IDS_AD_LOGIN_PASSWORD);
+  builder->Add("adLoginInvalidPassword", IDS_AD_INVALID_PASSWORD);
+  builder->Add("adJoinErrorMachineNameInvalid", IDS_AD_DEVICE_NAME_INVALID);
+  builder->Add("adJoinErrorMachineNameTooLong", IDS_AD_DEVICE_NAME_TOO_LONG);
+  builder->Add("adJoinErrorMachineNameInvalidFormat",
+               IDS_AD_DEVICE_NAME_INVALID_FORMAT);
+  builder->Add("adJoinMoreOptions", IDS_AD_MORE_OPTIONS_BUTTON);
+  builder->Add("adUnlockTitle", IDS_AD_UNLOCK_TITLE_MESSAGE);
+  builder->Add("adUnlockSubtitle", IDS_AD_UNLOCK_SUBTITLE_MESSAGE);
+  builder->Add("adUnlockPassword", IDS_AD_UNLOCK_CONFIG_PASSWORD);
+  builder->Add("adUnlockIncorrectPassword", IDS_AD_UNLOCK_INCORRECT_PASSWORD);
+  builder->Add("adUnlockPasswordSkip", IDS_AD_UNLOCK_PASSWORD_SKIP);
+  builder->Add("adJoinOrgUnit", IDS_AD_ORG_UNIT_HINT);
+  builder->Add("adJoinCancel", IDS_AD_CANCEL_BUTTON);
+  builder->Add("adJoinSave", IDS_AD_SAVE_BUTTON);
+  builder->Add("selectEncryption", IDS_AD_ENCRYPTION_SELECTION_SELECT);
+  builder->Add("selectConfiguration", IDS_AD_CONFIG_SELECTION_SELECT);
+  /* End of Active Directory strings */
 }
 
 void EnrollmentScreenHandler::DeclareJSCallbacks() {
-  AddCallback(
-      "toggleFakeEnrollmentAndCompleteLogin",
-      &EnrollmentScreenHandler::HandleToggleFakeEnrollmentAndCompleteLogin);
+  AddCallback("toggleFakeEnrollment",
+              &EnrollmentScreenHandler::HandleToggleFakeEnrollment);
   AddCallback("oauthEnrollClose", &EnrollmentScreenHandler::HandleClose);
   AddCallback("oauthEnrollCompleteLogin",
               &EnrollmentScreenHandler::HandleCompleteLogin);
+  AddCallback("oauthEnrollAdCompleteLogin",
+              &EnrollmentScreenHandler::HandleAdCompleteLogin);
+  AddCallback("oauthEnrollAdUnlockConfiguration",
+              &EnrollmentScreenHandler::HandleAdUnlockConfiguration);
   AddCallback("enterpriseIdentifierEntered",
               &EnrollmentScreenHandler::HandleIdentifierEntered);
   AddCallback("oauthEnrollRetry", &EnrollmentScreenHandler::HandleRetry);
@@ -593,12 +740,46 @@ void EnrollmentScreenHandler::DeclareJSCallbacks() {
               &EnrollmentScreenHandler::HandleDeviceAttributesProvided);
   AddCallback("oauthEnrollOnLearnMore",
               &EnrollmentScreenHandler::HandleOnLearnMore);
-  AddCallback("getDeviceIdForEnrollment",
-              &EnrollmentScreenHandler::HandleGetDeviceId);
+}
+
+void EnrollmentScreenHandler::GetAdditionalParameters(
+    base::Value::Dict* parameters) {
+  parameters->Set("encryptionTypesList", GetEncryptionTypesList());
 }
 
 bool EnrollmentScreenHandler::IsOnEnrollmentScreen() {
   return (GetCurrentScreen() == kScreenId);
+}
+
+void EnrollmentScreenHandler::OnAdConfigurationUnlocked(
+    std::string unlocked_data) {
+  if (unlocked_data.empty()) {
+    CallExternalAPI(
+        "setAdJoinParams", std::string() /* machineName */,
+        std::string() /* userName */,
+        static_cast<int>(ActiveDirectoryErrorState::BAD_UNLOCK_PASSWORD),
+        true /* show_unlock_password */);
+    return;
+  }
+  active_directory_domain_join_config_.clear();
+  absl::optional<base::Value> options = base::JSONReader::Read(
+      unlocked_data, base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS);
+  if (!options || !options->is_list()) {
+    ShowError(IDS_AD_JOIN_CONFIG_NOT_PARSED, true);
+    CallExternalAPI("setAdJoinParams", std::string() /* machineName */,
+                    std::string() /* userName */,
+                    static_cast<int>(ActiveDirectoryErrorState::NONE),
+                    false /* show_unlock_password */);
+    return;
+  }
+  base::Value::Dict custom;
+  custom.Set(
+      "name",
+      base::Value(l10n_util::GetStringUTF8(IDS_AD_CONFIG_SELECTION_CUSTOM)));
+  options->GetList().Append(std::move(custom));
+  active_directory_join_type_ =
+      ActiveDirectoryDomainJoinType::USING_CONFIGURATION;
+  CallExternalAPI("setAdJoinConfiguration", std::move(*options));
 }
 
 void EnrollmentScreenHandler::ShowSkipConfirmationDialog() {
@@ -606,24 +787,28 @@ void EnrollmentScreenHandler::ShowSkipConfirmationDialog() {
 }
 
 // EnrollmentScreenHandler, private -----------------------------
-void EnrollmentScreenHandler::HandleToggleFakeEnrollmentAndCompleteLogin(
-    const std::string& user,
-    int license_type) {
-  // This method should only be used on test images.
-  base::SysInfo::CrashIfChromeOSNonTestImage();
-
+void EnrollmentScreenHandler::HandleToggleFakeEnrollment() {
   // TODO(crbug.com/1271134): Logging as "WARNING" to make sure it's preserved
   // in the logs.
-  LOG(WARNING) << "HandleToggleFakeEnrollmentAndCompleteLogin";
+  LOG(WARNING) << "HandleToggleFakeEnrollment";
   policy::PolicyOAuth2TokenFetcher::UseFakeTokensForTesting();
   WizardController::SkipEnrollmentPromptsForTesting();
   use_fake_login_for_testing_ = true;
-
-  HandleCompleteLogin(user, license_type);
 }
 
 void EnrollmentScreenHandler::HandleClose(const std::string& reason) {
   DCHECK(controller_);
+  if (active_directory_join_type_ != ActiveDirectoryDomainJoinType::COUNT) {
+    DCHECK(g_browser_process->platform_part()
+               ->browser_policy_connector_ash()
+               ->IsActiveDirectoryManaged());
+    // Record Active Directory join type in case of successful enrollment and
+    // domain join.
+    base::UmaHistogramEnumeration(kActiveDirectoryJoinHistogram,
+                                  active_directory_join_type_,
+                                  ActiveDirectoryDomainJoinType::COUNT);
+  }
+
   if (reason == "cancel") {
     controller_->OnCancel();
   } else if (reason == "done") {
@@ -729,6 +914,26 @@ void EnrollmentScreenHandler::OnCookieWaitTimeout() {
     ShowError(IDS_LOGIN_FATAL_ERROR_NO_AUTH_TOKEN, true);
 }
 
+void EnrollmentScreenHandler::HandleAdCompleteLogin(
+    const std::string& machine_name,
+    const std::string& distinguished_name,
+    const std::string& encryption_types,
+    const std::string& user_name,
+    const std::string& password) {
+  DCHECK(controller_);
+  controller_->OnActiveDirectoryCredsProvided(
+      machine_name, distinguished_name,
+      TranslateEncryptionTypesString(encryption_types), user_name, password);
+}
+
+void EnrollmentScreenHandler::HandleAdUnlockConfiguration(
+    const std::string& password) {
+  AuthPolicyHelper::DecryptConfiguration(
+      active_directory_domain_join_config_, password,
+      base::BindOnce(&EnrollmentScreenHandler::OnAdConfigurationUnlocked,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
 void EnrollmentScreenHandler::HandleIdentifierEntered(
     const std::string& email) {
   DCHECK(controller_);
@@ -755,21 +960,6 @@ void EnrollmentScreenHandler::HandleOnLearnMore() {
     help_app_ = new HelpAppLauncher(
         LoginDisplayHost::default_host()->GetNativeWindow());
   help_app_->ShowHelpTopic(HelpAppLauncher::HELP_DEVICE_ATTRIBUTES);
-}
-
-void EnrollmentScreenHandler::HandleGetDeviceId(
-    const std::string& callback_id) {
-  if (!IsJavascriptAllowed()) {
-    return;
-  }
-
-  // We need to respond to "getDeviceId" message from Gaia. This is normally
-  // used for regular signin scenarios but since we need to respond with
-  // something here - we will respond with a GUID. The account used for
-  // enrollment is not actually logging into the device - and "getDeviceId" is
-  // meant for those kinds of users.
-  ResolveJavascriptCallback(base::Value(callback_id),
-                            base::Uuid::GenerateRandomV4().AsLowercaseString());
 }
 
 void EnrollmentScreenHandler::ShowStep(const std::string& step) {
@@ -849,21 +1039,15 @@ base::Value::Dict EnrollmentScreenHandler::ScreenDataForOAuthEnrollment() {
 
   screen_data.Set("webviewPartitionName", signin_partition_name_);
   screen_data.Set("gaiaUrl", GaiaUrls::GetInstance()->gaia_url().spec());
-  screen_data.Set(
-      "gaiaPath",
-      GaiaUrls::GetInstance()->embedded_setup_chromeos_url().path().substr(1));
   screen_data.Set("clientId",
                   GaiaUrls::GetInstance()->oauth2_chrome_client_id());
   screen_data.Set("management_domain", config_.management_domain);
   screen_data.Set("gaia_buttons_type",
                   GetGaiaButtonsTypeString(gaia_buttons_type_));
-  const std::string& app_locale = g_browser_process->GetApplicationLocale();
+  const std::string app_locale = g_browser_process->GetApplicationLocale();
   if (!app_locale.empty())
     screen_data.Set("hl", app_locale);
-  const std::string& email = config_.enrollment_nudge_email;
-  if (!email.empty()) {
-    screen_data.Set("email", email);
-  }
+
   return screen_data;
 }
 
@@ -873,6 +1057,10 @@ base::Value::Dict EnrollmentScreenHandler::ScreenDataCommon() {
   screen_data.Set("enrollment_mode", EnrollmentModeToUIMode(config_.mode));
   screen_data.Set("is_enrollment_enforced", config_.is_forced());
   screen_data.Set("attestationBased", config_.is_mode_attestation());
+  screen_data.Set("jemaBased", config_.is_mode_jema());
+  screen_data.Set("fallbackEnabled",
+      config_.auth_mechanism == policy::EnrollmentConfig::AUTH_MECHANISM_BEST_AVAILABLE ||
+      config_.auth_mechanism == policy::EnrollmentConfig::AUTH_MECHANISM_JEMA_BEST_AVAILABLE);
   screen_data.Set("flow", GetFlowString(flow_type_));
 
   if (ShouldSpecifyLicenseType(config_)) {

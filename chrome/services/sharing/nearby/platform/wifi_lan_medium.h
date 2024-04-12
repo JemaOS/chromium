@@ -6,11 +6,9 @@
 #define CHROME_SERVICES_SHARING_NEARBY_PLATFORM_WIFI_LAN_MEDIUM_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/containers/flat_set.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "chrome/services/sharing/nearby/platform/wifi_lan_server_socket.h"
 #include "chrome/services/sharing/nearby/platform/wifi_lan_socket.h"
@@ -24,6 +22,7 @@
 #include "net/base/ip_address.h"
 #include "net/base/ip_endpoint.h"
 #include "services/network/public/mojom/tcp_socket.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/nearby/src/internal/platform/implementation/wifi_lan.h"
 
 namespace ash {
@@ -73,7 +72,7 @@ class WifiLanMedium : public api::WifiLanMedium {
       int port,
       CancellationFlag* cancellation_flag) override;
   std::unique_ptr<api::WifiLanServerSocket> ListenForService(int port) override;
-  std::optional<std::pair<std::int32_t, std::int32_t>> GetDynamicPortRange()
+  absl::optional<std::pair<std::int32_t, std::int32_t>> GetDynamicPortRange()
       override;
 
  private:
@@ -106,17 +105,17 @@ class WifiLanMedium : public api::WifiLanMedium {
   // ConnectToService() helpers: Connect to remote server socket.
   /*==========================================================================*/
   void DoConnect(const net::AddressList& address_list,
-                 std::optional<WifiLanSocket::ConnectedSocketParameters>*
+                 absl::optional<WifiLanSocket::ConnectedSocketParameters>*
                      connected_socket_parameters,
                  base::WaitableEvent* connect_waitable_event);
-  void OnConnect(std::optional<WifiLanSocket::ConnectedSocketParameters>*
+  void OnConnect(absl::optional<WifiLanSocket::ConnectedSocketParameters>*
                      connected_socket_parameters,
                  base::WaitableEvent* connect_waitable_event,
                  mojo::PendingRemote<network::mojom::TCPConnectedSocket>
                      tcp_connected_socket,
                  int32_t result,
-                 const std::optional<net::IPEndPoint>& local_addr,
-                 const std::optional<net::IPEndPoint>& peer_addr,
+                 const absl::optional<net::IPEndPoint>& local_addr,
+                 const absl::optional<net::IPEndPoint>& peer_addr,
                  mojo::ScopedDataPipeConsumerHandle receive_stream,
                  mojo::ScopedDataPipeProducerHandle send_stream);
   /*==========================================================================*/
@@ -125,34 +124,34 @@ class WifiLanMedium : public api::WifiLanMedium {
   // ListenForService() helpers: Listen for and accept incoming connections.
   /*==========================================================================*/
   void DoListenForService(
-      std::optional<WifiLanServerSocket::ServerSocketParameters>*
+      absl::optional<WifiLanServerSocket::ServerSocketParameters>*
           server_socket_parameters,
       base::WaitableEvent* listen_waitable_event,
       int port);
   void OnGetNetworkStateList(
-      std::optional<WifiLanServerSocket::ServerSocketParameters>*
+      absl::optional<WifiLanServerSocket::ServerSocketParameters>*
           server_socket_parameters,
       base::WaitableEvent* listen_waitable_event,
       const ash::nearby::TcpServerSocketPort& port,
       std::vector<chromeos::network_config::mojom::NetworkStatePropertiesPtr>
           result);
   void OnGetNetworkProperties(
-      std::optional<WifiLanServerSocket::ServerSocketParameters>*
+      absl::optional<WifiLanServerSocket::ServerSocketParameters>*
           server_socket_parameters,
       base::WaitableEvent* listen_waitable_event,
       const ash::nearby::TcpServerSocketPort& port,
       chromeos::network_config::mojom::ManagedPropertiesPtr properties);
   void OnTcpServerSocketCreated(
-      std::optional<WifiLanServerSocket::ServerSocketParameters>*
+      absl::optional<WifiLanServerSocket::ServerSocketParameters>*
           server_socket_parameters,
       base::WaitableEvent* listen_waitable_event,
       mojo::PendingRemote<network::mojom::TCPServerSocket> tcp_server_socket,
       const net::IPAddress& ip_address,
       const ash::nearby::TcpServerSocketPort& port,
       int32_t result,
-      const std::optional<net::IPEndPoint>& local_addr);
+      const absl::optional<net::IPEndPoint>& local_addr);
   void OnFirewallHoleCreated(
-      std::optional<WifiLanServerSocket::ServerSocketParameters>*
+      absl::optional<WifiLanServerSocket::ServerSocketParameters>*
           server_socket_parameters,
       base::WaitableEvent* listen_waitable_event,
       mojo::PendingRemote<network::mojom::TCPServerSocket> tcp_server_socket,
@@ -188,10 +187,8 @@ class WifiLanMedium : public api::WifiLanMedium {
 
   // Track all pending connect/listen tasks in case Close() is called while
   // waiting.
-  base::flat_set<raw_ptr<base::WaitableEvent, CtnExperimental>>
-      pending_connect_waitable_events_;
-  base::flat_set<raw_ptr<base::WaitableEvent, CtnExperimental>>
-      pending_listen_waitable_events_;
+  base::flat_set<base::WaitableEvent*> pending_connect_waitable_events_;
+  base::flat_set<base::WaitableEvent*> pending_listen_waitable_events_;
 };
 
 }  // namespace chrome

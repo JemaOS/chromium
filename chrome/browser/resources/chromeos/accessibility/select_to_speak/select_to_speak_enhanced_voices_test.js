@@ -14,7 +14,7 @@ SelectToSpeakEnhancedNetworkTtsVoicesTest = class extends SelectToSpeakE2ETest {
     this.confirmationDialogResponse_ = true;
 
     chrome.accessibilityPrivate.showConfirmationDialog =
-        (title, description, cancelName, callback) => {
+        (title, description, callback) => {
           this.confirmationDialogShowCount_ += 1;
           callback(this.confirmationDialogResponse_);
         };
@@ -24,6 +24,17 @@ SelectToSpeakEnhancedNetworkTtsVoicesTest = class extends SelectToSpeakE2ETest {
         return msgid;
       },
     };
+  }
+
+  /** @override */
+  async setUpDeferred() {
+    await super.setUpDeferred();
+    await importModule(
+        'selectToSpeak', '/select_to_speak/select_to_speak_main.js');
+    await importModule(
+        'SelectToSpeakConstants',
+        '/select_to_speak/select_to_speak_constants.js');
+    await importModule('PrefsManager', '/select_to_speak/prefs_manager.js');
   }
 
   // Sets the policy to allow or disallow the network voices.

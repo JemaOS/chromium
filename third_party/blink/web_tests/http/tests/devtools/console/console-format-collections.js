@@ -2,12 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
 (async function() {
   TestRunner.addResult(`Tests that console nicely formats HTML Collections, NodeLists and DOMTokenLists.\n`);
 
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
   await TestRunner.showPanel('console');
 
   await TestRunner.loadHTML(`
@@ -73,6 +71,17 @@ import {ConsoleTestRunner} from 'console_test_runner';
         // DOMTokenList
         var div = document.getElementsByTagName("div")[0];
         console.log(div.classList);
+
+        // Array-like's.
+        console.log(new ArrayLike(5));
+        console.log(new ArrayLike(0xFFFFFFFF));
+        // Array-like's with wrong length.
+        console.log(new ArrayLike(-5));
+        console.log(new ArrayLike(5.6));
+        console.log(new ArrayLike(NaN));
+        console.log(new ArrayLike(Infinity));
+        console.log(new ArrayLike(-0));
+        console.log(new ArrayLike(0xFFFFFFFF + 1));
     }
 
     logToConsole();
@@ -86,6 +95,12 @@ import {ConsoleTestRunner} from 'console_test_runner';
         console.log("FAIL: 'length' should not be called");
         return this.keys.length;
     });
+
+    function ArrayLike(length)
+    {
+        this.length = length;
+    }
+    ArrayLike.prototype.splice = function() {};
   `);
 
   TestRunner.evaluateInPage('logToConsole()', callback);

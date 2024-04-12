@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <utility>
-#include <vector>
 
 #include "base/check_op.h"
 #include "base/containers/contains.h"
@@ -18,24 +17,24 @@
 #include "base/notreached.h"
 #include "chrome/browser/ash/file_system_provider/mount_path_util.h"
 #include "chrome/browser/ash/file_system_provider/provided_file_system_interface.h"
-#include "chrome/browser/ash/fileapi/fallback_copy_in_foreign_file.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "storage/browser/blob/shareable_file_reference.h"
-#include "storage/browser/file_system/file_system_context.h"
 #include "storage/browser/file_system/file_system_operation_context.h"
 #include "storage/browser/file_system/file_system_url.h"
 
 using content::BrowserThread;
 
-namespace ash::file_system_provider::internal {
+namespace ash {
+namespace file_system_provider {
+namespace internal {
 namespace {
 
 // Executes GetFileInfo on the UI thread.
 void GetFileInfoOnUIThread(
     std::unique_ptr<storage::FileSystemOperationContext> context,
     const storage::FileSystemURL& url,
-    storage::FileSystemOperation::GetMetadataFieldSet fields,
+    int fields,
     ProvidedFileSystemInterface::GetMetadataCallback callback) {
   util::FileSystemURLParser parser(url);
   if (!parser.Parse()) {
@@ -45,17 +44,12 @@ void GetFileInfoOnUIThread(
   }
 
   int fsp_fields = 0;
-  if (fields.Has(
-          storage::FileSystemOperation::GetMetadataField::kIsDirectory)) {
+  if (fields & storage::FileSystemOperation::GET_METADATA_FIELD_IS_DIRECTORY)
     fsp_fields |= ProvidedFileSystemInterface::METADATA_FIELD_IS_DIRECTORY;
-  }
-  if (fields.Has(storage::FileSystemOperation::GetMetadataField::kSize)) {
+  if (fields & storage::FileSystemOperation::GET_METADATA_FIELD_SIZE)
     fsp_fields |= ProvidedFileSystemInterface::METADATA_FIELD_SIZE;
-  }
-  if (fields.Has(
-          storage::FileSystemOperation::GetMetadataField::kLastModified)) {
+  if (fields & storage::FileSystemOperation::GET_METADATA_FIELD_LAST_MODIFIED)
     fsp_fields |= ProvidedFileSystemInterface::METADATA_FIELD_MODIFICATION_TIME;
-  }
 
   parser.file_system()->GetMetadata(parser.file_path(), fsp_fields,
                                     std::move(callback));
@@ -63,7 +57,7 @@ void GetFileInfoOnUIThread(
 
 // Routes the response of GetFileInfo back to the IO thread with a type
 // conversion.
-void OnGetFileInfo(storage::FileSystemOperation::GetMetadataFieldSet fields,
+void OnGetFileInfo(int fields,
                    storage::AsyncFileUtil::GetFileInfoCallback callback,
                    std::unique_ptr<EntryMetadata> metadata,
                    base::File::Error result) {
@@ -77,16 +71,12 @@ void OnGetFileInfo(storage::FileSystemOperation::GetMetadataFieldSet fields,
   DCHECK(metadata.get());
   base::File::Info file_info;
 
-  if (fields.Has(
-          storage::FileSystemOperation::GetMetadataField::kIsDirectory)) {
+  if (fields & storage::FileSystemOperation::GET_METADATA_FIELD_IS_DIRECTORY)
     file_info.is_directory = *metadata->is_directory;
-  }
-  if (fields.Has(storage::FileSystemOperation::GetMetadataField::kSize)) {
+  if (fields & storage::FileSystemOperation::GET_METADATA_FIELD_SIZE)
     file_info.size = std::max(int64_t{0}, *metadata->size);
-  }
 
-  if (fields.Has(
-          storage::FileSystemOperation::GetMetadataField::kLastModified)) {
+  if (fields & storage::FileSystemOperation::GET_METADATA_FIELD_LAST_MODIFIED) {
     file_info.last_modified = *metadata->modification_time;
     // TODO(mtomasz): Add support for last modified time and creation time.
     // See: crbug.com/388540.
@@ -109,7 +99,8 @@ void ReadDirectoryOnUIThread(
   util::FileSystemURLParser parser(url);
   if (!parser.Parse()) {
     callback.Run(base::File::FILE_ERROR_INVALID_OPERATION,
-                 storage::AsyncFileUtil::EntryList(), false /* has_more */);
+                 storage::AsyncFileUtil::EntryList(),
+                 false /* has_more */);
     return;
   }
 
@@ -121,14 +112,22 @@ void OnReadDirectory(storage::AsyncFileUtil::ReadDirectoryCallback callback,
                      base::File::Error result,
                      storage::AsyncFileUtil::EntryList entry_list,
                      bool has_more) {
-  std::erase_if(entry_list, [](const filesystem::mojom::DirectoryEntry& entry) {
-    return !filesystem::mojom::IsKnownEnumValue(entry.type) ||
-           entry.name.empty() || entry.name.value() == "." ||
-           entry.name.value() == ".." ||
-           base::Contains(entry.name.value(), '\0') ||
-           base::Contains(entry.name.value(), '/') ||
-           base::Contains(entry.name.value(), '\\');
-  });
+  auto new_end_it =
+      std::remove_if(entry_list.begin(), entry_list.end(),
+                     [](const filesystem::mojom::DirectoryEntry& entry) {
+                       if (!filesystem::mojom::IsKnownEnumValue(entry.type)) {
+                         return true;
+                       }
+                       if (entry.name.empty() || entry.name.value() == "." ||
+                           entry.name.value() == ".." ||
+                           base::Contains(entry.name.value(), '\0') ||
+                           base::Contains(entry.name.value(), '/') ||
+                           base::Contains(entry.name.value(), '\\')) {
+                         return true;
+                       }
+                       return false;
+                     });
+  entry_list.erase(new_end_it, entry_list.end());
 
   content::GetIOThreadTaskRunner({})->PostTask(
       FROM_HERE,
@@ -301,9 +300,9 @@ void OnTruncate(storage::AsyncFileUtil::StatusCallback callback,
 
 }  // namespace
 
-ProviderAsyncFileUtil::ProviderAsyncFileUtil() = default;
+ProviderAsyncFileUtil::ProviderAsyncFileUtil() {}
 
-ProviderAsyncFileUtil::~ProviderAsyncFileUtil() = default;
+ProviderAsyncFileUtil::~ProviderAsyncFileUtil() {}
 
 void ProviderAsyncFileUtil::CreateOrOpen(
     std::unique_ptr<storage::FileSystemOperationContext> context,
@@ -353,7 +352,7 @@ void ProviderAsyncFileUtil::CreateDirectory(
 void ProviderAsyncFileUtil::GetFileInfo(
     std::unique_ptr<storage::FileSystemOperationContext> context,
     const storage::FileSystemURL& url,
-    GetMetadataFieldSet fields,
+    int fields,
     GetFileInfoCallback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
   content::GetUIThreadTaskRunner({})->PostTask(
@@ -435,9 +434,7 @@ void ProviderAsyncFileUtil::CopyInForeignFile(
     const storage::FileSystemURL& dest_url,
     StatusCallback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
-  // TODO(b/289322939): can the FileSystemProvider accept a Blob instead?
-  ash::FallbackCopyInForeignFile(*this, std::move(context), src_file_path,
-                                 dest_url, std::move(callback));
+  std::move(callback).Run(base::File::FILE_ERROR_ACCESS_DENIED);
 }
 
 void ProviderAsyncFileUtil::DeleteFile(
@@ -487,4 +484,6 @@ void ProviderAsyncFileUtil::CreateSnapshotFile(
                           scoped_refptr<storage::ShareableFileReference>());
 }
 
-}  // namespace ash::file_system_provider::internal
+}  // namespace internal
+}  // namespace file_system_provider
+}  // namespace ash

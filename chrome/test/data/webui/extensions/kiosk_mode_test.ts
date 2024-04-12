@@ -4,8 +4,7 @@
 
 /** @fileoverview Suite of tests for extension-kiosk-dialog. */
 
-import type {ExtensionsKioskDialogElement, KioskApp, KioskAppSettings, KioskSettings} from 'chrome://extensions/extensions.js';
-import {KioskBrowserProxyImpl} from 'chrome://extensions/extensions.js';
+import {CrCheckboxElement, ExtensionsKioskDialogElement, KioskApp, KioskAppSettings, KioskBrowserProxyImpl, KioskSettings} from 'chrome://extensions/extensions.js';
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -13,7 +12,21 @@ import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 
 import {TestKioskBrowserProxy} from './test_kiosk_browser_proxy.js';
 
-suite('KioskModeTests', function() {
+const extension_kiosk_mode_tests = {
+  suiteName: 'kioskModeTests',
+  TestNames: {
+    AddButton: 'AddButton',
+    AddError: 'AddError',
+    AutoLaunch: 'AutoLaunch',
+    Bailout: 'Bailout',
+    Layout: 'Layout',
+    Updated: 'Updated',
+  },
+};
+
+Object.assign(window, {extension_kiosk_mode_tests});
+
+suite(extension_kiosk_mode_tests.suiteName, function() {
   let browserProxy: TestKioskBrowserProxy;
 
   let dialog: ExtensionsKioskDialogElement;
@@ -72,7 +85,7 @@ suite('KioskModeTests', function() {
     return initPage();
   });
 
-  test('Layout', async function() {
+  test(extension_kiosk_mode_tests.TestNames.Layout, async function() {
     const apps = basicApps.slice(0);
     apps[1]!.autoLaunch = true;
     apps[1]!.isLoading = true;
@@ -101,31 +114,32 @@ suite('KioskModeTests', function() {
     assertEquals(appId, basicApps[0]!.id);
   });
 
-  test('AutoLaunch', async function() {
-    const apps = basicApps.slice(0);
-    apps[1]!.autoLaunch = true;
-    setAppSettings({apps: apps, hasAutoLaunchApp: true});
-    setInitialSettings({autoLaunchEnabled: true});
+  test(
+      extension_kiosk_mode_tests.TestNames.AutoLaunch, async function() {
+        const apps = basicApps.slice(0);
+        apps[1]!.autoLaunch = true;
+        setAppSettings({apps: apps, hasAutoLaunchApp: true});
+        setInitialSettings({autoLaunchEnabled: true});
 
-    await initPage();
+        await initPage();
 
-    const buttons: NodeListOf<HTMLElement> =
-        dialog.shadowRoot!.querySelectorAll<HTMLElement>(
-            '.list-item cr-button');
-    // Has permission to edit auto-launch so buttons should be seen.
-    assertFalse(buttons[0]!.hidden);
-    assertFalse(buttons[1]!.hidden);
+        const buttons: NodeListOf<HTMLElement> =
+            dialog.shadowRoot!.querySelectorAll<HTMLElement>(
+                '.list-item cr-button');
+        // Has permission to edit auto-launch so buttons should be seen.
+        assertFalse(buttons[0]!.hidden);
+        assertFalse(buttons[1]!.hidden);
 
-    buttons[0]!.click();
-    let appId = await browserProxy.whenCalled('enableKioskAutoLaunch');
-    assertEquals(appId, basicApps[0]!.id);
+        buttons[0]!.click();
+        let appId = await browserProxy.whenCalled('enableKioskAutoLaunch');
+        assertEquals(appId, basicApps[0]!.id);
 
-    buttons[1]!.click();
-    appId = await browserProxy.whenCalled('disableKioskAutoLaunch');
-    assertEquals(appId, basicApps[1]!.id);
-  });
+        buttons[1]!.click();
+        appId = await browserProxy.whenCalled('disableKioskAutoLaunch');
+        assertEquals(appId, basicApps[1]!.id);
+      });
 
-  test('Bailout', async function() {
+  test(extension_kiosk_mode_tests.TestNames.Bailout, async function() {
     const apps = basicApps.slice(0);
     apps[1]!.autoLaunch = true;
     setAppSettings({apps: apps, hasAutoLaunchApp: true});
@@ -135,7 +149,8 @@ suite('KioskModeTests', function() {
 
     await initPage();
 
-    const bailoutCheckbox = dialog.$.bailout;
+    const bailoutCheckbox: CrCheckboxElement =
+        dialog.shadowRoot!.querySelector('cr-checkbox')!;
     // Bailout checkbox should be usable when auto-launching.
     assertFalse(bailoutCheckbox.hidden);
     assertFalse(bailoutCheckbox.disabled);
@@ -143,7 +158,7 @@ suite('KioskModeTests', function() {
 
     // Making sure canceling doesn't change anything.
     bailoutCheckbox.click();
-    await bailoutCheckbox.updateComplete;
+    flush();
     assertTrue(dialog.$.confirmDialog.open);
 
     dialog.$.confirmDialog.querySelector<HTMLElement>(
@@ -155,7 +170,7 @@ suite('KioskModeTests', function() {
 
     // Accepting confirmation dialog should trigger browserProxy call.
     bailoutCheckbox.click();
-    await bailoutCheckbox.updateComplete;
+    flush();
     assertTrue(dialog.$.confirmDialog.open);
 
     dialog.$.confirmDialog.querySelector<HTMLElement>(
@@ -170,21 +185,19 @@ suite('KioskModeTests', function() {
     // Test clicking on checkbox again should simply re-enable bailout.
     browserProxy.reset();
     bailoutCheckbox.click();
-    await bailoutCheckbox.updateComplete;
     assertFalse(bailoutCheckbox.checked);
     assertFalse(dialog.$.confirmDialog.open);
     disabled = await browserProxy.whenCalled('setDisableBailoutShortcut');
     assertFalse(disabled);
   });
 
-  test('AddButton', async function() {
+  test(extension_kiosk_mode_tests.TestNames.AddButton, async function() {
     const addButton = dialog.$.addButton;
     assertTrue(!!addButton);
     assertTrue(addButton.disabled);
 
     const addInput = dialog.$.addInput;
     addInput.value = 'blah';
-    await addInput.updateComplete;
     assertFalse(addButton.disabled);
 
     addButton.click();
@@ -192,7 +205,7 @@ suite('KioskModeTests', function() {
     assertEquals(appId, 'blah');
   });
 
-  test('Updated', function() {
+  test(extension_kiosk_mode_tests.TestNames.Updated, function() {
     const items =
         dialog.shadowRoot!.querySelectorAll<HTMLElement>('.list-item');
     assertTrue(items[0]!.textContent!.includes(basicApps[0]!.name));
@@ -211,7 +224,7 @@ suite('KioskModeTests', function() {
     assertTrue(items[0]!.textContent!.includes(newName));
   });
 
-  test('AddError', function() {
+  test(extension_kiosk_mode_tests.TestNames.AddError, function() {
     const addInput = dialog.$.addInput;
 
     assertFalse(!!addInput.invalid);

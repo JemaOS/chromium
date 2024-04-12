@@ -66,10 +66,10 @@ flex-container{
         8,
         8,
         "L",
-        508,
+        792,
         8,
         "L",
-        508,
+        792,
         108,
         "L",
         8,
@@ -92,7 +92,7 @@ flex-container{
     "isKeyboardFocusable": false,
     "accessibleName": "",
     "accessibleRole": "generic",
-    "layoutObjectName": "LayoutFlexibleBox",
+    "layoutObjectName": "LayoutNGFlexibleBox",
     "showAccessibilityInfo": true
   },
   "flexInfo": [
@@ -304,7 +304,7 @@ should-not-be-flexbox{
     "isKeyboardFocusable": true,
     "accessibleName": "click",
     "accessibleRole": "button",
-    "layoutObjectName": "LayoutButton",
+    "layoutObjectName": "LayoutNGButton",
     "showAccessibilityInfo": true
   }
 }

@@ -6,6 +6,6 @@
  * Name of the chrome flags.
  */
 export enum Flag {
-  AUTO_QR = 'auto_qr',
-  DIGITAL_ZOOM = 'digital_zoom',
+  JELLY = 'jelly',
+  TIME_LAPSE = 'timeLapse',
 }

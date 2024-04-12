@@ -9,7 +9,7 @@
 {
   "controlledFrameInternal": {
     "internal": true,
-    "channel": "stable",
+    "channel": "dev",
     "contexts": ["web_page"],
     // This feature is only enabled if the embedder's delegated check returns
     // true.

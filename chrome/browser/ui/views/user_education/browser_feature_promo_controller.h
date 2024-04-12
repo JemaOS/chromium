@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_USER_EDUCATION_BROWSER_FEATURE_PROMO_CONTROLLER_H_
 #define CHROME_BROWSER_UI_VIEWS_USER_EDUCATION_BROWSER_FEATURE_PROMO_CONTROLLER_H_
 
-#include <memory>
 #include <string>
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
@@ -24,10 +23,8 @@ class TrackedElement;
 
 namespace user_education {
 class FeaturePromoRegistry;
-class FeaturePromoSessionPolicy;
-class FeaturePromoStorageService;
+class FeaturePromoSnoozeService;
 class HelpBubbleFactoryRegistry;
-class ProductMessagingController;
 class TutorialService;
 }  // namespace user_education
 
@@ -46,17 +43,14 @@ class BrowserView;
 class BrowserFeaturePromoController
     : public user_education::FeaturePromoControllerCommon {
  public:
-  // Create the instance for the given |browser_view|. Prefer to call
-  // `MaybeCreateForBrowserView()` instead.
+  // Create the instance for the given |browser_view|.
   BrowserFeaturePromoController(
       BrowserView* browser_view,
       feature_engagement::Tracker* feature_engagement_tracker,
       user_education::FeaturePromoRegistry* registry,
       user_education::HelpBubbleFactoryRegistry* help_bubble_registry,
-      user_education::FeaturePromoStorageService* storage_service,
-      user_education::FeaturePromoSessionPolicy* session_policy,
-      user_education::TutorialService* tutorial_service,
-      user_education::ProductMessagingController* messaging_controller);
+      user_education::FeaturePromoSnoozeService* snooze_service,
+      user_education::TutorialService* tutorial_service);
   ~BrowserFeaturePromoController() override;
 
   // Get the appropriate instance for |view|. This finds the BrowserView
@@ -77,13 +71,11 @@ class BrowserFeaturePromoController
                            GetAcceleratorProvider);
   FRIEND_TEST_ALL_PREFIXES(BrowserFeaturePromoControllerTest,
                            GetFocusHelpBubbleScreenReaderHint);
-  FRIEND_TEST_ALL_PREFIXES(BrowserFeaturePromoControllerActivationUiTest,
-                           CanShowPromoForElement);
+  FRIEND_TEST_ALL_PREFIXES(BrowserFeaturePromoControllerUiTest, CanShowPromo);
 
   // FeaturePromoController:
   ui::ElementContext GetAnchorContext() const override;
-  bool CanShowPromoForElement(
-      ui::TrackedElement* anchor_element) const override;
+  bool CanShowPromo(ui::TrackedElement* anchor_element) const override;
   const ui::AcceleratorProvider* GetAcceleratorProvider() const override;
   std::u16string GetTutorialScreenReaderHint() const override;
   std::u16string GetFocusHelpBubbleScreenReaderHint(
@@ -93,7 +85,6 @@ class BrowserFeaturePromoController
   std::u16string GetBodyIconAltText() const override;
   const base::Feature* GetScreenReaderPromptPromoFeature() const override;
   const char* GetScreenReaderPromptPromoEventName() const override;
-  std::string GetAppId() const override;
 
  private:
   // The browser window this instance is responsible for.

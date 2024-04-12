@@ -21,4 +21,4 @@ var allTests = [
   }
 ];
 
-setUpAndRunTabsTests(allTests, 'word_boundaries.html');
+setUpAndRunTests(allTests, 'word_boundaries.html');

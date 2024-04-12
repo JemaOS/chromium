@@ -27,7 +27,7 @@ static jlong JNI_ProxyNativeTask_Init(JNIEnv* env,
 
   if (!jextras.is_null()) {
     params.extras = base::android::ConvertJavaStringToUTF8(
-        jni_zero::AttachCurrentThread(), jextras);
+        base::android::AttachCurrentThread(), jextras);
   }
 
   background_task::TaskFinishedCallback finish_callback =

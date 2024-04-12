@@ -43,8 +43,6 @@ class DeviceLocalAccountExternalCache : public ExternalCacheDelegate {
 
   // ExternalCacheDelegate:
   void OnExtensionListsUpdated(const base::Value::Dict& prefs) override;
-  bool IsRollbackAllowed() const override;
-  bool CanRollbackNow() const override;
 
   scoped_refptr<extensions::ExternalLoader> GetExtensionLoader();
 

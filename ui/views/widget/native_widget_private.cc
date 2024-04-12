@@ -8,11 +8,7 @@
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 
-namespace views {
-
-const char kWidgetIdentifierKey[] = "kWidgetIdentifierKey";
-
-namespace internal {
+namespace views::internal {
 
 // static
 gfx::Rect NativeWidgetPrivate::ConstrainBoundsToDisplayWorkArea(
@@ -35,6 +31,4 @@ bool NativeWidgetPrivate::IsMoveLoopSupported() const {
   return true;
 }
 
-}  // namespace internal
-
-}  // namespace views
+}  // namespace views::internal

@@ -128,7 +128,7 @@ static const CSSValueList* CreateFontFaceValueWithPool(
     if (auto* parsed_value_list = DynamicTo<CSSValueList>(parsed_value))
       entry.stored_value->value = parsed_value_list;
   }
-  return entry.stored_value->value.Get();
+  return entry.stored_value->value;
 }
 
 bool HTMLFontElement::CssValueFromFontSizeNumber(const String& s,

@@ -6,32 +6,29 @@
 
 #include <algorithm>
 #include <cstring>
-#include <vector>
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/capture_mode/capture_mode_camera_preview_view.h"
 #include "ash/capture_mode/capture_mode_constants.h"
 #include "ash/capture_mode/capture_mode_controller.h"
 #include "ash/capture_mode/capture_mode_metrics.h"
 #include "ash/capture_mode/capture_mode_session.h"
 #include "ash/capture_mode/capture_mode_util.h"
-#include "ash/game_dashboard/game_dashboard_controller.h"
 #include "ash/public/cpp/capture_mode/capture_mode_delegate.h"
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/root_window_controller.h"
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
+#include "ash/system/message_center/unified_message_center_bubble.h"
 #include "ash/system/status_area_widget.h"
 #include "ash/system/tray/system_tray_notifier.h"
 #include "ash/system/unified/unified_system_tray.h"
 #include "ash/system/unified/unified_system_tray_controller.h"
-#include "ash/wm/pip/pip_controller.h"
 #include "ash/wm/pip/pip_positioner.h"
 #include "ash/wm/window_state.h"
 #include "ash/wm/wm_event.h"
 #include "base/check.h"
 #include "base/containers/contains.h"
-#include "base/debug/crash_logging.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
@@ -185,6 +182,27 @@ views::Widget::InitParams CreateWidgetParams(const gfx::Rect& bounds) {
   return params;
 }
 
+// Called by `ContinueDraggingPreview` to make sure camera preview is not
+// dragged outside of the capture surface.
+void AdjustBoundsWithinConfinedBounds(const gfx::Rect& confined_bounds,
+                                      gfx::Rect& preview_bounds) {
+  const int x = preview_bounds.x();
+  if (int offset = x - confined_bounds.x(); offset < 0) {
+    preview_bounds.set_x(x - offset);
+  } else if (offset = confined_bounds.right() - preview_bounds.right();
+             offset < 0) {
+    preview_bounds.set_x(x + offset);
+  }
+
+  const int y = preview_bounds.y();
+  if (int offset = y - confined_bounds.y(); offset < 0) {
+    preview_bounds.set_y(y - offset);
+  } else if (offset = confined_bounds.bottom() - preview_bounds.bottom();
+             offset < 0) {
+    preview_bounds.set_y(y + offset);
+  }
+}
+
 // Returns the bounds that should be used in the bounds animation of the given
 // `camera_preview_window`. If this window is parented to a window that uses
 // screen coordinates, then the given `target_bounds` are in screen coordinates,
@@ -201,38 +219,21 @@ gfx::Rect GetTargetBoundsForBoundsAnimation(
   return result;
 }
 
-gfx::Rect GetCollisionAvoidanceRect(aura::Window* root_window,
-                                    aura::Window* preview_parent) {
+gfx::Rect GetCollisionAvoidanceRect(aura::Window* root_window) {
   DCHECK(root_window);
 
-  auto* status_area_widget =
-      RootWindowController::ForWindow(root_window)->GetStatusAreaWidget();
-  gfx::Rect collision_avoidance_rect;
+  UnifiedSystemTray* tray = RootWindowController::ForWindow(root_window)
+                                ->GetStatusAreaWidget()
+                                ->unified_system_tray();
 
-  if (UnifiedSystemTray* unified_system_tray =
-          status_area_widget->unified_system_tray();
-      unified_system_tray->IsBubbleShown()) {
-    collision_avoidance_rect = unified_system_tray->GetBubbleBoundsInScreen();
-  } else {
-    const std::vector<raw_ptr<TrayBackgroundView, VectorExperimental>>
-        tray_buttons = status_area_widget->tray_buttons();
-    for (ash::TrayBackgroundView* tray_button : tray_buttons) {
-      if (views::Widget* tray_bubble_widget = tray_button->GetBubbleWidget();
-          tray_bubble_widget && tray_bubble_widget->IsVisible()) {
-        collision_avoidance_rect.Union(
-            tray_bubble_widget->GetWindowBoundsInScreen());
-      }
-    }
-  }
+  if (!tray->IsBubbleShown())
+    return gfx::Rect();
 
-  if (auto* game_dashboard_controller = GameDashboardController::Get()) {
-    if (auto* game_dashboard_context =
-            game_dashboard_controller->GetGameDashboardContext(
-                preview_parent)) {
-      collision_avoidance_rect.Union(
-          game_dashboard_context->GetToolbarBoundsInScreen());
-    }
-  }
+  gfx::Rect collision_avoidance_rect = tray->GetBubbleBoundsInScreen();
+  auto* message_center_bubble = tray->message_center_bubble();
+
+  if (message_center_bubble->IsMessageCenterVisible())
+    collision_avoidance_rect.Union(message_center_bubble->GetBoundsInScreen());
 
   // TODO(conniekxu): Return a vector of collision avoidance rects including
   // other system UIs, like launcher.
@@ -252,7 +253,7 @@ void UpdateFloatingPanelBoundsIfNeeded(aura::Window* root_window) {
   for (aura::Window* pip_window : pip_window_container->children()) {
     auto* pip_window_state = WindowState::Get(pip_window);
     if (pip_window_state->IsPip())
-      Shell::Get()->pip_controller()->UpdatePipBounds();
+      pip_window_state->UpdatePipBounds();
   }
 }
 
@@ -262,7 +263,7 @@ void UpdateFloatingPanelBoundsIfNeeded(aura::Window* root_window) {
 // with the current configuration.
 gfx::Size CalculatePreviewInitialSize() {
   int max_shorter_side = 0;
-  for (aura::Window* root_window : Shell::GetAllRootWindows()) {
+  for (auto* root_window : Shell::GetAllRootWindows()) {
     const auto work_area = display::Screen::GetScreen()
                                ->GetDisplayNearestWindow(root_window)
                                .work_area();
@@ -341,7 +342,7 @@ class CameraPreviewTargeter : public aura::WindowTargeter {
   }
 
  private:
-  const raw_ptr<aura::Window> camera_preview_window_;
+  const raw_ptr<aura::Window, ExperimentalAsh> camera_preview_window_;
 };
 
 capture_mode_util::AnimationParams BuildCameraVisibilityAnimationParams(
@@ -484,24 +485,6 @@ void CaptureModeCameraController::SetSelectedCamera(CameraId camera_id) {
 
 void CaptureModeCameraController::SetShouldShowPreview(bool value) {
   should_show_preview_ = value;
-
-  // TODO(http://b/290363225): Remove this if no more crashes after the fix.
-  SCOPED_CRASH_KEY_BOOL("SelfieCam", "selected_cam_valid",
-                        selected_camera_.is_valid());
-  SCOPED_CRASH_KEY_STRING256("SelfieCam", "selected_camera_",
-                             selected_camera_.ToString());
-  SCOPED_CRASH_KEY_STRING256("SelfieCam", "selected_cam_display_name",
-                             GetDisplayNameOfSelectedCamera());
-  SCOPED_CRASH_KEY_BOOL("SelfieCam", "should_show_preview_",
-                        should_show_preview_);
-  SCOPED_CRASH_KEY_BOOL("SelfieCam", "is_shutting_down_", is_shutting_down_);
-  SCOPED_CRASH_KEY_BOOL("SelfieCam", "camera_preview_widget_",
-                        !!camera_preview_widget_);
-  SCOPED_CRASH_KEY_BOOL("SelfieCam", "camera_preview_view_",
-                        !!camera_preview_view_);
-  SCOPED_CRASH_KEY_BOOL("SelfieCam", "IsCameraDisabledByPolicy",
-                        IsCameraDisabledByPolicy());
-
   RefreshCameraPreview();
 }
 
@@ -580,8 +563,8 @@ void CaptureModeCameraController::MaybeUpdatePreviewWidget(bool animate) {
   const bool did_visibility_change = capture_mode_util::SetWidgetVisibility(
       camera_preview_widget_.get(), size_specs.should_be_visible,
       !should_animate_visibility
-          ? std::nullopt
-          : std::make_optional<capture_mode_util::AnimationParams>(
+          ? absl::nullopt
+          : absl::make_optional<capture_mode_util::AnimationParams>(
                 BuildCameraVisibilityAnimationParams(
                     /*target_visibility=*/size_specs.should_be_visible,
                     /*apply_scale_up_animation=*/is_first_bounds_update_)));
@@ -609,9 +592,8 @@ void CaptureModeCameraController::StartDraggingPreview(
   camera_preview_view_->RefreshResizeButtonVisibility();
 
   auto* controller = CaptureModeController::Get();
-  if (controller->IsActive()) {
+  if (controller->IsActive())
     controller->capture_mode_session()->OnCameraPreviewDragStarted();
-  }
 
   // Use cursor compositing instead of the platform cursor when dragging to
   // ensure the cursor is aligned with the camera preview.
@@ -624,7 +606,7 @@ void CaptureModeCameraController::ContinueDraggingPreview(
 
   current_bounds.Offset(
       gfx::ToRoundedVector2d(screen_location - previous_location_in_screen_));
-  capture_mode_util::AdjustBoundsWithinConfinedBounds(
+  AdjustBoundsWithinConfinedBounds(
       CaptureModeController::Get()->GetCaptureSurfaceConfineBounds(),
       current_bounds);
   camera_preview_widget_->SetBounds(current_bounds);
@@ -662,7 +644,7 @@ void CaptureModeCameraController::OnCaptureSessionStarted() {
 }
 
 void CaptureModeCameraController::OnRecordingStarted(
-    const CaptureModeBehavior* active_behavior) {
+    bool is_in_projector_mode) {
   // Check if there's a camera disconnection that happened before recording
   // starts. In this case, we don't want the camera preview to show, even if the
   // camera reconnects within the allowed grace period.
@@ -672,7 +654,7 @@ void CaptureModeCameraController::OnRecordingStarted(
   in_recording_camera_disconnections_ = 0;
 
   const bool starts_with_camera = camera_preview_widget();
-  RecordRecordingStartsWithCamera(starts_with_camera, active_behavior);
+  RecordRecordingStartsWithCamera(starts_with_camera, is_in_projector_mode);
   RecordCameraSizeOnStart(is_camera_preview_collapsed_
                               ? CaptureModeCameraSize::kCollapsed
                               : CaptureModeCameraSize::kExpanded);
@@ -694,7 +676,7 @@ void CaptureModeCameraController::OnFrameHandlerFatalError() {
   DCHECK(camera_preview_view_);
   DCHECK_EQ(selected_camera_, camera_preview_view_->camera_id());
 
-  std::erase_if(available_cameras_, [&](const CameraInfo& info) {
+  base::EraseIf(available_cameras_, [&](const CameraInfo& info) {
     return selected_camera_ == info.camera_id;
   });
 
@@ -741,14 +723,6 @@ void CaptureModeCameraController::OnDevicesChanged(
 
 void CaptureModeCameraController::OnSystemTrayBubbleShown() {
   MaybeUpdatePreviewWidget(/*animate=*/true);
-}
-
-void CaptureModeCameraController::OnStatusAreaAnchoredBubbleVisibilityChanged(
-    TrayBubbleView* tray_bubble,
-    bool visible) {
-  if (visible) {
-    MaybeUpdatePreviewWidget(/*animate=*/true);
-  }
 }
 
 void CaptureModeCameraController::ReconnectToVideoSourceProvider() {
@@ -877,9 +851,7 @@ void CaptureModeCameraController::RefreshCameraPreview() {
     }
   }
 
-  // The supported formats might be empty and then cause a crash. Please see
-  // b/290363225.
-  if (!camera_info || camera_info->supported_formats.empty()) {
+  if (!camera_info) {
     camera_preview_widget_.reset();
     camera_preview_view_ = nullptr;
     if (old_root)
@@ -914,7 +886,6 @@ void CaptureModeCameraController::RefreshCameraPreview() {
             PickSuitableCaptureFormat(initial_temp_bounds.size(),
                                       camera_info->supported_formats),
             ShouldCameraActLikeAMirror(*camera_info)));
-    camera_preview_view_->Initialize();
     ui::Layer* layer = camera_preview_widget_->GetLayer();
     layer->SetFillsBoundsOpaquely(false);
     layer->SetMasksToBounds(true);
@@ -952,7 +923,7 @@ gfx::Rect CaptureModeCameraController::CalculatePreviewWidgetTargetBounds(
           : controller->GetOnCaptureSurfaceWidgetParentWindow();
   DCHECK(parent);
   const gfx::Rect collision_rect_screen =
-      GetCollisionAvoidanceRect(parent->GetRootWindow(), parent);
+      GetCollisionAvoidanceRect(parent->GetRootWindow());
 
   std::vector<CameraPreviewSnapPosition> snap_positions = {
       CameraPreviewSnapPosition::kBottomRight,
@@ -961,7 +932,10 @@ gfx::Rect CaptureModeCameraController::CalculatePreviewWidgetTargetBounds(
 
   // Move `camera_preview_snap_position_` to the beginning of `snap_positions`
   // vector, since we should always try the current snap position first.
-  std::erase(snap_positions, camera_preview_snap_position_);
+  base::EraseIf(snap_positions,
+                [this](CameraPreviewSnapPosition snap_position) {
+                  return snap_position == camera_preview_snap_position_;
+                });
   snap_positions.insert(snap_positions.begin(), camera_preview_snap_position_);
 
   // Cache the current preview bounds and return it directly when we find no

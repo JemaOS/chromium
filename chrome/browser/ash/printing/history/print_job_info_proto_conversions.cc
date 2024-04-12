@@ -4,11 +4,11 @@
 
 #include "chrome/browser/ash/printing/history/print_job_info_proto_conversions.h"
 
-#include <optional>
 #include <string>
 
 #include "chrome/browser/chromeos/printing/printer_error_codes.h"
 #include "printing/mojom/print.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
@@ -20,7 +20,7 @@ namespace {
 
 proto::PrintSettings_ColorMode ColorModelToProto(
     ::printing::mojom::ColorModel color) {
-  std::optional<bool> is_color = ::printing::IsColorModelSelected(color);
+  absl::optional<bool> is_color = ::printing::IsColorModelSelected(color);
   return is_color.value() ? proto::PrintSettings_ColorMode_COLOR
                           : proto::PrintSettings_ColorMode_BLACK_AND_WHITE;
 }
@@ -60,8 +60,6 @@ proto::PrintJobInfo_PrintJobSource PrintJobSourceToProto(
       return proto::PrintJobInfo_PrintJobSource_EXTENSION;
     case ::printing::PrintJob::Source::kPrintPreviewIncognito:
       return proto::PrintJobInfo_PrintJobSource_PRINT_PREVIEW_INCOGNITO;
-    case ::printing::PrintJob::Source::kIsolatedWebApp:
-      return proto::PrintJobInfo_PrintJobSource_ISOLATED_WEB_APP;
     default:
       NOTREACHED();
   }
@@ -125,8 +123,6 @@ proto::PrintJobInfo_PrinterErrorCode PrinterErrorCodeToProto(
       return proto::PrintJobInfo_PrinterErrorCode_UNKNOWN_ERROR;
     case PrinterErrorCode::CLIENT_UNAUTHORIZED:
       return proto::PrintJobInfo_PrinterErrorCode_CLIENT_UNAUTHORIZED;
-    case PrinterErrorCode::EXPIRED_CERTIFICATE:
-      return proto::PrintJobInfo_PrinterErrorCode_EXPIRED_CERTIFICATE;
     default:
       // Be sure to update the above case statements whenever a new printer
       // error is introduced.
@@ -138,7 +134,7 @@ proto::PrintJobInfo_PrinterErrorCode PrinterErrorCodeToProto(
 // Helper method to convert base::Time to the number of milliseconds past the
 // Unix epoch. Loses precision beyond milliseconds.
 int64_t TimeToMillisecondsPastUnixEpoch(const base::Time& time) {
-  return static_cast<int64_t>(time.InMillisecondsFSinceUnixEpoch());
+  return static_cast<int64_t>(time.ToJsTime());
 }
 
 proto::Printer PrinterToProto(const chromeos::Printer& printer) {

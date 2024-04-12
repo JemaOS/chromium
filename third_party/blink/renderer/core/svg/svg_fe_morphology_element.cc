@@ -50,7 +50,11 @@ SVGFEMorphologyElement::SVGFEMorphologyElement(Document& document)
           MakeGarbageCollected<SVGAnimatedEnumeration<MorphologyOperatorType>>(
               this,
               svg_names::kOperatorAttr,
-              FEMORPHOLOGY_OPERATOR_ERODE)) {}
+              FEMORPHOLOGY_OPERATOR_ERODE)) {
+  AddToPropertyMap(radius_);
+  AddToPropertyMap(in1_);
+  AddToPropertyMap(svg_operator_);
+}
 
 SVGAnimatedNumber* SVGFEMorphologyElement::radiusX() {
   return radius_->FirstNumber();
@@ -123,27 +127,6 @@ FilterEffect* SVGFEMorphologyElement::Build(SVGFilterBuilder* filter_builder,
       filter, svg_operator_->CurrentEnumValue(), x_radius, y_radius);
   effect->InputEffects().push_back(input1);
   return effect;
-}
-
-SVGAnimatedPropertyBase* SVGFEMorphologyElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kRadiusAttr) {
-    return radius_.Get();
-  } else if (attribute_name == svg_names::kInAttr) {
-    return in1_.Get();
-  } else if (attribute_name == svg_names::kOperatorAttr) {
-    return svg_operator_.Get();
-  } else {
-    return SVGFilterPrimitiveStandardAttributes::PropertyFromAttribute(
-        attribute_name);
-  }
-}
-
-void SVGFEMorphologyElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{radius_.Get(), in1_.Get(),
-                                   svg_operator_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGFilterPrimitiveStandardAttributes::SynchronizeAllSVGAttributes();
 }
 
 }  // namespace blink

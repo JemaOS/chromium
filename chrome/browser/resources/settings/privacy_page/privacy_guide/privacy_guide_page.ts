@@ -7,7 +7,7 @@
  * 'settings-privacy-guide-page' is the settings page that helps users guide
  * various privacy settings.
  */
-import '/shared/settings/prefs/prefs.js';
+import 'chrome://resources/cr_components/settings_prefs/prefs.js';
 import 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import 'chrome://resources/cr_elements/cr_shared_style.css.js';
 import '../../settings_shared.css.js';
@@ -20,30 +20,27 @@ import './privacy_guide_safe_browsing_fragment.js';
 import './privacy_guide_welcome_fragment.js';
 import './step_indicator.js';
 
-import type {SyncBrowserProxy, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
-import {SyncBrowserProxyImpl} from '/shared/settings/people_page/sync_browser_proxy.js';
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
-import {CrSettingsPrefs} from '/shared/settings/prefs/prefs_types.js';
-import type {CrViewManagerElement} from 'chrome://resources/cr_elements/cr_view_manager/cr_view_manager.js';
+import {SyncBrowserProxy, SyncBrowserProxyImpl, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
+import {PrefsMixin} from 'chrome://resources/cr_components/settings_prefs/prefs_mixin.js';
+import {CrSettingsPrefs} from 'chrome://resources/cr_components/settings_prefs/prefs_types.js';
+import {CrViewManagerElement} from 'chrome://resources/cr_elements/cr_view_manager/cr_view_manager.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {afterNextRender, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {HatsBrowserProxyImpl, TrustSafetyInteraction} from '../../hats_browser_proxy.js';
 import {loadTimeData} from '../../i18n_setup.js';
-import type {MetricsBrowserProxy} from '../../metrics_browser_proxy.js';
-import {MetricsBrowserProxyImpl, PrivacyGuideInteractions, PrivacyGuideStepsEligibleAndReached} from '../../metrics_browser_proxy.js';
+import {MetricsBrowserProxy, MetricsBrowserProxyImpl, PrivacyGuideInteractions, PrivacyGuideStepsEligibleAndReached} from '../../metrics_browser_proxy.js';
 import {SafeBrowsingSetting} from '../../privacy_page/security_page.js';
 import {routes} from '../../route.js';
-import type {Route} from '../../router.js';
-import {RouteObserverMixin, Router} from '../../router.js';
+import {Route, RouteObserverMixin, Router} from '../../router.js';
 import {CookiePrimarySetting} from '../../site_settings/site_settings_prefs_browser_proxy.js';
 
 import {PrivacyGuideStep} from './constants.js';
 import {PrivacyGuideAvailabilityMixin} from './privacy_guide_availability_mixin.js';
 import {getTemplate} from './privacy_guide_page.html.js';
-import type {StepIndicatorModel} from './step_indicator.js';
+import {StepIndicatorModel} from './step_indicator.js';
 
 interface PrivacyGuideStepComponents {
   nextStep?: PrivacyGuideStep;
@@ -60,10 +57,10 @@ function eligibilityToRecord(step: PrivacyGuideStep):
       return PrivacyGuideStepsEligibleAndReached.MSBB_ELIGIBLE;
     case PrivacyGuideStep.HISTORY_SYNC:
       return PrivacyGuideStepsEligibleAndReached.HISTORY_SYNC_ELIGIBLE;
-    case PrivacyGuideStep.COOKIES:
-      return PrivacyGuideStepsEligibleAndReached.COOKIES_ELIGIBLE;
     case PrivacyGuideStep.SAFE_BROWSING:
       return PrivacyGuideStepsEligibleAndReached.SAFE_BROWSING_ELIGIBLE;
+    case PrivacyGuideStep.COOKIES:
+      return PrivacyGuideStepsEligibleAndReached.COOKIES_ELIGIBLE;
     case PrivacyGuideStep.COMPLETION:
       return PrivacyGuideStepsEligibleAndReached.COMPLETION_ELIGIBLE;
     default:
@@ -132,7 +129,7 @@ export class SettingsPrivacyGuidePageElement extends PrivacyGuideBase {
       stepIndicatorModel_: {
         type: Object,
         computed:
-            'computeStepIndicatorModel(privacyGuideStep_, prefs.generated.cookie_primary_setting, prefs.generated.safe_browsing, prefs.net.network_prediction_options)',
+            'computeStepIndicatorModel(privacyGuideStep_, prefs.generated.cookie_primary_setting, prefs.generated.safe_browsing)',
       },
 
       syncStatus_: Object,
@@ -141,7 +138,7 @@ export class SettingsPrivacyGuidePageElement extends PrivacyGuideBase {
 
   static get observers() {
     return [
-      'onPrefsChanged_(prefs.generated.cookie_primary_setting, prefs.generated.safe_browsing, prefs.net.network_prediction_options)',
+      'onPrefsChanged_(prefs.generated.cookie_primary_setting, prefs.generated.safe_browsing)',
       'exitIfNecessary(isPrivacyGuideAvailable)',
     ];
   }
@@ -480,7 +477,6 @@ export class SettingsPrivacyGuidePageElement extends PrivacyGuideBase {
         // This card has no step in the step indicator.
         continue;
       }
-
       if (this.privacyGuideStepToComponentsMap_.get(step)!.isAvailable()) {
         if (step === this.privacyGuideStep_) {
           activeIndex = stepCount;
@@ -503,9 +499,6 @@ export class SettingsPrivacyGuidePageElement extends PrivacyGuideBase {
     if (!this.prefs) {
       // Prefs are not available yet. Show the card until they become available.
       return true;
-    }
-    if (loadTimeData.getBoolean('is3pcdCookieSettingsRedesignEnabled')) {
-      return false;
     }
     const currentCookieSetting =
         this.getPref('generated.cookie_primary_setting').value;

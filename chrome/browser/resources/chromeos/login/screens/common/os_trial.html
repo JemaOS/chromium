@@ -1,15 +1,30 @@
-<style include="oobe-dialog-host-styles cr-card-radio-group-styles
-    cros-color-overrides">
+<style include="oobe-dialog-host-styles cr-card-radio-group-styles">
   @media screen and (max-width: 920px) {
   :host {
       --radio-button-height: 155px;
     }
   }
+  img.logo.openjema {
+    width: 132px;
+    height: 32px;
+  }
+  img.logo.jemaos {
+    width: 42px;
+    height: 42px;
+  }
 </style>
 
 <oobe-adaptive-dialog id="osTrialDialog" role="dialog"
     aria-label$="[[i18nDynamic(locale, 'osTrialTitle')]]">
-  <iron-icon slot="icon" icon="oobe-32:googleg"></iron-icon>
+  <if expr="openjema">
+    <img class="logo openjema" slot="icon"
+         src="images/openjema_logo.png" />
+  </if>
+  <if expr="not openjema">
+    <img class="logo jemaos" slot="icon"
+        srcset="images/jema_logo_1x.png 1x,
+                images/jema_logo_2x.png 2x" />
+  </if>
   <h1 slot="title">[[i18nDynamic(locale, 'osTrialTitle')]]</h1>
   <span inner-h-t-m-l="[[i18nAdvancedDynamic(locale, 'osTrialSubtitle')]]"
       slot="subtitle"></span>
@@ -52,11 +67,11 @@
   </div>
   <div slot="back-navigation">
     <oobe-back-button id="backButton"
-        on-click="onBackButtonClick"></oobe-back-button>
+        on-click="onBackButtonClick_"></oobe-back-button>
   </div>
   <div slot="bottom-buttons">
     <oobe-next-button
         class="focus-on-show" id="nextButton"
-        inverse on-click="onNextButtonClick"></oobe-next-button>
+        inverse on-click="onNextButtonClick_"></oobe-next-button>
   </div>
 </oobe-adaptive-dialog>

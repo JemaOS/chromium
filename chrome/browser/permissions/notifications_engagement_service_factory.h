@@ -12,7 +12,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace content {
@@ -34,7 +34,8 @@ class NotificationsEngagementServiceFactory
       const NotificationsEngagementServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<NotificationsEngagementServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      NotificationsEngagementServiceFactory>;
 
   NotificationsEngagementServiceFactory();
   ~NotificationsEngagementServiceFactory() override;

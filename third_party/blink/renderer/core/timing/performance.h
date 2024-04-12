@@ -66,7 +66,6 @@ class ExecutionContext;
 class LargestContentfulPaint;
 class LayoutShift;
 class MemoryInfo;
-class MemoryMeasurement;
 class Node;
 class PerformanceElementTiming;
 class PerformanceEventTiming;
@@ -76,6 +75,7 @@ class PerformanceMeasure;
 class PerformanceNavigation;
 class PerformanceObserver;
 class PerformanceTiming;
+class ScriptPromise;
 class ScriptState;
 class ScriptValue;
 class SoftNavigationEntry;
@@ -96,7 +96,7 @@ MergePerformanceEntryVectors(const PerformanceEntryVector& first_entry_vector,
                              const PerformanceEntryVector& second_entry_vector,
                              const AtomicString& maybe_name);
 
-class CORE_EXPORT Performance : public EventTarget {
+class CORE_EXPORT Performance : public EventTargetWithInlineData {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
@@ -108,7 +108,7 @@ class CORE_EXPORT Performance : public EventTarget {
   virtual PerformanceTiming* timing() const;
   virtual PerformanceNavigation* navigation() const;
   virtual MemoryInfo* memory(ScriptState*) const;
-  virtual ScriptPromiseTyped<MemoryMeasurement> measureUserAgentSpecificMemory(
+  virtual ScriptPromise measureUserAgentSpecificMemory(
       ScriptState*,
       ExceptionState& exception_state) const;
   virtual EventCounts* eventCounts();
@@ -129,12 +129,24 @@ class CORE_EXPORT Performance : public EventTarget {
       bool allow_negative_value,
       bool cross_origin_isolated_capability);
 
+  static base::TimeDelta MonotonicTimeToTimeDelta(
+      base::TimeTicks time_origin,
+      base::TimeTicks monotonic_time,
+      bool allow_negative_value,
+      bool cross_origin_isolated_capability);
+
   // Translate given platform monotonic time in seconds into a high resolution
   // DOMHighResTimeStamp in milliseconds. The result timestamp is relative to
   // document's time origin and has a time resolution that is safe for
   // exposing to web.
   DOMHighResTimeStamp MonotonicTimeToDOMHighResTimeStamp(base::TimeTicks) const;
   DOMHighResTimeStamp now() const;
+
+  // Translate given platform monotonic time in seconds into base::TimeDelta.
+  // The result timestamp is relative to document's time origin and is
+  // equivalent to the timestamp returned by the function
+  // MonotonicTimeToDOMHighResTimeStamp.
+  base::TimeDelta MonotonicTimeToTimeDelta(base::TimeTicks) const;
 
   // High Resolution Time Level 3 timeOrigin.
   // (https://www.w3.org/TR/hr-time-3/#dom-performance-timeorigin)
@@ -307,10 +319,6 @@ class CORE_EXPORT Performance : public EventTarget {
                            const base::TickClock* tick_clock);
   void ResetTimeOriginForTesting(base::TimeTicks time_origin);
 
-  // TODO(https://crbug.com/1457049): remove this once visited links are
-  // partitioned.
-  bool softNavPaintMetricsSupported() const;
-
  private:
   void AddPaintTiming(PerformancePaintTiming::PaintType,
                       base::TimeTicks start_time,
@@ -320,13 +328,13 @@ class CORE_EXPORT Performance : public EventTarget {
       ScriptState* script_state,
       const AtomicString& measure_name,
       const V8UnionPerformanceMeasureOptionsOrString* start_or_options,
-      std::optional<String> end_mark,
+      absl::optional<String> end_mark,
       ExceptionState& exception_state);
 
   PerformanceMeasure* MeasureWithDetail(ScriptState* script_state,
                                         const AtomicString& measure_name,
                                         const V8UnionDoubleOrString* start,
-                                        const std::optional<double>& duration,
+                                        const absl::optional<double>& duration,
                                         const V8UnionDoubleOrString* end,
                                         const ScriptValue& detail,
                                         ExceptionState& exception_state);
@@ -337,6 +345,8 @@ class CORE_EXPORT Performance : public EventTarget {
       PerformanceEntry::EntryType type,
       const AtomicString& maybe_name = g_null_atom,
       bool include_triggered_by_soft_navigation = false);
+
+  void MeasureMemoryExperimentTimerFired(TimerBase*);
 
   // Get performance entries of the current frame, with an optional name filter.
   PerformanceEntryVector GetEntriesForCurrentFrame(
@@ -354,8 +364,6 @@ class CORE_EXPORT Performance : public EventTarget {
       ScriptState* script_state,
       const AtomicString& maybe_type = g_null_atom,
       const AtomicString& maybe_name = g_null_atom);
-
-  void ProcessUserFeatureMark(const PerformanceMarkOptions* mark_options);
 
  protected:
   Performance(base::TimeTicks time_origin,

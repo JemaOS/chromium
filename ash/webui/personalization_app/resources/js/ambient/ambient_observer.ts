@@ -2,17 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {isNonEmptyArray} from 'chrome://resources/ash/common/sea_pen/sea_pen_utils.js';
 import {Url} from 'chrome://resources/mojo/url/mojom/url.mojom-webui.js';
 
-import {AmbientModeAlbum, AmbientObserverInterface, AmbientObserverReceiver, AmbientProviderInterface, AmbientTheme, AmbientUiVisibility, TemperatureUnit, TopicSource} from '../../personalization_app.mojom-webui.js';
+import {AmbientModeAlbum, AmbientObserverInterface, AmbientObserverReceiver, AmbientProviderInterface, AmbientUiVisibility, AnimationTheme, TemperatureUnit, TopicSource} from '../../personalization_app.mojom-webui.js';
 import {isAmbientModeAllowed, isPersonalizationJellyEnabled} from '../load_time_booleans.js';
 import {logGooglePhotosPreviewsLoadTime} from '../personalization_metrics_logger.js';
 import {Paths} from '../personalization_router_element.js';
 import {PersonalizationStore} from '../personalization_store.js';
-import {isRecentHighlightsAlbum} from '../utils.js';
+import {isNonEmptyArray, isRecentHighlightsAlbum} from '../utils.js';
 
-import {setAlbumsAction, setAmbientModeEnabledAction, setAmbientThemeAction, setAmbientUiVisibilityAction, setGeolocationPermissionEnabledAction, setPreviewsAction, setScreenSaverDurationAction, setTemperatureUnitAction, setTopicSourceAction} from './ambient_actions.js';
+import {setAlbumsAction, setAmbientModeEnabledAction, setAmbientUiVisibilityAction, setAnimationThemeAction, setPreviewsAction, setScreenSaverDurationAction, setTemperatureUnitAction, setTopicSourceAction} from './ambient_actions.js';
 import {getAmbientProvider} from './ambient_interface_provider.js';
 
 /** @fileoverview listens for updates on ambient mode changes. */
@@ -66,9 +65,9 @@ export class AmbientObserver implements AmbientObserverInterface {
     store.dispatch(setAmbientModeEnabledAction(ambientModeEnabled));
   }
 
-  onAmbientThemeChanged(ambientTheme: AmbientTheme): void {
+  onAnimationThemeChanged(animationTheme: AnimationTheme): void {
     const store = PersonalizationStore.getInstance();
-    store.dispatch(setAmbientThemeAction(ambientTheme));
+    store.dispatch(setAnimationThemeAction(animationTheme));
   }
 
   onScreenSaverDurationChanged(minutes: number): void {
@@ -137,10 +136,5 @@ export class AmbientObserver implements AmbientObserverInterface {
   onAmbientUiVisibilityChanged(ambientUiVisibility: AmbientUiVisibility) {
     const store = PersonalizationStore.getInstance();
     store.dispatch(setAmbientUiVisibilityAction(ambientUiVisibility));
-  }
-
-  onGeolocationPermissionForSystemServicesChanged(enabled: boolean): void {
-    const store = PersonalizationStore.getInstance();
-    store.dispatch(setGeolocationPermissionEnabledAction(enabled));
   }
 }

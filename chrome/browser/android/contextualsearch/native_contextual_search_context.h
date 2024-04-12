@@ -12,7 +12,7 @@
 // A ContextualSearchContext subclass that is modifiable via JNI. This is the
 // native implementation of the Java ContextualSearchContext; Instance lifetimes
 // are managed by the associated Java object.
-class NativeContextualSearchContext final : public ContextualSearchContext {
+class NativeContextualSearchContext : public ContextualSearchContext {
  public:
   NativeContextualSearchContext(JNIEnv* env, jobject obj);
 
@@ -20,10 +20,7 @@ class NativeContextualSearchContext final : public ContextualSearchContext {
   NativeContextualSearchContext& operator=(
       const NativeContextualSearchContext&) = delete;
 
-  ~NativeContextualSearchContext() override;
-
-  // ContextualSearchContext
-  base::WeakPtr<ContextualSearchContext> AsWeakPtr() override;
+  ~NativeContextualSearchContext();
 
   // Calls the destructor.  Should be called when this native object is no
   // longer needed.
@@ -77,8 +74,6 @@ class NativeContextualSearchContext final : public ContextualSearchContext {
  private:
   // The linked Java object.
   base::android::ScopedJavaGlobalRef<jobject> java_object_;
-
-  base::WeakPtrFactory<NativeContextualSearchContext> weak_ptr_factory_{this};
 };
 
 #endif  // CHROME_BROWSER_ANDROID_CONTEXTUALSEARCH_NATIVE_CONTEXTUAL_SEARCH_CONTEXT_H_

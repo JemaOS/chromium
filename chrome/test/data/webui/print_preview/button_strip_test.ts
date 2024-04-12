@@ -2,12 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {CrButtonElement, PrintPreviewButtonStripElement} from 'chrome://print/print_preview.js';
-import {Destination, DestinationOrigin, State} from 'chrome://print/print_preview.js';
+import {CrButtonElement, Destination, DestinationOrigin, PrintPreviewButtonStripElement, State} from 'chrome://print/print_preview.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
 
-suite('ButtonStripTest', function() {
+const button_strip_test = {
+  suiteName: 'ButtonStripTest',
+  TestNames: {
+    ButtonStripChangesForState: 'button strip changes for state',
+    ButtonOrder: 'button order',
+    ButtonStripFiresEvents: 'button strip fires events',
+  },
+};
+
+Object.assign(window, {button_strip_test: button_strip_test});
+
+suite(button_strip_test.suiteName, function() {
   let buttonStrip: PrintPreviewButtonStripElement;
 
   setup(function() {
@@ -20,16 +30,13 @@ suite('ButtonStripTest', function() {
     buttonStrip.state = State.READY;
     // No max sheets limit is specified.
     buttonStrip.maxSheets = 0;
-    // <if expr="is_chromeos">
-    buttonStrip.isPinValid = true;
-    // </if>
     document.body.appendChild(buttonStrip);
   });
 
   // Tests that the correct message is shown for non-READY states, and that
   // the print button is disabled appropriately.
   test(
-      'ButtonStripChangesForState', function() {
+      button_strip_test.TestNames.ButtonStripChangesForState, function() {
         const printButton =
             buttonStrip.shadowRoot!.querySelector<CrButtonElement>(
                 '.action-button')!;
@@ -50,7 +57,7 @@ suite('ButtonStripTest', function() {
 
   // Tests that the buttons are in the correct order for different platforms.
   // See https://crbug.com/880562.
-  test('ButtonOrder', function() {
+  test(button_strip_test.TestNames.ButtonOrder, function() {
     // Verify that there are only 2 buttons.
     assertEquals(
         2, buttonStrip.shadowRoot!.querySelectorAll('cr-button').length);
@@ -77,7 +84,7 @@ suite('ButtonStripTest', function() {
 
   // Tests that the button strip fires print-requested and cancel-requested
   // events.
-  test('ButtonStripFiresEvents', function() {
+  test(button_strip_test.TestNames.ButtonStripFiresEvents, function() {
     const printButton = buttonStrip.shadowRoot!.querySelector<HTMLElement>(
         'cr-button.action-button')!;
     const cancelButton = buttonStrip.shadowRoot!.querySelector<HTMLElement>(
@@ -92,16 +99,4 @@ suite('ButtonStripTest', function() {
       return whenCancelRequested;
     });
   });
-
-  // <if expr="is_chromeos">
-  // Tests having an invalid pin disable the print button
-  test('InvalidPinDisablesPrint', function() {
-    const printButton = buttonStrip.shadowRoot!.querySelector<CrButtonElement>(
-        '.action-button')!;
-    assertFalse(printButton.disabled);
-
-    buttonStrip.isPinValid = false;
-    assertTrue(printButton.disabled);
-  });
-  // </if>
 });

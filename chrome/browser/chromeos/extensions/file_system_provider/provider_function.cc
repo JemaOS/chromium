@@ -14,48 +14,48 @@ extensions::api::file_system_provider::ProviderError FileErrorToProviderError(
     base::File::Error error) {
   switch (error) {
     case base::File::FILE_OK:
-      return extensions::api::file_system_provider::ProviderError::kOk;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_OK;
     case base::File::FILE_ERROR_FAILED:
-      return extensions::api::file_system_provider::ProviderError::kFailed;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_FAILED;
     case base::File::FILE_ERROR_IN_USE:
-      return extensions::api::file_system_provider::ProviderError::kInUse;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_IN_USE;
     case base::File::FILE_ERROR_EXISTS:
-      return extensions::api::file_system_provider::ProviderError::kExists;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_EXISTS;
     case base::File::FILE_ERROR_NOT_FOUND:
-      return extensions::api::file_system_provider::ProviderError::kNotFound;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_NOT_FOUND;
     case base::File::FILE_ERROR_ACCESS_DENIED:
-      return extensions::api::file_system_provider::ProviderError::
-          kAccessDenied;
+      return extensions::api::file_system_provider::
+          PROVIDER_ERROR_ACCESS_DENIED;
     case base::File::FILE_ERROR_TOO_MANY_OPENED:
-      return extensions::api::file_system_provider::ProviderError::
-          kTooManyOpened;
+      return extensions::api::file_system_provider::
+          PROVIDER_ERROR_TOO_MANY_OPENED;
     case base::File::FILE_ERROR_NO_MEMORY:
-      return extensions::api::file_system_provider::ProviderError::kNoMemory;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_NO_MEMORY;
     case base::File::FILE_ERROR_NO_SPACE:
-      return extensions::api::file_system_provider::ProviderError::kNoSpace;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_NO_SPACE;
     case base::File::FILE_ERROR_NOT_A_DIRECTORY:
-      return extensions::api::file_system_provider::ProviderError::
-          kNotADirectory;
+      return extensions::api::file_system_provider::
+          PROVIDER_ERROR_NOT_A_DIRECTORY;
     case base::File::FILE_ERROR_INVALID_OPERATION:
-      return extensions::api::file_system_provider::ProviderError::
-          kInvalidOperation;
+      return extensions::api::file_system_provider::
+          PROVIDER_ERROR_INVALID_OPERATION;
     case base::File::FILE_ERROR_SECURITY:
-      return extensions::api::file_system_provider::ProviderError::kSecurity;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_SECURITY;
     case base::File::FILE_ERROR_ABORT:
-      return extensions::api::file_system_provider::ProviderError::kAbort;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_ABORT;
     case base::File::FILE_ERROR_NOT_A_FILE:
-      return extensions::api::file_system_provider::ProviderError::kNotAFile;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_NOT_A_FILE;
     case base::File::FILE_ERROR_NOT_EMPTY:
-      return extensions::api::file_system_provider::ProviderError::kNotEmpty;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_NOT_EMPTY;
     case base::File::FILE_ERROR_INVALID_URL:
-      return extensions::api::file_system_provider::ProviderError::kInvalidUrl;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_INVALID_URL;
     case base::File::FILE_ERROR_IO:
-      return extensions::api::file_system_provider::ProviderError::kIo;
+      return extensions::api::file_system_provider::PROVIDER_ERROR_IO;
     case base::File::FILE_ERROR_MAX:
       NOTREACHED();
   }
 
-  return extensions::api::file_system_provider::ProviderError::kFailed;
+  return extensions::api::file_system_provider::PROVIDER_ERROR_FAILED;
 }
 
 }  // namespace
@@ -65,41 +65,41 @@ namespace extensions {
 base::File::Error ProviderErrorToFileError(
     api::file_system_provider::ProviderError error) {
   switch (error) {
-    case api::file_system_provider::ProviderError::kOk:
+    case api::file_system_provider::PROVIDER_ERROR_OK:
       return base::File::FILE_OK;
-    case api::file_system_provider::ProviderError::kFailed:
+    case api::file_system_provider::PROVIDER_ERROR_FAILED:
       return base::File::FILE_ERROR_FAILED;
-    case api::file_system_provider::ProviderError::kInUse:
+    case api::file_system_provider::PROVIDER_ERROR_IN_USE:
       return base::File::FILE_ERROR_IN_USE;
-    case api::file_system_provider::ProviderError::kExists:
+    case api::file_system_provider::PROVIDER_ERROR_EXISTS:
       return base::File::FILE_ERROR_EXISTS;
-    case api::file_system_provider::ProviderError::kNotFound:
+    case api::file_system_provider::PROVIDER_ERROR_NOT_FOUND:
       return base::File::FILE_ERROR_NOT_FOUND;
-    case api::file_system_provider::ProviderError::kAccessDenied:
+    case api::file_system_provider::PROVIDER_ERROR_ACCESS_DENIED:
       return base::File::FILE_ERROR_ACCESS_DENIED;
-    case api::file_system_provider::ProviderError::kTooManyOpened:
+    case api::file_system_provider::PROVIDER_ERROR_TOO_MANY_OPENED:
       return base::File::FILE_ERROR_TOO_MANY_OPENED;
-    case api::file_system_provider::ProviderError::kNoMemory:
+    case api::file_system_provider::PROVIDER_ERROR_NO_MEMORY:
       return base::File::FILE_ERROR_NO_MEMORY;
-    case api::file_system_provider::ProviderError::kNoSpace:
+    case api::file_system_provider::PROVIDER_ERROR_NO_SPACE:
       return base::File::FILE_ERROR_NO_SPACE;
-    case api::file_system_provider::ProviderError::kNotADirectory:
+    case api::file_system_provider::PROVIDER_ERROR_NOT_A_DIRECTORY:
       return base::File::FILE_ERROR_NOT_A_DIRECTORY;
-    case api::file_system_provider::ProviderError::kInvalidOperation:
+    case api::file_system_provider::PROVIDER_ERROR_INVALID_OPERATION:
       return base::File::FILE_ERROR_INVALID_OPERATION;
-    case api::file_system_provider::ProviderError::kSecurity:
+    case api::file_system_provider::PROVIDER_ERROR_SECURITY:
       return base::File::FILE_ERROR_SECURITY;
-    case api::file_system_provider::ProviderError::kAbort:
+    case api::file_system_provider::PROVIDER_ERROR_ABORT:
       return base::File::FILE_ERROR_ABORT;
-    case api::file_system_provider::ProviderError::kNotAFile:
+    case api::file_system_provider::PROVIDER_ERROR_NOT_A_FILE:
       return base::File::FILE_ERROR_NOT_A_FILE;
-    case api::file_system_provider::ProviderError::kNotEmpty:
+    case api::file_system_provider::PROVIDER_ERROR_NOT_EMPTY:
       return base::File::FILE_ERROR_NOT_EMPTY;
-    case api::file_system_provider::ProviderError::kInvalidUrl:
+    case api::file_system_provider::PROVIDER_ERROR_INVALID_URL:
       return base::File::FILE_ERROR_INVALID_URL;
-    case api::file_system_provider::ProviderError::kIo:
+    case api::file_system_provider::PROVIDER_ERROR_IO:
       return base::File::FILE_ERROR_IO;
-    case api::file_system_provider::ProviderError::kNone:
+    case api::file_system_provider::PROVIDER_ERROR_NONE:
       NOTREACHED();
   }
 

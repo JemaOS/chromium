@@ -35,7 +35,6 @@
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/html/html_image_loader.h"
 #include "third_party/blink/renderer/core/html/lazy_load_image_observer.h"
-#include "third_party/blink/renderer/core/resize_observer/resize_observer.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_types.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_parameters.h"
@@ -47,6 +46,7 @@ namespace blink {
 class ExceptionState;
 class HTMLFormElement;
 class ImageCandidate;
+class LayoutSize;
 class ShadowRoot;
 
 class CORE_EXPORT HTMLImageElement final
@@ -66,6 +66,19 @@ class CORE_EXPORT HTMLImageElement final
                                                   unsigned width,
                                                   unsigned height);
 
+  // Returns dimension type of the attribute value or inline dimensions usable
+  // for LazyLoad, whether the dimension is absolute or not and if the absolute
+  // value is small enough to be skipped for lazyloading.
+  enum class LazyLoadDimensionType {
+    kNotAbsolute,
+    kAbsoluteNotSmall,
+    kAbsoluteSmall,
+  };
+  static LazyLoadDimensionType GetAttributeLazyLoadDimensionType(
+      const String& attribute_value);
+  static LazyLoadDimensionType GetInlineStyleDimensionsType(
+      const CSSPropertyValueSet* property_set);
+
   HTMLImageElement(Document&, const CreateElementFlags);
   explicit HTMLImageElement(Document&, bool created_by_parser = false);
   ~HTMLImageElement() override;
@@ -80,9 +93,6 @@ class CORE_EXPORT HTMLImageElement final
   unsigned LayoutBoxWidth() const;
   unsigned LayoutBoxHeight() const;
 
-  bool IsBeingRendered() const;
-  bool AllowAutoSizes() const;
-
   const String& currentSrc() const;
 
   bool IsServerMap() const;
@@ -92,16 +102,13 @@ class CORE_EXPORT HTMLImageElement final
   ImageResourceContent* CachedImage() const {
     return GetImageLoader().GetContent();
   }
-
   void LoadDeferredImageFromMicrotask() {
     GetImageLoader().LoadDeferredImage(/*force_blocking*/ false,
                                        /*update_from_microtask*/ true);
   }
-
   void LoadDeferredImageBlockingLoad() {
     GetImageLoader().LoadDeferredImage(/*force_blocking*/ true);
   }
-
   void SetImageForTest(ImageResourceContent* content) {
     GetImageLoader().SetImageForTest(content);
   }
@@ -118,11 +125,9 @@ class CORE_EXPORT HTMLImageElement final
   int x() const;
   int y() const;
 
-  ScriptPromiseTyped<IDLUndefined> decode(ScriptState*, ExceptionState&);
+  ScriptPromise decode(ScriptState*, ExceptionState&);
 
   bool complete() const;
-
-  void OnResize();
 
   bool HasPendingActivity() const final {
     return GetImageLoader().HasPendingActivity();
@@ -151,7 +156,7 @@ class CORE_EXPORT HTMLImageElement final
 
   void SetIsFallbackImage() { is_fallback_image_ = true; }
 
-  std::optional<float> GetResourceWidth() const;
+  absl::optional<float> GetResourceWidth() const;
   float SourceSize(Element&);
 
   void ForceReload() const;
@@ -184,12 +189,8 @@ class CORE_EXPORT HTMLImageElement final
   bool IsAdRelated() const override { return is_ad_related_; }
 
   // Keeps track whether this image is an LCP element.
-  // If the element is reused for loading another image, this flag might be
-  // retained so use with caution.
   void SetIsLCPElement() { is_lcp_element_ = true; }
   bool IsLCPElement() const { return is_lcp_element_; }
-  void SetPredictedLcpElement() { is_predicted_lcp_element_ = true; }
-  bool IsPredictedLcpElement() const { return is_predicted_lcp_element_; }
 
   bool IsChangedShortlyAfterMouseover() const {
     return is_changed_shortly_after_mouseover_;
@@ -202,17 +203,7 @@ class CORE_EXPORT HTMLImageElement final
   static bool SupportedImageType(const String& type,
                                  const HashSet<String>* disabled_image_types);
 
-  // True if the `loading` attribute is present and the value is lazy. Note that
-  // additional conditions can prevent lazy loading even when this is true, such
-  // as script being disabled (see: `LazyImageHelper::ShouldDeferImageLoad`).
-  bool HasLazyLoadingAttribute() const;
-
-  // True if the `sizes` attribute is present.
-  bool HasSizesAttribute() const;
-
-  // Returns script urls that were in execution while this element was being
-  // created, if LCPScriptObserver was active.
-  const HashSet<String>& creator_scripts() const { return creator_scripts_; }
+  bool is_lazy_loaded() const { return is_lazy_loaded_; }
 
  protected:
   // Controls how an image element appears in the layout. See:
@@ -247,7 +238,7 @@ class CORE_EXPORT HTMLImageElement final
       MutableCSSPropertyValueSet*) override;
   // For mapping attributes from the <source> element, if any.
   bool HasExtraStyleForPresentationAttribute() const override {
-    return source_ != nullptr;
+    return source_;
   }
   void CollectExtraStyleForPresentationAttribute(
       MutableCSSPropertyValueSet*) override;
@@ -260,6 +251,7 @@ class CORE_EXPORT HTMLImageElement final
 
   bool IsURLAttribute(const Attribute&) const override;
   bool HasLegalLinkAttribute(const QualifiedName&) const override;
+  const QualifiedName& SubResourceAttributeName() const override;
 
   bool draggable() const override;
 
@@ -274,7 +266,7 @@ class CORE_EXPORT HTMLImageElement final
   void ResetFormOwner();
   ImageCandidate FindBestFitImageFromPictureParent();
   void SetBestFitURLAndDPRFromImageCandidate(const ImageCandidate&);
-  PhysicalSize DensityCorrectedIntrinsicDimensions() const;
+  LayoutSize DensityCorrectedIntrinsicDimensions() const;
   HTMLImageLoader& GetImageLoader() const override { return *image_loader_; }
   void NotifyViewportChanged();
   void CreateMediaQueryListIfDoesNotExist();
@@ -300,17 +292,15 @@ class CORE_EXPORT HTMLImageElement final
   bool is_ad_related_ : 1;
   bool is_lcp_element_ : 1;
   bool is_changed_shortly_after_mouseover_ : 1;
-  bool is_auto_sized_ : 1;
-  bool is_predicted_lcp_element_ : 1;
-
-  HashSet<String> creator_scripts_;
+  bool has_sizes_attribute_in_img_or_sibling_ : 1;
+  bool is_lazy_loaded_ : 1;
 
   std::unique_ptr<LazyLoadImageObserver::VisibleLoadTimeMetrics>
       visible_load_time_metrics_;
 
   bool image_ad_use_counter_recorded_ = false;
 
-  // The last rectangle reported to the `PageTimingMetricsSender`.
+  // The last rectangle reported to the the `PageTimingMetricsSender`.
   // `last_reported_ad_rect_` is empty if there's no report before, or if the
   // last report was used to signal the removal of this element (i.e. both cases
   // will be handled the same way).

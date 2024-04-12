@@ -75,7 +75,7 @@ class MediaDialogViewWithRemotePlaybackTest : public ChromeViewsTestBase {
         &delegate_,
         content::MediaSession::GetRequestIdFromWebContents(web_contents())
             .ToString(),
-        "source_name", std::nullopt, controller_.CreateMediaControllerRemote(),
+        "source_name", absl::nullopt, controller_.CreateMediaControllerRemote(),
         std::move(session_info));
   }
 
@@ -138,7 +138,7 @@ class MediaDialogViewWithRemotePlaybackTest : public ChromeViewsTestBase {
   std::unique_ptr<content::WebContents> web_contents_;
   std::unique_ptr<MediaNotificationService> notification_service_;
   std::unique_ptr<views::Widget> anchor_widget_;
-  raw_ptr<MediaDialogView, DanglingUntriaged> view_ = nullptr;
+  raw_ptr<MediaDialogView> view_ = nullptr;
   media_session::test::TestMediaController controller_;
   testing::NiceMock<
       global_media_controls::test::MockMediaSessionNotificationItemDelegate>

@@ -24,8 +24,6 @@
 #include <string.h>
 
 #include <algorithm>
-#include <concepts>
-#include <functional>
 #include <initializer_list>
 #include <iterator>
 #include <type_traits>
@@ -35,7 +33,6 @@
 #include "base/compiler_specific.h"
 #include "base/dcheck_is_on.h"
 #include "base/numerics/safe_conversions.h"
-#include "base/ranges/algorithm.h"
 #include "base/template_util.h"
 #include "build/build_config.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/partition_allocator.h"
@@ -47,7 +44,6 @@
 #include "third_party/blink/renderer/platform/wtf/forward.h"  // For default Vector template parameters.
 #include "third_party/blink/renderer/platform/wtf/hash_table_deleted_value_type.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
-#include "third_party/blink/renderer/platform/wtf/type_traits.h"
 #include "third_party/blink/renderer/platform/wtf/vector_traits.h"
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 
@@ -170,16 +166,9 @@ struct VectorTypeOperations {
 
   static void Initialize(T* begin, T* end) {
     if constexpr (VectorTraits<T>::kCanInitializeWithMemset) {
-      size_t size =
-          reinterpret_cast<char*>(end) - reinterpret_cast<char*>(begin);
-      if constexpr (!Allocator::kIsGarbageCollected || !IsTraceable<T>::value) {
-        if (size != 0) {
-          // NOLINTNEXTLINE(bugprone-undefined-memory-manipulation)
-          memset(begin, 0, size);
-        }
-      } else {
-        AtomicMemzero(begin, size);
-      }
+      // NOLINTNEXTLINE(bugprone-undefined-memory-manipulation)
+      memset(begin, 0,
+             reinterpret_cast<char*>(end) - reinterpret_cast<char*>(begin));
     } else {
       for (T* cur = begin; cur != end; ++cur)
         ConstructTraits::Construct(cur);
@@ -205,7 +194,7 @@ struct VectorTypeOperations {
         }
       }
     } else if constexpr (Allocator::kIsGarbageCollected &&
-                         IsTraceable<T>::value) {
+                         IsTraceableInCollectionTrait<VectorTraits<T>>::value) {
       static_assert(VectorTraits<T>::kCanMoveWithMemcpy);
       AtomicWriteMemcpy(dst, src,
                         reinterpret_cast<const char*>(src_end) -
@@ -247,7 +236,7 @@ struct VectorTypeOperations {
         }
       }
     } else if constexpr (Allocator::kIsGarbageCollected &&
-                         IsTraceable<T>::value) {
+                         IsTraceableInCollectionTrait<VectorTraits<T>>::value) {
       static_assert(VectorTraits<T>::kCanMoveWithMemcpy);
       if (dst < src) {
         for (T *s = src, *d = dst; s < src_end; ++s, ++d)
@@ -277,7 +266,7 @@ struct VectorTypeOperations {
     if constexpr (!VectorTraits<T>::kCanMoveWithMemcpy) {
       std::swap_ranges(src, src_end, dst);
     } else if constexpr (Allocator::kIsGarbageCollected &&
-                         IsTraceable<T>::value) {
+                         IsTraceableInCollectionTrait<VectorTraits<T>>::value) {
       static_assert(VectorTraits<T>::kCanMoveWithMemcpy);
       constexpr size_t boundary = std::max(alignof(T), sizeof(size_t));
       alignas(boundary) char buf[sizeof(T)];
@@ -307,7 +296,7 @@ struct VectorTypeOperations {
     if constexpr (!VectorTraits<T>::kCanCopyWithMemcpy) {
       std::copy(src, src_end, dst);
     } else if constexpr (Allocator::kIsGarbageCollected &&
-                         IsTraceable<T>::value) {
+                         IsTraceableInCollectionTrait<VectorTraits<T>>::value) {
       static_assert(VectorTraits<T>::kCanCopyWithMemcpy);
       AtomicWriteMemcpy(dst, src,
                         reinterpret_cast<const char*>(src_end) -
@@ -318,36 +307,30 @@ struct VectorTypeOperations {
     } else {
       static_assert(VectorTraits<T>::kCanCopyWithMemcpy);
       // NOLINTNEXTLINE(bugprone-undefined-memory-manipulation)
-      if (src != src_end) {
-        memcpy(dst, src,
-               reinterpret_cast<const char*>(src_end) -
-                   reinterpret_cast<const char*>(src));
-      }
+      memcpy(dst, src,
+             reinterpret_cast<const char*>(src_end) -
+                 reinterpret_cast<const char*>(src));
     }
   }
 
-  template <typename U, typename Proj = std::identity>
+  template <typename U>
   static void UninitializedCopy(const U* src,
                                 const U* src_end,
                                 T* dst,
-                                VectorOperationOrigin origin,
-                                Proj proj = {}) {
-    if (!LIKELY(dst && src)) {
+                                VectorOperationOrigin origin) {
+    if (!LIKELY(dst && src))
       return;
-    }
-    if constexpr (std::is_same_v<T, U> && std::is_same_v<Proj, std::identity> &&
-                  VectorTraits<T>::kCanCopyWithMemcpy) {
+    if constexpr (std::is_same_v<T, U> && VectorTraits<T>::kCanCopyWithMemcpy) {
       Copy(src, src_end, dst, origin);
     } else if (origin == VectorOperationOrigin::kConstruction) {
       while (src != src_end) {
-        ConstructTraits::Construct(dst, std::invoke(proj, *src));
+        ConstructTraits::Construct(dst, *src);
         ++dst;
         ++src;
       }
     } else {
       while (src != src_end) {
-        ConstructTraits::ConstructAndNotifyElement(dst,
-                                                   std::invoke(proj, *src));
+        ConstructTraits::ConstructAndNotifyElement(dst, *src);
         ++dst;
         ++src;
       }
@@ -364,7 +347,7 @@ struct VectorTypeOperations {
       static_assert(sizeof(T) == sizeof(char), "size of type should be one");
       static_assert(!Allocator::kIsGarbageCollected,
                     "memset is unsupported for garbage-collected vectors.");
-      memset(dst, static_cast<unsigned char>(val), dst_end - dst);
+      memset(dst, val, dst_end - dst);
     } else if (origin == VectorOperationOrigin::kConstruction) {
       while (dst != dst_end) {
         ConstructTraits::Construct(dst, T(val));
@@ -507,7 +490,8 @@ class VectorBufferBase {
     // Tracing and finalization access all slots of a vector backing. In case
     // there's work to be done there unused slots should be cleared.
     return Allocator::kIsGarbageCollected &&
-           (IsTraceable<T>::value || VectorTraits<T>::kNeedsDestruction);
+           (IsTraceableInCollectionTrait<VectorTraits<T>>::value ||
+            VectorTraits<T>::kNeedsDestruction);
   }
 
   void AllocateBufferNoBarrier(wtf_size_t new_capacity) {
@@ -747,6 +731,9 @@ class VectorBuffer : protected VectorBufferBase<T, Allocator> {
                         OffsetRange other_hole,
                         VectorOperationOrigin this_origin) {
     using TypeOperations = VectorTypeOperations<T, Allocator>;
+
+    static_assert(VectorTraits<T>::kCanSwapUsingCopyOrMove,
+                  "Cannot swap using copy or move.");
 
     if (Buffer() != InlineBuffer() && other.Buffer() != other.InlineBuffer()) {
       Base::SwapBuffers(other, this_origin);
@@ -1081,20 +1068,6 @@ struct VectorNeedsDestructor<T, inlineCapacity, true> {
   static constexpr bool value = true;
 };
 
-namespace internal {
-
-template <typename Collection>
-concept VectorCanConstructFromCollection = requires(Collection c) {
-  // TODO(crbug.com/1502036): In theory we should be able to require that these
-  // conform to std::input_iterator, but HashTableConstIteratorAdapter actually
-  // doesn't.
-  c.begin();
-  c.end();
-  { c.size() } -> std::unsigned_integral;
-};
-
-}  // namespace internal
-
 template <typename T, wtf_size_t inlineCapacity, typename Allocator>
 class Vector
     : private VectorBuffer<T, INLINE_CAPACITY, Allocator>,
@@ -1103,9 +1076,6 @@ class Vector
           VectorNeedsDestructor<T,
                                 INLINE_CAPACITY,
                                 Allocator::kIsGarbageCollected>::value> {
-  // This condition is relied upon by TraceCollectionIfEnabled.
-  static_assert(!IsWeak<T>::value);
-
   USE_ALLOCATOR(Vector, Allocator);
   using Base = VectorBuffer<T, INLINE_CAPACITY, Allocator>;
   using TypeOperations = VectorTypeOperations<T, Allocator>;
@@ -1114,7 +1084,6 @@ class Vector
  public:
   using ValueType = T;
   using value_type = T;
-  using size_type = wtf_size_t;
   using reference = value_type&;
   using const_reference = const value_type&;
   using pointer = value_type*;
@@ -1124,8 +1093,6 @@ class Vector
   using const_iterator = const T*;
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-
-  static constexpr bool SupportsInlineCapacity() { return INLINE_CAPACITY > 0; }
 
   // Create an empty vector.
   inline Vector();
@@ -1151,28 +1118,24 @@ class Vector
   template <wtf_size_t otherCapacity>
   Vector& operator=(const Vector<T, otherCapacity, Allocator>&);
 
-  // Copying with projection.
-  template <
-      typename Proj,
-      typename = std::enable_if<std::is_invocable_v<Proj, const_reference>>>
-  Vector(const Vector&, Proj);
-  template <
-      typename U,
-      wtf_size_t otherCapacity,
-      typename Proj,
-      typename = std::enable_if<std::is_invocable_v<Proj, const_reference>>>
-  explicit Vector(const Vector<U, otherCapacity, Allocator>&, Proj);
-
   // Creates a vector with items copied from a collection. |Collection| must
   // have size(), begin() and end() methods.
-  template <typename Collection>
-    requires internal::VectorCanConstructFromCollection<Collection>
+  template <typename Collection,
+            // This prevents this constructor from being chosen for e.g.
+            // Vector(3).
+            typename = std::enable_if_t<std::disjunction_v<
+                std::is_same<value_type, typename Collection::value_type>,
+                std::is_constructible<value_type,
+                                      typename Collection::const_reference>>>>
   explicit Vector(const Collection& collection) : Vector() {
     assign(collection);
   }
   // Replaces the vector with items copied from a collection.
-  template <typename Collection>
-    requires internal::VectorCanConstructFromCollection<Collection>
+  template <typename Collection,
+            typename = std::enable_if_t<std::disjunction_v<
+                std::is_same<value_type, typename Collection::value_type>,
+                std::is_constructible<value_type,
+                                      typename Collection::const_reference>>>>
   void assign(const Collection&);
 
   // Moving.
@@ -1414,11 +1377,10 @@ class Vector
   //
   // The implementation of Fill uses std::fill which is not yet supported for
   // garbage collected vectors.
-  void Fill(const T&, wtf_size_t)
-    requires(!Allocator::kIsGarbageCollected);
-  void Fill(const T& val)
-    requires(!Allocator::kIsGarbageCollected)
-  {
+  template <typename A = Allocator>
+  std::enable_if_t<!A::kIsGarbageCollected> Fill(const T&, wtf_size_t);
+  template <typename A = Allocator>
+  std::enable_if_t<!A::kIsGarbageCollected> Fill(const T& val) {
     Fill(val, size());
   }
 
@@ -1456,8 +1418,8 @@ class Vector
     Base::Destruct();
   }
 
-  void Trace(auto visitor) const
-    requires Allocator::kIsGarbageCollected;
+  template <typename VisitorDispatcher, typename A = Allocator>
+  std::enable_if_t<A::kIsGarbageCollected> Trace(VisitorDispatcher) const;
 
   class GCForbiddenScope {
     STACK_ALLOCATED();
@@ -1486,7 +1448,7 @@ class Vector
   template <typename U>
   U* ExpandCapacity(wtf_size_t new_min_capacity, U*);
   template <typename U>
-  NOINLINE PRESERVE_MOST void AppendSlowCase(U&&);
+  void AppendSlowCase(U&&);
 
   bool HasInlineBuffer() const {
     return INLINE_CAPACITY && !this->HasOutOfLineBuffer();
@@ -1513,11 +1475,10 @@ class Vector
 // static
 template <typename T, wtf_size_t inlineCapacity, typename Allocator>
 constexpr void Vector<T, inlineCapacity, Allocator>::CheckTypeConstraints() {
-  static_assert(!IsStackAllocatedType<T>);
   static_assert(!std::is_polymorphic<T>::value ||
                     !VectorTraits<T>::kCanInitializeWithMemset,
                 "Cannot initialize with memset if there is a vtable.");
-  static_assert(Allocator::kIsGarbageCollected || !IsDisallowNew<T> ||
+  static_assert(Allocator::kIsGarbageCollected || !IsDisallowNew<T>::value ||
                     !IsTraceable<T>::value,
                 "Cannot put DISALLOW_NEW() objects that have trace methods "
                 "into an off-heap Vector.");
@@ -1572,23 +1533,10 @@ Vector<T, inlineCapacity, Allocator>::Vector(const Vector& other)
 }
 
 template <typename T, wtf_size_t inlineCapacity, typename Allocator>
-template <typename Proj, typename>
-Vector<T, inlineCapacity, Allocator>::Vector(const Vector& other, Proj proj)
-    : Base(other.capacity()) {
-  ANNOTATE_NEW_BUFFER(begin(), capacity(), other.size());
-  size_ = other.size();
-  TypeOperations::UninitializedCopy(other.begin(), other.end(), begin(),
-                                    VectorOperationOrigin::kConstruction,
-                                    std::move(proj));
-}
-
-template <typename T, wtf_size_t inlineCapacity, typename Allocator>
 template <wtf_size_t otherCapacity>
 Vector<T, inlineCapacity, Allocator>::Vector(
     const Vector<T, otherCapacity, Allocator>& other)
     : Base(other.capacity()) {
-  CheckTypeConstraints();
-
   ANNOTATE_NEW_BUFFER(begin(), capacity(), other.size());
   size_ = other.size();
   TypeOperations::UninitializedCopy(other.begin(), other.end(), begin(),
@@ -1596,24 +1544,8 @@ Vector<T, inlineCapacity, Allocator>::Vector(
 }
 
 template <typename T, wtf_size_t inlineCapacity, typename Allocator>
-template <typename U, wtf_size_t otherCapacity, typename Proj, typename>
-Vector<T, inlineCapacity, Allocator>::Vector(
-    const Vector<U, otherCapacity, Allocator>& other,
-    Proj proj)
-    : Base(other.capacity()) {
-  CheckTypeConstraints();
-
-  ANNOTATE_NEW_BUFFER(begin(), capacity(), other.size());
-  size_ = other.size();
-  TypeOperations::UninitializedCopy(other.begin(), other.end(), begin(),
-                                    VectorOperationOrigin::kConstruction,
-                                    std::move(proj));
-}
-
-template <typename T, wtf_size_t inlineCapacity, typename Allocator>
-Vector<T, inlineCapacity, Allocator>&
-Vector<T, inlineCapacity, Allocator>::operator=(
-    const Vector<T, inlineCapacity, Allocator>& other) {
+Vector<T, inlineCapacity, Allocator>& Vector<T, inlineCapacity, Allocator>::
+operator=(const Vector<T, inlineCapacity, Allocator>& other) {
   if (UNLIKELY(&other == this))
     return *this;
 
@@ -1671,8 +1603,7 @@ operator=(const Vector<T, otherCapacity, Allocator>& other) {
 }
 
 template <typename T, wtf_size_t inlineCapacity, typename Allocator>
-template <typename Collection>
-  requires internal::VectorCanConstructFromCollection<Collection>
+template <typename Collection, typename SFINAE>
 void Vector<T, inlineCapacity, Allocator>::assign(const Collection& other) {
   static_assert(
       !std::is_same_v<Vector<T, inlineCapacity, Allocator>, Collection>,
@@ -1684,7 +1615,10 @@ void Vector<T, inlineCapacity, Allocator>::assign(const Collection& other) {
     resize(base::checked_cast<wtf_size_t>(other.size()));
   }
 
-  base::ranges::copy(other, begin());
+  auto src = other.begin();
+  auto src_end = other.end();
+  for (wtf_size_t i = 0; src != src_end; ++src, ++i)
+    at(i) = *src;
 }
 
 template <typename T, wtf_size_t inlineCapacity, typename Allocator>
@@ -1714,8 +1648,6 @@ Vector<T, inlineCapacity, Allocator>::operator=(
 template <typename T, wtf_size_t inlineCapacity, typename Allocator>
 Vector<T, inlineCapacity, Allocator>::Vector(std::initializer_list<T> elements)
     : Base(base::checked_cast<wtf_size_t>(elements.size())) {
-  CheckTypeConstraints();
-
   ANNOTATE_NEW_BUFFER(begin(), capacity(), elements.size());
   size_ = static_cast<wtf_size_t>(elements.size());
   TypeOperations::UninitializedCopy(elements.begin(), elements.end(), begin(),
@@ -1779,10 +1711,9 @@ wtf_size_t Vector<T, inlineCapacity, Allocator>::ReverseFind(
 }
 
 template <typename T, wtf_size_t inlineCapacity, typename Allocator>
-void Vector<T, inlineCapacity, Allocator>::Fill(const T& val,
-                                                wtf_size_t new_size)
-  requires(!Allocator::kIsGarbageCollected)
-{
+template <typename A>
+std::enable_if_t<!A::kIsGarbageCollected>
+Vector<T, inlineCapacity, Allocator>::Fill(const T& val, wtf_size_t new_size) {
   if (size() > new_size) {
     Shrink(new_size);
   } else if (new_size > capacity()) {
@@ -2036,8 +1967,7 @@ void Vector<T, inlineCapacity, Allocator>::Append(const U* data,
 
 template <typename T, wtf_size_t inlineCapacity, typename Allocator>
 template <typename U>
-NOINLINE PRESERVE_MOST void
-Vector<T, inlineCapacity, Allocator>::AppendSlowCase(U&& val) {
+NOINLINE void Vector<T, inlineCapacity, Allocator>::AppendSlowCase(U&& val) {
   DCHECK_EQ(size(), capacity());
 
   typename std::remove_reference<U>::type* ptr = &val;
@@ -2284,9 +2214,9 @@ void DeferredTraceImpl(VisitorDispatcher visitor, const void* object) {
 
 // Only defined for HeapAllocator. Used when visiting vector object.
 template <typename T, wtf_size_t inlineCapacity, typename Allocator>
-void Vector<T, inlineCapacity, Allocator>::Trace(auto visitor) const
-  requires Allocator::kIsGarbageCollected
-{
+template <typename VisitorDispatcher, typename A>
+std::enable_if_t<A::kIsGarbageCollected>
+Vector<T, inlineCapacity, Allocator>::Trace(VisitorDispatcher visitor) const {
   static_assert(Allocator::kIsGarbageCollected,
                 "Garbage collector must be enabled.");
 
@@ -2311,7 +2241,7 @@ void Vector<T, inlineCapacity, Allocator>::Trace(auto visitor) const
     if (!VectorTraits<T>::kCanTraceConcurrently) {
       if (Allocator::DeferTraceToMutatorThreadIfConcurrent(
               visitor, buffer,
-              internal::DeferredTraceImpl<Allocator, decltype(visitor), T,
+              internal::DeferredTraceImpl<Allocator, VisitorDispatcher, T,
                                           inlineCapacity>,
               inlineCapacity * sizeof(T))) {
         return;
@@ -2390,7 +2320,7 @@ namespace base {
 #if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 7
 // Workaround for g++7 and earlier family.
 // Due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80654, without this
-// std::optional<WTF::Vector<T>> where T is non-copyable causes a compile
+// absl::optional<WTF::Vector<T>> where T is non-copyable causes a compile
 // error. As we know it is not trivially copy constructible, explicitly declare
 // so.
 //

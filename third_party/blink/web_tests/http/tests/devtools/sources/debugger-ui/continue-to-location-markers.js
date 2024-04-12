@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as Sources from 'devtools/panels/sources/sources.js';
-
 (async function() {
   TestRunner.addResult(`Tests that continue to location markers are computed correctly.\n`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.evaluateInPagePromise(`
         function foo1() {
@@ -97,11 +93,11 @@ import * as Sources from 'devtools/panels/sources/sources.js';
   function step1() {
     TestRunner
         .addSnifferPromise(
-            Sources.DebuggerPlugin.DebuggerPlugin.prototype,
+            Sources.DebuggerPlugin.prototype,
             '_continueToLocationRenderedForTest')
         .then(step2);
     TestRunner.addSniffer(
-        Sources.DebuggerPlugin.DebuggerPlugin.prototype, '_executionLineChanged', function() {
+        Sources.DebuggerPlugin.prototype, '_executionLineChanged', function() {
           SourcesTestRunner.showUISourceCodePromise(this._uiSourceCode)
               .then(() => {
                 this._showContinueToLocations();
@@ -111,7 +107,7 @@ import * as Sources from 'devtools/panels/sources/sources.js';
   }
 
   function step2() {
-    var currentFrame = Sources.SourcesPanel.SourcesPanel.instance().visibleView;
+    var currentFrame = UI.panels.sources.visibleView;
     var debuggerPlugin = SourcesTestRunner.debuggerPlugin(currentFrame);
     var decorations = debuggerPlugin._continueToLocationDecorations;
     var lines = [];

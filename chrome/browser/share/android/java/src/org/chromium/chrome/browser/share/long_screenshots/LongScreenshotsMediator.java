@@ -31,7 +31,6 @@ import org.chromium.chrome.browser.share.long_screenshots.bitmap_generation.Entr
 import org.chromium.chrome.browser.share.long_screenshots.bitmap_generation.LongScreenshotsEntry;
 import org.chromium.chrome.browser.share.long_screenshots.bitmap_generation.LongScreenshotsEntry.EntryStatus;
 import org.chromium.chrome.browser.share.screenshot.EditorScreenshotSource;
-import org.chromium.components.browser_ui.widget.ChromeDialog;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 import org.chromium.ui.widget.Toast;
@@ -40,11 +39,9 @@ import org.chromium.ui.widget.Toast;
  * LongScreenshotsMediator is responsible for retrieving the long screenshot Bitmaps and displaying
  * them in the area selection dialog.
  */
-public class LongScreenshotsMediator
-        implements LongScreenshotsEntry.EntryListener,
-                EditorScreenshotSource,
-                View.OnTouchListener,
-                DialogInterface.OnShowListener {
+public class LongScreenshotsMediator implements LongScreenshotsEntry.EntryListener,
+                                                EditorScreenshotSource, View.OnTouchListener,
+                                                DialogInterface.OnShowListener {
     private Dialog mDialog;
     private boolean mDone;
     private Runnable mDoneCallback;
@@ -93,83 +90,74 @@ public class LongScreenshotsMediator
     @VisibleForTesting
     void displayInitialScreenshot() {
         mDidScaleForTesting = false;
-        mEntryManager.addBitmapGeneratorObserver(
-                new EntryManager.BitmapGeneratorObserver() {
-                    @Override
-                    public void onStatusChange(int status) {
-                        if (status == EntryStatus.CAPTURE_IN_PROGRESS) return;
+        mEntryManager.addBitmapGeneratorObserver(new EntryManager.BitmapGeneratorObserver() {
+            @Override
+            public void onStatusChange(int status) {
+                if (status == EntryStatus.CAPTURE_IN_PROGRESS) return;
 
-                        if (status != EntryStatus.CAPTURE_COMPLETE) {
-                            mEntryManager.removeBitmapGeneratorObserver(this);
+                if (status != EntryStatus.CAPTURE_COMPLETE) {
+                    mEntryManager.removeBitmapGeneratorObserver(this);
+                }
+            }
+
+            @Override
+            public void onCompositorReady(Size size, Point offset) {
+                mEntryManager.removeBitmapGeneratorObserver(this);
+                LongScreenshotsEntry entry = mEntryManager.generateFullpageEntry();
+                entry.setListener(new LongScreenshotsEntry.EntryListener() {
+                    @Override
+                    public void onResult(@EntryStatus int status) {
+                        if (status == EntryStatus.BITMAP_GENERATED) {
+                            Bitmap entryBitmap = entry.getBitmap();
+                            long bitmapByteCount = entryBitmap.getAllocationByteCount();
+                            // Scale down the bitmap if passing it to ImageView.setImageBitmap()
+                            // would throw a too-large error due to OOM (out of memory).
+                            // TODO(http://crbug.com/1275758): We could include this logic inside
+                            // the generator and reuse mScaleFactor there.
+                            if (bitmapByteCount >= DOWNSCALE_AREA_THRESHOLD_BYTES) {
+                                double oversizeRatio =
+                                        (1.0 * bitmapByteCount / DOWNSCALE_AREA_THRESHOLD_BYTES);
+                                double scale = Math.sqrt(oversizeRatio);
+                                showAreaSelectionDialog(Bitmap.createScaledBitmap(entryBitmap,
+                                        (int) (Math.round(entryBitmap.getWidth() / scale)),
+                                        (int) (Math.round(entryBitmap.getHeight() / scale)), true));
+                                mDidScaleForTesting = true;
+                            } else {
+                                showAreaSelectionDialog(entryBitmap);
+                            }
+                            return;
                         }
-                    }
 
-                    @Override
-                    public void onCompositorReady(Size size, Point offset) {
-                        mEntryManager.removeBitmapGeneratorObserver(this);
-                        LongScreenshotsEntry entry = mEntryManager.generateFullpageEntry();
-                        entry.setListener((status) -> onEntry(entry, status));
+                        if (status == EntryStatus.BITMAP_GENERATION_IN_PROGRESS) {
+                            return;
+                        }
+
+                        Toast.makeText(mActivity, R.string.sharing_long_screenshot_unknown_error,
+                                     Toast.LENGTH_LONG)
+                                .show();
                     }
                 });
-    }
-
-    private void onEntry(LongScreenshotsEntry entry, @EntryStatus int status) {
-        if (status == EntryStatus.BITMAP_GENERATION_IN_PROGRESS) {
-            return;
-        }
-        if (status != EntryStatus.BITMAP_GENERATED) {
-            Toast.makeText(
-                            mActivity,
-                            R.string.sharing_long_screenshot_unknown_error,
-                            Toast.LENGTH_LONG)
-                    .show();
-            return;
-        }
-        Bitmap entryBitmap = entry.getBitmap();
-        long bitmapByteCount = entryBitmap.getAllocationByteCount();
-        // Scale down the bitmap if passing it to
-        // ImageView.setImageBitmap() would throw a too-large
-        // error due to OOM (out of memory).
-        // TODO(http://crbug.com/1275758): We could include this
-        // logic inside the generator and reuse mScaleFactor
-        // there.
-        if (bitmapByteCount >= DOWNSCALE_AREA_THRESHOLD_BYTES) {
-            double oversizeRatio = (1.0 * bitmapByteCount / DOWNSCALE_AREA_THRESHOLD_BYTES);
-            double scale = Math.sqrt(oversizeRatio);
-            showAreaSelectionDialog(
-                    Bitmap.createScaledBitmap(
-                            entryBitmap,
-                            (int) (Math.round(entryBitmap.getWidth() / scale)),
-                            (int) (Math.round(entryBitmap.getHeight() / scale)),
-                            true));
-            mDidScaleForTesting = true;
-        } else {
-            showAreaSelectionDialog(entryBitmap);
-        }
+            }
+        });
     }
 
     public void showAreaSelectionDialog(Bitmap bitmap) {
         mFullBitmap = bitmap;
-        mDialogView =
-                mActivity
-                        .getLayoutInflater()
-                        .inflate(R.layout.long_screenshots_area_selection_dialog, null);
-        mModel =
-                LongScreenshotsAreaSelectionDialogProperties.defaultModelBuilder()
-                        .with(DONE_BUTTON_CALLBACK, this::areaSelectionDone)
-                        .with(CLOSE_BUTTON_CALLBACK, this::areaSelectionClose)
-                        .with(DOWN_BUTTON_CALLBACK, this::areaSelectionDown)
-                        .with(UP_BUTTON_CALLBACK, this::areaSelectionUp)
-                        .build();
+        mDialogView = mActivity.getLayoutInflater().inflate(
+                R.layout.long_screenshots_area_selection_dialog, null);
+        mModel = LongScreenshotsAreaSelectionDialogProperties.defaultModelBuilder()
+                         .with(DONE_BUTTON_CALLBACK, this::areaSelectionDone)
+                         .with(CLOSE_BUTTON_CALLBACK, this::areaSelectionClose)
+                         .with(DOWN_BUTTON_CALLBACK, this::areaSelectionDown)
+                         .with(UP_BUTTON_CALLBACK, this::areaSelectionUp)
+                         .build();
 
         PropertyModelChangeProcessor.create(
                 mModel, mDialogView, LongScreenshotsAreaSelectionDialogViewBinder::bind);
 
-        mDialog = new ChromeDialog(mActivity, R.style.ThemeOverlay_BrowserUI_Fullscreen);
-        mDialog.addContentView(
-                mDialogView,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
+        mDialog = new Dialog(mActivity, R.style.ThemeOverlay_BrowserUI_Fullscreen);
+        mDialog.addContentView(mDialogView,
+                new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.MATCH_PARENT));
 
         mScrollView = mDialogView.findViewById(R.id.long_screenshot_scroll_view);
@@ -251,12 +239,10 @@ public class LongScreenshotsMediator
         // Message if we reached the extent of allowable capture.
         int minimumMaskHeight = dpToPx(MINIMUM_MASK_HEIGHT_DP);
         if (oldHeight <= minimumMaskHeight) {
-            Toast.makeText(
-                            mActivity,
-                            (isTop
-                                    ? R.string.sharing_long_screenshot_reached_top
-                                    : R.string.sharing_long_screenshot_reached_bottom),
-                            Toast.LENGTH_LONG)
+            Toast.makeText(mActivity,
+                         (isTop ? R.string.sharing_long_screenshot_reached_top
+                                : R.string.sharing_long_screenshot_reached_bottom),
+                         Toast.LENGTH_LONG)
                     .show();
             return;
         }
@@ -281,6 +267,7 @@ public class LongScreenshotsMediator
         return mDialog;
     }
 
+    @VisibleForTesting
     boolean getDidScaleForTesting() {
         return mDidScaleForTesting;
     }

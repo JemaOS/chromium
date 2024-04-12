@@ -5,9 +5,8 @@
 #ifndef ASH_APP_LIST_VIEWS_APP_LIST_VIEW_UTIL_H_
 #define ASH_APP_LIST_VIEWS_APP_LIST_VIEW_UTIL_H_
 
-#include <optional>
-
 #include "base/functional/callback_forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/animation/tween.h"
 
 namespace base {
@@ -40,7 +39,7 @@ void StartSlideInAnimation(views::View* view,
 void SlideViewIntoPositionWithSequenceBlock(
     views::View* view,
     int vertical_offset,
-    const std::optional<base::TimeDelta>& time_delta,
+    const absl::optional<base::TimeDelta>& time_delta,
     gfx::Tween::Type tween_type,
     views::AnimationSequenceBlock* sequence_block);
 

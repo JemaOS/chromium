@@ -17,7 +17,7 @@
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/test_browser_window.h"
 
-using BrowserListTest = BrowserWithTestWindowTest;
+typedef BrowserWithTestWindowTest BrowserListTest;
 
 namespace {
 
@@ -118,10 +118,6 @@ TEST_F(BrowserListTest, TabContentsIteratorVerifyBrowser) {
 
   // Close some tabs.
   browser2->tab_strip_model()->CloseAllTabs();
-  // This is normally invoked when the tab strip is empty (specifically from
-  // BrowserView::OnWindowCloseRequested).
-  browser2->OnWindowClosing();
-  EXPECT_TRUE(browser2->is_delete_scheduled());
   browser3->tab_strip_model()->CloseWebContentsAt(1, TabCloseTypes::CLOSE_NONE);
 
   count = 0;
@@ -133,21 +129,22 @@ TEST_F(BrowserListTest, TabContentsIteratorVerifyBrowser) {
       ADD_FAILURE();
   }
 
-  // Add one tab back to browser.
+  // Now make it one tab per browser.
   chrome::NewTab(browser());
+  chrome::NewTab(browser2.get());
 
   count = 0;
   for (auto iterator = all_tabs.begin(), end = all_tabs.end(); iterator != end;
        ++iterator, ++count) {
-    if (count == 0) {
+    if (count == 0)
       EXPECT_EQ(browser(), iterator.browser());
-    } else if (count == 1) {
+    else if (count == 1)
+      EXPECT_EQ(browser2.get(), iterator.browser());
+    else if (count == 2)
       EXPECT_EQ(browser3.get(), iterator.browser());
-    } else {
+    else
       ADD_FAILURE();
-    }
   }
-  EXPECT_EQ(2u, count);
 
   // Close all remaining tabs to keep all the destructors happy.
   browser2->tab_strip_model()->CloseAllTabs();

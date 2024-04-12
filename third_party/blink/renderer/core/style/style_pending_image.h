@@ -28,7 +28,6 @@
 
 #include "base/memory/values_equivalent.h"
 #include "base/notreached.h"
-#include "third_party/blink/renderer/core/css/css_value.h"
 #include "third_party/blink/renderer/core/style/style_image.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -37,6 +36,7 @@
 
 namespace blink {
 
+class CSSValue;
 class ImageResourceObserver;
 
 // StylePendingImage is a placeholder StyleImage that is entered into the
@@ -53,18 +53,12 @@ class CORE_EXPORT StylePendingImage final : public StyleImage {
 
   WrappedImagePtr Data() const override { return value_.Get(); }
 
-  CSSValue* CssValue() const override { return value_.Get(); }
+  CSSValue* CssValue() const override { return value_; }
 
   CSSValue* ComputedCSSValue(const ComputedStyle& style,
-                             bool allow_visited_style,
-                             CSSValuePhase value_phase) const override;
+                             bool allow_visited_style) const override;
 
   bool IsAccessAllowed(String&) const override { return true; }
-  IntrinsicSizingInfo GetNaturalSizingInfo(
-      float multiplier,
-      RespectImageOrientationEnum) const override {
-    return IntrinsicSizingInfo();
-  }
   gfx::SizeF ImageSize(float,
                        const gfx::SizeF&,
                        RespectImageOrientationEnum) const override {
@@ -103,11 +97,12 @@ struct DowncastTraits<StylePendingImage> {
 };
 
 inline bool StylePendingImage::IsEqual(const StyleImage& other) const {
-  // Ignore pending status when comparing; as long as the values are
-  // the same, the images should be considered equal, too.
-  return base::ValuesEquivalent(value_.Get(), other.CssValue());
+  if (!other.IsPendingImage()) {
+    return false;
+  }
+  const auto& other_pending = To<StylePendingImage>(other);
+  return base::ValuesEquivalent(value_, other_pending.value_);
 }
 
 }  // namespace blink
-
 #endif  // THIRD_PARTY_BLINK_RENDERER_CORE_STYLE_STYLE_PENDING_IMAGE_H_

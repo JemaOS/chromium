@@ -19,7 +19,6 @@
 #include "third_party/blink/renderer/platform/bindings/exception_code.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
@@ -39,7 +38,6 @@ CreateDataPipe(int32_t capacity = 1) {
 }  // namespace
 
 TEST(TCPSocketTest, CloseBeforeInit) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   auto* script_state = scope.GetScriptState();
@@ -54,7 +52,6 @@ TEST(TCPSocketTest, CloseBeforeInit) {
 }
 
 TEST(TCPSocketTest, CloseAfterInitWithResultOK) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   auto* script_state = scope.GetScriptState();
@@ -87,7 +84,6 @@ TEST(TCPSocketTest, CloseAfterInitWithResultOK) {
 }
 
 TEST(TCPSocketTest, OnSocketObserverConnectionError) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   auto* script_state = scope.GetScriptState();
@@ -131,7 +127,6 @@ class TCPSocketCloseTest
 TEST_P(TCPSocketCloseTest, OnErrorOrClose) {
   auto [read_error, write_error] = GetParam();
 
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   auto* script_state = scope.GetScriptState();

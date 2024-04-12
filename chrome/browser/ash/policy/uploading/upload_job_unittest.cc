@@ -179,8 +179,7 @@ class FakeOAuth2AccessTokenManagerDelegate
   std::unique_ptr<OAuth2AccessTokenFetcher> CreateAccessTokenFetcher(
       const CoreAccountId& account_id,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      OAuth2AccessTokenConsumer* consumer,
-      const std::string& token_binding_challenge) override {
+      OAuth2AccessTokenConsumer* consumer) override {
     EXPECT_EQ(CoreAccountId::FromRobotEmail(kRobotAccountId), account_id);
     return GaiaAccessTokenFetcher::
         CreateExchangeRefreshTokenForAccessTokenInstance(

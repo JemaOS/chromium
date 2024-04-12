@@ -6,7 +6,8 @@
 
 #include "base/logging.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 SmbMountResult TranslateErrorToMountResult(smbprovider::ErrorType error) {
   switch (error) {
@@ -53,4 +54,5 @@ SmbMountResult TranslateErrorToMountResult(smbprovider::ErrorType error) {
   }
 }
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

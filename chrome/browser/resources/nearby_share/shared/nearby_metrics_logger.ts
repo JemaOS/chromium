@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assertNotReached} from 'chrome://resources/js/assert.js';
+import {assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {Visibility} from 'chrome://resources/mojo/chromeos/ash/services/nearby/public/mojom/nearby_share_settings.mojom-webui.js';
 
 /**
@@ -27,7 +27,7 @@ export enum NearbyShareOnboardingFinalState {
  * These values are persisted to logs. Entries should not be renumbered and
  * numeric values should never be reused.
  */
-export enum NearbyShareOnboardingEntryPoint {
+enum NearbyShareOnboardingEntryPoint {
   SETTINGS = 0,
   TRAY = 1,
   SHARE_SHEET = 2,
@@ -53,7 +53,6 @@ enum NearbyShareOnboardingFlowEvent {
   HIDDEN_SELECTED_AND_CONFIRMED = 1414,
   MANAGE_CONTACTS_SELECTED = 1415,
   CANCEL_SELECTED_ON_VISIBILITY_PAGE = 1416,
-  YOUR_DEVICES_SELECTED_AND_CONFIRMED = 1417,
 }
 
 const NearbyShareOnboardingResultHistogramName =
@@ -64,8 +63,6 @@ const NearbyShareOnboardingDurationHistogramName =
     'Nearby.Share.Onboarding.Duration';
 const NearbyShareOnboardingFlowEventHistogramName =
     'Nearby.Share.Onboarding.FlowEvent';
-const NearbyShareOnboardingEntryPointResultPrefix = 'Nearby.Share.Onboarding.';
-const NearbyShareOnboardingEntryPointResultSuffix = '.Result';
 
 /**
  * Tracks time that onboarding is started. Gets set to null after onboarding is
@@ -74,42 +71,12 @@ const NearbyShareOnboardingEntryPointResultSuffix = '.Result';
 let onboardingInitiatedTimestamp: number|null;
 
 /**
- * Determines which histogram to log to based on entry point.
+ * Records the onboarding flow entrypoint and stores the time at which
+ * onboarding was initiated. The url param is used to infer the entrypoint.
  */
-function processOnboardingEntryPointResultMetrics(
-    nearbyShareOnboardingEntryPoint: NearbyShareOnboardingEntryPoint,
-    nearbyShareOnboardingFinalState: NearbyShareOnboardingFinalState): void {
-  let entryPointString;
-  switch (nearbyShareOnboardingEntryPoint) {
-    case NearbyShareOnboardingEntryPoint.SETTINGS:
-      entryPointString = 'Settings';
-      break;
-    case NearbyShareOnboardingEntryPoint.TRAY:
-      entryPointString = 'Tray';
-      break;
-    case NearbyShareOnboardingEntryPoint.SHARE_SHEET:
-      entryPointString = 'ShareSheet';
-      break;
-    case NearbyShareOnboardingEntryPoint
-        .NEARBY_DEVICE_TRYING_TO_SHARE_NOTIFICATION:
-      entryPointString = 'NearbyDeviceTryingToShareNotification';
-      break;
-    default:
-      assertNotReached('Invalid nearbyShareOnboardingEntryPoint');
-  }
-
-  chrome.send('metricsHandler:recordInHistogram', [
-    NearbyShareOnboardingEntryPointResultPrefix + entryPointString +
-        NearbyShareOnboardingEntryPointResultSuffix,
-    nearbyShareOnboardingFinalState,
-    NearbyShareOnboardingFinalState.MAX,
-  ]);
-}
-
-export function getOnboardingEntryPoint(url: URL):
-    NearbyShareOnboardingEntryPoint {
-  let nearbyShareOnboardingEntryPoint: NearbyShareOnboardingEntryPoint =
-      NearbyShareOnboardingEntryPoint.MAX;
+export function processOnboardingInitiatedMetrics(url: URL): void {
+  let nearbyShareOnboardingEntryPoint: NearbyShareOnboardingEntryPoint|null =
+      null;
 
   if (url.hostname === 'nearby') {
     nearbyShareOnboardingEntryPoint =
@@ -123,15 +90,6 @@ export function getOnboardingEntryPoint(url: URL):
     assertNotReached('Invalid nearbyShareOnboardingEntryPoint');
   }
 
-  return nearbyShareOnboardingEntryPoint;
-}
-
-/**
- * Records the onboarding flow entrypoint and stores the time at which
- * onboarding was initiated. The url param is used to infer the entrypoint.
- */
-export function processOnboardingInitiatedMetrics(
-    nearbyShareOnboardingEntryPoint: NearbyShareOnboardingEntryPoint): void {
   chrome.send('metricsHandler:recordInHistogram', [
     NearbyShareOnboardingEntryPointHistogramName,
     nearbyShareOnboardingEntryPoint,
@@ -146,8 +104,22 @@ export function processOnboardingInitiatedMetrics(
  * one-page onboarding was initiated. The url param is used to infer the
  * entrypoint.
  */
-export function processOnePageOnboardingInitiatedMetrics(
-    nearbyShareOnboardingEntryPoint: NearbyShareOnboardingEntryPoint): void {
+export function processOnePageOnboardingInitiatedMetrics(url: URL): void {
+  let nearbyShareOnboardingEntryPoint: NearbyShareOnboardingEntryPoint|null =
+      null;
+
+  if (url.hostname === 'nearby') {
+    nearbyShareOnboardingEntryPoint =
+        NearbyShareOnboardingEntryPoint.SHARE_SHEET;
+  } else if (url.hostname === 'os-settings') {
+    const urlParams = new URLSearchParams(url.search);
+
+    nearbyShareOnboardingEntryPoint =
+        getOnboardingEntrypointFromQueryParam(urlParams.get('entrypoint'));
+  } else {
+    assertNotReached('Invalid nearbyShareOnboardingEntryPoint');
+  }
+
   chrome.send('metricsHandler:recordInHistogram', [
     NearbyShareOnboardingEntryPointHistogramName,
     nearbyShareOnboardingEntryPoint,
@@ -181,7 +153,6 @@ function getOnboardingEntrypointFromQueryParam(queryParam: string|null):
  * step the cancellation occurred.
  */
 export function processOnboardingCancelledMetrics(
-    nearbyShareOnboardingEntryPointState: NearbyShareOnboardingEntryPoint,
     nearbyShareOnboardingFinalState: NearbyShareOnboardingFinalState): void {
   if (!onboardingInitiatedTimestamp) {
     return;
@@ -191,9 +162,6 @@ export function processOnboardingCancelledMetrics(
     nearbyShareOnboardingFinalState,
     NearbyShareOnboardingFinalState.MAX,
   ]);
-
-  processOnboardingEntryPointResultMetrics(
-      nearbyShareOnboardingEntryPointState, nearbyShareOnboardingFinalState);
   onboardingInitiatedTimestamp = null;
 }
 
@@ -202,7 +170,6 @@ export function processOnboardingCancelledMetrics(
  * during which step the cancellation occurred.
  */
 export function processOnePageOnboardingCancelledMetrics(
-    nearbyShareOnboardingEntryPointState: NearbyShareOnboardingEntryPoint,
     nearbyShareOnboardingFinalState: NearbyShareOnboardingFinalState): void {
   if (!onboardingInitiatedTimestamp) {
     return;
@@ -217,9 +184,6 @@ export function processOnePageOnboardingCancelledMetrics(
     NearbyShareOnboardingFlowEventHistogramName,
     getOnboardingCancelledFlowEvent(nearbyShareOnboardingFinalState),
   ]);
-
-  processOnboardingEntryPointResultMetrics(
-      nearbyShareOnboardingEntryPointState, nearbyShareOnboardingFinalState);
   onboardingInitiatedTimestamp = null;
 }
 
@@ -240,9 +204,7 @@ function getOnboardingCancelledFlowEvent(
  * Records a metric for successful onboarding flow completion and the time it
  * took to complete.
  */
-export function processOnboardingCompleteMetrics(
-    nearbyShareOnboardingEntryPointState: NearbyShareOnboardingEntryPoint):
-    void {
+export function processOnboardingCompleteMetrics(): void {
   if (!onboardingInitiatedTimestamp) {
     return;
   }
@@ -257,9 +219,6 @@ export function processOnboardingCompleteMetrics(
     window.performance.now() - onboardingInitiatedTimestamp,
   ]);
 
-  processOnboardingEntryPointResultMetrics(
-      nearbyShareOnboardingEntryPointState,
-      NearbyShareOnboardingFinalState.COMPLETE);
   onboardingInitiatedTimestamp = null;
 }
 
@@ -268,7 +227,6 @@ export function processOnboardingCompleteMetrics(
  * time it took to complete.
  */
 export function processOnePageOnboardingCompleteMetrics(
-    nearbyShareOnboardingEntryPointState: NearbyShareOnboardingEntryPoint,
     nearbyShareOnboardingFinalState: NearbyShareOnboardingFinalState,
     visibility: Visibility|null): void {
   if (!onboardingInitiatedTimestamp) {
@@ -291,9 +249,6 @@ export function processOnePageOnboardingCompleteMetrics(
     window.performance.now() - onboardingInitiatedTimestamp,
   ]);
 
-  processOnboardingEntryPointResultMetrics(
-      nearbyShareOnboardingEntryPointState,
-      NearbyShareOnboardingFinalState.COMPLETE);
   onboardingInitiatedTimestamp = null;
 }
 
@@ -326,8 +281,6 @@ function getOnboardingCompleteFlowEventOnVisibilityPage(
     case Visibility.kSelectedContacts:
       return NearbyShareOnboardingFlowEvent
           .SOME_CONTACTS_SELECTED_AND_CONFIRMED;
-    case Visibility.kYourDevices:
-      return NearbyShareOnboardingFlowEvent.YOUR_DEVICES_SELECTED_AND_CONFIRMED;
     case Visibility.kNoOne:
       return NearbyShareOnboardingFlowEvent.HIDDEN_SELECTED_AND_CONFIRMED;
     default:

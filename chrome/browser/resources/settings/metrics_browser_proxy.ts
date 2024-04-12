@@ -37,28 +37,8 @@ export enum PrivacyElementInteractions {
   THIRD_PARTY_COOKIES_ALLOW = 20,
   THIRD_PARTY_COOKIES_BLOCK_IN_INCOGNITO = 21,
   THIRD_PARTY_COOKIES_BLOCK = 22,
-  BLOCK_ALL_THIRD_PARTY_COOKIES = 23,
-  IP_PROTECTION = 24,
   // Max value should be updated whenever new entries are added.
-  MAX_VALUE = 25,
-}
-
-/**
- * Contains all Safety Hub card states.
- *
- * These values are persisted to logs. Entries should not be renumbered and
- * numeric values should never be reused.
- *
- * Must be kept in sync with SafetyHubCardState in
- * histograms/enums.xml and CardState in safety_hub/safety_hub_browser_proxy.ts.
- */
-export enum SafetyHubCardState {
-  WARNING = 0,
-  WEAK = 1,
-  INFO = 2,
-  SAFE = 3,
-  // Max value should be updated whenever new entries are added.
-  MAX_VALUE = 4,
+  MAX_VALUE = 23,
 }
 
 /**
@@ -110,10 +90,8 @@ export enum SafetyCheckNotificationsModuleInteractions {
   UNDO_IGNORE = 6,
   UNDO_RESET = 7,
   OPEN_REVIEW_UI = 8,
-  UNDO_BLOCK_ALL = 9,
-  GO_TO_SETTINGS = 10,
   // Max value should be updated whenever new entries are added.
-  MAX_VALUE = 11,
+  MAX_VALUE = 9,
 }
 
 /**
@@ -123,7 +101,7 @@ export enum SafetyCheckNotificationsModuleInteractions {
  * numeric values should never be reused.
  *
  * Must be kept in sync with the
- * SafetyCheckUnusedSitePermissionsModuleInteractions enum in
+ * SafetyChecUnusedSitePermissionsModuleInteractions enum in
  * histograms/enums.xml
  */
 export enum SafetyCheckUnusedSitePermissionsModuleInteractions {
@@ -133,46 +111,6 @@ export enum SafetyCheckUnusedSitePermissionsModuleInteractions {
   UNDO_ALLOW_AGAIN = 3,
   UNDO_ACKNOWLEDGE_ALL = 4,
   MINIMIZE = 5,
-  GO_TO_SETTINGS = 6,
-  // Max value should be updated whenever new entries are added.
-  MAX_VALUE = 7,
-}
-
-/**
- * Contains all entry points for Safety Hub page.
- *
- * These values are persisted to logs. Entries should not be renumbered and
- * numeric values should never be reused.
- *
- * Must be kept in sync with the SafetyHubEntryPoint enum in
- * histograms/enums.xml and safety_hub/safety_hub_constants.h.
- */
-export enum SafetyHubEntryPoint {
-  PRIVACY_SAFE = 0,
-  PRIVACY_WARNING = 1,
-  SITE_SETTINGS = 2,
-  THREE_DOT_MENU = 3,
-  NOTIFICATIONS = 4,
-  // Max value should be updated whenever new entries are added.
-  MAX_VALUE = 5,
-}
-
-/**
- * Contains all Safety Hub modules.
- *
- * These values are persisted to logs. Entries should not be renumbered and
- * numeric values should never be reused.
- *
- * Must be kept in sync with the SafetyHubModuleType enum in
- * histograms/enums.xml and safety_hub/safety_hub_constants.h.
- */
-export enum SafetyHubModuleType {
-  PERMISSIONS = 0,
-  NOTIFICATIONS = 1,
-  SAFE_BROWSING = 2,
-  EXTENSIONS = 3,
-  PASSWORDS = 4,
-  VERSION = 5,
   // Max value should be updated whenever new entries are added.
   MAX_VALUE = 6,
 }
@@ -218,9 +156,8 @@ export enum PrivacyGuideInteractions {
   PROMO_ENTRY = 7,
   SWAA_COMPLETION_LINK = 8,
   PRIVACY_SANDBOX_COMPLETION_LINK = 9,
-  SEARCH_SUGGESTIONS_NEXT_BUTTON = 10,
   // Max value should be updated whenever new entries are added.
-  MAX_VALUE = 11,
+  MAX_VALUE = 10,
 }
 
 /**
@@ -252,12 +189,8 @@ export enum PrivacyGuideSettingsStates {
   SAFE_BROWSING_ENHANCED_TO_STANDARD = 13,
   SAFE_BROWSING_STANDARD_TO_ENHANCED = 14,
   SAFE_BROWSING_STANDARD_TO_STANDARD = 15,
-  SEARCH_SUGGESTIONS_ON_TO_ON = 16,
-  SEARCH_SUGGESTIONS_ON_TO_OFF = 17,
-  SEARCH_SUGGESTIONS_OFF_TO_ON = 18,
-  SEARCH_SUGGESTIONS_OFF_TO_OFF = 19,
   // Max value should be updated whenever new entries are added.
-  MAX_VALUE = 20,
+  MAX_VALUE = 16,
 }
 
 /**
@@ -268,7 +201,7 @@ export enum PrivacyGuideSettingsStates {
  * numeric values should never be reused.
  *
  * Must be kept in sync with SettingsPrivacyGuideStepsEligibleAndReached in
- * enums.xml and PrivacyGuideStepsEligibleAndReached in
+ * emus.xml and PrivacyGuideStepsEligibleAndReached in
  * privacy_guide/privacy_guide.h.
  */
 export enum PrivacyGuideStepsEligibleAndReached {
@@ -282,51 +215,8 @@ export enum PrivacyGuideStepsEligibleAndReached {
   COOKIES_REACHED = 7,
   COMPLETION_ELIGIBLE = 8,
   COMPLETION_REACHED = 9,
-  SEARCH_SUGGESTIONS_ELIGIBLE = 10,
-  SEARCH_SUGGESTIONS_REACHED = 11,
   // Leave this at the end.
-  COUNT = 12,
-}
-
-/**
- * Contains the possible delete browsing data action types.
- * This should be kept in sync with the `DeleteBrowsingDataAction` enum in
- * components/browsing_data/core/browsing_data_utils.h
- */
-export enum DeleteBrowsingDataAction {
-  CLEAR_BROWSING_DATA_DIALOG = 0,
-  CLEAR_BROWSING_DATA_ON_EXIT = 1,
-  INCOGNITO_CLOSE_TABS = 2,
-  COOKIES_IN_USE_DIALOG = 3,
-  SITES_SETTINGS_PAGE = 4,
-  HISTORY_PAGE_ENTRIES = 5,
-  QUICK_DELETE = 6,
-  PAGE_INFO_RESET_PERMISSIONS = 7,
-  MAX_VALUE = 8,
-}
-
-/**
- * This enum contains the different surfaces of Safety Hub that users can
- * interact with, or on which they can observe a Safety Hub feature.
- *
- * Must be kept in sync with the `safety_hub::SafetyHubSurfaces` enum in
- * chrome/browser/ui/safety_hub/safety_hub_constants.h and `SafetyHubSurfaces`
- * in enums.xml
- */
-export enum SafetyHubSurfaces {
-  THREE_DOT_MENU = 0,
-  SAFETY_HUB_PAGE = 1,
-  MAX_VALUE = 2,
-}
-
-/**
- * This enum contains the possible user actions for the bulk CVC deletion
- * operation on the payments settings page.
- */
-export enum CvcDeletionUserAction {
-  HYPERLINK_CLICKED = 'BulkCvcDeletionHyperlinkClicked',
-  DIALOG_ACCEPTED = 'BulkCvcDeletionConfirmationDialogAccepted',
-  DIALOG_CANCELLED = 'BulkCvcDeletionConfirmationDialogCancelled',
+  COUNT = 10,
 }
 
 export interface MetricsBrowserProxy {
@@ -385,65 +275,6 @@ export interface MetricsBrowserProxy {
 
   /**
    * Helper function that calls recordHistogram for the
-   * Settings.SafetyHub.EntryPointShown histogram
-   */
-  recordSafetyHubEntryPointShown(page: SafetyHubEntryPoint): void;
-
-  /**
-   * Helper function that calls recordHistogram for the
-   *Settings.SafetyHub.EntryPointClicked histogram
-   */
-  recordSafetyHubEntryPointClicked(page: SafetyHubEntryPoint): void;
-
-  /**
-   * Helper function that calls recordHistogram for the
-   * Settings.SafetyHub.DashboardWarning histogram
-   */
-  recordSafetyHubModuleWarningImpression(module: SafetyHubModuleType): void;
-
-  /**
-   * Helper function that calls recordHistogram for the
-   * Settings.SafetyHub.HasDashboardShowAnyWarning histogram
-   */
-  recordSafetyHubDashboardAnyWarning(visible: boolean): void;
-
-  /**
-   * Helper function that calls recordHistogram for the
-   * Settings.SafetyHub.[card_name].StatusOnClick histogram
-   */
-  recordSafetyHubCardStateClicked(
-      histogramName: string, state: SafetyHubCardState): void;
-
-  /**
-   * Helper function that calls recordHistogram for the
-   * Settings.SafetyHub.NotificationPermissionsModule.Interactions histogram
-   */
-  recordSafetyHubNotificationPermissionsModuleInteractionsHistogram(
-      interaction: SafetyCheckNotificationsModuleInteractions): void;
-
-  /**
-   * Helper function that calls recordHistogram for
-   * Settings.SafetyHub.NotificationPermissionsModule.ListCount histogram
-   */
-  recordSafetyHubNotificationPermissionsModuleListCountHistogram(
-      suggestions: number): void;
-
-  /**
-   * Helper function that calls recordHistogram for the
-   * Settings.SafetyHub.UnusedSitePermissionsModule.Interactions histogram
-   */
-  recordSafetyHubUnusedSitePermissionsModuleInteractionsHistogram(
-      interaction: SafetyCheckUnusedSitePermissionsModuleInteractions): void;
-
-  /**
-   * Helper function that calls recordHistogram for
-   * Settings.SafetyHub.UnusedSitePermissionsModule.ListCount histogram
-   */
-  recordSafetyHubUnusedSitePermissionsModuleListCountHistogram(
-      suggestions: number): void;
-
-  /**
-   * Helper function that calls recordHistogram for the
    * SettingsPage.PrivacyElementInteractions histogram
    */
   recordSettingsPageHistogram(interaction: PrivacyElementInteractions): void;
@@ -488,24 +319,6 @@ export interface MetricsBrowserProxy {
    */
   recordPrivacyGuideStepsEligibleAndReachedHistogram(
       status: PrivacyGuideStepsEligibleAndReached): void;
-
-  /**
-   * Helper function that delegates the metric recording to the
-   * recordDeleteBrowsingDataAction backend function.
-   */
-  recordDeleteBrowsingDataAction(action: DeleteBrowsingDataAction): void;
-
-  /**
-   * Helper function that calls records an impression of the provided Safety Hub
-   * surface.
-   */
-  recordSafetyHubImpression(surface: SafetyHubSurfaces): void;
-
-  /**
-   * Helper function that calls records an interaction of the provided Safety
-   * Hub surface.
-   */
-  recordSafetyHubInteraction(surface: SafetyHubSurfaces): void;
 }
 
 export class MetricsBrowserProxyImpl implements MetricsBrowserProxy {
@@ -524,8 +337,7 @@ export class MetricsBrowserProxyImpl implements MetricsBrowserProxy {
   recordSafetyCheckNotificationsListCountHistogram(suggestions: number) {
     chrome.send('metricsHandler:recordInHistogram', [
       'Settings.SafetyCheck.NotificationsListCount',
-      suggestions,
-      99 /*max value for Notification suggestions*/,
+      suggestions, 99 /*max value for Notification suggestions*/,
     ]);
   }
 
@@ -568,80 +380,6 @@ export class MetricsBrowserProxyImpl implements MetricsBrowserProxy {
     chrome.send('metricsHandler:recordBooleanHistogram', [
       'Settings.SafetyCheck.UnusedSitePermissionsModuleEntryPointShown',
       visible,
-    ]);
-  }
-
-  recordSafetyHubCardStateClicked(
-      histogramName: string, state: SafetyHubCardState) {
-    chrome.send(
-        'metricsHandler:recordInHistogram',
-        [histogramName, state, SafetyHubCardState.MAX_VALUE]);
-  }
-
-  recordSafetyHubEntryPointShown(page: SafetyHubEntryPoint) {
-    chrome.send('metricsHandler:recordInHistogram', [
-      'Settings.SafetyHub.EntryPointImpression',
-      page,
-      SafetyHubEntryPoint.MAX_VALUE,
-    ]);
-  }
-
-  recordSafetyHubEntryPointClicked(page: SafetyHubEntryPoint) {
-    chrome.send('metricsHandler:recordInHistogram', [
-      'Settings.SafetyHub.EntryPointInteraction',
-      page,
-      SafetyHubEntryPoint.MAX_VALUE,
-    ]);
-  }
-
-  recordSafetyHubModuleWarningImpression(module: SafetyHubModuleType) {
-    chrome.send('metricsHandler:recordInHistogram', [
-      'Settings.SafetyHub.DashboardWarning',
-      module,
-      SafetyHubModuleType.MAX_VALUE,
-    ]);
-  }
-
-  recordSafetyHubDashboardAnyWarning(visible: boolean) {
-    chrome.send('metricsHandler:recordBooleanHistogram', [
-      'Settings.SafetyHub.HasDashboardShowAnyWarning',
-      visible,
-    ]);
-  }
-
-  recordSafetyHubNotificationPermissionsModuleInteractionsHistogram(
-      interaction: SafetyCheckNotificationsModuleInteractions) {
-    chrome.send('metricsHandler:recordInHistogram', [
-      'Settings.SafetyHub.NotificationPermissionsModule.Interactions',
-      interaction,
-      SafetyCheckNotificationsModuleInteractions.MAX_VALUE,
-    ]);
-  }
-
-  recordSafetyHubNotificationPermissionsModuleListCountHistogram(suggestions:
-                                                                     number) {
-    chrome.send('metricsHandler:recordInHistogram', [
-      'Settings.SafetyHub.NotificationPermissionsModule.ListCount',
-      suggestions,
-      99 /*max value for Notification Permissions suggestions*/,
-    ]);
-  }
-
-  recordSafetyHubUnusedSitePermissionsModuleInteractionsHistogram(
-      interaction: SafetyCheckUnusedSitePermissionsModuleInteractions) {
-    chrome.send('metricsHandler:recordInHistogram', [
-      'Settings.SafetyHub.UnusedSitePermissionsModule.Interactions',
-      interaction,
-      SafetyCheckUnusedSitePermissionsModuleInteractions.MAX_VALUE,
-    ]);
-  }
-
-  recordSafetyHubUnusedSitePermissionsModuleListCountHistogram(suggestions:
-                                                                   number) {
-    chrome.send('metricsHandler:recordInHistogram', [
-      'Settings.SafetyHub.UnusedSitePermissionsModule.ListCount',
-      suggestions,
-      99 /*max value for Unused Site Permissions suggestions*/,
     ]);
   }
 
@@ -702,30 +440,6 @@ export class MetricsBrowserProxyImpl implements MetricsBrowserProxy {
       'Settings.PrivacyGuide.StepsEligibleAndReached',
       status,
       PrivacyGuideStepsEligibleAndReached.COUNT,
-    ]);
-  }
-
-  recordDeleteBrowsingDataAction(action: DeleteBrowsingDataAction): void {
-    chrome.send('metricsHandler:recordInHistogram', [
-      'Privacy.DeleteBrowsingData.Action',
-      action,
-      DeleteBrowsingDataAction.MAX_VALUE,
-    ]);
-  }
-
-  recordSafetyHubImpression(surface: SafetyHubSurfaces): void {
-    chrome.send('metricsHandler:recordInHistogram', [
-      'Settings.SafetyHub.Impression',
-      surface,
-      SafetyHubSurfaces.MAX_VALUE,
-    ]);
-  }
-
-  recordSafetyHubInteraction(surface: SafetyHubSurfaces): void {
-    chrome.send('metricsHandler:recordInHistogram', [
-      'Settings.SafetyHub.Interaction',
-      surface,
-      SafetyHubSurfaces.MAX_VALUE,
     ]);
   }
 

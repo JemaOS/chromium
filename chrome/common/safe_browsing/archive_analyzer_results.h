@@ -37,25 +37,7 @@ enum class ArchiveAnalysisResult {
   kFailedToOpenTempFile = 6,
   kDmgNoPartitions = 7,
   kFailedDuringIteration = 8,
-  kDiskError = 9,
-  kMaxValue = kDiskError,
-};
-
-struct EncryptionInfo {
-  // True if the metadata is encrypted or there is at least one encrypted entry
-  // in the archive.
-  bool is_encrypted = false;
-
-  enum PasswordStatus {
-    kUnknown = 0,
-    kKnownIncorrect = 1,
-    kKnownCorrect = 2,
-    kMaxValue = kKnownCorrect,
-  };
-
-  // Set to kKnownCorrect if the archive unpacks correctly with the given
-  // password.
-  PasswordStatus password_status = kUnknown;
+  kMaxValue = kFailedDuringIteration,
 };
 
 struct ArchiveAnalyzerResults {
@@ -75,9 +57,6 @@ struct ArchiveAnalyzerResults {
   int directory_count = 0;
   ArchiveAnalysisResult analysis_result = ArchiveAnalysisResult::kUnspecified;
 
-  // TODO(crbug/1466284): Populate this information for RAR archives as well.
-  EncryptionInfo encryption_info;
-
   ArchiveAnalyzerResults();
   ArchiveAnalyzerResults(const ArchiveAnalyzerResults& other);
   ~ArchiveAnalyzerResults();
@@ -92,7 +71,6 @@ void UpdateArchiveAnalyzerResultsWithFile(base::FilePath path,
                                           int file_length,
                                           bool is_encrypted,
                                           bool is_directory,
-                                          bool contents_valid,
                                           ArchiveAnalyzerResults* results);
 
 // Returns the `DownloadFileType_InspectionType` of the file path.

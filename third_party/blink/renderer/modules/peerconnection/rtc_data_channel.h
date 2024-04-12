@@ -47,7 +47,7 @@ class ExceptionState;
 class RTCPeerConnectionHandler;
 
 class MODULES_EXPORT RTCDataChannel final
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ActiveScriptWrappable<RTCDataChannel>,
       public ExecutionContextLifecycleObserver {
   DEFINE_WRAPPERTYPEINFO();
@@ -65,11 +65,11 @@ class MODULES_EXPORT RTCDataChannel final
   bool reliable() const;
 
   bool ordered() const;
-  std::optional<uint16_t> maxPacketLifeTime() const;
-  std::optional<uint16_t> maxRetransmits() const;
+  absl::optional<uint16_t> maxPacketLifeTime() const;
+  absl::optional<uint16_t> maxRetransmits() const;
   String protocol() const;
   bool negotiated() const;
-  std::optional<uint16_t> id() const;
+  absl::optional<uint16_t> id() const;
   String readyState() const;
   unsigned bufferedAmount() const;
 
@@ -131,11 +131,6 @@ class MODULES_EXPORT RTCDataChannel final
     // thread except for on observer registration, done in a synchronous call to
     // the signaling thread (safe because the call is synchronous).
     const rtc::scoped_refptr<webrtc::DataChannelInterface>& channel() const;
-
-    // Returns true if a valid `blink_channel_` is held and `Unregister()`
-    // hasn't been called. A return value of false indicates that the `Observer`
-    // can be safely discarded.
-    bool is_registered() const;
 
     // Clears the |blink_channel_| reference, disassociates this observer from
     // the |webrtc_channel_| and releases the |webrtc_channel_| pointer. Must be
@@ -199,7 +194,7 @@ class MODULES_EXPORT RTCDataChannel final
   // Once an id has been assigned, we'll set this value and use it instead
   // of querying the channel (which requires thread hop). This is a cached
   // value to optimize a const getter, and therefore `mutable`.
-  mutable std::optional<uint16_t> id_;
+  mutable absl::optional<uint16_t> id_;
   unsigned buffered_amount_low_threshold_ = 0u;
   unsigned buffered_amount_ = 0u;
   bool stopped_ = false;

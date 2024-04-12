@@ -40,8 +40,6 @@ class FakeVcManagerMojoClient : public mojom::VideoConferenceManagerClient {
       bool disabled,
       SetSystemMediaDeviceStatusCallback callback) override {}
 
-  void StopAllScreenShare() override {}
-
   mojo::Receiver<mojom::VideoConferenceManagerClient> receiver_{this};
   mojo::Remote<mojom::VideoConferenceManager> remote_;
   base::UnguessableToken id_{base::UnguessableToken::Create()};

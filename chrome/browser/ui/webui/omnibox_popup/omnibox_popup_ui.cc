@@ -4,22 +4,15 @@
 
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
 
-#include <atomic>
-
-#include "base/strings/string_number_conversions.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_window.h"
-#include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
+#include "chrome/browser/ui/webui/realbox/realbox_handler.h"
 #include "chrome/browser/ui/webui/sanitized_image_source.h"
-#include "chrome/browser/ui/webui/searchbox/realbox_handler.h"
 #include "chrome/browser/ui/webui/webui_util.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/omnibox_popup_resources.h"
 #include "chrome/grit/omnibox_popup_resources_map.h"
 #include "components/favicon_base/favicon_url_parser.h"
-#include "components/omnibox/browser/omnibox_view.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "ui/webui/color_change_listener/color_change_handler.h"
 
@@ -29,7 +22,8 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       Profile::FromWebUI(web_ui), chrome::kChromeUIOmniboxPopupHost);
 
-  RealboxHandler::SetupWebUIDataSource(source, Profile::FromWebUI(web_ui));
+  RealboxHandler::SetupDropdownWebUIDataSource(source,
+                                               Profile::FromWebUI(web_ui));
 
   webui::SetupWebUIDataSource(
       source,
@@ -49,42 +43,10 @@ OmniboxPopupUI::~OmniboxPopupUI() = default;
 WEB_UI_CONTROLLER_TYPE_IMPL(OmniboxPopupUI)
 
 void OmniboxPopupUI::BindInterface(
-    content::RenderFrameHost* host,
-    mojo::PendingReceiver<searchbox::mojom::PageHandler> pending_page_handler) {
-  // Extract SessionID from URL to select the omnibox that initiated page load.
-  const GURL& url = host->GetWebUI()->GetWebContents()->GetLastCommittedURL();
-  SessionID id = SessionID::InvalidValue();
-  if (url.is_valid() && url.has_query()) {
-    base::StringPiece spec(url.query_piece());
-    url::Component query, key, value;
-    query.len = static_cast<int>(spec.size());
-    while (url::ExtractQueryKeyValue(spec, &query, &key, &value)) {
-      if (key.is_nonempty() && value.is_nonempty()) {
-        const base::StringPiece key_piece = spec.substr(key.begin, key.len);
-        constexpr char kSessionIdKey[] = "session_id";
-        if (key_piece == kSessionIdKey) {
-          const base::StringPiece value_piece =
-              spec.substr(value.begin, value.len);
-          int value_int = 0;
-          if (base::StringToInt(value_piece, &value_int)) {
-            id = SessionID::FromSerializedValue(value_int);
-          }
-          break;
-        }
-      }
-    }
-  }
-
-  if (id.is_valid()) {
-    if (Browser* browser = chrome::FindBrowserWithID(id)) {
-      OmniboxController* controller =
-          browser->window()->GetLocationBar()->GetOmniboxView()->controller();
-
-      handler_ = std::make_unique<RealboxHandler>(
-          std::move(pending_page_handler), Profile::FromWebUI(web_ui()),
-          web_ui()->GetWebContents(), &metrics_reporter_, controller);
-    }
-  }
+    mojo::PendingReceiver<omnibox::mojom::PageHandler> pending_page_handler) {
+  webui_handler_ = std::make_unique<RealboxHandler>(
+      std::move(pending_page_handler), Profile::FromWebUI(web_ui()),
+      web_ui()->GetWebContents(), &metrics_reporter_);
 }
 
 void OmniboxPopupUI::BindInterface(

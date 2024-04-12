@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SYNC_USER_EVENT_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_SYNC_USER_EVENT_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -25,7 +25,7 @@ class UserEventServiceFactory : public ProfileKeyedServiceFactory {
   UserEventServiceFactory& operator=(const UserEventServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<UserEventServiceFactory>;
+  friend struct base::DefaultSingletonTraits<UserEventServiceFactory>;
 
   UserEventServiceFactory();
   ~UserEventServiceFactory() override;

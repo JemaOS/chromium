@@ -36,14 +36,14 @@ bool ScreenshotDelegate::IsScreenshotAllowed() {
   // shutdown (and unit tests) - don't allow screenshots unless we have a
   // StatusUploader that can confirm that screenshots are allowed.
   return manager && manager->GetStatusUploader() &&
-         manager->GetStatusUploader()->IsScreenshotAllowed();
+         manager->GetStatusUploader()->IsSessionDataUploadAllowed();
 }
 
 void ScreenshotDelegate::TakeSnapshot(
     gfx::NativeWindow window,
     const gfx::Rect& source_rect,
     OnScreenshotTakenCallback upload_callback) {
-  ui::GrabWindowSnapshotAsPNG(
+  ui::GrabWindowSnapshotAsyncPNG(
       window, source_rect,
       base::BindOnce(&ScreenshotDelegate::OnScreenshotTaken,
                      weak_ptr_factory_.GetWeakPtr(),

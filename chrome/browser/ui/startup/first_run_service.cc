@@ -26,8 +26,8 @@
 #include "chrome/browser/signin/signin_features.h"
 #include "chrome/browser/signin/signin_util.h"
 #include "chrome/browser/sync/sync_service_factory.h"
-#include "chrome/browser/ui/profiles/profile_customization_util.h"
-#include "chrome/browser/ui/profiles/profile_picker.h"
+#include "chrome/browser/ui/profile_picker.h"
+#include "chrome/browser/ui/signin/profile_customization_util.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_registry_simple.h"
@@ -42,7 +42,6 @@
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/ui/startup/silent_sync_enabler.h"
 #include "chromeos/crosapi/mojom/device_settings_service.mojom.h"
-#include "chromeos/startup/browser_params_proxy.h"
 #endif
 
 namespace {
@@ -145,7 +144,11 @@ PolicyEffect ComputeDevicePolicyEffect(Profile& profile) {
     return PolicyEffect::kSilenced;
   }
 
-  if (chromeos::BrowserParamsProxy::Get()->IsCurrentUserEphemeral()) {
+  crosapi::mojom::DeviceSettings* device_settings =
+      g_browser_process->browser_policy_connector()->GetDeviceSettings();
+  if (device_settings->device_ephemeral_users_enabled ==
+      crosapi::mojom::DeviceSettings::OptionalBool::kTrue) {
+    // Corresponding policy: DeviceEphemeralUsersEnabled=true
     return PolicyEffect::kSilenced;
   }
 #endif
@@ -178,13 +181,11 @@ void FirstRunService::RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
   registry->RegisterStringPref(prefs::kFirstRunStudyGroup, "");
 }
 
-FirstRunService::FirstRunService(Profile& profile,
-                                 signin::IdentityManager& identity_manager)
-    : profile_(profile), identity_manager_(identity_manager) {}
+FirstRunService::FirstRunService(Profile* profile) : profile_(profile) {}
 FirstRunService::~FirstRunService() = default;
 
 bool FirstRunService::ShouldOpenFirstRun() const {
-  return ::ShouldOpenFirstRun(&profile_.get());
+  return ::ShouldOpenFirstRun(profile_);
 }
 
 void FirstRunService::TryMarkFirstRunAlreadyFinished(
@@ -201,49 +202,34 @@ void FirstRunService::TryMarkFirstRunAlreadyFinished(
     return;
   }
 
-  auto policy_effect = ComputeDevicePolicyEffect(*profile_);
-  // This check should be done prior to the profile already set up check below,
-  // to include the case where the feature `kForceSigninFlowInProfilePicker` is
-  // enabled which would cause the profile to be signed in already at this
-  // point.
-  if (policy_effect != PolicyEffect::kNone &&
-      signin_util::IsForceSigninEnabled() &&
-      base::FeatureList::IsEnabled(kForceSigninFlowInProfilePicker)) {
-    // When ForceSignin is enabled and the flows are going through the profile
-    // picker, the final profile setup should not yet be reached. The
-    // rest of the flow is still happening within the Profile Picker, either
-    // the management acceptance screen for Managed accounts, or the Sync
-    // Confirmation screen for Consumer accounts.
-    FinishFirstRun(FinishedReason::kForceSignin);
-    return;
-  }
-
+  auto* identity_manager = IdentityManagerFactory::GetForProfile(profile_);
   bool has_set_up_profile =
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
       // Indicates that the profile was likely migrated from pre-Lacros Ash.
-      identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSync);
+      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync);
 #else
       // The Dice FRE focuses on identity and offering the user to sign in. If
       // the profile already has an account (e.g. the sentinel file was deleted
       // or `--force-first-run` was passed), this ensures we still skip it and
       // avoid having to handle too strange states later.
-      identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSignin);
+      identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin);
 #endif
   if (has_set_up_profile) {
     FinishFirstRun(FinishedReason::kProfileAlreadySetUp);
     return;
   }
 
+  auto policy_effect = ComputeDevicePolicyEffect(*profile_);
+
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   switch (policy_effect) {
     case PolicyEffect::kDisabled:
-      if (!chrome::enterprise_util::UserAcceptedAccountManagement(
-              &profile_.get())) {
+      if (!chrome::enterprise_util::UserAcceptedAccountManagement(profile_)) {
         // Management had to be accepted to create the session. Normally this
         // gets set during the FRE (TurnSyncOn flow), but since it is skipped,
         // set the flag here.
-        chrome::enterprise_util::SetUserAcceptedAccountManagement(
-            &profile_.get(), true);
+        chrome::enterprise_util::SetUserAcceptedAccountManagement(profile_,
+                                                                  true);
       }
       break;
     case PolicyEffect::kSilenced:
@@ -272,8 +258,7 @@ void FirstRunService::StartSilentSync(base::OnceClosure callback) {
 
   auto reset_enabler_callback = base::BindOnce(
       &FirstRunService::ClearSilentSyncEnabler, weak_ptr_factory_.GetWeakPtr());
-  silent_sync_enabler_ =
-      std::make_unique<SilentSyncEnabler>(*profile_, *identity_manager_);
+  silent_sync_enabler_ = std::make_unique<SilentSyncEnabler>(profile_);
   silent_sync_enabler_->StartAttempt(
       callback ? std::move(reset_enabler_callback).Then(std::move(callback))
                : std::move(reset_enabler_callback));
@@ -335,7 +320,7 @@ void FirstRunService::FinishFirstRun(FinishedReason reason) {
   SetFirstRunFinished(reason);
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
-  std::optional<ProfileMetrics::ProfileSignedInFlowOutcome> outcome;
+  absl::optional<ProfileMetrics::ProfileSignedInFlowOutcome> outcome;
   switch (reason) {
     case FinishedReason::kFinishedFlow:
       // No outcome to log, the flow logs it by itself.
@@ -347,9 +332,6 @@ void FirstRunService::FinishFirstRun(FinishedReason reason) {
     case FinishedReason::kSkippedByPolicies:
       outcome = ProfileMetrics::ProfileSignedInFlowOutcome::kSkippedByPolicies;
       break;
-    case FinishedReason::kForceSignin:
-      NOTREACHED() << "Force Signin policy value is not active on Lacros.";
-      break;
   }
 
   if (outcome.has_value()) {
@@ -357,16 +339,13 @@ void FirstRunService::FinishFirstRun(FinishedReason reason) {
   }
 #endif
 
-  // If the reason is `FinishedReason::kForceSignin` the profile is already
-  // signed in and finalized. It should not finish the setup again.
-  if (identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSignin) &&
-      reason != FinishedReason::kForceSignin) {
+  auto* identity_manager = IdentityManagerFactory::GetForProfile(profile_);
+  if (identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
     // Noting that we expect that the name should already be available, as
     // after sign-in, the extended info is fetched and used for the sync
     // opt-in screen.
-    profile_name_resolver_ = std::make_unique<ProfileNameResolver>(
-        &identity_manager_.get(), identity_manager_->GetPrimaryAccountInfo(
-                                      signin::ConsentLevel::kSignin));
+    profile_name_resolver_ =
+        std::make_unique<ProfileNameResolver>(identity_manager);
     profile_name_resolver_->RunWithProfileName(base::BindOnce(
         &FirstRunService::FinishProfileSetUp, weak_ptr_factory_.GetWeakPtr()));
   } else if (reason == FinishedReason::kSkippedByPolicies) {
@@ -381,8 +360,7 @@ void FirstRunService::FinishProfileSetUp(std::u16string profile_name) {
 
   profile_name_resolver_.reset();
   DCHECK(!profile_name.empty());
-  FinalizeNewProfileSetup(&profile_.get(), profile_name,
-                          /*is_default_name=*/false);
+  FinalizeNewProfileSetup(profile_, profile_name, /*is_default_name=*/false);
 }
 
 void FirstRunService::OpenFirstRunIfNeeded(EntryPoint entry_point,
@@ -465,8 +443,7 @@ FirstRunService* FirstRunServiceFactory::GetForBrowserContextIfExists(
       GetInstance()->GetServiceForBrowserContext(context, /*create=*/false));
 }
 
-std::unique_ptr<KeyedService>
-FirstRunServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* FirstRunServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   if (!ShouldOpenFirstRun(profile)) {
@@ -493,8 +470,7 @@ FirstRunServiceFactory::BuildServiceInstanceForBrowserContext(
   }
 #endif
 
-  std::unique_ptr<FirstRunService> instance = std::make_unique<FirstRunService>(
-      *profile, *IdentityManagerFactory::GetForProfile(profile));
+  auto* instance = new FirstRunService(profile);
   base::UmaHistogramBoolean("ProfilePicker.FirstRun.ServiceCreated", true);
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)

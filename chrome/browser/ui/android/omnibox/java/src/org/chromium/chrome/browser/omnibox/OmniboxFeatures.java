@@ -6,45 +6,79 @@ package org.chromium.chrome.browser.omnibox;
 
 import android.content.Context;
 
-import org.chromium.base.BaseSwitches;
-import org.chromium.base.CommandLine;
-import org.chromium.base.FeatureList;
-import org.chromium.base.SysUtils;
-import org.chromium.base.cached_flags.BooleanCachedFieldTrialParameter;
+import org.chromium.chrome.browser.flags.BooleanCachedFieldTrialParameter;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
-import org.chromium.components.browser_ui.util.ConversionUtils;
+import org.chromium.chrome.browser.flags.MutableFlagWithSafeDefault;
 import org.chromium.ui.base.DeviceFormFactor;
 
-/** This is the place where we define these: List of Omnibox features and parameters. */
+/**
+ * This is the place where we define these:
+ *   List of Omnibox features and parameters.
+ */
 public class OmniboxFeatures {
-    // Threshold for low RAM devices. We won't be showing suggestion images
-    // on devices that have less RAM than this to avoid bloat and reduce user-visible
-    // slowdown while spinning up an image decompression process.
-    // We set the threshold to 1.5GB to reduce number of users affected by this restriction.
-    private static final int LOW_MEMORY_THRESHOLD_KB =
-            (int) (1.5 * ConversionUtils.KILOBYTES_PER_GIGABYTE);
-
-    /// Holds the information whether logic should focus on preserving memory on this device.
-    private static Boolean sIsLowMemoryDevice;
-
     public static final BooleanCachedFieldTrialParameter ENABLE_MODERNIZE_VISUAL_UPDATE_ON_TABLET =
-            ChromeFeatureList.newBooleanCachedFieldTrialParameter(
-                    ChromeFeatureList.OMNIBOX_MODERNIZE_VISUAL_UPDATE,
-                    "enable_modernize_visual_update_on_tablet",
-                    true);
+            new BooleanCachedFieldTrialParameter(ChromeFeatureList.OMNIBOX_MODERNIZE_VISUAL_UPDATE,
+                    "enable_modernize_visual_update_on_tablet", false);
 
     public static final BooleanCachedFieldTrialParameter
-            MODERNIZE_VISUAL_UPDATE_ACTIVE_COLOR_ON_OMNIBOX =
-                    ChromeFeatureList.newBooleanCachedFieldTrialParameter(
-                            ChromeFeatureList.OMNIBOX_MODERNIZE_VISUAL_UPDATE,
-                            "modernize_visual_update_active_color_on_omnibox",
-                            true);
+            MODERNIZE_VISUAL_UPDATE_ACTIVE_COLOR_ON_OMNIBOX = new BooleanCachedFieldTrialParameter(
+                    ChromeFeatureList.OMNIBOX_MODERNIZE_VISUAL_UPDATE,
+                    "modernize_visual_update_active_color_on_omnibox", false);
 
-    public static final BooleanCachedFieldTrialParameter QUERY_TILES_SHOW_AS_CAROUSEL =
-            ChromeFeatureList.newBooleanCachedFieldTrialParameter(
-                    ChromeFeatureList.QUERY_TILES_IN_ZPS_ON_NTP, "QueryTilesShowAsCarousel", false);
+    public static final BooleanCachedFieldTrialParameter
+            MODERNIZE_VISUAL_UPDATE_SMALL_BOTTOM_MARGIN = new BooleanCachedFieldTrialParameter(
+                    ChromeFeatureList.OMNIBOX_MODERNIZE_VISUAL_UPDATE,
+                    "modernize_visual_update_small_bottom_margin", false);
 
-    public static final int DEFAULT_MAX_PREFETCHES_PER_OMNIBOX_SESSION = 5;
+    public static final BooleanCachedFieldTrialParameter MODERNIZE_VISUAL_UPDATE_SMALLER_MARGINS =
+            new BooleanCachedFieldTrialParameter(ChromeFeatureList.OMNIBOX_MODERNIZE_VISUAL_UPDATE,
+                    "modernize_visual_update_smaller_margins", false);
+
+    public static final BooleanCachedFieldTrialParameter MODERNIZE_VISUAL_UPDATE_SMALLEST_MARGINS =
+            new BooleanCachedFieldTrialParameter(ChromeFeatureList.OMNIBOX_MODERNIZE_VISUAL_UPDATE,
+                    "modernize_visual_update_smallest_margins", false);
+
+    public static final BooleanCachedFieldTrialParameter
+            MODERNIZE_VISUAL_UPDATE_MERGE_CLIPBOARD_ON_NTP = new BooleanCachedFieldTrialParameter(
+                    ChromeFeatureList.OMNIBOX_MODERNIZE_VISUAL_UPDATE,
+                    "modernize_visual_update_merge_clipboard_on_ntp", false);
+
+    public static final String TAB_STRIP_REDESIGN_DISABLE_TOOLBAR_REORDERING_PARAM =
+            "disable_toolbar_reordering";
+    public static final BooleanCachedFieldTrialParameter
+            TAB_STRIP_REDESIGN_DISABLE_TOOLBAR_REORDERING =
+                    new BooleanCachedFieldTrialParameter(ChromeFeatureList.TAB_STRIP_REDESIGN,
+                            TAB_STRIP_REDESIGN_DISABLE_TOOLBAR_REORDERING_PARAM, false);
+
+    private static final MutableFlagWithSafeDefault sOmniboxConsumesImeInsets =
+            new MutableFlagWithSafeDefault(ChromeFeatureList.OMNIBOX_CONSUMERS_IME_INSETS, false);
+    private static final MutableFlagWithSafeDefault sShouldAdaptToNarrowTabletWindows =
+            new MutableFlagWithSafeDefault(
+                    ChromeFeatureList.OMNIBOX_ADAPT_NARROW_TABLET_WINDOWS, false);
+    private static final MutableFlagWithSafeDefault sJourneysRowUiFlag =
+            new MutableFlagWithSafeDefault(
+                    ChromeFeatureList.OMNIBOX_HISTORY_CLUSTER_PROVIDER, false);
+
+    private static final MutableFlagWithSafeDefault sCacheSuggestionResources =
+            new MutableFlagWithSafeDefault(
+                    ChromeFeatureList.OMNIBOX_CACHE_SUGGESTION_RESOURCES, false);
+    private static final MutableFlagWithSafeDefault
+            sOmniboxAdaptiveSuggestionsVisibleGroupEligibilityUpdate =
+                    new MutableFlagWithSafeDefault(
+                            ChromeFeatureList
+                                    .OMNIBOX_ADAPTIVE_SUGGESTIONS_VISIBLE_GROUP_ELIGIBILITY_UPDATE,
+                            false);
+
+    private static final MutableFlagWithSafeDefault sWarmRecycledViewPoolFlag =
+            new MutableFlagWithSafeDefault(
+                    ChromeFeatureList.OMNIBOX_WARM_RECYCLED_VIEW_POOL, false);
+
+    /**
+     * @return Whether Toolbar reordering for tab strip redesign is disabled.
+     */
+    public static boolean isTabStripToolbarReorderingDisabled() {
+        return TAB_STRIP_REDESIGN_DISABLE_TOOLBAR_REORDERING.getValue();
+    }
 
     /**
      * @param context The activity context.
@@ -56,11 +90,54 @@ public class OmniboxFeatures {
     }
 
     /**
+     * Returns whether the omnibox dropdown should be switched to a phone-like appearance when the
+     * window width is <600dp.
+     */
+    public static boolean shouldAdaptToNarrowTabletWindows() {
+        return sShouldAdaptToNarrowTabletWindows.isEnabled();
+    }
+
+    /**
      * @return Whether to show an active color for Omnibox which has a different background color
-     *     than toolbar.
+     *         than toolbar.
      */
     public static boolean shouldShowActiveColorOnOmnibox() {
         return MODERNIZE_VISUAL_UPDATE_ACTIVE_COLOR_ON_OMNIBOX.getValue();
+    }
+
+    /**
+     * Returns whether the margin between groups should be "small" in the visual update.
+     */
+    public static boolean shouldShowSmallBottomMargin() {
+        return MODERNIZE_VISUAL_UPDATE_SMALL_BOTTOM_MARGIN.getValue();
+    }
+
+    /**
+     * Returns whether smaller vertical and horizontal margins should be used in the visual update.
+     */
+    public static boolean shouldShowSmallerMargins() {
+        return MODERNIZE_VISUAL_UPDATE_SMALLER_MARGINS.getValue();
+    }
+
+    /**
+     * Returns whether even smaller vertical and horizontal margins should be used in the visual
+     * update.
+     */
+    public static boolean shouldShowSmallestMargins() {
+        return MODERNIZE_VISUAL_UPDATE_SMALLEST_MARGINS.getValue();
+    }
+
+    /**
+     * Returns whether the clipboard suggestion should be grouped with other zero suggest items on
+     * the NTP or start surface in the visual update.
+     * */
+    public static boolean shouldMergeClipboardOnNtp() {
+        return MODERNIZE_VISUAL_UPDATE_MERGE_CLIPBOARD_ON_NTP.getValue();
+    }
+
+    /** Returns whether the omnibox should directly consume IME (keyboard) insets. */
+    public static boolean omniboxConsumesImeInsets() {
+        return sOmniboxConsumesImeInsets.isEnabled();
     }
 
     /**
@@ -78,122 +155,45 @@ public class OmniboxFeatures {
         return ENABLE_MODERNIZE_VISUAL_UPDATE_ON_TABLET.getValue();
     }
 
-    /** Returns whether the toolbar and status bar color should be matched. */
+    /**
+     * Returns whether the toolbar and status bar color should be matched.
+     */
     public static boolean shouldMatchToolbarAndStatusBarColor() {
         return ChromeFeatureList.sOmniboxMatchToolbarAndStatusBarColor.isEnabled();
     }
 
+    /**
+     * Returns whether we need to add a RecycledViewPool to MostVisitedTiles.
+     */
+    public static boolean shouldAddMostVisitedTilesRecycledViewPool() {
+        return ChromeFeatureList.sOmniboxMostVisitedTilesAddRecycledViewPool.isEnabled();
+    }
+
     /** Whether Journeys suggestions should be shown in a dedicated row. */
     public static boolean isJourneysRowUiEnabled() {
-        return ChromeFeatureList.sOmniboxHistoryClusterProvider.isEnabled();
+        return sJourneysRowUiFlag.isEnabled();
+    }
+
+    /**
+     * Returns whether suggestion resources should be cached directly instead of relying on Android
+     * system caching.
+     */
+    public static boolean shouldCacheSuggestionResources() {
+        return sCacheSuggestionResources.isEnabled();
+    }
+
+    /**
+     * Returns whether a modified visible-group eligibility logic should be used when determining
+     * suggestion visibility.
+     */
+    public static boolean adaptiveSuggestionsVisibleGroupEligibilityUpdate() {
+        return sOmniboxAdaptiveSuggestionsVisibleGroupEligibilityUpdate.isEnabled();
     }
 
     /**
      * Returns whether the omnibox's recycler view pool should be pre-warmed prior to initial use.
      */
     public static boolean shouldPreWarmRecyclerViewPool() {
-        return !isLowMemoryDevice();
-    }
-
-    /**
-     * Returns whether the device is to be considered low-end for any memory intensive operations.
-     */
-    public static boolean isLowMemoryDevice() {
-        if (sIsLowMemoryDevice == null) {
-            sIsLowMemoryDevice =
-                    (SysUtils.amountOfPhysicalMemoryKB() < LOW_MEMORY_THRESHOLD_KB
-                            && !CommandLine.getInstance()
-                                    .hasSwitch(BaseSwitches.DISABLE_LOW_END_DEVICE_MODE));
-        }
-        return sIsLowMemoryDevice;
-    }
-
-    /**
-     * Returns whether clicking the edit url suggestion / search-ready omnibox should be a no-op.
-     * Currently the default behavior is to refresh the page.
-     */
-    public static boolean noopEditUrlSuggestionClicks() {
-        return ChromeFeatureList.sOmniboxNoopEditUrlSuggestionClicks.isEnabled();
-    }
-
-    /**
-     * Returns whether a touch down event on a search suggestion should send a signal to prefetch
-     * the corresponding page.
-     */
-    public static boolean isTouchDownTriggerForPrefetchEnabled() {
-        return ChromeFeatureList.sTouchDownTriggerForPrefetch.isEnabled();
-    }
-
-    /**
-     * Returns the maximum number of prefetches that can be triggered by touch down events within an
-     * omnibox session.
-     */
-    public static int getMaxPrefetchesPerOmniboxSession() {
-        if (!FeatureList.isInitialized()) {
-            return DEFAULT_MAX_PREFETCHES_PER_OMNIBOX_SESSION;
-        }
-        return ChromeFeatureList.getFieldTrialParamByFeatureAsInt(
-                ChromeFeatureList.OMNIBOX_TOUCH_DOWN_TRIGGER_FOR_PREFETCH,
-                "max_prefetches_per_omnibox_session",
-                DEFAULT_MAX_PREFETCHES_PER_OMNIBOX_SESSION);
-    }
-
-    /** Returns whether the visible url in the url bar should be truncated. */
-    public static boolean shouldTruncateVisibleUrlV2() {
-        return ChromeFeatureList.sVisibleUrlTruncationV2.isEnabled();
-    }
-
-    /**
-     * Returns if we should omit calculating the visible hint if the TLD is different than the
-     * previous call to setText().
-     */
-    public static boolean shouldOmitVisibleHintCalculationForDifferentTLD() {
-        return ChromeFeatureList.sNoVisibleHintForDifferentTLD.isEnabled();
-    }
-
-    /** Returns whether to show the incognito status for tablet. */
-    public static boolean showIncognitoStatusForTablet() {
-        return ChromeFeatureList.sTabletToolbarIncognitoStatus.isEnabled()
-                || (ChromeFeatureList.sDynamicTopChrome.isEnabled()
-                        && !ChromeFeatureList.sTabStripLayoutOptimization.isEnabled());
-    }
-
-    /** Returns whether answer suggestions should be annotated with attached action chips. */
-    public static boolean shouldShowAnswerActions() {
-        return ChromeFeatureList.sOmniboxAnswerActions.isEnabled();
-    }
-
-    /** Returns whether answers with actions should be re-ordered to just above the keyboard */
-    public static boolean shouldShowAnswerWithActionsAboveKeyboard() {
-        return shouldShowAnswerActions()
-                && ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
-                        ChromeFeatureList.OMNIBOX_ANSWER_ACTIONS,
-                        "AnswerActionsShowAboveKeyboard",
-                        false);
-    }
-
-    /**
-     * Returns whether answers with actions should be displayed if there are url suggestions
-     * present.
-     */
-    public static boolean shouldShowAnswerWithActionsIfUrlsPresent() {
-        return shouldShowAnswerActions()
-                && ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
-                        ChromeFeatureList.OMNIBOX_ANSWER_ACTIONS, "ShowIfUrlsPresent", false);
-    }
-
-    /** Returns whether answers with actions should be presented as a rich card */
-    public static boolean shouldShowRichAnswerCard() {
-        return shouldShowAnswerActions()
-                && ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
-                        ChromeFeatureList.OMNIBOX_ANSWER_ACTIONS, "ShowRichCard", false);
-    }
-
-    /**
-     * Whether the appearance of the omnibox suggestions list should animated in sync with the soft
-     * keyboard.
-     */
-    public static boolean shouldAnimateSuggestionsListAppearance() {
-        return ChromeFeatureList.sAnimateSuggestionsListAppearance.isEnabled();
+        return sWarmRecycledViewPoolFlag.isEnabled();
     }
 }

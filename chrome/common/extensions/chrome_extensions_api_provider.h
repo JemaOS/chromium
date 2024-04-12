@@ -5,8 +5,6 @@
 #ifndef CHROME_COMMON_EXTENSIONS_CHROME_EXTENSIONS_API_PROVIDER_H_
 #define CHROME_COMMON_EXTENSIONS_CHROME_EXTENSIONS_API_PROVIDER_H_
 
-#include <string_view>
-
 #include "extensions/common/extensions_api_provider.h"
 
 namespace extensions {
@@ -28,7 +26,7 @@ class ChromeExtensionsAPIProvider : public ExtensionsAPIProvider {
   void AddBehaviorFeatures(FeatureProvider* provider) override;
   void AddAPIJSONSources(JSONFeatureProviderSource* json_source) override;
   bool IsAPISchemaGenerated(const std::string& name) override;
-  std::string_view GetAPISchema(const std::string& name) override;
+  base::StringPiece GetAPISchema(const std::string& name) override;
   void RegisterPermissions(PermissionsInfo* permissions_info) override;
   void RegisterManifestHandlers() override;
 };

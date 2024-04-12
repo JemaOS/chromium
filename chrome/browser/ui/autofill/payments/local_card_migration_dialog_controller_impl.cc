@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/observer_list.h"
@@ -61,8 +62,7 @@ void LocalCardMigrationDialogControllerImpl::ShowOfferDialog(
     const LegalMessageLines& legal_message_lines,
     const std::string& user_email,
     const std::vector<MigratableCreditCard>& migratable_credit_cards,
-    payments::PaymentsAutofillClient::LocalCardMigrationCallback
-        start_migrating_cards_callback) {
+    AutofillClient::LocalCardMigrationCallback start_migrating_cards_callback) {
   if (local_card_migration_dialog_)
     local_card_migration_dialog_->CloseDialog();
 
@@ -85,8 +85,7 @@ void LocalCardMigrationDialogControllerImpl::ShowOfferDialog(
 void LocalCardMigrationDialogControllerImpl::UpdateCreditCardIcon(
     const std::u16string& tip_message,
     const std::vector<MigratableCreditCard>& migratable_credit_cards,
-    payments::PaymentsAutofillClient::MigrationDeleteCardCallback
-        delete_local_card_callback) {
+    AutofillClient::MigrationDeleteCardCallback delete_local_card_callback) {
   if (local_card_migration_dialog_)
     local_card_migration_dialog_->CloseDialog();
 
@@ -226,7 +225,7 @@ void LocalCardMigrationDialogControllerImpl::DeleteCard(
   DCHECK(delete_local_card_callback_);
   delete_local_card_callback_.Run(deleted_card_guid);
 
-  std::erase_if(migratable_credit_cards_, [&](const auto& card) {
+  base::EraseIf(migratable_credit_cards_, [&](const auto& card) {
     return card.credit_card().guid() == deleted_card_guid;
   });
 
@@ -271,7 +270,7 @@ void LocalCardMigrationDialogControllerImpl::OpenUrl(const GURL& url) {
 }
 
 void LocalCardMigrationDialogControllerImpl::UpdateLocalCardMigrationIcon() {
-  Browser* browser = chrome::FindBrowserWithTab(&GetWebContents());
+  Browser* browser = chrome::FindBrowserWithWebContents(&GetWebContents());
   if (browser) {
     browser->window()->UpdatePageActionIcon(
         PageActionIconType::kLocalCardMigration);

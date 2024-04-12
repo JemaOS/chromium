@@ -48,18 +48,20 @@ void DragDropClientMac::StartDragAndDrop(
   // Synthesize an event for dragging, since we can't be sure that
   // [NSApp currentEvent] will return a valid dragging event.
   NSWindow* window = bridge_->ns_window();
-  NSEvent* event =
-      [NSEvent mouseEventWithType:NSEventTypeLeftMouseDragged
-                         location:window.mouseLocationOutsideOfEventStream
-                    modifierFlags:0
-                        timestamp:NSApp.currentEvent.timestamp
-                     windowNumber:window.windowNumber
-                          context:nil
-                      eventNumber:0
-                       clickCount:1
-                         pressure:1.0];
+  NSPoint position = [window mouseLocationOutsideOfEventStream];
+  NSTimeInterval event_time = [[NSApp currentEvent] timestamp];
+  NSEvent* event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDragged
+                                      location:position
+                                 modifierFlags:0
+                                     timestamp:event_time
+                                  windowNumber:[window windowNumber]
+                                       context:nil
+                                   eventNumber:0
+                                    clickCount:1
+                                      pressure:1.0];
 
-  NSImage* image = gfx::NSImageFromImageSkia(provider_mac.GetDragImage());
+  NSImage* image = gfx::NSImageFromImageSkiaWithColorSpace(
+      provider_mac.GetDragImage(), base::mac::GetSRGBColorSpace());
 
   DCHECK(!NSEqualSizes(image.size, NSZeroSize));
   NSArray<NSDraggingItem*>* drag_items = provider_mac.GetDraggingItems();
@@ -106,9 +108,9 @@ NSDragOperation DragDropClientMac::DragUpdate(id<NSDraggingInfo> sender) {
   if (!exchange_data_) {
     exchange_data_ = std::make_unique<OSExchangeData>(
         ui::OSExchangeDataProviderMac::CreateProviderWrappingPasteboard(
-            sender.draggingPasteboard));
+            [sender draggingPasteboard]));
     source_operation_ = ui::DragDropTypes::NSDragOperationToDragOperation(
-        sender.draggingSourceOperationMask);
+        [sender draggingSourceOperationMask]);
   }
 
   last_operation_ = drop_helper_.OnDragOver(
@@ -144,8 +146,8 @@ void DragDropClientMac::DragExit() {
 }
 
 gfx::Point DragDropClientMac::LocationInView(NSPoint point) const {
-  NSRect content_rect =
-      [bridge_->ns_window() contentRectForFrameRect:bridge_->ns_window().frame];
+  NSRect content_rect = [bridge_->ns_window()
+      contentRectForFrameRect:[bridge_->ns_window() frame]];
   return gfx::Point(point.x, NSHeight(content_rect) - point.y);
 }
 

@@ -5,21 +5,19 @@
 #include "chrome/browser/web_applications/web_app_provider_factory.h"
 
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
-#include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/metrics/ukm_background_recorder_service.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/model_type_store_service_factory.h"
 #include "chrome/browser/web_applications/daily_metrics_helper.h"
-#include "chrome/browser/web_applications/extensions_manager.h"
+#include "chrome/browser/web_applications/externally_installed_web_app_prefs.h"
 #include "chrome/browser/web_applications/install_bounce_metric.h"
 #include "chrome/browser/web_applications/os_integration/web_app_shortcut_manager.h"
 #include "chrome/browser/web_applications/policy/web_app_policy_manager.h"
 #include "chrome/browser/web_applications/preinstalled_web_app_manager.h"
 #include "chrome/browser/web_applications/user_uninstalled_preinstalled_web_app_prefs.h"
-#include "chrome/browser/web_applications/web_app_pref_guardrails.h"
+#include "chrome/browser/web_applications/web_app_prefs_utils.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
-#include "chrome/common/pref_names.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 
@@ -34,8 +32,7 @@ WebAppProvider* WebAppProviderFactory::GetForProfile(Profile* profile) {
 
 // static
 WebAppProviderFactory* WebAppProviderFactory::GetInstance() {
-  static base::NoDestructor<WebAppProviderFactory> instance;
-  return instance.get();
+  return base::Singleton<WebAppProviderFactory>::get();
 }
 
 // static
@@ -53,18 +50,14 @@ WebAppProviderFactory::WebAppProviderFactory()
   // Required to listen to file handling settings change in
   // `WebAppInstallFinalizer::OnContentSettingChanged()`
   DependsOn(HostContentSettingsMapFactory::GetInstance());
-  DependsOn(ExtensionsManager::GetExtensionSystemSharedFactory());
-  // Required to use different preinstalled app configs for managed devices.
-  DependsOn(policy::ManagementServiceFactory::GetInstance());
 }
 
 WebAppProviderFactory::~WebAppProviderFactory() = default;
 
-std::unique_ptr<KeyedService>
-WebAppProviderFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* WebAppProviderFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  auto provider = std::make_unique<WebAppProvider>(profile);
+  WebAppProvider* provider = new WebAppProvider(profile);
   provider->Start();
 
   return provider;
@@ -82,11 +75,10 @@ content::BrowserContext* WebAppProviderFactory::GetBrowserContextToUse(
 void WebAppProviderFactory::RegisterProfilePrefs(
     user_prefs::PrefRegistrySyncable* registry) {
   UserUninstalledPreinstalledWebAppPrefs::RegisterProfilePrefs(registry);
+  ExternallyInstalledWebAppPrefs::RegisterProfilePrefs(registry);
   PreinstalledWebAppManager::RegisterProfilePrefs(registry);
-  WebAppPrefGuardrails::RegisterProfilePrefs(registry);
   WebAppPolicyManager::RegisterProfilePrefs(registry);
-  registry->RegisterBooleanPref(prefs::kShouldGarbageCollectStoragePartitions,
-                                false);
+  WebAppPrefsUtilsRegisterProfilePrefs(registry);
   RegisterInstallBounceMetricProfilePrefs(registry);
   RegisterDailyWebAppMetricsProfilePrefs(registry);
   WebAppShortcutManager::RegisterProfilePrefs(registry);

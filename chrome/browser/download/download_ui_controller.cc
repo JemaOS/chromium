@@ -27,12 +27,8 @@
 #include "content/public/browser/web_contents_delegate.h"
 
 #if BUILDFLAG(IS_ANDROID)
-#include "base/strings/string_util.h"
 #include "chrome/browser/download/android/download_controller.h"
 #include "chrome/browser/download/android/download_controller_base.h"
-#include "components/pdf/common/constants.h"
-#include "content/public/browser/download_manager_delegate.h"
-#include "content/public/common/content_features.h"
 #else
 #include "chrome/browser/download/bubble/download_bubble_prefs.h"
 #include "chrome/browser/download/bubble/download_bubble_ui_controller.h"
@@ -48,10 +44,6 @@
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/download/notification/download_notification_manager.h"
 #endif  // BUILDFLAG(IS_CHROMEOS)
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-#include "chromeos/startup/browser_params_proxy.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
 namespace {
 
@@ -118,7 +110,7 @@ void DownloadShelfUIControllerDelegate::OnNewDownloadReady(
       web_contents = inspected;
   }
   Browser* browser =
-      web_contents ? chrome::FindBrowserWithTab(web_contents) : nullptr;
+      web_contents ? chrome::FindBrowserWithWebContents(web_contents) : nullptr;
 
   // As a last resort, use the last active browser for this profile. Not ideal,
   // but better than not showing the download at all.
@@ -140,7 +132,8 @@ class DownloadBubbleUIControllerDelegate
   // |profile| is required to outlive DownloadBubbleUIControllerDelegate.
   explicit DownloadBubbleUIControllerDelegate(Profile* profile)
       : profile_(profile) {
-    if (profile_->IsOffTheRecord()) {
+    if (download::IsDownloadBubbleV2Enabled(profile_) &&
+        profile_->IsOffTheRecord()) {
       profile_->GetPrefs()->SetBoolean(prefs::kPromptForDownload, true);
     }
   }
@@ -164,12 +157,19 @@ void DownloadBubbleUIControllerDelegate::OnNewDownloadReady(
     return;
   }
 
-  DownloadBubbleUpdateService* download_bubble_update_service =
-      DownloadBubbleUpdateServiceFactory::GetForProfile(profile_);
-  if (!download_bubble_update_service) {
+  Browser* browser_to_show_animation =
+      FindBrowserToShowAnimation(item, profile_);
+  BrowserList* browser_list = BrowserList::GetInstance();
+  if (!browser_list)
     return;
+
+  for (auto* browser : *browser_list) {
+    if (browser && browser->window() &&
+        browser->window()->GetDownloadBubbleUIController()) {
+      browser->window()->GetDownloadBubbleUIController()->OnDownloadItemAdded(
+          item, /*may_show_animation=*/(browser == browser_to_show_animation));
+    }
   }
-  download_bubble_update_service->NotifyWindowsOfDownloadItemAdded(item);
 }
 
 void DownloadBubbleUIControllerDelegate::OnButtonClicked() {
@@ -177,7 +177,7 @@ void DownloadBubbleUIControllerDelegate::OnButtonClicked() {
   if (!browser_list)
     return;
 
-  for (Browser* browser : *browser_list) {
+  for (auto* browser : *browser_list) {
     if (browser && browser->window() &&
         browser->window()->GetDownloadBubbleUIController()) {
       browser->window()->GetDownloadBubbleUIController()->HandleButtonPressed();
@@ -186,66 +186,6 @@ void DownloadBubbleUIControllerDelegate::OnButtonClicked() {
 }
 
 #endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_CHROMEOS)
-
-// A composite `DownloadUIController::Delegate` for use exclusively on ChromeOS.
-// TODO(http://b/279791981): Remove after enabling the new downloads integration
-// with System UI surfaces and deprecating `DownloadNotificationManager`.
-class CrOSUIControllerDelegate : public DownloadUIController::Delegate {
- public:
-  explicit CrOSUIControllerDelegate(content::DownloadManager* manager) {
-    // Conditionally add the `DownloadBubbleUIControllerDelegate`.
-    auto* profile = Profile::FromBrowserContext(manager->GetBrowserContext());
-    if (download::IsDownloadBubbleEnabled()) {
-      delegates_.emplace_back(
-          std::make_unique<DownloadBubbleUIControllerDelegate>(profile));
-      InitializeDownloadBubbleUpdateService(profile, manager);
-    }
-
-    // Generally the `DownloadNotificationManager` should always be added as it
-    // provides System UI notifications on ChromeOS.
-    bool add_download_notification_manager = true;
-
-    // In Lacros, the `DownloadNotificationManager` should be added if and only
-    // if the new downloads integration with System UI surfaces is disabled.
-    // This ensures that exactly one System UI notification provider exists.
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-    if (auto* proxy = chromeos::BrowserParamsProxy::Get();
-        proxy && proxy->IsSysUiDownloadsIntegrationV2Enabled()) {
-      add_download_notification_manager = false;
-    }
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-
-    if (add_download_notification_manager) {
-      delegates_.emplace_back(
-          std::make_unique<DownloadNotificationManager>(profile));
-    }
-  }
-
-  CrOSUIControllerDelegate(const CrOSUIControllerDelegate&) = delete;
-  CrOSUIControllerDelegate& operator=(const CrOSUIControllerDelegate&) = delete;
-  ~CrOSUIControllerDelegate() override = default;
-
- private:
-  // DownloadUIController::Delegate:
-  void OnNewDownloadReady(download::DownloadItem* item) override {
-    for (auto& delegate : delegates_) {
-      delegate->OnNewDownloadReady(item);
-    }
-  }
-
-  void OnButtonClicked() override {
-    for (auto& delegate : delegates_) {
-      delegate->OnButtonClicked();
-    }
-  }
-
-  // The collection of delegates contained by this composite.
-  std::vector<std::unique_ptr<DownloadUIController::Delegate>> delegates_;
-};
-
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 } // namespace
 
@@ -262,13 +202,20 @@ DownloadUIController::DownloadUIController(content::DownloadManager* manager,
     delegate_ = std::make_unique<AndroidUIControllerDelegate>();
 #elif BUILDFLAG(IS_CHROMEOS)
   if (!delegate_) {
-    delegate_ = std::make_unique<CrOSUIControllerDelegate>(manager);
+    Profile* profile =
+        Profile::FromBrowserContext(manager->GetBrowserContext());
+    if (download::IsDownloadBubbleEnabled(profile)) {
+      delegate_ = std::make_unique<DownloadBubbleUIControllerDelegate>(profile);
+      InitializeDownloadBubbleUpdateService(profile, manager);
+    } else {
+      delegate_ = std::make_unique<DownloadNotificationManager>(profile);
+    }
   }
 #else   // BUILDFLAG(IS_CHROMEOS)
   if (!delegate_) {
     Profile* profile =
         Profile::FromBrowserContext(manager->GetBrowserContext());
-    if (download::IsDownloadBubbleEnabled()) {
+    if (download::IsDownloadBubbleEnabled(profile)) {
       delegate_ = std::make_unique<DownloadBubbleUIControllerDelegate>(profile);
       InitializeDownloadBubbleUpdateService(profile, manager);
     } else {
@@ -278,7 +225,8 @@ DownloadUIController::DownloadUIController(content::DownloadManager* manager,
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 
-DownloadUIController::~DownloadUIController() = default;
+DownloadUIController::~DownloadUIController() {
+}
 
 void DownloadUIController::OnButtonClicked() {
   delegate_->OnButtonClicked();
@@ -319,22 +267,10 @@ void DownloadUIController::OnDownloadUpdated(content::DownloadManager* manager,
                                              download::DownloadItem* item) {
   DownloadItemModel item_model(item);
 
-  bool needs_to_render = false;
-#if BUILDFLAG(IS_ANDROID)
-  if (manager->GetDelegate() && manager->GetDelegate()->ShouldOpenPdfInline() &&
-      !item->IsMustDownload() &&
-      base::EqualsCaseInsensitiveASCII(item->GetMimeType(),
-                                       pdf::kPDFMimeType)) {
-    needs_to_render = true;
-  }
-#endif  // BUILDFLAG(IS_ANDROID)
-
   // Ignore if we've already notified the UI about |item| or if it isn't a new
   // download.
-  if (item_model.WasUINotified() ||
-      (!item_model.ShouldNotifyUI() && !needs_to_render)) {
+  if (item_model.WasUINotified() || !item_model.ShouldNotifyUI())
     return;
-  }
 
   // Downloads blocked by local policies should be notified, otherwise users
   // won't get any feedback that the download has failed.
@@ -354,11 +290,9 @@ void DownloadUIController::OnDownloadUpdated(content::DownloadManager* manager,
       content::DownloadItemUtils::GetWebContents(item);
   if (web_contents) {
 #if BUILDFLAG(IS_ANDROID)
-    if (!needs_to_render) {
-      DownloadController::CloseTabIfEmpty(web_contents, item);
-    }
-#else   // BUILDFLAG(IS_ANDROID)
-    Browser* browser = chrome::FindBrowserWithTab(web_contents);
+    DownloadController::CloseTabIfEmpty(web_contents, item);
+#else
+    Browser* browser = chrome::FindBrowserWithWebContents(web_contents);
     // If the download occurs in a new tab, and it's not a save page
     // download (started before initial navigation completed) close it.
     // Avoid calling CloseContents if the tab is not in this browser's tab strip

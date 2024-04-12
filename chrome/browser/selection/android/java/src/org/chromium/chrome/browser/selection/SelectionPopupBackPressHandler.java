@@ -14,20 +14,22 @@ import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.content_public.browser.SelectionPopupController;
+import org.chromium.content_public.browser.WebContents;
 
 /**
  * {@link BackPressHandler} of {@link SelectionPopupController}. This listens to the change of tab
  * model and notifies whether the current selection popup controller is going to intercept the
  * back press.
  */
-public class SelectionPopupBackPressHandler extends EmptyTabObserver
-        implements BackPressHandler, TabModelObserver, Destroyable {
+public class SelectionPopupBackPressHandler
+        extends EmptyTabObserver implements BackPressHandler, TabModelObserver, Destroyable {
     private final ObservableSupplierImpl<Boolean> mBackPressChangedSupplier =
             new ObservableSupplierImpl<>();
     private final Callback<Boolean> mCallback = this::onActionBarShowingChanged;
 
     private SelectionPopupController mPopupController;
     private Tab mTab;
+    private WebContents mWebContents;
 
     /**
      * @param tabModelSelector A {@link TabModelSelector} which can provide
@@ -40,10 +42,8 @@ public class SelectionPopupBackPressHandler extends EmptyTabObserver
     @Override
     public @BackPressResult int handleBackPress() {
         assert mPopupController != null;
-        int res =
-                mPopupController.isSelectActionBarShowing()
-                        ? BackPressResult.SUCCESS
-                        : BackPressResult.FAILURE;
+        int res = mPopupController.isSelectActionBarShowing() ? BackPressResult.SUCCESS
+                                                              : BackPressResult.FAILURE;
         mPopupController.clearSelection();
         return res;
     }
@@ -81,12 +81,16 @@ public class SelectionPopupBackPressHandler extends EmptyTabObserver
             mPopupController = null;
         }
         if (mTab != null) mTab.removeObserver(this);
-        mTab = tab;
-        if (tab == null) return;
-        var webContents = tab.getWebContents();
-        if (webContents == null) return;
+        if (tab == null) {
+            mWebContents = null;
+            mTab = null;
+            return;
+        }
+        mWebContents = tab.getWebContents();
+        if (tab.getWebContents() == null) return;
         tab.addObserver(this);
-        mPopupController = SelectionPopupController.fromWebContents(webContents);
+        mTab = tab;
+        mPopupController = SelectionPopupController.fromWebContents(tab.getWebContents());
         mPopupController.isSelectActionBarShowingSupplier().addObserver(mCallback);
     }
 

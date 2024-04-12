@@ -9,7 +9,6 @@
 
 #include "ash/components/arc/arc_browser_context_keyed_service_factory_base.h"
 #include "ash/public/cpp/notification_utils.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/strings/utf_string_conversions.h"
@@ -22,6 +21,7 @@
 #include "chrome/browser/notifications/notification_display_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/user_manager/user_manager.h"
@@ -73,7 +73,7 @@ void ShowLowDiskSpaceErrorNotification(content::BrowserContext* context) {
       notifier_id, optional_fields,
       base::MakeRefCounted<message_center::HandleNotificationClickDelegate>(
           base::BindRepeating(
-              [](Profile* profile, std::optional<int> button_index) {
+              [](Profile* profile, absl::optional<int> button_index) {
                 if (button_index) {
                   DCHECK_EQ(0, *button_index);
                   chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(

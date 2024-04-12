@@ -8,12 +8,12 @@
 #include <memory>
 #include <vector>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "components/favicon_base/favicon_callback.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_controller_factory.h"
-#include "ui/base/resource/resource_scale_factor.h"
+#include "ui/base/layout.h"
 
 class Profile;
 
@@ -57,11 +57,10 @@ class ChromeWebUIControllerFactory : public content::WebUIControllerFactory {
                         favicon_base::FaviconResultsCallback callback) const;
 
 #if BUILDFLAG(IS_CHROMEOS)
-  // When Lacros is enabled, this function is called to retrieve a list of URLs
-  // which can be handled by this browser (Ash or Lacros).
+  // Called to retrieve a list of URLs which can be handled by this browser.
   // For Ash this means that they are shown in an SWA application and for
   // Lacros it means that Lacros will handle them themselves.
-  const std::vector<GURL>& GetListOfAcceptableURLs();
+  std::vector<GURL> GetListOfAcceptableURLs();
 
   // Determines if the given URL can be handled by any known handler.
   bool CanHandleUrl(const GURL& url);
@@ -72,7 +71,7 @@ class ChromeWebUIControllerFactory : public content::WebUIControllerFactory {
   ~ChromeWebUIControllerFactory() override;
 
  private:
-  friend base::NoDestructor<ChromeWebUIControllerFactory>;
+  friend struct base::DefaultSingletonTraits<ChromeWebUIControllerFactory>;
 
   // Gets the data for the favicon for a WebUI page. Returns NULL if the WebUI
   // does not have a favicon.

@@ -24,7 +24,7 @@ class PrimaryAccountPolicyManagerFactory : public ProfileKeyedServiceFactory {
   ~PrimaryAccountPolicyManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

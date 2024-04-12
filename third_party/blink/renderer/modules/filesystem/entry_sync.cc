@@ -115,7 +115,7 @@ void EntrySync::remove(ExceptionState& exception_state) const {
   sync_helper->GetResultOrThrow(exception_state);
 }
 
-DirectoryEntrySync* EntrySync::getParent() const {
+EntrySync* EntrySync::getParent() const {
   // Sync verion of getParent doesn't throw exceptions.
   String parent_path = DOMFilePath::GetDirectory(fullPath());
   return MakeGarbageCollected<DirectoryEntrySync>(file_system_, parent_path);

@@ -10,7 +10,7 @@
 
 namespace ash {
 
-class PackagedLicenseView {
+class PackagedLicenseView : public base::SupportsWeakPtr<PackagedLicenseView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"packaged-license",
                                                        "PackagedLicenseScreen"};
@@ -22,14 +22,11 @@ class PackagedLicenseView {
 
   // Shows the contents of the screen.
   virtual void Show() = 0;
-
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<PackagedLicenseView> AsWeakPtr() = 0;
 };
 
 // A class that handles WebUI hooks in PackagedLicense screen.
-class PackagedLicenseScreenHandler final : public BaseScreenHandler,
-                                           public PackagedLicenseView {
+class PackagedLicenseScreenHandler : public BaseScreenHandler,
+                                     public PackagedLicenseView {
  public:
   using TView = PackagedLicenseView;
   PackagedLicenseScreenHandler();
@@ -39,14 +36,11 @@ class PackagedLicenseScreenHandler final : public BaseScreenHandler,
   ~PackagedLicenseScreenHandler() override;
 
   void Show() override;
-  base::WeakPtr<PackagedLicenseView> AsWeakPtr() override;
 
  private:
   // BaseScreenHandler implementation:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
-  base::WeakPtrFactory<PackagedLicenseView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

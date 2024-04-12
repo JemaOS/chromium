@@ -22,7 +22,6 @@ LocalMediaStreamAudioSource::LocalMediaStreamAudioSource(
     const MediaStreamDevice& device,
     const int* requested_buffer_size,
     bool disable_local_echo,
-    bool enable_system_echo_cancellation,
     ConstraintsRepeatingCallback started_callback,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
     : MediaStreamAudioSource(std::move(task_runner),
@@ -30,30 +29,8 @@ LocalMediaStreamAudioSource::LocalMediaStreamAudioSource(
                              disable_local_echo),
       consumer_frame_(consumer_frame),
       started_callback_(std::move(started_callback)) {
-  DVLOG(1) << "LocalMediaStreamAudioSource::LocalMediaStreamAudioSource("
-              "device.input="
-           << device.input.AsHumanReadableString()
-           << "requested_buffer_size=" << requested_buffer_size
-           << "enable_system_echo_cancellation="
-           << (enable_system_echo_cancellation ? "true" : "false") << ")";
-  const int device_supported_effects = device.input.effects();
-  MediaStreamDevice device_to_request(device);
-  if (enable_system_echo_cancellation) {
-    // Echo cancellation may only be requested if supported by the device,
-    // otherwise a different MediaStreamSource implementation should be used.
-    DCHECK_NE(device_supported_effects &
-                  (media::AudioParameters::ECHO_CANCELLER |
-                   media::AudioParameters::EXPERIMENTAL_ECHO_CANCELLER),
-              0);
-    // The EXPERIMENTAL_ECHO_CANCELLER bit only signals presence of a device
-    // effect, we need to toggle the ECHO_CANCELLER bit to request the effect.
-    device_to_request.input.set_effects(device_supported_effects |
-                                        media::AudioParameters::ECHO_CANCELLER);
-  } else {
-    device_to_request.input.set_effects(
-        device_supported_effects & ~media::AudioParameters::ECHO_CANCELLER);
-  }
-  SetDevice(device_to_request);
+  DVLOG(1) << "LocalMediaStreamAudioSource::LocalMediaStreamAudioSource()";
+  SetDevice(device);
 
   int frames_per_buffer = device.input.frames_per_buffer();
   if (requested_buffer_size)
@@ -74,7 +51,6 @@ LocalMediaStreamAudioSource::LocalMediaStreamAudioSource(
   if (device.input.channel_layout() == media::CHANNEL_LAYOUT_DISCRETE) {
     DCHECK_LE(device.input.channels(), 2);
   }
-  params.set_effects(device_to_request.input.effects());
   SetFormat(params);
 }
 
@@ -135,14 +111,12 @@ void LocalMediaStreamAudioSource::OnCaptureStarted() {
   started_callback_.Run(this, mojom::MediaStreamRequestResult::OK, "");
 }
 
-void LocalMediaStreamAudioSource::Capture(
-    const media::AudioBus* audio_bus,
-    base::TimeTicks audio_capture_time,
-    const media::AudioGlitchInfo& glitch_info,
-    double volume,
-    bool key_pressed) {
+void LocalMediaStreamAudioSource::Capture(const media::AudioBus* audio_bus,
+                                          base::TimeTicks audio_capture_time,
+                                          double volume,
+                                          bool key_pressed) {
   DCHECK(audio_bus);
-  DeliverDataToTracks(*audio_bus, audio_capture_time, glitch_info);
+  DeliverDataToTracks(*audio_bus, audio_capture_time);
 }
 
 void LocalMediaStreamAudioSource::OnCaptureError(
@@ -172,7 +146,7 @@ void LocalMediaStreamAudioSource::ChangeSourceImpl(
 using EchoCancellationType =
     blink::AudioProcessingProperties::EchoCancellationType;
 
-std::optional<blink::AudioProcessingProperties>
+absl::optional<blink::AudioProcessingProperties>
 LocalMediaStreamAudioSource::GetAudioProcessingProperties() const {
   blink::AudioProcessingProperties properties;
   properties.DisableDefaultProperties();

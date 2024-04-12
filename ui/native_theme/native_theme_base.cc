@@ -19,8 +19,8 @@
 #include "third_party/skia/include/core/SkPath.h"
 #include "third_party/skia/include/core/SkRRect.h"
 #include "third_party/skia/include/effects/SkGradientShader.h"
+#include "ui/base/layout.h"
 #include "ui/base/resource/resource_bundle.h"
-#include "ui/base/resource/resource_scale_factor.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/color/color_provider.h"
@@ -33,7 +33,6 @@
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/native_theme/common_theme.h"
-#include "ui/native_theme/native_theme.h"
 
 namespace {
 
@@ -89,6 +88,46 @@ const double kAccentLuminanceAdjust = 0.11;
 SkColor GetColor(const SkColor colors[2],
                  ui::NativeTheme::ColorScheme color_scheme) {
   return colors[color_scheme == ui::NativeTheme::ColorScheme::kDark ? 1 : 0];
+}
+
+// This returns a color scheme which provides enough contrast with the custom
+// accent-color to make it easy to see.
+// |light_contrasting_color| is the color which is used to paint adjacent to
+// |accent_color| in ColorScheme::kLight, and |dark_contrasting_color| is the
+// one used for ColorScheme::kDark.
+ui::NativeTheme::ColorScheme ColorSchemeForAccentColor(
+    const absl::optional<SkColor>& accent_color,
+    const ui::NativeTheme::ColorScheme& color_scheme,
+    const SkColor& light_contrasting_color,
+    const SkColor& dark_contrasting_color) {
+  // If there is enough contrast between accent_color and color_scheme, then
+  // let's keep it the same. Otherwise, flip the color_scheme to guarantee
+  // contrast.
+
+  if (!accent_color)
+    return color_scheme;
+
+  float contrast_with_light =
+      color_utils::GetContrastRatio(*accent_color, light_contrasting_color);
+  float contrast_with_dark =
+      color_utils::GetContrastRatio(*accent_color, dark_contrasting_color);
+  const float kMinimumContrast = 3;
+
+  if (color_scheme == ui::NativeTheme::ColorScheme::kDark) {
+    if (contrast_with_dark < kMinimumContrast &&
+        contrast_with_dark < contrast_with_light) {
+      // TODO(crbug.com/1216137): what if |contrast_with_light| is less than
+      // |kMinimumContrast|? Should we modify |accent_color|...?
+      return ui::NativeTheme::ColorScheme::kLight;
+    }
+  } else {
+    if (contrast_with_light < kMinimumContrast &&
+        contrast_with_light < contrast_with_dark) {
+      return ui::NativeTheme::ColorScheme::kDark;
+    }
+  }
+
+  return color_scheme;
 }
 
 SkColor AdjustLuminance(const SkColor& color, double luminance) {
@@ -213,8 +252,7 @@ void NativeThemeBase::Paint(cc::PaintCanvas* canvas,
                             const gfx::Rect& rect,
                             const ExtraParams& extra,
                             ColorScheme color_scheme,
-                            bool in_forced_colors,
-                            const std::optional<SkColor>& accent_color) const {
+                            const absl::optional<SkColor>& accent_color) const {
   if (rect.IsEmpty())
     return;
 
@@ -222,7 +260,7 @@ void NativeThemeBase::Paint(cc::PaintCanvas* canvas,
   canvas->clipRect(gfx::RectToSkRect(rect));
 
   // Form control accents shouldn't be drawn with any transparency.
-  std::optional<SkColor> accent_color_opaque;
+  absl::optional<SkColor> accent_color_opaque;
   if (accent_color) {
     accent_color_opaque = SkColorSetA(accent_color.value(), SK_AlphaOPAQUE);
   }
@@ -230,55 +268,48 @@ void NativeThemeBase::Paint(cc::PaintCanvas* canvas,
   switch (part) {
     // Please keep these in the order of NativeTheme::Part.
     case kCheckbox:
-      PaintCheckbox(canvas, color_provider, state, rect,
-                    absl::get<ButtonExtraParams>(extra), color_scheme,
-                    accent_color_opaque);
+      PaintCheckbox(canvas, color_provider, state, rect, extra.button,
+                    color_scheme, accent_color_opaque);
       break;
 // TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
 // of lacros-chrome is complete.
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
     case kFrameTopArea:
-      PaintFrameTopArea(canvas, state, rect,
-                        absl::get<FrameTopAreaExtraParams>(extra),
+      PaintFrameTopArea(canvas, state, rect, extra.frame_top_area,
                         color_scheme);
       break;
 #endif
     case kInnerSpinButton:
       PaintInnerSpinButton(canvas, color_provider, state, rect,
-                           absl::get<InnerSpinButtonExtraParams>(extra),
-                           color_scheme, in_forced_colors);
+                           extra.inner_spin, color_scheme);
       break;
     case kMenuList:
-      PaintMenuList(canvas, color_provider, state, rect,
-                    absl::get<MenuListExtraParams>(extra), color_scheme);
+      PaintMenuList(canvas, color_provider, state, rect, extra.menu_list,
+                    color_scheme);
       break;
     case kMenuPopupBackground:
       PaintMenuPopupBackground(canvas, color_provider, rect.size(),
-                               absl::get<MenuBackgroundExtraParams>(extra),
-                               color_scheme);
+                               extra.menu_background, color_scheme);
       break;
     case kMenuPopupSeparator:
       PaintMenuSeparator(canvas, color_provider, state, rect,
-                         absl::get<MenuSeparatorExtraParams>(extra));
+                         extra.menu_separator);
       break;
     case kMenuItemBackground:
       PaintMenuItemBackground(canvas, color_provider, state, rect,
-                              absl::get<MenuItemExtraParams>(extra),
-                              color_scheme);
+                              extra.menu_item, color_scheme);
       break;
     case kProgressBar:
-      PaintProgressBar(canvas, color_provider, state, rect,
-                       absl::get<ProgressBarExtraParams>(extra), color_scheme,
-                       accent_color_opaque);
+      PaintProgressBar(canvas, color_provider, state, rect, extra.progress_bar,
+                       color_scheme, accent_color_opaque);
       break;
     case kPushButton:
-      PaintButton(canvas, color_provider, state, rect,
-                  absl::get<ButtonExtraParams>(extra), color_scheme);
+      PaintButton(canvas, color_provider, state, rect, extra.button,
+                  color_scheme);
       break;
     case kRadio:
-      PaintRadio(canvas, color_provider, state, rect,
-                 absl::get<ButtonExtraParams>(extra), color_scheme,
-                 accent_color_opaque);
+      PaintRadio(canvas, color_provider, state, rect, extra.button,
+                 color_scheme, accent_color_opaque);
       break;
     case kScrollbarDownArrow:
     case kScrollbarUpArrow:
@@ -286,20 +317,17 @@ void NativeThemeBase::Paint(cc::PaintCanvas* canvas,
     case kScrollbarRightArrow:
       if (scrollbar_button_length_ > 0)
         PaintArrowButton(canvas, color_provider, rect, part, state,
-                         color_scheme, in_forced_colors,
-                         absl::get<ScrollbarArrowExtraParams>(extra));
+                         color_scheme, extra.scrollbar_arrow);
       break;
     case kScrollbarHorizontalThumb:
     case kScrollbarVerticalThumb:
       PaintScrollbarThumb(canvas, color_provider, part, state, rect,
-                          absl::get<ScrollbarThumbExtraParams>(extra),
-                          color_scheme);
+                          extra.scrollbar_thumb.scrollbar_theme, color_scheme);
       break;
     case kScrollbarHorizontalTrack:
     case kScrollbarVerticalTrack:
       PaintScrollbarTrack(canvas, color_provider, part, state,
-                          absl::get<ScrollbarTrackExtraParams>(extra), rect,
-                          color_scheme, in_forced_colors);
+                          extra.scrollbar_track, rect, color_scheme);
       break;
     case kScrollbarHorizontalGripper:
     case kScrollbarVerticalGripper:
@@ -307,26 +335,22 @@ void NativeThemeBase::Paint(cc::PaintCanvas* canvas,
       // implementations, so no NOTIMPLEMENTED.
       break;
     case kScrollbarCorner:
-      PaintScrollbarCorner(canvas, color_provider, state, rect,
-                           absl::get<ScrollbarTrackExtraParams>(extra),
-                           color_scheme);
+      PaintScrollbarCorner(canvas, color_provider, state, rect, color_scheme);
       break;
     case kSliderTrack:
-      PaintSliderTrack(canvas, color_provider, state, rect,
-                       absl::get<SliderExtraParams>(extra), color_scheme,
-                       accent_color_opaque);
+      PaintSliderTrack(canvas, color_provider, state, rect, extra.slider,
+                       color_scheme, accent_color_opaque);
       break;
     case kSliderThumb:
-      PaintSliderThumb(canvas, color_provider, state, rect,
-                       absl::get<SliderExtraParams>(extra), color_scheme,
-                       accent_color_opaque);
+      PaintSliderThumb(canvas, color_provider, state, rect, extra.slider,
+                       color_scheme, accent_color_opaque);
       break;
     case kTabPanelBackground:
       NOTIMPLEMENTED();
       break;
     case kTextField:
-      PaintTextField(canvas, color_provider, state, rect,
-                     absl::get<TextFieldExtraParams>(extra), color_scheme);
+      PaintTextField(canvas, color_provider, state, rect, extra.text_field,
+                     color_scheme);
       break;
     case kTrackbarThumb:
     case kTrackbarTrack:
@@ -370,15 +394,12 @@ void NativeThemeBase::PaintArrowButton(
     Part direction,
     State state,
     ColorScheme color_scheme,
-    bool in_forced_colors,
-    const ScrollbarArrowExtraParams& extra_params) const {
+    const ScrollbarArrowExtraParams& arrow) const {
   cc::PaintFlags flags;
 
   // Calculate button color.
   SkScalar track_hsv[3];
-  SkColorToHSV(
-      extra_params.track_color.value_or(GetColor(kTrackColor, color_scheme)),
-      track_hsv);
+  SkColorToHSV(GetColor(kTrackColor, color_scheme), track_hsv);
   SkColor button_color = SaturateAndBrighten(track_hsv, 0, 0.2f);
   SkColor background_color = button_color;
   if (state == kPressed) {
@@ -448,12 +469,8 @@ void NativeThemeBase::PaintArrowButton(
   flags.setColor(OutlineColor(track_hsv, thumb_hsv));
   canvas->drawPath(outline, flags);
 
-  // TODO(crbug.com/891944): Adjust thumb_color based on `state`.
-  const SkColor arrow_color =
-      extra_params.thumb_color.has_value()
-          ? extra_params.thumb_color.value()
-          : GetArrowColor(state, color_scheme, color_provider);
-  PaintArrow(canvas, rect, direction, arrow_color);
+  PaintArrow(canvas, rect, direction,
+             GetArrowColor(state, color_scheme, color_provider));
 }
 
 void NativeThemeBase::PaintArrow(cc::PaintCanvas* gc,
@@ -519,8 +536,7 @@ void NativeThemeBase::PaintScrollbarTrack(
     State state,
     const ScrollbarTrackExtraParams& extra_params,
     const gfx::Rect& rect,
-    ColorScheme color_scheme,
-    bool in_forced_colors) const {
+    ColorScheme color_scheme) const {
   cc::PaintFlags flags;
   SkIRect skrect;
 
@@ -537,14 +553,13 @@ void NativeThemeBase::PaintScrollbarTrack(
   DrawBox(canvas, rect, flags);
 }
 
-void NativeThemeBase::PaintScrollbarThumb(
-    cc::PaintCanvas* canvas,
-    const ColorProvider* color_provider,
-    Part part,
-    State state,
-    const gfx::Rect& rect,
-    const ScrollbarThumbExtraParams& extra_params,
-    ColorScheme color_scheme) const {
+void NativeThemeBase::PaintScrollbarThumb(cc::PaintCanvas* canvas,
+                                          const ColorProvider* color_provider,
+                                          Part part,
+                                          State state,
+                                          const gfx::Rect& rect,
+                                          ScrollbarOverlayColorTheme,
+                                          ColorScheme color_scheme) const {
   const bool hovered = state == kHovered;
   const int midx = rect.x() + rect.width() / 2;
   const int midy = rect.y() + rect.height() / 2;
@@ -604,13 +619,11 @@ void NativeThemeBase::PaintScrollbarThumb(
   }
 }
 
-void NativeThemeBase::PaintScrollbarCorner(
-    cc::PaintCanvas* canvas,
-    const ColorProvider* color_provider,
-    State state,
-    const gfx::Rect& rect,
-    const ScrollbarTrackExtraParams& extra_params,
-    ColorScheme color_scheme) const {}
+void NativeThemeBase::PaintScrollbarCorner(cc::PaintCanvas* canvas,
+                                           const ColorProvider* color_provider,
+                                           State state,
+                                           const gfx::Rect& rect,
+                                           ColorScheme color_scheme) const {}
 
 void NativeThemeBase::PaintCheckbox(
     cc::PaintCanvas* canvas,
@@ -619,7 +632,20 @@ void NativeThemeBase::PaintCheckbox(
     const gfx::Rect& rect,
     const ButtonExtraParams& button,
     ColorScheme color_scheme,
-    const std::optional<SkColor>& accent_color) const {
+    const absl::optional<SkColor>& accent_color) const {
+  // ControlsBackgroundColorForState is used below for |checkmark_color|, which
+  // gets drawn adjacent to |accent_color|. In order to guarantee contrast
+  // between |checkmark_color| and |accent_color|, we choose the |color_scheme|
+  // here based on the two possible values for |checkmark_color|.
+  if (button.checked && state != kDisabled) {
+    color_scheme = ColorSchemeForAccentColor(
+        accent_color, color_scheme,
+        ControlsBackgroundColorForState(state, ColorScheme::kLight,
+                                        color_provider),
+        ControlsBackgroundColorForState(state, ColorScheme::kDark,
+                                        color_provider));
+  }
+
   const float border_radius =
       GetBorderRadiusForPart(kCheckbox, rect.width(), rect.height());
 
@@ -680,7 +706,7 @@ SkRect NativeThemeBase::PaintCheckboxRadioCommon(
     bool is_checkbox,
     const SkScalar border_radius,
     ColorScheme color_scheme,
-    const std::optional<SkColor>& accent_color) const {
+    const absl::optional<SkColor>& accent_color) const {
   SkRect skrect = gfx::RectToSkRect(rect);
 
   // Use the largest square that fits inside the provided rectangle.
@@ -761,7 +787,20 @@ void NativeThemeBase::PaintRadio(
     const gfx::Rect& rect,
     const ButtonExtraParams& button,
     ColorScheme color_scheme,
-    const std::optional<SkColor>& accent_color) const {
+    const absl::optional<SkColor>& accent_color) const {
+  // ControlsBackgroundColorForState is used below in PaintCheckboxRadioCommon,
+  // which gets draw adjacent to |accent_color|. In order to guarantee contrast
+  // between the background and |accent_color|, we choose the |color_scheme|
+  // here based on the two possible values for ControlsBackgroundColorForState.
+  if (button.checked && state != kDisabled) {
+    color_scheme = ColorSchemeForAccentColor(
+        accent_color, color_scheme,
+        ControlsBackgroundColorForState(state, ColorScheme::kLight,
+                                        color_provider),
+        ControlsBackgroundColorForState(state, ColorScheme::kDark,
+                                        color_provider));
+  }
+
   // Most of a radio button is the same as a checkbox, except the the rounded
   // square is a circle (i.e. border radius >= 100%).
   const float border_radius =
@@ -883,7 +922,7 @@ void NativeThemeBase::PaintMenuList(cc::PaintCanvas* canvas,
   // and the border of the control. The arrow (menulist button) is always
   // painted by the theming code.
   if (!menu_list.has_border_radius) {
-    TextFieldExtraParams text_field;
+    TextFieldExtraParams text_field = {false};
     text_field.background_color = menu_list.background_color;
     text_field.has_border = menu_list.has_border;
     text_field.zoom = menu_list.zoom;
@@ -898,65 +937,30 @@ void NativeThemeBase::PaintMenuList(cc::PaintCanvas* canvas,
   flags.setStyle(cc::PaintFlags::kStroke_Style);
   flags.setStrokeWidth(kMenuListArrowStrokeWidth);
 
-  if (menu_list.arrow_direction == ui::NativeTheme::ArrowDirection::kDown) {
-    float arrow_width = menu_list.arrow_size;
-    int arrow_height = arrow_width * 0.5;
-    gfx::Rect arrow(menu_list.arrow_x, menu_list.arrow_y - (arrow_height / 2),
-                    arrow_width, arrow_height);
-    arrow.Intersect(rect);
+  float arrow_width = menu_list.arrow_size;
+  int arrow_height = arrow_width * 0.5;
+  gfx::Rect arrow(menu_list.arrow_x, menu_list.arrow_y - (arrow_height / 2),
+                  arrow_width, arrow_height);
+  arrow.Intersect(rect);
 
-    if (arrow_width != arrow.width() || arrow_height != arrow.height()) {
-      // The arrow is clipped after being constrained to the paint rect so we
-      // need to recalculate its size.
-      int height_clip = arrow_height - arrow.height();
-      int width_clip = arrow_width - arrow.width();
-      if (height_clip > width_clip) {
-        arrow.set_width(arrow.height() * 1.6);
-      } else {
-        arrow.set_height(arrow.width() * 0.6);
-      }
-      arrow.set_y(menu_list.arrow_y - (arrow.height() / 2));
-    }
-
-    SkPath path;
-    path.moveTo(arrow.x(), arrow.y());
-    path.lineTo(arrow.x() + arrow.width() / 2, arrow.y() + arrow.height());
-    path.lineTo(arrow.x() + arrow.width(), arrow.y());
-    canvas->drawPath(path, flags);
-  } else {
-    // Arrow direction is either left or right
-    float arrow_height = menu_list.arrow_size;
-    int arrow_width = arrow_height * 0.5;
-    gfx::Rect arrow(menu_list.arrow_x - (arrow_width / 2), menu_list.arrow_y,
-                    arrow_width, arrow_height);
-    arrow.Intersect(rect);
-
-    if (arrow_width != arrow.width() || arrow_height != arrow.height()) {
-      // The arrow is clipped after being constrained to the paint rect so we
-      // need to recalculate its size.
-      int height_clip = arrow_height - arrow.height();
-      int width_clip = arrow_width - arrow.width();
-      if (height_clip > width_clip) {
-        arrow.set_width(arrow.height() * 0.6);
-      } else {
-        arrow.set_height(arrow.width() * 1.6);
-      }
-      arrow.set_x(menu_list.arrow_x - (arrow.width() / 2));
-    }
-
-    SkPath path;
-    if (menu_list.arrow_direction == ui::NativeTheme::ArrowDirection::kLeft) {
-      path.moveTo(arrow.x() + arrow.width(), arrow.y());
-      path.lineTo(arrow.x(), arrow.y() + arrow.height() / 2);
-      path.lineTo(arrow.x() + arrow.width(), arrow.y() + arrow.height());
+  if (arrow_width != arrow.width() || arrow_height != arrow.height()) {
+    // The arrow is clipped after being constrained to the paint rect so we
+    // need to recalculate its size.
+    int height_clip = arrow_height - arrow.height();
+    int width_clip = arrow_width - arrow.width();
+    if (height_clip > width_clip) {
+      arrow.set_width(arrow.height() * 1.6);
     } else {
-      // Arrow direction is right
-      path.moveTo(arrow.x(), arrow.y());
-      path.lineTo(arrow.x() + arrow.width(), arrow.y() + arrow.height() / 2);
-      path.lineTo(arrow.x(), arrow.y() + arrow.height());
+      arrow.set_height(arrow.width() * 0.6);
     }
-    canvas->drawPath(path, flags);
+    arrow.set_y(menu_list.arrow_y - (arrow.height() / 2));
   }
+
+  SkPath path;
+  path.moveTo(arrow.x(), arrow.y());
+  path.lineTo(arrow.x() + arrow.width() / 2, arrow.y() + arrow.height());
+  path.lineTo(arrow.x() + arrow.width(), arrow.y());
+  canvas->drawPath(path, flags);
 }
 
 void NativeThemeBase::PaintMenuPopupBackground(
@@ -1005,7 +1009,21 @@ void NativeThemeBase::PaintSliderTrack(
     const gfx::Rect& rect,
     const SliderExtraParams& slider,
     ColorScheme color_scheme,
-    const std::optional<SkColor>& accent_color) const {
+    const absl::optional<SkColor>& accent_color) const {
+  // ControlsFillColorForState is used below for the slider track, which
+  // gets drawn adjacent to |accent_color|. In order to guarantee contrast
+  // between the slider track and |accent_color|, we choose the |color_scheme|
+  // here based on the two possible values for the slider track.
+  // We use kNormal here because the user hovering or clicking on the slider
+  // will change the state to something else, and we don't want the color-scheme
+  // to flicker back and forth when the user interacts with it.
+  if (state != kDisabled) {
+    color_scheme = ColorSchemeForAccentColor(
+        accent_color, color_scheme,
+        ControlsFillColorForState(kNormal, ColorScheme::kLight, color_provider),
+        ControlsFillColorForState(kNormal, ColorScheme::kDark, color_provider));
+  }
+
   // Paint the entire slider track.
   cc::PaintFlags flags;
   flags.setAntiAlias(true);
@@ -1024,12 +1042,12 @@ void NativeThemeBase::PaintSliderTrack(
       GetBorderRadiusForPart(kSliderTrack, rect.width(), rect.height());
   canvas->drawRoundRect(track_rect, border_radius, border_radius, flags);
 
-  // Set the clip to the extent of the value bar.
-  SkRect value_rect = AlignSliderTrack(rect, slider, true, track_height);
-  canvas->save();
-  canvas->clipRect(value_rect, SkClipOp::kIntersect, true);
+  // Clip the track to create rounded corners for the value bar.
+  SkRRect rounded_rect;
+  rounded_rect.setRectXY(track_rect, border_radius, border_radius);
+  canvas->clipRRect(rounded_rect, SkClipOp::kIntersect, true);
 
-  // Draw the full value bar, clipped to its extent.
+  // Paint the value slider track.
   if (accent_color && state != kDisabled) {
     flags.setColor(
         CustomAccentColorForState(*accent_color, state, color_scheme));
@@ -1037,10 +1055,8 @@ void NativeThemeBase::PaintSliderTrack(
     flags.setColor(
         ControlsSliderColorForState(state, color_scheme, color_provider));
   }
-  SkRRect rounded_rect;
-  rounded_rect.setRectXY(track_rect, border_radius, border_radius);
-  canvas->drawRRect(rounded_rect, flags);
-  canvas->restore();
+  SkRect value_rect = AlignSliderTrack(rect, slider, true, track_height);
+  canvas->drawRect(value_rect, flags);
 
   // Paint the border.
   flags.setStyle(cc::PaintFlags::kStroke_Style);
@@ -1062,7 +1078,21 @@ void NativeThemeBase::PaintSliderThumb(
     const gfx::Rect& rect,
     const SliderExtraParams& slider,
     ColorScheme color_scheme,
-    const std::optional<SkColor>& accent_color) const {
+    const absl::optional<SkColor>& accent_color) const {
+  // This is the same logic used in PaintSliderTrack to guarantee contrast with
+  // |accent_color|. This and PaintSliderTrack are used together to paint
+  // <input type=range>, so the logic must be the same in order to make sure one
+  // color scheme is used to paint the entire control.
+  // We use kNormal here because the user hovering or clicking on the slider
+  // will change the state to something else, and we don't want the color-scheme
+  // to flicker back and forth when the user interacts with it.
+  if (state != kDisabled) {
+    color_scheme = ColorSchemeForAccentColor(
+        accent_color, color_scheme,
+        ControlsFillColorForState(kNormal, ColorScheme::kLight, color_provider),
+        ControlsFillColorForState(kNormal, ColorScheme::kDark, color_provider));
+  }
+
   const float radius =
       GetBorderRadiusForPart(kSliderThumb, rect.width(), rect.height());
   SkRect thumb_rect = gfx::RectToSkRect(rect);
@@ -1093,8 +1123,7 @@ void NativeThemeBase::PaintInnerSpinButton(
     State state,
     const gfx::Rect& rect,
     const InnerSpinButtonExtraParams& spin_button,
-    ColorScheme color_scheme,
-    bool in_forced_colors) const {
+    ColorScheme color_scheme) const {
   if (spin_button.read_only)
     state = kDisabled;
 
@@ -1106,26 +1135,15 @@ void NativeThemeBase::PaintInnerSpinButton(
     north_state = north_state != kDisabled ? kNormal : kDisabled;
 
   gfx::Rect half = rect;
+  half.set_height(rect.height() / 2);
   ScrollbarArrowExtraParams arrow = ScrollbarArrowExtraParams();
   arrow.zoom = 1.0;
-  if (spin_button.spin_arrows_direction ==
-      ui::NativeTheme::SpinArrowsDirection::kUpDown) {
-    half.set_height(rect.height() / 2);
-    PaintArrowButton(canvas, color_provider, half, kScrollbarUpArrow,
-                     north_state, color_scheme, in_forced_colors, arrow);
+  PaintArrowButton(canvas, color_provider, half, kScrollbarUpArrow, north_state,
+                   color_scheme, arrow);
 
-    half.set_y(rect.y() + rect.height() / 2);
-    PaintArrowButton(canvas, color_provider, half, kScrollbarDownArrow,
-                     south_state, color_scheme, in_forced_colors, arrow);
-  } else {
-    half.set_width(rect.width() / 2);
-    PaintArrowButton(canvas, color_provider, half, kScrollbarLeftArrow,
-                     south_state, color_scheme, in_forced_colors, arrow);
-
-    half.set_x(rect.x() + rect.width() / 2);
-    PaintArrowButton(canvas, color_provider, half, kScrollbarRightArrow,
-                     north_state, color_scheme, in_forced_colors, arrow);
-  }
+  half.set_y(rect.y() + rect.height() / 2);
+  PaintArrowButton(canvas, color_provider, half, kScrollbarDownArrow,
+                   south_state, color_scheme, arrow);
 }
 
 void NativeThemeBase::PaintProgressBar(
@@ -1135,8 +1153,18 @@ void NativeThemeBase::PaintProgressBar(
     const gfx::Rect& rect,
     const ProgressBarExtraParams& progress_bar,
     ColorScheme color_scheme,
-    const std::optional<SkColor>& accent_color) const {
+    const absl::optional<SkColor>& accent_color) const {
   DCHECK(!rect.IsEmpty());
+
+  // GetControlColor(kFill) is used below for the track, which
+  // gets drawn adjacent to |accent_color|. In order to guarantee contrast
+  // between the track and |accent_color|, we choose the |color_scheme|
+  // here based on the two possible values for the track.
+  color_scheme = ColorSchemeForAccentColor(
+      accent_color, color_scheme,
+      GetControlColor(kFill, ColorScheme::kLight, color_provider),
+      GetControlColor(kFill, ColorScheme::kDark, color_provider));
+
   // Paint the track.
   cc::PaintFlags flags;
   flags.setAntiAlias(true);
@@ -1435,6 +1463,9 @@ SkColor NativeThemeBase::GetControlColor(
     ControlColorId color_id,
     ColorScheme color_scheme,
     const ColorProvider* color_provider) const {
+  if (InForcedColorsMode() && features::IsForcedColorsEnabled())
+    return GetHighContrastControlColor(color_id, color_scheme);
+
   if (IsColorPipelineSupportedForControlColorId(color_provider, color_id))
     return GetControlColorFromColorProvider(color_id, color_provider);
 
@@ -1602,106 +1633,146 @@ SkColor NativeThemeBase::GetDarkModeControlColor(
   return gfx::kPlaceholderColor;
 }
 
+SkColor NativeThemeBase::GetHighContrastControlColor(
+    ControlColorId color_id,
+    ColorScheme color_scheme) const {
+  if (!system_colors_.empty()) {
+    switch (color_id) {
+      case kDisabledBorder:
+      case kDisabledAccent:
+      case kDisabledSlider:
+      case kButtonDisabledBorder:
+        return system_colors_[SystemThemeColor::kGrayText];
+      case kBorder:
+      case kHoveredBorder:
+      case kPressedBorder:
+      case kButtonBorder:
+      case kButtonHoveredBorder:
+      case kButtonPressedBorder:
+        return system_colors_[SystemThemeColor::kButtonText];
+      case kAccent:
+      case kHoveredAccent:
+      case kPressedAccent:
+      case kProgressValue:
+      case kSlider:
+      case kHoveredSlider:
+      case kPressedSlider:
+      case kScrollbarThumbHovered:
+      case kScrollbarThumbPressed:
+      case kScrollbarArrowBackgroundHovered:
+      case kScrollbarArrowBackgroundPressed:
+        return system_colors_[SystemThemeColor::kHighlight];
+      case kBackground:
+      case kDisabledBackground:
+      case kFill:
+      case kHoveredFill:
+      case kPressedFill:
+      case kDisabledFill:
+      case kButtonFill:
+      case kButtonHoveredFill:
+      case kButtonPressedFill:
+      case kButtonDisabledFill:
+      case kAutoCompleteBackground:
+      case kLightenLayer:
+      case kScrollbarArrowBackground:
+      case kScrollbarCornerControlColorId:
+      case kScrollbarTrack:
+        return system_colors_[SystemThemeColor::kWindow];
+      case kScrollbarArrow:
+      case kScrollbarThumb:
+      case kScrollbarThumbInactive:
+        return system_colors_[SystemThemeColor::kWindowText];
+      case kScrollbarArrowHovered:
+      case kScrollbarArrowPressed:
+        return system_colors_[SystemThemeColor::kButtonFace];
+    }
+  } else {
+    // Default high contrast colors (used in web test mode)
+    switch (color_id) {
+      case kDisabledBorder:
+      case kDisabledAccent:
+      case kDisabledSlider:
+      case kButtonDisabledBorder:
+        return SK_ColorGREEN;
+      case kBorder:
+      case kHoveredBorder:
+      case kPressedBorder:
+      case kButtonBorder:
+      case kButtonHoveredBorder:
+      case kButtonPressedBorder:
+      case kScrollbarThumbInactive:
+      case kScrollbarArrowBackground:
+      case kScrollbarTrack:
+        return SK_ColorWHITE;
+      case kAccent:
+      case kHoveredAccent:
+      case kPressedAccent:
+      case kProgressValue:
+      case kSlider:
+      case kHoveredSlider:
+      case kPressedSlider:
+        return SK_ColorCYAN;
+      case kBackground:
+      case kDisabledBackground:
+      case kFill:
+      case kHoveredFill:
+      case kPressedFill:
+      case kDisabledFill:
+      case kButtonFill:
+      case kButtonHoveredFill:
+      case kButtonPressedFill:
+      case kButtonDisabledFill:
+      case kAutoCompleteBackground:
+      case kLightenLayer:
+      case kScrollbarThumb:
+      case kScrollbarArrow:
+      case kScrollbarArrowHovered:
+      case kScrollbarArrowPressed:
+      case kScrollbarCornerControlColorId:
+        return SK_ColorBLACK;
+      case kScrollbarThumbHovered:
+      case kScrollbarThumbPressed:
+      case kScrollbarArrowBackgroundHovered:
+      case kScrollbarArrowBackgroundPressed:
+        return SkColorSetRGB(0x1A, 0xEB, 0xFF);
+    }
+  }
+  NOTREACHED();
+  return gfx::kPlaceholderColor;
+}
+
 SkColor NativeThemeBase::GetControlColorFromColorProvider(
     ControlColorId color_id,
     const ColorProvider* color_provider) const {
   DCHECK(IsColorPipelineSupportedForControlColorId(color_provider, color_id));
   switch (color_id) {
-    case kBorder:
-      return color_provider->GetColor(kColorWebNativeControlBorder);
-    case kDisabledBorder:
-      return color_provider->GetColor(kColorWebNativeControlBorderDisabled);
-    case kHoveredBorder:
-      return color_provider->GetColor(kColorWebNativeControlBorderHovered);
-    case kPressedBorder:
-      return color_provider->GetColor(kColorWebNativeControlBorderPressed);
-    case kAccent:
-      return color_provider->GetColor(kColorWebNativeControlAccent);
-    case kDisabledAccent:
-      return color_provider->GetColor(kColorWebNativeControlAccentDisabled);
-    case kHoveredAccent:
-      return color_provider->GetColor(kColorWebNativeControlAccentHovered);
-    case kPressedAccent:
-      return color_provider->GetColor(kColorWebNativeControlAccentPressed);
-    case kBackground:
-      return color_provider->GetColor(kColorWebNativeControlBackground);
-    case kDisabledBackground:
-      return color_provider->GetColor(kColorWebNativeControlBackgroundDisabled);
-    case kFill:
-      return color_provider->GetColor(kColorWebNativeControlFill);
-    case kDisabledFill:
-      return color_provider->GetColor(kColorWebNativeControlFillDisabled);
-    case kHoveredFill:
-      return color_provider->GetColor(kColorWebNativeControlFillHovered);
-    case kPressedFill:
-      return color_provider->GetColor(kColorWebNativeControlFillPressed);
-    case kLightenLayer:
-      return color_provider->GetColor(kColorWebNativeControlLightenLayer);
-    case kProgressValue:
-      return color_provider->GetColor(kColorWebNativeControlProgressValue);
-    case kSlider:
-      return color_provider->GetColor(kColorWebNativeControlSlider);
-    case kDisabledSlider:
-      return color_provider->GetColor(kColorWebNativeControlSliderDisabled);
-    case kHoveredSlider:
-      return color_provider->GetColor(kColorWebNativeControlSliderHovered);
-    case kPressedSlider:
-      return color_provider->GetColor(kColorWebNativeControlSliderPressed);
-    case kAutoCompleteBackground:
-      return color_provider->GetColor(
-          kColorWebNativeControlAutoCompleteBackground);
     case kScrollbarArrowBackground:
     case kScrollbarTrack:
-      return color_provider->GetColor(kColorWebNativeControlScrollbarTrack);
+      return color_provider->GetColor(kColorScrollbarTrack);
     case kScrollbarArrowBackgroundHovered:
-      return color_provider->GetColor(
-          kColorWebNativeControlScrollbarArrowBackgroundHovered);
+      return color_provider->GetColor(kColorScrollbarArrowBackgroundHovered);
     case kScrollbarArrowBackgroundPressed:
-      return color_provider->GetColor(
-          kColorWebNativeControlScrollbarArrowBackgroundPressed);
+      return color_provider->GetColor(kColorScrollbarArrowBackgroundPressed);
     case kScrollbarArrow:
     case kScrollbarArrowHovered:
-      return color_provider->GetColor(
-          kColorWebNativeControlScrollbarArrowForeground);
+      return color_provider->GetColor(kColorScrollbarArrowForeground);
     case kScrollbarArrowPressed:
-      return color_provider->GetColor(
-          kColorWebNativeControlScrollbarArrowForegroundPressed);
+      return color_provider->GetColor(kColorScrollbarArrowForegroundPressed);
     case kScrollbarCornerControlColorId:
-      return color_provider->GetColor(kColorWebNativeControlScrollbarCorner);
+      return color_provider->GetColor(kColorScrollbarCorner);
     case kScrollbarThumb:
-      return color_provider->GetColor(kColorWebNativeControlScrollbarThumb);
+      return color_provider->GetColor(kColorScrollbarThumb);
     case kScrollbarThumbHovered:
-      return color_provider->GetColor(
-          kColorWebNativeControlScrollbarThumbHovered);
+      return color_provider->GetColor(kColorScrollbarThumbHovered);
     case kScrollbarThumbInactive:
-      return color_provider->GetColor(
-          kColorWebNativeControlScrollbarThumbInactive);
+      return color_provider->GetColor(kColorScrollbarThumbInactive);
     case kScrollbarThumbPressed:
-      return color_provider->GetColor(
-          kColorWebNativeControlScrollbarThumbPressed);
-    case kButtonBorder:
-      return color_provider->GetColor(kColorWebNativeControlButtonBorder);
-    case kButtonDisabledBorder:
-      return color_provider->GetColor(
-          kColorWebNativeControlButtonBorderDisabled);
-    case kButtonHoveredBorder:
-      return color_provider->GetColor(
-          kColorWebNativeControlButtonBorderHovered);
-    case kButtonPressedBorder:
-      return color_provider->GetColor(
-          kColorWebNativeControlButtonBorderPressed);
-    case kButtonFill:
-      return color_provider->GetColor(kColorWebNativeControlButtonFill);
-    case kButtonDisabledFill:
-      return color_provider->GetColor(kColorWebNativeControlButtonFillDisabled);
-    case kButtonHoveredFill:
-      return color_provider->GetColor(kColorWebNativeControlButtonFillHovered);
-    case kButtonPressedFill:
-      return color_provider->GetColor(kColorWebNativeControlButtonFillPressed);
+      return color_provider->GetColor(kColorScrollbarThumbPressed);
     default:
       break;
   }
-  NOTREACHED_NORETURN();
+  NOTREACHED();
+  return gfx::kPlaceholderColor;
 }
 
 void NativeThemeBase::PaintLightenLayer(cc::PaintCanvas* canvas,
@@ -1767,47 +1838,13 @@ bool NativeThemeBase::IsColorPipelineSupportedForControlColorId(
     return false;
 
   static constexpr auto kControlColorIdsSet =
-      base::MakeFixedFlatSet<ControlColorId>({kBorder,
-                                              kDisabledBorder,
-                                              kHoveredBorder,
-                                              kPressedBorder,
-                                              kAccent,
-                                              kDisabledAccent,
-                                              kHoveredAccent,
-                                              kPressedAccent,
-                                              kBackground,
-                                              kDisabledBackground,
-                                              kFill,
-                                              kDisabledFill,
-                                              kHoveredFill,
-                                              kPressedFill,
-                                              kLightenLayer,
-                                              kProgressValue,
-                                              kSlider,
-                                              kDisabledSlider,
-                                              kHoveredSlider,
-                                              kPressedSlider,
-                                              kAutoCompleteBackground,
-                                              kScrollbarArrowBackground,
-                                              kScrollbarArrowBackgroundHovered,
-                                              kScrollbarArrowBackgroundPressed,
-                                              kScrollbarArrow,
-                                              kScrollbarArrowHovered,
-                                              kScrollbarArrowPressed,
-                                              kScrollbarCornerControlColorId,
-                                              kScrollbarTrack,
-                                              kScrollbarThumb,
-                                              kScrollbarThumbHovered,
-                                              kScrollbarThumbPressed,
-                                              kScrollbarThumbInactive,
-                                              kButtonBorder,
-                                              kButtonDisabledBorder,
-                                              kButtonHoveredBorder,
-                                              kButtonPressedBorder,
-                                              kButtonFill,
-                                              kButtonDisabledFill,
-                                              kButtonHoveredFill,
-                                              kButtonPressedFill});
+      base::MakeFixedFlatSet<ControlColorId>(
+          {kScrollbarArrowBackground, kScrollbarArrowBackgroundHovered,
+           kScrollbarArrowBackgroundPressed, kScrollbarArrow,
+           kScrollbarArrowHovered, kScrollbarArrowPressed,
+           kScrollbarCornerControlColorId, kScrollbarTrack, kScrollbarThumb,
+           kScrollbarThumbHovered, kScrollbarThumbPressed,
+           kScrollbarThumbInactive});
   return kControlColorIdsSet.contains(color_id);
 }
 

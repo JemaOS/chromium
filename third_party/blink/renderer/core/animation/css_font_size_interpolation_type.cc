@@ -62,7 +62,7 @@ InterpolationValue MaybeConvertKeyword(
   if (FontSizeFunctions::IsValidValueID(value_id)) {
     bool is_monospace = state.StyleBuilder().GetFontDescription().IsMonospace();
     conversion_checkers.push_back(
-        MakeGarbageCollected<IsMonospaceChecker>(is_monospace));
+        std::make_unique<IsMonospaceChecker>(is_monospace));
     return ConvertFontSize(state.GetFontBuilder().FontSizeForKeyword(
         FontSizeFunctions::KeywordSize(value_id), is_monospace));
   }
@@ -73,7 +73,7 @@ InterpolationValue MaybeConvertKeyword(
   const FontDescription::Size& inherited_font_size =
       state.ParentFontDescription().GetSize();
   conversion_checkers.push_back(
-      MakeGarbageCollected<InheritedFontSizeChecker>(inherited_font_size));
+      std::make_unique<InheritedFontSizeChecker>(inherited_font_size));
   if (value_id == CSSValueID::kSmaller)
     return ConvertFontSize(
         FontDescription::SmallerSize(inherited_font_size).value);
@@ -102,7 +102,7 @@ InterpolationValue CSSFontSizeInterpolationType::MaybeConvertInherit(
   const FontDescription::Size& inherited_font_size =
       state.ParentFontDescription().GetSize();
   conversion_checkers.push_back(
-      MakeGarbageCollected<InheritedFontSizeChecker>(inherited_font_size));
+      std::make_unique<InheritedFontSizeChecker>(inherited_font_size));
   return ConvertFontSize(inherited_font_size.value);
 }
 
@@ -112,9 +112,10 @@ InterpolationValue CSSFontSizeInterpolationType::MaybeConvertValue(
     ConversionCheckers& conversion_checkers) const {
   DCHECK(state);
 
-  InterpolableValue* result = InterpolableLength::MaybeConvertCSSValue(value);
+  std::unique_ptr<InterpolableValue> result =
+      InterpolableLength::MaybeConvertCSSValue(value);
   if (result)
-    return InterpolationValue(result);
+    return InterpolationValue(std::move(result));
 
   if (auto* identifier_value = DynamicTo<CSSIdentifierValue>(value)) {
     return MaybeConvertKeyword(identifier_value->GetValueID(), *state,

@@ -24,7 +24,6 @@
 
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
 
-#include "skia/ext/font_utils.h"
 #include "third_party/blink/renderer/platform/fonts/font_platform_data.h"
 
 namespace blink {
@@ -45,12 +44,12 @@ void FontCache::SetSystemFontFamily(const AtomicString& family_name) {
   MutableSystemFontFamily() = family_name;
 }
 
-const SimpleFontData* FontCache::PlatformFallbackFontForCharacter(
+scoped_refptr<SimpleFontData> FontCache::PlatformFallbackFontForCharacter(
     const FontDescription& font_description,
     UChar32 character,
     const SimpleFontData* font_data_to_substitute,
     FontFallbackPriority fallback_priority) {
-  sk_sp<SkFontMgr> font_mgr(skia::DefaultFontMgr());
+  sk_sp<SkFontMgr> font_mgr(SkFontMgr::RefDefault());
   std::string family_name = font_description.Family().FamilyName().Utf8();
   Bcp47Vector locales =
       GetBcp47LocaleForRequest(font_description, fallback_priority);
@@ -67,12 +66,12 @@ const SimpleFontData* FontCache::PlatformFallbackFontForCharacter(
                           !typeface->isItalic() &&
                           font_description.SyntheticItalicAllowed();
 
-  const auto* font_data = MakeGarbageCollected<FontPlatformData>(
+  auto font_data = std::make_unique<FontPlatformData>(
       std::move(typeface), std::string(), font_description.EffectiveFontSize(),
       synthetic_bold, synthetic_italic, font_description.TextRendering(),
       ResolvedFontFeatures(), font_description.Orientation());
 
-  return FontDataFromFontPlatformData(font_data);
+  return FontDataFromFontPlatformData(font_data.get(), kDoNotRetain);
 }
 
 }  // namespace blink

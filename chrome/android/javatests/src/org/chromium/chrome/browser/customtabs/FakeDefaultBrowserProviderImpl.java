@@ -4,7 +4,7 @@
 
 package org.chromium.chrome.browser.customtabs;
 
-import androidx.test.core.app.ApplicationProvider;
+import androidx.test.InstrumentationRegistry;
 
 import org.chromium.chrome.browser.customtabs.content.CustomTabActivityNavigationController;
 
@@ -12,13 +12,13 @@ import org.chromium.chrome.browser.customtabs.content.CustomTabActivityNavigatio
  * Fake default browser provider implementation to inject into
  * CustomTabActivityNavigationController.
  *
- * <p>Required for all tests which call {@link
+ * Required for all tests which call {@link
  * CustomTabActivityNavigationController#openCurrentUrlInBrowser}.
  */
 public class FakeDefaultBrowserProviderImpl
         implements CustomTabActivityNavigationController.DefaultBrowserProvider {
     @Override
     public String getDefaultBrowser() {
-        return ApplicationProvider.getApplicationContext().getPackageName();
+        return InstrumentationRegistry.getTargetContext().getPackageName();
     }
 }

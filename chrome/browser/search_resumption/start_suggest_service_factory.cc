@@ -43,8 +43,7 @@ StartSuggestServiceFactory::StartSuggestServiceFactory()
 
 StartSuggestServiceFactory::~StartSuggestServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-StartSuggestServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* StartSuggestServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
@@ -52,7 +51,7 @@ StartSuggestServiceFactory::BuildServiceInstanceForBrowserContext(
       TemplateURLServiceFactory::GetForProfile(profile);
   auto url_loader_factory = context->GetDefaultStoragePartition()
                                 ->GetURLLoaderFactoryForBrowserProcess();
-  return std::make_unique<StartSuggestService>(
+  return new StartSuggestService(
       template_url_service, url_loader_factory,
       std::make_unique<ChromeAutocompleteSchemeClassifier>(profile),
       std::string(), std::string(), GURL(chrome::kChromeUINewTabURL));

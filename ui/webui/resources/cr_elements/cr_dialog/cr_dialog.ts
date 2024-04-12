@@ -20,18 +20,20 @@
  * dialog contents).
  */
 import '../cr_icon_button/cr_icon_button.js';
+import '../cr_icons.css.js';
+import '../cr_hidden_style.css.js';
+import '../cr_shared_vars.css.js';
 
-import {assert} from '//resources/js/assert.js';
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {assert} from '//resources/js/assert_ts.js';
+import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {CrContainerShadowMixinLit} from '../cr_container_shadow_mixin_lit.js';
-import type {CrIconButtonElement} from '../cr_icon_button/cr_icon_button.js';
-import type {CrInputElement} from '../cr_input/cr_input.js';
+import {CrContainerShadowMixin} from '../cr_container_shadow_mixin.js';
+import {CrIconButtonElement} from '../cr_icon_button/cr_icon_button.js';
+import {CrInputElement} from '../cr_input/cr_input.js';
 
-import {getCss} from './cr_dialog.css.js';
-import {getHtml} from './cr_dialog.html.js';
+import {getTemplate} from './cr_dialog.html.js';
 
-const CrDialogElementBase = CrContainerShadowMixinLit(CrLitElement);
+const CrDialogElementBase = CrContainerShadowMixin(PolymerElement);
 
 export interface CrDialogElement {
   $: {
@@ -45,77 +47,88 @@ export class CrDialogElement extends CrDialogElementBase {
     return 'cr-dialog';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
       open: {
         type: Boolean,
-        reflect: true,
+        value: false,
+        reflectToAttribute: true,
       },
 
       /**
        * Alt-text for the dialog close button.
        */
-      closeText: {type: String},
+      closeText: String,
 
       /**
        * True if the dialog should remain open on 'popstate' events. This is
        * used for navigable dialogs that have their separate navigation handling
        * code.
        */
-      ignorePopstate: {type: Boolean},
+      ignorePopstate: {
+        type: Boolean,
+        value: false,
+      },
 
       /**
        * True if the dialog should ignore 'Enter' keypresses.
        */
-      ignoreEnterKey: {type: Boolean},
+      ignoreEnterKey: {
+        type: Boolean,
+        value: false,
+      },
 
       /**
        * True if the dialog should consume 'keydown' events. If ignoreEnterKey
        * is true, 'Enter' key won't be consumed.
        */
-      consumeKeydownEvent: {type: Boolean},
+      consumeKeydownEvent: {
+        type: Boolean,
+        value: false,
+      },
 
       /**
        * True if the dialog should not be able to be cancelled, which will
        * prevent 'Escape' key presses from closing the dialog.
        */
-      noCancel: {type: Boolean},
+      noCancel: {
+        type: Boolean,
+        value: false,
+      },
 
       // True if dialog should show the 'X' close button.
-      showCloseButton: {type: Boolean},
+      showCloseButton: {
+        type: Boolean,
+        value: false,
+      },
 
-      showOnAttach: {type: Boolean},
-
-      /**
-       * Text for the aria description.
-       */
-      ariaDescriptionText: {type: String},
+      showOnAttach: {
+        type: Boolean,
+        value: false,
+      },
     };
   }
 
-  closeText?: string;
-  consumeKeydownEvent: boolean = false;
-  ignoreEnterKey: boolean = false;
-  ignorePopstate: boolean = false;
-  noCancel: boolean = false;
-  open: boolean = false;
-  showCloseButton: boolean = false;
-  showOnAttach: boolean = false;
-  ariaDescriptionText?: string;
+  closeText: string;
+  consumeKeydownEvent: boolean;
+  ignoreEnterKey: boolean;
+  ignorePopstate: boolean;
+  noCancel: boolean;
+  open: boolean;
+  showCloseButton: boolean;
+  showOnAttach: boolean;
 
   private intersectionObserver_: IntersectionObserver|null = null;
   private mutationObserver_: MutationObserver|null = null;
   private boundKeydown_: ((e: KeyboardEvent) => void)|null = null;
 
-  override firstUpdated() {
+  override ready() {
+    super.ready();
+
     // If the active history entry changes (i.e. user clicks back button),
     // all open dialogs should be cancelled.
     window.addEventListener('popstate', () => {
@@ -190,16 +203,17 @@ export class CrDialogElement extends CrDialogElementBase {
     this.boundKeydown_ = null;
   }
 
-  async showModal() {
+  showModal() {
     this.$.dialog.showModal();
     assert(this.$.dialog.open);
     this.open = true;
-    await this.updateComplete;
-    this.fire('cr-dialog-open');
+    this.dispatchEvent(
+        new CustomEvent('cr-dialog-open', {bubbles: true, composed: true}));
   }
 
   cancel() {
-    this.fire('cancel');
+    this.dispatchEvent(
+        new CustomEvent('cancel', {bubbles: true, composed: true}));
     this.$.dialog.close();
     assert(!this.$.dialog.open);
     this.open = false;
@@ -220,13 +234,13 @@ export class CrDialogElement extends CrDialogElementBase {
     this.$.dialog.setAttribute('aria-label', title);
   }
 
-  protected onCloseKeypress_(e: Event) {
+  private onCloseKeypress_(e: Event) {
     // Because the dialog may have a default Enter key handler, prevent
     // keypress events from bubbling up from this element.
     e.stopPropagation();
   }
 
-  protected onNativeDialogClose_(e: Event) {
+  private onNativeDialogClose_(e: Event) {
     // Ignore any 'close' events not fired directly by the <dialog> element.
     if (e.target !== this.getNative()) {
       return;
@@ -234,10 +248,11 @@ export class CrDialogElement extends CrDialogElementBase {
 
     // Catch and re-fire the 'close' event such that it bubbles across Shadow
     // DOM v1.
-    this.fire('close');
+    this.dispatchEvent(
+        new CustomEvent('close', {bubbles: true, composed: true}));
   }
 
-  protected async onNativeDialogCancel_(e: Event) {
+  private onNativeDialogCancel_(e: Event) {
     // Ignore any 'cancel' events not fired directly by the <dialog> element.
     if (e.target !== this.getNative()) {
       return;
@@ -252,11 +267,10 @@ export class CrDialogElement extends CrDialogElementBase {
     // the |open| property (since close() is not called).
     this.open = false;
 
-    await this.updateComplete;
-
     // Catch and re-fire the native 'cancel' event such that it bubbles across
     // Shadow DOM v1.
-    this.fire('cancel');
+    this.dispatchEvent(
+        new CustomEvent('cancel', {bubbles: true, composed: true}));
   }
 
   /**

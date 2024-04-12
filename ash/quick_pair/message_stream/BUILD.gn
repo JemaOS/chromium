@@ -22,7 +22,6 @@ source_set("message_stream") {
     "//chromeos/ash/services/quick_pair",
     "//chromeos/ash/services/quick_pair/public/cpp",
     "//chromeos/ash/services/quick_pair/public/mojom",
-    "//components/cross_device/logging:logging",
     "//device/bluetooth",
     "//net",
   ]
@@ -48,7 +47,6 @@ static_library("test_support") {
     "//chromeos/ash/services/quick_pair",
     "//chromeos/ash/services/quick_pair/public/cpp",
     "//chromeos/ash/services/quick_pair/public/mojom",
-    "//components/cross_device/logging:logging",
     "//device/bluetooth",
     "//device/bluetooth:mocks",
     "//testing/gtest",

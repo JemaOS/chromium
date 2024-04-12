@@ -269,6 +269,9 @@ TEST(DeclarativeContentActionTest, SetIcon) {
     ContentAction::SetAllowInvisibleIconsForTest(true);
     EXPECT_EQ("", error);
     ASSERT_TRUE(result.get());
+    EXPECT_THAT(histogram_tester.GetAllSamples(
+                    "Extensions.DeclarativeSetIconWasVisible"),
+                testing::ElementsAre(base::Bucket(1, 1)));
     histogram_tester.ExpectUniqueSample(
         "Extensions.DeclarativeContentActionCreated",
         ContentActionType::kSetIcon, 1);
@@ -323,6 +326,9 @@ TEST(DeclarativeContentActionTest, SetInvisibleIcon) {
   ContentAction::SetAllowInvisibleIconsForTest(true);
   EXPECT_EQ("The specified icon is not sufficiently visible", error);
   EXPECT_FALSE(result);
+  EXPECT_THAT(
+      histogram_tester.GetAllSamples("Extensions.DeclarativeSetIconWasVisible"),
+      testing::ElementsAre(base::Bucket(0, 1)));
   histogram_tester.ExpectTotalCount(
       "Extensions.DeclarativeContentActionCreated", 0);
 }

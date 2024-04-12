@@ -23,7 +23,6 @@
 #include "chrome/browser/autocomplete/autocomplete_classifier_factory.h"
 #include "chrome/browser/autocomplete/chrome_autocomplete_provider_client.h"
 #include "chrome/browser/autocomplete/chrome_autocomplete_scheme_classifier.h"
-#include "chrome/browser/autocomplete/document_suggestions_service_factory.h"
 #include "chrome/browser/autocomplete/remote_suggestions_service_factory.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
@@ -41,7 +40,6 @@
 #include "components/omnibox/browser/autocomplete_provider.h"
 #include "components/omnibox/browser/autocomplete_provider_listener.h"
 #include "components/omnibox/browser/history_url_provider.h"
-#include "components/omnibox/browser/omnibox_feature_configs.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/browser/remote_suggestions_service.h"
 #include "components/omnibox/browser/search_provider.h"
@@ -144,8 +142,6 @@ std::unique_ptr<KeyedService> BuildRemoteSuggestionsServiceWithURLLoader(
     network::TestURLLoaderFactory* test_url_loader_factory,
     content::BrowserContext* context) {
   return std::make_unique<RemoteSuggestionsService>(
-      DocumentSuggestionsServiceFactory::GetForProfile(
-          Profile::FromBrowserContext(context), /*create_if_necessary=*/true),
       test_url_loader_factory->GetSafeWeakWrapper());
 }
 
@@ -153,7 +149,9 @@ std::string SerializeAndEncodeEntityInfo(
     const omnibox::EntityInfo& entity_info) {
   std::string serialized_entity_info;
   entity_info.SerializeToString(&serialized_entity_info);
-  return base::Base64Encode(serialized_entity_info);
+  std::string encoded_entity_info;
+  base::Base64Encode(serialized_entity_info, &encoded_entity_info);
+  return encoded_entity_info;
 }
 
 }  // namespace
@@ -1073,14 +1071,6 @@ TEST_F(SearchProviderTest, InlineMixedCaseMatches) {
 // Verifies AutocompleteControllers return results (including keyword
 // results) in the right order and set descriptions for them correctly.
 TEST_F(SearchProviderTest, KeywordOrderingAndDescriptions) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      omnibox_feature_configs::LimitKeywordModeSuggestions::
-          kLimitKeywordModeSuggestions);
-  omnibox_feature_configs::ScopedConfigForTesting<
-      omnibox_feature_configs::LimitKeywordModeSuggestions>
-      scoped_config;
-
   // Add an entry that corresponds to a keyword search with 'term2'.
   AddSearchToHistory(keyword_t_url_, u"term2", 1);
   profile_->BlockUntilHistoryProcessesPendingRequests();
@@ -1127,14 +1117,6 @@ TEST_F(SearchProviderTest, KeywordOrderingAndDescriptions) {
 }
 
 TEST_F(SearchProviderTest, KeywordVerbatim) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      omnibox_feature_configs::LimitKeywordModeSuggestions::
-          kLimitKeywordModeSuggestions);
-  omnibox_feature_configs::ScopedConfigForTesting<
-      omnibox_feature_configs::LimitKeywordModeSuggestions>
-      scoped_config;
-
   TestData cases[] = {
       // Test a simple keyword input.
       {u"k foo",
@@ -1271,14 +1253,6 @@ TEST_F(SearchProviderTest, SuggestRelevance) {
 // when in keyword mode.  This should happen regardless of whether the
 // keyword provider returns suggested relevance scores.
 TEST_F(SearchProviderTest, DefaultProviderNoSuggestRelevanceInKeywordMode) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      omnibox_feature_configs::LimitKeywordModeSuggestions::
-          kLimitKeywordModeSuggestions);
-  omnibox_feature_configs::ScopedConfigForTesting<
-      omnibox_feature_configs::LimitKeywordModeSuggestions>
-      scoped_config;
-
   struct {
     const std::string default_provider_json;
     const std::string keyword_provider_json;
@@ -1588,13 +1562,7 @@ TEST_F(SearchProviderTest, KeywordFetcherSuggestRelevance) {
           {omnibox::kUIExperimentMaxAutocompleteMatches,
            {{OmniboxFieldTrial::kUIMaxAutocompleteMatchesParam, "6"}}},
       },
-      {omnibox::kDynamicMaxAutocomplete,
-       omnibox_feature_configs::LimitKeywordModeSuggestions::
-           kLimitKeywordModeSuggestions});
-  omnibox_feature_configs::ScopedConfigForTesting<
-      omnibox_feature_configs::LimitKeywordModeSuggestions>
-      scoped_config;
-
+      {omnibox::kDynamicMaxAutocomplete});
   struct KeywordFetcherMatch {
     std::string contents;
     bool from_keyword;
@@ -2318,8 +2286,10 @@ TEST_F(SearchProviderTest, DontCacheCalculatorSuggestions) {
   // answer fields on Desktop. See https://crbug.com/1325124#c1.
   // As a result of the field flip, the Calculator answer is only permitted
   // to be the default suggestion on the Desktop.
-  if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_DESKTOP)
-    cases[0].async_matches[1].contents = "1+2 = 3";
+  if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_DESKTOP) {
+    cases[0].async_matches[1].contents = "1+2";
+    cases[0].async_matches[1].allowed_to_be_default_match = true;
+  }
 
   for (size_t i = 0; i < std::size(cases); ++i) {
     // First, send the query "1+2" and receive the JSON response |first_json|.
@@ -2875,10 +2845,8 @@ TEST_F(SearchProviderTest, NavigationInline) {
     QueryForInput(ASCIIToUTF16(cases[i].input), false, false);
     SearchSuggestionParser::NavigationResult result(
         ChromeAutocompleteSchemeClassifier(profile_.get()), GURL(cases[i].url),
-        AutocompleteMatchType::NAVSUGGEST,
-        /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
-        std::u16string(), std::string(), false, 0, false,
-        ASCIIToUTF16(cases[i].input));
+        AutocompleteMatchType::NAVSUGGEST, {}, std::u16string(), std::string(),
+        false, 0, false, ASCIIToUTF16(cases[i].input));
     result.set_received_after_last_keystroke(false);
     AutocompleteMatch match(provider_->NavigationToMatch(result));
     EXPECT_EQ(ASCIIToUTF16(cases[i].inline_autocompletion),
@@ -2891,10 +2859,8 @@ TEST_F(SearchProviderTest, NavigationInline) {
     QueryForInput(ASCIIToUTF16(cases[i].input), true, false);
     SearchSuggestionParser::NavigationResult result_prevent_inline(
         ChromeAutocompleteSchemeClassifier(profile_.get()), GURL(cases[i].url),
-        AutocompleteMatchType::NAVSUGGEST,
-        /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
-        std::u16string(), std::string(), false, 0, false,
-        ASCIIToUTF16(cases[i].input));
+        AutocompleteMatchType::NAVSUGGEST, {}, std::u16string(), std::string(),
+        false, 0, false, ASCIIToUTF16(cases[i].input));
     result_prevent_inline.set_received_after_last_keystroke(false);
     AutocompleteMatch match_prevent_inline(
         provider_->NavigationToMatch(result_prevent_inline));
@@ -2913,9 +2879,8 @@ TEST_F(SearchProviderTest, NavigationInlineSchemeSubstring) {
   const std::u16string url(u"http://a.com");
   SearchSuggestionParser::NavigationResult result(
       ChromeAutocompleteSchemeClassifier(profile_.get()), GURL(url),
-      AutocompleteMatchType::NAVSUGGEST,
-      /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
-      std::u16string(), std::string(), false, 0, false, input);
+      AutocompleteMatchType::NAVSUGGEST, {}, std::u16string(), std::string(),
+      false, 0, false, input);
   result.set_received_after_last_keystroke(false);
 
   // Check the offset and strings when inline autocompletion is allowed.
@@ -2940,8 +2905,7 @@ TEST_F(SearchProviderTest, NavigationInlineDomainClassify) {
   QueryForInput(u"h", false, false);
   SearchSuggestionParser::NavigationResult result(
       ChromeAutocompleteSchemeClassifier(profile_.get()),
-      GURL("http://www.http.com/http"), AutocompleteMatchType::NAVSUGGEST,
-      /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
+      GURL("http://www.http.com/http"), AutocompleteMatchType::NAVSUGGEST, {},
       std::u16string(), std::string(), false, 0, false, u"h");
   result.set_received_after_last_keystroke(false);
   AutocompleteMatch match(provider_->NavigationToMatch(result));
@@ -2967,8 +2931,7 @@ TEST_F(SearchProviderTest, NavigationPrefixClassify) {
   QueryForInput(u"moon", false, false);
   SearchSuggestionParser::NavigationResult result(
       ChromeAutocompleteSchemeClassifier(profile_.get()),
-      GURL("http://moon.com/moon"), AutocompleteMatchType::NAVSUGGEST,
-      /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
+      GURL("http://moon.com/moon"), AutocompleteMatchType::NAVSUGGEST, {},
       std::u16string(), std::string(), false, 0, false, u"moon");
   result.set_received_after_last_keystroke(false);
   AutocompleteMatch match(provider_->NavigationToMatch(result));
@@ -2988,8 +2951,7 @@ TEST_F(SearchProviderTest, NavigationMidWordClassify) {
   QueryForInput(u"acebook", false, false);
   SearchSuggestionParser::NavigationResult result(
       ChromeAutocompleteSchemeClassifier(profile_.get()),
-      GURL("http://www.facebook.com"), AutocompleteMatchType::NAVSUGGEST,
-      /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
+      GURL("http://www.facebook.com"), AutocompleteMatchType::NAVSUGGEST, {},
       std::u16string(), std::string(), false, 0, false, u"acebook");
   result.set_received_after_last_keystroke(false);
   AutocompleteMatch match(provider_->NavigationToMatch(result));
@@ -3007,9 +2969,8 @@ TEST_F(SearchProviderTest, NavigationWordBreakClassify) {
   SearchSuggestionParser::NavigationResult result(
       ChromeAutocompleteSchemeClassifier(profile_.get()),
       GURL("http://www.yellow-animals.com/duck"),
-      AutocompleteMatchType::NAVSUGGEST,
-      /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
-      std::u16string(), std::string(), false, 0, false, u"duck");
+      AutocompleteMatchType::NAVSUGGEST, {}, std::u16string(), std::string(),
+      false, 0, false, u"duck");
   result.set_received_after_last_keystroke(false);
   AutocompleteMatch match(provider_->NavigationToMatch(result));
   EXPECT_EQ(u"yellow-animals.com/duck", match.contents);
@@ -3029,9 +2990,8 @@ TEST_F(SearchProviderTest, DoTrimHttpScheme) {
   const std::u16string url(u"http://www.facebook.com");
   SearchSuggestionParser::NavigationResult result(
       ChromeAutocompleteSchemeClassifier(profile_.get()), GURL(url),
-      AutocompleteMatchType::NAVSUGGEST,
-      /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
-      std::u16string(), std::string(), false, 0, false, input);
+      AutocompleteMatchType::NAVSUGGEST, {}, std::u16string(), std::string(),
+      false, 0, false, input);
 
   QueryForInput(input, false, false);
   AutocompleteMatch match_inline(provider_->NavigationToMatch(result));
@@ -3045,9 +3005,8 @@ TEST_F(SearchProviderTest, DontTrimHttpSchemeIfInputHasScheme) {
   const std::u16string url(u"http://www.facebook.com");
   SearchSuggestionParser::NavigationResult result(
       ChromeAutocompleteSchemeClassifier(profile_.get()), GURL(url),
-      AutocompleteMatchType::NAVSUGGEST,
-      /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
-      std::u16string(), std::string(), false, 0, false, input);
+      AutocompleteMatchType::NAVSUGGEST, {}, std::u16string(), std::string(),
+      false, 0, false, input);
 
   QueryForInput(input, false, false);
   AutocompleteMatch match_inline(provider_->NavigationToMatch(result));
@@ -3061,9 +3020,8 @@ TEST_F(SearchProviderTest, DontTrimHttpsSchemeIfInputHasScheme) {
   const std::u16string url(u"https://www.facebook.com");
   SearchSuggestionParser::NavigationResult result(
       ChromeAutocompleteSchemeClassifier(profile_.get()), GURL(url),
-      AutocompleteMatchType::NAVSUGGEST,
-      /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
-      std::u16string(), std::string(), false, 0, false, input);
+      AutocompleteMatchType::NAVSUGGEST, {}, std::u16string(), std::string(),
+      false, 0, false, input);
 
   QueryForInput(input, false, false);
   AutocompleteMatch match_inline(provider_->NavigationToMatch(result));
@@ -3076,9 +3034,8 @@ TEST_F(SearchProviderTest, DoTrimHttpsScheme) {
   const std::u16string url(u"https://www.facebook.com");
   SearchSuggestionParser::NavigationResult result(
       ChromeAutocompleteSchemeClassifier(profile_.get()), GURL(url),
-      AutocompleteMatchType::NAVSUGGEST,
-      /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
-      std::u16string(), std::string(), false, 0, false, input);
+      AutocompleteMatchType::NAVSUGGEST, {}, std::u16string(), std::string(),
+      false, 0, false, input);
 
   QueryForInput(input, false, false);
   AutocompleteMatch match_inline(provider_->NavigationToMatch(result));
@@ -3213,14 +3170,6 @@ TEST_F(SearchProviderTest, ParseEntitySuggestion) {
 
 // A basic test that verifies the prefetch metadata parsing logic.
 TEST_F(SearchProviderTest, PrefetchMetadataParsing) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      omnibox_feature_configs::LimitKeywordModeSuggestions::
-          kLimitKeywordModeSuggestions);
-  omnibox_feature_configs::ScopedConfigForTesting<
-      omnibox_feature_configs::LimitKeywordModeSuggestions>
-      scoped_config;
-
   struct Match {
     std::string contents;
     bool allowed_to_be_prefetched;
@@ -3962,8 +3911,7 @@ TEST_F(SearchProviderTest, AnswersCache) {
   std::u16string query = u"weather los angeles";
   SearchSuggestionParser::SuggestResult suggest_result(
       query, AutocompleteMatchType::SEARCH_HISTORY,
-      /*suggest_type=*/omnibox::TYPE_NATIVE_CHROME, /*subtypes=*/{},
-      /*from_keyword_provider=*/false,
+      /*subtypes=*/{}, /*from_keyword_provider=*/false,
       /*relevance=*/1200, /*relevance_from_server=*/false,
       /*input_text=*/query);
   QueryForInput(u"weather l", false, false);
@@ -4057,14 +4005,6 @@ class SearchProviderCommandLineOverrideTest : public SearchProviderTest {
 };
 
 TEST_F(SearchProviderCommandLineOverrideTest, CommandLineOverrides) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      omnibox_feature_configs::LimitKeywordModeSuggestions::
-          kLimitKeywordModeSuggestions);
-  omnibox_feature_configs::ScopedConfigForTesting<
-      omnibox_feature_configs::LimitKeywordModeSuggestions>
-      scoped_config;
-
   TemplateURLService* turl_model =
       TemplateURLServiceFactory::GetForProfile(profile_.get());
 

@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {PrintPreviewModelElement, PrintPreviewPinSettingsElement} from 'chrome://print/print_preview.js';
-import {State} from 'chrome://print/print_preview.js';
+import {PrintPreviewModelElement, PrintPreviewPinSettingsElement, State} from 'chrome://print/print_preview.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {fakeDataBind} from 'chrome://webui-test/polymer_test_util.js';
@@ -68,7 +67,6 @@ suite('PinSettingsTest', function() {
     assertEquals('', pinSection.getSettingValue('pinValue'));
 
     const input = pinSection.shadowRoot!.querySelector('cr-input')!;
-    await input.updateComplete;
     assertEquals('', input.value);
     assertFalse(pinSection.getSetting('pinValue').setFromUi);
 
@@ -77,7 +75,7 @@ suite('PinSettingsTest', function() {
     assertTrue(pinSection.getSettingValue('pin'));
     assertEquals('0000', pinSection.getSettingValue('pinValue'));
     assertTrue(pinSection.getSetting('pinValue').setFromUi);
-    assertEquals(true, pinSection.isPinValid);
+    assertEquals(true, pinSection.getSetting('pinValue').valid);
   });
 
   // Tests that entering non-digit pin value updates the validity of the
@@ -94,7 +92,7 @@ suite('PinSettingsTest', function() {
     await triggerInputEvent(input, 'aaaa', pinSection);
     assertTrue(pinSection.getSettingValue('pin'));
     assertEquals('', pinSection.getSettingValue('pinValue'));
-    assertEquals(false, pinSection.isPinValid);
+    assertEquals(false, pinSection.getSetting('pinValue').valid);
 
     // Check that checkbox and input are still enabled so user can correct
     // invalid input.
@@ -117,7 +115,7 @@ suite('PinSettingsTest', function() {
     await triggerInputEvent(input, '000', pinSection);
     assertTrue(pinSection.getSettingValue('pin'));
     assertEquals('', pinSection.getSettingValue('pinValue'));
-    assertEquals(false, pinSection.isPinValid);
+    assertEquals(false, pinSection.getSetting('pinValue').valid);
 
     // Check that checkbox and input are still enabled so user can correct
     // invalid input.
@@ -137,20 +135,20 @@ suite('PinSettingsTest', function() {
     // Verify that initial pin value is empty and the setting is invalid.
     assertTrue(pinSection.getSettingValue('pin'));
     assertEquals('', pinSection.getSettingValue('pinValue'));
-    assertEquals(false, pinSection.isPinValid);
+    assertEquals(false, pinSection.getSetting('pinValue').valid);
 
     // Verify that entering the pin value in the input sets the setting.
     await triggerInputEvent(input, '0000', pinSection);
     assertTrue(pinSection.getSettingValue('pin'));
     assertEquals('0000', pinSection.getSettingValue('pinValue'));
-    assertEquals(true, pinSection.isPinValid);
+    assertEquals(true, pinSection.getSetting('pinValue').valid);
 
     // Verify that entering empty pin value in the input updates the
     // setting validity and its value.
     await triggerInputEvent(input, '', pinSection);
     assertTrue(pinSection.getSettingValue('pin'));
     assertEquals('', pinSection.getSettingValue('pinValue'));
-    assertEquals(false, pinSection.isPinValid);
+    assertEquals(false, pinSection.getSetting('pinValue').valid);
 
     // Check that checkbox and input are still enabled so user can correct
     // invalid input.
@@ -161,12 +159,12 @@ suite('PinSettingsTest', function() {
     checkbox.checked = false;
     checkbox.dispatchEvent(
         new CustomEvent('change', {bubbles: true, composed: true}));
-    assertEquals(true, pinSection.isPinValid);
+    assertEquals(true, pinSection.getSetting('pinValue').valid);
   });
 
   // Tests that if settings are enforced by enterprise policy the
   // appropriate UI is disabled.
-  test('disabled by policy', async () => {
+  test('disabled by policy', function() {
     const checkbox = pinSection.shadowRoot!.querySelector('cr-checkbox')!;
     assertFalse(checkbox.disabled);
 
@@ -175,7 +173,6 @@ suite('PinSettingsTest', function() {
     assertFalse(input.disabled);
 
     model.set('settings.pin.setByPolicy', true);
-    await input.updateComplete;
     assertTrue(checkbox.disabled);
     assertFalse(input.disabled);
   });

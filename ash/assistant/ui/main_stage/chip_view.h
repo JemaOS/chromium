@@ -16,8 +16,6 @@
 namespace ash {
 
 class COMPONENT_EXPORT(ASSISTANT_UI) ChipView : public views::Button {
-  METADATA_HEADER(ChipView, views::Button)
-
  public:
   enum Type { kDefault, kLarge };
 
@@ -42,6 +40,8 @@ class COMPONENT_EXPORT(ASSISTANT_UI) ChipView : public views::Button {
 
   void SetText(const std::u16string& text);
   const std::u16string& GetText() const;
+
+  METADATA_HEADER(ChipView);
 
  private:
   const Type type_;

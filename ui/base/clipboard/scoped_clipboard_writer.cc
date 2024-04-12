@@ -10,7 +10,6 @@
 #include "base/pickle.h"
 #include "base/strings/escape.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/types/variant_util.h"
 #include "base/values.h"
 #include "ui/base/clipboard/clipboard_constants.h"
 #include "ui/base/clipboard/clipboard_format_type.h"
@@ -32,34 +31,37 @@ ScopedClipboardWriter::~ScopedClipboardWriter() {
   // If the metadata format type is not empty then create a JSON payload and
   // write to the clipboard.
   if (!registered_formats_.empty()) {
+    std::string custom_format_json;
     base::Value::Dict registered_formats_value;
     for (const auto& item : registered_formats_)
       registered_formats_value.Set(item.first, item.second);
-    std::string custom_format_json;
     base::JSONWriter::Write(registered_formats_value, &custom_format_json);
-    Clipboard::Data data = Clipboard::WebCustomFormatMapData{
-        .data = std::move(custom_format_json),
-    };
-    const size_t index = data.index();
-    objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+    std::vector<Clipboard::ObjectMapParam> parameters;
+    parameters.emplace_back(custom_format_json.begin(),
+                            custom_format_json.end());
+    objects_[Clipboard::PortableFormat::kWebCustomFormatMap] =
+        Clipboard::ObjectMapParams(std::move(parameters),
+                                   ClipboardContentType::kUnsanitized);
   }
 
   if (main_frame_url_.is_valid() || frame_url_.is_valid()) {
-    auto text_iter = objects_.find(
-        base::VariantIndexOfType<Clipboard::Data, Clipboard::TextData>());
-    if (text_iter != objects_.end()) {
-      const auto& text_data =
-          absl::get<Clipboard::TextData>(text_iter->second.data);
-      Clipboard::GetForCurrentThread()->NotifyCopyWithUrl(
-          text_data.data, frame_url_, main_frame_url_);
+    auto it = objects_.find(Clipboard::PortableFormat::kText);
+    if (it != objects_.end()) {
+      auto current = *(it->second.data.begin());
+      base::StringPiece text(current.data(), current.size());
+      Clipboard::GetForCurrentThread()->NotifyCopyWithUrl(text, frame_url_,
+                                                          main_frame_url_);
     }
   }
 
   if (!objects_.empty() || !platform_representations_.empty()) {
     Clipboard::GetForCurrentThread()->WritePortableAndPlatformRepresentations(
         buffer_, objects_, std::move(platform_representations_),
-        std::move(data_src_), privacy_types_);
+        std::move(data_src_));
   }
+
+  if (confidential_)
+    Clipboard::GetForCurrentThread()->MarkAsConfidential();
 }
 
 void ScopedClipboardWriter::SetDataSource(
@@ -75,48 +77,53 @@ void ScopedClipboardWriter::SetDataSourceURL(const GURL& main_frame,
 
 void ScopedClipboardWriter::WriteText(const std::u16string& text) {
   RecordWrite(ClipboardFormatMetric::kText);
+  std::string utf8_text = base::UTF16ToUTF8(text);
 
-  Clipboard::Data data = Clipboard::TextData{.data = base::UTF16ToUTF8(text)};
-  const size_t index = data.index();
-  objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+  std::vector<Clipboard::ObjectMapParam> parameters;
+  parameters.emplace_back(utf8_text.begin(), utf8_text.end());
+  objects_[Clipboard::PortableFormat::kText] = Clipboard::ObjectMapParams(
+      std::move(parameters), ClipboardContentType::kSanitized);
 }
 
 void ScopedClipboardWriter::WriteHTML(const std::u16string& markup,
-                                      const std::string& source_url) {
+                                      const std::string& source_url,
+                                      ClipboardContentType content_type) {
   RecordWrite(ClipboardFormatMetric::kHtml);
+  std::string utf8_markup = base::UTF16ToUTF8(markup);
 
-  Clipboard::HtmlData html_data;
-  html_data.markup = base::UTF16ToUTF8(markup);
+  std::vector<Clipboard::ObjectMapParam> parameters;
+  parameters.emplace_back(utf8_markup.begin(), utf8_markup.end());
   if (!source_url.empty()) {
-    html_data.source_url = source_url;
+    parameters.emplace_back(source_url.begin(), source_url.end());
   }
-  Clipboard::Data data(std::move(html_data));
-  const size_t index = data.index();
-  objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+  objects_[Clipboard::PortableFormat::kHtml] =
+      Clipboard::ObjectMapParams(std::move(parameters), content_type);
 }
 
 void ScopedClipboardWriter::WriteSvg(const std::u16string& markup) {
   RecordWrite(ClipboardFormatMetric::kSvg);
+  std::string utf8_markup = base::UTF16ToUTF8(markup);
 
-  Clipboard::Data data =
-      Clipboard::SvgData{.markup = base::UTF16ToUTF8(markup)};
-  const size_t index = data.index();
-  objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+  std::vector<Clipboard::ObjectMapParam> parameters;
+  parameters.emplace_back(utf8_markup.begin(), utf8_markup.end());
+  objects_[Clipboard::PortableFormat::kSvg] = Clipboard::ObjectMapParams(
+      std::move(parameters), ClipboardContentType::kSanitized);
 }
 
 void ScopedClipboardWriter::WriteRTF(const std::string& rtf_data) {
   RecordWrite(ClipboardFormatMetric::kRtf);
-
-  Clipboard::Data data = Clipboard::RtfData{.data = rtf_data};
-  const size_t index = data.index();
-  objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+  std::vector<Clipboard::ObjectMapParam> parameters;
+  parameters.emplace_back(rtf_data.begin(), rtf_data.end());
+  objects_[Clipboard::PortableFormat::kRtf] = Clipboard::ObjectMapParams(
+      std::move(parameters), ClipboardContentType::kSanitized);
 }
 
 void ScopedClipboardWriter::WriteFilenames(const std::string& uri_list) {
   RecordWrite(ClipboardFormatMetric::kFilenames);
-  Clipboard::Data data = Clipboard::FilenamesData{.text_uri_list = uri_list};
-  const size_t index = data.index();
-  objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+  std::vector<Clipboard::ObjectMapParam> parameters;
+  parameters.emplace_back(uri_list.begin(), uri_list.end());
+  objects_[Clipboard::PortableFormat::kFilenames] = Clipboard::ObjectMapParams(
+      std::move(parameters), ClipboardContentType::kSanitized);
 }
 
 void ScopedClipboardWriter::WriteBookmark(const std::u16string& bookmark_title,
@@ -125,10 +132,13 @@ void ScopedClipboardWriter::WriteBookmark(const std::u16string& bookmark_title,
     return;
   RecordWrite(ClipboardFormatMetric::kBookmark);
 
-  Clipboard::Data data = Clipboard::BookmarkData{
-      .title = base::UTF16ToUTF8(bookmark_title), .url = url};
-  const size_t index = data.index();
-  objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+  std::string utf8_markup = base::UTF16ToUTF8(bookmark_title);
+
+  std::vector<Clipboard::ObjectMapParam> parameters;
+  parameters.emplace_back(utf8_markup.begin(), utf8_markup.end());
+  parameters.emplace_back(url.begin(), url.end());
+  objects_[Clipboard::PortableFormat::kBookmark] = Clipboard::ObjectMapParams(
+      std::move(parameters), ClipboardContentType::kSanitized);
 }
 
 void ScopedClipboardWriter::WriteHyperlink(const std::u16string& anchor_text,
@@ -142,14 +152,13 @@ void ScopedClipboardWriter::WriteHyperlink(const std::u16string& anchor_text,
   html += "\">";
   html += base::EscapeForHTML(base::UTF16ToUTF8(anchor_text));
   html += "</a>";
-  WriteHTML(base::UTF8ToUTF16(html), std::string());
+  WriteHTML(base::UTF8ToUTF16(html), std::string(),
+            ClipboardContentType::kSanitized);
 }
 
 void ScopedClipboardWriter::WriteWebSmartPaste() {
   RecordWrite(ClipboardFormatMetric::kWebSmartPaste);
-  Clipboard::Data data = Clipboard::WebkitData();
-  const size_t index = data.index();
-  objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+  objects_[Clipboard::PortableFormat::kWebkit] = Clipboard::ObjectMapParams();
 }
 
 void ScopedClipboardWriter::WriteImage(const SkBitmap& bitmap) {
@@ -163,32 +172,42 @@ void ScopedClipboardWriter::WriteImage(const SkBitmap& bitmap) {
   // memcpy of the pixels can cause out-of-bounds issues.
   CHECK_EQ(bitmap.colorType(), kN32_SkColorType);
 
-  Clipboard::Data data = Clipboard::BitmapData{.bitmap = bitmap};
-  const size_t index = data.index();
-  objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+  bitmap_ = bitmap;
+  // TODO(dcheng): This is slightly less horrible than what we used to do, but
+  // only very slightly less.
+  SkBitmap* bitmap_pointer = &bitmap_;
+  Clipboard::ObjectMapParam packed_pointer;
+  packed_pointer.resize(sizeof(bitmap_pointer));
+  *reinterpret_cast<SkBitmap**>(&*packed_pointer.begin()) = bitmap_pointer;
+  std::vector<Clipboard::ObjectMapParam> parameters;
+  parameters.emplace_back(packed_pointer);
+  objects_[Clipboard::PortableFormat::kBitmap] = Clipboard::ObjectMapParams(
+      std::move(parameters), ClipboardContentType::kSanitized);
 }
 
 void ScopedClipboardWriter::MarkAsConfidential() {
-  privacy_types_ |= Clipboard::PrivacyTypes::kNoDisplay;
-}
-
-void ScopedClipboardWriter::MarkAsOffTheRecord() {
-  privacy_types_ |= Clipboard::PrivacyTypes::kNoLocalClipboardHistory;
-  privacy_types_ |= Clipboard::PrivacyTypes::kNoCloudClipboard;
+  confidential_ = true;
 }
 
 void ScopedClipboardWriter::WritePickledData(
     const base::Pickle& pickle,
     const ClipboardFormatType& format) {
   RecordWrite(ClipboardFormatMetric::kCustomData);
-  Clipboard::RawData raw_data;
-  raw_data.format = format;
-  raw_data.data = std::vector<uint8_t>(
-      reinterpret_cast<const uint8_t*>(pickle.data()),
-      reinterpret_cast<const uint8_t*>(pickle.data()) + pickle.size());
-  Clipboard::Data data = std::move(raw_data);
-  const size_t index = data.index();
-  objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+  std::string format_string = format.Serialize();
+  Clipboard::ObjectMapParam format_parameter(format_string.begin(),
+                                             format_string.end());
+  Clipboard::ObjectMapParam data_parameter;
+
+  data_parameter.resize(pickle.size());
+  memcpy(const_cast<char*>(&data_parameter.front()),
+         pickle.data(), pickle.size());
+
+  std::vector<Clipboard::ObjectMapParam> parameters;
+  parameters.emplace_back(format_parameter);
+  parameters.emplace_back(data_parameter);
+  objects_[Clipboard::PortableFormat::kData] =
+      Clipboard::Clipboard::ObjectMapParams(std::move(parameters),
+                                            ClipboardContentType::kUnsanitized);
 }
 
 void ScopedClipboardWriter::WriteData(const std::u16string& format,
@@ -222,10 +241,11 @@ void ScopedClipboardWriter::WriteData(const std::u16string& format,
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
 void ScopedClipboardWriter::WriteEncodedDataTransferEndpointForTesting(
     const std::string& json) {
-  Clipboard::Data data =
-      Clipboard::EncodedDataTransferEndpointData{.data = json};
-  const size_t index = data.index();
-  objects_[index] = Clipboard::ObjectMapParams(std::move(data));
+  std::vector<Clipboard::ObjectMapParam> parameters;
+  parameters.emplace_back(json.begin(), json.end());
+  objects_[Clipboard::PortableFormat::kEncodedDataTransferEndpoint] =
+      Clipboard::ObjectMapParams(std::move(parameters),
+                                 ClipboardContentType::kSanitized);
 }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
@@ -233,7 +253,8 @@ void ScopedClipboardWriter::Reset() {
   objects_.clear();
   platform_representations_.clear();
   registered_formats_.clear();
-  privacy_types_ = 0;
+  bitmap_.reset();
+  confidential_ = false;
   counter_ = 0;
 }
 

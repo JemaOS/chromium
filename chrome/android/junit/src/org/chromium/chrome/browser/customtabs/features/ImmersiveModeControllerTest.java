@@ -44,12 +44,17 @@ public class ImmersiveModeControllerTest {
     private static final boolean STICKY = true;
     private static final int LAYOUT = LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
 
-    @Mock public ActivityLifecycleDispatcher mLifecycleDispatcher;
+    @Mock
+    public ActivityLifecycleDispatcher mLifecycleDispatcher;
 
-    @Mock public Activity mActivity;
-    @Mock public WindowAndroid mWindowAndroid;
-    @Mock public Window mWindow;
-    @Mock public View mDecorView;
+    @Mock
+    public Activity mActivity;
+    @Mock
+    public WindowAndroid mWindowAndroid;
+    @Mock
+    public Window mWindow;
+    @Mock
+    public View mDecorView;
     private WindowManager.LayoutParams mLayoutParams = new WindowManager.LayoutParams();
     public UnownedUserDataHost mWindowUserDataHost = new UnownedUserDataHost();
 
@@ -69,13 +74,10 @@ public class ImmersiveModeControllerTest {
 
         // Reflect mSystemUiVisibility in the DecorView.
         when(mDecorView.getSystemUiVisibility()).thenAnswer(invocation -> mSystemUiVisibility);
-        doAnswer(
-                        invocation -> {
-                            mSystemUiVisibility = invocation.getArgument(0);
-                            return null;
-                        })
-                .when(mDecorView)
-                .setSystemUiVisibility(anyInt());
+        doAnswer(invocation -> {
+            mSystemUiVisibility = invocation.getArgument(0);
+            return null;
+        }).when(mDecorView).setSystemUiVisibility(anyInt());
 
         when(mWindowAndroid.getUnownedUserDataHost()).thenReturn(mWindowUserDataHost);
 

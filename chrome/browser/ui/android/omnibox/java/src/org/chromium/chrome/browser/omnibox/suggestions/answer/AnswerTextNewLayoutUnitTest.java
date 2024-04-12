@@ -26,7 +26,9 @@ import org.chromium.chrome.browser.omnibox.test.R;
 import org.chromium.components.omnibox.AnswerTextType;
 import org.chromium.components.omnibox.AnswerType;
 
-/** Tests for {@link AnswerTextNewLayout}. */
+/**
+ * Tests for {@link AnswerTextNewLayout}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 public class AnswerTextNewLayoutUnitTest {
     private Context mContext;
@@ -36,16 +38,12 @@ public class AnswerTextNewLayoutUnitTest {
     @Before
     public void setUp() {
         mContext = ContextUtils.getApplicationContext();
-        mGreenTextColor =
-                new TextAppearanceSpan(
-                                mContext,
-                                R.style.TextAppearance_OmniboxAnswerDescriptionPositiveSmall)
-                        .getTextColor();
-        mRedTextColor =
-                new TextAppearanceSpan(
-                                mContext,
-                                R.style.TextAppearance_OmniboxAnswerDescriptionNegativeSmall)
-                        .getTextColor();
+        mGreenTextColor = new TextAppearanceSpan(
+                mContext, R.style.TextAppearance_OmniboxAnswerDescriptionPositiveSmall)
+                                  .getTextColor();
+        mRedTextColor = new TextAppearanceSpan(
+                mContext, R.style.TextAppearance_OmniboxAnswerDescriptionNegativeSmall)
+                                .getTextColor();
     }
 
     /** Check the validity of TextAppearanceSpan. */
@@ -62,9 +60,8 @@ public class AnswerTextNewLayoutUnitTest {
     @SmallTest
     public void getAppearanceForAnswerText_noColorReversal() {
         // Test for red text color.
-        MetricAffectingSpan[] textAppearanceSpan1 =
-                AnswerTextNewLayout.getAppearanceForAnswerText(
-                        mContext, AnswerTextType.DESCRIPTION_NEGATIVE, AnswerType.FINANCE, false);
+        MetricAffectingSpan[] textAppearanceSpan1 = AnswerTextNewLayout.getAppearanceForAnswerText(
+                mContext, AnswerTextType.DESCRIPTION_NEGATIVE, AnswerType.FINANCE, false);
         verifyTextAppearanceSpan(textAppearanceSpan1);
 
         TextAppearanceSpan textAppearanceSpan1Converted =
@@ -72,9 +69,8 @@ public class AnswerTextNewLayoutUnitTest {
         Assert.assertEquals(mRedTextColor, textAppearanceSpan1Converted.getTextColor());
 
         // Test for green text color.
-        MetricAffectingSpan[] textAppearanceSpan2 =
-                AnswerTextNewLayout.getAppearanceForAnswerText(
-                        mContext, AnswerTextType.DESCRIPTION_POSITIVE, AnswerType.FINANCE, false);
+        MetricAffectingSpan[] textAppearanceSpan2 = AnswerTextNewLayout.getAppearanceForAnswerText(
+                mContext, AnswerTextType.DESCRIPTION_POSITIVE, AnswerType.FINANCE, false);
         verifyTextAppearanceSpan(textAppearanceSpan2);
 
         TextAppearanceSpan textAppearanceSpan2Converted =
@@ -90,9 +86,8 @@ public class AnswerTextNewLayoutUnitTest {
     @SmallTest
     public void getAppearanceForAnswerText_withColorReversal() {
         // Test for green text color.
-        MetricAffectingSpan[] textAppearanceSpan1 =
-                AnswerTextNewLayout.getAppearanceForAnswerText(
-                        mContext, AnswerTextType.DESCRIPTION_NEGATIVE, AnswerType.FINANCE, true);
+        MetricAffectingSpan[] textAppearanceSpan1 = AnswerTextNewLayout.getAppearanceForAnswerText(
+                mContext, AnswerTextType.DESCRIPTION_NEGATIVE, AnswerType.FINANCE, true);
         verifyTextAppearanceSpan(textAppearanceSpan1);
 
         TextAppearanceSpan textAppearanceSpan1Converted =
@@ -100,9 +95,8 @@ public class AnswerTextNewLayoutUnitTest {
         Assert.assertEquals(mGreenTextColor, textAppearanceSpan1Converted.getTextColor());
 
         // Test for red text color.
-        MetricAffectingSpan[] textAppearanceSpan2 =
-                AnswerTextNewLayout.getAppearanceForAnswerText(
-                        mContext, AnswerTextType.DESCRIPTION_POSITIVE, AnswerType.FINANCE, true);
+        MetricAffectingSpan[] textAppearanceSpan2 = AnswerTextNewLayout.getAppearanceForAnswerText(
+                mContext, AnswerTextType.DESCRIPTION_POSITIVE, AnswerType.FINANCE, true);
         verifyTextAppearanceSpan(textAppearanceSpan2);
 
         TextAppearanceSpan textAppearanceSpan2Converted =

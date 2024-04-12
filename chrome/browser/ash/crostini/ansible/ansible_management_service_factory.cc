@@ -37,11 +37,10 @@ AnsibleManagementServiceFactory::AnsibleManagementServiceFactory()
 AnsibleManagementServiceFactory::~AnsibleManagementServiceFactory() = default;
 
 // BrowserContextKeyedServiceFactory:
-std::unique_ptr<KeyedService>
-AnsibleManagementServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AnsibleManagementServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<AnsibleManagementService>(profile);
+  return new AnsibleManagementService(profile);
 }
 
 KeyedService* AnsibleManagementServiceFactory::SetTestingFactoryAndUse(

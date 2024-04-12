@@ -97,7 +97,7 @@
   "samp",
   "section",
   "select",
-  "selectlist",
+  "selectmenu",
   "slot",
   "small",
   "source",

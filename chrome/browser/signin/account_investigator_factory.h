@@ -11,7 +11,7 @@ class AccountInvestigator;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 // Factory for BrowserKeyedService AccountInvestigator.
@@ -26,7 +26,7 @@ class AccountInvestigatorFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<AccountInvestigatorFactory>;
+  friend struct base::DefaultSingletonTraits<AccountInvestigatorFactory>;
 
   AccountInvestigatorFactory();
   ~AccountInvestigatorFactory() override;

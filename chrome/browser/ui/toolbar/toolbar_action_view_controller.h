@@ -8,7 +8,7 @@
 #include <string>
 
 #include "chrome/browser/extensions/extension_context_menu_model.h"
-#include "chrome/browser/extensions/permissions/site_permissions_helper.h"
+#include "chrome/browser/extensions/site_permissions_helper.h"
 #include "chrome/browser/ui/extensions/extension_popup_types.h"
 #include "chrome/browser/ui/toolbar/toolbar_action_hover_card_types.h"
 #include "ui/base/models/image_model.h"
@@ -107,13 +107,9 @@ class ToolbarActionViewController {
   virtual ui::ImageModel GetIcon(content::WebContents* web_contents,
                                  const gfx::Size& size) = 0;
 
-  // Returns the name of the action.
+  // Returns the name of the action, which can be separate from the accessible
+  // name or name for the tooltip.
   virtual std::u16string GetActionName() const = 0;
-
-  // Returns the title of the action on the given `web_contents`, which may be
-  // different than the action's name.
-  virtual std::u16string GetActionTitle(
-      content::WebContents* web_contents) const = 0;
 
   // Returns the accessible name to use for the given |web_contents|.
   // May be passed null, or a |web_contents| that returns -1 for
@@ -151,15 +147,13 @@ class ToolbarActionViewController {
       extensions::ExtensionContextMenuModel::ContextMenuSource
           context_menu_source) = 0;
 
-  // Called when a context menu is shown from `source` so the controller can
-  // perform any necessary setup.
-  virtual void OnContextMenuShown(
-      extensions::ExtensionContextMenuModel::ContextMenuSource source) {}
+  // Called when a context menu is shown so the controller can perform any
+  // necessary setup.
+  virtual void OnContextMenuShown() {}
 
-  // Called when a context menu has closed from `source` so the controller can
-  // perform any necessary cleanup.
-  virtual void OnContextMenuClosed(
-      extensions::ExtensionContextMenuModel::ContextMenuSource source) {}
+  // Called when a context menu has closed so the controller can perform any
+  // necessary cleanup.
+  virtual void OnContextMenuClosed() {}
 
   // Executes the default behavior associated with the action. This should only
   // be called as a result of a user action.

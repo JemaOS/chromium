@@ -101,14 +101,14 @@ void TabModalConfirmDialogDelegate::CloseDialog() {
     close_delegate_->CloseDialog();
 }
 
-std::optional<int> TabModalConfirmDialogDelegate::GetDefaultDialogButton() {
+absl::optional<int> TabModalConfirmDialogDelegate::GetDefaultDialogButton() {
   // Use the default, don't override.
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int> TabModalConfirmDialogDelegate::GetInitiallyFocusedButton() {
+absl::optional<int> TabModalConfirmDialogDelegate::GetInitiallyFocusedButton() {
   // Use the default, don't override.
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void TabModalConfirmDialogDelegate::DidStartLoading() {

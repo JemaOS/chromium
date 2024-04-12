@@ -15,12 +15,14 @@ import org.junit.runner.RunWith;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Batch;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 
 import java.util.Arrays;
 import java.util.List;
 
-/** Tests for the AppLocalUtils class. */
+/**
+ * Tests for the AppLocalUtils class.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Batch(Batch.UNIT_TESTS)
 public class AppLocaleUtilsTest {
@@ -33,8 +35,8 @@ public class AppLocaleUtilsTest {
     @After
     public void tearDown() {
         LanguageTestUtils.clearResourceBundleForTesting();
-        ChromeSharedPreferences.getInstance()
-                .writeString(ChromePreferenceKeys.APPLICATION_OVERRIDE_LANGUAGE, null);
+        SharedPreferencesManager.getInstance().writeString(
+                ChromePreferenceKeys.APPLICATION_OVERRIDE_LANGUAGE, null);
     }
 
     // Test getAppLanguagePref.
@@ -78,9 +80,8 @@ public class AppLocaleUtilsTest {
     @SmallTest
     public void testIsFollowSystemLanguage() {
         Assert.assertTrue(AppLocaleUtils.isFollowSystemLanguage(null));
-        Assert.assertTrue(
-                AppLocaleUtils.isFollowSystemLanguage(
-                        AppLocaleUtils.APP_LOCALE_USE_SYSTEM_LANGUAGE));
+        Assert.assertTrue(AppLocaleUtils.isFollowSystemLanguage(
+                AppLocaleUtils.APP_LOCALE_USE_SYSTEM_LANGUAGE));
         Assert.assertFalse(AppLocaleUtils.isFollowSystemLanguage("en"));
     }
 
@@ -91,25 +92,16 @@ public class AppLocaleUtilsTest {
         List<String> notAvailableBaseLanguages =
                 Arrays.asList("cy", "ga", "ia", "yo", "aa-not-a-language");
         for (String language : notAvailableBaseLanguages) {
-            Assert.assertFalse(
-                    String.format("Language %s", language),
+            Assert.assertFalse(String.format("Language %s", language),
                     AppLocaleUtils.isSupportedUiLanguage(language));
         }
 
         // Base languages that have UI translations.
         List<String> avaliableBaseLanguages =
-                Arrays.asList(
-                        "af-ZA",
-                        "en",
-                        "en-US",
-                        "en-non-a-language",
-                        "fr-CA",
-                        "fr-FR",
-                        "zu-ZA",
-                        AppLocaleUtils.APP_LOCALE_USE_SYSTEM_LANGUAGE);
+                Arrays.asList("af-ZA", "en", "en-US", "en-non-a-language", "fr-CA", "fr-FR",
+                        "zu-ZA", AppLocaleUtils.APP_LOCALE_USE_SYSTEM_LANGUAGE);
         for (String language : avaliableBaseLanguages) {
-            Assert.assertTrue(
-                    String.format("Language %s", language),
+            Assert.assertTrue(String.format("Language %s", language),
                     AppLocaleUtils.isSupportedUiLanguage(language));
         }
     }
@@ -118,45 +110,26 @@ public class AppLocaleUtilsTest {
     @SmallTest
     public void testIsAvailableExactUiLanguage() {
         // Languages for which there is no exact matching UI language.
-        List<String> notAvailableExactLanguages =
-                Arrays.asList(
-                        "en",
-                        "pt",
-                        "zh",
-                        "cy",
-                        "ga",
-                        "ia",
-                        "en-AU",
-                        "en-ZA",
-                        "fr-CM",
-                        "en-not-a-language");
+        List<String> notAvailableExactLanguages = Arrays.asList(
+                "en", "pt", "zh", "cy", "ga", "ia", "en-AU", "en-ZA", "fr-CM", "en-not-a-language");
         for (String language : notAvailableExactLanguages) {
-            Assert.assertFalse(
-                    String.format("Language %s", language),
+            Assert.assertFalse(String.format("Language %s", language),
                     AppLocaleUtils.isAvailableExactUiLanguage(language));
         }
 
         // Languages that have an exact matching UI language.
-        List<String> avaliableExactLanguages =
-                Arrays.asList(
-                        "en-US",
-                        "pt-BR",
-                        "fr",
-                        "fr-CA",
-                        "zh-CN",
-                        AppLocaleUtils.APP_LOCALE_USE_SYSTEM_LANGUAGE);
+        List<String> avaliableExactLanguages = Arrays.asList("en-US", "pt-BR", "fr", "fr-CA",
+                "zh-CN", AppLocaleUtils.APP_LOCALE_USE_SYSTEM_LANGUAGE);
         for (String language : avaliableExactLanguages) {
-            Assert.assertTrue(
-                    String.format("Language %s", language),
+            Assert.assertTrue(String.format("Language %s", language),
                     AppLocaleUtils.isAvailableExactUiLanguage(language));
         }
     }
 
     // Helper function to manually get and check AppLanguagePref.
     private void assertLanguagePrefEquals(String language) {
-        Assert.assertEquals(
-                language,
-                ChromeSharedPreferences.getInstance()
-                        .readString(ChromePreferenceKeys.APPLICATION_OVERRIDE_LANGUAGE, null));
+        Assert.assertEquals(language,
+                SharedPreferencesManager.getInstance().readString(
+                        ChromePreferenceKeys.APPLICATION_OVERRIDE_LANGUAGE, null));
     }
 }

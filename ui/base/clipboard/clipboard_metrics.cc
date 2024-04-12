@@ -26,7 +26,7 @@ void RecordTimeIntervalBetweenCommitAndRead(const ui::ClipboardData* data) {
   if (!data)
     return;
 
-  std::optional<base::Time> commit_time = data->commit_time();
+  absl::optional<base::Time> commit_time = data->commit_time();
   if (!commit_time.has_value())
     return;
 

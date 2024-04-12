@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,11 +16,8 @@ class AppRegistryCache;
 }
 
 namespace desks_storage {
-class AdminTemplateService;
 class DeskModel;
 }
-
-class TestingPrefServiceSimple;
 
 namespace ash {
 
@@ -42,26 +39,18 @@ class SavedDeskTestHelper {
   // this isn't done automatically for all tests is that the act of waiting will
   // pump the event loop and a lot of tests apparently cannot handle that.
   // See https://crbug.com/1360638 for more info.
-  void WaitForDeskModels();
+  void WaitForDeskModel();
 
-  desks_storage::DeskModel* desk_model() { return saved_desk_model_.get(); }
-
-  TestingPrefServiceSimple* test_pref_service() {
-    return test_pref_service_.get();
-  }
+  desks_storage::DeskModel* desk_model() { return desk_model_.get(); }
 
  private:
   AccountId account_id_;
 
   base::ScopedTempDir desk_model_data_dir_;
 
-  std::unique_ptr<desks_storage::AdminTemplateService> admin_template_service_;
-
-  std::unique_ptr<desks_storage::DeskModel> saved_desk_model_;
+  std::unique_ptr<desks_storage::DeskModel> desk_model_;
 
   std::unique_ptr<apps::AppRegistryCache> cache_;
-
-  std::unique_ptr<TestingPrefServiceSimple> test_pref_service_;
 };
 
 }  // namespace ash

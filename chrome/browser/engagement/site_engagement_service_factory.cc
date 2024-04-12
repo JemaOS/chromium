@@ -36,12 +36,7 @@ SiteEngagementServiceFactory* SiteEngagementServiceFactory::GetInstance() {
 SiteEngagementServiceFactory::SiteEngagementServiceFactory()
     : ProfileKeyedServiceFactory(
           "SiteEngagementService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HistoryServiceFactory::GetInstance());
   DependsOn(HostContentSettingsMapFactory::GetInstance());
   DependsOn(prerender::NoStatePrefetchManagerFactory::GetInstance());
@@ -52,12 +47,11 @@ SiteEngagementServiceFactory::~SiteEngagementServiceFactory() {
   SiteEngagementService::ClearServiceProvider(this);
 }
 
-std::unique_ptr<KeyedService>
-SiteEngagementServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SiteEngagementServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   history::HistoryService* history = HistoryServiceFactory::GetForProfile(
       Profile::FromBrowserContext(context), ServiceAccessType::IMPLICIT_ACCESS);
-  return std::make_unique<HistoryAwareSiteEngagementService>(context, history);
+  return new HistoryAwareSiteEngagementService(context, history);
 }
 
 SiteEngagementService* SiteEngagementServiceFactory::GetSiteEngagementService(

@@ -12,7 +12,7 @@ function getServerURL(path) {
 var hangingRequest;
 function abortRequest() {
   hangingRequest.abort();
-  return true;
+  window.domAutomationController.send(true);
 }
 
 chrome.runtime.onInstalled.addListener(function() {

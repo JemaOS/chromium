@@ -17,7 +17,6 @@
 #include "base/files/platform_file.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
-#include "base/i18n/time_formatting.h"
 #include "base/logging.h"
 #include "base/posix/safe_strerror.h"
 #include "base/strings/stringprintf.h"
@@ -80,8 +79,12 @@ class DefaultAshTraceDestinationIO : public AshTraceDestinationIO {
 };
 
 std::string GenerateTraceFileName(base::Time timestamp) {
-  return base::UnlocalizedTimeFormatWithPattern(
-      timestamp, "'ash-trace_'yyMMdd-HHmmss.SSS'.dat'");
+  base::Time::Exploded time_deets;
+  timestamp.LocalExplode(&time_deets);
+  return base::StringPrintf(
+      "ash-trace_%02d%02d%02d-%02d%02d%02d.%03d.dat", time_deets.year,
+      time_deets.month, time_deets.day_of_month, time_deets.hour,
+      time_deets.minute, time_deets.second, time_deets.millisecond);
 }
 
 std::unique_ptr<AshTraceDestination> GenerateTraceDestinationFile(

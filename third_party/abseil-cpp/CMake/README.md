@@ -170,7 +170,7 @@ And finally install:
 cmake --build /temporary/build/abseil-cpp --target install
 ```
 
-# CMake Option Synopsis
+# CMake Option Synposis
 
 ## Enable Standard CMake Installation
 

@@ -164,7 +164,8 @@ SecurePaymentConfirmationNoCredsDialogView::CreateBodyView() {
   return no_matching_creds_view;
 }
 
-BEGIN_METADATA(SecurePaymentConfirmationNoCredsDialogView)
+BEGIN_METADATA(SecurePaymentConfirmationNoCredsDialogView,
+               views::DialogDelegateView)
 END_METADATA
 
 }  // namespace payments

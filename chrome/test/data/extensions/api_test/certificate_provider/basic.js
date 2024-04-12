@@ -113,35 +113,28 @@ function setCertificates() {
     certificateChain: [l1LeafCert.buffer],
     supportedAlgorithms: supportedAlgorithms
   };
-  return new Promise(resolve => {
-    chrome.certificateProvider.setCertificates(
-        {clientCertificates: [
-          validCert, ...getInvalidClientCertificateInfos()]},
-        () => {
-          const success = !chrome.runtime.lastError;
-          resolve(success);
-        });
-  });
+  chrome.certificateProvider.setCertificates(
+      {clientCertificates: [validCert, ...getInvalidClientCertificateInfos()]},
+      () => {
+        const success = !chrome.runtime.lastError;
+        domAutomationController.send(success);
+      });
 }
 
 // Similar to `setCertificates()`, but only provides invalid certificates.
 function setInvalidCertificates() {
-  return new Promise(resolve => {
-    chrome.certificateProvider.setCertificates(
-        {clientCertificates: getInvalidClientCertificateInfos()}, () => {
-          const success = !chrome.runtime.lastError;
-          resolve(success);
-        });
-  });
+  chrome.certificateProvider.setCertificates(
+      {clientCertificates: getInvalidClientCertificateInfos()}, () => {
+        const success = !chrome.runtime.lastError;
+        domAutomationController.send(success);
+      });
 }
 
 // Indicates that there are no certificates available.
 function unsetCertificates() {
-  return new Promise(resolve => {
-    chrome.certificateProvider.setCertificates({clientCertificates: []}, () => {
-      const success = !chrome.runtime.lastError;
-      resolve(success);
-    });
+  chrome.certificateProvider.setCertificates({clientCertificates: []}, () => {
+    const success = !chrome.runtime.lastError;
+    domAutomationController.send(success);
   });
 }
 
@@ -197,8 +190,10 @@ function replyWithSignatureSecondTime() {
   try {
     signatureCallback(signature.buffer);
   } catch (e) {
+    domAutomationController.send(false);
     return false;
   }
+  domAutomationController.send(true);
   return true;
 }
 

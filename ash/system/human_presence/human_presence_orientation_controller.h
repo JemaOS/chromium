@@ -61,7 +61,7 @@ class ASH_EXPORT HumanPresenceOrientationController
   void LidEventReceived(chromeos::PowerManagerClient::LidState state,
                         base::TimeTicks timestamp) override;
   void OnReceiveSwitchStates(
-      std::optional<chromeos::PowerManagerClient::SwitchStates> switch_states);
+      absl::optional<chromeos::PowerManagerClient::SwitchStates> switch_states);
 
   // Updates the internal state of the controller, and notifies observers if
   // the state has changed.

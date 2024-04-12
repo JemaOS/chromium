@@ -34,7 +34,9 @@ public class WebappCustomTabTimeSpentLogger {
         return new WebappCustomTabTimeSpentLogger(activityType);
     }
 
-    /** Stop timer and log UMA. */
+    /**
+     * Stop timer and log UMA.
+     */
     public void onPause() {
         long timeSpent = SystemClock.elapsedRealtime() - mStartTime;
         String umaSuffix;

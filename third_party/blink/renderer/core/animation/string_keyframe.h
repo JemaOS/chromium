@@ -68,7 +68,7 @@ class CORE_EXPORT StringKeyframe : public Keyframe {
     CHECK_GE(index, 0);
     return css_property_map_->PropertyAt(static_cast<unsigned>(index))
         .Value()
-        .EnsureScopedValue(tree_scope_.Get());
+        .EnsureScopedValue(tree_scope_);
   }
 
   const CSSValue& PresentationAttributeValue(
@@ -78,7 +78,7 @@ class CORE_EXPORT StringKeyframe : public Keyframe {
     CHECK_GE(index, 0);
     return presentation_attribute_map_->PropertyAt(static_cast<unsigned>(index))
         .Value()
-        .EnsureScopedValue(tree_scope_.Get());
+        .EnsureScopedValue(tree_scope_);
     ;
   }
 
@@ -122,7 +122,7 @@ class CORE_EXPORT StringKeyframe : public Keyframe {
         const ComputedStyle& base_style,
         const ComputedStyle* parent_style) const final;
     const CompositorKeyframeValue* GetCompositorKeyframeValue() const final {
-      return compositor_keyframe_value_cache_.Get();
+      return compositor_keyframe_value_cache_;
     }
 
     bool IsNeutral() const final { return !value_; }
@@ -213,7 +213,7 @@ class CORE_EXPORT StringKeyframe : public Keyframe {
     // Two shorthands with overlapping longhand properties are sorted based
     // on the number of longhand properties in their expansions.
     bool IsLogical() { return is_logical_; }
-    bool IsShorthand() { return css_property_value_set_ != nullptr; }
+    bool IsShorthand() { return css_property_value_set_; }
     unsigned ExpansionCount() {
       return css_property_value_set_ ? css_property_value_set_->PropertyCount()
                                      : 1;

@@ -32,7 +32,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import org.chromium.base.test.util.Batch;
-import org.chromium.base.test.util.DisabledTest;
 import org.chromium.chrome.R;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.components.browser_ui.widget.gesture.SwipeGestureListener.ScrollDirection;
@@ -44,8 +43,10 @@ import org.chromium.ui.test.util.BlankUiTestActivityTestCase;
 @RunWith(ChromeJUnit4ClassRunner.class)
 @Batch(Batch.PER_CLASS)
 public class CustomTabBottomBarViewUnitTest extends BlankUiTestActivityTestCase {
-    @Mock private SwipeHandler mSwipeHandler;
-    @Mock private OnClickListener mOnClickListener;
+    @Mock
+    private SwipeHandler mSwipeHandler;
+    @Mock
+    private OnClickListener mOnClickListener;
 
     private CustomTabBottomBarView mView;
     private View mStub;
@@ -54,22 +55,15 @@ public class CustomTabBottomBarViewUnitTest extends BlankUiTestActivityTestCase 
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         when(mSwipeHandler.isSwipeEnabled(eq(ScrollDirection.UP))).thenReturn(true);
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mView =
-                            (CustomTabBottomBarView)
-                                    getActivity()
-                                            .getLayoutInflater()
-                                            .inflate(R.layout.custom_tabs_bottombar, null);
-                    mStub =
-                            getActivity()
-                                    .getLayoutInflater()
-                                    .inflate(R.layout.bottombar_stub, null);
-                    mStub.setOnClickListener(mOnClickListener);
-                    mView.addView(mStub);
-                    mView.setSwipeHandler(mSwipeHandler);
-                    getActivity().setContentView(mView);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mView = (CustomTabBottomBarView) getActivity().getLayoutInflater().inflate(
+                    R.layout.custom_tabs_bottombar, null);
+            mStub = getActivity().getLayoutInflater().inflate(R.layout.bottombar_stub, null);
+            mStub.setOnClickListener(mOnClickListener);
+            mView.addView(mStub);
+            mView.setSwipeHandler(mSwipeHandler);
+            getActivity().setContentView(mView);
+        });
     }
 
     @Test
@@ -84,7 +78,6 @@ public class CustomTabBottomBarViewUnitTest extends BlankUiTestActivityTestCase 
 
     @Test
     @SmallTest
-    @DisabledTest(message = "crbug.com/329163715")
     public void testSwipeUp() {
         onView(withChild(withId(R.id.stub))).perform(swipeUp());
         verify(mSwipeHandler).onSwipeStarted(eq(ScrollDirection.UP), any(MotionEvent.class));

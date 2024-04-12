@@ -8,25 +8,17 @@ import static androidx.test.espresso.matcher.ViewMatchers.assertThat;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import android.app.Activity;
 import android.content.Context;
-import android.util.SparseArray;
 import android.view.View;
-import android.view.ViewStructure;
-import android.view.autofill.AutofillValue;
 
-import androidx.annotation.Nullable;
 import androidx.test.filters.SmallTest;
 
 import org.junit.Before;
@@ -38,50 +30,68 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.annotation.Config;
 
-import org.chromium.base.Token;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Features;
-import org.chromium.base.test.util.Features.DisableFeatures;
-import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.JniMocker;
 import org.chromium.chrome.browser.app.ChromeActivity;
-import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.tab.state.CriticalPersistedTabData;
+import org.chromium.chrome.browser.tab.state.CriticalPersistedTabDataObserver;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
-import org.chromium.components.autofill.AutofillFeatures;
-import org.chromium.components.autofill.AutofillProvider;
+import org.chromium.chrome.test.util.browser.Features;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.WindowAndroid;
 
 import java.lang.ref.WeakReference;
 
-/** Tests for {@link Tab}. */
+/**
+ * Tests for {@link Tab}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
+@Features.EnableFeatures(ChromeFeatureList.TAB_STATE_V1_OPTIMIZATIONS)
 public class TabUnitTest {
     private static final int TAB1_ID = 456;
     private static final int TAB2_ID = 789;
 
-    @Rule public TestRule mFeaturesProcessorRule = new Features.JUnitProcessor();
+    @Rule
+    public TestRule mFeaturesProcessorRule = new Features.JUnitProcessor();
 
-    @Rule public JniMocker mocker = new JniMocker();
+    @Rule
+    public JniMocker mocker = new JniMocker();
 
-    @Mock private AutofillProvider mAutofillProvider;
-    @Mock private Profile mProfile;
-    @Mock private WindowAndroid mWindowAndroid;
-    @Mock private LoadUrlParams mLoadUrlParams;
-    @Mock private EmptyTabObserver mObserver;
-    @Mock private Context mContext;
-    @Mock private WeakReference<Context> mWeakReferenceContext;
-    @Mock private WeakReference<Activity> mWeakReferenceActivity;
-    @Mock private Activity mActivity;
-    @Mock private NativePage mNativePage;
-    @Mock private TabDelegateFactory mDelegateFactory;
-    @Mock private TabWebContentsDelegateAndroid mTabWebContentsDelegateAndroid;
-    @Mock private WebContents mWebContents;
-    @Mock private View mNativePageView;
-    @Mock private ChromeActivity mChromeActivity;
-    @Mock TabImpl.Natives mNativeMock;
+    @Mock
+    private WindowAndroid mWindowAndroid;
+    @Mock
+    private LoadUrlParams mLoadUrlParams;
+    @Mock
+    private EmptyTabObserver mObserver;
+    @Mock
+    private Context mContext;
+    @Mock
+    private WeakReference<Context> mWeakReferenceContext;
+    @Mock
+    private WeakReference<Activity> mWeakReferenceActivity;
+    @Mock
+    private Activity mActivity;
+    @Mock
+    private CriticalPersistedTabData mCriticalPersistedTabData;
+    @Mock
+    private CriticalPersistedTabDataObserver mCriticalPersistedTabDataObserver;
+    @Mock
+    private NativePage mNativePage;
+    @Mock
+    private TabDelegateFactory mDelegateFactory;
+    @Mock
+    private TabWebContentsDelegateAndroid mTabWebContentsDelegateAndroid;
+    @Mock
+    private WebContents mWebContents;
+    @Mock
+    private View mNativePageView;
+    @Mock
+    private ChromeActivity mChromeActivity;
+    @Mock
+    TabImpl.Natives mNativeMock;
 
     private TabImpl mTab;
 
@@ -95,33 +105,30 @@ public class TabUnitTest {
         doReturn(mContext).when(mWeakReferenceContext).get();
         doReturn(mContext).when(mContext).getApplicationContext();
 
-        mTab =
-                new TabImpl(TAB1_ID, mProfile, null) {
-                    @Override
-                    public boolean isInitialized() {
-                        return true;
-                    }
-                };
+        mTab = new TabImpl(TAB1_ID, false, null, null) {
+            @Override
+            public boolean isInitialized() {
+                return true;
+            }
+        };
         mTab.addObserver(mObserver);
-        mTab.setAutofillProvider(mAutofillProvider);
+        CriticalPersistedTabData.from(mTab).addObserver(mCriticalPersistedTabDataObserver);
     }
 
     @Test
     @SmallTest
     public void testSetRootIdWithChange() {
         TabStateAttributes.createForTab(mTab, TabCreationState.FROZEN_ON_RESTORE);
-        assertThat(
-                TabStateAttributes.from(mTab).getDirtinessState(),
+        assertThat(TabStateAttributes.from(mTab).getDirtinessState(),
                 equalTo(TabStateAttributes.DirtinessState.CLEAN));
-        assertThat(mTab.getRootId(), equalTo(TAB1_ID));
+        assertThat(CriticalPersistedTabData.from(mTab).getRootId(), equalTo(TAB1_ID));
 
-        mTab.setRootId(TAB2_ID);
+        CriticalPersistedTabData.from(mTab).setRootId(TAB2_ID);
 
-        verify(mObserver).onRootIdChanged(mTab, TAB2_ID);
+        verify(mCriticalPersistedTabDataObserver).onRootIdChanged(mTab, TAB2_ID);
 
-        assertThat(mTab.getRootId(), equalTo(TAB2_ID));
-        assertThat(
-                TabStateAttributes.from(mTab).getDirtinessState(),
+        assertThat(CriticalPersistedTabData.from(mTab).getRootId(), equalTo(TAB2_ID));
+        assertThat(TabStateAttributes.from(mTab).getDirtinessState(),
                 equalTo(TabStateAttributes.DirtinessState.DIRTY));
     }
 
@@ -129,71 +136,17 @@ public class TabUnitTest {
     @SmallTest
     public void testSetRootIdWithoutChange() {
         TabStateAttributes.createForTab(mTab, TabCreationState.FROZEN_ON_RESTORE);
-        assertThat(
-                TabStateAttributes.from(mTab).getDirtinessState(),
+        assertThat(TabStateAttributes.from(mTab).getDirtinessState(),
                 equalTo(TabStateAttributes.DirtinessState.CLEAN));
-        assertThat(mTab.getRootId(), equalTo(TAB1_ID));
+        assertThat(CriticalPersistedTabData.from(mTab).getRootId(), equalTo(TAB1_ID));
         TabStateAttributes.from(mTab).clearTabStateDirtiness();
 
-        mTab.setRootId(TAB1_ID);
+        CriticalPersistedTabData.from(mTab).setRootId(TAB1_ID);
 
-        verify(mObserver, never()).onRootIdChanged(any(Tab.class), anyInt());
-        assertThat(mTab.getRootId(), equalTo(TAB1_ID));
-        assertThat(
-                TabStateAttributes.from(mTab).getDirtinessState(),
-                equalTo(TabStateAttributes.DirtinessState.CLEAN));
-    }
-
-    @Test
-    @SmallTest
-    public void testSetTabGroupIdWithChange() {
-        TabStateAttributes.createForTab(mTab, TabCreationState.FROZEN_ON_RESTORE);
-        assertThat(
-                TabStateAttributes.from(mTab).getDirtinessState(),
-                equalTo(TabStateAttributes.DirtinessState.CLEAN));
-        assertNull(mTab.getTabGroupId());
-
-        long tokenHigh = 0x1234567890L;
-        long tokenLow = 0xABCDEF;
-        Token token = new Token(tokenHigh, tokenLow);
-        checkTabGroupIdChange(token);
-
-        // Reverse field order so the token is unequal.
-        token = new Token(tokenLow, tokenHigh);
-        checkTabGroupIdChange(token);
-
-        checkTabGroupIdChange(null);
-    }
-
-    private void checkTabGroupIdChange(@Nullable Token token) {
-        mTab.setTabGroupId(token);
-
-        verify(mObserver).onTabGroupIdChanged(mTab, token);
-
-        TabStateAttributes attributes = TabStateAttributes.from(mTab);
-        assertThat(mTab.getTabGroupId(), equalTo(token));
-        assertThat(
-                attributes.getDirtinessState(), equalTo(TabStateAttributes.DirtinessState.DIRTY));
-
-        attributes.clearTabStateDirtiness();
-    }
-
-    @Test
-    @SmallTest
-    public void testSetTabGroupIdWithoutChange() {
-        TabStateAttributes.createForTab(mTab, TabCreationState.FROZEN_ON_RESTORE);
-        assertThat(
-                TabStateAttributes.from(mTab).getDirtinessState(),
-                equalTo(TabStateAttributes.DirtinessState.CLEAN));
-        assertNull(mTab.getTabGroupId());
-        TabStateAttributes.from(mTab).clearTabStateDirtiness();
-
-        mTab.setTabGroupId(null);
-
-        verify(mObserver, never()).onTabGroupIdChanged(any(Tab.class), any());
-        assertNull(mTab.getTabGroupId());
-        assertThat(
-                TabStateAttributes.from(mTab).getDirtinessState(),
+        verify(mCriticalPersistedTabDataObserver, never())
+                .onRootIdChanged(any(Tab.class), anyInt());
+        assertThat(CriticalPersistedTabData.from(mTab).getRootId(), equalTo(TAB1_ID));
+        assertThat(TabStateAttributes.from(mTab).getDirtinessState(),
                 equalTo(TabStateAttributes.DirtinessState.CLEAN));
     }
 
@@ -207,35 +160,26 @@ public class TabUnitTest {
                 .createWebContentsDelegate(any(Tab.class));
         doReturn(mNativePage)
                 .when(mDelegateFactory)
-                .createNativePage(any(String.class), any(), any(Tab.class), any());
+                .createNativePage(any(String.class), any(), any(Tab.class));
         doReturn(false).when(mNativePage).isFrozen();
         doReturn(mNativePageView).when(mNativePage).getView();
         doReturn(mWindowAndroid).when(mWebContents).getTopLevelNativeWindow();
         doReturn(mChromeActivity).when(mWeakReferenceContext).get();
 
-        mTab =
-                new TabImpl(TAB1_ID, mProfile, null) {
-                    @Override
-                    public WindowAndroid getWindowAndroid() {
-                        return mWindowAndroid;
-                    }
-
-                    @Override
-                    void updateWindowAndroid(WindowAndroid windowAndroid) {}
-
-                    @Override
-                    public WebContents getWebContents() {
-                        return mWebContents;
-                    }
-
-                    @Override
-                    public boolean isNativePage() {
-                        return true;
-                    }
-
-                    @Override
-                    void pushNativePageStateToNavigationEntry() {}
-                };
+        mTab = new TabImpl(TAB1_ID, false, null, null) {
+            @Override
+            void updateWindowAndroid(WindowAndroid windowAndroid) {}
+            @Override
+            public WebContents getWebContents() {
+                return mWebContents;
+            }
+            @Override
+            public boolean isNativePage() {
+                return true;
+            }
+            @Override
+            void pushNativePageStateToNavigationEntry() {}
+        };
         mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
 
         // A valid, non-null NativeFrozenPage object should be instantiated when a Tab is
@@ -243,47 +187,5 @@ public class TabUnitTest {
         assertEquals(mTab.getNativePage(), mNativePage);
         mTab.freezeNativePage();
         assertNotEquals(mTab.getNativePage(), mNativePage);
-    }
-
-    @Test
-    @SmallTest
-    public void testMaybeLoadNativePage_nullOrEmptyUrl() {
-        mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
-        assertFalse(
-                mTab.maybeShowNativePage(
-                        (String) null, /* forceReload= */ false, /* pdfInfo= */ null));
-        assertFalse(mTab.maybeShowNativePage("", /* forceReload= */ false, /* pdfInfo= */ null));
-    }
-
-    @Test
-    @SmallTest
-    @DisableFeatures({AutofillFeatures.AUTOFILL_VIRTUAL_VIEW_STRUCTURE_ANDROID})
-    public void testAutofillUnavailable() {
-        assertFalse(mTab.providesAutofillStructure());
-        mTab.setAutofillProvider(null);
-
-        mTab.onProvideAutofillVirtualStructure(mock(ViewStructure.class), 0);
-        verify(mAutofillProvider, never()).onProvideAutoFillVirtualStructure(any(), anyInt());
-
-        mTab.autofill(new SparseArray<AutofillValue>());
-        verify(mAutofillProvider, never()).autofill(any());
-    }
-
-    @Test
-    @SmallTest
-    @EnableFeatures({AutofillFeatures.AUTOFILL_VIRTUAL_VIEW_STRUCTURE_ANDROID})
-    public void testAutofillRequestsHandledByProvider() {
-        assertTrue(mTab.providesAutofillStructure());
-
-        ViewStructure structure = mock(ViewStructure.class);
-        mTab.onProvideAutofillVirtualStructure(
-                structure, View.AUTOFILL_FLAG_INCLUDE_NOT_IMPORTANT_VIEWS);
-        verify(mAutofillProvider)
-                .onProvideAutoFillVirtualStructure(
-                        structure, View.AUTOFILL_FLAG_INCLUDE_NOT_IMPORTANT_VIEWS);
-
-        SparseArray<AutofillValue> values = new SparseArray<AutofillValue>();
-        mTab.autofill(values);
-        verify(mAutofillProvider).autofill(values);
     }
 }

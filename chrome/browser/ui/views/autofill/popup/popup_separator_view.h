@@ -16,10 +16,10 @@ namespace autofill {
 // Autofill suggestions. Note that this is NOT the same as the border on top of
 // the footer section or the border between footer items.
 class PopupSeparatorView : public views::View {
-  METADATA_HEADER(PopupSeparatorView, views::View)
-
  public:
-  explicit PopupSeparatorView(int vertical_padding);
+  METADATA_HEADER(PopupSeparatorView);
+
+  PopupSeparatorView();
   ~PopupSeparatorView() override;
 
   PopupSeparatorView(const PopupSeparatorView&) = delete;

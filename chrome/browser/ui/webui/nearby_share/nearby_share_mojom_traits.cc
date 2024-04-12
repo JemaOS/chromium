@@ -37,10 +37,10 @@ StructTraits<nearby_share::mojom::ShareTargetDataView, ShareTarget>::type(
 mojo::OptionalAsPointer<const GURL>
 StructTraits<nearby_share::mojom::ShareTargetDataView, ShareTarget>::image_url(
     const ShareTarget& share_target) {
-  return mojo::OptionalAsPointer(share_target.image_url &&
-                                         share_target.image_url->is_valid()
-                                     ? &share_target.image_url.value()
-                                     : nullptr);
+  return mojo::MakeOptionalAsPointer(share_target.image_url &&
+                                             share_target.image_url->is_valid()
+                                         ? &share_target.image_url.value()
+                                         : nullptr);
 }
 
 // static
@@ -65,9 +65,8 @@ StructTraits<nearby_share::mojom::ShareTargetDataView,
   }
 
   // If there are no attachments, return an empty text preview.
-  if (!attachment) {
+  if (!attachment)
     return payload_preview;
-  }
 
   payload_preview->description = attachment->GetDescription();
 
@@ -80,13 +79,6 @@ StructTraits<nearby_share::mojom::ShareTargetDataView,
   }
 
   return payload_preview;
-}
-
-// static
-bool mojo::StructTraits<nearby_share::mojom::ShareTargetDataView,
-                        ShareTarget>::for_self_share(const ShareTarget&
-                                                         share_target) {
-  return share_target.for_self_share;
 }
 
 // static

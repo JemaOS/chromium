@@ -8,10 +8,10 @@
  * and existing networks.
  */
 
-import '//resources/ash/common/cr_elements/action_link.css.js';
-import '//resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
-import '//resources/ash/common/cr_elements/cr_toggle/cr_toggle.js';
-import '//resources/ash/common/cr_elements/policy/cr_policy_indicator.js';
+import '//resources/cr_elements/action_link.css.js';
+import '//resources/cr_elements/cr_dialog/cr_dialog.js';
+import '//resources/cr_elements/cr_toggle/cr_toggle.js';
+import '//resources/cr_elements/policy/cr_policy_indicator.js';
 import '//resources/js/action_link.js';
 import '//resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
 import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
@@ -26,7 +26,7 @@ import {assert, assertNotReached} from '//resources/ash/common/assert.js';
 import {I18nBehavior} from '//resources/ash/common/i18n_behavior.js';
 import {loadTimeData} from '//resources/ash/common/load_time_data.m.js';
 import {flush, Polymer} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {CertificateType, ConfigProperties, CrosNetworkConfigInterface, EAPConfigProperties, GlobalPolicy, HiddenSsidMode, IPSecConfigProperties, L2TPConfigProperties, ManagedBoolean, ManagedEAPProperties, ManagedInt32, ManagedIPSecProperties, ManagedL2TPProperties, ManagedOpenVPNProperties, ManagedProperties, ManagedString, ManagedStringList, ManagedWireGuardProperties, NetworkCertificate, OpenVPNConfigProperties, SecurityType, StartConnectResult, SubjectAltName, VpnType, WireGuardConfigProperties} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
+import {CertificateType, ConfigProperties, CrosNetworkConfigRemote, EAPConfigProperties, GlobalPolicy, HiddenSsidMode, IPSecConfigProperties, L2TPConfigProperties, ManagedBoolean, ManagedEAPProperties, ManagedInt32, ManagedIPSecProperties, ManagedL2TPProperties, ManagedOpenVPNProperties, ManagedProperties, ManagedString, ManagedStringList, ManagedWireGuardProperties, NetworkCertificate, OpenVPNConfigProperties, SecurityType, StartConnectResult, SubjectAltName, VpnType, WireGuardConfigProperties} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
 import {ConnectionStateType, IPConfigType, NetworkType, OncSource, PolicySource} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/network_types.mojom-webui.js';
 
 import {MojoInterfaceProvider, MojoInterfaceProviderImpl} from './mojo_interface_provider.js';
@@ -69,8 +69,6 @@ const WireGuardKeyConfigType = {
 /** @type {string}  */ const DO_NOT_CHECK_HASH = 'do-not-check';
 /** @type {string}  */ const NO_CERTS_HASH = 'no-certs';
 /** @type {string}  */ const NO_USER_CERT_HASH = 'no-user-cert';
-
-/** @type {string}  */ const DEFAULT_EAP_OUTER_PROTOCOL = 'PEAP';
 
 /** @type {string}  */ const PLACEHOLDER_CREDENTIAL = '(credential)';
 
@@ -162,13 +160,6 @@ Polymer({
       type: String,
       notify: true,
     },
-
-    /**
-     * The prefilled network configuration. This can be empty if nothing to
-     * prefill or the configuration will be synced according to `this.guid`.
-     * @type {?ConfigProperties}
-     */
-    prefilledProperties: Object,
 
     /** @private {?ManagedProperties} */
     managedProperties_: {
@@ -268,21 +259,6 @@ Polymer({
     shareNetwork_: {
       type: Boolean,
       value: true,
-    },
-
-    /**
-     * This is a ManagedBoolean that represents a device-policy-enforced false
-     * value. It is used to present a policy-disabled toggle for "Share network"
-     * when user-created networks are ephemeral. It is never mutated.
-     * @private {!ManagedBoolean}
-     */
-    shareNetworkEphemeralDisabled_: {
-      type: Object,
-      value: {
-        activeValue: false,
-        policySource: PolicySource.kDevicePolicyEnforced,
-        policyValue: false,
-      },
     },
 
     /**
@@ -396,13 +372,12 @@ Polymer({
 
     /**
      * Array of values for the EAP Method (Outer) dropdown.
-     * They will be presented in a dropdown in this order.
      * @private {!Array<string>}
      */
     eapOuterItems_: {
       type: Array,
       readOnly: true,
-      value: ['PEAP', 'EAP-TLS', 'EAP-TTLS', 'LEAP'],
+      value: ['LEAP', 'PEAP', 'EAP-TLS', 'EAP-TTLS'],
     },
 
     /**
@@ -529,8 +504,17 @@ Polymer({
   /** @const */
   MIN_PASSPHRASE_LENGTH: 5,
 
-  /** @private {?CrosNetworkConfigInterface} */
+  /** @private {?CrosNetworkConfigRemote} */
   networkConfig_: null,
+
+  /*
+   * This value is used to avoid an edge case when configuring a network. We
+   * default to |true| since this is the more privacy-preserving option. This
+   * value is overridden with dialog arguments in specific situations where it
+   * ought be |false|. For more information see b/253247084.
+   * @private {boolean}
+   */
+  isLoggedIn_: true,
 
   /** @override */
   created() {
@@ -555,6 +539,16 @@ Polymer({
     this.cachedUserCerts_ = undefined;
     this.selectedServerCaHash_ = undefined;
     this.selectedUserCertHash_ = undefined;
+
+    if (this.getHiddenNetworkMigrationEnabled()) {
+      const dialogArgs = chrome.getVariableValue('dialogArguments');
+      if (dialogArgs) {
+        const args = JSON.parse(dialogArgs);
+        if ('loggedIn' in args) {
+          this.isLoggedIn_ = args.loggedIn;
+        }
+      }
+    }
 
     this.networkConfig_.getSupportedVpnTypes().then(response => {
       this.updateVpnTypeItems_(response.vpnTypes);
@@ -610,6 +604,11 @@ Polymer({
     }
   },
 
+  /** @private */
+  getHiddenNetworkMigrationEnabled() {
+    return loadTimeData.getBoolean('enableHiddenNetworkMigration');
+  },
+
   /**
    * @param {boolean} connect If true, connect after save.
    * @private
@@ -646,12 +645,13 @@ Polymer({
     }
     const propertiesToSet = this.getPropertiesToSet_();
     if (this.managedProperties_.source === OncSource.kNone) {
-      // Explicitly set the hidden SSID mode of new WiFi networks disabled to
-      // avoid networks being unintentionally marked as hidden in some
-      // situations, e.g., when the network SSID is misspelled or the network is
-      // not within range.
-      if (this.mojoType_ === NetworkType.kWiFi) {
-        propertiesToSet.typeConfig.wifi.hiddenSsid = HiddenSsidMode.kDisabled;
+      if (this.getHiddenNetworkMigrationEnabled() && this.isLoggedIn_) {
+        // Note: Set hidden SSID mode of new WiFi networks to disabled to avoid
+        // unintentionally marking networks as hidden if not in range or
+        // misspelled, etc.
+        if (this.mojoType_ === NetworkType.kWiFi) {
+          propertiesToSet.typeConfig.wifi.hiddenSsid = HiddenSsidMode.kDisabled;
+        }
       }
       if (!this.autoConnect_) {
         // Note: Do not set autoConnect to true, the connection manager will do
@@ -910,7 +910,7 @@ Polymer({
       return;
     }
     if (!this.shareIsVisible_()) {
-      this.shareNetwork_ = this.shareDefault;
+      this.shareNetwork_ = false;
       return;
     }
     if (this.shareAllowEnable) {
@@ -945,7 +945,7 @@ Polymer({
       domainSuffixMatch: this.getActiveStringList_(eap.domainSuffixMatch) || [],
       identity: OncMojo.getActiveString(eap.identity),
       inner: OncMojo.getActiveString(eap.inner),
-      outer: OncMojo.getActiveString(eap.outer) || DEFAULT_EAP_OUTER_PROTOCOL,
+      outer: OncMojo.getActiveString(eap.outer) || 'LEAP',
       password: OncMojo.getActiveString(eap.password),
       saveCredentials: this.getActiveBoolean_(eap.saveCredentials),
       serverCaPems: this.getActiveStringList_(eap.serverCaPems),
@@ -1178,7 +1178,7 @@ Polymer({
     let eap;
     if (security === SecurityType.kWpaEap) {
       eap = this.getEap_(this.configProperties_, true);
-      eap.outer = eap.outer || DEFAULT_EAP_OUTER_PROTOCOL;
+      eap.outer = eap.outer || 'LEAP';
     }
     this.setEap_(eap);
   },
@@ -1827,27 +1827,6 @@ Polymer({
       return false;
     }
     return true;
-  },
-
-  /**
-   * Returns true if the network configured by this UI element is ephemeral
-   * according to enterprise policy.
-   * @return {boolean}
-   * @private
-   */
-  networkIsEphemeral_() {
-    if (!loadTimeData.getBoolean('ephemeralNetworkPoliciesEnabled')) {
-      return false;
-    }
-    if (!this.globalPolicy_ ||
-        !this.globalPolicy_.userCreatedNetworkConfigurationsAreEphemeral) {
-      return false;
-    }
-    if (!this.managedProperties_) {
-      return false;
-    }
-    // Only user-created networks are ephemeral with this policy.
-    return this.managedProperties_.source === OncSource.kNone;
   },
 
   /**

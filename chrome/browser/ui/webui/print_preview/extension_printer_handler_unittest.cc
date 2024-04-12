@@ -33,6 +33,7 @@
 #include "extensions/browser/api/printer_provider/printer_provider_print_job.h"
 #include "extensions/browser/api/usb/usb_device_manager.h"
 #include "extensions/common/extension.h"
+#include "extensions/common/value_builder.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "printing/pdf_render_settings.h"
 #include "printing/print_job_constants.h"
@@ -44,6 +45,7 @@
 #include "ui/gfx/geometry/size.h"
 
 using device::mojom::UsbDeviceInfoPtr;
+using extensions::DictionaryBuilder;
 using extensions::Extension;
 using extensions::PrinterProviderAPI;
 using extensions::PrinterProviderPrintJob;
@@ -303,8 +305,7 @@ class FakePwgRasterConverter : public PwgRasterConverter {
 
   // PwgRasterConverter implementation. It writes |data| to shared memory.
   // Also, remembers conversion and bitmap settings passed into the method.
-  void Start(const std::optional<bool>& use_skia,
-             const base::RefCountedMemory* data,
+  void Start(const base::RefCountedMemory* data,
              const PdfRenderSettings& conversion_settings,
              const PwgRasterSettings& bitmap_settings,
              ResultCallback callback) override {
@@ -597,23 +598,25 @@ TEST_F(ExtensionPrinterHandlerTest, GetUsbPrinters) {
   EXPECT_FALSE(is_done);
   EXPECT_EQ(2u, printers.size());
   base::Value::Dict extension_1_entry =
-      base::Value::Dict()
+      DictionaryBuilder()
           .Set("id", base::StringPrintf("provisional-usb:%s:%s",
                                         extension_1->id().c_str(),
                                         device0->guid.c_str()))
           .Set("name", "USB Printer")
           .Set("extensionName", "Provider 1")
           .Set("extensionId", extension_1->id())
-          .Set("provisional", true);
+          .Set("provisional", true)
+          .Build();
   base::Value::Dict extension_2_entry =
-      base::Value::Dict()
+      DictionaryBuilder()
           .Set("id", base::StringPrintf("provisional-usb:%s:%s",
                                         extension_2->id().c_str(),
                                         device1->guid.c_str()))
           .Set("name", "USB Printer")
           .Set("extensionName", "Provider 2")
           .Set("extensionId", extension_2->id())
-          .Set("provisional", true);
+          .Set("provisional", true)
+          .Build();
   EXPECT_TRUE(base::Contains(printers, extension_1_entry));
   EXPECT_TRUE(base::Contains(printers, extension_2_entry));
 
@@ -648,10 +651,11 @@ TEST_F(ExtensionPrinterHandlerTest, GetCapability) {
   base::Value::Dict* printer =
       original_capability_with_dpi_dict.FindDict("printer");
   ASSERT_TRUE(printer);
-  auto default_dpi_option =
-      base::Value::Dict().Set("horizontal_dpi", kDefaultPdfDpi);
+  base::Value::Dict default_dpi_option;
+  default_dpi_option.Set("horizontal_dpi", kDefaultPdfDpi);
   default_dpi_option.Set("vertical_dpi", kDefaultPdfDpi);
-  auto dpi_list = base::Value::List().Append(std::move(default_dpi_option));
+  base::Value::List dpi_list;
+  dpi_list.Append(std::move(default_dpi_option));
   base::Value::Dict dpi_dict;
   dpi_dict.Set("option", std::move(dpi_list));
   printer->Set("dpi", std::move(dpi_dict));
@@ -992,8 +996,10 @@ TEST_F(ExtensionPrinterHandlerTest, GrantUsbPrinterAccess) {
   ASSERT_TRUE(fake_api);
   ASSERT_EQ(1u, fake_api->pending_usb_info_count());
 
-  base::Value::Dict original_printer_info =
-      base::Value::Dict().Set("id", "printer1").Set("name", "Printer 1");
+  base::Value::Dict original_printer_info = DictionaryBuilder()
+                                                .Set("id", "printer1")
+                                                .Set("name", "Printer 1")
+                                                .Build();
 
   fake_api->TriggerNextUsbPrinterInfoCallback(original_printer_info.Clone());
 
@@ -1023,8 +1029,10 @@ TEST_F(ExtensionPrinterHandlerTest, GrantUsbPrinterAccessReset) {
 
   extension_printer_handler_->Reset();
 
-  base::Value::Dict original_printer_info =
-      base::Value::Dict().Set("id", "printer1").Set("name", "Printer 1");
+  base::Value::Dict original_printer_info = DictionaryBuilder()
+                                                .Set("id", "printer1")
+                                                .Set("name", "Printer 1")
+                                                .Build();
 
   fake_api->TriggerNextUsbPrinterInfoCallback(std::move(original_printer_info));
 

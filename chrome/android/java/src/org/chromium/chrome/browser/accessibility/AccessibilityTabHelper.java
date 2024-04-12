@@ -11,7 +11,9 @@ import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsAccessibility;
 import org.chromium.ui.base.WindowAndroid;
 
-/** Helper class that wraps accessibility state information for {Tab}. */
+/**
+ *  Helper class that wraps accessibility state information for {Tab}.
+ */
 public class AccessibilityTabHelper extends EmptyTabObserver implements UserData {
     public static final Class<AccessibilityTabHelper> USER_DATA_KEY = AccessibilityTabHelper.class;
 
@@ -55,9 +57,6 @@ public class AccessibilityTabHelper extends EmptyTabObserver implements UserData
 
         // Enable image descriptions feature normally, but not for Chrome Custom Tabs.
         wcax.setIsImageDescriptionsCandidate(!tab.isCustomTab());
-
-        // Enable Auto-disable Accessibility feature normally, but not for Chrome Custom Tabs.
-        wcax.setIsAutoDisableAccessibilityCandidate(!tab.isCustomTab());
     }
 
     @Override

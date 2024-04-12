@@ -10,7 +10,9 @@ package org.chromium.chrome.browser.accessibility.hierarchysnapshotter;
  * go/HSV.
  */
 public class HierarchySnapshotter {
-    /** Initialize a HierarchySnapshotter. */
+    /**
+     * Initialize a HierarchySnapshotter.
+     */
     public static void initialize() {
         new HierarchySnapshotterDelegateImpl().initialize();
     }

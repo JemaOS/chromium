@@ -109,7 +109,7 @@ class FakeAuthorizationServer {
   base::queue<std::string> upload_data_;
 
   // The pending request that is currently being processed.
-  raw_ptr<network::TestURLLoaderFactory::PendingRequest, DanglingUntriaged>
+  raw_ptr<network::TestURLLoaderFactory::PendingRequest, ExperimentalAsh>
       current_request_ = nullptr;
 
   network::TestURLLoaderFactory fake_server_;

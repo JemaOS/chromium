@@ -6,12 +6,8 @@
 
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
-#include "ash/public/cpp/input_device_settings_controller.h"
-#include "ash/public/cpp/test/mock_input_device_settings_controller.h"
-#include "ash/public/mojom/input_device_settings.mojom.h"
 #include "ash/session/session_controller_impl.h"
 #include "ash/shell.h"
-#include "ash/system/input_device_settings/input_device_settings_defaults.h"
 #include "ash/test/ash_test_base.h"
 #include "ash/wm/desks/desk.h"
 #include "ash/wm/desks/desk_mini_view.h"
@@ -20,74 +16,54 @@
 #include "ash/wm/desks/desks_test_util.h"
 #include "ash/wm/desks/legacy_desk_bar_view.h"
 #include "ash/wm/overview/overview_controller.h"
-#include "ash/wm/overview/overview_focus_cycler.h"
 #include "ash/wm/overview/overview_grid.h"
+#include "ash/wm/overview/overview_highlight_controller.h"
 #include "ash/wm/overview/overview_test_util.h"
 #include "ash/wm/screen_pinning_controller.h"
 #include "ash/wm/window_cycle/window_cycle_controller.h"
 #include "ash/wm/window_cycle/window_cycle_list.h"
 #include "ash/wm/window_util.h"
-#include "base/files/file_path.h"
 #include "base/test/scoped_feature_list.h"
 #include "components/prefs/pref_service.h"
 #include "ui/aura/window.h"
-#include "ui/events/devices/device_hotplug_event_observer.h"
-#include "ui/events/devices/input_device.h"
-#include "ui/events/devices/touchpad_device.h"
-#include "ui/events/event_constants.h"
 #include "ui/events/test/event_generator.h"
+#include "ui/message_center/message_center.h"
 #include "ui/views/widget/widget.h"
 
 namespace ash {
 
 namespace {
 
-constexpr InputDeviceSettingsController::DeviceId kTouchpadId =
-    ui::ED_UNKNOWN_DEVICE;
-
 bool InOverviewSession() {
   return Shell::Get()->overview_controller()->InOverviewSession();
 }
 
-const aura::Window* GetFocusedWindow() {
-  return InOverviewSession() ? GetOverviewFocusedWindow() : nullptr;
+const aura::Window* GetHighlightedWindow() {
+  return InOverviewSession() ? GetOverviewHighlightedWindow() : nullptr;
 }
 
-class TestInputDeviceSettingsController
-    : public MockInputDeviceSettingsController {
- public:
-  TestInputDeviceSettingsController()
-      : touchpad_settings_(
-            /*sensitivity=*/kDefaultSensitivity,
-            kDefaultReverseScrolling,
-            kDefaultAccelerationEnabled,
-            kDefaultTapToClickEnabled,
-            kDefaultThreeFingerClickEnabled,
-            kDefaultTapDraggingEnabled,
-            /*scroll_sensitivity=*/kDefaultScrollSensitivity,
-            kDefaultScrollAccelerationEnabled,
-            kDefaultHapticSensitivity,
-            kDefaultHapticFeedbackEnabled,
-            /*simulate_right_click=*/
-            ui::mojom::SimulateRightClickModifier::kNone) {}
-  TestInputDeviceSettingsController(const TestInputDeviceSettingsController&) =
-      delete;
-  TestInputDeviceSettingsController& operator=(
-      const TestInputDeviceSettingsController*) = delete;
-  ~TestInputDeviceSettingsController() override = default;
+bool IsNaturalScrollOn() {
+  PrefService* pref =
+      Shell::Get()->session_controller()->GetActivePrefService();
+  return pref->GetBoolean(prefs::kTouchpadEnabled) &&
+         pref->GetBoolean(prefs::kNaturalScroll);
+}
 
-  void SetTouchpadReverseScrollingEnabled(bool enable_reverse_scrolling) {
-    touchpad_settings_.reverse_scrolling = enable_reverse_scrolling;
-  }
+int GetOffsetX(int offset) {
+  // The handler code uses the new directions which is the reverse of the old
+  // handler code. Reverse the offset if the ReverseScrollGestures feature is
+  // disabled so that the unit tests test the old behavior.
+  return features::IsReverseScrollGesturesEnabled() ? offset : -offset;
+}
 
-  // MockInputDeviceSettingsController:
-  const mojom::TouchpadSettings* GetTouchpadSettings(DeviceId id) override {
-    return &touchpad_settings_;
-  }
-
- private:
-  mojom::TouchpadSettings touchpad_settings_;
-};
+int GetOffsetY(int offset) {
+  // The handler code uses the new directions which is the reverse of the old
+  // handler code. Reverse the offset if the ReverseScrollGestures feature is
+  // disabled so that the unit tests test the old behavior.
+  if (!features::IsReverseScrollGesturesEnabled() || IsNaturalScrollOn())
+    return -offset;
+  return offset;
+}
 
 }  // namespace
 
@@ -98,38 +74,10 @@ class WmGestureHandlerTest : public AshTestBase {
   WmGestureHandlerTest& operator=(const WmGestureHandlerTest&) = delete;
   ~WmGestureHandlerTest() override = default;
 
-  int GetOffsetY(int y_offset) {
-    return input_controller_->GetTouchpadSettings(kTouchpadId)
-                   ->reverse_scrolling
-               ? -y_offset
-               : y_offset;
-  }
-
-  // AshTestBase:
-  void SetUp() override {
-    AshTestBase::SetUp();
-
-    // Reset existing input device settings controller.
-    scoped_input_controller_resetter_ = std::make_unique<
-        InputDeviceSettingsController::ScopedResetterForTest>();
-    // Create a test input device settings controller for test use.
-    input_controller_ = std::make_unique<TestInputDeviceSettingsController>();
-    // Disable touchpad reverse scrolling.
-    SetTouchpadReverseScrollingEnabled(false);
-  }
-
-  void TearDown() override {
-    // Reset test input controller and the controller resetter.
-    input_controller_.reset();
-    scoped_input_controller_resetter_.reset();
-
-    AshTestBase::TearDown();
-  }
-
   void Scroll(float x_offset, float y_offset, int fingers) {
-    GetEventGenerator()->ScrollSequence(gfx::Point(), base::Milliseconds(5),
-                                        x_offset, GetOffsetY(y_offset),
-                                        /*steps=*/100, fingers);
+    GetEventGenerator()->ScrollSequence(
+        gfx::Point(), base::Milliseconds(5), GetOffsetX(x_offset),
+        GetOffsetY(y_offset), /*steps=*/100, fingers);
   }
 
   void MouseWheelScroll(int delta_x, int delta_y, int num_of_times) {
@@ -137,17 +85,6 @@ class WmGestureHandlerTest : public AshTestBase {
     for (int i = 0; i < num_of_times; i++)
       generator->MoveMouseWheel(delta_x, delta_y);
   }
-
- protected:
-  void SetTouchpadReverseScrollingEnabled(bool enable_reverse_scrolling) {
-    input_controller_->SetTouchpadReverseScrollingEnabled(
-        enable_reverse_scrolling);
-  }
-
- private:
-  std::unique_ptr<InputDeviceSettingsController::ScopedResetterForTest>
-      scoped_input_controller_resetter_;
-  std::unique_ptr<TestInputDeviceSettingsController> input_controller_;
 };
 
 // Tests a three fingers upwards scroll gesture to enter and a scroll down to
@@ -164,6 +101,9 @@ TEST_F(WmGestureHandlerTest, VerticalScrolls) {
 
 // Tests wrong gestures that swiping down to enter and up to exit overview.
 TEST_F(WmGestureHandlerTest, WrongVerticalScrolls) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kReverseScrollGestures);
+
   const float long_scroll = 2 * WmGestureHandler::kVerticalThresholdDp;
 
   // Swiping down cannot enter overview.
@@ -196,29 +136,32 @@ TEST_F(WmGestureHandlerTest, HorizontalScrollInOverview) {
   EnterOverview();
   EXPECT_TRUE(InOverviewSession());
 
-  // Scrolls until a window is focused, ignoring any desks items (if any).
-  auto scroll_until_window_focused = [this](float x_offset, float y_offset) {
+  // Scrolls until a window is highlight, ignoring any desks items (if any).
+  auto scroll_until_window_highlighted = [this](float x_offset,
+                                                float y_offset) {
     do {
-      Scroll(x_offset, GetOffsetY(y_offset), kNumFingersForFocus);
-    } while (!GetFocusedWindow());
+      Scroll(GetOffsetX(x_offset), GetOffsetY(y_offset),
+             kNumFingersForHighlight);
+    } while (!GetHighlightedWindow());
   };
 
   // Select the first window first.
-  scroll_until_window_focused(horizontal_scroll, 0);
+  scroll_until_window_highlighted(horizontal_scroll, 0);
 
   // Long scroll right moves selection to the fourth window.
-  scroll_until_window_focused(horizontal_scroll * 3, 0);
+  scroll_until_window_highlighted(horizontal_scroll * 3, 0);
   EXPECT_TRUE(InOverviewSession());
 
   // Short scroll left moves selection to the third window.
-  scroll_until_window_focused(-horizontal_scroll, 0);
+  scroll_until_window_highlighted(-horizontal_scroll, 0);
   EXPECT_TRUE(InOverviewSession());
 
   // Short scroll left moves selection to the second window.
-  scroll_until_window_focused(-horizontal_scroll, 0);
+  scroll_until_window_highlighted(-horizontal_scroll, 0);
   EXPECT_TRUE(InOverviewSession());
 
-  // Swiping down (3 fingers) exits and selects the currently focused window.
+  // Swiping down (3 fingers) exits and selects the currently-highlighted
+  // window.
   Scroll(0, -vertical_scroll, 3);
   EXPECT_FALSE(InOverviewSession());
 
@@ -229,10 +172,10 @@ TEST_F(WmGestureHandlerTest, HorizontalScrollInOverview) {
 // Tests that a mostly horizontal scroll does not trigger overview.
 TEST_F(WmGestureHandlerTest, HorizontalScrolls) {
   const float long_scroll = 2 * WmGestureHandler::kVerticalThresholdDp;
-  Scroll(long_scroll + 100, long_scroll, kNumFingersForFocus);
+  Scroll(long_scroll + 100, long_scroll, kNumFingersForHighlight);
   EXPECT_FALSE(InOverviewSession());
 
-  Scroll(-long_scroll - 100, long_scroll, kNumFingersForFocus);
+  Scroll(-long_scroll - 100, long_scroll, kNumFingersForHighlight);
   EXPECT_FALSE(InOverviewSession());
 }
 
@@ -351,9 +294,9 @@ TEST_F(DesksGestureHandlerTest, NoDeskChangesInLockScreen) {
   EXPECT_EQ(desk_controller->desks()[0].get(), desk_controller->active_desk());
 }
 
-// Tests that we activate focused desk when using 3-finger swipes to exit
+// Tests that activate highlighted desk when using 3-finger swipes to exit
 // overview.
-TEST_F(WmGestureHandlerTest, ActivateFocusedDeskWithVerticalScroll) {
+TEST_F(WmGestureHandlerTest, ActivateHighlightedDeskWithVerticalScroll) {
   auto* desks_controller = DesksController::Get();
 
   EnterOverview();
@@ -366,7 +309,7 @@ TEST_F(WmGestureHandlerTest, ActivateFocusedDeskWithVerticalScroll) {
   // The current active desk is the first desk.
   EXPECT_EQ(0, desks_controller->GetActiveDeskIndex());
 
-  // Move focus to the second desk.
+  // Move highlight to the second desk.
   OverviewSession* overview_session =
       Shell::Get()->overview_controller()->overview_session();
   DeskMiniView* mini_view_1 =
@@ -374,9 +317,9 @@ TEST_F(WmGestureHandlerTest, ActivateFocusedDeskWithVerticalScroll) {
           ->desks_bar_view()
           ->mini_views()[1];
 
-  overview_session->focus_cycler()->MoveFocusToView(
+  overview_session->highlight_controller()->MoveHighlightToView(
       mini_view_1->desk_preview());
-  EXPECT_TRUE(mini_view_1->desk_preview()->is_focused());
+  EXPECT_TRUE(mini_view_1->desk_preview()->IsViewHighlighted());
 
   // Exit overview with 3-fingers downward swipes.
   DeskSwitchAnimationWaiter waiter;
@@ -399,11 +342,19 @@ class ReverseGestureHandlerTest : public WmGestureHandlerTest {
 
   // AshTestBase:
   void SetUp() override {
-    WmGestureHandlerTest::SetUp();
+    scoped_feature_list_.InitAndEnableFeature(features::kReverseScrollGestures);
+    AshTestBase::SetUp();
 
-    // Enable touchpad reverse scrolling.
-    SetTouchpadReverseScrollingEnabled(true);
+    // Set natural scroll on.
+    PrefService* pref =
+        Shell::Get()->session_controller()->GetActivePrefService();
+    pref->SetBoolean(prefs::kTouchpadEnabled, true);
+    pref->SetBoolean(prefs::kNaturalScroll, true);
+    pref->SetBoolean(prefs::kMouseReverseScroll, true);
   }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 TEST_F(ReverseGestureHandlerTest, Overview) {
@@ -439,33 +390,6 @@ TEST_F(ReverseGestureHandlerTest, SwitchDesk) {
   // Scroll right to get previous desk.
   ScrollToSwitchDesks(/*scroll_left=*/false, GetEventGenerator());
   EXPECT_EQ(desk1, GetActiveDesk());
-}
-
-// Test state for gestures in kiosk.
-class WmGestureHandlerKioskTest : public WmGestureHandlerTest {
- public:
-  WmGestureHandlerKioskTest() = default;
-  WmGestureHandlerKioskTest(const WmGestureHandlerKioskTest&) = delete;
-  WmGestureHandlerKioskTest& operator=(const WmGestureHandlerKioskTest&) =
-      delete;
-  ~WmGestureHandlerKioskTest() override = default;
-
-  void SetUp() override {
-    WmGestureHandlerTest::SetUp();
-    SimulateKioskMode(user_manager::UserType::kWebKioskApp);
-  }
-};
-
-// Tests that a three fingers upwards scroll gesture does not enter overview.
-TEST_F(WmGestureHandlerKioskTest, VerticalScrollDisabledKiosk) {
-  EXPECT_FALSE(InOverviewSession());
-
-  const float long_scroll = 2 * WmGestureHandler::kVerticalThresholdDp;
-  const int finger_count = 3;
-  Scroll(0, long_scroll, finger_count);
-
-  // Overview was not opened by gesture.
-  EXPECT_FALSE(InOverviewSession());
 }
 
 }  // namespace ash

@@ -10,14 +10,12 @@
 #include "ash/constants/ash_features.h"
 #include "ash/public/cpp/ambient/ambient_prefs.h"
 #include "ash/public/cpp/image_downloader.h"
-#include "base/check.h"
 #include "base/functional/callback.h"
 #include "chrome/browser/ash/login/demo_mode/demo_session.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/common/channel_info.h"
-#include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
 #include "components/account_id/account_id.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/consent_level.h"
@@ -30,11 +28,11 @@
 #include "components/user_manager/user_manager.h"
 #include "components/version_info/channel.h"
 #include "content/public/browser/device_service.h"
-#include "content/public/browser/storage_partition.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "net/http/http_request_headers.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "jemaos/switches/misc/misc_switches.h"
 
 namespace {
 
@@ -112,6 +110,10 @@ AmbientClientImpl::AmbientClientImpl() = default;
 AmbientClientImpl::~AmbientClientImpl() = default;
 
 bool AmbientClientImpl::IsAmbientModeAllowed() {
+  if (jemaos::switches::IsJemaCustomEnabled()) {
+    return false;
+  }
+
   if (is_allowed_for_testing_.has_value()) {
     return is_allowed_for_testing_.value();
   }
@@ -202,16 +204,6 @@ AmbientClientImpl::GetURLLoaderFactory() {
   auto* profile = GetProfileForActiveUser();
   DCHECK(profile);
 
-  return profile->GetURLLoaderFactory();
-}
-
-scoped_refptr<network::SharedURLLoaderFactory>
-AmbientClientImpl::GetSigninURLLoaderFactory() {
-  content::BrowserContext* browser_context =
-      ash::BrowserContextHelper::Get()->GetSigninBrowserContext();
-  CHECK(browser_context);
-  Profile* profile = Profile::FromBrowserContext(browser_context);
-  CHECK(profile);
   return profile->GetURLLoaderFactory();
 }
 

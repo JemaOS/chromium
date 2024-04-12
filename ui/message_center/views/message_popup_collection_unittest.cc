@@ -4,8 +4,7 @@
 
 #include "ui/message_center/views/message_popup_collection.h"
 
-#include <vector>
-
+#include "base/containers/cxx20_erase.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
@@ -15,7 +14,6 @@
 #include "ui/gfx/animation/linear_animation.h"
 #include "ui/message_center/message_center.h"
 #include "ui/message_center/public/cpp/message_center_constants.h"
-#include "ui/message_center/public/cpp/notification_types.h"
 #include "ui/message_center/views/desktop_message_popup_collection.h"
 #include "ui/message_center/views/message_popup_view.h"
 #include "ui/views/test/views_test_base.h"
@@ -32,7 +30,7 @@ class MockMessagePopupView;
 class MockMessagePopupCollection : public DesktopMessagePopupCollection {
  public:
   explicit MockMessagePopupCollection(gfx::NativeWindow context)
-      : context_(context) {}
+      : DesktopMessagePopupCollection(), context_(context) {}
 
   MockMessagePopupCollection(const MockMessagePopupCollection&) = delete;
   MockMessagePopupCollection& operator=(const MockMessagePopupCollection&) =
@@ -48,7 +46,9 @@ class MockMessagePopupCollection : public DesktopMessagePopupCollection {
       AnimationProgressed(animation());
   }
 
-  void RemovePopup(MockMessagePopupView* popup) { std::erase(popups_, popup); }
+  void RemovePopup(MockMessagePopupView* popup) {
+    base::Erase(popups_, popup);
+  }
 
   bool IsAnimating() { return animation()->is_animating(); }
 
@@ -62,19 +62,9 @@ class MockMessagePopupCollection : public DesktopMessagePopupCollection {
     new_popup_height_ = new_popup_height;
   }
 
-  std::vector<raw_ptr<MockMessagePopupView, VectorExperimental>>& popups() {
-    return popups_;
-  }
+  std::vector<MockMessagePopupView*>& popups() { return popups_; }
 
   bool popup_timer_started() const { return popup_timer_started_; }
-
-  int popup_collection_height_changed() const {
-    return popup_collection_height_changed_;
-  }
-
-  int notify_silent_notification_count() const {
-    return notify_silent_notification_count_;
-  }
 
  protected:
   MessagePopupView* CreatePopup(const Notification& notification) override;
@@ -105,25 +95,15 @@ class MockMessagePopupCollection : public DesktopMessagePopupCollection {
     return is_fullscreen_;
   }
 
-  void NotifyPopupCollectionHeightChanged() override {
-    ++popup_collection_height_changed_;
-  }
-
-  void NotifySilentNotification(const std::string& notification_id) override {
-    ++notify_silent_notification_count_;
-  }
-
  private:
   gfx::NativeWindow context_;
 
-  std::vector<raw_ptr<MockMessagePopupView, VectorExperimental>> popups_;
+  std::vector<MockMessagePopupView*> popups_;
 
   bool popup_timer_started_ = false;
   bool is_primary_display_ = true;
   bool is_fullscreen_ = false;
   int new_popup_height_ = 84;
-  int popup_collection_height_changed_ = 0;
-  int notify_silent_notification_count_ = 0;
 };
 
 class MockMessagePopupView : public MessagePopupView {
@@ -154,14 +134,6 @@ class MockMessagePopupView : public MessagePopupView {
     popup_collection_->NotifyPopupResized();
     updated_ = true;
     title_ = base::UTF16ToUTF8(notification.title());
-  }
-
-  void UpdateContentsForChildNotification(
-      const std::string& notification_id,
-      const Notification& notification) override {
-    child_updated_ = true;
-    child_updated_notification_id_ = notification_id;
-    child_updated_title_ = base::UTF16ToUTF8(notification.title());
   }
 
   void AutoCollapse() override {
@@ -195,17 +167,11 @@ class MockMessagePopupView : public MessagePopupView {
   const std::string& id() const { return id_; }
   bool updated() const { return updated_; }
 
-  bool child_updated() const { return child_updated_; }
-  const std::string& child_updated_notification_id() {
-    return child_updated_notification_id_;
-  }
-  const std::string& child_updated_title() { return child_updated_title_; }
-
   const std::string& title() const { return title_; }
 
   void set_expandable(bool expandable) { expandable_ = expandable; }
 
-  void set_height_after_update(std::optional<int> height_after_update) {
+  void set_height_after_update(absl::optional<int> height_after_update) {
     height_after_update_ = height_after_update;
   }
 
@@ -214,15 +180,10 @@ class MockMessagePopupView : public MessagePopupView {
 
   std::string id_;
   bool updated_ = false;
-
-  bool child_updated_ = false;
-  std::string child_updated_notification_id_;
-  std::string child_updated_title_;
-
   bool expandable_ = false;
   std::string title_;
 
-  std::optional<int> height_after_update_;
+  absl::optional<int> height_after_update_;
 };
 
 MessagePopupView* MockMessagePopupCollection::CreatePopup(
@@ -293,21 +254,10 @@ class MessagePopupCollectionTest : public views::ViewsTestBase,
         NotifierId(), RichNotificationData(), new NotificationDelegate());
   }
 
-  std::unique_ptr<Notification> CreateLowPriorityNotification() {
-    std::unique_ptr<Notification> notification =
-        CreateNotification(base::NumberToString(id_++));
-    notification->set_priority(LOW_PRIORITY);
-    return notification;
-  }
-
   std::string AddNotification() {
     std::string id = base::NumberToString(id_++);
     MessageCenter::Get()->AddNotification(CreateNotification(id));
     return id;
-  }
-
-  void AddNotification(std::unique_ptr<Notification> notification) {
-    MessageCenter::Get()->AddNotification(std::move(notification));
   }
 
   void Update() { popup_collection_->Update(); }
@@ -335,7 +285,7 @@ class MessagePopupCollectionTest : public views::ViewsTestBase,
   }
 
   MockMessagePopupView* GetPopup(const std::string& id) {
-    for (MockMessagePopupView* popup : popup_collection_->popups()) {
+    for (auto* popup : popup_collection_->popups()) {
       if (popup->id() == id)
         return popup;
     }
@@ -345,8 +295,6 @@ class MessagePopupCollectionTest : public views::ViewsTestBase,
   MockMessagePopupView* GetPopupAt(size_t index) {
     return popup_collection_->popups()[index];
   }
-
-  void CloseAllPopupsNow() { popup_collection()->CloseAllPopupsNow(); }
 
   size_t GetPopupCounts() const { return popup_collection_->popups().size(); }
 
@@ -475,24 +423,6 @@ TEST_F(MessagePopupCollectionTest, DISABLED_UpdateContentsCausesPopupClose) {
   MessageCenter::Get()->UpdateNotification(id, std::move(updated_notification));
   RunPendingMessages();
   EXPECT_EQ(0u, GetPopupCounts());
-}
-
-TEST_F(MessagePopupCollectionTest, OnChildNotificationViewUpdated) {
-  std::string parent_id = AddNotification();
-  std::string child_id = AddNotification();
-
-  const std::string new_notification_title("new_title");
-  auto new_notification = CreateNotification(child_id, new_notification_title);
-  MessageCenter::Get()->UpdateNotification(child_id,
-                                           std::move(new_notification));
-
-  // Calling `OnChildNotificationViewUpdated()` should update the child
-  // notification in parent's popup.
-  popup_collection()->OnChildNotificationViewUpdated(parent_id, child_id);
-
-  EXPECT_TRUE(GetPopup(parent_id)->child_updated());
-  EXPECT_EQ(child_id, GetPopup(parent_id)->child_updated_notification_id());
-  EXPECT_EQ(new_notification_title, GetPopup(parent_id)->child_updated_title());
 }
 
 TEST_F(MessagePopupCollectionTest, MessageCenterVisibility) {
@@ -908,88 +838,6 @@ TEST_F(MessagePopupCollectionTest, NotDismissedOnClick) {
   EXPECT_TRUE(GetPopup(id2));
 }
 
-TEST_F(MessagePopupCollectionTest, PopupCollectionBounds) {
-  EXPECT_EQ(gfx::Rect(), popup_collection()->popup_collection_bounds());
-
-  std::string id0 = AddNotification();
-  AnimateUntilIdle();
-
-  gfx::Rect r0 = GetPopup(id0)->GetBoundsInScreen();
-
-  // The popup collection bounds should be the bounds of the only popup.
-  EXPECT_EQ(r0, popup_collection()->popup_collection_bounds());
-
-  std::string id1 = AddNotification();
-  std::string id2 = AddNotification();
-
-  AnimateUntilIdle();
-
-  r0 = GetPopup(id0)->GetBoundsInScreen();
-  gfx::Rect r1 = GetPopup(id1)->GetBoundsInScreen();
-  gfx::Rect r2 = GetPopup(id2)->GetBoundsInScreen();
-
-  // The height of the entire popup collection bounds should be the total
-  // heights of all popups, plus all the margins between them.
-  int expected_height = r0.height() + kMarginBetweenPopups + r1.height() +
-                        kMarginBetweenPopups + r2.height();
-
-  EXPECT_EQ(gfx::Rect(r2.x(), r2.y(), kNotificationWidth, expected_height),
-            popup_collection()->popup_collection_bounds());
-
-  MessageCenter::Get()->RemoveNotification(id0, true);
-  AnimateUntilIdle();
-
-  r1 = GetPopup(id1)->GetBoundsInScreen();
-  r2 = GetPopup(id2)->GetBoundsInScreen();
-
-  EXPECT_EQ(gfx::Rect(r2.x(), r2.y(), kNotificationWidth,
-                      r1.height() + kMarginBetweenPopups + r2.height()),
-            popup_collection()->popup_collection_bounds());
-}
-
-TEST_F(MessagePopupCollectionTest, PopupCollectionHeightChanged) {
-  EXPECT_EQ(0, popup_collection()->popup_collection_height_changed());
-
-  std::string id0 = AddNotification();
-  AnimateUntilIdle();
-
-  EXPECT_EQ(1, popup_collection()->popup_collection_height_changed());
-
-  std::string id1 = AddNotification();
-  AnimateUntilIdle();
-
-  EXPECT_EQ(2, popup_collection()->popup_collection_height_changed());
-
-  std::string id2 = AddNotification();
-  AnimateUntilIdle();
-
-  EXPECT_EQ(3, popup_collection()->popup_collection_height_changed());
-
-  MessageCenter::Get()->RemoveNotification(id0, true);
-  AnimateUntilIdle();
-
-  EXPECT_EQ(4, popup_collection()->popup_collection_height_changed());
-}
-
-// Tests that `MessagePopupCollection` notifies when there is an incoming silent
-// notification.
-TEST_F(MessagePopupCollectionTest, NotifySilentNotification) {
-  ASSERT_EQ(0, popup_collection()->notify_silent_notification_count());
-
-  // Add a silent notification.
-  AddNotification(CreateLowPriorityNotification());
-
-  // Assert that clients are notified of the incoming silent notification.
-  EXPECT_EQ(1, popup_collection()->notify_silent_notification_count());
-
-  // Add a non-silent notification.
-  AddNotification();
-
-  // Assert that clients are not notified for the incoming non-silent
-  // notification.
-  EXPECT_EQ(1, popup_collection()->notify_silent_notification_count());
-}
-
 TEST_F(MessagePopupCollectionTest, DefaultPositioning) {
   std::string id0 = AddNotification();
   std::string id1 = AddNotification();
@@ -1139,21 +987,6 @@ TEST_F(MessagePopupCollectionTest, PopupWidgetClosedOutsideDuringFadeOut) {
   AnimateToEnd();
 
   EXPECT_FALSE(IsAnimating());
-}
-
-TEST_F(MessagePopupCollectionTest, NotifyPopupClosedThenCloseAllPopups) {
-  std::string id1 = AddNotification();
-  std::string id2 = AddNotification();
-  AnimateUntilIdle();
-
-  // This test make sure that when `NotifyPopupClosed()` is called and then
-  // `CloseAllPopupsNow()` is triggered, no crash would happen. This scenerio
-  // can happen when `MessagePopupView::~MessagePopupView()` is called, and then
-  // at the same time another entity (i.e.
-  // AshMessagePopupCollection::NotifierCollisionHandler) calls
-  // `CloseAllPopupsNow()` (b/312515706).
-  popup_collection()->NotifyPopupClosed(GetPopup(id1));
-  CloseAllPopupsNow();
 }
 
 // Notification removing may occur while the animation triggered by the previous

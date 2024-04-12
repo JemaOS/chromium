@@ -35,32 +35,28 @@ public class SiteSettingsHelper {
         boolean isOfflinePage = OfflinePageUtils.getOfflinePage(webContents) != null;
         // TODO(crbug.com/1033178): dedupe the DomDistillerUrlUtils#getOriginalUrlFromDistillerUrl()
         // calls.
-        GURL url =
-                webContents != null
-                        ? DomDistillerUrlUtils.getOriginalUrlFromDistillerUrl(
-                                webContents.getVisibleUrl())
-                        : null;
+        GURL url = webContents != null
+                ? DomDistillerUrlUtils.getOriginalUrlFromDistillerUrl(webContents.getVisibleUrl())
+                : null;
         return !isOfflinePage && url != null && UrlUtilities.isHttpOrHttps(url);
     }
 
-    /** Show the single category settings page for given category and type. */
+    /**
+     * Show the single category settings page for given category and type.
+     */
     public static void showCategorySettings(
-            Context context, Profile profile, @SiteSettingsCategory.Type int category) {
+            Context context, @SiteSettingsCategory.Type int category) {
         SettingsLauncher settingsLauncher = new SettingsLauncherImpl();
         Bundle extras = new Bundle();
-        extras.putString(
-                SingleCategorySettings.EXTRA_CATEGORY,
+        extras.putString(SingleCategorySettings.EXTRA_CATEGORY,
                 SiteSettingsCategory.preferenceKey(category));
-        extras.putString(
-                SingleCategorySettings.EXTRA_TITLE,
-                context.getResources()
-                        .getString(
-                                ContentSettingsResources.getTitleForCategory(
-                                        category,
-                                        new ChromeSiteSettingsDelegate(context, profile))));
-        Intent preferencesIntent =
-                settingsLauncher.createSettingsActivityIntent(
-                        context, SingleCategorySettings.class.getName(), extras);
+        extras.putString(SingleCategorySettings.EXTRA_TITLE,
+                context.getResources().getString(
+                        ContentSettingsResources.getTitleForCategory(category,
+                                new ChromeSiteSettingsDelegate(
+                                        context, Profile.getLastUsedRegularProfile()))));
+        Intent preferencesIntent = settingsLauncher.createSettingsActivityIntent(
+                context, SingleCategorySettings.class.getName(), extras);
         launchIntent(context, preferencesIntent);
     }
 

@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "base/memory/raw_ref.h"
+#include "base/memory/raw_ptr.h"
 #include "base/sequence_checker.h"
 #include "ui/gfx/image/image_skia.h"
 
@@ -28,7 +28,6 @@ struct VectorIcon;
 namespace sharing_hub {
 
 struct SharingHubAction {
-  // `icon` may not be null and must outlive the SharingHubAction.
   SharingHubAction(int command_id,
                    std::u16string title,
                    const gfx::VectorIcon* icon,
@@ -41,7 +40,7 @@ struct SharingHubAction {
   ~SharingHubAction() = default;
   int command_id;
   std::u16string title;
-  raw_ref<const gfx::VectorIcon> icon;
+  raw_ptr<const gfx::VectorIcon> icon;
   std::string feature_name_for_metrics;
   int announcement_id;
 };
@@ -54,13 +53,13 @@ class SharingHubModel {
   explicit SharingHubModel(content::BrowserContext* context);
   SharingHubModel(const SharingHubModel&) = delete;
   SharingHubModel& operator=(const SharingHubModel&) = delete;
-  ~SharingHubModel();
+  virtual ~SharingHubModel();
 
-  // Returns a vector with the first party Sharing Hub actions, ordered by
+  // Populates the vector with first party Sharing Hub actions, ordered by
   // appearance in the dialog. Some actions (i.e. send tab to self) may not be
   // shown for some URLs.
-  std::vector<SharingHubAction> GetFirstPartyActionList(
-      content::WebContents* web_contents) const;
+  void GetFirstPartyActionList(content::WebContents* web_contents,
+                               std::vector<SharingHubAction>* list);
 
   // Executes the third party action indicated by |id|, i.e. opens a popup to
   // the corresponding webpage. The |url| is the URL to share, and the |title|
@@ -77,6 +76,8 @@ class SharingHubModel {
  private:
   void PopulateFirstPartyActions();
   void PopulateThirdPartyActions();
+
+  bool DoShowSendTabToSelfForWebContents(content::WebContents* web_contents);
 
   // A list of Sharing Hub first party actions in order in which they appear.
   std::vector<SharingHubAction> first_party_action_list_;

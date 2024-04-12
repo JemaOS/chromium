@@ -15,25 +15,22 @@
 
 class Browser;
 class Profile;
+class PrefService;
 
 namespace content {
 class WebUIDataSource;
 }
 
-namespace syncer {
-class SyncService;
-}
-
-namespace content {
+namespace ui {
 class WebUI;
-}  // namespace content
+}
 
 enum class SyncConfirmationStyle;
 
 // WebUI controller for the sync confirmation dialog.
 //
 // Note: This controller does not set the WebUI message handler. It is
-// the responsibility of the caller to pass the correct message handler.
+// the responsability of the caller to pass the correct message handler.
 class SyncConfirmationUI : public SigninWebDialogUI {
  public:
   // Exposed for testing
@@ -41,8 +38,7 @@ class SyncConfirmationUI : public SigninWebDialogUI {
   // the user, based on which `syncer::UserSelectableType`s are available.
   // The data format is:
   // `[{"iconName": "${iron_icon_id}", "title": "${grit_string_id}"}, ...]`
-  static std::string GetSyncBenefitsListJSON(
-      const syncer::SyncService* sync_service);
+  static std::string GetSyncBenefitsListJSON(PrefService& pref_service);
 
   explicit SyncConfirmationUI(content::WebUI* web_ui);
 

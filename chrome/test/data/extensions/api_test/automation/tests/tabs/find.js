@@ -33,9 +33,6 @@ function initializeNodes(rootNode) {
   p2 = main.firstChild;
   assertEq(RoleType.PARAGRAPH, p2.role);
 
-  strong = p2.lastChild;
-  assertEq(RoleType.STRONG, strong.role);
-
   p3 = main.lastChild;
   assertEq(RoleType.PARAGRAPH, p3.role);
 
@@ -129,7 +126,7 @@ var allTests = [
 
     // Find by value attribute - regexp.
     var query = {attributes: {name: /relationship/}};
-    assertEq(strong, rootNode.find(query).parent);
+    assertEq(p2, rootNode.find(query).parent);
 
     // Find by role and hierarchicalLevel attribute.
     assertEq(
@@ -176,7 +173,7 @@ var allTests = [
         }),
         'h1 should match focusable: false');
 
-    var p2StaticText = strong.firstChild;
+    var p2StaticText = p2.firstChild;
     assertTrue(
         p2StaticText.matches(
             {role: RoleType.STATIC_TEXT, attributes: {name: /relationship/}}),
@@ -190,4 +187,4 @@ var allTests = [
   }
 ];
 
-setUpAndRunTabsTests(allTests, 'complex.html');
+setUpAndRunTests(allTests, 'complex.html');

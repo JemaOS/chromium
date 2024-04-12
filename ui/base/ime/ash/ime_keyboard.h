@@ -9,51 +9,61 @@
 #include <vector>
 
 #include "base/component_export.h"
-#include "base/functional/callback_forward.h"
 #include "base/observer_list.h"
-#include "base/time/time.h"
 
 namespace ash {
 namespace input_method {
 
 struct AutoRepeatRate {
-  base::TimeDelta initial_delay;
-  base::TimeDelta repeat_interval;
+  AutoRepeatRate() : initial_delay_in_ms(0), repeat_interval_in_ms(0) {}
+  unsigned int initial_delay_in_ms;
+  unsigned int repeat_interval_in_ms;
 };
 
 class COMPONENT_EXPORT(UI_BASE_IME_ASH) ImeKeyboard {
  public:
-  class Observer : public base::CheckedObserver {
+  class Observer {
    public:
     // Called when the caps lock state has changed.
     virtual void OnCapsLockChanged(bool enabled) = 0;
 
     // Called when the layout state is changing.
     virtual void OnLayoutChanging(const std::string& layout_name) = 0;
-
-   protected:
-    ~Observer() override = default;
   };
 
   ImeKeyboard();
   virtual ~ImeKeyboard();
-
   // Adds/removes observer.
   virtual void AddObserver(Observer* observer);
   virtual void RemoveObserver(Observer* observer);
 
   // Sets the current keyboard layout to |layout_name|. This function does not
-  // change the current mapping of the modifier keys. Callback is supplied
-  // boolean with true on success and false on failure. Callback can potentially
-  // be ran immediately with no delay.
-  virtual void SetCurrentKeyboardLayoutByName(
-      const std::string& layout_name,
-      base::OnceCallback<void(bool)> callback);
+  // change the current mapping of the modifier keys. Returns true on success.
+  virtual bool SetCurrentKeyboardLayoutByName(const std::string& layout_name);
 
   // Gets the current keyboard layout name.
   const std::string& GetCurrentKeyboardLayoutName() const {
     return last_layout_;
   }
+
+  // Sets the current keyboard layout again. We have to call the function every
+  // time when "x11::Input::HierarchyEvent::opcode" XInput2 event is sent to
+  // Chrome. See xinput_hierarchy_changed_event_listener.h for details.
+  virtual bool ReapplyCurrentKeyboardLayout() = 0;
+
+  // Updates keyboard LEDs on all keyboards.
+  // XKB asymmetrically propagates keyboard modifier indicator state changes to
+  // slave keyboards. If the state change is initiated from a client to the
+  // "core keyboard", XKB changes global state and pushes an indication change
+  // down to all keyboards. If the state change is initiated by one slave
+  // (physical) keyboard, it changes global state but only pushes an indicator
+  // state change down to that one keyboard.
+  // This function changes LEDs on all keyboards by explicitly updating the
+  // core keyboard.
+  virtual void ReapplyCurrentModifierLockStatus() = 0;
+
+  // Disables the num lock.
+  virtual void DisableNumLock() = 0;
 
   // Sets the caps lock status to |enable_caps_lock|. Do not call the function
   // from non-UI threads.
@@ -61,7 +71,7 @@ class COMPONENT_EXPORT(UI_BASE_IME_ASH) ImeKeyboard {
 
   // Returns true if caps lock is enabled. Do not call the function from non-UI
   // threads.
-  virtual bool IsCapsLockEnabled();
+  virtual bool CapsLockIsEnabled();
 
   // Returns true if the current layout supports ISO Level 5 shift.
   virtual bool IsISOLevel5ShiftAvailable() const;
@@ -69,9 +79,9 @@ class COMPONENT_EXPORT(UI_BASE_IME_ASH) ImeKeyboard {
   // Returns true if the current layout supports alt gr.
   virtual bool IsAltGrAvailable() const;
 
-  // Turns on and off the auto-repeat of the keyboard.
+  // Turns on and off the auto-repeat of the keyboard. Returns true on success.
   // Do not call the function from non-UI threads.
-  virtual void SetAutoRepeatEnabled(bool enabled) = 0;
+  virtual bool SetAutoRepeatEnabled(bool enabled) = 0;
 
   // Returns true if auto-repeat is enabled.
   virtual bool GetAutoRepeatEnabled() = 0;
@@ -81,13 +91,11 @@ class COMPONENT_EXPORT(UI_BASE_IME_ASH) ImeKeyboard {
   // non-UI threads.
   virtual bool SetAutoRepeatRate(const AutoRepeatRate& rate) = 0;
 
- protected:
-  bool SetCurrentKeyboardLayoutByNameImpl(const std::string& layout_name);
+  bool caps_lock_is_enabled_;
+  std::string last_layout_;
 
  private:
-  bool caps_lock_is_enabled_ = false;
-  std::string last_layout_;
-  base::ObserverList<Observer> observers_;
+  base::ObserverList<Observer>::Unchecked observers_;
 };
 
 }  // namespace input_method

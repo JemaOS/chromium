@@ -19,10 +19,6 @@
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "components/search/ntp_features.h"
-#include "components/segmentation_platform/public/constants.h"
-#include "components/segmentation_platform/public/prediction_options.h"
-#include "components/segmentation_platform/public/result.h"
-#include "components/segmentation_platform/public/segmentation_platform_service.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/primary_account_access_token_fetcher.h"
 #include "components/signin/public/identity_manager/scope_set.h"
@@ -54,7 +50,7 @@ constexpr char kRequestBody[] = R"({
       "name": "%s"
     }
   },
-  "max_suggestions": %d,
+  "max_suggestions": 3,
   "type_detail_fields": "drive_item.title,drive_item.mimeType"
 })";
 // Maximum accepted size of an ItemSuggest response. 1MB.
@@ -97,13 +93,13 @@ constexpr net::NetworkTrafficAnnotationTag kTrafficAnnotation =
           }
         }
       })");
-constexpr char kFakeDataWithThreeFiles[] = R"({
+constexpr char kFakeData[] = R"({
   "item": [
     {
       "itemId": "foo",
       "url": "https://docs.google.com",
       "driveItem": {
-        "title": "Drive Module Design Doc",
+        "title": "foo doc",
         "mimeType": "application/vnd.google-apps.document"
       },
       "justification": {
@@ -116,7 +112,7 @@ constexpr char kFakeDataWithThreeFiles[] = R"({
       "itemId": "bar",
       "url": "https://sheets.google.com",
       "driveItem": {
-        "title": "Monthly Presentation Schedule",
+        "title": "bar sheet",
         "mimeType": "application/vnd.google-apps.spreadsheet"
       },
       "justification": {
@@ -129,7 +125,7 @@ constexpr char kFakeDataWithThreeFiles[] = R"({
       "itemId": "baz",
       "url": "https://slides.google.com",
       "driveItem": {
-        "title": "File With A Really Really Really Really Really Long Name",
+        "title": "baz slides",
         "mimeType": "application/vnd.google-apps.presentation"
       },
       "justification": {
@@ -141,88 +137,6 @@ constexpr char kFakeDataWithThreeFiles[] = R"({
   ]
 }
 )";
-constexpr char kFakeDataWithSixFiles[] = R"({
-  "item": [
-    {
-      "itemId": "foo",
-      "url": "https://docs.google.com",
-      "driveItem": {
-        "title": "Drive Module Design Doc",
-        "mimeType": "application/vnd.google-apps.document"
-      },
-      "justification": {
-        "unstructuredJustificationDescription": {
-          "textSegment": [{"text": "You opened yesterday"}]
-        }
-      }
-    },
-    {
-      "itemId": "bar",
-      "url": "https://sheets.google.com",
-      "driveItem": {
-        "title": "Monthly Presentation Schedule",
-        "mimeType": "application/vnd.google-apps.spreadsheet"
-      },
-      "justification": {
-        "unstructuredJustificationDescription": {
-          "textSegment": [{"text": "You opened today"}]
-        }
-      }
-    },
-    {
-      "itemId": "baz",
-      "url": "https://slides.google.com",
-      "driveItem": {
-        "title": "File With A Really Really Really Really Really Long Name",
-        "mimeType": "application/vnd.google-apps.presentation"
-      },
-      "justification": {
-        "unstructuredJustificationDescription": {
-          "textSegment": [{"text": "You opened on Monday"}]
-        }
-      }
-    },
-    {
-      "itemId": "qux",
-      "url": "https://slides.google.com",
-      "driveItem": {
-        "title": "Cutest Kittens on the Web",
-        "mimeType": "application/vnd.google-apps.presentation"
-      },
-      "justification": {
-        "unstructuredJustificationDescription": {
-          "textSegment": [{"text": "You opened on Monday"}]
-        }
-      }
-    },
-    {
-      "itemId": "foobar",
-      "url": "https://docs.google.com",
-      "driveItem": {
-        "title": "Budgeting Notes",
-        "mimeType": "application/vnd.google-apps.document"
-      },
-      "justification": {
-        "unstructuredJustificationDescription": {
-          "textSegment": [{"text": "You opened yesterday"}]
-        }
-      }
-    },
-    {
-      "itemId": "bazqux",
-      "url": "https://sheets.google.com",
-      "driveItem": {
-        "title": "1",
-        "mimeType": "application/vnd.google-apps.spreadsheet"
-      },
-      "justification": {
-        "unstructuredJustificationDescription": {
-          "textSegment": [{"text": "You opened today"}]
-        }
-      }
-    }
-  ]
-})";
 }  // namespace
 
 // static
@@ -237,13 +151,10 @@ DriveService::~DriveService() = default;
 DriveService::DriveService(
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
     signin::IdentityManager* identity_manager,
-    segmentation_platform::SegmentationPlatformService*
-        segmentation_platform_service,
     const std::string& application_locale,
     PrefService* pref_service)
     : url_loader_factory_(std::move(url_loader_factory)),
       identity_manager_(identity_manager),
-      segmentation_platform_service_(segmentation_platform_service),
       application_locale_(application_locale),
       pref_service_(pref_service) {}
 
@@ -259,27 +170,9 @@ void DriveService::GetDriveFiles(GetFilesCallback get_files_callback) {
     return;
   }
 
-  if (base::FeatureList::IsEnabled(ntp_features::kNtpDriveModuleSegmentation)) {
-    GetDriveModuleSegmentationData();
-  } else {
-    GetDriveFilesInternal();
-  }
-}
-
-bool DriveService::GetDriveModuleSegmentationData() {
-  segmentation_platform::PredictionOptions options;
-  options.on_demand_execution = true;
-  segmentation_platform_service_->GetClassificationResult(
-      segmentation_platform::kDesktopNtpModuleKey, options, nullptr,
-      base::IgnoreArgs<const segmentation_platform::ClassificationResult&>(
-          base::BindOnce(&DriveService::GetDriveFilesInternal,
-                         base::Unretained(this))));
-  return true;
-}
-
-void DriveService::GetDriveFilesInternal() {
   // Bail if module is still dismissed.
-  if (!pref_service_->GetTime(kLastDismissedTimePrefName).is_null() &&
+  if (!base::FeatureList::IsEnabled(ntp_features::kNtpModulesRedesigned) &&
+      !pref_service_->GetTime(kLastDismissedTimePrefName).is_null() &&
       base::Time::Now() - pref_service_->GetTime(kLastDismissedTimePrefName) <
           kDismissDuration) {
     for (auto& callback : callbacks_) {
@@ -293,14 +186,9 @@ void DriveService::GetDriveFilesInternal() {
   if (base::GetFieldTrialParamValueByFeature(
           ntp_features::kNtpDriveModule,
           ntp_features::kNtpDriveModuleDataParam) == "fake") {
-    base::FeatureList::IsEnabled(ntp_features::kNtpDriveModuleShowSixFiles)
-        ? data_decoder::DataDecoder::ParseJsonIsolated(
-              kFakeDataWithSixFiles, base::BindOnce(&DriveService::OnJsonParsed,
-                                                    weak_factory_.GetWeakPtr()))
-        : data_decoder::DataDecoder::ParseJsonIsolated(
-              kFakeDataWithThreeFiles,
-              base::BindOnce(&DriveService::OnJsonParsed,
-                             weak_factory_.GetWeakPtr()));
+    data_decoder::DataDecoder::ParseJsonIsolated(
+        kFakeData, base::BindOnce(&DriveService::OnJsonParsed,
+                                  weak_factory_.GetWeakPtr()));
     return;
   }
 
@@ -368,17 +256,12 @@ void DriveService::OnTokenReceived(GoogleServiceAuthError error,
   url_loader_ = network::SimpleURLLoader::Create(std::move(resource_request),
                                                  kTrafficAnnotation);
   url_loader_->SetRetryOptions(0, network::SimpleURLLoader::RETRY_NEVER);
-  const int kNumFilesRequested =
-      base::FeatureList::IsEnabled(ntp_features::kNtpDriveModuleShowSixFiles)
-          ? 6
-          : 3;
   url_loader_->AttachStringForUpload(
       base::StringPrintf(kRequestBody, kPlatform, application_locale_.c_str(),
                          base::GetFieldTrialParamValueByFeature(
                              ntp_features::kNtpDriveModule,
                              ntp_features::kNtpDriveModuleExperimentGroupParam)
-                             .c_str(),
-                         kNumFilesRequested),
+                             .c_str()),
       "application/json");
   url_loader_->DownloadToString(
       url_loader_factory_.get(),

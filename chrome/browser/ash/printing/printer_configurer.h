@@ -9,21 +9,19 @@
 #include <string>
 
 #include "base/functional/callback_forward.h"
-#include "base/memory/scoped_refptr.h"
 #include "url/gurl.h"
 
+class Profile;
+
 namespace chromeos {
-class PpdProvider;
 class Printer;
 }
 
 namespace ash {
 
-class DlcserviceClient;
-
 // These values are written to logs.  New enum values can be added, but existing
 // enums must never be renumbered or deleted and reused.
-enum class PrinterSetupResult {
+enum PrinterSetupResult {
   kFatalError = 0,                // Setup failed in an unrecognized way
   kSuccess = 1,                   // Printer set up successfully
   kPrinterUnreachable = 2,        // Could not reach printer
@@ -52,10 +50,7 @@ enum class PrinterSetupResult {
   // enum and PrinterSetupResultFromDbusErrorCode().
   kDbusNoReply = 64,  // Expected remote response but got nothing
   kDbusTimeout = 65,  // Generic timeout error (c.f. dbus-protocol.h)
-
-  // Printer was removed before the setup was completed (setup cancelled)
-  kPrinterRemoved = 66,
-  kMaxValue = kPrinterRemoved  // Maximum value for histograms
+  kMaxValue           // Maximum value for histograms
 };
 
 // These values are written to logs.  New enum values can be added, but existing
@@ -74,9 +69,7 @@ using PrinterSetupCallback = base::OnceCallback<void(PrinterSetupResult)>;
 // Class must be constructed and used on the UI thread.
 class PrinterConfigurer {
  public:
-  static std::unique_ptr<PrinterConfigurer> Create(
-      scoped_refptr<chromeos::PpdProvider> ppd_provider,
-      DlcserviceClient* dlc_service_client);
+  static std::unique_ptr<PrinterConfigurer> Create(Profile* profile);
 
   PrinterConfigurer(const PrinterConfigurer&) = delete;
   PrinterConfigurer& operator=(const PrinterConfigurer&) = delete;
@@ -86,14 +79,9 @@ class PrinterConfigurer {
   // Set up |printer| retrieving the appropriate PPD and registering the printer
   // with CUPS.  |callback| is called with the result of the operation.  This
   // method must be called on the UI thread and will run |callback| on the
-  // UI thread. Do not use this method directly, use `SetUpPrinter` from
-  // `CupsPrintersManager` instead. Keep in mind that this method install a new
-  // printer in the CUPS daemon and `CupsPrintersManager` must track all
-  // printers installed in CUPS daemon. Calling this method directly will cause
-  // `CupsPrintersManager` to have a different list of installed printers than
-  // the CUPS daemon, which is the source of strange bugs and flaky tests.
-  virtual void SetUpPrinterInCups(const chromeos::Printer& printer,
-                                  PrinterSetupCallback callback) = 0;
+  // UI thread.
+  virtual void SetUpPrinter(const chromeos::Printer& printer,
+                            PrinterSetupCallback callback) = 0;
 
   // Return an opaque fingerprint of the fields used to set up a printer with
   // CUPS.  The idea here is that if this fingerprint changes for a printer, we
@@ -103,6 +91,10 @@ class PrinterConfigurer {
 
   // Records UMA metrics for USB printer setup.
   static void RecordUsbPrinterSetupSource(UsbPrinterSetupSource source);
+
+  // Test method to override the printer configurer for testing.
+  static void SetPrinterConfigurerForTesting(
+      std::unique_ptr<PrinterConfigurer> printer_configurer);
 
   // Returns a generated EULA GURL for the provided |license|. |license| is the
   // identifier tag of the printer's license information.

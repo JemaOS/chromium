@@ -4,13 +4,11 @@
 
 #include "chrome/browser/web_applications/chromeos_web_app_experiments.h"
 
-#include <string_view>
-
 #include "base/containers/contains.h"
 #include "base/no_destructor.h"
-#include "base/strings/string_util.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chromeos/constants/chromeos_features.h"
+#include "content/public/browser/web_contents.h"
 
 namespace web_app {
 
@@ -31,15 +29,35 @@ constexpr const char* kMicrosoftOfficeWebAppExperimentScopeExtensions[] = {
 
 const char kOneDriveBusinessDomain[] = "sharepoint.com";
 
+struct FallbackPageThemeColor {
+  const char* page_url_piece;
+  SkColor page_theme_color;
+};
+
+constexpr FallbackPageThemeColor
+    kMicrosoftOfficeWebAppExperimentFallbackPageThemeColors[] = {
+        // Word theme color.
+        {.page_url_piece = "file%2cdocx",
+         .page_theme_color = SkColorSetRGB(0x18, 0x5A, 0xBD)},
+
+        // Excel theme color.
+        {.page_url_piece = "file%2cxlsx",
+         .page_theme_color = SkColorSetRGB(0x10, 0x7C, 0x41)},
+
+        // PowerPoint theme color.
+        {.page_url_piece = "file%2cpptx",
+         .page_theme_color = SkColorSetRGB(0xC4, 0x3E, 0x1C)},
+};
+
 bool g_always_enabled_for_testing = false;
 
-bool IsExperimentEnabled(const webapps::AppId& app_id) {
+bool IsExperimentEnabled(const AppId& app_id) {
   return g_always_enabled_for_testing || app_id == kMicrosoft365AppId;
 }
 
-std::optional<std::vector<const char*>>&
+absl::optional<std::vector<const char* const>>&
 GetScopeExtensionsOverrideForTesting() {
-  static base::NoDestructor<std::optional<std::vector<const char*>>>
+  static base::NoDestructor<absl::optional<std::vector<const char* const>>>
       scope_extensions;
   return *scope_extensions;
 }
@@ -47,7 +65,7 @@ GetScopeExtensionsOverrideForTesting() {
 }  // namespace
 
 base::span<const char* const> ChromeOsWebAppExperiments::GetScopeExtensions(
-    const webapps::AppId& app_id) {
+    const AppId& app_id) {
   DCHECK(chromeos::features::IsUploadOfficeToCloudEnabled());
 
   if (!IsExperimentEnabled(app_id))
@@ -60,8 +78,8 @@ base::span<const char* const> ChromeOsWebAppExperiments::GetScopeExtensions(
 }
 
 size_t ChromeOsWebAppExperiments::GetExtendedScopeScore(
-    const webapps::AppId& app_id,
-    std::string_view url_spec) {
+    const AppId& app_id,
+    base::StringPiece url_spec) {
   DCHECK(chromeos::features::IsUploadOfficeToCloudEnabled());
 
   size_t best_score = 0;
@@ -82,10 +100,28 @@ size_t ChromeOsWebAppExperiments::GetExtendedScopeScore(
   return best_score;
 }
 
-bool ChromeOsWebAppExperiments::IgnoreManifestColor(
-    const webapps::AppId& app_id) {
+absl::optional<SkColor> ChromeOsWebAppExperiments::GetFallbackPageThemeColor(
+    const AppId& app_id,
+    content::WebContents* web_contents) {
   DCHECK(chromeos::features::IsUploadOfficeToCloudEnabled());
-  return IsExperimentEnabled(app_id);
+
+  if (!IsExperimentEnabled(app_id))
+    return absl::nullopt;
+
+  if (!web_contents)
+    return absl::nullopt;
+
+  const GURL& url = web_contents->GetLastCommittedURL();
+  if (!url.is_valid())
+    return absl::nullopt;
+
+  for (const FallbackPageThemeColor& fallback_theme_color :
+       kMicrosoftOfficeWebAppExperimentFallbackPageThemeColors) {
+    if (base::Contains(url.spec(), fallback_theme_color.page_url_piece))
+      return fallback_theme_color.page_theme_color;
+  }
+
+  return absl::nullopt;
 }
 
 void ChromeOsWebAppExperiments::SetAlwaysEnabledForTesting() {
@@ -93,7 +129,7 @@ void ChromeOsWebAppExperiments::SetAlwaysEnabledForTesting() {
 }
 
 void ChromeOsWebAppExperiments::SetScopeExtensionsForTesting(
-    std::vector<const char*> scope_extensions_override) {
+    std::vector<const char* const> scope_extensions_override) {
   GetScopeExtensionsOverrideForTesting() = std::move(scope_extensions_override);
 }
 

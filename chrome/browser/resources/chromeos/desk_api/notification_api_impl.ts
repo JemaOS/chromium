@@ -6,7 +6,7 @@
  * @fileoverview The implementation of Notification API
  */
 
-import {ClickEventListener, NotificationApi, NotificationOptions, VoidCallback} from './types.js';
+import {ClickEventListener, NotificationApi, NotificationOptions, VoidCallback} from './types';
 
 /**
  * Provides the implementation for Notification API.

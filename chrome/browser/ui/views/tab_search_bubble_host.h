@@ -7,9 +7,7 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
-#include "chrome/browser/ui/tabs/organization/tab_organization_observer.h"
 #include "chrome/browser/ui/views/bubble/webui_bubble_manager.h"
-#include "chrome/browser/ui/views/bubble/webui_bubble_manager_observer.h"
 #include "chrome/browser/ui/webui/tab_search/tab_search_ui.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/controls/button/menu_button_controller.h"
@@ -21,13 +19,10 @@ class Widget;
 }
 
 class Profile;
-class TabOrganizationService;
 
 // TabSearchBubbleHost assumes responsibility for configuring its button,
 // showing / hiding the tab search bubble and handling metrics collection.
-class TabSearchBubbleHost : public views::WidgetObserver,
-                            public TabOrganizationObserver,
-                            public WebUIBubbleManagerObserver {
+class TabSearchBubbleHost : public views::WidgetObserver {
  public:
   TabSearchBubbleHost(views::Button* button, Profile* profile);
   TabSearchBubbleHost(const TabSearchBubbleHost&) = delete;
@@ -38,38 +33,21 @@ class TabSearchBubbleHost : public views::WidgetObserver,
   void OnWidgetVisibilityChanged(views::Widget* widget, bool visible) override;
   void OnWidgetDestroying(views::Widget* widget) override;
 
-  // TabOrganizationObserver:
-  void OnOrganizationAccepted(const Browser* browser) override;
-  void OnUserInvokedFeature(const Browser* browser) override;
-
-  // WebUIBubbleManagerObserver:
-  void BeforeBubbleWidgetShowed(views::Widget* widget) override;
-
   // When this is called the bubble may already be showing or be loading in.
   // This returns true if the method call results in the creation of a new Tab
-  // Search bubble. Optionally use tab_index to force the bubble to open to the
-  // given tab, even if the bubble is already showing.
-  // TODO(emshack): Either use an enum for tab_index here or break this out
-  // into multiple methods for improved readability.
-  bool ShowTabSearchBubble(bool triggered_by_keyboard_shortcut = false,
-                           int tab_index = -1);
+  // Search bubble.
+  bool ShowTabSearchBubble(bool triggered_by_keyboard_shortcut = false);
   void CloseTabSearchBubble();
-
-  const Browser* GetBrowser() const;
 
   views::View* button() { return button_; }
 
   WebUIBubbleManager* webui_bubble_manager_for_testing() {
-    return webui_bubble_manager_.get();
+    return &webui_bubble_manager_;
   }
-  const std::optional<base::TimeTicks>& bubble_created_time_for_testing()
+  const absl::optional<base::TimeTicks>& bubble_created_time_for_testing()
       const {
     return bubble_created_time_;
   }
-
-  // Return whether the tab search button is shown before tab strip.
-  // This also determines tab search bubble's anchor position.
-  static bool ShouldTabSearchRenderBeforeTabStrip();
 
  private:
   void ButtonPressed(const ui::Event& event);
@@ -79,12 +57,12 @@ class TabSearchBubbleHost : public views::WidgetObserver,
 
   const raw_ptr<Profile> profile_;
 
-  std::unique_ptr<WebUIBubbleManager> webui_bubble_manager_;
+  WebUIBubbleManagerT<TabSearchUI> webui_bubble_manager_;
 
   views::WidgetOpenTimer widget_open_timer_;
 
   // Timestamp for when the current bubble was created.
-  std::optional<base::TimeTicks> bubble_created_time_;
+  absl::optional<base::TimeTicks> bubble_created_time_;
 
   raw_ptr<views::MenuButtonController> menu_button_controller_ = nullptr;
 
@@ -94,12 +72,6 @@ class TabSearchBubbleHost : public views::WidgetObserver,
 
   base::ScopedObservation<views::Widget, views::WidgetObserver>
       bubble_widget_observation_{this};
-
-  base::ScopedObservation<TabOrganizationService, TabOrganizationObserver>
-      tab_organization_observation_{this};
-
-  base::ScopedObservation<WebUIBubbleManager, WebUIBubbleManagerObserver>
-      webui_bubble_manager_observer_{this};
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_TAB_SEARCH_BUBBLE_HOST_H_

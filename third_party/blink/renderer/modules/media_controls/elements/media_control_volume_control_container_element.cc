@@ -18,18 +18,17 @@ MediaControlVolumeControlContainerElement::
   SetShadowPseudoId(
       AtomicString("-webkit-media-controls-volume-control-container"));
   MediaControlElementsHelper::CreateDiv(
-      AtomicString("-webkit-media-controls-volume-control-hover-background"),
-      this);
+      "-webkit-media-controls-volume-control-hover-background", this);
 
   CloseContainer();
 }
 
 void MediaControlVolumeControlContainerElement::OpenContainer() {
-  classList().Remove(AtomicString(kClosedCSSClass));
+  classList().Remove(kClosedCSSClass);
 }
 
 void MediaControlVolumeControlContainerElement::CloseContainer() {
-  classList().Add(AtomicString(kClosedCSSClass));
+  classList().Add(kClosedCSSClass);
 }
 
 void MediaControlVolumeControlContainerElement::DefaultEventHandler(

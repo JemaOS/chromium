@@ -18,7 +18,6 @@
 #include "ui/gfx/buffer_usage_util.h"
 #include "ui/gfx/geometry/size_conversions.h"
 #include "ui/gfx/linux/drm_util_linux.h"
-#include "ui/gfx/linux/gbm_defines.h"
 #include "ui/gfx/linux/gbm_device.h"
 #include "ui/gfx/linux/gbm_util.h"
 #include "ui/gfx/native_pixmap_handle.h"
@@ -42,7 +41,7 @@ bool GbmPixmapWayland::InitializeBuffer(
     gfx::Size size,
     gfx::BufferFormat format,
     gfx::BufferUsage usage,
-    std::optional<gfx::Size> visible_area_size) {
+    absl::optional<gfx::Size> visible_area_size) {
   DCHECK(!visible_area_size ||
          ((visible_area_size.value().width() <= size.width()) &&
           (visible_area_size.value().height() <= size.height())));
@@ -66,14 +65,8 @@ bool GbmPixmapWayland::InitializeBuffer(
     // When buffer |usage| implies on GBM_BO_USE_LINEAR, pass in
     // DRM_FORMAT_MOD_LINEAR, i.e: no tiling, when creating gbm buffers,
     // otherwise it fails to create BOs.
-    // As suggested in the comments the usage |GBM_BO_USE_FRONT_RENDERING|
-    // should not be mixed with frame buffer compression. Until we have a
-    // mechanism for determine which modifiers produce artifacts we should
-    // default |DRM_FORMAT_MOD_LINEAR| here.
-    if (gbm_flags & GBM_BO_USE_LINEAR ||
-        gbm_flags & GBM_BO_USE_FRONT_RENDERING) {
+    if (gbm_flags & GBM_BO_USE_LINEAR)
       modifiers = {DRM_FORMAT_MOD_LINEAR};
-    }
     gbm_bo_ = gbm_device->CreateBufferWithModifiers(fourcc_format, size,
                                                     gbm_flags, modifiers);
   }
@@ -194,7 +187,7 @@ bool GbmPixmapWayland::ScheduleOverlayPlane(
   return true;
 }
 
-gfx::NativePixmapHandle GbmPixmapWayland::ExportHandle() const {
+gfx::NativePixmapHandle GbmPixmapWayland::ExportHandle() {
   gfx::NativePixmapHandle handle;
 
   const size_t num_planes = gbm_bo_->GetNumPlanes();
@@ -233,6 +226,7 @@ void GbmPixmapWayland::CreateDmabufBasedWlBuffer() {
   base::ScopedFD fd(HANDLE_EINTR(dup(GetDmaBufFd(0))));
   if (!fd.is_valid()) {
     PLOG(FATAL) << "dup";
+    return;
   }
 
   // The wl_buffer must be destroyed once this pixmap is destroyed.

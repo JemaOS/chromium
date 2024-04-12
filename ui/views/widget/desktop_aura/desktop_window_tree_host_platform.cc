@@ -10,7 +10,6 @@
 
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/notreached.h"
 #include "base/ranges/algorithm.h"
 #include "base/task/single_thread_task_runner.h"
@@ -20,7 +19,6 @@
 #include "ui/aura/client/drag_drop_client.h"
 #include "ui/aura/client/focus_client.h"
 #include "ui/aura/client/transient_window_client.h"
-#include "ui/aura/native_window_occlusion_tracker.h"
 #include "ui/base/hit_test.h"
 #include "ui/base/owned_window_anchor.h"
 #include "ui/base/ui_base_types.h"
@@ -34,27 +32,19 @@
 #include "ui/ozone/public/ozone_platform.h"
 #include "ui/platform_window/extensions/workspace_extension.h"
 #include "ui/platform_window/platform_window.h"
-#include "ui/platform_window/platform_window_delegate.h"
 #include "ui/platform_window/platform_window_init_properties.h"
 #include "ui/platform_window/wm/wm_move_loop_handler.h"
+#include "ui/views/corewm/tooltip_aura.h"
 #include "ui/views/corewm/tooltip_controller.h"
 #include "ui/views/widget/desktop_aura/desktop_drag_drop_client_ozone.h"
 #include "ui/views/widget/desktop_aura/desktop_native_widget_aura.h"
 #include "ui/views/widget/widget_aura_utils.h"
-#include "ui/views/widget/widget_delegate.h"
 #include "ui/views/window/native_frame_view.h"
-#include "ui/wm/core/window_properties.h"
 #include "ui/wm/core/window_util.h"
 #include "ui/wm/public/window_move_client.h"
 
 #if BUILDFLAG(IS_LINUX)
 #include "ui/views/widget/desktop_aura/desktop_drag_drop_client_ozone_linux.h"
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-#include "ui/views/corewm/tooltip_lacros.h"
-#else
-#include "ui/views/corewm/tooltip_aura.h"
 #endif
 
 DEFINE_UI_CLASS_PROPERTY_TYPE(views::DesktopWindowTreeHostPlatform*)
@@ -133,8 +123,7 @@ ui::PlatformWindowShadowType GetPlatformWindowShadowType(
 
 ui::PlatformWindowInitProperties ConvertWidgetInitParamsToInitProperties(
     const Widget::InitParams& params,
-    bool requires_accelerated_widget,
-    float device_scale_factor) {
+    bool requires_accelerated_widget) {
   ui::PlatformWindowInitProperties properties;
   properties.type =
       GetPlatformWindowType(params.type, requires_accelerated_widget);
@@ -173,9 +162,6 @@ ui::PlatformWindowInitProperties ConvertWidgetInitParamsToInitProperties(
     }
   }
   properties.inhibit_keyboard_shortcuts = params.inhibit_keyboard_shortcuts;
-
-  properties.frame_insets_px =
-      gfx::ScaleToCeiledInsets(params.frame_insets, device_scale_factor);
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -278,14 +264,9 @@ void DesktopWindowTreeHostPlatform::Init(const Widget::InitParams& params) {
   const bool requires_accelerated_widget = false;
 #endif
   ui::PlatformWindowInitProperties properties =
-      ConvertWidgetInitParamsToInitProperties(
-          params, requires_accelerated_widget, device_scale_factor());
+      ConvertWidgetInitParamsToInitProperties(params,
+                                              requires_accelerated_widget);
   AddAdditionalInitProperties(params, &properties);
-
-#if BUILDFLAG(IS_CHROMEOS)
-  // Set persistable based on whether or not the content window is persistable.
-  properties.persistable = GetContentWindow()->GetProperty(wm::kPersistableKey);
-#endif
 
   // If we have a parent, record the parent/child relationship. We use this
   // data during destruction to make sure that when we try to close a parent
@@ -299,9 +280,6 @@ void DesktopWindowTreeHostPlatform::Init(const Widget::InitParams& params) {
 
   // Calculate initial bounds.
   properties.bounds = params.bounds;
-#if BUILDFLAG(IS_CHROMEOS)
-  properties.display_id = params.display_id;
-#endif
 
   // Set extensions delegate.
   DCHECK(!properties.workspace_extension_delegate);
@@ -345,11 +323,7 @@ void DesktopWindowTreeHostPlatform::OnActiveWindowChanged(bool active) {}
 
 std::unique_ptr<corewm::Tooltip>
 DesktopWindowTreeHostPlatform::CreateTooltip() {
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  return std::make_unique<corewm::TooltipLacros>();
-#else
   return std::make_unique<corewm::TooltipAura>();
-#endif
 }
 
 std::unique_ptr<aura::client::DragDropClient>
@@ -405,11 +379,10 @@ void DesktopWindowTreeHostPlatform::CloseNow() {
 
   // If we have children, close them. Use a copy for iteration because they'll
   // remove themselves.
-  std::set<raw_ptr<DesktopWindowTreeHostPlatform, SetExperimental>>
-      window_children_copy = window_children_;
-  for (DesktopWindowTreeHostPlatform* child : window_children_copy) {
+  std::set<DesktopWindowTreeHostPlatform*> window_children_copy =
+      window_children_;
+  for (auto* child : window_children_copy)
     child->CloseNow();
-  }
   DCHECK(window_children_.empty());
 
   // If we have a parent, remove ourselves from its children list.
@@ -433,7 +406,6 @@ aura::WindowTreeHost* DesktopWindowTreeHostPlatform::AsWindowTreeHost() {
 
 void DesktopWindowTreeHostPlatform::Show(ui::WindowShowState show_state,
                                          const gfx::Rect& restore_bounds) {
-  OnAcceleratedWidgetMadeVisible(true);
   if (compositor())
     SetVisible(true);
 
@@ -459,10 +431,8 @@ void DesktopWindowTreeHostPlatform::Show(ui::WindowShowState show_state,
   }
 
   if (native_widget_delegate_->CanActivate()) {
-    if (show_state != ui::SHOW_STATE_INACTIVE &&
-        show_state != ui::SHOW_STATE_MINIMIZED) {
+    if (show_state != ui::SHOW_STATE_INACTIVE)
       Activate();
-    }
 
     // SetInitialFocus() should be always be called, even for
     // SHOW_STATE_INACTIVE. If the window has to stay inactive, the method will
@@ -475,12 +445,7 @@ void DesktopWindowTreeHostPlatform::Show(ui::WindowShowState show_state,
         IsActive() ? show_state : ui::SHOW_STATE_INACTIVE);
   }
 
-  // compositor()->SetVisible(true) might have already led to content_window
-  // Show() via OnCompositorVisibilityChanging(). Calling Show() a second time
-  // has side effects, so skip it.
-  if (!GetContentWindow()->IsVisible()) {
-    GetContentWindow()->Show();
-  }
+  GetContentWindow()->Show();
 }
 
 bool DesktopWindowTreeHostPlatform::IsVisible() const {
@@ -590,17 +555,6 @@ void DesktopWindowTreeHostPlatform::SetShape(
   platform_window()->SetShape(std::move(native_shape), GetRootTransform());
 }
 
-void DesktopWindowTreeHostPlatform::SetParent(gfx::AcceleratedWidget parent) {
-  // TODO(crbug.com/1490267): hook parent to the accelerated widget.
-  if (window_parent_) {
-    window_parent_->window_children_.erase(this);
-  }
-  window_parent_ = DesktopWindowTreeHostPlatform::GetHostForWidget(parent);
-  if (window_parent_) {
-    window_parent_->window_children_.insert(this);
-  }
-}
-
 void DesktopWindowTreeHostPlatform::Activate() {
   platform_window()->Activate();
 }
@@ -612,10 +566,6 @@ void DesktopWindowTreeHostPlatform::Deactivate() {
 
 bool DesktopWindowTreeHostPlatform::IsActive() const {
   return is_active_;
-}
-
-bool DesktopWindowTreeHostPlatform::CanMaximize() {
-  return GetWidget()->widget_delegate()->CanMaximize();
 }
 
 void DesktopWindowTreeHostPlatform::Maximize() {
@@ -753,10 +703,6 @@ void DesktopWindowTreeHostPlatform::FrameTypeChanged() {
     GetWidget()->non_client_view()->UpdateFrame();
 }
 
-bool DesktopWindowTreeHostPlatform::CanFullscreen() {
-  return GetWidget()->widget_delegate()->CanFullscreen();
-}
-
 void DesktopWindowTreeHostPlatform::SetFullscreen(bool fullscreen,
                                                   int64_t target_display_id) {
   auto weak_ptr = GetWeakPtr();
@@ -775,8 +721,8 @@ void DesktopWindowTreeHostPlatform::SetFullscreen(bool fullscreen,
 }
 
 bool DesktopWindowTreeHostPlatform::IsFullscreen() const {
-  return ui::IsPlatformWindowStateFullscreen(
-      platform_window()->GetPlatformWindowState());
+  return platform_window()->GetPlatformWindowState() ==
+         ui::PlatformWindowState::kFullScreen;
 }
 
 void DesktopWindowTreeHostPlatform::SetOpacity(float opacity) {
@@ -810,6 +756,11 @@ void DesktopWindowTreeHostPlatform::FlashFrame(bool flash_frame) {
 
 bool DesktopWindowTreeHostPlatform::IsAnimatingClosed() const {
   return platform_window()->IsAnimatingClosed();
+}
+
+bool DesktopWindowTreeHostPlatform::IsTranslucentWindowOpacitySupported()
+    const {
+  return platform_window()->IsTranslucentWindowOpacitySupported();
 }
 
 void DesktopWindowTreeHostPlatform::SizeConstraintsChanged() {
@@ -881,26 +832,6 @@ gfx::Rect DesktopWindowTreeHostPlatform::GetBoundsInDIP() const {
   return platform_window()->GetBoundsInDIP();
 }
 
-void DesktopWindowTreeHostPlatform::OnCompositorVisibilityChanging(
-    ui::Compositor* compositor,
-    bool visible) {
-  // Make sure to show the content window before the compositor has become
-  // visible.
-  if (visible) {
-    GetContentWindow()->Show();
-  }
-}
-
-void DesktopWindowTreeHostPlatform::OnCompositorVisibilityChanged(
-    ui::Compositor* compositor,
-    bool visible) {
-  // Make sure to hide the content window after the compositor has become
-  // not visible.
-  if (!visible) {
-    GetContentWindow()->Hide();
-  }
-}
-
 void DesktopWindowTreeHostPlatform::OnClosed() {
   open_windows().remove(GetAcceleratedWidget());
   wm::SetWindowMoveClient(window(), nullptr);
@@ -919,12 +850,12 @@ void DesktopWindowTreeHostPlatform::OnWindowStateChanged(
   // Propagate minimization/restore to compositor to avoid drawing 'blank'
   // frames that could be treated as previews, which show content even if a
   // window is minimized.
-  if (!aura::NativeWindowOcclusionTracker::
-          IsNativeWindowOcclusionTrackingAlwaysEnabled(this) &&
-      is_minimized != was_minimized) {
+  if (is_minimized != was_minimized) {
     if (is_minimized) {
       SetVisible(false);
+      GetContentWindow()->Hide();
     } else {
+      GetContentWindow()->Show();
       SetVisible(true);
     }
   }
@@ -933,7 +864,6 @@ void DesktopWindowTreeHostPlatform::OnWindowStateChanged(
   // window. (The windows code doesn't need this because their window change is
   // synchronous.)
   ScheduleRelayout();
-  GetWidget()->OnNativeWidgetWindowShowStateChanged();
 }
 
 void DesktopWindowTreeHostPlatform::OnCloseRequest() {
@@ -951,13 +881,6 @@ void DesktopWindowTreeHostPlatform::OnWillDestroyAcceleratedWidget() {
   desktop_native_widget_aura_->OnHostWillClose();
 }
 
-bool DesktopWindowTreeHostPlatform::OnRotateFocus(
-    ui::PlatformWindowDelegate::RotateDirection direction,
-    bool reset) {
-  return DesktopWindowTreeHostPlatform::RotateFocusForWidget(*GetWidget(),
-                                                             direction, reset);
-}
-
 void DesktopWindowTreeHostPlatform::OnActivationChanged(bool active) {
   if (active) {
     auto widget = GetAcceleratedWidget();
@@ -972,12 +895,12 @@ void DesktopWindowTreeHostPlatform::OnActivationChanged(bool active) {
   ScheduleRelayout();
 }
 
-std::optional<gfx::Size>
+absl::optional<gfx::Size>
 DesktopWindowTreeHostPlatform::GetMinimumSizeForWindow() {
   return native_widget_delegate_->GetMinimumSize();
 }
 
-std::optional<gfx::Size>
+absl::optional<gfx::Size>
 DesktopWindowTreeHostPlatform::GetMaximumSizeForWindow() {
   return native_widget_delegate_->GetMaximumSize();
 }
@@ -992,11 +915,15 @@ SkPath DesktopWindowTreeHostPlatform::GetWindowMaskForWindowShapeInPixels() {
   return window_mask;
 }
 
-std::optional<ui::OwnedWindowAnchor>
+absl::optional<ui::MenuType> DesktopWindowTreeHostPlatform::GetMenuType() {
+  return GetContentWindow()->GetProperty(aura::client::kMenuType);
+}
+
+absl::optional<ui::OwnedWindowAnchor>
 DesktopWindowTreeHostPlatform::GetOwnedWindowAnchorAndRectInDIP() {
   const auto* anchor =
       GetContentWindow()->GetProperty(aura::client::kOwnedWindowAnchor);
-  return anchor ? std::make_optional(*anchor) : std::nullopt;
+  return anchor ? absl::make_optional(*anchor) : absl::nullopt;
 }
 
 gfx::Rect DesktopWindowTreeHostPlatform::ConvertRectToPixels(
@@ -1040,9 +967,10 @@ gfx::Rect DesktopWindowTreeHostPlatform::ToPixelRect(
       GetRootTransform().MapRect(gfx::RectF(rect_in_dip));
   // Due to the limitation of IEEE floating point representation and rounding
   // error, the converted result may become slightly larger than expected value,
-  // such as 3000.0005. Allow error to round down in such case. This is
+  // such as 3000.0005. Allow 0.001 eplisin to round down in such case. This is
   // also used in cc/viz. See crbug.com/1418606.
-  return gfx::ToEnclosingRectIgnoringError(rect_in_pixels_f);
+  constexpr float kEpsilon = 0.001f;
+  return gfx::ToEnclosingRectIgnoringError(rect_in_pixels_f, kEpsilon);
 }
 
 Widget* DesktopWindowTreeHostPlatform::GetWidget() {
@@ -1099,23 +1027,6 @@ display::Display DesktopWindowTreeHostPlatform::GetDisplayNearestRootWindow()
   // TODO(sky): GetDisplayNearestWindow() should take a const aura::Window*.
   return display::Screen::GetScreen()->GetDisplayNearestWindow(
       const_cast<aura::Window*>(window()));
-}
-
-bool DesktopWindowTreeHostPlatform::RotateFocusForWidget(
-    Widget& widget,
-    ui::PlatformWindowDelegate::RotateDirection direction,
-    bool reset) {
-  if (reset) {
-    widget.GetFocusManager()->ClearFocus();
-  }
-  auto focus_manager_direction =
-      direction == RotateDirection::kForward
-          ? views::FocusManager::Direction::kForward
-          : views::FocusManager::Direction::kBackward;
-  auto wrapping = reset ? views::FocusManager::FocusCycleWrapping::kEnabled
-                        : views::FocusManager::FocusCycleWrapping::kDisabled;
-  return widget.GetFocusManager()->RotatePaneFocus(focus_manager_direction,
-                                                   wrapping);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

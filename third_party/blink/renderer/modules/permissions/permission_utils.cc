@@ -15,8 +15,6 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_clipboard_permission_descriptor.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_midi_permission_descriptor.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_permission_descriptor.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_permission_name.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_permission_state.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_push_permission_descriptor.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_top_level_storage_access_permission_descriptor.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -28,30 +26,6 @@
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
-
-namespace {
-
-constexpr V8PermissionState::Enum ToPermissionStateEnum(
-    mojom::blink::PermissionStatus status) {
-  // This assertion protects against the IDL enum changing without updating the
-  // corresponding mojom interface, while the lack of a default case in the
-  // switch statement below ensures the opposite.
-  static_assert(
-      V8PermissionState::kEnumSize == 3u,
-      "the number of fields in the PermissionStatus mojom enum "
-      "must match the number of fields in the PermissionState blink enum");
-
-  switch (status) {
-    case mojom::blink::PermissionStatus::GRANTED:
-      return V8PermissionState::Enum::kGranted;
-    case mojom::blink::PermissionStatus::DENIED:
-      return V8PermissionState::Enum::kDenied;
-    case mojom::blink::PermissionStatus::ASK:
-      return V8PermissionState::Enum::kPrompt;
-  }
-}
-
-}  // namespace
 
 // There are two PermissionDescriptor, one in Mojo bindings and one
 // in v8 bindings so we'll rename one here.
@@ -66,12 +40,17 @@ void ConnectToPermissionService(
       std::move(receiver));
 }
 
-V8PermissionState ToV8PermissionState(mojom::blink::PermissionStatus status) {
-  return V8PermissionState(ToPermissionStateEnum(status));
-}
-
 String PermissionStatusToString(mojom::blink::PermissionStatus status) {
-  return ToV8PermissionState(status).AsString();
+  switch (status) {
+    case mojom::blink::PermissionStatus::GRANTED:
+      return "granted";
+    case mojom::blink::PermissionStatus::DENIED:
+      return "denied";
+    case mojom::blink::PermissionStatus::ASK:
+      return "prompt";
+  }
+  NOTREACHED();
+  return "denied";
 }
 
 String PermissionNameToString(PermissionName name) {
@@ -119,20 +98,16 @@ String PermissionNameToString(PermissionName name) {
     case PermissionName::STORAGE_ACCESS:
       return "storage-access";
     case PermissionName::WINDOW_MANAGEMENT:
-      if (RuntimeEnabledFeatures::WindowPlacementPermissionAliasEnabled()) {
-        return "window_placement";
+      if (RuntimeEnabledFeatures::WindowManagementPermissionAliasEnabled()) {
+        return "window-management";
       }
-      return "window-management";
+      return "window_placement";
     case PermissionName::LOCAL_FONTS:
       return "local_fonts";
     case PermissionName::DISPLAY_CAPTURE:
       return "display_capture";
     case PermissionName::TOP_LEVEL_STORAGE_ACCESS:
       return "top-level-storage-access";
-    case PermissionName::CAPTURED_SURFACE_CONTROL:
-      return "captured-surface-control";
-    case PermissionName::SPEAKER_SELECTION:
-      return "speaker-selection";
   }
   NOTREACHED();
   return "unknown";
@@ -205,11 +180,11 @@ PermissionDescriptorPtr ParsePermissionDescriptor(
     return nullptr;
   }
 
-  const auto& name = permission->name();
-  if (name == V8PermissionName::Enum::kGeolocation) {
+  const String& name = permission->name();
+  if (name == "geolocation") {
     return CreatePermissionDescriptor(PermissionName::GEOLOCATION);
   }
-  if (name == V8PermissionName::Enum::kCamera) {
+  if (name == "camera") {
     CameraDevicePermissionDescriptor* camera_device_permission =
         NativeValueTraits<CameraDevicePermissionDescriptor>::NativeValue(
             script_state->GetIsolate(), raw_descriptor.V8Value(),
@@ -221,16 +196,16 @@ PermissionDescriptorPtr ParsePermissionDescriptor(
     return CreateVideoCapturePermissionDescriptor(
         camera_device_permission->panTiltZoom());
   }
-  if (name == V8PermissionName::Enum::kMicrophone) {
+  if (name == "microphone") {
     return CreatePermissionDescriptor(PermissionName::AUDIO_CAPTURE);
   }
-  if (name == V8PermissionName::Enum::kNotifications) {
+  if (name == "notifications") {
     return CreatePermissionDescriptor(PermissionName::NOTIFICATIONS);
   }
-  if (name == V8PermissionName::Enum::kPersistentStorage) {
+  if (name == "persistent-storage") {
     return CreatePermissionDescriptor(PermissionName::DURABLE_STORAGE);
   }
-  if (name == V8PermissionName::Enum::kPush) {
+  if (name == "push") {
     PushPermissionDescriptor* push_permission =
         NativeValueTraits<PushPermissionDescriptor>::NativeValue(
             script_state->GetIsolate(), raw_descriptor.V8Value(),
@@ -249,22 +224,20 @@ PermissionDescriptorPtr ParsePermissionDescriptor(
 
     return CreatePermissionDescriptor(PermissionName::NOTIFICATIONS);
   }
-  if (name == V8PermissionName::Enum::kMidi) {
+  if (name == "midi") {
     MidiPermissionDescriptor* midi_permission =
         NativeValueTraits<MidiPermissionDescriptor>::NativeValue(
             script_state->GetIsolate(), raw_descriptor.V8Value(),
             exception_state);
     return CreateMidiPermissionDescriptor(midi_permission->sysex());
   }
-  if (name == V8PermissionName::Enum::kBackgroundSync) {
+  if (name == "background-sync") {
     return CreatePermissionDescriptor(PermissionName::BACKGROUND_SYNC);
   }
-  if (name == V8PermissionName::Enum ::kAmbientLightSensor ||
-      name == V8PermissionName::Enum::kAccelerometer ||
-      name == V8PermissionName::Enum::kGyroscope ||
-      name == V8PermissionName::Enum::kMagnetometer) {
+  if (name == "ambient-light-sensor" || name == "accelerometer" ||
+      name == "gyroscope" || name == "magnetometer") {
     // ALS requires an extra flag.
-    if (name == V8PermissionName::Enum::kAmbientLightSensor) {
+    if (name == "ambient-light-sensor") {
       if (!RuntimeEnabledFeatures::SensorExtraClassesEnabled()) {
         exception_state.ThrowTypeError(
             "GenericSensorExtraClasses flag is not enabled.");
@@ -274,7 +247,7 @@ PermissionDescriptorPtr ParsePermissionDescriptor(
 
     return CreatePermissionDescriptor(PermissionName::SENSORS);
   }
-  if (name == V8PermissionName::Enum::kAccessibilityEvents) {
+  if (name == "accessibility-events") {
     if (!RuntimeEnabledFeatures::AccessibilityObjectModelEnabled()) {
       exception_state.ThrowTypeError(
           "Accessibility Object Model is not enabled.");
@@ -282,10 +255,9 @@ PermissionDescriptorPtr ParsePermissionDescriptor(
     }
     return CreatePermissionDescriptor(PermissionName::ACCESSIBILITY_EVENTS);
   }
-  if (name == V8PermissionName::Enum::kClipboardRead ||
-      name == V8PermissionName::Enum::kClipboardWrite) {
+  if (name == "clipboard-read" || name == "clipboard-write") {
     PermissionName permission_name = PermissionName::CLIPBOARD_READ;
-    if (name == V8PermissionName::Enum::kClipboardWrite) {
+    if (name == "clipboard-write") {
       permission_name = PermissionName::CLIPBOARD_WRITE;
     }
 
@@ -299,22 +271,22 @@ PermissionDescriptorPtr ParsePermissionDescriptor(
         /*will_be_sanitized=*/
         !clipboard_permission->allowWithoutSanitization());
   }
-  if (name == V8PermissionName::Enum::kPaymentHandler) {
+  if (name == "payment-handler") {
     return CreatePermissionDescriptor(PermissionName::PAYMENT_HANDLER);
   }
-  if (name == V8PermissionName::Enum::kBackgroundFetch) {
+  if (name == "background-fetch") {
     return CreatePermissionDescriptor(PermissionName::BACKGROUND_FETCH);
   }
-  if (name == V8PermissionName::Enum::kIdleDetection) {
+  if (name == "idle-detection") {
     return CreatePermissionDescriptor(PermissionName::IDLE_DETECTION);
   }
-  if (name == V8PermissionName::Enum::kPeriodicBackgroundSync) {
+  if (name == "periodic-background-sync") {
     return CreatePermissionDescriptor(PermissionName::PERIODIC_BACKGROUND_SYNC);
   }
-  if (name == V8PermissionName::Enum::kScreenWakeLock) {
+  if (name == "screen-wake-lock") {
     return CreatePermissionDescriptor(PermissionName::SCREEN_WAKE_LOCK);
   }
-  if (name == V8PermissionName::Enum::kSystemWakeLock) {
+  if (name == "system-wake-lock") {
     if (!RuntimeEnabledFeatures::SystemWakeLockEnabled(
             ExecutionContext::From(script_state))) {
       exception_state.ThrowTypeError("System Wake Lock is not enabled.");
@@ -322,7 +294,7 @@ PermissionDescriptorPtr ParsePermissionDescriptor(
     }
     return CreatePermissionDescriptor(PermissionName::SYSTEM_WAKE_LOCK);
   }
-  if (name == V8PermissionName::Enum::kNfc) {
+  if (name == "nfc") {
     if (!RuntimeEnabledFeatures::WebNFCEnabled(
             ExecutionContext::From(script_state))) {
       exception_state.ThrowTypeError("Web NFC is not enabled.");
@@ -330,10 +302,20 @@ PermissionDescriptorPtr ParsePermissionDescriptor(
     }
     return CreatePermissionDescriptor(PermissionName::NFC);
   }
-  if (name == V8PermissionName::Enum::kStorageAccess) {
+  if (name == "storage-access") {
+    if (!RuntimeEnabledFeatures::StorageAccessAPIEnabled()) {
+      exception_state.ThrowTypeError("The Storage Access API is not enabled.");
+      return nullptr;
+    }
     return CreatePermissionDescriptor(PermissionName::STORAGE_ACCESS);
   }
-  if (name == V8PermissionName::Enum::kTopLevelStorageAccess) {
+  if (name == "top-level-storage-access") {
+    if (!RuntimeEnabledFeatures::StorageAccessAPIEnabled() ||
+        !RuntimeEnabledFeatures::StorageAccessAPIForOriginExtensionEnabled()) {
+      exception_state.ThrowTypeError(
+          "The requestStorageAccessFor API is not enabled.");
+      return nullptr;
+    }
     TopLevelStorageAccessPermissionDescriptor*
         top_level_storage_access_permission =
             NativeValueTraits<TopLevelStorageAccessPermissionDescriptor>::
@@ -350,23 +332,23 @@ PermissionDescriptorPtr ParsePermissionDescriptor(
 
     return CreateTopLevelStorageAccessPermissionDescriptor(origin_as_kurl);
   }
-  if (name == V8PermissionName::Enum::kWindowManagement) {
+  if (name == "window-management") {
     UseCounter::Count(CurrentExecutionContext(script_state->GetIsolate()),
                       WebFeature::kWindowManagementPermissionDescriptorUsed);
-    return CreatePermissionDescriptor(PermissionName::WINDOW_MANAGEMENT);
-  }
-  if (name == V8PermissionName::Enum::kWindowPlacement) {
-    if (!RuntimeEnabledFeatures::WindowPlacementPermissionAliasEnabled()) {
+    if (!RuntimeEnabledFeatures::WindowManagementPermissionAliasEnabled()) {
       exception_state.ThrowTypeError(
-          "The Window Placement alias is not enabled.");
+          "The Window Management alias is not enabled.");
       return nullptr;
     }
+    return CreatePermissionDescriptor(PermissionName::WINDOW_MANAGEMENT);
+  }
+  if (name == "window-placement") {
     Deprecation::CountDeprecation(
         CurrentExecutionContext(script_state->GetIsolate()),
         WebFeature::kWindowPlacementPermissionDescriptorUsed);
     return CreatePermissionDescriptor(PermissionName::WINDOW_MANAGEMENT);
   }
-  if (name == V8PermissionName::Enum::kLocalFonts) {
+  if (name == "local-fonts") {
     if (!RuntimeEnabledFeatures::FontAccessEnabled(
             ExecutionContext::From(script_state))) {
       exception_state.ThrowTypeError("Local Fonts Access API is not enabled.");
@@ -374,26 +356,8 @@ PermissionDescriptorPtr ParsePermissionDescriptor(
     }
     return CreatePermissionDescriptor(PermissionName::LOCAL_FONTS);
   }
-  if (name == V8PermissionName::Enum::kDisplayCapture) {
+  if (name == "display-capture") {
     return CreatePermissionDescriptor(PermissionName::DISPLAY_CAPTURE);
-  }
-  if (name == V8PermissionName::Enum::kCapturedSurfaceControl) {
-    if (!RuntimeEnabledFeatures::CapturedSurfaceControlEnabled(
-            ExecutionContext::From(script_state))) {
-      exception_state.ThrowTypeError(
-          "The Captured Surface Control API is not enabled.");
-      return nullptr;
-    }
-    return CreatePermissionDescriptor(PermissionName::CAPTURED_SURFACE_CONTROL);
-  }
-  if (name == V8PermissionName::Enum::kSpeakerSelection) {
-    if (!RuntimeEnabledFeatures::SpeakerSelectionEnabled(
-            ExecutionContext::From(script_state))) {
-      exception_state.ThrowTypeError(
-          "The Speaker Selection API is not enabled.");
-      return nullptr;
-    }
-    return CreatePermissionDescriptor(PermissionName::SPEAKER_SELECTION);
   }
   return nullptr;
 }

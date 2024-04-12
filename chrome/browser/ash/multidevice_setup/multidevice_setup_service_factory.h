@@ -32,7 +32,7 @@ class MultiDeviceSetupServiceFactory : public ProfileKeyedServiceFactory {
   ~MultiDeviceSetupServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

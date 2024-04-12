@@ -323,6 +323,15 @@ Statistics.prototype.recordLayout = function(
       this.getLayoutType(layoutCode, isA11yMode), Statistics.LayoutTypes.MAX);
 };
 
+
+/**
+ * Records the layout switching action.
+ */
+Statistics.prototype.recordLayoutSwitch = function() {
+  this.recordValue('InputMethod.VirtualKeyboard.LayoutSwitch', 1, 1, 1);
+};
+
+
 /**
  * Records enum value.
  *

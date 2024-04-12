@@ -20,11 +20,6 @@ void DemoPreferencesScreenHandler::Show() {
   ShowInWebUI();
 }
 
-base::WeakPtr<DemoPreferencesScreenView>
-DemoPreferencesScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 void DemoPreferencesScreenHandler::DeclareLocalizedValues(
     ::login::LocalizedValuesBuilder* builder) {
   builder->Add("demoPreferencesScreenTitle",

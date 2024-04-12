@@ -4,17 +4,16 @@
 
 #include "chrome/browser/sync/sync_startup_tracker.h"
 
-#include <optional>
-
 #include "base/functional/bind.h"
 #include "base/notreached.h"
-#include "components/sync/service/sync_service.h"
+#include "components/sync/driver/sync_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
 constexpr base::TimeDelta kDefaultWaitTimeout = base::Seconds(10);
 
-std::optional<base::TimeDelta> g_wait_timeout = kDefaultWaitTimeout;
+absl::optional<base::TimeDelta> g_wait_timeout = kDefaultWaitTimeout;
 
 }  // namespace
 
@@ -99,7 +98,7 @@ SyncStartupTracker::GetServiceStartupState(syncer::SyncService* sync_service) {
 namespace testing {
 
 ScopedSyncStartupTimeoutOverride::ScopedSyncStartupTimeoutOverride(
-    std::optional<base::TimeDelta> wait_timeout) {
+    absl::optional<base::TimeDelta> wait_timeout) {
   old_wait_timeout_ = g_wait_timeout;
   g_wait_timeout = wait_timeout;
 }

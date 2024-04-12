@@ -11,6 +11,7 @@
 
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
+#include "base/metrics/histogram_macros.h"
 #include "base/sequence_checker.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/default_tick_clock.h"
@@ -30,7 +31,6 @@
 #include "net/base/ip_endpoint.h"
 #include "net/dns/public/dns_protocol.h"
 #include "net/dns/public/secure_dns_mode.h"
-#include "services/network/public/cpp/network_context_getter.h"
 #include "services/network/public/mojom/network_service.mojom.h"
 
 namespace chrome_browser_net {
@@ -46,6 +46,15 @@ const int kMaxResultAgeMs = 5000;
 // connectivity.
 const uint8_t kGooglePublicDns1[] = {8, 8, 8, 8};
 const uint8_t kGooglePublicDns2[] = {8, 8, 4, 4};
+
+void HistogramProbe(error_page::DnsProbeStatus status,
+                    base::TimeDelta elapsed) {
+  DCHECK(error_page::DnsProbeStatusIsFinished(status));
+
+  UMA_HISTOGRAM_ENUMERATION("DnsProbe.ProbeResult", status,
+                            error_page::DNS_PROBE_MAX);
+  UMA_HISTOGRAM_MEDIUM_TIMES("DnsProbe.ProbeDuration2", elapsed);
+}
 
 network::mojom::NetworkContext* GetNetworkContextForProfile(
     content::BrowserContext* context) {
@@ -78,12 +87,13 @@ class DnsProbeServiceImpl
     : public DnsProbeService,
       public network::mojom::DnsConfigChangeManagerClient {
  public:
+  using NetworkContextGetter = DnsProbeServiceFactory::NetworkContextGetter;
   using DnsConfigChangeManagerGetter =
       DnsProbeServiceFactory::DnsConfigChangeManagerGetter;
 
   explicit DnsProbeServiceImpl(content::BrowserContext* context);
   DnsProbeServiceImpl(
-      const network::NetworkContextGetter& network_context_getter,
+      const NetworkContextGetter& network_context_getter,
       const DnsConfigChangeManagerGetter& dns_config_change_manager_getter,
       const base::TickClock* tick_clock);
 
@@ -136,7 +146,7 @@ class DnsProbeServiceImpl
   base::TimeTicks probe_start_time_;
   error_page::DnsProbeStatus cached_result_;
 
-  network::NetworkContextGetter network_context_getter_;
+  NetworkContextGetter network_context_getter_;
   DnsConfigChangeManagerGetter dns_config_change_manager_getter_;
   mojo::Receiver<network::mojom::DnsConfigChangeManagerClient> receiver_{this};
   net::SecureDnsMode current_config_secure_dns_mode_ = net::SecureDnsMode::kOff;
@@ -163,7 +173,7 @@ DnsProbeServiceImpl::DnsProbeServiceImpl(content::BrowserContext* context)
           base::DefaultTickClock::GetInstance()) {}
 
 DnsProbeServiceImpl::DnsProbeServiceImpl(
-    const network::NetworkContextGetter& network_context_getter,
+    const NetworkContextGetter& network_context_getter,
     const DnsConfigChangeManagerGetter& dns_config_change_manager_getter,
     const base::TickClock* tick_clock)
     : state_(STATE_NO_RESULT),
@@ -272,6 +282,8 @@ void DnsProbeServiceImpl::OnProbeComplete() {
   cached_result_ = EvaluateResults(current_config_runner_->result(),
                                    google_config_runner_->result());
   state_ = STATE_RESULT_CACHED;
+
+  HistogramProbe(cached_result_, tick_clock_->NowTicks() - probe_start_time_);
 
   CallCallbacks();
 }
@@ -389,32 +401,25 @@ DnsProbeService* DnsProbeServiceFactory::GetForContext(
 }
 
 DnsProbeServiceFactory* DnsProbeServiceFactory::GetInstance() {
-  static base::NoDestructor<DnsProbeServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<DnsProbeServiceFactory>::get();
 }
 
 DnsProbeServiceFactory::DnsProbeServiceFactory()
     : ProfileKeyedServiceFactory(
           "DnsProbeService",
           // Create separate service for incognito profiles.
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
-DnsProbeServiceFactory::~DnsProbeServiceFactory() = default;
+DnsProbeServiceFactory::~DnsProbeServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-DnsProbeServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* DnsProbeServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<DnsProbeServiceImpl>(context);
+  return new DnsProbeServiceImpl(context);
 }
 
 // static
 std::unique_ptr<DnsProbeService> DnsProbeServiceFactory::CreateForTesting(
-    const network::NetworkContextGetter& network_context_getter,
+    const NetworkContextGetter& network_context_getter,
     const DnsConfigChangeManagerGetter& dns_config_change_manager_getter,
     const base::TickClock* tick_clock) {
   return std::make_unique<DnsProbeServiceImpl>(

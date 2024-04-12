@@ -20,7 +20,7 @@ class WindowDimmer;
 
 // Dialog which embeds the Parent Access UI, which verifies a
 // parent during a child session.
-class ParentAccessDialog : public ParentAccessUiHandlerDelegate,
+class ParentAccessDialog : public ParentAccessUIHandlerDelegate,
                            public SystemWebDialogDelegate {
  public:
   struct Result {
@@ -53,10 +53,8 @@ class ParentAccessDialog : public ParentAccessUiHandlerDelegate,
   ui::ModalType GetDialogModalType() const override;
   void GetDialogSize(gfx::Size* size) const override;
   bool ShouldCloseDialogOnEscape() const override;
-  bool ShouldShowDialogTitle() const override;
-  bool ShouldShowCloseButton() const override;
 
-  // ParentAccessUiHandlerDelegate:
+  // ParentAccessUIHandlerDelegate:
   parent_access_ui::mojom::ParentAccessParamsPtr CloneParentAccessParams()
       override;
   void SetApproved(const std::string& parent_access_token,

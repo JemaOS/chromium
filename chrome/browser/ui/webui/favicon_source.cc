@@ -28,8 +28,8 @@
 #include "extensions/common/constants.h"
 #include "extensions/common/manifest.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/base/layout.h"
 #include "ui/base/resource/resource_bundle.h"
-#include "ui/base/resource/resource_scale_factor.h"
 #include "ui/base/webui/web_ui_util.h"
 #include "ui/gfx/codec/png_codec.h"
 #include "ui/native_theme/native_theme.h"
@@ -120,6 +120,18 @@ void FaviconSource::StartDataRequest(
     SendDefaultResponse(std::move(callback), wc_getter,
                         parsed.force_light_mode);
     return;
+  }
+
+  if (url_format_ == chrome::FaviconUrlFormat::kFaviconLegacy) {
+    const extensions::Extension* extension =
+        extensions::ExtensionRegistry::Get(profile_)
+            ->enabled_extensions()
+            .GetExtensionOrAppByURL(GetUnsafeRequestOrigin(wc_getter));
+    if (extension) {
+      base::UmaHistogramEnumeration("Extensions.FaviconResourceRequested",
+                                    extension->GetType(),
+                                    extensions::Manifest::NUM_LOAD_TYPES);
+    }
   }
 
   if (parsed.page_url.empty()) {

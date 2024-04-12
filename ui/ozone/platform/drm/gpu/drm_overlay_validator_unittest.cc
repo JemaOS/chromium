@@ -15,7 +15,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/test/task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/gpu_fence.h"
 #include "ui/gfx/linux/drm_util_linux.h"
@@ -91,7 +90,7 @@ class MAYBE_DrmOverlayValidatorTest : public testing::Test {
     CommitRequest commit_request;
 
     DrmOverlayPlaneList modeset_planes;
-    modeset_planes.push_back(DrmOverlayPlane::TestPlane(CreateBuffer()));
+    modeset_planes.emplace_back(CreateBuffer(), nullptr);
 
     controller->GetModesetProps(&commit_request, modeset_planes, kDefaultMode,
                                 /*enable_vrr=*/false);
@@ -132,10 +131,10 @@ class MAYBE_DrmOverlayValidatorTest : public testing::Test {
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::SingleThreadTaskEnvironment::MainThreadType::UI};
   scoped_refptr<MockDrmDevice> drm_;
-  raw_ptr<MockGbmDevice> gbm_ = nullptr;
+  raw_ptr<MockGbmDevice, ExperimentalAsh> gbm_ = nullptr;
   std::unique_ptr<ScreenManager> screen_manager_;
   std::unique_ptr<DrmDeviceManager> drm_device_manager_;
-  raw_ptr<DrmWindow, DanglingUntriaged> window_;
+  raw_ptr<DrmWindow, ExperimentalAsh> window_;
   std::unique_ptr<DrmOverlayValidator> overlay_validator_;
   std::vector<OverlaySurfaceCandidate> overlay_params_;
   DrmOverlayPlaneList plane_list_;
@@ -211,13 +210,12 @@ void MAYBE_DrmOverlayValidatorTest::SetupControllers() {
   screen_manager_ = std::make_unique<ScreenManager>();
   screen_manager_->AddDisplayController(drm_, primary_crtc_id,
                                         primary_connector_id);
-  std::vector<ControllerConfigParams> controllers_to_enable;
+  std::vector<ScreenManager::ControllerConfigParams> controllers_to_enable;
   controllers_to_enable.emplace_back(
       1 /*display_id*/, drm_, primary_crtc_id, primary_connector_id,
       gfx::Point(), std::make_unique<drmModeModeInfo>(kDefaultMode));
   screen_manager_->ConfigureDisplayControllers(
-      controllers_to_enable, {display::ModesetFlag::kTestModeset,
-                              display::ModesetFlag::kCommitModeset});
+      controllers_to_enable, display::kTestModeset | display::kCommitModeset);
 
   drm_device_manager_ = std::make_unique<DrmDeviceManager>(nullptr);
 
@@ -262,8 +260,7 @@ void MAYBE_DrmOverlayValidatorTest::AddPlane(
   scoped_refptr<DrmFramebuffer> drm_framebuffer = CreateOverlayBuffer(
       GetFourCCFormatFromBufferFormat(params.format), params.buffer_size);
   plane_list_.emplace_back(
-      std::move(drm_framebuffer), params.color_space, params.plane_z_order,
-      absl::get<gfx::OverlayTransform>(params.transform), gfx::Rect(),
+      std::move(drm_framebuffer), params.plane_z_order, params.transform,
       gfx::ToNearestRect(params.display_rect), params.crop_rect, true, nullptr);
 }
 

@@ -19,33 +19,31 @@ let openTab;
 chrome.test.getConfig(config => chrome.test.runTests([
 
   function attachMalformedVersion() {
-    chrome.tabs.query({active: true}, function(tabs) {
-      chrome.debugger.attach({tabId: tabs[0].id}, "malformed-version", fail(
+    chrome.tabs.getSelected(null, function(tab) {
+      chrome.debugger.attach({tabId: tab.id}, "malformed-version", fail(
           "Requested protocol version is not supported: malformed-version."));
     });
   },
 
   function attachUnsupportedMinorVersion() {
-    chrome.tabs.query({active: true}, function(tabs) {
-      chrome.debugger.attach({tabId: tabs[0].id},
-                             unsupportedMinorProtocolVersion,
+    chrome.tabs.getSelected(null, function(tab) {
+      chrome.debugger.attach({tabId: tab.id}, unsupportedMinorProtocolVersion,
           fail("Requested protocol version is not supported: " +
               unsupportedMinorProtocolVersion + "."));
     });
   },
 
   function attachUnsupportedVersion() {
-    chrome.tabs.query({active: true}, function(tabs) {
-      chrome.debugger.attach({tabId: tabs[0].id},
-                             unsupportedMajorProtocolVersion,
+    chrome.tabs.getSelected(null, function(tab) {
+      chrome.debugger.attach({tabId: tab.id}, unsupportedMajorProtocolVersion,
           fail("Requested protocol version is not supported: " +
               unsupportedMajorProtocolVersion + "."));
     });
   },
 
   function attachPreviousVersion() {
-    chrome.tabs.query({active: true}, function(tabs) {
-      debuggee = {tabId: tabs[0].id};
+    chrome.tabs.getSelected(null, function(tab) {
+      debuggee = {tabId: tab.id};
       chrome.debugger.attach(debuggee, protocolPreviousVersion, function() {
         chrome.debugger.detach(debuggee, pass());
       });
@@ -53,9 +51,9 @@ chrome.test.getConfig(config => chrome.test.runTests([
   },
 
   function attachLatestVersion() {
-    chrome.tabs.query({active: true}, function(tabs) {
-      tabId = tabs[0].id;
-      debuggee = {tabId: tabId};
+    chrome.tabs.getSelected(null, function(tab) {
+      tabId = tab.id;
+      debuggee = {tabId: tab.id};
       chrome.debugger.attach(debuggee, protocolVersion, pass());
     });
   },
@@ -180,7 +178,7 @@ chrome.test.getConfig(config => chrome.test.runTests([
   },
 
   function attachToOwnBackgroundPageWithNoSilentFlag() {
-    var ownExtensionId = chrome.runtime.getURL('').split('/')[2];
+    var ownExtensionId = chrome.extension.getURL('').split('/')[2];
     debuggee = {extensionId: ownExtensionId};
     chrome.debugger.attach(debuggee, protocolVersion, pass());
   },
@@ -327,7 +325,6 @@ chrome.test.getConfig(config => chrome.test.runTests([
     });
   },
 
-  /* TODO(crbug.com/1434257): This test is flaky.
   async function offlineErrorPage() {
     const url = 'http://127.0.0.1//extensions/api_test/debugger/inspected.html';
     const tab = await openTab(url);
@@ -408,7 +405,6 @@ chrome.test.getConfig(config => chrome.test.runTests([
     chrome.debugger.onEvent.addListener(onEvent);
     chrome.debugger.attach(debuggee, protocolVersion, onAttach);
   },
-  */
 
   function autoAttachToOOPIF() {
     if (!config.customArg) {

@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startBlank(
       'Verifies that WebSocket binary messages are encoded as base64 over the protocol');
   await dp.Network.enable();

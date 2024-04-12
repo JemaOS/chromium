@@ -14,9 +14,8 @@
 #include "testing/perf/perf_result_reporter.h"
 #include "testing/perf/perf_test.h"
 
-namespace {
-
-std::string Statistic(const std::string& statistic, const std::string& bucket) {
+static std::string Statistic(const std::string& statistic,
+                             const std::string& bucket) {
   // A ssrc stats key will be on the form stats.<bucket>-<key>.values.
   // This will give a json "path" which will dig into the time series for the
   // specified statistic. Buckets can be for instance ssrc_1212344, bweforvideo,
@@ -26,9 +25,9 @@ std::string Statistic(const std::string& statistic, const std::string& bucket) {
                             statistic.c_str());
 }
 
-void MaybePrintResultsForAudioReceive(const std::string& ssrc,
-                                      const base::Value::Dict& pc_dict,
-                                      const std::string& modifier) {
+static void MaybePrintResultsForAudioReceive(const std::string& ssrc,
+                                             const base::Value::Dict& pc_dict,
+                                             const std::string& modifier) {
   const std::string* value =
       pc_dict.FindStringByDottedPath(Statistic("audioOutputLevel", ssrc));
   if (!value) {
@@ -61,9 +60,9 @@ void MaybePrintResultsForAudioReceive(const std::string& ssrc,
                          *value, "%", false);
 }
 
-void MaybePrintResultsForAudioSend(const std::string& ssrc,
-                                   const base::Value::Dict& pc_dict,
-                                   const std::string& modifier) {
+static void MaybePrintResultsForAudioSend(const std::string& ssrc,
+                                          const base::Value::Dict& pc_dict,
+                                          const std::string& modifier) {
   const std::string* value =
       pc_dict.FindStringByDottedPath(Statistic("audioInputLevel", ssrc));
   if (!value) {
@@ -85,9 +84,9 @@ void MaybePrintResultsForAudioSend(const std::string& ssrc,
                          *value, "packets", false);
 }
 
-void MaybePrintResultsForVideoSend(const std::string& ssrc,
-                                   const base::Value::Dict& pc_dict,
-                                   const std::string& modifier) {
+static void MaybePrintResultsForVideoSend(const std::string& ssrc,
+                                          const base::Value::Dict& pc_dict,
+                                          const std::string& modifier) {
   const std::string* value =
       pc_dict.FindStringByDottedPath(Statistic("googFrameRateSent", ssrc));
   if (!value) {
@@ -139,9 +138,9 @@ void MaybePrintResultsForVideoSend(const std::string& ssrc,
                          "goog_encode_usage_percent", *value, "%", false);
 }
 
-void MaybePrintResultsForVideoReceive(const std::string& ssrc,
-                                      const base::Value::Dict& pc_dict,
-                                      const std::string& modifier) {
+static void MaybePrintResultsForVideoReceive(const std::string& ssrc,
+                                             const base::Value::Dict& pc_dict,
+                                             const std::string& modifier) {
   const std::string* value =
       pc_dict.FindStringByDottedPath(Statistic("googFrameRateReceived", ssrc));
   if (!value) {
@@ -199,7 +198,7 @@ void MaybePrintResultsForVideoReceive(const std::string& ssrc,
                          "ms", false);
 }
 
-std::string ExtractSsrcIdentifier(const std::string& key) {
+static std::string ExtractSsrcIdentifier(const std::string& key) {
   // Example key: ssrc_1234-someStatName. Grab the part before the dash.
   size_t key_start_pos = 0;
   size_t key_end_pos = key.find("-");
@@ -209,7 +208,7 @@ std::string ExtractSsrcIdentifier(const std::string& key) {
 
 // Returns the set of unique ssrc identifiers in the call (e.g. ssrc_1234,
 // ssrc_12356, etc). |stats_dict| is the .stats dict from one peer connection.
-std::set<std::string> FindAllSsrcIdentifiers(
+static std::set<std::string> FindAllSsrcIdentifiers(
     const base::Value::Dict& stats_dict) {
   std::set<std::string> result;
   for (auto kv : stats_dict) {
@@ -218,8 +217,6 @@ std::set<std::string> FindAllSsrcIdentifiers(
   }
   return result;
 }
-
-}  // namespace
 
 namespace test {
 

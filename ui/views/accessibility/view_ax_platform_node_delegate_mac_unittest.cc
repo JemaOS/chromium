@@ -5,11 +5,11 @@
 #include "ui/views/accessibility/view_ax_platform_node_delegate.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/views/test/views_test_base.h"
 #include "ui/views/widget/widget_delegate.h"
@@ -39,10 +39,10 @@ class AccessibleView : public View {
     return static_cast<ViewAXPlatformNodeDelegate*>(&GetViewAccessibility());
   }
 
-  void SetDescription(const std::optional<std::string>& descritpion) {
+  void SetDescription(const absl::optional<std::string>& descritpion) {
     description_ = descritpion;
   }
-  const std::optional<std::string>& GetDescription() const {
+  const absl::optional<std::string>& GetDescription() const {
     return description_;
   }
 
@@ -53,7 +53,7 @@ class AccessibleView : public View {
   ax::mojom::Role GetRole() const { return role_; }
 
  private:
-  std::optional<std::string> description_ = kDescription;
+  absl::optional<std::string> description_ = kDescription;
   std::string name_ = kDialogName;
   ax::mojom::Role role_ = ax::mojom::Role::kDialog;
 };
@@ -69,7 +69,7 @@ class ViewAXPlatformNodeDelegateMacTest : public ViewsTestBase {
     ViewsTestBase::SetUp();
     widget_ = CreateTestWidget();
     widget_->widget_delegate()->SetTitle(base::ASCIIToUTF16(kDialogName));
-    widget_->SetContentsView(std::make_unique<AccessibleView>());
+    view_ = widget_->SetContentsView(std::make_unique<AccessibleView>());
   }
 
   void TearDown() override {
@@ -78,57 +78,53 @@ class ViewAXPlatformNodeDelegateMacTest : public ViewsTestBase {
   }
 
  protected:
-  AccessibleView* view() {
-    return static_cast<AccessibleView*>(widget_->GetContentsView());
-  }
-
- private:
   std::unique_ptr<Widget> widget_;
+  raw_ptr<AccessibleView> view_;
 };
 
 TEST_F(ViewAXPlatformNodeDelegateMacTest,
        GetNameReturnsNodeNameWhenNameAndTitleAreEqual) {
-  EXPECT_NE(view()->GetPlatformNodeDelegate()->GetName(),
-            *view()->GetDescription());
+  EXPECT_NE(view_->GetPlatformNodeDelegate()->GetName(),
+            *view_->GetDescription());
 }
 
 TEST_F(ViewAXPlatformNodeDelegateMacTest,
        GetNameReturnsNodeNameWhenNameAndTitleAreDifferent) {
-  EXPECT_NE(view()->GetPlatformNodeDelegate()->GetName(),
-            *view()->GetDescription());
+  EXPECT_NE(view_->GetPlatformNodeDelegate()->GetName(),
+            *view_->GetDescription());
 
-  view()->SetNameChecked(kDifferentNodeName);
+  view_->SetNameChecked(kDifferentNodeName);
 
-  EXPECT_EQ(view()->GetPlatformNodeDelegate()->GetName(), kDifferentNodeName);
+  EXPECT_EQ(view_->GetPlatformNodeDelegate()->GetName(), kDifferentNodeName);
 }
 
 TEST_F(ViewAXPlatformNodeDelegateMacTest, GetNameReturnsNodeNameForNonDialog) {
-  EXPECT_NE(view()->GetPlatformNodeDelegate()->GetName(),
-            *view()->GetDescription());
+  EXPECT_NE(view_->GetPlatformNodeDelegate()->GetName(),
+            *view_->GetDescription());
 
-  view()->SetRole(ax::mojom::Role::kDesktop);
+  view_->SetRole(ax::mojom::Role::kDesktop);
 
-  EXPECT_EQ(view()->GetPlatformNodeDelegate()->GetName(), kDialogName);
+  EXPECT_EQ(view_->GetPlatformNodeDelegate()->GetName(), kDialogName);
 }
 
 TEST_F(ViewAXPlatformNodeDelegateMacTest,
        GetNameReturnsNodeNameWhenDescriptionIsNotSet) {
-  EXPECT_NE(view()->GetPlatformNodeDelegate()->GetName(),
-            *view()->GetDescription());
+  EXPECT_NE(view_->GetPlatformNodeDelegate()->GetName(),
+            *view_->GetDescription());
 
-  view()->SetDescription(std::nullopt);
+  view_->SetDescription(absl::nullopt);
 
-  EXPECT_EQ(view()->GetPlatformNodeDelegate()->GetName(), kDialogName);
+  EXPECT_EQ(view_->GetPlatformNodeDelegate()->GetName(), kDialogName);
 }
 
 TEST_F(ViewAXPlatformNodeDelegateMacTest,
        GetNameReturnsNodeNameWhenDescriptionIsAnEmptyString) {
-  EXPECT_NE(view()->GetPlatformNodeDelegate()->GetName(),
-            *view()->GetDescription());
+  EXPECT_NE(view_->GetPlatformNodeDelegate()->GetName(),
+            *view_->GetDescription());
 
-  view()->SetDescription("");
+  view_->SetDescription("");
 
-  EXPECT_EQ(view()->GetPlatformNodeDelegate()->GetName(), kDialogName);
+  EXPECT_EQ(view_->GetPlatformNodeDelegate()->GetName(), kDialogName);
 }
 
 }  // namespace views::test

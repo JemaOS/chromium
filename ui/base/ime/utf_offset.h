@@ -5,10 +5,9 @@
 #ifndef UI_BASE_IME_UTF_OFFSET_H_
 #define UI_BASE_IME_UTF_OFFSET_H_
 
-#include <optional>
-
 #include "base/component_export.h"
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ui {
 
@@ -16,15 +15,15 @@ namespace ui {
 // Returns nullopt if the given offset is invalid (not at a valid boundary
 // or out of range).
 COMPONENT_EXPORT(UI_BASE)
-std::optional<size_t> Utf16OffsetFromUtf8Offset(base::StringPiece text,
-                                                size_t utf8_offset);
+absl::optional<size_t> Utf16OffsetFromUtf8Offset(base::StringPiece text,
+                                                 size_t utf8_offset);
 
 // Given UTF16 string and its valid offset, returns the offset in UTF8.
 // Returns nullopt if the given offset is invalid (not at a valid boundary
 // or out of range).
 COMPONENT_EXPORT(UI_BASE)
-std::optional<size_t> Utf8OffsetFromUtf16Offset(base::StringPiece16 text,
-                                                size_t utf16_offset);
+absl::optional<size_t> Utf8OffsetFromUtf16Offset(base::StringPiece16 text,
+                                                 size_t utf16_offset);
 
 }  // namespace ui
 

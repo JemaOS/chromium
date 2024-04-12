@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
 #include <string>
 
 #include "ash/constants/ash_switches.h"
@@ -20,6 +19,7 @@
 #include "content/public/test/browser_test_utils.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/switches.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy {
 
@@ -52,7 +52,7 @@ class NoteTakingOnLockScreenPolicyTest : public ExtensionPolicyTestBase {
                                                enabled_on_lock_screen);
   }
 
-  void SetPolicyValue(std::optional<base::Value> value) {
+  void SetPolicyValue(absl::optional<base::Value> value) {
     PolicyMap policies;
     if (value) {
       policies.Set(key::kNoteTakingAppsLockScreenAllowlist,
@@ -89,7 +89,7 @@ IN_PROC_BROWSER_TEST_F(NoteTakingOnLockScreenPolicyTest,
   EXPECT_EQ(ash::LockScreenAppSupport::kNotAllowedByPolicy,
             GetLockScreenSupportForApp(app->id()));
 
-  SetPolicyValue(std::nullopt);
+  SetPolicyValue(absl::nullopt);
   EXPECT_EQ(ash::LockScreenAppSupport::kEnabled,
             GetLockScreenSupportForApp(app->id()));
 }

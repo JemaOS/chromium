@@ -5,13 +5,8 @@
     height: 100%;
   }
 
-  /* TODO(b/323429208): Remove jelly-enabled and update css style. */
   :host-context(body.jelly-enabled) navigation-view-panel {
     --navigation-view-panel-bg-color: var(--cros-sys-app_base_shaded);
-  }
-
-  #diagnosticsAppContainer {
-    height: 100%;
   }
 
   #navigationPanel::part(top-nav) {
@@ -29,6 +24,13 @@
     height: 20px;
     margin-inline-end: 8px;
     width: 20px;
+  }
+
+  #learn-more-icon {
+    --iron-icon-height: 14px;
+    --iron-icon-width: 14px;
+    margin-inline-start: -10px;
+    margin-bottom: 4px;
   }
 
   .session-log-button {
@@ -68,6 +70,9 @@
         <iron-icon icon="diagnostics:download" id="download-icon"></iron-icon>
         <span>[[i18n('sessionLog')]]</span>
       </cr-button>
+      <a href="[[jemaDiagnosticAppUrl_]]" target="_blank">
+        <iron-icon icon="diagnostics:question" id="learn-more-icon"></iron-icon>
+      </a>
     </div>
     <div slot="bottom-nav-content-drawer" class="session-log-container">
       <cr-button on-click="onSessionLogClick" class="session-log-button"
@@ -75,6 +80,9 @@
         <iron-icon icon="diagnostics:download" id="download-icon"></iron-icon>
         <span>[[i18n('sessionLog')]]</span>
       </cr-button>
+      <a href="[[jemaDiagnosticAppUrl_]]" target="_blank">
+        <iron-icon icon="diagnostics:question" id="learn-more-icon"></iron-icon>
+      </a>
     </div>
   </navigation-view-panel>
   <cr-toast id="toast" duration="2500">

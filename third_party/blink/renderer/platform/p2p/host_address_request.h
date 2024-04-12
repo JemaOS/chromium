@@ -7,15 +7,14 @@
 
 #include <stdint.h>
 
-#include <optional>
-
 #include "base/functional/callback.h"
 #include "base/memory/ref_counted.h"
 #include "base/threading/thread_checker.h"
 #include "net/base/ip_address.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/platform/heap/cross_thread_persistent.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
-#include "third_party/webrtc/rtc_base/socket_address.h"
+#include "third_party/webrtc/rtc_base/async_resolver_interface.h"
 
 namespace blink {
 
@@ -35,7 +34,7 @@ class P2PAsyncAddressResolver
 
   // Start address resolve process.
   void Start(const rtc::SocketAddress& addr,
-             std::optional<int> address_family,
+             absl::optional<int> address_family,
              DoneCallback done_callback);
   // Clients must unregister before exiting for cleanup.
   void Cancel();

@@ -4,9 +4,6 @@
 
 #include "ui/ozone/public/native_pixmap_gl_binding.h"
 
-#include "base/notreached.h"
-#include "ui/gl/gl_bindings.h"
-
 namespace ui {
 
 NativePixmapGLBinding::NativePixmapGLBinding() = default;

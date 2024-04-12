@@ -5,14 +5,9 @@
 #ifndef CHROME_BROWSER_POLICY_MESSAGING_LAYER_UPLOAD_FAKE_UPLOAD_CLIENT_H_
 #define CHROME_BROWSER_POLICY_MESSAGING_LAYER_UPLOAD_FAKE_UPLOAD_CLIENT_H_
 
-#include <vector>
-
 #include "base/memory/raw_ptr.h"
 #include "base/values.h"
 #include "chrome/browser/policy/messaging_layer/upload/upload_client.h"
-#include "chrome/browser/policy/messaging_layer/util/upload_response_parser.h"
-#include "components/reporting/proto/synced/record.pb.h"
-#include "components/reporting/resources/resource_manager.h"
 
 namespace reporting {
 
@@ -27,7 +22,6 @@ class FakeUploadClient : public UploadClient {
 
   Status EnqueueUpload(
       bool need_encryption_key,
-      int config_file_version,
       std::vector<EncryptedRecord> records,
       ScopedReservation scoped_reservation,
       ReportSuccessfulUploadCallback report_upload_success_cb,
@@ -37,9 +31,10 @@ class FakeUploadClient : public UploadClient {
   FakeUploadClient();
 
   void OnUploadComplete(
+      ScopedReservation scoped_reservation,
       ReportSuccessfulUploadCallback report_upload_success_cb,
       EncryptionKeyAttachedCallback encryption_key_attached_cb,
-      StatusOr<UploadResponseParser> response);
+      StatusOr<base::Value::Dict> response);
 };
 
 }  // namespace reporting

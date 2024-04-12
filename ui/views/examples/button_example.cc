@@ -9,8 +9,6 @@
 
 #include "base/strings/utf_string_conversions.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/image/image.h"
@@ -134,8 +132,6 @@ class SolidRoundRectPainterWithShadow : public Painter {
 // library. This is a prototype of a potential way to implement such an effect
 // by overriding the hover effect to draw a new background with a shadow.
 class FabButton : public views::MdTextButton {
-  METADATA_HEADER(FabButton, views::MdTextButton)
-
  public:
   using MdTextButton::MdTextButton;
   FabButton(const FabButton&) = delete;
@@ -169,8 +165,28 @@ class FabButton : public views::MdTextButton {
   bool use_shadow_ = false;
 };
 
-BEGIN_METADATA(FabButton)
-END_METADATA
+class IconAndTextButton : public views::MdTextButton {
+ public:
+  IconAndTextButton(PressedCallback callback,
+                    const std::u16string& text,
+                    const gfx::VectorIcon& icon)
+      : MdTextButton(callback, text), icon_(icon) {}
+  IconAndTextButton(const IconAndTextButton&) = delete;
+  IconAndTextButton& operator=(const IconAndTextButton&) = delete;
+  ~IconAndTextButton() override = default;
+
+  void OnThemeChanged() override {
+    views::MdTextButton::OnThemeChanged();
+
+    // Use the text color for the associated vector image.
+    SetImageModel(
+        views::Button::ButtonState::STATE_NORMAL,
+        ui::ImageModel::FromVectorIcon(*icon_, label()->GetEnabledColor()));
+  }
+
+ private:
+  const raw_ref<const gfx::VectorIcon> icon_;
+};
 
 ButtonExample::ButtonExample() : ExampleBase("Button") {
   ui::ResourceBundle& rb = ui::ResourceBundle::GetSharedInstance();
@@ -181,6 +197,7 @@ ButtonExample::~ButtonExample() = default;
 
 void ButtonExample::CreateExampleView(View* container) {
   container->SetUseDefaultFillLayout(true);
+  ui::ResourceBundle& rb = ui::ResourceBundle::GetSharedInstance();
 
   auto view = Builder<BoxLayoutView>()
                   .SetOrientation(BoxLayout::Orientation::kVertical)
@@ -207,15 +224,12 @@ void ButtonExample::CreateExampleView(View* container) {
                                    .SetIsDefault(true),
                                Builder<MdTextButton>()
                                    .CopyAddressTo(&md_tonal_button_)
-                                   .SetStyle(ui::ButtonStyle::kTonal)
+                                   .SetStyle(MdTextButton::Style::kTonal)
                                    .SetText(u"Tonal"),
                                Builder<MdTextButton>()
                                    .CopyAddressTo(&md_text_button_)
-                                   .SetStyle(ui::ButtonStyle::kText)
+                                   .SetStyle(MdTextButton::Style::kText)
                                    .SetText(u"Material Text"),
-                               Builder<MdTextButton>()
-                                   .CopyAddressTo(&md_icon_text_button_)
-                                   .SetText(u"Material Text with Icon"),
                                Builder<ImageButton>()
                                    .CopyAddressTo(&image_button_)
                                    .SetAccessibleName(l10n_util::GetStringUTF16(
@@ -225,9 +239,12 @@ void ButtonExample::CreateExampleView(View* container) {
                                        &ButtonExample::ImageButtonPressed,
                                        base::Unretained(this))))
                   .Build();
-  md_icon_text_button_->SetImageModel(
-      views::Button::ButtonState::STATE_NORMAL,
-      ui::ImageModel::FromVectorIcon(views::kInfoIcon));
+
+  view->AddChildView(std::make_unique<IconAndTextButton>(
+      base::BindRepeating(&ButtonExample::ImageButtonPressed,
+                          base::Unretained(this)),
+      l10n_util::GetStringUTF16(IDS_COLORED_DIALOG_CHOOSER_BUTTON),
+      views::kInfoIcon));
   view->AddChildView(std::make_unique<FabButton>(
       base::BindRepeating(&ButtonExample::ImageButtonPressed,
                           base::Unretained(this)),
@@ -238,12 +255,12 @@ void ButtonExample::CreateExampleView(View* container) {
                           base::Unretained(this)),
       views::kLaunchIcon, u"Icon button"));
 
-  image_button_->SetImageModel(ImageButton::STATE_NORMAL,
-                               ui::ImageModel::FromResourceId(IDR_CLOSE));
-  image_button_->SetImageModel(ImageButton::STATE_HOVERED,
-                               ui::ImageModel::FromResourceId(IDR_CLOSE_H));
-  image_button_->SetImageModel(ImageButton::STATE_PRESSED,
-                               ui::ImageModel::FromResourceId(IDR_CLOSE_P));
+  image_button_->SetImage(ImageButton::STATE_NORMAL,
+                          rb.GetImageNamed(IDR_CLOSE).ToImageSkia());
+  image_button_->SetImage(ImageButton::STATE_HOVERED,
+                          rb.GetImageNamed(IDR_CLOSE_H).ToImageSkia());
+  image_button_->SetImage(ImageButton::STATE_PRESSED,
+                          rb.GetImageNamed(IDR_CLOSE_P).ToImageSkia());
 
   container->AddChildView(std::move(view));
 }

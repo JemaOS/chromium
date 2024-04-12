@@ -4,7 +4,7 @@
 
 #include "chrome/browser/offline_items_collection/offline_content_aggregator_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "components/keyed_service/core/simple_dependency_manager.h"
@@ -13,8 +13,7 @@
 // static
 OfflineContentAggregatorFactory*
 OfflineContentAggregatorFactory::GetInstance() {
-  static base::NoDestructor<OfflineContentAggregatorFactory> instance;
-  return instance.get();
+  return base::Singleton<OfflineContentAggregatorFactory>::get();
 }
 
 // static

@@ -68,17 +68,19 @@ bool PointerLockController::RequestPointerLock(Element* target,
   return true;
 }
 
-void PointerLockController::RequestPointerLock(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver,
+ScriptPromise PointerLockController::RequestPointerLock(
+    ScriptPromiseResolver* resolver,
     Element* target,
     ExceptionState& exception_state,
     const PointerLockOptions* options) {
+  ScriptPromise promise = resolver->Promise();
+
   if (!target || !target->isConnected() ||
       document_of_removed_element_while_waiting_for_unlock_) {
     EnqueueEvent(event_type_names::kPointerlockerror, target);
     exception_state.ThrowDOMException(DOMExceptionCode::kWrongDocumentError,
                                       "Target Element removed from DOM");
-    return;
+    return promise;
   }
 
   LocalDOMWindow* window = To<LocalDOMWindow>(target->GetExecutionContext());
@@ -112,7 +114,7 @@ void PointerLockController::RequestPointerLock(
               "is "
               "sandboxed and the 'allow-pointer-lock' permission is not set.",
         "");
-    return;
+    return promise;
   }
 
   bool unadjusted_movement_requested =
@@ -124,7 +126,7 @@ void PointerLockController::RequestPointerLock(
           DOMExceptionCode::kWrongDocumentError,
           "The new element is not in the same shadow-root document as the "
           "element that currently holds the lock.");
-      return;
+      return promise;
     }
     // Attempt to change options if necessary.
     if (unadjusted_movement_requested != current_unadjusted_movement_setting_) {
@@ -132,7 +134,7 @@ void PointerLockController::RequestPointerLock(
         EnqueueEvent(event_type_names::kPointerlockerror, target);
         exception_state.ThrowDOMException(
             DOMExceptionCode::kInUseAttributeError, "Pointer lock pending.");
-        return;
+        return promise;
       }
 
       mouse_lock_context_->RequestMouseLockChange(
@@ -143,7 +145,7 @@ void PointerLockController::RequestPointerLock(
               WTF::BindOnce(&PointerLockController::ProcessResultScriptPromise,
                             WrapPersistent(resolver)),
               unadjusted_movement_requested));
-      return;
+      return promise;
     }
 
     EnqueueEvent(event_type_names::kPointerlockchange, target);
@@ -164,6 +166,8 @@ void PointerLockController::RequestPointerLock(
     lock_pending_ = true;
     element_ = target;
   }
+
+  return promise;
 }
 
 void PointerLockController::ChangeLockRequestCallback(
@@ -200,7 +204,7 @@ void PointerLockController::LockRequestCallback(
 }
 
 void PointerLockController::ProcessResultScriptPromise(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver,
+    ScriptPromiseResolver* resolver,
     mojom::blink::PointerLockResult result) {
   if (result == mojom::blink::PointerLockResult::kSuccess) {
     resolver->Resolve();

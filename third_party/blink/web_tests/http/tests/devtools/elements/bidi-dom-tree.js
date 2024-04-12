@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
 (async function() {
   TestRunner.addResult(`Tests that elements panel correctly displays DOM tree structure for bi-di pages.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <!DOCTYPE html>
@@ -14,7 +12,9 @@ import {ElementsTestRunner} from 'elements_test_runner';
     `);
 
   // Warm up highlighter module.
-  ElementsTestRunner.expandElementsTree(step1);
+  TestRunner.loadLegacyModule('source_frame').then(function() {
+    ElementsTestRunner.expandElementsTree(step1);
+  });
 
   function step1() {
     ElementsTestRunner.dumpElementsTree();

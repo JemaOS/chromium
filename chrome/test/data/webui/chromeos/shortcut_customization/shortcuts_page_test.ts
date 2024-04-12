@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 import 'chrome://shortcut-customization/js/shortcuts_page.js';
-import 'chrome://webui-test/chromeos/mojo_webui_test_support.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {AcceleratorLookupManager} from 'chrome://shortcut-customization/js/accelerator_lookup_manager.js';
 import {AcceleratorRowElement} from 'chrome://shortcut-customization/js/accelerator_row.js';
@@ -13,7 +13,7 @@ import {AcceleratorCategory, AcceleratorSource, AcceleratorSubcategory, MojoAcce
 import {SHORTCUTS_APP_URL} from 'chrome://shortcut-customization/js/shortcut_utils.js';
 import {ShortcutsPageElement} from 'chrome://shortcut-customization/js/shortcuts_page.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {flushTasks, waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
+import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 
 function initShortcutsPageElement(category: AcceleratorCategory):
     ShortcutsPageElement {
@@ -171,16 +171,15 @@ suite('ShortcutsPageTest', function() {
 
     // Disable smooth scroll so that the scroll completes instantly.
     disableScrollAnimation(AcceleratorRowElement);
-    shortcutsPageElement.setScrollTimeoutForTesting(/*timeout=*/ 0);
 
     // Trigger onRouteChanged as if the user had selected a SearchResultRow.
     shortcutsPageElement.onRouteChanged(new URL(`${SHORTCUTS_APP_URL}?action=${
         lastAcceleratorRow.action}&category=${AcceleratorCategory.kGeneral}`));
 
     await flushTasks();
+
     // After `onRouteChanged`, the AcceleratorRow is now visible.
     assertTrue(isVisibleVerticallyInViewport(lastAcceleratorRow));
-    // TODO(longbowei): Add test to verify lastAcceleratorRow is focused.
   });
 
   test('ScrollIntoView works when page changes', async () => {
@@ -206,7 +205,6 @@ suite('ShortcutsPageTest', function() {
 
     // Disable smooth scroll so that the scroll completes instantly.
     disableScrollAnimation(AcceleratorRowElement);
-    shortcutsPageElement.setScrollTimeoutForTesting(/*timeout=*/ 0);
 
     // Update the URL of the app and trigger onNavigationPageChanged as if the
     // user had selected a SearchResultRow.
@@ -216,11 +214,9 @@ suite('ShortcutsPageTest', function() {
             AcceleratorCategory.kGeneral}`);
     shortcutsPageElement.onNavigationPageChanged({isActive: true});
 
-    await waitAfterNextRender(shortcutsPageElement);
+    await flushTasks();
 
-    // After `onNavigationPageChanged`, the AcceleratorRow is now
-    // visible.
+    // After `onNavigationPageChanged`, the AcceleratorRow is now visible.
     assertTrue(isVisibleVerticallyInViewport(lastAcceleratorRow));
-    // TODO(longbowei): Add test to verify lastAcceleratorRow is focused.
   });
 });

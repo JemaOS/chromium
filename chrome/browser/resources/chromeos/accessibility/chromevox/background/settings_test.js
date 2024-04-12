@@ -23,10 +23,19 @@ ChromeVoxSettingsPagesTest = class extends ChromeVoxE2ETest {
   /** @override */
   testGenPreamble() {
     GEN(`
-    ash::SystemWebAppManager::GetForTest(GetProfile())
+    ash::SystemWebAppManager::GetForTest(browser()->profile())
         ->InstallSystemAppsForTesting();
   `);
     super.testGenPreamble();
+  }
+
+  /** @override */
+  async setUpDeferred() {
+    await super.setUpDeferred();
+
+    // Alphabetical based on file path.
+    await importModule('ChromeVox', '/chromevox/background/chromevox.js');
+    await importModule('TtsSettings', '/chromevox/common/tts_types.js');
   }
 };
 

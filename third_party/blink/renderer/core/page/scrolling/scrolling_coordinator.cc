@@ -66,7 +66,7 @@ ScrollingCoordinator::ScrollableAreaWithElementIdInAllLocalFrames(
 void ScrollingCoordinator::DidCompositorScroll(
     CompositorElementId element_id,
     const gfx::PointF& offset,
-    const std::optional<cc::TargetSnapAreaElementIds>& snap_target_ids) {
+    const absl::optional<cc::TargetSnapAreaElementIds>& snap_target_ids) {
   // Find the associated scrollable area using the element id and notify it of
   // the compositor-side scroll. We explicitly do not check the VisualViewport
   // which handles scroll offset differently (see:
@@ -111,7 +111,7 @@ bool ScrollingCoordinator::UpdateCompositorScrollOffset(
 void ScrollingCoordinator::WillBeDestroyed() {
   DCHECK(page_);
   page_ = nullptr;
-  callbacks_.reset();
+  weak_ptr_factory_.InvalidateWeakPtrs();
 }
 
 }  // namespace blink

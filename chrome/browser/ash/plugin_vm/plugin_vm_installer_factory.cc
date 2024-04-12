@@ -18,29 +18,21 @@ PluginVmInstaller* PluginVmInstallerFactory::GetForProfile(Profile* profile) {
 
 // static
 PluginVmInstallerFactory* PluginVmInstallerFactory::GetInstance() {
-  static base::NoDestructor<PluginVmInstallerFactory> instance;
-  return instance.get();
+  return base::Singleton<PluginVmInstallerFactory>::get();
 }
 
 PluginVmInstallerFactory::PluginVmInstallerFactory()
     : ProfileKeyedServiceFactory(
           "PluginVmInstaller",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              .WithGuest(ProfileSelection::kNone)
-              .WithAshInternals(ProfileSelection::kNone)
-              .WithSystem(ProfileSelection::kNone)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(BackgroundDownloadServiceFactory::GetInstance());
 }
 
 PluginVmInstallerFactory::~PluginVmInstallerFactory() = default;
 
-std::unique_ptr<KeyedService>
-PluginVmInstallerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PluginVmInstallerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<PluginVmInstaller>(
-      Profile::FromBrowserContext(context));
+  return new PluginVmInstaller(Profile::FromBrowserContext(context));
 }
 
 }  // namespace plugin_vm

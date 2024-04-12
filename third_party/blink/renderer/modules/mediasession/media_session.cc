@@ -5,10 +5,10 @@
 #include "third_party/blink/renderer/modules/mediasession/media_session.h"
 
 #include <memory>
-#include <optional>
 
 #include "base/time/default_tick_clock.h"
 #include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/browser_interface_broker_proxy.h"
 #include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_media_position_state.h"
@@ -21,7 +21,7 @@
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/modules/mediasession/media_metadata.h"
 #include "third_party/blink/renderer/modules/mediasession/media_metadata_sanitizer.h"
-#include "third_party/blink/renderer/modules/mediasession/media_session_type_converters.h"
+#include "third_party/blink/renderer/modules/mediasession/type_converters.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
@@ -55,8 +55,6 @@ const AtomicString& MojomActionToActionName(MediaSessionAction action) {
                       ("previousslide"));
   DEFINE_STATIC_LOCAL(const AtomicString, next_slide_action_name,
                       ("nextslide"));
-  DEFINE_STATIC_LOCAL(const AtomicString, enter_picture_in_picture_action_name,
-                      ("enterpictureinpicture"));
 
   switch (action) {
     case MediaSessionAction::kPlay:
@@ -87,15 +85,13 @@ const AtomicString& MojomActionToActionName(MediaSessionAction action) {
       return previous_slide_action_name;
     case MediaSessionAction::kNextSlide:
       return next_slide_action_name;
-    case MediaSessionAction::kEnterPictureInPicture:
-      return enter_picture_in_picture_action_name;
     default:
       NOTREACHED();
   }
   return WTF::g_empty_atom;
 }
 
-std::optional<MediaSessionAction> ActionNameToMojomAction(
+absl::optional<MediaSessionAction> ActionNameToMojomAction(
     const String& action_name) {
   if ("play" == action_name)
     return MediaSessionAction::kPlay;
@@ -125,12 +121,9 @@ std::optional<MediaSessionAction> ActionNameToMojomAction(
     return MediaSessionAction::kPreviousSlide;
   if ("nextslide" == action_name)
     return MediaSessionAction::kNextSlide;
-  if ("enterpictureinpicture" == action_name) {
-    return MediaSessionAction::kEnterPictureInPicture;
-  }
 
   NOTREACHED();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 const AtomicString& MediaSessionPlaybackStateToString(
@@ -208,7 +201,7 @@ void MediaSession::setMetadata(MediaMetadata* metadata) {
 }
 
 MediaMetadata* MediaSession::metadata() const {
-  return metadata_.Get();
+  return metadata_;
 }
 
 void MediaSession::OnMetadataChanged() {
@@ -241,12 +234,11 @@ void MediaSession::setActionHandler(const String& action,
     UseCounter::Count(window, WebFeature::kMediaSessionSkipAd);
   }
 
-  if (!RuntimeEnabledFeatures::MediaSessionEnterPictureInPictureEnabled()) {
-    if ("enterpictureinpicture" == action) {
-      exception_state.ThrowTypeError(
-          "The provided value 'enterpictureinpicture'"
-          " is not a valid enum "
-          "value of type MediaSessionAction.");
+  if (!RuntimeEnabledFeatures::MediaSessionSlidesEnabled()) {
+    if ("previousslide" == action || "nextslide" == action) {
+      exception_state.ThrowTypeError("The provided value '" + action +
+                                     "' is not a valid enum "
+                                     "value of type MediaSessionAction.");
       return;
     }
   }
@@ -285,12 +277,6 @@ void MediaSession::setPositionState(MediaPositionState* position_state,
   // The duration cannot be missing.
   if (!position_state->hasDuration()) {
     exception_state.ThrowTypeError("The duration must be provided.");
-    return;
-  }
-
-  // The duration cannot be NaN.
-  if (std::isnan(position_state->duration())) {
-    exception_state.ThrowTypeError("The provided duration cannot be NaN.");
     return;
   }
 

@@ -14,17 +14,16 @@ namespace blink {
 
 class CounterStyleTest : public PageTestBase {
  protected:
-  const CounterStyle& GetCounterStyle(const char* name) {
-    AtomicString name_string(name);
+  const CounterStyle& GetCounterStyle(const AtomicString& name) {
     if (const CounterStyleMap* document_map =
             CounterStyleMap::GetAuthorCounterStyleMap(GetDocument())) {
-      return *document_map->FindCounterStyleAcrossScopes(name_string);
+      return *document_map->FindCounterStyleAcrossScopes(name);
     }
     return *CounterStyleMap::GetUACounterStyleMap()
-                ->FindCounterStyleAcrossScopes(name_string);
+                ->FindCounterStyleAcrossScopes(name);
   }
 
-  const CounterStyle AddCounterStyle(const char* name,
+  const CounterStyle AddCounterStyle(const AtomicString& name,
                                      const String& descriptors) {
     StringBuilder declaration;
     declaration.Append("@counter-style ");
@@ -121,9 +120,9 @@ TEST_F(CounterStyleTest, FixedAlgorithm) {
   EXPECT_EQ(String(u"\u5B50"), eb.GenerateRepresentation(1));
   EXPECT_EQ(String(u"\u4EA5"), eb.GenerateRepresentation(12));
 
-  // Fallback to cjk-decimal
+  // Fallback to decimal
   EXPECT_EQ("-1", eb.GenerateRepresentation(-1));
-  EXPECT_EQ(String(u"\u3007"), eb.GenerateRepresentation(0));
+  EXPECT_EQ("0", eb.GenerateRepresentation(0));
 }
 
 TEST_F(CounterStyleTest, SymbolicAlgorithm) {

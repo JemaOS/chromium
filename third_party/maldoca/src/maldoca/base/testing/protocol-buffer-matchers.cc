@@ -34,7 +34,7 @@ namespace internal {
 
 using absl::string_view;
 using std::string;
-using RegExpStringPiece = absl::string_view;
+using RegExpStringPiece = re2::StringPiece;
 
 // Utilities.
 

@@ -14,9 +14,7 @@
 #include "ash/system/model/system_tray_model.h"
 #include "base/i18n/time_formatting.h"
 #include "base/memory/raw_ptr.h"
-#include "base/metrics/histogram_base.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
@@ -76,9 +74,25 @@ const char kManagedGaiaID[] = "33333";
 
 }  // namespace
 
-using SystemTrayClientEnterpriseTest = policy::DevicePolicyCrosBrowserTest;
+// Parameterized by feature QsRevamp.
+class SystemTrayClientEnterpriseTest
+    : public policy::DevicePolicyCrosBrowserTest,
+      public testing::WithParamInterface<bool> {
+ public:
+  SystemTrayClientEnterpriseTest() {
+    if (GetParam()) {
+      feature_list_.InitAndEnableFeature(ash::features::kQsRevamp);
+    }
+  }
 
-IN_PROC_BROWSER_TEST_F(SystemTrayClientEnterpriseTest, TrayEnterprise) {
+  base::test::ScopedFeatureList feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(QsRevamp,
+                         SystemTrayClientEnterpriseTest,
+                         testing::Bool());
+
+IN_PROC_BROWSER_TEST_P(SystemTrayClientEnterpriseTest, TrayEnterprise) {
   auto test_api = ash::SystemTrayTestApi::Create();
 
   // Managed devices show an item in the menu.
@@ -314,14 +328,19 @@ IN_PROC_BROWSER_TEST_F(SystemTrayClientClockUnknownPrefTest, SwitchToDefault) {
   EXPECT_TRUE(tray_test_api->Is24HourClock());
 }
 
-class SystemTrayClientEnterpriseAccountTest : public ash::LoginManagerTest {
+// Parameterized by feature QsRevamp.
+class SystemTrayClientEnterpriseAccountTest
+    : public ash::LoginManagerTest,
+      public testing::WithParamInterface<bool> {
  protected:
   SystemTrayClientEnterpriseAccountTest() {
+    feature_list_.InitWithFeatureState(ash::features::kQsRevamp, GetParam());
     std::unique_ptr<ash::ScopedUserPolicyUpdate> scoped_user_policy_update =
         user_policy_mixin_.RequestPolicyUpdate();
     scoped_user_policy_update->policy_data()->set_managed_by(kManager);
   }
 
+  base::test::ScopedFeatureList feature_list_;
   const ash::LoginManagerMixin::TestUserInfo unmanaged_user_{
       AccountId::FromUserEmailGaiaId(kNewUser, kNewGaiaID)};
   const ash::LoginManagerMixin::TestUserInfo managed_user_{
@@ -332,7 +351,11 @@ class SystemTrayClientEnterpriseAccountTest : public ash::LoginManagerTest {
                                       {managed_user_, unmanaged_user_}};
 };
 
-IN_PROC_BROWSER_TEST_F(SystemTrayClientEnterpriseAccountTest,
+INSTANTIATE_TEST_SUITE_P(QsRevamp,
+                         SystemTrayClientEnterpriseAccountTest,
+                         testing::Bool());
+
+IN_PROC_BROWSER_TEST_P(SystemTrayClientEnterpriseAccountTest,
                        TrayEnterpriseManagedAccount) {
   auto test_api = ash::SystemTrayTestApi::Create();
 
@@ -366,7 +389,7 @@ IN_PROC_BROWSER_TEST_F(SystemTrayClientEnterpriseAccountTest,
             test_api->GetBubbleViewTooltip(ash::VIEW_ID_QS_MANAGED_BUTTON));
 }
 
-IN_PROC_BROWSER_TEST_F(SystemTrayClientEnterpriseAccountTest,
+IN_PROC_BROWSER_TEST_P(SystemTrayClientEnterpriseAccountTest,
                        TrayEnterpriseUnmanagedAccount) {
   auto test_api = ash::SystemTrayTestApi::Create();
 
@@ -388,12 +411,16 @@ class SystemTrayClientEnterpriseSessionRestoreTest
   }
 };
 
-IN_PROC_BROWSER_TEST_F(SystemTrayClientEnterpriseSessionRestoreTest,
+INSTANTIATE_TEST_SUITE_P(QsRevamp,
+                         SystemTrayClientEnterpriseSessionRestoreTest,
+                         testing::Bool());
+
+IN_PROC_BROWSER_TEST_P(SystemTrayClientEnterpriseSessionRestoreTest,
                        PRE_SessionRestore) {
   LoginUser(managed_user_.account_id);
 }
 
-IN_PROC_BROWSER_TEST_F(SystemTrayClientEnterpriseSessionRestoreTest,
+IN_PROC_BROWSER_TEST_P(SystemTrayClientEnterpriseSessionRestoreTest,
                        SessionRestore) {
   auto test_api = ash::SystemTrayTestApi::Create();
 
@@ -443,8 +470,9 @@ class SystemTrayClientShowCalendarTest : public ash::LoginManagerTest {
   void InstallApp(const char* app_id, const char* name) {
     std::vector<apps::AppPtr> registry_deltas;
     registry_deltas.push_back(MakeApp(app_id, name));
-    proxy()->OnApps(std::move(registry_deltas), apps::AppType::kChromeApp,
-                    /*should_notify_initialized=*/false);
+    proxy()->AppRegistryCache().OnApps(std::move(registry_deltas),
+                                       apps::AppType::kChromeApp,
+                                       /*should_notify_initialized=*/false);
   }
 
   void SetPreferredApp(const char* app_id) {
@@ -471,7 +499,7 @@ IN_PROC_BROWSER_TEST_F(SystemTrayClientShowCalendarTest, NoEventUrl) {
   base::Time date;
   ASSERT_TRUE(base::Time::FromString("18 Nov 2021 10:00 GMT", &date));
   ash::Shell::Get()->system_tray_model()->client()->ShowCalendarEvent(
-      std::nullopt, date, opened_pwa, final_url);
+      absl::nullopt, date, opened_pwa, final_url);
   EXPECT_FALSE(opened_pwa);
   EXPECT_EQ(final_url.spec(), GURL(kExpectedUrlStr).spec());
 
@@ -480,7 +508,7 @@ IN_PROC_BROWSER_TEST_F(SystemTrayClientShowCalendarTest, NoEventUrl) {
   opened_pwa = false;
   final_url = GURL();
   ash::Shell::Get()->system_tray_model()->client()->ShowCalendarEvent(
-      std::nullopt, date, opened_pwa, final_url);
+      absl::nullopt, date, opened_pwa, final_url);
   EXPECT_TRUE(opened_pwa);
   EXPECT_EQ(final_url.spec(), GURL(kExpectedUrlStr).spec());
 }
@@ -562,7 +590,7 @@ class SystemTrayClientShowVideoConferenceTest
     ASSERT_TRUE(browser_);
   }
 
-  raw_ptr<Browser, DanglingUntriaged> browser_ = nullptr;
+  raw_ptr<Browser, ExperimentalAsh> browser_ = nullptr;
 };
 
 IN_PROC_BROWSER_TEST_F(SystemTrayClientShowVideoConferenceTest,

@@ -4,12 +4,11 @@
 #ifndef CHROME_BROWSER_ASH_APP_MODE_KIOSK_APP_LAUNCHER_H_
 #define CHROME_BROWSER_ASH_APP_MODE_KIOSK_APP_LAUNCHER_H_
 
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "base/observer_list_types.h"
 #include "chrome/browser/ash/app_mode/kiosk_app_launch_error.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
@@ -42,6 +41,9 @@ class KioskAppLauncher {
     virtual void InitializeNetwork() = 0;
     // Whether the device is online.
     virtual bool IsNetworkReady() const = 0;
+    // TODO(crbug.com/1015383): Refactor out this method at some moment.
+    // Whether network configure UI is shown.
+    virtual bool IsShowingNetworkConfigScreen() const = 0;
   };
 
   class Observer : public base::CheckedObserver {
@@ -53,7 +55,7 @@ class KioskAppLauncher {
     virtual void OnAppPrepared() {}
     virtual void OnAppLaunched() {}
     virtual void OnAppWindowCreated(
-        const std::optional<std::string>& app_name) {}
+        const absl::optional<std::string>& app_name) {}
     virtual void OnLaunchFailed(KioskAppLaunchError::Error error) {}
   };
 
@@ -72,7 +74,7 @@ class KioskAppLauncher {
     void NotifyAppPrepared();
     void NotifyAppLaunched();
     void NotifyAppWindowCreated(
-        const std::optional<std::string>& app_id = std::nullopt);
+        const absl::optional<std::string>& app_id = absl::nullopt);
     void NotifyLaunchFailed(KioskAppLaunchError::Error error);
 
    private:
@@ -96,7 +98,7 @@ class KioskAppLauncher {
   virtual void LaunchApp() = 0;
 
  protected:
-  raw_ptr<NetworkDelegate> delegate_ = nullptr;  // Not owned, owns us.
+  base::raw_ptr<NetworkDelegate> delegate_ = nullptr;  // Not owned, owns us.
 };
 
 }  // namespace ash

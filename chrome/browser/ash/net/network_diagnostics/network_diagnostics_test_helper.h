@@ -11,12 +11,10 @@
 #include "chromeos/ash/components/network/managed_network_configuration_handler.h"
 #include "chromeos/ash/components/network/network_handler.h"
 #include "chromeos/ash/components/network/network_handler_test_helper.h"
-#include "chromeos/ash/components/system/fake_statistics_provider.h"
 #include "chromeos/ash/services/network_config/cros_network_config.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/proxy_config/pref_proxy_config_tracker_impl.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
-#include "components/user_manager/scoped_user_manager.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -50,10 +48,8 @@ class NetworkDiagnosticsTestHelper : public ::testing::Test {
   std::unique_ptr<network_config::CrosNetworkConfig> cros_network_config_;
   sync_preferences::TestingPrefServiceSyncable user_prefs_;
   TestingPrefServiceSimple local_state_;
-  std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
   std::string wifi_path_;
   std::string wifi_guid_;
-  system::ScopedFakeStatisticsProvider statistics_provider_;
 };
 
 }  // namespace network_diagnostics

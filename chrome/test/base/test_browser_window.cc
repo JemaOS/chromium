@@ -4,7 +4,6 @@
 
 #include "chrome/test/base/test_browser_window.h"
 
-#include "base/feature_list.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/browser/sharing/sharing_dialog_data.h"
@@ -15,7 +14,6 @@
 #include "components/user_education/common/feature_promo_handle.h"
 #include "content/public/browser/keyboard_event_processing_result.h"
 #include "ui/base/interaction/element_identifier.h"
-#include "ui/color/color_provider_key.h"
 #include "ui/color/color_provider_manager.h"
 #include "ui/gfx/geometry/rect.h"
 
@@ -39,6 +37,25 @@ std::unique_ptr<Browser> CreateBrowserWithTestWindowForParams(
 
 // TestBrowserWindow::TestLocationBar -----------------------------------------
 
+GURL TestBrowserWindow::TestLocationBar::GetDestinationURL() const {
+  return GURL();
+}
+
+WindowOpenDisposition
+    TestBrowserWindow::TestLocationBar::GetWindowOpenDisposition() const {
+  return WindowOpenDisposition::CURRENT_TAB;
+}
+
+ui::PageTransition
+    TestBrowserWindow::TestLocationBar::GetPageTransition() const {
+  return ui::PAGE_TRANSITION_LINK;
+}
+
+base::TimeTicks TestBrowserWindow::TestLocationBar::GetMatchSelectionTimestamp()
+    const {
+  return base::TimeTicks();
+}
+
 const OmniboxView* TestBrowserWindow::TestLocationBar::GetOmniboxView() const {
   return nullptr;
 }
@@ -52,25 +69,19 @@ LocationBarTesting*
   return nullptr;
 }
 
-LocationBarModel* TestBrowserWindow::TestLocationBar::GetLocationBarModel() {
-  return nullptr;
-}
-
-content::WebContents* TestBrowserWindow::TestLocationBar::GetWebContents() {
-  return nullptr;
+bool TestBrowserWindow::TestLocationBar::IsInputTypedUrlWithoutScheme() const {
+  return false;
 }
 
 // TestBrowserWindow ----------------------------------------------------------
 
-TestBrowserWindow::TestBrowserWindow() = default;
+TestBrowserWindow::TestBrowserWindow() {}
 
-TestBrowserWindow::~TestBrowserWindow() = default;
+TestBrowserWindow::~TestBrowserWindow() {}
 
 void TestBrowserWindow::Close() {
-  if (close_callback_) {
+  if (close_callback_)
     std::move(close_callback_).Run();
-  }
-  is_closed_ = true;
 }
 
 bool TestBrowserWindow::IsActive() const {
@@ -108,7 +119,10 @@ const ui::ThemeProvider* TestBrowserWindow::GetThemeProvider() const {
 
 const ui::ColorProvider* TestBrowserWindow::GetColorProvider() const {
   return ui::ColorProviderManager::Get().GetColorProviderFor(
-      ui::ColorProviderKey());
+      {ui::ColorProviderManager::ColorMode::kLight,
+       ui::ColorProviderManager::ContrastMode::kNormal,
+       ui::SystemTheme::kDefault,
+       ui::ColorProviderManager::FrameType::kChromium});
 }
 
 ui::ElementContext TestBrowserWindow::GetElementContext() {
@@ -154,14 +168,6 @@ bool TestBrowserWindow::IsMinimized() const {
 
 bool TestBrowserWindow::ShouldHideUIForFullscreen() const {
   return false;
-}
-
-bool TestBrowserWindow::GetCanResize() {
-  return false;
-}
-
-ui::WindowShowState TestBrowserWindow::GetWindowShowState() const {
-  return ui::SHOW_STATE_DEFAULT;
 }
 
 bool TestBrowserWindow::IsFullscreen() const {
@@ -271,10 +277,6 @@ TestBrowserWindow::ShowScreenshotCapturedBubble(content::WebContents* contents,
 }
 #endif
 
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-void TestBrowserWindow::VerifyUserEligibilityIOSPasswordPromoBubble() {}
-#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
-
 send_tab_to_self::SendTabToSelfBubbleView*
 TestBrowserWindow::ShowSendTabToSelfDevicePickerBubble(
     content::WebContents* contents) {
@@ -360,35 +362,34 @@ bool TestBrowserWindow::IsFeaturePromoActive(
              iph_feature, user_education::FeaturePromoStatus::kContinued);
 }
 
-user_education::FeaturePromoResult TestBrowserWindow::CanShowFeaturePromo(
-    const base::Feature& iph_feature) const {
-  if (!feature_promo_controller_) {
-    return user_education::FeaturePromoResult::kBlockedByContext;
-  }
-  return feature_promo_controller_->CanShowPromo(iph_feature);
-}
-
-user_education::FeaturePromoResult TestBrowserWindow::MaybeShowFeaturePromo(
-    user_education::FeaturePromoParams params) {
-  if (!feature_promo_controller_) {
-    return user_education::FeaturePromoResult::kBlockedByContext;
-  }
-
-  return feature_promo_controller_->MaybeShowPromo(std::move(params));
+bool TestBrowserWindow::MaybeShowFeaturePromo(
+    const base::Feature& iph_feature,
+    user_education::FeaturePromoSpecification::StringReplacements
+        body_text_replacements,
+    user_education::FeaturePromoController::BubbleCloseCallback
+        close_callback) {
+  return feature_promo_controller_ &&
+         feature_promo_controller_->MaybeShowPromo(
+             iph_feature, body_text_replacements, std::move(close_callback));
 }
 
 bool TestBrowserWindow::MaybeShowStartupFeaturePromo(
-    user_education::FeaturePromoParams params) {
+    const base::Feature& iph_feature,
+    user_education::FeaturePromoSpecification::StringReplacements
+        body_text_replacements,
+    user_education::FeaturePromoController::StartupPromoCallback promo_callback,
+    user_education::FeaturePromoController::BubbleCloseCallback
+        close_callback) {
   if (!feature_promo_controller_)
     return false;
-  return feature_promo_controller_->MaybeShowStartupPromo(std::move(params));
+  return feature_promo_controller_->MaybeShowStartupPromo(
+      iph_feature, body_text_replacements, std::move(promo_callback),
+      std::move(close_callback));
 }
 
-bool TestBrowserWindow::CloseFeaturePromo(
-    const base::Feature& iph_feature,
-    user_education::EndFeaturePromoReason close_reason) {
+bool TestBrowserWindow::CloseFeaturePromo(const base::Feature& iph_feature) {
   return feature_promo_controller_ &&
-         feature_promo_controller_->EndPromo(iph_feature, close_reason);
+         feature_promo_controller_->EndPromo(iph_feature);
 }
 
 user_education::FeaturePromoHandle
@@ -401,13 +402,6 @@ TestBrowserWindow::CloseFeaturePromoAndContinue(
 }
 
 void TestBrowserWindow::NotifyFeatureEngagementEvent(const char* event_name) {}
-
-void TestBrowserWindow::NotifyPromoFeatureUsed(const base::Feature& feature) {}
-
-bool TestBrowserWindow::MaybeShowNewBadgeFor(
-    const base::Feature& new_badge_feature) {
-  return false;
-}
 
 user_education::FeaturePromoController*
 TestBrowserWindow::SetFeaturePromoController(

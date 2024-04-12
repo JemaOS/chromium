@@ -28,8 +28,6 @@ class MockReadAnythingToolbarViewDelegate
   MOCK_METHOD(void, OnLetterSpacingChanged, (int new_index), (override));
   MOCK_METHOD(ReadAnythingMenuModel*, GetLetterSpacingModel, (), (override));
   MOCK_METHOD(void, OnSystemThemeChanged, (), (override));
-  MOCK_METHOD(void, OnLinksEnabledChanged, (bool is_enabled), (override));
-  MOCK_METHOD(bool, GetLinksEnabled, (), (override));
 };
 
 class MockReadAnythingFontComboboxDelegate
@@ -67,18 +65,13 @@ class ReadAnythingToolbarViewTest : public InProcessBrowserTest {
         coordinator_.get(), &toolbar_delegate_, &font_combobox_delegate_);
   }
 
-  void TearDownOnMainThread() override {
-    toolbar_view_ = nullptr;
-    coordinator_ = nullptr;
-  }
+  void TearDownOnMainThread() override { coordinator_ = nullptr; }
 
   // Wrapper methods around the ReadAnythingToolbarView.
 
   void DecreaseFontSizeCallback() { toolbar_view_->DecreaseFontSizeCallback(); }
 
   void IncreaseFontSizeCallback() { toolbar_view_->IncreaseFontSizeCallback(); }
-
-  void LinksToggledCallback() { toolbar_view_->LinksToggledCallback(); }
 
   void ChangeColorsCallback() { toolbar_view_->ChangeColorsCallback(); }
 
@@ -99,19 +92,17 @@ class ReadAnythingToolbarViewTest : public InProcessBrowserTest {
   void OnReadAnythingThemeChanged(
       const std::string& font_name,
       double font_scale,
-      bool links_enabled,
       ui::ColorId foreground_color_id,
       ui::ColorId background_color_id,
       ui::ColorId separator_color_id,
       ui::ColorId dropdown_color_id,
       ui::ColorId selected_color_id,
-      ui::ColorId focus_ring_color_id,
       read_anything::mojom::LineSpacing line_spacing,
       read_anything::mojom::LetterSpacing letter_spacing) {
     toolbar_view_->OnReadAnythingThemeChanged(
-        font_name, font_scale, links_enabled, foreground_color_id,
-        background_color_id, separator_color_id, dropdown_color_id,
-        selected_color_id, focus_ring_color_id, line_spacing, letter_spacing);
+        font_name, font_scale, foreground_color_id, background_color_id,
+        separator_color_id, dropdown_color_id, selected_color_id, line_spacing,
+        letter_spacing);
   }
 
   views::Button::ButtonState GetDecreaseSizeButtonState() {
@@ -122,16 +113,11 @@ class ReadAnythingToolbarViewTest : public InProcessBrowserTest {
     return toolbar_view_->increase_text_size_button_->GetState();
   }
 
-  bool GetLinksToggleButtonState() {
-    return toolbar_view_->toggle_links_button_->GetToggled();
-  }
-
   std::vector<views::View*> GetChildren() {
     std::vector<views::View*> children;
     children.emplace_back(toolbar_view_->font_combobox_);
     children.emplace_back(toolbar_view_->increase_text_size_button_);
     children.emplace_back(toolbar_view_->decrease_text_size_button_);
-    children.emplace_back(toolbar_view_->toggle_links_button_);
     children.emplace_back(toolbar_view_->colors_button_);
     children.emplace_back(toolbar_view_->line_spacing_button_);
     children.emplace_back(toolbar_view_->letter_spacing_button_);
@@ -151,10 +137,9 @@ class ReadAnythingToolbarViewTest : public InProcessBrowserTest {
 IN_PROC_BROWSER_TEST_F(ReadAnythingToolbarViewTest,
                        DecreaseButtonDisabledAtMin) {
   OnReadAnythingThemeChanged(
-      "", kReadAnythingMinimumFontScale, kReadAnythingDefaultLinksEnabled,
+      "", kReadAnythingMinimumFontScale, kColorReadAnythingForeground,
       kColorReadAnythingForeground, kColorReadAnythingForeground,
       kColorReadAnythingForeground, kColorReadAnythingForeground,
-      kColorReadAnythingForeground, kColorReadAnythingFocusRingBackground,
       read_anything::mojom::LineSpacing::kStandard,
       read_anything::mojom::LetterSpacing::kStandard);
 
@@ -177,24 +162,11 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingToolbarViewTest, DecreaseFontSizeCallback) {
 }
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingToolbarViewTest,
-                       ToggleLinksEnabledCallback) {
-  bool inital_state = GetLinksToggleButtonState();
-
-  EXPECT_CALL(toolbar_delegate_, OnLinksEnabledChanged(!inital_state)).Times(1);
-  EXPECT_CALL(toolbar_delegate_, OnLinksEnabledChanged(inital_state)).Times(0);
-
-  LinksToggledCallback();
-
-  EXPECT_EQ(GetLinksToggleButtonState(), !inital_state);
-}
-
-IN_PROC_BROWSER_TEST_F(ReadAnythingToolbarViewTest,
                        IncreaseButtonDisabledAtMax) {
   OnReadAnythingThemeChanged(
-      "", kReadAnythingMaximumFontScale, kReadAnythingDefaultLinksEnabled,
+      "", kReadAnythingMaximumFontScale, kColorReadAnythingForeground,
       kColorReadAnythingForeground, kColorReadAnythingForeground,
       kColorReadAnythingForeground, kColorReadAnythingForeground,
-      kColorReadAnythingForeground, kColorReadAnythingFocusRingBackground,
       read_anything::mojom::LineSpacing::kStandard,
       read_anything::mojom::LetterSpacing::kStandard);
 

@@ -20,6 +20,21 @@ const PanelBridge = {
 
 /** Test fixture for PanelNodeMenuBackground. */
 ChromeVoxPanelNodeMenuBackgroundTest = class extends ChromeVoxE2ETest {
+  /** @override */
+  async setUpDeferred() {
+    await super.setUpDeferred();
+
+    // Alphabetical based on file path.
+    await importModule(
+        'PanelBackground', '/chromevox/background/panel/panel_background.js');
+    await importModule(
+        'PanelNodeMenuBackground',
+        '/chromevox/background/panel/panel_node_menu_background.js');
+    await importModule(
+        ['PanelNodeMenuId', 'ALL_PANEL_MENU_NODE_DATA'],
+        '/chromevox/common/panel_menu_data.js');
+  }
+
   assertMenuItemIndicatesNoNodesFound(item) {
     assertNotNullNorUndefined(item);
     assertEquals('None', item.title);

@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/printing/oauth2/profile_auth_servers_sync_bridge.h"
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -15,7 +14,6 @@
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
-#include "base/trace_event/trace_event.h"
 #include "chrome/common/channel_info.h"
 #include "components/sync/base/report_unrecoverable_error.h"
 #include "components/sync/model/client_tag_based_model_type_processor.h"
@@ -30,6 +28,7 @@
 #include "components/sync/protocol/entity_data.h"
 #include "components/sync/protocol/entity_specifics.pb.h"
 #include "components/sync/protocol/printers_authorization_server_specifics.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace ash::printing::oauth2 {
@@ -122,7 +121,7 @@ ProfileAuthServersSyncBridge::ProfileAuthServersSyncBridge(
 }
 
 void ProfileAuthServersSyncBridge::OnStoreCreated(
-    const std::optional<syncer::ModelError>& error,
+    const absl::optional<syncer::ModelError>& error,
     std::unique_ptr<syncer::ModelTypeStore> store) {
   if (error) {
     change_processor()->ReportError(*error);
@@ -136,7 +135,7 @@ void ProfileAuthServersSyncBridge::OnStoreCreated(
 }
 
 void ProfileAuthServersSyncBridge::OnReadAllData(
-    const std::optional<syncer::ModelError>& error,
+    const absl::optional<syncer::ModelError>& error,
     std::unique_ptr<syncer::ModelTypeStore::RecordList> record_list) {
   if (error) {
     change_processor()->ReportError(*error);
@@ -161,9 +160,8 @@ void ProfileAuthServersSyncBridge::OnReadAllData(
 }
 
 void ProfileAuthServersSyncBridge::OnReadAllMetadata(
-    const std::optional<syncer::ModelError>& error,
+    const absl::optional<syncer::ModelError>& error,
     std::unique_ptr<syncer::MetadataBatch> metadata_batch) {
-  TRACE_EVENT0("ui", "ProfileAuthServersSyncBridge::OnReadAllMetadata");
   if (error) {
     change_processor()->ReportError(*error);
     return;
@@ -178,7 +176,7 @@ ProfileAuthServersSyncBridge::CreateMetadataChangeList() {
   return syncer::ModelTypeStore::WriteBatch::CreateMetadataChangeList();
 }
 
-std::optional<syncer::ModelError>
+absl::optional<syncer::ModelError>
 ProfileAuthServersSyncBridge::MergeFullSyncData(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList entity_data) {
@@ -216,10 +214,10 @@ ProfileAuthServersSyncBridge::MergeFullSyncData(
                                        weak_ptr_factory_.GetWeakPtr()));
 
   NotifyObserver(added_local_uris, /*deleted=*/{});
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<syncer::ModelError>
+absl::optional<syncer::ModelError>
 ProfileAuthServersSyncBridge::ApplyIncrementalSyncChanges(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList entity_changes) {
@@ -250,7 +248,7 @@ ProfileAuthServersSyncBridge::ApplyIncrementalSyncChanges(
                                        weak_ptr_factory_.GetWeakPtr()));
 
   NotifyObserver(added_local_uris, deleted_local_uris);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void ProfileAuthServersSyncBridge::GetData(StorageKeyList storage_keys,
@@ -285,7 +283,7 @@ std::string ProfileAuthServersSyncBridge::GetStorageKey(
 }
 
 void ProfileAuthServersSyncBridge::OnCommit(
-    const std::optional<syncer::ModelError>& error) {
+    const absl::optional<syncer::ModelError>& error) {
   if (error) {
     LOG(WARNING) << "Failed to commit operation to store in "
                     "ProfileAuthServersSyncBridge";

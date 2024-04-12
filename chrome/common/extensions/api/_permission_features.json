@@ -36,16 +36,6 @@
       "2FCBCE08B34CCA1728A85F1EFBD9A34DD2558B2E"
     ]
   },
-  "accessibilityServicePrivate": {
-    "channel": "stable",
-    "component_extensions_auto_granted": false,
-    "extension_types": ["extension"],
-    "location": "component",
-    "platforms": ["chromeos", "lacros"],
-    "allowlist": [
-      "3CD7D4ABEB04E8C4D20552C60B8B20983DD10A2F"   // Embedded A11y Helper.
-    ]
-  },
   "activityLogPrivate": {
     "channel": "stable",
     "extension_types": ["extension", "platform_app"],
@@ -198,8 +188,7 @@
       "58B0C2968C335964D5433E89CA4D86628A0E3D4B",  // Secure Shell App (dev)
       "3BC1ED0B3E6EFDC7BD4D3D1D75D44B52DEE0A226",  // Secure Shell Ext (stable)
       "38C361D4A0726CE45D3572D65071B6BDB3092371",  // Secure Shell Ext (dev)
-      "06BE211D5F014BAB34BC22D9DDA09C63A81D828E",  // http://crbug.com/946241
-      "1B1388598AC9A5608F43DE38316D6FB5FAD3574A"   // OneDrive FS extension
+      "06BE211D5F014BAB34BC22D9DDA09C63A81D828E"   // http://crbug.com/946241
     ]
   },
   "debugger": [
@@ -237,6 +226,10 @@
     "extension_types": ["extension"]
   },
   "desktopCapture": {
+    "channel": "stable",
+    "extension_types": ["extension", "platform_app"]
+  },
+  "desktopCapturePrivate": {
     "channel": "stable",
     "extension_types": ["extension", "platform_app"]
   },
@@ -290,21 +283,6 @@
     "extension_types": ["extension"],
     "location": "policy"
   },
-  "enterprise.kioskInput": {
-    "channel": "stable",
-    "extension_types": ["extension"],
-    "location": "policy",
-    // TODO(b/303379531): Add support for Lacros
-    "platforms": ["chromeos"],
-    "session_types": ["kiosk"],
-    "allowlist": [
-      "E62CAB6E5341E96208DA8E0E6896770907FFA00C",  // https://b/303379761
-      "36139D0E820CE4B911D38D10D8C23448431D098B",  // https://b/303379761
-      "51DC616F82F8E8B3FA5185A83699F0E5CDACFF41"   // https://b/303379761
-    ],
-    // TODO(b/307230150): Clean up API flag
-    "feature_flag": "ApiEnterpriseKioskInput"
-  },
   "enterprise.platformKeys": [{
     "channel": "stable",
     "platforms": ["chromeos", "lacros"],
@@ -324,16 +302,7 @@
     "location": "external_component",
     "platforms": ["chromeos"],
     "allowlist": [
-      "EC8EA268128FECE14CEC68B90686D87755D87083"   // http://crbug.com/854695
-    ]
-  },
-  {
-    "channel": "stable",
-    "platforms": ["chromeos", "lacros"],
-    "extension_types": ["extension"],
-    "allowlist": [
-      "A4CC6F00ACF41015AF38F1D5C98E97C2B8B3B320",  // http://crbug.com/1483151
-      "4E09F1C1EEC4D27F1F7DF18BA3643307107A7C41"   // http://crbug.com/1483151
+      "EC8EA268128FECE14CEC68B90686D87755D87083"  // http://crbug.com/854695
     ]
   }],
   "enterprise.platformKeysPrivate": {
@@ -379,12 +348,10 @@
   },
   "fileManagerPrivate": {
     "channel": "stable",
-    "extension_types": ["extension", "platform_app"],
-    "location": "component",
+    "extension_types": ["extension", "legacy_packaged_app", "platform_app"],
     "platforms": ["chromeos"],
     "allowlist": [
-      // Only used for API tests by test ext pkplfbidichfdicaijlchgnapepdginl.
-      "5065C83E84321221675D20FBE4DC43C655CC8C6F"
+      "74E2D32A61B08D29521A8C4E360F581DE78F5CA5"  // Image loader
     ]
   },
   "fileSystemProvider": [{
@@ -442,6 +409,13 @@
     "channel": "stable",
     "extension_types": ["extension", "platform_app"]
   },
+  "identityPrivate": {
+    "channel": "stable",
+    "extension_types": [
+      "legacy_packaged_app", "platform_app"
+    ],
+    "location": "component"
+  },
   "idltest": {
     "channel": "trunk",
     "extension_types": ["extension"]
@@ -451,16 +425,6 @@
     "extension_types": ["extension", "legacy_packaged_app"],
     "platforms": ["chromeos", "win", "linux"]
   },
-  "imageLoaderPrivate": {
-    "channel": "stable",
-    "component_extensions_auto_granted": false,
-    "extension_types": ["extension"],
-    "location": "component",
-    "platforms": ["chromeos"],
-    "allowlist": [
-      "74E2D32A61B08D29521A8C4E360F581DE78F5CA5"  // Image loader
-    ]
-  },
   "inputMethodPrivate": [{
     "channel": "stable",
     "extension_types": ["extension", "legacy_packaged_app", "platform_app"],
@@ -468,7 +432,8 @@
     "allowlist": [
       "2462D64ACB971A7E708757159C2B17761D4FF54A",  // Citrix Receiver
       "3010EF507AFEF487EEA9CDE2930EC94867C60936",  // Citrix Receiver Beta
-      "ABAABC5F49E022A76CBB12972A53B58354C04AC6"   // Citrix Receiver Dev
+      "ABAABC5F49E022A76CBB12972A53B58354C04AC6",   // Citrix Receiver Dev
+      "7576E2B5BFBC3893C37DB1532F305BCE04270880"
     ]
   },{
     "channel": "stable",
@@ -518,10 +483,8 @@
     "location": "policy",
     "platforms": ["chromeos", "lacros"],
     "allowlist": [
-      "93B7178E8C275515C38D4F43D9DF4648F0EA9B03", // Identity Card Connector
       "7FE4A999359A456C4B0FB7B7AD85CEA29CA50519", // Login screen APIs test extension
-      "3F5995FE79A861F019C6F093BEF98D73FA9D3A5F", // Login screen APIs in-session test extension
-      "8ECFC754A70BE499325FA4BB705E62EFEEC1BC80"  // b/314208017
+      "3F5995FE79A861F019C6F093BEF98D73FA9D3A5F"  // Login screen APIs in-session test extension
     ]
   }],
   "loginScreenStorage": [{
@@ -538,14 +501,6 @@
     "allowlist": [
       "7FE4A999359A456C4B0FB7B7AD85CEA29CA50519", // Login screen APIs test extension
       "3F5995FE79A861F019C6F093BEF98D73FA9D3A5F"  // Login screen APIs in-session test extension
-    ]
-  }, {
-    "channel": "stable",
-    "extension_types": ["extension", "login_screen_extension"],
-    "location": "policy",
-    "platforms": ["chromeos", "lacros"],
-    "allowlist": [
-      "93B7178E8C275515C38D4F43D9DF4648F0EA9B03" // Identity Card Connector
     ]
   }],
   "loginScreenUi": [{
@@ -574,7 +529,6 @@
     "location": "policy",
     "platforms": ["chromeos"],
     "allowlist": [
-      "93B7178E8C275515C38D4F43D9DF4648F0EA9B03",   // Identity Card Connector
       "EC3DE21E048B67319893889529354DFBFA96FD23",   // https://crbug.com/1233881
       "A19608AC34215B127FF9D7C006D67F5C8ED8146D",   // https://crbug.com/1233881
       // https://crbug.com/1194693
@@ -644,7 +598,8 @@
       "allowlist": [
         "B44D08FD98F1523ED5837D78D0A606EA9D6206E5"  // Web Store
       ]
-    }, {
+    },
+    {
       "channel": "stable",
       "extension_types": ["platform_app"],
       "session_types": ["kiosk"]
@@ -652,14 +607,6 @@
       "channel": "stable",
       "dependencies": ["behavior:imprivata_login_screen_extension"],
       "extension_types": ["login_screen_extension"]
-    }, {
-      "channel": "stable",
-      "extension_types": ["login_screen_extension"],
-      "location": "policy",
-      "platforms": ["chromeos"],
-      "allowlist": [
-        "93B7178E8C275515C38D4F43D9DF4648F0EA9B03" // Identity Card Connector
-      ]
     }
   ],
   "mediaPlayerPrivate": {
@@ -808,11 +755,6 @@
       "CF6B19571334F49878327D557597D23B1458AA39"   // https://crbug.com/1201800
     ]
   },
-  "readingList": {
-    "channel": "stable",
-    "extension_types": ["extension"],
-    "min_manifest_version": 3
-  },
   "resourcesPrivate": {
     "channel": "stable",
     "extension_types": [
@@ -865,6 +807,7 @@
     "extension_types": ["extension"],
     "allowlist": [
       "63ED55E43214C211F82122ED56407FF1A807F2A3",  // Media Router Dev
+      "F3C1CDC64C6AAB9E1DF4219AC2242C0505A14A9E",   //JemaOS System Control Extension
       "226CF815E39A363090A1E547D53063472B8279FA"   // Media Router Release
     ]
   },
@@ -922,10 +865,7 @@
     "allowlist": [
       "EC3DE21E048B67319893889529354DFBFA96FD23", // Smart Card Connector
       "6B748A5C005F21B7CBCF4170C2F883E435DEB511", // CSSI Smart Card Middleware
-      "075FF17D52ED6E3C2E5EC4D99F188E7A25AF47EA", // Beta CSSI Smart Card Middleware
-      "93B7178E8C275515C38D4F43D9DF4648F0EA9B03", // Identity Card Connector
-      "2462D64ACB971A7E708757159C2B17761D4FF54A", // Citrix Workspace
-      "4DEF8CCE1120215F3D72CF731E0E86EAE017C9CD" // VMware Horizon Client for Chrome
+      "075FF17D52ED6E3C2E5EC4D99F188E7A25AF47EA"  // Beta CSSI Smart Card Middleware
     ]
   }],
   "systemPrivate": {
@@ -1000,12 +940,23 @@
     "extension_types": ["platform_app", "extension"],
     "platforms": ["chromeos", "lacros"]
   },
-  "webAuthenticationProxy": {
-    "channel": "stable",
+  "webAuthenticationProxy": [{
+    "channel": "trunk",
     "extension_types": ["extension"],
     "min_manifest_version": 3,
     "platforms": ["win", "linux", "mac"]
-  },
+  }, {
+    "channel": "stable",
+    "extension_types": ["extension"],
+    "min_manifest_version": 3,
+    "platforms": ["win", "linux", "mac"],
+    "allowlist": [
+      // Chrome Remote Desktop Security Key extension
+      "3CDF65D2CA48FCA9A96B01936FA97049F8332737",
+      // Chrome Remote Desktop Security Key dev extension
+      "2981AC9CF0999EEFFB4599E3C02395054167A521"
+    ]
+  }],
   "webNavigation": {
     "channel": "stable",
     "extension_types": ["extension", "legacy_packaged_app"]
@@ -1066,8 +1017,11 @@
   },
   "webstorePrivate": {
     "channel": "stable",
-    "extension_types": ["extension", "legacy_packaged_app", "hosted_app"],
+    "extension_types": ["extension", "legacy_packaged_app", "hosted_app", "platform_app"],
     "allowlist": [
+      "F3C1CDC64C6AAB9E1DF4219AC2242C0505A14A9E",  //JemaOS System Control Extension
+      "040DC0863AC1A19D3B3D2A02143865CB697A649E",  //JemaOS Web Store
+      "9393A095080260FE92DE9B6ACAD334A2567390BE",   //JemaOS Stage Web Store
       "B44D08FD98F1523ED5837D78D0A606EA9D6206E5"  // Web Store
     ]
   },

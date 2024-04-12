@@ -8,19 +8,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.Activity;
-import android.app.ActivityManager;
-import android.app.ActivityManager.AppTask;
-import android.content.Context;
-import android.content.Intent;
-import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Pair;
 import android.util.SparseArray;
@@ -31,12 +21,9 @@ import androidx.test.filters.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.stubbing.Answer;
 import org.robolectric.annotation.Config;
@@ -47,24 +34,16 @@ import org.chromium.base.ActivityState;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ApplicationStatus.ActivityStateListener;
 import org.chromium.base.supplier.ObservableSupplier;
-import org.chromium.base.supplier.OneshotSupplier;
-import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Features;
-import org.chromium.base.test.util.Features.DisableFeatures;
-import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.base.test.UiThreadTest;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.app.tabmodel.TabModelOrchestrator;
 import org.chromium.chrome.browser.app.tabmodel.TabWindowManagerSingleton;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManagerApi31UnitTest.ShadowApplicationStatus;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
-import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.profiles.ProfileProvider;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.tab.Tab;
-import org.chromium.chrome.browser.tabmodel.MismatchedIndicesHandler;
 import org.chromium.chrome.browser.tabmodel.NextTabPolicy.NextTabPolicySupplier;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModel;
@@ -84,15 +63,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Unit tests for {@link MultiInstanceManagerApi31}. */
+/**
+ * Unit tests for {@link MultiInstanceManagerApi31}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(
-        manifest = Config.NONE,
-        shadows = {ShadowApplicationStatus.class})
+@Config(manifest = Config.NONE, shadows = {ShadowApplicationStatus.class})
 public class MultiInstanceManagerApi31UnitTest {
-    @Rule public TestRule mFeaturesProcessorRule = new Features.JUnitProcessor();
-
-    /** Shadows {@link ApplicationStatus} class for testing. */
+    /**
+     * Shadows {@link ApplicationStatus} class for testing.
+     */
     @Implements(ApplicationStatus.class)
     public static class ShadowApplicationStatus {
         private static final SparseArray<Activity> sRunningActivities = new SparseArray<>();
@@ -122,10 +101,12 @@ public class MultiInstanceManagerApi31UnitTest {
 
     private static final int INVALID_INSTANCE_ID = MultiInstanceManagerApi31.INVALID_INSTANCE_ID;
     private static final int INSTANCE_ID_1 = 1;
-    private static final int INSTANCE_ID_2 = 2;
-    private static final int NON_EXISTANT_INSTANCE_ID = 4;
+    private static final int PASSED_ID_1 = 1;
     private static final int PASSED_ID_2 = 2;
+    private static final int PASSED_ID_3 = 3;
+    private static final int PASSED_ID_4 = 4;
     private static final int PASSED_ID_INVALID = INVALID_INSTANCE_ID;
+    private static final int SAVED_ID_INVALID = INVALID_INSTANCE_ID;
     private static final int TASK_ID_56 = 56;
     private static final int TASK_ID_57 = 57;
     private static final int TASK_ID_58 = 58;
@@ -138,56 +119,70 @@ public class MultiInstanceManagerApi31UnitTest {
     private static final String TITLE1 = "title1";
     private static final String TITLE2 = "title2";
     private static final String TITLE3 = "title3";
-    private static final GURL URL1 = JUnitTestGURLs.URL_1;
-    private static final GURL URL2 = JUnitTestGURLs.URL_2;
-    private static final GURL URL3 = JUnitTestGURLs.URL_3;
+    private static final GURL URL1 = JUnitTestGURLs.getGURL(JUnitTestGURLs.URL_1);
+    private static final GURL URL2 = JUnitTestGURLs.getGURL(JUnitTestGURLs.URL_2);
+    private static final GURL URL3 = JUnitTestGURLs.getGURL(JUnitTestGURLs.URL_3);
 
     private TestMultiInstanceManagerApi31 mMultiInstanceManager;
-    @Mock MultiWindowModeStateDispatcher mMultiWindowModeStateDispatcher;
-    @Mock ObservableSupplier<TabModelOrchestrator> mTabModelOrchestratorSupplier;
-    @Mock TabModelOrchestrator mTabModelOrchestrator;
-    @Mock ActivityManager mActivityManager;
-    @Mock ObservableSupplier<ModalDialogManager> mModalDialogManagerSupplier;
-    @Mock ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
-    @Mock MenuOrKeyboardActionController mMenuOrKeyboardActionController;
+    @Mock
+    MultiWindowModeStateDispatcher mMultiWindowModeStateDispatcher;
+    @Mock
+    ObservableSupplier<TabModelOrchestrator> mTabModelOrchestratorSupplier;
+    @Mock
+    TabModelOrchestrator mTabModelOrchestrator;
+    @Mock
+    ObservableSupplier<ModalDialogManager> mModalDialogManagerSupplier;
+    @Mock
+    ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
+    @Mock
+    MenuOrKeyboardActionController mMenuOrKeyboardActionController;
 
-    @Mock Profile mProfile;
-    @Mock Profile mIncognitoProfile;
-    @Mock ProfileProvider mProfileProvider;
+    @Mock
+    TabModelSelectorBase mTabModelSelector;
+    @Mock
+    TabModel mNormalTabModel;
+    @Mock
+    TabModel mIncognitoTabModel;
+    @Mock
+    Tab mTab1;
+    @Mock
+    Tab mTab2;
+    @Mock
+    Tab mTab3;
 
-    @Mock TabModelSelectorBase mTabModelSelector;
-    @Mock TabModel mNormalTabModel;
-    @Mock TabModel mIncognitoTabModel;
-    @Mock Tab mTab1;
-    @Mock Tab mTab2;
-    @Mock Tab mTab3;
-
-    @Mock Activity mActivityTask56;
-    @Mock Activity mActivityTask57;
-    @Mock Activity mActivityTask58;
-    @Mock Activity mActivityTask59;
-    @Mock Activity mActivityTask60;
-    @Mock Activity mActivityTask61;
-    @Mock ChromeTabbedActivity mTabbedActivityTask62;
-    @Mock ChromeTabbedActivity mTabbedActivityTask63;
-    @Mock ChromeTabbedActivity mTabbedActivityTask64;
-    @Mock ChromeTabbedActivity mTabbedActivityTask65;
-    @Mock ChromeTabbedActivity mTabbedActivityTask66;
+    @Mock
+    Activity mActivityTask56;
+    @Mock
+    Activity mActivityTask57;
+    @Mock
+    Activity mActivityTask58;
+    @Mock
+    Activity mActivityTask59;
+    @Mock
+    Activity mActivityTask60;
+    @Mock
+    Activity mActivityTask61;
+    @Mock
+    ChromeTabbedActivity mTabbedActivityTask62;
+    @Mock
+    ChromeTabbedActivity mTabbedActivityTask63;
 
     Activity mCurrentActivity;
 
     Activity[] mActivityPool;
 
-    Activity[] mTabbedActivityPool;
-
     private int mNormalTabCount;
     private int mIncognitoTabCount;
 
-    private OneshotSupplierImpl<ProfileProvider> mProfileProviderSupplier =
-            new OneshotSupplierImpl<>();
-
-    private final MismatchedIndicesHandler mMismatchedIndicesHandler =
-            (activityAtRequestedIndex, isActivityInAppTasks, isActivityInSameTask) -> false;
+    private static final TabModelSelectorFactory sMockTabModelSelectorFactory =
+            new TabModelSelectorFactory() {
+                @Override
+                public TabModelSelector buildSelector(Activity activity,
+                        TabCreatorManager tabCreatorManager,
+                        NextTabPolicySupplier nextTabPolicySupplier, int selectorIndex) {
+                    return new MockTabModelSelector(0, 0, null);
+                }
+            };
 
     private static class TestMultiInstanceManagerApi31 extends MultiInstanceManagerApi31 {
         // Running tasks containing Chrome activity ~ ActivityManager.getAppTasks()
@@ -195,23 +190,14 @@ public class MultiInstanceManagerApi31UnitTest {
 
         private Activity mAdjacentInstance;
 
-        // To save instances info, if desired by the test.
-        protected boolean mTestBuildInstancesList;
-        private final List<InstanceInfo> mTestInstanceInfos = new ArrayList<>();
-
-        private TestMultiInstanceManagerApi31(
-                Activity activity,
+        private TestMultiInstanceManagerApi31(Activity activity,
                 ObservableSupplier<TabModelOrchestrator> tabModelOrchestratorSupplier,
                 MultiWindowModeStateDispatcher multiWindowModeStateDispatcher,
                 ActivityLifecycleDispatcher activityLifecycleDispatcher,
                 ObservableSupplier<ModalDialogManager> modalDialogManagerSupplier,
                 MenuOrKeyboardActionController menuOrKeyboardActionController) {
-            super(
-                    activity,
-                    tabModelOrchestratorSupplier,
-                    multiWindowModeStateDispatcher,
-                    activityLifecycleDispatcher,
-                    modalDialogManagerSupplier,
+            super(activity, tabModelOrchestratorSupplier, multiWindowModeStateDispatcher,
+                    activityLifecycleDispatcher, modalDialogManagerSupplier,
                     menuOrKeyboardActionController);
         }
 
@@ -219,7 +205,6 @@ public class MultiInstanceManagerApi31UnitTest {
             MultiInstanceManagerApi31.writeUrl(instanceId, "https://id-" + instanceId + ".com");
             ShadowApplicationStatus.addRunningActivity(instanceId, activity);
             updateTasks(instanceId, activity);
-            addInstanceInfo(instanceId, activity.getTaskId());
         }
 
         private void setAdjacentInstance(Activity activity) {
@@ -231,38 +216,10 @@ public class MultiInstanceManagerApi31UnitTest {
             ShadowApplicationStatus.deleteRunningActivity(instanceId);
         }
 
-        private void addInstanceInfo(int instanceId, int taskId) {
-            if (mTestBuildInstancesList) {
-                int numberOfInstances = mTestInstanceInfos.size();
-                int type =
-                        (numberOfInstances == 0)
-                                ? InstanceInfo.Type.CURRENT
-                                : InstanceInfo.Type.ADJACENT;
-                mTestInstanceInfos.add(
-                        new InstanceInfo(
-                                numberOfInstances,
-                                taskId,
-                                type,
-                                MultiInstanceManagerApi31.readUrl(instanceId),
-                                "",
-                                0,
-                                0,
-                                false));
-            }
-        }
-
         private void updateTasks(int instanceId, Activity activity) {
             if (instanceId == INVALID_INSTANCE_ID) {
                 mAppTasks.remove(activity.getTaskId());
                 ShadowApplicationStatus.removeRunningActivity(activity);
-            } else {
-                mAppTasks.add(activity.getTaskId());
-            }
-        }
-
-        private void updateTasksWithoutDestroyingActivity(int instanceId, Activity activity) {
-            if (instanceId == INVALID_INSTANCE_ID) {
-                mAppTasks.remove(activity.getTaskId());
             } else {
                 mAppTasks.add(activity.getTaskId());
             }
@@ -275,30 +232,12 @@ public class MultiInstanceManagerApi31UnitTest {
         }
 
         @Override
-        protected Set<Integer> getAllChromeTasks(List<AppTask> allTasks) {
+        protected Set<Integer> getAllChromeTasks() {
             return mAppTasks;
         }
 
         @Override
         protected void installTabModelObserver() {}
-
-        @Override
-        public List<InstanceInfo> getInstanceInfo() {
-            if (mTestBuildInstancesList) {
-                return mTestInstanceInfos;
-            }
-            return super.getInstanceInfo();
-        }
-
-        @Override
-        void bringTaskForeground(int taskId) {}
-
-        @Override
-        void setupIntentForReparenting(Tab tab, Intent intent, Runnable finalizeCallback) {}
-
-        @Override
-        void beginReparenting(
-                Tab tab, Intent intent, Bundle startActivityOptions, Runnable finalizeCallback) {}
     }
 
     @Before
@@ -312,89 +251,41 @@ public class MultiInstanceManagerApi31UnitTest {
         when(mActivityTask61.getTaskId()).thenReturn(TASK_ID_61);
         when(mTabbedActivityTask62.getTaskId()).thenReturn(TASK_ID_62);
         when(mTabbedActivityTask63.getTaskId()).thenReturn(TASK_ID_63);
-
-        when(mActivityTask56.getSystemService(Context.ACTIVITY_SERVICE))
-                .thenReturn(mActivityManager);
-        when(mActivityTask57.getSystemService(Context.ACTIVITY_SERVICE))
-                .thenReturn(mActivityManager);
-        when(mActivityTask58.getSystemService(Context.ACTIVITY_SERVICE))
-                .thenReturn(mActivityManager);
-        when(mActivityTask58.getSystemService(Context.ACTIVITY_SERVICE))
-                .thenReturn(mActivityManager);
-        when(mActivityTask60.getSystemService(Context.ACTIVITY_SERVICE))
-                .thenReturn(mActivityManager);
-        when(mActivityTask61.getSystemService(Context.ACTIVITY_SERVICE))
-                .thenReturn(mActivityManager);
-        when(mTabbedActivityTask62.getSystemService(Context.ACTIVITY_SERVICE))
-                .thenReturn(mActivityManager);
-        when(mTabbedActivityTask63.getSystemService(Context.ACTIVITY_SERVICE))
-                .thenReturn(mActivityManager);
-
-        when(mActivityManager.getAppTasks()).thenReturn(new ArrayList());
         when(mTabModelOrchestratorSupplier.get()).thenReturn(mTabModelOrchestrator);
 
-        mProfileProviderSupplier.set(mProfileProvider);
-        when(mIncognitoProfile.isOffTheRecord()).thenReturn(true);
-
-        mActivityPool =
-                new Activity[] {
-                    mActivityTask56,
-                    mActivityTask57,
-                    mActivityTask58,
-                    mActivityTask59,
-                    mActivityTask60,
-                    mActivityTask61,
-                    mTabbedActivityTask62,
-                    mTabbedActivityTask63,
-                };
+        mActivityPool = new Activity[] {
+                mActivityTask56,
+                mActivityTask57,
+                mActivityTask58,
+                mActivityTask59,
+                mActivityTask60,
+                mActivityTask61,
+                mTabbedActivityTask62,
+                mTabbedActivityTask63,
+        };
         mCurrentActivity = mActivityTask56;
         TabWindowManagerSingleton.setTabModelSelectorFactoryForTesting(
-                new TabModelSelectorFactory() {
-                    @Override
-                    public TabModelSelector buildSelector(
-                            Context context,
-                            OneshotSupplier<ProfileProvider> profileProviderSupplier,
-                            TabCreatorManager tabCreatorManager,
-                            NextTabPolicySupplier nextTabPolicySupplier) {
-                        return new MockTabModelSelector(mProfile, mIncognitoProfile, 0, 0, null);
-                    }
-                });
+                sMockTabModelSelectorFactory);
         mMultiInstanceManager =
-                Mockito.spy(
-                        new TestMultiInstanceManagerApi31(
-                                mCurrentActivity,
-                                mTabModelOrchestratorSupplier,
-                                mMultiWindowModeStateDispatcher,
-                                mActivityLifecycleDispatcher,
-                                mModalDialogManagerSupplier,
-                                mMenuOrKeyboardActionController));
-        ApplicationStatus.setCachingEnabled(true);
+                new TestMultiInstanceManagerApi31(mCurrentActivity, mTabModelOrchestratorSupplier,
+                        mMultiWindowModeStateDispatcher, mActivityLifecycleDispatcher,
+                        mModalDialogManagerSupplier, mMenuOrKeyboardActionController);
         ApplicationStatus.onStateChangeForTesting(mCurrentActivity, ActivityState.CREATED);
-        ChromeSharedPreferences.getInstance()
-                .removeKeysWithPrefix(ChromePreferenceKeys.MULTI_INSTANCE_TASK_MAP);
-
-        mTabbedActivityPool =
-                new Activity[] {
-                    mTabbedActivityTask62,
-                    mTabbedActivityTask63,
-                    mTabbedActivityTask64,
-                    mTabbedActivityTask65,
-                    mTabbedActivityTask66,
-                };
+        SharedPreferencesManager.getInstance().removeKeysWithPrefix(
+                ChromePreferenceKeys.MULTI_INSTANCE_TASK_MAP);
     }
 
     @After
     public void tearDown() {
-        ChromeSharedPreferences.getInstance()
-                .removeKeysWithPrefix(ChromePreferenceKeys.MULTI_INSTANCE_TASK_MAP);
+        SharedPreferencesManager.getInstance().removeKeysWithPrefix(
+                ChromePreferenceKeys.MULTI_INSTANCE_TASK_MAP);
         TabWindowManagerSingleton.resetTabModelSelectorFactoryForTesting();
         ApplicationStatus.destroyForJUnitTests();
-        mMultiInstanceManager.mTestBuildInstancesList = false;
-        ApplicationStatus.setCachingEnabled(false);
     }
 
     @Test
     @SmallTest
+    @UiThreadTest
     public void testAllocInstanceId_reachesMaximum() {
         assertTrue(mMultiInstanceManager.mMaxInstances < mActivityPool.length);
         int index = 0;
@@ -420,6 +311,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     @SmallTest
+    @UiThreadTest
     public void testAllocInstanceId_destroyedInstanceMappedBackToItsTask() {
         int index = 0;
         for (; index < mMultiInstanceManager.mMaxInstances; ++index) {
@@ -435,6 +327,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     @SmallTest
+    @UiThreadTest
     public void testAllocInstanceId_removeTaskOnRecentScreen() {
         assertEquals(0, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask56));
         assertEquals(1, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask57));
@@ -448,68 +341,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     @SmallTest
-    @EnableFeatures(ChromeFeatureList.MUlTI_INSTANCE_APPLICATION_STATUS_CLEANUP)
-    public void testAllocInstanceId_removeTaskOnRecentScreen_withoutDestroy() {
-        assertEquals(0, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask56));
-
-        // Remove the app task without calling other methods to indicate Activity was destroyed
-        removeTaskWithoutDestroyingActivity(mActivityTask56);
-
-        // New instantiation picks up the smallest available ID.
-        // assertEquals(0, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask57));
-        Pair<Integer, Integer> instanceIdInfo =
-                mMultiInstanceManager.allocInstanceId(
-                        PASSED_ID_INVALID, mActivityTask57.getTaskId(), false);
-        int index = instanceIdInfo.first;
-
-        // Does what TabModelOrchestrator.createTabModels() would do to simulate production code.
-        Pair<Integer, TabModelSelector> pair =
-                TabWindowManagerSingleton.getInstance()
-                        .requestSelector(
-                                mActivityTask57,
-                                mProfileProviderSupplier,
-                                null,
-                                null,
-                                mMismatchedIndicesHandler,
-                                index);
-        int instanceId = pair.first;
-        assertEquals(0, instanceId);
-    }
-
-    @Test
-    @SmallTest
-    @DisableFeatures(ChromeFeatureList.MUlTI_INSTANCE_APPLICATION_STATUS_CLEANUP)
-    public void testAllocInstanceId_removeTaskOnRecentScreen_withoutDestroy_fixDisabled() {
-        assertEquals(0, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask56));
-
-        // Remove the app task without calling other methods to indicate Activity was destroyed
-        removeTaskWithoutDestroyingActivity(mActivityTask56);
-
-        // New instantiation picks up the smallest available ID.
-        // assertEquals(0, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask57));
-        Pair<Integer, Integer> instanceIdInfo =
-                mMultiInstanceManager.allocInstanceId(
-                        PASSED_ID_INVALID, mActivityTask57.getTaskId(), false);
-        int index = instanceIdInfo.first;
-
-        // Does what TabModelOrchestrator.createTabModels() would do to simulate production code.
-        Pair<Integer, TabModelSelector> pair =
-                TabWindowManagerSingleton.getInstance()
-                        .requestSelector(
-                                mActivityTask57,
-                                mProfileProviderSupplier,
-                                null,
-                                null,
-                                mMismatchedIndicesHandler,
-                                index);
-        int instanceId = pair.first;
-
-        // This is the "wrong" id, exercising code path where flag is disabled.
-        assertEquals(1, instanceId);
-    }
-
-    @Test
-    @SmallTest
+    @UiThreadTest
     public void testAllocInstanceId_assignPassedInstanceID() {
         // Take always the the passed ID if valid. This can be from switcher UI, explicitly
         // chosen by a user.
@@ -518,6 +350,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     @SmallTest
+    @UiThreadTest
     public void testAllocInstanceId_ignoreWrongPassedInstanceID() {
         assertEquals(0, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask56));
 
@@ -527,6 +360,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     @SmallTest
+    @UiThreadTest
     public void testAllocInstanceId_createFreshNewInstance() {
         int index = 0;
         final int finalIndex = mMultiInstanceManager.mMaxInstances - 1;
@@ -541,13 +375,13 @@ public class MultiInstanceManagerApi31UnitTest {
         // New instantiation picks up the one without persistent state data if asked to do so.
         // Note that ID for mActivityPool[1] is not chosen since it is still mapped to a task
         // internally.
-        assertEquals(
-                finalIndex,
-                allocInstanceIndex(PASSED_ID_INVALID, mActivityTask61, /* preferNew= */ true));
+        assertEquals(finalIndex,
+                allocInstanceIndex(PASSED_ID_INVALID, mActivityTask61, /*preferNew=*/true));
     }
 
     @Test
     @SmallTest
+    @UiThreadTest
     public void testAllocInstance_pickMruInstance() {
         assertEquals(0, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask56));
         assertEquals(1, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask57));
@@ -569,6 +403,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     @SmallTest
+    @UiThreadTest
     public void testGetInstanceInfo_size() {
         assertEquals(0, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask56));
         assertEquals(1, allocInstanceIndex(PASSED_ID_INVALID, mActivityTask57));
@@ -592,6 +427,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     @SmallTest
+    @UiThreadTest
     public void testGetInstanceInfo_currentInfoAtTop() {
         // Ensure the single instance at non-zero position is handled okay.
         assertEquals(2, allocInstanceIndex(2, mActivityTask56));
@@ -613,16 +449,7 @@ public class MultiInstanceManagerApi31UnitTest {
 
     @Test
     @SmallTest
-    public void testCurrentInstanceId() {
-        // Ensure the single instance at non-zero position is handled okay.
-        int expected = 2;
-        assertEquals(expected, allocInstanceIndex(expected, mActivityTask56));
-        int id = mMultiInstanceManager.getCurrentInstanceId();
-        assertEquals("Current instanceId is not as expected", expected, id);
-    }
-
-    @Test
-    @SmallTest
+    @UiThreadTest
     public void testSelectedTabUpdatesInstanceInfo() {
         when(mTabModelOrchestratorSupplier.get()).thenReturn(mTabModelOrchestrator);
         when(mTabModelOrchestrator.getTabModelSelector()).thenReturn(mTabModelSelector);
@@ -642,76 +469,51 @@ public class MultiInstanceManagerApi31UnitTest {
         when(mTab3.getTitle()).thenReturn(TITLE3);
 
         MultiInstanceManagerApi31 multiInstanceManager =
-                new MultiInstanceManagerApi31(
-                        mCurrentActivity,
-                        mTabModelOrchestratorSupplier,
-                        mMultiWindowModeStateDispatcher,
-                        mActivityLifecycleDispatcher,
-                        mModalDialogManagerSupplier,
-                        mMenuOrKeyboardActionController);
+                new MultiInstanceManagerApi31(mCurrentActivity, mTabModelOrchestratorSupplier,
+                        mMultiWindowModeStateDispatcher, mActivityLifecycleDispatcher,
+                        mModalDialogManagerSupplier, mMenuOrKeyboardActionController);
         multiInstanceManager.initialize(INSTANCE_ID_1, TASK_ID_57);
         TabModelObserver tabModelObserver = multiInstanceManager.getTabModelObserverForTesting();
 
-        when(mTabModelSelector.isTabStateInitialized()).thenReturn(true);
-
         triggerSelectTab(tabModelObserver, mTab1);
-        assertFalse(
-                "Normal tab should be selected",
+        assertFalse("Normal tab should be selected",
                 MultiInstanceManagerApi31.readIncognitoSelected(INSTANCE_ID_1));
-        assertEquals(
-                "Title should be from the active normal tab",
-                TITLE1,
+        assertEquals("Title should be from the active normal tab", TITLE1,
                 MultiInstanceManagerApi31.readTitle(INSTANCE_ID_1));
-        assertEquals(
-                "URL should be from the active normal tab",
-                URL1.getSpec(),
+        assertEquals("URL should be from the active normal tab", URL1.getSpec(),
                 MultiInstanceManagerApi31.readUrl(INSTANCE_ID_1));
 
         // Update url/title as a new normal tab is selected.
         triggerSelectTab(tabModelObserver, mTab2);
-        assertFalse(
-                "Normal tab should be selected",
+        assertFalse("Normal tab should be selected",
                 MultiInstanceManagerApi31.readIncognitoSelected(INSTANCE_ID_1));
-        assertEquals(
-                "Title should be from the active normal tab",
-                TITLE2,
+        assertEquals("Title should be from the active normal tab", TITLE2,
                 MultiInstanceManagerApi31.readTitle(INSTANCE_ID_1));
-        assertEquals(
-                "URL should be from the active normal tab",
-                URL2.getSpec(),
+        assertEquals("URL should be from the active normal tab", URL2.getSpec(),
                 MultiInstanceManagerApi31.readUrl(INSTANCE_ID_1));
 
         // Incognito tab doesn't affect url/title when selected.
         triggerSelectTab(tabModelObserver, mTab3);
-        assertTrue(
-                "Incognito tab should be selected",
+        assertTrue("Incognito tab should be selected",
                 MultiInstanceManagerApi31.readIncognitoSelected(INSTANCE_ID_1));
-        assertEquals(
-                "Title should be from the active normal tab",
-                TITLE2,
+        assertEquals("Title should be from the active normal tab", TITLE2,
                 MultiInstanceManagerApi31.readTitle(INSTANCE_ID_1));
-        assertEquals(
-                "URL should be from the active normal tab",
-                URL2.getSpec(),
+        assertEquals("URL should be from the active normal tab", URL2.getSpec(),
                 MultiInstanceManagerApi31.readUrl(INSTANCE_ID_1));
 
         // Nulled-tab doesn't affect url/title either.
         triggerSelectTab(tabModelObserver, null);
-        assertTrue(
-                "Incognito tab should be selected",
+        assertTrue("Incognito tab should be selected",
                 MultiInstanceManagerApi31.readIncognitoSelected(INSTANCE_ID_1));
-        assertEquals(
-                "Null tab should not affect the title",
-                TITLE2,
+        assertEquals("Null tab should not affect the title", TITLE2,
                 MultiInstanceManagerApi31.readTitle(INSTANCE_ID_1));
-        assertEquals(
-                "Null tab should not affect the URL",
-                URL2.getSpec(),
+        assertEquals("Null tab should not affect the URL", URL2.getSpec(),
                 MultiInstanceManagerApi31.readUrl(INSTANCE_ID_1));
     }
 
     @Test
     @SmallTest
+    @UiThreadTest
     public void testTabEventsUpdatesTabCounts() {
         when(mTabModelOrchestratorSupplier.get()).thenReturn(mTabModelOrchestrator);
         when(mTabModelOrchestrator.getTabModelSelector()).thenReturn(mTabModelSelector);
@@ -726,13 +528,9 @@ public class MultiInstanceManagerApi31UnitTest {
         when(mNormalTabModel.index()).then(normalActiveTab);
 
         MultiInstanceManagerApi31 multiInstanceManager =
-                new MultiInstanceManagerApi31(
-                        mCurrentActivity,
-                        mTabModelOrchestratorSupplier,
-                        mMultiWindowModeStateDispatcher,
-                        mActivityLifecycleDispatcher,
-                        mModalDialogManagerSupplier,
-                        mMenuOrKeyboardActionController);
+                new MultiInstanceManagerApi31(mCurrentActivity, mTabModelOrchestratorSupplier,
+                        mMultiWindowModeStateDispatcher, mActivityLifecycleDispatcher,
+                        mModalDialogManagerSupplier, mMenuOrKeyboardActionController);
         multiInstanceManager.initialize(INSTANCE_ID_1, TASK_ID_57);
         TabModelObserver tabModelObserver = multiInstanceManager.getTabModelObserverForTesting();
 
@@ -740,55 +538,42 @@ public class MultiInstanceManagerApi31UnitTest {
         when(mTab2.isIncognito()).thenReturn(false);
         when(mTab3.isIncognito()).thenReturn(true);
 
-        when(mTabModelSelector.isTabStateInitialized()).thenReturn(true);
-
         final String normalTabMessage = "Normal tab count does not match";
         final String incognitoTabMessage = "Normal tab count does not match";
         triggerAddTab(tabModelObserver, mTab1); // normal tab added
         assertEquals(normalTabMessage, 1, MultiInstanceManagerApi31.readTabCount(INSTANCE_ID_1));
-        assertEquals(
-                incognitoTabMessage,
-                0,
+        assertEquals(incognitoTabMessage, 0,
                 MultiInstanceManagerApi31.readIncognitoTabCount(INSTANCE_ID_1));
 
         triggerAddTab(tabModelObserver, mTab2); // normal tab added
         assertEquals(normalTabMessage, 2, MultiInstanceManagerApi31.readTabCount(INSTANCE_ID_1));
-        assertEquals(
-                incognitoTabMessage,
-                0,
+        assertEquals(incognitoTabMessage, 0,
                 MultiInstanceManagerApi31.readIncognitoTabCount(INSTANCE_ID_1));
 
         triggerAddTab(tabModelObserver, mTab3); // incognito tab added
         assertEquals(normalTabMessage, 2, MultiInstanceManagerApi31.readTabCount(INSTANCE_ID_1));
-        assertEquals(
-                incognitoTabMessage,
-                1,
+        assertEquals(incognitoTabMessage, 1,
                 MultiInstanceManagerApi31.readIncognitoTabCount(INSTANCE_ID_1));
 
         triggerOnFinishingTabClosure(tabModelObserver, mTab1);
         assertEquals(normalTabMessage, 1, MultiInstanceManagerApi31.readTabCount(INSTANCE_ID_1));
-        assertEquals(
-                incognitoTabMessage,
-                1,
+        assertEquals(incognitoTabMessage, 1,
                 MultiInstanceManagerApi31.readIncognitoTabCount(INSTANCE_ID_1));
 
         triggerTabRemoved(tabModelObserver, mTab3);
         assertEquals(normalTabMessage, 1, MultiInstanceManagerApi31.readTabCount(INSTANCE_ID_1));
-        assertEquals(
-                incognitoTabMessage,
-                0,
+        assertEquals(incognitoTabMessage, 0,
                 MultiInstanceManagerApi31.readIncognitoTabCount(INSTANCE_ID_1));
 
         triggerTabRemoved(tabModelObserver, mTab2);
         assertEquals(normalTabMessage, 0, MultiInstanceManagerApi31.readTabCount(INSTANCE_ID_1));
-        assertEquals(
-                incognitoTabMessage,
-                0,
+        assertEquals(incognitoTabMessage, 0,
                 MultiInstanceManagerApi31.readIncognitoTabCount(INSTANCE_ID_1));
     }
 
     @Test
     @SmallTest
+    @UiThreadTest
     public void testZeroNormalTabClearsUrlTitle() {
         when(mTabModelOrchestratorSupplier.get()).thenReturn(mTabModelOrchestrator);
         when(mTabModelOrchestrator.getTabModelSelector()).thenReturn(mTabModelSelector);
@@ -810,56 +595,39 @@ public class MultiInstanceManagerApi31UnitTest {
         when(mTab2.getTitle()).thenReturn(TITLE2);
 
         MultiInstanceManagerApi31 multiInstanceManager =
-                new MultiInstanceManagerApi31(
-                        mCurrentActivity,
-                        mTabModelOrchestratorSupplier,
-                        mMultiWindowModeStateDispatcher,
-                        mActivityLifecycleDispatcher,
-                        mModalDialogManagerSupplier,
-                        mMenuOrKeyboardActionController);
+                new MultiInstanceManagerApi31(mCurrentActivity, mTabModelOrchestratorSupplier,
+                        mMultiWindowModeStateDispatcher, mActivityLifecycleDispatcher,
+                        mModalDialogManagerSupplier, mMenuOrKeyboardActionController);
         multiInstanceManager.initialize(INSTANCE_ID_1, TASK_ID_57);
         TabModelObserver tabModelObserver = multiInstanceManager.getTabModelObserverForTesting();
 
-        when(mTabModelSelector.isTabStateInitialized()).thenReturn(true);
-
         triggerAddTab(tabModelObserver, mTab1);
         triggerSelectTab(tabModelObserver, mTab1);
-        assertEquals(
-                "Title should be from the active normal tab",
-                TITLE1,
+        assertEquals("Title should be from the active normal tab", TITLE1,
                 MultiInstanceManagerApi31.readTitle(INSTANCE_ID_1));
-        assertEquals(
-                "URL should be from the active normal tab",
-                URL1.getSpec(),
+        assertEquals("URL should be from the active normal tab", URL1.getSpec(),
                 MultiInstanceManagerApi31.readUrl(INSTANCE_ID_1));
 
         triggerAddTab(tabModelObserver, mTab2);
         triggerSelectTab(tabModelObserver, mTab2);
-        assertEquals(
-                "Title should be from the active normal tab",
-                TITLE2,
+        assertEquals("Title should be from the active normal tab", TITLE2,
                 MultiInstanceManagerApi31.readTitle(INSTANCE_ID_1));
-        assertEquals(
-                "URL should be from the active normal tab",
-                URL2.getSpec(),
+        assertEquals("URL should be from the active normal tab", URL2.getSpec(),
                 MultiInstanceManagerApi31.readUrl(INSTANCE_ID_1));
 
         triggerOnFinishingTabClosure(tabModelObserver, mTab1);
         triggerTabRemoved(tabModelObserver, mTab2);
-        assertEquals(
-                "Tab count should be zero",
-                0,
+        assertEquals("Tab count should be zero", 0,
                 MultiInstanceManagerApi31.readTabCount(INSTANCE_ID_1));
-        assertTrue(
-                "Title was not cleared",
+        assertTrue("Title was not cleared",
                 TextUtils.isEmpty(MultiInstanceManagerApi31.readTitle(INSTANCE_ID_1)));
-        assertTrue(
-                "URL was not cleared",
+        assertTrue("URL was not cleared",
                 TextUtils.isEmpty(MultiInstanceManagerApi31.readUrl(INSTANCE_ID_1)));
     }
 
     @Test
     @SmallTest
+    @UiThreadTest
     @Config(sdk = 31)
     public void testGetWindowIdsOfRunningTabbedActivities() {
         // Create 1 activity that is not a ChromeTabbedActivity and 2 ChromeTabbedActivity's.
@@ -873,13 +641,9 @@ public class MultiInstanceManagerApi31UnitTest {
 
         SparseIntArray runningTabbedActivityIds =
                 MultiInstanceManagerApi31.getWindowIdsOfRunningTabbedActivities();
-        assertEquals(
-                "There should be only 1 running ChromeTabbedActivity.",
-                1,
+        assertEquals("There should be only 1 running ChromeTabbedActivity.", 1,
                 runningTabbedActivityIds.size());
-        assertEquals(
-                "The window ID of the running ChromeTabbedActivity should match.",
-                2,
+        assertEquals("The window ID of the running ChromeTabbedActivity should match.", 2,
                 runningTabbedActivityIds.valueAt(0));
     }
 
@@ -918,24 +682,17 @@ public class MultiInstanceManagerApi31UnitTest {
     }
 
     private int allocInstanceIndex(int passedId, Activity activity) {
-        return allocInstanceIndex(passedId, activity, /* preferNew= */ false);
+        return allocInstanceIndex(passedId, activity, /*preferNew=*/false);
     }
 
     private int allocInstanceIndex(int passedId, Activity activity, boolean preferNew) {
-        Pair<Integer, Integer> instanceIdInfo =
+        int index =
                 mMultiInstanceManager.allocInstanceId(passedId, activity.getTaskId(), preferNew);
-        int index = instanceIdInfo.first;
 
         // Does what TabModelOrchestrator.createTabModels() would do to simulate production code.
         Pair<Integer, TabModelSelector> pair =
-                TabWindowManagerSingleton.getInstance()
-                        .requestSelector(
-                                activity,
-                                mProfileProviderSupplier,
-                                null,
-                                null,
-                                mMismatchedIndicesHandler,
-                                index);
+                TabWindowManagerSingleton.getInstance().requestSelector(
+                        activity, null, null, index);
         if (pair == null) return INVALID_INSTANCE_ID;
 
         int instanceId = pair.first;
@@ -945,8 +702,8 @@ public class MultiInstanceManagerApi31UnitTest {
         // Store minimal data to get the instance recognized.
         MultiInstanceManagerApi31.writeUrl(instanceId, "url" + instanceId);
         MultiInstanceManagerApi31.writeLastAccessedTime(index);
-        ChromeSharedPreferences.getInstance()
-                .writeInt(MultiInstanceManagerApi31.tabCountKey(index), 1);
+        SharedPreferencesManager.getInstance().writeInt(
+                MultiInstanceManagerApi31.tabCountKey(index), 1);
         return instanceId;
     }
 
@@ -964,11 +721,6 @@ public class MultiInstanceManagerApi31UnitTest {
         destroyActivity(activityForTask);
     }
 
-    private void removeTaskWithoutDestroyingActivity(Activity activityForTask) {
-        mMultiInstanceManager.updateTasksWithoutDestroyingActivity(
-                INVALID_INSTANCE_ID, activityForTask);
-    }
-
     // Simulate only an activity gets destroyed, leaving everything intact.
     private void closeInstanceOnly(Activity activity, int instanceId) {
         mMultiInstanceManager.closeInstanceOnly(instanceId);
@@ -979,292 +731,5 @@ public class MultiInstanceManagerApi31UnitTest {
         ActivityStateListener stateListener =
                 (ActivityStateListener) TabWindowManagerSingleton.getInstance();
         stateListener.onActivityStateChange(activity, ActivityState.DESTROYED);
-    }
-
-    private MultiInstanceManagerApi31 createChromeInstance(
-            int instanceId, int taskId, List<Tab> tabs) {
-        // Setp the mocks.
-        when(mTabModelOrchestratorSupplier.get()).thenReturn(mTabModelOrchestrator);
-        when(mTabModelOrchestrator.getTabModelSelector()).thenReturn(mTabModelSelector);
-        when(mTabModelSelector.getModels()).thenReturn(Collections.emptyList());
-        when(mTabModelSelector.getModel(false)).thenReturn(mNormalTabModel);
-        when(mTabModelSelector.getModel(true)).thenReturn(mIncognitoTabModel);
-        Answer normalTabCount = invocation -> mNormalTabCount;
-        when(mNormalTabModel.getCount()).then(normalTabCount);
-        Answer incognitoTabCount = invocation -> mIncognitoTabCount;
-        when(mIncognitoTabModel.getCount()).then(incognitoTabCount);
-        Answer normalActiveTab = invocation -> mNormalTabCount > 0 ? 0 : TabModel.INVALID_TAB_INDEX;
-        when(mNormalTabModel.index()).then(normalActiveTab);
-
-        MultiInstanceManager multiInstanceManager =
-                new MultiInstanceManagerApi31(
-                        mCurrentActivity,
-                        mTabModelOrchestratorSupplier,
-                        mMultiWindowModeStateDispatcher,
-                        mActivityLifecycleDispatcher,
-                        mModalDialogManagerSupplier,
-                        mMenuOrKeyboardActionController);
-        multiInstanceManager.initialize(instanceId, taskId);
-        multiInstanceManager.onTabStateInitialized();
-        TabModelObserver tabModelObserver = multiInstanceManager.getTabModelObserverForTesting();
-        when(mTabModelSelector.isTabStateInitialized()).thenReturn(true);
-        for (Tab tab : tabs) {
-            when(tab.isIncognito()).thenReturn(false);
-            triggerAddTab(tabModelObserver, tab);
-        }
-
-        return (MultiInstanceManagerApi31) multiInstanceManager;
-    }
-
-    @Test
-    @SmallTest
-    @Config(sdk = 31)
-    @EnableFeatures(ChromeFeatureList.TAB_DRAG_DROP_ANDROID)
-    public void testTabMove_MoveTabToNewWindow_calledWithDesiredParameters() {
-        mMultiInstanceManager.mTestBuildInstancesList = true;
-        MultiWindowTestUtils.enableMultiInstance();
-        // Allocate and create two instances.
-        assertEquals(0, allocInstanceIndex(PASSED_ID_INVALID, mTabbedActivityTask62, true));
-        assertEquals(1, allocInstanceIndex(PASSED_ID_INVALID, mTabbedActivityTask63, true));
-        Mockito.doNothing()
-                .when(mMultiInstanceManager)
-                .moveAndReparentTabToNewWindow(
-                        eq(mTab1), eq(INVALID_INSTANCE_ID), eq(true), eq(false), eq(true));
-
-        // Action
-        mMultiInstanceManager.moveTabToNewWindow(mTab1);
-
-        // Verify the call is made with desired parameters. The moveAndReparentTabToNewWindow method
-        // is validated in integration test here
-        // https://source.chromium.org/chromium/chromium/src/+/main:chrome/android/javatests/src/org/chromium/chrome/browser/multiwindow/MultiWindowIntegrationTest.java
-        verify(mMultiInstanceManager, times(1))
-                .moveAndReparentTabToNewWindow(
-                        any(), eq(INVALID_INSTANCE_ID), eq(true), eq(false), eq(true));
-    }
-
-    @Test
-    @SmallTest
-    @DisableFeatures(ChromeFeatureList.TAB_DRAG_DROP_ANDROID)
-    public void testTabMove_MoveTabToNewWindow_notCalled() {
-        MultiInstanceManagerApi31 multiInstanceManager1 =
-                Mockito.spy(
-                        createChromeInstance(
-                                INSTANCE_ID_1, TASK_ID_62, List.of(mTab1, mTab2, mTab3)));
-        Mockito.doNothing()
-                .when(multiInstanceManager1)
-                .moveAndReparentTabToNewWindow(
-                        eq(mTab2), eq(INVALID_INSTANCE_ID), eq(true), eq(false), eq(true));
-
-        // Action
-        multiInstanceManager1.moveTabToNewWindow(mTab2);
-
-        // Verify the call is made with desired parameters. The moveAndReparentTabToNewWindow method
-        // is validated in integration test here
-        // https://source.chromium.org/chromium/chromium/src/+/main:chrome/android/javatests/src/org/chromium/chrome/browser/multiwindow/MultiWindowIntegrationTest.java
-        verify(multiInstanceManager1, times(0))
-                .moveAndReparentTabToNewWindow(
-                        any(), eq(INVALID_INSTANCE_ID), eq(true), eq(false), eq(true));
-    }
-
-    @Test
-    @SmallTest
-    @Config(sdk = 31)
-    @EnableFeatures(ChromeFeatureList.TAB_DRAG_DROP_ANDROID)
-    public void testTabMove_MoveTabToNewWindow_BeyondMaxWindows_CallsOnly_OpenNewWindow() {
-        mMultiInstanceManager.mTestBuildInstancesList = true;
-        MultiWindowTestUtils.enableMultiInstance();
-        // Create max instances first before asking to move a tab from one to another.
-        for (int index = 0; index < mMultiInstanceManager.mMaxInstances; ++index) {
-            assertEquals(
-                    index, allocInstanceIndex(PASSED_ID_INVALID, mTabbedActivityPool[index], true));
-        }
-        assertEquals(
-                mMultiInstanceManager.mMaxInstances,
-                mMultiInstanceManager.getInstanceInfo().size());
-
-        Mockito.doNothing()
-                .when(mMultiInstanceManager)
-                .openNewWindow(eq("Android.WindowManager.NewWindow"));
-
-        // Action
-        mMultiInstanceManager.moveTabToNewWindow(mTab1);
-
-        // Verify only openNewWindow is called and moveAndReparentTabToNewWindow is not called.
-        verify(mMultiInstanceManager, times(0))
-                .moveAndReparentTabToNewWindow(
-                        any(), eq(INVALID_INSTANCE_ID), eq(true), eq(false), eq(true));
-        verify(mMultiInstanceManager, times(1)).openNewWindow(any());
-    }
-
-    @Test
-    @EnableFeatures(ChromeFeatureList.TAB_DRAG_DROP_ANDROID)
-    @Config(sdk = 31)
-    public void testTabMove_MoveTabToCurrentWindow_calledWithDesiredParameters() {
-        int tabAtIndex = 0;
-        mMultiInstanceManager.mTestBuildInstancesList = true;
-        MultiWindowTestUtils.enableMultiInstance();
-        // Create two instances first before asking to move a tab from one to current.
-        assertEquals(INSTANCE_ID_1, allocInstanceIndex(INSTANCE_ID_1, mTabbedActivityTask62, true));
-        assertEquals(INSTANCE_ID_2, allocInstanceIndex(INSTANCE_ID_2, mTabbedActivityTask63, true));
-        assertEquals(2, mMultiInstanceManager.getInstanceInfo().size());
-
-        Mockito.doNothing()
-                .when(mMultiInstanceManager)
-                .moveTabAction(any(), eq(mTab1), eq(tabAtIndex));
-
-        // Action
-        mMultiInstanceManager.moveTabToWindow(mTabbedActivityTask63, mTab1, tabAtIndex);
-
-        // Verify moveTabAction and getCurrentInstanceInfo are each called once.
-        verify(mMultiInstanceManager, times(1)).moveTabAction(any(), eq(mTab1), eq(tabAtIndex));
-        verify(mMultiInstanceManager, times(1)).getInstanceInfoFor(any());
-    }
-
-    @Test
-    @DisableFeatures(ChromeFeatureList.TAB_DRAG_DROP_ANDROID)
-    public void testTabMove_MoveTabToWindow_notCalled() {
-        int tabAtIndex = 0;
-        MultiInstanceManagerApi31 multiInstanceManager =
-                Mockito.spy(
-                        createChromeInstance(
-                                INSTANCE_ID_1, TASK_ID_62, List.of(mTab1, mTab2, mTab3)));
-        Mockito.doNothing()
-                .when(multiInstanceManager)
-                .moveTabAction(any(), eq(mTab2), eq(tabAtIndex));
-
-        // Action
-        multiInstanceManager.moveTabToWindow(mTabbedActivityTask62, mTab2, tabAtIndex);
-
-        // Verify moveTabAction is not called.
-        verify(multiInstanceManager, times(0)).moveTabAction(any(), eq(mTab2), eq(tabAtIndex));
-    }
-
-    @Test
-    @EnableFeatures(ChromeFeatureList.TAB_DRAG_DROP_ANDROID)
-    public void testTabMove_MoveTabAction_WithTabIndex_success() {
-        mMultiInstanceManager.mTestBuildInstancesList = true;
-        // Create two instances first before asking to move a tab from one to current.
-        assertEquals(INSTANCE_ID_1, allocInstanceIndex(INSTANCE_ID_1, mTabbedActivityTask62, true));
-        assertEquals(INSTANCE_ID_2, allocInstanceIndex(INSTANCE_ID_2, mTabbedActivityTask63, true));
-        assertEquals(2, mMultiInstanceManager.getInstanceInfo().size());
-
-        // Action
-        InstanceInfo info = mMultiInstanceManager.getInstanceInfoFor(mTabbedActivityTask63);
-        mMultiInstanceManager.moveTabAction(info, mTab1, /* atIndex= */ 0);
-
-        // Verify reparentTabToRunningActivity is called once.
-        verify(mMultiInstanceManager, times(1))
-                .reparentTabToRunningActivity(any(), eq(mTab1), eq(0));
-        verify(mMultiInstanceManager, times(0))
-                .moveAndReparentTabToNewWindow(
-                        eq(mTab1), eq(INVALID_INSTANCE_ID), eq(false), eq(true), eq(true));
-    }
-
-    @Test
-    @Config(sdk = 31)
-    @EnableFeatures(ChromeFeatureList.TAB_DRAG_DROP_ANDROID)
-    public void testTabMove_MoveTabAction_WithNonExistantInstance_success() {
-        mMultiInstanceManager.mTestBuildInstancesList = true;
-        // Create two instances first before asking to move a tab from one to current.
-        assertEquals(INSTANCE_ID_1, allocInstanceIndex(INSTANCE_ID_1, mTabbedActivityTask62, true));
-        assertEquals(
-                INSTANCE_ID_2, allocInstanceIndex(INSTANCE_ID_2, mTabbedActivityTask63, false));
-        assertEquals(2, mMultiInstanceManager.getInstanceInfo().size());
-        MultiWindowTestUtils.enableMultiInstance();
-        Mockito.doAnswer(
-                        invocation -> {
-                            // Change the last parameter to false to bypass calling
-                            // IntentUtils.addTrustedIntentExtras() for testing.
-                            mMultiInstanceManager.moveAndReparentTabToNewWindow(
-                                    mTab1, NON_EXISTANT_INSTANCE_ID, false, true, false);
-                            return null;
-                        })
-                .when(mMultiInstanceManager)
-                .moveAndReparentTabToNewWindow(
-                        eq(mTab1), eq(NON_EXISTANT_INSTANCE_ID), eq(false), eq(true), eq(true));
-
-        // Action
-        InstanceInfo info =
-                new InstanceInfo(
-                        NON_EXISTANT_INSTANCE_ID,
-                        NON_EXISTANT_INSTANCE_ID,
-                        InstanceInfo.Type.ADJACENT,
-                        "https://id-4.com",
-                        "",
-                        0,
-                        0,
-                        false);
-
-        mMultiInstanceManager.moveTabAction(info, mTab1, /* atIndex= */ 0);
-
-        // Verify moveAndReparentTabToNewWindow is called made with desired parameters once. The
-        // method is validated in integration test here
-        // https://source.chromium.org/chromium/chromium/src/+/main:chrome/android/javatests/src/org/chromium/chrome/browser/multiwindow/MultiWindowIntegrationTest.java.
-        // Also reparentTabToRunningActivity is not called.
-        verify(mMultiInstanceManager, times(1))
-                .moveAndReparentTabToNewWindow(
-                        eq(mTab1), eq(NON_EXISTANT_INSTANCE_ID), eq(false), eq(true), eq(false));
-        verify(mMultiInstanceManager, times(0))
-                .reparentTabToRunningActivity(any(), eq(mTab1), eq(0));
-    }
-
-    @Test
-    @EnableFeatures(ChromeFeatureList.TAB_DRAG_DROP_ANDROID)
-    @Config(sdk = 31)
-    public void testCloseChromeWindowIfEmpty_closed() {
-        mMultiInstanceManager.mTestBuildInstancesList = true;
-        MultiWindowTestUtils.enableMultiInstance();
-        // Create an empty instance before asking it to close. The flag that provides permission to
-        // close is enabled.
-        assertEquals(INSTANCE_ID_1, allocInstanceIndex(INSTANCE_ID_1, mTabbedActivityTask62, true));
-        assertEquals(1, mMultiInstanceManager.getInstanceInfo().size());
-
-        // Action
-        mMultiInstanceManager.closeChromeWindowIfEmpty(INSTANCE_ID_1);
-
-        verify(mMultiInstanceManager, times(1))
-                .closeInstance(anyInt(), eq(MultiWindowUtils.INVALID_TASK_ID));
-    }
-
-    @Test
-    @EnableFeatures({
-        ChromeFeatureList.TAB_LINK_DRAG_DROP_ANDROID,
-        ChromeFeatureList.DRAG_DROP_TAB_TEARING
-    })
-    @DisableFeatures(ChromeFeatureList.TAB_DRAG_DROP_ANDROID)
-    @Config(sdk = 31)
-    public void testCloseChromeWindowIfEmpty_tabTearing() {
-        mMultiInstanceManager.mTestBuildInstancesList = true;
-        MultiWindowTestUtils.enableMultiInstance();
-        // Create an empty instance before asking it to close. The flag that provides permission to
-        // close is enabled.
-        assertEquals(INSTANCE_ID_1, allocInstanceIndex(INSTANCE_ID_1, mTabbedActivityTask62, true));
-        assertEquals(1, mMultiInstanceManager.getInstanceInfo().size());
-
-        // Action
-        mMultiInstanceManager.closeChromeWindowIfEmpty(INSTANCE_ID_1);
-
-        verify(mMultiInstanceManager, times(1))
-                .closeInstance(anyInt(), eq(MultiWindowUtils.INVALID_TASK_ID));
-    }
-
-    @Test
-    @DisableFeatures({
-        ChromeFeatureList.TAB_DRAG_DROP_ANDROID,
-        ChromeFeatureList.DRAG_DROP_TAB_TEARING
-    })
-    @Config(sdk = 31)
-    public void testCloseChromeWindowIfEmpty_notClosed() {
-        mMultiInstanceManager.mTestBuildInstancesList = true;
-        MultiWindowTestUtils.enableMultiInstance();
-        // Create an empty instance before asking it to close. The flag that provides permission to
-        // close is disabled.
-        assertEquals(INSTANCE_ID_1, allocInstanceIndex(INSTANCE_ID_1, mTabbedActivityTask62, true));
-        assertEquals(1, mMultiInstanceManager.getInstanceInfo().size());
-
-        // Action
-        mMultiInstanceManager.closeChromeWindowIfEmpty(INSTANCE_ID_1);
-
-        verify(mMultiInstanceManager, times(0)).closeInstance(anyInt(), anyInt());
     }
 }

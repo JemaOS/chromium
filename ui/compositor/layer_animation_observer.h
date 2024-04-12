@@ -8,7 +8,6 @@
 #include <map>
 #include <set>
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "ui/compositor/compositor_export.h"
 #include "ui/compositor/layer_animation_element.h"
@@ -48,8 +47,7 @@ class COMPOSITOR_EXPORT LayerAnimationObserver  {
       LayerAnimationSequence* sequence) = 0;
 
  protected:
-  typedef std::set<raw_ptr<LayerAnimationSequence, SetExperimental>>
-      AttachedSequences;
+  typedef std::set<LayerAnimationSequence*> AttachedSequences;
 
   LayerAnimationObserver();
   virtual ~LayerAnimationObserver();

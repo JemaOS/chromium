@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
 (async function() {
   TestRunner.addResult(`Tests that properties defining grid templates are correct.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <style>
@@ -37,7 +35,7 @@ import {ElementsTestRunner} from 'elements_test_runner';
   function step2() {
     const treeElement = ElementsTestRunner.getElementStylePropertyTreeItem('grid-template-areas');
     TestRunner.addResult('Start editing "grid-template-areas"');
-    treeElement.startEditingValue();
+    treeElement.startEditing(treeElement.valueElement);
 
     TestRunner.addResult(`Prompt text ${treeElement.prompt.text()}`);
 

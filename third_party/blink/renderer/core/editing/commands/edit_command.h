@@ -65,7 +65,7 @@ class CORE_EXPORT EditCommand : public GarbageCollected<EditCommand> {
   explicit EditCommand(Document&);
 
   Document& GetDocument() const { return *document_.Get(); }
-  CompositeEditCommand* Parent() const { return parent_.Get(); }
+  CompositeEditCommand* Parent() const { return parent_; }
 
   static bool IsRenderedCharacter(const Position&);
 

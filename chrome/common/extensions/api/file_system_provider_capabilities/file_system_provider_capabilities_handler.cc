@@ -77,33 +77,32 @@ bool FileSystemProviderCapabilitiesHandler::Parse(Extension* extension,
     return true;
   }
 
-  auto idl_capabilities =
-      api::manifest_types::FileSystemProviderCapabilities::FromValue(*section);
-  if (!idl_capabilities.has_value()) {
-    *error = std::move(idl_capabilities).error();
+  api::manifest_types::FileSystemProviderCapabilities idl_capabilities;
+  if (!api::manifest_types::FileSystemProviderCapabilities::Populate(
+          *section, idl_capabilities, *error)) {
     return false;
   }
 
   FileSystemProviderSource source = SOURCE_FILE;
-  switch (idl_capabilities->source) {
-    case api::manifest_types::FileSystemProviderSource::kFile:
+  switch (idl_capabilities.source) {
+    case api::manifest_types::FILE_SYSTEM_PROVIDER_SOURCE_FILE:
       source = SOURCE_FILE;
       break;
-    case api::manifest_types::FileSystemProviderSource::kDevice:
+    case api::manifest_types::FILE_SYSTEM_PROVIDER_SOURCE_DEVICE:
       source = SOURCE_DEVICE;
       break;
-    case api::manifest_types::FileSystemProviderSource::kNetwork:
+    case api::manifest_types::FILE_SYSTEM_PROVIDER_SOURCE_NETWORK:
       source = SOURCE_NETWORK;
       break;
-    case api::manifest_types::FileSystemProviderSource::kNone:
+    case api::manifest_types::FILE_SYSTEM_PROVIDER_SOURCE_NONE:
       NOTREACHED();
   }
 
   std::unique_ptr<FileSystemProviderCapabilities> capabilities(
       new FileSystemProviderCapabilities(
-          idl_capabilities->configurable.value_or(false) /* false by default */,
-          idl_capabilities->watchable.value_or(false) /* false by default */,
-          idl_capabilities->multiple_mounts.value_or(
+          idl_capabilities.configurable.value_or(false) /* false by default */,
+          idl_capabilities.watchable.value_or(false) /* false by default */,
+          idl_capabilities.multiple_mounts.value_or(
               false) /* false by default */,
           source));
 

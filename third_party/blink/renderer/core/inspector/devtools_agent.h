@@ -55,7 +55,7 @@ class CORE_EXPORT DevToolsAgent : public GarbageCollected<DevToolsAgent>,
       WorkerThread*,
       const KURL&,
       const String& global_scope_name,
-      const std::optional<const DedicatedWorkerToken>& token);
+      const absl::optional<const DedicatedWorkerToken>& token);
   static void WorkerThreadTerminated(ExecutionContext* parent_context,
                                      WorkerThread*);
 
@@ -68,9 +68,6 @@ class CORE_EXPORT DevToolsAgent : public GarbageCollected<DevToolsAgent>,
 
   void Dispose();
   void FlushProtocolNotifications();
-  void DebuggerPaused();
-  void DebuggerResumed();
-  void BringDevToolsWindowToFocus();
   // For workers, we use the IO thread similar to DevToolsSession::IOSession to
   // ensure that we can always interrupt a worker that is stuck in JS. We don't
   // use an associated channel for workers, meaning we don't have the ordering
@@ -138,6 +135,7 @@ class CORE_EXPORT DevToolsAgent : public GarbageCollected<DevToolsAgent>,
   void ReportChildTargetsImpl(bool report,
                               bool wait_for_debugger,
                               base::OnceClosure callback);
+
   Client* client_;
   // DevToolsAgent is not tied to ExecutionContext
   HeapMojoAssociatedReceiver<mojom::blink::DevToolsAgent, DevToolsAgent>

@@ -70,7 +70,8 @@ class CodeGenerator {
   static std::string NameTensor(const TensorMetadata& tensor,
                                 const std::string& default_name);
   static void ResolveConflictedInputAndOutputNames(
-      std::vector<std::string>* input, std::vector<std::string>* output);
+      std::vector<std::string>* input,
+      std::vector<std::string>* output);
 };
 
 }  // namespace codegen

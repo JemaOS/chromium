@@ -12,22 +12,24 @@
 namespace blink {
 
 class AudioContext;
+class ScriptPromiseResolver;
 class V8UnionAudioSinkOptionsOrString;
 
-class SetSinkIdResolver : public GarbageCollected<SetSinkIdResolver> {
+class SetSinkIdResolver : public ScriptPromiseResolver {
  public:
+  static SetSinkIdResolver* Create(ScriptState*,
+                                   AudioContext&,
+                                   const V8UnionAudioSinkOptionsOrString&);
   SetSinkIdResolver(ScriptState*,
                     AudioContext&,
                     const V8UnionAudioSinkOptionsOrString&);
   SetSinkIdResolver(const SetSinkIdResolver&) = delete;
   SetSinkIdResolver& operator=(const SetSinkIdResolver&) = delete;
-  ~SetSinkIdResolver() = default;
+  ~SetSinkIdResolver() override = default;
 
   void Start();
 
-  ScriptPromiseResolverTyped<IDLUndefined>* Resolver() { return resolver_; }
-
-  void Trace(Visitor*) const;
+  void Trace(Visitor*) const override;
 
  private:
   // This callback function is passed to 'AudioDestinationNode::SetSinkId()'.
@@ -38,7 +40,7 @@ class SetSinkIdResolver : public GarbageCollected<SetSinkIdResolver> {
   void NotifySetSinkIdIsDone();
 
   WeakMember<AudioContext> audio_context_;
-  Member<ScriptPromiseResolverTyped<IDLUndefined>> resolver_;
+
   WebAudioSinkDescriptor sink_descriptor_;
 };
 }  // namespace blink

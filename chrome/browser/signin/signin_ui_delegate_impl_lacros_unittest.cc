@@ -4,14 +4,12 @@
 
 #include "chrome/browser/signin/signin_ui_delegate_impl_lacros.h"
 
-#include <string_view>
-
 #include "base/containers/fixed_flat_map.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/scoped_observation.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "chrome/browser/signin/chrome_signin_client_factory.h"
@@ -40,14 +38,14 @@ namespace {
 
 constexpr auto kPromoSuffixes = base::MakeFixedFlatMap<
     signin_metrics::PromoAction,
-    std::string_view>(
+    base::StringPiece>(
     {{signin_metrics::PromoAction::PROMO_ACTION_WITH_DEFAULT, ".WithDefault"},
      {signin_metrics::PromoAction::PROMO_ACTION_NOT_DEFAULT, ".NotDefault"},
      {signin_metrics::PromoAction::PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT,
       ".NewAccountNoExistingAccount"},
      {signin_metrics::PromoAction::PROMO_ACTION_NEW_ACCOUNT_EXISTING_ACCOUNT,
       ".NewAccountExistingAccount"}});
-constexpr std::string_view kSigninStartedHistogramBaseName =
+constexpr base::StringPiece kSigninStartedHistogramBaseName =
     "Signin.SigninStartedAccessPoint";
 
 constexpr signin_metrics::AccessPoint kAccessPoint =
@@ -83,8 +81,8 @@ std::unique_ptr<KeyedService> BuildSigninManager(
     content::BrowserContext* context) {
   Profile* profile = Profile::FromBrowserContext(context);
   return std::make_unique<SigninManager>(
-      *profile->GetPrefs(), *IdentityManagerFactory::GetForProfile(profile),
-      *ChromeSigninClientFactory::GetForProfile(profile));
+      profile->GetPrefs(), IdentityManagerFactory::GetForProfile(profile),
+      ChromeSigninClientFactory::GetForProfile(profile));
 }
 
 void ExpectOneSigninStartedHistograms(
@@ -140,11 +138,11 @@ class SigninUiDelegateImplLacrosTest : public ::testing::TestWithParam<bool> {
 
  private:
   network::TestURLLoaderFactory test_url_loader_factory_;
+  FakeAccountManagerUI* fake_account_manager_ui_;
   std::unique_ptr<ScopedAshAccountManagerForTests> scoped_account_manager_;
-  raw_ptr<FakeAccountManagerUI> fake_account_manager_ui_;
   content::BrowserTaskEnvironment task_environment_;
   TestingProfileManager profile_manager_{TestingBrowserProcess::GetGlobal()};
-  raw_ptr<Profile> profile_;
+  Profile* profile_;
   std::unique_ptr<IdentityTestEnvironmentProfileAdaptor>
       identity_test_env_adaptor_;
 };

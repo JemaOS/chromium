@@ -13,20 +13,39 @@ namespace {
 constexpr const char* kReportTo = "report-to";
 constexpr const char* kNone = "none";
 
-const char* PolicyValueTypeToString(mojom::blink::PolicyValueType type) {
+const char* ItemTypeToString(net::structured_headers::Item::ItemType type) {
   switch (type) {
-    case mojom::blink::PolicyValueType::kNull:
-      return "null";
-    case mojom::blink::PolicyValueType::kBool:
-      return "boolean";
-    case mojom::blink::PolicyValueType::kDecDouble:
-      return "double";
-    case mojom::blink::PolicyValueType::kEnum:
-      return "enum";
+    case net::structured_headers::Item::ItemType::kIntegerType:
+      return "Integer";
+    case net::structured_headers::Item::ItemType::kDecimalType:
+      return "Decimal";
+    case net::structured_headers::Item::ItemType::kBooleanType:
+      return "Boolean";
+    case net::structured_headers::Item::ItemType::kByteSequenceType:
+      return "ByteSequence";
+    case net::structured_headers::Item::ItemType::kNullType:
+      return "Null";
+    case net::structured_headers::Item::ItemType::kStringType:
+      return "String";
+    case net::structured_headers::Item::ItemType::kTokenType:
+      return "Token";
   }
 }
 
-std::optional<PolicyValue> ItemToPolicyValue(
+const char* PolicyValueTypeToString(mojom::blink::PolicyValueType type) {
+  switch (type) {
+    case mojom::blink::PolicyValueType::kNull:
+      return "Null";
+    case mojom::blink::PolicyValueType::kBool:
+      return "Boolean";
+    case mojom::blink::PolicyValueType::kDecDouble:
+      return "Double";
+    case mojom::blink::PolicyValueType::kEnum:
+      return "Enum";
+  }
+}
+
+absl::optional<PolicyValue> ItemToPolicyValue(
     const net::structured_headers::Item& item,
     mojom::blink::PolicyValueType type) {
   switch (type) {
@@ -34,7 +53,7 @@ std::optional<PolicyValue> ItemToPolicyValue(
       if (item.is_boolean()) {
         return PolicyValue::CreateBool(item.GetBoolean());
       } else {
-        return std::nullopt;
+        return absl::nullopt;
       }
     }
     case mojom::blink::PolicyValueType::kDecDouble:
@@ -45,27 +64,27 @@ std::optional<PolicyValue> ItemToPolicyValue(
         case net::structured_headers::Item::ItemType::kDecimalType:
           return PolicyValue::CreateDecDouble(item.GetDecimal());
         default:
-          return std::nullopt;
+          return absl::nullopt;
       }
     default:
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
-std::optional<std::string> ItemToString(
+absl::optional<std::string> ItemToString(
     const net::structured_headers::Item& item) {
   if (item.Type() != net::structured_headers::Item::ItemType::kTokenType)
-    return std::nullopt;
+    return absl::nullopt;
   return item.GetString();
 }
 
 struct ParsedFeature {
   mojom::blink::DocumentPolicyFeature feature;
   PolicyValue policy_value;
-  std::optional<std::string> endpoint_group;
+  absl::optional<std::string> endpoint_group;
 };
 
-std::optional<ParsedFeature> ParseFeature(
+absl::optional<ParsedFeature> ParseFeature(
     const net::structured_headers::DictionaryMember& directive,
     const DocumentPolicyNameFeatureMap& name_feature_map,
     const DocumentPolicyFeatureInfoMap& feature_info_map,
@@ -79,7 +98,7 @@ std::optional<ParsedFeature> ParseFeature(
                        "get list of items(length=%d).",
                        feature_name.c_str(),
                        static_cast<uint32_t>(directive.second.member.size())));
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Parse feature_name string to DocumentPolicyFeature.
@@ -89,21 +108,21 @@ std::optional<ParsedFeature> ParseFeature(
   } else {
     logger.Warn(String::Format("Unrecognized document policy feature name %s.",
                                feature_name.c_str()));
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   auto expected_policy_value_type =
       feature_info_map.at(parsed_feature.feature).default_value.Type();
   const net::structured_headers::Item& item =
       directive.second.member.front().item;
-  std::optional<PolicyValue> policy_value =
+  absl::optional<PolicyValue> policy_value =
       ItemToPolicyValue(item, expected_policy_value_type);
   if (!policy_value) {
     logger.Warn(String::Format(
         "Parameter for feature %s should be %s, not %s.", feature_name.c_str(),
         PolicyValueTypeToString(expected_policy_value_type),
-        net::structured_headers::ItemTypeToString(item.Type()).data()));
-    return std::nullopt;
+        ItemTypeToString(item.Type())));
+    return absl::nullopt;
   }
   parsed_feature.policy_value = *policy_value;
 
@@ -119,7 +138,7 @@ std::optional<ParsedFeature> ParseFeature(
         logger.Warn(String::Format(
             "\"report-to\" parameter should be a token in feature %s.",
             feature_name.c_str()));
-        return std::nullopt;
+        return absl::nullopt;
       }
     } else {
       // Unrecognized param.
@@ -164,11 +183,11 @@ void ApplyDefaultEndpoint(DocumentPolicy::ParsedDocumentPolicy& parsed_policy,
 }  // namespace
 
 // static
-std::optional<DocumentPolicy::ParsedDocumentPolicy> DocumentPolicyParser::Parse(
-    const String& policy_string,
-    PolicyParserMessageBuffer& logger) {
+absl::optional<DocumentPolicy::ParsedDocumentPolicy>
+DocumentPolicyParser::Parse(const String& policy_string,
+                            PolicyParserMessageBuffer& logger) {
   if (policy_string.empty())
-    return std::make_optional<DocumentPolicy::ParsedDocumentPolicy>({});
+    return absl::make_optional<DocumentPolicy::ParsedDocumentPolicy>({});
 
   return ParseInternal(policy_string, GetDocumentPolicyNameFeatureMap(),
                        GetDocumentPolicyFeatureInfoMap(),
@@ -176,7 +195,7 @@ std::optional<DocumentPolicy::ParsedDocumentPolicy> DocumentPolicyParser::Parse(
 }
 
 // static
-std::optional<DocumentPolicy::ParsedDocumentPolicy>
+absl::optional<DocumentPolicy::ParsedDocumentPolicy>
 DocumentPolicyParser::ParseInternal(
     const String& policy_string,
     const DocumentPolicyNameFeatureMap& name_feature_map,
@@ -188,14 +207,14 @@ DocumentPolicyParser::ParseInternal(
     logger.Error(
         "Parse of document policy failed because of errors reported by "
         "structured header parser.");
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   DocumentPolicy::ParsedDocumentPolicy parse_result;
   std::string default_endpoint = "";
   for (const net::structured_headers::DictionaryMember& directive :
        root.value()) {
-    std::optional<ParsedFeature> parsed_feature_option =
+    absl::optional<ParsedFeature> parsed_feature_option =
         ParseFeature(directive, name_feature_map, feature_info_map, logger);
     // If a feature fails parsing, ignore the entry.
     if (!parsed_feature_option)

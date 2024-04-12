@@ -13,15 +13,16 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.chromium.base.test.util.CommandLineFlags;
+import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.browser.autofill.AutofillTestHelper;
+import org.chromium.chrome.browser.autofill.PersonalDataManager.AutofillProfile;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.payments.PaymentRequestTestRule.AppPresence;
 import org.chromium.chrome.browser.payments.PaymentRequestTestRule.FactorySpeed;
 import org.chromium.chrome.browser.payments.ui.PaymentRequestSection;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.R;
-import org.chromium.components.autofill.AutofillProfile;
 
 import java.util.concurrent.TimeoutException;
 
@@ -41,18 +42,9 @@ public class PaymentRequestIncompleteContactDetailsTest {
         AutofillTestHelper helper = new AutofillTestHelper();
         // The user has an invalid email address on disk.
         helper.setProfile(
-                AutofillProfile.builder()
-                        .setFullName("Jon Doe")
-                        .setCompanyName("Google")
-                        .setStreetAddress("340 Main St")
-                        .setRegion("CA")
-                        .setLocality("Los Angeles")
-                        .setPostalCode("90291")
-                        .setCountryCode("US")
-                        .setPhoneNumber("333-333-3333")
-                        .setEmailAddress("jon.doe" /* invalid email address */)
-                        .setLanguageCode("en-US")
-                        .build());
+                new AutofillProfile("", "https://example.test", true, "" /* honorific prefix */,
+                        "Jon Doe", "Google", "340 Main St", "CA", "Los Angeles", "", "90291", "",
+                        "US", "333-333-3333", "jon.doe" /* invalid email address */, "en-US"));
 
         mPaymentRequestTestRule.addPaymentAppFactory(
                 AppPresence.HAVE_APPS, FactorySpeed.FAST_FACTORY);
@@ -64,8 +56,7 @@ public class PaymentRequestIncompleteContactDetailsTest {
     @Feature({"Payments"})
     public void testEditIncompleteContactAndCancel() throws TimeoutException {
         // Not ready to pay since Contact email is invalid.
-        mPaymentRequestTestRule.runJavaScriptAndWaitForUIEvent(
-                "buy();", mPaymentRequestTestRule.getReadyForInput());
+        mPaymentRequestTestRule.triggerUIAndWait("buy", mPaymentRequestTestRule.getReadyForInput());
         // Check that there is a selected payment method (makes sure we are not ready to pay because
         // of the Contact Details).
         mPaymentRequestTestRule.expectPaymentMethodRowIsSelected(0);
@@ -75,16 +66,14 @@ public class PaymentRequestIncompleteContactDetailsTest {
                 R.id.payments_section, mPaymentRequestTestRule.getReadyForInput());
         mPaymentRequestTestRule.clickInContactInfoAndWait(
                 R.id.payments_first_radio_button, mPaymentRequestTestRule.getReadyToEdit());
-        mPaymentRequestTestRule.setTextInEditorAndWait(
-                new String[] {"", "---", "jane.jones"},
+        mPaymentRequestTestRule.setTextInEditorAndWait(new String[] {"", "---", "jane.jones"},
                 mPaymentRequestTestRule.getEditorTextUpdate());
         mPaymentRequestTestRule.clickInEditorAndWait(
                 R.id.editor_dialog_done_button, mPaymentRequestTestRule.getEditorValidationError());
         // The section collapses and the [CHOOSE] button is active.
         mPaymentRequestTestRule.clickInEditorAndWait(
                 R.id.payments_edit_cancel_button, mPaymentRequestTestRule.getReadyForInput());
-        Assert.assertEquals(
-                PaymentRequestSection.EDIT_BUTTON_CHOOSE,
+        Assert.assertEquals(PaymentRequestSection.EDIT_BUTTON_CHOOSE,
                 mPaymentRequestTestRule.getContactDetailsButtonState());
 
         mPaymentRequestTestRule.clickAndWait(
@@ -96,11 +85,11 @@ public class PaymentRequestIncompleteContactDetailsTest {
     /** Attempt to add invalid contact info alongside the already invalid info, and cancel. */
     @Test
     @MediumTest
+    @DisabledTest(message = "crbug.com/1182234")
     @Feature({"Payments"})
-    public void testAddIncompleteContactAndCancel() throws TimeoutException, InterruptedException {
+    public void testAddIncompleteContactAndCancel() throws TimeoutException {
         // Not ready to pay since Contact email is invalid.
-        mPaymentRequestTestRule.runJavaScriptAndWaitForUIEvent(
-                "buy();", mPaymentRequestTestRule.getReadyForInput());
+        mPaymentRequestTestRule.triggerUIAndWait("buy", mPaymentRequestTestRule.getReadyForInput());
         // Check that there is a selected payment method (makes sure we are not ready to pay because
         // of the Contact Details).
         mPaymentRequestTestRule.expectPaymentMethodRowIsSelected(0);
@@ -110,17 +99,16 @@ public class PaymentRequestIncompleteContactDetailsTest {
                 R.id.payments_section, mPaymentRequestTestRule.getReadyForInput());
         mPaymentRequestTestRule.clickInContactInfoAndWait(
                 R.id.payments_add_option_button, mPaymentRequestTestRule.getReadyToEdit());
-        mPaymentRequestTestRule.setTextInEditorAndWait(
-                new String[] {"", "---", "jane.jones"},
+        mPaymentRequestTestRule.setTextInEditorAndWait(new String[] {"", "---", "jane.jones"},
                 mPaymentRequestTestRule.getEditorTextUpdate());
         mPaymentRequestTestRule.clickInEditorAndWait(
                 R.id.editor_dialog_done_button, mPaymentRequestTestRule.getEditorValidationError());
         // The section collapses and the [CHOOSE] button is active.
         mPaymentRequestTestRule.clickInEditorAndWait(
                 R.id.payments_edit_cancel_button, mPaymentRequestTestRule.getReadyForInput());
-        Assert.assertEquals(
-                PaymentRequestSection.EDIT_BUTTON_CHOOSE,
+        Assert.assertEquals(PaymentRequestSection.EDIT_BUTTON_CHOOSE,
                 mPaymentRequestTestRule.getContactDetailsButtonState());
+
         mPaymentRequestTestRule.clickAndWait(
                 R.id.close_button, mPaymentRequestTestRule.getDismissed());
         mPaymentRequestTestRule.expectResultContains(
@@ -132,8 +120,7 @@ public class PaymentRequestIncompleteContactDetailsTest {
     @MediumTest
     @Feature({"Payments"})
     public void testEditIncompleteContactAndPay() throws TimeoutException {
-        mPaymentRequestTestRule.runJavaScriptAndWaitForUIEvent(
-                "buy();", mPaymentRequestTestRule.getReadyForInput());
+        mPaymentRequestTestRule.triggerUIAndWait("buy", mPaymentRequestTestRule.getReadyForInput());
         mPaymentRequestTestRule.clickInContactInfoAndWait(
                 R.id.payments_section, mPaymentRequestTestRule.getReadyForInput());
         mPaymentRequestTestRule.clickInContactInfoAndWait(

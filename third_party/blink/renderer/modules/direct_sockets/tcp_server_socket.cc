@@ -1,4 +1,4 @@
-// Copyright 2023 The Chromium Authors
+// Copyright 2023 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -57,7 +57,9 @@ mojom::blink::DirectTCPServerSocketOptionsPtr CreateTCPServerSocketOptions(
           "equivalent.");
       return {};
     }
-    socket_options->ipv6_only = options->ipv6Only();
+    socket_options->ipv6_only =
+        options->ipv6Only() ? network::mojom::blink::OptionalBool::kTrue
+                            : network::mojom::blink::OptionalBool::kFalse;
   }
 
   socket_options->local_addr = std::move(local_addr);
@@ -67,10 +69,7 @@ mojom::blink::DirectTCPServerSocketOptionsPtr CreateTCPServerSocketOptions(
 }  // namespace
 
 TCPServerSocket::TCPServerSocket(ScriptState* script_state)
-    : Socket(script_state),
-      opened_(MakeGarbageCollected<
-              ScriptPromiseProperty<TCPServerSocketOpenInfo, DOMException>>(
-          GetExecutionContext())) {}
+    : Socket(script_state) {}
 
 TCPServerSocket::~TCPServerSocket() = default;
 
@@ -90,18 +89,12 @@ TCPServerSocket* TCPServerSocket::Create(ScriptState* script_state,
   return socket;
 }
 
-ScriptPromiseTyped<TCPServerSocketOpenInfo> TCPServerSocket::opened(
-    ScriptState* script_state) const {
-  return opened_->Promise(script_state->World());
-}
-
-ScriptPromiseTyped<IDLUndefined> TCPServerSocket::close(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise TCPServerSocket::close(ScriptState* script_state,
+                                     ExceptionState& exception_state) {
   if (GetState() == State::kOpening) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Socket is not properly initialized.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   if (GetState() != State::kOpen) {
@@ -111,7 +104,7 @@ ScriptPromiseTyped<IDLUndefined> TCPServerSocket::close(
   if (readable_stream_wrapper_->Locked()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Close called on locked streams.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   auto* reason = MakeGarbageCollected<DOMException>(
@@ -150,7 +143,7 @@ void TCPServerSocket::OnTCPServerSocketOpened(
     mojo::PendingRemote<network::mojom::blink::TCPServerSocket>
         tcp_server_remote,
     int32_t result,
-    const std::optional<net::IPEndPoint>& local_addr) {
+    const absl::optional<net::IPEndPoint>& local_addr) {
   if (result == net::OK) {
     DCHECK(local_addr);
     readable_stream_wrapper_ =
@@ -165,7 +158,7 @@ void TCPServerSocket::OnTCPServerSocketOpened(
     open_info->setLocalAddress(String{local_addr->ToStringWithoutPort()});
     open_info->setLocalPort(local_addr->port());
 
-    opened_->Resolve(open_info);
+    GetOpenedPromiseResolver()->Resolve(open_info);
 
     SetState(State::kOpen);
   } else {
@@ -173,11 +166,9 @@ void TCPServerSocket::OnTCPServerSocketOpened(
     base::UmaHistogramSparse("DirectSockets.TCPServerNetworkFailures", -result);
     ReleaseResources();
 
-    ScriptState::Scope scope(GetScriptState());
     auto* exception = CreateDOMExceptionFromNetErrorCode(result);
-    opened_->Reject(exception);
-    GetClosedProperty().Reject(ScriptValue(GetScriptState()->GetIsolate(),
-                                           exception->ToV8(GetScriptState())));
+    GetOpenedPromiseResolver()->Reject(exception);
+    GetClosedPromiseResolver()->Reject(exception);
 
     SetState(State::kAborted);
   }
@@ -186,7 +177,6 @@ void TCPServerSocket::OnTCPServerSocketOpened(
 }
 
 void TCPServerSocket::Trace(Visitor* visitor) const {
-  visitor->Trace(opened_);
   visitor->Trace(readable_stream_wrapper_);
 
   ScriptWrappable::Trace(visitor);
@@ -207,10 +197,10 @@ void TCPServerSocket::OnReadableStreamClosed(ScriptValue exception) {
   DCHECK_EQ(GetState(), State::kOpen);
 
   if (!exception.IsEmpty()) {
-    GetClosedProperty().Reject(exception);
+    GetClosedPromiseResolver()->Reject(exception);
     SetState(State::kAborted);
   } else {
-    GetClosedProperty().ResolveWithUndefined();
+    GetClosedPromiseResolver()->Resolve();
     SetState(State::kClosed);
   }
   ReleaseResources();

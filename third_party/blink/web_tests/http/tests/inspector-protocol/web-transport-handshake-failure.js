@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {session, dp} = await testRunner.startBlank(
       `Check the console message printed on a WebTransport handshake failure.`);
   const url = 'https://localhost';

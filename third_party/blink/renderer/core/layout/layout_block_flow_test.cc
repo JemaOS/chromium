@@ -10,7 +10,7 @@ class LayoutBlockFlowTest : public RenderingTest {};
 
 // crbug.com/1253159.  We had a bug that a legacy IFC LayoutBlockFlow didn't
 // call RecalcVisualOverflow() for children.
-TEST_F(LayoutBlockFlowTest, RecalcInlineChildrenScrollableOverflow) {
+TEST_F(LayoutBlockFlowTest, RecalcInlineChildrenLayoutOverflow) {
   SetBodyInnerHTML(R"HTML(
 <style>
 kbd { float: right; }
@@ -26,10 +26,9 @@ var { column-count: 17179869184; }
   ASSERT_TRUE(kbd->Parent()->IsLayoutNGBlockFlow());
   ASSERT_TRUE(kbd->CreatesNewFormattingContext());
   UpdateAllLifecyclePhasesForTest();
-  GetElementById("text")->setAttribute(AtomicString("font-size"),
-                                       AtomicString("100"));
+  GetElementById("text")->setAttribute("font-size", "100");
   UpdateAllLifecyclePhasesForTest();
-  // The test passes if no DCHECK failure in ink_overflow.cc.
+  // The test passes if no DCHECK failure in ng_ink_overflow.cc.
 }
 
 }  // namespace blink

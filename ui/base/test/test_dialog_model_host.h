@@ -17,8 +17,7 @@
 
 namespace ui {
 
-class TestDialogModelHost final : public DialogModelHost,
-                                  public DialogModelFieldHost {
+class TestDialogModelHost final : public DialogModelHost {
  public:
   enum class ButtonId {
     kCancel,
@@ -55,7 +54,7 @@ class TestDialogModelHost final : public DialogModelHost,
  private:
   // DialogModelHost:
   void Close() override;
-  void OnDialogButtonChanged() override;
+  void OnFieldAdded(DialogModelField* field) override;
 
   std::unique_ptr<DialogModel> dialog_model_;
 };

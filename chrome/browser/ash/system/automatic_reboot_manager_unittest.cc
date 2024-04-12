@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/system/automatic_reboot_manager.h"
 
-#include <optional>
 #include <string>
 
 #include "ash/constants/ash_paths.h"
@@ -14,10 +13,10 @@
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
+#include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
-#include "base/test/scoped_path_override.h"
 #include "base/test/simple_test_tick_clock.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_mock_time_task_runner.h"
@@ -82,7 +81,7 @@ class MockUptimeProvider {
   }
 
  private:
-  raw_ptr<base::TestMockTimeTaskRunner> mock_time_task_runner_;
+  raw_ptr<base::TestMockTimeTaskRunner, ExperimentalAsh> mock_time_task_runner_;
 
   base::FilePath uptime_file_path_;
   base::TimeDelta uptime_offset_;
@@ -134,7 +133,7 @@ class MockAutomaticRebootManagerObserver
  private:
   void StopObserving();
 
-  raw_ptr<AutomaticRebootManager> automatic_reboot_manger_;
+  raw_ptr<AutomaticRebootManager, ExperimentalAsh> automatic_reboot_manger_;
 };
 
 }  // namespace
@@ -217,8 +216,6 @@ class AutomaticRebootManagerBasicTest : public testing::Test {
   std::unique_ptr<AutomaticRebootManager> automatic_reboot_manager_;
 
   base::ScopedTempDir temp_dir_;
-  std::optional<base::ScopedPathOverride> file_uptime_override_;
-  std::optional<base::ScopedPathOverride> file_reboot_needed_override_;
   base::FilePath update_reboot_needed_uptime_file_;
 
   bool reboot_after_update_ = false;
@@ -231,7 +228,7 @@ class AutomaticRebootManagerBasicTest : public testing::Test {
   user_manager::ScopedUserManager user_manager_enabler_;
   session_manager::SessionManager session_manager_;
 
-  raw_ptr<FakeUpdateEngineClient, DanglingUntriaged> update_engine_client_ =
+  raw_ptr<FakeUpdateEngineClient, ExperimentalAsh> update_engine_client_ =
       nullptr;  // Not owned.
 };
 
@@ -340,12 +337,9 @@ void AutomaticRebootManagerBasicTest::SetUp() {
   update_reboot_needed_uptime_file_ =
       temp_dir.Append("update_reboot_needed_uptime");
   ASSERT_TRUE(base::WriteFile(update_reboot_needed_uptime_file_, ""));
-  file_uptime_override_.emplace(FILE_UPTIME, uptime_file, /*is_absolute=*/false,
-                                /*create=*/false);
-  file_reboot_needed_override_.emplace(FILE_UPDATE_REBOOT_NEEDED_UPTIME,
-                                       update_reboot_needed_uptime_file_,
-                                       /*is_absolute=*/false,
-                                       /*create=*/false);
+  ASSERT_TRUE(base::PathService::Override(FILE_UPTIME, uptime_file));
+  ASSERT_TRUE(base::PathService::Override(FILE_UPDATE_REBOOT_NEEDED_UPTIME,
+                                          update_reboot_needed_uptime_file_));
 
   TestingBrowserProcess::GetGlobal()->SetLocalState(&local_state_);
   AutomaticRebootManager::RegisterPrefs(local_state_.registry());

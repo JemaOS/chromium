@@ -11,18 +11,13 @@
 #include "chrome/updater/lock.h"
 #include "chrome/updater/prefs.h"
 
-namespace base {
-class FilePath;
-}
-
 namespace updater {
 
 enum class UpdaterScope;
 
 class UpdaterPrefsImpl : public LocalPrefs, public GlobalPrefs {
  public:
-  UpdaterPrefsImpl(const base::FilePath& prefs_dir_,
-                   std::unique_ptr<ScopedLock> lock,
+  UpdaterPrefsImpl(std::unique_ptr<ScopedLock> lock,
                    std::unique_ptr<PrefService> prefs);
 
   // Overrides for UpdaterPrefs.
@@ -45,8 +40,6 @@ class UpdaterPrefsImpl : public LocalPrefs, public GlobalPrefs {
   ~UpdaterPrefsImpl() override;
 
  private:
-  // `prefs_dir_` is used for logging purposes and it may be deprecated later.
-  const base::FilePath prefs_dir_;
   std::unique_ptr<ScopedLock> lock_;
   std::unique_ptr<PrefService> prefs_;
 };

@@ -12,6 +12,7 @@
 
 #include "base/auto_reset.h"
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/memory/raw_ptr.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/observer_list.h"
@@ -23,7 +24,6 @@
 #include "ui/views/animation/animation_delegate_views.h"
 #include "ui/views/layout/normalized_geometry.h"
 #include "ui/views/view.h"
-#include "ui/views/view_class_properties.h"
 
 namespace views {
 
@@ -88,13 +88,13 @@ struct AnimatingLayoutManager::LayoutFadeInfo {
   // How the child view is fading.
   LayoutFadeType fade_type;
   // The child view which is fading.
-  raw_ptr<View, DanglingUntriaged> child_view = nullptr;
+  raw_ptr<View> child_view = nullptr;
   // The view previous (leading side) to the fading view which is in both the
   // starting and target layout, or null if none.
-  raw_ptr<View, DanglingUntriaged> prev_view = nullptr;
+  raw_ptr<View> prev_view = nullptr;
   // The view next (trailing side) to the fading view which is in both the
   // starting and target layout, or null if none.
-  raw_ptr<View, DanglingUntriaged> next_view = nullptr;
+  raw_ptr<View> next_view = nullptr;
   // The full-size bounds, normalized to the orientation of the layout manager,
   // that |child_view| starts with, if fading out, or ends with, if fading in.
   NormalizedRect reference_bounds;
@@ -305,7 +305,7 @@ void AnimatingLayoutManager::FadeOut(View* child_view) {
   }
 
   // This handles a case where we are in the middle of an animation where we
-  // would have hidden the target view, but haven't laid out yet, so haven't
+  // would have hidden the target view, but haven't hit Layout() yet, so haven't
   // actually hidden it yet. Because we plan fade-outs off of the current layout
   // if the view the child view is visible it will not get a proper fade-out and
   // will remain visible but not properly laid out. We remedy this by hiding the
@@ -430,19 +430,19 @@ int AnimatingLayoutManager::GetPreferredHeightForWidth(const View* host,
   return target_layout_manager()->GetPreferredHeightForWidth(host, width);
 }
 
-std::vector<raw_ptr<View, VectorExperimental>>
-AnimatingLayoutManager::GetChildViewsInPaintOrder(const View* host) const {
+std::vector<View*> AnimatingLayoutManager::GetChildViewsInPaintOrder(
+    const View* host) const {
   DCHECK_EQ(host_view(), host);
 
   if (!is_animating())
     return LayoutManagerBase::GetChildViewsInPaintOrder(host);
 
-  std::vector<raw_ptr<View, VectorExperimental>> result;
+  std::vector<View*> result;
   std::set<View*> fading;
 
   // Put all fading views to the front of the list (back of the Z-order).
   for (const LayoutFadeInfo& fade_info : fade_infos_) {
-    result.push_back(fade_info.child_view.get());
+    result.push_back(fade_info.child_view);
     fading.insert(fade_info.child_view);
   }
 
@@ -457,13 +457,13 @@ AnimatingLayoutManager::GetChildViewsInPaintOrder(const View* host) const {
 
 bool AnimatingLayoutManager::OnViewRemoved(View* host, View* view) {
   // Remove any fade infos corresponding to the removed view.
-  std::erase_if(fade_infos_, [view](const LayoutFadeInfo& fade_info) {
+  base::EraseIf(fade_infos_, [view](const LayoutFadeInfo& fade_info) {
     return fade_info.child_view == view;
   });
 
   // Remove any elements in the current layout corresponding to the removed
   // view.
-  std::erase_if(current_layout_.child_layouts,
+  base::EraseIf(current_layout_.child_layouts,
                 [view](const ChildLayout& child_layout) {
                   return child_layout.child_view == view;
                 });
@@ -512,7 +512,7 @@ bool AnimatingLayoutManager::OnViewAdded(View* host, View* view) {
   // Handle a case where we add a visible view that shouldn't be visible in the
   // layout. In this case, there is no animation, no invalidation, and we just
   // set the view to not be visible.
-  if (IsChildIncludedInLayout(view) && cached_layout_size() && !is_animating_) {
+  if (view->GetVisible() && cached_layout_size() && !is_animating_) {
     const gfx::Size target_size = GetAvailableTargetLayoutSize();
     ProposedLayout proposed_layout =
         target_layout_manager()->GetProposedLayout(target_size);
@@ -807,10 +807,10 @@ void AnimatingLayoutManager::CalculateFadeInfos() {
   fade_infos_.clear();
 
   struct ChildInfo {
-    std::optional<size_t> start;
+    absl::optional<size_t> start;
     NormalizedRect start_bounds;
     bool start_visible = false;
-    std::optional<size_t> target;
+    absl::optional<size_t> target;
     NormalizedRect target_bounds;
     bool target_visible = false;
   };
@@ -945,8 +945,7 @@ void AnimatingLayoutManager::ResolveFades() {
     View* const child = fade_info.child_view;
     if (fade_info.fade_type == LayoutFadeType::kFadingOut &&
         host_view()->GetIndexOf(child).has_value() &&
-        !child->GetProperty(kViewIgnoredByLayoutKey) &&
-        !IsChildIncludedInLayout(child)) {
+        !IsChildViewIgnoredByLayout(child) && !IsChildIncludedInLayout(child)) {
       SetViewVisibility(child, false);
     }
   }
@@ -1136,22 +1135,14 @@ gfx::Size AnimatingLayoutManager::DefaultFlexRuleImpl(
   // Does the preferred size fit in the bounds? If so, return the preferred
   // size. Note that the *target* size might not fit in the bounds, but we'll
   // recalculate that the next time we lay out.
-  //
-  // The one exception is if the current preferred size is empty. If that's the
-  // case, then this check becomes trivial and the layout can get stuck at zero
-  // size (which is bad). See crbug.com/1506607 for an example of an empty
-  // layout causing issues.
-  if (!preferred_size.IsEmpty() &&
-      CanFitInBounds(preferred_size, size_bounds)) {
+  if (CanFitInBounds(preferred_size, size_bounds))
     return preferred_size;
-  }
 
   // Special case - if we're being asked for a zero-size layout we'll return the
   // minimum size of the layout. This is because we're being probed for how
   // small we can get, not being asked for an actual size.
-  if (GetMainAxis(animating_layout->orientation(), size_bounds) <= 0) {
+  if (GetMainAxis(animating_layout->orientation(), size_bounds) <= 0)
     return animating_layout->GetMinimumSize(view);
-  }
 
   // We know our current size does not fit into the bounds being given to us.
   // This is going to force a snap to a new size, which will be the ideal size
@@ -1162,9 +1153,8 @@ gfx::Size AnimatingLayoutManager::DefaultFlexRuleImpl(
   // Easiest case is that the target layout's preferred size *does* fit, in
   // which case we can use that.
   const gfx::Size target_preferred = target_layout->GetPreferredSize(view);
-  if (CanFitInBounds(target_preferred, size_bounds)) {
+  if (CanFitInBounds(target_preferred, size_bounds))
     return target_preferred;
-  }
 
   // We know that at least one of the width and height are constrained, so we
   // need to ask the target layout how large it wants to be in the space

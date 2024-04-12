@@ -323,22 +323,22 @@ gfx::PointF TouchHandle::ComputeHandleOrigin() const {
   int focal_offset_x = 0;
   int focal_offset_y = mirror_vertical_ ? drawable_bounds.height() : 0;
   switch (orientation_) {
-    case TouchHandleOrientation::LEFT:
+    case ui::TouchHandleOrientation::LEFT:
       focal_offset_x =
           mirror_horizontal_
               ? drawable_width * handle_horizontal_padding_
               : drawable_width * (1.0f - handle_horizontal_padding_);
       break;
-    case TouchHandleOrientation::RIGHT:
+    case ui::TouchHandleOrientation::RIGHT:
       focal_offset_x =
           mirror_horizontal_
               ? drawable_width * (1.0f - handle_horizontal_padding_)
               : drawable_width * handle_horizontal_padding_;
       break;
-    case TouchHandleOrientation::CENTER:
+    case ui::TouchHandleOrientation::CENTER:
       focal_offset_x = drawable_width * 0.5f;
       break;
-    case TouchHandleOrientation::UNDEFINED:
+    case ui::TouchHandleOrientation::UNDEFINED:
       NOTREACHED() << "Invalid touch handle orientation.";
       break;
   };

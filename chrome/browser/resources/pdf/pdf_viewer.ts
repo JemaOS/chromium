@@ -15,50 +15,32 @@ import './pdf_viewer_shared_style.css.js';
 import 'chrome://resources/cr_elements/cr_hidden_style.css.js';
 import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {listenOnce} from 'chrome://resources/js/util.js';
+import {listenOnce} from 'chrome://resources/js/util_ts.js';
 
-import type {Bookmark} from './bookmark_type.js';
-import type {BrowserApi} from './browser_api.js';
-import type {Attachment, DocumentMetadata, ExtendedKeyEvent, Point} from './constants.js';
-import {FittingType, SaveRequestType} from './constants.js';
-import type {MessageData} from './controller.js';
-import {PluginController} from './controller.js';
+import {Bookmark} from './bookmark_type.js';
+import {BrowserApi} from './browser_api.js';
+import {Attachment, DocumentMetadata, ExtendedKeyEvent, FittingType, Point, SaveRequestType} from './constants.js';
+import {MessageData, PluginController} from './controller.js';
 // <if expr="enable_ink">
-import type {ContentController} from './controller.js';
+import {ContentController} from './controller.js';
 // </if>
-import type {ChangePageAndXyDetail, ChangePageDetail, NavigateDetail} from './elements/viewer-bookmark.js';
-import {ChangePageOrigin} from './elements/viewer-bookmark.js';
-import type {ViewerErrorDialogElement} from './elements/viewer-error-dialog.js';
-import type {ViewerPasswordDialogElement} from './elements/viewer-password-dialog.js';
-import type {ViewerPdfSidenavElement} from './elements/viewer-pdf-sidenav.js';
-import type {ViewerToolbarElement} from './elements/viewer-toolbar.js';
+import {ChangePageAndXyDetail, ChangePageDetail, ChangePageOrigin, NavigateDetail} from './elements/viewer-bookmark.js';
+import {ViewerErrorDialogElement} from './elements/viewer-error-dialog.js';
+import {ViewerPasswordDialogElement} from './elements/viewer-password-dialog.js';
+import {ViewerPdfSidenavElement} from './elements/viewer-pdf-sidenav.js';
+import {ViewerToolbarElement} from './elements/viewer-toolbar.js';
 // <if expr="enable_ink">
 import {InkController, InkControllerEventType} from './ink_controller.js';
 //</if>
 import {LocalStorageProxyImpl} from './local_storage_proxy.js';
-import {record, recordEnumeration, UserAction} from './metrics.js';
+import {record, UserAction} from './metrics.js';
 import {NavigatorDelegateImpl, PdfNavigator, WindowOpenDisposition} from './navigator.js';
 import {deserializeKeyEvent, LoadState} from './pdf_scripting_api.js';
 import {getTemplate} from './pdf_viewer.html.js';
-import type {KeyEventData} from './pdf_viewer_base.js';
-import {PdfViewerBaseElement} from './pdf_viewer_base.js';
-import {PdfViewerPrivateProxyImpl} from './pdf_viewer_private_proxy.js';
-import type {DestinationMessageData, DocumentDimensionsMessageData} from './pdf_viewer_utils.js';
-import {hasCtrlModifier, hasCtrlModifierOnly, shouldIgnoreKeyEvents} from './pdf_viewer_utils.js';
-
-/**
- * Keep in sync with the values for enum PDFPostMessageDataType in
- * tools/metrics/histograms/metadata/pdf/enums.xml.
- * These values are persisted to logs. Entries should not be renumbered, removed
- * or reused.
- */
-enum PostMessageDataType {
-  GET_SELECTED_TEXT = 0,
-  PRINT = 1,
-  SELECT_ALL = 2,
-}
+import {KeyEventData, PdfViewerBaseElement} from './pdf_viewer_base.js';
+import {DestinationMessageData, DocumentDimensionsMessageData, hasCtrlModifier, shouldIgnoreKeyEvents} from './pdf_viewer_utils.js';
 
 interface EmailMessageData {
   type: string;
@@ -267,7 +249,6 @@ export class PdfViewerElement extends PdfViewerBaseElement {
   private docLength_: number;
   private documentHasFocus_: boolean;
   private documentMetadata_: DocumentMetadata;
-  private embedded_: boolean;
   private fileName_: string;
   private hadPassword_: boolean;
   private hasEdits_: boolean;
@@ -331,13 +312,8 @@ export class PdfViewerElement extends PdfViewerBaseElement {
     this.inkController_.init(this.viewport);
     this.tracker.add(
         this.inkController_.getEventTarget(),
-        InkControllerEventType.HAS_UNSAVED_CHANGES, () => {
-          // TODO(crbug.com/1445746): Write an equivalent API call for
-          // chrome.pdfViewerPrivate.
-          if (!this.pdfOopifEnabled) {
-            chrome.mimeHandlerPrivate.setShowBeforeUnloadDialog(true);
-          }
-        });
+        InkControllerEventType.HAS_UNSAVED_CHANGES,
+        () => chrome.mimeHandlerPrivate.setShowBeforeUnloadDialog(true));
     // </if>
 
     this.fileName_ = getFilenameFromURL(this.originalUrl);
@@ -358,18 +334,8 @@ export class PdfViewerElement extends PdfViewerBaseElement {
         new NavigatorDelegateImpl(browserApi));
 
     // Listen for save commands from the browser.
-    if (this.pdfOopifEnabled) {
-      chrome.pdfViewerPrivate.onSave.addListener(this.onSave_.bind(this));
-    } else {
+    if (chrome.mimeHandlerPrivate && chrome.mimeHandlerPrivate.onSave) {
       chrome.mimeHandlerPrivate.onSave.addListener(this.onSave_.bind(this));
-    }
-
-    this.embedded_ = this.browserApi!.getStreamInfo().embedded;
-
-    if (this.pdfOopifEnabled && !this.embedded_) {
-      // Give the full page PDF viewer focus so it can handle keyboard events
-      // immediately.
-      window.focus();
     }
   }
 
@@ -397,9 +363,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
 
     switch (e.key) {
       case 'a':
-        // Take over Ctrl+A (but not other combinations like Ctrl-Shift-A).
-        // Note that on macOS, "Ctrl" is Command.
-        if (hasCtrlModifierOnly(e)) {
+        if (hasCtrlModifier(e)) {
           this.pluginController_!.selectAll();
           // Since we do selection ourselves.
           e.preventDefault();
@@ -645,11 +609,6 @@ export class PdfViewerElement extends PdfViewerBaseElement {
     return this.bookmarks_;
   }
 
-  /** @return The title. Used for testing. */
-  get pdfTitle(): string {
-    return this.title_;
-  }
-
   override setLoadState(loadState: LoadState) {
     super.setLoadState(loadState);
     if (loadState === LoadState.FAILED) {
@@ -734,28 +693,20 @@ export class PdfViewerElement extends PdfViewerBaseElement {
       return true;
     }
 
-    let messageType;
     switch (message.data.type.toString()) {
       case 'getSelectedText':
-        messageType = PostMessageDataType.GET_SELECTED_TEXT;
         this.pluginController_!.getSelectedText().then(
             this.handleSelectedTextReply.bind(this));
         break;
       case 'print':
-        messageType = PostMessageDataType.PRINT;
         this.pluginController_!.print();
         break;
       case 'selectAll':
-        messageType = PostMessageDataType.SELECT_ALL;
         this.pluginController_!.selectAll();
         break;
       default:
         return false;
     }
-
-    recordEnumeration(
-        'PDF.PostMessageDataType', messageType,
-        Object.keys(PostMessageDataType).length);
     return true;
   }
 
@@ -810,6 +761,10 @@ export class PdfViewerElement extends PdfViewerBaseElement {
       case 'setIsEditing':
         // Editing mode can only be entered once, and cannot be exited.
         this.hasEdits_ = true;
+        return;
+      case 'setIsSelecting':
+        const selectingData = data as unknown as {isSelecting: boolean};
+        this.viewportScroller!.setEnableScrolling(selectingData.isSelecting);
         return;
       case 'setSmoothScrolling':
         this.viewport.setSmoothScrolling(
@@ -902,18 +857,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
   private setDocumentMetadata_(metadata: DocumentMetadata) {
     this.documentMetadata_ = metadata;
     this.title_ = this.documentMetadata_.title || this.fileName_;
-
-    // Tab title is updated only when document.title is called in a
-    // top-level document (`main_frame` of `WebContents`). For OOPIF PDF viewer,
-    // the current document is the child of a top-level document, hence using a
-    // private API to set the tab title.
-    // NOTE: Title should only be set for full-page PDFs.
-    if (this.pdfOopifEnabled && !this.embedded_) {
-      PdfViewerPrivateProxyImpl.getInstance().setPdfDocumentTitle(this.title_);
-    } else {
-      document.title = this.title_;
-    }
-
+    document.title = this.title_;
     this.canSerializeDocument_ = this.documentMetadata_.canSerializeDocument;
   }
 
@@ -968,11 +912,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
             writer.write(blob);
             // Unblock closing the window now that the user has saved
             // successfully.
-            // TODO(crbug.com/1445746): Write an equivalent API call for
-            // chrome.pdfViewerPrivate.
-            if (!this.pdfOopifEnabled) {
-              chrome.mimeHandlerPrivate.setShowBeforeUnloadDialog(false);
-            }
+            chrome.mimeHandlerPrivate.setShowBeforeUnloadDialog(false);
           });
         });
   }
@@ -1103,11 +1043,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
             writer.write(blob);
             // Unblock closing the window now that the user has saved
             // successfully.
-            // TODO(crbug.com/1445746): Write an equivalent API call for
-            // chrome.pdfViewerPrivate.
-            if (!this.pdfOopifEnabled) {
-              chrome.mimeHandlerPrivate.setShowBeforeUnloadDialog(false);
-            }
+            chrome.mimeHandlerPrivate.setShowBeforeUnloadDialog(false);
           });
         });
 

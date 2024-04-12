@@ -19,33 +19,14 @@ using base::android::JavaParamRef;
 using base::android::JavaRef;
 
 namespace android {
-namespace {
-
-static bool LayerDraws(scoped_refptr<cc::slim::Layer> layer) {
-  if (!layer.get() || layer->opacity() == 0.0f ||
-      layer->hide_layer_and_subtree()) {
-    return false;
-  }
-
-  if (layer->draws_content()) {
-    return true;
-  }
-
-  for (const auto& child : layer->children()) {
-    if (LayerDraws(child)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-}  // namespace
 
 StaticTabSceneLayer::StaticTabSceneLayer(JNIEnv* env,
                                          const JavaRef<jobject>& jobj)
     : SceneLayer(env, jobj),
       tab_content_manager_(nullptr),
-      background_color_(SK_ColorWHITE) {}
+      last_set_tab_id_(-1),
+      background_color_(SK_ColorWHITE),
+      brightness_(1.f) {}
 
 StaticTabSceneLayer::~StaticTabSceneLayer() = default;
 
@@ -66,7 +47,8 @@ void StaticTabSceneLayer::UpdateTabLayer(JNIEnv* env,
                                          jfloat x,
                                          jfloat y,
                                          jfloat static_to_view_blend,
-                                         jfloat saturation) {
+                                         jfloat saturation,
+                                         jfloat brightness) {
   DCHECK(tab_content_manager_)
       << "TabContentManager must be set before updating the layer";
 
@@ -75,24 +57,32 @@ void StaticTabSceneLayer::UpdateTabLayer(JNIEnv* env,
     content_layer_ = android::ContentLayer::Create(tab_content_manager_);
     layer_->AddChild(content_layer_->layer());
   }
-  if (id != -1 && can_use_live_layer) {
-    // StaticLayout may not know that the live layer cannot draw. Ensure it gets
-    // a thumbnail if needed.
-    auto live_layer = tab_content_manager_->GetLiveLayer(id);
-    if (live_layer) {
-      live_layer->SetHideLayerAndSubtree(!can_use_live_layer);
-      if (!LayerDraws(live_layer)) {
-        std::vector<int> tab_ids = {id};
-        tab_content_manager_->UpdateVisibleIds(tab_ids, id);
-      }
-    }
-  }
+
+  // Only override the alpha of content layers when the static tab is first
+  // assigned to the layer tree.
+  float content_alpha_override = 1.f;
+  bool should_override_content_alpha = last_set_tab_id_ != id;
+  last_set_tab_id_ = id;
 
   content_layer_->SetProperties(id, can_use_live_layer, static_to_view_blend,
-                                false, 1.f, saturation, false, gfx::Rect());
+                                should_override_content_alpha,
+                                content_alpha_override, saturation, false,
+                                gfx::Rect());
 
   content_layer_->layer()->SetPosition(gfx::PointF(x, y));
   content_layer_->layer()->SetIsDrawable(true);
+
+  // Only applies the brightness filter if the value has changed and is less
+  // than 1.
+  if (brightness != brightness_) {
+    brightness_ = brightness;
+
+    std::vector<cc::slim::Filter> filters;
+    if (brightness_ < 1.f) {
+      filters.push_back(cc::slim::Filter::CreateBrightness(brightness_));
+    }
+    layer_->SetFilters(std::move(filters));
+  }
 }
 
 void StaticTabSceneLayer::SetTabContentManager(

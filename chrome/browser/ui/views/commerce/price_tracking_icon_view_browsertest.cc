@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,8 +26,7 @@ const char kTestURL[] = "about:blank";
 class PriceTrackingIconViewBrowserTest : public UiBrowserTest {
  public:
   PriceTrackingIconViewBrowserTest() {
-    test_features_.InitWithFeatures({commerce::kShoppingList},
-                                    {commerce::kPriceInsights});
+    test_features_.InitAndEnableFeature(commerce::kShoppingList);
   }
 
   // UiBrowserTest:

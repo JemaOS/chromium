@@ -11,13 +11,13 @@
 
 #include <list>
 #include <memory>
-#include <optional>
 
-#include "base/apple/scoped_cftyperef.h"
 #include "base/containers/flat_map.h"
-#include "base/feature_list.h"
+#include "base/mac/scoped_cftyperef.h"
+#include "base/mac/scoped_nsobject.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/accelerated_widget_mac/accelerated_widget_mac_export.h"
 #include "ui/gfx/geometry/rect.h"
@@ -31,10 +31,6 @@
 @class AVSampleBufferDisplayLayer;
 
 namespace ui {
-
-ACCELERATED_WIDGET_MAC_EXPORT BASE_DECLARE_FEATURE(
-    kFullscreenLowPowerBackdropMac);
-ACCELERATED_WIDGET_MAC_EXPORT BASE_DECLARE_FEATURE(kCALayerTreeOptimization);
 
 struct CARendererLayerParams;
 
@@ -139,7 +135,7 @@ class ACCELERATED_WIDGET_MAC_EXPORT CARendererLayerTree {
     const raw_ptr<CARendererLayerTree> tree_;
 
     std::list<ClipAndSortingLayer> clip_and_sorting_layers_;
-    CALayer* __strong ca_layer_;
+    base::scoped_nsobject<CALayer> ca_layer_;
 
     // Weak pointer to the layer in the old CARendererLayerTree that will be
     // reused by this layer, and the weak factory used to make that pointer.
@@ -178,8 +174,8 @@ class ACCELERATED_WIDGET_MAC_EXPORT CARendererLayerTree {
     gfx::RRectF rounded_corner_bounds_;
     unsigned sorting_context_id_ = 0;
     bool is_singleton_sorting_context_ = false;
-    CALayer* __strong clipping_ca_layer_;
-    CALayer* __strong rounded_corner_ca_layer_;
+    base::scoped_nsobject<CALayer> clipping_ca_layer_;
+    base::scoped_nsobject<CALayer> rounded_corner_ca_layer_;
 
     // The status when used as an old layer.
     bool ca_layer_used_ = false;
@@ -213,7 +209,7 @@ class ACCELERATED_WIDGET_MAC_EXPORT CARendererLayerTree {
     std::list<ContentLayer> content_layers_;
 
     gfx::Transform transform_;
-    CALayer* __strong ca_layer_;
+    base::scoped_nsobject<CALayer> ca_layer_;
 
     // The ca layer status when used as an old layer.
     bool ca_layer_used_ = false;
@@ -226,8 +222,8 @@ class ACCELERATED_WIDGET_MAC_EXPORT CARendererLayerTree {
   class ContentLayer {
    public:
     ContentLayer(TransformLayer* parent_layer,
-                 base::apple::ScopedCFTypeRef<IOSurfaceRef> io_surface,
-                 base::apple::ScopedCFTypeRef<CVPixelBufferRef> cv_pixel_buffer,
+                 base::ScopedCFTypeRef<IOSurfaceRef> io_surface,
+                 base::ScopedCFTypeRef<CVPixelBufferRef> cv_pixel_buffer,
                  const gfx::RectF& contents_rect,
                  const gfx::Rect& rect,
                  SkColor4f background_color,
@@ -235,9 +231,9 @@ class ACCELERATED_WIDGET_MAC_EXPORT CARendererLayerTree {
                  unsigned edge_aa_mask,
                  float opacity,
                  bool nearest_neighbor_filter,
-                 const gfx::HDRMetadata& hdr_metadata,
-                 gfx::ProtectedVideoType protected_video_type,
-                 bool is_render_pass_draw_quad);
+                 gfx::HDRMode hdr_mode,
+                 absl::optional<gfx::HDRMetadata> hdr_metadata,
+                 gfx::ProtectedVideoType protected_video_type);
 
     ContentLayer(ContentLayer&& layer) = delete;
     ContentLayer(const ContentLayer&) = delete;
@@ -259,7 +255,7 @@ class ACCELERATED_WIDGET_MAC_EXPORT CARendererLayerTree {
     // When they are committed to the window server, that will also increment
     // their use count.
     const gfx::ScopedInUseIOSurface io_surface_;
-    const base::apple::ScopedCFTypeRef<CVPixelBufferRef> cv_pixel_buffer_;
+    const base::ScopedCFTypeRef<CVPixelBufferRef> cv_pixel_buffer_;
     scoped_refptr<SolidColorContents> solid_color_contents_;
     gfx::RectF contents_rect_;
     gfx::RectF rect_;
@@ -280,28 +276,27 @@ class ACCELERATED_WIDGET_MAC_EXPORT CARendererLayerTree {
     // protected content (see https://crbug.com/1026703).
     bool video_type_can_downgrade_ = true;
 
-    gfx::HDRMetadata hdr_metadata_;
+    gfx::HDRMode hdr_mode_ = gfx::HDRMode::kDefault;
+    absl::optional<gfx::HDRMetadata> hdr_metadata_;
 
     gfx::ProtectedVideoType protected_video_type_ =
         gfx::ProtectedVideoType::kClear;
 
-    CALayer* __strong ca_layer_;
+    base::scoped_nsobject<CALayer> ca_layer_;
 
     // If this layer's contents can be represented as an
     // AVSampleBufferDisplayLayer, then |ca_layer| will point to |av_layer|.
-    AVSampleBufferDisplayLayer* __strong av_layer_;
+    base::scoped_nsobject<AVSampleBufferDisplayLayer> av_layer_;
 
     // Layer used to colorize content when it updates, if borders are
     // enabled.
-    CALayer* __strong update_indicator_layer_;
+    base::scoped_nsobject<CALayer> update_indicator_layer_;
 
     // Indicate the content layer order in the whole layer tree.
     int layer_order_ = 0;
 
     // The status when used as an old layer.
     bool ca_layer_used_ = false;
-
-    bool is_render_pass_draw_quad_ = false;
 
     // Weak pointer to the layer in the old CARendererLayerTree that will be
     // reused by this layer, and the weak factory used to make that pointer.
@@ -314,7 +309,12 @@ class ACCELERATED_WIDGET_MAC_EXPORT CARendererLayerTree {
   bool has_committed_ = false;
   const bool allow_av_sample_buffer_display_layer_ = true;
   const bool allow_solid_color_layers_ = true;
-  id<MTLDevice> __strong metal_device_ = nil;
+  id<MTLDevice> metal_device_ = nil;
+
+  // Used for uma.
+  int changed_io_surfaces_during_commit_ = 0;
+  int unchanged_io_surfaces_during_commit_ = 0;
+  int total_updated_io_surface_size_during_commit_ = 0;
 
   // Enable CALayerTree optimization that will try to reuse the CALayer with a
   // matched CALayer from the old CALayerTree in the previous frame.

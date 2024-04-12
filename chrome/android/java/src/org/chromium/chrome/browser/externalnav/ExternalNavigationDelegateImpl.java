@@ -20,6 +20,7 @@ import org.chromium.base.PackageManagerUtils;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.ChromeTabbedActivity2;
 import org.chromium.chrome.browser.IntentHandler;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
@@ -32,7 +33,9 @@ import org.chromium.url.GURL;
 
 import java.util.List;
 
-/** The main implementation of the {@link ExternalNavigationDelegate}. */
+/**
+ * The main implementation of the {@link ExternalNavigationDelegate}.
+ */
 public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegate {
     protected final Context mApplicationContext;
     private final Tab mTab;
@@ -45,13 +48,12 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
         mTab = tab;
         mTabModelSelectorSupplier = TabModelSelectorSupplier.from(tab.getWindowAndroid());
         mApplicationContext = ContextUtils.getApplicationContext();
-        mTabObserver =
-                new EmptyTabObserver() {
-                    @Override
-                    public void onDestroyed(Tab tab) {
-                        mIsTabDestroyed = true;
-                    }
-                };
+        mTabObserver = new EmptyTabObserver() {
+            @Override
+            public void onDestroyed(Tab tab) {
+                mIsTabDestroyed = true;
+            }
+        };
         mTab.addObserver(mTabObserver);
     }
 
@@ -90,9 +92,8 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
 
         // Fall back to the more expensive querying of Android when the intent doesn't target
         // Chrome.
-        ResolveInfo info =
-                PackageManagerUtils.resolveActivity(
-                        intent, matchDefaultOnly ? PackageManager.MATCH_DEFAULT_ONLY : 0);
+        ResolveInfo info = PackageManagerUtils.resolveActivity(
+                intent, matchDefaultOnly ? PackageManager.MATCH_DEFAULT_ONLY : 0);
         return info != null && info.activityInfo.packageName.equals(context.getPackageName());
     }
 
@@ -158,8 +159,8 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
         IntentWithRequestMetadataHandler.RequestMetadata metadata =
                 new IntentWithRequestMetadataHandler.RequestMetadata(
                         hasUserGesture, isRendererInitiated);
-        IntentWithRequestMetadataHandler.getInstance()
-                .onNewIntentWithRequestMetadata(intent, metadata);
+        IntentWithRequestMetadataHandler.getInstance().onNewIntentWithRequestMetadata(
+                intent, metadata);
     }
 
     @Override
@@ -204,7 +205,8 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
 
     @Override
     public boolean shouldLaunchWebApksOnInitialIntent() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S;
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && ChromeFeatureList.sWebApkTrampolineOnInitialIntent.isEnabled();
     }
 
     @Override
@@ -222,10 +224,5 @@ public class ExternalNavigationDelegateImpl implements ExternalNavigationDelegat
         // The initial navigation off of things like typed navigations or bookmarks should stay in
         // the browser.
         return true;
-    }
-
-    @Override
-    public String getSelfScheme() {
-        return IntentHandler.GOOGLECHROME_SCHEME;
     }
 }

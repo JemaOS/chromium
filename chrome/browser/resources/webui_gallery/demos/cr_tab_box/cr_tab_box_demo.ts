@@ -4,17 +4,13 @@
 
 import '//resources/cr_elements/cr_tab_box/cr_tab_box.js';
 
-import type {CrTabBoxElement} from '//resources/cr_elements/cr_tab_box/cr_tab_box.js';
-import {assert} from '//resources/js/assert.js';
+import {CrTabBoxElement} from '//resources/cr_elements/cr_tab_box/cr_tab_box.js';
+import {assert} from '//resources/js/assert_ts.js';
 import {CustomElement} from '//resources/js/custom_element.js';
 
 import {getTemplate} from './cr_tab_box_demo.html.js';
 
 class CrTabBoxDemoElement extends CustomElement {
-  static get is() {
-    return 'cr-tab-box-demo';
-  }
-
   static override get template() {
     return getTemplate();
   }
@@ -95,6 +91,4 @@ class CrTabBoxDemoElement extends CustomElement {
   }
 }
 
-export const tagName = CrTabBoxDemoElement.is;
-
-customElements.define(CrTabBoxDemoElement.is, CrTabBoxDemoElement);
+customElements.define('cr-tab-box-demo', CrTabBoxDemoElement);

@@ -4,24 +4,22 @@
 
 #include "ash/system/video_conference/effects/video_conference_tray_effects_manager_types.h"
 
-#include <utility>
-
 #include "ash/system/video_conference/effects/video_conference_tray_effects_manager.h"
 #include "ui/gfx/vector_icon_types.h"
 
 namespace ash {
 
-VcEffectState::VcEffectState(const gfx::VectorIcon* icon,
+VcEffectState::VcEffectState(const gfx::VectorIcon* enabled_icon,
                              const std::u16string& label_text,
                              int accessible_name_id,
-                             base::RepeatingClosure button_callback,
-                             std::optional<int> state_value)
-    : icon_(icon),
+                             views::Button::PressedCallback button_callback,
+                             absl::optional<int> state_value)
+    : enabled_icon_(enabled_icon),
       label_text_(label_text),
       accessible_name_id_(accessible_name_id),
-      button_callback_(std::move(button_callback)),
+      button_callback_(button_callback),
       state_value_(state_value) {
-  DCHECK(icon);
+  DCHECK(enabled_icon);
 }
 
 VcEffectState::~VcEffectState() = default;

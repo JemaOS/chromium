@@ -9,7 +9,6 @@
 #include <map>
 #include <string>
 
-#include "base/containers/heap_array.h"
 #include "base/logging.h"
 #include "base/memory/singleton.h"
 #include "base/strings/pattern.h"
@@ -806,7 +805,7 @@ std::string RoleVariantToString(const base::win::ScopedVariant& role) {
 }
 
 COMPONENT_EXPORT(AX_PLATFORM)
-std::optional<std::string> GetIAccessible2Attribute(
+absl::optional<std::string> GetIAccessible2Attribute(
     Microsoft::WRL::ComPtr<IAccessible2> element,
     std::string attribute) {
   base::win::ScopedBstr bstr;
@@ -826,7 +825,7 @@ std::optional<std::string> GetIAccessible2Attribute(
         return ia2_attribute[1];
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 COMPONENT_EXPORT(AX_PLATFORM)
@@ -835,7 +834,7 @@ std::string GetDOMId(Microsoft::WRL::ComPtr<IAccessible> element) {
   if (S_OK != IA2QueryInterface<IAccessible2>(element.Get(), &ia2))
     return "";
 
-  std::optional<std::string> id = GetIAccessible2Attribute(ia2, "id");
+  absl::optional<std::string> id = GetIAccessible2Attribute(ia2, "id");
   if (id) {
     return *id;
   }
@@ -881,8 +880,8 @@ MSAAChildren::MSAAChildren(IAccessible* parent) {
   if (FAILED(parent->get_accChildCount(&count_)))
     return;
 
-  auto children_variants = base::HeapArray<VARIANT>::Uninit(count_);
-  if (FAILED(AccessibleChildren(parent, 0, count_, children_variants.data(),
+  std::unique_ptr<VARIANT[]> children_variants(new VARIANT[count_]);
+  if (FAILED(AccessibleChildren(parent, 0, count_, children_variants.get(),
                                 &count_))) {
     count_ = 0;
     return;

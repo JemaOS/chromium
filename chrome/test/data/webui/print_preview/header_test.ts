@@ -2,14 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {PrintPreviewHeaderElement} from 'chrome://print/print_preview.js';
-import {Destination, DestinationOrigin, GooglePromotedDestinationId, PrintPreviewPluralStringProxyImpl, State} from 'chrome://print/print_preview.js';
+import {Destination, DestinationOrigin, GooglePromotedDestinationId, PrintPreviewHeaderElement, PrintPreviewPluralStringProxyImpl, State} from 'chrome://print/print_preview.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {fakeDataBind} from 'chrome://webui-test/polymer_test_util.js';
 import {TestPluralStringProxy} from 'chrome://webui-test/test_plural_string_proxy.js';
 
-suite('HeaderTest', function() {
+const header_test = {
+  suiteName: 'HeaderTest',
+  TestNames: {
+    HeaderPrinterTypes: 'header printer types',
+    HeaderChangesForState: 'header changes for state',
+    EnterprisePolicy: 'enterprise policy',
+  },
+};
+
+Object.assign(window, {header_test: header_test});
+
+suite(header_test.suiteName, function() {
   let header: PrintPreviewHeaderElement;
 
   let pluralString: TestPluralStringProxy;
@@ -49,7 +59,7 @@ suite('HeaderTest', function() {
 
   // Tests that the 4 different messages (non-virtual printer singular and
   // plural, virtual printer singular and plural) all show up as expected.
-  test('HeaderPrinterTypes', async function() {
+  test(header_test.TestNames.HeaderPrinterTypes, async function() {
     const summary = header.shadowRoot!.querySelector('.summary')!;
     {
       const {messageName, itemCount} =
@@ -90,7 +100,7 @@ suite('HeaderTest', function() {
 
   // Tests that the correct message is shown for non-READY states, and that
   // the print button is disabled appropriately.
-  test('HeaderChangesForState', async function() {
+  test(header_test.TestNames.HeaderChangesForState, async function() {
     const summary = header.shadowRoot!.querySelector('.summary')!;
     await pluralString.whenCalled('getPluralString');
     assertEquals('1 sheet of paper', summary.textContent!.trim());
@@ -109,7 +119,7 @@ suite('HeaderTest', function() {
   });
 
   // Tests that enterprise badge shows up if any setting is managed.
-  test('EnterprisePolicy', function() {
+  test(header_test.TestNames.EnterprisePolicy, function() {
     assertTrue(header.shadowRoot!.querySelector('iron-icon')!.hidden);
     header.managed = true;
     assertFalse(header.shadowRoot!.querySelector('iron-icon')!.hidden);

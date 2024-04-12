@@ -1,12 +1,11 @@
 // Copyright 2023 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include "chrome/browser/ui/webui/settings/settings_default_browser_handler.h"
-
 #include <memory>
 
+#include "chrome/browser/ui/webui/settings/settings_default_browser_handler.h"
+
 #include "base/memory/scoped_refptr.h"
-#include "base/test/run_until.h"
 #include "base/test/test_timeouts.h"
 #include "base/values.h"
 #include "chrome/browser/shell_integration.h"
@@ -130,8 +129,13 @@ class DefaultBrowserHandlerTest : public testing::Test {
   }
 
   void WaitForSingleCallData() {
-    EXPECT_TRUE(base::test::RunUntil(
-        [&]() { return !test_web_ui()->call_data().empty(); }));
+    while (test_web_ui()->call_data().empty()) {
+      base::RunLoop run_loop;
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE, run_loop.QuitClosure(), TestTimeouts::tiny_timeout());
+      run_loop.Run();
+    }
+
     ASSERT_EQ(test_web_ui()->call_data().size(), 1u);
   }
 

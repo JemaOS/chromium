@@ -9,7 +9,6 @@
 #include "base/check.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/notreached.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
@@ -17,7 +16,6 @@
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search/search.h"
-#include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
 #include "components/bookmarks/browser/bookmark_model.h"
@@ -37,7 +35,6 @@
 #include "ui/base/dragdrop/mojom/drag_drop_types.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/pointer/touch_ui_controller.h"
-#include "ui/base/ui_base_features.h"
 
 #if defined(TOOLKIT_VIEWS)
 #include "chrome/grit/theme_resources.h"
@@ -159,20 +156,10 @@ bool IsAppsShortcutEnabled(Profile* profile) {
 #endif
 }
 
-bool IsSavedTabGroupsEnabled(Profile* profile) {
-  return base::FeatureList::IsEnabled(features::kTabGroupsSave) &&
-         profile->IsRegularProfile();
-}
-
 bool ShouldShowAppsShortcutInBookmarkBar(Profile* profile) {
   return IsAppsShortcutEnabled(profile) &&
          profile->GetPrefs()->GetBoolean(
              bookmarks::prefs::kShowAppsShortcutInBookmarkBar);
-}
-
-bool ShouldShowTabGroupsInBookmarkBar(Profile* profile) {
-  return profile->GetPrefs()->GetBoolean(
-      bookmarks::prefs::kShowTabGroupsInBookmarkBar);
 }
 
 int GetBookmarkDragOperation(content::BrowserContext* browser_context,
@@ -183,7 +170,7 @@ int GetBookmarkDragOperation(content::BrowserContext* browser_context,
 
   int move = ui::DragDropTypes::DRAG_MOVE;
   if (!prefs->GetBoolean(bookmarks::prefs::kEditBookmarksEnabled) ||
-      model->client()->IsNodeManaged(node)) {
+      !model->client()->CanBeEditedByUser(node)) {
     move = ui::DragDropTypes::DRAG_NONE;
   }
   if (node->is_url())
@@ -220,15 +207,14 @@ DragOperation GetBookmarkDropOperation(Profile* profile,
     return DragOperation::kNone;
 
   BookmarkModel* model = BookmarkModelFactory::GetForBrowserContext(profile);
-  if (model->client()->IsNodeManaged(parent)) {
+  if (!model->client()->CanBeEditedByUser(parent))
     return DragOperation::kNone;
-  }
 
   const BookmarkNode* dragged_node =
       data.GetFirstNode(model, profile->GetPath());
   if (dragged_node) {
     // User is dragging from this profile.
-    if (model->client()->IsNodeManaged(dragged_node)) {
+    if (!model->client()->CanBeEditedByUser(dragged_node)) {
       // Do a copy instead of a move when dragging bookmarks that the user can't
       // modify.
       return DragOperation::kCopy;
@@ -254,21 +240,19 @@ bool IsValidBookmarkDropLocation(Profile* profile,
     return false;
 
   BookmarkModel* model = BookmarkModelFactory::GetForBrowserContext(profile);
-  if (model->client()->IsNodeManaged(drop_parent)) {
+  if (!model->client()->CanBeEditedByUser(drop_parent))
     return false;
-  }
 
   const base::FilePath& profile_path = profile->GetPath();
   if (data.IsFromProfilePath(profile_path)) {
-    std::vector<raw_ptr<const BookmarkNode, VectorExperimental>> nodes =
-        data.GetNodes(model, profile_path);
+    std::vector<const BookmarkNode*> nodes = data.GetNodes(model, profile_path);
     for (size_t i = 0; i < nodes.size(); ++i) {
       // Don't allow the drop if the user is attempting to drop on one of the
       // nodes being dragged.
       const BookmarkNode* node = nodes[i];
-      std::optional<size_t> node_index = (drop_parent == node->parent())
-                                             ? drop_parent->GetIndexOf(nodes[i])
-                                             : std::nullopt;
+      absl::optional<size_t> node_index =
+          (drop_parent == node->parent()) ? drop_parent->GetIndexOf(nodes[i])
+                                          : absl::nullopt;
       if (node_index.has_value() &&
           (index == node_index.value() || index == node_index.value() + 1)) {
         return false;
@@ -285,34 +269,6 @@ bool IsValidBookmarkDropLocation(Profile* profile,
 }
 
 #if defined(TOOLKIT_VIEWS)
-
-gfx::ImageSkia GetBookmarkFolderImageFromVectorIcon(
-    BookmarkFolderIconType icon_type,
-    absl::variant<ui::ColorId, SkColor> color,
-    const ui::ColorProvider* color_provider) {
-  const gfx::VectorIcon* id;
-  gfx::ImageSkia folder;
-  if (icon_type == BookmarkFolderIconType::kNormal) {
-    id = features::IsChromeRefresh2023()
-             ? &vector_icons::kFolderChromeRefreshIcon
-             : (ui::TouchUiController::Get()->touch_ui()
-                    ? &vector_icons::kFolderTouchIcon
-                    : &vector_icons::kFolderIcon);
-  } else {
-    id = features::IsChromeRefresh2023()
-             ? &vector_icons::kFolderManagedRefreshIcon
-             : (ui::TouchUiController::Get()->touch_ui()
-                    ? &vector_icons::kFolderManagedTouchIcon
-                    : &vector_icons::kFolderManagedIcon);
-  }
-  const ui::ThemedVectorIcon icon =
-      absl::holds_alternative<SkColor>(color)
-          ? ui::ThemedVectorIcon(id, absl::get<SkColor>(color))
-          : ui::ThemedVectorIcon(id, absl::get<ui::ColorId>(color));
-  folder = icon.GetImageSkia(color_provider);
-  return folder;
-}
-
 ui::ImageModel GetBookmarkFolderIcon(
     BookmarkFolderIconType icon_type,
     absl::variant<ui::ColorId, SkColor> color) {
@@ -327,35 +283,43 @@ ui::ImageModel GetBookmarkFolderIcon(
                             absl::variant<ui::ColorId, SkColor> color,
                             const ui::ColorProvider* color_provider) {
     gfx::ImageSkia folder;
-    if (features::IsChromeRefresh2023()) {
-      folder = GetBookmarkFolderImageFromVectorIcon(icon_type, color,
-                                                    color_provider);
-    } else {
 #if BUILDFLAG(IS_WIN)
-      // TODO(bsep): vectorize the Windows versions: crbug.com/564112
-      folder = *ui::ResourceBundle::GetSharedInstance().GetImageSkiaNamed(
-          default_id);
+    // TODO(bsep): vectorize the Windows versions: crbug.com/564112
+    folder =
+        *ui::ResourceBundle::GetSharedInstance().GetImageSkiaNamed(default_id);
 #elif BUILDFLAG(IS_MAC)
-      SkColor sk_color;
-      if (absl::holds_alternative<SkColor>(color)) {
-        sk_color = absl::get<SkColor>(color);
-      } else {
-        DCHECK(color_provider);
-        sk_color = color_provider->GetColor(absl::get<ui::ColorId>(color));
-      }
-      const int white_id = (icon_type == BookmarkFolderIconType::kNormal)
-                               ? IDR_FOLDER_CLOSED_WHITE
-                               : IDR_BOOKMARK_BAR_FOLDER_MANAGED_WHITE;
-      const int resource_id =
-          color_utils::IsDark(sk_color) ? default_id : white_id;
-      folder = *ui::ResourceBundle::GetSharedInstance()
-                    .GetNativeImageNamed(resource_id)
-                    .ToImageSkia();
-#else
-      folder = GetBookmarkFolderImageFromVectorIcon(icon_type, color,
-                                                    color_provider);
-#endif
+    SkColor sk_color;
+    if (absl::holds_alternative<SkColor>(color)) {
+      sk_color = absl::get<SkColor>(color);
+    } else {
+      DCHECK(color_provider);
+      sk_color = color_provider->GetColor(absl::get<ui::ColorId>(color));
     }
+    const int white_id = (icon_type == BookmarkFolderIconType::kNormal)
+                             ? IDR_FOLDER_CLOSED_WHITE
+                             : IDR_BOOKMARK_BAR_FOLDER_MANAGED_WHITE;
+    const int resource_id =
+        color_utils::IsDark(sk_color) ? default_id : white_id;
+    folder = *ui::ResourceBundle::GetSharedInstance()
+                  .GetNativeImageNamed(resource_id)
+                  .ToImageSkia();
+#else
+    const gfx::VectorIcon* id;
+    if (icon_type == BookmarkFolderIconType::kNormal) {
+      id = ui::TouchUiController::Get()->touch_ui()
+               ? &vector_icons::kFolderTouchIcon
+               : &vector_icons::kFolderIcon;
+    } else {
+      id = ui::TouchUiController::Get()->touch_ui()
+               ? &vector_icons::kFolderManagedTouchIcon
+               : &vector_icons::kFolderManagedIcon;
+    }
+    const ui::ThemedVectorIcon icon =
+        absl::holds_alternative<SkColor>(color)
+            ? ui::ThemedVectorIcon(id, absl::get<SkColor>(color))
+            : ui::ThemedVectorIcon(id, absl::get<ui::ColorId>(color));
+    folder = icon.GetImageSkia(color_provider);
+#endif
     return gfx::ImageSkia(std::make_unique<RTLFlipSource>(folder),
                           folder.size());
   };

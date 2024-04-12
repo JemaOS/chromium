@@ -4,27 +4,27 @@
 
 package org.chromium.chrome.browser.privacy.settings;
 
-import androidx.annotation.UiThread;
-
-import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.components.minidump_uploader.util.CrashReportingPermissionManager;
 
 /**
  * Manages preferences related to privacy, metrics reporting, prerendering, and network prediction.
- * Provides interfaces to observe changes over {@link #isUsageAndCrashReportingPermitted()}.
  */
 public interface PrivacyPreferencesManager extends CrashReportingPermissionManager {
-    /** Observer for changes in privacy preferences. */
+    /**
+     * Observer for changes in privacy preferences.
+     */
     interface Observer {
         void onIsUsageAndCrashReportingPermittedChanged(boolean permitted);
     }
 
-    /** Adds an {@link Observer}. Must be used on UI thread. */
-    @UiThread
+    /**
+     * Adds an {@link Observer}.
+     */
     void addObserver(Observer observer);
 
-    /** Removes an {@link Observer}. Must be used on UI thread. */
-    @UiThread
+    /**
+     * Removes an {@link Observer}.
+     */
     void removeObserver(Observer observer);
 
     /**
@@ -41,33 +41,19 @@ public interface PrivacyPreferencesManager extends CrashReportingPermissionManag
     void syncUsageAndCrashReportingPrefs();
 
     /**
-     * Sets whether this client is in-sample for usage metrics reporting. See {@link
-     * org.chromium.chrome.browser.metrics.UmaUtils#isClientInSampleForMetrics} for details.
+     * Sets whether this client is in-sample for usage metrics and crash reporting. See
+     * {@link org.chromium.chrome.browser.metrics.UmaUtils#isClientInMetricsSample} for details.
      */
-    void setClientInSampleForMetrics(boolean inSample);
+    void setClientInMetricsSample(boolean inSample);
 
     /**
-     * Checks whether this client is in-sample for usage metrics. See {@link
-     * org.chromium.chrome.browser.metrics.UmaUtils#isClientInSampleForMetrics} for details.
+     * Checks whether this client is in-sample for usage metrics and crash reporting. See
+     * {@link org.chromium.chrome.browser.metrics.UmaUtils#isClientInMetricsSample} for details.
      *
-     * @returns boolean Whether client is in-sample for metrics.
-     */
-    boolean isClientInSampleForMetrics();
-
-    /**
-     * Sets whether this client is in-sample for crash reporting. See {@link
-     * org.chromium.chrome.browser.metrics.UmaUtils#isClientInSampleForCrashes} for details.
-     */
-    void setClientInSampleForCrashes(boolean inSample);
-
-    /**
-     * Checks whether this client is in-sample for crash reporting. See {@link
-     * org.chromium.chrome.browser.metrics.UmaUtils#isClientInSampleForCrashes} for details.
-     *
-     * @returns boolean Whether client is in-sample for crash reporting.
+     * @returns boolean Whether client is in-sample.
      */
     @Override
-    boolean isClientInSampleForCrashes();
+    boolean isClientInMetricsSample();
 
     /**
      * Checks whether uploading of crash dumps is permitted for the available network(s).
@@ -112,13 +98,8 @@ public interface PrivacyPreferencesManager extends CrashReportingPermissionManag
      */
     boolean isMetricsReportingEnabled();
 
-    /** Sets whether the usage and crash reporting pref should be enabled. */
-    void setMetricsReportingEnabled(boolean enabled);
-
     /**
-     * Return a observable supplier which provides {@link #isUsageAndCrashReportingPermitted()}.
-     * Must be used on UI thread.
+     * Sets whether the usage and crash reporting pref should be enabled.
      */
-    @UiThread
-    ObservableSupplier<Boolean> getUsageAndCrashReportingPermittedObservableSupplier();
+    void setMetricsReportingEnabled(boolean enabled);
 }

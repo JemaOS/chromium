@@ -21,13 +21,14 @@
       </iron-icon>
       <div class="instructions">[[i18n('criticalErrorMessageText')]]</div>
     </div>
+    <div id="writeProtectStatus">[[statusString_]]</div>
     <div id="navigationButtonWrapper">
       <cr-button id="rebootButton" class="action-button"
-          on-click="onRebootButtonClicked" disabled="[[allButtonsDisabled]]">
+          on-click="onRebootButtonClicked_" disabled="[[allButtonsDisabled]]">
         [[i18n('criticalErrorRebootText')]]
       </cr-button>
       <cr-button id="exitToLoginButton"
-          on-click="onExitToLoginButtonClicked"
+          on-click="onExitToLoginButtonClicked_"
           disabled="[[allButtonsDisabled]]">
         [[i18n('criticalErrorExitText')]]
       </cr-button>

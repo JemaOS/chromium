@@ -7,13 +7,14 @@
  * panel, etc.) to communicate with the background.
  */
 
-import {constants} from '/common/constants.js';
+import {constants} from '../../common/constants.js';
 
 import {BridgeConstants} from './bridge_constants.js';
 import {BridgeHelper} from './bridge_helper.js';
-import {Command} from './command.js';
+import {Command} from './command_store.js';
 import {EarconId} from './earcon_id.js';
-import {SerializableLog} from './log_types.js';
+import {BaseLog, SerializableLog} from './log_types.js';
+import {PanelTabMenuItemData} from './panel_menu_data.js';
 import {QueueMode, TtsSpeechProperties} from './tts_types.js';
 
 export const BackgroundBridge = {};
@@ -45,17 +46,6 @@ BackgroundBridge.Braille = {
   },
 
   /**
-   * Enables or disables processing of braille commands.
-   * @param {boolean} bypassed
-   * @return {!Promise}
-   */
-  async setBypass(bypassed) {
-    return BridgeHelper.sendMessage(
-        BridgeConstants.Braille.TARGET,
-        BridgeConstants.Braille.Action.SET_BYPASS, bypassed);
-  },
-
-  /**
    * @param {!string} text The text to write in Braille.
    * @returns {!Promise<boolean>}
    */
@@ -63,6 +53,18 @@ BackgroundBridge.Braille = {
     return BridgeHelper.sendMessage(
         BridgeConstants.Braille.TARGET, BridgeConstants.Braille.Action.WRITE,
         text);
+  },
+};
+
+BackgroundBridge.BrailleCommandHandler = {
+  /**
+   * @param {boolean} enabled
+   * @return {!Promise}
+   */
+  async setEnabled(enabled) {
+    return BridgeHelper.sendMessage(
+        BridgeConstants.BrailleCommandHandler.TARGET,
+        BridgeConstants.BrailleCommandHandler.Action.SET_ENABLED, enabled);
   },
 };
 
@@ -169,13 +171,13 @@ BackgroundBridge.EventSource = {
 
 BackgroundBridge.GestureCommandHandler = {
   /**
-   * @param {boolean} bypassed
+   * @param {boolean} enabled
    * @return {!Promise}
    */
-  async setBypass(bypassed) {
+  async setEnabled(enabled) {
     return BridgeHelper.sendMessage(
         BridgeConstants.GestureCommandHandler.TARGET,
-        BridgeConstants.GestureCommandHandler.Action.SET_BYPASS, bypassed);
+        BridgeConstants.GestureCommandHandler.Action.SET_ENABLED);
   },
 };
 
@@ -191,41 +193,6 @@ BackgroundBridge.EventStreamLogger = {
         BridgeConstants.EventStreamLogger.Action
             .NOTIFY_EVENT_STREAM_FILTER_CHANGED,
         name, enabled);
-  },
-};
-
-BackgroundBridge.ForcedActionPath = {
-  /**
-   * Creates a new user action monitor.
-   * Resolves after all actions in |actions| have been observed.
-   * @param {!Array<{
-   *     type: string,
-   *     value: (string|Object),
-   *     beforeActionMsg: (string|undefined),
-   *     afterActionMsg: (string|undefined)}>} actions
-   * @return {!Promise}
-   */
-  async create(actions) {
-    return BridgeHelper.sendMessage(
-        BridgeConstants.ForcedActionPath.TARGET,
-        BridgeConstants.ForcedActionPath.Action.CREATE, actions);
-  },
-
-  /**
-   * Destroys the user action monitor.
-   * @return {!Promise}
-   */
-  async destroy() {
-    return BridgeHelper.sendMessage(
-        BridgeConstants.ForcedActionPath.TARGET,
-        BridgeConstants.ForcedActionPath.Action.DESTROY);
-  },
-
-  /** @return {!Promise<boolean>} */
-  async onKeyDown(event) {
-    return BridgeHelper.sendMessage(
-        BridgeConstants.ForcedActionPath.TARGET,
-        BridgeConstants.ForcedActionPath.Action.ON_KEY_DOWN, event);
   },
 };
 
@@ -290,6 +257,17 @@ BackgroundBridge.PanelBackground = {
   },
 
   /**
+   * @param {number} windowId
+   * @param {number} tabId
+   * @return {!Promise}
+   */
+  async focusTab(windowId, tabId) {
+    return BridgeHelper.sendMessage(
+        BridgeConstants.PanelBackground.TARGET,
+        BridgeConstants.PanelBackground.Action.FOCUS_TAB, windowId, tabId);
+  },
+
+  /**
    * @return {!Promise<{
    *     standardActions: !Array<!chrome.automation.ActionType>,
    *     customActions: !Array<!chrome.automation.CustomAction>
@@ -299,6 +277,13 @@ BackgroundBridge.PanelBackground = {
     return BridgeHelper.sendMessage(
         BridgeConstants.PanelBackground.TARGET,
         BridgeConstants.PanelBackground.Action.GET_ACTIONS_FOR_CURRENT_NODE);
+  },
+
+  /** @return {!Promise<!Array<!PanelTabMenuItemData>>} */
+  async getTabMenuData() {
+    return BridgeHelper.sendMessage(
+        BridgeConstants.PanelBackground.TARGET,
+        BridgeConstants.PanelBackground.Action.GET_TAB_MENU_DATA);
   },
 
   /**
@@ -416,5 +401,41 @@ BackgroundBridge.TtsBackground = {
         BridgeConstants.TtsBackground.TARGET,
         BridgeConstants.TtsBackground.Action.UPDATE_PUNCTUATION_ECHO,
         punctuationEcho);
+  },
+};
+
+
+BackgroundBridge.UserActionMonitor = {
+  /**
+   * Creates a new user action monitor.
+   * Resolves after all actions in |actions| have been observed.
+   * @param {!Array<{
+   *     type: string,
+   *     value: (string|Object),
+   *     beforeActionMsg: (string|undefined),
+   *     afterActionMsg: (string|undefined)}>} actions
+   * @return {!Promise}
+   */
+  async create(actions) {
+    return BridgeHelper.sendMessage(
+        BridgeConstants.UserActionMonitor.TARGET,
+        BridgeConstants.UserActionMonitor.Action.CREATE, actions);
+  },
+
+  /**
+   * Destroys the user action monitor.
+   * @return {!Promise}
+   */
+  async destroy() {
+    return BridgeHelper.sendMessage(
+        BridgeConstants.UserActionMonitor.TARGET,
+        BridgeConstants.UserActionMonitor.Action.DESTROY);
+  },
+
+  /** @return {!Promise<boolean>} */
+  async onKeyDown(event) {
+    return BridgeHelper.sendMessage(
+        BridgeConstants.UserActionMonitor.TARGET,
+        BridgeConstants.UserActionMonitor.Action.ON_KEY_DOWN, event);
   },
 };

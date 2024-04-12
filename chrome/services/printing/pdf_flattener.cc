@@ -20,33 +20,28 @@ void PdfFlattener::FlattenPdf(base::ReadOnlySharedMemoryRegion src_pdf_region,
                               FlattenPdfCallback callback) {
   base::ReadOnlySharedMemoryMapping pdf_mapping = src_pdf_region.Map();
   if (!pdf_mapping.IsValid()) {
-    std::move(callback).Run(nullptr);
+    std::move(callback).Run(base::ReadOnlySharedMemoryRegion());
     return;
   }
 
   auto input_pdf_buffer = pdf_mapping.GetMemoryAsSpan<const uint8_t>();
-  std::optional<chrome_pdf::FlattenPdfResult> result =
+  std::vector<uint8_t> output_pdf_buffer =
       chrome_pdf::CreateFlattenedPdf(input_pdf_buffer);
-  if (!result) {
-    std::move(callback).Run(nullptr);
+  if (output_pdf_buffer.empty()) {
+    std::move(callback).Run(base::ReadOnlySharedMemoryRegion());
     return;
   }
 
   base::MappedReadOnlyRegion region_mapping =
-      base::ReadOnlySharedMemoryRegion::Create(result->pdf.size());
+      base::ReadOnlySharedMemoryRegion::Create(output_pdf_buffer.size());
   if (!region_mapping.IsValid()) {
-    std::move(callback).Run(nullptr);
+    std::move(callback).Run(std::move(region_mapping.region));
     return;
   }
 
-  memcpy(region_mapping.mapping.memory(), result->pdf.data(),
-         result->pdf.size());
-  std::move(callback).Run(printing::mojom::FlattenPdfResult::New(
-      std::move(region_mapping.region), result->page_count));
-}
-
-void PdfFlattener::SetUseSkiaRendererPolicy(bool use_skia) {
-  chrome_pdf::SetUseSkiaRendererPolicy(use_skia);
+  memcpy(region_mapping.mapping.memory(), output_pdf_buffer.data(),
+         output_pdf_buffer.size());
+  std::move(callback).Run(std::move(region_mapping.region));
 }
 
 }  // namespace printing

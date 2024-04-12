@@ -5,8 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_NETINFO_NETWORK_INFORMATION_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_NETINFO_NETWORK_INFORMATION_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/platform/web_connection_type.h"
 #include "third_party/blink/public/platform/web_effective_connection_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
@@ -20,7 +19,7 @@ namespace blink {
 class NavigatorBase;
 
 class NetworkInformation final
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ActiveScriptWrappable<NetworkInformation>,
       public Supplement<NavigatorBase>,
       public ExecutionContextLifecycleObserver,
@@ -47,9 +46,9 @@ class NetworkInformation final
   void ConnectionChange(WebConnectionType,
                         double downlink_max_mbps,
                         WebEffectiveConnectionType effective_type,
-                        const std::optional<base::TimeDelta>& http_rtt,
-                        const std::optional<base::TimeDelta>& transport_rtt,
-                        const std::optional<double>& downlink_mbps,
+                        const absl::optional<base::TimeDelta>& http_rtt,
+                        const absl::optional<base::TimeDelta>& transport_rtt,
+                        const absl::optional<double>& downlink_mbps,
                         bool save_data) override;
 
   // EventTarget overrides.

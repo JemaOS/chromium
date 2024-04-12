@@ -16,7 +16,9 @@ import java.util.Optional;
  * jobs. All methods are expected to respond asynchronously to callbacks.
  */
 public interface PasswordStoreAndroidBackend {
-    /** Serves as a general exception for failed requests to the PasswordStoreAndroidBackend. */
+    /**
+     * Serves as a general exception for failed requests to the PasswordStoreAndroidBackend.
+     */
     public class BackendException extends Exception {
         public @AndroidBackendErrorType int errorCode;
 
@@ -33,7 +35,7 @@ public interface PasswordStoreAndroidBackend {
      * @param failureCallback A callback that is called on failure for any reason. May return sync.
      * TODO(crbug.com/1278767): Remove default keyword after downstream implementation.
      */
-    default void subscribe(Runnable successCallback, Callback<Exception> failureCallback) {}
+    default void subscribe(Runnable successCallback, Callback<Exception> failureCallback){};
 
     /**
      * Unsubscribes from notifications from the downstream implementation.
@@ -42,7 +44,7 @@ public interface PasswordStoreAndroidBackend {
      * @param failureCallback A callback that is called on failure for any reason. May return sync.
      * TODO(crbug.com/1278767): Remove default keyword after downstream implementation.
      */
-    default void unsubscribe(Runnable successCallback, Callback<Exception> failureCallback) {}
+    default void unsubscribe(Runnable successCallback, Callback<Exception> failureCallback){};
 
     /**
      * Triggers an async list call to retrieve all logins.
@@ -54,9 +56,7 @@ public interface PasswordStoreAndroidBackend {
      * data.
      * @param failureCallback A callback that is called on failure for any reason. May return sync.
      */
-    void getAllLogins(
-            Optional<Account> syncingAccount,
-            Callback<byte[]> loginsReply,
+    void getAllLogins(Optional<Account> syncingAccount, Callback<byte[]> loginsReply,
             Callback<Exception> failureCallback);
 
     /**
@@ -70,28 +70,9 @@ public interface PasswordStoreAndroidBackend {
      *         org.chromium.components.sync.protocol.ListPasswordsResult} data.
      * @param failureCallback A callback that is called on failure for any reason. May return sync.
      */
-    void getAllLoginsBetween(
-            Date createdAfter,
-            Date createdBefore,
-            Optional<Account> syncingAccount,
-            Callback<byte[]> loginsReply,
+    void getAllLoginsBetween(Date createdAfter, Date createdBefore,
+            Optional<Account> syncingAccount, Callback<byte[]> loginsReply,
             Callback<Exception> failureCallback);
-
-    /**
-     * Triggers an async list call to retrieve all logins with branding info.
-     *
-     * @param syncingAccount Account used to sync passwords. If the syncingAccount is empty local
-     *     account will be used.
-     * @param loginsReply Callback that is called on success with serialized {@link
-     *     org.chromium.components.password_manager.core.browser.proto.ListPasswordsWithUiInfoResult
-     *     } data.
-     * @param failureCallback A callback that is called on failure for any reason. May return sync.
-     *     TODO(crbug.com/1428539): Remove default keyword after downstream implementation.
-     */
-    default void getAllLoginsWithBrandingInfo(
-            Optional<Account> syncingAccount,
-            Callback<byte[]> loginsReply,
-            Callback<Exception> failureCallback) {}
 
     /**
      * Triggers an async list call to retrieve autofillable logins.
@@ -103,9 +84,7 @@ public interface PasswordStoreAndroidBackend {
      * data.
      * @param failureCallback A callback that is called on failure for any reason. May return sync.
      */
-    void getAutofillableLogins(
-            Optional<Account> syncingAccount,
-            Callback<byte[]> loginsReply,
+    void getAutofillableLogins(Optional<Account> syncingAccount, Callback<byte[]> loginsReply,
             Callback<Exception> failureCallback);
 
     /**
@@ -120,30 +99,8 @@ public interface PasswordStoreAndroidBackend {
      * data.
      * @param failureCallback A callback that is called on failure for any reason. May return sync.
      */
-    void getLoginsForSignonRealm(
-            String signonRealm,
-            Optional<Account> syncingAccount,
-            Callback<byte[]> loginsReply,
-            Callback<Exception> failureCallback);
-
-    /**
-     * Triggers an async list call to retrieve affiliated logins with matching signon realm. This
-     * includes credential sharing affiliation and grouping affiliation.
-     *
-     * @param signonRealm Signon realm string matched by a substring match. The returned results
-     *     must be validated (e.g matching "sample.com" also returns logins for "not-sample.com").
-     * @param syncingAccount Account used to sync passwords. If the syncingAccount is empty local
-     *     account will be used.
-     * @param loginsReply Callback that is called on success with serialized {@link
-     *     org.chromium.components.password_manager.core.browser.proto.ListAffiliatedPasswordsResult}
-     *     data.
-     * @param failureCallback A callback that is called on failure for any reason. May return sync.
-     */
-    void getAffiliatedLoginsForSignonRealm(
-            String signonRealm,
-            Optional<Account> syncingAccount,
-            Callback<byte[]> loginsReply,
-            Callback<Exception> failureCallback);
+    void getLoginsForSignonRealm(String signonRealm, Optional<Account> syncingAccount,
+            Callback<byte[]> loginsReply, Callback<Exception> failureCallback);
 
     /**
      * Triggers an async call to add a login to the store.
@@ -154,11 +111,8 @@ public interface PasswordStoreAndroidBackend {
      * @param successCallback Callback that is called on success.
      * @param failureCallback A callback that is called on failure for any reason. May return sync.
      */
-    void addLogin(
-            byte[] pwdWithLocalData,
-            Optional<Account> syncingAccount,
-            Runnable successCallback,
-            Callback<Exception> failureCallback);
+    void addLogin(byte[] pwdWithLocalData, Optional<Account> syncingAccount,
+            Runnable successCallback, Callback<Exception> failureCallback);
 
     /**
      * Triggers an async call to update a login in the store.
@@ -170,11 +124,8 @@ public interface PasswordStoreAndroidBackend {
      * @param successCallback Callback that is called on success.
      * @param failureCallback A callback that is called on failure for any reason. May return sync.
      */
-    void updateLogin(
-            byte[] pwdWithLocalData,
-            Optional<Account> syncingAccount,
-            Runnable successCallback,
-            Callback<Exception> failureCallback);
+    void updateLogin(byte[] pwdWithLocalData, Optional<Account> syncingAccount,
+            Runnable successCallback, Callback<Exception> failureCallback);
 
     /**
      * Triggers an async call to remove a login from store.
@@ -185,9 +136,6 @@ public interface PasswordStoreAndroidBackend {
      * @param successCallback Callback that is called on success.
      * @param failureCallback A callback that is called on failure for any reason. May return sync.
      */
-    void removeLogin(
-            byte[] pwdSpecificsData,
-            Optional<Account> syncingAccount,
-            Runnable successCallback,
-            Callback<Exception> failureCallback);
+    void removeLogin(byte[] pwdSpecificsData, Optional<Account> syncingAccount,
+            Runnable successCallback, Callback<Exception> failureCallback);
 }

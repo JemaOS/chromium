@@ -12,39 +12,30 @@
 #include <utility>
 #include <vector>
 
-#include "base/containers/contains.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
+#include "base/metrics/histogram_functions.h"
+#include "base/metrics/user_metrics.h"
 #include "base/strings/escape.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
-#include "chrome/browser/apps/app_service/app_icon/app_icon_source.h"
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
-#include "chrome/browser/chromeos/reporting/metric_reporting_prefs.h"
 #include "chrome/browser/device_api/managed_configuration_api.h"
 #include "chrome/browser/device_api/managed_configuration_api_factory.h"
-#include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/enterprise/connectors/common.h"
 #include "chrome/browser/enterprise/connectors/connectors_service.h"
-#include "chrome/browser/enterprise/reporting/prefs.h"
 #include "chrome/browser/media/webrtc/capture_policy_utils.h"
 #include "chrome/browser/policy/chrome_browser_policy_connector.h"
+#include "chrome/browser/policy/management_utils.h"
 #include "chrome/browser/policy/profile_policy_connector.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/managed_ui.h"
-#include "chrome/browser/web_applications/web_app_constants.h"
-#include "chrome/browser/web_applications/web_app_provider.h"
-#include "chrome/browser/web_applications/web_app_registrar.h"
-#include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/pref_names.h"
-#include "components/content_settings/core/common/content_settings_pattern.h"
-#include "components/enterprise/browser/reporting/common_pref_names.h"
-#include "components/policy/core/common/management/management_service.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/supervised_user/core/common/pref_names.h"
@@ -70,7 +61,6 @@
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
 #include "chrome/browser/ash/policy/core/device_cloud_policy_manager_ash.h"
 #include "chrome/browser/ash/policy/handlers/minimum_version_policy_handler.h"
-#include "chrome/browser/ash/policy/reporting/metrics_reporting/metric_reporting_prefs.h"
 #include "chrome/browser/ash/policy/status_collector/device_status_collector.h"
 #include "chrome/browser/ash/policy/status_collector/status_collector.h"
 #include "chrome/browser/ash/policy/uploading/status_uploader.h"
@@ -82,7 +72,7 @@
 #include "chrome/browser/net/stub_resolver_config_reader.h"
 #include "chrome/browser/net/system_network_context_manager.h"
 #include "chrome/browser/ui/webui/management/management_ui_handler_chromeos.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chromeos/ash/components/network/network_state_handler.h"
 #include "chromeos/ash/components/network/proxy/proxy_config_handler.h"
 #include "chromeos/ash/components/network/proxy/ui_proxy_config_service.h"
@@ -92,14 +82,8 @@
 #include "components/user_manager/user_manager.h"
 #include "ui/chromeos/devicetype_utils.h"
 #else
-#include "chrome/browser/ui/managed_ui.h"
 #include "components/policy/core/common/cloud/user_cloud_policy_manager.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-#include "chrome/browser/enterprise/signals/user_permission_service_factory.h"
-#include "components/device_signals/core/browser/user_permission_service.h"  // nogncheck
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/extensions/extension_util.h"
@@ -174,33 +158,24 @@ const char kManagementOnPageVisitedEvent[] = "managementOnPageVisitedEvent";
 const char kManagementOnPageVisitedVisibleData[] =
     "managementOnPageVisitedVisibleData";
 
-const char kManagementLegacyTechReport[] = "managementLegacyTechReport";
-
 const char kReportingTypeDevice[] = "device";
 const char kReportingTypeExtensions[] = "extensions";
 const char kReportingTypeSecurity[] = "security";
 const char kReportingTypeUser[] = "user";
 const char kReportingTypeUserActivity[] = "user-activity";
-const char kReportingTypeLegacyTech[] = "legacy-tech";
 
 enum class ReportingType {
   kDevice,
   kExtensions,
   kSecurity,
   kUser,
-  kUserActivity,
-  kLegacyTech,
+  kUserActivity
 };
 
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
 const char kManagementScreenCaptureEvent[] = "managementScreenCaptureEvent";
 const char kManagementScreenCaptureData[] = "managementScreenCaptureData";
 #endif  // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
-
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-const char kManagementDeviceSignalsDisclosure[] =
-    "managementDeviceSignalsDisclosure";
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_CHROMEOS)
 const char kManagementLogUploadEnabled[] = "managementLogUploadEnabled";
@@ -224,10 +199,6 @@ const char kManagementReportPrintJobs[] = "managementReportPrintJobs";
 const char kManagementReportLoginLogout[] = "managementReportLoginLogout";
 const char kManagementReportCRDSessions[] = "managementReportCRDSessions";
 const char kManagementReportDlpEvents[] = "managementReportDlpEvents";
-const char kManagementReportAllWebsiteInfoAndActivity[] =
-    "managementReportAllWebsiteInfoAndActivity";
-const char kManagementReportWebsiteInfoAndActivity[] =
-    "managementReportWebsiteInfoAndActivity";
 const char kManagementOnFileTransferEvent[] = "managementOnFileTransferEvent";
 const char kManagementOnFileTransferVisibleData[] =
     "managementOnFileTransferVisibleData";
@@ -242,6 +213,8 @@ const char kOverview[] = "overview";
 
 const char kCustomerLogo[] = "customerLogo";
 
+const char kPowerfulExtensionsCountHistogram[] = "Extensions.PowerfulCount";
+
 namespace {
 
 bool IsProfileManaged(Profile* profile) {
@@ -249,6 +222,10 @@ bool IsProfileManaged(Profile* profile) {
 }
 
 #if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
+
+bool IsDeviceManaged() {
+  return policy::IsDeviceEnterpriseManaged();
+}
 
 enum class DeviceReportingType {
   kSupervisedUser,
@@ -268,8 +245,6 @@ enum class DeviceReportingType {
   kLoginLogout,
   kCRDSessions,
   kPeripherals,
-  kLegacyTech,
-  kWebsiteInfoAndActivity,
 };
 
 #else
@@ -320,36 +295,18 @@ std::string ToJSDeviceReportingType(const DeviceReportingType& type) {
       return "crd sessions";
     case DeviceReportingType::kPeripherals:
       return "peripherals";
-    case DeviceReportingType::kLegacyTech:
-      return kReportingTypeLegacyTech;
-    case DeviceReportingType::kWebsiteInfoAndActivity:
-      return "website info and activity";
     default:
       NOTREACHED() << "Unknown device reporting type";
       return "device";
   }
 }
 
-std::string GetWebsiteReportingAllowlistMessageParam(
-    const base::Value::List& url_allowlist) {
-  std::vector<std::string> url_patterns;
-  for (const base::Value& pattern_value : url_allowlist) {
-    url_patterns.push_back(pattern_value.GetString());
-  }
-
-  return base::JoinString(url_patterns, ", ");
-}
-
-void AddDeviceReportingElement(
-    base::Value::List* report_sources,
-    const std::string& message_id,
-    const DeviceReportingType& type,
-    base::Value::List message_params = base::Value::List()) {
+void AddDeviceReportingElement(base::Value::List* report_sources,
+                               const std::string& message_id,
+                               const DeviceReportingType& type) {
   base::Value::Dict data;
   data.Set("messageId", message_id);
   data.Set("reportingType", ToJSDeviceReportingType(type));
-  data.Set("messageParams", std::move(message_params));
-
   report_sources->Append(std::move(data));
 }
 
@@ -403,13 +360,7 @@ void AddDeviceReportingInfo(base::Value::List* report_sources,
     AddDeviceReportingElement(report_sources, kManagementReportCrashReports,
                               DeviceReportingType::kCrashReport);
   }
-
-  const auto& app_inventory_app_types =
-      profile->GetPrefs()->GetList(::ash::reporting::kReportAppInventory);
-  const auto& app_usage_app_types =
-      profile->GetPrefs()->GetList(::ash::reporting::kReportAppUsage);
-  if (collector->IsReportingAppInfoAndActivity() || device_report_xdr_events ||
-      !app_inventory_app_types.empty() || !app_usage_app_types.empty()) {
+  if (collector->IsReportingAppInfoAndActivity() || device_report_xdr_events) {
     AddDeviceReportingElement(report_sources,
                               kManagementReportAppInfoAndActivity,
                               DeviceReportingType::kAppInfoAndActivity);
@@ -486,20 +437,10 @@ void AddDeviceReportingInfo(base::Value::List* report_sources,
                               DeviceReportingType::kAndroidApplication);
   }
 
-  if (!profile->GetPrefs()
-           ->GetList(enterprise_reporting::kCloudLegacyTechReportAllowlist)
-           .empty()) {
-    AddDeviceReportingElement(report_sources, kManagementLegacyTechReport,
-                              DeviceReportingType::kLegacyTech);
-  }
-
   bool report_login_logout = false;
   ash::CrosSettings::Get()->GetBoolean(ash::kReportDeviceLoginLogout,
                                        &report_login_logout);
-  bool report_xdr_events = false;
-  ash::CrosSettings::Get()->GetBoolean(ash::kDeviceReportXDREvents,
-                                       &report_xdr_events);
-  if (report_login_logout || report_xdr_events) {
+  if (report_login_logout) {
     AddDeviceReportingElement(report_sources, kManagementReportLoginLogout,
                               DeviceReportingType::kLoginLogout);
   }
@@ -510,43 +451,6 @@ void AddDeviceReportingInfo(base::Value::List* report_sources,
   if (report_crd_sessions) {
     AddDeviceReportingElement(report_sources, kManagementReportCRDSessions,
                               DeviceReportingType::kCRDSessions);
-  }
-
-  const auto wildcard_pattern_string =
-      ContentSettingsPattern::Wildcard().ToString();
-  const auto& website_telemetry_types =
-      profile->GetPrefs()->GetList(::reporting::kReportWebsiteTelemetry);
-  const auto& website_telemetry_allowlist = profile->GetPrefs()->GetList(
-      ::reporting::kReportWebsiteTelemetryAllowlist);
-  const auto& website_activity_allowlist = profile->GetPrefs()->GetList(
-      ::reporting::kReportWebsiteActivityAllowlist);
-  if (base::Contains(website_activity_allowlist, wildcard_pattern_string) ||
-      (!website_telemetry_types.empty() &&
-       base::Contains(website_telemetry_allowlist, wildcard_pattern_string))) {
-    // One or more website metrics reporting policies allowlists all website
-    // URLs.
-    AddDeviceReportingElement(report_sources,
-                              kManagementReportAllWebsiteInfoAndActivity,
-                              DeviceReportingType::kWebsiteInfoAndActivity);
-  } else if (!website_activity_allowlist.empty()) {
-    // Admin defined subset of URLs allowlisted for website activity reporting.
-    base::Value::List message_params;
-    message_params.Append(
-        GetWebsiteReportingAllowlistMessageParam(website_activity_allowlist));
-    AddDeviceReportingElement(report_sources,
-                              kManagementReportWebsiteInfoAndActivity,
-                              DeviceReportingType::kWebsiteInfoAndActivity,
-                              std::move(message_params));
-  } else if (!website_telemetry_types.empty() &&
-             !website_telemetry_allowlist.empty()) {
-    // Admin defined subset of URLs allowlisted for website telemetry reporting.
-    base::Value::List message_params;
-    message_params.Append(
-        GetWebsiteReportingAllowlistMessageParam(website_telemetry_allowlist));
-    AddDeviceReportingElement(report_sources,
-                              kManagementReportWebsiteInfoAndActivity,
-                              DeviceReportingType::kWebsiteInfoAndActivity,
-                              std::move(message_params));
   }
 }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
@@ -609,8 +513,6 @@ const char* GetReportingTypeValue(ReportingType reportingType) {
       return kReportingTypeUser;
     case ReportingType::kUserActivity:
       return kReportingTypeUserActivity;
-    case ReportingType::kLegacyTech:
-      return kReportingTypeLegacyTech;
     default:
       return kReportingTypeSecurity;
   }
@@ -626,7 +528,7 @@ void AddThreatProtectionPermission(const char* title,
 }
 
 std::string GetAccountManager(Profile* profile) {
-  std::optional<std::string> manager =
+  absl::optional<std::string> manager =
       chrome::GetAccountManagerIdentity(profile);
   if (!manager &&
       base::FeatureList::IsEnabled(features::kFlexOrgManagementDisclosure)) {
@@ -645,7 +547,8 @@ ManagementUIHandler::ManagementUIHandler() {
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
   // Get device report sources.
   if (service->IsAvailable<crosapi::mojom::DeviceSettingsService>() &&
-      service->GetInterfaceVersion<crosapi::mojom::DeviceSettingsService>() >=
+      service->GetInterfaceVersion(
+          crosapi::mojom::DeviceSettingsService::Uuid_) >=
           static_cast<int>(crosapi::mojom::DeviceSettingsService::
                                kGetDeviceReportSourcesMinVersion)) {
     service->GetRemote<crosapi::mojom::DeviceSettingsService>()
@@ -672,8 +575,7 @@ void ManagementUIHandler::InitializeInternal(content::WebUI* web_ui,
 
 #if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
   handler->account_managed_ = IsProfileManaged(profile);
-  handler->device_managed_ =
-      policy::ManagementServiceFactory::GetForPlatform()->IsManaged();
+  handler->device_managed_ = IsDeviceManaged();
 #else
   handler->account_managed_ = IsProfileManaged(profile) || IsBrowserManaged();
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -714,10 +616,6 @@ void ManagementUIHandler::RegisterMessages() {
       base::BindRepeating(&ManagementUIHandler::HandleGetManagedWebsites,
                           base::Unretained(this)));
   web_ui()->RegisterMessageCallback(
-      "getApplications",
-      base::BindRepeating(&ManagementUIHandler::HandleGetApplications,
-                          base::Unretained(this)));
-  web_ui()->RegisterMessageCallback(
       "initBrowserReportingInfo",
       base::BindRepeating(&ManagementUIHandler::HandleInitBrowserReportingInfo,
                           base::Unretained(this)));
@@ -754,25 +652,20 @@ void ManagementUIHandler::AddReportingInfo(base::Value::List* report_sources) {
       &on_prem_reporting_extension_stable_policy_map,
       &on_prem_reporting_extension_beta_policy_map};
 
+  const auto* cloud_reporting_policy_value =
+      GetPolicyService()
+          ->GetPolicies(policy::PolicyNamespace(policy::POLICY_DOMAIN_CHROME,
+                                                std::string()))
+          .GetValue(policy::key::kCloudReportingEnabled,
+                    base::Value::Type::BOOLEAN);
   const bool cloud_reporting_policy_enabled =
-      g_browser_process->local_state()->GetBoolean(
-          enterprise_reporting::kCloudReportingEnabled);
-  const bool cloud_legacy_tech_report_enabled =
-      !Profile::FromWebUI(web_ui())
-           ->GetPrefs()
-           ->GetList(enterprise_reporting::kCloudLegacyTechReportAllowlist)
-           .empty();
-
-  if (cloud_legacy_tech_report_enabled) {
-    Profile::FromWebUI(web_ui())->GetPrefs()->GetList(
-        enterprise_reporting::kCloudLegacyTechReportAllowlist)[0];
-  }
+      cloud_reporting_policy_value && cloud_reporting_policy_value->GetBool();
 
   const struct {
-    const char* reporting_extension_policy_key;
+    const char* policy_key;
     const char* message;
     const ReportingType reporting_type;
-    const bool cloud_reporting_enabled;
+    const bool enabled_by_default;
   } report_definitions[] = {
       {kPolicyKeyReportMachineIdData, kManagementExtensionReportMachineName,
        ReportingType::kDevice, cloud_reporting_policy_enabled},
@@ -791,19 +684,17 @@ void ManagementUIHandler::AddReportingInfo(base::Value::List* report_sources) {
       {kPolicyKeyReportUserBrowsingData,
        kManagementExtensionReportUserBrowsingData, ReportingType::kUserActivity,
        false},
-      {kPolicyKeyReportUserBrowsingData, kManagementLegacyTechReport,
-       ReportingType::kLegacyTech, cloud_legacy_tech_report_enabled}};
+  };
 
   std::unordered_set<const char*> enabled_messages;
 
   for (auto& report_definition : report_definitions) {
-    if (report_definition.cloud_reporting_enabled) {
+    if (report_definition.enabled_by_default) {
       enabled_messages.insert(report_definition.message);
-    } else if (report_definition.reporting_extension_policy_key) {
+    } else if (report_definition.policy_key) {
       for (const policy::PolicyMap* policy_map : policy_maps) {
         const base::Value* policy_value = policy_map->GetValue(
-            report_definition.reporting_extension_policy_key,
-            base::Value::Type::BOOLEAN);
+            report_definition.policy_key, base::Value::Type::BOOLEAN);
         if (policy_value && policy_value->GetBool()) {
           enabled_messages.insert(report_definition.message);
           break;
@@ -831,18 +722,6 @@ void ManagementUIHandler::AddReportingInfo(base::Value::List* report_sources) {
              GetReportingTypeValue(report_definition.reporting_type));
     report_sources->Append(std::move(data));
   }
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-  // Insert the device signals consent disclosure at the end of browser
-  // reporting section.
-  auto* user_permission_service = GetUserPermissionService();
-  if (user_permission_service && user_permission_service->CanCollectSignals() ==
-                                     device_signals::UserPermission::kGranted) {
-    base::Value::Dict data;
-    data.Set("messageId", kManagementDeviceSignalsDisclosure);
-    data.Set("reportingType", GetReportingTypeValue(ReportingType::kDevice));
-    report_sources->Append(std::move(data));
-  }
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 }
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -884,7 +763,7 @@ void ManagementUIHandler::AddUpdateRequiredEolInfo(
 }
 
 void ManagementUIHandler::AddMonitoredNetworkPrivacyDisclosure(
-    base::Value::Dict* response) {
+    base::Value::Dict* response) const {
   bool showMonitoredNetworkDisclosure = false;
 
   // Check for secure DNS templates with identifiers.
@@ -895,23 +774,6 @@ void ManagementUIHandler::AddMonitoredNetworkPrivacyDisclosure(
   if (showMonitoredNetworkDisclosure) {
     response->Set("showMonitoredNetworkPrivacyDisclosure",
                   showMonitoredNetworkDisclosure);
-    return;
-  }
-
-  // Check if DeviceReportXDREvents is enabled.
-  auto* report_xdr_events_policy_value =
-      GetPolicyService()
-          ->GetPolicies(policy::PolicyNamespace(policy::POLICY_DOMAIN_CHROME,
-                                                std::string()))
-          .GetValue(policy::key::kDeviceReportXDREvents,
-                    base::Value::Type::BOOLEAN);
-  bool report_xdr_events_policy_enabled =
-      report_xdr_events_policy_value &&
-      report_xdr_events_policy_value->GetBool();
-
-  if (report_xdr_events_policy_enabled) {
-    response->Set("showMonitoredNetworkPrivacyDisclosure",
-                  report_xdr_events_policy_enabled);
     return;
   }
 
@@ -998,23 +860,25 @@ base::Value::Dict ManagementUIHandler::GetContextualManagedData(
                l10n_util::GetStringFUTF16(
                    managed_() ? IDS_MANAGEMENT_BROWSER_NOTICE
                               : IDS_MANAGEMENT_NOT_MANAGED_NOTICE,
-                   chrome::kManagedUiLearnMoreUrl,
+                   base::UTF8ToUTF16(chrome::kManagedUiLearnMoreUrl),
                    base::EscapeForHTML(l10n_util::GetStringUTF16(
                        IDS_MANAGEMENT_LEARN_MORE_ACCCESSIBILITY_TEXT))));
-  response.Set("pageSubtitle", chrome::GetManagementPageSubtitle(profile));
 #endif
+
   if (enterprise_manager.empty()) {
     response.Set(
-        "extensionReportingSubtitle",
+        "extensionReportingTitle",
         l10n_util::GetStringUTF16(IDS_MANAGEMENT_EXTENSIONS_INSTALLED));
-    response.Set(
-        "applicationReportingSubtitle",
-        l10n_util::GetStringUTF16(IDS_MANAGEMENT_APPLICATIONS_INSTALLED));
     response.Set(
         "managedWebsitesSubtitle",
         l10n_util::GetStringUTF16(IDS_MANAGEMENT_MANAGED_WEBSITES_EXPLANATION));
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
+    response.Set("pageSubtitle",
+                 l10n_util::GetStringUTF16(
+                     managed_() ? IDS_MANAGEMENT_SUBTITLE
+                                : IDS_MANAGEMENT_NOT_MANAGED_SUBTITLE));
+#else
     const auto device_type = ui::GetChromeOSDeviceTypeResourceId();
     response.Set("pageSubtitle",
                  managed_() ? l10n_util::GetStringFUTF16(
@@ -1023,23 +887,26 @@ base::Value::Dict ManagementUIHandler::GetContextualManagedData(
                             : l10n_util::GetStringFUTF16(
                                   IDS_MANAGEMENT_NOT_MANAGED_SUBTITLE,
                                   l10n_util::GetStringUTF16(device_type)));
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 
   } else {
     response.Set(
-        "extensionReportingSubtitle",
+        "extensionReportingTitle",
         l10n_util::GetStringFUTF16(IDS_MANAGEMENT_EXTENSIONS_INSTALLED_BY,
-                                   base::UTF8ToUTF16(enterprise_manager)));
-    response.Set(
-        "applicationReportingSubtitle",
-        l10n_util::GetStringFUTF16(IDS_MANAGEMENT_APPLICATIONS_INSTALLED_BY,
                                    base::UTF8ToUTF16(enterprise_manager)));
     response.Set("managedWebsitesSubtitle",
                  l10n_util::GetStringFUTF16(
                      IDS_MANAGEMENT_MANAGED_WEBSITES_BY_EXPLANATION,
                      base::UTF8ToUTF16(enterprise_manager)));
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
+    response.Set(
+        "pageSubtitle",
+        managed_()
+            ? l10n_util::GetStringFUTF16(IDS_MANAGEMENT_SUBTITLE_MANAGED_BY,
+                                         base::UTF8ToUTF16(enterprise_manager))
+            : l10n_util::GetStringUTF16(IDS_MANAGEMENT_NOT_MANAGED_SUBTITLE));
+#else
     const auto device_type = ui::GetChromeOSDeviceTypeResourceId();
     response.Set("pageSubtitle",
                  managed_() ? l10n_util::GetStringFUTF16(
@@ -1049,7 +916,7 @@ base::Value::Dict ManagementUIHandler::GetContextualManagedData(
                             : l10n_util::GetStringFUTF16(
                                   IDS_MANAGEMENT_NOT_MANAGED_SUBTITLE,
                                   l10n_util::GetStringUTF16(device_type)));
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
   }
   response.Set("managed", managed_());
   GetManagementStatus(profile, &response);
@@ -1108,7 +975,8 @@ base::Value::Dict ManagementUIHandler::GetThreatProtectionInfo(
   }
 
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
-  if (capture_policy::IsGetAllScreensMediaAllowedForAnySite(profile)) {
+  if (capture_policy::IsGetDisplayMediaSetSelectAllScreensAllowedForAnySite(
+          profile)) {
     AddThreatProtectionPermission(kManagementScreenCaptureEvent,
                                   kManagementScreenCaptureData, &info);
   }
@@ -1146,58 +1014,11 @@ base::Value::List ManagementUIHandler::GetManagedWebsitesInfo(
   return managed_websites;
 }
 
-base::Value::List ManagementUIHandler::GetApplicationsInfo(
-    Profile* profile) const {
-  base::Value::List applications;
-
-  auto* provider = web_app::WebAppProvider::GetForWebApps(profile);
-  // Only display web apps for the profile that contains them e.g. Lacros
-  // primary profile when Lacros is enabled.
-  if (provider == nullptr) {
-    return applications;
-  }
-
-  auto& registrar = provider->registrar_unsafe();
-
-  for (const webapps::AppId& app_id : registrar.GetAppIds()) {
-    base::Value::List permission_messages;
-    // Display RunOnOsLogin if it is set to autostart by admin policy.
-    web_app::ValueWithPolicy<web_app::RunOnOsLoginMode> policy =
-        registrar.GetAppRunOnOsLoginMode(app_id);
-    if (!policy.user_controllable &&
-        web_app::IsRunOnOsLoginModeEnabledForAutostart(policy.value)) {
-      permission_messages.Append(l10n_util::GetStringUTF16(
-          IDS_MANAGEMENT_APPLICATIONS_RUN_ON_OS_LOGIN));
-    }
-
-    if (!permission_messages.empty()) {
-      base::Value::Dict app_info;
-      app_info.Set("name", registrar.GetAppShortName(app_id));
-      // We try to match the same icon size as used for the extensions
-      GURL icon = apps::AppIconSource::GetIconURL(
-          app_id, extension_misc::EXTENSION_ICON_SMALLISH);
-      app_info.Set("icon", icon.spec());
-      app_info.Set("permissions", std::move(permission_messages));
-      applications.Append(std::move(app_info));
-    }
-  }
-
-  return applications;
-}
-
 policy::PolicyService* ManagementUIHandler::GetPolicyService() {
   return Profile::FromWebUI(web_ui())
       ->GetProfilePolicyConnector()
       ->policy_service();
 }
-
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-device_signals::UserPermissionService*
-ManagementUIHandler::GetUserPermissionService() {
-  return enterprise_signals::UserPermissionServiceFactory::GetForProfile(
-      Profile::FromWebUI(web_ui()));
-}
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 void ManagementUIHandler::AsyncUpdateLogo() {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -1267,6 +1088,9 @@ const std::string ManagementUIHandler::GetDeviceManager() const {
   if (device_managed_) {
     device_domain = connector->GetEnterpriseDomainManager();
   }
+  if (device_domain.empty() && connector->IsActiveDirectoryManaged()) {
+    device_domain = connector->GetRealm();
+  }
   return device_domain;
 }
 
@@ -1312,8 +1136,14 @@ void ManagementUIHandler::HandleGetExtensions(const base::Value::List& args) {
       extensions::ExtensionRegistry::Get(Profile::FromWebUI(web_ui()))
           ->enabled_extensions();
 
-  ResolveJavascriptCallback(args[0] /* callback_id */,
-                            GetPowerfulExtensions(extensions));
+  base::Value::List powerful_extensions = GetPowerfulExtensions(extensions);
+
+  // The number of extensions to be reported in chrome://management with
+  // powerful permissions.
+  base::UmaHistogramCounts1000(kPowerfulExtensionsCountHistogram,
+                               powerful_extensions.size());
+
+  ResolveJavascriptCallback(args[0] /* callback_id */, powerful_extensions);
 }
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -1395,13 +1225,6 @@ void ManagementUIHandler::HandleGetManagedWebsites(
       GetManagedWebsitesInfo(Profile::FromWebUI(web_ui())));
 }
 
-void ManagementUIHandler::HandleGetApplications(const base::Value::List& args) {
-  AllowJavascript();
-
-  ResolveJavascriptCallback(args[0] /* callback_id */,
-                            GetApplicationsInfo(Profile::FromWebUI(web_ui())));
-}
-
 void ManagementUIHandler::HandleInitBrowserReportingInfo(
     const base::Value::List& args) {
   base::Value::List report_sources;
@@ -1454,12 +1277,9 @@ void ManagementUIHandler::UpdateManagedState() {
   bool managed_state_changed = false;
 #if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
   managed_state_changed |= account_managed_ != IsProfileManaged(profile);
-  managed_state_changed |=
-      device_managed_ !=
-      policy::ManagementServiceFactory::GetForPlatform()->IsManaged();
+  managed_state_changed |= device_managed_ != IsDeviceManaged();
   account_managed_ = IsProfileManaged(profile);
-  device_managed_ =
-      policy::ManagementServiceFactory::GetForPlatform()->IsManaged();
+  device_managed_ = IsDeviceManaged();
 #else
   managed_state_changed |=
       account_managed_ != (IsProfileManaged(profile) || IsBrowserManaged());

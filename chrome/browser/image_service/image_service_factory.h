@@ -34,7 +34,7 @@ class ImageServiceFactory : public ProfileKeyedServiceFactory {
   ~ImageServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

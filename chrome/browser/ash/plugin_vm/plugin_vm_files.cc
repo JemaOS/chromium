@@ -73,7 +73,7 @@ void FocusAllPluginVmWindows() {
   if (!item_controller) {
     return;
   }
-  for (AppWindowBase* app_window : item_controller->windows()) {
+  for (auto* app_window : item_controller->windows()) {
     app_window->Activate();
   }
 }
@@ -110,7 +110,7 @@ void LaunchPluginVmAppImpl(Profile* profile,
       std::move(request),
       base::BindOnce(
           [](const std::string& app_id, LaunchPluginVmAppCallback callback,
-             std::optional<
+             absl::optional<
                  vm_tools::cicerone::LaunchContainerApplicationResponse>
                  response) {
             if (!response || !response->success()) {
@@ -147,7 +147,7 @@ void EnsureDefaultSharedDirExists(
 
 void LaunchPluginVmApp(Profile* profile,
                        std::string app_id,
-                       const std::vector<guest_os::LaunchArg>& args,
+                       const std::vector<LaunchArg>& args,
                        LaunchPluginVmAppCallback callback) {
   if (!plugin_vm::PluginVmFeatures::Get()->IsEnabled(profile)) {
     return std::move(callback).Run(LaunchPluginVmAppResult::FAILED,

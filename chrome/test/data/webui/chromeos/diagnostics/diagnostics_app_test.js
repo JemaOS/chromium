@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 import 'chrome://diagnostics/diagnostics_app.js';
-import 'chrome://resources/ash/common/cr_elements/cr_button/cr_button.js';
-import 'chrome://webui-test/chromeos/mojo_webui_test_support.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
 import {DiagnosticsAppElement} from 'chrome://diagnostics/diagnostics_app.js';
 import {DiagnosticsBrowserProxyImpl} from 'chrome://diagnostics/diagnostics_browser_proxy.js';
@@ -60,7 +60,7 @@ suite('appTestSuite', function() {
   });
 
   setup(() => {
-    document.body.innerHTML = window.trustedTypes.emptyHTML;
+    document.body.innerHTML = '';
   });
 
   teardown(() => {
@@ -69,28 +69,6 @@ suite('appTestSuite', function() {
     systemDataProvider.reset();
     networkHealthProvider.reset();
   });
-
-  /**
-   * @param {boolean} isLoggedIn
-   * @suppress {visibility} // access private member
-   * @return {!Promise}
-   */
-  function changeLoggedInState(isLoggedIn) {
-    page.isLoggedIn = isLoggedIn;
-    return flushTasks();
-  }
-
-  /**
-   * Simulate clicking session log button.
-   * @return {!Promise}
-   */
-  function clickSessionLogButton() {
-    const sessionLogButton = getSessionLogButton();
-    assertTrue(!!sessionLogButton);
-    sessionLogButton.click();
-
-    return flushTasks();
-  }
 
   /** @return {!HTMLElement} */
   function getCautionBanner() {
@@ -134,14 +112,6 @@ suite('appTestSuite', function() {
 
     return /** @type {!HTMLElement} */ (
         page.shadowRoot.querySelector('[slot=bottom-nav-content-panel]'));
-  }
-
-  /**
-   * Returns whether the toast is visible or not.
-   * @return {boolean}
-   */
-  function isToastVisible() {
-    return page.shadowRoot.querySelector('cr-toast').open;
   }
 
   /**
@@ -244,66 +214,39 @@ suite('appTestSuite', function() {
         .then(() => assertFalse(isVisible(getCautionBanner())));
   });
 
-  test('SaveSessionLogDisabledWhenPendingResult', () => {
-    return initializeDiagnosticsApp(
-               fakeSystemInfo, fakeBatteryChargeStatus, fakeBatteryHealth,
-               fakeBatteryInfo, fakeCpuUsage, fakeMemoryUsage)
-        .then(() => {
-          assertFalse(getSessionLogButton().disabled);
-          DiagnosticsBrowserProxy.setSuccess(true);
+  test('IsJellyEnabledForDiagnosticsApp', async () => {
+    // Setup test for jelly disabled.
+    loadTimeData.overrideValues({
+      isJellyEnabledForDiagnosticsApp: false,
+    });
+    /*@type {HTMLLinkElement}*/
+    const link = document.createElement('link');
+    const disabledUrl = 'chrome://resources/chromeos/colors/cros_styles.css';
+    link.href = disabledUrl;
+    document.head.appendChild(link);
+    await initializeDiagnosticsApp(
+        fakeSystemInfo, fakeBatteryChargeStatus, fakeBatteryHealth,
+        fakeBatteryInfo, fakeCpuUsage, fakeMemoryUsage);
 
-          getSessionLogButton().click();
-          assertTrue(getSessionLogButton().disabled);
-          return flushTasks();
-        })
-        .then(() => {
-          assertFalse(getSessionLogButton().disabled);
-        });
-  });
+    dx_utils.assertTextContains(link.href, disabledUrl);
 
-  test('SaveSessionLogSuccessShowsToast', () => {
-    return initializeDiagnosticsApp(
-               fakeSystemInfo, fakeBatteryChargeStatus, fakeBatteryHealth,
-               fakeBatteryInfo, fakeCpuUsage, fakeMemoryUsage)
-        .then(() => {
-          DiagnosticsBrowserProxy.setSuccess(true);
-          clickSessionLogButton().then(() => {
-            assertTrue(isToastVisible());
-            dx_utils.assertElementContainsText(
-                page.shadowRoot.querySelector('#toast'),
-                loadTimeData.getString('sessionLogToastTextSuccess'));
-          });
-        });
-  });
+    // Reset diagnostics app element
+    document.body.innerHTML = '';
+    page.remove();
+    page = null;
 
-  test('SaveSessionLogFailure', () => {
-    return initializeDiagnosticsApp(
-               fakeSystemInfo, fakeBatteryChargeStatus, fakeBatteryHealth,
-               fakeBatteryInfo, fakeCpuUsage, fakeMemoryUsage)
-        .then(() => {
-          DiagnosticsBrowserProxy.setSuccess(false);
-          clickSessionLogButton().then(() => {
-            assertTrue(isToastVisible());
-            dx_utils.assertElementContainsText(
-                page.shadowRoot.querySelector('#toast'),
-                loadTimeData.getString('sessionLogToastTextFailure'));
-          });
-        });
-  });
+    // Setup test for jelly enabled.
+    loadTimeData.overrideValues({
+      isJellyEnabledForDiagnosticsApp: true,
+    });
+    await initializeDiagnosticsApp(
+        fakeSystemInfo, fakeBatteryChargeStatus, fakeBatteryHealth,
+        fakeBatteryInfo, fakeCpuUsage, fakeMemoryUsage);
 
-  test('SessionLogHiddenWhenNotLoggedIn', () => {
-    return initializeDiagnosticsApp(
-               fakeSystemInfo, fakeBatteryChargeStatus, fakeBatteryHealth,
-               fakeBatteryInfo, fakeCpuUsage, fakeMemoryUsage)
-        .then(() => changeLoggedInState(/* isLoggedIn */ (false)))
-        .then(() => assertFalse(isVisible(getSessionLogButton())));
-  });
+    const enabledUrl = 'chrome://theme/colors.css?sets=legacy';
+    dx_utils.assertTextContains(link.href, enabledUrl);
 
-  test('SessionLogShownWhenLoggedIn', () => {
-    return initializeDiagnosticsApp(
-               fakeSystemInfo, fakeBatteryChargeStatus, fakeBatteryHealth,
-               fakeBatteryInfo, fakeCpuUsage, fakeMemoryUsage)
-        .then(() => changeLoggedInState(/* isLoggedIn */ (true)))
-        .then(() => assertTrue(isVisible(getSessionLogButton())));
+    // Clean up test specific element.
+    document.head.removeChild(link);
   });
 });

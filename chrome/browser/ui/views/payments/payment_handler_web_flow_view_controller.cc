@@ -5,14 +5,12 @@
 #include "chrome/browser/ui/views/payments/payment_handler_web_flow_view_controller.h"
 
 #include <memory>
-#include <utility>
 
 #include "base/check_op.h"
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/task_manager/web_contents_tags.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
@@ -109,9 +107,8 @@ SkColor GetContrastingGoogleColor(SkColor light_mode_color,
 // Note that the back button on the header is drawn instead by the parent
 // PaymentRequestSheetController class in the current UX.
 class ReadOnlyOriginView : public views::View {
-  METADATA_HEADER(ReadOnlyOriginView, views::View)
-
  public:
+  METADATA_HEADER(ReadOnlyOriginView);
   ReadOnlyOriginView(const std::u16string& page_title,
                      const url::Origin& origin,
                      const SkBitmap* icon_bitmap,
@@ -162,8 +159,7 @@ class ReadOnlyOriginView : public views::View {
     views::BoxLayout* top_level_layout =
         SetLayoutManager(std::make_unique<views::BoxLayout>());
     const bool has_icon = icon_bitmap && !icon_bitmap->drawsNothing();
-    float adjusted_width =
-        base::checked_cast<float>(has_icon ? icon_bitmap->width() : 0);
+    float adjusted_width = base::checked_cast<float>(has_icon ? icon_bitmap->width() : 0);
     if (has_icon) {
       adjusted_width =
           adjusted_width *
@@ -194,20 +190,18 @@ class ReadOnlyOriginView : public views::View {
   ~ReadOnlyOriginView() override = default;
 };
 
-BEGIN_METADATA(ReadOnlyOriginView)
+BEGIN_METADATA(ReadOnlyOriginView, views::View)
 END_METADATA
 
 // The close ('X') button used in the minimal PaymentHandler header UX. See
 // |PopulateSheetHeaderView|.
 class PaymentHandlerCloseButton : public views::ImageButton {
-  METADATA_HEADER(PaymentHandlerCloseButton, views::ImageButton)
-
  public:
   explicit PaymentHandlerCloseButton(
       views::Button::PressedCallback pressed_callback,
       const SkColor enabled_color,
       const SkColor disabled_color)
-      : views::ImageButton(std::move(pressed_callback)) {
+      : views::ImageButton(pressed_callback) {
     ConfigureVectorImageButton(this);
     views::InstallCircleHighlightPathGenerator(this);
     constexpr int kCloseButtonSize = 16;
@@ -222,9 +216,6 @@ class PaymentHandlerCloseButton : public views::ImageButton {
                                            enabled_color, disabled_color);
   }
 };
-
-BEGIN_METADATA(PaymentHandlerCloseButton)
-END_METADATA
 
 PaymentHandlerWebFlowViewController::PaymentHandlerWebFlowViewController(
     base::WeakPtr<PaymentRequestSpec> spec,
@@ -267,8 +258,7 @@ void PaymentHandlerWebFlowViewController::FillContentView(
     // Add the progress bar to the separator container. The progress bar
     // colors will be set in PopulateSheetHeaderView.
     progress_bar_ = header_content_separator_container()->AddChildView(
-        std::make_unique<views::ProgressBar>());
-    progress_bar_->SetPreferredHeight(2);
+        std::make_unique<views::ProgressBar>(/*preferred_height=*/2));
     if (!spec()->IsPaymentHandlerMinimalHeaderUXEnabled()) {
       // Prior to minimal UX, the separator container used a Separator view,
       // which uses the Chrome theme color which may not match the header color.
@@ -292,12 +282,6 @@ void PaymentHandlerWebFlowViewController::FillContentView(
       ->SetOpenedWindow(
           /*payment_handler_web_contents=*/web_contents());
   web_view->LoadInitialURL(target_);
-
-  if (base::FeatureList::IsEnabled(
-          features::kPaymentHandlerWindowInTaskManager)) {
-    // Make the web view show up in the task manager.
-    task_manager::WebContentsTags::CreateForTabContents(web_contents());
-  }
 
   // Enable modal dialogs for web-based payment handlers.
   dialog_manager_delegate_.SetWebContents(web_contents());
@@ -590,7 +574,7 @@ void PaymentHandlerWebFlowViewController::LoadProgressChanged(double progress) {
 
     // The progress bar is accessibility-visible while loading, and then ignored
     // once it just serves as a separator.
-    progress_bar_->GetViewAccessibility().SetIsIgnored(progress == 1.0);
+    progress_bar_->GetViewAccessibility().OverrideIsIgnored(progress == 1.0);
     progress_bar_->GetViewAccessibility().OverrideIsLeaf(progress == 1.0);
   } else {
     progress_bar_->SetValue(progress);

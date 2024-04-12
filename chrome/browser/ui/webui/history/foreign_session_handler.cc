@@ -15,7 +15,6 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/i18n/time_formatting.h"
-#include "base/memory/raw_ptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
@@ -46,10 +45,10 @@ namespace {
 const size_t kMaxSessionsToShow = 10;
 
 // Helper method to create JSON compatible objects from Session objects.
-std::optional<base::Value::Dict> SessionTabToValue(
+absl::optional<base::Value::Dict> SessionTabToValue(
     const ::sessions::SessionTab& tab) {
   if (tab.navigations.empty())
-    return std::nullopt;
+    return absl::nullopt;
 
   int selected_index = std::min(tab.current_navigation_index,
                                 static_cast<int>(tab.navigations.size() - 1));
@@ -57,7 +56,7 @@ std::optional<base::Value::Dict> SessionTabToValue(
       tab.navigations.at(selected_index);
   GURL tab_url = current_navigation.virtual_url();
   if (!tab_url.is_valid() || tab_url.spec() == chrome::kChromeUINewTabURL)
-    return std::nullopt;
+    return absl::nullopt;
 
   base::Value::Dict dictionary;
   NewTabUI::SetUrlTitleAndDirection(&dictionary, current_navigation.title(),
@@ -78,6 +77,9 @@ std::optional<base::Value::Dict> SessionTabToValue(
 base::Value::Dict BuildWindowData(base::Time modification_time,
                                   SessionID window_id) {
   base::Value::Dict dictionary;
+  // The items which are to be written into |dictionary| are also described in
+  // chrome/browser/resources/ntp4/other_sessions.js in @typedef for WindowData.
+  // Please update it whenever you add or remove any keys here.
   dictionary.Set("type", "window");
   dictionary.Set("timestamp",
                  static_cast<double>(modification_time.ToInternalValue()));
@@ -87,10 +89,10 @@ base::Value::Dict BuildWindowData(base::Time modification_time,
 }
 
 // Helper method to create JSON compatible objects from SessionWindow objects.
-std::optional<base::Value::Dict> SessionWindowToValue(
+absl::optional<base::Value::Dict> SessionWindowToValue(
     const ::sessions::SessionWindow& window) {
   if (window.tabs.empty())
-    return std::nullopt;
+    return absl::nullopt;
 
   base::Value::List tab_values;
   // Calculate the last |modification_time| for all entries within a window.
@@ -103,7 +105,7 @@ std::optional<base::Value::Dict> SessionWindowToValue(
     }
   }
   if (tab_values.empty())
-    return std::nullopt;
+    return absl::nullopt;
 
   base::Value::Dict dictionary =
       BuildWindowData(window.timestamp, window.window_id);
@@ -154,10 +156,9 @@ void ForeignSessionHandler::OpenForeignSessionWindows(
   if (!open_tabs)
     return;
 
+  std::vector<const ::sessions::SessionWindow*> windows;
   // Note: we don't own the ForeignSessions themselves.
-  std::vector<const ::sessions::SessionWindow*> windows =
-      open_tabs->GetForeignSession(session_string_value);
-  if (windows.empty()) {
+  if (!open_tabs->GetForeignSession(session_string_value, &windows)) {
     LOG(ERROR) << "ForeignSessionHandler failed to get session data from"
                   "OpenTabsUIDelegate.";
     return;
@@ -257,14 +258,13 @@ void ForeignSessionHandler::HandleGetForeignSessions(
 
   // Clear the initial list so that it will be reset in AllowJavascript if the
   // page is refreshed.
-  initial_session_list_ = std::nullopt;
+  initial_session_list_ = absl::nullopt;
 }
 
 base::Value::List ForeignSessionHandler::GetForeignSessions() {
   sync_sessions::OpenTabsUIDelegate* open_tabs =
       GetOpenTabsUIDelegate(web_ui());
-  std::vector<raw_ptr<const sync_sessions::SyncedSession, VectorExperimental>>
-      sessions;
+  std::vector<const sync_sessions::SyncedSession*> sessions;
 
   base::Value::List session_list;
   if (open_tabs && open_tabs->GetAllForeignSessions(&sessions)) {
@@ -290,9 +290,7 @@ base::Value::List ForeignSessionHandler::GetForeignSessions() {
       session_data.Set("name", session->GetSessionName());
       session_data.Set("modifiedTime",
                        FormatSessionTime(session->GetModifiedTime()));
-      session_data.Set(
-          "timestamp",
-          session->GetModifiedTime().InMillisecondsFSinceUnixEpoch());
+      session_data.Set("timestamp", session->GetModifiedTime().ToJsTime());
 
       bool is_collapsed = collapsed_sessions.Find(session_tag);
       session_data.Set("collapsed", is_collapsed);

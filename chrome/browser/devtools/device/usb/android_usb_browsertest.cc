@@ -615,9 +615,8 @@ class MockListListener : public DevToolsAndroidBridge::DeviceListListener {
 
 class MockCountListener : public DevToolsAndroidBridge::DeviceCountListener {
  public:
-  explicit MockCountListener(DevToolsAndroidBridge* adb_bridge,
-                             base::OnceClosure callback)
-      : adb_bridge_(adb_bridge), callback_(std::move(callback)) {}
+  explicit MockCountListener(DevToolsAndroidBridge* adb_bridge)
+      : adb_bridge_(adb_bridge) {}
   ~MockCountListener() override = default;
 
   void DeviceCountChanged(int count) override {
@@ -626,18 +625,16 @@ class MockCountListener : public DevToolsAndroidBridge::DeviceCountListener {
     Shutdown();
   }
 
-  void Shutdown() { std::move(callback_).Run(); }
+  void Shutdown() { base::RunLoop::QuitCurrentWhenIdleDeprecated(); }
 
   DevToolsAndroidBridge* adb_bridge_;
-  base::OnceClosure callback_;
   int invoked_ = 0;
 };
 
 class MockCountListenerWithReAdd : public MockCountListener {
  public:
-  explicit MockCountListenerWithReAdd(DevToolsAndroidBridge* adb_bridge,
-                                      base::OnceClosure callback)
-      : MockCountListener(adb_bridge, std::move(callback)) {}
+  explicit MockCountListenerWithReAdd(DevToolsAndroidBridge* adb_bridge)
+      : MockCountListener(adb_bridge) {}
   ~MockCountListenerWithReAdd() override = default;
 
   void DeviceCountChanged(int count) override {
@@ -659,9 +656,8 @@ class MockCountListenerWithReAdd : public MockCountListener {
 class MockCountListenerWithReAddWhileQueued : public MockCountListener {
  public:
   explicit MockCountListenerWithReAddWhileQueued(
-      DevToolsAndroidBridge* adb_bridge,
-      base::OnceClosure callback)
-      : MockCountListener(adb_bridge, std::move(callback)) {}
+      DevToolsAndroidBridge* adb_bridge)
+      : MockCountListener(adb_bridge) {}
   ~MockCountListenerWithReAddWhileQueued() override = default;
 
   void DeviceCountChanged(int count) override {
@@ -688,9 +684,8 @@ class MockCountListenerWithReAddWhileQueued : public MockCountListener {
 
 class MockCountListenerForCheckingTraits : public MockCountListener {
  public:
-  explicit MockCountListenerForCheckingTraits(DevToolsAndroidBridge* adb_bridge,
-                                              base::OnceClosure callback)
-      : MockCountListener(adb_bridge, std::move(callback)) {}
+  explicit MockCountListenerForCheckingTraits(DevToolsAndroidBridge* adb_bridge)
+      : MockCountListener(adb_bridge) {}
   ~MockCountListenerForCheckingTraits() override = default;
 
   void DeviceCountChanged(int count) override {
@@ -744,7 +739,7 @@ IN_PROC_BROWSER_TEST_F(AndroidNoConfigUsbTest, TestDeviceNoConfig) {
 
 IN_PROC_BROWSER_TEST_F(AndroidUsbCountTest,
                        TestNoMultipleCallsRemoveInCallback) {
-  MockCountListener listener(adb_bridge_, runner_->QuitClosure());
+  MockCountListener listener(adb_bridge_);
   adb_bridge_->AddDeviceCountListener(&listener);
   runner_->Run();
   EXPECT_EQ(1, listener.invoked_);
@@ -753,7 +748,7 @@ IN_PROC_BROWSER_TEST_F(AndroidUsbCountTest,
 
 IN_PROC_BROWSER_TEST_F(AndroidUsbCountTest,
                        TestNoMultipleCallsRemoveAddInCallback) {
-  MockCountListenerWithReAdd listener(adb_bridge_, runner_->QuitClosure());
+  MockCountListenerWithReAdd listener(adb_bridge_);
   adb_bridge_->AddDeviceCountListener(&listener);
   runner_->Run();
   EXPECT_EQ(3, listener.invoked_);
@@ -762,7 +757,7 @@ IN_PROC_BROWSER_TEST_F(AndroidUsbCountTest,
 
 IN_PROC_BROWSER_TEST_F(AndroidUsbCountTest,
                        TestNoMultipleCallsRemoveAddOnStart) {
-  MockCountListener listener(adb_bridge_, runner_->QuitClosure());
+  MockCountListener listener(adb_bridge_);
   adb_bridge_->AddDeviceCountListener(&listener);
   adb_bridge_->RemoveDeviceCountListener(&listener);
   adb_bridge_->AddDeviceCountListener(&listener);
@@ -773,8 +768,7 @@ IN_PROC_BROWSER_TEST_F(AndroidUsbCountTest,
 
 IN_PROC_BROWSER_TEST_F(AndroidUsbCountTest,
                        TestNoMultipleCallsRemoveAddWhileQueued) {
-  MockCountListenerWithReAddWhileQueued listener(adb_bridge_,
-                                                 runner_->QuitClosure());
+  MockCountListenerWithReAddWhileQueued listener(adb_bridge_);
   adb_bridge_->AddDeviceCountListener(&listener);
   runner_->Run();
   EXPECT_EQ(2, listener.invoked_);
@@ -782,8 +776,7 @@ IN_PROC_BROWSER_TEST_F(AndroidUsbCountTest,
 }
 
 IN_PROC_BROWSER_TEST_F(AndroidUsbTraitsTest, TestDeviceCounting) {
-  MockCountListenerForCheckingTraits listener(adb_bridge_,
-                                              runner_->QuitClosure());
+  MockCountListenerForCheckingTraits listener(adb_bridge_);
   adb_bridge_->AddDeviceCountListener(&listener);
   runner_->Run();
 }

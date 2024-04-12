@@ -33,10 +33,7 @@
 
 #include "third_party/blink/renderer/core/svg/properties/svg_property_info.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-
-namespace WTF {
-class String;
-}  // namespace WTF
+#include "third_party/blink/renderer/platform/wtf/forward.h"
 
 namespace blink {
 
@@ -56,9 +53,9 @@ class SVGPropertyBase : public GarbageCollected<SVGPropertyBase> {
   // FIXME: remove this in WebAnimations transition.
   // This is used from SVGAnimatedNewPropertyAnimator for its animate-by-string
   // implementation.
-  virtual SVGPropertyBase* CloneForAnimation(const WTF::String&) const = 0;
+  virtual SVGPropertyBase* CloneForAnimation(const String&) const = 0;
 
-  virtual WTF::String ValueAsString() const = 0;
+  virtual String ValueAsString() const = 0;
 
   // Set the initial value based on a per-type defined (encoded) value. Overload
   // this in the specific subclass to handle initial values, and set

@@ -45,7 +45,7 @@ class StyleRuleCSSStyleDeclaration : public PropertySetCSSStyleDeclaration {
  protected:
   CSSStyleSheet* ParentStyleSheet() const override;
 
-  CSSRule* parentRule() const override { return parent_rule_.Get(); }
+  CSSRule* parentRule() const override { return parent_rule_; }
 
   void WillMutate() override;
   void DidMutate(MutationType) override;

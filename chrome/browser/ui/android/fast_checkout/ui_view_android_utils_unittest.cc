@@ -8,12 +8,14 @@
 #include "components/autofill/core/browser/autofill_data_util.h"
 #include "components/autofill/core/browser/autofill_test_utils.h"
 #include "components/autofill/core/browser/data_model/autofill_profile.h"
+#include "components/autofill/core/browser/geo/country_names.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 TEST(FastCheckoutUIViewAndroidUtils, CreateFastCheckoutAutofillProfile) {
+  autofill::CountryNames::SetLocaleString("en-US");
   JNIEnv* env = base::android::AttachCurrentThread();
-  autofill::AutofillProfile profile = autofill::test::GetFullProfile();
+  autofill::AutofillProfile profile = autofill::test::GetVerifiedProfile();
 
   base::android::ScopedJavaLocalRef<jobject> scoped_profile =
       CreateFastCheckoutAutofillProfile(env, profile, "en-US");
@@ -24,12 +26,14 @@ TEST(FastCheckoutUIViewAndroidUtils, CreateFastCheckoutAutofillProfile) {
       CreateFastCheckoutAutofillProfileFromJava(env, java_profile, "en-US");
 
   EXPECT_EQ(profile.guid(), parsed_profile->guid());
+  EXPECT_EQ(profile.origin(), parsed_profile->origin());
   EXPECT_EQ(profile.language_code(), parsed_profile->language_code());
 
-  const autofill::FieldType types[] = {
+  const autofill::ServerFieldType types[] = {
       autofill::NAME_FULL,
       autofill::NAME_FIRST,
       autofill::NAME_MIDDLE,
+      autofill::NAME_HONORIFIC_PREFIX,
       autofill::NAME_LAST,
       autofill::NAME_LAST_FIRST,
       autofill::NAME_LAST_SECOND,
@@ -46,12 +50,13 @@ TEST(FastCheckoutUIViewAndroidUtils, CreateFastCheckoutAutofillProfile) {
       autofill::PHONE_HOME_WHOLE_NUMBER,
   };
 
-  for (autofill::FieldType type : types) {
+  for (autofill::ServerFieldType type : types) {
     EXPECT_EQ(profile.GetRawInfo(type), parsed_profile->GetRawInfo(type));
   }
 }
 
 TEST(FastCheckoutUIViewAndroidUtils, CreateFastCheckoutCreditCard) {
+  autofill::CountryNames::SetLocaleString("en-US");
   JNIEnv* env = base::android::AttachCurrentThread();
   const autofill::CreditCard credit_cards[] = {
       autofill::test::GetCreditCard(), autofill::test::GetFullServerCard(),

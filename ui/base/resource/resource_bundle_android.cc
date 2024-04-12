@@ -18,7 +18,6 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/resource/data_pack.h"
 #include "ui/base/resource/resource_bundle.h"
-#include "ui/base/resource/resource_scale_factor.h"
 #include "ui/base/ui_base_jni_headers/ResourceBundle_jni.h"
 #include "ui/base/ui_base_paths.h"
 
@@ -57,7 +56,6 @@ bool LoadFromApkOrFile(const char* apk_path,
   bool success = *out_fd >= 0;
   if (!success) {
     LOG(ERROR) << "Failed to open pak file: " << apk_path;
-    base::android::DumpLastOpenApkAssetFailure();
   }
   return success;
 }

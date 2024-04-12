@@ -14,7 +14,6 @@
 
 namespace blink {
 
-class ExceptionState;
 class ImageBitmap;
 
 class MODULES_EXPORT ImageBitmapRenderingContext final
@@ -47,7 +46,7 @@ class MODULES_EXPORT ImageBitmapRenderingContext final
   void transferFromImageBitmap(ImageBitmap*, ExceptionState&);
 
   // CanvasRenderingContext implementation
-  ImageBitmap* TransferToImageBitmap(ScriptState*, ExceptionState&) override;
+  ImageBitmap* TransferToImageBitmap(ScriptState*) override;
 
   V8RenderingContext* AsV8RenderingContext() final;
   V8OffscreenRenderingContext* AsV8OffscreenRenderingContext() final;

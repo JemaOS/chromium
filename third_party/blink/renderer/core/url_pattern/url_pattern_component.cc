@@ -4,15 +4,12 @@
 
 #include "third_party/blink/renderer/core/url_pattern/url_pattern_component.h"
 
-#include "base/metrics/histogram_functions.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
-#include "components/url_pattern/url_pattern_util.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_url_pattern_options.h"
 #include "third_party/blink/renderer/core/url_pattern/url_pattern_canon.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
-#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_utf8_adaptor.h"
 #include "url/url_util.h"
 
@@ -44,25 +41,46 @@ StringView TypeToString(Component::Type type) {
   NOTREACHED();
 }
 
+// Utility method to determine if a particular hostname pattern should be
+// treated as an IPv6 hostname.  This implements a simple and fast heuristic
+// looking for a leading `[`.  It is intended to catch the most common cases
+// with minimum overhead.
+bool TreatAsIPv6Hostname(base::StringPiece pattern_utf8) {
+  // The `[` string cannot be a valid IPv6 hostname.  We need at least two
+  // characters to represent `[*`.
+  if (pattern_utf8.size() < 2)
+    return false;
+
+  if (pattern_utf8[0] == '[')
+    return true;
+
+  // We do a bit of extra work to detect brackets behind an escape and
+  // within a grouping.
+  if ((pattern_utf8[0] == '\\' || pattern_utf8[0] == '{') &&
+      pattern_utf8[1] == '[')
+    return true;
+
+  return false;
+}
+
 // Utility method to get the correct encoding callback for a given type.
 liburlpattern::EncodeCallback GetEncodeCallback(base::StringPiece pattern_utf8,
                                                 Component::Type type,
                                                 Component* protocol_component) {
   switch (type) {
     case Component::Type::kProtocol:
-      return ::url_pattern::ProtocolEncodeCallback;
+      return ProtocolEncodeCallback;
     case Component::Type::kUsername:
-      return ::url_pattern::UsernameEncodeCallback;
+      return UsernameEncodeCallback;
     case Component::Type::kPassword:
-      return ::url_pattern::PasswordEncodeCallback;
+      return PasswordEncodeCallback;
     case Component::Type::kHostname:
-      if (::url_pattern::TreatAsIPv6Hostname(pattern_utf8)) {
-        return ::url_pattern::IPv6HostnameEncodeCallback;
-      } else {
-        return ::url_pattern::HostnameEncodeCallback;
-      }
+      if (TreatAsIPv6Hostname(pattern_utf8))
+        return IPv6HostnameEncodeCallback;
+      else
+        return HostnameEncodeCallback;
     case Component::Type::kPort:
-      return ::url_pattern::PortEncodeCallback;
+      return PortEncodeCallback;
     case Component::Type::kPathname:
       // Different types of URLs use different canonicalization for pathname.
       // A "standard" URL flattens `.`/`..` and performs full percent encoding.
@@ -88,13 +106,13 @@ liburlpattern::EncodeCallback GetEncodeCallback(base::StringPiece pattern_utf8,
       // actually have a pathname pattern to compile.
       CHECK(protocol_component);
       if (protocol_component->ShouldTreatAsStandardURL())
-        return ::url_pattern::StandardURLPathnameEncodeCallback;
+        return StandardURLPathnameEncodeCallback;
       else
-        return ::url_pattern::PathURLPathnameEncodeCallback;
+        return PathURLPathnameEncodeCallback;
     case Component::Type::kSearch:
-      return ::url_pattern::SearchEncodeCallback;
+      return SearchEncodeCallback;
     case Component::Type::kHash:
-      return ::url_pattern::HashEncodeCallback;
+      return HashEncodeCallback;
   }
   NOTREACHED();
 }
@@ -180,8 +198,7 @@ int ComparePart(const liburlpattern::Part& lh, const liburlpattern::Part& rh) {
 }  // anonymous namespace
 
 // static
-Component* Component::Compile(v8::Isolate* isolate,
-                              StringView pattern,
+Component* Component::Compile(StringView pattern,
                               Type type,
                               Component* protocol_component,
                               const URLPatternOptions& external_options,
@@ -220,24 +237,8 @@ Component* Component::Compile(v8::Isolate* isolate,
                                             : WTF::kTextCaseASCIIInsensitive;
     DCHECK(base::IsStringASCII(regexp_string));
     regexp = MakeGarbageCollected<ScriptRegexp>(
-        isolate, String(regexp_string.data(), regexp_string.size()),
-        case_sensitive, MultilineMode::kMultilineDisabled,
-        UnicodeMode::kUnicode);
-
-    // There are some incompatible regexp patterns between "u" and "v". Counting
-    // those cases to measure the potential impact of upgrading to the "v" flag.
-    ScriptRegexp* regexp_v = MakeGarbageCollected<ScriptRegexp>(
-        isolate, String(regexp_string.data(), regexp_string.size()),
-        case_sensitive, MultilineMode::kMultilineDisabled,
-        UnicodeMode::kUnicodeSets);
-    base::UmaHistogramBoolean(
-        "Blink.URLPattern.IncompatiblePatternWithUnicodeSetsMode",
-        regexp->IsValid() && !regexp_v->IsValid());
-
-    if (RuntimeEnabledFeatures::URLPatternRegexpUnicodeSetsModeEnabled()) {
-      regexp = regexp_v;
-    }
-
+        String(regexp_string.data(), regexp_string.size()), case_sensitive,
+        MultilineMode::kMultilineDisabled, UnicodeMode::kUnicode);
     if (!regexp->IsValid()) {
       // The regular expression failed to compile.  This means that some
       // custom regexp group within the pattern is illegal.  Attempt to
@@ -249,11 +250,8 @@ Component* Component::Compile(v8::Isolate* isolate,
         DCHECK(base::IsStringASCII(part.value));
         String group_value(part.value.data(), part.value.size());
         regexp = MakeGarbageCollected<ScriptRegexp>(
-            isolate, group_value, case_sensitive,
-            MultilineMode::kMultilineDisabled,
-            RuntimeEnabledFeatures::URLPatternRegexpUnicodeSetsModeEnabled()
-                ? UnicodeMode::kUnicodeSets
-                : UnicodeMode::kUnicode);
+            group_value, case_sensitive, MultilineMode::kMultilineDisabled,
+            UnicodeMode::kUnicode);
         if (regexp->IsValid())
           continue;
         exception_state.ThrowTypeError("Invalid " + TypeToString(type) +
@@ -348,7 +346,7 @@ bool Component::Match(StringView input,
   }
 
   // There is no regexp, so directly match against the pattern.
-  std::vector<std::pair<absl::string_view, std::optional<absl::string_view>>>
+  std::vector<std::pair<absl::string_view, absl::optional<absl::string_view>>>
       pattern_group_list;
   // Lossy UTF8 conversion is fine given the input has come through a
   // USVString webidl argument.
@@ -400,10 +398,6 @@ bool Component::ShouldTreatAsStandardURL() const {
   should_treat_as_standard_url_ =
       base::ranges::any_of(url::GetStandardSchemes(), protocol_matches);
   return *should_treat_as_standard_url_;
-}
-
-const std::vector<liburlpattern::Part>& Component::PartList() const {
-  return pattern_.PartList();
 }
 
 void Component::Trace(Visitor* visitor) const {

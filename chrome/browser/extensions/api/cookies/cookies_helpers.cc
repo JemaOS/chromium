@@ -44,8 +44,7 @@ void AppendCookieToVectorIfMatchAndHasHostPermission(
     const net::CanonicalCookie cookie,
     GetAll::Params::Details* details,
     const Extension* extension,
-    std::vector<Cookie>* match_vector,
-    const net::CookiePartitionKeyCollection& cookie_partition_key_collection) {
+    std::vector<Cookie>* match_vector) {
   // Ignore any cookie whose domain doesn't match the extension's
   // host permissions.
   GURL cookie_domain_url = cookies_helpers::GetURLFromCanonicalCookie(cookie);
@@ -53,11 +52,6 @@ void AppendCookieToVectorIfMatchAndHasHostPermission(
     return;
   // Filter the cookie using the match filter.
   cookies_helpers::MatchFilter filter(details);
-  // There is an edge case where a getAll call that contains a
-  // partition key parameter but no top_level_site parameter results in a
-  // return of partitioned and non-partitioned cookies. To ensure this is
-  // handled correctly, the CookiePartitionKeyCollection value is set
-  filter.SetCookiePartitionKeyCollection(cookie_partition_key_collection);
   if (filter.MatchesCookie(cookie)) {
     match_vector->push_back(
         cookies_helpers::CreateCookie(cookie, *details->store_id));
@@ -94,6 +88,7 @@ const char* GetStoreIdFromProfile(Profile* profile) {
 Cookie CreateCookie(const net::CanonicalCookie& canonical_cookie,
                     const std::string& store_id) {
   Cookie cookie;
+
   // A cookie is a raw byte sequence. By explicitly parsing it as UTF-8, we
   // apply error correction, so the string can be safely passed to the renderer.
   cookie.name = base::UTF16ToUTF8(base::UTF8ToUTF16(canonical_cookie.Name()));
@@ -105,28 +100,27 @@ Cookie CreateCookie(const net::CanonicalCookie& canonical_cookie,
   cookie.path = base::IsStringUTF8(canonical_cookie.Path())
                     ? canonical_cookie.Path()
                     : std::string();
-  cookie.secure = canonical_cookie.SecureAttribute();
+  cookie.secure = canonical_cookie.IsSecure();
   cookie.http_only = canonical_cookie.IsHttpOnly();
 
   switch (canonical_cookie.SameSite()) {
     case net::CookieSameSite::NO_RESTRICTION:
-      cookie.same_site = api::cookies::SameSiteStatus::kNoRestriction;
+      cookie.same_site = api::cookies::SAME_SITE_STATUS_NO_RESTRICTION;
       break;
     case net::CookieSameSite::LAX_MODE:
-      cookie.same_site = api::cookies::SameSiteStatus::kLax;
+      cookie.same_site = api::cookies::SAME_SITE_STATUS_LAX;
       break;
     case net::CookieSameSite::STRICT_MODE:
-      cookie.same_site = api::cookies::SameSiteStatus::kStrict;
+      cookie.same_site = api::cookies::SAME_SITE_STATUS_STRICT;
       break;
     case net::CookieSameSite::UNSPECIFIED:
-      cookie.same_site = api::cookies::SameSiteStatus::kUnspecified;
+      cookie.same_site = api::cookies::SAME_SITE_STATUS_UNSPECIFIED;
       break;
   }
 
   cookie.session = !canonical_cookie.IsPersistent();
   if (canonical_cookie.IsPersistent()) {
-    double expiration_date =
-        canonical_cookie.ExpiryDate().InSecondsFSinceUnixEpoch();
+    double expiration_date = canonical_cookie.ExpiryDate().ToDoubleT();
     if (canonical_cookie.ExpiryDate().is_max() ||
         !std::isfinite(expiration_date)) {
       expiration_date = std::numeric_limits<double>::max();
@@ -135,18 +129,6 @@ Cookie CreateCookie(const net::CanonicalCookie& canonical_cookie,
   }
   cookie.store_id = store_id;
 
-  if (canonical_cookie.PartitionKey()) {
-    base::expected<net::CookiePartitionKey::SerializedCookiePartitionKey,
-                   std::string>
-        serialized_partition_key =
-            net::CookiePartitionKey::Serialize(canonical_cookie.PartitionKey());
-    CHECK(serialized_partition_key.has_value());
-    cookie.partition_key = extensions::api::cookies::CookiePartitionKey();
-    // TODO (crbug.com/326605834) Once ancestor chain bit changes are
-    // implemented update this method utilize the ancestor bit.
-    cookie.partition_key->top_level_site =
-        serialized_partition_key->TopLevelSite();
-  }
   return cookie;
 }
 
@@ -156,18 +138,19 @@ CookieStore CreateCookieStore(Profile* profile, base::Value::List tab_ids) {
   dict.Set(cookies_api_constants::kIdKey, GetStoreIdFromProfile(profile));
   dict.Set(cookies_api_constants::kTabIdsKey, std::move(tab_ids));
 
-  auto cookie_store = CookieStore::FromValue(dict);
-  CHECK(cookie_store);
-  return std::move(cookie_store).value();
+  CookieStore cookie_store;
+  bool rv = CookieStore::Populate(dict, cookie_store);
+  CHECK(rv);
+  return cookie_store;
 }
 
 void GetCookieListFromManager(
     network::mojom::CookieManager* manager,
     const GURL& url,
-    const net::CookiePartitionKeyCollection& partition_key_collection,
     network::mojom::CookieManager::GetCookieListCallback callback) {
   manager->GetCookieList(url, net::CookieOptions::MakeAllInclusive(),
-                         partition_key_collection, std::move(callback));
+                         net::CookiePartitionKeyCollection::Todo(),
+                         std::move(callback));
 }
 
 void GetAllCookiesFromManager(
@@ -184,19 +167,17 @@ GURL GetURLFromCanonicalCookie(const net::CanonicalCookie& cookie) {
   DCHECK(!cookie.Domain().empty());
 
   return net::cookie_util::CookieOriginToURL(cookie.Domain(),
-                                             cookie.SecureAttribute());
+                                             cookie.IsSecure());
 }
 
 void AppendMatchingCookiesFromCookieListToVector(
     const net::CookieList& all_cookies,
     GetAll::Params::Details* details,
     const Extension* extension,
-    std::vector<Cookie>* match_vector,
-    const net::CookiePartitionKeyCollection& cookie_partition_key_collection) {
+    std::vector<Cookie>* match_vector) {
   for (const net::CanonicalCookie& cookie : all_cookies) {
-    AppendCookieToVectorIfMatchAndHasHostPermission(
-        cookie, details, extension, match_vector,
-        cookie_partition_key_collection);
+    AppendCookieToVectorIfMatchAndHasHostPermission(cookie, details, extension,
+                                                    match_vector);
   }
 }
 
@@ -208,10 +189,8 @@ void AppendMatchingCookiesFromCookieAccessResultListToVector(
   for (const net::CookieWithAccessResult& cookie_with_access_result :
        all_cookies_with_access_result) {
     const net::CanonicalCookie& cookie = cookie_with_access_result.cookie;
-    AppendCookieToVectorIfMatchAndHasHostPermission(
-        cookie, details, extension, match_vector,
-        CookiePartitionKeyCollectionFromApiPartitionKey(
-            details->partition_key));
+    AppendCookieToVectorIfMatchAndHasHostPermission(cookie, details, extension,
+                                                    match_vector);
   }
 }
 
@@ -223,113 +202,12 @@ void AppendToTabIdList(Browser* browser, base::Value::List& tab_ids) {
   }
 }
 
-bool ValidateCookieApiPartitionKey(
-    const std::optional<extensions::api::cookies::CookiePartitionKey>&
-        partition_key,
-    std::optional<net::CookiePartitionKey>& net_partition_key,
-    std::string& error_message) {
-  // TODO (crbug.com/326605834) Once ancestor chain bit changes are
-  // implemented update this method utilize the ancestor bit.
-  if (partition_key.has_value() && partition_key->top_level_site.has_value() &&
-      !partition_key->top_level_site->empty()) {
-    base::expected<net::CookiePartitionKey, std::string> key =
-        net::CookiePartitionKey::FromUntrustedInput(
-            partition_key->top_level_site.value());
-    if (!key.has_value()) {
-      error_message = key.error();
-      return false;
-    }
-    net_partition_key = key.value();
-  }
-  return true;
-}
-
-bool CookieMatchesPartitionKeyCollection(
-    const net::CookiePartitionKeyCollection& cookie_partition_key_collection,
-    const net::CanonicalCookie& cookie) {
-  if (!cookie.IsPartitioned()) {
-    return cookie_partition_key_collection.ContainsAllKeys() ||
-           cookie_partition_key_collection.IsEmpty();
-  }
-  return cookie_partition_key_collection.Contains(*cookie.PartitionKey());
-}
-
-bool CanonicalCookiePartitionKeyMatchesApiCookiePartitionKey(
-    const std::optional<extensions::api::cookies::CookiePartitionKey>&
-        api_partition_key,
-    const std::optional<net::CookiePartitionKey>& net_partition_key) {
-  if (!api_partition_key.has_value()) {
-    return !net_partition_key.has_value();
-  }
-
-  if (!net_partition_key.has_value()) {
-    return false;
-  }
-
-  // If both keys are present, they both must be serializable for a match.
-  if (!net_partition_key->IsSerializeable() ||
-      !api_partition_key->top_level_site.has_value()) {
-    return false;
-  }
-  // TODO (crbug.com/326605834) Once ancestor chain bit changes are
-  // implemented update this method utilize the ancestor bit.
-  base::expected<net::CookiePartitionKey::SerializedCookiePartitionKey,
-                 std::string>
-      net_serialized_result =
-          net::CookiePartitionKey::Serialize(net_partition_key);
-
-  if (!net_serialized_result.has_value()) {
-    return false;
-  }
-
-  return net_serialized_result->TopLevelSite() ==
-         api_partition_key->top_level_site.value();
-}
-
-net::CookiePartitionKeyCollection
-CookiePartitionKeyCollectionFromApiPartitionKey(
-    const std::optional<extensions::api::cookies::CookiePartitionKey>&
-        partition_key) {
-  if (!partition_key) {
-    return net::CookiePartitionKeyCollection();
-  }
-
-  if (!partition_key->top_level_site) {
-    return net::CookiePartitionKeyCollection::ContainsAll();
-  }
-
-  if (partition_key->top_level_site.value().empty()) {
-    return net::CookiePartitionKeyCollection();
-  }
-  // TODO (crbug.com/326605834) Once ancestor chain bit changes are implemented
-  // update this method utilize the ancestor bit.
-  base::expected<net::CookiePartitionKey, std::string> net_partition_key =
-      net::CookiePartitionKey::FromUntrustedInput(
-          partition_key->top_level_site.value());
-  if (!net_partition_key.has_value()) {
-    return net::CookiePartitionKeyCollection();
-  }
-
-  return net::CookiePartitionKeyCollection::FromOptional(
-      net_partition_key.value());
-}
-
 MatchFilter::MatchFilter(GetAll::Params::Details* details) : details_(details) {
   DCHECK(details_);
 }
 
 bool MatchFilter::MatchesCookie(
     const net::CanonicalCookie& cookie) {
-  if (!CookieMatchesPartitionKeyCollection(cookie_partition_key_collection_,
-                                           cookie)) {
-    return false;
-  }
-  // Confirm there's at least one parameter to check.
-  if (!details_->name && !details_->domain && !details_->path &&
-      !details_->secure && !details_->session && !details_->partition_key) {
-    return true;
-  }
-
   if (details_->name && *details_->name != cookie.Name())
     return false;
 
@@ -339,19 +217,13 @@ bool MatchFilter::MatchesCookie(
   if (details_->path && *details_->path != cookie.Path())
     return false;
 
-  if (details_->secure && *details_->secure != cookie.SecureAttribute()) {
+  if (details_->secure && *details_->secure != cookie.IsSecure())
     return false;
-  }
 
   if (details_->session && *details_->session != !cookie.IsPersistent())
     return false;
 
   return true;
-}
-
-void MatchFilter::SetCookiePartitionKeyCollection(
-    const net::CookiePartitionKeyCollection& cookie_partition_key_collection) {
-  cookie_partition_key_collection_ = cookie_partition_key_collection;
 }
 
 bool MatchFilter::MatchesDomain(const std::string& domain) {

@@ -206,7 +206,8 @@ class BrowserAppInstanceRegistry
 
   void OnControllerDisconnected();
 
-  const raw_ref<BrowserAppInstanceTracker> ash_instance_tracker_;
+  const raw_ref<BrowserAppInstanceTracker, ExperimentalAsh>
+      ash_instance_tracker_;
 
   // Lacros app instances.
   BrowserAppInstanceMap<base::UnguessableToken, BrowserAppInstance>

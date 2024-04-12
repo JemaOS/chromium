@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {MessagePipe} from '../message_pipe.js';
+import {GenericErrorResponse, MessagePipe} from '../message_pipe.js';
 
 /** A pipe through which we can send messages to the parent frame. */
 const parentMessagePipe =
@@ -22,7 +22,7 @@ async function signalTestHandlersReady() {
     try {
       await parentMessagePipe.sendMessage('test-handlers-ready', {});
       return;
-    } catch (/** @type {{message: string}} */ e) {
+    } catch (/** @type {!GenericErrorResponse} */ e) {
       if (e.message !== EXPECTED_ERROR) {
         console.error('Unexpected error in signalTestHandlersReady', e);
         return;

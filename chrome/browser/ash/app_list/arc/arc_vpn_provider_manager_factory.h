@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_APP_LIST_ARC_ARC_VPN_PROVIDER_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_ASH_APP_LIST_ARC_ARC_VPN_PROVIDER_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace app_list {
@@ -24,12 +24,12 @@ class ArcVpnProviderManagerFactory : public ProfileKeyedServiceFactory {
   static ArcVpnProviderManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<ArcVpnProviderManagerFactory>;
+  friend struct base::DefaultSingletonTraits<ArcVpnProviderManagerFactory>;
 
   ArcVpnProviderManagerFactory();
   ~ArcVpnProviderManagerFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

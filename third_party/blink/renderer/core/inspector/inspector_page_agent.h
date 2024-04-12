@@ -31,8 +31,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_INSPECTOR_INSPECTOR_PAGE_AGENT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_INSPECTOR_INSPECTOR_PAGE_AGENT_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/frame/ad_tracker.h"
 #include "third_party/blink/renderer/core/inspector/inspector_base_agent.h"
@@ -125,7 +124,6 @@ class CORE_EXPORT InspectorPageAgent final
       const String& source,
       Maybe<String> world_name,
       Maybe<bool> include_command_line_api,
-      Maybe<bool> runImmediately,
       String* identifier) override;
   protocol::Response removeScriptToEvaluateOnNewDocument(
       const String& identifier) override;
@@ -209,8 +207,9 @@ class CORE_EXPORT InspectorPageAgent final
   void DidOpenDocument(LocalFrame*, DocumentLoader*);
   void FrameAttachedToParent(
       LocalFrame*,
-      const std::optional<AdScriptIdentifier>& ad_script_on_stack);
+      const absl::optional<AdScriptIdentifier>& ad_script_on_stack);
   void FrameDetachedFromParent(LocalFrame*, FrameDetachType);
+  void FrameStartedLoading(LocalFrame*);
   void FrameStoppedLoading(LocalFrame*);
   void FrameRequestedNavigation(Frame* target_frame,
                                 const KURL&,
@@ -268,9 +267,10 @@ class CORE_EXPORT InspectorPageAgent final
       bool case_sensitive,
       bool is_regex,
       std::unique_ptr<SearchInResourceCallback>);
-  DOMWrapperWorld* EnsureDOMWrapperWorld(LocalFrame* frame,
-                                         const String& world_name,
-                                         bool grant_universal_access);
+  scoped_refptr<DOMWrapperWorld> EnsureDOMWrapperWorld(
+      LocalFrame* frame,
+      const String& world_name,
+      bool grant_universal_access);
 
   static KURL UrlWithoutFragment(const KURL&);
 
@@ -300,13 +300,13 @@ class CORE_EXPORT InspectorPageAgent final
 
   HeapHashMap<WeakMember<LocalFrame>, Vector<IsolatedWorldRequest>>
       pending_isolated_worlds_;
-  using FrameIsolatedWorlds = HeapHashMap<String, Member<DOMWrapperWorld>>;
-  HeapHashMap<WeakMember<LocalFrame>, Member<FrameIsolatedWorlds>>
-      isolated_worlds_;
+  using FrameIsolatedWorlds = HashMap<String, scoped_refptr<DOMWrapperWorld>>;
+  HeapHashMap<WeakMember<LocalFrame>, FrameIsolatedWorlds> isolated_worlds_;
   HashMap<String, std::unique_ptr<blink::AdScriptIdentifier>>
       ad_script_identifiers_;
   v8_inspector::V8InspectorSession* v8_session_;
   Client* client_;
+  String pending_script_to_evaluate_on_load_once_;
   String script_to_evaluate_on_load_once_;
   Member<InspectorResourceContentLoader> inspector_resource_content_loader_;
   int resource_content_loader_client_id_;
@@ -315,7 +315,6 @@ class CORE_EXPORT InspectorPageAgent final
   InspectorAgentState::Boolean screencast_enabled_;
   InspectorAgentState::Boolean lifecycle_events_enabled_;
   InspectorAgentState::Boolean bypass_csp_enabled_;
-  InspectorAgentState::String pending_script_to_evaluate_on_load_once_;
   InspectorAgentState::StringMap scripts_to_evaluate_on_load_;
   InspectorAgentState::StringMap worlds_to_evaluate_on_load_;
   InspectorAgentState::BooleanMap

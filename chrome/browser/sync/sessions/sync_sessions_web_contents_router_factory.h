@@ -11,7 +11,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace sync_sessions {
@@ -33,13 +33,14 @@ class SyncSessionsWebContentsRouterFactory : public ProfileKeyedServiceFactory {
       const SyncSessionsWebContentsRouterFactory&) = delete;
 
  private:
-  friend base::NoDestructor<SyncSessionsWebContentsRouterFactory>;
+  friend struct base::DefaultSingletonTraits<
+      SyncSessionsWebContentsRouterFactory>;
 
   SyncSessionsWebContentsRouterFactory();
   ~SyncSessionsWebContentsRouterFactory() override;
 
   // Overridden from BrowserContextKeyedServiceFactory.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

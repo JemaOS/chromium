@@ -31,10 +31,7 @@
 
 #include "third_party/blink/renderer/core/html/forms/text_field_input_type.h"
 
-#include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/core/dom/events/event_dispatch_forbidden_scope.h"
-#include "third_party/blink/renderer/core/dom/focus_params.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/events/before_text_inserted_event.h"
@@ -43,12 +40,12 @@
 #include "third_party/blink/renderer/core/events/mouse_event.h"
 #include "third_party/blink/renderer/core/events/text_event.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/html/forms/form_data.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/forms/text_control_inner_elements.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
 #include "third_party/blink/renderer/core/html_names.h"
-#include "third_party/blink/renderer/core/keywords.h"
-#include "third_party/blink/renderer/core/layout/forms/layout_text_control_single_line.h"
+#include "third_party/blink/renderer/core/layout/ng/layout_ng_text_control_single_line.h"
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
@@ -101,13 +98,13 @@ class DataListIndicatorElement final : public HTMLDivElement {
     DCHECK(ContainingShadowRoot()->IsUserAgent());
     SetShadowPseudoId(shadow_element_names::kPseudoCalendarPickerIndicator);
     setAttribute(html_names::kIdAttr, shadow_element_names::kIdPickerIndicator);
-    SetInlineStyleProperty(CSSPropertyID::kDisplay, CSSValueID::kListItem);
-    SetInlineStyleProperty(CSSPropertyID::kListStyle, "disclosure-open inside");
-    SetInlineStyleProperty(CSSPropertyID::kCounterIncrement, "list-item 0");
-    SetInlineStyleProperty(CSSPropertyID::kBlockSize, 1.0,
-                           CSSPrimitiveValue::UnitType::kEms);
+    setAttribute(html_names::kStyleAttr,
+                 "display:list-item; "
+                 "list-style:disclosure-open inside; "
+                 "counter-increment: list-item 0;"
+                 "block-size:1em;");
     // Do not expose list-item role.
-    setAttribute(html_names::kAriaHiddenAttr, keywords::kTrue);
+    setAttribute(html_names::kAriaHiddenAttr, "true");
   }
 };
 
@@ -232,21 +229,12 @@ void TextFieldInputType::HandleKeydownEventForSpinButton(KeyboardEvent& event) {
   if (GetElement().IsDisabledOrReadOnly())
     return;
   const String& key = event.key();
-  bool is_horizontal =
-      GetElement().GetComputedStyle()
-          ? GetElement().GetComputedStyle()->IsHorizontalWritingMode()
-          : true;
-
-  if ((is_horizontal && key == "ArrowUp") ||
-      (!is_horizontal && key == "ArrowRight")) {
+  if (key == "ArrowUp")
     SpinButtonStepUp();
-  } else if (((is_horizontal && key == "ArrowDown") ||
-              (!is_horizontal && key == "ArrowLeft")) &&
-             !event.altKey()) {
+  else if (key == "ArrowDown" && !event.altKey())
     SpinButtonStepDown();
-  } else {
+  else
     return;
-  }
   GetElement().DispatchFormControlChangeEvent();
   event.SetDefaultHandled();
 }
@@ -312,18 +300,11 @@ void TextFieldInputType::AdjustStyle(ComputedStyleBuilder& builder) {
 
 LayoutObject* TextFieldInputType::CreateLayoutObject(
     const ComputedStyle&) const {
-  return MakeGarbageCollected<LayoutTextControlSingleLine>(&GetElement());
+  return MakeGarbageCollected<LayoutNGTextControlSingleLine>(&GetElement());
 }
 
 ControlPart TextFieldInputType::AutoAppearance() const {
   return kTextFieldPart;
-}
-
-bool TextFieldInputType::IsInnerEditorValueEmpty() const {
-  if (!HasCreatedShadowSubtree()) {
-    return VisibleValue().empty();
-  }
-  return GetElement().InnerEditorValue().empty();
 }
 
 void TextFieldInputType::CreateShadowSubtree() {
@@ -344,8 +325,6 @@ void TextFieldInputType::CreateShadowSubtree() {
 
   Document& document = GetElement().GetDocument();
   auto* container = MakeGarbageCollected<HTMLDivElement>(document);
-  container->SetInlineStyleProperty(CSSPropertyID::kUnicodeBidi,
-                                    CSSValueID::kNormal);
   container->SetIdAttribute(shadow_element_names::kIdTextFieldContainer);
   container->SetShadowPseudoId(
       shadow_element_names::kPseudoTextFieldDecorationContainer);
@@ -549,21 +528,15 @@ bool TextFieldInputType::ShouldRespectListAttribute() {
   return true;
 }
 
-HTMLElement* TextFieldInputType::UpdatePlaceholderText(
-    bool is_suggested_value) {
-  if (!HasCreatedShadowSubtree() &&
-      RuntimeEnabledFeatures::CreateInputShadowTreeDuringLayoutEnabled()) {
-    return nullptr;
-  }
-  if (!SupportsPlaceholder()) {
-    return nullptr;
-  }
+void TextFieldInputType::UpdatePlaceholderText(bool is_suggested_value) {
+  if (!SupportsPlaceholder())
+    return;
   HTMLElement* placeholder = GetElement().PlaceholderElement();
-  if (!is_suggested_value &&
-      !GetElement().FastHasAttribute(html_names::kPlaceholderAttr)) {
+  String placeholder_text = GetElement().GetPlaceholderValue();
+  if (placeholder_text.empty()) {
     if (placeholder)
       placeholder->remove(ASSERT_NO_EXCEPTION);
-    return nullptr;
+    return;
   }
   if (!placeholder) {
     GetElement().EnsureShadowSubtree();
@@ -590,8 +563,17 @@ HTMLElement* TextFieldInputType::UpdatePlaceholderText(
   } else {
     placeholder->RemoveInlineStyleProperty(CSSPropertyID::kUserSelect);
   }
-  placeholder->setTextContent(GetElement().GetPlaceholderValue());
-  return placeholder;
+  placeholder->setTextContent(placeholder_text);
+}
+
+void TextFieldInputType::AppendToFormData(FormData& form_data) const {
+  InputType::AppendToFormData(form_data);
+  const AtomicString& dirname_attr_value =
+      GetElement().FastGetAttribute(html_names::kDirnameAttr);
+  if (!dirname_attr_value.IsNull()) {
+    form_data.AppendFromElement(dirname_attr_value,
+                                GetElement().DirectionForFormData());
+  }
 }
 
 String TextFieldInputType::ConvertFromVisibleValue(
@@ -605,8 +587,6 @@ void TextFieldInputType::SubtreeHasChanged() {
   GetElement().UpdatePlaceholderVisibility();
   GetElement().PseudoStateChanged(CSSSelector::kPseudoValid);
   GetElement().PseudoStateChanged(CSSSelector::kPseudoInvalid);
-  GetElement().PseudoStateChanged(CSSSelector::kPseudoUserValid);
-  GetElement().PseudoStateChanged(CSSSelector::kPseudoUserInvalid);
   GetElement().PseudoStateChanged(CSSSelector::kPseudoInRange);
   GetElement().PseudoStateChanged(CSSSelector::kPseudoOutOfRange);
 
@@ -650,7 +630,7 @@ void TextFieldInputType::UpdateView() {
 }
 
 void TextFieldInputType::FocusAndSelectSpinButtonOwner() {
-  GetElement().Focus(FocusParams(FocusTrigger::kUserGesture));
+  GetElement().Focus();
   GetElement().SetSelectionRange(0, std::numeric_limits<int>::max());
 }
 

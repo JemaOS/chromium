@@ -54,6 +54,7 @@
 #include "third_party/skia/include/core/SkScalar.h"
 
 namespace blink {
+class LayoutRect;
 
 /**** constants ****/
 
@@ -84,6 +85,8 @@ SkColor PLATFORM_EXPORT ScaleAlpha(SkColor, float);
 bool PLATFORM_EXPORT
 ApproximatelyEqualSkColorSpaces(sk_sp<SkColorSpace> src_color_space,
                                 sk_sp<SkColorSpace> dst_color_space);
+
+SkRect PLATFORM_EXPORT LayoutRectToSkRect(const blink::LayoutRect& rect);
 
 // Skia has problems when passed infinite, etc floats, filter them to 0.
 inline SkScalar WebCoreFloatToSkScalar(float f) {
@@ -147,11 +150,11 @@ inline float BlurRadiusToStdDev(float radius) {
 
 void PLATFORM_EXPORT DrawPlatformFocusRing(const SkRRect&,
                                            cc::PaintCanvas*,
-                                           SkColor4f,
+                                           SkColor,
                                            float width);
 void PLATFORM_EXPORT DrawPlatformFocusRing(const SkPath&,
                                            cc::PaintCanvas*,
-                                           SkColor4f,
+                                           SkColor,
                                            float width,
                                            float corner_radius);
 

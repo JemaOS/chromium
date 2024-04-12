@@ -4,8 +4,7 @@
 
 import 'chrome://history/history.js';
 
-import type {HistoryAppElement} from 'chrome://history/history.js';
-import {BrowserServiceImpl} from 'chrome://history/history.js';
+import {BrowserServiceImpl, HistoryAppElement} from 'chrome://history/history.js';
 import {isMac} from 'chrome://resources/js/platform.js';
 import {pressAndReleaseKeyOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-interactions.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -42,19 +41,17 @@ suite('<history-toolbar>', function() {
     assertFalse(app.$.toolbar.$.mainToolbar.getSearchField().isSearchFocused());
   });
 
-  test('shortcuts to open search field', async function() {
+  test('shortcuts to open search field', function() {
     const field = app.$.toolbar.$.mainToolbar.getSearchField();
     field.blur();
     assertFalse(field.showingSearch);
 
     const modifier = isMac ? 'meta' : 'ctrl';
     pressAndReleaseKeyOn(document.body, 70, modifier, 'f');
-    await field.updateComplete;
     assertTrue(field.showingSearch);
     assertEquals(field.$.searchInput, field.shadowRoot!.activeElement);
 
     pressAndReleaseKeyOn(field.$.searchInput, 27, '', 'Escape');
-    await field.updateComplete;
     assertFalse(field.showingSearch, 'Pressing escape closes field.');
     assertNotEquals(field.$.searchInput, field.shadowRoot!.activeElement);
   });

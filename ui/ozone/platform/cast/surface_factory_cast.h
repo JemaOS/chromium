@@ -42,7 +42,7 @@ class SurfaceFactoryCast : public SurfaceFactoryOzone {
       gfx::Size size,
       gfx::BufferFormat format,
       gfx::BufferUsage usage,
-      std::optional<gfx::Size> framebuffer_size = std::nullopt) override;
+      absl::optional<gfx::Size> framebuffer_size = absl::nullopt) override;
 
  private:
   std::unique_ptr<GLOzoneEglCast> egl_implementation_;

@@ -4,8 +4,6 @@
 
 #include "chrome/browser/downgrade/user_data_downgrade.h"
 
-#include <optional>
-
 #include "base/containers/flat_set.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
@@ -16,6 +14,7 @@
 #include "chrome/common/chrome_constants.h"
 #include "content/public/browser/browsing_data_remover.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace downgrade {
 
@@ -83,7 +82,7 @@ TEST(UserDataDowngradeTests, GetSnapshotToRestore) {
   }
 
   EXPECT_EQ(GetSnapshotToRestore(base::Version("9"), user_data_dir.GetPath()),
-            std::nullopt);
+            absl::nullopt);
   EXPECT_EQ(
       *GetSnapshotToRestore(base::Version("10.1.0"), user_data_dir.GetPath()),
       base::Version("10.0.0"));

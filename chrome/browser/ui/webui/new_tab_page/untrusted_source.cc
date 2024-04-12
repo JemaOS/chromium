@@ -4,12 +4,10 @@
 
 #include "chrome/browser/ui/webui/new_tab_page/untrusted_source.h"
 
-#include <optional>
 #include <string>
 #include <utility>
 
 #include "base/base64.h"
-#include "base/containers/contains.h"
 #include "base/files/file_util.h"
 #include "base/i18n/rtl.h"
 #include "base/memory/ref_counted_memory.h"
@@ -30,6 +28,7 @@
 #include "content/public/common/url_constants.h"
 #include "net/base/url_util.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/re2/src/re2/re2.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/template_expressions.h"
@@ -51,9 +50,10 @@ std::string FormatTemplate(int resource_id,
       /* skip_unexpected_placeholder_check= */ true);
 }
 
-std::string ReadBackgroundImageData(const base::FilePath& path) {
+std::string ReadBackgroundImageData(const base::FilePath& profile_path) {
   std::string data_string;
-  base::ReadFileToString(path, &data_string);
+  base::ReadFileToString(profile_path.AppendASCII("background.jpg"),
+                         &data_string);
   return data_string;
 }
 
@@ -153,16 +153,17 @@ void UntrustedSource::StartDataRequest(
   if (path == "custom_background_image") {
     // Parse all query parameters to hash map and decode values.
     std::unordered_map<std::string, std::string> params;
-    std::string_view query_piece = url.query_piece();
-    url::Component query(0, url.query_piece().length());
+    url::Component query(0, url.query().length());
     url::Component key, value;
-    while (url::ExtractQueryKeyValue(query_piece, &query, &key, &value)) {
+    while (
+        url::ExtractQueryKeyValue(url.query().c_str(), &query, &key, &value)) {
       url::RawCanonOutputW<kMaxUriDecodeLen> output;
-      url::DecodeURLEscapeSequences(query_piece.substr(value.begin, value.len),
-                                    url::DecodeURLMode::kUTF8OrIsomorphic,
-                                    &output);
-      params.insert({std::string(query_piece.substr(key.begin, key.len)),
-                     base::UTF16ToUTF8(output.view())});
+      url::DecodeURLEscapeSequences(
+          url.query().c_str() + value.begin, value.len,
+          url::DecodeURLMode::kUTF8OrIsomorphic, &output);
+      params.insert(
+          {url.query().substr(key.begin, key.len),
+           base::UTF16ToUTF8(std::u16string(output.data(), output.length()))});
     }
     // Extract desired values.
     ServeBackgroundImage(
@@ -172,7 +173,8 @@ void UntrustedSource::StartDataRequest(
         params.count("repeatX") == 1 ? params["repeatX"] : "no-repeat",
         params.count("repeatY") == 1 ? params["repeatY"] : "no-repeat",
         params.count("positionX") == 1 ? params["positionX"] : "center",
-        params.count("positionY") == 1 ? params["positionY"] : "center", "none",
+        params.count("positionY") == 1 ? params["positionY"] : "center",
+        params.count("scrimDisplay") == 1 ? params["scrimDisplay"] : "inherit",
         std::move(callback));
     return;
   }
@@ -182,11 +184,10 @@ void UntrustedSource::StartDataRequest(
         IDR_NEW_TAB_PAGE_UNTRUSTED_BACKGROUND_IMAGE_JS));
     return;
   }
-  if (base::Contains(path, "background.jpg")) {
+  if (path == "background.jpg") {
     base::ThreadPool::PostTaskAndReplyWithResult(
         FROM_HERE, {base::TaskPriority::USER_VISIBLE, base::MayBlock()},
-        base::BindOnce(&ReadBackgroundImageData,
-                       profile_->GetPath().AppendASCII(path)),
+        base::BindOnce(&ReadBackgroundImageData, profile_->GetPath()),
         base::BindOnce(&ServeBackgroundImageData, std::move(callback)));
     return;
   }
@@ -230,18 +231,18 @@ bool UntrustedSource::ShouldServiceRequest(
   return path == "one-google-bar" || path == "one_google_bar.js" ||
          path == "image" || path == "background_image" ||
          path == "custom_background_image" || path == "background_image.js" ||
-         base::Contains(path, "background.jpg");
+         path == "background.jpg";
 }
 
 void UntrustedSource::OnOneGoogleBarDataUpdated() {
-  std::optional<OneGoogleBarData> data =
+  absl::optional<OneGoogleBarData> data =
       one_google_bar_service_->one_google_bar_data();
 
   if (one_google_bar_load_start_time_.has_value()) {
     NTPUserDataLogger::LogOneGoogleBarFetchDuration(
         /*success=*/data.has_value(),
         /*duration=*/base::TimeTicks::Now() - *one_google_bar_load_start_time_);
-    one_google_bar_load_start_time_ = std::nullopt;
+    one_google_bar_load_start_time_ = absl::nullopt;
   }
 
   std::string html;
@@ -254,6 +255,11 @@ void UntrustedSource::OnOneGoogleBarDataUpdated() {
     replacements["afterBarScript"] = data->after_bar_script;
     replacements["endOfBodyHtml"] = data->end_of_body_html;
     replacements["endOfBodyScript"] = data->end_of_body_script;
+
+    replacements["ogbUnprotectedTextSelector"] =
+        ntp_features::kNtpOgbUnprotectedTextSelectorParam.Get();
+    replacements["ogbButtonSelector"] =
+        ntp_features::kNtpOgbButtonSelectorParam.Get();
 
     html = FormatTemplate(IDR_NEW_TAB_PAGE_UNTRUSTED_ONE_GOOGLE_BAR_HTML,
                           replacements);
@@ -291,7 +297,7 @@ void UntrustedSource::ServeBackgroundImage(
   replacements["url"] = url.spec();
   if (url_2x.is_valid()) {
     replacements["backgroundUrl"] =
-        base::StringPrintf("image-set(url(%s) 1x, url(%s) 2x)",
+        base::StringPrintf("-webkit-image-set(url(%s) 1x, url(%s) 2x)",
                            url.spec().c_str(), url_2x.spec().c_str());
   } else {
     replacements["backgroundUrl"] =

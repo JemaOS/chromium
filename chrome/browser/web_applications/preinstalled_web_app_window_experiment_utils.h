@@ -5,13 +5,12 @@
 #ifndef CHROME_BROWSER_WEB_APPLICATIONS_PREINSTALLED_WEB_APP_WINDOW_EXPERIMENT_UTILS_H_
 #define CHROME_BROWSER_WEB_APPLICATIONS_PREINSTALLED_WEB_APP_WINDOW_EXPERIMENT_UTILS_H_
 
-#include <optional>
-
 #include "base/containers/flat_set.h"
 #include "base/metrics/field_trial_params.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom-forward.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/common/chrome_features.h"
-#include "components/webapps/common/web_app_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 class PrefService;
@@ -41,7 +40,7 @@ void DeleteExperimentPrefs(PrefService* pref_service);
 
 // User group:
 
-std::optional<mojom::UserDisplayMode> UserGroupToUserDisplayMode(
+absl::optional<mojom::UserDisplayMode> UserGroupToUserDisplayMode(
     features::PreinstalledWebAppWindowExperimentUserGroup user_group);
 
 // Returns the current value of the experiment parameter.
@@ -60,7 +59,7 @@ void SetUserGroupPref(
 
 // Returns the persisted value for whether the user is eligible for the
 // experiment, or nullopt if not set.
-std::optional<bool> GetEligibilityPref(const PrefService* pref_service);
+absl::optional<bool> GetEligibilityPref(const PrefService* pref_service);
 
 void SetEligibilityPref(PrefService* pref_service, bool eligible);
 
@@ -72,20 +71,19 @@ bool DetermineEligibility(Profile* profile, WebAppRegistrar& registrar);
 
 // Returns whether the given preinstalled app was launched before the
 // experiment began.
-bool HasLaunchedAppBeforeExperiment(const webapps::AppId& preinstalled_app_id,
+bool HasLaunchedAppBeforeExperiment(const AppId& preinstalled_app_id,
                                     PrefService* pref_service);
 
-void SetHasLaunchedAppsBeforePref(
-    PrefService* pref_service,
-    const base::flat_set<webapps::AppId>& app_ids);
+void SetHasLaunchedAppsBeforePref(PrefService* pref_service,
+                                  const base::flat_set<AppId>& app_ids);
 
 // Display mode:
 
-base::flat_set<webapps::AppId> GetAppIdsWithUserOverridenDisplayModePref(
+base::flat_set<AppId> GetAppIdsWithUserOverridenDisplayModePref(
     PrefService* pref_service);
 
 void SetUserOverridenDisplayModePref(PrefService* pref_service,
-                                     const webapps::AppId& app_id);
+                                     const AppId& app_id);
 
 // Histograms:
 

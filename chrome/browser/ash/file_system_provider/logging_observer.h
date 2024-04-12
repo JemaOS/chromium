@@ -8,7 +8,8 @@
 #include "chrome/browser/ash/file_system_provider/observer.h"
 #include "chrome/browser/ash/file_system_provider/provided_file_system_info.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 // Utility observer, logging events from file_system_provider::Service.
 class LoggingObserver : public Observer {
@@ -21,7 +22,7 @@ class LoggingObserver : public Observer {
         : file_system_info_(file_system_info),
           context_(context),
           error_(error) {}
-    ~Event() = default;
+    ~Event() {}
 
     const ProvidedFileSystemInfo& file_system_info() const {
       return file_system_info_;
@@ -55,6 +56,7 @@ class LoggingObserver : public Observer {
   std::vector<Event> unmounts;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_LOGGING_OBSERVER_H_

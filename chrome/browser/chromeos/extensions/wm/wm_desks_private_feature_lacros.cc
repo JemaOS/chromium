@@ -39,11 +39,12 @@ api::wm_desks_private::SavedDeskType ToSavedDeskType(
     const crosapi::mojom::SavedDeskType type) {
   switch (type) {
     case crosapi::mojom::SavedDeskType::kTemplate:
-      return api::wm_desks_private::SavedDeskType::kTemplate;
+      return api::wm_desks_private::SavedDeskType::SAVED_DESK_TYPE_KTEMPLATE;
     case crosapi::mojom::SavedDeskType::kSaveAndRecall:
-      return api::wm_desks_private::SavedDeskType::kSaveAndRecall;
+      return api::wm_desks_private::SavedDeskType::
+          SAVED_DESK_TYPE_KSAVEANDRECALL;
     case crosapi::mojom::SavedDeskType::kUnknown:
-      return api::wm_desks_private::SavedDeskType::kUnknown;
+      return api::wm_desks_private::SavedDeskType::SAVED_DESK_TYPE_KUNKNOWN;
   }
 }
 
@@ -133,8 +134,7 @@ void WMDesksPrivateFeatureLacros::LaunchDesk(std::string desk_name,
 }
 
 void WMDesksPrivateFeatureLacros::RemoveDesk(const base::Uuid& desk_uuid,
-                                             bool combine_desk,
-                                             bool allow_undo,
+                                             bool close_all,
                                              RemoveDeskCallback callback) {
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
   if (!service->IsAvailable<crosapi::mojom::Desk>()) {
@@ -142,7 +142,7 @@ void WMDesksPrivateFeatureLacros::RemoveDesk(const base::Uuid& desk_uuid,
     return;
   }
   service->GetRemote<crosapi::mojom::Desk>()->RemoveDesk(
-      desk_uuid, combine_desk, allow_undo,
+      desk_uuid, close_all,
       base::BindOnce(
           [](RemoveDeskCallback callback,
              crosapi::mojom::RemoveDeskResultPtr result) {
@@ -267,7 +267,7 @@ void WMDesksPrivateFeatureLacros::GetSavedDesks(
     GetSavedDesksCallback callback) {
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
   if (!service->IsAvailable<crosapi::mojom::Desk>() ||
-      service->GetInterfaceVersion<crosapi::mojom::Desk>() <
+      service->GetInterfaceVersion(crosapi::mojom::Desk::Uuid_) <
           static_cast<int>(crosapi::mojom::Desk::MethodMinVersions::
                                kGetSavedDesksMinVersion)) {
     std::move(callback).Run(kCROS_API_UNAVAILABLE, {});
@@ -293,7 +293,7 @@ void WMDesksPrivateFeatureLacros::GetActiveDesk(
     GetActiveDeskCallback callback) {
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
   if (!service->IsAvailable<crosapi::mojom::Desk>() ||
-      service->GetInterfaceVersion<crosapi::mojom::Desk>() <
+      service->GetInterfaceVersion(crosapi::mojom::Desk::Uuid_) <
           static_cast<int>(crosapi::mojom::Desk::MethodMinVersions::
                                kGetActiveDeskMinVersion)) {
     std::move(callback).Run(kCROS_API_UNAVAILABLE, {});
@@ -315,7 +315,7 @@ void WMDesksPrivateFeatureLacros::SwitchDesk(const base::Uuid& desk_uuid,
                                              SwitchDeskCallback callback) {
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
   if (!service->IsAvailable<crosapi::mojom::Desk>() ||
-      service->GetInterfaceVersion<crosapi::mojom::Desk>() <
+      service->GetInterfaceVersion(crosapi::mojom::Desk::Uuid_) <
           static_cast<int>(
               crosapi::mojom::Desk::MethodMinVersions::kSwitchDeskMinVersion)) {
     std::move(callback).Run(kCROS_API_UNAVAILABLE);
@@ -339,7 +339,7 @@ void WMDesksPrivateFeatureLacros::GetDeskByID(const base::Uuid& desk_uuid,
                                               GetDeskByIDCallback callback) {
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
   if (!service->IsAvailable<crosapi::mojom::Desk>() ||
-      service->GetInterfaceVersion<crosapi::mojom::Desk>() <
+      service->GetInterfaceVersion(crosapi::mojom::Desk::Uuid_) <
           static_cast<int>(crosapi::mojom::Desk::MethodMinVersions::
                                kGetDeskByIDMinVersion)) {
     std::move(callback).Run(kCROS_API_UNAVAILABLE, {});

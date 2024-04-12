@@ -18,6 +18,11 @@
 #include "chrome/browser/push_messaging/push_messaging_service_impl.h"
 #include "components/gcm_driver/instance_id/instance_id_profile_service.h"
 
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chrome/browser/ash/android_sms/android_sms_service_factory.h"
+#include "chrome/browser/ash/multidevice_setup/multidevice_setup_client_factory.h"
+#endif
+
 // static
 PushMessagingServiceImpl* PushMessagingServiceFactory::GetForProfile(
     content::BrowserContext* context) {
@@ -32,40 +37,39 @@ PushMessagingServiceImpl* PushMessagingServiceFactory::GetForProfile(
 
 // static
 PushMessagingServiceFactory* PushMessagingServiceFactory::GetInstance() {
-  static base::NoDestructor<PushMessagingServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<PushMessagingServiceFactory>::get();
 }
 
 PushMessagingServiceFactory::PushMessagingServiceFactory()
     : ProfileKeyedServiceFactory(
           "PushMessagingProfileService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(gcm::GCMProfileServiceFactory::GetInstance());
   DependsOn(instance_id::InstanceIDProfileServiceFactory::GetInstance());
   DependsOn(HostContentSettingsMapFactory::GetInstance());
   DependsOn(PermissionManagerFactory::GetInstance());
   DependsOn(site_engagement::SiteEngagementServiceFactory::GetInstance());
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  DependsOn(ash::android_sms::AndroidSmsServiceFactory::GetInstance());
+  DependsOn(
+      ash::multidevice_setup::MultiDeviceSetupClientFactory::GetInstance());
+#endif
 }
 
-PushMessagingServiceFactory::~PushMessagingServiceFactory() = default;
+PushMessagingServiceFactory::~PushMessagingServiceFactory() {}
 
 void PushMessagingServiceFactory::RestoreFactoryForTests(
     content::BrowserContext* context) {
-  SetTestingFactory(
-      context, base::BindRepeating([](content::BrowserContext* context) {
-        return GetInstance()->BuildServiceInstanceForBrowserContext(context);
-      }));
+  SetTestingFactory(context,
+                    base::BindRepeating([](content::BrowserContext* context) {
+                      return base::WrapUnique(
+                          GetInstance()->BuildServiceInstanceFor(context));
+                    }));
 }
 
-std::unique_ptr<KeyedService>
-PushMessagingServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PushMessagingServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   CHECK(!profile->IsOffTheRecord());
-  return std::make_unique<PushMessagingServiceImpl>(profile);
+  return new PushMessagingServiceImpl(profile);
 }

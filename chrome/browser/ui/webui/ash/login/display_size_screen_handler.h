@@ -13,7 +13,8 @@ namespace ash {
 
 // Interface for dependency injection between DisplaySizeScreen and its
 // WebUI representation.
-class DisplaySizeScreenView {
+class DisplaySizeScreenView
+    : public base::SupportsWeakPtr<DisplaySizeScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"display-size",
                                                        "DisplaySizeScreen"};
@@ -21,14 +22,11 @@ class DisplaySizeScreenView {
   virtual ~DisplaySizeScreenView() = default;
 
   // Shows the contents of the screen.
-  virtual void Show(base::Value::Dict data) = 0;
-
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<DisplaySizeScreenView> AsWeakPtr() = 0;
+  virtual void Show() = 0;
 };
 
-class DisplaySizeScreenHandler final : public BaseScreenHandler,
-                                       public DisplaySizeScreenView {
+class DisplaySizeScreenHandler : public BaseScreenHandler,
+                                 public DisplaySizeScreenView {
  public:
   using TView = DisplaySizeScreenView;
 
@@ -44,11 +42,7 @@ class DisplaySizeScreenHandler final : public BaseScreenHandler,
       ::login::LocalizedValuesBuilder* builder) override;
 
   // DisplaySizeScreenView:
-  void Show(base::Value::Dict data) override;
-  base::WeakPtr<DisplaySizeScreenView> AsWeakPtr() override;
-
- private:
-  base::WeakPtrFactory<DisplaySizeScreenView> weak_ptr_factory_{this};
+  void Show() override;
 };
 
 }  // namespace ash

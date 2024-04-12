@@ -9,6 +9,8 @@ package org.chromium.chrome.browser.lifecycle;
  * native having been loaded.
  */
 public interface NativeInitObserver extends LifecycleObserver {
-    /** Called when the native library has finished loading. */
+    /**
+     * Called when the native library has finished loading.
+     */
     void onFinishNativeInitialization();
 }

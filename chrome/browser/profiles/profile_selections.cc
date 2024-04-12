@@ -6,19 +6,27 @@
 
 #include "base/memory/ptr_util.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_types_ash.h"
 #include "components/profile_metrics/browser_profile_type.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chromeos/ash/components/browser_context_helper/browser_context_types.h"
+#include "chrome/common/chrome_constants.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
+BASE_FEATURE(kSystemProfileSelectionDefaultNone,
+             "SystemProfileSelectionDefaultNone",
+             base::FeatureState::FEATURE_ENABLED_BY_DEFAULT);
+
 bool AreKeyedServicesDisabledForProfileByDefault(const Profile* profile) {
-  // By default disable all services for System Profile.
-  // Even though having no services is also the default value for Guest Profile,
-  // this is not really the case in practice because a lot of Service Factories
-  // override the default value for the `ProfileSelection` of the Guest Profile.
   if (profile && profile->IsSystemProfile()) {
-    return true;
+    // The default behavior of the system profile selection depends on the value
+    // of `kSystemProfileSelectionDefaultNone` feature flag.
+    ProfileSelection system_profile_default =
+        base::FeatureList::IsEnabled(kSystemProfileSelectionDefaultNone)
+            ? ProfileSelections::kSystemProfileExperimentDefault
+            : ProfileSelections::kRegularProfileDefault;
+
+    return system_profile_default == ProfileSelection::kNone;
   }
 
   return false;
@@ -68,6 +76,15 @@ ProfileSelections::ProfileSelections() = default;
 ProfileSelections::~ProfileSelections() = default;
 ProfileSelections::ProfileSelections(const ProfileSelections& other) = default;
 
+ProfileSelections ProfileSelections::BuildForAllProfiles() {
+  return ProfileSelections::Builder()
+      .WithRegular(ProfileSelection::kOwnInstance)
+      .WithGuest(ProfileSelection::kOwnInstance)
+      .WithSystem(ProfileSelection::kOwnInstance)
+      .WithAshInternals(ProfileSelection::kOwnInstance)
+      .Build();
+}
+
 ProfileSelections ProfileSelections::BuildNoProfilesSelected() {
   return ProfileSelections::Builder()
       .WithRegular(ProfileSelection::kNone)
@@ -84,7 +101,8 @@ ProfileSelections ProfileSelections::BuildForRegularProfile() {
       .Build();
 }
 
-ProfileSelections ProfileSelections::BuildForRegularAndIncognito() {
+ProfileSelections
+ProfileSelections::BuildForRegularAndIncognitoNonExperimental() {
   return ProfileSelections::Builder()
       .WithRegular(ProfileSelection::kOwnInstance)
       .WithGuest(ProfileSelection::kNone)
@@ -92,7 +110,8 @@ ProfileSelections ProfileSelections::BuildForRegularAndIncognito() {
       .Build();
 }
 
-ProfileSelections ProfileSelections::BuildRedirectedInIncognito() {
+ProfileSelections
+ProfileSelections::BuildRedirectedInIncognitoNonExperimental() {
   return ProfileSelections::Builder()
       .WithRegular(ProfileSelection::kRedirectedToOriginal)
       .WithGuest(ProfileSelection::kNone)
@@ -100,8 +119,50 @@ ProfileSelections ProfileSelections::BuildRedirectedInIncognito() {
       .Build();
 }
 
+ProfileSelections ProfileSelections::BuildRedirectedToOriginal() {
+  return ProfileSelections::Builder()
+      .WithRegular(ProfileSelection::kRedirectedToOriginal)
+      .WithGuest(ProfileSelection::kRedirectedToOriginal)
+      .WithSystem(ProfileSelection::kRedirectedToOriginal)
+      .Build();
+}
+
+ProfileSelections ProfileSelections::BuildDefault(bool force_guest,
+                                                  bool force_system) {
+  Builder builder;
+  if (force_guest)
+    builder.WithGuest(ProfileSelection::kOriginalOnly);
+  if (force_system)
+    builder.WithSystem(ProfileSelection::kOriginalOnly);
+  return builder.Build();
+}
+
+ProfileSelections ProfileSelections::BuildRedirectedInIncognito(
+    bool force_guest,
+    bool force_system) {
+  Builder builder;
+  builder.WithRegular(ProfileSelection::kRedirectedToOriginal);
+  if (force_guest)
+    builder.WithGuest(ProfileSelection::kRedirectedToOriginal);
+  if (force_system)
+    builder.WithSystem(ProfileSelection::kRedirectedToOriginal);
+  return builder.Build();
+}
+
+ProfileSelections ProfileSelections::BuildForRegularAndIncognito(
+    bool force_guest,
+    bool force_system) {
+  Builder builder;
+  builder.WithRegular(ProfileSelection::kOwnInstance);
+  if (force_guest)
+    builder.WithGuest(ProfileSelection::kOwnInstance);
+  if (force_system)
+    builder.WithSystem(ProfileSelection::kOwnInstance);
+  return builder.Build();
+}
+
 Profile* ProfileSelections::ApplyProfileSelection(Profile* profile) const {
-  CHECK(profile);
+  DCHECK(profile);
 
   ProfileSelection selection = GetProfileSelection(profile);
   switch (selection) {
@@ -119,12 +180,12 @@ Profile* ProfileSelections::ApplyProfileSelection(Profile* profile) const {
 }
 
 ProfileSelection ProfileSelections::GetProfileSelection(
-    Profile* profile) const {
+    const Profile* profile) const {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // This check has to be performed before the check on
   // `profile->IsRegularProfile()` because profiles that are internal ASH
   // (non-user) profiles will also satisfy the later condition.
-  if (!ash::IsUserBrowserContext(profile)) {
+  if (!IsUserProfile(profile)) {
     // If the value for `ash_internals_profile_selection_` is not set, redirect
     // to the default behavior, which is the behavior given to the
     // RegularProfile.
@@ -148,10 +209,20 @@ ProfileSelection ProfileSelections::GetProfileSelection(
   }
 
   if (profile->IsSystemProfile()) {
-    // If a value is not set for the System Profile Selection,
-    // `ProfileSelection::kNone` is set by default, meaning no profile will be
-    // selected.
-    return system_profile_selection_.value_or(ProfileSelection::kNone);
+    // Default value depends on the experiment
+    // `kSystemProfileSelectionDefaultNone`. If experiment is active default
+    // value is ProfileSelection::kNone, otherwise the behavior is redirected to
+    // the `regular_profile_selection_` value (old default behavior).
+    ProfileSelection system_profile_default =
+        base::FeatureList::IsEnabled(kSystemProfileSelectionDefaultNone)
+            ? ProfileSelections::kSystemProfileExperimentDefault
+            : regular_profile_selection_;
+
+    // If the value for SystemProfileSelection is set, use it.
+    // Otherwise, use the default value set above.
+    // This is used for both original system profile (not user visible) and for
+    // the off-the-record system profile (used in the Profile Picker).
+    return system_profile_selection_.value_or(system_profile_default);
   }
 
   NOTREACHED();

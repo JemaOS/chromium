@@ -8,6 +8,7 @@
 #include <map>
 
 #include "base/files/file_path.h"
+#import "base/mac/scoped_nsobject.h"
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "components/bookmarks/browser/bookmark_model.h"
@@ -21,6 +22,10 @@ class Profile;
 
 namespace bookmarks {
 class BookmarkNode;
+}
+
+namespace test {
+class AppMenuControllerTest;
 }
 
 // C++ controller for the bookmark menu; one per AppController (which
@@ -47,23 +52,31 @@ class BookmarkMenuBridge : public bookmarks::BookmarkModelObserver {
   ~BookmarkMenuBridge() override;
 
   // bookmarks::BookmarkModelObserver:
-  void BookmarkModelLoaded(bool ids_reassigned) override;
-  void BookmarkModelBeingDeleted() override;
-  void BookmarkNodeMoved(const bookmarks::BookmarkNode* old_parent,
+  void BookmarkModelLoaded(bookmarks::BookmarkModel* model,
+                           bool ids_reassigned) override;
+  void BookmarkModelBeingDeleted(bookmarks::BookmarkModel* model) override;
+  void BookmarkNodeMoved(bookmarks::BookmarkModel* model,
+                         const bookmarks::BookmarkNode* old_parent,
                          size_t old_index,
                          const bookmarks::BookmarkNode* new_parent,
                          size_t new_index) override;
-  void BookmarkNodeAdded(const bookmarks::BookmarkNode* parent,
+  void BookmarkNodeAdded(bookmarks::BookmarkModel* model,
+                         const bookmarks::BookmarkNode* parent,
                          size_t index,
                          bool added_by_user) override;
-  void BookmarkNodeRemoved(const bookmarks::BookmarkNode* parent,
+  void BookmarkNodeRemoved(bookmarks::BookmarkModel* model,
+                           const bookmarks::BookmarkNode* parent,
                            size_t old_index,
                            const bookmarks::BookmarkNode* node,
                            const std::set<GURL>& removed_urls) override;
-  void BookmarkAllUserNodesRemoved(const std::set<GURL>& removed_urls) override;
-  void BookmarkNodeChanged(const bookmarks::BookmarkNode* node) override;
-  void BookmarkNodeFaviconChanged(const bookmarks::BookmarkNode* node) override;
+  void BookmarkAllUserNodesRemoved(bookmarks::BookmarkModel* model,
+                                   const std::set<GURL>& removed_urls) override;
+  void BookmarkNodeChanged(bookmarks::BookmarkModel* model,
+                           const bookmarks::BookmarkNode* node) override;
+  void BookmarkNodeFaviconChanged(bookmarks::BookmarkModel* model,
+                                  const bookmarks::BookmarkNode* node) override;
   void BookmarkNodeChildrenReordered(
+      bookmarks::BookmarkModel* model,
       const bookmarks::BookmarkNode* node) override;
 
   // Rebuilds the main bookmark menu, if it has been marked invalid. Or builds
@@ -96,12 +109,9 @@ class BookmarkMenuBridge : public bookmarks::BookmarkModelObserver {
   // an NSMenuItem in this menu, returns the invalid GUID.
   base::Uuid TagToGUID(int64_t tag) const;
 
-  // Returns the NSMenuItem for a given BookmarkNode, exposed publicly for
-  // testing.
-  NSMenuItem* MenuItemForNodeForTest(const bookmarks::BookmarkNode* node);
-
  private:
   friend class BookmarkMenuBridgeTest;
+  friend class test::AppMenuControllerTest;
 
   void BuildRootMenu(bool recurse);
 
@@ -155,13 +165,13 @@ class BookmarkMenuBridge : public bookmarks::BookmarkModelObserver {
   bool menuIsValid_;
 
   raw_ptr<Profile> profile_;  // weak
-  BookmarkMenuCocoaController* __strong controller_;
-  NSMenu* __strong menu_root_;
+  base::scoped_nsobject<BookmarkMenuCocoaController> controller_;
+  base::scoped_nsobject<NSMenu> menu_root_;
 
   base::FilePath profile_dir_;  // Remembered after OnProfileWillBeDestroyed().
 
   // The folder image so we can use one copy for all.
-  NSImage* __strong folder_image_;
+  base::scoped_nsobject<NSImage> folder_image_;
 
   // In order to appropriately update items in the bookmark menu, without
   // forcing a rebuild, map the model's nodes to menu items.

@@ -50,6 +50,7 @@ web_app::ExternalInstallOptions GetInstallOptionsForUrl(const GURL& url) {
       url, web_app::mojom::UserDisplayMode::kStandalone,
       web_app::ExternalInstallSource::kInternalDefault);
   options.override_previous_user_uninstall = true;
+  options.bypass_service_worker_check = true;
   options.require_manifest = true;
   return options;
 }
@@ -151,14 +152,14 @@ class AndroidSmsAppSetupControllerImplTest : public testing::Test {
         return;
 
       url_to_pwa_map_[url] =
-          web_app::GenerateAppId(/*manifest_id=*/std::nullopt, url);
+          web_app::GenerateAppId(/*manifest_id=*/absl::nullopt, url);
     }
 
     // AndroidSmsAppSetupControllerImpl::PwaDelegate:
-    std::optional<webapps::AppId> GetPwaForUrl(const GURL& install_url,
-                                               Profile* profile) override {
+    absl::optional<web_app::AppId> GetPwaForUrl(const GURL& install_url,
+                                                Profile* profile) override {
       if (!base::Contains(url_to_pwa_map_, install_url))
-        return std::nullopt;
+        return absl::nullopt;
 
       return url_to_pwa_map_[install_url];
     }
@@ -168,7 +169,7 @@ class AndroidSmsAppSetupControllerImplTest : public testing::Test {
     }
 
     void RemovePwa(
-        const webapps::AppId& app_id,
+        const web_app::AppId& app_id,
         Profile* profile,
         AndroidSmsAppSetupController::SuccessCallback callback) override {
       for (const auto& url_pwa_pair : url_to_pwa_map_) {
@@ -183,8 +184,8 @@ class AndroidSmsAppSetupControllerImplTest : public testing::Test {
     }
 
    private:
-    raw_ptr<FakeCookieManager> fake_cookie_manager_;
-    base::flat_map<GURL, webapps::AppId> url_to_pwa_map_;
+    raw_ptr<FakeCookieManager, ExperimentalAsh> fake_cookie_manager_;
+    base::flat_map<GURL, web_app::AppId> url_to_pwa_map_;
   };
 
   AndroidSmsAppSetupControllerImplTest()
@@ -447,16 +448,16 @@ class AndroidSmsAppSetupControllerImplTest : public testing::Test {
 
   content::BrowserTaskEnvironment task_environment_;
 
-  std::optional<bool> last_set_up_app_result_;
-  std::optional<bool> last_delete_cookie_result_;
-  std::optional<bool> last_remove_app_result_;
+  absl::optional<bool> last_set_up_app_result_;
+  absl::optional<bool> last_delete_cookie_result_;
+  absl::optional<bool> last_remove_app_result_;
 
-  raw_ptr<web_app::FakeWebAppProvider, DanglingUntriaged> provider_;
+  raw_ptr<web_app::FakeWebAppProvider> provider_;
 
   TestingProfile profile_;
-  raw_ptr<HostContentSettingsMap> host_content_settings_map_;
+  raw_ptr<HostContentSettingsMap, ExperimentalAsh> host_content_settings_map_;
   std::unique_ptr<FakeCookieManager> fake_cookie_manager_;
-  raw_ptr<TestPwaDelegate, DanglingUntriaged> test_pwa_delegate_;
+  raw_ptr<TestPwaDelegate, ExperimentalAsh> test_pwa_delegate_;
   std::unique_ptr<AndroidSmsAppSetupController> setup_controller_;
 };
 

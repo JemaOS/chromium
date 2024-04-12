@@ -26,7 +26,6 @@
 #include "third_party/blink/renderer/core/css/css_property_names.h"
 #include "third_party/blink/renderer/core/css/style_change_reason.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
-#include "third_party/blink/renderer/core/html/cross_origin_attribute.h"
 #include "third_party/blink/renderer/core/layout/layout_image_resource.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_image.h"
 #include "third_party/blink/renderer/core/svg/svg_animated_length.h"
@@ -73,7 +72,13 @@ SVGImageElement::SVGImageElement(Document& document)
           MakeGarbageCollected<SVGAnimatedPreserveAspectRatio>(
               this,
               svg_names::kPreserveAspectRatioAttr)),
-      image_loader_(MakeGarbageCollected<SVGImageLoader>(this)) {}
+      image_loader_(MakeGarbageCollected<SVGImageLoader>(this)) {
+  AddToPropertyMap(x_);
+  AddToPropertyMap(y_);
+  AddToPropertyMap(width_);
+  AddToPropertyMap(height_);
+  AddToPropertyMap(preserve_aspect_ratio_);
+}
 
 void SVGImageElement::Trace(Visitor* visitor) const {
   visitor->Trace(x_);
@@ -99,9 +104,8 @@ bool SVGImageElement::CurrentFrameHasSingleSecurityOrigin() const {
   return true;
 }
 
-ScriptPromiseTyped<IDLUndefined> SVGImageElement::decode(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise SVGImageElement::decode(ScriptState* script_state,
+                                      ExceptionState& exception_state) {
   return GetImageLoader().Decode(script_state, exception_state);
 }
 
@@ -111,16 +115,16 @@ void SVGImageElement::CollectStyleForPresentationAttribute(
     MutableCSSPropertyValueSet* style) {
   SVGAnimatedPropertyBase* property = PropertyFromAttribute(name);
   if (property == width_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kWidth,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             width_->CssValue());
   } else if (property == height_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kHeight,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             height_->CssValue());
   } else if (property == x_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kX,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             x_->CssValue());
   } else if (property == y_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kY,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             y_->CssValue());
   } else {
     SVGGraphicsElement::CollectStyleForPresentationAttribute(name, value,
@@ -172,24 +176,6 @@ void SVGImageElement::ParseAttribute(
   if (params.name == svg_names::kDecodingAttr) {
     UseCounter::Count(GetDocument(), WebFeature::kImageDecodingAttribute);
     decoding_mode_ = ParseImageDecodingMode(params.new_value);
-  } else if (params.name == html_names::kCrossoriginAttr) {
-    // As per an image's relevant mutations [1], we must queue a new loading
-    // microtask when the `crossorigin` attribute state has changed. Note that
-    // the attribute value can change without the attribute state changing [2].
-    //
-    // [1]:
-    // https://html.spec.whatwg.org/multipage/images.html#relevant-mutations
-    // [2]: https://github.com/whatwg/html/issues/4533#issuecomment-483417499
-    CrossOriginAttributeValue new_crossorigin_state =
-        GetCrossOriginAttributeValue(params.new_value);
-    CrossOriginAttributeValue old_crossorigin_state =
-        GetCrossOriginAttributeValue(params.old_value);
-
-    if (new_crossorigin_state != old_crossorigin_state) {
-      // Update the current state so we can detect future state changes.
-      GetImageLoader().UpdateFromElement(
-          ImageLoader::kUpdateIgnorePreviousError);
-    }
   } else {
     SVGElement::ParseAttribute(params);
   }
@@ -211,8 +197,12 @@ bool SVGImageElement::HaveLoadedRequiredResources() {
 
 void SVGImageElement::AttachLayoutTree(AttachContext& context) {
   SVGGraphicsElement::AttachLayoutTree(context);
-  if (GetLayoutObject()) {
-    GetImageLoader().OnAttachLayoutTree();
+
+  if (auto* image_obj = To<LayoutSVGImage>(GetLayoutObject())) {
+    LayoutImageResource* layout_image_resource = image_obj->ImageResource();
+    if (layout_image_resource->HasImage())
+      return;
+    layout_image_resource->SetImageResource(GetImageLoader().GetContent());
   }
 }
 
@@ -224,50 +214,6 @@ void SVGImageElement::DidMoveToNewDocument(Document& old_document) {
   GetImageLoader().ElementDidMoveToNewDocument();
   SVGGraphicsElement::DidMoveToNewDocument(old_document);
   GetImageLoader().UpdateFromElement(ImageLoader::kUpdateIgnorePreviousError);
-}
-
-SVGAnimatedPropertyBase* SVGImageElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kXAttr) {
-    return x_.Get();
-  } else if (attribute_name == svg_names::kYAttr) {
-    return y_.Get();
-  } else if (attribute_name == svg_names::kWidthAttr) {
-    return width_.Get();
-  } else if (attribute_name == svg_names::kHeightAttr) {
-    return height_.Get();
-  } else if (attribute_name == svg_names::kPreserveAspectRatioAttr) {
-    return preserve_aspect_ratio_.Get();
-  } else {
-    SVGAnimatedPropertyBase* ret =
-        SVGURIReference::PropertyFromAttribute(attribute_name);
-    if (ret) {
-      return ret;
-    } else {
-      return SVGGraphicsElement::PropertyFromAttribute(attribute_name);
-    }
-  }
-}
-
-void SVGImageElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{x_.Get(), y_.Get(), width_.Get(),
-                                   height_.Get(), preserve_aspect_ratio_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGURIReference::SynchronizeAllSVGAttributes();
-  SVGGraphicsElement::SynchronizeAllSVGAttributes();
-}
-
-void SVGImageElement::CollectExtraStyleForPresentationAttribute(
-    MutableCSSPropertyValueSet* style) {
-  for (auto* property : (SVGAnimatedPropertyBase*[]){
-           x_.Get(), y_.Get(), width_.Get(), height_.Get()}) {
-    DCHECK(property->HasPresentationAttributeMapping());
-    if (property->IsAnimating()) {
-      CollectStyleForPresentationAttribute(property->AttributeName(),
-                                           g_empty_atom, style);
-    }
-  }
-  SVGGraphicsElement::CollectExtraStyleForPresentationAttribute(style);
 }
 
 }  // namespace blink

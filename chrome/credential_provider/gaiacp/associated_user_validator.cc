@@ -79,16 +79,16 @@ unsigned __stdcall CheckReauthStatus(void* param) {
     }
 
     base::StringPiece response_string(response.data(), response.size());
-    std::optional<base::Value> properties_val = base::JSONReader::Read(
-        response_string, base::JSON_ALLOW_TRAILING_COMMAS);
-    if (!properties_val || !properties_val->is_dict()) {
+    absl::optional<base::Value> properties(base::JSONReader::Read(
+        response_string, base::JSON_ALLOW_TRAILING_COMMAS));
+    if (!properties || !properties->is_dict()) {
       LOGFN(ERROR) << "base::JSONReader::Read failed forcing reauth";
       return 0;
     }
 
-    const auto& properties = properties_val->GetDict();
-    std::optional<int> expires_in = properties.FindInt("expires_in");
-    if (properties.contains("error") || !expires_in || expires_in.value() < 0) {
+    absl::optional<int> expires_in = properties->FindIntKey("expires_in");
+    if (properties->GetDict().contains("error") || !expires_in ||
+        expires_in.value() < 0) {
       LOGFN(VERBOSE) << "Needs reauth sid=" << reauth_info->sid;
       return 0;
     }
@@ -539,26 +539,18 @@ AssociatedUserValidator::GetAuthEnforceReason(const std::wstring& sid) {
   LOGFN(VERBOSE);
 
   // Is user not associated, then we shouldn't have any auth enforcement.
-  if (!IsUserAssociated(sid)) {
-    LOGFN(VERBOSE) << "IsUserAssociated is false, not forcing auth";
+  if (!IsUserAssociated(sid))
     return AssociatedUserValidator::EnforceAuthReason::NOT_ENFORCED;
-  }
 
   // Check if online sign in is enforced.
-  if (IsOnlineLoginEnforced(sid)) {
-    LOGFN(VERBOSE) << "IsOnlineLoginEnforced is true, forcing auth";
+  if (IsOnlineLoginEnforced(sid))
     return AssociatedUserValidator::EnforceAuthReason::ONLINE_LOGIN_ENFORCED;
-  }
 
   // All token handles are valid when no internet connection is available.
   if (!HasInternetConnection()) {
     if (!IsOnlineLoginStale(sid)) {
-      LOGFN(VERBOSE) << "HasInternetConnectionis false and IsOnlineLoginStale "
-                        "is false - not forcing auth";
       return AssociatedUserValidator::EnforceAuthReason::NOT_ENFORCED;
     }
-    LOGFN(VERBOSE) << "HasInternetConnectionis false and IsOnlineLoginStale is "
-                      "true - forcing auth";
     return AssociatedUserValidator::EnforceAuthReason::ONLINE_LOGIN_STALE;
   }
 
@@ -567,18 +559,14 @@ AssociatedUserValidator::GetAuthEnforceReason(const std::wstring& sid) {
   // user.
   if (UserPoliciesManager::Get()->CloudPoliciesEnabled() &&
       UserPoliciesManager::Get()->IsUserPolicyStaleOrMissing(sid)) {
-    LOGFN(VERBOSE) << "CloudPolicies enabled and  >IsUserPolicyStaleOrMissing "
-                      "is true - forcing auth";
     return AssociatedUserValidator::EnforceAuthReason::
         MISSING_OR_STALE_USER_POLICIES;
   }
 
   // Force a reauth only for this user if mdm enrollment is needed, so that they
   // enroll.
-  if (NeedsToEnrollWithMdm(sid)) {
-    LOGFN(VERBOSE) << "NeedsToEnrollWithMdm is true, forcing auth";
+  if (NeedsToEnrollWithMdm(sid))
     return AssociatedUserValidator::EnforceAuthReason::NOT_ENROLLED_WITH_MDM;
-  }
 
   if (PasswordRecoveryEnabled()) {
     std::wstring store_key = GetUserPasswordLsaStoreKey(sid);
@@ -592,13 +580,10 @@ AssociatedUserValidator::GetAuthEnforceReason(const std::wstring& sid) {
     }
   }
 
-  if (!IsTokenHandleValidForUser(sid)) {
-    LOGFN(VERBOSE) << "IsTokenHandleValidForUser is false, forcing auth";
+  if (!IsTokenHandleValidForUser(sid))
     return AssociatedUserValidator::EnforceAuthReason::INVALID_TOKEN_HANDLE;
-  }
 
   if (UploadDeviceDetailsNeeded(sid)) {
-    LOGFN(VERBOSE) << "UploadDeviceDetailsNeeded is true, forcing auth";
     return AssociatedUserValidator::EnforceAuthReason::
         UPLOAD_DEVICE_DETAILS_FAILED;
   }

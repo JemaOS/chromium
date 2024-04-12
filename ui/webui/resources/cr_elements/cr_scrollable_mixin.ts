@@ -35,9 +35,8 @@
  */
 
 // clang-format off
-import type { PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {beforeNextRender, dedupingMixin, microTask} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {IronListElement} from '//resources/polymer/v3_0/iron-list/iron-list.js';
+import {beforeNextRender, dedupingMixin, microTask, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {IronListElement} from '//resources/polymer/v3_0/iron-list/iron-list.js';
 // clang-format on
 
 type IronListElementWithExtras = IronListElement&{

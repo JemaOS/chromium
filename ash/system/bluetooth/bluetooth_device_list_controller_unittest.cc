@@ -17,6 +17,7 @@
 #include "chromeos/ash/services/bluetooth_config/public/mojom/cros_bluetooth_config.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/views/controls/label.h"
+#include "ui/views/controls/separator.h"
 
 namespace ash {
 
@@ -61,6 +62,14 @@ class BluetoothDeviceListControllerTest : public AshTestBase {
         IDS_ASH_STATUS_TRAY_BLUETOOTH_NO_DEVICE_CONNECTED));
   }
 
+  const views::Separator* FindSeparator() {
+    for (const auto* view : device_list()->children()) {
+      if (!std::strcmp("Separator", view->GetClassName()))
+        return static_cast<const views::Separator*>(view);
+    }
+    return nullptr;
+  }
+
   PairedBluetoothDevicePropertiesPtr BuildDeviceProperties(
       const std::string& id) {
     PairedBluetoothDevicePropertiesPtr device_properties =
@@ -94,13 +103,22 @@ class BluetoothDeviceListControllerTest : public AshTestBase {
       const TriView* connected_sub_header = FindConnectedSubHeader();
       const TriView* previously_connected_sub_header =
           FindPreviouslyConnectedSubHeader();
+      const views::Separator* device_list_separator = FindSeparator();
 
       EXPECT_TRUE(connected_sub_header);
       EXPECT_TRUE(previously_connected_sub_header);
+      EXPECT_TRUE(device_list_separator);
 
       const size_t connected_index =
           device_list()->GetIndexOf(connected_sub_header).value();
+      const size_t previously_connected_index =
+          device_list()->GetIndexOf(previously_connected_sub_header).value();
+      const size_t separator_index =
+          device_list()->GetIndexOf(device_list_separator).value();
+
       EXPECT_EQ(0u, connected_index);
+      EXPECT_EQ(connected_device_count + 1, separator_index);
+      EXPECT_EQ(separator_index + 1, previously_connected_index);
       return;
     }
 
@@ -153,7 +171,7 @@ class BluetoothDeviceListControllerTest : public AshTestBase {
 
  private:
   const TriView* FindSubHeaderWithText(const std::u16string text) {
-    for (const views::View* view : device_list()->children()) {
+    for (const auto* view : device_list()->children()) {
       if (std::strcmp("TriView", view->GetClassName()))
         continue;
       const TriView* sub_header = static_cast<const TriView*>(view);
@@ -186,7 +204,7 @@ TEST_F(BluetoothDeviceListControllerTest,
 }
 
 TEST_F(BluetoothDeviceListControllerTest,
-       HasCorrectDeviceListOrderWithPairedAndPreviouslyPairedDevices) {
+       HasCorrectDeviceListOrderWithPairedDevices) {
   CheckNotifyDeviceListChangedCount(/*call_count=*/0u);
 
   bluetooth_device_list_controller()->UpdateBluetoothEnabledState(true);
@@ -238,21 +256,7 @@ TEST_F(BluetoothDeviceListControllerTest,
 
   CheckNotifyDeviceListChangedCount(/*call_count=*/4u);
 
-  // This is confusing but `device_list()` is actually the scroll contents of
-  // the bluetooth detailed view, rather than a list of devices. So the count
-  // here is a combination of the following views (all are optional):
-  // *  Connected device header
-  // *  Connected device list
-  // *  Previously connected device header
-  // *  Previously connected device list
-  const int connected_header_count = FindConnectedSubHeader() ? 1 : 0;
-  const int previously_connected_header_count =
-      FindPreviouslyConnectedSubHeader() ? 1 : 0;
-  const size_t device_count =
-      connected_list.size() + previously_connected_list.size();
-  const auto expected_device_list_size =
-      connected_header_count + previously_connected_header_count + device_count;
-  EXPECT_EQ(expected_device_list_size, device_list()->children().size());
+  EXPECT_EQ(5u, device_list()->children().size());
 
   CheckDeviceListOrdering(
       /*connected_device_count=*/connected_list.size(),

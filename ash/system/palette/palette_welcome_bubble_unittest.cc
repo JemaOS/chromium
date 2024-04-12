@@ -147,22 +147,13 @@ TEST_F(PaletteWelcomeBubbleTest, BubbleNotShownInactiveSession) {
   EXPECT_FALSE(welcome_bubble_->GetBubbleViewForTesting());
 }
 
-TEST_F(PaletteWelcomeBubbleTest, BubbleNotShownKiosk) {
-  ClearLogin();
-  SimulateKioskMode(user_manager::UserType::kWebKioskApp);
-  SetCanLockScreen(false);
-
-  welcome_bubble_->ShowIfNeeded();
-  EXPECT_FALSE(welcome_bubble_->GetBubbleViewForTesting());
-}
-
 using PaletteWelcomeBubbleEmphemeralAccountTest = AshTestBase;
 
 TEST_F(PaletteWelcomeBubbleEmphemeralAccountTest, BubbleNotShownForGuest) {
   auto welcome_bubble = std::make_unique<PaletteWelcomeBubble>(
       StatusAreaWidgetTestHelper::GetStatusAreaWidget()->palette_tray());
   GetSessionControllerClient()->AddUserSession(kGuestEmail,
-                                               user_manager::UserType::kGuest);
+                                               user_manager::USER_TYPE_GUEST);
   GetSessionControllerClient()->SwitchActiveUser(
       AccountId::FromUserEmail(kGuestEmail));
   welcome_bubble->ShowIfNeeded();
@@ -174,7 +165,7 @@ TEST_F(PaletteWelcomeBubbleEmphemeralAccountTest,
   auto welcome_bubble = std::make_unique<PaletteWelcomeBubble>(
       StatusAreaWidgetTestHelper::GetStatusAreaWidget()->palette_tray());
   GetSessionControllerClient()->AddUserSession(
-      kPublicAccountEmail, user_manager::UserType::kPublicAccount);
+      kPublicAccountEmail, user_manager::USER_TYPE_PUBLIC_ACCOUNT);
   GetSessionControllerClient()->SwitchActiveUser(
       AccountId::FromUserEmail(kPublicAccountEmail));
   welcome_bubble->ShowIfNeeded();

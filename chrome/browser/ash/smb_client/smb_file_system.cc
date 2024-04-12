@@ -6,12 +6,12 @@
 
 #include <memory>
 
-#include "base/notreached.h"
 #include "chrome/browser/ash/file_system_provider/service.h"
 #include "chrome/browser/ash/smb_client/smb_file_system_id.h"
 #include "components/services/filesystem/public/mojom/types.mojom.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 using file_system_provider::AbortCallback;
 
@@ -19,7 +19,7 @@ SmbFileSystem::SmbFileSystem(
     const file_system_provider::ProvidedFileSystemInfo& file_system_info)
     : file_system_info_(file_system_info) {}
 
-SmbFileSystem::~SmbFileSystem() = default;
+SmbFileSystem::~SmbFileSystem() {}
 
 AbortCallback SmbFileSystem::RequestUnmount(
     storage::AsyncFileUtil::StatusCallback callback) {
@@ -139,13 +139,6 @@ AbortCallback SmbFileSystem::WriteFile(
   return base::DoNothing();
 }
 
-AbortCallback SmbFileSystem::FlushFile(
-    int file_handle,
-    storage::AsyncFileUtil::StatusCallback callback) {
-  NOTREACHED();
-  return base::DoNothing();
-}
-
 AbortCallback SmbFileSystem::AddWatcher(
     const GURL& origin,
     const base::FilePath& entry_path,
@@ -218,13 +211,8 @@ void SmbFileSystem::Configure(storage::AsyncFileUtil::StatusCallback callback) {
 
 base::WeakPtr<file_system_provider::ProvidedFileSystemInterface>
 SmbFileSystem::GetWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
+  return AsWeakPtr();
 }
 
-std::unique_ptr<file_system_provider::ScopedUserInteraction>
-SmbFileSystem::StartUserInteraction() {
-  NOTREACHED();
-  return nullptr;
-}
-
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

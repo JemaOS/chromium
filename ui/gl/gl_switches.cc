@@ -11,7 +11,7 @@
 #include "base/android/build_info.h"
 #endif
 
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_LINUX)
 #include <vulkan/vulkan_core.h>
 #include "third_party/angle/src/gpu_info_util/SystemInfo.h"  // nogncheck
 #endif
@@ -165,21 +165,12 @@ const char* const kGLSwitchesCopiedFromGpuProcessHost[] = {
     kEnableDirectCompositionVideoOverlays,
     kDirectCompositionVideoSwapChainFormat,
 };
-const size_t kGLSwitchesCopiedFromGpuProcessHostNumSwitches =
+const int kGLSwitchesCopiedFromGpuProcessHostNumSwitches =
     std::size(kGLSwitchesCopiedFromGpuProcessHost);
 
 }  // namespace switches
 
 namespace features {
-
-// Enable DComp debug visualizations. This can be useful to determine how much
-// work DWM is doing when we update our tree.
-//
-// Please be aware that some of these visualizations result in quickly flashing
-// colors.
-BASE_FEATURE(kDCompDebugVisualization,
-             "DCompDebugVisualization",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Use BufferCount of 3 for the direct composition root swap chain.
 BASE_FEATURE(kDCompTripleBufferRootSwapChain,
@@ -191,10 +182,10 @@ BASE_FEATURE(kDCompTripleBufferVideoSwapChain,
              "DCompTripleBufferVideoSwapChain",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables incremental update of dcomp visual tree.
-BASE_FEATURE(kDCompVisualTreeOptimization,
-             "DCompVisualTreeOptimization",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+// Use presentation feedback event queries (must be enabled) to limit latency.
+BASE_FEATURE(kDirectCompositionLowLatencyPresentation,
+             "DirectCompositionLowLatencyPresentation",
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Allow overlay swapchain to present on all GPUs even if they only support
 // software overlays. GPU deny lists limit it to NVIDIA only at the moment.
@@ -202,38 +193,30 @@ BASE_FEATURE(kDirectCompositionSoftwareOverlays,
              "DirectCompositionSoftwareOverlays",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// TODO(crbug.com/1269749): This is used temporarily for verifying
+// the draw offset bug. The code should be removed once the bug is fixed.
+BASE_FEATURE(kDirectCompositionVerifyDrawOffset,
+             "DirectCompositionVerifyDrawOffset",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<int> kVerifyDrawOffsetX{
+    &kDirectCompositionVerifyDrawOffset, "verify_draw_offset_x", 0};
+
+const base::FeatureParam<int> kVerifyDrawOffsetY{
+    &kDirectCompositionVerifyDrawOffset, "verify_draw_offset_y", 0};
+
 // Adjust the letterbox video size and position to the center of the screen so
 // that DWM power optimization can be turned on.
 BASE_FEATURE(kDirectCompositionLetterboxVideoOptimization,
              "DirectCompositionLetterboxVideoOptimization",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Do not consider hardware YUV overlay count when promoting quads to DComp
-// visuals. If there are more videos than hardware overlay planes, there may be
-// a performance hit compared to drawing all the videos into a single swap
-// chain. This feature is intended for testing and debugging.
-BASE_FEATURE(kDirectCompositionUnlimitedOverlays,
-             "DirectCompositionUnlimitedOverlays",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Allow overlay candidates to have resources that are not scanout. These
-// resources will be copied to DComp surfaces in the output device, as needed.
-// This allows testing delegated compositing on versions of Windows that do not
-// support directly scanning out textures.
-BASE_FEATURE(kCopyNonOverlayResourcesToDCompSurfaces,
-             "CopyNonOverlayResourcesToDCompSurfaces",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Allow dual GPU rendering through EGL where supported, i.e., allow a WebGL
 // or WebGPU context to be on the high performance GPU if preferred and Chrome
 // internal rendering to be on the low power GPU.
 BASE_FEATURE(kEGLDualGPURendering,
              "EGLDualGPURendering",
-#if BUILDFLAG(IS_MAC)
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#else
              base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
 
 // Allow overlay swapchain to use Intel video processor for super resolution.
 BASE_FEATURE(kIntelVpSuperResolution,
@@ -245,11 +228,6 @@ BASE_FEATURE(kNvidiaVpSuperResolution,
              "NvidiaVpSuperResolution",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Allow overlay swapchain to use NVIDIA video processor for trueHDR.
-BASE_FEATURE(kNvidiaVpTrueHDR,
-             "NvidiaVpTrueHDR",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Default to using ANGLE's OpenGL backend
 BASE_FEATURE(kDefaultANGLEOpenGL,
              "DefaultANGLEOpenGL",
@@ -258,7 +236,7 @@ BASE_FEATURE(kDefaultANGLEOpenGL,
 // Default to using ANGLE's Metal backend.
 BASE_FEATURE(kDefaultANGLEMetal,
              "DefaultANGLEMetal",
-#if BUILDFLAG(IS_IOS) || (BUILDFLAG(IS_MAC) && defined(ARCH_CPU_ARM64))
+#if BUILDFLAG(IS_IOS)
              base::FEATURE_ENABLED_BY_DEFAULT
 #else
              base::FEATURE_DISABLED_BY_DEFAULT
@@ -282,15 +260,10 @@ BASE_FEATURE(kVulkanFromANGLE,
              "VulkanFromANGLE",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enable ANGLE's debug layer.
-BASE_FEATURE(kANGLEDebugLayer,
-             "ANGLEDebugLayer",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 bool IsDefaultANGLEVulkan() {
 #if defined(MEMORY_SANITIZER)
   return false;
-#else  // !defined(MEMORY_SANITIZER)
+#else
 #if BUILDFLAG(IS_ANDROID)
   // No support for devices before Q -- exit before checking feature flags
   // so that devices are not counted in finch trials.
@@ -298,7 +271,7 @@ bool IsDefaultANGLEVulkan() {
       base::android::SDK_VERSION_Q)
     return false;
 #endif  // BUILDFLAG(IS_ANDROID)
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_LINUX)
   angle::SystemInfo system_info;
   if (!angle::GetSystemInfoVulkan(&system_info))
     return false;
@@ -310,7 +283,6 @@ bool IsDefaultANGLEVulkan() {
 
   const auto& active_gpu = system_info.gpus[system_info.activeGPUIndex];
 
-#if BUILDFLAG(IS_LINUX)
   // Vulkan 1.1 is required.
   if (active_gpu.driverApiVersion < VK_VERSION_1_1)
     return false;
@@ -319,16 +291,15 @@ bool IsDefaultANGLEVulkan() {
   // crbug.com/1340081
   if (active_gpu.driverId == VK_DRIVER_ID_AMD_OPEN_SOURCE)
     return false;
-#endif  // BUILDFLAG(IS_LINUX)
 
   // The performance of MESA llvmpipe is really bad.
   if (active_gpu.driverId == VK_DRIVER_ID_MESA_LLVMPIPE) {
     return false;
   }
 
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#endif
   return base::FeatureList::IsEnabled(kDefaultANGLEVulkan);
-#endif  // !defined(MEMORY_SANITIZER)
+#endif  // defined(MEMORY_SANITIZER)
 }
 
 // Use waitable swap chain on Windows to reduce display latency.
@@ -347,12 +318,6 @@ const base::FeatureParam<int> kDXGIWaitableSwapChainMaxQueuedFrames{
 BASE_FEATURE(kDXGISwapChainPresentInterval0,
              "DXGISwapChainPresentInterval0",
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Kill switch using floating point based rounding adjustments in
-// SwapChainPresenter::Adjust* functions.
-BASE_FEATURE(kUseSwapChainPresenterFloatingPointAdjustments,
-             "UseSwapChainPresenterFloatingPointAdjustments",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool SupportsEGLDualGPURendering() {
 #if defined(USE_EGL) && (BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC))

@@ -30,8 +30,7 @@ constexpr char kFeatureDirname[] = "tab_service";
 
 // static
 PaintPreviewTabServiceFactory* PaintPreviewTabServiceFactory::GetInstance() {
-  static base::NoDestructor<PaintPreviewTabServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<PaintPreviewTabServiceFactory>::get();
 }
 
 // static

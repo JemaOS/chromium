@@ -21,9 +21,8 @@ class WebauthnDialogModel;
 class WebauthnDialogView : public WebauthnDialog,
                            public WebauthnDialogModelObserver,
                            public views::DialogDelegateView {
-  METADATA_HEADER(WebauthnDialogView, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(WebauthnDialogView);
   WebauthnDialogView(WebauthnDialogController* controller,
                      WebauthnDialogState dialog_state);
   WebauthnDialogView(const WebauthnDialogView&) = delete;

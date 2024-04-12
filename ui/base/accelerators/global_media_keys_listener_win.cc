@@ -5,6 +5,7 @@
 #include "ui/base/accelerators/global_media_keys_listener_win.h"
 
 #include "base/functional/bind.h"
+#include "base/metrics/histogram_macros.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/events/keycodes/keyboard_code_conversion_win.h"
 #include "ui/gfx/win/singleton_hwnd_hot_key_observer.h"
@@ -44,6 +45,9 @@ bool GlobalMediaKeysListenerWin::StartWatchingMediaKey(KeyboardCode key_code) {
   bool success = !!observer;
   if (success)
     key_codes_hotkey_observers_[key_code] = std::move(observer);
+
+  UMA_HISTOGRAM_BOOLEAN("Media.MediaKeysListener.RegisterHotKeyResult",
+                        success);
 
   return success;
 }

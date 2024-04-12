@@ -11,7 +11,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -32,13 +32,13 @@ class MediaNotificationServiceFactory : public ProfileKeyedServiceFactory {
   static MediaNotificationService* GetForProfile(Profile* profile);
 
  private:
-  friend base::NoDestructor<MediaNotificationServiceFactory>;
+  friend struct base::DefaultSingletonTraits<MediaNotificationServiceFactory>;
 
   MediaNotificationServiceFactory();
   ~MediaNotificationServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

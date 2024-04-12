@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {SettingsMenuElement} from 'chrome://settings/settings.js';
-import {pageVisibility} from 'chrome://settings/settings.js';
+import {pageVisibility, SettingsMenuElement} from 'chrome://settings/settings.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
 
 suite('SettingsMenuInteractiveUITest', () => {

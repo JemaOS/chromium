@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "ash/components/arc/arc_util.h"
+#include "ash/components/arc/mojom/accessibility_helper.mojom.h"
 #include "ash/components/arc/session/arc_bridge_service.h"
 #include "ash/constants/app_types.h"
 #include "ash/public/cpp/app_types_util.h"
@@ -26,16 +27,18 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
+#include "chrome/browser/ash/arc/accessibility/arc_accessibility_test_util.h"
+#include "chrome/browser/ash/arc/accessibility/arc_accessibility_util.h"
 #include "chrome/common/extensions/api/accessibility_private.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/views/chrome_views_test_base.h"
+#include "components/language/core/browser/pref_names.h"
+#include "components/live_caption/pref_names.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/testing_pref_service.h"
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/test_event_router.h"
-#include "services/accessibility/android/android_accessibility_util.h"
-#include "services/accessibility/android/public/mojom/accessibility_helper.mojom.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/display/display.h"
 #include "ui/display/manager/managed_display_info.h"
@@ -98,13 +101,13 @@ class ArcAccessibilityHelperBridgeTest : public ChromeViewsTestBase {
     extensions::EventRouter* GetEventRouter() const override {
       return event_router_;
     }
-    ax::android::mojom::AccessibilityFilterType GetFilterType() override {
+    arc::mojom::AccessibilityFilterType GetFilterType() override {
       return filter_type_for_test_;
     }
 
-    const raw_ptr<extensions::TestEventRouter> event_router_;
-    ax::android::mojom::AccessibilityFilterType filter_type_for_test_ =
-        ax::android::mojom::AccessibilityFilterType::ALL;
+    const raw_ptr<extensions::TestEventRouter, ExperimentalAsh> event_router_;
+    arc::mojom::AccessibilityFilterType filter_type_for_test_ =
+        arc::mojom::AccessibilityFilterType::ALL;
   };
 
   class ArcNotificationSurfaceManagerTest
@@ -145,7 +148,7 @@ class ArcAccessibilityHelperBridgeTest : public ChromeViewsTestBase {
 
    private:
     std::map<std::string, ArcNotificationSurface*> surfaces_;
-    base::ObserverList<Observer>::UncheckedAndDanglingUntriaged observers_;
+    base::ObserverList<Observer>::Unchecked observers_;
   };
 
   ArcAccessibilityHelperBridgeTest() = default;
@@ -222,10 +225,10 @@ TEST_F(ArcAccessibilityHelperBridgeTest, AnnouncementEvent) {
       accessibility_helper_bridge();
   const std::string announce_text = "announcement text.";
   std::vector<std::string> text({announce_text});
-  auto event = ax::android::mojom::AccessibilityEventData::New();
-  event->event_type = ax::android::mojom::AccessibilityEventType::ANNOUNCEMENT;
+  auto event = arc::mojom::AccessibilityEventData::New();
+  event->event_type = arc::mojom::AccessibilityEventType::ANNOUNCEMENT;
   event->event_text =
-      std::make_optional<std::vector<std::string>>(std::move(text));
+      absl::make_optional<std::vector<std::string>>(std::move(text));
 
   helper_bridge->OnAccessibilityEvent(event.Clone());
 
@@ -245,17 +248,17 @@ TEST_F(ArcAccessibilityHelperBridgeTest, NotificationStateChangedEvent) {
       accessibility_helper_bridge();
   const std::string toast_text = "announcement text.";
   std::vector<std::string> text({toast_text});
-  auto event = ax::android::mojom::AccessibilityEventData::New();
+  auto event = arc::mojom::AccessibilityEventData::New();
   event->event_type =
-      ax::android::mojom::AccessibilityEventType::NOTIFICATION_STATE_CHANGED;
+      arc::mojom::AccessibilityEventType::NOTIFICATION_STATE_CHANGED;
   event->event_text =
-      std::make_optional<std::vector<std::string>>(std::move(text));
+      absl::make_optional<std::vector<std::string>>(std::move(text));
   event->string_properties =
-      base::flat_map<ax::android::mojom::AccessibilityEventStringProperty,
+      base::flat_map<arc::mojom::AccessibilityEventStringProperty,
                      std::string>();
-  event->string_properties.value().insert(std::make_pair(
-      ax::android::mojom::AccessibilityEventStringProperty::CLASS_NAME,
-      "android.widget.Toast$TN"));
+  event->string_properties.value().insert(
+      std::make_pair(arc::mojom::AccessibilityEventStringProperty::CLASS_NAME,
+                     "android.widget.Toast$TN"));
 
   helper_bridge->OnAccessibilityEvent(event.Clone());
 
@@ -268,9 +271,9 @@ TEST_F(ArcAccessibilityHelperBridgeTest, NotificationStateChangedEvent) {
 
   // Do not announce for non-toast event.
   event->string_properties->clear();
-  event->string_properties.value().insert(std::make_pair(
-      ax::android::mojom::AccessibilityEventStringProperty::CLASS_NAME,
-      "com.android.vending"));
+  event->string_properties.value().insert(
+      std::make_pair(arc::mojom::AccessibilityEventStringProperty::CLASS_NAME,
+                     "com.android.vending"));
 
   helper_bridge->OnAccessibilityEvent(event.Clone());
 
@@ -301,19 +304,15 @@ TEST_F(ArcAccessibilityHelperBridgeTest, NotificationEventArriveFirst) {
   // mojo: notification 1 created
   helper_bridge->OnNotificationStateChanged(
       kNotificationKey,
-      ax::android::mojom::AccessibilityNotificationStateType::SURFACE_CREATED);
-  auto event1 = ax::android::mojom::AccessibilityEventData::New();
-  event1->event_type =
-      ax::android::mojom::AccessibilityEventType::WINDOW_STATE_CHANGED;
-  event1->notification_key = std::make_optional<std::string>(kNotificationKey);
-  event1->node_data.push_back(
-      ax::android::mojom::AccessibilityNodeInfoData::New());
-  event1->node_data[0]->id = 1;
+      arc::mojom::AccessibilityNotificationStateType::SURFACE_CREATED);
+  auto event1 = arc::mojom::AccessibilityEventData::New();
+  event1->event_type = arc::mojom::AccessibilityEventType::WINDOW_STATE_CHANGED;
+  event1->notification_key = absl::make_optional<std::string>(kNotificationKey);
+  event1->node_data.push_back(arc::mojom::AccessibilityNodeInfoData::New());
   event1->window_data =
-      std::vector<ax::android::mojom::AccessibilityWindowInfoDataPtr>();
+      std::vector<arc::mojom::AccessibilityWindowInfoDataPtr>();
   event1->window_data->push_back(
-      ax::android::mojom::AccessibilityWindowInfoData::New());
-  event1->window_data->at(0)->window_id = 2;
+      arc::mojom::AccessibilityWindowInfoData::New());
   helper_bridge->OnAccessibilityEvent(event1.Clone());
 
   EXPECT_EQ(1U, key_to_tree_.size());
@@ -323,7 +322,7 @@ TEST_F(ArcAccessibilityHelperBridgeTest, NotificationEventArriveFirst) {
   arc_notification_surface_manager_->AddSurface(&test_surface);
 
   // Confirm that axtree id is set to the surface.
-  ax::android::AXTreeSourceAndroid* tree = key_to_tree_.begin()->second.get();
+  AXTreeSourceArc* tree = key_to_tree_.begin()->second.get();
   ui::AXTreeData tree_data;
   tree->GetTreeData(&tree_data);
   EXPECT_EQ(tree_data.tree_id, test_surface.GetAXTreeId());
@@ -331,7 +330,7 @@ TEST_F(ArcAccessibilityHelperBridgeTest, NotificationEventArriveFirst) {
   // mojo: notification 1 removed
   helper_bridge->OnNotificationStateChanged(
       kNotificationKey,
-      ax::android::mojom::AccessibilityNotificationStateType::SURFACE_REMOVED);
+      arc::mojom::AccessibilityNotificationStateType::SURFACE_REMOVED);
 
   // Ax tree of the surface should be reset as the tree no longer exists.
   EXPECT_EQ(ui::AXTreeIDUnknown(), test_surface.GetAXTreeId());
@@ -341,26 +340,22 @@ TEST_F(ArcAccessibilityHelperBridgeTest, NotificationEventArriveFirst) {
   // mojo: notification 2 created
   helper_bridge->OnNotificationStateChanged(
       kNotificationKey,
-      ax::android::mojom::AccessibilityNotificationStateType::SURFACE_CREATED);
-  auto event3 = ax::android::mojom::AccessibilityEventData::New();
-  event3->event_type =
-      ax::android::mojom::AccessibilityEventType::WINDOW_STATE_CHANGED;
-  event3->notification_key = std::make_optional<std::string>(kNotificationKey);
-  event3->node_data.push_back(
-      ax::android::mojom::AccessibilityNodeInfoData::New());
-  event3->node_data[0]->id = 3;
+      arc::mojom::AccessibilityNotificationStateType::SURFACE_CREATED);
+  auto event3 = arc::mojom::AccessibilityEventData::New();
+  event3->event_type = arc::mojom::AccessibilityEventType::WINDOW_STATE_CHANGED;
+  event3->notification_key = absl::make_optional<std::string>(kNotificationKey);
+  event3->node_data.push_back(arc::mojom::AccessibilityNodeInfoData::New());
   event3->window_data =
-      std::vector<ax::android::mojom::AccessibilityWindowInfoDataPtr>();
+      std::vector<arc::mojom::AccessibilityWindowInfoDataPtr>();
   event3->window_data->push_back(
-      ax::android::mojom::AccessibilityWindowInfoData::New());
-  event3->window_data->at(0)->window_id = 4;
+      arc::mojom::AccessibilityWindowInfoData::New());
   helper_bridge->OnAccessibilityEvent(event3.Clone());
 
   EXPECT_EQ(1U, key_to_tree_.size());
 
   // Ax tree from the second event is attached to the first surface. This is
   // expected behavior.
-  ax::android::AXTreeSourceAndroid* tree2 = key_to_tree_.begin()->second.get();
+  AXTreeSourceArc* tree2 = key_to_tree_.begin()->second.get();
   ui::AXTreeData tree_data2;
   tree2->GetTreeData(&tree_data2);
   EXPECT_EQ(tree_data2.tree_id, test_surface.GetAXTreeId());
@@ -380,7 +375,7 @@ TEST_F(ArcAccessibilityHelperBridgeTest, NotificationEventArriveFirst) {
   // mojo: notification 2 removed
   helper_bridge->OnNotificationStateChanged(
       kNotificationKey,
-      ax::android::mojom::AccessibilityNotificationStateType::SURFACE_REMOVED);
+      arc::mojom::AccessibilityNotificationStateType::SURFACE_REMOVED);
 
   EXPECT_EQ(0U, key_to_tree_.size());
 
@@ -412,19 +407,15 @@ TEST_F(ArcAccessibilityHelperBridgeTest, NotificationSurfaceArriveFirst) {
   // mojo: notification 1 created
   helper_bridge->OnNotificationStateChanged(
       kNotificationKey,
-      ax::android::mojom::AccessibilityNotificationStateType::SURFACE_CREATED);
-  auto event1 = ax::android::mojom::AccessibilityEventData::New();
-  event1->event_type =
-      ax::android::mojom::AccessibilityEventType::WINDOW_STATE_CHANGED;
-  event1->notification_key = std::make_optional<std::string>(kNotificationKey);
-  event1->node_data.push_back(
-      ax::android::mojom::AccessibilityNodeInfoData::New());
-  event1->node_data[0]->id = 1;
+      arc::mojom::AccessibilityNotificationStateType::SURFACE_CREATED);
+  auto event1 = arc::mojom::AccessibilityEventData::New();
+  event1->event_type = arc::mojom::AccessibilityEventType::WINDOW_STATE_CHANGED;
+  event1->notification_key = absl::make_optional<std::string>(kNotificationKey);
+  event1->node_data.push_back(arc::mojom::AccessibilityNodeInfoData::New());
   event1->window_data =
-      std::vector<ax::android::mojom::AccessibilityWindowInfoDataPtr>();
+      std::vector<arc::mojom::AccessibilityWindowInfoDataPtr>();
   event1->window_data->push_back(
-      ax::android::mojom::AccessibilityWindowInfoData::New());
-  event1->window_data->at(0)->window_id = 2;
+      arc::mojom::AccessibilityWindowInfoData::New());
   helper_bridge->OnAccessibilityEvent(event1.Clone());
 
   EXPECT_EQ(1U, key_to_tree_.size());
@@ -432,7 +423,7 @@ TEST_F(ArcAccessibilityHelperBridgeTest, NotificationSurfaceArriveFirst) {
   // mojo: notification 2 removed
   helper_bridge->OnNotificationStateChanged(
       kNotificationKey,
-      ax::android::mojom::AccessibilityNotificationStateType::SURFACE_REMOVED);
+      arc::mojom::AccessibilityNotificationStateType::SURFACE_REMOVED);
 
   EXPECT_EQ(0U, key_to_tree_.size());
 }
@@ -465,22 +456,17 @@ TEST_F(ArcAccessibilityHelperBridgeTest,
 
   accessibility_helper_bridge()->OnNotificationStateChanged(
       kNotificationKey,
-      ax::android::mojom::AccessibilityNotificationStateType::SURFACE_CREATED);
+      arc::mojom::AccessibilityNotificationStateType::SURFACE_CREATED);
 
   // Dispatch text selection changed event.
-  auto event = ax::android::mojom::AccessibilityEventData::New();
+  auto event = arc::mojom::AccessibilityEventData::New();
   event->event_type =
-      ax::android::mojom::AccessibilityEventType::VIEW_TEXT_SELECTION_CHANGED;
-  event->notification_key = std::make_optional<std::string>(kNotificationKey);
-  event->node_data.push_back(
-      ax::android::mojom::AccessibilityNodeInfoData::New());
-  event->node_data[0]->id = 1;
+      arc::mojom::AccessibilityEventType::VIEW_TEXT_SELECTION_CHANGED;
+  event->notification_key = absl::make_optional<std::string>(kNotificationKey);
+  event->node_data.push_back(arc::mojom::AccessibilityNodeInfoData::New());
   event->window_data =
-      std::vector<ax::android::mojom::AccessibilityWindowInfoDataPtr>();
-  event->window_data->push_back(
-      ax::android::mojom::AccessibilityWindowInfoData::New());
-  event->window_data->at(0)->window_id = 2;
-  event->source_id = 1;
+      std::vector<arc::mojom::AccessibilityWindowInfoDataPtr>();
+  event->window_data->push_back(arc::mojom::AccessibilityWindowInfoData::New());
   accessibility_helper_bridge()->OnAccessibilityEvent(event.Clone());
 
   // Widget is activated.
@@ -534,22 +520,17 @@ TEST_F(ArcAccessibilityHelperBridgeTest, TextSelectionChangedFocusContentView) {
 
   accessibility_helper_bridge()->OnNotificationStateChanged(
       kNotificationKey,
-      ax::android::mojom::AccessibilityNotificationStateType::SURFACE_CREATED);
+      arc::mojom::AccessibilityNotificationStateType::SURFACE_CREATED);
 
   // Dispatch text selection changed event.
-  auto event = ax::android::mojom::AccessibilityEventData::New();
+  auto event = arc::mojom::AccessibilityEventData::New();
   event->event_type =
-      ax::android::mojom::AccessibilityEventType::VIEW_TEXT_SELECTION_CHANGED;
-  event->notification_key = std::make_optional<std::string>(kNotificationKey);
-  event->node_data.push_back(
-      ax::android::mojom::AccessibilityNodeInfoData::New());
-  event->node_data[0]->id = 1;
+      arc::mojom::AccessibilityEventType::VIEW_TEXT_SELECTION_CHANGED;
+  event->notification_key = absl::make_optional<std::string>(kNotificationKey);
+  event->node_data.push_back(arc::mojom::AccessibilityNodeInfoData::New());
   event->window_data =
-      std::vector<ax::android::mojom::AccessibilityWindowInfoDataPtr>();
-  event->window_data->push_back(
-      ax::android::mojom::AccessibilityWindowInfoData::New());
-  event->window_data->at(0)->window_id = 2;
-  event->source_id = 1;
+      std::vector<arc::mojom::AccessibilityWindowInfoDataPtr>();
+  event->window_data->push_back(arc::mojom::AccessibilityWindowInfoData::New());
   accessibility_helper_bridge()->OnAccessibilityEvent(event.Clone());
 
   // Focus moves to contents view with text selection change.
@@ -565,6 +546,67 @@ TEST_F(ArcAccessibilityHelperBridgeTest, TextSelectionChangedFocusContentView) {
 
   // Remove surface cleanly before it's destructed.
   arc_notification_surface_manager_->RemoveSurface(surface.get());
+}
+
+class GetCaptionStyleFromPrefsTests : public ::testing::Test {
+ public:
+  void SetUp() override {
+    prefs_.registry()->RegisterStringPref(prefs::kAccessibilityCaptionsTextSize,
+                                          "");
+    prefs_.registry()->RegisterStringPref(
+        prefs::kAccessibilityCaptionsTextColor, "");
+    prefs_.registry()->RegisterIntegerPref(
+        prefs::kAccessibilityCaptionsTextOpacity, 100);
+    prefs_.registry()->RegisterStringPref(
+        prefs::kAccessibilityCaptionsBackgroundColor, "");
+    prefs_.registry()->RegisterIntegerPref(
+        prefs::kAccessibilityCaptionsBackgroundOpacity, 100);
+    prefs_.registry()->RegisterStringPref(
+        prefs::kAccessibilityCaptionsTextShadow, "");
+    prefs_.registry()->RegisterStringPref(language::prefs::kApplicationLocale,
+                                          "");
+  }
+
+ protected:
+  TestingPrefServiceSimple prefs_;
+};
+
+TEST_F(GetCaptionStyleFromPrefsTests, ValidValues) {
+  prefs_.SetUserPref(prefs::kAccessibilityCaptionsTextSize,
+                     std::make_unique<base::Value>("200%"));
+  prefs_.SetUserPref(prefs::kAccessibilityCaptionsTextColor,
+                     std::make_unique<base::Value>("10,20,30"));
+  prefs_.SetUserPref(prefs::kAccessibilityCaptionsTextOpacity,
+                     std::make_unique<base::Value>(90));
+  prefs_.SetUserPref(prefs::kAccessibilityCaptionsBackgroundColor,
+                     std::make_unique<base::Value>("40,50,60"));
+  prefs_.SetUserPref(prefs::kAccessibilityCaptionsBackgroundOpacity,
+                     std::make_unique<base::Value>(80));
+  prefs_.SetUserPref(
+      prefs::kAccessibilityCaptionsTextShadow,
+      std::make_unique<base::Value>("-2px -2px 4px rgba(0, 0, 0, 0.5)"));
+  prefs_.SetUserPref(language::prefs::kApplicationLocale,
+                     std::make_unique<base::Value>("my_locale"));
+
+  auto style = GetCaptionStyleFromPrefs(&prefs_);
+
+  ASSERT_TRUE(style);
+  EXPECT_EQ("200%", style->text_size);
+  EXPECT_EQ("rgba(10,20,30,0.9)", style->text_color);
+  EXPECT_EQ("rgba(40,50,60,0.8)", style->background_color);
+  EXPECT_EQ("my_locale", style->user_locale);
+  EXPECT_EQ(arc::mojom::CaptionTextShadowType::RAISED, style->text_shadow_type);
+}
+
+TEST_F(GetCaptionStyleFromPrefsTests, EmptyValues) {
+  auto style = GetCaptionStyleFromPrefs(&prefs_);
+
+  ASSERT_TRUE(style);
+  EXPECT_EQ("", style->text_size);
+  EXPECT_EQ("", style->text_color);
+  EXPECT_EQ("", style->background_color);
+  EXPECT_EQ("", style->user_locale);
+  EXPECT_EQ(arc::mojom::CaptionTextShadowType::NONE, style->text_shadow_type);
 }
 
 }  // namespace arc

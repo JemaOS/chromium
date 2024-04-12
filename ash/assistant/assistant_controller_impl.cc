@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <utility>
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/assistant/util/deep_link_util.h"
 #include "ash/capture_mode/capture_mode_controller.h"
 #include "ash/constants/ash_features.h"
@@ -45,7 +45,6 @@ const AccountId& GetActiveUserAccountId() {
 }  // namespace
 
 AssistantControllerImpl::AssistantControllerImpl() {
-  Shell::Get()->AddShellObserver(this);
   assistant_state_controller_.AddObserver(this);
   CrasAudioHandler::Get()->AddAudioObserver(this);
   AddObserver(this);
@@ -60,7 +59,14 @@ AssistantControllerImpl::AssistantControllerImpl() {
   NotifyConstructed();
 }
 
-AssistantControllerImpl::~AssistantControllerImpl() = default;
+AssistantControllerImpl::~AssistantControllerImpl() {
+  NotifyDestroying();
+
+  CrasAudioHandler::Get()->RemoveAudioObserver(this);
+  Shell::Get()->accessibility_controller()->RemoveObserver(this);
+  assistant_state_controller_.RemoveObserver(this);
+  RemoveObserver(this);
+}
 
 // static
 void AssistantControllerImpl::RegisterProfilePrefs(
@@ -162,14 +168,20 @@ void AssistantControllerImpl::OpenUrl(const GURL& url,
                                       bool from_server) {
   // app_list search result will be opened by `OpenUrl()`. However, the
   // `assistant_` may not be ready. Show a toast to indicate it.
-  if (!IsAssistantReady()) {
+  if (!IsAssistantReady() && !ash::features::IsJemaAssistantEnabled()) {
     assistant_ui_controller_.ShowUnboundErrorToast();
     return;
   }
 
   if (assistant::util::IsDeepLinkUrl(url)) {
-    NotifyDeepLinkReceived(url);
-    return;
+    if (ash::features::IsJemaAssistantEnabled() && assistant::util::GetDeepLinkType(url) == assistant::util::DeepLinkType::kQuery) {
+      // only AssistantInteractionControllerImpl will handle the query deep link, which will call ShowUi
+      NotifyDeepLinkReceived(url);
+      return;
+    } else {
+      VLOG(2) << "Ignoring deep link url: " << url.spec();
+      return;
+    }
   }
 
   auto* android_helper = AndroidIntentHelper::GetInstance();
@@ -296,15 +308,6 @@ void AssistantControllerImpl::OnColorModeChanged(bool dark_mode_enabled) {
   }
 
   assistant_->OnColorModeChanged(dark_mode_enabled);
-}
-
-void AssistantControllerImpl::OnShellDestroying() {
-  NotifyDestroying();
-  CrasAudioHandler::Get()->RemoveAudioObserver(this);
-  Shell::Get()->accessibility_controller()->RemoveObserver(this);
-  assistant_state_controller_.RemoveObserver(this);
-  Shell::Get()->RemoveShellObserver(this);
-  RemoveObserver(this);
 }
 
 bool AssistantControllerImpl::IsAssistantReady() const {

@@ -32,16 +32,16 @@ class Rect;
 
 namespace blink {
 
-class FrameSelection;
-class InlineCursor;
-class InlineCursorPosition;
 class LayoutObject;
 class LayoutText;
-class SelectionPaintRange;
-enum class SelectionState;
+class NGInlineCursor;
+class NGInlineCursorPosition;
+struct NGTextOffsetRange;
+class FrameSelection;
 struct LayoutSelectionStatus;
 struct LayoutTextSelectionStatus;
-struct TextOffsetRange;
+class SelectionPaintRange;
+enum class SelectionState;
 
 class LayoutSelection final : public GarbageCollected<LayoutSelection> {
  public:
@@ -51,18 +51,18 @@ class LayoutSelection final : public GarbageCollected<LayoutSelection> {
   void Commit();
 
   gfx::Rect AbsoluteSelectionBounds();
-  void InvalidateStyleAndPaintForSelection();
+  void InvalidatePaintForSelection();
 
   LayoutTextSelectionStatus ComputeSelectionStatus(const LayoutText&) const;
-  LayoutSelectionStatus ComputeSelectionStatus(const InlineCursor&) const;
+  LayoutSelectionStatus ComputeSelectionStatus(const NGInlineCursor&) const;
 
   // Compute the layout selection state relative to the current item of the
-  // given InlineCursor. E.g. a state of kStart means that the selection
+  // given NGInlineCursor. E.g. a state of kStart means that the selection
   // starts within the position (and ends elsewhere), where kStartAndEnd means
   // the selection both starts and ends within the position. This information is
   // used at paint time to determine the edges of the layout selection.
   SelectionState ComputePaintingSelectionStateForCursor(
-      const InlineCursorPosition&) const;
+      const NGInlineCursorPosition&) const;
 
   static bool IsSelected(const LayoutObject&);
 
@@ -71,8 +71,8 @@ class LayoutSelection final : public GarbageCollected<LayoutSelection> {
   void Trace(Visitor*) const;
 
  private:
-  LayoutSelectionStatus ComputeSelectionStatus(const InlineCursor&,
-                                               const TextOffsetRange&) const;
+  LayoutSelectionStatus ComputeSelectionStatus(const NGInlineCursor&,
+                                               const NGTextOffsetRange&) const;
   SelectionState ComputeSelectionStateFromOffsets(SelectionState state,
                                                   unsigned start_offset,
                                                   unsigned end_offset) const;

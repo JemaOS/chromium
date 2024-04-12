@@ -14,7 +14,6 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
 #include "third_party/blink/renderer/modules/webcodecs/codec_pressure_gauge.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -97,7 +96,6 @@ class ReclaimBackgroundOnlyTest : public BaseReclaimableCodecTest {
   }
 
  private:
-  test::TaskEnvironment task_environment_;
   base::test::ScopedFeatureList feature_list_;
 };
 
@@ -114,7 +112,6 @@ class ReclaimForegroundSameAsBackgroundTest : public BaseReclaimableCodecTest {
   }
 
  private:
-  test::TaskEnvironment task_environment_;
   base::test::ScopedFeatureList feature_list_;
 };
 
@@ -129,7 +126,6 @@ class ReclaimDisabledTest : public BaseReclaimableCodecTest {
   }
 
  private:
-  test::TaskEnvironment task_environment_;
   base::test::ScopedFeatureList feature_list_;
 };
 

@@ -8,12 +8,9 @@
 #include "third_party/blink/renderer/platform/geometry/geometry_hash_traits.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
+#include "third_party/skia/include/core/SkColorFilter.h"
 #include "third_party/skia/include/core/SkRect.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
-
-namespace cc {
-class ColorFilter;
-}
 
 namespace blink {
 
@@ -28,12 +25,12 @@ class PLATFORM_EXPORT DarkModeImageCache {
 
   bool Exists(const SkIRect& src) { return cache_.Contains(src); }
 
-  sk_sp<cc::ColorFilter> Get(const SkIRect& src) {
+  sk_sp<SkColorFilter> Get(const SkIRect& src) {
     auto result = cache_.find(src);
     return (result != cache_.end()) ? result->value : nullptr;
   }
 
-  void Add(const SkIRect& src, sk_sp<cc::ColorFilter> dark_mode_color_filter) {
+  void Add(const SkIRect& src, sk_sp<SkColorFilter> dark_mode_color_filter) {
     DCHECK(!Exists(src));
 
     cache_.insert(src, std::move(dark_mode_color_filter));
@@ -44,7 +41,7 @@ class PLATFORM_EXPORT DarkModeImageCache {
   void Clear() { cache_.clear(); }
 
  private:
-  HashMap<SkIRect, sk_sp<cc::ColorFilter>> cache_;
+  HashMap<SkIRect, sk_sp<SkColorFilter>> cache_;
 };
 
 }  // namespace blink

@@ -2,22 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {NetworkTestRunner} from 'network_test_runner';
-
-import * as Common from 'devtools/core/common/common.js';
-import * as Network from 'devtools/panels/network/network.js';
-import * as SourceFrame from 'devtools/ui/legacy/components/source_frame/source_frame.js';
-import * as UIModule from 'devtools/ui/legacy/legacy.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   'use strict';
   TestRunner.addResult(`Tests to make sure the proper view is used for the data that is received in network panel.\n`);
+  await TestRunner.loadTestModule('network_test_runner');
+  await TestRunner.loadLegacyModule('source_frame');
   await TestRunner.showPanel('network');
 
   function createNetworkRequest(mimeType, content, statusCode, resourceType) {
-    var request = SDK.NetworkRequest.NetworkRequest.create(0, 'http://localhost');
+    var request = SDK.NetworkRequest.create(0, 'http://localhost');
     request.setResourceType(resourceType);
     request.mimeType = mimeType;
     request.setContentDataProvider(() => Promise.resolve({error: null, content: content, encoded: false}));
@@ -31,21 +24,21 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
       return '** NONE **';
     if (previewer instanceof SourceFrame.ResourceSourceFrame.SearchableContainer)
       return 'SearchableContainer > ' + getViewName(previewer.children()[0]);
-    if (previewer instanceof UIModule.SearchableView.SearchableView)
+    if (previewer instanceof UI.SearchableView)
       return 'SearchableView > ' + getViewName(previewer.searchProvider);
     return previewer.contentElement.className;
   }
 
   async function testPreviewer(mimeType, content, statusCode) {
     var testResourceTypes = [
-      Common.ResourceType.resourceTypes.XHR, Common.ResourceType.resourceTypes.Fetch, Common.ResourceType.resourceTypes.Document, Common.ResourceType.resourceTypes.Other
+      Common.resourceTypes.XHR, Common.resourceTypes.Fetch, Common.resourceTypes.Document, Common.resourceTypes.Other
     ];
     TestRunner.addResult('Testing with MimeType: ' + mimeType + ', and StatusCode: ' + statusCode);
     TestRunner.addResult('Content: ' + content.replace(/\0/g, '**NULL**'));
     TestRunner.addResult('');
     for (var resourceType of testResourceTypes) {
       var request = createNetworkRequest(mimeType, content, statusCode, resourceType);
-      var previewView = new Network.RequestPreviewView.RequestPreviewView(request);
+      var previewView = new Network.RequestPreviewView(request, new Network.RequestResponseView(request));
       previewView.wasShown();
       TestRunner.addResult(
           'ResourceType(' + resourceType.name() + '): ' + getViewName(await previewView.contentViewPromise));

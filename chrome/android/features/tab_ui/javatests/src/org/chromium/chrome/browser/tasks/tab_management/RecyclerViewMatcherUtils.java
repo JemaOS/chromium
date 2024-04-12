@@ -13,7 +13,9 @@ import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
 
-/** Contains useful RecyclerViewMatcher. */
+/**
+ * Contains useful RecyclerViewMatcher.
+ */
 public class RecyclerViewMatcherUtils {
     /**
      * This view matcher matches a RecyclerView that has a given number of items in its adapter.

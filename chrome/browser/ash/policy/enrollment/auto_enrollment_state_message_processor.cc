@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/policy/enrollment/auto_enrollment_state_message_processor.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "ash/constants/ash_features.h"
@@ -14,6 +13,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "chrome/browser/ash/policy/server_backed_state/server_backed_device_state.h"
 #include "components/policy/proto/device_management_backend.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 // TODO(crbug.com/1271134): Logging as "WARNING" throughout the file to make
 // sure it's preserved in the logs.
@@ -67,10 +67,6 @@ std::string ConvertInitialEnrollmentMode(
         initial_enrollment_mode) {
   switch (initial_enrollment_mode) {
     case em::DeviceInitialEnrollmentStateResponse::INITIAL_ENROLLMENT_MODE_NONE:
-    // Do nothing initially with token-based enrollment mode.
-    // TODO(b/320497143): Return correct prefs constant instead of empty string.
-    case em::DeviceInitialEnrollmentStateResponse::
-        INITIAL_ENROLLMENT_MODE_TOKEN_ENROLLMENT_ENFORCED:
       return std::string();
     case em::DeviceInitialEnrollmentStateResponse::
         INITIAL_ENROLLMENT_MODE_ENROLLMENT_ENFORCED:
@@ -143,18 +139,18 @@ class InitialEnrollmentStateMessageProcessor
     inner_request->set_serial_number(device_serial_number_);
   }
 
-  std::optional<ParsedResponse> ParseResponse(
+  absl::optional<ParsedResponse> ParseResponse(
       const em::DeviceManagementResponse& response) override {
     if (!response.has_device_initial_enrollment_state_response()) {
       LOG(ERROR) << "Server failed to provide initial enrollment response.";
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     return ParseInitialEnrollmentStateResponse(
         response.device_initial_enrollment_state_response());
   }
 
-  static std::optional<ParsedResponse> ParseInitialEnrollmentStateResponse(
+  static absl::optional<ParsedResponse> ParseInitialEnrollmentStateResponse(
       const em::DeviceInitialEnrollmentStateResponse& state_response) {
     ParsedResponse parsed_response;
 
@@ -236,11 +232,11 @@ class FREStateMessageProcessor : public AutoEnrollmentStateMessageProcessor {
         ->set_server_backed_state_key(server_backed_state_key_);
   }
 
-  std::optional<ParsedResponse> ParseResponse(
+  absl::optional<ParsedResponse> ParseResponse(
       const em::DeviceManagementResponse& response) override {
     if (!response.has_device_state_retrieval_response()) {
       LOG(ERROR) << "Server failed to provide auto-enrollment response.";
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     const em::DeviceStateRetrievalResponse& state_response =

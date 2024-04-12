@@ -8,7 +8,9 @@
 #include <memory>
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/core/style/content_data.h"
-#include "third_party/blink/renderer/core/style/paint_images.h"
+#include "third_party/blink/renderer/core/style/data_ref.h"
+#include "third_party/blink/renderer/core/style/style_filter_data.h"
+#include "third_party/blink/renderer/platform/heap/persistent.h"
 
 namespace blink {
 
@@ -18,7 +20,7 @@ scoped_refptr<T> MemberCopy(const scoped_refptr<T>& v) {
 }
 
 template <typename T>
-Member<T> MemberCopy(const Member<T>& v) {
+Persistent<T> MemberCopy(const Persistent<T>& v) {
   return v;
 }
 
@@ -27,12 +29,13 @@ std::unique_ptr<T> MemberCopy(const std::unique_ptr<T>& v) {
   return v ? v->Clone() : nullptr;
 }
 
-inline Member<ContentData> MemberCopy(const Member<ContentData>& v) {
+inline Persistent<ContentData> MemberCopy(const Persistent<ContentData>& v) {
   return v ? v->Clone() : nullptr;
 }
 
-inline Member<PaintImages> MemberCopy(const Member<PaintImages>& v) {
-  return v ? v->Clone() : nullptr;
+inline Persistent<StyleFilterData> MemberCopy(
+    const Persistent<StyleFilterData>& v) {
+  return v->Copy();
 }
 
 }  // namespace blink

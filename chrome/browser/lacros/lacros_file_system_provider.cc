@@ -8,7 +8,6 @@
 #include "base/ranges/algorithm.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/chromeos/extensions/file_system_provider/service_worker_lifetime_manager.h"
-#include "chrome/browser/lacros/profile_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/common/extensions/api/file_system_provider_capabilities/file_system_provider_capabilities_handler.h"
@@ -25,13 +24,23 @@
 #include "ui/gfx/image/image_skia.h"
 
 namespace {
+// Returns the single main profile, or nullptr if none is found.
+Profile* GetMainProfile() {
+  auto profiles = g_browser_process->profile_manager()->GetLoadedProfiles();
+  const auto main_it = base::ranges::find_if(profiles, &Profile::IsMainProfile);
+  if (main_it == profiles.end()) {
+    return nullptr;
+  }
+  return *main_it;
+}
 
 const extensions::Extension* GetEnabledExtension(
     content::BrowserContext* browser_context,
     const extensions::ExtensionId& extension_id) {
   extensions::ExtensionRegistry* registry =
       extensions::ExtensionRegistry::Get(browser_context);
-  return registry->enabled_extensions().GetByID(extension_id);
+  return registry->GetExtensionById(extension_id,
+                                    extensions::ExtensionRegistry::ENABLED);
 }
 
 // Loads an icon of a single size.
@@ -71,8 +80,8 @@ void OnLoadedIcon32x32(base::WeakPtr<Profile> weak_profile_ptr,
   }
 
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
-  int fsp_service_version =
-      service->GetInterfaceVersion<crosapi::mojom::FileSystemProviderService>();
+  int fsp_service_version = service->GetInterfaceVersion(
+      crosapi::mojom::FileSystemProviderService::Uuid_);
   if (fsp_service_version <
       int{crosapi::mojom::FileSystemProviderService::MethodMinVersions::
               kExtensionLoadedDeprecatedMinVersion}) {
@@ -188,7 +197,7 @@ void LacrosFileSystemProvider::ForwardOperation(
 
 void LacrosFileSystemProvider::ForwardRequest(
     const std::string& provider,
-    const std::optional<std::string>& file_system_id,
+    const absl::optional<std::string>& file_system_id,
     int64_t request_id,
     int32_t histogram_value,
     const std::string& event_name,
@@ -260,7 +269,7 @@ void LacrosFileSystemProvider::ForwardRequest(
 
 void LacrosFileSystemProvider::CancelRequest(
     const std::string& provider,
-    const std::optional<std::string>& file_system_id,
+    const absl::optional<std::string>& file_system_id,
     int64_t request_id) {
   Profile* main_profile = GetMainProfile();
   if (!main_profile) {
@@ -297,8 +306,8 @@ void LacrosFileSystemProvider::OnExtensionUnloaded(
     const extensions::Extension* extension,
     extensions::UnloadedExtensionReason reason) {
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
-  if (service
-          ->GetInterfaceVersion<crosapi::mojom::FileSystemProviderService>() <
+  if (service->GetInterfaceVersion(
+          crosapi::mojom::FileSystemProviderService::Uuid_) <
       int{crosapi::mojom::FileSystemProviderService::MethodMinVersions::
               kExtensionUnloadedMinVersion}) {
     return;

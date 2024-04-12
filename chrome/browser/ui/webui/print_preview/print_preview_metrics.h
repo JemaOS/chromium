@@ -8,11 +8,6 @@
 #include <cstddef>
 
 #include "base/values.h"
-#include "printing/mojom/print.mojom-forward.h"
-
-namespace base {
-class TimeTicks;
-}  // namespace base
 
 namespace printing {
 
@@ -53,8 +48,7 @@ enum class PrintSettingsBuckets {
   kNonDefaultDpi = 23,
   kPin = 24,
   kFitToPaper = 25,
-  kNonSquarePixels = 26,
-  kMaxValue = kNonSquarePixels
+  kMaxValue = kFitToPaper
 };
 
 // This enum is used to back an UMA histogram, and should therefore be treated
@@ -88,9 +82,6 @@ void ReportPrintSettingsStats(const base::Value::Dict& print_settings,
                               bool is_pdf);
 
 void ReportUserActionHistogram(UserActionBuckets event);
-
-void RecordGetPrintersTimeHistogram(mojom::PrinterType printer_type,
-                                    const base::TimeTicks& start_time);
 
 }  // namespace printing
 

@@ -20,7 +20,7 @@ var tests;
 onload = function() {
   tests.forEach(function(t) {
     test(function(t_obj) {
-      if (t.shape === null) {
+      if (area.shape === null) {
         area.removeAttribute('shape');
       } else {
         area.shape = t.shape;

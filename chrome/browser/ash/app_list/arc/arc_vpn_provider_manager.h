@@ -53,10 +53,8 @@ class ArcVpnProviderManager : public ArcAppListPrefs::Observer,
 
   static ArcVpnProviderManager* Get(content::BrowserContext* context);
 
-  static std::unique_ptr<ArcVpnProviderManager> Create(
-      content::BrowserContext* context);
+  static ArcVpnProviderManager* Create(content::BrowserContext* context);
 
-  explicit ArcVpnProviderManager(ArcAppListPrefs* arc_app_list_prefs);
   ArcVpnProviderManager(const ArcVpnProviderManager&) = delete;
   ArcVpnProviderManager& operator=(const ArcVpnProviderManager&) = delete;
 
@@ -78,9 +76,11 @@ class ArcVpnProviderManager : public ArcAppListPrefs::Observer,
   std::vector<std::unique_ptr<ArcVpnProvider>> GetArcVpnProviders();
 
  private:
+  explicit ArcVpnProviderManager(ArcAppListPrefs* arc_app_list_prefs);
+
   void MaybeNotifyArcVpnProviderUpdate(const std::string& app_id);
 
-  const raw_ptr<ArcAppListPrefs> arc_app_list_prefs_;
+  const raw_ptr<ArcAppListPrefs, ExperimentalAsh> arc_app_list_prefs_;
 
   // List of observers.
   base::ObserverList<Observer> observer_list_;

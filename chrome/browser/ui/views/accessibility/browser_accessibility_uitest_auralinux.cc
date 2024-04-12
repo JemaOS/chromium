@@ -12,10 +12,10 @@
 #include "chrome/browser/ui/tab_modal_confirm_dialog.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/test/base/in_process_browser_test.h"
+#include "content/public/browser/browser_accessibility_state.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/scoped_accessibility_mode_override.h"
 #include "ui/accessibility/platform/ax_platform_node_base.h"
 #include "ui/views/accessibility/view_accessibility.h"
 
@@ -24,21 +24,21 @@ class AuraLinuxAccessibilityInProcessBrowserTest : public InProcessBrowserTest {
   AuraLinuxAccessibilityInProcessBrowserTest() = default;
 
   void PreRunTestOnMainThread() override {
-    ax_mode_override_ =
-        std::make_unique<content::ScopedAccessibilityModeOverride>(
+    ax_mode_setter_ =
+        std::make_unique<content::testing::ScopedContentAXModeSetter>(
             ui::kAXModeComplete);
     InProcessBrowserTest::PreRunTestOnMainThread();
   }
 
-  void PostRunTestOnMainThread() override {
-    InProcessBrowserTest::PostRunTestOnMainThread();
-    ax_mode_override_.reset();
-  }
+  AuraLinuxAccessibilityInProcessBrowserTest(
+      const AuraLinuxAccessibilityInProcessBrowserTest&) = delete;
+  AuraLinuxAccessibilityInProcessBrowserTest& operator=(
+      const AuraLinuxAccessibilityInProcessBrowserTest&) = delete;
 
   void VerifyEmbedRelationships();
 
  private:
-  std::unique_ptr<content::ScopedAccessibilityModeOverride> ax_mode_override_;
+  std::unique_ptr<content::testing::ScopedContentAXModeSetter> ax_mode_setter_;
 };
 
 IN_PROC_BROWSER_TEST_F(AuraLinuxAccessibilityInProcessBrowserTest,
@@ -254,7 +254,7 @@ IN_PROC_BROWSER_TEST_F(AuraLinuxAccessibilityInProcessBrowserTest,
       webview->GetViewAccessibility().GetNativeObject();
 
   // Gets the index in its parents for the WebView.
-  std::optional<int> index =
+  absl::optional<int> index =
       static_cast<ui::AXPlatformNodeBase*>(
           ui::AXPlatformNode::FromNativeViewAccessible(accessible))
           ->GetIndexInParent();

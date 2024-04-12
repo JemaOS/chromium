@@ -3,8 +3,7 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/lifetime/application_lifetime_desktop.h"
-
-#include <optional>
+#include "chrome/browser/lifetime/application_lifetime.h"
 
 #include "base/callback_list.h"
 #include "base/functional/bind.h"
@@ -18,7 +17,6 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
 #include "chrome/browser/download/download_core_service.h"
-#include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/lifetime/browser_close_manager.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
 #include "chrome/browser/lifetime/termination_notification.h"
@@ -36,12 +34,13 @@
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/notification_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/boot_times_recorder.h"
 #include "chrome/browser/lifetime/application_lifetime_chromeos.h"
 #else  // !BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ui/profiles/profile_picker.h"
+#include "chrome/browser/ui/profile_picker.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -74,7 +73,7 @@ using IgnoreUnloadHandlers =
 void AttemptRestartInternal(IgnoreUnloadHandlers ignore_unload_handlers) {
   // TODO(beng): Can this use ProfileManager::GetLoadedProfiles instead?
   // TODO(crbug.com/1205798): Unset SaveSessionState if the restart fails.
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     browser->profile()->SaveSessionState();
 #if BUILDFLAG(ENABLE_SESSION_SERVICE)
     auto* session_data_service =
@@ -114,8 +113,8 @@ void AttemptRestartInternal(IgnoreUnloadHandlers ignore_unload_handlers) {
   // does not work on Lacros.
   auto* lacros_service = chromeos::LacrosService::Get();
   if (lacros_service->IsAvailable<crosapi::mojom::BrowserServiceHost>() &&
-      lacros_service
-              ->GetInterfaceVersion<crosapi::mojom::BrowserServiceHost>() >=
+      lacros_service->GetInterfaceVersion(
+          crosapi::mojom::BrowserServiceHost::Uuid_) >=
           static_cast<int>(
               crosapi::mojom::BrowserServiceHost::kRequestRelaunchMinVersion)) {
     lacros_service->GetRemote<crosapi::mojom::BrowserServiceHost>()
@@ -210,8 +209,8 @@ void SessionEnding() {
 
   // Two different types of hang detection cannot attempt to upload crashes at
   // the same time or they would interfere with each other.
-  std::optional<ShutdownWatcherHelper> shutdown_watcher;
-  std::optional<base::WatchHangsInScope> watch_hangs_scope;
+  absl::optional<ShutdownWatcherHelper> shutdown_watcher;
+  absl::optional<base::WatchHangsInScope> watch_hangs_scope;
   if (base::HangWatcher::IsCrashReportingEnabled()) {
     // TODO(crbug.com/1327000): Migrate away from ShutdownWatcher and its old
     // timing.
@@ -240,10 +239,6 @@ void SessionEnding() {
 
   // Write important data first.
   g_browser_process->EndSession();
-
-  // Emit the shutdown metric for the end-session case. The process will exit
-  // after this point.
-  browser_shutdown::RecordShutdownMetrics();
 
 #if BUILDFLAG(IS_WIN)
   base::win::SetShouldCrashOnProcessDetach(false);
@@ -288,7 +283,7 @@ void MarkAsCleanShutdown() {
   std::set<Profile*> pending_profiles;
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     if (ExitTypeService* exit_type_service =
             ExitTypeService::GetInstanceForProfile(browser->profile())) {
       exit_type_service->SetCurrentSessionExitType(ExitType::kClean);
@@ -313,12 +308,11 @@ bool AreAllBrowsersCloseable() {
 
   // If there are any downloads active, all browsers are not closeable.
   // However, this does not block for malicious downloads.
-  if (DownloadCoreService::BlockingShutdownCountAllProfiles() > 0) {
+  if (DownloadCoreService::NonMaliciousDownloadCountAllProfiles() > 0)
     return false;
-  }
 
   // Check TabsNeedBeforeUnloadFired().
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     if (browser->TabsNeedBeforeUnloadFired())
       return false;
   }

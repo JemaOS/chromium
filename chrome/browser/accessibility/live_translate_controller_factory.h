@@ -33,7 +33,7 @@ class LiveTranslateControllerFactory : public ProfileKeyedServiceFactory {
 
   // BrowserContextKeyedServiceFactory:
   bool ServiceIsCreatedWithBrowserContext() const override;
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* browser_context) const override;
 };
 

@@ -22,7 +22,9 @@ public interface LayoutManagerHost {
      */
     static final boolean LOG_CHROME_VIEW_SHOW_TIME = false;
 
-    /** Requests a refresh of the visuals. */
+    /**
+     * Requests a refresh of the visuals.
+     */
     void requestRender();
 
     /**
@@ -70,6 +72,16 @@ public interface LayoutManagerHost {
     void getViewportFullControls(RectF outRect);
 
     /**
+     * @return The height of the top browser controls in pixels.
+     */
+    int getTopControlsHeightPixels();
+
+    /**
+     * @return The height of the bottom browsers controls in pixels.
+     */
+    int getBottomControlsHeightPixels();
+
+    /**
      * @return The associated {@link LayoutRenderHost} to be used from the GL Thread.
      */
     LayoutRenderHost getLayoutRenderHost();
@@ -91,7 +103,9 @@ public interface LayoutManagerHost {
      */
     FullscreenManager getFullscreenManager();
 
-    /** Called when the currently visible content has been changed. */
+    /**
+     * Called when the currently visible content has been changed.
+     */
     void onContentChanged();
 
     /**

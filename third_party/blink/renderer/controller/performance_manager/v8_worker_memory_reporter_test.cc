@@ -25,12 +25,7 @@ class V8WorkerMemoryReporterTest : public ::testing::Test {
 };
 
 class V8WorkerMemoryReporterTestWithDedicatedWorker
-    : public DedicatedWorkerTest {
- public:
-  V8WorkerMemoryReporterTestWithDedicatedWorker()
-      : DedicatedWorkerTest(
-            base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
-};
+    : public DedicatedWorkerTest {};
 
 class V8WorkerMemoryReporterTestWithMockPlatform
     : public V8WorkerMemoryReporterTestWithDedicatedWorker {
@@ -77,12 +72,9 @@ class MemoryUsageChecker {
     }
     called_ = true;
     if (callback_action_ == CallbackAction::kExitRunLoop) {
-      loop_.Quit();
+      test::ExitRunLoop();
     }
   }
-
-  void Run() { loop_.Run(); }
-
   bool IsCalled() { return called_; }
 
  private:
@@ -90,7 +82,6 @@ class MemoryUsageChecker {
   size_t worker_count_;
   size_t bytes_per_worker_lower_bound_;
   CallbackAction callback_action_;
-  base::RunLoop loop_;
 };
 
 TEST_F(V8WorkerMemoryReporterTest, OnMeasurementSuccess) {
@@ -179,7 +170,7 @@ TEST_F(V8WorkerMemoryReporterTestWithDedicatedWorker, GetMemoryUsage) {
   V8WorkerMemoryReporter::GetMemoryUsage(
       WTF::BindOnce(&MemoryUsageChecker::Callback, WTF::Unretained(&checker)),
       v8::MeasureMemoryExecution::kEager);
-  checker.Run();
+  test::EnterRunLoop();
   EXPECT_TRUE(checker.IsCalled());
 }
 
@@ -193,8 +184,8 @@ TEST_F(V8WorkerMemoryReporterTestWithMockPlatform, GetMemoryUsageTimeout) {
   V8WorkerMemoryReporter::GetMemoryUsage(
       WTF::BindOnce(&MemoryUsageChecker::Callback, WTF::Unretained(&checker)),
       v8::MeasureMemoryExecution::kEager);
-  FastForwardBy(
-      base::Seconds(V8WorkerMemoryReporter::kTimeout.InSeconds() + 1));
+  platform()->RunForPeriodSeconds(V8WorkerMemoryReporter::kTimeout.InSeconds() +
+                                  1);
   EXPECT_TRUE(checker.IsCalled());
 }
 

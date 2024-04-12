@@ -16,6 +16,11 @@
 
 namespace ui {
 
+// static
+constexpr char XdgForeignWrapper::kInterfaceNameV1[];
+// static
+constexpr char XdgForeignWrapper::kInterfaceNameV2[];
+
 constexpr uint32_t kMinVersion = 1;
 
 using OnHandleExported = XdgForeignWrapper::OnHandleExported;
@@ -121,8 +126,10 @@ class XdgForeignWrapperImpl
   }
 
  private:
-  // zxdg_exported_{v1,v2}_listener callbacks:
-  static void OnHandle(void* data, ExportedType* exported, const char* handle) {
+  // static
+  static void OnExported(void* data,
+                         ExportedType* exported,
+                         const char* handle) {
     auto* self =
         static_cast<XdgForeignWrapperImpl<ExporterType, ExportedType>*>(data);
     DCHECK(self);
@@ -133,9 +140,8 @@ class XdgForeignWrapperImpl
     DCHECK(exported_surface_it != self->exported_surfaces_.end());
     exported_surface_it->exported_handle = handle;
 
-    for (auto& cb : exported_surface_it->callbacks) {
+    for (auto& cb : exported_surface_it->callbacks)
       std::move(cb).Run(exported_surface_it->exported_handle);
-    }
 
     exported_surface_it->callbacks.clear();
   }
@@ -148,15 +154,13 @@ class XdgForeignWrapperImpl
 template <>
 void XdgForeignWrapperImpl<zxdg_exporter_v1, zxdg_exported_v1>::
     ExportSurfaceInternal(wl_surface* surface, OnHandleExported cb) {
+  static constexpr zxdg_exported_v1_listener kExportedListener = {&OnExported};
+
   ExportedSurface<zxdg_exported_v1> exported_surface(surface, std::move(cb));
   exported_surface.exported.reset(
       zxdg_exporter_v1_export(exporter_.get(), surface));
-
-  static constexpr zxdg_exported_v1_listener kXdgExportedListener = {
-      .handle = &OnHandle};
   zxdg_exported_v1_add_listener(exported_surface.exported.get(),
-                                &kXdgExportedListener, this);
-
+                                &kExportedListener, this);
   exported_surfaces_.emplace_back(std::move(exported_surface));
   connection_->Flush();
 }
@@ -164,15 +168,13 @@ void XdgForeignWrapperImpl<zxdg_exporter_v1, zxdg_exported_v1>::
 template <>
 void XdgForeignWrapperImpl<zxdg_exporter_v2, zxdg_exported_v2>::
     ExportSurfaceInternal(wl_surface* surface, OnHandleExported cb) {
+  static constexpr zxdg_exported_v2_listener kExportedListener = {&OnExported};
+
   ExportedSurface<zxdg_exported_v2> exported_surface(surface, std::move(cb));
   exported_surface.exported.reset(
       zxdg_exporter_v2_export_toplevel(exporter_.get(), surface));
-
-  static constexpr zxdg_exported_v2_listener kXdgExportedListener = {
-      .handle = &OnHandle};
   zxdg_exported_v2_add_listener(exported_surface.exported.get(),
-                                &kXdgExportedListener, this);
-
+                                &kExportedListener, this);
   exported_surfaces_.emplace_back(std::move(exported_surface));
   connection_->Flush();
 }

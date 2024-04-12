@@ -6,10 +6,10 @@
  * @fileoverview Polymer element for network password input fields.
  */
 
-import '//resources/ash/common/cr_elements/cr_icon_button/cr_icon_button.js';
-import '//resources/ash/common/cr_elements/cr_icons.css.js';
-import '//resources/ash/common/cr_elements/cr_input/cr_input.js';
-import '//resources/ash/common/cr_elements/cr_shared_vars.css.js';
+import '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import '//resources/cr_elements/cr_icons.css.js';
+import '//resources/cr_elements/cr_input/cr_input.js';
+import '//resources/cr_elements/cr_shared_vars.css.js';
 import '//resources/polymer/v3_0/paper-tooltip/paper-tooltip.js';
 import './cr_policy_network_indicator_mojo.js';
 import './network_shared.css.js';
@@ -36,6 +36,11 @@ Polymer({
     label: {
       type: String,
       reflectToAttribute: true,
+    },
+
+    value: {
+      type: String,
+      notify: true,
     },
 
     showPassword: {
@@ -132,7 +137,7 @@ Polymer({
    * @private
    */
   onShowPasswordTap_(event) {
-    if (event.type === 'touchend' && event.cancelable) {
+    if (event.type === 'touchend') {
       // Prevent touch from producing secondary mouse events
       // that may cause the tooltip to appear unnecessarily.
       event.preventDefault();
@@ -171,9 +176,7 @@ Polymer({
     // Prevent cursor navigation keys from working when the placeholder password
     // is displayed. This prevents using the arrows or home/end keys to
     // remove or change the selection.
-    if (event.cancelable) {
-      event.preventDefault();
-    }
+    event.preventDefault();
   },
 
   /**
@@ -194,8 +197,7 @@ Polymer({
     // selection when the placeholder password is displayed.  This prevents
     // the user from modifying the placeholder, only allows it to be left alone
     // or completely removed.
-    if (event.cancelable) {
-      event.preventDefault();
-    }
+    event.preventDefault();
   },
+
 });

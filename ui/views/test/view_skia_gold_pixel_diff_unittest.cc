@@ -8,8 +8,6 @@
 #include <utility>
 
 #include "base/command_line.h"
-#include "base/strings/strcat.h"
-#include "base/strings/utf_string_conversions.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkBitmap.h"
@@ -18,18 +16,14 @@
 #include "ui/views/view.h"
 
 using ::testing::_;
-using ::testing::AnyNumber;
-using ::testing::IsTrue;
-using ::testing::ResultOf;
 using ::testing::Return;
 
 namespace views {
 
-class FakeBrowserSkiaGoldPixelDiff : public ViewSkiaGoldPixelDiff {
+class MockBrowserSkiaGoldPixelDiff : public ViewSkiaGoldPixelDiff {
  public:
-  explicit FakeBrowserSkiaGoldPixelDiff(const std::string& screenshot_prefix)
-      : ViewSkiaGoldPixelDiff(screenshot_prefix) {}
-
+  MockBrowserSkiaGoldPixelDiff() = default;
+  MOCK_CONST_METHOD1(LaunchProcess, int(const base::CommandLine&));
   bool GrabWindowSnapshotInternal(gfx::NativeWindow window,
                                   const gfx::Rect& snapshot_bounds,
                                   gfx::Image* image) const override {
@@ -40,11 +34,18 @@ class FakeBrowserSkiaGoldPixelDiff : public ViewSkiaGoldPixelDiff {
   }
 };
 
+class MockViewSkiaGoldPixelDiffMockUpload
+    : public MockBrowserSkiaGoldPixelDiff {
+ public:
+  MockViewSkiaGoldPixelDiffMockUpload() = default;
+  MOCK_CONST_METHOD3(UploadToSkiaGoldServer,
+                     bool(const base::FilePath&,
+                          const std::string&,
+                          const ui::test::SkiaGoldMatchingAlgorithm*));
+};
+
 class ViewSkiaGoldPixelDiffTest : public views::test::WidgetTest {
  public:
-  using MockLaunchProcess = testing::MockFunction<
-      ui::test::SkiaGoldPixelDiff::LaunchProcessCallback::RunType>;
-
   ViewSkiaGoldPixelDiffTest() {
     auto* cmd_line = base::CommandLine::ForCurrentProcess();
     cmd_line->AppendSwitchASCII("git-revision", "test");
@@ -61,64 +62,25 @@ class ViewSkiaGoldPixelDiffTest : public views::test::WidgetTest {
 
     return widget->SetContentsView(std::move(view_unique_ptr));
   }
-
- protected:
-  void SetUp() override {
-    views::test::WidgetTest::SetUp();
-
-    session_cache_.emplace();
-    mock_launch_process_.emplace();
-    auto_reset_custom_launch_process_.emplace(
-        ui::test::SkiaGoldPixelDiff::OverrideLaunchProcessForTesting(
-            base::BindLambdaForTesting(mock_launch_process_->AsStdFunction())));
-  }
-
-  void TearDown() override {
-    views::test::WidgetTest::TearDown();
-
-    auto_reset_custom_launch_process_.reset();
-    mock_launch_process_.reset();
-    session_cache_.reset();
-  }
-
-  MockLaunchProcess& mock_launch_process() {
-    return mock_launch_process_.value();
-  }
-
- private:
-  std::optional<ui::test::SkiaGoldPixelDiff::ScopedSessionCacheForTesting>
-      session_cache_;
-  std::optional<MockLaunchProcess> mock_launch_process_;
-  std::optional<
-      base::AutoReset<ui::test::SkiaGoldPixelDiff::LaunchProcessCallback>>
-      auto_reset_custom_launch_process_;
 };
 
 TEST_F(ViewSkiaGoldPixelDiffTest, CompareScreenshotByView) {
-  EXPECT_CALL(mock_launch_process(), Call(_)).Times(AnyNumber());
-  auto mock_pixel = FakeBrowserSkiaGoldPixelDiff("Prefix");
-  views::Widget* widget = CreateTopLevelNativeWidget();
-  views::View* child_view = AddChildViewToWidget(widget);
+  MockViewSkiaGoldPixelDiffMockUpload mock_pixel;
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   constexpr char kPrefix[] = "Prefix.Demo.";
 #else
   constexpr char kPrefix[] = "Prefix_Demo_";
 #endif
-  EXPECT_CALL(
-      mock_launch_process(),
-      Call(ResultOf(
-          "imgtest add is called with the expected --test-name value",
-          [&](const base::CommandLine& cmdline) {
-            return cmdline.argv()[1] == FILE_PATH_LITERAL("imgtest") &&
-                   cmdline.argv()[2] == FILE_PATH_LITERAL("add") &&
-                   cmdline.GetSwitchValueASCII("test-name") ==
-                       base::StrCat(
-                           {kPrefix,
-                            ui::test::SkiaGoldPixelDiff::GetPlatform()});
-          },
-          IsTrue())))
-      .Times(1);
+
+  EXPECT_CALL(mock_pixel,
+              UploadToSkiaGoldServer(
+                  _, kPrefix + ui::test::SkiaGoldPixelDiff::GetPlatform(), _))
+      .Times(1)
+      .WillOnce(Return(true));
+  views::Widget* widget = CreateTopLevelNativeWidget();
+  views::View* child_view = AddChildViewToWidget(widget);
+  mock_pixel.Init("Prefix");
   bool ret = mock_pixel.CompareViewScreenshot("Demo", child_view);
   EXPECT_TRUE(ret);
   widget->CloseNow();
@@ -128,10 +90,11 @@ TEST_F(ViewSkiaGoldPixelDiffTest, BypassSkiaGoldFunctionality) {
   base::CommandLine::ForCurrentProcess()->AppendSwitch(
       "bypass-skia-gold-functionality");
 
-  EXPECT_CALL(mock_launch_process(), Call(_)).Times(0);
-  auto mock_pixel = FakeBrowserSkiaGoldPixelDiff("Prefix");
+  MockBrowserSkiaGoldPixelDiff mock_pixel;
+  EXPECT_CALL(mock_pixel, LaunchProcess(_)).Times(0);
   views::Widget* widget = CreateTopLevelNativeWidget();
   views::View* child_view = AddChildViewToWidget(widget);
+  mock_pixel.Init("Prefix");
   bool ret = mock_pixel.CompareViewScreenshot("Demo", child_view);
   EXPECT_TRUE(ret);
   widget->CloseNow();

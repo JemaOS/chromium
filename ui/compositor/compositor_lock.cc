@@ -4,11 +4,9 @@
 
 #include "ui/compositor/compositor_lock.h"
 
-#include <vector>
-
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/task/single_thread_task_runner.h"
 
 namespace ui {
@@ -57,7 +55,7 @@ std::unique_ptr<CompositorLock> CompositorLockManager::GetCompositorLock(
 }
 
 void CompositorLockManager::RemoveCompositorLock(CompositorLock* lock) {
-  std::erase(active_locks_, lock);
+  base::Erase(active_locks_, lock);
   if (active_locks_.empty()) {
     lock_timeout_weak_ptr_factory_.InvalidateWeakPtrs();
     scheduled_timeout_ = base::TimeTicks();
@@ -66,11 +64,9 @@ void CompositorLockManager::RemoveCompositorLock(CompositorLock* lock) {
 
 void CompositorLockManager::TimeoutLocks() {
   // Make a copy, we're going to cause |active_locks_| to become empty.
-  std::vector<raw_ptr<CompositorLock, VectorExperimental>> locks =
-      active_locks_;
-  for (ui::CompositorLock* lock : locks) {
+  std::vector<CompositorLock*> locks = active_locks_;
+  for (auto* lock : locks)
     lock->TimeoutLock();
-  }
   DCHECK(active_locks_.empty());
 }
 

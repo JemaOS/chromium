@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://customize-chrome-side-panel.top-chrome/shared/sp_shared_style.css.js';
 import 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
 import 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 import 'chrome://resources/cr_elements/policy/cr_policy_indicator.js';
@@ -10,13 +9,11 @@ import 'chrome://resources/polymer/v3_0/iron-collapse/iron-collapse.js';
 import './strings.m.js';
 
 import {loadTimeData} from '//resources/js/load_time_data.js';
-import type {DomRepeatEvent} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {DomRepeatEvent, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './cards.html.js';
 import {ChromeCartProxy} from './chrome_cart_proxy.js';
-import {CustomizeChromeAction, recordCustomizeChromeAction} from './common.js';
-import type {CustomizeChromePageHandlerInterface, ModuleSettings} from './customize_chrome.mojom-webui.js';
+import {CustomizeChromePageHandlerInterface, ModuleSettings} from './customize_chrome.mojom-webui.js';
 import {CustomizeChromeApiProxy} from './customize_chrome_api_proxy.js';
 
 /*
@@ -139,8 +136,6 @@ export class CardsElement extends PolymerElement {
   }
 
   private onShowChange_(e: CustomEvent<boolean>) {
-    recordCustomizeChromeAction(
-        CustomizeChromeAction.SHOW_CARDS_TOGGLE_CLICKED);
     this.show_ = e.detail;
     this.pageHandler_.setModulesVisible(this.show_);
   }
@@ -149,10 +144,8 @@ export class CardsElement extends PolymerElement {
     const id: string = e.model.item.id;
     const checked: boolean = e.detail;
     this.pageHandler_.setModuleDisabled(id, !checked);
-    const metricBase = `NewTabPage.Modules.${checked ? 'Enabled' : 'Disabled'}`;
-    chrome.metricsPrivate.recordSparseValueWithPersistentHash(metricBase, id);
     chrome.metricsPrivate.recordSparseValueWithPersistentHash(
-        `${metricBase}.Customize`, id);
+        'NewTabPage.Modules.' + (checked ? 'Enabled' : 'Disabled'), id);
   }
 
   private showDiscountOptionCheckbox_(

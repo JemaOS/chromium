@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_features.h"
@@ -281,7 +280,7 @@ class AlwaysBlockedExternalProtocolHandlerDelegate
       content::WebContents* web_contents,
       ui::PageTransition page_transition,
       bool has_user_gesture,
-      const std::optional<url::Origin>& initiating_origin,
+      const absl::optional<url::Origin>& initiating_origin,
       const std::u16string& program_name) override {
     NOTREACHED();
   }

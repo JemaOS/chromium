@@ -53,6 +53,8 @@ ClientHintToPolicyFeatureMap MakeClientHintToPolicyFeatureMap() {
        mojom::PermissionsPolicyFeature::kClientHintPrefersColorScheme},
       {network::mojom::WebClientHintsType::kUABitness,
        mojom::PermissionsPolicyFeature::kClientHintUABitness},
+      {network::mojom::WebClientHintsType::kUAReduced,
+       mojom::PermissionsPolicyFeature::kClientHintUAReduced},
       {network::mojom::WebClientHintsType::kViewportHeight,
        mojom::PermissionsPolicyFeature::kClientHintViewportHeight},
       {network::mojom::WebClientHintsType::kDeviceMemory,
@@ -65,16 +67,14 @@ ClientHintToPolicyFeatureMap MakeClientHintToPolicyFeatureMap() {
        mojom::PermissionsPolicyFeature::kClientHintViewportWidth},
       {network::mojom::WebClientHintsType::kUAFullVersionList,
        mojom::PermissionsPolicyFeature::kClientHintUAFullVersionList},
+      {network::mojom::WebClientHintsType::kFullUserAgent,
+       mojom::PermissionsPolicyFeature::kClientHintUAFull},
       {network::mojom::WebClientHintsType::kUAWoW64,
        mojom::PermissionsPolicyFeature::kClientHintUAWoW64},
       {network::mojom::WebClientHintsType::kSaveData,
        mojom::PermissionsPolicyFeature::kClientHintSaveData},
       {network::mojom::WebClientHintsType::kPrefersReducedMotion,
        mojom::PermissionsPolicyFeature::kClientHintPrefersReducedMotion},
-      {network::mojom::WebClientHintsType::kUAFormFactors,
-       mojom::PermissionsPolicyFeature::kClientHintUAFormFactors},
-      {network::mojom::WebClientHintsType::kPrefersReducedTransparency,
-       mojom::PermissionsPolicyFeature::kClientHintPrefersReducedTransparency},
   };
 }
 

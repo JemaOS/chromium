@@ -3,13 +3,14 @@
 // found in the LICENSE file.
 
 import '../icons.html.js';
+import '../cr_shared_style.css.js';
+import '../cr_shared_vars.css.js';
 import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
 import '//resources/polymer/v3_0/paper-tooltip/paper-tooltip.js';
 
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {getCss} from './cr_tooltip_icon.css.js';
-import {getHtml} from './cr_tooltip_icon.html.js';
+import {getTemplate} from './cr_tooltip_icon.html.js';
 
 export interface CrTooltipIconElement {
   $: {
@@ -17,34 +18,33 @@ export interface CrTooltipIconElement {
   };
 }
 
-export class CrTooltipIconElement extends CrLitElement {
+export class CrTooltipIconElement extends PolymerElement {
   static get is() {
     return 'cr-tooltip-icon';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
-      iconAriaLabel: {type: String},
-      iconClass: {type: String},
-      tooltipText: {type: String},
+      iconAriaLabel: String,
+      iconClass: String,
+      tooltipText: String,
 
       /** Position of tooltip popup related to the icon. */
-      tooltipPosition: {type: String},
+      tooltipPosition: {
+        type: String,
+        value: 'top',
+      },
     };
   }
 
-  iconAriaLabel: string = '';
-  iconClass: string = '';
-  tooltipText: string = '';
-  tooltipPosition: string = 'top';
+  iconAriaLabel: string;
+  iconClass: string;
+  tooltipText: string;
+  tooltipPosition: string;
 
   getFocusableElement(): HTMLElement {
     return this.$.indicator;

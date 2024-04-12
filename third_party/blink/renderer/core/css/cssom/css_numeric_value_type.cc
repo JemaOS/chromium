@@ -67,8 +67,6 @@ CSSNumericValueType::BaseType UnitTypeToBaseType(
     case UnitType::kIcs:
     case UnitType::kLhs:
     case UnitType::kRlhs:
-    case UnitType::kCaps:
-    case UnitType::kRcaps:
       return BaseType::kLength;
     case UnitType::kMilliseconds:
     case UnitType::kSeconds:
@@ -86,7 +84,7 @@ CSSNumericValueType::BaseType UnitTypeToBaseType(
     case UnitType::kDotsPerInch:
     case UnitType::kDotsPerCentimeter:
       return BaseType::kResolution;
-    case UnitType::kFlex:
+    case UnitType::kFraction:
       return BaseType::kFlex;
     case UnitType::kPercentage:
       return BaseType::kPercent;
@@ -98,7 +96,7 @@ CSSNumericValueType::BaseType UnitTypeToBaseType(
 
 }  // namespace
 
-String CSSNumericValueType::BaseTypeToString(BaseType base_type) {
+AtomicString CSSNumericValueType::BaseTypeToString(BaseType base_type) {
   switch (base_type) {
     case BaseType::kLength:
       return "length";

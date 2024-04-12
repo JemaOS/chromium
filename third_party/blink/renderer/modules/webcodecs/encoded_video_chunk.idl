@@ -8,9 +8,9 @@ enum EncodedVideoChunkType {
 };
 
 [
-    Exposed=(Window,DedicatedWorker)
+    Exposed=(Window,DedicatedWorker),
+    RuntimeEnabled=WebCodecs
 ] interface EncodedVideoChunk {
-  [CallWith=ScriptState, RaisesException]
   constructor(EncodedVideoChunkInit init);
   readonly attribute EncodedVideoChunkType type;
   // TODO: Add frame dependency information

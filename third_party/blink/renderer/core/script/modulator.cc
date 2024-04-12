@@ -37,13 +37,15 @@ Modulator* Modulator::From(ScriptState* script_state) {
   if (modulator)
     return modulator;
   ExecutionContext* execution_context = ExecutionContext::From(script_state);
-  if (IsA<LocalDOMWindow>(execution_context)) {
+  if (auto* window = DynamicTo<LocalDOMWindow>(execution_context)) {
     modulator = MakeGarbageCollected<DocumentModulatorImpl>(script_state);
     Modulator::SetModulator(script_state, modulator);
-  } else if (IsA<WorkletGlobalScope>(execution_context)) {
+  } else if (auto* worklet_scope =
+                 DynamicTo<WorkletGlobalScope>(execution_context)) {
     modulator = MakeGarbageCollected<WorkletModulatorImpl>(script_state);
     Modulator::SetModulator(script_state, modulator);
-  } else if (IsA<WorkerGlobalScope>(execution_context)) {
+  } else if (auto* worker_scope =
+                 DynamicTo<WorkerGlobalScope>(execution_context)) {
     modulator = MakeGarbageCollected<WorkerModulatorImpl>(script_state);
     Modulator::SetModulator(script_state, modulator);
   } else {

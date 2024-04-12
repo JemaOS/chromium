@@ -35,9 +35,6 @@ class QuickPairBrowserDelegateImpl final : public QuickPairBrowserDelegate {
   PrefService* GetActivePrefService() override;
   void RequestService(
       mojo::PendingReceiver<mojom::QuickPairService> receiver) override;
-  bool CompanionAppInstalled(const std::string& app_id) override;
-  void LaunchCompanionApp(const std::string& app_id) override;
-  void OpenPlayStorePage(GURL play_store_uri) override;
 
  private:
   Profile* GetActiveProfile();

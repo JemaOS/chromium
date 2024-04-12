@@ -4,15 +4,12 @@
 
 #include "ash/system/bluetooth/bluetooth_detailed_view_controller.h"
 
-#include <optional>
-
 #include "ash/constants/ash_switches.h"
 #include "ash/public/cpp/bluetooth_config_service.h"
 #include "ash/public/cpp/hats_bluetooth_revamp_trigger.h"
 #include "ash/public/cpp/system_tray_client.h"
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
-#include "ash/system/bluetooth/hid_preserving_controller/hid_preserving_bluetooth_state_service.h"
 #include "ash/system/model/system_tray_model.h"
 #include "ash/system/unified/unified_system_tray_controller.h"
 #include "base/check.h"
@@ -21,6 +18,7 @@
 #include "build/chromeos_buildflags.h"
 #include "chromeos/ash/services/bluetooth_config/public/cpp/cros_bluetooth_config_util.h"
 #include "mojo/public/cpp/bindings/clone_traits.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/views/view.h"
 
@@ -48,11 +46,6 @@ BluetoothDetailedViewController::BluetoothDetailedViewController(
       remote_cros_bluetooth_config_.BindNewPipeAndPassReceiver());
   remote_cros_bluetooth_config_->ObserveSystemProperties(
       cros_system_properties_observer_receiver_.BindNewPipeAndPassRemote());
-
-  if (features::IsBluetoothDisconnectWarningEnabled()) {
-    GetHidPreservingBluetoothStateControllerService(
-        remote_hid_preserving_bluetooth_.BindNewPipeAndPassReceiver());
-  }
 }
 
 BluetoothDetailedViewController::~BluetoothDetailedViewController() = default;
@@ -119,12 +112,7 @@ void BluetoothDetailedViewController::OnPropertiesUpdated(
 }
 
 void BluetoothDetailedViewController::OnToggleClicked(bool new_state) {
-  if (features::IsBluetoothDisconnectWarningEnabled()) {
-    remote_hid_preserving_bluetooth_->TryToSetBluetoothEnabledState(
-        new_state, mojom::HidWarningDialogSource::kQuickSettings);
-  } else {
-    remote_cros_bluetooth_config_->SetBluetoothEnabledState(new_state);
-  }
+  remote_cros_bluetooth_config_->SetBluetoothEnabledState(new_state);
 
   if (auto* hats_bluetooth_revamp_trigger = HatsBluetoothRevampTrigger::Get()) {
     hats_bluetooth_revamp_trigger->TryToShowSurvey();
@@ -134,7 +122,7 @@ void BluetoothDetailedViewController::OnToggleClicked(bool new_state) {
 void BluetoothDetailedViewController::OnPairNewDeviceRequested() {
   tray_controller_->CloseBubble();  // Deletes |this|.
   Shell::Get()->system_tray_model()->client()->ShowBluetoothPairingDialog(
-      /*device_address=*/std::nullopt);
+      /*device_address=*/absl::nullopt);
 
   if (auto* hats_bluetooth_revamp_trigger = HatsBluetoothRevampTrigger::Get()) {
     hats_bluetooth_revamp_trigger->TryToShowSurvey();
@@ -163,11 +151,13 @@ void BluetoothDetailedViewController::OnDeviceListItemSelected(
 }
 
 void BluetoothDetailedViewController::BluetoothEnabledStateChanged() {
+  const bool bluetooth_enabled_state =
+      IsBluetoothEnabledOrEnabling(system_state_);
   if (view_)
-    view_->UpdateBluetoothEnabledState(system_state_);
+    view_->UpdateBluetoothEnabledState(bluetooth_enabled_state);
   if (device_list_controller_) {
     device_list_controller_->UpdateBluetoothEnabledState(
-        IsBluetoothEnabledOrEnabling(system_state_));
+        bluetooth_enabled_state);
   }
 }
 

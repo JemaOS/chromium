@@ -120,7 +120,7 @@ class InputDataProvider : public mojom::InputDataProvider,
   void LidEventReceived(chromeos::PowerManagerClient::LidState state,
                         base::TimeTicks time) override;
   void OnReceiveSwitchStates(
-      std::optional<chromeos::PowerManagerClient::SwitchStates> switch_states);
+      absl::optional<chromeos::PowerManagerClient::SwitchStates> switch_states);
 
   // display::DisplayConfigurator::Observer
   void OnPowerStateChanged(chromeos::DisplayPowerState power_state) override;
@@ -134,8 +134,6 @@ class InputDataProvider : public mojom::InputDataProvider,
 
  private:
   void Initialize(aura::Window* window);
-
-  void GetConnectedDevicesHelper(GetConnectedDevicesCallback callback);
 
   void ProcessDeviceInfo(std::unique_ptr<InputDeviceInformation> device_info);
 
@@ -203,7 +201,7 @@ class InputDataProvider : public mojom::InputDataProvider,
   base::Time keyboard_tester_start_timestamp_;
 
   bool logged_not_dispatching_key_events_ = false;
-  raw_ptr<views::Widget> widget_ = nullptr;
+  raw_ptr<views::Widget, ExperimentalAsh> widget_ = nullptr;
 
   mojo::RemoteSet<mojom::ConnectedDevicesObserver> connected_devices_observers_;
 
@@ -224,8 +222,6 @@ class InputDataProvider : public mojom::InputDataProvider,
   raw_ptr<ui::EventRewriterAsh::Delegate> event_rewriter_delegate_;
 
   HealthdEventReporter healthd_event_reporter_;
-
-  base::OnceCallback<void()> get_connected_devices_callback_;
 
   base::WeakPtrFactory<InputDataProvider> weak_factory_{this};
 };

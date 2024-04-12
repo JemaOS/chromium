@@ -6,8 +6,8 @@
 #define UI_VIEWS_CONTROLS_NATIVE_NATIVE_VIEW_HOST_H_
 
 #include <memory>
-#include <optional>
 
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/native_widget_types.h"
 #include "ui/views/view.h"
 
@@ -31,9 +31,9 @@ extern const char kWidgetNativeViewHostKey[];
 // Under the hood, a platform-specific NativeViewHostWrapper implementation does
 // the platform-specific work of manipulating the underlying OS widget type.
 class VIEWS_EXPORT NativeViewHost : public View {
-  METADATA_HEADER(NativeViewHost, View)
-
  public:
+  METADATA_HEADER(NativeViewHost);
+
   NativeViewHost();
 
   NativeViewHost(const NativeViewHost&) = delete;
@@ -104,10 +104,10 @@ class VIEWS_EXPORT NativeViewHost : public View {
 
   // Sets the desired background color for repainting when the view is clipped.
   // Defaults to transparent color if unset.
-  void SetBackgroundColorWhenClipped(std::optional<SkColor> color);
+  void SetBackgroundColorWhenClipped(absl::optional<SkColor> color);
 
   // Overridden from View:
-  void Layout(PassKey) override;
+  void Layout() override;
   void OnPaint(gfx::Canvas* canvas) override;
   void VisibilityChanged(View* starting_from, bool is_visible) override;
   void OnFocus() override;
@@ -135,7 +135,7 @@ class VIEWS_EXPORT NativeViewHost : public View {
   void ClearFocus();
 
   // The attached native view. There is exactly one native_view_ attached.
-  gfx::NativeView native_view_ = gfx::NativeView();
+  gfx::NativeView native_view_ = nullptr;
 
   // A platform-specific wrapper that does the OS-level manipulation of the
   // attached gfx::NativeView.
@@ -150,7 +150,7 @@ class VIEWS_EXPORT NativeViewHost : public View {
   bool fast_resize_ = false;
 
   // The color to use for repainting the background when the view is clipped.
-  std::optional<SkColor> background_color_when_clipped_;
+  absl::optional<SkColor> background_color_when_clipped_;
 };
 
 }  // namespace views

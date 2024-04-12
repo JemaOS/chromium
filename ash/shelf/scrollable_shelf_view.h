@@ -6,7 +6,6 @@
 #define ASH_SHELF_SCROLLABLE_SHELF_VIEW_H_
 
 #include <memory>
-#include <optional>
 
 #include "ash/app_list/views/app_list_drag_and_drop_host.h"
 #include "ash/ash_export.h"
@@ -24,7 +23,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
-#include "ui/base/metadata/metadata_header_macros.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animation_observer.h"
 #include "ui/gfx/geometry/linear_gradient.h"
@@ -52,8 +51,6 @@ class ASH_EXPORT ScrollableShelfView : public views::AccessiblePaneView,
                                        public ShelfTooltipDelegate,
                                        public views::ContextMenuController,
                                        public ui::ImplicitAnimationObserver {
-  METADATA_HEADER(ScrollableShelfView, views::AccessiblePaneView)
-
  public:
   class TestObserver {
    public:
@@ -129,10 +126,6 @@ class ASH_EXPORT ScrollableShelfView : public views::AccessiblePaneView,
   // that the returned value is mirrored for the horizontal shelf under RTL.
   gfx::Insets CalculateMirroredEdgePadding(bool use_target_bounds) const;
 
-  // Returns whether the shelf will be overflown (i.e. it will show one or both
-  // arrow buttons) if it is given the input length.
-  bool CalculateShelfOverflowForAvailableLength(int available_length) const;
-
   views::View* GetShelfContainerViewForTest();
   bool ShouldAdjustForTest() const;
 
@@ -160,10 +153,10 @@ class ASH_EXPORT ScrollableShelfView : public views::AccessiblePaneView,
   LayoutStrategy layout_strategy_for_test() const { return layout_strategy_; }
   gfx::Vector2dF scroll_offset_for_test() const { return scroll_offset_; }
 
-  std::optional<size_t> first_tappable_app_index() const {
+  absl::optional<size_t> first_tappable_app_index() const {
     return first_tappable_app_index_;
   }
-  std::optional<size_t> last_tappable_app_index() const {
+  absl::optional<size_t> last_tappable_app_index() const {
     return last_tappable_app_index_;
   }
 
@@ -235,8 +228,9 @@ class ASH_EXPORT ScrollableShelfView : public views::AccessiblePaneView,
 
   // views::View:
   gfx::Size CalculatePreferredSize() const override;
-  void Layout(PassKey) override;
+  void Layout() override;
   void ChildPreferredSizeChanged(views::View* child) override;
+  const char* GetClassName() const override;
   void OnScrollEvent(ui::ScrollEvent* event) override;
   void OnMouseEvent(ui::MouseEvent* event) override;
   void OnGestureEvent(ui::GestureEvent* event) override;
@@ -280,8 +274,7 @@ class ASH_EXPORT ScrollableShelfView : public views::AccessiblePaneView,
 
   // ShelfTooltipDelegate:
   bool ShouldShowTooltipForView(const views::View* view) const override;
-  bool ShouldHideTooltip(const gfx::Point& cursor_location,
-                         views::View* delegate_view) const override;
+  bool ShouldHideTooltip(const gfx::Point& cursor_location) const override;
   const std::vector<aura::Window*> GetOpenWindowsForView(
       views::View* view) override;
   std::u16string GetTitleForView(const views::View* view) const override;
@@ -291,9 +284,9 @@ class ASH_EXPORT ScrollableShelfView : public views::AccessiblePaneView,
   void OnImplicitAnimationsCompleted() override;
 
   // Returns whether the left/right arrow button should show based on the
-  // current layout strategy. Because the visibility of arrow buttons is updated
-  // during layout, which may happen asynchronously, we should not use arrow
-  // buttons' visibility directly.
+  // current layout strategy. Because Layout(), where the visibility of arrow
+  // buttons is updated, may be called in asynchronous way, we should not use
+  // arrow buttons' visibility directly.
   bool ShouldShowLeftArrow() const;
   bool ShouldShowRightArrow() const;
 
@@ -374,7 +367,7 @@ class ASH_EXPORT ScrollableShelfView : public views::AccessiblePaneView,
   // layout strategy and offset along the main axis (that is the x-axis when
   // shelf is horizontally aligned or the y-axis if the shelf is vertically
   // aligned).
-  std::pair<std::optional<size_t>, std::optional<size_t>>
+  std::pair<absl::optional<size_t>, absl::optional<size_t>>
   CalculateTappableIconIndices(LayoutStrategy layout_strategy,
                                int scroll_distance_on_main_axis) const;
 
@@ -480,15 +473,15 @@ class ASH_EXPORT ScrollableShelfView : public views::AccessiblePaneView,
   LayoutStrategy layout_strategy_ = kNotShowArrowButtons;
 
   // Child views Owned by views hierarchy.
-  raw_ptr<ScrollArrowView> left_arrow_ = nullptr;
-  raw_ptr<ScrollArrowView> right_arrow_ = nullptr;
-  raw_ptr<ShelfContainerView> shelf_container_view_ = nullptr;
+  raw_ptr<ScrollArrowView, ExperimentalAsh> left_arrow_ = nullptr;
+  raw_ptr<ScrollArrowView, ExperimentalAsh> right_arrow_ = nullptr;
+  raw_ptr<ShelfContainerView, ExperimentalAsh> shelf_container_view_ = nullptr;
 
   // Available space to accommodate child views. It is mirrored for the
   // horizontal shelf under RTL.
   gfx::Rect available_space_;
 
-  raw_ptr<ShelfView> shelf_view_ = nullptr;
+  raw_ptr<ShelfView, ExperimentalAsh> shelf_view_ = nullptr;
 
   // Defines the padding space inside the scrollable shelf. It is decided by the
   // current padding strategy. Note that `edge_padding_insets_` is mirrored
@@ -521,8 +514,8 @@ class ASH_EXPORT ScrollableShelfView : public views::AccessiblePaneView,
   std::unique_ptr<views::FocusSearch> focus_search_;
 
   // The index of the first/last tappable app index.
-  std::optional<size_t> first_tappable_app_index_ = std::nullopt;
-  std::optional<size_t> last_tappable_app_index_ = std::nullopt;
+  absl::optional<size_t> first_tappable_app_index_ = absl::nullopt;
+  absl::optional<size_t> last_tappable_app_index_ = absl::nullopt;
 
   // The number of corner buttons whose ink drop is activated.
   int activated_corner_buttons_ = 0;
@@ -546,11 +539,11 @@ class ASH_EXPORT ScrollableShelfView : public views::AccessiblePaneView,
   // Waiting time before flipping the page.
   base::TimeDelta page_flip_time_threshold_;
 
-  raw_ptr<TestObserver> test_observer_ = nullptr;
+  raw_ptr<TestObserver, ExperimentalAsh> test_observer_ = nullptr;
 
   // If page flip timer is active for shelf item drag, the last known drag item
   // bounds in screen coordinates.
-  std::optional<gfx::Rect> drag_item_bounds_in_screen_;
+  absl::optional<gfx::Rect> drag_item_bounds_in_screen_;
 
   base::OneShotTimer page_flip_timer_;
 

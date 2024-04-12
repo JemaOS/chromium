@@ -36,7 +36,7 @@
 #include <tuple>
 #include <utility>
 
-#include "base/allocator/partition_allocator/src/partition_alloc/partition_alloc.h"
+#include "base/allocator/partition_allocator/partition_alloc.h"
 #include "base/numerics/checked_math.h"
 #include "media/base/logging_override_if_enabled.h"
 #include "media/base/stream_parser_buffer.h"
@@ -155,7 +155,8 @@ scoped_refptr<media::StreamParserBuffer> MakeAudioStreamParserBuffer(
       kWebCodecsAudioTrackId);
 
   // Currently, we do not populate any side_data in these converters.
-  DCHECK(!stream_parser_buffer->has_side_data());
+  DCHECK_EQ(0U, stream_parser_buffer->side_data_size());
+  DCHECK_EQ(nullptr, stream_parser_buffer->side_data());
 
   stream_parser_buffer->set_timestamp(audio_chunk.buffer()->timestamp());
   // TODO(crbug.com/1144908): Get EncodedAudioChunk to have an optional duration
@@ -180,7 +181,8 @@ scoped_refptr<media::StreamParserBuffer> MakeVideoStreamParserBuffer(
       kWebCodecsVideoTrackId);
 
   // Currently, we do not populate any side_data in these converters.
-  DCHECK(!stream_parser_buffer->has_side_data());
+  DCHECK_EQ(0U, stream_parser_buffer->side_data_size());
+  DCHECK_EQ(nullptr, stream_parser_buffer->side_data());
 
   stream_parser_buffer->set_timestamp(video_chunk.buffer()->timestamp());
   // TODO(crbug.com/1144908): Get EncodedVideoChunk to have an optional decode
@@ -190,11 +192,6 @@ scoped_refptr<media::StreamParserBuffer> MakeVideoStreamParserBuffer(
   // or decode errors.
   DCHECK(video_chunk.duration().has_value());
   stream_parser_buffer->set_duration(video_chunk.buffer()->duration());
-
-  if (video_chunk.buffer()->decrypt_config()) {
-    stream_parser_buffer->set_decrypt_config(
-        video_chunk.buffer()->decrypt_config()->Clone());
-  }
   return stream_parser_buffer;
 }
 
@@ -263,11 +260,11 @@ void SourceBuffer::Dispose() {
 }
 
 AtomicString SourceBuffer::SegmentsKeyword() {
-  return AtomicString("segments");
+  return "segments";
 }
 
 AtomicString SourceBuffer::SequenceKeyword() {
-  return AtomicString("sequence");
+  return "sequence";
 }
 
 void SourceBuffer::setMode(const AtomicString& new_mode,
@@ -624,7 +621,7 @@ void SourceBuffer::appendBuffer(NotShared<DOMArrayBufferView> data,
 // implementation. Further note, |chunks| may instead be a single audio or a
 // single video chunk as a helpful additional overload for one-chunk-at-a-time
 // append use-cases.
-ScriptPromiseTyped<IDLUndefined> SourceBuffer::appendEncodedChunks(
+ScriptPromise SourceBuffer::appendEncodedChunks(
     ScriptState* script_state,
     const V8EncodedChunks* chunks,
     ExceptionState& exception_state) {
@@ -640,7 +637,7 @@ ScriptPromiseTyped<IDLUndefined> SourceBuffer::appendEncodedChunks(
                                         exception_state)) {
     TRACE_EVENT_NESTABLE_ASYNC_END0(
         "media", "SourceBuffer::appendEncodedChunks", TRACE_ID_LOCAL(this));
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   // Convert |chunks| to a StreamParser::BufferQueue.
@@ -657,7 +654,8 @@ ScriptPromiseTyped<IDLUndefined> SourceBuffer::appendEncodedChunks(
     case V8EncodedChunks::ContentType::kEncodedAudioChunk:
       buffer_queue->emplace_back(
           MakeAudioStreamParserBuffer(*(chunks->GetAsEncodedAudioChunk())));
-      size += buffer_queue->back()->data_size();
+      size += buffer_queue->back()->data_size() +
+              buffer_queue->back()->side_data_size();
       break;
     case V8EncodedChunks::ContentType::kEncodedVideoChunk: {
       const auto& video_chunk = *(chunks->GetAsEncodedVideoChunk());
@@ -666,10 +664,11 @@ ScriptPromiseTyped<IDLUndefined> SourceBuffer::appendEncodedChunks(
             exception_state,
             "EncodedVideoChunk is missing duration, required for use with "
             "SourceBuffer.");
-        return ScriptPromiseTyped<IDLUndefined>();
+        return ScriptPromise();
       }
       buffer_queue->emplace_back(MakeVideoStreamParserBuffer(video_chunk));
-      size += buffer_queue->back()->data_size();
+      size += buffer_queue->back()->data_size() +
+              buffer_queue->back()->side_data_size();
       break;
     }
     case V8EncodedChunks::ContentType::
@@ -682,7 +681,8 @@ ScriptPromiseTyped<IDLUndefined> SourceBuffer::appendEncodedChunks(
               kEncodedAudioChunk:
             buffer_queue->emplace_back(MakeAudioStreamParserBuffer(
                 *(av_chunk->GetAsEncodedAudioChunk())));
-            size += buffer_queue->back()->data_size();
+            size += buffer_queue->back()->data_size() +
+                    buffer_queue->back()->side_data_size();
             break;
           case V8UnionEncodedAudioChunkOrEncodedVideoChunk::ContentType::
               kEncodedVideoChunk: {
@@ -692,11 +692,12 @@ ScriptPromiseTyped<IDLUndefined> SourceBuffer::appendEncodedChunks(
                   exception_state,
                   "EncodedVideoChunk is missing duration, required for use "
                   "with SourceBuffer.");
-              return ScriptPromiseTyped<IDLUndefined>();
+              return ScriptPromise();
             }
             buffer_queue->emplace_back(
                 MakeVideoStreamParserBuffer(video_chunk));
-            size += buffer_queue->back()->data_size();
+            size += buffer_queue->back()->data_size() +
+                    buffer_queue->back()->side_data_size();
             break;
           }
         }
@@ -705,9 +706,8 @@ ScriptPromiseTyped<IDLUndefined> SourceBuffer::appendEncodedChunks(
   }
 
   DCHECK(!append_encoded_chunks_resolver_);
-  append_encoded_chunks_resolver_ =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state, exception_state.GetContext());
+  append_encoded_chunks_resolver_ = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
   auto promise = append_encoded_chunks_resolver_->Promise();
 
   // Do remainder of steps of analogue of prepare append algorithm and sending
@@ -724,7 +724,7 @@ ScriptPromiseTyped<IDLUndefined> SourceBuffer::appendEncodedChunks(
         exception_state, DOMExceptionCode::kInvalidStateError,
         "Worker MediaSource attachment is closing");
     append_encoded_chunks_resolver_ = nullptr;
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   return promise;
@@ -1391,7 +1391,7 @@ AtomicString SourceBuffer::DefaultTrackLabel(
   // Spec: https://w3c.github.io/media-source/#sourcebuffer-default-track-label
   const TrackDefault* track_default =
       GetTrackDefault(track_type, byte_stream_track_id);
-  return track_default ? AtomicString(track_default->label()) : g_empty_atom;
+  return track_default ? AtomicString(track_default->label()) : "";
 }
 
 AtomicString SourceBuffer::DefaultTrackLanguage(
@@ -1401,7 +1401,7 @@ AtomicString SourceBuffer::DefaultTrackLanguage(
   // https://w3c.github.io/media-source/#sourcebuffer-default-track-language
   const TrackDefault* track_default =
       GetTrackDefault(track_type, byte_stream_track_id);
-  return track_default ? AtomicString(track_default->language()) : g_empty_atom;
+  return track_default ? AtomicString(track_default->language()) : "";
 }
 
 void SourceBuffer::AddPlaceholderCrossThreadTracks(
@@ -2102,9 +2102,10 @@ void SourceBuffer::AppendEncodedChunksAsyncPart_Locked(
     // attachment will send updated buffered and seekable information to the
     // main thread here, too.
     AppendError(pass_key);
-    append_encoded_chunks_resolver_->RejectWithDOMException(
+    append_encoded_chunks_resolver_->Reject(V8ThrowDOMException::CreateOrDie(
+        append_encoded_chunks_resolver_->GetScriptState()->GetIsolate(),
         DOMExceptionCode::kSyntaxError,
-        "Parsing or frame processing error while buffering encoded chunks.");
+        "Parsing or frame processing error while buffering encoded chunks."));
     append_encoded_chunks_resolver_ = nullptr;
   } else {
     updating_ = false;
@@ -2282,7 +2283,7 @@ void SourceBuffer::Trace(Visitor* visitor) const {
   visitor->Trace(append_encoded_chunks_resolver_);
   visitor->Trace(audio_tracks_);
   visitor->Trace(video_tracks_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }
 

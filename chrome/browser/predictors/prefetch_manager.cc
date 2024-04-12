@@ -14,7 +14,6 @@
 #include "chrome/browser/predictors/predictors_features.h"
 #include "chrome/browser/predictors/predictors_switches.h"
 #include "chrome/browser/predictors/resource_prefetch_predictor.h"
-#include "chrome/browser/prefetch/prefetch_headers.h"
 #include "chrome/browser/profiles/profile.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/global_request_id.h"
@@ -202,8 +201,6 @@ blink::mojom::ResourceType GetResourceType(
       return blink::mojom::ResourceType::kScript;
     case network::mojom::RequestDestination::kStyle:
       return blink::mojom::ResourceType::kStylesheet;
-    case network::mojom::RequestDestination::kFont:
-      return blink::mojom::ResourceType::kFontResource;
     default:
       NOTREACHED() << destination;
   }
@@ -230,8 +227,6 @@ void PrefetchManager::PrefetchUrl(
   request.referrer_policy = net::ReferrerPolicy::NO_REFERRER;
 
   request.headers.SetHeader("Purpose", "prefetch");
-  request.headers.SetHeader(prefetch::headers::kSecPurposeHeaderName,
-                            prefetch::headers::kSecPurposePrefetchHeaderValue);
 
   request.load_flags = net::LOAD_PREFETCH;
   request.destination = job->destination;
@@ -263,8 +258,7 @@ void PrefetchManager::PrefetchUrl(
       content::CreateContentBrowserURLLoaderThrottles(
           request, profile_, std::move(wc_getter),
           /*navigation_ui_data=*/nullptr,
-          content::RenderFrameHost::kNoFrameTreeNodeId,
-          /*navigation_id=*/std::nullopt);
+          content::RenderFrameHost::kNoFrameTreeNodeId);
 
   auto client = std::make_unique<network::EmptyURLLoaderClient>();
 
@@ -283,7 +277,7 @@ void PrefetchManager::PrefetchUrl(
           content::GlobalRequestID::MakeBrowserInitiated().request_id, options,
           &request, client.get(), kPrefetchTrafficAnnotation,
           base::SingleThreadTaskRunner::GetCurrentDefault(),
-          /*cors_exempt_header_list=*/std::nullopt);
+          /*cors_exempt_header_list=*/absl::nullopt);
 
   delegate_->PrefetchInitiated(info.url, job->url);
 

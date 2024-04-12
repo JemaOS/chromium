@@ -45,7 +45,7 @@ class BookmarkManagerPrivateEventRouter
 
   // bookmarks::BaseBookmarkModelObserver:
   void BookmarkModelChanged() override;
-  void BookmarkModelBeingDeleted() override;
+  void BookmarkModelBeingDeleted(bookmarks::BookmarkModel* model) override;
 
  private:
   // Helper to actually dispatch an event to extension listeners.
@@ -312,10 +312,13 @@ class BookmarkManagerPrivateIOFunction : public BookmarksFunction,
  public:
   BookmarkManagerPrivateIOFunction();
 
-  // ui::SelectFileDialog::Listener:
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override = 0;
+
+  // ui::SelectFileDialog::Listener:
+  void MultiFilesSelected(const std::vector<base::FilePath>& files,
+                          void* params) override;
   void FileSelectionCanceled(void* params) override;
 
   void ShowSelectFileDialog(
@@ -335,7 +338,7 @@ class BookmarkManagerPrivateImportFunction
                              BOOKMARKMANAGERPRIVATE_IMPORT)
 
   // BookmarkManagerIOFunction:
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override;
 
@@ -354,10 +357,9 @@ class BookmarkManagerPrivateExportFunction
                              BOOKMARKMANAGERPRIVATE_EXPORT)
 
   // BookmarkManagerIOFunction:
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override;
-
  protected:
   ~BookmarkManagerPrivateExportFunction() override = default;
 

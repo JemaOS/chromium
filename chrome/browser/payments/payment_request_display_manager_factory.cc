@@ -10,8 +10,7 @@ namespace payments {
 
 PaymentRequestDisplayManagerFactory*
 PaymentRequestDisplayManagerFactory::GetInstance() {
-  static base::NoDestructor<PaymentRequestDisplayManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<PaymentRequestDisplayManagerFactory>::get();
 }
 
 PaymentRequestDisplayManager*
@@ -26,20 +25,13 @@ PaymentRequestDisplayManagerFactory::PaymentRequestDisplayManagerFactory()
           "PaymentRequestDisplayManager",
           // Returns non-NULL even for Incognito contexts so that a separate
           // instance of a service is created for the Incognito context.
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
-PaymentRequestDisplayManagerFactory::~PaymentRequestDisplayManagerFactory() =
-    default;
+PaymentRequestDisplayManagerFactory::~PaymentRequestDisplayManagerFactory() {}
 
-std::unique_ptr<KeyedService>
-PaymentRequestDisplayManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PaymentRequestDisplayManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<PaymentRequestDisplayManager>();
+  return new PaymentRequestDisplayManager();
 }
 
 }  // namespace payments

@@ -5,7 +5,7 @@
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
 
 #include "base/functional/bind.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/device_info_sync_service_factory.h"
@@ -25,8 +25,7 @@ SendTabToSelfSyncServiceFactory::GetForProfile(Profile* profile) {
 // static
 SendTabToSelfSyncServiceFactory*
 SendTabToSelfSyncServiceFactory::GetInstance() {
-  static base::NoDestructor<SendTabToSelfSyncServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<SendTabToSelfSyncServiceFactory>::get();
 }
 
 SendTabToSelfSyncServiceFactory::SendTabToSelfSyncServiceFactory()
@@ -62,5 +61,5 @@ KeyedService* SendTabToSelfSyncServiceFactory::BuildServiceInstanceFor(
 
   return new send_tab_to_self::SendTabToSelfSyncService(
       chrome::GetChannel(), std::move(store_factory), history_service,
-      profile->GetPrefs(), device_info_tracker);
+      device_info_tracker);
 }

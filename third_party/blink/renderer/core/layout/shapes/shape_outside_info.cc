@@ -34,7 +34,6 @@
 #include "base/auto_reset.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
-#include "third_party/blink/renderer/core/layout/geometry/logical_rect.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
@@ -52,22 +51,31 @@ CSSBoxType ReferenceBox(const ShapeValue& shape_value) {
 }
 
 void ShapeOutsideInfo::SetReferenceBoxLogicalSize(
-    LogicalSize new_reference_box_logical_size,
-    LogicalSize margin_size) {
+    LayoutSize new_reference_box_logical_size) {
   Document& document = layout_box_->GetDocument();
   bool is_horizontal_writing_mode =
       layout_box_->ContainingBlock()->StyleRef().IsHorizontalWritingMode();
 
-  LogicalSize margin_box_for_use_counter = new_reference_box_logical_size;
-  margin_box_for_use_counter.Expand(margin_size.inline_size,
-                                    margin_size.block_size);
+  LayoutSize margin_box_for_use_counter = new_reference_box_logical_size;
+  if (is_horizontal_writing_mode) {
+    margin_box_for_use_counter.Expand(layout_box_->MarginWidth(),
+                                      layout_box_->MarginHeight());
+  } else {
+    margin_box_for_use_counter.Expand(layout_box_->MarginHeight(),
+                                      layout_box_->MarginWidth());
+  }
 
   const ShapeValue& shape_value = *layout_box_->StyleRef().ShapeOutside();
   switch (ReferenceBox(shape_value)) {
     case CSSBoxType::kMargin:
       UseCounter::Count(document, WebFeature::kShapeOutsideMarginBox);
-      new_reference_box_logical_size.Expand(margin_size.inline_size,
-                                            margin_size.block_size);
+      if (is_horizontal_writing_mode) {
+        new_reference_box_logical_size.Expand(layout_box_->MarginWidth(),
+                                              layout_box_->MarginHeight());
+      } else {
+        new_reference_box_logical_size.Expand(layout_box_->MarginHeight(),
+                                              layout_box_->MarginWidth());
+      }
       break;
     case CSSBoxType::kBorder:
       UseCounter::Count(document, WebFeature::kShapeOutsideBorderBox);
@@ -147,21 +155,22 @@ static bool CheckShapeImageOrigin(Document& document,
   return false;
 }
 
-static LogicalRect GetShapeImageMarginRect(
+static LayoutRect GetShapeImageMarginRect(
     const LayoutBox& layout_box,
-    const LogicalSize& reference_box_logical_size) {
-  LogicalOffset margin_box_origin(-layout_box.MarginInlineStart() -
-                                      layout_box.BorderAndPaddingLogicalLeft(),
-                                  -layout_box.MarginBlockStart() -
-                                      layout_box.BorderBlockStart() -
-                                      layout_box.PaddingBlockStart());
-  LogicalSize margin_rect_size = reference_box_logical_size;
-  margin_rect_size.Expand(layout_box.MarginLogicalWidth() +
-                              layout_box.BorderAndPaddingLogicalWidth(),
-                          layout_box.MarginLogicalHeight() +
-                              layout_box.BorderAndPaddingLogicalHeight());
+    const LayoutSize& reference_box_logical_size) {
+  LayoutPoint margin_box_origin(
+      -layout_box.MarginLineLeft() - layout_box.BorderAndPaddingLogicalLeft(),
+      -layout_box.MarginBefore() - layout_box.BorderBefore() -
+          layout_box.PaddingBefore());
+  LayoutSize margin_box_size_delta(
+      layout_box.MarginLogicalWidth() +
+          layout_box.BorderAndPaddingLogicalWidth(),
+      layout_box.MarginLogicalHeight() +
+          layout_box.BorderAndPaddingLogicalHeight());
+  LayoutSize margin_rect_size(reference_box_logical_size +
+                              margin_box_size_delta);
   margin_rect_size.ClampNegativeToZero();
-  return LogicalRect(margin_box_origin, margin_rect_size);
+  return LayoutRect(margin_box_origin, margin_rect_size);
 }
 
 std::unique_ptr<Shape> ShapeOutsideInfo::CreateShapeForImage(
@@ -173,31 +182,27 @@ std::unique_ptr<Shape> ShapeOutsideInfo::CreateShapeForImage(
 
   RespectImageOrientationEnum respect_orientation =
       style_image->ForceOrientationIfNecessary(
-          layout_box_->StyleRef().ImageOrientation());
+          LayoutObject::ShouldRespectImageOrientation(layout_box_));
 
-  const DeprecatedLayoutSize& image_size =
-      RoundedLayoutSize(style_image->ImageSize(
-          layout_box_->StyleRef().EffectiveZoom(),
-          gfx::SizeF(reference_box_logical_size_.inline_size.ToFloat(),
-                     reference_box_logical_size_.block_size.ToFloat()),
-          respect_orientation));
+  const LayoutSize& image_size = RoundedLayoutSize(style_image->ImageSize(
+      layout_box_->StyleRef().EffectiveZoom(),
+      gfx::SizeF(reference_box_logical_size_), respect_orientation));
 
-  const LogicalRect& margin_rect =
+  const LayoutRect& margin_rect =
       GetShapeImageMarginRect(*layout_box_, reference_box_logical_size_);
-  const DeprecatedLayoutRect& image_rect =
-      (layout_box_->IsLayoutImage())
-          ? To<LayoutImage>(layout_box_.Get())
-                ->ReplacedContentRect()
-                .ToLayoutRect()
-          : DeprecatedLayoutRect(LayoutPoint(), image_size);
+  const LayoutRect& image_rect = (layout_box_->IsLayoutImage())
+                                     ? To<LayoutImage>(layout_box_.Get())
+                                           ->ReplacedContentRect()
+                                           .ToLayoutRect()
+                                     : LayoutRect(LayoutPoint(), image_size);
 
   scoped_refptr<Image> image =
       style_image->GetImage(*layout_box_, layout_box_->GetDocument(),
                             layout_box_->StyleRef(), gfx::SizeF(image_size));
 
   return Shape::CreateRasterShape(image.get(), shape_image_threshold,
-                                  image_rect, margin_rect.ToLayoutRect(),
-                                  writing_mode, margin, respect_orientation);
+                                  image_rect, margin_rect, writing_mode, margin,
+                                  respect_orientation);
 }
 
 const Shape& ShapeOutsideInfo::ComputedShape() const {
@@ -245,10 +250,8 @@ const Shape& ShapeOutsideInfo::ComputedShape() const {
     case ShapeValue::kBox: {
       // TODO(layout-dev): It seems incorrect to pass logical size to
       // RoundedBorderGeometry().
-      PhysicalSize size(reference_box_logical_size_.inline_size,
-                        reference_box_logical_size_.block_size);
       const FloatRoundedRect& shape_rect = RoundedBorderGeometry::RoundedBorder(
-          style, PhysicalRect(PhysicalOffset(), size));
+          style, PhysicalRect(PhysicalOffset(), reference_box_logical_size_));
       shape_ = Shape::CreateLayoutBoxShape(shape_rect, writing_mode, margin);
       break;
     }
@@ -273,7 +276,7 @@ inline LayoutUnit BorderBeforeInWritingMode(const LayoutBox& layout_box,
   }
 
   NOTREACHED();
-  return LayoutUnit(layout_box.BorderBlockStart());
+  return LayoutUnit(layout_box.BorderBefore());
 }
 
 inline LayoutUnit BorderAndPaddingBeforeInWritingMode(
@@ -292,13 +295,13 @@ inline LayoutUnit BorderAndPaddingBeforeInWritingMode(
   }
 
   NOTREACHED();
-  return layout_box.BorderAndPaddingBlockStart();
+  return layout_box.BorderAndPaddingBefore();
 }
 
 LayoutUnit ShapeOutsideInfo::LogicalTopOffset() const {
   switch (ReferenceBox(*layout_box_->StyleRef().ShapeOutside())) {
     case CSSBoxType::kMargin:
-      return -layout_box_->MarginBlockStart(
+      return -layout_box_->MarginBefore(
           layout_box_->ContainingBlock()->Style());
     case CSSBoxType::kBorder:
       return LayoutUnit();
@@ -351,8 +354,7 @@ inline LayoutUnit BorderAndPaddingStartWithStyleForWritingMode(
 LayoutUnit ShapeOutsideInfo::LogicalLeftOffset() const {
   switch (ReferenceBox(*layout_box_->StyleRef().ShapeOutside())) {
     case CSSBoxType::kMargin:
-      return -layout_box_->MarginInlineStart(
-          layout_box_->ContainingBlock()->Style());
+      return -layout_box_->MarginStart(layout_box_->ContainingBlock()->Style());
     case CSSBoxType::kBorder:
       return LayoutUnit();
     case CSSBoxType::kPadding:
@@ -391,29 +393,22 @@ bool ShapeOutsideInfo::IsEnabledFor(const LayoutBox& box) {
 }
 
 PhysicalRect ShapeOutsideInfo::ComputedShapePhysicalBoundingBox() const {
-  LogicalRect logical_box = ComputedShape().ShapeMarginLogicalBoundingBox();
-  // TODO(crbug.com/1463823): The logic of this function looks incorrect.
-  PhysicalRect physical_bounding_box(
-      logical_box.offset.inline_offset, logical_box.offset.block_offset,
-      logical_box.size.inline_size, logical_box.size.block_size);
-  physical_bounding_box.offset.left += LogicalLeftOffset();
+  LayoutRect physical_bounding_box =
+      ComputedShape().ShapeMarginLogicalBoundingBox();
+  physical_bounding_box.SetX(physical_bounding_box.X() + LogicalLeftOffset());
 
-  if (layout_box_->StyleRef().IsFlippedBlocksWritingMode()) {
-    physical_bounding_box.offset.top =
-        layout_box_->LogicalHeight() - physical_bounding_box.Bottom();
-  } else {
-    physical_bounding_box.offset.top += LogicalTopOffset();
-  }
+  if (layout_box_->StyleRef().IsFlippedBlocksWritingMode())
+    physical_bounding_box.SetY(layout_box_->LogicalHeight() -
+                               physical_bounding_box.MaxY());
+  else
+    physical_bounding_box.SetY(physical_bounding_box.Y() + LogicalTopOffset());
 
-  if (!layout_box_->StyleRef().IsHorizontalWritingMode()) {
-    physical_bounding_box = PhysicalRect(
-        physical_bounding_box.offset.top, physical_bounding_box.offset.left,
-        physical_bounding_box.size.height, physical_bounding_box.size.width);
-  } else {
-    physical_bounding_box.offset.top += LogicalTopOffset();
-  }
+  if (!layout_box_->StyleRef().IsHorizontalWritingMode())
+    physical_bounding_box = physical_bounding_box.TransposedRect();
+  else
+    physical_bounding_box.SetY(physical_bounding_box.Y() + LogicalTopOffset());
 
-  return physical_bounding_box;
+  return PhysicalRect(physical_bounding_box);
 }
 
 gfx::PointF ShapeOutsideInfo::ShapeToLayoutObjectPoint(

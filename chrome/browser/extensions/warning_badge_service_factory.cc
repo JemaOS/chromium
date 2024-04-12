@@ -22,28 +22,22 @@ WarningBadgeService* WarningBadgeServiceFactory::GetForBrowserContext(
 
 // static
 WarningBadgeServiceFactory* WarningBadgeServiceFactory::GetInstance() {
-  static base::NoDestructor<WarningBadgeServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<WarningBadgeServiceFactory>::get();
 }
 
 WarningBadgeServiceFactory::WarningBadgeServiceFactory()
     : ProfileKeyedServiceFactory(
           "WarningBadgeService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(WarningServiceFactory::GetInstance());
 }
 
-WarningBadgeServiceFactory::~WarningBadgeServiceFactory() = default;
+WarningBadgeServiceFactory::~WarningBadgeServiceFactory() {
+}
 
-std::unique_ptr<KeyedService>
-WarningBadgeServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* WarningBadgeServiceFactory::BuildServiceInstanceFor(
     BrowserContext* context) const {
-  return std::make_unique<WarningBadgeService>(static_cast<Profile*>(context));
+  return new WarningBadgeService(static_cast<Profile*>(context));
 }
 
 bool WarningBadgeServiceFactory::ServiceIsCreatedWithBrowserContext() const {

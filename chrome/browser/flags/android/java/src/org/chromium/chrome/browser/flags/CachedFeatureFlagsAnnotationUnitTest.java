@@ -11,18 +11,19 @@ import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.robolectric.annotation.Config;
 
-import org.chromium.base.cached_flags.CachedFlag;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Features;
-import org.chromium.base.test.util.Features.DisableFeatures;
-import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.chrome.test.util.browser.Features;
 
-/** Unit tests to verify @EnableFeatures() and @DisableFeatures() work for {@link CachedFlag}. */
+/**
+ * Unit tests to verify @Features.EnableFeatures() and @Features.DisableFeatures() work for
+ * {@link CachedFeatureFlags}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
-@EnableFeatures(ChromeFeatureList.TEST_DEFAULT_DISABLED)
+@Features.EnableFeatures(ChromeFeatureList.TEST_DEFAULT_DISABLED)
 @Config(manifest = Config.NONE)
 public class CachedFeatureFlagsAnnotationUnitTest {
-    @Rule public TestRule mProcessor = new Features.JUnitProcessor();
+    @Rule
+    public TestRule mProcessor = new Features.JUnitProcessor();
 
     @Test
     public void testDefaultFeatureValue() {
@@ -35,11 +36,11 @@ public class CachedFeatureFlagsAnnotationUnitTest {
     }
 
     @Test
-    @DisableFeatures({
-        ChromeFeatureList.TEST_DEFAULT_DISABLED,
-        ChromeFeatureList.TEST_DEFAULT_ENABLED
-    })
+    // clang-format off
+    @Features.DisableFeatures({ChromeFeatureList.TEST_DEFAULT_DISABLED,
+            ChromeFeatureList.TEST_DEFAULT_ENABLED})
     public void testFeatureAnnotationOnMethod() {
+        // clang-format on
         Assert.assertFalse(ChromeFeatureList.sTestDefaultDisabled.isEnabled());
         Assert.assertFalse(ChromeFeatureList.sTestDefaultEnabled.isEnabled());
     }

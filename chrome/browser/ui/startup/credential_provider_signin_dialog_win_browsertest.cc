@@ -54,10 +54,8 @@ class CredentialProviderSigninDialogWinBaseTest : public InProcessBrowserTest {
   content::WebContents* web_contents() { return web_contents_; }
   virtual void WaitForDialogToLoad();
 
-  raw_ptr<views::WebDialogView, AcrossTasksDanglingUntriaged> web_view_ =
-      nullptr;
-  raw_ptr<content::WebContents, AcrossTasksDanglingUntriaged> web_contents_ =
-      nullptr;
+  raw_ptr<views::WebDialogView, DanglingUntriaged> web_view_ = nullptr;
+  raw_ptr<content::WebContents, DanglingUntriaged> web_contents_ = nullptr;
 };
 
 CredentialProviderSigninDialogWinBaseTest::
@@ -206,7 +204,7 @@ IN_PROC_BROWSER_TEST_F(CredentialProviderSigninDialogWinDialogTest,
 
   EXPECT_TRUE(signin_complete_called_);
   EXPECT_EQ(result_dict_.size(), 1u);
-  std::optional<int> exit_code =
+  absl::optional<int> exit_code =
       result_dict_.FindInt(credential_provider::kKeyExitCode);
   EXPECT_TRUE(exit_code);
   EXPECT_EQ(credential_provider::kUiecAbort, exit_code.value());
@@ -223,7 +221,7 @@ IN_PROC_BROWSER_TEST_F(CredentialProviderSigninDialogWinDialogTest,
       nullptr /* source_site_instance */,
       content::mojom::WindowContainerType::NORMAL /* window_container_type */,
       GURL() /* opener_url */, "foo" /* frame_name */,
-      GURL() /* target_url */));
+      GURL::EmptyGURL() /* target_url */));
 
   web_view_->GetWidget()->CloseWithReason(
       views::Widget::ClosedReason::kEscKeyPressed);
@@ -376,7 +374,7 @@ IN_PROC_BROWSER_TEST_P(CredentialProviderSigninDialogWinDialogExitCodeTest,
   SendSigninCompleteMessage(signin_result);
   EXPECT_TRUE(signin_complete_called_);
   EXPECT_EQ(exit_code_, expected_error_code);
-  std::optional<int> exit_code_value =
+  absl::optional<int> exit_code_value =
       result_dict_.FindInt(credential_provider::kKeyExitCode);
   EXPECT_EQ(exit_code_value, expected_error_code);
 

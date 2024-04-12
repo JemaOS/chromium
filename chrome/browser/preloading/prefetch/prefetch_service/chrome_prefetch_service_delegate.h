@@ -42,12 +42,8 @@ class ChromePrefetchServiceDelegate : public content::PrefetchServiceDelegate {
   void ClearData() override;
   bool DisableDecoysBasedOnUserSettings() override;
   content::PreloadingEligibility IsSomePreloadingEnabled() override;
-  bool IsPreloadingPrefEnabled() override;
-  bool IsDataSaverEnabled() override;
-  bool IsBatterySaverEnabled() override;
   bool IsExtendedPreloadingEnabled() override;
   bool IsDomainInPrefetchAllowList(const GURL& referring_url) override;
-  bool IsContaminationExempt(const GURL& referring_url) override;
   void OnPrefetchLikely(content::WebContents* web_contents) override;
 
  private:
@@ -59,4 +55,4 @@ class ChromePrefetchServiceDelegate : public content::PrefetchServiceDelegate {
   std::unique_ptr<PrefetchOriginDecider> origin_decider_;
 };
 
-#endif  // CHROME_BROWSER_PRELOADING_PREFETCH_PREFETCH_SERVICE_CHROME_PREFETCH_SERVICE_DELEGATE_H_
+#endif  // CHROME_BROWSER_PRELOADING_PREFETCH_PREFETCH_PROXY_CHROME_PREFETCH_SERVICE_DELEGATE_H_

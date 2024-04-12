@@ -42,12 +42,12 @@ void FocusCycler::RemoveWidget(views::Widget* widget) {
     widgets_.erase(iter);
 }
 
-void FocusCycler::RotateFocus(Direction direction, bool move_onto_next_widget) {
+void FocusCycler::RotateFocus(Direction direction) {
   if (aura::Window* window = window_util::GetActiveWindow(); window) {
     views::Widget* widget = views::Widget::GetWidgetForNativeView(window);
     // First try to rotate focus within the active widget. If that succeeds,
     // we're done.
-    if (widget && !move_onto_next_widget &&
+    if (widget &&
         widget->GetFocusManager()->RotatePaneFocus(
             direction == BACKWARD ? views::FocusManager::Direction::kBackward
                                   : views::FocusManager::Direction::kForward,
@@ -87,7 +87,7 @@ void FocusCycler::RotateFocus(Direction direction, bool move_onto_next_widget) {
           Shell::Get()->mru_window_tracker()->BuildMruWindowList(kActiveDesk));
       if (mru_windows.empty())
         break;
-      auto* window = mru_windows.front().get();
+      auto* window = mru_windows.front();
       WindowState::Get(window)->Activate();
       views::Widget* widget = views::Widget::GetWidgetForNativeView(window);
       if (!widget)
@@ -121,7 +121,7 @@ bool FocusCycler::FocusWidget(views::Widget* widget) {
 
 views::Widget* FocusCycler::FindWidget(
     base::RepeatingCallback<bool(views::Widget*)> callback) {
-  for (views::Widget* widget : widgets_) {
+  for (auto* widget : widgets_) {
     if (callback.Run(widget))
       return widget;
   }

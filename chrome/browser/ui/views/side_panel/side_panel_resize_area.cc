@@ -30,7 +30,7 @@ SidePanelResizeHandle::SidePanelResizeHandle(SidePanel* side_panel)
 
   constexpr int kIconSize = 16;
   SetImage(ui::ImageModel::FromVectorIcon(
-      kDragHandleIcon, kColorSidePanelResizeAreaHandle, kIconSize));
+      kDragHandleIcon, kColorToolbarContentAreaSeparator, kIconSize));
 }
 
 void SidePanelResizeHandle::GetAccessibleNodeData(ui::AXNodeData* node_data) {
@@ -57,7 +57,7 @@ void SidePanelResizeHandle::OnDidChangeFocus(views::View* before,
   }
 }
 
-BEGIN_METADATA(SidePanelResizeHandle)
+BEGIN_METADATA(SidePanelResizeHandle, ImageView)
 END_METADATA
 
 SidePanelResizeArea::SidePanelResizeArea(SidePanel* side_panel)
@@ -91,8 +91,8 @@ bool SidePanelResizeArea::OnKeyPressed(const ui::KeyEvent& event) {
   return false;
 }
 
-void SidePanelResizeArea::Layout(PassKey) {
-  LayoutSuperclass<ResizeArea>(this);
+void SidePanelResizeArea::Layout() {
+  ResizeArea::Layout();
   // The side panel resize area should draw on top of its parent's border.
   gfx::Rect local_bounds = parent()->GetLocalBounds();
   gfx::Rect contents_bounds = parent()->GetContentsBounds();
@@ -110,7 +110,7 @@ void SidePanelResizeArea::Layout(PassKey) {
   SetBoundsRect(resize_bounds);
 }
 
-BEGIN_METADATA(SidePanelResizeArea)
+BEGIN_METADATA(SidePanelResizeArea, ResizeArea)
 END_METADATA
 
 }  // namespace views

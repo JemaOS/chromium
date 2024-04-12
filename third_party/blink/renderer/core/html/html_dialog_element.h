@@ -44,8 +44,7 @@ class CORE_EXPORT HTMLDialogElement final : public HTMLElement {
 
   void Trace(Visitor*) const override;
 
-  void close(const String& return_value = String(),
-             bool ignore_open_attribute = false);
+  void close(const String& return_value = String());
   void show(ExceptionState&);
   void showModal(ExceptionState&);
   void RemovedFrom(ContainerNode&) override;
@@ -60,17 +59,13 @@ class CORE_EXPORT HTMLDialogElement final : public HTMLElement {
   void CloseWatcherFiredCancel(Event*);
   void CloseWatcherFiredClose();
 
-  // Dialogs support focus, since the dialog focus algorithm
-  // https://html.spec.whatwg.org/multipage/interactive-elements.html#dialog-focusing-steps
-  // can decide to focus the dialog itself if the dialog does not have a focus
-  // delegate.
-  bool SupportsFocus(UpdateBehavior) const override { return true; }
-  bool IsKeyboardFocusable(UpdateBehavior update_behavior =
-                               UpdateBehavior::kStyleAndLayout) const override;
+  bool IsMouseFocusable() const override {
+    return isConnected() && IsFocusableStyleAfterUpdate();
+  }
 
   // https://html.spec.whatwg.org/C/#the-dialog-element
   // Chooses the focused element when show() or showModal() is invoked.
-  void SetFocusForDialog();
+  void SetFocusForDialog(bool is_modal);
 
   // This is the old dialog initial focus behavior which is currently being
   // replaced by SetFocusForDialog.
@@ -79,15 +74,12 @@ class CORE_EXPORT HTMLDialogElement final : public HTMLElement {
   static void SetFocusForDialogLegacy(HTMLDialogElement* dialog);
 
  private:
-  void ParseAttribute(const AttributeModificationParams&) override;
+  void DefaultEventHandler(Event&) override;
 
   void SetIsModal(bool is_modal);
   void ScheduleCloseEvent();
 
   bool is_modal_;
-  // is_closing_ is set to true at the beginning of close() and is reset to
-  // false after the call to close() finishes.
-  bool is_closing_ = false;
   String return_value_;
   WeakMember<Element> previously_focused_element_;
 

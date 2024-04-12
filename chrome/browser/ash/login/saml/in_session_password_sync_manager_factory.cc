@@ -4,10 +4,13 @@
 
 #include "chrome/browser/ash/login/saml/in_session_password_sync_manager_factory.h"
 
+#include "ash/constants/ash_features.h"
 #include "chrome/browser/ash/login/saml/in_session_password_sync_manager.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/keyed_service/core/keyed_service.h"
+#include "components/user_manager/user.h"
+#include "components/user_manager/user_manager.h"
 #include "content/public/browser/browser_context.h"
 
 namespace ash {
@@ -15,8 +18,7 @@ namespace ash {
 // static
 InSessionPasswordSyncManagerFactory*
 InSessionPasswordSyncManagerFactory::GetInstance() {
-  static base::NoDestructor<InSessionPasswordSyncManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<InSessionPasswordSyncManagerFactory>::get();
 }
 
 // static
@@ -39,8 +41,7 @@ InSessionPasswordSyncManagerFactory::InSessionPasswordSyncManagerFactory()
 InSessionPasswordSyncManagerFactory::~InSessionPasswordSyncManagerFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-InSessionPasswordSyncManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* InSessionPasswordSyncManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = static_cast<Profile*>(context);
 
@@ -48,7 +49,7 @@ InSessionPasswordSyncManagerFactory::BuildServiceInstanceForBrowserContext(
   if (!ProfileHelper::IsPrimaryProfile(profile)) {
     return nullptr;
   }
-  return std::make_unique<InSessionPasswordSyncManager>(profile);
+  return new InSessionPasswordSyncManager(profile);
 }
 
 }  // namespace ash

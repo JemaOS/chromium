@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ui/startup/launch_mode_recorder.h"
 
-#include <optional>
-
 #include "base/base_paths.h"
 #include "base/command_line.h"
 #include "base/files/file_path.h"
@@ -19,6 +17,7 @@
 #include "base/test/task_environment.h"
 #include "chrome/common/chrome_switches.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -36,12 +35,12 @@ class LaunchModeRecorderTest : public testing::Test {
   void ComputeLaunchModeAndVerify(const base::CommandLine& cmd_line,
                                   LaunchMode expected_mode) {
     base::RunLoop run_loop;
-    base::MockCallback<base::OnceCallback<void(std::optional<LaunchMode>)>>
+    base::MockCallback<base::OnceCallback<void(absl::optional<LaunchMode>)>>
         mock_callback;
     ON_CALL(mock_callback, Run(testing::_))
         .WillByDefault(
-            [&run_loop](std::optional<LaunchMode>) { run_loop.Quit(); });
-    EXPECT_CALL(mock_callback, Run(std::optional<LaunchMode>(expected_mode)))
+            [&run_loop](absl::optional<LaunchMode>) { run_loop.Quit(); });
+    EXPECT_CALL(mock_callback, Run(absl::optional<LaunchMode>(expected_mode)))
         .WillOnce(testing::DoDefault());
     ComputeLaunchMode(cmd_line, mock_callback.Get());
     run_loop.Run();
@@ -53,15 +52,15 @@ class LaunchModeRecorderTest : public testing::Test {
 
 TEST_F(LaunchModeRecorderTest, NoMetric) {
   base::HistogramTester histogram_tester;
-  base::OnceCallback<void(std::optional<LaunchMode>)> record_callback =
+  base::OnceCallback<void(absl::optional<LaunchMode>)> record_callback =
       GetRecordLaunchModeForTesting();
-  std::move(record_callback).Run(std::nullopt);
+  std::move(record_callback).Run(absl::nullopt);
   histogram_tester.ExpectTotalCount(kLaunchModeMetric, 0);
 }
 
 TEST_F(LaunchModeRecorderTest, NoneMetric) {
   base::HistogramTester histogram_tester;
-  base::OnceCallback<void(std::optional<LaunchMode>)> record_callback =
+  base::OnceCallback<void(absl::optional<LaunchMode>)> record_callback =
       GetRecordLaunchModeForTesting();
   std::move(record_callback).Run(LaunchMode::kNone);
   histogram_tester.ExpectTotalCount(kLaunchModeMetric, 0);
@@ -69,7 +68,7 @@ TEST_F(LaunchModeRecorderTest, NoneMetric) {
 
 TEST_F(LaunchModeRecorderTest, SimpleMetric) {
   base::HistogramTester histogram_tester;
-  base::OnceCallback<void(std::optional<LaunchMode>)> record_callback =
+  base::OnceCallback<void(absl::optional<LaunchMode>)> record_callback =
       GetRecordLaunchModeForTesting();
   std::move(record_callback).Run(LaunchMode::kWithUrl);
   histogram_tester.ExpectUniqueSample(kLaunchModeMetric, LaunchMode::kWithUrl,
@@ -77,6 +76,14 @@ TEST_F(LaunchModeRecorderTest, SimpleMetric) {
 }
 
 #if BUILDFLAG(IS_WIN)
+// Test  that we we record a LaunchMode of `kUserExperiment` for
+// `kTryChromeAgain`.
+TEST_F(LaunchModeRecorderTest, TryChromeAgain) {
+  base::CommandLine cmd_line(base::CommandLine::NO_PROGRAM);
+  cmd_line.AppendSwitch(switches::kTryChromeAgain);
+  ComputeLaunchModeAndVerify(cmd_line, LaunchMode::kUserExperiment);
+}
+
 TEST_F(LaunchModeRecorderTest, WinNotification) {
   base::CommandLine cmd_line(base::CommandLine::NO_PROGRAM);
   cmd_line.AppendSwitch(switches::kNotificationLaunchId);

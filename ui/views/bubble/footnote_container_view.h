@@ -14,9 +14,9 @@ namespace views {
 // A container that changes visibility with its contents, and draws a solid
 // background with rounded corners at the bottom.
 class FootnoteContainerView : public View {
-  METADATA_HEADER(FootnoteContainerView, View)
-
  public:
+  METADATA_HEADER(FootnoteContainerView);
+
   FootnoteContainerView() = delete;
 
   FootnoteContainerView(const gfx::Insets& margins,

@@ -25,32 +25,24 @@ BackgroundContentsService* BackgroundContentsServiceFactory::GetForProfile(
 // static
 BackgroundContentsServiceFactory*
 BackgroundContentsServiceFactory::GetInstance() {
-  static base::NoDestructor<BackgroundContentsServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<BackgroundContentsServiceFactory>::get();
 }
 
 BackgroundContentsServiceFactory::BackgroundContentsServiceFactory()
     : ProfileKeyedServiceFactory(
           "BackgroundContentsService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(extensions::ExtensionRegistryFactory::GetInstance());
   DependsOn(extensions::ExtensionSystemFactory::GetInstance());
   DependsOn(extensions::ExtensionHostRegistry::GetFactory());
   DependsOn(NotificationDisplayServiceFactory::GetInstance());
 }
 
-BackgroundContentsServiceFactory::~BackgroundContentsServiceFactory() = default;
+BackgroundContentsServiceFactory::~BackgroundContentsServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-BackgroundContentsServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* BackgroundContentsServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<BackgroundContentsService>(
-      static_cast<Profile*>(profile));
+  return new BackgroundContentsService(static_cast<Profile*>(profile));
 }
 
 void BackgroundContentsServiceFactory::RegisterProfilePrefs(

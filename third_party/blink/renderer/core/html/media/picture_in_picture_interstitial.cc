@@ -145,9 +145,8 @@ void PictureInPictureInterstitial::RemovedFrom(ContainerNode&) {
 void PictureInPictureInterstitial::NotifyElementSizeChanged(
     const DOMRectReadOnly& new_size) {
   message_element_->setAttribute(
-      html_names::kClassAttr,
-      MediaControls::GetSizingCSSClass(
-          MediaControls::GetSizingClass(new_size.width())));
+      "class", MediaControls::GetSizingCSSClass(
+                   MediaControls::GetSizingClass(new_size.width())));
 
   // Force a layout since |LayoutMedia::UpdateLayout()| will sometimes miss a
   // layout otherwise.

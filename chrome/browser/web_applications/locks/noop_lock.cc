@@ -13,12 +13,10 @@ namespace web_app {
 
 NoopLockDescription::NoopLockDescription()
     : LockDescription({}, LockDescription::Type::kNoOp) {}
-NoopLockDescription::NoopLockDescription(NoopLockDescription&&) = default;
 NoopLockDescription::~NoopLockDescription() = default;
 
-NoopLock::NoopLock(std::unique_ptr<content::PartitionedLockHolder> holder,
-                   base::WeakPtr<WebAppLockManager> lock_manager)
-    : Lock(std::move(holder), std::move(lock_manager)) {}
+NoopLock::NoopLock(std::unique_ptr<content::PartitionedLockHolder> holder)
+    : Lock(std::move(holder)) {}
 NoopLock::~NoopLock() = default;
 
 }  // namespace web_app

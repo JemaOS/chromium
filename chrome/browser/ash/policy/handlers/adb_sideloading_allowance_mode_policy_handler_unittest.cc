@@ -116,12 +116,12 @@ class AdbSideloadingAllowanceModePolicyHandlerTest : public testing::Test {
 
   content::BrowserTaskEnvironment task_environment_;
   ScopedTestingLocalState local_state_;
-  raw_ptr<ash::FakeChromeUserManager, DanglingUntriaged> user_manager_;
+  raw_ptr<ash::FakeChromeUserManager, ExperimentalAsh> user_manager_;
   user_manager::ScopedUserManager user_manager_enabler_;
 
   ash::ScopedTestingCrosSettings scoped_testing_cros_settings_;
 
-  raw_ptr<ash::MockAdbSideloadingPolicyChangeNotification, DanglingUntriaged>
+  raw_ptr<ash::MockAdbSideloadingPolicyChangeNotification, ExperimentalAsh>
       mock_notification_;
   std::unique_ptr<AdbSideloadingAllowanceModePolicyHandler>
       adb_sideloading_allowance_mode_policy_handler_;

@@ -13,7 +13,7 @@
 
 // This class informs OneTimePermissionsTracker of pages being loaded, navigated
 // or destroyed in each tab. This information is then used by the
-// OneTimePermissionProvider to revoke permissions.
+// OneTimeGeolocationPermissionProvider to revoke permissions.
 class OneTimePermissionsTrackerHelper
     : public content::WebContentsObserver,
       public content::WebContentsUserData<OneTimePermissionsTrackerHelper>,
@@ -46,8 +46,8 @@ class OneTimePermissionsTrackerHelper
  private:
   explicit OneTimePermissionsTrackerHelper(content::WebContents* webContents);
   friend class content::WebContentsUserData<OneTimePermissionsTrackerHelper>;
-  std::optional<url::Origin> last_committed_origin_;
-  std::optional<content::Visibility> last_visibility_;
+  absl::optional<url::Origin> last_committed_origin_;
+  absl::optional<content::Visibility> last_visibility_;
 
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };

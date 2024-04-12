@@ -34,9 +34,5 @@ void ScopedSearchHANDLECloseTraits::Free(HANDLE handle) {
   PCHECK(FindClose(handle)) << "FindClose";
 }
 
-void ScopedVectoredExceptionRegistrationCloseTraits::Free(PVOID handle) {
-  PCHECK(::RemoveVectoredExceptionHandler(handle));
-}
-
 }  // namespace internal
 }  // namespace crashpad

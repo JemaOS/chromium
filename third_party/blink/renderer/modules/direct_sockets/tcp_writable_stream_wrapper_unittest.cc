@@ -16,7 +16,6 @@
 #include "third_party/blink/renderer/modules/direct_sockets/stream_wrapper.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
@@ -53,7 +52,7 @@ class StreamCreator : public GarbageCollected<StreamCreator> {
     auto* script_state = scope.GetScriptState();
     stream_wrapper_ = MakeGarbageCollected<TCPWritableStreamWrapper>(
         script_state, base::DoNothing(), std::move(data_pipe_producer));
-    return stream_wrapper_.Get();
+    return stream_wrapper_;
   }
 
   void ResetPipe() { data_pipe_consumer_.reset(); }
@@ -106,7 +105,6 @@ class ScopedStreamCreator {
 };
 
 TEST(TCPWritableStreamWrapperTest, Create) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedStreamCreator stream_creator(MakeGarbageCollected<StreamCreator>());
   auto* tcp_writable_stream_wrapper = stream_creator->Create(scope);
@@ -114,7 +112,6 @@ TEST(TCPWritableStreamWrapperTest, Create) {
 }
 
 TEST(TCPWritableStreamWrapperTest, WriteArrayBuffer) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedStreamCreator stream_creator(MakeGarbageCollected<StreamCreator>());
   auto* tcp_writable_stream_wrapper = stream_creator->Create(scope);
@@ -133,7 +130,6 @@ TEST(TCPWritableStreamWrapperTest, WriteArrayBuffer) {
 }
 
 TEST(TCPWritableStreamWrapperTest, WriteArrayBufferView) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedStreamCreator stream_creator(MakeGarbageCollected<StreamCreator>());
   auto* tcp_writable_stream_wrapper = stream_creator->Create(scope);
@@ -158,7 +154,6 @@ bool IsAllNulls(base::span<const uint8_t> data) {
 }
 
 TEST(TCPWritableStreamWrapperTest, AsyncWrite) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedStreamCreator stream_creator(MakeGarbageCollected<StreamCreator>());
   // Set a large pipe capacity, so any platform-specific excess is dwarfed in
@@ -217,7 +212,6 @@ TEST(TCPWritableStreamWrapperTest, AsyncWrite) {
 
 // Writing immediately followed by closing should not lose data.
 TEST(TCPWritableStreamWrapperTest, WriteThenClose) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedStreamCreator stream_creator(MakeGarbageCollected<StreamCreator>());
   auto* tcp_writable_stream_wrapper = stream_creator->Create(scope);
@@ -248,7 +242,6 @@ TEST(TCPWritableStreamWrapperTest, WriteThenClose) {
 }
 
 TEST(TCPWritableStreamWrapperTest, DISABLED_TriggerHasAborted) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedStreamCreator stream_creator(MakeGarbageCollected<StreamCreator>());
   auto* tcp_writable_stream_wrapper = stream_creator->Create(scope);
@@ -279,13 +272,12 @@ INSTANTIATE_TEST_SUITE_P(/**/,
                          testing::Bool());
 
 TEST_P(TCPWritableStreamWrapperCloseTestWithMaybePendingWrite, TriggerClose) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedStreamCreator stream_creator(MakeGarbageCollected<StreamCreator>());
   auto* tcp_writable_stream_wrapper = stream_creator->Create(scope);
 
   bool pending_write = GetParam();
-  std::optional<ScriptPromiseTester> tester;
+  absl::optional<ScriptPromiseTester> tester;
   if (pending_write) {
     auto* script_state = scope.GetScriptState();
     auto* chunk = DOMArrayBuffer::Create("D", 2);
@@ -316,13 +308,12 @@ TEST_P(TCPWritableStreamWrapperCloseTestWithMaybePendingWrite, TriggerClose) {
 
 TEST_P(TCPWritableStreamWrapperCloseTestWithMaybePendingWrite,
        TriggerCloseInReverseOrder) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedStreamCreator stream_creator(MakeGarbageCollected<StreamCreator>());
   auto* tcp_writable_stream_wrapper = stream_creator->Create(scope);
 
   bool pending_write = GetParam();
-  std::optional<ScriptPromiseTester> tester;
+  absl::optional<ScriptPromiseTester> tester;
   if (pending_write) {
     auto* script_state = scope.GetScriptState();
     auto* chunk = DOMArrayBuffer::Create("D", 2);

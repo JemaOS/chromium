@@ -6,11 +6,9 @@
 #define CHROME_TEST_CHROMEDRIVER_CAPABILITIES_H_
 
 #include <stddef.h>
-#include <third_party/abseil-cpp/absl/types/optional.h>
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -19,12 +17,12 @@
 #include "base/files/file_path.h"
 #include "base/time/time.h"
 #include "base/values.h"
-#include "chrome/test/chromedriver/chrome/device_metrics.h"
 #include "chrome/test/chromedriver/chrome/devtools_http_client.h"
 #include "chrome/test/chromedriver/chrome/log.h"
 #include "chrome/test/chromedriver/chrome/mobile_device.h"
 #include "chrome/test/chromedriver/net/net_util.h"
 #include "chrome/test/chromedriver/session.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class CommandLine;
@@ -122,8 +120,6 @@ struct Capabilities {
   base::TimeDelta script_timeout = Session::kDefaultScriptTimeout;
   base::TimeDelta page_load_timeout = Session::kDefaultPageLoadTimeout;
   base::TimeDelta implicit_wait_timeout = Session::kDefaultImplicitWaitTimeout;
-  base::TimeDelta browser_startup_timeout =
-      Session::kDefaultBrowserStartupTimeout;
 
   bool strict_file_interactability;
 
@@ -161,7 +157,7 @@ struct Capabilities {
   // ChromeDriver dies.
   bool detach;
 
-  std::optional<MobileDevice> mobile_device;
+  absl::optional<MobileDevice> mobile_device;
 
   // Set of switches which should be removed from default list when launching
   // Chrome.

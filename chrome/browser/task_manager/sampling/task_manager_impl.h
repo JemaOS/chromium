@@ -102,7 +102,6 @@ class TaskManagerImpl : public TaskManagerInterface,
   void TaskAdded(Task* task) override;
   void TaskRemoved(Task* task) override;
   void TaskUnresponsive(Task* task) override;
-  void ActiveTaskFetched(TaskId active_task_id) override;
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   void TaskIdsListToBeInvalidated() override;
 #endif
@@ -193,7 +192,8 @@ class TaskManagerImpl : public TaskManagerInterface,
   // Task provider handling crosapi task data.
   // Once CrosapiTaskProvider is created and added to the task_providers_, it
   // should never be removed from task_providers_ unless in the destructor.
-  raw_ptr<CrosapiTaskProviderAsh> crosapi_task_provider_ = nullptr;
+  raw_ptr<CrosapiTaskProviderAsh, ExperimentalAsh> crosapi_task_provider_ =
+      nullptr;
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
   // This will be set to true while there are observers and the task manager is

@@ -29,7 +29,7 @@ FakeNearbyShareCertificateStorage::Factory::CreateInstance(
 
 FakeNearbyShareCertificateStorage::ReplacePublicCertificatesCall::
     ReplacePublicCertificatesCall(
-        const std::vector<nearby::sharing::proto::PublicCertificate>&
+        const std::vector<nearbyshare::proto::PublicCertificate>&
             public_certificates,
         ResultCallback callback)
     : public_certificates(public_certificates), callback(std::move(callback)) {}
@@ -43,7 +43,7 @@ FakeNearbyShareCertificateStorage::ReplacePublicCertificatesCall::
 
 FakeNearbyShareCertificateStorage::AddPublicCertificatesCall::
     AddPublicCertificatesCall(
-        const std::vector<nearby::sharing::proto::PublicCertificate>&
+        const std::vector<nearbyshare::proto::PublicCertificate>&
             public_certificates,
         ResultCallback callback)
     : public_certificates(public_certificates), callback(std::move(callback)) {}
@@ -76,12 +76,12 @@ void FakeNearbyShareCertificateStorage::GetPublicCertificates(
   get_public_certificates_callbacks_.push_back(std::move(callback));
 }
 
-std::optional<std::vector<NearbySharePrivateCertificate>>
+absl::optional<std::vector<NearbySharePrivateCertificate>>
 FakeNearbyShareCertificateStorage::GetPrivateCertificates() const {
   return private_certificates_;
 }
 
-std::optional<base::Time>
+absl::optional<base::Time>
 FakeNearbyShareCertificateStorage::NextPublicCertificateExpirationTime() const {
   return next_public_certificate_expiration_time_;
 }
@@ -92,7 +92,7 @@ void FakeNearbyShareCertificateStorage::ReplacePrivateCertificates(
 }
 
 void FakeNearbyShareCertificateStorage::AddPublicCertificates(
-    const std::vector<nearby::sharing::proto::PublicCertificate>&
+    const std::vector<nearbyshare::proto::PublicCertificate>&
         public_certificates,
     ResultCallback callback) {
   add_public_certificates_calls_.emplace_back(public_certificates,
@@ -112,6 +112,6 @@ void FakeNearbyShareCertificateStorage::SetPublicCertificateIds(
 }
 
 void FakeNearbyShareCertificateStorage::SetNextPublicCertificateExpirationTime(
-    std::optional<base::Time> time) {
+    absl::optional<base::Time> time) {
   next_public_certificate_expiration_time_ = time;
 }

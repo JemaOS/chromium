@@ -23,12 +23,9 @@ std::string EncryptToken(const std::string& system_salt,
 }
 
 std::string DecryptToken(const std::string& system_salt,
-                         const std::string encrypted_dm_token,
-                         bool is_weakly_encrypted) {
+                         const std::string encrypted_dm_token) {
   ash::CryptohomeTokenEncryptor encryptor(system_salt);
-  return is_weakly_encrypted
-             ? encryptor.WeakDecryptWithSystemSalt(encrypted_dm_token)
-             : encryptor.DecryptWithSystemSalt(encrypted_dm_token);
+  return encryptor.DecryptWithSystemSalt(encrypted_dm_token);
 }
 
 }  // namespace
@@ -52,8 +49,7 @@ DMTokenStorage::~DMTokenStorage() {
 
 // static
 void DMTokenStorage::RegisterPrefs(PrefRegistrySimple* registry) {
-  registry->RegisterStringPref(prefs::kDeviceDMTokenV1, std::string());
-  registry->RegisterStringPref(prefs::kDeviceDMTokenV2, std::string());
+  registry->RegisterStringPref(prefs::kDeviceDMToken, std::string());
 }
 
 void DMTokenStorage::StoreDMToken(const std::string& dm_token,
@@ -146,7 +142,7 @@ void DMTokenStorage::OnTokenEncrypted(const std::string& encrypted_dm_token) {
   if (encrypted_dm_token.empty()) {
     DLOG(ERROR) << "Failed to encrypt DM token.";
   } else {
-    local_state_->SetString(prefs::kDeviceDMTokenV2, encrypted_dm_token);
+    local_state_->SetString(prefs::kDeviceDMToken, encrypted_dm_token);
   }
   FlushStoreTokenCallback(!encrypted_dm_token.empty());
 }
@@ -154,18 +150,12 @@ void DMTokenStorage::OnTokenEncrypted(const std::string& encrypted_dm_token) {
 void DMTokenStorage::LoadAndDecryptToken() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   DCHECK_EQ(SaltState::LOADED, state_);
-  bool is_weakly_encrypted = false;
   std::string encrypted_dm_token =
-      local_state_->GetString(prefs::kDeviceDMTokenV2);
-  if (encrypted_dm_token.empty()) {
-    is_weakly_encrypted = true;
-    encrypted_dm_token = local_state_->GetString(prefs::kDeviceDMTokenV1);
-  }
+      local_state_->GetString(prefs::kDeviceDMToken);
   if (!encrypted_dm_token.empty()) {
     base::ThreadPool::PostTaskAndReplyWithResult(
         FROM_HERE, {base::MayBlock(), base::TaskPriority::BEST_EFFORT},
-        base::BindOnce(&DecryptToken, system_salt_, encrypted_dm_token,
-                       is_weakly_encrypted),
+        base::BindOnce(&DecryptToken, system_salt_, encrypted_dm_token),
         base::BindOnce(&DMTokenStorage::FlushRetrieveTokenCallback,
                        weak_ptr_factory_.GetWeakPtr()));
   } else {

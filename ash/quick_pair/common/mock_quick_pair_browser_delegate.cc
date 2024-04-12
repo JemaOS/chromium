@@ -7,13 +7,9 @@
 namespace ash {
 namespace quick_pair {
 
-MockQuickPairBrowserDelegate::MockQuickPairBrowserDelegate() {
-  SetInstance(this);
-}
+MockQuickPairBrowserDelegate::MockQuickPairBrowserDelegate() = default;
 
-MockQuickPairBrowserDelegate::~MockQuickPairBrowserDelegate() {
-  SetInstance(nullptr);
-}
+MockQuickPairBrowserDelegate::~MockQuickPairBrowserDelegate() = default;
 
 }  // namespace quick_pair
 }  // namespace ash

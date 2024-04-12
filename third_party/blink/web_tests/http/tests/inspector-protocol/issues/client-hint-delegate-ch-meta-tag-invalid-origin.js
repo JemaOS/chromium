@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function (testRunner) {
     const { page, dp } = await testRunner.startBlank(`Test Invalid Origin Delegate-CH`);
     await dp.Network.enable();
     await dp.Audits.enable();

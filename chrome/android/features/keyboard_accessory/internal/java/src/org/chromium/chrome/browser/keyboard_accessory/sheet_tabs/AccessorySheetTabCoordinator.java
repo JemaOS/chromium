@@ -16,10 +16,10 @@ import androidx.annotation.CallSuper;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.chromium.base.ResettersForTesting;
 import org.chromium.chrome.browser.keyboard_accessory.AccessoryTabType;
 import org.chromium.chrome.browser.keyboard_accessory.data.KeyboardAccessoryData;
 import org.chromium.chrome.browser.keyboard_accessory.data.KeyboardAccessoryData.AccessorySheetData;
@@ -37,9 +37,12 @@ public abstract class AccessorySheetTabCoordinator implements KeyboardAccessoryD
 
     protected final PropertyModel mModel;
 
-    /** Provides the icon used for a sheet. Simplifies mocking in controller tests. */
+    /**
+     * Provides the icon used for a sheet. Simplifies mocking in controller tests.
+     */
+    @VisibleForTesting
     public static class IconProvider {
-        private static Drawable sIconForTesting;
+        private static Drawable sTestIcon;
 
         /**
          * Loads the icon used for this class. Used to mock icons in unit tests.
@@ -48,13 +51,13 @@ public abstract class AccessorySheetTabCoordinator implements KeyboardAccessoryD
          * @return The icon as {@link Drawable}.
          */
         static Drawable getIcon(Context context, @DrawableRes int resource) {
-            if (sIconForTesting != null) return sIconForTesting;
+            if (sTestIcon != null) return sTestIcon;
             return AppCompatResources.getDrawable(context, resource);
         }
 
+        @VisibleForTesting
         public static void setIconForTesting(Drawable icon) {
-            sIconForTesting = icon;
-            ResettersForTesting.register(() -> sIconForTesting = null);
+            sTestIcon = icon;
         }
     }
 
@@ -67,23 +70,17 @@ public abstract class AccessorySheetTabCoordinator implements KeyboardAccessoryD
      * @param tabType The type of this tab as used in histograms.
      * @param scrollListener An optional listener that will be bound to an inflated recycler view.
      */
-    AccessorySheetTabCoordinator(
-            String title,
-            Drawable icon,
-            String contentDescription,
-            @LayoutRes int layout,
-            @AccessoryTabType int tabType,
+    AccessorySheetTabCoordinator(String title, Drawable icon, String contentDescription,
+            @LayoutRes int layout, @AccessoryTabType int tabType,
             @Nullable RecyclerView.OnScrollListener scrollListener) {
-        mTab =
-                new KeyboardAccessoryData.Tab(
-                        title, icon, contentDescription, layout, tabType, this);
+        mTab = new KeyboardAccessoryData.Tab(
+                title, icon, contentDescription, layout, tabType, this);
         mScrollListener = scrollListener;
-        mModel =
-                new PropertyModel.Builder(AccessorySheetTabProperties.ALL_KEYS)
-                        .with(ITEMS, new AccessorySheetTabItemsModel())
-                        .with(SCROLL_LISTENER, scrollListener)
-                        .with(IS_DEFAULT_A11Y_FOCUS_REQUESTED, false)
-                        .build();
+        mModel = new PropertyModel.Builder(AccessorySheetTabProperties.ALL_KEYS)
+                         .with(ITEMS, new AccessorySheetTabItemsModel())
+                         .with(SCROLL_LISTENER, scrollListener)
+                         .with(IS_DEFAULT_A11Y_FOCUS_REQUESTED, false)
+                         .build();
     }
 
     @CallSuper
@@ -126,6 +123,7 @@ public abstract class AccessorySheetTabCoordinator implements KeyboardAccessoryD
         sheetDataProvider.addObserver(getMediator());
     }
 
+    @VisibleForTesting
     AccessorySheetTabItemsModel getSheetDataPiecesForTesting() {
         return mModel.get(ITEMS);
     }

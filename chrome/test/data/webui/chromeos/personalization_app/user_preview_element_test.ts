@@ -3,18 +3,18 @@
 // found in the LICENSE file.
 
 import 'chrome://personalization/strings.m.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
-import {DefaultUserImage, Paths, UserImage, UserPreviewElement} from 'chrome://personalization/js/personalization_app.js';
-import {stringToMojoString16} from 'chrome://resources/js/mojo_type_util.js';
+import {DefaultUserImage, Paths, UserImage, UserPreview} from 'chrome://personalization/js/personalization_app.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
 
-import {baseSetup, initElement, teardownElement} from './personalization_app_test_utils.js';
+import {baseSetup, initElement, teardownElement, toString16} from './personalization_app_test_utils.js';
 import {TestPersonalizationStore} from './test_personalization_store.js';
 import {TestUserProvider} from './test_user_interface_provider.js';
 
-suite('UserPreviewElementTest', function() {
-  let userPreviewElement: UserPreviewElement|null;
+suite('UserPreviewTest', function() {
+  let userPreviewElement: UserPreview|null;
   let personalizationStore: TestPersonalizationStore;
   let userProvider: TestUserProvider;
 
@@ -31,13 +31,13 @@ suite('UserPreviewElementTest', function() {
 
   test('fetches user info on creation', async () => {
     assertEquals(0, userProvider.getCallCount('getUserInfo'));
-    userPreviewElement = initElement(UserPreviewElement);
+    userPreviewElement = initElement(UserPreview);
     await userProvider.whenCalled('getUserInfo');
   });
 
   test('displays user info when set', async () => {
     personalizationStore.data.user.info = userProvider.info;
-    userPreviewElement = initElement(UserPreviewElement);
+    userPreviewElement = initElement(UserPreview);
     await waitAfterNextRender(userPreviewElement!);
 
     assertEquals(
@@ -52,7 +52,7 @@ suite('UserPreviewElementTest', function() {
   test('displays edit icon when not managed', async () => {
     personalizationStore.data.user.image = userProvider.image;
     personalizationStore.data.user.imageIsEnterpriseManaged = false;
-    userPreviewElement = initElement(UserPreviewElement, {path: Paths.ROOT});
+    userPreviewElement = initElement(UserPreview, {path: Paths.ROOT});
     await waitAfterNextRender(userPreviewElement);
 
     const avatarImage =
@@ -68,7 +68,7 @@ suite('UserPreviewElementTest', function() {
 
   test('displays user image from default image', async () => {
     personalizationStore.data.user.image = userProvider.image;
-    userPreviewElement = initElement(UserPreviewElement, {path: Paths.ROOT});
+    userPreviewElement = initElement(UserPreview, {path: Paths.ROOT});
     await waitAfterNextRender(userPreviewElement!);
 
     const avatarImage = userPreviewElement!.shadowRoot!.getElementById(
@@ -81,7 +81,7 @@ suite('UserPreviewElementTest', function() {
   test('displays user image from profile image', async () => {
     personalizationStore.data.user.image = {profileImage: {}} as UserImage;
     personalizationStore.data.user.profileImage = userProvider.profileImage;
-    userPreviewElement = initElement(UserPreviewElement, {path: Paths.ROOT});
+    userPreviewElement = initElement(UserPreview, {path: Paths.ROOT});
     await waitAfterNextRender(userPreviewElement!);
 
     const avatarImage = userPreviewElement!.shadowRoot!.getElementById(
@@ -108,7 +108,7 @@ suite('UserPreviewElementTest', function() {
     } as UserImage;
     personalizationStore.data.user.image = externalImage;
 
-    userPreviewElement = initElement(UserPreviewElement, {path: Paths.ROOT});
+    userPreviewElement = initElement(UserPreview, {path: Paths.ROOT});
     await waitAfterNextRender(userPreviewElement);
 
     const avatarImage = userPreviewElement!.shadowRoot!.getElementById(
@@ -128,13 +128,12 @@ suite('UserPreviewElementTest', function() {
         url: {
           url: 'https://www.gstatic.com/',
         },
-        title: stringToMojoString16('the remains of the day'),
+        title: toString16('the remains of the day'),
         index: 1,
-        sourceInfo: null,
       },
     };
 
-    userPreviewElement = initElement(UserPreviewElement, {path: Paths.ROOT});
+    userPreviewElement = initElement(UserPreview, {path: Paths.ROOT});
     await waitAfterNextRender(userPreviewElement);
 
     const avatarImage = userPreviewElement!.shadowRoot!.getElementById(
@@ -148,7 +147,7 @@ suite('UserPreviewElementTest', function() {
   });
 
   test('do not display image if user image is not ready yet', async () => {
-    userPreviewElement = initElement(UserPreviewElement, {path: Paths.ROOT});
+    userPreviewElement = initElement(UserPreview, {path: Paths.ROOT});
     await waitAfterNextRender(userPreviewElement!);
 
     const avatarImage = userPreviewElement!.shadowRoot!.getElementById(
@@ -160,7 +159,7 @@ suite('UserPreviewElementTest', function() {
 
   test('displays placeholder image if user image is invalid', async () => {
     personalizationStore.data.user.image = {invalidImage: {}} as UserImage;
-    userPreviewElement = initElement(UserPreviewElement, {path: Paths.ROOT});
+    userPreviewElement = initElement(UserPreview, {path: Paths.ROOT});
     await waitAfterNextRender(userPreviewElement!);
 
     const avatarImage = userPreviewElement!.shadowRoot!.getElementById(
@@ -172,7 +171,7 @@ suite('UserPreviewElementTest', function() {
 
   test('displays non-clickable user image on user subpage', async () => {
     personalizationStore.data.user.image = userProvider.image;
-    userPreviewElement = initElement(UserPreviewElement, {path: Paths.USER});
+    userPreviewElement = initElement(UserPreview, {path: Paths.USER});
     await waitAfterNextRender(userPreviewElement);
 
     const avatarImage = userPreviewElement!.shadowRoot!.getElementById(
@@ -185,7 +184,7 @@ suite('UserPreviewElementTest', function() {
   test('displays enterprise logo on avatar image', async () => {
     personalizationStore.data.user.image = userProvider.image;
     personalizationStore.data.user.imageIsEnterpriseManaged = true;
-    userPreviewElement = initElement(UserPreviewElement, {path: Paths.ROOT});
+    userPreviewElement = initElement(UserPreview, {path: Paths.ROOT});
     await waitAfterNextRender(userPreviewElement);
 
     const avatarImage =
@@ -201,7 +200,7 @@ suite('UserPreviewElementTest', function() {
 
   test('displays author and website source info if present', async () => {
     personalizationStore.data.user.image = userProvider.image;
-    userPreviewElement = initElement(UserPreviewElement, {path: Paths.ROOT});
+    userPreviewElement = initElement(UserPreview, {path: Paths.ROOT});
     await waitAfterNextRender(userPreviewElement);
 
     // Image has no sourceInfo so should be missing.
@@ -209,10 +208,10 @@ suite('UserPreviewElementTest', function() {
 
     const deprecatedDefaultImage: DefaultUserImage = {
       index: 2,
-      title: stringToMojoString16('title'),
+      title: toString16('title'),
       url: {url: 'data://test_url'},
       sourceInfo: {
-        author: stringToMojoString16('author example'),
+        author: toString16('author example'),
         website: {url: 'website example'},
       },
     };

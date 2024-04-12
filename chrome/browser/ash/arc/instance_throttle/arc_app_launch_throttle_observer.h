@@ -8,7 +8,6 @@
 #include <set>
 #include <string>
 
-#include "ash/components/arc/app/arc_app_launch_notifier.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/ash/app_list/arc/arc_app_list_prefs.h"
@@ -28,7 +27,7 @@ class ArcAppLaunchThrottleObserver
     : public ash::ThrottleObserver,
       public ArcAppListPrefs::Observer,
       public ash::ArcWindowWatcher::ArcWindowDisplayObserver,
-      public ArcAppLaunchNotifier::Observer {
+      public AppLaunchObserver {
  public:
   ArcAppLaunchThrottleObserver();
 
@@ -43,9 +42,8 @@ class ArcAppLaunchThrottleObserver
                       const ObserverStateChangedCallback& callback) override;
   void StopObserving() override;
 
-  // ArcAppLaunchNotifier::Observer:
-  void OnArcAppLaunchRequested(std::string_view identifier) override;
-  void OnArcAppLaunchNotifierDestroy() override;
+  // AppLaunchObserver:
+  void OnAppLaunchRequested(const ArcAppListPrefs::AppInfo& app_info) override;
 
   // ArcAppListPrefs::Observer:
   void OnTaskCreated(int32_t task_id,
@@ -56,7 +54,6 @@ class ArcAppLaunchThrottleObserver
 
   // ash::ArcWindowWatcher::ArcWindowDisplayObserver
   void OnArcWindowDisplayed(const std::string& package_name) override;
-  void OnWillDestroyWatcher() override;
 
  private:
   void OnLaunchedOrRequestExpired(const std::string& name);
@@ -69,9 +66,6 @@ class ArcAppLaunchThrottleObserver
 
   base::ScopedObservation<ArcAppListPrefs, ArcAppListPrefs::Observer>
       task_creation_observation_{this};
-
-  base::ScopedObservation<ArcAppLaunchNotifier, ArcAppLaunchNotifier::Observer>
-      launch_request_observation_{this};
 
   // Must go last.
   base::WeakPtrFactory<ArcAppLaunchThrottleObserver> weak_ptr_factory_{this};

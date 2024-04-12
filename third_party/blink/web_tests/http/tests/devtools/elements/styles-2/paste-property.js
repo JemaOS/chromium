@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
 (async function() {
   TestRunner.addResult(`Tests that splitting properties when pasting works.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <div id="inspected" style="font-size: 12px">Text</div>
@@ -49,7 +47,7 @@ import {ElementsTestRunner} from 'elements_test_runner';
 
   function pasteProperty(treeElement, propertyText, callback) {
     treeElement.nameElement.textContent = propertyText;
-    treeElement.startEditingName();
+    treeElement.startEditing();
 
     document.execCommand('SelectAll');
     document.execCommand('Copy');

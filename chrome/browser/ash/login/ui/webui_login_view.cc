@@ -16,8 +16,10 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/trace_event.h"
 #include "base/values.h"
-#include "chrome/browser/ash/app_mode/kiosk_chrome_app_manager.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
 #include "chrome/browser/ash/login/ui/login_display_host_webui.h"
+#include "chrome/browser/ash/login/ui/login_display_webui.h"
+#include "chrome/browser/ash/login/ui/web_contents_forced_title.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/lifetime/termination_notification.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
@@ -85,40 +87,13 @@ class ScopedArrowKeyTraversal {
   const bool previous_arrow_key_traversal_enabled_;
 };
 
-void InitializeWebView(views::WebView* web_view) {
-  WebContents* web_contents = web_view->GetWebContents();
-
-  views::WebContentsSetBackgroundColor::CreateForWebContentsWithColor(
-      web_contents, SK_ColorTRANSPARENT);
-
-  // Ensure that the login UI has a tab ID, which will allow the GAIA auth
-  // extension's background script to tell it apart from a captive portal window
-  // that may be opened on top of this UI.
-  CreateSessionServiceTabHelper(web_contents);
-
-  // Create the password manager that is needed for the proxy.
-  autofill::ChromeAutofillClient::CreateForWebContents(web_contents);
-  ChromePasswordManagerClient::CreateForWebContents(web_contents);
-
-  // Create the password reuse detection manager.
-  ChromePasswordReuseDetectionManagerClient::CreateForWebContents(web_contents);
-
-  // LoginHandlerViews uses a constrained window for the password manager view.
-  WebContentsModalDialogManager::CreateForWebContents(web_contents);
-
-  extensions::SetViewType(web_contents,
-                          extensions::mojom::ViewType::kComponent);
-  blink::RendererPreferences* prefs = web_contents->GetMutableRendererPrefs();
-  renderer_preferences_util::UpdateFromSystemSettings(
-      prefs, ProfileHelper::GetSigninProfile());
-}
-
 }  // namespace
 
 // WebUILoginView public: ------------------------------------------------------
 
-WebUILoginView::WebUILoginView(base::WeakPtr<LoginDisplayHostWebUI> controller)
-    : controller_(controller) {
+WebUILoginView::WebUILoginView(const WebViewSettings& settings,
+                               base::WeakPtr<LoginDisplayHostWebUI> controller)
+    : settings_(settings), controller_(controller) {
   on_app_terminating_subscription_ =
       browser_shutdown::AddAppTerminatingCallback(base::BindOnce(
           &WebUILoginView::OnAppTerminating, base::Unretained(this)));
@@ -132,7 +107,7 @@ WebUILoginView::WebUILoginView(base::WeakPtr<LoginDisplayHostWebUI> controller)
     // passed. Favor --ash-dev-shortcuts since that is explicitly added.
     if (kLoginAcceleratorData[i].action ==
             LoginAcceleratorAction::kEnableConsumerKiosk &&
-        !KioskChromeAppManager::IsConsumerKioskEnabled()) {
+        !KioskAppManager::IsConsumerKioskEnabled()) {
       continue;
     }
 
@@ -164,6 +139,40 @@ WebUILoginView::~WebUILoginView() {
   web_contents->SetDelegate(nullptr);
 }
 
+// static
+void WebUILoginView::InitializeWebView(views::WebView* web_view,
+                                       const std::u16string& title) {
+  WebContents* web_contents = web_view->GetWebContents();
+
+  if (!title.empty())
+    WebContentsForcedTitle::CreateForWebContentsWithTitle(web_contents, title);
+
+  views::WebContentsSetBackgroundColor::CreateForWebContentsWithColor(
+      web_contents, SK_ColorTRANSPARENT);
+
+  // Ensure that the login UI has a tab ID, which will allow the GAIA auth
+  // extension's background script to tell it apart from a captive portal window
+  // that may be opened on top of this UI.
+  CreateSessionServiceTabHelper(web_contents);
+
+  // Create the password manager that is needed for the proxy.
+  ChromePasswordManagerClient::CreateForWebContentsWithAutofillClient(
+      web_contents,
+      autofill::ContentAutofillClient::FromWebContents(web_contents));
+
+  // Create the password reuse detection manager.
+  ChromePasswordReuseDetectionManagerClient::CreateForWebContents(web_contents);
+
+  // LoginHandlerViews uses a constrained window for the password manager view.
+  WebContentsModalDialogManager::CreateForWebContents(web_contents);
+
+  extensions::SetViewType(web_contents,
+                          extensions::mojom::ViewType::kComponent);
+  blink::RendererPreferences* prefs = web_contents->GetMutableRendererPrefs();
+  renderer_preferences_util::UpdateFromSystemSettings(
+      prefs, ProfileHelper::GetSigninProfile());
+}
+
 void WebUILoginView::Init() {
   // Init() should only be called once.
   DCHECK(!web_view_);
@@ -171,7 +180,7 @@ void WebUILoginView::Init() {
       std::make_unique<views::WebView>(ProfileHelper::GetSigninProfile());
   WebContents* web_contents = web_view->GetWebContents();
 
-  InitializeWebView(web_view.get());
+  InitializeWebView(web_view.get(), settings_.web_view_title);
   web_view->set_allow_accelerators(true);
 
   web_view_ = AddChildView(std::move(web_view));
@@ -257,7 +266,7 @@ void WebUILoginView::SetStatusAreaVisible(bool visible) {
   SystemTrayClientImpl::Get()->SetPrimaryTrayVisible(visible);
 }
 
-void WebUILoginView::SetKeyboardEventsAndSystemTrayEnabled(bool enabled) {
+void WebUILoginView::SetUIEnabled(bool enabled) {
   forward_keyboard_event_ = enabled;
 
   SystemTrayClientImpl::Get()->SetPrimaryTrayEnabled(enabled);
@@ -265,7 +274,7 @@ void WebUILoginView::SetKeyboardEventsAndSystemTrayEnabled(bool enabled) {
 
 // WebUILoginView protected: ---------------------------------------------------
 
-void WebUILoginView::Layout(PassKey) {
+void WebUILoginView::Layout() {
   DCHECK(web_view_);
   web_view_->SetBoundsRect(bounds());
 
@@ -274,7 +283,7 @@ void WebUILoginView::Layout(PassKey) {
 }
 
 void WebUILoginView::ChildPreferredSizeChanged(View* child) {
-  DeprecatedLayoutImmediately();
+  Layout();
   SchedulePaint();
 }
 
@@ -353,7 +362,7 @@ void WebUILoginView::RequestMediaAccessPermission(
 
 bool WebUILoginView::CheckMediaAccessPermission(
     content::RenderFrameHost* render_frame_host,
-    const url::Origin& security_origin,
+    const GURL& security_origin,
     blink::mojom::MediaStreamType type) {
   return MediaCaptureDevicesDispatcher::GetInstance()
       ->CheckMediaAccessPermission(render_frame_host, security_origin, type);
@@ -397,7 +406,7 @@ void WebUILoginView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
       l10n_util::GetStringUTF16(IDS_OOBE_ACCESSIBLE_SCREEN_NAME));
 }
 
-BEGIN_METADATA(WebUILoginView)
+BEGIN_METADATA(WebUILoginView, views::View)
 END_METADATA
 
 }  // namespace ash

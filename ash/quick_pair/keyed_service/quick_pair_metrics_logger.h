@@ -45,7 +45,7 @@ class QuickPairMetricsLogger : public PairerBroker::Observer,
   void OnHandshakeComplete(scoped_refptr<Device> device) override;
   void OnDevicePaired(scoped_refptr<Device> device) override;
   void OnAccountKeyWrite(scoped_refptr<Device> device,
-                         std::optional<AccountKeyFailure> error) override;
+                         absl::optional<AccountKeyFailure> error) override;
   void OnPairingComplete(scoped_refptr<Device> device) override;
   void OnPairFailure(scoped_refptr<Device> device,
                      PairFailure failure) override;

@@ -5,7 +5,6 @@
 #include "chrome/test/base/chrome_render_view_test.h"
 
 #include <memory>
-#include <vector>
 
 #include "base/debug/leak_annotations.h"
 #include "base/run_loop.h"
@@ -19,9 +18,8 @@
 #include "components/autofill/content/renderer/test_password_autofill_agent.h"
 #include "components/spellcheck/renderer/spellcheck.h"
 #include "components/spellcheck/spellcheck_buildflags.h"
-#include "content/public/common/input/native_web_keyboard_event.h"
+#include "content/public/browser/native_web_keyboard_event.h"
 #include "extensions/buildflags/buildflags.h"
-#include "extensions/renderer/extensions_renderer_api_provider.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/platform/web_url_request.h"
@@ -32,6 +30,7 @@
 #include "third_party/blink/public/web/web_view.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+#include "chrome/renderer/extensions/chrome_extensions_dispatcher_delegate.h"
 #include "chrome/renderer/extensions/chrome_extensions_renderer_client.h"
 #include "extensions/browser/extension_function_dispatcher.h"
 #include "extensions/common/extension.h"
@@ -53,6 +52,43 @@ using testing::_;
 using testing::NiceMock;
 using testing::Return;
 
+namespace {
+
+// An autofill agent that treats all typing as user gesture.
+class MockAutofillAgent : public AutofillAgent {
+ public:
+  MockAutofillAgent(RenderFrame* render_frame,
+                    PasswordAutofillAgent* password_autofill_agent,
+                    PasswordGenerationAgent* password_generation_agent,
+                    blink::AssociatedInterfaceRegistry* registry)
+      : AutofillAgent(render_frame,
+                      password_autofill_agent,
+                      password_generation_agent,
+                      registry) {}
+
+  MockAutofillAgent(const MockAutofillAgent&) = delete;
+  MockAutofillAgent& operator=(const MockAutofillAgent&) = delete;
+  ~MockAutofillAgent() override = default;
+
+  void WaitForAutofillDidAddOrRemoveFormRelatedElements() {
+    DCHECK(run_loop_ == nullptr);
+    run_loop_ = std::make_unique<base::RunLoop>();
+    run_loop_->Run();
+    run_loop_.reset();
+  }
+
+ private:
+  void DidAddOrRemoveFormRelatedElementsDynamically() override {
+    AutofillAgent::DidAddOrRemoveFormRelatedElementsDynamically();
+    if (run_loop_)
+      run_loop_->Quit();
+  }
+
+  std::unique_ptr<base::RunLoop> run_loop_;
+};
+
+}  // namespace
+
 ChromeRenderViewTest::ChromeRenderViewTest() = default;
 ChromeRenderViewTest::~ChromeRenderViewTest() = default;
 
@@ -71,26 +107,17 @@ void ChromeRenderViewTest::SetUp() {
 
   // RenderFrame doesn't expose its Agent objects, because it has no need to
   // store them directly (they're stored as RenderFrameObserver*).  So just
-  // create another set. They destroy themselves in OnDestruct().
-  auto unique_password_autofill_agent =
-      std::make_unique<autofill::TestPasswordAutofillAgent>(
-          GetMainRenderFrame(), &associated_interfaces_);
-  password_autofill_agent_ = unique_password_autofill_agent.get();
-  auto unique_password_generation =
-      std::make_unique<autofill::PasswordGenerationAgent>(
-          GetMainRenderFrame(), password_autofill_agent_.get(),
-          &associated_interfaces_);
-  password_generation_ = unique_password_generation.get();
-  autofill_agent_ = new AutofillAgent(
-      GetMainRenderFrame(), {}, std::move(unique_password_autofill_agent),
-      std::move(unique_password_generation), &associated_interfaces_);
+  // create another set.
+  password_autofill_agent_ = new autofill::TestPasswordAutofillAgent(
+      GetMainRenderFrame(), &associated_interfaces_);
+  password_generation_ = new autofill::PasswordGenerationAgent(
+      GetMainRenderFrame(), password_autofill_agent_, &associated_interfaces_);
+  autofill_agent_ = new NiceMock<MockAutofillAgent>(
+      GetMainRenderFrame(), password_autofill_agent_, password_generation_,
+      &associated_interfaces_);
 }
 
 void ChromeRenderViewTest::TearDown() {
-  autofill_agent_ = nullptr;
-  password_generation_ = nullptr;
-  password_autofill_agent_ = nullptr;
-
   base::RunLoop().RunUntilIdle();
 
 #if defined(LEAK_SANITIZER)
@@ -127,11 +154,15 @@ void ChromeRenderViewTest::InitChromeContentRendererClient(
       ChromeExtensionsRendererClient::GetInstance();
   ext_client->SetExtensionDispatcherForTest(
       std::make_unique<extensions::Dispatcher>(
-          std::vector<std::unique_ptr<
-              const extensions::ExtensionsRendererAPIProvider>>()));
+          std::make_unique<ChromeExtensionsDispatcherDelegate>()));
 #endif
 
 #if BUILDFLAG(ENABLE_SPELLCHECK)
   client->InitSpellCheck();
 #endif
+}
+
+void ChromeRenderViewTest::WaitForAutofillDidAddOrRemoveFormRelatedElements() {
+  static_cast<MockAutofillAgent*>(autofill_agent_)
+      ->WaitForAutofillDidAddOrRemoveFormRelatedElements();
 }

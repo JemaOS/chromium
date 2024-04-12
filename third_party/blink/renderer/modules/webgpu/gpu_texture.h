@@ -27,12 +27,11 @@ class GPUTexture : public DawnObject<WGPUTexture> {
   static GPUTexture* CreateError(GPUDevice* device,
                                  const WGPUTextureDescriptor* desc);
 
-  GPUTexture(GPUDevice* device, WGPUTexture texture, const String& label);
+  GPUTexture(GPUDevice* device, WGPUTexture texture);
   GPUTexture(GPUDevice* device,
              WGPUTextureFormat format,
              WGPUTextureUsage usage,
-             scoped_refptr<WebGPUMailboxTexture> mailbox_texture,
-             const String& label);
+             scoped_refptr<WebGPUMailboxTexture> mailbox_texture);
 
   ~GPUTexture() override;
 
@@ -54,19 +53,9 @@ class GPUTexture : public DawnObject<WGPUTexture> {
 
   WGPUTextureDimension Dimension() { return dimension_; }
   WGPUTextureFormat Format() { return format_; }
-  WGPUTextureUsageFlags Usage() { return usage_; }
-  bool Destroyed() { return destroyed_; }
+  WGPUTextureUsage Usage() { return usage_; }
 
   void DissociateMailbox();
-
-  // Returns a shared pointer to the mailbox texture. The mailbox texture
-  // remains associated to the GPUTexture.
-  scoped_refptr<WebGPUMailboxTexture> GetMailboxTexture();
-
-  // Sets a callback which is called if destroy is called manually, before the
-  // WebGPU handle is actually destroyed.
-  void SetBeforeDestroyCallback(base::OnceClosure);
-  void ClearBeforeDestroyCallback();
 
  private:
   void setLabelImpl(const String& value) override {
@@ -76,10 +65,8 @@ class GPUTexture : public DawnObject<WGPUTexture> {
 
   WGPUTextureDimension dimension_;
   WGPUTextureFormat format_;
-  WGPUTextureUsageFlags usage_;
+  WGPUTextureUsage usage_;
   scoped_refptr<WebGPUMailboxTexture> mailbox_texture_;
-  bool destroyed_ = false;
-  base::OnceClosure destroy_callback_;
 };
 
 }  // namespace blink

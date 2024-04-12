@@ -2,24 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
 import 'chrome://customize-chrome-side-panel.top-chrome/cards.js';
 
-import type {CardsElement} from 'chrome://customize-chrome-side-panel.top-chrome/cards.js';
+import {CardsElement} from 'chrome://customize-chrome-side-panel.top-chrome/cards.js';
 import {CartHandlerRemote} from 'chrome://customize-chrome-side-panel.top-chrome/chrome_cart.mojom-webui.js';
 import {ChromeCartProxy} from 'chrome://customize-chrome-side-panel.top-chrome/chrome_cart_proxy.js';
-import {CustomizeChromeAction} from 'chrome://customize-chrome-side-panel.top-chrome/common.js';
-import type {CustomizeChromePageRemote, ModuleSettings} from 'chrome://customize-chrome-side-panel.top-chrome/customize_chrome.mojom-webui.js';
-import {CustomizeChromePageCallbackRouter, CustomizeChromePageHandlerRemote} from 'chrome://customize-chrome-side-panel.top-chrome/customize_chrome.mojom-webui.js';
+import {CustomizeChromePageCallbackRouter, CustomizeChromePageHandlerRemote, CustomizeChromePageRemote, ModuleSettings} from 'chrome://customize-chrome-side-panel.top-chrome/customize_chrome.mojom-webui.js';
 import {CustomizeChromeApiProxy} from 'chrome://customize-chrome-side-panel.top-chrome/customize_chrome_api_proxy.js';
-import type {CrCheckboxElement} from 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
-import type {CrToggleElement} from 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
+import {CrCheckboxElement} from 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
+import {CrToggleElement} from 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import type {IronCollapseElement} from 'chrome://resources/polymer/v3_0/iron-collapse/iron-collapse.js';
+import {IronCollapseElement} from 'chrome://resources/polymer/v3_0/iron-collapse/iron-collapse.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
-import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
+import {fakeMetricsPrivate, MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
-import type {TestMock} from 'chrome://webui-test/test_mock.js';
+import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {isVisible} from 'chrome://webui-test/test_util.js';
 
 import {assertNotStyle, assertStyle, installMock} from './test_support.js';
@@ -171,30 +169,23 @@ suite('CardsTest', () => {
         /*modulesVisible=*/ true);
 
     const cards = getCardsMap();
-    const fooCheckbox = cards.get('foo name')!.querySelector('cr-checkbox');
-    assertTrue(!!fooCheckbox);
+    const fooCheckbox = cards.get('foo name')!.querySelector('cr-checkbox')!;
 
     // Act.
     fooCheckbox.click();
-    await fooCheckbox.updateComplete;
 
     // Assert.
     assertDeepEquals(['foo', true], handler.getArgs('setModuleDisabled')[0]);
     assertCardCheckedStatus(cards, 'foo name', false);
     assertEquals(1, metrics.count('NewTabPage.Modules.Disabled', 'foo'));
-    assertEquals(
-        1, metrics.count('NewTabPage.Modules.Disabled.Customize', 'foo'));
 
     // Act.
     fooCheckbox.click();
-    await fooCheckbox.updateComplete;
 
     // Assert.
     assertDeepEquals(['foo', false], handler.getArgs('setModuleDisabled')[1]);
     assertCardCheckedStatus(cards, 'foo name', true);
     assertEquals(1, metrics.count('NewTabPage.Modules.Enabled', 'foo'));
-    assertEquals(
-        1, metrics.count('NewTabPage.Modules.Enabled.Customize', 'foo'));
   });
 
   suite('Chrome Cart', () => {
@@ -254,7 +245,6 @@ suite('CardsTest', () => {
       const discountCheckbox: CrCheckboxElement =
           cartCardOptionName.nextElementSibling! as CrCheckboxElement;
       discountCheckbox.click();
-      await discountCheckbox.updateComplete;
 
       // Assert.
       assertEquals(1, cartHandler.getCallCount('setDiscountEnabled'));
@@ -404,7 +394,6 @@ suite('CardsTest', () => {
       const cartCheckbox: CrCheckboxElement =
           cartCardOptionName.nextElementSibling! as CrCheckboxElement;
       cartCheckbox.click();
-      await cartCheckbox.updateComplete;
 
       // Assert.
       assertEquals(1, handler.getCallCount('setModuleDisabled'));
@@ -414,7 +403,6 @@ suite('CardsTest', () => {
 
       // Act.
       cartCheckbox.click();
-      await cartCheckbox.updateComplete;
 
       // Assert.
       assertEquals(2, handler.getCallCount('setModuleDisabled'));
@@ -480,7 +468,6 @@ suite('CardsTest', () => {
       const discountCheckbox: CrCheckboxElement =
           discountCardOptionName.nextElementSibling! as CrCheckboxElement;
       discountCheckbox.click();
-      await discountCheckbox.updateComplete;
 
       // Assert.
       assertEquals(1, cartHandler.getCallCount('setDiscountEnabled'));
@@ -488,7 +475,6 @@ suite('CardsTest', () => {
 
       // Act.
       discountCheckbox.click();
-      await discountCheckbox.updateComplete;
 
       // Assert.
       assertEquals(2, cartHandler.getCallCount('setDiscountEnabled'));
@@ -599,21 +585,5 @@ suite('CardsTest', () => {
           assertCardCheckedStatus(cards, 'History Cluster', false);
           assertCardCheckedStatus(cards, 'bar name', false);
         });
-  });
-
-  suite('Metrics', () => {
-    test('Clicking show cards toggle sets metric', async () => {
-      getToggleElement().click();
-      await callbackRouterRemote.$.flushForTesting();
-      await waitAfterNextRender(customizeCards);
-
-      assertEquals(
-          1, metrics.count('NewTabPage.CustomizeChromeSidePanelAction'));
-      assertEquals(
-          1,
-          metrics.count(
-              'NewTabPage.CustomizeChromeSidePanelAction',
-              CustomizeChromeAction.SHOW_CARDS_TOGGLE_CLICKED));
-    });
   });
 });

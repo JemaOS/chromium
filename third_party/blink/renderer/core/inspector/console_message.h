@@ -5,8 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_INSPECTOR_CONSOLE_MESSAGE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_INSPECTOR_CONSOLE_MESSAGE_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/devtools/console_message.mojom-blink.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
@@ -25,26 +24,23 @@ struct WebConsoleMessage;
 class CORE_EXPORT ConsoleMessage final
     : public GarbageCollected<ConsoleMessage> {
  public:
-  using Source = mojom::blink::ConsoleMessageSource;
-  using Level = mojom::blink::ConsoleMessageLevel;
-
   // This constructor captures current location if available.
-  ConsoleMessage(Source,
-                 Level,
+  ConsoleMessage(mojom::blink::ConsoleMessageSource,
+                 mojom::blink::ConsoleMessageLevel,
                  const String& message,
                  const String& url,
                  DocumentLoader*,
                  uint64_t request_identifier);
   // Creates message from WorkerMessageSource.
-  ConsoleMessage(Level,
+  ConsoleMessage(mojom::blink::ConsoleMessageLevel,
                  const String& message,
                  std::unique_ptr<SourceLocation>,
                  WorkerThread*);
   // Creates a ConsoleMessage from a similar WebConsoleMessage.
   ConsoleMessage(const WebConsoleMessage&, LocalFrame*);
   // If provided, source_location must be non-null.
-  ConsoleMessage(Source,
-                 Level,
+  ConsoleMessage(mojom::blink::ConsoleMessageSource,
+                 mojom::blink::ConsoleMessageLevel,
                  const String& message,
                  std::unique_ptr<SourceLocation> source_location =
                      CaptureSourceLocation());
@@ -53,22 +49,22 @@ class CORE_EXPORT ConsoleMessage final
   SourceLocation* Location() const;
   const String& RequestIdentifier() const;
   double Timestamp() const;
-  Source GetSource() const;
-  Level GetLevel() const;
+  mojom::blink::ConsoleMessageSource Source() const;
+  mojom::blink::ConsoleMessageLevel Level() const;
   const String& Message() const;
   const String& WorkerId() const;
   LocalFrame* Frame() const;
   Vector<DOMNodeId>& Nodes();
   void SetNodes(LocalFrame*, Vector<DOMNodeId> nodes);
-  const std::optional<mojom::blink::ConsoleMessageCategory>& Category() const;
+  const absl::optional<mojom::blink::ConsoleMessageCategory>& Category() const;
   void SetCategory(mojom::blink::ConsoleMessageCategory category);
 
   void Trace(Visitor*) const;
 
  private:
-  Source source_;
-  Level level_;
-  std::optional<mojom::blink::ConsoleMessageCategory> category_;
+  mojom::blink::ConsoleMessageSource source_;
+  mojom::blink::ConsoleMessageLevel level_;
+  absl::optional<mojom::blink::ConsoleMessageCategory> category_;
   String message_;
   std::unique_ptr<SourceLocation> location_;
   String request_identifier_;

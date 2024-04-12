@@ -18,7 +18,7 @@
 #include "net/test/python_utils.h"
 
 #if BUILDFLAG(IS_APPLE)
-#include "base/apple/foundation_util.h"
+#include "base/mac/foundation_util.h"
 #endif
 
 namespace {
@@ -46,9 +46,8 @@ bool GetPyProtoPath(base::FilePath* dir) {
   }
 
 #if BUILDFLAG(IS_APPLE)
-  if (base::apple::AmIBundled()) {
+  if (base::mac::AmIBundled())
     generated_code_dir = generated_code_dir.DirName().DirName().DirName();
-  }
 #endif
 
   const base::FilePath kPyProto(FILE_PATH_LITERAL("pyproto"));
@@ -124,13 +123,13 @@ bool WVTestLicenseServerConfig::GetServerCommandLine(
   return true;
 }
 
-std::optional<base::EnvironmentMap>
+absl::optional<base::EnvironmentMap>
 WVTestLicenseServerConfig::GetServerEnvironment() {
   // Add the Python protocol buffers files directory to Python path.
   base::FilePath pyproto_dir;
   if (!GetPyProtoPath(&pyproto_dir)) {
     LOG(WARNING) << "Cannot find pyproto directory required by license server.";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   base::EnvironmentMap map;
@@ -148,7 +147,7 @@ bool WVTestLicenseServerConfig::SelectServerPort() {
     net::NetLogSource source;
     net::TCPServerSocket sock(nullptr, source);
     if (sock.Listen(net::IPEndPoint(net::IPAddress::IPv4Localhost(), try_port),
-                    1, /*ipv6_only=*/std::nullopt) == net::OK) {
+                    1, /*ipv6_only=*/absl::nullopt) == net::OK) {
       port_ = try_port;
       return true;
     }
@@ -188,7 +187,7 @@ void WVTestLicenseServerConfig::GetLicenseServerPath(base::FilePath *path) {
 void WVTestLicenseServerConfig::GetLicenseServerRootPath(
     base::FilePath* path) {
   base::FilePath source_root;
-  base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &source_root);
+  base::PathService::Get(base::DIR_SOURCE_ROOT, &source_root);
   *path = source_root.Append(FILE_PATH_LITERAL("third_party"))
                      .Append(FILE_PATH_LITERAL("widevine"))
                      .Append(FILE_PATH_LITERAL("test"))

@@ -18,11 +18,11 @@ async function runNavigateAncestorTest(test_type, ancestor_type) {
     win.onload = resolve;
   });
 
-  const pagehidePromise = new Promise(resolve => {
-    win.onpagehide = resolve;
+  const unloadPromise = new Promise(resolve => {
+    win.onunload = resolve;
   });
 
   await win.runTest(test_type, ancestor_type);
   win.close();
-  await pagehidePromise;
+  await unloadPromise;
 }

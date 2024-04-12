@@ -7,12 +7,12 @@ package org.chromium.chrome.browser.init;
 import android.content.DialogInterface;
 
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.ChromeBaseAppCompatActivity;
 import org.chromium.chrome.browser.crash.ChromePureJavaExceptionReporter;
 
-public class LaunchFailedActivity extends AppCompatActivity {
+public class LaunchFailedActivity extends ChromeBaseAppCompatActivity {
     /**
      * Tracks whether an exception has been reported.
      *
@@ -35,14 +35,12 @@ public class LaunchFailedActivity extends AppCompatActivity {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(getString(R.string.update_needed))
-                .setPositiveButton(
-                        getString(R.string.ok),
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int id) {
-                                finish();
-                            }
-                        });
+                .setPositiveButton(getString(R.string.ok), new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int id) {
+                        finish();
+                    }
+                });
         builder.create().show();
     }
 }

@@ -2,20 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/extensions/api/enterprise_reporting_private/enterprise_reporting_private_api.h"
-
 #include <tuple>
+
+#include "base/files/file_util.h"
+#include "base/memory/raw_ptr.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/enterprise/signals/device_info_fetcher.h"
+#include "chrome/browser/extensions/api/enterprise_reporting_private/enterprise_reporting_private_api.h"
 
 #include "base/command_line.h"
 #include "base/environment.h"
-#include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/json/json_writer.h"
-#include "base/memory/raw_ptr.h"
 #include "build/build_config.h"
-#include "chrome/browser/browser_process.h"
 #include "chrome/browser/enterprise/identifiers/profile_id_service_factory.h"
-#include "chrome/browser/enterprise/signals/device_info_fetcher.h"
 #include "chrome/browser/enterprise/signals/signals_common.h"
 #include "chrome/browser/extensions/api/enterprise_reporting_private/chrome_desktop_report_request_helper.h"
 #include "chrome/browser/extensions/extension_api_unittest.h"
@@ -50,7 +50,6 @@
 
 #if BUILDFLAG(IS_WIN)
 #include <netfw.h>
-#include <shlobj.h>
 #include <windows.h>
 #include <wrl/client.h>
 
@@ -122,7 +121,6 @@ class EnterpriseReportingPrivateGetDeviceIdTest : public ExtensionApiUnittest {
 
   void SetClientId(const std::string& client_id) {
     storage_.SetClientId(client_id);
-    storage_.ResetForTesting();
   }
 
  private:
@@ -133,7 +131,7 @@ TEST_F(EnterpriseReportingPrivateGetDeviceIdTest, GetDeviceId) {
   auto function =
       base::MakeRefCounted<EnterpriseReportingPrivateGetDeviceIdFunction>();
   SetClientId(kFakeClientId);
-  std::optional<base::Value> id =
+  absl::optional<base::Value> id =
       RunFunctionAndReturnValue(function.get(), "[]");
   ASSERT_TRUE(id);
   ASSERT_TRUE(id->is_string());
@@ -316,7 +314,7 @@ class EnterpriseReportingPrivateGetPersistentSecretFunctionTest
 TEST_F(EnterpriseReportingPrivateGetPersistentSecretFunctionTest, GetSecret) {
   auto function = base::MakeRefCounted<
       EnterpriseReportingPrivateGetPersistentSecretFunction>();
-  std::optional<base::Value> result1 =
+  absl::optional<base::Value> result1 =
       RunFunctionAndReturnValue(function.get(), "[]");
   ASSERT_TRUE(result1);
   ASSERT_TRUE(result1->is_blob());
@@ -325,7 +323,7 @@ TEST_F(EnterpriseReportingPrivateGetPersistentSecretFunctionTest, GetSecret) {
   // Re-running should not change the secret.
   auto function2 = base::MakeRefCounted<
       EnterpriseReportingPrivateGetPersistentSecretFunction>();
-  std::optional<base::Value> result2 =
+  absl::optional<base::Value> result2 =
       RunFunctionAndReturnValue(function2.get(), "[]");
   ASSERT_TRUE(result2);
   ASSERT_TRUE(result2->is_blob());
@@ -334,7 +332,7 @@ TEST_F(EnterpriseReportingPrivateGetPersistentSecretFunctionTest, GetSecret) {
   // Re-running should not change the secret even when force recreate is set.
   auto function3 = base::MakeRefCounted<
       EnterpriseReportingPrivateGetPersistentSecretFunction>();
-  std::optional<base::Value> result3 =
+  absl::optional<base::Value> result3 =
       RunFunctionAndReturnValue(function3.get(), "[true]");
   ASSERT_TRUE(result3);
   ASSERT_TRUE(result3->is_blob());
@@ -359,7 +357,7 @@ TEST_F(EnterpriseReportingPrivateGetPersistentSecretFunctionTest, GetSecret) {
   // Re=running should not change the secret even when force recreate is set.
   auto function5 = base::MakeRefCounted<
       EnterpriseReportingPrivateGetPersistentSecretFunction>();
-  std::optional<base::Value> result5 =
+  absl::optional<base::Value> result5 =
       RunFunctionAndReturnValue(function5.get(), "[true]");
   ASSERT_TRUE(result5);
   ASSERT_TRUE(result5->is_blob());
@@ -373,38 +371,38 @@ using EnterpriseReportingPrivateGetDeviceInfoTest = ExtensionApiUnittest;
 TEST_F(EnterpriseReportingPrivateGetDeviceInfoTest, GetDeviceInfo) {
   auto function =
       base::MakeRefCounted<EnterpriseReportingPrivateGetDeviceInfoFunction>();
-  std::optional<base::Value> device_info_value =
+  absl::optional<base::Value> device_info_value =
       RunFunctionAndReturnValue(function.get(), "[]");
   ASSERT_TRUE(device_info_value);
   ASSERT_TRUE(device_info_value->is_dict());
-  auto info = enterprise_reporting_private::DeviceInfo::FromValue(
-      device_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::DeviceInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::DeviceInfo::Populate(
+      device_info_value->GetDict(), info));
 #if BUILDFLAG(IS_MAC)
-  EXPECT_EQ("macOS", info->os_name);
+  EXPECT_EQ("macOS", info.os_name);
 #elif BUILDFLAG(IS_WIN)
-  EXPECT_EQ("windows", info->os_name);
-  EXPECT_FALSE(info->device_model.empty());
+  EXPECT_EQ("windows", info.os_name);
+  EXPECT_FALSE(info.device_model.empty());
 #elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
   std::unique_ptr<base::Environment> env(base::Environment::Create());
   env->SetVar(base::nix::kXdgCurrentDesktopEnvVar, "XFCE");
-  EXPECT_EQ("linux", info->os_name);
+  EXPECT_EQ("linux", info.os_name);
 #else
   // Verify a stub implementation.
-  EXPECT_EQ("stubOS", info->os_name);
-  EXPECT_EQ("0.0.0.0", info->os_version);
-  EXPECT_EQ("security patch level", info->security_patch_level);
-  EXPECT_EQ("midnightshift", info->device_host_name);
-  EXPECT_EQ("topshot", info->device_model);
-  EXPECT_EQ("twirlchange", info->serial_number);
-  EXPECT_EQ(enterprise_reporting_private::SettingValue::kEnabled,
-            info->screen_lock_secured);
-  EXPECT_EQ(enterprise_reporting_private::SettingValue::kDisabled,
-            info->disk_encrypted);
-  ASSERT_EQ(1u, info->mac_addresses.size());
-  EXPECT_EQ("00:00:00:00:00:00", info->mac_addresses[0]);
-  EXPECT_EQ(*info->windows_machine_domain, "MACHINE_DOMAIN");
-  EXPECT_EQ(*info->windows_user_domain, "USER_DOMAIN");
+  EXPECT_EQ("stubOS", info.os_name);
+  EXPECT_EQ("0.0.0.0", info.os_version);
+  EXPECT_EQ("security patch level", info.security_patch_level);
+  EXPECT_EQ("midnightshift", info.device_host_name);
+  EXPECT_EQ("topshot", info.device_model);
+  EXPECT_EQ("twirlchange", info.serial_number);
+  EXPECT_EQ(enterprise_reporting_private::SETTING_VALUE_ENABLED,
+            info.screen_lock_secured);
+  EXPECT_EQ(enterprise_reporting_private::SETTING_VALUE_DISABLED,
+            info.disk_encrypted);
+  ASSERT_EQ(1u, info.mac_addresses.size());
+  EXPECT_EQ("00:00:00:00:00:00", info.mac_addresses[0]);
+  EXPECT_EQ(*info.windows_machine_domain, "MACHINE_DOMAIN");
+  EXPECT_EQ(*info.windows_user_domain, "USER_DOMAIN");
 #endif
 }
 
@@ -423,9 +421,9 @@ TEST_F(EnterpriseReportingPrivateGetDeviceInfoTest, GetDeviceInfoConversion) {
   EXPECT_EQ("midnightshift", info.device_host_name);
   EXPECT_EQ("topshot", info.device_model);
   EXPECT_EQ("twirlchange", info.serial_number);
-  EXPECT_EQ(enterprise_reporting_private::SettingValue::kEnabled,
+  EXPECT_EQ(enterprise_reporting_private::SETTING_VALUE_ENABLED,
             info.screen_lock_secured);
-  EXPECT_EQ(enterprise_reporting_private::SettingValue::kDisabled,
+  EXPECT_EQ(enterprise_reporting_private::SETTING_VALUE_DISABLED,
             info.disk_encrypted);
   ASSERT_EQ(1u, info.mac_addresses.size());
   EXPECT_EQ("00:00:00:00:00:00", info.mac_addresses[0]);
@@ -453,17 +451,16 @@ class EnterpriseReportingPrivateGetContextInfoTest
   enterprise_reporting_private::ContextInfo GetContextInfo() {
     auto function = base::MakeRefCounted<
         EnterpriseReportingPrivateGetContextInfoFunction>();
-    std::optional<base::Value> context_info_value =
+    absl::optional<base::Value> context_info_value =
         RunFunctionAndReturnValue(function.get(), "[]");
     EXPECT_TRUE(context_info_value);
     EXPECT_TRUE(context_info_value->is_dict());
 
-    auto info = enterprise_reporting_private::ContextInfo::FromValue(
-        context_info_value->GetDict());
-    EXPECT_TRUE(info);
+    enterprise_reporting_private::ContextInfo info;
+    EXPECT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+        context_info_value->GetDict(), info));
 
-    return std::move(info).value_or(
-        enterprise_reporting_private::ContextInfo());
+    return info;
   }
 
   bool BuiltInDnsClientPlatformDefault() {
@@ -495,16 +492,16 @@ TEST_F(EnterpriseReportingPrivateGetContextInfoTest, NoSpecialContext) {
   EXPECT_TRUE(info.on_file_attached_providers.empty());
   EXPECT_TRUE(info.on_file_downloaded_providers.empty());
   EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
-  EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
+  EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
             info.realtime_url_check_mode);
   EXPECT_TRUE(info.on_security_event_providers.empty());
   EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
-  EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
+  EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
             info.safe_browsing_protection_level);
   EXPECT_EQ(BuiltInDnsClientPlatformDefault(),
             info.built_in_dns_client_enabled);
   EXPECT_EQ(
-      enterprise_reporting_private::PasswordProtectionTrigger::kPolicyUnset,
+      enterprise_reporting_private::PASSWORD_PROTECTION_TRIGGER_POLICY_UNSET,
       info.password_protection_warning_trigger);
   EXPECT_FALSE(info.chrome_remote_desktop_app_blocked);
   ExpectDefaultThirdPartyBlockingEnabled(info);
@@ -529,11 +526,11 @@ TEST_P(EnterpriseReportingPrivateGetContextInfoThirdPartyBlockingTest, Test) {
   EXPECT_TRUE(info.on_file_attached_providers.empty());
   EXPECT_TRUE(info.on_file_downloaded_providers.empty());
   EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
-  EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
+  EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
             info.realtime_url_check_mode);
   EXPECT_TRUE(info.on_security_event_providers.empty());
   EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
-  EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
+  EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
             info.safe_browsing_protection_level);
   EXPECT_EQ(BuiltInDnsClientPlatformDefault(),
             info.built_in_dns_client_enabled);
@@ -568,26 +565,26 @@ TEST_P(EnterpriseReportingPrivateGetContextInfoSafeBrowsingTest, Test) {
   EXPECT_TRUE(info.on_file_attached_providers.empty());
   EXPECT_TRUE(info.on_file_downloaded_providers.empty());
   EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
-  EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
+  EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
             info.realtime_url_check_mode);
   EXPECT_TRUE(info.on_security_event_providers.empty());
   EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
 
   if (safe_browsing_enabled) {
     if (safe_browsing_enhanced_enabled)
-      EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kEnhanced,
+      EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_ENHANCED,
                 info.safe_browsing_protection_level);
     else
-      EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
+      EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
                 info.safe_browsing_protection_level);
   } else {
-    EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kDisabled,
+    EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_DISABLED,
               info.safe_browsing_protection_level);
   }
   EXPECT_EQ(BuiltInDnsClientPlatformDefault(),
             info.built_in_dns_client_enabled);
   EXPECT_EQ(
-      enterprise_reporting_private::PasswordProtectionTrigger::kPolicyUnset,
+      enterprise_reporting_private::PASSWORD_PROTECTION_TRIGGER_POLICY_UNSET,
       info.password_protection_warning_trigger);
   ExpectDefaultThirdPartyBlockingEnabled(info);
   EXPECT_TRUE(info.enterprise_profile_id);
@@ -617,15 +614,15 @@ TEST_P(EnterpriseReportingPrivateGetContextInfoBuiltInDnsClientTest, Test) {
   EXPECT_TRUE(info.on_file_attached_providers.empty());
   EXPECT_TRUE(info.on_file_downloaded_providers.empty());
   EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
-  EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
+  EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
             info.realtime_url_check_mode);
   EXPECT_TRUE(info.on_security_event_providers.empty());
   EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
-  EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
+  EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
             info.safe_browsing_protection_level);
   EXPECT_EQ(policyValue, info.built_in_dns_client_enabled);
   EXPECT_EQ(
-      enterprise_reporting_private::PasswordProtectionTrigger::kPolicyUnset,
+      enterprise_reporting_private::PASSWORD_PROTECTION_TRIGGER_POLICY_UNSET,
       info.password_protection_warning_trigger);
   ExpectDefaultThirdPartyBlockingEnabled(info);
   EXPECT_TRUE(info.enterprise_profile_id);
@@ -644,14 +641,14 @@ class EnterpriseReportingPrivateGetContextPasswordProtectionWarningTrigger
   safe_browsing::PasswordProtectionTrigger MapPasswordProtectionTriggerToPolicy(
       enterprise_reporting_private::PasswordProtectionTrigger enumValue) {
     switch (enumValue) {
-      case enterprise_reporting_private::PasswordProtectionTrigger::
-          kPasswordProtectionOff:
+      case enterprise_reporting_private::
+          PASSWORD_PROTECTION_TRIGGER_PASSWORD_PROTECTION_OFF:
         return safe_browsing::PASSWORD_PROTECTION_OFF;
-      case enterprise_reporting_private::PasswordProtectionTrigger::
-          kPasswordReuse:
+      case enterprise_reporting_private::
+          PASSWORD_PROTECTION_TRIGGER_PASSWORD_REUSE:
         return safe_browsing::PASSWORD_REUSE;
-      case enterprise_reporting_private::PasswordProtectionTrigger::
-          kPhishingReuse:
+      case enterprise_reporting_private::
+          PASSWORD_PROTECTION_TRIGGER_PHISHING_REUSE:
         return safe_browsing::PHISHING_REUSE;
       default:
         NOTREACHED();
@@ -675,11 +672,11 @@ TEST_P(EnterpriseReportingPrivateGetContextPasswordProtectionWarningTrigger,
   EXPECT_TRUE(info.on_file_attached_providers.empty());
   EXPECT_TRUE(info.on_file_downloaded_providers.empty());
   EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
-  EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
+  EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
             info.realtime_url_check_mode);
   EXPECT_TRUE(info.on_security_event_providers.empty());
   EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
-  EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
+  EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
             info.safe_browsing_protection_level);
   EXPECT_EQ(BuiltInDnsClientPlatformDefault(),
             info.built_in_dns_client_enabled);
@@ -691,12 +688,12 @@ TEST_P(EnterpriseReportingPrivateGetContextPasswordProtectionWarningTrigger,
 INSTANTIATE_TEST_SUITE_P(
     ,
     EnterpriseReportingPrivateGetContextPasswordProtectionWarningTrigger,
-    testing::Values(
-        enterprise_reporting_private::PasswordProtectionTrigger::
-            kPasswordProtectionOff,
-        enterprise_reporting_private::PasswordProtectionTrigger::kPasswordReuse,
-        enterprise_reporting_private::PasswordProtectionTrigger::
-            kPhishingReuse));
+    testing::Values(enterprise_reporting_private::
+                        PASSWORD_PROTECTION_TRIGGER_PASSWORD_PROTECTION_OFF,
+                    enterprise_reporting_private::
+                        PASSWORD_PROTECTION_TRIGGER_PASSWORD_REUSE,
+                    enterprise_reporting_private::
+                        PASSWORD_PROTECTION_TRIGGER_PHISHING_REUSE));
 
 #if BUILDFLAG(IS_LINUX)
 class EnterpriseReportingPrivateGetContextOSFirewallLinuxTest
@@ -717,16 +714,16 @@ class EnterpriseReportingPrivateGetContextOSFirewallLinuxTest
     EXPECT_TRUE(info.on_file_attached_providers.empty());
     EXPECT_TRUE(info.on_file_downloaded_providers.empty());
     EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
-    EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
+    EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
               info.realtime_url_check_mode);
     EXPECT_TRUE(info.on_security_event_providers.empty());
     EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
-    EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
+    EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
               info.safe_browsing_protection_level);
     EXPECT_EQ(BuiltInDnsClientPlatformDefault(),
               info.built_in_dns_client_enabled);
     EXPECT_EQ(
-        enterprise_reporting_private::PasswordProtectionTrigger::kPolicyUnset,
+        enterprise_reporting_private::PASSWORD_PROTECTION_TRIGGER_POLICY_UNSET,
         info.password_protection_warning_trigger);
     EXPECT_FALSE(info.chrome_remote_desktop_app_blocked);
     ExpectDefaultThirdPartyBlockingEnabled(info);
@@ -747,7 +744,7 @@ TEST_F(EnterpriseReportingPrivateGetContextOSFirewallLinuxTest,
 
   ExpectDefaultPolicies(info);
   EXPECT_EQ(info.os_firewall,
-            enterprise_reporting_private::SettingValue::kUnknown);
+            enterprise_reporting_private::SETTING_VALUE_UNKNOWN);
 }
 
 TEST_F(EnterpriseReportingPrivateGetContextOSFirewallLinuxTest, NoEnabledKey) {
@@ -760,23 +757,23 @@ TEST_F(EnterpriseReportingPrivateGetContextOSFirewallLinuxTest, NoEnabledKey) {
 
   ExpectDefaultPolicies(info);
   EXPECT_EQ(info.os_firewall,
-            enterprise_reporting_private::SettingValue::kUnknown);
+            enterprise_reporting_private::SETTING_VALUE_UNKNOWN);
 }
 
 TEST_P(EnterpriseReportingPrivateGetContextOSFirewallLinuxTest, Test) {
   enterprise_reporting_private::SettingValue os_firewall_value = GetParam();
   switch (os_firewall_value) {
-    case enterprise_reporting_private::SettingValue::kEnabled:
+    case enterprise_reporting_private::SETTING_VALUE_ENABLED:
       // File format to test if comments, empty lines and strings containing the
       // key are ignored
       base::WriteFile(file_path_,
                       "#ENABLED=no\nrandomtextENABLED=no\n  \nENABLED=yes\n");
       break;
-    case enterprise_reporting_private::SettingValue::kDisabled:
+    case enterprise_reporting_private::SETTING_VALUE_DISABLED:
       base::WriteFile(file_path_,
                       "#ENABLED=yes\nENABLEDrandomtext=yes\n  \nENABLED=no\n");
       break;
-    case enterprise_reporting_private::SettingValue::kUnknown:
+    case enterprise_reporting_private::SETTING_VALUE_UNKNOWN:
       // File content to test a value that isn't yes or no
       base::WriteFile(file_path_,
                       "#ENABLED=yes\nLOGLEVEL=yes\nENABLED=yesno\n");
@@ -795,9 +792,9 @@ TEST_P(EnterpriseReportingPrivateGetContextOSFirewallLinuxTest, Test) {
 INSTANTIATE_TEST_SUITE_P(
     ,
     EnterpriseReportingPrivateGetContextOSFirewallLinuxTest,
-    testing::Values(enterprise_reporting_private::SettingValue::kEnabled,
-                    enterprise_reporting_private::SettingValue::kDisabled,
-                    enterprise_reporting_private::SettingValue::kUnknown));
+    testing::Values(enterprise_reporting_private::SETTING_VALUE_ENABLED,
+                    enterprise_reporting_private::SETTING_VALUE_DISABLED,
+                    enterprise_reporting_private::SETTING_VALUE_UNKNOWN));
 #endif  // BUILDFLAG(IS_LINUX)
 
 class EnterpriseReportingPrivateGetContextInfoChromeRemoteDesktopAppBlockedTest
@@ -819,23 +816,22 @@ class EnterpriseReportingPrivateGetContextInfoChromeRemoteDesktopAppBlockedTest
                                    std::move(allowlist));
   }
 
-  void ExpectDefaultPolicies(
-      const enterprise_reporting_private::ContextInfo& info) {
+  void ExpectDefaultPolicies(enterprise_reporting_private::ContextInfo& info) {
     EXPECT_TRUE(info.browser_affiliation_ids.empty());
     EXPECT_TRUE(info.profile_affiliation_ids.empty());
     EXPECT_TRUE(info.on_file_attached_providers.empty());
     EXPECT_TRUE(info.on_file_downloaded_providers.empty());
     EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
-    EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
+    EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
               info.realtime_url_check_mode);
     EXPECT_TRUE(info.on_security_event_providers.empty());
     EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
-    EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
+    EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
               info.safe_browsing_protection_level);
     EXPECT_EQ(BuiltInDnsClientPlatformDefault(),
               info.built_in_dns_client_enabled);
     EXPECT_EQ(
-        enterprise_reporting_private::PasswordProtectionTrigger::kPolicyUnset,
+        enterprise_reporting_private::PASSWORD_PROTECTION_TRIGGER_POLICY_UNSET,
         info.password_protection_warning_trigger);
     ExpectDefaultThirdPartyBlockingEnabled(info);
     EXPECT_TRUE(info.enterprise_profile_id);
@@ -895,10 +891,6 @@ class EnterpriseReportingPrivateGetContextInfoOSFirewallTest
 
  protected:
   void SetUp() override {
-    if (!::IsUserAnAdmin()) {
-      // INetFwPolicy2::put_FirewallEnabled fails for non-admin users.
-      GTEST_SKIP() << "This test must be run by an admin user";
-    }
     EnterpriseReportingPrivateGetContextInfoTest::SetUp();
     HRESULT hr = CoCreateInstance(CLSID_NetFwPolicy2, nullptr, CLSCTX_ALL,
                                   IID_PPV_ARGS(&firewall_policy_));
@@ -928,10 +920,6 @@ class EnterpriseReportingPrivateGetContextInfoOSFirewallTest
   }
 
   void TearDown() override {
-    if (!::IsUserAnAdmin()) {
-      // Test already skipped in `SetUp`.
-      return;
-    }
     // Resetting the firewall to its initial state
     HRESULT hr =
         firewall_policy_->put_FirewallEnabled(active_profile_, enabled_);
@@ -943,15 +931,15 @@ class EnterpriseReportingPrivateGetContextInfoOSFirewallTest
   ToInfoSettingValue(enterprise_signals::SettingValue value) {
     switch (value) {
       case SettingValue::DISABLED:
-        return extensions::api::enterprise_reporting_private::SettingValue::
-            kDisabled;
+        return extensions::api::enterprise_reporting_private::
+            SETTING_VALUE_DISABLED;
       case SettingValue::ENABLED:
-        return extensions::api::enterprise_reporting_private::SettingValue::
-            kEnabled;
+        return extensions::api::enterprise_reporting_private::
+            SETTING_VALUE_ENABLED;
       default:
         NOTREACHED();
-        return extensions::api::enterprise_reporting_private::SettingValue::
-            kUnknown;
+        return extensions::api::enterprise_reporting_private::
+            SETTING_VALUE_UNKNOWN;
     }
   }
   Microsoft::WRL::ComPtr<INetFwPolicy2> firewall_policy_;
@@ -968,16 +956,16 @@ TEST_P(EnterpriseReportingPrivateGetContextInfoOSFirewallTest, Test) {
   EXPECT_TRUE(info.on_file_attached_providers.empty());
   EXPECT_TRUE(info.on_file_downloaded_providers.empty());
   EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
-  EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
+  EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
             info.realtime_url_check_mode);
   EXPECT_TRUE(info.on_security_event_providers.empty());
   EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
-  EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
+  EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
             info.safe_browsing_protection_level);
   EXPECT_EQ(BuiltInDnsClientPlatformDefault(),
             info.built_in_dns_client_enabled);
   EXPECT_EQ(
-      enterprise_reporting_private::PasswordProtectionTrigger::kPolicyUnset,
+      enterprise_reporting_private::PASSWORD_PROTECTION_TRIGGER_POLICY_UNSET,
       info.password_protection_warning_trigger);
   EXPECT_FALSE(info.chrome_remote_desktop_app_blocked);
   ExpectDefaultThirdPartyBlockingEnabled(info);
@@ -998,7 +986,7 @@ class EnterpriseReportingPrivateGetContextInfoRealTimeURLCheckTest
  public:
   EnterpriseReportingPrivateGetContextInfoRealTimeURLCheckTest() {
     policy::SetDMTokenForTesting(
-        policy::DMToken::CreateValidToken("fake-token"));
+        policy::DMToken::CreateValidTokenForTesting("fake-token"));
   }
 
   bool url_check_enabled() const { return GetParam(); }
@@ -1020,11 +1008,11 @@ TEST_P(EnterpriseReportingPrivateGetContextInfoRealTimeURLCheckTest, Test) {
   enterprise_reporting_private::ContextInfo info = GetContextInfo();
 
   if (url_check_enabled()) {
-    EXPECT_EQ(
-        enterprise_reporting_private::RealtimeUrlCheckMode::kEnabledMainFrame,
-        info.realtime_url_check_mode);
+    EXPECT_EQ(enterprise_reporting_private::
+                  REALTIME_URL_CHECK_MODE_ENABLED_MAIN_FRAME,
+              info.realtime_url_check_mode);
   } else {
-    EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
+    EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
               info.realtime_url_check_mode);
   }
 
@@ -1035,12 +1023,12 @@ TEST_P(EnterpriseReportingPrivateGetContextInfoRealTimeURLCheckTest, Test) {
   EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
   EXPECT_TRUE(info.on_security_event_providers.empty());
   EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
-  EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
+  EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
             info.safe_browsing_protection_level);
   EXPECT_EQ(BuiltInDnsClientPlatformDefault(),
             info.built_in_dns_client_enabled);
   EXPECT_EQ(
-      enterprise_reporting_private::PasswordProtectionTrigger::kPolicyUnset,
+      enterprise_reporting_private::PASSWORD_PROTECTION_TRIGGER_POLICY_UNSET,
       info.password_protection_warning_trigger);
   ExpectDefaultThirdPartyBlockingEnabled(info);
   EXPECT_TRUE(info.enterprise_profile_id);
@@ -1082,7 +1070,7 @@ class EnterpriseReportingPrivateEnqueueRecordFunctionTest
     ::reporting::Record record;
     record.set_data(serialized_data);
     record.set_destination(::reporting::Destination::TELEMETRY_METRIC);
-    record.set_timestamp_us(base::Time::Now().InMillisecondsSinceUnixEpoch() *
+    record.set_timestamp_us(base::Time::Now().ToJavaTime() *
                             base::Time::kMicrosecondsPerMillisecond);
 
     return record;
@@ -1114,13 +1102,14 @@ TEST_F(EnterpriseReportingPrivateEnqueueRecordFunctionTest,
   enqueue_record_request.record_data = serialized_record_data_;
   enqueue_record_request.priority = ::reporting::Priority::BACKGROUND_BATCH;
   enqueue_record_request.event_type =
-      api::enterprise_reporting_private::EventType::kUser;
+      api::enterprise_reporting_private::EventType::EVENT_TYPE_USER;
 
   base::Value::List params;
   params.Append(enqueue_record_request.ToValue());
 
   // Set up DM token
-  const auto dm_token = policy::DMToken::CreateValidToken(kTestDMTokenValue);
+  const auto dm_token =
+      policy::DMToken::CreateValidTokenForTesting(kTestDMTokenValue);
   policy::SetDMTokenForTesting(dm_token);
 
   api_test_utils::RunFunction(
@@ -1157,13 +1146,13 @@ TEST_F(EnterpriseReportingPrivateEnqueueRecordFunctionTest,
   enqueue_record_request.priority = -1;
 
   enqueue_record_request.event_type =
-      api::enterprise_reporting_private::EventType::kUser;
+      api::enterprise_reporting_private::EventType::EVENT_TYPE_USER;
 
   base::Value::List params;
   params.Append(enqueue_record_request.ToValue());
 
   policy::SetDMTokenForTesting(
-      policy::DMToken::CreateValidToken(kTestDMTokenValue));
+      policy::DMToken::CreateValidTokenForTesting(kTestDMTokenValue));
 
   api_test_utils::RunFunction(
       function_.get(), std::move(params),
@@ -1188,13 +1177,13 @@ TEST_F(EnterpriseReportingPrivateEnqueueRecordFunctionTest,
   enqueue_record_request.priority = ::reporting::Priority::BACKGROUND_BATCH;
 
   enqueue_record_request.event_type =
-      api::enterprise_reporting_private::EventType::kUser;
+      api::enterprise_reporting_private::EventType::EVENT_TYPE_USER;
 
   base::Value::List params;
   params.Append(enqueue_record_request.ToValue());
 
   policy::SetDMTokenForTesting(
-      policy::DMToken::CreateValidToken(kTestDMTokenValue));
+      policy::DMToken::CreateValidTokenForTesting(kTestDMTokenValue));
 
   api_test_utils::RunFunction(
       function_.get(), std::move(params),
@@ -1216,13 +1205,13 @@ TEST_F(EnterpriseReportingPrivateEnqueueRecordFunctionTest,
   enqueue_record_request.record_data = serialized_record_data_;
   enqueue_record_request.priority = ::reporting::Priority::BACKGROUND_BATCH;
   enqueue_record_request.event_type =
-      api::enterprise_reporting_private::EventType::kUser;
+      api::enterprise_reporting_private::EventType::EVENT_TYPE_USER;
 
   base::Value::List params;
   params.Append(enqueue_record_request.ToValue());
 
   // Set up invalid DM token
-  policy::SetDMTokenForTesting(policy::DMToken::CreateInvalidToken());
+  policy::SetDMTokenForTesting(policy::DMToken::CreateInvalidTokenForTesting());
 
   api_test_utils::RunFunction(
       function_.get(), std::move(params),
@@ -1251,14 +1240,14 @@ TEST_F(EnterpriseReportingPrivateEnqueueRecordFunctionTest,
   enqueue_record_request.record_data = serialized_record_data_;
   enqueue_record_request.priority = ::reporting::Priority::BACKGROUND_BATCH;
   enqueue_record_request.event_type =
-      api::enterprise_reporting_private::EventType::kUser;
+      api::enterprise_reporting_private::EventType::EVENT_TYPE_USER;
 
   base::Value::List params;
   params.Append(enqueue_record_request.ToValue());
 
   // Set up invalid DM token
   policy::SetDMTokenForTesting(
-      policy::DMToken::CreateValidToken(kTestDMTokenValue));
+      policy::DMToken::CreateValidTokenForTesting(kTestDMTokenValue));
 
   api_test_utils::RunFunction(
       function_.get(), std::move(params),
@@ -1325,8 +1314,7 @@ class UserContextGatedTest : public ExtensionApiUnittest {
         enterprise_signals::features::kNewEvSignalsEnabled);
   }
 
-  raw_ptr<device_signals::MockSignalsAggregator, DanglingUntriaged>
-      mock_aggregator_;
+  raw_ptr<device_signals::MockSignalsAggregator> mock_aggregator_;
   base::test::ScopedFeatureList scoped_features_;
   base::HistogramTester histogram_tester_;
 };
@@ -1404,7 +1392,7 @@ TEST_F(EnterpriseReportingPrivateGetFileSystemInfoTest, Success) {
   EXPECT_EQ(parsed_file_system_signal->path,
             fake_file_item.file_path.AsUTF8Unsafe());
   EXPECT_EQ(parsed_file_system_signal->presence,
-            enterprise_reporting_private::PresenceValue::kFound);
+            enterprise_reporting_private::PRESENCE_VALUE_FOUND);
   EXPECT_EQ(*parsed_file_system_signal->sha256_hash, "c29tZSBoYXNoZWQgdmFsdWU");
 
   histogram_tester_.ExpectUniqueSample(
@@ -1546,7 +1534,7 @@ class EnterpriseReportingPrivateGetSettingsTest : public UserContextGatedTest {
     api_param.get_value = true;
 
     api_param.hive =
-        enterprise_reporting_private::RegistryHive::kHkeyCurrentUser;
+        enterprise_reporting_private::REGISTRY_HIVE_HKEY_CURRENT_USER;
 
     return api_param;
   }
@@ -1601,14 +1589,13 @@ TEST_F(EnterpriseReportingPrivateGetSettingsTest, Success) {
   ASSERT_TRUE(parsed_settings_signal);
   EXPECT_EQ(parsed_settings_signal->path, fake_settings_item.path);
   EXPECT_EQ(parsed_settings_signal->presence,
-            enterprise_reporting_private::PresenceValue::kFound);
+            enterprise_reporting_private::PRESENCE_VALUE_FOUND);
   ASSERT_TRUE(parsed_settings_signal->value);
   EXPECT_EQ(parsed_settings_signal->value.value(), setting_json_value);
 
-  ASSERT_NE(parsed_settings_signal->hive,
-            enterprise_reporting_private::RegistryHive::kNone);
+  ASSERT_TRUE(parsed_settings_signal->hive);
   EXPECT_EQ(parsed_settings_signal->hive,
-            enterprise_reporting_private::RegistryHive::kHkeyCurrentUser);
+            enterprise_reporting_private::REGISTRY_HIVE_HKEY_CURRENT_USER);
 
   histogram_tester_.ExpectUniqueSample(
       "Enterprise.DeviceSignals.Collection.Request.SystemSettings.Items", 1, 1);
@@ -1785,7 +1772,7 @@ TEST_F(EnterpriseReportingPrivateGetAvInfoTest, Success) {
   ASSERT_TRUE(parsed_av_signal);
   EXPECT_EQ(parsed_av_signal->display_name, fake_av_product.display_name);
   EXPECT_EQ(parsed_av_signal->state,
-            enterprise_reporting_private::AntiVirusProductState::kOff);
+            enterprise_reporting_private::ANTI_VIRUS_PRODUCT_STATE_OFF);
   EXPECT_EQ(parsed_av_signal->product_id, fake_av_product.product_id);
 
   histogram_tester_.ExpectUniqueSample(

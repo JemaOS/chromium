@@ -6,8 +6,10 @@
 
 #include "chrome/browser/invalidation/profile_invalidation_provider_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/sync/sync_service_factory.h"
 #include "components/drive/drive_notification_manager.h"
 #include "components/invalidation/impl/profile_invalidation_provider.h"
+#include "components/sync/base/command_line_switches.h"
 
 namespace drive {
 namespace {
@@ -38,6 +40,8 @@ DriveNotificationManagerFactory::FindForBrowserContext(
 DriveNotificationManager*
 DriveNotificationManagerFactory::GetForBrowserContext(
     content::BrowserContext* context) {
+  if (!syncer::IsSyncAllowedByFlag())
+    return nullptr;
   if (!GetInvalidationService(Profile::FromBrowserContext(context))) {
     // Do not create a DriveNotificationManager for |context|s that do not
     // support invalidation.
@@ -51,8 +55,7 @@ DriveNotificationManagerFactory::GetForBrowserContext(
 // static
 DriveNotificationManagerFactory*
 DriveNotificationManagerFactory::GetInstance() {
-  static base::NoDestructor<DriveNotificationManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<DriveNotificationManagerFactory>::get();
 }
 
 DriveNotificationManagerFactory::DriveNotificationManagerFactory()
@@ -64,15 +67,15 @@ DriveNotificationManagerFactory::DriveNotificationManagerFactory()
               // Guest mode.
               .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {
+  DependsOn(SyncServiceFactory::GetInstance());
   DependsOn(invalidation::ProfileInvalidationProviderFactory::GetInstance());
 }
 
-DriveNotificationManagerFactory::~DriveNotificationManagerFactory() = default;
+DriveNotificationManagerFactory::~DriveNotificationManagerFactory() {}
 
-std::unique_ptr<KeyedService>
-DriveNotificationManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* DriveNotificationManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<DriveNotificationManager>(
+  return new DriveNotificationManager(
       GetInvalidationService(Profile::FromBrowserContext(context)));
 }
 

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_PERMISSIONS_PERMISSION_ACTIONS_HISTORY_FACTORY_H_
 #define CHROME_BROWSER_PERMISSIONS_PERMISSION_ACTIONS_HISTORY_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -24,13 +24,13 @@ class PermissionActionsHistoryFactory : public ProfileKeyedServiceFactory {
   static PermissionActionsHistoryFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<PermissionActionsHistoryFactory>;
+  friend struct base::DefaultSingletonTraits<PermissionActionsHistoryFactory>;
 
   PermissionActionsHistoryFactory();
   ~PermissionActionsHistoryFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

@@ -92,10 +92,6 @@ bool SendBeaconCommon(const ScriptState& state,
       fetch_initiator_type_names::kBeacon;
 
   frame->Client()->DidDispatchPingLoader(url);
-
-  FetchUtils::LogFetchKeepAliveRequestMetric(
-      params.GetResourceRequest().GetRequestContext(),
-      FetchUtils::FetchKeepAliveRequestState::kTotal);
   Resource* resource =
       RawResource::Fetch(params, frame->DomWindow()->Fetcher(), nullptr);
   return resource->GetStatus() != ResourceStatus::kLoadError;
@@ -112,10 +108,9 @@ void PingLoader::SendLinkAuditPing(LocalFrame* frame,
 
   ResourceRequest request(ping_url);
   request.SetHttpMethod(http_names::kPOST);
-  request.SetHTTPContentType(AtomicString("text/ping"));
+  request.SetHTTPContentType("text/ping");
   request.SetHttpBody(EncodedFormData::Create("PING"));
-  request.SetHttpHeaderField(http_names::kCacheControl,
-                             AtomicString("max-age=0"));
+  request.SetHttpHeaderField(http_names::kCacheControl, "max-age=0");
   request.SetHttpHeaderField(http_names::kPingTo,
                              AtomicString(destination_url.GetString()));
   scoped_refptr<const SecurityOrigin> ping_origin =
@@ -138,9 +133,6 @@ void PingLoader::SendLinkAuditPing(LocalFrame* frame,
       fetch_initiator_type_names::kPing;
 
   frame->Client()->DidDispatchPingLoader(ping_url);
-  FetchUtils::LogFetchKeepAliveRequestMetric(
-      params.GetResourceRequest().GetRequestContext(),
-      FetchUtils::FetchKeepAliveRequestState::kTotal);
   RawResource::Fetch(params, frame->DomWindow()->Fetcher(), nullptr);
 }
 
@@ -149,7 +141,7 @@ void PingLoader::SendViolationReport(ExecutionContext* execution_context,
                                      scoped_refptr<EncodedFormData> report) {
   ResourceRequest request(report_url);
   request.SetHttpMethod(http_names::kPOST);
-  request.SetHTTPContentType(AtomicString("application/csp-report"));
+  request.SetHTTPContentType("application/csp-report");
   request.SetKeepalive(true);
   request.SetHttpBody(std::move(report));
   request.SetCredentialsMode(network::mojom::CredentialsMode::kSameOrigin);
@@ -167,9 +159,6 @@ void PingLoader::SendViolationReport(ExecutionContext* execution_context,
   if (window && window->GetFrame())
     window->GetFrame()->Client()->DidDispatchPingLoader(report_url);
 
-  FetchUtils::LogFetchKeepAliveRequestMetric(
-      params.GetResourceRequest().GetRequestContext(),
-      FetchUtils::FetchKeepAliveRequestState::kTotal);
   RawResource::Fetch(params, execution_context->Fetcher(), nullptr);
 }
 

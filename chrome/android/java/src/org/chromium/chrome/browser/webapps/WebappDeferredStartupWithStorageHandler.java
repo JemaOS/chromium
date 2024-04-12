@@ -25,7 +25,9 @@ import javax.inject.Inject;
  */
 @ActivityScope
 public class WebappDeferredStartupWithStorageHandler {
-    /** Interface for deferred startup task callbacks. */
+    /**
+     * Interface for deferred startup task callbacks.
+     */
     public interface Task {
         /**
          * Called to run task.
@@ -50,13 +52,11 @@ public class WebappDeferredStartupWithStorageHandler {
         mIsWebApk = intentDataProvider.isWebApkActivity();
     }
 
-    /** Invoked to add deferred startup task to queue. */
+    /**
+     * Invoked to add deferred startup task to queue.
+     */
     public void initDeferredStartupForActivity() {
-        DeferredStartupHandler.getInstance()
-                .addDeferredTask(
-                        () -> {
-                            runDeferredTask();
-                        });
+        DeferredStartupHandler.getInstance().addDeferredTask(() -> { runDeferredTask(); });
     }
 
     public void addTask(Task task) {
@@ -72,19 +72,17 @@ public class WebappDeferredStartupWithStorageHandler {
 
         WebappDataStorage storage = WebappRegistry.getInstance().getWebappDataStorage(mWebappId);
         if (storage != null || !mIsWebApk) {
-            runTasks(storage, /* didCreateStorage= */ false);
+            runTasks(storage, false /* didCreateStorage */);
             return;
         }
 
-        WebappRegistry.getInstance()
-                .register(
-                        mWebappId,
-                        new WebappRegistry.FetchWebappDataStorageCallback() {
-                            @Override
-                            public void onWebappDataStorageRetrieved(WebappDataStorage storage) {
-                                runTasks(storage, /* didCreateStorage= */ true);
-                            }
-                        });
+        WebappRegistry.getInstance().register(
+                mWebappId, new WebappRegistry.FetchWebappDataStorageCallback() {
+                    @Override
+                    public void onWebappDataStorageRetrieved(WebappDataStorage storage) {
+                        runTasks(storage, true /* didCreateStorage */);
+                    }
+                });
     }
 
     public void runTasks(@Nullable WebappDataStorage storage, boolean didCreateStorage) {

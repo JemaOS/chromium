@@ -24,7 +24,8 @@ namespace tflite::task::text::clu {
 
 template <>
 void PopulateTfLiteTensorValue<std::string>(
-    const std::initializer_list<std::string> values, TfLiteTensor* tensor) {
+    const std::initializer_list<std::string> values,
+    TfLiteTensor* tensor) {
   tflite::DynamicBuffer buf;
   for (const std::string& s : values) {
     buf.AddString(s.data(), s.length());
@@ -38,13 +39,18 @@ size_t NumTotalFromShape(const std::initializer_list<int>& shape) {
     num_total = 1;
   else
     num_total = 0;
-  for (const int dim : shape) num_total *= dim;
+  for (const int dim : shape)
+    num_total *= dim;
   return num_total;
 }
 
-TfLiteTensor* UniqueTfLiteTensor::get() { return tensor_; }
+TfLiteTensor* UniqueTfLiteTensor::get() {
+  return tensor_;
+}
 
-UniqueTfLiteTensor::~UniqueTfLiteTensor() { TfLiteTensorFree(tensor_); }
+UniqueTfLiteTensor::~UniqueTfLiteTensor() {
+  TfLiteTensorFree(tensor_);
+}
 
 template <>
 TfLiteType TypeToTfLiteType<std::string>() {

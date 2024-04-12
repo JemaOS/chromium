@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
 import 'chrome://new-tab-page/lazy_load.js';
 
-import type {CustomizeBackgroundsElement} from 'chrome://new-tab-page/lazy_load.js';
+import {CustomizeBackgroundsElement} from 'chrome://new-tab-page/lazy_load.js';
 import {NewTabPageProxy, WindowProxy} from 'chrome://new-tab-page/new_tab_page.js';
-import type {BackgroundCollection, CollectionImage} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
-import {PageCallbackRouter, PageHandlerRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
+import {BackgroundCollection, CollectionImage, PageCallbackRouter, PageHandlerRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
-import type {TestMock} from 'chrome://webui-test/test_mock.js';
+import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {eventToPromise, isVisible} from 'chrome://webui-test/test_util.js';
 
 import {assertNotStyle, assertStyle, createBackgroundImage, createTheme, installMock} from './test_support.js';

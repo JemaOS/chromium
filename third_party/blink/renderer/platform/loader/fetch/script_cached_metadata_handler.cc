@@ -87,7 +87,7 @@ void ScriptCachedMetadataHandler::SetSerializedCachedMetadata(
   // triggers, it indicates an efficiency problem which is most likely
   // unexpected in code designed to improve performance.
   DCHECK(!cached_metadata_);
-  cached_metadata_ = CachedMetadata::CreateFromSerializedData(data);
+  cached_metadata_ = CachedMetadata::CreateFromSerializedData(std::move(data));
 }
 
 String ScriptCachedMetadataHandler::Encoding() const {
@@ -175,23 +175,23 @@ void ScriptCachedMetadataHandlerWithHashing::SetSerializedCachedMetadata(
   // The kChecked state guarantees that hash_ will never be updated again.
   CHECK(hash_state_ != kChecked);
 
+  const uint32_t kMetadataTypeSize = sizeof(uint32_t);
+  const uint32_t kHashingHeaderSize = kMetadataTypeSize + kSha256Bytes;
+
   // Ensure the data is big enough, otherwise discard the data.
-  if (data.size() < sizeof(CachedMetadataHeaderWithHash)) {
+  if (data.size() < kHashingHeaderSize)
     return;
-  }
   // Ensure the marker matches, otherwise discard the data.
-  const CachedMetadataHeaderWithHash* header =
-      reinterpret_cast<const CachedMetadataHeaderWithHash*>(data.data());
-  if (header->marker != CachedMetadataHandler::kSingleEntryWithHashAndPadding) {
+  if (*reinterpret_cast<const uint32_t*>(data.data()) !=
+      CachedMetadataHandler::kSingleEntryWithHash) {
     return;
   }
 
   // Split out the data into the hash and the CachedMetadata that follows.
-  memcpy(hash_, header->hash, kSha256Bytes);
+  memcpy(hash_, data.data() + kMetadataTypeSize, kSha256Bytes);
   hash_state_ = kDeserialized;
   cached_metadata_ = CachedMetadata::CreateFromSerializedData(
-      data.data() + sizeof(CachedMetadataHeaderWithHash),
-      data.size() - sizeof(CachedMetadataHeaderWithHash));
+      data.data() + kHashingHeaderSize, data.size() - kHashingHeaderSize);
 }
 
 scoped_refptr<CachedMetadata>
@@ -223,19 +223,9 @@ Vector<uint8_t>
 ScriptCachedMetadataHandlerWithHashing::GetSerializedCachedMetadata() const {
   Vector<uint8_t> serialized_data;
   if (cached_metadata_ && hash_state_ == kChecked) {
-    uint32_t marker = CachedMetadataHandler::kSingleEntryWithHashAndPadding;
-    CHECK_EQ(serialized_data.size(),
-             offsetof(CachedMetadataHeaderWithHash, marker));
+    uint32_t marker = CachedMetadataHandler::kSingleEntryWithHash;
     serialized_data.Append(reinterpret_cast<uint8_t*>(&marker), sizeof(marker));
-    uint32_t padding = 0;
-    CHECK_EQ(serialized_data.size(),
-             offsetof(CachedMetadataHeaderWithHash, padding));
-    serialized_data.Append(reinterpret_cast<uint8_t*>(&padding),
-                           sizeof(padding));
-    CHECK_EQ(serialized_data.size(),
-             offsetof(CachedMetadataHeaderWithHash, hash));
     serialized_data.Append(hash_, kSha256Bytes);
-    CHECK_EQ(serialized_data.size(), sizeof(CachedMetadataHeaderWithHash));
     base::span<const uint8_t> data = cached_metadata_->SerializedData();
     serialized_data.Append(data.data(),
                            base::checked_cast<wtf_size_t>(data.size()));

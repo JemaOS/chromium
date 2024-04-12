@@ -6,15 +6,14 @@
 
 #include <algorithm>
 #include <string>
-#include <string_view>
 #include <vector>
 
+#include "base/barrier_closure.h"
 #include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_forward.h"
-#include "base/functional/concurrent_closures.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/no_destructor.h"
@@ -28,7 +27,6 @@
 #include "chrome/browser/web_applications/web_app.h"
 #include "chrome/browser/web_applications/web_app_constants.h"
 #include "chrome/browser/web_applications/web_app_icon_manager.h"
-#include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
 #include "chrome/common/pref_names.h"
 #include "components/pref_registry/pref_registry_syncable.h"
@@ -106,17 +104,20 @@ void WebAppShortcutManager::RegisterProfilePrefs(
 
 WebAppShortcutManager::WebAppShortcutManager(
     Profile* profile,
+    WebAppIconManager* icon_manager,
     WebAppFileHandlerManager* file_handler_manager,
     WebAppProtocolHandlerManager* protocol_handler_manager)
     : profile_(profile),
+      icon_manager_(icon_manager),
       file_handler_manager_(file_handler_manager),
       protocol_handler_manager_(protocol_handler_manager) {}
 
 WebAppShortcutManager::~WebAppShortcutManager() = default;
 
-void WebAppShortcutManager::SetProvider(base::PassKey<OsIntegrationManager>,
-                                        WebAppProvider& provider) {
-  provider_ = &provider;
+void WebAppShortcutManager::SetSubsystems(WebAppIconManager* icon_manager,
+                                          WebAppRegistrar* registrar) {
+  icon_manager_ = icon_manager;
+  registrar_ = registrar;
 }
 
 void WebAppShortcutManager::Start() {
@@ -124,8 +125,8 @@ void WebAppShortcutManager::Start() {
 }
 
 void WebAppShortcutManager::UpdateShortcuts(
-    const webapps::AppId& app_id,
-    std::string_view old_name,
+    const AppId& app_id,
+    base::StringPiece old_name,
     ResultCallback update_finished_callback) {
   DCHECK(CanCreateShortcuts());
   GetShortcutInfoForApp(
@@ -174,7 +175,7 @@ void WebAppShortcutManager::SuppressShortcutsForTesting() {
   suppress_shortcuts_for_testing_ = true;
 }
 
-void WebAppShortcutManager::CreateShortcuts(const webapps::AppId& app_id,
+void WebAppShortcutManager::CreateShortcuts(const AppId& app_id,
                                             bool add_to_desktop,
                                             ShortcutCreationReason reason,
                                             CreateShortcutsCallback callback) {
@@ -192,7 +193,7 @@ void WebAppShortcutManager::CreateShortcuts(const webapps::AppId& app_id,
 }
 
 void WebAppShortcutManager::DeleteShortcuts(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     const base::FilePath& shortcuts_data_dir,
     std::unique_ptr<ShortcutInfo> shortcut_info,
     ResultCallback callback) {
@@ -207,19 +208,17 @@ void WebAppShortcutManager::DeleteShortcuts(
 }
 
 void WebAppShortcutManager::ReadAllShortcutsMenuIconsAndRegisterShortcutsMenu(
-    const webapps::AppId& app_id,
-    const std::vector<WebAppShortcutsMenuItemInfo>& shortcuts_menu_item_infos,
+    const AppId& app_id,
     ResultCallback callback) {
-  provider_->icon_manager().ReadAllShortcutsMenuIcons(
+  icon_manager_->ReadAllShortcutsMenuIcons(
       app_id,
       base::BindOnce(
           &WebAppShortcutManager::OnShortcutsMenuIconsReadRegisterShortcutsMenu,
-          weak_ptr_factory_.GetWeakPtr(), app_id, shortcuts_menu_item_infos,
-          std::move(callback)));
+          weak_ptr_factory_.GetWeakPtr(), app_id, std::move(callback)));
 }
 
 void WebAppShortcutManager::RegisterShortcutsMenuWithOs(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     const std::vector<WebAppShortcutsMenuItemInfo>& shortcuts_menu_item_infos,
     const ShortcutsMenuIconBitmaps& shortcuts_menu_icon_bitmaps,
     ResultCallback callback) {
@@ -248,7 +247,7 @@ void WebAppShortcutManager::RegisterShortcutsMenuWithOs(
 }
 
 void WebAppShortcutManager::UnregisterShortcutsMenuWithOs(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     ResultCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!web_app::ShouldRegisterShortcutsMenuWithOs()) {
@@ -260,7 +259,7 @@ void WebAppShortcutManager::UnregisterShortcutsMenuWithOs(
                                          std::move(callback));
 }
 
-void WebAppShortcutManager::OnShortcutsCreated(const webapps::AppId& app_id,
+void WebAppShortcutManager::OnShortcutsCreated(const AppId& app_id,
                                                CreateShortcutsCallback callback,
                                                bool success) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
@@ -270,7 +269,7 @@ void WebAppShortcutManager::OnShortcutsCreated(const webapps::AppId& app_id,
   std::move(callback).Run(success);
 }
 
-void WebAppShortcutManager::OnShortcutsDeleted(const webapps::AppId& app_id,
+void WebAppShortcutManager::OnShortcutsDeleted(const AppId& app_id,
                                                ResultCallback callback,
                                                bool success) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
@@ -305,12 +304,18 @@ void WebAppShortcutManager::OnShortcutInfoRetrievedCreateShortcuts(
 }
 
 void WebAppShortcutManager::OnShortcutsMenuIconsReadRegisterShortcutsMenu(
-    const webapps::AppId& app_id,
-    const std::vector<WebAppShortcutsMenuItemInfo>& shortcuts_menu_item_infos,
+    const AppId& app_id,
     ResultCallback callback,
     ShortcutsMenuIconBitmaps shortcuts_menu_icon_bitmaps) {
-  RegisterShortcutsMenuWithOs(app_id, shortcuts_menu_item_infos,
-                              shortcuts_menu_icon_bitmaps, std::move(callback));
+  std::vector<WebAppShortcutsMenuItemInfo> shortcuts_menu_item_infos =
+      registrar_->GetAppShortcutsMenuItemInfos(app_id);
+  if (!shortcuts_menu_item_infos.empty()) {
+    RegisterShortcutsMenuWithOs(app_id, shortcuts_menu_item_infos,
+                                shortcuts_menu_icon_bitmaps,
+                                std::move(callback));
+  } else {
+    std::move(callback).Run(Result::kError);
+  }
 }
 
 void WebAppShortcutManager::OnShortcutInfoRetrievedUpdateShortcuts(
@@ -326,22 +331,21 @@ void WebAppShortcutManager::OnShortcutInfoRetrievedUpdateShortcuts(
       internals::GetShortcutDataDir(*shortcut_info);
   internals::PostShortcutIOTaskAndReplyWithResult(
       base::BindOnce(&internals::UpdatePlatformShortcuts,
-                     std::move(shortcut_data_dir), std::move(old_name),
-                     /*user_specified_locations=*/std::nullopt),
+                     std::move(shortcut_data_dir), std::move(old_name)),
       std::move(shortcut_info), std::move(update_finished_callback));
 }
 
 std::unique_ptr<ShortcutInfo> WebAppShortcutManager::BuildShortcutInfo(
-    const webapps::AppId& app_id) {
-  const WebApp* app = provider_->registrar_unsafe().GetAppById(app_id);
+    const AppId& app_id) {
+  const WebApp* app = registrar_->GetAppById(app_id);
   DCHECK(app);
   return BuildShortcutInfoForWebApp(app);
 }
 
 void WebAppShortcutManager::GetShortcutInfoForApp(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     GetShortcutInfoCallback callback) {
-  const WebApp* app = provider_->registrar_unsafe().GetAppById(app_id);
+  const WebApp* app = registrar_->GetAppById(app_id);
 
   // app could be nullptr if registry profile is being deleted.
   if (!app) {
@@ -354,12 +358,12 @@ void WebAppShortcutManager::GetShortcutInfoForApp(
       app->downloaded_icon_sizes(IconPurpose::ANY),
       GetDesiredIconSizesForShortcut());
 
+  DCHECK(icon_manager_);
   if (!icon_sizes_in_px.empty()) {
-    provider_->icon_manager().ReadIcons(
-        app_id, IconPurpose::ANY, icon_sizes_in_px,
-        base::BindOnce(&WebAppShortcutManager::OnIconsRead,
-                       weak_ptr_factory_.GetWeakPtr(), app_id,
-                       std::move(callback)));
+    icon_manager_->ReadIcons(app_id, IconPurpose::ANY, icon_sizes_in_px,
+                             base::BindOnce(&WebAppShortcutManager::OnIconsRead,
+                                            weak_ptr_factory_.GetWeakPtr(),
+                                            app_id, std::move(callback)));
     return;
   }
 
@@ -367,25 +371,19 @@ void WebAppShortcutManager::GetShortcutInfoForApp(
   // get.
   SquareSizePx desired_icon_size = GetDesiredIconSizesForShortcut().back();
 
-  provider_->icon_manager().ReadIconAndResize(
+  icon_manager_->ReadIconAndResize(
       app_id, IconPurpose::ANY, desired_icon_size,
       base::BindOnce(&WebAppShortcutManager::OnIconsRead,
                      weak_ptr_factory_.GetWeakPtr(), app_id,
                      std::move(callback)));
 }
 
-base::OnceClosure&
-WebAppShortcutManager::OnSetCurrentAppShortcutsVersionCallbackForTesting() {
-  static base::NoDestructor<base::OnceClosure> callback;
-  return *callback;
-}
-
 void WebAppShortcutManager::OnIconsRead(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     GetShortcutInfoCallback callback,
     std::map<SquareSizePx, SkBitmap> icon_bitmaps) {
   // |icon_bitmaps| can be empty here if no icon found.
-  const WebApp* app = provider_->registrar_unsafe().GetAppById(app_id);
+  const WebApp* app = registrar_->GetAppById(app_id);
   if (!app) {
     std::move(callback).Run(nullptr);
     return;
@@ -416,10 +414,10 @@ std::unique_ptr<ShortcutInfo> WebAppShortcutManager::BuildShortcutInfoForWebApp(
 
   shortcut_info->app_id = app->app_id();
   shortcut_info->url = app->start_url();
-  shortcut_info->title = base::UTF8ToUTF16(
-      provider_->registrar_unsafe().GetAppShortName(app->app_id()));
-  shortcut_info->description = base::UTF8ToUTF16(
-      provider_->registrar_unsafe().GetAppDescription(app->app_id()));
+  shortcut_info->title =
+      base::UTF8ToUTF16(registrar_->GetAppShortName(app->app_id()));
+  shortcut_info->description =
+      base::UTF8ToUTF16(registrar_->GetAppDescription(app->app_id()));
   shortcut_info->profile_path = profile_->GetPath();
   shortcut_info->profile_name =
       profile_->GetPrefs()->GetString(prefs::kProfileName);
@@ -503,25 +501,24 @@ void WebAppShortcutManager::UpdateShortcutsForAllAppsNow() {
   if (suppress_shortcuts_for_testing_)
     return;
 
-  base::ConcurrentClosures concurrent;
+  std::vector<AppId> app_ids = registrar_->GetAppIds();
+  auto done_callback = base::BarrierClosure(
+      app_ids.size() + 1,
+      base::BindOnce(&WebAppShortcutManager::SetCurrentAppShortcutsVersion,
+                     weak_ptr_factory_.GetWeakPtr()));
 
-  for (const auto& app_id : provider_->registrar_unsafe().GetAppIds()) {
+  for (const auto& app_id : app_ids) {
     UpdateShortcuts(app_id, /*old_name=*/{},
-                    base::IgnoreArgs<Result>(concurrent.CreateClosure()));
+                    base::IgnoreArgs<Result>(done_callback));
   }
 
   UpdateShortcutsForAllAppsCallback update_callback =
       GetUpdateShortcutsForAllAppsCallback();
   if (update_callback) {
-    update_callback.Run(profile_, concurrent.CreateClosure());
+    update_callback.Run(profile_, done_callback);
   } else {
-    concurrent.CreateClosure().Run();
+    done_callback.Run();
   }
-
-  std::move(concurrent)
-      .Done(
-          base::BindOnce(&WebAppShortcutManager::SetCurrentAppShortcutsVersion,
-                         weak_ptr_factory_.GetWeakPtr()));
 }
 
 void WebAppShortcutManager::SetCurrentAppShortcutsVersion() {
@@ -529,11 +526,6 @@ void WebAppShortcutManager::SetCurrentAppShortcutsVersion() {
                                    kCurrentAppShortcutsVersion);
   profile_->GetPrefs()->SetString(prefs::kAppShortcutsArch,
                                   CurrentAppShortcutsArch());
-
-  if (base::OnceClosure& callback =
-          OnSetCurrentAppShortcutsVersionCallbackForTesting()) {
-    std::move(callback).Run();
-  }
 }
 
 }  // namespace web_app

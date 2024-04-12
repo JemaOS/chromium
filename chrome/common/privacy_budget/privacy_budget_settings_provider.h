@@ -31,7 +31,7 @@
 class PrivacyBudgetSettingsProvider final
     : public blink::IdentifiabilityStudySettingsProvider {
  public:
-  explicit PrivacyBudgetSettingsProvider(bool meta_experiment_active);
+  PrivacyBudgetSettingsProvider();
   PrivacyBudgetSettingsProvider(const PrivacyBudgetSettingsProvider&);
   PrivacyBudgetSettingsProvider(PrivacyBudgetSettingsProvider&&);
   ~PrivacyBudgetSettingsProvider() override;
@@ -40,11 +40,12 @@ class PrivacyBudgetSettingsProvider final
   bool operator=(const PrivacyBudgetSettingsProvider&&) const = delete;
 
   // blink::IdentifiabilityStudySettingsProvider
-  bool IsMetaExperimentActive() const override;
   bool IsActive() const override;
   bool IsAnyTypeOrSurfaceBlocked() const override;
   bool IsSurfaceAllowed(blink::IdentifiableSurface surface) const override;
   bool IsTypeAllowed(blink::IdentifiableSurface::Type type) const override;
+  bool ShouldActivelySample() const override;
+  std::vector<std::string> FontFamiliesToActivelySample() const override;
 
  private:
   // Set of identifiable surfaces for which we will NOT collect metrics. This
@@ -55,11 +56,12 @@ class PrivacyBudgetSettingsProvider final
   // This list is server controlled.
   const IdentifiableSurfaceTypeSet blocked_types_;
 
-  // True if identifiability study is enabled.
+  // True if identifiability study is enabled. If this field is false, then none
+  // of the other values are applicable.
   const bool enabled_ = false;
 
-  // True if the meta experiment is enabled for this client.
-  const bool meta_experiment_active_ = false;
+  // True if surfaces should be actively sampled.
+  const bool active_sampling_enabled_ = false;
 };
 
 #endif  // CHROME_COMMON_PRIVACY_BUDGET_PRIVACY_BUDGET_SETTINGS_PROVIDER_H_

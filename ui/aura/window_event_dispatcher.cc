@@ -523,10 +523,8 @@ ui::EventDispatchDetails WindowEventDispatcher::PreDispatchEvent(
     ui::EventTarget* target,
     ui::Event* event) {
   if (host_->compositor() && cc::CustomMetricRecorder::Get()) {
-    // Must destroy existing monitor before creating the new one since the
-    // monitors are expected to be added and removed in stack order (LIFO).
-    event_metrics_monitor_.reset();
-    event_metrics_monitor_ = CreateScropedMetricsMonitorForEvent(*event);
+    event_metrics_monitors_.push_back(
+        CreateScropedMetricsMonitorForEvent(*event));
   }
 
   Window* target_window = static_cast<Window*>(target);
@@ -609,7 +607,9 @@ ui::EventDispatchDetails WindowEventDispatcher::PostDispatchEvent(
   // monitor creation code in PreDispatchEvent to track latencies properly.
   if (!details.dispatcher_destroyed && host_->compositor() &&
       cc::CustomMetricRecorder::Get()) {
-    event_metrics_monitor_.reset();
+    std::unique_ptr<cc::EventsMetricsManager::ScopedMonitor> monitor =
+        std::move(event_metrics_monitors_.back());
+    event_metrics_monitors_.pop_back();
   }
 
   return details;
@@ -899,7 +899,7 @@ DispatchDetails WindowEventDispatcher::PreDispatchLocatedEvent(
   int flags = event->flags();
   if (IsNonClientLocation(target, event->location()))
     flags |= ui::EF_IS_NON_CLIENT;
-  event->SetFlags(flags);
+  event->set_flags(flags);
 
   if (!is_dispatched_held_event(*event) &&
       (event->IsMouseEvent() || event->IsScrollEvent()) &&
@@ -1042,8 +1042,7 @@ DispatchDetails WindowEventDispatcher::PreDispatchTouchEvent(
     return DispatchDetails();
   }
 
-  Env::GetInstance()->env_controller()->UpdateStateForTouchEvent(target,
-                                                                 *event);
+  Env::GetInstance()->env_controller()->UpdateStateForTouchEvent(*event);
 
   ui::TouchEvent root_relative_event(*event);
   root_relative_event.set_location_f(event->root_location_f());
@@ -1112,20 +1111,16 @@ WindowEventDispatcher::CreateScropedMetricsMonitorForEvent(
     } else if (gesture->IsScrollGestureEvent()) {
       metrics = cc::ScrollEventMetrics::CreateForBrowser(
           gesture->type(), input_type,
-          /*is_inertial=*/false, gesture->time_stamp(),
-          base::IdType64<class ui::LatencyInfo>(event.latency()->trace_id()));
+          /*is_inertial=*/false, gesture->time_stamp());
       if (gesture->type() == ui::ET_GESTURE_SCROLL_BEGIN)
         has_seen_gesture_scroll_update_after_begin_ = false;
     } else {
       DCHECK(gesture->IsPinchEvent());
-      metrics = cc::PinchEventMetrics::Create(
-          gesture->type(), input_type, gesture->time_stamp(),
-          base::IdType64<class ui::LatencyInfo>(event.latency()->trace_id()));
+      metrics = cc::PinchEventMetrics::Create(gesture->type(), input_type,
+                                              gesture->time_stamp());
     }
   } else {
-    metrics = cc::EventMetrics::Create(
-        event.type(), event.time_stamp(),
-        base::IdType64<class ui::LatencyInfo>(event.latency()->trace_id()));
+    metrics = cc::EventMetrics::Create(event.type(), event.time_stamp());
   }
   cc::EventsMetricsManager::ScopedMonitor::DoneCallback done_callback;
   if (metrics) {

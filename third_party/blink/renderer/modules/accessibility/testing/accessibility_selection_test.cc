@@ -60,14 +60,14 @@ class AXSelectionSerializer final {
     builder_.Append(AXObject::InternalRoleName(text_object.RoleValue()));
     builder_.Append(": ");
     const String name = text_object.ComputedName() + ">\n";
-    const AXObject& base_container = *selection_.Anchor().ContainerObject();
-    const AXObject& extent_container = *selection_.Focus().ContainerObject();
+    const AXObject& base_container = *selection_.Base().ContainerObject();
+    const AXObject& extent_container = *selection_.Extent().ContainerObject();
 
     if (base_container == text_object && extent_container == text_object) {
-      DCHECK(selection_.Anchor().IsTextPosition() &&
-             selection_.Focus().IsTextPosition());
-      const int base_offset = selection_.Anchor().TextOffset();
-      const int extent_offset = selection_.Focus().TextOffset();
+      DCHECK(selection_.Base().IsTextPosition() &&
+             selection_.Extent().IsTextPosition());
+      const int base_offset = selection_.Base().TextOffset();
+      const int extent_offset = selection_.Extent().TextOffset();
 
       if (base_offset == extent_offset) {
         builder_.Append(name.Left(base_offset));
@@ -96,8 +96,8 @@ class AXSelectionSerializer final {
     }
 
     if (base_container == text_object) {
-      DCHECK(selection_.Anchor().IsTextPosition());
-      const int base_offset = selection_.Anchor().TextOffset();
+      DCHECK(selection_.Base().IsTextPosition());
+      const int base_offset = selection_.Base().TextOffset();
 
       builder_.Append(name.Left(base_offset));
       builder_.Append('^');
@@ -106,8 +106,8 @@ class AXSelectionSerializer final {
     }
 
     if (extent_container == text_object) {
-      DCHECK(selection_.Focus().IsTextPosition());
-      const int extent_offset = selection_.Focus().TextOffset();
+      DCHECK(selection_.Extent().IsTextPosition());
+      const int extent_offset = selection_.Extent().TextOffset();
 
       builder_.Append(name.Left(extent_offset));
       builder_.Append('|');
@@ -136,14 +136,13 @@ class AXSelectionSerializer final {
     if (!position.IsValid())
       return;
 
-    if (selection_.Focus() == position) {
+    if (selection_.Extent() == position) {
       builder_.Append('|');
       return;
     }
 
-    if (selection_.Anchor() != position) {
+    if (selection_.Base() != position)
       return;
-    }
 
     builder_.Append('^');
   }
@@ -208,7 +207,7 @@ class AXSelectionDeserializer final {
                                         HTMLElement& element) {
     element.setInnerHTML(String::FromUTF8(html_snippet));
     element.GetDocument().View()->UpdateAllLifecyclePhasesForTest();
-    AXObject* root = ax_object_cache_->Get(&element);
+    AXObject* root = ax_object_cache_->GetOrCreate(&element);
     if (!root || root->IsDetached())
       return {};
 
@@ -230,7 +229,7 @@ class AXSelectionDeserializer final {
       const auto ax_caret = AXPosition::FromPosition(caret);
       AXSelection::Builder builder;
       ax_selections.push_back(
-          builder.SetAnchor(ax_caret).SetFocus(ax_caret).Build());
+          builder.SetBase(ax_caret).SetExtent(ax_caret).Build());
       return ax_selections;
     }
 
@@ -244,7 +243,7 @@ class AXSelectionDeserializer final {
       const auto ax_extent = AXPosition::FromPosition(extent);
       AXSelection::Builder builder;
       ax_selections.push_back(
-          builder.SetAnchor(ax_base).SetFocus(ax_extent).Build());
+          builder.SetBase(ax_base).SetExtent(ax_extent).Build());
     }
 
     return ax_selections;
@@ -349,13 +348,6 @@ AccessibilitySelectionTest::AccessibilitySelectionTest(
     LocalFrameClient* local_frame_client)
     : AccessibilityTest(local_frame_client) {}
 
-void AccessibilitySelectionTest::SetUp() {
-  RenderingTest::SetUp();
-  // Do not include noisy inline textboxes in selection tests.
-  ax_context_ =
-      std::make_unique<AXContext>(GetDocument(), ui::AXMode::kWebContents);
-}
-
 std::string AccessibilitySelectionTest::GetCurrentSelectionText() const {
   const SelectionInDOMTree selection =
       GetFrame().Selection().GetSelectionInDOMTree();
@@ -446,12 +438,7 @@ void AccessibilitySelectionTest::RunSelectionTest(
     actual_ax_file_contents += GetCurrentSelectionText();
   }
 
-  EXPECT_TRUE(ax_file_contents == actual_ax_file_contents)
-      << "\nSelection does not match expectations. Legend: ^=selection start  "
-         "|=selection end"
-      << "\n\nExpected:\n--------\n"
-      << ax_file_contents << "\n\nActual:\n------\n"
-      << actual_ax_file_contents;
+  EXPECT_EQ(ax_file_contents, actual_ax_file_contents);
 
   // Uncomment these lines to write the output to the expectations file.
   // TODO(dmazzoni): make this a command-line parameter.

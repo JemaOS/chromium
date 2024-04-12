@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ApplicationTestRunner} from 'application_test_runner';
-
-import * as Common from 'devtools/core/common/common.js';
-
 (async function() {
   TestRunner.addResult(`Tests "Bypass for network" checkbox works with navigations. crbug.com/746220\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('application_test_runner');
   // Note: every test that uses a storage API must manually clean-up state from previous tests.
   await ApplicationTestRunner.resetState();
 
@@ -43,12 +39,12 @@ import * as Common from 'devtools/core/common/common.js';
       })
       .then(() => {
         TestRunner.addResult('Enable BypassServiceWorker.');
-        Common.Settings.settingForTest('bypass-service-worker').set(true);
+        Common.settings.settingForTest('bypassServiceWorker').set(true);
         return loadIframe('frame_id2');
       })
       .then(() => {
         TestRunner.addResult('Disable BypassServiceWorker.');
-        Common.Settings.settingForTest('bypass-service-worker').set(false);
+        Common.settings.settingForTest('bypassServiceWorker').set(false);
         return loadIframe('frame_id3');
       })
       .then(() => {

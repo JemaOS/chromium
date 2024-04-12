@@ -18,7 +18,7 @@ NSDictionary* GetMacNotificationUserInfo(
 
   NSString* origin_url = base::SysUTF8ToNSString(meta->origin_url.spec());
   NSNumber* type = @(meta->type);
-  NSString* user_data_dir = base::SysUTF8ToNSString(meta->user_data_dir);
+  NSNumber* creator_pid = @(meta->creator_pid);
   NSNumber* settings_button =
       [NSNumber numberWithBool:notification->show_settings_button];
 
@@ -28,7 +28,7 @@ NSDictionary* GetMacNotificationUserInfo(
     kNotificationIncognito : incognito,
     kNotificationOrigin : origin_url,
     kNotificationType : type,
-    kNotificationUserDataDir : user_data_dir,
+    kNotificationCreatorPid : creator_pid,
     kNotificationHasSettingsButton : settings_button,
   };
 }
@@ -46,13 +46,11 @@ mojom::NotificationMetadataPtr GetMacNotificationMetadata(
 
   int type = [[user_info objectForKey:kNotificationType] intValue];
   NSString* origin_url_ns = [user_info objectForKey:kNotificationOrigin];
-  NSString* user_data_dir_ns =
-      [user_info objectForKey:kNotificationUserDataDir];
+  int creator_pid = [[user_info objectForKey:kNotificationCreatorPid] intValue];
 
   return mojom::NotificationMetadata::New(
       std::move(notification_id), type,
-      GURL(base::SysNSStringToUTF8(origin_url_ns)),
-      base::SysNSStringToUTF8(user_data_dir_ns));
+      GURL(base::SysNSStringToUTF8(origin_url_ns)), creator_pid);
 }
 
 std::string DeriveMacNotificationId(
@@ -65,6 +63,7 @@ std::string DeriveMacNotificationId(
 NSString* const kNotificationButtonOne = @"buttonOne";
 NSString* const kNotificationButtonTwo = @"buttonTwo";
 NSString* const kNotificationCloseButtonTag = @"closeButton";
+NSString* const kNotificationCreatorPid = @"notificationCreatorPid";
 NSString* const kNotificationHasSettingsButton =
     @"notificationHasSettingsButton";
 NSString* const kNotificationId = @"notificationId";
@@ -73,6 +72,5 @@ NSString* const kNotificationOrigin = @"notificationOrigin";
 NSString* const kNotificationProfileId = @"notificationProfileId";
 NSString* const kNotificationSettingsButtonTag = @"settingsButton";
 NSString* const kNotificationType = @"notificationType";
-NSString* const kNotificationUserDataDir = @"notificationUserDataDir";
 
 }  // namespace mac_notifications

@@ -7,10 +7,8 @@
 #include <map>
 
 #include "base/logging.h"
-#include "base/trace_event/trace_event.h"
 #include "chrome/browser/ash/app_list/app_context_menu.h"
 #include "ui/base/models/image_model.h"
-#include "url/gurl.h"
 
 ChromeSearchResult::ChromeSearchResult()
     : metadata_(std::make_unique<ash::SearchResultMetadata>()) {}
@@ -155,9 +153,8 @@ void ChromeSearchResult::SetMetricsType(MetricsType metrics_type) {
   SetSearchResultMetadata();
 }
 
-void ChromeSearchResult::SetContinueFileSuggestionType(
-    ash::ContinueFileSuggestionType type) {
-  metadata_->continue_file_suggestion_type = type;
+void ChromeSearchResult::SetIsOmniboxSearch(bool is_omnibox_search) {
+  metadata_->is_omnibox_search = is_omnibox_search;
   SetSearchResultMetadata();
 }
 
@@ -172,7 +169,7 @@ void ChromeSearchResult::SetSkipUpdateAnimation(bool skip_update_animation) {
 }
 
 void ChromeSearchResult::SetIcon(const IconInfo& icon) {
-  TRACE_EVENT0("ui", "ChromeSearchResult::SetIcon");
+  icon.icon.EnsureRepsForSupportedScales();
   metadata_->icon = icon;
   SetSearchResultMetadata();
 }
@@ -183,7 +180,6 @@ void ChromeSearchResult::SetIconDimension(const int dimension) {
 }
 
 void ChromeSearchResult::SetChipIcon(const gfx::ImageSkia& chip_icon) {
-  TRACE_EVENT0("ui", "ChromeSearchResult::SetChipIcon");
   chip_icon.EnsureRepsForSupportedScales();
   metadata_->chip_icon = chip_icon;
   SetSearchResultMetadata();
@@ -206,29 +202,14 @@ void ChromeSearchResult::SetSystemInfoAnswerCardData(
   SetSearchResultMetadata();
 }
 
-void ChromeSearchResult::SetFilePath(base::FilePath file_path) {
-  metadata_->file_path = file_path;
-  SetSearchResultMetadata();
-}
-
-void ChromeSearchResult::SetMetadataLoaderCallback(
-    MetadataLoaderCallback callback) {
-  metadata_->file_metadata_loader.SetLoaderCallback(std::move(callback));
-  SetSearchResultMetadata();
-}
-
 void ChromeSearchResult::SetSearchResultMetadata() {
   AppListModelUpdater* updater = model_updater();
   if (updater)
     updater->SetSearchResultMetadata(id(), CloneMetadata());
 }
 
-std::optional<std::string> ChromeSearchResult::DriveId() const {
-  return std::nullopt;
-}
-
-std::optional<GURL> ChromeSearchResult::url() const {
-  return std::nullopt;
+absl::optional<std::string> ChromeSearchResult::DriveId() const {
+  return absl::nullopt;
 }
 
 void ChromeSearchResult::InvokeAction(ash::SearchResultActionType action) {}

@@ -46,4 +46,3 @@
 
 HTMLAnchorElement includes HTMLAttributionSrcElementUtils;
 HTMLAnchorElement includes HTMLHyperlinkElementUtils;
-HTMLAnchorElement includes InterestInvokerElement;

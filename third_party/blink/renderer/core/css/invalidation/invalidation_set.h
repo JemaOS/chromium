@@ -117,6 +117,8 @@ class CORE_EXPORT InvalidationSet
     return GetType() == InvalidationType::kInvalidateNthSiblings;
   }
 
+  static void CacheTracingFlag();
+
   bool InvalidatesElement(Element&) const;
   bool InvalidatesTagName(Element&) const;
 
@@ -594,7 +596,7 @@ size_t InvalidationSet::Backing<type>::Size(
   if (const HashSet<AtomicString>* set = GetHashSet(flags)) {
     return set->size();
   }
-  if (GetString(flags)) {
+  if (const String* string = GetString(flags)) {
     return 1;
   }
   return 0;

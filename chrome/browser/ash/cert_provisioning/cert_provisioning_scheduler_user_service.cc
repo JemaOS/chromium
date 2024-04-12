@@ -23,15 +23,6 @@ CertProvisioningSchedulerUserService::CertProvisioningSchedulerUserService(
 CertProvisioningSchedulerUserService::~CertProvisioningSchedulerUserService() =
     default;
 
-void CertProvisioningSchedulerUserService::Shutdown() {
-  // The scheduler uses invalidations and depends on
-  // `ProfileInvalidationProvider`. Invalidation service is destroyed on
-  // Shutdown call and expects all invalidators to be unregistered before that.
-  // Destroy `scheduler_` and its invalidators on service's shutdown to fulfill
-  // this requirement.
-  scheduler_.reset();
-}
-
 // ================ CertProvisioningSchedulerUserServiceFactory ================
 
 // static
@@ -52,11 +43,12 @@ CertProvisioningSchedulerUserServiceFactory::GetInstance() {
 
 CertProvisioningSchedulerUserServiceFactory::
     CertProvisioningSchedulerUserServiceFactory()
-    : ProfileKeyedServiceFactory("CertProvisioningSchedulerUserService",
-                                 ProfileSelections::Builder()
-                                     .WithGuest(ProfileSelection::kOriginalOnly)
-                                     .WithAshInternals(ProfileSelection::kNone)
-                                     .Build()) {
+    : ProfileKeyedServiceFactory(
+          "CertProvisioningSchedulerUserService",
+          ProfileSelections::Builder()
+              .WithGuest(ProfileSelections::kRegularProfileDefault)
+              .WithAshInternals(ProfileSelection::kNone)
+              .Build()) {
   DependsOn(platform_keys::PlatformKeysServiceFactory::GetInstance());
   DependsOn(invalidation::ProfileInvalidationProviderFactory::GetInstance());
 }
@@ -66,15 +58,15 @@ bool CertProvisioningSchedulerUserServiceFactory::
   return true;
 }
 
-std::unique_ptr<KeyedService> CertProvisioningSchedulerUserServiceFactory::
-    BuildServiceInstanceForBrowserContext(
-        content::BrowserContext* context) const {
+KeyedService*
+CertProvisioningSchedulerUserServiceFactory::BuildServiceInstanceFor(
+    content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   if (!profile || !profile->GetProfilePolicyConnector()->IsManaged()) {
     return nullptr;
   }
 
-  return std::make_unique<CertProvisioningSchedulerUserService>(profile);
+  return new CertProvisioningSchedulerUserService(profile);
 }
 
 }  // namespace cert_provisioning

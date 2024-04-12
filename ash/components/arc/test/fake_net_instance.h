@@ -28,7 +28,6 @@ class FakeNetInstance : public mojom::NetInstance {
 
   void ConfigureAndroidVpn() override;
 
-  // TODO(b/308365031): Rename mojo ActiveNetworksChanged to HostNetworksChanged
   void ActiveNetworksChanged(
       std::vector<mojom::NetworkConfigurationPtr> network) override;
 

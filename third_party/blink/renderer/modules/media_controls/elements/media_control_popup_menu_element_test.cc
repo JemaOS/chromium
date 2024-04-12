@@ -23,7 +23,6 @@
 #include "third_party/blink/renderer/modules/media_controls/media_controls_impl.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/keyboard_codes.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
@@ -35,9 +34,8 @@ class MediaControlPopupMenuElementTest : public PageTestBase {
     PageTestBase::SetUp();
     media_element_ = MakeGarbageCollected<HTMLVideoElement>(GetDocument());
     media_element_->SetBooleanAttribute(html_names::kControlsAttr, true);
-    media_element_->setAttribute(html_names::kPreloadAttr,
-                                 AtomicString("none"));
-    media_element_->SetSrc(AtomicString("http://example.com/foo.mp4"));
+    media_element_->setAttribute(html_names::kPreloadAttr, "none");
+    media_element_->SetSrc("http://example.com/foo.mp4");
     GetDocument().body()->AppendChild(media_element_);
     test::RunPendingTasks();
     UpdateAllLifecyclePhasesForTest();

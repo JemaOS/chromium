@@ -12,7 +12,6 @@
 #include "base/path_service.h"
 #include "build/build_config.h"
 #include "chrome/browser/headless/test/headless_browser_test_utils.h"
-#include "components/headless/select_file_dialog/headless_select_file_dialog.h"
 #include "content/public/common/content_switches.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "services/network/public/cpp/network_switches.h"
@@ -48,13 +47,6 @@ void HeadlessModeProtocolBrowserTest::SetUpCommandLine(
 
 base::Value::Dict HeadlessModeProtocolBrowserTest::GetPageUrlExtraParams() {
   return base::Value::Dict();
-}
-
-void HeadlessModeProtocolBrowserTest::RunTestScript(
-    base::StringPiece script_name) {
-  test_folder_ = "/protocol/";
-  script_name_ = script_name;
-  RunTest();
 }
 
 void HeadlessModeProtocolBrowserTest::RunDevTooledTest() {
@@ -97,7 +89,7 @@ void HeadlessModeProtocolBrowserTest::OnLoadEventFired(
     const base::Value::Dict& params) {
   base::ScopedAllowBlockingForTesting allow_blocking;
   base::FilePath src_dir;
-  CHECK(base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &src_dir));
+  CHECK(base::PathService::Get(base::DIR_SOURCE_ROOT, &src_dir));
   base::FilePath test_path =
       src_dir.Append(kTestsScriptRoot).AppendASCII(script_name_);
   std::string script;
@@ -156,7 +148,7 @@ void HeadlessModeProtocolBrowserTest::ProcessTestResult(
   base::ScopedAllowBlockingForTesting allow_blocking;
 
   base::FilePath src_dir;
-  ASSERT_TRUE(base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &src_dir));
+  ASSERT_TRUE(base::PathService::Get(base::DIR_SOURCE_ROOT, &src_dir));
   base::FilePath expectation_path =
       src_dir.Append(kTestsScriptRoot)
           .AppendASCII(script_name_.substr(0, script_name_.length() - 3) +
@@ -204,7 +196,6 @@ void HeadlessModeProtocolBrowserTest::OnConsoleAPICalled(
 }
 
 HEADLESS_MODE_PROTOCOL_TEST(DomFocus, "input/dom-focus.js")
-HEADLESS_MODE_PROTOCOL_TEST(FocusEvent, "input/focus-event.js")
 
 // Flaky crbug/1431857
 HEADLESS_MODE_PROTOCOL_TEST(DISABLED_FocusBlurNotifications,
@@ -218,89 +209,16 @@ HEADLESS_MODE_PROTOCOL_TEST(DISABLED_FocusBlurNotifications,
 HEADLESS_MODE_PROTOCOL_TEST(MAYBE_InputClipboardOps,
                             "input/input-clipboard-ops.js")
 
-class HeadlessModeInputSelectFileDialogTest
-    : public HeadlessModeProtocolBrowserTest {
- public:
-  HeadlessModeInputSelectFileDialogTest() = default;
-
-  void SetUpOnMainThread() override {
-    HeadlessSelectFileDialogFactory::SetSelectFileDialogOnceCallbackForTests(
-        base::BindOnce(
-            &HeadlessModeInputSelectFileDialogTest::OnSelectFileDialogCallback,
-            base::Unretained(this)));
-
-    HeadlessModeProtocolBrowserTest::SetUpOnMainThread();
-  }
-
-  void FinishAsyncTest() override {
-    EXPECT_TRUE(select_file_dialog_has_run_);
-
-    HeadlessModeProtocolBrowserTest::FinishAsyncTest();
-  }
-
- private:
-  void OnSelectFileDialogCallback(ui::SelectFileDialog::Type type) {
-    select_file_dialog_has_run_ = true;
-  }
-
-  bool select_file_dialog_has_run_ = false;
-};
-
-// TODO(crbug.com/1459246): flaky on Mac and Linux builders.
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-#define MAYBE_InputSelectFileDialog DISABLED_InputSelectFileDialog
-#else
-#define MAYBE_InputSelectFileDialog InputSelectFileDialog
-#endif
-HEADLESS_MODE_PROTOCOL_TEST_F(HeadlessModeInputSelectFileDialogTest,
-                              MAYBE_InputSelectFileDialog,
-                              "input/input-select-file-dialog.js")
-
-class HeadlessModeScreencastTest : public HeadlessModeProtocolBrowserTest {
- public:
-  HeadlessModeScreencastTest() = default;
-
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    HeadlessModeProtocolBrowserTest::SetUpCommandLine(command_line);
-
+// https://crbug.com/1411976
 #if BUILDFLAG(IS_WIN)
-    // Screencast tests fail on Windows unless GPU compositing is disabled,
-    // see https://crbug.com/1411976 and https://crbug.com/1502651.
-    UseSoftwareCompositing();
+#define MAYBE_ScreencastBasics DISABLED_ScreencastBasics
+#else
+#define MAYBE_ScreencastBasics ScreencastBasics
 #endif
-  }
-};
-
-HEADLESS_MODE_PROTOCOL_TEST_F(HeadlessModeScreencastTest,
-                              ScreencastBasics,
-                              "sanity/screencast-basics.js")
-HEADLESS_MODE_PROTOCOL_TEST_F(HeadlessModeScreencastTest,
-                              ScreencastViewport,
-                              "sanity/screencast-viewport.js")
+HEADLESS_MODE_PROTOCOL_TEST(MAYBE_ScreencastBasics,
+                            "sanity/screencast-basics.js")
 
 HEADLESS_MODE_PROTOCOL_TEST(LargeBrowserWindowSize,
                             "sanity/large-browser-window-size.js")
-
-// These currently fail on Mac,see https://crbug.com/1488010
-#if !BUILDFLAG(IS_MAC)
-HEADLESS_MODE_PROTOCOL_TEST(MinimizeRestoreWindow,
-                            "sanity/minimize-restore-window.js")
-HEADLESS_MODE_PROTOCOL_TEST(MaximizeRestoreWindow,
-                            "sanity/maximize-restore-window.js")
-HEADLESS_MODE_PROTOCOL_TEST(FullscreenRestoreWindow,
-                            "sanity/fullscreen-restore-window.js")
-#endif  // !BUILDFLAG(IS_MAC)
-
-HEADLESS_MODE_PROTOCOL_TEST(MaximizedWindowSize,
-                            "sanity/maximized-window-size.js")
-
-// This currently fails on Mac,see https://crbug.com/1500046
-#if !BUILDFLAG(IS_MAC)
-HEADLESS_MODE_PROTOCOL_TEST(FullscreenWindowSize,
-                            "sanity/fullscreen-window-size.js")
-#endif  // !BUILDFLAG(IS_MAC)
-
-HEADLESS_MODE_PROTOCOL_TEST(PrintToPdfTinyPage,
-                            "sanity/print-to-pdf-tiny-page.js")
 
 }  // namespace headless

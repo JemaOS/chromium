@@ -34,7 +34,7 @@ class SyncMojoServiceFactoryAsh : public ProfileKeyedServiceFactory {
   ~SyncMojoServiceFactoryAsh() override;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

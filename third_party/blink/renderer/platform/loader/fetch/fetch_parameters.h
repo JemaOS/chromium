@@ -26,7 +26,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_FETCH_PARAMETERS_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_FETCH_PARAMETERS_H_
 
-#include "base/memory/stack_allocated.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/script/script_type.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/script/script_type.mojom-shared.h"
@@ -117,11 +116,11 @@ class PLATFORM_EXPORT FetchParameters {
   DeferOption Defer() const { return defer_; }
   void SetDefer(DeferOption defer) { defer_ = defer; }
 
-  std::optional<float> GetResourceWidth() const { return resource_width_; }
-  void SetResourceWidth(const std::optional<float> resource_width);
+  absl::optional<float> GetResourceWidth() const { return resource_width_; }
+  void SetResourceWidth(const absl::optional<float> resource_width);
 
-  std::optional<float> GetResourceHeight() const { return resource_height_; }
-  void SetResourceHeight(const std::optional<float> resource_height);
+  absl::optional<float> GetResourceHeight() const { return resource_height_; }
+  void SetResourceHeight(const absl::optional<float> resource_height);
 
   bool IsSpeculativePreload() const {
     return speculative_preload_type_ != SpeculativePreloadType::kNotSpeculative;
@@ -207,21 +206,11 @@ class PLATFORM_EXPORT FetchParameters {
     render_blocking_behavior_ = render_blocking_behavior;
   }
 
-  void SetIsPotentiallyLCPElement(bool flag) {
-    is_potentially_lcp_element_ = flag;
+  void SetDiscoveryTime(base::TimeTicks discovery_time) {
+    discovery_time_ = discovery_time;
   }
 
-  void SetIsPotentiallyLCPInfluencer(bool flag) {
-    is_potentially_lcp_influencer_ = flag;
-  }
-
-  bool IsPotentiallyLCPElement() const { return is_potentially_lcp_element_; }
-
-  bool IsPotentiallyLCPInfluencer() const {
-    return is_potentially_lcp_influencer_;
-  }
-
-  void Trace(Visitor* visitor) const { visitor->Trace(options_); }
+  base::TimeTicks DiscoveryTime() { return discovery_time_; }
 
  private:
   ResourceRequest resource_request_;
@@ -233,16 +222,15 @@ class PLATFORM_EXPORT FetchParameters {
   SpeculativePreloadType speculative_preload_type_ =
       SpeculativePreloadType::kNotSpeculative;
   DeferOption defer_ = DeferOption::kNoDefer;
-  std::optional<float> resource_width_;
-  std::optional<float> resource_height_;
+  absl::optional<float> resource_width_;
+  absl::optional<float> resource_height_;
   ImageRequestBehavior image_request_behavior_ = ImageRequestBehavior::kNone;
   mojom::blink::ScriptType script_type_ = mojom::blink::ScriptType::kClassic;
   bool is_stale_revalidation_ = false;
   bool is_from_origin_dirty_style_sheet_ = false;
   RenderBlockingBehavior render_blocking_behavior_ =
       RenderBlockingBehavior::kUnset;
-  bool is_potentially_lcp_element_ = false;
-  bool is_potentially_lcp_influencer_ = false;
+  base::TimeTicks discovery_time_;
 };
 
 }  // namespace blink

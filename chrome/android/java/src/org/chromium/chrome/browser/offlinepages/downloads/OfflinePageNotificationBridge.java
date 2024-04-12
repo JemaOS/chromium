@@ -4,8 +4,7 @@
 
 package org.chromium.chrome.browser.offlinepages.downloads;
 
-import org.jni_zero.CalledByNative;
-
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.chrome.browser.download.DownloadInfo;
 import org.chromium.chrome.browser.download.DownloadManagerService;
 import org.chromium.chrome.browser.download.DownloadNotifier;
@@ -34,15 +33,14 @@ public class OfflinePageNotificationBridge {
         DownloadNotifier notifier = getDownloadNotifier();
         if (notifier == null) return;
 
-        DownloadInfo downloadInfo =
-                new DownloadInfo.Builder()
-                        .setIsOfflinePage(true)
-                        .setDownloadGuid(guid)
-                        .setFileName(displayName)
-                        .setIsResumable(false)
-                        .setOTRProfileId(null)
-                        .setBytesTotalSize(networkBytesUsed)
-                        .build();
+        DownloadInfo downloadInfo = new DownloadInfo.Builder()
+                                            .setIsOfflinePage(true)
+                                            .setDownloadGuid(guid)
+                                            .setFileName(displayName)
+                                            .setIsResumable(false)
+                                            .setOTRProfileId(null)
+                                            .setBytesTotalSize(networkBytesUsed)
+                                            .build();
 
         notifier.notifyDownloadSuccessful(downloadInfo, -1, false, true);
     }
@@ -61,12 +59,8 @@ public class OfflinePageNotificationBridge {
         DownloadNotifier notifier = getDownloadNotifier();
         if (notifier == null) return;
 
-        DownloadInfo downloadInfo =
-                new DownloadInfo.Builder()
-                        .setIsOfflinePage(true)
-                        .setDownloadGuid(guid)
-                        .setFileName(displayName)
-                        .build();
+        DownloadInfo downloadInfo = new DownloadInfo.Builder()
+                .setIsOfflinePage(true).setDownloadGuid(guid).setFileName(displayName).build();
 
         notifier.notifyDownloadFailed(downloadInfo, failState);
     }
@@ -85,17 +79,16 @@ public class OfflinePageNotificationBridge {
         DownloadNotifier notifier = getDownloadNotifier();
         if (notifier == null) return;
 
-        DownloadInfo downloadInfo =
-                new DownloadInfo.Builder()
-                        .setIsOfflinePage(true)
-                        .setDownloadGuid(guid)
-                        .setFileName(displayName)
-                        .setFilePath(url)
-                        .setBytesReceived(bytesReceived)
-                        .setOTRProfileId(null)
-                        .setIsResumable(true)
-                        .setTimeRemainingInMillis(0)
-                        .build();
+        DownloadInfo downloadInfo = new DownloadInfo.Builder()
+                                            .setIsOfflinePage(true)
+                                            .setDownloadGuid(guid)
+                                            .setFileName(displayName)
+                                            .setFilePath(url)
+                                            .setBytesReceived(bytesReceived)
+                                            .setOTRProfileId(null)
+                                            .setIsResumable(true)
+                                            .setTimeRemainingInMillis(0)
+                                            .build();
 
         notifier.notifyDownloadProgress(downloadInfo, startTime, false);
     }
@@ -111,12 +104,8 @@ public class OfflinePageNotificationBridge {
         DownloadNotifier notifier = getDownloadNotifier();
         if (notifier == null) return;
 
-        DownloadInfo downloadInfo =
-                new DownloadInfo.Builder()
-                        .setIsOfflinePage(true)
-                        .setDownloadGuid(guid)
-                        .setFileName(displayName)
-                        .build();
+        DownloadInfo downloadInfo = new DownloadInfo.Builder()
+                .setIsOfflinePage(true).setDownloadGuid(guid).setFileName(displayName).build();
 
         notifier.notifyDownloadPaused(downloadInfo);
     }
@@ -133,13 +122,12 @@ public class OfflinePageNotificationBridge {
         DownloadNotifier notifier = getDownloadNotifier();
         if (notifier == null) return;
 
-        DownloadInfo downloadInfo =
-                new DownloadInfo.Builder()
-                        .setIsOfflinePage(true)
-                        .setDownloadGuid(guid)
-                        .setFileName(displayName)
-                        .setIsResumable(true)
-                        .build();
+        DownloadInfo downloadInfo = new DownloadInfo.Builder()
+                                            .setIsOfflinePage(true)
+                                            .setDownloadGuid(guid)
+                                            .setFileName(displayName)
+                                            .setIsResumable(true)
+                                            .build();
 
         notifier.notifyDownloadInterrupted(downloadInfo, true, pendingState);
     }
@@ -157,16 +145,20 @@ public class OfflinePageNotificationBridge {
         notifier.notifyDownloadCanceled(LegacyHelpers.buildLegacyContentId(true, guid));
     }
 
-    /** Shows a "Downloading ..." toast for the requested items already scheduled for download. */
+    /**
+     * Shows a "Downloading ..." toast for the requested items already scheduled for download.
+     */
     @CalledByNative
     public static void showDownloadingToast() {
         intializeOfflineItemsCollection();
         DownloadManagerService.getDownloadManagerService()
-                .getMessageUiController(/* otrProfileID= */ null)
+                .getMessageUiController(/*otrProfileID=*/null)
                 .onDownloadStarted();
     }
 
-    /** TODO(shaktisahu): Remove this function when offline pages backend cache loading is fixed. */
+    /**
+     * TODO(shaktisahu): Remove this function when offline pages backend cache loading is fixed.
+     */
     private static void intializeOfflineItemsCollection() {
         OfflineContentProvider offlineContentProvider = OfflineContentAggregatorFactory.get();
         offlineContentProvider.getAllItems(offlineItems -> {});

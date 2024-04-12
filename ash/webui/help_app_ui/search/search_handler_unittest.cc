@@ -5,6 +5,7 @@
 #include "ash/webui/help_app_ui/search/search_handler.h"
 #include <cstddef>
 
+#include "ash/webui/help_app_ui/search/search.mojom-test-utils.h"
 #include "ash/webui/help_app_ui/search/search_concept.h"
 #include "ash/webui/help_app_ui/search/search_tag_registry.h"
 #include "base/files/file_util.h"
@@ -12,7 +13,6 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
-#include "base/test/test_future.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -96,7 +96,8 @@ class HelpAppSearchHandlerTest : public testing::Test {
         /*url_path_with_parameters=*/"help",
         /*locale=*/"");
     new_search_concepts.push_back(std::move(new_concept_1));
-    Update(std::move(new_search_concepts));
+    mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+        .Update(std::move(new_search_concepts));
     handler_remote_.FlushForTesting();
     task_environment_.RunUntilIdle();
   }
@@ -118,19 +119,6 @@ class HelpAppSearchHandlerTest : public testing::Test {
       size_t expected_size) {
     return base::BindOnce(&HelpAppSearchHandlerTest::OnRead,
                           base::Unretained(this), expected_size);
-  }
-
-  std::vector<mojom::SearchResultPtr> Search(const std::u16string& query,
-                                             int32_t max_num_results) {
-    base::test::TestFuture<std::vector<mojom::SearchResultPtr>> future;
-    handler_remote_->Search(query, max_num_results, future.GetCallback());
-    return future.Take();
-  }
-
-  void Update(std::vector<mojom::SearchConceptPtr> search_concepts) {
-    base::test::TestFuture<void> future;
-    handler_remote_->Update(std::move(search_concepts), future.GetCallback());
-    EXPECT_TRUE(future.Wait());
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -168,7 +156,8 @@ TEST_F(HelpAppSearchHandlerTest, UpdateAndSearch) {
   search_concepts.push_back(std::move(new_concept_1));
   search_concepts.push_back(std::move(new_concept_2));
 
-  Update(std::move(search_concepts));
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Update(std::move(search_concepts));
   handler_remote_.FlushForTesting();
   task_environment_.RunUntilIdle();
 
@@ -177,18 +166,21 @@ TEST_F(HelpAppSearchHandlerTest, UpdateAndSearch) {
   std::vector<mojom::SearchResultPtr> search_results;
 
   // 2 results should be available for a "test tag" query.
-  search_results = Search(u"test tag",
-                          /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"test tag",
+              /*max_num_results=*/3u, &search_results);
   EXPECT_EQ(search_results.size(), 2u);
 
   // Limit results to 1 max and ensure that only 1 result is returned.
-  search_results = Search(u"test tag",
-                          /*max_num_results=*/1u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"test tag",
+              /*max_num_results=*/1u, &search_results);
   EXPECT_EQ(search_results.size(), 1u);
 
   // Search for a query which should return no results.
-  search_results = Search(u"QueryWithNoResults",
-                          /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"QueryWithNoResults",
+              /*max_num_results=*/3u, &search_results);
   EXPECT_TRUE(search_results.empty());
 }
 
@@ -205,13 +197,15 @@ TEST_F(HelpAppSearchHandlerTest, SearchResultMetadata) {
       /*locale=*/"");
   search_concepts.push_back(std::move(new_concept_1));
 
-  Update(std::move(search_concepts));
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Update(std::move(search_concepts));
   handler_remote_.FlushForTesting();
   task_environment_.RunUntilIdle();
 
   std::vector<mojom::SearchResultPtr> search_results;
-  search_results = Search(u"Printing",
-                          /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"Printing",
+              /*max_num_results=*/3u, &search_results);
 
   EXPECT_EQ(search_results.size(), 1u);
   EXPECT_EQ(search_results[0]->id, "test-id-1");
@@ -243,13 +237,15 @@ TEST_F(HelpAppSearchHandlerTest, SearchResultOrdering) {
   search_concepts.push_back(std::move(new_concept_1));
   search_concepts.push_back(std::move(new_concept_2));
 
-  Update(std::move(search_concepts));
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Update(std::move(search_concepts));
   handler_remote_.FlushForTesting();
   task_environment_.RunUntilIdle();
 
   std::vector<mojom::SearchResultPtr> search_results;
-  search_results = Search(u"relevant tag",
-                          /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"relevant tag",
+              /*max_num_results=*/3u, &search_results);
 
   // The more relevant concept should be first, but the other concept still has
   // some relevance.
@@ -266,7 +262,8 @@ TEST_F(HelpAppSearchHandlerTest, SearchStatusNotReadyAndEmptyIndex) {
   std::vector<mojom::SearchResultPtr> search_results;
 
   // Search without updating the index.
-  search_results = Search(u"test query", /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"test query", /*max_num_results=*/3u, &search_results);
 
   EXPECT_TRUE(search_results.empty());
   // 0 is kNotReadyAndEmptyIndex.
@@ -286,14 +283,16 @@ TEST_F(HelpAppSearchHandlerTest, SearchStatusReadyAndSuccess) {
       /*url_path_with_parameters=*/"help",
       /*locale=*/"");
   search_concepts.push_back(std::move(new_concept_1));
-  Update(std::move(search_concepts));
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Update(std::move(search_concepts));
   handler_remote_.FlushForTesting();
   task_environment_.RunUntilIdle();
 
   base::HistogramTester histogram_tester;
   std::vector<mojom::SearchResultPtr> search_results;
 
-  search_results = Search(u"Printing", /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"Printing", /*max_num_results=*/3u, &search_results);
 
   EXPECT_EQ(search_results.size(), 1u);
   // 2 is kReadyAndSuccess.
@@ -305,14 +304,16 @@ TEST_F(HelpAppSearchHandlerTest, SearchStatusReadyAndEmptyIndex) {
   // Update using an empty list. This can happen if there is no localized
   // content for the current locale.
   std::vector<mojom::SearchConceptPtr> search_concepts;
-  Update(std::move(search_concepts));
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Update(std::move(search_concepts));
   handler_remote_.FlushForTesting();
   task_environment_.RunUntilIdle();
 
   base::HistogramTester histogram_tester;
   std::vector<mojom::SearchResultPtr> search_results;
 
-  search_results = Search(u"Printing", /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"Printing", /*max_num_results=*/3u, &search_results);
 
   EXPECT_TRUE(search_results.empty());
   // 3 is kReadyAndEmptyIndex.
@@ -332,7 +333,8 @@ TEST_F(HelpAppSearchHandlerTest, SearchStatusReadyAndOtherStatus) {
       /*url_path_with_parameters=*/"help",
       /*locale=*/"");
   search_concepts.push_back(std::move(new_concept_1));
-  Update(std::move(search_concepts));
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Update(std::move(search_concepts));
   handler_remote_.FlushForTesting();
   task_environment_.RunUntilIdle();
 
@@ -340,7 +342,8 @@ TEST_F(HelpAppSearchHandlerTest, SearchStatusReadyAndOtherStatus) {
   std::vector<mojom::SearchResultPtr> search_results;
 
   // Searching with an empty query results in a different status: kEmptyQuery.
-  search_results = Search(u"", /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"", /*max_num_results=*/3u, &search_results);
 
   EXPECT_TRUE(search_results.empty());
   // 4 is kReadyAndOtherStatus.
@@ -385,8 +388,9 @@ TEST_F(HelpAppSearchHandlerTest, InitializeWithPersistence) {
   std::vector<mojom::SearchResultPtr> search_results;
 
   // There should be results.
-  search_results = Search(u"test tag",
-                          /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"test tag",
+              /*max_num_results=*/3u, &search_results);
   EXPECT_EQ(search_results.size(), 2u);
 }
 
@@ -411,12 +415,14 @@ TEST_F(HelpAppSearchHandlerTest, PersistenceUpdateWithNewData) {
   std::vector<mojom::SearchResultPtr> search_results;
 
   // There should be new results.
-  search_results = Search(u"Printing", /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"Printing", /*max_num_results=*/3u, &search_results);
   EXPECT_EQ(search_results.size(), 1u);
 
   // There should be no old results.
-  search_results = Search(u"test tag",
-                          /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"test tag",
+              /*max_num_results=*/3u, &search_results);
   EXPECT_EQ(search_results.size(), 0u);
 
   // Check the persistence is also updated.
@@ -445,12 +451,14 @@ TEST_F(HelpAppSearchHandlerTest, NewDataComesBeforePersistenceLoad) {
   std::vector<mojom::SearchResultPtr> search_results;
 
   // There should be new results.
-  search_results = Search(u"Printing", /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"Printing", /*max_num_results=*/3u, &search_results);
   EXPECT_EQ(search_results.size(), 1u);
 
   // There should be no persistence results.
-  search_results = Search(u"test tag",
-                          /*max_num_results=*/3u);
+  mojom::SearchHandlerAsyncWaiter(handler_remote_.get())
+      .Search(u"test tag",
+              /*max_num_results=*/3u, &search_results);
   EXPECT_EQ(search_results.size(), 0u);
 
   // Check the persistence is also updated.

@@ -15,8 +15,7 @@ namespace policy {
 // static
 UserCloudPolicyTokenForwarderFactory*
 UserCloudPolicyTokenForwarderFactory::GetInstance() {
-  static base::NoDestructor<UserCloudPolicyTokenForwarderFactory> instance;
-  return instance.get();
+  return base::Singleton<UserCloudPolicyTokenForwarderFactory>::get();
 }
 
 UserCloudPolicyTokenForwarderFactory::UserCloudPolicyTokenForwarderFactory()
@@ -31,11 +30,9 @@ UserCloudPolicyTokenForwarderFactory::UserCloudPolicyTokenForwarderFactory()
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
-UserCloudPolicyTokenForwarderFactory::~UserCloudPolicyTokenForwarderFactory() =
-    default;
+UserCloudPolicyTokenForwarderFactory::~UserCloudPolicyTokenForwarderFactory() {}
 
-std::unique_ptr<KeyedService>
-UserCloudPolicyTokenForwarderFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* UserCloudPolicyTokenForwarderFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = static_cast<Profile*>(context);
   UserCloudPolicyManagerAsh* manager = profile->GetUserCloudPolicyManagerAsh();
@@ -43,8 +40,7 @@ UserCloudPolicyTokenForwarderFactory::BuildServiceInstanceForBrowserContext(
       IdentityManagerFactory::GetForProfile(profile);
   if (!manager || !identity_manager)
     return nullptr;
-  return std::make_unique<UserCloudPolicyTokenForwarder>(manager,
-                                                         identity_manager);
+  return new UserCloudPolicyTokenForwarder(manager, identity_manager);
 }
 
 bool UserCloudPolicyTokenForwarderFactory::ServiceIsCreatedWithBrowserContext()

@@ -74,7 +74,8 @@ class CaptureModeDemoToolsTestApi {
   const TouchHighlightLayersMap& GetTouchIdToHighlightLayerMap() const;
 
  private:
-  const raw_ptr<CaptureModeDemoToolsController, DanglingUntriaged>
+  const raw_ptr<CaptureModeDemoToolsController,
+                DanglingUntriaged | ExperimentalAsh>
       demo_tools_controller_;
 };
 

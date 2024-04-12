@@ -20,8 +20,7 @@ namespace {
 
 constexpr char kWindowPredictorLaunchHistogram[] = "Arc.WindowPredictorLaunch";
 
-// Reason for Window Predictor launch action when failed to launch App
-// enumeration; Used for UMA counter.
+// Reason for Window Predictor launch action enumeration; Used for UMA counter.
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum class WindowPredictorLaunchType {
@@ -31,9 +30,6 @@ enum class WindowPredictorLaunchType {
   kFailedNoArcAppLaunchHandler = 3,
   kMaxValue = kFailedNoArcAppLaunchHandler,
 };
-
-constexpr char kWindowPredictorUseCaseHistogram[] =
-    "Arc.WindowPredictorUseCase";
 
 // Pre-defined screen size for ARC. See ArcLaunchParamsModifier.java in ARC
 // codebase.
@@ -94,7 +90,6 @@ bool WindowPredictor::LaunchArcAppWithGhostWindow(
     const apps::IntentPtr& intent,
     int event_flags,
     GhostWindowType window_type,
-    WindowPredictorUseCase use_case,
     const arc::mojom::WindowInfoPtr& window_info) {
   // ArcGhostWindowHandler maybe null in the test env.
   if (!ash::full_restore::ArcGhostWindowHandler::Get())
@@ -131,7 +126,6 @@ bool WindowPredictor::LaunchArcAppWithGhostWindow(
 
   base::UmaHistogramEnumeration(kWindowPredictorLaunchHistogram,
                                 WindowPredictorLaunchType::kSuccess);
-  base::UmaHistogramEnumeration(kWindowPredictorUseCaseHistogram, use_case);
   return true;
 }
 
@@ -149,13 +143,10 @@ arc::mojom::WindowInfoPtr WindowPredictor::PredictAppWindowInfo(
         window_info->display_id, &disp);
   }
 
-  if (display::Screen::GetScreen()->InTabletMode()) {
+  if (ash::TabletMode::Get()->IsInTabletMode()) {
     // TODO: Figure out why setting kMaximized doesn't work.
-    // Note that the ghost window state type is default, but the ARC app
-    // window state will be assigned by ARC and not be affected by this state.
     window_info->state =
         static_cast<int32_t>(chromeos::WindowStateType::kDefault);
-    window_info->bounds = disp.work_area();
     return window_info;
   }
 
@@ -178,17 +169,9 @@ arc::mojom::WindowInfoPtr WindowPredictor::PredictAppWindowInfo(
       break;
     case arc::mojom::WindowSizeType::kUnknown:
     default:
-      if (IsGoogleSeriesPackage(app_info.package_name)) {
-        // Google apps support tablet, launch them in tablet size on chromebook.
-        // This is the short-term workaround, should be removed in the future.
-        window_info->state =
-            static_cast<int32_t>(chromeos::WindowStateType::kNormal);
-        window_info->bounds = GetMiddleBounds(disp, GetTabletSize());
-      } else {
-        window_info->state =
-            static_cast<int32_t>(chromeos::WindowStateType::kDefault);
-        window_info->bounds = GetMiddleBounds(disp, GetPhoneSize());
-      }
+      window_info->state =
+          static_cast<int32_t>(chromeos::WindowStateType::kDefault);
+      window_info->bounds = GetMiddleBounds(disp, GetPhoneSize());
   }
 
   return window_info;

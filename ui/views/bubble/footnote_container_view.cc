@@ -103,7 +103,7 @@ void FootnoteContainerView::ResetBorder() {
       GetColorProvider()->GetColor(ui::kColorBubbleFooterBorder)));
 }
 
-BEGIN_METADATA(FootnoteContainerView)
+BEGIN_METADATA(FootnoteContainerView, View)
 END_METADATA
 
 }  // namespace views

@@ -89,5 +89,5 @@ CrostiniForceCloseView::CrostiniForceCloseView(
 
 CrostiniForceCloseView::~CrostiniForceCloseView() = default;
 
-BEGIN_METADATA(CrostiniForceCloseView)
+BEGIN_METADATA(CrostiniForceCloseView, views::BubbleDialogDelegateView)
 END_METADATA

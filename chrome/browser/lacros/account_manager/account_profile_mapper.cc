@@ -4,10 +4,9 @@
 
 #include "chrome/browser/lacros/account_manager/account_profile_mapper.h"
 
-#include <vector>
-
 #include "base/check.h"
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/containers/unique_ptr_adapters.h"
@@ -426,14 +425,14 @@ void AccountProfileMapper::AddAccountInternal(
           absl::get_if<account_manager::AccountKey>(&source_or_accountkey)) {
     if (account_key->account_type() != account_manager::AccountType::kGaia) {
       if (callback)
-        std::move(callback).Run(std::nullopt);
+        std::move(callback).Run(absl::nullopt);
       return;
     }
     const account_manager::Account* account =
         account_cache_.FindAccountByGaiaId(account_key->id());
     if (!account) {
       if (callback)
-        std::move(callback).Run(std::nullopt);
+        std::move(callback).Run(absl::nullopt);
       return;
     } else {
       source_or_account = *account;
@@ -460,7 +459,7 @@ void AccountProfileMapper::AddAccountInternal(
 void AccountProfileMapper::OnAddAccountCompleted(
     AddAccountHelper* helper,
     AddAccountCallback callback,
-    const std::optional<AddAccountResult>& result) {
+    const absl::optional<AddAccountResult>& result) {
   // Note: the new account may or may not be in `account_cache_`. There is a
   // small possibility that an account was already removed from the OS. As a
   // result, this function does not use `account_cache_` at all.
@@ -475,7 +474,7 @@ void AccountProfileMapper::OnAddAccountCompleted(
     std::move(callback).Run(result);
 
   size_t erased_count =
-      std::erase_if(add_account_helpers_, base::MatchesUniquePtr(helper));
+      base::EraseIf(add_account_helpers_, base::MatchesUniquePtr(helper));
   DCHECK_EQ(erased_count, 1u);
   if (add_account_helpers_.empty()) {
     account_manager_facade_->GetAccounts(
@@ -657,7 +656,7 @@ ProfileAttributesEntry* AccountProfileMapper::MaybeGetProfileForNewAccounts()
   std::vector<ProfileAttributesEntry*> entries =
       profile_attributes_storage_->GetAllProfilesAttributes();
   // Ignore omitted profiles.
-  std::erase_if(entries,
+  base::EraseIf(entries,
                 [](const auto* entry) -> bool { return entry->IsOmitted(); });
   if (entries.empty())
     return nullptr;  // Happens in tests.

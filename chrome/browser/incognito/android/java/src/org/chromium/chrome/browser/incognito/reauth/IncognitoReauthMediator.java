@@ -7,7 +7,9 @@ import androidx.annotation.NonNull;
 
 import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthManager.IncognitoReauthCallback;
 
-/** The mediator responsible for handling the interactions with the incognito re-auth view. */
+/**
+ * The mediator responsible for handling the interactions with the incognito re-auth view.
+ */
 class IncognitoReauthMediator {
     private final Runnable mShowTabSwitcherRunnable;
     // The entity responsible for actually calling the underlying system re-authentication.
@@ -22,8 +24,7 @@ class IncognitoReauthMediator {
      *         to initiate re-authentication.
      * @param showTabSwitcherRunnable A {link Runnable} to show the tab switcher UI.
      */
-    IncognitoReauthMediator(
-            @NonNull IncognitoReauthCallback incognitoReauthCallback,
+    IncognitoReauthMediator(@NonNull IncognitoReauthCallback incognitoReauthCallback,
             @NonNull IncognitoReauthManager incognitoReauthManager,
             @NonNull Runnable showTabSwitcherRunnable) {
         mIncognitoReauthCallback = incognitoReauthCallback;

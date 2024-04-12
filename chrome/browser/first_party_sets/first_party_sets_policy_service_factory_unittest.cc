@@ -5,6 +5,7 @@
 #include "chrome/browser/first_party_sets/first_party_sets_policy_service_factory.h"
 
 #include "base/json/json_reader.h"
+#include "base/test/scoped_feature_list.h"
 #include "chrome/browser/first_party_sets/first_party_sets_policy_service.h"
 #include "chrome/browser/first_party_sets/first_party_sets_pref_names.h"
 #include "chrome/test/base/testing_browser_process.h"
@@ -36,6 +37,8 @@ class FirstPartySetsPolicyServiceFactoryTest : public testing::Test {
 
 TEST_F(FirstPartySetsPolicyServiceFactoryTest,
        ServiceCreatedRegardlessIfPolicyEnabled) {
+  base::test::ScopedFeatureList features;
+  features.InitAndEnableFeature(features::kFirstPartySets);
   TestingProfile* disabled_profile =
       profile_manager().CreateTestingProfile("disabled");
   TestingProfile* enabled_profile =
@@ -50,14 +53,14 @@ TEST_F(FirstPartySetsPolicyServiceFactoryTest,
                                 .value();
   base::Value expected_policy = empty_lists.Clone();
   disabled_profile->GetPrefs()->SetBoolean(
-      prefs::kPrivacySandboxRelatedWebsiteSetsEnabled, false);
+      prefs::kPrivacySandboxFirstPartySetsEnabled, false);
   disabled_profile->GetPrefs()->SetDict(
-      first_party_sets::kRelatedWebsiteSetsOverrides,
+      first_party_sets::kFirstPartySetsOverrides,
       std::move(empty_lists.Clone().GetDict()));
   enabled_profile->GetPrefs()->SetBoolean(
-      prefs::kPrivacySandboxRelatedWebsiteSetsEnabled, true);
+      prefs::kPrivacySandboxFirstPartySetsEnabled, true);
   enabled_profile->GetPrefs()->SetDict(
-      first_party_sets::kRelatedWebsiteSetsOverrides,
+      first_party_sets::kFirstPartySetsOverrides,
       std::move(empty_lists.GetDict()));
 
   // Ensure that the Service creation isn't reliant on the enabled pref.
@@ -70,24 +73,22 @@ TEST_F(FirstPartySetsPolicyServiceFactoryTest,
 }
 
 TEST_F(FirstPartySetsPolicyServiceFactoryTest,
-       OffTheRecordProfile_DistinctAndDisabled) {
+       OffTheRecordProfile_SameServiceAsOriginalProfile) {
+  base::test::ScopedFeatureList features;
+  features.InitAndEnableFeature(features::kFirstPartySets);
   TestingProfile* profile =
       profile_manager().CreateTestingProfile("TestProfile");
 
   FirstPartySetsPolicyService* service =
       FirstPartySetsPolicyServiceFactory::GetForBrowserContext(
           profile->GetOriginalProfile());
+
+  auto otr_profile_id = Profile::OTRProfileID::CreateUniqueForTesting();
   ASSERT_NE(service, nullptr);
-  ASSERT_TRUE(service->is_enabled());
-
-  FirstPartySetsPolicyService* otr_service =
-      FirstPartySetsPolicyServiceFactory::GetForBrowserContext(
-          profile->GetOffTheRecordProfile(
-              Profile::OTRProfileID::CreateUniqueForTesting(),
-              /*create_if_needed=*/true));
-  EXPECT_NE(service, otr_service);
-
-  EXPECT_FALSE(otr_service->is_enabled());
+  EXPECT_EQ(service,
+            FirstPartySetsPolicyServiceFactory::GetForBrowserContext(
+                profile->GetOffTheRecordProfile(otr_profile_id,
+                                                /*create_if_needed=*/true)));
 }
 
 }  // namespace first_party_sets

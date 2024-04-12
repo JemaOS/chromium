@@ -9,6 +9,7 @@
 
 #include "base/notreached.h"
 #include "services/network/public/cpp/content_security_policy/content_security_policy.h"
+#include "services/network/public/cpp/features.h"
 #include "services/network/public/mojom/content_security_policy.mojom-blink.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/space_split_string.h"
@@ -27,7 +28,6 @@
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/weborigin/known_ports.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
-#include "third_party/blink/renderer/platform/weborigin/reporting_disposition.h"
 #include "third_party/blink/renderer/platform/wtf/text/base64.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_utf8_adaptor.h"
@@ -156,7 +156,7 @@ void ReportViolation(
         ContentSecurityPolicyViolationType::kURLViolation,
     const String& sample = String(),
     const String& sample_prefix = String(),
-    std::optional<base::UnguessableToken> issue_id = std::nullopt) {
+    absl::optional<base::UnguessableToken> issue_id = absl::nullopt) {
   String message = CSPDirectiveListIsReportOnly(csp)
                        ? "[Report Only] " + console_message
                        : console_message;
@@ -338,6 +338,22 @@ bool AreAllMatchingHashesPresent(
   return true;
 }
 
+bool CheckSource(ContentSecurityPolicy* policy,
+                 const network::mojom::blink::CSPSourceList* directive,
+                 const network::mojom::blink::CSPSource& self_origin,
+                 const KURL& url,
+                 ResourceRequest::RedirectStatus redirect_status) {
+  // If |url| is empty, fall back to the policy URL to ensure that <object>'s
+  // without a `src` can be blocked/allowed, as they can still load plugins
+  // even though they don't actually have a URL.
+  if (!directive)
+    return true;
+
+  return CSPSourceListAllows(
+      *directive, self_origin,
+      url.IsEmpty() ? policy->FallbackUrlForPlugin() : url, redirect_status);
+}
+
 bool CheckEvalAndReportViolation(
     const network::mojom::blink::ContentSecurityPolicy& csp,
     ContentSecurityPolicy* policy,
@@ -466,14 +482,31 @@ bool CheckInlineAndReportViolation(
   return true;
 }
 
-void ReportViolationForCheckSource(
+bool CheckSourceAndReportViolation(
     const network::mojom::blink::ContentSecurityPolicy& csp,
     ContentSecurityPolicy* policy,
     CSPOperativeDirective directive,
     const KURL& url,
     CSPDirectiveName effective_type,
     const KURL& url_before_redirects,
-    String suffix) {
+    ResourceRequest::RedirectStatus redirect_status) {
+  if (!directive.source_list)
+    return true;
+
+  String suffix = String();
+  if (CheckSource(policy, directive.source_list, *csp.self_origin, url,
+                  redirect_status)) {
+    // We ignore URL-based allowlists if we're allowing dynamic script
+    // injection.
+    if (!CheckDynamic(directive.source_list, effective_type)) {
+      return true;
+    } else {
+      suffix =
+          " Note that 'strict-dynamic' is present, so host-based allowlisting "
+          "is disabled.";
+    }
+  }
+
   // We should never have a violation against `child-src`
   // directly; the effective directive should always be one of the explicit
   // fetch directives, or default-src in the case of resource hints.
@@ -553,9 +586,9 @@ void ReportViolationForCheckSource(
 
   // Wildcards match network schemes ('http', 'https', 'ws', 'wss'), and the
   // scheme of the protected resource:
-  // https://w3c.github.io/webappsec-csp/#match-url-to-source-expression.
-  // Other schemes, including custom schemes, must be explicitly listed in a
-  // source list.
+  // https://w3c.github.io/webappsec-csp/#match-url-to-source-expression. Other
+  // schemes, including custom schemes, must be explicitly listed in a source
+  // list.
   if (directive.source_list->allow_star) {
     suffix = suffix +
              " Note that '*' matches only URLs with network schemes ('http', "
@@ -572,47 +605,7 @@ void ReportViolationForCheckSource(
                       "Policy directive: \"" +
                       raw_directive + "\"." + suffix + "\n",
                   url_before_redirects);
-}
-
-CSPCheckResult CheckSource(
-    const network::mojom::blink::ContentSecurityPolicy& csp,
-    ContentSecurityPolicy* policy,
-    CSPOperativeDirective directive,
-    const KURL& url,
-    CSPDirectiveName effective_type,
-    const KURL& url_before_redirects,
-    ResourceRequest::RedirectStatus redirect_status,
-    ReportingDisposition reporting_disposition) {
-  if (!directive.source_list) {
-    return CSPCheckResult::Allowed();
-  }
-
-  // If |url| is empty, fall back to the policy URL to ensure that
-  // <object>'s without a `src` can be blocked/allowed, as they can
-  // still load plugins even though they don't actually have a URL.
-  const KURL& url_to_check =
-      url.IsEmpty() ? policy->FallbackUrlForPlugin() : url;
-  String suffix = String();
-  CSPCheckResult result = CSPSourceListAllows(
-      *directive.source_list, *csp.self_origin, url_to_check, redirect_status);
-  if (result) {
-    // We ignore URL-based allowlists if we're allowing dynamic script
-    // injection.
-    if (!CheckDynamic(directive.source_list, effective_type)) {
-      return result;
-    } else {
-      suffix =
-          " Note that 'strict-dynamic' is present, so host-based allowlisting "
-          "is disabled.";
-    }
-  }
-
-  if (reporting_disposition == ReportingDisposition::kReport) {
-    ReportViolationForCheckSource(csp, policy, directive, url, effective_type,
-                                  url_before_redirects, suffix);
-  }
-
-  return CSPCheckResult(CSPDirectiveListIsReportOnly(csp));
+  return CSPDirectiveListIsReportOnly(csp);
 }
 
 bool AllowDynamicWorker(
@@ -635,7 +628,7 @@ bool CSPDirectiveListAllowTrustedTypeAssignmentFailure(
     const String& message,
     const String& sample,
     const String& sample_prefix,
-    std::optional<base::UnguessableToken> issue_id) {
+    absl::optional<base::UnguessableToken> issue_id) {
   if (!CSPDirectiveListRequiresTrustedTypes(csp))
     return true;
 
@@ -822,7 +815,7 @@ bool CSPDirectiveListShouldDisableWasmEval(
   return true;
 }
 
-CSPCheckResult CSPDirectiveListAllowFromSource(
+bool CSPDirectiveListAllowFromSource(
     const network::mojom::blink::ContentSecurityPolicy& csp,
     ContentSecurityPolicy* policy,
     CSPDirectiveName type,
@@ -852,37 +845,45 @@ CSPCheckResult CSPDirectiveListAllowFromSource(
          type == CSPDirectiveName::WorkerSrc);
 
   if (type == CSPDirectiveName::ObjectSrc) {
-    if (url.ProtocolIsAbout()) {
-      return CSPCheckResult::Allowed();
-    }
+    if (url.ProtocolIsAbout())
+      return true;
   }
 
-  if (type == CSPDirectiveName::WorkerSrc && AllowDynamicWorker(csp)) {
-    return CSPCheckResult::Allowed();
-  }
+  if (type == CSPDirectiveName::WorkerSrc && AllowDynamicWorker(csp))
+    return true;
 
   if (type == CSPDirectiveName::ScriptSrcElem ||
       type == CSPDirectiveName::StyleSrcElem) {
     if (IsMatchingNoncePresent(OperativeDirective(csp, type).source_list,
-                               nonce)) {
-      return CSPCheckResult::Allowed();
-    }
+                               nonce))
+      return true;
   }
 
   if (type == CSPDirectiveName::ScriptSrcElem) {
     if (parser_disposition == kNotParserInserted &&
-        CSPDirectiveListAllowDynamic(csp, type)) {
-      return CSPCheckResult::Allowed();
-    }
+        CSPDirectiveListAllowDynamic(csp, type))
+      return true;
     if (AreAllMatchingHashesPresent(OperativeDirective(csp, type).source_list,
-                                    hashes)) {
-      return CSPCheckResult::Allowed();
-    }
+                                    hashes))
+      return true;
   }
 
   CSPOperativeDirective directive = OperativeDirective(csp, type);
-  return CheckSource(csp, policy, directive, url, type, url_before_redirects,
-                     redirect_status, reporting_disposition);
+  bool result =
+      reporting_disposition == ReportingDisposition::kReport
+          ? CheckSourceAndReportViolation(csp, policy, directive, url, type,
+                                          url_before_redirects, redirect_status)
+          : CheckSource(policy, directive.source_list, *csp.self_origin, url,
+                        redirect_status);
+
+  if (type == CSPDirectiveName::BaseURI) {
+    if (result && !CheckSource(policy, directive.source_list, *csp.self_origin,
+                               url, redirect_status)) {
+      policy->Count(WebFeature::kBaseWouldBeBlockedByDefaultSrc);
+    }
+  }
+
+  return result;
 }
 
 bool CSPDirectiveListAllowTrustedTypePolicy(
@@ -891,7 +892,7 @@ bool CSPDirectiveListAllowTrustedTypePolicy(
     const String& policy_name,
     bool is_duplicate,
     ContentSecurityPolicy::AllowTrustedTypePolicyDetails& violation_details,
-    std::optional<base::UnguessableToken> issue_id) {
+    absl::optional<base::UnguessableToken> issue_id) {
   if (!csp.trusted_types ||
       CSPTrustedTypesAllows(*csp.trusted_types, policy_name, is_duplicate,
                             violation_details)) {

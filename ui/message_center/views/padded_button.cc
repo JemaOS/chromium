@@ -43,7 +43,7 @@ void PaddedButton::OnThemeChanged() {
       color_utils::GetColorWithMaxContrast(background_color));
 }
 
-BEGIN_METADATA(PaddedButton)
+BEGIN_METADATA(PaddedButton, views::ImageButton)
 END_METADATA
 
 }  // namespace message_center

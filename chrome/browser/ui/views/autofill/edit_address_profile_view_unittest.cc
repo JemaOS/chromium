@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ui/views/autofill/edit_address_profile_view.h"
 
-#include <utility>
-
 #include "base/memory/raw_ptr.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
@@ -15,7 +13,6 @@
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/views/chrome_views_test_base.h"
 #include "components/autofill/core/browser/autofill_test_utils.h"
-#include "components/autofill/core/browser/data_model/autofill_profile.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/web_contents_tester.h"
@@ -25,10 +22,9 @@
 
 namespace autofill {
 
-// |arg| must be of type base::optional_ref<const AutofillProfile>.
+// |arg| must be of type AutofillProfile.
 MATCHER_P2(AutofillProfileHasInfo, type, expected_value, "") {
-  EXPECT_TRUE(arg.has_value());
-  return arg.value().GetRawInfo(type) == expected_value;
+  return arg.GetRawInfo(type) == expected_value;
 }
 
 class MockEditAddressProfileDialogController
@@ -40,10 +36,11 @@ class MockEditAddressProfileDialogController
   MOCK_METHOD(const AutofillProfile&, GetProfileToEdit, (), (const, override));
   MOCK_METHOD(bool, GetIsValidatable, (), (const, override));
   MOCK_METHOD(void,
-              OnDialogClosed,
-              (AutofillClient::AddressPromptUserDecision decision,
-               base::optional_ref<const AutofillProfile> profile),
+              OnUserDecision,
+              (AutofillClient::SaveAddressProfileOfferUserDecision decision,
+               const AutofillProfile& profile),
               (override));
+  MOCK_METHOD(void, OnDialogClosed, (), (override));
 };
 
 class EditAddressProfileViewTest : public ChromeViewsTestBase {
@@ -51,9 +48,7 @@ class EditAddressProfileViewTest : public ChromeViewsTestBase {
   EditAddressProfileViewTest() = default;
   ~EditAddressProfileViewTest() override = default;
 
-  void CreateViewAndShow() { CreateViewAndShow(address_profile_to_edit()); }
-
-  void CreateViewAndShow(const AutofillProfile& address_profile);
+  void CreateViewAndShow();
 
   void SetUp() override {
     ChromeViewsTestBase::SetUp();
@@ -67,8 +62,7 @@ class EditAddressProfileViewTest : public ChromeViewsTestBase {
   }
 
   void TearDown() override {
-    dialog_ = nullptr;
-    std::exchange(widget_, nullptr)->Close();
+    widget_->Close();
     parent_widget_.reset();
     ChromeViewsTestBase::TearDown();
   }
@@ -84,28 +78,26 @@ class EditAddressProfileViewTest : public ChromeViewsTestBase {
  private:
   base::test::ScopedFeatureList feature_list_;
   TestingProfile profile_;
-  AutofillProfile address_profile_to_edit_{
-      i18n_model_definition::kLegacyHierarchyCountryCode};
+  AutofillProfile address_profile_to_edit_;
   // This enables uses of TestWebContents.
   content::RenderViewHostTestEnabler test_render_host_factories_;
   std::unique_ptr<content::WebContents> test_web_contents_;
   std::unique_ptr<views::Widget> parent_widget_;
   raw_ptr<views::Widget> widget_ = nullptr;
-  raw_ptr<EditAddressProfileView> dialog_ = nullptr;
+  raw_ptr<EditAddressProfileView> dialog_;
   testing::NiceMock<MockEditAddressProfileDialogController> mock_controller_;
 };
 
-void EditAddressProfileViewTest::CreateViewAndShow(
-    const AutofillProfile& address_profile) {
+void EditAddressProfileViewTest::CreateViewAndShow() {
   ON_CALL(*mock_controller(), GetWindowTitle())
       .WillByDefault(testing::Return(std::u16string()));
   ON_CALL(*mock_controller(), GetProfileToEdit())
-      .WillByDefault(testing::ReturnRef(address_profile));
+      .WillByDefault(testing::ReturnRef(address_profile_to_edit()));
 
   dialog_ = new EditAddressProfileView(mock_controller());
   dialog_->ShowForWebContents(test_web_contents_.get());
 
-  gfx::NativeView parent = gfx::NativeView();
+  gfx::NativeView parent = gfx::kNullNativeView;
 #if BUILDFLAG(IS_MAC)
   // We need a native view parent for the dialog to avoid a DCHECK
   // on Mac.
@@ -138,18 +130,19 @@ TEST_F(EditAddressProfileViewTest, SaveInvokesTheCallbackWithEditedFullname) {
   // Confirm that the new name is indeed different from the original one from
   // the controller.
   ASSERT_NE(kNewFirstName, address_profile_to_edit().GetInfo(
-                               autofill::FieldType::NAME_FULL, locale));
+                               autofill::ServerFieldType::NAME_FULL, locale));
   AddressEditorView* editor_view = dialog()->GetAddressEditorViewForTesting();
   DCHECK(editor_view);
 
-  editor_view->SetTextInputFieldValueForTesting(autofill::FieldType::NAME_FULL,
-                                                kNewFirstName);
+  editor_view->SetTextInputFieldValueForTesting(
+      autofill::ServerFieldType::NAME_FULL, kNewFirstName);
 
   EXPECT_CALL(
       *mock_controller(),
-      OnDialogClosed(AutofillClient::AddressPromptUserDecision::kEditAccepted,
-                     AutofillProfileHasInfo(autofill::FieldType::NAME_FULL,
-                                            kNewFirstName)));
+      OnUserDecision(
+          AutofillClient::SaveAddressProfileOfferUserDecision::kEditAccepted,
+          AutofillProfileHasInfo(autofill::ServerFieldType::NAME_FULL,
+                                 kNewFirstName)));
   dialog()->Accept();
 }
 
@@ -162,7 +155,7 @@ TEST_F(EditAddressProfileViewTest,
   // from the controller.
   ASSERT_NE(kNewPhoneNumber,
             address_profile_to_edit().GetInfo(
-                autofill::FieldType::PHONE_HOME_WHOLE_NUMBER, locale));
+                autofill::ServerFieldType::PHONE_HOME_WHOLE_NUMBER, locale));
 
   // Set the phone number in the editor to the new invalid value. Make sure that
   // this value is respected and sent to the backend.
@@ -170,14 +163,15 @@ TEST_F(EditAddressProfileViewTest,
   DCHECK(editor_view);
 
   editor_view->SetTextInputFieldValueForTesting(
-      autofill::FieldType::PHONE_HOME_WHOLE_NUMBER, kNewPhoneNumber);
+      autofill::ServerFieldType::PHONE_HOME_WHOLE_NUMBER, kNewPhoneNumber);
 
   EXPECT_CALL(
       *mock_controller(),
-      OnDialogClosed(
-          AutofillClient::AddressPromptUserDecision::kEditAccepted,
-          AutofillProfileHasInfo(autofill::FieldType::PHONE_HOME_WHOLE_NUMBER,
-                                 kNewPhoneNumber)));
+      OnUserDecision(
+          AutofillClient::SaveAddressProfileOfferUserDecision::kEditAccepted,
+          AutofillProfileHasInfo(
+              autofill::ServerFieldType::PHONE_HOME_WHOLE_NUMBER,
+              kNewPhoneNumber)));
   dialog()->Accept();
 }
 
@@ -188,37 +182,19 @@ TEST_F(EditAddressProfileViewTest, SaveInvokesTheCallbackWithEditedEmail) {
   // Confirm that the new email is indeed different from the original one
   // from the controller.
   ASSERT_NE(kNewEmail, address_profile_to_edit().GetInfo(
-                           autofill::FieldType::EMAIL_ADDRESS, locale));
+                           autofill::ServerFieldType::EMAIL_ADDRESS, locale));
   AddressEditorView* editor_view = dialog()->GetAddressEditorViewForTesting();
   DCHECK(editor_view);
 
   editor_view->SetTextInputFieldValueForTesting(
-      autofill::FieldType::EMAIL_ADDRESS, kNewEmail);
+      autofill::ServerFieldType::EMAIL_ADDRESS, kNewEmail);
 
   EXPECT_CALL(
       *mock_controller(),
-      OnDialogClosed(AutofillClient::AddressPromptUserDecision::kEditAccepted,
-                     AutofillProfileHasInfo(autofill::FieldType::EMAIL_ADDRESS,
-                                            kNewEmail)));
-  dialog()->Accept();
-}
-
-TEST_F(EditAddressProfileViewTest, InvalidFormIsNotSent) {
-  ON_CALL(*mock_controller(), GetIsValidatable)
-      .WillByDefault(::testing::Return(true));
-  CreateViewAndShow(AutofillProfile(AddressCountryCode("US")));
-
-  // `kIgnored` is sent as the decision when the dialog is closed (on test end).
-  EXPECT_CALL(
-      *mock_controller(),
-      OnDialogClosed(AutofillClient::AddressPromptUserDecision::kIgnored,
-                     ::testing::_));
-  EXPECT_CALL(
-      *mock_controller(),
-      OnDialogClosed(AutofillClient::AddressPromptUserDecision::kEditAccepted,
-                     ::testing::_))
-      .Times(0);
-
+      OnUserDecision(
+          AutofillClient::SaveAddressProfileOfferUserDecision::kEditAccepted,
+          AutofillProfileHasInfo(autofill::ServerFieldType::EMAIL_ADDRESS,
+                                 kNewEmail)));
   dialog()->Accept();
 }
 

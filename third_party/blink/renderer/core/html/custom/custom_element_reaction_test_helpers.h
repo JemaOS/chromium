@@ -110,8 +110,7 @@ class TestReaction : public CustomElementReaction {
   explicit TestReaction(HeapVector<Member<Command>>&& commands)
       : CustomElementReaction(
             *MakeGarbageCollected<TestCustomElementDefinition>(
-                CustomElementDescriptor(AtomicString("mock-element"),
-                                        AtomicString("mock-element")))),
+                CustomElementDescriptor("mock-element", "mock-element"))),
         commands_(std::move(commands)) {}
   TestReaction(const TestReaction&) = delete;
   TestReaction& operator=(const TestReaction&) = delete;

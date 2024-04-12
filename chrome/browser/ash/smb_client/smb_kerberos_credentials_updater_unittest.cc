@@ -26,7 +26,8 @@
 
 using ::base::test::RunClosure;
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 namespace {
 
@@ -199,4 +200,5 @@ TEST_F(SmbKerberosCredentialsUpdaterTest, KerberosGetsEnabled) {
   EXPECT_EQ(credentials_updater_->active_account_name(), kPrincipal);
 }
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

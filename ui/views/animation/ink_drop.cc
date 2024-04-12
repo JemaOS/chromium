@@ -15,7 +15,6 @@
 #include "ui/views/animation/ink_drop_host.h"
 #include "ui/views/animation/ink_drop_impl.h"
 #include "ui/views/animation/ink_drop_observer.h"
-#include "ui/views/view_class_properties.h"
 
 DEFINE_UI_CLASS_PROPERTY_TYPE(views::InkDropHost*)
 
@@ -43,9 +42,8 @@ std::unique_ptr<InkDrop> CreateInkDropImpl(
 
 InkDrop::~InkDrop() = default;
 
-InkDropHost* InkDrop::Install(View* host,
-                              std::unique_ptr<InkDropHost> ink_drop) {
-  return host->SetProperty(kInkDropKey, std::move(ink_drop));
+void InkDrop::Install(View* host, std::unique_ptr<InkDropHost> ink_drop) {
+  host->SetProperty(kInkDropKey, std::move(ink_drop));
 }
 
 void InkDrop::Remove(View* host) {
@@ -139,10 +137,9 @@ void InkDrop::NotifyInkDropRippleAnimationEnded(InkDropState ink_drop_state) {
 InkDropContainerView::InkDropContainerView() {
   // Ensure the container View is found as the EventTarget instead of this.
   SetCanProcessEventsWithinSubtree(false);
-  SetProperty(kIsDecorativeViewKey, true);
 }
 
-BEGIN_METADATA(InkDropContainerView)
+BEGIN_METADATA(InkDropContainerView, views::View)
 END_METADATA
 
 }  // namespace views

@@ -54,8 +54,8 @@ class FakeFastPairScannerFactory
   }
 
  private:
-  raw_ptr<ash::quick_pair::FakeFastPairScanner> fake_fast_pair_scanner_ =
-      nullptr;
+  raw_ptr<ash::quick_pair::FakeFastPairScanner, ExperimentalAsh>
+      fake_fast_pair_scanner_ = nullptr;
 };
 
 class FakeFastPairDiscoverableScanner
@@ -112,7 +112,7 @@ class FakeFastPairDiscoverableScannerFactory
 
  protected:
   bool create_instance_ = false;
-  raw_ptr<FakeFastPairDiscoverableScanner, DanglingUntriaged>
+  raw_ptr<FakeFastPairDiscoverableScanner, ExperimentalAsh>
       fake_fast_pair_discoverable_scanner_ = nullptr;
 };
 
@@ -171,7 +171,7 @@ class FakeFastPairNotDiscoverableScannerFactory
 
  protected:
   bool create_instance_ = false;
-  raw_ptr<FakeFastPairNotDiscoverableScanner, DanglingUntriaged>
+  raw_ptr<FakeFastPairNotDiscoverableScanner, ExperimentalAsh>
       fake_fast_pair_not_discoverable_scanner_ = nullptr;
 };
 
@@ -274,7 +274,7 @@ class ScannerBrokerImplTest : public AshTestBase,
 };
 
 TEST_F(ScannerBrokerImplTest, RegularUser_DiscoverableFound) {
-  Login(user_manager::UserType::kRegular);
+  Login(user_manager::UserType::USER_TYPE_REGULAR);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -292,7 +292,7 @@ TEST_F(ScannerBrokerImplTest, RegularUser_DiscoverableFound) {
 }
 
 TEST_F(ScannerBrokerImplTest, ChildUser_DiscoverableFound) {
-  Login(user_manager::UserType::kChild);
+  Login(user_manager::UserType::USER_TYPE_CHILD);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -310,7 +310,7 @@ TEST_F(ScannerBrokerImplTest, ChildUser_DiscoverableFound) {
 }
 
 TEST_F(ScannerBrokerImplTest, RegularUser_NotDiscoverableFound) {
-  Login(user_manager::UserType::kRegular);
+  Login(user_manager::UserType::USER_TYPE_REGULAR);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -328,7 +328,7 @@ TEST_F(ScannerBrokerImplTest, RegularUser_NotDiscoverableFound) {
 }
 
 TEST_F(ScannerBrokerImplTest, GuestUser_DiscoverableFound) {
-  Login(user_manager::UserType::kGuest);
+  Login(user_manager::UserType::USER_TYPE_GUEST);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -345,7 +345,7 @@ TEST_F(ScannerBrokerImplTest, GuestUser_DiscoverableFound) {
 }
 
 TEST_F(ScannerBrokerImplTest, GuestUser_NotDiscoverableNotCreated) {
-  Login(user_manager::UserType::kGuest);
+  Login(user_manager::UserType::USER_TYPE_GUEST);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -358,7 +358,7 @@ TEST_F(ScannerBrokerImplTest, GuestUser_NotDiscoverableNotCreated) {
 }
 
 TEST_F(ScannerBrokerImplTest, GuestUser_RegularUserLogsIn) {
-  Login(user_manager::UserType::kGuest);
+  Login(user_manager::UserType::USER_TYPE_GUEST);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -369,14 +369,14 @@ TEST_F(ScannerBrokerImplTest, GuestUser_RegularUserLogsIn) {
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
   EXPECT_TRUE(discoverable_scanner_factory_->create_instance());
 
-  Login(user_manager::UserType::kRegular);
+  Login(user_manager::UserType::USER_TYPE_REGULAR);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_TRUE(not_discoverable_scanner_factory_->create_instance());
 }
 
 TEST_F(ScannerBrokerImplTest, RegularUser_GuestUserLogsIn) {
-  Login(user_manager::UserType::kRegular);
+  Login(user_manager::UserType::USER_TYPE_REGULAR);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -387,14 +387,14 @@ TEST_F(ScannerBrokerImplTest, RegularUser_GuestUserLogsIn) {
   EXPECT_TRUE(not_discoverable_scanner_factory_->create_instance());
   EXPECT_TRUE(discoverable_scanner_factory_->create_instance());
 
-  Login(user_manager::UserType::kGuest);
+  Login(user_manager::UserType::USER_TYPE_GUEST);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_TRUE(not_discoverable_scanner_factory_->create_instance());
 }
 
 TEST_F(ScannerBrokerImplTest, PublicUser_NotDiscoverableNotCreated) {
-  Login(user_manager::UserType::kPublicAccount);
+  Login(user_manager::UserType::USER_TYPE_PUBLIC_ACCOUNT);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -407,7 +407,7 @@ TEST_F(ScannerBrokerImplTest, PublicUser_NotDiscoverableNotCreated) {
 }
 
 TEST_F(ScannerBrokerImplTest, Kiosk_NotDiscoverableNotCreated) {
-  Login(user_manager::UserType::kKioskApp);
+  Login(user_manager::UserType::USER_TYPE_KIOSK_APP);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -420,7 +420,7 @@ TEST_F(ScannerBrokerImplTest, Kiosk_NotDiscoverableNotCreated) {
 }
 
 TEST_F(ScannerBrokerImplTest, RegularUser_DiscoverableLost) {
-  Login(user_manager::UserType::kRegular);
+  Login(user_manager::UserType::USER_TYPE_REGULAR);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -438,7 +438,7 @@ TEST_F(ScannerBrokerImplTest, RegularUser_DiscoverableLost) {
 }
 
 TEST_F(ScannerBrokerImplTest, RegularUser_NotDiscoverableLost) {
-  Login(user_manager::UserType::kRegular);
+  Login(user_manager::UserType::USER_TYPE_REGULAR);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -456,7 +456,7 @@ TEST_F(ScannerBrokerImplTest, RegularUser_NotDiscoverableLost) {
 }
 
 TEST_F(ScannerBrokerImplTest, GuestUser_DiscoverableLost) {
-  Login(user_manager::UserType::kGuest);
+  Login(user_manager::UserType::USER_TYPE_GUEST);
   base::RunLoop().RunUntilIdle();
 
   EXPECT_FALSE(not_discoverable_scanner_factory_->create_instance());
@@ -473,7 +473,7 @@ TEST_F(ScannerBrokerImplTest, GuestUser_DiscoverableLost) {
 }
 
 TEST_F(ScannerBrokerImplTest, StopScanning_Regular) {
-  Login(user_manager::UserType::kRegular);
+  Login(user_manager::UserType::USER_TYPE_REGULAR);
   base::RunLoop().RunUntilIdle();
 
   CreateScannerBroker();

@@ -5,12 +5,12 @@
 // https://gpuweb.github.io/gpuweb/
 
 [
-    Exposed=(Window, Worker),
+    Exposed(Window WebGPU, DedicatedWorker WebGPU),
     SecureContext
 ] interface GPUQueue {
-    [CallWith=ScriptState] void submit(sequence<GPUCommandBuffer> buffers);
+    void submit(sequence<GPUCommandBuffer> buffers);
 
-    [CallWith=ScriptState] Promise<undefined> onSubmittedWorkDone();
+    [CallWith=ScriptState] Promise<void> onSubmittedWorkDone();
 
     // TODO(crbug.com/1088107): Merge these overloads into one with
     // [AllowShared] BufferSource (or whatever the upstream spec has), which

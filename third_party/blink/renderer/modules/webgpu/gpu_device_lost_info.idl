@@ -10,10 +10,10 @@ enum GPUDeviceLostReason {
 };
 
 [
-    Exposed=(Window, Worker),
+    Exposed(Window WebGPU, DedicatedWorker WebGPU),
     SecureContext
 ] interface GPUDeviceLostInfo {
-    readonly attribute GPUDeviceLostReason reason;
+    [CallWith=ScriptState] readonly attribute GPUDeviceLostReason reason;
     readonly attribute DOMString message;
 };
 

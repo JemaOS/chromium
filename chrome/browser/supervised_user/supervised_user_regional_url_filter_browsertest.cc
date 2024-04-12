@@ -3,46 +3,37 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <sstream>
 #include <string>
-#include <string_view>
 #include <utility>
 
-#include "base/callback_list.h"
 #include "base/command_line.h"
-#include "base/feature_list.h"
 #include "base/functional/bind.h"
-#include "base/ranges/algorithm.h"
-#include "base/strings/string_util.h"
+#include "base/memory/raw_ptr.h"
+#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/types/strong_alias.h"
+#include "chrome/browser/ash/login/test/logged_in_user_mixin.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
+#include "chrome/browser/supervised_user/kids_chrome_management/kids_chrome_management_client_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/mixin_based_in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
-#include "chrome/test/supervised_user/supervision_mixin.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
-#include "components/supervised_user/core/browser/fetcher_config.h"
-#include "components/supervised_user/core/browser/proto/kidsmanagement_messages.pb.h"
-#include "components/supervised_user/core/browser/supervised_user_preferences.h"
-#include "components/supervised_user/core/common/features.h"
-#include "components/supervised_user/test_support/kids_management_api_server_mock.h"
+#include "components/supervised_user/core/browser/kids_chrome_management_client.h"
+#include "components/supervised_user/core/browser/proto/kidschromemanagement_messages.pb.h"
 #include "components/variations/variations_switches.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/test/browser_test.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
-#include "net/test/embedded_test_server/http_request.h"
 #include "services/network/public/cpp/network_switches.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "url/gurl.h"
 
-namespace supervised_user {
 namespace {
 
-using ::kidsmanagement::ClassifyUrlRequest;
+using ::kids_chrome_management::ClassifyUrlRequest;
 using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Pointee;
@@ -58,134 +49,118 @@ MATCHER_P(EqualsProto,
   return expected_serialized == actual_serialized;
 }
 
-// Wrapper class; introducing fluent aliases for test parameters.
-class TestCase {
- public:
-  explicit TestCase(const SupervisionMixin::SignInMode test_case_base)
-      : test_case_base_(test_case_base) {}
-
-  // Named accessors to TestCase's objects.
-  SupervisionMixin::SignInMode GetSignInMode() const { return test_case_base_; }
-
- private:
-  SupervisionMixin::SignInMode test_case_base_;
-};
-
 // The region code for variations service (any should work).
-constexpr std::string_view kRegionCode = "jp";
+constexpr base::StringPiece kRegionCode = "jp";
 
 // Tests custom filtering logic based on regions, for supervised users.
 class SupervisedUserRegionalURLFilterTest
-    : public MixinBasedInProcessBrowserTest,
-      public ::testing::WithParamInterface<SupervisionMixin::SignInMode> {
+    : public MixinBasedInProcessBrowserTest {
  public:
   SupervisedUserRegionalURLFilterTest() {
     // TODO(crbug.com/1394910): Use HTTPS URLs in tests to avoid having to
     // disable this feature.
-    feature_list_.InitWithFeatures(
-        /*enabled_features=*/{},
-        /*disabled_features=*/{features::kHttpsUpgrades});
+    feature_list_.InitAndDisableFeature(features::kHttpsUpgrades);
   }
-  ~SupervisedUserRegionalURLFilterTest() override { feature_list_.Reset(); }
+
+  ~SupervisedUserRegionalURLFilterTest() override = default;
 
  protected:
-  MOCK_METHOD(void,
-              ClassifyUrlRequestMonitor,
-              (std::string_view, std::string_view));
+  class MockKidsChromeManagementClient : public KidsChromeManagementClient {
+   public:
+    explicit MockKidsChromeManagementClient(Profile* profile)
+        : KidsChromeManagementClient(
+              profile->GetDefaultStoragePartition()
+                  ->GetURLLoaderFactoryForBrowserProcess(),
+              IdentityManagerFactory::GetForProfile(profile)) {
+      // Without forwarding the call to the real implementation, the browser
+      // hangs and the test times out.
+      ON_CALL(*this, ClassifyURL)
+          .WillByDefault(
+              [this](std::unique_ptr<ClassifyUrlRequest> request_proto,
+                     ::KidsChromeManagementClient::KidsChromeManagementCallback
+                         callback) {
+                KidsChromeManagementClient::ClassifyURL(
+                    std::move(request_proto), std::move(callback));
+              });
+    }
 
-  static const TestCase GetTestCase() { return TestCase(GetParam()); }
+    MOCK_METHOD(
+        void,
+        ClassifyURL,
+        (std::unique_ptr<ClassifyUrlRequest> request_proto,
+         ::KidsChromeManagementClient::KidsChromeManagementCallback callback),
+        (override));
+
+    static std::unique_ptr<KeyedService> MakeUnique(
+        content::BrowserContext* context) {
+      return std::make_unique<NiceMock<MockKidsChromeManagementClient>>(
+          static_cast<Profile*>(context));
+    }
+  };
 
   void SetUpInProcessBrowserTestFixture() override {
     MixinBasedInProcessBrowserTest::SetUpInProcessBrowserTestFixture();
-    request_monitor_subscription_ =
-        kids_management_api_mock().Subscribe(base::BindRepeating(
-            &SupervisedUserRegionalURLFilterTest::ClassifyUrlRequestMonitor,
-            base::Unretained(this)));
+    create_services_subscription_ =
+        BrowserContextDependencyManager::GetInstance()
+            ->RegisterCreateServicesCallbackForTesting(
+                base::BindRepeating(&SupervisedUserRegionalURLFilterTest::
+                                        OnWillCreateBrowserContextServices,
+                                    base::Unretained(this)));
   }
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
-    MixinBasedInProcessBrowserTest::SetUpCommandLine(command_line);
+    ASSERT_TRUE(embedded_test_server()->Started());
+    std::string host_port = embedded_test_server()->host_port_pair().ToString();
+
+    // Remap all URLs in context of this test to the test server.
+    command_line->AppendSwitchASCII(network::switches::kHostResolverRules,
+                                    "MAP *.example.com " + host_port);
+
     command_line->AppendSwitchASCII(
         variations::switches::kVariationsOverrideCountry, kRegionCode);
+    MixinBasedInProcessBrowserTest::SetUpCommandLine(command_line);
   }
 
- protected:
-  supervised_user::KidsManagementApiServerMock& kids_management_api_mock() {
-    return supervision_mixin_.api_mock_setup_mixin().api_mock();
+  void SetUpOnMainThread() override {
+    MixinBasedInProcessBrowserTest::SetUpOnMainThread();
+    logged_in_user_mixin_.LogInUser();
   }
 
-  bool IsUrlFilteringEnabled() const {
-    return supervised_user::IsSubjectToParentalControls(
-        *browser()->profile()->GetPrefs());
+  void OnWillCreateBrowserContextServices(content::BrowserContext* context) {
+    kids_chrome_management_client_ =
+        static_cast<MockKidsChromeManagementClient*>(
+            KidsChromeManagementClientFactory::GetInstance()
+                ->SetTestingFactoryAndUse(
+                    Profile::FromBrowserContext(context),
+                    base::BindRepeating(
+                        &MockKidsChromeManagementClient::MakeUnique)));
   }
+
+  raw_ptr<MockKidsChromeManagementClient, ExperimentalAsh>
+      kids_chrome_management_client_;
+  ash::LoggedInUserMixin logged_in_user_mixin_{
+      &mixin_host_, ash::LoggedInUserMixin::LogInType::kChild,
+      embedded_test_server(), this};
 
  private:
   base::test::ScopedFeatureList feature_list_;
-  base::CallbackListSubscription request_monitor_subscription_;
-  supervised_user::SupervisionMixin supervision_mixin_{
-      mixin_host_,
-      this,
-      embedded_test_server(),
-      {
-          .sign_in_mode = GetTestCase().GetSignInMode(),
-          .embedded_test_server_options =
-              {
-                  .resolver_rules_map_host_list =
-                      "*.example.com",  // example.com must be resolved, because
-                                        // the in proc browser is requesting it,
-                                        // and otherwise tests timeout.
-              },
-      }};
+  base::CallbackListSubscription create_services_subscription_;
 };
 
 // Verifies that the regional setting is passed to the RPC backend.
-IN_PROC_BROWSER_TEST_P(SupervisedUserRegionalURLFilterTest, RegionIsAdded) {
+IN_PROC_BROWSER_TEST_F(SupervisedUserRegionalURLFilterTest, RegionIsAdded) {
   std::string url_to_classify =
-      "http://www.example.com/simple.html";  // Hostname of this url must be
-                                             // resolved to embedded test
-                                             // server's address.
+      "http://www.example.com/simple.html";  // The hostname must be handled by
+                                             // embedded server, see {@link
+                                             // SetUpCommandLine}.
 
   ClassifyUrlRequest expected;
   expected.set_region_code(std::string(kRegionCode));
   expected.set_url(url_to_classify);
-
-  int number_of_expected_calls = IsUrlFilteringEnabled() ? 1 : 0;
-  if (number_of_expected_calls > 0) {
-    kids_management_api_mock().AllowSubsequentClassifyUrl();
-    EXPECT_CALL(kids_management_api_mock().classify_url_mock(), ClassifyUrl)
-        .Times(number_of_expected_calls);
-  }
-  // Ignore all extra calls to other methods
-  EXPECT_CALL(*this, ClassifyUrlRequestMonitor(_, _))
-      .Times(::testing::AnyNumber());
-  // Last expectation takes precedence.
-  EXPECT_CALL(*this,
-              ClassifyUrlRequestMonitor(kClassifyUrlConfig.StaticServicePath(),
-                                        expected.SerializeAsString()))
-      .Times(number_of_expected_calls);
+  EXPECT_CALL(*kids_chrome_management_client_,
+              ClassifyURL(Pointee(EqualsProto(expected)), /* callback= */ _));
 
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL(url_to_classify)));
 }
 
-// Instead of /0, /1... print human-readable description of the test: type of
-// the user signed in and the list of conditionally enabled features.
-std::string PrettyPrintTestCaseName(
-    const ::testing::TestParamInfo<SupervisionMixin::SignInMode>& info) {
-  std::stringstream ss;
-  ss << TestCase(info.param).GetSignInMode() << "Account";
-  return ss.str();
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    All,
-    SupervisedUserRegionalURLFilterTest,
-    testing::Values(
-#if !BUILDFLAG(IS_CHROMEOS_ASH)
-        // Only for platforms that support signed-out browser.
-        SupervisionMixin::SignInMode::kSignedOut,
-#endif
-        SupervisionMixin::SignInMode::kRegular,
-        SupervisionMixin::SignInMode::kSupervised),
-    &PrettyPrintTestCaseName);
 }  // namespace
-}  // namespace supervised_user

@@ -27,7 +27,8 @@ TEST_F(WindowMirrorViewTest, LocalWindowOcclusionMadeVisible) {
             widget_window->GetOcclusionState());
 
   auto mirror_widget = CreateTestWidget();
-  auto mirror_view = std::make_unique<WindowMirrorView>(widget_window);
+  auto mirror_view = std::make_unique<WindowMirrorView>(
+      widget_window, /*trilinear_filtering_on_init=*/false);
   mirror_widget->widget_delegate()->GetContentsView()->AddChildView(
       mirror_view.get());
 
@@ -50,7 +51,8 @@ TEST_F(WindowMirrorViewTest, MirrorLayerHasNoTransformWhenNonClientViewShown) {
 
   auto mirror_widget = CreateTestWidget();
   auto mirror_view = std::make_unique<WindowMirrorView>(
-      widget_window, /*show_non_client_view=*/true);
+      widget_window, /*trilinear_filtering_on_init=*/false,
+      /*show_non_client_view=*/true);
   mirror_view->RecreateMirrorLayers();
 
   EXPECT_TRUE(

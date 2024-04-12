@@ -14,7 +14,6 @@
 #include "components/value_store/value_store_change.h"
 #include "extensions/browser/api/storage/backend_task_runner.h"
 #include "extensions/browser/api/storage/storage_area_namespace.h"
-#include "extensions/common/extension_id.h"
 
 using value_store::ValueStore;
 
@@ -30,7 +29,7 @@ ValueStore::Status ReadOnlyError() {
 }  // namespace
 
 PolicyValueStore::PolicyValueStore(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     SequenceBoundSettingsChangedCallback observer,
     std::unique_ptr<ValueStore> delegate)
     : extension_id_(extension_id),
@@ -102,7 +101,6 @@ void PolicyValueStore::SetCurrentPolicy(const policy::PolicyMap& policy) {
 
   if (!changes.empty()) {
     observer_->Run(extension_id_, StorageAreaNamespace::kManaged,
-                   /*session_access_level=*/std::nullopt,
                    value_store::ValueStoreChange::ToValue(std::move(changes)));
   }
 }

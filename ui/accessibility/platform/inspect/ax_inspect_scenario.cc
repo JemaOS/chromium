@@ -23,7 +23,7 @@ AXInspectScenario::~AXInspectScenario() = default;
 AXInspectScenario& AXInspectScenario::operator=(AXInspectScenario&&) = default;
 
 // static
-std::optional<AXInspectScenario> AXInspectScenario::From(
+absl::optional<AXInspectScenario> AXInspectScenario::From(
     const std::string& directive_prefix,
     const base::FilePath& scenario_path,
     const std::vector<ui::AXPropertyFilter>& default_filters) {
@@ -35,7 +35,7 @@ std::optional<AXInspectScenario> AXInspectScenario::From(
     if (!base::ReadFileToString(scenario_path, &file_contents)) {
       LOG(ERROR) << "Failed to open a file to extract an inspect scenario: "
                  << scenario_path;
-      return std::nullopt;
+      return absl::nullopt;
     }
   }
 

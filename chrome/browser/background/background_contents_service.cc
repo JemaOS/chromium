@@ -44,7 +44,6 @@
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_icon_set.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/extension_set.h"
 #include "extensions/common/manifest_handlers/background_info.h"
 #include "extensions/common/manifest_handlers/icons_handler.h"
@@ -97,8 +96,8 @@ class CrashNotificationDelegate : public message_center::NotificationDelegate {
   CrashNotificationDelegate& operator=(const CrashNotificationDelegate&) =
       delete;
 
-  void Click(const std::optional<int>& button_index,
-             const std::optional<std::u16string>& reply) override {
+  void Click(const absl::optional<int>& button_index,
+             const absl::optional<std::u16string>& reply) override {
     // Pass arguments by value as HandleClick() might destroy *this.
     HandleClick(is_hosted_app_, is_platform_app_, extension_id_, profile_);
     // *this might be destroyed now, do not access any members anymore!
@@ -137,14 +136,10 @@ class CrashNotificationDelegate : public message_center::NotificationDelegate {
     CloseBalloon(extension_id, profile);
   }
 
-  // This dangling raw_ptr occurred in:
-  // unit_tests:
-  // BackgroundContentsServiceNotificationTest.TestShowBalloonShutdown
-  // https://ci.chromium.org/ui/p/chromium/builders/try/linux-rel/1427454/test-results?q=ExactID%3Aninja%3A%2F%2Fchrome%2Ftest%3Aunit_tests%2FBackgroundContentsServiceNotificationTest.TestShowBalloonShutdown+VHash%3A728d3f3a440b40c1
-  raw_ptr<Profile, FlakyDanglingUntriaged> profile_;
+  raw_ptr<Profile> profile_;
   bool is_hosted_app_;
   bool is_platform_app_;
-  extensions::ExtensionId extension_id_;
+  std::string extension_id_;
 };
 
 void ReloadExtension(const std::string& extension_id, Profile* profile) {
@@ -162,7 +157,8 @@ void ReloadExtension(const std::string& extension_id, Profile* profile) {
     return;
   }
 
-  if (!extension_registry->terminated_extensions().GetByID(extension_id)) {
+  if (!extension_registry->GetExtensionById(
+          extension_id, extensions::ExtensionRegistry::TERMINATED)) {
     // Either the app/extension was uninstalled by policy or it has since
     // been restarted successfully by someone else (the user).
     return;
@@ -429,8 +425,8 @@ void BackgroundContentsService::LoadBackgroundContentsFromPrefs() {
   DCHECK(extension_registry);
   for (const auto [extension_id, _] : contents) {
     // Check to make sure that the parent extension is still enabled.
-    const Extension* extension =
-        extension_registry->enabled_extensions().GetByID(extension_id);
+    const Extension* extension = extension_registry->GetExtensionById(
+        extension_id, extensions::ExtensionRegistry::ENABLED);
     if (!extension) {
       // Normally, we shouldn't reach here - it shouldn't be possible for an app
       // to become uninstalled without the associated BackgroundContents being
@@ -472,9 +468,9 @@ void BackgroundContentsService::MaybeClearBackoffEntry(
 void BackgroundContentsService::LoadBackgroundContentsForExtension(
     const std::string& extension_id) {
   // First look if the manifest specifies a background page.
-  const Extension* extension = extensions::ExtensionRegistry::Get(profile_)
-                                   ->enabled_extensions()
-                                   .GetByID(extension_id);
+  const Extension* extension =
+      extensions::ExtensionRegistry::Get(profile_)->GetExtensionById(
+          extension_id, extensions::ExtensionRegistry::ENABLED);
   DCHECK(!extension || extension->is_hosted_app());
   if (extension && BackgroundInfo::HasBackgroundPage(extension)) {
     LoadBackgroundContents(BackgroundInfo::GetBackgroundURL(extension),
@@ -692,8 +688,8 @@ void BackgroundContentsService::OnBackgroundContentsNavigated(
   const std::string& appid = GetParentApplicationId(contents);
   extensions::ExtensionRegistry* extension_registry =
       extensions::ExtensionRegistry::Get(profile_);
-  const Extension* extension =
-      extension_registry->enabled_extensions().GetByID(appid);
+  const Extension* extension = extension_registry->GetExtensionById(
+      appid, extensions::ExtensionRegistry::ENABLED);
   if (extension && BackgroundInfo::HasBackgroundPage(extension))
     return;
   RegisterBackgroundContents(contents);
@@ -701,9 +697,10 @@ void BackgroundContentsService::OnBackgroundContentsNavigated(
 
 void BackgroundContentsService::OnBackgroundContentsTerminated(
     BackgroundContents* contents) {
-  HandleExtensionCrashed(extensions::ExtensionRegistry::Get(profile_)
-                             ->enabled_extensions()
-                             .GetByID(GetParentApplicationId(contents)));
+  HandleExtensionCrashed(
+      extensions::ExtensionRegistry::Get(profile_)->GetExtensionById(
+          GetParentApplicationId(contents),
+          extensions::ExtensionRegistry::ENABLED));
   DeleteBackgroundContents(contents);
 }
 

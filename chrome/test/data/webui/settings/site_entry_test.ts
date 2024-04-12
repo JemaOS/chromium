@@ -6,14 +6,13 @@
 import 'chrome://webui-test/cr_elements/cr_policy_strings.js';
 
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {SiteEntryElement} from 'chrome://settings/lazy_load.js';
-import {SiteSettingsPrefsBrowserProxyImpl, SortMethod} from 'chrome://settings/lazy_load.js';
+import {SiteEntryElement, SiteSettingsPrefsBrowserProxyImpl, SortMethod} from 'chrome://settings/lazy_load.js';
 import {Router, routes} from 'chrome://settings/settings.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise, isChildVisible} from 'chrome://webui-test/test_util.js';
 
 import {TestSiteSettingsPrefsBrowserProxy} from './test_site_settings_prefs_browser_proxy.js';
-import {createOriginInfo, createSiteGroup} from './test_util.js';
+import {createOriginInfo,createSiteGroup} from './test_util.js';
 
 // clang-format on
 
@@ -21,17 +20,16 @@ suite('SiteEntry', function() {
   /**
    * An example eTLD+1 Object with multiple origins grouped under it.
    */
-  const TEST_MULTIPLE_SITE_GROUP =
-      createSiteGroup('example.com', 'example.com', [
-        'http://example.com',
-        'https://www.example.com',
-        'https://login.example.com',
-      ]);
+  const TEST_MULTIPLE_SITE_GROUP = createSiteGroup('example.com', [
+    'http://example.com',
+    'https://www.example.com',
+    'https://login.example.com',
+  ]);
 
   /**
    * An example eTLD+1 Object with a single origin in it.
    */
-  const TEST_SINGLE_SITE_GROUP = createSiteGroup('foo.com', 'foo.com', [
+  const TEST_SINGLE_SITE_GROUP = createSiteGroup('foo.com', [
     'https://login.foo.com',
   ]);
 
@@ -135,14 +133,16 @@ suite('SiteEntry', function() {
       'moving from grouped to ungrouped does not get stuck in opened state',
       function() {
         // Clone this object to avoid propagating changes made in this test.
-        testElement.siteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
+        testElement.siteGroup =
+            JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
         flush();
         testElement.$.toggleButton.click();
         assertTrue(testElement.$.originList.get().opened);
 
         // Remove all origins except one, then make sure it's not still
         // expanded.
-        const siteGroupUpdated = structuredClone(TEST_MULTIPLE_SITE_GROUP);
+        const siteGroupUpdated =
+            JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
         siteGroupUpdated.origins.splice(1);
         testElement.siteGroup = siteGroupUpdated;
         assertEquals(1, testElement.siteGroup.origins.length);
@@ -155,7 +155,7 @@ suite('SiteEntry', function() {
     const cookiesLabel = testElement.$.cookies;
     assertTrue(cookiesLabel.hidden);
     // When the number of cookies is more than zero, the label appears.
-    const testSiteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
     const numCookies = 3;
     testSiteGroup.numCookies = numCookies;
 
@@ -175,7 +175,7 @@ suite('SiteEntry', function() {
     assertTrue(cookiesLabel.hidden);
 
 
-    const testSiteGroup = structuredClone(TEST_SINGLE_SITE_GROUP);
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
     const numCookies = 3;
 
     testSiteGroup.numCookies = numCookies;
@@ -191,13 +191,13 @@ suite('SiteEntry', function() {
 
   test('data usage shown correctly for grouped entries', async function() {
     // Clone this object to avoid propagating changes made in this test.
-    const testSiteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
     const numBytes1 = 74622;
     const numBytes2 = 1274;
     const numBytes3 = 0;
-    testSiteGroup.origins[0]!.usage = numBytes1;
-    testSiteGroup.origins[1]!.usage = numBytes2;
-    testSiteGroup.origins[2]!.usage = numBytes3;
+    testSiteGroup.origins[0].usage = numBytes1;
+    testSiteGroup.origins[1].usage = numBytes2;
+    testSiteGroup.origins[2].usage = numBytes3;
     testElement.siteGroup = testSiteGroup;
     flush();
     const args = await browserProxy.whenCalled('getFormattedBytes');
@@ -212,9 +212,9 @@ suite('SiteEntry', function() {
 
   test('data usage shown correctly for ungrouped entries', async function() {
     // Clone this object to avoid propagating changes made in this test.
-    const testSiteGroup = structuredClone(TEST_SINGLE_SITE_GROUP);
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
     const numBytes = 74622;
-    testSiteGroup.origins[0]!.usage = numBytes;
+    testSiteGroup.origins[0].usage = numBytes;
     testElement.siteGroup = testSiteGroup;
     flush();
     const args = await browserProxy.whenCalled('getFormattedBytes');
@@ -230,13 +230,14 @@ suite('SiteEntry', function() {
       'large number data usage shown correctly for grouped entries',
       async function() {
         // Clone this object to avoid propagating changes made in this test.
-        const testSiteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
+        const testSiteGroup =
+            JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
         const numBytes1 = 2000000000;
         const numBytes2 = 10000000000;
         const numBytes3 = 7856;
-        testSiteGroup.origins[0]!.usage = numBytes1;
-        testSiteGroup.origins[1]!.usage = numBytes2;
-        testSiteGroup.origins[2]!.usage = numBytes3;
+        testSiteGroup.origins[0].usage = numBytes1;
+        testSiteGroup.origins[1].usage = numBytes2;
+        testSiteGroup.origins[2].usage = numBytes3;
         testElement.siteGroup = testSiteGroup;
         flush();
         const args = await browserProxy.whenCalled('getFormattedBytes');
@@ -251,10 +252,10 @@ suite('SiteEntry', function() {
 
   test('favicon with www.etld+1 chosen for site group', function() {
     // Clone this object to avoid propagating changes made in this test.
-    const testSiteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
-    testSiteGroup.origins[0]!.usage = 0;
-    testSiteGroup.origins[1]!.usage = 1274;
-    testSiteGroup.origins[2]!.usage = 74622;
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
+    testSiteGroup.origins[0].usage = 0;
+    testSiteGroup.origins[1].usage = 1274;
+    testSiteGroup.origins[2].usage = 74622;
     testElement.siteGroup = testSiteGroup;
     flush();
     assertEquals(
@@ -264,11 +265,11 @@ suite('SiteEntry', function() {
 
   test('favicon with largest storage chosen for site group', function() {
     // Clone this object to avoid propagating changes made in this test.
-    const testSiteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
-    testSiteGroup.origins[0]!.usage = 0;
-    testSiteGroup.origins[1]!.usage = 1274;
-    testSiteGroup.origins[2]!.usage = 74622;
-    testSiteGroup.origins[1]!.origin = 'https://abc.example.com';
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
+    testSiteGroup.origins[0].usage = 0;
+    testSiteGroup.origins[1].usage = 1274;
+    testSiteGroup.origins[2].usage = 74622;
+    testSiteGroup.origins[1].origin = 'https://abc.example.com';
     testElement.siteGroup = testSiteGroup;
     flush();
     assertEquals(
@@ -278,14 +279,14 @@ suite('SiteEntry', function() {
 
   test('favicon with largest cookies number chosen for site group', function() {
     // Clone this object to avoid propagating changes made in this test.
-    const testSiteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
-    testSiteGroup.origins[0]!.usage = 0;
-    testSiteGroup.origins[1]!.usage = 1274;
-    testSiteGroup.origins[2]!.usage = 1274;
-    testSiteGroup.origins[0]!.numCookies = 10;
-    testSiteGroup.origins[1]!.numCookies = 3;
-    testSiteGroup.origins[2]!.numCookies = 1;
-    testSiteGroup.origins[1]!.origin = 'https://abc.example.com';
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
+    testSiteGroup.origins[0].usage = 0;
+    testSiteGroup.origins[1].usage = 1274;
+    testSiteGroup.origins[2].usage = 1274;
+    testSiteGroup.origins[0].numCookies = 10;
+    testSiteGroup.origins[1].numCookies = 3;
+    testSiteGroup.origins[2].numCookies = 1;
+    testSiteGroup.origins[1].origin = 'https://abc.example.com';
     testElement.siteGroup = testSiteGroup;
     flush();
     assertEquals(
@@ -295,16 +296,16 @@ suite('SiteEntry', function() {
 
   test('can be sorted by most visited', function() {
     // Clone this object to avoid propagating changes made in this test.
-    const testSiteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
-    testSiteGroup.origins[0]!.engagement = 20;
-    testSiteGroup.origins[1]!.engagement = 30;
-    testSiteGroup.origins[2]!.engagement = 10;
-    testSiteGroup.origins[0]!.usage = 0;
-    testSiteGroup.origins[1]!.usage = 1274;
-    testSiteGroup.origins[2]!.usage = 1274;
-    testSiteGroup.origins[0]!.numCookies = 10;
-    testSiteGroup.origins[1]!.numCookies = 3;
-    testSiteGroup.origins[2]!.numCookies = 1;
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
+    testSiteGroup.origins[0].engagement = 20;
+    testSiteGroup.origins[1].engagement = 30;
+    testSiteGroup.origins[2].engagement = 10;
+    testSiteGroup.origins[0].usage = 0;
+    testSiteGroup.origins[1].usage = 1274;
+    testSiteGroup.origins[2].usage = 1274;
+    testSiteGroup.origins[0].numCookies = 10;
+    testSiteGroup.origins[1].numCookies = 3;
+    testSiteGroup.origins[2].numCookies = 1;
     testElement.sortMethod = SortMethod.MOST_VISITED;
     testElement.siteGroup = testSiteGroup;
     flush();
@@ -328,16 +329,16 @@ suite('SiteEntry', function() {
 
   test('can be sorted by storage', function() {
     // Clone this object to avoid propagating changes made in this test.
-    const testSiteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
-    testSiteGroup.origins[0]!.engagement = 20;
-    testSiteGroup.origins[1]!.engagement = 30;
-    testSiteGroup.origins[2]!.engagement = 10;
-    testSiteGroup.origins[0]!.usage = 0;
-    testSiteGroup.origins[1]!.usage = 1274;
-    testSiteGroup.origins[2]!.usage = 1274;
-    testSiteGroup.origins[0]!.numCookies = 10;
-    testSiteGroup.origins[1]!.numCookies = 3;
-    testSiteGroup.origins[2]!.numCookies = 1;
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
+    testSiteGroup.origins[0].engagement = 20;
+    testSiteGroup.origins[1].engagement = 30;
+    testSiteGroup.origins[2].engagement = 10;
+    testSiteGroup.origins[0].usage = 0;
+    testSiteGroup.origins[1].usage = 1274;
+    testSiteGroup.origins[2].usage = 1274;
+    testSiteGroup.origins[0].numCookies = 10;
+    testSiteGroup.origins[1].numCookies = 3;
+    testSiteGroup.origins[2].numCookies = 1;
     testElement.sortMethod = SortMethod.STORAGE;
     testElement.siteGroup = testSiteGroup;
     flush();
@@ -361,16 +362,16 @@ suite('SiteEntry', function() {
 
   test('can be sorted by name', function() {
     // Clone this object to avoid propagating changes made in this test.
-    const testSiteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
-    testSiteGroup.origins[0]!.engagement = 20;
-    testSiteGroup.origins[1]!.engagement = 30;
-    testSiteGroup.origins[2]!.engagement = 10;
-    testSiteGroup.origins[0]!.usage = 0;
-    testSiteGroup.origins[1]!.usage = 1274;
-    testSiteGroup.origins[2]!.usage = 1274;
-    testSiteGroup.origins[0]!.numCookies = 10;
-    testSiteGroup.origins[1]!.numCookies = 3;
-    testSiteGroup.origins[2]!.numCookies = 1;
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
+    testSiteGroup.origins[0].engagement = 20;
+    testSiteGroup.origins[1].engagement = 30;
+    testSiteGroup.origins[2].engagement = 10;
+    testSiteGroup.origins[0].usage = 0;
+    testSiteGroup.origins[1].usage = 1274;
+    testSiteGroup.origins[2].usage = 1274;
+    testSiteGroup.origins[0].numCookies = 10;
+    testSiteGroup.origins[1].numCookies = 3;
+    testSiteGroup.origins[2].numCookies = 1;
     testElement.sortMethod = SortMethod.NAME;
     testElement.siteGroup = testSiteGroup;
     flush();
@@ -393,7 +394,8 @@ suite('SiteEntry', function() {
   });
 
   test('remove site fires correct event for individual site', async function() {
-    testElement.siteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
+    testElement.siteGroup =
+        JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
     flush();
 
     const collapseChild = testElement.$.originList.get();
@@ -414,7 +416,8 @@ suite('SiteEntry', function() {
   });
 
   test('remove site fires correct event for site group', async function() {
-    testElement.siteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
+    testElement.siteGroup =
+        JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
     flush();
 
     const siteRemoved = eventToPromise('remove-site', testElement);
@@ -431,7 +434,7 @@ suite('SiteEntry', function() {
 
   test('partitioned entry interaction', async function() {
     // Clone this object to avoid propagating changes made in this test.
-    const testSiteGroup = structuredClone(TEST_MULTIPLE_SITE_GROUP);
+    const testSiteGroup = JSON.parse(JSON.stringify(TEST_MULTIPLE_SITE_GROUP));
 
     // Add a partitioned entry for an unrelated origin.
     testSiteGroup.origins.push(
@@ -469,8 +472,8 @@ suite('SiteEntry', function() {
   test('partitioned entry prevents collapse', function() {
     // If a siteGroup has a partitioned entry, even if it is the only entry,
     // it should keep the site entry as a top level + collapse list.
-    const testSingleSite = structuredClone(TEST_SINGLE_SITE_GROUP);
-    testSingleSite.origins[0]!.isPartitioned = true;
+    const testSingleSite = JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
+    testSingleSite.origins[0].isPartitioned = true;
 
     testElement.siteGroup = testSingleSite;
     flush();
@@ -489,7 +492,7 @@ suite('SiteEntry', function() {
   test('unpartitioned entry remains collapsed', async function() {
     // Check that a single origin containing unpartitioned storage only is
     // correctly collapsed.
-    testElement.siteGroup = structuredClone(TEST_SINGLE_SITE_GROUP);
+    testElement.siteGroup = JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
     flush();
     const collapseChild = testElement.$.originList.get();
 
@@ -509,7 +512,7 @@ suite('SiteEntry', function() {
 
   test('first party set information showed when available', async function() {
     // Set unowned site group.
-    testElement.siteGroup = structuredClone(TEST_SINGLE_SITE_GROUP);
+    testElement.siteGroup = JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
     flush();
 
     const fpsMembershipLabel = testElement.$.fpsMembership;
@@ -517,7 +520,7 @@ suite('SiteEntry', function() {
     assertTrue(fpsMembershipLabel.hidden);
 
     // Update first party set information and set siteGroup
-    const fooSiteGroup = structuredClone(TEST_SINGLE_SITE_GROUP);
+    const fooSiteGroup = JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
     fooSiteGroup.fpsOwner = 'foo.com';
     fooSiteGroup.fpsNumMembers = 1;
     testElement.siteGroup = fooSiteGroup;
@@ -532,7 +535,7 @@ suite('SiteEntry', function() {
 
   test('first party set policy shown when managed key is true', function() {
     // Set site group with first party set information.
-    const fooSiteGroup = structuredClone(TEST_SINGLE_SITE_GROUP);
+    const fooSiteGroup = JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
     fooSiteGroup.fpsOwner = 'foo.com';
     fooSiteGroup.fpsNumMembers = 1;
     fooSiteGroup.fpsEnterpriseManaged = true;
@@ -547,7 +550,7 @@ suite('SiteEntry', function() {
   test(
       'first party set policy undefined when managed key is false', function() {
         // Set site group with first party set information.
-        const fooSiteGroup = structuredClone(TEST_SINGLE_SITE_GROUP);
+        const fooSiteGroup = JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
         fooSiteGroup.fpsOwner = 'foo.com';
         fooSiteGroup.fpsNumMembers = 1;
         fooSiteGroup.fpsEnterpriseManaged = false;
@@ -561,7 +564,7 @@ suite('SiteEntry', function() {
 
   test('first party set more actions aria-label set correctly', function() {
     // Set site group with first party set information.
-    const fooSiteGroup = structuredClone(TEST_SINGLE_SITE_GROUP);
+    const fooSiteGroup = JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
     fooSiteGroup.fpsOwner = 'foo.com';
     fooSiteGroup.fpsNumMembers = 1;
     fooSiteGroup.fpsEnterpriseManaged = false;
@@ -579,7 +582,7 @@ suite('SiteEntry', function() {
       'first party set more actions menu removed when filtered by fps owner',
       function() {
         // Set site group with first party set information.
-        const fooSiteGroup = structuredClone(TEST_SINGLE_SITE_GROUP);
+        const fooSiteGroup = JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
         fooSiteGroup.fpsOwner = 'foo.com';
         fooSiteGroup.fpsNumMembers = 1;
         fooSiteGroup.fpsEnterpriseManaged = false;
@@ -603,9 +606,10 @@ suite('SiteEntry', function() {
       });
 
   test('extension site group is shown correctly', async function() {
-    const extensionSiteGroup = structuredClone(TEST_SINGLE_SITE_GROUP);
+    const extensionSiteGroup =
+        JSON.parse(JSON.stringify(TEST_SINGLE_SITE_GROUP));
     extensionSiteGroup.displayName = 'Test Extension';
-    extensionSiteGroup.origins[0]!.origin =
+    extensionSiteGroup.origins[0].origin =
         'chrome-extension://mhabknllooicelmdboebjilbohdbihln';
     testElement.siteGroup = extensionSiteGroup;
     flush();

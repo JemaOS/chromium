@@ -34,7 +34,10 @@ class BackgroundFetchPermissionContext
       const GURL& requesting_origin,
       const GURL& embedding_origin) const override;
   void DecidePermission(
-      permissions::PermissionRequestData request_data,
+      const permissions::PermissionRequestID& id,
+      const GURL& requesting_origin,
+      const GURL& embedding_origin,
+      bool user_gesture,
       permissions::BrowserPermissionCallback callback) override;
   void NotifyPermissionSet(const permissions::PermissionRequestID& id,
                            const GURL& requesting_origin,

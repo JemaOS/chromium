@@ -1,6 +1,6 @@
 {
-  "accounts_endpoint": "accounts.php",
+  "accounts_endpoint": "accounts.json",
   "client_metadata_endpoint": "client_metadata.json",
   "id_assertion_endpoint": "token.php",
-  "login_url": "signin.html"
+  "signin_url": "https://idp.example/signin"
 }

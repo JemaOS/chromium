@@ -3,10 +3,10 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/views/frame/browser_frame_view_layout_linux_native.h"
+#include "base/memory/raw_ptr.h"
 
 #include <memory>
 
-#include "base/memory/raw_ptr.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/ui/layout_constants.h"
@@ -79,9 +79,10 @@ class TestLayoutDelegate : public OpaqueBrowserFrameViewLayoutDelegate {
   bool EverHasVisibleBackgroundTabShapes() const override { return false; }
   void UpdateWindowControlsOverlay(
       const gfx::Rect& bounding_rect) const override {}
+  bool IsTranslucentWindowOpacitySupported() const override { return true; }
   bool ShouldDrawRestoredFrameShadow() const override { return true; }
-#if BUILDFLAG(IS_LINUX)
-  bool IsTiled() const override { return false; }
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+  ui::WindowTiledEdges GetTiledEdges() const override { return {}; }
 #endif
   int WebAppButtonHeight() const override { return 0; }
 };
@@ -146,7 +147,7 @@ class TestFrameProvider : public ui::WindowFrameProvider {
                         const gfx::Rect& rect,
                         int top_area_height,
                         bool focused,
-                        const gfx::Insets& input_insets) override {}
+                        ui::WindowTiledEdges tiled_edges) override {}
 };
 
 }  // namespace
@@ -169,10 +170,7 @@ class BrowserFrameViewLayoutLinuxNativeTest : public ChromeViewsTestBase {
     nav_button_provider_ = std::make_unique<::TestNavButtonProvider>();
     frame_provider_ = std::make_unique<::TestFrameProvider>();
     auto layout = std::make_unique<BrowserFrameViewLayoutLinuxNative>(
-        nav_button_provider_.get(),
-        base::BindRepeating([](ui::WindowFrameProvider* frame_provider,
-                               bool tiled) { return frame_provider; },
-                            frame_provider_.get()));
+        nav_button_provider_.get(), frame_provider_.get());
     layout->set_delegate(delegate_.get());
     layout->set_forced_window_caption_spacing_for_test(0);
     widget_ = CreateTestWidget();
@@ -201,7 +199,7 @@ class BrowserFrameViewLayoutLinuxNativeTest : public ChromeViewsTestBase {
 
   void ResetNativeNavButtonImagesFromButtonProvider() {
     struct {
-      raw_ptr<views::ImageButton, DanglingUntriaged> button;
+      raw_ptr<views::ImageButton> button;
       ui::NavButtonProvider::FrameButtonDisplayType type;
     } const kButtons[] = {
         {minimize_button_,
@@ -238,18 +236,17 @@ class BrowserFrameViewLayoutLinuxNativeTest : public ChromeViewsTestBase {
   }
 
   std::unique_ptr<views::Widget> widget_;
-  raw_ptr<views::View, DanglingUntriaged> root_view_ = nullptr;
-  raw_ptr<BrowserFrameViewLayoutLinuxNative, DanglingUntriaged>
-      layout_manager_ = nullptr;
+  raw_ptr<views::View> root_view_ = nullptr;
+  raw_ptr<BrowserFrameViewLayoutLinuxNative> layout_manager_ = nullptr;
   std::unique_ptr<TestLayoutDelegate> delegate_;
   std::unique_ptr<ui::NavButtonProvider> nav_button_provider_;
   std::unique_ptr<ui::WindowFrameProvider> frame_provider_;
 
   // Widgets:
-  raw_ptr<views::ImageButton, DanglingUntriaged> minimize_button_ = nullptr;
-  raw_ptr<views::ImageButton, DanglingUntriaged> maximize_button_ = nullptr;
-  raw_ptr<views::ImageButton, DanglingUntriaged> restore_button_ = nullptr;
-  raw_ptr<views::ImageButton, DanglingUntriaged> close_button_ = nullptr;
+  raw_ptr<views::ImageButton> minimize_button_ = nullptr;
+  raw_ptr<views::ImageButton> maximize_button_ = nullptr;
+  raw_ptr<views::ImageButton> restore_button_ = nullptr;
+  raw_ptr<views::ImageButton> close_button_ = nullptr;
 };
 
 // Tests layout of native navigation buttons.

@@ -6,12 +6,6 @@
 
 #include <string>
 
-#include "base/functional/bind.h"
-#include "base/functional/callback_forward.h"
-#include "base/functional/callback_helpers.h"
-#include "base/functional/overloaded.h"
-#include "base/not_fatal_until.h"
-#include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/trace_event.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/delete_profile_helper.h"
@@ -19,33 +13,25 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_metrics.h"
 #include "chrome/browser/profiles/profile_window.h"
-#include "chrome/browser/search_engine_choice/search_engine_choice_dialog_service.h"
-#include "chrome/browser/search_engine_choice/search_engine_choice_dialog_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
-#include "chrome/browser/ui/profiles/profile_customization_util.h"
+#include "chrome/browser/ui/signin/profile_customization_util.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/profiles/avatar_toolbar_button.h"
 #include "chrome/browser/ui/views/profiles/profile_customization_bubble_sync_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_customization_bubble_view.h"
-#include "chrome/browser/ui/views/profiles/profile_management_flow_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_management_flow_controller_impl.h"
 #include "chrome/browser/ui/views/profiles/profile_management_step_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_management_types.h"
-#include "chrome/browser/ui/views/profiles/profile_picker_dice_reauth_provider.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_signed_in_flow_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_web_contents_host.h"
-#include "chrome/browser/ui/webui/signin/signin_ui_error.h"
 #include "chrome/common/webui_url_constants.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/signin/public/base/signin_metrics.h"
-#include "google_apis/gaia/core_account_id.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/mojom/themes.mojom.h"
-#include "ui/base/ui_base_features.h"
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 #include "chrome/browser/ui/views/profiles/profile_picker_dice_sign_in_provider.h"
@@ -77,10 +63,8 @@ GURL GetInitialURL(ProfilePicker::EntryPoint entry_point) {
     case ProfilePicker::EntryPoint::kBackgroundModeManager:
     case ProfilePicker::EntryPoint::kProfileIdle:
     case ProfilePicker::EntryPoint::kNewSessionOnExistingProcessNoProfile:
-    case ProfilePicker::EntryPoint::kAppMenuProfileSubMenuManageProfiles:
       return base_url;
     case ProfilePicker::EntryPoint::kProfileMenuAddNewProfile:
-    case ProfilePicker::EntryPoint::kAppMenuProfileSubMenuAddNewProfile:
       return base_url.Resolve("new-profile");
     case ProfilePicker::EntryPoint::kLacrosSelectAvailableAccount:
       return base_url.Resolve("account-selection-lacros");
@@ -95,13 +79,12 @@ GURL GetInitialURL(ProfilePicker::EntryPoint entry_point) {
 // color is enforced by policy or downloaded through Sync or the default theme
 // should be used. An IPH is shown after the bubble, or right away if the bubble
 // cannot be shown.
-void ShowCustomizationBubble(std::optional<SkColor> new_profile_color,
+void ShowCustomizationBubble(absl::optional<SkColor> new_profile_color,
                              Browser* browser) {
   DCHECK(browser);
   BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
-  if (!browser_view || !browser_view->toolbar_button_provider()) {
+  if (!browser_view || !browser_view->toolbar_button_provider())
     return;
-  }
   views::View* anchor_view =
       browser_view->toolbar_button_provider()->GetAvatarToolbarButton();
   CHECK(anchor_view);
@@ -124,9 +107,8 @@ void ShowCustomizationBubble(std::optional<SkColor> new_profile_color,
 void MaybeShowProfileSwitchIPH(Browser* browser) {
   DCHECK(browser);
   BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
-  if (!browser_view) {
+  if (!browser_view)
     return;
-  }
   browser_view->MaybeShowProfileSwitchIPH();
 }
 
@@ -137,28 +119,22 @@ void MaybeShowProfileSwitchIPH(Browser* browser) {
 // - applies profile customizations (theme, profile name)
 // - finalizes the profile (deleting it if the flow is aborted, marks it
 //   non-ephemeral if the flow is completed)
-// `step_completed_callback` is not called if the flow is canceled.
-// Note that `account_id` has been added to the `IdentityManager` but may not
-// be set as primary yet, because this operation is asynchronous.
+// `finish_flow_callback` is not called if the flow is canceled.
 class ProfileCreationSignedInFlowController
     : public ProfilePickerSignedInFlowController {
  public:
   ProfileCreationSignedInFlowController(
       ProfilePickerWebContentsHost* host,
       Profile* profile,
-      const CoreAccountInfo& account_info,
       std::unique_ptr<content::WebContents> contents,
-      std::optional<SkColor> profile_color,
-      base::OnceCallback<
-          void(PostHostClearedCallback, bool, StepSwitchFinishedCallback)>
-          step_completed_callback)
+      absl::optional<SkColor> profile_color,
+      FinishFlowCallback finish_flow_callback)
       : ProfilePickerSignedInFlowController(host,
                                             profile,
-                                            account_info,
                                             std::move(contents),
                                             kAccessPoint,
                                             profile_color),
-        step_completed_callback_(std::move(step_completed_callback)) {}
+        finish_flow_callback_(std::move(finish_flow_callback)) {}
 
   ProfileCreationSignedInFlowController(
       const ProfilePickerSignedInFlowController&) = delete;
@@ -189,13 +165,12 @@ class ProfileCreationSignedInFlowController
     signin::IdentityManager* identity_manager =
         IdentityManagerFactory::GetForProfile(profile());
     profile_name_resolver_ =
-        std::make_unique<ProfileNameResolver>(identity_manager, account_info());
+        std::make_unique<ProfileNameResolver>(identity_manager);
   }
 
   void Cancel() override {
-    if (is_finishing_) {
+    if (is_finishing_)
       return;
-    }
 
     is_finishing_ = true;
   }
@@ -205,12 +180,10 @@ class ProfileCreationSignedInFlowController
     // called. Note that this can get called first time from a special case
     // handling (such as the Settings link) and than second time when the
     // TurnSyncOnHelper finishes.
-    if (is_finishing_) {
+    if (is_finishing_)
       return;
-    }
     is_finishing_ = true;
 
-    bool is_continue_callback = !callback->is_null();
     if (callback->is_null()) {
       // No custom callback is specified, we can schedule a profile-related
       // experience to be shown in context of the opened fresh profile.
@@ -221,7 +194,7 @@ class ProfileCreationSignedInFlowController
     profile_name_resolver_->RunWithProfileName(base::BindOnce(
         &ProfileCreationSignedInFlowController::FinishFlow,
         // Unretained ok: `this` outlives `profile_name_resolver_`.
-        base::Unretained(this), std::move(callback), is_continue_callback));
+        base::Unretained(this), std::move(callback)));
   }
 
  private:
@@ -239,28 +212,21 @@ class ProfileCreationSignedInFlowController
       if (!ProfileCustomizationBubbleSyncController::CanThemeSyncStart(
               profile())) {
         auto* theme_service = ThemeServiceFactory::GetForProfile(profile());
-        if (features::IsChromeWebuiRefresh2023()) {
-          theme_service->SetUserColorAndBrowserColorVariant(
-              GetProfileColor().value(),
-              ui::mojom::BrowserColorVariant::kTonalSpot);
-        } else {
-          theme_service->BuildAutogeneratedThemeFromColor(
-              GetProfileColor().value());
-        }
+        theme_service->BuildAutogeneratedThemeFromColor(
+            GetProfileColor().value());
       }
       return PostHostClearedCallback(
           base::BindOnce(&ShowCustomizationBubble, GetProfileColor()));
     }
   }
 
-  void FinishFlow(PostHostClearedCallback post_host_cleared_callback,
-                  bool is_continue_callback,
+  void FinishFlow(PostHostClearedCallback callback,
                   std::u16string name_for_signed_in_profile) {
     TRACE_EVENT1("browser", "ProfileCreationSignedInFlowController::FinishFlow",
                  "profile_path", profile()->GetPath().AsUTF8Unsafe());
-    CHECK(!name_for_signed_in_profile.empty());
-    DCHECK(post_host_cleared_callback.value());
-    DCHECK(step_completed_callback_);
+    DCHECK(!name_for_signed_in_profile.empty());
+    DCHECK(callback.value());
+    DCHECK(finish_flow_callback_.value());
 
     profile_name_resolver_.reset();
 
@@ -270,9 +236,7 @@ class ProfileCreationSignedInFlowController
     ProfileMetrics::LogProfileAddNewUser(
         ProfileMetrics::ADD_NEW_PROFILE_PICKER_SIGNED_IN);
 
-    std::move(step_completed_callback_)
-        .Run(std::move(post_host_cleared_callback), is_continue_callback,
-             StepSwitchFinishedCallback());
+    std::move(finish_flow_callback_.value()).Run(std::move(callback));
   }
 
   // Controls whether the flow still needs to finalize (which includes showing
@@ -280,56 +244,8 @@ class ProfileCreationSignedInFlowController
   bool is_finishing_ = false;
 
   std::unique_ptr<ProfileNameResolver> profile_name_resolver_;
-  base::OnceCallback<
-      void(PostHostClearedCallback, bool, StepSwitchFinishedCallback)>
-      step_completed_callback_;
+  FinishFlowCallback finish_flow_callback_;
 };
-
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
-class ReauthFlowStepController : public ProfileManagementStepController {
- public:
-  explicit ReauthFlowStepController(
-      ProfilePickerWebContentsHost* host,
-      std::unique_ptr<ProfilePickerDiceReauthProvider> reauth_provider,
-      Profile* profile)
-      : ProfileManagementStepController(host),
-        reauth_provider_(std::move(reauth_provider)) {}
-
-  ~ReauthFlowStepController() override = default;
-
-  void Show(base::OnceCallback<void(bool)> step_shown_callback,
-            bool reset_state) override {
-    reauth_provider_->SwitchToReauth();
-  }
-
-  void OnHidden() override { host()->SetNativeToolbarVisible(false); }
-
-  void OnNavigateBackRequested() override {
-    NavigateBackInternal(reauth_provider_->contents());
-  }
-
- private:
-  std::unique_ptr<ProfilePickerDiceReauthProvider> reauth_provider_;
-};
-
-std::unique_ptr<ProfileManagementStepController> CreateReauthtep(
-    ProfilePickerWebContentsHost* host,
-    Profile* profile,
-    base::OnceCallback<void(bool, ReauthUIError)> on_reauth_completed) {
-  ProfileAttributesEntry* entry =
-      g_browser_process->profile_manager()
-          ->GetProfileAttributesStorage()
-          .GetProfileAttributesWithPath(profile->GetPath());
-
-  return std::make_unique<ReauthFlowStepController>(
-      host,
-      std::make_unique<ProfilePickerDiceReauthProvider>(
-          host, profile, entry->GetGAIAId(),
-          base::UTF16ToUTF8(entry->GetUserName()),
-          std::move(on_reauth_completed)),
-      profile);
-}
-#endif
 
 }  // namespace
 
@@ -353,106 +269,25 @@ void ProfilePickerFlowController::Init(
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 void ProfilePickerFlowController::SwitchToDiceSignIn(
-    ProfilePicker::ProfileInfo profile_info,
+    absl::optional<SkColor> profile_color,
     StepSwitchFinishedCallback switch_finished_callback) {
   DCHECK_EQ(Step::kProfilePicker, current_step());
 
-  base::FilePath profile_path;
-  // Split the variant information from `profile_info`.
-  absl::visit(base::Overloaded{
-                  [&suggested_profile_color =
-                       suggested_profile_color_](std::optional<SkColor> color) {
-                    suggested_profile_color = color;
-                  },
-                  [&profile_path](base::FilePath profile_path_info) {
-                    profile_path = profile_path_info;
-                  },
-              },
-              profile_info);
-
-  SwitchToIdentityStepsFromAccountSelection(std::move(switch_finished_callback),
-                                            kAccessPoint,
-                                            std::move(profile_path));
+  profile_color_ = profile_color;
+  SwitchToIdentityStepsFromAccountSelection(
+      std::move(switch_finished_callback));
 }
-
-void ProfilePickerFlowController::SwitchToReauth(
-    Profile* profile,
-    base::OnceCallback<void(ReauthUIError)> on_error_callback) {
-  DCHECK_EQ(Step::kProfilePicker, current_step());
-
-  // if the step was already initialized, unregister to make sure the new
-  // reauth is properly initialised and the current reauth step is cleaned.
-  //
-  // TODO(crbug.com/1478217): Cleanup the unregistration of the step with a
-  // proper resetable state within the `ProfilePickerDiceReauthProvider`, and
-  // using the `ProfileManagementFlowController::SwitchToStep()` `reset_state`
-  // value to trigger the reset.
-  if (IsStepInitialized(Step::kReauth)) {
-    UnregisterStep(Step::kReauth);
-  }
-
-  RegisterStep(
-      Step::kReauth,
-      CreateReauthtep(
-          host(), profile,
-          base::BindOnce(&ProfilePickerFlowController::OnReauthCompleted,
-                         base::Unretained(this), profile,
-                         std::move(on_error_callback))));
-
-  SwitchToStep(
-      Step::kReauth, true, StepSwitchFinishedCallback(),
-      /*pop_step_callback=*/CreateSwitchToStepPopCallback(current_step()));
-}
-
-void ProfilePickerFlowController::OnReauthCompleted(
-    Profile* profile,
-    base::OnceCallback<void(ReauthUIError)> on_error_callback,
-    bool success,
-    ReauthUIError error) {
-  if (!success) {
-    CHECK_NE(error, ReauthUIError::kNone);
-
-    SwitchToStep(
-        Step::kProfilePicker, /*reset_state=*/true,
-        base::BindOnce(
-            &ProfilePickerFlowController::OnProfilePickerStepShownReauthError,
-            base::Unretained(this), std::move(on_error_callback), error));
-    return;
-  }
-
-  g_browser_process->profile_manager()
-      ->GetProfileAttributesStorage()
-      .GetProfileAttributesWithPath(profile->GetPath())
-      ->LockForceSigninProfile(false);
-
-  FinishFlowAndRunInBrowser(profile, PostHostClearedCallback());
-}
-
-void ProfilePickerFlowController::OnProfilePickerStepShownReauthError(
-    base::OnceCallback<void(ReauthUIError)> on_error_callback,
-    ReauthUIError error,
-    bool switch_step_success) {
-  // If the step switch to the profile picker was not successful, do not proceed
-  // with displaying the error dialog.
-  if (!switch_step_success) {
-    return;
-  }
-
-  std::move(on_error_callback).Run(error);
-}
-
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
 void ProfilePickerFlowController::SwitchToPostSignIn(
     Profile* signed_in_profile,
-    const CoreAccountInfo& account_info,
-    std::optional<SkColor> profile_color,
+    absl::optional<SkColor> profile_color,
     std::unique_ptr<content::WebContents> contents) {
   DCHECK_EQ(Step::kProfilePicker, current_step());
-  suggested_profile_color_ = profile_color;
+  profile_color_ = profile_color;
   SwitchToIdentityStepsFromPostSignIn(
-      signed_in_profile, account_info,
+      signed_in_profile,
       content::WebContents::Create(
           content::WebContents::CreateParams(signed_in_profile)),
       StepSwitchFinishedCallback());
@@ -472,7 +307,6 @@ void ProfilePickerFlowController::CancelPostSignInFlow() {
   DCHECK_EQ(Step::kPostSignInFlow, current_step());
 
   switch (entry_point_) {
-    case ProfilePicker::EntryPoint::kAppMenuProfileSubMenuManageProfiles:
     case ProfilePicker::EntryPoint::kOnStartup:
     case ProfilePicker::EntryPoint::kOnStartupNoProfile:
     case ProfilePicker::EntryPoint::kProfileMenuManageProfiles:
@@ -490,7 +324,6 @@ void ProfilePickerFlowController::CancelPostSignInFlow() {
 #endif
       return;
     }
-    case ProfilePicker::EntryPoint::kAppMenuProfileSubMenuAddNewProfile:
     case ProfilePicker::EntryPoint::kProfileMenuAddNewProfile: {
       // This results in destroying `this`.
       ExitFlow();
@@ -513,86 +346,27 @@ std::u16string ProfilePickerFlowController::GetFallbackAccessibleWindowTitle()
 #endif
 }
 
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+std::unique_ptr<ProfilePickerDiceSignInProvider>
+ProfilePickerFlowController::CreateDiceSignInProvider() {
+  return std::make_unique<ProfilePickerDiceSignInProvider>(host(),
+                                                           kAccessPoint);
+}
+
+absl::optional<SkColor> ProfilePickerFlowController::GetProfileColor() {
+  return profile_color_;
+}
+#endif
+
 std::unique_ptr<ProfilePickerSignedInFlowController>
 ProfilePickerFlowController::CreateSignedInFlowController(
     Profile* signed_in_profile,
-    const CoreAccountInfo& account_info,
-    std::unique_ptr<content::WebContents> contents) {
+    std::unique_ptr<content::WebContents> contents,
+    FinishFlowCallback finish_flow_callback) {
   DCHECK(!weak_signed_in_flow_controller_);
-
-  created_profile_ = signed_in_profile->GetWeakPtr();
-  auto step_completed_callback =
-      base::BindOnce(&ProfilePickerFlowController::HandleIdentityStepsCompleted,
-                     // Unretained ok: the callback is passed to a step that
-                     // the `this` will own and outlive.
-                     base::Unretained(this),
-                     // Unretained ok: the steps register a profile keep-alive
-                     // and will be alive until this callback runs.
-                     base::Unretained(created_profile_.get()));
-
   auto signed_in_flow = std::make_unique<ProfileCreationSignedInFlowController>(
-      host(), signed_in_profile, account_info, std::move(contents),
-      suggested_profile_color_, std::move(step_completed_callback));
+      host(), signed_in_profile, std::move(contents), profile_color_,
+      std::move(finish_flow_callback));
   weak_signed_in_flow_controller_ = signed_in_flow->GetWeakPtr();
   return signed_in_flow;
-}
-
-void ProfilePickerFlowController::SwitchToSignedOutPostIdentityFlow(
-    Profile* profile,
-    PostHostClearedCallback post_host_cleared_callback,
-    StepSwitchFinishedCallback step_switch_finished_callback) {
-  CHECK(profile);
-  created_profile_ = profile->GetWeakPtr();
-  CreateSignedOutFlowWebContents(created_profile_.get());
-
-  HandleIdentityStepsCompleted(
-      created_profile_.get(), std::move(post_host_cleared_callback),
-      /*is_continue_callback=*/false, std::move(step_switch_finished_callback));
-}
-
-base::queue<ProfileManagementFlowController::Step>
-ProfilePickerFlowController::RegisterPostIdentitySteps(
-    PostHostClearedCallback post_host_cleared_callback) {
-  CHECK(created_profile_);
-  base::queue<ProfileManagementFlowController::Step> post_identity_steps;
-
-  content::WebContents* web_contents = nullptr;
-  if (weak_signed_in_flow_controller_) {
-    // TODO(crbug.com/1501785): Find a way to get the web contents without
-    // relying on the weak ptr.
-    web_contents = weak_signed_in_flow_controller_->contents();
-    CHECK(web_contents, base::NotFatalUntil::M127);
-  } else {
-    // TODO(crbug.com/1501785): Find another way to fetch the web contents.
-    web_contents = GetSignedOutFlowWebContents();
-    CHECK(web_contents, base::NotFatalUntil::M127);
-  }
-
-  auto search_engine_choice_step_completed = base::BindOnce(
-      &ProfilePickerFlowController::AdvanceToNextPostIdentityStep,
-      base::Unretained(this));
-  SearchEngineChoiceDialogService* search_engine_choice_dialog_service =
-      SearchEngineChoiceDialogServiceFactory::GetForProfile(
-          created_profile_.get());
-  RegisterStep(
-      Step::kSearchEngineChoice,
-      ProfileManagementStepController::CreateForSearchEngineChoice(
-          host(), search_engine_choice_dialog_service, web_contents,
-          SearchEngineChoiceDialogService::EntryPoint::kProfileCreation,
-          std::move(search_engine_choice_step_completed)));
-  post_identity_steps.emplace(
-      ProfileManagementFlowController::Step::kSearchEngineChoice);
-
-  RegisterStep(
-      Step::kFinishFlow,
-      ProfileManagementStepController::CreateForFinishFlowAndRunInBrowser(
-          host(),
-          base::BindOnce(
-              &ProfilePickerFlowController::FinishFlowAndRunInBrowser,
-              base::Unretained(this), base::Unretained(created_profile_.get()),
-              std::move(post_host_cleared_callback))));
-  post_identity_steps.emplace(
-      ProfileManagementFlowController::Step::kFinishFlow);
-
-  return post_identity_steps;
 }

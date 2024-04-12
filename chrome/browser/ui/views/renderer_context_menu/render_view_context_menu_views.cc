@@ -207,7 +207,7 @@ bool RenderViewContextMenuViews::GetAcceleratorForCommandId(
       *accel = ui::Accelerator(ui::VKEY_R, ui::EF_CONTROL_DOWN);
       return true;
 
-    case IDC_CONTENT_CONTEXT_SAVEPLUGINAS:
+    case IDC_CONTENT_CONTEXT_SAVEAVAS:
     case IDC_SAVE_PAGE:
       *accel = ui::Accelerator(ui::VKEY_S, ui::EF_CONTROL_DOWN);
       return true;
@@ -298,20 +298,12 @@ void RenderViewContextMenuViews::ExecuteCommand(int command_id,
 
     case IDC_WRITING_DIRECTION_RTL:
     case IDC_WRITING_DIRECTION_LTR: {
-      // Note: we get the local render frame host so that the writing mode
-      // settings changes apply to the correct frame. See crbug.com/1129073
-      // for a description of what happens if we use the outermost frame.
-      content::RenderFrameHost* rfh = GetRenderFrameHost();
-      // It's possible that the frame drops out from under us while the context
-      // menu is open. In this case, we'll not perform the action, but still
-      // record metrics.
-      if (rfh) {
-        rfh->GetRenderWidgetHost()->UpdateTextDirection(
-            (command_id == IDC_WRITING_DIRECTION_RTL)
-                ? base::i18n::RIGHT_TO_LEFT
-                : base::i18n::LEFT_TO_RIGHT);
-        rfh->GetRenderWidgetHost()->NotifyTextDirection();
-      }
+      content::RenderViewHost* view_host = GetRenderViewHost();
+      view_host->GetWidget()->UpdateTextDirection(
+          (command_id == IDC_WRITING_DIRECTION_RTL)
+              ? base::i18n::RIGHT_TO_LEFT
+              : base::i18n::LEFT_TO_RIGHT);
+      view_host->GetWidget()->NotifyTextDirection();
       RenderViewContextMenu::RecordUsedItem(command_id);
       break;
     }
@@ -382,6 +374,20 @@ void RenderViewContextMenuViews::AppendPlatformEditableItems() {
       IDC_WRITING_DIRECTION_MENU,
       l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_WRITING_DIRECTION_MENU),
       &bidi_submenu_model_);
+}
+
+void RenderViewContextMenuViews::ExecOpenInReadAnything() {
+  Browser* browser = GetBrowser();
+  if (!browser) {
+    return;
+  }
+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
+  if (!browser_view) {
+    return;
+  }
+  browser_view->side_panel_coordinator()->Show(
+      SidePanelEntry::Id::kReadAnything,
+      SidePanelUtil::SidePanelOpenTrigger::kReadAnythingContextMenu);
 }
 
 void RenderViewContextMenuViews::Show() {

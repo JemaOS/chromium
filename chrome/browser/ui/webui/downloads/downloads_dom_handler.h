@@ -56,10 +56,6 @@ class DownloadsDOMHandler : public content::WebContentsObserver,
   void OpenFileRequiringGesture(const std::string& id) override;
   void Drag(const std::string& id) override;
   void SaveDangerousRequiringGesture(const std::string& id) override;
-  void SaveSuspiciousRequiringGesture(const std::string& id) override;
-  void RecordOpenBypassWarningPrompt(const std::string& id) override;
-  void SaveDangerousFromPromptRequiringGesture(const std::string& id) override;
-  void RecordCancelBypassWarningPrompt(const std::string& id) override;
   void DiscardDangerous(const std::string& id) override;
   void RetryDownload(const std::string& id) override;
   void Show(const std::string& id) override;
@@ -74,8 +70,6 @@ class DownloadsDOMHandler : public content::WebContentsObserver,
   void ReviewDangerousRequiringGesture(const std::string& id) override;
   void DeepScan(const std::string& id) override;
   void BypassDeepScanRequiringGesture(const std::string& id) override;
-  void OpenEsbSettings() override;
-  void IsEligibleForEsbPromo(IsEligibleForEsbPromoCallback callback) override;
 
  protected:
   // These methods are for mocking so that most of this class does not actually
@@ -86,8 +80,7 @@ class DownloadsDOMHandler : public content::WebContentsObserver,
   // Actually remove downloads with an ID in |removals_|. This cannot be undone.
   void FinalizeRemovals();
 
-  using DownloadVector =
-      std::vector<raw_ptr<download::DownloadItem, VectorExperimental>>;
+  using DownloadVector = std::vector<download::DownloadItem*>;
 
   // Remove all downloads in |to_remove|. Safe downloads can be revived,
   // dangerous ones are immediately removed. Protected for testing.

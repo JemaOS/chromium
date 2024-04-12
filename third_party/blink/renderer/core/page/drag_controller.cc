@@ -103,7 +103,6 @@
 
 namespace blink {
 
-using mojom::blink::FormControlType;
 using ui::mojom::blink::DragOperation;
 
 static const int kMaxOriginalImageArea = 1500 * 1500;
@@ -257,10 +256,7 @@ void DragController::PerformDrag(DragData* drag_data, LocalFrame& local_root) {
   if ((drag_destination_action_ & kDragDestinationActionDHTML) &&
       document_is_handling_drag_) {
     bool prevented_default = false;
-    if (drag_data->ForceDefaultAction()) {
-      // Tell the document that the drag has left the building.
-      DragExited(drag_data, local_root);
-    } else if (local_root.View()) {
+    if (local_root.View()) {
       // Sending an event can result in the destruction of the view and part.
       DataTransfer* data_transfer = CreateDraggingDataTransfer(
           DataTransferAccessPolicy::kReadable, drag_data);
@@ -300,29 +296,38 @@ void DragController::PerformDrag(DragData* drag_data, LocalFrame& local_root) {
   }
 
   if (OperationForLoad(drag_data, local_root) != DragOperation::kNone) {
-    ResourceRequest resource_request(drag_data->AsURL());
-    resource_request.SetHasUserGesture(LocalFrame::HasTransientUserActivation(
-        document_under_mouse_ ? document_under_mouse_->GetFrame() : nullptr));
+    if (page_->GetSettings().GetNavigateOnDragDrop()) {
+      ResourceRequest resource_request(drag_data->AsURL());
+      resource_request.SetHasUserGesture(LocalFrame::HasTransientUserActivation(
+          document_under_mouse_ ? document_under_mouse_->GetFrame() : nullptr));
 
-    // Use a unique origin to match other navigations that are initiated
-    // outside of a renderer process (e.g. omnibox navigations).  Here, the
-    // initiator of the navigation is a user dragging files from *outside* of
-    // the current page.  See also https://crbug.com/930049.
-    //
-    // TODO(lukasza): Once drag-and-drop remembers the source of the drag
-    // (unique origin for drags started from top-level Chrome like bookmarks
-    // or for drags started from other apps like Windows Explorer;  specific
-    // origin for drags started from another tab) we should use the source of
-    // the drag as the initiator of the navigation below.
-    resource_request.SetRequestorOrigin(SecurityOrigin::CreateUniqueOpaque());
+      // Use a unique origin to match other navigations that are initiated
+      // outside of a renderer process (e.g. omnibox navigations).  Here, the
+      // initiator of the navigation is a user dragging files from *outside* of
+      // the current page.  See also https://crbug.com/930049.
+      //
+      // TODO(lukasza): Once drag-and-drop remembers the source of the drag
+      // (unique origin for drags started from top-level Chrome like bookmarks
+      // or for drags started from other apps like Windows Explorer;  specific
+      // origin for drags started from another tab) we should use the source of
+      // the drag as the initiator of the navigation below.
+      resource_request.SetRequestorOrigin(SecurityOrigin::CreateUniqueOpaque());
 
-    FrameLoadRequest request(nullptr, resource_request);
+      FrameLoadRequest request(nullptr, resource_request);
 
-    // Open the dropped URL in a new tab to avoid potential data-loss in the
-    // current tab. See https://crbug.com/451659.
-    request.SetNavigationPolicy(
-        NavigationPolicy::kNavigationPolicyNewForegroundTab);
-    local_root.Navigate(request, WebFrameLoadType::kStandard);
+      // Open the dropped URL in a new tab to avoid potential data-loss in the
+      // current tab. See https://crbug.com/451659.
+      request.SetNavigationPolicy(
+          NavigationPolicy::kNavigationPolicyNewForegroundTab);
+      local_root.Navigate(request, WebFrameLoadType::kStandard);
+    }
+
+    // TODO(bokan): This case happens when we end a URL drag inside a guest
+    // process which doesn't navigate. We assume that since we'll navigate the
+    // page in the general case we don't end up sending `dragleave` and
+    // `dragend` events but for plugins we wont navigate so it seems we should
+    // be sending these events. crbug.com/748243.
+    local_root.GetEventHandler().ClearDragState();
   }
 
   document_under_mouse_ = nullptr;
@@ -338,9 +343,8 @@ void DragController::MouseMovedIntoDocument(Document* new_document) {
   document_under_mouse_ = new_document;
 }
 
-DragController::Operation DragController::DragEnteredOrUpdated(
-    DragData* drag_data,
-    LocalFrame& local_root) {
+DragOperation DragController::DragEnteredOrUpdated(DragData* drag_data,
+                                                   LocalFrame& local_root) {
   DCHECK(drag_data);
 
   MouseMovedIntoDocument(local_root.DocumentAtPoint(
@@ -353,16 +357,12 @@ DragController::Operation DragController::DragEnteredOrUpdated(
           : static_cast<DragDestinationAction>(kDragDestinationActionDHTML |
                                                kDragDestinationActionEdit);
 
-  Operation drag_operation;
-  document_is_handling_drag_ =
-      TryDocumentDrag(drag_data, drag_destination_action_,
-                      drag_operation.operation, local_root);
+  DragOperation drag_operation = DragOperation::kNone;
+  document_is_handling_drag_ = TryDocumentDrag(
+      drag_data, drag_destination_action_, drag_operation, local_root);
   if (!document_is_handling_drag_ &&
-      (drag_destination_action_ & kDragDestinationActionLoad)) {
-    drag_operation.operation = OperationForLoad(drag_data, local_root);
-  }
-
-  drag_operation.document_is_handling_drag = document_is_handling_drag_;
+      (drag_destination_action_ & kDragDestinationActionLoad))
+    drag_operation = OperationForLoad(drag_data, local_root);
   return drag_operation;
 }
 
@@ -371,9 +371,8 @@ static HTMLInputElement* AsFileInput(Node* node) {
   for (; node; node = node->OwnerShadowHost()) {
     auto* html_input_element = DynamicTo<HTMLInputElement>(node);
     if (html_input_element &&
-        html_input_element->FormControlType() == FormControlType::kInputFile) {
+        html_input_element->type() == input_type_names::kFile)
       return html_input_element;
-    }
   }
   return nullptr;
 }
@@ -512,7 +511,7 @@ static bool SetSelectionToDragCaret(LocalFrame* frame,
                                     const SelectionInDOMTree& drag_caret,
                                     Range*& range,
                                     const PhysicalOffset& point) {
-  frame->Selection().SetSelection(drag_caret, SetSelectionOptions());
+  frame->Selection().SetSelectionAndEndTyping(drag_caret);
   // TODO(editing-dev): The use of
   // UpdateStyleAndLayout
   // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -527,9 +526,8 @@ static bool SetSelectionToDragCaret(LocalFrame* frame,
   if (!position.IsConnected())
     return false;
 
-  frame->Selection().SetSelection(
-      SelectionInDOMTree::Builder().Collapse(position).Build(),
-      SetSelectionOptions());
+  frame->Selection().SetSelectionAndEndTyping(
+      SelectionInDOMTree::Builder().Collapse(position).Build());
   // TODO(editing-dev): The use of
   // UpdateStyleAndLayout
   // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -652,7 +650,7 @@ bool DragController::ConcludeEditDrag(DragData* drag_data) {
       MakeGarbageCollected<DragAndDropCommand>(*inner_frame->GetDocument()));
 
   if (DragIsMove(inner_frame->Selection(), drag_data) ||
-      IsRichlyEditablePosition(drag_caret.Anchor())) {
+      IsRichlyEditablePosition(drag_caret.Base())) {
     DragSourceType drag_source_type = DragSourceType::kHTMLSource;
     DocumentFragment* fragment = DocumentFragmentFromDragData(
         drag_data, inner_frame, range, true, drag_source_type);
@@ -679,15 +677,13 @@ bool DragController::ConcludeEditDrag(DragData* drag_data) {
                   *inner_frame,
                   inner_frame->Selection()
                       .ComputeVisibleSelectionInDOMTreeDeprecated()),
-              delete_mode, drag_caret.Anchor())) {
+              delete_mode, drag_caret.Base()))
         return false;
-      }
 
-      inner_frame->Selection().SetSelection(
+      inner_frame->Selection().SetSelectionAndEndTyping(
           SelectionInDOMTree::Builder()
               .SetBaseAndExtent(EphemeralRange(range))
-              .Build(),
-          SetSelectionOptions());
+              .Build());
       if (inner_frame->Selection().IsAvailable()) {
         DCHECK(document_under_mouse_);
         if (!inner_frame->GetEditor().ReplaceSelectionAfterDraggingWithEvents(
@@ -945,11 +941,10 @@ static void PrepareDataTransferForImageDrag(LocalFrame* source,
     // TODO(editing-dev): We should use |EphemeralRange| instead of |Range|.
     Range* range = source->GetDocument()->createRange();
     range->selectNode(node, ASSERT_NO_EXCEPTION);
-    source->Selection().SetSelection(
+    source->Selection().SetSelectionAndEndTyping(
         SelectionInDOMTree::Builder()
             .SetBaseAndExtent(EphemeralRange(range))
-            .Build(),
-        SetSelectionOptions());
+            .Build());
   }
   data_transfer->DeclareAndWriteDragImage(node, link_url, image_url, label);
 }
@@ -1136,8 +1131,13 @@ gfx::Rect DragRectForImage(const DragImage* drag_image,
 
 std::unique_ptr<DragImage> DragImageForLink(const KURL& link_url,
                                             const String& link_text,
-                                            float device_scale_factor) {
-  return DragImage::Create(link_url, link_text, device_scale_factor);
+                                            float device_scale_factor,
+                                            const Document* document) {
+  FontDescription font_description;
+  LayoutTheme::GetTheme().SystemFont(blink::CSSValueID::kNone, font_description,
+                                     document);
+  return DragImage::Create(link_url, link_text, font_description,
+                           device_scale_factor);
 }
 
 gfx::Rect DragRectForLink(const DragImage* link_image,
@@ -1184,9 +1184,9 @@ std::unique_ptr<DragImage> DragController::DragImageForSelection(
   PaintFlags paint_flags =
       PaintFlag::kSelectionDragImageOnly | PaintFlag::kOmitCompositingInfo;
 
-  PaintRecordBuilder builder;
+  auto* builder = MakeGarbageCollected<PaintRecordBuilder>();
   frame.View()->PaintOutsideOfLifecycle(
-      builder.Context(), paint_flags,
+      builder->Context(), paint_flags,
       CullRect(gfx::ToEnclosingRect(painting_rect)));
 
   auto property_tree_state = frame.View()
@@ -1196,7 +1196,7 @@ std::unique_ptr<DragImage> DragController::DragImageForSelection(
                                  .Unalias();
   return DataTransfer::CreateDragImageForFrame(
       frame, opacity, painting_rect.size(), painting_rect.OffsetFromOrigin(),
-      builder, property_tree_state);
+      *builder, property_tree_state);
 }
 
 namespace {
@@ -1214,10 +1214,9 @@ void SelectEnclosingAnchorIfContentEditable(LocalFrame* frame) {
     if (Node* anchor = EnclosingAnchorElement(
             frame->Selection()
                 .ComputeVisibleSelectionInDOMTreeDeprecated()
-                .Anchor())) {
-      frame->Selection().SetSelection(
-          SelectionInDOMTree::Builder().SelectAllChildren(*anchor).Build(),
-          SetSelectionOptions());
+                .Base())) {
+      frame->Selection().SetSelectionAndEndTyping(
+          SelectionInDOMTree::Builder().SelectAllChildren(*anchor).Build());
     }
   }
 }
@@ -1285,7 +1284,7 @@ std::unique_ptr<DragImage> DetermineDragImageAndRect(
     if (!drag_image) {
       DCHECK(frame->GetPage());
       drag_image = DragImageForLink(link_url, hit_test_result.TextContent(),
-                                    device_scale_factor);
+                                    device_scale_factor, frame->GetDocument());
       drag_obj_rect = DragRectForLink(drag_image.get(), mouse_dragged_point,
                                       device_scale_factor,
                                       frame->GetPage()->PageScaleFactor());

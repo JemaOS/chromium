@@ -105,12 +105,8 @@ class TabManager::TabManagerSessionRestoreObserver final
 
 TabManager::TabManager() {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  if (!base::FeatureList::IsEnabled(
-          performance_manager::features::
-              kAshUrgentDiscardingFromPerformanceManager)) {
-    delegate_ =
-        std::make_unique<TabManagerDelegate>(weak_ptr_factory_.GetWeakPtr());
-  }
+  delegate_ =
+      std::make_unique<TabManagerDelegate>(weak_ptr_factory_.GetWeakPtr());
 #endif
   session_restore_observer_ =
       std::make_unique<TabManagerSessionRestoreObserver>(this);
@@ -123,23 +119,18 @@ void TabManager::Start() {
   // reliable. On Windows, Mac and ChromeOS Lacros, urgent discarding is
   // handled by Performance Manager.
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  if (!base::FeatureList::IsEnabled(
-          performance_manager::features::
-              kAshUrgentDiscardingFromPerformanceManager)) {
-    delegate_->StartPeriodicOOMScoreUpdate();
+  delegate_->StartPeriodicOOMScoreUpdate();
 
-    // Create a |MemoryPressureListener| to listen for memory events when
-    // MemoryCoordinator is disabled. When MemoryCoordinator is enabled
-    // it asks TabManager to do tab discarding.
-    base::MemoryPressureMonitor* monitor = base::MemoryPressureMonitor::Get();
-    if (monitor) {
-      RegisterMemoryPressureListener();
-      base::MemoryPressureListener::MemoryPressureLevel level =
-          monitor->GetCurrentPressureLevel();
-      if (level ==
-          base::MemoryPressureListener::MEMORY_PRESSURE_LEVEL_CRITICAL) {
-        OnMemoryPressure(level);
-      }
+  // Create a |MemoryPressureListener| to listen for memory events when
+  // MemoryCoordinator is disabled. When MemoryCoordinator is enabled
+  // it asks TabManager to do tab discarding.
+  base::MemoryPressureMonitor* monitor = base::MemoryPressureMonitor::Get();
+  if (monitor) {
+    RegisterMemoryPressureListener();
+    base::MemoryPressureListener::MemoryPressureLevel level =
+        monitor->GetCurrentPressureLevel();
+    if (level == base::MemoryPressureListener::MEMORY_PRESSURE_LEVEL_CRITICAL) {
+      OnMemoryPressure(level);
     }
   }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
@@ -179,14 +170,8 @@ LifecycleUnitVector TabManager::GetSortedLifecycleUnits() {
 void TabManager::DiscardTab(LifecycleUnitDiscardReason reason,
                             TabDiscardDoneCB tab_discard_done) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  if (!base::FeatureList::IsEnabled(
-          performance_manager::features::
-              kAshUrgentDiscardingFromPerformanceManager)) {
-    // Call Chrome OS specific low memory handling process.
-    delegate_->LowMemoryKill(reason, std::move(tab_discard_done));
-  } else {
-    DiscardTabImpl(reason, std::move(tab_discard_done));
-  }
+  // Call Chrome OS specific low memory handling process.
+  delegate_->LowMemoryKill(reason, std::move(tab_discard_done));
 #else
   DiscardTabImpl(reason, std::move(tab_discard_done));
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)

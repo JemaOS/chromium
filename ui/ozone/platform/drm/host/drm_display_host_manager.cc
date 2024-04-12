@@ -176,7 +176,7 @@ void OpenDeviceAsync(const base::FilePath& device_path,
 
 struct DisplayCard {
   base::FilePath path;
-  std::optional<std::string> driver;
+  absl::optional<std::string> driver;
 };
 
 std::vector<DisplayCard> GetValidDisplayCards() {
@@ -240,6 +240,7 @@ base::FilePath GetPrimaryDisplayCardPath() {
   }
 
   LOG(FATAL) << "Failed to open primary graphics device.";
+  return base::FilePath();  // Not reached.
 }
 
 }  // namespace
@@ -267,6 +268,7 @@ DrmDisplayHostManager::DrmDisplayHostManager(
                                         /*is_primary_device=*/true);
     if (!primary_drm_device_) {
       LOG(FATAL) << "Failed to open primary graphics card";
+      return;
     }
     host_properties->supports_overlays = primary_drm_device_->is_atomic();
     drm_devices_[primary_graphics_card_path_] =
@@ -404,7 +406,7 @@ void DrmDisplayHostManager::UpdateDisplays(
 void DrmDisplayHostManager::ConfigureDisplays(
     const std::vector<display::DisplayConfigurationParams>& config_requests,
     display::ConfigureCallback callback,
-    display::ModesetFlags modeset_flags) {
+    uint32_t modeset_flag) {
   for (auto& config : config_requests) {
     if (GetDisplay(config.id)->is_dummy()) {
       std::move(callback).Run(true);
@@ -413,7 +415,7 @@ void DrmDisplayHostManager::ConfigureDisplays(
   }
 
   proxy_->GpuConfigureNativeDisplays(config_requests, std::move(callback),
-                                     modeset_flags);
+                                     modeset_flag);
 }
 
 void DrmDisplayHostManager::OnDeviceEvent(const DeviceEvent& event) {
@@ -632,7 +634,7 @@ void DrmDisplayHostManager::GpuTookDisplayControl(bool status) {
   DCHECK(display_control_change_pending_);
 
   if (status) {
-    scoped_input_devices_disabler_.reset();
+    input_controller_->SetInputDevicesEnabled(true);
     display_externally_controlled_ = false;
   }
 
@@ -653,7 +655,7 @@ void DrmDisplayHostManager::GpuRelinquishedDisplayControl(bool status) {
   DCHECK(display_control_change_pending_);
 
   if (status) {
-    scoped_input_devices_disabler_ = input_controller_->DisableInputDevices();
+    input_controller_->SetInputDevicesEnabled(false);
     display_externally_controlled_ = true;
   }
 
@@ -675,7 +677,7 @@ void DrmDisplayHostManager::GpuShouldDisplayEventTriggerConfiguration(
 
 void DrmDisplayHostManager::RunUpdateDisplaysCallback(
     display::GetDisplaysCallback callback) const {
-  std::vector<raw_ptr<display::DisplaySnapshot, VectorExperimental>> snapshots;
+  std::vector<display::DisplaySnapshot*> snapshots;
   for (const auto& display : displays_)
     snapshots.push_back(display->snapshot());
 

@@ -29,7 +29,7 @@ MediaStreamComponent* CreateMediaStreamComponent(
 
 class FakeRTCRtpSenderImpl : public blink::RTCRtpSenderPlatform {
  public:
-  FakeRTCRtpSenderImpl(std::optional<String> track_id,
+  FakeRTCRtpSenderImpl(absl::optional<String> track_id,
                        Vector<String> stream_ids,
                        scoped_refptr<base::SingleThreadTaskRunner> task_runner);
   FakeRTCRtpSenderImpl(const FakeRTCRtpSenderImpl&);
@@ -47,13 +47,15 @@ class FakeRTCRtpSenderImpl : public blink::RTCRtpSenderPlatform {
   std::unique_ptr<blink::RtcDtmfSenderHandler> GetDtmfSender() const override;
   std::unique_ptr<webrtc::RtpParameters> GetParameters() const override;
   void SetParameters(Vector<webrtc::RtpEncodingParameters>,
-                     std::optional<webrtc::DegradationPreference>,
+                     absl::optional<webrtc::DegradationPreference>,
                      blink::RTCVoidRequest*) override;
-  void GetStats(RTCStatsReportCallback) override;
+  void GetStats(RTCStatsReportCallback,
+                const Vector<webrtc::NonStandardGroupId>&,
+                bool is_track_stats_deprecation_trial_enabled) override;
   void SetStreams(const Vector<String>& stream_ids) override;
 
  private:
-  std::optional<String> track_id_;
+  absl::optional<String> track_id_;
   Vector<String> stream_ids_;
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 };
@@ -75,10 +77,12 @@ class FakeRTCRtpReceiverImpl : public RTCRtpReceiverPlatform {
   MediaStreamComponent* Track() const override;
   Vector<String> StreamIds() const override;
   Vector<std::unique_ptr<RTCRtpSource>> GetSources() override;
-  void GetStats(RTCStatsReportCallback) override;
+  void GetStats(RTCStatsReportCallback,
+                const Vector<webrtc::NonStandardGroupId>&,
+                bool is_track_stats_deprecation_trial_enabled) override;
   std::unique_ptr<webrtc::RtpParameters> GetParameters() const override;
   void SetJitterBufferMinimumDelay(
-      std::optional<double> delay_seconds) override;
+      absl::optional<double> delay_seconds) override;
 
  private:
   Persistent<MediaStreamComponent> component_;
@@ -92,7 +96,7 @@ class FakeRTCRtpTransceiverImpl : public RTCRtpTransceiverPlatform {
       FakeRTCRtpSenderImpl sender,
       FakeRTCRtpReceiverImpl receiver,
       webrtc::RtpTransceiverDirection direction,
-      std::optional<webrtc::RtpTransceiverDirection> current_direction);
+      absl::optional<webrtc::RtpTransceiverDirection> current_direction);
   ~FakeRTCRtpTransceiverImpl() override;
 
   uintptr_t Id() const override;
@@ -102,9 +106,9 @@ class FakeRTCRtpTransceiverImpl : public RTCRtpTransceiverPlatform {
   webrtc::RtpTransceiverDirection Direction() const override;
   webrtc::RTCError SetDirection(
       webrtc::RtpTransceiverDirection direction) override;
-  std::optional<webrtc::RtpTransceiverDirection> CurrentDirection()
+  absl::optional<webrtc::RtpTransceiverDirection> CurrentDirection()
       const override;
-  std::optional<webrtc::RtpTransceiverDirection> FiredDirection()
+  absl::optional<webrtc::RtpTransceiverDirection> FiredDirection()
       const override;
 
   webrtc::RTCError Stop() override;
@@ -122,7 +126,7 @@ class FakeRTCRtpTransceiverImpl : public RTCRtpTransceiverPlatform {
   FakeRTCRtpSenderImpl sender_;
   FakeRTCRtpReceiverImpl receiver_;
   webrtc::RtpTransceiverDirection direction_;
-  std::optional<webrtc::RtpTransceiverDirection> current_direction_;
+  absl::optional<webrtc::RtpTransceiverDirection> current_direction_;
 };
 
 }  // namespace blink

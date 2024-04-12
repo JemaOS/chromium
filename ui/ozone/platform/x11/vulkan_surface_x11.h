@@ -12,7 +12,7 @@
 #include "ui/gfx/x/event.h"
 
 namespace x11 {
-class ScopedEventSelector;
+class XScopedEventSelector;
 }
 
 namespace ui {
@@ -42,7 +42,7 @@ class VulkanSurfaceX11 : public gpu::VulkanSurface, public x11::EventObserver {
 
   const x11::Window parent_window_;
   x11::Window window_;
-  x11::ScopedEventSelector event_selector_;
+  std::unique_ptr<x11::XScopedEventSelector> event_selector_;
 };
 
 }  // namespace ui

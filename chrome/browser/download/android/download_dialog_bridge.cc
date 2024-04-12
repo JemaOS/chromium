@@ -10,12 +10,9 @@
 #include "base/metrics/histogram_macros.h"
 #include "chrome/browser/download/android/download_controller.h"
 #include "chrome/browser/download/android/jni_headers/DownloadDialogBridge_jni.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profile_android.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/common/pref_names.h"
 #include "components/download/public/common/download_features.h"
-#include "components/prefs/android/pref_service_android.h"
 #include "components/prefs/pref_service.h"
 #include "ui/android/window_android.h"
 
@@ -49,7 +46,7 @@ void DownloadDialogBridge::ShowDialog(
     net::NetworkChangeNotifier::ConnectionType connection_type,
     DownloadLocationDialogType dialog_type,
     const base::FilePath& suggested_path,
-    Profile* profile,
+    bool is_incognito,
     DialogCallback dialog_callback) {
   if (!native_window)
     return;
@@ -86,7 +83,7 @@ void DownloadDialogBridge::ShowDialog(
       static_cast<int>(dialog_type),
       base::android::ConvertUTF8ToJavaString(env,
                                              suggested_path.AsUTF8Unsafe()),
-      ProfileAndroid::FromProfile(profile)->GetJavaObject());
+      is_incognito);
 }
 
 void DownloadDialogBridge::OnComplete(
@@ -124,14 +121,30 @@ void DownloadDialogBridge::CompleteSelection(DownloadDialogResult result) {
 }
 
 // static
+base::android::ScopedJavaLocalRef<jstring>
+JNI_DownloadDialogBridge_GetDownloadDefaultDirectory(JNIEnv* env) {
+  PrefService* pref_service =
+      ProfileManager::GetActiveUserProfile()->GetOriginalProfile()->GetPrefs();
+
+  return base::android::ConvertUTF8ToJavaString(
+      env, pref_service->GetString(prefs::kDownloadDefaultDirectory));
+}
+
+// static
 void JNI_DownloadDialogBridge_SetDownloadAndSaveFileDefaultDirectory(
     JNIEnv* env,
-    const base::android::JavaParamRef<jobject>& jpref_service,
     const base::android::JavaParamRef<jstring>& directory) {
   PrefService* pref_service =
-      PrefServiceAndroid::FromPrefServiceAndroid(jpref_service);
+      ProfileManager::GetActiveUserProfile()->GetOriginalProfile()->GetPrefs();
 
   base::FilePath path(base::android::ConvertJavaStringToUTF8(env, directory));
   pref_service->SetFilePath(prefs::kDownloadDefaultDirectory, path);
   pref_service->SetFilePath(prefs::kSaveFileDefaultDirectory, path);
+}
+
+jboolean JNI_DownloadDialogBridge_IsLocationDialogManaged(JNIEnv* env) {
+  PrefService* pref_service =
+      ProfileManager::GetActiveUserProfile()->GetOriginalProfile()->GetPrefs();
+
+  return pref_service->IsManagedPreference(prefs::kPromptForDownload);
 }

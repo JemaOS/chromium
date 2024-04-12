@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<script src="../../resources/run-after-layout-and-paint.js"></script>
 <style>
 ::selection {
     background-color: blue;
@@ -12,18 +11,8 @@
 </style>
 <span>Any textual selection in this sentence should have a green background when the window is inactive.</span>
 <script>
-if (window.testRunner) {
-  testRunner.waitUntilDone();
-}
-onload = function() {
-    var span = document.querySelector("span");
-    window.getSelection().setBaseAndExtent(span, 0, span, 1);
-
-    runAfterLayoutAndPaint(function() {
-        if (window.testRunner)
-            testRunner.setWindowFocus(false);
-        runAfterLayoutAndPaint(function() {
-        }, true);
-    }, false);
-}
+var span = document.querySelector("span");
+window.getSelection().setBaseAndExtent(span, 0, span, 1);
+if (window.testRunner)
+    testRunner.setWindowFocus(false);
 </script>

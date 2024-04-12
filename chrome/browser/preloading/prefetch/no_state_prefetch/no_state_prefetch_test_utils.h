@@ -43,7 +43,7 @@ class TestNoStatePrefetchContents : public NoStatePrefetchContents,
       content::BrowserContext* browser_context,
       const GURL& url,
       const content::Referrer& referrer,
-      const std::optional<url::Origin>& initiator_origin,
+      const absl::optional<url::Origin>& initiator_origin,
       Origin origin,
       FinalStatus expected_final_status,
       bool ignore_final_status);
@@ -89,7 +89,8 @@ class TestNoStatePrefetchContents : public NoStatePrefetchContents,
 // A handle to a TestNoStatePrefetchContents whose lifetime is under the
 // caller's control. A NoStatePrefetchContents may be destroyed at any point.
 // This allows tracking the FinalStatus.
-class TestPrerender : public NoStatePrefetchContents::Observer {
+class TestPrerender : public NoStatePrefetchContents::Observer,
+                      public base::SupportsWeakPtr<TestPrerender> {
  public:
   TestPrerender();
 
@@ -121,10 +122,6 @@ class TestPrerender : public NoStatePrefetchContents::Observer {
 
   void OnPrefetchStop(NoStatePrefetchContents* contents) override;
 
-  base::WeakPtr<TestPrerender> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
  private:
   raw_ptr<TestNoStatePrefetchContents> contents_;
   FinalStatus final_status_;
@@ -139,7 +136,6 @@ class TestPrerender : public NoStatePrefetchContents::Observer {
   base::RunLoop create_loop_;
   base::RunLoop start_loop_;
   base::RunLoop stop_loop_;
-  base::WeakPtrFactory<TestPrerender> weak_ptr_factory_{this};
 };
 
 // Blocks until a TestNoStatePrefetchContents has been destroyed with the given
@@ -242,7 +238,7 @@ class TestNoStatePrefetchContentsFactory
       content::BrowserContext* browser_context,
       const GURL& url,
       const content::Referrer& referrer,
-      const std::optional<url::Origin>& initiator_origin,
+      const absl::optional<url::Origin>& initiator_origin,
       Origin origin) override;
 
  private:
@@ -369,9 +365,9 @@ class PrerenderInProcessBrowserTest : virtual public InProcessBrowserTest {
       external_protocol_handler_delegate_;
   std::unique_ptr<safe_browsing::TestSafeBrowsingServiceFactory>
       safe_browsing_factory_;
-  raw_ptr<TestNoStatePrefetchContentsFactory, AcrossTasksDanglingUntriaged>
+  raw_ptr<TestNoStatePrefetchContentsFactory, DanglingUntriaged>
       no_state_prefetch_contents_factory_;
-  raw_ptr<Browser, AcrossTasksDanglingUntriaged> explicitly_set_browser_;
+  raw_ptr<Browser, DanglingUntriaged> explicitly_set_browser_;
   bool autostart_test_server_;
   base::HistogramTester histogram_tester_;
   std::unique_ptr<net::EmbeddedTestServer> https_src_server_;

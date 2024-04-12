@@ -34,11 +34,11 @@ namespace blink {
 
 struct SameSizeAsTextRun {
   DISALLOW_NEW();
-  union {
-    const void* pointer;
-  };
-  int integer;
-  uint32_t bitfields : 4;
+  const void* pointer;
+  int integers[2];
+  float floats[2];
+  uint32_t bitfields : 10;
+  TabSize tab_size;
 };
 
 ASSERT_SIZE(TextRun, SameSizeAsTextRun);

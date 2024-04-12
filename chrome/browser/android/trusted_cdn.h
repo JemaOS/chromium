@@ -6,13 +6,17 @@
 #define CHROME_BROWSER_ANDROID_TRUSTED_CDN_H_
 
 #include "base/android/scoped_java_ref.h"
-#include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_observer.h"
+
+namespace content {
+class Page;
+}
 
 // Native part of Trusted CDN publisher URL provider. Managed by Java layer.
-class TrustedCdn {
+class TrustedCdn : public content::WebContentsObserver {
  public:
   TrustedCdn(JNIEnv* env, const base::android::JavaParamRef<jobject>& obj);
-  ~TrustedCdn();
+  ~TrustedCdn() override;
 
   void SetWebContents(
       JNIEnv* env,
@@ -22,11 +26,12 @@ class TrustedCdn {
                         const base::android::JavaParamRef<jobject>& obj);
   void OnDestroyed(JNIEnv* env,
                    const base::android::JavaParamRef<jobject>& obj);
-  base::android::ScopedJavaLocalRef<jobject> GetPublisherUrl(JNIEnv* env);
+
+  // content::WebContentsObserver
+  void PrimaryPageChanged(content::Page& page) override;
 
  private:
   base::android::ScopedJavaGlobalRef<jobject> jobj_;
-  raw_ptr<content::WebContents> web_contents_;
 };
 
 #endif  // CHROME_BROWSER_ANDROID_TRUSTED_CDN_H_

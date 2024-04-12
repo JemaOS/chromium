@@ -7,11 +7,13 @@
 
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "chrome/browser/ash/policy/dlp/dlp_files_controller.h"
 #include "chrome/browser/chromeos/policy/dlp/dialogs/dlp_warn_dialog.h"
 #include "chrome/browser/chromeos/policy/dlp/dialogs/policy_dialog_base.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_confidential_contents.h"
+#include "chrome/browser/chromeos/policy/dlp/dlp_confidential_file.h"
+#include "chrome/browser/chromeos/policy/dlp/dlp_file_destination.h"
 #include "ui/gfx/native_widget_types.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_observer.h"
@@ -31,30 +33,41 @@ class DlpWarnNotifier : public views::WidgetObserver {
   void OnWidgetDestroying(views::Widget* widget) override;
 
   // Shows a warning dialog that informs the user that printing is not
-  // recommended. Calls `callback` and passes user's choice of whether to
+  // recommended. Calls |callback| and passes user's choice of whether to
   // proceed or not.
-  void ShowDlpPrintWarningDialog(WarningCallback callback);
+  void ShowDlpPrintWarningDialog(OnDlpRestrictionCheckedCallback callback);
 
   // Shows a warning dialog that informs the user that screen capture is not
-  // recommended due to `confidential_contents` visible. Calls `callback` and
+  // recommended due to |confidential_contents| visible. Calls |callback| and
   // passes user's choice of whether to proceed or not.
   void ShowDlpScreenCaptureWarningDialog(
-      WarningCallback callback,
+      OnDlpRestrictionCheckedCallback callback,
       const DlpConfidentialContents& confidential_contents);
 
   // Shows a warning dialog that informs the user that video capture is not
-  // recommended due to `confidential_contents` visible. Calls `callback` and
+  // recommended due to |confidential_contents| visible. Calls |callback| and
   // passes user's choice of whether to proceed or not.
   void ShowDlpVideoCaptureWarningDialog(
-      WarningCallback callback,
+      OnDlpRestrictionCheckedCallback callback,
       const DlpConfidentialContents& confidential_contents);
 
+  // Shows a warning dialog that informs the user that |files_action| to
+  // |files_destination| on selected |confidential_files| is not recommended.
+  // Calls |callback| and passes user's choice of whether to proceed or not.
+  // Returns a pointer to the widget that owns the created dialog.
+  base::WeakPtr<views::Widget> ShowDlpFilesWarningDialog(
+      OnDlpRestrictionCheckedCallback callback,
+      const std::vector<DlpConfidentialFile>& confidential_files,
+      const DlpFileDestination& files_destination,
+      DlpFilesController::FileAction files_action,
+      gfx::NativeWindow modal_parent);
+
   // Shows a warning dialog that informs the user that screen sharing is not
-  // recommended due to `confidential_contents` visible. Calls `callback` and
+  // recommended due to |confidential_contents| visible. Calls |callback| and
   // passes user's choice of whether to proceed or not.
   // Returns a pointer to the widget that owns the created dialog.
   base::WeakPtr<views::Widget> ShowDlpScreenShareWarningDialog(
-      WarningCallback callback,
+      OnDlpRestrictionCheckedCallback callback,
       const DlpConfidentialContents& confidential_contents,
       const std::u16string& application_title);
 
@@ -68,18 +81,16 @@ class DlpWarnNotifier : public views::WidgetObserver {
 
   // Helper method to create and show a DlpWarnDialog.
   virtual base::WeakPtr<views::Widget> ShowDlpWarningDialog(
-      WarningCallback callback,
-      DlpWarnDialog::DlpWarnDialogOptions options);
+      OnDlpRestrictionCheckedCallback callback,
+      DlpWarnDialog::DlpWarnDialogOptions options,
+      gfx::NativeWindow modal_parent = nullptr);
 
-  // Helper method to show the `widget`.
-  virtual void ShowWidget(views::Widget* widget);
-
-  // Removes the `widget` from widgets_ and stops observing it.
+  // Removes the |widget| from widgets_ and stops observing it.
   void RemoveWidget(views::Widget* widget);
 
   // List of active widgets. Used in tests to verify that the dialog has or
   // hasn't been shown.
-  std::vector<raw_ptr<views::Widget, VectorExperimental>> widgets_;
+  std::vector<views::Widget*> widgets_;
 };
 
 }  // namespace policy

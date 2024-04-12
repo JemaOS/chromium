@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/extensions/file_manager/file_stream_md5_digester.h"
 
-#include <string_view>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -22,8 +21,7 @@ const int kMd5DigestBufferSize = 512 * 1024;  // 512 kB.
 }  // namespace
 
 FileStreamMd5Digester::FileStreamMd5Digester()
-    : buffer_(
-          base::MakeRefCounted<net::IOBufferWithSize>(kMd5DigestBufferSize)) {}
+    : buffer_(base::MakeRefCounted<net::IOBuffer>(kMd5DigestBufferSize)) {}
 
 FileStreamMd5Digester::~FileStreamMd5Digester() = default;
 
@@ -65,7 +63,8 @@ void FileStreamMd5Digester::OnChunkRead(int bytes_read) {
   }
 
   // Read data and digest it.
-  base::MD5Update(&md5_context_, std::string_view(buffer_->data(), bytes_read));
+  base::MD5Update(&md5_context_,
+                  base::StringPiece(buffer_->data(), bytes_read));
 
   // Kick off the next read.
   ReadNextChunk();

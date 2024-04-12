@@ -87,10 +87,6 @@ void SigninScreenExtensionsExternalLoader::OnExtensionListsUpdated(
   LoadFinished(prefs.Clone());
 }
 
-bool SigninScreenExtensionsExternalLoader::IsRollbackAllowed() const {
-  return true;
-}
-
 SigninScreenExtensionsExternalLoader::~SigninScreenExtensionsExternalLoader() =
     default;
 

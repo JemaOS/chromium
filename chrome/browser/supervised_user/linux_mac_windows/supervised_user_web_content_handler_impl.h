@@ -32,6 +32,7 @@ class SupervisedUserWebContentHandlerImpl
   void RequestLocalApproval(const GURL& url,
                             const std::u16string& child_display_name,
                             ApprovalRequestInitiatedCallback callback) override;
+  void ShowFeedback(GURL url, std::u16string reason) override;
 
  private:
   base::WeakPtrFactory<SupervisedUserWebContentHandlerImpl> weak_ptr_factory_{

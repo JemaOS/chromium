@@ -48,7 +48,10 @@ class CrowdDenySafeBrowsingRequest::SafeBrowsingClient
   }
 
   void CheckOrigin(const url::Origin& origin) {
-    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+    DCHECK_CURRENTLY_ON(
+        base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)
+            ? content::BrowserThread::UI
+            : content::BrowserThread::IO);
 
     // Start the timer before the call to CheckApiBlocklistUrl(), as it may
     // call back into OnCheckApiBlocklistUrlResult() synchronously.
@@ -112,10 +115,20 @@ CrowdDenySafeBrowsingRequest::CrowdDenySafeBrowsingRequest(
   client_ = std::make_unique<SafeBrowsingClient>(
       database_manager, weak_factory_.GetWeakPtr(),
       base::SequencedTaskRunner::GetCurrentDefault());
-  client_->CheckOrigin(origin);
+  if (base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)) {
+    client_->CheckOrigin(origin);
+  } else {
+    content::GetIOThreadTaskRunner({})->PostTask(
+        FROM_HERE, base::BindOnce(&SafeBrowsingClient::CheckOrigin,
+                                  base::Unretained(client_.get()), origin));
+  }
 }
 
 CrowdDenySafeBrowsingRequest::~CrowdDenySafeBrowsingRequest() {
+  if (!base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)) {
+    content::BrowserThread::DeleteSoon(content::BrowserThread::IO, FROM_HERE,
+                                       client_.release());
+  }
 }
 
 void CrowdDenySafeBrowsingRequest::OnReceivedResult(Verdict verdict) {

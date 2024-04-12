@@ -8,7 +8,6 @@
 
 #include "ash/components/arc/arc_prefs.h"
 #include "ash/constants/ash_features.h"
-#include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
 #include "base/command_line.h"
 #include "base/files/file_util.h"
@@ -19,13 +18,9 @@
 #include "base/task/thread_pool.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
-#include "chrome/browser/ash/drive/file_system_util.h"
 #include "chrome/browser/ash/login/login_pref_names.h"
 #include "chrome/browser/ash/login/onboarding_user_activity_counter.h"
-#include "chrome/browser/ash/login/oobe_metrics_helper.h"
 #include "chrome/browser/ash/login/oobe_quick_start/oobe_quick_start_pref_names.h"
-#include "chrome/browser/ash/login/ui/login_display_host.h"
-#include "chrome/browser/ash/login/ui/login_display_host_common.h"
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
@@ -66,13 +61,6 @@ void SaveStringPreferenceForced(const char* pref_name,
   prefs->CommitPendingWrite();
 }
 
-// Saves time "Local State" preference and forces its persistence to disk.
-void SaveTimePreferenceForced(const char* pref_name, base::Time value) {
-  PrefService* prefs = g_browser_process->local_state();
-  prefs->SetTime(pref_name, value);
-  prefs->CommitPendingWrite();
-}
-
 // Returns the path to flag file indicating that both parts of OOBE were
 // completed.
 // On chrome device, returns /home/chronos/.oobe_completed.
@@ -110,17 +98,12 @@ void CreateOobeCompleteFlagFile() {
 void StartupUtils::RegisterPrefs(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(prefs::kOobeComplete, false);
   registry->RegisterStringPref(prefs::kOobeScreenPending, "");
-  registry->RegisterTimePref(prefs::kOobeStartTime, base::Time());
   registry->RegisterIntegerPref(::prefs::kDeviceRegistered, -1);
-  registry->RegisterTimePref(ash::prefs::kDeviceRegisteredTime, base::Time());
   registry->RegisterBooleanPref(::prefs::kEnrollmentRecoveryRequired, false);
   registry->RegisterStringPref(::prefs::kInitialLocale, "en-US");
   registry->RegisterBooleanPref(kDisableHIDDetectionScreenForTests, false);
   registry->RegisterBooleanPref(prefs::kOobeGuestMetricsEnabled, false);
-  registry->RegisterBooleanPref(prefs::kOobeCriticalUpdateCompleted, false);
-  registry->RegisterBooleanPref(prefs::kOobeIsConsumerSegment, false);
-  registry->RegisterBooleanPref(prefs::kOobeConsumerUpdateCompleted, false);
-  registry->RegisterStringPref(prefs::kOobeScreenAfterConsumerUpdate, "");
+  registry->RegisterBooleanPref(prefs::kOobeGuestAcceptedTos, false);
   if (switches::IsRevenBranding()) {
     registry->RegisterBooleanPref(prefs::kOobeRevenUpdatedToFlex, false);
   }
@@ -160,13 +143,9 @@ void StartupUtils::RegisterOobeProfilePrefs(PrefRegistrySimple* registry) {
     registry->RegisterListPref(prefs::kChoobeCompletedScreens);
   }
 
-  if (drive::util::IsOobeDrivePinningScreenEnabled()) {
+  if (features::IsOobeDrivePinningEnabled()) {
     registry->RegisterBooleanPref(prefs::kOobeDrivePinningEnabledDeferred,
                                   false);
-  }
-
-  if (features::IsOobeDisplaySizeEnabled()) {
-    registry->RegisterDoublePref(prefs::kOobeDisplaySizeFactorDeferred, 1.0);
   }
 
   OnboardingUserActivityCounter::RegisterProfilePrefs(registry);
@@ -192,6 +171,7 @@ void StartupUtils::MarkOobeCompleted() {
   // Forcing the second pref will force this one as well. Even if this one
   // doesn't end up synced it is only going to eat up a couple of bytes with no
   // side-effects.
+  g_browser_process->local_state()->ClearPref(prefs::kOobeScreenPending);
   SaveBoolPreferenceForced(prefs::kOobeComplete, true);
 
   // Successful enrollment implies that recovery is not required.
@@ -201,11 +181,6 @@ void StartupUtils::MarkOobeCompleted() {
 // static
 void StartupUtils::SaveOobePendingScreen(const std::string& screen) {
   SaveStringPreferenceForced(prefs::kOobeScreenPending, screen);
-}
-
-// static
-void StartupUtils::SaveScreenAfterConsumerUpdate(const std::string& screen) {
-  SaveStringPreferenceForced(prefs::kOobeScreenAfterConsumerUpdate, screen);
 }
 
 // static
@@ -241,30 +216,9 @@ bool StartupUtils::IsDeviceRegistered() {
   }
 }
 
-void StartupUtils::ClearSpecificOobePrefs() {
-  g_browser_process->local_state()->ClearPref(prefs::kOobeScreenPending);
-  g_browser_process->local_state()->ClearPref(prefs::kOobeIsConsumerSegment);
-  g_browser_process->local_state()->ClearPref(
-      prefs::kOobeConsumerUpdateCompleted);
-  g_browser_process->local_state()->ClearPref(
-      prefs::kOobeScreenAfterConsumerUpdate);
-  g_browser_process->local_state()->ClearPref(
-      prefs::kOobeCriticalUpdateCompleted);
-}
-
 // static
 void StartupUtils::MarkDeviceRegistered(base::OnceClosure done_callback) {
   SaveIntegerPreferenceForced(::prefs::kDeviceRegistered, 1);
-
-  SaveTimePreferenceForced(ash::prefs::kDeviceRegisteredTime,
-                           base::Time::Now());
-
-  auto* host = LoginDisplayHost::default_host();
-  if (host) {
-    host->GetOobeMetricsHelper()->RecordDeviceRegistered();
-  }
-
-  ClearSpecificOobePrefs();
   if (done_callback.is_null()) {
     base::ThreadPool::PostTask(
         FROM_HERE, {base::TaskPriority::BEST_EFFORT, base::MayBlock()},

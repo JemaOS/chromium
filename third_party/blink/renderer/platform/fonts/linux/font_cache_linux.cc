@@ -62,7 +62,7 @@ bool FontCache::GetFontForCharacter(UChar32 c,
   }
 }
 
-const SimpleFontData* FontCache::PlatformFallbackFontForCharacter(
+scoped_refptr<SimpleFontData> FontCache::PlatformFallbackFontForCharacter(
     const FontDescription& font_description,
     UChar32 c,
     const SimpleFontData*,
@@ -77,9 +77,11 @@ const SimpleFontData* FontCache::PlatformFallbackFontForCharacter(
     AtomicString family_name = GetFamilyNameForCharacter(
         font_manager_.get(), c, font_description, nullptr, fallback_priority);
     if (family_name.empty())
-      return GetLastResortFallbackFont(font_description);
-    return FontDataFromFontPlatformData(GetFontPlatformData(
-        font_description, FontFaceCreationParams(family_name)));
+      return GetLastResortFallbackFont(font_description, kDoNotRetain);
+    return FontDataFromFontPlatformData(
+        GetFontPlatformData(font_description,
+                            FontFaceCreationParams(family_name)),
+        kDoNotRetain);
   }
 
   if (fallback_priority == FontFallbackPriority::kEmojiEmoji) {
@@ -92,9 +94,9 @@ const SimpleFontData* FontCache::PlatformFallbackFontForCharacter(
 
   // First try the specified font with standard style & weight.
   if (fallback_priority != FontFallbackPriority::kEmojiEmoji &&
-      (font_description.Style() == kItalicSlopeValue ||
-       font_description.Weight() >= kBoldThreshold)) {
-    const SimpleFontData* font_data =
+      (font_description.Style() == ItalicSlopeValue() ||
+       font_description.Weight() >= BoldThreshold())) {
+    scoped_refptr<SimpleFontData> font_data =
         FallbackOnStandardFontStyle(font_description, c);
     if (font_data)
       return font_data;
@@ -120,33 +122,31 @@ const SimpleFontData* FontCache::PlatformFallbackFontForCharacter(
   bool should_set_synthetic_bold = false;
   bool should_set_synthetic_italic = false;
   FontDescription description(font_description);
-  if (fallback_font.is_bold && description.Weight() < kBoldThreshold) {
-    description.SetWeight(kBoldWeightValue);
-  }
-  if (!fallback_font.is_bold && description.Weight() >= kBoldThreshold &&
+  if (fallback_font.is_bold && description.Weight() < BoldThreshold())
+    description.SetWeight(BoldWeightValue());
+  if (!fallback_font.is_bold && description.Weight() >= BoldThreshold() &&
       font_description.SyntheticBoldAllowed()) {
     should_set_synthetic_bold = true;
-    description.SetWeight(kNormalWeightValue);
+    description.SetWeight(NormalWeightValue());
   }
-  if (fallback_font.is_italic && description.Style() == kNormalSlopeValue) {
-    description.SetStyle(kItalicSlopeValue);
-  }
-  if (!fallback_font.is_italic && (description.Style() == kItalicSlopeValue) &&
+  if (fallback_font.is_italic && description.Style() == NormalSlopeValue())
+    description.SetStyle(ItalicSlopeValue());
+  if (!fallback_font.is_italic && (description.Style() == ItalicSlopeValue()) &&
       font_description.SyntheticItalicAllowed()) {
     should_set_synthetic_italic = true;
-    description.SetStyle(kNormalSlopeValue);
+    description.SetStyle(NormalSlopeValue());
   }
 
-  const FontPlatformData* substitute_platform_data =
+  FontPlatformData* substitute_platform_data =
       GetFontPlatformData(description, creation_params);
   if (!substitute_platform_data)
     return nullptr;
 
-  FontPlatformData* platform_data =
-      MakeGarbageCollected<FontPlatformData>(*substitute_platform_data);
+  std::unique_ptr<FontPlatformData> platform_data(
+      new FontPlatformData(*substitute_platform_data));
   platform_data->SetSyntheticBold(should_set_synthetic_bold);
   platform_data->SetSyntheticItalic(should_set_synthetic_italic);
-  return FontDataFromFontPlatformData(platform_data);
+  return FontDataFromFontPlatformData(platform_data.get(), kDoNotRetain);
 }
 
 }  // namespace blink

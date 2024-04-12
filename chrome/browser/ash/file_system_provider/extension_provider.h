@@ -6,17 +6,16 @@
 #define CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_EXTENSION_PROVIDER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/memory/weak_ptr.h"
-#include "base/scoped_observation.h"
 #include "chrome/browser/ash/file_system_provider/icon_set.h"
 #include "chrome/browser/ash/file_system_provider/provided_file_system_info.h"
 #include "chrome/browser/ash/file_system_provider/provided_file_system_interface.h"
 #include "chrome/browser/ash/file_system_provider/provider_interface.h"
 #include "components/services/app_service/public/cpp/app_registry_cache.h"
 #include "extensions/common/extension_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -24,10 +23,10 @@ namespace extensions {
 class ExtensionRegistry;
 }  // namespace extensions
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 class RequestDispatcher;
-class ODFSMetrics;
 
 class ExtensionProvider : public ProviderInterface,
                           public apps::AppRegistryCache::Observer {
@@ -36,7 +35,7 @@ class ExtensionProvider : public ProviderInterface,
                     ProviderId id,
                     Capabilities capabilities,
                     std::string name,
-                    std::optional<IconSet> icon_set);
+                    absl::optional<IconSet> icon_set);
 
   ~ExtensionProvider() override;
 
@@ -49,8 +48,7 @@ class ExtensionProvider : public ProviderInterface,
   // ProviderInterface overrides.
   std::unique_ptr<ProvidedFileSystemInterface> CreateProvidedFileSystem(
       Profile* profile,
-      const ProvidedFileSystemInfo& file_system_info,
-      CacheManager* cache_manager) override;
+      const ProvidedFileSystemInfo& file_system_info) override;
   const Capabilities& GetCapabilities() const override;
   const ProviderId& GetId() const override;
   const std::string& GetName() const override;
@@ -75,16 +73,12 @@ class ExtensionProvider : public ProviderInterface,
   std::string name_;
   IconSet icon_set_;
   std::unique_ptr<RequestDispatcher> request_dispatcher_;
-  std::unique_ptr<ODFSMetrics> odfs_metrics_;
   std::unique_ptr<RequestManager> request_manager_;
-
-  base::ScopedObservation<apps::AppRegistryCache,
-                          apps::AppRegistryCache::Observer>
-      app_registry_cache_observer_{this};
 
   base::WeakPtrFactory<ExtensionProvider> weak_ptr_factory_{this};
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_EXTENSION_PROVIDER_H_

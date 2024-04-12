@@ -6,7 +6,6 @@ assert(is_chromeos, "Nearby Share is CrOS only")
 
 static_library("cpp") {
   sources = [
-    "nearby_connection.cc",
     "nearby_connection.h",
     "nearby_connections_manager.cc",
     "nearby_connections_manager.h",
@@ -15,25 +14,7 @@ static_library("cpp") {
   deps = [
     "//base",
     "//chrome/browser/nearby_sharing/common",
-    "//chromeos/ash/components/nearby/presence:presence",
     "//chromeos/ash/services/nearby/public/mojom",
     "//third_party/abseil-cpp:absl",
-  ]
-
-  public_deps = [ "//third_party/nearby:presence_types" ]
-}
-
-static_library("test_support") {
-  testonly = true
-
-  sources = [
-    "fake_nearby_connections_manager.cc",
-    "fake_nearby_connections_manager.h",
-  ]
-
-  deps = [
-    ":cpp",
-    "//base",
-    "//chromeos/ash/services/nearby/public/mojom",
   ]
 }

@@ -8,10 +8,8 @@
 #include "ash/app_list/app_list_presenter_impl.h"
 #include "ash/app_list/views/app_list_view.h"
 #include "ash/constants/ash_features.h"
-#include "ash/constants/ash_switches.h"
 #include "ash/drag_drop/drag_image_view.h"
 #include "ash/public/cpp/shelf_config.h"
-#include "ash/public/cpp/shelf_prefs.h"
 #include "ash/root_window_controller.h"
 #include "ash/shelf/scrollable_shelf_constants.h"
 #include "ash/shelf/shelf_app_button.h"
@@ -24,13 +22,12 @@
 #include "ash/test/ash_test_base.h"
 #include "ash/test/ash_test_util.h"
 #include "ash/wm/overview/overview_controller.h"
-#include "ash/wm/tablet_mode/tablet_mode_controller_test_api.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/icu_test_util.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "ui/compositor/presentation_time_recorder.h"
 #include "ui/compositor/scoped_animation_duration_scale_mode.h"
 #include "ui/display/manager/display_manager.h"
@@ -72,7 +69,8 @@ class PageFlipWaiter : public ScrollableShelfView::TestObserver {
     run_loop_->Quit();
   }
 
-  raw_ptr<ScrollableShelfView> scrollable_shelf_view_ = nullptr;
+  raw_ptr<ScrollableShelfView, ExperimentalAsh> scrollable_shelf_view_ =
+      nullptr;
   std::unique_ptr<base::RunLoop> run_loop_;
 };
 
@@ -103,7 +101,7 @@ class InkDropAnimationWaiter : public views::InkDropObserver {
     }
   }
 
-  raw_ptr<views::Button> button_ = nullptr;
+  raw_ptr<views::Button, ExperimentalAsh> button_ = nullptr;
   std::unique_ptr<base::RunLoop> run_loop_;
 };
 
@@ -633,7 +631,7 @@ TEST_P(ScrollableShelfViewRTLTest, CorrectUIAfterSwitchingToTablet) {
   ASSERT_EQ(ScrollableShelfView::kShowButtons,
             scrollable_shelf_view_->layout_strategy_for_test());
 
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
   base::RunLoop().RunUntilIdle();
 
   views::ViewModel* view_model = shelf_view_->view_model_for_test();
@@ -666,7 +664,7 @@ TEST_P(ScrollableShelfViewRTLTest, CorrectUIAfterSwitchingToTablet) {
 // Verifies that the scrollable shelf without overflow has the correct layout in
 // tablet mode.
 TEST_P(ScrollableShelfViewRTLTest, CorrectUIInTabletWithoutOverflow) {
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
 
   for (int i = 0; i < 3; i++) {
     AddAppShortcut();
@@ -722,7 +720,7 @@ TEST_P(ScrollableShelfViewRTLTest, VerifyActivateIconRippleOnVerySmallDisplay) {
 // Verifies that the scrollable shelf without overflow has the correct layout in
 // tablet mode.
 TEST_P(ScrollableShelfViewRTLTest, CheckRoundedCornersSetForInkDrop) {
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
   AddAppShortcutsUntilOverflow();
   ASSERT_EQ(ScrollableShelfView::kShowRightArrowButton,
             scrollable_shelf_view_->layout_strategy_for_test());
@@ -798,7 +796,7 @@ TEST_P(ScrollableShelfViewRTLTest,
                   .IsEmpty());
 
   // Switch to tablet mode. The ripple ring should be hidden.
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
   {
     InkDropAnimationWaiter waiter(icon);
     waiter.Wait();
@@ -822,7 +820,7 @@ TEST_F(ScrollableShelfViewTest,
        CheckRoundedCornersAfterUnpinningFromContextMenu) {
   ui::ScopedAnimationDurationScaleMode regular_animations(
       ui::ScopedAnimationDurationScaleMode::NON_ZERO_DURATION);
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
 
   AddAppShortcut();
   const ShelfID app_id = AddAppShortcut();
@@ -859,7 +857,7 @@ TEST_F(ScrollableShelfViewTest, CheckRoundedCornersAfterLongPress) {
   // Enable animations so that we can make sure that they occur.
   ui::ScopedAnimationDurationScaleMode regular_animations(
       ui::ScopedAnimationDurationScaleMode::NON_ZERO_DURATION);
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
   PopulateAppShortcut(3);
   ASSERT_EQ(ScrollableShelfView::kNotShowArrowButtons,
             scrollable_shelf_view_->layout_strategy_for_test());
@@ -1282,7 +1280,7 @@ class ScrollableShelfViewWithAppScalingTest : public ScrollableShelfViewTest {
     UpdateDisplay("820x601");
 
     // App scaling is only used in tablet mode.
-    ash::TabletModeControllerTestApi().EnterTabletMode();
+    Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
     base::RunLoop().RunUntilIdle();
     ASSERT_FALSE(ShelfConfig::Get()->is_dense());
   }
@@ -1385,54 +1383,6 @@ TEST_F(ScrollableShelfViewWithAppScalingTest,
   ExitOverview();
   WaitForOverviewAnimation(/*enter=*/false);
   EXPECT_EQ(HotseatDensity::kNormal, hotseat_widget->target_hotseat_density());
-}
-
-TEST_F(ScrollableShelfViewWithAppScalingTest, TabletModeTransition) {
-  PopulateAppShortcut(kAppCountWithShowingDateTray);
-
-  HotseatWidget* hotseat_widget =
-      GetPrimaryShelf()->shelf_widget()->hotseat_widget();
-  EXPECT_EQ(HotseatDensity::kNormal, hotseat_widget->target_hotseat_density());
-
-  // Pin an app icon and verify that app scaling is turned on.
-  const ShelfID shelf_id = AddAppShortcut();
-  EXPECT_EQ(HotseatDensity::kSemiDense,
-            hotseat_widget->target_hotseat_density());
-
-  // Switch to clamshell and verify that hotseat density reverts to normal.
-  ash::TabletModeControllerTestApi().LeaveTabletMode();
-  EXPECT_EQ(HotseatDensity::kNormal, hotseat_widget->target_hotseat_density());
-
-  // Go back to tablet mode, and verify density gets updated.
-  ash::TabletModeControllerTestApi().EnterTabletMode();
-  EXPECT_EQ(HotseatDensity::kSemiDense,
-            hotseat_widget->target_hotseat_density());
-}
-
-TEST_F(ScrollableShelfViewWithAppScalingTest,
-       TabletModeTransitionWithVerticalShelf) {
-  PrefService* const prefs =
-      Shell::Get()->session_controller()->GetLastActiveUserPrefService();
-  SetShelfAlignmentPref(prefs, GetPrimaryDisplay().id(), ShelfAlignment::kLeft);
-
-  PopulateAppShortcut(kAppCountWithShowingDateTray);
-  HotseatWidget* hotseat_widget =
-      GetPrimaryShelf()->shelf_widget()->hotseat_widget();
-  EXPECT_EQ(HotseatDensity::kNormal, hotseat_widget->target_hotseat_density());
-
-  // Pin an app icon and verify that app scaling is turned on.
-  const ShelfID shelf_id = AddAppShortcut();
-  EXPECT_EQ(HotseatDensity::kSemiDense,
-            hotseat_widget->target_hotseat_density());
-
-  // Switch to clamshell and verify that hotseat density reverts to normal.
-  ash::TabletModeControllerTestApi().LeaveTabletMode();
-  EXPECT_EQ(HotseatDensity::kNormal, hotseat_widget->target_hotseat_density());
-
-  // Go back to tablet mode, and verify density gets updated.
-  ash::TabletModeControllerTestApi().EnterTabletMode();
-  EXPECT_EQ(HotseatDensity::kSemiDense,
-            hotseat_widget->target_hotseat_density());
 }
 
 // Verifies that right-click on scroll arrows shows shelf's context menu
@@ -1540,100 +1490,6 @@ TEST_P(ScrollableShelfViewRTLTest, ActivateAppScrollShelfToMakeAppVisible) {
       visible_space_in_screen.Contains(first_button->GetBoundsInScreen()));
   EXPECT_FALSE(
       visible_space_in_screen.Contains(last_button->GetBoundsInScreen()));
-}
-
-namespace {
-
-class ScrollableShelfViewDeskButtonTest : public ScrollableShelfViewTest {
- public:
-  ScrollableShelfViewDeskButtonTest() = default;
-  ScrollableShelfViewDeskButtonTest(const ScrollableShelfViewDeskButtonTest&) =
-      delete;
-  ScrollableShelfViewDeskButtonTest& operator=(
-      const ScrollableShelfViewDeskButtonTest&) = delete;
-  ~ScrollableShelfViewDeskButtonTest() override = default;
-
-  // ScrollableShelfViewTest:
-  void SetUp() override {
-    scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/{features::kDeskButton,
-                              chromeos::features::kJellyroll},
-        /*disabled_features=*/{});
-
-    // Shelf overflow can be influenced by system time (i.e. if the date is
-    // slightly longer or the clock has four digits instead of three, this can
-    // cause overflow). We set the timer to be a consistent time so that the
-    // time cannot impact the test's success.
-    base::CommandLine::ForCurrentProcess()->AppendSwitch(
-        switches::kStabilizeTimeDependentViewForTests);
-
-    ScrollableShelfViewTest::SetUp();
-    SetShowDeskButtonInShelfPref(
-        Shell::Get()->session_controller()->GetPrimaryUserPrefService(), true);
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-}  // namespace
-
-// Verify that desk button behavior before and after shelf is overflown.
-TEST_F(ScrollableShelfViewDeskButtonTest, ButtonRespondsToOverflowStateChange) {
-  SetShelfAnimationDuration(base::Milliseconds(1));
-
-  auto* shelf = GetPrimaryShelf();
-  auto* hotseat_widget = shelf->hotseat_widget();
-  auto* scrollable_shelf_view = hotseat_widget->scrollable_shelf_view();
-  auto* desk_button_widget = shelf->desk_button_widget();
-  shelf->SetAlignment(ShelfAlignment::kBottom);
-  EXPECT_FALSE(hotseat_widget->CalculateShelfOverflow(true));
-  EXPECT_EQ(ScrollableShelfView::LayoutStrategy::kNotShowArrowButtons,
-            scrollable_shelf_view->layout_strategy_for_test());
-
-  // Keep adding apps until the shelf overflows. The desk button should remain
-  // expanded.
-  ShelfID last_app_id;
-  gfx::Rect last_desk_button_bounds;
-  for (int i = 0; i < 50 && !hotseat_widget->CalculateShelfOverflow(true);
-       i++) {
-    last_desk_button_bounds = desk_button_widget->GetTargetBounds();
-    last_app_id = AddAppShortcut();
-    WaitForShelfAnimation();
-    ASSERT_NE(last_desk_button_bounds, desk_button_widget->GetTargetBounds());
-  }
-  EXPECT_TRUE(hotseat_widget->CalculateShelfOverflow(true));
-  EXPECT_EQ(ScrollableShelfView::LayoutStrategy::kShowRightArrowButton,
-            scrollable_shelf_view->layout_strategy_for_test());
-
-  // Add one more app, desk button does not change its bounds. The desk button
-  // remains at the same bounds.
-  auto* shelf_model = ShelfModel::Get();
-  last_desk_button_bounds = desk_button_widget->GetTargetBounds();
-  ShelfID new_app_id = AddAppShortcut();
-  WaitForShelfAnimation();
-  EXPECT_EQ(last_desk_button_bounds, desk_button_widget->GetTargetBounds());
-  EXPECT_TRUE(hotseat_widget->CalculateShelfOverflow(true));
-  EXPECT_EQ(ScrollableShelfView::LayoutStrategy::kShowRightArrowButton,
-            scrollable_shelf_view->layout_strategy_for_test());
-
-  // Remove the new app, desk button does not change its bounds. The desk button
-  // remains at the same bounds.
-  shelf_model->RemoveItemAt(shelf_model->ItemIndexByID(new_app_id));
-  WaitForShelfAnimation();
-  EXPECT_EQ(last_desk_button_bounds, desk_button_widget->GetTargetBounds());
-  EXPECT_TRUE(hotseat_widget->CalculateShelfOverflow(true));
-  EXPECT_EQ(ScrollableShelfView::LayoutStrategy::kShowRightArrowButton,
-            scrollable_shelf_view->layout_strategy_for_test());
-
-  // Remove the last app icon so that the shelf does not overflow. The desk
-  // button changes its bounds.
-  shelf_model->RemoveItemAt(shelf_model->ItemIndexByID(last_app_id));
-  WaitForShelfAnimation();
-  EXPECT_NE(last_desk_button_bounds, desk_button_widget->GetTargetBounds());
-  EXPECT_FALSE(hotseat_widget->CalculateShelfOverflow(true));
-  EXPECT_EQ(ScrollableShelfView::LayoutStrategy::kNotShowArrowButtons,
-            scrollable_shelf_view->layout_strategy_for_test());
 }
 
 }  // namespace ash

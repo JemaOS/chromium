@@ -98,10 +98,10 @@ class BlobFileReaderClient : public GarbageCollected<BlobFileReaderClient>,
   void DidFinishLoading(FileReaderData contents) override {
     if (read_type_ == FileReadType::kReadAsText) {
       String result = std::move(contents).AsText("UTF-8");
-      resolver_->DowncastTo<IDLUSVString>()->Resolve(result);
+      resolver_->Resolve(result);
     } else if (read_type_ == FileReadType::kReadAsArrayBuffer) {
       DOMArrayBuffer* result = std::move(contents).AsDOMArrayBuffer();
-      resolver_->DowncastTo<DOMArrayBuffer>()->Resolve(result);
+      resolver_->Resolve(result);
     } else {
       NOTREACHED() << "Unknown ReadType supplied to BlobFileReaderClient";
     }
@@ -241,35 +241,37 @@ ReadableStream* Blob::stream(ScriptState* script_state) const {
   return body_buffer->Stream();
 }
 
-ScriptPromiseTyped<IDLUSVString> Blob::text(ScriptState* script_state) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUSVString>>(
-          script_state);
+// Helper called by Blob::text() and arrayBuffer(). The operations only differ
+// by 1 line, depending on the read_type.
+static ScriptPromise ReadBlobHelper(
+    const scoped_refptr<BlobDataHandle>& blob_data_handle,
+    ScriptState* script_state,
+    FileReadType read_type) {
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
   auto promise = resolver->Promise();
+
   MakeGarbageCollected<BlobFileReaderClient>(
-      blob_data_handle_,
+      blob_data_handle,
       ExecutionContext::From(script_state)
           ->GetTaskRunner(TaskType::kFileReading),
-      FileReadType::kReadAsText, resolver);
+      read_type, resolver);
+
   return promise;
 }
 
-ScriptPromiseTyped<DOMArrayBuffer> Blob::arrayBuffer(
-    ScriptState* script_state) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<DOMArrayBuffer>>(
-          script_state);
-  auto promise = resolver->Promise();
-  MakeGarbageCollected<BlobFileReaderClient>(
-      blob_data_handle_,
-      ExecutionContext::From(script_state)
-          ->GetTaskRunner(TaskType::kFileReading),
-      FileReadType::kReadAsArrayBuffer, resolver);
-  return promise;
+blink::ScriptPromise Blob::text(ScriptState* script_state) {
+  auto read_type = FileReadType::kReadAsText;
+  return ReadBlobHelper(blob_data_handle_, script_state, read_type);
+}
+
+blink::ScriptPromise Blob::arrayBuffer(ScriptState* script_state) {
+  auto read_type = FileReadType::kReadAsArrayBuffer;
+  return ReadBlobHelper(blob_data_handle_, script_state, read_type);
 }
 
 void Blob::AppendTo(BlobData& blob_data) const {
-  blob_data.AppendBlob(blob_data_handle_, 0, size());
+  blob_data.AppendBlob(blob_data_handle_, 0, blob_data_handle_->size());
 }
 
 URLRegistry& Blob::Registry() const {
@@ -285,7 +287,7 @@ void Blob::CloneMojoBlob(mojo::PendingReceiver<mojom::blink::Blob> receiver) {
   blob_data_handle_->CloneBlobRemote(std::move(receiver));
 }
 
-mojo::PendingRemote<mojom::blink::Blob> Blob::AsMojoBlob() const {
+mojo::PendingRemote<mojom::blink::Blob> Blob::AsMojoBlob() {
   return blob_data_handle_->CloneBlobRemote();
 }
 

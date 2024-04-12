@@ -8,27 +8,27 @@
 #include "ash/assistant/ui/assistant_view_ids.h"
 #include "ash/assistant/ui/test_support/mock_assistant_view_delegate.h"
 #include "ash/assistant/util/test_support/macros.h"
+#include "ash/constants/ash_pref_names.h"
 #include "ash/session/session_controller_impl.h"
 #include "ash/shell.h"
-#include "ash/style/ash_color_id.h"
 #include "ash/style/ash_color_provider.h"
 #include "ash/style/dark_light_mode_controller_impl.h"
 #include "ash/test/ash_test_base.h"
-#include "base/test/scoped_feature_list.h"
 #include "cc/paint/paint_flags.h"
 #include "cc/test/pixel_comparator.h"
-#include "chromeos/constants/chromeos_features.h"
+#include "chromeos/ash/services/assistant/public/cpp/assistant_service.h"
 #include "chromeos/ui/vector_icons/vector_icons.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/canvas.h"
-#include "ui/gfx/color_utils.h"
+#include "ui/gfx/color_palette.h"
 #include "ui/gfx/geometry/insets_f.h"
 #include "ui/gfx/image/image_unittest_util.h"
 #include "ui/gfx/paint_vector_icon.h"
-#include "ui/gfx/test/sk_color_eq.h"
 #include "ui/views/background.h"
+#include "ui/views/controls/focus_ring.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/focus/focus_manager.h"
 #include "ui/views/test/views_test_utils.h"
@@ -72,37 +72,13 @@ SkBitmap GetSuggestionChipViewBitmap(SuggestionChipView* view) {
   return canvas.GetBitmap();
 }
 
-std::string GetTestSuffix(const testing::TestParamInfo<bool>& info) {
-  return info.param ? "JellyEnabled" : "JellyDisabled";
-}
-
 }  // namespace
 
 // Tests -----------------------------------------------------------------------
 
-class SuggestionChipViewTest : public AshTestBase,
-                               public testing::WithParamInterface<bool> {
- public:
-  SuggestionChipViewTest() {
-    scoped_feature_list_.InitWithFeatureState(chromeos::features::kJelly,
-                                              GetParam());
-  }
+using SuggestionChipViewTest = AshTestBase;
 
-  SuggestionChipViewTest(const SuggestionChipViewTest&) = delete;
-  SuggestionChipViewTest& operator=(const SuggestionChipViewTest&) = delete;
-
-  ~SuggestionChipViewTest() override = default;
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-INSTANTIATE_TEST_SUITE_P(,
-                         SuggestionChipViewTest,
-                         testing::Bool(),
-                         GetTestSuffix);
-
-TEST_P(SuggestionChipViewTest, ShouldHandleLocalIcons) {
+TEST_F(SuggestionChipViewTest, ShouldHandleLocalIcons) {
   auto widget = CreateFramelessTestWidget();
   auto* suggestion_chip_view =
       widget->SetContentsView(std::make_unique<SuggestionChipView>(
@@ -117,7 +93,7 @@ TEST_P(SuggestionChipViewTest, ShouldHandleLocalIcons) {
   ASSERT_PIXELS_EQ(actual, expected);
 }
 
-TEST_P(SuggestionChipViewTest, ShouldHandleRemoteIcons) {
+TEST_F(SuggestionChipViewTest, ShouldHandleRemoteIcons) {
   const gfx::ImageSkia expected =
       gfx::test::CreateImageSkia(/*width=*/10, /*height=*/10);
 
@@ -139,7 +115,7 @@ TEST_P(SuggestionChipViewTest, ShouldHandleRemoteIcons) {
   EXPECT_TRUE(actual.BackedBySameObjectAs(expected));
 }
 
-TEST_P(SuggestionChipViewTest, DarkAndLightTheme) {
+TEST_F(SuggestionChipViewTest, DarkAndLightTheme) {
   auto* dark_light_mode_controller = DarkLightModeControllerImpl::Get();
   dark_light_mode_controller->OnActiveUserPrefServiceChanged(
       Shell::Get()->session_controller()->GetActivePrefService());
@@ -161,10 +137,9 @@ TEST_P(SuggestionChipViewTest, DarkAndLightTheme) {
   // No background if dark and light theme is on.
   EXPECT_EQ(suggestion_chip_view->GetBackground(), nullptr);
 
-  const SkColor light_mode_enabled_color = label->GetEnabledColor();
-  EXPECT_SKCOLOR_EQ(
-      light_mode_enabled_color,
-      label->GetColorProvider()->GetColor(kColorAshSuggestionChipViewTextView));
+  EXPECT_EQ(label->GetEnabledColor(),
+            ColorProvider::Get()->GetContentLayerColor(
+                ColorProvider::ContentLayerType::kTextColorSecondary));
   EXPECT_TRUE(cc::ExactPixelComparator().Compare(
       GetSuggestionChipViewBitmap(suggestion_chip_view),
       GetBitmapWithInnerRoundedRect(
@@ -177,17 +152,9 @@ TEST_P(SuggestionChipViewTest, DarkAndLightTheme) {
   ASSERT_NE(initial_dark_mode_status,
             dark_light_mode_controller->IsDarkModeEnabled());
 
-  const SkColor dark_mode_enabled_color = label->GetEnabledColor();
-  EXPECT_FALSE(
-      gfx::ColorsClose(light_mode_enabled_color, dark_mode_enabled_color, 20))
-      << " light_mode_enabled_color="
-      << color_utils::SkColorToRgbaString(light_mode_enabled_color)
-      << " dark_mode_enabled_color="
-      << color_utils::SkColorToRgbaString(dark_mode_enabled_color);
-  EXPECT_SKCOLOR_EQ(
-      dark_mode_enabled_color,
-      label->GetColorProvider()->GetColor(kColorAshSuggestionChipViewTextView));
-
+  EXPECT_EQ(label->GetEnabledColor(),
+            ColorProvider::Get()->GetContentLayerColor(
+                ColorProvider::ContentLayerType::kTextColorSecondary));
   EXPECT_TRUE(cc::ExactPixelComparator().Compare(
       GetSuggestionChipViewBitmap(suggestion_chip_view),
       GetBitmapWithInnerRoundedRect(
@@ -196,7 +163,7 @@ TEST_P(SuggestionChipViewTest, DarkAndLightTheme) {
               ColorProvider::ContentLayerType::kSeparatorColor))));
 }
 
-TEST_P(SuggestionChipViewTest, FontWeight) {
+TEST_F(SuggestionChipViewTest, FontWeight) {
   auto widget = CreateFramelessTestWidget();
   auto* suggestion_chip_view =
       widget->SetContentsView(std::make_unique<SuggestionChipView>(

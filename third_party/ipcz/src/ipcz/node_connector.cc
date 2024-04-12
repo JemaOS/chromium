@@ -15,6 +15,7 @@
 #include "ipcz/node_link.h"
 #include "ipcz/node_link_memory.h"
 #include "ipcz/operation_context.h"
+#include "ipcz/portal.h"
 #include "ipcz/remote_router_link.h"
 #include "ipcz/router.h"
 #include "ipcz/sublink_id.h"
@@ -30,17 +31,17 @@ class NodeConnectorForBrokerToNonBroker : public NodeConnector {
  public:
   NodeConnectorForBrokerToNonBroker(Ref<Node> node,
                                     Ref<DriverTransport> transport,
-                                    DriverMemoryWithMapping memory,
                                     IpczConnectNodeFlags flags,
-                                    std::vector<Ref<Router>> waiting_routers,
+                                    std::vector<Ref<Portal>> waiting_portals,
                                     ConnectCallback callback)
       : NodeConnector(std::move(node),
                       std::move(transport),
                       flags,
-                      std::move(waiting_routers),
+                      std::move(waiting_portals),
                       std::move(callback)),
-        link_memory_allocation_(std::move(memory)) {
-    ABSL_HARDENING_ASSERT(link_memory_allocation_.mapping.is_valid());
+        link_memory_allocation_(
+            NodeLinkMemory::AllocateMemory(node_->driver())) {
+    ABSL_ASSERT(link_memory_allocation_.mapping.is_valid());
   }
 
   ~NodeConnectorForBrokerToNonBroker() override = default;
@@ -92,12 +93,12 @@ class NodeConnectorForNonBrokerToBroker : public NodeConnector {
   NodeConnectorForNonBrokerToBroker(Ref<Node> node,
                                     Ref<DriverTransport> transport,
                                     IpczConnectNodeFlags flags,
-                                    std::vector<Ref<Router>> waiting_routers,
+                                    std::vector<Ref<Portal>> waiting_portals,
                                     ConnectCallback callback)
       : NodeConnector(std::move(node),
                       std::move(transport),
                       flags,
-                      std::move(waiting_routers),
+                      std::move(waiting_portals),
                       std::move(callback)) {}
 
   ~NodeConnectorForNonBrokerToBroker() override = default;
@@ -130,6 +131,7 @@ class NodeConnectorForNonBrokerToBroker : public NodeConnector {
         connect.params().broker_name, Node::Type::kBroker,
         connect.params().protocol_version, transport_,
         NodeLinkMemory::Create(node_, std::move(mapping)));
+    node_->SetAssignedName(connect.params().receiver_name);
     if ((flags_ & IPCZ_CONNECT_NODE_TO_ALLOCATION_DELEGATE) != 0) {
       node_->SetAllocationDelegate(new_link);
     }
@@ -149,13 +151,13 @@ class NodeConnectorForReferrer : public NodeConnector {
   NodeConnectorForReferrer(Ref<Node> node,
                            Ref<DriverTransport> transport,
                            IpczConnectNodeFlags flags,
-                           std::vector<Ref<Router>> waiting_routers,
+                           std::vector<Ref<Portal>> waiting_portals,
                            Ref<NodeLink> broker_link,
                            ConnectCallback callback)
       : NodeConnector(std::move(node),
                       /*transport=*/nullptr,
                       flags,
-                      std::move(waiting_routers),
+                      std::move(waiting_portals),
                       std::move(callback)),
         transport_for_broker_(std::move(transport)),
         broker_link_(std::move(broker_link)) {}
@@ -202,12 +204,12 @@ class NodeConnectorForReferredNonBroker : public NodeConnector {
   NodeConnectorForReferredNonBroker(Ref<Node> node,
                                     Ref<DriverTransport> transport,
                                     IpczConnectNodeFlags flags,
-                                    std::vector<Ref<Router>> waiting_routers,
+                                    std::vector<Ref<Portal>> waiting_portals,
                                     ConnectCallback callback)
       : NodeConnector(std::move(node),
                       std::move(transport),
                       flags,
-                      std::move(waiting_routers),
+                      std::move(waiting_portals),
                       std::move(callback)) {}
 
   ~NodeConnectorForReferredNonBroker() override = default;
@@ -256,6 +258,7 @@ class NodeConnectorForReferredNonBroker : public NodeConnector {
         connect.params().broker_name, Node::Type::kBroker,
         broker_protocol_version, transport_,
         NodeLinkMemory::Create(node_, std::move(broker_mapping)));
+    node_->SetAssignedName(connect.params().name);
     if ((flags_ & IPCZ_CONNECT_NODE_TO_ALLOCATION_DELEGATE) != 0) {
       node_->SetAllocationDelegate(broker_link);
     }
@@ -288,21 +291,17 @@ class NodeConnectorForBrokerReferral : public NodeConnector {
                                  uint64_t referral_id,
                                  uint32_t num_initial_portals,
                                  Ref<NodeLink> referrer,
-                                 Ref<DriverTransport> transport,
-                                 DriverMemoryWithMapping link_memory,
-                                 DriverMemoryWithMapping client_link_memory)
+                                 Ref<DriverTransport> transport)
       : NodeConnector(std::move(node),
                       std::move(transport),
                       IPCZ_NO_FLAGS,
-                      /*waiting_routers=*/{},
+                      /*waiting_portals=*/{},
                       /*callback=*/nullptr),
         referral_id_(referral_id),
         num_initial_portals_(num_initial_portals),
-        referrer_(std::move(referrer)),
-        link_memory_(std::move(link_memory)),
-        client_link_memory_(std::move(client_link_memory)) {
-    ABSL_HARDENING_ASSERT(link_memory_.mapping.is_valid());
-    ABSL_HARDENING_ASSERT(client_link_memory_.mapping.is_valid());
+        referrer_(std::move(referrer)) {
+    ABSL_ASSERT(link_memory_.mapping.is_valid());
+    ABSL_ASSERT(client_link_memory_.mapping.is_valid());
   }
 
   ~NodeConnectorForBrokerReferral() override = default;
@@ -393,25 +392,27 @@ class NodeConnectorForBrokerReferral : public NodeConnector {
   const Ref<NodeLink> referrer_;
   const NodeName broker_name_{node_->GetAssignedName()};
   const NodeName referred_node_name_{node_->GenerateRandomName()};
-  DriverMemoryWithMapping link_memory_;
-  DriverMemoryWithMapping client_link_memory_;
+  DriverMemoryWithMapping link_memory_{
+      NodeLinkMemory::AllocateMemory(node_->driver())};
+  DriverMemoryWithMapping client_link_memory_{
+      NodeLinkMemory::AllocateMemory(node_->driver())};
 };
 
 class NodeConnectorForBrokerToBroker : public NodeConnector {
  public:
   NodeConnectorForBrokerToBroker(Ref<Node> node,
                                  Ref<DriverTransport> transport,
-                                 DriverMemoryWithMapping memory,
                                  IpczConnectNodeFlags flags,
-                                 std::vector<Ref<Router>> waiting_routers,
+                                 std::vector<Ref<Portal>> waiting_portals,
                                  ConnectCallback callback)
       : NodeConnector(std::move(node),
                       std::move(transport),
                       flags,
-                      std::move(waiting_routers),
+                      std::move(waiting_portals),
                       std::move(callback)),
-        link_memory_allocation_(std::move(memory)) {
-    ABSL_HARDENING_ASSERT(link_memory_allocation_.mapping.is_valid());
+        link_memory_allocation_(
+            NodeLinkMemory::AllocateMemory(node_->driver())) {
+    ABSL_ASSERT(link_memory_allocation_.mapping.is_valid());
   }
 
   ~NodeConnectorForBrokerToBroker() override = default;
@@ -471,7 +472,7 @@ std::pair<Ref<NodeConnector>, IpczResult> CreateConnector(
     Ref<Node> node,
     Ref<DriverTransport> transport,
     IpczConnectNodeFlags flags,
-    const std::vector<Ref<Router>>& initial_routers,
+    const std::vector<Ref<Portal>>& initial_portals,
     Ref<NodeLink> broker_link,
     NodeConnector::ConnectCallback callback) {
   const bool from_broker = node->type() == Node::Type::kBroker;
@@ -479,42 +480,36 @@ std::pair<Ref<NodeConnector>, IpczResult> CreateConnector(
   const bool share_broker = (flags & IPCZ_CONNECT_NODE_SHARE_BROKER) != 0;
   const bool inherit_broker = (flags & IPCZ_CONNECT_NODE_INHERIT_BROKER) != 0;
   if (from_broker) {
-    DriverMemoryWithMapping memory =
-        NodeLinkMemory::AllocateMemory(node->driver());
-    if (!memory.mapping.is_valid()) {
-      return {nullptr, IPCZ_RESULT_RESOURCE_EXHAUSTED};
-    }
-
     if (to_broker) {
       return {MakeRefCounted<NodeConnectorForBrokerToBroker>(
-                  std::move(node), std::move(transport), std::move(memory),
-                  flags, initial_routers, std::move(callback)),
+                  std::move(node), std::move(transport), flags, initial_portals,
+                  std::move(callback)),
               IPCZ_RESULT_OK};
     }
 
     return {MakeRefCounted<NodeConnectorForBrokerToNonBroker>(
-                std::move(node), std::move(transport), std::move(memory), flags,
-                initial_routers, std::move(callback)),
+                std::move(node), std::move(transport), flags, initial_portals,
+                std::move(callback)),
             IPCZ_RESULT_OK};
   }
 
   if (to_broker) {
     return {MakeRefCounted<NodeConnectorForNonBrokerToBroker>(
-                std::move(node), std::move(transport), flags, initial_routers,
+                std::move(node), std::move(transport), flags, initial_portals,
                 std::move(callback)),
             IPCZ_RESULT_OK};
   }
 
   if (share_broker) {
     return {MakeRefCounted<NodeConnectorForReferrer>(
-                std::move(node), std::move(transport), flags, initial_routers,
+                std::move(node), std::move(transport), flags, initial_portals,
                 std::move(broker_link), std::move(callback)),
             IPCZ_RESULT_OK};
   }
 
   if (inherit_broker) {
     return {MakeRefCounted<NodeConnectorForReferredNonBroker>(
-                std::move(node), std::move(transport), flags, initial_routers,
+                std::move(node), std::move(transport), flags, initial_portals,
                 std::move(callback)),
             IPCZ_RESULT_OK};
   }
@@ -529,7 +524,7 @@ IpczResult NodeConnector::ConnectNode(
     Ref<Node> node,
     Ref<DriverTransport> transport,
     IpczConnectNodeFlags flags,
-    const std::vector<Ref<Router>>& initial_routers,
+    const std::vector<Ref<Portal>>& initial_portals,
     ConnectCallback callback) {
   const bool from_broker = node->type() == Node::Type::kBroker;
   const bool to_broker = (flags & IPCZ_CONNECT_NODE_TO_BROKER) != 0;
@@ -544,7 +539,7 @@ IpczResult NodeConnector::ConnectNode(
   }
 
   auto [connector, result] = CreateConnector(
-      std::move(node), std::move(transport), flags, initial_routers,
+      std::move(node), std::move(transport), flags, initial_portals,
       std::move(broker_link), std::move(callback));
   if (result != IPCZ_RESULT_OK) {
     return result;
@@ -570,14 +565,11 @@ bool NodeConnector::HandleNonBrokerReferral(
     uint64_t referral_id,
     uint32_t num_initial_portals,
     Ref<NodeLink> referrer,
-    Ref<DriverTransport> transport_to_referred_node,
-    DriverMemoryWithMapping link_memory,
-    DriverMemoryWithMapping client_link_memory) {
+    Ref<DriverTransport> transport_to_referred_node) {
   ABSL_ASSERT(node->type() == Node::Type::kBroker);
   auto connector = MakeRefCounted<NodeConnectorForBrokerReferral>(
       std::move(node), referral_id, num_initial_portals, std::move(referrer),
-      std::move(transport_to_referred_node), std::move(link_memory),
-      std::move(client_link_memory));
+      std::move(transport_to_referred_node));
 
   // The connector effectively owns itself and lives only until its transport is
   // disconnected or it receives a greeting from the referred node.
@@ -587,12 +579,12 @@ bool NodeConnector::HandleNonBrokerReferral(
 NodeConnector::NodeConnector(Ref<Node> node,
                              Ref<DriverTransport> transport,
                              IpczConnectNodeFlags flags,
-                             std::vector<Ref<Router>> waiting_routers,
+                             std::vector<Ref<Portal>> waiting_portals,
                              ConnectCallback callback)
     : node_(std::move(node)),
       transport_(std::move(transport)),
       flags_(flags),
-      waiting_routers_(std::move(waiting_routers)),
+      waiting_portals_(std::move(waiting_portals)),
       callback_(std::move(callback)) {}
 
 NodeConnector::~NodeConnector() = default;
@@ -603,14 +595,14 @@ void NodeConnector::AcceptConnection(Node::Connection connection,
   if (callback_) {
     callback_(connection.link);
   }
-  EstablishWaitingRouters(connection.link, num_remote_portals);
+  EstablishWaitingPortals(connection.link, num_remote_portals);
 }
 
 void NodeConnector::RejectConnection() {
   if (callback_) {
     callback_(nullptr);
   }
-  EstablishWaitingRouters(nullptr, 0);
+  EstablishWaitingPortals(nullptr, 0);
   if (transport_) {
     transport_->Deactivate();
   }
@@ -625,16 +617,16 @@ bool NodeConnector::ActivateTransport() {
   return true;
 }
 
-void NodeConnector::EstablishWaitingRouters(Ref<NodeLink> to_link,
+void NodeConnector::EstablishWaitingPortals(Ref<NodeLink> to_link,
                                             size_t max_valid_portals) {
   // All paths to this function come from a transport notification.
   const OperationContext context{OperationContext::kTransportNotification};
 
   ABSL_ASSERT(to_link != nullptr || max_valid_portals == 0);
   const size_t num_valid_portals =
-      std::min(max_valid_portals, waiting_routers_.size());
+      std::min(max_valid_portals, waiting_portals_.size());
   for (size_t i = 0; i < num_valid_portals; ++i) {
-    const Ref<Router>& router = waiting_routers_[i];
+    const Ref<Router> router = waiting_portals_[i]->router();
     Ref<RouterLink> link = to_link->AddRemoteRouterLink(
         context, SublinkId(i), to_link->memory().GetInitialRouterLinkState(i),
         LinkType::kCentral, to_link->link_side(), router);
@@ -647,9 +639,9 @@ void NodeConnector::EstablishWaitingRouters(Ref<NodeLink> to_link,
 
   // Elicit immediate peer closure on any surplus portals that were established
   // on this side of the link.
-  for (size_t i = num_valid_portals; i < waiting_routers_.size(); ++i) {
-    waiting_routers_[i]->AcceptRouteClosureFrom(context, LinkType::kCentral,
-                                                SequenceNumber(0));
+  for (size_t i = num_valid_portals; i < waiting_portals_.size(); ++i) {
+    waiting_portals_[i]->router()->AcceptRouteClosureFrom(
+        context, LinkType::kCentral, SequenceNumber(0));
   }
 }
 

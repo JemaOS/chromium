@@ -26,8 +26,8 @@ class MODULES_EXPORT ImageTrackList final : public ScriptWrappable {
   uint32_t length() const { return tracks_.size(); }
   ImageTrack* AnonymousIndexedGetter(uint32_t index) const;
   int32_t selectedIndex() const;
-  ImageTrack* selectedTrack() const;
-  ScriptPromiseTyped<IDLUndefined> ready(ScriptState* script_state);
+  absl::optional<ImageTrack*> selectedTrack() const;
+  ScriptPromise ready(ScriptState* script_state);
 
   bool IsEmpty() const { return tracks_.empty(); }
 
@@ -52,9 +52,10 @@ class MODULES_EXPORT ImageTrackList final : public ScriptWrappable {
  private:
   Member<ImageDecoderExternal> image_decoder_;
   HeapVector<Member<ImageTrack>> tracks_;
-  std::optional<wtf_size_t> selected_track_id_;
+  absl::optional<wtf_size_t> selected_track_id_;
 
-  using ReadyProperty = ScriptPromiseProperty<IDLUndefined, DOMException>;
+  using ReadyProperty =
+      ScriptPromiseProperty<ToV8UndefinedGenerator, Member<DOMException>>;
   Member<ReadyProperty> ready_property_;
 };
 

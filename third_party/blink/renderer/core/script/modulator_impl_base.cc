@@ -70,11 +70,10 @@ void ModulatorImplBase::FetchTree(
     network::mojom::RequestDestination destination,
     const ScriptFetchOptions& options,
     ModuleScriptCustomFetchType custom_fetch_type,
-    ModuleTreeClient* client,
-    String referrer) {
+    ModuleTreeClient* client) {
   tree_linker_registry_->Fetch(
       url, module_type, fetch_client_settings_object_fetcher, context_type,
-      destination, options, this, custom_fetch_type, client, referrer);
+      destination, options, this, custom_fetch_type, client);
 }
 
 void ModulatorImplBase::FetchDescendantsForInlineScript(
@@ -124,7 +123,7 @@ KURL ModulatorImplBase::ResolveModuleSpecifier(const String& specifier,
   // errors, but should be supressed (i.e. |logger| should be null) in normal
   // cases.
 
-  std::optional<KURL> mapped_url;
+  absl::optional<KURL> mapped_url;
   if (GetImportMap()) {
     String import_map_debug_message;
     mapped_url = GetImportMap()->Resolve(parsed_specifier, base_url,
@@ -133,7 +132,7 @@ KURL ModulatorImplBase::ResolveModuleSpecifier(const String& specifier,
     // Output the resolution log. This is too verbose to be always shown, but
     // will be helpful for Web developers (and also Chromium developers) for
     // debugging import maps.
-    VLOG(1) << import_map_debug_message;
+    LOG(INFO) << import_map_debug_message;
 
     if (mapped_url) {
       KURL url = *mapped_url;
@@ -176,7 +175,7 @@ bool ModulatorImplBase::HasValidContext() {
 void ModulatorImplBase::ResolveDynamically(
     const ModuleRequest& module_request,
     const ReferrerScriptInfo& referrer_info,
-    ScriptPromiseResolverTyped<IDLAny>* resolver) {
+    ScriptPromiseResolver* resolver) {
   String reason;
   if (IsDynamicImportForbidden(&reason)) {
     resolver->Reject(V8ThrowException::CreateTypeError(

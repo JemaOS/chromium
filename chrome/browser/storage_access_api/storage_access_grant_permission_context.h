@@ -5,9 +5,12 @@
 #ifndef CHROME_BROWSER_STORAGE_ACCESS_API_STORAGE_ACCESS_GRANT_PERMISSION_CONTEXT_H_
 #define CHROME_BROWSER_STORAGE_ACCESS_API_STORAGE_ACCESS_GRANT_PERMISSION_CONTEXT_H_
 
+#include "base/gtest_prod_util.h"
 #include "base/memory/weak_ptr.h"
 #include "components/permissions/permission_context_base.h"
 #include "net/first_party_sets/first_party_set_metadata.h"
+
+extern const int kDefaultImplicitGrantLimit;
 
 class GURL;
 
@@ -17,7 +20,6 @@ class PermissionRequestID;
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
-// Update StorageAccessAPIRequestOutcome in enums.xml when you add entries.
 enum class RequestOutcome {
   // The request was granted because the requesting site and the top level site
   // were in the same First-Party Set.
@@ -40,23 +42,7 @@ enum class RequestOutcome {
   // The user has already been asked and made a choice (and was not asked
   // again).
   kReusedPreviousDecision = 7,
-  // The request was denied because the most recent top-level interaction on
-  // the embedded site was too long ago, or there is no such interaction.
-  kDeniedByTopLevelInteractionHeuristic = 8,
-  // 3p cookies are already allowed by user agent, so there is no need to ask.
-  kAllowedByCookieSettings = 9,
-  // The permission was previously granted without user action. E.g. through
-  // FPS.
-  kReusedImplicitGrant = 10,
-  // 3p cookies are blocked by user explicitly, so there is no need to ask.
-  kDeniedByCookieSettings = 11,
-  // The requesting origin is same-site with the embedding origin.
-  kAllowedBySameSite = 12,
-  // The request was aborted by the browser (e.g. because the RenderFrameHost
-  // was deleted).
-  kDeniedAborted = 13,
-
-  kMaxValue = kDeniedAborted,
+  kMaxValue = kReusedPreviousDecision,
 };
 
 class StorageAccessGrantPermissionContext
@@ -74,16 +60,19 @@ class StorageAccessGrantPermissionContext
 
   // Exposes `DecidePermission` for tests.
   void DecidePermissionForTesting(
-      permissions::PermissionRequestData request_data,
+      const permissions::PermissionRequestID& id,
+      const GURL& requesting_origin,
+      const GURL& embedding_origin,
+      bool user_gesture,
       permissions::BrowserPermissionCallback callback);
-
-  static int GetImplicitGrantLimitForTesting();
-  static void SetImplicitGrantLimitForTesting(int limit);
 
  private:
   // PermissionContextBase:
   void DecidePermission(
-      permissions::PermissionRequestData request_data,
+      const permissions::PermissionRequestID& id,
+      const GURL& requesting_origin,
+      const GURL& embedding_origin,
+      bool user_gesture,
       permissions::BrowserPermissionCallback callback) override;
   ContentSetting GetPermissionStatusInternal(
       content::RenderFrameHost* render_frame_host,
@@ -114,19 +103,24 @@ class StorageAccessGrantPermissionContext
 
   // Checks First-Party Sets metadata to determine if auto-grants or
   // auto-denials are applicable. If no autogrant or autodenial is applicable,
-  // this tries to to use an implicit grant, and finally may prompt the user if
+  // this tries to to use an implicit grant, and finally prompts the user if
   // necessary.
   void CheckForAutoGrantOrAutoDenial(
-      permissions::PermissionRequestData request_data,
+      const permissions::PermissionRequestID& id,
+      const GURL& requesting_origin,
+      const GURL& embedding_origin,
+      bool user_gesture,
       permissions::BrowserPermissionCallback callback,
       net::FirstPartySetMetadata metadata);
 
-  // Determines whether the top-level user-interaction heuristic was satisfied,
-  // and if so, prompts the user.
-  void OnCheckedUserInteractionHeuristic(
-      permissions::PermissionRequestData request_data,
-      permissions::BrowserPermissionCallback callback,
-      bool had_top_level_user_interaction);
+  // Determines whether an implicit grant is available, and otherwise prompts
+  // the user.
+  void UseImplicitGrantOrPrompt(
+      const permissions::PermissionRequestID& id,
+      const GURL& requesting_origin,
+      const GURL& embedding_origin,
+      bool user_gesture,
+      permissions::BrowserPermissionCallback callback);
 
   base::WeakPtrFactory<StorageAccessGrantPermissionContext> weak_factory_{this};
 };

@@ -11,7 +11,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace device_signals {
@@ -27,7 +27,7 @@ class UserPermissionServiceFactory : public ProfileKeyedServiceFactory {
   static device_signals::UserPermissionService* GetForProfile(Profile* profile);
 
  private:
-  friend base::NoDestructor<UserPermissionServiceFactory>;
+  friend struct base::DefaultSingletonTraits<UserPermissionServiceFactory>;
 
   UserPermissionServiceFactory();
   ~UserPermissionServiceFactory() override;

@@ -7,11 +7,11 @@
  * ChromeVox interactive tutorial.
  */
 
-import 'chrome://resources/ash/common/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
-import 'chrome://resources/ash/common/cr_elements/md_select.css.js';
-import 'chrome://resources/ash/common/cr_elements/cr_shared_style.css.js';
-import 'chrome://resources/ash/common/cr_elements/cr_shared_vars.css.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import 'chrome://resources/cr_elements/md_select.css.js';
+import 'chrome://resources/cr_elements/cr_shared_style.css.js';
+import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 
 import {html, Polymer} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
@@ -181,6 +181,17 @@ export const TutorialLesson = Polymer({
     }
 
     return false;
+  },
+
+  /**
+   * @param {string} text
+   * @private
+   */
+  requestSpeech(text) {
+    // TODO (akihiroota): Migrate this to i_tutorial.js so that the tutorial
+    // engine controls all speech requests.
+    this.dispatchEvent(
+        new CustomEvent('requestspeech', {composed: true, detail: {text}}));
   },
 
   /**

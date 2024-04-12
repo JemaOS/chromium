@@ -7,10 +7,9 @@
  * addresses for use in autofill and payments APIs.
  */
 
-import '/shared/settings/prefs/prefs.js';
+import 'chrome://resources/cr_components/settings_prefs/prefs.js';
 import 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 import 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import 'chrome://resources/cr_elements/cr_shared_style.css.js';
 import 'chrome://resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
@@ -25,18 +24,15 @@ import '../i18n_setup.js';
 import {getInstance as getAnnouncerInstance} from '//resources/cr_elements/cr_a11y_announcer/cr_a11y_announcer.js';
 import {I18nMixin} from '//resources/cr_elements/i18n_mixin.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
-import type {CrActionMenuElement} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
-import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import type {CrToggleElement} from 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {CrActionMenuElement} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {focusWithoutInk} from 'chrome://resources/js/focus_without_ink.js';
-import type {DomRepeatEvent} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {DomRepeatEvent, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
+import {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
 
-import type {AutofillManagerProxy, PersonalDataChangedListener} from './autofill_manager_proxy.js';
-import {AutofillManagerImpl} from './autofill_manager_proxy.js';
+import {AutofillManagerImpl, AutofillManagerProxy, PersonalDataChangedListener} from './autofill_manager_proxy.js';
 import {getTemplate} from './autofill_section.html.js';
 
 declare global {
@@ -48,8 +44,6 @@ declare global {
 export interface SettingsAutofillSectionElement {
   $: {
     autofillProfileToggle: SettingsToggleButtonElement,
-    autofillSyncToggleWrapper: HTMLElement,
-    autofillSyncToggle: CrToggleElement,
     addressSharedMenu: CrActionMenuElement,
     addAddress: CrButtonElement,
     addressList: HTMLElement,
@@ -89,21 +83,27 @@ export class SettingsAutofillSectionElement extends
   prefs: {[key: string]: any};
   addresses: chrome.autofillPrivate.AddressEntry[];
   activeAddress: chrome.autofillPrivate.AddressEntry|null;
-  private accountInfo_: chrome.autofillPrivate.AccountInfo|null = null;
+  private accountInfo_?: chrome.autofillPrivate.AccountInfo;
   private showAddressDialog_: boolean;
   private showAddressRemoveConfirmationDialog_: boolean;
+  private activeDialogAnchor_: HTMLElement|null;
   private autofillManager_: AutofillManagerProxy =
       AutofillManagerImpl.getInstance();
   private setPersonalDataListener_: PersonalDataChangedListener|null = null;
 
+  constructor() {
+    super();
+
+    /**
+     * The element to return focus to, when the currently active dialog is
+     * closed.
+     */
+    this.activeDialogAnchor_ = null;
+  }
+
   override ready() {
     super.ready();
     this.addEventListener('save-address', this.saveAddress_);
-
-    // This is to mimic the behaviour of <settings-toggle-button>.
-    this.$.autofillSyncToggleWrapper.addEventListener('click', () => {
-      this.$.autofillSyncToggle.click();
-    });
   }
 
   override connectedCallback() {
@@ -116,12 +116,12 @@ export class SettingsAutofillSectionElement extends
         };
     const setAccountListener =
         (accountInfo?: chrome.autofillPrivate.AccountInfo) => {
-          this.accountInfo_ = accountInfo || null;
+          this.accountInfo_ = accountInfo;
         };
     const setPersonalDataListener: PersonalDataChangedListener =
         (addressList, _cardList, _ibans, accountInfo?) => {
           this.addresses = addressList;
-          this.accountInfo_ = accountInfo || null;
+          this.accountInfo_ = accountInfo;
         };
 
     // Remember the bound reference in order to detach.
@@ -159,6 +159,7 @@ export class SettingsAutofillSectionElement extends
 
     const dotsButton = e.target as HTMLElement;
     this.$.addressSharedMenu.showAt(dotsButton);
+    this.activeDialogAnchor_ = dotsButton;
   }
 
   /**
@@ -166,12 +167,16 @@ export class SettingsAutofillSectionElement extends
    */
   private onAddAddressClick_(e: Event) {
     e.preventDefault();
-    this.activeAddress = {fields: []};
+    this.activeAddress = {};
     this.showAddressDialog_ = true;
+    this.activeDialogAnchor_ = this.$.addAddress;
   }
 
   private onAddressDialogClose_() {
     this.showAddressDialog_ = false;
+    assert(this.activeDialogAnchor_);
+    focusWithoutInk(this.activeDialogAnchor_);
+    this.activeDialogAnchor_ = null;
   }
 
   /**
@@ -185,36 +190,23 @@ export class SettingsAutofillSectionElement extends
 
   private onAddressRemoveConfirmationDialogClose_() {
     // Check if the dialog was confirmed before closing it.
-    const wasDeletionConfirmed =
-        this.shadowRoot!
-            .querySelector(
-                'settings-address-remove-confirmation-dialog')!.wasConfirmed();
-    if (wasDeletionConfirmed) {
-      // Two corner cases are handled:
-      // 1. removing the only address: the focus goes to the Add button
-      // 2. removing the last address: the focus goes to the previous address
-      // In other cases the focus remaining on the same node (reused in
-      // subsequently updated address list), but the next address, works fine.
+    if (this.shadowRoot!
+            .querySelector('settings-address-remove-confirmation-dialog')!
+            .wasConfirmed()) {
       if (this.addresses.length === 1) {
-        focusWithoutInk(this.$.addAddress);
-      } else {
-        const lastIndex = this.addresses.length - 1;
-        if (this.activeAddress!.guid === this.addresses[lastIndex]!.guid) {
-          focusWithoutInk(this.$.addressList.querySelectorAll<HTMLElement>(
-              '.address-menu')[lastIndex - 1]);
-        }
+        // When user removes the last address, move focus to the Add Address
+        // button when the dialog closes. Otherwise, focus gets lost.
+        this.activeDialogAnchor_ = this.$.addAddress;
       }
 
       this.autofillManager_.removeAddress(this.activeAddress!.guid as string);
       getAnnouncerInstance().announce(
           loadTimeData.getString('addressRemovedMessage'));
     }
-    chrome.metricsPrivate.recordBoolean(
-        'Autofill.ProfileDeleted.Settings',
-        /*confirmed=*/ wasDeletionConfirmed);
-    chrome.metricsPrivate.recordBoolean(
-        'Autofill.ProfileDeleted.Any', /*confirmed=*/ wasDeletionConfirmed);
     this.showAddressRemoveConfirmationDialog_ = false;
+    assert(this.activeDialogAnchor_);
+    focusWithoutInk(this.activeDialogAnchor_);
+    this.activeDialogAnchor_ = null;
   }
 
   /**
@@ -240,32 +232,13 @@ export class SettingsAutofillSectionElement extends
     this.autofillManager_.saveAddress(event.detail);
   }
 
-  private isCloudOffVisible_(
+  private isInAccountOrSyncable_(
       address: chrome.autofillPrivate.AddressEntry,
-      accountInfo: chrome.autofillPrivate.AccountInfo|null): boolean {
-    if (address.metadata?.source ===
-        chrome.autofillPrivate.AddressSource.ACCOUNT) {
-      return false;
-    }
-
-    if (!accountInfo) {
-      return false;
-    }
-
-    if (accountInfo.isSyncEnabledForAutofillProfiles) {
-      return false;
-    }
-
-    if (!loadTimeData.getBoolean(
-            'syncEnableContactInfoDataTypeInTransportMode')) {
-      return false;
-    }
-
-    // Local profile of a logged-in user with disabled address sync and
-    // enabled feature.
-    return true;
+      accountInfo?: chrome.autofillPrivate.AccountInfo): boolean {
+    return address.metadata?.source ===
+        chrome.autofillPrivate.AddressSource.ACCOUNT ||
+        !!accountInfo?.isSyncEnabledForAutofillProfiles;
   }
-
   /**
    * @returns the title for the More Actions button corresponding to the address
    *     which is described by `label` and `sublabel`.
@@ -273,24 +246,6 @@ export class SettingsAutofillSectionElement extends
   private moreActionsTitle_(label: string, sublabel: string) {
     return this.i18n(
         'moreActionsForAddress', label + (sublabel ? sublabel : ''));
-  }
-
-  private isAutofillSyncToggleVisible_(accountInfo:
-                                           chrome.autofillPrivate.AccountInfo|
-                                       null): boolean {
-    return !!(accountInfo?.isAutofillSyncToggleAvailable);
-  }
-
-  /**
-   * Triggered by settings-toggle-button#autofillSyncToggle. It passes
-   * the toggle state to the native code. If the data changed the page
-   * content will be refreshed automatically via `PersonalDataChangedListener`.
-   */
-  private onAutofillSyncEnabledChange_() {
-    assert(
-        this.accountInfo_ && this.accountInfo_.isAutofillSyncToggleAvailable);
-    this.autofillManager_.setAutofillSyncToggleEnabled(
-        this.$.autofillSyncToggle.checked);
   }
 }
 

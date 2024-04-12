@@ -66,7 +66,6 @@ public class SplitCompatJobService extends JobService {
         }
 
         public abstract boolean onStartJob(JobParameters params);
-
         public abstract boolean onStopJob(JobParameters params);
     }
 }

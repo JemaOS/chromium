@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -25,15 +24,15 @@
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "build/chromeos_buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/display/display.h"
 #include "ui/display/display_layout.h"
 #include "ui/display/display_observer.h"
 #include "ui/display/manager/display_configurator.h"
 #include "ui/display/manager/display_manager_export.h"
-#include "ui/display/manager/display_manager_observer.h"
+#include "ui/display/manager/display_manager_utilities.h"
 #include "ui/display/manager/managed_display_info.h"
 #include "ui/display/manager/touch_device_manager.h"
-#include "ui/display/manager/util/display_manager_util.h"
 #include "ui/display/tablet_state.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/display/unified_desktop_utils.h"
@@ -181,8 +180,6 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
   // Checks the validity of given |display_id|.
   bool IsDisplayIdValid(int64_t display_id) const;
 
-  void OnScreenBrightnessChanged(float brightness);
-
   // Finds the display that contains |point| in screen coordinates.  Returns
   // invalid display if there is no display that can satisfy the condition.
   const Display& FindDisplayContainingPoint(
@@ -220,11 +217,10 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
       const gfx::Size& resolution_in_pixels,
       float device_scale_factor,
       float display_zoom_factor,
-      const DisplaySizeToZoomFactorMap& display_zoom_factor_map,
       float refresh_rate,
       bool is_interlaced,
       VariableRefreshRateState variable_refresh_rate_state,
-      const std::optional<float>& vsync_rate_min);
+      const absl::optional<uint16_t>& vsync_rate_min);
 
   // Register stored rotation properties for the internal display.
   void RegisterDisplayRotationProperties(bool rotation_lock,
@@ -355,7 +351,8 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
     should_restore_mirror_mode_from_display_prefs_ = value;
   }
 
-  const std::optional<MixedMirrorModeParams>& mixed_mirror_mode_params() const {
+  const absl::optional<MixedMirrorModeParams>& mixed_mirror_mode_params()
+      const {
     return mixed_mirror_mode_params_;
   }
 
@@ -363,7 +360,7 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
   // mixed mirror mode in the next display configuration. (Use SetMirrorMode()
   // to immediately switch to mixed mirror mode.)
   void set_mixed_mirror_mode_params(
-      const std::optional<MixedMirrorModeParams> mixed_params) {
+      const absl::optional<MixedMirrorModeParams> mixed_params) {
     mixed_mirror_mode_params_ = mixed_params;
   }
 
@@ -431,11 +428,12 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
   // the specified destination displays and all other connected displays will be
   // extended.
   void SetMirrorMode(MirrorMode mode,
-                     const std::optional<MixedMirrorModeParams>& mixed_params);
+                     const absl::optional<MixedMirrorModeParams>& mixed_params);
 
   // Used to emulate display change when run in a desktop environment instead
   // of on a device.
-  void AddRemoveDisplay();
+  void AddRemoveDisplay(
+      ManagedDisplayInfo::ManagedDisplayModeList display_modes = {});
   void ToggleDisplayScaleFactor();
 
   void InitConfigurator(std::unique_ptr<NativeDisplayDelegate> delegate);
@@ -454,7 +452,7 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
       const ui::TouchscreenDevice& touchdevice);
   void ClearTouchCalibrationData(
       int64_t display_id,
-      std::optional<ui::TouchscreenDevice> touchdevice);
+      absl::optional<ui::TouchscreenDevice> touchdevice);
   void UpdateZoomFactor(int64_t display_id, float zoom_factor);
   bool HasUnassociatedDisplay() const;
 
@@ -498,17 +496,10 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
   void NotifyMetricsChanged(const Display& display, uint32_t metrics);
   void NotifyDisplayAdded(const Display& display);
   void NotifyDisplayRemoved(const Display& display);
-  void NotifyWillProcessDisplayChanges();
-  void NotifyDidProcessDisplayChanges(
-      const DisplayManagerObserver::DisplayConfigurationChange& config_change);
 
   // Delegated from the Screen implementation.
   void AddObserver(DisplayObserver* observer);
   void RemoveObserver(DisplayObserver* observer);
-
-  // Add/Remove interface for DisplayManager::Obserevrs.
-  void AddObserver(DisplayManagerObserver* observer);
-  void RemoveObserver(DisplayManagerObserver* observer);
 
   display::TabletState GetTabletState() const;
 
@@ -519,8 +510,7 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
   // See description above |notify_depth_| for details.
   class BeginEndNotifier {
    public:
-    explicit BeginEndNotifier(DisplayManager* display_manager,
-                              bool notify_on_pending_change_only = false);
+    explicit BeginEndNotifier(DisplayManager* display_manager);
 
     BeginEndNotifier(const BeginEndNotifier&) = delete;
     BeginEndNotifier& operator=(const BeginEndNotifier&) = delete;
@@ -528,42 +518,7 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
     ~BeginEndNotifier();
 
    private:
-    // Uses the pending display change data in display manager to create the
-    // config change object propagated to observers.
-    DisplayManagerObserver::DisplayConfigurationChange CreateConfigChange()
-        const;
-
-    // Propagates change notifications only if `pending_display_changes_` is
-    // non-empty. This is necessary to handle change notifications triggering
-    // further changes and nested notifications.
-    // TODO(crbug.com/328134509): Update DisplayManager to better handle display
-    // changes during change propagation.
-    bool notify_on_pending_change_only_ = false;
-
-    raw_ptr<DisplayManager> display_manager_;
-  };
-
-  // Tracks the in-progress change to the current display configuration. This is
-  // reported to observers when the last BeginEndNotifier goes out of scope.
-  struct PendingDisplayChanges {
-    PendingDisplayChanges();
-    PendingDisplayChanges(const PendingDisplayChanges&) = delete;
-    PendingDisplayChanges& operator=(const PendingDisplayChanges&) = delete;
-    ~PendingDisplayChanges();
-
-    // True if there are no stored pending changes.
-    bool IsEmpty() const;
-
-    // Store added display_ids to avoid copying potentially stale display
-    // objects while update state is accumulated.
-    DisplayIdList added_display_ids;
-
-    // Store displays by value as removed displays are no longer persisted by
-    // the manager once removed from the `active_display_list_`.
-    Displays removed_displays;
-
-    // Maps the display_id to its metrics change.
-    base::flat_map<int64_t, uint32_t> display_metrics_changes;
+    raw_ptr<DisplayManager, ExperimentalAsh> display_manager_;
   };
 
   void set_change_display_upon_host_resize(bool value) {
@@ -632,7 +587,7 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
 
   void UpdateLayoutForMixedMode();
 
-  raw_ptr<Delegate> delegate_ = nullptr;  // not owned.
+  raw_ptr<Delegate, ExperimentalAsh> delegate_ = nullptr;  // not owned.
 
   // When set to true, DisplayManager will use DisplayConfigurator to configure
   // displays. By default, this is set to true when running on device and false
@@ -740,24 +695,17 @@ class DISPLAY_MANAGER_EXPORT DisplayManager
   // time.
   base::OnceClosure created_mirror_window_;
 
-  base::ObserverList<DisplayObserver> display_observers_;
-
-  base::ObserverList<DisplayManagerObserver> manager_observers_;
+  base::ObserverList<DisplayObserver> observers_;
 
   // Not empty if mixed mirror mode should be turned on (the specified source
   // display is mirrored to the specified destination displays). Empty if mixed
   // mirror mode is disabled.
-  std::optional<MixedMirrorModeParams> mixed_mirror_mode_params_;
+  absl::optional<MixedMirrorModeParams> mixed_mirror_mode_params_;
 
   // This is incremented whenever a BeginEndNotifier is created and decremented
   // when destroyed. BeginEndNotifier uses this to track when it should call
   // OnWillProcessDisplayChanges() and OnDidProcessDisplayChanges().
   int notify_depth_ = 0;
-
-  // State accumulated during a display configuration update. Created when
-  // BeginEndNotifier is created and propagated in OnDidProcessDisplayChanges()
-  // when the last BeginEndNotifier is destroyed.
-  std::optional<PendingDisplayChanges> pending_display_changes_;
 
   std::unique_ptr<display::DisplayConfigurator> display_configurator_;
 

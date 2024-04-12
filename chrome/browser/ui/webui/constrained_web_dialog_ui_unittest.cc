@@ -17,18 +17,37 @@
 
 namespace {
 
+class OnDialogClosedWebDialogDelegate : public ui::test::TestWebDialogDelegate {
+ public:
+  OnDialogClosedWebDialogDelegate() : ui::test::TestWebDialogDelegate(GURL()) {}
+  ~OnDialogClosedWebDialogDelegate() override = default;
+
+  // Overridden ui::test::TestWebDialogDelegate behavior:
+  void OnDialogClosed(const std::string& json_retval) override {
+    if (callback_)
+      std::move(callback_).Run(json_retval);
+  }
+
+  void RegisterOnDialogClosedCallback(
+      base::OnceCallback<void(const std::string&)> cb) {
+    callback_ = std::move(cb);
+  }
+
+ private:
+  base::OnceCallback<void(const std::string&)> callback_;
+};
+
 class TestConstrainedWebDialogDelegate : public ConstrainedWebDialogDelegate {
  public:
   TestConstrainedWebDialogDelegate() {
-    web_dialog_delegate_ = std::make_unique<ui::WebDialogDelegate>();
-    web_dialog_delegate_->set_delete_on_close(false);
+    web_dialog_delegate_ = std::make_unique<OnDialogClosedWebDialogDelegate>();
   }
 
   // ConstrainedWebDialogDelegate::GetWebDialogDelegate w/ covariant returns
-  const ui::WebDialogDelegate* GetWebDialogDelegate() const override {
+  const OnDialogClosedWebDialogDelegate* GetWebDialogDelegate() const override {
     return web_dialog_delegate_.get();
   }
-  ui::WebDialogDelegate* GetWebDialogDelegate() override {
+  OnDialogClosedWebDialogDelegate* GetWebDialogDelegate() override {
     return web_dialog_delegate_.get();
   }
 
@@ -67,7 +86,7 @@ class TestConstrainedWebDialogDelegate : public ConstrainedWebDialogDelegate {
   }
 
  private:
-  std::unique_ptr<ui::WebDialogDelegate> web_dialog_delegate_;
+  std::unique_ptr<OnDialogClosedWebDialogDelegate> web_dialog_delegate_;
 };
 
 }  // namespace

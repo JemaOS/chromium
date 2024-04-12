@@ -45,8 +45,7 @@ class DummyModulator : public Modulator {
                  network::mojom::RequestDestination destination,
                  const ScriptFetchOptions&,
                  ModuleScriptCustomFetchType,
-                 ModuleTreeClient*,
-                 String referrer) override;
+                 ModuleTreeClient*) override;
   void FetchSingle(const ModuleScriptFetchRequest&,
                    ResourceFetcher*,
                    ModuleGraphLevel,
@@ -63,7 +62,7 @@ class DummyModulator : public Modulator {
   bool HasValidContext() override;
   void ResolveDynamically(const ModuleRequest& module_request,
                           const ReferrerScriptInfo&,
-                          ScriptPromiseResolverTyped<IDLAny>*) override;
+                          ScriptPromiseResolver*) override;
   ModuleImportMeta HostGetImportMetaProperties(
       v8::Local<v8::Module>) const override;
   ModuleType ModuleTypeFromRequest(

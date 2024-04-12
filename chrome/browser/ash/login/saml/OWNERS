@@ -2,6 +2,6 @@
 xiyuan@chromium.org
 
 # (in CET)
-file://ash/login/SAML_INTEGRATION_OWNERS
+rsorokin@google.com
 
 per-file *security_token*=emaxx@chromium.org

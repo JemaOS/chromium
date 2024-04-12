@@ -18,7 +18,7 @@ namespace ui {
 class COMPONENT_EXPORT(COLOR) ColorProviderSourceObserver
     : public base::CheckedObserver {
  public:
-  explicit ColorProviderSourceObserver(ColorProviderSource* source = nullptr);
+  ColorProviderSourceObserver();
   ~ColorProviderSourceObserver() override;
 
   // Called when the source's ColorProvider instance has changed.

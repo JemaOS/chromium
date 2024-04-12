@@ -4,7 +4,7 @@
 
 package org.chromium.chrome.browser.tab;
 
-import androidx.test.core.app.ApplicationProvider;
+import androidx.test.InstrumentationRegistry;
 import androidx.test.filters.SmallTest;
 
 import org.junit.After;
@@ -25,7 +25,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 
-/** Tests whether TabState can be restored from disk properly. */
+/**
+ * Tests whether TabState can be restored from disk properly.
+ */
 @RunWith(BaseJUnit4ClassRunner.class)
 @Batch(Batch.UNIT_TESTS)
 public class WebContentsStateBridgeTest {
@@ -34,15 +36,13 @@ public class WebContentsStateBridgeTest {
     @Before
     public void setUp() {
         NativeLibraryTestUtils.loadNativeLibraryNoBrowserProcess();
-        mTestTabModelDirectory =
-                new TestTabModelDirectory(
-                        ApplicationProvider.getApplicationContext(),
-                        "WebContentsStateBridgeTest",
-                        null);
+        mTestTabModelDirectory = new TestTabModelDirectory(
+                InstrumentationRegistry.getTargetContext(), "WebContentsStateBridgeTest", null);
     }
 
     @After
     public void tearDown() {
+        TabStateFileManager.setChannelNameOverrideForTest(null);
         mTestTabModelDirectory.tearDown();
     }
 
@@ -59,33 +59,31 @@ public class WebContentsStateBridgeTest {
         }
     }
 
-    /** Tests that Chrome doesn't crash parsing a corrupted tab state. crbug/1094239 */
+    /**
+     * Tests that Chrome doesn't crash parsing a corrupted tab state. crbug/1094239
+     */
     @Test
     @SmallTest
     public void testLoadCorruptedTabState() throws Exception {
-        writeFile(
-                mTestTabModelDirectory.getBaseDirectory(),
-                "tab0",
-                new byte[] {
-                    0, 0, 0, 0, 0, 0, 0, 0, // encryption key
-                    0, 0, 0, 0, 0, 0, 0, 0, // timestamp
-                    0, 0, 0, 0, // length is 0 - (i.e. map 0-length content state)
-                    'g', 'a', 'r', 'b', 'a', 'g', 'e'
-                });
+        TabStateFileManager.setChannelNameOverrideForTest(null);
+
+        writeFile(mTestTabModelDirectory.getBaseDirectory(), "tab0",
+                new byte[] {0, 0, 0, 0, 0, 0, 0, 0, // encryption key
+                        0, 0, 0, 0, 0, 0, 0, 0, // timestamp
+                        0, 0, 0, 0, // length is 0 - (i.e. map 0-length content state)
+                        'g', 'a', 'r', 'b', 'a', 'g', 'e'});
 
         File tabStateFile = new File(mTestTabModelDirectory.getBaseDirectory(), "tab0");
-        TabState tabState = TabStateFileManager.restoreTabStateInternal(tabStateFile, false);
+        TabState tabState = TabStateFileManager.restoreTabState(tabStateFile, false);
         // Garbage-in, garbage out. Client code must be tolerant to null TabState
         Assert.assertNotNull(tabState);
         Assert.assertNotNull(tabState.contentsState);
         Assert.assertNotNull(tabState.contentsState.buffer());
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    // Return a null contents state but don't crash.
-                    Assert.assertNull(
-                            WebContentsStateBridge.restoreContentsFromByteBuffer(
-                                    tabState.contentsState, false));
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            // Return a null contents state but don't crash.
+            Assert.assertNull(WebContentsStateBridge.restoreContentsFromByteBuffer(
+                    tabState.contentsState, false));
+        });
     }
 }

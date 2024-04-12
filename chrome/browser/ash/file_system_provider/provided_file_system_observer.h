@@ -12,7 +12,8 @@
 #include "chrome/browser/ash/file_system_provider/watcher.h"
 #include "storage/browser/file_system/watcher_manager.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 class ProvidedFileSystemInfo;
 
@@ -55,6 +56,7 @@ class ProvidedFileSystemObserver {
       const Watchers& watchers) = 0;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_PROVIDED_FILE_SYSTEM_OBSERVER_H_

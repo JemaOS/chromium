@@ -4,6 +4,8 @@
 
 package org.chromium.chrome.browser.uid;
 
+import androidx.annotation.VisibleForTesting;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -56,6 +58,7 @@ public final class UniqueIdentificationGeneratorFactory {
         }
     }
 
+    @VisibleForTesting
     public static void clearGeneratorMapForTest() {
         synchronized (LOCK) {
             GENERATOR_MAP.clear();

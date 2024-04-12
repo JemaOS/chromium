@@ -72,9 +72,8 @@ void WebRtcAudioDeviceImpl::RenderData(
 #if DCHECK_IS_ON()
     DCHECK(!renderer_ || renderer_->CurrentThreadIsRenderingThread());
     if (!audio_renderer_thread_checker_.CalledOnValidThread()) {
-      for (WebRtcPlayoutDataSource::Sink* sink : playout_sinks_) {
+      for (auto* sink : playout_sinks_)
         sink->OnRenderThreadChanged();
-      }
     }
 #endif
     if (!playing_ || audio_bus->channels() > 8) {
@@ -123,9 +122,8 @@ void WebRtcAudioDeviceImpl::RenderData(
 
   // Pass the render data to the playout sinks.
   base::AutoLock auto_lock(lock_);
-  for (WebRtcPlayoutDataSource::Sink* sink : playout_sinks_) {
+  for (auto* sink : playout_sinks_)
     sink->OnPlayoutData(audio_bus, sample_rate, audio_delay);
-  }
 }
 
 void WebRtcAudioDeviceImpl::RemoveAudioRenderer(
@@ -134,9 +132,8 @@ void WebRtcAudioDeviceImpl::RemoveAudioRenderer(
   base::AutoLock auto_lock(lock_);
   DCHECK_EQ(renderer, renderer_.get());
   // Notify the playout sink of the change.
-  for (WebRtcPlayoutDataSource::Sink* sink : playout_sinks_) {
+  for (auto* sink : playout_sinks_)
     sink->OnPlayoutDataSourceChanged();
-  }
 
   renderer_ = nullptr;
 }
@@ -147,10 +144,8 @@ void WebRtcAudioDeviceImpl::AudioRendererThreadStopped() {
   // Notify the playout sink of the change.
   // Not holding |lock_| because the caller must guarantee that the audio
   // renderer thread is dead, so no race is possible with |playout_sinks_|
-  for (WebRtcPlayoutDataSource::Sink* sink :
-       TS_UNCHECKED_READ(playout_sinks_)) {
+  for (auto* sink : TS_UNCHECKED_READ(playout_sinks_))
     sink->OnPlayoutDataSourceChanged();
-  }
 }
 
 void WebRtcAudioDeviceImpl::SetOutputDeviceForAec(
@@ -162,7 +157,7 @@ void WebRtcAudioDeviceImpl::SetOutputDeviceForAec(
            << "], new id [" << output_device_id << "]";
   output_device_id_for_aec_ = output_device_id;
   base::AutoLock lock(lock_);
-  for (ProcessedLocalAudioSource* capturer : capturers_) {
+  for (auto* capturer : capturers_) {
     capturer->SetOutputDeviceForAec(output_device_id.Utf8());
   }
 }
@@ -405,10 +400,10 @@ void WebRtcAudioDeviceImpl::RemovePlayoutSink(
   playout_sinks_.remove(sink);
 }
 
-std::optional<webrtc::AudioDeviceModule::Stats>
+absl::optional<webrtc::AudioDeviceModule::Stats>
 WebRtcAudioDeviceImpl::GetStats() const {
   base::AutoLock auto_lock(lock_);
-  return std::optional<webrtc::AudioDeviceModule::Stats>(
+  return absl::optional<webrtc::AudioDeviceModule::Stats>(
       webrtc::AudioDeviceModule::Stats{
           .synthesized_samples_duration_s =
               cumulative_glitch_info_.duration.InSecondsF(),

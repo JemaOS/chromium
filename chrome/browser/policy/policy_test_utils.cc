@@ -4,7 +4,6 @@
 
 #include "chrome/browser/policy/policy_test_utils.h"
 
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -25,12 +24,12 @@
 #include "components/policy/policy_constants.h"
 #include "components/safe_search_api/safe_search_util.h"
 #include "content/public/browser/browser_thread.h"
-#include "content/public/browser/network_service_util.h"
 #include "content/public/browser/web_contents.h"
-#include "content/public/test/browser_test_utils.h"
+#include "content/public/common/network_service_util.h"
 #include "content/public/test/test_utils.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/dns/mock_host_resolver.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using content::BrowserThread;
 
@@ -67,7 +66,7 @@ void PolicyTest::UpdateProviderPolicy(const PolicyMap& policy) {
 // static
 void PolicyTest::SetPolicy(PolicyMap* policies,
                            const char* key,
-                           std::optional<base::Value> value) {
+                           absl::optional<base::Value> value) {
   policies->Set(key, POLICY_LEVEL_MANDATORY, POLICY_SCOPE_USER,
                 POLICY_SOURCE_CLOUD, std::move(value), nullptr);
 }
@@ -80,18 +79,19 @@ bool PolicyTest::FetchSubresource(content::WebContents* web_contents,
       "xhr.open('GET', '");
   script += url.spec() +
             "', true);"
-            "new Promise(resolve => {"
-            "  xhr.onload = function (e) {"
-            "    if (xhr.readyState === 4) {"
-            "      resolve(xhr.status === 200);"
-            "    }"
-            "  };"
-            "  xhr.onerror = function () {"
-            "    resolve(false);"
-            "  };"
-            "  xhr.send(null)"
-            "});";
-  return content::EvalJs(web_contents, script).ExtractBool();
+            "xhr.onload = function (e) {"
+            "  if (xhr.readyState === 4) {"
+            "    window.domAutomationController.send(xhr.status === 200);"
+            "  }"
+            "};"
+            "xhr.onerror = function () {"
+            "  window.domAutomationController.send(false);"
+            "};"
+            "xhr.send(null)";
+  bool xhr_result = false;
+  bool execute_result =
+      content::ExecuteScriptAndExtractBool(web_contents, script, &xhr_result);
+  return xhr_result && execute_result;
 }
 
 void PolicyTest::FlushBlocklistPolicy() {

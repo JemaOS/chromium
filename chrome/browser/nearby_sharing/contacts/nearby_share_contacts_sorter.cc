@@ -5,51 +5,49 @@
 #include "chrome/browser/nearby_sharing/contacts/nearby_share_contacts_sorter.h"
 
 #include <algorithm>
-#include <optional>
 #include <string>
 
 #include "base/i18n/string_compare.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
-#include "third_party/nearby/sharing/proto/rpc_resources.pb.h"
+#include "chrome/browser/nearby_sharing/proto/rpc_resources.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
 struct ContactSortingFields {
   // Primary sorting key: person name if not empty; otherwise, email.
-  std::optional<std::string> person_name_or_email;
+  absl::optional<std::string> person_name_or_email;
   // Secondary sorting key. Note: It is okay if email is also used as the
   // primary sorting key.
-  std::optional<std::string> email;
+  absl::optional<std::string> email;
   // Tertiary sorting key.
-  std::optional<std::string> phone_number;
+  absl::optional<std::string> phone_number;
   // Last resort sorting key. The contact ID should be unique for each contact
   // record, guaranteeing uniquely defined ordering.
   std::string id;
 };
 
 ContactSortingFields GetContactSortingFields(
-    const nearby::sharing::proto::ContactRecord& contact) {
+    const nearbyshare::proto::ContactRecord& contact) {
   ContactSortingFields fields;
   fields.id = contact.id();
   for (const auto& identifier : contact.identifiers()) {
     switch (identifier.identifier_case()) {
-      case nearby::sharing::proto::Contact_Identifier::IdentifierCase::
-          kAccountName:
+      case nearbyshare::proto::Contact_Identifier::IdentifierCase::kAccountName:
         if (!fields.email) {
           fields.email = identifier.account_name();
         }
         break;
-      case nearby::sharing::proto::Contact_Identifier::IdentifierCase::
-          kPhoneNumber:
+      case nearbyshare::proto::Contact_Identifier::IdentifierCase::kPhoneNumber:
         if (!fields.phone_number) {
           fields.phone_number = identifier.phone_number();
         }
         break;
-      case nearby::sharing::proto::Contact_Identifier::IdentifierCase::
+      case nearbyshare::proto::Contact_Identifier::IdentifierCase::
           kObfuscatedGaia:
         break;
-      case nearby::sharing::proto::Contact_Identifier::IdentifierCase::
+      case nearbyshare::proto::Contact_Identifier::IdentifierCase::
           IDENTIFIER_NOT_SET:
         break;
     }
@@ -57,7 +55,7 @@ ContactSortingFields GetContactSortingFields(
   fields.person_name_or_email =
       contact.person_name().empty()
           ? fields.email
-          : std::make_optional<std::string>(contact.person_name());
+          : absl::make_optional<std::string>(contact.person_name());
 
   return fields;
 }
@@ -67,8 +65,8 @@ class ContactRecordComparator {
   explicit ContactRecordComparator(icu::Collator* collator)
       : collator_(collator) {}
 
-  bool operator()(const nearby::sharing::proto::ContactRecord& c1,
-                  const nearby::sharing::proto::ContactRecord& c2) const {
+  bool operator()(const nearbyshare::proto::ContactRecord& c1,
+                  const nearbyshare::proto::ContactRecord& c2) const {
     ContactSortingFields f1 = GetContactSortingFields(c1);
     ContactSortingFields f2 = GetContactSortingFields(c2);
 
@@ -104,9 +102,9 @@ class ContactRecordComparator {
   }
 
  private:
-  UCollationResult CollatorCompare(const std::optional<std::string>& a,
-                                   const std::optional<std::string>& b) const {
-    // Sort populated strings before std::nullopt.
+  UCollationResult CollatorCompare(const absl::optional<std::string>& a,
+                                   const absl::optional<std::string>& b) const {
+    // Sort populated strings before absl::nullopt.
     if (!a && !b)
       return UCOL_EQUAL;
     if (!b)
@@ -128,13 +126,13 @@ class ContactRecordComparator {
     return *a < *b ? UCOL_LESS : UCOL_GREATER;
   }
 
-  raw_ptr<icu::Collator> collator_;
+  raw_ptr<icu::Collator, ExperimentalAsh> collator_;
 };
 
 }  // namespace
 
 void SortNearbyShareContactRecords(
-    std::vector<nearby::sharing::proto::ContactRecord>* contacts,
+    std::vector<nearbyshare::proto::ContactRecord>* contacts,
     icu::Locale locale) {
   UErrorCode error = U_ZERO_ERROR;
   std::unique_ptr<icu::Collator> collator(

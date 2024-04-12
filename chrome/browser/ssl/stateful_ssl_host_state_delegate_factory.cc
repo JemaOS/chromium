@@ -32,8 +32,7 @@ StatefulSSLHostStateDelegateFactory::GetForProfile(Profile* profile) {
 // static
 StatefulSSLHostStateDelegateFactory*
 StatefulSSLHostStateDelegateFactory::GetInstance() {
-  static base::NoDestructor<StatefulSSLHostStateDelegateFactory> instance;
-  return instance.get();
+  return base::Singleton<StatefulSSLHostStateDelegateFactory>::get();
 }
 
 // static
@@ -45,22 +44,16 @@ StatefulSSLHostStateDelegateFactory::GetDefaultFactoryForTesting() {
 StatefulSSLHostStateDelegateFactory::StatefulSSLHostStateDelegateFactory()
     : ProfileKeyedServiceFactory(
           "StatefulSSLHostStateDelegate",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HostContentSettingsMapFactory::GetInstance());
 }
 
 StatefulSSLHostStateDelegateFactory::~StatefulSSLHostStateDelegateFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-StatefulSSLHostStateDelegateFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* StatefulSSLHostStateDelegateFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return BuildStatefulSSLHostStateDelegate(context);
+  return BuildStatefulSSLHostStateDelegate(context).release();
 }
 
 bool StatefulSSLHostStateDelegateFactory::ServiceIsNULLWhileTesting() const {

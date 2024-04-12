@@ -34,12 +34,14 @@ public class DownloadMessageUiDelegate implements DownloadMessageUiController.De
     }
 
     @Override
-    public @Nullable Context getContext() {
+    @Nullable
+    public Context getContext() {
         return mActivity.get();
     }
 
     @Override
-    public @Nullable MessageDispatcher getMessageDispatcher() {
+    @Nullable
+    public MessageDispatcher getMessageDispatcher() {
         ChromeActivity chromeActivity = mActivity.get();
         if (chromeActivity == null) return null;
 
@@ -50,7 +52,8 @@ public class DownloadMessageUiDelegate implements DownloadMessageUiController.De
     }
 
     @Override
-    public @Nullable ModalDialogManager getModalDialogManager() {
+    @Nullable
+    public ModalDialogManager getModalDialogManager() {
         ChromeActivity chromeActivity = mActivity.get();
         return chromeActivity == null ? null : chromeActivity.getModalDialogManager();
     }

@@ -95,6 +95,28 @@ class MediaControllerTest : public AshTestBase {
   std::unique_ptr<media_session::test::TestMediaController> controller_;
 };
 
+class MediaControllerLockScreenEnabledTest : public MediaControllerTest {
+ public:
+  MediaControllerLockScreenEnabledTest() {
+    scoped_feature_list_.InitAndEnableFeature(
+        features::kLockScreenMediaControls);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+class MediaControllerLockScreenDisabledTest : public MediaControllerTest {
+ public:
+  MediaControllerLockScreenDisabledTest() {
+    scoped_feature_list_.InitAndDisableFeature(
+        features::kLockScreenMediaControls);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
 TEST_F(MediaControllerTest, EnableMediaKeysWhenUnlocked) {
   EXPECT_EQ(0, controller()->suspend_count());
   EXPECT_EQ(0, controller()->resume_count());
@@ -115,7 +137,7 @@ TEST_F(MediaControllerTest, EnableMediaKeysWhenUnlocked) {
   EXPECT_EQ(1, controller()->seek_forward_count());
 }
 
-TEST_F(MediaControllerTest, EnableLockScreenMediaKeys) {
+TEST_F(MediaControllerLockScreenEnabledTest, EnableLockScreenMediaKeys) {
   PrefService* prefs =
       Shell::Get()->session_controller()->GetLastActiveUserPrefService();
   prefs->SetBoolean(prefs::kLockScreenMediaControlsEnabled, true);
@@ -124,7 +146,23 @@ TEST_F(MediaControllerTest, EnableLockScreenMediaKeys) {
       Shell::Get()->media_controller()->AreLockScreenMediaKeysEnabled());
 }
 
-TEST_F(MediaControllerTest, DisableLockScreenMediaKeysIfPreferenceDisabled) {
+TEST_F(MediaControllerLockScreenDisabledTest,
+       DisableLockScreenMediaKeysIfFeatureDisabled) {
+  PrefService* prefs =
+      Shell::Get()->session_controller()->GetPrimaryUserPrefService();
+  prefs->SetBoolean(prefs::kLockScreenMediaControlsEnabled, true);
+
+  EXPECT_FALSE(
+      Shell::Get()->media_controller()->AreLockScreenMediaKeysEnabled());
+
+  prefs->SetBoolean(prefs::kLockScreenMediaControlsEnabled, false);
+
+  EXPECT_FALSE(
+      Shell::Get()->media_controller()->AreLockScreenMediaKeysEnabled());
+}
+
+TEST_F(MediaControllerLockScreenEnabledTest,
+       DisableLockScreenMediaKeysIfPreferenceDisabled) {
   PrefService* prefs =
       Shell::Get()->session_controller()->GetPrimaryUserPrefService();
   prefs->SetBoolean(prefs::kLockScreenMediaControlsEnabled, false);
@@ -133,7 +171,8 @@ TEST_F(MediaControllerTest, DisableLockScreenMediaKeysIfPreferenceDisabled) {
       Shell::Get()->media_controller()->AreLockScreenMediaKeysEnabled());
 }
 
-TEST_F(MediaControllerTest, EnableMediaKeysWhenLockedAndControlsEnabled) {
+TEST_F(MediaControllerLockScreenEnabledTest,
+       EnableMediaKeysWhenLockedAndControlsEnabled) {
   PrefService* prefs =
       Shell::Get()->session_controller()->GetPrimaryUserPrefService();
   prefs->SetBoolean(prefs::kLockScreenMediaControlsEnabled, true);
@@ -159,7 +198,8 @@ TEST_F(MediaControllerTest, EnableMediaKeysWhenLockedAndControlsEnabled) {
   EXPECT_EQ(1, controller()->seek_forward_count());
 }
 
-TEST_F(MediaControllerTest, DisableMediaKeysWhenLockedAndControlsDisabled) {
+TEST_F(MediaControllerLockScreenEnabledTest,
+       DisableMediaKeysWhenLockedAndControlsDisabled) {
   PrefService* prefs =
       Shell::Get()->session_controller()->GetPrimaryUserPrefService();
   prefs->SetBoolean(prefs::kLockScreenMediaControlsEnabled, false);

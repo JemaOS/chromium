@@ -18,9 +18,9 @@ class OmniboxResultView;
 class OmniboxTextView;
 
 class OmniboxMatchCellView : public views::View {
-  METADATA_HEADER(OmniboxMatchCellView, views::View)
-
  public:
+  METADATA_HEADER(OmniboxMatchCellView);
+
   // Constants used in layout. Exposed so other views can coordinate margins.
   static constexpr int kMarginLeft = 4;
   static constexpr int kMarginRight = 8;
@@ -70,7 +70,7 @@ class OmniboxMatchCellView : public views::View {
                      const AutocompleteMatch& match);
 
   // Set's the `icon_view_` image, possibly with a rounded square background.
-  void SetIcon(const gfx::ImageSkia& image, const AutocompleteMatch& match);
+  void SetIcon(const gfx::ImageSkia& image);
 
   // Clears the `icon_view_` image. Useful for suggestions that don't need icons
   // e.g., tail suggestions. Can't simply set the icon to an empty icon,
@@ -85,7 +85,7 @@ class OmniboxMatchCellView : public views::View {
 
   // views::View:
   gfx::Insets GetInsets() const override;
-  void Layout(PassKey) override;
+  void Layout() override;
   bool GetCanProcessEventsWithinSubtree() const override;
   gfx::Size CalculatePreferredSize() const override;
 

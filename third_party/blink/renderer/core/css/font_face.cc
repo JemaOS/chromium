@@ -90,7 +90,7 @@ const CSSValue* ParseCSSValue(const ExecutionContext* context,
 
 CSSFontFace* CreateCSSFontFace(FontFace* font_face,
                                const CSSValue* unicode_range) {
-  HeapVector<UnicodeRange> ranges;
+  Vector<UnicodeRange> ranges;
   if (const auto* range_list = To<CSSValueList>(unicode_range)) {
     unsigned num_ranges = range_list->length();
     for (unsigned i = 0; i < num_ranges; i++) {
@@ -100,7 +100,7 @@ CSSFontFace* CreateCSSFontFace(FontFace* font_face,
     }
   }
 
-  return MakeGarbageCollected<CSSFontFace>(font_face, std::move(ranges));
+  return MakeGarbageCollected<CSSFontFace>(font_face, ranges);
 }
 
 const CSSValue* ConvertFontMetricOverrideValue(const CSSValue* parsed_value) {
@@ -551,8 +551,7 @@ void FontFace::SetError(DOMException* error) {
   SetLoadStatus(kError);
 }
 
-ScriptPromiseTyped<FontFace> FontFace::FontStatusPromise(
-    ScriptState* script_state) {
+ScriptPromise FontFace::FontStatusPromise(ScriptState* script_state) {
   if (!loaded_property_) {
     loaded_property_ = MakeGarbageCollected<LoadedProperty>(
         ExecutionContext::From(script_state));
@@ -565,7 +564,7 @@ ScriptPromiseTyped<FontFace> FontFace::FontStatusPromise(
   return loaded_property_->Promise(script_state->World());
 }
 
-ScriptPromiseTyped<FontFace> FontFace::load(ScriptState* script_state) {
+ScriptPromise FontFace::load(ScriptState* script_state) {
   if (status_ == kUnloaded) {
     css_font_face_->Load();
   }
@@ -595,9 +594,9 @@ FontSelectionCapabilities FontFace::GetFontSelectionCapabilities() const {
   // weight values. The first value of each pair is the minimum value, the
   // second is the maximum value.
   FontSelectionCapabilities normal_capabilities(
-      {kNormalWidthValue, kNormalWidthValue},
-      {kNormalSlopeValue, kNormalSlopeValue},
-      {kNormalWeightValue, kNormalWeightValue});
+      {NormalWidthValue(), NormalWidthValue()},
+      {NormalSlopeValue(), NormalSlopeValue()},
+      {NormalWeightValue(), NormalWeightValue()});
   FontSelectionCapabilities capabilities(normal_capabilities);
 
   if (stretch_) {
@@ -605,45 +604,46 @@ FontSelectionCapabilities FontFace::GetFontSelectionCapabilities() const {
             DynamicTo<CSSIdentifierValue>(stretch_.Get())) {
       switch (stretch_identifier_value->GetValueID()) {
         case CSSValueID::kUltraCondensed:
-          capabilities.width = {kUltraCondensedWidthValue,
-                                kUltraCondensedWidthValue,
+          capabilities.width = {UltraCondensedWidthValue(),
+                                UltraCondensedWidthValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kExtraCondensed:
-          capabilities.width = {kExtraCondensedWidthValue,
-                                kExtraCondensedWidthValue,
+          capabilities.width = {ExtraCondensedWidthValue(),
+                                ExtraCondensedWidthValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kCondensed:
-          capabilities.width = {kCondensedWidthValue, kCondensedWidthValue,
+          capabilities.width = {CondensedWidthValue(), CondensedWidthValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kSemiCondensed:
-          capabilities.width = {kSemiCondensedWidthValue,
-                                kSemiCondensedWidthValue,
+          capabilities.width = {SemiCondensedWidthValue(),
+                                SemiCondensedWidthValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kSemiExpanded:
-          capabilities.width = {kSemiExpandedWidthValue,
-                                kSemiExpandedWidthValue,
+          capabilities.width = {SemiExpandedWidthValue(),
+                                SemiExpandedWidthValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kExpanded:
-          capabilities.width = {kExpandedWidthValue, kExpandedWidthValue,
+          capabilities.width = {ExpandedWidthValue(), ExpandedWidthValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kExtraExpanded:
-          capabilities.width = {kExtraExpandedWidthValue,
-                                kExtraExpandedWidthValue,
+          capabilities.width = {ExtraExpandedWidthValue(),
+                                ExtraExpandedWidthValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kUltraExpanded:
-          capabilities.width = {kUltraExpandedWidthValue,
-                                kUltraExpandedWidthValue,
+          capabilities.width = {UltraExpandedWidthValue(),
+                                UltraExpandedWidthValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kAuto:
-          capabilities.width = {kNormalWidthValue, kNormalWidthValue,
+          DCHECK(RuntimeEnabledFeatures::CSSFontFaceAutoVariableRangeEnabled());
+          capabilities.width = {NormalWidthValue(), NormalWidthValue(),
                                 FontSelectionRange::RangeType::kSetFromAuto};
           break;
         default:
@@ -696,19 +696,20 @@ FontSelectionCapabilities FontFace::GetFontSelectionCapabilities() const {
     if (auto* identifier_value = DynamicTo<CSSIdentifierValue>(style_.Get())) {
       switch (identifier_value->GetValueID()) {
         case CSSValueID::kNormal:
-          capabilities.slope = {kNormalSlopeValue, kNormalSlopeValue,
+          capabilities.slope = {NormalSlopeValue(), NormalSlopeValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kOblique:
-          capabilities.slope = {kItalicSlopeValue, kItalicSlopeValue,
+          capabilities.slope = {ItalicSlopeValue(), ItalicSlopeValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kItalic:
-          capabilities.slope = {kItalicSlopeValue, kItalicSlopeValue,
+          capabilities.slope = {ItalicSlopeValue(), ItalicSlopeValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kAuto:
-          capabilities.slope = {kNormalSlopeValue, kNormalSlopeValue,
+          DCHECK(RuntimeEnabledFeatures::CSSFontFaceAutoVariableRangeEnabled());
+          capabilities.slope = {NormalSlopeValue(), NormalSlopeValue(),
                                 FontSelectionRange::RangeType::kSetFromAuto};
           break;
         default:
@@ -722,12 +723,12 @@ FontSelectionCapabilities FontFace::GetFontSelectionCapabilities() const {
         if (!range_value->GetObliqueValues()) {
           if (font_style_id == CSSValueID::kNormal) {
             capabilities.slope = {
-                kNormalSlopeValue, kNormalSlopeValue,
+                NormalSlopeValue(), NormalSlopeValue(),
                 FontSelectionRange::RangeType::kSetExplicitly};
           }
           DCHECK(font_style_id == CSSValueID::kItalic ||
                  font_style_id == CSSValueID::kOblique);
-          capabilities.slope = {kItalicSlopeValue, kItalicSlopeValue,
+          capabilities.slope = {ItalicSlopeValue(), ItalicSlopeValue(),
                                 FontSelectionRange::RangeType::kSetExplicitly};
         } else {
           DCHECK(font_style_id == CSSValueID::kOblique);
@@ -773,15 +774,16 @@ FontSelectionCapabilities FontFace::GetFontSelectionCapabilities() const {
     if (auto* identifier_value = DynamicTo<CSSIdentifierValue>(weight_.Get())) {
       switch (identifier_value->GetValueID()) {
         case CSSValueID::kNormal:
-          capabilities.weight = {kNormalWeightValue, kNormalWeightValue,
+          capabilities.weight = {NormalWeightValue(), NormalWeightValue(),
                                  FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kBold:
-          capabilities.weight = {kBoldWeightValue, kBoldWeightValue,
+          capabilities.weight = {BoldWeightValue(), BoldWeightValue(),
                                  FontSelectionRange::RangeType::kSetExplicitly};
           break;
         case CSSValueID::kAuto:
-          capabilities.weight = {kNormalWeightValue, kNormalWeightValue,
+          DCHECK(RuntimeEnabledFeatures::CSSFontFaceAutoVariableRangeEnabled());
+          capabilities.weight = {NormalWeightValue(), NormalWeightValue(),
                                  FontSelectionRange::RangeType::kSetFromAuto};
           break;
         default:
@@ -892,7 +894,7 @@ void FontFace::InitCSSFontFace(ExecutionContext* context, const CSSValue& src) {
       }
     } else {
       css_font_face_->AddSource(MakeGarbageCollected<LocalFontFaceSource>(
-          css_font_face_, font_selector, item.LocalResource()));
+          css_font_face_, font_selector, item.GetResource()));
     }
   }
 }

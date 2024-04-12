@@ -38,7 +38,6 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 using testing::AnyNumber;
 
@@ -74,7 +73,6 @@ class ExecutionContextLifecycleStateObserverTest : public testing::Test {
   MockExecutionContextLifecycleStateObserver& Observer() { return *observer_; }
 
  private:
-  test::TaskEnvironment task_environment_;
   std::unique_ptr<DummyPageHolder> src_page_holder_;
   std::unique_ptr<DummyPageHolder> dest_page_holder_;
   Persistent<MockExecutionContextLifecycleStateObserver> observer_;

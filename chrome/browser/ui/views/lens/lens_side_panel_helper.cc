@@ -4,14 +4,12 @@
 
 #include "chrome/browser/ui/lens/lens_side_panel_helper.h"
 
-#include "chrome/browser/ui/side_panel/companion/companion_utils.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/top_container_view.h"
 #include "chrome/browser/ui/views/lens/lens_region_search_instructions_view.h"
 #include "chrome/browser/ui/views/lens/lens_static_page_controller.h"
 #include "chrome/browser/ui/views/side_panel/lens/lens_side_panel_coordinator.h"
-#include "chrome/browser/ui/views/side_panel/search_companion/search_companion_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
 #include "components/lens/lens_entrypoints.h"
 #include "components/lens/lens_features.h"
@@ -23,6 +21,20 @@
 
 namespace lens {
 
+bool IsValidLensResultUrl(const GURL& url) {
+  if (url.is_empty())
+    return false;
+
+  std::string payload;
+  // Make sure the payload is present
+  return net::GetValueForKeyInQuery(url, kPayloadQueryParameter, &payload);
+}
+
+bool IsLensUrl(const GURL& url) {
+  return !url.is_empty() &&
+         url.host() == GURL(lens::features::GetHomepageURLForLens()).host();
+}
+
 bool ShouldPageBeVisible(const GURL& url) {
   return lens::IsValidLensResultUrl(url) || !lens::IsLensUrl(url) ||
          !lens::features::GetEnableLensHtmlRedirectFix();
@@ -33,23 +45,18 @@ bool ShouldPageBeVisible(const GURL& url) {
 GURL CreateURLForNewTab(const GURL& original_url) {
   if (!IsValidLensResultUrl(original_url))
     return GURL();
+  // Set the side panel max size to zero, as this is not a side panel request.
+  gfx::Size side_panel_initial_size = gfx::Size();
 
   // Append or replace query parameters related to entry point.
   return AppendOrReplaceQueryParametersForLensRequest(
       original_url, EntryPoint::CHROME_OPEN_NEW_TAB_SIDE_PANEL,
       RenderingEnvironment::ONELENS_DESKTOP_WEB_FULLSCREEN,
-      /*is_side_panel_request=*/false);
+      /*is_side_panel_request=*/false, side_panel_initial_size);
 }
 
 void OpenLensSidePanel(Browser* browser,
                        const content::OpenURLParams& url_params) {
-  if (companion::ShouldUseContextualLensPanelForImageSearch(browser)) {
-    auto* coordinator =
-        SearchCompanionSidePanelCoordinator::GetOrCreateForBrowser(browser);
-    coordinator->ShowLens(url_params);
-    return;
-  }
-
   LensSidePanelCoordinator::GetOrCreateForBrowser(browser)
       ->RegisterEntryAndShow(url_params);
 }
@@ -58,19 +65,18 @@ views::Widget* OpenLensRegionSearchInstructions(
     Browser* browser,
     base::OnceClosure close_callback,
     base::OnceClosure escape_callback) {
-  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
-  CHECK(browser_view);
   // Our anchor should be the browser view's top container view. This makes sure
   // that we account for side panel width and the top container view.
-  views::View* anchor = browser_view->contents_web_view();
+  views::View* anchor =
+      BrowserView::GetBrowserViewForBrowser(browser)->contents_web_view();
   return views::BubbleDialogDelegateView::CreateBubble(
       std::make_unique<LensRegionSearchInstructionsView>(
           anchor, std::move(close_callback), std::move(escape_callback)));
 }
 
 void CreateLensUnifiedSidePanelEntryForTesting(Browser* browser) {
-  SidePanelCoordinator* coordinator =
-      SidePanelUtil::GetSidePanelCoordinatorForBrowser(browser);
+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
+  SidePanelCoordinator* coordinator = browser_view->side_panel_coordinator();
   DCHECK(coordinator);
   coordinator->SetNoDelaysForTesting(true);  // IN-TEST
 

@@ -4,6 +4,7 @@
 <link rel="help" href="https://drafts.csswg.org/css-contain-3/#query-container">
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
+<script src="/resources/declarative-shadow-dom-polyfill.js"></script>
 <script src="support/cq-testcommon.js"></script>
 
 <div id="inclusive-ancestor-across-root">
@@ -136,6 +137,12 @@
     <template shadowrootmode="open">
       <div exportparts="inner-part" style="-foo: baz">
         <template shadowrootmode="open">
+          <style>
+            div {
+              width: 200px;
+              container-type: inline-size;
+            }
+          </style>
           <div style="--foo: baz">
             <span id="t9" part="inner-part"></span>
           </div>
@@ -194,6 +201,7 @@
 <script>
   setup(() => {
     assert_implements_container_queries();
+    polyfill_declarative_shadow_dom(document);
   });
 
   const green = "rgb(0, 128, 0)";

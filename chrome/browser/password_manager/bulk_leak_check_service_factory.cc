@@ -7,7 +7,7 @@
 #include "base/no_destructor.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "components/password_manager/core/browser/leak_detection/bulk_leak_check_service.h"
+#include "components/password_manager/core/browser/bulk_leak_check_service.h"
 #include "content/public/browser/storage_partition.h"
 
 BulkLeakCheckServiceFactory::BulkLeakCheckServiceFactory()
@@ -37,11 +37,10 @@ BulkLeakCheckServiceFactory::GetForProfile(Profile* profile) {
       GetInstance()->GetServiceForBrowserContext(profile, true));
 }
 
-std::unique_ptr<KeyedService>
-BulkLeakCheckServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* BulkLeakCheckServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<password_manager::BulkLeakCheckService>(
+  return new password_manager::BulkLeakCheckService(
       IdentityManagerFactory::GetForProfile(profile),
       profile->GetDefaultStoragePartition()
           ->GetURLLoaderFactoryForBrowserProcess());

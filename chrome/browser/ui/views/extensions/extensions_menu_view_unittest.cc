@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "base/command_line.h"
-#include "base/containers/to_vector.h"
 #include "base/files/file_path.h"
 #include "base/memory/raw_ptr.h"
 #include "base/ranges/algorithm.h"
@@ -64,7 +63,7 @@ class AdditionalBrowser {
 
  private:
   std::unique_ptr<Browser> browser_;
-  raw_ptr<BrowserView, DanglingUntriaged> browser_view_;
+  raw_ptr<BrowserView> browser_view_;
 };
 
 }  // namespace
@@ -128,7 +127,7 @@ ExtensionsMenuViewUnitTest::InstallExtensionAndLayout(const std::string& name) {
 }
 
 ExtensionMenuItemView* ExtensionsMenuViewUnitTest::GetOnlyMenuItem() {
-  base::flat_set<raw_ptr<ExtensionMenuItemView, CtnExperimental>> menu_items =
+  base::flat_set<ExtensionMenuItemView*> menu_items =
       extensions_menu()->extensions_menu_items_for_testing();
   if (menu_items.size() != 1u) {
     ADD_FAILURE() << "Not exactly one item; size is: " << menu_items.size();
@@ -172,7 +171,7 @@ ExtensionsMenuViewUnitTest::GetPinnedExtensionViews() {
 
 ExtensionMenuItemView* ExtensionsMenuViewUnitTest::GetExtensionMenuItemView(
     const std::string& name) {
-  base::flat_set<raw_ptr<ExtensionMenuItemView, CtnExperimental>> menu_items =
+  base::flat_set<ExtensionMenuItemView*> menu_items =
       extensions_menu()->extensions_menu_items_for_testing();
   auto iter =
       base::ranges::find(menu_items, name, [](ExtensionMenuItemView* item) {
@@ -182,9 +181,13 @@ ExtensionMenuItemView* ExtensionsMenuViewUnitTest::GetExtensionMenuItemView(
 }
 
 std::vector<std::string> ExtensionsMenuViewUnitTest::GetPinnedExtensionNames() {
-  return base::ToVector(GetPinnedExtensionViews(), [](ToolbarActionView* view) {
+  std::vector<ToolbarActionView*> views = GetPinnedExtensionViews();
+  std::vector<std::string> result;
+  result.resize(views.size());
+  base::ranges::transform(views, result.begin(), [](ToolbarActionView* view) {
     return base::UTF16ToUTF8(view->view_controller()->GetActionName());
   });
+  return result;
 }
 
 void ExtensionsMenuViewUnitTest::LayoutMenuIfNecessary() {
@@ -200,7 +203,7 @@ TEST_F(ExtensionsMenuViewUnitTest, ExtensionsAreShownInTheMenu) {
   InstallExtensionAndLayout(kExtensionName);
 
   {
-    base::flat_set<raw_ptr<ExtensionMenuItemView, CtnExperimental>> menu_items =
+    base::flat_set<ExtensionMenuItemView*> menu_items =
         extensions_menu()->extensions_menu_items_for_testing();
     ASSERT_EQ(1u, menu_items.size());
     EXPECT_EQ(kExtensionName,
@@ -311,7 +314,7 @@ TEST_F(ExtensionsMenuViewUnitTest, PinnedExtensionRemovedWhenDisabled) {
 TEST_F(ExtensionsMenuViewUnitTest, PinnedExtensionLayout) {
   for (int i = 0; i < 3; i++)
     InstallExtensionAndLayout(base::StringPrintf("Test %d", i));
-  for (ExtensionMenuItemView* menu_item :
+  for (auto* menu_item :
        extensions_menu()->extensions_menu_items_for_testing()) {
     ClickPinButton(menu_item);
   }

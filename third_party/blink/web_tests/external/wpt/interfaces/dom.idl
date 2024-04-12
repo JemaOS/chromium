@@ -95,7 +95,6 @@ interface AbortController {
 interface AbortSignal : EventTarget {
   [NewObject] static AbortSignal abort(optional any reason);
   [Exposed=(Window,Worker), NewObject] static AbortSignal timeout([EnforceRange] unsigned long long milliseconds);
-  [NewObject] static AbortSignal _any(sequence<AbortSignal> signals);
 
   readonly attribute boolean aborted;
   readonly attribute any reason;
@@ -339,7 +338,6 @@ interface ShadowRoot : DocumentFragment {
   readonly attribute ShadowRootMode mode;
   readonly attribute boolean delegatesFocus;
   readonly attribute SlotAssignmentMode slotAssignment;
-  readonly attribute boolean clonable;
   readonly attribute Element host;
   attribute EventHandler onslotchange;
 };
@@ -397,7 +395,6 @@ dictionary ShadowRootInit {
   required ShadowRootMode mode;
   boolean delegatesFocus = false;
   SlotAssignmentMode slotAssignment = "named";
-  boolean clonable = false;
 };
 
 [Exposed=Window,

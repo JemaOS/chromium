@@ -9,7 +9,6 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
@@ -28,9 +27,9 @@ class GPUAdapter;
 class GPUBuffer;
 class GPURequestAdapterOptions;
 class NavigatorBase;
+class ScriptPromiseResolver;
 class ScriptState;
 class DawnControlClientHolder;
-class WGSLLanguageFeatures;
 
 struct BoxedMappableWGPUBufferHandles
     : public RefCounted<BoxedMappableWGPUBufferHandles> {
@@ -76,13 +75,9 @@ class MODULES_EXPORT GPU final : public ScriptWrappable,
   void ContextDestroyed() override;
 
   // gpu.idl
-  ScriptPromiseTyped<IDLNullable<GPUAdapter>> requestAdapter(
-      ScriptState* script_state,
-      const GPURequestAdapterOptions* options);
+  ScriptPromise requestAdapter(ScriptState* script_state,
+                               const GPURequestAdapterOptions* options);
   String getPreferredCanvasFormat();
-  WGSLLanguageFeatures* wgslLanguageFeatures() const;
-
-  static WGPUTextureFormat preferred_canvas_format();
 
   // Store the buffer in a weak hash set so we can destroy it when the
   // context is destroyed.
@@ -99,13 +94,12 @@ class MODULES_EXPORT GPU final : public ScriptWrappable,
       scoped_refptr<DawnControlClientHolder> dawn_control_client);
 
  private:
-  void OnRequestAdapterCallback(
-      ScriptState* script_state,
-      const GPURequestAdapterOptions* options,
-      ScriptPromiseResolverTyped<IDLNullable<GPUAdapter>>* resolver,
-      WGPURequestAdapterStatus status,
-      WGPUAdapter adapter,
-      const char* error_message);
+  void OnRequestAdapterCallback(ScriptState* script_state,
+                                const GPURequestAdapterOptions* options,
+                                ScriptPromiseResolver* resolver,
+                                WGPURequestAdapterStatus status,
+                                WGPUAdapter adapter,
+                                const char* error_message);
 
   void RecordAdapterForIdentifiability(ScriptState* script_state,
                                        const GPURequestAdapterOptions* options,
@@ -113,9 +107,7 @@ class MODULES_EXPORT GPU final : public ScriptWrappable,
 
   void RequestAdapterImpl(ScriptState* script_state,
                           const GPURequestAdapterOptions* options,
-                          ScriptPromiseResolverTyped<IDLNullable<GPUAdapter>>*);
-
-  Member<WGSLLanguageFeatures> wgsl_language_features_;
+                          ScriptPromiseResolver* resolver);
 
   scoped_refptr<DawnControlClientHolder> dawn_control_client_;
   WTF::Vector<base::OnceCallback<void()>>

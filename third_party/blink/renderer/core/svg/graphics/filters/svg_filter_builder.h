@@ -59,7 +59,7 @@ class SVGFilterGraphNodeMap final
   FilterEffect* EffectForElement(
       SVGFilterPrimitiveStandardAttributes& primitive) {
     auto it = effect_element_.find(&primitive);
-    return it != effect_element_.end() ? it->value.Get() : nullptr;
+    return it != effect_element_.end() ? it->value : nullptr;
   }
 
   void InvalidateDependentEffects(FilterEffect*);

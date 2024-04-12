@@ -7,35 +7,18 @@
 #include <memory>
 #include <utility>
 
-#include "base/functional/bind.h"
-#include "chrome/browser/autofill/personal_data_manager_factory.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/autofill/address_editor_controller.h"
-#include "chrome/browser/ui/autofill/autofill_bubble_base.h"
 #include "chrome/browser/ui/autofill/edit_address_profile_dialog_controller.h"
-#include "chrome/browser/ui/autofill/edit_address_profile_view.h"
 #include "chrome/browser/ui/views/autofill/address_editor_view.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "components/autofill/core/common/autofill_features.h"
-#include "components/constrained_window/constrained_window_views.h"
 #include "components/strings/grit/components_strings.h"
-#include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/fill_layout.h"
-#include "ui/views/view_class_properties.h"
 
 namespace autofill {
-
-AutofillBubbleBase* ShowEditAddressProfileDialogView(
-    content::WebContents* web_contents,
-    EditAddressProfileDialogController* controller) {
-  EditAddressProfileView* dialog = new EditAddressProfileView(controller);
-  dialog->ShowForWebContents(web_contents);
-  constrained_window::ShowWebModalDialogViews(dialog, web_contents);
-  return dialog;
-}
 
 EditAddressProfileView::EditAddressProfileView(
     EditAddressProfileDialogController* controller)
@@ -48,11 +31,12 @@ EditAddressProfileView::EditAddressProfileView(
   set_fixed_width(views::LayoutProvider::Get()->GetDistanceMetric(
       views::DISTANCE_MODAL_DIALOG_PREFERRED_WIDTH));
 
-  SetAcceptCallbackWithClose(base::BindRepeating(
-      &EditAddressProfileView::OnAcceptButtonClicked, base::Unretained(this)));
+  SetAcceptCallback(base::BindOnce(
+      &EditAddressProfileView::OnUserDecision, base::Unretained(this),
+      AutofillClient::SaveAddressProfileOfferUserDecision::kEditAccepted));
   SetCancelCallback(base::BindOnce(
       &EditAddressProfileView::OnUserDecision, base::Unretained(this),
-      AutofillClient::AddressPromptUserDecision::kEditDeclined));
+      AutofillClient::SaveAddressProfileOfferUserDecision::kEditDeclined));
 
   SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical, gfx::Insets(),
@@ -61,7 +45,6 @@ EditAddressProfileView::EditAddressProfileView(
   set_margins(ChromeLayoutProvider::Get()->GetInsetsMetric(
       views::InsetsMetric::INSETS_DIALOG));
 
-  SetProperty(views::kElementIdentifierKey, kTopViewId);
   SetTitle(controller_->GetWindowTitle());
   SetButtonLabel(ui::DIALOG_BUTTON_OK, controller_->GetOkButtonLabel());
   SetButtonLabel(ui::DIALOG_BUTTON_CANCEL,
@@ -74,12 +57,8 @@ EditAddressProfileView::~EditAddressProfileView() = default;
 void EditAddressProfileView::ShowForWebContents(
     content::WebContents* web_contents) {
   DCHECK(web_contents);
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents->GetBrowserContext());
   auto address_editor_controller = std::make_unique<AddressEditorController>(
-      controller_->GetProfileToEdit(),
-      autofill::PersonalDataManagerFactory::GetForProfile(
-          profile->GetOriginalProfile()),
+      controller_->GetProfileToEdit(), web_contents,
       controller_->GetIsValidatable());
 
   // Storing subscription (which gets canceled in the destructor) in a property
@@ -88,6 +67,7 @@ void EditAddressProfileView::ShowForWebContents(
       address_editor_controller->AddIsValidChangedCallback(
           base::BindRepeating(&EditAddressProfileView::UpdateActionButtonState,
                               base::Unretained(this)));
+  UpdateActionButtonState(address_editor_controller->get_is_valid());
 
   address_editor_view_ = AddChildView(std::make_unique<AddressEditorView>(
       std::move(address_editor_controller)));
@@ -111,11 +91,7 @@ void EditAddressProfileView::Hide() {
 
 void EditAddressProfileView::WindowClosing() {
   if (controller_) {
-    controller_->OnDialogClosed(
-        decision_,
-        decision_ == AutofillClient::AddressPromptUserDecision::kEditAccepted
-            ? base::optional_ref(address_editor_view_->GetAddressProfile())
-            : std::nullopt);
+    controller_->OnDialogClosed();
     controller_ = nullptr;
   }
 }
@@ -130,22 +106,15 @@ AddressEditorView* EditAddressProfileView::GetAddressEditorViewForTesting() {
 }
 
 void EditAddressProfileView::OnUserDecision(
-    AutofillClient::AddressPromptUserDecision decision) {
-  decision_ = decision;
+    AutofillClient::SaveAddressProfileOfferUserDecision decision) {
+  if (!controller_)
+    return;
+  controller_->OnUserDecision(decision,
+                              address_editor_view_->GetAddressProfile());
 }
 
 void EditAddressProfileView::UpdateActionButtonState(bool is_valid) {
   SetButtonEnabled(ui::DIALOG_BUTTON_OK, is_valid);
 }
-
-bool EditAddressProfileView::OnAcceptButtonClicked() {
-  bool is_form_valid = address_editor_view_->ValidateAllFields();
-  if (is_form_valid) {
-    OnUserDecision(AutofillClient::AddressPromptUserDecision::kEditAccepted);
-  }
-  return is_form_valid;
-}
-
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(EditAddressProfileView, kTopViewId);
 
 }  // namespace autofill

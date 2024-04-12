@@ -7,9 +7,8 @@
 
 #include <stdint.h>
 
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/display/manager/display_configurator.h"
 #include "ui/display/manager/display_manager_export.h"
 #include "ui/display/manager/managed_display_info.h"
@@ -90,10 +89,10 @@ class DISPLAY_MANAGER_EXPORT DisplayChangeObserver
 
   // The panel radii of the internal display that is specified via command-line
   // switch `display::switches::kDisplayProperties`.
-  std::optional<gfx::RoundedCornersF> internal_panel_radii_;
+  absl::optional<gfx::RoundedCornersF> internal_panel_radii_;
 
   // |display_manager_| is not owned and must outlive DisplayChangeObserver.
-  raw_ptr<DisplayManager> display_manager_;
+  raw_ptr<DisplayManager, ExperimentalAsh> display_manager_;
 };
 
 }  // namespace display

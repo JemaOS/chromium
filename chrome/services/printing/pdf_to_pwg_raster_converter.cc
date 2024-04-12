@@ -147,8 +147,4 @@ void PdfToPwgRasterConverter::Convert(
   std::move(callback).Run(std::move(region), page_count);
 }
 
-void PdfToPwgRasterConverter::SetUseSkiaRendererPolicy(bool use_skia) {
-  chrome_pdf::SetUseSkiaRendererPolicy(use_skia);
-}
-
 }  // namespace printing

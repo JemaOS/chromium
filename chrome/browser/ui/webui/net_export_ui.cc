@@ -16,7 +16,6 @@
 #include "base/lazy_instance.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -45,7 +44,6 @@
 #include "extensions/buildflags/buildflags.h"
 #include "net/log/net_log_capture_mode.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
-#include "ui/shell_dialogs/selected_file_info.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "components/browser_ui/share/android/intent_helper.h"
@@ -74,8 +72,9 @@ void CreateAndAddNetExportHTMLSource(Profile* profile) {
 // This class receives javascript messages from the renderer.
 // Note that the WebUI infrastructure runs on the UI thread, therefore all of
 // this class's public methods are expected to run on the UI thread.
-class NetExportMessageHandler final
+class NetExportMessageHandler
     : public WebUIMessageHandler,
+      public base::SupportsWeakPtr<NetExportMessageHandler>,
       public ui::SelectFileDialog::Listener,
       public net_log::NetExportFileWriter::StateObserver {
  public:
@@ -97,7 +96,7 @@ class NetExportMessageHandler final
   void OnShowFile(const base::Value::List& list);
 
   // ui::SelectFileDialog::Listener implementation.
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override;
   void FileSelectionCanceled(void* params) override;
@@ -262,18 +261,17 @@ void NetExportMessageHandler::OnSendNetLog(const base::Value::List& list) {
 void NetExportMessageHandler::OnShowFile(const base::Value::List& list) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   file_writer_->GetFilePathToCompletedLog(
-      base::BindOnce(&NetExportMessageHandler::ShowFileInShell,
-                     weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&NetExportMessageHandler::ShowFileInShell, AsWeakPtr()));
 }
 
-void NetExportMessageHandler::FileSelected(const ui::SelectedFileInfo& file,
+void NetExportMessageHandler::FileSelected(const base::FilePath& path,
                                            int index,
                                            void* params) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   DCHECK(select_file_dialog_);
-  *last_save_dir.Pointer() = file.path().DirName();
+  *last_save_dir.Pointer() = path.DirName();
 
-  StartNetLog(file.path());
+  StartNetLog(path);
 
   // IMPORTANT: resetting the dialog may lead to the deletion of |path|, so keep
   // this line last.

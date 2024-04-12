@@ -6,7 +6,7 @@
 #define CHROME_BROWSER_AUTOCOMPLETE_SHORTCUTS_BACKEND_FACTORY_H_
 
 #include "base/memory/ref_counted.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/refcounted_profile_keyed_service_factory.h"
 
 class Profile;
@@ -34,7 +34,7 @@ class ShortcutsBackendFactory : public RefcountedProfileKeyedServiceFactory {
       content::BrowserContext* profile);
 
  private:
-  friend base::NoDestructor<ShortcutsBackendFactory>;
+  friend struct base::DefaultSingletonTraits<ShortcutsBackendFactory>;
 
   ShortcutsBackendFactory();
   ~ShortcutsBackendFactory() override;

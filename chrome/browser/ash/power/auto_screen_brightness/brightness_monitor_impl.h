@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_POWER_AUTO_SCREEN_BRIGHTNESS_BRIGHTNESS_MONITOR_IMPL_H_
 #define CHROME_BROWSER_ASH_POWER_AUTO_SCREEN_BRIGHTNESS_BRIGHTNESS_MONITOR_IMPL_H_
 
-#include <optional>
-
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
@@ -16,6 +14,7 @@
 #include "base/timer/timer.h"
 #include "chrome/browser/ash/power/auto_screen_brightness/brightness_monitor.h"
 #include "chromeos/dbus/power/power_manager_client.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace power {
@@ -56,7 +55,7 @@ class BrightnessMonitorImpl : public BrightnessMonitor,
   // Sets initial brightness obtained from powerd. If nullopt is received from
   // powerd, the monitor status will be set to kDisabled.
   void OnReceiveInitialBrightnessPercent(
-      std::optional<double> brightness_percent);
+      absl::optional<double> brightness_percent);
 
   // Notifies its observers on the initialization status of the monitor.
   void OnInitializationComplete();
@@ -96,11 +95,11 @@ class BrightnessMonitorImpl : public BrightnessMonitor,
   // final/consolidated brightness (i.e. ignoring intermediate values selected
   // by the user). If the change is not user requested, it will simply be the
   // new brightness value.
-  std::optional<double> stable_brightness_percent_;
+  absl::optional<double> stable_brightness_percent_;
   // Current user selected brightness. It is reset after we've collected
   // final/stable user-requested brightness (i.e. after
   // |brightness_sample_timer_| times out).
-  std::optional<double> user_brightness_percent_;
+  absl::optional<double> user_brightness_percent_;
 
   base::ObserverList<BrightnessMonitor::Observer> observers_;
 

@@ -5,7 +5,7 @@
 import 'chrome://intro/lacros_app.js';
 
 import {IntroBrowserProxyImpl} from 'chrome://intro/browser_proxy.js';
-import type {LacrosIntroAppElement} from 'chrome://intro/lacros_app.js';
+import {LacrosIntroAppElement} from 'chrome://intro/lacros_app.js';
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {waitBeforeNextRender} from 'chrome://webui-test/polymer_test_util.js';
@@ -42,11 +42,10 @@ suite('LacrosAppTest', function() {
     assertEquals(expectedUrl, img.src);
   }
 
-  test('proceed button clicked', function() {
-    assertFalse(app.$.proceedButton.disabled);
+  test('proceed button clicked', async function() {
     app.$.proceedButton.click();
     assertTrue(app.$.proceedButton.disabled);
-    return browserProxy.whenCalled('continueWithAccount');
+    await browserProxy.whenCalled('continueWithAccount');
   });
 
   test('on-profile-info-changed event', function() {

@@ -22,8 +22,8 @@
 
 #include <algorithm>
 
-#include "base/apple/mach_logging.h"
 #include "base/logging.h"
+#include "base/mac/mach_logging.h"
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
 #include "snapshot/cpu_context.h"
@@ -118,8 +118,6 @@ void SystemSnapshotIOSIntermediateDump::Initialize(
       free_ *= page_size;
     }
   }
-
-  GetDataValueFromMap(system_data, Key::kCrashpadUptime, &crashpad_uptime_ns_);
 
   INITIALIZATION_STATE_SET_VALID(initialized_);
 }
@@ -249,11 +247,6 @@ void SystemSnapshotIOSIntermediateDump::TimeZone(
 uint64_t SystemSnapshotIOSIntermediateDump::AddressMask() const {
   INITIALIZATION_STATE_DCHECK_VALID(initialized_);
   return address_mask_;
-}
-
-uint64_t SystemSnapshotIOSIntermediateDump::CrashpadUptime() const {
-  INITIALIZATION_STATE_DCHECK_VALID(initialized_);
-  return crashpad_uptime_ns_;
 }
 
 }  // namespace internal

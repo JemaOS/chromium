@@ -27,7 +27,6 @@
 #include "third_party/blink/renderer/core/messaging/message_port.h"
 
 #include <memory>
-#include <optional>
 
 #include "base/numerics/safe_conversions.h"
 #include "base/trace_event/trace_event.h"
@@ -54,6 +53,7 @@
 #include "third_party/blink/renderer/platform/bindings/thread_debugger.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/scheduler/public/task_attribution_tracker.h"
+#include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
@@ -66,11 +66,9 @@ MessagePort::MessagePort(ExecutionContext& execution_context)
                                             : &execution_context),
       // Ports in a destroyed context start out in a closed state.
       closed_(execution_context.IsContextDestroyed()),
-      task_runner_(execution_context.GetTaskRunner(TaskType::kPostedMessage)),
-      post_message_task_container_(
-          MakeGarbageCollected<PostMessageTaskContainer>()) {}
+      task_runner_(execution_context.GetTaskRunner(TaskType::kPostedMessage)) {}
 
-void MessagePort::Dispose() {
+MessagePort::~MessagePort() {
   DCHECK(!started_ || !IsEntangled());
   if (!IsNeutered()) {
     // Disentangle before teardown. The MessagePortDescriptor will blow up if it
@@ -134,23 +132,11 @@ void MessagePort::postMessage(ScriptState* script_state,
   msg.sender_agent_cluster_id = GetExecutionContext()->GetAgentClusterID();
   msg.locked_to_sender_agent_cluster = msg.message->IsLockedToAgentCluster();
 
+  auto* tracker = ThreadScheduler::Current()->GetTaskAttributionTracker();
   // Only pass the parent task ID if we're in the main world, as isolated world
-  // task tracking is not yet supported. Also, only pass the parent task if the
-  // port is still entangled to its initially entangled port.
-  if (auto* tracker =
-          scheduler::TaskAttributionTracker::From(script_state->GetIsolate());
-      initially_entangled_port_ && tracker &&
-      script_state->World().IsMainWorld()) {
-    if (scheduler::TaskAttributionInfo* task = tracker->RunningTask()) {
-      // Since `initially_entangled_port_` is not nullptr, neither should be
-      // `post_message_task_container_`.
-      CHECK(post_message_task_container_);
-      post_message_task_container_->AddPostMessageTask(task);
-      msg.parent_task_id =
-          std::optional<scheduler::TaskAttributionId>(task->Id());
-    } else {
-      msg.parent_task_id = std::nullopt;
-    }
+  // task tracking is not yet supported.
+  if (tracker && script_state->World().IsMainWorld()) {
+    msg.parent_task_id = tracker->RunningTaskAttributionId(script_state);
   }
 
   mojo::Message mojo_message =
@@ -160,15 +146,9 @@ void MessagePort::postMessage(ScriptState* script_state,
 
 MessagePortChannel MessagePort::Disentangle() {
   DCHECK(!IsNeutered());
-  port_descriptor_.GiveDisentangledHandle(connector_->PassMessagePipe());
+  port_.GiveDisentangledHandle(connector_->PassMessagePipe());
   connector_ = nullptr;
-  // Using a variable here places the WeakMember pointer on the stack, ensuring
-  // it doesn't get GCed while it's being used.
-  if (auto* entangled_port = initially_entangled_port_.Get()) {
-    entangled_port->OnEntangledPortDisconnected();
-  }
-  OnEntangledPortDisconnected();
-  return MessagePortChannel(std::move(port_descriptor_));
+  return MessagePortChannel(std::move(port_));
 }
 
 void MessagePort::start() {
@@ -192,24 +172,13 @@ void MessagePort::close() {
   if (!IsNeutered()) {
     Disentangle().ReleaseHandle();
     MessagePortDescriptorPair pipe;
-    Entangle(pipe.TakePort0(), nullptr);
+    Entangle(pipe.TakePort0());
   }
   closed_ = true;
 }
 
-void MessagePort::OnConnectionError() {
-  close();
-  // When the entangled port is disconnected, this error handler is executed,
-  // so in this error handler, we dispatch the close event if close event is
-  // enabled.
-  if (RuntimeEnabledFeatures::MessagePortCloseEventEnabled()) {
-    DispatchEvent(*Event::Create(event_type_names::kClose));
-  }
-}
-
-void MessagePort::Entangle(MessagePortDescriptor port_descriptor,
-                           MessagePort* port) {
-  DCHECK(port_descriptor.IsValid());
+void MessagePort::Entangle(MessagePortDescriptor port) {
+  DCHECK(port.IsValid());
   DCHECK(!connector_);
 
   // If the context was already destroyed, there is no reason to actually
@@ -218,10 +187,9 @@ void MessagePort::Entangle(MessagePortDescriptor port_descriptor,
   if (!GetExecutionContext())
     return;
 
-  port_descriptor_ = std::move(port_descriptor);
-  initially_entangled_port_ = port;
+  port_ = std::move(port);
   connector_ = std::make_unique<mojo::Connector>(
-      port_descriptor_.TakeHandleToEntangle(GetExecutionContext()),
+      port_.TakeHandleToEntangle(GetExecutionContext()),
       mojo::Connector::SINGLE_THREADED_SEND);
   // The raw `this` is safe despite `this` being a garbage collected object
   // because we make sure that:
@@ -230,13 +198,11 @@ void MessagePort::Entangle(MessagePortDescriptor port_descriptor,
   // 2. when the execution context is destroyed, the connector_ is reset.
   connector_->set_incoming_receiver(this);
   connector_->set_connection_error_handler(
-      WTF::BindOnce(&MessagePort::OnConnectionError, WrapWeakPersistent(this)));
+      WTF::BindOnce(&MessagePort::close, WrapWeakPersistent(this)));
 }
 
 void MessagePort::Entangle(MessagePortChannel channel) {
-  // We're not passing a MessagePort* for TaskAttribution purposes here, as this
-  // method is only used for plugin support.
-  Entangle(channel.ReleaseHandle(), nullptr);
+  Entangle(channel.ReleaseHandle());
 }
 
 const AtomicString& MessagePort::InterfaceName() const {
@@ -249,10 +215,6 @@ bool MessagePort::HasPendingActivity() const {
   // We'll also stipulate that the queue needs to be open (if the app drops its
   // reference to the port before start()-ing it, then it's not really entangled
   // as it's unreachable).
-  // Between close() and dispatching a close event, IsEntangled() starts
-  // returning false, but it is not garbage collected because a function on the
-  // MessagePort is running, and the MessagePort is retained on the stack at
-  // that time.
   return started_ && IsEntangled();
 }
 
@@ -328,9 +290,7 @@ MessagePortArray* MessagePort::EntanglePorts(
 
 void MessagePort::Trace(Visitor* visitor) const {
   ExecutionContextLifecycleObserver::Trace(visitor);
-  EventTarget::Trace(visitor);
-  visitor->Trace(initially_entangled_port_);
-  visitor->Trace(post_message_task_container_);
+  EventTargetWithInlineData::Trace(visitor);
 }
 
 bool MessagePort::Accept(mojo::Message* mojo_message) {
@@ -351,12 +311,11 @@ bool MessagePort::Accept(mojo::Message* mojo_message) {
   }
 
   Event* evt = CreateMessageEvent(message);
-  std::optional<scheduler::TaskAttributionTracker::TaskScope>
+  // This unique_ptr is here to ensure that the TaskScope remains alive for the
+  // lifetime of this function.
+  std::unique_ptr<scheduler::TaskAttributionTracker::TaskScope>
       task_attribution_scope;
-  // Using a variable here places the WeakMember pointer on the stack, ensuring
-  // it doesn't get GCed while it's being used.
-  auto* entangled_port = initially_entangled_port_.Get();
-  if (entangled_port && message.sender_origin &&
+  if (message.sender_origin &&
       message.sender_origin->IsSameOriginWith(context->GetSecurityOrigin()) &&
       context->IsSameAgentCluster(message.sender_agent_cluster_id) &&
       context->IsWindow()) {
@@ -373,17 +332,13 @@ bool MessagePort::Accept(mojo::Message* mojo_message) {
     // We cannot check `content->GetCurrentWorld()->IsMainWorld()` here, as the
     // v8::Context may still be empty (and hence
     // ExecutionContext::GetCurrentWorld returns null).
-    if (ScriptState* script_state = ToScriptStateForMainWorld(context)) {
-      if (auto* tracker = scheduler::TaskAttributionTracker::From(
-              script_state->GetIsolate())) {
-        // Since `initially_entangled_port_` is not nullptr, neither should be
-        // its `post_message_task_container_`.
-        CHECK(entangled_port->post_message_task_container_);
-        scheduler::TaskAttributionInfo* parent_task =
-            entangled_port->post_message_task_container_
-                ->GetAndDecrementPostMessageTask(message.parent_task_id);
+    if (ScriptState* script_state =
+            ToScriptState(context, DOMWrapperWorld::MainWorld())) {
+      DCHECK(ThreadScheduler::Current());
+      if (auto* tracker =
+              ThreadScheduler::Current()->GetTaskAttributionTracker()) {
         task_attribution_scope = tracker->CreateTaskScope(
-            script_state, parent_task,
+            script_state, message.parent_task_id,
             scheduler::TaskAttributionTracker::TaskScopeType::kPostMessage);
       }
     }
@@ -444,41 +399,6 @@ Event* MessagePort::CreateMessageEvent(BlinkTransferableMessage& message) {
 
   return MessageEvent::Create(ports, std::move(message.message),
                               user_activation);
-}
-
-void MessagePort::OnEntangledPortDisconnected() {
-  initially_entangled_port_ = nullptr;
-  post_message_task_container_ = nullptr;
-}
-
-// PostMessageTaskContainer's implementation
-//////////////////////////////////////
-void MessagePort::PostMessageTaskContainer::AddPostMessageTask(
-    scheduler::TaskAttributionInfo* task) {
-  CHECK(task);
-  auto it = post_message_tasks_.find(task->Id().value());
-  if (it == post_message_tasks_.end()) {
-    post_message_tasks_.insert(task->Id().value(),
-                               MakeGarbageCollected<PostMessageTask>(task));
-  } else {
-    it->value->IncrementCounter();
-  }
-}
-
-scheduler::TaskAttributionInfo*
-MessagePort::PostMessageTaskContainer::GetAndDecrementPostMessageTask(
-    std::optional<scheduler::TaskAttributionId> id) {
-  if (!id) {
-    return nullptr;
-  }
-  auto it = post_message_tasks_.find(id.value().value());
-  CHECK(it != post_message_tasks_.end());
-  CHECK(it->value);
-  scheduler::TaskAttributionInfo* task = it->value->GetTask();
-  if (!it->value->DecrementAndReturnCounter()) {
-    post_message_tasks_.erase(it);
-  }
-  return task;
 }
 
 }  // namespace blink

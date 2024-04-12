@@ -37,7 +37,7 @@
 #include "components/site_engagement/content/site_engagement_score.h"
 #include "components/site_engagement/content/site_engagement_service.h"
 #include "components/ukm/test_ukm_recorder.h"
-#include "components/url_formatter/spoof_checks/top_domains/test_top_bucket_domains.h"
+#include "components/url_formatter/spoof_checks/top_domains/test_top500_domains.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_paths.h"
@@ -267,7 +267,7 @@ class LookalikeUrlNavigationThrottleBrowserTest
     test_helper_ =
         std::make_unique<LookalikeTestHelper>(test_ukm_recorder_.get());
 
-    const base::Time kNow = base::Time::FromSecondsSinceUnixEpoch(1000);
+    const base::Time kNow = base::Time::FromDoubleT(1000);
     test_clock_.SetNow(kNow);
 
     LookalikeUrlService* lookalike_service =
@@ -327,7 +327,7 @@ class LookalikeUrlNavigationThrottleBrowserTest
     auto entries = test_ukm_recorder()->GetEntriesByName(UkmEntry::kEntryName);
     ASSERT_EQ(navigated_urls.size(), entries.size());
     int entry_count = 0;
-    for (const ukm::mojom::UkmEntry* const entry : entries) {
+    for (const auto* const entry : entries) {
       test_ukm_recorder()->ExpectEntrySourceHasUrl(entry,
                                                    navigated_urls[entry_count]);
       test_ukm_recorder()->ExpectEntryMetric(entry, metric_name,
@@ -1690,9 +1690,9 @@ class LookalikeUrlNavigationThrottleSignedExchangeBrowserTest
     net::CertVerifyResult dummy_result;
     dummy_result.verified_cert = original_cert;
     dummy_result.cert_status = net::OK;
-    dummy_result.ocsp_result.response_status = bssl::OCSPVerifyResult::PROVIDED;
+    dummy_result.ocsp_result.response_status = net::OCSPVerifyResult::PROVIDED;
     dummy_result.ocsp_result.revocation_status =
-        bssl::OCSPRevocationStatus::GOOD;
+        net::OCSPRevocationStatus::GOOD;
     mock_cert_verifier_.mock_cert_verifier()->AddResultForCertAndHost(
         original_cert, "google-com.example.org", dummy_result, net::OK);
   }
@@ -1856,7 +1856,7 @@ class LookalikeUrlNavigationThrottlePrerenderBrowserTest
   }
 
   void SetUpOnMainThread() override {
-    prerender_helper_->RegisterServerRequestMonitor(https_server());
+    prerender_helper_->SetUp(https_server());
     LookalikeUrlNavigationThrottleBrowserTest::SetUpOnMainThread();
   }
 

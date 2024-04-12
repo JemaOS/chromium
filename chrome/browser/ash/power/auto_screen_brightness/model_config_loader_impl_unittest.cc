@@ -37,7 +37,7 @@ class TestObserver : public ModelConfigLoader::Observer {
   ~TestObserver() override = default;
 
   // ModelConfigLoader::Observer overrides:
-  void OnModelConfigLoaded(std::optional<ModelConfig> model_config) override {
+  void OnModelConfigLoaded(absl::optional<ModelConfig> model_config) override {
     model_config_loader_initialized_ = true;
     model_config_ = model_config;
   }
@@ -45,11 +45,11 @@ class TestObserver : public ModelConfigLoader::Observer {
   bool model_config_loader_initialized() const {
     return model_config_loader_initialized_;
   }
-  std::optional<ModelConfig> model_config() { return model_config_; }
+  absl::optional<ModelConfig> model_config() { return model_config_; }
 
  private:
   bool model_config_loader_initialized_ = false;
-  std::optional<ModelConfig> model_config_;
+  absl::optional<ModelConfig> model_config_;
 };
 
 }  // namespace

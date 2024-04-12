@@ -7,7 +7,6 @@
 
 #include <memory.h>
 
-#include <optional>
 #include <utility>
 
 #include "ash/webui/system_apps/public/system_web_app_type.h"
@@ -22,6 +21,7 @@
 #include "components/prefs/pref_change_registrar.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_delegate.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -73,7 +73,7 @@ class SystemWebAppBackgroundTask {
     return web_contents_.get();
   }
 
-  std::optional<base::TimeDelta> period_for_testing() const { return period_; }
+  absl::optional<base::TimeDelta> period_for_testing() const { return period_; }
 
   unsigned long opened_count_for_testing() const { return opened_count_; }
 
@@ -115,6 +115,7 @@ class SystemWebAppBackgroundTask {
   void MaybeOpenPage();
 
   void NavigateBackgroundPage();
+  void OnLoaderReady(web_app::WebAppUrlLoader::Result);
   void OnPageReady(web_app::WebAppUrlLoader::Result);
 
   void CloseWebContents(content::WebContents* contents);
@@ -126,7 +127,7 @@ class SystemWebAppBackgroundTask {
   std::unique_ptr<base::OneShotTimer> timer_;
   TimerState state_;
   GURL url_;
-  std::optional<base::TimeDelta> period_;
+  absl::optional<base::TimeDelta> period_;
   unsigned long opened_count_ = 0U;
   unsigned long timer_activated_count_ = 0U;
   bool open_immediately_ = false;

@@ -3,13 +3,11 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/lifetime/application_lifetime.h"
-
-#include <optional>
+#include "chrome/browser/lifetime/application_lifetime_chromeos.h"
 
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "chrome/browser/browser_process.h"
-#include "chrome/browser/lifetime/application_lifetime_chromeos.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_list_observer.h"
 #include "chrome/common/pref_names.h"
@@ -23,6 +21,7 @@
 #include "content/public/test/browser_test.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace chrome {
 
@@ -75,8 +74,8 @@ class ApplicationLifetimeTest : public InProcessBrowserTest,
       quits_on_browser_closing_->Quit();
   }
 
-  std::optional<base::RunLoop> quits_on_browser_closing_;
-  raw_ptr<ash::FakeUpdateEngineClient, DanglingUntriaged>
+  absl::optional<base::RunLoop> quits_on_browser_closing_;
+  raw_ptr<ash::FakeUpdateEngineClient, ExperimentalAsh>
       fake_update_engine_client_ = nullptr;
 };
 

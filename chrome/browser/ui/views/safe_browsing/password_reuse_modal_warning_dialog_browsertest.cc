@@ -58,8 +58,7 @@ class PasswordReuseModalWarningTest : public DialogBrowserTest {
   void DialogCallback(WarningAction action) { latest_user_action_ = action; }
 
  protected:
-  raw_ptr<PasswordReuseModalWarningDialog, AcrossTasksDanglingUntriaged>
-      dialog_;
+  raw_ptr<PasswordReuseModalWarningDialog, DanglingUntriaged> dialog_;
   WarningAction latest_user_action_;
 };
 

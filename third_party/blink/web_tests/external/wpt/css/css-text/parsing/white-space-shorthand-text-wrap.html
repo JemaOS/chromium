@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<link rel="help" href="https://drafts.csswg.org/css-text-4/#propdef-white-space">
-<link rel="help" href="https://drafts.csswg.org/css-text-4/#propdef-text-wrap">
+<link rel="help" href="https://w3c.github.io/csswg-drafts/css-text-4/#propdef-white-space">
+<link rel="help" href="https://w3c.github.io/csswg-drafts/css-text-4/#propdef-text-wrap">
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
 <style>
@@ -31,31 +31,17 @@ test(() => {
 </script>
 
 <style>
-#white-space-after-text-wrap-balance {
+#white-space-after-text-wrap {
   text-wrap: balance;
   white-space: normal;
 }
 </style>
-<div id="white-space-after-text-wrap-balance"></div>
+<div id="white-space-after-text-wrap"></div>
 <script>
 test(() => {
-  const target = document.getElementById('white-space-after-text-wrap-balance');
-  assert_equals(getComputedStyle(target).textWrap, 'balance');
-}, "`white-space` should not overwrite previous `text-wrap-style: balance`");
-</script>
-
-<style>
-#white-space-after-text-wrap-nowrap {
-  text-wrap: nowrap balance;
-  white-space: normal;
-}
-</style>
-<div id="white-space-after-text-wrap-nowrap"></div>
-<script>
-test(() => {
-  const target = document.getElementById('white-space-after-text-wrap-nowrap');
-  assert_equals(getComputedStyle(target).textWrap, 'balance');
-}, "`white-space` should overwrite previous `text-wrap-mode: nowrap`");
+  const target = document.getElementById('white-space-after-text-wrap');
+  assert_equals(getComputedStyle(target).textWrap, 'wrap');
+}, "`white-space` should overwrite previous `text-wrap`");
 </script>
 
 <style>
@@ -73,12 +59,12 @@ test(() => {
 }, "`text-wrap` should not be affected by `white-space` on the parent");
 </script>
 
-<div style="text-wrap: balance nowrap;">
+<div class="balance">
   <div id="parent-text-wrap" class="normal"></div>
 </div>
 <script>
 test(() => {
   const target = document.getElementById('parent-text-wrap');
-  assert_equals(getComputedStyle(target).textWrap, 'balance');
-}, "`white-space` should overwrite `text-wrap-mode` on the parent");
+  assert_equals(getComputedStyle(target).textWrap, 'wrap');
+}, "`white-space` should overwrite `text-wrap` on the parent");
 </script>

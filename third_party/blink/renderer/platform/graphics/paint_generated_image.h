@@ -24,7 +24,7 @@ class PLATFORM_EXPORT PaintGeneratedImage : public GeneratedImage {
             const gfx::RectF&,
             const gfx::RectF&,
             const ImageDrawOptions& draw_options) override;
-  void DrawTile(cc::PaintCanvas*,
+  void DrawTile(GraphicsContext&,
                 const gfx::RectF&,
                 const ImageDrawOptions&) final;
 

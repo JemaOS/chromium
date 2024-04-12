@@ -46,7 +46,7 @@ ScriptFetchOptions::~ScriptFetchOptions() = default;
 FetchParameters ScriptFetchOptions::CreateFetchParameters(
     const KURL& url,
     const SecurityOrigin* security_origin,
-    const DOMWrapperWorld* world_for_csp,
+    scoped_refptr<const DOMWrapperWorld> world_for_csp,
     CrossOriginAttributeValue cross_origin,
     const WTF::TextEncoding& encoding,
     FetchParameters::DeferOption defer) const {
@@ -55,8 +55,8 @@ FetchParameters ScriptFetchOptions::CreateFetchParameters(
   ResourceRequest resource_request(url);
 
   // Step 1. ... "script", ... [spec text]
-  ResourceLoaderOptions resource_loader_options(world_for_csp);
-  resource_loader_options.initiator_info.name = AtomicString("script");
+  ResourceLoaderOptions resource_loader_options(std::move(world_for_csp));
+  resource_loader_options.initiator_info.name = "script";
   resource_loader_options.reject_coep_unsafe_none = reject_coep_unsafe_none_;
   FetchParameters params(std::move(resource_request), resource_loader_options);
   params.SetRequestContext(mojom::blink::RequestContextType::SCRIPT);

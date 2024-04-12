@@ -25,6 +25,9 @@
 #include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/image/image_skia_operations.h"
 
+using LumaRange = color_utils::LumaRange;
+using SaturationRange = color_utils::SaturationRange;
+
 namespace ash {
 
 namespace {
@@ -65,9 +68,19 @@ const gfx::ImageSkia GetResizedImage(const gfx::ImageSkia& image) {
 //
 // NOTE: |image| is intentionally a copy to ensure it exists for the duration of
 // the calculation.
-WallpaperCalculatedColors CalculateWallpaperColor(const gfx::ImageSkia image) {
+WallpaperCalculatedColors CalculateWallpaperColor(
+    const gfx::ImageSkia image,
+    const std::vector<color_utils::ColorProfile> color_profiles) {
   base::TimeTicks start_time = base::TimeTicks::Now();
   gfx::ImageSkia resized_image = GetResizedImage(image);
+  const std::vector<color_utils::Swatch> prominent_swatches =
+      color_utils::CalculateProminentColorsOfBitmap(
+          *resized_image.bitmap(), color_profiles, nullptr /* region */,
+          color_utils::ColorSwatchFilter());
+
+  std::vector<SkColor> prominent_colors(prominent_swatches.size());
+  for (size_t i = 0; i < prominent_swatches.size(); ++i)
+    prominent_colors[i] = prominent_swatches[i].color;
 
   constexpr color_utils::HSL kNoBounds = {-1, -1, -1};
   SkColor k_mean_color = color_utils::CalculateKMeanColorOfBitmap(
@@ -75,12 +88,59 @@ WallpaperCalculatedColors CalculateWallpaperColor(const gfx::ImageSkia image) {
       /*find_closest=*/true);
 
   // Compute result with with the improved clustering algorithm.
-  SkColor celebi_color = ComputeWallpaperSeedColor(resized_image);
+  SkColor celebi_color = chromeos::features::IsJellyEnabled()
+                             ? ComputeWallpaperSeedColor(resized_image)
+                             : SK_ColorTRANSPARENT;
 
   DVLOG(2) << __func__ << " image_size=" << image.size().ToString()
            << " time=" << base::TimeTicks::Now() - start_time;
 
-  return WallpaperCalculatedColors(k_mean_color, celebi_color);
+  WallpaperColorExtractionResult result = NUM_COLOR_EXTRACTION_RESULTS;
+  for (size_t i = 0; i < color_profiles.size(); ++i) {
+    bool is_result_transparent = prominent_colors[i] == SK_ColorTRANSPARENT;
+    if (color_profiles[i].saturation == SaturationRange::VIBRANT) {
+      switch (color_profiles[i].luma) {
+        case LumaRange::ANY:
+          // There should be no color profiles with the ANY luma range.
+          NOTREACHED();
+          break;
+        case LumaRange::DARK:
+          result = is_result_transparent ? RESULT_DARK_VIBRANT_TRANSPARENT
+                                         : RESULT_DARK_VIBRANT_OPAQUE;
+          break;
+        case LumaRange::NORMAL:
+          result = is_result_transparent ? RESULT_NORMAL_VIBRANT_TRANSPARENT
+                                         : RESULT_NORMAL_VIBRANT_OPAQUE;
+          break;
+        case LumaRange::LIGHT:
+          result = is_result_transparent ? RESULT_LIGHT_VIBRANT_TRANSPARENT
+                                         : RESULT_LIGHT_VIBRANT_OPAQUE;
+          break;
+      }
+    } else {
+      switch (color_profiles[i].luma) {
+        case LumaRange::ANY:
+          // There should be no color profiles with the ANY luma range.
+          NOTREACHED();
+          break;
+        case LumaRange::DARK:
+          result = is_result_transparent ? RESULT_DARK_MUTED_TRANSPARENT
+                                         : RESULT_DARK_MUTED_OPAQUE;
+          break;
+        case LumaRange::NORMAL:
+          result = is_result_transparent ? RESULT_NORMAL_MUTED_TRANSPARENT
+                                         : RESULT_NORMAL_MUTED_OPAQUE;
+          break;
+        case LumaRange::LIGHT:
+          result = is_result_transparent ? RESULT_LIGHT_MUTED_TRANSPARENT
+                                         : RESULT_LIGHT_MUTED_OPAQUE;
+          break;
+      }
+    }
+  }
+  DCHECK_NE(NUM_COLOR_EXTRACTION_RESULTS, result);
+  return WallpaperCalculatedColors(prominent_colors, k_mean_color,
+                                   celebi_color);
 }
 
 bool ShouldCalculateSync(const gfx::ImageSkia& image) {
@@ -89,8 +149,10 @@ bool ShouldCalculateSync(const gfx::ImageSkia& image) {
 
 }  // namespace
 
-WallpaperColorCalculator::WallpaperColorCalculator(const gfx::ImageSkia& image)
-    : image_(image) {
+WallpaperColorCalculator::WallpaperColorCalculator(
+    const gfx::ImageSkia& image,
+    const std::vector<color_utils::ColorProfile>& color_profiles)
+    : image_(image), color_profiles_(color_profiles) {
   // The task runner is used to compute the wallpaper colors on a thread
   // that doesn't block the UI. The user may or may not be waiting for it.
   // If we need to shutdown, we can just re-compute the value next time.
@@ -104,14 +166,15 @@ WallpaperColorCalculator::~WallpaperColorCalculator() = default;
 bool WallpaperColorCalculator::StartCalculation(
     WallpaperColorCallback callback) {
   if (ShouldCalculateSync(image_)) {
-    calculated_colors_ = CalculateWallpaperColor(image_);
+    calculated_colors_ = CalculateWallpaperColor(image_, color_profiles_);
     std::move(callback).Run(*calculated_colors_);
     return true;
   }
 
   image_.MakeThreadSafe();
   if (task_runner_->PostTaskAndReplyWithResult(
-          FROM_HERE, base::BindOnce(&CalculateWallpaperColor, image_),
+          FROM_HERE,
+          base::BindOnce(&CalculateWallpaperColor, image_, color_profiles_),
           base::BindOnce(&WallpaperColorCalculator::OnAsyncCalculationComplete,
                          weak_ptr_factory_.GetWeakPtr(), base::TimeTicks::Now(),
                          std::move(callback)))) {

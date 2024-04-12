@@ -4,12 +4,8 @@
 
 #include "chrome/browser/safe_browsing/tailored_security/tailored_security_url_observer.h"
 
-#include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "components/safe_browsing/core/browser/tailored_security_service/tailored_security_service.h"
-#include "components/sync/base/user_selectable_type.h"
-#include "components/sync/test/test_sync_service.h"
-#include "components/sync/test/test_sync_user_settings.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -20,11 +16,8 @@ namespace {
 
 class MockTailoredSecurityService : public TailoredSecurityService {
  public:
-  MockTailoredSecurityService()
-      : TailoredSecurityService(/*identity_manager=*/nullptr,
-                                /*sync_service=*/nullptr,
-                                /*prefs=*/nullptr) {}
-  MOCK_METHOD(bool, AddQueryRequest, (), (override));
+  MockTailoredSecurityService() : TailoredSecurityService(nullptr, nullptr) {}
+  MOCK_METHOD(void, AddQueryRequest, (), (override));
   MOCK_METHOD(void, RemoveQueryRequest, (), (override));
   MOCK_METHOD(void, MaybeNotifySyncUser, (bool, base::Time), (override));
   MOCK_METHOD(scoped_refptr<network::SharedURLLoaderFactory>,
@@ -35,20 +28,7 @@ class MockTailoredSecurityService : public TailoredSecurityService {
 
 }  // namespace
 
-class TailoredSecurityUrlObserverTest : public ChromeRenderViewHostTestHarness {
- protected:
-  TestingProfile::TestingFactories GetTestingFactories() const override {
-    return {{SyncServiceFactory::GetInstance(),
-             base::BindRepeating(
-                 [](content::BrowserContext*) -> std::unique_ptr<KeyedService> {
-                   auto sync_service =
-                       std::make_unique<syncer::TestSyncService>();
-                   sync_service->GetUserSettings()->SetSelectedType(
-                       syncer::UserSelectableType::kHistory, false);
-                   return sync_service;
-                 })}};
-  }
-};
+using TailoredSecurityUrlObserverTest = ChromeRenderViewHostTestHarness;
 
 TEST_F(TailoredSecurityUrlObserverTest, QueryRequestOnFocus) {
   MockTailoredSecurityService mock_service;
@@ -57,7 +37,7 @@ TEST_F(TailoredSecurityUrlObserverTest, QueryRequestOnFocus) {
   TailoredSecurityUrlObserver* url_observer =
       TailoredSecurityUrlObserver::FromWebContents(web_contents());
 
-  EXPECT_CALL(mock_service, AddQueryRequest()).WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_service, AddQueryRequest());
   NavigateAndCommit(GURL("https://google.com"));
 
   EXPECT_CALL(mock_service, RemoveQueryRequest());
@@ -73,7 +53,7 @@ TEST_F(TailoredSecurityUrlObserverTest, QueryRequestOnNavigation) {
 
   url_observer->OnWebContentsFocused(nullptr);
 
-  EXPECT_CALL(mock_service, AddQueryRequest()).WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_service, AddQueryRequest());
   NavigateAndCommit(GURL("https://google.com"));
 
   EXPECT_CALL(mock_service, RemoveQueryRequest());

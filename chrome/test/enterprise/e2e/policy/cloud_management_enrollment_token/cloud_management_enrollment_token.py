@@ -41,10 +41,11 @@ class CloudManagementEnrollmentTokenTest(ChromeEnterpriseTestCase):
 
     local_dir = os.path.dirname(os.path.abspath(__file__))
 
-    output = self.RunWebDriverTest(self.win_config['client'],
-                                   os.path.join(local_dir, '../cbcm_enroll.py'))
+    output = self.RunWebDriverTest(
+        self.win_config['client'],
+        os.path.join(local_dir, 'cloud_enrollment_webdriver.py'))
     # Verify CBCM status legend
     self.assertIn('Machine policies', output)
-    self.assertIn('CLIENT2022', output)
+    self.assertIn('CLIENT2016', output)
     self.assertIn(token, output)
     self.assertIn('Policy cache OK', output)

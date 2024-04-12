@@ -41,7 +41,6 @@ void ProfileReportGeneratorDesktop::GetExtensionInfo(
 
 void ProfileReportGeneratorDesktop::GetExtensionRequest(
     enterprise_management::ChromeUserProfileInfo* report) {
-#if BUILDFLAG(ENABLE_EXTENSIONS)
   if (!profile_->GetPrefs()->GetBoolean(prefs::kCloudExtensionRequestEnabled))
     return;
   const base::Value::Dict& pending_requests =
@@ -55,9 +54,9 @@ void ProfileReportGeneratorDesktop::GetExtensionRequest(
       extension_urls::GetDefaultWebstoreUpdateUrl().spec();
 
   int number_of_requests = 0;
-  for (auto [extension_id, request_data] : pending_requests) {
+  for (auto it : pending_requests) {
     if (!ExtensionRequestReportGenerator::ShouldUploadExtensionRequest(
-            extension_id, webstore_update_url, extension_management)) {
+            it.first, webstore_update_url, extension_management)) {
       continue;
     }
 
@@ -68,21 +67,18 @@ void ProfileReportGeneratorDesktop::GetExtensionRequest(
       break;
 
     auto* request = report->add_extension_requests();
-    request->set_id(extension_id);
-
-    const auto& request_data_dict = request_data.GetDict();
-    std::optional<base::Time> timestamp = ::base::ValueToTime(
-        request_data_dict.Find(extension_misc::kExtensionRequestTimestamp));
+    request->set_id(it.first);
+    absl::optional<base::Time> timestamp = ::base::ValueToTime(
+        it.second.GetDict().Find(extension_misc::kExtensionRequestTimestamp));
     if (timestamp)
-      request->set_request_timestamp(timestamp->InMillisecondsSinceUnixEpoch());
+      request->set_request_timestamp(timestamp->ToJavaTime());
 
-    const std::string* justification = request_data_dict.FindString(
+    const std::string* justification = it.second.FindStringKey(
         extension_misc::kExtensionWorkflowJustification);
     if (justification) {
       request->set_justification(*justification);
     }
   }
-#endif
 }
 
 }  // namespace enterprise_reporting

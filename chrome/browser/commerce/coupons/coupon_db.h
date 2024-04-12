@@ -59,8 +59,7 @@ class CouponDB {
   void OnOperationFinished(bool success);
 
  private:
-  raw_ptr<SessionProtoDB<coupon_db::CouponContentProto>,
-          AcrossTasksDanglingUntriaged>
+  raw_ptr<SessionProtoDB<coupon_db::CouponContentProto>, DanglingUntriaged>
       proto_db_;
   base::WeakPtrFactory<CouponDB> weak_ptr_factory_{this};
 };

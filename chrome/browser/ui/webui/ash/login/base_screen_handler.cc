@@ -31,11 +31,12 @@ BaseScreenHandler::BaseScreenHandler(OobeScreenId oobe_screen)
 
 BaseScreenHandler::~BaseScreenHandler() = default;
 
-void BaseScreenHandler::ShowInWebUI(std::optional<base::Value::Dict> data) {
+void BaseScreenHandler::ShowInWebUI(absl::optional<base::Value::Dict> data) {
   if (!GetOobeUI()) {
     return;
   }
-  GetOobeUI()->GetCoreOobe()->ShowScreenWithData(oobe_screen_, std::move(data));
+  GetOobeUI()->GetCoreOobeView()->ShowScreenWithData(oobe_screen_,
+                                                     std::move(data));
 }
 
 void BaseScreenHandler::RegisterMessages() {

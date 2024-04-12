@@ -12,7 +12,6 @@
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile_manager.h"
 #include "components/policy/core/common/cloud/dm_token.h"
-#include "components/reporting/util/status_macros.h"
 #include "components/reporting/util/statusor.h"
 #include "components/reporting/util/test_support_callbacks.h"
 #include "content/public/test/browser_task_environment.h"
@@ -67,7 +66,7 @@ TEST_F(DMTokenRetrieverProviderTest,
   dm_token_retriever->RetrieveDMToken(dm_token_retrieved_event.cb());
   auto dm_token_result = dm_token_retrieved_event.result();
   ASSERT_OK(dm_token_result);
-  EXPECT_THAT(dm_token_result.value(), IsEmpty());
+  EXPECT_THAT(dm_token_result.ValueOrDie(), IsEmpty());
 }
 
 TEST_F(DMTokenRetrieverProviderTest, ReturnsUserDMTokenRetrieverForUserEvents) {
@@ -79,12 +78,13 @@ TEST_F(DMTokenRetrieverProviderTest, ReturnsUserDMTokenRetrieverForUserEvents) {
   // Verify it is a UserDMTokenRetriever by mocking profile based DM token
   // retrieval to return the test DM token and comparing the result of the
   // retrieval with this token.
-  policy::SetDMTokenForTesting(policy::DMToken::CreateValidToken(kDMToken));
+  policy::SetDMTokenForTesting(
+      policy::DMToken::CreateValidTokenForTesting(kDMToken));
   test::TestEvent<StatusOr<std::string>> dm_token_retrieved_event;
   dm_token_retriever->RetrieveDMToken(dm_token_retrieved_event.cb());
   auto dm_token_result = dm_token_retrieved_event.result();
   ASSERT_OK(dm_token_result);
-  EXPECT_THAT(dm_token_result.value(), StrEq(kDMToken));
+  EXPECT_THAT(dm_token_result.ValueOrDie(), StrEq(kDMToken));
 }
 
 TEST_F(DMTokenRetrieverProviderTest,

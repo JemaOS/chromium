@@ -12,18 +12,20 @@
 
 namespace ash {
 
-class FakeUpdateRequiredScreenHandler final : public UpdateRequiredView {
+class FakeUpdateRequiredScreenHandler : public UpdateRequiredView {
  public:
-  FakeUpdateRequiredScreenHandler();
+  FakeUpdateRequiredScreenHandler() = default;
 
   FakeUpdateRequiredScreenHandler(const FakeUpdateRequiredScreenHandler&) =
       delete;
   FakeUpdateRequiredScreenHandler& operator=(
       const FakeUpdateRequiredScreenHandler&) = delete;
 
-  ~FakeUpdateRequiredScreenHandler() override;
+  ~FakeUpdateRequiredScreenHandler() override {}
 
   UpdateRequiredView::UIState ui_state() { return ui_state_; }
+
+ private:
   void Show() override {}
 
   void SetIsConnected(bool connected) override {}
@@ -37,12 +39,8 @@ class FakeUpdateRequiredScreenHandler final : public UpdateRequiredView {
                                   const std::u16string& deviceName) override {}
   void SetEolMessage(const std::string& eolMessage) override {}
   void SetIsUserDataPresent(bool data_present) override {}
-  base::WeakPtr<UpdateRequiredView> AsWeakPtr() override;
 
- private:
   UpdateRequiredView::UIState ui_state_;
-
-  base::WeakPtrFactory<UpdateRequiredView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

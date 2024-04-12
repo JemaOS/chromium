@@ -4,16 +4,14 @@
 
 #include "base/run_loop.h"
 #include "base/test/bind.h"
-#include "base/test/run_until.h"
-#include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "chrome/app/chrome_command_ids.h"
-#include "chrome/browser/apps/app_service/app_registry_cache_waiter.h"
 #include "chrome/browser/lacros/browser_test_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_dialogs.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
@@ -22,23 +20,22 @@
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
 #include "chrome/browser/ui/web_applications/test/web_app_navigation_browsertest.h"
-#include "chrome/browser/ui/web_applications/web_app_dialogs.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom.h"
+#include "chrome/browser/web_applications/test/app_registry_cache_waiter.h"
+#include "chrome/browser/web_applications/test/service_worker_registration_waiter.h"
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/browser/web_applications/test/web_app_test_observers.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_sync_bridge.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "chromeos/crosapi/mojom/test_controller.mojom-test-utils.h"
 #include "chromeos/crosapi/mojom/test_controller.mojom.h"
 #include "chromeos/lacros/lacros_service.h"
-#include "chromeos/startup/browser_params_proxy.h"
 #include "components/app_constants/constants.h"
-#include "components/webapps/browser/test/service_worker_registration_waiter.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
-#include "third_party/blink/public/common/features.h"
 #include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
 
@@ -49,36 +46,51 @@ namespace {
 constexpr char kFirstAppUrlHost[] = "first-pwa.test";
 constexpr char kSecondAppUrlHost[] = "second-pwa.test";
 
+// Polls until the command has the expected state.
+void WaitForAppMenuCommandState(int command_id,
+                                Browser* browser,
+                                web_app::AppMenuCommandState command_state) {
+  base::RunLoop run_loop;
+  base::RepeatingTimer timer;
+  constexpr base::TimeDelta kPollingInterval = base::Milliseconds(1000);
+  timer.Start(FROM_HERE, kPollingInterval, base::BindLambdaForTesting([&]() {
+                if (web_app::GetAppMenuCommandState(command_id, browser) ==
+                    command_state) {
+                  timer.Stop();
+                  run_loop.Quit();
+                }
+              }));
+  run_loop.Run();
+}
+
 }  // namespace
 
 namespace web_app {
 
-class LacrosWebAppShelfBrowserTest : public WebAppControllerBrowserTest {
+class LacrosWebAppShelfBrowserTest : public WebAppNavigationBrowserTest {
  public:
   LacrosWebAppShelfBrowserTest() = default;
   ~LacrosWebAppShelfBrowserTest() override = default;
+
+  void SetUpOnMainThread() override {
+    WebAppNavigationBrowserTest::SetUpOnMainThread();
+    ASSERT_TRUE(https_server().Start());
+  }
 
  protected:
   // If ash is does not contain the relevant test controller functionality, then
   // there's nothing to do for this test.
   bool IsServiceAvailable() {
     DCHECK(IsWebAppsCrosapiEnabled());
-    uint32_t version =
-        chromeos::LacrosService::Get()
-            ->GetInterfaceVersion<crosapi::mojom::TestController>();
-    using MethodMinVersions = crosapi::mojom::TestController::MethodMinVersions;
-    if (version < MethodMinVersions::kGetShelfItemStateMinVersion ||
-        version < MethodMinVersions::kSelectContextMenuForShelfItemMinVersion) {
+    if (chromeos::LacrosService::Get()->GetInterfaceVersion(
+            crosapi::mojom::TestController::Uuid_) <
+        static_cast<int>(crosapi::mojom::TestController::MethodMinVersions::
+                             kGetShelfItemStateMinVersion)) {
       LOG(WARNING) << "Unsupported ash version.";
       return false;
     }
     return true;
   }
-
-  base::test::ScopedFeatureList tab_strip_feature_{
-      blink::features::kDesktopPWAsTabStrip};
-  base::test::ScopedFeatureList tab_strip_customizations_feature_{
-      blink::features::kDesktopPWAsTabStripCustomizations};
 };
 
 IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, Activation) {
@@ -86,16 +98,16 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, Activation) {
     GTEST_SKIP();
 
   const GURL app1_url =
-      https_server()->GetURL(kFirstAppUrlHost, "/web_apps/basic.html");
-  const webapps::AppId app1_id =
+      https_server().GetURL(kFirstAppUrlHost, "/web_apps/basic.html");
+  const AppId app1_id =
       InstallWebAppFromPageAndCloseAppBrowser(browser(), app1_url);
 
-  const GURL app2_url = https_server()->GetURL(
+  const GURL app2_url = https_server().GetURL(
       kSecondAppUrlHost, "/web_apps/standalone/basic.html");
-  const webapps::AppId app2_id =
+  const AppId app2_id =
       InstallWebAppFromPageAndCloseAppBrowser(browser(), app2_url);
 
-  apps::AppReadinessWaiter(profile(), app1_id).Await();
+  AppReadinessWaiter(profile(), app1_id).Await();
   Browser* app_browser1 = LaunchWebAppBrowser(app1_id);
   EXPECT_TRUE(AppBrowserController::IsForWebApp(app_browser1, app1_id));
   ASSERT_TRUE(browser_test_util::WaitForShelfItemState(
@@ -103,7 +115,7 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, Activation) {
 
   ASSERT_TRUE(AddTabAtIndex(/*index=*/1, app1_url, ui::PAGE_TRANSITION_TYPED));
 
-  apps::AppReadinessWaiter(profile(), app2_id).Await();
+  AppReadinessWaiter(profile(), app2_id).Await();
   LaunchWebAppBrowser(app2_id);
   ASSERT_TRUE(browser_test_util::WaitForShelfItemState(
       app2_id, static_cast<uint32_t>(ShelfItemState::kActive)));
@@ -117,8 +129,7 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, Activation) {
       app1_id, static_cast<uint32_t>(ShelfItemState::kNormal)));
 
   test::UninstallWebApp(profile(), app2_id);
-  apps::AppReadinessWaiter(profile(), app2_id,
-                           apps::Readiness::kUninstalledByUser)
+  AppReadinessWaiter(profile(), app2_id, apps::Readiness::kUninstalledByUser)
       .Await();
   ASSERT_TRUE(browser_test_util::WaitForShelfItemState(
       app2_id, static_cast<uint32_t>(ShelfItemState::kNormal)));
@@ -133,16 +144,16 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, Navigation) {
     GTEST_SKIP();
 
   const GURL app1_url =
-      https_server()->GetURL(kFirstAppUrlHost, "/web_apps/basic.html");
-  const webapps::AppId app1_id =
+      https_server().GetURL(kFirstAppUrlHost, "/web_apps/basic.html");
+  const AppId app1_id =
       InstallWebAppFromPageAndCloseAppBrowser(browser(), app1_url);
 
-  const GURL app2_url = https_server()->GetURL(
+  const GURL app2_url = https_server().GetURL(
       kSecondAppUrlHost, "/web_app_shortcuts/shortcuts.html");
-  const webapps::AppId app2_id =
+  const AppId app2_id =
       InstallWebAppFromPageAndCloseAppBrowser(browser(), app2_url);
 
-  GURL out_of_scope_url = https_server()->GetURL("/empty.html");
+  GURL out_of_scope_url = https_server().GetURL("/empty.html");
 
   Browser* app_browser1 = LaunchWebAppBrowser(app1_id);
   {
@@ -182,12 +193,12 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, BadgeShown) {
   if (!IsServiceAvailable())
     GTEST_SKIP();
 
-  const GURL app_url = https_server()->GetURL(
-      kFirstAppUrlHost, "/web_apps/minimal_ui/basic.html");
-  const webapps::AppId app_id =
+  const GURL app_url = https_server().GetURL(kFirstAppUrlHost,
+                                             "/web_apps/minimal_ui/basic.html");
+  const AppId app_id =
       InstallWebAppFromPageAndCloseAppBrowser(browser(), app_url);
 
-  apps::AppReadinessWaiter(profile(), app_id).Await();
+  AppReadinessWaiter(profile(), app_id).Await();
   Browser* app_browser = LaunchWebAppBrowser(app_id);
   content::WebContents* const web_contents =
       app_browser->tab_strip_model()->GetActiveWebContents();
@@ -195,14 +206,13 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, BadgeShown) {
   ASSERT_TRUE(browser_test_util::WaitForShelfItemState(
       app_id, static_cast<uint32_t>(ShelfItemState::kActive)));
 
-  ASSERT_TRUE(content::ExecJs(web_contents, "navigator.setAppBadge();",
-                              content::EXECUTE_SCRIPT_NO_RESOLVE_PROMISES));
+  ASSERT_TRUE(content::ExecuteScript(web_contents, "navigator.setAppBadge();"));
   ASSERT_TRUE(browser_test_util::WaitForShelfItemState(
       app_id, static_cast<uint32_t>(ShelfItemState::kActive) |
                   static_cast<uint32_t>(ShelfItemState::kNotification)));
 
-  ASSERT_TRUE(content::ExecJs(web_contents, "navigator.clearAppBadge();",
-                              content::EXECUTE_SCRIPT_NO_RESOLVE_PROMISES));
+  ASSERT_TRUE(
+      content::ExecuteScript(web_contents, "navigator.clearAppBadge();"));
   ASSERT_TRUE(browser_test_util::WaitForShelfItemState(
       app_id, static_cast<uint32_t>(ShelfItemState::kActive)));
 
@@ -215,16 +225,19 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, RunningInTab) {
   if (!IsServiceAvailable())
     GTEST_SKIP();
 
-  auto& test_controller = chromeos::LacrosService::Get()
-                              ->GetRemote<crosapi::mojom::TestController>();
-  const GURL app1_url = https_server()->GetURL(
+  crosapi::mojom::TestController* const test_controller =
+      chromeos::LacrosService::Get()
+          ->GetRemote<crosapi::mojom::TestController>()
+          .get();
+  crosapi::mojom::TestControllerAsyncWaiter waiter(test_controller);
+  const GURL app1_url = https_server().GetURL(
       kFirstAppUrlHost, "/web_apps/standalone/basic.html");
-  const webapps::AppId app1_id =
+  const AppId app1_id =
       InstallWebAppFromPageAndCloseAppBrowser(browser(), app1_url);
 
   const GURL app2_url =
-      https_server()->GetURL(kSecondAppUrlHost, "/web_apps/basic.html");
-  const webapps::AppId app2_id =
+      https_server().GetURL(kSecondAppUrlHost, "/web_apps/basic.html");
+  const AppId app2_id =
       InstallWebAppFromPageAndCloseAppBrowser(browser(), app2_url);
 
   {
@@ -234,32 +247,20 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, RunningInTab) {
     Browser* app_browser1 = LaunchWebAppBrowser(app1_id);
     ASSERT_TRUE(browser_test_util::WaitForShelfItemState(
         app1_id, static_cast<uint32_t>(ShelfItemState::kActive)));
-    {
-      base::test::TestFuture<bool> success_future;
-      test_controller->PinOrUnpinItemInShelf(app1_id, /*pin=*/true,
-                                             success_future.GetCallback());
-      EXPECT_TRUE(success_future.Get());
-    }
+    waiter.PinOrUnpinItemInShelf(app1_id, /*pin=*/true);
     CloseAndWait(app_browser1);
     sync_bridge.SetAppUserDisplayMode(app1_id, mojom::UserDisplayMode::kBrowser,
                                       /*is_user_action=*/true);
-    apps::AppWindowModeWaiter(profile(), app1_id, apps::WindowMode::kBrowser)
-        .Await();
+    AppWindowModeWaiter(profile(), app1_id, apps::WindowMode::kBrowser).Await();
 
     Browser* app_browser2 = LaunchWebAppBrowser(app2_id);
     ASSERT_TRUE(browser_test_util::WaitForShelfItemState(
         app2_id, static_cast<uint32_t>(ShelfItemState::kActive)));
-    {
-      base::test::TestFuture<bool> success_future;
-      test_controller->PinOrUnpinItemInShelf(app2_id, /*pin=*/true,
-                                             success_future.GetCallback());
-      EXPECT_TRUE(success_future.Get());
-    }
+    waiter.PinOrUnpinItemInShelf(app2_id, /*pin=*/true);
     CloseAndWait(app_browser2);
     sync_bridge.SetAppUserDisplayMode(app2_id, mojom::UserDisplayMode::kBrowser,
                                       /*is_user_action=*/true);
-    apps::AppWindowModeWaiter(profile(), app2_id, apps::WindowMode::kBrowser)
-        .Await();
+    AppWindowModeWaiter(profile(), app2_id, apps::WindowMode::kBrowser).Await();
   }
 
   ASSERT_TRUE(browser_test_util::WaitForShelfItemState(
@@ -338,7 +339,7 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, CreateShortcut) {
       embedded_test_server()->GetURL("/banners/scope_a/no_manifest.html"));
   GURL app2_url(
       embedded_test_server()->GetURL("/banners/scope_b/scope_b.html"));
-  webapps::AppId app1_id;
+  AppId app1_id;
   Browser* app1_browser;
   {
     web_app::ServiceWorkerRegistrationWaiter registration_waiter(profile(),
@@ -349,17 +350,14 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, CreateShortcut) {
 
     ASSERT_TRUE(
         AddTabAtIndex(/*index=*/2, app2_url, ui::PAGE_TRANSITION_TYPED));
-    ASSERT_TRUE(base::test::RunUntil([&] {
-      return web_app::GetAppMenuCommandState(IDC_INSTALL_PWA, browser()) ==
-             kEnabled;
-    }));
+    WaitForAppMenuCommandState(IDC_INSTALL_PWA, browser(), kEnabled);
 
     // Install app1 shortcut.
     browser()->tab_strip_model()->ActivateTabAt(/*index=*/1);
     EXPECT_EQ(GetAppMenuCommandState(IDC_CREATE_SHORTCUT, browser()), kEnabled);
     EXPECT_EQ(GetAppMenuCommandState(IDC_INSTALL_PWA, browser()), kNotPresent);
 
-    SetAutoAcceptWebAppDialogForTesting(
+    chrome::SetAutoAcceptWebAppDialogForTesting(
         /*auto_accept=*/true,
         /*auto_open_in_window=*/true);
     ui_test_utils::BrowserChangeObserver browser_change_observer(
@@ -370,7 +368,7 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, CreateShortcut) {
     app1_id = install_observer.Wait();
     app1_browser = browser_change_observer.Wait();
     EXPECT_TRUE(AppBrowserController::IsForWebApp(app1_browser, app1_id));
-    SetAutoAcceptWebAppDialogForTesting(
+    chrome::SetAutoAcceptWebAppDialogForTesting(
         /*auto_accept=*/false,
         /*auto_open_in_window=*/false);
   }
@@ -385,8 +383,7 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, CreateShortcut) {
   {
     sync_bridge.SetAppUserDisplayMode(app1_id, mojom::UserDisplayMode::kBrowser,
                                       /*is_user_action=*/false);
-    apps::AppWindowModeWaiter(profile(), app1_id, apps::WindowMode::kBrowser)
-        .Await();
+    AppWindowModeWaiter(profile(), app1_id, apps::WindowMode::kBrowser).Await();
 
     app1_browser->window()->Close();
 
@@ -399,14 +396,14 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, CreateShortcut) {
   }
 
   // Install app2 PWA.
-  webapps::AppId app2_id;
+  AppId app2_id;
   Browser* app2_browser;
   {
     browser()->tab_strip_model()->ActivateTabAt(/*index=*/1);
     EXPECT_EQ(GetAppMenuCommandState(IDC_CREATE_SHORTCUT, browser()), kEnabled);
     EXPECT_EQ(GetAppMenuCommandState(IDC_INSTALL_PWA, browser()), kEnabled);
 
-    SetAutoAcceptPWAInstallConfirmationForTesting(/*auto_accept=*/true);
+    chrome::SetAutoAcceptPWAInstallConfirmationForTesting(/*auto_accept=*/true);
     ui_test_utils::BrowserChangeObserver browser_change_observer(
         nullptr, ui_test_utils::BrowserChangeObserver::ChangeType::kAdded);
     WebAppTestInstallObserver observer(profile());
@@ -415,7 +412,7 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, CreateShortcut) {
     app2_id = observer.Wait();
     app2_browser = browser_change_observer.Wait();
     EXPECT_TRUE(AppBrowserController::IsForWebApp(app2_browser, app2_id));
-    SetAutoAcceptPWAInstallConfirmationForTesting(
+    chrome::SetAutoAcceptPWAInstallConfirmationForTesting(
         /*auto_accept=*/false);
   }
 
@@ -434,48 +431,6 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, CreateShortcut) {
       app_constants::kLacrosAppId,
       static_cast<uint32_t>(ShelfItemState::kRunning)));
   ASSERT_TRUE(browser_test_util::WaitForShelfItem(app1_id, /*exists=*/false));
-}
-
-// Tests that opening a new window for a tabbed web app opens a new window.
-// TODO(crbug.com/1490336): Make this run on Ash as well.
-IN_PROC_BROWSER_TEST_F(LacrosWebAppShelfBrowserTest, NewTabbedWindow) {
-  const std::optional<std::vector<std::string>>& capabilities =
-      chromeos::BrowserParamsProxy::Get()->AshCapabilities();
-  if (!capabilities || !base::Contains(*capabilities, "crbug/1490336")) {
-    GTEST_SKIP() << "Unsupported Ash version.";
-  }
-
-  if (!IsServiceAvailable()) {
-    GTEST_SKIP() << "Unsupported Ash version.";
-  }
-  auto& test_controller = chromeos::LacrosService::Get()
-                              ->GetRemote<crosapi::mojom::TestController>();
-
-  webapps::AppId app_id = InstallWebAppFromPage(
-      browser(),
-      https_server()->GetURL("/web_apps/tab_strip_customizations.html"));
-  const WebApp& app =
-      *WebAppProvider::GetForTest(profile())->registrar_unsafe().GetAppById(
-          app_id);
-  ASSERT_EQ(app.display_mode_override().front(), DisplayMode::kTabbed);
-  ASSERT_TRUE(absl::holds_alternative<blink::Manifest::HomeTabParams>(
-      app.tab_strip()->home_tab));
-
-  ui_test_utils::BrowserChangeObserver browser_observer(
-      nullptr, ui_test_utils::BrowserChangeObserver::ChangeType::kAdded);
-
-  ASSERT_TRUE(browser_test_util::WaitForShelfItemState(
-      app_id, static_cast<uint32_t>(ShelfItemState::kActive)));
-  {
-    base::test::TestFuture<bool> future;
-    // Should select the "New window" menu item.
-    test_controller->SelectContextMenuForShelfItem(app_id, /*index=*/0,
-                                                   future.GetCallback());
-    ASSERT_TRUE(future.Get());
-  }
-
-  EXPECT_TRUE(
-      AppBrowserController::IsForWebApp(browser_observer.Wait(), app_id));
 }
 
 }  // namespace web_app

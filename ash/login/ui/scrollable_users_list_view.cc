@@ -5,7 +5,6 @@
 #include "ash/login/ui/scrollable_users_list_view.h"
 
 #include <memory>
-#include <optional>
 
 #include "ash/controls/rounded_scroll_bar.h"
 #include "ash/login/ui/login_constants.h"
@@ -19,13 +18,9 @@
 #include "ash/wallpaper/wallpaper_controller_impl.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "cc/paint/paint_flags.h"
 #include "cc/paint/paint_shader.h"
-#include "chromeos/constants/chromeos_features.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
-#include "ui/color/color_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/color_analysis.h"
 #include "ui/gfx/color_utils.h"
@@ -72,7 +67,7 @@ class EnsureMinHeightView : public NonAccessibleView {
   ~EnsureMinHeightView() override = default;
 
   // NonAccessibleView:
-  void Layout(PassKey) override {
+  void Layout() override {
     // Make sure our height is at least as tall as the parent, so the layout
     // manager will center us properly.
     int min_height = parent()->height();
@@ -81,7 +76,7 @@ class EnsureMinHeightView : public NonAccessibleView {
       new_size.set_height(min_height);
       SetSize(new_size);
     }
-    LayoutSuperclass<NonAccessibleView>(this);
+    NonAccessibleView::Layout();
   }
 };
 
@@ -135,16 +130,12 @@ ScrollableUsersListView::GradientParams::BuildForStyle(LoginDisplayStyle style,
                                                        views::View* view) {
   switch (style) {
     case LoginDisplayStyle::kExtraSmall: {
-      SkColor dark_muted_color = view->GetColorProvider()->GetColor(
-          kColorAshLoginScrollableUserListBackground);
-
-      ui::ColorId tint_color_id =
-          chromeos::features::IsJellyEnabled()
-              ? static_cast<ui::ColorId>(cros_tokens::kCrosSysScrim2)
-              : kColorAshShieldAndBase80;
-
+      SkColor dark_muted_color =
+          Shell::Get()->wallpaper_controller()->GetProminentColor(
+              color_utils::ColorProfile(color_utils::LumaRange::DARK,
+                                        color_utils::SaturationRange::MUTED));
       SkColor tint_color = color_utils::GetResultingPaintColor(
-          view->GetColorProvider()->GetColor(tint_color_id),
+          view->GetColorProvider()->GetColor(kColorAshShieldAndBase80),
           SkColorSetA(dark_muted_color, SK_AlphaOPAQUE));
 
       GradientParams params;
@@ -170,7 +161,7 @@ ScrollableUsersListView::TestApi::TestApi(ScrollableUsersListView* view)
 
 ScrollableUsersListView::TestApi::~TestApi() = default;
 
-const std::vector<raw_ptr<LoginUserView, VectorExperimental>>&
+const std::vector<LoginUserView*>&
 ScrollableUsersListView::TestApi::user_views() const {
   return view_->user_views_;
 }
@@ -195,9 +186,10 @@ ScrollableUsersListView::ScrollableUsersListView(
       views::BoxLayout::CrossAxisAlignment::kCenter);
 
   for (std::size_t i = 1u; i < users.size(); ++i) {
-    auto* view = new LoginUserView(display_style, false /*show_dropdown*/,
-                                   base::BindRepeating(on_tap_user, i - 1),
-                                   base::RepeatingClosure());
+    auto* view =
+        new LoginUserView(display_style, false /*show_dropdown*/,
+                          base::BindRepeating(on_tap_user, i - 1),
+                          base::RepeatingClosure(), base::RepeatingClosure());
     user_views_.push_back(view);
     view->UpdateForUser(users[i], false /*animate*/);
     user_view_host_->AddChildView(view);
@@ -220,15 +212,13 @@ ScrollableUsersListView::ScrollableUsersListView(
       ->set_main_axis_alignment(views::BoxLayout::MainAxisAlignment::kCenter);
   ensure_min_height->AddChildView(user_view_host_.get());
   SetContents(std::move(ensure_min_height));
-  SetBackgroundColor(std::nullopt);
+  SetBackgroundColor(absl::nullopt);
   SetDrawOverflowIndicator(false);
 
-  auto vertical_scroll = std::make_unique<RoundedScrollBar>(
-      views::ScrollBar::Orientation::kVertical);
+  auto vertical_scroll = std::make_unique<RoundedScrollBar>(false);
   vertical_scroll->SetInsets(kVerticalScrollInsets);
   SetVerticalScrollBar(std::move(vertical_scroll));
-  SetHorizontalScrollBar(std::make_unique<RoundedScrollBar>(
-      views::ScrollBar::Orientation::kHorizontal));
+  SetHorizontalScrollBar(std::make_unique<RoundedScrollBar>(true));
 
   observation_.Observe(Shell::Get()->wallpaper_controller());
 }
@@ -237,7 +227,7 @@ ScrollableUsersListView::~ScrollableUsersListView() = default;
 
 LoginUserView* ScrollableUsersListView::GetUserView(
     const AccountId& account_id) {
-  for (ash::LoginUserView* view : user_views_) {
+  for (auto* view : user_views_) {
     if (view->current_user().basic_user_info.account_id == account_id) {
       return view;
     }
@@ -255,7 +245,7 @@ void ScrollableUsersListView::UpdateUserViewHostLayoutInsets() {
                             : layout_params.insets_portrait);
 }
 
-void ScrollableUsersListView::Layout(PassKey) {
+void ScrollableUsersListView::Layout() {
   DCHECK(user_view_host_layout_);
 
   // Update clipping height.
@@ -270,7 +260,7 @@ void ScrollableUsersListView::Layout(PassKey) {
   UpdateUserViewHostLayoutInsets();
 
   // Layout everything.
-  LayoutSuperclass<ScrollView>(this);
+  ScrollView::Layout();
 }
 
 void ScrollableUsersListView::OnPaintBackground(gfx::Canvas* canvas) {
@@ -323,12 +313,7 @@ void ScrollableUsersListView::OnPaintBackground(gfx::Canvas* canvas) {
     cc::PaintFlags flags;
     flags.setAntiAlias(true);
     flags.setStyle(cc::PaintFlags::kFill_Style);
-
-    ui::ColorId background_color_id =
-        chromeos::features::IsJellyEnabled()
-            ? static_cast<ui::ColorId>(cros_tokens::kCrosSysScrim2)
-            : kColorAshShieldAndBase80;
-    flags.setColor(GetColorProvider()->GetColor(background_color_id));
+    flags.setColor(GetColorProvider()->GetColor(kColorAshShieldAndBase80));
     canvas->DrawRoundRect(render_bounds,
                           login::kNonBlurredWallpaperBackgroundRadiusDp, flags);
   }
@@ -350,8 +335,5 @@ void ScrollableUsersListView::OnWallpaperBlurChanged() {
   gradient_params_ = GradientParams::BuildForStyle(display_style_, this);
   SchedulePaint();
 }
-
-BEGIN_METADATA(ScrollableUsersListView)
-END_METADATA
 
 }  // namespace ash

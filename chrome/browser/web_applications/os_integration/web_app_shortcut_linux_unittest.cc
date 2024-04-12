@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <cstdlib>
 #include <map>
-#include <string_view>
 #include <vector>
 
 #include "base/base_paths.h"
@@ -21,6 +20,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/logging.h"
 #include "base/nix/xdg_util.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
@@ -29,9 +29,9 @@
 #include "chrome/browser/web_applications/os_integration/web_app_shortcut.h"
 #include "chrome/browser/web_applications/test/web_app_test.h"
 #include "chrome/browser/web_applications/web_app_constants.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/common/chrome_constants.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/gfx/image/image_skia.h"
@@ -48,12 +48,12 @@ class MockEnvironment : public base::Environment {
   MockEnvironment(const MockEnvironment&) = delete;
   MockEnvironment& operator=(const MockEnvironment&) = delete;
 
-  void Set(std::string_view name, const std::string& value) {
+  void Set(base::StringPiece name, const std::string& value) {
     const std::string key(name);
     variables_[key] = value;
   }
 
-  bool GetVar(std::string_view variable_name, std::string* result) override {
+  bool GetVar(base::StringPiece variable_name, std::string* result) override {
     const std::string key(variable_name);
     if (base::Contains(variables_, key)) {
       *result = variables_[key];
@@ -63,13 +63,13 @@ class MockEnvironment : public base::Environment {
     return false;
   }
 
-  bool SetVar(std::string_view variable_name,
+  bool SetVar(base::StringPiece variable_name,
               const std::string& new_value) override {
     ADD_FAILURE();
     return false;
   }
 
-  bool UnSetVar(std::string_view variable_name) override {
+  bool UnSetVar(base::StringPiece variable_name) override {
     ADD_FAILURE();
     return false;
   }
@@ -844,8 +844,7 @@ TEST_F(WebAppShortcutLinuxTest, UpdateDesktopShortcuts) {
 
   std::unique_ptr<ShortcutInfo> shortcut_info = GetShortcutInfo();
 
-  UpdateDesktopShortcuts(&env, *shortcut_info,
-                         /*user_specified_locations=*/std::nullopt);
+  UpdateDesktopShortcuts(&env, *shortcut_info);
   EXPECT_EQ(invoke_count, 4);
 
   // At this point, we've already validated creation in the Application menu

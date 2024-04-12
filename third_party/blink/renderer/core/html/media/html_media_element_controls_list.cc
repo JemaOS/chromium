@@ -5,9 +5,20 @@
 #include "third_party/blink/renderer/core/html/media/html_media_element_controls_list.h"
 
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
-#include "third_party/blink/renderer/core/keywords.h"
 
 namespace blink {
+
+namespace {
+
+const char kNoDownload[] = "nodownload";
+const char kNoFullscreen[] = "nofullscreen";
+const char kNoPlaybackRate[] = "noplaybackrate";
+const char kNoRemotePlayback[] = "noremoteplayback";
+
+const char* const kSupportedTokens[] = {kNoDownload, kNoFullscreen,
+                                        kNoPlaybackRate, kNoRemotePlayback};
+
+}  // namespace
 
 HTMLMediaElementControlsList::HTMLMediaElementControlsList(
     HTMLMediaElement* element)
@@ -16,26 +27,27 @@ HTMLMediaElementControlsList::HTMLMediaElementControlsList(
 bool HTMLMediaElementControlsList::ValidateTokenValue(
     const AtomicString& token_value,
     ExceptionState&) const {
-  return token_value == keywords::kNodownload ||
-         token_value == keywords::kNofullscreen ||
-         token_value == keywords::kNoplaybackrate ||
-         token_value == keywords::kNoremoteplayback;
+  for (const char* supported_token : kSupportedTokens) {
+    if (token_value == supported_token)
+      return true;
+  }
+  return false;
 }
 
 bool HTMLMediaElementControlsList::ShouldHideDownload() const {
-  return contains(keywords::kNodownload);
+  return contains(kNoDownload);
 }
 
 bool HTMLMediaElementControlsList::ShouldHideFullscreen() const {
-  return contains(keywords::kNofullscreen);
+  return contains(kNoFullscreen);
 }
 
 bool HTMLMediaElementControlsList::ShouldHidePlaybackRate() const {
-  return contains(keywords::kNoplaybackrate);
+  return contains(kNoPlaybackRate);
 }
 
 bool HTMLMediaElementControlsList::ShouldHideRemotePlayback() const {
-  return contains(keywords::kNoremoteplayback);
+  return contains(kNoRemotePlayback);
 }
 
 bool HTMLMediaElementControlsList::CanShowAllControls() const {

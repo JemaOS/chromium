@@ -17,7 +17,8 @@
 #include "chromeos/ash/components/dbus/smbprovider/smb_provider_client.h"
 #include "net/base/network_interfaces.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 // Calculates the broadcast address of a network interface.
 net::IPAddress CalculateBroadcastAddress(
@@ -27,7 +28,8 @@ net::IPAddress CalculateBroadcastAddress(
 bool ShouldUseInterface(const net::NetworkInterface& interface);
 
 // HostLocator implementation that uses NetBIOS to locate hosts.
-class NetBiosHostLocator final : public HostLocator {
+class NetBiosHostLocator : public HostLocator,
+                           public base::SupportsWeakPtr<NetBiosHostLocator> {
  public:
   using GetInterfacesFunction =
       base::RepeatingCallback<net::NetworkInterfaceList()>;
@@ -102,7 +104,7 @@ class NetBiosHostLocator final : public HostLocator {
   int32_t outstanding_parse_requests_ = 0;
   GetInterfacesFunction get_interfaces_;
   NetBiosClientFactory client_factory_;
-  raw_ptr<SmbProviderClient> smb_provider_client_;
+  raw_ptr<SmbProviderClient, ExperimentalAsh> smb_provider_client_;
   FindHostsCallback callback_;
   HostMap results_;
   // |netbios_clients_| is a container for storing NetBios clients that are
@@ -110,9 +112,9 @@ class NetBiosHostLocator final : public HostLocator {
   // scope. One NetBiosClient exists for each network interface on the device.
   std::list<std::unique_ptr<NetBiosClientInterface>> netbios_clients_;
   std::unique_ptr<base::OneShotTimer> timer_;
-  base::WeakPtrFactory<NetBiosHostLocator> weak_ptr_factory_{this};
 };
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_SMB_CLIENT_DISCOVERY_NETBIOS_HOST_LOCATOR_H_

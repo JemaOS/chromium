@@ -12,7 +12,6 @@
 #include "ash/ash_export.h"
 #include "ash/public/cpp/accelerator_configuration.h"
 #include "ash/public/cpp/accelerators.h"
-#include "ash/public/cpp/session/session_observer.h"
 #include "ash/public/mojom/accelerator_configuration.mojom-shared.h"
 #include "ash/public/mojom/accelerator_configuration.mojom.h"
 #include "ash/public/mojom/accelerator_info.mojom.h"
@@ -20,38 +19,15 @@
 #include "base/containers/span.h"
 #include "base/observer_list.h"
 #include "base/observer_list_types.h"
-#include "base/types/optional_ref.h"
-#include "base/values.h"
-#include "components/prefs/pref_registry_simple.h"
 #include "mojo/public/cpp/bindings/clone_traits.h"
 #include "ui/base/accelerators/accelerator_map.h"
-
-namespace {
-// Represents the state of the accelerator modification in the prefs.
-// `kAdd` - User adds a custom accelerator ontop of the default accelerators.
-// `kRemove` - User removes a default accelerator.
-// Removing a user-added accelerator will not result in a new action, rather it
-// will remove the pref override entry with `kAdd`.
-enum class AcceleratorModificationAction {
-  kAdd = 0,
-  kRemove = 1,
-};
-
-// Represents the underlying data of a modified accelerator in the pref
-// storage.
-struct AcceleratorModificationData {
-  ui::Accelerator accelerator;
-  AcceleratorModificationAction action;
-};
-}  // namespace
 
 namespace ash {
 
 // Implementor of AcceleratorConfiguration for Ash accelerators.
 // This class exist as a way to provide access to view and modify Ash
 // accelerators.
-class ASH_EXPORT AshAcceleratorConfiguration : public AcceleratorConfiguration,
-                                               public SessionObserver {
+class ASH_EXPORT AshAcceleratorConfiguration : public AcceleratorConfiguration {
  public:
   // Observer to notify clients of when accelerators are updated.
   // Clients can receive a list of accelerators via
@@ -68,8 +44,9 @@ class ASH_EXPORT AshAcceleratorConfiguration : public AcceleratorConfiguration,
       delete;
   ~AshAcceleratorConfiguration() override;
 
-  static void RegisterProfilePrefs(PrefRegistrySimple* registry);
-
+  // AcceleratorConfiguration::
+  const std::vector<ui::Accelerator>& GetAcceleratorsForAction(
+      AcceleratorActionId action_id) override;
   // Whether the source is mutable and shortcuts can be changed. If this returns
   // false then any of the Add/Remove/Replace class will DCHECK. The two Restore
   // methods will be no-ops.
@@ -92,9 +69,6 @@ class ASH_EXPORT AshAcceleratorConfiguration : public AcceleratorConfiguration,
       AcceleratorActionId action_id) override;
   mojom::AcceleratorConfigResult RestoreAllDefaults() override;
 
-  // SessionObserver::
-  void OnActiveUserPrefServiceChanged(PrefService* pref_service) override;
-
   void Initialize();
   void Initialize(base::span<const AcceleratorData> accelerators);
   void InitializeDeprecatedAccelerators(
@@ -103,7 +77,6 @@ class ASH_EXPORT AshAcceleratorConfiguration : public AcceleratorConfiguration,
 
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
-  bool HasObserver(Observer* observer);
 
   const AcceleratorAction* FindAcceleratorAction(
       const ui::Accelerator& accelerator) const;
@@ -112,7 +85,9 @@ class ASH_EXPORT AshAcceleratorConfiguration : public AcceleratorConfiguration,
     return accelerators_;
   }
 
-  void SetUsePositionalLookup(bool use_positional_lookup);
+  void SetUsePositionalLookup(bool use_positional_lookup) {
+    accelerator_to_id_.set_use_positional_lookup(use_positional_lookup);
+  }
 
   // Returns a nullptr if `action` is not a deprecated action, otherwise
   // returns the deprecated data.
@@ -120,8 +95,8 @@ class ASH_EXPORT AshAcceleratorConfiguration : public AcceleratorConfiguration,
       AcceleratorActionId action);
 
   // Returns the ID of the action if `accelerator` is a default accelerator.
-  // If there is no ID found, returns std::nullopt.
-  std::optional<AcceleratorAction> GetIdForDefaultAccelerator(
+  // If there is no ID found, returns absl::nullopt.
+  absl::optional<AcceleratorAction> GetIdForDefaultAccelerator(
       ui::Accelerator accelerator);
 
   // Returns the default accelerators of a given accelerator ID.
@@ -132,36 +107,22 @@ class ASH_EXPORT AshAcceleratorConfiguration : public AcceleratorConfiguration,
   bool IsValid(uint32_t id) const;
 
  private:
-  friend class AshAcceleratorConfigurationTest;
-
   // A map for looking up actions from accelerators.
   using AcceleratorActionMap = ui::AcceleratorMap<AcceleratorAction>;
-
-  // AcceleratorConfiguration::
-  base::optional_ref<const std::vector<ui::Accelerator>>
-  GetAcceleratorsForAction(AcceleratorActionId action_id) override;
 
   void InitializeDeprecatedAccelerators();
 
   void AddAccelerators(base::span<const AcceleratorData> accelerators);
 
-  void ApplyPrefOverrides();
-  void SaveOverridePrefChanges();
-  void UpdateOverrides(AcceleratorActionId action_id,
-                       const ui::Accelerator& accelerator,
-                       AcceleratorModificationAction action);
-
   // Remove the accelerator, does not notify observers.
   mojom::AcceleratorConfigResult DoRemoveAccelerator(
       AcceleratorActionId action_id,
-      const ui::Accelerator& accelerator,
-      bool save_override);
+      const ui::Accelerator& accelerator);
 
   // Adds the accelerator, does not notify observers.
   mojom::AcceleratorConfigResult DoAddAccelerator(
       AcceleratorActionId action_id,
-      const ui::Accelerator& accelerator,
-      bool save_override);
+      const ui::Accelerator& accelerator);
 
   // Replace the accelerator, does not notify observers.
   mojom::AcceleratorConfigResult DoReplaceAccelerator(
@@ -172,20 +133,6 @@ class ASH_EXPORT AshAcceleratorConfiguration : public AcceleratorConfiguration,
   void NotifyAcceleratorsUpdated();
 
   void UpdateAndNotifyAccelerators();
-
-  // Checks that the accelerators are in a valid state, if not reset back to
-  // the default state and clear the override prefs.
-  bool AreAcceleratorsValid();
-
-  // Resets all accelerator mappings to the the system default.
-  void ResetAllAccelerators();
-
-  // Returns the total number of customizations for all accelerators.
-  int GetTotalNumberOfModifications();
-
-  // A local copy of the pref overrides, allows modifying the overrides before
-  // updating the override pref.
-  base::Value::Dict accelerator_overrides_;
 
   std::vector<ui::Accelerator> accelerators_;
 

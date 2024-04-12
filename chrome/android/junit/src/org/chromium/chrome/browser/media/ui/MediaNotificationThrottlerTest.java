@@ -13,6 +13,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import android.os.Build;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -27,9 +29,10 @@ import org.chromium.components.browser_ui.media.MediaNotificationInfo;
  * correctly.
  */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(
-        manifest = Config.NONE,
-        shadows = {MediaNotificationTestShadowResources.class})
+@Config(manifest = Config.NONE,
+        // Remove this after updating to a version of Robolectric that supports
+        // notification channel creation. crbug.com/774315
+        sdk = Build.VERSION_CODES.N_MR1, shadows = {MediaNotificationTestShadowResources.class})
 public class MediaNotificationThrottlerTest extends MediaNotificationTestBase {
     private static final int THROTTLE_MILLIS =
             MediaNotificationController.Throttler.THROTTLE_MILLIS;

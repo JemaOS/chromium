@@ -6,8 +6,11 @@
 #define CHROME_BROWSER_PRELOADING_PRELOADING_FEATURES_H_
 
 #include "base/feature_list.h"
-#include "base/metrics/field_trial_params.h"
 
-namespace features {}  // namespace features
+namespace features {
+
+BASE_DECLARE_FEATURE(kPreloadingDesktopSettingsSubPage);
+
+}  // namespace features
 
 #endif  // CHROME_BROWSER_PRELOADING_PRELOADING_FEATURES_H_

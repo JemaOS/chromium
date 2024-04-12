@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "net/base/io_buffer.h"
 #include "net/base/test_completion_callback.h"
 #include "net/filter/mock_source_stream.h"
@@ -77,7 +78,9 @@ struct I18nTestParam {
   const int buffer_size;
   const int read_size;
   const net::MockSourceStream::Mode mode;
-  raw_ptr<const I18nTest> test;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #constexpr-ctor-field-initializer
+  RAW_PTR_EXCLUSION const I18nTest* test;
 };
 
 }  // namespace
@@ -88,8 +91,7 @@ class I18nSourceStreamTest : public ::testing::TestWithParam<I18nTestParam> {
 
   // Helpful function to initialize the test fixture.
   void Init() {
-    output_buffer_ =
-        base::MakeRefCounted<net::IOBufferWithSize>(output_buffer_size_);
+    output_buffer_ = base::MakeRefCounted<net::IOBuffer>(output_buffer_size_);
     std::unique_ptr<net::MockSourceStream> source(new net::MockSourceStream());
     source_ = source.get();
 

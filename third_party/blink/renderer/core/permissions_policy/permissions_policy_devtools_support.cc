@@ -12,17 +12,17 @@
 
 namespace blink {
 
-std::optional<PermissionsPolicyBlockLocator> TracePermissionsPolicyBlockSource(
+absl::optional<PermissionsPolicyBlockLocator> TracePermissionsPolicyBlockSource(
     Frame* frame,
     mojom::PermissionsPolicyFeature feature) {
   const PermissionsPolicy* current_policy =
       frame->GetSecurityContext()->GetPermissionsPolicy();
   DCHECK(current_policy);
   if (current_policy->IsFeatureEnabled(feature))
-    return std::nullopt;
+    return absl::nullopt;
 
   // All permissions are disabled by default for fenced frames, irrespective of
-  // headers (see PermissionsPolicy::CreateFixedForFencedFrame).
+  // headers (see PermissionsPolicy::CreateForFencedFrame).
   if (frame->IsInFencedFrameTree()) {
     return PermissionsPolicyBlockLocator{
         IdentifiersFactory::FrameId(frame),

@@ -10,7 +10,7 @@
         "keyboard"
       ],
       "name": "TapM",
-      "key": "Space",
+      "key": "KeyM",
       "location": [
         {
           "type": "position",

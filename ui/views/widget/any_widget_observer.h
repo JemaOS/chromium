@@ -8,7 +8,7 @@
 #include <string>
 
 #include "base/functional/callback.h"
-#include "base/memory/weak_ptr.h"
+#include "base/memory/raw_ptr.h"
 #include "base/observer_list_types.h"
 #include "base/run_loop.h"
 #include "ui/views/views_export.h"
@@ -41,7 +41,7 @@ class Widget;
 // This class can be used for waiting for a particular View being shown, as in:
 //
 //    RunLoop run_loop;
-//    AnyWidgetObserver observer(views::test::AnyWidgetTestPasskey{});
+//    AnyWidgetCallbackObserver observer(views::test::AnyWidgetTestPasskey{});
 //    Widget* widget;
 //    observer.set_initialized_callback(
 //        base::BindLambdaForTesting([&](Widget* w) {
@@ -67,7 +67,7 @@ class Widget;
 // This class can also be used to make sure a named widget is _not_ shown, as
 // this particular example (intended for testing code) shows:
 //
-// AnyWidgetObserver observer(views::test::AnyWidgetTestPasskey{});
+// AnyWidgetCallbackObserver observer(views::test::AnyWidgetTestPasskey{});
 // observer.set_shown_callback(
 //    base::BindLambdaForTesting([&](views::Widget* widget) {
 //        ASSERT_FALSE(widget->GetName() == "MyWidget");
@@ -183,7 +183,7 @@ class VIEWS_EXPORT NamedWidgetShownWaiter {
   void OnAnyWidgetShown(Widget* widget);
 
   AnyWidgetObserver observer_;
-  base::WeakPtr<Widget> widget_;
+  raw_ptr<Widget, DanglingUntriaged> widget_ = nullptr;
   base::RunLoop run_loop_;
   const std::string name_;
 };

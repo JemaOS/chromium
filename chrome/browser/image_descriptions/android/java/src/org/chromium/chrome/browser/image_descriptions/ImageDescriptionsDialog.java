@@ -38,13 +38,11 @@ public class ImageDescriptionsDialog
         implements ModalDialogProperties.Controller, RadioGroup.OnCheckedChangeListener {
     // Please treat this list as append only and keep it in sync with
     // AccessibilityImageLabelModeAndroid in enums.xml
-    @IntDef({
-        ImageDescriptionsDialogAction.ENABLED,
-        ImageDescriptionsDialogAction.ENABLED_ONLY_ON_WIFI,
-        ImageDescriptionsDialogAction.JUST_ONCE,
-        ImageDescriptionsDialogAction.JUST_ONCE_DONT_ASK_AGAIN,
-        ImageDescriptionsDialogAction.CANCEL
-    })
+    @IntDef({ImageDescriptionsDialogAction.ENABLED,
+            ImageDescriptionsDialogAction.ENABLED_ONLY_ON_WIFI,
+            ImageDescriptionsDialogAction.JUST_ONCE,
+            ImageDescriptionsDialogAction.JUST_ONCE_DONT_ASK_AGAIN,
+            ImageDescriptionsDialogAction.CANCEL})
     public @interface ImageDescriptionsDialogAction {
         int ENABLED = 0;
         int ENABLED_ONLY_ON_WIFI = 1;
@@ -73,16 +71,13 @@ public class ImageDescriptionsDialog
     private Profile mProfile;
     private Context mContext;
 
-    protected ImageDescriptionsDialog(
-            Context context,
-            ModalDialogManager modalDialogManager,
-            ImageDescriptionsControllerDelegate delegate,
-            boolean shouldShowDontAskAgainOption,
+    protected ImageDescriptionsDialog(Context context, ModalDialogManager modalDialogManager,
+            ImageDescriptionsControllerDelegate delegate, boolean shouldShowDontAskAgainOption,
             WebContents webContents) {
         mModalDialogManager = modalDialogManager;
         mControllerDelegate = delegate;
         mWebContents = webContents;
-        mProfile = Profile.fromWebContents(webContents).getOriginalProfile();
+        mProfile = Profile.getLastUsedRegularProfile();
         mContext = context;
 
         // Set initial state.
@@ -104,14 +99,13 @@ public class ImageDescriptionsDialog
                 rootView.findViewById(R.id.image_descriptions_dialog_radio_button_always);
 
         mOptionalCheckbox = rootView.findViewById(R.id.image_descriptions_dialog_check_box);
-        mOptionalCheckbox.setOnCheckedChangeListener(
-                (buttonView, isChecked) -> {
-                    if (mOptionJustOnceRadioButton.isChecked()) {
-                        mDontAskAgainState = isChecked;
-                    } else {
-                        mOnlyOnWifiState = isChecked;
-                    }
-                });
+        mOptionalCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (mOptionJustOnceRadioButton.isChecked()) {
+                mDontAskAgainState = isChecked;
+            } else {
+                mOnlyOnWifiState = isChecked;
+            }
+        });
 
         // Dialog should start with "Just once" checked, and with optional checkbox as needed.
         mOptionJustOnceRadioButton.setChecked(true);
@@ -121,61 +115,51 @@ public class ImageDescriptionsDialog
 
         // Create a |WebContentsObserver| to track changes in state for which we should
         // dismiss the dialog, such as navigation, and |mWebContents| being hidden or destroyed.
-        mWebContentsObserver =
-                new WebContentsObserver(mWebContents) {
-                    @Override
-                    public void wasHidden() {
-                        mDismissalCause = DialogDismissalCause.TAB_SWITCHED;
-                        unregisterObserverAndDismiss();
-                    }
+        mWebContentsObserver = new WebContentsObserver(mWebContents) {
+            @Override
+            public void wasHidden() {
+                mDismissalCause = DialogDismissalCause.TAB_SWITCHED;
+                unregisterObserverAndDismiss();
+            }
 
-                    @Override
-                    public void navigationEntryCommitted(LoadCommittedDetails details) {
-                        mDismissalCause = DialogDismissalCause.NAVIGATE;
-                        unregisterObserverAndDismiss();
-                    }
+            @Override
+            public void navigationEntryCommitted(LoadCommittedDetails details) {
+                mDismissalCause = DialogDismissalCause.NAVIGATE;
+                unregisterObserverAndDismiss();
+            }
 
-                    @Override
-                    public void onTopLevelNativeWindowChanged(
-                            @Nullable WindowAndroid windowAndroid) {
-                        // Dismiss the dialog when the associated WebContents is detached from the
-                        // window.
-                        if (windowAndroid == null) {
-                            mDismissalCause = DialogDismissalCause.NOT_ATTACHED_TO_WINDOW;
-                            unregisterObserverAndDismiss();
-                        }
-                    }
+            @Override
+            public void onTopLevelNativeWindowChanged(@Nullable WindowAndroid windowAndroid) {
+                // Dismiss the dialog when the associated WebContents is detached from the window.
+                if (windowAndroid == null) {
+                    mDismissalCause = DialogDismissalCause.NOT_ATTACHED_TO_WINDOW;
+                    unregisterObserverAndDismiss();
+                }
+            }
 
-                    @Override
-                    public void destroy() {
-                        super.destroy();
-                        // If no dismissal cause has been set, web contents were destroyed.
-                        if (mDismissalCause == DialogDismissalCause.UNKNOWN) {
-                            mDismissalCause = DialogDismissalCause.WEB_CONTENTS_DESTROYED;
-                        }
-                        dismiss();
-                    }
-                };
+            @Override
+            public void destroy() {
+                super.destroy();
+                // If no dismissal cause has been set, web contents were destroyed.
+                if (mDismissalCause == DialogDismissalCause.UNKNOWN) {
+                    mDismissalCause = DialogDismissalCause.WEB_CONTENTS_DESTROYED;
+                }
+                dismiss();
+            }
+        };
 
         // Build our dialog property model.
         mPropertyModel =
                 new PropertyModel.Builder(ModalDialogProperties.ALL_KEYS)
                         .with(ModalDialogProperties.CONTROLLER, this)
-                        .with(
-                                ModalDialogProperties.TITLE,
-                                mContext.getResources(),
+                        .with(ModalDialogProperties.TITLE, mContext.getResources(),
                                 R.string.image_descriptions_dialog_header)
                         .with(ModalDialogProperties.CUSTOM_VIEW, rootView)
-                        .with(
-                                ModalDialogProperties.NEGATIVE_BUTTON_TEXT,
-                                mContext.getResources(),
+                        .with(ModalDialogProperties.NEGATIVE_BUTTON_TEXT, mContext.getResources(),
                                 R.string.no_thanks)
-                        .with(
-                                ModalDialogProperties.POSITIVE_BUTTON_TEXT,
-                                mContext.getResources(),
+                        .with(ModalDialogProperties.POSITIVE_BUTTON_TEXT, mContext.getResources(),
                                 R.string.image_descriptions_dialog_get_descriptions_button)
-                        .with(
-                                ModalDialogProperties.BUTTON_STYLES,
+                        .with(ModalDialogProperties.BUTTON_STYLES,
                                 ModalDialogProperties.ButtonStyles.PRIMARY_FILLED_NEGATIVE_OUTLINE)
                         .build();
     }
@@ -210,10 +194,8 @@ public class ImageDescriptionsDialog
                 mControllerDelegate.enableImageDescriptions(mProfile);
                 mControllerDelegate.setOnlyOnWifiRequirement(mOnlyOnWifiState, mProfile);
 
-                userAction =
-                        mOnlyOnWifiState
-                                ? ImageDescriptionsDialogAction.ENABLED_ONLY_ON_WIFI
-                                : ImageDescriptionsDialogAction.ENABLED;
+                userAction = mOnlyOnWifiState ? ImageDescriptionsDialogAction.ENABLED_ONLY_ON_WIFI
+                                              : ImageDescriptionsDialogAction.ENABLED;
 
                 // If user requested "only on wifi" and we have no wifi, provide alt toast.
                 if (mOnlyOnWifiState
@@ -225,10 +207,9 @@ public class ImageDescriptionsDialog
                 mControllerDelegate.getImageDescriptionsJustOnce(mDontAskAgainState, mWebContents);
                 toastMessage = R.string.image_descriptions_toast_just_once;
 
-                userAction =
-                        mDontAskAgainState
-                                ? ImageDescriptionsDialogAction.JUST_ONCE_DONT_ASK_AGAIN
-                                : ImageDescriptionsDialogAction.JUST_ONCE;
+                userAction = mDontAskAgainState
+                        ? ImageDescriptionsDialogAction.JUST_ONCE_DONT_ASK_AGAIN
+                        : ImageDescriptionsDialogAction.JUST_ONCE;
             }
 
             mDismissalCause = DialogDismissalCause.POSITIVE_BUTTON_CLICKED;
@@ -269,12 +250,16 @@ public class ImageDescriptionsDialog
         mWebContentsObserver.destroy();
     }
 
-    /** Helper method to display this dialog. */
+    /**
+     * Helper method to display this dialog.
+     */
     public void show() {
         mModalDialogManager.showDialog(mPropertyModel, ModalDialogManager.ModalDialogType.APP);
     }
 
-    /** Helper method to dismiss this dialog. Dismisses the dialog with cause |mDismissalCause|. */
+    /**
+     * Helper method to dismiss this dialog. Dismisses the dialog with cause |mDismissalCause|.
+     */
     private void dismiss() {
         mModalDialogManager.dismissDialog(mPropertyModel, mDismissalCause);
     }
@@ -285,9 +270,7 @@ public class ImageDescriptionsDialog
      * @param action    @ImageDescriptionsDialogAction int, action user has taken on the dialog
      */
     private void recordHistogramMetric(@ImageDescriptionsDialogAction int action) {
-        RecordHistogram.recordEnumeratedHistogram(
-                "Accessibility.ImageLabels.Android.DialogOption",
-                action,
-                ImageDescriptionsDialogAction.NUM_ENTRIES);
+        RecordHistogram.recordEnumeratedHistogram("Accessibility.ImageLabels.Android.DialogOption",
+                action, ImageDescriptionsDialogAction.NUM_ENTRIES);
     }
 }

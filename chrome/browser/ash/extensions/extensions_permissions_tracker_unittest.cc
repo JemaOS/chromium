@@ -16,6 +16,7 @@
 #include "extensions/browser/pref_names.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/permissions/permissions_data.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -114,8 +115,8 @@ class ExtensionsPermissionsTrackerTest : public testing::Test {
  protected:
   content::BrowserTaskEnvironment task_environment_;
   TestingProfile profile_;
-  raw_ptr<sync_preferences::TestingPrefServiceSyncable> prefs_;
-  raw_ptr<ExtensionRegistry> registry_;
+  raw_ptr<sync_preferences::TestingPrefServiceSyncable, ExperimentalAsh> prefs_;
+  raw_ptr<ExtensionRegistry, ExperimentalAsh> registry_;
   ScopedTestingLocalState testing_local_state_;
   std::unique_ptr<MockExtensionsPermissionsTracker> permissions_tracker_;
 };

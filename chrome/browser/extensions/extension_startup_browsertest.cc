@@ -31,6 +31,7 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "content/public/browser/notification_details.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
@@ -268,7 +269,7 @@ class ExtensionStartupTestBase : public InProcessBrowserTest {
 // ExtensionsStartupTest
 // Ensures that we can startup the browser with --enable-extensions and some
 // extensions installed and see them run and do basic things.
-using ExtensionStartupTest = ExtensionStartupTestBase;
+typedef ExtensionStartupTestBase ExtensionStartupTest;
 
 IN_PROC_BROWSER_TEST_F(ExtensionStartupTest, Test) {
   WaitForServicesToStart(num_expected_extensions_, true);

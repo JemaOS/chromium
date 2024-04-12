@@ -36,7 +36,8 @@
 #include "storage/browser/file_system/watcher_manager.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 namespace {
 
 const char kOrigin[] =
@@ -64,7 +65,7 @@ class FakeEventRouter : public extensions::EventRouter {
   FakeEventRouter(const FakeEventRouter&) = delete;
   FakeEventRouter& operator=(const FakeEventRouter&) = delete;
 
-  ~FakeEventRouter() override = default;
+  ~FakeEventRouter() override {}
 
   // Handles an event which would normally be routed to an extension. Instead
   // replies with a hard coded response.
@@ -78,7 +79,7 @@ class FakeEventRouter : public extensions::EventRouter {
         dict->GetDict().FindString("fileSystemId");
     EXPECT_NE(file_system_id, nullptr);
     EXPECT_EQ(kFileSystemId, *file_system_id);
-    std::optional<int> id = dict->GetDict().FindInt("requestId");
+    absl::optional<int> id = dict->GetDict().FindInt("requestId");
     EXPECT_TRUE(id);
     int request_id = *id;
     EXPECT_TRUE(event->event_name == extensions::api::file_system_provider::
@@ -98,7 +99,7 @@ class FakeEventRouter : public extensions::EventRouter {
 
       using extensions::api::file_system_provider_internal::
           OperationRequestedSuccess::Params;
-      std::optional<Params> params(Params::Create(list));
+      absl::optional<Params> params(Params::Create(list));
       ASSERT_TRUE(params.has_value());
       file_system_->GetRequestManager()->FulfillRequest(
           request_id,
@@ -113,8 +114,7 @@ class FakeEventRouter : public extensions::EventRouter {
   void set_reply_result(base::File::Error result) { reply_result_ = result; }
 
  private:
-  const raw_ptr<ProvidedFileSystemInterface,
-                DanglingUntriaged>
+  const raw_ptr<ProvidedFileSystemInterface, ExperimentalAsh>
       file_system_;  // Not owned.
   base::File::Error reply_result_;
 };
@@ -131,7 +131,7 @@ class Observer : public ProvidedFileSystemObserver {
     ChangeEvent(const ChangeEvent&) = delete;
     ChangeEvent& operator=(const ChangeEvent&) = delete;
 
-    virtual ~ChangeEvent() = default;
+    virtual ~ChangeEvent() {}
 
     storage::WatcherManager::ChangeType change_type() const {
       return change_type_;
@@ -145,7 +145,7 @@ class Observer : public ProvidedFileSystemObserver {
     const ProvidedFileSystemObserver::Changes changes_;
   };
 
-  Observer() = default;
+  Observer() : list_changed_counter_(0), tag_updated_counter_(0) {}
 
   Observer(const Observer&) = delete;
   Observer& operator=(const Observer&) = delete;
@@ -172,7 +172,6 @@ class Observer : public ProvidedFileSystemObserver {
                             const Watchers& watchers) override {
     EXPECT_EQ(kFileSystemId, file_system_info.file_system_id());
     ++list_changed_counter_;
-    last_watchers_size_ = watchers.size();
   }
 
   // Completes handling the OnWatcherChanged event.
@@ -187,25 +186,23 @@ class Observer : public ProvidedFileSystemObserver {
     return change_events_;
   }
   int tag_updated_counter() const { return tag_updated_counter_; }
-  int last_watchers_size() const { return last_watchers_size_; }
 
  private:
   std::vector<std::unique_ptr<ChangeEvent>> change_events_;
-  int list_changed_counter_ = 0;
-  int tag_updated_counter_ = 0;
-  int last_watchers_size_ = 0;
+  int list_changed_counter_;
+  int tag_updated_counter_;
   base::OnceClosure complete_callback_;
 };
 
 // Stub notification manager, which works in unit tests.
 class StubNotificationManager : public NotificationManagerInterface {
  public:
-  StubNotificationManager() = default;
+  StubNotificationManager() {}
 
   StubNotificationManager(const StubNotificationManager&) = delete;
   StubNotificationManager& operator=(const StubNotificationManager&) = delete;
 
-  ~StubNotificationManager() override = default;
+  ~StubNotificationManager() override {}
 
   // NotificationManagerInterface overrides.
   void ShowUnresponsiveNotification(int id,
@@ -232,15 +229,15 @@ void LogNotification(NotificationLog* notification_log,
 void LogOpenFile(OpenFileLog* open_file_log,
                  int file_handle,
                  base::File::Error result) {
-  open_file_log->emplace_back(file_handle, result);
+  open_file_log->push_back(std::make_pair(file_handle, result));
 }
 
 }  // namespace
 
 class FileSystemProviderProvidedFileSystemTest : public testing::Test {
  protected:
-  FileSystemProviderProvidedFileSystemTest() = default;
-  ~FileSystemProviderProvidedFileSystemTest() override = default;
+  FileSystemProviderProvidedFileSystemTest() {}
+  ~FileSystemProviderProvidedFileSystemTest() override {}
 
   void SetUp() override {
     profile_ = std::make_unique<TestingProfile>();
@@ -753,43 +750,6 @@ TEST_F(FileSystemProviderProvidedFileSystemTest, RemoveWatcher) {
   provided_file_system_->RemoveObserver(&observer);
 }
 
-TEST_F(FileSystemProviderProvidedFileSystemTest,
-       RemoveWatcher_NotifiedAfterWatchersRemoved) {
-  Observer observer;
-  provided_file_system_->AddObserver(&observer);
-
-  {
-    // Watch a directory not recursively.
-    Log log;
-    NotificationLog notification_log;
-
-    provided_file_system_->AddWatcher(
-        GURL(kOrigin), base::FilePath(kDirectoryPath), false /* recursive */,
-        false /* persistent */,
-        base::BindOnce(&LogStatus, base::Unretained(&log)),
-        base::BindRepeating(&LogNotification,
-                            base::Unretained(&notification_log)));
-    base::RunLoop().RunUntilIdle();
-
-    Watchers* const watchers = provided_file_system_->GetWatchers();
-    EXPECT_EQ(1u, watchers->size());
-  }
-
-  {
-    Log log;
-    provided_file_system_->RemoveWatcher(
-        GURL(kOrigin), base::FilePath(kDirectoryPath), false /* recursive */,
-        base::BindOnce(&LogStatus, base::Unretained(&log)));
-    base::RunLoop().RunUntilIdle();
-
-    // The observer should be notified after the watchers list was modified, so
-    // it should see 0 watchers.
-    EXPECT_EQ(0, observer.last_watchers_size());
-  }
-
-  provided_file_system_->RemoveObserver(&observer);
-}
-
 TEST_F(FileSystemProviderProvidedFileSystemTest, Notify) {
   Observer observer;
   provided_file_system_->AddObserver(&observer);
@@ -997,4 +957,5 @@ TEST_F(FileSystemProviderProvidedFileSystemTest, OpenedFile_ClosingFailure) {
   provided_file_system_->RemoveObserver(&observer);
 }
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

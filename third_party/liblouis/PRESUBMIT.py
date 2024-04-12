@@ -6,6 +6,7 @@
 import json
 import sys
 
+USE_PYTHON3 = True
 
 def CheckChangeOnUpload(input_api, output_api):
   if not sys.platform.startswith('linux'):

@@ -21,10 +21,7 @@ namespace ash {
 struct ASH_PUBLIC_EXPORT WallpaperInfo {
   WallpaperInfo();
 
-  // `target_variant` should match one of the
-  // `online_wallpaper_params.variants`.
-  explicit WallpaperInfo(const OnlineWallpaperParams& online_wallpaper_params,
-                         const OnlineWallpaperVariant& target_variant);
+  explicit WallpaperInfo(const OnlineWallpaperParams& online_wallpaper_params);
   explicit WallpaperInfo(
       const GooglePhotosWallpaperParams& google_photos_wallpaper_params);
 
@@ -55,9 +52,7 @@ struct ASH_PUBLIC_EXPORT WallpaperInfo {
   // Either file name of migrated wallpaper including first directory level
   // (corresponding to user wallpaper_files_id), online wallpaper URL, or
   // Google Photos id.
-  // For SeaPen wallpaper, location is a uint32 id as a string.
   std::string location;
-
   // user_file_path is the full path of the wallpaper file and is used as
   // the new CurrentWallpaper key. This field is required as the old key which
   // was set to the filename part made the UI mistakenly highlight multiple
@@ -65,28 +60,17 @@ struct ASH_PUBLIC_EXPORT WallpaperInfo {
   std::string user_file_path;
   WallpaperLayout layout;
   WallpaperType type;
-  // The timestamp at which this wallpaper was first rendered. This is usually
-  // synonymous with the user selecting it unless there were delays or
-  // unexpected errors when trying to download/decode the wallpaper before it's
-  // actually rendered.
-  //
-  // Note the following do not affect this timestamp:
-  // a) Re-rendering this wallpaper (ex: after a reboot/re-login)
-  // b) Rendering a different variant of this wallpaper
-  //    (ex: dark/light mode changes).
   base::Time date;
 
   // These fields are applicable if |type| == WallpaperType::kOnceGooglePhotos
   // or WallpaperType::kDailyGooglePhotos.
-  std::optional<std::string> dedup_key;
+  absl::optional<std::string> dedup_key;
 
   // These fields are applicable if |type| == WallpaperType::kOnline or
   // WallpaperType::kDaily.
-  // TODO(b/279781227): Remove this field in favor of |unit_id|. Note: Do *not*
-  // read |asset_id| to make migration easier.
-  std::optional<uint64_t> asset_id;
+  absl::optional<uint64_t> asset_id;
   std::string collection_id;
-  std::optional<uint64_t> unit_id;
+  absl::optional<uint64_t> unit_id;
   std::vector<OnlineWallpaperVariant> variants;
 
   // Not empty if type == WallpaperType::kOneShot.

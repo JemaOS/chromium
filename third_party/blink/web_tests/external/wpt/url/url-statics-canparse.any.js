@@ -6,23 +6,23 @@
     "expected": false
   },
   {
-    "url": "aaa:b",
+    "url": "a:b",
     "base": undefined,
     "expected": true
   },
   {
     "url": undefined,
-    "base": "aaa:b",
+    "base": "a:b",
     "expected": false
   },
   {
-    "url": "aaa:/b",
+    "url": "a:/b",
     "base": undefined,
     "expected": true
   },
   {
     "url": undefined,
-    "base": "aaa:/b",
+    "base": "a:/b",
     "expected": true
   },
   {

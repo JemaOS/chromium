@@ -26,11 +26,11 @@ class PrepopulatedComputedStylePropertyMapTest : public PageTestBase {
   }
 
   const CSSValue* GetNativeValue(const CSSPropertyID& property_id) {
-    Element* element = GetDocument().getElementById(AtomicString("target"));
+    Element* node = GetDocument().getElementById("target");
     return CSSProperty::Get(property_id)
-        .CSSValueFromComputedStyle(
-            element->ComputedStyleRef(), nullptr /* layout_object */,
-            false /* allow_visited_style */, CSSValuePhase::kComputedValue);
+        .CSSValueFromComputedStyle(node->ComputedStyleRef(),
+                                   nullptr /* layout_object */,
+                                   false /* allow_visited_style */);
   }
 
   CSSComputedStyleDeclaration* Declaration() const {
@@ -43,7 +43,7 @@ class PrepopulatedComputedStylePropertyMapTest : public PageTestBase {
         GetDocument().documentElement());
   }
 
-  Element* RootElement() { return GetDocument().documentElement(); }
+  Node* PageNode() { return GetDocument().documentElement(); }
 
  private:
   Persistent<CSSComputedStyleDeclaration> declaration_;
@@ -55,11 +55,11 @@ TEST_F(PrepopulatedComputedStylePropertyMapTest, NativePropertyAccessors) {
   Vector<AtomicString> empty_custom_properties;
 
   UpdateAllLifecyclePhasesForTest();
-  Element* element = RootElement();
+  Node* node = PageNode();
 
   PrepopulatedComputedStylePropertyMap* map =
       MakeGarbageCollected<PrepopulatedComputedStylePropertyMap>(
-          GetDocument(), element->ComputedStyleRef(), native_properties,
+          GetDocument(), node->ComputedStyleRef(), native_properties,
           empty_custom_properties);
 
   DummyExceptionStateForTesting exception_state;
@@ -91,15 +91,14 @@ TEST_F(PrepopulatedComputedStylePropertyMapTest, NativePropertyAccessors) {
 
 TEST_F(PrepopulatedComputedStylePropertyMapTest, CustomPropertyAccessors) {
   Vector<CSSPropertyID> empty_native_properties;
-  Vector<AtomicString> custom_properties(
-      {AtomicString("--foo"), AtomicString("--bar")});
+  Vector<AtomicString> custom_properties({"--foo", "--bar"});
 
   UpdateAllLifecyclePhasesForTest();
-  Element* element = RootElement();
+  Node* node = PageNode();
 
   PrepopulatedComputedStylePropertyMap* map =
       MakeGarbageCollected<PrepopulatedComputedStylePropertyMap>(
-          GetDocument(), element->ComputedStyleRef(), empty_native_properties,
+          GetDocument(), node->ComputedStyleRef(), empty_native_properties,
           custom_properties);
 
   DummyExceptionStateForTesting exception_state;

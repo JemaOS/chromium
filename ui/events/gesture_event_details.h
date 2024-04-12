@@ -131,12 +131,7 @@ struct EVENTS_BASE_EXPORT GestureEventDetails {
 
   float scale() const {
     DCHECK_EQ(ET_GESTURE_PINCH_UPDATE, type_);
-    return data_.pinch_update.scale;
-  }
-
-  float pinch_angle() const {
-    DCHECK_EQ(ET_GESTURE_PINCH_UPDATE, type_);
-    return data_.pinch_update.angle;
+    return data_.scale;
   }
 
   bool swipe_left() const {
@@ -157,26 +152,6 @@ struct EVENTS_BASE_EXPORT GestureEventDetails {
   bool swipe_down() const {
     DCHECK_EQ(ET_GESTURE_SWIPE, type_);
     return data_.swipe.down;
-  }
-
-  void set_swipe_left(bool swipe) {
-    DCHECK_EQ(ET_GESTURE_SWIPE, type_);
-    data_.swipe.left = swipe;
-  }
-
-  void set_swipe_right(bool swipe) {
-    DCHECK_EQ(ET_GESTURE_SWIPE, type_);
-    data_.swipe.right = swipe;
-  }
-
-  void set_swipe_up(bool swipe) {
-    DCHECK_EQ(ET_GESTURE_SWIPE, type_);
-    data_.swipe.up = swipe;
-  }
-
-  void set_swipe_down(bool swipe) {
-    DCHECK_EQ(ET_GESTURE_SWIPE, type_);
-    data_.swipe.down = swipe;
   }
 
   int tap_count() const {
@@ -208,12 +183,7 @@ struct EVENTS_BASE_EXPORT GestureEventDetails {
   void set_scale(float scale) {
     DCHECK_GE(scale, 0.0f);
     DCHECK_EQ(type_, ET_GESTURE_PINCH_UPDATE);
-    data_.pinch_update.scale = scale;
-  }
-
-  void set_pinch_angle(float angle) {
-    DCHECK_EQ(type_, ET_GESTURE_PINCH_UPDATE);
-    data_.pinch_update.angle = angle;
+    data_.scale = scale;
   }
 
   const EventLatencyMetadata& GetEventLatencyMetadata() const {
@@ -252,10 +222,7 @@ struct EVENTS_BASE_EXPORT GestureEventDetails {
       // suppressed because the underlying touch was consumed.
     } scroll_update;
 
-    struct {  // PINCH details.
-      float scale;
-      float angle;
-    } pinch_update;
+    float scale;  // PINCH scale.
 
     struct {  // FLING velocity.
       float x;

@@ -19,38 +19,28 @@ import org.chromium.base.ThreadUtils;
 public class NotificationJobServiceImpl extends NotificationJobService.Impl {
     static PersistableBundle getJobExtrasFromIntent(Intent intent) {
         PersistableBundle bundle = new PersistableBundle();
-        bundle.putString(
-                NotificationConstants.EXTRA_NOTIFICATION_ID,
+        bundle.putString(NotificationConstants.EXTRA_NOTIFICATION_ID,
                 intent.getStringExtra(NotificationConstants.EXTRA_NOTIFICATION_ID));
-        bundle.putInt(
-                NotificationConstants.EXTRA_NOTIFICATION_TYPE,
-                intent.getIntExtra(
-                        NotificationConstants.EXTRA_NOTIFICATION_TYPE,
+        bundle.putInt(NotificationConstants.EXTRA_NOTIFICATION_TYPE,
+                intent.getIntExtra(NotificationConstants.EXTRA_NOTIFICATION_TYPE,
                         NotificationType.WEB_PERSISTENT));
-        bundle.putString(
-                NotificationConstants.EXTRA_NOTIFICATION_INFO_ORIGIN,
+        bundle.putString(NotificationConstants.EXTRA_NOTIFICATION_INFO_ORIGIN,
                 intent.getStringExtra(NotificationConstants.EXTRA_NOTIFICATION_INFO_ORIGIN));
-        bundle.putString(
-                NotificationConstants.EXTRA_NOTIFICATION_INFO_SCOPE,
+        bundle.putString(NotificationConstants.EXTRA_NOTIFICATION_INFO_SCOPE,
                 intent.getStringExtra(NotificationConstants.EXTRA_NOTIFICATION_INFO_SCOPE));
-        bundle.putString(
-                NotificationConstants.EXTRA_NOTIFICATION_INFO_PROFILE_ID,
+        bundle.putString(NotificationConstants.EXTRA_NOTIFICATION_INFO_PROFILE_ID,
                 intent.getStringExtra(NotificationConstants.EXTRA_NOTIFICATION_INFO_PROFILE_ID));
-        bundle.putBoolean(
-                NotificationConstants.EXTRA_NOTIFICATION_INFO_PROFILE_INCOGNITO,
+        bundle.putBoolean(NotificationConstants.EXTRA_NOTIFICATION_INFO_PROFILE_INCOGNITO,
                 intent.getBooleanExtra(
                         NotificationConstants.EXTRA_NOTIFICATION_INFO_PROFILE_INCOGNITO, false));
-        bundle.putInt(
-                NotificationConstants.EXTRA_NOTIFICATION_INFO_ACTION_INDEX,
+        bundle.putInt(NotificationConstants.EXTRA_NOTIFICATION_INFO_ACTION_INDEX,
                 intent.getIntExtra(NotificationConstants.EXTRA_NOTIFICATION_INFO_ACTION_INDEX, -1));
-        bundle.putString(
-                NotificationConstants.EXTRA_NOTIFICATION_INFO_WEBAPK_PACKAGE,
+        bundle.putString(NotificationConstants.EXTRA_NOTIFICATION_INFO_WEBAPK_PACKAGE,
                 intent.getStringExtra(
                         NotificationConstants.EXTRA_NOTIFICATION_INFO_WEBAPK_PACKAGE));
         bundle.putString(NotificationConstants.EXTRA_NOTIFICATION_ACTION, intent.getAction());
         // Only primitives can be set on a persistable bundle, so extract the raw reply.
-        bundle.putString(
-                NotificationConstants.EXTRA_NOTIFICATION_REPLY,
+        bundle.putString(NotificationConstants.EXTRA_NOTIFICATION_REPLY,
                 NotificationPlatformBridge.getNotificationReply(intent));
         return bundle;
     }
@@ -69,18 +59,13 @@ public class NotificationJobServiceImpl extends NotificationJobService.Impl {
     public boolean onStartJob(final JobParameters params) {
         PersistableBundle extras = params.getExtras();
         putJobStartedTimeInExtras(extras);
-
-        String action = extras.getString(NotificationConstants.EXTRA_NOTIFICATION_ACTION);
-        NotificationUmaTracker.getInstance()
-                .recordIntentHandlerJobStage(
-                        NotificationUmaTracker.IntentHandlerJobStage.ON_START_JOB, action);
-
         if (!extras.containsKey(NotificationConstants.EXTRA_NOTIFICATION_ID)
                 || !extras.containsKey(NotificationConstants.EXTRA_NOTIFICATION_INFO_ORIGIN)) {
             return false;
         }
 
-        Intent intent = new Intent(action);
+        Intent intent =
+                new Intent(extras.getString(NotificationConstants.EXTRA_NOTIFICATION_ACTION));
         intent.putExtras(new Bundle(extras));
 
         ThreadUtils.assertOnUiThread();
@@ -98,12 +83,6 @@ public class NotificationJobServiceImpl extends NotificationJobService.Impl {
 
     @Override
     public boolean onStopJob(JobParameters params) {
-        String action =
-                params.getExtras().getString(NotificationConstants.EXTRA_NOTIFICATION_ACTION);
-        NotificationUmaTracker.getInstance()
-                .recordIntentHandlerJobStage(
-                        NotificationUmaTracker.IntentHandlerJobStage.ON_STOP_JOB, action);
-
         // As it stands, all our job processing is done synchronously in onStartJob so there is
         // nothing to do here. Even once we include further async processing in our jobs
         // (crbug.com/685197) it may by infeasible to cancel this halfway through.

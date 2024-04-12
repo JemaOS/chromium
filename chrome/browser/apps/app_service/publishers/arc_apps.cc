@@ -5,10 +5,8 @@
 #include "chrome/browser/apps/app_service/publishers/arc_apps.h"
 
 #include <algorithm>
-#include <optional>
 #include <utility>
 
-#include "ash/components/arc/arc_prefs.h"
 #include "ash/components/arc/arc_util.h"
 #include "ash/components/arc/metrics/arc_metrics_constants.h"
 #include "ash/components/arc/metrics/arc_metrics_service.h"
@@ -21,7 +19,6 @@
 #include "ash/constants/ash_features.h"
 #include "ash/public/cpp/app_menu_constants.h"
 #include "base/containers/contains.h"
-#include "base/containers/fixed_flat_set.h"
 #include "base/containers/flat_map.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
@@ -36,8 +33,8 @@
 #include "chrome/browser/apps/app_service/intent_util.h"
 #include "chrome/browser/apps/app_service/launch_utils.h"
 #include "chrome/browser/apps/app_service/menu_util.h"
+#include "chrome/browser/apps/app_service/package_id.h"
 #include "chrome/browser/apps/app_service/promise_apps/promise_app.h"
-#include "chrome/browser/apps/app_service/promise_apps/promise_app_registry_cache.h"
 #include "chrome/browser/apps/app_service/publishers/arc_apps_factory.h"
 #include "chrome/browser/apps/app_service/webapk/webapk_manager.h"
 #include "chrome/browser/ash/app_list/arc/arc_app_icon.h"
@@ -46,9 +43,6 @@
 #include "chrome/browser/ash/arc/arc_util.h"
 #include "chrome/browser/ash/arc/session/arc_session_manager.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
-#include "chrome/browser/browser_process.h"
-#include "chrome/browser/policy/profile_policy_connector.h"
-#include "chrome/browser/policy/system_features_disable_list_policy_handler.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/chrome_features.h"
@@ -59,19 +53,18 @@
 #include "components/app_restore/full_restore_utils.h"
 #include "components/arc/common/intent_helper/arc_intent_helper_package.h"
 #include "components/arc/intent_helper/intent_constants.h"
-#include "components/policy/core/common/policy_pref_names.h"
-#include "components/prefs/pref_service.h"
 #include "components/services/app_service/public/cpp/app_types.h"
 #include "components/services/app_service/public/cpp/capability_access.h"
+#include "components/services/app_service/public/cpp/features.h"
 #include "components/services/app_service/public/cpp/icon_types.h"
 #include "components/services/app_service/public/cpp/intent.h"
 #include "components/services/app_service/public/cpp/intent_filter.h"
 #include "components/services/app_service/public/cpp/intent_util.h"
-#include "components/services/app_service/public/cpp/package_id.h"
 #include "components/services/app_service/public/cpp/permission.h"
 #include "components/services/app_service/public/cpp/types_util.h"
 #include "extensions/grit/extensions_browser_resources.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/gfx/geometry/size.h"
@@ -84,7 +77,55 @@
 
 namespace {
 
-std::optional<int> g_test_arc_version_;
+void UpdateIconImage(apps::LoadIconCallback callback, apps::IconValuePtr iv) {
+  if (iv->icon_type == apps::IconType::kCompressed) {
+    ConvertUncompressedIconToCompressedIcon(std::move(iv), std::move(callback));
+    return;
+  }
+  std::move(callback).Run(std::move(iv));
+}
+
+void OnArcAppIconCompletelyLoaded(apps::IconType icon_type,
+                                  int32_t size_hint_in_dip,
+                                  apps::IconEffects icon_effects,
+                                  apps::LoadIconCallback callback,
+                                  ArcAppIcon* icon) {
+  if (!icon) {
+    std::move(callback).Run(std::make_unique<apps::IconValue>());
+    return;
+  }
+
+  auto iv = std::make_unique<apps::IconValue>();
+  iv->icon_type = icon_type;
+  iv->is_placeholder_icon = false;
+
+  switch (icon_type) {
+    case apps::IconType::kCompressed:
+      [[fallthrough]];
+    case apps::IconType::kUncompressed:
+      [[fallthrough]];
+    case apps::IconType::kStandard: {
+      iv->uncompressed =
+          icon->is_adaptive_icon()
+              ? apps::CompositeImagesAndApplyMask(icon->foreground_image_skia(),
+                                                  icon->background_image_skia())
+              : apps::ApplyBackgroundAndMask(icon->image_skia());
+
+      if (icon_effects != apps::IconEffects::kNone) {
+        apps::ApplyIconEffects(
+            icon_effects, size_hint_in_dip, std::move(iv),
+            base::BindOnce(&UpdateIconImage, std::move(callback)));
+        return;
+      }
+      break;
+    }
+    case apps::IconType::kUnknown:
+      NOTREACHED();
+      break;
+  }
+
+  UpdateIconImage(std::move(callback), std::move(iv));
+}
 
 apps::PermissionType GetPermissionType(
     arc::mojom::AppPermission arc_permission_type) {
@@ -134,33 +175,24 @@ bool GetArcPermissionType(apps::PermissionType app_service_permission_type,
 
 apps::Permissions CreatePermissions(
     const base::flat_map<arc::mojom::AppPermission,
-                         arc::mojom::PermissionStatePtr>& arc_permissions) {
+                         arc::mojom::PermissionStatePtr>& new_permissions) {
   apps::Permissions permissions;
-  for (const auto& [arc_permission_type, arc_permission_state] :
-       arc_permissions) {
-    apps::TriState value = arc_permission_state->granted
-                               ? apps::TriState::kAllow
-                               : apps::TriState::kBlock;
-    // Permissions in the one-time state will ask for permission again the next
-    // time they are used.
-    if (arc_permission_state->one_time) {
-      value = apps::TriState::kAsk;
-    }
-
+  for (const auto& new_permission : new_permissions) {
     permissions.push_back(std::make_unique<apps::Permission>(
-        GetPermissionType(arc_permission_type), value,
-        arc_permission_state->managed, arc_permission_state->details));
+        GetPermissionType(new_permission.first),
+        std::make_unique<apps::PermissionValue>(new_permission.second->granted),
+        new_permission.second->managed));
   }
   return permissions;
 }
 
-std::optional<arc::UserInteractionType> GetUserInterationType(
+absl::optional<arc::UserInteractionType> GetUserInterationType(
     apps::LaunchSource launch_source) {
   auto user_interaction_type = arc::UserInteractionType::NOT_USER_INITIATED;
   switch (launch_source) {
     // kUnknown is not set anywhere, this case is not valid.
     case apps::LaunchSource::kUnknown:
-      return std::nullopt;
+      return absl::nullopt;
     case apps::LaunchSource::kFromChromeInternal:
       user_interaction_type = arc::UserInteractionType::NOT_USER_INITIATED;
       break;
@@ -220,7 +252,7 @@ std::optional<arc::UserInteractionType> GetUserInterationType(
       break;
     default:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
   return user_interaction_type;
 }
@@ -353,14 +385,14 @@ apps::WindowInfoPtr SetSessionId(apps::WindowInfoPtr window_info) {
   return window_info;
 }
 
-std::optional<bool> GetResizeLocked(ArcAppListPrefs* prefs,
-                                    const std::string& app_id) {
+absl::optional<bool> GetResizeLocked(ArcAppListPrefs* prefs,
+                                     const std::string& app_id) {
   // Set null to resize lock state until the Mojo connection to ARC++ has been
   // established. This prevents Chrome and ARC++ from having inconsistent
   // states.
   auto* arc_service_manager = arc::ArcServiceManager::Get();
   if (!arc_service_manager) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // If we don't have the connection (e.g. for non-supported Android versions),
@@ -368,7 +400,7 @@ std::optional<bool> GetResizeLocked(ArcAppListPrefs* prefs,
   auto* compatibility_mode =
       arc_service_manager->arc_bridge_service()->compatibility_mode();
   if (!compatibility_mode->IsConnected()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Check if |SetResizeLockState| is available to see if Android is ready to
@@ -377,7 +409,7 @@ std::optional<bool> GetResizeLocked(ArcAppListPrefs* prefs,
   auto* instance =
       ARC_GET_INSTANCE_FOR_METHOD(compatibility_mode, SetResizeLockState);
   if (!instance) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   auto resize_lock_state = prefs->GetResizeLockState(app_id);
@@ -391,7 +423,7 @@ std::optional<bool> GetResizeLocked(ArcAppListPrefs* prefs,
     // FULLY_LOCKED means the resize-lock-related features are not available
     // including the resizability toggle in the app management page.
     case arc::mojom::ArcResizeLockState::FULLY_LOCKED:
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
@@ -414,32 +446,11 @@ bool IntentHasFilesAndMimeTypes(const apps::IntentPtr& intent) {
 }
 
 // Returns true if the app with the given |app_id| should open supported links
-// inside the app by default.
-bool AppShouldDefaultHandleLinksInApp(const std::string& app_id) {
+// inside the browser by default.
+bool AppShouldDefaultHandleLinksInBrowser(const std::string& app_id) {
   // Play Store provides core system functionality and should handle links
   // inside the app rather than in the browser.
-  return app_id == arc::kPlayStoreAppId;
-}
-
-// Returns true if the package with the given |package_name| should open
-// supported links inside the browser by default, on managed devices.
-bool PackageShouldDefaultHandleLinksInBrowser(const std::string& package_name) {
-  constexpr auto allowlist = base::MakeFixedFlatSet<std::string_view>({
-      "com.google.android.apps.docs",                 // Google Drive
-      "com.google.android.apps.docs.editors.docs",    // Google Docs
-      "com.google.android.apps.docs.editors.sheets",  // Google Sheets
-      "com.google.android.apps.docs.editors.slides",  // Google Slides
-  });
-
-  return allowlist.contains(package_name);
-}
-
-// Returns true if the given `profile` is managed, and therefore should open
-// supported links inside the app by default.
-bool IsProfileManaged(Profile* profile) {
-  // TODO(crbug.com/1454381): Remove once we have policy control over link
-  // capturing behavior.
-  return profile->GetProfilePolicyConnector()->IsManaged();
+  return app_id != arc::kPlayStoreAppId;
 }
 
 // Returns the hard-coded Play Store intent filters. This is a stop-gap solution
@@ -465,12 +476,9 @@ std::vector<apps::IntentFilterPtr> GetHardcodedPlayStoreIntentFilters() {
   paths.emplace_back("/protect/home", arc::mojom::PatternType::PATTERN_PREFIX);
 
   std::vector<apps::IntentFilterPtr> intent_filters;
-  apps::IntentFilterPtr filter = apps_util::CreateIntentFilterForArc(
+  intent_filters.push_back(apps_util::CreateIntentFilterForArc(
       arc::IntentFilter(arc::kPlayStorePackage, actions, std::move(authorities),
-                        std::move(paths), schemes, mime_types));
-  if (filter) {
-    intent_filters.push_back(std::move(filter));
-  }
+                        std::move(paths), schemes, mime_types)));
   return intent_filters;
 }
 
@@ -498,18 +506,9 @@ apps::InstallReason GetInstallReason(const ArcAppListPrefs* prefs,
   return apps::InstallReason::kUser;
 }
 
-bool ArcVersionEligibleForPromiseIcons() {
-  return g_test_arc_version_.value_or(arc::GetArcAndroidSdkVersionAsInt()) >=
-         arc::kArcVersionR;
-}
-
 }  // namespace
 
 namespace apps {
-
-void ArcApps::SetArcVersionForTesting(int version) {
-  g_test_arc_version_ = version;
-}
 
 // static
 ArcApps* ArcApps::Get(Profile* profile) {
@@ -517,7 +516,9 @@ ArcApps* ArcApps::Get(Profile* profile) {
 }
 
 ArcApps::ArcApps(AppServiceProxy* proxy)
-    : AppPublisher(proxy), profile_(proxy->profile()) {}
+    : AppPublisher(proxy),
+      profile_(proxy->profile()),
+      arc_icon_once_loader_(profile_) {}
 
 ArcApps::~ArcApps() {
   proxy()->UnregisterPublisher(AppType::kArc);
@@ -578,8 +579,6 @@ void ArcApps::Initialize() {
   }
   AppPublisher::Publish(std::move(apps), AppType::kArc,
                         /*should_notify_initialized=*/true);
-
-  ObserveDisabledSystemFeaturesPolicy();
 }
 
 void ArcApps::Shutdown() {
@@ -589,6 +588,7 @@ void ArcApps::Shutdown() {
   if (prefs) {
     prefs->RemoveObserver(this);
   }
+  arc_icon_once_loader_.StopObserving(prefs);
 
   auto* intent_helper_bridge =
       arc::ArcIntentHelperBridge::GetForBrowserContext(profile_);
@@ -598,6 +598,47 @@ void ArcApps::Shutdown() {
 
   arc_intent_helper_observation_.Reset();
   arc_privacy_items_bridge_observation_.Reset();
+}
+
+void ArcApps::LoadIcon(const std::string& app_id,
+                       const IconKey& icon_key,
+                       IconType icon_type,
+                       int32_t size_hint_in_dip,
+                       bool allow_placeholder_icon,
+                       apps::LoadIconCallback callback) {
+  if (icon_type == IconType::kUnknown) {
+    std::move(callback).Run(std::make_unique<IconValue>());
+    return;
+  }
+  IconEffects icon_effects = static_cast<IconEffects>(icon_key.icon_effects);
+
+  // Treat the Play Store as a special case, loading an icon defined by a
+  // resource instead of asking the Android VM (or the cache of previous
+  // responses from the Android VM). Presumably this is for bootstrapping:
+  // the Play Store icon (the UI for enabling and installing Android apps)
+  // should be showable even before the user has installed their first
+  // Android app and before bringing up an Android VM for the first time.
+  if (app_id == arc::kPlayStoreAppId) {
+    LoadPlayStoreIcon(icon_type, size_hint_in_dip, icon_effects,
+                      std::move(callback));
+  } else {
+    const ArcAppListPrefs* arc_prefs = ArcAppListPrefs::Get(profile_);
+    DCHECK(arc_prefs);
+
+    // If the app has been removed, immediately terminate the icon request since
+    // it can't possibly succeed.
+    std::unique_ptr<ArcAppListPrefs::AppInfo> app_info =
+        arc_prefs->GetApp(app_id);
+    if (!app_info) {
+      std::move(callback).Run(std::make_unique<IconValue>());
+      return;
+    }
+
+    arc_icon_once_loader_.LoadIcon(
+        app_id, size_hint_in_dip, icon_type,
+        base::BindOnce(&OnArcAppIconCompletelyLoaded, icon_type,
+                       size_hint_in_dip, icon_effects, std::move(callback)));
+  }
 }
 
 void ArcApps::GetCompressedIconData(const std::string& app_id,
@@ -643,7 +684,7 @@ void ArcApps::LaunchAppWithIntent(const std::string& app_id,
                                   LaunchCallback callback) {
   auto user_interaction_type = GetUserInterationType(launch_source);
   if (!user_interaction_type.has_value()) {
-    std::move(callback).Run(LaunchResult(State::kFailed));
+    std::move(callback).Run(LaunchResult(State::FAILED));
     return;
   }
 
@@ -658,14 +699,14 @@ void ArcApps::LaunchAppWithIntent(const std::string& app_id,
 
   ArcAppListPrefs* prefs = ArcAppListPrefs::Get(profile_);
   if (!prefs) {
-    std::move(callback).Run(LaunchResult(State::kFailed));
+    std::move(callback).Run(LaunchResult(State::FAILED));
     return;
   }
   const std::unique_ptr<ArcAppListPrefs::AppInfo> app_info =
       prefs->GetApp(app_id);
   if (!app_info) {
     LOG(ERROR) << "Launch App failed, could not find app with id " << app_id;
-    std::move(callback).Run(LaunchResult(State::kFailed));
+    std::move(callback).Run(LaunchResult(State::FAILED));
     return;
   }
 
@@ -709,7 +750,7 @@ void ArcApps::LaunchAppWithIntent(const std::string& app_id,
             user_interaction_type.value(),
             MakeArcWindowInfo(std::move(new_window_info)))) {
       VLOG(2) << "Failed to launch app: " + app_id + ".";
-      std::move(callback).Run(LaunchResult(State::kFailed));
+      std::move(callback).Run(LaunchResult(State::FAILED));
       return;
     }
 
@@ -718,7 +759,7 @@ void ArcApps::LaunchAppWithIntent(const std::string& app_id,
         std::make_unique<app_restore::AppLaunchInfo>(
             app_id, event_flags, std::move(intent_for_full_restore), session_id,
             display_id));
-    std::move(callback).Run(LaunchResult(State::kSuccess));
+    std::move(callback).Run(LaunchResult(State::SUCCESS));
     return;
   }
 
@@ -734,7 +775,7 @@ void ArcApps::LaunchAppWithIntent(const std::string& app_id,
       // Store.
       if (app_id == arc::kPlayStoreAppId) {
         prefs->SetLastLaunchTime(app_id);
-        std::move(callback).Run(LaunchResult(State::kSuccess));
+        std::move(callback).Run(LaunchResult(State::SUCCESS));
         return;
       }
     }
@@ -744,7 +785,7 @@ void ArcApps::LaunchAppWithIntent(const std::string& app_id,
       // caller is responsible to not call this function in such case.  DCHECK
       // is here to prevent possible mistake.
       if (!arc::SetArcPlayStoreEnabledForProfile(profile_, true)) {
-        std::move(callback).Run(LaunchResult(State::kFailed));
+        std::move(callback).Run(LaunchResult(State::FAILED));
         return;
       }
       DCHECK(arc::IsArcPlayStoreEnabledForProfile(profile_));
@@ -755,7 +796,7 @@ void ArcApps::LaunchAppWithIntent(const std::string& app_id,
       // Store.
       if (app_id == arc::kPlayStoreAppId) {
         prefs->SetLastLaunchTime(app_id);
-        std::move(callback).Run(LaunchResult(State::kFailed));
+        std::move(callback).Run(LaunchResult(State::FAILED));
         return;
       }
     } else {
@@ -763,7 +804,7 @@ void ArcApps::LaunchAppWithIntent(const std::string& app_id,
       DCHECK(arc::ShouldArcAlwaysStart());
     }
   }
-  std::move(callback).Run(LaunchResult(State::kSuccess));
+  std::move(callback).Run(LaunchResult(State::SUCCESS));
 }
 
 void ArcApps::LaunchAppWithParams(AppLaunchParams&& params,
@@ -897,47 +938,6 @@ void ArcApps::SetResizeLocked(const std::string& app_id, bool locked) {
                                         : arc::mojom::ArcResizeLockState::OFF);
 }
 
-void ArcApps::SetAppLocale(const std::string& app_id,
-                           const std::string& locale_tag) {
-  ArcAppListPrefs* prefs = ArcAppListPrefs::Get(profile_);
-  if (!profile_->GetPrefs() || !prefs) {
-    return;
-  }
-  const std::unique_ptr<ArcAppListPrefs::AppInfo> app_info =
-      prefs->GetApp(app_id);
-  if (!app_info) {
-    LOG(ERROR) << "SetAppLocale failed, could not find app with id " << app_id;
-    return;
-  }
-  if (app_info->package_name.empty()) {
-    LOG(ERROR) << "SetAppLocale failed, package name is empty with app_id "
-               << app_id;
-    return;
-  }
-  // Set app locale and update last-set app locale.
-  arc::mojom::AppInstance* app_instance =
-      (arc::ArcServiceManager::Get()
-           ? ARC_GET_INSTANCE_FOR_METHOD(
-                 arc::ArcServiceManager::Get()->arc_bridge_service()->app(),
-                 SetAppLocale)
-           : nullptr);
-  if (app_instance) {
-    app_instance->SetAppLocale(app_info->package_name, locale_tag);
-  } else {
-    // If AppInstance is not ready, we still want to update the prefs to ensure
-    // good UX. To ensure eventual-correctness between ARC settings and Chrome
-    // settings, on ARC boot, ARC will always sends its latest-set locale to
-    // Chrome. If there's a mismatch, Chrome will then send back its latest-set
-    // locale to ARC, both settings are still synchronized.
-    prefs->SetAppLocale(app_info->package_name, locale_tag);
-  }
-  // Update the last-set locale, unless the locale tag is the system language.
-  if (!locale_tag.empty()) {
-    profile_->GetPrefs()->SetString(arc::prefs::kArcLastSetAppLocale,
-                                    locale_tag);
-  }
-}
-
 void ArcApps::PauseApp(const std::string& app_id) {
   if (paused_apps_.MaybeAddApp(app_id)) {
     SetIconEffect(app_id);
@@ -961,34 +961,6 @@ void ArcApps::StopApp(const std::string& app_id) {
   CloseTasks(app_id);
 }
 
-void ArcApps::UpdateAppSize(const std::string& app_id) {
-  arc::mojom::AppInstance* app_instance =
-      (arc::ArcServiceManager::Get()
-           ? ARC_GET_INSTANCE_FOR_METHOD(
-                 arc::ArcServiceManager::Get()->arc_bridge_service()->app(),
-                 UpdateAppDetails)
-           : nullptr);
-  if (!app_instance) {
-    return;
-  }
-  ArcAppListPrefs* prefs = ArcAppListPrefs::Get(profile_);
-  if (!prefs) {
-    return;
-  }
-  const std::unique_ptr<ArcAppListPrefs::AppInfo> app_info =
-      prefs->GetApp(app_id);
-  if (!app_info) {
-    return;
-  }
-  if (app_info->package_name.empty()) {
-    return;
-  }
-
-  // A request is made to simultaneously update all of the app's details,
-  // inclusive of the app size, for simplicity
-  app_instance->UpdateAppDetails(app_info->package_name);
-}
-
 void ArcApps::ExecuteContextMenuCommand(const std::string& app_id,
                                         int command_id,
                                         const std::string& shortcut_id,
@@ -1008,15 +980,8 @@ void ArcApps::OpenNativeSettings(const std::string& app_id) {
                << ". App is not found.";
     return;
   }
-  if (app_info->package_name.empty()) {
-    LOG(ERROR) << "Cannot open native settings for " << app_id
-               << ". Package name is empty.";
-    return;
-  }
-  const auto page = arc::IsReadOnlyPermissionsEnabled()
-                        ? arc::mojom::ShowPackageInfoPage::MANAGE_PERMISSIONS
-                        : arc::mojom::ShowPackageInfoPage::MAIN;
-  arc::ShowPackageInfo(app_info->package_name, page,
+  arc::ShowPackageInfo(app_info->package_name,
+                       arc::mojom::ShowPackageInfoPage::MAIN,
                        display::Screen::GetScreen()->GetPrimaryDisplay().id());
 }
 
@@ -1074,6 +1039,18 @@ void ArcApps::OnAppRemoved(const std::string& app_id) {
   auto app = std::make_unique<App>(AppType::kArc, app_id);
   app->readiness = Readiness::kUninstalledByUser;
   AppPublisher::Publish(std::move(app));
+}
+
+void ArcApps::OnAppIconUpdated(const std::string& app_id,
+                               const ArcAppIconDescriptor& descriptor) {
+  if (!base::FeatureList::IsEnabled(apps::kUnifiedAppServiceIconLoading)) {
+    // OnAppIconUpdated is called when ArcAppListPrefs installs icon files in
+    // the ARC directory. When the flag kUnifiedAppServiceIconLoading is
+    // enabled, we no longer depend on the icon files in the ARC directory. So
+    // we don't need to update icon effects and reload icons when
+    // ArcAppListPrefs installs icon files.
+    SetIconEffect(app_id);
+  }
 }
 
 void ArcApps::OnAppNameUpdated(const std::string& app_id,
@@ -1152,7 +1129,7 @@ void ArcApps::OnTaskDestroyed(int32_t task_id) {
 }
 
 void ArcApps::OnIntentFiltersUpdated(
-    const std::optional<std::string>& package_name) {
+    const absl::optional<std::string>& package_name) {
   ArcAppListPrefs* prefs = ArcAppListPrefs::Get(profile_);
   if (!prefs) {
     return;
@@ -1172,7 +1149,7 @@ void ArcApps::OnIntentFiltersUpdated(
   // Note: Cannot combine the two for-loops because the return type of
   // GetAppIds() is std::vector<std::string> and the return type of
   // GetAppsForPackage() is std::unordered_set<std::string>.
-  if (package_name == std::nullopt) {
+  if (package_name == absl::nullopt) {
     for (const auto& app_id : prefs->GetAppIds()) {
       GetAppInfoAndPublish(app_id);
     }
@@ -1199,31 +1176,16 @@ void ArcApps::OnArcSupportedLinksChanged(
       continue;
     }
 
-    // ARC apps may handle links by default on the ARC side, but do not handle
-    // links by default on the Ash side. This means that the default setting may
-    // be different between Ash and ARC. Any user action to change the setting
-    // will make it the same between both sides.
-    //
-    // To make this work, we need to ignore request from the ARC system to
-    // update the supported links setting. We allow updates in the following
-    // cases:
-    bool allow_update =
-        // When the user explicitly changes the setting in Android Settings.
-        source == arc::mojom::SupportedLinkChangeSource::kUserPreference ||
-        // If the app is already marked as preferred on the Ash side.
-        proxy()->PreferredAppsList().IsPreferredAppForSupportedLinks(app_id) ||
-        // If the app is specifically allowed to handle links by default.
-        AppShouldDefaultHandleLinksInApp(app_id);
+    // Ignore any requests from the ARC system to set an app as handling
+    // supported links by default. We allow requests if they were initiated by
+    // user action, or if the app already has a non-default setting on the Ash
+    // side.
+    bool should_ignore_update =
+        AppShouldDefaultHandleLinksInBrowser(app_id) &&
+        source == arc::mojom::SupportedLinkChangeSource::kArcSystem &&
+        !proxy()->PreferredAppsList().IsPreferredAppForSupportedLinks(app_id);
 
-    // Managed users are temporarily opted out of this behavior (b/280056133)
-    // and always apply updates from the ARC side, except for an allowlist of
-    // apps which handle links in the browser to improve the user experience.
-    if (IsProfileManaged(profile_) && !PackageShouldDefaultHandleLinksInBrowser(
-                                          supported_link->package_name)) {
-      allow_update = true;
-    }
-
-    if (!allow_update) {
+    if (should_ignore_update) {
       continue;
     }
 
@@ -1374,6 +1336,21 @@ void ArcApps::OnInstanceRegistryWillBeDestroyed(
   instance_registry_observation_.Reset();
 }
 
+void ArcApps::LoadPlayStoreIcon(apps::IconType icon_type,
+                                int32_t size_hint_in_dip,
+                                IconEffects icon_effects,
+                                apps::LoadIconCallback callback) {
+  // Use overloaded Chrome icon for Play Store that is adapted to Chrome style.
+  constexpr bool quantize_to_supported_scale_factor = true;
+  int size_hint_in_px = apps_util::ConvertDipToPx(
+      size_hint_in_dip, quantize_to_supported_scale_factor);
+  int resource_id = (size_hint_in_px <= 32) ? IDR_ARC_SUPPORT_ICON_32_PNG
+                                            : IDR_ARC_SUPPORT_ICON_192_PNG;
+  constexpr bool is_placeholder_icon = false;
+  LoadIconFromResource(icon_type, size_hint_in_dip, resource_id,
+                       is_placeholder_icon, icon_effects, std::move(callback));
+}
+
 AppPtr ArcApps::CreateApp(ArcAppListPrefs* prefs,
                           const std::string& app_id,
                           const ArcAppListPrefs::AppInfo& app_info,
@@ -1382,18 +1359,20 @@ AppPtr ArcApps::CreateApp(ArcAppListPrefs* prefs,
   auto install_reason = GetInstallReason(prefs, app_id, app_info);
   auto app = AppPublisher::MakeApp(
       AppType::kArc, app_id,
-      IsAppSuspended(app_id, app_info) ? Readiness::kDisabledByPolicy
-                                       : Readiness::kReady,
+      app_info.suspended ? Readiness::kDisabledByPolicy : Readiness::kReady,
       app_info.name, install_reason,
       install_reason == InstallReason::kSystem ? InstallSource::kSystem
                                                : InstallSource::kPlayStore);
 
   app->publisher_id = app_info.package_name;
-  app->installer_package_id = PackageId(AppType::kArc, app_info.package_name);
   app->policy_ids = {app_info.package_name};
 
   if (update_icon) {
-    app->icon_key = IconKey(raw_icon_updated, GetIconEffects(app_id, app_info));
+    app->icon_key = std::move(
+        *icon_key_factory_.CreateIconKey(GetIconEffects(app_id, app_info)));
+    if (raw_icon_updated) {
+      app->icon_key->raw_icon_updated = true;
+    }
   }
 
   app->version = app_info.version_name;
@@ -1405,10 +1384,6 @@ AppPtr ArcApps::CreateApp(ArcAppListPrefs* prefs,
       prefs->GetPackage(app_info.package_name);
   if (package) {
     app->permissions = CreatePermissions(package->permissions);
-    if (package->locale_info) {
-      app->supported_locales = package->locale_info->supported_locales;
-      app->selected_locale = package->locale_info->selected_locale;
-    }
   }
 
   auto show = ShouldShow(app_info);
@@ -1437,7 +1412,6 @@ AppPtr ArcApps::CreateApp(ArcAppListPrefs* prefs,
   }
 
   app->allow_uninstall = app_info.ready && !app_info.sticky;
-  app->allow_close = true;
 
   app->has_badge = app_notifications_.HasNotification(app_id);
   app->paused = paused_apps_.IsPaused(app_id);
@@ -1477,12 +1451,17 @@ void ArcApps::ConvertAndPublishPackageApps(
        prefs->GetAppsForPackage(package_info.package_name)) {
     std::unique_ptr<ArcAppListPrefs::AppInfo> app_info = prefs->GetApp(app_id);
     if (app_info && !IsWebAppShellPackage(profile_, *app_info)) {
-      // If the package is added or modified, the app icon files might be
-      // modified, so set `update_icon` and `raw_icon_updated` as true to update
-      // icon files in the icon folders.
-      AppPublisher::Publish(CreateApp(prefs, app_id, *app_info,
-                                      /*update_icon=*/true,
-                                      /*raw_icon_updated=*/true));
+      if (base::FeatureList::IsEnabled(apps::kUnifiedAppServiceIconLoading)) {
+        // When the flag kUnifiedAppServiceIconLoading is enabled, if the
+        // package is added or modified, the app icon files might be modified,
+        // so set `update_icon` and `raw_icon_updated` as true to update icon
+        // files in the icon folders.
+        AppPublisher::Publish(CreateApp(prefs, app_id, *app_info,
+                                        /*update_icon=*/true,
+                                        /*raw_icon_updated=*/true));
+      } else {
+        AppPublisher::Publish(CreateApp(prefs, app_id, *app_info, update_icon));
+      }
     }
   }
 }
@@ -1490,7 +1469,7 @@ void ArcApps::ConvertAndPublishPackageApps(
 IconEffects ArcApps::GetIconEffects(const std::string& app_id,
                                     const ArcAppListPrefs::AppInfo& app_info) {
   IconEffects icon_effects = IconEffects::kNone;
-  if (IsAppSuspended(app_id, app_info)) {
+  if (app_info.suspended) {
     icon_effects =
         static_cast<IconEffects>(icon_effects | IconEffects::kBlocked);
   }
@@ -1512,7 +1491,8 @@ void ArcApps::SetIconEffect(const std::string& app_id) {
   }
 
   auto app = std::make_unique<App>(AppType::kArc, app_id);
-  app->icon_key = IconKey(GetIconEffects(app_id, *app_info));
+  app->icon_key = std::move(
+      *icon_key_factory_.CreateIconKey(GetIconEffects(app_id, *app_info)));
   AppPublisher::Publish(std::move(app));
 }
 
@@ -1537,11 +1517,12 @@ void ArcApps::BuildMenuForShortcut(
   arc_app_shortcuts_request_ =
       std::make_unique<arc::ArcAppShortcutsRequest>(base::BindOnce(
           &ArcApps::OnGetAppShortcutItems, weak_ptr_factory_.GetWeakPtr(),
-          std::move(menu_items), std::move(callback)));
+          base::TimeTicks::Now(), std::move(menu_items), std::move(callback)));
   arc_app_shortcuts_request_->StartForPackage(package_name);
 }
 
 void ArcApps::OnGetAppShortcutItems(
+    const base::TimeTicks start_time,
     MenuItems menu_items,
     base::OnceCallback<void(MenuItems)> callback,
     std::unique_ptr<apps::AppShortcutItems> app_shortcut_items) {
@@ -1574,11 +1555,13 @@ void ArcApps::OnGetAppShortcutItems(
   }
   std::move(callback).Run(std::move(menu_items));
   arc_app_shortcuts_request_.reset();
+
+  UMA_HISTOGRAM_TIMES("Arc.AppShortcuts.BuildMenuTime",
+                      base::TimeTicks::Now() - start_time);
 }
 
 void ArcApps::OnInstallationStarted(const std::string& package_name) {
-  if (ash::features::ArePromiseIconsEnabled() &&
-      ArcVersionEligibleForPromiseIcons()) {
+  if (ash::features::ArePromiseIconsEnabled()) {
     PromiseAppPtr promise_app =
         AppPublisher::MakePromiseApp(PackageId(AppType::kArc, package_name));
 
@@ -1588,143 +1571,4 @@ void ArcApps::OnInstallationStarted(const std::string& package_name) {
   }
 }
 
-void ArcApps::OnInstallationProgressChanged(const std::string& package_name,
-                                            float progress) {
-  if (ash::features::ArePromiseIconsEnabled()) {
-    PackageId package_id = PackageId(AppType::kArc, package_name);
-    const PromiseApp* existing_promise_app =
-        proxy()->PromiseAppRegistryCache()->GetPromiseApp(package_id);
-    if (!existing_promise_app) {
-      LOG(ERROR) << "Cannot update installation progress value for "
-                 << package_name
-                 << ", as there is no promise app registered for this package.";
-      return;
-    }
-    PromiseAppPtr promise_app = AppPublisher::MakePromiseApp(package_id);
-    promise_app->progress = progress;
-
-    // Update the status to reflect that the app is actively downloading/
-    // installing. We update the status here on the first progress update
-    // instead of in OnInstallationActiveChanged, due to some conflicts with
-    // what the ARC active status indicates and what we need.
-    if (existing_promise_app->status == PromiseStatus::kPending) {
-      promise_app->status = PromiseStatus::kInstalling;
-    }
-    AppPublisher::PublishPromiseApp(std::move(promise_app));
-  }
-}
-
-void ArcApps::OnInstallationActiveChanged(const std::string& package_name,
-                                          bool active) {
-  if (ash::features::ArePromiseIconsEnabled()) {
-    PackageId package_id(AppType::kArc, package_name);
-    if (!proxy()->PromiseAppRegistryCache()->HasPromiseApp(package_id)) {
-      LOG(ERROR) << "Cannot update installation active status for "
-                 << package_name
-                 << ", as there is no promise app registered for this package.";
-      return;
-    }
-    // TODO(b/261907409): Set PromiseStatus to kPending if the installation is
-    // no longer active, i.e. if active=false after there has been at least one
-    // progress change.
-  }
-}
-
-void ArcApps::OnInstallationFinished(const std::string& package_name,
-                                     bool success,
-                                     bool is_launchable_app) {
-  if (ash::features::ArePromiseIconsEnabled() &&
-      ArcVersionEligibleForPromiseIcons()) {
-    if (success && is_launchable_app) {
-      return;
-    }
-    // Remove the promise app of any failed installation or non-launchable
-    // package.
-    PackageId package_id(AppType::kArc, package_name);
-    if (!proxy()->PromiseAppRegistryCache()->HasPromiseApp(package_id)) {
-      return;
-    }
-    PromiseAppPtr promise_app = AppPublisher::MakePromiseApp(package_id);
-    promise_app->status = PromiseStatus::kCancelled;
-    AppPublisher::PublishPromiseApp(std::move(promise_app));
-  }
-}
-
-void ArcApps::ObserveDisabledSystemFeaturesPolicy() {
-  PrefService* const local_state = g_browser_process->local_state();
-  if (!local_state) {  // Sometimes it's not available in tests.
-    return;
-  }
-
-  local_state_pref_change_registrar_.Init(local_state);
-  local_state_pref_change_registrar_.Add(
-      policy::policy_prefs::kSystemFeaturesDisableList,
-      base::BindRepeating(&ArcApps::OnDisableListPolicyChanged,
-                          base::Unretained(this)));
-}
-
-void ArcApps::OnDisableListPolicyChanged() {
-  PrefService* const local_state = g_browser_process->local_state();
-  if (!local_state) {
-    return;
-  }
-
-  const base::Value::List& disabled_system_features_pref =
-      local_state->GetList(policy::policy_prefs::kSystemFeaturesDisableList);
-  bool disable_arc_settings = false;
-  for (const auto& entry : disabled_system_features_pref) {
-    if (static_cast<policy::SystemFeature>(entry.GetInt()) ==
-        policy::SystemFeature::kOsSettings) {
-      disable_arc_settings = true;
-      break;
-    }
-  }
-
-  ArcAppListPrefs* arc_prefs = ArcAppListPrefs::Get(profile_);
-  if (!arc_prefs) {
-    return;
-  }
-
-  std::unique_ptr<ArcAppListPrefs::AppInfo> app_info =
-      arc_prefs->GetApp(arc::kSettingsAppId);
-  if (!app_info) {
-    return;
-  }
-
-  bool is_disabled = false;
-  bool found = proxy()->AppRegistryCache().ForOneApp(
-      arc::kSettingsAppId, [&is_disabled](const apps::AppUpdate& update) {
-        is_disabled = (update.Readiness() == Readiness::kDisabledByPolicy);
-      });
-  if (!found) {
-    return;
-  }
-
-  if (disable_arc_settings == is_disabled) {
-    return;
-  }
-
-  auto app = std::make_unique<App>(AppType::kArc, arc::kSettingsAppId);
-  if (disable_arc_settings) {
-    settings_app_is_disabled_ = true;
-    app->readiness = Readiness::kDisabledByPolicy;
-    app->icon_key = IconKey(/*raw_icon_updated=*/false, IconEffects::kBlocked);
-  } else {
-    settings_app_is_disabled_ = false;
-    app->readiness =
-        app_info->suspended ? Readiness::kDisabledByPolicy : Readiness::kReady;
-    app->icon_key = IconKey(GetIconEffects(arc::kSettingsAppId, *app_info));
-  }
-
-  AppPublisher::Publish(std::move(app));
-}
-
-bool ArcApps::IsAppSuspended(const std::string& app_id,
-                             const ArcAppListPrefs::AppInfo& app_info) {
-  if (app_id == arc::kSettingsAppId && settings_app_is_disabled_) {
-    return true;
-  }
-
-  return app_info.suspended;
-}
 }  // namespace apps

@@ -6,16 +6,16 @@
 #define UI_EVENTS_KEYBOARD_HOOK_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/component_export.h"
 #include "base/containers/flat_set.h"
 #include "base/functional/callback.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/native_widget_types.h"
 
 namespace ui {
 
-enum class DomCode : uint32_t;
+enum class DomCode;
 class KeyEvent;
 
 // Intercepts keyboard events typically handled by the OS or browser.
@@ -33,7 +33,7 @@ class COMPONENT_EXPORT(KEYBOARD_HOOK) KeyboardHook {
   // Returns a valid instance if the hook was created and successfully
   // registered otherwise nullptr.
   static std::unique_ptr<KeyboardHook> CreateModifierKeyboardHook(
-      std::optional<base::flat_set<DomCode>> dom_codes,
+      absl::optional<base::flat_set<DomCode>> dom_codes,
       gfx::AcceleratedWidget accelerated_widget,
       KeyEventCallback callback);
 

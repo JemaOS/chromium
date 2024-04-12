@@ -28,7 +28,6 @@
 #include "third_party/blink/renderer/core/workers/worker_global_scope.h"
 
 #include "base/memory/scoped_refptr.h"
-#include "base/trace_event/typed_macros.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/metrics/public/cpp/mojo_ukm_recorder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
@@ -47,13 +46,13 @@
 #include "third_party/blink/renderer/core/events/error_event.h"
 #include "third_party/blink/renderer/core/events/message_event.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
+#include "third_party/blink/renderer/core/frame/dom_timer_coordinator.h"
 #include "third_party/blink/renderer/core/frame/font_matching_metrics.h"
 #include "third_party/blink/renderer/core/frame/user_activation.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/inspector/console_message_storage.h"
 #include "third_party/blink/renderer/core/inspector/inspector_audits_issue.h"
 #include "third_party/blink/renderer/core/inspector/inspector_issue_storage.h"
-#include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
 #include "third_party/blink/renderer/core/inspector/worker_inspector_controller.h"
 #include "third_party/blink/renderer/core/inspector/worker_thread_debugger.h"
 #include "third_party/blink/renderer/core/loader/threadable_loader.h"
@@ -89,7 +88,6 @@
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 #include "third_party/blink/renderer/platform/weborigin/security_policy.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
-#include "third_party/perfetto/include/perfetto/tracing/track_event_args.h"
 
 namespace blink {
 namespace {
@@ -394,10 +392,16 @@ void WorkerGlobalScope::AddConsoleMessageImpl(ConsoleMessage* console_message,
                                               bool discard_duplicates) {
   DCHECK(IsContextThread());
   ReportingProxy().ReportConsoleMessage(
-      console_message->GetSource(), console_message->GetLevel(),
+      console_message->Source(), console_message->Level(),
       console_message->Message(), console_message->Location());
   GetThread()->GetConsoleMessageStorage()->AddConsoleMessage(
       this, console_message, discard_duplicates);
+}
+
+void WorkerGlobalScope::AddInspectorIssue(
+    mojom::blink::InspectorIssueInfoPtr info) {
+  GetThread()->GetInspectorIssueStorage()->AddInspectorIssue(this,
+                                                             std::move(info));
 }
 
 void WorkerGlobalScope::AddInspectorIssue(AuditsIssue issue) {
@@ -454,7 +458,7 @@ void WorkerGlobalScope::EvaluateClassicScript(
 
 void WorkerGlobalScope::WorkerScriptFetchFinished(
     Script& worker_script,
-    std::optional<v8_inspector::V8StackTraceId> stack_id) {
+    absl::optional<v8_inspector::V8StackTraceId> stack_id) {
   DCHECK(IsContextThread());
 
   DCHECK_NE(ScriptEvalState::kEvaluated, script_eval_state_);
@@ -561,9 +565,9 @@ void WorkerGlobalScope::ReceiveMessage(BlinkTransferableMessage message) {
       MessagePort::EntanglePorts(*this, std::move(message.ports));
   WorkerThreadDebugger* debugger =
       WorkerThreadDebugger::From(GetThread()->GetIsolate());
-  if (debugger) {
+  if (debugger)
     debugger->ExternalAsyncTaskStarted(message.sender_stack_trace_id);
-  }
+
   if (message.message->CanDeserializeIn(this)) {
     UserActivation* user_activation = nullptr;
     if (message.user_activation) {
@@ -571,17 +575,8 @@ void WorkerGlobalScope::ReceiveMessage(BlinkTransferableMessage message) {
           message.user_activation->has_been_active,
           message.user_activation->was_active);
     }
-    MessageEvent* message_event = MessageEvent::Create(
-        ports, std::move(message.message), user_activation);
-    message_event->SetTraceId(message.trace_id);
-    TRACE_EVENT(
-        "devtools.timeline", "HandlePostMessage", "data",
-        [&](perfetto::TracedValue context) {
-          inspector_handle_post_message_event::Data(
-              std::move(context), GetExecutionContext(), *message_event);
-        },
-        perfetto::Flow::Global(message_event->GetTraceId()));
-    DispatchEvent(*message_event);
+    DispatchEvent(*MessageEvent::Create(ports, std::move(message.message),
+                                        user_activation));
   } else {
     DispatchEvent(*MessageEvent::CreateError());
   }
@@ -605,8 +600,11 @@ WorkerGlobalScope::WorkerGlobalScope(
               (creation_params->agent_cluster_id.is_empty()
                    ? base::UnguessableToken::Create()
                    : creation_params->agent_cluster_id),
-              v8::MicrotaskQueue::New(thread->GetIsolate(),
-                                      v8::MicrotasksPolicy::kScoped)),
+              base::FeatureList::IsEnabled(
+                  scheduler::kMicrotaskQueuePerWorkerAgent)
+                  ? v8::MicrotaskQueue::New(thread->GetIsolate(),
+                                            v8::MicrotasksPolicy::kScoped)
+                  : nullptr),
           creation_params->global_scope_name,
           creation_params->parent_devtools_token,
           creation_params->v8_cache_options,
@@ -614,9 +612,7 @@ WorkerGlobalScope::WorkerGlobalScope(
           std::move(creation_params->content_settings_client),
           std::move(creation_params->web_worker_fetch_context),
           thread->GetWorkerReportingProxy(),
-          creation_params->script_url.ProtocolIsData(),
-          /*is_default_world_of_isolate=*/
-          creation_params->is_default_world_of_isolate),
+          creation_params->script_url.ProtocolIsData()),
       ActiveScriptWrappable<WorkerGlobalScope>({}),
       script_type_(creation_params->script_type),
       user_agent_(creation_params->user_agent),
@@ -630,9 +626,6 @@ WorkerGlobalScope::WorkerGlobalScope(
       ukm_source_id_(creation_params->ukm_source_id),
       top_level_frame_security_origin_(
           std::move(creation_params->top_level_frame_security_origin)) {
-  // Workers should always maintain the default world of an isolate.
-  CHECK(creation_params->is_default_world_of_isolate);
-
   InstanceCounters::IncrementCounter(
       InstanceCounters::kWorkerGlobalScopeCounter);
 
@@ -760,10 +753,6 @@ void WorkerGlobalScope::Trace(Visitor* visitor) const {
   visitor->Trace(worker_script_);
   WorkerOrWorkletGlobalScope::Trace(visitor);
   Supplementable<WorkerGlobalScope>::Trace(visitor);
-}
-
-bool WorkerGlobalScope::HasPendingActivity() const {
-  return !ExecutionContext::IsContextDestroyed();
 }
 
 FontMatchingMetrics* WorkerGlobalScope::GetFontMatchingMetrics() {

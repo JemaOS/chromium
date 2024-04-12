@@ -16,9 +16,8 @@ class GlobalErrorWithStandardBubble;
 
 class GlobalErrorBubbleView : public views::BubbleDialogDelegateView,
                               public GlobalErrorBubbleViewBase {
-  METADATA_HEADER(GlobalErrorBubbleView, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(GlobalErrorBubbleView);
   GlobalErrorBubbleView(
       views::View* anchor_view,
       views::BubbleBorder::Arrow arrow,

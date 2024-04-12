@@ -8,7 +8,6 @@
 
 #include "third_party/blink/renderer/core/animation/interpolation_environment.h"
 #include "third_party/blink/renderer/core/animation/string_keyframe.h"
-#include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
 #include "third_party/blink/renderer/core/svg/svg_rect.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
@@ -26,11 +25,10 @@ enum RectComponentIndex : unsigned {
 InterpolationValue SVGRectInterpolationType::MaybeConvertNeutral(
     const InterpolationValue&,
     ConversionCheckers&) const {
-  auto* result =
-      MakeGarbageCollected<InterpolableList>(kRectComponentIndexCount);
+  auto result = std::make_unique<InterpolableList>(kRectComponentIndexCount);
   for (wtf_size_t i = 0; i < kRectComponentIndexCount; i++)
-    result->Set(i, MakeGarbageCollected<InterpolableNumber>(0));
-  return InterpolationValue(result);
+    result->Set(i, std::make_unique<InterpolableNumber>(0));
+  return InterpolationValue(std::move(result));
 }
 
 InterpolationValue SVGRectInterpolationType::MaybeConvertSVGValue(
@@ -39,34 +37,23 @@ InterpolationValue SVGRectInterpolationType::MaybeConvertSVGValue(
     return nullptr;
 
   const auto& rect = To<SVGRect>(svg_value);
-  auto* result =
-      MakeGarbageCollected<InterpolableList>(kRectComponentIndexCount);
-  result->Set(kRectX, MakeGarbageCollected<InterpolableNumber>(rect.X()));
-  result->Set(kRectY, MakeGarbageCollected<InterpolableNumber>(rect.Y()));
-  result->Set(kRectWidth,
-              MakeGarbageCollected<InterpolableNumber>(rect.Width()));
-  result->Set(kRectHeight,
-              MakeGarbageCollected<InterpolableNumber>(rect.Height()));
-  return InterpolationValue(result);
+  auto result = std::make_unique<InterpolableList>(kRectComponentIndexCount);
+  result->Set(kRectX, std::make_unique<InterpolableNumber>(rect.X()));
+  result->Set(kRectY, std::make_unique<InterpolableNumber>(rect.Y()));
+  result->Set(kRectWidth, std::make_unique<InterpolableNumber>(rect.Width()));
+  result->Set(kRectHeight, std::make_unique<InterpolableNumber>(rect.Height()));
+  return InterpolationValue(std::move(result));
 }
 
 SVGPropertyBase* SVGRectInterpolationType::AppliedSVGValue(
     const InterpolableValue& interpolable_value,
     const NonInterpolableValue*) const {
   const auto& list = To<InterpolableList>(interpolable_value);
-  // Note: using default CSSToLengthConversionData here as it's
-  // guaranteed to be a double.
-  // TODO(crbug.com/325821290): Avoid InterpolableNumber here.
-  CSSToLengthConversionData length_resolver;
   auto* result = MakeGarbageCollected<SVGRect>();
-  result->SetX(
-      To<InterpolableNumber>(list.Get(kRectX))->Value(length_resolver));
-  result->SetY(
-      To<InterpolableNumber>(list.Get(kRectY))->Value(length_resolver));
-  result->SetWidth(
-      To<InterpolableNumber>(list.Get(kRectWidth))->Value(length_resolver));
-  result->SetHeight(
-      To<InterpolableNumber>(list.Get(kRectHeight))->Value(length_resolver));
+  result->SetX(To<InterpolableNumber>(list.Get(kRectX))->Value());
+  result->SetY(To<InterpolableNumber>(list.Get(kRectY))->Value());
+  result->SetWidth(To<InterpolableNumber>(list.Get(kRectWidth))->Value());
+  result->SetHeight(To<InterpolableNumber>(list.Get(kRectHeight))->Value());
   return result;
 }
 

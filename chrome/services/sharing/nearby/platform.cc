@@ -11,12 +11,10 @@
 #include "chrome/services/sharing/nearby/platform/atomic_boolean.h"
 #include "chrome/services/sharing/nearby/platform/atomic_uint32.h"
 #include "chrome/services/sharing/nearby/platform/ble_medium.h"
-#include "chrome/services/sharing/nearby/platform/ble_v2_medium.h"
 #include "chrome/services/sharing/nearby/platform/bluetooth_adapter.h"
 #include "chrome/services/sharing/nearby/platform/bluetooth_classic_medium.h"
 #include "chrome/services/sharing/nearby/platform/condition_variable.h"
 #include "chrome/services/sharing/nearby/platform/count_down_latch.h"
-#include "chrome/services/sharing/nearby/platform/credential_storage.h"
 #include "chrome/services/sharing/nearby/platform/input_file.h"
 #include "chrome/services/sharing/nearby/platform/log_message.h"
 #include "chrome/services/sharing/nearby/platform/mutex.h"
@@ -212,28 +210,13 @@ std::unique_ptr<BleMedium> ImplementationPlatform::CreateBleMedium(
 
 std::unique_ptr<ble_v2::BleMedium> ImplementationPlatform::CreateBleV2Medium(
     api::BluetoothAdapter& adapter) {
-  nearby::NearbySharedRemotes* nearby_shared_remotes =
-      nearby::NearbySharedRemotes::GetInstance();
-  // Ignore the provided |adapter| argument; it is a reference to the object
-  // created by ImplementationPlatform::CreateBluetoothAdapter(). Instead,
-  // directly use the cached bluetooth::mojom::Adapter.
-  if (nearby_shared_remotes &&
-      nearby_shared_remotes->bluetooth_adapter.is_bound()) {
-    return std::make_unique<chrome::BleV2Medium>(
-        nearby_shared_remotes->bluetooth_adapter);
-  }
+  // Do nothing. ble_v2::BleMedium is not yet supported in Chrome Nearby.
   return nullptr;
 }
 
+// TODO(b/279611359): Wire into Chrome impl.
 std::unique_ptr<api::CredentialStorage>
 ImplementationPlatform::CreateCredentialStorage() {
-  nearby::NearbySharedRemotes* nearby_shared_remotes =
-      nearby::NearbySharedRemotes::GetInstance();
-  if (nearby_shared_remotes &&
-      nearby_shared_remotes->nearby_presence_credential_storage.is_bound()) {
-    return std::make_unique<nearby::chrome::CredentialStorage>(
-        nearby_shared_remotes->nearby_presence_credential_storage);
-  }
   return nullptr;
 }
 

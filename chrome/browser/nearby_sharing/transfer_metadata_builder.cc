@@ -44,7 +44,7 @@ TransferMetadataBuilder& TransferMetadataBuilder::set_status(
 }
 
 TransferMetadataBuilder& TransferMetadataBuilder::set_token(
-    std::optional<std::string> token) {
+    absl::optional<std::string> token) {
   token_ = std::move(token);
   return *this;
 }

@@ -63,12 +63,10 @@ void IntersectionObserverController::DeliverNotifications(
 bool IntersectionObserverController::ComputeIntersections(
     unsigned flags,
     LocalFrameUkmAggregator* metrics_aggregator,
-    std::optional<base::TimeTicks>& monotonic_time,
-    gfx::Vector2dF accumulated_scroll_delta_since_last_update) {
+    absl::optional<base::TimeTicks>& monotonic_time) {
   needs_occlusion_tracking_ = false;
-  if (!GetExecutionContext()) {
+  if (!GetExecutionContext())
     return false;
-  }
   TRACE_EVENT0("blink,devtools.timeline",
                "IntersectionObserverController::"
                "computeIntersections");
@@ -79,16 +77,14 @@ bool IntersectionObserverController::ComputeIntersections(
   int64_t internal_observation_count = 0;
   int64_t javascript_observation_count = 0;
   {
-    std::optional<LocalFrameUkmAggregator::IterativeTimer> metrics_timer;
+    absl::optional<LocalFrameUkmAggregator::IterativeTimer> metrics_timer;
     if (metrics_aggregator)
       metrics_timer.emplace(*metrics_aggregator);
     for (auto& observer : observers_to_process) {
-      DCHECK(!observer->RootIsImplicit());
       if (observer->HasObservations()) {
         if (metrics_timer)
           metrics_timer->StartInterval(observer->GetUkmMetricId());
-        int64_t count = observer->ComputeIntersections(
-            flags, monotonic_time, accumulated_scroll_delta_since_last_update);
+        int64_t count = observer->ComputeIntersections(flags, monotonic_time);
         if (observer->IsInternal())
           internal_observation_count += count;
         else
@@ -101,10 +97,7 @@ bool IntersectionObserverController::ComputeIntersections(
     for (auto& observation : observations_to_process) {
       if (metrics_timer)
         metrics_timer->StartInterval(observation->Observer()->GetUkmMetricId());
-      std::optional<IntersectionGeometry::RootGeometry> root_geometry;
-      int64_t count = observation->ComputeIntersection(
-          flags, accumulated_scroll_delta_since_last_update, monotonic_time,
-          root_geometry);
+      int64_t count = observation->ComputeIntersection(flags, monotonic_time);
       if (observation->Observer()->IsInternal())
         internal_observation_count += count;
       else

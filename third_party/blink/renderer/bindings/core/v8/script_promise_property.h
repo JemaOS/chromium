@@ -9,6 +9,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+#include "third_party/blink/renderer/bindings/core/v8/to_v8_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
@@ -24,10 +25,10 @@ class ExecutionContext;
 // Use ScriptPromise if the property is associated with only one world
 // (e.g., FetchEvent.preloadResponse). Use ScriptPromiseProperty if the property
 // can be accessed from multiple worlds (e.g., ServiceWorkerContainer.ready).
-template <typename IDLResolvedType, typename IDLRejectedType>
+template <typename ResolvedType, typename RejectedType>
 class ScriptPromiseProperty final
     : public GarbageCollected<
-          ScriptPromiseProperty<IDLResolvedType, IDLRejectedType>>,
+          ScriptPromiseProperty<ResolvedType, RejectedType>>,
       public ExecutionContextClient {
  public:
   enum State {
@@ -46,34 +47,32 @@ class ScriptPromiseProperty final
   ScriptPromiseProperty(const ScriptPromiseProperty&) = delete;
   ScriptPromiseProperty& operator=(const ScriptPromiseProperty&) = delete;
 
-  ScriptPromiseTyped<IDLResolvedType> Promise(DOMWrapperWorld& world) {
+  ScriptPromise Promise(DOMWrapperWorld& world) {
     if (!GetExecutionContext()) {
-      return ScriptPromiseTyped<IDLResolvedType>();
+      return ScriptPromise();
     }
 
     v8::HandleScope handle_scope(GetExecutionContext()->GetIsolate());
     v8::Local<v8::Context> context = ToV8Context(GetExecutionContext(), world);
     if (context.IsEmpty()) {
-      return ScriptPromiseTyped<IDLResolvedType>();
+      return ScriptPromise();
     }
     ScriptState* script_state = ScriptState::From(context);
 
-    for (auto& promise : promises_) {
+    for (const auto& promise : promises_) {
       if (promise.IsAssociatedWith(script_state)) {
-        return static_cast<ScriptPromiseTyped<IDLResolvedType>&>(promise);
+        return promise;
       }
     }
 
     ScriptState::Scope scope(script_state);
 
-    auto* resolver =
-        MakeGarbageCollected<ScriptPromiseResolverTyped<IDLResolvedType>>(
-            script_state);
+    auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
     // ScriptPromiseResolver usually requires a caller to reject it before
     // releasing, but ScriptPromiseProperty doesn't have such a requirement, so
     // suppress the check forcibly.
     resolver->SuppressDetachCheck();
-    ScriptPromiseTyped<IDLResolvedType> promise = resolver->Promise();
+    ScriptPromise promise = resolver->Promise();
     if (mark_as_handled_)
       promise.MarkAsHandled();
     switch (state_) {
@@ -81,10 +80,14 @@ class ScriptPromiseProperty final
         resolvers_.push_back(resolver);
         break;
       case kResolved:
-        resolver->Resolve(resolved_);
+        if (resolved_with_undefined_) {
+          resolver->Resolve();
+        } else {
+          resolver->Resolve(resolved_);
+        }
         break;
       case kRejected:
-        resolver->template Reject<IDLRejectedType>(rejected_);
+        resolver->Reject(rejected_);
         break;
     }
     promises_.push_back(promise);
@@ -103,11 +106,29 @@ class ScriptPromiseProperty final
     HeapVector<Member<ScriptPromiseResolver>> resolvers;
     resolvers.swap(resolvers_);
     for (const Member<ScriptPromiseResolver>& resolver : resolvers) {
-      resolver->DowncastTo<IDLResolvedType>()->Resolve(value);
+      resolver->Resolve(resolved_);
     }
   }
 
-  void ResolveWithUndefined() { Resolve(ToV8UndefinedGenerator()); }
+  void ResolveWithUndefined() {
+    CHECK(!ScriptForbiddenScope::IsScriptForbidden());
+    if (RuntimeEnabledFeatures::BlinkLifecycleScriptForbiddenEnabled()) {
+      CHECK(!ScriptForbiddenScope::WillBeScriptForbidden());
+    } else {
+      DCHECK(!ScriptForbiddenScope::WillBeScriptForbidden());
+    }
+    DCHECK_EQ(GetState(), kPending);
+    if (!GetExecutionContext()) {
+      return;
+    }
+    state_ = kResolved;
+    resolved_with_undefined_ = true;
+    HeapVector<Member<ScriptPromiseResolver>> resolvers;
+    resolvers.swap(resolvers_);
+    for (const Member<ScriptPromiseResolver>& resolver : resolvers) {
+      resolver->Resolve();
+    }
+  }
 
   template <typename PassRejectedType>
   void Reject(PassRejectedType value) {
@@ -126,7 +147,7 @@ class ScriptPromiseProperty final
     HeapVector<Member<ScriptPromiseResolver>> resolvers;
     resolvers.swap(resolvers_);
     for (const Member<ScriptPromiseResolver>& resolver : resolvers) {
-      resolver->Reject<IDLRejectedType>(rejected_);
+      resolver->Reject(rejected_);
     }
   }
 
@@ -135,10 +156,11 @@ class ScriptPromiseProperty final
   // resolved and the rejected values.
   void Reset() {
     state_ = kPending;
-    resolved_ = DefaultPromiseResultValue<MemberResolvedType>();
-    rejected_ = DefaultPromiseResultValue<MemberRejectedType>();
+    resolved_ = ResolvedType();
+    rejected_ = RejectedType();
     resolvers_.clear();
     promises_.clear();
+    resolved_with_undefined_ = false;
   }
 
   // Mark generated promises as handled to avoid reporting unhandled rejections.
@@ -150,8 +172,8 @@ class ScriptPromiseProperty final
   }
 
   void Trace(Visitor* visitor) const override {
-    TraceIfNeeded<MemberResolvedType>::Trace(visitor, resolved_);
-    TraceIfNeeded<MemberRejectedType>::Trace(visitor, rejected_);
+    TraceIfNeeded<ResolvedType>::Trace(visitor, resolved_);
+    TraceIfNeeded<RejectedType>::Trace(visitor, rejected_);
     visitor->Trace(resolvers_);
     visitor->Trace(promises_);
     ExecutionContextClient::Trace(visitor);
@@ -160,33 +182,12 @@ class ScriptPromiseProperty final
   State GetState() const { return state_; }
 
  private:
-  using MemberResolvedType =
-      AddMemberIfNeeded<typename IDLTypeToBlinkImplType<IDLResolvedType>::type>;
-  using MemberRejectedType =
-      AddMemberIfNeeded<typename IDLTypeToBlinkImplType<IDLRejectedType>::type>;
-
-  template <typename T>
-  static T DefaultPromiseResultValue() {
-    return {};
-  }
-
-  template <typename T>
-    requires std::derived_from<T, bindings::EnumerationBase>
-  static T DefaultPromiseResultValue() {
-    return T(static_cast<T::Enum>(0));
-  }
-
   State state_ = kPending;
-  MemberResolvedType resolved_{DefaultPromiseResultValue<MemberResolvedType>()};
-  MemberRejectedType rejected_{DefaultPromiseResultValue<MemberRejectedType>()};
-
-  // These vectors contain ScriptPromiseResolverTyped<IDLResolvedType> and
-  // ScriptPromiseTyped<IDLResolvedType>, respectively. We save ~10KB of binary
-  // size by storing them as the untemplated base class and downcasting where
-  // needed.
+  ResolvedType resolved_;
+  RejectedType rejected_;
   HeapVector<Member<ScriptPromiseResolver>> resolvers_;
   HeapVector<ScriptPromise> promises_;
-
+  bool resolved_with_undefined_ = false;
   bool mark_as_handled_ = false;
 };
 

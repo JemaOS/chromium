@@ -6,34 +6,15 @@ chrome.test.getConfig(function(config) {
   var inDeveloperMode = config.customArg == 'in_developer_mode';
 
   chrome.test.runTests([
-    async function testDebuggerApiAccess() {
+    function testDebuggerApiAccess() {
       if (inDeveloperMode) {
-        // In developer mode, the API should be defined...
-        chrome.test.assertTrue(!!chrome.userScripts);
-        chrome.test.assertTrue(!!chrome.userScripts.register);
-        chrome.test.assertTrue(!!chrome.userScripts.getScripts);
-
-        // ... And, just as importantly, should be usable. (We don't need to
-        // check the whole implementation here -- just verifying the API calls
-        // don't throw is sufficient.)
-        const script =
-            {
-              id: 'script',
-              matches: ['*://*/*'],
-              js: [{file: 'script.js'}]
-            };
-        await chrome.userScripts.register([script]);
-        const registered = await chrome.userScripts.getScripts();
-        chrome.test.assertEq(1, registered.length);
-        chrome.test.assertEq('script', registered[0].id);
+        chrome.test.assertTrue(!!chrome.debugger);
+        chrome.test.assertTrue(!!chrome.debugger.getTargets);
       } else {
-        const expectedError =
-            `The 'userScripts' API is only available for users ` +
-            'in developer mode.';
-        // Trying to access the API should throw an error outside of developer
-        // mode.
-        const functionThatThrows = function() {
-          chrome.userScripts;
+        var expectedError = 'The \'debugger\' API is only '
+                          + 'available for users in developer mode.';
+        var functionThatThrows = function() {
+          chrome.debugger;
         };
         chrome.test.assertThrows(functionThatThrows, [], expectedError);
       }

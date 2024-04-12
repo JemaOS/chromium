@@ -5,11 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_ARC_INPUT_OVERLAY_UI_EDIT_FINISH_VIEW_H_
 #define CHROME_BROWSER_ASH_ARC_INPUT_OVERLAY_UI_EDIT_FINISH_VIEW_H_
 
-#include <memory>
-
 #include "base/memory/raw_ptr.h"
-#include "chrome/browser/ash/arc/input_overlay/ui/reposition_controller.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/events/event.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/views/view.h"
@@ -37,8 +33,6 @@ class DisplayOverlayController;
 // |        Cancel        |
 // +----------------------+
 class EditFinishView : public views::View {
-  METADATA_HEADER(EditFinishView, views::View)
-
  public:
   static EditFinishView* BuildView(
       DisplayOverlayController* display_overlay_controller,
@@ -50,13 +44,7 @@ class EditFinishView : public views::View {
   EditFinishView& operator=(const EditFinishView&) = delete;
   ~EditFinishView() override;
 
-  // Callbacks related to reposition operations.
-  void OnMouseDragEndCallback();
-  void OnGestureDragEndCallback();
-  void OnKeyReleasedCallback();
-
   // views::View:
-  void AddedToWidget() override;
   bool OnMousePressed(const ui::MouseEvent& event) override;
   bool OnMouseDragged(const ui::MouseEvent& event) override;
   void OnMouseReleased(const ui::MouseEvent& event) override;
@@ -77,18 +65,26 @@ class EditFinishView : public views::View {
   // Focus ring specs.
   void SetFocusRing();
 
+  // Drag operations.
+  void OnDragStart(const ui::LocatedEvent& event);
+  void OnDragUpdate(const ui::LocatedEvent& event);
+  void OnDragEnd();
+
   void SetCursor(ui::mojom::CursorType cursor_type);
-
-  void SetRepositionController();
-
-  std::unique_ptr<RepositionController> reposition_controller_;
 
   raw_ptr<ChildButton> reset_button_ = nullptr;
   raw_ptr<ChildButton> save_button_ = nullptr;
   raw_ptr<ChildButton> cancel_button_ = nullptr;
 
-  // DisplayOverlayController owns `this` class, no need to deallocate.
+  // DisplayOverlayController owns |this| class, no need to deallocate.
   const raw_ptr<DisplayOverlayController> display_overlay_controller_ = nullptr;
+
+  // LocatedEvent's position when drag starts.
+  gfx::Point start_drag_event_pos_;
+  // This view's position when drag starts.
+  gfx::Point start_drag_view_pos_;
+  // If this view is in a dragging state.
+  bool is_dragging_ = false;
 };
 
 }  // namespace arc::input_overlay

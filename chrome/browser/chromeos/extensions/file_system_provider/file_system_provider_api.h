@@ -206,18 +206,6 @@ class FileSystemProviderInternalReadFileRequestedSuccessFunction
   ResponseAction Run() override;
 };
 
-class FileSystemProviderInternalOpenFileRequestedSuccessFunction
-    : public FileSystemProviderInternal {
- public:
-  DECLARE_EXTENSION_FUNCTION(
-      "fileSystemProviderInternal.openFileRequestedSuccess",
-      FILESYSTEMPROVIDERINTERNAL_OPENFILEREQUESTEDSUCCESS)
-
- protected:
-  ~FileSystemProviderInternalOpenFileRequestedSuccessFunction() override {}
-  ResponseAction Run() override;
-};
-
 class FileSystemProviderInternalOperationRequestedSuccessFunction
     : public FileSystemProviderInternal {
  public:

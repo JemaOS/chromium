@@ -25,7 +25,6 @@
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "extensions/common/constants.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/features/feature.h"
 #include "net/base/file_stream.h"
 #include "net/base/io_buffer.h"
@@ -45,10 +44,9 @@ const size_t kMessageHeaderSize = 4;
 // Size of the buffer to be allocated for each read.
 const size_t kReadBufferSize = 4096;
 
-base::FilePath GetProfilePathIfEnabled(
-    Profile* profile,
-    const extensions::ExtensionId& extension_id,
-    const std::string& host_id) {
+base::FilePath GetProfilePathIfEnabled(Profile* profile,
+                                       const std::string& extension_id,
+                                       const std::string& host_id) {
   return extensions::ExtensionSupportsConnectionFromNativeApp(
              extension_id, host_id, profile, /* log_errors = */ false)
              ? profile->GetPath()
@@ -60,7 +58,7 @@ base::FilePath GetProfilePathIfEnabled(
 namespace extensions {
 
 NativeMessageProcessHost::NativeMessageProcessHost(
-    const ExtensionId& source_extension_id,
+    const std::string& source_extension_id,
     const std::string& native_host_name,
     std::unique_ptr<NativeProcessLauncher> launcher)
     : client_(nullptr),
@@ -99,7 +97,7 @@ NativeMessageProcessHost::~NativeMessageProcessHost() {
 std::unique_ptr<NativeMessageHost> NativeMessageHost::Create(
     content::BrowserContext* browser_context,
     gfx::NativeView native_view,
-    const ExtensionId& source_extension_id,
+    const std::string& source_extension_id,
     const std::string& native_host_name,
     bool allow_user_level,
     std::string* error_message) {
@@ -110,13 +108,12 @@ std::unique_ptr<NativeMessageHost> NativeMessageHost::Create(
           GetProfilePathIfEnabled(Profile::FromBrowserContext(browser_context),
                                   source_extension_id, native_host_name),
           /* require_native_initiated_connections = */ false,
-          /* connect_id = */ "", /* error_arg = */ "",
-          Profile::FromBrowserContext(browser_context)));
+          /* connect_id = */ "", /* error_arg = */ ""));
 }
 
 // static
 std::unique_ptr<NativeMessageHost> NativeMessageProcessHost::CreateWithLauncher(
-    const ExtensionId& source_extension_id,
+    const std::string& source_extension_id,
     const std::string& native_host_name,
     std::unique_ptr<NativeProcessLauncher> launcher) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
@@ -250,7 +247,7 @@ void NativeMessageProcessHost::DoRead() {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   while (!closed_ && !read_pending_) {
-    read_buffer_ = base::MakeRefCounted<net::IOBufferWithSize>(kReadBufferSize);
+    read_buffer_ = base::MakeRefCounted<net::IOBuffer>(kReadBufferSize);
     int result =
         read_stream_->Read(read_buffer_.get(), kReadBufferSize,
                            base::BindOnce(&NativeMessageProcessHost::OnRead,

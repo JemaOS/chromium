@@ -34,6 +34,7 @@ class BaseState : public WindowState::State {
       WindowState* window_state,
       const WMEvent* event);
 
+  static void CenterWindow(WindowState* window_state);
   static void CycleSnap(WindowState* window_state, WMEventType event);
 
   // Handles workspace related events, such as DISPLAY_BOUNDS_CHANGED.
@@ -57,6 +58,11 @@ class BaseState : public WindowState::State {
   void UpdateMinimizedState(WindowState* window_state,
                             chromeos::WindowStateType previous_state_type);
 
+  // Returns the window bounds for snapped window state.
+  gfx::Rect GetSnappedWindowBoundsInParent(
+      aura::Window* window,
+      const chromeos::WindowStateType state_type);
+
   // Returns the window bounds for snapped window state for given `snap_ratio`.
   // Note that even when `snap_ratio` is provided, it might get ignored to meet
   // the window's minimum size requirement.
@@ -69,10 +75,8 @@ class BaseState : public WindowState::State {
   // split screen and if so, SplitViewController will start observe this window.
   // This needs to be done before the window's state and bounds change to its
   // snapped window state and bounds to make sure split screen can be properly
-  // set up. `snap_action_source` specifies the source for this snap event.
-  void HandleWindowSnapping(WindowState* window_state,
-                            WMEventType event_type,
-                            WindowSnapActionSource snap_action_source);
+  // set up.
+  void HandleWindowSnapping(WindowState* window_state, WMEventType event_type);
 
   // The current type of the window.
   chromeos::WindowStateType state_type_;

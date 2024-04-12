@@ -11,20 +11,22 @@ namespace blink {
 
 class CSSSyntaxStringParserTest : public testing::Test {
  public:
-  std::optional<CSSSyntaxComponent> ParseSingleComponent(const String& syntax) {
+  absl::optional<CSSSyntaxComponent> ParseSingleComponent(
+      const String& syntax) {
     auto definition = CSSSyntaxStringParser(syntax).Parse();
     if (!definition) {
-      return std::nullopt;
+      return absl::nullopt;
     }
     if (definition->Components().size() != 1) {
-      return std::nullopt;
+      return absl::nullopt;
     }
     return definition->Components()[0];
   }
 
-  std::optional<CSSSyntaxType> ParseSingleType(const String& syntax) {
+  absl::optional<CSSSyntaxType> ParseSingleType(const String& syntax) {
     auto component = ParseSingleComponent(syntax);
-    return component ? std::make_optional(component->GetType()) : std::nullopt;
+    return component ? absl::make_optional(component->GetType())
+                     : absl::nullopt;
   }
 
   String ParseSingleIdent(const String& syntax) {

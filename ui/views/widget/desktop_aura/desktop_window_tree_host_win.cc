@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/containers/flat_set.h"
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/scoped_refptr.h"
@@ -25,6 +26,7 @@
 #include "ui/base/cursor/cursor.h"
 #include "ui/base/cursor/platform_cursor.h"
 #include "ui/base/ime/input_method.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/base/win/event_creation_utils.h"
 #include "ui/base/win/win_cursor.h"
 #include "ui/compositor/compositor.h"
@@ -41,6 +43,7 @@
 #include "ui/gfx/native_widget_types.h"
 #include "ui/gfx/path_win.h"
 #include "ui/views/corewm/tooltip_aura.h"
+#include "ui/views/views_features.h"
 #include "ui/views/views_switches.h"
 #include "ui/views/widget/desktop_aura/desktop_drag_drop_client_win.h"
 #include "ui/views/widget/desktop_aura/desktop_native_cursor_manager.h"
@@ -122,7 +125,10 @@ bool DesktopWindowTreeHostWin::is_cursor_visible_ = true;
 DesktopWindowTreeHostWin::DesktopWindowTreeHostWin(
     internal::NativeWidgetDelegate* native_widget_delegate,
     DesktopNativeWidgetAura* desktop_native_widget_aura)
-    : native_widget_delegate_(native_widget_delegate->AsWidget()->GetWeakPtr()),
+    : message_handler_(new HWNDMessageHandler(
+          this,
+          native_widget_delegate->AsWidget()->GetName())),
+      native_widget_delegate_(native_widget_delegate->AsWidget()->GetWeakPtr()),
       desktop_native_widget_aura_(desktop_native_widget_aura),
       drag_drop_client_(nullptr),
       should_animate_window_close_(false),
@@ -169,10 +175,6 @@ void DesktopWindowTreeHostWin::Init(const Widget::InitParams& params) {
       !params.remove_standard_frame)
     content_window()->SetProperty(aura::client::kAnimationsDisabledKey, true);
 
-  message_handler_ = HWNDMessageHandler::Create(
-      this, native_widget_delegate_->AsWidget()->GetName(),
-      params.ShouldInitAsHeadless());
-
   ConfigureWindowStyles(message_handler_.get(), params,
                         GetWidget()->widget_delegate(),
                         native_widget_delegate_.get());
@@ -188,17 +190,17 @@ void DesktopWindowTreeHostWin::Init(const Widget::InitParams& params) {
   // We don't have an HWND yet, so scale relative to the nearest screen.
   gfx::Rect pixel_bounds =
       display::win::ScreenWin::DIPToScreenRect(nullptr, params.bounds);
-  message_handler_->Init(parent_hwnd, pixel_bounds);
+  message_handler_->Init(parent_hwnd, pixel_bounds, params.headless_mode);
   CreateCompositor(params.force_software_compositing);
   OnAcceleratedWidgetAvailable();
   InitHost();
   window()->Show();
 
-  // Stack immediately above its parent so that it does not cover other
-  // root-level windows, with the exception of menus, to allow them to be
-  // displayed on top of other windows.
-  if (params.parent && params.type != views::Widget::InitParams::TYPE_MENU) {
-    StackAbove(params.parent);
+  if (base::FeatureList::IsEnabled(views::features::kWidgetLayering)) {
+    // Stack immedately above its parent so that it does not cover other
+    // root-level windows.
+    if (params.parent)
+      StackAbove(params.parent);
   }
 }
 
@@ -386,10 +388,6 @@ void DesktopWindowTreeHostWin::SetShape(
   message_handler_->SetRegion(gfx::CreateHRGNFromSkRegion(shape));
 }
 
-void DesktopWindowTreeHostWin::SetParent(gfx::AcceleratedWidget parent) {
-  message_handler_->SetParentOrOwner(parent);
-}
-
 void DesktopWindowTreeHostWin::Activate() {
   message_handler_->Activate();
 }
@@ -528,7 +526,7 @@ DesktopWindowTreeHostWin::CreateNonClientFrameView() {
 }
 
 bool DesktopWindowTreeHostWin::ShouldUseNativeFrame() const {
-  return true;
+  return IsTranslucentWindowOpacitySupported();
 }
 
 bool DesktopWindowTreeHostWin::ShouldWindowContentsBeTransparent() const {
@@ -592,6 +590,10 @@ void DesktopWindowTreeHostWin::FlashFrame(bool flash_frame) {
 
 bool DesktopWindowTreeHostWin::IsAnimatingClosed() const {
   return pending_close_;
+}
+
+bool DesktopWindowTreeHostWin::IsTranslucentWindowOpacitySupported() const {
+  return true;
 }
 
 void DesktopWindowTreeHostWin::SizeConstraintsChanged() {
@@ -701,7 +703,7 @@ void DesktopWindowTreeHostWin::ReleaseCapture() {
 }
 
 bool DesktopWindowTreeHostWin::CaptureSystemKeyEventsImpl(
-    std::optional<base::flat_set<ui::DomCode>> dom_codes) {
+    absl::optional<base::flat_set<ui::DomCode>> dom_codes) {
   // Only one KeyboardHook should be active at a time, otherwise there will be
   // problems with event routing (i.e. which Hook takes precedence) and
   // destruction ordering.
@@ -990,10 +992,6 @@ void DesktopWindowTreeHostWin::HandleEndWMSizeMove() {
 }
 
 void DesktopWindowTreeHostWin::HandleMove() {
-  // Adding/removing a monitor, or changing the primary monitor can cause a
-  // WM_MOVE message before `OnDisplayChanged()`. Without this call, we would
-  // DCHECK due to stale `DisplayInfo`s. See https:://crbug.com/1413940.
-  display::win::ScreenWin::UpdateDisplayInfosIfNeeded();
   CheckForMonitorChange();
   OnHostMovedInPixels();
 }
@@ -1030,6 +1028,8 @@ void DesktopWindowTreeHostWin::HandleClientSizeChanged(
 }
 
 void DesktopWindowTreeHostWin::HandleFrameChanged() {
+  CheckForMonitorChange();
+  desktop_native_widget_aura_->UpdateWindowTransparency();
   // Replace the frame and layout the contents.
   if (GetWidget()->non_client_view())
     GetWidget()->non_client_view()->UpdateFrame();
@@ -1254,7 +1254,7 @@ bool DesktopWindowTreeHostWin::IsModalWindowActive() const {
   if (!dispatcher())
     return false;
 
-  const auto is_active = [](const aura::Window* child) {
+  const auto is_active = [](const auto* child) {
     return child->GetProperty(aura::client::kModalKey) != ui::MODAL_TYPE_NONE &&
            child->TargetVisibility();
   };

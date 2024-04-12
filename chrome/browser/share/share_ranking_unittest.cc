@@ -54,7 +54,7 @@ class ShareRankingTest : public testing::Test {
     });
   }
 
-  std::optional<ShareRanking::Ranking> RankSync(
+  absl::optional<ShareRanking::Ranking> RankSync(
       ShareHistory* history,
       const std::vector<std::string>& available,
       const std::string& type = "type",
@@ -62,9 +62,9 @@ class ShareRankingTest : public testing::Test {
       int length = 4,
       bool persist = true) {
     base::RunLoop loop;
-    std::optional<ShareRanking::Ranking> ranking;
-    auto callback =
-        base::BindLambdaForTesting([&](std::optional<ShareRanking::Ranking> r) {
+    absl::optional<ShareRanking::Ranking> ranking;
+    auto callback = base::BindLambdaForTesting(
+        [&](absl::optional<ShareRanking::Ranking> r) {
           ranking = r;
           loop.Quit();
         });

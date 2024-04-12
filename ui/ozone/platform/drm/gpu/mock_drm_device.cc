@@ -17,6 +17,23 @@
 #include "ui/ozone/platform/drm/gpu/hardware_display_plane_manager_atomic.h"
 #include "ui/ozone/platform/drm/gpu/hardware_display_plane_manager_legacy.h"
 
+// Private types defined in libdrm. Define them here so we can peek at the
+// commit and ensure the expected state has been set correctly.
+struct drmModeAtomicReqItem {
+  uint32_t object_id;
+  uint32_t property_id;
+  uint64_t value;
+  uint32_t cursor;
+};
+
+typedef drmModeAtomicReqItem* drmModeAtomicReqItemPtr;
+
+struct _drmModeAtomicReq {
+  uint32_t cursor;
+  uint32_t size_items;
+  drmModeAtomicReqItemPtr items;
+};
+
 namespace ui {
 
 namespace {
@@ -32,9 +49,6 @@ constexpr uint32_t kCommitModesetFlags = DRM_MODE_ATOMIC_ALLOW_MODESET;
 constexpr uint32_t kSeamlessModesetFlags = 0;
 
 const std::vector<uint32_t> kBlobProperyIds = {kEdidBlobPropId};
-
-const ResolutionAndRefreshRate kStandardMode =
-    ResolutionAndRefreshRate{gfx::Size(1920, 1080), 60u};
 
 const std::map<uint32_t, std::string> kCrtcRequiredPropertyNames = {
     {kActivePropId, "ACTIVE"},
@@ -74,6 +88,10 @@ const std::map<uint32_t, std::string> kPlaneRequiredPropertyNames = {
     {kTypePropId, "type"},
     {kInFormatsPropId, "IN_FORMATS"},
     {kRotationPropId, "rotation"},
+};
+
+const std::map<uint32_t, std::string> kPlaneOptionalPropertyNames = {
+    {kPlaneCtmId, "PLANE_CTM"},
 };
 
 template <class T>
@@ -153,13 +171,13 @@ uint32_t MockDrmDevice::PlaneProperties::type() const {
   return prop.value()->value;
 }
 
-std::optional<const DrmDevice::Property*>
+absl::optional<const DrmDevice::Property*>
 MockDrmDevice::PlaneProperties::GetProp(uint32_t prop_id) const {
   for (const auto& prop : properties) {
     if (prop.id == prop_id)
       return {&prop};
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void MockDrmDevice::PlaneProperties::SetProp(uint32_t prop_id, uint32_t value) {
@@ -193,6 +211,8 @@ MockDrmDevice::MockDrmState::CreateStateWithAllProperties() {
 
   // Separately add optional properties that will be used in some tests, but the
   // tests will append the property to the planes on a case-by-case basis.
+  state.property_names.insert(kPlaneOptionalPropertyNames.begin(),
+                              kPlaneOptionalPropertyNames.end());
   state.property_names.insert(kCrtcOptionalPropertyNames.begin(),
                               kCrtcOptionalPropertyNames.end());
 
@@ -207,15 +227,7 @@ MockDrmDevice::MockDrmState::CreateStateWithDefaultObjects(
   MockDrmState state = CreateStateWithAllProperties();
   std::vector<uint32_t> crtc_ids;
   for (size_t i = 0; i < crtc_count; ++i) {
-    const auto& props = state.AddCrtcAndConnector();
-
-    // Add at least one mode, so the connector is not sterile.
-    ConnectorProperties& connector = props.second;
-    connector.connection = true;
-    connector.modes = std::vector<ResolutionAndRefreshRate>{kStandardMode};
-
-    // Add CRTC planes.
-    CrtcProperties& crtc = props.first;
+    const auto& crtc = state.AddCrtcAndConnector().first;
     crtc_ids.push_back(crtc.id);
 
     state.AddPlane(crtc.id, DRM_PLANE_TYPE_PRIMARY);
@@ -237,7 +249,6 @@ MockDrmDevice::MockDrmState::AddConnector() {
   uint32_t next_connector_id =
       GetNextId(connector_properties, kConnectorIdBase);
   auto& connector_property = connector_properties.emplace_back();
-  connector_property.connection = false;
   connector_property.id = next_connector_id;
   for (const auto& pair : kConnectorRequiredPropertyNames) {
     connector_property.properties.push_back({.id = pair.first, .value = 0});
@@ -249,7 +260,7 @@ MockDrmDevice::MockDrmState::AddConnector() {
 }
 
 MockDrmDevice::EncoderProperties& MockDrmDevice::MockDrmState::AddEncoder() {
-  uint32_t next_encoder_id = GetNextId(encoder_properties, kEncoderIdBase);
+  uint32_t next_encoder_id = GetNextId(crtc_properties, kEncoderIdBase);
   auto& encoder_property = encoder_properties.emplace_back();
   encoder_property.id = next_encoder_id;
 
@@ -378,28 +389,10 @@ bool MockDrmDevice::InitializeStateWithResult(MockDrmState& state,
   }
   SetCapability(DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
 
-  UpdateConnectors(state);
+  MaybeSetEdidBlobsForConnectors(state);
   UpdateStateBesidesPlaneManager(state);
 
   return plane_manager_->Initialize();
-}
-
-void MockDrmDevice::UpdateConnectors(MockDrmState& state) {
-  UpdateConnectorsLinkStatus(state);
-  MaybeSetEdidBlobsForConnectors(state);
-}
-
-void MockDrmDevice::UpdateConnectorsLinkStatus(MockDrmState& state) {
-  for (MockDrmDevice::ConnectorProperties& connector :
-       state.connector_properties) {
-    if (connector.connection && connector.modes.empty()) {
-      DrmWrapper::Property* connector_link_status =
-          FindObjectById(kLinkStatusPropId, connector.properties);
-      if (connector_link_status) {
-        connector_link_status->value = DRM_MODE_LINK_STATUS_BAD;
-      }
-    }
-  }
 }
 
 void MockDrmDevice::MaybeSetEdidBlobsForConnectors(MockDrmState& state) {
@@ -757,33 +750,30 @@ bool MockDrmDevice::CreateDumbBuffer(const SkImageInfo& info,
   if (!create_dumb_buffer_expectation_)
     return false;
 
-  // |handle| should start from 1. 0 is considered an invalid handle.
-  *handle = ++allocate_buffer_count_;
+  *handle = allocate_buffer_count_++;
   *stride = info.minRowBytes();
   void* pixels = new char[info.computeByteSize(*stride)];
   SkSurfaceProps props = skia::LegacyDisplayGlobals::GetSkSurfaceProps();
-  buffers_[*handle] = SkSurfaces::WrapPixels(
+  buffers_.push_back(SkSurface::MakeRasterDirectReleaseProc(
       info, pixels, *stride,
       [](void* pixels, void* context) { delete[] static_cast<char*>(pixels); },
-      /*context=*/nullptr, &props);
+      /*context=*/nullptr, &props));
   buffers_[*handle]->getCanvas()->clear(SK_ColorBLACK);
 
   return true;
 }
 
 bool MockDrmDevice::DestroyDumbBuffer(uint32_t handle) {
-  if (handle > buffers_.size() || !buffers_[handle]) {
+  if (handle >= buffers_.size() || !buffers_[handle])
     return false;
-  }
 
   buffers_[handle].reset();
   return true;
 }
 
 bool MockDrmDevice::MapDumbBuffer(uint32_t handle, size_t size, void** pixels) {
-  if (handle > buffers_.size() || !buffers_[handle]) {
+  if (handle >= buffers_.size() || !buffers_[handle])
     return false;
-  }
 
   SkPixmap pixmap;
   buffers_[handle]->peekPixels(&pixmap);
@@ -877,17 +867,18 @@ bool MockDrmDevice::CommitProperties(
   return true;
 }
 
-bool MockDrmDevice::SetGammaRamp(uint32_t crtc_id,
-                                 const display::GammaCurve& curve) {
+bool MockDrmDevice::SetGammaRamp(
+    uint32_t crtc_id,
+    const std::vector<display::GammaRampRGBEntry>& lut) {
   set_gamma_ramp_count_++;
   return legacy_gamma_ramp_expectation_;
 }
 
-std::optional<std::string> MockDrmDevice::GetDriverName() const {
+absl::optional<std::string> MockDrmDevice::GetDriverName() const {
   return driver_name_;
 }
 
-void MockDrmDevice::SetDriverName(std::optional<std::string> name) {
+void MockDrmDevice::SetDriverName(absl::optional<std::string> name) {
   driver_name_ = name;
 }
 

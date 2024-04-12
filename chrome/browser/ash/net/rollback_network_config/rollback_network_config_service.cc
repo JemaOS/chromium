@@ -44,10 +44,9 @@ void BindToInProcessInstance(
   GetInstance()->BindReceiver(std::move(receiver));
 }
 
-RollbackNetworkConfig* OverrideInProcessInstanceForTesting(
+void OverrideInProcessInstanceForTesting(
     std::unique_ptr<RollbackNetworkConfig> instance) {
   g_rollback_network_config_instance = instance.release();
-  return g_rollback_network_config_instance;
 }
 
 }  // namespace rollback_network_config

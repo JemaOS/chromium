@@ -29,7 +29,8 @@ namespace base {
 class FilePath;
 }  // namespace base
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 class Queue;
 class OperationRequestManager;
@@ -100,9 +101,6 @@ class ThrottledFileSystem : public ProvidedFileSystemInterface {
       int64_t offset,
       int length,
       storage::AsyncFileUtil::StatusCallback callback) override;
-  AbortCallback FlushFile(
-      int file_handle,
-      storage::AsyncFileUtil::StatusCallback callback) override;
   AbortCallback AddWatcher(const GURL& origin,
                            const base::FilePath& entry_path,
                            bool recursive,
@@ -128,7 +126,6 @@ class ThrottledFileSystem : public ProvidedFileSystemInterface {
               storage::AsyncFileUtil::StatusCallback callback) override;
   void Configure(storage::AsyncFileUtil::StatusCallback callback) override;
   base::WeakPtr<ProvidedFileSystemInterface> GetWeakPtr() override;
-  std::unique_ptr<ScopedUserInteraction> StartUserInteraction() override;
 
  private:
   // Called when an operation enqueued with |queue_token| is aborted.
@@ -154,6 +151,7 @@ class ThrottledFileSystem : public ProvidedFileSystemInterface {
   base::WeakPtrFactory<ThrottledFileSystem> weak_ptr_factory_{this};
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_THROTTLED_FILE_SYSTEM_H_

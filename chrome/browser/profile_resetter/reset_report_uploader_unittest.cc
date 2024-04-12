@@ -21,7 +21,8 @@ class ResetReportUploaderTest : public testing::Test {
  public:
   ResetReportUploaderTest()
       : test_shared_loader_factory_(
-            test_url_loader_factory_.GetSafeWeakWrapper()) {}
+            base::MakeRefCounted<network::WeakWrapperSharedURLLoaderFactory>(
+                &test_url_loader_factory_)) {}
 
  protected:
   scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory() {

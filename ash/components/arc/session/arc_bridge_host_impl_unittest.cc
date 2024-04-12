@@ -77,7 +77,7 @@ class ScopedPendingReceiver {
 
  private:
   mojo::PendingReceiver<T> pending_receiver_;
-  const raw_ptr<const ArcBridgeHostImpl> arc_bridge_host_impl_;
+  const raw_ptr<const ArcBridgeHostImpl, ExperimentalAsh> arc_bridge_host_impl_;
 };
 
 // Test that the test fixture class, especially its ArcBridgeHostImpl variable,
@@ -108,26 +108,12 @@ TEST_F(ArcBridgeHostImplTest, TestOnInstanceReady) {
     EXPECT_EQ(count_before + 1, count_after);                                 \
   }
 
-#define MAKE_INSTANCE_READY_WITH_NAMESPACE(name_space, name)                 \
-  ScopedPendingReceiver<name_space::name##Instance> pending_receiver_##name( \
-      impl);                                                                 \
-  {                                                                          \
-    SCOPED_TRACE(#name_space "::" #name "Instance");                         \
-    mojo::PendingRemote<name_space::name##Instance> remote =                 \
-        pending_receiver_##name.get().InitWithNewPipeAndPassRemote();        \
-    const size_t count_before = impl->GetNumMojoChannelsForTesting();        \
-    proxy->On##name##InstanceReady(std::move(remote));                       \
-    base::RunLoop().RunUntilIdle();                                          \
-    const size_t count_after = impl->GetNumMojoChannelsForTesting();         \
-    EXPECT_EQ(count_before + 1, count_after);                                \
-  }
-
-#define MAKE_INSTANCE_READY_PREFIX_NAMESPACE(name_space, name)        \
-  ScopedPendingReceiver<name_space::mojom::name##Instance>            \
+#define MAKE_INSTANCE_READY_WITH_NAMESPACE(name_space, name)          \
+  ScopedPendingReceiver<mojom::name_space::name##Instance>            \
       pending_receiver_##name(impl);                                  \
   {                                                                   \
-    SCOPED_TRACE("mojom::" #name "Instance");                         \
-    mojo::PendingRemote<name_space::mojom::name##Instance> remote =   \
+    SCOPED_TRACE("mojom::" #name_space "::" #name "Instance");        \
+    mojo::PendingRemote<mojom::name_space::name##Instance> remote =   \
         pending_receiver_##name.get().InitWithNewPipeAndPassRemote(); \
     const size_t count_before = impl->GetNumMojoChannelsForTesting(); \
     proxy->On##name##InstanceReady(std::move(remote));                \
@@ -136,7 +122,7 @@ TEST_F(ArcBridgeHostImplTest, TestOnInstanceReady) {
     EXPECT_EQ(count_before + 1, count_after);                         \
   }
 
-    MAKE_INSTANCE_READY_PREFIX_NAMESPACE(ax::android, AccessibilityHelper);
+    MAKE_INSTANCE_READY(AccessibilityHelper);
     MAKE_INSTANCE_READY(AdbdMonitor);
     MAKE_INSTANCE_READY(App);
     MAKE_INSTANCE_READY(AppPermissions);
@@ -159,8 +145,9 @@ TEST_F(ArcBridgeHostImplTest, TestOnInstanceReady) {
     MAKE_INSTANCE_READY(InputMethodManager);
     MAKE_INSTANCE_READY(IntentHelper);
     MAKE_INSTANCE_READY(Keymaster);
-    MAKE_INSTANCE_READY_WITH_NAMESPACE(mojom::keymint, KeyMint);
+    MAKE_INSTANCE_READY_WITH_NAMESPACE(keymint, KeyMint);
     MAKE_INSTANCE_READY(Kiosk);
+    MAKE_INSTANCE_READY(LockScreen);
     MAKE_INSTANCE_READY(MediaSession);
     MAKE_INSTANCE_READY(Metrics);
     MAKE_INSTANCE_READY(Midis);
@@ -171,13 +158,14 @@ TEST_F(ArcBridgeHostImplTest, TestOnInstanceReady) {
     // instance is forwarded to ash, we need a completely different test.
     MAKE_INSTANCE_READY(ObbMounter);
     MAKE_INSTANCE_READY(OemCrypto);
-    MAKE_INSTANCE_READY_WITH_NAMESPACE(chromeos::payments::mojom, PaymentApp);
+    MAKE_INSTANCE_READY(PaymentApp);
     MAKE_INSTANCE_READY(Pip);
     MAKE_INSTANCE_READY(Policy);
     MAKE_INSTANCE_READY(Power);
     MAKE_INSTANCE_READY(PrintSpooler);
     MAKE_INSTANCE_READY(Process);
     MAKE_INSTANCE_READY(Property);
+    MAKE_INSTANCE_READY(RotationLock);
     MAKE_INSTANCE_READY(ScreenCapture);
     MAKE_INSTANCE_READY(Sharesheet);
     MAKE_INSTANCE_READY(StorageManager);
@@ -191,7 +179,6 @@ TEST_F(ArcBridgeHostImplTest, TestOnInstanceReady) {
     MAKE_INSTANCE_READY(Wallpaper);
 
 #undef MAKE_INSTANCE_READY
-#undef MAKE_INSTANCE_READY_PREFIX_NAMESPACE
     EXPECT_LT(0u, impl->GetNumMojoChannelsForTesting());
   }
   // After all ScopedPendingReceiver<T> objects are destructed, the number of

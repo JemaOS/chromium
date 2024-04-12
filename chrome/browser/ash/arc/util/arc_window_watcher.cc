@@ -96,8 +96,8 @@ class Tracker : public aura::WindowObserver {
   }
 
  private:
-  raw_ptr<aura::Window> window_;
-  raw_ptr<aura::Window> arc_window_ =
+  raw_ptr<aura::Window, ExperimentalAsh> window_;
+  raw_ptr<aura::Window, ExperimentalAsh> arc_window_ =
       nullptr;  // set to window_ when we know it is ARC.
   bool display_reported_ = false;
 };
@@ -115,19 +115,11 @@ ArcWindowWatcher::ArcWindowWatcher() {
 
 ArcWindowWatcher::~ArcWindowWatcher() {
   DCHECK(instance_ == this);
-  // Stop observing Env, to ensure no new trackers are created.
+  // Make sure no new trackers are created.
   aura::Env::GetInstance()->RemoveObserver(this);
 
   // Then remove all existing trackers in one shot.
   trackers_.clear();
-
-  // Tell observers, so they have a chance to un-subscribe.
-  for (auto& observer : arc_window_display_observers_) {
-    observer.OnWillDestroyWatcher();
-  }
-  for (auto& observer : arc_window_count_observers_) {
-    observer.OnWillDestroyWatcher();
-  }
 
   instance_ = nullptr;
 }

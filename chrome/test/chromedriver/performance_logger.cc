@@ -13,6 +13,7 @@
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/values.h"
+#include "chrome/test/chromedriver/chrome/browser_info.h"
 #include "chrome/test/chromedriver/chrome/chrome.h"
 #include "chrome/test/chromedriver/chrome/devtools_client.h"
 #include "chrome/test/chromedriver/chrome/devtools_client_impl.h"
@@ -175,6 +176,10 @@ Status PerformanceLogger::EnableInspectorDomains(DevToolsClient* client) {
   if (IsEnabled(prefs_.network)) {
     enable_commands.push_back("Network.enable");
   }
+  if (IsEnabled(prefs_.page) && (client->GetOwner() == nullptr ||
+                                 !client->GetOwner()->IsServiceWorker())) {
+    enable_commands.push_back("Page.enable");
+  }
   for (const auto& enable_command : enable_commands) {
     base::Value::Dict params;  // All the enable commands have empty params.
     Status status = client->SendCommand(enable_command, params);
@@ -217,7 +222,8 @@ Status PerformanceLogger::HandleTraceEvents(DevToolsClient* client,
   } else if (method == "Tracing.bufferUsage") {
     // 'value' will be between 0-1 and represents how full the DevTools trace
     // buffer is. If the buffer is full, warn the user.
-    std::optional<double> maybe_buffer_usage = params.FindDouble("percentFull");
+    absl::optional<double> maybe_buffer_usage =
+        params.FindDouble("percentFull");
     if (!maybe_buffer_usage.has_value()) {
       // Tracing.bufferUsage event will occur once per second, and it really
       // only serves as a warning, so if we can't reliably tell whether the

@@ -9,20 +9,21 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
-#include "base/strings/string_piece.h"
-#include "chrome/browser/affiliations/affiliation_service_factory.h"
+#include "base/strings/string_piece_forward.h"
 #include "chrome/browser/password_check/android/password_check_ui_status.h"
 #include "chrome/browser/password_entry_edit/android/credential_edit_bridge.h"
 #include "chrome/browser/password_manager/account_password_store_factory.h"
+#include "chrome/browser/password_manager/affiliation_service_factory.h"
 #include "chrome/browser/password_manager/bulk_leak_check_service_factory.h"
-#include "chrome/browser/password_manager/profile_password_store_factory.h"
+#include "chrome/browser/password_manager/password_store_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "components/password_manager/core/browser/leak_detection/bulk_leak_check_service.h"
-#include "components/password_manager/core/browser/leak_detection/bulk_leak_check_service_interface.h"
+#include "components/password_manager/core/browser/bulk_leak_check_service.h"
+#include "components/password_manager/core/browser/bulk_leak_check_service_interface.h"
 #include "components/password_manager/core/browser/ui/bulk_leak_check_service_adapter.h"
 #include "components/password_manager/core/browser/ui/credential_ui_entry.h"
 #include "components/password_manager/core/browser/ui/insecure_credentials_manager.h"
 #include "components/password_manager/core/browser/ui/saved_passwords_presenter.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PasswordCheckManager
     : public password_manager::SavedPasswordsPresenter::Observer,
@@ -96,9 +97,6 @@ class PasswordCheckManager
   // UI update on completion.
   void RemoveCredential(const password_manager::CredentialUIEntry& credential);
 
-  // Checks if user is signed into their account to perform the check.
-  bool HasAccountForRequest();
-
   // Not copyable or movable
   PasswordCheckManager(const PasswordCheckManager&) = delete;
   PasswordCheckManager& operator=(const PasswordCheckManager&) = delete;
@@ -153,8 +151,7 @@ class PasswordCheckManager
   };
 
   // password_manager::SavedPasswordsPresenter::Observer:
-  void OnSavedPasswordsChanged(
-      const password_manager::PasswordStoreChangeList& changes) override;
+  void OnSavedPasswordsChanged() override;
 
   // InsecureCredentialsManager::Observer
   void OnInsecureCredentialsChanged() override;
@@ -208,9 +205,8 @@ class PasswordCheckManager
   // passwords.
   password_manager::SavedPasswordsPresenter saved_passwords_presenter_{
       AffiliationServiceFactory::GetForProfile(profile_),
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile_,
-          ServiceAccessType::EXPLICIT_ACCESS),
+      PasswordStoreFactory::GetForProfile(profile_,
+                                          ServiceAccessType::EXPLICIT_ACCESS),
       AccountPasswordStoreFactory::GetForProfile(
           profile_,
           ServiceAccessType::EXPLICIT_ACCESS)};
@@ -218,9 +214,8 @@ class PasswordCheckManager
   // Used to obtain the list of insecure credentials.
   password_manager::InsecureCredentialsManager insecure_credentials_manager_{
       &saved_passwords_presenter_,
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile_,
-          ServiceAccessType::EXPLICIT_ACCESS),
+      PasswordStoreFactory::GetForProfile(profile_,
+                                          ServiceAccessType::EXPLICIT_ACCESS),
       AccountPasswordStoreFactory::GetForProfile(
           profile_,
           ServiceAccessType::EXPLICIT_ACCESS)};

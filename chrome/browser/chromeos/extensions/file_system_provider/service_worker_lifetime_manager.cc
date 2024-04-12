@@ -97,18 +97,15 @@ bool ServiceWorkerLifetimeManager::KeepaliveKey::operator<(
 
 std::string ServiceWorkerLifetimeManager::IncrementKeepalive(
     const WorkerId& worker_id) {
-  return process_manager_
-      ->IncrementServiceWorkerKeepaliveCount(
-          worker_id,
-          content::ServiceWorkerExternalRequestTimeoutType::kDoesNotTimeout,
-          extensions::Activity::Type::EVENT, /*extra_data=*/"")
-      .AsLowercaseString();
+  return process_manager_->IncrementServiceWorkerKeepaliveCount(
+      worker_id,
+      content::ServiceWorkerExternalRequestTimeoutType::kDoesNotTimeout,
+      extensions::Activity::Type::EVENT, /*extra_data=*/"");
 }
 
 void ServiceWorkerLifetimeManager::DecrementKeepalive(const KeepaliveKey& key) {
-  base::Uuid uuid = base::Uuid::ParseLowercase(key.request_uuid);
   process_manager_->DecrementServiceWorkerKeepaliveCount(
-      key.worker_id, uuid, extensions::Activity::Type::EVENT,
+      key.worker_id, key.request_uuid, extensions::Activity::Type::EVENT,
       /*extra_data=*/"");
 }
 
@@ -141,10 +138,9 @@ ServiceWorkerLifetimeManagerFactory::ServiceWorkerLifetimeManagerFactory()
 ServiceWorkerLifetimeManagerFactory::~ServiceWorkerLifetimeManagerFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-ServiceWorkerLifetimeManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ServiceWorkerLifetimeManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<ServiceWorkerLifetimeManager>(context);
+  return new ServiceWorkerLifetimeManager(context);
 }
 
 }  // namespace extensions::file_system_provider

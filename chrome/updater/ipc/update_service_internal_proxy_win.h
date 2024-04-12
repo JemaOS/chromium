@@ -5,10 +5,6 @@
 #ifndef CHROME_UPDATER_IPC_UPDATE_SERVICE_INTERNAL_PROXY_WIN_H_
 #define CHROME_UPDATER_IPC_UPDATE_SERVICE_INTERNAL_PROXY_WIN_H_
 
-#include <windows.h>
-
-#include <optional>
-
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/sequence_checker.h"
@@ -16,26 +12,23 @@
 
 namespace updater {
 
-using RpcError = HRESULT;
-
 enum class UpdaterScope;
-class UpdateServiceInternalProxyImplImpl;
+class UpdateServiceInternalProxyImpl;
 
 // All functions and callbacks must be called on the same sequence.
-class UpdateServiceInternalProxyImpl
-    : public base::RefCountedThreadSafe<UpdateServiceInternalProxyImpl> {
+class UpdateServiceInternalProxy : public UpdateServiceInternal {
  public:
-  explicit UpdateServiceInternalProxyImpl(UpdaterScope scope);
+  explicit UpdateServiceInternalProxy(UpdaterScope scope);
 
-  void Run(base::OnceCallback<void(std::optional<RpcError>)> callback);
-  void Hello(base::OnceCallback<void(std::optional<RpcError>)> callback);
+  // Overrides for UpdateServiceInternal.
+  void Run(base::OnceClosure callback) override;
+  void Hello(base::OnceClosure callback) override;
 
  private:
-  friend class base::RefCountedThreadSafe<UpdateServiceInternalProxyImpl>;
-  ~UpdateServiceInternalProxyImpl();
+  ~UpdateServiceInternalProxy() override;
 
   SEQUENCE_CHECKER(sequence_checker_);
-  scoped_refptr<UpdateServiceInternalProxyImplImpl> impl_;
+  scoped_refptr<UpdateServiceInternalProxyImpl> impl_;
 };
 
 }  // namespace updater

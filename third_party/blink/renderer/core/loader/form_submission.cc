@@ -32,7 +32,6 @@
 
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "third_party/blink/public/common/security_context/insecure_request_policy.h"
-#include "third_party/blink/public/mojom/frame/frame.mojom-blink.h"
 #include "third_party/blink/public/mojom/security_context/insecure_request_policy.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/capture_source_location.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -65,7 +64,7 @@ static int64_t GenerateFormDataIdentifier() {
   // Initialize to the current time to reduce the likelihood of generating
   // identifiers that overlap with those from past/future browser sessions.
   static int64_t next_identifier =
-      (base::Time::Now() - base::Time::UnixEpoch()).InMicroseconds();
+      static_cast<int64_t>(base::Time::Now().ToDoubleT() * 1000000.0);
   return ++next_identifier;
 }
 
@@ -155,7 +154,7 @@ inline FormSubmission::FormSubmission(
     const KURL& action,
     const AtomicString& target,
     const AtomicString& content_type,
-    Element* submitter,
+    HTMLFormElement* form,
     scoped_refptr<EncodedFormData> data,
     const Event* event,
     NavigationPolicy navigation_policy,
@@ -167,13 +166,13 @@ inline FormSubmission::FormSubmission(
     LocalDOMWindow* origin_window,
     const LocalFrameToken& initiator_frame_token,
     std::unique_ptr<SourceLocation> source_location,
-    mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle>
-        initiator_navigation_state_keep_alive_handle)
+    mojo::PendingRemote<mojom::blink::PolicyContainerHostKeepAliveHandle>
+        initiator_policy_container_keep_alive_handle)
     : method_(method),
       action_(action),
       target_(target),
       content_type_(content_type),
-      submitter_(submitter),
+      form_(form),
       form_data_(std::move(data)),
       navigation_policy_(navigation_policy),
       triggering_event_info_(triggering_event_info),
@@ -184,8 +183,8 @@ inline FormSubmission::FormSubmission(
       origin_window_(origin_window),
       initiator_frame_token_(initiator_frame_token),
       source_location_(std::move(source_location)),
-      initiator_navigation_state_keep_alive_handle_(
-          std::move(initiator_navigation_state_keep_alive_handle)) {}
+      initiator_policy_container_keep_alive_handle_(
+          std::move(initiator_policy_container_keep_alive_handle)) {}
 
 inline FormSubmission::FormSubmission(const String& result)
     : method_(kDialogMethod), result_(result) {}
@@ -283,6 +282,9 @@ FormSubmission* FormSubmission::Create(HTMLFormElement* form,
 
   form_data->SetIdentifier(GenerateFormDataIdentifier());
   form_data->SetContainsPasswordData(dom_form_data->ContainsPasswordData());
+  AtomicString target_or_base_target = copied_attributes.Target().empty()
+                                           ? document.BaseTarget()
+                                           : copied_attributes.Target();
 
   if (copied_attributes.Method() != FormSubmission::kPostMethod &&
       !action_url.ProtocolIsJavaScript()) {
@@ -305,9 +307,8 @@ FormSubmission* FormSubmission::Create(HTMLFormElement* form,
                                            "; boundary=" + boundary);
     }
   }
-  LocalFrame* form_local_frame = form->GetDocument().GetFrame();
   resource_request->SetHasUserGesture(
-      LocalFrame::HasTransientUserActivation(form_local_frame));
+      LocalFrame::HasTransientUserActivation(form->GetDocument().GetFrame()));
   resource_request->SetFormSubmission(true);
 
   mojom::blink::TriggeringEventInfo triggering_event_info;
@@ -324,63 +325,58 @@ FormSubmission* FormSubmission::Create(HTMLFormElement* form,
 
   FrameLoadRequest frame_request(form->GetDocument().domWindow(),
                                  *resource_request);
-  NavigationPolicy navigation_policy = NavigationPolicyFromEvent(event);
-  if (navigation_policy == kNavigationPolicyLinkPreview) {
-    return nullptr;
-  }
-  frame_request.SetNavigationPolicy(navigation_policy);
+  frame_request.SetNavigationPolicy(NavigationPolicyFromEvent(event));
   frame_request.SetClientRedirectReason(reason);
-  if (submit_button) {
-    frame_request.SetSourceElement(submit_button);
-  } else {
-    frame_request.SetSourceElement(form);
-  }
+  frame_request.SetForm(form);
   frame_request.SetTriggeringEventInfo(triggering_event_info);
-  AtomicString target_or_base_target = frame_request.CleanNavigationTarget(
-      copied_attributes.Target().empty() ? document.BaseTarget()
-                                         : copied_attributes.Target());
 
-  if (form->HasRel(HTMLFormElement::kNoReferrer)) {
+  if (RuntimeEnabledFeatures::FormRelAttributeEnabled() &&
+      form->HasRel(HTMLFormElement::kNoReferrer)) {
     frame_request.SetNoReferrer();
     frame_request.SetNoOpener();
   }
-  if (form->HasRel(HTMLFormElement::kNoOpener) ||
-      (EqualIgnoringASCIICase(target_or_base_target, "_blank") &&
-       !form->HasRel(HTMLFormElement::kOpener) &&
-       form->GetDocument()
-           .domWindow()
-           ->GetFrame()
-           ->GetSettings()
-           ->GetTargetBlankImpliesNoOpenerEnabledWillBeRemoved())) {
+  if (RuntimeEnabledFeatures::FormRelAttributeEnabled() &&
+      (form->HasRel(HTMLFormElement::kNoOpener) ||
+       (EqualIgnoringASCIICase(target_or_base_target, "_blank") &&
+        !form->HasRel(HTMLFormElement::kOpener) &&
+        form->GetDocument()
+            .domWindow()
+            ->GetFrame()
+            ->GetSettings()
+            ->GetTargetBlankImpliesNoOpenerEnabledWillBeRemoved()))) {
     frame_request.SetNoOpener();
   }
 
   Frame* target_frame =
-      form_local_frame->Tree()
+      form->GetDocument()
+          .GetFrame()
+          ->Tree()
           .FindOrCreateFrameForNavigation(frame_request, target_or_base_target)
           .frame;
 
-  // Apply replacement now, before any async steps, as the result may change.
   WebFrameLoadType load_type = WebFrameLoadType::kStandard;
   LocalFrame* target_local_frame = DynamicTo<LocalFrame>(target_frame);
   if (target_local_frame &&
-      target_local_frame->NavigationShouldReplaceCurrentHistoryEntry(
-          frame_request, load_type)) {
+      !target_local_frame->GetDocument()->LoadEventFinished() &&
+      !LocalFrame::HasTransientUserActivation(target_local_frame))
     load_type = WebFrameLoadType::kReplaceCurrentItem;
-  }
 
   return MakeGarbageCollected<FormSubmission>(
       copied_attributes.Method(), action_url, target_or_base_target,
-      encoding_type, frame_request.GetSourceElement(), std::move(form_data),
-      event, frame_request.GetNavigationPolicy(), triggering_event_info, reason,
+      encoding_type, form, std::move(form_data), event,
+      frame_request.GetNavigationPolicy(), triggering_event_info, reason,
       std::move(resource_request), target_frame, load_type,
-      form->GetDocument().domWindow(), form_local_frame->GetLocalFrameToken(),
+      form->GetDocument().domWindow(),
+      form->GetDocument().GetFrame()->GetLocalFrameToken(),
       CaptureSourceLocation(form->GetDocument().domWindow()),
-      form_local_frame->IssueKeepAliveHandle());
+      form->GetDocument()
+          .domWindow()
+          ->GetPolicyContainer()
+          ->IssueKeepAliveHandle());
 }
 
 void FormSubmission::Trace(Visitor* visitor) const {
-  visitor->Trace(submitter_);
+  visitor->Trace(form_);
   visitor->Trace(target_frame_);
   visitor->Trace(origin_window_);
 }
@@ -389,11 +385,11 @@ void FormSubmission::Navigate() {
   FrameLoadRequest frame_request(origin_window_.Get(), *resource_request_);
   frame_request.SetNavigationPolicy(navigation_policy_);
   frame_request.SetClientRedirectReason(reason_);
-  frame_request.SetSourceElement(submitter_);
+  frame_request.SetForm(form_);
   frame_request.SetTriggeringEventInfo(triggering_event_info_);
   frame_request.SetInitiatorFrameToken(initiator_frame_token_);
-  frame_request.SetInitiatorNavigationStateKeepAliveHandle(
-      std::move(initiator_navigation_state_keep_alive_handle_));
+  frame_request.SetInitiatorPolicyContainerKeepAliveHandle(
+      std::move(initiator_policy_container_keep_alive_handle_));
   frame_request.SetSourceLocation(std::move(source_location_));
 
   if (target_frame_ && !target_frame_->GetPage())

@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <atomic>
-#include <memory>
-
 #include "base/environment.h"
 #include "base/files/file.h"
+#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/thread_restrictions.h"
@@ -15,6 +13,7 @@
 #include "chrome/browser/vr/test/ui_utils.h"
 #include "chrome/browser/vr/test/webxr_vr_browser_test.h"
 
+#include <memory>
 
 namespace vr {
 
@@ -29,13 +28,9 @@ class MyXRMock : public MockXRDeviceHookBase {
     if (num_submitted_frames_ > 0)
       return;
 
-    wait_loop_ = std::make_unique<base::RunLoop>(
-        base::RunLoop::Type::kNestableTasksAllowed);
-    can_signal_wait_loop_ = true;
-
+    wait_loop_ = new base::RunLoop(base::RunLoop::Type::kNestableTasksAllowed);
     wait_loop_->Run();
-
-    can_signal_wait_loop_ = false;
+    delete wait_loop_;
     wait_loop_ = nullptr;
   }
 
@@ -43,12 +38,7 @@ class MyXRMock : public MockXRDeviceHookBase {
   unsigned int num_submitted_frames_ = 0;
 
  private:
-  std::unique_ptr<base::RunLoop> wait_loop_ = nullptr;
-
-  // Used to track both if `wait_loop_` is valid in a thread-safe manner or if
-  // it has already had quit signaled on it, since `AnyQuitCalled` won't update
-  // until the `Quit` task has posted to the main thread.
-  std::atomic_bool can_signal_wait_loop_ = false;
+  raw_ptr<base::RunLoop, DanglingUntriaged> wait_loop_ = nullptr;
 };
 
 void MyXRMock::OnFrameSubmitted(
@@ -59,9 +49,8 @@ void MyXRMock::OnFrameSubmitted(
   last_submitted_color_ = std::move(views[0]->color);
   num_submitted_frames_++;
 
-  if (can_signal_wait_loop_) {
+  if (wait_loop_) {
     wait_loop_->Quit();
-    can_signal_wait_loop_ = false;
   }
 
   std::move(callback).Run();
@@ -72,7 +61,7 @@ void MyXRMock::OnFrameSubmitted(
 void TestPresentationPixelsImpl(WebXrVrBrowserTestBase* t,
                                 std::string filename) {
   // Disable frame-timeout UI to test what WebXR renders.
-  UiUtils::DisableOverlayForTesting();
+  UiUtils::DisableFrameTimeoutForTesting();
   MyXRMock my_mock;
 
   // Load the test page, and enter presentation.

@@ -40,24 +40,22 @@ class PasswordStoreAndroidBackendDispatcherBridgeImpl
 
  private:
   // Implements PasswordStoreAndroidBackendDispatcherBridge interface.
-  void GetAllLogins(JobId job_id, std::string account) override;
-  void GetAllLoginsWithBrandingInfo(JobId job_id, std::string account) override;
-  void GetAutofillableLogins(JobId job_id, std::string account) override;
+  void GetAllLogins(JobId job_id, Account account) override;
+  void GetAutofillableLogins(JobId job_id, Account account) override;
   void GetLoginsForSignonRealm(JobId job_id,
                                const std::string& signon_realm,
-                               std::string account) override;
-  void GetAffiliatedLoginsForSignonRealm(JobId job_id,
-                                         const std::string& signon_realm,
-                                         std::string account) override;
+                               Account account) override;
   void AddLogin(JobId job_id,
                 const password_manager::PasswordForm& form,
-                std::string account) override;
+                Account account) override;
   void UpdateLogin(JobId job_id,
                    const password_manager::PasswordForm& form,
-                   std::string account) override;
+                   Account account) override;
   void RemoveLogin(JobId job_id,
                    const password_manager::PasswordForm& form,
-                   std::string account) override;
+                   Account account) override;
+
+  void ShowErrorNotification() override;
 
   // This member stores the unique ID last used for an API request.
   JobId last_job_id_{0};

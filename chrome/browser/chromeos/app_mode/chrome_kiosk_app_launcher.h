@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_CHROMEOS_APP_MODE_CHROME_KIOSK_APP_LAUNCHER_H_
 #define CHROME_BROWSER_CHROMEOS_APP_MODE_CHROME_KIOSK_APP_LAUNCHER_H_
 
-#include <string>
-
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
@@ -17,7 +15,7 @@
 #include "extensions/browser/app_window/app_window_registry.h"
 #include "extensions/common/extension.h"
 
-namespace chromeos {
+namespace ash {
 
 class ChromeKioskAppLauncher : public extensions::AppWindowRegistry::Observer {
  public:
@@ -38,7 +36,7 @@ class ChromeKioskAppLauncher : public extensions::AppWindowRegistry::Observer {
   // AppWindowRegistry::Observer:
   void OnAppWindowAdded(extensions::AppWindow* app_window) override;
 
-  // `KioskAppServiceLauncher` callback.
+  // |KioskAppServiceLauncher| callback.
   void OnAppServiceAppLaunched(bool success);
 
   void WaitForAppWindow();
@@ -73,6 +71,6 @@ class ChromeKioskAppLauncher : public extensions::AppWindowRegistry::Observer {
   base::WeakPtrFactory<ChromeKioskAppLauncher> weak_ptr_factory_{this};
 };
 
-}  // namespace chromeos
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_CHROMEOS_APP_MODE_CHROME_KIOSK_APP_LAUNCHER_H_

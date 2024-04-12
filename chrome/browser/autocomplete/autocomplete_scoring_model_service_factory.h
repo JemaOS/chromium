@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -36,7 +36,8 @@ class AutocompleteScoringModelServiceFactory
       const AutocompleteScoringModelServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<AutocompleteScoringModelServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      AutocompleteScoringModelServiceFactory>;
 
   AutocompleteScoringModelServiceFactory();
   ~AutocompleteScoringModelServiceFactory() override;

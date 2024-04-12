@@ -24,13 +24,17 @@ public class CurrentTabObserverTest {
 
     private ObservableSupplierImpl<Tab> mTabSupplier;
 
-    @Mock private Tab mTab;
+    @Mock
+    private Tab mTab;
 
-    @Mock private Tab mTab2;
+    @Mock
+    private Tab mTab2;
 
-    @Mock private TabObserver mTabObserver;
+    @Mock
+    private TabObserver mTabObserver;
 
-    @Mock private Callback<Tab> mSwapCallback;
+    @Mock
+    private Callback<Tab> mSwapCallback;
 
     @Before
     public void beforeTest() {
@@ -80,7 +84,7 @@ public class CurrentTabObserverTest {
 
         // Null swap callback for CurrentTabObserver should just work without crashing.
         mCurrentTabObserver =
-                new CurrentTabObserver(mTabSupplier, mTabObserver, /* swapCallback= */ null);
+                new CurrentTabObserver(mTabSupplier, mTabObserver, /* swapCallback=*/null);
         mTabSupplier.set(mTab);
         verify(mTab).addObserver(mTabObserver);
         mTabSupplier.set(null);

@@ -8,6 +8,7 @@
 
 #include "base/memory/raw_ref.h"
 #include "base/ranges/algorithm.h"
+#include "base/strings/stringprintf.h"
 #include "base/test/test_reg_util_win.h"
 #include "base/win/registry.h"
 #include "chrome/browser/win/conflicts/msi_util.h"
@@ -15,8 +16,8 @@
 
 namespace {
 
-constexpr wchar_t kRegistryKeyPathPrefix[] =
-    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\";
+static const wchar_t kRegistryKeyPathFormat[] =
+    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\%ls";
 
 struct CommonInfo {
   std::wstring product_id;
@@ -96,7 +97,8 @@ class InstalledApplicationsTest : public testing::Test {
 
   void AddFakeApplication(const MsiApplicationInfo& application_info) {
     const std::wstring registry_key_path =
-        kRegistryKeyPathPrefix + application_info.common_info.product_id;
+        base::StringPrintf(kRegistryKeyPathFormat,
+                           application_info.common_info.product_id.c_str());
     base::win::RegKey registry_key(HKEY_CURRENT_USER, registry_key_path.c_str(),
                                    KEY_WRITE);
 
@@ -109,7 +111,8 @@ class InstalledApplicationsTest : public testing::Test {
   void AddFakeApplication(
       const InstallLocationApplicationInfo& application_info) {
     const std::wstring registry_key_path =
-        kRegistryKeyPathPrefix + application_info.common_info.product_id;
+        base::StringPrintf(kRegistryKeyPathFormat,
+                           application_info.common_info.product_id.c_str());
     base::win::RegKey registry_key(HKEY_CURRENT_USER, registry_key_path.c_str(),
                                    KEY_WRITE);
 

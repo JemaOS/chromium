@@ -4,7 +4,7 @@
 
 chrome.test.runTests([
   function testWebNavigationOnCommitted() {
-    var getURL = chrome.runtime.getURL;
+    var getURL = chrome.extension.getURL;
     chrome.tabs.create({url: 'about:blank'}, function(tab) {
       var tabId = tab.id;
       var aVisited = false;

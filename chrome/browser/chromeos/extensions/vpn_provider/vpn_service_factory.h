@@ -16,7 +16,7 @@ class BrowserContext;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace chromeos {
@@ -34,7 +34,7 @@ class VpnServiceFactory : public ProfileKeyedServiceFactory {
   static VpnServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<VpnServiceFactory>;
+  friend struct base::DefaultSingletonTraits<VpnServiceFactory>;
 
   VpnServiceFactory();
   ~VpnServiceFactory() override;

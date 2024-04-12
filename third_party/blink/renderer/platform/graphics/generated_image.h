@@ -55,16 +55,6 @@ class PLATFORM_EXPORT GeneratedImage : public Image {
                    const gfx::RectF& dest_rect,
                    const ImageTilingInfo&,
                    const ImageDrawOptions& draw_options) final;
-
-  // Implementation hook for the `DrawPattern()` implementation. `tile_rect` is
-  // a single tile rectangle including any spacing. `pattern_matrix` contains
-  // the transform from tile space to destination space. `src_rect` is the
-  // rectangle containing actual content (`tile_rect` minus any spacing).
-  //
-  // Provide an implementation of this for a subclass if it can generate a more
-  // efficient PaintShader than the default PaintRecord-based shader. If this
-  // is overridden, then the `DrawTile()` implementation can be empty since it
-  // won't be used.
   virtual sk_sp<cc::PaintShader> CreateShader(
       const gfx::RectF& tile_rect,
       const SkMatrix* pattern_matrix,
@@ -76,10 +66,7 @@ class PLATFORM_EXPORT GeneratedImage : public Image {
 
   GeneratedImage(const gfx::SizeF& size) : size_(size) {}
 
-  // Implementation hook for `CreateShader()`. Is passed a source rectangle
-  // (see `CreateShader()` above) that should be painted onto the provided
-  // PaintCanvas.
-  virtual void DrawTile(cc::PaintCanvas*,
+  virtual void DrawTile(GraphicsContext&,
                         const gfx::RectF&,
                         const ImageDrawOptions&) = 0;
 

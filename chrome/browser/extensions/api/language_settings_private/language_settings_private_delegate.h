@@ -39,10 +39,9 @@ class LanguageSettingsPrivateDelegate
       public SpellcheckHunspellDictionary::Observer,
       public SpellcheckCustomDictionary::Observer {
  public:
-  static std::unique_ptr<LanguageSettingsPrivateDelegate> Create(
+  static LanguageSettingsPrivateDelegate* Create(
       content::BrowserContext* browser_context);
 
-  explicit LanguageSettingsPrivateDelegate(content::BrowserContext* context);
   LanguageSettingsPrivateDelegate(const LanguageSettingsPrivateDelegate&) =
       delete;
   LanguageSettingsPrivateDelegate& operator=(
@@ -59,6 +58,8 @@ class LanguageSettingsPrivateDelegate
   virtual void RetryDownloadHunspellDictionary(const std::string& language);
 
  protected:
+  explicit LanguageSettingsPrivateDelegate(content::BrowserContext* context);
+
   // KeyedService implementation.
   void Shutdown() override;
 

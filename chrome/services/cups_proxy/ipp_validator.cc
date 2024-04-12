@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/containers/cxx20_erase.h"
 #include "base/containers/span.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
@@ -103,15 +104,15 @@ bool StartsWith(base::span<uint8_t const> data,
 // Verifies that |method|, |endpoint|, and |http_version| form a valid HTTP
 // request-line. On success, returns a wrapper obj containing the verified
 // request-line.
-std::optional<HttpRequestLine> IppValidator::ValidateHttpRequestLine(
+absl::optional<HttpRequestLine> IppValidator::ValidateHttpRequestLine(
     base::StringPiece method,
     base::StringPiece endpoint,
     base::StringPiece http_version) {
   if (method != "POST") {
-    return std::nullopt;
+    return absl::nullopt;
   }
   if (http_version != "HTTP/1.1") {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Empty endpoint is allowed.
@@ -123,19 +124,19 @@ std::optional<HttpRequestLine> IppValidator::ValidateHttpRequestLine(
   // Ensure endpoint is a known printer.
   auto printer_id = ParseEndpointForPrinterId(std::string(endpoint));
   if (!printer_id.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   auto printer = delegate_->GetPrinter(*printer_id);
   if (!printer.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return HttpRequestLine{std::string(method), std::string(endpoint),
                          std::string(http_version)};
 }
 
-std::optional<std::vector<ipp_converter::HttpHeader>>
+absl::optional<std::vector<ipp_converter::HttpHeader>>
 IppValidator::ValidateHttpHeaders(
     const size_t http_content_length,
     const base::flat_map<std::string, std::string>& headers) {
@@ -143,14 +144,14 @@ IppValidator::ValidateHttpHeaders(
   for (const auto& header : headers) {
     if (!net::HttpUtil::IsValidHeaderName(header.first) ||
         !net::HttpUtil::IsValidHeaderValue(header.second)) {
-      return std::nullopt;
+      return absl::nullopt;
     }
   }
 
   std::vector<ipp_converter::HttpHeader> ret(headers.begin(), headers.end());
 
   // Update the ContentLength.
-  std::erase_if(ret, [](const ipp_converter::HttpHeader& header) {
+  base::EraseIf(ret, [](const ipp_converter::HttpHeader& header) {
     return header.first == "Content-Length";
   });
   ret.push_back({"Content-Length", base::NumberToString(http_content_length)});
@@ -321,7 +322,7 @@ IppValidator::IppValidator(CupsProxyServiceDelegate* const delegate)
 
 IppValidator::~IppValidator() = default;
 
-std::optional<IppRequest> IppValidator::ValidateIppRequest(
+absl::optional<IppRequest> IppValidator::ValidateIppRequest(
     ipp_parser::mojom::IppRequestPtr to_validate) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Build ipp message.
@@ -329,20 +330,20 @@ std::optional<IppRequest> IppValidator::ValidateIppRequest(
   printing::ScopedIppPtr ipp =
       printing::WrapIpp(ValidateIppMessage(std::move(to_validate->ipp)));
   if (ipp == nullptr) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Validate ipp data.
   // TODO(crbug/894607): Validate ippData (pdf).
   if (!ValidateIppData(to_validate->data)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Build request line.
   auto request_line = ValidateHttpRequestLine(
       to_validate->method, to_validate->endpoint, to_validate->http_version);
   if (!request_line.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Build headers; must happen after ipp message/data since it requires the
@@ -351,7 +352,7 @@ std::optional<IppRequest> IppValidator::ValidateIppRequest(
       ippLength(ipp.get()) + to_validate->data.size();
   auto headers = ValidateHttpHeaders(http_content_length, to_validate->headers);
   if (!headers.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Marshall request
@@ -366,7 +367,7 @@ std::optional<IppRequest> IppValidator::ValidateIppRequest(
       ret.request_line.method, ret.request_line.endpoint,
       ret.request_line.http_version, ret.headers, ret.ipp.get(), ret.ipp_data);
   if (!request_buffer.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   ret.buffer = std::move(*request_buffer);

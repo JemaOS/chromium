@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "base/no_destructor.h"
 #include "base/notreached.h"
-#include "base/strings/string_util.h"
 #include "base/win/atl.h"
 #include "base/win/embedded_i18n/language_selector.h"
 #include "base/win/i18n.h"
@@ -26,12 +26,6 @@ constexpr base::win::i18n::LanguageSelector::LangToOffset
 #undef HANDLE_LANGUAGE
 };
 
-size_t GetLanguageOffset(const std::wstring& lang) {
-  return base::win::i18n::LanguageSelector(lang, kLanguageOffsetPairs).offset();
-}
-
-}  // namespace
-
 std::wstring GetPreferredLanguage() {
   std::vector<std::wstring> languages;
   if (!base::win::i18n::GetUserPreferredUILanguageList(&languages) ||
@@ -42,11 +36,18 @@ std::wstring GetPreferredLanguage() {
   return languages[0];
 }
 
-std::wstring GetLocalizedString(UINT base_message_id,
-                                const std::wstring& lang) {
+const base::win::i18n::LanguageSelector& GetLanguageSelector() {
+  static base::NoDestructor<base::win::i18n::LanguageSelector> instance(
+      GetPreferredLanguage(), kLanguageOffsetPairs);
+  return *instance;
+}
+
+}  // namespace
+
+std::wstring GetLocalizedString(UINT base_message_id) {
   // Map `base_message_id` to the base id for the current install mode.
   UINT message_id =
-      static_cast<UINT>(base_message_id + GetLanguageOffset(lang));
+      static_cast<UINT>(base_message_id + GetLanguageSelector().offset());
   const ATLSTRINGRESOURCEIMAGE* image =
       AtlGetStringResourceImage(_AtlBaseModule.GetModuleInstance(), message_id);
   if (image) {
@@ -57,21 +58,19 @@ std::wstring GetLocalizedString(UINT base_message_id,
 }
 
 std::wstring GetLocalizedStringF(UINT base_message_id,
-                                 const std::wstring& replacement,
-                                 const std::wstring& lang) {
+                                 const std::wstring& replacement) {
   return GetLocalizedStringF(base_message_id,
-                             std::vector<std::wstring>{replacement}, lang);
+                             std::vector<std::wstring>{replacement});
 }
 
 std::wstring GetLocalizedStringF(UINT base_message_id,
-                                 std::vector<std::wstring> replacements,
-                                 const std::wstring& lang) {
+                                 std::vector<std::wstring> replacements) {
   // Replacements start at index 1 because the implementation of
   // ReplaceStringPlaceholders does i+1, so the first placeholder would be `$1`.
   // A `$0` is considered an invalid placeholder.
   replacements.insert(replacements.begin(), {});
-  return base::ReplaceStringPlaceholders(
-      GetLocalizedString(base_message_id, lang), replacements, nullptr);
+  return base::ReplaceStringPlaceholders(GetLocalizedString(base_message_id),
+                                         replacements, nullptr);
 }
 
 std::wstring GetLocalizedErrorString(DWORD exit_code) {

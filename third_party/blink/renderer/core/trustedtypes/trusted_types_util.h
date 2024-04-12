@@ -18,7 +18,7 @@ class QualifiedName;
 class ScriptValue;
 class ScriptState;
 class V8UnionStringOrTrustedScript;
-class V8UnionStringLegacyNullToEmptyStringOrTrustedScript;
+class V8UnionStringTreatNullAsEmptyStringOrTrustedScript;
 
 enum class SpecificTrustedType {
   kNone,
@@ -39,7 +39,7 @@ TrustedTypesCheckForScript(const V8UnionStringOrTrustedScript* value,
                            const ExecutionContext* execution_context,
                            ExceptionState& exception_state);
 [[nodiscard]] CORE_EXPORT String TrustedTypesCheckForScript(
-    const V8UnionStringLegacyNullToEmptyStringOrTrustedScript* value,
+    const V8UnionStringTreatNullAsEmptyStringOrTrustedScript* value,
     const ExecutionContext* execution_context,
     ExceptionState& exception_state);
 

@@ -11,6 +11,7 @@ import androidx.annotation.CallSuper;
 import androidx.annotation.Nullable;
 
 import org.chromium.base.TraceEvent;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.keyboard_accessory.AccessoryAction;
 import org.chromium.chrome.browser.keyboard_accessory.AccessoryTabType;
 import org.chromium.chrome.browser.keyboard_accessory.AccessoryToggleType;
@@ -18,7 +19,6 @@ import org.chromium.chrome.browser.keyboard_accessory.ManualFillingMetricsRecord
 import org.chromium.chrome.browser.keyboard_accessory.data.KeyboardAccessoryData.AccessorySheetData;
 import org.chromium.chrome.browser.keyboard_accessory.data.KeyboardAccessoryData.FooterCommand;
 import org.chromium.chrome.browser.keyboard_accessory.data.KeyboardAccessoryData.OptionToggle;
-import org.chromium.chrome.browser.keyboard_accessory.data.KeyboardAccessoryData.PasskeySection;
 import org.chromium.chrome.browser.keyboard_accessory.data.KeyboardAccessoryData.PromoCodeInfo;
 import org.chromium.chrome.browser.keyboard_accessory.data.KeyboardAccessoryData.UserInfo;
 import org.chromium.chrome.browser.keyboard_accessory.data.Provider;
@@ -66,11 +66,8 @@ class AccessorySheetTabMediator implements Provider.Observer<AccessorySheetData>
         TraceEvent.end("AccessorySheetTabMediator#onItemAvailable");
     }
 
-    AccessorySheetTabMediator(
-            PropertyModel model,
-            @AccessoryTabType int tabType,
-            @Type int userInfoType,
-            @AccessoryAction int manageActionToRecord,
+    AccessorySheetTabMediator(PropertyModel model, @AccessoryTabType int tabType,
+            @Type int userInfoType, @AccessoryAction int manageActionToRecord,
             @Nullable ToggleChangeDelegate toggleChangeDelegate) {
         mModel = model;
         mTabType = tabType;
@@ -81,6 +78,8 @@ class AccessorySheetTabMediator implements Provider.Observer<AccessorySheetData>
 
     @CallSuper
     void onTabShown() {
+        AccessorySheetTabMetricsRecorder.recordSheetSuggestions(mTabType, mModel.get(ITEMS));
+
         // This is a compromise: we log an impression, even if the user didn't scroll down far
         // enough to see it. If we moved it into the view layer (i.e. when the actual button is
         // created and shown), we could record multiple impressions of the user scrolls up and
@@ -117,9 +116,6 @@ class AccessorySheetTabMediator implements Provider.Observer<AccessorySheetData>
         if (!accessorySheetData.getWarning().isEmpty()) {
             items.add(new AccessorySheetDataPiece(accessorySheetData.getWarning(), Type.WARNING));
         }
-        for (PasskeySection passkey : accessorySheetData.getPasskeySectionList()) {
-            items.add(new AccessorySheetDataPiece(passkey, Type.PASSKEY_SECTION));
-        }
         for (UserInfo userInfo : accessorySheetData.getUserInfoList()) {
             items.add(new AccessorySheetDataPiece(userInfo, mUserInfoType));
         }
@@ -131,22 +127,19 @@ class AccessorySheetTabMediator implements Provider.Observer<AccessorySheetData>
     }
 
     private AccessorySheetDataPiece createDataPieceForToggle(OptionToggle toggle) {
-        assert mToggleChangeDelegate != null
-                : "Toggles added in an accessory sheet should have a" + "toggle change delegate.";
+        assert mToggleChangeDelegate
+                != null : "Toggles added in an accessory sheet should have a"
+                          + "toggle change delegate.";
         // Make sure the delegate knows the initial state of the toggle.
         mToggleChangeDelegate.onToggleChanged(toggle.isEnabled());
-        OptionToggle toggleWithAddedCallback =
-                new OptionToggle(
-                        toggle.getDisplayText(),
-                        toggle.isEnabled(),
-                        toggle.getActionType(),
-                        enabled -> {
-                            ManualFillingMetricsRecorder.recordToggleClicked(
-                                    getRecordingTypeForToggle(toggle));
-                            updateOptionToggleEnabled();
-                            mToggleChangeDelegate.onToggleChanged(enabled);
-                            toggle.getCallback().onResult(enabled);
-                        });
+        OptionToggle toggleWithAddedCallback = new OptionToggle(
+                toggle.getDisplayText(), toggle.isEnabled(), toggle.getActionType(), enabled -> {
+                    ManualFillingMetricsRecorder.recordToggleClicked(
+                            getRecordingTypeForToggle(toggle));
+                    updateOptionToggleEnabled();
+                    mToggleChangeDelegate.onToggleChanged(enabled);
+                    toggle.getCallback().onResult(enabled);
+                });
         return new AccessorySheetDataPiece(toggleWithAddedCallback, Type.OPTION_TOGGLE);
     }
 
@@ -155,14 +148,10 @@ class AccessorySheetTabMediator implements Provider.Observer<AccessorySheetData>
             AccessorySheetDataPiece data = mModel.get(ITEMS).get(i);
             if (AccessorySheetDataPiece.getType(data) == Type.OPTION_TOGGLE) {
                 OptionToggle toggle = (OptionToggle) data.getDataPiece();
-                OptionToggle updatedToggle =
-                        new OptionToggle(
-                                toggle.getDisplayText(),
-                                !toggle.isEnabled(),
-                                toggle.getActionType(),
-                                toggle.getCallback());
-                mModel.get(ITEMS)
-                        .update(i, new AccessorySheetDataPiece(updatedToggle, Type.OPTION_TOGGLE));
+                OptionToggle updatedToggle = new OptionToggle(toggle.getDisplayText(),
+                        !toggle.isEnabled(), toggle.getActionType(), toggle.getCallback());
+                mModel.get(ITEMS).update(
+                        i, new AccessorySheetDataPiece(updatedToggle, Type.OPTION_TOGGLE));
                 break;
             }
         }
@@ -181,16 +170,15 @@ class AccessorySheetTabMediator implements Provider.Observer<AccessorySheetData>
 
     private @AccessoryToggleType int getRecordingTypeForToggle(OptionToggle toggle) {
         if (toggle.getActionType() == AccessoryAction.TOGGLE_SAVE_PASSWORDS) {
-            return toggle.isEnabled()
-                    ? AccessoryToggleType.SAVE_PASSWORDS_TOGGLE_ON
-                    : AccessoryToggleType.SAVE_PASSWORDS_TOGGLE_OFF;
+            return toggle.isEnabled() ? AccessoryToggleType.SAVE_PASSWORDS_TOGGLE_ON
+                                      : AccessoryToggleType.SAVE_PASSWORDS_TOGGLE_OFF;
         }
-        assert false
-                : "Recording type for toggle of type " + toggle.getActionType() + "is not known.";
+        assert false : "Recording type for toggle of type " + toggle.getActionType()
+                       + "is not known.";
         return AccessoryToggleType.COUNT;
     }
-
     private boolean shouldShowTitle(List<UserInfo> userInfoList) {
-        return userInfoList.isEmpty();
+        return !ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_KEYBOARD_ACCESSORY)
+                || userInfoList.isEmpty();
     }
 }

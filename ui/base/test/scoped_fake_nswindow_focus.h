@@ -7,11 +7,14 @@
 
 #include <memory>
 
-namespace base::apple {
+namespace base {
+namespace mac {
 class ScopedObjCClassSwizzler;
 }
+}
 
-namespace ui::test {
+namespace ui {
+namespace test {
 
 // Simulates key and main status by listening for -makeKeyWindow,
 // -makeMainWindow and -orderOut:. This allows test coverage of code relying on
@@ -26,15 +29,16 @@ class ScopedFakeNSWindowFocus {
   ~ScopedFakeNSWindowFocus();
 
  private:
-  std::unique_ptr<base::apple::ScopedObjCClassSwizzler> is_main_swizzler_;
-  std::unique_ptr<base::apple::ScopedObjCClassSwizzler> make_main_swizzler_;
-  std::unique_ptr<base::apple::ScopedObjCClassSwizzler> resign_main_swizzler_;
-  std::unique_ptr<base::apple::ScopedObjCClassSwizzler> is_key_swizzler_;
-  std::unique_ptr<base::apple::ScopedObjCClassSwizzler> make_key_swizzler_;
-  std::unique_ptr<base::apple::ScopedObjCClassSwizzler> resign_key_swizzler_;
-  std::unique_ptr<base::apple::ScopedObjCClassSwizzler> order_out_swizzler_;
+  std::unique_ptr<base::mac::ScopedObjCClassSwizzler> is_main_swizzler_;
+  std::unique_ptr<base::mac::ScopedObjCClassSwizzler> make_main_swizzler_;
+  std::unique_ptr<base::mac::ScopedObjCClassSwizzler> resign_main_swizzler_;
+  std::unique_ptr<base::mac::ScopedObjCClassSwizzler> is_key_swizzler_;
+  std::unique_ptr<base::mac::ScopedObjCClassSwizzler> make_key_swizzler_;
+  std::unique_ptr<base::mac::ScopedObjCClassSwizzler> resign_key_swizzler_;
+  std::unique_ptr<base::mac::ScopedObjCClassSwizzler> order_out_swizzler_;
 };
 
-}  // namespace ui::test
+}  // namespace test
+}  // namespace ui
 
 #endif  // UI_BASE_TEST_SCOPED_FAKE_NSWINDOW_FOCUS_H_

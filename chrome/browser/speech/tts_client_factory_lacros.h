@@ -29,7 +29,7 @@ class TtsClientFactoryLacros : public ProfileKeyedServiceFactory {
   ~TtsClientFactoryLacros() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

@@ -23,7 +23,6 @@ namespace {
 
 constexpr const char kUserActionNext[] = "next";
 constexpr const char kUserActionSelect[] = "select";
-constexpr const char kUserActionReturn[] = "return";
 
 ThemeSelectionScreen::SelectedTheme GetSelectedTheme(Profile* profile) {
   if (profile->GetPrefs()->GetInteger(prefs::kDarkModeScheduleType) ==
@@ -49,29 +48,9 @@ std::string GetSelectedThemeString(Profile* profile) {
   }
 }
 
-void RecordSelectedTheme(Profile* profile,
-                         ThemeSelectionScreen::SelectedTheme initial_theme) {
+void RecordSelectedTheme(Profile* profile) {
   base::UmaHistogramEnumeration("OOBE.ThemeSelectionScreen.SelectedTheme",
                                 GetSelectedTheme(profile));
-  base::UmaHistogramBoolean("OOBE.CHOOBE.SettingChanged.Theme-selection",
-                            GetSelectedTheme(profile) != initial_theme);
-}
-
-bool ShouldShowChoobeReturnButton(ChoobeFlowController* controller) {
-  if (!features::IsOobeChoobeEnabled() || !controller) {
-    return false;
-  }
-  return controller->ShouldShowReturnButton(
-      ThemeSelectionScreenView::kScreenId);
-}
-
-void ReportScreenCompletedToChoobe(ChoobeFlowController* controller) {
-  if (!features::IsOobeChoobeEnabled() || !controller) {
-    return;
-  }
-  controller->OnScreenCompleted(
-      *ProfileManager::GetActiveUserProfile()->GetPrefs(),
-      ThemeSelectionScreenView::kScreenId);
 }
 
 }  // namespace
@@ -96,19 +75,6 @@ ThemeSelectionScreen::ThemeSelectionScreen(
 
 ThemeSelectionScreen::~ThemeSelectionScreen() = default;
 
-std::string ThemeSelectionScreen::RetrieveChoobeSubtitle() {
-  Profile* profile = ProfileManager::GetActiveUserProfile();
-  ThemeSelectionScreen::SelectedTheme theme = GetSelectedTheme(profile);
-  switch (theme) {
-    case ThemeSelectionScreen::SelectedTheme::kAuto:
-      return "autoThemeLabel";
-    case ThemeSelectionScreen::SelectedTheme::kDark:
-      return "darkThemeLabel";
-    case ThemeSelectionScreen::SelectedTheme::kLight:
-      return "lightThemeLabel";
-  }
-}
-
 bool ThemeSelectionScreen::ShouldBeSkipped(const WizardContext& context) const {
   if (context.skip_post_login_screens_for_tests)
     return true;
@@ -123,9 +89,9 @@ bool ThemeSelectionScreen::ShouldBeSkipped(const WizardContext& context) const {
   if (features::IsOobeChoobeEnabled()) {
     auto* choobe_controller =
         WizardController::default_controller()->choobe_flow_controller();
-    if (choobe_controller && choobe_controller->ShouldScreenBeSkipped(
-                                 ThemeSelectionScreenView::kScreenId)) {
-      return true;
+    if (choobe_controller) {
+      return choobe_controller->ShouldScreenBeSkipped(
+          ThemeSelectionScreenView::kScreenId);
     }
   }
 
@@ -143,17 +109,8 @@ bool ThemeSelectionScreen::MaybeSkip(WizardContext& context) {
 void ThemeSelectionScreen::ShowImpl() {
   if (!view_)
     return;
-
-  initial_theme_ = GetSelectedTheme(ProfileManager::GetActiveUserProfile());
-
-  base::Value::Dict data;
-  data.Set("selectedTheme",
-           GetSelectedThemeString(ProfileManager::GetActiveUserProfile()));
-  data.Set(
-      "shouldShowReturn",
-      ShouldShowChoobeReturnButton(
-          WizardController::default_controller()->choobe_flow_controller()));
-  view_->Show(std::move(data));
+  Profile* profile = ProfileManager::GetActiveUserProfile();
+  view_->Show(GetSelectedThemeString(profile));
 }
 
 void ThemeSelectionScreen::HideImpl() {}
@@ -177,17 +134,18 @@ void ThemeSelectionScreen::OnUserAction(const base::Value::List& args) {
                                       selected_theme == SelectedTheme::kDark);
     }
   } else if (action_id == kUserActionNext) {
-    RecordSelectedTheme(profile, initial_theme_);
-    ReportScreenCompletedToChoobe(
-        WizardController::default_controller()->choobe_flow_controller());
+    RecordSelectedTheme(profile);
+    if (features::IsOobeChoobeEnabled()) {
+      auto* choobe_controller =
+          WizardController::default_controller()->choobe_flow_controller();
+      if (choobe_controller) {
+        choobe_controller->OnScreenCompleted(
+            *ProfileManager::GetActiveUserProfile()->GetPrefs(),
+            ThemeSelectionScreenView::kScreenId);
+      }
+    }
+
     exit_callback_.Run(Result::kProceed);
-  } else if (action_id == kUserActionReturn) {
-    context()->return_to_choobe_screen = true;
-    RecordSelectedTheme(profile, initial_theme_);
-    ReportScreenCompletedToChoobe(
-        WizardController::default_controller()->choobe_flow_controller());
-    exit_callback_.Run(Result::kProceed);
-    return;
   } else {
     BaseScreen::OnUserAction(args);
   }
@@ -196,17 +154,10 @@ void ThemeSelectionScreen::OnUserAction(const base::Value::List& args) {
 ScreenSummary ThemeSelectionScreen::GetScreenSummary() {
   ScreenSummary summary;
   summary.screen_id = ThemeSelectionScreenView::kScreenId;
-  summary.icon_id = "oobe-40:theme-choobe";
+  summary.icon_id = "oobe-32:stars";
   summary.title_id = "choobeThemeSelectionTitle";
   summary.is_revisitable = true;
   summary.is_synced = false;
-
-  if (WizardController::default_controller()
-          ->choobe_flow_controller()
-          ->IsScreenCompleted(ThemeSelectionScreenView::kScreenId)) {
-    summary.subtitle_resource = RetrieveChoobeSubtitle();
-  }
-
   return summary;
 }
 

@@ -79,7 +79,6 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
   String StrippedPlaceholder() const;
   HTMLElement* PlaceholderElement() const;
   void UpdatePlaceholderVisibility();
-  void UpdatePlaceholderShadowPseudoId(HTMLElement& placeholder);
 
   VisiblePosition VisiblePositionForIndex(int) const;
   unsigned selectionStart() const;
@@ -135,8 +134,9 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
       WebAutofillState = WebAutofillState::kNotFilled) = 0;
 
   TextControlInnerEditorElement* InnerEditorElement() const {
-    return inner_editor_.Get();
+    return inner_editor_;
   }
+  virtual TextControlInnerEditorElement* EnsureInnerEditorElement() const = 0;
   HTMLElement* CreateInnerEditorElement();
   void DropInnerEditorElement() { inner_editor_ = nullptr; }
 
@@ -148,10 +148,6 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
   Node* CreatePlaceholderBreakElement() const;
 
   String DirectionForFormData() const;
-  // https://html.spec.whatwg.org/#auto-directionality-form-associated-elements
-  // Check if, when dir=auto, we should use the value to define text direction.
-  // For example, when value contains a bidirectional character.
-  virtual bool IsAutoDirectionalityFormAssociated() const = 0;
 
   // Set the value trimmed to the max length of the field and dispatch the input
   // and change events. If |value| is empty, the autofill state is always
@@ -159,7 +155,6 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
   void SetAutofillValue(const String& value,
                         WebAutofillState = WebAutofillState::kAutofilled);
 
-  // A null value indicates that the suggested value should be hidden.
   virtual void SetSuggestedValue(const String& value);
   const String& SuggestedValue() const;
 
@@ -169,12 +164,9 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
 
  protected:
   TextControlElement(const QualifiedName&, Document&);
-  virtual HTMLElement* UpdatePlaceholderText() = 0;
+  bool IsPlaceholderEmpty() const;
+  virtual void UpdatePlaceholderText() = 0;
   virtual String GetPlaceholderValue() const = 0;
-
-  // Creates the editor if necessary. Implementations that support an editor
-  // should callback to CreateInnerEditorElement().
-  virtual void CreateInnerEditorElementIfNecessary() const = 0;
 
   void ParseAttribute(const AttributeModificationParams&) override;
 
@@ -188,19 +180,7 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
   String ValueWithHardLineBreaks() const;
 
   void CloneNonAttributePropertiesFrom(const Element&,
-                                       NodeCloningData&) override;
-
-  // Returns true if the inner-editor value is empty. This may be cheaper
-  // than calling InnerEditorValue(), and InnerEditorValue() returns
-  // the wrong thing if the editor hasn't been created yet.
-  virtual bool IsInnerEditorValueEmpty() const = 0;
-
-  TextControlInnerEditorElement* EnsureInnerEditorElement() const {
-    if (!inner_editor_) {
-      CreateInnerEditorElementIfNecessary();
-    }
-    return inner_editor_.Get();
-  }
+                                       CloneChildrenFlag) override;
 
  private:
   // Used by ComputeSelection() to specify which values are needed.
@@ -236,6 +216,12 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
   void ScheduleSelectEvent();
   void DisabledOrReadonlyAttributeChanged(const QualifiedName&);
 
+  // Returns true if user-editable value is empty. Used to check placeholder
+  // visibility.
+  virtual bool IsEmptyValue() const = 0;
+  // Returns true if suggested value is empty. Used to check placeholder
+  // visibility.
+  bool IsEmptySuggestedValue() const { return SuggestedValue().empty(); }
   // Called in dispatchFocusEvent(), after placeholder process, before calling
   // parent's dispatchFocusEvent().
   virtual void HandleFocusEvent(Element* /* oldFocusedNode */,

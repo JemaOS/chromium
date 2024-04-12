@@ -16,41 +16,55 @@ namespace ash {
 namespace {
 
 // The number of correct printers in BulkPolicyContentsJson.
-constexpr size_t kNumValidPrinters = 3;
+constexpr size_t kNumPrinters = 3;
 
 // An example bulk printer configuration file.
 constexpr char kBulkPolicyContentsJson[] = R"json(
 [
   {
-    "guid": "First",
+    "id": "First",
     "display_name": "LexaPrint",
     "description": "Laser on the test shelf",
+    "manufacturer": "LexaPrint, Inc.",
+    "model": "MS610de",
     "uri": "ipp://192.168.1.5",
     "ppd_resource": {
       "effective_model": "MS610de"
     }
   }, {
-    "guid": "Incorrect uri",
+    "id": "Incorrect uri",
     "display_name": "aaa",
     "description": "bbbb",
+    "manufacturer": "cccc",
+    "model":"dddd",
     "uri":"ipp://:",
+    "uuid":"1c555fdb-1193-2204-3346-44c046e79d12",
     "ppd_resource":{
+      "effective_manufacturer": "eee",
       "effective_model": "fff"
     }
   }, {
-    "guid": "Second",
+    "id": "Second",
     "display_name": "Color Laser",
+    "description": "The printer next to the water cooler.",
+    "manufacturer": "Printer Manufacturer",
+    "model":"Color Laser 2004",
     "uri":"ipps://print-server.intranet.example.com:443/ipp/cl2k4",
+    "uuid":"1c395fdb-5d93-4904-b246-b2c046e79d12",
     "ppd_resource":{
+      "effective_manufacturer": "MakesPrinters",
       "effective_model": "ColorLaser2k4"
     }
   }, {
-    "guid": "Third",
+    "id": "Third",
     "display_name": "YaLP",
     "description": "Fancy Fancy Fancy",
+    "manufacturer": "LexaPrint, Inc.",
+    "model": "MS610de",
     "uri": "ipp://192.168.1.8",
     "ppd_resource": {
-      "autoconf": true
+      "effective_manufacturer": "LexaPrint",
+      "effective_model": "MS610de"
     }
   }
 ])json";
@@ -59,9 +73,11 @@ constexpr char kBulkPolicyContentsJson[] = R"json(
 constexpr char kMoreContentsJson[] = R"json(
 [
   {
-    "guid": "ThirdPrime",
+    "id": "ThirdPrime",
     "display_name": "Printy McPrinter",
     "description": "Laser on the test shelf",
+    "manufacturer": "CrosInc.",
+    "model": "MS610de",
     "uri": "ipp://192.168.1.5",
     "ppd_resource": {
       "effective_model": "MS610de"
@@ -141,7 +157,7 @@ TEST_F(BulkPrintersCalculatorTest, AllPoliciesResultInPrinters) {
   task_environment_.RunUntilIdle();
   EXPECT_TRUE(external_printers_->IsComplete());
   const auto& printers = external_printers_->GetPrinters();
-  EXPECT_EQ(kNumValidPrinters, printers.size());
+  EXPECT_EQ(kNumPrinters, printers.size());
   EXPECT_EQ("LexaPrint", printers.at("First").display_name());
   EXPECT_EQ("Color Laser", printers.at("Second").display_name());
   EXPECT_EQ("YaLP", printers.at("Third").display_name());
@@ -165,7 +181,7 @@ TEST_F(BulkPrintersCalculatorTest, PolicyClearedNowUnset) {
 }
 
 // Verify that the blocklist policy is applied correctly.  Printers in the
-// blocklist policy should not be available.  Printers not in the blocklist
+// blocklist policy should not be available.  Printers not in the blackslist
 // should be available.
 TEST_F(BulkPrintersCalculatorTest, BlocklistPolicySet) {
   auto data = std::make_unique<std::string>(kBulkPolicyContentsJson);
@@ -212,7 +228,7 @@ TEST_F(BulkPrintersCalculatorTest, EmptyBlocklistAllPrinters) {
   task_environment_.RunUntilIdle();
   EXPECT_TRUE(external_printers_->IsComplete());
   const auto& printers = external_printers_->GetPrinters();
-  EXPECT_EQ(kNumValidPrinters, printers.size());
+  EXPECT_EQ(kNumPrinters, printers.size());
 }
 
 // Verify that an empty allowlist results in no printers.
@@ -255,8 +271,8 @@ TEST_F(BulkPrintersCalculatorTest, MultipleUpdates) {
   external_printers_->ClearData();
   external_printers_->SetData(std::move(data));
   external_printers_->SetAccessMode(BulkPrintersCalculator::ALL_ACCESS);
-  // There will be 3 printers here.  But we don't want to wait for computation
-  // to complete to verify the final value gets used.
+  // There will be 3 printers here.  But we don't want to wait for compuation to
+  // complete to verify the final value gets used.
 
   auto new_data = std::make_unique<std::string>(kMoreContentsJson);
   external_printers_->SetData(std::move(new_data));
@@ -286,7 +302,7 @@ TEST_F(BulkPrintersCalculatorTest, ObserverTest) {
   EXPECT_EQ(2, obs.called);
   EXPECT_TRUE(obs.last_valid);  // ready now
   // Printer list is correct after notification.
-  EXPECT_EQ(kNumValidPrinters, external_printers_->GetPrinters().size());
+  EXPECT_EQ(kNumPrinters, external_printers_->GetPrinters().size());
 
   external_printers_->SetAccessMode(BulkPrintersCalculator::ALLOWLIST_ONLY);
   task_environment_.RunUntilIdle();

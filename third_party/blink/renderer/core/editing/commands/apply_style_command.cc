@@ -184,7 +184,7 @@ void ApplyStyleCommand::UpdateStartEnd(const EphemeralRange& range) {
     use_ending_selection_ = true;
   GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
   const bool was_base_first =
-      StartingSelection().IsAnchorFirst() || !SelectionIsDirectional();
+      StartingSelection().IsBaseFirst() || !SelectionIsDirectional();
   SelectionInDOMTree::Builder builder;
   if (was_base_first)
     builder.SetAsForwardSelection(range);
@@ -556,22 +556,17 @@ HTMLElement* ApplyStyleCommand::SplitAncestorsWithUnicodeBidi(
   ContainerNode* next_highest_ancestor_with_unicode_bidi = nullptr;
   CSSValueID highest_ancestor_unicode_bidi = CSSValueID::kInvalid;
   for (Node& runner : NodeTraversal::AncestorsOf(*node)) {
-    if (runner == block) {
+    if (runner == block)
       break;
-    }
-    Element* element = DynamicTo<Element>(runner);
-    if (!element) {
-      continue;
-    }
     CSSValueID unicode_bidi = GetIdentifierValue(
-        MakeGarbageCollected<CSSComputedStyleDeclaration>(element),
+        MakeGarbageCollected<CSSComputedStyleDeclaration>(&runner),
         CSSPropertyID::kUnicodeBidi);
     if (IsValidCSSValueID(unicode_bidi) &&
         unicode_bidi != CSSValueID::kNormal) {
       highest_ancestor_unicode_bidi = unicode_bidi;
       next_highest_ancestor_with_unicode_bidi =
           highest_ancestor_with_unicode_bidi;
-      highest_ancestor_with_unicode_bidi = element;
+      highest_ancestor_with_unicode_bidi = static_cast<ContainerNode*>(&runner);
     }
   }
 
@@ -587,7 +582,7 @@ HTMLElement* ApplyStyleCommand::SplitAncestorsWithUnicodeBidi(
           mojo_base::mojom::blink::TextDirection::UNKNOWN_DIRECTION &&
       highest_ancestor_unicode_bidi != CSSValueID::kBidiOverride &&
       highest_ancestor_html_element &&
-      MakeGarbageCollected<EditingStyle>(highest_ancestor_html_element,
+      MakeGarbageCollected<EditingStyle>(highest_ancestor_with_unicode_bidi,
                                          EditingStyle::kAllProperties)
           ->GetTextDirection(highest_ancestor_direction) &&
       highest_ancestor_direction == allowed_direction) {
@@ -666,7 +661,7 @@ static HTMLElement* HighestEmbeddingAncestor(Node* start_node,
     auto* html_element = DynamicTo<HTMLElement>(n);
     if (html_element &&
         EditingStyleUtilities::IsEmbedOrIsolate(GetIdentifierValue(
-            MakeGarbageCollected<CSSComputedStyleDeclaration>(html_element),
+            MakeGarbageCollected<CSSComputedStyleDeclaration>(n),
             CSSPropertyID::kUnicodeBidi))) {
       return html_element;
     }
@@ -2036,15 +2031,8 @@ void ApplyStyleCommand::ApplyInlineStyleChange(
 float ApplyStyleCommand::ComputedFontSize(Node* node) {
   if (!node)
     return 0;
-  Element* element = DynamicTo<Element>(node);
-  if (!element) {
-    element = FlatTreeTraversal::ParentElement(*node);
-  }
-  if (!element) {
-    return 0;
-  }
 
-  auto* style = MakeGarbageCollected<CSSComputedStyleDeclaration>(element);
+  auto* style = MakeGarbageCollected<CSSComputedStyleDeclaration>(node);
   if (!style)
     return 0;
 

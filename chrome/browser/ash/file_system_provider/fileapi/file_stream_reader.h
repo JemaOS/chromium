@@ -21,7 +21,8 @@ namespace storage {
 class FileSystemContext;
 }  // namespace storage
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 struct EntryMetadata;
 
@@ -113,6 +114,7 @@ class FileStreamReader : public storage::FileStreamReader {
   base::WeakPtrFactory<FileStreamReader> weak_ptr_factory_{this};
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_FILEAPI_FILE_STREAM_READER_H_

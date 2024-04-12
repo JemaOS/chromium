@@ -2,15 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {CPUProfilerTestRunner} from 'cpu_profiler_test_runner';
-
-import * as UIModule from 'devtools/ui/legacy/legacy.js';
-import * as ProfilerModule from 'devtools/panels/profiler/profiler.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Tests that search works for large bottom-up view of CPU profile.\n`);
+  await TestRunner.loadLegacyModule('profiler'); await TestRunner.loadTestModule('cpu_profiler_test_runner');
 
   var nodesCount = 200;
   function buildTree(startId, count) {
@@ -30,9 +24,9 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
   var profileAndExpectations = {
     'title': 'profile1',
     'target': function() {
-      return SDK.TargetManager.TargetManager.instance().targets()[0];
+      return SDK.targetManager.targets()[0];
     },
-    'profileModel': () => new SDK.CPUProfileDataModel.CPUProfileDataModel({
+    'profileModel': () => new SDK.CPUProfileDataModel({
       'nodes': [
         {
           'id': 0,
@@ -57,13 +51,13 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
       'endTime': nodesCount * 10e3 + 3e3
     })
   };
-  var view = new ProfilerModule.CPUProfileView.CPUProfileView(profileAndExpectations);
+  var view = new Profiler.CPUProfileView(profileAndExpectations);
   view.viewSelectComboBox.setSelectedIndex(1);
   view.changeView();
   var tree = view.profileDataGridTree;
   if (!tree)
     TestRunner.addResult('no tree');
-  tree.performSearch(new UIModule.SearchableView.SearchConfig('foo12', true, false), false);
+  tree.performSearch(new UI.SearchableView.SearchConfig('foo12', true, false), false);
   for (var item of tree.searchResults) {
     var node = item.profileNode;
     TestRunner.addResult(`${node.callUID}: ${node.functionName} ${node.self} ${node.total}`);

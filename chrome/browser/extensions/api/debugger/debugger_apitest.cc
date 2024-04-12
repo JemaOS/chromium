@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/command_line.h"
-#include "base/containers/to_vector.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/path_service.h"
@@ -30,7 +29,6 @@
 #include "chrome/browser/profiles/profile_destroyer.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_test_util.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
@@ -54,20 +52,12 @@
 #include "content/public/test/no_renderer_crashes_assertion.h"
 #include "extensions/browser/api_test_utils.h"
 #include "extensions/browser/extension_function.h"
-#include "extensions/browser/extension_util.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/manifest_constants.h"
-#include "extensions/common/permissions/permissions_data.h"
 #include "extensions/common/switches.h"
 #include "extensions/test/test_extension_dir.h"
 #include "net/dns/mock_host_resolver.h"
-#include "pdf/buildflags.h"
-
-#if BUILDFLAG(ENABLE_PDF)
-#include "base/test/with_feature_override.h"
-#include "pdf/pdf_features.h"
-#endif  // BUILDFLAG(ENABLE_PDF)
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/profiles/profile_helper.h"
@@ -123,10 +113,6 @@ void DebuggerApiTest::SetUpCommandLine(base::CommandLine* command_line) {
 
 void DebuggerApiTest::SetUpOnMainThread() {
   ExtensionApiTest::SetUpOnMainThread();
-
-  host_resolver()->AddRule("*", "127.0.0.1");
-  ASSERT_TRUE(embedded_test_server()->Start());
-
   test_extension_dir_.WriteManifest(
       R"({
          "name": "debugger",
@@ -161,7 +147,7 @@ testing::AssertionResult DebuggerApiTest::RunAttachFunction(
   // Attach by targetId.
   scoped_refptr<DebuggerGetTargetsFunction> get_targets_function =
       new DebuggerGetTargetsFunction();
-  std::optional<base::Value> value(
+  absl::optional<base::Value> value(
       api_test_utils::RunFunctionAndReturnSingleResult(
           get_targets_function.get(), "[]", profile()));
   EXPECT_TRUE(value->is_list());
@@ -169,7 +155,7 @@ testing::AssertionResult DebuggerApiTest::RunAttachFunction(
   std::string debugger_target_id;
   for (const base::Value& target_value : value->GetList()) {
     EXPECT_TRUE(target_value.is_dict());
-    std::optional<int> id = target_value.GetDict().FindInt("tabId");
+    absl::optional<int> id = target_value.GetDict().FindInt("tabId");
     if (id == tab_id) {
       const std::string* id_str = target_value.GetDict().FindString("id");
       EXPECT_TRUE(id_str);
@@ -292,59 +278,6 @@ class TestInterstitialPage
 };
 
 IN_PROC_BROWSER_TEST_F(DebuggerApiTest,
-                       DebuggerNotAllowedOnRestrictedBlobUrls) {
-  content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
-  EXPECT_TRUE(content::NavigateToURL(web_contents, GURL("chrome://settings")));
-  EXPECT_TRUE(content::WaitForLoadStop(web_contents));
-  ASSERT_TRUE(content::ExecJs(web_contents, R"(
-    var blob = new Blob([JSON.stringify({foo: 'bar'})], {
-      type: "application/json",
-    });
-    var burl = URL.createObjectURL(blob, 'application/json');
-    window.open(burl);
-  )"));
-  content::WebContents* blob_web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
-  EXPECT_NE(blob_web_contents, web_contents);
-  EXPECT_TRUE(content::WaitForLoadStop(blob_web_contents));
-  EXPECT_EQ("{\"foo\":\"bar\"}",
-            content::EvalJs(blob_web_contents, "document.body.innerText"));
-  EXPECT_TRUE(
-      RunAttachFunction(blob_web_contents, "Cannot access a chrome:// URL"));
-}
-
-IN_PROC_BROWSER_TEST_F(DebuggerApiTest,
-                       DebuggerNotAllowedOnPolicyRestrictedBlobUrls) {
-  GURL url(embedded_test_server()->GetURL("a.com", "/simple.html"));
-  content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
-  EXPECT_TRUE(content::NavigateToURL(web_contents, url));
-  EXPECT_TRUE(content::WaitForLoadStop(web_contents));
-  ASSERT_TRUE(content::ExecJs(web_contents, R"(
-    var blob = new Blob([JSON.stringify({foo: 'bar'})], {
-      type: "application/json",
-    });
-    window.open(URL.createObjectURL(blob, 'application/json'));
-  )"));
-  content::WebContents* blob_web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
-  EXPECT_NE(blob_web_contents, web_contents);
-  EXPECT_TRUE(content::WaitForLoadStop(blob_web_contents));
-  EXPECT_EQ("{\"foo\":\"bar\"}",
-            content::EvalJs(blob_web_contents, "document.body.innerText"));
-  base::RunLoop run_loop;
-  URLPatternSet default_blocked_hosts;
-  default_blocked_hosts.AddPattern(
-      URLPattern(URLPattern::SCHEME_HTTP, "http://a.com/*"));
-  PermissionsData::SetDefaultPolicyHostRestrictions(
-      util::GetBrowserContextId(profile()), default_blocked_hosts,
-      URLPatternSet());
-  EXPECT_TRUE(
-      RunAttachFunction(blob_web_contents, "Cannot attach to this target."));
-}
-
-IN_PROC_BROWSER_TEST_F(DebuggerApiTest,
                        DebuggerNotAllowedOnSecirutyInterstitials) {
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
@@ -396,9 +329,9 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
   ASSERT_TRUE(api_test_utils::RunFunction(
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id), profile()));
-  EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
-  EXPECT_EQ(1u, manager3->infobars().size());
+  EXPECT_EQ(1u, manager1->infobar_count());
+  EXPECT_EQ(1u, manager2->infobar_count());
+  EXPECT_EQ(1u, manager3->infobar_count());
 
   // Attaching to another tab should not create more infobars.
   attach_function = new DebuggerAttachFunction();
@@ -406,9 +339,9 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
   ASSERT_TRUE(api_test_utils::RunFunction(
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id2), profile()));
-  EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
-  EXPECT_EQ(1u, manager3->infobars().size());
+  EXPECT_EQ(1u, manager1->infobar_count());
+  EXPECT_EQ(1u, manager2->infobar_count());
+  EXPECT_EQ(1u, manager3->infobar_count());
 
   // Detaching from one of the tabs should not remove infobars.
   detach_function = new DebuggerDetachFunction();
@@ -416,9 +349,9 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
   ASSERT_TRUE(api_test_utils::RunFunction(
       detach_function.get(), base::StringPrintf("[{\"tabId\": %d}]", tab_id2),
       profile()));
-  EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
-  EXPECT_EQ(1u, manager3->infobars().size());
+  EXPECT_EQ(1u, manager1->infobar_count());
+  EXPECT_EQ(1u, manager2->infobar_count());
+  EXPECT_EQ(1u, manager3->infobar_count());
 
   // Detaching from the other tab also should not remove infobars, since even
   // though there is no longer an extension attached, the infobar can only be
@@ -428,9 +361,9 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
   ASSERT_TRUE(api_test_utils::RunFunction(
       detach_function.get(), base::StringPrintf("[{\"tabId\": %d}]", tab_id),
       profile()));
-  EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
-  EXPECT_EQ(1u, manager3->infobars().size());
+  EXPECT_EQ(1u, manager1->infobar_count());
+  EXPECT_EQ(1u, manager2->infobar_count());
+  EXPECT_EQ(1u, manager3->infobar_count());
 
   // Attach again; should not create infobars.
   attach_function = new DebuggerAttachFunction();
@@ -438,19 +371,19 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
   ASSERT_TRUE(api_test_utils::RunFunction(
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id), profile()));
-  EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
-  EXPECT_EQ(1u, manager3->infobars().size());
+  EXPECT_EQ(1u, manager1->infobar_count());
+  EXPECT_EQ(1u, manager2->infobar_count());
+  EXPECT_EQ(1u, manager3->infobar_count());
 
   // Remove the global infobar by simulating what happens when the user clicks
   // the close button (see InfoBarView::ButtonPressed()).  The
   // InfoBarDismissed() call will remove the infobars everywhere except on
   // |manager2| itself; the RemoveSelf() call removes that one.
-  manager2->infobars()[0]->delegate()->InfoBarDismissed();
-  manager2->infobars()[0]->RemoveSelf();
-  EXPECT_EQ(0u, manager1->infobars().size());
-  EXPECT_EQ(0u, manager2->infobars().size());
-  EXPECT_EQ(0u, manager3->infobars().size());
+  manager2->infobar_at(0)->delegate()->InfoBarDismissed();
+  manager2->infobar_at(0)->RemoveSelf();
+  EXPECT_EQ(0u, manager1->infobar_count());
+  EXPECT_EQ(0u, manager2->infobar_count());
+  EXPECT_EQ(0u, manager3->infobar_count());
   detach_function = new DebuggerDetachFunction();
   detach_function->set_extension(extension());
   // Cannot detach again.
@@ -464,23 +397,21 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
   ASSERT_TRUE(api_test_utils::RunFunction(
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id), profile()));
-  EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
-  EXPECT_EQ(1u, manager3->infobars().size());
+  EXPECT_EQ(1u, manager1->infobar_count());
+  EXPECT_EQ(1u, manager2->infobar_count());
+  EXPECT_EQ(1u, manager3->infobar_count());
 
   // Closing tab should not affect anything.
-  EXPECT_EQ(2, another_browser->tab_strip_model()->count());
-  another_browser->tab_strip_model()->CloseWebContentsAt(1, 0);
-  EXPECT_EQ(1, another_browser->tab_strip_model()->count());
+  ASSERT_TRUE(another_browser->tab_strip_model()->CloseWebContentsAt(1, 0));
   manager3 = nullptr;
-  EXPECT_EQ(1u, manager1->infobars().size());
-  EXPECT_EQ(1u, manager2->infobars().size());
+  EXPECT_EQ(1u, manager1->infobar_count());
+  EXPECT_EQ(1u, manager2->infobar_count());
 
   // Closing browser should not affect anything.
   CloseBrowserSynchronously(another_browser);
   manager2 = nullptr;
   another_browser = nullptr;
-  EXPECT_EQ(1u, manager1->infobars().size());
+  EXPECT_EQ(1u, manager1->infobar_count());
 
   // Detach should not affect anything.
   detach_function = new DebuggerDetachFunction();
@@ -488,7 +419,7 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBar) {
   ASSERT_TRUE(api_test_utils::RunFunction(
       detach_function.get(), base::StringPrintf("[{\"tabId\": %d}]", tab_id),
       profile()));
-  EXPECT_EQ(1u, manager1->infobars().size());
+  EXPECT_EQ(1u, manager1->infobar_count());
 }
 
 IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBarIsRemovedAfterFiveSeconds) {
@@ -505,7 +436,7 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBarIsRemovedAfterFiveSeconds) {
   ASSERT_TRUE(api_test_utils::RunFunction(
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id), profile()));
-  EXPECT_EQ(1u, manager->infobars().size());
+  EXPECT_EQ(1u, manager->infobar_count());
 
   // Detaching from the tab should remove the infobar after 5 seconds.
   auto detach_function = base::MakeRefCounted<DebuggerDetachFunction>();
@@ -521,99 +452,13 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest, InfoBarIsRemovedAfterFiveSeconds) {
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, run_loop.QuitClosure(),
       ExtensionDevToolsInfoBarDelegate::kAutoCloseDelay);
-  EXPECT_EQ(1u, manager->infobars().size());  // Infobar is still shown.
+  EXPECT_EQ(1u, manager->infobar_count());  // Infobar is still shown.
 
   // Advance the clock by 5 seconds, and verify the infobar is removed.
   AdvanceClock(ExtensionDevToolsInfoBarDelegate::kAutoCloseDelay);
   run_loop.Run();
 
-  EXPECT_EQ(0u, manager->infobars().size());
-}
-
-IN_PROC_BROWSER_TEST_F(DebuggerApiTest,
-                       InfoBarIsNotRemovedWhenAnotherDebuggerAttached) {
-  const int tab_id1 = sessions::SessionTabHelper::IdForTab(
-                          browser()->tab_strip_model()->GetActiveWebContents())
-                          .id();
-  infobars::ContentInfoBarManager* manager =
-      infobars::ContentInfoBarManager::FromWebContents(
-          browser()->tab_strip_model()->GetActiveWebContents());
-
-  ASSERT_TRUE(embedded_test_server()->Started());
-  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
-      browser(), embedded_test_server()->GetURL("/simple.html"),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB,
-      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
-  const int tab_id2 = sessions::SessionTabHelper::IdForTab(
-                          browser()->tab_strip_model()->GetActiveWebContents())
-                          .id();
-
-  // Attaching to a tab should create an infobar.
-  {
-    auto attach_function = base::MakeRefCounted<DebuggerAttachFunction>();
-    attach_function->set_extension(extension());
-    ASSERT_TRUE(api_test_utils::RunFunction(
-        attach_function.get(),
-        base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id1), profile()));
-  }
-
-  EXPECT_EQ(1u, manager->infobars().size());
-
-  // Attaching to a 2nd tab, to have another attached debugger.
-  {
-    auto attach_function = base::MakeRefCounted<DebuggerAttachFunction>();
-    attach_function->set_extension(extension());
-    ASSERT_TRUE(api_test_utils::RunFunction(
-        attach_function.get(),
-        base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id2), profile()));
-  }
-
-  EXPECT_EQ(1u, manager->infobars().size());
-
-  // Detaching from the tab should not remove the infobar after 5 seconds, as
-  // another debugger is still attached.
-  {
-    auto detach_function = base::MakeRefCounted<DebuggerDetachFunction>();
-    detach_function->set_extension(extension());
-    ASSERT_TRUE(api_test_utils::RunFunction(
-        detach_function.get(), base::StringPrintf("[{\"tabId\": %d}]", tab_id1),
-        profile()));
-  }
-
-  // Advance the clock by 5 seconds.
-  {
-    base::RunLoop run_loop;
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE, run_loop.QuitClosure(),
-        ExtensionDevToolsInfoBarDelegate::kAutoCloseDelay);
-    AdvanceClock(ExtensionDevToolsInfoBarDelegate::kAutoCloseDelay);
-    run_loop.Run();
-  }
-
-  // Verify inforbar not removed.
-  EXPECT_EQ(1u, manager->infobars().size());
-
-  // Now detach the last debugger.
-  {
-    auto detach_function = base::MakeRefCounted<DebuggerDetachFunction>();
-    detach_function->set_extension(extension());
-    ASSERT_TRUE(api_test_utils::RunFunction(
-        detach_function.get(), base::StringPrintf("[{\"tabId\": %d}]", tab_id2),
-        profile()));
-  }
-
-  // Advance the clock by 5 seconds, once again.
-  {
-    base::RunLoop run_loop;
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE, run_loop.QuitClosure(),
-        ExtensionDevToolsInfoBarDelegate::kAutoCloseDelay);
-    AdvanceClock(ExtensionDevToolsInfoBarDelegate::kAutoCloseDelay);
-    run_loop.Run();
-  }
-
-  // Verify inforbar removed.
-  EXPECT_EQ(0u, manager->infobars().size());
+  EXPECT_EQ(0u, manager->infobar_count());
 }
 
 class CrossProfileDebuggerApiTest : public DebuggerApiTest {
@@ -632,6 +477,7 @@ class CrossProfileDebuggerApiTest : public DebuggerApiTest {
 
  private:
   void SetUpOnMainThread() override {
+    ASSERT_TRUE(embedded_test_server()->Start());
 #if BUILDFLAG(IS_CHROMEOS_ASH)
     ash::ProfileHelper::SetAlwaysReturnPrimaryUserForTesting(true);
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
@@ -685,8 +531,9 @@ IN_PROC_BROWSER_TEST_F(CrossProfileDebuggerApiTest, GetTargets) {
 
     ASSERT_TRUE(value.is_list());
     const base::Value::List targets = std::move(value).TakeList();
-    std::vector<std::string> urls =
-        base::ToVector(targets, [](const base::Value& value) {
+    std::vector<std::string> urls;
+    base::ranges::transform(
+        targets, std::back_inserter(urls), [](const base::Value& value) {
           GURL::Replacements remove_port;
           remove_port.ClearPort();
           const std::string* url = value.GetDict().FindString("url");
@@ -763,7 +610,7 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest,
   ASSERT_TRUE(api_test_utils::RunFunction(
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id), profile()));
-  EXPECT_EQ(1u, manager->infobars().size());
+  EXPECT_EQ(1u, manager->infobar_count());
 
   // Detaching from the tab and attaching it again before 5 seconds should not
   // remove the infobar.
@@ -772,7 +619,7 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest,
   ASSERT_TRUE(api_test_utils::RunFunction(
       detach_function.get(), base::StringPrintf("[{\"tabId\": %d}]", tab_id),
       profile()));
-  EXPECT_EQ(1u, manager->infobars().size());
+  EXPECT_EQ(1u, manager->infobar_count());
 
   attach_function = base::MakeRefCounted<DebuggerAttachFunction>();
   attach_function->set_extension(extension());
@@ -780,7 +627,7 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest,
       attach_function.get(),
       base::StringPrintf("[{\"tabId\": %d}, \"1.1\"]", tab_id), profile()));
   // Verify that only one infobar is created.
-  EXPECT_EQ(1u, manager->infobars().size());
+  EXPECT_EQ(1u, manager->infobar_count());
 
   // Verify that infobar is not closed after 5 seconds.
   base::RunLoop run_loop;
@@ -790,23 +637,20 @@ IN_PROC_BROWSER_TEST_F(DebuggerApiTest,
   AdvanceClock(ExtensionDevToolsInfoBarDelegate::kAutoCloseDelay);
   run_loop.Run();
 
-  EXPECT_EQ(1u, manager->infobars().size());
+  EXPECT_EQ(1u, manager->infobar_count());
 }
 
 // Tests that policy blocked hosts supersede the `debugger`
 // permission. Regression test for crbug.com/1139156.
 IN_PROC_BROWSER_TEST_F(DebuggerApiTest, TestDefaultPolicyBlockedHosts) {
-  ASSERT_TRUE(embedded_test_server()->Started());
-  GURL url("https://example.com/test");
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL url("https://example.com");
   EXPECT_TRUE(RunAttachFunction(url, std::string()));
-  URLPatternSet default_blocked_hosts;
-  default_blocked_hosts.AddPattern(
-      URLPattern(URLPattern::SCHEME_HTTPS, "https://example.com/*"));
-  PermissionsData::SetDefaultPolicyHostRestrictions(
-      util::GetBrowserContextId(profile()), default_blocked_hosts,
-      URLPatternSet());
-
-  EXPECT_TRUE(RunAttachFunction(url, "Cannot attach to this target."));
+  policy::MockConfigurationPolicyProvider policy_provider;
+  ExtensionManagementPolicyUpdater pref(&policy_provider);
+  pref.AddPolicyBlockedHost("*", url.spec());
+  EXPECT_FALSE(
+      RunAttachFunction(url, manifest_errors::kCannotAccessExtensionUrl));
 }
 
 class DebuggerExtensionApiTest : public ExtensionApiTest {
@@ -828,12 +672,6 @@ IN_PROC_BROWSER_TEST_F(DebuggerExtensionApiTest, ParentTargetPermissions) {
   ASSERT_TRUE(RunExtensionTest("parent_target_permissions")) << message_;
 }
 
-IN_PROC_BROWSER_TEST_F(DebuggerExtensionApiTest, ReloadAndResetHistory) {
-  // Run test with file access disabled.
-  ASSERT_TRUE(RunExtensionTest("debugger_reload_and_reset_history"))
-      << message_;
-}
-
 // Tests that an extension is not allowed to inspect a worker through the
 // inspectWorker debugger command.
 // Regression test for https://crbug.com/1059577.
@@ -851,42 +689,14 @@ IN_PROC_BROWSER_TEST_F(DebuggerExtensionApiTest, AttachToEmptyUrls) {
   ASSERT_TRUE(RunExtensionTest("debugger_attach_to_empty_urls")) << message_;
 }
 
-#if BUILDFLAG(ENABLE_PDF)
-class DebuggerExtensionApiPdfTest : public base::test::WithFeatureOverride,
-                                    public DebuggerExtensionApiTest {
- public:
-  DebuggerExtensionApiPdfTest()
-      : base::test::WithFeatureOverride(chrome_pdf::features::kPdfOopif) {}
-};
-
-IN_PROC_BROWSER_TEST_P(DebuggerExtensionApiPdfTest, AttachToPdf) {
-  // TODO(crbug.com/1445746): Remove this once the test passes for OOPIF PDF.
-  if (IsParamFeatureEnabled()) {
-    GTEST_SKIP();
-  }
-
+IN_PROC_BROWSER_TEST_F(DebuggerExtensionApiTest, AttachToPdf) {
   ASSERT_TRUE(RunExtensionTest("debugger_attach_to_pdf")) << message_;
-}
-
-// TODO(crbug.com/1445746): Stop testing both modes after OOPIF PDF viewer
-// launches.
-INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(DebuggerExtensionApiPdfTest);
-#endif  // BUILDFLAG(ENABLE_PDF)
-
-IN_PROC_BROWSER_TEST_F(DebuggerExtensionApiTest, AttachToBlob) {
-  ASSERT_TRUE(RunExtensionTest("debugger_attach_to_blob_urls")) << message_;
 }
 
 // Tests that navigation to a forbidden URL is properly denied and
 // does not cause a crash.
 // This is a regression test for https://crbug.com/1188889.
-// TODO(crbug.com/1517512): Re-enable this test.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_NavigateToForbiddenUrl DISABLED_NavigateToForbiddenUrl
-#else
-#define MAYBE_NavigateToForbiddenUrl NavigateToForbiddenUrl
-#endif
-IN_PROC_BROWSER_TEST_F(DebuggerExtensionApiTest, MAYBE_NavigateToForbiddenUrl) {
+IN_PROC_BROWSER_TEST_F(DebuggerExtensionApiTest, NavigateToForbiddenUrl) {
   content::ScopedAllowRendererCrashes scoped_allow_renderer_crashes;
   ASSERT_TRUE(RunExtensionTest("debugger_navigate_to_forbidden_url"))
       << message_;

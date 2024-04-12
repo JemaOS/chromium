@@ -6,6 +6,10 @@
 
 @implementation FakeUNNotification
 @synthesize request = _request;
+- (void)dealloc {
+  [_request release];
+  [super dealloc];
+}
 @end
 
 @implementation FakeUNNotificationSettings
@@ -14,17 +18,17 @@
 @end
 
 @implementation FakeUNUserNotificationCenter {
-  FakeUNNotificationSettings* __strong _settings;
-  NSMutableDictionary* __strong _notifications;
-  NSSet<UNNotificationCategory*>* __strong _categories;
-  id<UNUserNotificationCenterDelegate> __weak _delegate;
+  base::scoped_nsobject<FakeUNNotificationSettings> _settings;
+  base::scoped_nsobject<NSMutableDictionary> _notifications;
+  base::scoped_nsobject<NSSet<UNNotificationCategory*>> _categories;
+  id<UNUserNotificationCenterDelegate> _delegate;
 }
 
 - (instancetype)init {
   if ((self = [super init])) {
-    _settings = [[FakeUNNotificationSettings alloc] init];
-    _notifications = [[NSMutableDictionary alloc] init];
-    _categories = [[NSSet alloc] init];
+    _settings.reset([[FakeUNNotificationSettings alloc] init]);
+    _notifications.reset([[NSMutableDictionary alloc] init]);
+    _categories.reset([[NSSet alloc] init]);
     _delegate = nil;
   }
   return self;
@@ -39,7 +43,7 @@
 }
 
 - (void)setNotificationCategories:(NSSet<UNNotificationCategory*>*)categories {
-  _categories = [categories copy];
+  _categories.reset([categories copy]);
 }
 
 - (void)replaceContentForRequestWithIdentifier:(NSString*)requestIdentifier
@@ -52,17 +56,19 @@
       [UNNotificationRequest requestWithIdentifier:requestIdentifier
                                            content:content
                                            trigger:nil];
-  FakeUNNotification* notification = [[FakeUNNotification alloc] init];
-  notification.request = request;
-  [_notifications setObject:notification forKey:request.identifier];
+  base::scoped_nsobject<FakeUNNotification> notification(
+      [[FakeUNNotification alloc] init]);
+  [notification setRequest:request];
+  [_notifications setObject:notification forKey:[request identifier]];
   notificationDelivered(/*error=*/nil);
 }
 
 - (void)addNotificationRequest:(UNNotificationRequest*)request
          withCompletionHandler:(void (^)(NSError* error))completionHandler {
-  FakeUNNotification* notification = [[FakeUNNotification alloc] init];
+  base::scoped_nsobject<FakeUNNotification> notification(
+      [[FakeUNNotification alloc] init]);
   [notification setRequest:request];
-  [_notifications setObject:notification forKey:request.identifier];
+  [_notifications setObject:notification forKey:[request identifier]];
   completionHandler(/*error=*/nil);
 }
 
@@ -73,7 +79,7 @@
 
 - (void)getNotificationCategoriesWithCompletionHandler:
     (void (^)(NSSet<UNNotificationCategory*>* categories))completionHandler {
-  completionHandler([_categories copy]);
+  completionHandler([[_categories copy] autorelease]);
 }
 
 - (void)requestAuthorizationWithOptions:(UNAuthorizationOptions)options
@@ -89,19 +95,19 @@
 
 - (void)getNotificationSettingsWithCompletionHandler:
     (void (^)(UNNotificationSettings* settings))completionHandler {
-  completionHandler(static_cast<UNNotificationSettings*>(_settings));
+  completionHandler(static_cast<UNNotificationSettings*>(_settings.get()));
 }
 
 - (FakeUNNotificationSettings*)settings {
-  return _settings;
+  return _settings.get();
 }
 
 - (NSArray<UNNotification*>* _Nonnull)notifications {
-  return _notifications.allValues;
+  return [_notifications allValues];
 }
 
 - (NSSet<UNNotificationCategory*>* _Nonnull)categories {
-  return _categories;
+  return _categories.get();
 }
 
 - (id<UNUserNotificationCenterDelegate> _Nullable)delegate {

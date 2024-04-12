@@ -12,7 +12,8 @@ namespace extensions {
 
 namespace errors = manifest_errors;
 
-using ExtensionManifestOfflineEnabledTest = ChromeManifestTest;
+class ExtensionManifestOfflineEnabledTest : public ChromeManifestTest {
+};
 
 TEST_F(ExtensionManifestOfflineEnabledTest, OfflineEnabled) {
   LoadAndExpectError("offline_enabled_invalid.json",

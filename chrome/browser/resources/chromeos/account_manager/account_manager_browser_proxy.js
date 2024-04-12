@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import {addSingletonGetter} from 'chrome://resources/ash/common/cr_deprecated.js';
+
 /**
  * @fileoverview Functions for Account manager screens.
  */
@@ -34,17 +36,6 @@ export class AccountManagerBrowserProxyImpl {
   closeDialog() {
     chrome.send('closeDialog');
   }
-
-  /** @return {!AccountManagerBrowserProxy} */
-  static getInstance() {
-    return instance || (instance = new AccountManagerBrowserProxyImpl());
-  }
-
-  /** @param {!AccountManagerBrowserProxy} obj */
-  static setInstance(obj) {
-    instance = obj;
-  }
 }
 
-/** @type {?AccountManagerBrowserProxy} */
-let instance = null;
+addSingletonGetter(AccountManagerBrowserProxyImpl);

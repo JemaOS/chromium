@@ -14,12 +14,10 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/browser_features.h"
-#include "chrome/browser/chrome_browser_main_extra_parts_nacl_deprecation.h"
 #include "chrome/browser/devtools/chrome_devtools_manager_delegate.h"
 #include "chrome/browser/devtools/devtools_window_testing.h"
 #include "chrome/browser/extensions/api/developer_private/developer_private_api.h"
@@ -120,9 +118,7 @@ class LoadedIncognitoObserver : public ExtensionRegistryObserver {
 
 class LazyBackgroundPageApiTest : public ExtensionApiTest {
  public:
-  LazyBackgroundPageApiTest() {
-    feature_list_.InitAndEnableFeature(kNaclAllow);
-  }
+  LazyBackgroundPageApiTest() {}
 
   LazyBackgroundPageApiTest(const LazyBackgroundPageApiTest&) = delete;
   LazyBackgroundPageApiTest& operator=(const LazyBackgroundPageApiTest&) =
@@ -185,9 +181,6 @@ class LazyBackgroundPageApiTest : public ExtensionApiTest {
                                 browser()->profile(),
                                 api_test_utils::FunctionMode::kNone);
   }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(LazyBackgroundPageApiTest, BrowserActionCreateTab) {
@@ -432,7 +425,10 @@ IN_PROC_BROWSER_TEST_F(LazyBackgroundPageApiTest, DISABLED_WaitForRequest) {
   host_helper.RestrictToType(mojom::ViewType::kExtensionBackgroundPage);
 
   // Abort the request.
-  EXPECT_EQ(true, content::EvalJs(host->web_contents(), "abortRequest()"));
+  bool result = false;
+  EXPECT_TRUE(content::ExecuteScriptAndExtractBool(host->web_contents(),
+                                                   "abortRequest()", &result));
+  EXPECT_TRUE(result);
   host_helper.WaitForHostDestroyed();
 
   // Lazy Background Page has been shut down.
@@ -630,53 +626,29 @@ IN_PROC_BROWSER_TEST_F(LazyBackgroundPageApiTest, DISABLED_IncognitoSplitMode) {
   }
 }
 
-enum class BackForwardCacheParam {
-  kEnabledWithDisconnectingExtensionPortWhenPageEnterBFCache,
-  kEnabledWithoutDisconnectingExtensionPortWhenPageEnterBFCache,
-  kDisabled,
-};
-
 class LazyBackgroundPageApiWithBFCacheParamTest
     : public LazyBackgroundPageApiTest,
-      public testing::WithParamInterface<BackForwardCacheParam> {
+      public testing::WithParamInterface<bool> {
  public:
   LazyBackgroundPageApiWithBFCacheParamTest() {
-    if (GetParam() == BackForwardCacheParam::kDisabled) {
+    if (IsBackForwardCacheEnabled()) {
+      feature_list_.InitWithFeaturesAndParameters(
+          content::GetBasicBackForwardCacheFeatureForTesting(),
+          content::GetDefaultDisabledBackForwardCacheFeaturesForTesting());
+    } else {
       feature_list_.InitWithFeaturesAndParameters(
           {}, {features::kBackForwardCache});
-      return;
     }
-    auto enabled_features =
-        content::GetBasicBackForwardCacheFeatureForTesting();
-    auto disabled_features =
-        content::GetDefaultDisabledBackForwardCacheFeaturesForTesting();
-
-    if (GetParam() ==
-        BackForwardCacheParam::
-            kEnabledWithDisconnectingExtensionPortWhenPageEnterBFCache) {
-      enabled_features.push_back(
-          {features::kDisconnectExtensionMessagePortWhenPageEntersBFCache, {}});
-    } else {
-      disabled_features.push_back(
-          features::kDisconnectExtensionMessagePortWhenPageEntersBFCache);
-    }
-    feature_list_.InitWithFeaturesAndParameters(enabled_features,
-                                                disabled_features);
   }
+  bool IsBackForwardCacheEnabled() { return GetParam(); }
 
  private:
   base::test::ScopedFeatureList feature_list_;
 };
 
-INSTANTIATE_TEST_SUITE_P(
-    All,
-    LazyBackgroundPageApiWithBFCacheParamTest,
-    testing::Values(
-        BackForwardCacheParam::
-            kEnabledWithDisconnectingExtensionPortWhenPageEnterBFCache,
-        BackForwardCacheParam::
-            kEnabledWithoutDisconnectingExtensionPortWhenPageEnterBFCache,
-        BackForwardCacheParam::kDisabled));
+INSTANTIATE_TEST_SUITE_P(All,
+                         LazyBackgroundPageApiWithBFCacheParamTest,
+                         testing::Bool());
 
 // Tests that messages from the content script activate the lazy background
 // page, and keep it alive until all channels are closed.
@@ -711,17 +683,14 @@ IN_PROC_BROWSER_TEST_P(LazyBackgroundPageApiWithBFCacheParamTest,
   // Navigate away
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
 
-  if (GetParam() ==
-      BackForwardCacheParam::
-          kEnabledWithoutDisconnectingExtensionPortWhenPageEnterBFCache) {
-    // When the page is stored back/forward cache without enabling
-    // kDisconnectExtensionMessagePortWhenPageEntersBFCache, the message channel
-    // should be kept.
+  if (IsBackForwardCacheEnabled()) {
+    // When the page is stored back/forward cache, the message channel should be
+    // kept.
     WaitForLoadStop(browser()->tab_strip_model()->GetActiveWebContents());
     EXPECT_TRUE(IsBackgroundPageAlive(last_loaded_extension_id()));
   } else {
-    // Otherwise, navigating away triggers closing the message channel and
-    // therefore the background page.
+    // Without back/forward cache, navigating away triggers closing the message
+    // channel and therefore the background page.
     host_helper.WaitForHostDestroyed();
     EXPECT_FALSE(IsBackgroundPageAlive(last_loaded_extension_id()));
   }

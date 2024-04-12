@@ -30,9 +30,9 @@ class SameThreadMediaSourceTracer final : public MediaSourceTracer {
 
   bool IsCrossThreadForDebugging() const override { return false; }
 
-  HTMLMediaElement* GetMediaElement() { return media_element_.Get(); }
+  HTMLMediaElement* GetMediaElement() { return media_element_; }
 
-  MediaSource* GetMediaSource() { return media_source_.Get(); }
+  MediaSource* GetMediaSource() { return media_source_; }
 
  private:
   Member<HTMLMediaElement> media_element_;

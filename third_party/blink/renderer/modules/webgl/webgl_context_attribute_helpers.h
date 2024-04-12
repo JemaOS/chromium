@@ -23,7 +23,8 @@ WebGLContextAttributes* ToWebGLContextAttributes(
 // Platform API.
 Platform::ContextAttributes ToPlatformContextAttributes(
     const CanvasContextCreationAttributesCore&,
-    Platform::ContextType context_type);
+    Platform::ContextType context_type,
+    bool support_own_offscreen_surface);
 
 // Turns the powerPreference context creation attribute into the
 // gl::GpuPreference enum which is sent along with GPU switching

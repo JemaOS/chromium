@@ -13,7 +13,7 @@
 namespace blink {
 
 template <class T>
-class TrackListBase : public EventTarget {
+class TrackListBase : public EventTargetWithInlineData {
  public:
   explicit TrackListBase(HTMLMediaElement* media_element)
       : media_element_(media_element) {}
@@ -48,7 +48,7 @@ class TrackListBase : public EventTarget {
   }
 
   void Add(T* track) {
-    track->SetMediaElement(media_element_.Get());
+    track->SetMediaElement(media_element_);
     tracks_.push_back(track);
     ScheduleEvent(TrackEvent::Create(event_type_names::kAddtrack, track));
   }
@@ -81,7 +81,7 @@ class TrackListBase : public EventTarget {
   void Trace(Visitor* visitor) const override {
     visitor->Trace(tracks_);
     visitor->Trace(media_element_);
-    EventTarget::Trace(visitor);
+    EventTargetWithInlineData::Trace(visitor);
   }
 
  private:

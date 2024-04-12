@@ -39,9 +39,9 @@
 namespace {
 
 class ErrorLabelView : public views::Label {
-  METADATA_HEADER(ErrorLabelView, views::Label)
-
  public:
+  METADATA_HEADER(ErrorLabelView);
+
   explicit ErrorLabelView(bool show_error_label)
       : Label(l10n_util::GetStringUTF16(
             IDS_SYSTEM_PROXY_AUTH_DIALOG_ERROR_LABEL)) {
@@ -59,7 +59,7 @@ class ErrorLabelView : public views::Label {
   }
 };
 
-BEGIN_METADATA(ErrorLabelView)
+BEGIN_METADATA(ErrorLabelView, views::Label)
 END_METADATA
 
 }  // namespace
@@ -193,7 +193,7 @@ void RequestSystemProxyCredentialsView::Init() {
   error_container->SetFlexForView(error_label_, 1);
 }
 
-BEGIN_METADATA(RequestSystemProxyCredentialsView)
+BEGIN_METADATA(RequestSystemProxyCredentialsView, views::DialogDelegateView)
 ADD_READONLY_PROPERTY_METADATA(std::string, ProxyServer)
 ADD_READONLY_PROPERTY_METADATA(std::u16string, Username)
 ADD_READONLY_PROPERTY_METADATA(std::u16string, Password)

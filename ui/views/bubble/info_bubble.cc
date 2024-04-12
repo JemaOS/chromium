@@ -130,7 +130,7 @@ void InfoBubble::UpdatePosition() {
   }
 }
 
-BEGIN_METADATA(InfoBubble)
+BEGIN_METADATA(InfoBubble, BubbleDialogDelegateView)
 END_METADATA
 
 }  // namespace views

@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/crosapi/browser_data_back_migrator_metrics.h"
 
-#include <string_view>
-
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -42,7 +40,7 @@ void SetUpProfileDirectories(const base::FilePath& lacros_dir) {
   ASSERT_TRUE(base::CreateDirectory(lacros_dir.Append("Other directory")));
 
   ASSERT_TRUE(
-      base::WriteFile(lacros_dir.Append("Profile 9"), std::string_view()));
+      base::WriteFile(lacros_dir.Append("Profile 9"), base::StringPiece()));
 }
 
 }  // namespace
@@ -193,7 +191,7 @@ TEST(BrowserDataBackMigratorMetricsTest, RecordBackwardMigrationTimeDelta) {
   base::HistogramTester histogram_tester;
 
   browser_data_back_migrator_metrics::RecordBackwardMigrationTimeDelta(
-      std::nullopt);
+      absl::nullopt);
   histogram_tester.ExpectTotalCount(
       browser_data_back_migrator_metrics::kElapsedTimeBetweenDataMigrations, 0);
 
@@ -201,39 +199,6 @@ TEST(BrowserDataBackMigratorMetricsTest, RecordBackwardMigrationTimeDelta) {
       base::Time::UnixEpoch());
   histogram_tester.ExpectTotalCount(
       browser_data_back_migrator_metrics::kElapsedTimeBetweenDataMigrations, 1);
-}
-
-TEST(BrowserDataBackMigratorMetricsTest,
-     RecordBackwardMigrationNotPrecededByForwardMigration) {
-  base::HistogramTester histogram_tester;
-
-  browser_data_back_migrator_metrics::
-      RecordBackwardMigrationPrecededByForwardMigration(std::nullopt);
-  histogram_tester.ExpectBucketCount(
-      browser_data_back_migrator_metrics::
-          kIsBackwardMigrationPrecededByForwardMigration,
-      false, 1);
-  histogram_tester.ExpectTotalCount(
-      browser_data_back_migrator_metrics::
-          kIsBackwardMigrationPrecededByForwardMigration,
-      1);
-}
-
-TEST(BrowserDataBackMigratorMetricsTest,
-     RecordBackwardMigrationPrecededByForwardMigration) {
-  base::HistogramTester histogram_tester;
-
-  browser_data_back_migrator_metrics::
-      RecordBackwardMigrationPrecededByForwardMigration(
-          base::Time::UnixEpoch());
-  histogram_tester.ExpectBucketCount(
-      browser_data_back_migrator_metrics::
-          kIsBackwardMigrationPrecededByForwardMigration,
-      true, 1);
-  histogram_tester.ExpectTotalCount(
-      browser_data_back_migrator_metrics::
-          kIsBackwardMigrationPrecededByForwardMigration,
-      1);
 }
 
 }  // namespace ash

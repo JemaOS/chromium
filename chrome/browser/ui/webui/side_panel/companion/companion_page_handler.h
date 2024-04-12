@@ -7,18 +7,10 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/metrics/histogram_functions.h"
-#include "base/scoped_observation.h"
-#include "chrome/browser/companion/core/companion_metrics_logger.h"
 #include "chrome/browser/companion/core/constants.h"
 #include "chrome/browser/companion/core/mojom/companion.mojom.h"
-#include "chrome/browser/companion/visual_query/visual_query_classifier_host.h"
-#include "chrome/browser/ui/side_panel/side_panel_enums.h"
+#include "chrome/browser/companion/core/msbb_delegate.h"
 #include "components/lens/buildflags.h"
-#include "components/prefs/pref_change_registrar.h"
-#include "components/signin/public/identity_manager/identity_manager.h"
-#include "components/unified_consent/url_keyed_data_collection_consent_helper.h"
-#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -34,12 +26,11 @@ class CompanionMetricsLogger;
 class CompanionUrlBuilder;
 class PromoHandler;
 class SigninDelegate;
+class TextFinderManager;
 
-class CompanionPageHandler
-    : public side_panel::mojom::CompanionPageHandler,
-      public content::WebContentsObserver,
-      public signin::IdentityManager::Observer,
-      public unified_consent::UrlKeyedDataCollectionConsentHelper::Observer {
+class CompanionPageHandler : public side_panel::mojom::CompanionPageHandler,
+                             public content::WebContentsObserver,
+                             public MsbbDelegate {
  public:
   CompanionPageHandler(
       mojo::PendingReceiver<side_panel::mojom::CompanionPageHandler> receiver,
@@ -55,70 +46,35 @@ class CompanionPageHandler
                      side_panel::mojom::PromoAction promo_action) override;
   void OnRegionSearchClicked() override;
   void OnExpsOptInStatusAvailable(bool is_exps_opted_in) override;
-  void OnOpenInNewTabButtonURLChanged(const GURL& url_to_open) override;
+  void OnOpenInNewTabButtonURLChanged(const ::GURL& url_to_open) override;
   void RecordUiSurfaceShown(side_panel::mojom::UiSurface ui_surface,
-                            int32_t ui_surface_position,
-                            int32_t child_element_available_count,
-                            int32_t child_element_shown_count) override;
-  void RecordUiSurfaceClicked(side_panel::mojom::UiSurface ui_surface,
-                              int32_t click_position) override;
+                            uint32_t child_element_count) override;
+  void RecordUiSurfaceClicked(side_panel::mojom::UiSurface ui_surface) override;
   void OnCqCandidatesAvailable(
       const std::vector<std::string>& text_directives) override;
-  void OnPhFeedback(side_panel::mojom::PhFeedback ph_feedback) override;
-  void OnCqJumptagClicked(const std::string& text_directive) override;
-  void OpenUrlInBrowser(const std::optional<GURL>& url_to_open,
-                        bool use_new_tab) override;
-  void OnLoadingState(side_panel::mojom::LoadingState loading_state) override;
-  void RefreshCompanionPage() override;
-  void OnServerSideUrlFilterEvent() override;
 
-  // content::WebContentsObserver overrides.
-  void DidFinishNavigation(
-      content::NavigationHandle* navigation_handle) override;
-  void DidFinishLoad(content::RenderFrameHost* render_frame_host,
-                     const GURL& validated_url) override;
+  // content::WebContentsObserver:
+  void PrimaryPageChanged(content::Page& page) override;
 
-  // IdentityManager::Observer overrides.
-  void OnPrimaryAccountChanged(
-      const signin::PrimaryAccountChangeEvent& event) override;
-  void OnErrorStateOfRefreshTokenUpdatedForAccount(
-      const CoreAccountInfo& account_info,
-      const GoogleServiceAuthError& error) override;
-
-  // UrlKeyedDataCollectionConsentHelper::Observer overrides.
-  void OnUrlKeyedDataCollectionConsentStateChanged(
-      unified_consent::UrlKeyedDataCollectionConsentHelper* consent_helper)
-      override;
-
-  // Called when page content setting pref changes.
-  void OnPageContentPrefChanged();
-
-  // Attempts to retrieve a search query string and initiate a search if
-  // available. If it does not load a companion page, returns false.
-  bool OnSearchTextQuery();
+  // Informs the page handler that a new text query to initialize / reload the
+  // page with was sent from client.
+  void OnSearchTextQuery(const std::string& text_query);
   void OnImageQuery(side_panel::mojom::ImageQuery image_query);
 
-  // Informs the page handler that the WebUI has detected a navigation that
-  // resulted in an error page.
-  void OnNavigationError();
-
-  // Notifies the companion side panel about a link click that happened in
-  // the side panel that maybe was handled by the browser (either new tab or
-  // same tab).
-  void NotifyLinkOpened(GURL opened_url,
-                        side_panel::mojom::LinkOpenMetadataPtr metadata);
+  // Returns the latest set url to be used for the 'open in new tab' button in
+  // the side panel header.
+  GURL GetNewTabButtonUrl();
 
  private:
+  // MsbbDelegate overrides.
+  void EnableMsbb(bool enable_msbb) override;
+
   // Notifies the companion side panel about the URL of the main frame. Based on
   // the call site, either does a full reload of the side panel or does a
   // postmessage() update. Reload is done during initial load of the side panel,
   // and context menu initiated navigations, while postmessage() is used for
   // subsequent navigations on the main frame.
   void NotifyURLChanged(bool is_full_reload);
-
-  // Registers a WebContentsModalDialogManager for our WebContents in order to
-  // display web modal dialogs triggered by it.
-  void RegisterModalDialogManager(Browser* browser);
 
   // Get the current browser associated with the WebUI.
   Browser* GetBrowser();
@@ -130,66 +86,17 @@ class CompanionPageHandler
   void DidFinishFindingCqTexts(
       const std::vector<std::pair<std::string, bool>>& text_found_vec);
 
-  // This method is used as the callback that handles visual query results.
-  // Its role is to perform some checks and do a mojom IPC to side panel.
-  void HandleVisualQueryResult(
-      const visual_query::VisualSuggestionsResults results,
-      const VisualSuggestionsMetrics stats);
-
-  // Method responsible for binding and sending VQS results to panel.
-  void SendVisualQueryResult(
-      const visual_query::VisualSuggestionsResults& results);
-
-  // The callback that handles the response to the request for the innerHTML of
-  // the main frame. Stores the response in |inner_html_| and sends it to the
-  // side panel if ready.
-  void HandleInnerHtmlResponse(const std::optional<std::string>& inner_html);
-
-  // Notifies the companion side panel about the title and the innerHTML of the
-  // main frame using a postmessage() update.
-  void SendPageContent();
-
   mojo::Receiver<side_panel::mojom::CompanionPageHandler> receiver_;
   mojo::Remote<side_panel::mojom::CompanionPage> page_;
   raw_ptr<CompanionSidePanelUntrustedUI> companion_untrusted_ui_ = nullptr;
+  raw_ptr<TextFinderManager> text_finder_manager_ = nullptr;
   std::unique_ptr<SigninDelegate> signin_delegate_;
   std::unique_ptr<CompanionUrlBuilder> url_builder_;
   std::unique_ptr<PromoHandler> promo_handler_;
-  std::unique_ptr<unified_consent::UrlKeyedDataCollectionConsentHelper>
-      consent_helper_;
-
-  // Owns the orchestrator for visual query suggestions.
-  std::unique_ptr<visual_query::VisualQueryClassifierHost> visual_query_host_;
+  GURL open_in_new_tab_url_;
 
   // Logs metrics for companion page. Reset when there is a new navigation.
   std::unique_ptr<CompanionMetricsLogger> metrics_logger_;
-
-  // The current URL of the main frame.
-  GURL page_url_;
-
-  // Observers for sign-in, MSBB, and page content status.
-  base::ScopedObservation<signin::IdentityManager,
-                          signin::IdentityManager::Observer>
-      identity_manager_observation_{this};
-  base::ScopedObservation<
-      unified_consent::UrlKeyedDataCollectionConsentHelper,
-      unified_consent::UrlKeyedDataCollectionConsentHelper::Observer>
-      consent_helper_observation_{this};
-  PrefChangeRegistrar pref_change_registrar_;
-
-  std::optional<base::TimeTicks> full_load_start_time_;
-  std::optional<base::TimeTicks> reload_start_time_;
-  std::optional<base::TimeTicks> ui_ready_for_visual_queries_time_;
-
-  // Indicates that the kStartedLoading signal was received from side panel. The
-  // page content is sent to the side panel only if the side panel is ready.
-  // Otherwise, it is stored to be sent when the kStartedLoading signal is
-  // received from the side panel.
-  std::optional<base::TimeTicks> ui_ready_for_page_content_time_;
-  // Used to store the page content before the side panel is ready for it. This
-  // is untrustworthy content which will be sent to the webui for processing.
-  // TODO(1493364): Use an opaque mojo type to hold this data in the browser.
-  std::optional<std::string> inner_html_;
 
   base::WeakPtrFactory<CompanionPageHandler> weak_ptr_factory_{this};
 };

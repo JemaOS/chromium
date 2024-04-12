@@ -3,13 +3,16 @@
 // found in the LICENSE file.
 
 import '//resources/polymer/v3_0/paper-styles/color.js';
+import '../cr_hidden_style.css.js';
+import '../cr_shared_style.css.js';
+import '../cr_shared_vars.css.js';
+import './cr_input_style.css.js';
 
-import {assert} from '//resources/js/assert.js';
-import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {assert} from '//resources/js/assert_ts.js';
+import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {getCss} from './cr_input.css.js';
-import {getHtml} from './cr_input.html.js';
+import {getTemplate} from './cr_input.html.js';
+
 
 /**
  * Input types supported by cr-input.
@@ -63,39 +66,50 @@ export interface CrInputElement {
   };
 }
 
-export class CrInputElement extends CrLitElement {
+export class CrInputElement extends PolymerElement {
   static get is() {
     return 'cr-input';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
-      ariaDescription: {type: String},
-      ariaLabel: {type: String},
+      ariaDescription: {
+        type: String,
+      },
+
+      ariaLabel: {
+        type: String,
+        value: '',
+      },
 
       autofocus: {
         type: Boolean,
-        reflect: true,
+        value: false,
+        reflectToAttribute: true,
       },
 
-      autoValidate: {type: Boolean},
+      autoValidate: Boolean,
 
       disabled: {
         type: Boolean,
-        reflect: true,
+        value: false,
+        reflectToAttribute: true,
       },
 
-      errorMessage: {type: String},
-      errorRole_: {type: String},
-      displayErrorMessage_: {type: String},
+      errorMessage: {
+        type: String,
+        value: '',
+        observer: 'onInvalidOrErrorMessageChanged_',
+      },
+
+      displayErrorMessage_: {
+        type: String,
+        value: '',
+      },
 
       /**
        * This is strictly used internally for styling, do not attempt to use
@@ -103,139 +117,178 @@ export class CrInputElement extends CrLitElement {
        */
       focused_: {
         type: Boolean,
-        reflect: true,
+        value: false,
+        reflectToAttribute: true,
       },
 
       invalid: {
         type: Boolean,
+        value: false,
         notify: true,
-        reflect: true,
+        reflectToAttribute: true,
+        observer: 'onInvalidOrErrorMessageChanged_',
       },
 
       max: {
         type: Number,
-        reflect: true,
+        reflectToAttribute: true,
       },
 
       min: {
         type: Number,
-        reflect: true,
+        reflectToAttribute: true,
       },
 
       maxlength: {
         type: Number,
-        reflect: true,
+        reflectToAttribute: true,
       },
 
       minlength: {
         type: Number,
-        reflect: true,
+        reflectToAttribute: true,
       },
 
       pattern: {
         type: String,
-        reflect: true,
+        reflectToAttribute: true,
       },
 
-      inputmode: {type: String},
-      label: {type: String},
-      placeholder: {type: String},
+      inputmode: String,
+
+      label: {
+        type: String,
+        value: '',
+      },
+
+      placeholder: {
+        type: String,
+        value: null,
+        observer: 'placeholderChanged_',
+      },
 
       readonly: {
         type: Boolean,
-        reflect: true,
+        reflectToAttribute: true,
       },
 
       required: {
         type: Boolean,
-        reflect: true,
+        reflectToAttribute: true,
       },
 
-      inputTabindex: {type: Number},
-      type: {type: String},
+      inputTabindex: {
+        type: Number,
+        value: 0,
+        observer: 'onInputTabindexChanged_',
+      },
+
+      type: {
+        type: String,
+        value: 'text',
+        observer: 'onTypeChanged_',
+      },
 
       value: {
         type: String,
+        value: '',
         notify: true,
+        observer: 'onValueChanged_',
       },
-
-      internalValue_: {type: String},
     };
   }
 
-  override ariaDescription: string|null;
-  override ariaLabel: string = '';
-  override autofocus: boolean = false;
-  autoValidate: boolean = false;
-  disabled: boolean = false;
-  errorMessage: string = '';
-  inputmode?: string;
-  inputTabindex: number = 0;
-  invalid: boolean = false;
-  label: string = '';
-  max?: number;
-  min?: number;
-  maxlength?: number;
-  minlength?: number;
-  pattern?: string;
-  placeholder: string|null = null;
-  readonly: boolean = false;
-  required: boolean = false;
-  type: string = 'text';
-  value: string = '';
-  protected internalValue_: string = '';
-  protected focused_: boolean = false;
+  ariaDescription: string|undefined;
+  autoFocus: boolean;
+  autoValidate: boolean;
+  disabled: boolean;
+  errorMessage: string;
+  inputmode: string;
+  inputTabindex: number;
+  invalid: boolean;
+  label: string;
+  max: number;
+  min: number;
+  maxlength: number;
+  minlength: number;
+  pattern: string;
+  placeholder: string|null;
+  readonly: boolean;
+  required: boolean;
+  type: string;
+  value: string;
 
-  override firstUpdated() {
+  private displayErrorMessage_: string;
+  private focused_: boolean;
+
+  override ready() {
+    super.ready();
+
     // Use inputTabindex instead.
     assert(!this.hasAttribute('tabindex'));
   }
 
-  override willUpdate(changedProperties: PropertyValues<this>) {
-    super.willUpdate(changedProperties);
-
-    if (changedProperties.has('value')) {
-      // Don't allow null or undefined as these will render in the input.
-      // cr-input cannot use Lit's "nothing" in the HTML template; this breaks
-      // the underlying native input's auto validation if |required| is set.
-      this.internalValue_ =
-          (this.value === undefined || this.value === null) ? '' : this.value;
-    }
-
-    if (changedProperties.has('inputTabindex')) {
-      // CrInput only supports 0 or -1 values for the input's tabindex to allow
-      // having the input in tab order or not. Values greater than 0 will not
-      // work as the shadow root encapsulates tabindices.
-      assert(this.inputTabindex === 0 || this.inputTabindex === -1);
-    }
-
-    if (changedProperties.has('type')) {
-      // Check that the 'type' is one of the supported types.
-      assert(SUPPORTED_INPUT_TYPES.has(this.type));
-    }
+  private onInputTabindexChanged_() {
+    // CrInput only supports 0 or -1 values for the input's tabindex to allow
+    // having the input in tab order or not. Values greater than 0 will not work
+    // as the shadow root encapsulates tabindices.
+    assert(this.inputTabindex === 0 || this.inputTabindex === -1);
   }
 
-  override updated(changedProperties: PropertyValues<this>) {
-    super.updated(changedProperties);
-
-    if (changedProperties.has('value')) {
-      const previous = changedProperties.get('value');
-      if ((!!this.value || !!previous) && this.autoValidate) {
-        this.invalid = !this.inputElement.checkValidity();
-      }
-    }
-
-    if (changedProperties.has('placeholder')) {
-      if (this.placeholder === null || this.placeholder === undefined) {
-        this.inputElement.removeAttribute('placeholder');
-      } else {
-        this.inputElement.setAttribute('placeholder', this.placeholder);
-      }
-    }
+  private onTypeChanged_() {
+    // Check that the 'type' is one of the supported types.
+    assert(SUPPORTED_INPUT_TYPES.has(this.type));
   }
 
   get inputElement(): HTMLInputElement {
     return this.$.input;
+  }
+
+  /**
+   * Returns the aria label to be used with the input element.
+   */
+  private getAriaLabel_(ariaLabel: string, label: string, placeholder: string):
+      string {
+    return ariaLabel || label || placeholder;
+  }
+
+  /**
+   * Returns 'true' or 'false' as a string for the aria-invalid attribute.
+   */
+  private getAriaInvalid_(invalid: boolean): string {
+    return invalid ? 'true' : 'false';
+  }
+
+  private onInvalidOrErrorMessageChanged_() {
+    this.displayErrorMessage_ = this.invalid ? this.errorMessage : '';
+
+    // On VoiceOver role="alert" is not consistently announced when its content
+    // changes. Adding and removing the |role| attribute every time there
+    // is an error, triggers VoiceOver to consistently announce.
+    const ERROR_ID = 'error';
+    const errorElement =
+        this.shadowRoot!.querySelector<HTMLElement>(`#${ERROR_ID}`);
+    assert(errorElement);
+    if (this.invalid) {
+      errorElement.setAttribute('role', 'alert');
+      this.inputElement.setAttribute('aria-errormessage', ERROR_ID);
+    } else {
+      errorElement.removeAttribute('role');
+      this.inputElement.removeAttribute('aria-errormessage');
+    }
+  }
+
+  /**
+   * This is necessary instead of doing <input placeholder="[[placeholder]]">
+   * because if this.placeholder is set to a truthy value then removed, it
+   * would show "null" as placeholder.
+   */
+  private placeholderChanged_() {
+    if (this.placeholder || this.placeholder === '') {
+      this.inputElement.setAttribute('placeholder', this.placeholder);
+    } else {
+      this.inputElement.removeAttribute('placeholder');
+    }
   }
 
   override focus() {
@@ -256,51 +309,31 @@ export class CrInputElement extends CrLitElement {
     return true;
   }
 
+  private onValueChanged_(newValue: string, oldValue: string) {
+    if (!newValue && !oldValue) {
+      return;
+    }
+    if (this.autoValidate) {
+      this.validate();
+    }
+  }
+
   /**
    * 'change' event fires when <input> value changes and user presses 'Enter'.
    * This function helps propagate it to host since change events don't
    * propagate across Shadow DOM boundary by default.
    */
-  protected async onInputChange_(e: Event) {
-    // Ensure that |value| has been updated before re-firing 'change'.
-    await this.updateComplete;
-    this.fire('change', {sourceEvent: e});
+  private onInputChange_(e: Event) {
+    this.dispatchEvent(new CustomEvent(
+        'change', {bubbles: true, composed: true, detail: {sourceEvent: e}}));
   }
 
-  protected onInput_(e: Event) {
-    this.internalValue_ = (e.target as HTMLInputElement).value;
-    this.value = this.internalValue_;
-  }
-
-  protected onInputFocus_() {
+  private onInputFocus_() {
     this.focused_ = true;
   }
 
-  protected onInputBlur_() {
+  private onInputBlur_() {
     this.focused_ = false;
-  }
-
-  protected getAriaLabel_() {
-    return this.ariaLabel || this.label || this.placeholder;
-  }
-
-  protected getAriaInvalid_() {
-    return this.invalid ? 'true' : 'false';
-  }
-
-  protected getErrorMessage_() {
-    return this.invalid ? this.errorMessage : '';
-  }
-
-  protected getErrorRole_() {
-    // On VoiceOver role="alert" is not consistently announced when its
-    // content changes. Adding and removing the |role| attribute every time
-    // there is an error, triggers VoiceOver to consistently announce.
-    return this.invalid ? 'alert' : '';
-  }
-
-  protected getAriaErrorMessage_() {
-    return this.invalid ? 'error' : '';
   }
 
   /**
@@ -321,19 +354,8 @@ export class CrInputElement extends CrLitElement {
     }
   }
 
-  // Note: In order to preserve it as a synchronous API, validate() forces 2
-  // rendering updates to cr-input. This allows this function to be used to
-  // synchronously determine the validity of a <cr-input>, however, as a result
-  // of these 2 forced updates it may result in slower performance. validate()
-  // should not be called internally from within cr_input.ts, and should only
-  // be called where necessary from clients.
   validate(): boolean {
-    // Ensure that any changes to |value| have propagated to the native <input>.
-    this.performUpdate();
     this.invalid = !this.inputElement.checkValidity();
-    // Perform update again to ensure change propagates via 2 way binding to
-    // Polymer parent before returning.
-    this.performUpdate();
     return !this.invalid;
   }
 }

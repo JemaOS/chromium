@@ -1,6 +1,10 @@
 # Description: some utilitiy function for audio processing.
 
 package(
+    default_applicable_licenses = ["//tensorflow_lite_support:license"],
+    default_visibility = [
+        "//tensorflow_lite_support:internal",
+    ],
     licenses = ["notice"],  # Apache 2.0
 )
 
@@ -26,7 +30,9 @@ cc_library(
         "wav_io.cc",
     ],
     hdrs = ["wav_io.h"],
-    visibility = ["//tensorflow_lite_support:internal"],
+    visibility = [
+        "//tensorflow_lite_support:internal",
+    ],
     deps = [
         "//tensorflow_lite_support/cc/port:status_macros",
         "@com_google_absl//absl/status",

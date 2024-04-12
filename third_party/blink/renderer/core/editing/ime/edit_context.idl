@@ -11,7 +11,8 @@
 
 [
     Exposed=Window,
-    ActiveScriptWrappable
+    ActiveScriptWrappable,
+    RuntimeEnabled=EditContext
 ] interface EditContext : EventTarget {
     [CallWith=ScriptState] constructor(optional EditContextInit options = {});
     [RaisesException] void updateSelection(unsigned long start, unsigned long end);
@@ -19,11 +20,14 @@
     void updateSelectionBounds(DOMRect selectionBounds);
     void updateCharacterBounds(unsigned long rangeStart, sequence<DOMRect> characterBounds);
     [RaisesException] void updateText(unsigned long start, unsigned long end, DOMString newText);
-    sequence<HTMLElement> attachedElements();
+    sequence<Element> attachedElements();
 
-    readonly attribute DOMString text;
-    readonly attribute unsigned long selectionStart;
-    readonly attribute unsigned long selectionEnd;
+    attribute DOMString text;
+    [RaisesException=Setter] attribute unsigned long selectionStart;
+    [RaisesException=Setter] attribute unsigned long selectionEnd;
+    attribute EditContextInputMode inputMode;
+    attribute EditContextInputPanelPolicy inputPanelPolicy;
+    attribute EditContextEnterKeyHint enterKeyHint;
     readonly attribute unsigned long characterBoundsRangeStart;
     sequence<DOMRect> characterBounds();
 

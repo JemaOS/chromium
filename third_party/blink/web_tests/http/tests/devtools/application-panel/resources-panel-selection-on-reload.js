@@ -2,26 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ApplicationTestRunner} from 'application_test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
-import * as Common from 'devtools/core/common/common.js';
-import * as UI from 'devtools/ui/legacy/legacy.js';
-import * as Application from 'devtools/panels/application/application.js';
-
 (async function() {
   TestRunner.addResult(`Tests Application Panel response to a main frame navigation.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('application_test_runner');
     // Note: every test that uses a storage API must manually clean-up state from previous tests.
   await ApplicationTestRunner.resetState();
 
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
   await TestRunner.showPanel('resources');
 
   function createIndexedDB(callback) {
     var mainFrameId = TestRunner.resourceTreeModel.mainFrame.id;
-    var model = TestRunner.mainTarget.model(Application.IndexedDBModel.IndexedDBModel);
+    var model = TestRunner.mainTarget.model(Resources.IndexedDBModel);
     ApplicationTestRunner.createDatabase(mainFrameId, 'Database1', () => {
-      var event = model.addEventListener(Application.IndexedDBModel.Events.DatabaseAdded, () => {
+      var event = model.addEventListener(Resources.IndexedDBModel.Events.DatabaseAdded, () => {
         Common.EventTarget.removeEventListeners([event]);
         callback();
       });
@@ -37,7 +31,7 @@ import * as Application from 'devtools/panels/application/application.js';
   }
 
   function dumpCurrentState(label) {
-    var view = Application.ResourcesPanel.ResourcesPanel.instance();
+    var view = UI.panels.resources;
     TestRunner.addResult(label);
     dump(view.sidebar.sidebarTree.rootElement(), '');
     var path = [];
@@ -46,12 +40,13 @@ import * as Application from 'devtools/panels/application/application.js';
         path.push(selected.itemURL);
     }
     TestRunner.addResult('Selection: ' + JSON.stringify(path));
-    TestRunner.addResult('Visible view is a cookie view: ' + (view.visibleView instanceof Application.CookieItemsView.CookieItemsView));
+    TestRunner.addResult('Visible view is a cookie view: ' + (view.visibleView instanceof Resources.CookieItemsView));
   }
 
   await new Promise(createIndexedDB);
-  await UI.ViewManager.ViewManager.instance().showView('resources');
-  Application.ResourcesPanel.ResourcesPanel.instance().sidebar.cookieListTreeElement.firstChild().select(false, true);
+  await ApplicationTestRunner.createWebSQLDatabase('database-for-test');
+  await UI.viewManager.showView('resources');
+  UI.panels.resources.sidebar.cookieListTreeElement.firstChild().select(false, true);
   dumpCurrentState('Initial state:');
   await TestRunner.reloadPagePromise();
   dumpCurrentState('After navigation:');

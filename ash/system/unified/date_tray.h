@@ -32,9 +32,9 @@ class GlanceableTrayBubble;
 // TODO(b:277268122) update documentation.
 class ASH_EXPORT DateTray : public TrayBackgroundView,
                             public UnifiedSystemTray::Observer {
-  METADATA_HEADER(DateTray, TrayBackgroundView)
-
  public:
+  METADATA_HEADER(DateTray);
+
   DateTray(Shelf* shelf, UnifiedSystemTray* tray);
   DateTray(const DateTray&) = delete;
   DateTray& operator=(const DateTray&) = delete;
@@ -48,10 +48,8 @@ class ASH_EXPORT DateTray : public TrayBackgroundView,
   void UpdateAfterLoginStatusChange() override;
   void ShowBubble() override;
   void CloseBubble() override;
-  void HideBubbleWithView(const TrayBubbleView* bubble_view) override;
-  void HideBubble(const TrayBubbleView* bubble_view) override;
-  void ClickedOutsideBubble(const ui::LocatedEvent& event) override;
-  void UpdateTrayItemColor(bool is_active) override;
+  void HideBubbleWithView(const TrayBubbleView* bubble_view) override {}
+  void ClickedOutsideBubble() override;
 
   // UnifiedSystemTray::Observer:
   void OnOpeningCalendarView() override;
@@ -60,22 +58,17 @@ class ASH_EXPORT DateTray : public TrayBackgroundView,
   // Callback called when this tray is pressed.
   void OnButtonPressed(const ui::Event& event);
 
-  // `from_keyboard` - whether `ShowGlanceableBubble()` is being shown in
-  // response to a keyboard event.
-  void ShowGlanceableBubble(bool from_keyboard);
+  void ShowGlanceableBubble();
   void HideGlanceableBubble();
 
  private:
   friend class DateTrayTest;
-  friend class GlanceablesPixelTest;
-  friend class GlanceablesBrowserTest;
-  friend class GlanceableTrayBubbleViewTest;
 
   // Owned by the views hierarchy.
-  raw_ptr<TimeTrayItemView> time_view_ = nullptr;
+  raw_ptr<TimeTrayItemView, ExperimentalAsh> time_view_ = nullptr;
 
   // Owned by `StatusAreaWidget`.
-  raw_ptr<UnifiedSystemTray> unified_system_tray_ = nullptr;
+  raw_ptr<UnifiedSystemTray, ExperimentalAsh> unified_system_tray_ = nullptr;
 
   // Bubble container for Glanceable UI.
   std::unique_ptr<GlanceableTrayBubble> bubble_;

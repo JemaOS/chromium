@@ -4,8 +4,7 @@
 
 import 'chrome://extensions/extensions.js';
 
-import type {ExtensionsRuntimeHostsDialogElement} from 'chrome://extensions/extensions.js';
-import {getMatchingUserSpecifiedSites, getPatternFromSite} from 'chrome://extensions/extensions.js';
+import {ExtensionsRuntimeHostsDialogElement, getMatchingUserSpecifiedSites, getPatternFromSite} from 'chrome://extensions/extensions.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise, isVisible} from 'chrome://webui-test/test_util.js';
@@ -56,7 +55,6 @@ suite('RuntimeHostsDialog', function() {
     input.value = site;
     input.dispatchEvent(
         new CustomEvent('input', {bubbles: true, composed: true}));
-    await input.updateComplete;
     assertFalse(input.invalid);
 
     const submit = dialog.$.submit;
@@ -67,7 +65,7 @@ suite('RuntimeHostsDialog', function() {
     assertEquals('http://www.example.com/*', pattern);
   });
 
-  test('invalid input', async () => {
+  test('invalid input', function() {
     // Initially the action button should be disabled, but the error warning
     // should not be shown for an empty input.
     const input = dialog.shadowRoot!.querySelector('cr-input');
@@ -79,19 +77,15 @@ suite('RuntimeHostsDialog', function() {
     // Simulate user input of invalid text.
     const invalidSite = 'foobar';
     input.value = invalidSite;
-    await input.updateComplete;
     input.dispatchEvent(
         new CustomEvent('input', {bubbles: true, composed: true}));
-    await input.updateComplete;
     assertTrue(input.invalid);
     assertTrue(submit.disabled);
 
     // Entering valid text should clear the error and enable the submit button.
     input.value = 'http://www.example.com';
-    await input.updateComplete;
     input.dispatchEvent(
         new CustomEvent('input', {bubbles: true, composed: true}));
-    await input.updateComplete;
     assertFalse(input.invalid);
     assertFalse(submit.disabled);
   });
@@ -105,7 +99,6 @@ suite('RuntimeHostsDialog', function() {
     input.value = site;
     input.dispatchEvent(
         new CustomEvent('input', {bubbles: true, composed: true}));
-    await input.updateComplete;
     assertFalse(input.invalid);
 
     const submit = dialog.$.submit;
@@ -126,7 +119,6 @@ suite('RuntimeHostsDialog', function() {
     input.value = newPattern;
     input.dispatchEvent(
         new CustomEvent('input', {bubbles: true, composed: true}));
-    await input.updateComplete;
     const submit = dialog.$.submit;
 
     submit.click();
@@ -173,7 +165,6 @@ suite('RuntimeHostsDialog', function() {
     input.value = site;
     input.dispatchEvent(
         new CustomEvent('input', {bubbles: true, composed: true}));
-    await input.updateComplete;
     assertFalse(input.invalid);
 
     const submit = dialog.$.submit;
@@ -246,7 +237,6 @@ suite('RuntimeHostsDialog', function() {
     input.value = 'http://www.nomatch.com';
     input.dispatchEvent(
         new CustomEvent('input', {bubbles: true, composed: true}));
-    await input.updateComplete;
     assertFalse(input.invalid);
     assertFalse(isVisible(dialog.shadowRoot!.querySelector(
         '.matching-restricted-sites-warning')));
@@ -254,7 +244,6 @@ suite('RuntimeHostsDialog', function() {
     input.value = 'http://*.restricted.com';
     input.dispatchEvent(
         new CustomEvent('input', {bubbles: true, composed: true}));
-    await input.updateComplete;
     assertFalse(input.invalid);
     assertTrue(isVisible(dialog.shadowRoot!.querySelector(
         '.matching-restricted-sites-warning')));

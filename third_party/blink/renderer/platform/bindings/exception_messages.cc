@@ -36,24 +36,6 @@
 
 namespace blink {
 
-namespace {
-
-String optionalNameProperty(const String& property) {
-  if (!property) {
-    return String();
-  }
-  return " '" + property + "'";
-}
-
-String optionalIndexProperty(const String& property) {
-  if (!property) {
-    return String();
-  }
-  return " [" + property + "]";
-}
-
-}  //  namespace
-
 String ExceptionMessages::FailedToConvertJSValue(const char* type) {
   return String::Format("Failed to convert value to '%s'.", type);
 }
@@ -70,76 +52,67 @@ String ExceptionMessages::FailedToEnumerate(const char* type,
          (!detail.empty() ? String("': " + detail) : String("'"));
 }
 
-String ExceptionMessages::FailedToExecute(const String& method,
+String ExceptionMessages::FailedToExecute(const char* method,
                                           const char* type,
                                           const String& detail) {
-  return "Failed to execute '" + method + "' on '" + String(type) +
+  return "Failed to execute '" + String(method) + "' on '" + String(type) +
          (!detail.empty() ? String("': " + detail) : String("'"));
 }
 
-String ExceptionMessages::FailedToGet(const String& property,
+String ExceptionMessages::FailedToGet(const char* property,
                                       const char* type,
                                       const String& detail) {
-  return "Failed to read the '" + property + "' property from '" +
+  return "Failed to read the '" + String(property) + "' property from '" +
          String(type) + "': " + detail;
 }
 
-String ExceptionMessages::FailedToSet(const String& property,
+String ExceptionMessages::FailedToSet(const char* property,
                                       const char* type,
                                       const String& detail) {
-  return "Failed to set the '" + property + "' property on '" + String(type) +
-         "': " + detail;
+  return "Failed to set the '" + String(property) + "' property on '" +
+         String(type) + "': " + detail;
 }
 
-String ExceptionMessages::FailedToDelete(const String& property,
+String ExceptionMessages::FailedToDelete(const char* property,
                                          const char* type,
                                          const String& detail) {
-  return "Failed to delete the '" + property + "' property from '" +
+  return "Failed to delete the '" + String(property) + "' property from '" +
          String(type) + "': " + detail;
 }
 
-String ExceptionMessages::FailedToGetIndexed(const String& property,
-                                             const char* type,
+String ExceptionMessages::FailedToGetIndexed(const char* type,
                                              const String& detail) {
-  return "Failed to read an indexed property" +
-         optionalIndexProperty(property) + " from '" + String(type) +
+  return "Failed to read an indexed property from '" + String(type) +
          "': " + detail;
 }
 
-String ExceptionMessages::FailedToSetIndexed(const String& property,
-                                             const char* type,
+String ExceptionMessages::FailedToSetIndexed(const char* type,
                                              const String& detail) {
-  return "Failed to set an indexed property" + optionalIndexProperty(property) +
-         " on '" + String(type) + "': " + detail;
+  return "Failed to set an indexed property on '" + String(type) +
+         "': " + detail;
 }
 
-String ExceptionMessages::FailedToDeleteIndexed(const String& property,
-                                                const char* type,
+String ExceptionMessages::FailedToDeleteIndexed(const char* type,
                                                 const String& detail) {
-  return "Failed to delete an indexed property" +
-         optionalIndexProperty(property) + " from '" + String(type) +
+  return "Failed to delete an indexed property from '" + String(type) +
          "': " + detail;
 }
 
-String ExceptionMessages::FailedToGetNamed(const String& property,
-                                           const char* type,
+String ExceptionMessages::FailedToGetNamed(const char* type,
                                            const String& detail) {
-  return "Failed to read a named property" + optionalNameProperty(property) +
-         " from '" + String(type) + "': " + detail;
+  return "Failed to read a named property from '" + String(type) +
+         "': " + detail;
 }
 
-String ExceptionMessages::FailedToSetNamed(const String& property,
-                                           const char* type,
+String ExceptionMessages::FailedToSetNamed(const char* type,
                                            const String& detail) {
-  return "Failed to set a named property" + optionalNameProperty(property) +
-         " on '" + String(type) + "': " + detail;
+  return "Failed to set a named property on '" + String(type) + "': " + detail;
 }
 
-String ExceptionMessages::FailedToDeleteNamed(const String& property,
-                                              const char* type,
+String ExceptionMessages::FailedToDeleteNamed(const char* type,
                                               const String& detail) {
-  return "Failed to delete a named property" + optionalNameProperty(property) +
-         " from '" + String(type) + "': " + detail;
+  return "Failed to delete a named property from '" + String(type) +
+         "': " + detail;
 }
 
 String ExceptionMessages::ConstructorNotCallableAsFunction(const char* type) {
@@ -202,6 +175,13 @@ String ExceptionMessages::NotAFiniteNumber(const Decimal& value,
   DCHECK(!value.IsFinite());
   return String::Format("The %s is %s.", name,
                         value.IsInfinity() ? "infinite" : "not a number");
+}
+
+String ExceptionMessages::InputArrayTooLong(unsigned int expected_size,
+                                            unsigned int actual_size) {
+  return "Input array's length should be less than " +
+         String::Number(expected_size) + ". Actual length is " +
+         String::Number(actual_size) + ".";
 }
 
 String ExceptionMessages::OrdinalNumber(int number) {

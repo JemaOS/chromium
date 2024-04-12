@@ -4,10 +4,6 @@
 
 #include "chrome/common/media/cdm_registration.h"
 
-#include <memory>
-#include <optional>
-#include <utility>
-
 #include "base/check.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -16,14 +12,13 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "content/public/common/cdm_info.h"
-#include "media/base/cdm_capability.h"
+#include "media/cdm/cdm_capability.h"
 #include "media/cdm/cdm_type.h"
 #include "media/cdm/clear_key_cdm_common.h"
 #include "third_party/widevine/cdm/buildflags.h"
 
 #if BUILDFLAG(ENABLE_LIBRARY_CDMS)
 #include "base/command_line.h"
-#include "components/cdm/common/cdm_manifest.h"
 #include "media/base/media_switches.h"
 #include "media/cdm/cdm_paths.h"  // nogncheck
 #endif
@@ -36,7 +31,7 @@
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN)
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 #include "base/no_destructor.h"
-#include "chrome/common/media/component_widevine_cdm_hint_file_linux.h"
+#include "components/cdm/common/cdm_manifest.h"
 #include "media/cdm/supported_audio_codecs.h"
 // Needed for WIDEVINE_CDM_MIN_GLIBC_VERSION. This file is in
 // SHARED_INTERMEDIATE_DIR.
@@ -46,11 +41,14 @@
 #include <gnu/libc-version.h>
 #include "base/version.h"
 #endif  // defined(WIDEVINE_CDM_MIN_GLIBC_VERSION)
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chrome/common/media/component_widevine_cdm_hint_file_linux.h"
+#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 #endif  // BUILDFLAG(ENABLE_WIDEVINE)
 
 #if BUILDFLAG(IS_ANDROID)
-#include "components/cdm/common/android_cdm_registration.h"
+#include "media/base/android/media_drm_bridge.h"
 #endif  // BUILDFLAG(IS_ANDROID)
 
 namespace {
@@ -84,7 +82,6 @@ std::unique_ptr<content::CdmInfo> CreateCdmInfoFromWidevineDirectory(
       media::GetPlatformSpecificDirectory(cdm_base_path)
           .Append(base::GetNativeLibraryName(kWidevineCdmLibraryName));
   if (!base::PathExists(cdm_library_path)) {
-    DLOG(ERROR) << __func__ << " no directory: " << cdm_library_path;
     return nullptr;
   }
 
@@ -93,7 +90,6 @@ std::unique_ptr<content::CdmInfo> CreateCdmInfoFromWidevineDirectory(
   base::Version version;
   media::CdmCapability capability;
   if (!ParseCdmManifestFromPath(manifest_path, &version, &capability)) {
-    DLOG(ERROR) << __func__ << " no manifest: " << manifest_path;
     return nullptr;
   }
 
@@ -107,8 +103,8 @@ std::unique_ptr<content::CdmInfo> CreateCdmInfoFromWidevineDirectory(
 #if BUILDFLAG(BUNDLE_WIDEVINE_CDM) && \
     (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
 // On Linux/ChromeOS we have to preload the CDM since it uses the zygote
-// sandbox. On Windows and Mac, CDM registration is handled by Component
-// Update (as the CDM can be loaded only when needed).
+// sandbox. On Windows and Mac, the bundled CDM is handled by the component
+// updater.
 
 // This code checks to see if the Widevine CDM was bundled with Chrome. If one
 // can be found and looks valid, it returns the CdmInfo for the CDM. Otherwise
@@ -125,39 +121,32 @@ content::CdmInfo* GetBundledWidevine() {
       }());
   return s_cdm_info->get();
 }
-#endif  // BUILDFLAG(BUNDLE_WIDEVINE_CDM) &&
-        // (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
+#endif  // BUILDFLAG(BUNDLE_WIDEVINE_CDM) && (BUILDFLAG(IS_LINUX) ||
+        // BUILDFLAG(IS_CHROMEOS))
 
 #if BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT) && \
     (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
-// This code checks to see if Component Updater picked a version of the Widevine
-// CDM to be used last time it ran. (Component Updater may choose the bundled
-// CDM if there is not a new version available for download.) If there is one
-// and it looks valid, return the CdmInfo for that CDM. Otherwise return
-// nullptr.
-std::unique_ptr<content::CdmInfo> GetHintedWidevine() {
-  // Ideally this would cache the result, as Component Update may run and
-  // download a new version once Chrome has been running for a while. However,
-  // RegisterCdmInfo() will be called by different processes (the pre-zygote
-  // process and the browser process), so caching it as a static variable ends
-  // up with multiple copies anyways. As long as this is called before the
-  // Component Update process for the Widevine CDM runs, it should return the
-  // same version so what is loaded in the zygote is the same as what ends up
-  // registered in the browser process. (This function also ends up being called
-  // by tests, so caching the result means that we can't change what the test
-  // pretends Component Update returns.)
-  // TODO(crbug.com/324117290): Investigate if the pre-zygote data can be used
-  // by the browser process so that RegisterCdmInfo() is only called once.
-  auto install_dir = GetHintedWidevineCdmDirectory();
-  if (install_dir.empty()) {
-    DVLOG(1) << __func__ << ": no version available";
-    return nullptr;
-  }
+// This code checks to see if a component updated Widevine CDM can be found. If
+// there is one and it looks valid, return the CdmInfo for that CDM. Otherwise
+// return nullptr.
+content::CdmInfo* GetComponentUpdatedWidevine() {
+  // We only want to do this on the first call, as the component updater may run
+  // and download a new version once Chrome has been running for a while. Since
+  // the first returned version will be the one loaded into the zygote, we want
+  // to return the same thing on subsequent calls.
+  static base::NoDestructor<std::unique_ptr<content::CdmInfo>> s_cdm_info(
+      []() -> std::unique_ptr<content::CdmInfo> {
+        auto install_dir = GetLatestComponentUpdatedWidevineCdmDirectory();
+        if (install_dir.empty()) {
+          return nullptr;
+        }
 
-  return CreateCdmInfoFromWidevineDirectory(install_dir);
+        return CreateCdmInfoFromWidevineDirectory(install_dir);
+      }());
+  return s_cdm_info->get();
 }
-#endif  // BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT) &&
-        // (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
+#endif  // BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT) && (BUILDFLAG(IS_LINUX) ||
+        // BUILDFLAG(IS_CHROMEOS))
 
 void AddSoftwareSecureWidevine(std::vector<content::CdmInfo>* cdms) {
   DVLOG(1) << __func__;
@@ -167,7 +156,7 @@ void AddSoftwareSecureWidevine(std::vector<content::CdmInfo>* cdms) {
   // devices. Register Widevine without any capabilities so that it will be
   // checked the first time some page attempts to play protected content.
   cdms->emplace_back(
-      kWidevineKeySystem, Robustness::kSoftwareSecure, std::nullopt,
+      kWidevineKeySystem, Robustness::kSoftwareSecure, absl::nullopt,
       /*supports_sub_key_systems=*/false, kWidevineCdmDisplayName,
       kWidevineCdmType, base::Version(), base::FilePath());
 
@@ -181,85 +170,42 @@ void AddSoftwareSecureWidevine(std::vector<content::CdmInfo>* cdms) {
   }
 #endif  // defined(WIDEVINE_CDM_MIN_GLIBC_VERSION)
 
-  // The Widevine CDM on Linux/ChromeOS needs to be registered (and loaded)
-  // before the zygote is locked down. The CDM can be found from the version
-  // bundled with Chrome (if BUNDLE_WIDEVINE_CDM = true) and/or the version
-  // selected by Component Update (if ENABLE_WIDEVINE_CDM_COMPONENT = true).
+  // The Widevine CDM on Linux needs to be registered (and loaded) before the
+  // zygote is locked down. The CDM can be found from the version bundled with
+  // Chrome (if BUNDLE_WIDEVINE_CDM = true) and/or the version downloaded by
+  // the component updater (if ENABLE_WIDEVINE_CDM_COMPONENT = true). If two
+  // versions exist, take the one with the higher version number.
   //
-  // If both settings are set, then there are several scenarios that need to
-  // be handled:
-  // 1. First launch. There will only be a bundled CDM as Component Update
-  //    hasn't run, so load the bundled CDM.
-  // 2. Subsequent launches. Component Update should have run and updated the
-  //    hint file. It could have selected the bundled version as the desired
-  //    CDM, or downloaded a different version that should be used instead.
-  //    In case of a version downgrade the bundled CDM version is saved so
-  //    that we can detect the downgrade. Generally we should use the version
-  //    selected by Component Update.
-  // 3. New version of Chrome, containing a different bundled CDM. For this
-  //    case we should select the CDM with the higher version.
-  //
-  // Note that Component Update will detect the bundled version, and if there is
-  // no newer version available, select the bundled version. In this case both
-  // versions will be the same and point to the same directory, so it doesn't
-  // matter which one is loaded. In the case of a version downgrade, the CDM
-  // selected by Component Update may have a lower version than the bundled CDM.
-  // We should still use the version selected by Component Update (except for
-  // case #3 above).
+  // Note that the component updater will detect the bundled version, and if
+  // there is no newer version available, select the bundled version. In this
+  // case both versions will be the same and point to the same directory, so
+  // it doesn't matter which one is loaded.
   content::CdmInfo* bundled_widevine = nullptr;
 #if BUILDFLAG(BUNDLE_WIDEVINE_CDM)
   bundled_widevine = GetBundledWidevine();
 #endif
 
-  std::unique_ptr<content::CdmInfo> hinted_widevine;
+  content::CdmInfo* updated_widevine = nullptr;
 #if BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT)
-  hinted_widevine = GetHintedWidevine();
+  updated_widevine = GetComponentUpdatedWidevine();
 #endif
 
-  if (bundled_widevine && !hinted_widevine) {
-    // Only a bundled version is available, so use it.
+  // If only a bundled version is available, or both are available and the
+  // bundled version is not less than the updated version, register the
+  // bundled version. If only the updated version is available, or both are
+  // available and the updated version is greater, then register the updated
+  // version. If neither are available, then nothing is registered.
+  if (bundled_widevine &&
+      (!updated_widevine ||
+       bundled_widevine->version >= updated_widevine->version)) {
     VLOG(1) << "Registering bundled Widevine " << bundled_widevine->version;
     cdms->push_back(*bundled_widevine);
-  } else if (!bundled_widevine && hinted_widevine) {
-    // Only a component updated version is available, so use it.
-    VLOG(1) << "Registering hinted Widevine " << hinted_widevine->version;
-    cdms->push_back(*hinted_widevine);
-  } else if (!bundled_widevine && !hinted_widevine) {
-    VLOG(1) << "Widevine enabled but no library found";
+  } else if (updated_widevine) {
+    VLOG(1) << "Registering component updated Widevine "
+            << updated_widevine->version;
+    cdms->push_back(*updated_widevine);
   } else {
-    // Both a bundled CDM and a CDM selected by Component Update found, so
-    // choose between them.
-    base::Version bundled_version = bundled_widevine->version;
-    base::Version hinted_version = hinted_widevine->version;
-    DVLOG(1) << __func__ << " bundled: " << bundled_version;
-    DVLOG(1) << __func__ << " hinted: " << hinted_version;
-
-    bool choose_bundled;
-    if (base::FeatureList::IsEnabled(media::kSupportCdmComponentDowngrade)) {
-      // Generally we want to pick the Component Update selected version, except
-      // in the case the bundled CDM is newer than the selected CDM and is
-      // different than the previously bundled CDM.
-      choose_bundled =
-          bundled_version > hinted_version &&
-          bundled_version != GetBundledVersionDuringLastComponentUpdate();
-    } else {
-      // As this does not support version downgrades, choose the highest version
-      // CDM, preferring the bundled CDM over the selected one if the versions
-      // are the same.
-      choose_bundled = bundled_version >= hinted_version;
-    }
-
-    if (choose_bundled) {
-      // Bundled CDM is a higher version than the Component Update selected CDM
-      // and does not match the version Component Update replaced, so use it.
-      VLOG(1) << "Choosing bundled Widevine " << bundled_version << " from "
-              << bundled_widevine->path;
-      cdms->push_back(*bundled_widevine);
-    } else {
-      VLOG(1) << "Choosing hinted Widevine " << hinted_version << " from "
-              << hinted_widevine->path;
-      cdms->push_back(*hinted_widevine);
-    }
+    VLOG(1) << "Widevine enabled but no library found";
   }
 #endif  // BUILDFLAG(IS_ANDROID)
 }
@@ -272,7 +218,7 @@ void AddHardwareSecureWidevine(std::vector<content::CdmInfo>* cdms) {
   // devices. Register Widevine without any capabilities so that it will be
   // checked the first time some page attempts to play protected content.
   cdms->emplace_back(
-      kWidevineKeySystem, Robustness::kHardwareSecure, std::nullopt,
+      kWidevineKeySystem, Robustness::kHardwareSecure, absl::nullopt,
       /*supports_sub_key_systems=*/false, kWidevineCdmDisplayName,
       kWidevineCdmType, base::Version(), base::FilePath());
 
@@ -402,6 +348,34 @@ void AddMediaFoundationClearKey(std::vector<content::CdmInfo>* cdms) {
 }
 #endif  // BUILDFLAG(IS_WIN)
 
+#if BUILDFLAG(IS_ANDROID)
+void AddOtherAndroidKeySystems(std::vector<content::CdmInfo>* cdms) {
+  // CdmInfo needs a CdmType, but on Android it is not used as the key system
+  // is supported by MediaDrm. Using a random value as something needs to be
+  // specified, but must be different than other CdmTypes specified.
+  // (On Android the key system is identified by UUID, and that mapping is
+  // maintained by MediaDrmBridge.)
+  const media::CdmType kAndroidCdmType{0x2e9dabb9c171c28cull,
+                                       0xf455252ec70b52adull};
+
+  // MediaDrmBridge returns a list of key systems available on the device
+  // that are not Widevine. Register them with no capabilities specified so
+  // that lazy evaluation can figure out what is supported when requested.
+  // We don't know if either software secure or hardware secure support is
+  // available, so register them both. Lazy evaluation will remove them
+  // if they aren't supported.
+  const auto key_system_names =
+      media::MediaDrmBridge::GetPlatformKeySystemNames();
+  for (const auto& key_system : key_system_names) {
+    DVLOG(3) << __func__ << " key_system:" << key_system;
+    cdms->push_back(content::CdmInfo(key_system, Robustness::kSoftwareSecure,
+                                     absl::nullopt, kAndroidCdmType));
+    cdms->push_back(content::CdmInfo(key_system, Robustness::kHardwareSecure,
+                                     absl::nullopt, kAndroidCdmType));
+  }
+}
+#endif  // BUILDFLAG(IS_ANDROID)
+
 }  // namespace
 
 void RegisterCdmInfo(std::vector<content::CdmInfo>* cdms) {
@@ -422,16 +396,8 @@ void RegisterCdmInfo(std::vector<content::CdmInfo>* cdms) {
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
-  cdm::AddOtherAndroidCdms(cdms);
+  AddOtherAndroidKeySystems(cdms);
 #endif  // BUILDFLAG(IS_ANDROID)
 
   DVLOG(3) << __func__ << " done with " << cdms->size() << " cdms";
 }
-
-#if BUILDFLAG(ENABLE_WIDEVINE) && BUILDFLAG(IS_LINUX)
-std::vector<content::CdmInfo> GetSoftwareSecureWidevineForTesting() {
-  std::vector<content::CdmInfo> cdms;
-  AddSoftwareSecureWidevine(&cdms);
-  return cdms;
-}
-#endif  // BUILDFLAG(ENABLE_WIDEVINE) && BUILDFLAG(IS_LINUX)

@@ -10,6 +10,7 @@
 #include "components/global_media_controls/public/constants.h"
 #include "components/global_media_controls/public/media_item_manager.h"
 #include "components/media_message_center/media_notification_util.h"
+#include "components/media_message_center/media_notification_view.h"
 #include "components/media_router/browser/presentation/presentation_service_delegate_impl.h"
 #include "content/public/browser/media_session.h"
 #include "services/media_session/public/cpp/media_image_manager.h"
@@ -26,19 +27,21 @@ content::WebContents* GetWebContentsFromPresentationRequest(
   return content::WebContents::FromRenderFrameHost(rfh);
 }
 
-std::optional<gfx::ImageSkia> GetCorrectColorTypeImage(const SkBitmap& bitmap) {
-  if (bitmap.info().colorType() == kN32_SkColorType) {
+absl::optional<gfx::ImageSkia> GetCorrectColorTypeImage(
+    const SkBitmap& bitmap) {
+  if (bitmap.info().colorType() == kN32_SkColorType)
     return gfx::ImageSkia::CreateFrom1xBitmap(bitmap);
-  }
+
   SkImageInfo color_type_info = bitmap.info().makeColorType(kN32_SkColorType);
   SkBitmap color_type_copy;
-  if (!color_type_copy.tryAllocPixels(color_type_info)) {
-    return std::nullopt;
-  }
+  if (!color_type_copy.tryAllocPixels(color_type_info))
+    return absl::nullopt;
+
   if (!bitmap.readPixels(color_type_info, color_type_copy.getPixels(),
                          color_type_copy.rowBytes(), 0, 0)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
+
   return gfx::ImageSkia::CreateFrom1xBitmap(color_type_copy);
 }
 
@@ -52,14 +55,14 @@ content::MediaSession* GetMediaSession(content::WebContents* web_contents) {
 }  // namespace
 
 PresentationRequestNotificationItem::PresentationRequestNotificationItem(
+    global_media_controls::MediaItemManager* item_manager,
     const content::PresentationRequest& request,
-    std::unique_ptr<media_router::StartPresentationContext> context,
-    const mojo::Remote<global_media_controls::mojom::DevicePickerProvider>&
-        provider)
-    : is_default_presentation_request_(context == nullptr),
+    std::unique_ptr<media_router::StartPresentationContext> context)
+    : id_(base::UnguessableToken::Create().ToString()),
+      item_manager_(item_manager),
+      is_default_presentation_request_(context == nullptr),
       context_(std::move(context)),
-      request_(request),
-      provider_(provider) {
+      request_(request) {
   DCHECK(!context_ || request == context_->presentation_request());
 
   // We want to observe the content::MediaSession associated with the
@@ -79,15 +82,30 @@ PresentationRequestNotificationItem::PresentationRequestNotificationItem(
 }
 
 PresentationRequestNotificationItem::~PresentationRequestNotificationItem() {
-  if (provider_->is_bound()) {
-    (*provider_)->HideItem();
-  }
+  item_manager_->HideItem(id_);
+}
+
+void PresentationRequestNotificationItem::SetView(
+    media_message_center::MediaNotificationView* view) {
+  view_ = view;
+  if (!view_)
+    return;
+
+  UpdateViewWithImages();
+  UpdateViewWithMetadata();
+}
+
+void PresentationRequestNotificationItem::OnMediaSessionActionButtonPressed(
+    media_session::mojom::MediaSessionAction action) {}
+
+void PresentationRequestNotificationItem::Dismiss() {
+  item_manager_->HideItem(id_);
 }
 
 void PresentationRequestNotificationItem::MediaSessionMetadataChanged(
-    const std::optional<media_session::MediaMetadata>& metadata) {
+    const absl::optional<media_session::MediaMetadata>& metadata) {
   metadata_ = metadata;
-  UpdatePickerWithMetadata();
+  UpdateViewWithMetadata();
 }
 
 void PresentationRequestNotificationItem::MediaSessionImagesChanged(
@@ -103,12 +121,12 @@ void PresentationRequestNotificationItem::MediaSessionImagesChanged(
   media_session::MediaImageManager manager(
       global_media_controls::kMediaItemArtworkMinSize,
       global_media_controls::kMediaItemArtworkDesiredSize);
-  bool should_synchronously_update_picker = false;
+  bool should_synchronously_update_view = false;
 
-  std::optional<media_session::MediaImage> artwork_image;
+  absl::optional<media_session::MediaImage> artwork_image;
   auto it = images.find(media_session::mojom::MediaSessionImageType::kArtwork);
   if (it == images.end()) {
-    artwork_image = std::nullopt;
+    artwork_image = absl::nullopt;
   } else {
     artwork_image = manager.SelectImage(it->second);
   }
@@ -120,14 +138,14 @@ void PresentationRequestNotificationItem::MediaSessionImagesChanged(
         base::BindOnce(&PresentationRequestNotificationItem::OnArtworkBitmap,
                        weak_ptr_factory_.GetWeakPtr()));
   } else {
-    artwork_image_ = gfx::ImageSkia();
-    should_synchronously_update_picker = true;
+    artwork_image_ = absl::nullopt;
+    should_synchronously_update_view = true;
   }
 
-  std::optional<media_session::MediaImage> favicon_image;
+  absl::optional<media_session::MediaImage> favicon_image;
   it = images.find(media_session::mojom::MediaSessionImageType::kSourceIcon);
   if (it == images.end()) {
-    favicon_image = std::nullopt;
+    favicon_image = absl::nullopt;
   } else {
     favicon_image = manager.SelectImage(it->second);
   }
@@ -138,12 +156,12 @@ void PresentationRequestNotificationItem::MediaSessionImagesChanged(
         base::BindOnce(&PresentationRequestNotificationItem::OnFaviconBitmap,
                        weak_ptr_factory_.GetWeakPtr()));
   } else {
-    favicon_image_ = gfx::ImageSkia();
-    should_synchronously_update_picker = true;
+    favicon_image_ = absl::nullopt;
+    should_synchronously_update_view = true;
   }
-  if (should_synchronously_update_picker) {
-    UpdatePickerWithImages();
-  }
+
+  if (should_synchronously_update_view)
+    UpdateViewWithImages();
 }
 
 // static
@@ -152,10 +170,24 @@ void PresentationRequestNotificationItem::SetMediaSessionForTest(
   g_media_session_for_test = media_session;
 }
 
-void PresentationRequestNotificationItem::UpdatePickerWithMetadata() {
-  if (!provider_->is_bound()) {
+media_message_center::SourceType
+PresentationRequestNotificationItem::SourceType() {
+  return media_message_center::SourceType::kPresentationRequest;
+}
+
+bool PresentationRequestNotificationItem::RequestMediaRemoting() {
+  return false;
+}
+
+absl::optional<base::UnguessableToken>
+PresentationRequestNotificationItem::GetSourceId() const {
+  return absl::nullopt;
+}
+
+void PresentationRequestNotificationItem::UpdateViewWithMetadata() {
+  if (!view_)
     return;
-  }
+
   // If we have metadata from the media session, use that.
   media_session::MediaMetadata data =
       metadata_.value_or(media_session::MediaMetadata{});
@@ -173,40 +205,46 @@ void PresentationRequestNotificationItem::UpdatePickerWithMetadata() {
   if (web_contents && data.artist.empty()) {
     data.artist = web_contents->GetTitle();
   }
-  (*provider_)->OnMetadataChanged(data);
+  view_->UpdateWithMediaMetadata(data);
 }
 
-void PresentationRequestNotificationItem::UpdatePickerWithImages() {
-  if (!provider_->is_bound()) {
+void PresentationRequestNotificationItem::UpdateViewWithImages() {
+  if (!view_)
+    return;
+
+  if (artwork_image_) {
+    view_->UpdateWithMediaArtwork(*artwork_image_);
+  } else {
+    view_->UpdateWithMediaArtwork(gfx::ImageSkia());
+  }
+
+  // If the media session has given a favicon image, use that.
+  if (favicon_image_) {
+    view_->UpdateWithFavicon(*favicon_image_);
     return;
   }
-  (*provider_)->OnArtworkImageChanged(artwork_image_);
-  if (!favicon_image_.isNull()) {
-    (*provider_)->OnFaviconImageChanged(favicon_image_);
-    return;
-  }
+
   // Otherwise, get one ourselves.
   auto* web_contents = GetWebContentsFromPresentationRequest(request_);
   if (web_contents) {
     favicon::FaviconDriver* favicon_driver =
         favicon::ContentFaviconDriver::FromWebContents(web_contents);
     if (favicon_driver) {
-      (*provider_)
-          ->OnFaviconImageChanged(favicon_driver->GetFavicon().AsImageSkia());
+      view_->UpdateWithFavicon(favicon_driver->GetFavicon().AsImageSkia());
       return;
     }
   }
-  (*provider_)->OnFaviconImageChanged(gfx::ImageSkia());
+  view_->UpdateWithFavicon(gfx::ImageSkia());
 }
 
 void PresentationRequestNotificationItem::OnArtworkBitmap(
     const SkBitmap& bitmap) {
-  artwork_image_ = GetCorrectColorTypeImage(bitmap).value_or(gfx::ImageSkia());
-  UpdatePickerWithImages();
+  artwork_image_ = GetCorrectColorTypeImage(bitmap);
+  UpdateViewWithImages();
 }
 
 void PresentationRequestNotificationItem::OnFaviconBitmap(
     const SkBitmap& bitmap) {
-  favicon_image_ = GetCorrectColorTypeImage(bitmap).value_or(gfx::ImageSkia());
-  UpdatePickerWithImages();
+  favicon_image_ = GetCorrectColorTypeImage(bitmap);
+  UpdateViewWithImages();
 }

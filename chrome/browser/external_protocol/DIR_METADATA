@@ -1,6 +1,3 @@
 monorail: {
-  component: "UI>Browser>WebAppInstalls>ProtocolHandling"
-}
-buganizer_public: {
-  component_id: 1457358
+  component: "UI>Browser>Permissions>Prompts"
 }

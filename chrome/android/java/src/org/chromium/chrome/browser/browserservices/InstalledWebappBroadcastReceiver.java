@@ -9,11 +9,11 @@ import android.content.Context;
 import android.content.Intent;
 
 import org.chromium.base.Log;
-import org.chromium.base.version_info.VersionInfo;
 import org.chromium.chrome.browser.ChromeApplicationImpl;
 import org.chromium.chrome.browser.browserservices.permissiondelegation.PermissionUpdater;
-import org.chromium.chrome.browser.webapps.WebApkUninstallTracker;
+import org.chromium.chrome.browser.metrics.WebApkUninstallUmaTracker;
 import org.chromium.components.embedder_support.util.Origin;
+import org.chromium.components.version_info.VersionInfo;
 import org.chromium.components.webapk.lib.common.WebApkConstants;
 
 import java.util.Arrays;
@@ -62,11 +62,10 @@ public class InstalledWebappBroadcastReceiver extends BroadcastReceiver {
     private static final String ACTION_DEBUG =
             "org.chromium.chrome.browser.browserservices.InstalledWebappBroadcastReceiver.DEBUG";
 
-    private static final Set<String> BROADCASTS =
-            new HashSet<>(
-                    Arrays.asList(
-                            Intent.ACTION_PACKAGE_DATA_CLEARED,
-                            Intent.ACTION_PACKAGE_FULLY_REMOVED));
+    private static final Set<String> BROADCASTS = new HashSet<>(Arrays.asList(
+            Intent.ACTION_PACKAGE_DATA_CLEARED,
+            Intent.ACTION_PACKAGE_FULLY_REMOVED
+    ));
 
     private final ClearDataStrategy mClearDataStrategy;
     private final InstalledWebappDataRegister mDataRegister;
@@ -76,19 +75,15 @@ public class InstalledWebappBroadcastReceiver extends BroadcastReceiver {
     /** Constructor with default dependencies for Android. */
     @Inject
     public InstalledWebappBroadcastReceiver() {
-        this(
-                new ClearDataStrategy(),
-                new InstalledWebappDataRegister(),
+        this(new ClearDataStrategy(), new InstalledWebappDataRegister(),
                 new BrowserServicesStore(
-                        ChromeApplicationImpl.getComponent().resolveChromeSharedPreferences()),
+                        ChromeApplicationImpl.getComponent().resolveSharedPreferencesManager()),
                 ChromeApplicationImpl.getComponent().resolvePermissionUpdater());
     }
 
     /** Constructor to allow dependency injection in tests. */
-    public InstalledWebappBroadcastReceiver(
-            ClearDataStrategy strategy,
-            InstalledWebappDataRegister dataRegister,
-            BrowserServicesStore store,
+    public InstalledWebappBroadcastReceiver(ClearDataStrategy strategy,
+            InstalledWebappDataRegister dataRegister, BrowserServicesStore store,
             PermissionUpdater permissionUpdater) {
         mClearDataStrategy = strategy;
         mDataRegister = dataRegister;
@@ -116,7 +111,7 @@ public class InstalledWebappBroadcastReceiver extends BroadcastReceiver {
                     && packageName.startsWith(WebApkConstants.WEBAPK_PACKAGE_PREFIX)) {
                 // Native is likely not loaded. Defer recording UMA and UKM till the next browser
                 // launch.
-                WebApkUninstallTracker.deferRecordWebApkUninstalled(packageName);
+                WebApkUninstallUmaTracker.deferRecordWebApkUninstalled(packageName);
             }
         }
 
@@ -141,12 +136,8 @@ public class InstalledWebappBroadcastReceiver extends BroadcastReceiver {
 
     /** Implemented as a class partially for historic reasons, partially to help testing. */
     static class ClearDataStrategy {
-        public void execute(
-                Context context,
-                InstalledWebappDataRegister dataRegister,
-                PermissionUpdater permissionUpdater,
-                int uid,
-                boolean uninstalled) {
+        public void execute(Context context, InstalledWebappDataRegister dataRegister,
+                PermissionUpdater permissionUpdater, int uid, boolean uninstalled) {
             // Retrieving domains and origins ahead of time, because the register is about to be
             // cleaned up.
             Set<String> domains = dataRegister.getDomainsForRegisteredUid(uid);
@@ -158,9 +149,8 @@ public class InstalledWebappBroadcastReceiver extends BroadcastReceiver {
             }
 
             String appName = dataRegister.getAppNameForRegisteredUid(uid);
-            Intent intent =
-                    ClearDataDialogActivity.createIntent(
-                            context, appName, domains, origins, uninstalled);
+            Intent intent = ClearDataDialogActivity.createIntent(
+                    context, appName, domains, origins, uninstalled);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
             context.startActivity(intent);
         }

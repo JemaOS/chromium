@@ -117,19 +117,14 @@ Canvas log:
     }
     5 : {
         commandIndex : 5
-        method : "drawImageRect"
+        method : "drawImage"
         params : {
-            dst : {
-                bottom : 21
-                left : 0
-                right : 19
-                top : 0
-            }
             image : {
                 height : 21
                 opaque : false
                 width : 19
             }
+            left : 0
             paint : {
                 color : "#FF000000"
                 flags : "AntiAlias"
@@ -143,12 +138,7 @@ Canvas log:
                 filter : "kLinear"
                 mipmap : "kNearest"
             }
-            src : {
-                bottom : 21
-                left : 0
-                right : 19
-                top : 0
-            }
+            top : 0
         }
     }
     6 : {

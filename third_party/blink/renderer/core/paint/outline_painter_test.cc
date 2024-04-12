@@ -7,7 +7,6 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
-#include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/skia/include/core/SkPath.h"
 
 namespace blink {
@@ -15,11 +14,11 @@ namespace blink {
 using OutlinePainterTest = RenderingTest;
 
 TEST_F(OutlinePainterTest, FocusRingOutset) {
-  const auto* initial_style = ComputedStyle::GetInitialStyleSingleton();
+  auto initial_style = ComputedStyle::CreateInitialStyleSingleton();
   ComputedStyleBuilder builder(*initial_style);
   builder.SetOutlineStyle(EBorderStyle::kSolid);
   builder.SetOutlineStyleIsAuto(true);
-  const auto* style = builder.TakeStyle();
+  auto style = builder.TakeStyle();
   LayoutObject::OutlineInfo info =
       LayoutObject::OutlineInfo::GetFromStyle(*style);
   EXPECT_EQ(2, OutlinePainter::OutlineOutsetExtent(*style, info));
@@ -41,7 +40,7 @@ TEST_F(OutlinePainterTest, HugeOutlineWidthOffset) {
   )HTML");
   LayoutObject::OutlineInfo info;
   GetLayoutObjectByElementId("target")->OutlineRects(
-      &info, PhysicalOffset(), OutlineType::kDontIncludeBlockInkOverflow);
+      &info, PhysicalOffset(), NGOutlineType::kDontIncludeBlockVisualOverflow);
   const auto& style = GetLayoutObjectByElementId("target")->StyleRef();
   EXPECT_TRUE(style.HasOutline());
   EXPECT_EQ(LayoutUnit::Max().ToInt() * 2,
@@ -72,7 +71,7 @@ TEST_F(OutlinePainterTest, IterateCollapsedPath) {
   path.close();
   // Collapsed contour should not cause crash and should be ignored.
   OutlinePainter::IterateRightAnglePathForTesting(
-      path, WTF::BindRepeating(
+      path, base::BindRepeating(
                 [](const Vector<OutlinePainter::Line>&) { NOTREACHED(); }));
 }
 

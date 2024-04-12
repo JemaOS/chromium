@@ -21,14 +21,13 @@
 #include "base/timer/mock_timer.h"
 #include "chrome/browser/ash/app_list/search/system_info/system_info_util.h"
 #include "chrome/browser/ash/app_list/search/test/test_search_controller.h"
+#include "chrome/browser/ash/file_manager/fake_disk_mount_manager.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
-#include "chrome/browser/ui/webui/ash/settings/pages/storage/device_storage_util.h"
+#include "chrome/browser/ui/webui/settings/ash/device_storage_util.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chromeos/ash/components/dbus/concierge/concierge_client.h"
 #include "chromeos/ash/components/dbus/spaced/spaced_client.h"
-#include "chromeos/ash/components/disks/disk_mount_manager.h"
-#include "chromeos/ash/components/disks/fake_disk_mount_manager.h"
 #include "chromeos/ash/components/mojo_service_manager/fake_mojo_service_manager.h"
 #include "chromeos/ash/services/cros_healthd/public/cpp/fake_cros_healthd.h"
 #include "chromeos/ash/services/cros_healthd/public/mojom/cros_healthd_probe.mojom-forward.h"
@@ -143,7 +142,7 @@ healthd_mojom::BatteryInfoPtr CreateCrosHealthdBatteryHealthResponse(
       /*current_now=*/0,
       /*technology=*/"",
       /*status=*/"",
-      /*manufacture_date=*/std::nullopt, std::move(temp_value_ptr));
+      /*manufacture_date=*/absl::nullopt, std::move(temp_value_ptr));
   return battery_info;
 }
 
@@ -215,7 +214,7 @@ void SetPowerManagerProperties(
 base::FilePath GetTestDataFilePath(const std::string& file_name) {
   // Get the path to file manager's test data directory.
   base::FilePath source_dir;
-  CHECK(base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &source_dir));
+  CHECK(base::PathService::Get(base::DIR_SOURCE_ROOT, &source_dir));
   base::FilePath test_data_dir = source_dir.AppendASCII("chrome")
                                      .AppendASCII("test")
                                      .AppendASCII("data")
@@ -305,15 +304,14 @@ class SystemInfoCardProviderTest : public testing::Test {
     ash::SpacedClient::InitializeFake();
 
     ash::disks::DiskMountManager::InitializeForTesting(
-        new ash::disks::FakeDiskMountManager);
+        new file_manager::FakeDiskMountManager);
 
     // The storage handler requires an instance of ArcServiceManager
     arc_service_manager_ = std::make_unique<arc::ArcServiceManager>();
     profile_ = std::make_unique<TestingProfile>();
     search_controller_ = std::make_unique<TestSearchController>();
-    auto provider = std::make_unique<SystemInfoCardProvider>(profile_.get());
-    provider_ = provider.get();
-    search_controller_->AddProvider(std::move(provider));
+    provider_ = std::make_unique<SystemInfoCardProvider>(profile_.get());
+    provider_->set_controller(search_controller_.get());
 
     // Create and register My files directory.
     // By emulating chromeos running, GetMyFilesFolderForProfile will return the
@@ -331,7 +329,7 @@ class SystemInfoCardProviderTest : public testing::Test {
   }
 
   void TearDown() override {
-    provider_ = nullptr;
+    provider_.reset();
     search_controller_.reset();
     profile_.reset();
     arc_service_manager_.reset();
@@ -349,16 +347,14 @@ class SystemInfoCardProviderTest : public testing::Test {
     return search_controller_->last_results();
   }
 
-  void StartSearch(const std::u16string& query) {
-    search_controller_->StartSearch(query);
-  }
+  void StartSearch(const std::u16string& query) { provider_->Start(query); }
 
   content::BrowserTaskEnvironment task_environment_;
   ::ash::mojo_service_manager::FakeMojoServiceManager fake_service_manager_;
   std::unique_ptr<arc::ArcServiceManager> arc_service_manager_;
   std::unique_ptr<Profile> profile_;
   std::unique_ptr<TestSearchController> search_controller_;
-  raw_ptr<SystemInfoCardProvider> provider_;
+  std::unique_ptr<SystemInfoCardProvider> provider_;
 };
 
 TEST_F(SystemInfoCardProviderTest, Version) {
@@ -395,35 +391,8 @@ TEST_F(SystemInfoCardProviderTest, Version) {
   ASSERT_EQ(results()[0]->details_text_vector().size(), 1u);
   const auto& details = results()[0]->details_text_vector()[0];
   ASSERT_EQ(details.GetType(), ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(details.GetText(), u"Click to check for details");
+  EXPECT_EQ(details.GetText(), u"Check for updates");
   EXPECT_TRUE(details.GetTextTags().empty());
-}
-
-TEST_F(SystemInfoCardProviderTest, PreventTriggeringOfTooShortQueries) {
-  auto timer = std::make_unique<base::MockRepeatingTimer>();
-  provider_->SetCpuUsageTimerForTesting(std::move(timer));
-
-  int temp_1 = 40;
-  int temp_2 = 50;
-  int temp_3 = 15;
-  uint32_t core_1_speed = 4000000;
-  uint32_t core_2_speed = 2000000;
-  CpuUsageData core_1(1000, 1000, 1000);
-  CpuUsageData core_2(2000, 2000, 2000);
-
-  SetCrosHealthdCpuResponse({core_1, core_2}, {temp_1, temp_2, temp_3},
-                            {core_1_speed, core_2_speed});
-  StartSearch(u"cp");
-  Wait();
-  ASSERT_TRUE(results().empty());
-
-  StartSearch(u"c");
-  Wait();
-  ASSERT_TRUE(results().empty());
-
-  StartSearch(u"cpu");
-  Wait();
-  ASSERT_FALSE(results().empty());
 }
 
 TEST_F(SystemInfoCardProviderTest, Cpu) {
@@ -459,7 +428,7 @@ TEST_F(SystemInfoCardProviderTest, Cpu) {
   ASSERT_EQ(results()[0]->title_text_vector().size(), 1u);
   const auto& title = results()[0]->title_text_vector()[0];
   ASSERT_EQ(title.GetType(), ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(title.GetText(), u"CPU usage snapshot: 66%");
+  EXPECT_EQ(title.GetText(), u"CPU current usage: 66%");
   EXPECT_TRUE(title.GetTextTags().empty());
 
   ASSERT_EQ(results()[0]->details_text_vector().size(), 1u);
@@ -484,7 +453,7 @@ TEST_F(SystemInfoCardProviderTest, Cpu) {
   timer_ptr->Fire();
   Wait();
 
-  EXPECT_EQ(title.GetText(), u"CPU usage snapshot: 60%");
+  EXPECT_EQ(title.GetText(), u"CPU current usage: 60%");
   EXPECT_EQ(details.GetText(), u"Temperature: 20°C - Current speed: 5.5GHz");
 
   SetCrosHealthdCpuResponse({core_1 + core_1_delta + core_1_delta,
@@ -492,13 +461,13 @@ TEST_F(SystemInfoCardProviderTest, Cpu) {
                             {new_temp_1, new_temp_2, new_temp_3},
                             {core_1_speed, core_2_speed});
 
-  StartSearch(u"cpu");
+  StartSearch(u"cpu usage");
   Wait();
 
   ASSERT_FALSE(results().empty());
   EXPECT_EQ(results().size(), 1u);
   const auto& title2 = results()[0]->title_text_vector()[0];
-  EXPECT_EQ(title2.GetText(), u"CPU usage snapshot: 60%");
+  EXPECT_EQ(title2.GetText(), u"CPU current usage: 60%");
   const auto& details2 = results()[0]->details_text_vector()[0];
   EXPECT_EQ(details2.GetText(), u"Temperature: 20°C - Current speed: 5.5GHz");
 }
@@ -562,7 +531,7 @@ TEST_F(SystemInfoCardProviderTest, Memory) {
   ASSERT_EQ(results()[0]->details_text_vector().size(), 1u);
   const auto& details = results()[0]->details_text_vector()[0];
   EXPECT_EQ(details.GetType(), ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(details.GetText(), u"Memory 3.8 GB | 7.6 GB total");
+  EXPECT_EQ(details.GetText(), u"3.8 GB of 7.6 GB available");
   EXPECT_TRUE(details.GetTextTags().empty());
 
   const uint32_t total_memory_kib_2 = 8000000;
@@ -576,23 +545,19 @@ TEST_F(SystemInfoCardProviderTest, Memory) {
   Wait();
 
   EXPECT_EQ(title.GetText(), u"");
-  EXPECT_EQ(details.GetText(), u"Memory 1.9 GB | 7.6 GB total");
+  EXPECT_EQ(details.GetText(), u"1.9 GB of 7.6 GB available");
   EXPECT_EQ(results()[0]->system_info_answer_card_data()->bar_chart_percentage,
             75);
 
-  StartSearch(u"memory");
+  StartSearch(u"memory usage");
   Wait();
 
   ASSERT_FALSE(results().empty());
   EXPECT_EQ(results().size(), 1u);
   const auto& details2 = results()[0]->details_text_vector()[0];
-  EXPECT_EQ(details2.GetText(), u"Memory 1.9 GB | 7.6 GB total");
+  EXPECT_EQ(details2.GetText(), u"1.9 GB of 7.6 GB available");
   EXPECT_EQ(results()[0]->system_info_answer_card_data()->bar_chart_percentage,
             75);
-  EXPECT_EQ(results()[0]
-                ->system_info_answer_card_data()
-                ->upper_warning_limit_bar_chart.value(),
-            90);
 }
 
 TEST_F(SystemInfoCardProviderTest, MemoryProbeError) {
@@ -657,17 +622,14 @@ TEST_F(SystemInfoCardProviderTest, Battery) {
   ASSERT_EQ(results()[0]->title_text_vector().size(), 1u);
   const auto& title = results()[0]->title_text_vector()[0];
   ASSERT_EQ(title.GetType(), ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(title.GetText(), u"");
+  EXPECT_EQ(title.GetText(), u"94% | 17 minutes until full");
   EXPECT_TRUE(title.GetTextTags().empty());
 
   ASSERT_EQ(results()[0]->details_text_vector().size(), 1u);
   const auto& details = results()[0]->details_text_vector()[0];
   ASSERT_EQ(details.GetType(), ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(details.GetText(), u"Battery 94% | 17 minutes until full");
+  EXPECT_EQ(details.GetText(), u"Battery health 76% | Cycle count 500");
   EXPECT_TRUE(details.GetTextTags().empty());
-
-  EXPECT_EQ(results()[0]->system_info_answer_card_data()->extra_details,
-            u"Battery health 76% | Cycle count 500");
 
   const int64_t new_time_to_full_secs = time_to_full_secs - 100;
   const double new_battery_percent = 96.0;
@@ -683,53 +645,8 @@ TEST_F(SystemInfoCardProviderTest, Battery) {
   ASSERT_EQ(results()[0]->title_text_vector().size(), 1u);
   const auto& updated_title = results()[0]->title_text_vector()[0];
   ASSERT_EQ(updated_title.GetType(), ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(updated_title.GetText(), u"");
+  EXPECT_EQ(updated_title.GetText(), u"96% | 15 minutes until full");
   EXPECT_TRUE(updated_title.GetTextTags().empty());
-
-  const auto& updated_details = results()[0]->details_text_vector()[0];
-  ASSERT_EQ(updated_details.GetType(), ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(updated_details.GetText(), u"Battery 96% | 15 minutes until full");
-  EXPECT_TRUE(updated_details.GetTextTags().empty());
-}
-
-TEST_F(SystemInfoCardProviderTest, BatteryWhileCalculating) {
-  const double charge_full_now = 20;
-  const double charge_full_design = 26;
-  const int32_t cycle_count = 500;
-
-  SetCrosHealthdBatteryHealthResponse(charge_full_now, charge_full_design,
-                                      cycle_count);
-
-  const auto power_source =
-      power_manager::PowerSupplyProperties_ExternalPower_AC;
-  const auto battery_state =
-      power_manager::PowerSupplyProperties_BatteryState_CHARGING;
-  const bool is_calculating_battery_time = true;
-  const int64_t time_to_full_secs = 1000;
-  const int64_t time_to_empty_secs = 0;
-  const double battery_percent = 94.0;
-
-  SetPowerManagerProperties(power_source, battery_state,
-                            is_calculating_battery_time, time_to_full_secs,
-                            time_to_empty_secs, battery_percent);
-  StartSearch(u"battery");
-  Wait();
-
-  EXPECT_EQ(results()[0]->system_info_answer_card_data()->bar_chart_percentage,
-            94);
-
-  ASSERT_EQ(results()[0]->title_text_vector().size(), 1u);
-  const auto& calculating_title = results()[0]->title_text_vector()[0];
-  ASSERT_EQ(calculating_title.GetType(),
-            ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(calculating_title.GetText(), u"");
-  EXPECT_TRUE(calculating_title.GetTextTags().empty());
-
-  const auto& calculating_details = results()[0]->details_text_vector()[0];
-  ASSERT_EQ(calculating_details.GetType(),
-            ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(calculating_details.GetText(), u"Battery 94%");
-  EXPECT_TRUE(calculating_details.GetTextTags().empty());
 }
 
 TEST_F(SystemInfoCardProviderTest, BatteryProbeError) {
@@ -807,7 +724,7 @@ TEST_F(SystemInfoCardProviderTest, BatteryPowerManagerError) {
   SetCrosHealthdBatteryHealthResponse(charge_full_now, charge_full_design,
                                       cycle_count);
 
-  std::nullopt_t props = std::nullopt;
+  absl::nullopt_t props = absl::nullopt;
   chromeos::FakePowerManagerClient::Get()->UpdatePowerProperties(props);
 
   StartSearch(u"battery");
@@ -846,14 +763,14 @@ TEST_F(SystemInfoCardProviderTest, Storage) {
 
   const int kMountPathBytes = 8092;
   const int kAndroidPathBytes = 15271;
-  const int kDownloadsPathBytes = 56758;
+  const int kDownloadsPathBytes = 59943;
 
   // Add files in My files and android files.
   AddFile("random.bin", kMountPathBytes, mount_path);          // ~7.9 KB
   AddFile("tall.pdf", kAndroidPathBytes, android_files_path);  // ~14.9 KB
   // Add file in Downloads and simulate bind mount with
   // [android files]/Download.
-  AddFile("video.ogv", kDownloadsPathBytes, downloads_path);  // ~55.4 KB
+  AddFile("video.ogv", kDownloadsPathBytes, downloads_path);  // ~58.6 KB
 
   int64_t total_bytes = base::SysInfo::AmountOfTotalDiskSpace(mount_path);
   int64_t available_bytes = base::SysInfo::AmountOfFreeDiskSpace(mount_path);
@@ -862,8 +779,8 @@ TEST_F(SystemInfoCardProviderTest, Storage) {
   int64_t in_use_bytes = rounded_total_size - available_bytes;
   std::u16string in_use_size = ui::FormatBytes(in_use_bytes);
   std::u16string total_size = ui::FormatBytes(rounded_total_size);
-  std::u16string result_description = base::StrCat(
-      {u"Storage ", in_use_size, u" in use | ", total_size, u" total"});
+  std::u16string result_title =
+      base::StrCat({in_use_size, u" in use / ", total_size});
 
   StartSearch(u"storage");
 
@@ -877,22 +794,29 @@ TEST_F(SystemInfoCardProviderTest, Storage) {
             ash::AppListSearchResultType::kSystemInfo);
   EXPECT_EQ(results()[0]->metrics_type(), ash::SYSTEM_INFO);
   EXPECT_EQ(results()[0]->system_info_answer_card_data()->display_type,
-            ash::SystemInfoAnswerCardDisplayType::kBarChart);
-  auto found_bar_chart_percentage =
-      results()[0]->system_info_answer_card_data()->bar_chart_percentage;
-  auto expected_bar_chart_percentage = in_use_bytes * 100 / rounded_total_size;
-  EXPECT_EQ(expected_bar_chart_percentage, found_bar_chart_percentage);
+            ash::SystemInfoAnswerCardDisplayType::kMultiElementBarChart);
+  auto storage_type_to_size =
+      results()[0]->system_info_answer_card_data()->storage_type_to_size;
+  EXPECT_EQ(
+      ui::FormatBytes(
+          storage_type_to_size[ash::SearchResultSystemInfoStorageType::kTotal]),
+      total_size);
+  EXPECT_EQ(
+      ui::FormatBytes(storage_type_to_size
+                          [ash::SearchResultSystemInfoStorageType::kMyFiles]),
+      ui::FormatBytes(kMountPathBytes + kAndroidPathBytes +
+                      kDownloadsPathBytes));
 
   ASSERT_EQ(results()[0]->title_text_vector().size(), 1u);
   const auto& title = results()[0]->title_text_vector()[0];
   ASSERT_EQ(title.GetType(), ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(title.GetText(), u"");
+  EXPECT_EQ(title.GetText(), result_title);
   EXPECT_TRUE(title.GetTextTags().empty());
 
   ASSERT_EQ(results()[0]->details_text_vector().size(), 1u);
   const auto& details = results()[0]->details_text_vector()[0];
   ASSERT_EQ(details.GetType(), ash::SearchResultTextItemType::kString);
-  EXPECT_EQ(details.GetText(), result_description);
+  EXPECT_EQ(details.GetText(), u"");
   EXPECT_TRUE(details.GetTextTags().empty());
 }
 

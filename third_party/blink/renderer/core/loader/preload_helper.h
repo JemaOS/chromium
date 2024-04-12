@@ -5,8 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_PRELOAD_HELPER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_PRELOAD_HELPER_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource.h"
 
 namespace blink {
@@ -29,7 +28,6 @@ class PreloadHelper final {
     kDocumentBeforeCommit,
     kDocumentAfterCommitWithoutViewport,
     kDocumentAfterCommitWithViewport,
-    kDocumentAfterLoadCompleted,
     kSubresourceFromMemoryCache,
     kSubresourceNotFromMemoryCache,
   };
@@ -73,11 +71,8 @@ class PreloadHelper final {
                                     Document&,
                                     const ViewportDescription*,
                                     PendingLinkPreload*);
-  static void FetchDictionaryIfNeeded(const LinkLoadParameters&,
-                                      Document&,
-                                      PendingLinkPreload*);
 
-  static std::optional<ResourceType> GetResourceTypeFromAsAttribute(
+  static absl::optional<ResourceType> GetResourceTypeFromAsAttribute(
       const String& as);
 };
 

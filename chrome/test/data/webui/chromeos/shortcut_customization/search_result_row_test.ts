@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 import 'chrome://shortcut-customization/js/search/search_result_row.js';
-import 'chrome://webui-test/chromeos/mojo_webui_test_support.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
-import {ShortcutInputKeyElement} from 'chrome://resources/ash/common/shortcut_input_ui/shortcut_input_key.js';
 import {strictQuery} from 'chrome://resources/ash/common/typescript_utils/strict_query.js';
-import {mojoString16ToString} from 'chrome://resources/js/mojo_type_util.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {AcceleratorLookupManager} from 'chrome://shortcut-customization/js/accelerator_lookup_manager.js';
-import {CycleTabsTextSearchResult, fakeAcceleratorConfig, fakeLayoutInfo, SnapWindowLeftSearchResult, TakeScreenshotSearchResult} from 'chrome://shortcut-customization/js/fake_data.js';
+import {CycleTabsTextSearchResult, SnapWindowLeftSearchResult, TakeScreenshotSearchResult} from 'chrome://shortcut-customization/js/fake_data.js';
+import {InputKeyElement} from 'chrome://shortcut-customization/js/input_key.js';
+import {mojoString16ToString} from 'chrome://shortcut-customization/js/mojo_utils.js';
 import {getBoldedDescription} from 'chrome://shortcut-customization/js/search/search_result_bolding.js';
 import {SearchResultRowElement} from 'chrome://shortcut-customization/js/search/search_result_row.js';
 import {TextAcceleratorElement} from 'chrome://shortcut-customization/js/text_accelerator.js';
@@ -28,19 +27,8 @@ function initSearchResultRowElement(): SearchResultRowElement {
 
 suite('searchResultRowTest', function() {
   let searchResultRowElement: SearchResultRowElement|null = null;
-  let manager: AcceleratorLookupManager|null = null;
-
-  setup(() => {
-    // Set up manager.
-    manager = AcceleratorLookupManager.getInstance();
-    manager.setAcceleratorLookup(fakeAcceleratorConfig);
-    manager.setAcceleratorLayoutLookup(fakeLayoutInfo);
-  });
 
   teardown(() => {
-    if (manager) {
-      manager.reset();
-    }
     if (searchResultRowElement) {
       searchResultRowElement.remove();
     }
@@ -113,8 +101,8 @@ suite('searchResultRowTest', function() {
     // Two accelerators are expected.
     assertEquals(2, acceleratorElements.length);
 
-    const keys1: NodeListOf<ShortcutInputKeyElement> =
-        acceleratorElements[0]!.querySelectorAll('shortcut-input-key');
+    const keys1: NodeListOf<InputKeyElement> =
+        acceleratorElements[0]!.querySelectorAll('input-key');
     // Control + Overview
     assertEquals(2, keys1.length);
     assertEquals(
@@ -122,17 +110,15 @@ suite('searchResultRowTest', function() {
         keys1[0]!.shadowRoot!.querySelector('#key')!.textContent!.trim());
     assertEquals(
         'show windows',
-        keys1[1]!.shadowRoot!.querySelector('#keyIcon')!.getAttribute(
-            'aria-label'));
+        keys1[1]!.shadowRoot!.querySelector('div:has(> iron-icon)')!.ariaLabel);
 
-    const keys2: NodeListOf<ShortcutInputKeyElement> =
-        acceleratorElements[1]!.querySelectorAll('shortcut-input-key');
+    const keys2: NodeListOf<InputKeyElement> =
+        acceleratorElements[1]!.querySelectorAll('input-key');
     // Screenshot
     assertEquals(1, keys2.length);
     assertEquals(
         'take screenshot',
-        keys2[0]!.shadowRoot!.querySelector('#keyIcon')!.getAttribute(
-            'aria-label'));
+        keys2[0]!.shadowRoot!.querySelector('div:has(> iron-icon)')!.ariaLabel);
 
     // Select the row and verify that the keys are highlighted.
     assertFalse(keys1[0]!.highlighted);
@@ -184,8 +170,7 @@ suite('searchResultRowTest', function() {
         getBoldedDescription(
             mojoString16ToString(searchResultRowElement.searchResult
                                      .acceleratorLayoutInfo.description),
-            query)
-            .toString(),
+            query),
         strictQuery(
             '#description', searchResultRowElement.shadowRoot, HTMLDivElement)
             .innerHTML);

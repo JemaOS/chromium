@@ -34,7 +34,6 @@
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/core/dom/document_fragment.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
-#include "third_party/blink/renderer/core/dom/node_cloning_data.h"
 #include "third_party/blink/renderer/core/dom/node_traversal.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
@@ -426,7 +425,7 @@ static CSSValueID DetermineTextDirection(DocumentFragment* vtt_root) {
     DCHECK(node->IsDescendantOf(vtt_root));
 
     if (node->IsTextNode()) {
-      if (const std::optional<TextDirection> node_direction =
+      if (const absl::optional<TextDirection> node_direction =
               BidiParagraph::BaseDirectionForString(node->nodeValue())) {
         text_direction = *node_direction;
         break;
@@ -650,9 +649,9 @@ void VTTCue::UpdatePastAndFutureNodes(double movie_time) {
   }
 }
 
-std::optional<double> VTTCue::GetNextIntraCueTime(double movie_time) const {
+absl::optional<double> VTTCue::GetNextIntraCueTime(double movie_time) const {
   if (!display_tree_) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Iterate through children once, since in a well-formed VTTCue
@@ -669,13 +668,13 @@ std::optional<double> VTTCue::GetNextIntraCueTime(double movie_time) const {
           return timestamp;
         } else {
           // Timestamps should never be greater than the end time of the VTTCue.
-          return std::nullopt;
+          return absl::nullopt;
         }
       }
     }
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 VTTCueBox* VTTCue::GetDisplayTree() {
@@ -689,13 +688,13 @@ VTTCueBox* VTTCue::GetDisplayTree() {
   DCHECK_EQ(display_tree_->firstChild(), cue_background_box_);
 
   if (!display_tree_should_change_)
-    return display_tree_.Get();
+    return display_tree_;
 
   CreateVTTNodeTree();
 
   cue_background_box_->RemoveChildren();
-  NodeCloningData data{CloneOption::kIncludeDescendants};
-  cue_background_box_->CloneChildNodesFrom(*vtt_node_tree_, data);
+  cue_background_box_->CloneChildNodesFrom(*vtt_node_tree_,
+                                           CloneChildrenFlag::kClone);
 
   if (!region()) {
     VTTDisplayParameters display_parameters = CalculateDisplayParameters();
@@ -707,7 +706,7 @@ VTTCueBox* VTTCue::GetDisplayTree() {
 
   display_tree_should_change_ = false;
 
-  return display_tree_.Get();
+  return display_tree_;
 }
 
 void VTTCue::RemoveDisplayTree(RemovalNotification removal_notification) {

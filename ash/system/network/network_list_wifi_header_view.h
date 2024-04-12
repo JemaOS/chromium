@@ -7,16 +7,17 @@
 
 #include "ash/ash_export.h"
 #include "ash/system/network/network_list_network_header_view.h"
-#include "ui/base/metadata/metadata_header_macros.h"
+#include "ui/base/metadata/metadata_impl_macros.h"
 
 namespace ash {
 
-// Creates network list header for Wifi networks.
+// This class is the interface used to create network list header for Wifi
+// networks, and is responsible for the creation of wifi-specific buttons.
 class ASH_EXPORT NetworkListWifiHeaderView
     : public NetworkListNetworkHeaderView {
-  METADATA_HEADER(NetworkListWifiHeaderView, NetworkListNetworkHeaderView)
-
  public:
+  METADATA_HEADER(NetworkListWifiHeaderView);
+
   explicit NetworkListWifiHeaderView(
       NetworkListNetworkHeaderView::Delegate* delegate);
   NetworkListWifiHeaderView(const NetworkListWifiHeaderView&) = delete;
@@ -24,12 +25,7 @@ class ASH_EXPORT NetworkListWifiHeaderView
       delete;
   ~NetworkListWifiHeaderView() override;
 
-  // NetworkListNetworkHeaderView:
-  void SetToggleState(bool enabled, bool is_on, bool animate_toggle) override;
-  void OnToggleToggled(bool is_on) override;
-
- private:
-  friend class NetworkListWifiHeaderViewTest;
+  virtual void SetJoinWifiButtonState(bool enabled, bool visible) = 0;
 };
 
 }  // namespace ash

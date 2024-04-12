@@ -19,7 +19,7 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.toolbar.ToolbarFeatures;
 import org.chromium.components.omnibox.SecurityButtonAnimationDelegate;
 import org.chromium.ui.base.ViewUtils;
-import org.chromium.ui.interpolators.Interpolators;
+import org.chromium.ui.interpolators.BakedBezierInterpolator;
 
 /**
  * A delegate class to handle the title animation and security icon animation in
@@ -41,7 +41,6 @@ import org.chromium.ui.interpolators.Interpolators;
 class CustomTabToolbarAnimationDelegate {
     private final SecurityButtonAnimationDelegate mSecurityButtonAnimationDelegate;
     private final BrandingSecurityButtonAnimationDelegate mBrandingAnimationDelegate;
-    private final Runnable mAnimationEndRunnable;
 
     private TextView mUrlBar;
     private TextView mTitleBar;
@@ -51,46 +50,22 @@ class CustomTabToolbarAnimationDelegate {
     private @DrawableRes int mSecurityIconRes;
     private boolean mIsInAnimation;
 
-    private final AnimatorListenerAdapter mTitleBarAnimatorListenerAdapter =
-            new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    mIsInAnimation = false;
-                    mAnimationEndRunnable.run();
-                }
-            };
-
-    private final AnimatorListenerAdapter mUrlBarAnimatorListenerAdapter =
-            new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    mTitleBar
-                            .animate()
-                            .alpha(1f)
-                            .setInterpolator(Interpolators.LINEAR_OUT_SLOW_IN_INTERPOLATOR)
-                            .setDuration(SecurityButtonAnimationDelegate.FADE_DURATION_MS)
-                            .setListener(mTitleBarAnimatorListenerAdapter)
-                            .start();
-                }
-            };
-
-    /** Constructs an instance of {@link CustomTabToolbarAnimationDelegate}. */
-    CustomTabToolbarAnimationDelegate(
-            ImageButton securityButton,
-            final View titleUrlContainer,
-            Runnable animationEndRunnable,
+    /**
+     * Constructs an instance of {@link CustomTabToolbarAnimationDelegate}.
+     */
+    CustomTabToolbarAnimationDelegate(ImageButton securityButton, final View titleUrlContainer,
             @DimenRes int securityStatusIconSize) {
         int securityButtonWidth =
                 securityButton.getResources().getDimensionPixelSize(securityStatusIconSize);
         titleUrlContainer.setTranslationX(-securityButtonWidth);
-        mSecurityButtonAnimationDelegate =
-                new SecurityButtonAnimationDelegate(
-                        securityButton, titleUrlContainer, securityStatusIconSize);
+        mSecurityButtonAnimationDelegate = new SecurityButtonAnimationDelegate(
+                securityButton, titleUrlContainer, securityStatusIconSize);
         mBrandingAnimationDelegate = new BrandingSecurityButtonAnimationDelegate(securityButton);
-        mAnimationEndRunnable = animationEndRunnable;
     }
 
-    /** Sets whether the title scaling animation is enabled. */
+    /**
+     * Sets whether the title scaling animation is enabled.
+     */
     void setTitleAnimationEnabled(boolean enabled) {
         mShouldRunTitleAnimation = enabled;
     }
@@ -111,72 +86,76 @@ class CustomTabToolbarAnimationDelegate {
         if (!mShouldRunTitleAnimation) return;
         mShouldRunTitleAnimation = false;
 
-        var titleBar = mTitleBar;
-        titleBar.setVisibility(View.VISIBLE);
-        titleBar.setAlpha(0f);
+        mTitleBar.setVisibility(View.VISIBLE);
+        mTitleBar.setAlpha(0f);
 
-        TextView urlBar = mUrlBar;
         float newSizeSp = context.getResources().getDimension(R.dimen.custom_tabs_url_text_size);
-        float oldSizePx = urlBar.getTextSize();
-        urlBar.setTextSize(TypedValue.COMPLEX_UNIT_PX, newSizeSp);
+
+        float oldSizePx = mUrlBar.getTextSize();
+        mUrlBar.setTextSize(TypedValue.COMPLEX_UNIT_PX, newSizeSp);
 
         // View#getY() cannot be used because the boundary of the parent will change after relayout.
         final int[] oldLoc = new int[2];
-        urlBar.getLocationInWindow(oldLoc);
+        mUrlBar.getLocationInWindow(oldLoc);
 
-        ViewUtils.requestLayout(urlBar, "CustomTabToolbarAnimationDelegate.startTitleAnimation");
+        ViewUtils.requestLayout(mUrlBar, "CustomTabToolbarAnimationDelegate.startTitleAnimation");
 
-        urlBar.addOnLayoutChangeListener(
-                new View.OnLayoutChangeListener() {
-                    @Override
-                    public void onLayoutChange(
-                            View v,
-                            int left,
-                            int top,
-                            int right,
-                            int bottom,
-                            int oldLeft,
-                            int oldTop,
-                            int oldRight,
-                            int oldBottom) {
-                        TextView urlBar = mUrlBar;
-                        urlBar.removeOnLayoutChangeListener(this);
+        mUrlBar.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int left, int top, int right, int bottom,
+                    int oldLeft, int oldTop, int oldRight, int oldBottom) {
+                mUrlBar.removeOnLayoutChangeListener(this);
 
-                        int[] newLoc = new int[2];
-                        urlBar.getLocationInWindow(newLoc);
+                int[] newLoc = new int[2];
+                mUrlBar.getLocationInWindow(newLoc);
 
-                        // The size may change during the measuring pass, so we should calculate the
-                        // new size here, after the layout is done.
-                        float newSizePx = urlBar.getTextSize();
-                        final float scale = oldSizePx / newSizePx;
+                // The size may change during the measuring pass, so we should calculate the new
+                // size here, after the layout is done.
+                float newSizePx = mUrlBar.getTextSize();
+                final float scale = oldSizePx / newSizePx;
 
-                        urlBar.setScaleX(scale);
-                        urlBar.setScaleY(scale);
-                        urlBar.setTranslationX(oldLoc[0] - newLoc[0]);
-                        urlBar.setTranslationY(oldLoc[1] - newLoc[1]);
+                mUrlBar.setScaleX(scale);
+                mUrlBar.setScaleY(scale);
+                mUrlBar.setTranslationX(oldLoc[0] - newLoc[0]);
+                mUrlBar.setTranslationY(oldLoc[1] - newLoc[1]);
 
-                        mIsInAnimation = true;
-                        urlBar.animate()
-                                .scaleX(1f)
-                                .scaleY(1f)
-                                .translationX(0)
-                                .translationY(0)
-                                .setDuration(SecurityButtonAnimationDelegate.SLIDE_DURATION_MS)
-                                .setInterpolator(Interpolators.FAST_OUT_SLOW_IN_INTERPOLATOR)
-                                .setListener(mUrlBarAnimatorListenerAdapter)
-                                .start();
-                    }
-                });
+                mIsInAnimation = true;
+                mUrlBar.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .translationX(0)
+                        .translationY(0)
+                        .setDuration(SecurityButtonAnimationDelegate.SLIDE_DURATION_MS)
+                        .setInterpolator(BakedBezierInterpolator.TRANSFORM_CURVE)
+                        .setListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                mTitleBar.animate()
+                                        .alpha(1f)
+                                        .setInterpolator(BakedBezierInterpolator.FADE_IN_CURVE)
+                                        .setDuration(
+                                                SecurityButtonAnimationDelegate.FADE_DURATION_MS)
+                                        .setListener(new AnimatorListenerAdapter() {
+                                            @Override
+                                            public void onAnimationEnd(Animator animation) {
+                                                mIsInAnimation = false;
+                                            }
+                                        })
+                                        .start();
+                            }
+                        })
+                        .start();
+            }
+        });
     }
 
     /**
      * Starts the animation to show/hide the security button,
-     *
-     * @param securityIconResource The updated resource to be assigned to the security status icon.
-     *     When this is null, the icon is animated to the left and faded out.
+     * @param securityIconResource  The updated resource to be assigned to the security status icon.
+     * When this is null, the icon is animated to the left and faded out.
      */
-    void updateSecurityButton(@DrawableRes int securityIconResource) {
-        if (mUseRotationTransition) {
+    void updateSecurityButton(@DrawableRes int securityIconResource, boolean animate) {
+        if (mUseRotationTransition && animate) {
             mBrandingAnimationDelegate.updateDrawableResource(securityIconResource);
         } else {
             boolean isActualResourceChange = true;
@@ -184,7 +163,7 @@ class CustomTabToolbarAnimationDelegate {
                 isActualResourceChange = securityIconResource != mSecurityIconRes;
             }
             mSecurityButtonAnimationDelegate.updateSecurityButton(
-                    securityIconResource, /* animate= */ true, isActualResourceChange);
+                    securityIconResource, animate, isActualResourceChange);
         }
         mSecurityIconRes = securityIconResource;
     }
@@ -201,8 +180,7 @@ class CustomTabToolbarAnimationDelegate {
 
     /** Returns whether an animation is currently running. */
     boolean isInAnimation() {
-        return mIsInAnimation
-                || mBrandingAnimationDelegate.isInAnimation()
+        return mIsInAnimation || mBrandingAnimationDelegate.isInAnimation()
                 || mSecurityButtonAnimationDelegate.isInAnimation();
     }
 }

@@ -1,4 +1,6 @@
-file://third_party/blink/common/mediastream/COMMON_OWNERS
+eladalon@chromium.org
+guidou@chromium.org
+toprice@chromium.org
 
 per-file *.mojom=set noparent
 per-file *.mojom=file://ipc/SECURITY_OWNERS

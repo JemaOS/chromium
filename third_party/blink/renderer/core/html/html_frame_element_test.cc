@@ -10,13 +10,10 @@
 #include "third_party/blink/renderer/core/dom/document_init.h"
 #include "third_party/blink/renderer/core/testing/null_execution_context.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
-class HTMLFrameElementTest : public testing::Test {
-  test::TaskEnvironment task_environment_;
-};
+class HTMLFrameElementTest : public testing::Test {};
 
 // Test that the correct container policy is constructed on a frame element.
 // Frame elements do not have any container-policy related attributes, but the
@@ -31,8 +28,7 @@ TEST_F(HTMLFrameElementTest, DefaultContainerPolicy) {
 
   auto* frame_element = MakeGarbageCollected<HTMLFrameElement>(*document);
 
-  frame_element->setAttribute(html_names::kSrcAttr,
-                              AtomicString("http://example.net/"));
+  frame_element->setAttribute(html_names::kSrcAttr, "http://example.net/");
   frame_element->UpdateContainerPolicyForTests();
 
   const ParsedPermissionsPolicy& container_policy =

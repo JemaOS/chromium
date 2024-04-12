@@ -2,22 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/webauthn/local_credential_management_mac.h"
-
-#include <optional>
 #include <tuple>
+
+#include "chrome/browser/webauthn/local_credential_management_mac.h"
 
 #include "build/build_config.h"
 #include "chrome/test/base/testing_profile.h"
 #include "content/public/test/browser_task_environment.h"
-#include "crypto/apple_keychain_v2.h"
-#include "crypto/scoped_fake_apple_keychain_v2.h"
 #include "device/fido/mac/authenticator_config.h"
 #include "device/fido/mac/credential_store.h"
+#include "device/fido/mac/fake_keychain.h"
 #include "device/fido/public_key_credential_user_entity.h"
 #include "device/fido/test_callback_receiver.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -36,7 +35,8 @@ class LocalCredentialManagementTest : public testing::Test {
       .keychain_access_group = "test-keychain-access-group",
       .metadata_secret = "TestMetadataSecret"};
   LocalCredentialManagementMac local_cred_man_{config_};
-  crypto::ScopedFakeAppleKeychainV2 keychain_{config_.keychain_access_group};
+  device::fido::mac::ScopedFakeKeychain keychain_{
+      config_.keychain_access_group};
   device::fido::mac::TouchIdCredentialStore store_{config_};
 };
 
@@ -48,7 +48,7 @@ TEST_F(LocalCredentialManagementTest, NoCredentials) {
   EXPECT_FALSE(std::get<0>(callback.TakeResult()));
 
   device::test::TestCallbackReceiver<
-      std::optional<std::vector<device::DiscoverableCredentialMetadata>>>
+      absl::optional<std::vector<device::DiscoverableCredentialMetadata>>>
       enumerate_callback;
   local_cred_man_.Enumerate(enumerate_callback.callback());
   EXPECT_FALSE(enumerate_callback.was_called());
@@ -69,12 +69,12 @@ TEST_F(LocalCredentialManagementTest, OneCredential) {
   EXPECT_TRUE(std::get<0>(callback.TakeResult()));
 
   device::test::TestCallbackReceiver<
-      std::optional<std::vector<device::DiscoverableCredentialMetadata>>>
+      absl::optional<std::vector<device::DiscoverableCredentialMetadata>>>
       enumerate_callback;
   local_cred_man_.Enumerate(enumerate_callback.callback());
   EXPECT_FALSE(enumerate_callback.was_called());
   enumerate_callback.WaitForCallback();
-  const std::optional<std::vector<device::DiscoverableCredentialMetadata>>
+  const absl::optional<std::vector<device::DiscoverableCredentialMetadata>>
       result = std::get<0>(enumerate_callback.TakeResult());
   ASSERT_TRUE(result.has_value());
   ASSERT_EQ(result->size(), 1u);
@@ -173,7 +173,7 @@ TEST_F(LocalCredentialManagementTest, EditUnknownCredential) {
   EXPECT_FALSE(std::get<0>(callback.TakeResult()));
 }
 
-class ScopedMockKeychain : crypto::AppleKeychainV2 {
+class ScopedMockKeychain : device::fido::mac::Keychain {
  public:
   ScopedMockKeychain() { SetInstanceOverride(this); }
   ~ScopedMockKeychain() override { ClearInstanceOverride(); }
@@ -207,7 +207,7 @@ TEST_F(MockKeychainLocalCredentialManagementTest, KeychainError) {
   EXPECT_CALL(mock_keychain_, ItemCopyMatching)
       .WillOnce(testing::Return(errSecInternalComponent));
   device::test::TestCallbackReceiver<
-      std::optional<std::vector<device::DiscoverableCredentialMetadata>>>
+      absl::optional<std::vector<device::DiscoverableCredentialMetadata>>>
       enumerate_callback;
   local_cred_man_.Enumerate(enumerate_callback.callback());
   EXPECT_FALSE(enumerate_callback.was_called());

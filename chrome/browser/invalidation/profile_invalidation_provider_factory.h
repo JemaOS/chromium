@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_INVALIDATION_PROFILE_INVALIDATION_PROVIDER_FACTORY_H_
 #define CHROME_BROWSER_INVALIDATION_PROFILE_INVALIDATION_PROVIDER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -44,13 +44,14 @@ class ProfileInvalidationProviderFactory : public ProfileKeyedServiceFactory {
  private:
   friend class ProfileInvalidationProviderFactoryTestBase;
   friend class policy::AffiliatedInvalidationServiceProviderImplTest;
-  friend base::NoDestructor<ProfileInvalidationProviderFactory>;
+  friend struct base::DefaultSingletonTraits<
+      ProfileInvalidationProviderFactory>;
 
   ProfileInvalidationProviderFactory();
   ~ProfileInvalidationProviderFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;

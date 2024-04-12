@@ -7,17 +7,15 @@ import {keyDownOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {SettingsReviewNotificationPermissionsElement} from 'chrome://settings/lazy_load.js';
-import {SafetyHubBrowserProxyImpl, SafetyHubEvent} from 'chrome://settings/lazy_load.js';
-import type {CrActionMenuElement, SettingsRoutes} from 'chrome://settings/settings.js';
-import {MetricsBrowserProxyImpl, Router, routes, SafetyCheckNotificationsModuleInteractions} from 'chrome://settings/settings.js';
+import {SettingsReviewNotificationPermissionsElement, SiteSettingsPrefsBrowserProxyImpl} from 'chrome://settings/lazy_load.js';
+import {CrActionMenuElement, MetricsBrowserProxyImpl, Router, routes, SafetyCheckNotificationsModuleInteractions, SettingsRoutes} from 'chrome://settings/settings.js';
 import {isChildVisible, isVisible} from 'chrome://webui-test/test_util.js';
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {isMac} from 'chrome://resources/js/platform.js';
 import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
 
 import {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
-import {TestSafetyHubBrowserProxy} from './test_safety_hub_browser_proxy.js';
+import {TestSiteSettingsPrefsBrowserProxy} from './test_site_settings_prefs_browser_proxy.js';
 
 // clang-format on
 
@@ -25,7 +23,7 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
   /**
    * The mock proxy object to use during test.
    */
-  let browserProxy: TestSafetyHubBrowserProxy;
+  let browserProxy: TestSiteSettingsPrefsBrowserProxy;
   let metricsBrowserProxy: TestMetricsBrowserProxy;
 
   let testElement: SettingsReviewNotificationPermissionsElement;
@@ -111,9 +109,9 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
   }
 
   setup(async function() {
-    browserProxy = new TestSafetyHubBrowserProxy();
+    browserProxy = new TestSiteSettingsPrefsBrowserProxy();
     browserProxy.setNotificationPermissionReview(mockData);
-    SafetyHubBrowserProxyImpl.setInstance(browserProxy);
+    SiteSettingsPrefsBrowserProxyImpl.setInstance(browserProxy);
     metricsBrowserProxy = new TestMetricsBrowserProxy();
     MetricsBrowserProxyImpl.setInstance(metricsBrowserProxy);
     testRoutes = {
@@ -299,7 +297,7 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
 
     await assertUndo('allowNotificationPermissionForOrigins', 0);
     webUIListenerCallback(
-        SafetyHubEvent.NOTIFICATION_PERMISSIONS_MAYBE_CHANGED, mockData);
+        'notification-permission-review-list-maybe-changed', mockData);
     assertAnimation([false, false]);
     await assertMetricsInteraction(
         SafetyCheckNotificationsModuleInteractions.UNDO_BLOCK);
@@ -320,7 +318,7 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
 
     await assertUndo('undoIgnoreNotificationPermissionForOrigins', 0);
     webUIListenerCallback(
-        SafetyHubEvent.NOTIFICATION_PERMISSIONS_MAYBE_CHANGED, mockData);
+        'notification-permission-review-list-maybe-changed', mockData);
     assertAnimation([false, false]);
     await assertMetricsInteraction(
         SafetyCheckNotificationsModuleInteractions.UNDO_IGNORE);
@@ -341,7 +339,7 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
 
     await assertUndo('allowNotificationPermissionForOrigins', 0);
     webUIListenerCallback(
-        SafetyHubEvent.NOTIFICATION_PERMISSIONS_MAYBE_CHANGED, mockData);
+        'notification-permission-review-list-maybe-changed', mockData);
     assertAnimation([false, false]);
     await assertMetricsInteraction(
         SafetyCheckNotificationsModuleInteractions.UNDO_RESET);
@@ -412,7 +410,7 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
 
   test('Block All Click single entry', async function() {
     webUIListenerCallback(
-        SafetyHubEvent.NOTIFICATION_PERMISSIONS_MAYBE_CHANGED, [{
+        'notification-permission-review-list-maybe-changed', [{
           origin: origin1,
           notificationInfoString: detail1,
         }]);
@@ -445,7 +443,7 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
     // Through reviewing permissions the permission list is empty and only the
     // completion info is visible.
     webUIListenerCallback(
-        SafetyHubEvent.NOTIFICATION_PERMISSIONS_MAYBE_CHANGED, []);
+        'notification-permission-review-list-maybe-changed', []);
     await flushTasks();
     assertFalse(isChildVisible(testElement, '#review-header'));
     assertFalse(isChildVisible(testElement, '.site-list'));
@@ -454,7 +452,7 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
     // The element returns to showing the list of permissions when new items are
     // added while the completion state is visible.
     webUIListenerCallback(
-        SafetyHubEvent.NOTIFICATION_PERMISSIONS_MAYBE_CHANGED, mockData);
+        'notification-permission-review-list-maybe-changed', mockData);
     await flushTasks();
     assertTrue(isChildVisible(testElement, '#review-header'));
     assertTrue(isChildVisible(testElement, '.site-list'));
@@ -476,7 +474,7 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
 
     // User collapses the list.
     expandButton.click();
-    await expandButton.updateComplete;
+    flush();
     await assertMetricsInteraction(
         SafetyCheckNotificationsModuleInteractions.MINIMIZE);
 
@@ -486,7 +484,7 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
 
     // User expands the list.
     expandButton.click();
-    await expandButton.updateComplete;
+    flush();
 
     // Button and list are expanded.
     assertTrue(expandButton.expanded);
@@ -513,7 +511,7 @@ suite('CrSettingsReviewNotificationPermissionsTest', function() {
 
     // Check header string for singular case.
     webUIListenerCallback(
-        SafetyHubEvent.NOTIFICATION_PERMISSIONS_MAYBE_CHANGED, [{
+        'notification-permission-review-list-maybe-changed', [{
           origin: origin1,
           notificationInfoString: detail1,
         }]);

@@ -17,7 +17,6 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
-#include "chrome/browser/chrome_browser_main_extra_parts_nacl_deprecation.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
@@ -116,12 +115,12 @@ void PPAPITestBase::InfoBarObserver::OnManagerShuttingDown(
 
 void PPAPITestBase::InfoBarObserver::VerifyInfoBarState() {
   infobars::ContentInfoBarManager* infobar_manager = GetInfoBarManager();
-  EXPECT_EQ(expecting_infobar_ ? 1U : 0U, infobar_manager->infobars().size());
+  EXPECT_EQ(expecting_infobar_ ? 1U : 0U, infobar_manager->infobar_count());
   if (!expecting_infobar_)
     return;
   expecting_infobar_ = false;
 
-  infobars::InfoBar* infobar = infobar_manager->infobars()[0];
+  infobars::InfoBar* infobar = infobar_manager->infobar_at(0);
   ConfirmInfoBarDelegate* delegate =
       infobar->delegate()->AsConfirmInfoBarDelegate();
   ASSERT_TRUE(delegate != nullptr);
@@ -145,7 +144,7 @@ PPAPITestBase::PPAPITestBase() {
   scoped_feature_list_.InitWithFeatures(
       // enabled_features
       {net::features::kSplitHostCacheByNetworkIsolationKey,
-       net::features::kPartitionConnectionsByNetworkIsolationKey, kNaclAllow},
+       net::features::kPartitionConnectionsByNetworkIsolationKey},
       // disabled_features
       {});
 }
@@ -178,7 +177,7 @@ void PPAPITestBase::SetUpOnMainThread() {
 GURL PPAPITestBase::GetTestFileUrl(const std::string& test_case) {
   base::ScopedAllowBlockingForTesting allow_blocking;
   base::FilePath test_path;
-  EXPECT_TRUE(base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &test_path));
+  EXPECT_TRUE(base::PathService::Get(base::DIR_SOURCE_ROOT, &test_path));
   test_path = test_path.Append(FILE_PATH_LITERAL("ppapi"));
   test_path = test_path.Append(FILE_PATH_LITERAL("tests"));
   test_path = test_path.Append(FILE_PATH_LITERAL("test_case.html"));
@@ -308,6 +307,16 @@ OutOfProcessPPAPITest::OutOfProcessPPAPITest() {
 void OutOfProcessPPAPITest::SetUpCommandLine(base::CommandLine* command_line) {
   PPAPITest::SetUpCommandLine(command_line);
   command_line->AppendSwitch(switches::kUseFakeUIForMediaStream);
+}
+
+void OutOfProcessPPAPITest::RunTest(const std::string& test_case) {
+#if BUILDFLAG(IS_WIN)
+  // See crbug.com/1231528 for context.
+  if (test_case == "Printing")
+    return;
+#endif
+
+  PPAPITestBase::RunTest(test_case);
 }
 
 // Send touch events to a plugin and expect the events to reach the renderer

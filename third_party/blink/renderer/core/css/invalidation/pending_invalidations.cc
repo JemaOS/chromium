@@ -18,6 +18,10 @@
 
 namespace blink {
 
+PendingInvalidations::PendingInvalidations() {
+  InvalidationSet::CacheTracingFlag();
+}
+
 void PendingInvalidations::ScheduleInvalidationSetsForNode(
     const InvalidationLists& invalidation_lists,
     ContainerNode& node) {
@@ -52,8 +56,8 @@ void PendingInvalidations::ScheduleInvalidationSetsForNode(
       }
     }
     // No need to schedule descendant invalidations on display:none elements.
-    if (requires_descendant_invalidation && node.IsElementNode() &&
-        !To<Element>(node).GetComputedStyle()) {
+    if (requires_descendant_invalidation && !node.GetComputedStyle() &&
+        !node.IsShadowRoot()) {
       requires_descendant_invalidation = false;
     }
   }

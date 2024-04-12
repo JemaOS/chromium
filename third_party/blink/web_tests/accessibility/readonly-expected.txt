@@ -4,7 +4,7 @@ Link Button A B C D E F G H I
  J
 1
 2
- K L M N
+ K L M
 Focusable
 Heading
 Plain div can't be readonly
@@ -13,7 +13,6 @@ ARIA toggle button
 ARIA link
 ARIA slider
 ARIA progress meter
-ARIA textbox
 Button
 
 This tests which elements expose themselves as readonly. Readonly here refers to whether the item is not editable, not whether a control value can be changed vs if it's unavailable.
@@ -42,7 +41,7 @@ PASS axElement.isReadOnly is true
 
 text-readonly2
 PASS document.activeElement == element is true
-PASS axElement.isReadOnly is true
+PASS axElement.isReadOnly is false
 
 
 checkbox1
@@ -90,11 +89,6 @@ PASS document.activeElement == element is true
 PASS axElement.isReadOnly is true
 
 
-textarea-readonly2
-PASS document.activeElement == element is true
-PASS axElement.isReadOnly is true
-
-
 focusable1
 PASS document.activeElement == element is true
 PASS axElement.isReadOnly is false
@@ -135,11 +129,6 @@ PASS document.activeElement == element is true
 PASS axElement.isReadOnly is false
 
 
-aria-textbox1
-PASS document.activeElement == element is true
-PASS axElement.isReadOnly is true
-
-
 contenteditable_root1
 PASS document.activeElement == element is true
 PASS axElement.isReadOnly is false
@@ -156,11 +145,6 @@ PASS axElement.isReadOnly is false
 
 
 contenteditable_root-readonly2
-PASS document.activeElement == element is true
-PASS axElement.isReadOnly is false
-
-
-contenteditable_root-readonly3
 PASS document.activeElement == element is true
 PASS axElement.isReadOnly is true
 

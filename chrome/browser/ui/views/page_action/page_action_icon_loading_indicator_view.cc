@@ -67,6 +67,6 @@ void PageActionIconLoadingIndicatorView::AnimationProgressed(
   SchedulePaint();
 }
 
-BEGIN_METADATA(PageActionIconLoadingIndicatorView)
+BEGIN_METADATA(PageActionIconLoadingIndicatorView, views::View)
 ADD_PROPERTY_METADATA(bool, Animating)
 END_METADATA

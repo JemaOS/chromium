@@ -35,7 +35,7 @@ using SmartReaderLacrosBrowserTest = InProcessBrowserTest;
 IN_PROC_BROWSER_TEST_F(SmartReaderLacrosBrowserTest, Basic) {
   auto* lacros_service = chromeos::LacrosService::Get();
   ASSERT_TRUE(lacros_service);
-  if (!lacros_service->IsSupported<crosapi::mojom::SmartReaderClient>()) {
+  if (!lacros_service->IsSmartReaderClientAvailable()) {
     GTEST_SKIP();
   }
   FakeSmartReaderClient client;

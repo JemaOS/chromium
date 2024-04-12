@@ -15,7 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageView;
 
-import org.chromium.build.annotations.MockedInTests;
+import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.suggestions.base.SuggestionLayout.LayoutParams;
 import org.chromium.chrome.browser.util.KeyNavigationUtil;
 import org.chromium.components.browser_ui.widget.RoundedCornerOutlineProvider;
@@ -29,14 +29,11 @@ import java.util.List;
  *
  * @param <T> The type of View being wrapped by this container.
  */
-@MockedInTests
 public class BaseSuggestionView<T extends View> extends SuggestionLayout {
-    public final @NonNull ImageView decorationIcon;
-    public final @NonNull T contentView;
-    public final @NonNull ActionChipsView actionChipsView;
-    public final @NonNull RoundedCornerOutlineProvider decorationIconOutline;
-
     private final List<ImageView> mActionButtons;
+    private final ImageView mDecorationIcon;
+    private final @NonNull ActionChipsView mActionChips;
+    private T mContentView;
     private @Nullable Runnable mOnFocusViaSelectionListener;
 
     /**
@@ -50,25 +47,23 @@ public class BaseSuggestionView<T extends View> extends SuggestionLayout {
         setClickable(true);
         setFocusable(true);
 
-        decorationIconOutline = new RoundedCornerOutlineProvider();
-
-        decorationIcon = new ImageView(getContext());
-        decorationIcon.setOutlineProvider(decorationIconOutline);
-        decorationIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        addView(
-                decorationIcon,
+        mDecorationIcon = new ImageView(getContext());
+        mDecorationIcon.setOutlineProvider(new RoundedCornerOutlineProvider(
+                getResources().getDimensionPixelSize(R.dimen.default_rounded_corner_radius)));
+        mDecorationIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        addView(mDecorationIcon,
                 LayoutParams.forViewType(LayoutParams.SuggestionViewType.DECORATION));
 
-        actionChipsView = new ActionChipsView(getContext());
-        actionChipsView.setVisibility(GONE);
-        addView(actionChipsView, LayoutParams.forViewType(LayoutParams.SuggestionViewType.FOOTER));
+        mActionChips = new ActionChipsView(getContext());
+        mActionChips.setVisibility(GONE);
+        addView(mActionChips, LayoutParams.forViewType(LayoutParams.SuggestionViewType.FOOTER));
 
         mActionButtons = new ArrayList<>();
 
-        contentView = view;
-        contentView.setLayoutParams(
+        mContentView = view;
+        mContentView.setLayoutParams(
                 LayoutParams.forViewType(LayoutParams.SuggestionViewType.CONTENT));
-        addView(contentView);
+        addView(mContentView);
     }
 
     /**
@@ -138,17 +133,15 @@ public class BaseSuggestionView<T extends View> extends SuggestionLayout {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Pass event to ActionChips first in case this key event is appropriate for ActionChip
         // navigation.
-        if (actionChipsView.onKeyDown(keyCode, event)) return true;
+        if (mActionChips.onKeyDown(keyCode, event)) return true;
 
         boolean isRtl = getLayoutDirection() == LAYOUT_DIRECTION_RTL;
         if ((!isRtl && KeyNavigationUtil.isGoRight(event))
                 || (isRtl && KeyNavigationUtil.isGoLeft(event))) {
             // For views with exactly 1 action icon, continue to support the arrow key triggers.
             if (mActionButtons.size() == 1) {
-                return mActionButtons.get(0).performClick();
+                mActionButtons.get(0).callOnClick();
             }
-        } else if (KeyNavigationUtil.isEnter(event)) {
-            return performClick();
         }
         return super.onKeyDown(keyCode, event);
     }
@@ -161,6 +154,15 @@ public class BaseSuggestionView<T extends View> extends SuggestionLayout {
         }
     }
 
+    /** @return Embedded suggestion content view. */
+    public T getContentView() {
+        return mContentView;
+    }
+
+    public ActionChipsView getActionChipsView() {
+        return mActionChips;
+    }
+
     /**
      * Specify the listener receiving a call when the user highlights this Suggestion.
      *
@@ -168,6 +170,11 @@ public class BaseSuggestionView<T extends View> extends SuggestionLayout {
      */
     void setOnFocusViaSelectionListener(@Nullable Runnable listener) {
         mOnFocusViaSelectionListener = listener;
+    }
+
+    /** @return Widget holding suggestion decoration icon. */
+    ImageView getSuggestionImageView() {
+        return mDecorationIcon;
     }
 
     @Override

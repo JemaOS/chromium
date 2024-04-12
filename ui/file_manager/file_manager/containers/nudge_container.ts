@@ -4,12 +4,9 @@
 
 import '../widgets/xf_nudge.js';
 
-import {isNewDirectoryTreeEnabled} from '../common/js/flags.js';
 import {storage} from '../common/js/storage.js';
-import {str} from '../common/js/translations.js';
-import type {XfNudge} from '../widgets/xf_nudge.js';
-import {NudgeDirection} from '../widgets/xf_nudge.js';
-import type {XfTreeItem} from '../widgets/xf_tree_item.js';
+import {str} from '../common/js/util.js';
+import {NudgeDirection, XfNudge} from '../widgets/xf_nudge.js';
 
 /**
  * NudgeContainer maintains the lifetime of a "nudge". A nudge refers to an
@@ -199,31 +196,11 @@ export class NudgeContainer {
     }
     window.addEventListener(
         'resize', this.throttledRepositionCallback_.bind(this), config);
-
-    if (info.selfDismiss) {
-      // Self dismissable nudge only dismisses if the user clicks on the nudge.
-      this.nudge_.addEventListener(
-          'pointerdown', () => this.closeNudge(this.currentNudgeType_), config);
-      anchor.addEventListener(
-          'pointerdown', () => this.closeNudge(this.currentNudgeType_), config);
-      const dismissOnKeyDown = info.dismissOnKeyDown;
-      if (dismissOnKeyDown) {
-        document.addEventListener('keydown', (event: KeyboardEvent) => {
-          if (dismissOnKeyDown(anchor, event)) {
-            this.closeNudge(this.currentNudgeType_);
-          }
-        }, config);
-      }
-    } else {
-      // Otherwise the nudge dismisses when user clicks anywhere in the app.
-      document.addEventListener('keydown', e => this.handleKeyDown_(e), config);
-      document.addEventListener(
-          'pointerdown', e => this.handlePointerDown_(e), config);
-      anchor.addEventListener(
-          'blur', (_: Event) => this.closeNudge(this.currentNudgeType_),
-          config);
-      this.nudge_.dismissText = '';
-    }
+    document.addEventListener('keydown', e => this.handleKeyDown_(e), config);
+    document.addEventListener(
+        'pointerdown', e => this.handlePointerDown_(e), config);
+    anchor.addEventListener(
+        'blur', (_: Event) => this.closeNudge(this.currentNudgeType_), config);
 
     this.nudge_.anchor = anchor;
     this.nudge_.content = info.content();
@@ -285,7 +262,8 @@ export class NudgeContainer {
    */
   private handlePointerDown_(event: MouseEvent) {
     // Ignore pointer events on the nudge to allow copying the nudge's text.
-    if (event.composedPath().includes(this.nudge_)) {
+    if (event.composedPath().includes(
+            /** @type {!EventTarget} */ (this.nudge_))) {
       return;
     }
     this.closeNudge(this.currentNudgeType_);
@@ -334,7 +312,7 @@ export class NudgeContainer {
  */
 export enum NudgeType {
   TEST_NUDGE = 'test-nudge',
-  MANUAL_TEST_NUDGE = 'manual-test-nudge',
+  TRASH_NUDGE = 'trash-nudge',
   ONE_DRIVE_MOVED_FILE_NUDGE = 'one-drive-moved-file-nudge',
   DRIVE_MOVED_FILE_NUDGE = 'drive-moved-file-nudge',
   SEARCH_V2_EDUCATION_NUDGE = 'search-v2-education-nudge',
@@ -358,44 +336,6 @@ interface NudgeInfo {
   // The date the nudge expires, after this date even if the nudge is invoked it
   // will not appear.
   expiryDate: Date;
-
-  // When the using selfDimiss=true the user can dismiss by clicking in the
-  // nudge. Otherwise the nudge is dismissed when clicking anywhere in
-  // the app/document.
-  selfDismiss?: boolean;
-
-  // For selfDismiss nudge the nudge and its anchor might not get keyboard focus
-  // to be able to dismiss via keyboard.
-  // Implement this callback that receives the keydown from document and should
-  // return true if the nudge should be dismissed.
-  dismissOnKeyDown?:
-      (anchor: HTMLElement|null, event: KeyboardEvent) => boolean;
-}
-
-/**
- * Dismisses the nudge when the tree-item that anchors the nudge is selected.
- *
- * NOTE: It relies on the nudge anchor being in the icon, to traverse 2 parents
- * up to the tree-item.
- */
-function treeDismissOnKeyDownOnTreeItem(
-    anchor: HTMLElement|null, event: KeyboardEvent) {
-  const dismissKeys = new Set(['Enter', 'Space']);
-  if (!dismissKeys.has(event.key)) {
-    return false;
-  }
-
-  // When the anchor (tree item) is selected we dismiss.
-  let parentTreeItem: Element|null|undefined;
-  if (isNewDirectoryTreeEnabled()) {
-    parentTreeItem = (anchor?.getRootNode() as ShadowRoot)?.host;
-  } else {
-    parentTreeItem = anchor?.parentElement?.parentElement;
-  }
-  if (parentTreeItem?.hasAttribute('selected')) {
-    return true;
-  }
-  return false;
 }
 
 /**
@@ -409,75 +349,43 @@ export const nudgeInfo: {[type in NudgeType]: NudgeInfo} = {
     direction: NudgeDirection.BOTTOM_ENDWARD,
     expiryDate: new Date(2999, 1, 1),
   },
-  [NudgeType['MANUAL_TEST_NUDGE']]: {
-    anchor: () => {
-      if (!isNewDirectoryTreeEnabled()) {
-        const children = Array.from(document.querySelectorAll<HTMLElement>(
-            '.tree-item[section-start="my_files"] > .tree-children > .tree-item .entry-name'));
-
-        for (const child of children) {
-          if (child.innerText !== 'Downloads') {
-            continue;
-          }
-
-          return child.parentElement?.querySelector<HTMLSpanElement>(
-                     '.item-icon') ??
-              null;
-        }
-
-        return null;
-      }
-      const downloadsTreeItem =
-          document.querySelector<XfTreeItem>('xf-tree-item[icon="downloads"]')!;
-      return downloadsTreeItem.shadowRoot!.querySelector('xf-icon');
-    },
-    content: () => str('ONE_DRIVE_MOVED_FILE_NUDGE'),
-    direction: NudgeDirection.TRAILING_DOWNWARD,
-    expiryDate: new Date(2999, 1, 1),
-    selfDismiss: true,
-    dismissOnKeyDown: treeDismissOnKeyDownOnTreeItem,
+  // A nudge that is shown when an item is first sent to the trash.
+  [NudgeType['TRASH_NUDGE']]: {
+    anchor: () =>
+        document.querySelector<HTMLSpanElement>('span[root-type-icon="trash"]'),
+    content: () => str('TRASH_NUDGE_LABEL'),
+    direction: NudgeDirection.BOTTOM_ENDWARD,
+    // Expire this after 4 releases (expires when M112 hits Stable).
+    expiryDate: new Date(2023, 4, 6),
   },
   [NudgeType['ONE_DRIVE_MOVED_FILE_NUDGE']]: {
     anchor: () => {
-      if (!isNewDirectoryTreeEnabled()) {
-        return document
-                   .querySelector<HTMLSpanElement>(
-                       '.tree-item[one-drive] .file-row .item-icon')
-                   ?.parentElement ||
-            null;
-      }
-      const oneDriveTreeItem =
-          document.querySelector<XfTreeItem>('xf-tree-item[one-drive]');
-      return oneDriveTreeItem?.shadowRoot!.querySelector('.tree-row') || null;
+      return document
+                 .querySelector<HTMLSpanElement>(
+                     '.tree-item[one-drive] .file-row .item-icon')
+                 ?.parentElement ||
+          null;
     },
     content: () => str('ONE_DRIVE_MOVED_FILE_NUDGE'),
     direction: NudgeDirection.TRAILING_DOWNWARD,
-    expiryDate: new Date(2025, 12, 5),
-    selfDismiss: true,
-    dismissOnKeyDown: treeDismissOnKeyDownOnTreeItem,
+    // Expire after 4 releases (expires when M120 hits Stable).
+    expiryDate: new Date(2023, 12, 5),
   },
   [NudgeType['DRIVE_MOVED_FILE_NUDGE']]: {
     anchor: () => {
-      if (!isNewDirectoryTreeEnabled()) {
-        return document
-                   .querySelector<HTMLSpanElement>(
-                       '.tree-item .item-icon[volume-type-icon="drive"]')
-                   ?.parentElement ||
-            null;
-      }
-      const driveTreeItem = document.querySelector<XfTreeItem>(
-          'xf-tree-item[icon="service_drive"]');
-      return driveTreeItem?.shadowRoot!.querySelector('.tree-row') || null;
+      return document
+                 .querySelector<HTMLSpanElement>(
+                     '.tree-item .item-icon[volume-type-icon="drive"]')
+                 ?.parentElement ||
+          null;
     },
     content: () => str('DRIVE_MOVED_FILE_NUDGE'),
     direction: NudgeDirection.TRAILING_DOWNWARD,
-    expiryDate: new Date(2025, 12, 5),
-    selfDismiss: true,
-    dismissOnKeyDown: treeDismissOnKeyDownOnTreeItem,
+    // Expire after 4 releases (expires when M120 hits Stable).
+    expiryDate: new Date(2023, 12, 5),
   },
   [NudgeType['SEARCH_V2_EDUCATION_NUDGE']]: {
-    anchor: () =>
-        document.querySelector<HTMLDivElement>('#search-button > .icon'),
+    anchor: () => document.querySelector<HTMLSpanElement>('#search-wrapper'),
     content: () => str('SEARCH_V2_EDUCATION_NUDGE'),
     direction: NudgeDirection.BOTTOM_STARTWARD,
     // Expire after 4 releases (expires when M120 hits Stable).

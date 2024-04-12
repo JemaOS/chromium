@@ -2,6 +2,7 @@ file://ash/login/LOGIN_LOCK_OWNERS
 
 # (in PST)
 achuith@chromium.org
+alemate@chromium.org
 
 per-file *wizard_controller.*=set noparent
 per-file *wizard_controller.*=file://ash/login/LOGIN_LOCK_OWNERS

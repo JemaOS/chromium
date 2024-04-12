@@ -18,8 +18,18 @@
 #include "ui/gl/direct_composition_child_surface_win.h"
 #include "ui/gl/direct_composition_support.h"
 #include "ui/gl/gl_angle_util_win.h"
+#include "ui/gl/vsync_thread_win.h"
 
 namespace gl {
+
+namespace {
+
+bool SupportsLowLatencyPresentation() {
+  return base::FeatureList::IsEnabled(
+      features::kDirectCompositionLowLatencyPresentation);
+}
+
+}  // namespace
 
 DirectCompositionSurfaceWin::PendingFrame::PendingFrame(
     Microsoft::WRL::ComPtr<ID3D11Query> query,
@@ -34,21 +44,20 @@ DirectCompositionSurfaceWin::PendingFrame::operator=(PendingFrame&& other) =
 
 DirectCompositionSurfaceWin::DirectCompositionSurfaceWin(
     GLDisplayEGL* display,
+    VSyncCallback vsync_callback,
     const Settings& settings)
     : GLSurfaceEGL(display),
-      d3d11_device_(GetDirectCompositionD3D11Device()),
+      vsync_callback_(std::move(vsync_callback)),
+      vsync_thread_(VSyncThreadWin::GetInstance()),
       task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       max_pending_frames_(settings.max_pending_frames),
       root_surface_(new DirectCompositionChildSurfaceWin(
           display,
-          d3d11_device_,
           settings.use_angle_texture_offset)),
       layer_tree_(std::make_unique<DCLayerTree>(
           settings.disable_nv12_dynamic_textures,
-          settings.disable_vp_auto_hdr,
           settings.disable_vp_scaling,
           settings.disable_vp_super_resolution,
-          settings.force_dcomp_triple_buffer_video_swap_chain,
           settings.no_downscaled_overlay_promotion)) {}
 
 DirectCompositionSurfaceWin::~DirectCompositionSurfaceWin() {
@@ -61,9 +70,13 @@ bool DirectCompositionSurfaceWin::Initialize(GLSurfaceFormat format) {
     return false;
   }
 
+  d3d11_device_ = QueryD3D11DeviceObjectFromANGLE();
+
   child_window_.Initialize();
 
-  layer_tree_->Initialize(window(), d3d11_device_);
+  if (!layer_tree_->Initialize(window())) {
+    return false;
+  }
 
   if (!root_surface_->Initialize(GLSurfaceFormat()))
     return false;
@@ -76,9 +89,8 @@ void DirectCompositionSurfaceWin::Destroy() {
     std::move(frame.callback).Run(gfx::PresentationFeedback::Failure());
   pending_frames_.clear();
 
-  if (observing_vsync_) {
-    VSyncThreadWin::GetInstance()->RemoveObserver(this);
-  }
+  if (vsync_thread_started_)
+    vsync_thread_->RemoveObserver(this);
 
   root_surface_->Destroy();
   // Freeing DComp resources such as visuals and surfaces causes the
@@ -108,7 +120,10 @@ bool DirectCompositionSurfaceWin::Resize(const gfx::Size& size,
                                          float scale_factor,
                                          const gfx::ColorSpace& color_space,
                                          bool has_alpha) {
-  if (!child_window_.Resize(size)) {
+  // Force a resize and redraw (but not a move, activate, etc.).
+  if (!SetWindowPos(window(), nullptr, 0, 0, size.width(), size.height(),
+                    SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOCOPYBITS |
+                        SWP_NOOWNERZORDER | SWP_NOZORDER)) {
     return false;
   }
   return root_surface_->Resize(size, scale_factor, color_space, has_alpha);
@@ -147,7 +162,7 @@ gfx::SwapResult DirectCompositionSurfaceWin::PostSubBuffer(
 }
 
 gfx::VSyncProvider* DirectCompositionSurfaceWin::GetVSyncProvider() {
-  return VSyncThreadWin::GetInstance()->vsync_provider();
+  return vsync_thread_->vsync_provider();
 }
 
 void DirectCompositionSurfaceWin::SetVSyncEnabled(bool enabled) {
@@ -156,6 +171,12 @@ void DirectCompositionSurfaceWin::SetVSyncEnabled(bool enabled) {
 
 void DirectCompositionSurfaceWin::OnVSync(base::TimeTicks vsync_time,
                                           base::TimeDelta interval) {
+  // Main thread will run vsync callback in low latency presentation mode.
+  if (VSyncCallbackEnabled() && !SupportsLowLatencyPresentation()) {
+    DCHECK(vsync_callback_);
+    vsync_callback_.Run(vsync_time, interval);
+  }
+
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&DirectCompositionSurfaceWin::HandleVSyncOnMainThread,
@@ -210,6 +231,18 @@ gfx::Vector2d DirectCompositionSurfaceWin::GetDrawOffset() const {
   return root_surface_->GetDrawOffset();
 }
 
+bool DirectCompositionSurfaceWin::SupportsGpuVSync() const {
+  return true;
+}
+
+void DirectCompositionSurfaceWin::SetGpuVSyncEnabled(bool enabled) {
+  {
+    base::AutoLock auto_lock(vsync_callback_enabled_lock_);
+    vsync_callback_enabled_ = enabled;
+  }
+  StartOrStopVSyncThread();
+}
+
 bool DirectCompositionSurfaceWin::SupportsDelegatedInk() {
   return layer_tree_->SupportsDelegatedInk();
 }
@@ -260,20 +293,34 @@ void DirectCompositionSurfaceWin::HandleVSyncOnMainThread(
     base::TimeDelta interval) {
   last_vsync_time_ = vsync_time;
   last_vsync_interval_ = interval;
+
   CheckPendingFrames();
+
+  UMA_HISTOGRAM_COUNTS_100("GPU.DirectComposition.NumPendingFrames",
+                           pending_frames_.size());
+
+  if (SupportsLowLatencyPresentation() && VSyncCallbackEnabled() &&
+      pending_frames_.size() < max_pending_frames_) {
+    DCHECK(vsync_callback_);
+    vsync_callback_.Run(vsync_time, interval);
+  }
 }
 
 void DirectCompositionSurfaceWin::StartOrStopVSyncThread() {
-  bool needs_vsync = !pending_frames_.empty();
-  if (observing_vsync_ == needs_vsync) {
+  bool start_vsync_thread = VSyncCallbackEnabled() || !pending_frames_.empty();
+  if (vsync_thread_started_ == start_vsync_thread)
     return;
-  }
-  observing_vsync_ = needs_vsync;
-  if (needs_vsync) {
-    VSyncThreadWin::GetInstance()->AddObserver(this);
+  vsync_thread_started_ = start_vsync_thread;
+  if (start_vsync_thread) {
+    vsync_thread_->AddObserver(this);
   } else {
-    VSyncThreadWin::GetInstance()->RemoveObserver(this);
+    vsync_thread_->RemoveObserver(this);
   }
+}
+
+bool DirectCompositionSurfaceWin::VSyncCallbackEnabled() const {
+  base::AutoLock auto_lock(vsync_callback_enabled_lock_);
+  return vsync_callback_enabled_;
 }
 
 void DirectCompositionSurfaceWin::CheckPendingFrames() {

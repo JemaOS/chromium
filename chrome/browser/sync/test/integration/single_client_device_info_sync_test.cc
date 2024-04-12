@@ -164,7 +164,12 @@ class SingleClientDeviceInfoSyncTest : public SyncTest {
  public:
   SingleClientDeviceInfoSyncTest() : SyncTest(SINGLE_CLIENT) {
     override_features_.InitWithFeatures(
-        {syncer::kSkipInvalidationOptimizationsWhenDeviceInfoUpdated}, {});
+        {syncer::kSkipInvalidationOptimizationsWhenDeviceInfoUpdated,
+         // Enable both features to make it sure that old invalidations are
+         // completely disabled.
+         syncer::kUseSyncInvalidations,
+         syncer::kUseSyncInvalidationsForWalletAndOffer},
+        {});
   }
 
   SingleClientDeviceInfoSyncTest(const SingleClientDeviceInfoSyncTest&) =

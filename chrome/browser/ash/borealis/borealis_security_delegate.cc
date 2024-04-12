@@ -19,11 +19,10 @@ namespace borealis {
 
 void BorealisSecurityDelegate::Build(
     Profile* profile,
-    std::string vm_name,
     base::OnceCallback<void(std::unique_ptr<guest_os::GuestOsSecurityDelegate>)>
         callback) {
   BorealisService::GetForProfile(profile)->Features().IsAllowed(base::BindOnce(
-      [](Profile* profile, std::string vm_name,
+      [](Profile* profile,
          base::OnceCallback<void(
              std::unique_ptr<guest_os::GuestOsSecurityDelegate>)> callback,
          BorealisFeatures::AllowStatus allow_status) {
@@ -33,11 +32,11 @@ void BorealisSecurityDelegate::Build(
           return;
         }
         BorealisSecurityDelegate* delegate =
-            new BorealisSecurityDelegate(profile, std::move(vm_name));
+            new BorealisSecurityDelegate(profile);
         // Use WrapUnique due to private constructor.
         std::move(callback).Run(base::WrapUnique(delegate));
       },
-      profile, std::move(vm_name), std::move(callback)));
+      profile, std::move(callback)));
 }
 
 BorealisSecurityDelegate::~BorealisSecurityDelegate() = default;
@@ -52,23 +51,20 @@ bool BorealisSecurityDelegate::CanLockPointer(aura::Window* window) const {
   return window->GetProperty(chromeos::kUseOverviewToExitPointerLock);
 }
 
-exo::SecurityDelegate::SetBoundsPolicy BorealisSecurityDelegate::CanSetBounds(
+bool BorealisSecurityDelegate::CanSetBoundsWithServerSideDecoration(
     aura::Window* window) const {
-  return exo::SecurityDelegate::SetBoundsPolicy::ADJUST_IF_DECORATED;
+  return true;
 }
 
 // static
 std::unique_ptr<BorealisSecurityDelegate>
 BorealisSecurityDelegate::MakeForTesting(Profile* profile) {
-  BorealisSecurityDelegate* delegate =
-      new BorealisSecurityDelegate(profile, std::string());
+  BorealisSecurityDelegate* delegate = new BorealisSecurityDelegate(profile);
   // Use WrapUnique due to private constructor.
   return base::WrapUnique(delegate);
 }
 
-BorealisSecurityDelegate::BorealisSecurityDelegate(Profile* profile,
-                                                   std::string vm_name)
-    : guest_os::GuestOsSecurityDelegate(std::move(vm_name)),
-      profile_(profile) {}
+BorealisSecurityDelegate::BorealisSecurityDelegate(Profile* profile)
+    : profile_(profile) {}
 
 }  // namespace borealis

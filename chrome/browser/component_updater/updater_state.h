@@ -6,16 +6,16 @@
 #define CHROME_BROWSER_COMPONENT_UPDATER_UPDATER_STATE_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/containers/flat_map.h"
 #include "base/gtest_prod_util.h"
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/time/time.h"
 #include "base/values.h"
 #include "base/version.h"
 #include "build/build_config.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace component_updater {
 
@@ -93,7 +93,7 @@ class UpdaterState {
 #endif
   class StateReaderChromiumUpdater final : public StateReader {
    public:
-    explicit StateReaderChromiumUpdater(base::Value::Dict parsed_json);
+    explicit StateReaderChromiumUpdater(base::Value parsed_json);
 
    private:
     // Overrides for StateReader.
@@ -105,7 +105,7 @@ class UpdaterState {
     int GetUpdatePolicy() const override;
 
     base::Time FindTimeKey(base::StringPiece key) const;
-    const base::Value::Dict parsed_json_;
+    const base::Value parsed_json_;
   };
 
   explicit UpdaterState(bool is_machine);
@@ -113,7 +113,7 @@ class UpdaterState {
   // Builds the map of state attributes by serializing the state of this object.
   Attributes Serialize() const;
 
-  static std::optional<State> ReadState(bool is_machine);
+  static absl::optional<State> ReadState(bool is_machine);
 
   static std::string GetUpdaterName();
   static base::Version GetUpdaterVersion(bool is_machine);
@@ -127,7 +127,7 @@ class UpdaterState {
   // True if the updater is installed per-machine.
   bool is_machine_ = false;
 
-  std::optional<State> state_;
+  absl::optional<State> state_;
 };
 
 }  // namespace component_updater

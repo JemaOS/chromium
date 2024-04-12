@@ -24,7 +24,6 @@
 #include "base/check_op.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/partition_allocator.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
-#include "third_party/blink/renderer/platform/wtf/type_traits.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
 namespace WTF {
@@ -50,7 +49,6 @@ class HashCountedSet {
   typedef typename ImplType::AddResult AddResult;
 
   HashCountedSet() {
-    static_assert(!IsStackAllocatedType<Value>);
     static_assert(Allocator::kIsGarbageCollected ||
                       !IsPointerToGarbageCollectedType<Value>::value,
                   "Cannot put raw pointers to garbage-collected classes into "
@@ -58,8 +56,8 @@ class HashCountedSet {
                   "HeapHashCountedSet<Member<T>> instead.");
   }
 
-  HashCountedSet(const HashCountedSet&) = default;
-  HashCountedSet& operator=(const HashCountedSet&) = default;
+  HashCountedSet(const HashCountedSet&) = delete;
+  HashCountedSet& operator=(const HashCountedSet&) = delete;
 
   void swap(HashCountedSet& other) { impl_.swap(other.impl_); }
 
@@ -103,9 +101,9 @@ class HashCountedSet {
 
   Vector<Value> AsVector() const;
 
-  void Trace(auto visitor) const
-    requires Allocator::kIsGarbageCollected
-  {
+  template <typename VisitorDispatcher, typename A = Allocator>
+  std::enable_if_t<A::kIsGarbageCollected> Trace(
+      VisitorDispatcher visitor) const {
     impl_.Trace(visitor);
   }
 

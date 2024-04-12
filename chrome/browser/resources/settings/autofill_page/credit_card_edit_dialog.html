@@ -6,6 +6,11 @@
         width: var(--cr-default-input-max-width);
       }
 
+      /* Override the padding-top (the space is set by save-to-this-device). */
+      div[slot='button-container'] {
+        padding-top: 0;
+      }
+
       .md-select + .md-select {
         margin-inline-start: 8px;
       }
@@ -14,19 +19,11 @@
         width: 70px;
       }
 
-      #cvcInput {
-        width: 132px;
-      }
-
-      #cvcImage {
-        margin-inline-start: 10px;
-      }
-
       #saved-to-this-device-only-label {
         /* Overall space between input fields, including space between
            nicknameInput and saved-to-this-device text, between
            saved-to-this-device text and button. */
-        margin-bottom: 10px;
+        margin-bottom: 26px;
         margin-top: 0;
       }
 
@@ -105,20 +102,7 @@
           </template>
         </select>
         <div id="expiredError">$i18n{creditCardExpired}</div>
-        <template is="dom-if"
-            if="[[checkIfCvcStorageIsAvailable_(
-                  prefs.autofill.payment_cvc_storage.value,
-                  cvcStorageAvailable_)]]">
-          <cr-input id="cvcInput" label="$i18n{creditCardCvcInputTitle}"
-              placeholder="$i18n{creditCardCvcInputPlaceholder}"
-              value="{{cvc_}}">
-            <img slot="suffix" id="cvcImage"
-                src="[[getCvcImageSource_(cardNumber_)]]"
-                title="[[getCvcImageTooltip_(cardNumber_)]]">
-            </img>
-          </cr-input>
-        </template>
-        <!-- Place cardholder name field and nickname field after CVC input.-->
+        <!-- Place cardholder name field and nickname field after expiration.-->
         <cr-input id="nameInput" label="$i18n{creditCardName}"
             value="{{name_}}" spellcheck="false">
         </cr-input>
@@ -127,7 +111,7 @@
             on-input="validateNickname_"
             invalid="[[nicknameInvalid_]]"
             error-message="$i18n{creditCardNicknameInvalid}">
-            <div id="charCount" slot="suffix" aria-hidden="true">
+            <div id="charCount" slot="suffix">
               [[computeNicknameCharCount_(nickname_)]]/25
             </div>
         </cr-input>

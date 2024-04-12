@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/policy/enrollment/fake_auto_enrollment_client.h"
 
-#include "chrome/browser/ash/policy/enrollment/auto_enrollment_state.h"
 #include "chrome/browser/ash/policy/enrollment/psm/rlwe_dmserver_client.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 
@@ -49,16 +48,20 @@ FakeAutoEnrollmentClient::FactoryImpl::CreateForInitialEnrollment(
 
 FakeAutoEnrollmentClient::FakeAutoEnrollmentClient(
     const ProgressCallback& progress_callback)
-    : progress_callback_(progress_callback) {}
+    : progress_callback_(progress_callback),
+      state_(AutoEnrollmentState::kIdle) {}
 
 FakeAutoEnrollmentClient::~FakeAutoEnrollmentClient() {}
 
-void FakeAutoEnrollmentClient::Start() {}
+void FakeAutoEnrollmentClient::Start() {
+  SetState(AutoEnrollmentState::kPending);
+}
 
 void FakeAutoEnrollmentClient::Retry() {}
 
 void FakeAutoEnrollmentClient::SetState(AutoEnrollmentState target_state) {
-  progress_callback_.Run(target_state);
+  state_ = target_state;
+  progress_callback_.Run(state_);
 }
 
 }  // namespace policy

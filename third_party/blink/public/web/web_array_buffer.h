@@ -66,7 +66,7 @@ class BLINK_EXPORT WebArrayBuffer {
 #endif
 
  protected:
-  WebPrivatePtrForGC<DOMArrayBuffer> private_;
+  WebPrivatePtr<DOMArrayBuffer> private_;
 };
 
 }  // namespace blink

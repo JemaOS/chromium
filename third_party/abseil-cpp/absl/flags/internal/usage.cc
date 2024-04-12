@@ -27,10 +27,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/attributes.h"
 #include "absl/base/config.h"
-#include "absl/base/const_init.h"
-#include "absl/base/thread_annotations.h"
 #include "absl/flags/commandlineflag.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/internal/flag.h"
@@ -43,8 +40,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
-#include "absl/strings/strip.h"
-#include "absl/synchronization/mutex.h"
 
 // Dummy global variables to prevent anyone else defining these.
 bool FLAGS_help = false;
@@ -97,16 +92,8 @@ class XMLElement {
         case '>':
           out << "&gt;";
           break;
-        case '\n':
-        case '\v':
-        case '\f':
-        case '\t':
-          out << " ";
-          break;
         default:
-          if (IsValidXmlCharacter(static_cast<unsigned char>(c))) {
-            out << c;
-          }
+          out << c;
           break;
       }
     }
@@ -115,7 +102,6 @@ class XMLElement {
   }
 
  private:
-  static bool IsValidXmlCharacter(unsigned char c) { return c >= 0x20; }
   absl::string_view tag_;
   absl::string_view txt_;
 };

@@ -47,7 +47,7 @@ chrome.extension.onMessage.addListener(function(request, sender) {
                  "history.go(-1); else window.close();"
         });
     var url = "subscribe.html?" + encodeURIComponent(request.href);
-    url = chrome.runtime.getURL(url);
+    url = chrome.extension.getURL(url);
     chrome.tabs.create({ url: url, index: sender.tab.index });
   }
 });

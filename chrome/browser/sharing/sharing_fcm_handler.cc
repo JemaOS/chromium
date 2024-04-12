@@ -91,6 +91,7 @@ void SharingFCMHandler::OnMessage(const std::string& app_id,
                                   const gcm::IncomingMessage& message) {
   TRACE_EVENT_BEGIN0("sharing", "SharingFCMHandler::OnMessage");
 
+  base::TimeTicks message_received_time = base::TimeTicks::Now();
   chrome_browser_sharing::SharingMessage sharing_message;
   if (!sharing_message.ParseFromString(message.raw_data)) {
     LOG(ERROR) << "Failed to parse incoming message with id : "
@@ -120,8 +121,8 @@ void SharingFCMHandler::OnMessage(const std::string& app_id,
       done_callback = base::BindOnce(
           &SharingFCMHandler::SendAckMessage, weak_ptr_factory_.GetWeakPtr(),
           std::move(message_id), message_type, GetFCMChannel(sharing_message),
-          GetServerChannel(sharing_message),
-          GetSenderPlatform(sharing_message));
+          GetServerChannel(sharing_message), GetSenderPlatform(sharing_message),
+          message_received_time);
     }
 
     handler->OnMessage(std::move(sharing_message), std::move(done_callback));
@@ -146,27 +147,27 @@ void SharingFCMHandler::OnStoreReset() {
   // TODO: Handle GCM store reset.
 }
 
-std::optional<chrome_browser_sharing::FCMChannelConfiguration>
+absl::optional<chrome_browser_sharing::FCMChannelConfiguration>
 SharingFCMHandler::GetFCMChannel(
     const chrome_browser_sharing::SharingMessage& original_message) {
   if (!original_message.has_fcm_channel_configuration())
-    return std::nullopt;
+    return absl::nullopt;
 
   return original_message.fcm_channel_configuration();
 }
 
-std::optional<chrome_browser_sharing::ServerChannelConfiguration>
+absl::optional<chrome_browser_sharing::ServerChannelConfiguration>
 SharingFCMHandler::GetServerChannel(
     const chrome_browser_sharing::SharingMessage& original_message) {
   if (!original_message.has_server_channel_configuration())
-    return std::nullopt;
+    return absl::nullopt;
 
   return original_message.server_channel_configuration();
 }
 
 SharingDevicePlatform SharingFCMHandler::GetSenderPlatform(
     const chrome_browser_sharing::SharingMessage& original_message) {
-  const syncer::DeviceInfo* device_info =
+  auto device_info =
       device_info_tracker_->GetDeviceInfo(original_message.sender_guid());
   if (!device_info)
     return SharingDevicePlatform::kUnknown;
@@ -177,13 +178,19 @@ SharingDevicePlatform SharingFCMHandler::GetSenderPlatform(
 void SharingFCMHandler::SendAckMessage(
     std::string original_message_id,
     chrome_browser_sharing::MessageType original_message_type,
-    std::optional<chrome_browser_sharing::FCMChannelConfiguration> fcm_channel,
-    std::optional<chrome_browser_sharing::ServerChannelConfiguration>
+    absl::optional<chrome_browser_sharing::FCMChannelConfiguration> fcm_channel,
+    absl::optional<chrome_browser_sharing::ServerChannelConfiguration>
         server_channel,
     SharingDevicePlatform sender_device_type,
+    base::TimeTicks message_received_time,
     std::unique_ptr<chrome_browser_sharing::ResponseMessage> response) {
+  LogSharingMessageHandlerTime(original_message_type,
+                               base::TimeTicks::Now() - message_received_time);
   if (!fcm_channel && !server_channel) {
     LOG(ERROR) << "Unable to find ack channel configuration";
+    LogSendSharingAckMessageResult(original_message_type, sender_device_type,
+                                   SharingChannelType::kUnknown,
+                                   SharingSendMessageResult::kDeviceNotFound);
     return;
   }
 
@@ -224,8 +231,10 @@ void SharingFCMHandler::OnAckMessageSent(
     SharingDevicePlatform sender_device_type,
     int trace_id,
     SharingSendMessageResult result,
-    std::optional<std::string> message_id,
+    absl::optional<std::string> message_id,
     SharingChannelType channel_type) {
+  LogSendSharingAckMessageResult(original_message_type, sender_device_type,
+                                 channel_type, result);
   if (result != SharingSendMessageResult::kSuccessful)
     LOG(ERROR) << "Failed to send ack mesage for " << original_message_id;
 

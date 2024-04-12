@@ -33,8 +33,8 @@ TEST_F(FontCacheTest, getLastResortFallbackFont) {
         FontDescription::kSansSerifFamily}) {
     FontDescription font_description;
     font_description.SetGenericFamily(family_type);
-    const SimpleFontData* font_data =
-        font_cache.GetLastResortFallbackFont(font_description);
+    scoped_refptr<SimpleFontData> font_data =
+        font_cache.GetLastResortFallbackFont(font_description, kRetain);
     EXPECT_TRUE(font_data);
   }
 }
@@ -53,9 +53,10 @@ TEST_F(FontCacheTest, NoFallbackForPrivateUseArea) {
     font_description.SetGenericFamily(family_type);
     for (UChar32 character : {0xE000, 0xE401, 0xE402, 0xE403, 0xF8FF, 0xF0000,
                               0xFAAAA, 0x100000, 0x10AAAA}) {
-      const SimpleFontData* font_data = font_cache.FallbackFontForCharacter(
-          font_description, character, nullptr);
-      EXPECT_EQ(font_data, nullptr);
+      scoped_refptr<SimpleFontData> font_data =
+          font_cache.FallbackFontForCharacter(font_description, character,
+                                              nullptr);
+      EXPECT_EQ(font_data.get(), nullptr);
     }
   }
 }
@@ -90,17 +91,19 @@ TEST_F(FontCacheTest, FallbackForEmojis) {
       icu::UnicodeString(character).toUTF8String(character_utf8);
 
       {
-        const SimpleFontData* font_data = font_cache.FallbackFontForCharacter(
-            font_description, character, nullptr,
-            FontFallbackPriority::kEmojiEmoji);
+        scoped_refptr<SimpleFontData> font_data =
+            font_cache.FallbackFontForCharacter(
+                font_description, character, nullptr,
+                FontFallbackPriority::kEmojiEmoji);
         EXPECT_EQ(font_data->PlatformData().FontFamilyName(), kNotoColorEmoji)
             << "Character " << character_utf8
             << " doesn't match what we expected for kEmojiEmoji.";
       }
       {
-        const SimpleFontData* font_data = font_cache.FallbackFontForCharacter(
-            font_description, character, nullptr,
-            FontFallbackPriority::kEmojiText);
+        scoped_refptr<SimpleFontData> font_data =
+            font_cache.FallbackFontForCharacter(
+                font_description, character, nullptr,
+                FontFallbackPriority::kEmojiText);
         if (available_in_contour_font) {
           EXPECT_NE(font_data->PlatformData().FontFamilyName(), kNotoColorEmoji)
               << "Character " << character_utf8
@@ -136,16 +139,8 @@ TEST_F(FontCacheTest, firstAvailableOrFirst) {
             FontCache::FirstAvailableOrFirst(", not exist, not exist"));
 }
 
-// Unfortunately, we can't ensure a font here since on Android and Mac the
-// unittests can't access the font configuration. However, this test passes
-// when it's not crashing in FontCache.
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-#define MAYBE_GetLargerThanMaxUnsignedFont DISABLED_GetLargerThanMaxUnsignedFont
-#else
-#define MAYBE_GetLargerThanMaxUnsignedFont GetLargerThanMaxUnsignedFont
-#endif
 // https://crbug.com/969402
-TEST_F(FontCacheTest, MAYBE_GetLargerThanMaxUnsignedFont) {
+TEST_F(FontCacheTest, GetLargerThanMaxUnsignedFont) {
   FontCache& font_cache = FontCache::Get();
 
   FontDescription font_description;
@@ -153,9 +148,14 @@ TEST_F(FontCacheTest, MAYBE_GetLargerThanMaxUnsignedFont) {
   font_description.SetComputedSize(
       static_cast<float>(std::numeric_limits<unsigned>::max()) + 1.f);
   FontFaceCreationParams creation_params;
-  const blink::SimpleFontData* font_data =
+  scoped_refptr<blink::SimpleFontData> font_data =
       font_cache.GetFontData(font_description, AtomicString());
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_WIN)
+  // Unfortunately, we can't ensure a font here since on Android and Mac the
+  // unittests can't access the font configuration. However, this test passes
+  // when it's not crashing in FontCache.
   EXPECT_TRUE(font_data);
+#endif
 }
 
 #if !BUILDFLAG(IS_MAC)
@@ -169,16 +169,16 @@ TEST_F(FontCacheTest, systemFont) {
 TEST_F(FontCacheTest, Locale) {
   FontCacheKey key1(FontFaceCreationParams(), /* font_size */ 16,
                     /* options */ 0, /* device_scale_factor */ 1.0f,
-                    /* size_adjust */ FontSizeAdjust(),
                     /* variation_settings */ nullptr,
                     /* palette */ nullptr,
                     /* variant_alternates */ nullptr,
-                    /* is_unique_match */ false);
+                    /* is_unique_match */ false,
+                    /* is_generic_family */ false);
   FontCacheKey key2 = key1;
   EXPECT_EQ(key1.GetHash(), key2.GetHash());
   EXPECT_EQ(key1, key2);
 
-  key2.SetLocale(AtomicString("ja"));
+  key2.SetLocale("ja");
   EXPECT_NE(key1.GetHash(), key2.GetHash());
   EXPECT_NE(key1, key2);
 }

@@ -33,6 +33,8 @@ void DelegatedInkTrailPresenter::updateInkTrailStartPoint(
     PointerEvent* evt,
     InkTrailStyle* style,
     ExceptionState& exception_state) {
+  DCHECK(RuntimeEnabledFeatures::DelegatedInkTrailsEnabled());
+
   if (!state->ContextIsValid()) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,

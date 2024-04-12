@@ -11,7 +11,6 @@
 #include "chromeos/ash/components/multidevice/logging/logging.h"
 #include "chromeos/ash/services/nearby/public/cpp/nearby_process_manager.h"
 #include "chromeos/ash/services/secure_channel/public/cpp/client/nearby_connector.h"
-#include "chromeos/ash/services/secure_channel/public/mojom/nearby_connector.mojom-shared.h"
 #include "components/keyed_service/core/keyed_service.h"
 
 namespace ash {
@@ -24,14 +23,10 @@ NearbyConnectorImpl::ConnectionRequestMetadata::ConnectionRequestMetadata(
     const std::vector<uint8_t>& bluetooth_public_address,
     const std::vector<uint8_t>& eid,
     mojo::PendingRemote<mojom::NearbyMessageReceiver> message_receiver,
-    mojo::PendingRemote<mojom::NearbyConnectionStateListener>
-        nearby_connection_state_listener,
     ConnectCallback callback)
     : bluetooth_public_address(bluetooth_public_address),
       eid(eid),
       message_receiver(std::move(message_receiver)),
-      nearby_connection_state_listener(
-          std::move(nearby_connection_state_listener)),
       callback(std::move(callback)) {}
 
 NearbyConnectorImpl::ConnectionRequestMetadata::~ConnectionRequestMetadata() =
@@ -58,13 +53,11 @@ void NearbyConnectorImpl::Connect(
     const std::vector<uint8_t>& bluetooth_public_address,
     const std::vector<uint8_t>& eid,
     mojo::PendingRemote<mojom::NearbyMessageReceiver> message_receiver,
-    mojo::PendingRemote<mojom::NearbyConnectionStateListener>
-        nearby_connection_state_listener,
     ConnectCallback callback) {
   queued_connection_requests_.emplace(
-      std::make_unique<ConnectionRequestMetadata>(
-          bluetooth_public_address, eid, std::move(message_receiver),
-          std::move(nearby_connection_state_listener), std::move(callback)));
+      std::make_unique<ConnectionRequestMetadata>(bluetooth_public_address, eid,
+                                                  std::move(message_receiver),
+                                                  std::move(callback)));
   ProcessQueuedConnectionRequests();
 }
 
@@ -142,7 +135,6 @@ void NearbyConnectorImpl::ProcessQueuedConnectionRequests() {
           std::move(message_sender_pending_receiver),
           std::move(file_payload_handler_pending_receiver),
           std::move(metadata->message_receiver),
-          std::move(metadata->nearby_connection_state_listener),
           process_reference_->GetNearbyConnections(),
           base::BindOnce(&NearbyConnectorImpl::OnConnected,
                          base::Unretained(this), new_broker_id,

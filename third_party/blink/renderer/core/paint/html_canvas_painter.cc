@@ -14,7 +14,7 @@
 #include "third_party/blink/renderer/platform/geometry/layout_point.h"
 #include "third_party/blink/renderer/platform/graphics/paint/drawing_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/paint/foreign_layer_display_item.h"
-#include "third_party/blink/renderer/platform/graphics/scoped_image_rendering_settings.h"
+#include "third_party/blink/renderer/platform/graphics/scoped_interpolation_quality.h"
 
 namespace blink {
 
@@ -76,9 +76,8 @@ void HTMLCanvasPainter::PaintReplaced(const PaintInfo& paint_info,
 
   BoxDrawingRecorder recorder(context, layout_html_canvas_, paint_info.phase,
                               paint_offset);
-  ScopedImageRenderingSettings image_rendering_settings_scope(
-      context, InterpolationQualityForCanvas(layout_html_canvas_.StyleRef()),
-      layout_html_canvas_.StyleRef().GetDynamicRangeLimit());
+  ScopedInterpolationQuality interpolation_quality_scope(
+      context, InterpolationQualityForCanvas(layout_html_canvas_.StyleRef()));
   canvas->Paint(context, paint_rect, paint_info.ShouldOmitCompositingInfo());
 }
 

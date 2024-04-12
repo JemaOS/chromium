@@ -34,7 +34,6 @@
 #include "extensions/browser/event_router_factory.h"
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/mock_extension_system.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/manifest.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -50,7 +49,7 @@ const ValueStore::WriteOptions DEFAULTS = ValueStore::DEFAULTS;
 // More saving typing. Maps extension IDs to a list of sync changes for that
 // extension.
 using SettingSyncDataMultimap =
-    std::map<ExtensionId, std::unique_ptr<SettingSyncDataList>>;
+    std::map<std::string, std::unique_ptr<SettingSyncDataList>>;
 
 // Gets the pretty-printed JSON for a value.
 static std::string GetJson(const base::Value& value) {
@@ -106,7 +105,7 @@ class MockSyncChangeProcessor : public syncer::SyncChangeProcessor {
   MockSyncChangeProcessor() : fail_all_requests_(false) {}
 
   // syncer::SyncChangeProcessor implementation.
-  std::optional<syncer::ModelError> ProcessSyncChanges(
+  absl::optional<syncer::ModelError> ProcessSyncChanges(
       const base::Location& from_here,
       const syncer::SyncChangeList& change_list) override {
     if (fail_all_requests_) {
@@ -116,7 +115,7 @@ class MockSyncChangeProcessor : public syncer::SyncChangeProcessor {
     for (const auto& sync_change : change_list) {
       changes_.push_back(std::make_unique<SettingSyncData>(sync_change));
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Mock methods.
@@ -133,7 +132,7 @@ class MockSyncChangeProcessor : public syncer::SyncChangeProcessor {
 
   // Returns the only change for a given extension setting.  If there is not
   // exactly 1 change for that key, a test assertion will fail.
-  SettingSyncData* GetOnlyChange(const ExtensionId& extension_id,
+  SettingSyncData* GetOnlyChange(const std::string& extension_id,
                                  const std::string& key) {
     std::vector<SettingSyncData*> matching_changes;
     for (const std::unique_ptr<SettingSyncData>& change : changes_) {
@@ -212,8 +211,8 @@ class ExtensionSettingsSyncTest : public testing::Test {
  protected:
   // Adds a record of an extension or app to the extension service, then returns
   // its storage area.
-  ValueStore* AddExtensionAndGetStorage(const ExtensionId& id,
-                                        Manifest::Type type) {
+  ValueStore* AddExtensionAndGetStorage(
+      const std::string& id, Manifest::Type type) {
     scoped_refptr<const Extension> extension =
         settings_test_util::AddExtensionWithId(profile_.get(), id, type);
     return settings_test_util::GetStorage(extension, frontend_.get());
@@ -294,7 +293,7 @@ class ExtensionSettingsSyncTest : public testing::Test {
   std::unique_ptr<MockSyncChangeProcessor> sync_processor_;
   std::unique_ptr<syncer::SyncChangeProcessorWrapperForTest>
       sync_processor_wrapper_;
-  raw_ptr<SyncValueStoreCache, DanglingUntriaged> sync_cache_;
+  raw_ptr<SyncValueStoreCache> sync_cache_;
 };
 
 // Get a semblance of coverage for both EXTENSION_SETTINGS and APP_SETTINGS
@@ -1441,7 +1440,7 @@ static void UnlimitedLocalStorageTestCallback(ValueStore* local_storage) {
 }  // namespace
 
 TEST_F(ExtensionSettingsSyncTest, UnlimitedStorageForLocalButNotSync) {
-  const ExtensionId id = "ext";
+  const std::string id = "ext";
   std::set<std::string> permissions;
   permissions.insert("unlimitedStorage");
   scoped_refptr<const Extension> extension =

@@ -20,7 +20,8 @@ namespace blink {
 using HighlightSetIterable = ValueSyncIterable<Highlight>;
 class HighlightRegistry;
 
-class CORE_EXPORT Highlight : public EventTarget, public HighlightSetIterable {
+class CORE_EXPORT Highlight : public EventTargetWithInlineData,
+                              public HighlightSetIterable {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
@@ -77,7 +78,7 @@ class CORE_EXPORT Highlight : public EventTarget, public HighlightSetIterable {
 
   HeapLinkedHashSet<Member<AbstractRange>> highlight_ranges_;
   int32_t priority_ = 0;
-  AtomicString type_{"highlight"};
+  AtomicString type_ = "highlight";
   // Since a Highlight can be registered many times under different names in
   // many HighlightRegistries, we need to keep track of the number of times
   // it's present in each registry. If the Highlight is not registered anywhere,

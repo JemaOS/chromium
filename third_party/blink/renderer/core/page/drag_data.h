@@ -30,12 +30,9 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/page/drag_actions.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
+#include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 #include "ui/gfx/geometry/point_f.h"
-
-namespace WTF {
-class String;
-}  // namespace WTF
 
 namespace blink {
 
@@ -54,8 +51,7 @@ class CORE_EXPORT DragData {
   DragData(DataObject*,
            const gfx::PointF& client_position,
            const gfx::PointF& global_position,
-           DragOperationsMask,
-           bool force_default_action);
+           DragOperationsMask);
   const gfx::PointF& ClientPosition() const { return client_position_; }
   const gfx::PointF& GlobalPosition() const { return global_position_; }
   DataObject* PlatformData() const { return platform_drag_data_; }
@@ -66,26 +62,23 @@ class CORE_EXPORT DragData {
       FilenameConversionPolicy filename_policy = kConvertFilenames) const;
   bool ContainsPlainText() const;
   bool ContainsCompatibleContent() const;
-  WTF::String AsURL(
-      FilenameConversionPolicy filename_policy = kConvertFilenames,
-      WTF::String* title = nullptr) const;
-  WTF::String AsPlainText() const;
-  void AsFilePaths(Vector<WTF::String>&) const;
+  String AsURL(FilenameConversionPolicy filename_policy = kConvertFilenames,
+               String* title = nullptr) const;
+  String AsPlainText() const;
+  void AsFilePaths(Vector<String>&) const;
   unsigned NumberOfFiles() const;
   DocumentFragment* AsFragment(LocalFrame*) const;
   bool CanSmartReplace() const;
   bool ContainsFiles() const;
-  bool ForceDefaultAction() const;
   int GetModifiers() const;
 
-  WTF::String DroppedFileSystemId() const;
+  String DroppedFileSystemId() const;
 
  private:
   const gfx::PointF client_position_;
   const gfx::PointF global_position_;
   DataObject* const platform_drag_data_;
   const DragOperationsMask dragging_source_operation_mask_;
-  bool force_default_action_;
 
   bool ContainsHTML() const;
 };

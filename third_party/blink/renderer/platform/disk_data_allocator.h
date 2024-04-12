@@ -22,7 +22,6 @@
 namespace blink {
 
 class DiskDataMetadata;
-class ReservedChunk;
 
 // Stores data onto a single file.
 //
@@ -45,14 +44,9 @@ class PLATFORM_EXPORT DiskDataAllocator : public mojom::blink::DiskAllocator {
   // returns false, writes will fail.
   bool may_write() LOCKS_EXCLUDED(lock_);
 
-  // Return valid |ReservedChunk| if success, otherwise nullptr.
-  // It may fail to reserve if remaining free space is not enough for |size|.
-  std::unique_ptr<ReservedChunk> TryReserveChunk(size_t size);
-
   // Returns |nullptr| in case of error.
   // Note that this performs a blocking disk write.
-  std::unique_ptr<DiskDataMetadata> Write(std::unique_ptr<ReservedChunk> chunk,
-                                          const void* data);
+  std::unique_ptr<DiskDataMetadata> Write(const void* data, size_t size);
 
   // Reads data. A read failure is fatal.
   // Caller must make sure that this is not called at the same time as
@@ -81,14 +75,13 @@ class PLATFORM_EXPORT DiskDataAllocator : public mojom::blink::DiskAllocator {
     return free_chunks_size_;
   }
 
-  void set_may_write_for_testing(bool may_write) LOCKS_EXCLUDED(lock_);
-
  protected:
   // Protected methods for testing.
   DiskDataAllocator();
+  void set_may_write_for_testing(bool may_write) LOCKS_EXCLUDED(lock_);
 
  private:
-  DiskDataMetadata FindFreeChunk(size_t size) EXCLUSIVE_LOCKS_REQUIRED(lock_);
+  DiskDataMetadata FindChunk(size_t size) EXCLUSIVE_LOCKS_REQUIRED(lock_);
   void ReleaseChunk(const DiskDataMetadata& metadata)
       EXCLUSIVE_LOCKS_REQUIRED(lock_);
 
@@ -100,9 +93,6 @@ class PLATFORM_EXPORT DiskDataAllocator : public mojom::blink::DiskAllocator {
 
   mojo::Receiver<mojom::blink::DiskAllocator> receiver_{this};
   base::File file_;  // May be invalid.
-
-  bool has_capacity_limit_ = false;
-  size_t max_capacity_ = 0;
 
  protected:  // For testing.
   base::Lock lock_;

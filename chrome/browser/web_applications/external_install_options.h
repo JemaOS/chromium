@@ -5,18 +5,17 @@
 #ifndef CHROME_BROWSER_WEB_APPLICATIONS_EXTERNAL_INSTALL_OPTIONS_H_
 #define CHROME_BROWSER_WEB_APPLICATIONS_EXTERNAL_INSTALL_OPTIONS_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "base/time/time.h"
 #include "base/values.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom.h"
 #include "chrome/browser/web_applications/web_app_constants.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/browser/web_applications/web_app_install_params.h"
-#include "components/webapps/common/web_app_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -30,22 +29,10 @@ using WebAppInstallInfoFactory =
 
 enum class ExternalInstallSource;
 
-enum class PlaceholderResolutionBehavior {
-  // Waits for all running app instances being closed before the placeholder is
-  // resolved.
-  kWaitForAppWindowsClosed,
-  // Closes all running app instances, resolves the placeholder and relaunches
-  // the app in a separate window.
-  kCloseAndRelaunch,
-  // Closes all running app instances and resolves the placeholder. After the
-  // placeholder is resolved, the app is not relaunched.
-  kClose
-};
-
 struct ExternalInstallOptions {
   ExternalInstallOptions(
       const GURL& install_url,
-      std::optional<mojom::UserDisplayMode> user_display_mode,
+      absl::optional<mojom::UserDisplayMode> user_display_mode,
       ExternalInstallSource install_source);
 
   ~ExternalInstallOptions();
@@ -59,21 +46,21 @@ struct ExternalInstallOptions {
 
   GURL install_url;
 
-  std::optional<mojom::UserDisplayMode> user_display_mode;
+  absl::optional<mojom::UserDisplayMode> user_display_mode;
 
   ExternalInstallSource install_source;
 
   // App name to use for placeholder apps or web apps that have no name in
   // their manifest.
-  std::optional<std::string> fallback_app_name;
+  absl::optional<std::string> fallback_app_name;
 
   // App name that replaces the app's real name.
   // override_name takes precedent over fallback_app_name in case both are
   // present.
-  std::optional<std::string> override_name;
+  absl::optional<std::string> override_name;
 
   // URL of an icon that replaces the app's real icons.
-  std::optional<GURL> override_icon_url;
+  absl::optional<GURL> override_icon_url;
 
   // If true, a shortcut is added to the Applications folder on macOS, and Start
   // Menu on Linux and Windows and launcher on Chrome OS. If false, we skip
@@ -127,19 +114,24 @@ struct ExternalInstallOptions {
   // is disabled, existing external installs will be removed.
   // See chrome/browser/web_applications/preinstalled_app_install_features.h
   // for available features to gate on.
-  std::optional<std::string> gate_on_feature;
+  absl::optional<std::string> gate_on_feature;
 
   // Which feature flag should be enabled to install this app. If the feature is
   // disabled, existing external installs will not be removed.
   // See chrome/browser/web_applications/preinstalled_app_install_features.h
   // for available features to gate on.
-  std::optional<std::string> gate_on_feature_or_installed;
+  absl::optional<std::string> gate_on_feature_or_installed;
 
   // Whether this should not be installed for devices that support ARC.
   bool disable_if_arc_supported = false;
 
   // Whether this should not be installed for tablet devices.
   bool disable_if_tablet_form_factor = false;
+
+  // This must only be used by pre-installed default or system apps that are
+  // valid PWAs if loading the real service worker is too costly to verify
+  // programmatically.
+  bool bypass_service_worker_check = false;
 
   // When set to true this will fail installation with
   // |kNotValidManifestForWebApp| if the |install_url| doesn't have a manifest
@@ -161,13 +153,11 @@ struct ExternalInstallOptions {
   // goes from less the milestone specified to greater or equal than the
   // milestone specified. For example, if this value is 89 then we update the
   // app on all browser upgrades from <89 to >=89. The update happens only once.
-  std::optional<int> force_reinstall_for_milestone;
+  absl::optional<int> force_reinstall_for_milestone;
 
-  // Defines how to handle running app instances of a placeholder app when a
-  // placeholder can be resolved. See `PlaceholderResolutionBehavior`
-  // documentation for details.
-  PlaceholderResolutionBehavior placeholder_resolution_behavior =
-      PlaceholderResolutionBehavior::kClose;
+  // Whether we should wait for all app windows being closed before reinstalling
+  // the placeholder.
+  bool wait_for_windows_closed = false;
 
   // Whether a placeholder app should be installed if we fail to retrieve the
   // metadata for the app. A placeholder app uses:
@@ -176,8 +166,12 @@ struct ExternalInstallOptions {
   //  - |url| as the app name (unless fallback_app_name has been specified)
   bool install_placeholder = false;
 
+  // Whether we should try to reinstall the app if there is a placeholder for
+  // it.
+  bool reinstall_placeholder = false;
+
   // Optional query parameters to add to the start_url when launching the app.
-  std::optional<std::string> launch_query_params;
+  absl::optional<std::string> launch_query_params;
 
   // Whether we should load |service_worker_registration_url| after successful
   // installation to allow the site to install its service worker and set up
@@ -188,16 +182,11 @@ struct ExternalInstallOptions {
   // configurable by sites that wish to be able to track install metrics of the
   // install_url separate from the service worker registration step. Defaults to
   // install_url if unset.
-  std::optional<GURL> service_worker_registration_url;
-
-  // The time to wait for the service worker registration before it times out.
-  // This is currently default at 40 seconds, override this value if more or
-  // less time is required.
-  base::TimeDelta service_worker_registration_timeout = base::Seconds(40);
+  absl::optional<GURL> service_worker_registration_url;
 
   // A list of app_ids that the Web App System should attempt to uninstall and
   // replace with this app (e.g maintain shelf pins, app list positions).
-  std::vector<webapps::AppId> uninstall_and_replace;
+  std::vector<AppId> uninstall_and_replace;
 
   // Additional keywords that will be used by the OS when searching for the app.
   // Only affects Chrome OS.
@@ -214,7 +203,7 @@ struct ExternalInstallOptions {
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // The type of SystemWebApp, if this app is a System Web App.
-  std::optional<ash::SystemWebAppType> system_app_type = std::nullopt;
+  absl::optional<ash::SystemWebAppType> system_app_type = absl::nullopt;
 #endif
 
   // Whether the app was installed by an OEM and should be placed in a special
@@ -232,12 +221,7 @@ struct ExternalInstallOptions {
   // Does not block installation if the actual app id doesn't match the
   // expectation.
   // Intended to be used for post-install activities like metrics and migration.
-  std::optional<webapps::AppId> expected_app_id;
-
-  // Whether the app should be set as the preferred app for its supported links
-  // after installation. Note that this has no effect if the app is already
-  // installed as the user may have already updated their preference.
-  bool is_preferred_app_for_supported_links = false;
+  absl::optional<AppId> expected_app_id;
 };
 
 WebAppInstallParams ConvertExternalInstallOptionsToParams(

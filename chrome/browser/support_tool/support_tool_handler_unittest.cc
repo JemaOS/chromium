@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -29,6 +28,7 @@
 #include "components/feedback/redaction_tool/pii_types.h"
 #include "testing/gmock/include/gmock/gmock-matchers.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/zlib/google/zip_reader.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -93,7 +93,7 @@ class TestDataCollector : public DataCollector {
           SupportToolErrorCode::kDataCollectorError, /*error_message=*/""));
     } else {
       pii_map_[redaction::PIIType::kUIHierarchyWindowTitles].insert(name_);
-      std::move(callback).Run(std::nullopt);
+      std::move(callback).Run(absl::nullopt);
     }
   }
 
@@ -107,7 +107,7 @@ class TestDataCollector : public DataCollector {
     } else {
       base::FilePath target_file = target_directory.AppendASCII(name_);
       base::WriteFile(target_file, kTestDataToWriteOnFile);
-      std::move(callback).Run(std::nullopt);
+      std::move(callback).Run(absl::nullopt);
     }
   }
 

@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/memory/weak_ptr.h"
 #include "components/payments/content/payment_request_spec.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/payments/payment_request.mojom.h"
@@ -34,7 +33,8 @@ class TestListItem : public PaymentRequestItemList::Item {
                                      list,
                                      selected,
                                      /*clickable=*/true,
-                                     /*show_edit_button=*/false) {
+                                     /*show_edit_button=*/false),
+        selected_state_changed_calls_count_(0) {
     Init();
   }
 
@@ -43,10 +43,6 @@ class TestListItem : public PaymentRequestItemList::Item {
 
   int selected_state_changed_calls_count() {
     return selected_state_changed_calls_count_;
-  }
-
-  base::WeakPtr<PaymentRequestRowView> AsWeakPtr() override {
-    return weak_ptr_factory_.GetWeakPtr();
   }
 
  private:
@@ -67,8 +63,7 @@ class TestListItem : public PaymentRequestItemList::Item {
     ++selected_state_changed_calls_count_;
   }
 
-  int selected_state_changed_calls_count_ = 0;
-  base::WeakPtrFactory<TestListItem> weak_ptr_factory_{this};
+  int selected_state_changed_calls_count_;
 };
 
 }  // namespace

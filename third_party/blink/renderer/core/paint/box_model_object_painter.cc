@@ -30,13 +30,37 @@ Node* GetNode(const LayoutBoxModelObject& box_model) {
 }  // anonymous namespace
 
 BoxModelObjectPainter::BoxModelObjectPainter(const LayoutBoxModelObject& box)
-    : BoxPainterBase(box.GetDocument(), box.StyleRef(), GetNode(box)),
+    : BoxPainterBase(&box.GetDocument(), box.StyleRef(), GetNode(box)),
       box_model_(box) {}
 
+void BoxModelObjectPainter::PaintTextClipMask(
+    const PaintInfo& paint_info,
+    const gfx::Rect& mask_rect,
+    const PhysicalOffset& paint_offset,
+    bool object_has_multiple_boxes) {
+  PaintInfo mask_paint_info(paint_info.context, CullRect(mask_rect),
+                            PaintPhase::kTextClip);
+  mask_paint_info.SetFragmentID(paint_info.FragmentID());
+  if (auto* layout_block = DynamicTo<LayoutBlock>(box_model_)) {
+    layout_block->PaintObject(mask_paint_info, paint_offset);
+  } else {
+    // We should go through the above path for LayoutInlines.
+    DCHECK(!box_model_.IsLayoutInline());
+    // Other types of objects don't have anything meaningful to paint for text
+    // clip mask.
+  }
+}
+
 PhysicalRect BoxModelObjectPainter::AdjustRectForScrolledContent(
-    GraphicsContext& context,
-    const PhysicalBoxStrut& border,
-    const PhysicalRect& rect) const {
+    const PaintInfo& paint_info,
+    const BoxPainterBase::FillLayerInfo& info,
+    const PhysicalRect& rect) {
+  if (!info.is_clipped_with_local_scrolling)
+    return rect;
+  if (paint_info.IsPaintingBackgroundInContentsSpace())
+    return rect;
+
+  GraphicsContext& context = paint_info.context;
   // Clip to the overflow area.
   // TODO(chrishtr): this should be pixel-snapped.
   const auto& this_box = To<LayoutBox>(box_model_);
@@ -47,10 +71,19 @@ PhysicalRect BoxModelObjectPainter::AdjustRectForScrolledContent(
   PhysicalRect scrolled_paint_rect = rect;
   scrolled_paint_rect.offset -=
       PhysicalOffset(this_box.PixelSnappedScrolledContentOffset());
+  NGPhysicalBoxStrut border = AdjustedBorderOutsets(info);
   scrolled_paint_rect.SetWidth(border.HorizontalSum() + this_box.ScrollWidth());
   scrolled_paint_rect.SetHeight(this_box.BorderTop() + this_box.ScrollHeight() +
                                 this_box.BorderBottom());
   return scrolled_paint_rect;
+}
+
+NGPhysicalBoxStrut BoxModelObjectPainter::ComputeBorders() const {
+  return box_model_.BorderBoxOutsets();
+}
+
+NGPhysicalBoxStrut BoxModelObjectPainter::ComputePadding() const {
+  return box_model_.PaddingOutsets();
 }
 
 BoxPainterBase::FillLayerInfo BoxModelObjectPainter::GetFillLayerInfo(
@@ -58,10 +91,17 @@ BoxPainterBase::FillLayerInfo BoxModelObjectPainter::GetFillLayerInfo(
     const FillLayer& bg_layer,
     BackgroundBleedAvoidance bleed_avoidance,
     bool is_painting_background_in_contents_space) const {
+  PhysicalBoxSides sides_to_include;
+  RespectImageOrientationEnum respect_orientation =
+      LayoutObject::ShouldRespectImageOrientation(&box_model_);
+  if (auto* style_image = bg_layer.GetImage()) {
+    respect_orientation =
+        style_image->ForceOrientationIfNecessary(respect_orientation);
+  }
   return BoxPainterBase::FillLayerInfo(
       box_model_.GetDocument(), box_model_.StyleRef(),
       box_model_.IsScrollContainer(), color, bg_layer, bleed_avoidance,
-      PhysicalBoxSides(), box_model_.IsLayoutInline(),
+      respect_orientation, sides_to_include, box_model_.IsLayoutInline(),
       is_painting_background_in_contents_space);
 }
 

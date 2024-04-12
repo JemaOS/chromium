@@ -5,9 +5,9 @@
 #include "third_party/blink/renderer/core/animation/css_number_interpolation_type.h"
 
 #include <memory>
-#include <optional>
 
 #include "base/memory/ptr_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/animation/number_property_functions.h"
 #include "third_party/blink/renderer/core/css/css_numeric_literal_value.h"
 #include "third_party/blink/renderer/core/css/resolver/style_builder.h"
@@ -20,19 +20,19 @@ class InheritedNumberChecker
     : public CSSInterpolationType::CSSConversionChecker {
  public:
   InheritedNumberChecker(const CSSProperty& property,
-                         std::optional<double> number)
+                         absl::optional<double> number)
       : property_(property), number_(number) {}
 
  private:
   bool IsValid(const StyleResolverState& state,
                const InterpolationValue& underlying) const final {
-    std::optional<double> parent_number =
+    absl::optional<double> parent_number =
         NumberPropertyFunctions::GetNumber(property_, *state.ParentStyle());
     return number_ == parent_number;
   }
 
   const CSSProperty& property_;
-  const std::optional<double> number_;
+  const absl::optional<double> number_;
 };
 
 const CSSValue* CSSNumberInterpolationType::CreateCSSValue(
@@ -46,7 +46,7 @@ const CSSValue* CSSNumberInterpolationType::CreateCSSValue(
 
 InterpolationValue CSSNumberInterpolationType::CreateNumberValue(
     double number) const {
-  return InterpolationValue(MakeGarbageCollected<InterpolableNumber>(number));
+  return InterpolationValue(std::make_unique<InterpolableNumber>(number));
 }
 
 InterpolationValue CSSNumberInterpolationType::MaybeConvertNeutral(
@@ -58,7 +58,7 @@ InterpolationValue CSSNumberInterpolationType::MaybeConvertNeutral(
 InterpolationValue CSSNumberInterpolationType::MaybeConvertInitial(
     const StyleResolverState& state,
     ConversionCheckers& conversion_checkers) const {
-  std::optional<double> initial_number =
+  absl::optional<double> initial_number =
       NumberPropertyFunctions::GetInitialNumber(
           CssProperty(), state.GetDocument().GetStyleResolver().InitialStyle());
   if (!initial_number)
@@ -71,10 +71,10 @@ InterpolationValue CSSNumberInterpolationType::MaybeConvertInherit(
     ConversionCheckers& conversion_checkers) const {
   if (!state.ParentStyle())
     return nullptr;
-  std::optional<double> inherited =
+  absl::optional<double> inherited =
       NumberPropertyFunctions::GetNumber(CssProperty(), *state.ParentStyle());
   conversion_checkers.push_back(
-      MakeGarbageCollected<InheritedNumberChecker>(CssProperty(), inherited));
+      std::make_unique<InheritedNumberChecker>(CssProperty(), inherited));
   if (!inherited)
     return nullptr;
   return CreateNumberValue(*inherited);
@@ -94,7 +94,7 @@ InterpolationValue CSSNumberInterpolationType::MaybeConvertValue(
 InterpolationValue
 CSSNumberInterpolationType::MaybeConvertStandardPropertyUnderlyingValue(
     const ComputedStyle& style) const {
-  std::optional<double> underlying_number =
+  absl::optional<double> underlying_number =
       NumberPropertyFunctions::GetNumber(CssProperty(), style);
   if (!underlying_number)
     return nullptr;

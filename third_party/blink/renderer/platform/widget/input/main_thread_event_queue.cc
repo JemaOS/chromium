@@ -10,7 +10,6 @@
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/time/time.h"
 #include "cc/base/features.h"
 #include "cc/metrics/event_metrics.h"
 #include "third_party/blink/public/common/features.h"
@@ -173,7 +172,7 @@ class QueuedWebInputEvent : public MainThreadEventQueueTask {
       // The |callback| won't be run, so our stored |callback_| should run
       // indicating error.
       HandledEvent(queue, mojom::blink::InputEventResultState::kNotConsumed,
-                   event_->latency_info(), nullptr, std::nullopt);
+                   event_->latency_info(), nullptr, absl::nullopt);
     }
   }
 
@@ -181,7 +180,7 @@ class QueuedWebInputEvent : public MainThreadEventQueueTask {
                     mojom::blink::InputEventResultState ack_result,
                     const ui::LatencyInfo& latency_info,
                     mojom::blink::DidOverscrollParamsPtr overscroll,
-                    std::optional<cc::TouchAction> touch_action) {
+                    absl::optional<cc::TouchAction> touch_action) {
     // callback_ can be null in tests.
     if (callback_) {
       std::move(callback_).Run(ack_result, latency_info, std::move(overscroll),
@@ -194,7 +193,7 @@ class QueuedWebInputEvent : public MainThreadEventQueueTask {
       for (auto&& callback : blocking_coalesced_callbacks_) {
         coalesced_latency_info.set_trace_id(callback.second);
         std::move(callback.first)
-            .Run(ack_result, coalesced_latency_info, nullptr, std::nullopt);
+            .Run(ack_result, coalesced_latency_info, nullptr, absl::nullopt);
       }
     }
 
@@ -216,10 +215,6 @@ class QueuedWebInputEvent : public MainThreadEventQueueTask {
   const WebInputEvent& Event() const { return event_->Event(); }
 
   WebCoalescedInputEvent* mutable_coalesced_event() { return event_.get(); }
-
-  void SetQueuedTimeStamp(base::TimeTicks queued_time) {
-    event_->EventPointer()->SetQueuedTimeStamp(queued_time);
-  }
 
  private:
   FilterResult HandleTouchScrollStartQueued() {
@@ -278,6 +273,9 @@ MainThreadEventQueue::MainThreadEventQueue(
     scoped_refptr<scheduler::WidgetScheduler> widget_scheduler,
     bool allow_raf_aligned_input)
     : client_(client),
+      last_touch_start_forced_nonblocking_due_to_fling_(false),
+      needs_low_latency_(false),
+      needs_unbuffered_input_for_debugger_(false),
       allow_raf_aligned_input_(allow_raf_aligned_input),
       main_task_runner_(main_task_runner),
       widget_scheduler_(std::move(widget_scheduler)) {
@@ -291,9 +289,13 @@ MainThreadEventQueue::MainThreadEventQueue(
 
 MainThreadEventQueue::~MainThreadEventQueue() {}
 
-bool MainThreadEventQueue::Allowed(const WebInputEvent& event,
-                                   bool force_allow) {
+bool MainThreadEventQueue::AllowedForUnification(const WebInputEvent& event,
+                                                 bool force_allow) {
   if (force_allow) {
+    return true;
+  }
+
+  if (!base::FeatureList::IsEnabled(::features::kScrollUnification)) {
     return true;
   }
 
@@ -309,8 +311,8 @@ bool MainThreadEventQueue::Allowed(const WebInputEvent& event,
     cursor_control_in_progress_ = true;
   }
 
-  // The Android swipe-to-move-cursor feature still sends gesture scroll events
-  // to the main thread.
+  // Unification should not send gesture scroll events to the main thread,
+  // except for the Android swipe-to-move-cursor feature.
   bool allowed = cursor_control_in_progress_;
 
   if (event_type == WebInputEvent::Type::kGestureScrollEnd &&
@@ -336,10 +338,10 @@ void MainThreadEventQueue::HandleEvent(
   DCHECK(ack_result == mojom::blink::InputEventResultState::kSetNonBlocking ||
          ack_result ==
              mojom::blink::InputEventResultState::kSetNonBlockingDueToFling ||
-         ack_result == mojom::blink::InputEventResultState::kNotConsumed ||
-         ack_result ==
-             mojom::blink::InputEventResultState::kNotConsumedBlocking);
-  DCHECK(Allowed(event->Event(), allow_main_gesture_scroll));
+         ack_result == mojom::blink::InputEventResultState::kNotConsumed);
+  if (!AllowedForUnification(event->Event(), allow_main_gesture_scroll)) {
+    DCHECK(!base::FeatureList::IsEnabled(::features::kScrollUnification));
+  }
 
   bool is_blocking =
       original_dispatch_type == DispatchType::kBlocking &&
@@ -445,7 +447,7 @@ void MainThreadEventQueue::HandleEvent(
 
   if (callback) {
     std::move(callback).Run(ack_result, cloned_latency_info, nullptr,
-                            std::nullopt);
+                            absl::nullopt);
   }
 }
 
@@ -579,11 +581,6 @@ void MainThreadEventQueue::ClearRafFallbackTimerForTesting() {
   raf_fallback_timer_.reset();
 }
 
-bool MainThreadEventQueue::IsEmptyForTesting() {
-  base::AutoLock lock(shared_state_lock_);
-  return shared_state_.events_.empty();
-}
-
 void MainThreadEventQueue::DispatchRafAlignedInput(base::TimeTicks frame_time) {
   if (raf_fallback_timer_)
     raf_fallback_timer_->Stop();
@@ -646,10 +643,10 @@ void MainThreadEventQueue::QueueEvent(
   WebInputEvent::Type input_event_type = WebInputEvent::Type::kUndefined;
   WebInputEventAttribution attribution;
   if (is_input_event) {
-    auto* queued_input_event = static_cast<QueuedWebInputEvent*>(event.get());
+    auto* queued_input_event =
+        static_cast<const QueuedWebInputEvent*>(event.get());
     input_event_type = queued_input_event->Event().GetType();
     attribution = queued_input_event->attribution();
-    queued_input_event->SetQueuedTimeStamp(base::TimeTicks::Now());
   }
 
   {

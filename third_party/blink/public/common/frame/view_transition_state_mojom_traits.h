@@ -5,11 +5,9 @@
 #ifndef THIRD_PARTY_BLINK_PUBLIC_COMMON_FRAME_VIEW_TRANSITION_STATE_MOJOM_TRAITS_H_
 #define THIRD_PARTY_BLINK_PUBLIC_COMMON_FRAME_VIEW_TRANSITION_STATE_MOJOM_TRAITS_H_
 
-#include <optional>
-
 #include "base/check_op.h"
-#include "base/containers/flat_map.h"
 #include "services/viz/public/mojom/compositing/view_transition_element_resource_id.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/common_export.h"
 #include "third_party/blink/public/common/frame/view_transition_state.h"
 #include "third_party/blink/public/mojom/frame/view_transition_state.mojom-shared.h"
@@ -48,20 +46,8 @@ struct BLINK_COMMON_EXPORT
     return r.paint_order;
   }
 
-  static const std::optional<gfx::RectF>& captured_rect_in_layout_space(
-      const blink::ViewTransitionElement& r) {
-    return r.captured_rect_in_layout_space;
-  }
-
-  static const base::flat_map<blink::mojom::ViewTransitionPropertyId,
-                              std::string>&
-  captured_css_properties(const blink::ViewTransitionElement& r) {
-    return r.captured_css_properties;
-  }
-
-  static const std::vector<std::string>& class_list(
-      const blink::ViewTransitionElement& r) {
-    return r.class_list;
+  static bool is_root(const blink::ViewTransitionElement& r) {
+    return r.is_root;
   }
 
   static bool Read(blink::mojom::ViewTransitionElementDataView r,
@@ -77,23 +63,14 @@ struct BLINK_COMMON_EXPORT
     return r.elements;
   }
 
-  static const viz::TransitionId& transition_id(
+  static const base::UnguessableToken& navigation_id(
       const blink::ViewTransitionState& r) {
-    return r.transition_id;
+    return r.navigation_id;
   }
 
   static const gfx::Size& snapshot_root_size_at_capture(
       const blink::ViewTransitionState& r) {
     return r.snapshot_root_size_at_capture;
-  }
-
-  static float device_pixel_ratio(const blink::ViewTransitionState& r) {
-    return r.device_pixel_ratio;
-  }
-
-  static uint32_t next_element_resource_id(
-      const blink::ViewTransitionState& r) {
-    return r.next_element_resource_id;
   }
 
   static bool Read(blink::mojom::ViewTransitionStateDataView r,

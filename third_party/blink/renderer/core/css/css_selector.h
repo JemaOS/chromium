@@ -32,15 +32,11 @@
 #include "third_party/blink/renderer/core/css/parser/css_parser_mode.h"
 #include "third_party/blink/renderer/core/dom/qualified_name.h"
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
+#include "third_party/blink/renderer/core/style/toggle_root.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/heap/visitor.h"
-#include "third_party/blink/renderer/platform/wtf/bit_field.h"
 #include "third_party/blink/renderer/platform/wtf/gc_plugin.h"
-
-namespace WTF {
-class StringBuilder;
-}  // namespace WTF
 
 namespace blink {
 
@@ -134,16 +130,9 @@ class CORE_EXPORT CSSSelector {
   static constexpr unsigned kClassLikeSpecificity = 0x000100;
   static constexpr unsigned kTagSpecificity = 0x000001;
 
-  static constexpr unsigned kMaxValueMask = 0xffffff;
-  static constexpr unsigned kIdMask = 0xff0000;
-  static constexpr unsigned kClassMask = 0x00ff00;
-  static constexpr unsigned kElementMask = 0x0000ff;
-
   // http://www.w3.org/TR/css3-selectors/#specificity
   // We use 256 as the base of the specificity number system.
   unsigned Specificity() const;
-  // Returns specificity components in decreasing order of significance.
-  std::array<uint8_t, 3> SpecificityTuple() const;
 
   /* how the attribute value has to match.... Default is Exact */
   enum MatchType {
@@ -219,8 +208,6 @@ class CORE_EXPORT CSSSelector {
 
   enum PseudoType {
     kPseudoActive,
-    kPseudoActiveViewTransition,
-    kPseudoActiveViewTransitionType,
     kPseudoAfter,
     kPseudoAny,
     kPseudoAnyLink,
@@ -233,8 +220,6 @@ class CORE_EXPORT CSSSelector {
     kPseudoCornerPresent,
     kPseudoDecrement,
     kPseudoDefault,
-    kPseudoDetailsContent,
-    kPseudoDialogInTopLayer,
     kPseudoDisabled,
     kPseudoDoubleButton,
     kPseudoDrag,
@@ -275,7 +260,6 @@ class CORE_EXPORT CSSSelector {
     kPseudoOptional,
     kPseudoParent,  // Written as & (in nested rules).
     kPseudoPart,
-    kPseudoPermissionGranted,
     kPseudoPlaceholder,
     kPseudoPlaceholderShown,
     kPseudoReadOnly,
@@ -295,20 +279,13 @@ class CORE_EXPORT CSSSelector {
     kPseudoSelectorFragmentAnchor,
     kPseudoSingleButton,
     kPseudoStart,
-    // kPseudoState is for :state(foo). kPseudoStateDeprecated is for :--foo.
-    // :--foo is deprecated and is replacing :state(foo).
-    // TODO(crbug.com/1514397): Remove kPseudoStateDeprecatedSyntax after the
-    // deprecation is done.
     kPseudoState,
-    kPseudoStateDeprecatedSyntax,
     kPseudoTarget,
     kPseudoUnknown,
     // Something that was unparsable, but contained either a nesting
     // selector (&), or a :scope pseudo-class, and must therefore be kept
     // for serialization purposes.
     kPseudoUnparsed,
-    kPseudoUserInvalid,
-    kPseudoUserValid,
     kPseudoValid,
     kPseudoVertical,
     kPseudoVisited,
@@ -327,6 +304,7 @@ class CORE_EXPORT CSSSelector {
     kPseudoPaused,
     kPseudoPictureInPicture,
     kPseudoPlaying,
+    kPseudoToggle,
     kPseudoXrOverlay,
     // Pseudo elements in UA ShadowRoots. Available in any stylesheets.
     kPseudoWebKitCustomElement,
@@ -349,11 +327,11 @@ class CORE_EXPORT CSSSelector {
     kPseudoMultiSelectFocus,
     kPseudoOpen,
     kPseudoPastCue,
-    kPseudoPopoverInTopLayer,
     kPseudoPopoverOpen,
     kPseudoRelativeAnchor,
     kPseudoSlotted,
     kPseudoSpatialNavigationFocus,
+    kPseudoSpatialNavigationInterest,
     kPseudoSpellingError,
     kPseudoTargetText,
     // Always matches. See SetTrue().
@@ -380,7 +358,7 @@ class CORE_EXPORT CSSSelector {
   };
 
   PseudoType GetPseudoType() const {
-    return static_cast<PseudoType>(bits_.get<PseudoTypeField>());
+    return static_cast<PseudoType>(pseudo_type_);
   }
 
   void UpdatePseudoType(const AtomicString&,
@@ -418,10 +396,10 @@ class CORE_EXPORT CSSSelector {
   // Selectors are kept in an array by CSSSelectorList. The next component of
   // the selector is the next item in the array.
   const CSSSelector* NextSimpleSelector() const {
-    return IsLastInComplexSelector() ? nullptr : this + 1;
+    return is_last_in_complex_selector_ ? nullptr : this + 1;
   }
   CSSSelector* NextSimpleSelector() {
-    return IsLastInComplexSelector() ? nullptr : this + 1;
+    return is_last_in_complex_selector_ ? nullptr : this + 1;
   }
 
   static const AtomicString& UniversalSelectorAtom() { return g_null_atom; }
@@ -443,10 +421,10 @@ class CORE_EXPORT CSSSelector {
   // Note that :nth-* selectors don't store an argument and just store the
   // numbers.
   const AtomicString& Argument() const {
-    return HasRareData() ? data_.rare_data_->argument_ : g_null_atom;
+    return has_rare_data_ ? data_.rare_data_->argument_ : g_null_atom;
   }
   const CSSSelectorList* SelectorList() const {
-    return HasRareData() ? data_.rare_data_->selector_list_.Get() : nullptr;
+    return has_rare_data_ ? data_.rare_data_->selector_list_.Get() : nullptr;
   }
   // Similar to SelectorList(), but also works for kPseudoParent
   // (i.e., nested selectors); on &, will give the parent's selector list.
@@ -454,18 +432,20 @@ class CORE_EXPORT CSSSelector {
   // pseudo selector at all), or if we are a & rule that's in a non-nesting
   // context (which is valid, but won't match anything).
   const CSSSelector* SelectorListOrParent() const;
-  const Vector<AtomicString>& IdentList() const {
-    CHECK(HasRareData() && data_.rare_data_->ident_list_);
-    return *data_.rare_data_->ident_list_;
+  const Vector<AtomicString>* PartNames() const {
+    return has_rare_data_ ? data_.rare_data_->part_names_.get() : nullptr;
+  }
+  const ToggleRoot::State* ToggleValue() const {
+    return has_rare_data_ ? data_.rare_data_->toggle_value_.get() : nullptr;
   }
   bool ContainsPseudoInsideHasPseudoClass() const {
-    return HasRareData() ? data_.rare_data_->bits_.has_.contains_pseudo_
-                         : false;
+    return has_rare_data_ ? data_.rare_data_->bits_.has_.contains_pseudo_
+                          : false;
   }
   bool ContainsComplexLogicalCombinationsInsideHasPseudoClass() const {
-    return HasRareData() ? data_.rare_data_->bits_.has_
-                               .contains_complex_logical_combinations_
-                         : false;
+    return has_rare_data_ ? data_.rare_data_->bits_.has_
+                                .contains_complex_logical_combinations_
+                          : false;
   }
 
 #if DCHECK_IS_ON()
@@ -478,7 +458,9 @@ class CORE_EXPORT CSSSelector {
   void SetAttribute(const QualifiedName&, AttributeMatchType);
   void SetArgument(const AtomicString&);
   void SetSelectorList(CSSSelectorList*);
-  void SetIdentList(std::unique_ptr<Vector<AtomicString>>);
+  void SetPartNames(std::unique_ptr<Vector<AtomicString>>);
+  void SetToggle(const AtomicString& name,
+                 std::unique_ptr<ToggleRoot::State>&& value);
   void SetContainsPseudoInsideHasPseudoClass();
   void SetContainsComplexLogicalCombinationsInsideHasPseudoClass();
 
@@ -489,47 +471,35 @@ class CORE_EXPORT CSSSelector {
     return relation == kDirectAdjacent || relation == kIndirectAdjacent;
   }
   bool IsAttributeSelector() const {
-    return Match() >= kFirstAttributeSelectorMatch;
+    return match_ >= kFirstAttributeSelectorMatch;
   }
   bool IsHostPseudoClass() const {
-    return GetPseudoType() == kPseudoHost ||
-           GetPseudoType() == kPseudoHostContext;
+    return pseudo_type_ == kPseudoHost || pseudo_type_ == kPseudoHostContext;
   }
-  // Test for combinations including :host() or :host-context()
-  // (See Example 3 under https://drafts.csswg.org/selectors-4/#data-model).
-  bool IsOrContainsHostPseudoClass() const;
   bool IsUserActionPseudoClass() const;
   bool IsIdClassOrAttributeSelector() const;
 
-  RelationType Relation() const {
-    return static_cast<RelationType>(bits_.get<RelationField>());
-  }
+  RelationType Relation() const { return static_cast<RelationType>(relation_); }
   void SetRelation(RelationType relation) {
-    bits_.set<RelationField>(relation);
-    DCHECK_EQ(Relation(),
+    relation_ = relation;
+    DCHECK_EQ(static_cast<RelationType>(relation_),
               relation);  // using a bitfield.
   }
 
-  MatchType Match() const {
-    return static_cast<MatchType>(bits_.get<MatchField>());
-  }
+  MatchType Match() const { return static_cast<MatchType>(match_); }
   void SetMatch(MatchType match) {
-    bits_.set<MatchField>(match);
-    DCHECK_EQ(Match(), match);  // using a bitfield.
+    match_ = match;
+    DCHECK_EQ(static_cast<MatchType>(match_), match);  // using a bitfield.
   }
 
-  bool IsLastInSelectorList() const {
-    return bits_.get<IsLastInSelectorListField>();
-  }
+  bool IsLastInSelectorList() const { return is_last_in_selector_list_; }
   void SetLastInSelectorList(bool is_last) {
-    bits_.set<IsLastInSelectorListField>(is_last);
+    is_last_in_selector_list_ = is_last;
   }
 
-  bool IsLastInComplexSelector() const {
-    return bits_.get<IsLastInComplexSelectorField>();
-  }
+  bool IsLastInComplexSelector() const { return is_last_in_complex_selector_; }
   void SetLastInComplexSelector(bool is_last) {
-    bits_.set<IsLastInComplexSelectorField>(is_last);
+    is_last_in_complex_selector_ = is_last;
   }
 
   // https://drafts.csswg.org/selectors/#compound
@@ -545,17 +515,11 @@ class CORE_EXPORT CSSSelector {
   // the selector.
   bool HasLinkOrVisited() const;
 
-  bool HasRareData() const { return bits_.get<HasRareDataField>(); }
+  bool IsForPage() const { return is_for_page_; }
+  void SetForPage() { is_for_page_ = true; }
 
-  bool IsForPage() const { return bits_.get<IsForPageField>(); }
-  void SetForPage() { bits_.set<IsForPageField>(true); }
-
-  bool IsCoveredByBucketing() const {
-    return bits_.get<IsCoveredByBucketingField>();
-  }
-  void SetCoveredByBucketing(bool value) {
-    bits_.set<IsCoveredByBucketingField>(value);
-  }
+  bool IsCoveredByBucketing() const { return is_covered_by_bucketing_; }
+  void SetCoveredByBucketing(bool value) { is_covered_by_bucketing_ = value; }
 
   bool MatchesPseudoElement() const;
   bool IsTreeAbidingPseudoElement() const;
@@ -567,94 +531,22 @@ class CORE_EXPORT CSSSelector {
   bool FollowsSlotted() const;
 
   // True if the selector was added implicitly. This can happen for e.g.
-  // nested rules that would otherwise lack the scoping selector (:scope).
-  bool IsImplicit() const { return bits_.get<IsImplicitlyAddedField>(); }
-
-  // Returns true for simple selectors whose evaluation depends on DOM tree
-  // position like :first-of-type and :nth-child().
-  bool IsChildIndexedSelector() const;
-
-  // Signaling Rules
-  // ================
-  //
-  // Signaling rules are style rules whose declarations trigger
-  // a certain use-counter. The use-counter is triggered by StyleCascade
-  // when a signaling declaration satisfies all of the following:
-  //
-  //  - The declaration is added to the cascade map.
-  //  - Adding the declaration to the map actually changed the value,
-  //    i.e. the cascaded value before/after isn't the same.
-  //  - The declaration ultimately won the cascade, i.e. nothing else
-  //    overwrote it.
-  //
-  // Note: the final goal of signaling rules is to hopefully unblock
-  // the following CSSWG issues:
-  //
-  //  - https://github.com/w3c/csswg-drafts/issues/8738
-  //  - https://github.com/w3c/csswg-drafts/issues/9492
-  //
-  // TODO(crbug.com/1517290): Remove signaling rules when we're done
-  // use-counting.
-
-  enum class Signal {
-    kNone = 0,
-
-    // WebFeature::kCSSBareDeclarationShift
-    kBareDeclarationShift = 1,
-
-    // WebFeature::kCSSNestedGroupRuleSpecificity
-    kNestedGroupRuleSpecificity = 2,
-
-    kMax = kNestedGroupRuleSpecificity,
-  };
-
-  void SetSignal(Signal signal) {
-    bits_.set<SignalField>(static_cast<unsigned>(signal));
-  }
-  Signal GetSignal() const {
-    return static_cast<Signal>(bits_.get<SignalField>());
-  }
-
-  // Invisible Rules
-  // ===============
-  //
-  // Invisible rules are rules which exist internally for use-counting
-  // purposes, but don't have any author-visible effect on the cascade,
-  // and are not otherwise reachable through APIs.
-  //
-  // Invisible rules are useful when used in conjunction with signaling rules
-  // (above), because it makes it possible to check if a given rule has
-  // any impact in the presence of some alternative/hypothetical rule.
-  //
-  // TODO(crbug.com/1517290): Remove invisible rules when we're done
-  // use-counting.
-
-  void SetInvisible() { bits_.set<IsInvisibleField>(true); }
-  bool IsInvisible() const { return bits_.get<IsInvisibleField>(); }
+  // nested rules that would otherwise lack the nesting selector (&).
+  bool IsImplicit() const { return is_implicitly_added_; }
 
   void Trace(Visitor* visitor) const;
 
   static String FormatPseudoTypeForDebugging(PseudoType);
 
  private:
-  // Trace() branches on the match/pseudo_type flags,
-  // RuleData bucketing sets is_covered_by_bucketing,
-  // and these could happen concurrently. This trips up TSan,
-  // even though the race is benign, so use an atomic read
-  // instead of C++ bitfields.
-  using BitField = WTF::ConcurrentlyReadBitField<uint32_t>;
-  using RelationField =
-      BitField::DefineFirstValue<uint32_t, 4>;  // RelationType
-  using MatchField = RelationField::DefineNextValue<uint32_t, 4>;  // MatchType
-  using PseudoTypeField =
-      MatchField::DefineNextValue<uint32_t, 8>;  // PseudoType
-  using IsLastInSelectorListField = PseudoTypeField::DefineNextValue<bool, 1>;
-  using IsLastInComplexSelectorField =
-      IsLastInSelectorListField::DefineNextValue<bool, 1>;
-  using HasRareDataField =
-      IsLastInComplexSelectorField::DefineNextValue<bool, 1>;
-  using IsForPageField = HasRareDataField::DefineNextValue<bool, 1>;
-  using IsImplicitlyAddedField = IsForPageField::DefineNextValue<bool, 1>;
+  unsigned relation_ : 4;     // enum RelationType
+  unsigned match_ : 4;        // enum MatchType
+  unsigned pseudo_type_ : 8;  // enum PseudoType
+  unsigned is_last_in_selector_list_ : 1;
+  unsigned is_last_in_complex_selector_ : 1;
+  unsigned has_rare_data_ : 1;
+  unsigned is_for_page_ : 1;
+  unsigned is_implicitly_added_ : 1;
 
   // If set, we don't need to check this simple selector when matching;
   // it will always match, since we can only see the selector if we
@@ -673,21 +565,18 @@ class CORE_EXPORT CSSSelector {
   //
   // This always starts out false, and is set when we bucket a given
   // RuleData (by calling MarkAsCoveredByBucketing()).
-  using IsCoveredByBucketingField =
-      IsImplicitlyAddedField::DefineNextValue<bool, 1>;
-  using SignalField = IsCoveredByBucketingField::DefineNextValue<unsigned, 2>;
-  using IsInvisibleField = SignalField::DefineNextValue<bool, 1>;
-  BitField bits_;
+  unsigned is_covered_by_bucketing_ : 1;
 
   void SetPseudoType(PseudoType pseudo_type) {
-    bits_.set<PseudoTypeField>(pseudo_type);
-    DCHECK_EQ(GetPseudoType(), pseudo_type);  // using a bitfield.
+    pseudo_type_ = pseudo_type;
+    DCHECK_EQ(static_cast<PseudoType>(pseudo_type_),
+              pseudo_type);  // using a bitfield.
   }
 
   unsigned SpecificityForOneSelector() const;
   unsigned SpecificityForPage() const;
-  bool SerializeSimpleSelector(WTF::StringBuilder& builder) const;
-  const CSSSelector* SerializeCompound(WTF::StringBuilder&) const;
+  bool SerializeSimpleSelector(StringBuilder& builder) const;
+  const CSSSelector* SerializeCompound(StringBuilder&) const;
 
   struct RareData : public GarbageCollected<RareData> {
     explicit RareData(const AtomicString& value);
@@ -724,11 +613,12 @@ class CORE_EXPORT CSSSelector {
       CSSNestingType unparsed_nesting_type_;
     } bits_;
     QualifiedName attribute_;  // Used for attribute selector
-    AtomicString argument_;    // Used for :contains, :lang, :dir, etc.
+    AtomicString argument_;    // Used for :contains, :lang, :dir, :toggle, etc.
     Member<CSSSelectorList>
         selector_list_;  // Used :is, :not, :-webkit-any, etc.
     std::unique_ptr<Vector<AtomicString>>
-        ident_list_;  // Used for ::part(), :active-view-transition-type().
+        part_names_;  // Used for ::part() selectors.
+    std::unique_ptr<ToggleRoot::State> toggle_value_;  // used for :toggle()
 
     void Trace(Visitor* visitor) const;
   };
@@ -737,11 +627,11 @@ class CORE_EXPORT CSSSelector {
   // The type tag for DataUnion is actually inferred from multiple state
   // variables in the containing CSSSelector using the following rules.
   //
-  //  if (Match() == kTag) {
+  //  if (match_ == kTag) {
   //     /* data_.tag_q_name_ is valid */
-  //  } else if (Match() == kPseudoClass && GetPseudoType() == kPseudoParent) {
+  //  } else if (match_ == kPseudoClass && pseudo_type_ == kPseudoParent) {
   //     /* data_.parent_rule_ is valid */
-  //  } else if (HasRareData()) {
+  //  } else if (has_rare_data_) {
   //     /* data_.rare_data_ is valid */
   //  } else {
   //     /* data_.value_ is valid */
@@ -782,19 +672,19 @@ class CORE_EXPORT CSSSelector {
 
 inline const QualifiedName& CSSSelector::Attribute() const {
   DCHECK(IsAttributeSelector());
-  DCHECK(HasRareData());
+  DCHECK(has_rare_data_);
   return data_.rare_data_->attribute_;
 }
 
 inline CSSSelector::AttributeMatchType CSSSelector::AttributeMatch() const {
   DCHECK(IsAttributeSelector());
-  DCHECK(HasRareData());
+  DCHECK(has_rare_data_);
   return data_.rare_data_->bits_.attr_.attribute_match_;
 }
 
 inline bool CSSSelector::IsCaseSensitiveAttribute() const {
   DCHECK(IsAttributeSelector());
-  DCHECK(HasRareData());
+  DCHECK(has_rare_data_);
   return data_.rare_data_->bits_.attr_.is_case_sensitive_attribute_;
 }
 
@@ -809,13 +699,13 @@ inline bool CSSSelector::IsASCIILower(const AtomicString& value) {
 
 inline void CSSSelector::SetValue(const AtomicString& value,
                                   bool match_lower_case = false) {
-  DCHECK_NE(Match(), static_cast<unsigned>(kTag));
-  DCHECK(!(Match() == kPseudoClass && GetPseudoType() == kPseudoParent));
-  if (match_lower_case && !HasRareData() && !IsASCIILower(value)) {
+  DCHECK_NE(match_, static_cast<unsigned>(kTag));
+  DCHECK(!(match_ == kPseudoClass && pseudo_type_ == kPseudoParent));
+  if (match_lower_case && !has_rare_data_ && !IsASCIILower(value)) {
     CreateRareData();
   }
 
-  if (!HasRareData()) {
+  if (!has_rare_data_) {
     data_.value_ = value;
     return;
   }
@@ -825,66 +715,73 @@ inline void CSSSelector::SetValue(const AtomicString& value,
 }
 
 inline CSSSelector::CSSSelector()
-    : bits_(RelationField::encode(kSubSelector) | MatchField::encode(kUnknown) |
-            PseudoTypeField::encode(kPseudoUnknown) |
-            IsLastInSelectorListField::encode(false) |
-            IsLastInComplexSelectorField::encode(false) |
-            HasRareDataField::encode(false) | IsForPageField::encode(false) |
-            IsImplicitlyAddedField::encode(false) |
-            IsCoveredByBucketingField::encode(false) |
-            SignalField::encode(static_cast<unsigned>(Signal::kNone)) |
-            IsInvisibleField::encode(false)),
+    : relation_(kSubSelector),
+      match_(kUnknown),
+      pseudo_type_(kPseudoUnknown),
+      is_last_in_selector_list_(false),
+      is_last_in_complex_selector_(false),
+      has_rare_data_(false),
+      is_for_page_(false),
+      is_implicitly_added_(false),
+      is_covered_by_bucketing_(false),
       data_(DataUnion::kConstructEmptyValue) {}
 
 inline CSSSelector::CSSSelector(const QualifiedName& tag_q_name,
                                 bool tag_is_implicit)
-    : bits_(RelationField::encode(kSubSelector) | MatchField::encode(kTag) |
-            PseudoTypeField::encode(kPseudoUnknown) |
-            IsLastInSelectorListField::encode(false) |
-            IsLastInComplexSelectorField::encode(false) |
-            HasRareDataField::encode(false) | IsForPageField::encode(false) |
-            IsImplicitlyAddedField::encode(tag_is_implicit) |
-            IsCoveredByBucketingField::encode(false) |
-            SignalField::encode(static_cast<unsigned>(Signal::kNone)) |
-            IsInvisibleField::encode(false)),
+    : relation_(kSubSelector),
+      match_(kTag),
+      pseudo_type_(kPseudoUnknown),
+      is_last_in_selector_list_(false),
+      is_last_in_complex_selector_(false),
+      has_rare_data_(false),
+      is_for_page_(false),
+      is_implicitly_added_(tag_is_implicit),
+      is_covered_by_bucketing_(false),
       data_(tag_q_name) {}
 
 inline CSSSelector::CSSSelector(const StyleRule* parent_rule, bool is_implicit)
-    : bits_(RelationField::encode(kSubSelector) |
-            MatchField::encode(kPseudoClass) |
-            PseudoTypeField::encode(kPseudoParent) |
-            IsLastInSelectorListField::encode(false) |
-            IsLastInComplexSelectorField::encode(false) |
-            HasRareDataField::encode(false) | IsForPageField::encode(false) |
-            IsImplicitlyAddedField::encode(is_implicit) |
-            IsCoveredByBucketingField::encode(false) |
-            SignalField::encode(static_cast<unsigned>(Signal::kNone)) |
-            IsInvisibleField::encode(false)),
+    : relation_(kSubSelector),
+      match_(kPseudoClass),
+      pseudo_type_(kPseudoParent),
+      is_last_in_selector_list_(false),
+      is_last_in_complex_selector_(false),
+      has_rare_data_(false),
+      is_for_page_(false),
+      is_implicitly_added_(is_implicit),
+      is_covered_by_bucketing_(false),
       data_(parent_rule) {}
 
 inline CSSSelector::CSSSelector(const AtomicString& pseudo_name,
                                 bool is_implicit)
-    : bits_(RelationField::encode(kSubSelector) |
-            MatchField::encode(kPseudoClass) |
-            PseudoTypeField::encode(NameToPseudoType(pseudo_name,
-                                                     /* has_arguments */ false,
-                                                     /* document */ nullptr)) |
-            IsLastInSelectorListField::encode(false) |
-            IsLastInComplexSelectorField::encode(false) |
-            HasRareDataField::encode(false) | IsForPageField::encode(false) |
-            IsImplicitlyAddedField::encode(is_implicit) |
-            IsCoveredByBucketingField::encode(false) |
-            SignalField::encode(static_cast<unsigned>(Signal::kNone)) |
-            IsInvisibleField::encode(false)),
+    : relation_(kSubSelector),
+      match_(kPseudoClass),
+      pseudo_type_(NameToPseudoType(pseudo_name,
+                                    /* has_arguments */ false,
+                                    /* document */ nullptr)),
+      is_last_in_selector_list_(false),
+      is_last_in_complex_selector_(false),
+      has_rare_data_(false),
+      is_for_page_(false),
+      is_implicitly_added_(is_implicit),
+      is_covered_by_bucketing_(false),
       data_(pseudo_name) {}
 
 inline CSSSelector::CSSSelector(const CSSSelector& o)
-    : bits_(o.bits_), data_(DataUnion::kConstructUninitialized) {
-  if (o.Match() == kTag) {
+    : relation_(o.relation_),
+      match_(o.match_),
+      pseudo_type_(o.pseudo_type_),
+      is_last_in_selector_list_(o.is_last_in_selector_list_),
+      is_last_in_complex_selector_(o.is_last_in_complex_selector_),
+      has_rare_data_(o.has_rare_data_),
+      is_for_page_(o.is_for_page_),
+      is_implicitly_added_(o.is_implicitly_added_),
+      is_covered_by_bucketing_(o.is_covered_by_bucketing_),
+      data_(DataUnion::kConstructUninitialized) {
+  if (o.match_ == kTag) {
     new (&data_.tag_q_name_) QualifiedName(o.data_.tag_q_name_);
-  } else if (o.Match() == kPseudoClass && o.GetPseudoType() == kPseudoParent) {
+  } else if (o.match_ == kPseudoClass && o.pseudo_type_ == kPseudoParent) {
     data_.parent_rule_ = o.data_.parent_rule_;
-  } else if (o.HasRareData()) {
+  } else if (o.has_rare_data_) {
     data_.rare_data_ = o.data_.rare_data_;  // Oilpan-managed.
   } else {
     new (&data_.value_) AtomicString(o.data_.value_);
@@ -902,11 +799,11 @@ inline CSSSelector::CSSSelector(CSSSelector&& o)
 }
 
 inline CSSSelector::~CSSSelector() {
-  if (Match() == kTag) {
+  if (match_ == kTag) {
     data_.tag_q_name_.~QualifiedName();
-  } else if (Match() == kPseudoClass && GetPseudoType() == kPseudoParent)
+  } else if (match_ == kPseudoClass && pseudo_type_ == kPseudoParent)
     ;  // Nothing to do.
-  else if (HasRareData())
+  else if (has_rare_data_)
     ;  // Nothing to do.
   else {
     data_.value_.~AtomicString();
@@ -920,37 +817,37 @@ inline CSSSelector& CSSSelector::operator=(CSSSelector&& other) {
 }
 
 inline const QualifiedName& CSSSelector::TagQName() const {
-  DCHECK_EQ(Match(), static_cast<unsigned>(kTag));
+  DCHECK_EQ(match_, static_cast<unsigned>(kTag));
   return data_.tag_q_name_;
 }
 
 inline const StyleRule* CSSSelector::ParentRule() const {
-  DCHECK_EQ(Match(), static_cast<unsigned>(kPseudoClass));
-  DCHECK_EQ(GetPseudoType(), kPseudoParent);
-  return data_.parent_rule_.Get();
+  DCHECK_EQ(match_, static_cast<unsigned>(kPseudoClass));
+  DCHECK_EQ(pseudo_type_, static_cast<unsigned>(kPseudoParent));
+  return data_.parent_rule_;
 }
 
 inline const AtomicString& CSSSelector::Value() const {
-  DCHECK_NE(Match(), static_cast<unsigned>(kTag));
-  if (HasRareData()) {
+  DCHECK_NE(match_, static_cast<unsigned>(kTag));
+  if (has_rare_data_) {
     return data_.rare_data_->matching_value_;
   }
   return data_.value_;
 }
 
 inline const AtomicString& CSSSelector::SerializingValue() const {
-  DCHECK_NE(Match(), static_cast<unsigned>(kTag));
-  if (HasRareData()) {
+  DCHECK_NE(match_, static_cast<unsigned>(kTag));
+  if (has_rare_data_) {
     return data_.rare_data_->serializing_value_;
   }
   return data_.value_;
 }
 
 inline bool CSSSelector::IsUserActionPseudoClass() const {
-  return GetPseudoType() == kPseudoHover || GetPseudoType() == kPseudoActive ||
-         GetPseudoType() == kPseudoFocus || GetPseudoType() == kPseudoDrag ||
-         GetPseudoType() == kPseudoFocusWithin ||
-         GetPseudoType() == kPseudoFocusVisible;
+  return pseudo_type_ == kPseudoHover || pseudo_type_ == kPseudoActive ||
+         pseudo_type_ == kPseudoFocus || pseudo_type_ == kPseudoDrag ||
+         pseudo_type_ == kPseudoFocusWithin ||
+         pseudo_type_ == kPseudoFocusVisible;
 }
 
 inline bool CSSSelector::IsIdClassOrAttributeSelector() const {

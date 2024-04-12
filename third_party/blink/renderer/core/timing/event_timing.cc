@@ -4,9 +4,8 @@
 
 #include "third_party/blink/renderer/core/timing/event_timing.h"
 
-#include <optional>
-
 #include "base/time/tick_clock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/events/keyboard_event.h"
 #include "third_party/blink/renderer/core/events/pointer_event.h"
@@ -47,12 +46,10 @@ bool ShouldReportForEventTiming(WindowPerformance* performance) {
 
 EventTiming::EventTiming(base::TimeTicks processing_start,
                          WindowPerformance* performance,
-                         const Event& event,
-                         EventTarget* original_event_target)
+                         const Event& event)
     : processing_start_(processing_start),
       performance_(performance),
-      event_(&event),
-      original_event_target_(original_event_target) {
+      event_(&event) {
   performance_->SetCurrentEventTimingEvent(&event);
 }
 
@@ -81,12 +78,8 @@ bool EventTiming::IsEventTypeForEventTiming(const Event& event) {
   // events that are considered continuous: event types for which the user agent
   // may have timer-based dispatch under certain conditions. These are excluded
   // since EventCounts cannot be used to properly computed percentiles on those.
-  // See spec: https://wicg.github.io/event-timing/#sec-events-exposed.
-  // Need to be kept in sync with IsWebInteractionEvent
-  // (widget_event_handler.cc) except non-raw web input event types, for example
-  // kCompositionend.
-  return (event.isTrusted() ||
-          event.type() == event_type_names::kCompositionend) &&
+  // See spec: https://wicg.github.io/event-timing/#sec-events-exposed
+  return event.isTrusted() &&
          (IsA<MouseEvent>(event) || IsA<PointerEvent>(event) ||
           IsA<TouchEvent>(event) || IsA<KeyboardEvent>(event) ||
           IsA<WheelEvent>(event) || event.IsInputEvent() ||
@@ -100,15 +93,13 @@ bool EventTiming::IsEventTypeForEventTiming(const Event& event) {
 }
 
 // static
-std::unique_ptr<EventTiming> EventTiming::Create(
-    LocalDOMWindow* window,
-    const Event& event,
-    EventTarget* original_event_target) {
+std::unique_ptr<EventTiming> EventTiming::Create(LocalDOMWindow* window,
+                                                 const Event& event) {
   auto* performance = DOMWindowPerformance::performance(*window);
-  if (!performance || (!IsEventTypeForEventTiming(event) &&
-                       event.type() != event_type_names::kPointermove)) {
+  if (!performance || !event.isTrusted() ||
+      (!IsEventTypeForEventTiming(event) &&
+       event.type() != event_type_names::kPointermove))
     return nullptr;
-  }
 
   // Most events track their performance in EventDispatcher::Dispatch but
   // some event types which can be filtered are tracked at the point
@@ -127,7 +118,7 @@ std::unique_ptr<EventTiming> EventTiming::Create(
   HandleInputDelay(window, event, processing_start);
   return should_report_for_event_timing
              ? std::make_unique<EventTiming>(processing_start, performance,
-                                             event, original_event_target)
+                                             event)
              : nullptr;
 }
 
@@ -142,15 +133,8 @@ EventTiming::~EventTiming() {
   base::TimeTicks event_timestamp =
       pointer_event ? pointer_event->OldestPlatformTimeStamp()
                     : event_->PlatformTimeStamp();
-
-  // `event->target()` is assigned as part of EventDispatch, and will be unset
-  // whenever we skip dispatch. (See: crbug.com/1367329).
-  // In those cases, we may still have an `original_event_target` which was the
-  // result of the original HitTest.  Use that as fallback only.
-  EventTarget* event_target =
-      event_->target() ? event_->target() : original_event_target_.Get();
-  performance_->RegisterEventTiming(*event_, event_target, event_timestamp,
-                                    processing_start_, Now());
+  performance_->RegisterEventTiming(*event_, event_timestamp, processing_start_,
+                                    Now());
 }
 
 }  // namespace blink

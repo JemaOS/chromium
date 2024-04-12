@@ -4,9 +4,9 @@
 
 #include "third_party/blink/public/web/web_document.h"
 
-#include <algorithm>
 #include <string>
 
+#include "base/cxx17_backports.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/origin_trials/scoped_test_origin_trial_policy.h"
 #include "third_party/blink/public/web/web_origin_trials.h"
@@ -24,7 +24,6 @@
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/testing/mock_policy_container_host.h"
 #include "third_party/blink/renderer/platform/graphics/color.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
 #include "third_party/blink/renderer/platform/weborigin/scheme_registry.h"
@@ -42,17 +41,16 @@ const char kNoOriginTrialDummyFilePath[] = "simple_div.html";
 
 class WebDocumentTest : public testing::Test {
  protected:
-  static void SetUpTestSuite();
+  static void SetUpTestCase();
 
   void LoadURL(const std::string& url);
   Document* TopDocument() const;
   WebDocument TopWebDocument() const;
 
-  test::TaskEnvironment task_environment_;
   WebViewHelper web_view_helper_;
 };
 
-void WebDocumentTest::SetUpTestSuite() {
+void WebDocumentTest::SetUpTestCase() {
   url_test_helpers::RegisterMockedURLLoad(
       ToKURL(std::string(kDefaultOrigin) + kNoOriginTrialDummyFilePath),
       test::CoreTestDataPath(kNoOriginTrialDummyFilePath));
@@ -200,7 +198,7 @@ void RegisterMockedURLLoad(const KURL& url, const char* path) {
 
 class WebDocumentFirstPartyTest : public WebDocumentTest {
  public:
-  static void SetUpTestSuite();
+  static void SetUpTestCase();
 
  protected:
   void Load(const char*);
@@ -208,7 +206,7 @@ class WebDocumentFirstPartyTest : public WebDocumentTest {
   Document* NestedNestedDocument() const;
 };
 
-void WebDocumentFirstPartyTest::SetUpTestSuite() {
+void WebDocumentFirstPartyTest::SetUpTestCase() {
   RegisterMockedURLLoad(ToOriginA(g_empty_file), g_empty_file);
   RegisterMockedURLLoad(ToOriginA(g_nested_data), g_nested_data);
   RegisterMockedURLLoad(ToOriginA(g_nested_origin_a), g_nested_origin_a);

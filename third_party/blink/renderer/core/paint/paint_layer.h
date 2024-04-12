@@ -50,8 +50,8 @@
 #include "base/dcheck_is_on.h"
 #include "base/gtest_prod_util.h"
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/layout/geometry/static_position.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
+#include "third_party/blink/renderer/core/layout/ng/geometry/ng_static_position.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_clipper.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_fragment.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_resource_info.h"
@@ -133,7 +133,7 @@ enum PaintLayerIteration {
 //   PaintLayers.
 // - If the flag is false, the LayoutObject is painted like normal children (ie
 //   as if it didn't have a PaintLayer). The paint order is handled by
-//   BoxFragmentPainter.
+//   NGBoxFragmentPainter.
 // This means that the self-painting flag changes the painting order in a subtle
 // way, which can potentially have visible consequences. Those bugs are called
 // painting inversion as we invert the order of painting for 2 elements
@@ -177,11 +177,11 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
   // Returns |GetLayoutBox()| if it exists and has fragments.
   const LayoutBox* GetLayoutBoxWithBlockFragments() const;
 
-  PaintLayer* Parent() const { return parent_.Get(); }
-  PaintLayer* PreviousSibling() const { return previous_.Get(); }
-  PaintLayer* NextSibling() const { return next_.Get(); }
-  PaintLayer* FirstChild() const { return first_.Get(); }
-  PaintLayer* LastChild() const { return last_.Get(); }
+  PaintLayer* Parent() const { return parent_; }
+  PaintLayer* PreviousSibling() const { return previous_; }
+  PaintLayer* NextSibling() const { return next_; }
+  PaintLayer* FirstChild() const { return first_; }
+  PaintLayer* LastChild() const { return last_; }
 
   // TODO(wangxianzhu): Find a better name for it. 'paintContainer' might be
   // good but we can't use it for now because it conflicts with
@@ -213,6 +213,13 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
     return curr;
   }
 
+  // The physical offset from this PaintLayer to its ContainingLayer.
+  // Does not include any scroll offset of the ContainingLayer. Also does not
+  // include offsets for positioned elements.
+  //
+  // Do not use this function.  We're going to remove this.
+  const PhysicalOffset& LocationWithoutPositionOffset() const;
+
   // This is the scroll offset that's actually used to display to the screen.
   // It should only be used in paint/compositing type use cases (includes hit
   // testing, intersection observer). Most other cases should use the unsnapped
@@ -220,9 +227,21 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
   // ScrollableArea.
   gfx::Vector2d PixelSnappedScrolledContentOffset() const;
 
+  // FIXME: size() should DCHECK(!needs_position_update_) as well, but that
+  // fails in some tests, for example, fast/repaint/clipped-relative.html.
+  const LayoutSize& Size() const { return size_; }
+
+#if DCHECK_IS_ON()
+  // Do not use this function.  We're going to remove this.
+  bool NeedsPositionUpdate() const { return needs_position_update_; }
+#endif
+
   bool IsRootLayer() const { return is_root_layer_; }
 
-  void UpdateScrollingAfterLayout();
+  bool UpdateSize();
+  void UpdateSizeAndScrollingAfterLayout();
+
+  void UpdateLayerPositionsAfterLayout();
 
   void UpdateTransform();
 
@@ -243,7 +262,16 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
   // of this layer. Normally the parent layer is the containing layer, except
   // for out of flow positioned, floating and multicol spanner layers whose
   // containing layer might be an ancestor of the parent layer.
-  PaintLayer* ContainingLayer() const;
+  // If |ancestor| is specified, |*skippedAncestor| will be set to true if
+  // |ancestor| is found in the ancestry chain between this layer and the
+  // containing block layer; if not found, it will be set to false. Either both
+  // |ancestor| and |skippedAncestor| should be nullptr, or none of them should.
+  PaintLayer* ContainingLayer(const PaintLayer* ancestor = nullptr,
+                              bool* skipped_ancestor = nullptr) const;
+
+  // Do not use this function.  We're going to remove this.
+  void ConvertToLayerCoords(const PaintLayer* ancestor_layer,
+                            PhysicalOffset&) const;
 
   // The hitTest() method looks for mouse events by walking layers that
   // intersect the point from front to back.
@@ -254,14 +282,18 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
                const PhysicalRect& hit_test_area);
 
   // Static position is set in parent's coordinate space.
+  LayoutUnit StaticInlinePosition() const { return static_inline_position_; }
   LayoutUnit StaticBlockPosition() const { return static_block_position_; }
 
+  void SetStaticInlinePosition(LayoutUnit position) {
+    static_inline_position_ = position;
+  }
   void SetStaticBlockPosition(LayoutUnit position) {
     static_block_position_ = position;
   }
 
-  using InlineEdge = LogicalStaticPosition::InlineEdge;
-  using BlockEdge = LogicalStaticPosition::BlockEdge;
+  using InlineEdge = NGLogicalStaticPosition::InlineEdge;
+  using BlockEdge = NGLogicalStaticPosition::BlockEdge;
   InlineEdge StaticInlineEdge() const {
     return static_cast<InlineEdge>(static_inline_edge_);
   }
@@ -269,15 +301,15 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
     return static_cast<BlockEdge>(static_block_edge_);
   }
 
-  void SetStaticPositionFromNG(const LogicalStaticPosition& position) {
+  void SetStaticPositionFromNG(const NGLogicalStaticPosition& position) {
     static_inline_position_ = position.offset.inline_offset;
     static_block_position_ = position.offset.block_offset;
     static_inline_edge_ = position.inline_edge;
     static_block_edge_ = position.block_edge;
   }
 
-  LogicalStaticPosition GetStaticPosition() const {
-    LogicalStaticPosition position;
+  NGLogicalStaticPosition GetStaticPosition() const {
+    NGLogicalStaticPosition position;
     position.offset.inline_offset = static_inline_position_;
     position.offset.block_offset = static_block_position_;
     position.inline_edge = StaticInlineEdge();
@@ -285,12 +317,7 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
     return position;
   }
 
-  // Note that this transform has the transform-origin baked in. Due to this
-  // fact, this transform is pretty useless if we're fragmented, since each
-  // fragment has its own origin. Avoid calling this method if a box is
-  // fragmented. Ideally, we should have a DCHECK for being non-fragmented here,
-  // but that's going to fail currently. LayoutBox::MapVisualRectToContainer()
-  // calls this function without any checks, for instance.
+  // Note that this transform has the transform-origin baked in.
   gfx::Transform* Transform() const { return transform_.get(); }
 
   // Returns *Transform(), or identity matrix if Transform() is nullptr.
@@ -352,7 +379,7 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
     return has_filter_that_moves_pixels_;
   }
 
-  PaintLayerResourceInfo* ResourceInfo() const { return resource_info_.Get(); }
+  PaintLayerResourceInfo* ResourceInfo() const { return resource_info_; }
   PaintLayerResourceInfo& EnsureResourceInfo();
 
   // Filter reference box is the area over which the filter is computed, in the
@@ -368,8 +395,6 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
                              const ComputedStyle& new_style);
   void UpdateClipPath(const ComputedStyle* old_style,
                       const ComputedStyle& new_style);
-  void UpdateOffsetPath(const ComputedStyle* old_style,
-                        const ComputedStyle& new_style);
 
   Node* EnclosingNode() const;
 
@@ -519,13 +544,14 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
 
   void Trace(Visitor*) const override;
 
-  PhysicalRect LocalBoundingBoxIncludingSelfPaintingDescendants() const;
-
  private:
   void Update3DTransformedDescendantStatus();
 
   // Bounding box in the coordinates of this layer.
   PhysicalRect LocalBoundingBox() const;
+
+  void UpdateLayerPositionRecursive();
+  void UpdateLayerPosition();
 
   void SetNextSibling(PaintLayer* next) { next_ = next; }
   void SetPreviousSibling(PaintLayer* prev) { previous_ = prev; }
@@ -596,7 +622,7 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
       const HitTestingTransformState* root_transform_state) const;
 
   bool HitTestFragmentWithPhase(HitTestResult&,
-                                const PhysicalBoxFragment*,
+                                const NGPhysicalBoxFragment*,
                                 const PhysicalOffset& fragment_offset,
                                 const HitTestLocation&,
                                 HitTestPhase phase) const;
@@ -659,7 +685,7 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
 
   // This is private because PaintLayerStackingNode is only for PaintLayer and
   // PaintLayerPaintOrderIterator.
-  PaintLayerStackingNode* StackingNode() const { return stacking_node_.Get(); }
+  PaintLayerStackingNode* StackingNode() const { return stacking_node_; }
 
   void SetNeedsReorderOverlayOverflowControls(bool);
 
@@ -680,6 +706,11 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
   unsigned needs_visual_overflow_recalc_ : 1;
 
   unsigned has_visible_self_painting_descendant_ : 1;
+
+#if DCHECK_IS_ON()
+  // TODO(crbug.com/1432839): Remove this.
+  unsigned needs_position_update_ : 1;
+#endif
 
   // Set on a stacking context layer that has 3D descendants anywhere
   // in a preserves3D hierarchy. Hint to do 3D-aware hit testing.
@@ -743,6 +774,17 @@ class CORE_EXPORT PaintLayer : public GarbageCollected<PaintLayer>,
   Member<PaintLayerScrollableArea> scrollable_area_;
   Member<PaintLayerStackingNode> stacking_node_;
   Member<PaintLayerResourceInfo> resource_info_;
+
+  // Our (x,y) coordinates are in our containing layer's coordinate space,
+  // excluding positioning offset and scroll.
+  // TODO(crbug.com/1432839): Remove this.
+  PhysicalOffset location_without_position_offset_;
+
+  // The layer's size.
+  //
+  // If the associated LayoutBoxModelObject is a LayoutBox, it's its border
+  // box. Otherwise, this is the LayoutInline's lines' bounding box.
+  LayoutSize size_;
 
   // Cached normal flow values for absolute positioned elements with static
   // left/top values.

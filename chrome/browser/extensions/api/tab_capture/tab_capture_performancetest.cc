@@ -3,10 +3,9 @@
 // found in the LICENSE file.
 
 #include <cmath>
-#include <string_view>
+#include <unordered_map>
 
 #include "base/command_line.h"
-#include "base/containers/flat_map.h"
 #include "base/files/file_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/trace_event_analyzer.h"
@@ -55,7 +54,7 @@ constexpr char kEventSuffixFailRate[] = "FailRate";
 constexpr char kEventSuffixLatency[] = "Latency";
 constexpr char kEventCommitAndDrawCompositorFrame[] =
     "WidgetBase::DidCommitAndDrawCompositorFrame";
-const base::flat_map<std::string, std::string> kEventToMetricMap(
+const std::unordered_map<std::string, std::string> kEventToMetricMap(
     {{kEventCapture, kMetricCaptureMs},
      {std::string(kEventCapture) + kEventSuffixFailRate,
       kMetricCaptureFailRatePercent},
@@ -313,8 +312,8 @@ IN_PROC_BROWSER_TEST_P(TabCapturePerformanceTest, MAYBE_Performance) {
   // Observe the running browser for a while, collecting a trace.
   std::unique_ptr<trace_analyzer::TraceAnalyzer> analyzer = TraceAndObserve(
       "gpu,gpu.capture",
-      std::vector<std::string_view>{kEventCommitAndDrawCompositorFrame,
-                                    kEventCapture},
+      std::vector<base::StringPiece>{kEventCommitAndDrawCompositorFrame,
+                                     kEventCapture},
       // In a full performance run, events will be trimmed from both ends of
       // trace. Otherwise, just require the bare-minimum to verify the stats
       // calculations will work.

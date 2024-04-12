@@ -221,19 +221,17 @@ void MediaStreamSource::AddObserver(MediaStreamSource::Observer* observer) {
 void MediaStreamSource::SetAudioProcessingProperties(
     EchoCancellationMode echo_cancellation_mode,
     bool auto_gain_control,
-    bool noise_supression,
-    bool voice_isolation) {
+    bool noise_supression) {
   SendLogMessage(
       String::Format("%s({echo_cancellation_mode=%s}, {auto_gain_control=%d}, "
-                     "{noise_supression=%d}, {voice_isolation=%d})",
+                     "{noise_supression=%d})",
                      __func__,
                      EchoCancellationModeToString(echo_cancellation_mode),
-                     auto_gain_control, noise_supression, voice_isolation)
+                     auto_gain_control, noise_supression)
           .Utf8());
   echo_cancellation_mode_ = echo_cancellation_mode;
   auto_gain_control_ = auto_gain_control;
   noise_supression_ = noise_supression;
-  voice_isolation_ = voice_isolation;
 }
 
 void MediaStreamSource::SetAudioConsumer(
@@ -287,9 +285,6 @@ void MediaStreamSource::GetSettings(
     settings.auto_gain_control = *auto_gain_control_;
   if (noise_supression_)
     settings.noise_supression = *noise_supression_;
-  if (voice_isolation_) {
-    settings.voice_isolation = *voice_isolation_;
-  }
 
   GetSourceSettings(WebMediaStreamSource(this), settings);
 }
@@ -355,22 +350,6 @@ void MediaStreamSource::OnDeviceCaptureHandleChange(
   for (auto observer : observers) {
     observer->SourceChangedCaptureHandle();
   }
-}
-
-void MediaStreamSource::OnZoomLevelChange(const MediaStreamDevice& device,
-                                          int zoom_level) {
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-  if (!platform_source_) {
-    return;
-  }
-
-  // Observers may dispatch events which create and add new Observers;
-  // take a snapshot so as to safely iterate.
-  HeapVector<Member<Observer>> observers(observers_);
-  for (auto observer : observers) {
-    observer->SourceChangedZoomLevel(zoom_level);
-  }
-#endif
 }
 
 void MediaStreamSource::Trace(Visitor* visitor) const {

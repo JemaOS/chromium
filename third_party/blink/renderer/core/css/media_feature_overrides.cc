@@ -17,10 +17,10 @@ namespace blink {
 
 namespace {
 
-std::optional<ColorSpaceGamut> ConvertColorGamut(
+absl::optional<ColorSpaceGamut> ConvertColorGamut(
     const MediaQueryExpValue& value) {
   if (!value.IsValid()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   if (value.Id() == CSSValueID::kSRGB) {
     return ColorSpaceGamut::SRGB;
@@ -32,64 +32,53 @@ std::optional<ColorSpaceGamut> ConvertColorGamut(
   if (value.Id() == CSSValueID::kRec2020) {
     return ColorSpaceGamut::BT2020;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<ForcedColors> ConvertForcedColors(
+absl::optional<mojom::blink::PreferredColorScheme> ConvertPreferredColorScheme(
     const MediaQueryExpValue& value) {
   if (!value.IsValid()) {
-    return std::nullopt;
+    return absl::nullopt;
+  }
+  return CSSValueIDToPreferredColorScheme(value.Id());
+}
+
+absl::optional<mojom::blink::PreferredContrast> ConvertPreferredContrast(
+    const MediaQueryExpValue& value) {
+  if (!value.IsValid()) {
+    return absl::nullopt;
+  }
+  return CSSValueIDToPreferredContrast(value.Id());
+}
+
+absl::optional<bool> ConvertPrefersReducedMotion(
+    const MediaQueryExpValue& value) {
+  if (!value.IsValid()) {
+    return absl::nullopt;
+  }
+  return value.Id() == CSSValueID::kReduce;
+}
+
+absl::optional<bool> ConvertPrefersReducedData(
+    const MediaQueryExpValue& value) {
+  if (!value.IsValid()) {
+    return absl::nullopt;
+  }
+  return value.Id() == CSSValueID::kReduce;
+}
+
+absl::optional<ForcedColors> ConvertForcedColors(
+    const MediaQueryExpValue& value) {
+  if (!value.IsValid()) {
+    return absl::nullopt;
   }
   return CSSValueIDToForcedColors(value.Id());
 }
 
 }  // namespace
 
-std::optional<mojom::blink::PreferredColorScheme>
-MediaFeatureOverrides::ConvertPreferredColorScheme(
-    const MediaQueryExpValue& value) {
-  if (!value.IsValid()) {
-    return std::nullopt;
-  }
-  return CSSValueIDToPreferredColorScheme(value.Id());
-}
-
-std::optional<mojom::blink::PreferredContrast>
-MediaFeatureOverrides::ConvertPreferredContrast(
-    const MediaQueryExpValue& value) {
-  if (!value.IsValid()) {
-    return std::nullopt;
-  }
-  return CSSValueIDToPreferredContrast(value.Id());
-}
-
-std::optional<bool> MediaFeatureOverrides::ConvertPrefersReducedMotion(
-    const MediaQueryExpValue& value) {
-  if (!value.IsValid()) {
-    return std::nullopt;
-  }
-  return value.Id() == CSSValueID::kReduce;
-}
-
-std::optional<bool> MediaFeatureOverrides::ConvertPrefersReducedData(
-    const MediaQueryExpValue& value) {
-  if (!value.IsValid()) {
-    return std::nullopt;
-  }
-  return value.Id() == CSSValueID::kReduce;
-}
-
-std::optional<bool> MediaFeatureOverrides::ConvertPrefersReducedTransparency(
-    const MediaQueryExpValue& value) {
-  if (!value.IsValid()) {
-    return std::nullopt;
-  }
-  return value.Id() == CSSValueID::kReduce;
-}
-
-MediaQueryExpValue MediaFeatureOverrides::ParseMediaQueryValue(
-    const AtomicString& feature,
-    const String& value_string) {
+void MediaFeatureOverrides::SetOverride(const AtomicString& feature,
+                                        const String& value_string) {
   CSSTokenizer tokenizer(value_string);
   auto [tokens, raw_offsets] = tokenizer.TokenizeToEOFWithOffsets();
   CSSParserTokenRange range(tokens);
@@ -112,12 +101,7 @@ MediaQueryExpValue MediaFeatureOverrides::ParseMediaQueryValue(
   MediaQueryExpBounds bounds =
       MediaQueryExp::Create(feature, range, offsets, *fake_context).Bounds();
   DCHECK(!bounds.left.IsValid());
-  return bounds.right.value;
-}
-
-void MediaFeatureOverrides::SetOverride(const AtomicString& feature,
-                                        const String& value_string) {
-  MediaQueryExpValue value = ParseMediaQueryValue(feature, value_string);
+  MediaQueryExpValue value = bounds.right.value;
 
   if (feature == media_feature_names::kColorGamutMediaFeature) {
     color_gamut_ = ConvertColorGamut(value);
@@ -130,9 +114,6 @@ void MediaFeatureOverrides::SetOverride(const AtomicString& feature,
     prefers_reduced_motion_ = ConvertPrefersReducedMotion(value);
   } else if (feature == media_feature_names::kPrefersReducedDataMediaFeature) {
     prefers_reduced_data_ = ConvertPrefersReducedData(value);
-  } else if (feature ==
-             media_feature_names::kPrefersReducedTransparencyMediaFeature) {
-    prefers_reduced_transparency_ = ConvertPrefersReducedTransparency(value);
   } else if (feature == media_feature_names::kForcedColorsMediaFeature) {
     forced_colors_ = ConvertForcedColors(value);
   }

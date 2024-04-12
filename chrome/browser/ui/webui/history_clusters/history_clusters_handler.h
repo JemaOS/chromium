@@ -13,7 +13,6 @@
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/history/profile_based_browsing_history_driver.h"
-#include "chrome/browser/ui/webui/top_chrome/top_chrome_web_ui_controller.h"
 #include "components/history/core/browser/browsing_history_service.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/history_clusters/core/history_clusters_service.h"
@@ -21,6 +20,7 @@
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "ui/webui/mojo_bubble_web_ui_controller.h"
 #include "ui/webui/resources/cr_components/history_clusters/history_clusters.mojom.h"
 
 class Profile;
@@ -60,7 +60,8 @@ class HistoryClustersHandler : public mojom::PageHandler,
   const std::string& last_query_issued() const { return last_query_issued_; }
 
   void SetSidePanelUIEmbedder(
-      base::WeakPtr<TopChromeWebUIController::Embedder> side_panel_embedder);
+      base::WeakPtr<ui::MojoBubbleWebUIController::Embedder>
+          side_panel_embedder);
   // Used to set the in-page query from the browser.
   void SetQuery(const std::string& query);
 
@@ -78,9 +79,7 @@ class HistoryClustersHandler : public mojom::PageHandler,
                     RemoveVisitsCallback callback) override;
   void HideVisits(std::vector<mojom::URLVisitPtr> visits,
                   HideVisitsCallback callback) override;
-  void OpenVisitUrlsInTabGroup(
-      std::vector<mojom::URLVisitPtr> visits,
-      const std::optional<std::string>& tab_group_name = std::nullopt) override;
+  void OpenVisitUrlsInTabGroup(std::vector<mojom::URLVisitPtr> visits) override;
   void RecordVisitAction(mojom::VisitAction visit_action,
                          uint32_t visit_index,
                          mojom::VisitType visit_type) override;
@@ -111,7 +110,7 @@ class HistoryClustersHandler : public mojom::PageHandler,
 
   void OnHideVisitsComplete();
 
-  base::WeakPtr<TopChromeWebUIController::Embedder>
+  base::WeakPtr<ui::MojoBubbleWebUIController::Embedder>
       history_clusters_side_panel_embedder_;
 
   raw_ptr<Profile> profile_;
@@ -125,19 +124,17 @@ class HistoryClustersHandler : public mojom::PageHandler,
   mojo::Remote<mojom::Page> page_;
   mojo::Receiver<mojom::PageHandler> page_handler_;
 
-  // Used only for hiding History visits and finding ungrouped visits matching
-  // user searches.
-  raw_ptr<history::HistoryService> history_service_;
+  // Encapsulates the currently loaded clusters state on the page.
+  std::unique_ptr<QueryClustersState> query_clusters_state_;
+
+  // Used only for hiding History visits. It's not used for querying History,
+  // because we do our querying with HistoryClustersService.
+  base::raw_ptr<history::HistoryService> history_service_;
 
   // Used only for deleting History properly, and observing deletions that occur
-  // from other tabs. It's not used for querying History. We do our querying
-  // using QueryClustersState which hits the HistoryClustersService and
-  // HistoryService directly, without using BrowsingHistoryService.
+  // from other tabs. It's not used for querying History, because we do our
+  // querying with HistoryClustersService.
   std::unique_ptr<history::BrowsingHistoryService> browsing_history_service_;
-
-  // Encapsulates the currently loaded clusters state on the page. This member
-  // is below the history services so it is deleted first.
-  std::unique_ptr<QueryClustersState> query_clusters_state_;
 
   // The visits requested to be hidden and related request fields.
   // `HistoryClustersHandler` can only handle 1 hide request at a time.

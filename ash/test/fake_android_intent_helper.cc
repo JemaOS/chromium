@@ -13,12 +13,12 @@ void FakeAndroidIntentHelper::LaunchAndroidIntent(const std::string& intent) {
   last_launched_intent_ = intent;
 }
 
-std::optional<std::string> FakeAndroidIntentHelper::GetAndroidAppLaunchIntent(
+absl::optional<std::string> FakeAndroidIntentHelper::GetAndroidAppLaunchIntent(
     const assistant::AndroidAppInfo& app_info) {
   auto iterator = apps_.find(app_info.localized_app_name);
   if (iterator != apps_.end())
     return iterator->second;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void FakeAndroidIntentHelper::AddApp(const LocalizedAppName& name,

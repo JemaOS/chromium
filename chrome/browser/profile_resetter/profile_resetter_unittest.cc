@@ -36,7 +36,7 @@
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/webdata_services/web_data_service_factory.h"
+#include "chrome/browser/web_data_service_factory.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "components/content_settings/core/browser/content_settings_info.h"
@@ -490,8 +490,9 @@ TEST_F(ProfileResetterTest, ResetContentSettings) {
     if (info->IsSettingValid(site_setting)) {
       host_content_settings_map->SetContentSettingDefaultScope(
           url, url, content_type, site_setting);
-      ContentSettingsForOneType host_settings =
-          host_content_settings_map->GetSettingsForOneType(content_type);
+      ContentSettingsForOneType host_settings;
+      host_content_settings_map->GetSettingsForOneType(content_type,
+                                                       &host_settings);
       EXPECT_EQ(2U, host_settings.size());
     }
   }
@@ -512,8 +513,9 @@ TEST_F(ProfileResetterTest, ResetContentSettings) {
         GURL("example.org"), GURL(), content_type);
     EXPECT_EQ(default_setting, site_setting);
 
-    ContentSettingsForOneType host_settings =
-        host_content_settings_map->GetSettingsForOneType(content_type);
+    ContentSettingsForOneType host_settings;
+    host_content_settings_map->GetSettingsForOneType(content_type,
+                                                     &host_settings);
     EXPECT_EQ(1U, host_settings.size());
   }
 }
@@ -748,7 +750,7 @@ TEST_F(ConfigParserTest, NoConnectivity) {
       url, network::mojom::URLResponseHead::New(), "",
       network::URLLoaderCompletionStatus(net::HTTP_INTERNAL_SERVER_ERROR));
 
-  std::unique_ptr<BrandcodeConfigFetcher> fetcher = WaitForRequest(url);
+  std::unique_ptr<BrandcodeConfigFetcher> fetcher = WaitForRequest(GURL(url));
   EXPECT_FALSE(fetcher->GetSettings());
 }
 
@@ -770,7 +772,7 @@ TEST_F(ConfigParserTest, ParseConfig) {
   test_url_loader_factory().AddResponse(url, std::move(head), xml_config,
                                         status);
 
-  std::unique_ptr<BrandcodeConfigFetcher> fetcher = WaitForRequest(url);
+  std::unique_ptr<BrandcodeConfigFetcher> fetcher = WaitForRequest(GURL(url));
   std::unique_ptr<BrandcodedDefaultSettings> settings = fetcher->GetSettings();
   ASSERT_TRUE(settings);
 
@@ -783,7 +785,7 @@ TEST_F(ConfigParserTest, ParseConfig) {
   EXPECT_TRUE(settings->GetHomepage(&homepage));
   EXPECT_EQ("http://www.foo.com", homepage);
 
-  std::optional<base::Value::List> startup_list(
+  absl::optional<base::Value::List> startup_list(
       settings->GetUrlsToRestoreOnStartup());
   EXPECT_TRUE(startup_list.has_value());
   std::vector<std::string> startup_pages;
@@ -794,32 +796,6 @@ TEST_F(ConfigParserTest, ParseConfig) {
   ASSERT_EQ(2u, startup_pages.size());
   EXPECT_EQ("http://goo.gl", startup_pages[0]);
   EXPECT_EQ("http://foo.de", startup_pages[1]);
-}
-
-// Return an invalid response from the fetch request and delete the
-// Fetcher object in the callback, which mimics how ResetSettingsHandler uses
-// the class. See https://crbug.com/1491296.
-TEST_F(ConfigParserTest, InvalidResponseDeleteFromCallback) {
-  const GURL url("http://test");
-  auto head = network::mojom::URLResponseHead::New();
-  head->headers = base::MakeRefCounted<net::HttpResponseHeaders>(
-      net::HttpUtil::AssembleRawHeaders(
-          "HTTP/1.1 200 OK\nContent-type: application/custom\n\n"));
-  head->mime_type = "application/custom";
-  test_url_loader_factory().AddResponse(url, std::move(head),
-                                        "Custom app data, not XML",
-                                        network::URLLoaderCompletionStatus());
-
-  base::RunLoop run_loop;
-  std::unique_ptr<BrandcodeConfigFetcher> fetcher;
-  auto callback = base::BindLambdaForTesting([&fetcher, &run_loop] {
-    EXPECT_FALSE(fetcher->GetSettings());
-    fetcher.reset();
-    run_loop.Quit();
-  });
-  fetcher = std::make_unique<BrandcodeConfigFetcher>(&test_url_loader_factory(),
-                                           std::move(callback), url, "ABCD");
-  run_loop.Run();
 }
 
 TEST_F(ProfileResetterTest, CheckSnapshots) {
@@ -1007,18 +983,18 @@ TEST_F(ProfileResetterTest, GetReadableFeedback) {
   base::Value::List list = std::move(capture.list_);
   bool checked_extensions = false;
   bool checked_shortcuts = false;
-  for (const auto& entry : list) {
-    const base::Value::Dict* dict = entry.GetIfDict();
-    ASSERT_TRUE(dict);
-    const std::string* value = dict->FindString("key");
+  for (size_t i = 0; i < list.size(); ++i) {
+    const base::Value& dict = list[i];
+    ASSERT_TRUE(dict.is_dict());
+    const std::string* value = dict.FindStringKey("key");
     ASSERT_TRUE(value);
     if (*value == "Extensions") {
-      const std::string* extensions = dict->FindString("value");
+      const std::string* extensions = dict.FindStringKey("value");
       ASSERT_TRUE(extensions);
       EXPECT_EQ(*extensions, "Tiësto");
       checked_extensions = true;
     } else if (*value == "Shortcut targets") {
-      const std::string* targets = dict->FindString("value");
+      const std::string* targets = dict.FindStringKey("value");
       ASSERT_TRUE(targets);
       EXPECT_NE(std::string::npos, targets->find("foo.com")) << *targets;
       checked_shortcuts = true;

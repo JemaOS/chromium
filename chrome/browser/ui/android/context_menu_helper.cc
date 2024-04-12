@@ -50,9 +50,7 @@ void ContextMenuHelper::ShowContextMenu(
   gfx::NativeView view = GetWebContents().GetNativeView();
   Java_ContextMenuHelper_showContextMenu(
       env, java_obj_,
-      context_menu::BuildJavaContextMenuParams(
-          context_menu_params_, render_frame_host.GetProcess()->GetID(),
-          render_frame_host.GetFrameToken().value()),
+      context_menu::BuildJavaContextMenuParams(context_menu_params_),
       render_frame_host.GetJavaRenderFrameHost(), view->GetContainerView(),
       view->content_offset() * view->GetDipScale());
 }

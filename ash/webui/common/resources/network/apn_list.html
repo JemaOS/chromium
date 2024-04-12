@@ -26,7 +26,7 @@
     padding: 0 20px 0 0;
   }
 
-  #errorMessageContainer {
+  #errorMessage {
     display: flex;
     margin: 30px;
     margin-inline-end: 80px;
@@ -53,10 +53,11 @@
     margin-inline-end: 10px;
   }
 </style>
-<div id="apnDescription" class="property-box" aria-live="assertive">
+<div id="apnDescription" class="property-box">
   <template is="dom-if" if="[[!shouldOmitLinks]]" restamp>
     <localized-link
-        localized-string="[[i18nAdvanced('apnSettingsDescriptionWithLink')]]">
+        localized-string="[[i18nAdvanced('apnSettingsDescriptionWithLink')]]"
+        on-link-clicked="onLearnMoreClicked_">
     </localized-link>
   </template>
   <template is="dom-if" if="[[shouldOmitLinks]]" restamp>
@@ -67,11 +68,12 @@
   <template is="dom-if"
       if="[[shouldShowErrorMessage_(managedCellularProperties,
           errorState)]]" restamp>
-    <div id="errorMessageContainer">
+    <div id="errorMessage">
       <span><iron-icon icon="cr20:warning"></iron-icon></span>
-      <span id="errorMessage">
-        [[getErrorMessage_(managedCellularProperties, errorState)]]
-      </span>
+      <localized-link
+          localized-string="[[getErrorMessage_(managedCellularProperties,
+              errorState)]]">
+      </localized-link>
     </div>
   </template>
 </div>
@@ -85,7 +87,7 @@
   </div>
 </template>
 
-<iron-list items="[[apns_]]"
+<iron-list items="[[getApns_(managedCellularProperties)]]"
     on-show-apn-detail-dialog="onShowApnDetailDialog_">
   <template>
     <apn-list-item
@@ -93,10 +95,7 @@
         is-connected="[[isApnConnected_(index, managedCellularProperties)]]"
         should-disallow-disabling-removing="[[shouldDisallowDisablingRemoving_(item)]]"
         should-disallow-enabling="[[shouldDisallowEnabling_(item)]]"
-        guid="[[guid]]"
-        item-index="[[index]]"
-        list-size="[[apns_.length]]"
-        portal-state="[[portalState]]">
+        guid="[[guid]]">
     </apn-list-item>
   </template>
 </iron-list>
@@ -105,15 +104,7 @@
   <apn-detail-dialog id="apnDetailDialog"
       mode="[[apnDetailDialogMode_]]"
       guid="[[guid]]"
-      apn-list="[[getCustomApnList_(managedCellularProperties)]]"
+      apn-list="[[getCustomApns_(managedCellularProperties)]]"
       on-close="onApnDetailDialogClose_">
   </apn-detail-dialog>
-</template>
-
-<template is="dom-if" if="[[shouldShowApnSelectionDialog_]]" restamp>
-  <apn-selection-dialog
-      guid="[[guid]]"
-      apn-list="[[getValidDatabaseApnList_(managedCellularProperties)]]"
-      on-close="onApnSelectionDialogClose_">
-  </apn-selection-dialog>
 </template>

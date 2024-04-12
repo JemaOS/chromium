@@ -132,9 +132,10 @@ void NtpBackgroundHandler::HandleSetBackground(const base::Value::List& args) {
 
   switch (background_index) {
     case static_cast<int>(NtpBackgrounds::kArt):
-      service->SetCustomBackgroundInfo(NtpBackgrounds[background_index], GURL(),
-                                       "Universe Cosmic Vacum",
-                                       "Philipp Rietz — Walli", GURL(), "");
+      service->SetCustomBackgroundInfo(
+          NtpBackgrounds[background_index], GURL(), "Universe Cosmic Vacum",
+          "Philipp Rietz — Walli",
+          GURL("https://walli.shanga.co/image/view/?id=370"), "");
       break;
     case static_cast<int>(NtpBackgrounds::kCityscape):
       service->SetCustomBackgroundInfo(
@@ -154,9 +155,10 @@ void NtpBackgroundHandler::HandleSetBackground(const base::Value::List& args) {
           "", GURL("https://www.google.com/sky/"), "");
       break;
     case static_cast<int>(NtpBackgrounds::kGeometricShapes):
-      service->SetCustomBackgroundInfo(NtpBackgrounds[background_index], GURL(),
-                                       "Tessellation 15", "Justin Prno — Walli",
-                                       GURL(), "");
+      service->SetCustomBackgroundInfo(
+          NtpBackgrounds[background_index], GURL(), "Tessellation 15",
+          "Justin Prno — Walli",
+          GURL("https://walli.shanga.co/image/view/?id=1375"), "");
       break;
     case static_cast<int>(NtpBackgrounds::kLandscape):
       service->SetCustomBackgroundInfo(

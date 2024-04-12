@@ -33,12 +33,21 @@ void SaveUpdateAddressProfileFlowManager::OfferSave(
   if (save_update_address_profile_message_controller_.IsMessageDisplayed() ||
       save_update_address_profile_prompt_controller_) {
     std::move(callback).Run(
-        AutofillClient::AddressPromptUserDecision::kAutoDeclined, std::nullopt);
+        AutofillClient::SaveAddressProfileOfferUserDecision::kAutoDeclined,
+        profile);
     return;
   }
 
-  ShowConfirmationMessage(web_contents, profile, original_profile,
-                          is_migration_to_account, std::move(callback));
+  if (base::FeatureList::IsEnabled(
+          messages::kMessagesForAndroidInfrastructure)) {
+    ShowConfirmationMessage(web_contents, profile, original_profile,
+                            is_migration_to_account, std::move(callback));
+  } else {
+    // Fallback to the default behavior without confirmation.
+    std::move(callback).Run(
+        AutofillClient::SaveAddressProfileOfferUserDecision::kUserNotAsked,
+        profile);
+  }
 }
 
 SaveUpdateAddressProfileMessageController*

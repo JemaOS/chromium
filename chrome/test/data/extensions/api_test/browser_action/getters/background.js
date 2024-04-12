@@ -5,8 +5,7 @@
 chrome.browserAction.setBadgeBackgroundColor({color: [255, 0, 0, 255]});
 chrome.browserAction.setBadgeText({text: 'Text'});
 
-chrome.tabs.query({active: true}, function(tabs) {
-  const tab = tabs[0];
+chrome.tabs.getSelected(null, function(tab) {
   chrome.browserAction.setPopup({tabId: tab.id, popup: 'newPopup.html'});
   chrome.browserAction.setTitle({tabId: tab.id, title: 'newTitle'});
   chrome.browserAction.setBadgeBackgroundColor({

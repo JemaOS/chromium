@@ -6,6 +6,7 @@
 
 #include "base/time/time.h"
 #include "chrome/browser/performance_manager/decorators/page_aggregator.h"
+#include "chrome/browser/performance_manager/decorators/page_live_state_decorator_delegate_impl.h"
 #include "chrome/browser/performance_manager/policies/page_discarding_helper.h"
 #include "components/performance_manager/decorators/freezing_vote_decorator.h"
 #include "components/performance_manager/freezing/freezing_vote_aggregator.h"
@@ -25,14 +26,13 @@ LenientMockPageDiscarder::~LenientMockPageDiscarder() = default;
 void LenientMockPageDiscarder::DiscardPageNodes(
     const std::vector<const PageNode*>& page_nodes,
     ::mojom::LifecycleUnitDiscardReason discard_reason,
-    base::OnceCallback<void(const std::vector<DiscardEvent>&)>
-        post_discard_cb) {
-  std::vector<DiscardEvent> discard_events;
+    base::OnceCallback<void(bool)> post_discard_cb) {
+  bool result = false;
   for (auto* node : page_nodes) {
     if (DiscardPageNodeImpl(node))
-      discard_events.emplace_back(base::TimeTicks::Now(), 0);
+      result = true;
   }
-  std::move(post_discard_cb).Run(std::move(discard_events));
+  std::move(post_discard_cb).Run(result);
 }
 
 GraphTestHarnessWithMockDiscarder::GraphTestHarnessWithMockDiscarder()
@@ -56,7 +56,8 @@ void GraphTestHarnessWithMockDiscarder::SetUp() {
   mock_discarder_ = mock_discarder.get();
 
   // The discarding logic relies on the existence of the page live state data.
-  graph()->PassToGraph(std::make_unique<PageLiveStateDecorator>());
+  graph()->PassToGraph(std::make_unique<PageLiveStateDecorator>(
+      PageLiveStateDelegateImpl::Create()));
 
   // Create the helper and pass it to the graph.
   auto page_discarding_helper =
@@ -76,6 +77,7 @@ void GraphTestHarnessWithMockDiscarder::SetUp() {
   page_node_ = CreateNode<performance_manager::PageNodeImpl>();
   main_frame_node_ =
       CreateFrameNodeAutoId(process_node_.get(), page_node_.get());
+  main_frame_node_->SetIsCurrent(true);
   MakePageNodeDiscardable(page_node(), task_env());
 }
 
@@ -95,9 +97,8 @@ void MakePageNodeDiscardable(PageNodeImpl* page_node,
   page_node->SetIsVisible(false);
   page_node->SetIsAudible(false);
   const auto kUrl = GURL("https://foo.com");
-  page_node->OnMainFrameNavigationCommitted(
-      false, base::TimeTicks::Now(), 42, kUrl, "text/html",
-      /*notification_permission_status=*/blink::mojom::PermissionStatus::ASK);
+  page_node->OnMainFrameNavigationCommitted(false, base::TimeTicks::Now(), 42,
+                                            kUrl, "text/html");
   (*page_node->main_frame_nodes().begin())->OnNavigationCommitted(kUrl, false);
   task_env.FastForwardBy(base::Minutes(10));
   const auto* helper =

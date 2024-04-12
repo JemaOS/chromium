@@ -50,7 +50,8 @@ class TextTrackList;
 
 using TextTrackMode = V8TextTrackMode::Enum;
 
-class CORE_EXPORT TextTrack : public EventTarget, public TrackBase {
+class CORE_EXPORT TextTrack : public EventTargetWithInlineData,
+                              public TrackBase {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
@@ -65,7 +66,7 @@ class CORE_EXPORT TextTrack : public EventTarget, public TrackBase {
   ~TextTrack() override;
 
   virtual void SetTrackList(TextTrackList*);
-  TextTrackList* TrackList() { return track_list_.Get(); }
+  TextTrackList* TrackList() { return track_list_; }
 
   bool IsVisualKind() const;
   bool IsSpokenKind() const;

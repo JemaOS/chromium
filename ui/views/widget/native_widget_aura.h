@@ -76,7 +76,6 @@ class VIEWS_EXPORT NativeWidgetAura : public internal::NativeWidgetPrivate,
   // internal::NativeWidgetPrivate:
   void InitNativeWidget(Widget::InitParams params) override;
   void OnWidgetInitDone() override;
-  void ReparentNativeViewImpl(gfx::NativeView new_parent) override;
   std::unique_ptr<NonClientFrameView> CreateNonClientFrameView() override;
   bool ShouldUseNativeFrame() const override;
   bool ShouldWindowContentsBeTransparent() const override;
@@ -164,6 +163,7 @@ class VIEWS_EXPORT NativeWidgetAura : public internal::NativeWidgetPrivate,
   void SetVisibilityAnimationDuration(const base::TimeDelta& duration) override;
   void SetVisibilityAnimationTransition(
       Widget::VisibilityTransition transition) override;
+  bool IsTranslucentWindowOpacitySupported() const override;
   ui::GestureRecognizer* GetGestureRecognizer() override;
   ui::GestureConsumer* GetGestureConsumer() override;
   void OnSizeConstraintsChanged() override;
@@ -240,13 +240,6 @@ class VIEWS_EXPORT NativeWidgetAura : public internal::NativeWidgetPrivate,
 
  private:
   void SetInitialFocus(ui::WindowShowState show_state);
-
-  // Set the bounds with target 'display_id'. This will place the widget in that
-  // 'display' even if the more than half of bounds are outside of the display.
-  // If the 'display_id' is nullopt or the display does not exist, it will use
-  // the display that matches 'bounds'.
-  void SetBoundsInternal(const gfx::Rect& bounds,
-                         std::optional<int64_t> display_id);
 
   base::WeakPtr<internal::NativeWidgetDelegate> delegate_;
   std::unique_ptr<internal::NativeWidgetDelegate> owned_delegate_;

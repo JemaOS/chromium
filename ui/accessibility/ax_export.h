@@ -8,13 +8,24 @@
 // Defines AX_EXPORT so that functionality implemented by the
 // ui/accessibility module can be exported to consumers.
 
-#if defined(COMPONENT_BUILD) && defined(WIN32) && defined(AX_IMPLEMENTATION)
+#if defined(COMPONENT_BUILD)
+#if defined(WIN32)
+
+#if defined(AX_IMPLEMENTATION)
 #define AX_EXPORT __declspec(dllexport)
-#elif defined(COMPONENT_BUILD) && defined(WIN32)
+#else
 #define AX_EXPORT __declspec(dllimport)
-#elif defined(COMPONENT_BUILD) && !defined(WIN32) && defined(AX_IMPLEMENTATION)
+#endif  // defined(ACCESSIBILITY_IMPLEMENTATION)
+
+#else  // defined(WIN32)
+#if defined(AX_IMPLEMENTATION)
 #define AX_EXPORT __attribute__((visibility("default")))
 #else
+#define AX_EXPORT
+#endif
+#endif
+
+#else  // defined(COMPONENT_BUILD)
 #define AX_EXPORT
 #endif
 

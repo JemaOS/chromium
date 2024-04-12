@@ -31,7 +31,6 @@ class SendTabToSelfClientService : public KeyedService,
   SendTabToSelfClientService(const SendTabToSelfClientService&) = delete;
   SendTabToSelfClientService& operator=(const SendTabToSelfClientService&) =
       delete;
-  ~SendTabToSelfClientService() override;
 
   void Shutdown() override;
 
@@ -47,6 +46,7 @@ class SendTabToSelfClientService : public KeyedService,
   void EntriesRemovedRemotely(const std::vector<std::string>& guids) override;
 
  protected:
+  ~SendTabToSelfClientService() override;
 
   // Sets up the ReceivingUiHandlerRegistry.
   virtual void SetupHandlerRegistry(Profile* profile);

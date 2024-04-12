@@ -43,7 +43,7 @@
 
 namespace blink {
 
-Event::Event() : Event(g_empty_atom, Bubbles::kNo, Cancelable::kNo) {
+Event::Event() : Event("", Bubbles::kNo, Cancelable::kNo) {
   was_initialized_ = false;
 }
 
@@ -289,12 +289,25 @@ void Event::InitEventPath(Node& node) {
   }
 }
 
-void Event::SetHandlingPassive(PassiveMode mode) {
-  handling_passive_ = mode;
+ScriptValue Event::path(ScriptState* script_state) const {
+  Deprecation::CountDeprecation(ExecutionContext::From(script_state),
+                                WebFeature::kEventPath);
+  return ScriptValue(
+      script_state->GetIsolate(),
+      ToV8(PathInternal(script_state, kNonEmptyAfterDispatch), script_state));
 }
 
 HeapVector<Member<EventTarget>> Event::composedPath(
     ScriptState* script_state) const {
+  return PathInternal(script_state, kEmptyAfterDispatch);
+}
+
+void Event::SetHandlingPassive(PassiveMode mode) {
+  handling_passive_ = mode;
+}
+
+HeapVector<Member<EventTarget>> Event::PathInternal(ScriptState* script_state,
+                                                    EventPathMode mode) const {
   if (!current_target_) {
     DCHECK_EQ(Event::PhaseType::kNone, event_phase_);
     if (!event_path_) {
@@ -303,7 +316,10 @@ HeapVector<Member<EventTarget>> Event::composedPath(
     }
     DCHECK(!event_path_->IsEmpty());
     // After dispatching the event
-    return HeapVector<Member<EventTarget>>();
+    if (mode == kEmptyAfterDispatch)
+      return HeapVector<Member<EventTarget>>();
+    return event_path_->Last().GetTreeScopeEventContext().EnsureEventPath(
+        *event_path_);
   }
 
   if (Node* node = current_target_->ToNode()) {

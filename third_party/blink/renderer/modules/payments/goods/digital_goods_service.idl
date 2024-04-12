@@ -17,5 +17,5 @@
   Promise<sequence<PurchaseDetails>> listPurchaseHistory();
 
   [CallWith=ScriptState, MeasureAs=DigitalGoodsConsume]
-  Promise<undefined> consume(DOMString purchaseToken);
+  Promise<void> consume(DOMString purchaseToken);
 };

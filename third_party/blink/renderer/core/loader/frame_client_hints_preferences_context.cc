@@ -4,8 +4,7 @@
 
 #include "third_party/blink/renderer/core/loader/frame_client_hints_preferences_context.h"
 
-#include <algorithm>
-
+#include "base/cxx17_backports.h"
 #include "base/no_destructor.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "services/network/public/cpp/client_hints.h"
@@ -57,6 +56,8 @@ ClientHintToWebFeatureMap MakeClientHintToWebFeatureMap() {
        WebFeature::kClientHintsPrefersColorScheme},
       {network::mojom::WebClientHintsType::kUABitness,
        WebFeature::kClientHintsUABitness},
+      {network::mojom::WebClientHintsType::kUAReduced,
+       WebFeature::kClientHintsUAReduced},
       {network::mojom::WebClientHintsType::kViewportHeight,
        WebFeature::kClientHintsViewportHeight},
       {network::mojom::WebClientHintsType::kDeviceMemory,
@@ -68,16 +69,14 @@ ClientHintToWebFeatureMap MakeClientHintToWebFeatureMap() {
        WebFeature::kClientHintsViewportWidth},
       {network::mojom::WebClientHintsType::kUAFullVersionList,
        WebFeature::kClientHintsUAFullVersionList},
+      {network::mojom::WebClientHintsType::kFullUserAgent,
+       WebFeature::kClientHintsUAFull},
       {network::mojom::WebClientHintsType::kUAWoW64,
        WebFeature::kClientHintsUAWoW64},
       {network::mojom::WebClientHintsType::kSaveData,
        WebFeature::kClientHintsSaveData},
       {network::mojom::WebClientHintsType::kPrefersReducedMotion,
        WebFeature::kClientHintsPrefersReducedMotion},
-      {network::mojom::WebClientHintsType::kUAFormFactors,
-       WebFeature::kClientHintsUAFormFactors},
-      {network::mojom::WebClientHintsType::kPrefersReducedTransparency,
-       WebFeature::kClientHintsPrefersReducedTransparency},
   };
 }
 

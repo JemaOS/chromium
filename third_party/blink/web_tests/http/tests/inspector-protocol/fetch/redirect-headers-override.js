@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {session, dp} = await testRunner.startBlank(
       `Tests overridden headers don't stick across redirects`);
 
@@ -19,8 +19,7 @@
     ]
   });
   const afterRedirect = (await dp.Fetch.onceRequestPaused()).params;
-  const stabilizeNames = [...TestRunner.stabilizeNames, 'User-Agent'];
-  testRunner.log(afterRedirect.request.headers, 'Redirected request headers:', stabilizeNames);
+  testRunner.log(afterRedirect.request.headers);
   dp.Fetch.continueRequest({
     requestId: afterRedirect.requestId,
   });

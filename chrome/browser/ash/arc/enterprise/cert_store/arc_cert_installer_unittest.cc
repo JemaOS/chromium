@@ -84,7 +84,7 @@ void AddCert(const std::string& cn, std::vector<CertDescription>* certs) {
       key->key(), net::x509_util::DIGEST_SHA256, cn, 1, base::Time::UnixEpoch(),
       base::Time::UnixEpoch(), {}, &der_cert));
   cert = net::x509_util::CreateCERTCertificateFromBytes(
-      base::as_byte_span(der_cert));
+      reinterpret_cast<const uint8_t*>(der_cert.data()), der_cert.size());
   ASSERT_TRUE(cert);
   certs->emplace_back(key.release(), cert.release(),
                       keymanagement::mojom::ChapsSlot::kUser, kLabel, kId);
@@ -155,10 +155,10 @@ class ArcCertInstallerTest : public testing::Test {
   const std::unique_ptr<arc::ArcServiceManager> arc_service_manager_;
   std::unique_ptr<arc::ArcSessionManager> arc_session_manager_;
   const std::unique_ptr<TestingProfile> profile_;
-  raw_ptr<arc::ArcPolicyBridge> arc_policy_bridge_;
+  raw_ptr<arc::ArcPolicyBridge, ExperimentalAsh> arc_policy_bridge_;
   std::unique_ptr<arc::MockPolicyInstance> policy_instance_;
 
-  raw_ptr<policy::RemoteCommandsQueue, DanglingUntriaged> queue_;
+  raw_ptr<policy::RemoteCommandsQueue, ExperimentalAsh> queue_;
   std::unique_ptr<ArcCertInstaller> installer_;
   MockRemoteCommandsQueueObserver observer_;
 };

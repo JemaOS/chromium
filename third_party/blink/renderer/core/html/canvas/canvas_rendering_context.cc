@@ -45,18 +45,7 @@ CanvasRenderingContext::CanvasRenderingContext(
       host_(host),
       color_params_(attrs.color_space, attrs.pixel_format, attrs.alpha),
       creation_attributes_(attrs),
-      canvas_rendering_type_(canvas_rendering_API) {
-  // The following check is for investigating crbug.com/1470622
-  // If the crash stops happening in CanvasRenderingContext2D::
-  // GetOrCreatePaintCanvas(), and starts happening here instead,
-  // then we'll know that the bug is related to creation and the
-  // new crash reports pointing to this location will provide more
-  // actionable feedback on how to fix the issue. If the crash
-  // continues to happen at the old location, then we'll know that
-  // the problem has to do with a pre-finalizer being called
-  // prematurely.
-  CHECK(host_);
-}
+      canvas_rendering_type_(canvas_rendering_API) {}
 
 SkColorInfo CanvasRenderingContext::CanvasRenderingContextSkColorInfo() const {
   return SkColorInfo(kN32_SkColorType, kPremul_SkAlphaType,
@@ -72,8 +61,8 @@ void CanvasRenderingContext::Dispose() {
   // the other in order to break the circular reference.  This is to avoid
   // an error when CanvasRenderingContext::DidProcessTask() is invoked
   // after the HTMLCanvasElement is destroyed.
-  if (CanvasRenderingContextHost* host = Host(); LIKELY(host != nullptr)) {
-    host->DetachContext();
+  if (Host()) {
+    Host()->DetachContext();
     host_ = nullptr;
   }
 }
@@ -85,8 +74,7 @@ NoAllocDirectCallHost* CanvasRenderingContext::AsNoAllocDirectCallHost() {
 void CanvasRenderingContext::DidDraw(
     const SkIRect& dirty_rect,
     CanvasPerformanceMonitor::DrawType draw_type) {
-  CanvasRenderingContextHost* const host = Host();
-  host->DidDraw(dirty_rect);
+  Host()->DidDraw(dirty_rect);
 
   auto& monitor = GetCanvasPerformanceMonitor();
   monitor.DidDraw(draw_type);
@@ -98,7 +86,7 @@ void CanvasRenderingContext::DidDraw(
   // We need to store whether the document is being printed because the
   // document may exit printing state by the time DidProcessTask is called.
   // This is an issue with beforeprint event listeners.
-  did_print_in_current_task_ |= host->IsPrinting();
+  did_print_in_current_task_ |= Host()->IsPrinting();
   Thread::Current()->AddTaskObserver(this);
 }
 
@@ -108,29 +96,27 @@ void CanvasRenderingContext::DidProcessTask(
 
   // The end of a script task that drew content to the canvas is the point
   // at which the current frame may be considered complete.
-  if (CanvasRenderingContextHost* host = Host(); LIKELY(host != nullptr)) {
-    host->PreFinalizeFrame();
-  }
-  FlushReason reason = did_print_in_current_task_
-                           ? FlushReason::kCanvasPushFrameWhilePrinting
-                           : FlushReason::kCanvasPushFrame;
+  if (Host())
+    Host()->PreFinalizeFrame();
+  CanvasResourceProvider::FlushReason reason =
+      did_print_in_current_task_
+          ? CanvasResourceProvider::FlushReason::kCanvasPushFrameWhilePrinting
+          : CanvasResourceProvider::FlushReason::kCanvasPushFrame;
   FinalizeFrame(reason);
   did_print_in_current_task_ = false;
-  if (CanvasRenderingContextHost* host = Host(); LIKELY(host != nullptr)) {
-    host->PostFinalizeFrame(reason);
-  }
+  if (Host())
+    Host()->PostFinalizeFrame(reason);
 }
 
 void CanvasRenderingContext::RecordUMACanvasRenderingAPI() {
-  const CanvasRenderingContextHost* const host = Host();
   if (auto* window =
-          DynamicTo<LocalDOMWindow>(host->GetTopExecutionContext())) {
+          DynamicTo<LocalDOMWindow>(Host()->GetTopExecutionContext())) {
     WebFeature feature;
-    if (host->IsOffscreenCanvas()) {
+    if (Host()->IsOffscreenCanvas()) {
       switch (canvas_rendering_type_) {
         default:
           NOTREACHED();
-          [[fallthrough]];
+          U_FALLTHROUGH;
         case CanvasRenderingContext::CanvasRenderingAPI::k2D:
           feature = WebFeature::kOffscreenCanvas_2D;
           break;
@@ -151,7 +137,7 @@ void CanvasRenderingContext::RecordUMACanvasRenderingAPI() {
       switch (canvas_rendering_type_) {
         default:
           NOTREACHED();
-          [[fallthrough]];
+          U_FALLTHROUGH;
         case CanvasRenderingContext::CanvasRenderingAPI::k2D:
           feature = WebFeature::kHTMLCanvasElement_2D;
           break;
@@ -174,10 +160,9 @@ void CanvasRenderingContext::RecordUMACanvasRenderingAPI() {
 }
 
 void CanvasRenderingContext::RecordUKMCanvasRenderingAPI() {
-  CanvasRenderingContextHost* const host = Host();
-  DCHECK(host);
-  const auto& ukm_params = host->GetUkmParameters();
-  if (host->IsOffscreenCanvas()) {
+  DCHECK(Host());
+  const auto& ukm_params = Host()->GetUkmParameters();
+  if (Host()->IsOffscreenCanvas()) {
     ukm::builders::ClientRenderingAPI(ukm_params.source_id)
         .SetOffscreenCanvas_RenderingContext(
             static_cast<int>(canvas_rendering_type_))
@@ -190,10 +175,9 @@ void CanvasRenderingContext::RecordUKMCanvasRenderingAPI() {
 }
 
 void CanvasRenderingContext::RecordUKMCanvasDrawnToRenderingAPI() {
-  CanvasRenderingContextHost* const host = Host();
-  DCHECK(host);
-  const auto& ukm_params = host->GetUkmParameters();
-  if (host->IsOffscreenCanvas()) {
+  DCHECK(Host());
+  const auto& ukm_params = Host()->GetUkmParameters();
+  if (Host()->IsOffscreenCanvas()) {
     ukm::builders::ClientRenderingAPI(ukm_params.source_id)
         .SetOffscreenCanvas_RenderingContextDrawnTo(
             static_cast<int>(canvas_rendering_type_))
@@ -207,26 +191,39 @@ void CanvasRenderingContext::RecordUKMCanvasDrawnToRenderingAPI() {
 }
 
 CanvasRenderingContext::CanvasRenderingAPI
-CanvasRenderingContext::RenderingAPIFromId(const String& id) {
-  if (id == "2d") {
+CanvasRenderingContext::RenderingAPIFromId(
+    const String& id,
+    const ExecutionContext* execution_context) {
+  if (id == "2d")
     return CanvasRenderingAPI::k2D;
-  }
-  if (id == "experimental-webgl") {
+  if (id == "experimental-webgl")
     return CanvasRenderingAPI::kWebgl;
-  }
-  if (id == "webgl") {
+  if (id == "webgl")
     return CanvasRenderingAPI::kWebgl;
-  }
-  if (id == "webgl2") {
+  if (id == "webgl2")
     return CanvasRenderingAPI::kWebgl2;
-  }
-  if (id == "bitmaprenderer") {
+  if (id == "bitmaprenderer")
     return CanvasRenderingAPI::kBitmaprenderer;
-  }
-  if (id == "webgpu") {
+  if ((id == "webgpu") &&
+      RuntimeEnabledFeatures::WebGPUEnabled(execution_context))
     return CanvasRenderingAPI::kWebgpu;
-  }
   return CanvasRenderingAPI::kUnknown;
+}
+
+bool CanvasRenderingContext::WouldTaintOrigin(CanvasImageSource* image_source) {
+  // Don't taint the canvas on data URLs. This special case is needed here
+  // because CanvasImageSource::WouldTaintOrigin() can return false for data
+  // URLs due to restrictions on SVG foreignObject nodes as described in
+  // https://crbug.com/294129.
+  // TODO(crbug.com/294129): Remove the restriction on foreignObject nodes, then
+  // this logic isn't needed, CanvasImageSource::SourceURL() isn't needed, and
+  // this function can just be image_source->WouldTaintOrigin().
+  const KURL& source_url = image_source->SourceURL();
+  const bool has_url = (source_url.IsValid() && !source_url.IsAboutBlankURL());
+  if (has_url && source_url.ProtocolIsData())
+    return false;
+
+  return image_source->WouldTaintOrigin();
 }
 
 void CanvasRenderingContext::Trace(Visitor* visitor) const {

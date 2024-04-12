@@ -7,7 +7,6 @@
 #include <tuple>
 #include <utility>
 
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/frame/browser_non_client_frame_view.h"
 #include "chrome/browser/ui/views/tabs/tab_group_header.h"
@@ -136,15 +135,27 @@ SkColor TabGroupViews::GetGroupColor() const {
       tab_slot_controller_->GetGroupColorId(group_));
 }
 
+SkColor TabGroupViews::GetTabBackgroundColor() const {
+  return tab_slot_controller_->GetTabBackgroundColor(
+      TabActive::kInactive, BrowserFrameActiveState::kUseCurrent);
+}
+
+SkColor TabGroupViews::GetGroupBackgroundColor() const {
+  const SkColor active_color = tab_slot_controller_->GetTabBackgroundColor(
+      TabActive::kActive, BrowserFrameActiveState::kUseCurrent);
+  return SkColorSetA(active_color, gfx::Tween::IntValueBetween(
+                                       style_->GetSelectedTabOpacity(),
+                                       SK_AlphaTRANSPARENT, SK_AlphaOPAQUE));
+}
+
 bool TabGroupViews::InTearDown() const {
   return !header_ || !header_->GetWidget() || !drag_underline_->GetWidget();
 }
 
 std::tuple<const views::View*, const views::View*>
 TabGroupViews::GetLeadingTrailingGroupViews() const {
-  std::vector<raw_ptr<views::View, VectorExperimental>> children =
-      underline_->parent()->children();
-  std::vector<raw_ptr<views::View, VectorExperimental>> dragged_children =
+  std::vector<views::View*> children = underline_->parent()->children();
+  std::vector<views::View*> dragged_children =
       drag_underline_->parent()->children();
   children.insert(children.end(), dragged_children.begin(),
                   dragged_children.end());
@@ -158,7 +169,7 @@ TabGroupViews::GetLeadingTrailingDraggedGroupViews() const {
 
 std::tuple<views::View*, views::View*>
 TabGroupViews::GetLeadingTrailingGroupViews(
-    std::vector<raw_ptr<views::View, VectorExperimental>> children) const {
+    std::vector<views::View*> children) const {
   // Elements of |children| may be in different coordinate spaces. Canonicalize
   // to widget space for comparison, since they will be in the same widget.
   views::View* leading_child = nullptr;

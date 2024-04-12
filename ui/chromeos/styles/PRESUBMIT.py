@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 PRESUBMIT_VERSION = '2.0.0'
+USE_PYTHON3 = True
 
 TEST_PATTERNS = [r'.+_test.py$']
 # Regex patterns which identify all source json5 files we currently use in
@@ -37,7 +38,9 @@ def CheckCrosColorCSS(input_api, output_api):
             input_api,
             output_api,
             '.',
-            files_to_check=TEST_PATTERNS)
+            files_to_check=TEST_PATTERNS,
+            run_on_python2=False,
+            skip_shebang_check=True)
     finally:
         sys.path = old_sys_path
     return results

@@ -71,11 +71,10 @@ class MODULES_EXPORT StorageController : public mojom::blink::DomStorageClient {
 
   // Methods that delegate to the internal StorageNamespace used for
   // LocalStorage:
+
   scoped_refptr<CachedStorageArea> GetLocalStorageArea(
       LocalDOMWindow* local_dom_window,
-      mojo::PendingRemote<mojom::blink::StorageArea> local_storage_area = {},
-      StorageNamespace::StorageContext context =
-          StorageNamespace::StorageContext::kStandard);
+      mojo::PendingRemote<mojom::blink::StorageArea> local_storage_area = {});
   void AddLocalStorageInspectorStorageAgent(InspectorDOMStorageAgent* agent);
   void RemoveLocalStorageInspectorStorageAgent(InspectorDOMStorageAgent* agent);
 

@@ -24,13 +24,13 @@ class PrintingHooksDelegate : public APIBindingHooksDelegate {
       const std::string& method_name,
       const APISignature* signature,
       v8::Local<v8::Context> context,
-      v8::LocalVector<v8::Value>* arguments,
+      std::vector<v8::Local<v8::Value>>* arguments,
       const APITypeReferenceMap& refs) override;
 
  private:
   APIBindingHooks::RequestResult HandleSubmitJob(
       v8::Isolate* isolate,
-      v8::LocalVector<v8::Value>* arguments);
+      std::vector<v8::Local<v8::Value>>* arguments);
 };
 
 }  // namespace extensions

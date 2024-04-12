@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://webui-test/chromeos/mojo_webui_test_support.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 import 'chrome://nearby/shared/nearby_page_template.js';
 
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
@@ -15,7 +15,7 @@ suite('nearby-page-template', function() {
   let element;
 
   setup(function() {
-    document.body.innerHTML = trustedTypes.emptyHTML;
+    document.body.innerHTML = '';
 
     element = /** @type {!NearbyPageTemplateElement} */ (
         document.createElement('nearby-page-template'));

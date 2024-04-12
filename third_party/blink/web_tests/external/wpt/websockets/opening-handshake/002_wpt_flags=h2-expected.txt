@@ -1,5 +1,4 @@
 This is a testharness.js-based test.
-[FAIL] WebSockets: valid handshake
-  assert_unreached: Reached unreachable code
+FAIL WebSockets: valid handshake assert_unreached: Reached unreachable code
 Harness: the test ran to completion.
 

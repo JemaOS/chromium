@@ -14,7 +14,7 @@
 namespace blink {
 
 // static
-ScriptPromiseTyped<IDLUndefined> InternalsDeleteAllCookies::deleteAllCookies(
+ScriptPromise InternalsDeleteAllCookies::deleteAllCookies(
     ScriptState* script_state,
     Internals&) {
   LocalDOMWindow* window = LocalDOMWindow::From(script_state);
@@ -23,15 +23,14 @@ ScriptPromiseTyped<IDLUndefined> InternalsDeleteAllCookies::deleteAllCookies(
       cookie_manager.BindNewPipeAndPassReceiver());
   DCHECK(cookie_manager.is_bound());
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state);
-  auto promise = resolver->Promise();
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
   // Get the interface so `cookie_manager` can be moved below.
   test::mojom::blink::CookieManagerAutomation* raw_cookie_manager =
       cookie_manager.get();
   raw_cookie_manager->DeleteAllCookies(WTF::BindOnce(
-      [](ScriptPromiseResolverTyped<IDLUndefined>* resolver,
+      [](ScriptPromiseResolver* resolver,
          mojo::Remote<test::mojom::blink::CookieManagerAutomation>) {
         resolver->Resolve();
       },

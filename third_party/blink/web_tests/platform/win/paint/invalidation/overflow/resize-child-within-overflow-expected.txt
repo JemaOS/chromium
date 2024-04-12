@@ -12,14 +12,12 @@
     {
       "name": "HorizontalScrollbar",
       "position": [0, 585],
-      "bounds": [785, 15],
-      "contentsOpaque": true
+      "bounds": [785, 15]
     },
     {
       "name": "VerticalScrollbar",
       "position": [785, 0],
-      "bounds": [15, 585],
-      "contentsOpaque": true
+      "bounds": [15, 585]
     },
     {
       "name": "Scroll corner of LayoutView #document",

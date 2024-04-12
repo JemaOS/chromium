@@ -7,7 +7,6 @@
 
 #include <windows.h>
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -16,6 +15,7 @@
 #include "base/process/process.h"
 #include "chrome/updater/updater_scope.h"
 #include "chrome/updater/util/win_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace updater {
 
@@ -68,10 +68,10 @@ class AppCommandRunner {
   // `parameter` is replaced with substitutions[N - 1]. Any literal `%` needs to
   // be escaped with a `%`.
   //
-  // Returns `std::nullopt` if:
+  // Returns `absl::nullopt` if:
   // * a placeholder %N is encountered where N > substitutions.size().
   // * a literal `%` is not escaped with a `%`.
-  static std::optional<std::wstring> FormatParameter(
+  static absl::optional<std::wstring> FormatParameter(
       const std::wstring& parameter,
       const std::vector<std::wstring>& substitutions);
 
@@ -84,10 +84,10 @@ class AppCommandRunner {
   // parameter will be interpreted as a single command-line parameter according
   // to the rules for ::CommandLineToArgvW.
   //
-  // Returns `std::nullopt` if:
+  // Returns `absl::nullopt` if:
   // * a placeholder %N is encountered where N > substitutions.size().
   // * a literal `%` is not escaped with a `%`.
-  static std::optional<std::wstring> FormatAppCommandLine(
+  static absl::optional<std::wstring> FormatAppCommandLine(
       const std::vector<std::wstring>& parameters,
       const std::vector<std::wstring>& substitutions);
 
@@ -101,14 +101,15 @@ class AppCommandRunner {
   base::FilePath executable_;
   std::vector<std::wstring> parameters_;
 
-  FRIEND_TEST_ALL_PREFIXES(AppCommandFormatComponentsInvalidPathsTest,
-                           TestCases);
-  FRIEND_TEST_ALL_PREFIXES(AppCommandFormatComponentsProgramFilesPathsTest,
-                           TestCases);
-  FRIEND_TEST_ALL_PREFIXES(AppCommandFormatParameterTest, TestCases);
-  FRIEND_TEST_ALL_PREFIXES(AppCommandFormatComponentsAndCommandLineTest,
-                           TestCases);
-  FRIEND_TEST_ALL_PREFIXES(AppCommandExecuteTest, TestCases);
+  FRIEND_TEST_ALL_PREFIXES(AppCommandRunnerTest,
+                           GetAppCommandFormatComponents_InvalidPaths);
+  FRIEND_TEST_ALL_PREFIXES(AppCommandRunnerTest,
+                           GetAppCommandFormatComponents_ProgramFilesPaths);
+  FRIEND_TEST_ALL_PREFIXES(AppCommandRunnerTest, FormatParameter);
+  FRIEND_TEST_ALL_PREFIXES(
+      AppCommandRunnerTest,
+      GetAppCommandFormatComponents_And_FormatAppCommandLine);
+  FRIEND_TEST_ALL_PREFIXES(AppCommandRunnerTest, ExecuteAppCommand);
 };
 
 }  // namespace updater

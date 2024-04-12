@@ -87,8 +87,6 @@ CupsReason PrinterReasonToCupsReason(const ReasonFromPrinter& reason) {
       return CupsReason::kTrayMissing;
     case ReasonFromPrinter::kUnknownReason:
       return CupsReason::kUnknownReason;
-    case ReasonFromPrinter::kCupsPkiExpired:
-      return CupsReason::kExpiredCertificate;
   }
 }
 

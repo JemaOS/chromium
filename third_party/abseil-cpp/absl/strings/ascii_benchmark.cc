@@ -14,9 +14,7 @@
 
 #include "absl/strings/ascii.h"
 
-#include <algorithm>
 #include <cctype>
-#include <cstddef>
 #include <string>
 #include <array>
 #include <random>
@@ -105,28 +103,18 @@ static void BM_StrToLower(benchmark::State& state) {
   const int size = state.range(0);
   std::string s(size, 'X');
   for (auto _ : state) {
-    benchmark::DoNotOptimize(s);
-    std::string res = absl::AsciiStrToLower(s);
-    benchmark::DoNotOptimize(res);
+    benchmark::DoNotOptimize(absl::AsciiStrToLower(s));
   }
 }
-BENCHMARK(BM_StrToLower)
-    ->DenseRange(0, 32)
-    ->RangeMultiplier(2)
-    ->Range(64, 1 << 26);
+BENCHMARK(BM_StrToLower)->Range(1, 1 << 20);
 
 static void BM_StrToUpper(benchmark::State& state) {
   const int size = state.range(0);
   std::string s(size, 'x');
   for (auto _ : state) {
-    benchmark::DoNotOptimize(s);
-    std::string res = absl::AsciiStrToUpper(s);
-    benchmark::DoNotOptimize(res);
+    benchmark::DoNotOptimize(absl::AsciiStrToUpper(s));
   }
 }
-BENCHMARK(BM_StrToUpper)
-    ->DenseRange(0, 32)
-    ->RangeMultiplier(2)
-    ->Range(64, 1 << 26);
+BENCHMARK(BM_StrToUpper)->Range(1, 1 << 20);
 
 }  // namespace

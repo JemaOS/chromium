@@ -4,8 +4,6 @@
 
 package org.chromium.chrome.browser.omnibox.suggestions;
 
-import android.annotation.SuppressLint;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -49,33 +47,20 @@ public interface OmniboxSuggestionsDropdownEmbedder {
         public boolean equals(@Nullable Object obj) {
             if (!(obj instanceof OmniboxAlignment)) return false;
             OmniboxAlignment other = (OmniboxAlignment) obj;
-            return other.left == this.left
-                    && other.top == this.top
-                    && other.width == this.width
-                    && other.height == this.height
+            return other.left == this.left && other.top == this.top && other.width == this.width
                     && other.paddingLeft == this.paddingLeft
                     && other.paddingRight == this.paddingRight;
         }
 
-        @SuppressLint("DefaultLocale")
-        @NonNull
-        @Override
-        public String toString() {
-            return String.format(
-                    "OmniboxAlignment left: %d top: %d width: %d height: %d paddingLeft: %d"
-                            + " paddingRight: %d",
-                    left, top, width, height, paddingLeft, paddingRight);
-        }
-
         /**
-         * Returns whether the difference from the given alignment object is solely in terms of left
-         * or padding.
+         * Returns whether the difference from the given alignment object is solely in terms of
+         * left or padding.
          */
         public boolean isOnlyHorizontalDifference(@Nullable OmniboxAlignment other) {
             if (other == null) return false;
             return (this.left != other.left
-                            || this.paddingLeft != other.paddingLeft
-                                    && this.paddingRight != other.paddingRight)
+                           || this.paddingLeft != other.paddingLeft
+                                   && this.paddingRight != other.paddingRight)
                     && (this.top == other.top && this.width == other.width);
         }
 
@@ -96,14 +81,15 @@ public interface OmniboxSuggestionsDropdownEmbedder {
     OmniboxAlignment addAlignmentObserver(Callback<OmniboxAlignment> obs);
 
     /**
-     * Remove an observer of alignment changes. The supplied callback will be no longer invoked when
-     * alignment is recalculated.
+     * Remove an observer of alignment changes. The supplied callback will be no longer invoked
+     * when alignment is recalculated.
      */
     void removeAlignmentObserver(Callback<OmniboxAlignment> obs);
 
     /**
-     * Returns the current alignment values, but does not recalculate them. Will not return null but
-     * may return {@link OmniboxAlignment.UNSPECIFIED} if there is not a currently valid alignment.
+       Returns the current alignment values, but does not recalculate them. Will not return null
+       but may return {@link OmniboxAlignment.UNSPECIFIED} if there is not a currently valid
+       alignment.
      */
     @NonNull
     OmniboxAlignment getCurrentAlignment();

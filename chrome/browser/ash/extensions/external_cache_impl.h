@@ -19,16 +19,13 @@
 #include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/ash/extensions/external_cache.h"
 #include "chrome/browser/extensions/updater/local_extension_cache.h"
+#include "content/public/browser/notification_observer.h"
+#include "content/public/browser/notification_registrar.h"
 #include "extensions/browser/updater/extension_downloader_delegate.h"
 #include "extensions/common/extension_id.h"
 #include "net/base/backoff_entry.h"
 
-namespace content {
-class BrowserContext;
-}
-
 namespace extensions {
-class CrxInstaller;
 class ExtensionDownloader;
 }
 
@@ -42,6 +39,7 @@ class ExternalCacheDelegate;
 
 // The ExternalCacheImpl manages a cache for external extensions.
 class ExternalCacheImpl : public ExternalCache,
+                          public content::NotificationObserver,
                           public extensions::ExtensionDownloaderDelegate {
  public:
   // The |url_loader_factory| is used for update checks. All file I/O is done
@@ -88,7 +86,12 @@ class ExternalCacheImpl : public ExternalCache,
                             const std::string& version,
                             PutExternalExtensionCallback callback) override;
   void SetBackoffPolicy(
-      std::optional<net::BackoffEntry::Policy> backoff_policy) override;
+      absl::optional<net::BackoffEntry::Policy> backoff_policy) override;
+
+  // Implementation of content::NotificationObserver:
+  void Observe(int type,
+               const content::NotificationSource& source,
+               const content::NotificationDetails& details) override;
 
   // Implementation of ExtensionDownloaderDelegate:
   void OnExtensionDownloadFailed(const extensions::ExtensionId& id,
@@ -105,14 +108,10 @@ class ExternalCacheImpl : public ExternalCache,
   bool IsExtensionPending(const extensions::ExtensionId& id) override;
   bool GetExtensionExistingVersion(const extensions::ExtensionId& id,
                                    std::string* version) override;
-  RequestRollbackResult RequestRollback(
-      const extensions::ExtensionId& id) override;
 
   void set_flush_on_put(bool flush_on_put) { flush_on_put_ = flush_on_put; }
 
  private:
-  class AnyInstallFailureObserver;
-
   // Notifies the that the cache has been updated, providing
   // extensions loader with an updated list of extensions.
   void UpdateExtensionLoader();
@@ -141,10 +140,6 @@ class ExternalCacheImpl : public ExternalCache,
   // |local_cache_| and notifies the |delegate_|. This method should be followed
   // by a call to UpdateExtensionLoader().
   void RemoveCachedExtension(const extensions::ExtensionId& id);
-  void OnCrxInstallFailure(content::BrowserContext* context,
-                           const extensions::CrxInstaller& installer);
-
-  std::unique_ptr<AnyInstallFailureObserver> any_install_failure_observer_;
 
   extensions::LocalExtensionCache local_cache_;
 
@@ -155,7 +150,7 @@ class ExternalCacheImpl : public ExternalCache,
   const scoped_refptr<base::SequencedTaskRunner> backend_task_runner_;
 
   // Delegate that would like to get notifications about cache updates.
-  raw_ptr<ExternalCacheDelegate> delegate_;
+  raw_ptr<ExternalCacheDelegate, ExperimentalAsh> delegate_;
 
   // Updates needs to be check for the extensions with external_crx too.
   bool always_check_updates_;
@@ -180,7 +175,10 @@ class ExternalCacheImpl : public ExternalCache,
   std::unique_ptr<extensions::ExtensionDownloader> downloader_;
 
   // Backoff policy of extension downloader.
-  std::optional<net::BackoffEntry::Policy> backoff_policy_;
+  absl::optional<net::BackoffEntry::Policy> backoff_policy_;
+
+  // Observes failures to install CRX files.
+  content::NotificationRegistrar notification_registrar_;
 
   // Used to observe CrosSettings.
   base::CallbackListSubscription kiosk_crx_updates_from_policy_subscription_;

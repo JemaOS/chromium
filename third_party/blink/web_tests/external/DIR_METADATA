@@ -1,4 +1,5 @@
-buganizer_public {
-  component_id: 1456176
+monorail {
+  component: "Blink>Infra>Ecosystem"
 }
 team_email: "ecosystem-infra@chromium.org"
+

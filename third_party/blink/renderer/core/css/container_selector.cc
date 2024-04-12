@@ -15,28 +15,19 @@ ContainerSelector::ContainerSelector(AtomicString name,
   MediaQueryExpNode::FeatureFlags feature_flags = query.CollectFeatureFlags();
 
   if (feature_flags & MediaQueryExpNode::kFeatureInlineSize) {
-    logical_axes_ |= kLogicalAxesInline;
+    logical_axes_ |= kLogicalAxisInline;
   }
   if (feature_flags & MediaQueryExpNode::kFeatureBlockSize) {
-    logical_axes_ |= kLogicalAxesBlock;
+    logical_axes_ |= kLogicalAxisBlock;
   }
   if (feature_flags & MediaQueryExpNode::kFeatureWidth) {
-    physical_axes_ |= kPhysicalAxesHorizontal;
+    physical_axes_ |= kPhysicalAxisHorizontal;
   }
   if (feature_flags & MediaQueryExpNode::kFeatureHeight) {
-    physical_axes_ |= kPhysicalAxesVertical;
+    physical_axes_ |= kPhysicalAxisVertical;
   }
   if (feature_flags & MediaQueryExpNode::kFeatureStyle) {
     has_style_query_ = true;
-  }
-  if (feature_flags & MediaQueryExpNode::kFeatureSticky) {
-    has_sticky_query_ = true;
-  }
-  if (feature_flags & MediaQueryExpNode::kFeatureSnap) {
-    has_snap_query_ = true;
-  }
-  if (feature_flags & MediaQueryExpNode::kFeatureUnknown) {
-    has_unknown_feature_ = true;
   }
 }
 
@@ -45,7 +36,6 @@ unsigned ContainerSelector::GetHash() const {
   WTF::AddIntToHash(hash, physical_axes_.value());
   WTF::AddIntToHash(hash, logical_axes_.value());
   WTF::AddIntToHash(hash, has_style_query_);
-  WTF::AddIntToHash(hash, has_sticky_query_);
   return hash;
 }
 
@@ -55,15 +45,13 @@ unsigned ContainerSelector::Type(WritingMode writing_mode) const {
   LogicalAxes axes =
       logical_axes_ | ToLogicalAxes(physical_axes_, writing_mode);
 
-  if ((axes & kLogicalAxesInline).value()) {
+  if ((axes & kLogicalAxisInline).value()) {
     type |= kContainerTypeInlineSize;
   }
-  if ((axes & kLogicalAxesBlock).value()) {
+  if ((axes & kLogicalAxisBlock).value()) {
     type |= kContainerTypeBlockSize;
   }
-  if (has_sticky_query_ || has_snap_query_) {
-    type |= kContainerTypeScrollState;
-  }
+
   return type;
 }
 

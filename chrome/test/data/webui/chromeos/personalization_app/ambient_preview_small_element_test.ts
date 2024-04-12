@@ -3,8 +3,9 @@
 // found in the LICENSE file.
 
 import 'chrome://personalization/strings.m.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
-import {AmbientObserver, AmbientPreviewSmallElement, PersonalizationRouterElement, TopicSource} from 'chrome://personalization/js/personalization_app.js';
+import {AmbientObserver, AmbientPreviewSmall, PersonalizationRouter, TopicSource} from 'chrome://personalization/js/personalization_app.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
@@ -15,12 +16,12 @@ import {TestAmbientProvider} from './test_ambient_interface_provider.js';
 import {TestPersonalizationStore} from './test_personalization_store.js';
 
 
-suite('AmbientPreviewSmallElementTest', function() {
-  let ambientPreviewSmallElement: AmbientPreviewSmallElement|null;
+suite('AmbientPreviewSmallTest', function() {
+  let ambientPreviewSmallElement: AmbientPreviewSmall|null;
   let ambientProvider: TestAmbientProvider;
   let personalizationStore: TestPersonalizationStore;
-  const routerOriginal = PersonalizationRouterElement.instance;
-  const routerMock = TestMock.fromClass(PersonalizationRouterElement);
+  const routerOriginal = PersonalizationRouter.instance;
+  const routerMock = TestMock.fromClass(PersonalizationRouter);
 
   setup(() => {
     loadTimeData.overrideValues({isAmbientModeAllowed: true});
@@ -28,14 +29,14 @@ suite('AmbientPreviewSmallElementTest', function() {
     ambientProvider = mocks.ambientProvider;
     personalizationStore = mocks.personalizationStore;
     AmbientObserver.initAmbientObserverIfNeeded();
-    PersonalizationRouterElement.instance = () => routerMock;
+    PersonalizationRouter.instance = () => routerMock;
   });
 
   teardown(async () => {
     await teardownElement(ambientPreviewSmallElement);
     ambientPreviewSmallElement = null;
     AmbientObserver.shutdown();
-    PersonalizationRouterElement.instance = routerOriginal;
+    PersonalizationRouter.instance = routerOriginal;
   });
 
   test(
@@ -44,7 +45,7 @@ suite('AmbientPreviewSmallElementTest', function() {
         personalizationStore.data.ambient.topicSource = TopicSource.kArtGallery;
         personalizationStore.data.ambient.ambientModeEnabled = false;
         personalizationStore.data.ambient.previews = ambientProvider.previews;
-        ambientPreviewSmallElement = initElement(AmbientPreviewSmallElement);
+        ambientPreviewSmallElement = initElement(AmbientPreviewSmall);
         personalizationStore.notifyObservers();
         await waitAfterNextRender(ambientPreviewSmallElement);
 
@@ -65,7 +66,7 @@ suite('AmbientPreviewSmallElementTest', function() {
   test('shows placeholders while loading', async () => {
     // Null indicates that this value has not yet loaded.
     personalizationStore.data.ambient.ambientModeEnabled = null;
-    ambientPreviewSmallElement = initElement(AmbientPreviewSmallElement);
+    ambientPreviewSmallElement = initElement(AmbientPreviewSmall);
     personalizationStore.notifyObservers();
     await waitAfterNextRender(ambientPreviewSmallElement);
 
@@ -81,48 +82,6 @@ suite('AmbientPreviewSmallElementTest', function() {
     }
 
     assertEquals(null, container.querySelector('#imageContainer'));
-  });
-
-  test('shows placeholders while waiting for assets to load', async () => {
-    // Only AmbientModeEnabled is set.
-    personalizationStore.data.ambient.ambientModeEnabled = true;
-    // Null indicates that albums have not yet loaded.
-    personalizationStore.data.ambient.albums = null;
-    ambientPreviewSmallElement = initElement(AmbientPreviewSmallElement);
-    personalizationStore.notifyObservers();
-    await waitAfterNextRender(ambientPreviewSmallElement);
-
-    const container = ambientPreviewSmallElement.$.container;
-    assertEquals('imagePlaceholder', container.firstElementChild?.id);
-
-    const textPlaceholder = container.querySelector('#textPlaceholder');
-    assertTrue(!!textPlaceholder, 'textPlaceholder element exists');
-    for (const child of textPlaceholder.children) {
-      assertTrue(
-          child.classList.contains('placeholder'),
-          'every element has placeholder class');
-    }
-
-    assertEquals(null, container.querySelector('#imageContainer'));
-  });
-
-  test('ends loading early if ambient mode is disabled', async () => {
-    personalizationStore.data.ambient.ambientModeEnabled = false;
-    ambientPreviewSmallElement = initElement(AmbientPreviewSmallElement);
-    personalizationStore.notifyObservers();
-    await waitAfterNextRender(ambientPreviewSmallElement);
-
-    const zeroStateTextContainer =
-        ambientPreviewSmallElement.shadowRoot!.getElementById(
-            'zeroStateTextContainer');
-    assertTrue(!!zeroStateTextContainer);
-    const textSpan =
-        zeroStateTextContainer.firstElementChild as HTMLSpanElement;
-    assertTrue(!!textSpan);
-    assertEquals('span', textSpan.tagName.toLowerCase());
-    assertEquals(
-        ambientPreviewSmallElement.i18n('ambientModeMainPageZeroStateMessage'),
-        textSpan.innerText.trim());
   });
 
   test('shows image when loaded', async () => {
@@ -130,7 +89,7 @@ suite('AmbientPreviewSmallElementTest', function() {
     personalizationStore.data.ambient.topicSource = TopicSource.kArtGallery;
     personalizationStore.data.ambient.ambientModeEnabled = true;
     personalizationStore.data.ambient.previews = ambientProvider.previews;
-    ambientPreviewSmallElement = initElement(AmbientPreviewSmallElement);
+    ambientPreviewSmallElement = initElement(AmbientPreviewSmall);
     personalizationStore.notifyObservers();
     await waitAfterNextRender(ambientPreviewSmallElement);
 

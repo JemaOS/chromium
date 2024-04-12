@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startBlank(
       `Tests that Runtime.getProperties doesn't crash on window.frames[0]. Should not crash.`);
 

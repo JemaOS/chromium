@@ -31,10 +31,11 @@
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
-#include "base/notreached.h"
+#include "base/no_destructor.h"
+#include "base/synchronization/lock.h"
+
 #include "third_party/abseil-cpp/absl/base/attributes.h"
 #include "third_party/blink/public/platform/web_isolated_world_info.h"
 #include "third_party/blink/renderer/platform/bindings/dom_data_store.h"
@@ -49,74 +50,44 @@
 
 namespace blink {
 
-namespace {
-
-constexpr bool IsMainWorldId(int32_t world_id) {
-  return world_id == DOMWrapperWorld::kMainWorldId;
-}
-
-static_assert(IsMainWorldId(kMainDOMWorldId),
+static_assert(kMainDOMWorldId == DOMWrapperWorld::kMainWorldId,
               "The publicly-exposed kMainWorldId constant must match "
               "the internal blink value.");
+
+unsigned DOMWrapperWorld::number_of_non_main_worlds_in_main_thread_ = 0;
 
 // This does not contain the main world because the WorldMap needs
 // non-default hashmap traits (WTF::IntWithZeroKeyHashTraits) to contain
 // it for the main world's id (0), and it may change the performance trends.
 // (see https://crbug.com/704778#c6).
-using WorldMap = HeapHashMap<int, WeakMember<DOMWrapperWorld>>;
+using WorldMap = HashMap<int, DOMWrapperWorld*>;
 static WorldMap& GetWorldMap() {
-  DEFINE_THREAD_SAFE_STATIC_LOCAL(ThreadSpecific<Persistent<WorldMap>>, map,
-                                  ());
-  Persistent<WorldMap>& persistent_map = *map;
-  if (!persistent_map) {
-    persistent_map = MakeGarbageCollected<WorldMap>();
-  }
-  return *persistent_map;
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(ThreadSpecific<WorldMap>, map, ());
+  return *map;
 }
 
-}  // namespace
+#if DCHECK_IS_ON()
+static bool IsMainWorldId(int32_t world_id) {
+  return world_id == DOMWrapperWorld::kMainWorldId;
+}
+#endif
 
-unsigned DOMWrapperWorld::number_of_non_main_worlds_in_main_thread_ = 0;
-
-DOMWrapperWorld* DOMWrapperWorld::Create(v8::Isolate* isolate,
-                                         WorldType world_type,
-                                         bool is_default_world_of_isolate) {
-  DCHECK(isolate);
+scoped_refptr<DOMWrapperWorld> DOMWrapperWorld::Create(v8::Isolate* isolate,
+                                                       WorldType world_type) {
   DCHECK_NE(WorldType::kIsolated, world_type);
-  const auto world_id = GenerateWorldIdForType(world_type);
-  return LIKELY(world_id.has_value())
-             ? MakeGarbageCollected<DOMWrapperWorld>(
-                   PassKey(), isolate, world_type, world_id.value(),
-                   is_default_world_of_isolate)
-             : nullptr;
+  int32_t world_id = GenerateWorldIdForType(world_type);
+  if (world_id == kInvalidWorldId)
+    return nullptr;
+  return base::AdoptRef(new DOMWrapperWorld(isolate, world_type, world_id));
 }
 
-DOMWrapperWorld* DOMWrapperWorld::EnsureIsolatedWorld(v8::Isolate* isolate,
-                                                      int32_t world_id) {
-  DCHECK(IsIsolatedWorldId(world_id));
-  WorldMap& map = GetWorldMap();
-  auto it = map.find(world_id);
-  if (it != map.end()) {
-    DOMWrapperWorld* world = it->value.Get();
-    DCHECK(world->IsIsolatedWorld());
-    DCHECK_EQ(world_id, world->GetWorldId());
-    return world;
-  }
-  return MakeGarbageCollected<DOMWrapperWorld>(
-      PassKey(), isolate, WorldType::kIsolated, world_id,
-      /*is_default_world_of_isolate=*/false);
-}
-
-DOMWrapperWorld::DOMWrapperWorld(PassKey,
-                                 v8::Isolate* isolate,
+DOMWrapperWorld::DOMWrapperWorld(v8::Isolate* isolate,
                                  WorldType world_type,
-                                 int32_t world_id,
-                                 bool is_default_world_of_isolate)
+                                 int32_t world_id)
     : world_type_(world_type),
       world_id_(world_id),
       dom_data_store_(
-          MakeGarbageCollected<DOMDataStore>(isolate,
-                                             is_default_world_of_isolate)),
+          MakeGarbageCollected<DOMDataStore>(isolate, IsMainWorld())),
       v8_object_data_store_(MakeGarbageCollected<V8ObjectDataStore>()) {
   switch (world_type_) {
     case WorldType::kMain:
@@ -126,7 +97,7 @@ DOMWrapperWorld::DOMWrapperWorld(PassKey,
     case WorldType::kInspectorIsolated:
     case WorldType::kRegExp:
     case WorldType::kForV8ContextSnapshotNonMain:
-    case WorldType::kWorkerOrWorklet:
+    case WorldType::kWorker:
     case WorldType::kShadowRealm: {
       WorldMap& map = GetWorldMap();
       DCHECK(!map.Contains(world_id_));
@@ -138,35 +109,63 @@ DOMWrapperWorld::DOMWrapperWorld(PassKey,
   }
 }
 
-DOMWrapperWorld& DOMWrapperWorld::MainWorld(v8::Isolate* isolate) {
+DOMWrapperWorld& DOMWrapperWorld::MainWorld() {
   DCHECK(IsMainThread());
-  return V8PerIsolateData::From(isolate)->GetMainWorld();
+  DEFINE_STATIC_REF(
+      DOMWrapperWorld, cached_main_world,
+      (DOMWrapperWorld::Create(v8::Isolate::GetCurrent(), WorldType::kMain)));
+  return *cached_main_world;
 }
 
-void DOMWrapperWorld::AllWorldsInIsolate(
-    v8::Isolate* isolate,
-    HeapVector<Member<DOMWrapperWorld>>& worlds) {
+void DOMWrapperWorld::AllWorldsInCurrentThread(
+    Vector<scoped_refptr<DOMWrapperWorld>>& worlds) {
   DCHECK(worlds.empty());
   WTF::CopyValuesToVector(GetWorldMap(), worlds);
-  if (IsMainThread()) {
-    worlds.push_back(&MainWorld(isolate));
-  }
+  if (IsMainThread())
+    worlds.push_back(&MainWorld());
 }
 
 DOMWrapperWorld::~DOMWrapperWorld() {
-  if (IsMainThread() && !IsMainWorld()) {
+  DCHECK(!IsMainWorld());
+  if (IsMainThread())
     number_of_non_main_worlds_in_main_thread_--;
-  }
+
+  // WorkerWorld should be disposed of before the dtor.
+  if (!IsWorkerWorld())
+    Dispose();
+  DCHECK(!GetWorldMap().Contains(world_id_));
 }
 
 void DOMWrapperWorld::Dispose() {
-  CHECK(!IsMainWorld());
   if (dom_data_store_) {
     // The data_store_ might be cleared on thread termination in the same
     // garbage collection cycle which prohibits accessing the references from
     // the dtor.
     dom_data_store_->Dispose();
+    dom_data_store_.Clear();
   }
+  DCHECK(GetWorldMap().Contains(world_id_));
+  GetWorldMap().erase(world_id_);
+}
+
+scoped_refptr<DOMWrapperWorld> DOMWrapperWorld::EnsureIsolatedWorld(
+    v8::Isolate* isolate,
+    int32_t world_id) {
+#if DCHECK_IS_ON()
+  DCHECK(IsIsolatedWorldId(world_id));
+#endif
+
+  WorldMap& map = GetWorldMap();
+  auto it = map.find(world_id);
+  if (it != map.end()) {
+    scoped_refptr<DOMWrapperWorld> world = it->value;
+    DCHECK(world->IsIsolatedWorld());
+    DCHECK_EQ(world_id, world->GetWorldId());
+    return world;
+  }
+
+  return base::AdoptRef(
+      new DOMWrapperWorld(isolate, WorldType::kIsolated, world_id));
 }
 
 typedef HashMap<int, scoped_refptr<SecurityOrigin>>
@@ -204,7 +203,9 @@ DOMWrapperWorld::IsolatedWorldSecurityOrigin(
 void DOMWrapperWorld::SetIsolatedWorldSecurityOrigin(
     int32_t world_id,
     scoped_refptr<SecurityOrigin> security_origin) {
+#if DCHECK_IS_ON()
   DCHECK(IsIsolatedWorldId(world_id));
+#endif
   if (security_origin)
     IsolatedWorldSecurityOrigins().Set(world_id, std::move(security_origin));
   else
@@ -227,7 +228,9 @@ String DOMWrapperWorld::NonMainWorldStableId() const {
 
 void DOMWrapperWorld::SetNonMainWorldStableId(int32_t world_id,
                                               const String& stable_id) {
+#if DCHECK_IS_ON()
   DCHECK(!IsMainWorldId(world_id));
+#endif
   IsolatedWorldStableIds().Set(world_id, stable_id);
 }
 
@@ -248,7 +251,9 @@ String DOMWrapperWorld::NonMainWorldHumanReadableName() const {
 void DOMWrapperWorld::SetNonMainWorldHumanReadableName(
     int32_t world_id,
     const String& human_readable_name) {
+#if DCHECK_IS_ON()
   DCHECK(!IsMainWorldId(world_id));
+#endif
   IsolatedWorldHumanReadableNames().Set(world_id, human_readable_name);
 }
 
@@ -256,65 +261,64 @@ ABSL_CONST_INIT thread_local int next_world_id =
     DOMWrapperWorld::kUnspecifiedWorldIdStart;
 
 // static
-std::optional<int> DOMWrapperWorld::GenerateWorldIdForType(
-    WorldType world_type) {
+int DOMWrapperWorld::GenerateWorldIdForType(WorldType world_type) {
   switch (world_type) {
     case WorldType::kMain:
       return kMainWorldId;
     case WorldType::kIsolated:
       // This function should not be called for IsolatedWorld because an
       // identifier for the world is given from out of DOMWrapperWorld.
-      NOTREACHED_NORETURN();
+      NOTREACHED();
+      return kInvalidWorldId;
     case WorldType::kInspectorIsolated: {
       DCHECK(IsMainThread());
       static int next_devtools_isolated_world_id =
           IsolatedWorldId::kDevToolsFirstIsolatedWorldId;
       if (next_devtools_isolated_world_id >
-          IsolatedWorldId::kDevToolsLastIsolatedWorldId) {
-        return std::nullopt;
-      }
+          IsolatedWorldId::kDevToolsLastIsolatedWorldId)
+        return WorldId::kInvalidWorldId;
       return next_devtools_isolated_world_id++;
     }
     case WorldType::kRegExp:
     case WorldType::kForV8ContextSnapshotNonMain:
-    case WorldType::kWorkerOrWorklet:
+    case WorldType::kWorker:
     case WorldType::kShadowRealm: {
       CHECK_GE(next_world_id, kUnspecifiedWorldIdStart);
       return next_world_id++;
     }
   }
-  NOTREACHED_NORETURN();
+  NOTREACHED();
+  return kInvalidWorldId;
 }
 
-// static
-bool DOMWrapperWorld::ClearWrapperInAnyNonInlineStorageWorldIfEqualTo(
-    ScriptWrappable* object,
-    const v8::Local<v8::Object>& handle) {
-  for (DOMWrapperWorld* world : GetWorldMap().Values()) {
-    DOMDataStore& data_store = world->DomDataStore();
-    if (data_store.ClearInMapIfEqualTo(object, handle)) {
+bool DOMWrapperWorld::HasWrapperInAnyWorldInMainThread(
+    ScriptWrappable* script_wrappable) {
+  DCHECK(IsMainThread());
+
+  Vector<scoped_refptr<DOMWrapperWorld>> worlds;
+  DOMWrapperWorld::AllWorldsInCurrentThread(worlds);
+  for (const auto& world : worlds) {
+    DOMDataStore& dom_data_store = world->DomDataStore();
+    if (dom_data_store.ContainsWrapper(script_wrappable))
       return true;
-    }
   }
   return false;
 }
 
 // static
-bool DOMWrapperWorld::ClearWrapperInAnyNonInlineStorageWorldIfEqualTo(
+bool DOMWrapperWorld::UnsetNonMainWorldWrapperIfSet(
     ScriptWrappable* object,
     const v8::TracedReference<v8::Object>& handle) {
+  // This function can be called in parallel.
+  static base::NoDestructor<base::Lock> g_lock;
+  base::AutoLock lock(*g_lock);
+
   for (DOMWrapperWorld* world : GetWorldMap().Values()) {
     DOMDataStore& data_store = world->DomDataStore();
-    if (data_store.ClearInMapIfEqualTo(object, handle)) {
+    if (data_store.UnsetSpecificWrapperIfSet(object, handle))
       return true;
-    }
   }
   return false;
-}
-
-void DOMWrapperWorld::Trace(Visitor* visitor) const {
-  visitor->Trace(dom_data_store_);
-  visitor->Trace(v8_object_data_store_);
 }
 
 }  // namespace blink

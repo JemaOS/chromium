@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
+
 import {MetricsReporterImpl} from 'chrome://resources/js/metrics_reporter/metrics_reporter.js';
 import {keyDownOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-interactions.js';
-import type {ProfileData, Tab, TabSearchPageElement} from 'chrome://tab-search.top-chrome/tab_search.js';
-import {TabAlertState, TabSearchApiProxyImpl} from 'chrome://tab-search.top-chrome/tab_search.js';
+import {ProfileData, Tab, TabAlertState, TabSearchApiProxyImpl, TabSearchAppElement} from 'chrome://tab-search.top-chrome/tab_search.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
 import {MockedMetricsReporter} from 'chrome://webui-test/mocked_metrics_reporter.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
@@ -15,7 +16,7 @@ import {initLoadTimeDataWithDefaults} from './tab_search_test_helper.js';
 import {TestTabSearchApiProxy} from './test_tab_search_api_proxy.js';
 
 suite('TabSearchMediaTabsTest', () => {
-  let tabSearchPage: TabSearchPageElement;
+  let tabSearchApp: TabSearchAppElement;
   let testProxy: TestTabSearchApiProxy;
 
   function verifyTabIds(rows: NodeListOf<HTMLElement>, ids: number[]) {
@@ -26,12 +27,12 @@ suite('TabSearchMediaTabsTest', () => {
   }
 
   function queryRows(): NodeListOf<HTMLElement> {
-    return tabSearchPage.$.tabsList.querySelectorAll(
+    return tabSearchApp.$.tabsList.querySelectorAll(
         'tab-search-item, tab-search-group-item');
   }
 
   function queryListTitle(): NodeListOf<HTMLElement> {
-    return tabSearchPage.$.tabsList.querySelectorAll('.list-section-title');
+    return tabSearchApp.$.tabsList.querySelectorAll('.list-section-title');
   }
 
   /**
@@ -49,10 +50,10 @@ suite('TabSearchMediaTabsTest', () => {
     testProxy.setProfileData(sampleData);
     TabSearchApiProxyImpl.setInstance(testProxy);
 
-    tabSearchPage = document.createElement('tab-search-page');
+    tabSearchApp = document.createElement('tab-search-app');
 
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    document.body.appendChild(tabSearchPage);
+    document.body.appendChild(tabSearchApp);
     await flushTasks();
   }
 
@@ -62,10 +63,10 @@ suite('TabSearchMediaTabsTest', () => {
           windows: SAMPLE_WINDOW_DATA_WITH_MEDIA_TAB,
         }),
         {mediaTabsEnabled: true});
-    assertEquals(1, tabSearchPage.getSelectedIndex());
+    assertEquals(1, tabSearchApp.getSelectedIndex());
     const tabSearchItems = queryRows();
     keyDownOn(tabSearchItems[1]!, 0, [], 'ArrowUp');
-    assertEquals(0, tabSearchPage.getSelectedIndex());
+    assertEquals(0, tabSearchApp.getSelectedIndex());
 
     Object.defineProperty(
         document, 'visibilityState', {value: 'hidden', writable: true});
@@ -75,27 +76,28 @@ suite('TabSearchMediaTabsTest', () => {
     // search text' test case, if no search query was originally provided
     // onSearchChanged will not be called when hidden and the index is not
     // reset until the state is visible again.
-    assertEquals(-1, tabSearchPage.getSelectedIndex());
+    assertEquals(-1, tabSearchApp.getSelectedIndex());
 
     // The selected tab should again be the most recently used tab.
     Object.defineProperty(
         document, 'visibilityState', {value: 'visible', writable: true});
     document.dispatchEvent(new Event('visibilitychange'));
     await flushTasks();
-    assertEquals(1, tabSearchPage.getSelectedIndex());
+    assertEquals(1, tabSearchApp.getSelectedIndex());
 
     // During search there should be no Audio & Video section and the selected
     // index should be 0.
-    tabSearchPage.setValue('Google');
+    const searchField = tabSearchApp.$.searchField;
+    searchField.setValue('Google');
     await flushTasks();
     verifyTabIds(queryRows(), [2, 1]);
-    assertEquals(0, tabSearchPage.getSelectedIndex());
+    assertEquals(0, tabSearchApp.getSelectedIndex());
 
     // When the search query is reset the initially selected index should also
     // be reset.
-    tabSearchPage.setValue('');
+    searchField.setValue('');
     await flushTasks();
-    assertEquals(1, tabSearchPage.getSelectedIndex());
+    assertEquals(1, tabSearchApp.getSelectedIndex());
   });
 
   test('Verify initially selected tab is not the active tab', async () => {
@@ -144,7 +146,7 @@ suite('TabSearchMediaTabsTest', () => {
 
     // MRU is the tab with Id 3 but since it is the active tab the selected
     // index should be the next MRU tab.
-    assertEquals(0, tabSearchPage.getSelectedIndex());
+    assertEquals(0, tabSearchApp.getSelectedIndex());
   });
 
   test('Show media tab in Audio & Video section', async () => {
@@ -207,7 +209,8 @@ suite('TabSearchMediaTabsTest', () => {
   test('Search for media tab', async () => {
     await setupTest(
         createProfileData({windows: SAMPLE_WINDOW_DATA_WITH_MEDIA_TAB}));
-    tabSearchPage.setValue('google');
+    const searchField = tabSearchApp.$.searchField;
+    searchField.setValue('google');
     await flushTasks();
     // No media tabs section when there is a search query.
     assertEquals(1, queryListTitle().length);

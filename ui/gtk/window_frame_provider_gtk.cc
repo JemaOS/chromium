@@ -5,9 +5,7 @@
 #include "ui/gtk/window_frame_provider_gtk.h"
 
 #include "base/logging.h"
-#include "base/numerics/safe_conversions.h"
 #include "third_party/skia/include/core/SkRRect.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/rect.h"
@@ -30,27 +28,32 @@ constexpr int kMaxFrameSizeDip = 64;
 // will get an incorrect hint as to which pixels are fully opaque.
 constexpr int kMaxCornerRadiusDip = 32;
 
-GtkCssContext WindowContext(bool solid_frame, bool tiled, bool focused) {
+std::string GetThemeName() {
+  gchar* theme = nullptr;
+  g_object_get(gtk_settings_get_default(), "gtk-theme-name", &theme, nullptr);
+  std::string theme_string;
+  if (theme) {
+    theme_string = theme;
+    g_free(theme);
+  }
+  return theme_string;
+}
+
+GtkCssContext WindowContext(bool solid_frame, bool focused) {
   std::string selector = "window.background.";
   selector += solid_frame ? "solid-csd" : "csd";
-  if (tiled) {
-    selector += ".tiled";
-  }
-  if (!focused) {
+  if (!focused)
     selector += ":inactive";
-  }
   return AppendCssNodeToStyleContext({}, selector);
 }
 
-GtkCssContext DecorationContext(bool solid_frame, bool tiled, bool focused) {
-  auto context = WindowContext(solid_frame, tiled, focused);
+GtkCssContext DecorationContext(bool solid_frame, bool focused) {
+  auto context = WindowContext(solid_frame, focused);
   // GTK4 renders the decoration directly on the window.
-  if (!GtkCheckVersion(4)) {
+  if (!GtkCheckVersion(4))
     context = AppendCssNodeToStyleContext(context, "decoration");
-  }
-  if (!focused) {
+  if (!focused)
     gtk_style_context_set_state(context, GTK_STATE_FLAG_BACKDROP);
-  }
 
   // The web contents is rendered after the frame border, so remove bottom
   // rounded corners otherwise their borders would get covered up.
@@ -62,21 +65,17 @@ GtkCssContext DecorationContext(bool solid_frame, bool tiled, bool focused) {
   return context;
 }
 
-GtkCssContext HeaderContext(bool solid_frame, bool tiled, bool focused) {
-  auto context = WindowContext(solid_frame, tiled, focused);
+GtkCssContext HeaderContext(bool solid_frame, bool focused) {
+  auto context = WindowContext(solid_frame, focused);
   context =
       AppendCssNodeToStyleContext(context, "headerbar.header-bar.titlebar");
-  if (!focused) {
+  if (!focused)
     gtk_style_context_set_state(context, GTK_STATE_FLAG_BACKDROP);
-  }
-  if (features::IsChromeRefresh2023()) {
-    ApplyCssToContext(context, "* { border-bottom-style: none; }");
-  }
   return context;
 }
 
 SkBitmap PaintBitmap(const gfx::Size& bitmap_size,
-                     const gfx::RectF& render_bounds,
+                     const gfx::Rect& render_bounds,
                      GtkCssContext context,
                      float scale) {
   SkBitmap bitmap;
@@ -86,16 +85,18 @@ SkBitmap PaintBitmap(const gfx::Size& bitmap_size,
   CairoSurface surface(bitmap);
   cairo_t* cr = surface.cairo();
 
-  double opacity = GetOpacityFromContext(context);
-  if (opacity < 1) {
+  auto bounds = render_bounds;
+
+  double opacity = 1;
+  GtkStyleContextGet(context, "opacity", &opacity, nullptr);
+  if (opacity < 1)
     cairo_push_group(cr);
-  }
 
   cairo_scale(cr, scale, scale);
-  gtk_render_background(context, cr, render_bounds.x(), render_bounds.y(),
-                        render_bounds.width(), render_bounds.height());
-  gtk_render_frame(context, cr, render_bounds.x(), render_bounds.y(),
-                   render_bounds.width(), render_bounds.height());
+  gtk_render_background(context, cr, bounds.x(), bounds.y(), bounds.width(),
+                        bounds.height());
+  gtk_render_frame(context, cr, bounds.x(), bounds.y(), bounds.width(),
+                   bounds.height());
 
   if (opacity < 1) {
     cairo_pop_group_to_source(cr);
@@ -110,8 +111,8 @@ SkBitmap PaintBitmap(const gfx::Size& bitmap_size,
 SkBitmap PaintHeaderbar(const gfx::Size& size,
                         GtkCssContext context,
                         float scale) {
-  gfx::RectF tabstrip_bounds_dip(0, 0, size.width() / scale,
-                                 size.height() / scale);
+  gfx::Rect tabstrip_bounds_dip(0, 0, size.width() / scale,
+                                size.height() / scale);
   return PaintBitmap(size, tabstrip_bounds_dip, context, scale);
 }
 
@@ -120,8 +121,8 @@ int ComputeTopCornerRadius() {
   // need to experimentally determine the corner radius by rendering a sample.
   // Additionally, in GTK4, the headerbar corners get clipped by the window
   // rather than the headerbar having its own rounded corners.
-  auto context = GtkCheckVersion(4) ? DecorationContext(false, false, false)
-                                    : HeaderContext(false, false, false);
+  auto context = GtkCheckVersion(4) ? DecorationContext(false, false)
+                                    : HeaderContext(false, false);
   ApplyCssToContext(context, R"(window, headerbar {
     background-image: none;
     background-color: black;
@@ -132,10 +133,9 @@ int ComputeTopCornerRadius() {
     border-top-right-radius: 0;
   })");
   gfx::Size size_dip{kMaxCornerRadiusDip, kMaxCornerRadiusDip};
-  auto bitmap =
-      GtkCheckVersion(4)
-          ? PaintBitmap(size_dip, {{0, 0}, gfx::SizeF(size_dip)}, context, 1)
-          : PaintHeaderbar(size_dip, context, 1);
+  auto bitmap = GtkCheckVersion(4)
+                    ? PaintBitmap(size_dip, {{0, 0}, size_dip}, context, 1)
+                    : PaintHeaderbar(size_dip, context, 1);
   DCHECK_EQ(bitmap.width(), bitmap.height());
   for (int i = 0; i < bitmap.width(); ++i) {
     if (SkColorGetA(bitmap.getColor(0, i)) == 255 &&
@@ -155,11 +155,11 @@ int ComputeTopCornerRadius() {
 bool HeaderIsTranslucent() {
   // The arbitrary square size to render a sample header.
   constexpr int kHeaderSize = 32;
-  auto context = HeaderContext(false, false, false);
-  double opacity = GetOpacityFromContext(context);
-  if (opacity < 1.0) {
+  auto context = HeaderContext(false, false);
+  double opacity = 1.0f;
+  GtkStyleContextGet(context, "opacity", &opacity, nullptr);
+  if (opacity < 1.0f)
     return true;
-  }
   ApplyCssToContext(context, R"(window, headerbar {
     box-shadow: none;
     border: none;
@@ -175,6 +175,12 @@ bool HeaderIsTranslucent() {
     }
   }
   return false;
+}
+
+// Returns int(scale * 100), which essentially limits the scale to fractions of
+// 100 and secures from rounding errors.
+int ToRoundedScale(float scale) {
+  return round(scale * 100);
 }
 
 }  // namespace
@@ -196,9 +202,8 @@ WindowFrameProviderGtk::Asset::~Asset() = default;
 void WindowFrameProviderGtk::Asset::CloneFrom(
     const WindowFrameProviderGtk::Asset& src) {
   valid = src.valid;
-  if (!valid) {
+  if (!valid)
     return;
-  }
 
   frame_size_px = src.frame_size_px;
   frame_thickness_px = src.frame_thickness_px;
@@ -206,18 +211,8 @@ void WindowFrameProviderGtk::Asset::CloneFrom(
   unfocused_bitmap = src.unfocused_bitmap;
 }
 
-WindowFrameProviderGtk::WindowFrameProviderGtk(bool solid_frame, bool tiled)
-    : solid_frame_(solid_frame), tiled_(tiled) {
-  GtkSettings* settings = gtk_settings_get_default();
-  // Unretained() is safe since WindowFrameProviderGtk will own the signals.
-  auto callback = base::BindRepeating(&WindowFrameProviderGtk::OnThemeChanged,
-                                      base::Unretained(this));
-  theme_name_signal_ = ScopedGSignal(settings, "notify::gtk-theme-name",
-                                     callback, G_CONNECT_AFTER);
-  prefer_dark_signal_ =
-      ScopedGSignal(settings, "notify::gtk-application-prefer-dark-theme",
-                    callback, G_CONNECT_AFTER);
-}
+WindowFrameProviderGtk::WindowFrameProviderGtk(bool solid_frame)
+    : solid_frame_(solid_frame) {}
 
 WindowFrameProviderGtk::~WindowFrameProviderGtk() = default;
 
@@ -236,24 +231,26 @@ gfx::Insets WindowFrameProviderGtk::GetFrameThicknessDip() {
   return frame_thickness_dip_;
 }
 
-void WindowFrameProviderGtk::PaintWindowFrame(gfx::Canvas* canvas,
-                                              const gfx::Rect& rect_dip,
-                                              int top_area_height_dip,
-                                              bool focused,
-                                              const gfx::Insets& input_insets) {
+void WindowFrameProviderGtk::PaintWindowFrame(
+    gfx::Canvas* canvas,
+    const gfx::Rect& rect_dip,
+    int top_area_height_dip,
+    bool focused,
+    ui::WindowTiledEdges tiled_edges) {
   gfx::ScopedCanvas scoped_canvas(canvas);
   float scale = canvas->UndoDeviceScaleFactor();
 
   MaybeUpdateBitmaps(scale);
 
-  const auto& asset = assets_[scale];
+  const auto& asset = assets_[ToRoundedScale(scale)];
   DCHECK(asset.valid);
 
-  const auto input_insets_px = gfx::ScaleToRoundedInsets(input_insets, scale);
-  auto effective_frame_thickness_px = asset.frame_thickness_px;
-  effective_frame_thickness_px.SetToMax(input_insets_px);
-
   auto client_bounds_px = gfx::ScaleToRoundedRect(rect_dip, scale);
+  const auto effective_frame_thickness_px = gfx::Insets::TLBR(
+      tiled_edges.top ? 0 : asset.frame_thickness_px.top(),
+      tiled_edges.left ? 0 : asset.frame_thickness_px.left(),
+      tiled_edges.bottom ? 0 : asset.frame_thickness_px.bottom(),
+      tiled_edges.right ? 0 : asset.frame_thickness_px.right());
   client_bounds_px.Inset(effective_frame_thickness_px);
 
   gfx::Rect src_rect(gfx::Size(BitmapSizePx(asset), BitmapSizePx(asset)));
@@ -273,9 +270,8 @@ void WindowFrameProviderGtk::PaintWindowFrame(gfx::Canvas* canvas,
 
   auto draw_image = [&](int src_x, int src_y, int src_w, int src_h, int dst_x,
                         int dst_y, int dst_w, int dst_h) {
-    if (src_w <= 0 || src_h <= 0 || dst_w <= 0 || dst_h <= 0) {
+    if (src_w <= 0 || src_h <= 0 || dst_w <= 0 || dst_h <= 0)
       return;
-    }
     canvas->DrawImageInt(image, src_x, src_y, src_w, src_h, dst_x, dst_y, dst_w,
                          dst_h, false);
   };
@@ -319,13 +315,11 @@ void WindowFrameProviderGtk::PaintWindowFrame(gfx::Canvas* canvas,
              effective_frame_thickness_px.right(), 1, client_bounds_px.right(),
              corner_insets.top(), effective_frame_thickness_px.right(), edge_h);
 
-  const int top_area_bottom_dip = rect_dip.y() + top_area_height_dip;
-  const int top_area_bottom_px = base::ClampCeil(top_area_bottom_dip * scale);
-  const int top_area_height_px = top_area_bottom_px - client_bounds_px.y();
+  int top_area_height_px =
+      top_area_height_dip * scale - effective_frame_thickness_px.top();
 
-  auto header =
-      PaintHeaderbar({client_bounds_px.width(), top_area_height_px},
-                     HeaderContext(solid_frame_, tiled_, focused), scale);
+  auto header = PaintHeaderbar({client_bounds_px.width(), top_area_height_px},
+                               HeaderContext(solid_frame_, focused), scale);
   image = gfx::ImageSkia::CreateFrom1xBitmap(header);
   // In GTK4, the headerbar gets clipped by the window.
   if (GtkCheckVersion(4)) {
@@ -343,24 +337,29 @@ void WindowFrameProviderGtk::PaintWindowFrame(gfx::Canvas* canvas,
 }
 
 void WindowFrameProviderGtk::MaybeUpdateBitmaps(float scale) {
-  auto& asset = assets_[scale];
-  if (asset.valid) {
-    return;
+  std::string theme_name = GetThemeName();
+  if (theme_name_ != theme_name) {
+    assets_.clear();
+    theme_name_ = theme_name;
   }
+
+  auto& asset = assets_[ToRoundedScale(scale)];
+  if (asset.valid)
+    return;
 
   asset.frame_size_px = std::ceil(kMaxFrameSizeDip * scale);
 
   gfx::Rect frame_bounds_dip(kMaxFrameSizeDip, kMaxFrameSizeDip,
                              2 * kMaxFrameSizeDip, 2 * kMaxFrameSizeDip);
-  auto focused_context = DecorationContext(solid_frame_, tiled_, true);
+  auto focused_context = DecorationContext(solid_frame_, true);
   frame_bounds_dip.Inset(-GtkStyleContextGetPadding(focused_context));
   frame_bounds_dip.Inset(-GtkStyleContextGetBorder(focused_context));
   gfx::Size bitmap_size(BitmapSizePx(asset), BitmapSizePx(asset));
-  asset.focused_bitmap = PaintBitmap(bitmap_size, gfx::RectF(frame_bounds_dip),
-                                     focused_context, scale);
+  asset.focused_bitmap =
+      PaintBitmap(bitmap_size, frame_bounds_dip, focused_context, scale);
   asset.unfocused_bitmap =
-      PaintBitmap(bitmap_size, gfx::RectF(frame_bounds_dip),
-                  DecorationContext(solid_frame_, tiled_, false), scale);
+      PaintBitmap(bitmap_size, frame_bounds_dip,
+                  DecorationContext(solid_frame_, false), scale);
 
   // In GTK4, there's no way to obtain the frame thickness from CSS values
   // directly, so we must determine it experimentally based on the drawn
@@ -417,11 +416,6 @@ int WindowFrameProviderGtk::BitmapSizePx(const Asset& asset) const {
   // The left and right sides of the decoration add 2 * kMaxDecorationThickness,
   // and the window itself has size 2 * kMaxDecorationThickness.
   return 4 * asset.frame_size_px;
-}
-
-void WindowFrameProviderGtk::OnThemeChanged(GtkSettings* settings,
-                                            GtkParamSpec* param) {
-  assets_.clear();
 }
 
 }  // namespace gtk

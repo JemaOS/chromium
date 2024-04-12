@@ -88,7 +88,7 @@ class BLINK_EXPORT WebDOMEvent {
   }
 #endif
 
-  WebPrivatePtrForGC<Event> private_;
+  WebPrivatePtr<Event> private_;
 };
 
 }  // namespace blink

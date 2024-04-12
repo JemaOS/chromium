@@ -20,10 +20,10 @@ ImpressionTestData::ImpressionTestData(
     SchedulerClientType type,
     size_t current_max_daily_show,
     std::vector<Impression> impressions,
-    std::optional<SuppressionInfo> suppression_info,
+    absl::optional<SuppressionInfo> suppression_info,
     size_t negative_events_count,
-    std::optional<base::Time> last_negative_event_ts,
-    std::optional<base::Time> last_shown_ts)
+    absl::optional<base::Time> last_negative_event_ts,
+    absl::optional<base::Time> last_shown_ts)
     : type(type),
       current_max_daily_show(current_max_daily_show),
       impressions(std::move(impressions)),

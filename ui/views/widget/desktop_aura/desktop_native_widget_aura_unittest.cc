@@ -136,6 +136,30 @@ TEST_F(DesktopNativeWidgetAuraTest, WidgetNotVisibleOnlyWindowTreeHostShown) {
 }
 #endif
 
+TEST_F(DesktopNativeWidgetAuraTest, DesktopAuraWindowShowFrameless) {
+  Widget widget;
+  Widget::InitParams init_params =
+      CreateParams(Widget::InitParams::TYPE_WINDOW_FRAMELESS);
+  init_params.ownership = Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
+  widget.Init(std::move(init_params));
+
+  // Make sure that changing frame type doesn't crash when there's no non-client
+  // view.
+  ASSERT_EQ(nullptr, widget.non_client_view());
+  widget.DebugToggleFrameType();
+  widget.Show();
+
+#if BUILDFLAG(IS_WIN)
+  // On Windows also make sure that handling WM_SYSCOMMAND doesn't crash with
+  // custom frame. Frame type needs to be toggled again if Aero Glass is
+  // disabled.
+  if (widget.ShouldUseNativeFrame())
+    widget.DebugToggleFrameType();
+  SendMessage(widget.GetNativeWindow()->GetHost()->GetAcceleratedWidget(),
+              WM_SYSCOMMAND, SC_RESTORE, 0);
+#endif  // BUILDFLAG(IS_WIN)
+}
+
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 // TODO(crbug.com/916272): investigate fixing and enabling on Chrome OS.
 #define MAYBE_GlobalCursorState DISABLED_GlobalCursorState
@@ -395,11 +419,11 @@ class DesktopNativeWidgetAuraWithNoDelegateTest
   }
 
   void TearDown() override {
-    desktop_native_widget_.ExtractAsDangling()->CloseNow();
+    desktop_native_widget_->CloseNow();
     ViewsTestBase::TearDown();
   }
 
-  raw_ptr<TestDesktopNativeWidgetAura> desktop_native_widget_ = nullptr;
+  raw_ptr<TestDesktopNativeWidgetAura> desktop_native_widget_;
 };
 
 TEST_F(DesktopNativeWidgetAuraWithNoDelegateTest, GetHitTestMaskTest) {
@@ -509,6 +533,8 @@ TEST_F(DesktopNativeWidgetAuraWithNoDelegateTest, UpdateVisualStateTest) {
       ->UpdateVisualState();
 }
 
+using DesktopAuraWidgetTest = DesktopWidgetTest;
+
 #if !BUILDFLAG(IS_FUCHSIA)
 // TODO(crbug.com/1236997): Under Fuchsia pop-up and fullscreen windows are not
 // reparented to be top-level, so the following tests are not valid.
@@ -557,7 +583,7 @@ class DesktopAuraTopLevelWindowTest : public aura::WindowObserver {
     owned_window_->Init(ui::LAYER_TEXTURED);
     aura::client::ParentWindowWithContext(
         owned_window_, widget_.GetNativeView()->GetRootWindow(),
-        gfx::Rect(0, 0, 1900, 1600), display::kInvalidDisplayId);
+        gfx::Rect(0, 0, 1900, 1600));
     owned_window_->Show();
     owned_window_->AddObserver(this);
 
@@ -577,11 +603,7 @@ class DesktopAuraTopLevelWindowTest : public aura::WindowObserver {
       owned_window_->parent()->RemoveObserver(this);
       owner_destroyed_ = true;
       owned_window_destroyed_ = true;
-      delete owned_window_.ExtractAsDangling();
-      return;
     }
-    // `owned_window_` is not reset to nullptr here because it is required in
-    // `OnWindowDestroying()` and will be reset there.
     delete owned_window_;
   }
 
@@ -594,10 +616,8 @@ class DesktopAuraTopLevelWindowTest : public aura::WindowObserver {
     window->RemoveObserver(this);
     if (window == owned_window_) {
       owned_window_destroyed_ = true;
-      owned_window_ = nullptr;
     } else if (window == top_level_widget_->GetNativeView()) {
       owner_destroyed_ = true;
-      top_level_widget_ = nullptr;
     } else {
       ADD_FAILURE() << "Unexpected window destroyed callback: " << window;
     }
@@ -621,7 +641,7 @@ class DesktopAuraTopLevelWindowTest : public aura::WindowObserver {
   bool use_async_mode_ = true;
 };
 
-TEST_F(DesktopNativeWidgetAuraTest, FullscreenWindowDestroyedBeforeOwnerTest) {
+TEST_F(DesktopAuraWidgetTest, FullscreenWindowDestroyedBeforeOwnerTest) {
   DesktopAuraTopLevelWindowTest fullscreen_window;
   ASSERT_NO_FATAL_FAILURE(
       fullscreen_window.CreateTopLevelWindow(gfx::Rect(0, 0, 200, 200), true));
@@ -631,7 +651,7 @@ TEST_F(DesktopNativeWidgetAuraTest, FullscreenWindowDestroyedBeforeOwnerTest) {
   RunPendingMessages();
 }
 
-TEST_F(DesktopNativeWidgetAuraTest, FullscreenWindowOwnerDestroyed) {
+TEST_F(DesktopAuraWidgetTest, FullscreenWindowOwnerDestroyed) {
   DesktopAuraTopLevelWindowTest fullscreen_window;
   ASSERT_NO_FATAL_FAILURE(
       fullscreen_window.CreateTopLevelWindow(gfx::Rect(0, 0, 200, 200), true));
@@ -641,7 +661,7 @@ TEST_F(DesktopNativeWidgetAuraTest, FullscreenWindowOwnerDestroyed) {
   RunPendingMessages();
 }
 
-TEST_F(DesktopNativeWidgetAuraTest, TopLevelOwnedPopupTest) {
+TEST_F(DesktopAuraWidgetTest, TopLevelOwnedPopupTest) {
   DesktopAuraTopLevelWindowTest popup_window;
   ASSERT_NO_FATAL_FAILURE(
       popup_window.CreateTopLevelWindow(gfx::Rect(0, 0, 200, 200), false));
@@ -653,7 +673,7 @@ TEST_F(DesktopNativeWidgetAuraTest, TopLevelOwnedPopupTest) {
 
 // This test validates that when a top level owned popup Aura window is
 // resized, the widget is resized as well.
-TEST_F(DesktopNativeWidgetAuraTest, TopLevelOwnedPopupResizeTest) {
+TEST_F(DesktopAuraWidgetTest, TopLevelOwnedPopupResizeTest) {
   DesktopAuraTopLevelWindowTest popup_window;
 
   popup_window.set_use_async_mode(false);
@@ -672,7 +692,7 @@ TEST_F(DesktopNativeWidgetAuraTest, TopLevelOwnedPopupResizeTest) {
 
 // This test validates that when a top level owned popup Aura window is
 // repositioned, the widget is repositioned as well.
-TEST_F(DesktopNativeWidgetAuraTest, TopLevelOwnedPopupRepositionTest) {
+TEST_F(DesktopAuraWidgetTest, TopLevelOwnedPopupRepositionTest) {
   DesktopAuraTopLevelWindowTest popup_window;
 
   popup_window.set_use_async_mode(false);
@@ -750,12 +770,12 @@ void RunCloseWidgetDuringDispatchTest(WidgetTest* test,
 }
 
 // Verifies deleting the widget from a mouse pressed event doesn't crash.
-TEST_F(DesktopNativeWidgetAuraTest, CloseWidgetDuringMousePress) {
+TEST_F(DesktopAuraWidgetTest, CloseWidgetDuringMousePress) {
   RunCloseWidgetDuringDispatchTest(this, ui::ET_MOUSE_PRESSED);
 }
 
 // Verifies deleting the widget from a mouse released event doesn't crash.
-TEST_F(DesktopNativeWidgetAuraTest, CloseWidgetDuringMouseReleased) {
+TEST_F(DesktopAuraWidgetTest, CloseWidgetDuringMouseReleased) {
   RunCloseWidgetDuringDispatchTest(this, ui::ET_MOUSE_RELEASED);
 }
 
@@ -767,8 +787,8 @@ TEST_F(DesktopNativeWidgetAuraTest, CloseWidgetDuringMouseReleased) {
 #endif
 
 // This test verifies that whether mouse events when a modal dialog is
-// displayed are eaten or received by the dialog.
-TEST_F(DesktopNativeWidgetAuraTest, MAYBE_WindowMouseModalityTest) {
+// displayed are eaten or recieved by the dialog.
+TEST_F(DesktopWidgetTest, MAYBE_WindowMouseModalityTest) {
   // Create a top level widget.
   Widget top_level_widget;
   Widget::InitParams init_params =
@@ -840,7 +860,7 @@ TEST_F(DesktopNativeWidgetAuraTest, MAYBE_WindowMouseModalityTest) {
 #if BUILDFLAG(IS_WIN)
 // Tests whether we can activate the top level widget when a modal dialog is
 // active.
-TEST_F(DesktopNativeWidgetAuraTest, WindowModalityActivationTest) {
+TEST_F(DesktopWidgetTest, WindowModalityActivationTest) {
   TestDesktopWidgetDelegate widget_delegate;
   widget_delegate.InitWidget(CreateParams(Widget::InitParams::TYPE_WINDOW));
 
@@ -876,8 +896,7 @@ TEST_F(DesktopNativeWidgetAuraTest, WindowModalityActivationTest) {
 // messages via the WindowEventTarget interface implemented by the
 // HWNDMessageHandler class does not cause a crash due to an unprocessed
 // event
-TEST_F(DesktopNativeWidgetAuraTest,
-       CharMessagesAsKeyboardMessagesDoesNotCrash) {
+TEST_F(DesktopWidgetTest, CharMessagesAsKeyboardMessagesDoesNotCrash) {
   Widget widget;
   Widget::InitParams params = CreateParams(Widget::InitParams::TYPE_WINDOW);
   params.ownership = Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
@@ -897,27 +916,5 @@ TEST_F(DesktopNativeWidgetAuraTest,
 }
 
 #endif  // BUILDFLAG(IS_WIN)
-
-// Tests that reparenting a destkop widget to another desktop widget does not
-// crash.
-TEST_F(DesktopNativeWidgetAuraTest, Reparent) {
-  Widget root, widget;
-  Widget::InitParams root_params =
-      CreateParams(Widget::InitParams::TYPE_WINDOW);
-  root_params.ownership = Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
-  Widget::InitParams widget_params =
-      CreateParams(Widget::InitParams::TYPE_WINDOW);
-  widget_params.ownership = Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
-  root.Init(std::move(root_params));
-  widget.Init(std::move(widget_params));
-
-  // Reparent.
-  Widget::ReparentNativeView(widget.GetNativeView(), root.GetNativeView());
-
-  // Destroying root should eventually destroy its child.
-  WidgetDestroyedWaiter destroy_waiter(&widget);
-  root.Close();
-  destroy_waiter.Wait();
-}
 
 }  // namespace views::test

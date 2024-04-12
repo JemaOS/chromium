@@ -5,7 +5,6 @@
 #include "chrome/browser/support_tool/ash/network_routes_data_collector.h"
 
 #include <cstddef>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -26,6 +25,7 @@
 #include "chromeos/ash/components/dbus/debug_daemon/debug_daemon_client.h"
 #include "components/feedback/redaction_tool/pii_types.h"
 #include "components/feedback/redaction_tool/redaction_tool.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -113,7 +113,7 @@ void NetworkRoutesDataCollector::CollectDataAndDetectPII(
 
 void NetworkRoutesDataCollector::OnGetRoutes(
     base::RepeatingClosure barrier_closure,
-    std::optional<std::vector<std::string>> routes) {
+    absl::optional<std::vector<std::string>> routes) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (routes) {
     network_routes_.insert(network_routes_.end(), routes.value().begin(),
@@ -141,7 +141,7 @@ void NetworkRoutesDataCollector::OnPIIDetected(
     DataCollectorDoneCallback on_data_collected_callback,
     PIIMap detected_pii) {
   MergePIIMaps(pii_map_, detected_pii);
-  std::move(on_data_collected_callback).Run(/*error=*/std::nullopt);
+  std::move(on_data_collected_callback).Run(/*error=*/absl::nullopt);
 }
 
 void NetworkRoutesDataCollector::ExportCollectedDataWithPII(
@@ -185,5 +185,5 @@ void NetworkRoutesDataCollector::OnFilesWritten(
     std::move(on_exported_callback).Run(error);
     return;
   }
-  std::move(on_exported_callback).Run(/*error=*/std::nullopt);
+  std::move(on_exported_callback).Run(/*error=*/absl::nullopt);
 }

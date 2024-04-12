@@ -4,73 +4,62 @@
 
 package org.chromium.chrome.browser.toolbar;
 
-import org.chromium.base.cached_flags.BooleanCachedFieldTrialParameter;
-import org.chromium.base.cached_flags.IntCachedFieldTrialParameter;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.flags.MutableFlagWithSafeDefault;
 
 /** Utility class for toolbar code interacting with features and params. */
 public final class ToolbarFeatures {
-    private static final int DEFAULT_DTC_THRESHOLD_DP = 412;
-    private static final String DTC_TRANSITION_THRESHOLD_DP_PARAM_NAME = "transition_threshold_dp";
+    // The ablation experiment turns off toolbar scrolling off the screen. Initially this also
+    // turned off captures, which are unnecessary when the toolbar cannot scroll off. But this param
+    // allows half of this work to still be done, allowing measurement of both halves when compared
+    // to the original ablation and controls.
+    private static final MutableFlagWithSafeDefault sToolbarScrollAblation =
+            new MutableFlagWithSafeDefault(
+                    ChromeFeatureList.TOOLBAR_SCROLL_ABLATION_ANDROID, false);
+    private static final String ALLOW_CAPTURES = "allow_captures";
 
-    /** Width threshold for the tab strip to start transition. */
-    public static final IntCachedFieldTrialParameter DTC_TRANSITION_THRESHOLD_DP =
-            ChromeFeatureList.newIntCachedFieldTrialParameter(
-                    ChromeFeatureList.DYNAMIC_TOP_CHROME,
-                    DTC_TRANSITION_THRESHOLD_DP_PARAM_NAME,
-                    DEFAULT_DTC_THRESHOLD_DP);
-
-    private static final String USE_TOOLBAR_BG_COLOR_FOR_STRIP_TRANSITION_SCRIM_PARAM =
-            "use_toolbar_bg_color_for_strip_transition_scrim";
-
-    /**
-     * Whether the toolbar bg color will be used as the scrim overlay on the tab strip / status bar
-     * during a tab strip transition.
-     */
-    public static final BooleanCachedFieldTrialParameter
-            USE_TOOLBAR_BG_COLOR_FOR_STRIP_TRANSITION_SCRIM =
-                    ChromeFeatureList.newBooleanCachedFieldTrialParameter(
-                            ChromeFeatureList.DYNAMIC_TOP_CHROME,
-                            USE_TOOLBAR_BG_COLOR_FOR_STRIP_TRANSITION_SCRIM_PARAM,
-                            false);
+    private static final MutableFlagWithSafeDefault sSuppressionFlag =
+            new MutableFlagWithSafeDefault(ChromeFeatureList.SUPPRESS_TOOLBAR_CAPTURES, false);
+    private static final MutableFlagWithSafeDefault sRecordSuppressionMetrics =
+            new MutableFlagWithSafeDefault(ChromeFeatureList.RECORD_SUPPRESSION_METRICS, true);
+    private static final MutableFlagWithSafeDefault sDelayTransitionsForAnimation =
+            new MutableFlagWithSafeDefault(ChromeFeatureList.DELAY_TRANSITIONS_FOR_ANIMATION, true);
 
     /** Private constructor to avoid instantiation. */
     private ToolbarFeatures() {}
 
-    public static boolean shouldSuppressCaptures() {
-        return ChromeFeatureList.sSuppressionToolbarCaptures.isEnabled();
+    /** Returns whether captures should be blocked as part of the ablation experiment. */
+    public static boolean shouldBlockCapturesForAblation() {
+        // Not in ablation or pre-native, allow captures like normal.
+        if (!sToolbarScrollAblation.isEnabled()) {
+            return false;
+        }
+
+        // Ablation is enabled, follow the param.
+        return !ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
+                ChromeFeatureList.TOOLBAR_SCROLL_ABLATION_ANDROID, ALLOW_CAPTURES, false);
     }
 
+    public static boolean shouldSuppressCaptures() {
+        return sSuppressionFlag.isEnabled();
+    }
+
+    /**
+     * Returns whether the layout system will delay transitions between start/done hiding/showing
+     * for Android view animations or not. When this is delayed, the toolbar code will try to
+     * always draw itself from Android views during these transitions, to avoid letting the captured
+     * bitmap leak through during transitions. With suppression enabled, the captured bitmap is less
+     * reliable during these transitions.
+     */
+    public static boolean shouldDelayTransitionsForAnimation() {
+        return sDelayTransitionsForAnimation.isEnabled();
+    }
     /**
      * Returns whether to record metrics from suppression experiment. This allows an arm of
      * suppression to run without the overhead from reporting any extra metrics in Java. Using a
      * feature instead of a param to utilize Java side caching.
      */
     public static boolean shouldRecordSuppressionMetrics() {
-        return ChromeFeatureList.sRecordSuppressionMetrics.isEnabled();
-    }
-
-    /**
-     * @return Whether the toolbar bg color will be used as the scrim overlay on the tab strip and
-     *     status bar during a tab strip transition.
-     */
-    public static boolean shouldUseToolbarBgColorForStripTransitionScrim() {
-        return isDynamicTopChromeEnabled()
-                && USE_TOOLBAR_BG_COLOR_FOR_STRIP_TRANSITION_SCRIM.getValue();
-    }
-
-    /**
-     * @return Whether the tab strip will be hidden/shown on a tablet when the window width changes.
-     *     This feature will not be supported when the tab strip window layout optimization feature
-     *     is enabled.
-     */
-    public static boolean isDynamicTopChromeEnabled() {
-        return ChromeFeatureList.sDynamicTopChrome.isEnabled()
-                && !ChromeFeatureList.sTabStripLayoutOptimization.isEnabled();
-    }
-
-    /** Returns if we are using optimized window layout for tab strip. */
-    public static boolean isTabStripWindowLayoutOptimizationEnabled() {
-        return ChromeFeatureList.sTabStripLayoutOptimization.isEnabled();
+        return sRecordSuppressionMetrics.isEnabled();
     }
 }

@@ -6,13 +6,12 @@ import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {Coordinate2d} from './coordinate2d.js';
-import {Margins} from './margins.js';
+import {CustomMarginsOrientation, Margins} from './margins.js';
 import {PrintableArea} from './printable_area.js';
 import {Size} from './size.js';
 
 export interface DocumentSettings {
-  allPagesHaveCustomSize: boolean;
-  allPagesHaveCustomOrientation: boolean;
+  hasCssMediaStyles: boolean;
   hasSelection: boolean;
   isModifiable: boolean;
   isFromArc: boolean;
@@ -50,8 +49,7 @@ export class PrintPreviewDocumentInfoElement extends
         notify: true,
         value() {
           return {
-            allPagesHaveCustomSize: false,
-            allPagesHaveCustomOrientation: false,
+            hasCssMediaStyles: false,
             hasSelection: false,
             isModifiable: true,
             isFromArc: false,
@@ -115,11 +113,8 @@ export class PrintPreviewDocumentInfoElement extends
             this.onPageCountReady_(pageCount, previewResponseId, scaling));
     this.addWebUiListener(
         'page-layout-ready',
-        (pageLayout: PageLayoutInfo, allPagesHaveCustomSize: boolean,
-         allPagesHaveCustomOrientation: boolean) =>
-            this.onPageLayoutReady_(
-                pageLayout, allPagesHaveCustomSize,
-                allPagesHaveCustomOrientation));
+        (pageLayout: PageLayoutInfo, hasCustomPageSizeStyle: boolean) =>
+            this.onPageLayoutReady_(pageLayout, hasCustomPageSizeStyle));
   }
 
   /**
@@ -148,42 +143,29 @@ export class PrintPreviewDocumentInfoElement extends
    * Called when the page layout of the document is ready. Always occurs
    * as a result of a preview request.
    * @param pageLayout Layout information about the document.
-   * @param allPagesHaveCustomSize Whether this document has a custom page size
-   *     or style to use for all pages.
-   * @param allPagesHaveCustomOrientation Whether this document has a custom
-   *     page orientation to use for all pages.
+   * @param hasCustomPageSizeStyle Whether this document has a custom page size
+   *     or style to use.
    */
   private onPageLayoutReady_(
-      pageLayout: PageLayoutInfo, allPagesHaveCustomSize: boolean,
-      allPagesHaveCustomOrientation: boolean) {
+      pageLayout: PageLayoutInfo, hasCustomPageSizeStyle: boolean) {
     const origin =
         new Coordinate2d(pageLayout.printableAreaX, pageLayout.printableAreaY);
     const size =
         new Size(pageLayout.printableAreaWidth, pageLayout.printableAreaHeight);
 
-    const pageSize = new Size(
-        Math.round(
-            pageLayout.contentWidth + pageLayout.marginLeft +
-            pageLayout.marginRight),
-        Math.round(
-            pageLayout.contentHeight + pageLayout.marginTop +
-            pageLayout.marginBottom));
-
-    // Note that `Margins` stores rounded margin values, which is not
-    // appropriate for use with `pageSize` above, as that could cause rounding
-    // errors.
     const margins = new Margins(
-        pageLayout.marginTop, pageLayout.marginRight, pageLayout.marginBottom,
-        pageLayout.marginLeft);
+        Math.round(pageLayout.marginTop), Math.round(pageLayout.marginRight),
+        Math.round(pageLayout.marginBottom), Math.round(pageLayout.marginLeft));
+
+    const o = CustomMarginsOrientation;
+    const pageSize = new Size(
+        pageLayout.contentWidth + margins.get(o.LEFT) + margins.get(o.RIGHT),
+        pageLayout.contentHeight + margins.get(o.TOP) + margins.get(o.BOTTOM));
 
     if (this.isInitialized_) {
       this.printableArea = new PrintableArea(origin, size);
       this.pageSize = pageSize;
-      this.set(
-          'documentSettings.allPagesHaveCustomSize', allPagesHaveCustomSize);
-      this.set(
-          'documentSettings.allPagesHaveCustomOrientation',
-          allPagesHaveCustomOrientation);
+      this.set('documentSettings.hasCssMediaStyles', hasCustomPageSizeStyle);
       this.margins = margins;
     }
   }

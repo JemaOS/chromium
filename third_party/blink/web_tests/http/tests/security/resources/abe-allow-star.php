@@ -1,6 +1,6 @@
 <?php
-if (isset($_GET["Cookie"])) {
-  $cookie_check = $_GET["Cookie"];
+$cookie_check = $_GET["Cookie"];
+if (isset($cookie_check)) {
   if ($cookie_check == "NotSet") {
     if (isset($_COOKIE['TestCookie'])) {
       header("HTTP/1.0 404 Not Found");

@@ -1,7 +1,6 @@
 // META: script=/common/get-host-info.sub.js
 // META: script=/common/utils.js
 // META: script=/common/dispatcher/dispatcher.js
-// META: script=/fenced-frame/resources/utils.js
 // META: script=/html/cross-origin-embedder-policy/credentialless/resources/common.js
 // META: script=./resources/common.js
 // META: timeout=long
@@ -28,7 +27,7 @@ promise_test(async test => {
 
   // Create the the 3 actors.
   const iframe_credentialless_1 = newIframeCredentialless(cross_origin);
-  const fenced_frame = await newFencedFrame(cross_origin);
+  const fenced_frame = newFencedFrame(cross_origin);
   send(fenced_frame, `
     const importScript = ${importScript};
     await importScript("/common/utils.js");

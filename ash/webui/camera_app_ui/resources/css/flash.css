@@ -3,7 +3,8 @@
  * found in the LICENSE file. */
 
 body.view-flash #view-flash {
-  background: var(--cros-sys-scrim);
+  backdrop-filter: blur(30px);
+  background: rgba(var(--grey-900-rgb), 0.8);
   transition: opacity var(--moderate2-duration);
 }
 
@@ -14,14 +15,14 @@ body.view-flash #view-flash {
 }
 
 #processing-indicator .icon {
-  color: var(--cros-sys-progress);
+  background-image: url(/images/document_mode_spinner.svg);
   height: 40px;
   width: 40px;
 }
 
 #processing-indicator .msg {
-  color: var(--cros-sys-on_surface);
-  font: var(--cros-body-1-font);
+  color: var(--grey-200);
+  font: 14px/20px Roboto;
   margin-top: 16px;
 }
 
@@ -35,8 +36,6 @@ body.view-flash #view-flash {
 }
 
 body.gif-capture-post-processing.view-flash #processing-indicator {
-  animation:
-      show-processing-indicator-with-delay
-      var(--fast1-duration) ease-in 500ms 1 normal forwards;
+  animation: show-processing-indicator-with-delay var(--fast1-duration) ease-in 500ms 1 normal forwards;
   opacity: 0;
 }

@@ -24,28 +24,21 @@ PlatformNotificationServiceFactory::GetForProfile(Profile* profile) {
 // static
 PlatformNotificationServiceFactory*
 PlatformNotificationServiceFactory::GetInstance() {
-  static base::NoDestructor<PlatformNotificationServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<PlatformNotificationServiceFactory>::get();
 }
 
 PlatformNotificationServiceFactory::PlatformNotificationServiceFactory()
     : ProfileKeyedServiceFactory(
           "PlatformNotificationService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HostContentSettingsMapFactory::GetInstance());
   DependsOn(NotificationDisplayServiceFactory::GetInstance());
   DependsOn(NotificationMetricsLoggerFactory::GetInstance());
   DependsOn(ukm::UkmBackgroundRecorderFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService>
-PlatformNotificationServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PlatformNotificationServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<PlatformNotificationServiceImpl>(
+  return new PlatformNotificationServiceImpl(
       Profile::FromBrowserContext(context));
 }

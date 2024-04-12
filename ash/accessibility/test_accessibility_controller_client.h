@@ -5,11 +5,10 @@
 #ifndef ASH_ACCESSIBILITY_TEST_ACCESSIBILITY_CONTROLLER_CLIENT_H_
 #define ASH_ACCESSIBILITY_TEST_ACCESSIBILITY_CONTROLLER_CLIENT_H_
 
-#include <optional>
-
 #include "ash/public/cpp/accessibility_controller_client.h"
 #include "ash/public/cpp/accessibility_controller_enums.h"
 #include "chromeos/ash/components/audio/sounds.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 
 namespace ash {
@@ -41,19 +40,20 @@ class TestAccessibilityControllerClient : public AccessibilityControllerClient {
                                   gfx::PointF location) override;
   bool ToggleDictation() override;
   void SilenceSpokenFeedback() override;
+  void OnTwoFingerTouchStart() override;
+  void OnTwoFingerTouchStop() override;
   bool ShouldToggleSpokenFeedbackViaTouch() const override;
   void PlaySpokenFeedbackToggleCountdown(int tick_count) override;
   void RequestSelectToSpeakStateChange() override;
   void RequestAutoclickScrollableBoundsForPoint(
-      const gfx::Point& point_in_screen) override;
+      gfx::Point& point_in_screen) override;
   void MagnifierBoundsChanged(const gfx::Rect& bounds_in_screen) override;
   void OnSwitchAccessDisabled() override;
   void OnSelectToSpeakPanelAction(SelectToSpeakPanelAction action,
                                   double value) override;
   void SetA11yOverrideWindow(aura::Window* a11y_override_window) override;
-  std::string GetDictationDefaultLocale(bool new_user) override;
 
-  std::optional<Sound> GetPlayedEarconAndReset();
+  absl::optional<Sound> GetPlayedEarconAndReset();
 
   AccessibilityAlert last_a11y_alert() const { return last_a11y_alert_; }
   ax::mojom::Gesture last_a11y_gesture() const { return last_a11y_gesture_; }
@@ -71,7 +71,7 @@ class TestAccessibilityControllerClient : public AccessibilityControllerClient {
  private:
   AccessibilityAlert last_a11y_alert_ = AccessibilityAlert::NONE;
   std::string last_alert_message_;
-  std::optional<Sound> sound_key_;
+  absl::optional<Sound> sound_key_;
   bool is_dictation_active_ = false;
   SelectToSpeakPanelAction last_select_to_speak_panel_action_ =
       SelectToSpeakPanelAction::kNone;

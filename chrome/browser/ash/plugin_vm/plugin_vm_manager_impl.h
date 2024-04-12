@@ -6,8 +6,6 @@
 #define CHROME_BROWSER_ASH_PLUGIN_VM_PLUGIN_VM_MANAGER_IMPL_H_
 
 #include <memory>
-#include <optional>
-
 #include "base/files/file_path.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -21,6 +19,7 @@
 #include "chromeos/ash/components/dbus/vm_concierge/concierge_service.pb.h"
 #include "chromeos/ash/components/dbus/vm_plugin_dispatcher/vm_plugin_dispatcher.pb.h"
 #include "chromeos/ash/components/dbus/vm_plugin_dispatcher/vm_plugin_dispatcher_client.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -104,7 +103,7 @@ class PluginVmManagerImpl : public PluginVmManager,
   void OnListVms(
       base::OnceCallback<void(bool default_vm_exists)> success_callback,
       base::OnceClosure error_callback,
-      std::optional<vm_tools::plugin_dispatcher::ListVmResponse> reply);
+      absl::optional<vm_tools::plugin_dispatcher::ListVmResponse> reply);
 
   // The flow to launch a Plugin Vm. We'll probably want to add additional
   // abstraction around starting the services in the future but this is
@@ -112,12 +111,12 @@ class PluginVmManagerImpl : public PluginVmManager,
   void OnListVmsForLaunch(bool default_vm_exists);
   void StartVm();
   void OnStartVm(
-      std::optional<vm_tools::plugin_dispatcher::StartVmResponse> reply);
+      absl::optional<vm_tools::plugin_dispatcher::StartVmResponse> reply);
   void ShowVm();
   void OnShowVm(
-      std::optional<vm_tools::plugin_dispatcher::ShowVmResponse> reply);
+      absl::optional<vm_tools::plugin_dispatcher::ShowVmResponse> reply);
   void OnGetVmInfoForSharing(
-      std::optional<vm_tools::concierge::GetVmInfoResponse> reply);
+      absl::optional<vm_tools::concierge::GetVmInfoResponse> reply);
   void OnDefaultSharedDirExists(const base::FilePath& dir, bool exists);
   void UninstallSucceeded();
 
@@ -128,17 +127,17 @@ class PluginVmManagerImpl : public PluginVmManager,
 
   // The flow to relaunch Plugin Vm.
   void OnSuspendVmForRelaunch(
-      std::optional<vm_tools::plugin_dispatcher::SuspendVmResponse> reply);
+      absl::optional<vm_tools::plugin_dispatcher::SuspendVmResponse> reply);
   void OnRelaunchVmComplete(bool success);
 
   // The flow to uninstall Plugin Vm.
   void OnListVmsForUninstall(bool default_vm_exists);
   void StopVmForUninstall();
   void OnStopVmForUninstall(
-      std::optional<vm_tools::plugin_dispatcher::StopVmResponse> reply);
+      absl::optional<vm_tools::plugin_dispatcher::StopVmResponse> reply);
   void DestroyDiskImage();
   void OnDestroyDiskImage(
-      std::optional<vm_tools::concierge::DestroyDiskImageResponse> response);
+      absl::optional<vm_tools::concierge::DestroyDiskImageResponse> response);
 
   // Called when UninstallPluginVm() is unsuccessful.
   void UninstallFailed(
@@ -149,7 +148,7 @@ class PluginVmManagerImpl : public PluginVmManager,
   // policy changes.
   void OnAvailabilityChanged(bool is_allowed, bool is_configured);
 
-  raw_ptr<Profile> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
   std::string owner_id_;
   uint64_t seneschal_server_handle_ = 0;
 

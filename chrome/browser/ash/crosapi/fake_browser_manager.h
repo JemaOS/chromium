@@ -7,7 +7,6 @@
 
 #include "base/values.h"
 #include "chrome/browser/ash/crosapi/browser_manager.h"
-#include "chromeos/crosapi/mojom/crosapi.mojom.h"
 
 namespace crosapi {
 

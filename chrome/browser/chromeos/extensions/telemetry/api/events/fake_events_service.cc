@@ -19,29 +19,23 @@
 
 namespace chromeos {
 
-namespace {
-
-namespace crosapi = ::crosapi::mojom;
-
-}  // namespace
-
 FakeEventsService::FakeEventsService() = default;
 
 FakeEventsService::~FakeEventsService() = default;
 
 void FakeEventsService::BindPendingReceiver(
-    mojo::PendingReceiver<crosapi::TelemetryEventService> receiver) {
+    mojo::PendingReceiver<crosapi::mojom::TelemetryEventService> receiver) {
   receiver_.Bind(std::move(receiver));
 }
 
-mojo::PendingRemote<crosapi::TelemetryEventService>
+mojo::PendingRemote<crosapi::mojom::TelemetryEventService>
 FakeEventsService::BindNewPipeAndPassRemote() {
   return receiver_.BindNewPipeAndPassRemote();
 }
 
 void FakeEventsService::AddEventObserver(
-    crosapi::TelemetryEventCategoryEnum category,
-    mojo::PendingRemote<crosapi::TelemetryEventObserver> observer) {
+    crosapi::mojom::TelemetryEventCategoryEnum category,
+    mojo::PendingRemote<crosapi::mojom::TelemetryEventObserver> observer) {
   auto it = event_observers_.find(category);
   if (it == event_observers_.end()) {
     it = event_observers_.emplace_hint(it, std::piecewise_construct,
@@ -71,7 +65,7 @@ void FakeEventsService::AddEventObserver(
 }
 
 void FakeEventsService::IsEventSupported(
-    crosapi::TelemetryEventCategoryEnum category,
+    crosapi::mojom::TelemetryEventCategoryEnum category,
     IsEventSupportedCallback callback) {
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback),
@@ -79,13 +73,13 @@ void FakeEventsService::IsEventSupported(
 }
 
 void FakeEventsService::SetIsEventSupportedResponse(
-    crosapi::TelemetryExtensionSupportStatusPtr status) {
+    crosapi::mojom::TelemetryExtensionSupportStatusPtr status) {
   is_event_supported_response_.Swap(&status);
 }
 
 void FakeEventsService::EmitEventForCategory(
-    crosapi::TelemetryEventCategoryEnum category,
-    crosapi::TelemetryEventInfoPtr info) {
+    crosapi::mojom::TelemetryEventCategoryEnum category,
+    crosapi::mojom::TelemetryEventInfoPtr info) {
   // Flush the receiver, so any pending observers are registered before the
   // event is emitted.
   if (receiver_.is_bound()) {
@@ -102,9 +96,9 @@ void FakeEventsService::EmitEventForCategory(
   }
 }
 
-mojo::RemoteSet<crosapi::TelemetryEventObserver>*
+mojo::RemoteSet<crosapi::mojom::TelemetryEventObserver>*
 FakeEventsService::GetObserversByCategory(
-    crosapi::TelemetryEventCategoryEnum category) {
+    crosapi::mojom::TelemetryEventCategoryEnum category) {
   auto it = event_observers_.find(category);
   if (it == event_observers_.end()) {
     return nullptr;

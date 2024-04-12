@@ -3,13 +3,13 @@
 // found in the LICENSE file.
 
 import * as animation from './animation.js';
-import {assertEnumVariant, assertExists, assertNotReached} from './assert.js';
+import {assertExists, assertNotReached} from './assert.js';
 import * as dom from './dom.js';
 import {I18nString} from './i18n_string.js';
-import {SvgWrapper} from './lit/components/svg-wrapper.js';
 import * as loadTimeData from './models/load_time_data.js';
+import {speakMessage} from './spoken_msg.js';
 import * as state from './state.js';
-import {PerfEvent} from './type.js';
+import {PerfEvent} from './type';
 import * as util from './util.js';
 
 /**
@@ -65,7 +65,7 @@ class RippleEffect {
     this.parent.appendChild(template);
     // We don't care about waiting for the single ripple animation to end
     // before returning.
-    void animation.play(ripple).result.then(() => {
+    void animation.play(ripple).then(() => {
       ripple.remove();
     });
   }
@@ -139,7 +139,7 @@ function getIndicatorI18nStringId(indicatorType: IndicatorType): I18nString {
 function getIndicatorIcon(indicatorType: IndicatorType): string|null {
   switch (indicatorType) {
     default:
-      return 'new_feature_toast_icon.svg';
+      return '/images/new_feature_toast_icon.svg';
   }
 }
 
@@ -150,7 +150,7 @@ function getOffsetProperties(
 
   function getPositionProperty(key: string) {
     const property = assertExists(style.get(key)).toString();
-    return assertEnumVariant(PositionProperty, property);
+    return util.assertEnumVariant(PositionProperty, property);
   }
 
   for (const dir of ['x', 'y']) {
@@ -218,6 +218,7 @@ class Toast {
 
   show(): void {
     this.parent.appendChild(this.template);
+    speakMessage(this.message);
   }
 
   focus(): void {
@@ -239,12 +240,16 @@ class NewFeatureToast extends Toast {
     const template = util.instantiateTemplate('#new-feature-toast-template');
     const toast = dom.getFrom(template, '#new-feature-toast', HTMLDivElement);
 
-    const i18nId =
-        assertEnumVariant(I18nString, anchor.getAttribute('i18n-new-feature'));
+    const i18nId = util.assertEnumVariant(
+        I18nString, anchor.getAttribute('i18n-new-feature'));
     const textElement =
         dom.getFrom(template, '.custom-toast-text', HTMLSpanElement);
     const text = loadTimeData.getI18nMessage(i18nId);
     textElement.textContent = text;
+    const ariaLabelI18nId = util.assertEnumVariant(
+        I18nString, anchor.getAttribute('i18n-new-feature-label'));
+    const ariaLabel = loadTimeData.getI18nMessage(ariaLabelI18nId, text);
+    toast.setAttribute('aria-label', ariaLabel);
 
     super(
         anchor, template, toast, text, [{
@@ -269,11 +274,12 @@ class IndicatorToast extends Toast {
     toast.setAttribute('aria-label', text);
 
     const icon = getIndicatorIcon(indicatorType);
-    const iconElement = dom.getFrom(template, '#indicator-icon', SvgWrapper);
+    const iconElement =
+        dom.getFrom(template, '#indicator-icon', HTMLImageElement);
     if (icon === null) {
       iconElement.hidden = true;
     } else {
-      iconElement.name = icon;
+      iconElement.src = icon;
       iconElement.hidden = false;
     }
 
@@ -335,7 +341,7 @@ function stopEffect(effectPayload: EffectPayload) {
 /**
  * Timeout for effects.
  */
-const EFFECT_TIMEOUT_MS = 6000;
+const EFFECT_TIMEOUT_MS = 10000;
 
 /**
  * Shows the new feature toast message and ripple around the `anchor` element.

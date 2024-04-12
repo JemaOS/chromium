@@ -50,7 +50,7 @@ class DownloadsHandler : public SettingsPageUIHandler,
   void HandleSelectDownloadLocation(const base::Value::List& args);
 
   // SelectFileDialog::Listener implementation.
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override;
   void FileSelectionCanceled(void* params) override;
@@ -58,7 +58,7 @@ class DownloadsHandler : public SettingsPageUIHandler,
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // Callback for the "getDownloadLocationText" message.  Converts actual
   // paths in chromeos to values suitable to display to users.
-  // E.g. /home/chronos/u-<hash>/MyFiles/Downloads => "My Files > Downloads".
+  // E.g. /home/chronos/u-<hash>/Downloads => "Downloads".
   void HandleGetDownloadLocationText(const base::Value::List& args);
 #endif
 

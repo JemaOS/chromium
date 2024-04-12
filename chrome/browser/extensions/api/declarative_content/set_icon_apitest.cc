@@ -4,8 +4,6 @@
 
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/extensions/extension_tab_util.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/version_info/version_info.h"
 #include "content/public/browser/storage_partition.h"
@@ -13,7 +11,6 @@
 #include "content/public/test/prerender_test_util.h"
 #include "extensions/browser/api/declarative/rules_registry.h"
 #include "extensions/browser/api/declarative/rules_registry_service.h"
-#include "extensions/browser/extension_action.h"
 #include "extensions/browser/extension_action_manager.h"
 #include "extensions/common/features/feature_channel.h"
 #include "extensions/test/extension_test_message_listener.h"
@@ -161,7 +158,7 @@ class SetIconAPIPrerenderingTest : public SetIconAPITest {
 
  private:
   void SetUp() override {
-    prerender_helper_.RegisterServerRequestMonitor(embedded_test_server());
+    prerender_helper_.SetUp(embedded_test_server());
     ExtensionApiTest::SetUp();
   }
 

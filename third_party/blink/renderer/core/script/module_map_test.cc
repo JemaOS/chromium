@@ -47,7 +47,7 @@ class TestSingleModuleClient final : public SingleModuleClient {
   }
 
   bool WasNotifyFinished() const { return was_notify_finished_; }
-  ModuleScript* GetModuleScript() { return module_script_.Get(); }
+  ModuleScript* GetModuleScript() { return module_script_; }
 
  private:
   bool was_notify_finished_ = false;
@@ -106,7 +106,7 @@ class ModuleMapTestModulator final : public DummyModulator {
   ModuleRecordResolver* GetModuleRecordResolver() override {
     return resolver_.Get();
   }
-  ScriptState* GetScriptState() override { return script_state_.Get(); }
+  ScriptState* GetScriptState() override { return script_state_; }
 
   class TestModuleScriptFetcher final
       : public GarbageCollected<TestModuleScriptFetcher>,
@@ -152,7 +152,7 @@ class ModuleMapTestModulator final : public DummyModulator {
       client_->NotifyFetchFinishedSuccess(ModuleScriptCreationParams(
           url_, url_, ScriptSourceLocationType::kExternalFile,
           ModuleType::kJavaScript, ParkableString(String("").ReleaseImpl()),
-          nullptr, network::mojom::ReferrerPolicy::kDefault));
+          nullptr));
     }
     void Trace(Visitor* visitor) const { visitor->Trace(client_); }
 

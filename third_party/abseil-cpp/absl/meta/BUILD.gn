@@ -6,10 +6,7 @@ import("//third_party/abseil-cpp/absl.gni")
 
 absl_source_set("type_traits") {
   public = [ "type_traits.h" ]
-  deps = [
-    "//third_party/abseil-cpp/absl/base:config",
-    "//third_party/abseil-cpp/absl/base:core_headers",
-  ]
+  deps = [ "//third_party/abseil-cpp/absl/base:config" ]
 }
 
 absl_test("type_traits_test") {

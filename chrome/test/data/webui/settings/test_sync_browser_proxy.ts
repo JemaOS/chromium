@@ -3,8 +3,7 @@
 // found in the LICENSE file.
 
 // clang-format off
-import type {StoredAccount, SyncBrowserProxy, SyncPrefs, SyncStatus} from 'chrome://settings/settings.js';
-import {PageStatus, StatusAction} from 'chrome://settings/settings.js';
+import {PageStatus, StatusAction, StoredAccount, SyncBrowserProxy, SyncPrefs, SyncStatus} from 'chrome://settings/settings.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
 // clang-format on

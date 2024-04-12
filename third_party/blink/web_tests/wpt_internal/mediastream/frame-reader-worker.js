@@ -6,7 +6,7 @@ self.addEventListener('message', function(e) {
   const frameStream = e.data.stream;
   const frameReader = frameStream.getReader();
 
-  const framesToRead = 10;
+  const framesToRead = 20;
 
   var closeStream = function() {
     frameReader.releaseLock();

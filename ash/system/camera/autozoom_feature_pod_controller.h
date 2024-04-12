@@ -14,9 +14,10 @@
 
 namespace ash {
 
+class FeaturePodButton;
 class FeatureTile;
 
-// Controller of a feature tile that toggles autozoom.
+// Controller of a feature pod button that toggles autozoom.
 class ASH_EXPORT AutozoomFeaturePodController : public FeaturePodControllerBase,
                                                 public AutozoomObserver {
  public:
@@ -29,6 +30,7 @@ class ASH_EXPORT AutozoomFeaturePodController : public FeaturePodControllerBase,
   ~AutozoomFeaturePodController() override;
 
   // FeaturePodControllerBase:
+  FeaturePodButton* CreateButton() override;
   std::unique_ptr<FeatureTile> CreateTile(bool compact = false) override;
   QsFeatureCatalogName GetCatalogName() override;
   void OnIconPressed() override;
@@ -41,9 +43,12 @@ class ASH_EXPORT AutozoomFeaturePodController : public FeaturePodControllerBase,
  private:
   void UpdateButton(cros::mojom::CameraAutoFramingState state);
 
+  void UpdateButtonVisibility();
+
   void UpdateTileVisibility();
 
-  raw_ptr<FeatureTile, DanglingUntriaged> tile_ = nullptr;
+  raw_ptr<FeaturePodButton, ExperimentalAsh> button_ = nullptr;
+  raw_ptr<FeatureTile, ExperimentalAsh> tile_ = nullptr;
 
   base::WeakPtrFactory<AutozoomFeaturePodController> weak_factory_{this};
 };

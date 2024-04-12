@@ -11,7 +11,6 @@
 #include "ash/public/cpp/ash_prefs.h"
 #include "ash/root_window_controller.h"
 #include "ash/shell.h"
-#include "ash/system/notification_center/notification_center_tray.h"
 #include "ash/system/privacy/privacy_indicators_controller.h"
 #include "ash/system/privacy/privacy_indicators_tray_item_view.h"
 #include "ash/system/status_area_widget.h"
@@ -20,17 +19,14 @@
 #include "base/memory/raw_ptr.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
-#include "chrome/browser/apps/app_service/app_service_proxy.h"
-#include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
-#include "chrome/browser/apps/app_service/app_service_test.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
-#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile_manager.h"
 #include "components/account_id/account_id.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/services/app_service/public/cpp/app_capability_access_cache.h"
 #include "components/services/app_service/public/cpp/app_capability_access_cache_wrapper.h"
+#include "components/services/app_service/public/cpp/app_registry_cache.h"
 #include "components/services/app_service/public/cpp/app_registry_cache_wrapper.h"
 #include "components/services/app_service/public/cpp/app_types.h"
 #include "components/services/app_service/public/cpp/capability_access.h"
@@ -51,17 +47,13 @@ constexpr char kPrivacyIndicatorsLaunchSettingsHistogramName[] =
 
 // Check the visibility of privacy indicators and their camera/microphone icons
 // in all displays.
-ash::PrivacyIndicatorsTrayItemView* GetPrivacyIndicatorsView(
-    ash::RootWindowController* root_window_controller) {
-  return root_window_controller->GetStatusAreaWidget()
-      ->notification_center_tray()
-      ->privacy_indicators_view();
-}
-
 void ExpectPrivacyIndicatorsVisible(bool visible) {
   for (auto* root_window_controller :
        ash::Shell::Get()->GetAllRootWindowControllers()) {
-    EXPECT_EQ(GetPrivacyIndicatorsView(root_window_controller)->GetVisible(),
+    EXPECT_EQ(root_window_controller->GetStatusAreaWidget()
+                  ->unified_system_tray()
+                  ->privacy_indicators_view()
+                  ->GetVisible(),
               visible);
   }
 }
@@ -69,7 +61,9 @@ void ExpectPrivacyIndicatorsVisible(bool visible) {
 void ExpectPrivacyIndicatorsCameraIconVisible(bool visible) {
   for (auto* root_window_controller :
        ash::Shell::Get()->GetAllRootWindowControllers()) {
-    EXPECT_EQ(GetPrivacyIndicatorsView(root_window_controller)
+    EXPECT_EQ(root_window_controller->GetStatusAreaWidget()
+                  ->unified_system_tray()
+                  ->privacy_indicators_view()
                   ->camera_icon()
                   ->GetVisible(),
               visible);
@@ -79,7 +73,9 @@ void ExpectPrivacyIndicatorsCameraIconVisible(bool visible) {
 void ExpectPrivacyIndicatorsMicrophoneIconVisible(bool visible) {
   for (auto* root_window_controller :
        ash::Shell::Get()->GetAllRootWindowControllers()) {
-    EXPECT_EQ(GetPrivacyIndicatorsView(root_window_controller)
+    EXPECT_EQ(root_window_controller->GetStatusAreaWidget()
+                  ->unified_system_tray()
+                  ->privacy_indicators_view()
                   ->microphone_icon()
                   ->GetVisible(),
               visible);
@@ -106,23 +102,16 @@ class TestAppAccessNotifier : public AppAccessNotifier {
   AccountId user_account_id_ = EmptyAccountId();
 };
 
-class AppAccessNotifierTest : public testing::Test,
-                              public ::testing::WithParamInterface<bool> {
+class AppAccessNotifierBaseTest : public testing::Test {
  public:
-  AppAccessNotifierTest()
+  AppAccessNotifierBaseTest()
       : testing_profile_manager_(TestingBrowserProcess::GetGlobal()) {}
-  AppAccessNotifierTest(const AppAccessNotifierTest&) = delete;
-  AppAccessNotifierTest& operator=(const AppAccessNotifierTest&) = delete;
-  ~AppAccessNotifierTest() override = default;
-
-  bool IsCrosPrivacyHubEnabled() const { return GetParam(); }
+  AppAccessNotifierBaseTest(const AppAccessNotifierBaseTest&) = delete;
+  AppAccessNotifierBaseTest& operator=(const AppAccessNotifierBaseTest&) =
+      delete;
+  ~AppAccessNotifierBaseTest() override = default;
 
   void SetUp() override {
-    if (!IsCrosPrivacyHubEnabled()) {
-      scoped_feature_list_.InitAndDisableFeature(
-          ash::features::kCrosPrivacyHub);
-    }
-
     ASSERT_TRUE(testing_profile_manager_.SetUp());
 
     // Setting ash prefs for testing multi-display.
@@ -151,7 +140,7 @@ class AppAccessNotifierTest : public testing::Test,
     auto* primary_profile = testing_profile_manager_.CreateTestingProfile(
         account_id_primary_user_.GetUserEmail());
     fake_user_manager_->AddUserWithAffiliationAndTypeAndProfile(
-        account_id_primary_user_, false, user_manager::UserType::kRegular,
+        account_id_primary_user_, false, user_manager::USER_TYPE_REGULAR,
         primary_profile);
 
     registry_cache_primary_user_.SetAccountId(account_id_primary_user_);
@@ -163,15 +152,13 @@ class AppAccessNotifierTest : public testing::Test,
         account_id_primary_user_, &capability_access_cache_primary_user_);
 
     SetActiveUserAccountId(/*is_primary=*/true);
-    WaitForAppServiceProxyReady(
-        apps::AppServiceProxyFactory::GetForProfile(primary_profile));
   }
 
   void SetupSecondaryUser() {
     auto* secondary_profile = testing_profile_manager_.CreateTestingProfile(
         account_id_secondary_user_.GetUserEmail());
     fake_user_manager_->AddUserWithAffiliationAndTypeAndProfile(
-        account_id_secondary_user_, false, user_manager::UserType::kRegular,
+        account_id_secondary_user_, false, user_manager::USER_TYPE_REGULAR,
         secondary_profile);
 
     registry_cache_secondary_user_.SetAccountId(account_id_secondary_user_);
@@ -183,16 +170,16 @@ class AppAccessNotifierTest : public testing::Test,
         account_id_secondary_user_, &capability_access_cache_secondary_user_);
 
     SetActiveUserAccountId(/*is_primary=*/false);
-    WaitForAppServiceProxyReady(
-        apps::AppServiceProxyFactory::GetForProfile(secondary_profile));
   }
 
   std::vector<std::u16string> GetAppsAccessingCamera() {
-    return app_access_notifier_->GetAppsAccessingCamera();
+    return app_access_notifier_->GetAppsAccessingSensor(
+        ash::SensorDisabledNotificationDelegate::Sensor::kCamera);
   }
 
   std::vector<std::u16string> GetAppsAccessingMicrophone() {
-    return app_access_notifier_->GetAppsAccessingMicrophone();
+    return app_access_notifier_->GetAppsAccessingSensor(
+        ash::SensorDisabledNotificationDelegate::Sensor::kMicrophone);
   }
 
   static apps::AppPtr MakeApp(const std::string app_id,
@@ -206,8 +193,8 @@ class AppAccessNotifierTest : public testing::Test,
 
   static apps::CapabilityAccessPtr MakeCapabilityAccess(
       const std::string app_id,
-      std::optional<bool> camera,
-      std::optional<bool> microphone) {
+      absl::optional<bool> camera,
+      absl::optional<bool> microphone) {
     auto access = std::make_unique<apps::CapabilityAccess>(app_id);
     access->camera = camera;
     access->microphone = microphone;
@@ -220,15 +207,15 @@ class AppAccessNotifierTest : public testing::Test,
       bool use_camera,
       bool use_microphone,
       apps::AppType app_type = apps::AppType::kChromeApp) {
-    apps::AppServiceProxy* proxy = apps::AppServiceProxyFactory::GetForProfile(
-        ProfileManager::GetActiveUserProfile());
+    apps::AppRegistryCache* reg_cache =
+        app_access_notifier_->GetActiveUserAppRegistryCache();
     apps::AppCapabilityAccessCache* cap_cache =
         app_access_notifier_->GetActiveUserAppCapabilityAccessCache();
 
     std::vector<apps::AppPtr> registry_deltas;
     registry_deltas.push_back(MakeApp(id, name, app_type));
-    proxy->OnApps(std::move(registry_deltas), apps::AppType::kUnknown,
-                  /*should_notify_initialized=*/false);
+    reg_cache->OnApps(std::move(registry_deltas), apps::AppType::kUnknown,
+                      /*should_notify_initialized=*/false);
 
     std::vector<apps::CapabilityAccessPtr> capability_access_deltas;
     capability_access_deltas.push_back(
@@ -259,7 +246,7 @@ class AppAccessNotifierTest : public testing::Test,
   apps::AppRegistryCache registry_cache_secondary_user_;
   apps::AppCapabilityAccessCache capability_access_cache_secondary_user_;
 
-  raw_ptr<ash::FakeChromeUserManager, DanglingUntriaged> fake_user_manager_ =
+  raw_ptr<ash::FakeChromeUserManager, ExperimentalAsh> fake_user_manager_ =
       nullptr;
   std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
 
@@ -273,21 +260,79 @@ class AppAccessNotifierTest : public testing::Test,
   TestingPrefServiceSimple local_state_;
 
   ash::AshTestHelper ash_test_helper_;
+};
 
+class AppAccessNotifierParameterizedTest
+    : public AppAccessNotifierBaseTest,
+      public ::testing::WithParamInterface<
+          std::tuple</*IsPrivacyIndicatorsFeatureEnabled()=*/bool,
+                     /*IsCrosPrivacyHubEnabled()=*/bool>> {
+ public:
+  AppAccessNotifierParameterizedTest() = default;
+  AppAccessNotifierParameterizedTest(
+      const AppAccessNotifierParameterizedTest&) = delete;
+  AppAccessNotifierParameterizedTest& operator=(
+      const AppAccessNotifierParameterizedTest&) = delete;
+  ~AppAccessNotifierParameterizedTest() override = default;
+
+  // AppAccessNotifierBaseTest:
+  void SetUp() override {
+    std::vector<base::test::FeatureRef> disabled_features;
+
+    if (!IsPrivacyIndicatorsFeatureEnabled())
+      disabled_features.push_back(ash::features::kPrivacyIndicators);
+
+    if (!IsCrosPrivacyHubEnabled())
+      disabled_features.push_back(ash::features::kCrosPrivacyHub);
+
+    scoped_feature_list_.InitWithFeatures({}, disabled_features);
+
+    AppAccessNotifierBaseTest::SetUp();
+  }
+
+  bool IsPrivacyIndicatorsFeatureEnabled() const {
+    return std::get<0>(GetParam());
+  }
+
+  bool IsCrosPrivacyHubEnabled() const { return std::get<1>(GetParam()); }
+
+ private:
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-INSTANTIATE_TEST_SUITE_P(All,
-                         AppAccessNotifierTest,
-                         /*IsCrosPrivacyHubEnabled()=*/testing::Bool());
+class AppAccessNotifierPrivacyIndicatorTest : public AppAccessNotifierBaseTest {
+ public:
+  AppAccessNotifierPrivacyIndicatorTest() = default;
+  AppAccessNotifierPrivacyIndicatorTest(
+      const AppAccessNotifierPrivacyIndicatorTest&) = delete;
+  AppAccessNotifierPrivacyIndicatorTest& operator=(
+      const AppAccessNotifierPrivacyIndicatorTest&) = delete;
+  ~AppAccessNotifierPrivacyIndicatorTest() override = default;
 
-TEST_P(AppAccessNotifierTest, NoAppsLaunched) {
+  // AppAccessNotifierBaseTest:
+  void SetUp() override {
+    scoped_feature_list_.InitWithFeatures({ash::features::kPrivacyIndicators},
+                                          {});
+    AppAccessNotifierBaseTest::SetUp();
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    AppAccessNotifierParameterizedTest,
+    ::testing::Combine(/*IsPrivacyIndicatorsFeatureEnabled()=*/testing::Bool(),
+                       /*IsCrosPrivacyHubEnabled()=*/testing::Bool()));
+
+TEST_P(AppAccessNotifierParameterizedTest, NoAppsLaunched) {
   // The list of apps using mic or camera should be empty.
   EXPECT_EQ(std::vector<std::u16string>(), GetAppsAccessingCamera());
   EXPECT_EQ(std::vector<std::u16string>(), GetAppsAccessingMicrophone());
 }
 
-TEST_P(AppAccessNotifierTest, AppLaunchedNotUsingCameraAndMic) {
+TEST_P(AppAccessNotifierParameterizedTest, AppLaunchedNotUsingCameraAndMic) {
   LaunchAppUsingCameraOrMicrophone("id_rose", "name_rose", /*use_camera=*/false,
                                    /*use_microphone=*/false);
 
@@ -296,7 +341,7 @@ TEST_P(AppAccessNotifierTest, AppLaunchedNotUsingCameraAndMic) {
   EXPECT_EQ(std::vector<std::u16string>(), GetAppsAccessingMicrophone());
 }
 
-TEST_P(AppAccessNotifierTest, AppLaunchedUsingCameraAndMic) {
+TEST_P(AppAccessNotifierParameterizedTest, AppLaunchedUsingCameraAndMic) {
   LaunchAppUsingCameraOrMicrophone("id_rose", "name_rose", /*use_camera=*/true,
                                    /*use_microphone=*/true);
 
@@ -307,7 +352,8 @@ TEST_P(AppAccessNotifierTest, AppLaunchedUsingCameraAndMic) {
             GetAppsAccessingMicrophone());
 }
 
-TEST_P(AppAccessNotifierTest, MultipleAppsLaunchedUsingBothCameraAndMic) {
+TEST_P(AppAccessNotifierParameterizedTest,
+       MultipleAppsLaunchedUsingBothCameraAndMic) {
   LaunchAppUsingCameraOrMicrophone("id_rose", "name_rose", /*use_camera=*/true,
                                    /*use_microphone=*/true);
   LaunchAppUsingCameraOrMicrophone("id_mars", "name_mars", /*use_camera=*/true,
@@ -362,7 +408,7 @@ TEST_P(AppAccessNotifierTest, MultipleAppsLaunchedUsingBothCameraAndMic) {
       GetAppsAccessingMicrophone());
 }
 
-TEST_P(AppAccessNotifierTest, MultipleUsers) {
+TEST_P(AppAccessNotifierParameterizedTest, MultipleUsers) {
   // Prepare the secondary user.
   SetupSecondaryUser();
 
@@ -422,7 +468,7 @@ TEST_P(AppAccessNotifierTest, MultipleUsers) {
   EXPECT_EQ(std::vector<std::u16string>(), GetAppsAccessingMicrophone());
 }
 
-TEST_P(AppAccessNotifierTest, MultipleUsersMultipleApps) {
+TEST_P(AppAccessNotifierParameterizedTest, MultipleUsersMultipleApps) {
   // Prepare the secondary user.
   SetupSecondaryUser();
 
@@ -497,7 +543,7 @@ TEST_P(AppAccessNotifierTest, MultipleUsersMultipleApps) {
             GetAppsAccessingMicrophone());
 }
 
-TEST_P(AppAccessNotifierTest, GetShortNameFromAppId) {
+TEST_P(AppAccessNotifierParameterizedTest, GetShortNameFromAppId) {
   // Test that GetAppShortNameFromAppId works properly.
   const std::string id = "test_app_id";
   LaunchAppUsingCameraOrMicrophone(id, "test_app_name", /*use_camera=*/false,
@@ -505,7 +551,7 @@ TEST_P(AppAccessNotifierTest, GetShortNameFromAppId) {
   EXPECT_EQ(AppAccessNotifier::GetAppShortNameFromAppId(id), u"test_app_name");
 }
 
-TEST_P(AppAccessNotifierTest, AppAccessNotification) {
+TEST_F(AppAccessNotifierPrivacyIndicatorTest, AppAccessNotification) {
   // Test that notifications get created/removed when an app is accessing camera
   // or microphone.
   const std::string id1 = "test_app_id_1";
@@ -539,7 +585,7 @@ TEST_P(AppAccessNotifierTest, AppAccessNotification) {
       notification_id1));
 }
 
-TEST_P(AppAccessNotifierTest, PrivacyIndicatorsVisibility) {
+TEST_F(AppAccessNotifierPrivacyIndicatorTest, PrivacyIndicatorsVisibility) {
   // Uses normal animation duration so that the icons would not be immediately
   // hidden after the animation.
   ui::ScopedAnimationDurationScaleMode animation_scale(
@@ -547,7 +593,7 @@ TEST_P(AppAccessNotifierTest, PrivacyIndicatorsVisibility) {
 
   // Make sure privacy indicators work on multiple displays.
   display::test::DisplayManagerTestApi(ash::Shell::Get()->display_manager())
-      .UpdateDisplay("800x700,801+0-800x700");
+      .UpdateDisplay("800x800,801+0-800x800");
 
   ExpectPrivacyIndicatorsVisible(/*visible=*/false);
 
@@ -581,7 +627,7 @@ TEST_P(AppAccessNotifierTest, PrivacyIndicatorsVisibility) {
   ExpectPrivacyIndicatorsMicrophoneIconVisible(/*visible=*/true);
 }
 
-TEST_P(AppAccessNotifierTest, RecordAppType) {
+TEST_F(AppAccessNotifierPrivacyIndicatorTest, RecordAppType) {
   base::HistogramTester histograms;
   LaunchAppUsingCameraOrMicrophone("test_app_id1", "test_app_name",
                                    /*use_camera=*/true,
@@ -612,7 +658,7 @@ TEST_P(AppAccessNotifierTest, RecordAppType) {
                                apps::AppType::kSystemWeb, 1);
 }
 
-TEST_P(AppAccessNotifierTest, RecordLaunchSettings) {
+TEST_F(AppAccessNotifierPrivacyIndicatorTest, RecordLaunchSettings) {
   // Make sure histograms with app type is being recorded after launching
   // settings.
   base::HistogramTester histograms;
@@ -631,26 +677,4 @@ TEST_P(AppAccessNotifierTest, RecordLaunchSettings) {
   AppAccessNotifier::LaunchAppSettings("test_app_id2");
   histograms.ExpectBucketCount(kPrivacyIndicatorsLaunchSettingsHistogramName,
                                apps::AppType::kChromeApp, 1);
-}
-
-// Tests that the privacy indicators notification of a system web app should not
-// have a launch settings callback (thus it will not have a launch settings
-// button).
-TEST_P(AppAccessNotifierTest, SystemWebAppWithoutSettingsCallback) {
-  const std::string app_id = "test_app_id";
-  LaunchAppUsingCameraOrMicrophone(app_id, "test_app_name",
-                                   /*use_camera=*/true,
-                                   /*use_microphone=*/false,
-                                   /*app_type=*/apps::AppType::kSystemWeb);
-  const std::string notification_id =
-      ash::GetPrivacyIndicatorsNotificationId(app_id);
-
-  auto* notification =
-      message_center::MessageCenter::Get()->FindNotificationById(
-          notification_id);
-  ASSERT_TRUE(notification);
-
-  auto* delegate = static_cast<ash::PrivacyIndicatorsNotificationDelegate*>(
-      notification->delegate());
-  EXPECT_FALSE(delegate->launch_settings_callback());
 }

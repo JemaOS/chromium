@@ -20,7 +20,6 @@
 #include "third_party/blink/renderer/core/html/html_script_element.h"
 #include "third_party/blink/renderer/core/speculation_rules/stub_speculation_host.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
@@ -45,7 +44,7 @@ HTMLScriptElement* InsertSpeculationRules(Document& document,
                                           const String& speculation_script) {
   HTMLScriptElement* script =
       MakeGarbageCollected<HTMLScriptElement>(document, CreateElementFlags());
-  script->setAttribute(html_names::kTypeAttr, AtomicString("SpEcUlAtIoNrUlEs"));
+  script->setAttribute(html_names::kTypeAttr, "SpEcUlAtIoNrUlEs");
   script->setText(speculation_script);
   document.head()->appendChild(script);
   return script;
@@ -71,7 +70,6 @@ HTMLScriptElement* InsertSpeculationRules(Document& document,
     "jogMTk4NTgzMDkyM30=";
 
 TEST(PrefetchNoVarySearchOriginTrialTest, CanEnableFromToken) {
-  test::TaskEnvironment task_environment;
   ScopedTestOriginTrialPolicy using_test_keys;
   DummyPageHolder page_holder;
   LocalFrame& frame = page_holder.GetFrame();
@@ -82,14 +80,11 @@ TEST(PrefetchNoVarySearchOriginTrialTest, CanEnableFromToken) {
   // This should have enabled the origin trial and all its dependent features.
   EXPECT_TRUE(
       RuntimeEnabledFeatures::NoVarySearchPrefetchEnabled(frame.DomWindow()));
-  EXPECT_TRUE(RuntimeEnabledFeatures::SpeculationRulesNoVarySearchHintEnabled(
-      frame.DomWindow()));
-  EXPECT_TRUE(RuntimeEnabledFeatures::SpeculationRulesEagernessEnabled(
+  EXPECT_TRUE(RuntimeEnabledFeatures::SpeculationRulesPrefetchProxyEnabled(
       frame.DomWindow()));
 }
 
 TEST(PrefetchNoVarySearchOriginTrialTest, DoesNotEnableWithoutToken) {
-  test::TaskEnvironment task_environment;
   ScopedTestOriginTrialPolicy using_test_keys;
   DummyPageHolder page_holder;
   LocalFrame& frame = page_holder.GetFrame();
@@ -137,7 +132,6 @@ void NoVarySearchPrefetchEnabledTest(StubSpeculationHost& speculation_host) {
 
 TEST(PrefetchNoVarySearchOriginTrialTest,
      EnabledNoVarySearchPrefetchInBrowser) {
-  test::TaskEnvironment task_environment;
   ScopedNoVarySearchPrefetchForTest enable_no_vary_search_prefetch_{true};
   StubSpeculationHost speculation_host;
   NoVarySearchPrefetchEnabledTest(speculation_host);
@@ -146,7 +140,6 @@ TEST(PrefetchNoVarySearchOriginTrialTest,
 
 TEST(PrefetchNoVarySearchOriginTrialTest,
      DoNotEnableNoVarySearchPrefetchInBrowser) {
-  test::TaskEnvironment task_environment;
   ScopedNoVarySearchPrefetchForTest enable_no_vary_search_prefetch_{false};
   StubSpeculationHost speculation_host;
   NoVarySearchPrefetchEnabledTest(speculation_host);

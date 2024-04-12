@@ -5,7 +5,6 @@ Tests Page.setFontFamilies.
         familyName : Ahem
         glyphCount : 9
         isCustomFont : true
-        postScriptName : Ahem
     }
 ]
 .standard_font
@@ -14,7 +13,6 @@ Tests Page.setFontFamilies.
         familyName : Courier New
         glyphCount : 8
         isCustomFont : false
-        postScriptName : CourierNewPSMT
     }
 ]
 .sans_serif_font
@@ -23,7 +21,6 @@ Tests Page.setFontFamilies.
         familyName : Ahem
         glyphCount : 9
         isCustomFont : false
-        postScriptName : Ahem
     }
 ]
 .fixed_font
@@ -32,7 +29,6 @@ Tests Page.setFontFamilies.
         familyName : Ahem
         glyphCount : 5
         isCustomFont : false
-        postScriptName : Ahem
     }
 ]
 .notgeneric_font
@@ -41,7 +37,6 @@ Tests Page.setFontFamilies.
         familyName : Courier New
         glyphCount : 10
         isCustomFont : false
-        postScriptName : CourierNewPSMT
     }
 ]
 

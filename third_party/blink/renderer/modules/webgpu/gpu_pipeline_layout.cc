@@ -18,32 +18,33 @@ GPUPipelineLayout* GPUPipelineLayout::Create(
   DCHECK(device);
   DCHECK(webgpu_desc);
 
-  size_t bind_group_layout_count = webgpu_desc->bindGroupLayouts().size();
+  uint32_t bind_group_layout_count =
+      static_cast<uint32_t>(webgpu_desc->bindGroupLayouts().size());
 
   std::unique_ptr<WGPUBindGroupLayout[]> bind_group_layouts =
       bind_group_layout_count != 0 ? AsDawnType(webgpu_desc->bindGroupLayouts())
                                    : nullptr;
 
+  std::string label;
   WGPUPipelineLayoutDescriptor dawn_desc = {};
   dawn_desc.nextInChain = nullptr;
   dawn_desc.bindGroupLayoutCount = bind_group_layout_count;
   dawn_desc.bindGroupLayouts = bind_group_layouts.get();
-  std::string label = webgpu_desc->label().Utf8();
-  if (!label.empty()) {
+  if (webgpu_desc->hasLabel()) {
+    label = webgpu_desc->label().Utf8();
     dawn_desc.label = label.c_str();
   }
 
   GPUPipelineLayout* layout = MakeGarbageCollected<GPUPipelineLayout>(
-      device,
-      device->GetProcs().deviceCreatePipelineLayout(device->GetHandle(),
-                                                    &dawn_desc),
-      webgpu_desc->label());
+      device, device->GetProcs().deviceCreatePipelineLayout(device->GetHandle(),
+                                                            &dawn_desc));
+  if (webgpu_desc->hasLabel())
+    layout->setLabel(webgpu_desc->label());
   return layout;
 }
 
 GPUPipelineLayout::GPUPipelineLayout(GPUDevice* device,
-                                     WGPUPipelineLayout pipeline_layout,
-                                     const String& label)
-    : DawnObject<WGPUPipelineLayout>(device, pipeline_layout, label) {}
+                                     WGPUPipelineLayout pipeline_layout)
+    : DawnObject<WGPUPipelineLayout>(device, pipeline_layout) {}
 
 }  // namespace blink

@@ -235,7 +235,17 @@ static_library("libxml") {
     "src/threads.c",
     "src/timsort.h",
     "src/tree.c",
+    "src/triodef.h",
+    "src/trionan.h",
 
+    #"src/trio.c",
+    #"src/trio.h",
+    #"src/triodef.h",
+    # Note: xpath.c #includes trionan.c
+    #"src/trionan.c",
+    #"src/triop.h",
+    #"src/triostr.c",
+    #"src/triostr.h",
     "src/uri.c",
     "src/valid.c",
 
@@ -294,8 +304,6 @@ static_library("libxml") {
     # libxml2 already defines WIN32_LEAN_AND_MEAN.
     configs -= [ "//build/config/win:lean_and_mean" ]
   }
-
-  sources += [ "chromium/disabled_libxml_features.cc" ]
 
   public_configs = [ ":libxml_config" ]
   public_deps = [ "//third_party/icu:icuuc" ]

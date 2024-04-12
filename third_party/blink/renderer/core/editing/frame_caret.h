@@ -45,10 +45,10 @@ class FrameCaret;
 class GraphicsContext;
 class LayoutBlock;
 class LocalFrame;
-class PhysicalBoxFragment;
-class SelectionEditor;
+class NGPhysicalBoxFragment;
 struct PaintInvalidatorContext;
 struct PhysicalOffset;
+class SelectionEditor;
 
 class CORE_EXPORT FrameCaret final : public GarbageCollected<FrameCaret> {
  public:
@@ -75,10 +75,9 @@ class CORE_EXPORT FrameCaret final : public GarbageCollected<FrameCaret> {
   void LayoutBlockWillBeDestroyed(const LayoutBlock&);
   void UpdateStyleAndLayoutIfNeeded();
   void InvalidatePaint(const LayoutBlock&, const PaintInvalidatorContext&);
-  void EnsureInvalidationOfPreviousLayoutBlock();
 
   bool ShouldPaintCaret(const LayoutBlock&) const;
-  bool ShouldPaintCaret(const PhysicalBoxFragment&) const;
+  bool ShouldPaintCaret(const NGPhysicalBoxFragment&) const;
   void PaintCaret(GraphicsContext&, const PhysicalOffset&) const;
 
   const EffectPaintPropertyNode& CaretEffectNode() const { return *effect_; }

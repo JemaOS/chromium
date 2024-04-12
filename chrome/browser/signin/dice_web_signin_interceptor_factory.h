@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SIGNIN_DICE_WEB_SIGNIN_INTERCEPTOR_FACTORY_H_
 #define CHROME_BROWSER_SIGNIN_DICE_WEB_SIGNIN_INTERCEPTOR_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class DiceWebSigninInterceptor;
@@ -22,14 +22,14 @@ class DiceWebSigninInterceptorFactory : public ProfileKeyedServiceFactory {
       const DiceWebSigninInterceptorFactory&) = delete;
 
  private:
-  friend base::NoDestructor<DiceWebSigninInterceptorFactory>;
+  friend struct base::DefaultSingletonTraits<DiceWebSigninInterceptorFactory>;
   DiceWebSigninInterceptorFactory();
   ~DiceWebSigninInterceptorFactory() override;
 
   // BrowserContextKeyedServiceFactory:
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_METRICS_PER_USER_STATE_MANAGER_CHROMEOS_H_
 #define CHROME_BROWSER_METRICS_PER_USER_STATE_MANAGER_CHROMEOS_H_
 
-#include <optional>
 #include <string>
 
 #include "base/callback_list.h"
@@ -29,6 +28,7 @@
 #include "components/prefs/pref_registry_simple.h"
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace metrics {
 
@@ -73,12 +73,12 @@ class PerUserStateManagerChromeOS
   static void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
 
   // Returns the user_id of the current logged in user. If no user is logged in,
-  // returns std::nullopt. If a user has logged in and has opted-out, will
-  // return std::nullopt.
+  // returns absl::nullopt. If a user has logged in and has opted-out, will
+  // return absl::nullopt.
   //
   // If the user has opted-into metrics collection and is not ephemeral, then
   // this will return the pseudo-anonymous identifier associated with the user.
-  std::optional<std::string> GetCurrentUserId() const;
+  absl::optional<std::string> GetCurrentUserId() const;
 
   // Returns the consent of the current logged in user only if current user's
   // consent should be applied to metrics reporting.
@@ -88,12 +88,13 @@ class PerUserStateManagerChromeOS
   //    1) Regular non-owner users on non-managed devices.
   //    2) Guest users on non-owned devices.
   //
-  // If no user is logged in, returns std::nullopt. True means that the user
+  // If no user is logged in, returns absl::nullopt. True means that the user
   // has opted-into metrics collection during the session and False means that
   // the user has opted-out.
   //
-  // NOTE: If ownership status is not known, this will return std::nullopt.
-  std::optional<bool> GetCurrentUserReportingConsentIfApplicable() const;
+  // Note: Use this function over GetUserConsentIfApplicable() to retrieve user
+  // metrics reporting status.
+  absl::optional<bool> GetCurrentUserReportingConsentIfApplicable() const;
 
   // Sets the metric consent for the current logged in user. If no user is
   // logged in, no-ops.
@@ -155,7 +156,8 @@ class PerUserStateManagerChromeOS
   // Returns true if the reporting policy is managed.
   virtual bool IsReportingPolicyManaged() const;
 
-  // Returns the device metrics consent.
+  // Returns the device metrics consent. If ownership has not been taken, will
+  // return false.
   virtual bool GetDeviceMetricsConsent() const;
 
   // Returns true if user log store has been set to be used to persist metric
@@ -164,16 +166,10 @@ class PerUserStateManagerChromeOS
 
   // Returns true if the device is owned either by a policy or a local owner.
   //
-  // Does not guarantee that the ownership status is known and will return false
-  // if the status is unknown.
-  //
   // See //chrome/browser/ash/settings/device_settings_service.h for more
   // details as to when a device is considered owned and how a device becomes
   // owned.
   virtual bool IsDeviceOwned() const;
-
-  // Returns true if the device status is known.
-  virtual bool IsDeviceStatusKnown() const;
 
   // These methods are protected to avoid dependency on DeviceSettingsService
   // during testing.
@@ -184,8 +180,6 @@ class PerUserStateManagerChromeOS
 
   // Loads appropriate prefs from |current_user_| and creates new log storage
   // using profile prefs.
-  //
-  // Will only be called when OwnershipStatus is known.
   void InitializeProfileMetricsState(
       ash::DeviceSettingsService::OwnershipStatus status);
 
@@ -199,9 +193,7 @@ class PerUserStateManagerChromeOS
     // immediately created.
     USER_LOGIN = 1,
 
-    // User profile has been created and ready to use. Note that if ownership
-    // status is unknown, user log store will not be created until the ownership
-    // status is known.
+    // User profile has been created and ready to use.
     USER_PROFILE_READY = 2,
 
     // User log store has been initialized, if applicable. Per-user consent
@@ -254,15 +246,15 @@ class PerUserStateManagerChromeOS
   base::RepeatingCallbackList<void(bool)> callback_list_;
 
   // Raw pointer to Metrics service client that should own |this|.
-  const raw_ptr<MetricsServiceClient> metrics_service_client_;
+  const raw_ptr<MetricsServiceClient, ExperimentalAsh> metrics_service_client_;
 
   // Raw pointer to user manager. User manager is used to listen to login/logout
   // events as well as retrieve metadata about users. |user_manager_| should
   // outlive |this|.
-  const raw_ptr<user_manager::UserManager> user_manager_;
+  const raw_ptr<user_manager::UserManager, ExperimentalAsh> user_manager_;
 
   // Raw pointer to local state prefs store.
-  const raw_ptr<PrefService> local_state_;
+  const raw_ptr<PrefService, ExperimentalAsh> local_state_;
 
   // Logs parameters that control log storage requirements and restrictions.
   const MetricsLogStore::StorageLimits storage_limits_;
@@ -271,7 +263,7 @@ class PerUserStateManagerChromeOS
   const std::string signing_key_;
 
   // Pointer to the current logged-in user.
-  raw_ptr<user_manager::User> current_user_ = nullptr;
+  raw_ptr<user_manager::User, ExperimentalAsh> current_user_ = nullptr;
 
   // Current state for |this|.
   State state_ = State::CONSTRUCTED;

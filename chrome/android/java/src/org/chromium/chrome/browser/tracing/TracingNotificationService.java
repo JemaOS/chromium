@@ -11,7 +11,8 @@ import org.chromium.chrome.browser.base.SplitCompatIntentService;
 public class TracingNotificationService extends SplitCompatIntentService {
     private static final String TAG = "tracing_notification";
 
-    private static @IdentifierNameString String sImplClassName =
+    @IdentifierNameString
+    private static String sImplClassName =
             "org.chromium.chrome.browser.tracing.TracingNotificationServiceImpl";
 
     public TracingNotificationService() {

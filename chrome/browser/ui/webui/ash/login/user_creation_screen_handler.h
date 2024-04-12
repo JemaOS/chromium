@@ -14,7 +14,7 @@ class UserCreationScreen;
 
 // Interface for dependency injection between UserCreationScreen and its
 // WebUI representation.
-class UserCreationView {
+class UserCreationView : public base::SupportsWeakPtr<UserCreationView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"user-creation",
                                                        "UserCreationScreen"};
@@ -25,16 +25,10 @@ class UserCreationView {
   virtual void Show() = 0;
 
   virtual void SetIsBackButtonVisible(bool value) = 0;
-  virtual void SetTriageStep() = 0;
-  virtual void SetChildSetupStep() = 0;
-  virtual void SetDefaultStep() = 0;
-
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<UserCreationView> AsWeakPtr() = 0;
 };
 
-class UserCreationScreenHandler final : public UserCreationView,
-                                        public BaseScreenHandler {
+class UserCreationScreenHandler : public UserCreationView,
+                                  public BaseScreenHandler {
  public:
   using TView = UserCreationView;
 
@@ -49,16 +43,10 @@ class UserCreationScreenHandler final : public UserCreationView,
  private:
   void Show() override;
   void SetIsBackButtonVisible(bool value) override;
-  void SetTriageStep() override;
-  void SetChildSetupStep() override;
-  void SetDefaultStep() override;
-  base::WeakPtr<UserCreationView> AsWeakPtr() override;
 
   // BaseScreenHandler:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
-  base::WeakPtrFactory<UserCreationView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

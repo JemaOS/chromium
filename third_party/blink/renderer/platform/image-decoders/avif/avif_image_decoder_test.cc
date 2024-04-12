@@ -16,16 +16,11 @@
 #include "base/strings/stringprintf.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/task/thread_pool.h"
-#include "base/test/metrics/histogram_tester.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/public/common/features.h"
-#include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/platform/image-decoders/image_decoder_test_helpers.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
-#include "ui/gfx/color_space.h"
-#include "ui/gfx/color_transform.h"
+#include "third_party/libavif/src/include/avif/avif.h"
 
 #define FIXME_SUPPORT_ICC_PROFILE_NO_TRANSFORM 0
 #define FIXME_SUPPORT_ICC_PROFILE_TRANSFORM 0
@@ -48,7 +43,7 @@ std::unique_ptr<ImageDecoder> CreateAVIFDecoderWithOptions(
 std::unique_ptr<ImageDecoder> CreateAVIFDecoder() {
   return CreateAVIFDecoderWithOptions(
       ImageDecoder::kAlphaNotPremultiplied, ImageDecoder::kDefaultBitDepth,
-      ColorBehavior::kTag, ImageDecoder::AnimationOption::kUnspecified);
+      ColorBehavior::Tag(), ImageDecoder::AnimationOption::kUnspecified);
 }
 
 struct ExpectedColor {
@@ -70,7 +65,7 @@ struct StaticColorCheckParam {
   ImageDecoder::CompressionFormat compression_format;
   ImageDecoder::AlphaOption alpha_option;
   ColorBehavior color_behavior;
-  ImageOrientationEnum orientation = ImageOrientationEnum::kDefault;
+  ImageOrientation orientation;
   int color_threshold;
   std::vector<ExpectedColor> colors;
 };
@@ -96,16 +91,16 @@ std::ostream& operator<<(std::ostream& os, const StaticColorCheckParam& param) {
            ? "kAlphaPremultiplied"
            : "kAlphaNotPremultiplied");
   const char* color_behavior;
-  if (param.color_behavior == ColorBehavior::kIgnore) {
+  if (param.color_behavior.IsIgnore()) {
     color_behavior = "Ignore";
-  } else if (param.color_behavior == ColorBehavior::kTag) {
+  } else if (param.color_behavior.IsTag()) {
     color_behavior = "Tag";
   } else {
-    DCHECK(param.color_behavior == ColorBehavior::kTransformToSRGB);
+    DCHECK(param.color_behavior.IsTransformToSRGB());
     color_behavior = "TransformToSRGB";
   }
   const char* orientation;
-  switch (param.orientation) {
+  switch (param.orientation.Orientation()) {
     case ImageOrientationEnum::kOriginTopLeft:
       orientation = "kOriginTopLeft";
       break;
@@ -146,7 +141,7 @@ StaticColorCheckParam kTestParams[] = {
         ColorType::kRgb,
         ImageDecoder::kLossyFormat,
         ImageDecoder::kAlphaNotPremultiplied,  // q=60(lossy)
-        ColorBehavior::kTag,
+        ColorBehavior::Tag(),
         ImageOrientationEnum::kOriginTopLeft,
         0,
         {},  // we just check that this image is lossy.
@@ -157,23 +152,23 @@ StaticColorCheckParam kTestParams[] = {
         ColorType::kRgb,
         ImageDecoder::kLossyFormat,
         ImageDecoder::kAlphaNotPremultiplied,  // q=60(lossy)
-        ColorBehavior::kIgnore,
+        ColorBehavior::Ignore(),
         ImageOrientationEnum::kOriginTopLeft,
         0,
         {},  // we just check that the decoder won't crash when
-             // ColorBehavior::kIgnore is used.
+             // ColorBehavior::Ignore() is used.
     },
     {"/images/resources/avif/red-with-alpha-8bpc.avif",
      8,
      ColorType::kRgbA,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      3,
      {
          {gfx::Point(0, 0), SkColorSetARGB(0, 255, 0, 0)},
-         {gfx::Point(1, 1), SkColorSetARGB(127, 255, 0, 0)},
+         {gfx::Point(1, 1), SkColorSetARGB(128, 255, 0, 0)},
          {gfx::Point(2, 2), SkColorSetARGB(255, 255, 0, 0)},
      }},
     {"/images/resources/avif/red-full-range-420-8bpc.avif",
@@ -181,7 +176,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -194,7 +189,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      0,
      {
@@ -207,33 +202,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
-     ImageOrientationEnum::kOriginTopLeft,
-     0,
-     {
-         {gfx::Point(0, 0), SkColorSetARGB(255, 192, 192, 192)},
-         {gfx::Point(1, 1), SkColorSetARGB(255, 192, 192, 192)},
-         {gfx::Point(2, 2), SkColorSetARGB(255, 192, 192, 192)},
-     }},
-    {"/images/resources/avif/silver-400-matrix-6.avif",
-     8,
-     ColorType::kRgb,
-     ImageDecoder::kLosslessFormat,
-     ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
-     ImageOrientationEnum::kOriginTopLeft,
-     0,
-     {
-         {gfx::Point(0, 0), SkColorSetARGB(255, 192, 192, 192)},
-         {gfx::Point(1, 1), SkColorSetARGB(255, 192, 192, 192)},
-         {gfx::Point(2, 2), SkColorSetARGB(255, 192, 192, 192)},
-     }},
-    {"/images/resources/avif/silver-400-matrix-0.avif",
-     8,
-     ColorType::kRgb,
-     ImageDecoder::kLosslessFormat,
-     ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      0,
      {
@@ -246,7 +215,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kMono,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -259,7 +228,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kMono,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -272,12 +241,12 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgbA,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaPremultiplied,
-     ColorBehavior::kTransformToSRGB,
+     ColorBehavior::TransformToSRGB(),
      ImageOrientationEnum::kOriginTopLeft,
-     4,
+     3,
      {
          {gfx::Point(0, 0), SkColorSetARGB(0, 0, 0, 0)},
-         {gfx::Point(1, 1), SkColorSetARGB(127, 255, 0, 0)},
+         {gfx::Point(1, 1), SkColorSetARGB(128, 255, 0, 0)},
          {gfx::Point(2, 2), SkColorSetARGB(255, 255, 0, 0)},
      }},
 #if FIXME_SUPPORT_ICC_PROFILE_NO_TRANSFORM
@@ -286,7 +255,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kIgnore,
+     ColorBehavior::Ignore(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -301,7 +270,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTransformToSRGB,
+     ColorBehavior::TransformToSRGB(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -319,7 +288,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgbA,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      2,
      {
@@ -332,7 +301,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgbA,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaPremultiplied,
-     ColorBehavior::kTransformToSRGB,
+     ColorBehavior::TransformToSRGB(),
      ImageOrientationEnum::kOriginTopLeft,
      2,
      {
@@ -345,7 +314,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      0,
      {
@@ -358,7 +327,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kMono,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -371,7 +340,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kMono,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -385,7 +354,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kIgnore,
+     ColorBehavior::Ignore(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -400,7 +369,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTransformToSRGB,
+     ColorBehavior::TransformToSRGB(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -418,9 +387,9 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgbA,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
-     2,
+     1,
      {
          {gfx::Point(0, 0), SkColorSetARGB(0, 255, 0, 0)},
          {gfx::Point(1, 1), SkColorSetARGB(128, 255, 0, 0)},
@@ -431,9 +400,9 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgbA,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaPremultiplied,
-     ColorBehavior::kTransformToSRGB,
+     ColorBehavior::TransformToSRGB(),
      ImageOrientationEnum::kOriginTopLeft,
-     2,
+     1,
      {
          {gfx::Point(0, 0), SkColorSetARGB(0, 0, 0, 0)},
          {gfx::Point(1, 1), SkColorSetARGB(128, 255, 0, 0)},
@@ -444,7 +413,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      0,
      {
@@ -457,7 +426,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kMono,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -470,7 +439,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kMono,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -484,7 +453,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kIgnore,
+     ColorBehavior::Ignore(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -499,7 +468,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTransformToSRGB,
+     ColorBehavior::TransformToSRGB(),
      ImageOrientationEnum::kOriginTopLeft,
      1,
      {
@@ -512,29 +481,12 @@ StaticColorCheckParam kTestParams[] = {
          {gfx::Point(2, 2), SkColorSetARGB(255, 255, 0, 0)},
      }},
 #endif
-    {"/images/resources/avif/red-and-purple-crop.avif",
-     8,
-     ColorType::kRgbA,
-     ImageDecoder::kLosslessFormat,
-     ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
-     ImageOrientationEnum::kOriginTopLeft,
-     0,
-     {
-         // The clean aperture's size is 200x50. The left half is red and the
-         // right half is purple. Alpha values in the clean aperture are 255.
-         // (Alpha values to the right of the clean aperture are 128.)
-         {gfx::Point(0, 0), SkColorSetARGB(255, 255, 0, 0)},       // red
-         {gfx::Point(99, 24), SkColorSetARGB(255, 255, 0, 0)},     // red
-         {gfx::Point(100, 25), SkColorSetARGB(255, 127, 0, 128)},  // purple
-         {gfx::Point(199, 49), SkColorSetARGB(255, 127, 0, 128)},  // purple
-     }},
     {"/images/resources/avif/red-full-range-angle-1-420-8bpc.avif",
      8,
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginLeftBottom,
      0,
      {
@@ -547,7 +499,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginBottomLeft,
      0,
      {
@@ -560,7 +512,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopRight,
      0,
      {
@@ -573,7 +525,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginTopRight,
      0,
      {
@@ -586,7 +538,7 @@ StaticColorCheckParam kTestParams[] = {
      ColorType::kRgb,
      ImageDecoder::kLosslessFormat,
      ImageDecoder::kAlphaNotPremultiplied,
-     ColorBehavior::kTag,
+     ColorBehavior::Tag(),
      ImageOrientationEnum::kOriginLeftTop,
      0,
      {
@@ -694,17 +646,15 @@ void ReadYUV(const char* file_name,
   auto metadata = decoder->MakeMetadataForDecodeAcceleration();
   EXPECT_EQ(cc::ImageType::kAVIF, metadata.image_type);
   EXPECT_EQ(size, metadata.image_size);
-  if (expected_y_size == expected_uv_size) {
+  if (expected_y_size == expected_uv_size)
     EXPECT_EQ(cc::YUVSubsampling::k444, metadata.yuv_subsampling);
-  } else if (expected_y_size.height() == expected_uv_size.height()) {
+  else if (expected_y_size.height() == expected_uv_size.height())
     EXPECT_EQ(cc::YUVSubsampling::k422, metadata.yuv_subsampling);
-  } else {
+  else
     EXPECT_EQ(cc::YUVSubsampling::k420, metadata.yuv_subsampling);
-  }
 
-  if (!rgb_pixel) {
+  if (!rgb_pixel)
     return;
-  }
 
   if (bit_depth > 8) {
     rgb_pixel->set_x(reinterpret_cast<uint16_t*>(planes[0])[0]);
@@ -735,13 +685,8 @@ void ReadYUV(const char* file_name,
 
   // Convert our YUV pixel to RGB to avoid an excessive amounts of test
   // expectations. We otherwise need bit_depth * yuv_sampling * color_type.
-  gfx::ColorTransform::Options options;
-  options.src_bit_depth = bit_depth;
-  options.dst_bit_depth = bit_depth;
-  auto transform = gfx::ColorTransform::NewColorTransform(
-      reinterpret_cast<AVIFImageDecoder*>(decoder.get())
-          ->GetColorSpaceForTesting(),
-      gfx::ColorSpace(), options);
+  auto* transform = reinterpret_cast<AVIFImageDecoder*>(decoder.get())
+                        ->GetColorTransformForTesting();
   transform->Transform(rgb_pixel, 1);
 }
 
@@ -793,139 +738,34 @@ void DecodeTask(const SharedBuffer* data, base::RepeatingClosure* done) {
   done->Run();
 }
 
-void InspectImage(
-    const StaticColorCheckParam& param,
-    ImageDecoder::HighBitDepthDecodingOption high_bit_depth_option) {
-  std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoderWithOptions(
-      param.alpha_option, high_bit_depth_option, param.color_behavior,
-      ImageDecoder::AnimationOption::kUnspecified);
-  scoped_refptr<SharedBuffer> data = ReadFile(param.path);
-  ASSERT_TRUE(data.get());
-#if FIXME_DISTINGUISH_LOSSY_OR_LOSSLESS
-  EXPECT_EQ(param.compression_format,
-            ImageDecoder::GetCompressionFormat(data, "image/avif"));
-#endif
-  decoder->SetData(std::move(data), true);
-  EXPECT_EQ(1u, decoder->FrameCount());
-  EXPECT_EQ(kAnimationNone, decoder->RepetitionCount());
-  EXPECT_EQ(param.bit_depth > 8, decoder->ImageIsHighBitDepth());
-  auto metadata = decoder->MakeMetadataForDecodeAcceleration();
-  EXPECT_EQ(cc::ImageType::kAVIF, metadata.image_type);
-  // TODO(wtc): Check metadata.yuv_subsampling.
-  ImageFrame* frame = decoder->DecodeFrameBufferAtIndex(0);
-  ASSERT_TRUE(frame);
-  EXPECT_EQ(ImageFrame::kFrameComplete, frame->GetStatus());
-  EXPECT_FALSE(decoder->Failed());
-  EXPECT_EQ(param.orientation, decoder->Orientation());
-  EXPECT_EQ(param.color_type == ColorType::kRgbA ||
-                param.color_type == ColorType::kMonoA,
-            frame->HasAlpha());
-  auto get_color_channel = [](SkColorChannel channel, SkColor color) {
-    switch (channel) {
-      case SkColorChannel::kR:
-        return SkColorGetR(color);
-      case SkColorChannel::kG:
-        return SkColorGetG(color);
-      case SkColorChannel::kB:
-        return SkColorGetB(color);
-      case SkColorChannel::kA:
-        return SkColorGetA(color);
-    }
-  };
-  auto color_difference = [get_color_channel](SkColorChannel channel,
-                                              SkColor color1,
-                                              SkColor color2) -> int {
-    return std::abs(static_cast<int>(get_color_channel(channel, color1)) -
-                    static_cast<int>(get_color_channel(channel, color2)));
-  };
-  for (const auto& expected : param.colors) {
-    const SkBitmap& bitmap = frame->Bitmap();
-    SkColor frame_color =
-        bitmap.getColor(expected.point.x(), expected.point.y());
+}  // namespace
 
-    EXPECT_LE(color_difference(SkColorChannel::kR, frame_color, expected.color),
-              param.color_threshold);
-    EXPECT_LE(color_difference(SkColorChannel::kG, frame_color, expected.color),
-              param.color_threshold);
-    EXPECT_LE(color_difference(SkColorChannel::kB, frame_color, expected.color),
-              param.color_threshold);
-    // TODO(ryoh): Create alpha_threshold field for alpha channels.
-    EXPECT_LE(color_difference(SkColorChannel::kA, frame_color, expected.color),
-              param.color_threshold);
-    if (param.color_type == ColorType::kMono ||
-        param.color_type == ColorType::kMonoA) {
-      EXPECT_EQ(SkColorGetR(frame_color), SkColorGetG(frame_color));
-      EXPECT_EQ(SkColorGetR(frame_color), SkColorGetB(frame_color));
-    }
-  }
-}
-
-void TestAvifBppHistogram(const char* image_name,
-                          const char* histogram_name = nullptr,
-                          base::HistogramBase::Sample sample = 0) {
-  TestBppHistogram(CreateAVIFDecoder, "Avif", image_name, histogram_name,
-                   sample);
-}
-
-struct AVIFImageParam {
-  const char* path;
-  size_t expected_frame_count;
-  int expected_repetition_count;
-};
-
-constexpr AVIFImageParam kAnimatedTestParams[] = {
-    // star-animated-8bpc.avif, star-animated-10bpc.avif, and
-    // star-animated-12bpc.avif contain an EditListBox whose `flags` field is
-    // equal to 0, meaning the edit list is not repeated. Therefore their
-    // `expected_repetition_count` is 0.
-    {"/images/resources/avif/star-animated-8bpc.avif", 5u, 0},
-    {"/images/resources/avif/star-animated-8bpc-with-alpha.avif", 5u,
-     kAnimationLoopInfinite},
-    {"/images/resources/avif/star-animated-10bpc.avif", 5u, 0},
-    {"/images/resources/avif/star-animated-10bpc-with-alpha.avif", 5u,
-     kAnimationLoopInfinite},
-    {"/images/resources/avif/star-animated-12bpc.avif", 5u, 0},
-    {"/images/resources/avif/star-animated-12bpc-with-alpha.avif", 5u,
-     kAnimationLoopInfinite},
-    {"/images/resources/avif/star-animated-8bpc-1-repetition.avif", 5u, 1},
-    {"/images/resources/avif/star-animated-8bpc-10-repetition.avif", 5u, 10},
-    {"/images/resources/avif/star-animated-8bpc-infinite-repetition.avif", 5u,
-     kAnimationLoopInfinite},
-};
-
-constexpr AVIFImageParam kStaticTestParams[] = {
-    {"/images/resources/avif/red-at-12-oclock-with-color-profile-lossy.avif", 1,
-     kAnimationNone},
-    {"/images/resources/avif/red-at-12-oclock-with-color-profile-8bpc.avif", 1,
-     kAnimationNone},
-    {"/images/resources/avif/red-at-12-oclock-with-color-profile-10bpc.avif", 1,
-     kAnimationNone},
-    {"/images/resources/avif/red-at-12-oclock-with-color-profile-12bpc.avif", 1,
-     kAnimationNone},
-    {"/images/resources/avif/tiger_3layer_1res.avif", 1, kAnimationNone},
-    {"/images/resources/avif/tiger_3layer_3res.avif", 1, kAnimationNone},
-    {"/images/resources/avif/tiger_420_8b_grid1x13.avif", 1, kAnimationNone},
-    {"/images/resources/avif/dice_444_10b_grid4x3.avif", 1, kAnimationNone},
-    {"/images/resources/avif/gracehopper_422_12b_grid2x4.avif", 1,
-     kAnimationNone},
-    {"/images/resources/avif/small-with-gainmap-adobe.avif", 1, kAnimationNone},
-    {"/images/resources/avif/small-with-gainmap-iso.avif", 1, kAnimationNone},
-};
-
-using AVIFValidImagesTest = ::testing::TestWithParam<AVIFImageParam>;
-
-INSTANTIATE_TEST_SUITE_P(AnimatedAVIF,
-                         AVIFValidImagesTest,
-                         ::testing::ValuesIn(kAnimatedTestParams));
-
-INSTANTIATE_TEST_SUITE_P(StaticAVIF,
-                         AVIFValidImagesTest,
-                         ::testing::ValuesIn(kStaticTestParams));
-
-TEST_P(AVIFValidImagesTest, ByteByByteDecode) {
-  TestByteByByteDecode(&CreateAVIFDecoder, GetParam().path,
-                       GetParam().expected_frame_count,
-                       GetParam().expected_repetition_count);
+TEST(AnimatedAVIFTests, ValidImages) {
+  // star-animated-8bpc.avif, star-animated-10bpc.avif, and
+  // star-animated-12bpc.avif contain an EditListBox whose `flags` field is
+  // equal to 0, meaning the edit list is not repeated. Therefore their
+  // `expected_repetition_count` is 0.
+  TestByteByByteDecode(&CreateAVIFDecoder,
+                       "/images/resources/avif/star-animated-8bpc.avif", 5u, 0);
+  TestByteByByteDecode(
+      &CreateAVIFDecoder,
+      "/images/resources/avif/star-animated-8bpc-with-alpha.avif", 5u,
+      kAnimationLoopInfinite);
+  TestByteByByteDecode(&CreateAVIFDecoder,
+                       "/images/resources/avif/star-animated-10bpc.avif", 5u,
+                       0);
+  TestByteByByteDecode(
+      &CreateAVIFDecoder,
+      "/images/resources/avif/star-animated-10bpc-with-alpha.avif", 5u,
+      kAnimationLoopInfinite);
+  TestByteByByteDecode(&CreateAVIFDecoder,
+                       "/images/resources/avif/star-animated-12bpc.avif", 5u,
+                       0);
+  TestByteByByteDecode(
+      &CreateAVIFDecoder,
+      "/images/resources/avif/star-animated-12bpc-with-alpha.avif", 5u,
+      kAnimationLoopInfinite);
+  // TODO(ryoh): Add animated avif files with EditListBox.
 }
 
 TEST(AnimatedAVIFTests, HasMultipleSubImages) {
@@ -995,308 +835,39 @@ TEST(StaticAVIFTests, invalidImages) {
       ErrorPhase::kDecode);
 }
 
-TEST(StaticAVIFTests, GetAdobeGainmapInfoAndData) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kGainmapHdrImages,
-                            features::kAvifGainmapHdrImages},
-      /*disabled_features=*/{});
-
-  scoped_refptr<SharedBuffer> data =
-      ReadFile("/images/resources/avif/small-with-gainmap-adobe.avif");
-  std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoder();
-  decoder->SetData(data, true);
-  SkGainmapInfo gainmap_info;
-  scoped_refptr<SegmentReader> gainmap_data;
-  const bool has_gainmap =
-      decoder->GetGainmapInfoAndData(gainmap_info, gainmap_data);
-  ASSERT_TRUE(has_gainmap);
-
-  // Check gainmap metadata.
-  constexpr double kEpsilon = 0.00001;
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[0], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[1], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[2], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[0], std::exp2(2.753770), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[1], std::exp2(2.753770), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[2], std::exp2(2.753770), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[0], 1. / 0.31108, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[1], 1. / 0.31108, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[2], 1. / 0.31108, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[0], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[1], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[2], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[0], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[1], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[2], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fDisplayRatioSdr, 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fDisplayRatioHdr, std::exp2(2.8), kEpsilon);
-
-  EXPECT_EQ(gainmap_info.fGainmapMathColorSpace, nullptr);
-
-  // Check that the gainmap can be decoded.
-  std::unique_ptr<ImageDecoder> gainmap_decoder = CreateAVIFDecoder();
-  gainmap_decoder->SetData(gainmap_data, true);
-  ImageFrame* gainmap_frame = decoder->DecodeFrameBufferAtIndex(0);
-  EXPECT_TRUE(gainmap_frame);
-}
-
-TEST(StaticAVIFTests, GetIsoGainmapInfoAndData) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kGainmapHdrImages,
-                            features::kAvifGainmapHdrImages},
-      /*disabled_features=*/{});
-
-  scoped_refptr<SharedBuffer> data =
-      ReadFile("/images/resources/avif/small-with-gainmap-iso.avif");
-  std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoder();
-  decoder->SetData(data, true);
-  SkGainmapInfo gainmap_info;
-  scoped_refptr<SegmentReader> gainmap_data;
-  const bool has_gainmap =
-      decoder->GetGainmapInfoAndData(gainmap_info, gainmap_data);
-  ASSERT_TRUE(has_gainmap);
-
-  // Check gainmap metadata.
-  constexpr double kEpsilon = 0.00001;
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[0], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[1], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[2], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[0], std::exp2(1.4427), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[1], std::exp2(1.4427), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[2], std::exp2(1.4427), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[3], 1., kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[0], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[1], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[2], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[0], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[1], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[2], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[0], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[1], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[2], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fDisplayRatioSdr, 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fDisplayRatioHdr, std::exp2(1.4427), kEpsilon);
-
-  EXPECT_EQ(gainmap_info.fGainmapMathColorSpace, nullptr);
-
-  // Check that the gainmap can be decoded.
-  std::unique_ptr<ImageDecoder> gainmap_decoder = CreateAVIFDecoder();
-  gainmap_decoder->SetData(gainmap_data, true);
-  ImageFrame* gainmap_frame = decoder->DecodeFrameBufferAtIndex(0);
-  EXPECT_TRUE(gainmap_frame);
-}
-
-TEST(StaticAVIFTests, GetIsoGainmapInfoAndDataHdrToSdr) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kGainmapHdrImages,
-                            features::kAvifGainmapHdrImages},
-      /*disabled_features=*/{});
-
-  scoped_refptr<SharedBuffer> data = ReadFile(
-      "/images/resources/avif/small-with-gainmap-iso-hdrbase-forward.avif");
-  std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoder();
-  decoder->SetData(data, true);
-  SkGainmapInfo gainmap_info;
-  scoped_refptr<SegmentReader> gainmap_data;
-  const bool has_gainmap =
-      decoder->GetGainmapInfoAndData(gainmap_info, gainmap_data);
-  ASSERT_TRUE(has_gainmap);
-
-  // Check gainmap metadata.
-  constexpr double kEpsilon = 0.00001;
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[0], std::exp2(1.536), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[1], std::exp2(1.488), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[2], std::exp2(1.548), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMin[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[0], std::exp2(-0.372), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[1], std::exp2(-0.396), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[2], std::exp2(-0.444), kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapRatioMax[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[0], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[1], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[2], 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fGainmapGamma[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[0], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[1], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[2], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonSdr[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[0], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[1], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[2], 0.015625, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fEpsilonHdr[3], 1.0, kEpsilon);
-
-  EXPECT_NEAR(gainmap_info.fDisplayRatioSdr, 1.0, kEpsilon);
-  EXPECT_NEAR(gainmap_info.fDisplayRatioHdr, std::exp2(2.0), kEpsilon);
-
-  // Check that the gainmap can be decoded.
-  std::unique_ptr<ImageDecoder> gainmap_decoder = CreateAVIFDecoder();
-  gainmap_decoder->SetData(gainmap_data, true);
-  ImageFrame* gainmap_frame = decoder->DecodeFrameBufferAtIndex(0);
-  EXPECT_TRUE(gainmap_frame);
-}
-
-TEST(StaticAVIFTests, GetIsoGainmapColorSpaceSameICC) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kGainmapHdrImages,
-                            features::kAvifGainmapHdrImages},
-      /*disabled_features=*/{});
-
-  // The image has use_base_color_space set to false (i.e. use the alternate
-  // image's color space), and the base and alternate image ICC profiles are the
-  // same, so the alternate image color space should be ignored.
-  scoped_refptr<SharedBuffer> data = ReadFile(
-      "/images/resources/avif/small-with-gainmap-iso-usealtcolorspace.avif");
-  std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoder();
-  decoder->SetData(data, true);
-  SkGainmapInfo gainmap_info;
-  scoped_refptr<SegmentReader> gainmap_data;
-  const bool has_gainmap =
-      decoder->GetGainmapInfoAndData(gainmap_info, gainmap_data);
-  ASSERT_TRUE(has_gainmap);
-
-  EXPECT_EQ(gainmap_info.fGainmapMathColorSpace, nullptr);
-}
-
-void ExpectMatrixNear(const skcms_Matrix3x3& lhs,
-                      const skcms_Matrix3x3& rhs,
-                      float epsilon) {
-  for (int r = 0; r < 3; r++) {
-    for (int c = 0; c < 3; c++) {
-      EXPECT_NEAR(lhs.vals[r][c], rhs.vals[r][c], epsilon);
-    }
-  }
-}
-
-TEST(StaticAVIFTests, GetIsoGainmapColorSpaceDifferentICC) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kGainmapHdrImages,
-                            features::kAvifGainmapHdrImages},
-      /*disabled_features=*/{});
-
-  // The image has use_base_color_space set to false (i.e. use the alternate
-  // image's color space), and the base and alternate image ICC profiles are
-  // different, so the alternate ICC profile should be set as
-  // fGainmapMathColorSpace.
-  // Base is sRGB, alternate is P3.
-  scoped_refptr<SharedBuffer> data = ReadFile(
-      "/images/resources/avif/"
-      "small-with-gainmap-iso-usealtcolorspace-differenticc.avif");
-  std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoder();
-  decoder->SetData(data, true);
-  SkGainmapInfo gainmap_info;
-  scoped_refptr<SegmentReader> gainmap_data;
-  const bool has_gainmap =
-      decoder->GetGainmapInfoAndData(gainmap_info, gainmap_data);
-  ASSERT_TRUE(has_gainmap);
-
-  // Check that the gain map color space is specified.
-  EXPECT_NE(gainmap_info.fGainmapMathColorSpace, nullptr);
-  // Only compare the color primaries, the transfer function is irrelevant.
-  skcms_Matrix3x3 matrix;
-  ASSERT_TRUE(gainmap_info.fGainmapMathColorSpace->toXYZD50(&matrix));
-  ExpectMatrixNear(matrix, SkNamedGamut::kDisplayP3, 0.001);
-}
-
-TEST(StaticAVIFTests, GetIsoGainmapColorSpaceDifferentCICP) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kGainmapHdrImages,
-                            features::kAvifGainmapHdrImages},
-      /*disabled_features=*/{});
-
-  // The image has use_base_color_space set to false (i.e. use the alternate
-  // image's color space), and the base and alternate images don't have ICC
-  // but CICP values instead. The alternate image's CICP values should be used.
-  // Base is sRGB, alternate is Rec 2020.
-  scoped_refptr<SharedBuffer> data = ReadFile(
-      "/images/resources/avif/gainmap-sdr-srgb-to-hdr-wcg-rec2020.avif");
-  std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoder();
-  decoder->SetData(data, true);
-  SkGainmapInfo gainmap_info;
-  scoped_refptr<SegmentReader> gainmap_data;
-  const bool has_gainmap =
-      decoder->GetGainmapInfoAndData(gainmap_info, gainmap_data);
-  ASSERT_TRUE(has_gainmap);
-
-  // Check that the gain map color space is specified.
-  EXPECT_NE(gainmap_info.fGainmapMathColorSpace, nullptr);
-  // Only compare the color primaries, the transfer function is irrelevant.
-  skcms_Matrix3x3 matrix;
-  ASSERT_TRUE(gainmap_info.fGainmapMathColorSpace->toXYZD50(&matrix));
-  ExpectMatrixNear(matrix, SkNamedGamut::kRec2020, 0.0001);
-}
-
-TEST(StaticAVIFTests, GetGainmapInfoAndDataWithFeatureDisabled) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kGainmapHdrImages},
-      /*disabled_features=*/{features::kAvifGainmapHdrImages});
-
-  for (const std::string image :
-       {"small-with-gainmap-adobe.avif", "small-with-gainmap-iso.avif"}) {
-    scoped_refptr<SharedBuffer> data =
-        ReadFile("web_tests/images/resources/avif", image.c_str());
-    std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoder();
-    decoder->SetData(data, true);
-    SkGainmapInfo gainmap_info;
-    scoped_refptr<SegmentReader> gainmap_data;
-    const bool has_gainmap =
-        decoder->GetGainmapInfoAndData(gainmap_info, gainmap_data);
-    ASSERT_FALSE(has_gainmap);
-  }
-}
-
-TEST(StaticAVIFTests, GetGainmapInfoAndDataWithTruncatedData) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kGainmapHdrImages,
-                            features::kAvifGainmapHdrImages},
-      /*disabled_features=*/{});
-
-  for (const std::string image :
-       {"small-with-gainmap-adobe.avif", "small-with-gainmap-iso.avif"}) {
-    scoped_refptr<SharedBuffer> data =
-        ReadFile("web_tests/images/resources/avif", image.c_str());
-    const std::vector<char> data_vector = data->CopyAs<std::vector<char>>();
-    scoped_refptr<SharedBuffer> half_data =
-        SharedBuffer::Create(data_vector.data(), data_vector.size() / 2);
-
-    std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoder();
-    decoder->SetData(half_data, true);
-    SkGainmapInfo gainmap_info;
-    scoped_refptr<SegmentReader> gainmap_data;
-    const bool has_gainmap =
-        decoder->GetGainmapInfoAndData(gainmap_info, gainmap_data);
-    ASSERT_FALSE(has_gainmap);
-  }
+TEST(StaticAVIFTests, ValidImages) {
+  TestByteByByteDecode(
+      &CreateAVIFDecoder,
+      "/images/resources/avif/red-at-12-oclock-with-color-profile-lossy.avif",
+      1, kAnimationNone);
+  TestByteByByteDecode(
+      &CreateAVIFDecoder,
+      "/images/resources/avif/red-at-12-oclock-with-color-profile-8bpc.avif", 1,
+      kAnimationNone);
+  TestByteByByteDecode(
+      &CreateAVIFDecoder,
+      "/images/resources/avif/red-at-12-oclock-with-color-profile-10bpc.avif",
+      1, kAnimationNone);
+  TestByteByByteDecode(
+      &CreateAVIFDecoder,
+      "/images/resources/avif/red-at-12-oclock-with-color-profile-12bpc.avif",
+      1, kAnimationNone);
+  TestByteByByteDecode(&CreateAVIFDecoder,
+                       "/images/resources/avif/tiger_3layer_1res.avif", 1,
+                       kAnimationNone);
+  TestByteByByteDecode(&CreateAVIFDecoder,
+                       "/images/resources/avif/tiger_3layer_3res.avif", 1,
+                       kAnimationNone);
+  TestByteByByteDecode(&CreateAVIFDecoder,
+                       "/images/resources/avif/tiger_420_8b_grid1x13.avif", 1,
+                       kAnimationNone);
+  TestByteByByteDecode(&CreateAVIFDecoder,
+                       "/images/resources/avif/dice_444_10b_grid4x3.avif", 1,
+                       kAnimationNone);
+  TestByteByByteDecode(
+      &CreateAVIFDecoder,
+      "/images/resources/avif/gracehopper_422_12b_grid2x4.avif", 1,
+      kAnimationNone);
 }
 
 TEST(StaticAVIFTests, YUV) {
@@ -1350,8 +921,8 @@ TEST(StaticAVIFTests, SizeAvailableBeforeAllDataReceived) {
   std::unique_ptr<ImageDecoder> decoder = ImageDecoder::CreateByMimeType(
       "image/avif", segment_reader, /*data_complete=*/false,
       ImageDecoder::kAlphaPremultiplied, ImageDecoder::kDefaultBitDepth,
-      ColorBehavior::kTag, Platform::GetMaxDecodedImageBytes(),
-      SkISize::MakeEmpty(), ImageDecoder::AnimationOption::kUnspecified);
+      ColorBehavior::Tag(), SkISize::MakeEmpty(),
+      ImageDecoder::AnimationOption::kUnspecified);
   EXPECT_FALSE(decoder->IsSizeAvailable());
 
   scoped_refptr<SharedBuffer> data =
@@ -1369,15 +940,14 @@ TEST(StaticAVIFTests, SizeAvailableBeforeAllDataReceived) {
 }
 
 TEST(StaticAVIFTests, ProgressiveDecoding) {
-  base::HistogramTester histogram_tester;
   scoped_refptr<SharedBuffer> stream_buffer = WTF::SharedBuffer::Create();
   scoped_refptr<SegmentReader> segment_reader =
       SegmentReader::CreateFromSharedBuffer(stream_buffer);
   std::unique_ptr<ImageDecoder> decoder = ImageDecoder::CreateByMimeType(
       "image/avif", segment_reader, /*data_complete=*/false,
       ImageDecoder::kAlphaPremultiplied, ImageDecoder::kDefaultBitDepth,
-      ColorBehavior::kTag, Platform::GetMaxDecodedImageBytes(),
-      SkISize::MakeEmpty(), ImageDecoder::AnimationOption::kUnspecified);
+      ColorBehavior::Tag(), SkISize::MakeEmpty(),
+      ImageDecoder::AnimationOption::kUnspecified);
 
   scoped_refptr<SharedBuffer> data =
       ReadFile("/images/resources/avif/tiger_3layer_1res.avif");
@@ -1392,8 +962,6 @@ TEST(StaticAVIFTests, ProgressiveDecoding) {
   EXPECT_TRUE(decoder->IsSizeAvailable());
   EXPECT_FALSE(decoder->Failed());
   EXPECT_EQ(decoder->FrameCount(), 1u);
-  histogram_tester.ExpectTotalCount("Blink.DecodedImage.AvifDensity.Count.02MP",
-                                    0);
   ImageFrame* frame = decoder->DecodeFrameBufferAtIndex(0);
   ASSERT_TRUE(frame);
   EXPECT_EQ(frame->GetStatus(), ImageFrame::kFrameEmpty);
@@ -1409,52 +977,21 @@ TEST(StaticAVIFTests, ProgressiveDecoding) {
   ASSERT_TRUE(frame);
   EXPECT_EQ(frame->GetStatus(), ImageFrame::kFramePartial);
   EXPECT_FALSE(decoder->Failed());
-
-  base::HistogramTester::CountsMap expected_counts;
-  EXPECT_THAT(histogram_tester.GetTotalCountsForPrefix(
-                  "Blink.DecodedImage.AvifDensity.Count."),
-              testing::ContainerEq(expected_counts));
-
-  // Now send the rest of the data.
-  stream_buffer->Append(data->Data() + 8299u + 301u, 62344u);
-  decoder->SetData(stream_buffer, /*all_data_received=*/true);
-  EXPECT_FALSE(decoder->Failed());
-  frame = decoder->DecodeFrameBufferAtIndex(0);
-  ASSERT_TRUE(frame);
-  EXPECT_EQ(frame->GetStatus(), ImageFrame::kFrameComplete);
-  EXPECT_FALSE(decoder->Failed());
-
-  constexpr int kImageArea = 1216 * 832;  // = 1011712
-  constexpr int kFileSize = 70944;
-  constexpr int kSample =
-      (kFileSize * 100 * 8 + kImageArea / 2) / kImageArea;  // = 56
-  histogram_tester.ExpectUniqueSample(
-      "Blink.DecodedImage.AvifDensity.Count.02MP", kSample, 1);
-  expected_counts["Blink.DecodedImage.AvifDensity.Count.02MP"] = 1;
-  EXPECT_THAT(histogram_tester.GetTotalCountsForPrefix(
-                  "Blink.DecodedImage.AvifDensity.Count."),
-              testing::ContainerEq(expected_counts));
 }
 
 TEST(StaticAVIFTests, IncrementalDecoding) {
-  base::HistogramTester histogram_tester;
   scoped_refptr<SharedBuffer> stream_buffer = WTF::SharedBuffer::Create();
   scoped_refptr<SegmentReader> segment_reader =
       SegmentReader::CreateFromSharedBuffer(stream_buffer);
   std::unique_ptr<ImageDecoder> decoder = ImageDecoder::CreateByMimeType(
       "image/avif", segment_reader, /*data_complete=*/false,
       ImageDecoder::kAlphaPremultiplied, ImageDecoder::kDefaultBitDepth,
-      ColorBehavior::kTag, Platform::GetMaxDecodedImageBytes(),
-      SkISize::MakeEmpty(), ImageDecoder::AnimationOption::kUnspecified);
+      ColorBehavior::Tag(), SkISize::MakeEmpty(),
+      ImageDecoder::AnimationOption::kUnspecified);
 
   scoped_refptr<SharedBuffer> data =
       ReadFile("/images/resources/avif/tiger_420_8b_grid1x13.avif");
   ASSERT_TRUE(data.get());
-
-  constexpr int kImageArea = 1216 * 832;  // = 1011712
-  constexpr int kFileSize = 72257;
-  constexpr int kSample =
-      (kFileSize * 100 * 8 + kImageArea / 2) / kImageArea;  // = 57
 
   struct Step {
     size_t size;  // In bytes.
@@ -1496,16 +1033,6 @@ TEST(StaticAVIFTests, IncrementalDecoding) {
       }
     }
     previous_size = step.size;
-
-    base::HistogramTester::CountsMap expected_counts;
-    if (step.status == ImageFrame::kFrameComplete) {
-      histogram_tester.ExpectUniqueSample(
-          "Blink.DecodedImage.AvifDensity.Count.02MP", kSample, 1);
-      expected_counts["Blink.DecodedImage.AvifDensity.Count.02MP"] = 1;
-    }
-    EXPECT_THAT(histogram_tester.GetTotalCountsForPrefix(
-                    "Blink.DecodedImage.AvifDensity.Count."),
-                testing::ContainerEq(expected_counts));
   }
 }
 
@@ -1562,191 +1089,6 @@ TEST(StaticAVIFTests, UnsupportedTransferFunctionInColrProperty) {
   EXPECT_TRUE(decoder->Failed());
 }
 
-TEST(StaticAVIFTests, ClapPropertyZeroOrigin) {
-  constexpr int kClapWidth = 200;
-  constexpr int kClapHeight = 50;
-  std::unique_ptr<ImageDecoder> decoder1 = CreateAVIFDecoder();
-  decoder1->SetData(ReadFile("/images/resources/avif/red-and-purple-crop.avif"),
-                    true);
-  ASSERT_TRUE(decoder1->IsSizeAvailable());
-  gfx::Size size1 = decoder1->Size();
-  ASSERT_EQ(size1.width(), kClapWidth);
-  ASSERT_EQ(size1.height(), kClapHeight);
-  ImageFrame* frame1 = decoder1->DecodeFrameBufferAtIndex(0);
-  ASSERT_TRUE(frame1);
-  EXPECT_EQ(ImageFrame::kFrameComplete, frame1->GetStatus());
-  EXPECT_FALSE(decoder1->Failed());
-  const SkBitmap& bitmap1 = frame1->Bitmap();
-
-  // The second image is the uncropped version of the first image.
-  std::unique_ptr<ImageDecoder> decoder2 = CreateAVIFDecoder();
-  decoder2->SetData(
-      ReadFile("/images/resources/avif/red-and-purple-and-blue.avif"), true);
-  ASSERT_TRUE(decoder2->IsSizeAvailable());
-  gfx::Size size2 = decoder2->Size();
-  ASSERT_EQ(size2.width(), 300);
-  ASSERT_EQ(size2.height(), 100);
-  ImageFrame* frame2 = decoder2->DecodeFrameBufferAtIndex(0);
-  ASSERT_TRUE(frame2);
-  EXPECT_EQ(ImageFrame::kFrameComplete, frame2->GetStatus());
-  EXPECT_FALSE(decoder2->Failed());
-  const SkBitmap& bitmap2 = frame2->Bitmap();
-
-  // Compare pixel data.
-  for (int row = 0; row < kClapHeight; ++row) {
-    for (int col = 0; col < kClapWidth; ++col) {
-      EXPECT_EQ(bitmap1.getColor(/*x=*/col, /*y=*/row),
-                bitmap2.getColor(/*x=*/col, /*y=*/row));
-    }
-  }
-}
-
-// Verifies that an invalid 'clap' (clean aperture) image property is handled by
-// ignoring the 'clap' property and showing the full image.
-TEST(StaticAVIFTests, InvalidClapPropertyHandling) {
-  // The first image has a valid 'clap' property. The full image has size
-  // 320x280. The clean aperture has size 180x100, located at (40, 80) of the
-  // full image.
-  //
-  // Since the origin of the clean aperture is not located at (0, 0), we treat
-  // the 'clap' property as invalid. So the full image is shown.
-  std::unique_ptr<ImageDecoder> decoder1 = CreateAVIFDecoder();
-  decoder1->SetData(
-      ReadFile("/images/resources/avif/blue-and-magenta-crop.avif"), true);
-  ASSERT_TRUE(decoder1->IsSizeAvailable());
-  gfx::Size size1 = decoder1->Size();
-  ASSERT_EQ(size1.width(), 320);
-  ASSERT_EQ(size1.height(), 280);
-  ImageFrame* frame1 = decoder1->DecodeFrameBufferAtIndex(0);
-  ASSERT_TRUE(frame1);
-  EXPECT_EQ(ImageFrame::kFrameComplete, frame1->GetStatus());
-  EXPECT_FALSE(decoder1->Failed());
-  const SkBitmap& bitmap1 = frame1->Bitmap();
-
-  // The second image is the same as the first image except that the 'clap'
-  // property is invalid. In this case the full image is shown.
-  std::unique_ptr<ImageDecoder> decoder2 = CreateAVIFDecoder();
-  decoder2->SetData(
-      ReadFile("/images/resources/avif/blue-and-magenta-crop-invalid.avif"),
-      true);
-  ASSERT_TRUE(decoder2->IsSizeAvailable());
-  gfx::Size size2 = decoder2->Size();
-  ASSERT_EQ(size2.width(), 320);
-  ASSERT_EQ(size2.height(), 280);
-  ImageFrame* frame2 = decoder2->DecodeFrameBufferAtIndex(0);
-  ASSERT_TRUE(frame2);
-  EXPECT_EQ(ImageFrame::kFrameComplete, frame2->GetStatus());
-  EXPECT_FALSE(decoder2->Failed());
-  const SkBitmap& bitmap2 = frame2->Bitmap();
-
-  // Compare pixel data.
-  for (int row = 0; row < size1.height(); ++row) {
-    for (int col = 0; col < size1.width(); ++col) {
-      EXPECT_EQ(bitmap1.getColor(/*x=*/col, /*y=*/row),
-                bitmap2.getColor(/*x=*/col, /*y=*/row));
-    }
-  }
-}
-
-TEST(StaticAVIFTests, BppHistogramSmall) {
-  constexpr int kImageArea = 768 * 512;  // = 393216
-  constexpr int kFileSize = 25724;
-  constexpr int kSample =
-      (kFileSize * 100 * 8 + kImageArea / 2) / kImageArea;  // = 52
-  TestAvifBppHistogram("/images/resources/avif/kodim03.avif",
-                       "Blink.DecodedImage.AvifDensity.Count.0.4MP", kSample);
-}
-
-TEST(StaticAVIFTests, BppHistogramSmall3x3) {
-  // The centi bpp = 318 * 100 * 8 / (3 * 3) ~= 28267, which is greater than the
-  // histogram's max value (1000), so this sample goes into the overflow bucket.
-  constexpr int kSample = 1000;
-  TestAvifBppHistogram("/images/resources/avif/red-full-range-420-8bpc.avif",
-                       "Blink.DecodedImage.AvifDensity.Count.0.1MP", kSample);
-}
-
-TEST(StaticAVIFTests, BppHistogramSmall900000) {
-  constexpr int kImageArea = 1200 * 750;  // = 900000
-  constexpr int kFileSize = 8144;
-  constexpr int kSample =
-      (kFileSize * 100 * 8 + kImageArea / 2) / kImageArea;  // = 7
-  TestAvifBppHistogram("/images/resources/avif/peach_900000.avif",
-                       "Blink.DecodedImage.AvifDensity.Count.0.9MP", kSample);
-}
-
-TEST(StaticAVIFTests, BppHistogramBig) {
-  constexpr int kImageArea = 4032 * 3024;  // = 12192768
-  constexpr int kFileSize = 88692;
-  constexpr int kSample =
-      (kFileSize * 100 * 8 + kImageArea / 2) / kImageArea;  // = 6
-  TestAvifBppHistogram("/images/resources/avif/bee.avif",
-                       "Blink.DecodedImage.AvifDensity.Count.13MP", kSample);
-}
-
-TEST(StaticAVIFTests, BppHistogramBig13000000) {
-  constexpr int kImageArea = 4000 * 3250;  // = 13000000
-  constexpr int kFileSize = 16725;
-  constexpr int kSample =
-      (kFileSize * 100 * 8 + kImageArea / 2) / kImageArea;  // = 1
-  TestAvifBppHistogram("/images/resources/avif/peach_13000000.avif",
-                       "Blink.DecodedImage.AvifDensity.Count.13MP", kSample);
-}
-
-TEST(StaticAVIFTests, BppHistogramHuge) {
-  constexpr int kImageArea = 4624 * 3472;  // = 16054528
-  constexpr int kFileSize = 20095;
-  constexpr int kSample =
-      (kFileSize * 100 * 8 + kImageArea / 2) / kImageArea;  // = 1
-  TestAvifBppHistogram("/images/resources/avif/peach.avif",
-                       "Blink.DecodedImage.AvifDensity.Count.14+MP", kSample);
-}
-
-TEST(StaticAVIFTests, BppHistogramHuge13000002) {
-  constexpr int kImageArea = 3961 * 3282;  // = 13000002
-  constexpr int kFileSize = 16379;
-  constexpr int kSample =
-      (kFileSize * 100 * 8 + kImageArea / 2) / kImageArea;  // = 1
-  TestAvifBppHistogram("/images/resources/avif/peach_13000002.avif",
-                       "Blink.DecodedImage.AvifDensity.Count.14+MP", kSample);
-}
-
-TEST(StaticAVIFTests, BppHistogramInvalid) {
-  base::HistogramTester histogram_tester;
-  std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoder();
-  decoder->SetData(
-      ReadFile(
-          "/images/resources/avif/"
-          "red-at-12-oclock-with-color-profile-with-wrong-frame-header.avif"),
-      true);
-  ASSERT_TRUE(decoder->IsSizeAvailable());
-  EXPECT_FALSE(decoder->Failed());
-  EXPECT_EQ(decoder->FrameCount(), 1u);
-  ImageFrame* frame = decoder->DecodeFrameBufferAtIndex(0);
-  ASSERT_TRUE(frame);
-  EXPECT_NE(ImageFrame::kFrameComplete, frame->GetStatus());
-  EXPECT_TRUE(decoder->Failed());
-  const base::HistogramTester::CountsMap empty_counts;
-  EXPECT_THAT(histogram_tester.GetTotalCountsForPrefix(
-                  "Blink.DecodedImage.AvifDensity.Count."),
-              testing::ContainerEq(empty_counts));
-}
-
-TEST(StaticAVIFTests, BppHistogram10bit) {
-  TestAvifBppHistogram("/images/resources/avif/red-full-range-420-10bpc.avif");
-}
-
-TEST(StaticAVIFTests, BppHistogramMonochrome) {
-  TestAvifBppHistogram("/images/resources/avif/silver-400-matrix-6.avif");
-}
-
-TEST(StaticAVIFTests, BppHistogramAlpha) {
-  TestAvifBppHistogram("/images/resources/avif/red-with-alpha-8bpc.avif");
-}
-
-TEST(StaticAVIFTests, BppHistogramAnimated) {
-  TestAvifBppHistogram("/images/resources/avif/star-animated-8bpc.avif");
-}
-
 using StaticAVIFColorTests = ::testing::TestWithParam<StaticColorCheckParam>;
 
 INSTANTIATE_TEST_SUITE_P(Parameterized,
@@ -1754,13 +1096,70 @@ INSTANTIATE_TEST_SUITE_P(Parameterized,
                          ::testing::ValuesIn(kTestParams));
 
 TEST_P(StaticAVIFColorTests, InspectImage) {
-  InspectImage(GetParam(), ImageDecoder::kDefaultBitDepth);
-}
+  const StaticColorCheckParam& param = GetParam();
+  // TODO(ryoh): Add tests with ImageDecoder::kHighBitDepthToHalfFloat
+  std::unique_ptr<ImageDecoder> decoder = CreateAVIFDecoderWithOptions(
+      param.alpha_option, ImageDecoder::kDefaultBitDepth, param.color_behavior,
+      ImageDecoder::AnimationOption::kUnspecified);
+  scoped_refptr<SharedBuffer> data = ReadFile(param.path);
+  ASSERT_TRUE(data.get());
+#if FIXME_DISTINGUISH_LOSSY_OR_LOSSLESS
+  EXPECT_EQ(param.compression_format,
+            ImageDecoder::GetCompressionFormat(data, "image/avif"));
+#endif
+  decoder->SetData(std::move(data), true);
+  EXPECT_EQ(1u, decoder->FrameCount());
+  EXPECT_EQ(kAnimationNone, decoder->RepetitionCount());
+  EXPECT_EQ(param.bit_depth > 8, decoder->ImageIsHighBitDepth());
+  auto metadata = decoder->MakeMetadataForDecodeAcceleration();
+  EXPECT_EQ(cc::ImageType::kAVIF, metadata.image_type);
+  // TODO(wtc): Check metadata.yuv_subsampling.
+  ImageFrame* frame = decoder->DecodeFrameBufferAtIndex(0);
+  ASSERT_TRUE(frame);
+  EXPECT_EQ(ImageFrame::kFrameComplete, frame->GetStatus());
+  EXPECT_FALSE(decoder->Failed());
+  EXPECT_EQ(param.orientation, decoder->Orientation());
+  EXPECT_EQ(param.color_type == ColorType::kRgbA ||
+                param.color_type == ColorType::kMonoA,
+            frame->HasAlpha());
+  auto get_color_channel = [](SkColorChannel channel, SkColor color) {
+    switch (channel) {
+      case SkColorChannel::kR:
+        return SkColorGetR(color);
+      case SkColorChannel::kG:
+        return SkColorGetG(color);
+      case SkColorChannel::kB:
+        return SkColorGetB(color);
+      case SkColorChannel::kA:
+        return SkColorGetA(color);
+    }
+  };
+  auto color_difference = [get_color_channel](SkColorChannel channel,
+                                              SkColor color1,
+                                              SkColor color2) -> int {
+    return std::abs(static_cast<int>(get_color_channel(channel, color1)) -
+                    static_cast<int>(get_color_channel(channel, color2)));
+  };
+  for (const auto& expected : param.colors) {
+    const SkBitmap& bitmap = frame->Bitmap();
+    SkColor frame_color =
+        bitmap.getColor(expected.point.x(), expected.point.y());
 
-TEST_P(StaticAVIFColorTests, InspectImageHalfFloat) {
-  InspectImage(GetParam(), ImageDecoder::kHighBitDepthToHalfFloat);
+    EXPECT_LE(color_difference(SkColorChannel::kR, frame_color, expected.color),
+              param.color_threshold);
+    EXPECT_LE(color_difference(SkColorChannel::kG, frame_color, expected.color),
+              param.color_threshold);
+    EXPECT_LE(color_difference(SkColorChannel::kB, frame_color, expected.color),
+              param.color_threshold);
+    // TODO(ryoh): Create alpha_threshold field for alpha channels.
+    EXPECT_LE(color_difference(SkColorChannel::kA, frame_color, expected.color),
+              param.color_threshold);
+    if (param.color_type == ColorType::kMono ||
+        param.color_type == ColorType::kMonoA) {
+      EXPECT_EQ(SkColorGetR(frame_color), SkColorGetG(frame_color));
+      EXPECT_EQ(SkColorGetR(frame_color), SkColorGetB(frame_color));
+    }
+  }
 }
-
-}  // namespace
 
 }  // namespace blink

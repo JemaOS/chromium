@@ -12,7 +12,6 @@
 
 #include "ash/wm/window_resizer.h"
 #include "ash/wm/workspace/magnetism_matcher.h"
-#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
@@ -22,7 +21,6 @@
 #include "ui/gfx/geometry/point_f.h"
 
 namespace ash {
-class WindowSplitter;
 class PhantomWindowController;
 class WindowSize;
 class WindowState;
@@ -45,8 +43,7 @@ class ASH_EXPORT WorkspaceWindowResizer : public WindowResizer {
 
   static std::unique_ptr<WorkspaceWindowResizer> Create(
       WindowState* window_state,
-      const std::vector<raw_ptr<aura::Window, VectorExperimental>>&
-          attached_windows);
+      const std::vector<aura::Window*>& attached_windows);
 
   // WindowResizer:
   void Drag(const gfx::PointF& location_in_parent, int event_flags) override;
@@ -58,10 +55,8 @@ class ASH_EXPORT WorkspaceWindowResizer : public WindowResizer {
   friend class WorkspaceWindowResizerTest;
   FRIEND_TEST_ALL_PREFIXES(HapticsUtilTest, HapticFeedbackForNormalWindowSnap);
 
-  WorkspaceWindowResizer(
-      WindowState* window_state,
-      const std::vector<raw_ptr<aura::Window, VectorExperimental>>&
-          attached_windows);
+  WorkspaceWindowResizer(WindowState* window_state,
+                         const std::vector<aura::Window*>& attached_windows);
   WorkspaceWindowResizer(const WorkspaceWindowResizer&) = delete;
   WorkspaceWindowResizer& operator=(const WorkspaceWindowResizer&) = delete;
 
@@ -179,8 +174,7 @@ class ASH_EXPORT WorkspaceWindowResizer : public WindowResizer {
   // Returns the currently used instance for test.
   static WorkspaceWindowResizer* GetInstanceForTest();
 
-  const std::vector<raw_ptr<aura::Window, VectorExperimental>>
-      attached_windows_;
+  const std::vector<aura::Window*> attached_windows_;
 
   bool did_lock_cursor_ = false;
 
@@ -215,13 +209,13 @@ class ASH_EXPORT WorkspaceWindowResizer : public WindowResizer {
   // Timer for dwell time countdown.
   base::OneShotTimer dwell_countdown_timer_;
   // The location for drag maximize in screen.
-  std::optional<gfx::PointF> dwell_location_in_screen_;
+  absl::optional<gfx::PointF> dwell_location_in_screen_;
 
-  // The latest location passed to `Drag()` in screen coordinates.
-  gfx::PointF last_location_in_screen_;
+  // The location in parent passed to `Drag()`.
+  gfx::PointF last_location_in_parent_;
 
   // Window the drag has magnetically attached to.
-  raw_ptr<aura::Window> magnetism_window_ = nullptr;
+  raw_ptr<aura::Window, ExperimentalAsh> magnetism_window_ = nullptr;
 
   // Used to verify |magnetism_window_| is still valid.
   aura::WindowTracker window_tracker_;
@@ -239,9 +233,6 @@ class ASH_EXPORT WorkspaceWindowResizer : public WindowResizer {
 
   // Presentation time recorder for tab dragging in clamshell mode.
   std::unique_ptr<ui::PresentationTimeRecorder> tab_dragging_recorder_;
-
-  // Optional window splitter for tiling groups.
-  std::unique_ptr<WindowSplitter> window_splitter_;
 
   // Used to determine if this has been deleted during a drag such as when a tab
   // gets dragged into another browser window.

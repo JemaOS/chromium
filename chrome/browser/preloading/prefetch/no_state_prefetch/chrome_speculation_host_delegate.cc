@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/preloading/prefetch/no_state_prefetch/chrome_speculation_host_delegate.h"
-
 #include <algorithm>
-#include <vector>
+
+#include "chrome/browser/preloading/prefetch/no_state_prefetch/chrome_speculation_host_delegate.h"
 
 #include "chrome/browser/preloading/prefetch/no_state_prefetch/no_state_prefetch_manager_factory.h"
 #include "components/no_state_prefetch/browser/no_state_prefetch_handle.h"
@@ -59,7 +58,9 @@ void ChromeSpeculationHostDelegate::ProcessCandidates(
       };
 
   // Remove the entries that are to be processed by this delegate.
-  std::erase_if(candidates, should_process_entry);
+  auto new_end = std::remove_if(candidates.begin(), candidates.end(),
+                                should_process_entry);
+  candidates.erase(new_end, candidates.end());
 
   if (same_origin_prefetches_with_subresources.size() > 0) {
     prerender::NoStatePrefetchManager* no_state_prefetch_manager =

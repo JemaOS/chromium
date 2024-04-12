@@ -33,20 +33,19 @@ AXObjectCacheImpl& AccessibilityTest::GetAXObjectCache() const {
 }
 
 AXObject* AccessibilityTest::GetAXObject(LayoutObject* layout_object) const {
-  return GetAXObjectCache().Get(layout_object);
+  return GetAXObjectCache().GetOrCreate(layout_object);
 }
 
 AXObject* AccessibilityTest::GetAXObject(const Node& node) const {
-  return GetAXObjectCache().Get(&node);
+  return GetAXObjectCache().GetOrCreate(&node);
 }
 
 AXObject* AccessibilityTest::GetAXRootObject() const {
-  GetAXObjectCache().UpdateAXForAllDocuments();
-  return GetAXObjectCache().Root();
+  return GetAXObjectCache().GetOrCreate(&GetLayoutView());
 }
 
 AXObject* AccessibilityTest::GetAXBodyObject() const {
-  return GetAXObjectCache().Get(GetDocument().body());
+  return GetAXObjectCache().GetOrCreate(GetDocument().body());
 }
 
 AXObject* AccessibilityTest::GetAXFocusedObject() const {
@@ -55,7 +54,7 @@ AXObject* AccessibilityTest::GetAXFocusedObject() const {
 
 AXObject* AccessibilityTest::GetAXObjectByElementId(const char* id) const {
   const auto* element = GetElementById(id);
-  return GetAXObjectCache().Get(element);
+  return element ? GetAXObjectCache().GetOrCreate(element) : nullptr;
 }
 
 std::string AccessibilityTest::PrintAXTree() const {

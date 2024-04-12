@@ -13,10 +13,9 @@
 #include "build/buildflag.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/signin/reauth_result.h"
-#include "chrome/browser/ui/signin/signin_reauth_view_controller.h"
+#include "chrome/browser/ui/signin_reauth_view_controller.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/signin/public/base/signin_metrics.h"
-#include "components/signin/public/identity_manager/identity_manager.h"
 
 struct AccountInfo;
 struct CoreAccountInfo;
@@ -53,27 +52,11 @@ void ShowExtensionSigninPrompt(Profile* profile,
                                bool enable_sync,
                                const std::string& email_hint);
 
-// This function is used to sign-in the user into Chrome without offering sync.
-// This function does nothing if the user is already signed in to Chrome.
-void ShowSigninPromptFromPromo(Profile* profile,
-                               signin_metrics::AccessPoint access_point);
-
-// This function is used to sign in a given account:
-// * This function does nothing if the user is already signed in to Chrome.
-// * If |account| is empty, then it presents the Chrome sign-in page.
-// * If token service has an invalid refresh token for account |account|,
-//   then it presents the Chrome sign-in page with |account.email| prefilled.
-// * If token service has a valid refresh token for |account|, then it
-//   signs in the |account|.
-void SignInFromSingleAccountPromo(Profile* profile,
-                                  const CoreAccountInfo& account,
-                                  signin_metrics::AccessPoint access_point);
-
 // This function is used to enable sync for a given account:
 // * This function does nothing if the user is already signed in to Chrome.
 // * If |account| is empty, then it presents the Chrome sign-in page.
-// * If token service has an invalid refresh token for account |account|,
-//   then it presents the Chrome sign-in page with |account.email| prefilled.
+// * If token service has an invalid refreh token for account |account|,
+//   then it presents the Chrome sign-in page with |account.emil| prefilled.
 // * If token service has a valid refresh token for |account|, then it
 //   enables sync for |account|.
 void EnableSyncFromSingleAccountPromo(Profile* profile,
@@ -97,22 +80,14 @@ void EnableSyncFromMultiAccountPromo(Profile* profile,
 // |restrict_to_accounts_eligible_for_sync| is true, removes the account that
 // are not suitable for sync promos.
 std::vector<AccountInfo> GetOrderedAccountsForDisplay(
-    signin::IdentityManager* identity_manager,
+    Profile* profile,
     bool restrict_to_accounts_eligible_for_sync);
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
 // Returns single account to use in promos.
-AccountInfo GetSingleAccountForPromos(
-    signin::IdentityManager* identity_manager);
+AccountInfo GetSingleAccountForPromos(Profile* profile);
 
 #endif
-
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
-// Returns an existing re-usable Dice signin tab with the given access point.
-content::WebContents* GetSignInTabWithAccessPoint(
-    const Browser& browser,
-    signin_metrics::AccessPoint access_point);
-#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 // Returns the short user identity to display for |profile|. It is based on the
 // current unconsented primary account (if exists).
@@ -144,6 +119,10 @@ base::AutoReset<SigninUiDelegate*> SetSigninUiDelegateForTesting(
 // Records that the animated identity was shown for the given profile. This is
 // used for metrics and to decide whether/when the animation can be shown again.
 void RecordAnimatedIdentityTriggered(Profile* profile);
+
+// Records that the avatar icon was highlighted for the given profile. This is
+// used for metrics.
+void RecordAvatarIconHighlighted(Profile* profile);
 
 // Called when the ProfileMenuView is opened. Used for metrics.
 void RecordProfileMenuViewShown(Profile* profile);

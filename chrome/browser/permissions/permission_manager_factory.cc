@@ -9,7 +9,6 @@
 #include "chrome/browser/background_fetch/background_fetch_permission_context.h"
 #include "chrome/browser/background_sync/periodic_background_sync_permission_context.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
-#include "chrome/browser/display_capture/captured_surface_control_permission_context.h"
 #include "chrome/browser/display_capture/display_capture_permission_context.h"
 #include "chrome/browser/geolocation/geolocation_permission_context_delegate.h"
 #include "chrome/browser/idle/idle_detection_permission_context.h"
@@ -30,11 +29,9 @@
 #include "components/background_sync/background_sync_permission_context.h"
 #include "components/embedder_support/permission_context_utils.h"
 #include "components/permissions/contexts/local_fonts_permission_context.h"
-#include "components/permissions/contexts/speaker_selection_permission_context.h"
 #include "components/permissions/contexts/window_management_permission_context.h"
 #include "components/permissions/permission_manager.h"
 #include "ppapi/buildflags/buildflags.h"
-#include "services/device/public/cpp/geolocation/geolocation_system_permission_manager.h"
 
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN)
 #include "chrome/browser/media/protected_media_identifier_permission_context.h"
@@ -44,9 +41,9 @@
 #include "chrome/browser/geolocation/geolocation_permission_context_delegate_android.h"
 #endif  // BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(USE_CUPS)
-#include "chrome/browser/printing/web_api/web_printing_permission_context.h"
-#endif  // BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(USE_CUPS)
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/browser_process.h"
+#endif
 
 namespace {
 
@@ -62,9 +59,8 @@ permissions::PermissionManager::PermissionContextMap CreatePermissionContexts(
       std::make_unique<GeolocationPermissionContextDelegate>(profile);
 #endif  // BUILDFLAG(IS_ANDROID)
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
-  delegates.geolocation_system_permission_manager =
-      device::GeolocationSystemPermissionManager::GetInstance();
-  DCHECK(delegates.geolocation_system_permission_manager);
+  delegates.geolocation_manager = g_browser_process->geolocation_manager();
+  DCHECK(delegates.geolocation_manager);
 #endif
   delegates.media_stream_device_enumerator =
       MediaCaptureDevicesDispatcher::GetInstance();
@@ -76,8 +72,8 @@ permissions::PermissionManager::PermissionContextMap CreatePermissionContexts(
 
   // Create default permission contexts initially.
   permissions::PermissionManager::PermissionContextMap permission_contexts =
-      embedder_support::CreateDefaultPermissionContexts(
-          profile, profile->IsRegularProfile(), std::move(delegates));
+      embedder_support::CreateDefaultPermissionContexts(profile,
+                                                        std::move(delegates));
 
   // Add additional Chrome specific permission contexts. Please add a comment
   // when adding new contexts here explaining why it can't be shared with other
@@ -116,9 +112,6 @@ permissions::PermissionManager::PermissionContextMap CreatePermissionContexts(
       std::make_unique<MediaStreamDevicePermissionContext>(
           profile, ContentSettingsType::MEDIASTREAM_MIC);
 
-  permission_contexts[ContentSettingsType::SPEAKER_SELECTION] =
-      std::make_unique<SpeakerSelectionPermissionContext>(profile);
-
   // TODO(crbug.com/1025610): Move once Notifications are supported on WebLayer.
   permission_contexts[ContentSettingsType::NOTIFICATIONS] =
       std::make_unique<NotificationPermissionContext>(profile);
@@ -147,15 +140,6 @@ permissions::PermissionManager::PermissionContextMap CreatePermissionContexts(
   permission_contexts[ContentSettingsType::WINDOW_MANAGEMENT] =
       std::make_unique<permissions::WindowManagementPermissionContext>(profile);
 
-  permission_contexts[ContentSettingsType::CAPTURED_SURFACE_CONTROL] =
-      std::make_unique<permissions::CapturedSurfaceControlPermissionContext>(
-          profile);
-
-#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(USE_CUPS)
-  permission_contexts[ContentSettingsType::WEB_PRINTING] =
-      std::make_unique<WebPrintingPermissionContext>(profile);
-#endif  // BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(USE_CUPS)
-
   return permission_contexts;
 }
 
@@ -170,28 +154,21 @@ permissions::PermissionManager* PermissionManagerFactory::GetForProfile(
 
 // static
 PermissionManagerFactory* PermissionManagerFactory::GetInstance() {
-  static base::NoDestructor<PermissionManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<PermissionManagerFactory>::get();
 }
 
 PermissionManagerFactory::PermissionManagerFactory()
     : ProfileKeyedServiceFactory(
           "PermissionManagerFactory",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HostContentSettingsMapFactory::GetInstance());
 }
 
-PermissionManagerFactory::~PermissionManagerFactory() = default;
+PermissionManagerFactory::~PermissionManagerFactory() {}
 
-std::unique_ptr<KeyedService>
-PermissionManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PermissionManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<permissions::PermissionManager>(
-      profile, CreatePermissionContexts(profile));
+  return new permissions::PermissionManager(profile,
+                                            CreatePermissionContexts(profile));
 }

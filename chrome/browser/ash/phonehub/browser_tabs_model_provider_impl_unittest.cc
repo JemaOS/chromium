@@ -21,7 +21,6 @@
 #include "chromeos/ash/components/phonehub/mutable_phone_model.h"
 #include "chromeos/ash/components/phonehub/phone_model_test_util.h"
 #include "chromeos/ash/components/standalone_browser/lacros_availability.h"
-#include "chromeos/ash/components/standalone_browser/standalone_browser_features.h"
 #include "chromeos/ash/services/multidevice_setup/public/cpp/fake_multidevice_setup_client.h"
 #include "chromeos/crosapi/mojom/synced_session_client.mojom.h"
 #include "components/account_id/account_id.h"
@@ -62,6 +61,8 @@ class SessionSyncServiceMock : public sync_sessions::SessionSyncService {
   MOCK_METHOD0(ScheduleGarbageCollection, void());
   MOCK_METHOD0(GetControllerDelegate,
                base::WeakPtr<syncer::ModelTypeControllerDelegate>());
+  MOCK_METHOD1(ProxyTabsStateChanged,
+               void(syncer::DataTypeController::State state));
 };
 
 class OpenTabsUIDelegateMock : public sync_sessions::OpenTabsUIDelegate {
@@ -69,17 +70,17 @@ class OpenTabsUIDelegateMock : public sync_sessions::OpenTabsUIDelegate {
   OpenTabsUIDelegateMock() {}
   ~OpenTabsUIDelegateMock() override {}
 
-  MOCK_METHOD1(GetAllForeignSessions,
-               bool(std::vector<raw_ptr<const sync_sessions::SyncedSession,
-                                        VectorExperimental>>* sessions));
+  MOCK_METHOD1(
+      GetAllForeignSessions,
+      bool(std::vector<const sync_sessions::SyncedSession*>* sessions));
   MOCK_METHOD3(GetForeignTab,
                bool(const std::string& tag,
                     const SessionID tab_id,
                     const sessions::SessionTab** tab));
   MOCK_METHOD1(DeleteForeignSession, void(const std::string& tag));
-  MOCK_METHOD1(
-      GetForeignSession,
-      std::vector<const sessions::SessionWindow*>(const std::string& tag));
+  MOCK_METHOD2(GetForeignSession,
+               bool(const std::string& tag,
+                    std::vector<const sessions::SessionWindow*>* windows));
   MOCK_METHOD2(GetForeignSessionTabs,
                bool(const std::string& tag,
                     std::vector<const sessions::SessionTab*>* tabs));
@@ -126,7 +127,7 @@ class ScopedLacrosOnlyHandle {
     crosapi::browser_util::ClearLacrosAvailabilityCacheForTest();
   }
 
-  raw_ptr<ash::FakeChromeUserManager, DanglingUntriaged> fake_user_manager_ =
+  raw_ptr<ash::FakeChromeUserManager, ExperimentalAsh> fake_user_manager_ =
       nullptr;
   std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
 };
@@ -139,7 +140,7 @@ multidevice::RemoteDeviceRef CreatePhoneDevice(const std::string& pii_name) {
 
 std::unique_ptr<sync_sessions::SyncedSession> CreateNewSession(
     const std::string& session_name,
-    const base::Time& session_time = base::Time::FromSecondsSinceUnixEpoch(0)) {
+    const base::Time& session_time = base::Time::FromDoubleT(0)) {
   auto session = std::make_unique<sync_sessions::SyncedSession>();
   session->SetSessionName(session_name);
   session->SetModifiedTime(session_time);
@@ -245,8 +246,7 @@ class BrowserTabsModelProviderImplTest
   }
 
   bool MockGetAllForeignSessions(
-      std::vector<raw_ptr<const sync_sessions::SyncedSession,
-                          VectorExperimental>>* sessions) {
+      std::vector<const sync_sessions::SyncedSession*>* sessions) {
     if (sessions_) {
       *sessions = *sessions_;
       return !sessions->empty();
@@ -271,8 +271,7 @@ class BrowserTabsModelProviderImplTest
   }
 
   void set_synced_sessions(
-      std::vector<raw_ptr<const sync_sessions::SyncedSession,
-                          VectorExperimental>>* sessions) {
+      std::vector<const sync_sessions::SyncedSession*>* sessions) {
     sessions_ = sessions;
   }
 
@@ -294,8 +293,7 @@ class BrowserTabsModelProviderImplTest
   testing::NiceMock<OpenTabsUIDelegateMock> open_tabs_ui_delegate_;
 
   bool enable_tab_sync_ = true;
-  raw_ptr<std::vector<
-      raw_ptr<const sync_sessions::SyncedSession, VectorExperimental>>>
+  raw_ptr<std::vector<const sync_sessions::SyncedSession*>, ExperimentalAsh>
       sessions_ = nullptr;
   base::RepeatingClosure foreign_sessions_changed_callback_;
 };
@@ -334,8 +332,7 @@ TEST_F(BrowserTabsModelProviderImplTest, AttemptBrowserTabsModelUpdate) {
       fake_browser_tabs_metadata_fetcher()->DoesPendingCallbackExist());
 
   // Test enabling tab sync with no matching pii name with session_name.
-  std::vector<raw_ptr<const sync_sessions::SyncedSession, VectorExperimental>>
-      sessions;
+  std::vector<const sync_sessions::SyncedSession*> sessions;
   std::unique_ptr<sync_sessions::SyncedSession> session =
       CreateNewSession(kPhoneNameTwo);
   sessions.emplace_back(session.get());
@@ -375,7 +372,7 @@ TEST_F(BrowserTabsModelProviderImplTest, OnForeignSyncedPhoneSessionsUpdated) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
       /*enabled_features=*/{syncer::kChromeOSSyncedSessionSharing,
-                            ash::standalone_browser::features::kLacrosOnly},
+                            ash::features::kLacrosOnly},
       /*disabled_features=*/{});
   ScopedLacrosOnlyHandle lacros_only_handle;
 
@@ -425,7 +422,7 @@ TEST_F(BrowserTabsModelProviderImplTest, OnSessionSyncEnabledChanged) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
       /*enabled_features=*/{syncer::kChromeOSSyncedSessionSharing,
-                            ash::standalone_browser::features::kLacrosOnly},
+                            ash::features::kLacrosOnly},
       /*disabled_features=*/{});
   ScopedLacrosOnlyHandle lacros_only_handle;
 
@@ -475,8 +472,8 @@ TEST_F(BrowserTabsModelProviderImplTest, ClearTabMetadataDuringMetadataFetch) {
   SetPiiFreeName(kPhoneNameOne);
   std::unique_ptr<sync_sessions::SyncedSession> new_session =
       CreateNewSession(kPhoneNameOne);
-  std::vector<raw_ptr<const sync_sessions::SyncedSession, VectorExperimental>>
-      sessions({new_session.get()});
+  std::vector<const sync_sessions::SyncedSession*> sessions(
+      {new_session.get()});
 
   set_enable_tab_sync(true);
   set_synced_sessions(&sessions);
@@ -500,17 +497,16 @@ TEST_F(BrowserTabsModelProviderImplTest, SessionCorrectlySelected) {
   CreateProvider();
   SetPiiFreeName(kPhoneNameOne);
   std::unique_ptr<sync_sessions::SyncedSession> session_a =
-      CreateNewSession(kPhoneNameOne, base::Time::FromSecondsSinceUnixEpoch(1));
+      CreateNewSession(kPhoneNameOne, base::Time::FromDoubleT(1));
   std::unique_ptr<sync_sessions::SyncedSession> session_b =
-      CreateNewSession(kPhoneNameOne, base::Time::FromSecondsSinceUnixEpoch(3));
+      CreateNewSession(kPhoneNameOne, base::Time::FromDoubleT(3));
   std::unique_ptr<sync_sessions::SyncedSession> session_c =
-      CreateNewSession(kPhoneNameOne, base::Time::FromSecondsSinceUnixEpoch(2));
-  std::unique_ptr<sync_sessions::SyncedSession> session_d = CreateNewSession(
-      kPhoneNameTwo, base::Time::FromSecondsSinceUnixEpoch(10));
+      CreateNewSession(kPhoneNameOne, base::Time::FromDoubleT(2));
+  std::unique_ptr<sync_sessions::SyncedSession> session_d =
+      CreateNewSession(kPhoneNameTwo, base::Time::FromDoubleT(10));
 
-  std::vector<raw_ptr<const sync_sessions::SyncedSession, VectorExperimental>>
-      sessions(
-          {session_a.get(), session_b.get(), session_c.get(), session_d.get()});
+  std::vector<const sync_sessions::SyncedSession*> sessions(
+      {session_a.get(), session_b.get(), session_c.get(), session_d.get()});
 
   set_enable_tab_sync(true);
   set_synced_sessions(&sessions);

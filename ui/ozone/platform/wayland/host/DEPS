@@ -9,6 +9,5 @@ include_rules = [
   # Common includes.
   "+components/crash/core/common",
   "+dbus",
-  "+net/base/mime_util.h",
   "+ui/base/linux",
 ]

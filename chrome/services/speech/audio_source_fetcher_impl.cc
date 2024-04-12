@@ -113,7 +113,10 @@ void AudioSourceFetcherImpl::Start(
     // Bind to current loop to ensure the `ConvertingAudioFifo::OutputCallback`
     // and `ConvertingAudioFifo::Push` to be called on same thread.
     converter_ = std::make_unique<media::ConvertingAudioFifo>(
-        audio_parameters_, server_based_recognition_params_.value());
+        audio_parameters_, server_based_recognition_params_.value(),
+        /*output_callback=*/
+        base::BindRepeating(&AudioSourceFetcherImpl::OnAudioFinishedConvert,
+                            weak_factory_.GetWeakPtr()));
     resample_callback_ = base::BindPostTaskToCurrentDefault(
         base::BindRepeating(&AudioSourceFetcherImpl::SendAudioToResample,
                             weak_factory_.GetWeakPtr()));
@@ -126,9 +129,6 @@ void AudioSourceFetcherImpl::Start(
       std::move(stream_factory), device_id_,
       audio::DeadStreamDetection::kEnabled, std::move(audio_log_remote));
   DCHECK(audio_capturer_source_);
-
-  send_error_callback_ = base::BindPostTaskToCurrentDefault(base::BindRepeating(
-      &AudioSourceFetcherImpl::SendError, weak_factory_.GetWeakPtr()));
 
   // TODO(crbug.com/1185978): Check implementation / sandbox policy on Mac and
   // Windows.
@@ -144,13 +144,6 @@ void AudioSourceFetcherImpl::Start(
 #endif
 }
 
-void AudioSourceFetcherImpl::DrainConverterOutput() {
-  while (converter_->HasOutput()) {
-    OnAudioFinishedConvert(converter_->PeekOutput());
-    converter_->PopOutput();
-  }
-}
-
 void AudioSourceFetcherImpl::Stop() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -162,7 +155,6 @@ void AudioSourceFetcherImpl::Stop() {
   if (converter_) {
     // If converter is not null, flush remaining frames.
     converter_->Flush();
-    DrainConverterOutput();
     converter_.reset();
   }
   send_audio_callback_.Reset();
@@ -178,7 +170,6 @@ void AudioSourceFetcherImpl::Stop() {
 
 void AudioSourceFetcherImpl::Capture(const media::AudioBus* audio_source,
                                      base::TimeTicks audio_capture_time,
-                                     const media::AudioGlitchInfo& glitch_info,
                                      double volume,
                                      bool key_pressed) {
   audio_length_ += media::AudioTimestampHelper::FramesToTime(
@@ -202,12 +193,11 @@ void AudioSourceFetcherImpl::OnCaptureError(
     media::AudioCapturerSource::ErrorCode code,
     const std::string& message) {
   LOG(ERROR) << "Audio Capture Error" << message;
-  send_error_callback_.Run();
+  audio_consumer_->OnAudioCaptureError();
 }
 
 void AudioSourceFetcherImpl::SendAudioToSpeechRecognitionService(
     media::mojom::AudioDataS16Ptr buffer) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   audio_consumer_->AddAudio(std::move(buffer));
 }
 
@@ -215,12 +205,6 @@ void AudioSourceFetcherImpl::SendAudioToResample(
     std::unique_ptr<media::AudioBus> audio_data) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   converter_->Push(std::move(audio_data));
-  DrainConverterOutput();
-}
-
-void AudioSourceFetcherImpl::SendError() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  audio_consumer_->OnAudioCaptureError();
 }
 
 media::AudioCapturerSource* AudioSourceFetcherImpl::GetAudioCapturerSource() {
@@ -259,7 +243,7 @@ void AudioSourceFetcherImpl::OnProcessingStateChanged(
 }
 
 void AudioSourceFetcherImpl::OnAudioFinishedConvert(
-    const media::AudioBus* output_bus) {
+    media::AudioBus* output_bus) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(output_bus && send_audio_callback_);
   send_audio_callback_.Run(ConvertToAudioDataS16(

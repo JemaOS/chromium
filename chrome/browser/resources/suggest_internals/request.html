@@ -48,10 +48,8 @@
   <span class="label">[[getRequestPath_(request)]]</span>
 </cr-expand-button>
 <iron-collapse opened="[[request.expanded]]">
-  <div class="cr-row" hidden$="[[!requestDataJson_]]">
-    <div class="content"
-        inner-h-t-m-l="[[getRequestDataHtml_(requestDataJson_)]]">
-    </div>
+  <div class="cr-row" hidden$="[[!getRequestData_(request)]]">
+    <div class="content">[[getRequestData_(request)]]</div>
     <div class="actions">
       <cr-icon-button class="icon-copy-content" title="copy to clipboard"
           on-click="onCopyRequestClick_">
@@ -62,7 +60,8 @@
     </div>
   </div>
   <div class="cr-row" hidden$="[[!responseJson_]]">
-    <div class="content" inner-h-t-m-l="[[getResponseHtml_(responseJson_)]]">
+    <div class="content"
+        inner-h-t-m-l="[[getResponseHtml_(responseJson_)]]">
     </div>
     <div class="actions">
       <cr-icon-button class="icon-copy-content" title="copy to clipboard"

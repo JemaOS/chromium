@@ -10,6 +10,7 @@ public class DownloadManagerUiConfigHelper {
 
     /** Creates a {@link DownloadManagerUiConfig.Builder} based on feature flags. */
     public static DownloadManagerUiConfig.Builder fromFlags() {
-        return new DownloadManagerUiConfig.Builder().setSupportsGrouping(true);
+        return new DownloadManagerUiConfig.Builder()
+                .setSupportsGrouping(true);
     }
 }

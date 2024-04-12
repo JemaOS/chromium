@@ -7,18 +7,15 @@
 #include <memory>
 #include <string>
 
-#include "ash/constants/ash_features.h"
 #include "ash/constants/notifier_catalogs.h"
 #include "ash/public/cpp/notification_utils.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "chrome/browser/ash/account_manager/account_manager_util.h"
 #include "chrome/browser/ash/login/reauth_stats.h"
-#include "chrome/browser/ash/login/signin/token_handle_fetcher.h"
-#include "chrome/browser/ash/login/signin/token_handle_util.h"
+#include "chrome/browser/ash/login/users/chrome_user_manager.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
@@ -26,15 +23,17 @@
 #include "chrome/browser/notifications/notification_display_service.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/supervised_user/supervised_user_service.h"
 #include "chrome/browser/supervised_user/supervised_user_service_factory.h"
 #include "chrome/browser/ui/ash/multi_user/multi_user_util.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/theme_resources.h"
 #include "chromeos/ash/components/account_manager/account_manager_factory.h"
@@ -45,7 +44,6 @@
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
-#include "components/supervised_user/core/browser/supervised_user_service.h"
 #include "components/user_manager/user_manager.h"
 #include "components/vector_icons/vector_icons.h"
 #include "google_apis/gaia/google_service_auth_error.h"
@@ -53,6 +51,7 @@
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/message_center/public/cpp/notification.h"
 #include "ui/message_center/public/cpp/notification_delegate.h"
+#include "jemaos/switches/account/toggle/account_type_toggle.h"
 
 namespace ash {
 namespace {
@@ -63,7 +62,7 @@ constexpr char kSecondaryAccountNotificationIdSuffix[] = "/secondary-account";
 bool g_ignore_sync_errors_for_test_ = false;
 
 void HandleDeviceAccountReauthNotificationClick(
-    std::optional<int> button_index) {
+    absl::optional<int> button_index) {
   chrome::AttemptUserExit();
 }
 
@@ -162,15 +161,6 @@ std::u16string GetMessageBodyForDeviceAccountErrors(
   }
 }
 
-std::unique_ptr<TokenHandleFetcher> CreateTokenHandleFetcher(
-    Profile* profile,
-    TokenHandleUtil* token_handle_util) {
-  const AccountId account_id =
-      multi_user_util::GetAccountIdFromProfile(profile);
-  return std::make_unique<TokenHandleFetcher>(profile, token_handle_util,
-                                              account_id);
-}
-
 }  // namespace
 
 SigninErrorNotifier::SigninErrorNotifier(SigninErrorController* controller,
@@ -180,10 +170,7 @@ SigninErrorNotifier::SigninErrorNotifier(SigninErrorController* controller,
       identity_manager_(IdentityManagerFactory::GetForProfile(profile_)),
       account_manager_(g_browser_process->platform_part()
                            ->GetAccountManagerFactory()
-                           ->GetAccountManager(profile_->GetPath().value())),
-      token_handle_util_(std::make_unique<TokenHandleUtil>()),
-      token_handle_fetcher_(
-          CreateTokenHandleFetcher(profile_, token_handle_util_.get())) {
+                           ->GetAccountManager(profile_->GetPath().value())) {
   DCHECK(account_manager_);
   // Create a unique notification ID for this profile.
   device_account_notification_id_ =
@@ -194,9 +181,13 @@ SigninErrorNotifier::SigninErrorNotifier(SigninErrorController* controller,
   error_controller_->AddObserver(this);
   const AccountId account_id =
       multi_user_util::GetAccountIdFromProfile(profile_);
+  // ---***JEMAOS BEGIN***---
+  jemaos::switches::ToggleJemaAccountFlagByAccountId(account_id);
+  // ---***JEMAOS END***---
   if (TokenHandleUtil::HasToken(account_id) &&
       !TokenHandleUtil::IsRecentlyChecked(account_id)) {
-    token_handle_util_->IsReauthRequired(
+    token_handle_util_ = std::make_unique<TokenHandleUtil>();
+    token_handle_util_->CheckToken(
         account_id, profile->GetURLLoaderFactory(),
         base::BindOnce(&SigninErrorNotifier::OnTokenHandleCheck,
                        weak_factory_.GetWeakPtr()));
@@ -204,13 +195,11 @@ SigninErrorNotifier::SigninErrorNotifier(SigninErrorController* controller,
   OnErrorChanged();
 }
 
-void SigninErrorNotifier::OnTokenHandleCheck(const AccountId& account_id,
-                                             const std::string& token,
-                                             bool reauth_required) {
-  token_handle_fetcher_->DiagnoseTokenHandleMapping(account_id, token);
-  if (!reauth_required) {
+void SigninErrorNotifier::OnTokenHandleCheck(
+    const AccountId& account_id,
+    TokenHandleUtil::TokenHandleStatus status) {
+  if (status != TokenHandleUtil::INVALID)
     return;
-  }
   RecordReauthReason(account_id, ReauthReason::kInvalidTokenHandle);
   HandleDeviceAccountError(/*error_message=*/l10n_util::GetStringUTF16(
       IDS_SYNC_TOKEN_HANDLE_ERROR_BUBBLE_VIEW_MESSAGE));
@@ -286,14 +275,14 @@ void SigninErrorNotifier::HandleDeviceAccountError(
     const std::u16string& error_message) {
   // If this error has occurred because a user's account has just been converted
   // to a Family Link Supervised account, then suppress the notification.
-  supervised_user::SupervisedUserService* service =
+  SupervisedUserService* service =
       SupervisedUserServiceFactory::GetForProfile(profile_);
   if (service->signout_required_after_supervision_enabled())
     return;
 
   // We need to save the flag in the local state because
-  // TokenHandleUtil::IsReauthRequired might fail on the login screen due to
-  // lack of network connectivity.
+  // TokenHandleUtil::CheckToken might fail on the login screen due to lack of
+  // network connectivity.
   SaveForceOnlineSignin(profile_);
   std::unique_ptr<message_center::Notification> notification =
       CreateDeviceAccountErrorNotification(
@@ -365,11 +354,9 @@ void SigninErrorNotifier::OnCheckDummyGaiaTokenForAllAccounts(
 }
 
 void SigninErrorNotifier::HandleSecondaryAccountReauthNotificationClick(
-    std::optional<int> button_index) {
+    absl::optional<int> button_index) {
   chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(
-      profile_, ash::features::IsOsSettingsRevampWayfindingEnabled()
-                    ? chromeos::settings::mojom::kPeopleSectionPath
-                    : chromeos::settings::mojom::kMyAccountsSubpagePath);
+      profile_, chromeos::settings::mojom::kMyAccountsSubpagePath);
 }
 
 }  // namespace ash

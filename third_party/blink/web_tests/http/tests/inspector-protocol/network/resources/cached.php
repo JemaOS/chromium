@@ -1,6 +1,5 @@
 <?php
-    $HTTP_IF_MODIFIED_SINCE = $_SERVER["HTTP_IF_MODIFIED_SINCE"] ?? null;
-    if ($HTTP_IF_MODIFIED_SINCE) {
+    if ($_SERVER["HTTP_IF_MODIFIED_SINCE"]) {
         header("HTTP/1.0 304 Not Modified");
         exit;
     }

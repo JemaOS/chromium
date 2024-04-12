@@ -1,7 +1,6 @@
 <!DOCTYPE HTML>
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
-<script src="/common/media.js"></script>
 <script>
 function createNewCanvas(width, height)
 {
@@ -58,5 +57,5 @@ if (video.requestVideoFrameCallback) {
 } else {
     video.oncanplaythrough = t.step_func(() => generateTest());
 }
-video.src = getVideoURI("/media/counting");
+video.src = '/media/counting.' + (video.canPlayType('video/ogg') ? 'ogv' : 'mp4');
 </script>

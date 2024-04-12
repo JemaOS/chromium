@@ -7,17 +7,12 @@
 #include <vector>
 
 #include "ui/display/display.h"
-#include "ui/gfx/native_widget_types.h"
 
-#if BUILDFLAG(IS_CHROMEOS)
-#include "ui/display/display_list.h"
-#include "ui/display/display_observer.h"
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-namespace display::test {
+namespace display {
+namespace test {
 namespace {
 TestScreen* test_screen = nullptr;
-}  // namespace
+}
 
 // static
 constexpr gfx::Rect TestScreen::kDefaultScreenBounds;
@@ -63,7 +58,7 @@ bool TestScreen::IsWindowUnderCursor(gfx::NativeWindow window) {
 }
 
 gfx::NativeWindow TestScreen::GetWindowAtScreenPoint(const gfx::Point& point) {
-  return gfx::NativeWindow();
+  return nullptr;
 }
 
 Display TestScreen::GetDisplayNearestWindow(gfx::NativeWindow window) const {
@@ -74,22 +69,5 @@ void TestScreen::SetCursorScreenPointForTesting(const gfx::Point& point) {
   cursor_screen_point_ = point;
 }
 
-#if BUILDFLAG(IS_CHROMEOS)
-TabletState TestScreen::GetTabletState() const {
-  return state_;
-}
-
-void TestScreen::OverrideTabletStateForTesting(TabletState state) {
-  if (state_ == state) {
-    return;
-  }
-
-  state_ = state;
-
-  for (DisplayObserver& observer : *display_list().observers()) {
-    observer.OnDisplayTabletStateChanged(state);
-  }
-}
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-}  // namespace display::test
+}  // namespace test
+}  // namespace display

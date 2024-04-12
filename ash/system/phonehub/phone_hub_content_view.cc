@@ -4,8 +4,6 @@
 
 #include "ash/system/phonehub/phone_hub_content_view.h"
 
-#include "ui/base/metadata/metadata_impl_macros.h"
-
 namespace ash {
 
 PhoneHubContentView::PhoneHubContentView() = default;
@@ -23,8 +21,5 @@ void PhoneHubContentView::LogInterstitialScreenEvent(
     phone_hub_metrics::InterstitialScreenEvent event) {
   phone_hub_metrics::LogInterstitialScreenEvent(GetScreenForMetrics(), event);
 }
-
-BEGIN_METADATA(PhoneHubContentView)
-END_METADATA
 
 }  // namespace ash

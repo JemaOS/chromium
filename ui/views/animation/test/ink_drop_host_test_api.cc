@@ -6,12 +6,10 @@
 
 #include <utility>
 
-#include "ui/views/animation/ink_drop_mask.h"
-
 namespace views::test {
 
 InkDropHostTestApi::InkDropHostTestApi(InkDropHost* ink_drop_host)
-    : ink_drop_host_(*ink_drop_host) {}
+    : ink_drop_host_(ink_drop_host) {}
 
 InkDropHostTestApi::~InkDropHostTestApi() = default;
 
@@ -43,10 +41,6 @@ InkDrop* InkDropHostTestApi::GetInkDrop() {
 void InkDropHostTestApi::AnimateToState(InkDropState state,
                                         const ui::LocatedEvent* event) {
   ink_drop_host_->AnimateToState(state, event);
-}
-
-void InkDropHostTestApi::RemoveInkDropMask() {
-  ink_drop_host_->ink_drop_mask_.reset();
 }
 
 }  // namespace views::test

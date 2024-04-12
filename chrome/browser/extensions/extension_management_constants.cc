@@ -42,8 +42,6 @@ const char kToolbarPin[] = "toolbar_pin";
 const char kForcePinned[] = "force_pinned";
 const char kDefaultUnpinned[] = "default_unpinned";
 
-const char kFileUrlNavigationAllowed[] = "file_url_navigation_allowed";
-
 const AllowedTypesMapEntry kAllowedTypesMap[] = {
     {"extension", Manifest::TYPE_EXTENSION},
     {"theme", Manifest::TYPE_THEME},

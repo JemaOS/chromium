@@ -46,7 +46,7 @@ class WorkerPerformance final : public Performance {
   explicit WorkerPerformance(WorkerGlobalScope*);
 
   ExecutionContext* GetExecutionContext() const override {
-    return execution_context_.Get();
+    return execution_context_;
   }
   uint64_t interactionCount() const override { return 0; }
 

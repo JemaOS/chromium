@@ -20,12 +20,11 @@ TEST_F(LayoutReplacedTest, InvalidateAfterAddingBorderRadius) {
     </style>
     <img id=target style="width: 100px; height: 100px"/>
   )HTML");
-  Element* target_element = GetElementById("target");
+  Element* target_element = GetDocument().getElementById("target");
   LayoutObject* layout_object = target_element->GetLayoutObject();
   ASSERT_FALSE(layout_object->StyleRef().HasBorderRadius());
 
-  target_element->setAttribute(html_names::kStyleAttr,
-                               AtomicString("border-radius: 10px"));
+  target_element->setAttribute(html_names::kStyleAttr, "border-radius: 10px");
 
   GetDocument().View()->UpdateLifecycleToLayoutClean(
       DocumentUpdateReason::kTest);

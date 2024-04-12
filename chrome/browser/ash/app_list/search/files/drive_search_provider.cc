@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/app_list/search/files/drive_search_provider.h"
 
 #include <cmath>
-#include <optional>
 
 #include "ash/public/cpp/app_list/app_list_types.h"
 #include "base/files/file_util.h"
@@ -17,10 +16,9 @@
 #include "base/threading/scoped_blocking_call.h"
 #include "chrome/browser/ash/app_list/search/common/string_util.h"
 #include "chrome/browser/ash/app_list/search/files/file_result.h"
-#include "chrome/browser/ash/app_list/search/search_features.h"
-#include "chrome/browser/ash/app_list/search/types.h"
 #include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/profiles/profile.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/chromeos/strings/grit/ui_chromeos_strings.h"
 #include "url/gurl.h"
@@ -34,7 +32,6 @@ using ::ash::string_matching::TokenizedString;
 constexpr char kDriveSearchSchema[] = "drive_search://";
 constexpr int kMaxResults = 50;
 constexpr size_t kMinQuerySizeForSharedFiles = 5u;
-constexpr double kRelevanceThreshold = 0.79;
 
 // Outcome of a call to DriveSearchProvider::Start. These values persist
 // to logs. Entries should not be renumbered and numeric values should never be
@@ -71,7 +68,7 @@ std::vector<std::unique_ptr<DriveSearchProvider::FileInfo>> GetFileInfo(
     base::FilePath reparented_path = mount_path.Append(relative_path.value());
 
     base::File::Info info;
-    std::optional<base::Time> last_accessed;
+    absl::optional<base::Time> last_accessed;
     if (base::GetFileInfo(reparented_path, &info))
       last_accessed = info.last_accessed;
 
@@ -87,7 +84,7 @@ std::vector<std::unique_ptr<DriveSearchProvider::FileInfo>> GetFileInfo(
 DriveSearchProvider::FileInfo::FileInfo(
     const base::FilePath& reparented_path,
     drivefs::mojom::FileMetadataPtr metadata,
-    const std::optional<base::Time>& last_accessed)
+    const absl::optional<base::Time>& last_accessed)
     : reparented_path(reparented_path), last_accessed(last_accessed) {
   this->metadata = std::move(metadata);
 }
@@ -95,8 +92,7 @@ DriveSearchProvider::FileInfo::FileInfo(
 DriveSearchProvider::FileInfo::~FileInfo() = default;
 
 DriveSearchProvider::DriveSearchProvider(Profile* profile)
-    : SearchProvider(SearchCategory::kFiles),
-      profile_(profile),
+    : profile_(profile),
       drive_service_(
           drive::DriveIntegrationServiceFactory::GetForProfile(profile)) {
   DCHECK(profile_);
@@ -182,10 +178,6 @@ void DriveSearchProvider::SetSearchResults(
   for (const auto& info : item_info) {
     double relevance = FileResult::CalculateRelevance(
         last_tokenized_query_, info->reparented_path, info->last_accessed);
-    if (search_features::IsLauncherFuzzyMatchAcrossProvidersEnabled() &&
-        relevance < kRelevanceThreshold) {
-      continue;
-    }
 
     std::unique_ptr<FileResult> result;
     GURL url(info->metadata->alternate_url);
@@ -194,10 +186,11 @@ void DriveSearchProvider::SetSearchResults(
       const auto type = info->metadata->shared
                             ? FileResult::Type::kSharedDirectory
                             : FileResult::Type::kDirectory;
-      result = MakeResult(info->reparented_path, relevance, type, url);
+      result =
+          MakeResult(info->reparented_path, relevance, type, GetDriveId(url));
     } else {
       result = MakeResult(info->reparented_path, relevance,
-                          FileResult::Type::kFile, url);
+                          FileResult::Type::kFile, GetDriveId(url));
     }
     results.push_back(std::move(result));
   }
@@ -214,7 +207,7 @@ std::unique_ptr<FileResult> DriveSearchProvider::MakeResult(
     const base::FilePath& reparented_path,
     double relevance,
     FileResult::Type type,
-    const GURL& url) {
+    const absl::optional<std::string>& drive_id) {
   // Add "Google Drive" as details.
   std::u16string details =
       l10n_util::GetStringUTF16(IDS_FILE_BROWSER_DRIVE_DIRECTORY_LABEL);
@@ -224,8 +217,7 @@ std::unique_ptr<FileResult> DriveSearchProvider::MakeResult(
       details, ash::AppListSearchResultType::kDriveSearch,
       ash::SearchResultDisplayType::kList, relevance, last_query_, type,
       profile_);
-  result->set_drive_id(GetDriveId(url));
-  result->set_url(url);
+  result->set_drive_id(drive_id);
   return result;
 }
 

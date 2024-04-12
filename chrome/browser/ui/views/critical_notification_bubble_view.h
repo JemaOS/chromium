@@ -13,9 +13,6 @@
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 
 class CriticalNotificationBubbleView : public views::BubbleDialogDelegateView {
-  METADATA_HEADER(CriticalNotificationBubbleView,
-                  views::BubbleDialogDelegateView)
-
  public:
   using TimeFormatter = bool (*)(base::TimeDelta,
                                  base::DurationFormatWidth,
@@ -30,6 +27,7 @@ class CriticalNotificationBubbleView : public views::BubbleDialogDelegateView {
     base::AutoReset<TimeFormatter> resetter_;
   };
 
+  METADATA_HEADER(CriticalNotificationBubbleView);
   explicit CriticalNotificationBubbleView(views::View* anchor_view);
   CriticalNotificationBubbleView(const CriticalNotificationBubbleView&) =
       delete;

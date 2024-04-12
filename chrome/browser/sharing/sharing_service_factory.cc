@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "chrome/browser/gcm/gcm_profile_service_factory.h"
 #include "chrome/browser/gcm/instance_id/instance_id_profile_service_factory.h"
@@ -33,7 +33,7 @@
 #include "components/gcm_driver/gcm_driver.h"
 #include "components/gcm_driver/gcm_profile_service.h"
 #include "components/gcm_driver/instance_id/instance_id_profile_service.h"
-#include "components/sync/service/sync_service.h"
+#include "components/sync/driver/sync_service.h"
 #include "components/sync_device_info/device_info_sync_service.h"
 #include "components/sync_device_info/local_device_info_provider.h"
 #include "content/public/browser/browser_context.h"
@@ -60,8 +60,7 @@ void CleanEncryptionInfoWithoutAuthorizedEntity(gcm::GCMDriver* gcm_driver) {
 
 // static
 SharingServiceFactory* SharingServiceFactory::GetInstance() {
-  static base::NoDestructor<SharingServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<SharingServiceFactory>::get();
 }
 
 // static
@@ -91,8 +90,7 @@ SharingServiceFactory::SharingServiceFactory()
 
 SharingServiceFactory::~SharingServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-SharingServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SharingServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   syncer::SyncService* sync_service =
@@ -128,14 +126,12 @@ SharingServiceFactory::BuildServiceInstanceForBrowserContext(
   gcm::GCMDriver* gcm_driver =
       gcm::GCMProfileServiceFactory::GetForProfile(profile)->driver();
   CleanEncryptionInfoWithoutAuthorizedEntity(gcm_driver);
-  syncer::DeviceInfoTracker* device_info_tracker =
-      device_info_sync_service->GetDeviceInfoTracker();
   syncer::LocalDeviceInfoProvider* local_device_info_provider =
       device_info_sync_service->GetLocalDeviceInfoProvider();
   auto fcm_sender = std::make_unique<SharingFCMSender>(
       std::move(web_push_sender), message_bridge, sync_prefs.get(),
-      vapid_key_manager.get(), gcm_driver, device_info_tracker,
-      local_device_info_provider, sync_service);
+      vapid_key_manager.get(), gcm_driver, local_device_info_provider,
+      sync_service);
 
   auto sharing_message_sender =
       std::make_unique<SharingMessageSender>(local_device_info_provider);
@@ -143,6 +139,8 @@ SharingServiceFactory::BuildServiceInstanceForBrowserContext(
   sharing_message_sender->RegisterSendDelegate(
       SharingMessageSender::DelegateType::kFCM, std::move(fcm_sender));
 
+  syncer::DeviceInfoTracker* device_info_tracker =
+      device_info_sync_service->GetDeviceInfoTracker();
   auto device_source = std::make_unique<SharingDeviceSourceSync>(
       sync_service, local_device_info_provider, device_info_tracker);
 
@@ -154,7 +152,7 @@ SharingServiceFactory::BuildServiceInstanceForBrowserContext(
   auto fcm_handler = std::make_unique<SharingFCMHandler>(
       gcm_driver, device_info_tracker, fcm_sender_ptr, handler_registry.get());
 
-  return std::make_unique<SharingService>(
+  return new SharingService(
       std::move(sync_prefs), std::move(vapid_key_manager),
       std::move(sharing_device_registration), std::move(sharing_message_sender),
       std::move(device_source), std::move(handler_registry),

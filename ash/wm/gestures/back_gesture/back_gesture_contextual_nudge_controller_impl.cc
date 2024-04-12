@@ -15,7 +15,6 @@
 #include "base/time/time.h"
 #include "components/prefs/pref_service.h"
 #include "ui/aura/client/window_types.h"
-#include "ui/display/tablet_state.h"
 #include "ui/wm/public/activation_client.h"
 
 namespace ash {
@@ -30,6 +29,7 @@ PrefService* GetActivePrefService() {
 
 BackGestureContextualNudgeControllerImpl::
     BackGestureContextualNudgeControllerImpl() {
+  tablet_mode_observation_.Observe(Shell::Get()->tablet_mode_controller());
   shelf_control_visible_ = ShelfConfig::Get()->shelf_controls_shown();
   ShelfConfig::Get()->AddObserver(this);
 }
@@ -56,19 +56,16 @@ void BackGestureContextualNudgeControllerImpl::OnSessionStateChanged(
   UpdateWindowMonitoring(/*can_show_nudge_immediately=*/true);
 }
 
-void BackGestureContextualNudgeControllerImpl::OnDisplayTabletStateChanged(
-    display::TabletState state) {
-  switch (state) {
-    case display::TabletState::kEnteringTabletMode:
-    case display::TabletState::kExitingTabletMode:
-      break;
-    case display::TabletState::kInClamshellMode:
-      UpdateWindowMonitoring(/*can_show_nudge_immediately=*/false);
-      break;
-    case display::TabletState::kInTabletMode:
-      UpdateWindowMonitoring(/*can_show_nudge_immediately=*/true);
-      break;
-  }
+void BackGestureContextualNudgeControllerImpl::OnTabletModeStarted() {
+  UpdateWindowMonitoring(/*can_show_nudge_immediately=*/true);
+}
+
+void BackGestureContextualNudgeControllerImpl::OnTabletModeEnded() {
+  UpdateWindowMonitoring(/*can_show_nudge_immediately=*/false);
+}
+
+void BackGestureContextualNudgeControllerImpl::OnTabletControllerDestroyed() {
+  DoCleanUp();
 }
 
 void BackGestureContextualNudgeControllerImpl::OnWindowActivated(
@@ -219,6 +216,8 @@ void BackGestureContextualNudgeControllerImpl::OnNudgeAnimationFinished(
 }
 
 void BackGestureContextualNudgeControllerImpl::DoCleanUp() {
+  tablet_mode_observation_.Reset();
+
   if (is_monitoring_windows_) {
     Shell::Get()->activation_client()->RemoveObserver(this);
     nudge_delegate_.reset();

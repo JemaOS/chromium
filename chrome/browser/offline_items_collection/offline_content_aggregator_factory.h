@@ -13,7 +13,7 @@ class SimpleFactoryKey;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace offline_items_collection {
@@ -39,7 +39,7 @@ class OfflineContentAggregatorFactory : public SimpleKeyedServiceFactory {
       const OfflineContentAggregatorFactory&) = delete;
 
  private:
-  friend base::NoDestructor<OfflineContentAggregatorFactory>;
+  friend struct base::DefaultSingletonTraits<OfflineContentAggregatorFactory>;
 
   OfflineContentAggregatorFactory();
   ~OfflineContentAggregatorFactory() override;

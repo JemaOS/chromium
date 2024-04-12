@@ -6,7 +6,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_SCHEDULER_PUBLIC_FRAME_OR_WORKER_SCHEDULER_H_
 
 #include "base/functional/callback.h"
-#include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/types/strong_alias.h"
@@ -135,13 +134,17 @@ class PLATFORM_EXPORT FrameOrWorkerScheduler {
         FrameOrWorkerScheduler::BFCacheBlockingFeatureAndLocations;
 
     struct BlockingDetails {
-      const raw_ref<const BFCacheBlockingFeatureAndLocations>
+      // TODO(crbug.com/1366675): Remove features_mask.
+      uint64_t feature_mask;
+      const BFCacheBlockingFeatureAndLocations&
           non_sticky_features_and_js_locations;
-      const raw_ref<const BFCacheBlockingFeatureAndLocations>
+      const BFCacheBlockingFeatureAndLocations&
           sticky_features_and_js_locations;
-      BlockingDetails(BFCacheBlockingFeatureAndLocations& non_sticky,
+      BlockingDetails(uint64_t mask,
+                      BFCacheBlockingFeatureAndLocations& non_sticky,
                       BFCacheBlockingFeatureAndLocations& sticky)
-          : non_sticky_features_and_js_locations(non_sticky),
+          : feature_mask(mask),
+            non_sticky_features_and_js_locations(non_sticky),
             sticky_features_and_js_locations(sticky) {}
     };
     virtual ~Delegate() = default;

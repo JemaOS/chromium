@@ -46,7 +46,7 @@ class AssistantSetupController : public AssistantControllerObserver,
  private:
   void OnOptInFlowFinished(bool relaunch, bool completed);
 
-  const raw_ptr<AssistantControllerImpl>
+  const raw_ptr<AssistantControllerImpl, ExperimentalAsh>
       assistant_controller_;  // Owned by Shell.
 
   base::ScopedObservation<AssistantController, AssistantControllerObserver>

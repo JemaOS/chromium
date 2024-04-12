@@ -16,14 +16,17 @@ limitations under the License.
 package com.google.android.odml.image;
 
 import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertThrows;
 
 import android.graphics.Bitmap;
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 
 /**
  * Tests for {@link ByteBufferExtractor}.
@@ -35,145 +38,120 @@ import org.robolectric.RobolectricTestRunner;
  */
 @RunWith(RobolectricTestRunner.class)
 public final class ByteBufferExtractorTest {
+    @Test
+    public void extract_fromByteBuffer_succeeds() {
+        ByteBuffer byteBuffer = TestImageCreator.createRgbBuffer();
+        MlImage image = new ByteBufferMlImageBuilder(byteBuffer, TestImageCreator.getWidth(),
+                TestImageCreator.getHeight(), MlImage.IMAGE_FORMAT_RGB)
+                                .build();
 
-  @Test
-  public void extract_fromByteBuffer_succeeds() {
-    ByteBuffer byteBuffer = TestImageCreator.createRgbBuffer();
-    MlImage image =
-        new ByteBufferMlImageBuilder(
-                byteBuffer,
-                TestImageCreator.getWidth(),
-                TestImageCreator.getHeight(),
-                MlImage.IMAGE_FORMAT_RGB)
-            .build();
+        ByteBuffer result = ByteBufferExtractor.extract(image);
 
-    ByteBuffer result = ByteBufferExtractor.extract(image);
+        assertThat(result).isEquivalentAccordingToCompareTo(byteBuffer);
+        assertThat(result.isReadOnly()).isTrue();
+    }
 
-    assertThat(result).isEquivalentAccordingToCompareTo(byteBuffer);
-    assertThat(result.isReadOnly()).isTrue();
-  }
+    @Test
+    public void extract_fromBitmap_throws() {
+        Bitmap rgbaBitmap = TestImageCreator.createRgbaBitmap();
+        MlImage image = new BitmapMlImageBuilder(rgbaBitmap).build();
 
-  @Test
-  public void extract_fromBitmap_throws() {
-    Bitmap rgbaBitmap = TestImageCreator.createRgbaBitmap();
-    MlImage image = new BitmapMlImageBuilder(rgbaBitmap).build();
+        assertThrows(IllegalArgumentException.class, () -> ByteBufferExtractor.extract(image));
+    }
 
-    assertThrows(IllegalArgumentException.class, () -> ByteBufferExtractor.extract(image));
-  }
+    @Test
+    public void extract_rgbFromRgbByteBuffer_succeeds() {
+        ByteBuffer buffer = TestImageCreator.createRgbBuffer();
+        MlImage image = new ByteBufferMlImageBuilder(buffer, TestImageCreator.getWidth(),
+                TestImageCreator.getHeight(), MlImage.IMAGE_FORMAT_RGB)
+                                .build();
 
-  @Test
-  public void extract_rgbFromRgbByteBuffer_succeeds() {
-    ByteBuffer buffer = TestImageCreator.createRgbBuffer();
-    MlImage image =
-        new ByteBufferMlImageBuilder(
-                buffer,
-                TestImageCreator.getWidth(),
-                TestImageCreator.getHeight(),
-                MlImage.IMAGE_FORMAT_RGB)
-            .build();
+        ByteBuffer result = ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_RGB);
 
-    ByteBuffer result = ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_RGB);
+        assertThat(result.isReadOnly()).isTrue();
+        assertThat(result).isEquivalentAccordingToCompareTo(TestImageCreator.createRgbBuffer());
+    }
 
-    assertThat(result.isReadOnly()).isTrue();
-    assertThat(result).isEquivalentAccordingToCompareTo(TestImageCreator.createRgbBuffer());
-  }
+    @Test
+    public void extract_rgbFromRgbaByteBuffer_succeeds() {
+        ByteBuffer buffer = TestImageCreator.createRgbaBuffer();
+        MlImage image = new ByteBufferMlImageBuilder(buffer, TestImageCreator.getWidth(),
+                TestImageCreator.getHeight(), MlImage.IMAGE_FORMAT_RGBA)
+                                .build();
 
-  @Test
-  public void extract_rgbFromRgbaByteBuffer_succeeds() {
-    ByteBuffer buffer = TestImageCreator.createRgbaBuffer();
-    MlImage image =
-        new ByteBufferMlImageBuilder(
-                buffer,
-                TestImageCreator.getWidth(),
-                TestImageCreator.getHeight(),
-                MlImage.IMAGE_FORMAT_RGBA)
-            .build();
+        ByteBuffer result = ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_RGB);
 
-    ByteBuffer result = ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_RGB);
+        assertThat(result).isEquivalentAccordingToCompareTo(TestImageCreator.createRgbBuffer());
+        assertThat(buffer.position()).isEqualTo(0);
+    }
 
-    assertThat(result).isEquivalentAccordingToCompareTo(TestImageCreator.createRgbBuffer());
-    assertThat(buffer.position()).isEqualTo(0);
-  }
+    @Test
+    public void extract_rgbaFromRgbByteBuffer_succeeds() {
+        ByteBuffer buffer = TestImageCreator.createRgbBuffer();
+        MlImage image = new ByteBufferMlImageBuilder(buffer, TestImageCreator.getWidth(),
+                TestImageCreator.getHeight(), MlImage.IMAGE_FORMAT_RGB)
+                                .build();
 
-  @Test
-  public void extract_rgbaFromRgbByteBuffer_succeeds() {
-    ByteBuffer buffer = TestImageCreator.createRgbBuffer();
-    MlImage image =
-        new ByteBufferMlImageBuilder(
-                buffer,
-                TestImageCreator.getWidth(),
-                TestImageCreator.getHeight(),
-                MlImage.IMAGE_FORMAT_RGB)
-            .build();
+        ByteBuffer result = ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_RGBA);
 
-    ByteBuffer result = ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_RGBA);
+        assertThat(result).isEquivalentAccordingToCompareTo(
+                TestImageCreator.createOpaqueRgbaBuffer());
+        assertThat(buffer.position()).isEqualTo(0);
+    }
 
-    assertThat(result).isEquivalentAccordingToCompareTo(TestImageCreator.createOpaqueRgbaBuffer());
-    assertThat(buffer.position()).isEqualTo(0);
-  }
+    @Test
+    public void extract_rgbFromRgbaBitmap_succeeds() {
+        Bitmap rgbaBitmap = TestImageCreator.createRgbaBitmap();
+        MlImage image = new BitmapMlImageBuilder(rgbaBitmap).build();
 
-  @Test
-  public void extract_rgbFromRgbaBitmap_succeeds() {
-    Bitmap rgbaBitmap = TestImageCreator.createRgbaBitmap();
-    MlImage image = new BitmapMlImageBuilder(rgbaBitmap).build();
+        ByteBuffer result = ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_RGB);
 
-    ByteBuffer result = ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_RGB);
+        assertThat(result.isReadOnly()).isTrue();
+        assertThat(result).isEquivalentAccordingToCompareTo(TestImageCreator.createRgbBuffer());
 
-    assertThat(result.isReadOnly()).isTrue();
-    assertThat(result).isEquivalentAccordingToCompareTo(TestImageCreator.createRgbBuffer());
+        // Verifies ByteBuffer is cached inside MlImage.
+        ByteBufferImageContainer byteBufferImageContainer =
+                (ByteBufferImageContainer) image.getContainer(MlImage.STORAGE_TYPE_BYTEBUFFER);
+        assertThat(byteBufferImageContainer.getByteBuffer()).isEqualTo(result);
+        assertThat(byteBufferImageContainer.getImageFormat()).isEqualTo(MlImage.IMAGE_FORMAT_RGB);
 
-    // Verifies ByteBuffer is cached inside MlImage.
-    ByteBufferImageContainer byteBufferImageContainer =
-        (ByteBufferImageContainer) image.getContainer(MlImage.STORAGE_TYPE_BYTEBUFFER);
-    assertThat(byteBufferImageContainer.getByteBuffer()).isEqualTo(result);
-    assertThat(byteBufferImageContainer.getImageFormat()).isEqualTo(MlImage.IMAGE_FORMAT_RGB);
+        // Verifies that extracted ByteBuffer is the cached one.
+        ByteBuffer result2 = ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_RGB);
+        assertThat(result2).isEqualTo(result);
+    }
 
-    // Verifies that extracted ByteBuffer is the cached one.
-    ByteBuffer result2 = ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_RGB);
-    assertThat(result2).isEqualTo(result);
-  }
+    @Test
+    public void extract_unsupportedFormatFromByteBuffer_throws() {
+        ByteBuffer buffer = TestImageCreator.createRgbaBuffer();
+        MlImage image = new ByteBufferMlImageBuilder(buffer, TestImageCreator.getWidth(),
+                TestImageCreator.getHeight(), MlImage.IMAGE_FORMAT_RGBA)
+                                .build();
 
-  @Test
-  public void extract_unsupportedFormatFromByteBuffer_throws() {
-    ByteBuffer buffer = TestImageCreator.createRgbaBuffer();
-    MlImage image =
-        new ByteBufferMlImageBuilder(
-                buffer,
-                TestImageCreator.getWidth(),
-                TestImageCreator.getHeight(),
-                MlImage.IMAGE_FORMAT_RGBA)
-            .build();
+        assertThrows(IllegalArgumentException.class,
+                () -> ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_YUV_420_888));
+    }
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> ByteBufferExtractor.extract(image, MlImage.IMAGE_FORMAT_YUV_420_888));
-  }
+    @Test
+    public void extractInRecommendedFormat_anyFormatFromRgbByteBuffer_succeeds() {
+        ByteBuffer buffer = TestImageCreator.createRgbBuffer();
+        MlImage image = new ByteBufferMlImageBuilder(buffer, TestImageCreator.getWidth(),
+                TestImageCreator.getHeight(), MlImage.IMAGE_FORMAT_RGB)
+                                .build();
 
-  @Test
-  public void extractInRecommendedFormat_anyFormatFromRgbByteBuffer_succeeds() {
-    ByteBuffer buffer = TestImageCreator.createRgbBuffer();
-    MlImage image =
-        new ByteBufferMlImageBuilder(
-                buffer,
-                TestImageCreator.getWidth(),
-                TestImageCreator.getHeight(),
-                MlImage.IMAGE_FORMAT_RGB)
-            .build();
+        ByteBufferExtractor.Result result = ByteBufferExtractor.extractInRecommendedFormat(image);
 
-    ByteBufferExtractor.Result result = ByteBufferExtractor.extractInRecommendedFormat(image);
+        assertThat(result.buffer().isReadOnly()).isTrue();
+        assertThat(result.format()).isEqualTo(MlImage.IMAGE_FORMAT_RGB);
 
-    assertThat(result.buffer().isReadOnly()).isTrue();
-    assertThat(result.format()).isEqualTo(MlImage.IMAGE_FORMAT_RGB);
+        // Verifies ByteBuffer is cached inside MlImage.
+        ByteBufferImageContainer byteBufferImageContainer =
+                (ByteBufferImageContainer) image.getContainer(MlImage.STORAGE_TYPE_BYTEBUFFER);
+        assertThat(byteBufferImageContainer.getByteBuffer()).isEqualTo(result.buffer());
+        assertThat(byteBufferImageContainer.getImageFormat()).isEqualTo(MlImage.IMAGE_FORMAT_RGB);
 
-    // Verifies ByteBuffer is cached inside MlImage.
-    ByteBufferImageContainer byteBufferImageContainer =
-        (ByteBufferImageContainer) image.getContainer(MlImage.STORAGE_TYPE_BYTEBUFFER);
-    assertThat(byteBufferImageContainer.getByteBuffer()).isEqualTo(result.buffer());
-    assertThat(byteBufferImageContainer.getImageFormat()).isEqualTo(MlImage.IMAGE_FORMAT_RGB);
-
-    // Verifies that extracted ByteBuffer is the cached one.
-    ByteBufferExtractor.Result result2 = ByteBufferExtractor.extractInRecommendedFormat(image);
-    assertThat(result2.buffer()).isEqualTo(result.buffer());
-    assertThat(result2.format()).isEqualTo(result.format());
-  }
+        // Verifies that extracted ByteBuffer is the cached one.
+        ByteBufferExtractor.Result result2 = ByteBufferExtractor.extractInRecommendedFormat(image);
+        assertThat(result2.buffer()).isEqualTo(result.buffer());
+        assertThat(result2.format()).isEqualTo(result.format());
+    }
 }

@@ -13,7 +13,6 @@
 #include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
 #include "third_party/blink/renderer/platform/graphics/paint/geometry_mapper.h"
 #include "third_party/blink/renderer/platform/testing/paint_test_configurations.h"
-#include "ui/gfx/geometry/rect_conversions.h"
 
 namespace blink {
 
@@ -338,7 +337,7 @@ TEST_P(VisualRectMappingTest, LayoutViewSubpixelRounding) {
   auto* frame_container =
       To<LayoutBlock>(GetLayoutObjectByElementId("frameContainer"));
   LayoutObject* target =
-      ChildDocument().getElementById(AtomicString("target"))->GetLayoutObject();
+      ChildDocument().getElementById("target")->GetLayoutObject();
   PhysicalRect rect(0, 0, 100, 100);
   EXPECT_TRUE(target->MapToVisualRectInAncestorSpace(frame_container, rect));
   // When passing from the iframe to the parent frame, the rect of (0.5, 0, 100,
@@ -379,7 +378,7 @@ TEST_P(VisualRectMappingTest, LayoutViewDisplayNone) {
   EXPECT_TRUE(frame_div->MapToVisualRectInAncestorSpace(frame_container, rect));
   EXPECT_EQ(rect, PhysicalRect(4, 13, 20, 37));
 
-  Element* frame_element = GetElementById("frame");
+  Element* frame_element = GetDocument().getElementById("frame");
   frame_element->SetInlineStyleProperty(CSSPropertyID::kDisplay, "none");
   UpdateAllLifecyclePhasesForTest();
 
@@ -524,7 +523,7 @@ TEST_P(VisualRectMappingTest, ContainerFlippedWritingModeAndOverflowScroll) {
   EXPECT_EQ(0, scrollable_area->ScrollPosition().y());
   // The initial scroll offset is to the left-most because of flipped blocks
   // writing mode.
-  // 150 = total_scrollable_overflow(100 + 100) - width(50)
+  // 150 = total_layout_overflow(100 + 100) - width(50)
   EXPECT_EQ(150, scrollable_area->ScrollPosition().x());
   // Scroll to the right by 8 pixels.
   scrollable_area->ScrollToAbsolutePosition(gfx::PointF(142, 7));
@@ -619,7 +618,7 @@ TEST_P(VisualRectMappingTest, ContainerFlippedWritingModeAndOverflowHidden) {
   EXPECT_EQ(0, scrollable_area->ScrollPosition().y());
   // The initial scroll offset is to the left-most because of flipped blocks
   // writing mode.
-  // 150 = total_scrollable_overflow(100 + 100) - width(50)
+  // 150 = total_layout_overflow(100 + 100) - width(50)
   EXPECT_EQ(150, scrollable_area->ScrollPosition().x());
   scrollable_area->ScrollToAbsolutePosition(gfx::PointF(82, 7));
   UpdateAllLifecyclePhasesForTest();
@@ -658,7 +657,7 @@ TEST_P(VisualRectMappingTest, ContainerAndTargetDifferentFlippedWritingMode) {
   EXPECT_EQ(0, scrollable_area->ScrollPosition().y());
   // The initial scroll offset is to the left-most because of flipped blocks
   // writing mode.
-  // 150 = total_scrollable_overflow(100 + 100) - width(50)
+  // 150 = total_layout_overflow(100 + 100) - width(50)
   EXPECT_EQ(150, scrollable_area->ScrollPosition().x());
   // Scroll to the right by 8 pixels.
   scrollable_area->ScrollToAbsolutePosition(gfx::PointF(142, 7));
@@ -1137,8 +1136,7 @@ TEST_P(VisualRectMappingTest, FixedContentsInIframe) {
   )HTML");
 
   UpdateAllLifecyclePhasesForTest();
-  auto* fixed =
-      ChildDocument().getElementById(AtomicString("fixed"))->GetLayoutObject();
+  auto* fixed = ChildDocument().getElementById("fixed")->GetLayoutObject();
   auto* root_view = fixed->View();
   while (root_view->GetFrame()->OwnerLayoutObject())
     root_view = root_view->GetFrame()->OwnerLayoutObject()->View();
@@ -1173,7 +1171,7 @@ TEST_P(VisualRectMappingTest, FixedContentsWithScrollOffset) {
   )HTML");
 
   auto* ancestor = GetLayoutBoxByElementId("ancestor");
-  auto* fixed = GetLayoutObjectByElementId("fixed");
+  auto* fixed = GetDocument().getElementById("fixed")->GetLayoutObject();
 
   CheckMapToVisualRectInAncestorSpace(PhysicalRect(0, 0, 400, 300),
                                       PhysicalRect(0, -10, 400, 300), fixed,
@@ -1200,7 +1198,7 @@ TEST_P(VisualRectMappingTest, FixedContentsUnderViewWithScrollOffset) {
     <div id='forcescroll' style='height:1000px;'></div>
   )HTML");
 
-  auto* fixed = GetLayoutObjectByElementId("fixed");
+  auto* fixed = GetDocument().getElementById("fixed")->GetLayoutObject();
 
   CheckMapToVisualRectInAncestorSpace(
       PhysicalRect(0, 0, 400, 300), PhysicalRect(0, 0, 400, 300), fixed,
@@ -1287,7 +1285,7 @@ TEST_P(VisualRectMappingTest, PerspectiveWithAnonymousTable) {
   EXPECT_EQ(gfx::Rect(1, -1, 8, 12), ToEnclosingRect(rect));
 }
 
-TEST_P(VisualRectMappingTest, AnchorPositionScroll) {
+TEST_P(VisualRectMappingTest, AnchorScroll) {
   ScopedCSSAnchorPositioningForTest enabled_scope(true);
 
   GetDocument().SetBaseURLOverride(KURL("http://test.com"));
@@ -1321,7 +1319,7 @@ TEST_P(VisualRectMappingTest, AnchorPositionScroll) {
         bottom: anchor(--anchor top);
         width: 50px;
         height: 50px;
-        position-anchor: --anchor;
+        anchor-scroll: --anchor;
       }
     </style>
     <div id=cb>
@@ -1343,7 +1341,7 @@ TEST_P(VisualRectMappingTest, AnchorPositionScroll) {
       GetScrollableArea(To<LayoutBlock>(GetLayoutBoxByElementId("scroller")));
   scrollable_area->ScrollToAbsolutePosition(gfx::PointF(400, 0));
 
-  // Simulates a frame to update snapshotted scroll offset.
+  // Simulates a frame to update anchor-scroll snapshots.
   GetPage().Animator().ServiceScriptedAnimations(
       GetAnimationClock().CurrentTime() + base::Milliseconds(100));
   UpdateAllLifecyclePhasesForTest();
@@ -1351,35 +1349,6 @@ TEST_P(VisualRectMappingTest, AnchorPositionScroll) {
   // #anchored is moved into view and should have a non-empty visual rect
   CheckVisualRect(anchored, ancestor, PhysicalRect(0, 0, 50, 50),
                   PhysicalRect(100, 50, 50, 50));
-}
-
-TEST_P(VisualRectMappingTest, IgnoreFilters) {
-  SetBodyInnerHTML(R"HTML(
-    <div id="parent">
-      <div id="filter" style="filter: blur(1px)">
-        <div id="child"></div>
-      </div>
-    </div>
-  )HTML");
-
-  auto* parent = GetLayoutBoxByElementId("parent");
-  auto* filter = GetLayoutBoxByElementId("filter");
-  auto* child = GetLayoutBoxByElementId("child");
-  PhysicalRect input(0, 0, 50, 50);
-  PhysicalRect expected_without_filter = input;
-  PhysicalRect expected_with_filter(-3, -3, 56, 56);
-  CheckMapToVisualRectInAncestorSpace(input, expected_without_filter, child,
-                                      filter, kDefaultVisualRectFlags, true);
-  CheckMapToVisualRectInAncestorSpace(input, expected_without_filter, child,
-                                      filter, kIgnoreFilters, true);
-  CheckMapToVisualRectInAncestorSpace(input, expected_with_filter, child,
-                                      parent, kDefaultVisualRectFlags, true);
-  CheckMapToVisualRectInAncestorSpace(input, expected_without_filter, child,
-                                      parent, kIgnoreFilters, true);
-  CheckMapToVisualRectInAncestorSpace(input, expected_with_filter, filter,
-                                      parent, kDefaultVisualRectFlags, true);
-  CheckMapToVisualRectInAncestorSpace(input, expected_without_filter, filter,
-                                      parent, kIgnoreFilters, true);
 }
 
 }  // namespace blink

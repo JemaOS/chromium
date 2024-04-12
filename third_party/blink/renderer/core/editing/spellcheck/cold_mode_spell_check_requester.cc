@@ -72,7 +72,7 @@ SpellCheckRequester& ColdModeSpellCheckRequester::GetSpellCheckRequester()
 
 const Element* ColdModeSpellCheckRequester::CurrentFocusedEditable() const {
   const Position position =
-      window_->GetFrame()->Selection().GetSelectionInDOMTree().Focus();
+      window_->GetFrame()->Selection().GetSelectionInDOMTree().Extent();
   if (position.IsNull())
     return nullptr;
 
@@ -150,9 +150,8 @@ void ColdModeSpellCheckRequester::SetHasFullyCheckedCurrentRootEditable() {
   DCHECK(!fully_checked_root_editables_.Contains(root_editable_));
 
   fully_checked_root_editables_.Set(
-      root_editable_, FullyCheckedEditableEntry{
-                          TotalTextLength(*root_editable_), 0,
-                          root_editable_->GetDocument().DomTreeVersion()});
+      root_editable_,
+      FullyCheckedEditableEntry{TotalTextLength(*root_editable_), 0});
   last_chunk_index_ = kInvalidChunkIndex;
   if (!remaining_check_range_)
     return;
@@ -205,21 +204,14 @@ ColdModeSpellCheckRequester::AccumulateTextDeltaAndComputeCheckingType(
   if (iter == fully_checked_root_editables_.end())
     return CheckingType::kFull;
 
-  uint64_t dom_tree_version = element_to_check.GetDocument().DomTreeVersion();
-
-  // Nothing to check, because nothing has changed.
-  if (dom_tree_version == iter->value.previous_checked_dom_tree_version) {
-    return CheckingType::kNone;
-  }
-  iter->value.previous_checked_dom_tree_version =
-      element_to_check.GetDocument().DomTreeVersion();
-
-  // Compute the amount of text change heuristically. Invoke a full check if
-  // the accumulated change is above a threshold; or a local check otherwise.
-
   int current_text_length = TotalTextLength(element_to_check);
   int delta =
       std::abs(current_text_length - iter->value.previous_checked_length);
+
+  // Cold mode checking is not needed without plain text change (for example,
+  // after moving caret, changing text style, etc).
+  if (!delta)
+    return CheckingType::kNone;
 
   iter->value.accumulated_delta += delta;
   iter->value.previous_checked_length = current_text_length;
@@ -239,7 +231,7 @@ void ColdModeSpellCheckRequester::RequestLocalChecking(
   const EphemeralRange& full_range =
       EphemeralRange::RangeOfContents(element_to_check);
   const Position position =
-      window_->GetFrame()->Selection().GetSelectionInDOMTree().Focus();
+      window_->GetFrame()->Selection().GetSelectionInDOMTree().Extent();
   DCHECK(position.IsNotNull());
 
   TextIteratorBehavior behavior =
@@ -264,6 +256,9 @@ void ColdModeSpellCheckRequester::RequestLocalChecking(
 }
 
 void ColdModeSpellCheckRequester::ElementRemoved(Element* element) {
+  if (!RuntimeEnabledFeatures::DontLeakDetachedInputEnabled()) {
+    return;
+  }
   if (root_editable_ == element) {
     ClearProgress();
   }

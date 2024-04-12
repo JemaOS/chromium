@@ -30,7 +30,8 @@ void AmbientWeatherModel::UpdateWeatherInfo(
   temperature_fahrenheit_ = temperature_fahrenheit;
   show_celsius_ = show_celsius;
 
-  NotifyWeatherInfoUpdated();
+  if (!weather_condition_icon.isNull())
+    NotifyWeatherInfoUpdated();
 }
 
 float AmbientWeatherModel::GetTemperatureInCelsius() const {

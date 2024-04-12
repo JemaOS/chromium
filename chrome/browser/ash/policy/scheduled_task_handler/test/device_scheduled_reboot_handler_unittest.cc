@@ -46,10 +46,10 @@ constexpr char kKioskName[] = "test@kiosk-apps.device-local.localhost";
 }  // namespace
 
 using ::testing::_;
-#define EXPECT_ERROR_LOG(matcher)                                    \
-  if (DLOG_IS_ON(ERROR)) {                                           \
-    EXPECT_CALL(log_, Log(logging::LOGGING_ERROR, _, _, _, matcher)) \
-        .WillOnce(testing::Return(true)); /* suppress logging */     \
+#define EXPECT_ERROR_LOG(matcher)                                \
+  if (DLOG_IS_ON(ERROR)) {                                       \
+    EXPECT_CALL(log_, Log(logging::LOG_ERROR, _, _, _, matcher)) \
+        .WillOnce(testing::Return(true)); /* suppress logging */ \
   }
 
 class DeviceScheduledRebootHandlerForTest
@@ -202,8 +202,7 @@ class DeviceScheduledRebootHandlerTest : public testing::Test {
 
   base::test::TaskEnvironment task_environment_;
   user_manager::ScopedUserManager user_manager_enabler_;
-  raw_ptr<FakeScheduledTaskExecutor, DanglingUntriaged>
-      scheduled_task_executor_;
+  raw_ptr<FakeScheduledTaskExecutor, ExperimentalAsh> scheduled_task_executor_;
   std::unique_ptr<DeviceScheduledRebootHandlerForTest>
       device_scheduled_reboot_handler_;
   ash::ScopedTestingCrosSettings cros_settings_;
@@ -407,7 +406,7 @@ TEST_F(DeviceScheduledRebootHandlerTest,
       first_reboot_icu_time.get()));
   base::Time second_reboot_time =
       scheduled_task_test_util::IcuToBaseTime(*first_reboot_icu_time);
-  std::optional<base::TimeDelta> second_reboot_delay =
+  absl::optional<base::TimeDelta> second_reboot_delay =
       second_reboot_time - scheduled_task_executor_->GetCurrentTime();
   ASSERT_TRUE(second_reboot_delay.has_value());
   task_environment_.FastForwardBy(second_reboot_delay.value());
@@ -715,8 +714,7 @@ class ScheduledRebootTimerFailureTest : public testing::Test {
 
  protected:
   base::test::TaskEnvironment task_environment_;
-  raw_ptr<ScheduledTaskExecutorImpl, DanglingUntriaged>
-      scheduled_task_executor_;
+  raw_ptr<ScheduledTaskExecutorImpl, ExperimentalAsh> scheduled_task_executor_;
   std::unique_ptr<DeviceScheduledRebootHandlerForTest>
       device_scheduled_reboot_handler_;
   ash::ScopedTestingCrosSettings cros_settings_;
@@ -754,7 +752,7 @@ TEST_F(ScheduledRebootTimerFailureTest, SimulateTimerStartFailure) {
   EXPECT_EQ(notifications_scheduler_.GetCloseNotificationCalls(), 0);
   // Verify that the state is reset.
   EXPECT_EQ(device_scheduled_reboot_handler_->GetScheduledRebootDataForTest(),
-            std::nullopt);
+            absl::nullopt);
   EXPECT_EQ(device_scheduled_reboot_handler_->IsRebootSkippedForTest(), false);
 }
 
@@ -772,7 +770,7 @@ class ScheduledRebootDelayedServiceTest : public testing::Test {
                             base::Unretained(&wake_lock_provider_)));
     chromeos::PowerManagerClient::InitializeFake();
     chromeos::FakePowerManagerClient::Get()->SetServiceAvailability(
-        /*availability=*/std::nullopt);
+        /*availability=*/absl::nullopt);
     auto task_executor = std::make_unique<FakeScheduledTaskExecutor>(
         task_environment_.GetMockClock());
     scheduled_task_executor_ = task_executor.get();
@@ -792,8 +790,7 @@ class ScheduledRebootDelayedServiceTest : public testing::Test {
 
  protected:
   base::test::TaskEnvironment task_environment_;
-  raw_ptr<FakeScheduledTaskExecutor, DanglingUntriaged>
-      scheduled_task_executor_;
+  raw_ptr<FakeScheduledTaskExecutor, ExperimentalAsh> scheduled_task_executor_;
   std::unique_ptr<DeviceScheduledRebootHandlerForTest>
       device_scheduled_reboot_handler_;
   ash::ScopedTestingCrosSettings cros_settings_;
@@ -838,7 +835,7 @@ TEST_F(ScheduledRebootDelayedServiceTest,
   chromeos::FakePowerManagerClient::Get()->SetServiceAvailability(
       /*availability=*/false);
   EXPECT_EQ(device_scheduled_reboot_handler_->GetScheduledRebootDataForTest(),
-            std::nullopt);
+            absl::nullopt);
   EXPECT_EQ(device_scheduled_reboot_handler_->IsRebootSkippedForTest(), false);
   EXPECT_EQ(device_scheduled_reboot_handler_->GetPolicyChangesProcessedCount(),
             expected_policy_processed_count);

@@ -8,7 +8,7 @@
 #include "base/memory/raw_ptr.h"
 
 #ifndef IS_X11_IMPL
-#error "This file should only be included by //ui/gfx/x"
+#error "This file should only be included by //ui/gfx/x:xprotos"
 #endif
 
 #include <bitset>
@@ -124,9 +124,8 @@ void Read(T* t, ReadBuffer* buf) {
 
 inline void Pad(WriteBuffer* buf, size_t amount) {
   uint8_t zero = 0;
-  for (size_t i = 0; i < amount; i++) {
+  for (size_t i = 0; i < amount; i++)
     buf->Write(&zero);
-  }
 }
 
 inline void Pad(ReadBuffer* buf, size_t amount) {
@@ -153,9 +152,8 @@ size_t PopCount(T t) {
 template <typename F, typename T>
 auto SumOf(F&& f, T& t) {
   decltype(f(t[0])) sum = 0;
-  for (auto& v : t) {
+  for (auto& v : t)
     sum += f(v);
-  }
   return sum;
 }
 
@@ -191,14 +189,13 @@ auto BitNot(T t) {
 template <typename T>
 auto SwitchVar(T enum_val, bool condition, bool is_bitcase, T* switch_var) {
   using EnumInt = EnumBaseType<T>;
-  if (!condition) {
+  if (!condition)
     return;
-  }
   EnumInt switch_int = static_cast<EnumInt>(*switch_var);
   if (is_bitcase) {
     *switch_var = static_cast<T>(switch_int | static_cast<EnumInt>(enum_val));
   } else {
-    CHECK(!switch_int);
+    DCHECK(!switch_int);
     *switch_var = enum_val;
   }
 }

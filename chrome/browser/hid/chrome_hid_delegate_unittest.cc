@@ -5,11 +5,11 @@
 #include "chrome/browser/hid/chrome_hid_delegate.h"
 
 #include <memory>
-#include <string_view>
 
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/gmock_callback_support.h"
+#include "base/test/repeating_test_future.h"
 #include "base/test/test_future.h"
 #include "base/uuid.h"
 #include "build/build_config.h"
@@ -39,37 +39,37 @@
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "base/command_line.h"
-#include "base/values.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/test_extension_system.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
+#include "extensions/common/value_builder.h"
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
-#include "chrome/browser/ash/profiles/profile_helper.h"
 #include "components/account_id/account_id.h"
 #include "components/user_manager/scoped_user_manager.h"
 #endif
 
 namespace {
 
+using ::base::test::RepeatingTestFuture;
 using ::base::test::RunClosure;
 using ::base::test::TestFuture;
 using ::testing::ElementsAre;
 using ::testing::NiceMock;
 using ::testing::UnorderedElementsAre;
 
-constexpr std::string_view kDefaultTestUrl{"https://www.google.com"};
-constexpr std::string_view kCrossOriginTestUrl{"https://www.chromium.org"};
+constexpr base::StringPiece kDefaultTestUrl{"https://www.google.com"};
+constexpr base::StringPiece kCrossOriginTestUrl{"https://www.chromium.org"};
 constexpr char kTestUserEmail[] = "user@example.com";
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-constexpr std::string_view kPrivilegedExtensionId{
+constexpr base::StringPiece kPrivilegedExtensionId{
     "ckcendljdlmgnhghiaomidhiiclmapok"};
-constexpr std::string_view kExtensionDocumentFileName{"index.html"};
+constexpr base::StringPiece kExtensionDocumentFileName{"index.html"};
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
 MATCHER_P(HasGuid, matcher, "") {
@@ -204,7 +204,7 @@ class ChromeHidTestHelper {
   }
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  const user_manager::User* SetUpUserManager() {
+  void SetUpUserManager(TestingProfile* profile) {
     // On ChromeOS a user account is needed in order to check whether the user
     // account is affiliated with the device owner for the purposes of applying
     // enterprise policy.
@@ -216,11 +216,10 @@ class ChromeHidTestHelper {
 
     auto account_id =
         AccountId::FromUserEmailGaiaId(kTestUserEmail, kTestUserGaiaId);
-    const user_manager::User* user = fake_user_manager_ptr->AddUser(account_id);
-
+    fake_user_manager_ptr->AddUserWithAffiliationAndTypeAndProfile(
+        account_id, /*is_affiliated=*/false, user_manager::USER_TYPE_REGULAR,
+        profile);
     fake_user_manager_ptr->LoginUser(account_id);
-
-    return user;
   }
 
   void TearDownUserManager() { scoped_user_manager_.reset(); }
@@ -230,18 +229,18 @@ class ChromeHidTestHelper {
   // Creates a fake extension with the specified `extension_id` so that it can
   // exercise behaviors that are only enabled for privileged extensions.
   scoped_refptr<const extensions::Extension> CreateExtensionWithId(
-      std::string_view extension_id) {
-    auto manifest =
-        base::Value::Dict()
-            .Set("name", "Fake extension")
-            .Set("description", "For testing.")
-            .Set("version", "0.1")
-            .Set("manifest_version", 2)
-            .Set("web_accessible_resources",
-                 base::Value::List().Append(kExtensionDocumentFileName));
+      base::StringPiece extension_id) {
+    extensions::DictionaryBuilder manifest;
+    manifest.Set("name", "Fake extension")
+        .Set("description", "For testing.")
+        .Set("version", "0.1")
+        .Set("manifest_version", 2)
+        .Set("web_accessible_resources", extensions::ListBuilder()
+                                             .Append(kExtensionDocumentFileName)
+                                             .Build());
     scoped_refptr<const extensions::Extension> extension =
         extensions::ExtensionBuilder()
-            .SetManifest(std::move(manifest))
+            .SetManifest(manifest.Build())
             .SetID(std::string(extension_id))
             .Build();
     if (!extension) {
@@ -288,8 +287,6 @@ class ChromeHidTestHelper {
     return *hid_connection_tracker_;
   }
 
-  MockHidManagerClient& hid_manager_client() { return hid_manager_client_; }
-
   void TestHidServiceNotConnected() {
     base::RunLoop run_loop;
     mojo::Remote<blink::mojom::HidService> hid_service;
@@ -308,12 +305,12 @@ class ChromeHidTestHelper {
     // Grant permission to access `incomplete_device` from `origin`.
     GetChooserContext()->GrantDevicePermission(origin, *incomplete_device);
 
-    // Create the HidService and register a mock client to receive
+    // Create the HidService and register a `mock_client` to receive
     // notifications on device connections and disconnections.
     mojo::Remote<blink::mojom::HidService> hid_service;
     ConnectToService(hid_service.BindNewPipeAndPassReceiver());
-    hid_service->RegisterClient(
-        hid_manager_client().BindReceiverAndPassRemote());
+    NiceMock<MockHidManagerClient> mock_client;
+    hid_service->RegisterClient(mock_client.BindReceiverAndPassRemote());
 
     // Call GetDevices to ensure the service is started and the client is set.
     {
@@ -330,7 +327,7 @@ class ChromeHidTestHelper {
     complete_device->guid = incomplete_device->guid;
     complete_device->serial_number = incomplete_device->serial_number;
     TestFuture<device::mojom::HidDeviceInfoPtr> device_changed_future;
-    EXPECT_CALL(hid_manager_client(), DeviceChanged).WillOnce([&](auto d) {
+    EXPECT_CALL(mock_client, DeviceChanged).WillOnce([&](auto d) {
       device_changed_future.SetValue(std::move(d));
     });
     ChangeDevice(complete_device);
@@ -347,17 +344,17 @@ class ChromeHidTestHelper {
                 complete_device->collections.size());
     }
 
-    // Disconnect the devices. The mock client should be notified.
+    // Disconnect the devices. The `mock_client` should be notified.
     TestFuture<device::mojom::HidDeviceInfoPtr> device_removed_future;
-    EXPECT_CALL(hid_manager_client(), DeviceRemoved).WillOnce([&](auto d) {
+    EXPECT_CALL(mock_client, DeviceRemoved).WillOnce([&](auto d) {
       device_removed_future.SetValue(std::move(d));
     });
     RemoveDevice(incomplete_device);
     EXPECT_EQ(device_removed_future.Get()->guid, incomplete_device->guid);
 
-    // Reconnect the device. The mock client should be notified.
+    // Reconnect the device. The `mock_client` should be notified.
     TestFuture<device::mojom::HidDeviceInfoPtr> device_added_future;
-    EXPECT_CALL(hid_manager_client(), DeviceAdded).WillOnce([&](auto d) {
+    EXPECT_CALL(mock_client, DeviceAdded).WillOnce([&](auto d) {
       device_added_future.SetValue(std::move(d));
     });
     AddDevice(complete_device);
@@ -376,12 +373,12 @@ class ChromeHidTestHelper {
     // Grant permission to access `allowed_device1` from `origin`.
     GetChooserContext()->GrantDevicePermission(origin, *allowed_device1);
 
-    // Create the HidService and register a mock client to receive
+    // Create the HidService and register a `mock_client` to receive
     // notifications on device connections and disconnections.
     mojo::Remote<blink::mojom::HidService> hid_service;
     ConnectToService(hid_service.BindNewPipeAndPassReceiver());
-    hid_service->RegisterClient(
-        hid_manager_client().BindReceiverAndPassRemote());
+    NiceMock<MockHidManagerClient> mock_client;
+    hid_service->RegisterClient(mock_client.BindReceiverAndPassRemote());
 
     // Call GetDevices to ensure the service is started and the client is set.
     TestFuture<std::vector<device::mojom::HidDeviceInfoPtr>> devices_future;
@@ -398,13 +395,13 @@ class ChromeHidTestHelper {
     // Grant permission to access `allowed_device2` from `origin`.
     GetChooserContext()->GrantDevicePermission(origin, *allowed_device2);
 
-    // Disconnect all four devices. The mock client should be notified only
+    // Disconnect all four devices. The `mock_client` should be notified only
     // for the devices it has permission to access.
-    TestFuture<device::mojom::HidDeviceInfoPtr> device_removed_future;
-    EXPECT_CALL(hid_manager_client(), DeviceRemoved)
+    RepeatingTestFuture<device::mojom::HidDeviceInfoPtr> device_removed_future;
+    EXPECT_CALL(mock_client, DeviceRemoved)
         .Times(2)
         .WillRepeatedly(
-            [&](auto d) { device_removed_future.SetValue(std::move(d)); });
+            [&](auto d) { device_removed_future.AddValue(std::move(d)); });
     RemoveDevice(allowed_device1);
     RemoveDevice(allowed_device2);
     RemoveDevice(other_device1);
@@ -412,13 +409,12 @@ class ChromeHidTestHelper {
     EXPECT_EQ(device_removed_future.Take()->guid, allowed_device1->guid);
     EXPECT_EQ(device_removed_future.Take()->guid, allowed_device2->guid);
 
-    // Reconnect all four devices. The mock client should be notified only for
+    // Reconnect all four devices. The `mock_client` should be notified only for
     // the devices it has permission to access.
-    TestFuture<device::mojom::HidDeviceInfoPtr> device_added_future;
-    EXPECT_CALL(hid_manager_client(), DeviceAdded)
-        .Times(2)
-        .WillRepeatedly(
-            [&](auto d) { device_added_future.SetValue(std::move(d)); });
+    RepeatingTestFuture<device::mojom::HidDeviceInfoPtr> device_added_future;
+    EXPECT_CALL(mock_client, DeviceAdded).Times(2).WillRepeatedly([&](auto d) {
+      device_added_future.AddValue(std::move(d));
+    });
     AddDevice(allowed_device1);
     AddDevice(allowed_device2);
     AddDevice(other_device1);
@@ -444,13 +440,13 @@ class ChromeHidTestHelper {
     GetChooserContext()->GrantDevicePermission(origin, *device);
     GetChooserContext()->GrantDevicePermission(origin, *ephemeral_device);
 
-    // Create the HidService and register a mock client to receive
+    // Create the HidService and register a `mock_client` to receive
     // notifications on device connections and disconnections. Call `GetDevices`
     // to ensure the service is started and the client is set.
     mojo::Remote<blink::mojom::HidService> hid_service;
     ConnectToService(hid_service.BindNewPipeAndPassReceiver());
-    hid_service->RegisterClient(
-        hid_manager_client().BindReceiverAndPassRemote());
+    NiceMock<MockHidManagerClient> mock_client;
+    hid_service->RegisterClient(mock_client.BindReceiverAndPassRemote());
     {
       TestFuture<std::vector<device::mojom::HidDeviceInfoPtr>> devices_future;
       hid_service->GetDevices(devices_future.GetCallback());
@@ -466,9 +462,7 @@ class ChromeHidTestHelper {
 
     // Simulate a device service crash.
     base::RunLoop loop;
-    EXPECT_CALL(hid_manager_client(), ConnectionError).WillOnce([&]() {
-      loop.Quit();
-    });
+    EXPECT_CALL(mock_client, ConnectionError).WillOnce([&]() { loop.Quit(); });
     SimulateDeviceServiceCrash();
     loop.Run();
 
@@ -480,7 +474,7 @@ class ChromeHidTestHelper {
     // Add a new device eligible for persistent permissions.
     auto another_device = CreateFakeDevice();
     AddDevice(another_device);
-    EXPECT_CALL(hid_manager_client(), DeviceAdded).Times(0);
+    EXPECT_CALL(mock_client, DeviceAdded).Times(0);
     base::RunLoop().RunUntilIdle();
 
     // Grant the device permission while the service is off.
@@ -489,15 +483,13 @@ class ChromeHidTestHelper {
     // `mock_client` is not notified when `device` is removed because the
     // service is off.
     RemoveDevice(device);
-    EXPECT_CALL(hid_manager_client(), DeviceRemoved).Times(0);
+    EXPECT_CALL(mock_client, DeviceRemoved).Times(0);
     base::RunLoop().RunUntilIdle();
 
     // Reconnect the service.
     hid_service.reset();
-    testing::Mock::VerifyAndClearExpectations(&hid_manager_client());
     ConnectToService(hid_service.BindNewPipeAndPassReceiver());
-    hid_service->RegisterClient(
-        hid_manager_client().BindReceiverAndPassRemote());
+    hid_service->RegisterClient(mock_client.BindReceiverAndPassRemote());
     {
       TestFuture<std::vector<device::mojom::HidDeviceInfoPtr>> devices_future;
       hid_service->GetDevices(devices_future.GetCallback());
@@ -542,9 +534,8 @@ class ChromeHidTestHelper {
         hid_connection_client.InitWithNewPipeAndPassReceiver());
     TestFuture<mojo::PendingRemote<device::mojom::HidConnection>>
         pending_remote_future;
-    if (supports_hid_connection_tracker_) {
+    if (supports_hid_connection_tracker_)
       EXPECT_CALL(hid_connection_tracker(), IncrementConnectionCount(origin));
-    }
     hid_service->Connect(device->guid, std::move(hid_connection_client),
                          pending_remote_future.GetCallback());
     mojo::Remote<device::mojom::HidConnection> connection;
@@ -599,9 +590,8 @@ class ChromeHidTestHelper {
         hid_connection_client.InitWithNewPipeAndPassReceiver());
     TestFuture<mojo::PendingRemote<device::mojom::HidConnection>>
         pending_remote_future;
-    if (supports_hid_connection_tracker_) {
+    if (supports_hid_connection_tracker_)
       EXPECT_CALL(hid_connection_tracker(), IncrementConnectionCount(origin));
-    }
     hid_service->Connect(device->guid, std::move(hid_connection_client),
                          pending_remote_future.GetCallback());
     mojo::Remote<device::mojom::HidConnection> connection;
@@ -657,9 +647,8 @@ class ChromeHidTestHelper {
         hid_connection_client.InitWithNewPipeAndPassReceiver());
     TestFuture<mojo::PendingRemote<device::mojom::HidConnection>>
         pending_remote_future;
-    if (supports_hid_connection_tracker_) {
+    if (supports_hid_connection_tracker_)
       EXPECT_CALL(hid_connection_tracker(), IncrementConnectionCount(origin));
-    }
     hid_service->Connect(device->guid, std::move(hid_connection_client),
                          pending_remote_future.GetCallback());
     mojo::Remote<device::mojom::HidConnection> connection;
@@ -698,8 +687,6 @@ class ChromeHidTestHelper {
     // Create the `HidService`.
     mojo::Remote<blink::mojom::HidService> hid_service;
     ConnectToService(hid_service.BindNewPipeAndPassReceiver());
-    hid_service->RegisterClient(
-        hid_manager_client().BindReceiverAndPassRemote());
 
     // Connect a device.
     auto device = CreateFakeDevice();
@@ -726,9 +713,8 @@ class ChromeHidTestHelper {
         hid_connection_client.InitWithNewPipeAndPassReceiver());
     TestFuture<mojo::PendingRemote<device::mojom::HidConnection>>
         pending_remote_future;
-    if (supports_hid_connection_tracker_) {
+    if (supports_hid_connection_tracker_)
       EXPECT_CALL(hid_connection_tracker(), IncrementConnectionCount(origin));
-    }
     hid_service->Connect(device->guid, std::move(hid_connection_client),
                          pending_remote_future.GetCallback());
     mojo::Remote<device::mojom::HidConnection> connection;
@@ -807,7 +793,7 @@ class ChromeHidTestHelper {
   }
 #endif
 
-  void TestConnectionTrackerOpenDeviceNoConnectionCountUpdate() {
+  void TestConnectionTrackerOpenDeviceNoConnectionCountUpdateNoNotification() {
     mojo::Remote<blink::mojom::HidService> hid_service;
     ConnectToService(hid_service.BindNewPipeAndPassReceiver());
     auto origin = url::Origin::Create(origin_url_);
@@ -838,10 +824,9 @@ class ChromeHidTestHelper {
   }
 
  protected:
-  raw_ptr<TestingProfile, DanglingUntriaged> profile_ = nullptr;
+  raw_ptr<TestingProfile> profile_ = nullptr;
   GURL origin_url_;
-  raw_ptr<MockHidConnectionTracker, DanglingUntriaged> hid_connection_tracker_ =
-      nullptr;
+  raw_ptr<MockHidConnectionTracker> hid_connection_tracker_ = nullptr;
   // This flag is expected to be set to true only for the scenario of extension
   // origin and kEnableWebHidOnExtensionServiceWorker enabled.
   bool supports_hid_connection_tracker_ = false;
@@ -852,7 +837,6 @@ class ChromeHidTestHelper {
   std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
 #endif
   scoped_refptr<const extensions::Extension> extension_;
-  MockHidManagerClient hid_manager_client_;
 };
 
 class ChromeHidDelegateRenderFrameTestBase
@@ -861,14 +845,6 @@ class ChromeHidDelegateRenderFrameTestBase
  public:
   void SetUp() override {
     ChromeRenderViewHostTestHarness::SetUp();
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-    const user_manager::User* user = SetUpUserManager();
-    TestingProfile::Builder builder;
-    testing_profile_ = builder.Build();
-    profile_ = testing_profile_.get();
-    ash::ProfileHelper::Get()->SetUserToProfileMappingForTesting(
-        user, profile_.get());
-#else
     profile_manager_ = std::make_unique<TestingProfileManager>(
         TestingBrowserProcess::GetGlobal());
     ASSERT_TRUE(profile_manager_->SetUp());
@@ -885,12 +861,14 @@ class ChromeHidDelegateRenderFrameTestBase
     // As a result, here create a profile then call SetTestingFactory to inject
     // MockHidConnectionTracker.
     profile_ = profile_manager_->CreateTestingProfile(kTestUserEmail);
-#endif
     HidConnectionTrackerFactory::GetInstance()->SetTestingFactory(
         profile_, GetHidConnectionTrackerTestingFactory());
 
     ASSERT_TRUE(profile_);
     SetUpHidConnectionTracker();
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+    SetUpUserManager(profile_.get());
+#endif
     // Create a new web contents for `profile_`.
     SetContents(
         content::WebContentsTester::CreateTestWebContents(profile_, nullptr));
@@ -902,12 +880,10 @@ class ChromeHidDelegateRenderFrameTestBase
   void TearDown() override {
     DeleteContents();
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-    testing_profile_.reset();
     TearDownUserManager();
-#else
+#endif
     profile_manager_->DeleteAllTestingProfiles();
     profile_manager_.reset();
-#endif
     profile_ = nullptr;
     ChromeRenderViewHostTestHarness::TearDown();
     hid_connection_tracker_ = nullptr;
@@ -975,11 +951,7 @@ class ChromeHidDelegateRenderFrameTestBase
   }
 
  private:
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  std::unique_ptr<TestingProfile> testing_profile_;
-#else
   std::unique_ptr<TestingProfileManager> profile_manager_;
-#endif
 };
 
 class ChromeHidDelegateRenderFrameTest
@@ -995,7 +967,7 @@ class ChromeHidDelegateServiceWorkerTestBase
   void SetUp() override {
     content::EmbeddedWorkerInstanceTestHarness::SetUp();
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-    SetUpUserManager();
+    SetUpUserManager(profile_.get());
 #endif
     SetUpHidConnectionTracker();
     BindHidManager();
@@ -1021,9 +993,6 @@ class ChromeHidDelegateServiceWorkerTestBase
     auto worker_url =
         GURL(base::StringPrintf("%s/worker.js", origin_url_.spec().c_str()));
     CreateAndStartWorker(origin_url_, worker_url);
-
-    // Wait until tasks triggered by ServiceWorkerHidDelegateObserver settle.
-    base::RunLoop().RunUntilIdle();
   }
 
   void StopWorker() { StopAndResetWorker(); }
@@ -1063,13 +1032,11 @@ class ChromeHidDelegateServiceWorkerTest
 };
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-class DisableWebHidOnExtensionServiceWorkerHelper {
+class EnableWebHidOnExtensionServiceWorkerHelper {
  public:
-  DisableWebHidOnExtensionServiceWorkerHelper() {
+  EnableWebHidOnExtensionServiceWorkerHelper() {
     scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/{},
-        /*disabled_features=*/{
-            features::kEnableWebHidOnExtensionServiceWorker});
+        {features::kEnableWebHidOnExtensionServiceWorker}, {});
   }
 
  private:
@@ -1079,44 +1046,34 @@ class DisableWebHidOnExtensionServiceWorkerHelper {
 class ChromeHidDelegateExtensionServiceWorkerTest
     : public ChromeHidDelegateServiceWorkerTestBase {
  public:
-  ChromeHidDelegateExtensionServiceWorkerTest() {
-    supports_hid_connection_tracker_ = true;
-  }
   // ChromeHidTestHelper
   void SetUpOriginUrl() override { SetUpExtensionOriginUrl(); }
 };
 
-class ChromeHidDelegateExtensionServiceWorkerFeatureDisabledTest
+class ChromeHidDelegateExtensionServiceWorkerFeatureEnabledTest
     : public ChromeHidDelegateExtensionServiceWorkerTest,
-      public DisableWebHidOnExtensionServiceWorkerHelper {
+      public EnableWebHidOnExtensionServiceWorkerHelper {
  public:
-  ChromeHidDelegateExtensionServiceWorkerFeatureDisabledTest() {
-    // There is no hid connection tracker activity when
-    // features::kEnableWebHidOnExtensionServiceWorker is disabled.
-    supports_hid_connection_tracker_ = false;
+  ChromeHidDelegateExtensionServiceWorkerFeatureEnabledTest() {
+    supports_hid_connection_tracker_ = true;
   }
 };
+
+class ChromeHidDelegateServiceWorkerTestFeatureEnabledTest
+    : public ChromeHidDelegateServiceWorkerTest,
+      public EnableWebHidOnExtensionServiceWorkerHelper {};
 
 class ChromeHidDelegateExtensionRenderFrameTest
     : public ChromeHidDelegateRenderFrameTestBase {
  public:
-  ChromeHidDelegateExtensionRenderFrameTest() {
-    supports_hid_connection_tracker_ = true;
-  }
   // ChromeHidTestHelper
   void SetUpOriginUrl() override { SetUpExtensionOriginUrl(); }
 };
 
-class ChromeHidDelegateExtensionRenderFrameFeatureDisabledTest
+class ChromeHidDelegateExtensionRenderFrameFeatureEnabledTest
     : public ChromeHidDelegateExtensionRenderFrameTest,
-      public DisableWebHidOnExtensionServiceWorkerHelper {
- public:
-  ChromeHidDelegateExtensionRenderFrameFeatureDisabledTest() {
-    supports_hid_connection_tracker_ = false;
-  }
-  // ChromeHidTestHelper
-  void SetUpOriginUrl() override { SetUpExtensionOriginUrl(); }
-};
+      public EnableWebHidOnExtensionServiceWorkerHelper {};
+
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
 }  // namespace
@@ -1154,12 +1111,16 @@ TEST_F(ChromeHidDelegateRenderFrameTest, ConnectAndNavigateCrossDocument) {
   TestConnectAndNavigateCrossDocument(web_contents());
 }
 
-TEST_F(ChromeHidDelegateExtensionServiceWorkerFeatureDisabledTest,
-       HidServiceNotConnected) {
+TEST_F(ChromeHidDelegateExtensionServiceWorkerTest, HidServiceNotConnected) {
   TestHidServiceNotConnected();
 }
 
 TEST_F(ChromeHidDelegateServiceWorkerTest, HidServiceNotConnected) {
+  TestHidServiceNotConnected();
+}
+
+TEST_F(ChromeHidDelegateServiceWorkerTestFeatureEnabledTest,
+       HidServiceNotConnected) {
   TestHidServiceNotConnected();
 }
 
@@ -1203,37 +1164,43 @@ TEST_F(ChromeHidDelegateExtensionRenderFrameTest,
   TestConnectAndNavigateCrossDocument(web_contents());
 }
 
-TEST_F(ChromeHidDelegateExtensionRenderFrameFeatureDisabledTest,
+TEST_F(ChromeHidDelegateExtensionRenderFrameTest,
        ConnectionTrackerOpenDeviceNoIndicatorNoNotification) {
-  TestConnectionTrackerOpenDeviceNoConnectionCountUpdate();
+  TestConnectionTrackerOpenDeviceNoConnectionCountUpdateNoNotification();
 }
 
-TEST_F(ChromeHidDelegateExtensionServiceWorkerTest, AddChangeRemoveDevice) {
+TEST_F(ChromeHidDelegateExtensionServiceWorkerFeatureEnabledTest,
+       AddChangeRemoveDevice) {
   TestAddChangeRemoveDevice();
 }
 
-TEST_F(ChromeHidDelegateExtensionServiceWorkerTest, NoPermissionDevice) {
+TEST_F(ChromeHidDelegateExtensionServiceWorkerFeatureEnabledTest,
+       NoPermissionDevice) {
   TestNoPermissionDevice();
 }
 
-TEST_F(ChromeHidDelegateExtensionServiceWorkerTest, ReconnectHidService) {
+TEST_F(ChromeHidDelegateExtensionServiceWorkerFeatureEnabledTest,
+       ReconnectHidService) {
   TestReconnectHidService();
 }
 
-TEST_F(ChromeHidDelegateExtensionServiceWorkerTest, RevokeDevicePermission) {
+TEST_F(ChromeHidDelegateExtensionServiceWorkerFeatureEnabledTest,
+       RevokeDevicePermission) {
   TestRevokeDevicePermission();
 }
 
-TEST_F(ChromeHidDelegateExtensionServiceWorkerTest,
+TEST_F(ChromeHidDelegateExtensionServiceWorkerFeatureEnabledTest,
        RevokeDevicePermissionEphemeral) {
   TestRevokeDevicePermissionEphemeral();
 }
 
-TEST_F(ChromeHidDelegateExtensionServiceWorkerTest, ConnectAndDisconnect) {
+TEST_F(ChromeHidDelegateExtensionServiceWorkerFeatureEnabledTest,
+       ConnectAndDisconnect) {
   TestConnectAndDisconnect(/*web_contents=*/nullptr);
 }
 
-TEST_F(ChromeHidDelegateExtensionServiceWorkerTest, ConnectAndRemove) {
+TEST_F(ChromeHidDelegateExtensionServiceWorkerFeatureEnabledTest,
+       ConnectAndRemove) {
   TestConnectAndRemove(/*web_contents=*/nullptr);
 }
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
@@ -1244,8 +1211,7 @@ TEST(ChromeHidDelegateBrowserContextTest, BrowserContextIsNull) {
   EXPECT_FALSE(chrome_hid_delegate.CanRequestDevicePermission(
       /*browser_context=*/nullptr, origin));
   EXPECT_FALSE(chrome_hid_delegate.HasDevicePermission(
-      /*browser_context=*/nullptr, /*render_frame_host=*/nullptr, origin,
-      device::mojom::HidDeviceInfo()));
+      /*browser_context=*/nullptr, origin, device::mojom::HidDeviceInfo()));
   EXPECT_EQ(nullptr,
             chrome_hid_delegate.GetHidManager(/*browser_context=*/nullptr));
   EXPECT_EQ(nullptr, chrome_hid_delegate.GetDeviceInfo(

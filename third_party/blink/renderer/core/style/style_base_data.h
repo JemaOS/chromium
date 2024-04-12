@@ -7,9 +7,6 @@
 
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/properties/css_bitset.h"
-#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/heap/member.h"
-#include "third_party/blink/renderer/platform/heap/visitor.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/ref_counted.h"
 
@@ -17,23 +14,25 @@ namespace blink {
 
 class ComputedStyle;
 
-class CORE_EXPORT StyleBaseData : public GarbageCollected<StyleBaseData> {
+class CORE_EXPORT StyleBaseData : public RefCounted<StyleBaseData> {
+  USING_FAST_MALLOC(StyleBaseData);
+
  public:
-  static StyleBaseData* Create(const ComputedStyle* style,
-                               std::unique_ptr<CSSBitset> important_set) {
-    return MakeGarbageCollected<StyleBaseData>(style, std::move(important_set));
+  static scoped_refptr<StyleBaseData> Create(
+      scoped_refptr<const ComputedStyle> style,
+      std::unique_ptr<CSSBitset> important_set) {
+    return base::AdoptRef(new StyleBaseData(style, std::move(important_set)));
   }
-  StyleBaseData(const ComputedStyle*, std::unique_ptr<CSSBitset>);
 
   const ComputedStyle* GetBaseComputedStyle() const {
-    return computed_style_.Get();
+    return computed_style_.get();
   }
   const CSSBitset* GetBaseImportantSet() const { return important_set_.get(); }
 
-  void Trace(Visitor* visitor) const { visitor->Trace(computed_style_); }
-
  private:
-  Member<const ComputedStyle> computed_style_;
+  StyleBaseData(scoped_refptr<const ComputedStyle>, std::unique_ptr<CSSBitset>);
+
+  scoped_refptr<const ComputedStyle> computed_style_;
 
   // Keeps track of the !important declarations used to build the base
   // computed style. These declarations must not be overwritten by animation

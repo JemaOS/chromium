@@ -4,8 +4,7 @@
 
 var pass = chrome.test.callbackPass;
 
-chrome.tabs.query({active: true}, function(tabs) {
-  const tab = tabs[0];
+chrome.tabs.getSelected(null, function(tab) {
   chrome.test.runTests([
     function getPopup() {
       chrome.pageAction.getPopup({tabId: tab.id}, pass(function(result) {

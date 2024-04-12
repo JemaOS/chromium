@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_FILE_MANAGER_VOLUME_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/files/file_path.h"
@@ -15,13 +14,13 @@
 #include "chrome/browser/ash/file_system_provider/provided_file_system_info.h"
 #include "chrome/browser/ash/guest_os/public/types.h"
 #include "chromeos/ash/components/disks/disk_mount_manager.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace file_manager {
 
-// TODO(b/304383409): convert to enum class.
 // Identifiers for volume types managed by Chrome OS file manager.
-// The enum values must be kept in sync with FileManagerVolumeType and
-// OfficeFilesSourceVolume defined in tools/metrics/histograms/enums.xml.
+// The enum values must be kept in sync with FileManagerVolumeType defined in
+// tools/metrics/histograms/enums.xml.
 enum VolumeType {
   VOLUME_TYPE_TESTING = -1,  // Used only in tests.
   VOLUME_TYPE_GOOGLE_DRIVE = 0,
@@ -59,7 +58,7 @@ enum Source { SOURCE_FILE, SOURCE_DEVICE, SOURCE_NETWORK, SOURCE_SYSTEM };
 // Represents a volume (mount point) in the volume manager. Validity of the data
 // is guaranteed by the weak pointer. Simply saying, the weak pointer should be
 // valid as long as the volume is mounted.
-class Volume {
+class Volume : public base::SupportsWeakPtr<Volume> {
  public:
   Volume(const Volume&) = delete;
   Volume& operator=(const Volume&) = delete;
@@ -70,9 +69,7 @@ class Volume {
   static std::unique_ptr<Volume> CreateForDrive(base::FilePath drive_path);
 
   static std::unique_ptr<Volume> CreateForDownloads(
-      base::FilePath downloads_path,
-      base::FilePath optional_fusebox_path = {},
-      const char* optional_fusebox_volume_label = nullptr);
+      base::FilePath downloads_path);
 
   static std::unique_ptr<Volume> CreateForRemovable(
       const ash::disks::DiskMountManager::MountPoint& mount_point,
@@ -80,19 +77,27 @@ class Volume {
 
   static std::unique_ptr<Volume> CreateForProvidedFileSystem(
       const ash::file_system_provider::ProvidedFileSystemInfo& file_system_info,
-      MountContext mount_context,
-      base::FilePath optional_fusebox_path = {});
+      MountContext mount_context);
+
+  static std::unique_ptr<Volume> CreateForFuseBoxProvidedFileSystem(
+      base::FilePath mount_path,
+      const ash::file_system_provider::ProvidedFileSystemInfo& file_system_info,
+      MountContext mount_context);
 
   static std::unique_ptr<Volume> CreateForMTP(base::FilePath mount_path,
                                               std::string label,
-                                              bool read_only,
-                                              bool use_fusebox = false);
+                                              bool read_only);
 
-  static std::unique_ptr<Volume> CreateForMediaView(const std::string& root_id);
+  static std::unique_ptr<Volume> CreateForFuseBoxMTP(base::FilePath mount_path,
+                                                     std::string label,
+                                                     bool read_only);
+
+  static std::unique_ptr<Volume> CreateForMediaView(
+      const std::string& root_document_id);
 
   static std::unique_ptr<Volume> CreateMediaViewForTesting(
       base::FilePath mount_path,
-      const std::string& root_id);
+      const std::string& root_document_id);
 
   static std::unique_ptr<Volume> CreateForSshfsCrostini(
       base::FilePath crostini_path,
@@ -110,6 +115,7 @@ class Volume {
   static std::unique_ptr<Volume> CreateForDocumentsProvider(
       const std::string& authority,
       const std::string& root_id,
+      const std::string& document_id,
       const std::string& title,
       const std::string& summary,
       const GURL& icon_url,
@@ -143,7 +149,7 @@ class Volume {
   static std::unique_ptr<Volume> CreateForTesting(
       base::FilePath path,
       VolumeType volume_type,
-      std::optional<guest_os::VmType> vm_type,
+      absl::optional<guest_os::VmType> vm_type,
       base::FilePath source_path = {});
 
   // Getters for all members. See below for details.
@@ -186,9 +192,7 @@ class Volume {
     return icon_set_;
   }
   bool hidden() const { return hidden_; }
-  std::optional<guest_os::VmType> vm_type() const { return vm_type_; }
-
-  base::WeakPtr<Volume> AsWeakPtr() { return weak_ptr_factory_.GetWeakPtr(); }
+  absl::optional<guest_os::VmType> vm_type() const { return vm_type_; }
 
  private:
   Volume();
@@ -215,11 +219,12 @@ class Volume {
 
   // The source path of the volume.
   // E.g.:
-  // - /home/chronos/user/MyFiles/Downloads/zipfile_path.zip
+  // - /home/chronos/user/Downloads/zipfile_path.zip
   base::FilePath source_path_;
 
   // The mount path of the volume.
   // E.g.:
+  // - /home/chronos/user/Downloads
   // - /media/removable/usb1
   // - /media/archive/zip1
   base::FilePath mount_path_;
@@ -282,9 +287,7 @@ class Volume {
   bool hidden_ = false;
 
   // Only set for VOLUME_TYPE_GUEST_OS, identifies the type of Guest OS VM.
-  std::optional<guest_os::VmType> vm_type_;
-
-  base::WeakPtrFactory<Volume> weak_ptr_factory_{this};
+  absl::optional<guest_os::VmType> vm_type_;
 };
 
 }  // namespace file_manager

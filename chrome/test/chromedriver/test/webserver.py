@@ -23,11 +23,8 @@ class Responder(object):
 
   def SendResponseFromFile(self, path):
     """Sends OK response with the given file as the body."""
-    headers = {}
-    if path.endswith(".json"):
-      headers["content-type"] = "application/json"
     with open(path, 'rb') as f:
-      self.SendResponse(headers, f.read())
+      self.SendResponse({}, f.read())
 
   def SendHeaders(self, headers={}, content_length=None):
     """Sends headers for OK response."""
@@ -80,9 +77,6 @@ class _BaseServer(http.server.HTTPServer):
         if self.path.endswith('favicon.ico'):
           self.send_error(404)
           return
-        on_request(Request(self), Responder(self))
-
-      def do_POST(self):
         on_request(Request(self), Responder(self))
 
       def log_message(self, *args, **kwargs):

@@ -13,7 +13,6 @@
 #include "ui/ozone/platform/wayland/host/wayland_output.h"
 #include "ui/ozone/platform/wayland/host/wayland_window.h"
 #include "ui/ozone/platform/wayland/host/wayland_zaura_output_manager.h"
-#include "ui/ozone/platform/wayland/host/wayland_zaura_output_manager_v2.h"
 #include "ui/ozone/platform/wayland/host/wayland_zaura_shell.h"
 
 namespace ui {
@@ -48,11 +47,11 @@ void WaylandOutputManager::AddWaylandOutput(WaylandOutput::Id output_id,
   // geometry and the scaling factor from the Wayland Compositor.
   wayland_output->Initialize(this);
 
-  // If supported, the aura output manager will have have been bound by this
-  // client before the any wl_output objects. The aura output manager subsumes
-  // the responsibilities of xdg_output and aura_output, so avoid unnecessarily
+  // If supported, the zaura_output_manager will have have been bound by this
+  // client before the any wl_output objects. zaura_output_manager subsumes the
+  // responsibilities of xdg_output and aura_output, so avoid unnecessarily
   // creating the output extensions if present.
-  if (!connection_->IsUsingZAuraOutputManager()) {
+  if (!connection_->zaura_output_manager()) {
     if (connection_->xdg_output_manager_v1()) {
       wayland_output->InitializeXdgOutput(connection_->xdg_output_manager_v1());
     }
@@ -171,19 +170,6 @@ WaylandOutput* WaylandOutputManager::GetPrimaryOutput() const {
 const WaylandOutputManager::OutputList& WaylandOutputManager::GetAllOutputs()
     const {
   return output_list_;
-}
-
-void WaylandOutputManager::DumpState(std::ostream& out) const {
-  out << "WaylandOutputManager:" << std::endl;
-  if (wayland_screen_) {
-    wayland_screen_->DumpState(out);
-    out << std::endl;
-  }
-  for (const auto& output : output_list_) {
-    out << "  output[" << output.first << "]:";
-    output.second->DumpState(out);
-    out << std::endl;
-  }
 }
 
 void WaylandOutputManager::OnOutputHandleMetrics(

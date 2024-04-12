@@ -17,7 +17,9 @@ import org.chromium.base.Log;
 import org.chromium.payments.mojom.BillingResponseCode;
 import org.chromium.payments.mojom.DigitalGoods.Consume_Response;
 
-/** A converter that deals with the parameters and result for Consume calls. */
+/**
+ * A converter that deals with the parameters and result for Consume calls.
+ */
 class ConsumeConverter {
     private static final String TAG = "DigitalGoods";
 

@@ -11,10 +11,8 @@
 #include "base/values.h"
 
 namespace {
-
 // Keys in the JSON representation of a log message
 const char kLogMessageTextKey[] = "text";
-const char kLogMessageFeatureKey[] = "feature";
 const char kLogMessageTimeKey[] = "time";
 const char kLogMessageFileKey[] = "file";
 const char kLogMessageLineKey[] = "line";
@@ -23,10 +21,9 @@ const char kLogMessageSeverityKey[] = "severity";
 // Converts |log_message| to a raw dictionary value used as a JSON argument to
 // JavaScript functions.
 base::Value::Dict LogMessageToDictionary(
-    const CrossDeviceLogBuffer::LogMessage& log_message) {
+    const LogBuffer::LogMessage& log_message) {
   base::Value::Dict dictionary;
   dictionary.Set(kLogMessageTextKey, log_message.text);
-  dictionary.Set(kLogMessageFeatureKey, int(log_message.feature));
   dictionary.Set(kLogMessageTimeKey,
                  base::TimeFormatTimeOfDayWithMilliseconds(log_message.time));
   dictionary.Set(kLogMessageFileKey, log_message.file);
@@ -48,7 +45,7 @@ void NearbyInternalsLogsHandler::RegisterMessages() {
 }
 
 void NearbyInternalsLogsHandler::OnJavascriptAllowed() {
-  observation_.Observe(CrossDeviceLogBuffer::GetInstance());
+  observation_.Observe(LogBuffer::GetInstance());
 }
 
 void NearbyInternalsLogsHandler::OnJavascriptDisallowed() {
@@ -60,17 +57,17 @@ void NearbyInternalsLogsHandler::HandleGetLogMessages(
   AllowJavascript();
   const base::Value& callback_id = args[0];
   base::Value::List list;
-  for (const auto& log : *CrossDeviceLogBuffer::GetInstance()->logs()) {
+  for (const auto& log : *LogBuffer::GetInstance()->logs()) {
     list.Append(LogMessageToDictionary(log));
   }
   ResolveJavascriptCallback(callback_id, list);
 }
 
-void NearbyInternalsLogsHandler::OnCrossDeviceLogBufferCleared() {
+void NearbyInternalsLogsHandler::OnLogBufferCleared() {
   FireWebUIListener("log-buffer-cleared");
 }
 
 void NearbyInternalsLogsHandler::OnLogMessageAdded(
-    const CrossDeviceLogBuffer::LogMessage& log_message) {
+    const LogBuffer::LogMessage& log_message) {
   FireWebUIListener("log-message-added", LogMessageToDictionary(log_message));
 }

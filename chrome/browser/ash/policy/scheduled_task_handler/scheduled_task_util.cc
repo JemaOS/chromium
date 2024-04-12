@@ -13,6 +13,7 @@
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/notreached.h"
+#include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
 #include "third_party/icu/source/i18n/unicode/gregocal.h"
@@ -136,7 +137,7 @@ std::unique_ptr<icu::Calendar> AdvanceToNextValidTimeBasedOnPolicy(
 }  // namespace
 
 namespace scheduled_task_util {
-std::optional<ScheduledTaskExecutor::ScheduledTaskData> ParseScheduledTask(
+absl::optional<ScheduledTaskExecutor::ScheduledTaskData> ParseScheduledTask(
     const base::Value& value,
     const std::string& task_time_field_name) {
   const base::Value::Dict& dict = value.GetDict();
@@ -147,13 +148,13 @@ std::optional<ScheduledTaskExecutor::ScheduledTaskData> ParseScheduledTask(
   const base::Value::Dict* task_time_field_dict =
       dict.FindDict(task_time_field_name);
   DCHECK(task_time_field_dict);
-  std::optional<int> hour_opt = task_time_field_dict->FindInt("hour");
+  absl::optional<int> hour_opt = task_time_field_dict->FindInt("hour");
   DCHECK(hour_opt);
   // Validated by schema validation at higher layers.
   DCHECK(*hour_opt >= 0 && *hour_opt <= 23);
   result.hour = *hour_opt;
 
-  std::optional<int> minute_opt = task_time_field_dict->FindInt("minute");
+  absl::optional<int> minute_opt = task_time_field_dict->FindInt("minute");
   DCHECK(minute_opt);
   // Validated by schema validation at higher layers.
   DCHECK(*minute_opt >= 0 && *minute_opt <= 59);
@@ -173,7 +174,7 @@ std::optional<ScheduledTaskExecutor::ScheduledTaskData> ParseScheduledTask(
       const std::string* day_of_week = dict.FindString({"day_of_week"});
       if (!day_of_week) {
         LOG(ERROR) << "Day of week missing";
-        return std::nullopt;
+        return absl::nullopt;
       }
 
       // Validated by schema validation at higher layers.
@@ -182,10 +183,10 @@ std::optional<ScheduledTaskExecutor::ScheduledTaskData> ParseScheduledTask(
     }
 
     case ScheduledTaskExecutor::Frequency::kMonthly: {
-      std::optional<int> day_of_month = dict.FindInt("day_of_month");
+      absl::optional<int> day_of_month = dict.FindInt("day_of_month");
       if (!day_of_month) {
         LOG(ERROR) << "Day of month missing";
-        return std::nullopt;
+        return absl::nullopt;
       }
 
       // Validated by schema validation at higher layers.
@@ -219,9 +220,8 @@ std::unique_ptr<icu::Calendar> ConvertUtcToTzIcuTime(base::Time cur_time,
   }
   // Erase current time from the calendar.
   cal_tz->clear();
-  // Use Time::InMillisecondsSinceUnixEpoch() to get ms since epoch in int64_t
-  // format.
-  cal_tz->setTime(cur_time.InMillisecondsSinceUnixEpoch(), status);
+  // Use Time::ToJavaTime() to get ms since epoch in int64_t format.
+  cal_tz->setTime(cur_time.ToJavaTime(), status);
   if (U_FAILURE(status)) {
     LOG(ERROR) << "Couldn't create calendar";
     return nullptr;
@@ -230,14 +230,14 @@ std::unique_ptr<icu::Calendar> ConvertUtcToTzIcuTime(base::Time cur_time,
   return cal_tz;
 }
 
-std::optional<base::TimeDelta> CalculateNextScheduledTaskTimerDelay(
+absl::optional<base::TimeDelta> CalculateNextScheduledTaskTimerDelay(
     const ScheduledTaskExecutor::ScheduledTaskData& data,
     base::Time time,
     const icu::TimeZone& time_zone) {
   const auto cal = ConvertUtcToTzIcuTime(time, time_zone);
   if (!cal) {
     LOG(ERROR) << "Failed to get current ICU time";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   auto scheduled_task_time = CalculateNextScheduledTimeAfter(data, *cal);
@@ -263,6 +263,13 @@ std::unique_ptr<icu::Calendar> CalculateNextScheduledTimeAfter(
   DCHECK(IsAfter(*scheduled_task_time, time));
 
   return scheduled_task_time;
+}
+
+base::TimeDelta GenerateRandomDelay(int max_delay_in_seconds) {
+  int64_t max_delay_in_ms = max_delay_in_seconds * 1000;
+  int64_t random_delay =
+      static_cast<int64_t>(base::RandGenerator(max_delay_in_ms));
+  return base::Milliseconds(random_delay);
 }
 
 // Returns grace from commandline if present and valid. Returns default grace

@@ -9,6 +9,7 @@
 #include "base/android/jni_android.h"
 #include "base/ranges/algorithm.h"
 #include "chrome/browser/android/tab_android.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/android/tab_model/tab_model.h"
 #include "chrome/browser/ui/android/tab_model/tab_model_list_observer.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
@@ -68,8 +69,7 @@ TabModel* TabModelList::GetTabModelForWebContents(
     return nullptr;
 
   for (TabModel* model : models()) {
-    const size_t tab_count = model->GetTabCount();
-    for (size_t index = 0; index < tab_count; index++) {
+    for (int index = 0; index < model->GetTabCount(); index++) {
       if (web_contents == model->GetWebContentsAt(index))
         return model;
     }
@@ -83,8 +83,7 @@ TabModel* TabModelList::GetTabModelForTabAndroid(TabAndroid* tab_android) {
     return nullptr;
 
   for (TabModel* model : models()) {
-    const size_t tab_count = model->GetTabCount();
-    for (size_t index = 0; index < tab_count; index++) {
+    for (int index = 0; index < model->GetTabCount(); index++) {
       if (tab_android == model->GetTabAt(index))
         return model;
     }

@@ -5,9 +5,7 @@
 
 """Rolls third_party/boringssl/src in DEPS and updates generated build files."""
 
-# TODO(crbug.com/boringssl/542): Once BoringSSL has gni files pregenerated, we
-# will no longer need this script.
-
+import importlib
 import os
 import os.path
 import shutil
@@ -20,14 +18,18 @@ SRC_PATH = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_PATH)))
 DEPS_PATH = os.path.join(SRC_PATH, 'DEPS')
 BORINGSSL_PATH = os.path.join(SRC_PATH, 'third_party', 'boringssl')
 BORINGSSL_SRC_PATH = os.path.join(BORINGSSL_PATH, 'src')
-BORINGSSL_DEP = 'src/third_party/boringssl/src'
 
 if not os.path.isfile(DEPS_PATH) or not os.path.isdir(BORINGSSL_SRC_PATH):
   raise Exception('Could not find Chromium checkout')
 
+# Pull OS_ARCH_COMBOS out of the BoringSSL script.
+sys.path.append(os.path.join(BORINGSSL_SRC_PATH, 'util'))
+import generate_build_files
+
 GENERATED_FILES = [
     'BUILD.generated.gni',
     'BUILD.generated_tests.gni',
+    'err_data.c',
 ]
 
 
@@ -46,15 +48,17 @@ def RevParse(repo, rev):
                                  text=True).strip()
 
 
-def GetDep(repo, dep):
-  """Returns the revision of |dep|."""
-  return subprocess.check_output(['gclient', 'getdep', '-r', dep], cwd=repo,
-                                 text=True).strip()
-
-
-def SetDep(repo, dep, rev):
-  """Sets the revision of |dep| to |rev|."""
-  subprocess.check_call(['gclient', 'setdep', '-r', f'{dep}@{rev}'], cwd=repo)
+def UpdateDEPS(deps, from_hash, to_hash):
+  """Updates all references of |from_hash| to |to_hash| in |deps|."""
+  from_hash_bytes = from_hash.encode('utf-8')
+  to_hash_bytes = to_hash.encode('utf-8')
+  with open(deps, 'rb') as f:
+    contents = f.read()
+    if from_hash_bytes not in contents:
+      raise Exception('%s not in DEPS' % from_hash_bytes)
+  contents = contents.replace(from_hash_bytes, to_hash_bytes)
+  with open(deps, 'wb') as f:
+    f.write(contents)
 
 
 def Log(repo, revspec):
@@ -105,10 +109,10 @@ def main():
 
   if not IsPristine(SRC_PATH):
     print('Chromium checkout not pristine.', file=sys.stderr)
-    return 1
+    return 0
   if not IsPristine(BORINGSSL_SRC_PATH):
     print('BoringSSL checkout not pristine.', file=sys.stderr)
-    return 1
+    return 0
 
   if len(sys.argv) > 1:
     new_head = RevParse(BORINGSSL_SRC_PATH, sys.argv[1])
@@ -117,11 +121,6 @@ def main():
     new_head = RevParse(BORINGSSL_SRC_PATH, 'origin/master')
 
   old_head = RevParse(BORINGSSL_SRC_PATH, 'HEAD')
-  old_dep = GetDep(SRC_PATH, BORINGSSL_DEP)
-  if old_head != old_dep:
-    print(f'BoringSSL checkout is at {old_head}, but the dep is at {old_dep}')
-    return 1
-
   if old_head == new_head:
     print('BoringSSL already up to date.')
     return 0
@@ -151,12 +150,15 @@ def main():
     if has_update_note:
       update_note_commits.append(commit)
 
-  SetDep(SRC_PATH, BORINGSSL_DEP, new_head)
+  UpdateDEPS(DEPS_PATH, old_head, new_head)
 
   # Checkout third_party/boringssl/src to generate new files.
   subprocess.check_call(['git', 'checkout', new_head], cwd=BORINGSSL_SRC_PATH)
 
   # Clear the old generated files.
+  for (osname, arch, _, _, _) in generate_build_files.OS_ARCH_COMBOS:
+    path = os.path.join(BORINGSSL_PATH, osname + '-' + arch)
+    shutil.rmtree(path)
   for f in GENERATED_FILES:
     path = os.path.join(BORINGSSL_PATH, f)
     os.unlink(path)
@@ -170,7 +172,11 @@ def main():
                         cwd=BORINGSSL_PATH)
 
   # Commit everything.
+  importlib.reload(generate_build_files)
   subprocess.check_call(['git', 'add', DEPS_PATH], cwd=SRC_PATH)
+  for (osname, arch, _, _, _) in generate_build_files.OS_ARCH_COMBOS:
+    path = os.path.join(BORINGSSL_PATH, osname + '-' + arch)
+    subprocess.check_call(['git', 'add', path], cwd=SRC_PATH)
   for f in GENERATED_FILES:
     path = os.path.join(BORINGSSL_PATH, f)
     subprocess.check_call(['git', 'add', path], cwd=SRC_PATH)

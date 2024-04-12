@@ -11,7 +11,6 @@
 #include "ash/wm/overview/overview_session.h"
 #include "ash/wm/window_util.h"
 #include "base/containers/adapters.h"
-#include "base/containers/contains.h"
 #include "ui/aura/client/screen_position_client.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_targeter.h"
@@ -60,9 +59,8 @@ aura::Window* GetTopmostWindowAtPointWithinWindow(
     aura::Window* window,
     aura::WindowTargeter* targeter,
     const std::set<aura::Window*>& ignore) {
-  if (!window->IsVisible()) {
+  if (!window->IsVisible())
     return nullptr;
-  }
 
   if (window->GetId() == kShellWindowId_PhantomWindow ||
       window->GetId() == kShellWindowId_OverlayContainer ||
@@ -71,20 +69,18 @@ aura::Window* GetTopmostWindowAtPointWithinWindow(
   }
 
   if (IsTopLevelWindow(window)) {
-    if (IsWindowTargeted(window, screen_point, targeter)) {
-      return base::Contains(ignore, window) ? nullptr : window;
-    }
+    if (IsWindowTargeted(window, screen_point, targeter))
+      return (ignore.find(window) == ignore.end()) ? window : nullptr;
     return nullptr;
   }
 
-  for (aura::Window* child : base::Reversed(window->children())) {
+  for (auto* child : base::Reversed(window->children())) {
     aura::WindowTargeter* child_targeter =
         child->targeter() ? child->targeter() : targeter;
     aura::Window* result = GetTopmostWindowAtPointWithinWindow(
         screen_point, child, child_targeter, ignore);
-    if (result) {
+    if (result)
       return result;
-    }
   }
   return nullptr;
 }
@@ -97,25 +93,22 @@ aura::Window* GetToplevelWindowInOverviewAtPoint(
     const gfx::Point& screen_point,
     const std::set<aura::Window*>& ignore) {
   OverviewController* overview_controller = Shell::Get()->overview_controller();
-  if (!overview_controller->InOverviewSession()) {
+  if (!overview_controller->InOverviewSession())
     return nullptr;
-  }
 
   OverviewGrid* grid =
       overview_controller->overview_session()->GetGridWithRootWindow(
           window_util::GetRootWindowAt(screen_point));
-  if (!grid) {
+  if (!grid)
     return nullptr;
-  }
 
   aura::Window* window = grid->GetTargetWindowOnLocation(
       gfx::PointF(screen_point), /*ignored_item=*/nullptr);
-  if (!window) {
+  if (!window)
     return nullptr;
-  }
 
   window = window->GetToplevelWindow();
-  return base::Contains(ignore, window) ? nullptr : window;
+  return (ignore.find(window) == ignore.end()) ? window : nullptr;
 }
 
 }  // namespace

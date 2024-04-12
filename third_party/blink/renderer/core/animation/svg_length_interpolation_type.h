@@ -11,6 +11,7 @@
 
 namespace blink {
 
+class SVGLengthContext;
 enum class SVGLengthMode;
 
 class SVGLengthInterpolationType : public SVGInterpolationType {
@@ -22,10 +23,11 @@ class SVGLengthInterpolationType : public SVGInterpolationType {
             SVGLength::NegativeValuesForbiddenForAnimatedLengthAttribute(
                 attribute)) {}
 
-  static InterpolableValue* NeutralInterpolableValue();
+  static std::unique_ptr<InterpolableValue> NeutralInterpolableValue();
   static InterpolationValue MaybeConvertSVGLength(const SVGLength&);
   static SVGLength* ResolveInterpolableSVGLength(
       const InterpolableValue&,
+      const SVGLengthContext&,
       SVGLengthMode,
       bool negative_values_forbidden);
 
@@ -36,6 +38,9 @@ class SVGLengthInterpolationType : public SVGInterpolationType {
       const SVGPropertyBase& svg_value) const final;
   SVGPropertyBase* AppliedSVGValue(const InterpolableValue&,
                                    const NonInterpolableValue*) const final;
+  void Apply(const InterpolableValue&,
+             const NonInterpolableValue*,
+             InterpolationEnvironment&) const final;
 
   const SVGLengthMode unit_mode_;
   const bool negative_values_forbidden_;

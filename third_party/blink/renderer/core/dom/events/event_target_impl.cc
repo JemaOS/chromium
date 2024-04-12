@@ -18,7 +18,7 @@ ExecutionContext* EventTargetImpl::GetExecutionContext() const {
 }
 
 void EventTargetImpl::Trace(Visitor* visitor) const {
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextClient::Trace(visitor);
 }
 

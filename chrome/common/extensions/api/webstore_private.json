@@ -121,13 +121,14 @@
             "name": "expected_id",
             "type": "string",
             "description": "The id of the extension to install."
+          },
+          {
+            "name": "callback",
+            "type": "function",
+            "optional": true,
+            "parameters": []
           }
-        ],
-        "returns_async": {
-          "name": "callback",
-          "optional": true,
-          "parameters": []
-        }
+        ]
       },
       {
         "name": "beginInstallWithManifest3",
@@ -185,20 +186,22 @@
               }
             },
             "additionalProperties": { "type": "any" }
+          },
+          {
+            "name": "callback",
+            "type": "function",
+            "description": "Called when the user has either accepted/rejected the dialog, or some error occurred (such as invalid manifest or icon image data).",
+            "optional": true,
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "Result",
+                "description": "A string result code, which will be empty upon success. The possible values in the case of errors include 'unknown_error', 'user_cancelled', 'manifest_error', 'icon_error', 'invalid_id', 'permission_denied', 'invalid_icon_url' and 'already_installed'."
+              }
+            ]
           }
-        ],
-        "returns_async": {
-          "name": "callback",
-          "description": "Called when the user has either accepted/rejected the dialog, or some error occurred (such as invalid manifest or icon image data).",
-          "optional": true,
-          "parameters": [
-            {
-              "name": "result",
-              "$ref": "Result",
-              "description": "A string result code, which will be empty upon success. The possible values in the case of errors include 'unknown_error', 'user_cancelled', 'manifest_error', 'icon_error', 'invalid_id', 'permission_denied', 'invalid_icon_url' and 'already_installed'."
-            }
-          ]
-        }
+        ]
+
       },
       {
         "name": "completeInstall",
@@ -208,99 +211,149 @@
             "name": "expected_id",
             "type": "string",
             "description": "The id of the extension to be installed. This should match a previous call to beginInstallWithManifest3."
+          },
+          {
+            "name": "callback",
+            "type": "function",
+            "optional": true,
+            "parameters": []
           }
-        ],
-        "returns_async": {
-          "name": "callback",
-          "optional": true,
-          "parameters": []
-        }
+        ]
       },
       {
         "name": "enableAppLauncher",
         "description": "",
-        "parameters": [],
-        "returns_async": {
-          "name": "callback",
-          "optional": true,
-          "parameters": []
-        }
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "function",
+            "optional": true,
+            "parameters": []
+          }
+        ]
       },
       {
         "name": "getBrowserLogin",
         "description": "Returns the logged-in sync user login if there is one, or the empty string otherwise.",
-        "parameters": [],
-        "returns_async": {
-          "name": "callback",
-          "parameters": [
-            {
-              "name": "info",
-              "type": "object",
-              "properties": {
-                "login": { "type": "string" }
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "function",
+            "parameters": [
+              {
+                "name": "info",
+                "type": "object",
+                "properties": {
+                  "login": { "type": "string" }
+                }
               }
-            }
-          ]
-        }
+            ]
+          }
+        ]
       },
       {
         "name": "getStoreLogin",
         "description": "Returns the previous value set by setStoreLogin, or the empty string if there is none.",
-        "parameters": [],
-        "returns_async": {
-          "name": "callback",
-          "parameters": [
-            { "name": "login", "type": "string" }
-          ]
-        }
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "function",
+            "parameters": [
+              { "name": "login", "type": "string" }
+            ]
+          }
+        ]
       },
       {
         "name": "setStoreLogin",
         "description": "Sets a preference value with the store login.",
         "parameters": [
-          { "name": "login", "type": "string" }
-        ],
-        "returns_async": {
-          "name": "callback",
-          "optional": true,
-          "parameters": []
-        }
+          { "name": "login", "type": "string" },
+          {
+            "name": "callback",
+            "type": "function",
+            "optional": true,
+            "parameters": []
+          }
+        ]
       },
       {
         "name": "getWebGLStatus",
         "description": "Invokes a callback that returns whether WebGL is blacklisted or not.",
-        "parameters": [],
-        "returns_async": {
-          "name": "callback",
-          "parameters": [
-            {
-              "name": "webgl_status",
-              "$ref": "WebGlStatus"
-            }
-          ]
-        }
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "function",
+            "parameters": [
+              {
+                "name": "webgl_status",
+                "$ref": "WebGlStatus"
+              }
+            ]
+          }
+        ]
       },
       {
         "name": "getIsLauncherEnabled",
         "description": "Returns whether the apps launcher is enabled or not.",
-        "parameters": [],
-        "returns_async": {
-          "name": "callback",
-          "parameters": [
-            { "name": "is_enabled", "type": "boolean" }
-          ]
-        }
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "function",
+            "parameters": [
+              { "name": "is_enabled", "type": "boolean" }
+            ]
+          }
+        ]
       },
       {
         "name": "isInIncognitoMode",
         "description": "Returns whether the browser is in incognito mode or not.",
-        "parameters": [],
-        "returns_async": {
-          "name": "callback",
-          "parameters": [
-            { "name": "is_incognito", "type": "boolean" }
-          ]
-        }
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "function",
+            "parameters": [
+              { "name": "is_incognito", "type": "boolean" }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "getEphemeralAppsEnabled",
+        "description": "Returns whether the ephemeral apps feature is enabled.",
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "function",
+            "parameters": [
+              { "name": "is_enabled", "type": "boolean" }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "launchEphemeralApp",
+        "description": "Installs an app ephemerally in Chrome (if not already fully installed) and launches the app. A user gesture is required.",
+        "parameters": [
+          {
+            "name": "id",
+            "type": "string",
+            "description": "The extension id of the app to launch."
+          },
+          {
+            "name": "callback",
+            "type": "function",
+            "optional": true,
+            "parameters": [
+              {
+                "name": "result",
+                "$ref": "Result",
+                "description": "Whether an attempt to launch an app succeeded, or the reason for failure."
+              }
+            ]
+          }
+        ]
       },
       {
         "name": "isPendingCustodianApproval",
@@ -310,25 +363,28 @@
             "name": "id",
             "type": "string",
             "description": "The extension id of the extension to be checked."
+          },
+          {
+            "name": "callback",
+            "type": "function",
+            "parameters": [
+              { "name": "is_pending_approval", "type": "boolean" }
+            ]
           }
-        ],
-        "returns_async": {
-          "name": "callback",
-          "parameters": [
-            { "name": "is_pending_approval", "type": "boolean" }
-          ]
-        }
+        ]
       },
       {
         "name": "getReferrerChain",
         "description": "Returns a base-64 encoded referrer chain leading to the webstore page. Should only be used for extension anti-abuse purposes.",
-        "parameters": [],
-        "returns_async": {
-          "name": "callback",
-          "parameters": [
-            { "name": "referrerChain", "type": "string" }
-          ]
-        }
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "function",
+            "parameters": [
+              { "name": "referrerChain", "type": "string" }
+            ]
+          }
+        ]
       },
       {
         "name": "getExtensionStatus",
@@ -343,14 +399,15 @@
             "type": "string",
             "optional": true,
             "description": "The manifest of the extension"
+          },
+          {
+            "name": "callback",
+            "type": "function",
+            "parameters": [
+              { "name": "status", "$ref": "ExtensionInstallStatus" }
+            ]
           }
-        ],
-        "returns_async": {
-          "name": "callback",
-          "parameters": [
-            { "name": "status", "$ref": "ExtensionInstallStatus" }
-          ]
-        }
+        ]
       }
     ]
   }

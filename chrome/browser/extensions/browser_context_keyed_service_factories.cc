@@ -10,8 +10,8 @@
 namespace chrome_extensions {
 
 void EnsureBrowserContextKeyedServiceFactoriesBuilt() {
-  EnsureChromeBrowserContextKeyedServiceFactoriesBuilt();
-  EnsureApiBrowserContextKeyedServiceFactoriesBuilt();
+  chrome_extensions::EnsureChromeBrowserContextKeyedServiceFactoriesBuilt();
+  chrome_extensions::EnsureApiBrowserContextKeyedServiceFactoriesBuilt();
 }
 
 }  // namespace chrome_extensions

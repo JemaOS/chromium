@@ -4,8 +4,6 @@
 
 #include "ash/assistant/assistant_ui_controller_impl.h"
 
-#include <optional>
-
 #include "ash/assistant/assistant_controller_impl.h"
 #include "ash/assistant/model/assistant_interaction_model.h"
 #include "ash/assistant/ui/assistant_ui_constants.h"
@@ -29,6 +27,7 @@
 #include "chromeos/ash/services/assistant/public/cpp/features.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace ash {
@@ -102,6 +101,14 @@ void AssistantUiControllerImpl::SetKeyboardTraversalMode(
 }
 
 void AssistantUiControllerImpl::ShowUi(AssistantEntryPoint entry_point) {
+  if (ash::features::IsJemaAssistantEnabled()) {
+    if (entry_point == AssistantEntryPoint::kDeepLink || entry_point == AssistantEntryPoint::kHotkey || entry_point == AssistantEntryPoint::kLauncherSearchBoxIcon) {
+      model_.SetVisible(entry_point);
+      return;
+    } else {
+      return;
+    }
+  }
   // Skip if the opt-in window is active.
   auto* assistant_setup = AssistantSetup::GetInstance();
   if (assistant_setup && assistant_setup->BounceOptInWindowIfActive())
@@ -129,10 +136,10 @@ void AssistantUiControllerImpl::ShowUi(AssistantEntryPoint entry_point) {
   model_.SetVisible(entry_point);
 }
 
-std::optional<base::ScopedClosureRunner> AssistantUiControllerImpl::CloseUi(
+absl::optional<base::ScopedClosureRunner> AssistantUiControllerImpl::CloseUi(
     AssistantExitPoint exit_point) {
   if (model_.visibility() != AssistantVisibility::kVisible)
-    return std::nullopt;
+    return absl::nullopt;
 
   // Set visibility to `kClosing`.
   model_.SetClosing(exit_point);
@@ -153,8 +160,8 @@ void AssistantUiControllerImpl::SetAppListBubbleWidth(int width) {
 }
 
 void AssistantUiControllerImpl::ToggleUi(
-    std::optional<AssistantEntryPoint> entry_point,
-    std::optional<AssistantExitPoint> exit_point) {
+    absl::optional<AssistantEntryPoint> entry_point,
+    absl::optional<AssistantExitPoint> exit_point) {
   // When not visible, toggling will show the UI.
   if (model_.visibility() != AssistantVisibility::kVisible) {
     DCHECK(entry_point.has_value());
@@ -201,8 +208,8 @@ void AssistantUiControllerImpl::OnOpeningUrl(const GURL& url,
 void AssistantUiControllerImpl::OnUiVisibilityChanged(
     AssistantVisibility new_visibility,
     AssistantVisibility old_visibility,
-    std::optional<AssistantEntryPoint> entry_point,
-    std::optional<AssistantExitPoint> exit_point) {
+    absl::optional<AssistantEntryPoint> entry_point,
+    absl::optional<AssistantExitPoint> exit_point) {
   weak_factory_for_delayed_visibility_changes_.InvalidateWeakPtrs();
 
   if (new_visibility == AssistantVisibility::kVisible) {

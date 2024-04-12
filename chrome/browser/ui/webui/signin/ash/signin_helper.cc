@@ -10,7 +10,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/ash/account_manager/account_apps_availability.h"
 #include "components/account_manager_core/account.h"
-#include "components/account_manager_core/account_upsertion_result.h"
+#include "components/account_manager_core/account_addition_result.h"
 #include "components/account_manager_core/chromeos/account_manager.h"
 #include "components/account_manager_core/chromeos/account_manager_mojo_service.h"
 #include "components/user_manager/user_manager.h"
@@ -50,7 +50,7 @@ SigninHelper::SigninHelper(
     crosapi::AccountManagerMojoService* account_manager_mojo_service,
     const base::RepeatingClosure& close_dialog_closure,
     const base::RepeatingCallback<void(const std::string&, const std::string&)>&
-        show_signin_error,
+        show_signin_blocked_error,
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
     std::unique_ptr<ArcHelper> arc_helper,
     const std::string& gaia_id,
@@ -61,18 +61,17 @@ SigninHelper::SigninHelper(
       account_manager_mojo_service_(account_manager_mojo_service),
       arc_helper_(std::move(arc_helper)),
       close_dialog_closure_(close_dialog_closure),
-      show_signin_error_(show_signin_error),
+      show_signin_blocked_error_(show_signin_blocked_error),
       account_key_(gaia_id, account_manager::AccountType::kGaia),
       email_(email),
       url_loader_factory_(std::move(url_loader_factory)),
       gaia_auth_fetcher_(this, gaia::GaiaSource::kChrome, url_loader_factory_) {
   DCHECK(!signin_scoped_device_id.empty());
-  CHECK(show_signin_error_);
 
   if (AccountAppsAvailability::IsArcAccountRestrictionsEnabled())
     DCHECK(arc_helper_);
-
   if (!IsInitialPrimaryAccount()) {
+    DCHECK(show_signin_blocked_error_);
     restriction_fetcher_ =
         std::make_unique<UserCloudSigninRestrictionPolicyFetcher>(
             email_, url_loader_factory_);
@@ -105,14 +104,13 @@ void SigninHelper::OnClientOAuthFailure(const GoogleServiceAuthError& error) {
   LOG(ERROR) << "SigninHelper::OnClientOAuthFailure: couldn't fetch OAuth2 "
                 "token, the error was "
              << error.ToString();
-
-  show_signin_error_.Run(email_, /*hosted_domain=*/std::string());
+  // TODO(sinhak): Display an error.
 
   // Notify `AccountManagerMojoService` about account addition failure and send
   // `error`.
-  account_manager_mojo_service_->OnAccountUpsertionFinished(
-      account_manager::AccountUpsertionResult::FromError(error));
-  Exit();
+  account_manager_mojo_service_->OnAccountAdditionFinished(
+      account_manager::AccountAdditionResult::FromError(error));
+  CloseDialogAndExit();
 }
 
 void SigninHelper::UpsertAccount(const std::string& refresh_token) {
@@ -137,8 +135,8 @@ void SigninHelper::UpsertAccount(const std::string& refresh_token) {
   }
   // Notify `AccountManagerMojoService` about successful account addition and
   // send the account.
-  account_manager_mojo_service_->OnAccountUpsertionFinished(
-      account_manager::AccountUpsertionResult::FromAccount(
+  account_manager_mojo_service_->OnAccountAdditionFinished(
+      account_manager::AccountAdditionResult::FromAccount(
           account_manager::Account{account_key_, email_}));
 }
 
@@ -156,7 +154,7 @@ void SigninHelper::Exit() {
 // show an error page.
 void SigninHelper::OnGetSecondaryGoogleAccountUsage(
     SigninRestrictionPolicyFetcher::Status status,
-    std::optional<std::string> policy_result,
+    absl::optional<std::string> policy_result,
     const std::string& hosted_domain) {
   base::UmaHistogramEnumeration(kSecondaryGoogleAccountUsageHistogramName,
                                 status);
@@ -182,9 +180,9 @@ void SigninHelper::OnGetSecondaryGoogleAccountUsage(
     // The sign-in is blocked by SecondaryGoogleAccountUsage policy.
     // Notify `AccountManagerMojoService` about account addition failure and
     // send `error`.
-    account_manager_mojo_service_->OnAccountUpsertionFinished(
-        account_manager::AccountUpsertionResult::FromStatus(
-            account_manager::AccountUpsertionResult::Status::kBlockedByPolicy));
+    account_manager_mojo_service_->OnAccountAdditionFinished(
+        account_manager::AccountAdditionResult::FromStatus(
+            account_manager::AccountAdditionResult::Status::kBlockedByPolicy));
     ShowSigninBlockedErrorPageAndExit(hosted_domain);
     return;
   }
@@ -196,7 +194,7 @@ void SigninHelper::OnGetSecondaryGoogleAccountUsage(
 
 void SigninHelper::ShowSigninBlockedErrorPageAndExit(
     const std::string& hosted_domain) {
-  show_signin_error_.Run(email_, hosted_domain);
+  show_signin_blocked_error_.Run(email_, hosted_domain);
   RevokeGaiaTokenOnServer();
 }
 

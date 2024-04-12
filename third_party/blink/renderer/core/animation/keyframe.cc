@@ -8,7 +8,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_timeline_range_offset.h"
 #include "third_party/blink/renderer/core/animation/effect_model.h"
 #include "third_party/blink/renderer/core/animation/invalidatable_interpolation.h"
-#include "third_party/blink/renderer/core/animation/timeline_range.h"
+#include "third_party/blink/renderer/core/animation/view_timeline.h"
 #include "third_party/blink/renderer/core/css/cssom/css_unit_value.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
@@ -48,16 +48,16 @@ void Keyframe::AddKeyframePropertiesToV8Object(V8ObjectBuilder& object_builder,
                              CSSPrimitiveValue::UnitType::kPercentage));
     object_builder.Add("offset", timeline_range_offset);
   } else if (offset_) {
-    object_builder.AddNumber("offset", offset_.value());
+    object_builder.Add("offset", offset_.value());
   } else {
     object_builder.AddNull("offset");
   }
-  object_builder.AddString("easing", easing_->ToString());
+  object_builder.Add("easing", easing_->ToString());
   object_builder.AddString("composite",
                            EffectModel::CompositeOperationToString(composite_));
 }
 
-bool Keyframe::ResolveTimelineOffset(const TimelineRange& timeline_range,
+bool Keyframe::ResolveTimelineOffset(const ViewTimeline* view_timeline,
                                      double range_start,
                                      double range_end) {
   if (!timeline_offset_) {
@@ -65,7 +65,7 @@ bool Keyframe::ResolveTimelineOffset(const TimelineRange& timeline_range,
   }
 
   double relative_offset =
-      timeline_range.ToFractionalOffset(timeline_offset_.value());
+      view_timeline->ToFractionalOffset(timeline_offset_.value());
   double range = range_end - range_start;
   if (!range) {
     if (offset_) {
@@ -87,9 +87,9 @@ bool Keyframe::ResolveTimelineOffset(const TimelineRange& timeline_range,
 
 /* static */
 bool Keyframe::LessThan(const Member<Keyframe>& a, const Member<Keyframe>& b) {
-  std::optional first =
+  absl::optional first =
       a->ComputedOffset().has_value() ? a->ComputedOffset() : a->Offset();
-  std::optional second =
+  absl::optional second =
       b->ComputedOffset().has_value() ? b->ComputedOffset() : b->Offset();
 
   if (first < second) {
@@ -105,6 +105,16 @@ bool Keyframe::LessThan(const Member<Keyframe>& a, const Member<Keyframe>& b) {
   }
 
   return false;
+}
+
+bool Keyframe::ResetOffsetResolvedFromTimeline() {
+  if (!timeline_offset_.has_value()) {
+    return false;
+  }
+
+  offset_.reset();
+  computed_offset_ = kNullComputedOffset;
+  return true;
 }
 
 }  // namespace blink

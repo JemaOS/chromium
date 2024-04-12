@@ -19,6 +19,8 @@
 #include "ui/shell_dialogs/select_file_dialog.h"
 #include "ui/shell_dialogs/select_file_policy.h"
 
+#include "components/feedback/system_logs/system_logs_source.h"
+
 namespace content {
 class WebContents;
 }  // namespace content
@@ -61,12 +63,13 @@ class SessionLogHandler : public content::WebUIMessageHandler,
   void RegisterMessages() override;
 
   // SelectFileDialog::Listener:
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override;
-  void FileSelectionCanceled(void* params) override;
 
   void OnSessionLogCreated(const base::FilePath& path, bool success);
+
+  void FileSelectionCanceled(void* params) override;
 
   SessionLogHandler(const SessionLogHandler&) = delete;
   SessionLogHandler& operator=(const SessionLogHandler&) = delete;
@@ -88,14 +91,19 @@ class SessionLogHandler : public content::WebUIMessageHandler,
   // Initializes Javascript.
   void HandleInitialize(const base::Value::List& args);
 
+  void GetJemaOsSystemInfo();
+  void OnJemaOSSystemInfoReceived(std::unique_ptr<system_logs::SystemLogsResponse> sys_info);
+
   SelectFilePolicyCreator select_file_policy_creator_;
   std::unique_ptr<TelemetryLog> telemetry_log_;
   std::unique_ptr<RoutineLog> routine_log_;
   std::unique_ptr<NetworkingLog> networking_log_;
-  const raw_ptr<ash::HoldingSpaceClient> holding_space_client_;
+  const raw_ptr<ash::HoldingSpaceClient, ExperimentalAsh> holding_space_client_;
   std::string save_session_log_callback_id_;
   scoped_refptr<ui::SelectFileDialog> select_file_dialog_;
   base::OnceClosure log_created_closure_;
+
+  std::string jemaos_system_info_;
   // Task runner for tasks posted by save session log handler. Used to ensure
   // posted tasks are handled while SessionLogHandler is in scope to stop
   // heap-use-after-free error.

@@ -58,7 +58,6 @@ class BLINK_COMMON_EXPORT WebGestureEvent : public WebInputEvent {
     } tap;
 
     struct {
-      int tap_down_count;
       float width;
       float height;
     } tap_down;
@@ -247,7 +246,6 @@ class BLINK_COMMON_EXPORT WebGestureEvent : public WebInputEvent {
 
   gfx::SizeF TapAreaInRootFrame() const;
   int TapCount() const;
-  int TapDownCount() const;
 
   void ApplyTouchAdjustment(const gfx::PointF& root_frame_coords);
 
@@ -275,7 +273,6 @@ class BLINK_COMMON_EXPORT WebGestureEvent : public WebInputEvent {
       case Type::kGestureShortPress:
       case Type::kGestureLongPress:
       case Type::kGestureLongTap:
-      case Type::kGestureDoubleTap:
         return false;
       default:
         NOTREACHED();
@@ -357,15 +354,16 @@ class BLINK_COMMON_EXPORT WebGestureEvent : public WebInputEvent {
   static bool IsCompatibleScrollorPinch(const WebGestureEvent& new_event,
                                         const WebGestureEvent& event_in_queue);
 
-  // For a scrollbar gesture, generate a scroll gesture event (begin, update,
-  // or end), based on the parameters passed in. Populates the data field of
-  // the created WebGestureEvent based on the type.
-  static std::unique_ptr<blink::WebGestureEvent>
-  GenerateInjectedScrollbarGestureScroll(WebInputEvent::Type type,
-                                         base::TimeTicks timestamp,
-                                         gfx::PointF position_in_widget,
-                                         gfx::Vector2dF scroll_delta,
-                                         ui::ScrollGranularity granularity);
+  // Generate a scroll gesture event (begin, update, or end), based on the
+  // parameters passed in. Populates the data field of the created
+  // WebGestureEvent based on the type.
+  static std::unique_ptr<blink::WebGestureEvent> GenerateInjectedScrollGesture(
+      WebInputEvent::Type type,
+      base::TimeTicks timestamp,
+      WebGestureDevice device,
+      gfx::PointF position_in_widget,
+      gfx::Vector2dF scroll_delta,
+      ui::ScrollGranularity granularity);
 };
 
 }  // namespace blink

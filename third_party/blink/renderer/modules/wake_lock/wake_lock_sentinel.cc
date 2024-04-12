@@ -23,14 +23,13 @@ WakeLockSentinel::WakeLockSentinel(ScriptState* script_state,
 
 WakeLockSentinel::~WakeLockSentinel() = default;
 
-ScriptPromiseTyped<IDLUndefined> WakeLockSentinel::release(
-    ScriptState* script_state) {
+ScriptPromise WakeLockSentinel::release(ScriptState* script_state) {
   // https://w3c.github.io/screen-wake-lock/#the-release-method
   // 1. If this's [[Released]] is false, then run release a wake lock with lock
   //    set to this and type set to the value of this's type attribute.
   DoRelease();
   // 2. Return a promise resolved with undefined.
-  return ToResolvedUndefinedPromise(script_state);
+  return ScriptPromise::CastUndefined(script_state);
 }
 
 bool WakeLockSentinel::released() const {
@@ -53,7 +52,7 @@ const AtomicString& WakeLockSentinel::InterfaceName() const {
 
 void WakeLockSentinel::Trace(Visitor* visitor) const {
   visitor->Trace(manager_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }
 

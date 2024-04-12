@@ -14,35 +14,30 @@
 #include "chromeos/constants/devicetype.h"
 
 namespace ash {
-namespace {
-constexpr char kDefaultDeviceTypeName[] = "Chromebook";
-}  // namespace
 
 std::string GetDeviceBluetoothName(const std::string& bluetooth_address) {
-  const std::string device_name = DeviceTypeToString(chromeos::GetDeviceType());
-
-  // Take the lower 2 bytes of hashed |bluetooth_address| and combine it with
-  // the device type to create a more identifiable device name.
-  return base::StringPrintf(
-      "%s_%04X",
-      device_name.empty() ? kDefaultDeviceTypeName : device_name.c_str(),
-      base::PersistentHash(bluetooth_address) & 0xFFFF);
-}
-
-std::string DeviceTypeToString(chromeos::DeviceType device_type) {
-  switch (device_type) {
+  const char* name = "Chromebook";
+  switch (chromeos::GetDeviceType()) {
     case chromeos::DeviceType::kChromebase:
-      return "Chromebase";
+      name = "Chromebase";
+      break;
     case chromeos::DeviceType::kChromebit:
-      return "Chromebit";
+      name = "Chromebit";
+      break;
     case chromeos::DeviceType::kChromebook:
-      return "Chromebook";
+      name = "Chromebook";
+      break;
     case chromeos::DeviceType::kChromebox:
-      return "Chromebox";
+      name = "Chromebox";
+      break;
     case chromeos::DeviceType::kUnknown:
     default:
-      return "";
+      break;
   }
+  // Take the lower 2 bytes of hashed |bluetooth_address| and combine it with
+  // the device type to create a more identifiable device name.
+  return base::StringPrintf("%s_%04X", name,
+                            base::PersistentHash(bluetooth_address) & 0xFFFF);
 }
 
 bool IsGoogleBrandedDevice() {

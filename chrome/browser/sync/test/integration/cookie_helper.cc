@@ -34,7 +34,8 @@ void AddSigninCookie(Profile* profile) {
           /*last_update=*/base::Time(),
           /*secure=*/true,
           /*httponly=*/false, net::CookieSameSite::NO_RESTRICTION,
-          net::COOKIE_PRIORITY_DEFAULT);
+          net::COOKIE_PRIORITY_DEFAULT,
+          /*same_party=*/false);
 
   network::mojom::CookieManager* cookie_manager =
       profile->GetDefaultStoragePartition()

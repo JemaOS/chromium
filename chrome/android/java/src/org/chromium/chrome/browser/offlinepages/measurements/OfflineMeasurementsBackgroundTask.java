@@ -4,15 +4,16 @@
 
 package org.chromium.chrome.browser.offlinepages.measurements;
 
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 
-/** This class clears the persisted data in prefs from OfflineMeasurementsBackgroundTask. */
+/**
+ * This class clears the persisted data in prefs from OfflineMeasurementsBackgroundTask.
+ */
 public class OfflineMeasurementsBackgroundTask {
     public static void clearPersistedDataFromPrefs() {
         // Clear any data persisted in prefs.
-        SharedPreferencesManager sharedPreferencesManager = ChromeSharedPreferences.getInstance();
+        SharedPreferencesManager sharedPreferencesManager = SharedPreferencesManager.getInstance();
 
         sharedPreferencesManager.removeKey(
                 ChromePreferenceKeys.OFFLINE_MEASUREMENTS_LAST_CHECK_MILLIS);

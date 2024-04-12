@@ -4,15 +4,12 @@
 
 #import <UIKit/UIKit.h>
 
-#include "base/apple/foundation_util.h"
 #include "base/check.h"
+#include "base/mac/scoped_nsobject.h"
 #include "base/notreached.h"
 #include "base/task/single_thread_task_runner.h"
-#include "build/ios_buildflags.h"
 #include "ui/display/display.h"
-#include "ui/display/display_features.h"
 #include "ui/display/screen_base.h"
-#include "ui/gfx/native_widget_types.h"
 
 namespace display {
 namespace {
@@ -31,7 +28,7 @@ class ScreenNotification {
 
 @implementation ScreenObserver
 
-- (instancetype)initWithNotifier:(display::ScreenNotification*)notifier {
+- (instancetype)initWithNotfier:(display::ScreenNotification*)notifier {
   if (self = [super init]) {
     _notifier = notifier;
     NSNotificationCenter* defaultCenter = [NSNotificationCenter defaultCenter];
@@ -39,14 +36,7 @@ class ScreenNotification {
                       selector:@selector(mainScreenChanged)
                           name:UIDeviceOrientationDidChangeNotification
                         object:nil];
-    if (display::features::IsScreenIosRefactorEnabled()) {
-      [defaultCenter addObserver:self
-                        selector:@selector(mainScreenChanged)
-                            name:UIWindowDidBecomeKeyNotification
-                          object:nil];
-    }
   }
-
   return self;
 }
 
@@ -55,7 +45,7 @@ class ScreenNotification {
     return;
   }
   // This notification comes before UIScreen can change its bounds so post a
-  // task so the update occurs after the UIScreen has been updated.
+  // task so the update ocurrs after the UIScreen has been updated.
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&display::ScreenNotification::ScreenChanged,
                                 base::Unretained(_notifier)));
@@ -69,7 +59,8 @@ namespace {
 class ScreenIos : public ScreenBase, public ScreenNotification {
  public:
   ScreenIos() {
-    observer_ = [[ScreenObserver alloc] initWithNotifier:this];
+    observer_ = base::scoped_nsobject<ScreenObserver>(
+        [[ScreenObserver alloc] initWithNotfier:this]);
     ScreenChanged();
   }
 
@@ -77,20 +68,10 @@ class ScreenIos : public ScreenBase, public ScreenNotification {
   ScreenIos& operator=(const ScreenIos&) = delete;
 
   void ScreenChanged() override {
-    UIScreen* screen = GetAllActiveScreens().firstObject;
-    if (!display::features::IsScreenIosRefactorEnabled()) {
-      CHECK(screen);
-    } else if (!screen) {
-      return;
-    }
-
-    Display display(0, gfx::Rect(screen.bounds));
-    CGFloat scale = [screen scale];
-
-    if (Display::HasForceDeviceScaleFactor()) {
-      scale = Display::GetForcedDeviceScaleFactor();
-    }
-    display.set_device_scale_factor(scale);
+    UIScreen* mainScreen = [UIScreen mainScreen];
+    CHECK(mainScreen);
+    Display display(0, gfx::Rect(mainScreen.bounds));
+    display.set_device_scale_factor([mainScreen scale]);
     ProcessDisplayChanged(display, true /* is_primary */);
   }
 
@@ -110,40 +91,23 @@ class ScreenIos : public ScreenBase, public ScreenNotification {
   }
 
   int GetNumDisplays() const override {
-    return std::max(static_cast<int>([GetAllActiveScreens() count]), 1);
-  }
-
- private:
-  // Return all screens associated with scenes of the application.
-  NSArray<UIScreen*>* GetAllActiveScreens() const {
-#if BUILDFLAG(IS_IOS_APP_EXTENSION)
-    return [NSArray<UIScreen*> array];
+#if TARGET_IPHONE_SIMULATOR
+    // UIScreen does not reliably return correct results on the simulator.
+    return 1;
 #else
-    if (display::features::IsScreenIosRefactorEnabled()) {
-      NSMutableSet<UIScreen*>* screens = [NSMutableSet set];
-      for (UIScene* scene in UIApplication.sharedApplication.connectedScenes) {
-        UIWindowScene* windowScene =
-            base::apple::ObjCCastStrict<UIWindowScene>(scene);
-        UIScreen* screen = windowScene.keyWindow.screen;
-        if (screen) {
-          [screens addObject:screen];
-        }
-      }
-      return [screens allObjects];
-    }
-
-    return [UIScreen screens];
+    return [[UIScreen screens] count];
 #endif
   }
 
-  ScreenObserver* __strong observer_;
+ private:
+  base::scoped_nsobject<ScreenObserver> observer_;
 };
 
 }  // namespace
 
 // static
 gfx::NativeWindow Screen::GetWindowForView(gfx::NativeView view) {
-  return gfx::NativeWindow(view.Get().window);
+  return [view window];
 }
 
 Screen* CreateNativeScreen() {

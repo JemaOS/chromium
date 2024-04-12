@@ -15,7 +15,6 @@
 #include "components/version_info/version_info.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/feature_switch.h"
 #include "extensions/common/features/feature_channel.h"
 #include "extensions/common/manifest.h"
@@ -103,7 +102,7 @@ void ExternalInstallManager::RemoveExternalInstallError(
     // The |extension_id| may be owned by the ExternalInstallError, which is
     // deleted subsequently. To avoid any UAFs, make a safe copy of
     // |extension_id| now.
-    ExtensionId extension_id_copy = extension_id;
+    std::string extension_id_copy = extension_id;
 
     if (iter->second.get() == currently_visible_install_alert_)
       currently_visible_install_alert_ = nullptr;

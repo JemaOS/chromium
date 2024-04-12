@@ -1,9 +1,8 @@
 // Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include "extensions/browser/api/declarative_net_request/action_tracker.h"
 
-#include <string_view>
+#include "extensions/browser/api/declarative_net_request/action_tracker.h"
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -80,7 +79,7 @@ class ActionTrackerTest : public DNRTestBase {
 
   // Returns renderer-initiated request params for the given |url|.
   WebRequestInfoInitParams GetRequestParamsForURL(
-      std::string_view url,
+      base::StringPiece url,
       WebRequestResourceType web_request_type,
       int tab_id) {
     const int kRendererId = 1;

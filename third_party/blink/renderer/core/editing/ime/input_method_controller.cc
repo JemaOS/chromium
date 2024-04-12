@@ -58,7 +58,6 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
-#include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_text_area_element.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
@@ -70,8 +69,6 @@
 #include "third_party/blink/renderer/core/page/page.h"
 
 namespace blink {
-
-using mojom::blink::FormControlType;
 
 namespace {
 
@@ -224,9 +221,8 @@ Element* RootEditableElementOfSelection(const FrameSelection& frameSelection) {
     return nullptr;
   // To avoid update layout, we attempt to get root editable element from
   // a position where script/user specified.
-  if (Element* editable = RootEditableElementOf(selection.Anchor())) {
+  if (Element* editable = RootEditableElementOf(selection.Base()))
     return editable;
-  }
 
   // This is work around for applications assumes a position before editable
   // element as editable[1]
@@ -260,10 +256,10 @@ int ComputeAutocapitalizeFlags(const Element* element) {
   // autocapitalization hint" for the focused element:
   // https://html.spec.whatwg.org/C/#used-autocapitalization-hint
   if (auto* input = DynamicTo<HTMLInputElement>(*html_element)) {
-    FormControlType input_type = input->FormControlType();
-    if (input_type == FormControlType::kInputEmail ||
-        input_type == FormControlType::kInputUrl ||
-        input_type == FormControlType::kInputPassword) {
+    const AtomicString& input_type = input->type();
+    if (input_type == input_type_names::kEmail ||
+        input_type == input_type_names::kUrl ||
+        input_type == input_type_names::kPassword) {
       // The autocapitalize IDL attribute value is ignored for these input
       // types, so we set the None flag.
       return kWebTextInputFlagAutocapitalizeNone;
@@ -415,7 +411,8 @@ void InputMethodController::DispatchBeforeInputFromComposition(
   if (auto* node = target->ToNode())
     ranges = TargetRangesForInputEvent(*node);
   InputEvent* before_input_event = InputEvent::CreateBeforeInput(
-      input_type, data, InputEvent::EventIsComposing::kIsComposing, ranges);
+      input_type, data, InputTypeIsCancelable(input_type),
+      InputEvent::EventIsComposing::kIsComposing, ranges);
   target->DispatchEvent(*before_input_event);
 }
 
@@ -452,16 +449,15 @@ void InputMethodController::InsertTextDuringCompositionWithEvents(
   if (!target)
     return;
 
-  DispatchCompositionUpdateEvent(frame, text);
-  // 'compositionupdate' event handler may destroy document.
-  if (!IsAvailable()) {
-    return;
-  }
-
   DispatchBeforeInputFromComposition(
       target, InputEvent::InputType::kInsertCompositionText, text);
 
   // 'beforeinput' event handler may destroy document.
+  if (!IsAvailable())
+    return;
+
+  DispatchCompositionUpdateEvent(frame, text);
+  // 'compositionupdate' event handler may destroy document.
   if (!IsAvailable())
     return;
 
@@ -631,7 +627,7 @@ bool InputMethodController::FinishComposingText(
         GetFrame()
             .Selection()
             .ComputeVisibleSelectionInDOMTreeDeprecated()
-            .IsAnchorFirst();
+            .IsBaseFirst();
     RevealSelectionScope reveal_selection_scope(GetFrame());
 
     if (is_too_long) {
@@ -698,32 +694,20 @@ bool InputMethodController::CommitText(
   return InsertTextAndMoveCaret(text, relative_caret_position, ime_text_spans);
 }
 
-bool InputMethodController::ReplaceTextAndMoveCaret(
-    const String& text,
-    PlainTextRange range,
-    MoveCaretBehavior move_caret_behavior) {
+bool InputMethodController::ReplaceText(const String& text,
+                                        PlainTextRange range) {
   EventQueueScope scope;
   const PlainTextRange old_selection(GetSelectionOffsets());
   if (!SetSelectionOffsets(range))
     return false;
   if (!InsertText(text))
     return false;
-
-  switch (move_caret_behavior) {
-    case MoveCaretBehavior::kMoveCaretAfterText: {
-      wtf_size_t absolute_caret_position = range.Start() + text.length();
-      return SetSelectionOffsets(
-          {absolute_caret_position, absolute_caret_position});
-    }
-    case MoveCaretBehavior::kDoNotMove: {
-      wtf_size_t selection_delta = text.length() - range.length();
-      wtf_size_t start = old_selection.Start();
-      wtf_size_t end = old_selection.End();
-      return SetSelectionOffsets(
-          {start >= range.End() ? start + selection_delta : start,
-           end >= range.End() ? end + selection_delta : end});
-    }
-  }
+  wtf_size_t selection_delta = text.length() - range.length();
+  wtf_size_t start = old_selection.Start();
+  wtf_size_t end = old_selection.End();
+  return SetSelectionOffsets(
+      {start >= range.End() ? start + selection_delta : start,
+       end >= range.End() ? end + selection_delta : end});
 }
 
 bool InputMethodController::ReplaceComposition(const String& text) {
@@ -1075,28 +1059,26 @@ void InputMethodController::SetComposition(
   }
 
   // Find out what node has the composition now.
-  const Position anchor =
-      MostForwardCaretPosition(selection.Anchor(), kCanSkipOverEditingBoundary);
-  Node* anchor_node = anchor.AnchorNode();
-  if (!anchor_node || !anchor_node->IsTextNode()) {
+  const Position base =
+      MostForwardCaretPosition(selection.Base(), kCanSkipOverEditingBoundary);
+  Node* base_node = base.AnchorNode();
+  if (!base_node || !base_node->IsTextNode())
     return;
-  }
 
-  const Position focus = selection.Focus();
-  Node* focus_node = focus.AnchorNode();
+  const Position extent = selection.Extent();
+  Node* extent_node = extent.AnchorNode();
 
-  unsigned focus_offset = focus.ComputeOffsetInContainerNode();
-  unsigned anchor_offset = anchor.ComputeOffsetInContainerNode();
+  unsigned extent_offset = extent.ComputeOffsetInContainerNode();
+  unsigned base_offset = base.ComputeOffsetInContainerNode();
 
   has_composition_ = true;
   if (!composition_range_)
     composition_range_ = Range::Create(GetDocument());
-  composition_range_->setStart(anchor_node, anchor_offset);
-  composition_range_->setEnd(focus_node, focus_offset);
+  composition_range_->setStart(base_node, base_offset);
+  composition_range_->setEnd(extent_node, extent_offset);
 
-  if (anchor_node->GetLayoutObject()) {
-    anchor_node->GetLayoutObject()->SetShouldDoFullPaintInvalidation();
-  }
+  if (base_node->GetLayoutObject())
+    base_node->GetLayoutObject()->SetShouldDoFullPaintInvalidation();
 
   // TODO(editing-dev): The use of UpdateStyleAndLayout
   // needs to be audited. see http://crbug.com/590369 for more details.
@@ -1565,23 +1547,6 @@ void InputMethodController::DeleteSurroundingTextInCodePoints(int before,
   return DeleteSurroundingText(before_length, after_length);
 }
 
-void InputMethodController::ExtendSelectionAndReplace(
-    int before,
-    int after,
-    const String& replacement_text) {
-  const PlainTextRange selection_offsets(GetSelectionOffsets());
-  if (selection_offsets.IsNull() || before < 0 || after < 0) {
-    return;
-  }
-
-  ReplaceTextAndMoveCaret(
-      replacement_text,
-      PlainTextRange(
-          std::max(static_cast<int>(selection_offsets.Start()) - before, 0),
-          selection_offsets.End() + after),
-      MoveCaretBehavior::kMoveCaretAfterText);
-}
-
 void InputMethodController::GetLayoutBounds(gfx::Rect* control_bounds,
                                             gfx::Rect* selection_bounds) {
   if (!IsAvailable())
@@ -1818,32 +1783,19 @@ void InputMethodController::SetVirtualKeyboardVisibilityRequest(
     ui::mojom::VirtualKeyboardVisibilityRequest vk_visibility_request) {
   // show/hide API behavior is only applicable for elements/editcontexts that
   // have manual VK policy.
-  if (VirtualKeyboardPolicyOfFocusedElement() ==
-      ui::mojom::VirtualKeyboardPolicy::MANUAL) {
+  if ((VirtualKeyboardPolicyOfFocusedElement() ==
+       ui::mojom::VirtualKeyboardPolicy::MANUAL) ||
+      (GetActiveEditContext() &&
+       GetActiveEditContext()->IsVirtualKeyboardPolicyManual())) {
     last_vk_visibility_request_ = vk_visibility_request;
   }  // else we don't change the last VK visibility request.
 }
 
 DOMNodeId InputMethodController::NodeIdOfFocusedElement() const {
-  Element* element = GetDocument().FocusedElement();
-  return element ? element->GetDomNodeId() : kInvalidDOMNodeId;
+  return DOMNodeIds::IdForNode(GetDocument().FocusedElement());
 }
 
 WebTextInputType InputMethodController::TextInputType() const {
-  if (!IsAvailable()) {
-    return kWebTextInputTypeNone;
-  }
-
-  // Since selection can never go inside a <canvas> element, if the user is
-  // editing inside a <canvas> with EditContext we need to handle that case
-  // directly before looking at the selection position.
-  if (GetActiveEditContext()) {
-    Element* element = GetDocument().FocusedElement();
-    if (IsA<HTMLCanvasElement>(element)) {
-      return kWebTextInputTypeContentEditable;
-    }
-  }
-
   if (!GetFrame().Selection().IsAvailable()) {
     // "mouse-capture-inside-shadow.html" reaches here.
     return kWebTextInputTypeNone;
@@ -1855,35 +1807,35 @@ WebTextInputType InputMethodController::TextInputType() const {
   if (!RootEditableElementOfSelection(GetFrame().Selection()))
     return kWebTextInputTypeNone;
 
-  Element* element = GetDocument().FocusedElement();
-  if (!element) {
+  if (!IsAvailable())
     return kWebTextInputTypeNone;
-  }
+
+  Element* element = GetDocument().FocusedElement();
+  if (!element)
+    return kWebTextInputTypeNone;
 
   if (auto* input = DynamicTo<HTMLInputElement>(*element)) {
-    FormControlType type = input->FormControlType();
+    const AtomicString& type = input->type();
 
     if (input->IsDisabledOrReadOnly())
       return kWebTextInputTypeNone;
 
-    switch (type) {
-      case FormControlType::kInputPassword:
-        return kWebTextInputTypePassword;
-      case FormControlType::kInputSearch:
-        return kWebTextInputTypeSearch;
-      case FormControlType::kInputEmail:
-        return kWebTextInputTypeEmail;
-      case FormControlType::kInputNumber:
-        return kWebTextInputTypeNumber;
-      case FormControlType::kInputTelephone:
-        return kWebTextInputTypeTelephone;
-      case FormControlType::kInputUrl:
-        return kWebTextInputTypeURL;
-      case FormControlType::kInputText:
-        return kWebTextInputTypeText;
-      default:
-        return kWebTextInputTypeNone;
-    }
+    if (type == input_type_names::kPassword)
+      return kWebTextInputTypePassword;
+    if (type == input_type_names::kSearch)
+      return kWebTextInputTypeSearch;
+    if (type == input_type_names::kEmail)
+      return kWebTextInputTypeEmail;
+    if (type == input_type_names::kNumber)
+      return kWebTextInputTypeNumber;
+    if (type == input_type_names::kTel)
+      return kWebTextInputTypeTelephone;
+    if (type == input_type_names::kUrl)
+      return kWebTextInputTypeURL;
+    if (type == input_type_names::kText)
+      return kWebTextInputTypeText;
+
+    return kWebTextInputTypeNone;
   }
 
   if (auto* textarea = DynamicTo<HTMLTextAreaElement>(*element)) {

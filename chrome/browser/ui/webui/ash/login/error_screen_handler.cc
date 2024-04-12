@@ -17,8 +17,12 @@ ErrorScreenHandler::ErrorScreenHandler() : BaseScreenHandler(kScreenId) {}
 
 ErrorScreenHandler::~ErrorScreenHandler() = default;
 
-void ErrorScreenHandler::ShowScreenWithParam(bool is_closeable) {
-  ShowInWebUI(base::Value::Dict().Set("isCloseable", is_closeable));
+void ErrorScreenHandler::Show() {
+  base::Value::Dict data;
+  if (LoginDisplayHost::default_host()) {
+    data.Set("hasUserPods", LoginDisplayHost::default_host()->HasUserPods());
+  }
+  ShowInWebUI(std::move(data));
 }
 
 void ErrorScreenHandler::ShowOobeScreen(OobeScreenId screen) {
@@ -39,6 +43,10 @@ void ErrorScreenHandler::SetGuestSigninAllowed(bool value) {
   CallExternalAPI("allowGuestSignin", value);
 }
 
+void ErrorScreenHandler::SetJemaLocalSigninAllowed(bool value) {
+  CallExternalAPI("allowJemaLocalSignin", value);
+}
+
 void ErrorScreenHandler::SetOfflineSigninAllowed(bool value) {
   CallExternalAPI("allowOfflineLogin", value);
 }
@@ -47,12 +55,12 @@ void ErrorScreenHandler::SetShowConnectingIndicator(bool value) {
   CallExternalAPI("showConnectingIndicator", value);
 }
 
-void ErrorScreenHandler::SetUIState(NetworkError::UIState ui_state) {
-  CallExternalAPI("setUiState", static_cast<int>(ui_state));
+void ErrorScreenHandler::SetIsPersistentError(bool is_persistent) {
+  CallExternalAPI("setIsPersistentError", is_persistent);
 }
 
-base::WeakPtr<ErrorScreenView> ErrorScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
+void ErrorScreenHandler::SetUIState(NetworkError::UIState ui_state) {
+  CallExternalAPI("setUIState", static_cast<int>(ui_state));
 }
 
 void ErrorScreenHandler::DeclareLocalizedValues(
@@ -85,6 +93,7 @@ void ErrorScreenHandler::DeclareLocalizedValues(
   builder->Add("proxySettingsMenuName",
                IDS_NETWORK_PROXY_SETTINGS_LIST_ITEM_NAME);
   builder->Add("addWiFiNetworkMenuName", IDS_NETWORK_ADD_WI_FI_LIST_ITEM_NAME);
+  builder->Add("jemaLocalSignin", IDS_JEMA_LOCAL_SIGNIN_HTML);
   builder->Add("autoEnrollmentErrorMessageTitle", IDS_LOGIN_AUTO_ENROLLMENT_OFFLINE_TITLE);
   ui::network_element::AddLocalizedValuesToBuilder(builder);
 

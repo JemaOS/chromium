@@ -1,8 +1,4 @@
 <style include="scanning-fonts cros-color-overrides">
-  :host-context(body.jelly-enabled) .container {
-    font: var(--cros-body-2-font);
-  }
-
   .container,
   #doneButtonContainer {
     width: 272px;
@@ -59,10 +55,10 @@
 </style>
 <div class="container">
   <span id="fileSavedText" class="label"
-      inner-h-t-m-l="[[fileSavedTextContent]]">
+      inner-h-t-m-l="[[fileSavedTextContent_]]">
   </span>
 </div>
-<div class="container" on-click="onShowFileInLocationClick" >
+<div class="container" on-click="showFileInLocation_" >
   <span id="showInFolderButtonLabel" class="label" aria-hidden="true">
     [[i18n('showInFolderButtonLabel')]]
   </span>
@@ -70,9 +66,10 @@
       iron-icon="cr:open-in-new" aria-labelledby="showInFolderButtonLabel">
   </cr-icon-button>
 </div>
-<div class="container" on-click="onOpenMediaAppClick" >
+<div class="container" hidden="[[!showEditButton_]]"
+    on-click="openMediaApp_" >
   <span id="editButtonLabel" class="label" aria-hidden="true">
-    [[editButtonLabel]]
+    [[editButtonLabel_]]
   </span>
   <cr-icon-button id="editButton" class="button"
       iron-icon="cr:open-in-new" aria-labelledby="editButtonLabel">
@@ -80,7 +77,7 @@
 </div>
 <div id="doneButtonContainer">
   <cr-button id="doneButton" class="action-button"
-      on-click="onDoneClick">
+      on-click="onDoneClick_">
     [[i18n('doneButtonText')]]
   </cr-button>
 </div>

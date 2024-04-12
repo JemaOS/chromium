@@ -42,7 +42,7 @@ void GuestOsRemover::RemoveVm() {
 }
 
 void GuestOsRemover::StopVmFinished(
-    std::optional<vm_tools::concierge::StopVmResponse> response) {
+    absl::optional<vm_tools::concierge::StopVmResponse> response) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!response) {
     LOG(ERROR) << "Failed to stop termina vm. Empty response.";
@@ -74,7 +74,7 @@ void GuestOsRemover::StopVmFinished(
 }
 
 void GuestOsRemover::DestroyDiskImageFinished(
-    std::optional<vm_tools::concierge::DestroyDiskImageResponse> response) {
+    absl::optional<vm_tools::concierge::DestroyDiskImageResponse> response) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!response) {
     LOG(ERROR) << "Failed to destroy disk image. Empty response.";

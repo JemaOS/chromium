@@ -18,35 +18,42 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.annotation.Config;
 
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Features;
 import org.chromium.chrome.browser.homepage.HomepagePolicyManager.HomepagePolicyStateListener;
 import org.chromium.chrome.browser.init.ChromeBrowserInitializer;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.preferences.PrefChangeRegistrar;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
+import org.chromium.chrome.test.util.browser.Features;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.url.GURL;
 import org.chromium.url.JUnitTestGURLs;
+import org.chromium.url.ShadowGURL;
 
-/** Tests for the {@link HomepagePolicyManager}. */
+/**
+ * Tests for the {@link HomepagePolicyManager}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
+@Config(manifest = Config.NONE, shadows = ShadowGURL.class)
 public class HomepagePolicyManagerTest {
-    public static final String TEST_URL = JUnitTestGURLs.EXAMPLE_URL.getSpec();
-    public static final String CHROME_NTP = JUnitTestGURLs.NTP_URL.getSpec();
+    public static final String TEST_URL = JUnitTestGURLs.EXAMPLE_URL;
+    public static final String CHROME_NTP = JUnitTestGURLs.NTP_URL;
 
-    @Rule public TestRule mProcessor = new Features.JUnitProcessor();
+    @Rule
+    public TestRule mProcessor = new Features.JUnitProcessor();
 
     private HomepagePolicyManager mHomepagePolicyManager;
 
-    @Mock private PrefService mMockPrefService;
-    @Mock private PrefChangeRegistrar mMockRegistrar;
-    @Mock private ChromeBrowserInitializer mChromeBrowserInitializer;
+    @Mock
+    private PrefService mMockPrefService;
+    @Mock
+    private PrefChangeRegistrar mMockRegistrar;
+    @Mock
+    private ChromeBrowserInitializer mChromeBrowserInitializer;
 
-    @Mock private HomepagePolicyStateListener mListener;
+    @Mock
+    private HomepagePolicyStateListener mListener;
 
     private SharedPreferencesManager mSharedPreferenceManager;
 
@@ -55,7 +62,7 @@ public class HomepagePolicyManagerTest {
         MockitoAnnotations.initMocks(this);
 
         // Reset shared preference
-        mSharedPreferenceManager = ChromeSharedPreferences.getInstance();
+        mSharedPreferenceManager = SharedPreferencesManager.getInstance();
         setHomepageInSharedPreference(GURL.emptyGURL());
 
         ChromeBrowserInitializer.setForTesting(mChromeBrowserInitializer);
@@ -65,8 +72,7 @@ public class HomepagePolicyManagerTest {
         setupNewHomepagePolicyManagerForTests(false, "", null);
 
         // Verify setup
-        Assert.assertFalse(
-                "#isHomepageManagedByPolicy == true without homepage pref setup",
+        Assert.assertFalse("#isHomepageManagedByPolicy == true without homepage pref setup",
                 mHomepagePolicyManager.isHomepageLocationPolicyEnabled());
     }
 
@@ -75,10 +81,8 @@ public class HomepagePolicyManagerTest {
      *
      * @param homepageLocation homepage preference that will be returned by mock pref service
      */
-    private void setupNewHomepagePolicyManagerForTests(
-            boolean isPolicyEnabled,
-            String homepageLocation,
-            @Nullable HomepagePolicyStateListener listener) {
+    private void setupNewHomepagePolicyManagerForTests(boolean isPolicyEnabled,
+            String homepageLocation, @Nullable HomepagePolicyStateListener listener) {
         Mockito.when(mMockPrefService.isManagedPreference(Pref.HOME_PAGE))
                 .thenReturn(isPolicyEnabled);
         Mockito.when(mMockPrefService.getString(Pref.HOME_PAGE)).thenReturn(homepageLocation);
@@ -101,27 +105,23 @@ public class HomepagePolicyManagerTest {
         // Test if policy reflects the setting of shared preference
         Assert.assertFalse(
                 "HomepagePolicyManager should be not initialized yet", manager.isInitialized());
-        Assert.assertFalse(
-                "#isHomepageManagedByPolicy not consistent with test setting",
+        Assert.assertFalse("#isHomepageManagedByPolicy not consistent with test setting",
                 manager.isHomepageLocationPolicyEnabled());
     }
 
     @Test
     @SmallTest
     public void testEmptyInstance_EnabledFromSharedPreference() {
-        setHomepageInSharedPreference(new GURL(CHROME_NTP));
+        setHomepageInSharedPreference(JUnitTestGURLs.getGURL(CHROME_NTP));
 
         // Create a new empty instance
         HomepagePolicyManager manager = new HomepagePolicyManager();
 
         Assert.assertFalse(
                 "HomepagePolicyManager should be not initialized yet", manager.isInitialized());
-        Assert.assertTrue(
-                "#isHomepageManagedByPolicy not consistent with test setting",
+        Assert.assertTrue("#isHomepageManagedByPolicy not consistent with test setting",
                 manager.isHomepageLocationPolicyEnabled());
-        Assert.assertEquals(
-                "#getHomepageUrl not consistent with test setting",
-                CHROME_NTP,
+        Assert.assertEquals("#getHomepageUrl not consistent with test setting", CHROME_NTP,
                 manager.getHomepagePreference().getSpec());
     }
 
@@ -141,22 +141,16 @@ public class HomepagePolicyManagerTest {
     public void testInitialization() {
         setupNewHomepagePolicyManagerForTests(true, TEST_URL, null);
 
-        Assert.assertTrue(
-                "#isHomepageManagedByPolicy not consistent with test setting",
+        Assert.assertTrue("#isHomepageManagedByPolicy not consistent with test setting",
                 HomepagePolicyManager.isHomepageManagedByPolicy());
-        Assert.assertEquals(
-                "#getHomepageUrl not consistent with test setting",
-                TEST_URL,
+        Assert.assertEquals("#getHomepageUrl not consistent with test setting", TEST_URL,
                 HomepagePolicyManager.getHomepageUrl().getSpec());
 
-        String homepageGurlSerialized =
-                mSharedPreferenceManager.readString(
-                        ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL, "");
+        String homepageGurlSerialized = mSharedPreferenceManager.readString(
+                ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL, "");
         GURL homepageGurl = GURL.deserialize(homepageGurlSerialized);
-        Assert.assertEquals(
-                "Updated HomepageLocation should be stored in shared preference",
-                TEST_URL,
-                homepageGurl.getSpec());
+        Assert.assertEquals("Updated HomepageLocation should be stored in shared preference",
+                TEST_URL, homepageGurl.getSpec());
     }
 
     @Test
@@ -164,22 +158,16 @@ public class HomepagePolicyManagerTest {
     public void testInitialization_NTP() {
         setupNewHomepagePolicyManagerForTests(true, CHROME_NTP, null);
 
-        Assert.assertTrue(
-                "#isHomepageManagedByPolicy not consistent with test setting",
+        Assert.assertTrue("#isHomepageManagedByPolicy not consistent with test setting",
                 HomepagePolicyManager.isHomepageManagedByPolicy());
-        Assert.assertEquals(
-                "#getHomepageUrl not consistent with test setting",
-                CHROME_NTP,
+        Assert.assertEquals("#getHomepageUrl not consistent with test setting", CHROME_NTP,
                 HomepagePolicyManager.getHomepageUrl().getSpec());
 
-        String homepageGurlSerialized =
-                mSharedPreferenceManager.readString(
-                        ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL, "");
+        String homepageGurlSerialized = mSharedPreferenceManager.readString(
+                ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL, "");
         GURL homepageGurl = GURL.deserialize(homepageGurlSerialized);
-        Assert.assertEquals(
-                "Updated HomepageLocation should be stored in shared preference",
-                CHROME_NTP,
-                homepageGurl.getSpec());
+        Assert.assertEquals("Updated HomepageLocation should be stored in shared preference",
+                CHROME_NTP, homepageGurl.getSpec());
     }
 
     @Test
@@ -187,23 +175,21 @@ public class HomepagePolicyManagerTest {
     public void testDestroy() {
         HomepagePolicyManager.destroy();
         Mockito.verify(mMockRegistrar).destroy();
-        Assert.assertTrue(
-                "Listeners are not remove completely",
+        Assert.assertTrue("Listeners are not remove completely",
                 mHomepagePolicyManager.getListenersForTesting().isEmpty());
     }
 
     @Test
     @SmallTest
     public void testPrefRefreshToEnablePolicy() {
-        Assert.assertFalse(
-                "Policy should be disabled after set up",
+        Assert.assertFalse("Policy should be disabled after set up",
                 mHomepagePolicyManager.isHomepageLocationPolicyEnabled());
 
         // Add listener
         mHomepagePolicyManager.addListener(mListener);
 
         // A new policy URL is set, which triggers the refresh of native manager.
-        final String newUrl = JUnitTestGURLs.URL_1.getSpec();
+        final String newUrl = JUnitTestGURLs.URL_1;
         Mockito.when(mMockPrefService.isManagedPreference(Pref.HOME_PAGE)).thenReturn(true);
         Mockito.when(mMockPrefService.getString(Pref.HOME_PAGE)).thenReturn(newUrl);
 
@@ -211,12 +197,9 @@ public class HomepagePolicyManagerTest {
         mHomepagePolicyManager.onPreferenceChange();
 
         // The homepage retrieved from homepage manager should be in sync with pref setting
-        Assert.assertTrue(
-                "Policy should be enabled after refresh",
+        Assert.assertTrue("Policy should be enabled after refresh",
                 mHomepagePolicyManager.isHomepageLocationPolicyEnabled());
-        Assert.assertEquals(
-                "#getHomepageUrl not consistent with test setting",
-                newUrl,
+        Assert.assertEquals("#getHomepageUrl not consistent with test setting", newUrl,
                 mHomepagePolicyManager.getHomepagePreference().getSpec());
         Mockito.verify(mListener, Mockito.times(1)).onHomepagePolicyUpdate();
     }
@@ -229,8 +212,7 @@ public class HomepagePolicyManagerTest {
         mHomepagePolicyManager.addListener(mListener);
 
         // The verify policyEnabled
-        Assert.assertTrue(
-                "Policy should be enabled after set up",
+        Assert.assertTrue("Policy should be enabled after set up",
                 mHomepagePolicyManager.isHomepageLocationPolicyEnabled());
 
         // Update the preference, so that the policy will be disabled.
@@ -239,8 +221,7 @@ public class HomepagePolicyManagerTest {
         mHomepagePolicyManager.onPreferenceChange();
 
         // The homepage retrieved from homepage manager should be in sync with pref setting.
-        Assert.assertFalse(
-                "Policy should be disabled after refresh",
+        Assert.assertFalse("Policy should be disabled after refresh",
                 mHomepagePolicyManager.isHomepageLocationPolicyEnabled());
         Mockito.verify(mListener, Mockito.times(1)).onHomepagePolicyUpdate();
     }
@@ -252,8 +233,7 @@ public class HomepagePolicyManagerTest {
         setupNewHomepagePolicyManagerForTests(true, TEST_URL, null);
 
         // The verify policyEnabled
-        Assert.assertTrue(
-                "Policy should be enabled after set up",
+        Assert.assertTrue("Policy should be enabled after set up",
                 mHomepagePolicyManager.isHomepageLocationPolicyEnabled());
 
         // Perform an debounce - creating a new homepage manager with same setting, and add the
@@ -261,12 +241,9 @@ public class HomepagePolicyManagerTest {
         setupNewHomepagePolicyManagerForTests(true, TEST_URL, mListener);
 
         // Verify listeners should not receive updates.
-        Assert.assertTrue(
-                "Policy should be enabled after refresh",
+        Assert.assertTrue("Policy should be enabled after refresh",
                 mHomepagePolicyManager.isHomepageLocationPolicyEnabled());
-        Assert.assertEquals(
-                "#getHomepageUrl not consistent with test setting",
-                TEST_URL,
+        Assert.assertEquals("#getHomepageUrl not consistent with test setting", TEST_URL,
                 mHomepagePolicyManager.getHomepagePreference().getSpec());
 
         // However, because the native setting is consistent with cached value in SharedPreference,
@@ -284,37 +261,35 @@ public class HomepagePolicyManagerTest {
     @Test
     @SmallTest
     public void testGurlPreferenceKeysMigrationInConstructor() {
-        ChromeSharedPreferences.getInstance()
-                .writeString(ChromePreferenceKeys.DEPRECATED_HOMEPAGE_LOCATION_POLICY, null);
-        ChromeSharedPreferences.getInstance()
-                .writeString(ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL, null);
+        SharedPreferencesManager.getInstance().writeString(
+                ChromePreferenceKeys.DEPRECATED_HOMEPAGE_LOCATION_POLICY, null);
+        SharedPreferencesManager.getInstance().writeString(
+                ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL, null);
         mHomepagePolicyManager = new HomepagePolicyManager();
         Assert.assertFalse(mHomepagePolicyManager.isHomepageLocationPolicyEnabled());
 
-        final String url1 = JUnitTestGURLs.URL_1.getSpec();
-        final String url2 = JUnitTestGURLs.URL_2.getSpec();
-        ChromeSharedPreferences.getInstance()
-                .writeString(ChromePreferenceKeys.DEPRECATED_HOMEPAGE_LOCATION_POLICY, url1);
-        ChromeSharedPreferences.getInstance()
-                .writeString(ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL, null);
+        final String url1 = JUnitTestGURLs.URL_1;
+        final String url2 = JUnitTestGURLs.URL_2;
+        SharedPreferencesManager.getInstance().writeString(
+                ChromePreferenceKeys.DEPRECATED_HOMEPAGE_LOCATION_POLICY, url1);
+        SharedPreferencesManager.getInstance().writeString(
+                ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL, null);
         mHomepagePolicyManager = new HomepagePolicyManager();
         Assert.assertEquals(url1, mHomepagePolicyManager.getHomepagePreference().getSpec());
 
-        ChromeSharedPreferences.getInstance()
-                .writeString(ChromePreferenceKeys.DEPRECATED_HOMEPAGE_LOCATION_POLICY, null);
-        ChromeSharedPreferences.getInstance()
-                .writeString(
-                        ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL,
-                        new GURL(url1).serialize());
+        SharedPreferencesManager.getInstance().writeString(
+                ChromePreferenceKeys.DEPRECATED_HOMEPAGE_LOCATION_POLICY, null);
+        SharedPreferencesManager.getInstance().writeString(
+                ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL,
+                JUnitTestGURLs.getGURL(url1).serialize());
         mHomepagePolicyManager = new HomepagePolicyManager();
         Assert.assertEquals(url1, mHomepagePolicyManager.getHomepagePreference().getSpec());
 
-        ChromeSharedPreferences.getInstance()
-                .writeString(ChromePreferenceKeys.DEPRECATED_HOMEPAGE_LOCATION_POLICY, url1);
-        ChromeSharedPreferences.getInstance()
-                .writeString(
-                        ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL,
-                        new GURL(url2).serialize());
+        SharedPreferencesManager.getInstance().writeString(
+                ChromePreferenceKeys.DEPRECATED_HOMEPAGE_LOCATION_POLICY, url1);
+        SharedPreferencesManager.getInstance().writeString(
+                ChromePreferenceKeys.HOMEPAGE_LOCATION_POLICY_GURL,
+                JUnitTestGURLs.getGURL(url2).serialize());
         mHomepagePolicyManager = new HomepagePolicyManager();
         Assert.assertEquals(url2, mHomepagePolicyManager.getHomepagePreference().getSpec());
     }

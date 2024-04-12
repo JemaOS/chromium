@@ -20,8 +20,7 @@ namespace extensions {
 class PdfViewerPrivateEventRouter : public KeyedService,
                                     public EventRouter::Observer {
  public:
-  static std::unique_ptr<PdfViewerPrivateEventRouter> Create(
-      content::BrowserContext* context);
+  static PdfViewerPrivateEventRouter* Create(content::BrowserContext* context);
 
   explicit PdfViewerPrivateEventRouter(Profile* profile);
 

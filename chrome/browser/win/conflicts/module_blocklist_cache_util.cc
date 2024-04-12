@@ -7,13 +7,12 @@
 #include <functional>
 #include <iterator>
 #include <string>
-#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include "base/check.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -57,10 +56,10 @@ base::MD5Digest CalculateModuleBlocklistCacheMD5(
   base::MD5Init(&md5_context);
 
   base::MD5Update(&md5_context,
-                  std::string_view(reinterpret_cast<const char*>(&metadata),
-                                   sizeof(metadata)));
+                  base::StringPiece(reinterpret_cast<const char*>(&metadata),
+                                    sizeof(metadata)));
   base::MD5Update(&md5_context,
-                  std::string_view(
+                  base::StringPiece(
                       reinterpret_cast<const char*>(blocklisted_modules.data()),
                       sizeof(third_party_dlls::PackedListModule) *
                           blocklisted_modules.size()));
@@ -261,14 +260,14 @@ bool ModuleTimeDateStampGreater::operator()(
 void RemoveAllowlistedEntries(
     const ModuleListFilter& module_list_filter,
     std::vector<third_party_dlls::PackedListModule>* blocklisted_modules) {
-  std::erase_if(
+  base::EraseIf(
       *blocklisted_modules,
       [&module_list_filter](const third_party_dlls::PackedListModule& module) {
         return module_list_filter.IsAllowlisted(
-            std::string_view(
+            base::StringPiece(
                 reinterpret_cast<const char*>(&module.basename_hash[0]),
                 std::size(module.basename_hash)),
-            std::string_view(
+            base::StringPiece(
                 reinterpret_cast<const char*>(&module.code_id_hash[0]),
                 std::size(module.code_id_hash)));
       });

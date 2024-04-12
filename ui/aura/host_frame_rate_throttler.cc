@@ -48,11 +48,8 @@ void HostFrameRateThrottler::UpdateHostFrameSinkManager() {
   ids.reserve(hosts_.size());
   for (WindowTreeHost* host : hosts_)
     ids.push_back(host->compositor()->frame_sink_id());
-  // `ContextFactory` may be null on shutdown.
-  if (Env::GetInstance()->context_factory()) {
-    Env::GetInstance()->context_factory()->GetHostFrameSinkManager()->Throttle(
-        ids, base::Hertz(kDefaultThrottleFps));
-  }
+  Env::GetInstance()->context_factory()->GetHostFrameSinkManager()->Throttle(
+      ids, base::Hertz(kDefaultThrottleFps));
 }
 
 }  // namespace aura

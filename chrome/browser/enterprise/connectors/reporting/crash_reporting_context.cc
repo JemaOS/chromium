@@ -18,7 +18,7 @@
 
 namespace enterprise_connectors {
 
-#if !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS)
+#if !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS_ASH)
 
 namespace {
 
@@ -53,13 +53,9 @@ void CopyNewReports(
 
 std::vector<crashpad::CrashReportDatabase::Report> GetNewReports(
     time_t latest_creation_time) {
-  auto crashpad_path = crash_reporter::GetCrashpadDatabasePath();
-  if (!crashpad_path) {
-    VLOG(1) << "enterprise.crash_reporting: no valid crashpad path";
-    return {};
-  }
   std::unique_ptr<crashpad::CrashReportDatabase> database =
-      crashpad::CrashReportDatabase::InitializeWithoutCreating(*crashpad_path);
+      crashpad::CrashReportDatabase::InitializeWithoutCreating(
+          crash_reporter::GetCrashpadDatabasePath());
   if (!database) {
     VLOG(1) << "enterprise.crash_reporting: failed to fetch crashpad db";
     return {};
@@ -91,7 +87,7 @@ void ReportCrashes() {
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock()},
       base::BindOnce(&GetNewReports, latest_creation_time),
-      base::BindOnce(&UploadToReportingServer, reporting_client->GetWeakPtr(),
+      base::BindOnce(&UploadToReportingServer, reporting_client,
                      g_browser_process->local_state()));
 }
 
@@ -149,20 +145,20 @@ void SetLatestCrashReportTime(PrefService* local_state, time_t timestamp) {
 }
 
 void UploadToReportingServer(
-    base::WeakPtr<RealtimeReportingClient> reporting_client,
+    RealtimeReportingClient* reporting_client,
     PrefService* local_state,
     std::vector<crashpad::CrashReportDatabase::Report> reports) {
   VLOG(1) << "enterprise.crash_reporting: " << reports.size()
           << " crashes to report";
-  if (reports.empty() || !reporting_client) {
+  if (reports.empty()) {
     return;
   }
-  std::optional<ReportingSettings> settings =
+  absl::optional<ReportingSettings> settings =
       reporting_client->GetReportingSettings();
-  const std::string version(version_info::GetVersionNumber());
-  const std::string channel(
-      version_info::GetChannelString(chrome::GetChannel()));
-  const std::string platform(version_info::GetOSType());
+  const std::string version = version_info::GetVersionNumber();
+  const std::string channel =
+      version_info::GetChannelString(chrome::GetChannel());
+  const std::string platform = version_info::GetOSType();
 
   int64_t latest_creation_time = -1;
 
@@ -207,7 +203,7 @@ RealtimeReportingClient* CrashReportingContext::GetCrashReportingClient()
     if (!reporting_client) {
       continue;
     }
-    std::optional<ReportingSettings> settings =
+    absl::optional<ReportingSettings> settings =
         reporting_client->GetReportingSettings();
     if (settings.has_value() &&
         settings->enabled_event_names.count(
@@ -253,7 +249,7 @@ void CrashReportingContext::RemoveProfile(BrowserCrashEventRouter* router) {
   }
 }
 
-#endif  // !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS)
+#endif  // !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS_ASH)
 
 CrashReportingContext::~CrashReportingContext() = default;
 

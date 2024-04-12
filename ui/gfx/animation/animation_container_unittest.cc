@@ -92,12 +92,8 @@ TEST_F(AnimationContainerTest, Ownership) {
 
 // Makes sure multiple animations are managed correctly.
 TEST_F(AnimationContainerTest, Multi) {
-  base::RunLoop loop1;
   TestAnimationDelegate delegate1;
   TestAnimationDelegate delegate2;
-
-  delegate1.set_quit_closure(loop1.QuitWhenIdleClosure());
-  delegate2.set_quit_closure(loop1.QuitWhenIdleClosure());
 
   scoped_refptr<AnimationContainer> container(new AnimationContainer());
   TestAnimation animation1(&delegate1);
@@ -112,7 +108,7 @@ TEST_F(AnimationContainerTest, Multi) {
   EXPECT_TRUE(container->is_running());
 
   // Run the message loop the delegate quits the message loop when notified.
-  loop1.Run();
+  base::RunLoop().Run();
 
   // Both timers should have finished.
   EXPECT_TRUE(delegate1.finished());
@@ -124,10 +120,9 @@ TEST_F(AnimationContainerTest, Multi) {
 
 // Makes sure observer is notified appropriately.
 TEST_F(AnimationContainerTest, Observer) {
-  base::RunLoop loop;
   FakeAnimationContainerObserver observer;
   TestAnimationDelegate delegate1;
-  delegate1.set_quit_closure(loop.QuitWhenIdleClosure());
+
   scoped_refptr<AnimationContainer> container(new AnimationContainer());
   container->set_observer(&observer);
   TestAnimation animation1(&delegate1);
@@ -138,7 +133,7 @@ TEST_F(AnimationContainerTest, Observer) {
   EXPECT_TRUE(container->is_running());
 
   // Run the message loop. The delegate quits the message loop when notified.
-  loop.Run();
+  base::RunLoop().Run();
 
   EXPECT_EQ(1, observer.progressed_count());
 

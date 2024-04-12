@@ -6,13 +6,12 @@
 
 #include <stddef.h>
 
-#include <optional>
-
 #include "base/check.h"
 #include "base/command_line.h"
 #include "base/containers/contains.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/common/chrome_switches.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace chrome {
 
@@ -20,11 +19,11 @@ namespace {
 
 // If the device is running in forced app mode, returns the ID of the app for
 // which the device is forced in app mode. Otherwise, returns nullopt.
-std::optional<std::string> GetForcedAppModeApp() {
+absl::optional<std::string> GetForcedAppModeApp() {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (!command_line->HasSwitch(switches::kForceAppMode) ||
       !command_line->HasSwitch(switches::kAppId)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return command_line->GetSwitchValueASCII(switches::kAppId);
@@ -74,7 +73,7 @@ bool IsRunningInForcedAppMode() {
 bool IsRunningInForcedAppModeForApp(const std::string& app_id) {
   DCHECK(!app_id.empty());
 
-  std::optional<std::string> forced_app_mode_app = GetForcedAppModeApp();
+  absl::optional<std::string> forced_app_mode_app = GetForcedAppModeApp();
   if (!forced_app_mode_app.has_value()) {
     return false;
   }

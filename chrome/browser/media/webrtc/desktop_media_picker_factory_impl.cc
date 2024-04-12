@@ -9,7 +9,6 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/media/webrtc/current_tab_desktop_media_list.h"
-#include "chrome/browser/media/webrtc/desktop_capturer_wrapper.h"
 #include "chrome/browser/media/webrtc/native_desktop_media_list.h"
 #include "chrome/browser/media/webrtc/tab_desktop_media_list.h"
 #include "content/public/browser/desktop_capture.h"
@@ -17,42 +16,6 @@
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/media/webrtc/desktop_media_list_ash.h"
 #endif
-
-#if BUILDFLAG(IS_MAC)
-#include "chrome/browser/media/webrtc/thumbnail_capturer_mac.h"
-#endif
-
-namespace {
-#if !BUILDFLAG(IS_CHROMEOS_ASH)
-std::unique_ptr<ThumbnailCapturer> MakeScreenCapturer() {
-#if BUILDFLAG(IS_MAC)
-  if (ShouldUseThumbnailCapturerMac(DesktopMediaList::Type::kScreen)) {
-    return CreateThumbnailCapturerMac(DesktopMediaList::Type::kScreen);
-  }
-#endif  // BUILDFLAG(IS_MAC)
-
-  std::unique_ptr<webrtc::DesktopCapturer> desktop_capturer =
-      content::desktop_capture::CreateScreenCapturer();
-  return desktop_capturer ? std::make_unique<DesktopCapturerWrapper>(
-                                std::move(desktop_capturer))
-                          : nullptr;
-}
-
-std::unique_ptr<ThumbnailCapturer> MakeWindowCapturer() {
-#if BUILDFLAG(IS_MAC)
-  if (ShouldUseThumbnailCapturerMac(DesktopMediaList::Type::kWindow)) {
-    return CreateThumbnailCapturerMac(DesktopMediaList::Type::kWindow);
-  }
-#endif  // BUILDFLAG(IS_MAC)
-
-  std::unique_ptr<webrtc::DesktopCapturer> desktop_capturer =
-      content::desktop_capture::CreateWindowCapturer();
-  return desktop_capturer ? std::make_unique<DesktopCapturerWrapper>(
-                                std::move(desktop_capturer))
-                          : nullptr;
-}
-#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
-}  // namespace
 
 DesktopMediaPickerFactoryImpl::DesktopMediaPickerFactoryImpl() = default;
 
@@ -64,12 +27,12 @@ DesktopMediaPickerFactoryImpl* DesktopMediaPickerFactoryImpl::GetInstance() {
   return impl.get();
 }
 
-std::unique_ptr<DesktopMediaPicker> DesktopMediaPickerFactoryImpl::CreatePicker(
-    const content::MediaStreamRequest* request) {
+std::unique_ptr<DesktopMediaPicker>
+DesktopMediaPickerFactoryImpl::CreatePicker() {
 // DesktopMediaPicker is implemented only for Windows, OSX and Aura Linux
 // builds.
 #if defined(TOOLKIT_VIEWS)
-  return DesktopMediaPicker::Create(request);
+  return DesktopMediaPicker::Create();
 #else
   return nullptr;
 #endif
@@ -106,7 +69,8 @@ DesktopMediaPickerFactoryImpl::CreateMediaList(
         // If screen capture is not supported on the platform, then we should
         // not attempt to create an instance of NativeDesktopMediaList. Doing so
         // will hit a DCHECK.
-        std::unique_ptr<ThumbnailCapturer> capturer = MakeScreenCapturer();
+        std::unique_ptr<webrtc::DesktopCapturer> capturer =
+            content::desktop_capture::CreateScreenCapturer();
         if (!capturer)
           continue;
 
@@ -128,7 +92,8 @@ DesktopMediaPickerFactoryImpl::CreateMediaList(
         // If window capture is not supported on the platform, then we should
         // not attempt to create an instance of NativeDesktopMediaList. Doing so
         // will hit a DCHECK.
-        std::unique_ptr<ThumbnailCapturer> capturer = MakeWindowCapturer();
+        std::unique_ptr<webrtc::DesktopCapturer> capturer =
+            content::desktop_capture::CreateWindowCapturer();
         if (!capturer)
           continue;
         // If the capturer is not going to enumerate current process windows

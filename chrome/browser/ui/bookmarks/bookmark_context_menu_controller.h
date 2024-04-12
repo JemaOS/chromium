@@ -19,10 +19,6 @@
 class Browser;
 class Profile;
 
-namespace bookmarks {
-class BookmarkModel;
-}  // namespace bookmarks
-
 // An interface implemented by an object that performs actions on the actual
 // menu for the controller.
 class BookmarkContextMenuControllerDelegate {
@@ -35,8 +31,7 @@ class BookmarkContextMenuControllerDelegate {
   // Sent before any command from the menu is executed.
   virtual void WillExecuteCommand(
       int command_id,
-      const std::vector<raw_ptr<const bookmarks::BookmarkNode,
-                                VectorExperimental>>& bookmarks) {}
+      const std::vector<const bookmarks::BookmarkNode*>& bookmarks) {}
 
   // Sent after any command from the menu is executed.
   virtual void DidExecuteCommand(int command_id) {}
@@ -61,8 +56,7 @@ class BookmarkContextMenuController
       Profile* profile,
       BookmarkLaunchLocation opened_from,
       const bookmarks::BookmarkNode* parent,
-      const std::vector<raw_ptr<const bookmarks::BookmarkNode,
-                                VectorExperimental>>& selection);
+      const std::vector<const bookmarks::BookmarkNode*>& selection);
 
   BookmarkContextMenuController(const BookmarkContextMenuController&) = delete;
   BookmarkContextMenuController& operator=(
@@ -102,8 +96,7 @@ class BookmarkContextMenuController
   raw_ptr<Profile> profile_;
   const BookmarkLaunchLocation opened_from_;
   raw_ptr<const bookmarks::BookmarkNode> parent_;
-  std::vector<raw_ptr<const bookmarks::BookmarkNode, VectorExperimental>>
-      selection_;
+  std::vector<const bookmarks::BookmarkNode*> selection_;
   raw_ptr<bookmarks::BookmarkModel> model_;
   std::unique_ptr<ui::SimpleMenuModel> menu_model_;
   // Used to detect deletion of |this| executing a command.

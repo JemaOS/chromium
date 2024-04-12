@@ -24,6 +24,7 @@ constexpr gfx::Size ComboboxArrowSize() {
   return gfx::Size(/*width=*/8, /*height=*/4);
 }
 extern const int kComboboxArrowPaddingWidth;
+extern const int kComboboxArrowPaddingWidthChromeRefresh2023;
 
 int GetComboboxArrowContainerWidthAndMargins();
 

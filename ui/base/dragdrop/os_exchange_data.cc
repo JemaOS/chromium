@@ -13,7 +13,7 @@
 #include "ui/base/clipboard/clipboard_format_type.h"
 #include "ui/base/data_transfer_policy/data_transfer_endpoint.h"
 #include "ui/base/dragdrop/os_exchange_data_provider_factory.h"
-#include "url/origin.h"
+#include "url/gurl.h"
 
 namespace ui {
 
@@ -27,16 +27,12 @@ OSExchangeData::OSExchangeData(std::unique_ptr<OSExchangeDataProvider> provider)
 OSExchangeData::~OSExchangeData() {
 }
 
-void OSExchangeData::MarkRendererTaintedFromOrigin(const url::Origin& origin) {
-  provider_->MarkRendererTaintedFromOrigin(origin);
+void OSExchangeData::MarkOriginatedFromRenderer() {
+  provider_->MarkOriginatedFromRenderer();
 }
 
-bool OSExchangeData::IsRendererTainted() const {
-  return provider_->IsRendererTainted();
-}
-
-std::optional<url::Origin> OSExchangeData::GetRendererTaintedOrigin() const {
-  return provider_->GetRendererTaintedOrigin();
+bool OSExchangeData::DidOriginateFromRenderer() const {
+  return provider_->DidOriginateFromRenderer();
 }
 
 void OSExchangeData::MarkAsFromPrivileged() {
@@ -69,27 +65,27 @@ void OSExchangeData::SetPickledData(const ClipboardFormatType& format,
   provider_->SetPickledData(format, data);
 }
 
-std::optional<std::u16string> OSExchangeData::GetString() const {
-  return provider_->GetString();
+bool OSExchangeData::GetString(std::u16string* data) const {
+  return provider_->GetString(data);
 }
 
-std::optional<OSExchangeData::UrlInfo> OSExchangeData::GetURLAndTitle(
-    FilenameToURLPolicy policy) const {
-  return provider_->GetURLAndTitle(policy);
+bool OSExchangeData::GetURLAndTitle(FilenameToURLPolicy policy,
+                                    GURL* url,
+                                    std::u16string* title) const {
+  return provider_->GetURLAndTitle(policy, url, title);
 }
 
-std::optional<std::vector<GURL>> OSExchangeData::GetURLs(
-    FilenameToURLPolicy policy) const {
-  return provider_->GetURLs(policy);
+bool OSExchangeData::GetFilename(base::FilePath* path) const {
+  return provider_->GetFilename(path);
 }
 
-std::optional<std::vector<FileInfo>> OSExchangeData::GetFilenames() const {
-  return provider_->GetFilenames();
+bool OSExchangeData::GetFilenames(std::vector<FileInfo>* filenames) const {
+  return provider_->GetFilenames(filenames);
 }
 
-std::optional<base::Pickle> OSExchangeData::GetPickledData(
-    const ClipboardFormatType& format) const {
-  return provider_->GetPickledData(format);
+bool OSExchangeData::GetPickledData(const ClipboardFormatType& format,
+                                    base::Pickle* data) const {
+  return provider_->GetPickledData(format, data);
 }
 
 bool OSExchangeData::HasString() const {
@@ -139,9 +135,9 @@ void OSExchangeData::SetFileContents(const base::FilePath& filename,
   provider_->SetFileContents(filename, file_contents);
 }
 
-std::optional<OSExchangeData::FileContentsInfo>
-OSExchangeData::GetFileContents() const {
-  return provider_->GetFileContents();
+bool OSExchangeData::GetFileContents(base::FilePath* filename,
+                                     std::string* file_contents) const {
+  return provider_->GetFileContents(filename, file_contents);
 }
 
 #if BUILDFLAG(IS_WIN)
@@ -149,16 +145,16 @@ bool OSExchangeData::HasVirtualFilenames() const {
   return provider_->HasVirtualFilenames();
 }
 
-std::optional<std::vector<FileInfo>> OSExchangeData::GetVirtualFilenames()
-    const {
-  return provider_->GetVirtualFilenames();
+bool OSExchangeData::GetVirtualFilenames(
+    std::vector<FileInfo>* filenames) const {
+  return provider_->GetVirtualFilenames(filenames);
 }
 
-void OSExchangeData::GetVirtualFilesAsTempFiles(
+bool OSExchangeData::GetVirtualFilesAsTempFiles(
     base::OnceCallback<
         void(const std::vector<std::pair<base::FilePath, base::FilePath>>&)>
         callback) const {
-  provider_->GetVirtualFilesAsTempFiles(std::move(callback));
+  return provider_->GetVirtualFilesAsTempFiles(std::move(callback));
 }
 #endif
 
@@ -171,8 +167,8 @@ void OSExchangeData::SetHtml(const std::u16string& html, const GURL& base_url) {
   provider_->SetHtml(html, base_url);
 }
 
-std::optional<OSExchangeData::HtmlInfo> OSExchangeData::GetHtml() const {
-  return provider_->GetHtml();
+bool OSExchangeData::GetHtml(std::u16string* html, GURL* base_url) const {
+  return provider_->GetHtml(html, base_url);
 }
 #endif
 

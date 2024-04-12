@@ -13,6 +13,7 @@
 #include "base/notreached.h"
 #include "base/strings/string_util.h"
 #include "build/chromeos_buildflags.h"
+#include "ui/base/layout.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/template_expressions.h"
 #include "ui/resources/grit/webui_resources.h"
@@ -53,6 +54,44 @@ void AppendLoadTimeData(std::string* output) {
   output->append("</script>");
 }
 
+// Appends the source for JsTemplates in a script tag.
+void AppendJsTemplateSourceHtml(std::string* output) {
+  // fetch and cache the pointer of the jstemplate resource source text.
+  std::string jstemplate_src =
+      ui::ResourceBundle::GetSharedInstance().LoadDataResourceString(
+          IDR_JSTEMPLATE_JSTEMPLATE_COMPILED_JS);
+
+  if (jstemplate_src.empty()) {
+    NOTREACHED() << "Unable to get jstemplate src";
+    return;
+  }
+
+  output->append("<script>");
+  output->append(jstemplate_src);
+  output->append("</script>");
+}
+
+// Appends the code that processes the JsTemplate with the JSON. You should
+// call AppendJsTemplateSourceHtml and AppendLoadTimeData before calling this.
+void AppendJsTemplateProcessHtml(const base::Value::Dict& json,
+                                 base::StringPiece template_id,
+                                 std::string* output) {
+  std::string jstext;
+  JSONStringValueSerializer serializer(&jstext);
+  serializer.Serialize(json);
+
+  output->append("<script>");
+  output->append("const pageData = ");
+  output->append(jstext);
+  output->append(";");
+  output->append("loadTimeData.data = pageData;");
+  output->append("var tp = document.getElementById('");
+  output->append(template_id.data(), template_id.size());
+  output->append("');");
+  output->append("jstProcess(new JsEvalContext(pageData), tp);");
+  output->append("</script>");
+}
+
 }  // namespace
 
 std::string GetI18nTemplateHtml(base::StringPiece html_template,
@@ -65,6 +104,20 @@ std::string GetI18nTemplateHtml(base::StringPiece html_template,
   AppendLoadTimeData(&output);
   AppendJsonHtml(json, &output);
 
+  return output;
+}
+
+std::string GetTemplatesHtml(base::StringPiece html_template,
+                             const base::Value::Dict& json,
+                             base::StringPiece template_id) {
+  ui::TemplateReplacements replacements;
+  ui::TemplateReplacementsFromDictionaryValue(json, &replacements);
+  std::string output =
+      ui::ReplaceTemplateExpressions(html_template, replacements);
+
+  AppendJsTemplateSourceHtml(&output);
+  AppendLoadTimeData(&output);
+  AppendJsTemplateProcessHtml(json, template_id, &output);
   return output;
 }
 

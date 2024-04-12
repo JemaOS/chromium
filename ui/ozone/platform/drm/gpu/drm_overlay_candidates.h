@@ -37,7 +37,8 @@ class DrmOverlayCandidates : public OverlayCandidatesOzone {
   void RegisterOverlayRequirement(bool requires_overlay) override;
 
  private:
-  const raw_ptr<DrmOverlayManager> overlay_manager_;  // Not owned.
+  const raw_ptr<DrmOverlayManager, ExperimentalAsh>
+      overlay_manager_;  // Not owned.
   const gfx::AcceleratedWidget widget_;
 };
 

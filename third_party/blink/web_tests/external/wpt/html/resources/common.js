@@ -49,12 +49,6 @@ const HTML5_DEPRECATED_ELEMENTS = [
   'rtc',      'shadow',  'spacer',   'strike',   'tt',        'xmp'
 ];
 
-const HTML5_INPUT_TYPES = [
-  'hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date',
-  'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio',
-  'file', 'submit', 'image', 'reset', 'button'
-];
-
 function newDocument() {
     var d = document.implementation.createDocument();
     return d;

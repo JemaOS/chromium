@@ -34,10 +34,9 @@
 #include "third_party/blink/renderer/core/html/html_body_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
-#include "third_party/blink/renderer/core/layout/layout_text_combine.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/layout_ng_text_combine.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
-#include "third_party/blink/renderer/core/loader/render_blocking_resource_manager.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
@@ -73,8 +72,9 @@ bool NeedsLayoutStylePropagation(const ComputedStyle& layout_style,
          layout_style.Direction() != propagated_style.Direction();
 }
 
-const ComputedStyle* CreateLayoutStyle(const ComputedStyle& style,
-                                       const ComputedStyle& propagated_style) {
+scoped_refptr<const ComputedStyle> CreateLayoutStyle(
+    const ComputedStyle& style,
+    const ComputedStyle& propagated_style) {
   ComputedStyleBuilder builder(style);
   builder.SetDirection(propagated_style.Direction());
   builder.SetWritingMode(propagated_style.GetWritingMode());
@@ -84,8 +84,8 @@ const ComputedStyle* CreateLayoutStyle(const ComputedStyle& style,
 
 }  // namespace
 
-const ComputedStyle* HTMLHtmlElement::LayoutStyleForElement(
-    const ComputedStyle* style) {
+scoped_refptr<const ComputedStyle> HTMLHtmlElement::LayoutStyleForElement(
+    scoped_refptr<const ComputedStyle> style) {
   DCHECK(style);
   DCHECK(GetDocument().InStyleRecalc());
   DCHECK(GetLayoutObject());
@@ -121,7 +121,7 @@ void HTMLHtmlElement::PropagateWritingModeAndDirectionFromBody() {
     return;
 
   const ComputedStyle* const old_style = layout_object->Style();
-  const ComputedStyle* new_style =
+  scoped_refptr<const ComputedStyle> new_style =
       LayoutStyleForElement(layout_object->Style());
 
   if (old_style == new_style)
@@ -142,12 +142,12 @@ void HTMLHtmlElement::PropagateWritingModeAndDirectionFromBody() {
       continue;
     if (is_orthogonal) {
       // If the old and new writing-modes are orthogonal, reattach the layout
-      // objects to make sure we create or remove any LayoutTextCombine.
+      // objects to make sure we create or remove any LayoutNGTextCombine.
       node->SetNeedsReattachLayoutTree();
       continue;
     }
     auto* const text_combine =
-        DynamicTo<LayoutTextCombine>(layout_text->Parent());
+        DynamicTo<LayoutNGTextCombine>(layout_text->Parent());
     if (UNLIKELY(text_combine)) {
       layout_text->SetStyle(text_combine->Style());
       continue;

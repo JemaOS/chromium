@@ -4,18 +4,14 @@
 
 #include "chrome/browser/ui/views/side_panel/read_anything/read_anything_toolbar_view.h"
 
-#include <algorithm>
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/views/side_panel/read_anything/read_anything_menu_button.h"
-#include "chrome/browser/ui/views/side_panel/read_anything/read_anything_toggle_button_view.h"
 #include "chrome/common/accessibility/read_anything_constants.h"
 #include "chrome/grit/generated_resources.h"
-#include "ui/accessibility/accessibility_features.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
@@ -32,33 +28,13 @@
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/flex_layout.h"
 
-// TODO(crbug.com/1439905): Remove unused constructor when the
-// ReadAnythingLocalSidePanel flag is removed.
 ReadAnythingToolbarView::ReadAnythingToolbarView(
     ReadAnythingCoordinator* coordinator,
     ReadAnythingToolbarView::Delegate* toolbar_delegate,
     ReadAnythingFontCombobox::Delegate* font_combobox_delegate)
     : delegate_(toolbar_delegate), coordinator_(std::move(coordinator)) {
   coordinator_->AddObserver(this);
-  Init(toolbar_delegate, font_combobox_delegate);
-  // Start observing model after views creation so initial theme is applied.
-  coordinator_->AddModelObserver(this);
-}
 
-ReadAnythingToolbarView::ReadAnythingToolbarView(
-    ReadAnythingSidePanelController* controller,
-    ReadAnythingToolbarView::Delegate* toolbar_delegate,
-    ReadAnythingFontCombobox::Delegate* font_combobox_delegate)
-    : delegate_(toolbar_delegate), controller_(std::move(controller)) {
-  controller_->AddObserver(this);
-  Init(toolbar_delegate, font_combobox_delegate);
-  // Start observing model after views creation so initial theme is applied.
-  controller_->AddModelObserver(this);
-}
-
-void ReadAnythingToolbarView::Init(
-    ReadAnythingToolbarView::Delegate* toolbar_delegate,
-    ReadAnythingFontCombobox::Delegate* font_combobox_delegate) {
   // Set a FlexLayout LayoutManager for this view.
   SetLayoutManager(std::make_unique<views::FlexLayout>())
       ->SetOrientation(views::LayoutOrientation::kHorizontal)
@@ -81,6 +57,7 @@ void ReadAnythingToolbarView::Init(
   auto decrease_size_button = std::make_unique<ReadAnythingButtonView>(
       base::BindRepeating(&ReadAnythingToolbarView::DecreaseFontSizeCallback,
                           weak_pointer_factory_.GetWeakPtr()),
+      kTextDecreaseIcon, kIconSize, gfx::kPlaceholderColor,
       l10n_util::GetStringUTF16(
           IDS_READING_MODE_DECREASE_FONT_SIZE_BUTTON_LABEL));
   decrease_size_button->SetProperty(views::kCrossAxisAlignmentKey,
@@ -90,23 +67,12 @@ void ReadAnythingToolbarView::Init(
   auto increase_size_button = std::make_unique<ReadAnythingButtonView>(
       base::BindRepeating(&ReadAnythingToolbarView::IncreaseFontSizeCallback,
                           weak_pointer_factory_.GetWeakPtr()),
+      kTextIncreaseIcon, kIconSize, gfx::kPlaceholderColor,
       l10n_util::GetStringUTF16(
           IDS_READING_MODE_INCREASE_FONT_SIZE_BUTTON_LABEL));
   increase_size_button->SetProperty(views::kCrossAxisAlignmentKey,
                                     views::LayoutAlignment::kCenter);
   increase_size_button->SetGroup(kToolbarGroupId);
-
-  // Create link toggle button.
-  auto toggle_links_button = std::make_unique<ReadAnythingToggleButtonView>(
-      delegate_->GetLinksEnabled(),
-      base::BindRepeating(&ReadAnythingToolbarView::LinksToggledCallback,
-                          weak_pointer_factory_.GetWeakPtr()),
-      l10n_util::GetStringUTF16(IDS_READING_MODE_DISABLE_LINKS_BUTTON_LABEL),
-      l10n_util::GetStringUTF16(IDS_READING_MODE_ENABLE_LINKS_BUTTON_LABEL));
-
-  toggle_links_button->SetProperty(views::kCrossAxisAlignmentKey,
-                                   views::LayoutAlignment::kCenter);
-  toggle_links_button->SetGroup(kToolbarGroupId);
 
   // Create theme selection menubutton.
   auto colors_button = std::make_unique<ReadAnythingMenuButton>(
@@ -141,10 +107,12 @@ void ReadAnythingToolbarView::Init(
   decrease_text_size_button_ = AddChildView(std::move(decrease_size_button));
   increase_text_size_button_ = AddChildView(std::move(increase_size_button));
   AddChildView(Separator());
-  toggle_links_button_ = AddChildView(std::move(toggle_links_button));
   colors_button_ = AddChildView(std::move(colors_button));
   line_spacing_button_ = AddChildView(std::move(line_spacing_button));
   letter_spacing_button_ = AddChildView(std::move(letter_spacing_button));
+
+  // Start observing model after views creation so initial theme is applied.
+  coordinator_->AddModelObserver(this);
 }
 
 void ReadAnythingToolbarView::OnThemeChanged() {
@@ -161,59 +129,35 @@ void ReadAnythingToolbarView::AddedToWidget() {
 }
 
 void ReadAnythingToolbarView::DecreaseFontSizeCallback() {
-  if (delegate_) {
+  if (delegate_)
     delegate_->OnFontSizeChanged(/* increase = */ false);
-  }
 }
 
 void ReadAnythingToolbarView::IncreaseFontSizeCallback() {
-  if (delegate_) {
+  if (delegate_)
     delegate_->OnFontSizeChanged(/* increase = */ true);
-  }
 }
 
 void ReadAnythingToolbarView::ChangeColorsCallback() {
-  if (delegate_) {
+  if (delegate_)
     delegate_->OnColorsChanged(colors_button_->GetSelectedIndex().value_or(0));
-  }
 }
 
 void ReadAnythingToolbarView::ChangeLineSpacingCallback() {
-  if (delegate_) {
+  if (delegate_)
     delegate_->OnLineSpacingChanged(
         line_spacing_button_->GetSelectedIndex().value_or(1));
-  }
 }
 
 void ReadAnythingToolbarView::ChangeLetterSpacingCallback() {
-  if (delegate_) {
+  if (delegate_)
     delegate_->OnLetterSpacingChanged(
         letter_spacing_button_->GetSelectedIndex().value_or(0));
-  }
-}
-
-void ReadAnythingToolbarView::LinksToggledCallback() {
-  const bool toggled = !toggle_links_button_->GetToggled();
-  toggle_links_button_->SetToggled(toggled);
-  if (delegate_) {
-    delegate_->OnLinksEnabledChanged(toggled);
-  }
 }
 
 void ReadAnythingToolbarView::OnCoordinatorDestroyed() {
   // When the coordinator that created |this| is destroyed, clean up pointers.
   coordinator_ = nullptr;
-  CleanUp();
-}
-
-void ReadAnythingToolbarView::OnSidePanelControllerDestroyed() {
-  // When the side panel controller that created |this| is destroyed, clean up
-  // pointers.
-  controller_ = nullptr;
-  CleanUp();
-}
-
-void ReadAnythingToolbarView::CleanUp() {
   delegate_ = nullptr;
   font_combobox_->SetModel(nullptr);
   colors_button_->SetMenuModel(nullptr);
@@ -224,13 +168,11 @@ void ReadAnythingToolbarView::CleanUp() {
 void ReadAnythingToolbarView::OnReadAnythingThemeChanged(
     const std::string& font_name,
     double font_scale,
-    bool links_enabled,
     ui::ColorId foreground_color_id,
     ui::ColorId background_color_id,
     ui::ColorId separator_color_id,
     ui::ColorId dropdown_color_id,
     ui::ColorId selected_dropdown_color_id,
-    ui::ColorId focus_ring_color_id,
     read_anything::mojom::LineSpacing line_spacing,
     read_anything::mojom::LetterSpacing letter_spacing) {
   if (font_scale > kReadAnythingMinimumFontScale) {
@@ -244,13 +186,11 @@ void ReadAnythingToolbarView::OnReadAnythingThemeChanged(
     increase_text_size_button_->Disable();
   }
 
-  if (!GetColorProvider()) {
+  if (!GetColorProvider())
     return;
-  }
 
   SetBackground(views::CreateThemedSolidBackground(background_color_id));
   font_combobox_->SetBackgroundColorId(background_color_id);
-  font_combobox_->SetFocusRingColorId(focus_ring_color_id);
   colors_button_->SetBackground(
       views::CreateThemedSolidBackground(background_color_id));
   line_spacing_button_->SetBackground(
@@ -258,25 +198,23 @@ void ReadAnythingToolbarView::OnReadAnythingThemeChanged(
   letter_spacing_button_->SetBackground(
       views::CreateThemedSolidBackground(background_color_id));
 
-  decrease_text_size_button_->UpdateIcon(kTextDecreaseIcon, kFontSizeIconSize,
-                                         foreground_color_id,
-                                         focus_ring_color_id);
+  decrease_text_size_button_->UpdateIcon(kTextDecreaseIcon, kIconSize,
+                                         foreground_color_id);
 
-  increase_text_size_button_->UpdateIcon(kTextIncreaseIcon, kFontSizeIconSize,
-                                         foreground_color_id,
-                                         focus_ring_color_id);
+  increase_text_size_button_->UpdateIcon(kTextIncreaseIcon, kIconSize,
+                                         foreground_color_id);
 
-  toggle_links_button_->UpdateIcons(
-      kReadAnythingLinksEnabledIcon, kReadAnythingLinksDisabledIcon,
-      kLinkToggleIconSize, foreground_color_id, focus_ring_color_id);
-
-  colors_button_->SetIcon(kPaletteIcon, kIconSize, foreground_color_id,
-                          focus_ring_color_id);
+  colors_button_->SetIcon(kPaletteIcon, kIconSize, foreground_color_id);
 
   line_spacing_button_->SetIcon(kReadAnythingLineSpacingIcon, kIconSize,
-                                foreground_color_id, focus_ring_color_id);
+                                foreground_color_id);
   letter_spacing_button_->SetIcon(kReadAnythingLetterSpacingIcon, kIconSize,
-                                  foreground_color_id, focus_ring_color_id);
+                                  foreground_color_id);
+
+  // Update fonts.
+  colors_button_->SetFont(font_name);
+  line_spacing_button_->SetFont(font_name);
+  letter_spacing_button_->SetFont(font_name);
 
   // Update the background colors for the dropdowns.
   colors_button_->SetDropdownColorIds(dropdown_color_id, foreground_color_id,
@@ -321,17 +259,14 @@ void ReadAnythingToolbarView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
       l10n_util::GetStringUTF16(IDS_READING_MODE_TOOLBAR_LABEL));
 }
 
+BEGIN_METADATA(ReadAnythingToolbarView, views::View)
+END_METADATA
+
 ReadAnythingToolbarView::~ReadAnythingToolbarView() {
-  // If |this| is being destroyed before the associated coordinator or side
-  // panel controller, then remove |this| as an observer.
-  if (features::IsReadAnythingLocalSidePanelEnabled() && controller_) {
-    controller_->RemoveObserver(this);
-    controller_->RemoveModelObserver(this);
-  } else if (coordinator_) {
+  // If |this| is being destroyed before the associated coordinator, then
+  // remove |this| as an observer.
+  if (coordinator_) {
     coordinator_->RemoveObserver(this);
     coordinator_->RemoveModelObserver(this);
   }
 }
-
-BEGIN_METADATA(ReadAnythingToolbarView)
-END_METADATA

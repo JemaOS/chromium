@@ -78,8 +78,8 @@ void ColorChooserPopupUIController::EndChooser() {
   CancelPopup();
 }
 
-AXObject* ColorChooserPopupUIController::RootAXObject(Element* popup_owner) {
-  return popup_ ? popup_->RootAXObject(popup_owner) : nullptr;
+AXObject* ColorChooserPopupUIController::RootAXObject() {
+  return popup_ ? popup_->RootAXObject() : nullptr;
 }
 
 void ColorChooserPopupUIController::WriteDocument(SharedBuffer* data) {

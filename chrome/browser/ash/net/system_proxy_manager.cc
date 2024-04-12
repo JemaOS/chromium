@@ -82,7 +82,7 @@ class SystemProxyLoginHandler : public content::LoginDelegate {
                              const std::string& password,
                              LoginAuthRequiredCallback auth_required_callback) {
     std::move(auth_required_callback)
-        .Run(std::make_optional<net::AuthCredentials>(
+        .Run(absl::make_optional<net::AuthCredentials>(
             base::UTF8ToUTF16(username), base::UTF8ToUTF16(password)));
   }
 
@@ -472,7 +472,7 @@ bool SystemProxyManager::CanUsePolicyCredentials(
     return false;
   }
   if (!LoginState::IsInitialized() ||
-      (!LoginState::Get()->IsManagedGuestSessionUser() &&
+      (!LoginState::Get()->IsPublicSessionUser() &&
        !LoginState::Get()->IsKioskSession())) {
     VLOG(1) << "Only kiosk app and MGS can reuse the policy provided proxy "
                "credentials for authentication";
@@ -563,7 +563,7 @@ bool SystemProxyManager::IsProxyConfiguredByUserViaExtension() {
   if (!extension_prefs_util_)
     return false;
 
-  std::optional<extensions::api::settings_private::PrefObject> pref =
+  absl::optional<extensions::api::settings_private::PrefObject> pref =
       extension_prefs_util_->GetPref(proxy_config::prefs::kProxy);
   return pref && pref->extension_can_be_disabled &&
          *pref->extension_can_be_disabled;
@@ -650,7 +650,7 @@ void SystemProxyManager::OnAuthenticationRequired(
 
 void SystemProxyManager::LookupProxyAuthCredentialsCallback(
     const system_proxy::ProtectionSpace& protection_space,
-    const std::optional<net::AuthCredentials>& credentials) {
+    const absl::optional<net::AuthCredentials>& credentials) {
   if (!credentials) {
     // Ask the user for credentials
     ShowAuthenticationNotification(protection_space, /*show_error=*/false);

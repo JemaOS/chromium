@@ -158,8 +158,7 @@ class LiveCaptionUiRemoteDriverTest : public InProcessBrowserTest {
     // many tests.
     if (stub_bounds) {
       EXPECT_CALL(*surface, GetBounds(_))
-          .WillOnce(
-              [&](auto cb) { std::move(cb).Run(gfx::Rect(1, 1, 600, 800)); })
+          .WillOnce([&](auto cb) { std::move(cb).Run(gfx::Rect(1, 2, 3, 4)); })
           .RetiresOnSaturation();
     }
 
@@ -354,10 +353,9 @@ IN_PROC_BROWSER_TEST_F(LiveCaptionUiRemoteDriverTest, CloseBubble) {
   // Emulate a navigation (i.e. session end).
   driver_1->OnSessionEnded();
 
-  // Text from a new page should not cause the bubble to reappear because
-  // closing the bubble disables the feature.
-  EXPECT_FALSE(EmitTranscribedText(&surface_3, "New page text"));
-  EXPECT_FALSE(IsWidgetVisible());
+  // Text from a new page should cause the bubble to reappear.
+  EXPECT_TRUE(EmitTranscribedText(&surface_3, "New page text"));
+  EXPECT_TRUE(IsWidgetVisible());
 }
 
 // Test that the back to tab message is delivered.

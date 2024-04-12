@@ -32,12 +32,10 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
-#include "third_party/blink/renderer/core/execution_context/security_context.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen_request_type.h"
 #include "third_party/blink/renderer/platform/geometry/layout_rect.h"
 #include "third_party/blink/renderer/platform/supplementable.h"
@@ -48,6 +46,7 @@ namespace blink {
 
 class LocalDOMWindow;
 class FullscreenOptions;
+class ScriptPromiseResolver;
 
 // The Fullscreen class implements most of the Fullscreen API Standard,
 // https://fullscreen.spec.whatwg.org/, especially its algorithms. It is a
@@ -74,7 +73,7 @@ class CORE_EXPORT Fullscreen final : public GarbageCollected<Fullscreen>,
   static bool IsFullscreenFlagSetFor(const Element&);
 
   static void RequestFullscreen(Element&);
-  static ScriptPromiseTyped<IDLUndefined> RequestFullscreen(
+  static ScriptPromise RequestFullscreen(
       Element&,
       const FullscreenOptions*,
       FullscreenRequestType,
@@ -82,15 +81,12 @@ class CORE_EXPORT Fullscreen final : public GarbageCollected<Fullscreen>,
       ExceptionState* exception_state = nullptr);
 
   static void FullyExitFullscreen(Document&, bool ua_originated = false);
-  static ScriptPromiseTyped<IDLUndefined> ExitFullscreen(
-      Document&,
-      ScriptState* state = nullptr,
-      ExceptionState* exception_state = nullptr,
-      bool ua_originated = false);
+  static ScriptPromise ExitFullscreen(Document&,
+                                      ScriptState* state = nullptr,
+                                      ExceptionState* exception_state = nullptr,
+                                      bool ua_originated = false);
 
-  static bool FullscreenEnabled(
-      Document&,
-      ReportOptions report_on_failure = ReportOptions::kDoNotReport);
+  static bool FullscreenEnabled(Document&);
 
   // Called by FullscreenController to notify that we've entered or exited
   // fullscreen. All frames are notified, so there may be no pending request.
@@ -106,25 +102,19 @@ class CORE_EXPORT Fullscreen final : public GarbageCollected<Fullscreen>,
 
   void Trace(Visitor*) const override;
 
-  base::TimeTicks block_automatic_fullscreen_until() const {
-    return block_automatic_fullscreen_until_;
-  }
-
  private:
   static Fullscreen& From(LocalDOMWindow&);
 
-  static void ContinueRequestFullscreen(
-      Document&,
-      Element&,
-      FullscreenRequestType,
-      const FullscreenOptions*,
-      ScriptPromiseResolverTyped<IDLUndefined>* resolver,
-      const char* error);
+  static void ContinueRequestFullscreen(Document&,
+                                        Element&,
+                                        FullscreenRequestType,
+                                        const FullscreenOptions*,
+                                        ScriptPromiseResolver* resolver,
+                                        const char* error);
 
-  static void ContinueExitFullscreen(
-      Document*,
-      ScriptPromiseResolverTyped<IDLUndefined>* resolver,
-      bool resize);
+  static void ContinueExitFullscreen(Document*,
+                                     ScriptPromiseResolver* resolver,
+                                     bool resize);
 
   void FullscreenElementChanged(Element* old_element,
                                 Element* new_element,
@@ -137,34 +127,29 @@ class CORE_EXPORT Fullscreen final : public GarbageCollected<Fullscreen>,
     PendingRequest(Element* element,
                    FullscreenRequestType type,
                    const FullscreenOptions* options,
-                   ScriptPromiseResolverTyped<IDLUndefined>* resolver);
+                   ScriptPromiseResolver* resolver);
     PendingRequest(const PendingRequest&) = delete;
     PendingRequest& operator=(const PendingRequest&) = delete;
     virtual ~PendingRequest();
     virtual void Trace(Visitor* visitor) const;
 
-    Element* element() { return element_.Get(); }
+    Element* element() { return element_; }
     FullscreenRequestType type() { return type_; }
-    const FullscreenOptions* options() { return options_.Get(); }
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver() {
-      return resolver_.Get();
-    }
+    const FullscreenOptions* options() { return options_; }
+    ScriptPromiseResolver* resolver() { return resolver_; }
 
    private:
     Member<Element> element_;
     FullscreenRequestType type_;
     Member<const FullscreenOptions> options_;
-    Member<ScriptPromiseResolverTyped<IDLUndefined>> resolver_;
+    Member<ScriptPromiseResolver> resolver_;
   };
   using PendingRequests = HeapVector<Member<PendingRequest>>;
   PendingRequests pending_requests_;
 
-  using PendingExit = ScriptPromiseResolverTyped<IDLUndefined>;
+  using PendingExit = ScriptPromiseResolver;
   using PendingExits = HeapVector<Member<PendingExit>>;
   PendingExits pending_exits_;
-
-  // Used to block automatic fullscreen for a short time after exit.
-  base::TimeTicks block_automatic_fullscreen_until_;
 };
 
 inline bool Fullscreen::IsFullscreenElement(const Element& element) {

@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function (testRunner) {
   const HTML = '<body><p class="class1" attr1="attr1">Paragraph Text</p></body>';
   const { dp, page } = await testRunner.startBlank('Tests the DOM.getAttributes API.');
 

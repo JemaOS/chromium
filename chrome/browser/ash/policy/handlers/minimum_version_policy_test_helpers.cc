@@ -12,19 +12,21 @@ base::Value::Dict CreateMinimumVersionPolicyRequirement(
     const std::string& version,
     int warning,
     int eol_warning) {
-  return base::Value::Dict()
-      .Set(MinimumVersionPolicyHandler::kChromeOsVersion, version)
-      .Set(MinimumVersionPolicyHandler::kWarningPeriod, warning)
-      .Set(MinimumVersionPolicyHandler::kEolWarningPeriod, eol_warning);
+  base::Value::Dict dict;
+  dict.Set(MinimumVersionPolicyHandler::kChromeOsVersion, version);
+  dict.Set(MinimumVersionPolicyHandler::kWarningPeriod, warning);
+  dict.Set(MinimumVersionPolicyHandler::kEolWarningPeriod, eol_warning);
+  return dict;
 }
 
 base::Value::Dict CreateMinimumVersionPolicyValue(
     base::Value::List requirements,
     bool unmanaged_user_restricted) {
-  return base::Value::Dict()
-      .Set(MinimumVersionPolicyHandler::kRequirements, std::move(requirements))
-      .Set(MinimumVersionPolicyHandler::kUnmanagedUserRestricted,
+  base::Value::Dict dict;
+  dict.Set(MinimumVersionPolicyHandler::kRequirements, std::move(requirements));
+  dict.Set(MinimumVersionPolicyHandler::kUnmanagedUserRestricted,
            unmanaged_user_restricted);
+  return dict;
 }
 
 base::Value::Dict CreateMinimumVersionSingleRequirementPolicyValue(
@@ -32,7 +34,8 @@ base::Value::Dict CreateMinimumVersionSingleRequirementPolicyValue(
     int warning,
     int eol_warning,
     bool unmanaged_user_restricted) {
-  auto requirement_list = base::Value::List().Append(
+  base::Value::List requirement_list;
+  requirement_list.Append(
       CreateMinimumVersionPolicyRequirement(version, warning, eol_warning));
   return CreateMinimumVersionPolicyValue(std::move(requirement_list),
                                          unmanaged_user_restricted);

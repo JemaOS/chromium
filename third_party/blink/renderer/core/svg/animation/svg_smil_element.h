@@ -58,8 +58,21 @@ class CORE_EXPORT SMILInstanceTimeList {
   const_iterator end() const { return instance_times_.end(); }
 
  private:
+  static unsigned OriginToMask(SMILTimeOrigin origin) {
+    return 1u << static_cast<unsigned>(origin);
+  }
+  void AddOrigin(SMILTimeOrigin origin) {
+    time_origin_mask_ |= OriginToMask(origin);
+  }
+  void ClearOrigin(SMILTimeOrigin origin) {
+    time_origin_mask_ &= ~OriginToMask(origin);
+  }
+  bool HasOrigin(SMILTimeOrigin origin) const {
+    return (time_origin_mask_ & OriginToMask(origin)) != 0;
+  }
+
   Vector<SMILTimeWithOrigin> instance_times_;
-  SMILTimeOriginSet time_origins_;
+  unsigned time_origin_mask_ = 0;
 };
 
 // This class implements SMIL interval timing model as needed for SVG animation.
@@ -75,7 +88,7 @@ class CORE_EXPORT SVGSMILElement : public SVGElement, public SVGTests {
   SMILTimeContainer* TimeContainer() const { return time_container_.Get(); }
 
   bool HasValidTarget() const;
-  SVGElement* targetElement() const { return target_element_.Get(); }
+  SVGElement* targetElement() const { return target_element_; }
 
   void BeginByLinkActivation();
 
@@ -190,7 +203,6 @@ class CORE_EXPORT SVGSMILElement : public SVGElement, public SVGTests {
                        SMILTime time,
                        SMILTimeOrigin origin);
   void InstanceListChanged();
-  void IntervalStateChanged();
 
   // This represents conditions on elements begin or end list that need to be
   // resolved on runtime, for example
@@ -306,7 +318,6 @@ class CORE_EXPORT SVGSMILElement : public SVGElement, public SVGTests {
 
   bool interval_has_changed_;
   bool instance_lists_have_changed_;
-  bool interval_needs_revalidation_;
   bool is_notifying_dependents_;
 
   friend class ConditionEventListener;

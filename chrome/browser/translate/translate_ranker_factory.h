@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_TRANSLATE_TRANSLATE_RANKER_FACTORY_H_
 #define CHROME_BROWSER_TRANSLATE_TRANSLATE_RANKER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -26,7 +26,7 @@ class TranslateRankerFactory : public ProfileKeyedServiceFactory {
   TranslateRankerFactory& operator=(const TranslateRankerFactory&) = delete;
 
  private:
-  friend base::NoDestructor<TranslateRankerFactory>;
+  friend struct base::DefaultSingletonTraits<TranslateRankerFactory>;
 
   TranslateRankerFactory();
   ~TranslateRankerFactory() override;

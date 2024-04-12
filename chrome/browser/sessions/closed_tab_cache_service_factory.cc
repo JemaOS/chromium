@@ -8,11 +8,6 @@
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "extensions/buildflags/buildflags.h"
-
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-#include "extensions/browser/api/declarative/rules_registry_service.h"
-#endif
 
 ClosedTabCacheServiceFactory::ClosedTabCacheServiceFactory()
     : ProfileKeyedServiceFactory(
@@ -25,12 +20,6 @@ ClosedTabCacheServiceFactory::ClosedTabCacheServiceFactory()
               .Build()) {
   DependsOn(HostContentSettingsMapFactory::GetInstance());
   DependsOn(HistoryServiceFactory::GetInstance());
-
-#if BUILDFLAG(ENABLE_EXTENSIONS)
-  // ClosedTabCacheService has an indirect dependency on the
-  // RulesRegistryService through extensions::TabHelper::WebContentsDestroyed.
-  DependsOn(extensions::RulesRegistryService::GetFactoryInstance());
-#endif
 }
 
 // static
@@ -41,15 +30,12 @@ ClosedTabCacheService* ClosedTabCacheServiceFactory::GetForProfile(
 }
 
 ClosedTabCacheServiceFactory* ClosedTabCacheServiceFactory::GetInstance() {
-  static base::NoDestructor<ClosedTabCacheServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<ClosedTabCacheServiceFactory>::get();
 }
 
-std::unique_ptr<KeyedService>
-ClosedTabCacheServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ClosedTabCacheServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<ClosedTabCacheService>(
-      Profile::FromBrowserContext(context));
+  return new ClosedTabCacheService(static_cast<Profile*>(context));
 }
 
 bool ClosedTabCacheServiceFactory::ServiceIsCreatedWithBrowserContext() const {

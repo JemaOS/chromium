@@ -40,9 +40,8 @@ void CollectUpgradeCandidateInNode(Node& root,
     if (root_element->GetCustomElementState() == CustomElementState::kUndefined)
       candidates.push_back(root_element);
     if (auto* shadow_root = root_element->GetShadowRoot()) {
-      if (shadow_root->GetMode() != ShadowRootMode::kUserAgent) {
+      if (shadow_root->GetType() != ShadowRootType::kUserAgent)
         CollectUpgradeCandidateInNode(*shadow_root, candidates);
-      }
     }
   }
   for (auto& element : Traversal<HTMLElement>::ChildrenOf(root))
@@ -85,8 +84,7 @@ CustomElementRegistry* CustomElementRegistry::Create(
 CustomElementRegistry::CustomElementRegistry(const LocalDOMWindow* owner)
     : element_definition_is_running_(false),
       owner_(owner),
-      upgrade_candidates_(MakeGarbageCollected<UpgradeCandidateMap>()),
-      associated_documents_(MakeGarbageCollected<AssociatedDocumentSet>()) {}
+      upgrade_candidates_(MakeGarbageCollected<UpgradeCandidateMap>()) {}
 
 void CustomElementRegistry::Trace(Visitor* visitor) const {
   visitor->Trace(constructor_map_);
@@ -94,7 +92,6 @@ void CustomElementRegistry::Trace(Visitor* visitor) const {
   visitor->Trace(owner_);
   visitor->Trace(upgrade_candidates_);
   visitor->Trace(when_defined_promise_map_);
-  visitor->Trace(associated_documents_);
   ScriptWrappable::Trace(visitor);
 }
 
@@ -225,11 +222,11 @@ CustomElementDefinition* CustomElementRegistry::DefineInternal(
   // 16: when-defined promise processing
   const auto& entry = when_defined_promise_map_.find(name);
   if (entry != when_defined_promise_map_.end()) {
-    auto* resolver = entry->value.Get();
+    ScriptPromiseResolver* resolver = entry->value;
     when_defined_promise_map_.erase(entry);
     // Resolve() may run synchronous JavaScript that invalidates iterators of
     // |when_defined_promise_map_|, so it must be called after erasing |entry|.
-    resolver->Resolve(definition->GetV8CustomElementConstructor());
+    resolver->Resolve(definition->GetConstructorForScript());
   }
 
   return definition;
@@ -244,19 +241,6 @@ ScriptValue CustomElementRegistry::get(const AtomicString& name) {
     return ScriptValue();
   }
   return definition->GetConstructorForScript();
-}
-
-// https://html.spec.whatwg.org/C/#dom-customelementregistry-getname
-const AtomicString& CustomElementRegistry::getName(
-    V8CustomElementConstructor* constructor) {
-  if (!constructor) {
-    return g_null_atom;
-  }
-  CustomElementDefinition* definition = DefinitionForConstructor(constructor);
-  if (!definition) {
-    return g_null_atom;
-  }
-  return definition->Descriptor().GetName();
 }
 
 // https://html.spec.whatwg.org/C/#look-up-a-custom-element-definition
@@ -286,7 +270,7 @@ CustomElementDefinition* CustomElementRegistry::DefinitionForName(
   const auto it = name_map_.find(name);
   if (it == name_map_.end())
     return nullptr;
-  return it->value.Get();
+  return it->value;
 }
 
 CustomElementDefinition* CustomElementRegistry::DefinitionForConstructor(
@@ -294,7 +278,7 @@ CustomElementDefinition* CustomElementRegistry::DefinitionForConstructor(
   const auto it = constructor_map_.find(constructor);
   if (it == constructor_map_.end())
     return nullptr;
-  return it->value.Get();
+  return it->value;
 }
 
 CustomElementDefinition* CustomElementRegistry::DefinitionForConstructor(
@@ -304,7 +288,7 @@ CustomElementDefinition* CustomElementRegistry::DefinitionForConstructor(
           constructor);
   if (it == constructor_map_.end())
     return nullptr;
-  return it->value.Get();
+  return it->value;
 }
 
 void CustomElementRegistry::AddCandidate(Element& candidate) {
@@ -329,21 +313,21 @@ void CustomElementRegistry::AddCandidate(Element& candidate) {
 }
 
 // https://html.spec.whatwg.org/C/#dom-customelementsregistry-whendefined
-ScriptPromiseTyped<V8CustomElementConstructor>
-CustomElementRegistry::whenDefined(ScriptState* script_state,
-                                   const AtomicString& name,
-                                   ExceptionState& exception_state) {
+ScriptPromise CustomElementRegistry::whenDefined(
+    ScriptState* script_state,
+    const AtomicString& name,
+    ExceptionState& exception_state) {
   if (ThrowIfInvalidName(name, false, exception_state))
-    return ScriptPromiseTyped<V8CustomElementConstructor>();
-  if (CustomElementDefinition* definition = DefinitionForName(name)) {
-    return ToResolvedPromise<V8CustomElementConstructor>(
-        script_state, definition->GetV8CustomElementConstructor());
+    return ScriptPromise();
+  CustomElementDefinition* definition = DefinitionForName(name);
+  if (definition) {
+    return ScriptPromise::Cast(script_state,
+                               definition->GetConstructorForScript());
   }
   const auto it = when_defined_promise_map_.find(name);
   if (it != when_defined_promise_map_.end())
     return it->value->Promise();
-  auto* new_resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<V8CustomElementConstructor>>(
+  auto* new_resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
   when_defined_promise_map_.insert(name, new_resolver);
   return new_resolver->Promise();
@@ -359,23 +343,16 @@ void CustomElementRegistry::CollectCandidates(
   for (Element* element : *it.Get()->value) {
     if (!element || !desc.Matches(*element))
       continue;
-    if (RuntimeEnabledFeatures::ScopedCustomElementRegistryEnabled()) {
-      if (CustomElement::Registry(*element) != this) {
-        // The element has been moved away from the original tree scope and no
-        // longer uses this registry.
-        continue;
-      }
-    }
     sorter.Add(element);
   }
 
   upgrade_candidates_->erase(it);
 
-  for (Document* document : *associated_documents_) {
-    if (document && document->GetFrame()) {
-      sorter.Sorted(elements, document);
-    }
-  }
+  Document* document = owner_->document();
+  if (!document)
+    return;
+
+  sorter.Sorted(elements, document);
 }
 
 // https://html.spec.whatwg.org/C/#dom-customelementregistry-upgrade
@@ -390,14 +367,6 @@ void CustomElementRegistry::upgrade(Node* root) {
   // 2. For each candidate of candidates, try to upgrade candidate.
   for (auto& candidate : candidates)
     CustomElement::TryToUpgrade(*candidate);
-}
-
-bool CustomElementRegistry::IsGlobalRegistry() const {
-  return this == owner_->customElements();
-}
-
-void CustomElementRegistry::AssociatedWith(Document& document) {
-  associated_documents_->insert(&document);
 }
 
 }  // namespace blink

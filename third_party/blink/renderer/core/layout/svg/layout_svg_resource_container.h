@@ -24,13 +24,8 @@
 #include "third_party/blink/renderer/core/style/style_svg_resource.h"
 #include "third_party/blink/renderer/core/svg/svg_resource.h"
 #include "third_party/blink/renderer/core/svg/svg_resource_client.h"
-#include "third_party/blink/renderer/core/svg/svg_unit_types.h"
 
 namespace blink {
-
-class SVGLength;
-class SVGLengthConversionData;
-class SVGViewportResolver;
 
 enum LayoutSVGResourceType {
   kMaskerResourceType,
@@ -49,10 +44,6 @@ class LayoutSVGResourceContainer : public LayoutSVGHiddenContainer {
 
   virtual void RemoveAllClientsFromCache() = 0;
 
-  // Like RemoveAllClientsFromCache(), but predicated on if layout has been
-  // performed at all.
-  void InvalidateCache();
-
   // Remove any cached data for the |client|, and return true if so.
   virtual bool RemoveClientFromCache(SVGResourceClient&) {
     NOT_DESTROYED();
@@ -60,9 +51,10 @@ class LayoutSVGResourceContainer : public LayoutSVGHiddenContainer {
   }
 
   void UpdateLayout() override;
-  bool IsSVGResourceContainer() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectSVGResourceContainer ||
+           LayoutSVGHiddenContainer::IsOfType(type);
   }
 
   virtual LayoutSVGResourceType ResourceType() const = 0;
@@ -74,6 +66,9 @@ class LayoutSVGResourceContainer : public LayoutSVGHiddenContainer {
            resource_type == kLinearGradientResourceType ||
            resource_type == kRadialGradientResourceType;
   }
+
+  void InvalidateCacheAndMarkForLayout(LayoutInvalidationReasonForTracing);
+  void InvalidateCacheAndMarkForLayout();
 
   bool FindCycle() const;
 
@@ -89,42 +84,6 @@ class LayoutSVGResourceContainer : public LayoutSVGHiddenContainer {
     NOT_DESTROYED();
     completed_invalidations_mask_ = 0;
   }
-
-  // Resolve the rectangle defined by `x`, `y`, `width` and `height` in the
-  // unit space defined by `type` into user units.
-  static gfx::RectF ResolveRectangle(const SVGViewportResolver&,
-                                     const SVGLengthConversionData&,
-                                     SVGUnitTypes::SVGUnitType type,
-                                     const gfx::RectF& reference_box,
-                                     const SVGLength& x,
-                                     const SVGLength& y,
-                                     const SVGLength& width,
-                                     const SVGLength& height);
-  static gfx::RectF ResolveRectangle(const SVGElement& context,
-                                     SVGUnitTypes::SVGUnitType type,
-                                     const gfx::RectF& reference_box,
-                                     const SVGLength& x,
-                                     const SVGLength& y,
-                                     const SVGLength& width,
-                                     const SVGLength& height);
-  // Like the above, but pass `x()`, `y()`, `width()` and `height()` from the
-  // context element for the corresponding arguments.
-  template <typename T>
-  static gfx::RectF ResolveRectangle(const T& context,
-                                     SVGUnitTypes::SVGUnitType type,
-                                     const gfx::RectF& reference_box) {
-    return ResolveRectangle(
-        context, type, reference_box, *context.x()->CurrentValue(),
-        *context.y()->CurrentValue(), *context.width()->CurrentValue(),
-        *context.height()->CurrentValue());
-  }
-
-  gfx::RectF ResolveRectangle(SVGUnitTypes::SVGUnitType type,
-                              const gfx::RectF& reference_box,
-                              const SVGLength& x,
-                              const SVGLength& y,
-                              const SVGLength& width,
-                              const SVGLength& height) const;
 
  protected:
   typedef unsigned InvalidationModeMask;
@@ -173,21 +132,29 @@ struct DowncastTraits<LayoutSVGResourceContainer> {
 };
 
 template <typename ContainerType>
+inline bool IsResourceOfType(const LayoutSVGResourceContainer* container) {
+  return container->ResourceType() == ContainerType::kResourceType;
+}
+
+template <typename ContainerType>
 inline ContainerType* GetSVGResourceAsType(SVGResourceClient& client,
                                            const SVGResource* resource) {
-  if (!resource) {
+  if (!resource)
     return nullptr;
+  if (LayoutSVGResourceContainer* container =
+          resource->ResourceContainer(client)) {
+    if (IsResourceOfType<ContainerType>(container))
+      return static_cast<ContainerType*>(container);
   }
-  return DynamicTo<ContainerType>(resource->ResourceContainer(client));
+  return nullptr;
 }
 
 template <typename ContainerType>
 inline ContainerType* GetSVGResourceAsType(
     SVGResourceClient& client,
     const StyleSVGResource* style_resource) {
-  if (!style_resource) {
+  if (!style_resource)
     return nullptr;
-  }
   return GetSVGResourceAsType<ContainerType>(client,
                                              style_resource->Resource());
 }

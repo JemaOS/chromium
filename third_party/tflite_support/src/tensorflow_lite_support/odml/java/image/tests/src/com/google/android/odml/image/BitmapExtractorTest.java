@@ -16,39 +16,37 @@ limitations under the License.
 package com.google.android.odml.image;
 
 import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertThrows;
 
 import android.graphics.Bitmap;
-import java.nio.ByteBuffer;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
+import java.nio.ByteBuffer;
+
 /** Unit test for {@link BitmapExtractor}. */
 @RunWith(RobolectricTestRunner.class)
 public class BitmapExtractorTest {
+    @Test
+    public void extract_fromBitmap_succeeds() {
+        Bitmap bitmap = TestImageCreator.createRgbaBitmap();
+        MlImage image = new BitmapMlImageBuilder(bitmap).build();
 
-  @Test
-  public void extract_fromBitmap_succeeds() {
-    Bitmap bitmap = TestImageCreator.createRgbaBitmap();
-    MlImage image = new BitmapMlImageBuilder(bitmap).build();
+        Bitmap result = BitmapExtractor.extract(image);
 
-    Bitmap result = BitmapExtractor.extract(image);
+        assertThat(result).isSameInstanceAs(bitmap);
+    }
 
-    assertThat(result).isSameInstanceAs(bitmap);
-  }
+    @Test
+    public void extract_fromByteBuffer_throwsException() {
+        ByteBuffer buffer = TestImageCreator.createRgbBuffer();
+        MlImage image = new ByteBufferMlImageBuilder(buffer, TestImageCreator.getWidth(),
+                TestImageCreator.getHeight(), MlImage.IMAGE_FORMAT_RGB)
+                                .build();
 
-  @Test
-  public void extract_fromByteBuffer_throwsException() {
-    ByteBuffer buffer = TestImageCreator.createRgbBuffer();
-    MlImage image =
-        new ByteBufferMlImageBuilder(
-                buffer,
-                TestImageCreator.getWidth(),
-                TestImageCreator.getHeight(),
-                MlImage.IMAGE_FORMAT_RGB)
-            .build();
-
-    assertThrows(IllegalArgumentException.class, () -> BitmapExtractor.extract(image));
-  }
+        assertThrows(IllegalArgumentException.class, () -> BitmapExtractor.extract(image));
+    }
 }

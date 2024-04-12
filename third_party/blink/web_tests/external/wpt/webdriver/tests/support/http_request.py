@@ -5,21 +5,21 @@ from http.client import HTTPConnection
 
 
 class HTTPRequest(object):
-    def __init__(self, host: str, port: int):
+    def __init__(self, host, port):
         self.host = host
         self.port = port
 
-    def head(self, path: str):
+    def head(self, path):
         return self._request("HEAD", path)
 
-    def get(self, path: str):
+    def get(self, path):
         return self._request("GET", path)
 
-    def post(self, path: str, body):
+    def post(self, path, body):
         return self._request("POST", path, body)
 
     @contextlib.contextmanager
-    def _request(self, method: str, path: str, body=None):
+    def _request(self, method, path, body=None):
         payload = None
 
         if body is not None:

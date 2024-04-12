@@ -9,11 +9,10 @@
 
 #include "build/build_config.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter.h"
-#include "content/public/browser/render_frame_host.h"
+#include "components/omnibox/browser/omnibox.mojom-forward.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "ui/webui/mojo_web_ui_controller.h"
 #include "ui/webui/resources/cr_components/color_change_listener/color_change_listener.mojom-forward.h"
-#include "ui/webui/resources/cr_components/searchbox/searchbox.mojom-forward.h"
 #include "ui/webui/resources/js/metrics_reporter/metrics_reporter.mojom-forward.h"
 
 class Profile;
@@ -31,11 +30,10 @@ class OmniboxPopupUI : public ui::MojoWebUIController {
   OmniboxPopupUI& operator=(const OmniboxPopupUI&) = delete;
   ~OmniboxPopupUI() override;
 
-  // Instantiates the implementor of the searchbox::mojom::PageHandler mojo
+  // Instantiates the implementor of the omnibox::mojom::PageHandler mojo
   // interface passing the pending receiver that will be internally bound.
-  void BindInterface(content::RenderFrameHost* host,
-                     mojo::PendingReceiver<searchbox::mojom::PageHandler>
-                         pending_page_handler);
+  void BindInterface(
+      mojo::PendingReceiver<omnibox::mojom::PageHandler> pending_page_handler);
   // Instantiates the implementor of metrics_reporter::mojom::PageMetricsHost
   // mojo interface passing the pending receiver that will be internally bound.
   void BindInterface(
@@ -46,10 +44,10 @@ class OmniboxPopupUI : public ui::MojoWebUIController {
       mojo::PendingReceiver<color_change_listener::mojom::PageHandler>
           pending_receiver);
 
-  RealboxHandler* handler() { return handler_.get(); }
+  RealboxHandler* webui_handler() { return webui_handler_.get(); }
 
  private:
-  std::unique_ptr<RealboxHandler> handler_;
+  std::unique_ptr<RealboxHandler> webui_handler_;
   std::unique_ptr<ui::ColorChangeHandler> color_provider_handler_;
   raw_ptr<Profile> profile_;
   MetricsReporter metrics_reporter_;

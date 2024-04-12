@@ -51,7 +51,7 @@ class CORE_EXPORT PerformanceElementTiming final : public PerformanceEntry {
   const AtomicString& entryType() const override;
   PerformanceEntryType EntryTypeEnum() const override;
 
-  DOMRectReadOnly* intersectionRect() const { return intersection_rect_.Get(); }
+  DOMRectReadOnly* intersectionRect() const { return intersection_rect_; }
   DOMHighResTimeStamp renderTime() const { return render_time_; }
   DOMHighResTimeStamp loadTime() const { return load_time_; }
   AtomicString identifier() const { return identifier_; }

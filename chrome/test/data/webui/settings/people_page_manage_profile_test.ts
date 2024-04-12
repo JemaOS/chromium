@@ -4,13 +4,9 @@
 
 // clang-format off
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {ManageProfileBrowserProxy, SettingsManageProfileElement} from 'chrome://settings/lazy_load.js';
-import {ManageProfileBrowserProxyImpl, ProfileShortcutStatus} from 'chrome://settings/lazy_load.js';
-import type {CrToggleElement} from 'chrome://settings/settings.js';
-import {loadTimeData, Router, routes, StatusAction} from 'chrome://settings/settings.js';
+import {ManageProfileBrowserProxy, ManageProfileBrowserProxyImpl, ProfileShortcutStatus, SettingsManageProfileElement} from 'chrome://settings/lazy_load.js';
+import {CrToggleElement, loadTimeData, Router, routes, StatusAction} from 'chrome://settings/settings.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
-import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
 // clang-format on
@@ -111,6 +107,7 @@ suite('ManageProfileTests', function() {
     element.profileName = 'Initial Fake Name';
     element.syncStatus = {
       supervisedUser: false,
+      childUser: false,
       statusAction: StatusAction.NO_ACTION,
     };
     document.body.appendChild(element);
@@ -123,7 +120,7 @@ suite('ManageProfileTests', function() {
   test('ManageProfileChangeIcon', async function() {
     let items = null;
     await browserProxy.whenCalled('getAvailableIcons');
-    await microtasksFinished();
+    flush();
     items =
         manageProfile.shadowRoot!.querySelector(
                                      'cr-profile-avatar-selector')!.shadowRoot!
@@ -136,12 +133,10 @@ suite('ManageProfileTests', function() {
     assertFalse(items[2]!.parentElement!.classList.contains('iron-selected'));
 
     items[1]!.click();
-    await microtasksFinished();
     const args = await browserProxy.whenCalled('setProfileIconToDefaultAvatar');
     assertEquals(2, args[0]);
 
     items[2]!.click();
-    await microtasksFinished();
     await browserProxy.whenCalled('setProfileIconToGaiaAvatar');
   });
 
@@ -161,6 +156,20 @@ suite('ManageProfileTests', function() {
     assertEquals('New Name', args[0]);
   });
 
+  test('ProfileNameIsDisabledForSupervisedUser', function() {
+    manageProfile.syncStatus = {
+      supervisedUser: true,
+      childUser: false,
+      statusAction: StatusAction.NO_ACTION,
+    };
+
+    const nameField = manageProfile.$.name;
+    assertTrue(!!nameField);
+
+    // Name field should be disabled for legacy supervised users.
+    assertTrue(!!nameField.disabled);
+  });
+
   // Tests profile name updates pushed from the browser.
   test('ManageProfileNameUpdated', async function() {
     const nameField = manageProfile.$.name;
@@ -175,24 +184,8 @@ suite('ManageProfileTests', function() {
   });
 
   // Tests that the theme selector is visible.
-  test('ProfileThemeSelector', async function() {
-    // cr-customize-themes should be visible and cr-theme-color-picker should
-    // not be visible when ChromeWebuiRefresh2023 is disabled.
-    document.documentElement.toggleAttribute('chrome-refresh-2023', false);
-    manageProfile = createManageProfileElement();
-    await waitAfterNextRender(manageProfile);
-    assertFalse(
-        !!manageProfile.shadowRoot!.querySelector('cr-theme-color-picker'));
+  test('ProfileThemeSelector', function() {
     assertTrue(!!manageProfile.shadowRoot!.querySelector('#themeSelector'));
-
-    // cr-customize-themes should not be visible and cr-theme-color-picker
-    // should be visible when ChromeWebuiRefresh2023 is disabled.
-    document.documentElement.toggleAttribute('chrome-refresh-2023', true);
-    manageProfile = createManageProfileElement();
-    await waitAfterNextRender(manageProfile);
-    assertTrue(
-        !!manageProfile.shadowRoot!.querySelector('cr-theme-color-picker'));
-    assertFalse(!!manageProfile.shadowRoot!.querySelector('#themeSelector'));
   });
 
   // Tests profile shortcut toggle is hidden if profile shortcuts feature is

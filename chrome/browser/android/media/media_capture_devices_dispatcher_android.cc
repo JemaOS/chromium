@@ -52,7 +52,5 @@ void JNI_MediaCaptureDevicesDispatcherAndroid_NotifyStopped(
   scoped_refptr<MediaStreamCaptureIndicator> indicator =
       MediaCaptureDevicesDispatcher::GetInstance()
           ->GetMediaStreamCaptureIndicator();
-  indicator->StopMediaCapturing(
-      web_contents, MediaStreamCaptureIndicator::MediaType::kUserMedia |
-                        MediaStreamCaptureIndicator::MediaType::kDisplayMedia);
+  indicator->NotifyStopped(web_contents);
 }

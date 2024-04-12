@@ -45,8 +45,8 @@ class MockCredentialLeakPrompt : public CredentialLeakPrompt {
   MockCredentialLeakPrompt(const MockCredentialLeakPrompt&) = delete;
   MockCredentialLeakPrompt& operator=(const MockCredentialLeakPrompt&) = delete;
 
-  MOCK_METHOD(void, ShowCredentialLeakPrompt, (), (override));
-  MOCK_METHOD(void, ControllerGone, (), (override));
+  MOCK_METHOD0(ShowCredentialLeakPrompt, void());
+  MOCK_METHOD0(ControllerGone, void());
 };
 
 class CredentialLeakDialogControllerTest : public testing::Test {
@@ -90,7 +90,7 @@ void CheckUkmMetricsExpectations(
     LeakDialogDismissalReason expected_dismissal_reason) {
   const auto& entries = recorder.GetEntriesByName(UkmEntry::kEntryName);
   EXPECT_EQ(1u, entries.size());
-  for (const ukm::mojom::UkmEntry* entry : entries) {
+  for (const auto* entry : entries) {
     EXPECT_EQ(kTestSourceId, entry->source_id);
     recorder.ExpectEntryMetric(entry,
                                UkmEntry::kPasswordLeakDetectionDialogTypeName,

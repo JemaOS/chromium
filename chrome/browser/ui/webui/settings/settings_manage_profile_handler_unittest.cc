@@ -8,7 +8,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/profiles/profile_attributes_entry.h"
 #include "chrome/browser/profiles/profile_avatar_icon_util.h"
-#include "chrome/browser/ui/profiles/profile_colors_util.h"
+#include "chrome/browser/ui/signin/profile_colors_util.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile_manager.h"
@@ -105,7 +105,7 @@ class ManageProfileHandlerTest : public testing::Test {
       EXPECT_TRUE(profiles::IsDefaultAvatarIconUrl(*icon_url, &url_icon_index));
       EXPECT_EQ(icon_index, url_icon_index);
       EXPECT_TRUE(!icon_dict.FindString("label")->empty());
-      std::optional<bool> current_selected = icon_dict.FindBool("selected");
+      absl::optional<bool> current_selected = icon_dict.FindBool("selected");
       if (selected_index == icon_index) {
         EXPECT_FALSE(selected_found);
         EXPECT_TRUE(current_selected.value_or(false));
@@ -355,7 +355,7 @@ TEST_F(ManageProfileHandlerTest, ProfileThemeColorsChangedWebUIEvent) {
   entry()->SetAvatarIconIndex(37);
   web_ui()->ClearTrackedCalls();
 
-  entry()->SetProfileThemeColors(std::nullopt);
+  entry()->SetProfileThemeColors(absl::nullopt);
   EXPECT_EQ(1U, web_ui()->call_data().size());
 
   const content::TestWebUI::CallData& data_1 = *web_ui()->call_data().back();

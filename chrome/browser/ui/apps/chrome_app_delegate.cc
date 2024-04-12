@@ -45,6 +45,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "extensions/common/constants.h"
+#include "extensions/common/extension_messages.h"
 #include "extensions/common/mojom/app_window.mojom.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "printing/buildflags/buildflags.h"
@@ -81,12 +82,6 @@ content::WebContents* OpenURLFromTabInternal(
   // window.
   if (params.disposition == WindowOpenDisposition::NEW_BACKGROUND_TAB) {
     new_tab_params.disposition = WindowOpenDisposition::NEW_BACKGROUND_TAB;
-  } else if (params.disposition == WindowOpenDisposition::OFF_THE_RECORD) {
-    // Don't force this behaviour for requests for an incognito window, where
-    // it would not be acceptable to open in a new tab of a non-incognito
-    // window.
-    new_tab_params.disposition = WindowOpenDisposition::OFF_THE_RECORD;
-    new_tab_params.window_action = NavigateParams::SHOW_WINDOW;
   } else {
     new_tab_params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
     new_tab_params.window_action = NavigateParams::SHOW_WINDOW;
@@ -326,7 +321,7 @@ void ChromeAppDelegate::RequestMediaAccessPermission(
 
 bool ChromeAppDelegate::CheckMediaAccessPermission(
     content::RenderFrameHost* render_frame_host,
-    const url::Origin& security_origin,
+    const GURL& security_origin,
     blink::mojom::MediaStreamType type,
     const extensions::Extension* extension) {
   return MediaCaptureDevicesDispatcher::GetInstance()

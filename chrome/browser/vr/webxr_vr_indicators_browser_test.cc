@@ -4,7 +4,6 @@
 
 #include <vector>
 
-#include "base/containers/to_vector.h"
 #include "base/functional/callback_helpers.h"
 #include "base/ranges/algorithm.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
@@ -45,10 +44,13 @@ struct TestContentSettings {
 // Helpers
 std::vector<TestContentSettings> ExtractFrom(
     const std::vector<TestIndicatorSetting>& test_indicator_settings) {
-  return base::ToVector(
-      test_indicator_settings, [](const TestIndicatorSetting& s) {
+  std::vector<TestContentSettings> test_content_settings;
+  base::ranges::transform(
+      test_indicator_settings, std::back_inserter(test_content_settings),
+      [](const TestIndicatorSetting& s) {
         return TestContentSettings{s.content_setting_type, s.content_setting};
       });
+  return test_content_settings;
 }
 
 void SetMultipleContentSetting(
@@ -91,7 +93,8 @@ void TestIndicatorOnAccessForContentType(
 
   auto utils = UiUtils::Create();
   // Check if the location indicator shows.
-  utils->WaitForVisibilityStatus(element_name, true);
+  utils->PerformActionAndWaitForVisibilityStatus(element_name, true,
+                                                 base::DoNothing());
 
   t->EndSessionOrFail();
 }
@@ -109,8 +112,8 @@ void TestForInitialIndicatorForContentType(
   auto utils = UiUtils::Create();
   // Check if the location indicator shows.
   for (const TestIndicatorSetting& setting : test_indicator_settings)
-    utils->WaitForVisibilityStatus(setting.element_name,
-                                   setting.element_visibility);
+    utils->PerformActionAndWaitForVisibilityStatus(
+        setting.element_name, setting.element_visibility, base::DoNothing());
 
   t->EndSessionOrFail();
 }

@@ -5,18 +5,14 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_VIEW_TRANSITION_VIEW_TRANSITION_STYLE_TRACKER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_VIEW_TRANSITION_VIEW_TRANSITION_STYLE_TRACKER_H_
 
-#include "base/containers/flat_map.h"
-#include "base/unguessable_token.h"
 #include "components/viz/common/view_transition_element_resource_id.h"
 #include "third_party/blink/public/common/frame/view_transition_state.h"
-#include "third_party/blink/renderer/core/css/css_property_names.h"
-#include "third_party/blink/renderer/core/css/css_rule.h"
 #include "third_party/blink/renderer/core/css/style_request.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_rect.h"
 #include "third_party/blink/renderer/platform/allow_discouraged_type.h"
-#include "third_party/blink/renderer/platform/graphics/graphics_types.h"
+#include "third_party/blink/renderer/platform/geometry/layout_size.h"
 #include "third_party/blink/renderer/platform/graphics/paint/effect_paint_property_node.h"
 #include "third_party/blink/renderer/platform/graphics/view_transition_element_id.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
@@ -36,18 +32,10 @@ class PseudoElement;
 //    started.
 //
 // 2) Tracking changes in the state of transition elements that are mirrored in
-//    the style for their corresponding pseudo element. For example, if a
-//    transition element's size or viewport space transform is updated. This
-//    data is used to generate a dynamic UA stylesheet for these pseudo
-//    elements.
-//
-// Note: The root element is special because its responsibilities are hoisted up
-// to the LayoutView. For example, the root snapshot includes content from the
-// root element and top layer elements.
-// See
-// https://drafts.csswg.org/css-view-transitions-1/#capture-the-image-algorithm.
-// We avoid leaking this detail into this class by letting higher level code
-// deal with this mapping.
+// the
+//    style for their corresponding pseudo element. For example, if a transition
+//    element's size or viewport space transform is updated. This data is used
+//    to generate a dynamic UA stylesheet for these pseudo elements.
 //
 // A new instance of this class is created for every transition.
 class ViewTransitionStyleTracker
@@ -56,7 +44,7 @@ class ViewTransitionStyleTracker
   // Properties that transition on container elements.
   struct ContainerProperties {
     ContainerProperties() = default;
-    ContainerProperties(const PhysicalSize& size, const gfx::Transform& matrix)
+    ContainerProperties(const LayoutSize& size, const gfx::Transform& matrix)
         : border_box_size_in_css_space(size), snapshot_matrix(matrix) {}
 
     bool operator==(const ContainerProperties& other) const {
@@ -68,15 +56,14 @@ class ViewTransitionStyleTracker
       return !(*this == other);
     }
 
-    PhysicalSize border_box_size_in_css_space;
+    LayoutSize border_box_size_in_css_space;
 
     // Transforms a point from local space into the snapshot viewport. For
     // details of the snapshot viewport, see README.md.
     gfx::Transform snapshot_matrix;
   };
 
-  explicit ViewTransitionStyleTracker(Document& document,
-                                      const viz::TransitionId& transition_id);
+  explicit ViewTransitionStyleTracker(Document& document);
   ViewTransitionStyleTracker(Document& document, ViewTransitionState);
   ~ViewTransitionStyleTracker();
 
@@ -110,6 +97,10 @@ class ViewTransitionStyleTracker
   // is initiated.
   void Abort();
 
+  void UpdateRootIndexAndSnapshotId(
+      ViewTransitionElementId&,
+      viz::ViewTransitionElementResourceId&) const;
+
   void UpdateElementIndicesAndSnapshotId(
       Element*,
       ViewTransitionElementId&,
@@ -128,7 +119,7 @@ class ViewTransitionStyleTracker
   bool RunPostPrePaintSteps();
 
   // Provides a UA stylesheet applied to ::transition* pseudo elements.
-  CSSStyleSheet& UAStyleSheet();
+  const String& UAStyleSheet();
 
   void Trace(Visitor* visitor) const;
 
@@ -159,12 +150,13 @@ class ViewTransitionStyleTracker
 
   int CapturedTagCount() const { return captured_name_count_; }
 
-  // Returns true if `node` participates in this transition.
   bool IsTransitionElement(const Element& node) const;
-
-  // Returns whether a clip node is required because `node`'s painting exceeds
-  // max texture size.
   bool NeedsCaptureClipNode(const Element& node) const;
+
+  // This function represents whether root itself is participating in the
+  // transition (i.e. it has a name in the current phase). Note that we create
+  // an EffectNode for the root whether or not it's transitioning.
+  bool IsRootTransitioning() const;
 
   std::vector<viz::ViewTransitionElementResourceId> TakeCaptureResourceIds() {
     return std::move(capture_resource_ids_);
@@ -174,7 +166,6 @@ class ViewTransitionStyleTracker
   // rules based on the current phase of the transition.
   StyleRequest::RulesToInclude StyleRulesToInclude() const;
 
-  // Return non-root transitioning elements.
   VectorOf<Element> GetTransitioningElements() const;
 
   // In physical pixels. Returns the size of the snapshot root rect. This is
@@ -199,15 +190,6 @@ class ViewTransitionStyleTracker
   // recreate the same pseudo-element tree in a new Document.
   ViewTransitionState GetViewTransitionState() const;
 
-  // Returns if the current snapshot containing block size has changed since
-  // the initial capture was taken.
-  bool SnapshotRootDidChangeSize() const;
-
-  // https://drafts.csswg.org/css-view-transitions-2/#captured-element-class-list
-  // Returns the class list for a captured element by name.
-  const Vector<AtomicString>& GetViewTransitionClassList(
-      const AtomicString& name) const;
-
  private:
   class ImageWrapperPseudoElement;
 
@@ -225,8 +207,8 @@ class ViewTransitionStyleTracker
     gfx::RectF GetBorderBoxRect(bool use_cached_data,
                                 float device_scale_factor) const;
 
-    // Caches the current state for the old snapshot.
-    void CacheStateForOldSnapshot();
+    // Caches the current geometry state for the old snapshot.
+    void CacheGeometryState();
 
     // The element in the current DOM whose state is being tracked and mirrored
     // into the corresponding container pseudo element.
@@ -266,20 +248,18 @@ class ViewTransitionStyleTracker
     // A subset of the element's visual overflow rect which is painted into its
     // snapshot. Only populated if the element's painting needs to be clipped.
     // This rect is in layout space.
-    std::optional<gfx::RectF> captured_rect_in_layout_space;
-    std::optional<gfx::RectF> cached_captured_rect_in_layout_space;
+    absl::optional<gfx::RectF> captured_rect_in_layout_space;
+    absl::optional<gfx::RectF> cached_captured_rect_in_layout_space;
 
-    // For the following properties, they are initially set to the outgoing
-    // element's value, and then switch to the incoming element's value, if one
-    // exists.
-    base::flat_map<CSSPropertyID, String> captured_css_properties;
+    // The writing mode to use for the container. Note that initially this is
+    // the outgoing element's (if any) writing mode, and then switches to the
+    // incoming element's writing mode, if one exists.
+    WritingMode container_writing_mode = WritingMode::kHorizontalTb;
+  };
 
-    // This only contains properties that need to be animated, which is a
-    // subset of `captured_css_properties`.
-    base::flat_map<CSSPropertyID, String> cached_animated_css_properties;
-
-    // https://drafts.csswg.org/css-view-transitions-2/#captured-element-class-list
-    Vector<AtomicString> class_list;
+  struct RootData {
+    viz::ViewTransitionElementResourceId snapshot_id;
+    VectorOf<AtomicString> names;
   };
 
   // In physical pixels. Returns the snapshot root rect, relative to the
@@ -293,9 +273,20 @@ class ViewTransitionStyleTracker
 
   void AddConsoleError(String message, Vector<DOMNodeId> related_nodes = {});
   void AddTransitionElement(Element*, const AtomicString&);
-  bool FlattenAndVerifyElements(VectorOf<Element>&, VectorOf<AtomicString>&);
+  bool FlattenAndVerifyElements(VectorOf<Element>&,
+                                VectorOf<AtomicString>&,
+                                absl::optional<RootData>&);
 
   void AddTransitionElementsFromCSSRecursive(PaintLayer*);
+
+  int OldRootDataTagSize() const {
+    return old_root_data_ ? old_root_data_->names.size() : 0;
+  }
+  int NewRootDataTagSize() const {
+    return new_root_data_ ? new_root_data_->names.size() : 0;
+  }
+  absl::optional<RootData> GetCurrentRootData() const;
+  HashSet<AtomicString> AllRootTags() const;
 
   void InvalidateHitTestingCache();
 
@@ -303,26 +294,14 @@ class ViewTransitionStyleTracker
   // specified, then the result is mapped to that ancestor space.
   PhysicalRect ComputeVisualOverflowRect(
       LayoutBoxModelObject& box,
-      const LayoutBoxModelObject* ancestor = nullptr) const;
+      LayoutBoxModelObject* ancestor = nullptr);
 
-  // This corresponds to the state computed for keeping pseudo-elements in sync
-  // with the state of live DOM elements described in
-  // https://drafts.csswg.org/css-view-transitions-1/#style-transition-pseudo-elements-algorithm.
-  void ComputeLiveElementGeometry(
-      int max_capture_size,
-      LayoutObject& layout_object,
-      ContainerProperties&,
-      PhysicalRect& visual_overflow_rect_in_layout_space,
-      std::optional<gfx::RectF>& captured_rect_in_layout_space) const;
-
-  viz::ViewTransitionElementResourceId GenerateResourceId() const;
+  bool SnapshotRootDidChangeSize() const;
 
   Member<Document> document_;
 
   // Indicates which step during the transition we're currently at.
   State state_ = State::kIdle;
-
-  const viz::TransitionId transition_id_;
 
   // Set if this style tracker was created by deserializing captured state
   // instead of running through the capture phase. This is done for transitions
@@ -340,14 +319,20 @@ class ViewTransitionStyleTracker
   // be empty until the kCapturing phase. For a cross-document transition, this
   // will be initialized from the cached state at creation but is currently
   // unset.
-  std::optional<gfx::Size> snapshot_root_layout_size_at_capture_;
+  // TODO(bokan): Implement for cross-document transitions. crbug.com/1404957.
+  absl::optional<gfx::Size> snapshot_root_size_at_capture_;
 
   // Map of the CSS |view-transition-name| property to state for that tag.
   HeapHashMap<AtomicString, Member<ElementData>> element_data_map_;
 
   // The device scale factor used for layout of the Document. This is kept in
   // sync with the Document during RunPostPrePaintSteps().
-  float device_pixel_ratio_ = 0.f;
+  float device_pixel_ratio_ = 1.f;
+
+  // The data for the |documentElement| generate if it has a valid
+  // |view-transition-name| for the old and new DOM state.
+  absl::optional<RootData> old_root_data_;
+  absl::optional<RootData> new_root_data_;
 
   // The paint property node for the |documentElement|. This is generated if the
   // element has a valid |view-transition-name| and ensures correct generation
@@ -356,7 +341,7 @@ class ViewTransitionStyleTracker
 
   // The dynamically generated UA stylesheet for default styles on
   // pseudo-elements.
-  Member<CSSStyleSheet> ua_style_sheet_;
+  absl::optional<String> ua_style_sheet_;
 
   // The following state is buffered until the capture phase and populated again
   // by script for the start phase.
@@ -368,15 +353,6 @@ class ViewTransitionStyleTracker
   // so this uses the std::vector for that reason, instead of WTF::Vector.
   std::vector<viz::ViewTransitionElementResourceId> capture_resource_ids_
       ALLOW_DISCOURAGED_TYPE("cc API uses STL types");
-
-  // Caches whether the root element is currently participating in the
-  // transition. This is a purely performance optimization since this check is
-  // used in hot code-paths.
-  bool is_root_transitioning_ = false;
-
-  // Returns true if GetViewTransitionState() has already been called. This is
-  // used only to enforce additional captures don't happen after that.
-  mutable bool state_extracted_ = false;
 };
 
 }  // namespace blink

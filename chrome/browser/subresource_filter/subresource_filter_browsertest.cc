@@ -6,14 +6,16 @@
 #include <memory>
 #include <sstream>
 #include <string>
-#include <string_view>
 #include <utility>
+
+#include "chrome/browser/subresource_filter/subresource_filter_browser_test_harness.h"
 
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/memory/ref_counted.h"
 #include "base/strings/pattern.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
@@ -25,7 +27,6 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/safe_browsing/test_safe_browsing_database_helper.h"
 #include "chrome/browser/safe_browsing/test_safe_browsing_service.h"
-#include "chrome/browser/subresource_filter/subresource_filter_browser_test_harness.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_finder.h"
@@ -87,7 +88,7 @@ namespace proto = url_pattern_index::proto;
 static constexpr const char kTestFrameSetPath[] =
     "/subresource_filter/frame_set.html";
 
-GURL GetURLWithFragment(const GURL& url, std::string_view fragment) {
+GURL GetURLWithFragment(const GURL& url, base::StringPiece fragment) {
   GURL::Replacements replacements;
   replacements.SetRefStr(fragment);
   return url.ReplaceComponents(replacements);
@@ -1021,6 +1022,11 @@ void ExpectHistogramsAreRecordedForTestFrameSet(
                           time_recorded ? num_subresource_checks : 0);
   tester.ExpectTotalCount(SubresourceFilterBrowserTest::kEvaluationCPUDuration,
                           time_recorded ? num_subresource_checks : 0);
+
+  tester.ExpectUniqueSample(
+      SubresourceFilterBrowserTest::kDocumentLoadActivationLevel,
+      static_cast<base::Histogram::Sample>(mojom::ActivationLevel::kEnabled),
+      6);
 }
 
 }  // namespace
@@ -1089,6 +1095,10 @@ IN_PROC_BROWSER_TEST_F(SubresourceFilterBrowserTestWithoutAdTagging,
   tester.ExpectTotalCount(kEvaluationCPUDuration, 0);
 
   // Although SubresourceFilterAgents still record the activation decision.
+  tester.ExpectUniqueSample(
+      kDocumentLoadActivationLevel,
+      static_cast<base::Histogram::Sample>(mojom::ActivationLevel::kDisabled),
+      6);
 }
 
 IN_PROC_BROWSER_TEST_F(SubresourceFilterBrowserTest,
@@ -1292,7 +1302,7 @@ class AutomaticLazyLoadFrameBrowserTest
 
   void AddAdIframe(content::RenderFrameHost* render_frame_host,
                    const GURL& url) {
-    const std::string_view script = R"(
+    const base::StringPiece script = R"(
       createAdIframeWithSrc($1).onload = () => {childFrameLoadCount++;};
     )";
     EXPECT_TRUE(ExecJs(render_frame_host, content::JsReplace(script, url)));
@@ -1300,14 +1310,14 @@ class AutomaticLazyLoadFrameBrowserTest
 
   void AddLazyAdIframe(content::RenderFrameHost* render_frame_host,
                        const GURL& url) {
-    const std::string_view script = R"(
+    const base::StringPiece script = R"(
       createLazyAdIframeWithSrc($1).onload = () => {childFrameLoadCount++;};
     )";
     EXPECT_TRUE(ExecJs(render_frame_host, content::JsReplace(script, url)));
   }
 
   void AddIframe(content::RenderFrameHost* render_frame_host, const GURL& url) {
-    const std::string_view script = R"(
+    const base::StringPiece script = R"(
       const iframeElement = document.createElement("iframe");
       iframeElement.src = $1;
       iframeElement.onload = () => {childFrameLoadCount++;};
@@ -1318,7 +1328,7 @@ class AutomaticLazyLoadFrameBrowserTest
 
   void AddLazyIframe(content::RenderFrameHost* render_frame_host,
                      const GURL& url) {
-    const std::string_view script = R"(
+    const base::StringPiece script = R"(
       const iframeElement = document.createElement("iframe");
       iframeElement.src = $1;
       iframeElement.loading = 'lazy';
@@ -1357,9 +1367,9 @@ IN_PROC_BROWSER_TEST_P(AutomaticLazyLoadFrameBrowserTest, UKM) {
   const GURL kSameOriginEmbedUrl(
       embedded_test_server()->GetURL(kMainFrameOrigin, "/title1.html"));
 
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kMainFrameUrl));
   content::RenderFrameHost* render_frame_host =
-      web_contents()->GetPrimaryMainFrame();
+      ui_test_utils::NavigateToURL(browser(), kMainFrameUrl);
+  ASSERT_TRUE(render_frame_host);
 
   InitTestPage(render_frame_host);
 
@@ -1393,7 +1403,6 @@ IN_PROC_BROWSER_TEST_P(AutomaticLazyLoadFrameBrowserTest, UKM) {
   // LazyEmbeds and LazyAds must be disabled when the page is reloaded.
   EXPECT_TRUE(render_frame_host->Reload());
   EXPECT_TRUE(content::WaitForLoadStop(web_contents()));
-  render_frame_host = web_contents()->GetPrimaryMainFrame();
   InitTestPage(render_frame_host);
   AddAdIframe(render_frame_host, kAdUrl);
   AddIframe(render_frame_host, kEmbedUrl);

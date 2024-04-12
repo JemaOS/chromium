@@ -2,26 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/extensions/pref_mapping.h"
-
-#include <optional>
 #include <span>  // std::size.
 
 #include "base/containers/contains.h"
 #include "base/strings/stringprintf.h"
+#include "chrome/browser/extensions/pref_mapping.h"
 #include "chrome/browser/extensions/pref_transformer_interface.h"
 #include "chrome/browser/prefetch/pref_names.h"
-#include "chrome/browser/preloading/preloading_prefs.h"
+#include "chrome/browser/prefetch/prefetch_prefs.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/content_settings/core/common/pref_names.h"
 #include "components/embedder_support/pref_names.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
 #include "components/privacy_sandbox/privacy_sandbox_prefs.h"
-#include "components/privacy_sandbox/tracking_protection_prefs.h"
 #include "components/proxy_config/proxy_config_pref_names.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/spellcheck/browser/pref_names.h"
 #include "components/translate/core/browser/translate_pref_names.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
 #include "chrome/browser/chromeos/extensions/controlled_pref_mapping.h"
@@ -40,6 +39,10 @@ namespace {
 constexpr char kOnPrefChangeFormat[] = "types.ChromeSetting.%s.onChange";
 
 const PrefMappingEntry kMappings[] = {
+    {"jemaosImprovementPlanEnabled",
+     jemaos::prefs::kJemaOSImprovementPlanEnabled,
+     APIPermissionID::kJemaOSPrivate,
+     APIPermissionID::kJemaOSPrivate},
     {"alternateErrorPagesEnabled",
      embedder_support::kAlternateErrorPagesEnabled, APIPermissionID::kPrivacy,
      APIPermissionID::kPrivacy},
@@ -57,6 +60,7 @@ const PrefMappingEntry kMappings[] = {
      password_manager::prefs::kCredentialsEnableService,
      APIPermissionID::kPrivacy, APIPermissionID::kPrivacy},
 
+    // Note in Lacros this is Ash-controlled.
     {"protectedContentEnabled", prefs::kProtectedContentDefault,
      APIPermissionID::kPrivacy, APIPermissionID::kPrivacy},
 
@@ -77,6 +81,8 @@ const PrefMappingEntry kMappings[] = {
      APIPermissionID::kPrivacy, APIPermissionID::kPrivacy},
     {"thirdPartyCookiesAllowed", prefs::kCookieControlsMode,
      APIPermissionID::kPrivacy, APIPermissionID::kPrivacy},
+    {"privacySandboxEnabled", prefs::kPrivacySandboxApisEnabled,
+     APIPermissionID::kPrivacy, APIPermissionID::kPrivacy},
     {"topicsEnabled", prefs::kPrivacySandboxM1TopicsEnabled,
      APIPermissionID::kPrivacy, APIPermissionID::kPrivacy},
     {"fledgeEnabled", prefs::kPrivacySandboxM1FledgeEnabled,
@@ -89,9 +95,6 @@ const PrefMappingEntry kMappings[] = {
      APIPermissionID::kPrivacy, APIPermissionID::kPrivacy},
     {"webRTCUDPPortRange", prefs::kWebRTCUDPPortRange,
      APIPermissionID::kPrivacy, APIPermissionID::kPrivacy},
-    {"relatedWebsiteSetsEnabled",
-     prefs::kPrivacySandboxRelatedWebsiteSetsEnabled, APIPermissionID::kPrivacy,
-     APIPermissionID::kPrivacy},
     // accessibilityFeatures.animationPolicy is available for
     // all platforms but the others from accessibilityFeatures
     // is only available for OS_CHROMEOS.
@@ -153,14 +156,14 @@ const PrefMappingEntry kMappings[] = {
 
 class IdentityPrefTransformer : public PrefTransformerInterface {
  public:
-  std::optional<base::Value> ExtensionToBrowserPref(
+  absl::optional<base::Value> ExtensionToBrowserPref(
       const base::Value& extension_pref,
       std::string& error,
       bool& bad_message) override {
     return extension_pref.Clone();
   }
 
-  std::optional<base::Value> BrowserToExtensionPref(
+  absl::optional<base::Value> BrowserToExtensionPref(
       const base::Value& browser_pref,
       bool is_incognito_profile) override {
     return browser_pref.Clone();
@@ -218,7 +221,7 @@ PrefTransformerInterface* PrefMapping::FindTransformerForBrowserPref(
 // the pref in ash, or nullptr if no pref exists.
 crosapi::mojom::PrefPath PrefMapping::GetPrefPathForPrefName(
     const std::string& pref_name) const {
-  static constexpr auto name_to_extension_prefpath = base::MakeFixedFlatMap<
+  static const auto name_to_extension_prefpath = base::MakeFixedFlatMap<
       base::StringPiece, crosapi::mojom::PrefPath>(
       {{chromeos::prefs::kDockedMagnifierEnabled,
         crosapi::mojom::PrefPath::kDockedMagnifierEnabled},
@@ -250,8 +253,9 @@ crosapi::mojom::PrefPath PrefMapping::GetPrefPathForPrefName(
         crosapi::mojom::PrefPath::kAccessibilitySwitchAccessEnabled},
        {chromeos::prefs::kAccessibilityVirtualKeyboardEnabled,
         crosapi::mojom::PrefPath::kAccessibilityVirtualKeyboardEnabled},
-       {proxy_config::prefs::kProxy, crosapi::mojom::PrefPath::kProxy}});
-  auto pref_iter = name_to_extension_prefpath.find(pref_name);
+       {prefs::kProtectedContentDefault,
+        crosapi::mojom::PrefPath::kProtectedContentDefault}});
+  auto* pref_iter = name_to_extension_prefpath.find(pref_name);
   return pref_iter == name_to_extension_prefpath.end()
              ? crosapi::mojom::PrefPath::kUnknown
              : pref_iter->second;

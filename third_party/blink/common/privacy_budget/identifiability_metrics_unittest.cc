@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace blink {

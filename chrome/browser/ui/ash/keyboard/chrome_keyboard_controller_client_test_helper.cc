@@ -75,12 +75,11 @@ class ChromeKeyboardControllerClientTestHelper::FakeKeyboardController
   void RemoveObserver(ash::KeyboardControllerObserver* observer) override {
     observers_.RemoveObserver(observer);
   }
-  std::optional<ash::KeyRepeatSettings> GetKeyRepeatSettings() override {
+  absl::optional<ash::KeyRepeatSettings> GetKeyRepeatSettings() override {
     return ash::KeyRepeatSettings{true, base::Milliseconds(1000),
                                   base::Milliseconds(1000)};
   }
   bool AreTopRowKeysFunctionKeys() override { return false; }
-  void SetSmartVisibilityEnabled(bool enabled) override {}
 
  private:
   keyboard::KeyboardConfig keyboard_config_;

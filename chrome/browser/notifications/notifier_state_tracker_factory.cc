@@ -18,26 +18,19 @@ NotifierStateTrackerFactory::GetForProfile(Profile* profile) {
 // static
 NotifierStateTrackerFactory*
 NotifierStateTrackerFactory::GetInstance() {
-  static base::NoDestructor<NotifierStateTrackerFactory> instance;
-  return instance.get();
+  return base::Singleton<NotifierStateTrackerFactory>::get();
 }
 
 NotifierStateTrackerFactory::NotifierStateTrackerFactory()
     : ProfileKeyedServiceFactory(
           "NotifierStateTracker",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(PermissionManagerFactory::GetInstance());
 }
 
-NotifierStateTrackerFactory::~NotifierStateTrackerFactory() = default;
+NotifierStateTrackerFactory::~NotifierStateTrackerFactory() {}
 
-std::unique_ptr<KeyedService>
-NotifierStateTrackerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* NotifierStateTrackerFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<NotifierStateTracker>(static_cast<Profile*>(profile));
+  return new NotifierStateTracker(static_cast<Profile*>(profile));
 }

@@ -97,7 +97,7 @@ interface CSSRule {
 };
 
 [Exposed=Window]
-interface CSSStyleRule : CSSGroupingRule {
+interface CSSStyleRule : CSSRule {
   attribute CSSOMString selectorText;
   [SameObject, PutForwards=cssText] readonly attribute CSSStyleDeclaration style;
 };
@@ -106,9 +106,7 @@ interface CSSStyleRule : CSSGroupingRule {
 interface CSSImportRule : CSSRule {
   readonly attribute USVString href;
   [SameObject, PutForwards=mediaText] readonly attribute MediaList media;
-  [SameObject] readonly attribute CSSStyleSheet? styleSheet;
-  readonly attribute CSSOMString? layerName;
-  readonly attribute CSSOMString? supportsText;
+  [SameObject] readonly attribute CSSStyleSheet styleSheet;
 };
 
 [Exposed=Window]

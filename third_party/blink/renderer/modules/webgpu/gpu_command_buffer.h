@@ -14,8 +14,7 @@ class GPUCommandBuffer : public DawnObject<WGPUCommandBuffer> {
 
  public:
   explicit GPUCommandBuffer(GPUDevice* device,
-                            WGPUCommandBuffer command_buffer,
-                            const String& label);
+                            WGPUCommandBuffer command_buffer);
 
   GPUCommandBuffer(const GPUCommandBuffer&) = delete;
   GPUCommandBuffer& operator=(const GPUCommandBuffer&) = delete;

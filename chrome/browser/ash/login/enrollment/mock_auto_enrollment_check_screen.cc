@@ -28,9 +28,4 @@ MockAutoEnrollmentCheckScreenView::MockAutoEnrollmentCheckScreenView() =
 MockAutoEnrollmentCheckScreenView::~MockAutoEnrollmentCheckScreenView() =
     default;
 
-base::WeakPtr<AutoEnrollmentCheckScreenView>
-MockAutoEnrollmentCheckScreenView::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 }  // namespace ash

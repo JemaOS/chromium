@@ -27,6 +27,8 @@ class Layer;
 
 namespace ash::curtain {
 
+class InputEventFilter;
+
 // Displays a curtain widget over a single display, which will cover all other
 // content, preventing local users and passerby's from observing the display.
 // Owns the widget.
@@ -39,6 +41,7 @@ class ASH_EXPORT SecurityCurtainWidgetController {
   // Creates a new curtain overlay.
   static SecurityCurtainWidgetController CreateForRootWindow(
       aura::Window* curtain_container,
+      EventFilter event_filter,
       std::unique_ptr<views::View> curtain_view);
 
   const views::Widget& GetWidget() const;
@@ -48,8 +51,10 @@ class ASH_EXPORT SecurityCurtainWidgetController {
   class WidgetMaximizer;
 
   using Layers = std::vector<std::unique_ptr<ui::Layer>>;
-  SecurityCurtainWidgetController(std::unique_ptr<views::Widget> widget,
-                                  Layers layers);
+  SecurityCurtainWidgetController(
+      std::unique_ptr<views::Widget> widget,
+      Layers layers,
+      std::unique_ptr<InputEventFilter> event_filter);
 
   Layers widget_layers_;
   std::unique_ptr<views::Widget> widget_;
@@ -61,6 +66,9 @@ class ASH_EXPORT SecurityCurtainWidgetController {
 
   // Ensures the widget is always maximized, even when the display is resized.
   std::unique_ptr<WidgetMaximizer> widget_maximizer_;
+
+  // Ensures local input events are filtered out.
+  std::unique_ptr<InputEventFilter> input_event_filter_;
 };
 
 }  // namespace ash::curtain

@@ -5,7 +5,8 @@
 // https://www.khronos.org/registry/webgl/extensions/EXT_sRGB/
 
 [
-    LegacyNoInterfaceObject
+    LegacyNoInterfaceObject,
+    DoNotCheckConstants
 ] interface EXTsRGB {
     const unsigned long SRGB_EXT                                     = 0x8C40;
     const unsigned long SRGB_ALPHA_EXT                               = 0x8C42;

@@ -6,13 +6,14 @@
 #define CHROME_BROWSER_RENDERER_HOST_CHROME_NAVIGATION_UI_DATA_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
+#include "base/uuid.h"
 #include "components/offline_pages/buildflags/buildflags.h"
 #include "components/offline_pages/core/request_header/offline_page_navigation_ui_data.h"
 #include "content/public/browser/navigation_ui_data.h"
 #include "extensions/buildflags/buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "extensions/browser/extension_navigation_ui_data.h"
@@ -48,8 +49,7 @@ class ChromeNavigationUIData : public content::NavigationUIData {
   static std::unique_ptr<ChromeNavigationUIData> CreateForMainFrameNavigation(
       content::WebContents* web_contents,
       WindowOpenDisposition disposition,
-      bool is_using_https_as_default_scheme,
-      bool url_is_typed_with_http_scheme);
+      bool is_using_https_as_default_scheme);
 
   // Creates a new ChromeNavigationUIData that is a deep copy of the original.
   // Any changes to the original after the clone is created will not be
@@ -83,12 +83,9 @@ class ChromeNavigationUIData : public content::NavigationUIData {
   bool is_using_https_as_default_scheme() const {
     return is_using_https_as_default_scheme_;
   }
-  bool url_is_typed_with_http_scheme() const {
-    return url_is_typed_with_http_scheme_;
-  }
 
-  std::optional<int64_t> bookmark_id() { return bookmark_id_; }
-  void set_bookmark_id(std::optional<int64_t> id) { bookmark_id_ = id; }
+  absl::optional<base::Uuid> bookmark_id() { return bookmark_id_; }
+  void set_bookmark_id(absl::optional<base::Uuid> id) { bookmark_id_ = id; }
 
  private:
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -112,13 +109,8 @@ class ChromeNavigationUIData : public content::NavigationUIData {
   // observed and fall back to using http scheme if necessary.
   bool is_using_https_as_default_scheme_ = false;
 
-  // True if the navigation was initiated by typing in the omnibox, and the
-  // typed text had an explicit http scheme. This is used to opt-out of https
-  // upgrades.
-  bool url_is_typed_with_http_scheme_ = false;
-
   // Id of the bookmark which started this navigation.
-  std::optional<int64_t> bookmark_id_ = std::nullopt;
+  absl::optional<base::Uuid> bookmark_id_ = absl::nullopt;
 };
 
 #endif  // CHROME_BROWSER_RENDERER_HOST_CHROME_NAVIGATION_UI_DATA_H_

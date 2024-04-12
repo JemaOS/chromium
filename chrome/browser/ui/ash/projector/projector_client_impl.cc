@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ui/ash/projector/projector_client_impl.h"
 
-#include <optional>
-
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
 #include "ash/projector/projector_metrics.h"
@@ -22,7 +20,6 @@
 #include "base/functional/callback_helpers.h"
 #include "base/notreached.h"
 #include "base/strings/string_util.h"
-#include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/download/download_prefs.h"
@@ -44,14 +41,13 @@
 #include "media/audio/audio_device_description.h"
 #include "media/base/media_switches.h"
 #include "media/mojo/mojom/speech_recognition_service.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/views/controls/webview/webview.h"
 #include "url/gurl.h"
 
 namespace {
-
-constexpr char kUSMExperimentRoutingId[] = "screencast_experimental_usm2b";
 
 inline const std::string& GetLocale() {
   return g_browser_process->GetApplicationLocale();
@@ -120,9 +116,8 @@ ProjectorClientImpl::ProjectorClientImpl(ash::ProjectorController* controller)
   controller_->SetClient(this);
   session_manager::SessionManager* session_manager =
       session_manager::SessionManager::Get();
-  if (session_manager) {
+  if (session_manager)
     session_observation_.Observe(session_manager);
-  }
 
   if (base::FeatureList::IsEnabled(ash::features::kOnDeviceSpeechRecognition)) {
     soda_installation_controller_ =
@@ -171,9 +166,6 @@ void ProjectorClientImpl::StartSpeechRecognition() {
       availability.use_on_device
           ? GetLocale()
           : GetLocaleOrLanguageForServerSideRecognition();
-  const std::string experiment_recognizer_routing_key =
-      ash::features::IsProjectorUseUSMForS3Enabled() ? kUSMExperimentRoutingId
-                                                     : "";
 
   speech_recognizer_ = std::make_unique<SpeechRecognitionRecognizerClientImpl>(
       weak_ptr_factory_.GetWeakPtr(), ProfileManager::GetActiveUserProfile(),
@@ -182,9 +174,7 @@ void ProjectorClientImpl::StartSpeechRecognition() {
           media::mojom::SpeechRecognitionMode::kCaption,
           /*enable_formatting=*/true, locale,
           /*is_server_based=*/!availability.use_on_device,
-          media::mojom::RecognizerClientType::kProjector,
-          /*skip_continuously_empty_audio=*/false,
-          experiment_recognizer_routing_key));
+          media::mojom::RecognizerClientType::kProjector));
   if (!availability.use_on_device) {
     RecordOnDeviceToServerSpeechRecognitionFallbackReason(
         GetFallbackReason(availability.on_device_availability));
@@ -205,9 +195,8 @@ void ProjectorClientImpl::ForceEndSpeechRecognition() {
 }
 
 bool ProjectorClientImpl::GetBaseStoragePath(base::FilePath* result) const {
-  if (!IsDriveFsMounted()) {
+  if (!IsDriveFsMounted())
     return false;
-  }
 
   if (ash::ProjectorController::AreExtendedProjectorFeaturesDisabled()) {
     auto* profile = ProfileManager::GetActiveUserProfile();
@@ -224,9 +213,8 @@ bool ProjectorClientImpl::GetBaseStoragePath(base::FilePath* result) const {
 }
 
 bool ProjectorClientImpl::IsDriveFsMounted() const {
-  if (!ash::LoginState::Get()->IsUserLoggedIn()) {
+  if (!ash::LoginState::Get()->IsUserLoggedIn())
     return false;
-  }
 
   if (ash::ProjectorController::AreExtendedProjectorFeaturesDisabled()) {
     // Return true when extended projector features are disabled. Use download
@@ -249,26 +237,23 @@ void ProjectorClientImpl::MinimizeProjectorApp() const {
   auto* profile = ProfileManager::GetActiveUserProfile();
   auto* browser =
       ash::FindSystemWebAppBrowser(profile, ash::SystemWebAppType::PROJECTOR);
-  if (browser) {
+  if (browser)
     browser->window()->Minimize();
-  }
 }
 
 void ProjectorClientImpl::CloseProjectorApp() const {
   auto* profile = ProfileManager::GetActiveUserProfile();
   auto* browser =
       ash::FindSystemWebAppBrowser(profile, ash::SystemWebAppType::PROJECTOR);
-  if (browser) {
+  if (browser)
     browser->window()->Close();
-  }
 }
 
 void ProjectorClientImpl::OnNewScreencastPreconditionChanged(
     const ash::NewScreencastPrecondition& precondition) const {
   ash::ProjectorAppClient* app_client = ash::ProjectorAppClient::Get();
-  if (app_client) {
+  if (app_client)
     app_client->OnNewScreencastPreconditionChanged(precondition);
-  }
 }
 
 void ProjectorClientImpl::ToggleFileSyncingNotificationForPaths(
@@ -283,7 +268,7 @@ void ProjectorClientImpl::ToggleFileSyncingNotificationForPaths(
 void ProjectorClientImpl::OnSpeechResult(
     const std::u16string& text,
     bool is_final,
-    const std::optional<media::SpeechRecognitionResult>& full_result) {
+    const absl::optional<media::SpeechRecognitionResult>& full_result) {
   DCHECK(full_result.has_value());
   controller_->OnTranscription(full_result.value());
 }
@@ -339,9 +324,8 @@ void ProjectorClientImpl::OnFileSystemMountFailed() {
 }
 
 void ProjectorClientImpl::OnUserSessionStarted(bool is_primary_user) {
-  if (!is_primary_user || !pref_change_registrar_.IsEmpty()) {
+  if (!is_primary_user || !pref_change_registrar_.IsEmpty())
     return;
-  }
   Profile* profile = ProfileManager::GetActiveUserProfile();
   pref_change_registrar_.Init(profile->GetPrefs());
   // TOOD(b/232043809): Consider using the disabled system feature policy
@@ -357,10 +341,13 @@ void ProjectorClientImpl::OnUserSessionStarted(bool is_primary_user) {
 }
 
 void ProjectorClientImpl::MaybeSwitchDriveIntegrationServiceObservation() {
-  if (drive::DriveIntegrationService* const service =
-          ProjectorDriveFsProvider::GetActiveDriveIntegrationService()) {
-    Observe(service);
-  }
+  drive::DriveIntegrationService* drive_service =
+      ProjectorDriveFsProvider::GetActiveDriveIntegrationService();
+  if (!drive_service || drive_observation_.IsObservingSource(drive_service))
+    return;
+
+  drive_observation_.Reset();
+  drive_observation_.Observe(drive_service);
 }
 
 void ProjectorClientImpl::SpeechRecognitionEnded(bool forced) {
@@ -373,24 +360,34 @@ void ProjectorClientImpl::OnEnablementPolicyChanged() {
   Profile* profile = ProfileManager::GetActiveUserProfile();
   ash::SystemWebAppManager* swa_manager =
       ash::SystemWebAppManager::Get(profile);
-  CHECK(swa_manager);
-  const bool is_installed =
-      swa_manager->IsSystemWebApp(ash::kChromeUIUntrustedProjectorSwaAppId);
-  // We can't enable or disable the app if it's not already installed.
-  if (!is_installed) {
+  // TODO(b/240497023): convert to dcheck once confirm that the pointer is
+  // always available at this point.
+  if (!swa_manager) {
+    RecordPolicyChangeHandlingError(
+        ash::ProjectorPolicyChangeHandlingError::kSwaManager);
     return;
   }
+  const bool is_installed =
+      swa_manager->IsSystemWebApp(ash::kChromeUITrustedProjectorSwaAppId);
+  // We can't enable or disable the app if it's not already installed.
+  if (!is_installed)
+    return;
 
   const bool is_enabled = IsProjectorAppEnabled(profile);
   // The policy has changed to disallow the Projector app. Since we can't
   // uninstall the Projector SWA until the user signs out and back in, we should
   // close and disable the app for this current session.
-  if (!is_enabled) {
+  if (!is_enabled)
     CloseProjectorApp();
-  }
 
   auto* web_app_provider = ash::SystemWebAppManager::GetWebAppProvider(profile);
-  CHECK(web_app_provider);
+  // TODO(b/240497023): convert to dcheck once confirm that the pointer is
+  // always available at this point.
+  if (!web_app_provider) {
+    RecordPolicyChangeHandlingError(
+        ash::ProjectorPolicyChangeHandlingError::kWebAppProvider);
+    return;
+  }
   web_app_provider->on_registry_ready().Post(
       FROM_HERE, base::BindOnce(&ProjectorClientImpl::SetAppIsDisabled,
                                 weak_ptr_factory_.GetWeakPtr(), !is_enabled));
@@ -400,8 +397,14 @@ void ProjectorClientImpl::SetAppIsDisabled(bool disabled) {
   Profile* profile = ProfileManager::GetActiveUserProfile();
 
   auto* web_app_provider = ash::SystemWebAppManager::GetWebAppProvider(profile);
-  CHECK(web_app_provider);
+  // TODO(b/240497023): convert to dcheck once confirm that the pointer is
+  // always available at this point.
+  if (!web_app_provider) {
+    RecordPolicyChangeHandlingError(ash::ProjectorPolicyChangeHandlingError::
+                                        kWebAppProviderOnRegistryReady);
+    return;
+  }
 
   web_app_provider->scheduler().SetAppIsDisabled(
-      ash::kChromeUIUntrustedProjectorSwaAppId, disabled, base::DoNothing());
+      ash::kChromeUITrustedProjectorSwaAppId, disabled, base::DoNothing());
 }

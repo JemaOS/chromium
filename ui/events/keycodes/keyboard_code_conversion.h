@@ -11,7 +11,7 @@
 
 namespace ui {
 
-enum class DomCode : uint32_t;
+enum class DomCode;
 
 // Helper functions to get the meaning of a DOM |code| in a
 // platform independent way. It supports control characters as well.

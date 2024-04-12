@@ -22,36 +22,29 @@ MenuManager* MenuManagerFactory::GetForBrowserContext(
 
 // static
 MenuManagerFactory* MenuManagerFactory::GetInstance() {
-  static base::NoDestructor<MenuManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<MenuManagerFactory>::get();
 }
 
 // static
 std::unique_ptr<KeyedService>
 MenuManagerFactory::BuildServiceInstanceForTesting(
     content::BrowserContext* context) {
-  return GetInstance()->BuildServiceInstanceForBrowserContext(context);
+  return base::WrapUnique(GetInstance()->BuildServiceInstanceFor(context));
 }
 
 MenuManagerFactory::MenuManagerFactory()
     : ProfileKeyedServiceFactory(
           "MenuManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(ExtensionsBrowserClient::Get()->GetExtensionSystemFactory());
 }
 
-MenuManagerFactory::~MenuManagerFactory() = default;
+MenuManagerFactory::~MenuManagerFactory() {}
 
-std::unique_ptr<KeyedService> MenuManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* MenuManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<MenuManager>(
-      profile, ExtensionSystem::Get(profile)->state_store());
+  return new MenuManager(profile, ExtensionSystem::Get(profile)->state_store());
 }
 
 bool MenuManagerFactory::ServiceIsCreatedWithBrowserContext() const {

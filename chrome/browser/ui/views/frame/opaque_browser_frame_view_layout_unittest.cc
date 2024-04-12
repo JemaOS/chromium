@@ -10,6 +10,7 @@
 
 #include "base/command_line.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -76,7 +77,7 @@ class TestLayoutDelegate : public OpaqueBrowserFrameViewLayoutDelegate {
   bool IsTabStripVisible() const override { return window_title_.empty(); }
   bool GetBorderlessModeEnabled() const override { return false; }
   int GetTabStripHeight() const override {
-    return IsTabStripVisible() ? GetLayoutConstant(TAB_STRIP_HEIGHT) : 0;
+    return IsTabStripVisible() ? GetLayoutConstant(TAB_HEIGHT) : 0;
   }
   bool IsToolbarVisible() const override { return true; }
   gfx::Size GetTabstripMinimumSize() const override {
@@ -90,9 +91,10 @@ class TestLayoutDelegate : public OpaqueBrowserFrameViewLayoutDelegate {
   bool EverHasVisibleBackgroundTabShapes() const override { return false; }
   void UpdateWindowControlsOverlay(
       const gfx::Rect& bounding_rect) const override {}
+  bool IsTranslucentWindowOpacitySupported() const override { return true; }
   bool ShouldDrawRestoredFrameShadow() const override { return true; }
-#if BUILDFLAG(IS_LINUX)
-  bool IsTiled() const override { return false; }
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+  ui::WindowTiledEdges GetTiledEdges() const override { return {}; }
 #endif
   int WebAppButtonHeight() const override { return 0; }
 
@@ -362,26 +364,27 @@ class OpaqueBrowserFrameViewLayoutTest
   }
 
   std::unique_ptr<views::Widget> widget_;
-  raw_ptr<views::View, DanglingUntriaged> root_view_ = nullptr;
-  raw_ptr<OpaqueBrowserFrameViewLayout, DanglingUntriaged> layout_manager_ =
-      nullptr;
+  raw_ptr<views::View> root_view_ = nullptr;
+  raw_ptr<OpaqueBrowserFrameViewLayout> layout_manager_ = nullptr;
   std::unique_ptr<TestLayoutDelegate> delegate_;
 
   // Widgets:
-  raw_ptr<views::ImageButton, DanglingUntriaged> minimize_button_ = nullptr;
-  raw_ptr<views::ImageButton, DanglingUntriaged> maximize_button_ = nullptr;
-  raw_ptr<views::ImageButton, DanglingUntriaged> restore_button_ = nullptr;
-  raw_ptr<views::ImageButton, DanglingUntriaged> close_button_ = nullptr;
+  raw_ptr<views::ImageButton> minimize_button_ = nullptr;
+  raw_ptr<views::ImageButton> maximize_button_ = nullptr;
+  raw_ptr<views::ImageButton> restore_button_ = nullptr;
+  raw_ptr<views::ImageButton> close_button_ = nullptr;
 
-  raw_ptr<TabIconView, DanglingUntriaged> tab_icon_view_ = nullptr;
-  raw_ptr<views::Label, DanglingUntriaged> window_title_ = nullptr;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION TabIconView* tab_icon_view_ = nullptr;
+  raw_ptr<views::Label> window_title_ = nullptr;
 };
 
 TEST_P(OpaqueBrowserFrameViewLayoutTest, BasicWindow) {
   // Tests the layout of a default chrome window with a tabstrip and no window
   // title.
   views::test::RunScheduledLayout(root_view_);
-  ExpectCaptionButtons(false, GetParam() ? 1 : 0);
+  ExpectCaptionButtons(false, 0);
   ExpectTabStripAndMinimumSize(false);
   ExpectWindowIcon(false);
 }
@@ -396,7 +399,7 @@ TEST_P(OpaqueBrowserFrameViewLayoutTest, WindowButtonsOnLeft) {
   layout_manager_->SetButtonOrdering(leading_buttons, trailing_buttons);
 
   views::test::RunScheduledLayout(root_view_);
-  ExpectCaptionButtons(true, GetParam() ? 1 : 0);
+  ExpectCaptionButtons(true, 0);
   ExpectTabStripAndMinimumSize(true);
   ExpectWindowIcon(true);
 }
@@ -418,7 +421,7 @@ TEST_P(OpaqueBrowserFrameViewLayoutTest, WindowWithTitleAndIcon) {
   AddWindowTitleIcons();
 
   views::test::RunScheduledLayout(root_view_);
-  ExpectCaptionButtons(false, GetParam() ? 1 : 0);
+  ExpectCaptionButtons(false, 0);
   ExpectWindowIcon(false);
   ExpectWindowTitle();
 }

@@ -2,14 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {LayersTestRunner} from 'layers_test_runner';
-
-import * as Layers from 'devtools/panels/layers/layers.js';
-import * as LayerViewer from 'devtools/panels/layer_viewer/layer_viewer.js';
-
 (async function() {
   TestRunner.addResult(`Tests hit testing in Layers3DView\n`);
+  await TestRunner.loadTestModule('layers_test_runner');
 
   await TestRunner.loadHTML(`
       <div id="a" style="will-change: transform; transform:translateY(60px) rotateZ(45deg);width:300px;height:300px;margin-left:100px; border: 1px solid black;">
@@ -61,7 +56,7 @@ import * as LayerViewer from 'devtools/panels/layer_viewer/layer_viewer.js';
   }
 
   function initSizes() {
-    canvas = Layers.LayersPanel.LayersPanel.instance()._layers3DView._canvasElement;
+    canvas = UI.panels.layers._layers3DView._canvasElement;
     var canvasWidth = canvas.offsetWidth;
     var canvasHeight = canvas.offsetHeight;
     var rootWidth = 800;
@@ -89,10 +84,10 @@ import * as LayerViewer from 'devtools/panels/layer_viewer/layer_viewer.js';
 
   function dumpStateForOutlineType(type) {
     var outlined = 'none';
-    Layers.LayersPanel.LayersPanel.instance()._update();
+    UI.panels.layers._update();
 
     function checkLayer(layerInfo) {
-      var l3dview = Layers.LayersPanel.LayersPanel.instance()._layers3DView;
+      var l3dview = UI.panels.layers._layers3DView;
       if (l3dview._lastSelection[type] && layerInfo.layer.id() === l3dview._lastSelection[type].layer().id())
         outlined = layerInfo.name;
     }
@@ -103,8 +98,8 @@ import * as LayerViewer from 'devtools/panels/layer_viewer/layer_viewer.js';
 
   function dumpOutlinedStateForLayers() {
     TestRunner.addResult('State of layers:');
-    dumpStateForOutlineType(LayerViewer.Layers3DView.Layers3DView.OutlineType.Hovered);
-    dumpStateForOutlineType(LayerViewer.Layers3DView.Layers3DView.OutlineType.Selected);
+    dumpStateForOutlineType(LayerViewer.Layers3DView.OutlineType.Hovered);
+    dumpStateForOutlineType(LayerViewer.Layers3DView.OutlineType.Selected);
   }
 
 })();

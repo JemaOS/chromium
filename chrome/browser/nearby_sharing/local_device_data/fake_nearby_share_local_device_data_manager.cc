@@ -32,7 +32,7 @@ FakeNearbyShareLocalDeviceDataManager::Factory::CreateInstance(
 }
 
 FakeNearbyShareLocalDeviceDataManager::UploadContactsCall::UploadContactsCall(
-    std::vector<nearby::sharing::proto::Contact> contacts,
+    std::vector<nearbyshare::proto::Contact> contacts,
     UploadCompleteCallback callback)
     : contacts(std::move(contacts)), callback(std::move(callback)) {}
 
@@ -44,7 +44,7 @@ FakeNearbyShareLocalDeviceDataManager::UploadContactsCall::
 
 FakeNearbyShareLocalDeviceDataManager::UploadCertificatesCall::
     UploadCertificatesCall(
-        std::vector<nearby::sharing::proto::PublicCertificate> certificates,
+        std::vector<nearbyshare::proto::PublicCertificate> certificates,
         UploadCompleteCallback callback)
     : certificates(std::move(certificates)), callback(std::move(callback)) {}
 
@@ -69,12 +69,12 @@ std::string FakeNearbyShareLocalDeviceDataManager::GetDeviceName() const {
   return device_name_;
 }
 
-std::optional<std::string> FakeNearbyShareLocalDeviceDataManager::GetFullName()
+absl::optional<std::string> FakeNearbyShareLocalDeviceDataManager::GetFullName()
     const {
   return full_name_;
 }
 
-std::optional<std::string> FakeNearbyShareLocalDeviceDataManager::GetIconUrl()
+absl::optional<std::string> FakeNearbyShareLocalDeviceDataManager::GetIconUrl()
     const {
   return icon_url_;
 }
@@ -107,19 +107,19 @@ void FakeNearbyShareLocalDeviceDataManager::DownloadDeviceData() {
 }
 
 void FakeNearbyShareLocalDeviceDataManager::UploadContacts(
-    std::vector<nearby::sharing::proto::Contact> contacts,
+    std::vector<nearbyshare::proto::Contact> contacts,
     UploadCompleteCallback callback) {
   upload_contacts_calls_.emplace_back(std::move(contacts), std::move(callback));
 }
 
 void FakeNearbyShareLocalDeviceDataManager::UploadCertificates(
-    std::vector<nearby::sharing::proto::PublicCertificate> certificates,
+    std::vector<nearbyshare::proto::PublicCertificate> certificates,
     UploadCompleteCallback callback) {
   upload_certificates_calls_.emplace_back(std::move(certificates),
                                           std::move(callback));
 }
 void FakeNearbyShareLocalDeviceDataManager::SetFullName(
-    const std::optional<std::string>& full_name) {
+    const absl::optional<std::string>& full_name) {
   if (full_name_ == full_name)
     return;
 
@@ -131,7 +131,7 @@ void FakeNearbyShareLocalDeviceDataManager::SetFullName(
 }
 
 void FakeNearbyShareLocalDeviceDataManager::SetIconUrl(
-    const std::optional<std::string>& icon_url) {
+    const absl::optional<std::string>& icon_url) {
   if (icon_url_ == icon_url)
     return;
 

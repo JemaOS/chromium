@@ -31,9 +31,8 @@ constexpr int kPotentialProblemLatencyMs = 500;
 
 }  // namespace
 
-ArcHttpRoutine::ArcHttpRoutine(mojom::RoutineCallSource source)
-    : NetworkDiagnosticsRoutine(source),
-      hostnames_to_request_http_(
+ArcHttpRoutine::ArcHttpRoutine()
+    : hostnames_to_request_http_(
           util::GetRandomHostsWithSchemeAndGenerate204Path(kTotalHostsToQuery,
                                                            kHostPrefixLength,
                                                            kHttpScheme)) {}

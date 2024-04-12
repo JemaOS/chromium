@@ -5,9 +5,6 @@
 #ifndef UI_BASE_TEST_UI_CONTROLS_H_
 #define UI_BASE_TEST_UI_CONTROLS_H_
 
-#include <cstdint>
-#include <string>
-
 #include "base/functional/callback_forward.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -15,8 +12,6 @@
 #include "ui/gfx/native_widget_types.h"
 
 namespace ui_controls {
-
-enum KeyEventType { kKeyPress = 1 << 0, kKeyRelease = 1 << 1 };
 
 // A set of utility functions to generate native events in platform
 // independent way. Note that since the implementations depend on a window being
@@ -67,15 +62,15 @@ bool SendKeyPress(gfx::NativeWindow window,
                   bool shift,
                   bool alt,
                   bool command);
-bool SendKeyPressNotifyWhenDone(
-    gfx::NativeWindow window,
-    ui::KeyboardCode key,
-    bool control,
-    bool shift,
-    bool alt,
-    bool command,
-    base::OnceClosure task,
-    KeyEventType wait_for = KeyEventType::kKeyRelease);
+bool SendKeyPressNotifyWhenDone(gfx::NativeWindow window,
+                                ui::KeyboardCode key,
+                                bool control,
+                                bool shift,
+                                bool alt,
+                                bool command,
+                                base::OnceClosure task);
+
+enum KeyEventType { kKeyPress = 1 << 0, kKeyRelease = 1 << 1 };
 
 // The keys that may be held down while generating a keyboard/mouse event.
 enum AcceleratorState {
@@ -105,7 +100,7 @@ bool SendKeyEventsNotifyWhenDone(gfx::NativeWindow window,
 
 // This value specifies that no window hint is given and an appropriate target
 // window should be deduced from the target or current mouse position.
-constexpr gfx::NativeWindow kNoWindowHint = gfx::NativeWindow();
+constexpr gfx::NativeWindow kNoWindowHint = gfx::kNullNativeWindow;
 
 // Simulate a mouse move.
 //
@@ -186,16 +181,7 @@ bool SendTouchEventsNotifyWhenDone(int action,
                                    base::OnceClosure task);
 #endif
 
-#if BUILDFLAG(IS_LINUX)
-// Forces the platform implementation to use screen coordinates, even if they're
-// not really available, the next time that ui_controls::SendMouseMove() or
-// ui_controls::SendMouseMoveNotifyWhenDone() is called, or some other method
-// using these methods internally, e.g. ui_test_utils::SendMouseMoveSync(). All
-// following calls will behave normally (unless this method is called again).
-void ForceUseScreenCoordinatesOnce();
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_WIN)
+#if defined(USE_AURA)
 class UIControlsAura;
 void InstallUIControlsAura(UIControlsAura* instance);
 #endif
@@ -205,14 +191,6 @@ void InstallUIControlsAura(UIControlsAura* instance);
 // to traverse to the desired item; because the application is configured to
 // traverse more elements for accessibility reasons.
 bool IsFullKeyboardAccessEnabled();
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-// TODO(vincentchiang): Move to another test API file.
-// Update the test display configurations in accordance to the passed in
-// |display_specs| which is a comma separated list of display specs. See
-// ash::DisplayManagerTestApi::UpdateDisplay for detail.
-void UpdateDisplaySync(const std::string& display_specs);
 #endif
 
 }  // namespace ui_controls

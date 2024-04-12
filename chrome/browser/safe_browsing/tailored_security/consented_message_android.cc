@@ -38,7 +38,7 @@ TailoredSecurityConsentedModalAndroid::TailoredSecurityConsentedModalAndroid(
     content::WebContents* web_contents,
     bool enable,
     base::OnceClosure dismiss_callback)
-    : window_android_(web_contents->GetTopLevelNativeWindow()),
+    : web_contents_(web_contents),
       dismiss_callback_(std::move(dismiss_callback)),
       is_enable_message_(enable) {
   message_ = std::make_unique<messages::MessageWrapper>(
@@ -60,17 +60,12 @@ TailoredSecurityConsentedModalAndroid::TailoredSecurityConsentedModalAndroid(
             safe_browsing::kTailoredSecurityUpdatedMessages)) {
       description = l10n_util::GetStringUTF16(
           IDS_TAILORED_SECURITY_CONSENTED_ENABLE_MESSAGE_DESCRIPTION_UPDATED);
-      icon_resource_id =
-          ResourceMapper::MapToJavaDrawableId(IDR_ANDROID_MESSAGE_SHIELD_BLUE);
-      // Need to disable tint here because it removes a shade of blue from the
-      // shield which distorts the image.
-      message_->DisableIconTint();
     } else {
       description = l10n_util::GetStringUTF16(
           IDS_TAILORED_SECURITY_CONSENTED_ENABLE_MESSAGE_DESCRIPTION);
-      icon_resource_id =
-          ResourceMapper::MapToJavaDrawableId(IDR_ANDROID_MESSAGE_SAFETY_CHECK);
     }
+    icon_resource_id =
+        ResourceMapper::MapToJavaDrawableId(IDR_ANDROID_MESSAGE_SAFETY_CHECK);
   } else {
     title = l10n_util::GetStringUTF16(
         IDS_TAILORED_SECURITY_CONSENTED_DISABLE_MESSAGE_TITLE);
@@ -78,14 +73,12 @@ TailoredSecurityConsentedModalAndroid::TailoredSecurityConsentedModalAndroid(
             safe_browsing::kTailoredSecurityUpdatedMessages)) {
       description = l10n_util::GetStringUTF16(
           IDS_TAILORED_SECURITY_CONSENTED_DISABLE_MESSAGE_DESCRIPTION_UPDATED);
-      icon_resource_id =
-          ResourceMapper::MapToJavaDrawableId(IDR_ANDROID_MESSAGE_SHIELD_GRAY);
     } else {
       description = l10n_util::GetStringUTF16(
           IDS_TAILORED_SECURITY_CONSENTED_DISABLE_MESSAGE_DESCRIPTION);
-      icon_resource_id =
-          ResourceMapper::MapToJavaDrawableId(IDR_ANDROID_MESSAGE_SHIELD);
     }
+    icon_resource_id =
+        ResourceMapper::MapToJavaDrawableId(IDR_ANDROID_MESSAGE_SHIELD);
     message_->DisableIconTint();
   }
   message_->SetTitle(title);
@@ -100,7 +93,8 @@ TailoredSecurityConsentedModalAndroid::TailoredSecurityConsentedModalAndroid(
       base::Unretained(this)));
 
   messages::MessageDispatcherBridge::Get()->EnqueueWindowScopedMessage(
-      message_.get(), window_android_, messages::MessagePriority::kNormal);
+      message_.get(), web_contents_->GetTopLevelNativeWindow(),
+      messages::MessagePriority::kNormal);
   LogOutcome(TailoredSecurityOutcome::kShown, is_enable_message_);
 }
 
@@ -118,7 +112,7 @@ void TailoredSecurityConsentedModalAndroid::DismissMessageInternal(
 }
 
 void TailoredSecurityConsentedModalAndroid::HandleSettingsClicked() {
-  ShowSafeBrowsingSettings(window_android_,
+  ShowSafeBrowsingSettings(web_contents_,
                            SettingsAccessPoint::kTailoredSecurity);
   LogOutcome(TailoredSecurityOutcome::kSettings, is_enable_message_);
   DismissMessageInternal(messages::DismissReason::SECONDARY_ACTION);

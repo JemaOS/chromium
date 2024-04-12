@@ -5,13 +5,13 @@
 #include "chrome/browser/resource_coordinator/tab_lifecycle_unit.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
+#include "base/metrics/histogram_macros.h"
 #include "base/observer_list.h"
 #include "base/process/process_metrics.h"
 #include "build/chromeos_buildflags.h"
@@ -21,6 +21,7 @@
 #include "chrome/browser/performance_manager/public/user_tuning/user_performance_tuning_manager.h"
 #include "chrome/browser/permissions/permission_manager_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/resource_coordinator/intervention_policy_database.h"
 #include "chrome/browser/resource_coordinator/lifecycle_unit_state.mojom.h"
 #include "chrome/browser/resource_coordinator/tab_helper.h"
 #include "chrome/browser/resource_coordinator/tab_lifecycle_observer.h"
@@ -38,11 +39,13 @@
 #include "components/device_event_log/device_event_log.h"
 #include "components/performance_manager/public/decorators/page_live_state_decorator.h"
 #include "components/permissions/permission_manager.h"
+#include "components/permissions/permission_result.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/frame/sudden_termination_disabler_type.mojom.h"
 #include "url/gurl.h"
 
@@ -161,8 +164,7 @@ class TabLifecycleUnitExternalImpl : public TabLifecycleUnitExternal {
 
 TabLifecycleUnitSource::TabLifecycleUnit::TabLifecycleUnit(
     TabLifecycleUnitSource* source,
-    base::ObserverList<TabLifecycleObserver>::UncheckedAndDanglingUntriaged*
-        observers,
+    base::ObserverList<TabLifecycleObserver>::Unchecked* observers,
     UsageClock* usage_clock,
     content::WebContents* web_contents,
     TabStripModel* tab_strip_model)
@@ -215,17 +217,10 @@ void TabLifecycleUnitSource::TabLifecycleUnit::SetFocused(bool focused) {
 
   switch (GetState()) {
     case LifecycleUnitState::DISCARDED: {
-      // Transition to the active state.
+      // Reload the tab.
       SetState(LifecycleUnitState::ACTIVE, StateChangeReason::USER_INITIATED);
-
-      // Load the tab if it's discarded. It will typically be discarded, but
-      // might not be if this is invoked as part of reloading the tab explicitly
-      // and we haven't been notified of the ongoing load yet
-      // (crbug.com/40075246).
-      if (web_contents()->WasDiscarded()) {
-        bool loaded = Load();
-        DCHECK(loaded);
-      }
+      bool loaded = Load();
+      DCHECK(loaded);
       break;
     }
 
@@ -437,11 +432,6 @@ bool TabLifecycleUnitSource::TabLifecycleUnit::CanDiscard(
     decision_details->AddReason(DecisionFailureReason::LIVE_WEB_APP);
   }
 
-  if (web_contents()->HasPictureInPictureVideo() ||
-      web_contents()->HasPictureInPictureDocument()) {
-    decision_details->AddReason(DecisionFailureReason::LIVE_PICTURE_IN_PICTURE);
-  }
-
   if (decision_details->reasons().empty()) {
     decision_details->AddReason(
         DecisionSuccessReason::HEURISTIC_OBSERVED_TO_BE_SAFE);
@@ -479,6 +469,10 @@ void TabLifecycleUnitSource::TabLifecycleUnit::SetAutoDiscardable(
 void TabLifecycleUnitSource::TabLifecycleUnit::FinishDiscard(
     LifecycleUnitDiscardReason discard_reason,
     uint64_t tab_memory_footprint_estimate) {
+  UMA_HISTOGRAM_BOOLEAN(
+      "TabManager.Discarding.DiscardedTabHasBeforeUnloadHandler",
+      web_contents()->NeedToFireBeforeUnloadOrUnloadEvents());
+
   content::WebContents* const old_contents = web_contents();
   content::WebContents::CreateParams create_params(tab_strip_model_->profile());
   // TODO(fdoray): Consider setting |initially_hidden| to true when the tab is
@@ -518,8 +512,11 @@ void TabLifecycleUnitSource::TabLifecycleUnit::FinishDiscard(
                                                /* needs_reload */ false);
 
   // First try to fast-kill the process, if it's just running a single tab.
+  bool fast_shutdown_success =
+      GetRenderProcessHost()->FastShutdownIfPossible(1u, false);
+
 #if BUILDFLAG(IS_CHROMEOS)
-  if (!GetRenderProcessHost()->FastShutdownIfPossible(1u, false) &&
+  if (!fast_shutdown_success &&
       discard_reason == LifecycleUnitDiscardReason::URGENT) {
     content::RenderFrameHost* main_frame = old_contents->GetPrimaryMainFrame();
     // We avoid fast shutdown on tabs with beforeunload handlers on the main
@@ -528,13 +525,16 @@ void TabLifecycleUnitSource::TabLifecycleUnit::FinishDiscard(
     if (!main_frame->GetSuddenTerminationDisablerState(
             blink::mojom::SuddenTerminationDisablerType::
                 kBeforeUnloadHandler)) {
-      GetRenderProcessHost()->FastShutdownIfPossible(
+      fast_shutdown_success = GetRenderProcessHost()->FastShutdownIfPossible(
           1u, /* skip_unload_handlers */ true);
     }
+    UMA_HISTOGRAM_BOOLEAN(
+        "TabManager.Discarding.DiscardedTabCouldUnsafeFastShutdown",
+        fast_shutdown_success);
   }
-#else
-  GetRenderProcessHost()->FastShutdownIfPossible(1u, false);
 #endif
+  UMA_HISTOGRAM_BOOLEAN("TabManager.Discarding.DiscardedTabCouldFastShutdown",
+                        fast_shutdown_success);
 
   // Replace the discarded tab with the null version.
   const int index = tab_strip_model_->GetIndexOfWebContents(old_contents);
@@ -584,7 +584,7 @@ bool TabLifecycleUnitSource::TabLifecycleUnit::Discard(
   // here instead of in `CanDiscard` as not all calls to `Discard` check
   // `CanDiscard` and discarding a picture-in-picture WebContents leaves the
   // window in a bad state.
-  Browser* browser = chrome::FindBrowserWithTab(web_contents());
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents());
   if (browser && browser->is_type_picture_in_picture()) {
     return false;
   }

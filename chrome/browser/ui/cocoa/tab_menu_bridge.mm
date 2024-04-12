@@ -7,6 +7,7 @@
 #import <Cocoa/Cocoa.h>
 
 #include "base/functional/callback.h"
+#include "base/mac/scoped_nsobject.h"
 #include "base/strings/sys_string_conversions.h"
 #include "chrome/browser/ui/recently_audible_helper.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
@@ -15,7 +16,6 @@
 #include "chrome/grit/generated_resources.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/l10n/l10n_util_mac.h"
-#include "ui/gfx/image/image_skia_util_mac.h"
 
 using MenuItemCallback = base::RepeatingCallback<void(NSMenuItem*)>;
 
@@ -45,8 +45,7 @@ void UpdateItemForWebContents(NSMenuItem* item,
   } else {
     item.title = base::SysUTF16ToNSString(tab_ui_helper->GetTitle());
   }
-  item.image = NSImageFromImageSkia(
-      tab_ui_helper->GetFavicon().Rasterize(&web_contents->GetColorProvider()));
+  item.image = tab_ui_helper->GetFavicon().AsNSImage();
 }
 
 void RemoveMenuItems(NSArray* menu_items) {
@@ -82,14 +81,14 @@ void RemoveMenuItems(NSArray* menu_items) {
 
 TabMenuBridge::TabMenuBridge(TabStripModel* model, NSMenuItem* menu_item)
     : model_(model), menu_item_(menu_item) {
-  menu_listener_ = [[TabMenuListener alloc]
+  menu_listener_.reset([[TabMenuListener alloc]
       initWithCallback:base::BindRepeating(
                            &TabMenuBridge::OnDynamicItemChosen,
                            // Unretained is safe here: this class owns
                            // MenuListener, which holds the callback
                            // being constructed here, so the callback
                            // will be destructed before this class.
-                           base::Unretained(this))];
+                           base::Unretained(this))]);
   model_->AddObserver(this);
 }
 
@@ -106,13 +105,12 @@ void TabMenuBridge::BuildMenu() {
 
 NSMutableArray* TabMenuBridge::DynamicMenuItems() {
   NSMenu* tabMenu = menu_item_.submenu;
-  NSMutableArray* array =
-      [[NSMutableArray alloc] initWithCapacity:[tabMenu numberOfItems]];
+  NSMutableArray* array = [[[NSMutableArray alloc]
+      initWithCapacity:[tabMenu numberOfItems]] autorelease];
 
   for (NSMenuItem* item in menu_item_.submenu.itemArray) {
-    if (item.target == menu_listener_) {
+    if (item.target == menu_listener_.get())
       [array addObject:item];
-    }
   }
 
   return array;
@@ -124,17 +122,17 @@ void TabMenuBridge::AddDynamicItemsFromModel() {
 
   dynamic_items_start_ = tabMenu.numberOfItems - recyclable_items.count;
   for (int i = 0; i < model_->count(); ++i) {
-    NSMenuItem* item;
+    base::scoped_nsobject<NSMenuItem> item;
 
     if (recyclable_items.count) {
-      item = [recyclable_items firstObject];
+      item.reset([[recyclable_items firstObject] retain]);
       [recyclable_items removeObjectAtIndex:0];
-      item.state = NSControlStateValueOff;
+      [item setState:NSControlStateValueOff];
     } else {
-      item = [[NSMenuItem alloc] initWithTitle:@""
-                                        action:@selector(activateTab:)
-                                 keyEquivalent:@""];
-      [item setTarget:menu_listener_];
+      item.reset([[NSMenuItem alloc] initWithTitle:@""
+                                            action:@selector(activateTab:)
+                                     keyEquivalent:@""]);
+      [item setTarget:menu_listener_.get()];
     }
 
     if (model_->active_index() == i) {
@@ -143,7 +141,7 @@ void TabMenuBridge::AddDynamicItemsFromModel() {
     UpdateItemForWebContents(item, model_->GetWebContentsAt(i));
 
     if ([item menu] == nil) {
-      [tabMenu addItem:item];
+      [tabMenu addItem:item.get()];
     }
   }
 
@@ -154,7 +152,7 @@ void TabMenuBridge::OnDynamicItemChosen(NSMenuItem* item) {
   if (!model_)
     return;
 
-  DCHECK_EQ(item.target, menu_listener_);
+  DCHECK_EQ(item.target, menu_listener_.get());
   int index = [menu_item_.submenu indexOfItem:item] - dynamic_items_start_;
   model_->ActivateTabAt(index,
                         TabStripUserGestureDetails(

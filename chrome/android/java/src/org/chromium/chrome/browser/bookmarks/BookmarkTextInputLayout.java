@@ -8,16 +8,16 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.AttributeSet;
 
 import com.google.android.material.textfield.TextInputLayout;
 
 import org.chromium.chrome.R;
-import org.chromium.ui.text.EmptyTextWatcher;
 
 /**
- * Wraps around {@link TextInputLayout} to implement a basic empty field error behavior for the
- * Bookmark related TextInputLayouts.
+ * Wraps around {@link TextInputLayout} to implement a basic empty field error behavior
+ * for the Bookmark related TextInputLayouts.
  */
 public class BookmarkTextInputLayout extends TextInputLayout {
     private String mEmptyErrorMessage;
@@ -39,14 +39,18 @@ public class BookmarkTextInputLayout extends TextInputLayout {
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
-        getEditText()
-                .addTextChangedListener(
-                        new EmptyTextWatcher() {
-                            @Override
-                            public void afterTextChanged(Editable s) {
-                                validate();
-                            }
-                        });
+        getEditText().addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                validate();
+            }
+        });
     }
 
     /**
@@ -64,19 +68,13 @@ public class BookmarkTextInputLayout extends TextInputLayout {
     }
 
     /**
-     * Check the text and show or hide error message if needed. If there is a need for extra
-     * validation, this method should be overridden and extra validation statements should be added
-     * after calling super.validate()
-     *
-     * @return whether the input is valid.
+     * Check the text and show or hide error message if needed.
+     * If there is a need for extra validation, this method should be overridden
+     * and extra validation statements should be added after calling super.validate()
      */
-    public boolean validate() {
-        boolean isValid = !isEmpty();
+    public void validate() {
         if (mEmptyErrorMessage != null) {
-            setError(isValid ? null : mEmptyErrorMessage);
-            setErrorEnabled(!isValid);
+            setError(isEmpty() ? mEmptyErrorMessage : null);
         }
-
-        return isValid;
     }
 }

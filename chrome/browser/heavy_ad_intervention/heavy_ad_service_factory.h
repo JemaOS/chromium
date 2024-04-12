@@ -37,7 +37,7 @@ class HeavyAdServiceFactory : public ProfileKeyedServiceFactory {
   ~HeavyAdServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_NOTIFICATIONS_NOTIFIER_STATE_TRACKER_FACTORY_H_
 #define CHROME_BROWSER_NOTIFICATIONS_NOTIFIER_STATE_TRACKER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class NotifierStateTracker;
@@ -17,7 +17,7 @@ class NotifierStateTrackerFactory : public ProfileKeyedServiceFactory {
   static NotifierStateTrackerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<NotifierStateTrackerFactory>;
+  friend struct base::DefaultSingletonTraits<NotifierStateTrackerFactory>;
 
   NotifierStateTrackerFactory();
   NotifierStateTrackerFactory(const NotifierStateTrackerFactory&) = delete;
@@ -26,7 +26,7 @@ class NotifierStateTrackerFactory : public ProfileKeyedServiceFactory {
   ~NotifierStateTrackerFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

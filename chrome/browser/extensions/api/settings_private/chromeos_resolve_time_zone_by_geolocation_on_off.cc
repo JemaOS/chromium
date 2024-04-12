@@ -53,11 +53,10 @@ GeneratedResolveTimezoneByGeolocationOnOff::GetPrefObject() const {
   settings_api::PrefObject pref_object;
 
   pref_object.key = pref_name_;
-  pref_object.type = settings_api::PrefType::kBoolean;
-  pref_object.value =
-      base::Value(g_browser_process->platform_part()
-                      ->GetTimezoneResolverManager()
-                      ->TimeZoneResolverAllowedByTimeZoneConfigData());
+  pref_object.type = settings_api::PREF_TYPE_BOOLEAN;
+  pref_object.value = base::Value(g_browser_process->platform_part()
+                                      ->GetTimezoneResolverManager()
+                                      ->TimeZoneResolverShouldBeRunning());
 
   UpdateTimeZonePrefControlledBy(&pref_object);
 
@@ -78,10 +77,9 @@ SetPrefResult GeneratedResolveTimezoneByGeolocationOnOff::SetPref(
   }
 
   const bool new_value = value->GetBool();
-  const bool current_value =
-      g_browser_process->platform_part()
-          ->GetTimezoneResolverManager()
-          ->TimeZoneResolverAllowedByTimeZoneConfigData();
+  const bool current_value = g_browser_process->platform_part()
+                                 ->GetTimezoneResolverManager()
+                                 ->TimeZoneResolverShouldBeRunning();
   if (new_value == current_value)
     return SetPrefResult::SUCCESS;
 

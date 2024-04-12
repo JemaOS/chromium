@@ -12,7 +12,8 @@
 #include "net/base/net_errors.h"
 #include "storage/browser/file_system/file_system_backend.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 BufferingFileStreamReader::BufferingFileStreamReader(
     std::unique_ptr<storage::FileStreamReader> file_stream_reader,
@@ -22,12 +23,13 @@ BufferingFileStreamReader::BufferingFileStreamReader(
       preloading_buffer_length_(preloading_buffer_length),
       max_bytes_to_read_(max_bytes_to_read),
       bytes_read_(0),
-      preloading_buffer_(base::MakeRefCounted<net::IOBufferWithSize>(
-          preloading_buffer_length)),
+      preloading_buffer_(
+          base::MakeRefCounted<net::IOBuffer>(preloading_buffer_length)),
       preloading_buffer_offset_(0),
       preloaded_bytes_(0) {}
 
-BufferingFileStreamReader::~BufferingFileStreamReader() = default;
+BufferingFileStreamReader::~BufferingFileStreamReader() {
+}
 
 int BufferingFileStreamReader::Read(net::IOBuffer* buffer,
                                     int buffer_length,
@@ -132,4 +134,5 @@ void BufferingFileStreamReader::OnReadCompleted(
   std::move(callback).Run(result);
 }
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

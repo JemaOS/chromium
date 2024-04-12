@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_TESTING_COLOR_SCHEME_HELPER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_TESTING_COLOR_SCHEME_HELPER_H_
 
+#include "third_party/blink/public/common/css/forced_colors.h"
 #include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-shared.h"
 #include "third_party/blink/public/mojom/css/preferred_contrast.mojom-shared.h"
 
@@ -26,10 +27,10 @@ class ColorSchemeHelper {
   ~ColorSchemeHelper();
 
   void SetPreferredColorScheme(
-      mojom::PreferredColorScheme preferred_color_scheme);
-  void SetPreferredContrast(mojom::PreferredContrast preferred_contrast);
-  void SetInForcedColors(bool in_forced_colors);
-  void SetEmulatedForcedColors(Document& document, bool is_dark_theme);
+      const mojom::PreferredColorScheme preferred_color_scheme);
+  void SetPreferredContrast(const mojom::PreferredContrast preferred_contrast);
+  void SetForcedColors(Document& document, const ForcedColors forced_colors);
+  void SetForcedColors(Page& page, const ForcedColors forced_colors);
 
  private:
   WebThemeEngine* web_theme_engine_ = nullptr;
@@ -38,7 +39,7 @@ class ColorSchemeHelper {
       mojom::PreferredColorScheme::kLight;
   mojom::PreferredContrast default_preferred_contrast_ =
       mojom::PreferredContrast::kNoPreference;
-  bool default_in_forced_colors_ = false;
+  ForcedColors default_forced_colors_ = ForcedColors::kNone;
 };
 
 }  // namespace blink

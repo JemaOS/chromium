@@ -10,7 +10,6 @@
 #include "base/files/file_util.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
 #include "base/values.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "crypto/sha2.h"
@@ -18,12 +17,6 @@
 namespace safe_browsing {
 
 namespace {
-// Max number of files to process per extension.
-constexpr int64_t kMaxFilesToProcess = 50;
-
-// Max file size to process - 100KB.
-constexpr int64_t kMaxFileSizeBytes = 100 * 1024;
-
 // Max number of files to read per extension.
 constexpr int64_t kMaxFilesToRead = 1000;
 
@@ -77,16 +70,16 @@ void RecordValidExtension(bool valid) {
 
 struct ExtensionTelemetryFileProcessor::FileExtensionsComparator {
   bool operator()(const base::FilePath& a, const base::FilePath& b) const {
-    return kFileTypePriorityMap.at(base::ToLowerASCII(a.Extension())) >=
-           kFileTypePriorityMap.at(base::ToLowerASCII(b.Extension()));
+    return kFileTypePriorityMap.at(a.Extension()) >=
+           kFileTypePriorityMap.at(b.Extension());
   }
 };
 
 ExtensionTelemetryFileProcessor::~ExtensionTelemetryFileProcessor() = default;
 
 ExtensionTelemetryFileProcessor::ExtensionTelemetryFileProcessor()
-    : max_files_to_process_(kMaxFilesToProcess),
-      max_file_size_(kMaxFileSizeBytes),
+    : max_files_to_process_(kExtensionTelemetryFileDataMaxFilesToProcess.Get()),
+      max_file_size_(kExtensionTelemetryFileDataMaxFileSizeBytes.Get()),
       max_files_to_read_(kMaxFilesToRead) {}
 
 base::Value::Dict ExtensionTelemetryFileProcessor::ProcessExtension(
@@ -181,7 +174,7 @@ base::Value::Dict ExtensionTelemetryFileProcessor::ComputeHashes(
     root_dir.AppendRelativePath(full_path, &relative_path);
 
     std::string hash = crypto::SHA256HashString(file_contents);
-    std::string hex_encode = base::HexEncode(hash);
+    std::string hex_encode = base::HexEncode(hash.c_str(), hash.size());
 
     extension_data.Set(
         relative_path.NormalizePathSeparatorsTo('/').AsUTF8Unsafe(),
@@ -200,15 +193,6 @@ bool ExtensionTelemetryFileProcessor::IsApplicableType(
   return file_path.MatchesExtension(kJSFileSuffix) ||
          file_path.MatchesExtension(kHTMLFileSuffix) ||
          file_path.MatchesExtension(kCSSFileSuffix);
-}
-
-void ExtensionTelemetryFileProcessor::SetMaxFilesToProcessForTest(
-    int64_t max_files_to_process) {
-  max_files_to_process_ = max_files_to_process;
-}
-void ExtensionTelemetryFileProcessor::SetMaxFileSizeBytesForTest(
-    int64_t max_file_size) {
-  max_file_size_ = max_file_size;
 }
 
 void ExtensionTelemetryFileProcessor::SetMaxFilesToReadForTest(

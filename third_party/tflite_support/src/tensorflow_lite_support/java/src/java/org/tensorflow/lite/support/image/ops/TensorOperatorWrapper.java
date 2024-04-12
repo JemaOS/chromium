@@ -16,6 +16,7 @@ limitations under the License.
 package org.tensorflow.lite.support.image.ops;
 
 import android.graphics.PointF;
+
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.tensorflow.lite.support.common.TensorOperator;
 import org.tensorflow.lite.support.common.internal.SupportPreconditions;
@@ -31,48 +32,47 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
  * @see org.tensorflow.lite.support.image.TensorImage
  */
 public class TensorOperatorWrapper implements ImageOperator {
+    private final TensorOperator tensorOp;
 
-  private final TensorOperator tensorOp;
+    /**
+     * Wraps a {@link TensorOperator} object as an {@link ImageOperator}, so that the {@link
+     * TensorOperator} could handle {@link TensorImage} objects by handling its underlying {@link
+     * org.tensorflow.lite.support.tensorbuffer.TensorBuffer}.
+     *
+     * <p>Requirement: The {@code op} should not change coordinate system when applied on an image.
+     *
+     * @param op The created operator.
+     */
+    public TensorOperatorWrapper(TensorOperator op) {
+        tensorOp = op;
+    }
 
-  /**
-   * Wraps a {@link TensorOperator} object as an {@link ImageOperator}, so that the {@link
-   * TensorOperator} could handle {@link TensorImage} objects by handling its underlying {@link
-   * org.tensorflow.lite.support.tensorbuffer.TensorBuffer}.
-   *
-   * <p>Requirement: The {@code op} should not change coordinate system when applied on an image.
-   *
-   * @param op The created operator.
-   */
-  public TensorOperatorWrapper(TensorOperator op) {
-    tensorOp = op;
-  }
+    @Override
+    @NonNull
+    public TensorImage apply(@NonNull TensorImage image) {
+        SupportPreconditions.checkNotNull(image, "Op cannot apply on null image.");
+        TensorBuffer resBuffer = tensorOp.apply(image.getTensorBuffer());
+        // Some ops may change the data type of the underlying TensorBuffer, such as CastOp.
+        // Therefore, need to create a new TensorImage with the correct data type. However the
+        // underlying ops should not touch the color type.
+        ColorSpaceType colorSpaceType = image.getColorSpaceType();
+        TensorImage resImage = new TensorImage(resBuffer.getDataType());
+        resImage.load(resBuffer, colorSpaceType);
+        return resImage;
+    }
 
-  @Override
-  @NonNull
-  public TensorImage apply(@NonNull TensorImage image) {
-    SupportPreconditions.checkNotNull(image, "Op cannot apply on null image.");
-    TensorBuffer resBuffer = tensorOp.apply(image.getTensorBuffer());
-    // Some ops may change the data type of the underlying TensorBuffer, such as CastOp. Therefore,
-    // need to create a new TensorImage with the correct data type.
-    // However the underlying ops should not touch the color type.
-    ColorSpaceType colorSpaceType = image.getColorSpaceType();
-    TensorImage resImage = new TensorImage(resBuffer.getDataType());
-    resImage.load(resBuffer, colorSpaceType);
-    return resImage;
-  }
+    @Override
+    public int getOutputImageHeight(int inputImageHeight, int inputImageWidth) {
+        return inputImageHeight;
+    }
 
-  @Override
-  public int getOutputImageHeight(int inputImageHeight, int inputImageWidth) {
-    return inputImageHeight;
-  }
+    @Override
+    public int getOutputImageWidth(int inputImageHeight, int inputImageWidth) {
+        return inputImageWidth;
+    }
 
-  @Override
-  public int getOutputImageWidth(int inputImageHeight, int inputImageWidth) {
-    return inputImageWidth;
-  }
-
-  @Override
-  public PointF inverseTransform(PointF point, int inputImageHeight, int inputImageWidth) {
-    return point;
-  }
+    @Override
+    public PointF inverseTransform(PointF point, int inputImageHeight, int inputImageWidth) {
+        return point;
+    }
 }

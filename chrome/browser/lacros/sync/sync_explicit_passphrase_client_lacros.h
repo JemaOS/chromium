@@ -9,7 +9,7 @@
 
 #include "base/memory/raw_ptr.h"
 #include "chromeos/crosapi/mojom/sync.mojom.h"
-#include "components/sync/service/sync_service_observer.h"
+#include "components/sync/driver/sync_service_observer.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 
@@ -53,8 +53,9 @@ class SyncExplicitPassphraseClientLacros {
     bool is_passphrase_available() const { return is_passphrase_available_; }
 
    private:
-    raw_ptr<syncer::SyncService> sync_service_;
-    raw_ptr<SyncExplicitPassphraseClientLacros> explicit_passphrase_client_;
+    base::raw_ptr<syncer::SyncService> sync_service_;
+    base::raw_ptr<SyncExplicitPassphraseClientLacros>
+        explicit_passphrase_client_;
 
     bool is_passphrase_required_;
     bool is_passphrase_available_;
@@ -81,7 +82,8 @@ class SyncExplicitPassphraseClientLacros {
     bool is_passphrase_available() const { return is_passphrase_available_; }
 
    private:
-    raw_ptr<SyncExplicitPassphraseClientLacros> explicit_passphrase_client_;
+    base::raw_ptr<SyncExplicitPassphraseClientLacros>
+        explicit_passphrase_client_;
     mojo::Receiver<crosapi::mojom::SyncExplicitPassphraseClientObserver>
         receiver_{this};
 
@@ -100,7 +102,7 @@ class SyncExplicitPassphraseClientLacros {
   void OnQueryDecryptionKeyFromAshCompleted(
       crosapi::mojom::NigoriKeyPtr mojo_nigori_key);
 
-  raw_ptr<syncer::SyncService> sync_service_;
+  base::raw_ptr<syncer::SyncService> sync_service_;
   LacrosSyncServiceObserver sync_service_observer_;
   std::unique_ptr<AshSyncExplicitPassphraseClientObserver>
       ash_explicit_passphrase_client_observer_;

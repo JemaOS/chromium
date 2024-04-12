@@ -14,10 +14,7 @@ enum class ProtocolHandlerSecurityLevel {
   // https://html.spec.whatwg.org/multipage/system-state.html#normalize-protocol-handler-parameters
   kStrict,
 
-  // Similar to kStrict, but allows URLs with non-HTTP(S) schemes.
-  kSameOrigin,
-
-  // Allow registration calls to cross-origin HTTP/HTTPS URLs.
+  // Allow registration calls to cross-origin URLs.
   kUntrustedOrigins,
 
   // Allow extension features: ext+foo schemes and chrome-extension:// URLs.

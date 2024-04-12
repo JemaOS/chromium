@@ -12,7 +12,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/functional/callback.h"
 #include "base/values.h"
 #include "components/component_updater/component_installer.h"
 
@@ -62,10 +61,8 @@ class SmartDimComponentInstallerPolicy : public ComponentInstallerPolicy {
 };
 
 // Call once during startup to make the component update service aware of
-// the smart dim component. The optional `callback` is invoked when registration
-// is complete.
-void RegisterSmartDimComponent(ComponentUpdateService* cus,
-                               base::OnceClosure callback = {});
+// the smart dim component.
+void RegisterSmartDimComponent(ComponentUpdateService* cus);
 
 }  // namespace component_updater
 

@@ -13,6 +13,7 @@
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/ash/base/locale_util.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
@@ -21,6 +22,8 @@
 #include "components/language/core/browser/pref_names.h"
 #include "components/language/core/common/locale_util.h"
 #include "components/prefs/pref_service.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_source.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
 
@@ -147,8 +150,7 @@ void LocaleChangeGuard::Check() {
 
   LocaleUpdateController::Get()->ConfirmLocaleChange(
       cur_locale, from_locale_, to_locale_,
-      base::BindOnce(&LocaleChangeGuard::OnResult,
-                     weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&LocaleChangeGuard::OnResult, AsWeakPtr()));
 }
 
 void LocaleChangeGuard::OnResult(LocaleNotificationResult result) {

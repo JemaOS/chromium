@@ -26,7 +26,6 @@ class NoopLockDescription : public LockDescription {
  public:
   NoopLockDescription();
   ~NoopLockDescription();
-  NoopLockDescription(NoopLockDescription&&);
 };
 
 // Holding a NoopLock is required when a locked operation needs to be executed,
@@ -46,8 +45,7 @@ class NoopLock : public Lock {
 
  private:
   friend WebAppLockManager;
-  NoopLock(std::unique_ptr<content::PartitionedLockHolder> holder,
-           base::WeakPtr<WebAppLockManager> lock_manager);
+  explicit NoopLock(std::unique_ptr<content::PartitionedLockHolder> holder);
 
   base::WeakPtrFactory<NoopLock> weak_factory_{this};
 };

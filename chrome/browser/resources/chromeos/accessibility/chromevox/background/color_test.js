@@ -8,7 +8,15 @@ GEN_INCLUDE(['../testing/chromevox_e2e_test_base.js']);
 /**
  * Test fixture for Color.
  */
-ChromeVoxColorTest = class extends ChromeVoxE2ETest {};
+ChromeVoxColorTest = class extends ChromeVoxE2ETest {
+  /** @override */
+  async setUpDeferred() {
+    await super.setUpDeferred();
+
+    // Alphabetical based on file path.
+    await importModule('Color', '/chromevox/background/color.js');
+  }
+};
 
 
 AX_TEST_F('ChromeVoxColorTest', 'FindDistanceTest', function() {

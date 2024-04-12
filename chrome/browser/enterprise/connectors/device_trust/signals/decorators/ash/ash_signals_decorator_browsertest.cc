@@ -7,6 +7,7 @@
 #include "ash/constants/ash_pref_names.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
+#include "chrome/browser/ash/login/users/chrome_user_manager.h"
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
@@ -15,13 +16,11 @@
 #include "chrome/browser/enterprise/signals/signals_common.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/test/base/testing_profile.h"
-#include "chromeos/ash/components/browser_context_helper/browser_context_types.h"
 #include "chromeos/ash/components/dbus/shill/shill_device_client.h"
 #include "chromeos/ash/components/dbus/shill/shill_profile_client.h"
 #include "chromeos/ash/components/dbus/shill/shill_service_client.h"
 #include "chromeos/ash/components/network/network_state_handler.h"
 #include "chromeos/ash/components/system/fake_statistics_provider.h"
-#include "components/device_signals/core/browser/signals_types.h"
 #include "components/device_signals/core/common/signals_constants.h"
 #include "components/policy/proto/device_management_backend.pb.h"
 #include "components/prefs/pref_registry_simple.h"
@@ -29,7 +28,6 @@
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
 #include "content/public/test/browser_test.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/cros_system_api/dbus/shill/dbus-constants.h"
 
@@ -126,7 +124,7 @@ class AshSignalsDecoratorBrowserTest
 
   std::unique_ptr<TestingProfile> testing_profile_;
   TestingPrefServiceSimple prefs_;
-  raw_ptr<policy::BrowserPolicyConnectorAsh, DanglingUntriaged> connector_;
+  raw_ptr<policy::BrowserPolicyConnectorAsh, ExperimentalAsh> connector_;
 
   ash::system::ScopedFakeStatisticsProvider fake_statistics_provider_;
 };
@@ -191,8 +189,8 @@ IN_PROC_BROWSER_TEST_F(AshSignalsDecoratorBrowserTest, TestNetworkSignals) {
   base::flat_set<std::string> user_affiliation_ids;
   user_affiliation_ids.insert(kFakeAffilationID);
 
-  user_manager::UserManager::Get()->SetUserAffiliation(user->GetAccountId(),
-                                                       user_affiliation_ids);
+  ash::ChromeUserManager::Get()->SetUserAffiliation(user->GetAccountId(),
+                                                    user_affiliation_ids);
 
   // Test for no network
   {
@@ -237,43 +235,6 @@ IN_PROC_BROWSER_TEST_F(AshSignalsDecoratorBrowserTest, TestNetworkSignals) {
         signals.FindList(device_signals::names::kMeid);
     EXPECT_EQ(meid_list->size(), 1u);
     EXPECT_EQ(meid_list->front(), kFakeMeid);
-  }
-}
-
-IN_PROC_BROWSER_TEST_F(AshSignalsDecoratorBrowserTest, TestSignalTrigger) {
-  // Test with user profile
-  {
-    base::RunLoop run_loop;
-    AshSignalsDecorator decorator(connector_, testing_profile());
-    base::Value::Dict signals;
-    decorator.Decorate(signals, run_loop.QuitClosure());
-
-    run_loop.Run();
-
-    auto browser_context_type =
-        signals.FindInt(device_signals::names::kTrigger);
-    ASSERT_TRUE(browser_context_type);
-    EXPECT_EQ(
-        browser_context_type.value(),
-        static_cast<int32_t>(device_signals::Trigger::kBrowserNavigation));
-  }
-
-  // Test with signin profile
-  {
-    base::RunLoop run_loop;
-    AshSignalsDecorator decorator(
-        connector_,
-        ash::ProfileHelper::GetSigninProfile()->GetOriginalProfile());
-    base::Value::Dict signals;
-    decorator.Decorate(signals, run_loop.QuitClosure());
-
-    run_loop.Run();
-
-    auto browser_context_type =
-        signals.FindInt(device_signals::names::kTrigger);
-    ASSERT_TRUE(browser_context_type);
-    EXPECT_EQ(browser_context_type.value(),
-              static_cast<int32_t>(device_signals::Trigger::kLoginScreen));
   }
 }
 

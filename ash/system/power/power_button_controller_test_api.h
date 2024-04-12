@@ -62,17 +62,11 @@ class PowerButtonControllerTestApi {
   // True if the menu is opened.
   bool IsMenuOpened() const;
 
-  // True if |controller_|'s menu has a power off item.
-  bool MenuHasPowerOffItem() const;
-
   // True if |controller_|'s menu has a sign out item.
   bool MenuHasSignOutItem() const;
 
   // True if |controller_|'s menu has a lock screen item.
   bool MenuHasLockScreenItem() const;
-
-  // True if |controller_|'s menu has a capture mode item.
-  bool MenuHasCaptureModeItem() const;
 
   // True if |controller_|'s menu has a feedback item.
   bool MenuHasFeedbackItem() const;
@@ -89,7 +83,8 @@ class PowerButtonControllerTestApi {
   bool ShowMenuAnimationDone() const;
 
  private:
-  raw_ptr<PowerButtonController, DanglingUntriaged> controller_;  // Not owned.
+  raw_ptr<PowerButtonController, DanglingUntriaged | ExperimentalAsh>
+      controller_;  // Not owned.
 };
 
 }  // namespace ash

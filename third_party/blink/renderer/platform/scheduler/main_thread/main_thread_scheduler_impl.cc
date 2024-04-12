@@ -6,12 +6,10 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <type_traits>
 #include <utility>
 
 #include "base/check_op.h"
-#include "base/containers/contains.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/metrics/field_trial_params.h"
@@ -30,8 +28,12 @@
 #include "base/trace_event/trace_event.h"
 #include "base/trace_event/traced_value.h"
 #include "build/build_config.h"
+#include "components/power_scheduler/power_mode.h"
+#include "components/power_scheduler/power_mode_arbiter.h"
+#include "components/power_scheduler/power_mode_voter.h"
 #include "components/viz/common/frame_sinks/begin_frame_args.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/common/input/web_input_event_attribution.h"
@@ -41,7 +43,6 @@
 #include "third_party/blink/public/platform/scheduler/web_agent_group_scheduler.h"
 #include "third_party/blink/public/platform/scheduler/web_renderer_process_type.h"
 #include "third_party/blink/public/platform/web_input_event_result.h"
-#include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/renderer_resource_coordinator.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
@@ -50,11 +51,9 @@
 #include "third_party/blink/renderer/platform/scheduler/common/process_state.h"
 #include "third_party/blink/renderer/platform/scheduler/common/task_priority.h"
 #include "third_party/blink/renderer/platform/scheduler/common/throttling/task_queue_throttler.h"
-#include "third_party/blink/renderer/platform/scheduler/common/tracing_helper.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/agent_group_scheduler_impl.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/frame_scheduler_impl.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/main_thread_impl.h"
-#include "third_party/blink/renderer/platform/scheduler/main_thread/main_thread_metrics_helper.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/page_scheduler_impl.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/pending_user_input.h"
 #include "third_party/blink/renderer/platform/scheduler/main_thread/task_type_names.h"
@@ -87,11 +86,8 @@ const int64_t kSecondsPerMinute = 60;
 constexpr base::TimeDelta kDefaultPrioritizeCompositingAfterDelay =
     base::Milliseconds(100);
 
-// Duration before rendering is considered starved by render-blocking tasks,
-// which is a safeguard against pathological cases for render-blocking image
-// prioritization.
-constexpr base::TimeDelta kRenderBlockingStarvationThreshold =
-    base::Milliseconds(500);
+constexpr TaskPriority kPrioritizeCompositingAfterDelayPriority =
+    TaskPriority::kVeryHighPriority;
 
 v8::RAILMode RAILModeToV8RAILMode(RAILMode rail_mode) {
   switch (rail_mode) {
@@ -163,7 +159,7 @@ const char* RendererProcessTypeToString(WebRendererProcessType process_type) {
 }
 
 const char* OptionalTaskDescriptionToString(
-    std::optional<MainThreadSchedulerImpl::TaskDescriptionForTracing> desc) {
+    absl::optional<MainThreadSchedulerImpl::TaskDescriptionForTracing> desc) {
   if (!desc)
     return nullptr;
   if (desc->task_type != TaskType::kDeprecatedNone)
@@ -174,7 +170,8 @@ const char* OptionalTaskDescriptionToString(
       MainThreadTaskQueue::NameForQueueType(desc->queue_type.value()));
 }
 
-const char* OptionalTaskPriorityToString(std::optional<TaskPriority> priority) {
+const char* OptionalTaskPriorityToString(
+    absl::optional<TaskPriority> priority) {
   if (!priority)
     return nullptr;
   return TaskPriorityToString(*priority);
@@ -225,34 +222,16 @@ TaskPriority GetPriorityFromCompositorTQPolicyDuringThreadedScrolling(
   }
 }
 
-const char* RenderingPrioritizationStateToString(
-    MainThreadSchedulerImpl::RenderingPrioritizationState state) {
-  using RenderingPrioritizationState =
-      MainThreadSchedulerImpl::RenderingPrioritizationState;
-  switch (state) {
-    case RenderingPrioritizationState::kNone:
-      return "none";
-    case RenderingPrioritizationState::kRenderingStarved:
-      return "rendering_starved";
-    case RenderingPrioritizationState::kRenderingStarvedByRenderBlocking:
-      return "rendering_starved_by_render_blocking";
-    case RenderingPrioritizationState::kWaitingForInputResponse:
-      return "waiting_for_input_response";
-  }
+TaskPriority MaxPriority(TaskPriority priority1, TaskPriority priority2) {
+  return std::min(priority1, priority2);
 }
 
 }  // namespace
 
 MainThreadSchedulerImpl::MainThreadSchedulerImpl(
     std::unique_ptr<base::sequence_manager::SequenceManager> sequence_manager)
-    : MainThreadSchedulerImpl(sequence_manager.get()) {
-  owned_sequence_manager_ = std::move(sequence_manager);
-}
-
-MainThreadSchedulerImpl::MainThreadSchedulerImpl(
-    base::sequence_manager::SequenceManager* sequence_manager)
-    : sequence_manager_(sequence_manager),
-      helper_(sequence_manager_, this),
+    : sequence_manager_(std::move(sequence_manager)),
+      helper_(sequence_manager_.get(), this),
       idle_helper_queue_(helper_.NewTaskQueue(
           MainThreadTaskQueue::QueueCreationParams(
               MainThreadTaskQueue::QueueType::kIdle)
@@ -308,11 +287,6 @@ MainThreadSchedulerImpl::MainThreadSchedulerImpl(
 
   v8_task_queue_ = NewTaskQueue(MainThreadTaskQueue::QueueCreationParams(
       MainThreadTaskQueue::QueueType::kV8));
-  v8_low_priority_task_queue_ = NewTaskQueue(
-      MainThreadTaskQueue::QueueCreationParams(
-          MainThreadTaskQueue::QueueType::kV8LowPriority)
-          .SetPrioritisationType(
-              MainThreadTaskQueue::QueueTraits::PrioritisationType::kLow));
   non_waking_task_queue_ =
       NewTaskQueue(MainThreadTaskQueue::QueueCreationParams(
                        MainThreadTaskQueue::QueueType::kNonWaking)
@@ -320,8 +294,6 @@ MainThreadSchedulerImpl::MainThreadSchedulerImpl(
 
   v8_task_runner_ =
       v8_task_queue_->CreateTaskRunner(TaskType::kMainThreadTaskQueueV8);
-  v8_low_priority_task_runner_ = v8_low_priority_task_queue_->CreateTaskRunner(
-      TaskType::kMainThreadTaskQueueV8LowPriority);
   compositor_task_runner_ = compositor_task_queue_->CreateTaskRunner(
       TaskType::kMainThreadTaskQueueCompositor);
   control_task_runner_ = helper_.ControlMainThreadTaskQueue()->CreateTaskRunner(
@@ -352,7 +324,7 @@ MainThreadSchedulerImpl::MainThreadSchedulerImpl(
   internal::ProcessState::Get()->is_process_backgrounded =
       main_thread_only().renderer_backgrounded.get();
 
-  main_thread_only().current_policy.find_in_page_priority =
+  main_thread_only().current_policy.find_in_page_priority() =
       find_in_page_budget_pool_controller_->CurrentTaskPriority();
 
   // Explicitly set the priority of this queue since it is not managed by
@@ -365,18 +337,21 @@ MainThreadSchedulerImpl::~MainThreadSchedulerImpl() {
   TRACE_EVENT_OBJECT_DELETED_WITH_ID(
       TRACE_DISABLED_BY_DEFAULT("renderer.scheduler"), "MainThreadScheduler",
       this);
-  // Ensure the renderer scheduler was shut down explicitly, because otherwise
-  // we could end up having stale pointers to the Blink heap which has been
-  // terminated by this point.
-  CHECK(was_shutdown_);
 
-  // These should be cleared during shutdown.
-  CHECK(task_runners_.empty());
-  CHECK(main_thread_only().detached_task_queues.empty());
-  CHECK(!virtual_time_control_task_queue_);
+  for (const auto& pair : task_runners_) {
+    pair.first->ShutdownTaskQueue();
+  }
+
+  if (virtual_time_control_task_queue_)
+    virtual_time_control_task_queue_->ShutdownTaskQueue();
 
   base::trace_event::TraceLog::GetInstance()->RemoveAsyncEnabledStateObserver(
       this);
+
+  // Ensure the renderer scheduler was shut down explicitly, because otherwise
+  // we could end up having stale pointers to the Blink heap which has been
+  // terminated by this point.
+  DCHECK(was_shutdown_);
 }
 
 // static
@@ -414,7 +389,7 @@ MainThreadSchedulerImpl::MainThreadOnly::MainThreadOnly(
       renderer_pause_count(0,
                            "Scheduler.PauseCount",
                            &main_thread_scheduler_impl->tracing_controller_),
-      rail_mode_for_tracing(current_policy.rail_mode,
+      rail_mode_for_tracing(current_policy.rail_mode(),
                             "Scheduler.RAILMode",
                             &main_thread_scheduler_impl->tracing_controller_,
                             &AddRAILModeToProto),
@@ -429,6 +404,16 @@ MainThreadSchedulerImpl::MainThreadOnly::MainThreadOnly(
       blocking_input_expected_soon(
           false,
           "Scheduler.BlockingInputExpectedSoon",
+          &main_thread_scheduler_impl->tracing_controller_,
+          YesNoStateToString),
+      have_reported_blocking_intervention_in_current_policy(
+          false,
+          "Scheduler.HasReportedBlockingInterventionInCurrentPolicy",
+          &main_thread_scheduler_impl->tracing_controller_,
+          YesNoStateToString),
+      have_reported_blocking_intervention_since_navigation(
+          false,
+          "Scheduler.HasReportedBlockingInterventionSinceNavigation",
           &main_thread_scheduler_impl->tracing_controller_,
           YesNoStateToString),
       has_visible_render_widget_with_touch_handler(
@@ -469,26 +454,31 @@ MainThreadSchedulerImpl::MainThreadOnly::MainThreadOnly(
                    &main_thread_scheduler_impl->tracing_controller_,
                    RendererProcessTypeToString),
       task_description_for_tracing(
-          std::nullopt,
+          absl::nullopt,
           "Scheduler.MainThreadTask",
           &main_thread_scheduler_impl->tracing_controller_,
           OptionalTaskDescriptionToString),
       task_priority_for_tracing(
-          std::nullopt,
+          absl::nullopt,
           "Scheduler.TaskPriority",
           &main_thread_scheduler_impl->tracing_controller_,
           OptionalTaskPriorityToString),
+      prioritize_compositing_after_input(
+          false,
+          "Scheduler.PrioritizeCompositingAfterInput",
+          &main_thread_scheduler_impl->tracing_controller_,
+          YesNoStateToString),
       main_thread_compositing_is_fast(false),
       compositor_priority(TaskPriority::kNormalPriority,
                           "Scheduler.CompositorPriority",
                           &main_thread_scheduler_impl->tracing_controller_,
                           TaskPriorityToString),
-      main_frame_prioritization_state(
-          RenderingPrioritizationState::kNone,
-          "RenderingPrioritizationState",
-          &main_thread_scheduler_impl->tracing_controller_,
-          RenderingPrioritizationStateToString),
       last_frame_time(now),
+      should_prioritize_compositor_task_queue_after_delay(false),
+      have_seen_a_frame(false),
+      audible_power_mode_voter(
+          power_scheduler::PowerModeArbiter::GetInstance()->NewVoter(
+              "PowerModeVoter.Audible")),
       agent_group_schedulers(
           MakeGarbageCollected<
               HeapHashSet<WeakMember<AgentGroupSchedulerImpl>>>()) {}
@@ -534,11 +524,6 @@ MainThreadSchedulerImpl::AnyThread::AnyThread(
       waiting_for_any_main_frame_meaningful_paint(
           false,
           "Scheduler.WaitingForMeaningfulPaint",
-          &main_thread_scheduler_impl->tracing_controller_,
-          YesNoStateToString),
-      is_any_main_frame_loading(
-          false,
-          "Scheduler.IsAnyMainFrameLoading",
           &main_thread_scheduler_impl->tracing_controller_,
           YesNoStateToString),
       have_seen_input_since_navigation(
@@ -591,15 +576,8 @@ void MainThreadSchedulerImpl::ShutdownAllQueues() {
     scoped_refptr<MainThreadTaskQueue> queue = task_runners_.begin()->first;
     queue->ShutdownTaskQueue();
   }
-  while (!main_thread_only().detached_task_queues.empty()) {
-    scoped_refptr<MainThreadTaskQueue> queue =
-        *main_thread_only().detached_task_queues.begin();
-    queue->ShutdownTaskQueue();
-  }
-  if (virtual_time_control_task_queue_) {
+  if (virtual_time_control_task_queue_)
     virtual_time_control_task_queue_->ShutdownTaskQueue();
-    virtual_time_control_task_queue_ = nullptr;
-  }
 }
 
 bool MainThreadSchedulerImpl::
@@ -607,15 +585,6 @@ bool MainThreadSchedulerImpl::
   for (const PageSchedulerImpl* ps : main_thread_only().page_schedulers) {
     if (ps->IsOrdinary() && ps->IsWaitingForMainFrameMeaningfulPaint())
       return true;
-  }
-  return false;
-}
-
-bool MainThreadSchedulerImpl::IsAnyOrdinaryMainFrameLoading() const {
-  for (const PageSchedulerImpl* ps : main_thread_only().page_schedulers) {
-    if (ps->IsOrdinary() && ps->IsMainFrameLoading()) {
-      return true;
-    }
   }
   return false;
 }
@@ -644,8 +613,7 @@ void MainThreadSchedulerImpl::Shutdown() {
   // from |idle_helper_| early-outs and doesn't do anything.
   helper_.Shutdown();
   idle_helper_.Shutdown();
-  sequence_manager_ = nullptr;
-  owned_sequence_manager_.reset();
+  sequence_manager_.reset();
   main_thread_only().rail_mode_observers.Clear();
   was_shutdown_ = true;
 }
@@ -825,23 +793,6 @@ void MainThreadSchedulerImpl::
       ->DetachOnIPCTaskPostedWhileInBackForwardCache();
 }
 
-void MainThreadSchedulerImpl::ShutdownEmptyDetachedTaskQueues() {
-  if (main_thread_only().detached_task_queues.empty()) {
-    return;
-  }
-  WTF::Vector<scoped_refptr<MainThreadTaskQueue>> queues_to_delete;
-  for (auto& queue : main_thread_only().detached_task_queues) {
-    if (queue->IsEmpty()) {
-      queues_to_delete.push_back(queue);
-    }
-  }
-  for (auto& queue : queues_to_delete) {
-    queue->ShutdownTaskQueue();
-    // The task queue is removed in `OnShutdownTaskQueue()`.
-    CHECK(!main_thread_only().detached_task_queues.Contains(queue));
-  }
-}
-
 // TODO(sreejakshetty): Cleanup NewLoadingTaskQueue.
 scoped_refptr<MainThreadTaskQueue> MainThreadSchedulerImpl::NewLoadingTaskQueue(
     MainThreadTaskQueue::QueueType queue_type,
@@ -868,30 +819,20 @@ MainThreadSchedulerImpl::NewThrottleableTaskQueueForTest(
                           .SetCanRunWhenVirtualTimePaused(false));
 }
 
-void MainThreadSchedulerImpl::OnShutdownTaskQueue(
-    const scoped_refptr<MainThreadTaskQueue>& task_queue) {
-  if (was_shutdown_) {
-    return;
-  }
-  task_queue.get()->DetachOnIPCTaskPostedWhileInBackForwardCache();
-  task_runners_.erase(task_queue.get());
-  main_thread_only().detached_task_queues.erase(task_queue.get());
+scoped_refptr<base::sequence_manager::TaskQueue>
+MainThreadSchedulerImpl::NewTaskQueueForTest() {
+  return sequence_manager_->CreateTaskQueue(
+      base::sequence_manager::TaskQueue::Spec(
+          base::sequence_manager::QueueName::TEST_TQ));
 }
 
-void MainThreadSchedulerImpl::OnDetachTaskQueue(
-    MainThreadTaskQueue& task_queue) {
-  if (was_shutdown_) {
+void MainThreadSchedulerImpl::OnShutdownTaskQueue(
+    const scoped_refptr<MainThreadTaskQueue>& task_queue) {
+  if (was_shutdown_)
     return;
-  }
-  // `UpdatePolicy()` is not set up to handle detached frame scheduler queues.
-  // TODO(crbug.com/1143007): consider keeping FrameScheduler alive until all
-  // tasks have finished running.
-  task_runners_.erase(&task_queue);
 
-  // Don't immediately shut down the task queue even if it's empty. Tasks can
-  // still be queued before this task ends, which some parts of blink depend on.
-  main_thread_only().detached_task_queues.insert(
-      base::WrapRefCounted(&task_queue));
+  task_queue.get()->DetachOnIPCTaskPostedWhileInBackForwardCache();
+  task_runners_.erase(task_queue.get());
 }
 
 void MainThreadSchedulerImpl::AddTaskObserver(
@@ -920,7 +861,7 @@ void MainThreadSchedulerImpl::WillBeginFrame(const viz::BeginFrameArgs& args) {
     base::AutoLock lock(any_thread_lock_);
     any_thread().begin_main_frame_on_critical_path = args.on_critical_path;
   }
-  main_thread_only().is_current_task_main_frame = true;
+  main_thread_only().have_seen_a_frame = true;
 }
 
 void MainThreadSchedulerImpl::DidCommitFrameToCompositor() {
@@ -1046,6 +987,12 @@ void MainThreadSchedulerImpl::SetRendererHidden(bool hidden) {
 void MainThreadSchedulerImpl::SetRendererBackgrounded(bool backgrounded) {
   helper_.CheckOnValidThread();
 
+  // Increasing timer slack helps the OS to coalesce timers efficiently.
+  base::TimerSlack timer_slack = base::TIMER_SLACK_NONE;
+  if (backgrounded)
+    timer_slack = base::TIMER_SLACK_MAXIMUM;
+  helper_.SetTimerSlack(timer_slack);
+
   if (helper_.IsShutdown() ||
       main_thread_only().renderer_backgrounded.get() == backgrounded)
     return;
@@ -1074,11 +1021,6 @@ void MainThreadSchedulerImpl::SetRendererBackgrounded(bool backgrounded) {
   memory_purge_manager_.SetRendererBackgrounded(backgrounded);
 }
 
-void MainThreadSchedulerImpl::SetRendererBackgroundedForTesting(
-    bool backgrounded) {
-  SetRendererBackgrounded(backgrounded);
-}
-
 #if BUILDFLAG(IS_ANDROID)
 void MainThreadSchedulerImpl::PauseTimersForAndroidWebView() {
   main_thread_only().pause_timers_for_webview = true;
@@ -1101,6 +1043,10 @@ void MainThreadSchedulerImpl::OnAudioStateChanged() {
     return;
 
   main_thread_only().is_audio_playing = is_audio_playing;
+
+  main_thread_only().audible_power_mode_voter->VoteFor(
+      is_audio_playing ? power_scheduler::PowerMode::kAudible
+                       : power_scheduler::PowerMode::kIdle);
 }
 
 std::unique_ptr<MainThreadScheduler::RendererPauseHandle>
@@ -1152,8 +1098,6 @@ void MainThreadSchedulerImpl::SetHaveSeenABlockingGestureForTesting(
 }
 
 void MainThreadSchedulerImpl::PerformMicrotaskCheckpoint() {
-  TRACE_EVENT("toplevel", "BlinkScheduler_PerformMicrotaskCheckpoint");
-
   // This will fallback to execute the microtask checkpoint for the
   // default EventLoop for the isolate.
   if (isolate())
@@ -1389,7 +1333,7 @@ void MainThreadSchedulerImpl::DidHandleInputEventOnMainThread(
     }
   }
   if (!PendingUserInput::IsContinuousEventType(web_input_event.GetType())) {
-    main_thread_only().is_current_task_discrete_input = true;
+    main_thread_only().did_handle_discrete_input_event = true;
   }
 }
 
@@ -1548,18 +1492,18 @@ void MainThreadSchedulerImpl::UpdatePolicyLocked(UpdateType update_type) {
           kFastCompositingIdleTimeThreshold;
 
   Policy new_policy;
-  new_policy.rail_mode = RAILMode::kAnimation;
-  new_policy.use_case = main_thread_only().current_use_case;
+  new_policy.rail_mode() = RAILMode::kAnimation;
+  new_policy.use_case() = main_thread_only().current_use_case;
 
-  switch (new_policy.use_case) {
+  switch (new_policy.use_case()) {
     case UseCase::kCompositorGesture:
       if (main_thread_only().blocking_input_expected_soon)
-        new_policy.rail_mode = RAILMode::kResponse;
+        new_policy.rail_mode() = RAILMode::kResponse;
       break;
 
     case UseCase::kSynchronizedGesture:
       if (main_thread_only().blocking_input_expected_soon)
-        new_policy.rail_mode = RAILMode::kResponse;
+        new_policy.rail_mode() = RAILMode::kResponse;
       break;
 
     case UseCase::kMainThreadCustomInputHandling:
@@ -1567,12 +1511,12 @@ void MainThreadSchedulerImpl::UpdatePolicyLocked(UpdateType update_type) {
 
     case UseCase::kMainThreadGesture:
       if (main_thread_only().blocking_input_expected_soon)
-        new_policy.rail_mode = RAILMode::kResponse;
+        new_policy.rail_mode() = RAILMode::kResponse;
       break;
 
     case UseCase::kTouchstart:
-      new_policy.rail_mode = RAILMode::kResponse;
-      new_policy.should_defer_task_queues = true;
+      new_policy.rail_mode() = RAILMode::kResponse;
+      new_policy.should_defer_task_queues() = true;
       break;
 
     case UseCase::kNone:
@@ -1580,16 +1524,16 @@ void MainThreadSchedulerImpl::UpdatePolicyLocked(UpdateType update_type) {
       // driven gesture.
       if (main_thread_only().blocking_input_expected_soon &&
           any_thread().last_gesture_was_compositor_driven) {
-        new_policy.rail_mode = RAILMode::kResponse;
+        new_policy.rail_mode() = RAILMode::kResponse;
       }
       break;
 
     case UseCase::kEarlyLoading:
-      new_policy.rail_mode = RAILMode::kLoad;
+      new_policy.rail_mode() = RAILMode::kLoad;
       break;
 
     case UseCase::kLoading:
-      new_policy.rail_mode = RAILMode::kLoad;
+      new_policy.rail_mode() = RAILMode::kLoad;
       // TODO(skyostil): Experiment with throttling rendering frame rate.
       break;
 
@@ -1599,23 +1543,20 @@ void MainThreadSchedulerImpl::UpdatePolicyLocked(UpdateType update_type) {
 
   // TODO(skyostil): Add an idle state for foreground tabs too.
   if (main_thread_only().renderer_hidden.get())
-    new_policy.rail_mode = RAILMode::kIdle;
+    new_policy.rail_mode() = RAILMode::kIdle;
 
   if (main_thread_only().renderer_pause_count != 0) {
-    new_policy.should_pause_task_queues = true;
+    new_policy.should_pause_task_queues() = true;
   }
 
   if (main_thread_only().pause_timers_for_webview) {
-    new_policy.should_pause_task_queues_for_android_webview = true;
+    new_policy.should_pause_task_queues_for_android_webview() = true;
   }
 
-  new_policy.find_in_page_priority =
+  new_policy.find_in_page_priority() =
       find_in_page_budget_pool_controller_->CurrentTaskPriority();
 
-  new_policy.should_prioritize_ipc_tasks =
-      num_pending_urgent_ipc_messages_.load(std::memory_order_relaxed) > 0;
-
-  new_policy.should_freeze_compositor_task_queue = AllPagesFrozen();
+  new_policy.should_freeze_compositor_task_queue() = AllPagesFrozen();
 
   // Tracing is done before the early out check, because it's quite possible we
   // will otherwise miss this information in traces.
@@ -1634,13 +1575,13 @@ void MainThreadSchedulerImpl::UpdatePolicyLocked(UpdateType update_type) {
     return;
   }
 
-  main_thread_only().rail_mode_for_tracing = new_policy.rail_mode;
-  if (new_policy.rail_mode != main_thread_only().current_policy.rail_mode) {
+  main_thread_only().rail_mode_for_tracing = new_policy.rail_mode();
+  if (new_policy.rail_mode() != main_thread_only().current_policy.rail_mode()) {
     if (isolate()) {
-      isolate()->SetRAILMode(RAILModeToV8RAILMode(new_policy.rail_mode));
+      isolate()->SetRAILMode(RAILModeToV8RAILMode(new_policy.rail_mode()));
     }
     for (auto& observer : main_thread_only().rail_mode_observers) {
-      observer.OnRAILModeChanged(new_policy.rail_mode);
+      observer.OnRAILModeChanged(new_policy.rail_mode());
     }
   }
 
@@ -1651,7 +1592,7 @@ void MainThreadSchedulerImpl::UpdatePolicyLocked(UpdateType update_type) {
 }
 
 void MainThreadSchedulerImpl::UpdateStateForAllTaskQueues(
-    std::optional<Policy> previous_policy) {
+    absl::optional<Policy> previous_policy) {
   helper_.CheckOnValidThread();
 
   const Policy& current_policy = main_thread_only().current_policy;
@@ -1687,7 +1628,7 @@ void MainThreadSchedulerImpl::UpdateTaskQueueState(
   if (task_queue->GetPrioritisationType() ==
       MainThreadTaskQueue::QueueTraits::PrioritisationType::kCompositor) {
     task_queue_enabled_voter->SetVoteToEnable(
-        !new_policy.should_freeze_compositor_task_queue);
+        !new_policy.should_freeze_compositor_task_queue());
   }
 }
 
@@ -1744,16 +1685,8 @@ UseCase MainThreadSchedulerImpl::ComputeCurrentUseCase(
     if (any_thread().waiting_for_any_main_frame_contentful_paint)
       return UseCase::kEarlyLoading;
 
-    if (base::FeatureList::IsEnabled(
-            features::kLoadingPhaseBufferTimeAfterFirstMeaningfulPaint)) {
-      if (any_thread().waiting_for_any_main_frame_meaningful_paint) {
-        return UseCase::kLoading;
-      }
-    } else {
-      if (any_thread().is_any_main_frame_loading) {
-        return UseCase::kLoading;
-      }
-    }
+    if (any_thread().waiting_for_any_main_frame_meaningful_paint)
+      return UseCase::kLoading;
   }
   return UseCase::kNone;
 }
@@ -1899,9 +1832,14 @@ void MainThreadSchedulerImpl::WriteIntoTraceLocked(
            any_thread().waiting_for_any_main_frame_contentful_paint);
   dict.Add("waiting_for_any_main_frame_meaningful_paint",
            any_thread().waiting_for_any_main_frame_meaningful_paint);
-  dict.Add("is_any_main_frame_loading", any_thread().is_any_main_frame_loading);
   dict.Add("have_seen_input_since_navigation",
            any_thread().have_seen_input_since_navigation);
+  dict.Add(
+      "have_reported_blocking_intervention_in_current_policy",
+      main_thread_only().have_reported_blocking_intervention_in_current_policy);
+  dict.Add(
+      "have_reported_blocking_intervention_since_navigation",
+      main_thread_only().have_reported_blocking_intervention_since_navigation);
   dict.Add("renderer_backgrounded",
            main_thread_only().renderer_backgrounded.get());
   dict.Add("now", (optional_now - base::TimeTicks()).InMillisecondsF());
@@ -1947,31 +1885,26 @@ void MainThreadSchedulerImpl::WriteIntoTraceLocked(
 
 bool MainThreadSchedulerImpl::Policy::IsQueueEnabled(
     MainThreadTaskQueue* task_queue) const {
-  if (should_pause_task_queues && task_queue->CanBePaused()) {
+  if (should_pause_task_queues() && task_queue->CanBePaused())
     return false;
-  }
-  if (should_defer_task_queues && task_queue->CanBeDeferred()) {
+  if (should_defer_task_queues() && task_queue->CanBeDeferred())
     return false;
-  }
-  if (should_pause_task_queues_for_android_webview &&
-      task_queue->CanBePausedForAndroidWebview()) {
+  if (should_pause_task_queues_for_android_webview() &&
+      task_queue->CanBePausedForAndroidWebview())
     return false;
-  }
   return true;
 }
 
 void MainThreadSchedulerImpl::Policy::WriteIntoTrace(
     perfetto::TracedValue context) const {
   auto dict = std::move(context).WriteDictionary();
-  dict.Add("rail_mode", RAILModeToString(rail_mode));
-  dict.Add("use_case", UseCaseToString(use_case));
-  dict.Add("should_defer_task_queues", should_defer_task_queues);
-  dict.Add("should_pause_task_queues", should_pause_task_queues);
+  dict.Add("rail_mode", RAILModeToString(rail_mode()));
+  dict.Add("use_case", UseCaseToString(use_case()));
+
+  dict.Add("should_defer_task_queues", should_defer_task_queues());
+  dict.Add("should_pause_task_queues", should_pause_task_queues());
   dict.Add("should_pause_task_queues_for_android_webview",
-           should_pause_task_queues_for_android_webview);
-  dict.Add("should_freeze_compositor_task_queue",
-           should_freeze_compositor_task_queue);
-  dict.Add("should_prioritize_ipc_tasks", should_prioritize_ipc_tasks);
+           should_pause_task_queues_for_android_webview());
 }
 
 void MainThreadSchedulerImpl::OnIdlePeriodStarted() {
@@ -2047,9 +1980,9 @@ void MainThreadSchedulerImpl::DidCommitProvisionalLoad(
     RAILMode new_rail_mode;
     {
       base::AutoLock lock(any_thread_lock_);
-      old_rail_mode = main_thread_only().current_policy.rail_mode;
+      old_rail_mode = main_thread_only().current_policy.rail_mode();
       ResetForNavigationLocked();
-      new_rail_mode = main_thread_only().current_policy.rail_mode;
+      new_rail_mode = main_thread_only().current_policy.rail_mode();
     }
     if (old_rail_mode == new_rail_mode && isolate())
       isolate()->UpdateLoadStartTime();
@@ -2067,7 +2000,6 @@ void MainThreadSchedulerImpl::OnMainFramePaint() {
       IsAnyOrdinaryMainFrameWaitingForFirstContentfulPaint();
   any_thread().waiting_for_any_main_frame_meaningful_paint =
       IsAnyOrdinaryMainFrameWaitingForFirstMeaningfulPaint();
-  any_thread().is_any_main_frame_loading = IsAnyOrdinaryMainFrameLoading();
 
   UpdatePolicyLocked(UpdateType::kMayEarlyOutIfPolicyUnchanged);
 }
@@ -2083,28 +2015,21 @@ void MainThreadSchedulerImpl::ResetForNavigationLocked() {
       IsAnyOrdinaryMainFrameWaitingForFirstContentfulPaint();
   any_thread().waiting_for_any_main_frame_meaningful_paint =
       IsAnyOrdinaryMainFrameWaitingForFirstMeaningfulPaint();
-  any_thread().is_any_main_frame_loading = IsAnyOrdinaryMainFrameLoading();
   any_thread().have_seen_input_since_navigation = false;
   main_thread_only().idle_time_estimator.Clear();
+  main_thread_only().have_reported_blocking_intervention_since_navigation =
+      false;
   UpdatePolicyLocked(UpdateType::kMayEarlyOutIfPolicyUnchanged);
 }
 
 void MainThreadSchedulerImpl::AddRAILModeObserver(RAILModeObserver* observer) {
   main_thread_only().rail_mode_observers.AddObserver(observer);
-  observer->OnRAILModeChanged(main_thread_only().current_policy.rail_mode);
+  observer->OnRAILModeChanged(main_thread_only().current_policy.rail_mode());
 }
 
 void MainThreadSchedulerImpl::RemoveRAILModeObserver(
     RAILModeObserver const* observer) {
   main_thread_only().rail_mode_observers.RemoveObserver(observer);
-}
-
-void MainThreadSchedulerImpl::ForEachMainThreadIsolate(
-    base::RepeatingCallback<void(v8::Isolate* isolate)> callback) {
-  // TODO(dtapuska): For each AgentGroupScheduler's isolate invoke the callback.
-  if (v8::Isolate* isolate = Isolate()) {
-    callback.Run(isolate);
-  }
 }
 
 void MainThreadSchedulerImpl::SetRendererProcessType(
@@ -2155,11 +2080,6 @@ void MainThreadSchedulerImpl::PostNonNestableIdleTask(
 scoped_refptr<base::SingleThreadTaskRunner>
 MainThreadSchedulerImpl::V8TaskRunner() {
   return v8_task_runner_;
-}
-
-scoped_refptr<base::SingleThreadTaskRunner>
-MainThreadSchedulerImpl::V8LowPriorityTaskRunner() {
-  return v8_low_priority_task_runner_;
 }
 
 scoped_refptr<base::SingleThreadTaskRunner>
@@ -2242,7 +2162,7 @@ void MainThreadSchedulerImpl::BeginAgentGroupSchedulerScope(
 
   scoped_refptr<base::SingleThreadTaskRunner> previous_task_runner =
       base::SingleThreadTaskRunner::GetCurrentDefault();
-  std::unique_ptr<base::SingleThreadTaskRunner::CurrentDefaultHandle>
+  std::unique_ptr<base::SingleThreadTaskRunner::CurrentHandleOverride>
       single_thread_task_runner_current_handle_override;
   if (scheduling_settings().mbi_override_task_runner_handle &&
       next_task_runner != previous_task_runner) {
@@ -2256,10 +2176,10 @@ void MainThreadSchedulerImpl::BeginAgentGroupSchedulerScope(
     // returning an unexpected task runner from STTR/STR::GetCurrentDefault() in
     // this specific case.
     single_thread_task_runner_current_handle_override =
-        std::unique_ptr<base::SingleThreadTaskRunner::CurrentDefaultHandle>(
-            new base::SingleThreadTaskRunner::CurrentDefaultHandle(
-                next_task_runner, base::SingleThreadTaskRunner::
-                                      CurrentDefaultHandle::MayAlreadyExist{}));
+        std::unique_ptr<base::SingleThreadTaskRunner::CurrentHandleOverride>(
+            new base::SingleThreadTaskRunner::CurrentHandleOverride(
+                next_task_runner,
+                /*allow_nested_runloop=*/true));
   }
 
   main_thread_only().agent_group_scheduler_scope_stack.emplace_back(
@@ -2293,8 +2213,7 @@ void MainThreadSchedulerImpl::EndAgentGroupSchedulerScope() {
   TRACE_EVENT_NESTABLE_ASYNC_END1(
       TRACE_DISABLED_BY_DEFAULT("renderer.scheduler"),
       agent_group_scheduler_scope.trace_event_scope_name,
-      agent_group_scheduler_scope.trace_event_scope_id.get(),
-      "agent_group_scheduler",
+      agent_group_scheduler_scope.trace_event_scope_id, "agent_group_scheduler",
       static_cast<void*>(
           agent_group_scheduler_scope.current_agent_group_scheduler));
 
@@ -2326,10 +2245,8 @@ void MainThreadSchedulerImpl::AddPageScheduler(
   main_thread_only().page_schedulers.insert(page_scheduler);
   DetachOnIPCTaskPostedWhileInBackForwardCacheHandler();
   if (page_scheduler->IsOrdinary()) {
-    // MemoryPurgeManager::OnPageCreated() assumes that the page isn't frozen.
-    // Its logic must be modified if this assumption is broken in the future.
-    CHECK(!page_scheduler->IsFrozen());
-    memory_purge_manager_.OnPageCreated();
+    memory_purge_manager_.OnPageCreated(
+        page_scheduler->GetPageLifecycleState());
   }
 
   base::AutoLock lock(any_thread_lock_);
@@ -2337,17 +2254,17 @@ void MainThreadSchedulerImpl::AddPageScheduler(
       IsAnyOrdinaryMainFrameWaitingForFirstContentfulPaint();
   any_thread().waiting_for_any_main_frame_meaningful_paint =
       IsAnyOrdinaryMainFrameWaitingForFirstMeaningfulPaint();
-  any_thread().is_any_main_frame_loading = IsAnyOrdinaryMainFrameLoading();
   UpdatePolicyLocked(UpdateType::kMayEarlyOutIfPolicyUnchanged);
 }
 
 void MainThreadSchedulerImpl::RemovePageScheduler(
     PageSchedulerImpl* page_scheduler) {
-  DCHECK(base::Contains(main_thread_only().page_schedulers, page_scheduler));
+  DCHECK(main_thread_only().page_schedulers.find(page_scheduler) !=
+         main_thread_only().page_schedulers.end());
   main_thread_only().page_schedulers.erase(page_scheduler);
   if (page_scheduler->IsOrdinary()) {
     memory_purge_manager_.OnPageDestroyed(
-        /* frozen=*/page_scheduler->IsFrozen());
+        page_scheduler->GetPageLifecycleState());
   }
 
   if (IsIpcTrackingEnabledForAllPages()) {
@@ -2364,7 +2281,6 @@ void MainThreadSchedulerImpl::RemovePageScheduler(
       IsAnyOrdinaryMainFrameWaitingForFirstContentfulPaint();
   any_thread().waiting_for_any_main_frame_meaningful_paint =
       IsAnyOrdinaryMainFrameWaitingForFirstMeaningfulPaint();
-  any_thread().is_any_main_frame_loading = IsAnyOrdinaryMainFrameLoading();
   UpdatePolicyLocked(UpdateType::kMayEarlyOutIfPolicyUnchanged);
 }
 
@@ -2400,12 +2316,13 @@ void MainThreadSchedulerImpl::OnTaskStarted(
   main_thread_only().current_task_start_time = task_timing.start_time();
   main_thread_only().task_description_for_tracing = TaskDescriptionForTracing{
       static_cast<TaskType>(task.task_type),
-      queue ? std::optional<MainThreadTaskQueue::QueueType>(queue->queue_type())
-            : std::nullopt};
+      queue
+          ? absl::optional<MainThreadTaskQueue::QueueType>(queue->queue_type())
+          : absl::nullopt};
 
   main_thread_only().task_priority_for_tracing =
-      queue ? std::optional<TaskPriority>(queue->GetQueuePriority())
-            : std::nullopt;
+      queue ? absl::optional<TaskPriority>(queue->GetQueuePriority())
+            : absl::nullopt;
 }
 
 void MainThreadSchedulerImpl::OnTaskCompleted(
@@ -2413,8 +2330,6 @@ void MainThreadSchedulerImpl::OnTaskCompleted(
     const base::sequence_manager::Task& task,
     TaskQueue::TaskTiming* task_timing,
     base::LazyNow* lazy_now) {
-  TRACE_EVENT("renderer.scheduler", "BlinkScheduler_OnTaskCompleted");
-
   // Microtasks may detach the task queue and invalidate |queue|.
   PerformMicrotaskCheckpoint();
 
@@ -2440,28 +2355,29 @@ void MainThreadSchedulerImpl::OnTaskCompleted(
   if (queue) {
     queue->OnTaskRunTimeReported(task_timing);
 
-    if (FrameSchedulerImpl* frame_scheduler = queue->GetFrameScheduler()) {
-      frame_scheduler->OnTaskCompleted(task_timing);
+    if (RuntimeEnabledFeatures::LongAnimationFrameMonitoringEnabled()) {
+      if (FrameSchedulerImpl* frame_scheduler = queue->GetFrameScheduler()) {
+        frame_scheduler->OnTaskCompleted(task_timing,
+                                         task.GetDesiredExecutionTime());
+      }
     }
   }
 
   // TODO(altimin): Per-page metrics should also be considered.
   main_thread_only().metrics_helper.RecordTaskMetrics(queue.get(), task,
                                                       *task_timing);
-  main_thread_only().task_description_for_tracing = std::nullopt;
+  main_thread_only().task_description_for_tracing = absl::nullopt;
 
   // Unset the state of |task_priority_for_tracing|.
-  main_thread_only().task_priority_for_tracing = std::nullopt;
+  main_thread_only().task_priority_for_tracing = absl::nullopt;
 
   RecordTaskUkm(queue.get(), task, *task_timing);
 
   MaybeUpdateCompositorTaskQueuePriorityOnTaskCompleted(queue.get(),
                                                         *task_timing);
-  MaybeUpdateIPCTaskQueuePriorityOnTaskCompleted();
 
   find_in_page_budget_pool_controller_->OnTaskCompleted(queue.get(),
                                                         task_timing);
-  ShutdownEmptyDetachedTaskQueues();
 }
 
 void MainThreadSchedulerImpl::RecordTaskUkm(
@@ -2557,12 +2473,6 @@ TaskPriority MainThreadSchedulerImpl::ComputePriority(
     return frame_scheduler->ComputePriority(task_queue);
   }
 
-  if (task_queue->queue_type() == MainThreadTaskQueue::QueueType::kDefault) {
-    return main_thread_only().current_policy.should_prioritize_ipc_tasks
-               ? TaskPriority::kVeryHighPriority
-               : TaskPriority::kNormalPriority;
-  }
-
   switch (task_queue->GetPrioritisationType()) {
     case MainThreadTaskQueue::QueueTraits::PrioritisationType::kCompositor:
       return main_thread_only().compositor_priority;
@@ -2572,8 +2482,6 @@ TaskPriority MainThreadSchedulerImpl::ComputePriority(
       return TaskPriority::kBestEffortPriority;
     case MainThreadTaskQueue::QueueTraits::PrioritisationType::kRegular:
       return TaskPriority::kNormalPriority;
-    case MainThreadTaskQueue::QueueTraits::PrioritisationType::kLow:
-      return TaskPriority::kLowPriority;
     default:
       NOTREACHED();
       return TaskPriority::kNormalPriority;
@@ -2616,11 +2524,10 @@ bool MainThreadSchedulerImpl::IsAudioPlaying() const {
 
 bool MainThreadSchedulerImpl::ShouldUpdateTaskQueuePriorities(
     Policy old_policy) const {
-  return old_policy.use_case != main_thread_only().current_policy.use_case ||
-         old_policy.find_in_page_priority !=
-             main_thread_only().current_policy.find_in_page_priority ||
-         old_policy.should_prioritize_ipc_tasks !=
-             main_thread_only().current_policy.should_prioritize_ipc_tasks;
+  return old_policy.use_case() !=
+             main_thread_only().current_policy.use_case() ||
+         old_policy.find_in_page_priority() !=
+             main_thread_only().current_policy.find_in_page_priority();
 }
 
 UseCase MainThreadSchedulerImpl::current_use_case() const {
@@ -2633,51 +2540,40 @@ MainThreadSchedulerImpl::scheduling_settings() const {
 }
 
 TaskPriority MainThreadSchedulerImpl::ComputeCompositorPriority() const {
-  std::optional<TaskPriority> targeted_main_frame_priority =
-      ComputeCompositorPriorityForMainFrame();
-  std::optional<TaskPriority> use_case_priority =
-      ComputeCompositorPriorityFromUseCase();
-  if (!targeted_main_frame_priority && !use_case_priority) {
-    return TaskPriority::kNormalPriority;
-  } else if (!use_case_priority) {
-    return *targeted_main_frame_priority;
-  } else if (!targeted_main_frame_priority) {
-    return *use_case_priority;
-  }
-
-  // Both are set, so some reconciliation is needed.
-  CHECK(targeted_main_frame_priority && use_case_priority);
-  // If either votes for the highest priority, use that to simplify the
-  // remaining case.
-  if (*targeted_main_frame_priority == TaskPriority::kHighestPriority ||
-      *use_case_priority == TaskPriority::kHighestPriority) {
+  if (main_thread_only().prioritize_compositing_after_input) {
+    // Return the highest priority here otherwise consecutive heavy inputs (e.g.
+    // typing) will starve rendering.
     return TaskPriority::kHighestPriority;
-  }
-  // Otherwise, this must be a combination of UseCase::kCompositorGesture and
-  // rendering starvation since all other states set the priority to highest.
-  CHECK(current_use_case() == UseCase::kCompositorGesture &&
-        (main_thread_only().main_frame_prioritization_state ==
-             RenderingPrioritizationState::kRenderingStarved ||
-         main_thread_only().main_frame_prioritization_state ==
-             RenderingPrioritizationState::kRenderingStarvedByRenderBlocking));
-
-  // The default behavior for compositor gestures like compositor-driven
-  // scrolling is to deprioritize compositor TQ tasks (low priority) and not
-  // apply delay-based anti-starvation. This can lead to degraded user
-  // experience due to increased checkerboarding or scrolling blank content.
-  // When `kThreadedScrollPreventRenderingStarvation` is enabled, we use the
-  // priority computed in `ComputeCompositorPriorityFromUseCase()` as well as
-  // enable the delay-based anti-starvation to mitigate these issues.
-  //
-  // Note: for other use cases, the computed priority is higher, so they are
-  // not prone to rendering starvation in the same way.
-  if (scheduling_settings().compositor_tq_policy_during_threaded_scroll ==
-      CompositorTQPolicyDuringThreadedScroll::kLowPriorityAlways) {
-    return *use_case_priority;
   } else {
-    CHECK_LE(*targeted_main_frame_priority, *use_case_priority);
-    return *targeted_main_frame_priority;
+    absl::optional<TaskPriority> computed_compositor_priority =
+        ComputeCompositorPriorityFromUseCase();
+    // The default behavior for compositor gestures like compositor-driven
+    // scrolling is to deprioritize compositor TQ tasks (low priority) and not
+    // apply delay-based anti-starvation. This can lead to degraded user
+    // experience due to increased checkerboarding or scrolling blank content.
+    // When `kThreadedScrollPreventRenderingStarvation` is enabled, we use the
+    // priority computed in `ComputeCompositorPriorityFromUseCase()` as well as
+    // enable the delay-based anti-starvation to mitigate these issues.
+    //
+    // Note: for other use cases, the computed priority is higher, so they are
+    // not prone to rendering starvation in the same way.
+    if (current_use_case() == UseCase::kCompositorGesture &&
+        scheduling_settings().compositor_tq_policy_during_threaded_scroll !=
+            CompositorTQPolicyDuringThreadedScroll::kLowPriorityAlways &&
+        main_thread_only()
+            .should_prioritize_compositor_task_queue_after_delay) {
+      DCHECK(computed_compositor_priority);
+      return MaxPriority(kPrioritizeCompositingAfterDelayPriority,
+                         *computed_compositor_priority);
+    }
+    if (computed_compositor_priority) {
+      return computed_compositor_priority.value();
+    } else if (main_thread_only()
+                   .should_prioritize_compositor_task_queue_after_delay) {
+      return kPrioritizeCompositingAfterDelayPriority;
+    }
   }
+  return TaskPriority::kNormalPriority;
 }
 
 void MainThreadSchedulerImpl::UpdateCompositorTaskQueuePriority() {
@@ -2699,81 +2595,58 @@ void MainThreadSchedulerImpl::
     MaybeUpdateCompositorTaskQueuePriorityOnTaskCompleted(
         MainThreadTaskQueue* queue,
         const base::sequence_manager::TaskQueue::TaskTiming& task_timing) {
-  RenderingPrioritizationState old_state =
-      main_thread_only().main_frame_prioritization_state;
-  if (queue &&
-      queue->GetQueuePriority() == TaskPriority::kExtremelyHighPriority) {
-    main_thread_only().rendering_blocking_duration_since_last_frame +=
-        task_timing.wall_duration();
-  }
-
-  // A main frame task resets the rendering prioritization state. Otherwise if
-  // the scheduler is waiting for a frame because of discrete input, the state
-  // will only change once a main frame happens. Otherwise, compute the state in
-  // descending priority order.
+  bool current_prioritize_compositer_after_input =
+      main_thread_only().prioritize_compositing_after_input;
+  bool current_prioritize_compositor_after_delay =
+      main_thread_only().should_prioritize_compositor_task_queue_after_delay;
   if (queue &&
       queue->queue_type() == MainThreadTaskQueue::QueueType::kCompositor &&
-      main_thread_only().is_current_task_main_frame) {
+      main_thread_only().have_seen_a_frame) {
     main_thread_only().last_frame_time = task_timing.end_time();
-    main_thread_only().is_current_task_main_frame = false;
-    main_thread_only().rendering_blocking_duration_since_last_frame =
-        base::TimeDelta();
-    main_thread_only().main_frame_prioritization_state =
-        RenderingPrioritizationState::kNone;
-  } else if (main_thread_only().main_frame_prioritization_state !=
-             RenderingPrioritizationState::kWaitingForInputResponse) {
-    if (queue &&
-        queue->queue_type() == MainThreadTaskQueue::QueueType::kInput &&
-        main_thread_only().is_current_task_discrete_input) {
-      // Assume this input will result in a frame, which we want to show ASAP.
-      main_thread_only().main_frame_prioritization_state =
-          RenderingPrioritizationState::kWaitingForInputResponse;
-    } else if (main_thread_only()
-                   .rendering_blocking_duration_since_last_frame >=
-               kRenderBlockingStarvationThreshold) {
-      main_thread_only().main_frame_prioritization_state =
-          RenderingPrioritizationState::kRenderingStarvedByRenderBlocking;
-    } else {
-      base::TimeDelta threshold;
-      switch (current_use_case()) {
-        case UseCase::kCompositorGesture:
-          // Don't use experimental values if we're processing a gesture, so as
-          // not to interfere with kThreadedScrollPreventRenderingStarvation.
-          threshold = kDefaultPrioritizeCompositingAfterDelay;
-          break;
-        case UseCase::kEarlyLoading:
-          threshold =
-              scheduling_settings_.prioritize_compositing_after_delay_pre_fcp;
-          break;
-        default:
-          threshold =
-              scheduling_settings_.prioritize_compositing_after_delay_post_fcp;
-          break;
-      }
-      if (task_timing.end_time() - main_thread_only().last_frame_time >=
-          threshold) {
-        main_thread_only().main_frame_prioritization_state =
-            RenderingPrioritizationState::kRenderingStarved;
-      }
+    main_thread_only().have_seen_a_frame = false;
+    main_thread_only().should_prioritize_compositor_task_queue_after_delay =
+        false;
+    main_thread_only().prioritize_compositing_after_input = false;
+  } else if (queue &&
+             queue->queue_type() == MainThreadTaskQueue::QueueType::kInput &&
+             main_thread_only().did_handle_discrete_input_event) {
+    // Assume this input will result in a frame, which we want to show ASAP.
+    main_thread_only().prioritize_compositing_after_input = true;
+  } else {
+    base::TimeDelta threshold;
+    switch (current_use_case()) {
+      case UseCase::kCompositorGesture:
+        // Don't use experimental values if we're processing a gesture, so as
+        // not to interfere with kThreadedScrollPreventRenderingStarvation.
+        threshold = kDefaultPrioritizeCompositingAfterDelay;
+        break;
+      case UseCase::kEarlyLoading:
+        threshold =
+            scheduling_settings_.prioritize_compositing_after_delay_pre_fcp;
+        break;
+      default:
+        threshold =
+            scheduling_settings_.prioritize_compositing_after_delay_post_fcp;
+        break;
+    }
+    if (task_timing.end_time() - main_thread_only().last_frame_time >=
+        threshold) {
+      main_thread_only().should_prioritize_compositor_task_queue_after_delay =
+          true;
     }
   }
-  main_thread_only().is_current_task_discrete_input = false;
 
-  if (old_state != main_thread_only().main_frame_prioritization_state) {
+  main_thread_only().did_handle_discrete_input_event = false;
+
+  if (main_thread_only().should_prioritize_compositor_task_queue_after_delay !=
+          current_prioritize_compositor_after_delay ||
+      main_thread_only().prioritize_compositing_after_input !=
+          current_prioritize_compositer_after_input) {
     UpdateCompositorTaskQueuePriority();
   }
 }
 
-void MainThreadSchedulerImpl::MaybeUpdateIPCTaskQueuePriorityOnTaskCompleted() {
-  bool should_prioritize_ipc_tasks =
-      num_pending_urgent_ipc_messages_.load(std::memory_order_relaxed) > 0;
-  if (should_prioritize_ipc_tasks !=
-      main_thread_only().current_policy.should_prioritize_ipc_tasks) {
-    UpdatePolicy();
-  }
-}
-
-std::optional<TaskPriority>
+absl::optional<TaskPriority>
 MainThreadSchedulerImpl::ComputeCompositorPriorityFromUseCase() const {
   switch (current_use_case()) {
     case UseCase::kCompositorGesture:
@@ -2802,7 +2675,7 @@ MainThreadSchedulerImpl::ComputeCompositorPriorityFromUseCase() const {
       // to the page's functionality or not.
       if (main_thread_only().main_thread_compositing_is_fast)
         return TaskPriority::kHighestPriority;
-      return std::nullopt;
+      return absl::nullopt;
 
     case UseCase::kMainThreadGesture:
     case UseCase::kTouchstart:
@@ -2815,33 +2688,12 @@ MainThreadSchedulerImpl::ComputeCompositorPriorityFromUseCase() const {
     case UseCase::kNone:
     case UseCase::kEarlyLoading:
     case UseCase::kLoading:
-      return std::nullopt;
+      return absl::nullopt;
 
     default:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
-}
-
-std::optional<TaskPriority>
-MainThreadSchedulerImpl::ComputeCompositorPriorityForMainFrame() const {
-  switch (main_thread_only().main_frame_prioritization_state) {
-    case RenderingPrioritizationState::kNone:
-      return std::nullopt;
-    case RenderingPrioritizationState::kRenderingStarved:
-      // Set higher than most tasks, but lower than render blocking tasks and
-      // input.
-      return TaskPriority::kVeryHighPriority;
-    case RenderingPrioritizationState::kRenderingStarvedByRenderBlocking:
-      // Set to rendering blocking to prevent starvation by render blocking
-      // tasks, but don't block input.
-      return TaskPriority::kExtremelyHighPriority;
-    case RenderingPrioritizationState::kWaitingForInputResponse:
-      // Return the highest priority here otherwise consecutive heavy inputs
-      // (e.g. typing) will starve rendering.
-      return TaskPriority::kHighestPriority;
-  }
-  NOTREACHED_NORETURN();
 }
 
 bool MainThreadSchedulerImpl::AllPagesFrozen() const {
@@ -2852,6 +2704,16 @@ bool MainThreadSchedulerImpl::AllPagesFrozen() const {
       return false;
   }
   return true;
+}
+
+TaskAttributionTracker* MainThreadSchedulerImpl::GetTaskAttributionTracker() {
+  return main_thread_only().task_attribution_tracker.get();
+}
+
+void MainThreadSchedulerImpl::InitializeTaskAttributionTracker(
+    std::unique_ptr<TaskAttributionTracker> tracker) {
+  DCHECK(!main_thread_only().task_attribution_tracker);
+  main_thread_only().task_attribution_tracker = std::move(tracker);
 }
 
 // static
@@ -2913,21 +2775,6 @@ const char* MainThreadSchedulerImpl::TimeDomainTypeToString(
 WTF::Vector<base::OnceClosure>&
 MainThreadSchedulerImpl::GetOnTaskCompletionCallbacks() {
   return main_thread_only().on_task_completion_callbacks;
-}
-
-void MainThreadSchedulerImpl::OnUrgentMessageReceived() {
-  CHECK(base::FeatureList::IsEnabled(
-      features::kBlinkSchedulerPrioritizeNavigationIPCs));
-  std::atomic_fetch_add_explicit(&num_pending_urgent_ipc_messages_, 1u,
-                                 std::memory_order_relaxed);
-}
-
-void MainThreadSchedulerImpl::OnUrgentMessageProcessed() {
-  CHECK(base::FeatureList::IsEnabled(
-      features::kBlinkSchedulerPrioritizeNavigationIPCs));
-  uint64_t prev_urgent_message_count = std::atomic_fetch_sub_explicit(
-      &num_pending_urgent_ipc_messages_, 1u, std::memory_order_relaxed);
-  CHECK_GT(prev_urgent_message_count, 0u);
 }
 
 }  // namespace scheduler

@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "base/threading/thread_checker.h"
@@ -53,7 +52,6 @@ class MessageCenterImpl : public MessageCenter,
   ExpandState GetNotificationExpandState(const std::string& id) override;
   void SetNotificationExpandState(const std::string& id,
                                   const ExpandState state) override;
-  void OnSetExpanded(const std::string& id, bool expanded) override;
   void SetHasMessageCenterView(bool has_message_center_view) override;
   bool HasMessageCenterView() const override;
   size_t NotificationCount() const override;
@@ -92,7 +90,6 @@ class MessageCenterImpl : public MessageCenter,
                                           int button_index,
                                           const std::u16string& reply) override;
   void ClickOnSettingsButton(const std::string& id) override;
-  void ClickOnSnoozeButton(const std::string& id) override;
   void DisableNotification(const std::string& id) override;
   void MarkSinglePopupAsShown(const std::string& id,
                               bool mark_notification_as_read) override;
@@ -100,10 +97,7 @@ class MessageCenterImpl : public MessageCenter,
   void ResetSinglePopup(const std::string& id) override;
   void DisplayedNotification(const std::string& id,
                              const DisplaySource source) override;
-  void SetQuietMode(
-      bool in_quiet_mode,
-      QuietModeSourceType type = QuietModeSourceType::kUserAction) override;
-  QuietModeSourceType GetLastQuietModeChangeSourceType() const override;
+  void SetQuietMode(bool in_quiet_mode) override;
   void SetSpokenFeedbackEnabled(bool enabled) override;
   void EnterQuietModeWithExpire(const base::TimeDelta& expires_in) override;
   void RestartPopupTimers() override;
@@ -129,14 +123,8 @@ class MessageCenterImpl : public MessageCenter,
   THREAD_CHECKER(thread_checker_);
 
   void ClickOnNotificationUnlocked(const std::string& id,
-                                   const std::optional<int>& button_index,
-                                   const std::optional<std::u16string>& reply);
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  // Removes the lowest priority, unpinned, non group parent notification if the
-  // number of notifications stored is over the limit.
-  void RemoveLastNotificationIfOverLimit();
-#endif  // IS_CHROMEOS_ASH
+                                   const absl::optional<int>& button_index,
+                                   const absl::optional<std::u16string>& reply);
 
   const std::unique_ptr<LockScreenController> lock_screen_controller_;
 
@@ -145,14 +133,12 @@ class MessageCenterImpl : public MessageCenter,
   base::ObserverList<MessageCenterObserver> observer_list_;
   std::unique_ptr<PopupTimersController> popup_timers_controller_;
   base::OneShotTimer quiet_mode_timer_;
-  std::vector<raw_ptr<NotificationBlocker, VectorExperimental>> blockers_;
+  std::vector<NotificationBlocker*> blockers_;
 
   bool visible_ = false;
   bool has_message_center_view_ = true;
   bool spoken_feedback_enabled_ = false;
   const bool notifications_grouping_enabled_;
-  QuietModeSourceType last_quiet_mode_change_source_type_ =
-      QuietModeSourceType::kUserAction;
 
   std::u16string system_notification_app_name_;
 

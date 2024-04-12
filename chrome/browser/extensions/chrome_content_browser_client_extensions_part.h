@@ -37,11 +37,7 @@ class BinderRegistryWithArgs;
 using BinderRegistry = BinderRegistryWithArgs<>;
 }  // namespace service_manager
 
-class Profile;
-
 namespace extensions {
-
-BASE_DECLARE_FEATURE(kStopUsingRenderProcessHostPrivilege);
 
 // Implements the extensions portion of ChromeContentBrowserClient.
 class ChromeContentBrowserClientExtensionsPart
@@ -89,9 +85,6 @@ class ChromeContentBrowserClientExtensionsPart
   static bool MayDeleteServiceWorkerRegistration(
       const GURL& scope,
       content::BrowserContext* browser_context);
-  static bool ShouldTryToUpdateServiceWorkerRegistration(
-      const GURL& scope,
-      content::BrowserContext* browser_context);
   static std::vector<url::Origin> GetOriginsRequiringDedicatedProcess();
 
   // Helper function to call InfoMap::SetSigninProcess().
@@ -108,8 +101,6 @@ class ChromeContentBrowserClientExtensionsPart
       bool is_for_isolated_world,
       network::mojom::URLLoaderFactoryParams* factory_params);
 
-  // Checks if the component is a loaded component extension or the ODFS
-  // external component extension.
   static bool IsBuiltinComponent(content::BrowserContext* browser_context,
                                  const url::Origin& origin);
 
@@ -128,8 +119,9 @@ class ChromeContentBrowserClientExtensionsPart
                            IsolatedOriginsAndHostedAppWebExtents);
 
   // ChromeContentBrowserClientParts:
-  void SiteInstanceGotProcessAndSite(
-      content::SiteInstance* site_instance) override;
+  void RenderProcessWillLaunch(content::RenderProcessHost* host) override;
+  void SiteInstanceGotProcess(content::SiteInstance* site_instance) override;
+  void SiteInstanceDeleting(content::SiteInstance* site_instance) override;
   void OverrideWebkitPrefs(content::WebContents* web_contents,
                            blink::web_pref::WebPreferences* web_prefs) override;
   bool OverrideWebPreferencesAfterNavigation(
@@ -148,17 +140,12 @@ class ChromeContentBrowserClientExtensionsPart
           additional_backends) override;
   void AppendExtraRendererCommandLineSwitches(
       base::CommandLine* command_line,
-      content::RenderProcessHost& process) override;
+      content::RenderProcessHost* process,
+      Profile* profile) override;
   void ExposeInterfacesToRenderer(
       service_manager::BinderRegistry* registry,
       blink::AssociatedInterfaceRegistry* associated_registry,
       content::RenderProcessHost* render_process_host) override;
-  void ExposeInterfacesToRendererForServiceWorker(
-      const content::ServiceWorkerVersionBaseInfo& service_worker_version_info,
-      blink::AssociatedInterfaceRegistry& associated_registry) override;
-  void ExposeInterfacesToRendererForRenderFrameHost(
-      content::RenderFrameHost& frame_host,
-      blink::AssociatedInterfaceRegistry& associated_registry) override;
 };
 
 }  // namespace extensions

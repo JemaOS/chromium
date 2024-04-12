@@ -11,6 +11,7 @@
 #include "chrome/browser/ui/passwords/bubble_controllers/save_update_bubble_controller.h"
 #include "chrome/browser/ui/views/passwords/password_bubble_view_base.h"
 #include "components/user_education/common/help_bubble.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/views/layout/animating_layout_manager.h"
 #include "ui/views/view.h"
 
@@ -33,7 +34,7 @@ class PasswordSaveUpdateView : public PasswordBubbleViewBase,
   PasswordSaveUpdateView(content::WebContents* web_contents,
                          views::View* anchor_view,
                          DisplayReason reason);
-#ifdef UNIT_TEST
+
   views::Combobox* DestinationDropdownForTesting() {
     return destination_dropdown_;
   }
@@ -41,11 +42,6 @@ class PasswordSaveUpdateView : public PasswordBubbleViewBase,
   views::EditableCombobox* username_dropdown_for_testing() const {
     return username_dropdown_.get();
   }
-
-  views::EditablePasswordCombobox* password_dropdown_for_testing() const {
-    return password_dropdown_.get();
-  }
-#endif  // #ifdef UNIT_TEST
 
  private:
   // Type of the IPH to show.

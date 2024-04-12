@@ -22,7 +22,6 @@
 #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
 #include "third_party/blink/renderer/platform/bindings/v8_per_context_data.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_deque.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "v8/include/v8.h"
 
 namespace blink {
@@ -84,7 +83,7 @@ class ModuleRecordTestModulator final : public DummyModulator {
  private:
   // Implements Modulator:
 
-  ScriptState* GetScriptState() override { return script_state_.Get(); }
+  ScriptState* GetScriptState() override { return script_state_; }
 
   ModuleRecordResolver* GetModuleRecordResolver() override {
     return resolver_.Get();
@@ -111,8 +110,6 @@ class ModuleRecordTest : public ::testing::Test, public ModuleTestBase {
  public:
   void SetUp() override { ModuleTestBase::SetUp(); }
   void TearDown() override { ModuleTestBase::TearDown(); }
-
-  test::TaskEnvironment task_environment_;
 };
 
 TEST_F(ModuleRecordTest, compileSuccess) {
@@ -290,8 +287,7 @@ TEST_F(ModuleRecordTest, Evaluate) {
           ->RunScriptAndReturnValue(&scope.GetWindow())
           .GetSuccessValueOrEmpty();
   ASSERT_TRUE(value->IsString());
-  EXPECT_EQ("bar", ToCoreString(scope.GetIsolate(),
-                                v8::Local<v8::String>::Cast(value)));
+  EXPECT_EQ("bar", ToCoreString(v8::Local<v8::String>::Cast(value)));
 
   v8::Local<v8::Object> module_namespace =
       v8::Local<v8::Object>::Cast(ModuleRecord::V8Namespace(module));
@@ -324,8 +320,7 @@ TEST_F(ModuleRecordTest, EvaluateCaptureError) {
   v8::Local<v8::Value> exception =
       GetException(scope.GetScriptState(), std::move(result));
   ASSERT_TRUE(exception->IsString());
-  EXPECT_EQ("bar",
-            ToCoreString(scope.GetIsolate(), exception.As<v8::String>()));
+  EXPECT_EQ("bar", ToCoreString(exception.As<v8::String>()));
 }
 
 }  // namespace

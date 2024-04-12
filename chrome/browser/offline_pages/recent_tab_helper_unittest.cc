@@ -34,6 +34,7 @@ namespace offline_pages {
 
 namespace {
 
+using IsSavingSamePageEnum = RecentTabHelper::IsSavingSamePageEnum;
 const int kTabId = 153;
 
 }  // namespace
@@ -354,6 +355,8 @@ TEST_F(RecentTabHelperTest, LastNCaptureAfterLoad) {
   ASSERT_EQ(1U, GetAllPages().size());
   EXPECT_EQ(kTestUrl, GetAllPages()[0].url);
   EXPECT_EQ(kLastNNamespace, GetAllPages()[0].client_id.name_space);
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
 }
 
 // Simulates the tab being hidden too early in the page loading so that a
@@ -372,6 +375,8 @@ TEST_F(RecentTabHelperTest, NoLastNCaptureIfTabHiddenTooEarlyInPageLoad) {
   FastForwardSnapshotController();
   EXPECT_EQ(0U, page_added_count());
   ASSERT_EQ(0U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 }
 
 // Checks that WebContents with no tab IDs have snapshot requests properly
@@ -391,6 +396,8 @@ TEST_F(RecentTabHelperTest, NoTabIdNoCapture) {
   // No page should be captured.
   EXPECT_EQ(0U, page_added_count());
   ASSERT_EQ(0U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 }
 
 // Checks that last_n is disabled if the device is low-end (aka svelte) but that
@@ -415,6 +422,8 @@ TEST_F(RecentTabHelperTest, LastNDisabledOnSvelte) {
   RunUntilIdle();
   EXPECT_EQ(1U, page_added_count());
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 }
 
 // Checks that last_n will not save a snapshot while the tab is being presented
@@ -438,6 +447,8 @@ TEST_F(RecentTabHelperTest, LastNWontSaveCustomTab) {
   RunUntilIdle();
   EXPECT_EQ(1U, page_added_count());
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 
   // Simulates the tab being transfered from the CustomTabActivity back to a
   // ChromeActivity.
@@ -448,6 +459,8 @@ TEST_F(RecentTabHelperTest, LastNWontSaveCustomTab) {
   RunUntilIdle();
   EXPECT_EQ(2U, page_added_count());
   ASSERT_EQ(2U, GetAllPages().size());
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
 }
 
 // Triggers two last_n snapshot captures during a single page load. Should end
@@ -468,6 +481,8 @@ TEST_F(RecentTabHelperTest, TwoCapturesSamePageLoad) {
   EXPECT_EQ(0U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
   EXPECT_EQ(kTestUrl, GetAllPages()[0].url);
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
   int64_t first_offline_id = GetAllPages()[0].offline_id;
 
   // Set page loading state to the 2nd and last snapshot-able stage. No new
@@ -487,6 +502,11 @@ TEST_F(RecentTabHelperTest, TwoCapturesSamePageLoad) {
   ASSERT_EQ(1U, GetAllPages().size());
   EXPECT_EQ(kTestUrl, GetAllPages()[0].url);
   EXPECT_NE(first_offline_id, GetAllPages()[0].offline_id);
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       2);
+  histogram_tester()->ExpectBucketCount(
+      "OfflinePages.LastN.IsSavingSamePage",
+      IsSavingSamePageEnum::kSamePageBetterQuality, 1);
 }
 
 // Triggers two last_n captures during a single page load, where the 2nd capture
@@ -541,6 +561,8 @@ TEST_F(RecentTabHelperTest, TwoCapturesDifferentPageLoadsSameUrl) {
   EXPECT_EQ(0U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
   EXPECT_EQ(kTestUrl, GetAllPages()[0].url);
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
   int64_t first_offline_id = GetAllPages()[0].offline_id;
 
   // Reload the same URL until the page is minimally loaded. The previous
@@ -560,6 +582,8 @@ TEST_F(RecentTabHelperTest, TwoCapturesDifferentPageLoadsSameUrl) {
   ASSERT_EQ(1U, GetAllPages().size());
   EXPECT_EQ(kTestUrl, GetAllPages()[0].url);
   EXPECT_NE(first_offline_id, GetAllPages()[0].offline_id);
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 2);
 }
 
 // Triggers two last_n captures for two different page loads of the same URL
@@ -577,6 +601,8 @@ TEST_F(RecentTabHelperTest, TwoCapturesWhere2ndFailsDifferentPageLoadsSameUrl) {
   EXPECT_EQ(0U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
   EXPECT_EQ(kTestUrl, GetAllPages()[0].url);
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
 
   // Updates the delegate so that will make the second snapshot fail.
   default_test_delegate()->set_archive_size(-1);
@@ -594,6 +620,8 @@ TEST_F(RecentTabHelperTest, TwoCapturesWhere2ndFailsDifferentPageLoadsSameUrl) {
   EXPECT_EQ(1U, page_added_count());
   EXPECT_EQ(1U, model_removed_count());
   ASSERT_EQ(0U, GetAllPages().size());
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 2);
 }
 
 // Triggers two last_n captures for two different page loads of different URLs.
@@ -611,6 +639,8 @@ TEST_F(RecentTabHelperTest, TwoCapturesDifferentPageLoadsDifferentUrls) {
   EXPECT_EQ(0U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
   EXPECT_EQ(kTestUrl, GetAllPages()[0].url);
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
 
   // Fully load the second URL. The previous snapshot should have been deleted.0
   const GURL kOtherUrl("http://crazy.site/foo_other.html");
@@ -629,6 +659,8 @@ TEST_F(RecentTabHelperTest, TwoCapturesDifferentPageLoadsDifferentUrls) {
   EXPECT_EQ(1U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
   EXPECT_EQ(kOtherUrl, GetAllPages()[0].url);
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 2);
 }
 
 // Fully loads a page where last_n captures two snapshots. Then triggers two
@@ -652,6 +684,13 @@ TEST_F(RecentTabHelperTest, TwoLastNAndTwoDownloadCapturesSamePage) {
   EXPECT_EQ(1U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
   EXPECT_EQ(kTestUrl, GetAllPages()[0].url);
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       2);
+  histogram_tester()->ExpectBucketCount("OfflinePages.LastN.IsSavingSamePage",
+                                        IsSavingSamePageEnum::kNewPage, 1);
+  histogram_tester()->ExpectBucketCount(
+      "OfflinePages.LastN.IsSavingSamePage",
+      IsSavingSamePageEnum::kSamePageBetterQuality, 1);
   int64_t first_offline_id = GetAllPages()[0].offline_id;
 
   // First snapshot request by downloads. Two offline pages are expected.
@@ -684,6 +723,8 @@ TEST_F(RecentTabHelperTest, TwoLastNAndTwoDownloadCapturesSamePage) {
   ASSERT_NE(nullptr, third_page);
   EXPECT_EQ(kTestUrl, third_page->url);
   EXPECT_EQ(third_client_id, third_page->client_id);
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       2);
 }
 
 // Simulates an error (disconnection) during the load of a page. Should end up
@@ -697,6 +738,8 @@ TEST_F(RecentTabHelperTest, NoCaptureOnErrorPage) {
                                                      123L, "");
   RunUntilIdle();
   ASSERT_EQ(0U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 }
 
 // Simulates a download request to offline the current page made early during
@@ -730,6 +773,8 @@ TEST_F(RecentTabHelperTest, DownloadRequestEarlyInLoad) {
   EXPECT_EQ(kTestUrl, later_page.url);
   EXPECT_EQ(client_id, later_page.client_id);
   EXPECT_EQ(153L, later_page.offline_id);
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 }
 
 // Simulates a download request to offline the current page made when the page
@@ -756,6 +801,8 @@ TEST_F(RecentTabHelperTest, DownloadRequestLaterInLoad) {
   EXPECT_EQ(2U, page_added_count());
   EXPECT_EQ(1U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 }
 
 // Simulates a download request to offline the current page made after loading
@@ -776,6 +823,8 @@ TEST_F(RecentTabHelperTest, DownloadRequestAfterFullyLoad) {
   EXPECT_EQ(client_id, page.client_id);
   EXPECT_EQ(153L, page.offline_id);
   EXPECT_EQ("", page.request_origin);
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 }
 
 // Simulates a download request to offline the current page made after loading
@@ -796,6 +845,8 @@ TEST_F(RecentTabHelperTest, DownloadRequestAfterFullyLoadWithOrigin) {
   EXPECT_EQ(client_id, page.client_id);
   EXPECT_EQ(153L, page.offline_id);
   EXPECT_EQ("abc", page.request_origin);
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 }
 
 // Simulates requests coming from last_n and downloads at the same time for a
@@ -812,6 +863,8 @@ TEST_F(RecentTabHelperTest, SimultaneousCapturesFromLastNAndDownloads) {
                                                      download_offline_id, "");
   RunUntilIdle();
   ASSERT_EQ(2U, GetAllPages().size());
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
 
   const OfflinePageItem* downloads_page =
       FindPageForOfflineId(download_offline_id);
@@ -839,12 +892,19 @@ TEST_F(RecentTabHelperTest, DuplicateTabHiddenEventsShouldTriggerNewSnapshots) {
   EXPECT_EQ(1U, page_added_count());
   EXPECT_EQ(0U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
 
   recent_tab_helper()->OnVisibilityChanged(content::Visibility::HIDDEN);
   RunUntilIdle();
   EXPECT_EQ(2U, page_added_count());
   EXPECT_EQ(1U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       2);
+  histogram_tester()->ExpectBucketCount(
+      "OfflinePages.LastN.IsSavingSamePage",
+      IsSavingSamePageEnum::kSamePageSameQuality, 1);
 
   recent_tab_helper()->DocumentOnLoadCompletedInPrimaryMainFrame();
   FastForwardSnapshotController();
@@ -853,12 +913,22 @@ TEST_F(RecentTabHelperTest, DuplicateTabHiddenEventsShouldTriggerNewSnapshots) {
   EXPECT_EQ(3U, page_added_count());
   EXPECT_EQ(2U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       3);
+  histogram_tester()->ExpectBucketCount(
+      "OfflinePages.LastN.IsSavingSamePage",
+      IsSavingSamePageEnum::kSamePageBetterQuality, 1);
 
   recent_tab_helper()->OnVisibilityChanged(content::Visibility::HIDDEN);
   RunUntilIdle();
   EXPECT_EQ(4U, page_added_count());
   EXPECT_EQ(3U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       4);
+  histogram_tester()->ExpectBucketCount(
+      "OfflinePages.LastN.IsSavingSamePage",
+      IsSavingSamePageEnum::kSamePageSameQuality, 2);
 }
 
 // Simulates multiple download requests and verifies that overlapping requests
@@ -899,6 +969,8 @@ TEST_F(RecentTabHelperTest, OverlappingDownloadRequestsAreIgnored) {
   ASSERT_TRUE(second_page);
   EXPECT_EQ(client_id_3, second_page->client_id);
   EXPECT_EQ(offline_id_3, second_page->offline_id);
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 }
 
 // Simulates a same document navigation and checks we snapshot correctly with
@@ -914,6 +986,8 @@ TEST_F(RecentTabHelperTest, SaveSameDocumentNavigationSnapshots) {
   EXPECT_EQ(1U, page_added_count());
   EXPECT_EQ(0U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
 
   // Now navigates same page and check the results of hiding the tab again.
   // Another snapshot should be created to the updated URL.
@@ -925,6 +999,11 @@ TEST_F(RecentTabHelperTest, SaveSameDocumentNavigationSnapshots) {
   EXPECT_EQ(1U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
   EXPECT_EQ(kTestPageUrlWithFragment, GetAllPages()[0].url);
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       2);
+  histogram_tester()->ExpectBucketCount(
+      "OfflinePages.LastN.IsSavingSamePage",
+      IsSavingSamePageEnum::kSamePageSameQuality, 1);
 
   // Now create a download request and check the snapshot is properly created.
   const ClientId client_id = NewDownloadClientId();
@@ -938,6 +1017,8 @@ TEST_F(RecentTabHelperTest, SaveSameDocumentNavigationSnapshots) {
   EXPECT_EQ(kTestPageUrlWithFragment, downloads_page->url);
   EXPECT_EQ(client_id, downloads_page->client_id);
   EXPECT_EQ(offline_id, downloads_page->offline_id);
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       2);
 }
 
 // Tests that a page reloaded is tracked as an actual load and properly saved.
@@ -949,6 +1030,8 @@ TEST_F(RecentTabHelperTest, ReloadIsTrackedAsNavigationAndSavedOnlyUponLoad) {
   recent_tab_helper()->OnVisibilityChanged(content::Visibility::HIDDEN);
   RunUntilIdle();
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
 
   // Starts a reload and hides the tab before it minimally load. The previous
   // snapshot should be removed.
@@ -968,6 +1051,8 @@ TEST_F(RecentTabHelperTest, ReloadIsTrackedAsNavigationAndSavedOnlyUponLoad) {
   EXPECT_EQ(2U, page_added_count());
   EXPECT_EQ(1U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 2);
 }
 
 // Checks that a closing tab doesn't trigger the creation of a snapshot. And
@@ -986,6 +1071,8 @@ TEST_F(RecentTabHelperTest, NoSaveIfTabIsClosing) {
   EXPECT_EQ(0U, page_added_count());
   EXPECT_EQ(0U, model_removed_count());
   ASSERT_EQ(0U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 
   // Simulates the page being restored and shown again, then hidden. At this
   // moment a snapshot should be created.
@@ -995,6 +1082,8 @@ TEST_F(RecentTabHelperTest, NoSaveIfTabIsClosing) {
   EXPECT_EQ(1U, page_added_count());
   EXPECT_EQ(0U, model_removed_count());
   ASSERT_EQ(1U, GetAllPages().size());
+  histogram_tester()->ExpectUniqueSample("OfflinePages.LastN.IsSavingSamePage",
+                                         IsSavingSamePageEnum::kNewPage, 1);
 }
 
 TEST_F(RecentTabHelperTest, NoSaveOfflinePageCacheForPost) {
@@ -1011,6 +1100,8 @@ TEST_F(RecentTabHelperTest, NoSaveOfflinePageCacheForPost) {
   RunUntilIdle();
   EXPECT_EQ(0U, page_added_count());
   ASSERT_EQ(0U, GetAllPages().size());
+  histogram_tester()->ExpectTotalCount("OfflinePages.LastN.IsSavingSamePage",
+                                       0);
 
   // A manual download should succeed despite being ineligible for OPC.
   recent_tab_helper()->ObserveAndDownloadCurrentPage(NewDownloadClientId(),

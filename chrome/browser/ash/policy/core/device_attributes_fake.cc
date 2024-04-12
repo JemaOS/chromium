@@ -4,10 +4,10 @@
 
 #include "chrome/browser/ash/policy/core/device_attributes_fake.h"
 
-#include <optional>
 #include <string>
 
 #include "components/policy/core/common/cloud/cloud_policy_constants.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy {
 
@@ -26,6 +26,10 @@ std::string FakeDeviceAttributes::GetSSOProfile() const {
   return fake_sso_profile_;
 }
 
+std::string FakeDeviceAttributes::GetRealm() const {
+  return fake_realm_;
+}
+
 std::string FakeDeviceAttributes::GetDeviceAssetID() const {
   return fake_device_asset_id_;
 }
@@ -42,7 +46,7 @@ std::string FakeDeviceAttributes::GetDeviceAnnotatedLocation() const {
   return fake_device_annotated_location_;
 }
 
-std::optional<std::string> FakeDeviceAttributes::GetDeviceHostname() const {
+absl::optional<std::string> FakeDeviceAttributes::GetDeviceHostname() const {
   return fake_device_hostname_;
 }
 
@@ -76,6 +80,10 @@ void FakeDeviceAttributes::SetFakeSsoProfile(const std::string& sso_profile) {
   fake_sso_profile_ = sso_profile;
 }
 
+void FakeDeviceAttributes::SetFakeRealm(const std::string& realm) {
+  fake_realm_ = realm;
+}
+
 void FakeDeviceAttributes::SetFakeDeviceAssetId(
     const std::string& device_asset_id) {
   fake_device_asset_id_ = device_asset_id;
@@ -96,7 +104,7 @@ void FakeDeviceAttributes::SetFakeDeviceAnnotatedLocation(
 }
 
 void FakeDeviceAttributes::SetFakeDeviceHostname(
-    const std::optional<std::string> device_hostname) {
+    const absl::optional<std::string> device_hostname) {
   fake_device_hostname_ = device_hostname;
 }
 

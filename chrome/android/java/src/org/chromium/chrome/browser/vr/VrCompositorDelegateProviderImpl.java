@@ -4,14 +4,15 @@
 
 package org.chromium.chrome.browser.vr;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
 import org.chromium.components.webxr.VrCompositorDelegate;
 import org.chromium.components.webxr.VrCompositorDelegateProvider;
 import org.chromium.content_public.browser.WebContents;
 
-/** Concrete, Chrome-specific implementation of VrCompositorDelegateProvider interface. */
+/**
+ * Concrete, Chrome-specific implementation of VrCompositorDelegateProvider interface.
+ */
 @JNINamespace("vr")
 public class VrCompositorDelegateProviderImpl implements VrCompositorDelegateProvider {
     @CalledByNative

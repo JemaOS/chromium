@@ -55,19 +55,14 @@ void BuildAncestorChainsAndFindCommonAncestors(
 
 }  // namespace
 
-void BoundaryEventDispatcher::SendBoundaryEvents(
-    EventTarget* exited_target,
-    bool original_exited_target_removed,
-    EventTarget* entered_target) {
-  if (exited_target == entered_target && !original_exited_target_removed) {
+void BoundaryEventDispatcher::SendBoundaryEvents(EventTarget* exited_target,
+                                                 EventTarget* entered_target) {
+  if (exited_target == entered_target)
     return;
-  }
 
   // Dispatch out event
-  if (event_handling_util::IsInDocument(exited_target) &&
-      !original_exited_target_removed) {
-    Dispatch(exited_target, entered_target, out_event_, false);
-  }
+  if (event_handling_util::IsInDocument(exited_target))
+    DispatchOut(exited_target, entered_target);
 
   // Create lists of all exited/entered ancestors, locate the common ancestor
   // Based on httparchive, in more than 97% cases the depth of DOM is less
@@ -95,7 +90,6 @@ void BoundaryEventDispatcher::SendBoundaryEvents(
   // behavior from past only to match Firefox and IE behavior.
   //
   // TODO(mustaq): Confirm spec conformance, double-check with other browsers.
-  // See https://crbug.com/1501368.
 
   BuildAncestorChainsAndFindCommonAncestors(
       exited_target, entered_target, &exited_ancestors, &entered_ancestors,
@@ -103,39 +97,38 @@ void BoundaryEventDispatcher::SendBoundaryEvents(
       &entered_ancestors_common_parent_index);
 
   bool exited_node_has_capturing_ancestor = false;
+  const AtomicString& leave_event = GetLeaveEvent();
   for (wtf_size_t j = 0; j < exited_ancestors.size(); j++) {
-    if (exited_ancestors[j]->HasCapturingEventListeners(leave_event_)) {
+    if (exited_ancestors[j]->HasCapturingEventListeners(leave_event)) {
       exited_node_has_capturing_ancestor = true;
       break;
     }
   }
 
   // Dispatch leave events, in child-to-parent order.
-  for (wtf_size_t j = 0; j < exited_ancestors_common_parent_index; j++) {
-    Dispatch(exited_ancestors[j], entered_target, leave_event_,
-             !exited_node_has_capturing_ancestor);
-  }
+  for (wtf_size_t j = 0; j < exited_ancestors_common_parent_index; j++)
+    DispatchLeave(exited_ancestors[j], entered_target,
+                  !exited_node_has_capturing_ancestor);
 
   // Dispatch over event
-  if (event_handling_util::IsInDocument(entered_target)) {
-    Dispatch(entered_target, exited_target, over_event_, false);
-  }
+  if (event_handling_util::IsInDocument(entered_target))
+    DispatchOver(entered_target, exited_target);
 
   // Defer locating capturing enter listener until /after/ dispatching the leave
   // events because the leave handlers might set a capturing enter handler.
   bool entered_node_has_capturing_ancestor = false;
+  const AtomicString& enter_event = GetEnterEvent();
   for (wtf_size_t i = 0; i < entered_ancestors.size(); i++) {
-    if (entered_ancestors[i]->HasCapturingEventListeners(enter_event_)) {
+    if (entered_ancestors[i]->HasCapturingEventListeners(enter_event)) {
       entered_node_has_capturing_ancestor = true;
       break;
     }
   }
 
   // Dispatch enter events, in parent-to-child order.
-  for (wtf_size_t i = entered_ancestors_common_parent_index; i > 0; i--) {
-    Dispatch(entered_ancestors[i - 1], exited_target, enter_event_,
-             !entered_node_has_capturing_ancestor);
-  }
+  for (wtf_size_t i = entered_ancestors_common_parent_index; i > 0; i--)
+    DispatchEnter(entered_ancestors[i - 1], exited_target,
+                  !entered_node_has_capturing_ancestor);
 }
 
 }  // namespace blink

@@ -5,14 +5,12 @@
 #include "third_party/blink/renderer/modules/webgpu/gpu_compute_pipeline.h"
 
 #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_compute_pipeline_descriptor.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_feature_name.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_programmable_stage.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_bind_group_layout.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_device.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_pipeline_layout.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_programmable_stage.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_shader_module.h"
-#include "third_party/blink/renderer/modules/webgpu/gpu_supported_features.h"
 
 namespace blink {
 
@@ -29,8 +27,8 @@ WGPUComputePipelineDescriptor AsDawnType(
   dawn_desc.nextInChain = nullptr;
 
   dawn_desc.layout = AsDawnType(webgpu_desc->layout());
-  *label = webgpu_desc->label().Utf8();
-  if (!label->empty()) {
+  if (webgpu_desc->hasLabel()) {
+    *label = webgpu_desc->label().Utf8();
     dawn_desc.label = label->c_str();
   }
 
@@ -40,8 +38,7 @@ WGPUComputePipelineDescriptor AsDawnType(
   dawn_desc.compute.constantCount = computeStage->constantCount;
   dawn_desc.compute.constants = computeStage->constants.get();
   dawn_desc.compute.module = programmable_stage_desc->module()->GetHandle();
-  dawn_desc.compute.entryPoint =
-      computeStage->entry_point ? computeStage->entry_point->c_str() : nullptr;
+  dawn_desc.compute.entryPoint = computeStage->entry_point.c_str();
 
   return dawn_desc;
 }
@@ -58,35 +55,22 @@ GPUComputePipeline* GPUComputePipeline::Create(
   WGPUComputePipelineDescriptor dawn_desc =
       AsDawnType(device, webgpu_desc, &label, &computeStage);
 
-  // If ChromiumExperimentalSubgroups feature is enabled, chain the full
-  // subgroups options after compute pipeline descriptor.
-  WGPUDawnComputePipelineFullSubgroups fullSubgroupsOptions = {};
-  if (device->features()->has(
-          V8GPUFeatureName::Enum::kChromiumExperimentalSubgroups)) {
-    fullSubgroupsOptions.chain.sType =
-        WGPUSType_DawnComputePipelineFullSubgroups;
-    fullSubgroupsOptions.requiresFullSubgroups =
-        webgpu_desc->getRequiresFullSubgroupsOr(false);
-    dawn_desc.nextInChain = &fullSubgroupsOptions.chain;
-  }
-
   GPUComputePipeline* pipeline = MakeGarbageCollected<GPUComputePipeline>(
-      device,
-      device->GetProcs().deviceCreateComputePipeline(device->GetHandle(),
-                                                     &dawn_desc),
-      webgpu_desc->label());
+      device, device->GetProcs().deviceCreateComputePipeline(
+                  device->GetHandle(), &dawn_desc));
+  if (webgpu_desc->hasLabel())
+    pipeline->setLabel(webgpu_desc->label());
   return pipeline;
 }
 
 GPUComputePipeline::GPUComputePipeline(GPUDevice* device,
-                                       WGPUComputePipeline compute_pipeline,
-                                       const String& label)
-    : DawnObject<WGPUComputePipeline>(device, compute_pipeline, label) {}
+                                       WGPUComputePipeline compute_pipeline)
+    : DawnObject<WGPUComputePipeline>(device, compute_pipeline) {}
 
 GPUBindGroupLayout* GPUComputePipeline::getBindGroupLayout(uint32_t index) {
   return MakeGarbageCollected<GPUBindGroupLayout>(
-      device_, GetProcs().computePipelineGetBindGroupLayout(GetHandle(), index),
-      String());
+      device_,
+      GetProcs().computePipelineGetBindGroupLayout(GetHandle(), index));
 }
 
 }  // namespace blink

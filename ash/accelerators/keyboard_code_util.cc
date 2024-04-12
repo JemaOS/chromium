@@ -5,8 +5,6 @@
 #include "ash/accelerators/keyboard_code_util.h"
 
 #include "ash/public/cpp/accelerators_util.h"
-#include "ash/public/cpp/assistant/assistant_state.h"
-#include "ash/public/cpp/assistant/assistant_state_base.h"
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
@@ -22,7 +20,7 @@ namespace {
 // description or they require a special one we explicitly specify. For example,
 // ui::VKEY_COMMAND could return a string "Meta", but we want to display it as
 // "Search" or "Launcher".
-std::optional<std::u16string> GetSpecialStringForKeyboardCode(
+absl::optional<std::u16string> GetSpecialStringForKeyboardCode(
     ui::KeyboardCode key_code) {
   int msg_id = 0;
   switch (key_code) {
@@ -36,10 +34,9 @@ std::optional<std::u16string> GetSpecialStringForKeyboardCode(
       msg_id = IDS_KSV_MODIFIER_SHIFT;
       break;
     case ui::VKEY_COMMAND:
-      msg_id =
-          Shell::Get()->keyboard_capability()->HasLauncherButtonOnAnyKeyboard()
-              ? IDS_KSV_MODIFIER_LAUNCHER
-              : IDS_KSV_MODIFIER_SEARCH;
+      msg_id = Shell::Get()->keyboard_capability()->HasLauncherButton()
+                   ? IDS_KSV_MODIFIER_LAUNCHER
+                   : IDS_KSV_MODIFIER_SEARCH;
       break;
     case ui::VKEY_ESCAPE:
       msg_id = IDS_KSV_KEY_ESCAPE;
@@ -64,22 +61,16 @@ std::optional<std::u16string> GetSpecialStringForKeyboardCode(
       // "VKEY_OEM_PLUS", which is "+" and "VKEY_SPACE", which is "Space".
       return u"+ ";
     default:
-      return std::nullopt;
+      return absl::nullopt;
   }
   return l10n_util::GetStringUTF16(msg_id);
-}
-
-bool IsAssistantAvailable() {
-  AssistantStateBase* state = AssistantState::Get();
-  return state->allowed_state() == assistant::AssistantAllowedState::ALLOWED &&
-         state->settings_enabled().value_or(false);
 }
 
 }  // namespace
 
 std::u16string GetStringForKeyboardCode(ui::KeyboardCode key_code,
                                         bool remap_positional_key) {
-  const std::optional<std::u16string> key_label =
+  const absl::optional<std::u16string> key_label =
       GetSpecialStringForKeyboardCode(key_code);
   if (key_label)
     return key_label.value();
@@ -124,16 +115,6 @@ const gfx::VectorIcon* GetVectorIconForKeyboardCode(ui::KeyboardCode key_code) {
     default:
       return nullptr;
   }
-}
-
-const gfx::VectorIcon* GetSearchOrLauncherVectorIcon() {
-  if (Shell::Get()->keyboard_capability()->HasLauncherButtonOnAnyKeyboard()) {
-    return IsAssistantAvailable()
-               ? &kCaptureModeDemoToolsLauncherAssistantOnIcon
-               : &kCaptureModeDemoToolsLauncherAssistantOffIcon;
-  }
-
-  return &kCaptureModeDemoToolsSearchIcon;
 }
 
 }  // namespace ash

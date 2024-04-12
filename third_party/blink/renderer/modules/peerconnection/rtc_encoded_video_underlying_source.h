@@ -26,10 +26,8 @@ class MODULES_EXPORT RTCEncodedVideoUnderlyingSource
       WTF::CrossThreadOnceClosure disconnect_callback);
 
   // UnderlyingSourceBase
-  ScriptPromise Pull(ScriptState*, ExceptionState&) override;
-  ScriptPromise Cancel(ScriptState*,
-                       ScriptValue reason,
-                       ExceptionState&) override;
+  ScriptPromise pull(ScriptState*) override;
+  ScriptPromise Cancel(ScriptState*, ScriptValue reason) override;
 
   void OnFrameFromSource(
       std::unique_ptr<webrtc::TransformableVideoFrameInterface>);

@@ -7,8 +7,6 @@
 #include "ash/system/tray/size_range_layout.h"
 #include "base/check.h"
 #include "base/notreached.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/views/border.h"
 #include "ui/views/layout/box_layout.h"
@@ -31,6 +29,18 @@ views::BoxLayout::Orientation GetOrientation(TriView::Orientation orientation) {
   return views::BoxLayout::Orientation::kHorizontal;
 }
 
+// A View that will perform a layout if a child view's preferred size changes.
+class RelayoutView : public views::View {
+ public:
+  RelayoutView() = default;
+
+  RelayoutView(const RelayoutView&) = delete;
+  RelayoutView& operator=(const RelayoutView&) = delete;
+
+  // views::View:
+  void ChildPreferredSizeChanged(View* child) override { Layout(); }
+};
+
 }  // namespace
 
 TriView::TriView() : TriView(0) {}
@@ -41,9 +51,19 @@ TriView::TriView(int padding_between_containers)
 TriView::TriView(Orientation orientation) : TriView(orientation, 0) {}
 
 TriView::TriView(Orientation orientation, int padding_between_containers) {
-  start_container_layout_manager_ = AddChildView(new SizeRangeLayout);
-  center_container_layout_manager_ = AddChildView(new SizeRangeLayout);
-  end_container_layout_manager_ = AddChildView(new SizeRangeLayout);
+  AddChildView(new RelayoutView);
+  AddChildView(new RelayoutView);
+  AddChildView(new RelayoutView);
+
+  start_container_layout_manager_ =
+      GetContainer(Container::START)
+          ->SetLayoutManager(std::make_unique<SizeRangeLayout>());
+  center_container_layout_manager_ =
+      GetContainer(Container::CENTER)
+          ->SetLayoutManager(std::make_unique<SizeRangeLayout>());
+  end_container_layout_manager_ =
+      GetContainer(Container::END)
+          ->SetLayoutManager(std::make_unique<SizeRangeLayout>());
 
   auto layout = std::make_unique<views::BoxLayout>(
       GetOrientation(orientation), gfx::Insets(), padding_between_containers);
@@ -107,7 +127,7 @@ void TriView::SetContainerVisible(Container container, bool visible) {
   if (GetContainer(container)->GetVisible() == visible)
     return;
   GetContainer(container)->SetVisible(visible);
-  DeprecatedLayoutImmediately();
+  Layout();
 }
 
 void TriView::SetFlexForContainer(Container container, int flex) {
@@ -135,6 +155,10 @@ void TriView::ViewHierarchyChanged(
       DCHECK(false) << "Container views should not be removed.";
     }
   }
+}
+
+const char* TriView::GetClassName() const {
+  return "TriView";
 }
 
 gfx::Rect TriView::GetAnchorBoundsInScreen() const {
@@ -170,8 +194,5 @@ SizeRangeLayout* TriView::GetLayoutManager(Container container) {
   NOTREACHED();
   return nullptr;
 }
-
-BEGIN_METADATA(TriView)
-END_METADATA
 
 }  // namespace ash

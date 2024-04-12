@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.customtabs.content;
 
 import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider;
 
-/** Strategy of handling incoming intents. */
+/**
+ * Strategy of handling incoming intents.
+ */
 public interface CustomTabIntentHandlingStrategy {
 
     /**

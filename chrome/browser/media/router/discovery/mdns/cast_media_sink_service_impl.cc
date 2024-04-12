@@ -21,7 +21,6 @@
 #include "components/media_router/common/media_sink.h"
 #include "components/media_router/common/mojom/media_router.mojom.h"
 #include "components/media_router/common/providers/cast/channel/cast_channel_enum.h"
-#include "components/media_router/common/providers/cast/channel/cast_device_capability.h"
 #include "components/media_router/common/providers/cast/channel/cast_socket_service.h"
 #include "components/net_log/chrome_net_log.h"
 #include "content/public/browser/browser_thread.h"
@@ -52,6 +51,7 @@ MediaSinkInternal CreateCastSinkFromDialSink(
       net::IPEndPoint(dial_sink.dial_data().ip_address, kCastControlPort);
   extra_data.model_name = dial_sink.dial_data().model_name;
   extra_data.discovery_type = CastDiscoveryType::kDial;
+  extra_data.capabilities = cast_channel::CastDeviceCapability::NONE;
 
   return MediaSinkInternal(sink, extra_data);
 }
@@ -75,7 +75,8 @@ std::string EnumToString(MediaRouterChannelError error) {
     case MediaRouterChannelError::PING_TIMEOUT:
       return "PING_TIMEOUT";
     case MediaRouterChannelError::TOTAL_COUNT:
-      NOTREACHED_NORETURN();
+      NOTREACHED();
+      return "";
   }
 }
 
@@ -310,11 +311,12 @@ void CastMediaSinkServiceImpl::OpenChannelsWithRandomizedDelay(
   // Add a random backoff between 0s to 5s before opening channels to prevent
   // different browser instances connecting to the same receiver at the same
   // time.
+  base::TimeDelta delay = base::Milliseconds(base::RandInt(0, 50) * 100);
   task_runner()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&CastMediaSinkServiceImpl::OpenChannels, GetWeakPtr(),
                      cast_sinks, sink_source),
-      base::RandTimeDeltaUpTo(base::Seconds(5)));
+      delay);
 }
 
 void CastMediaSinkServiceImpl::OpenChannels(
@@ -388,9 +390,6 @@ void CastMediaSinkServiceImpl::OnMessage(
     const cast_channel::CastSocket& socket,
     const cast::channel::CastMessage& message) {}
 
-void CastMediaSinkServiceImpl::OnReadyStateChanged(
-    const cast_channel::CastSocket& socket) {}
-
 void CastMediaSinkServiceImpl::OnNetworksChanged(
     const std::string& network_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -421,7 +420,7 @@ void CastMediaSinkServiceImpl::OnNetworksChanged(
   LoggerList::GetInstance()->Log(
       LoggerImpl::Severity::kError, mojom::LogCategory::kDiscovery,
       kLoggerComponent,
-      base::StringPrintf("Network ID changed from \"%s\" to \"%s\".",
+      base::StringPrintf("Network ID chagned from \"%s\" to \"%s\".",
                          last_network_id.c_str(), current_network_id_.c_str()),
       "", "", "");
 
@@ -464,7 +463,7 @@ CastMediaSinkServiceImpl::CreateCastSocketOpenParams(
       sink.cast_data().ip_endpoint, base::Seconds(connect_timeout_in_seconds),
       base::Seconds(liveness_timeout_in_seconds),
       base::Seconds(open_params_.ping_interval_in_seconds),
-      /*CastDeviceCapabilitySet*/ {});
+      cast_channel::CastDeviceCapability::NONE);
 }
 
 void CastMediaSinkServiceImpl::OpenChannel(
@@ -627,11 +626,10 @@ void CastMediaSinkServiceImpl::OnChannelOpenSucceeded(
   // Manually set device capabilities for sinks discovered via DIAL as DIAL
   // discovery does not provide capability info.
   if (cast_sink.cast_data().discovery_type == CastDiscoveryType::kDial) {
-    extra_data.capabilities.Put(cast_channel::CastDeviceCapability::kAudioOut);
-    if (!socket->audio_only()) {
-      extra_data.capabilities.Put(
-          cast_channel::CastDeviceCapability::kVideoOut);
-    }
+    extra_data.capabilities = cast_channel::CastDeviceCapability::AUDIO_OUT;
+    if (!socket->audio_only())
+      extra_data.capabilities |= cast_channel::CastDeviceCapability::VIDEO_OUT;
+
     // We can now set the proper icon type now that capabilities is determined.
     cast_sink.sink().set_icon_type(
         GetCastSinkIconType(extra_data.capabilities));

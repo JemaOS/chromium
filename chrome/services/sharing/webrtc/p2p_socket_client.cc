@@ -59,7 +59,7 @@ void P2PSocketClient::Init(network::P2PSocketType type,
       type, local_address, network::P2PPortRange(min_port, max_port),
       remote_address,
       net::MutableNetworkTrafficAnnotationTag(traffic_annotation_),
-      /*devtools_token=*/std::nullopt, receiver_.BindNewPipeAndPassRemote(),
+      receiver_.BindNewPipeAndPassRemote(),
       socket_.BindNewPipeAndPassReceiver());
   receiver_.set_disconnect_handler(base::BindOnce(
       &P2PSocketClient::OnConnectionError, base::Unretained(this)));
@@ -124,16 +124,6 @@ void P2PSocketClient::SendComplete(
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   if (delegate_)
     delegate_->OnSendComplete(send_metrics);
-}
-
-void P2PSocketClient::SendBatchComplete(
-    const std::vector<::network::P2PSendPacketMetrics>& send_metrics_batch) {
-  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  if (delegate_) {
-    for (const auto& send_metrics : send_metrics_batch) {
-      delegate_->OnSendComplete(send_metrics);
-    }
-  }
 }
 
 void P2PSocketClient::DataReceived(

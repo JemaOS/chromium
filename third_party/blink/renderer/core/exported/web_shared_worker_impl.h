@@ -104,6 +104,8 @@ class CORE_EXPORT WebSharedWorkerImpl final : public WebSharedWorker {
       WebSecurityOrigin constructor_origin,
       bool is_constructor_secure_context,
       const WebString& user_agent,
+      const WebString& full_user_agent,
+      const WebString& reduced_user_agent,
       const blink::UserAgentMetadata& ua_metadata,
       const WebVector<WebContentSecurityPolicy>& content_security_policies,
       const WebFetchClientSettingsObject& outside_fetch_client_settings_object,
@@ -118,8 +120,7 @@ class CORE_EXPORT WebSharedWorkerImpl final : public WebSharedWorker {
           worker_main_script_load_params,
       std::unique_ptr<blink::WebPolicyContainer> policy_container,
       scoped_refptr<WebWorkerFetchContext> web_worker_fetch_context,
-      ukm::SourceId ukm_source_id,
-      bool require_cross_site_request_for_cookies);
+      ukm::SourceId ukm_source_id);
 
   void DispatchPendingConnections();
   void ConnectToChannel(int connection_request_id,

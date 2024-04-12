@@ -5,7 +5,6 @@
 /**
  * @fileoverview Data relating to the earcons used in ChromeVox.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
 
 /**
  * Earcon names.
@@ -71,5 +70,3 @@ export const EarconDescription = {
   [EarconId.SMART_STICKY_MODE_ON]: 'smart_sticky_mode_on_earcon_description',
   [EarconId.WRAP]: 'wrap_earcon_description',
 };
-
-TestImportManager.exportForTesting(['EarconId', EarconId]);

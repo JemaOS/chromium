@@ -21,8 +21,7 @@ OobeCompletionTracker* OobeCompletionTrackerFactory::GetForProfile(
 
 // static
 OobeCompletionTrackerFactory* OobeCompletionTrackerFactory::GetInstance() {
-  static base::NoDestructor<OobeCompletionTrackerFactory> instance;
-  return instance.get();
+  return base::Singleton<OobeCompletionTrackerFactory>::get();
 }
 
 OobeCompletionTrackerFactory::OobeCompletionTrackerFactory()
@@ -37,10 +36,9 @@ OobeCompletionTrackerFactory::OobeCompletionTrackerFactory()
 
 OobeCompletionTrackerFactory::~OobeCompletionTrackerFactory() = default;
 
-std::unique_ptr<KeyedService>
-OobeCompletionTrackerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* OobeCompletionTrackerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<OobeCompletionTracker>();
+  return new OobeCompletionTracker();
 }
 
 }  // namespace multidevice_setup

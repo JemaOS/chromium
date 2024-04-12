@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace extensions {
@@ -32,13 +32,13 @@ class ExtensionGarbageCollectorFactory : public ProfileKeyedServiceFactory {
       content::BrowserContext* context);
 
  private:
-  friend base::NoDestructor<ExtensionGarbageCollectorFactory>;
+  friend struct base::DefaultSingletonTraits<ExtensionGarbageCollectorFactory>;
 
   ExtensionGarbageCollectorFactory();
   ~ExtensionGarbageCollectorFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 
   bool ServiceIsCreatedWithBrowserContext() const override;

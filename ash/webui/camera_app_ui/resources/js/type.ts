@@ -51,6 +51,7 @@ export class Resolution {
    * Compares width/height of resolutions, see if they are equal or not.
    *
    * @param resolution Resolution to be compared with.
+   * @return Whether width/height of resolutions are equal.
    */
   equals(resolution: Resolution|null): boolean {
     if (resolution === null) {
@@ -64,6 +65,7 @@ export class Resolution {
    * returns true if the resolution is rotated.
    *
    * @param resolution Resolution to be compared with.
+   * @return Whether width/height of resolutions are equal.
    */
   equalsWithRotation(resolution: Resolution): boolean {
     return (this.width === resolution.width &&
@@ -75,6 +77,7 @@ export class Resolution {
    * Compares aspect ratio of resolutions, see if they are equal or not.
    *
    * @param resolution Resolution to be compared with.
+   * @return Whether aspect ratio of resolutions are equal.
    */
   aspectRatioEquals(resolution: Resolution): boolean {
     return this.aspectRatio === resolution.aspectRatio;
@@ -134,6 +137,7 @@ export enum ViewName {
   EXPERT_SETTINGS = 'view-expert-settings',
   FLASH = 'view-flash',
   LOW_STORAGE_DIALOG = 'view-low-storage-dialog',
+  MESSAGE_DIALOG = 'view-message-dialog',
   OPTION_PANEL = 'view-option-panel',
   PHOTO_ASPECT_RATIO_SETTINGS = 'view-photo-aspect-ratio-settings',
   PHOTO_RESOLUTION_SETTINGS = 'view-photo-resolution-settings',
@@ -332,20 +336,17 @@ export enum ErrorType {
   FILE_SYSTEM_FAILURE = 'file-system-failure',
   FRAME_ROTATION_NOT_DISABLED = 'frame-rotation-not-disabled',
   HANDLE_CAMERA_RESULT_FAILURE = 'handle-camera-result-failure',
+  IDLE_DETECTOR_FAILURE = 'idle-detector-failure',
   INVALID_REVIEW_UI_STATE = 'invalid-review-ui-state',
   METADATA_MAPPING_FAILURE = 'metadata-mapping-failure',
-  MULTI_WINDOW_HANDLING_FAILURE = 'multi-window-handling-failure',
   MULTIPLE_STREAMS_FAILURE = 'multiple-streams-failure',
   NO_AVAILABLE_LEVEL = 'no-available-level',
   PERF_METRICS_FAILURE = 'perf-metrics-failure',
   PRELOAD_IMAGE_FAILURE = 'preload-image-failure',
-  RESUME_CAMERA_FAILURE = 'resume-camera-failure',
-  RESUME_PAUSE_FAILURE = 'resume-pause-failure',
   SET_FPS_RANGE_FAILURE = 'set-fps-range-failure',
   START_CAMERA_FAILURE = 'start-camera-failure',
   START_CAPTURE_FAILURE = 'start-capture-failure',
   STOP_CAPTURE_FAILURE = 'stop-capture-failure',
-  SUSPEND_CAMERA_FAILURE = 'suspend-camera-failure',
   UNCAUGHT_ERROR = 'uncaught-error',
   UNCAUGHT_PROMISE = 'uncaught-promise',
   UNSAFE_INTEGER = 'unsafe-integer',
@@ -451,7 +452,7 @@ export class NoFrameError extends Error {
 /**
  * Throws when the portrait mode fails to detect a human face.
  */
-export class PortraitErrorNoFaceDetected extends Error {
+export class PortraitModeProcessError extends Error {
   constructor(message = 'No human face detected in the scene') {
     super(message);
     this.name = this.constructor.name;
@@ -459,7 +460,7 @@ export class PortraitErrorNoFaceDetected extends Error {
 }
 
 /**
- * Throws when the camera is suspended while camera effects are ongoing.
+ * Throws when the camera is suspended while reprocess effects are ongoing.
  */
 export class CameraSuspendError extends Error {
   constructor(message = 'camera suspended') {
@@ -476,13 +477,9 @@ export enum LocalStorageKey {
   ENABLE_FPS_PICKER = 'enableFPSPicker',
   ENABLE_FULL_SIZED_VIDEO_SNAPSHOT = 'enableFullSizedVideoSnapshot',
   ENABLE_MULTISTREAM_RECORDING = 'enableMultistreamRecording',
-  ENABLE_MULTISTREAM_RECORDING_CHROME = 'enableMultistreamRecordingChrome',
   ENABLE_PTZ_FOR_BUILTIN = 'enablePTZForBuiltin',
   EXPERT_MODE = 'expert',
-  FIRST_OPENING = 'firstOpening',
-  GA_ID_REFRESH_TIME = 'gaIdRefreshTime',
   GA_USER_ID = 'google-analytics.analytics.user-id',
-  GA4_CLIENT_ID = 'ga4ClientId',
   MIRRORING_TOGGLES = 'mirroringToggles',
   PREF_DEVICE_PHOTO_ASPECT_RATIO_SET = 'devicePhotoAspectRatioSet',
   PREF_DEVICE_PHOTO_RESOLUTION_EXPERT = 'devicePhotoResolutionExpert',
@@ -503,17 +500,6 @@ export enum LocalStorageKey {
 export enum LowStorageDialogType {
   AUTO_STOP = 'auto-stop',
   CANNOT_START = 'cannot-start',
-}
-
-/**
- * A rectangle representing a crop region with size (width, height) and having
- * the top-left coordinate at (x, y).
- */
-export interface CropRegionRect {
-  height: number;
-  width: number;
-  x: number;
-  y: number;
 }
 
 export type Awaitable<T> = PromiseLike<T>|T;

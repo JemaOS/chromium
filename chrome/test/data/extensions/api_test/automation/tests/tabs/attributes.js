@@ -354,4 +354,4 @@ var allTests = [
   }
 ];
 
-setUpAndRunTabsTests(allTests, 'attributes.html');
+setUpAndRunTests(allTests, 'attributes.html');

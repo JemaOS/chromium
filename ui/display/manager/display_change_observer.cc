@@ -27,9 +27,9 @@
 #include "ui/display/display_switches.h"
 #include "ui/display/manager/display_layout_store.h"
 #include "ui/display/manager/display_manager.h"
+#include "ui/display/manager/display_manager_utilities.h"
 #include "ui/display/manager/display_properties_parser.h"
 #include "ui/display/manager/touch_device_manager.h"
-#include "ui/display/manager/util/display_manager_util.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/display/types/display_mode.h"
 #include "ui/display/types/display_snapshot.h"
@@ -38,6 +38,7 @@
 #include "ui/events/devices/device_data_manager.h"
 #include "ui/events/devices/touchscreen_device.h"
 #include "ui/strings/grit/ui_strings.h"
+#include "jemaos/switches/display/display_switches.h"
 
 namespace display {
 
@@ -51,7 +52,7 @@ struct DeviceScaleFactorDPIThreshold {
 };
 
 // Update the list of zoom levels whenever a new device scale factor is added
-// here. See zoom level list in /ui/display/manager/util/display_manager_util.cc
+// here. See zoom level list in /ui/display/manager/display_manager_util.cc
 const DeviceScaleFactorDPIThreshold kThresholdTableForInternal[] = {
     {310.f, kDsf_2_666}, {270.0f, 2.4f},  {230.0f, 2.0f}, {220.0f, kDsf_1_777},
     {180.0f, 1.6f},      {150.0f, 1.25f}, {0.0f, 1.0f},
@@ -82,29 +83,21 @@ ManagedDisplayInfo::ManagedDisplayModeList GetModeListWithAllRefreshRates(
   return display_mode_list;
 }
 
-std::optional<gfx::RoundedCornersF> ParsePanelRadiiFromCommandLine() {
+absl::optional<gfx::RoundedCornersF> ParsePanelRadiiFromCommandLine() {
   if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kDisplayProperties)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
-  std::optional<base::Value> display_switch_value = base::JSONReader::Read(
+  absl::optional<base::Value> display_switch_value = base::JSONReader::Read(
       base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
           switches::kDisplayProperties));
 
   if (!display_switch_value.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return ParseDisplayPanelRadii(&display_switch_value.value());
-}
-
-std::optional<float> GetVSyncRateMin(const DisplaySnapshot* snapshot,
-                                     const DisplayMode* mode_info) {
-  if (snapshot->vsync_rate_min().has_value()) {
-    return mode_info->GetVSyncRateMin(snapshot->vsync_rate_min().value());
-  }
-  return std::nullopt;
 }
 
 }  // namespace
@@ -332,6 +325,8 @@ ManagedDisplayInfo DisplayChangeObserver::CreateManagedDisplayInfo(
   new_info.set_from_native_platform(true);
 
   new_info.set_native(native);
+  device_scale_factor = jemaos::switches::GetDefaultDSF(device_scale_factor);
+  VLOG(1) << "device_scale_factor:" << device_scale_factor << " dpi:" << dpi;
   new_info.set_device_scale_factor(device_scale_factor);
 
   const gfx::Rect display_bounds(snapshot->origin(), mode_info->size());
@@ -355,11 +350,6 @@ ManagedDisplayInfo DisplayChangeObserver::CreateManagedDisplayInfo(
 
   new_info.set_refresh_rate(mode_info->refresh_rate());
   new_info.set_is_interlaced(mode_info->is_interlaced());
-  new_info.set_vsync_rate_min(GetVSyncRateMin(snapshot, mode_info));
-  new_info.set_variable_refresh_rate_state(
-      snapshot->variable_refresh_rate_state());
-  new_info.set_connection_type(snapshot->type());
-  new_info.set_physical_size(snapshot->physical_size());
 
   ManagedDisplayInfo::ManagedDisplayModeList display_modes =
       (snapshot->type() == DISPLAY_CONNECTION_TYPE_INTERNAL)
@@ -369,9 +359,13 @@ ManagedDisplayInfo DisplayChangeObserver::CreateManagedDisplayInfo(
 
   new_info.set_maximum_cursor_size(snapshot->maximum_cursor_size());
 
-  new_info.set_panel_corners_radii(panel_radii);
+  new_info.set_rounded_corners_radii(panel_radii);
 
   new_info.SetDRMFormatsAndModifiers(snapshot->GetDRMFormatsAndModifiers());
+
+  new_info.set_variable_refresh_rate_state(
+      snapshot->variable_refresh_rate_state());
+  new_info.set_vsync_rate_min(snapshot->vsync_rate_min());
 
   return new_info;
 }
@@ -380,7 +374,7 @@ void DisplayChangeObserver::UpdateInternalDisplay(
     const DisplayConfigurator::DisplayStateList& display_states) {
   bool force_first_display_internal = ForceFirstDisplayInternal();
 
-  for (display::DisplaySnapshot* state : display_states) {
+  for (auto* state : display_states) {
     if (state->type() == DISPLAY_CONNECTION_TYPE_INTERNAL ||
         (force_first_display_internal &&
          (!HasInternalDisplay() || IsInternalDisplayId(state->display_id())))) {
@@ -413,22 +407,23 @@ ManagedDisplayInfo DisplayChangeObserver::CreateManagedDisplayInfoInternal(
   bool native = false;
   float device_scale_factor = 1.0f;
   // Sets dpi only if the screen size is valid.
-  const float dpi = IsDisplaySizeValid(snapshot->physical_size())
+  // ---***JEMAOS BEGIN***---
+  const float dpi = jemaos::switches::GetDefaultScreenDpi(
+      IsDisplaySizeValid(snapshot->physical_size())
                         ? kInchInMm * mode_info->size().width() /
                               snapshot->physical_size().width()
-                        : 0;
+                        : 0);
+  // ---***JEMAOS END***---
   if (snapshot->type() == DISPLAY_CONNECTION_TYPE_INTERNAL) {
     native = true;
     device_scale_factor = FindDeviceScaleFactor(dpi, mode_info->size());
   } else {
-    // DisplaySnapshot stores the native_mode info. For external display, use it
-    // to determine if current mode_info is native or not.
-    const DisplayMode* native_mode = snapshot->native_mode();
-    native = *mode_info == *native_mode;
-
-    // External display scale factor is always 1.
-    CHECK(snapshot->type() != DISPLAY_CONNECTION_TYPE_INTERNAL);
-    device_scale_factor = 1.0f;
+    ManagedDisplayMode mode;
+    if (display_manager_->GetSelectedModeForDisplayId(snapshot->display_id(),
+                                                      &mode)) {
+      device_scale_factor = mode.device_scale_factor();
+      native = mode.native();
+    }
   }
   std::string name = (snapshot->type() == DISPLAY_CONNECTION_TYPE_INTERNAL)
                          ? l10n_util::GetStringUTF8(IDS_DISPLAY_NAME_INTERNAL)

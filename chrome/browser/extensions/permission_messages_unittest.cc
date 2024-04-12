@@ -8,10 +8,9 @@
 #include <utility>
 
 #include "base/strings/utf_string_conversions.h"
-#include "base/values.h"
 #include "chrome/browser/extensions/extension_service.h"
-#include "chrome/browser/extensions/permissions/permissions_test_util.h"
-#include "chrome/browser/extensions/permissions/permissions_updater.h"
+#include "chrome/browser/extensions/permissions_test_util.h"
+#include "chrome/browser/extensions/permissions_updater.h"
 #include "chrome/browser/extensions/test_extension_environment.h"
 #include "chrome/common/extensions/permissions/chrome_permission_message_provider.h"
 #include "chrome/grit/generated_resources.h"
@@ -27,6 +26,7 @@
 #include "extensions/common/permissions/permissions_info.h"
 #include "extensions/common/permissions/usb_device_permission.h"
 #include "extensions/common/permissions/usb_device_permission_data.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/l10n/l10n_util.h"
 
@@ -124,7 +124,7 @@ class PermissionMessagesUnittest : public testing::Test {
 // other (the 'history' permission has superset permissions).
 TEST_F(PermissionMessagesUnittest, HistoryHidesTabsMessage) {
   CreateAndInstallExtensionWithPermissions(
-      base::Value::List().Append("tabs").Append("history"),
+      ListBuilder().Append("tabs").Append("history").Build(),
       base::Value::List());
 
   ASSERT_EQ(1U, required_permissions().size());
@@ -139,8 +139,8 @@ TEST_F(PermissionMessagesUnittest, HistoryHidesTabsMessage) {
 // permission, only the new coalesced message is displayed.
 TEST_F(PermissionMessagesUnittest, MixedPermissionMessagesCoalesceOnceGranted) {
   CreateAndInstallExtensionWithPermissions(
-      base::Value::List().Append("tabs"),
-      base::Value::List().Append("history"));
+      ListBuilder().Append("tabs").Build(),
+      ListBuilder().Append("history").Build());
 
   ASSERT_EQ(1U, required_permissions().size());
   EXPECT_EQ(
@@ -178,8 +178,8 @@ TEST_F(PermissionMessagesUnittest, MixedPermissionMessagesCoalesceOnceGranted) {
 TEST_F(PermissionMessagesUnittest,
        AntiTest_PromptCanRequestSubsetOfAlreadyGrantedPermissions) {
   CreateAndInstallExtensionWithPermissions(
-      base::Value::List().Append("history"),
-      base::Value::List().Append("tabs"));
+      ListBuilder().Append("history").Build(),
+      ListBuilder().Append("tabs").Build());
 
   ASSERT_EQ(1U, required_permissions().size());
   EXPECT_EQ(l10n_util::GetStringUTF16(
@@ -219,8 +219,8 @@ TEST_F(PermissionMessagesUnittest,
 TEST_F(PermissionMessagesUnittest,
        AntiTest_PromptCanBeEmptyButCausesChangeInPermissions) {
   CreateAndInstallExtensionWithPermissions(
-      base::Value::List().Append("tabs"),
-      base::Value::List().Append("sessions"));
+      ListBuilder().Append("tabs").Build(),
+      ListBuilder().Append("sessions").Build());
 
   ASSERT_EQ(1U, required_permissions().size());
   EXPECT_EQ(
@@ -265,9 +265,9 @@ TEST_F(USBDevicePermissionMessagesTest, SingleDevice) {
     const char16_t kMessage[] =
         u"Access any PVR Mass Storage from HUMAX Co., Ltd. via USB";
 
-    auto permission_list =
-        base::Value::List().Append(base::Value::FromUniquePtrValue(
-            UsbDevicePermissionData(0x02ad, 0x138c, -1, -1).ToValue()));
+    base::Value::List permission_list;
+    permission_list.Append(base::Value::FromUniquePtrValue(
+        UsbDevicePermissionData(0x02ad, 0x138c, -1, -1).ToValue()));
     base::Value permission_value = base::Value(std::move(permission_list));
 
     UsbDevicePermission permission(

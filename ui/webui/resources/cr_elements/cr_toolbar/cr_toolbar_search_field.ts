@@ -3,26 +3,36 @@
 // found in the LICENSE file.
 
 import '../cr_icon_button/cr_icon_button.js';
+import '../cr_icons.css.js';
 import '../icons.html.js';
+import '../cr_shared_style.css.js';
+import '../cr_shared_vars.css.js';
+import '//resources/polymer/v3_0/paper-ripple/paper-ripple.js';
 import '//resources/polymer/v3_0/paper-spinner/paper-spinner-lite.js';
 
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {FocusOutlineManager} from '//resources/js/focus_outline_manager.js';
+import {PaperRippleBehavior} from '//resources/polymer/v3_0/paper-behaviors/paper-ripple-behavior.js';
+import {DomIf, mixinBehaviors, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {CrIconButtonElement} from '../cr_icon_button/cr_icon_button.js';
-import {CrSearchFieldMixinLit} from '../cr_search_field/cr_search_field_mixin_lit.js';
+import {CrSearchFieldMixin, CrSearchFieldMixinInterface} from '../cr_search_field/cr_search_field_mixin.js';
 
-import {getCss} from './cr_toolbar_search_field.css.js';
-import {getHtml} from './cr_toolbar_search_field.html.js';
+import {getTemplate} from './cr_toolbar_search_field.html.js';
 
 export interface CrToolbarSearchFieldElement {
   $: {
-    icon: CrIconButtonElement,
     searchInput: HTMLInputElement,
     searchTerm: HTMLElement,
+    spinnerTemplate: DomIf,
   };
 }
 
-const CrToolbarSearchFieldElementBase = CrSearchFieldMixinLit(CrLitElement);
+const CrToolbarSearchFieldElementBase =
+    mixinBehaviors([PaperRippleBehavior], CrSearchFieldMixin(PolymerElement)) as
+    {
+      new (): PolymerElement & CrSearchFieldMixinInterface &
+          PaperRippleBehavior,
+    };
+
 
 export class CrToolbarSearchFieldElement extends
     CrToolbarSearchFieldElementBase {
@@ -30,63 +40,66 @@ export class CrToolbarSearchFieldElement extends
     return 'cr-toolbar-search-field';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
       narrow: {
         type: Boolean,
-        reflect: true,
+        reflectToAttribute: true,
       },
 
       showingSearch: {
         type: Boolean,
+        value: false,
         notify: true,
-        reflect: true,
+        observer: 'showingSearchChanged_',
+        reflectToAttribute: true,
       },
 
       disabled: {
         type: Boolean,
-        reflect: true,
+        value: false,
+        reflectToAttribute: true,
       },
 
       autofocus: {
         type: Boolean,
-        reflect: true,
+        value: false,
+        reflectToAttribute: true,
       },
 
       // When true, show a loading spinner to indicate that the backend is
       // processing the search. Will only show if the search field is open.
-      spinnerActive: {
+      spinnerActive: {type: Boolean, reflectToAttribute: true},
+
+      isSpinnerShown_: {
         type: Boolean,
-        reflect: true,
+        computed: 'computeIsSpinnerShown_(spinnerActive, showingSearch)',
       },
 
-      searchFocused_: {
-        type: Boolean,
-        reflect: true,
-      },
-
-      iconOverride: {type: String},
+      searchFocused_: {reflectToAttribute: true, type: Boolean, value: false},
     };
   }
 
   narrow: boolean;
-  showingSearch: boolean = false;
-  disabled: boolean = false;
-  override autofocus: boolean = false;
+  showingSearch: boolean;
+  disabled: boolean;
+  override autofocus: boolean;
   spinnerActive: boolean;
-  private searchFocused_: boolean = false;
-  iconOverride?: string;
+  private isSpinnerShown_: boolean;
+  private searchFocused_: boolean;
 
-  override firstUpdated() {
+  override ready() {
+    super.ready();
     this.addEventListener('click', e => this.showSearch_(e));
+
+    if (document.documentElement.hasAttribute('chrome-refresh-2023')) {
+      FocusOutlineManager.forDocument(document);
+      this.addEventListener('pointerdown', this.onPointerDown_.bind(this));
+    }
   }
 
   override getSearchInput(): HTMLInputElement {
@@ -97,9 +110,8 @@ export class CrToolbarSearchFieldElement extends
     return this.searchFocused_;
   }
 
-  async showAndFocus() {
+  showAndFocus() {
     this.showingSearch = true;
-    await this.updateComplete;
     this.focus_();
   }
 
@@ -108,42 +120,45 @@ export class CrToolbarSearchFieldElement extends
     this.showingSearch = this.hasSearchText || this.isSearchFocused();
   }
 
-  protected getIconTabIndex_(): number {
-    return this.narrow && !this.hasSearchText ? 0 : -1;
-  }
-
-  protected getIconAriaHidden_(): string {
-    return Boolean(!this.narrow || this.hasSearchText).toString();
-  }
-
-  protected shouldShowSpinner_(): boolean {
-    return this.spinnerActive && this.showingSearch;
-  }
-
-  protected onSearchIconClicked_() {
-    this.fire('search-icon-clicked');
+  private onSearchIconClicked_() {
+    this.dispatchEvent(new CustomEvent(
+        'search-icon-clicked', {bubbles: true, composed: true}));
   }
 
   private focus_() {
     this.getSearchInput().focus();
   }
 
-  protected onInputFocus_() {
+  private computeIconTabIndex_(narrow: boolean): number {
+    return narrow && !this.hasSearchText ? 0 : -1;
+  }
+
+  private computeIconAriaHidden_(narrow: boolean): string {
+    return Boolean(!narrow || this.hasSearchText).toString();
+  }
+
+  private computeIsSpinnerShown_(): boolean {
+    const showSpinner = this.spinnerActive && this.showingSearch;
+    if (showSpinner) {
+      this.$.spinnerTemplate.if = true;
+    }
+    return showSpinner;
+  }
+
+  private onInputFocus_() {
     this.searchFocused_ = true;
   }
 
-  protected onInputBlur_() {
+  private onInputBlur_() {
     this.searchFocused_ = false;
     if (!this.hasSearchText) {
       this.showingSearch = false;
     }
   }
 
-  protected onSearchTermKeydown_(e: KeyboardEvent) {
+  private onSearchTermKeydown_(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       this.showingSearch = false;
-      this.setValue('');
-      this.getSearchInput().blur();
     }
   }
 
@@ -151,15 +166,36 @@ export class CrToolbarSearchFieldElement extends
     if (e.target !== this.shadowRoot!.querySelector('#clearSearch')) {
       this.showingSearch = true;
     }
-    if (this.narrow) {
-      this.focus_();
-    }
   }
 
-  protected clearSearch_() {
+  private clearSearch_() {
     this.setValue('');
     this.focus_();
     this.spinnerActive = false;
+  }
+
+  private showingSearchChanged_(_current: boolean, previous?: boolean) {
+    // Prevent unnecessary 'search-changed' event from firing on startup.
+    if (previous === undefined) {
+      return;
+    }
+
+    if (this.showingSearch) {
+      this.focus_();
+      return;
+    }
+
+    this.setValue('');
+    this.getSearchInput().blur();
+  }
+
+  private onPointerDown_(event: PointerEvent) {
+    // Hide the paper-ripple if the pointerdown event happened on a
+    // cr-icon-button. noink is a property inherited from PaperRippleBehavior.
+    this.noink = event.composedPath().some(item => {
+      return (item as HTMLElement).tagName === 'CR-ICON-BUTTON';
+    });
+    this.ensureRipple();
   }
 }
 

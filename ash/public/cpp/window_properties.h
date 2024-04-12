@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <string>
 
-#include "ash/public/cpp/arc_game_controls_flag.h"
 #include "ash/public/cpp/arc_resize_lock_type.h"
 #include "ash/public/cpp/ash_public_export.h"
 #include "ui/base/class_property.h"
@@ -41,10 +40,6 @@ enum class ResizeShadowType;
 // A property key to store the app ID for the window's associated app.
 ASH_PUBLIC_EXPORT extern const aura::WindowProperty<std::string*>* const
     kAppIDKey;
-
-// A property key to store the ARC Game Controls status.
-ASH_PUBLIC_EXPORT extern const aura::WindowProperty<ArcGameControlsFlag>* const
-    kArcGameControlsFlagsKey;
 
 // A property key to store the ARC package name for a window's associated
 // ARC app.
@@ -81,10 +76,6 @@ ASH_PUBLIC_EXPORT extern const aura::WindowProperty<bool>* const
 ASH_PUBLIC_EXPORT extern const aura::WindowProperty<bool>* const
     kHideInOverviewKey;
 
-// A property key to exclude the window in the transient tree iterator.
-ASH_PUBLIC_EXPORT extern const aura::WindowProperty<bool>* const
-    kExcludeFromTransientTreeTransformKey;
-
 // A property key to indicate whether we should hide this window in the shelf.
 ASH_PUBLIC_EXPORT extern const aura::WindowProperty<bool>* const
     kHideInShelfKey;
@@ -104,11 +95,6 @@ ASH_PUBLIC_EXPORT extern const aura::WindowProperty<bool>* const
 // source.
 ASH_PUBLIC_EXPORT extern const aura::WindowProperty<bool>* const
     kForceVisibleInMiniViewKey;
-
-// Set on lacros browser windows and identifies the lacros profile used to
-// launch the browser. See desk_profiles_delegate.h for more information.
-ASH_PUBLIC_EXPORT extern const aura::WindowProperty<uint64_t>* const
-    kLacrosProfileId;
 
 // A property key to store whether we should minimize a window when a system
 // synthesized back event (back gesture, back button) is processed by this
@@ -198,12 +184,6 @@ ASH_PUBLIC_EXPORT extern const aura::WindowProperty<SkRegion*>* const
 ASH_PUBLIC_EXPORT extern const aura::WindowProperty<bool>* const
     kWindowPositionManagedTypeKey;
 
-// A property key to indicate whether the cursor should stay visible when a key
-// is pressed. ChromeOS normally hides the cursor when a key is pressed but this
-// results in undesirable interaction with games.
-ASH_PUBLIC_EXPORT extern const aura::WindowProperty<bool>* const
-    kShowCursorOnKeypress;
-
 // A property key to indicate pip window state.
 ASH_PUBLIC_EXPORT extern const aura::WindowProperty<bool>* const
     kWindowPipTypeKey;
@@ -213,6 +193,11 @@ ASH_PUBLIC_EXPORT extern const aura::WindowProperty<bool>* const
 // handle.
 ASH_PUBLIC_EXPORT extern const aura::WindowProperty<gfx::Rect*>* const
     kWindowPipResizeHandleBoundsKey;
+
+// A property key to indicate a desk guid of a workspace this window belongs
+// to.
+ASH_PUBLIC_EXPORT extern const aura::WindowProperty<std::string*>* const
+    kDeskGuidKey;
 
 // Alphabetical sort.
 

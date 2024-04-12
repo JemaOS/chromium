@@ -4,8 +4,7 @@
 
 package org.chromium.chrome.browser.ui.android.webid.data;
 
-import org.jni_zero.CalledByNative;
-
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.url.GURL;
 
 /**

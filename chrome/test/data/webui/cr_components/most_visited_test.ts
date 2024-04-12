@@ -2,14 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
+
 import {MostVisitedBrowserProxy} from 'chrome://resources/cr_components/most_visited/browser_proxy.js';
 import {MostVisitedElement} from 'chrome://resources/cr_components/most_visited/most_visited.js';
-import type {MostVisitedPageRemote, MostVisitedTile} from 'chrome://resources/cr_components/most_visited/most_visited.mojom-webui.js';
-import {MostVisitedPageCallbackRouter, MostVisitedPageHandlerRemote} from 'chrome://resources/cr_components/most_visited/most_visited.mojom-webui.js';
+import {MostVisitedPageCallbackRouter, MostVisitedPageHandlerRemote, MostVisitedPageRemote, MostVisitedTile} from 'chrome://resources/cr_components/most_visited/most_visited.mojom-webui.js';
 import {MostVisitedWindowProxy} from 'chrome://resources/cr_components/most_visited/window_proxy.js';
-import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import type {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
-import type {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {isMac} from 'chrome://resources/js/platform.js';
 import {TextDirection} from 'chrome://resources/mojo/mojo/public/mojom/base/text_direction.mojom-webui.js';
@@ -18,7 +19,7 @@ import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
 
-import {$$, assertStyle, keydown} from './most_visited_test_support.js';
+import {$$, assertNotStyle, assertStyle, keydown} from './most_visited_test_support.js';
 
 let mostVisited: MostVisitedElement;
 let windowProxy: TestMock<MostVisitedWindowProxy>&MostVisitedWindowProxy;
@@ -136,19 +137,11 @@ function wide() {
   updateScreenWidth(true, true);
 }
 
-function medium() {
-  updateScreenWidth(false, true);
-}
-
-function narrow() {
-  updateScreenWidth(false, false);
-}
-
 function leaveUrlInput() {
   $$(mostVisited, '#dialogInputUrl').dispatchEvent(new Event('blur'));
 }
 
-function setUpTest(singleRow: boolean, reflowOnOverflow: boolean) {
+function setUpTest(singleRow: boolean) {
   document.body.innerHTML = window.trustedTypes!.emptyHTML;
 
   createBrowserProxy();
@@ -156,7 +149,6 @@ function setUpTest(singleRow: boolean, reflowOnOverflow: boolean) {
 
   mostVisited = new MostVisitedElement();
   mostVisited.singleRow = singleRow;
-  mostVisited.reflowOnOverflow = reflowOnOverflow;
   document.body.appendChild(mostVisited);
   assertEquals(1, handler.getCallCount('updateMostVisitedInfo'));
   wide();
@@ -164,7 +156,7 @@ function setUpTest(singleRow: boolean, reflowOnOverflow: boolean) {
 
 suite('General', () => {
   setup(() => {
-    setUpTest(/*singleRow=*/ false, /*reflowOnOverflow=*/ false);
+    setUpTest(/*singleRow=*/ false);
   });
 
   test('empty shows add shortcut only', async () => {
@@ -198,16 +190,16 @@ suite('General', () => {
   });
 });
 
-function createLayoutsSuite(singleRow: boolean, reflowOnOverflow: boolean) {
+function createLayoutsSuite(singleRow: boolean) {
   setup(() => {
-    setUpTest(singleRow, reflowOnOverflow);
+    setUpTest(singleRow);
   });
 
   test('four tiles fit on one line with addShortcut', async () => {
     await addTiles(4);
     assertEquals(4, queryTiles().length);
     assertAddShortcutShown();
-    const tops = queryAll<HTMLElement>('.tile, #addShortcut')
+    const tops = queryAll<HTMLElement>('a, #addShortcut')
                      .map(({offsetTop}) => offsetTop);
     assertEquals(5, tops.length);
     tops.forEach(top => {
@@ -219,7 +211,7 @@ function createLayoutsSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     await addTiles(5);
     assertEquals(5, queryTiles().length);
     assertAddShortcutShown();
-    const tops = queryAll<HTMLElement>('.tile, #addShortcut')
+    const tops = queryAll<HTMLElement>('a, #addShortcut')
                      .map(({offsetTop}) => offsetTop);
     assertEquals(6, tops.length);
     const firstRowTop = tops[0];
@@ -241,7 +233,7 @@ function createLayoutsSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     await addTiles(9);
     assertEquals(9, queryTiles().length);
     assertAddShortcutShown();
-    const tops = queryAll<HTMLElement>('.tile, #addShortcut')
+    const tops = queryAll<HTMLElement>('a, #addShortcut')
                      .map(({offsetTop}) => offsetTop);
     assertEquals(10, tops.length);
     const firstRowTop = tops[0];
@@ -263,8 +255,7 @@ function createLayoutsSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     await addTiles(10);
     assertEquals(10, queryTiles().length);
     assertAddShortcutHidden();
-    const tops =
-        queryAll<HTMLElement>('.tile:not([hidden])').map(a => a.offsetTop);
+    const tops = queryAll<HTMLElement>('a:not([hidden])').map(a => a.offsetTop);
     assertEquals(10, tops.length);
     const firstRowTop = tops[0];
     const secondRowTop = tops[5];
@@ -327,13 +318,15 @@ function createLayoutsSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     assertTrue(mostVisited.hasAttribute('visible_'));
     assertFalse(mostVisited.$.container.hidden);
   });
-}
 
-function createLayoutsWidthsSuite(singleRow: boolean) {
   suite('test various widths', () => {
-    setup(() => {
-      setUpTest(singleRow, false);
-    });
+    function medium() {
+      updateScreenWidth(false, true);
+    }
+
+    function narrow() {
+      updateScreenWidth(false, false);
+    }
 
     test('six / three is max for narrow', async () => {
       await addTiles(7);
@@ -427,90 +420,18 @@ function createLayoutsWidthsSuite(singleRow: boolean) {
   });
 }
 
-function rowCount(): number {
-  return Number(getComputedStyle(mostVisited.$.container)
-                    .getPropertyValue('--row-count'));
-}
-
-function columnCount(): number {
-  return Number(getComputedStyle(mostVisited.$.container)
-                    .getPropertyValue('--column-count'));
-}
-
-function createLayoutsWidthsReflowSuite(singleRow: boolean) {
-  suite('test reflow on various widths', () => {
-    setup(() => {
-      setUpTest(singleRow, /*reflowOnOverflow=*/ true);
-    });
-
-    test('No hidden tiles', async () => {
-      await addTiles(7);
-      updateScreenWidth(false, true);
-      assertTileLength(7);
-      assertHiddenTileLength(0);
-      updateScreenWidth(false, false);
-      assertTileLength(7);
-      assertHiddenTileLength(0);
-      assertAddShortcutShown();
-    });
-
-    test(
-        'Eight tiles + shortcut reflow to 3c x 3r in narrow layout',
-        async () => {
-          narrow();
-          await addTiles(8);
-          assertAddShortcutShown();
-          assertEquals(columnCount(), 3);
-          assertEquals(rowCount(), 3);
-        });
-
-    test(
-        'Eight tiles + shortcut reflow to 4c x 3r in medium layout',
-        async () => {
-          medium();
-          await addTiles(8);
-          assertAddShortcutShown();
-          assertEquals(columnCount(), 4);
-          assertEquals(rowCount(), 3);
-        });
-
-    test('Eight tiles + shortcut reflow in wide layout', async () => {
-      wide();
-      await addTiles(8);
-      assertAddShortcutShown();
-      assertEquals(columnCount(), singleRow ? 9 : 5);
-      assertEquals(rowCount(), singleRow ? 1 : 2);
-    });
-  });
-}
-
 suite('Layouts', () => {
   suite('double row', () => {
-    createLayoutsSuite(/*singleRow=*/ false, /*reflowOnOverflow=*/ false);
-    createLayoutsWidthsSuite(/*singleRow=*/ false);
+    createLayoutsSuite(false);
   });
-
   suite('single row', () => {
-    createLayoutsSuite(/*singleRow=*/ true, /*reflowOnOverflow=*/ false);
-    createLayoutsWidthsSuite(/*singleRow=*/ true);
-  });
-});
-
-suite('Reflow Layouts', () => {
-  suite('double row', () => {
-    createLayoutsSuite(/*singleRow=*/ false, /*reflowOnOverflow=*/ true);
-    createLayoutsWidthsReflowSuite(/*singleRow=*/ false);
-  });
-
-  suite('single row', () => {
-    createLayoutsSuite(/*singleRow=*/ false, /*reflowOnOverflow=*/ true);
-    createLayoutsWidthsReflowSuite(/*singleRow=*/ true);
+    createLayoutsSuite(true);
   });
 });
 
 suite('LoggingAndUpdates', () => {
   setup(() => {
-    setUpTest(/*singleRow=*/ false, /*reflowOnOverflow=*/ false);
+    setUpTest(/*singleRow=*/ false);
   });
 
   test('rendering tiles logs event', async () => {
@@ -548,7 +469,7 @@ suite('LoggingAndUpdates', () => {
     await addTiles(1);
 
     // Act.
-    const tileLink = queryTiles()[0]!.querySelector('a')!;
+    const tileLink = queryTiles()[0]!;
     // Prevent triggering a navigation, which would break the test.
     tileLink.href = '#';
     tileLink.click();
@@ -592,7 +513,7 @@ suite('Modification', () => {
   });
 
   setup(() => {
-    setUpTest(/*singleRow=*/ false, /*reflowOnOverflow=*/ false);
+    setUpTest(/*singleRow=*/ false);
   });
 
   suite('add dialog', () => {
@@ -618,22 +539,17 @@ suite('Modification', () => {
       assertEquals('', inputUrl.value);
     });
 
-    test('saveButton is enabled with URL is not empty', async () => {
+    test('saveButton is enabled with URL is not empty', () => {
       assertTrue(saveButton.disabled);
       inputName.value = 'name';
-      await inputName.updateComplete;
       assertTrue(saveButton.disabled);
       inputUrl.value = 'url';
-      await inputUrl.updateComplete;
       assertFalse(saveButton.disabled);
       inputUrl.value = '';
-      await inputUrl.updateComplete;
       assertTrue(saveButton.disabled);
       inputUrl.value = 'url';
-      await inputUrl.updateComplete;
       assertFalse(saveButton.disabled);
       inputUrl.value = '                                \n\n\n        ';
-      await inputUrl.updateComplete;
       assertTrue(saveButton.disabled);
     });
 
@@ -643,10 +559,9 @@ suite('Modification', () => {
       assertFalse(dialog.open);
     });
 
-    test('inputs are clear after dialog reuse', async () => {
+    test('inputs are clear after dialog reuse', () => {
       inputName.value = 'name';
       inputUrl.value = 'url';
-      await Promise.all([inputName.updateComplete, inputUrl.updateComplete]);
       cancelButton.click();
       mostVisited.$.addShortcut.click();
       assertEquals('', inputName.value);
@@ -656,7 +571,6 @@ suite('Modification', () => {
     test('use URL input for title when title empty', async () => {
       inputUrl.value = 'url';
       const addCalled = handler.whenCalled('addMostVisitedTile');
-      await inputUrl.updateComplete;
       saveButton.click();
       const [_url, title] = await addCalled;
       assertEquals('url', title);
@@ -664,7 +578,6 @@ suite('Modification', () => {
 
     test('toast shown on save', async () => {
       inputUrl.value = 'url';
-      await inputUrl.updateComplete;
       assertFalse(mostVisited.$.toast.open);
       const addCalled = handler.whenCalled('addMostVisitedTile');
       saveButton.click();
@@ -677,7 +590,6 @@ suite('Modification', () => {
         success: true,
       }));
       inputUrl.value = 'url';
-      await inputUrl.updateComplete;
       saveButton.click();
       await handler.whenCalled('addMostVisitedTile');
       await flushTasks();
@@ -689,7 +601,6 @@ suite('Modification', () => {
         success: false,
       }));
       inputUrl.value = 'url';
-      await inputUrl.updateComplete;
       saveButton.click();
       await handler.whenCalled('addMostVisitedTile');
       await flushTasks();
@@ -699,7 +610,6 @@ suite('Modification', () => {
     test('save name and URL', async () => {
       inputName.value = 'name';
       inputUrl.value = 'https://url/';
-      await Promise.all([inputName.updateComplete, inputUrl.updateComplete]);
       const addCalled = handler.whenCalled('addMostVisitedTile');
       saveButton.click();
       const [{url}, title] = await addCalled;
@@ -707,9 +617,8 @@ suite('Modification', () => {
       assertEquals('https://url/', url);
     });
 
-    test('dialog closes on save', async () => {
+    test('dialog closes on save', () => {
       inputUrl.value = 'url';
-      await inputUrl.updateComplete;
       assertTrue(dialog.open);
       saveButton.click();
       assertFalse(dialog.open);
@@ -717,7 +626,6 @@ suite('Modification', () => {
 
     test('https:// is added if no scheme is used', async () => {
       inputUrl.value = 'url';
-      await inputUrl.updateComplete;
       const addCalled = handler.whenCalled('addMostVisitedTile');
       saveButton.click();
       const [{url}, _title] = await addCalled;
@@ -727,7 +635,6 @@ suite('Modification', () => {
     test('http is a valid scheme', async () => {
       assertTrue(saveButton.disabled);
       inputUrl.value = 'http://url';
-      await inputUrl.updateComplete;
       const addCalled = handler.whenCalled('addMostVisitedTile');
       saveButton.click();
       await addCalled;
@@ -736,56 +643,44 @@ suite('Modification', () => {
 
     test('https is a valid scheme', async () => {
       inputUrl.value = 'https://url';
-      await inputUrl.updateComplete;
       const addCalled = handler.whenCalled('addMostVisitedTile');
       saveButton.click();
       await addCalled;
     });
 
-    test('chrome is not a valid scheme', async () => {
+    test('chrome is not a valid scheme', () => {
       assertTrue(saveButton.disabled);
       inputUrl.value = 'chrome://url';
-      await inputUrl.updateComplete;
       assertFalse(inputUrl.invalid);
       leaveUrlInput();
-      await inputUrl.updateComplete;
       assertTrue(inputUrl.invalid);
       assertTrue(saveButton.disabled);
     });
 
-    test('invalid cleared when text entered', async () => {
+    test('invalid cleared when text entered', () => {
       inputUrl.value = '%';
-      await inputUrl.updateComplete;
       assertFalse(inputUrl.invalid);
       leaveUrlInput();
-      await inputUrl.updateComplete;
       assertTrue(inputUrl.invalid);
       assertEquals('Type a valid URL', inputUrl.errorMessage);
       inputUrl.value = '';
-      await inputUrl.updateComplete;
       assertFalse(inputUrl.invalid);
     });
 
     test('shortcut already exists', async () => {
       await addTiles(2);
       inputUrl.value = 'b';
-      await inputUrl.updateComplete;
       assertFalse(inputUrl.invalid);
       leaveUrlInput();
-      await inputUrl.updateComplete;
       assertTrue(inputUrl.invalid);
       assertEquals('Shortcut already exists', inputUrl.errorMessage);
       inputUrl.value = 'c';
-      await inputUrl.updateComplete;
       assertFalse(inputUrl.invalid);
       leaveUrlInput();
-      await inputUrl.updateComplete;
       assertFalse(inputUrl.invalid);
       inputUrl.value = '%';
-      await inputUrl.updateComplete;
       assertFalse(inputUrl.invalid);
       leaveUrlInput();
-      await inputUrl.updateComplete;
       assertTrue(inputUrl.invalid);
       assertEquals('Type a valid URL', inputUrl.errorMessage);
     });
@@ -829,7 +724,6 @@ suite('Modification', () => {
       assertEquals('https://b/', inputUrl.value);
       const updateCalled = handler.whenCalled('updateMostVisitedTile');
       inputUrl.value = 'updated-url';
-      await inputUrl.updateComplete;
       saveButton.click();
       const [_url, newUrl, _newTitle] = await updateCalled;
       assertEquals('https://updated-url/', newUrl.url);
@@ -837,7 +731,6 @@ suite('Modification', () => {
 
     test('toast shown when tile editted', async () => {
       inputUrl.value = 'updated-url';
-      await inputUrl.updateComplete;
       assertFalse(mostVisited.$.toast.open);
       saveButton.click();
       await handler.whenCalled('updateMostVisitedTile');
@@ -855,7 +748,6 @@ suite('Modification', () => {
       assertEquals('b', inputName.value);
       const updateCalled = handler.whenCalled('updateMostVisitedTile');
       inputName.value = 'updated name';
-      await inputName.updateComplete;
       saveButton.click();
       const [_url, _newUrl, newTitle] = await updateCalled;
       assertEquals('updated name', newTitle);
@@ -870,7 +762,6 @@ suite('Modification', () => {
       actionMenuButton.click();
       $$<HTMLElement>(mostVisited, '#actionMenuEdit')!.click();
       inputUrl.value = 'updated-url';
-      await inputUrl.updateComplete;
       saveButton.click();
       const [_url, newUrl, _newTitle] = await updateCalled;
       assertEquals('https://updated-url/', newUrl.url);
@@ -878,19 +769,15 @@ suite('Modification', () => {
 
     test('shortcut already exists', async () => {
       inputUrl.value = 'a';
-      await inputUrl.updateComplete;
       assertFalse(inputUrl.invalid);
       leaveUrlInput();
-      await inputUrl.updateComplete;
       assertTrue(inputUrl.invalid);
       assertEquals('Shortcut already exists', inputUrl.errorMessage);
       // The shortcut being editted has a URL of https://b/. Entering the same
       // URL is not an error.
       inputUrl.value = 'b';
-      await inputUrl.updateComplete;
       assertFalse(inputUrl.invalid);
       leaveUrlInput();
-      await inputUrl.updateComplete;
       assertFalse(inputUrl.invalid);
     });
   });
@@ -982,7 +869,7 @@ suite('Modification', () => {
   test('tile url is set to href of <a>', async () => {
     await addTiles(1);
     const tile = queryTiles()[0]!;
-    assertEquals('https://a/', tile!.querySelector('a')!.href);
+    assertEquals('https://a/', tile.href);
   });
 
   test('delete first tile', async () => {
@@ -1028,7 +915,6 @@ suite('Modification', () => {
     mostVisited.$.addShortcut.click();
     const inputUrl = $$<CrInputElement>(mostVisited, '#dialogInputUrl')!;
     inputUrl.value = 'url';
-    await inputUrl.updateComplete;
     const saveButton =
         mostVisited.$.dialog.querySelector<HTMLElement>('.action-button')!;
     saveButton.click();
@@ -1081,9 +967,9 @@ suite('Modification', () => {
 });
 
 
-function createDragAndDropSuite(singleRow: boolean, reflowOnOverflow: boolean) {
+function createDragAndDropSuite(singleRow: boolean) {
   setup(() => {
-    setUpTest(singleRow, reflowOnOverflow);
+    setUpTest(singleRow);
   });
 
   test('drag first tile to second position', async () => {
@@ -1091,9 +977,9 @@ function createDragAndDropSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     const tiles = queryTiles();
     const first = tiles[0]!;
     const second = tiles[1]!;
-    assertEquals('https://a/', first.querySelector('a')!.href);
+    assertEquals('https://a/', first.href);
     assertTrue(first.draggable);
-    assertEquals('https://b/', second.querySelector('a')!.href);
+    assertEquals('https://b/', second.href);
     assertTrue(second.draggable);
     const firstRect = first.getBoundingClientRect();
     const secondRect = second.getBoundingClientRect();
@@ -1103,10 +989,6 @@ function createDragAndDropSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     }));
     await flushTasks();
     const reorderCalled = handler.whenCalled('reorderMostVisitedTile');
-    document.dispatchEvent(new DragEvent('drop', {
-      clientX: secondRect.x + 1,
-      clientY: secondRect.y + 1,
-    }));
     document.dispatchEvent(new DragEvent('dragend', {
       clientX: secondRect.x + 1,
       clientY: secondRect.y + 1,
@@ -1115,8 +997,8 @@ function createDragAndDropSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     assertEquals('https://a/', url.url);
     assertEquals(1, newPos);
     const [newFirst, newSecond] = queryTiles();
-    assertEquals('https://b/', newFirst!.querySelector('a')!.href);
-    assertEquals('https://a/', newSecond!.querySelector('a')!.href);
+    assertEquals('https://b/', newFirst!.href);
+    assertEquals('https://a/', newSecond!.href);
   });
 
   test('drag second tile to first position', async () => {
@@ -1124,9 +1006,9 @@ function createDragAndDropSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     const tiles = queryTiles();
     const first = tiles[0]!;
     const second = tiles[1]!;
-    assertEquals('https://a/', first.querySelector('a')!.href);
+    assertEquals('https://a/', first.href);
     assertTrue(first.draggable);
-    assertEquals('https://b/', second.querySelector('a')!.href);
+    assertEquals('https://b/', second.href);
     assertTrue(second.draggable);
     const firstRect = first.getBoundingClientRect();
     const secondRect = second.getBoundingClientRect();
@@ -1136,10 +1018,6 @@ function createDragAndDropSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     }));
     await flushTasks();
     const reorderCalled = handler.whenCalled('reorderMostVisitedTile');
-    document.dispatchEvent(new DragEvent('drop', {
-      clientX: firstRect.x + 1,
-      clientY: firstRect.y + 1,
-    }));
     document.dispatchEvent(new DragEvent('dragend', {
       clientX: firstRect.x + 1,
       clientY: firstRect.y + 1,
@@ -1148,8 +1026,8 @@ function createDragAndDropSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     assertEquals('https://b/', url.url);
     assertEquals(0, newPos);
     const [newFirst, newSecond] = queryTiles();
-    assertEquals('https://b/', newFirst!.querySelector('a')!.href);
-    assertEquals('https://a/', newSecond!.querySelector('a')!.href);
+    assertEquals('https://b/', newFirst!.href);
+    assertEquals('https://a/', newSecond!.href);
   });
 
   test('most visited tiles cannot be reordered', async () => {
@@ -1157,19 +1035,15 @@ function createDragAndDropSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     const tiles = queryTiles();
     const first = tiles[0]!;
     const second = tiles[1]!;
-    assertEquals('https://a/', first.querySelector('a')!.href);
+    assertEquals('https://a/', first.href);
     assertTrue(first.draggable);
-    assertEquals('https://b/', second.querySelector('a')!.href);
+    assertEquals('https://b/', second.href);
     assertTrue(second.draggable);
     const firstRect = first.getBoundingClientRect();
     const secondRect = second.getBoundingClientRect();
     first.dispatchEvent(new DragEvent('dragstart', {
       clientX: firstRect.x + firstRect.width / 2,
       clientY: firstRect.y + firstRect.height / 2,
-    }));
-    document.dispatchEvent(new DragEvent('drop', {
-      clientX: secondRect.x + 1,
-      clientY: secondRect.y + 1,
     }));
     document.dispatchEvent(new DragEvent('dragend', {
       clientX: secondRect.x + 1,
@@ -1178,25 +1052,23 @@ function createDragAndDropSuite(singleRow: boolean, reflowOnOverflow: boolean) {
     await flushTasks();
     assertEquals(0, handler.getCallCount('reorderMostVisitedTile'));
     const [newFirst, newSecond] = queryTiles();
-    assertEquals('https://a/', newFirst!.querySelector('a')!.href);
-    assertEquals('https://b/', newSecond!.querySelector('a')!.href);
+    assertEquals('https://a/', newFirst!.href);
+    assertEquals('https://b/', newSecond!.href);
   });
 }
 
 suite('DragAndDrop', () => {
   suite('double row', () => {
-    createDragAndDropSuite(/*singleRow=*/ false, /*reflowOnOverflow=*/ false);
-    createDragAndDropSuite(/*singleRow=*/ false, /*reflowOnOverflow=*/ true);
+    createDragAndDropSuite(false);
   });
   suite('single row', () => {
-    createDragAndDropSuite(/*singleRow=*/ true, /*reflowOnOverflow=*/ false);
-    createDragAndDropSuite(/*singleRow=*/ true, /*reflowOnOverflow=*/ true);
+    createDragAndDropSuite(true);
   });
 });
 
 suite('Theming', () => {
   setup(() => {
-    setUpTest(/*singleRow=*/ false, /*reflowOnOverflow=*/ false);
+    setUpTest(/*singleRow=*/ false);
   });
 
   test('RIGHT_TO_LEFT tile title text direction', async () => {
@@ -1251,93 +1123,22 @@ suite('Theming', () => {
         $$(mostVisited, '#addShortcutIcon'), 'background-color',
         'rgb(255, 255, 255)');
   });
-});
 
-suite('Prerendering', () => {
-  suiteSetup(() => {
-    loadTimeData.overrideValues({
-      prerenderEnabled: true,
-      preconnectStartTimeThreshold: 0,
-      prerenderStartTimeThreshold: 0,
+  test('add title pill', () => {
+    mostVisited.style.setProperty('--most-visited-text-shadow', '1px 2px');
+    queryAll('.tile-title').forEach(tile => {
+      assertStyle(tile, 'background-color', 'rgba(0, 0, 0, 0)');
     });
-  });
-
-  setup(() => {
-    setUpTest(/*singleRow=*/ false, /*reflowOnOverflow=*/ false);
-  });
-
-  test('preconnect', async () => {
-    // Arrange.
-    await addTiles(1);
-
-    // Act.
-    const tileLink = queryTiles()[0]!.querySelector('a')!;
-    // Prevent triggering a navigation, which would break the test.
-    tileLink.href = '#';
-    // Simulate a mousedown event.
-    const mouseEvent = document.createEvent('MouseEvents');
-    mouseEvent.initEvent('mouseenter', true, true);
-    tileLink.dispatchEvent(mouseEvent);
-
-    // Make sure preconnect has been triggered.
-    await handler.whenCalled('preconnectMostVisitedTile');
-  });
-
-  test('onMouseHover Trigger', async () => {
-    // Arrange.
-    await addTiles(1);
-
-    // Act.
-    const tileLink = queryTiles()[0]!.querySelector('a')!;
-    // Prevent triggering a navigation, which would break the test.
-    tileLink.href = '#';
-    // simulate a mousedown event.
-    const mouseEvent = document.createEvent('MouseEvents');
-    mouseEvent.initEvent('mouseenter', true, true);
-    tileLink.dispatchEvent(mouseEvent);
-
-    // Make sure Prerendering has been triggered.
-    await handler.whenCalled('prerenderMostVisitedTile');
-  });
-
-  test('onMouseDown Trigger', async () => {
-    // Arrange.
-    await addTiles(1);
-
-    // Act.
-    const tileLink = queryTiles()[0]!.querySelector('a')!;
-    // Prevent triggering a navigation, which would break the test.
-    tileLink.href = '#';
-    // simulate a mousedown event.
-    const mouseEvent = document.createEvent('MouseEvents');
-    mouseEvent.initEvent('mousedown', true, true);
-    tileLink.dispatchEvent(mouseEvent);
-
-    // Make sure Prerendering has been triggered.
-    await handler.whenCalled('prerenderMostVisitedTile');
-  });
-
-  test('prerender cancelation', async () => {
-    // Arrange.
-    await addTiles(1);
-
-    // Act.
-    const tileLink = queryTiles()[0]!.querySelector('a')!;
-    // Prevent triggering a navigation, which would break the test.
-    tileLink.href = '#';
-    // simulate a mousedown event.
-    const mouseEnterEvent = document.createEvent('MouseEvents');
-    mouseEnterEvent.initEvent('mouseenter', true, true);
-    tileLink.dispatchEvent(mouseEnterEvent);
-
-    // Make sure Prerendering has been triggered
-    await handler.whenCalled('prerenderMostVisitedTile');
-
-    const mouseExitEvent = document.createEvent('MouseEvents');
-    mouseExitEvent.initEvent('mouseleave', true, true);
-    tileLink.dispatchEvent(mouseExitEvent);
-
-    // Make sure Prerendering has been canceled.
-    await handler.whenCalled('cancelPrerender');
+    queryAll('.tile-title span').forEach(tile => {
+      assertNotStyle(tile, 'text-shadow', 'none');
+    });
+    mostVisited.toggleAttribute('use-title-pill_', true);
+    queryAll('.tile-title').forEach(tile => {
+      assertStyle(tile, 'background-color', 'rgb(255, 255, 255)');
+    });
+    queryAll('.tile-title span').forEach(tile => {
+      assertStyle(tile, 'text-shadow', 'none');
+      assertStyle(tile, 'color', 'rgb(60, 64, 67)');
+    });
   });
 });

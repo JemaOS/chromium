@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {DriveHandlerRemote} from '../../drive.mojom-webui.js';
-import {DriveHandler} from '../../drive.mojom-webui.js';
+import {DriveHandler, DriveHandlerRemote} from '../../drive.mojom-webui.js';
 
 /**
  * @fileoverview This file provides a class that exposes the Mojo handler

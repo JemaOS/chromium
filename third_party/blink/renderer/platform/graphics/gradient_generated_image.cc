@@ -50,13 +50,16 @@ void GradientGeneratedImage::Draw(cc::PaintCanvas* canvas,
   canvas->drawRect(visible_dest_rect, gradient_flags);
 }
 
-void GradientGeneratedImage::DrawTile(cc::PaintCanvas* canvas,
+void GradientGeneratedImage::DrawTile(GraphicsContext& context,
                                       const gfx::RectF& src_rect,
                                       const ImageDrawOptions& draw_options) {
-  cc::PaintFlags gradient_flags;
-  gradient_flags.setAntiAlias(true);
+  // TODO(ccameron): This function should not ignore |context|'s color behavior.
+  // https://crbug.com/672306
+  cc::PaintFlags gradient_flags(context.FillFlags());
   gradient_->ApplyToFlags(gradient_flags, SkMatrix::I(), draw_options);
-  canvas->drawRect(gfx::RectFToSkRect(src_rect), gradient_flags);
+
+  context.DrawRect(gfx::RectFToSkRect(src_rect), gradient_flags,
+                   AutoDarkMode::Disabled());
 }
 
 bool GradientGeneratedImage::ApplyShader(cc::PaintFlags& flags,
@@ -65,6 +68,7 @@ bool GradientGeneratedImage::ApplyShader(cc::PaintFlags& flags,
                                          const ImageDrawOptions& draw_options) {
   DCHECK(gradient_);
   gradient_->ApplyToFlags(flags, local_matrix, draw_options);
+
   return true;
 }
 

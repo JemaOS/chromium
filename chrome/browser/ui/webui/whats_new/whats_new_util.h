@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_UI_WEBUI_WHATS_NEW_WHATS_NEW_UTIL_H_
 #define CHROME_BROWSER_UI_WEBUI_WHATS_NEW_WHATS_NEW_UTIL_H_
 
-#include "base/feature_list.h"
 #include "base/functional/callback.h"
 #include "url/gurl.h"
 
@@ -44,11 +43,6 @@ enum class StartupType {
   kMaxValue = kOverridden,
 };
 
-// Exposed for testing.
-BASE_DECLARE_FEATURE(kForceEnabled);
-
-bool IsEnabled();
-
 // Logs the type of startup (e.g. whether a user is eligible for What's New, and
 // whether we try to show the page).
 void LogStartupType(StartupType type);
@@ -60,9 +54,6 @@ void DisableRemoteContentForTests();
 // Whether loading remote content has been disabled via
 // DisableRemoteContentForTests().
 bool IsRemoteContentDisabled();
-
-// Allow setting the CHROME_VERSION_MAJOR for tests
-void SetChromeVersionForTests(int chrome_version);
 
 // Returns true if the user has not yet seen the What's New page for the
 // current major milestone. When returning true, sets the pref in |local_state|

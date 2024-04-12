@@ -7,7 +7,8 @@
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 bool ParseUserPrincipalName(const std::string& user_principal_name,
                             std::string* user_name,
@@ -59,4 +60,5 @@ bool ParseUserName(const std::string& name,
   return true;
 }
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

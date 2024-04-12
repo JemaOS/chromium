@@ -4,8 +4,6 @@
 
 #include "ash/webui/eche_app_ui/eche_alert_generator.h"
 
-#include <optional>
-
 #include "ash/constants/ash_pref_names.h"
 #include "ash/webui/eche_app_ui/apps_launch_info_provider.h"
 #include "ash/webui/eche_app_ui/launch_app_helper.h"
@@ -14,6 +12,7 @@
 #include "components/prefs/testing_pref_service.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/image/image.h"
 
 namespace ash {
@@ -36,8 +35,8 @@ class MockLaunchAppHelper : public LaunchAppHelper {
   // LaunchAppHelper:
   MOCK_METHOD(void,
               ShowNotification,
-              (const std::optional<std::u16string>& title,
-               const std::optional<std::u16string>& message,
+              (const absl::optional<std::u16string>& title,
+               const absl::optional<std::u16string>& message,
                std::unique_ptr<NotificationInfo> info),
               (const, override));
 
@@ -80,10 +79,10 @@ class EcheAlertGeneratorTest : public testing::Test {
   }
 
   void FakeLaunchEcheAppFunction(
-      const std::optional<int64_t>& notification_id,
+      const absl::optional<int64_t>& notification_id,
       const std::string& package_name,
       const std::u16string& visible_name,
-      const std::optional<int64_t>& user_id,
+      const absl::optional<int64_t>& user_id,
       const gfx::Image& icon,
       const std::u16string& phone_name,
       AppsLaunchInfoProvider* apps_launch_info_provider) {
@@ -91,8 +90,8 @@ class EcheAlertGeneratorTest : public testing::Test {
   }
 
   void FakeLaunchNotificationFunction(
-      const std::optional<std::u16string>& title,
-      const std::optional<std::u16string>& message,
+      const absl::optional<std::u16string>& title,
+      const absl::optional<std::u16string>& message,
       std::unique_ptr<LaunchAppHelper::NotificationInfo> info) {
     // Do nothing.
   }
@@ -125,8 +124,8 @@ class EcheAlertGeneratorTest : public testing::Test {
 };
 
 TEST_F(EcheAlertGeneratorTest, ShowNotification) {
-  const std::optional<std::u16string> title = u"title";
-  const std::optional<std::u16string> message = u"message";
+  const absl::optional<std::u16string> title = u"title";
+  const absl::optional<std::u16string> message = u"message";
 
   // APP_CRAHSED
   EXPECT_CALL(*launch_app_helper_,

@@ -80,7 +80,7 @@ std::string ValidateCrosapi(int min_version, content::BrowserContext* context) {
   if (!service || !service->IsAvailable<crosapi::mojom::KeystoreService>())
     return kUnsupportedByAsh;
 
-  int version = service->GetInterfaceVersion<KeystoreService>();
+  int version = service->GetInterfaceVersion(KeystoreService::Uuid_);
   if (version < min_version)
     return kUnsupportedByAsh;
 
@@ -95,13 +95,13 @@ std::string ValidateCrosapi(int min_version, content::BrowserContext* context) {
   return "";
 }
 
-std::optional<crosapi::mojom::KeystoreType> KeystoreTypeFromString(
+absl::optional<crosapi::mojom::KeystoreType> KeystoreTypeFromString(
     const std::string& input) {
   if (input == "user")
     return crosapi::mojom::KeystoreType::kUser;
   if (input == "system")
     return crosapi::mojom::KeystoreType::kDevice;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // Validates that |token_id| is well-formed. Converts |token_id| into the output
@@ -110,7 +110,7 @@ std::optional<crosapi::mojom::KeystoreType> KeystoreTypeFromString(
 // extension termination.
 std::string ValidateInput(const std::string& token_id,
                           crosapi::mojom::KeystoreType* keystore) {
-  std::optional<crosapi::mojom::KeystoreType> keystore_type =
+  absl::optional<crosapi::mojom::KeystoreType> keystore_type =
       KeystoreTypeFromString(token_id);
   if (!keystore_type)
     return platform_keys::kErrorInvalidToken;
@@ -147,7 +147,7 @@ EnterprisePlatformKeysInternalGenerateKeyFunction::
 
 ExtensionFunction::ResponseAction
 EnterprisePlatformKeysInternalGenerateKeyFunction::Run() {
-  std::optional<api_epki::GenerateKey::Params> params =
+  absl::optional<api_epki::GenerateKey::Params> params =
       api_epki::GenerateKey::Params::Create(args());
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -158,7 +158,7 @@ EnterprisePlatformKeysInternalGenerateKeyFunction::Run() {
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
   EXTENSION_FUNCTION_VALIDATE(params);
-  std::optional<chromeos::platform_keys::TokenId> platform_keys_token_id =
+  absl::optional<chromeos::platform_keys::TokenId> platform_keys_token_id =
       platform_keys::ApiIdToPlatformKeysTokenId(params->token_id);
   if (!platform_keys_token_id)
     return RespondNow(Error(platform_keys::kErrorInvalidToken));
@@ -195,7 +195,7 @@ EnterprisePlatformKeysInternalGenerateKeyFunction::Run() {
 
 void EnterprisePlatformKeysInternalGenerateKeyFunction::OnGeneratedKey(
     std::vector<uint8_t> public_key_der,
-    std::optional<crosapi::mojom::KeystoreError> error) {
+    absl::optional<crosapi::mojom::KeystoreError> error) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!error) {
     Respond(ArgumentList(
@@ -210,7 +210,7 @@ void EnterprisePlatformKeysInternalGenerateKeyFunction::OnGeneratedKey(
 
 ExtensionFunction::ResponseAction
 EnterprisePlatformKeysGetCertificatesFunction::Run() {
-  std::optional<api_epk::GetCertificates::Params> params =
+  absl::optional<api_epk::GetCertificates::Params> params =
       api_epk::GetCertificates::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -256,7 +256,7 @@ void EnterprisePlatformKeysGetCertificatesFunction::OnGetCertificates(
 
 ExtensionFunction::ResponseAction
 EnterprisePlatformKeysImportCertificateFunction::Run() {
-  std::optional<api_epk::ImportCertificate::Params> params =
+  absl::optional<api_epk::ImportCertificate::Params> params =
       api_epk::ImportCertificate::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -291,7 +291,7 @@ void EnterprisePlatformKeysImportCertificateFunction::OnAddCertificate(
 
 ExtensionFunction::ResponseAction
 EnterprisePlatformKeysRemoveCertificateFunction::Run() {
-  std::optional<api_epk::RemoveCertificate::Params> params =
+  absl::optional<api_epk::RemoveCertificate::Params> params =
       api_epk::RemoveCertificate::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -373,7 +373,7 @@ void EnterprisePlatformKeysInternalGetTokensFunction::OnGetKeyStores(
 
 ExtensionFunction::ResponseAction
 EnterprisePlatformKeysChallengeMachineKeyFunction::Run() {
-  std::optional<api_epk::ChallengeMachineKey::Params> params =
+  absl::optional<api_epk::ChallengeMachineKey::Params> params =
       api_epk::ChallengeMachineKey::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -422,7 +422,7 @@ void EnterprisePlatformKeysChallengeMachineKeyFunction::
 
 ExtensionFunction::ResponseAction
 EnterprisePlatformKeysChallengeUserKeyFunction::Run() {
-  std::optional<api_epk::ChallengeUserKey::Params> params =
+  absl::optional<api_epk::ChallengeUserKey::Params> params =
       api_epk::ChallengeUserKey::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -472,7 +472,7 @@ const uint64_t kChallengeKeystoreAlgorithmParameterMinVersion = 17;
 
 ExtensionFunction::ResponseAction
 EnterprisePlatformKeysChallengeKeyFunction::Run() {
-  std::optional<api_epk::ChallengeKey::Params> params =
+  absl::optional<api_epk::ChallengeKey::Params> params =
       api_epk::ChallengeKey::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -491,15 +491,15 @@ EnterprisePlatformKeysChallengeKeyFunction::Run() {
   crosapi::mojom::KeystoreType keystore_type =
       crosapi::mojom::KeystoreType::kDevice;
   EXTENSION_FUNCTION_VALIDATE(params->options.scope !=
-                              api::enterprise_platform_keys::Scope::kNone);
+                              api::enterprise_platform_keys::SCOPE_NONE);
   switch (params->options.scope) {
-    case api::enterprise_platform_keys::Scope::kUser:
+    case api::enterprise_platform_keys::SCOPE_USER:
       keystore_type = crosapi::mojom::KeystoreType::kUser;
       break;
-    case api::enterprise_platform_keys::Scope::kMachine:
+    case api::enterprise_platform_keys::SCOPE_MACHINE:
       keystore_type = crosapi::mojom::KeystoreType::kDevice;
       break;
-    case api::enterprise_platform_keys::Scope::kNone:
+    case api::enterprise_platform_keys::SCOPE_NONE:
       NOTREACHED();
   }
 
@@ -507,15 +507,14 @@ EnterprisePlatformKeysChallengeKeyFunction::Run() {
   crosapi::mojom::KeystoreSigningAlgorithmName algorithm =
       crosapi::mojom::KeystoreSigningAlgorithmName::kRsassaPkcs115;
   if (params->options.register_key.has_value()) {
-    EXTENSION_FUNCTION_VALIDATE(
-        params->options.register_key->algorithm !=
-        api::enterprise_platform_keys::Algorithm::kNone);
+    EXTENSION_FUNCTION_VALIDATE(params->options.register_key->algorithm !=
+                                api::enterprise_platform_keys::ALGORITHM_NONE);
     switch (params->options.register_key->algorithm) {
-      case api::enterprise_platform_keys::Algorithm::kRsa:
+      case api::enterprise_platform_keys::ALGORITHM_RSA:
         algorithm =
             crosapi::mojom::KeystoreSigningAlgorithmName::kRsassaPkcs115;
         break;
-      case api::enterprise_platform_keys::Algorithm::kEcdsa: {
+      case api::enterprise_platform_keys::ALGORITHM_ECDSA: {
         // Older versions of Ash default to RSA. If ECDSA is specified but the
         // Keystore would use RSA instead, return an error.
         const std::string version_error = ValidateCrosapi(
@@ -526,7 +525,7 @@ EnterprisePlatformKeysChallengeKeyFunction::Run() {
         algorithm = crosapi::mojom::KeystoreSigningAlgorithmName::kEcdsa;
         break;
       }
-      case api::enterprise_platform_keys::Algorithm::kNone:
+      case api::enterprise_platform_keys::ALGORITHM_NONE:
         NOTREACHED();
     }
   }

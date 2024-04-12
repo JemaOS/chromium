@@ -32,7 +32,7 @@ class LoginScreenExtensionsLifetimeManagerFactory
   ~LoginScreenExtensionsLifetimeManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

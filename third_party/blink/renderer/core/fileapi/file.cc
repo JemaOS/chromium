@@ -35,11 +35,11 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_file_property_bag.h"
 #include "third_party/blink/renderer/core/core_initializer.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
-#include "third_party/blink/renderer/core/fileapi/file_backed_blob_factory_dispatcher.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html/forms/form_controller.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
+#include "third_party/blink/renderer/platform/bindings/to_v8.h"
 #include "third_party/blink/renderer/platform/blob/blob_data.h"
 #include "third_party/blink/renderer/platform/file_metadata.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -67,54 +67,50 @@ static String GetContentTypeFromFileName(const String& name,
   return type;
 }
 
-static scoped_refptr<BlobDataHandle> CreateBlobDataHandleForFileWithType(
-    ExecutionContext* context,
+static std::unique_ptr<BlobData> CreateBlobDataForFileWithType(
     const String& path,
     const String& content_type) {
-  return BlobDataHandle::CreateForFile(
-      FileBackedBlobFactoryDispatcher::GetFileBackedBlobFactory(context), path,
-      /*offset=*/0, BlobData::kToEndOfFile,
-      /*expected_modification_time=*/std::nullopt, content_type);
+  std::unique_ptr<BlobData> blob_data =
+      BlobData::CreateForFileWithUnknownSize(path);
+  blob_data->SetContentType(content_type);
+  return blob_data;
 }
 
-static scoped_refptr<BlobDataHandle> CreateBlobDataHandleForFile(
-    ExecutionContext* context,
+static std::unique_ptr<BlobData> CreateBlobDataForFile(
     const String& path,
     File::ContentTypeLookupPolicy policy) {
   if (path.empty()) {
     auto blob_data = std::make_unique<BlobData>();
     blob_data->SetContentType("application/octet-stream");
-    return BlobDataHandle::Create(std::move(blob_data), /*size=*/0);
+    return blob_data;
   }
-  return CreateBlobDataHandleForFileWithType(
-      context, path, GetContentTypeFromFileName(path, policy));
+  return CreateBlobDataForFileWithType(
+      path, GetContentTypeFromFileName(path, policy));
 }
 
-static scoped_refptr<BlobDataHandle> CreateBlobDataHandleForFileWithName(
-    ExecutionContext* context,
+static std::unique_ptr<BlobData> CreateBlobDataForFileWithName(
     const String& path,
     const String& file_system_name,
     File::ContentTypeLookupPolicy policy) {
-  return CreateBlobDataHandleForFileWithType(
-      context, path, GetContentTypeFromFileName(file_system_name, policy));
+  return CreateBlobDataForFileWithType(
+      path, GetContentTypeFromFileName(file_system_name, policy));
 }
 
-static scoped_refptr<BlobDataHandle> CreateBlobDataHandleForFileWithMetadata(
-    ExecutionContext* context,
+static std::unique_ptr<BlobData> CreateBlobDataForFileWithMetadata(
     const String& file_system_name,
     const FileMetadata& metadata) {
-  // We are creating a handle for a snapshot file. The FileSystemManager may
-  // have to create a read permission needed on the browser side for this
-  // operation. As the manager might revoke this permission directly after the
-  // call, we have to ensure the permission is available while we create the
-  // handle. So we need create a handle using the synchronous version of the
-  // IPC.
-  return BlobDataHandle::CreateForFileSync(
-      FileBackedBlobFactoryDispatcher::GetFileBackedBlobFactory(context),
-      metadata.platform_path,
-      /*offset=*/0, metadata.length, metadata.modification_time,
-      GetContentTypeFromFileName(file_system_name,
-                                 File::kWellKnownContentTypes));
+  std::unique_ptr<BlobData> blob_data;
+  if (metadata.length == BlobData::kToEndOfFile) {
+    blob_data = BlobData::CreateForFileWithUnknownSize(
+        metadata.platform_path, metadata.modification_time);
+  } else {
+    blob_data = std::make_unique<BlobData>();
+    blob_data->AppendFile(metadata.platform_path, 0, metadata.length,
+                          metadata.modification_time);
+  }
+  blob_data->SetContentType(GetContentTypeFromFileName(
+      file_system_name, File::kWellKnownContentTypes));
+  return blob_data;
 }
 
 // static
@@ -126,8 +122,8 @@ File* File::Create(ExecutionContext* context,
 
   base::Time last_modified;
   if (options->hasLastModified()) {
-    // We don't use base::Time::FromMillisecondsSinceUnixEpoch(double) here
-    // because options->lastModified() is a 64-bit integer, and casting it to
+    // We don't use base::Time::FromJsTime(double) here because
+    // options->lastModified() is a 64-bit integer, and casting it to
     // double is lossy.
     last_modified =
         base::Time::UnixEpoch() + base::Milliseconds(options->lastModified());
@@ -150,8 +146,7 @@ File* File::Create(ExecutionContext* context,
       BlobDataHandle::Create(std::move(blob_data), file_size));
 }
 
-File* File::CreateFromControlState(ExecutionContext* context,
-                                   const FormControlState& state,
+File* File::CreateFromControlState(const FormControlState& state,
                                    wtf_size_t& index) {
   if (index + 2 >= state.ValueSize()) {
     index = state.ValueSize();
@@ -161,8 +156,8 @@ File* File::CreateFromControlState(ExecutionContext* context,
   String name = state[index++];
   String relative_path = state[index++];
   if (relative_path.empty())
-    return File::CreateForUserProvidedFile(context, path, name);
-  return File::CreateWithRelativePath(context, path, relative_path);
+    return File::CreateForUserProvidedFile(path, name);
+  return File::CreateWithRelativePath(path, relative_path);
 }
 
 String File::PathFromControlState(const FormControlState& state,
@@ -176,10 +171,9 @@ String File::PathFromControlState(const FormControlState& state,
   return path;
 }
 
-File* File::CreateWithRelativePath(ExecutionContext* context,
-                                   const String& path,
+File* File::CreateWithRelativePath(const String& path,
                                    const String& relative_path) {
-  File* file = MakeGarbageCollected<File>(context, path, File::kAllContentTypes,
+  File* file = MakeGarbageCollected<File>(path, File::kAllContentTypes,
                                           File::kIsUserVisible);
   file->relative_path_ = relative_path;
   return file;
@@ -204,22 +198,23 @@ File* File::CreateForFileSystemFile(ExecutionContext& context,
   return MakeGarbageCollected<File>(url, metadata, user_visibility, handle);
 }
 
-File::File(ExecutionContext* context,
-           const String& path,
+File::File(const String& path,
            ContentTypeLookupPolicy policy,
            UserVisibility user_visibility)
-    : Blob(CreateBlobDataHandleForFile(context, path, policy)),
+    : Blob(BlobDataHandle::Create(CreateBlobDataForFile(path, policy),
+                                  std::numeric_limits<uint64_t>::max())),
       has_backing_file_(true),
       user_visibility_(user_visibility),
       path_(path),
       name_(FilePathToWebString(WebStringToFilePath(path).BaseName())) {}
 
-File::File(ExecutionContext* context,
-           const String& path,
+File::File(const String& path,
            const String& name,
            ContentTypeLookupPolicy policy,
            UserVisibility user_visibility)
-    : Blob(CreateBlobDataHandleForFileWithName(context, path, name, policy)),
+    : Blob(BlobDataHandle::Create(
+          CreateBlobDataForFileWithName(path, name, policy),
+          std::numeric_limits<uint64_t>::max())),
       has_backing_file_(true),
       user_visibility_(user_visibility),
       path_(path),
@@ -231,7 +226,7 @@ File::File(const String& path,
            UserVisibility user_visibility,
            bool has_snapshot_data,
            uint64_t size,
-           const std::optional<base::Time>& last_modified,
+           const absl::optional<base::Time>& last_modified,
            scoped_refptr<BlobDataHandle> blob_data_handle)
     : Blob(std::move(blob_data_handle)),
       has_backing_file_(!path.empty() || !relative_path.empty()),
@@ -245,7 +240,7 @@ File::File(const String& path,
 }
 
 File::File(const String& name,
-           const std::optional<base::Time>& modification_time,
+           const absl::optional<base::Time>& modification_time,
            scoped_refptr<BlobDataHandle> blob_data_handle)
     : Blob(std::move(blob_data_handle)),
       has_backing_file_(false),
@@ -257,19 +252,19 @@ File::File(const String& name,
     snapshot_size_ = size;
 }
 
-File::File(ExecutionContext* context,
-           const String& name,
+File::File(const String& name,
            const FileMetadata& metadata,
            UserVisibility user_visibility)
-    : Blob(CreateBlobDataHandleForFileWithMetadata(context, name, metadata)),
+    : Blob(BlobDataHandle::Create(
+          CreateBlobDataForFileWithMetadata(name, metadata),
+          metadata.length)),
       has_backing_file_(true),
       user_visibility_(user_visibility),
       path_(metadata.platform_path),
       name_(name),
       snapshot_modification_time_(metadata.modification_time) {
-  if (metadata.length >= 0) {
+  if (metadata.length >= 0)
     snapshot_size_ = metadata.length;
-  }
 }
 
 File::File(const KURL& file_system_url,
@@ -328,10 +323,11 @@ ScriptValue File::lastModifiedDate(ScriptState* script_state) const {
   return ScriptValue(
       script_state->GetIsolate(),
       ToV8Traits<IDLNullable<IDLDate>>::ToV8(
-          script_state, std::optional<base::Time>(LastModifiedTime())));
+          script_state, absl::optional<base::Time>(LastModifiedTime()))
+          .ToLocalChecked());
 }
 
-std::optional<base::Time> File::LastModifiedTimeForSerialization() const {
+absl::optional<base::Time> File::LastModifiedTimeForSerialization() const {
   CaptureSnapshotIfNeeded();
 
   return snapshot_modification_time_;
@@ -348,6 +344,28 @@ uint64_t File::size() const {
   return 0;
 }
 
+Blob* File::slice(int64_t start,
+                  int64_t end,
+                  const String& content_type,
+                  ExceptionState& exception_state) const {
+  if (!has_backing_file_)
+    return Blob::slice(start, end, content_type, exception_state);
+
+  // FIXME: Calling size triggers capturing a snapshot, if we don't have one
+  // already. This involves synchronous file operation. We need to figure out
+  // how to make it asynchronous (or make sure snapshot state is always passed
+  // in when creating a File instance).
+  ClampSliceOffsets(size(), start, end);
+
+  uint64_t length = end - start;
+  auto blob_data = std::make_unique<BlobData>();
+  blob_data->SetContentType(NormalizeType(content_type));
+  DCHECK(!path_.empty());
+  blob_data->AppendFile(path_, start, length, snapshot_modification_time_);
+  return MakeGarbageCollected<Blob>(
+      BlobDataHandle::Create(std::move(blob_data), length));
+}
+
 void File::CaptureSnapshotIfNeeded() const {
   if (HasValidSnapshotMetadata() && snapshot_modification_time_)
     return;
@@ -357,6 +375,19 @@ void File::CaptureSnapshotIfNeeded() const {
                                            &snapshot_modification_time_)) {
     snapshot_size_ = snapshot_size;
   }
+}
+
+void File::AppendTo(BlobData& blob_data) const {
+  if (!has_backing_file_) {
+    Blob::AppendTo(blob_data);
+    return;
+  }
+
+  // FIXME: This involves synchronous file operation. We need to figure out how
+  // to make it asynchronous.
+  CaptureSnapshotIfNeeded();
+  DCHECK(!path_.empty());
+  blob_data.AppendFile(path_, 0, *snapshot_size_, snapshot_modification_time_);
 }
 
 bool File::HasSameSource(const File& other) const {

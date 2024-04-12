@@ -29,9 +29,9 @@ class CaptureModeOption;
 // independent section in the settings menu. Each group can be created with a
 // header that has an icon and a label for the group, or be header-less.
 class ASH_EXPORT CaptureModeMenuGroup : public views::View {
-  METADATA_HEADER(CaptureModeMenuGroup, views::View)
-
  public:
+  METADATA_HEADER(CaptureModeMenuGroup);
+
   class Delegate {
    public:
     // Called when user selects an option.
@@ -104,8 +104,7 @@ class ASH_EXPORT CaptureModeMenuGroup : public views::View {
   // will open a folder window for user to select a new folder to save the
   // captured filed on click/press.
   void AddMenuItem(views::Button::PressedCallback callback,
-                   std::u16string item_label,
-                   bool enabled);
+                   std::u16string item_label);
 
   // Returns true if the option with the given `option_id` is checked, if such
   // option exists.
@@ -145,24 +144,24 @@ class ASH_EXPORT CaptureModeMenuGroup : public views::View {
 
   // CaptureModeSettingsView is the |delegate_| here. It's owned by
   // its views hierarchy.
-  const raw_ptr<const Delegate> delegate_;
+  const raw_ptr<const Delegate, ExperimentalAsh> delegate_;
 
   // The menu header of `this`. It's owned by the views hierarchy. Can be null
   // if this group is header-less.
-  raw_ptr<CaptureModeMenuHeader> menu_header_ = nullptr;
+  raw_ptr<CaptureModeMenuHeader, ExperimentalAsh> menu_header_ = nullptr;
 
   // Options added via calls "AddOption()". Options are owned by theirs views
   // hierarchy.
-  std::vector<raw_ptr<CaptureModeOption, VectorExperimental>> options_;
+  std::vector<CaptureModeOption*> options_;
 
   // It's a container view for |options_|. It's owned by its views hierarchy.
   // We need it for grouping up options. For example, when user selects a custom
   // folder, we need to add it to the end of the options instead of adding it
   // after the menu item.
-  raw_ptr<views::View> options_container_;
+  raw_ptr<views::View, ExperimentalAsh> options_container_;
 
   // Menu items added by calling AddMenuItem().
-  std::vector<raw_ptr<CaptureModeMenuItem, VectorExperimental>> menu_items_;
+  std::vector<CaptureModeMenuItem*> menu_items_;
 };
 
 }  // namespace ash

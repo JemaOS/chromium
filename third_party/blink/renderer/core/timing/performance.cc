@@ -32,7 +32,6 @@
 #include "third_party/blink/renderer/core/timing/performance.h"
 
 #include <algorithm>
-#include <optional>
 
 #include "base/containers/contains.h"
 #include "base/metrics/histogram_macros.h"
@@ -40,6 +39,7 @@
 #include "base/time/default_clock.h"
 #include "base/time/default_tick_clock.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/permissions_policy/document_policy_feature.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
@@ -321,8 +321,7 @@ EventCounts* Performance::eventCounts() {
   return nullptr;
 }
 
-ScriptPromiseTyped<MemoryMeasurement>
-Performance::measureUserAgentSpecificMemory(
+ScriptPromise Performance::measureUserAgentSpecificMemory(
     ScriptState* script_state,
     ExceptionState& exception_state) const {
   return MeasureMemoryController::StartMeasurement(script_state,
@@ -433,7 +432,9 @@ PerformanceEntryVector Performance::GetEntriesForCurrentFrame(
         entries, long_animation_frame_buffer_, maybe_name);
   }
 
-  if (visibility_state_buffer_.size()) {
+  if (RuntimeEnabledFeatures::VisibilityStateEntryEnabled(
+          GetExecutionContext()) &&
+      visibility_state_buffer_.size()) {
     entries = MergePerformanceEntryVectors(entries, visibility_state_buffer_,
                                            maybe_name);
   }
@@ -586,8 +587,6 @@ PerformanceEntryVector Performance::getEntriesByTypeInternal(
     case PerformanceEntry::kLongAnimationFrame:
       if (RuntimeEnabledFeatures::LongAnimationFrameTimingEnabled(
               GetExecutionContext())) {
-        UseCounter::Count(GetExecutionContext(),
-                          WebFeature::kLongAnimationFrameRequested);
         entries = &long_animation_frame_buffer_;
       }
       break;
@@ -935,8 +934,6 @@ PerformanceMark* Performance::mark(ScriptState* script_state,
                                   ("mark_fully_visible"));
   DEFINE_THREAD_SAFE_STATIC_LOCAL(const AtomicString, mark_interactive,
                                   ("mark_interactive"));
-  DEFINE_THREAD_SAFE_STATIC_LOCAL(const AtomicString, mark_feature_usage,
-                                  ("mark_feature_usage"));
   if (mark_options &&
       (mark_options->hasStartTime() || mark_options->hasDetail())) {
     UseCounter::Count(GetExecutionContext(), WebFeature::kUserTimingL3);
@@ -946,8 +943,7 @@ PerformanceMark* Performance::mark(ScriptState* script_state,
   if (performance_mark) {
     background_tracing_helper_->MaybeEmitBackgroundTracingPerformanceMarkEvent(
         *performance_mark);
-    GetUserTiming().AddMarkToPerformanceTimeline(*performance_mark,
-                                                 mark_options);
+    GetUserTiming().AddMarkToPerformanceTimeline(*performance_mark);
     if (mark_name == mark_fully_loaded) {
       if (LocalDOMWindow* window = LocalDOMWindow::From(script_state)) {
         window->GetFrame()
@@ -975,61 +971,10 @@ PerformanceMark* Performance::mark(ScriptState* script_state,
             .SetUserTimingMarkInteractive(
                 base::Milliseconds(performance_mark->startTime()));
       }
-    } else if (mark_name == mark_feature_usage && mark_options->hasDetail()) {
-      if (RuntimeEnabledFeatures::PerformanceMarkFeatureUsageEnabled()) {
-        ProcessUserFeatureMark(mark_options);
-      }
     }
     NotifyObserversOfEntry(*performance_mark);
   }
   return performance_mark;
-}
-
-void Performance::ProcessUserFeatureMark(
-    const PerformanceMarkOptions* mark_options) {
-  const ExecutionContext* exec_context = GetExecutionContext();
-  if (!exec_context) {
-    return;
-  }
-
-  const ScriptValue& detail = mark_options->detail();
-  if (!detail.IsObject()) {
-    return;
-  }
-
-  v8::Isolate* isolate = GetExecutionContext()->GetIsolate();
-  v8::Local<v8::Context> current_context = isolate->GetCurrentContext();
-  v8::Local<v8::Object> object;
-  if (!detail.V8Value()->ToObject(current_context).ToLocal(&object)) {
-    return;
-  }
-
-  v8::Local<v8::Value> user_feature_name_val;
-  if (!object->Get(current_context, V8AtomicString(isolate, "feature"))
-           .ToLocal(&user_feature_name_val) ||
-      user_feature_name_val->IsUndefined()) {
-    return;
-  }
-
-  v8::Local<v8::String> user_feature_name;
-  if (!user_feature_name_val->ToString(current_context)
-           .ToLocal(&user_feature_name)) {
-    return;
-  }
-
-  String blink_user_feature_name =
-      ToBlinkString<String>(isolate, user_feature_name, kDoNotExternalize);
-
-  // Check if the user feature name is mapped to an allowed WebFeature.
-  auto maybe_web_feature =
-      PerformanceMark::GetWebFeatureForUserFeatureName(blink_user_feature_name);
-  if (!maybe_web_feature.has_value()) {
-    // We have no matching WebFeature translation yet, skip.
-    return;
-  }
-
-  // Tick the corresponding use counter.
-  UseCounter::Count(GetExecutionContext(), maybe_web_feature.value());
 }
 
 void Performance::clearMarks(const AtomicString& mark_name) {
@@ -1041,7 +986,7 @@ PerformanceMeasure* Performance::measure(ScriptState* script_state,
                                          ExceptionState& exception_state) {
   // When |startOrOptions| is not provided, it's assumed to be an empty
   // dictionary.
-  return MeasureInternal(script_state, measure_name, nullptr, std::nullopt,
+  return MeasureInternal(script_state, measure_name, nullptr, absl::nullopt,
                          exception_state);
 }
 
@@ -1051,7 +996,7 @@ PerformanceMeasure* Performance::measure(
     const V8UnionPerformanceMeasureOptionsOrString* start_or_options,
     ExceptionState& exception_state) {
   return MeasureInternal(script_state, measure_name, start_or_options,
-                         std::nullopt, exception_state);
+                         absl::nullopt, exception_state);
 }
 
 PerformanceMeasure* Performance::measure(
@@ -1061,7 +1006,7 @@ PerformanceMeasure* Performance::measure(
     const String& end,
     ExceptionState& exception_state) {
   return MeasureInternal(script_state, measure_name, start_or_options,
-                         std::optional<String>(end), exception_state);
+                         absl::optional<String>(end), exception_state);
 }
 
 // |MeasureInternal| exists to unify the arguments from different
@@ -1078,13 +1023,13 @@ PerformanceMeasure* Performance::measure(
 //  - If an options dictionary contains neither a 'start' nor an 'end' field.
 //  - If an options dictionary contains all of 'start', 'duration' and 'end'.
 //
-// |end_mark| will be std::nullopt unless the `performance.measure()` overload
+// |end_mark| will be absl::nullopt unless the `performance.measure()` overload
 // specified an end mark.
 PerformanceMeasure* Performance::MeasureInternal(
     ScriptState* script_state,
     const AtomicString& measure_name,
     const V8UnionPerformanceMeasureOptionsOrString* start_or_options,
-    std::optional<String> end_mark,
+    absl::optional<String> end_mark,
     ExceptionState& exception_state) {
   // An empty option is treated with no difference as null, undefined.
   if (start_or_options && start_or_options->IsPerformanceMeasureOptions() &&
@@ -1116,7 +1061,7 @@ PerformanceMeasure* Performance::MeasureInternal(
     }
 
     V8UnionDoubleOrString* start = options->getStartOr(nullptr);
-    std::optional<double> duration;
+    absl::optional<double> duration;
     if (options->hasDuration()) {
       duration = options->duration();
     }
@@ -1141,7 +1086,7 @@ PerformanceMeasure* Performance::MeasureInternal(
     end = MakeGarbageCollected<V8UnionDoubleOrString>(*end_mark);
   }
   return MeasureWithDetail(script_state, measure_name, start,
-                           /* duration = */ std::nullopt, end,
+                           /* duration = */ absl::nullopt, end,
                            ScriptValue::CreateNull(script_state->GetIsolate()),
                            exception_state);
 }
@@ -1150,7 +1095,7 @@ PerformanceMeasure* Performance::MeasureWithDetail(
     ScriptState* script_state,
     const AtomicString& measure_name,
     const V8UnionDoubleOrString* start,
-    const std::optional<double>& duration,
+    const absl::optional<double>& duration,
     const V8UnionDoubleOrString* end,
     const ScriptValue& detail,
     ExceptionState& exception_state) {
@@ -1226,9 +1171,9 @@ void Performance::DeliverObservationsTimerFired(TimerBase*) {
   active_observers_.Swap(observers);
   for (const auto& observer : observers) {
     observer->Deliver(observer->RequiresDroppedEntries()
-                          ? std::optional<int>(GetDroppedEntriesForTypes(
+                          ? absl::optional<int>(GetDroppedEntriesForTypes(
                                 observer->FilterOptions()))
-                          : std::nullopt);
+                          : absl::nullopt);
   }
 }
 
@@ -1270,11 +1215,29 @@ DOMHighResTimeStamp Performance::MonotonicTimeToDOMHighResTimeStamp(
   return clamped_time;
 }
 
+// static
+base::TimeDelta Performance::MonotonicTimeToTimeDelta(
+    base::TimeTicks time_origin,
+    base::TimeTicks monotonic_time,
+    bool allow_negative_value,
+    bool cross_origin_isolated_capability) {
+  return base::Milliseconds(MonotonicTimeToDOMHighResTimeStamp(
+      time_origin, monotonic_time, allow_negative_value,
+      cross_origin_isolated_capability));
+}
+
 DOMHighResTimeStamp Performance::MonotonicTimeToDOMHighResTimeStamp(
     base::TimeTicks monotonic_time) const {
   return MonotonicTimeToDOMHighResTimeStamp(time_origin_, monotonic_time,
                                             false /* allow_negative_value */,
                                             cross_origin_isolated_capability_);
+}
+
+base::TimeDelta Performance::MonotonicTimeToTimeDelta(
+    base::TimeTicks monotonic_time) const {
+  return MonotonicTimeToTimeDelta(time_origin_, monotonic_time,
+                                  false /* allow_negative_value */,
+                                  cross_origin_isolated_capability_);
 }
 
 DOMHighResTimeStamp Performance::now() const {
@@ -1357,7 +1320,7 @@ void Performance::Trace(Visitor* visitor) const {
   visitor->Trace(deliver_observations_timer_);
   visitor->Trace(resource_timing_buffer_full_timer_);
   visitor->Trace(background_tracing_helper_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
 }
 
 void Performance::SetClocksForTesting(const base::Clock* clock,
@@ -1369,14 +1332,6 @@ void Performance::SetClocksForTesting(const base::Clock* clock,
 
 void Performance::ResetTimeOriginForTesting(base::TimeTicks time_origin) {
   time_origin_ = time_origin;
-}
-
-// TODO(https://crbug.com/1457049): remove this once visited links are
-// partitioned.
-bool Performance::softNavPaintMetricsSupported() const {
-  CHECK(
-      RuntimeEnabledFeatures::SoftNavigationHeuristicsExposeFPAndFCPEnabled());
-  return true;
 }
 
 }  // namespace blink

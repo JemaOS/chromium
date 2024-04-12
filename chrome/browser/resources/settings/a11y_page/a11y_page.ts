@@ -18,43 +18,38 @@ import './captions_subpage.js';
 import '../settings_page/settings_subpage.js';
 // </if>
 
-// <if expr="is_win or is_linux or is_macosx">
-import './pdf_ocr_toggle.js';
-// </if>
-
 // <if expr="is_win or is_macosx">
 import './live_caption_section.js';
 
 import {CaptionsBrowserProxyImpl} from '/shared/settings/a11y_page/captions_browser_proxy.js';
 // </if>
 // clang-format on
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
+
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {BaseMixin} from '../base_mixin.js';
-import type {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
+import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
+import {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
 import {loadTimeData} from '../i18n_setup.js';
 import {routes} from '../route.js';
 import {Router} from '../router.js';
 
-import type {AccessibilityBrowserProxy} from './a11y_browser_proxy.js';
-import {AccessibilityBrowserProxyImpl} from './a11y_browser_proxy.js';
 import {getTemplate} from './a11y_page.html.js';
 
 // clang-format off
 // <if expr="not is_chromeos">
-import type {LanguageHelper, LanguagesModel} from '../languages_page/languages_types.js';
-
+import {LanguageHelper, LanguagesModel} from '../languages_page/languages_types.js';
 // </if>
 // clang-format on
 
-const SettingsA11yPageElementBase =
-    PrefsMixin(WebUiListenerMixin(BaseMixin(PolymerElement)));
 
-export class SettingsA11yPageElement extends SettingsA11yPageElementBase {
+const SettingsA11yPageElementBase =
+    WebUiListenerMixin(I18nMixin(BaseMixin(PolymerElement)));
+
+class SettingsA11yPageElement extends SettingsA11yPageElementBase {
   static get is() {
-    return 'settings-a11y-page' as const;
+    return 'settings-a11y-page';
   }
 
   static get template() {
@@ -111,23 +106,26 @@ export class SettingsA11yPageElement extends SettingsA11yPageElementBase {
       // </if>
 
       /**
-       * Indicate whether a screen reader is enabled. Also, determine whether
-       * to show accessibility labels settings.
+       * Whether to show accessibility labels settings.
        */
-      hasScreenReader_: {
+      showAccessibilityLabelsSetting_: {
         type: Boolean,
         value: false,
       },
 
-      // <if expr="is_win or is_linux or is_macosx">
       /**
-       * Whether to show the PDF OCR toggle.
+       * Whether to show pdf ocr settings.
        */
       showPdfOcrToggle_: {
         type: Boolean,
-        computed: 'computeShowPdfOcrToggle_(hasScreenReader_)',
+        value: function() {
+          let isPdfOcrEnabled = false;
+          // <if expr="is_win or is_linux or is_macosx">
+          isPdfOcrEnabled = loadTimeData.getBoolean('pdfOcrEnabled');
+          // </if>
+          return isPdfOcrEnabled;
+        },
       },
-      // </if>
 
       focusConfig_: {
         type: Object,
@@ -158,25 +156,8 @@ export class SettingsA11yPageElement extends SettingsA11yPageElementBase {
           return opensExternally;
         },
       },
-
-      /**
-       * Whether to show the overscroll history navigation setting.
-       */
-      showOverscrollHistoryNavigationToggle_: {
-        type: Boolean,
-        value: function() {
-          let showOverscroll = false;
-          // <if expr="is_win or is_linux or is_macosx">
-          showOverscroll = true;
-          // </if>
-          return showOverscroll;
-        },
-      },
     };
   }
-
-  private browserProxy_: AccessibilityBrowserProxy =
-      AccessibilityBrowserProxyImpl.getInstance();
 
   // <if expr="not is_chromeos">
   languages: LanguagesModel;
@@ -186,22 +167,30 @@ export class SettingsA11yPageElement extends SettingsA11yPageElementBase {
   private showFocusHighlightOption_: boolean;
   // </if>
 
-  private captionSettingsOpensExternally_: boolean;
-  private hasScreenReader_: boolean;
-  private showOverscrollHistoryNavigationToggle_: boolean;
-  // <if expr="is_win or is_linux or is_macosx">
+  private showAccessibilityLabelsSetting_: boolean;
   private showPdfOcrToggle_: boolean;
-  // </if>
+  private captionSettingsOpensExternally_: boolean;
 
-  override connectedCallback() {
-    super.connectedCallback();
 
-    const updateScreenReaderState = (hasScreenReader: boolean) => {
-      this.hasScreenReader_ = hasScreenReader;
-    };
-    this.browserProxy_.getScreenReaderState().then(updateScreenReaderState);
+  override ready() {
+    super.ready();
+
     this.addWebUiListener(
-        'screen-reader-state-changed', updateScreenReaderState);
+        'screen-reader-state-changed',
+        (hasScreenReader: boolean) =>
+            this.onScreenReaderStateChanged_(hasScreenReader));
+
+    // Enables javascript and gets the screen reader state.
+    chrome.send('a11yPageReady');
+  }
+
+  /**
+   * @param hasScreenReader Whether a screen reader is enabled.
+   */
+  private onScreenReaderStateChanged_(hasScreenReader: boolean) {
+    this.showAccessibilityLabelsSetting_ = hasScreenReader;
+    this.showPdfOcrToggle_ =
+        hasScreenReader && loadTimeData.getBoolean('pdfOcrEnabled');
   }
 
   private onA11yCaretBrowsingChange_(event: Event) {
@@ -222,18 +211,15 @@ export class SettingsA11yPageElement extends SettingsA11yPageElementBase {
     }
   }
 
-  // <if expr="is_win or is_linux or is_macosx">
-  /**
-   * Return whether to show the PDF OCR toggle button based on:
-   *    1. The PDF OCR feature flag is enabled.
-   *    2. Whether a screen reader is enabled.
-   * Note: on ChromeOS, the PDF OCR toggle is shown on a different settings
-   * page; i.e. Settings > Accessibility > Text-to-Speech.
-   */
-  private computeShowPdfOcrToggle_(): boolean {
-    return loadTimeData.getBoolean('pdfOcrEnabled') && this.hasScreenReader_;
+  private onPdfOcrChange_(event: Event) {
+    const pdfOcrOn = (event.target as SettingsToggleButtonElement).checked;
+    if (pdfOcrOn) {
+      // TODO(crbug.com/1393069): Downloads a pdf ocr model if not yet
+      // downloaded.
+      console.error(
+          'Need to check a pdf ocr model and download it if necessary');
+    }
   }
-  // </if>
 
   // <if expr="not is_chromeos">
   private onFocusHighlightChange_(event: Event) {
@@ -265,23 +251,14 @@ export class SettingsA11yPageElement extends SettingsA11yPageElementBase {
     }
   }
 
-  // <if expr="is_win or is_linux">
-  private onOverscrollHistoryNavigationChange_(event: Event) {
-    const enabled = (event.target as SettingsToggleButtonElement).checked;
-    this.browserProxy_.recordOverscrollHistoryNavigationChanged(enabled);
-  }
-  // </if>
-
-  // <if expr="is_macosx">
-  private onMacTrackpadGesturesLinkClick_() {
-    this.browserProxy_.openTrackpadGesturesSettings();
-  }
-  // </if>
-}
-
-declare global {
-  interface HTMLElementTagNameMap {
-    [SettingsA11yPageElement.is]: SettingsA11yPageElement;
+  override connectedCallback() {
+    super.connectedCallback();
+    const isJemaProfile = loadTimeData.getBoolean('isJemaProfile');
+    if (!isJemaProfile) return;
+    setTimeout(() => {
+      const node = this.$$(`cr-link-row.hr[label="${this.i18n('moreFeaturesLink')}"]`);
+      if (node) node.setAttribute('hidden', 'true');
+    }, 0);
   }
 }
 

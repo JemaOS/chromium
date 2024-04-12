@@ -30,6 +30,7 @@
 #include "chrome/browser/extensions/extension_system_factory.h"
 #include "chrome/browser/extensions/install_verifier.h"
 #include "chrome/browser/extensions/load_error_reporter.h"
+#include "chrome/browser/extensions/navigation_observer.h"
 #include "chrome/browser/extensions/shared_module_service.h"
 #include "chrome/browser/extensions/unpacked_installer.h"
 #include "chrome/browser/extensions/update_install_gate.h"
@@ -43,7 +44,7 @@
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/url_data_source.h"
-#include "extensions/browser/content_verifier/content_verifier.h"
+#include "extensions/browser/content_verifier.h"
 #include "extensions/browser/extension_pref_store.h"
 #include "extensions/browser/extension_pref_value_map.h"
 #include "extensions/browser/extension_pref_value_map_factory.h"
@@ -69,8 +70,8 @@
 #include "chrome/browser/ash/extensions/signin_screen_policy_provider.h"
 #include "chrome/browser/ash/policy/core/device_local_account.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
+#include "chrome/browser/profiles/profiles_state.h"
 #include "chromeos/ash/components/login/login_state/login_state.h"
-#include "chromeos/components/mgs/managed_guest_session_utils.h"
 #include "components/user_manager/user_manager.h"
 #endif
 
@@ -100,7 +101,8 @@ UninstallPingSender::FilterResult ShouldSendUninstallPing(
 
 ExtensionSystemImpl::Shared::Shared(Profile* profile) : profile_(profile) {}
 
-ExtensionSystemImpl::Shared::~Shared() = default;
+ExtensionSystemImpl::Shared::~Shared() {
+}
 
 void ExtensionSystemImpl::Shared::InitPrefs() {
   store_factory_ = base::MakeRefCounted<value_store::ValueStoreFactoryImpl>(
@@ -154,9 +156,8 @@ void ExtensionSystemImpl::Shared::RegisterManagementPolicyProviders() {
     management_policy_->RegisterProvider(
         device_local_account_management_policy_provider_.get());
   }
-  if (signin_screen_policy_provider_) {
+  if (signin_screen_policy_provider_)
     management_policy_->RegisterProvider(signin_screen_policy_provider_.get());
-  }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
   management_policy_->RegisterProvider(InstallVerifier::Get(profile_));
@@ -166,6 +167,9 @@ void ExtensionSystemImpl::Shared::InitInstallGates() {
   update_install_gate_ = std::make_unique<UpdateInstallGate>(profile_);
   extension_service_->RegisterInstallGate(
       ExtensionPrefs::DELAY_REASON_WAIT_FOR_IDLE, update_install_gate_.get());
+  extension_service_->RegisterInstallGate(
+      ExtensionPrefs::DELAY_REASON_GC,
+      ExtensionGarbageCollector::Get(profile_));
   extension_service_->RegisterInstallGate(
       ExtensionPrefs::DELAY_REASON_WAIT_FOR_IMPORTS,
       extension_service_->shared_module_service());
@@ -185,6 +189,8 @@ void ExtensionSystemImpl::Shared::Init(bool extensions_enabled) {
   const base::CommandLine* command_line =
       base::CommandLine::ForCurrentProcess();
 
+  navigation_observer_ = std::make_unique<NavigationObserver>(profile_);
+
   bool allow_noisy_errors =
       !command_line->HasSwitch(::switches::kNoErrorDialogs);
   LoadErrorReporter::Init(allow_noisy_errors);
@@ -196,8 +202,8 @@ void ExtensionSystemImpl::Shared::Init(bool extensions_enabled) {
 
   user_script_manager_ = std::make_unique<UserScriptManager>(profile_);
 
-  bool autoupdate_enabled =
-      !profile_->IsGuestSession() && !profile_->IsSystemProfile();
+  bool autoupdate_enabled = !profile_->IsGuestSession() &&
+                            !profile_->IsSystemProfile();
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   if (!extensions_enabled ||
       ash::ProfileHelper::IsLockScreenAppProfile(profile_)) {
@@ -206,8 +212,9 @@ void ExtensionSystemImpl::Shared::Init(bool extensions_enabled) {
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
   extension_service_ = std::make_unique<ExtensionService>(
       profile_, base::CommandLine::ForCurrentProcess(),
-      profile_->GetPath().AppendASCII(kInstallDirectoryName),
-      profile_->GetPath().AppendASCII(kUnpackedInstallDirectoryName),
+      profile_->GetPath().AppendASCII(extensions::kInstallDirectoryName),
+      profile_->GetPath().AppendASCII(
+          extensions::kUnpackedInstallDirectoryName),
       ExtensionPrefs::Get(profile_), Blocklist::Get(profile_),
       autoupdate_enabled, extensions_enabled, &ready_);
 
@@ -225,17 +232,16 @@ void ExtensionSystemImpl::Shared::Init(bool extensions_enabled) {
     mode = std::max(mode,
                     ChromeContentVerifierDelegate::VerifyInfo::Mode::BOOTSTRAP);
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-    if (mode >= ChromeContentVerifierDelegate::VerifyInfo::Mode::BOOTSTRAP) {
+    if (mode >= ChromeContentVerifierDelegate::VerifyInfo::Mode::BOOTSTRAP)
       content_verifier_->Start();
-    }
 #if BUILDFLAG(IS_CHROMEOS_ASH)
     // This class is used to check the permissions of the force-installed
-    // extensions inside the managed guest session. It updates the local state
+    // extensions inside the managed-guest session. It updates the local state
     // perf with the result, a boolean value deciding whether the full warning
     // or the normal one should be displayed. The next time on the login screen
-    // of the managed guest sessions the warning will be decided according to
+    // of the managed-guest sessions the warning will be decided according to
     // the value saved from the last session.
-    if (chromeos::IsManagedGuestSession()) {
+    if (profiles::IsPublicSession()) {
       extensions_permissions_tracker_ =
           std::make_unique<ExtensionsPermissionsTracker>(
               ExtensionRegistry::Get(profile_), profile_);
@@ -257,8 +263,8 @@ void ExtensionSystemImpl::Shared::Init(bool extensions_enabled) {
   skip_session_extensions = !ash::LoginState::Get()->IsUserLoggedIn() ||
                             !ash::ProfileHelper::IsUserProfile(profile_);
   if (chrome::IsRunningInForcedAppMode()) {
-    extension_service_->component_loader()
-        ->AddDefaultComponentExtensionsForKioskMode(skip_session_extensions);
+    extension_service_->component_loader()->
+        AddDefaultComponentExtensionsForKioskMode(skip_session_extensions);
   } else {
     extension_service_->component_loader()->AddDefaultComponentExtensions(
         skip_session_extensions);
@@ -287,12 +293,10 @@ void ExtensionSystemImpl::Shared::Init(bool extensions_enabled) {
 }
 
 void ExtensionSystemImpl::Shared::Shutdown() {
-  if (content_verifier_.get()) {
+  if (content_verifier_.get())
     content_verifier_->Shutdown();
-  }
-  if (extension_service_) {
+  if (extension_service_)
     extension_service_->Shutdown();
-  }
 }
 
 ServiceWorkerManager* ExtensionSystemImpl::Shared::service_worker_manager() {
@@ -344,7 +348,8 @@ ContentVerifier* ExtensionSystemImpl::Shared::content_verifier() {
 // ExtensionSystemImpl
 //
 
-ExtensionSystemImpl::ExtensionSystemImpl(Profile* profile) : profile_(profile) {
+ExtensionSystemImpl::ExtensionSystemImpl(Profile* profile)
+    : profile_(profile) {
   shared_ = ExtensionSystemSharedFactory::GetForBrowserContext(profile);
 
   if (!profile->IsOffTheRecord()) {
@@ -352,16 +357,17 @@ ExtensionSystemImpl::ExtensionSystemImpl(Profile* profile) : profile_(profile) {
   }
 }
 
-ExtensionSystemImpl::~ExtensionSystemImpl() = default;
+ExtensionSystemImpl::~ExtensionSystemImpl() {
+}
 
-void ExtensionSystemImpl::Shutdown() {}
+void ExtensionSystemImpl::Shutdown() {
+}
 
 void ExtensionSystemImpl::InitForRegularProfile(bool extensions_enabled) {
   TRACE_EVENT0("browser,startup", "ExtensionSystemImpl::InitForRegularProfile");
 
-  if (user_script_manager() || extension_service()) {
+  if (user_script_manager() || extension_service())
     return;  // Already initialized.
-  }
 
   shared_->Init(extensions_enabled);
 }
@@ -446,7 +452,7 @@ void ExtensionSystemImpl::InstallUpdate(
 
 void ExtensionSystemImpl::PerformActionBasedOnOmahaAttributes(
     const std::string& extension_id,
-    const base::Value::Dict& attributes) {
+    const base::Value& attributes) {
   extension_service()->PerformActionBasedOnOmahaAttributes(extension_id,
                                                            attributes);
 }

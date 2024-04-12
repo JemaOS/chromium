@@ -3,11 +3,8 @@
 // found in the LICENSE file.
 
 #include "base/command_line.h"
-#include "base/functional/callback_helpers.h"
 #include "build/build_config.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/content_settings/core/common/content_settings.h"
 #include "content/public/browser/storage_partition.h"
@@ -56,14 +53,12 @@ class CookiesApiTest : public ExtensionApiTest,
           ->GetNetworkContext()
           ->GetCookieManager(
               cookie_manager_remote_.BindNewPipeAndPassReceiver());
-      cookie_manager_remote_->SetContentSettings(
-          ContentSettingsType::LEGACY_COOKIE_ACCESS,
+      cookie_manager_remote_->SetContentSettingsForLegacyCookieAccess(
           {ContentSettingPatternSource(
               ContentSettingsPattern::Wildcard(),
               ContentSettingsPattern::Wildcard(),
               base::Value(ContentSetting::CONTENT_SETTING_ALLOW),
-              std::string() /* source */, false /* incognito */)},
-          base::NullCallback());
+              std::string() /* source */, false /* incognito */)});
       cookie_manager_remote_.FlushForTesting();
     }
   }

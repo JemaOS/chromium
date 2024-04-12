@@ -24,7 +24,6 @@
 #include "base/functional/bind.h"
 #include "base/path_service.h"
 #include "chrome/browser/android/profile_key_startup_accessor.h"
-#include "chrome/browser/browser_process.h"
 #include "chrome/browser/policy/profile_policy_connector.h"
 #include "chrome/browser/policy/profile_policy_connector_builder.h"
 #include "chrome/browser/policy/schema_registry_service.h"
@@ -44,7 +43,6 @@
 #include "components/policy/core/common/cloud/user_cloud_policy_store.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/sync_preferences/pref_service_syncable.h"
-#include "components/variations/service/variations_service.h"
 #include "content/public/browser/network_service_instance.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/preferences/public/mojom/tracked_preference_validation_delegate.mojom.h"
@@ -98,17 +96,13 @@ void StartupData::RecordCoreSystemProfile() {
 }
 
 #if BUILDFLAG(IS_ANDROID)
-void StartupData::InitProfileKey() {
+void StartupData::CreateProfilePrefService() {
   key_ = std::make_unique<ProfileKey>(GetProfilePath());
   PreProfilePrefServiceInit();
-
-  ProfileKeyStartupAccessor::GetInstance()->SetProfileKey(key_.get());
-}
-
-void StartupData::CreateProfilePrefService() {
-  CHECK(key_);
   CreateServicesInternal();
   key_->SetPrefs(prefs_.get());
+
+  ProfileKeyStartupAccessor::GetInstance()->SetProfileKey(key_.get());
 }
 
 bool StartupData::HasBuiltProfilePrefService() {
@@ -157,36 +151,26 @@ void StartupData::PreProfilePrefServiceInit() {
   pref_registry_ = base::MakeRefCounted<user_prefs::PrefRegistrySyncable>();
   ChromeBrowserMainExtraPartsProfiles::
       EnsureBrowserContextKeyedServiceFactoriesBuilt();
+}
 
+void StartupData::CreateServicesInternal() {
   const base::FilePath& path = key_->GetPath();
   if (!base::PathExists(path)) {
     // TODO(rogerta): http://crbug/160553 - Bad things happen if we can't
     // write to the profile directory.  We should eventually be able to run in
     // this situation.
-    if (!base::CreateDirectory(path)) {
+    if (!base::CreateDirectory(path))
       return;
-    }
 
     CreateProfileReadme(path);
   }
-
-  // StoragePartitionImplMap uses profile directory as default storage
-  // partition, see StoragePartitionImplMap::GetStoragePartitionPath().
-  proto_db_provider_ = std::make_unique<leveldb_proto::ProtoDatabaseProvider>(
-      path, /*is_in_memory=*/false);
-  key_->SetProtoDatabaseProvider(proto_db_provider_.get());
-}
-
-void StartupData::CreateServicesInternal() {
-  const base::FilePath& path = key_->GetPath();
 
   scoped_refptr<base::SequencedTaskRunner> io_task_runner =
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskShutdownBehavior::BLOCK_SHUTDOWN, base::MayBlock()});
 
   policy::ChromeBrowserPolicyConnector* browser_policy_connector =
-      g_browser_process->browser_policy_connector();
-  CHECK(browser_policy_connector);
+      chrome_feature_list_creator_->browser_policy_connector();
   std::unique_ptr<policy::SchemaRegistry> schema_registry =
       std::make_unique<policy::SchemaRegistry>();
   schema_registry_service_ = BuildSchemaRegistryService(
@@ -205,6 +189,12 @@ void StartupData::CreateServicesInternal() {
       user_cloud_policy_manager_.get(),
       user_cloud_policy_manager_->core()->store(),
       true /* force_immediate_policy_load*/, nullptr /* user */);
+
+  // StoragePartitionImplMap uses profile directory as default storage
+  // partition, see StoragePartitionImplMap::GetStoragePartitionPath().
+  proto_db_provider_ = std::make_unique<leveldb_proto::ProtoDatabaseProvider>(
+      path, /*is_in_memory=*/false);
+  key_->SetProtoDatabaseProvider(proto_db_provider_.get());
 
   RegisterProfilePrefs(false /* is_signin_profile */,
                        chrome_feature_list_creator_->actual_locale(),

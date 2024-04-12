@@ -13,7 +13,7 @@
 #include "chrome/browser/devtools/devtools_contents_resizing_strategy.h"
 #include "chrome/browser/devtools/devtools_toggle_action.h"
 #include "chrome/browser/devtools/devtools_ui_bindings.h"
-#include "content/public/browser/child_process_host.h"
+#include "components/version_info/channel.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_contents_observer.h"
 
@@ -35,7 +35,7 @@ namespace user_prefs {
 class PrefRegistrySyncable;
 }
 
-// Values that represent different actions to open and close DevTools window.
+// Values that represent different actions to open DevTools window.
 // These values are written to logs. New enum values can be added, but existing
 // enums must never be renumbered or deleted and reused.
 enum class DevToolsOpenedByAction {
@@ -51,38 +51,13 @@ enum class DevToolsOpenedByAction {
   kInspectorModeShortcut = 4,
   // Toggle-open via F12
   kToggleShortcut = 5,
-  // Link on chrome://inspect
-  kInspectLink = 6,
-  // Via --auto-open-devtools-for-tabs or "Auto-open DevTools for popups"
-  kAutomaticForNewTarget = 7,
-  // Re-open when some targets (like apps) reload
-  kTargetReload = 8,
-  // Open Node DevTools button in a regular app
-  kOpenForNodeFromAnotherTarget = 9,
-  // User-pinned button in the toolbar
-  kPinnedToolbarButton = 10,
   // Add values above this line with a corresponding label in
-  // tools/metrics/histograms/metadata/dev/enums.xml
-  kMaxValue = kPinnedToolbarButton,
-};
-
-enum class DevToolsClosedByAction {
-  kUnknown = 0,
-  // Main menu -> More Tools -> Developer Tools
-  // or Ctrl+Shift+I shortcut
-  kMainMenuOrMainShortcut = 1,
-  // Toggle-open via F12
-  kToggleShortcut = 2,
-  kCloseButton = 3,
-  kTargetDetach = 4,
-  kPinnedToolbarButton = 5,
-  kMaxValue = kPinnedToolbarButton,
+  // tools/metrics/histograms/enums.xml
+  kMaxValue = kToggleShortcut,
 };
 
 class DevToolsWindow : public DevToolsUIBindings::Delegate,
-                       public content::WebContentsDelegate,
-                       public content::WebContentsObserver,
-                       public infobars::InfoBarManager::Observer {
+                       public content::WebContentsDelegate {
  public:
   static const char kDevToolsApp[];
 
@@ -124,28 +99,24 @@ class DevToolsWindow : public DevToolsUIBindings::Delegate,
   // How to get pointer to the created window see comments for
   // ToggleDevToolsWindow().
   static void OpenDevToolsWindow(content::WebContents* inspected_web_contents,
-                                 const DevToolsToggleAction& action,
-                                 DevToolsOpenedByAction opened_by);
+                                 const DevToolsToggleAction& action);
 
   // Open or reveal DevTools window, with no special action.
   // How to get pointer to the created window see comments for
   // ToggleDevToolsWindow().
+  static void OpenDevToolsWindow(content::WebContents* inspected_web_contents);
   static void OpenDevToolsWindow(content::WebContents* inspected_web_contents,
-                                 DevToolsOpenedByAction opened_by);
-  static void OpenDevToolsWindow(content::WebContents* inspected_web_contents,
-                                 Profile* profile,
-                                 DevToolsOpenedByAction opened_by);
+                                 Profile* profile);
 
   // Open or reveal DevTools window, with no special action. Use |profile| to
   // open client window in, default to |host|'s profile if none given.
-  static void OpenDevToolsWindow(scoped_refptr<content::DevToolsAgentHost> host,
-                                 Profile* profile,
-                                 DevToolsOpenedByAction opened_by);
+  static void OpenDevToolsWindow(
+      scoped_refptr<content::DevToolsAgentHost> host,
+      Profile* profile);
   // Similar to previous one, but forces the bundled frontend to be used.
   static void OpenDevToolsWindowWithBundledFrontend(
       scoped_refptr<content::DevToolsAgentHost> host,
-      Profile* profile,
-      DevToolsOpenedByAction opened_by);
+      Profile* profile);
 
   // Perform specified action for current WebContents inside a |browser|.
   // This may close currently open DevTools window.
@@ -166,18 +137,13 @@ class DevToolsWindow : public DevToolsUIBindings::Delegate,
       DevToolsOpenedByAction opened_by = DevToolsOpenedByAction::kUnknown);
 
   // Node frontend is always undocked.
-  static DevToolsWindow* OpenNodeFrontendWindow(
-      Profile* profile,
-      DevToolsOpenedByAction opened_by);
+  static DevToolsWindow* OpenNodeFrontendWindow(Profile* profile);
 
   static void InspectElement(content::RenderFrameHost* inspected_frame_host,
                              int x,
                              int y);
 
   static void LogDevToolsOpenedByAction(DevToolsOpenedByAction opened_by);
-
-  // Logs UKM event when DevTools is opened.
-  static void LogDevToolsOpenedUKM(content::WebContents* web_contents);
 
   static std::unique_ptr<content::NavigationThrottle>
   MaybeCreateNavigationThrottle(content::NavigationHandle* handle);
@@ -283,11 +249,9 @@ class DevToolsWindow : public DevToolsUIBindings::Delegate,
 
   content::WebContents* GetInspectedWebContents();
 
-  // content::DevToolsUIBindings::Delegate overrides
-  void ActivateWindow() override;
-
  private:
   friend class DevToolsWindowTesting;
+  friend class DevToolsWindowTest;
   friend class DevToolsWindowCreationObserver;
   friend class HatsNextWebDialogBrowserTest;
 
@@ -297,12 +261,10 @@ class DevToolsWindow : public DevToolsUIBindings::Delegate,
 
   static void OpenDevToolsWindowForFrame(
       Profile* profile,
-      const scoped_refptr<content::DevToolsAgentHost>& agent_host,
-      DevToolsOpenedByAction opened_by);
+      const scoped_refptr<content::DevToolsAgentHost>& agent_host);
   static void OpenDevToolsWindowForWorker(
       Profile* profile,
-      const scoped_refptr<content::DevToolsAgentHost>& worker_agent,
-      DevToolsOpenedByAction opened_by);
+      const scoped_refptr<content::DevToolsAgentHost>& worker_agent);
 
   // DevTools lifecycle typically follows this way:
   // - Toggle/Open: client call;
@@ -339,21 +301,17 @@ class DevToolsWindow : public DevToolsUIBindings::Delegate,
                  std::unique_ptr<content::WebContents> main_web_contents,
                  DevToolsUIBindings* bindings,
                  content::WebContents* inspected_web_contents,
-                 bool can_dock,
-                 DevToolsOpenedByAction opened_by);
+                 bool can_dock);
 
   // External frontend is always undocked.
   static void OpenExternalFrontend(
       Profile* profile,
       const std::string& frontend_uri,
       const scoped_refptr<content::DevToolsAgentHost>& agent_host,
-      bool use_bundled_frontend,
-      DevToolsOpenedByAction opened_by);
-
+      bool use_bundled_frontend);
   static void OpenDevToolsWindow(scoped_refptr<content::DevToolsAgentHost> host,
                                  Profile* profile,
-                                 bool use_bundled_frontend,
-                                 DevToolsOpenedByAction opened_by);
+                                 bool use_bundled_frontend);
 
   static DevToolsWindow* Create(Profile* profile,
                                 content::WebContents* inspected_web_contents,
@@ -363,10 +321,10 @@ class DevToolsWindow : public DevToolsUIBindings::Delegate,
                                 const std::string& settings,
                                 const std::string& panel,
                                 bool has_other_clients,
-                                bool browser_connection,
-                                DevToolsOpenedByAction opened_by);
+                                bool browser_connection);
   static GURL GetDevToolsURL(Profile* profile,
                              FrontendType frontend_type,
+                             version_info::Channel channel,
                              const std::string& frontend_url,
                              bool can_dock,
                              const std::string& panel,
@@ -419,16 +377,15 @@ class DevToolsWindow : public DevToolsUIBindings::Delegate,
                       const blink::mojom::FileChooserParams& params) override;
   bool PreHandleGestureEvent(content::WebContents* source,
                              const blink::WebGestureEvent& event) override;
-  void Close(DevToolsClosedByAction closed_by);
 
   // content::DevToolsUIBindings::Delegate overrides
+  void ActivateWindow() override;
   void CloseWindow() override;
   void Inspect(scoped_refptr<content::DevToolsAgentHost> host) override;
   void SetInspectedPageBounds(const gfx::Rect& rect) override;
   void InspectElementCompleted() override;
   void SetIsDocked(bool is_docked) override;
   void OpenInNewTab(const std::string& url) override;
-  void OpenSearchResultsInNewTab(const std::string& url) override;
   void SetWhitelistedShortcuts(const std::string& message) override;
   void SetEyeDropperActive(bool active) override;
   void OpenNodeFrontend() override;
@@ -440,19 +397,8 @@ class DevToolsWindow : public DevToolsUIBindings::Delegate,
   infobars::ContentInfoBarManager* GetInfoBarManager() override;
   void RenderProcessGone(bool crashed) override;
   void ShowCertificateViewer(const std::string& cert_viewer) override;
-  int GetDockStateForLogging() override;
-  int GetOpenedByForLogging() override;
-  int GetClosedByForLogging() override;
 
-  void OpenInNewTab(const GURL& url);
   void ColorPickedInEyeDropper(int r, int g, int b, int a);
-
-  // content::WebContentsObserver
-  using content::WebContentsObserver::BeforeUnloadFired;
-  void PrimaryPageChanged(content::Page& page) override;
-
-  // infobars::InfoBarManager::Observer
-  void OnInfoBarRemoved(infobars::InfoBar* infobar, bool animate) override;
 
   // This method creates a new Browser object (if possible), and passes
   // ownership of owned_main_web_contents_ to the tab strip of the Browser.
@@ -480,7 +426,7 @@ class DevToolsWindow : public DevToolsUIBindings::Delegate,
   void OnLocaleChanged();
   void OverrideAndSyncDevToolsRendererPrefs();
 
-  void MaybeShowSharedProcessInfobar();
+  base::WeakPtr<content::WebContents> inspected_web_contents_;
 
   FrontendType frontend_type_;
   Profile* profile_;
@@ -522,15 +468,9 @@ class DevToolsWindow : public DevToolsUIBindings::Delegate,
   std::unique_ptr<DevToolsEventForwarder> event_forwarder_;
   std::unique_ptr<DevToolsEyeDropper> eye_dropper_;
 
-  const DevToolsOpenedByAction opened_by_;
-  DevToolsClosedByAction closed_by_;
-  const base::UnguessableToken session_id_for_logging_;
-
   class Throttle;
   Throttle* throttle_ = nullptr;
   bool open_new_window_for_popups_ = false;
-  infobars::InfoBar* sharing_infobar_ = nullptr;
-  int checked_sharing_process_id_ = content::ChildProcessHost::kInvalidUniqueID;
 
   base::OnceCallback<void()> reattach_complete_callback_;
 

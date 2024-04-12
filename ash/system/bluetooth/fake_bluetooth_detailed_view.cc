@@ -6,15 +6,10 @@
 
 #include "ash/system/bluetooth/bluetooth_device_list_item_view.h"
 #include "ash/system/tray/tri_view.h"
-#include "chromeos/ash/services/bluetooth_config/public/cpp/cros_bluetooth_config_util.h"
-#include "chromeos/ash/services/bluetooth_config/public/mojom/cros_bluetooth_config.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/views/controls/label.h"
 
 namespace ash {
-
-using bluetooth_config::IsBluetoothEnabledOrEnabling;
-using bluetooth_config::mojom::BluetoothSystemState;
 
 FakeBluetoothDetailedView::FakeBluetoothDetailedView(Delegate* delegate)
     : BluetoothDetailedView(delegate),
@@ -26,9 +21,8 @@ views::View* FakeBluetoothDetailedView::GetAsView() {
   return this;
 }
 
-void FakeBluetoothDetailedView::UpdateBluetoothEnabledState(
-    const BluetoothSystemState system_state) {
-  last_bluetooth_enabled_state_ = IsBluetoothEnabledOrEnabling(system_state);
+void FakeBluetoothDetailedView::UpdateBluetoothEnabledState(bool enabled) {
+  last_bluetooth_enabled_state_ = enabled;
 }
 
 BluetoothDeviceListItemView* FakeBluetoothDetailedView::AddDeviceListItem() {

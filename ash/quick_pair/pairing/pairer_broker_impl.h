@@ -6,18 +6,19 @@
 #define ASH_QUICK_PAIR_PAIRING_PAIRER_BROKER_IMPL_H_
 
 #include <memory>
-#include <optional>
 #include <string>
+
+#include "ash/quick_pair/pairing/pairer_broker.h"
 
 #include "ash/quick_pair/common/account_key_failure.h"
 #include "ash/quick_pair/common/pair_failure.h"
 #include "ash/quick_pair/common/protocol.h"
-#include "ash/quick_pair/pairing/pairer_broker.h"
 #include "base/containers/flat_map.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "base/timer/timer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace device {
 
@@ -58,7 +59,7 @@ class PairerBrokerImpl final : public PairerBroker {
   void OnFastPairProcedureComplete(scoped_refptr<Device> device);
   void CreateHandshake(scoped_refptr<Device> device);
   void OnHandshakeComplete(scoped_refptr<Device> device,
-                           std::optional<PairFailure> failure);
+                           absl::optional<PairFailure> failure);
   void OnHandshakeFailure(scoped_refptr<Device> device, PairFailure failure);
   void StartBondingAttempt(scoped_refptr<Device> device);
 

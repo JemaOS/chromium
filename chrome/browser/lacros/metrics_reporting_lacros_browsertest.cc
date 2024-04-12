@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
-
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chromeos/crosapi/mojom/metrics_reporting.mojom.h"
@@ -13,6 +10,7 @@
 #include "content/public/test/browser_test.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace crosapi {
 namespace {
@@ -27,7 +25,7 @@ class TestObserver : public mojom::MetricsReportingObserver {
   // crosapi::mojom::MetricsReportingObserver:
   void OnMetricsReportingChanged(
       bool enabled,
-      const std::optional<std::string>& client_id) override {
+      const absl::optional<std::string>& client_id) override {
     metrics_enabled_ = enabled;
     metrics_client_id_ = client_id;
     if (on_changed_run_loop_)
@@ -35,9 +33,9 @@ class TestObserver : public mojom::MetricsReportingObserver {
   }
 
   // Public because this is test code.
-  std::optional<bool> metrics_enabled_;
-  std::optional<std::string> metrics_client_id_;
-  raw_ptr<base::RunLoop> on_changed_run_loop_ = nullptr;
+  absl::optional<bool> metrics_enabled_;
+  absl::optional<std::string> metrics_client_id_;
+  base::RunLoop* on_changed_run_loop_ = nullptr;
   mojo::Receiver<mojom::MetricsReportingObserver> receiver_{this};
 };
 
@@ -51,7 +49,7 @@ IN_PROC_BROWSER_TEST_F(MetricsReportingLacrosBrowserTest, Basics) {
   // on the ash build type (official vs. not).
   const bool ash_metrics_enabled =
       chromeos::BrowserParamsProxy::Get()->AshMetricsEnabled();
-  const std::optional<std::string> ash_metrics_client_id =
+  const absl::optional<std::string> ash_metrics_client_id =
       chromeos::BrowserParamsProxy::Get()->MetricsServiceClientId();
 
   mojo::Remote<mojom::MetricsReporting> metrics_reporting;

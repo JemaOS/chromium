@@ -15,29 +15,14 @@ class GURL;
 
 // Core singleton tab API:
 
-// Shows a given a URL. If a tab with the same URL (ignoring the ref) is already
-// visible in this browser, it becomes selected. Otherwise a new tab is created.
-// Note: On Ash, if Lacros is enabled, this requests the URL to be opened in a
-// Lacros-compatible manner (typically: in Lacros).
+// Show a given a URL. If a tab with the same URL (ignoring the ref) is
+// already visible in this browser, it becomes selected. Otherwise a new tab
+// is created.
 void ShowSingletonTab(Browser* browser, const GURL& url);
 
-// Like above, but uses the last active tabbed browser or creates a new one if
-// possible.
-void ShowSingletonTab(Profile* profile, const GURL& url);
-
-// Like ShowSingletonTab, but if the current tab is the new tab page or
+// As ShowSingletonTab, but if the current tab is the new tab page or
 // about:blank, then overwrite it with the passed contents.
-void ShowSingletonTabOverwritingNTP(
-    Profile* profile,
-    const GURL& url,
-    NavigateParams::PathBehavior path_behavior = NavigateParams::RESPECT);
-void ShowSingletonTabOverwritingNTP(
-    Browser* browser,
-    const GURL& url,
-    NavigateParams::PathBehavior path_behavior = NavigateParams::RESPECT);
-// This overload (on Ash) is incompatible with Lacros. Do not use it in new Ash
-// code.
-void ShowSingletonTabOverwritingNTP(NavigateParams* params);
+void ShowSingletonTabOverwritingNTP(Browser* browser, NavigateParams* params);
 
 // Creates a NavigateParams struct for a singleton tab navigation.
 NavigateParams GetSingletonTabNavigateParams(Browser* browser, const GURL& url);

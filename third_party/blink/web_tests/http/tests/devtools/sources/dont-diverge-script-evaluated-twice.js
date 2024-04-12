@@ -2,15 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as SourcesModule from 'devtools/panels/sources/sources.js';
-import * as Bindings from 'devtools/models/bindings/bindings.js';
-
 (async function() {
   TestRunner.addResult(
       `Checks that script evaluated twice with different source and the same sourceURL won't be diverged from VM.\n`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
 
   const scriptSource = '239\n//# sourceURL=test.js';
@@ -24,14 +19,14 @@ import * as Bindings from 'devtools/models/bindings/bindings.js';
   }
 
   function step2(uiSourceCode) {
-    TestRunner.addSnifferPromise(Bindings.ResourceScriptMapping.ResourceScriptFile.prototype, 'mappingCheckedForTest')
+    TestRunner.addSnifferPromise(Bindings.ResourceScriptFile.prototype, 'mappingCheckedForTest')
         .then(() => step3(uiSourceCode));
     SourcesTestRunner.showScriptSource('test.js');
   }
 
   function step3(uiSourceCode) {
     var debuggerModel = TestRunner.debuggerModel;
-    var scriptFile = Bindings.DebuggerWorkspaceBinding.DebuggerWorkspaceBinding.instance().scriptFile(uiSourceCode, debuggerModel);
+    var scriptFile = Bindings.debuggerWorkspaceBinding.scriptFile(uiSourceCode, debuggerModel);
     if (!scriptFile) {
       TestRunner.addResult('[FAIL]: no script file for test.js');
       SourcesTestRunner.completeDebuggerTest();
@@ -45,9 +40,9 @@ import * as Bindings from 'devtools/models/bindings/bindings.js';
 
     TestRunner
         .addSnifferPromise(
-            SourcesModule.DebuggerPlugin.DebuggerPlugin.prototype, 'didDivergeFromVM')
+            Sources.DebuggerPlugin.prototype, 'didDivergeFromVM')
         .then(dumpDivergeFromVM);
-    TestRunner.addSnifferPromise(Bindings.ResourceScriptMapping.ResourceScriptFile.prototype, 'mappingCheckedForTest')
+    TestRunner.addSnifferPromise(Bindings.ResourceScriptFile.prototype, 'mappingCheckedForTest')
         .then(() => SourcesTestRunner.completeDebuggerTest());
     TestRunner.evaluateInPage(changedScriptSource);
   }

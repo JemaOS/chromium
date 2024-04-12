@@ -78,6 +78,16 @@ const char* {{class_name}}::GetJSPropertyName() const {
 }
 
   {% if not is_alias %}
+  {% if property.visited_property %}
+const CSSProperty* {{class_name}}::GetVisitedProperty() const {
+  return &Get{{property.visited_property.property_id}}();
+}
+  {% endif %}
+  {% if property.unvisited_property %}
+const CSSProperty* {{class_name}}::GetUnvisitedProperty() const {
+  return &Get{{property.unvisited_property.property_id}}();
+}
+  {% endif %}
 
   {% if property.surrogate_for %}
 const CSSProperty* {{class_name}}::SurrogateFor(TextDirection direction,
@@ -92,10 +102,10 @@ const CSSProperty* {{class_name}}::SurrogateFor(TextDirection direction,
     {% if group.is_logical %}
 const CSSProperty* {{class_name}}::SurrogateFor(TextDirection direction,
     blink::WritingMode writing_mode) const {
-  return &ResolveDirectionAwarePropertyInternal(direction, writing_mode);
+  return &ResolveDirectionAwareProperty(direction, writing_mode);
 }
 
-const CSSProperty& {{class_name}}::ResolveDirectionAwarePropertyInternal(
+const CSSProperty& {{class_name}}::ResolveDirectionAwareProperty(
     TextDirection direction,
     blink::WritingMode writing_mode) const {
   return CSSDirectionAwareResolver::Resolve{{resolver_name}}(direction, writing_mode,

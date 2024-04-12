@@ -32,7 +32,8 @@
 
 namespace blink {
 
-AnalyserNode::AnalyserNode(BaseAudioContext& context) : AudioNode(context) {
+AnalyserNode::AnalyserNode(BaseAudioContext& context)
+    : AudioBasicInspectorNode(context) {
   SetHandler(AnalyserHandler::Create(*this, context.sampleRate()));
 }
 

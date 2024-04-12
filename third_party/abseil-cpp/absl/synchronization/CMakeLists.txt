@@ -151,10 +151,9 @@ absl_cc_test(
   COPTS
     ${ABSL_TEST_COPTS}
   DEPS
-    absl::check
-    absl::core_headers
     absl::graphcycles_internal
-    absl::log
+    absl::core_headers
+    absl::raw_logging_internal
     GTest::gmock_main
 )
 
@@ -184,11 +183,10 @@ absl_cc_test(
     absl::synchronization
     absl::thread_pool
     absl::base
-    absl::check
     absl::config
     absl::core_headers
-    absl::log
     absl::memory
+    absl::raw_logging_internal
     absl::time
     GTest::gmock_main
 )
@@ -280,5 +278,5 @@ absl_cc_test(
   DEPS
     absl::synchronization
     absl::core_headers
-    absl::check
+    absl::raw_logging_internal
 )

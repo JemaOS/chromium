@@ -67,7 +67,7 @@ class LocalFileSuggestionProviderTest : public testing::Test {
   void UpdateResults() {
     base::RunLoop run_loop;
     auto cb = base::BindLambdaForTesting(
-        [&](const std::optional<std::vector<FileSuggestData>>& data) {
+        [&](const absl::optional<std::vector<FileSuggestData>>& data) {
           results_ = data;
           run_loop.Quit();
         });
@@ -75,7 +75,7 @@ class LocalFileSuggestionProviderTest : public testing::Test {
     run_loop.Run();
   }
 
-  std::optional<std::vector<FileSuggestData>>& Results() { return results_; }
+  absl::optional<std::vector<FileSuggestData>>& Results() { return results_; }
 
   LocalFileSuggestionProvider* GetProvider() { return provider_.get(); }
 
@@ -94,13 +94,13 @@ class LocalFileSuggestionProviderTest : public testing::Test {
     WaitForProviderToBeInitialized();
   }
 
-  raw_ptr<TestingProfile, DanglingUntriaged> profile_;
+  raw_ptr<TestingProfile, ExperimentalAsh> profile_;
 
  private:
   content::BrowserTaskEnvironment task_environment_;
   std::unique_ptr<TestingProfileManager> testing_profile_manager_;
   std::unique_ptr<LocalFileSuggestionProvider> provider_;
-  std::optional<std::vector<FileSuggestData>> results_;
+  absl::optional<std::vector<FileSuggestData>> results_;
 };
 
 TEST_F(LocalFileSuggestionProviderTest, ResultsEmptyOnInitialization) {
@@ -135,7 +135,11 @@ TEST_F(LocalFileSuggestionProviderTest, OldFilesNotReturned) {
   WriteFile(Path("new.txt"));
   WriteFile(Path("old.png"));
   auto now = base::Time::Now();
-  base::TouchFile(Path("old.png"), now, now - GetMaxFileSuggestionRecency());
+  base::TouchFile(
+      Path("old.png"), now,
+      now -
+          base::Days(
+              LocalFileSuggestionProvider::kDefaultMaxLastModifiedTimeInDays));
 
   GetProvider()->OnFilesOpened(
       {OpenEvent(Path("new.txt")), OpenEvent(Path("old.png"))});
@@ -150,7 +154,11 @@ TEST_F(LocalFileSuggestionProviderTest, OldFilesNotReturned) {
 class LocalFileSuggestionProviderTrashTest
     : public LocalFileSuggestionProviderTest {
  public:
-  LocalFileSuggestionProviderTrashTest() = default;
+  LocalFileSuggestionProviderTrashTest() {
+    std::vector<base::test::FeatureRef> enabled_features;
+    enabled_features.push_back(ash::features::kFilesTrash);
+    scoped_feature_list_.InitWithFeatures(enabled_features, {});
+  }
 
   LocalFileSuggestionProviderTrashTest(
       const LocalFileSuggestionProviderTrashTest&) = delete;
@@ -183,6 +191,7 @@ class LocalFileSuggestionProviderTrashTest
 
  private:
   base::FilePath trash_folder_;
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 TEST_F(LocalFileSuggestionProviderTrashTest,

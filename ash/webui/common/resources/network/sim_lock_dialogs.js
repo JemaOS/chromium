@@ -6,20 +6,20 @@
  * @fileoverview Polymer element containing all Sim lock dialogs
  */
 
-import '//resources/ash/common/cr_elements/cr_button/cr_button.js';
-import '//resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
-import '//resources/ash/common/cr_elements/icons.html.js';
-import '//resources/ash/common/cr_elements/cr_shared_style.css.js';
+import '//resources/cr_elements/cr_button/cr_button.js';
+import '//resources/cr_elements/cr_dialog/cr_dialog.js';
+import '//resources/cr_elements/icons.html.js';
+import '//resources/cr_elements/cr_shared_style.css.js';
 import '//resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
 import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
 import './network_password_input.js';
 import './network_shared.css.js';
 
-import {assertNotReached} from '//resources/ash/common/assert.js';
 import {I18nBehavior} from '//resources/ash/common/i18n_behavior.js';
 import {loadTimeData} from '//resources/ash/common/load_time_data.m.js';
+import {assertNotReached} from '//resources/ash/common/assert.js';
 import {Polymer} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {CellularSimState, CrosNetworkConfigInterface, GlobalPolicy} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
+import {CellularSimState, CrosNetworkConfigRemote, GlobalPolicy} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
 
 import {MojoInterfaceProvider, MojoInterfaceProviderImpl} from './mojo_interface_provider.js';
 import {OncMojo} from './onc_mojo.js';
@@ -178,17 +178,9 @@ Polymer({
       value: false,
       computed: 'computeIsSimPinLockRestricted_(globalPolicy, globalPolicy.*)',
     },
-
-    isCellularCarrierLockEnabled_: {
-      type: Boolean,
-      value() {
-        return loadTimeData.valueExists('isCellularCarrierLockEnabled') &&
-            loadTimeData.getBoolean('isCellularCarrierLockEnabled');
-      },
-    },
   },
 
-  /** @private {?CrosNetworkConfigInterface} */
+  /** @private {?CrosNetworkConfigRemote} */
   networkConfig_: null,
 
   /** @override */
@@ -231,14 +223,6 @@ Polymer({
     const simLockStatus = this.deviceState.simLockStatus;
 
     if (!simLockStatus) {
-      this.isDialogOpen = false;
-      return;
-    }
-
-    // If device is carrier locked, don't show any dialog
-    // Device could only be unlocked by carrier
-    if (this.isCellularCarrierLockEnabled_ &&
-        simLockStatus.lockType === 'network-pin') {
       this.isDialogOpen = false;
       return;
     }

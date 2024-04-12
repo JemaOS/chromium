@@ -39,7 +39,6 @@
 // required types without reference to the generator output headers.
 
 #include <memory>
-#include <optional>
 
 #include "base/gtest_prod_util.h"
 #include "base/synchronization/lock.h"
@@ -47,8 +46,8 @@
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/struct_ptr.h"
 #include "mojo/public/cpp/system/data_pipe.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/blob/data_element.mojom-blink-forward.h"
-#include "third_party/blink/public/mojom/blob/file_backed_blob_factory.mojom-blink-forward.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
@@ -113,6 +112,15 @@ class PLATFORM_EXPORT BlobData {
   BlobData& operator=(const BlobData&) = delete;
   ~BlobData();
 
+  // Calling append* on objects returned by createFor___WithUnknownSize will
+  // check-fail. The caller can only have an unknown-length file if it is the
+  // only item in the blob.
+  static std::unique_ptr<BlobData> CreateForFileWithUnknownSize(
+      const String& path);
+  static std::unique_ptr<BlobData> CreateForFileWithUnknownSize(
+      const String& path,
+      const absl::optional<base::Time>& expected_modification_time);
+
   const String& ContentType() const { return content_type_; }
   void SetContentType(const String&);
 
@@ -123,6 +131,10 @@ class PLATFORM_EXPORT BlobData {
 
   void AppendBytes(const void*, size_t length);
   void AppendData(scoped_refptr<RawData>);
+  void AppendFile(const String& path,
+                  int64_t offset,
+                  int64_t length,
+                  const absl::optional<base::Time>& expected_modification_time);
 
   // The given blob must not be a file with unknown size. Please use the
   // File::appendTo instead.
@@ -169,20 +181,6 @@ class PLATFORM_EXPORT BlobDataHandle
   static scoped_refptr<BlobDataHandle> Create() {
     return base::AdoptRef(new BlobDataHandle());
   }
-  static scoped_refptr<BlobDataHandle> CreateForFile(
-      mojom::blink::FileBackedBlobFactory* file_backed_blob_factory,
-      const String& path,
-      int64_t offset,
-      int64_t length,
-      const std::optional<base::Time>& expected_modification_time,
-      const String& content_type);
-  static scoped_refptr<BlobDataHandle> CreateForFileSync(
-      mojom::blink::FileBackedBlobFactory* file_backed_blob_factory,
-      const String& path,
-      int64_t offset,
-      int64_t length,
-      const std::optional<base::Time>& expected_modification_time,
-      const String& content_type);
 
   // For initial creation.
   static scoped_refptr<BlobDataHandle> Create(std::unique_ptr<BlobData> data,
@@ -225,7 +223,7 @@ class PLATFORM_EXPORT BlobDataHandle
   // This does synchronous IPC, and possibly synchronous file operations. Think
   // twice before calling this function.
   bool CaptureSnapshot(uint64_t* snapshot_size,
-                       std::optional<base::Time>* snapshot_modification_time);
+                       absl::optional<base::Time>* snapshot_modification_time);
 
   void SetBlobRemoteForTesting(mojo::PendingRemote<mojom::blink::Blob> remote) {
     base::AutoLock locker(blob_remote_lock_);
@@ -238,11 +236,6 @@ class PLATFORM_EXPORT BlobDataHandle
  private:
   BlobDataHandle();
   BlobDataHandle(std::unique_ptr<BlobData>, uint64_t size);
-  BlobDataHandle(mojom::blink::FileBackedBlobFactory* file_backed_blob_factory,
-                 mojom::blink::DataElementFilePtr file_element,
-                 const String& content_type,
-                 uint64_t size,
-                 bool synchronous_register = false);
   BlobDataHandle(const String& uuid, const String& type, uint64_t size);
   BlobDataHandle(const String& uuid,
                  const String& type,

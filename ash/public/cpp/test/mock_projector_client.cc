@@ -4,8 +4,6 @@
 
 #include "ash/public/cpp/test/mock_projector_client.h"
 
-#include "base/check.h"
-
 namespace ash {
 
 MockProjectorClient::MockProjectorClient() {

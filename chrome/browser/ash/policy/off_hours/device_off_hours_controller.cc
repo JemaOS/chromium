@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/policy/off_hours/device_off_hours_controller.h"
 
-#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -22,6 +21,7 @@
 #include "components/prefs/pref_value_map.h"
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy::off_hours {
 
@@ -68,10 +68,13 @@ bool DeviceOffHoursController::IsCurrentSessionAllowedOnlyForOffHours() const {
   const user_manager::UserList& logged_in_users =
       user_manager->GetLoggedInUsers();
   user_manager::UserList users_to_check;
-  for (user_manager::User* user : logged_in_users) {
-    if (user->GetType() == user_manager::UserType::kRegular ||
-        user->GetType() == user_manager::UserType::kGuest ||
-        user->GetType() == user_manager::UserType::kChild) {
+  for (auto* user : logged_in_users) {
+    if (user->GetType() == user_manager::USER_TYPE_REGULAR ||
+        user->GetType() == user_manager::USER_TYPE_GUEST ||
+        user->GetType() == user_manager::USER_TYPE_FLINT_ACCOUNT ||
+        user->GetType() == user_manager::USER_TYPE_JEMA_ACCOUNT ||
+        user->GetType() == user_manager::USER_TYPE_JEMA_CHILD ||
+        user->GetType() == user_manager::USER_TYPE_CHILD) {
       users_to_check.push_back(user);
     }
   }
@@ -92,7 +95,7 @@ void DeviceOffHoursController::UpdateOffHoursPolicy(
   if (device_settings_proto.has_device_off_hours()) {
     const em::DeviceOffHoursProto& container(
         device_settings_proto.device_off_hours());
-    std::optional<std::string> timezone = ExtractTimezoneFromProto(container);
+    absl::optional<std::string> timezone = ExtractTimezoneFromProto(container);
     if (timezone) {
       off_hours_intervals = weekly_time_utils::ConvertIntervalsToGmt(
           ExtractWeeklyTimeIntervalsFromProto(container, *timezone, clock_));
@@ -128,7 +131,7 @@ void DeviceOffHoursController::UpdateOffHoursMode() {
   namespace wtu = weekly_time_utils;
   const base::Time now = clock_->Now();
   const bool in_interval = wtu::Contains(now, off_hours_intervals_);
-  const std::optional<base::Time> update_time =
+  const absl::optional<base::Time> update_time =
       wtu::GetNextEventTime(now, off_hours_intervals_);
 
   // weekly off_hours_intervals_ is not empty -> update_time has a value

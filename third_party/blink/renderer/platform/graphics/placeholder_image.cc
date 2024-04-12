@@ -85,18 +85,20 @@ void DrawCenteredIcon(cc::PaintCanvas* canvas,
 }
 
 FontDescription CreatePlaceholderFontDescription(float scale_factor) {
-  scoped_refptr<SharedFontFamily> arial = SharedFontFamily::Create(
-      font_family_names::kArial, FontFamily::Type::kFamilyName);
-  scoped_refptr<SharedFontFamily> helvetica = SharedFontFamily::Create(
-      font_family_names::kHelvetica, FontFamily::Type::kFamilyName, arial);
-  scoped_refptr<SharedFontFamily> helvetica_neue =
-      SharedFontFamily::Create(font_family_names::kHelveticaNeue,
-                               FontFamily::Type::kFamilyName, helvetica);
-  FontFamily roboto(font_family_names::kRoboto, FontFamily::Type::kFamilyName,
-                    helvetica_neue);
-
   FontDescription description;
-  description.SetFamily(roboto);
+  description.FirstFamily().SetFamily("Roboto", FontFamily::Type::kFamilyName);
+
+  scoped_refptr<SharedFontFamily> helvetica_neue = SharedFontFamily::Create();
+  helvetica_neue->SetFamily("Helvetica Neue", FontFamily::Type::kFamilyName);
+  scoped_refptr<SharedFontFamily> helvetica = SharedFontFamily::Create();
+  helvetica->SetFamily("Helvetica", FontFamily::Type::kFamilyName);
+  scoped_refptr<SharedFontFamily> arial = SharedFontFamily::Create();
+  arial->SetFamily("Arial", FontFamily::Type::kFamilyName);
+
+  helvetica->AppendFamily(std::move(arial));
+  helvetica_neue->AppendFamily(std::move(helvetica));
+  description.FirstFamily().AppendFamily(std::move(helvetica_neue));
+
   description.SetGenericFamily(FontDescription::kSansSerifFamily);
   description.SetComputedSize(scale_factor * kFontSize);
   description.SetWeight(FontSelectionValue(500));
@@ -155,25 +157,36 @@ String FormatOriginalResourceSizeBytes(int64_t bytes) {
                             locale.ConvertToLocalizedNumber(numeric_string));
 }
 
-// A simple wrapper around a Font, so that multiple PlaceholderImages can share
-// the same Font.
-class SharedFont : public GarbageCollected<SharedFont> {
+}  // namespace
+
+// A simple RefCounted wrapper around a Font, so that multiple PlaceholderImages
+// can share the same Font.
+class PlaceholderImage::SharedFont : public RefCounted<SharedFont> {
  public:
-  SharedFont()
-      : font_(CreatePlaceholderFontDescription(1.f)), scale_factor_(1.f) {}
+  static scoped_refptr<SharedFont> GetOrCreateInstance(float scale_factor) {
+    if (g_instance_) {
+      scoped_refptr<SharedFont> shared_font(g_instance_);
+      shared_font->MaybeUpdateForScaleFactor(scale_factor);
+      return shared_font;
+    }
 
-  void Trace(Visitor* visitor) const { visitor->Trace(font_); }
-
-  static SharedFont* Get(float scale_factor) {
-    DEFINE_STATIC_LOCAL(Persistent<SharedFont>, shared_font,
-                        (MakeGarbageCollected<SharedFont>()));
-    shared_font->MaybeUpdateForScaleFactor(scale_factor);
-    return shared_font.Get();
+    scoped_refptr<SharedFont> shared_font =
+        base::MakeRefCounted<SharedFont>(scale_factor);
+    g_instance_ = shared_font.get();
+    return shared_font;
   }
 
-  const Font& font() const { return font_; }
+  // This constructor is public so that base::MakeRefCounted() can call it.
+  explicit SharedFont(float scale_factor)
+      : font_(CreatePlaceholderFontDescription(scale_factor)),
+        scale_factor_(scale_factor) {
+  }
 
- private:
+  ~SharedFont() {
+    DCHECK_EQ(this, g_instance_);
+    g_instance_ = nullptr;
+  }
+
   void MaybeUpdateForScaleFactor(float scale_factor) {
     if (scale_factor_ == scale_factor)
       return;
@@ -182,11 +195,18 @@ class SharedFont : public GarbageCollected<SharedFont> {
     font_ = Font(CreatePlaceholderFontDescription(scale_factor_));
   }
 
+  const Font& font() const { return font_; }
+
+ private:
+  static SharedFont* g_instance_;
+
   Font font_;
   float scale_factor_;
 };
 
-}  // namespace
+// static
+PlaceholderImage::SharedFont* PlaceholderImage::SharedFont::g_instance_ =
+    nullptr;
 
 PlaceholderImage::PlaceholderImage(ImageObserver* observer,
                                    const gfx::Size& size,
@@ -219,7 +239,7 @@ bool PlaceholderImage::CurrentFrameKnownToBeOpaque() {
 
 PaintImage PlaceholderImage::PaintImageForCurrentFrame() {
   auto builder = CreatePaintImageBuilder().set_completion_state(
-      PaintImage::CompletionState::kDone);
+      PaintImage::CompletionState::DONE);
 
   const gfx::Rect dest_rect(size_);
   if (paint_record_for_current_frame_) {
@@ -247,7 +267,7 @@ void PlaceholderImage::SetIconAndTextScaleFactor(
     return;
   icon_and_text_scale_factor_ = icon_and_text_scale_factor;
   cached_text_width_.reset();
-  paint_record_for_current_frame_ = std::nullopt;
+  paint_record_for_current_frame_ = absl::nullopt;
 }
 
 void PlaceholderImage::Draw(cc::PaintCanvas* canvas,
@@ -280,10 +300,13 @@ void PlaceholderImage::Draw(cc::PaintCanvas* canvas,
     return;
   }
 
-  SharedFont* shared_font = SharedFont::Get(icon_and_text_scale_factor_);
+  if (!shared_font_)
+    shared_font_ = SharedFont::GetOrCreateInstance(icon_and_text_scale_factor_);
+  else
+    shared_font_->MaybeUpdateForScaleFactor(icon_and_text_scale_factor_);
 
   if (!cached_text_width_.has_value())
-    cached_text_width_ = shared_font->font().Width(TextRun(text_));
+    cached_text_width_ = shared_font_->font().Width(TextRun(text_));
 
   const float icon_and_text_width =
       cached_text_width_.value() +
@@ -323,7 +346,7 @@ void PlaceholderImage::Draw(cc::PaintCanvas* canvas,
            draw_options.sampling_options, icon_and_text_scale_factor_);
 
   flags.setColor(SkColorSetARGB(0xAB, 0, 0, 0));
-  shared_font->font().DrawBidiText(
+  shared_font_->font().DrawBidiText(
       canvas, TextRunPaintInfo(TextRun(text_)),
       gfx::PointF(text_x, feature_y + icon_and_text_scale_factor_ *
                                           (kTextPaddingY + kFontSize)),
@@ -345,6 +368,7 @@ void PlaceholderImage::DrawPattern(GraphicsContext& context,
 
 void PlaceholderImage::DestroyDecodedData() {
   paint_record_for_current_frame_.reset();
+  shared_font_ = scoped_refptr<SharedFont>();
 }
 
 Image::SizeAvailability PlaceholderImage::SetData(scoped_refptr<SharedBuffer>,
@@ -352,8 +376,8 @@ Image::SizeAvailability PlaceholderImage::SetData(scoped_refptr<SharedBuffer>,
   return Image::kSizeAvailable;
 }
 
-const Font& PlaceholderImage::GetFontForTesting() const {
-  return SharedFont::Get(icon_and_text_scale_factor_)->font();
+const Font* PlaceholderImage::GetFontForTesting() const {
+  return shared_font_ ? &shared_font_->font() : nullptr;
 }
 
 }  // namespace blink

@@ -79,7 +79,7 @@ class CORE_EXPORT HTMLSlotElement final : public HTMLElement {
       DetachDisplayLockedAssignedNodesLayoutTreeIfNeeded();
   }
 
-  void AttachLayoutTreeForSlotChildren(AttachContext&);
+  void AttachLayoutTree(AttachContext&) final;
   void DetachLayoutTree(bool performing_reattach) final;
   void RebuildDistributedChildrenLayoutTrees(WhitespaceAttacher&);
 
@@ -122,7 +122,6 @@ class CORE_EXPORT HTMLSlotElement final : public HTMLElement {
   void assign(HeapVector<Member<V8UnionElementOrText>>& nodes, ExceptionState&);
   // assign() c++ implementation.
   void Assign(const HeapVector<Member<Node>>& nodes);
-  void Assign(Node* node);
 
   const HeapLinkedHashSet<WeakMember<Node>>& ManuallyAssignedNodes() const {
     return manually_assigned_nodes_;
@@ -158,8 +157,6 @@ class CORE_EXPORT HTMLSlotElement final : public HTMLElement {
   void UpdateFlatTreeNodeDataForAssignedNodes();
   void ClearAssignedNodesAndFlatTreeChildren();
   void DetachDisplayLockedAssignedNodesLayoutTreeIfNeeded();
-
-  void UpdateDirAutoAncestorsForSupportsAssignmentChange();
 
   HeapVector<Member<Node>> assigned_nodes_;
   HeapVector<Member<Node>> flat_tree_children_;

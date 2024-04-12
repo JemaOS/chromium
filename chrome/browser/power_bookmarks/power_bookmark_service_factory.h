@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_POWER_BOOKMARKS_POWER_BOOKMARK_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_POWER_BOOKMARKS_POWER_BOOKMARK_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace power_bookmarks {
@@ -24,13 +24,13 @@ class PowerBookmarkServiceFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<PowerBookmarkServiceFactory>;
+  friend struct base::DefaultSingletonTraits<PowerBookmarkServiceFactory>;
 
   PowerBookmarkServiceFactory();
   ~PowerBookmarkServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

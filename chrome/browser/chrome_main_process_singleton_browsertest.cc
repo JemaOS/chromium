@@ -80,7 +80,15 @@ IN_PROC_BROWSER_TEST_F(ChromeMainTest, ReuseBrowserInstanceWhenOpeningFile) {
   ASSERT_EQ(url, tab->GetVisibleURL());
 }
 
-IN_PROC_BROWSER_TEST_F(ChromeMainTest, SecondLaunchWithIncognitoUrl) {
+// ChromeMainTest.SecondLaunchWithIncognitoUrl is flaky on Win and Linux.
+// http://crbug.com/130395
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_SecondLaunchWithIncognitoUrl DISABLED_SecondLaunchWithIncognitoUrl
+#else
+#define MAYBE_SecondLaunchWithIncognitoUrl SecondLaunchWithIncognitoUrl
+#endif
+
+IN_PROC_BROWSER_TEST_F(ChromeMainTest, MAYBE_SecondLaunchWithIncognitoUrl) {
   // We should start with one normal window.
   ASSERT_EQ(1u, chrome::GetTabbedBrowserCount(browser()->profile()));
 

@@ -16,7 +16,6 @@
 // non-Android include on Android.
 #include "chrome/browser/ui/webui/internals/user_education/user_education_internals.mojom.h"  // nogncheck
 #include "components/user_education/webui/help_bubble_handler.h"
-#include "ui/webui/color_change_listener/color_change_handler.h"
 #include "ui/webui/resources/cr_components/help_bubble/help_bubble.mojom.h"
 #endif
 
@@ -53,10 +52,6 @@ class InternalsUI : public ui::MojoWebUIController
       mojo::PendingRemote<help_bubble::mojom::HelpBubbleClient> pending_client,
       mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandler>
           pending_handler) override;
-
-  void BindInterface(
-      mojo::PendingReceiver<color_change_listener::mojom::PageHandler>
-          pending_receiver);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
  private:
@@ -81,8 +76,6 @@ class InternalsUI : public ui::MojoWebUIController
   std::unique_ptr<user_education::HelpBubbleHandler> help_bubble_handler_;
   mojo::Receiver<help_bubble::mojom::HelpBubbleHandlerFactory>
       help_bubble_handler_factory_receiver_;
-
-  std::unique_ptr<ui::ColorChangeHandler> color_provider_handler_;
 #endif  // !BUILDFLAG(IS_ANDROID)
 };
 

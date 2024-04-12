@@ -45,7 +45,7 @@ inline EBorderStyle OutlineStyle(Element* element) {
 TEST_F(LayoutThemeTest, ChangeFocusRingColor) {
   SetHtmlInnerHTML("<span id=span tabIndex=0>Span</span>");
 
-  Element* span = GetElementById("span");
+  Element* span = GetDocument().getElementById(AtomicString("span"));
   EXPECT_NE(nullptr, span);
   EXPECT_NE(nullptr, span->GetLayoutObject());
 
@@ -67,6 +67,7 @@ TEST_F(LayoutThemeTest, ChangeFocusRingColor) {
 
   // Change focus ring color.
   LayoutTheme::GetTheme().SetCustomFocusRingColor(custom_color);
+  Page::PlatformColorsChanged();
   UpdateAllLifecyclePhasesForTest();
 
   // Check that the focus ring color is updated.
@@ -88,7 +89,7 @@ TEST_F(LayoutThemeTest, SystemColorWithColorScheme) {
     <div id="dark"></div>
   )HTML");
 
-  Element* dark_element = GetElementById("dark");
+  Element* dark_element = GetDocument().getElementById("dark");
   ASSERT_TRUE(dark_element);
 
   const ComputedStyle* style = dark_element->GetComputedStyle();

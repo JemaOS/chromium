@@ -36,7 +36,6 @@
 namespace blink {
 
 class AXObject;
-class Element;
 class Color;
 
 // This interface respresents a UI to choose a color.
@@ -52,7 +51,7 @@ class CORE_EXPORT ColorChooser : public GarbageCollectedMixin {
   // Call to close the UI.
   virtual void EndChooser() {}
   // Returns a root AXObject in the ColorChooser if it's available.
-  virtual AXObject* RootAXObject(Element* popup_owner) = 0;
+  virtual AXObject* RootAXObject() = 0;
 };
 
 }  // namespace blink

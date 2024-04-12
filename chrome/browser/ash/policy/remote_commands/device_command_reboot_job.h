@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_POLICY_REMOTE_COMMANDS_DEVICE_COMMAND_REBOOT_JOB_H_
 #define CHROME_BROWSER_ASH_POLICY_REMOTE_COMMANDS_DEVICE_COMMAND_REBOOT_JOB_H_
 
+#include <memory>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -42,8 +43,7 @@ class RebootNotificationsScheduler;
 //   * If there is no logged in user, reports success and reboots immediately.
 //   * If a user is logged in, notifies the user, waits for a timeout, reports
 //     success and reboots.
-//   * If the user signs out during the waiting period, reports success and
-//     reboots.
+//   * If the user signs out during the timeout, reports success and reboots.
 class DeviceCommandRebootJob : public RemoteCommandJob,
                                public chromeos::PowerManagerClient::Observer {
  public:
@@ -77,8 +77,6 @@ class DeviceCommandRebootJob : public RemoteCommandJob,
       const base::TickClock* tick_clock,
       GetBootTimeCallback get_boot_time_callback);
 
-  bool ParseCommandPayload(const std::string& command_payload) override;
-
  private:
   // Posts a task with a callback. Command's callbacks cannot be run
   // synchronously from `RunImpl`.
@@ -109,26 +107,27 @@ class DeviceCommandRebootJob : public RemoteCommandJob,
   void ResetTriggeringEvents();
 
   // Sends the reboot request to power manager service. Unowned.
-  const raw_ptr<chromeos::PowerManagerClient> power_manager_client_;
+  const base::raw_ptr<chromeos::PowerManagerClient> power_manager_client_;
   // Checks the availability of `power_manager_client_`.
   base::ScopedObservation<chromeos::PowerManagerClient, DeviceCommandRebootJob>
       power_manager_availability_observation_{this};
 
   // Provides information about current logins status and device mode to
   // determine how to proceed with the reboot.
-  const raw_ptr<ash::LoginState> login_state_;
+  const base::raw_ptr<ash::LoginState> login_state_;
 
   // Handles reboot on signout.
-  raw_ptr<ash::SessionTerminationManager> session_termination_manager_;
+  base::raw_ptr<ash::SessionTerminationManager> session_termination_manager_;
 
   // Scheduler for reboot notification and dialog. Unowned.
-  raw_ptr<RebootNotificationsScheduler> in_session_notifications_scheduler_;
+  base::raw_ptr<RebootNotificationsScheduler>
+      in_session_notifications_scheduler_;
   // Timer tracking the delayed reboot event.
   base::WallClockTimer in_session_reboot_timer_;
 
   // Clock to schedule in-user-session reboot delay. Can be mocked for testing.
   // Unowned.
-  raw_ptr<const base::Clock> clock_;
+  base::raw_ptr<const base::Clock> clock_;
 
   // Returns device's boot timestamp. The boot time is not constant and may
   // change at runtime, e.g. because of time sync.
@@ -136,8 +135,7 @@ class DeviceCommandRebootJob : public RemoteCommandJob,
 
   CallbackWithResult result_callback_;
 
-  // Delay between execution start in user session and the reboot.
-  base::TimeDelta user_session_delay_;
+  const base::TimeDelta user_session_timeout_;
 
   base::WeakPtrFactory<DeviceCommandRebootJob> weak_factory_{this};
 };

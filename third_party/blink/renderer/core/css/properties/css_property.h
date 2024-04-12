@@ -23,44 +23,14 @@ class CrossThreadStyleValue;
 class ExecutionContext;
 class LayoutObject;
 
-// Determines how far to process a value requested from a computed style.
-enum class CSSValuePhase {
-  // The value inherited to child elements.
-  // https://www.w3.org/TR/css-cascade-3/#computed
-  kComputedValue,
-  // The value returned from getComputedStyle().
-  // https://www.w3.org/TR/cssom-1/#resolved-values
-  kResolvedValue
-};
-
-// For use in Get(Un)VisitedProperty(), although you could probably
-// use them yourself if you wanted to; contains a mapping from each
-// CSSPropertyID to its visited/unvisited counterpart, or kInvalid
-// if none exists. They use small integer types (even though they
-// actually contain CSSPropertyIDs) because they can be quite hot
-// in the cache, e.g., during cascade expansion.
-extern CORE_EXPORT const uint8_t kPropertyVisitedIDs[];
-extern CORE_EXPORT const uint16_t kPropertyUnvisitedIDs[];
-
 class CORE_EXPORT CSSProperty : public CSSUnresolvedProperty {
  public:
   using Flags = uint64_t;
 
   static const CSSProperty& Get(CSSPropertyID id) {
-    // Instead of using To<> here (which calls GetFlags()), we have
-    // a bounds check on the property ID.
-    //
-    // This is pretty much the same speed overall (as measured by the
-    // style perftest, June 2023), but should be a stronger security
-    // bound; it is unlikely that an attacker can corrupt an object
-    // in the read-only kProperties[] array but _not_ make it return
-    // the flags they want (which is what the To<> downcast checks),
-    // but it seems very likely that a bug could cause them to control
-    // the id to go out-of-bounds and hit an attacked-controlled vtable
-    // at some wild memory location.
-    SECURITY_CHECK(id > CSSPropertyID::kInvalid && id <= kLastCSSProperty);
-    DCHECK(IsA<CSSProperty>(GetPropertyInternal(id)));
-    return UnsafeTo<CSSProperty>(*GetPropertyInternal(id));
+    DCHECK(id != CSSPropertyID::kInvalid);
+    DCHECK(id <= kLastCSSProperty);  // last property id
+    return To<CSSProperty>(CSSUnresolvedProperty::GetNonAliasProperty(id));
   }
 
   static bool IsShorthand(const CSSPropertyName&);
@@ -107,7 +77,9 @@ class CORE_EXPORT CSSProperty : public CSSUnresolvedProperty {
     return flags_ & kValidForFormattedTextRun;
   }
   bool IsValidForKeyframe() const { return flags_ & kValidForKeyframe; }
-  bool IsValidForPositionTry() const { return flags_ & kValidForPositionTry; }
+  bool IsValidForPositionFallback() const {
+    return flags_ & kValidForPositionFallback;
+  }
   bool IsSurrogate() const { return flags_ & kSurrogate; }
   bool AffectsFont() const { return flags_ & kAffectsFont; }
   bool IsBackground() const { return flags_ & kBackground; }
@@ -132,58 +104,26 @@ class CORE_EXPORT CSSProperty : public CSSUnresolvedProperty {
   virtual const CSSValue* CSSValueFromComputedStyleInternal(
       const ComputedStyle&,
       const LayoutObject*,
-      bool allow_visited_style,
-      CSSValuePhase value_phase) const {
+      bool allow_visited_style) const {
     return nullptr;
   }
   const CSSValue* CSSValueFromComputedStyle(const ComputedStyle&,
                                             const LayoutObject*,
-                                            bool allow_visited_style,
-                                            CSSValuePhase) const;
+                                            bool allow_visited_style) const;
   std::unique_ptr<CrossThreadStyleValue> CrossThreadStyleValueFromComputedStyle(
       const ComputedStyle& computed_style,
       const LayoutObject* layout_object,
-      bool allow_visited_style,
-      CSSValuePhase value_phase) const;
-
-  const CSSProperty& ResolveDirectionAwareProperty(
-      TextDirection direction,
-      WritingMode writing_mode) const {
-    if (!IsInLogicalPropertyGroup()) {
-      // Avoid the potentially expensive virtual function call.
-      return *this;
-    } else {
-      return ResolveDirectionAwarePropertyInternal(direction, writing_mode);
-    }
-  }
-
-  virtual const CSSProperty& ResolveDirectionAwarePropertyInternal(
-      TextDirection,
-      WritingMode) const {
+      bool allow_visited_style) const;
+  virtual const CSSProperty& ResolveDirectionAwareProperty(TextDirection,
+                                                           WritingMode) const {
     return *this;
   }
   virtual bool IsInSameLogicalPropertyGroupWithDifferentMappingLogic(
       CSSPropertyID) const {
     return false;
   }
-  const CSSProperty* GetVisitedProperty() const {
-    CSSPropertyID visited_id = static_cast<CSSPropertyID>(
-        kPropertyVisitedIDs[static_cast<unsigned>(property_id_)]);
-    if (visited_id == CSSPropertyID::kInvalid) {
-      return nullptr;
-    } else {
-      return To<CSSProperty>(GetPropertyInternal(visited_id));
-    }
-  }
-  const CSSProperty* GetUnvisitedProperty() const {
-    CSSPropertyID unvisited_id = static_cast<CSSPropertyID>(
-        kPropertyUnvisitedIDs[static_cast<unsigned>(property_id_)]);
-    if (unvisited_id == CSSPropertyID::kInvalid) {
-      return nullptr;
-    } else {
-      return To<CSSProperty>(GetPropertyInternal(unvisited_id));
-    }
-  }
+  virtual const CSSProperty* GetVisitedProperty() const { return nullptr; }
+  virtual const CSSProperty* GetUnvisitedProperty() const { return nullptr; }
 
   virtual const CSSProperty* SurrogateFor(TextDirection, WritingMode) const {
     return nullptr;
@@ -257,18 +197,12 @@ class CORE_EXPORT CSSProperty : public CSSUnresolvedProperty {
     kLegacyOverlapping = 1 << 28,
     // See valid_for_keyframes in css_properties.json5
     kValidForKeyframe = 1 << 29,
-    // See valid_for_position_try in css_properties.json5
-    kValidForPositionTry = 1 << 30,
+    // See valid_for_position_fallback in css_properties.json5
+    kValidForPositionFallback = 1 << 30,
     // https://drafts.csswg.org/css-pseudo-4/#highlight-styling
     kValidForHighlight = 1ull << 31,
     // See accepts_numeric_literal in css_properties.json5.
     kAcceptsNumericLiteral = 1ull << 32,
-    // See valid_for_permission_element in css_properties.json5
-    kValidForPermissionElement = 1ull << 33,
-    // See valid_for_limited_page_context in css_properties.json5
-    kValidForLimitedPageContext = 1ull << 34,
-    // See valid_for_page_context in css_properties.json5
-    kValidForPageContext = 1ull << 35,
   };
 
   constexpr CSSProperty(CSSPropertyID property_id,
@@ -285,18 +219,16 @@ class CORE_EXPORT CSSProperty : public CSSUnresolvedProperty {
   };
 
  private:
-  static constexpr size_t kPropertyIdBits = 16;
-  uint64_t property_id_ : kPropertyIdBits;  // NOLINT(runtime/bitfields)
-  uint64_t repetition_separator_ : 8;       // NOLINT(runtime/bitfields)
-  uint64_t flags_ : 40;                     // NOLINT(runtime/bitfields)
+  uint16_t property_id_;
+  char repetition_separator_;
+  Flags flags_;
 
   // Make sure we have room for all valid CSSPropertyIDs.
-  // (Using bit fields here reduces CSSProperty size from 24 to 16
+  // (Using a smaller type here reduces CSSProperty size from 24 to 16
   // bytes, and we have many of them that are frequently accessed
   // during style application.)
-  static_assert(kPropertyIdBits >= kCSSPropertyIDBitLength);
+  static_assert(sizeof(property_id_) * 8 >= kCSSPropertyIDBitLength);
 };
-static_assert(sizeof(CSSProperty) <= 16);
 
 template <>
 struct DowncastTraits<CSSProperty> {

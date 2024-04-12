@@ -11,23 +11,22 @@ found in the LICENSE file.
     const video = document.getElementsByTagName('video')[0];
 
     function startPlaying() {
-      return video.play()
-        .then(() =>  true)
-        .catch(() => false);
+      video.play()
+        .then(() => window.domAutomationController.send(true))
+        .catch(() => window.domAutomationController.send(false));
     }
 
     function waitForPause() {
       if (video.paused) {
-        return true;
+        window.domAutomationController.send(true);
+        return;
       }
 
-      return new Promise(resolve => {
-        video.addEventListener('pause', () => resolve(true), { once: true });
-      });
+      video.addEventListener('pause', () => window.domAutomationController.send(true), { once: true });
     }
 
     function isPaused() {
-      return video.paused;
+      window.domAutomationController.send(video.paused);
     }
   </script>
 </body>

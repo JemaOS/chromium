@@ -6,7 +6,6 @@
 
 #include <stdint.h>
 
-#include <string_view>
 #include <tuple>
 
 #include "base/notreached.h"
@@ -60,7 +59,7 @@ std::unique_ptr<Beacon> MakeFirstNotDefaultBeacon() {
 
 // Beacon ----------------------------------------------------------------------
 
-Beacon::Beacon(std::wstring_view name, BeaconType type, BeaconScope scope)
+Beacon::Beacon(base::WStringPiece name, BeaconType type, BeaconScope scope)
     : type_(type),
       root_(install_static::IsSystemInstall() ? HKEY_LOCAL_MACHINE
                                               : HKEY_CURRENT_USER),
@@ -109,7 +108,7 @@ base::Time Beacon::Get() {
   return base::Time::FromInternalValue(now);
 }
 
-void Beacon::Initialize(std::wstring_view name) {
+void Beacon::Initialize(base::WStringPiece name) {
   const install_static::InstallDetails& install_details =
       install_static::InstallDetails::Get();
 
@@ -119,11 +118,11 @@ void Beacon::Initialize(std::wstring_view name) {
   if (scope_ == BeaconScope::PER_INSTALL ||
       !install_static::IsSystemInstall()) {
     key_path_ = install_details.GetClientStateKeyPath();
-    value_name_.assign(name);
+    value_name_.assign(name.data(), name.size());
   } else {
     key_path_ = install_details.GetClientStateMediumKeyPath();
     key_path_.push_back(L'\\');
-    key_path_.append(name);
+    key_path_.append(name.data(), name.size());
     // This should never fail. If it does, the beacon will be written in the
     // key's default value, which is okay since the majority case is likely a
     // machine with a single user.

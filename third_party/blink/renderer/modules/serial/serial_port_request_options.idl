@@ -6,5 +6,4 @@
 
 dictionary SerialPortRequestOptions {
   sequence<SerialPortFilter> filters;
-  sequence<BluetoothServiceUUID> allowedBluetoothServiceClassIds;
 };

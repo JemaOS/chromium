@@ -42,8 +42,6 @@ class CORE_EXPORT WebRemoteFrameImpl final
       mojo::PendingAssociatedReceiver<mojom::blink::RemoteFrame> receiver,
       mojom::blink::FrameReplicationStatePtr replicated_state);
 
-  // TODO(crbug.com/1498140): Rename this now that the portal case no longer
-  // applies.
   static WebRemoteFrameImpl* CreateForPortalOrFencedFrame(
       mojom::blink::TreeScopeType,
       const RemoteFrameToken& frame_token,
@@ -79,7 +77,7 @@ class CORE_EXPORT WebRemoteFrameImpl final
       const WebSecurityOrigin&,
       bool is_potentially_trustworthy_opaque_origin) override;
   void DidStartLoading() override;
-  v8::Local<v8::Object> GlobalProxy(v8::Isolate*) const override;
+  v8::Local<v8::Object> GlobalProxy() const override;
   WebString UniqueName() const override;
   const FrameVisualProperties& GetPendingVisualPropertiesForTesting()
       const override;

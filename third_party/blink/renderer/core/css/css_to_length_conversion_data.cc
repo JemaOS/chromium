@@ -30,11 +30,9 @@
 
 #include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
 
-#include "third_party/blink/renderer/core/css/anchor_evaluator.h"
 #include "third_party/blink/renderer/core/css/container_query.h"
 #include "third_party/blink/renderer/core/css/container_query_evaluator.h"
 #include "third_party/blink/renderer/core/css/css_resolution_units.h"
-#include "third_party/blink/renderer/core/css/out_of_flow_data.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/layout_tree_builder_traversal.h"
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
@@ -47,45 +45,79 @@ namespace blink {
 
 namespace {
 
-std::optional<double> FindSizeForContainerAxis(
-    PhysicalAxes requested_axis,
-    Element* context_element,
-    const ScopedCSSName* container_name = nullptr) {
-  DCHECK(requested_axis == kPhysicalAxesHorizontal ||
-         requested_axis == kPhysicalAxesVertical);
+absl::optional<double> FindSizeForContainerAxis(PhysicalAxes requested_axis,
+                                                Element* context_element) {
+  DCHECK(requested_axis == kPhysicalAxisHorizontal ||
+         requested_axis == kPhysicalAxisVertical);
 
-  ContainerSelector selector;
-  const TreeScope* tree_scope = nullptr;
-  if (container_name) {
-    selector = ContainerSelector(container_name->GetName(), requested_axis,
-                                 kLogicalAxesNone);
-    tree_scope = container_name->GetTreeScope();
-  } else {
-    selector = ContainerSelector(requested_axis);
-    tree_scope = context_element ? &context_element->GetTreeScope() : nullptr;
-  }
+  ContainerSelector selector(requested_axis);
+  const TreeScope* tree_scope =
+      context_element ? &context_element->GetTreeScope() : nullptr;
 
   for (Element* container = ContainerQueryEvaluator::FindContainer(
            context_element, selector, tree_scope);
        container;
        container = ContainerQueryEvaluator::FindContainer(
            container->ParentOrShadowHostElement(), selector, tree_scope)) {
-    ContainerQueryEvaluator& evaluator =
-        container->EnsureContainerQueryEvaluator();
-    evaluator.SetReferencedByUnit();
-    std::optional<double> size = requested_axis == kPhysicalAxesHorizontal
-                                     ? evaluator.Width()
-                                     : evaluator.Height();
+    ContainerQueryEvaluator* evaluator =
+        container->GetContainerQueryEvaluator();
+    if (!evaluator) {
+      continue;
+    }
+    evaluator->SetReferencedByUnit();
+    absl::optional<double> size = requested_axis == kPhysicalAxisHorizontal
+                                      ? evaluator->Width()
+                                      : evaluator->Height();
     if (!size.has_value()) {
       continue;
     }
     return size;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace
+
+CSSToLengthConversionData::FontSizes::FontSizes(float em,
+                                                float rem,
+                                                const Font* font,
+                                                float font_zoom)
+    : em_(em),
+      rem_(rem),
+      font_(font),
+      root_font_(font),
+      font_zoom_(font_zoom),
+      root_font_zoom_(font_zoom) {
+  DCHECK(font_);
+}
+
+CSSToLengthConversionData::FontSizes::FontSizes(float em,
+                                                float rem,
+                                                const Font* font,
+                                                const Font* root_font,
+                                                float font_zoom,
+                                                float root_font_zoom)
+    : em_(em),
+      rem_(rem),
+      font_(font),
+      root_font_(root_font),
+      font_zoom_(font_zoom),
+      root_font_zoom_(root_font_zoom) {
+  DCHECK(font_);
+  DCHECK(root_font_);
+}
+
+CSSToLengthConversionData::FontSizes::FontSizes(const FontSizeStyle& style,
+                                                const ComputedStyle* root_style)
+    : FontSizes(
+          style.SpecifiedFontSize(),
+          root_style ? root_style->SpecifiedFontSize()
+                     : style.SpecifiedFontSize(),
+          &style.GetFont(),
+          root_style ? &root_style->GetFont() : &style.GetFont(),
+          style.EffectiveZoom(),
+          root_style ? root_style->EffectiveZoom() : style.EffectiveZoom()) {}
 
 float CSSToLengthConversionData::FontSizes::Ex(float zoom) const {
   DCHECK(font_);
@@ -134,9 +166,9 @@ float CSSToLengthConversionData::FontSizes::Rch(float zoom) const {
 float CSSToLengthConversionData::FontSizes::Ic(float zoom) const {
   DCHECK(font_);
   const SimpleFontData* font_data = font_->PrimaryFont();
-  std::optional<float> full_width;
+  absl::optional<float> full_width;
   if (font_data) {
-    full_width = font_data->IdeographicInlineSize();
+    full_width = font_data->GetFontMetrics().IdeographicFullWidth();
   }
   if (!full_width.has_value()) {
     return Em(zoom);
@@ -149,9 +181,9 @@ float CSSToLengthConversionData::FontSizes::Ic(float zoom) const {
 float CSSToLengthConversionData::FontSizes::Ric(float zoom) const {
   DCHECK(root_font_);
   const SimpleFontData* font_data = root_font_->PrimaryFont();
-  std::optional<float> full_width;
+  absl::optional<float> full_width;
   if (font_data) {
-    full_width = font_data->IdeographicInlineSize();
+    full_width = font_data->GetFontMetrics().IdeographicFullWidth();
   }
   if (!full_width.has_value()) {
     return Rem(zoom);
@@ -159,28 +191,6 @@ float CSSToLengthConversionData::FontSizes::Ric(float zoom) const {
   // Font-metrics-based units are pre-zoomed with a factor of `font_zoom_`,
   // we need to unzoom using that factor before applying the target zoom.
   return full_width.value() / root_font_zoom_ * zoom;
-}
-
-float CSSToLengthConversionData::FontSizes::Cap(float zoom) const {
-  CHECK(font_);
-  const SimpleFontData* font_data = font_->PrimaryFont();
-  if (!font_data) {
-    return 0.0f;
-  }
-  // Font-metrics-based units are pre-zoomed with a factor of `font_zoom_`,
-  // we need to unzoom using that factor before applying the target zoom.
-  return font_data->GetFontMetrics().CapHeight() / font_zoom_ * zoom;
-}
-
-float CSSToLengthConversionData::FontSizes::Rcap(float zoom) const {
-  CHECK(root_font_);
-  const SimpleFontData* font_data = root_font_->PrimaryFont();
-  if (!font_data) {
-    return 0.0f;
-  }
-  // Font-metrics-based units are pre-zoomed with a factor of `root_font_zoom_`,
-  // we need to unzoom using that factor before applying the target zoom.
-  return font_data->GetFontMetrics().CapHeight() / root_font_zoom_ * zoom;
 }
 
 CSSToLengthConversionData::LineHeightSize::LineHeightSize(
@@ -256,52 +266,26 @@ bool CSSToLengthConversionData::ContainerSizes::SizesEqual(
   return (Width() == other.Width()) && (Height() == other.Height());
 }
 
-std::optional<double> CSSToLengthConversionData::ContainerSizes::Width() const {
-  CacheSizeIfNeeded(PhysicalAxes(kPhysicalAxesHorizontal), cached_width_);
+absl::optional<double> CSSToLengthConversionData::ContainerSizes::Width()
+    const {
+  CacheSizeIfNeeded(PhysicalAxes(kPhysicalAxisHorizontal), cached_width_);
   return cached_width_;
 }
 
-std::optional<double> CSSToLengthConversionData::ContainerSizes::Height()
+absl::optional<double> CSSToLengthConversionData::ContainerSizes::Height()
     const {
-  CacheSizeIfNeeded(PhysicalAxes(kPhysicalAxesVertical), cached_height_);
+  CacheSizeIfNeeded(PhysicalAxes(kPhysicalAxisVertical), cached_height_);
   return cached_height_;
-}
-
-std::optional<double> CSSToLengthConversionData::ContainerSizes::Width(
-    const ScopedCSSName& container_name) const {
-  return FindNamedSize(container_name, PhysicalAxes(kPhysicalAxesHorizontal));
-}
-
-std::optional<double> CSSToLengthConversionData::ContainerSizes::Height(
-    const ScopedCSSName& container_name) const {
-  return FindNamedSize(container_name, PhysicalAxes(kPhysicalAxesVertical));
 }
 
 void CSSToLengthConversionData::ContainerSizes::CacheSizeIfNeeded(
     PhysicalAxes requested_axis,
-    std::optional<double>& cache) const {
+    absl::optional<double>& cache) const {
   if ((cached_physical_axes_ & requested_axis) == requested_axis) {
     return;
   }
   cached_physical_axes_ |= requested_axis;
   cache = FindSizeForContainerAxis(requested_axis, context_element_);
-}
-
-std::optional<double> CSSToLengthConversionData::ContainerSizes::FindNamedSize(
-    const ScopedCSSName& container_name,
-    PhysicalAxes requested_axis) const {
-  return FindSizeForContainerAxis(requested_axis, context_element_,
-                                  &container_name);
-}
-
-CSSToLengthConversionData::AnchorData::AnchorData(Element* anchored,
-                                                  AnchorEvaluator* evaluator)
-    : evaluator_(evaluator) {
-  if (!evaluator_ && anchored) {
-    if (OutOfFlowData* out_of_flow_data = anchored->GetOutOfFlowData()) {
-      evaluator_ = &out_of_flow_data->GetAnchorResults();
-    }
-  }
 }
 
 CSSToLengthConversionData::CSSToLengthConversionData(
@@ -310,7 +294,6 @@ CSSToLengthConversionData::CSSToLengthConversionData(
     const LineHeightSize& line_height_size,
     const ViewportSize& viewport_size,
     const ContainerSizes& container_sizes,
-    const AnchorData& anchor_data,
     float zoom,
     Flags& flags)
     : CSSLengthResolver(
@@ -320,7 +303,6 @@ CSSToLengthConversionData::CSSToLengthConversionData(
       line_height_size_(line_height_size),
       viewport_size_(viewport_size),
       container_sizes_(container_sizes),
-      anchor_data_(anchor_data),
       flags_(&flags) {}
 
 float CSSToLengthConversionData::EmFontSize(float zoom) const {
@@ -403,29 +385,6 @@ float CSSToLengthConversionData::RootLineHeight(float zoom) const {
   return line_height_size_.Rlh(zoom);
 }
 
-float CSSToLengthConversionData::CapFontSize(float zoom) const {
-  // Need to mark the current element's ComputedStyle as having glyph relative
-  // styles, even if it is not relative to the current element's font because
-  // the invalidation that happens when a web font finishes loading for the root
-  // element does not necessarily cause a style difference for the root element,
-  // hence will not cause an invalidation of root font relative dependent
-  // styles. See also Node::MarkSubtreeNeedsStyleRecalcForFontUpdates().
-  SetFlag(Flag::kGlyphRelative);
-  return font_sizes_.Cap(zoom);
-}
-
-float CSSToLengthConversionData::RcapFontSize(float zoom) const {
-  // Need to mark the current element's ComputedStyle as having glyph relative
-  // styles, even if it is not relative to the current element's font because
-  // the invalidation that happens when a web font finishes loading for the root
-  // element does not necessarily cause a style difference for the root element,
-  // hence will not cause an invalidation of root font relative dependent
-  // styles. See also Node::MarkSubtreeNeedsStyleRecalcForFontUpdates().
-  SetFlag(Flag::kGlyphRelative);
-  SetFlag(Flag::kRootFontRelative);
-  return font_sizes_.Rcap(zoom);
-}
-
 double CSSToLengthConversionData::ViewportWidth() const {
   SetFlag(Flag::kStaticViewport);
   return viewport_size_.LargeWidth();
@@ -476,24 +435,7 @@ double CSSToLengthConversionData::ContainerHeight() const {
   return container_sizes_.Height().value_or(SmallViewportHeight());
 }
 
-double CSSToLengthConversionData::ContainerWidth(
-    const ScopedCSSName& container_name) const {
-  SetFlag(Flag::kContainerRelative);
-  return container_sizes_.Width(container_name).value_or(SmallViewportWidth());
-}
-
-double CSSToLengthConversionData::ContainerHeight(
-    const ScopedCSSName& container_name) const {
-  SetFlag(Flag::kContainerRelative);
-  return container_sizes_.Height(container_name)
-      .value_or(SmallViewportHeight());
-}
-
 WritingMode CSSToLengthConversionData::GetWritingMode() const {
-  // This method is called by CSSLengthResolver only when resolving
-  // logical direction relative units, so we can set the flag
-  // indicating the presence of such units.
-  SetFlag(Flag::kLogicalDirectionRelative);
   return writing_mode_;
 }
 
@@ -501,14 +443,6 @@ CSSToLengthConversionData::ContainerSizes
 CSSToLengthConversionData::PreCachedContainerSizesCopy() const {
   SetFlag(Flag::kContainerRelative);
   return container_sizes_.PreCachedCopy();
-}
-
-void CSSToLengthConversionData::ReferenceTreeScope() const {
-  SetFlag(Flag::kTreeScopedReference);
-}
-
-void CSSToLengthConversionData::ReferenceAnchor() const {
-  SetFlag(Flag::kAnchorRelative);
 }
 
 }  // namespace blink

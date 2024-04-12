@@ -4,6 +4,7 @@
 
 #include "ui/views/highlight_border.h"
 
+#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
 #include "ui/gfx/canvas.h"
@@ -75,8 +76,10 @@ SkColor HighlightBorder::GetHighlightColor(const views::View& view,
   ui::ColorId highlight_color_id;
   switch (type) {
     case HighlightBorder::Type::kHighlightBorderNoShadow:
+      highlight_color_id = cros_tokens::kCrosSysSystemHighlight;
+      break;
     case HighlightBorder::Type::kHighlightBorderOnShadow:
-      highlight_color_id = ui::kColorCrosSystemHighlight;
+      highlight_color_id = cros_tokens::kCrosSysSystemHighlight1;
       break;
     case HighlightBorder::Type::kHighlightBorder1:
       highlight_color_id = ui::kColorHighlightBorderHighlight1;
@@ -100,10 +103,10 @@ SkColor HighlightBorder::GetBorderColor(const views::View& view,
   ui::ColorId border_color_id;
   switch (type) {
     case HighlightBorder::Type::kHighlightBorderNoShadow:
-      border_color_id = ui::kColorCrosSystemHighlightBorder;
+      border_color_id = cros_tokens::kCrosSysSystemBorder;
       break;
     case HighlightBorder::Type::kHighlightBorderOnShadow:
-      border_color_id = ui::kColorCrosSystemHighlightBorder1;
+      border_color_id = cros_tokens::kCrosSysSystemBorder1;
       break;
     case HighlightBorder::Type::kHighlightBorder1:
       border_color_id = ui::kColorHighlightBorderBorder1;

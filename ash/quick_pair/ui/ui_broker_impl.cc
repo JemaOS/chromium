@@ -6,7 +6,6 @@
 
 #include <memory>
 
-#include "ash/constants/ash_features.h"
 #include "ash/quick_pair/common/device.h"
 #include "ash/quick_pair/common/protocol.h"
 #include "ash/quick_pair/ui/actions.h"
@@ -89,29 +88,12 @@ void UIBrokerImpl::ShowAssociateAccount(scoped_refptr<Device> device) {
   }
 }
 
-void UIBrokerImpl::ShowInstallCompanionApp(scoped_refptr<Device> device) {
-  CHECK(features::IsFastPairPwaCompanionEnabled());
-
+void UIBrokerImpl::ShowCompanionApp(scoped_refptr<Device> device) {
   switch (device->protocol()) {
     case Protocol::kFastPairInitial:
     case Protocol::kFastPairRetroactive:
     case Protocol::kFastPairSubsequent:
-      fast_pair_presenter_->ShowInstallCompanionApp(
-          device,
-          base::BindRepeating(&UIBrokerImpl::NotifyCompanionAppAction,
-                              weak_pointer_factory_.GetWeakPtr(), device));
-      break;
-  }
-}
-
-void UIBrokerImpl::ShowLaunchCompanionApp(scoped_refptr<Device> device) {
-  CHECK(features::IsFastPairPwaCompanionEnabled());
-
-  switch (device->protocol()) {
-    case Protocol::kFastPairInitial:
-    case Protocol::kFastPairRetroactive:
-    case Protocol::kFastPairSubsequent:
-      fast_pair_presenter_->ShowLaunchCompanionApp(
+      fast_pair_presenter_->ShowCompanionApp(
           device,
           base::BindRepeating(&UIBrokerImpl::NotifyCompanionAppAction,
                               weak_pointer_factory_.GetWeakPtr(), device));

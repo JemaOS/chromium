@@ -28,9 +28,9 @@ class Widget;
 class SubtleNotificationView;
 
 // ExclusiveAccessBubbleViews is responsible for showing a bubble atop the
-// screen in fullscreen/pointer lock mode, telling users how to exit and
-// providing a click target. The bubble auto-hides, and re-shows when the user
-// moves to the screen top.
+// screen in fullscreen/mouse lock mode, telling users how to exit and providing
+// a click target. The bubble auto-hides, and re-shows when the user moves to
+// the screen top.
 class ExclusiveAccessBubbleViews : public ExclusiveAccessBubble,
                                    public FullscreenObserver,
                                    public views::WidgetObserver {
@@ -39,7 +39,6 @@ class ExclusiveAccessBubbleViews : public ExclusiveAccessBubble,
       ExclusiveAccessBubbleViewsContext* context,
       const GURL& url,
       ExclusiveAccessBubbleType bubble_type,
-      bool notify_download,
       ExclusiveAccessBubbleHideCallback bubble_first_hide_callback);
 
   ExclusiveAccessBubbleViews(const ExclusiveAccessBubbleViews&) = delete;
@@ -74,12 +73,10 @@ class ExclusiveAccessBubbleViews : public ExclusiveAccessBubble,
 
   gfx::SlideAnimation* animation_for_test() { return animation_.get(); }
 
-  bool IsVisibleForTesting() const { return IsVisible(); }
-
  private:
-  // Starts or stops polling the mouse pointer location based on |popup_| and
+  // Starts or stops polling the mouse location based on |popup_| and
   // |bubble_type_|.
-  void UpdateMousePointerWatcher();
+  void UpdateMouseWatcher();
 
   // Updates |popup|'s bounds given |animation_| and |animated_attribute_|.
   void UpdateBounds();
@@ -87,7 +84,7 @@ class ExclusiveAccessBubbleViews : public ExclusiveAccessBubble,
   void UpdateViewContent(ExclusiveAccessBubbleType bubble_type);
 
   // Returns whether the popup is visible.
-  bool IsVisible() const;
+  bool IsVisible();
 
   // Returns the root view containing |browser_view_|.
   views::View* GetBrowserRootView() const;
@@ -102,7 +99,7 @@ class ExclusiveAccessBubbleViews : public ExclusiveAccessBubble,
   void Hide() override;
   void Show() override;
   bool IsAnimating() override;
-  bool CanTriggerOnMousePointer() const override;
+  bool CanTriggerOnMouse() const override;
 
   // FullscreenObserver:
   void OnFullscreenStateChanged() override;

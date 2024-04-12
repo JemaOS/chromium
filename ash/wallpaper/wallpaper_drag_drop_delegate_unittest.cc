@@ -12,7 +12,6 @@
 #include "ash/public/cpp/test/shell_test_api.h"
 #include "ash/public/cpp/wallpaper/wallpaper_controller.h"
 #include "ash/test/ash_test_base.h"
-#include "base/memory/raw_ptr.h"
 #include "base/strings/strcat.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -185,8 +184,7 @@ class WallpaperDragDropDelegateTest
   // The delegate, owned by the `WallpaperControllerImpl`, for drag-and-drop
   // events over the wallpaper. May be `nullptr` depending on test
   // parameterization.
-  raw_ptr<StrictMock<MockWallpaperDragDropDelegate>, DanglingUntriaged>
-      delegate_ = nullptr;
+  StrictMock<MockWallpaperDragDropDelegate>* delegate_ = nullptr;
 
   // The widget from which data can be drag-and-dropped.
   std::unique_ptr<views::Widget> widget_;

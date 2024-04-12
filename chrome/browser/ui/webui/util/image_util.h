@@ -6,7 +6,7 @@
 #define CHROME_BROWSER_UI_WEBUI_UTIL_IMAGE_UTIL_H_
 
 #include "base/containers/span.h"
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 
 namespace gfx {
 class ImageSkia;

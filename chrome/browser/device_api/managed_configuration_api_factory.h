@@ -12,7 +12,7 @@ class ManagedConfigurationAPI;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 // Factory for BrowserKeyedService ManagedConfigurationAPI.
@@ -28,7 +28,7 @@ class ManagedConfigurationAPIFactory : public ProfileKeyedServiceFactory {
       const ManagedConfigurationAPIFactory&) = delete;
 
  private:
-  friend base::NoDestructor<ManagedConfigurationAPIFactory>;
+  friend struct base::DefaultSingletonTraits<ManagedConfigurationAPIFactory>;
 
   ManagedConfigurationAPIFactory();
   ~ManagedConfigurationAPIFactory() override;

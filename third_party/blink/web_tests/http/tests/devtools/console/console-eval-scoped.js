@@ -2,17 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
-import * as Console from 'devtools/panels/console/console.js';
-
 (async function() {
   'use strict';
   TestRunner.addResult(
     `Tests that evaluating 'console.log()' in the console will have access to its outer scope variables. Bug 60547.\n`
   );
 
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
   await TestRunner.showPanel('console');
 
   await TestRunner.evaluateInPagePromise(`
@@ -61,7 +57,7 @@ import * as Console from 'devtools/panels/console/console.js';
   function dumpAndClearConsoleMessages(next) {
     TestRunner.deprecatedRunAfterPendingDispatches(async function() {
       await ConsoleTestRunner.dumpConsoleMessages();
-      Console.ConsoleView.ConsoleView.clearConsole();
+      Console.ConsoleView.clearConsole();
       TestRunner.deprecatedRunAfterPendingDispatches(next);
     });
   }

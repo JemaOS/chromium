@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_NEW_TAB_PAGE_PROMOS_PROMO_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_NEW_TAB_PAGE_PROMOS_PROMO_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class PromoService;
@@ -22,13 +22,13 @@ class PromoServiceFactory : public ProfileKeyedServiceFactory {
   PromoServiceFactory& operator=(const PromoServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<PromoServiceFactory>;
+  friend struct base::DefaultSingletonTraits<PromoServiceFactory>;
 
   PromoServiceFactory();
   ~PromoServiceFactory() override;
 
   // Overridden from BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

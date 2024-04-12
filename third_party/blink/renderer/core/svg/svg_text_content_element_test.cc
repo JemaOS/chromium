@@ -13,8 +13,7 @@ class SVGTextContentElementTest : public EditingTestBase {};
 
 TEST_F(SVGTextContentElementTest, selectSubStringNotCrash) {
   SetBodyContent("<svg><text style='visibility:hidden;'>Text</text></svg>");
-  auto* elem = To<SVGTextContentElement>(
-      GetDocument().QuerySelector(AtomicString("text")));
+  auto* elem = To<SVGTextContentElement>(GetDocument().QuerySelector("text"));
   VisiblePosition start = VisiblePosition::FirstPositionInNode(
       *const_cast<SVGTextContentElement*>(elem));
   EXPECT_TRUE(start.IsNull());

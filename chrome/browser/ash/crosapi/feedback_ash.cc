@@ -4,9 +4,9 @@
 
 #include "chrome/browser/ash/crosapi/feedback_ash.h"
 
+#include "chrome/browser/ash/login/users/chrome_user_manager.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ui/chrome_pages.h"
-#include "components/user_manager/user_manager.h"
 
 namespace crosapi {
 
@@ -28,16 +28,6 @@ chrome::FeedbackSource FromMojo(mojom::LacrosFeedbackSource source) {
       return chrome::kFeedbackSourceQuickAnswers;
     case mojom::LacrosFeedbackSource::kDeprecatedLacrosWindowLayoutMenu:
       return chrome::kFeedbackSourceWindowLayoutMenu;
-    case mojom::LacrosFeedbackSource::kFeedbackSourceCookieControls:
-      return chrome::kFeedbackSourceCookieControls;
-    case mojom::LacrosFeedbackSource::kFeedbackSourceSettingsPerformancePage:
-      return chrome::kFeedbackSourceSettingsPerformancePage;
-    case mojom::LacrosFeedbackSource::kFeedbackSourceProfileErrorDialog:
-      return chrome::kFeedbackSourceProfileErrorDialog;
-    case mojom::LacrosFeedbackSource::kFeedbackSourceQuickOffice:
-      return chrome::kFeedbackSourceQuickOffice;
-    case mojom::LacrosFeedbackSource::kFeedbackSourceAI:
-      return chrome::kFeedbackSourceAI;
     case mojom::LacrosFeedbackSource::kUnknown:
       return chrome::kFeedbackSourceUnknownLacrosSource;
   }
@@ -69,26 +59,14 @@ void FeedbackAsh::ShowFeedbackPage(mojom::FeedbackInfoPtr feedback_info) {
   }
   base::Value::Dict autofill_metadata;
   if (feedback_info->autofill_metadata) {
-    if (!feedback_info->autofill_metadata->is_dict()) {
-      LOG(ERROR) << "Feedback info autofill metadata is not a dict.";
-      return;
-    }
+    DCHECK(feedback_info->autofill_metadata->is_dict());
     autofill_metadata = std::move(*feedback_info->autofill_metadata).TakeDict();
-  }
-  base::Value::Dict ai_metadata;
-  if (feedback_info->ai_metadata) {
-    if (!feedback_info->ai_metadata->is_dict()) {
-      LOG(ERROR) << "Feedback info ai metadata is not a dict.";
-      return;
-    }
-    ai_metadata = std::move(*feedback_info->ai_metadata).TakeDict();
   }
   chrome::ShowFeedbackPage(
       feedback_info->page_url, profile, FromMojo(feedback_info->source),
       feedback_info->description_template,
       feedback_info->description_placeholder_text, feedback_info->category_tag,
-      feedback_info->extra_diagnostics, std::move(autofill_metadata),
-      std::move(ai_metadata));
+      feedback_info->extra_diagnostics, std::move(autofill_metadata));
 }
 
 }  // namespace crosapi

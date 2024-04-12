@@ -46,23 +46,23 @@ class CORE_EXPORT CSSFontSelectorBase : public FontSelector {
   void ReportFontLookupByUniqueOrFamilyName(
       const AtomicString& name,
       const FontDescription& font_description,
-      const SimpleFontData* resulting_font_data) override;
+      scoped_refptr<SimpleFontData> resulting_font_data) override;
 
   void ReportFontLookupByUniqueNameOnly(
       const AtomicString& name,
       const FontDescription& font_description,
-      const SimpleFontData* resulting_font_data,
+      scoped_refptr<SimpleFontData> resulting_font_data,
       bool is_loading_fallback = false) override;
 
   void ReportFontLookupByFallbackCharacter(
       UChar32 fallback_character,
       FontFallbackPriority fallback_priority,
       const FontDescription& font_description,
-      const SimpleFontData* resulting_font_data) override;
+      scoped_refptr<SimpleFontData> resulting_font_data) override;
 
   void ReportLastResortFallbackFontLookup(
       const FontDescription& font_description,
-      const SimpleFontData* resulting_font_data) override;
+      scoped_refptr<SimpleFontData> resulting_font_data) override;
 
   void ReportFontFamilyLookupByGenericFamily(
       const AtomicString& generic_font_family_name,
@@ -82,13 +82,14 @@ class CORE_EXPORT CSSFontSelectorBase : public FontSelector {
   // issue of `CSSFontSelector` is solved. It will be alive after `TreeScope`
   // is dead.
   virtual bool IsAlive() const { return true; }
-
-  // Might return null.
   virtual FontMatchingMetrics* GetFontMatchingMetrics() const = 0;
   virtual UseCounter* GetUseCounter() const = 0;
 
   AtomicString FamilyNameFromSettings(const FontDescription&,
                                       const FontFamily& generic_family_name);
+  void ReportSystemFontFamily(const AtomicString& font_family_name);
+  void ReportWebFontFamily(const AtomicString& font_family_name);
+
   Member<FontFaceCache> font_face_cache_;
   GenericFontFamilySettings generic_font_family_settings_;
   HashSet<AtomicString> prewarmed_generic_families_;

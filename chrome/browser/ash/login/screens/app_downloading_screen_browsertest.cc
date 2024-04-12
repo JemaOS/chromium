@@ -51,8 +51,8 @@ class AppDownloadingScreenTest : public OobeBaseTest {
     OobeBaseTest::SetUpOnMainThread();
     app_downloading_screen_ = WizardController::default_controller()
                                   ->GetScreen<AppDownloadingScreen>();
-    app_downloading_screen_->set_exit_callback_for_testing(
-        screen_exit_waiter_.GetRepeatingCallback());
+    app_downloading_screen_->set_exit_callback_for_testing(base::BindRepeating(
+        &AppDownloadingScreenTest::HandleScreenExit, base::Unretained(this)));
   }
 
   void Login() {
@@ -66,13 +66,26 @@ class AppDownloadingScreenTest : public OobeBaseTest {
     OobeScreenWaiter(AppDownloadingScreenView::kScreenId).Wait();
   }
 
-  void WaitForScreenExit() { EXPECT_TRUE(screen_exit_waiter_.Wait()); }
+  void WaitForScreenExit() {
+    if (screen_exited_)
+      return;
+    base::test::TestFuture<void> waiter;
+    screen_exit_callback_ = waiter.GetCallback();
+    EXPECT_TRUE(waiter.Wait());
+  }
 
-  raw_ptr<AppDownloadingScreen, DanglingUntriaged> app_downloading_screen_;
+  raw_ptr<AppDownloadingScreen, ExperimentalAsh> app_downloading_screen_;
   bool screen_exited_ = false;
 
  private:
-  base::test::TestFuture<void> screen_exit_waiter_;
+  void HandleScreenExit() {
+    ASSERT_FALSE(screen_exited_);
+    screen_exited_ = true;
+    if (screen_exit_callback_)
+      std::move(screen_exit_callback_).Run();
+  }
+
+  base::OnceClosure screen_exit_callback_;
 
   LoginManagerMixin login_manager_{&mixin_host_};
 };

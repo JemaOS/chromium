@@ -13,28 +13,16 @@
 ChromeFileSystemAccessPermissionContext*
 FileSystemAccessPermissionContextFactory::GetForProfile(
     content::BrowserContext* profile) {
-#if BUILDFLAG(IS_ANDROID)
-  // TODO(crbug.com/1011535): Local FS portion of FSA API is not yet enabled on
-  // Android. Create the permission context instance when supported on Android.
-  return nullptr;
-#else
   return static_cast<ChromeFileSystemAccessPermissionContext*>(
       GetInstance()->GetServiceForBrowserContext(profile, true));
-#endif
 }
 
 // static
 ChromeFileSystemAccessPermissionContext*
 FileSystemAccessPermissionContextFactory::GetForProfileIfExists(
     content::BrowserContext* profile) {
-#if BUILDFLAG(IS_ANDROID)
-  // TODO(crbug.com/1011535): Local FS portion of FSA API is not yet enabled on
-  // Android. Create the permission context instance when supported on Android.
-  return nullptr;
-#else
   return static_cast<ChromeFileSystemAccessPermissionContext*>(
       GetInstance()->GetServiceForBrowserContext(profile, false));
-#endif
 }
 
 // static
@@ -48,22 +36,16 @@ FileSystemAccessPermissionContextFactory::
     FileSystemAccessPermissionContextFactory()
     : ProfileKeyedServiceFactory(
           "FileSystemAccessPermissionContext",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HostContentSettingsMapFactory::GetInstance());
 }
 
 FileSystemAccessPermissionContextFactory::
     ~FileSystemAccessPermissionContextFactory() = default;
 
-std::unique_ptr<KeyedService>
-FileSystemAccessPermissionContextFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* FileSystemAccessPermissionContextFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<ChromeFileSystemAccessPermissionContext>(profile);
+  return new ChromeFileSystemAccessPermissionContext(profile);
 }
 
 void FileSystemAccessPermissionContextFactory::BrowserContextShutdown(

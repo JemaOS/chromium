@@ -25,7 +25,7 @@
 
 #include "third_party/blink/renderer/core/css/computed_style_css_value_mapping.h"
 
-#include "third_party/blink/renderer/core/css/css_unparsed_declaration_value.h"
+#include "third_party/blink/renderer/core/css/css_custom_property_declaration.h"
 #include "third_party/blink/renderer/core/css/css_value.h"
 #include "third_party/blink/renderer/core/css/properties/longhands/custom_property.h"
 #include "third_party/blink/renderer/core/css/property_registry.h"
@@ -36,23 +36,20 @@ namespace blink {
 const CSSValue* ComputedStyleCSSValueMapping::Get(
     const AtomicString& custom_property_name,
     const ComputedStyle& style,
-    const PropertyRegistry* registry,
-    CSSValuePhase value_phase) {
+    const PropertyRegistry* registry) {
   CustomProperty custom_property(custom_property_name, registry);
   return custom_property.CSSValueFromComputedStyle(
-      style, nullptr /* layout_object */, false /* allow_visited_style */,
-      value_phase);
+      style, nullptr /* layout_object */, false /* allow_visited_style */);
 }
 
 HeapHashMap<AtomicString, Member<const CSSValue>>
 ComputedStyleCSSValueMapping::GetVariables(const ComputedStyle& style,
-                                           const PropertyRegistry* registry,
-                                           CSSValuePhase value_phase) {
+                                           const PropertyRegistry* registry) {
   HeapHashMap<AtomicString, Member<const CSSValue>> variables;
 
   for (const AtomicString& name : style.GetVariableNames()) {
     const CSSValue* value =
-        ComputedStyleCSSValueMapping::Get(name, style, registry, value_phase);
+        ComputedStyleCSSValueMapping::Get(name, style, registry);
     if (value) {
       variables.Set(name, value);
     }

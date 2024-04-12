@@ -12,7 +12,6 @@
 
 #include <algorithm>
 #include <iterator>
-#include <string_view>
 
 #include "base/check.h"
 #include "base/check_op.h"
@@ -335,27 +334,6 @@ bool InstallUtil::IsStartMenuShortcutWithActivatorGuidInstalled() {
 }
 
 // static
-bool InstallUtil::IsRunningAsInteractiveUser() {
-  // Get the SID for interactive user.
-  DWORD sid_size = SECURITY_MAX_SID_SIZE;
-  uint8_t sid_bytes[SECURITY_MAX_SID_SIZE] = {0};
-  SID* interactive_sid = reinterpret_cast<SID*>(sid_bytes);
-  if (!::CreateWellKnownSid(WinInteractiveSid, nullptr, interactive_sid,
-                            &sid_size)) {
-    PLOG(ERROR) << "Failed to create well known SID";
-    return false;
-  }
-
-  BOOL is_member = FALSE;
-  if (!::CheckTokenMembership(nullptr, interactive_sid, &is_member)) {
-    PLOG(ERROR) << "Failed to check token membership for WinInteractiveSid";
-    return false;
-  }
-
-  return is_member;
-}
-
-// static
 std::wstring InstallUtil::GetToastActivatorRegistryPath() {
   return L"Software\\Classes\\CLSID\\" +
          base::win::WStringFromGUID(install_static::GetToastActivatorClsid());
@@ -424,7 +402,7 @@ std::wstring InstallUtil::GetCurrentDate() {
 }
 
 // static
-std::optional<base::Version> InstallUtil::GetDowngradeVersion() {
+absl::optional<base::Version> InstallUtil::GetDowngradeVersion() {
   RegKey key;
   std::wstring downgrade_version;
   if (key.Open(install_static::IsSystemInstall() ? HKEY_LOCAL_MACHINE
@@ -434,11 +412,11 @@ std::optional<base::Version> InstallUtil::GetDowngradeVersion() {
       key.ReadValue(installer::kRegDowngradeVersion, &downgrade_version) !=
           ERROR_SUCCESS ||
       downgrade_version.empty()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   base::Version version(base::WideToASCII(downgrade_version));
   if (!version.IsValid())
-    return std::nullopt;
+    return absl::nullopt;
   return version;
 }
 
@@ -482,8 +460,8 @@ InstallUtil::GetCloudManagementDmTokenLocation(
 
   base::win::RegKey key;
   if (read_only) {
-    (void)key.Open(HKEY_LOCAL_MACHINE, key_path.c_str(),
-                   KEY_QUERY_VALUE | wow_access);
+    key.Open(HKEY_LOCAL_MACHINE, key_path.c_str(),
+             KEY_QUERY_VALUE | wow_access);
   } else {
     auto result = key.Create(HKEY_LOCAL_MACHINE, key_path.c_str(),
                              KEY_SET_VALUE | wow_access);
@@ -508,8 +486,8 @@ InstallUtil::GetDeviceTrustSigningKeyLocation(ReadOnly read_only) {
       .append(L"\\DeviceTrust");
   base::win::RegKey key;
   if (read_only) {
-    (void)key.Open(HKEY_LOCAL_MACHINE, key_path.c_str(),
-                   KEY_QUERY_VALUE | KEY_WOW64_64KEY);
+    key.Open(HKEY_LOCAL_MACHINE, key_path.c_str(),
+             KEY_QUERY_VALUE | KEY_WOW64_64KEY);
   } else {
     auto result = key.Create(HKEY_LOCAL_MACHINE, key_path.c_str(),
                              KEY_SET_VALUE | KEY_WOW64_64KEY);
@@ -601,10 +579,10 @@ std::wstring InstallUtil::GetLongAppDescription() {
 }
 
 // static
-std::wstring InstallUtil::GuidToSquid(std::wstring_view guid) {
+std::wstring InstallUtil::GuidToSquid(base::WStringPiece guid) {
   std::wstring squid;
   squid.reserve(32);
-  auto input = guid.begin();
+  auto* input = guid.begin();
   auto output = std::back_inserter(squid);
 
   // Reverse-copy relevant characters, skipping separators.

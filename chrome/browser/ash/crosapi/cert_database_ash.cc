@@ -12,7 +12,6 @@
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/certificate_provider/certificate_provider_service.h"
 #include "chrome/browser/certificate_provider/certificate_provider_service_factory.h"
-#include "chrome/browser/chromeos/kcer/kcer_factory.h"
 #include "chrome/browser/net/nss_service.h"
 #include "chrome/browser/net/nss_service_factory.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -22,7 +21,6 @@
 #include "components/account_id/account_id.h"
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
-#include "components/user_manager/user_names.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "crypto/nss_util_internal.h"
@@ -32,7 +30,7 @@
 namespace {
 using GotDbCallback =
     base::OnceCallback<void(unsigned long private_slot_id,
-                            std::optional<unsigned long> system_slot_id)>;
+                            absl::optional<unsigned long> system_slot_id)>;
 
 void GotCertDbOnIOThread(GotDbCallback ui_callback,
                          net::NSSCertDatabase* cert_db) {
@@ -45,7 +43,7 @@ void GotCertDbOnIOThread(GotDbCallback ui_callback,
   unsigned long private_slot_id =
       PK11_GetSlotID(cert_db->GetPrivateSlot().get());
 
-  std::optional<unsigned long> system_slot_id;
+  absl::optional<unsigned long> system_slot_id;
   crypto::ScopedPK11Slot system_slot = cert_db->GetSystemSlot();
   if (system_slot)
     system_slot_id = PK11_GetSlotID(system_slot.get());
@@ -121,7 +119,8 @@ void CertDatabaseAsh::GetCertDatabaseInfo(
   }
 
   // Guest users should not have access to certs.
-  const bool is_guest = user->GetAccountId() == user_manager::GuestAccountId();
+  const bool is_guest =
+      user_manager::UserManager::Get()->IsGuestAccountId(user->GetAccountId());
 
   // Otherwise, if the TPM was already loaded previously, let the
   // caller know.
@@ -157,7 +156,7 @@ void CertDatabaseAsh::WaitForCertDatabaseReady(
 void CertDatabaseAsh::OnCertDatabaseReady(
     GetCertDatabaseInfoCallback callback,
     unsigned long private_slot_id,
-    std::optional<unsigned long> system_slot_id) {
+    absl::optional<unsigned long> system_slot_id) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
   is_cert_database_ready_ = true;
@@ -177,21 +176,9 @@ void CertDatabaseAsh::LoggedInStateChanged() {
   is_cert_database_ready_.reset();
 }
 
-void CertDatabaseAsh::OnCertsChangedInLacros(
-    mojom::CertDatabaseChangeType change_type) {
+void CertDatabaseAsh::OnCertsChangedInLacros() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  switch (change_type) {
-    case mojom::CertDatabaseChangeType::kUnknown:
-      net::CertDatabase::GetInstance()->NotifyObserversTrustStoreChanged();
-      net::CertDatabase::GetInstance()->NotifyObserversClientCertStoreChanged();
-      break;
-    case mojom::CertDatabaseChangeType::kTrustStore:
-      net::CertDatabase::GetInstance()->NotifyObserversTrustStoreChanged();
-      break;
-    case mojom::CertDatabaseChangeType::kClientCertStore:
-      net::CertDatabase::GetInstance()->NotifyObserversClientCertStoreChanged();
-      break;
-  }
+  net::CertDatabase::GetInstance()->NotifyObserversCertDBChanged();
 }
 
 void CertDatabaseAsh::AddAshCertDatabaseObserver(
@@ -222,17 +209,11 @@ void CertDatabaseAsh::SetCertsProvidedByExtension(
       extension_id, filtered_certificate_infos);
 }
 
-void CertDatabaseAsh::NotifyCertsChangedInAsh(
-    mojom::CertDatabaseChangeType change_type) {
+void CertDatabaseAsh::NotifyCertsChangedInAsh() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   for (const auto& observer : observers_) {
-    observer->OnCertsChangedInAsh(change_type);
+    observer->OnCertsChangedInAsh();
   }
-}
-
-void CertDatabaseAsh::OnPkcs12CertDualWritten() {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  kcer::KcerFactory::RecordPkcs12CertDualWritten();
 }
 
 }  // namespace crosapi

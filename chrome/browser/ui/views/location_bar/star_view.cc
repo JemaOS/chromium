@@ -63,7 +63,7 @@ StarView::StarView(CommandUpdater* command_updater,
   SetID(VIEW_ID_STAR_BUTTON);
   SetProperty(views::kElementIdentifierKey, kBookmarkStarViewElementId);
   SetActive(false);
-  SetAccessibilityProperties(/*role*/ std::nullopt,
+  SetAccessibilityProperties(/*role*/ absl::nullopt,
                              l10n_util::GetStringUTF16(IDS_TOOLTIP_STAR));
 }
 
@@ -86,6 +86,8 @@ void StarView::AfterPropertyChange(const void* key, int64_t old_value) {
 void StarView::UpdateImpl() {
   SetVisible(browser_defaults::bookmarks_enabled &&
              edit_bookmarks_enabled_.GetValue());
+  SetAccessibleName(l10n_util::GetStringUTF16(GetActive() ? IDS_TOOLTIP_STARRED
+                                                          : IDS_TOOLTIP_STAR));
 }
 
 void StarView::OnExecuting(PageActionIconView::ExecuteSource execute_source) {
@@ -122,14 +124,9 @@ const gfx::VectorIcon& StarView::GetVectorIcon() const {
   return GetActive() ? omnibox::kStarActiveIcon : omnibox::kStarIcon;
 }
 
-std::u16string StarView::GetTextForTooltipAndAccessibleName() const {
-  return l10n_util::GetStringUTF16(GetActive() ? IDS_TOOLTIP_STARRED
-                                               : IDS_TOOLTIP_STAR);
-}
-
 void StarView::EditBookmarksPrefUpdated() {
   Update();
 }
 
-BEGIN_METADATA(StarView)
+BEGIN_METADATA(StarView, PageActionIconView)
 END_METADATA

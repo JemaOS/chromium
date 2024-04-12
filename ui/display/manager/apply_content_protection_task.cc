@@ -8,10 +8,9 @@
 #include <vector>
 
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/ranges/algorithm.h"
 #include "ui/display/manager/display_layout_manager.h"
-#include "ui/display/manager/util/display_manager_util.h"
+#include "ui/display/manager/display_manager_util.h"
 #include "ui/display/types/display_snapshot.h"
 #include "ui/display/types/native_display_delegate.h"
 
@@ -110,8 +109,7 @@ void ApplyContentProtectionTask::OnGetHDCPState(
     return;
   }
 
-  std::vector<raw_ptr<DisplaySnapshot, VectorExperimental>> displays =
-      layout_manager_->GetDisplayStates();
+  std::vector<DisplaySnapshot*> displays = layout_manager_->GetDisplayStates();
   std::vector<std::tuple<DisplaySnapshot*, HDCPState, ContentProtectionMethod>>
       hdcped_displays;
   // Lookup the displays again since display configuration may have changed.

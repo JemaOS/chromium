@@ -5,15 +5,15 @@
 #ifndef CHROME_BROWSER_SUPERVISED_USER_CHILD_ACCOUNTS_CHILD_ACCOUNT_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_SUPERVISED_USER_CHILD_ACCOUNTS_CHILD_ACCOUNT_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
-#include "components/supervised_user/core/browser/child_account_service.h"
+#include "chrome/browser/supervised_user/child_accounts/child_account_service.h"
 
 class Profile;
 
 class ChildAccountServiceFactory : public ProfileKeyedServiceFactory {
  public:
-  static supervised_user::ChildAccountService* GetForProfile(Profile* profile);
+  static ChildAccountService* GetForProfile(Profile* profile);
 
   static ChildAccountServiceFactory* GetInstance();
 
@@ -22,7 +22,7 @@ class ChildAccountServiceFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<ChildAccountServiceFactory>;
+  friend struct base::DefaultSingletonTraits<ChildAccountServiceFactory>;
 
   ChildAccountServiceFactory();
   ~ChildAccountServiceFactory() override;

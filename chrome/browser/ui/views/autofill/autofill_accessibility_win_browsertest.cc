@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
-
-#include "base/test/scoped_feature_list.h"
 #include "base/win/scoped_variant.h"
 #include "build/build_config.h"
 #include "chrome/browser/ui/browser.h"
@@ -23,12 +20,11 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/content_browser_test_utils.h"
-#include "content/public/test/scoped_accessibility_mode_override.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "net/test/embedded_test_server/request_handler_util.h"
 #include "testing/gmock/include/gmock/gmock-matchers.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/accessibility/accessibility_features.h"
+#include "ui/accessibility/accessibility_switches.h"
 #include "ui/accessibility/ax_tree.h"
 #include "ui/accessibility/ax_tree_id.h"
 #include "ui/accessibility/ax_tree_manager_map.h"
@@ -53,8 +49,8 @@ class AutofillAccessibilityWinBrowserTest : public InProcessBrowserTest {
  protected:
   class TestAutofillManager : public BrowserAutofillManager {
    public:
-    explicit TestAutofillManager(ContentAutofillDriver* driver)
-        : BrowserAutofillManager(driver, "en-US") {}
+    TestAutofillManager(ContentAutofillDriver* driver, AutofillClient* client)
+        : BrowserAutofillManager(driver, client, "en-US") {}
 
     testing::AssertionResult WaitForFormsSeen(int min_num_awaited_calls) {
       return forms_seen_waiter_.Wait(min_num_awaited_calls);
@@ -69,10 +65,12 @@ class AutofillAccessibilityWinBrowserTest : public InProcessBrowserTest {
   void SetUpOnMainThread() override {
     InProcessBrowserTest::SetUpOnMainThread();
     ASSERT_TRUE(embedded_test_server()->Start());
-    scoped_accessibility_mode_.emplace(GetWebContents(), ui::kAXModeComplete);
+    GetWebContents()->SetAccessibilityMode(ui::kAXModeComplete);
   }
 
-  void TearDownOnMainThread() override { scoped_accessibility_mode_.reset(); }
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    command_line->AppendSwitch(switches::kEnableExperimentalUIAutomation);
+  }
 
   content::WebContents* GetWebContents() const {
     return browser()->tab_strip_model()->GetActiveWebContents();
@@ -98,7 +96,7 @@ class AutofillAccessibilityWinBrowserTest : public InProcessBrowserTest {
   // Show drop down based on the element id.
   void ShowDropdown(const std::string& field_id) {
     std::string js("document.getElementById('" + field_id + "').focus();");
-    ASSERT_TRUE(ExecJs(GetWebContents(), js));
+    ASSERT_TRUE(ExecuteScript(GetWebContents(), js));
     SendKeyToPage(GetWebContents(), ui::DomKey::ARROW_DOWN);
   }
 
@@ -110,11 +108,8 @@ class AutofillAccessibilityWinBrowserTest : public InProcessBrowserTest {
   }
 
  private:
-  base::test::ScopedFeatureList scoped_feature_list_{::features::kUiaProvider};
   test::AutofillBrowserTestEnvironment autofill_test_environment_;
   TestAutofillManagerInjector<TestAutofillManager> autofill_manager_injector_;
-  std::optional<content::ScopedAccessibilityModeOverride>
-      scoped_accessibility_mode_;
 };
 
 // The test is flaky on Windows. See https://crbug.com/1221273

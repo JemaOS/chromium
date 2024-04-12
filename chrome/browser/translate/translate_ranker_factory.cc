@@ -14,8 +14,7 @@ namespace translate {
 
 // static
 TranslateRankerFactory* TranslateRankerFactory::GetInstance() {
-  static base::NoDestructor<TranslateRankerFactory> instance;
-  return instance.get();
+  return base::Singleton<TranslateRankerFactory>::get();
 }
 
 // static
@@ -36,7 +35,7 @@ TranslateRankerFactory::TranslateRankerFactory()
               .WithAshInternals(ProfileSelection::kNone)
               .Build()) {}
 
-TranslateRankerFactory::~TranslateRankerFactory() = default;
+TranslateRankerFactory::~TranslateRankerFactory() {}
 
 KeyedService* TranslateRankerFactory::BuildServiceInstanceFor(
     content::BrowserContext* browser_context) const {

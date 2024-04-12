@@ -6,6 +6,7 @@
 
 [
     ActiveScriptWrappable,
+    DoNotCheckConstants,
     Exposed=(Window,Worker)
 ] interface WebGL2RenderingContext { };
 WebGL2RenderingContext includes WebGLRenderingContextBase;

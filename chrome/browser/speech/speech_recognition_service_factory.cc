@@ -28,19 +28,13 @@ SpeechRecognitionServiceFactory::SpeechRecognitionServiceFactory()
           "SpeechRecognitionService",
           // Incognito profiles should use their own instance of the browser
           // context.
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 SpeechRecognitionServiceFactory::~SpeechRecognitionServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-SpeechRecognitionServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SpeechRecognitionServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<speech::ChromeSpeechRecognitionService>(context);
+  return new speech::ChromeSpeechRecognitionService(context);
 }
 
 // static

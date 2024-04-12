@@ -13,7 +13,6 @@
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/blob/blob_data.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -24,11 +23,13 @@ class BackgroundFetchManagerTest : public testing::Test {
   // declarations necessary in the BackgroundFetchManager.
   Vector<mojom::blink::FetchAPIRequestPtr> CreateFetchAPIRequestVector(
       V8TestingScope& scope,
-      const V8UnionRequestInfoOrRequestOrUSVStringSequence* requests) {
+      const V8UnionRequestInfoOrRequestOrUSVStringSequence* requests
+  ) {
+    bool has_requests_with_body;
     return BackgroundFetchManager::CreateFetchAPIRequestVector(
-        scope.GetScriptState(), requests, scope.GetExceptionState());
+        scope.GetScriptState(), requests, scope.GetExceptionState(),
+        &has_requests_with_body);
   }
-  test::TaskEnvironment task_environment_;
 };
 
 TEST_F(BackgroundFetchManagerTest, SingleUSVString) {

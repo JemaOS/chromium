@@ -6,9 +6,11 @@
 
 #import <Foundation/Foundation.h>
 
-#include "base/apple/foundation_util.h"
+#include "base/debug/crash_logging.h"
+#include "base/debug/dump_without_crashing.h"
 #include "base/files/file_path.h"
 #include "base/logging.h"
+#include "base/mac/foundation_util.h"
 #include "base/notreached.h"
 #include "base/strings/sys_string_conversions.h"
 
@@ -40,6 +42,9 @@ NSString* const kCRUTicketTagKey = @"KSChannelID";
   if (!storeData) {
     VLOG(0) << "Failed to load ticket store at "
             << base::SysNSStringToUTF8(path) << ": " << error;
+    SCOPED_CRASH_KEY_STRING32("updater ticket error", "error",
+                              "Failed to load ticket store.");
+    base::debug::DumpWithoutCrashing();
     return nil;
   }
   if (!storeData.length) {
@@ -48,10 +53,14 @@ NSString* const kCRUTicketTagKey = @"KSChannelID";
 
   NSDictionary* store = nil;
   NSKeyedUnarchiver* unpacker =
-      [[NSKeyedUnarchiver alloc] initForReadingFromData:storeData error:&error];
+      [[[NSKeyedUnarchiver alloc] initForReadingFromData:storeData
+                                                   error:&error] autorelease];
   if (!unpacker) {
     VLOG(0) << base::SysNSStringToUTF8(
         [NSString stringWithFormat:@"Ticket error %@", error]);
+    SCOPED_CRASH_KEY_STRING32("updater ticket error", "error",
+                              "Failed to initialize unpacker.");
+    base::debug::DumpWithoutCrashing();
     return nil;
   }
   unpacker.requiresSecureCoding = YES;
@@ -66,10 +75,20 @@ NSString* const kCRUTicketTagKey = @"KSChannelID";
   [unpacker finishDecoding];
   if (unpacker.error) {
     VLOG(0) << "Error unpacking ticket store: " << unpacker.error;
+    SCOPED_CRASH_KEY_STRING32(
+        "updater ticket error", "description",
+        base::SysNSStringToUTF8([unpacker.error localizedDescription]));
+    SCOPED_CRASH_KEY_STRING32(
+        "updater ticket error", "reason",
+        base::SysNSStringToUTF8([unpacker.error localizedFailureReason]));
+    base::debug::DumpWithoutCrashing();
     return nil;
   }
   if (!store || ![store isKindOfClass:[NSDictionary class]]) {
     VLOG(0) << "Ticket store is not a dictionary.";
+    SCOPED_CRASH_KEY_STRING32("updater ticket error", "error",
+                              "store is nil or not an NSDictionary.");
+    base::debug::DumpWithoutCrashing();
     return nil;
   }
   return store;
@@ -85,22 +104,28 @@ NSString* const kCRUTicketTagKey = @"KSChannelID";
   return YES;
 }
 
+- (void)dealloc {
+  [path_ release];
+  [super dealloc];
+}
+
 - (instancetype)initWithCoder:(NSCoder*)coder {
   if ((self = [super init])) {
-    path_ = [coder decodeObjectOfClass:[NSString class] forKey:@"path"];
+    path_ = [[coder decodeObjectOfClass:[NSString class]
+                                 forKey:@"path"] retain];
   }
   return self;
 }
 
 - (instancetype)initWithFilePath:(const base::FilePath&)filePath {
   if ((self = [super init])) {
-    path_ = base::apple::FilePathToNSString(filePath);
+    path_ = [base::mac::FilePathToNSString(filePath) retain];
   }
   return self;
 }
 
 - (void)encodeWithCoder:(NSCoder*)coder {
-  [coder encodeObject:path_ forKey:@"path"];
+  NOTREACHED() << "KSPathExistenceChecker::encodeWithCoder not implemented.";
 }
 
 - (NSString*)description {
@@ -119,10 +144,15 @@ NSString* const kCRUTicketTagKey = @"KSChannelID";
   return YES;
 }
 
+- (void)dealloc {
+  [bundle_id_ release];
+  [super dealloc];
+}
+
 - (instancetype)initWithCoder:(NSCoder*)coder {
   if ((self = [super init])) {
-    bundle_id_ = [coder decodeObjectOfClass:[NSString class]
-                                     forKey:@"bundle_id"];
+    bundle_id_ = [[coder decodeObjectOfClass:[NSString class]
+                                      forKey:@"bundle_id"] retain];
   }
   return self;
 }
@@ -147,9 +177,15 @@ NSString* const kCRUTicketTagKey = @"KSChannelID";
   return YES;
 }
 
+- (void)dealloc {
+  [query_ release];
+  [super dealloc];
+}
+
 - (instancetype)initWithCoder:(NSCoder*)coder {
   if ((self = [super init])) {
-    query_ = [coder decodeObjectOfClass:[NSString class] forKey:@"query"];
+    query_ = [[coder decodeObjectOfClass:[NSString class]
+                                  forKey:@"query"] retain];
   }
   return self;
 }
@@ -166,26 +202,15 @@ NSString* const kCRUTicketTagKey = @"KSChannelID";
 
 @end
 
-// All these keys must be same as those from Keystone.
-NSString* const kKSTicketBrandKeyKey = @"brandKey";
-NSString* const kKSTicketBrandPathKey = @"brandPath";
 NSString* const kKSTicketCohortKey = @"Cohort";
 NSString* const kKSTicketCohortHintKey = @"CohortHint";
 NSString* const kKSTicketCohortNameKey = @"CohortName";
-NSString* const kKSTicketCreationDateKey = @"creation_date";
-NSString* const kKSTicketExistenceCheckerKey = @"existence_checker";
-NSString* const kKSTicketProductIDKey = @"product_id";
-NSString* const kKSTicketServerTypeKey = @"serverType";
-NSString* const kKSTicketServerURLKey = @"server_url";
-NSString* const kKSTicketTagKey = @"tag";
-NSString* const kKSTicketTagKeyKey = @"tagKey";
-NSString* const kKSTicketTagPathKey = @"tagPath";
-NSString* const kKSTicketTicketVersionKey = @"ticketVersion";
-NSString* const kKSTicketVersionKey = @"version";
-NSString* const kKSTicketVersionPathKey = @"versionPath";
-NSString* const kKSTicketVersionKeyKey = @"versionKey";
 
-@implementation KSTicket
+@implementation KSTicket {
+  NSString* tag_;
+  NSString* version_;
+  NSString* brandCode_;
+}
 
 @synthesize productID = productID_;
 @synthesize version = version_;
@@ -217,10 +242,9 @@ NSString* const kKSTicketVersionKeyKey = @"versionKey";
                             [NSString class],
                             [NSURL class],
                           ]]
-                                         forKey:kKSTicketServerURLKey];
-  if (!serverURL) {
+                                         forKey:@"server_url"];
+  if (!serverURL)
     return nil;
-  }
   if ([serverURL isKindOfClass:[NSString class]]) {
     return [NSURL URLWithString:serverURL];  // May throw
   }
@@ -229,41 +253,41 @@ NSString* const kKSTicketVersionKeyKey = @"versionKey";
 
 - (instancetype)initWithCoder:(NSCoder*)coder {
   if ((self = [super init])) {
-    productID_ = [coder decodeObjectOfClass:[NSString class]
-                                     forKey:kKSTicketProductIDKey];
-    version_ = [coder decodeObjectOfClass:[NSString class]
-                                   forKey:kKSTicketVersionKey];
-    if ([[coder decodeObjectForKey:kKSTicketExistenceCheckerKey]
+    productID_ = [[coder decodeObjectOfClass:[NSString class]
+                                      forKey:@"product_id"] retain];
+    version_ = [[coder decodeObjectOfClass:[NSString class]
+                                    forKey:@"version"] retain];
+    if ([[coder decodeObjectForKey:@"existence_checker"]
             isKindOfClass:[KSPathExistenceChecker class]]) {
       existenceChecker_ =
-          [coder decodeObjectOfClass:[KSPathExistenceChecker class]
-                              forKey:kKSTicketExistenceCheckerKey];
+          [[coder decodeObjectOfClass:[KSPathExistenceChecker class]
+                               forKey:@"existence_checker"] retain];
     }
-    serverURL_ = [self decodeServerURL:coder];
-    creationDate_ = [coder decodeObjectOfClass:[NSDate class]
-                                        forKey:kKSTicketCreationDateKey];
-    serverType_ = [coder decodeObjectOfClass:[NSString class]
-                                      forKey:kKSTicketServerTypeKey];
-    tag_ = [coder decodeObjectOfClass:[NSString class] forKey:kKSTicketTagKey];
-    tagPath_ = [coder decodeObjectOfClass:[NSString class]
-                                   forKey:kKSTicketTagPathKey];
-    tagKey_ = [coder decodeObjectOfClass:[NSString class]
-                                  forKey:kKSTicketTagKeyKey];
-    brandPath_ = [coder decodeObjectOfClass:[NSString class]
-                                     forKey:kKSTicketBrandPathKey];
-    brandKey_ = [coder decodeObjectOfClass:[NSString class]
-                                    forKey:kKSTicketBrandKeyKey];
-    versionPath_ = [coder decodeObjectOfClass:[NSString class]
-                                       forKey:kKSTicketVersionPathKey];
-    versionKey_ = [coder decodeObjectOfClass:[NSString class]
-                                      forKey:kKSTicketVersionKeyKey];
-    cohort_ = [coder decodeObjectOfClass:[NSString class]
-                                  forKey:kKSTicketCohortKey];
-    cohortHint_ = [coder decodeObjectOfClass:[NSString class]
-                                      forKey:kKSTicketCohortHintKey];
-    cohortName_ = [coder decodeObjectOfClass:[NSString class]
-                                      forKey:kKSTicketCohortNameKey];
-    ticketVersion_ = [coder decodeInt32ForKey:kKSTicketTicketVersionKey];
+    serverURL_ = [[self decodeServerURL:coder] retain];
+    creationDate_ = [[coder decodeObjectOfClass:[NSDate class]
+                                         forKey:@"creation_date"] retain];
+    serverType_ = [[coder decodeObjectOfClass:[NSString class]
+                                       forKey:@"serverType"] retain];
+    tag_ = [[coder decodeObjectOfClass:[NSString class] forKey:@"tag"] retain];
+    tagPath_ = [[coder decodeObjectOfClass:[NSString class]
+                                    forKey:@"tagPath"] retain];
+    tagKey_ = [[coder decodeObjectOfClass:[NSString class]
+                                   forKey:@"tagKey"] retain];
+    brandPath_ = [[coder decodeObjectOfClass:[NSString class]
+                                      forKey:@"brandPath"] retain];
+    brandKey_ = [[coder decodeObjectOfClass:[NSString class]
+                                     forKey:@"brandKey"] retain];
+    versionPath_ = [[coder decodeObjectOfClass:[NSString class]
+                                        forKey:@"versionPath"] retain];
+    versionKey_ = [[coder decodeObjectOfClass:[NSString class]
+                                       forKey:@"versionKey"] retain];
+    cohort_ = [[coder decodeObjectOfClass:[NSString class]
+                                   forKey:kKSTicketCohortKey] retain];
+    cohortHint_ = [[coder decodeObjectOfClass:[NSString class]
+                                       forKey:kKSTicketCohortHintKey] retain];
+    cohortName_ = [[coder decodeObjectOfClass:[NSString class]
+                                       forKey:kKSTicketCohortNameKey] retain];
+    ticketVersion_ = [coder decodeInt32ForKey:@"ticketVersion"];
   }
   return self;
 }
@@ -275,71 +299,55 @@ NSString* const kKSTicketVersionKeyKey = @"versionKey";
                     brandCode:(NSString*)brandCode
                     brandPath:(const base::FilePath&)brandPath {
   if ((self = [super init])) {
-    productID_ = appId;
-    version_ = version;
+    productID_ = [appId retain];
+    version_ = [version retain];
     if (!ecp.empty()) {
       existenceChecker_ = [[KSPathExistenceChecker alloc] initWithFilePath:ecp];
 
-      tagPath_ =
-          [NSString stringWithFormat:@"%@/Contents/Info.plist",
-                                     base::apple::FilePathToNSString(ecp)];
-      tagKey_ = kCRUTicketTagKey;
+      tagPath_ = [[NSString stringWithFormat:@"%@/Contents/Info.plist",
+                                             base::mac::FilePathToNSString(ecp)]
+          retain];
+      tagKey_ = [kCRUTicketTagKey retain];
     }
-    tag_ = tag;
+    tag_ = [tag retain];
 
-    brandCode_ = brandCode;
+    brandCode_ = [brandCode retain];
     if (!brandPath.empty()) {
-      brandPath_ = base::apple::FilePathToNSString(brandPath);
-      brandKey_ = kCRUTicketBrandKey;
+      brandPath_ = [base::mac::FilePathToNSString(brandPath) retain];
+      brandKey_ = [kCRUTicketBrandKey retain];
     }
-    serverURL_ =
-        [NSURL URLWithString:@"https://tools.google.com/service/update2"];
-    serverType_ = @"Omaha";
+    serverURL_ = [[NSURL
+        URLWithString:@"https://tools.google.com/service/update2"] retain];
+    serverType_ = [@"Omaha" retain];
     ticketVersion_ = 1;
   }
   return self;
 }
 
+- (void)dealloc {
+  [productID_ release];
+  [version_ release];
+  [existenceChecker_ release];
+  [serverURL_ release];
+  [creationDate_ release];
+  [serverType_ release];
+  [tag_ release];
+  [tagPath_ release];
+  [tagKey_ release];
+  [brandCode_ release];
+  [brandPath_ release];
+  [brandKey_ release];
+  [versionPath_ release];
+  [versionKey_ release];
+  [cohort_ release];
+  [cohortHint_ release];
+  [cohortName_ release];
+
+  [super dealloc];
+}
+
 - (void)encodeWithCoder:(NSCoder*)coder {
-  [coder encodeObject:productID_ forKey:kKSTicketProductIDKey];
-  [coder encodeObject:version_ forKey:kKSTicketVersionKey];
-  [coder encodeObject:existenceChecker_ forKey:kKSTicketExistenceCheckerKey];
-  [coder encodeObject:serverURL_ forKey:kKSTicketServerURLKey];
-  [coder encodeObject:creationDate_ forKey:kKSTicketCreationDateKey];
-  if (serverType_.length) {
-    [coder encodeObject:serverType_ forKey:kKSTicketServerTypeKey];
-  }
-  if (tag_.length) {
-    [coder encodeObject:tag_ forKey:kKSTicketTagKey];
-  }
-  if (tagPath_.length) {
-    [coder encodeObject:tagPath_ forKey:kKSTicketTagPathKey];
-  }
-  if (tagKey_.length) {
-    [coder encodeObject:tagKey_ forKey:kKSTicketTagKeyKey];
-  }
-  if (brandPath_.length) {
-    [coder encodeObject:brandPath_ forKey:kKSTicketBrandPathKey];
-  }
-  if (brandKey_.length) {
-    [coder encodeObject:brandKey_ forKey:kKSTicketBrandKeyKey];
-  }
-  if (versionPath_.length) {
-    [coder encodeObject:versionPath_ forKey:kKSTicketVersionPathKey];
-  }
-  if (versionKey_.length) {
-    [coder encodeObject:versionKey_ forKey:kKSTicketVersionKeyKey];
-  }
-  if (cohort_.length) {
-    [coder encodeObject:cohort_ forKey:kKSTicketCohortKey];
-  }
-  if (cohortHint_.length) {
-    [coder encodeObject:cohortHint_ forKey:kKSTicketCohortHintKey];
-  }
-  if (cohortName_.length) {
-    [coder encodeObject:cohortName_ forKey:kKSTicketCohortNameKey];
-  }
-  [coder encodeInt32:ticketVersion_ forKey:kKSTicketTicketVersionKey];
+  NOTREACHED() << "KSTicket::encodeWithCoder not implemented.";
 }
 
 - (NSUInteger)hash {
@@ -396,7 +404,7 @@ NSString* const kKSTicketVersionKeyKey = @"versionKey";
   // Dates used to be parsed and stored as GMT and printed in GMT. That
   // changed in 10.7 to be GMT with timezone information, so use a custom
   // description string that matches our old output.
-  NSDateFormatter* dateFormatter = [[NSDateFormatter alloc] init];
+  NSDateFormatter* dateFormatter = [[[NSDateFormatter alloc] init] autorelease];
   [dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
   [dateFormatter setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
   NSString* gmtDate = [dateFormatter stringFromDate:creationDate_];
@@ -413,9 +421,8 @@ NSString* const kKSTicketVersionKeyKey = @"versionKey";
   // Standardize (expands tilde, symlink resolve, etc.)
   NSString* fullPath = [path stringByStandardizingPath];
 
-  if (!fullPath.length || !key.length) {
+  if (!fullPath.length || !key.length)
     return nil;
-  }
 
   NSData* plistData = [NSData dataWithContentsOfFile:fullPath];
   if (!plistData.length) {
@@ -427,16 +434,15 @@ NSString* const kKSTicketVersionKeyKey = @"versionKey";
   id plistContent =
       [NSPropertyListSerialization propertyListWithData:plistData
                                                 options:NSPropertyListImmutable
-                                                 format:nil
+                                                 format:0
                                                   error:nil];
   if (!plistContent || ![plistContent isKindOfClass:[NSDictionary class]]) {
     return nil;
   }
 
   id value = [plistContent objectForKey:key];
-  if (![value isKindOfClass:[NSString class]]) {
+  if (![value isKindOfClass:[NSString class]])
     return nil;
-  }
 
   return (NSString*)value;
 }

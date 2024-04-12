@@ -61,21 +61,7 @@ async_test(t => {
     frame.close();
     t.done();
   }));
-
-  const mediaConfig = {
-    type: 'file',
-    video: {
-      contentType: 'video/mp4; codecs="av01.0.04M.08"',
-      width: 320,
-      height: 240,
-      bitrate: 1000000,
-      framerate: '30'
-    }
-  };
-  navigator.mediaCapabilities.decodingInfo(mediaConfig).then(t.step_func(result => {
-    assert_implements_optional(result.supported, "AV.1 file streaming unsupported");
-    video.src = 'four-colors.mp4';
-  }));
+  video.src = 'four-colors.mp4';
 }, '<video> and VideoFrame constructed VideoFrame');
 
 test(t => {
@@ -85,11 +71,7 @@ test(t => {
                     'CSSImageValues are currently always tainted');
 }, 'CSSImageValue constructed VideoFrame');
 
-promise_test(() => {
-  return new Promise(resolve => onload = resolve);
-}, "Wait for onload event to get access to image data");
-
-promise_test(async t => {
+test(t => {
   let frame = new VideoFrame(document.querySelector('img'), {timestamp: 0});
   let canvas = new OffscreenCanvas(frame.displayWidth, frame.displayHeight);
   let ctx = canvas.getContext('2d');
@@ -98,7 +80,7 @@ promise_test(async t => {
   frame.close();
 }, 'Image element constructed VideoFrame');
 
-promise_test(async t => {
+test(t => {
   let frame = new VideoFrame(document.querySelector('image'), {timestamp: 0});
   let canvas = new OffscreenCanvas(frame.displayWidth, frame.displayHeight);
   let ctx = canvas.getContext('2d');

@@ -14,11 +14,9 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/abort_signal.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
-#include "third_party/blink/renderer/core/execution_context/execution_context.h"
-#include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/core/fetch/bytes_uploader.h"
 #include "third_party/blink/renderer/core/fetch/fetch_data_loader.h"
-#include "third_party/blink/renderer/core/streams/underlying_byte_source_base.h"
+#include "third_party/blink/renderer/core/streams/underlying_source_base.h"
 #include "third_party/blink/renderer/platform/bindings/trace_wrapper_v8_reference.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/loader/fetch/bytes_consumer.h"
@@ -31,10 +29,8 @@ class ReadableStream;
 class ScriptState;
 class ScriptCachedMetadataHandler;
 
-class CORE_EXPORT BodyStreamBuffer final
-    : public UnderlyingByteSourceBase,
-      public ExecutionContextLifecycleObserver,
-      public BytesConsumer::Client {
+class CORE_EXPORT BodyStreamBuffer final : public UnderlyingSourceBase,
+                                           public BytesConsumer::Client {
  public:
   using PassKey = base::PassKey<BodyStreamBuffer>;
 
@@ -66,13 +62,12 @@ class CORE_EXPORT BodyStreamBuffer final
   BodyStreamBuffer(const BodyStreamBuffer&) = delete;
   BodyStreamBuffer& operator=(const BodyStreamBuffer&) = delete;
 
-  ReadableStream* Stream() { return stream_.Get(); }
+  ReadableStream* Stream() { return stream_; }
 
   // Callable only when neither locked nor disturbed.
   scoped_refptr<BlobDataHandle> DrainAsBlobDataHandle(
-      BytesConsumer::BlobSizePolicy,
-      ExceptionState&);
-  scoped_refptr<EncodedFormData> DrainAsFormData(ExceptionState&);
+      BytesConsumer::BlobSizePolicy);
+  scoped_refptr<EncodedFormData> DrainAsFormData();
   void DrainAsChunkedDataPipeGetter(
       ScriptState*,
       mojo::PendingReceiver<network::mojom::blink::ChunkedDataPipeGetter>,
@@ -85,14 +80,9 @@ class CORE_EXPORT BodyStreamBuffer final
                     ExceptionState&);
   void Tee(BodyStreamBuffer**, BodyStreamBuffer**, ExceptionState&);
 
-  // UnderlyingByteSourceBase
-  ScriptPromise Pull(ReadableByteStreamController* controller,
-                     ExceptionState&) override;
-  ScriptPromise Cancel(ExceptionState&) override;
-  ScriptPromise Cancel(v8::Local<v8::Value> reason, ExceptionState&) override;
-  ScriptState* GetScriptState() override;
-
-  // ExecutionContextLifecycleObserver
+  // UnderlyingSourceBase
+  ScriptPromise pull(ScriptState*) override;
+  ScriptPromise Cancel(ScriptState*, ScriptValue reason) override;
   void ContextDestroyed() override;
 
   // BytesConsumer::Client
@@ -107,7 +97,9 @@ class CORE_EXPORT BodyStreamBuffer final
 
   // Closes the stream if necessary, and then locks and disturbs it. Should not
   // be called if |stream_broken_| is true.
-  void CloseAndLockAndDisturb(ExceptionState&);
+  void CloseAndLockAndDisturb();
+
+  ScriptState* GetScriptState() { return script_state_; }
 
   bool IsAborted();
 
@@ -117,7 +109,7 @@ class CORE_EXPORT BodyStreamBuffer final
   ScriptCachedMetadataHandler* GetCachedMetadataHandler() {
     DCHECK(!IsStreamLocked());
     DCHECK(!IsStreamDisturbed());
-    return cached_metadata_handler_.Get();
+    return cached_metadata_handler_;
   }
 
   // Take the blob representing any side data associated with this body
@@ -133,9 +125,6 @@ class CORE_EXPORT BodyStreamBuffer final
   void Trace(Visitor*) const override;
 
  private:
-  friend class BodyStreamBufferUnderlyingByteSource;
-  friend class BodyStreamBufferUnderlyingSource;
-
   class LoaderClient;
 
   // This method exists to avoid re-entrancy inside the BodyStreamBuffer
@@ -145,11 +134,11 @@ class CORE_EXPORT BodyStreamBuffer final
 
   BytesConsumer* ReleaseHandle(ExceptionState&);
   void Abort();
-  void Close(ExceptionState&);
+  void Close();
   void GetError();
   void RaiseOOMError();
   void CancelConsumer();
-  void ProcessData(ExceptionState&);
+  void ProcessData();
   void EndLoading();
   void StopLoading();
 

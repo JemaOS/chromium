@@ -58,20 +58,18 @@ class MODULES_EXPORT RTCIceCandidate final : public ScriptWrappable {
 
   String candidate() const;
   String sdpMid() const;
-  std::optional<uint16_t> sdpMLineIndex() const;
+  absl::optional<uint16_t> sdpMLineIndex() const;
   String foundation() const;
   String component() const;
-  std::optional<uint32_t> priority() const;
+  absl::optional<uint32_t> priority() const;
   String address() const;
   String protocol() const;
-  std::optional<uint16_t> port() const;
+  absl::optional<uint16_t> port() const;
   String type() const;
-  std::optional<String> tcpType() const;
+  absl::optional<String> tcpType() const;
   String relatedAddress() const;
-  std::optional<uint16_t> relatedPort() const;
+  absl::optional<uint16_t> relatedPort() const;
   String usernameFragment() const;
-  std::optional<String> relayProtocol() const;
-  std::optional<String> url() const;
 
   ScriptValue toJSONForBinding(ScriptState*);
 

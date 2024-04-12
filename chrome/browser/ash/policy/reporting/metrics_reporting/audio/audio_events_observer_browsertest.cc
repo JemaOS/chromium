@@ -45,7 +45,7 @@ class AudioEventsBrowserTest : public ::policy::DevicePolicyCrosBrowserTest {
   AudioEventsBrowserTest() {
     crypto_home_mixin_.MarkUserAsExisting(affiliation_mixin_.account_id());
     ::policy::SetDMTokenForTesting(
-        ::policy::DMToken::CreateValidToken(kDMToken));
+        ::policy::DMToken::CreateValidTokenForTesting(kDMToken));
   }
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
@@ -92,7 +92,7 @@ IN_PROC_BROWSER_TEST_F(AudioEventsBrowserTest,
 IN_PROC_BROWSER_TEST_F(AudioEventsBrowserTest,
                        AudioSevereUnderrunAffiliatedUserAndPolicyEnabled) {
   chromeos::MissiveClientTestObserver missive_observer_(
-      Destination::EVENT_METRIC);
+      ::reporting::Destination::EVENT_METRIC);
 
   EnablePolicy();
 
@@ -102,40 +102,15 @@ IN_PROC_BROWSER_TEST_F(AudioEventsBrowserTest,
       ash::cros_healthd::mojom::EventCategoryEnum::kAudio,
       ash::cros_healthd::mojom::EventInfo::NewAudioEventInfo(info.Clone()));
 
-  const auto record = GetNextRecord(&missive_observer_);
-  ASSERT_TRUE(record.has_dm_token());
-  EXPECT_THAT(record.dm_token(), ::testing::StrEq(kDMToken));
-  ASSERT_TRUE(record.has_source_info());
-  EXPECT_THAT(record.source_info().source(), Eq(SourceInfo::ASH));
-
+  const Record& record = GetNextRecord(&missive_observer_);
   MetricData record_data;
   ASSERT_TRUE(record_data.ParseFromString(record.data()));
 
   // Testing event found successfully.
   EXPECT_THAT(record_data.event_data().type(),
-              Eq(MetricEventType::AUDIO_SEVERE_UNDERRUN));
-}
-
-IN_PROC_BROWSER_TEST_F(AudioEventsBrowserTest,
-                       PRE_NoAudioEventsWhenPolicyDisabled) {
-  // Dummy case that sets up the affiliated user through SetUpOnMain
-  // PRE-condition.
-}
-
-IN_PROC_BROWSER_TEST_F(AudioEventsBrowserTest,
-                       NoAudioEventsWhenPolicyDisabled) {
-  chromeos::MissiveClientTestObserver missive_observer(
-      Destination::EVENT_METRIC);
-
-  DisablePolicy();
-
-  ash::cros_healthd::mojom::AudioEventInfo info;
-  info.state = ash::cros_healthd::mojom::AudioEventInfo::State::kSevereUnderrun;
-  ash::cros_healthd::FakeCrosHealthd::Get()->EmitEventForCategory(
-      ash::cros_healthd::mojom::EventCategoryEnum::kAudio,
-      ash::cros_healthd::mojom::EventInfo::NewAudioEventInfo(info.Clone()));
-
-  EXPECT_FALSE(missive_observer.HasNewEnqueuedRecord());
+              Eq(::reporting::MetricEventType::AUDIO_SEVERE_UNDERRUN));
+  ASSERT_TRUE(record.has_dm_token());
+  EXPECT_THAT(record.dm_token(), ::testing::StrEq(kDMToken));
 }
 
 }  // namespace

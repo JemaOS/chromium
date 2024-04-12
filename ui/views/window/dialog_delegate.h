@@ -6,16 +6,15 @@
 #define UI_VIEWS_WINDOW_DIALOG_DELEGATE_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
+#include "base/compiler_specific.h"
 #include "base/observer_list.h"
 #include "base/time/time.h"
 #include "ui/accessibility/ax_enums.mojom-forward.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/ui_base_types.h"
-#include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/metadata/view_factory.h"
 #include "ui/views/view.h"
 #include "ui/views/views_export.h"
@@ -27,6 +26,7 @@ namespace views {
 class BubbleFrameView;
 class DialogClientView;
 class DialogObserver;
+class LabelButton;
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -48,9 +48,9 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
   struct Params {
     Params();
     ~Params();
-    std::optional<int> default_button = std::nullopt;
+    absl::optional<int> default_button = absl::nullopt;
     bool round_corners = true;
-    std::optional<int> corner_radius = std::nullopt;
+    absl::optional<int> corner_radius = absl::nullopt;
 
     bool draggable = false;
 
@@ -69,9 +69,6 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
     // Prefer to use this field (via SetButtonLabel) rather than override
     // GetDialogButtonLabel - see https://crbug.com/1011446
     std::u16string button_labels[ui::DIALOG_BUTTON_LAST + 1];
-
-    // Styles of each button on this dialog. If empty a style will be derived.
-    std::optional<ui::ButtonStyle> button_styles[ui::DIALOG_BUTTON_LAST + 1];
 
     // A bitmask of buttons (from ui::DialogButton) that are enabled in this
     // dialog. It's legal for a button to be marked enabled that isn't present
@@ -129,19 +126,8 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
   // Returns the label of the specified dialog button.
   std::u16string GetDialogButtonLabel(ui::DialogButton button) const;
 
-  // Returns the style of the specific dialog button.
-  ui::ButtonStyle GetDialogButtonStyle(ui::DialogButton button) const;
-
-  // Returns true if `button` should be the default button.
-  bool GetIsDefault(ui::DialogButton button) const;
-
   // Returns whether the specified dialog button is enabled.
   virtual bool IsDialogButtonEnabled(ui::DialogButton button) const;
-
-  // Returns true if we should ignore key pressed event handling of `button`.
-  virtual bool ShouldIgnoreButtonPressedEventHandling(
-      View* button,
-      const ui::Event& event) const;
 
   // For Dialog boxes, if there is a "Cancel" button or no dialog button at all,
   // this is called when the user presses the "Cancel" button.  This function
@@ -174,7 +160,7 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
   void set_fixed_width(int fixed_width) { fixed_width_ = fixed_width; }
   int fixed_width() const { return fixed_width_; }
 
-  template <typename T = View>
+  template <typename T>
   T* SetExtraView(std::unique_ptr<T> extra_view) {
     T* view = extra_view.get();
     extra_view_ = std::move(extra_view);
@@ -201,8 +187,8 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
 
   // Helpers for accessing parts of the DialogClientView without needing to know
   // about DialogClientView. Do not call these before OnWidgetInitialized().
-  views::MdTextButton* GetOkButton() const;
-  views::MdTextButton* GetCancelButton() const;
+  views::LabelButton* GetOkButton() const;
+  views::LabelButton* GetCancelButton() const;
   views::View* GetExtraView() const;
 
   // Helper for accessing the footnote view. Unlike the three methods just
@@ -228,13 +214,13 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
   // interval from when the protection is started as well as any following
   // clicks that happen in shorter succession than the user's double click
   // interval. Refer to InputEventActivationProtector for more information.
-  void TriggerInputProtection(bool force_early = false);
+  void TriggerInputProtection();
 
   void set_use_round_corners(bool round) { params_.round_corners = round; }
   void set_corner_radius(int corner_radius) {
     params_.corner_radius = corner_radius;
   }
-  const std::optional<int> corner_radius() const {
+  const absl::optional<int> corner_radius() const {
     return params_.corner_radius;
   }
   void set_draggable(bool draggable) { params_.draggable = draggable; }
@@ -247,29 +233,15 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
   void SetDefaultButton(int button);
   void SetButtons(int buttons);
   void SetButtonLabel(ui::DialogButton button, std::u16string label);
-  void SetButtonStyle(ui::DialogButton button,
-                      std::optional<ui::ButtonStyle> style);
   void SetButtonEnabled(ui::DialogButton button, bool enabled);
 
   // Called when the user presses the dialog's "OK" button or presses the dialog
-  // accept accelerator, if there is one. The dialog is closed after the
-  // callback is run.
+  // accept accelerator, if there is one.
   void SetAcceptCallback(base::OnceClosure callback);
 
-  // Called when the user presses the dialog's "OK" button or presses the dialog
-  // accept accelerator, if there is one. Callbacks can return true to close the
-  // dialog, false to leave the dialog open.
-  void SetAcceptCallbackWithClose(base::RepeatingCallback<bool()> callback);
-
-  // Called when the user cancels the dialog, which can happen either by:
-  //   * Clicking the Cancel button, if there is one, or
-  //   * Closing the dialog with the Esc key, if the dialog has a close button
-  //     but no close callback
-  // The dialog is closed after the callback is run. The callback variant which
-  // returns a bool decides whether the dialog actually closes or not; returning
-  // false prevents closing, returning true allows closing.
+  // Called when the user presses the dialog's "Cancel" button or presses the
+  // dialog close accelerator (which is always VKEY_ESCAPE).
   void SetCancelCallback(base::OnceClosure callback);
-  void SetCancelCallbackWithClose(base::RepeatingCallback<bool()> callback);
 
   // Called when:
   // * The user presses the dialog's close button, if it has one
@@ -279,10 +251,6 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
   // of the dialog's widget happens. The main way that can happen in production
   // use is if the dialog's parent widget is closed.
   void SetCloseCallback(base::OnceClosure callback);
-
-  // By default the NativeWidget owns the Widget. Calling this method will
-  // instead cause the reverse. Must be called before creating the Widget.
-  void SetWidgetOwnsNativeWidget();
 
   // Returns ownership of the extra view for this dialog, if one was provided
   // via SetExtraView(). This is only for use by DialogClientView; don't call
@@ -315,7 +283,7 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
   //    bounds, by not trying to deliver mouse events to it somehow, or
   // 3) DCV::SetupLayout could always force an explicit Layout, ignoring the
   //    lazy layout system in View::InvalidateLayout
-  std::optional<std::unique_ptr<View>> DisownExtraView();
+  std::unique_ptr<View> DisownExtraView();
 
   // Accept or cancel the dialog, as though the user had pressed the
   // Accept/Cancel buttons. These methods:
@@ -323,7 +291,9 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
   // 2) Depending on their return value, close the dialog's widget.
   // Neither of these methods can be called before the dialog has been
   // initialized.
-  void AcceptDialog();
+  // NOT_TAIL_CALLED forces the calling function to appear on the stack in
+  // crash dumps. https://crbug.com/1215247
+  NOT_TAIL_CALLED void AcceptDialog();
   void CancelDialog();
 
   // This method invokes the behavior that *would* happen if this dialog's
@@ -363,11 +333,9 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
   std::unique_ptr<View> DisownFootnoteView();
 
  private:
-  // Runs a close callback, ensuring that at most one close callback is run
-  // if `callback` is a OnceClosure or returns true.
-  bool RunCloseCallback(
-      absl::variant<base::OnceClosure, base::RepeatingCallback<bool()>>&
-          callback);
+  // Runs a close callback, ensuring that at most one close callback is ever
+  // run.
+  void RunCloseCallback(base::OnceClosure callback);
 
   // The margins between the content and the inside of the border.
   // TODO(crbug.com/733040): Most subclasses assume they must set their own
@@ -382,28 +350,22 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
   Params params_;
 
   // The extra view for this dialog, if there is one.
-  std::optional<std::unique_ptr<View>> extra_view_;
+  std::unique_ptr<View> extra_view_;
 
   // The footnote view for this dialog, if there is one.
   std::unique_ptr<View> footnote_view_;
 
   // Observers for DialogModel changes.
-  base::ObserverList<DialogObserver>::UncheckedAndDanglingUntriaged
-      observer_list_;
+  base::ObserverList<DialogObserver>::Unchecked observer_list_;
 
   // Callbacks for the dialog's actions:
-  absl::variant<base::OnceClosure, base::RepeatingCallback<bool()>>
-      accept_callback_;
-  absl::variant<base::OnceClosure, base::RepeatingCallback<bool()>>
-      cancel_callback_;
+  base::OnceClosure accept_callback_;
+  base::OnceClosure cancel_callback_;
   base::OnceClosure close_callback_;
 
-  // Whether any of the three callbacks just above has been delivered yet and
-  // returned true, *or* one of the Accept/Cancel methods have been called and
-  // returned true.
+  // Whether any of the three callbacks just above has been delivered yet, *or*
+  // one of the Accept/Cancel methods have been called and returned true.
   bool already_started_close_ = false;
-
-  bool widget_owns_native_widget_ = false;
 };
 
 // A DialogDelegate implementation that is-a View. Used to override GetWidget()
@@ -417,9 +379,8 @@ class VIEWS_EXPORT DialogDelegate : public WidgetDelegate {
 // DialogDelegateView has unusual lifetime semantics that you can avoid dealing
 // with, and your class will be smaller.
 class VIEWS_EXPORT DialogDelegateView : public DialogDelegate, public View {
-  METADATA_HEADER(DialogDelegateView, View)
-
  public:
+  METADATA_HEADER(DialogDelegateView);
   DialogDelegateView();
   DialogDelegateView(const DialogDelegateView&) = delete;
   DialogDelegateView& operator=(const DialogDelegateView&) = delete;

@@ -51,7 +51,7 @@ bool ThroughputTracker::Stop() {
 
   started_ = false;
   if (host_)
-    return host_->StopThroughputTracker(id_);
+    return host_->StopThroughtputTracker(id_);
 
   return false;
 }
@@ -64,7 +64,7 @@ void ThroughputTracker::Cancel() {
 
   started_ = false;
   if (host_)
-    host_->CancelThroughputTracker(id_);
+    host_->CancelThroughtputTracker(id_);
 }
 
 }  // namespace ui

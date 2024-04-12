@@ -6,8 +6,6 @@
 
 #include <utility>
 
-#include "ui/base/models/combobox_model_observer.h"
-
 namespace ui {
 
 SimpleComboboxModel::Item::Item(std::u16string text) : text(std::move(text)) {}
@@ -36,14 +34,6 @@ SimpleComboboxModel::SimpleComboboxModel(std::vector<Item> items)
 
 SimpleComboboxModel::~SimpleComboboxModel() = default;
 
-void SimpleComboboxModel::UpdateItemList(std::vector<Item> items) {
-  items_ = std::move(items);
-
-  for (auto& observer : observers()) {
-    observer.OnComboboxModelChanged(this);
-  }
-}
-
 size_t SimpleComboboxModel::GetItemCount() const {
   return items_.size();
 }
@@ -65,8 +55,8 @@ bool SimpleComboboxModel::IsItemSeparatorAt(size_t index) const {
   return items_[index].text.empty();
 }
 
-std::optional<size_t> SimpleComboboxModel::GetDefaultIndex() const {
-  return items_.empty() ? std::nullopt : std::make_optional(0u);
+absl::optional<size_t> SimpleComboboxModel::GetDefaultIndex() const {
+  return size_t{0};
 }
 
 }  // namespace ui

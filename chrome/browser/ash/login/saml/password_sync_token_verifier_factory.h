@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_LOGIN_SAML_PASSWORD_SYNC_TOKEN_VERIFIER_FACTORY_H_
 #define CHROME_BROWSER_ASH_LOGIN_SAML_PASSWORD_SYNC_TOKEN_VERIFIER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -22,13 +22,13 @@ class PasswordSyncTokenVerifierFactory : public ProfileKeyedServiceFactory {
   static PasswordSyncTokenVerifier* GetForProfile(Profile* profile);
 
  private:
-  friend base::NoDestructor<PasswordSyncTokenVerifierFactory>;
+  friend struct base::DefaultSingletonTraits<PasswordSyncTokenVerifierFactory>;
 
   PasswordSyncTokenVerifierFactory();
   ~PasswordSyncTokenVerifierFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

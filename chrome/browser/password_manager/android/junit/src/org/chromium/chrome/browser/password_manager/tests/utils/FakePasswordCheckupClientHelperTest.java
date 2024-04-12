@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.password_manager.tests.utils;
 import static android.os.Looper.getMainLooper;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.PendingIntent;
@@ -14,8 +15,6 @@ import android.app.PendingIntent;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -35,55 +34,33 @@ import java.util.Optional;
 public class FakePasswordCheckupClientHelperTest {
     private static final String TEST_ACCOUNT = "test@example.com";
     private FakePasswordCheckupClientHelper mFakeHelper;
-    @Mock private PendingIntent mPendingIntentForLocalCheckupMock;
-    @Mock private PendingIntent mPendingIntentForAccountCheckupMock;
-
-    private final PayloadCallbackHelper<PendingIntent> mSuccessCallbackHelper =
-            new PayloadCallbackHelper<>();
-    private final PayloadCallbackHelper<Exception> mFailureCallbackHelper =
-            new PayloadCallbackHelper<>();
 
     @Before
     public void setUp() {
-        MockitoAnnotations.initMocks(this);
         mFakeHelper = new FakePasswordCheckupClientHelper();
-        mFakeHelper.setIntentForLocalCheckup(mPendingIntentForLocalCheckupMock);
-        mFakeHelper.setIntentForAccountCheckup(mPendingIntentForAccountCheckupMock);
+        mFakeHelper.setIntent(mock(PendingIntent.class));
     }
 
     @Test
-    public void testGetPasswordCheckupIntentForLocalCheckupSucceeds() {
-        mFakeHelper.getPasswordCheckupIntent(
-                PasswordCheckReferrer.SAFETY_CHECK,
-                Optional.empty(),
-                mSuccessCallbackHelper::notifyCalled,
-                mFailureCallbackHelper::notifyCalled);
+    public void testGetPasswordCheckupIntentSucceeds() {
+        final PendingIntent pendingIntentMock = mock(PendingIntent.class);
+        mFakeHelper.setIntent(pendingIntentMock);
+
+        final PayloadCallbackHelper<PendingIntent> successCallbackHelper =
+                new PayloadCallbackHelper<>();
+        final PayloadCallbackHelper<Exception> failureCallbackHelper =
+                new PayloadCallbackHelper<>();
+
+        mFakeHelper.getPasswordCheckupIntent(PasswordCheckReferrer.SAFETY_CHECK,
+                Optional.of(TEST_ACCOUNT), successCallbackHelper::notifyCalled,
+                failureCallbackHelper::notifyCalled);
 
         // Move the clock forward
         shadowOf(getMainLooper()).idle();
         // Verify that success callback was called.
-        assertEquals(
-                mSuccessCallbackHelper.getOnlyPayloadBlocking(), mPendingIntentForLocalCheckupMock);
+        assertEquals(successCallbackHelper.getOnlyPayloadBlocking(), pendingIntentMock);
         // Verify that failure callback was not called.
-        assertEquals(mFailureCallbackHelper.getCallCount(), 0);
-    }
-
-    @Test
-    public void testGetPasswordCheckupIntentForAccountCheckupSucceeds() {
-        mFakeHelper.getPasswordCheckupIntent(
-                PasswordCheckReferrer.SAFETY_CHECK,
-                Optional.of(TEST_ACCOUNT),
-                mSuccessCallbackHelper::notifyCalled,
-                mFailureCallbackHelper::notifyCalled);
-
-        // Move the clock forward
-        shadowOf(getMainLooper()).idle();
-        // Verify that success callback was called.
-        assertEquals(
-                mSuccessCallbackHelper.getOnlyPayloadBlocking(),
-                mPendingIntentForAccountCheckupMock);
-        // Verify that failure callback was not called.
-        assertEquals(mFailureCallbackHelper.getCallCount(), 0);
+        assertEquals(failureCallbackHelper.getCallCount(), 0);
     }
 
     @Test
@@ -97,10 +74,8 @@ public class FakePasswordCheckupClientHelperTest {
         final PayloadCallbackHelper<Exception> failureCallbackHelper =
                 new PayloadCallbackHelper<>();
 
-        mFakeHelper.getPasswordCheckupIntent(
-                PasswordCheckReferrer.SAFETY_CHECK,
-                Optional.of(TEST_ACCOUNT),
-                successCallbackHelper::notifyCalled,
+        mFakeHelper.getPasswordCheckupIntent(PasswordCheckReferrer.SAFETY_CHECK,
+                Optional.of(TEST_ACCOUNT), successCallbackHelper::notifyCalled,
                 failureCallbackHelper::notifyCalled);
 
         // Move the clock forward
@@ -117,10 +92,8 @@ public class FakePasswordCheckupClientHelperTest {
         final PayloadCallbackHelper<Exception> failureCallbackHelper =
                 new PayloadCallbackHelper<>();
 
-        mFakeHelper.runPasswordCheckupInBackground(
-                PasswordCheckReferrer.SAFETY_CHECK,
-                Optional.of(TEST_ACCOUNT),
-                successCallbackHelper::notifyCalled,
+        mFakeHelper.runPasswordCheckupInBackground(PasswordCheckReferrer.SAFETY_CHECK,
+                Optional.of(TEST_ACCOUNT), successCallbackHelper::notifyCalled,
                 failureCallbackHelper::notifyCalled);
 
         // Move the clock forward
@@ -141,10 +114,8 @@ public class FakePasswordCheckupClientHelperTest {
         final PayloadCallbackHelper<Exception> failureCallbackHelper =
                 new PayloadCallbackHelper<>();
 
-        mFakeHelper.runPasswordCheckupInBackground(
-                PasswordCheckReferrer.SAFETY_CHECK,
-                Optional.of(TEST_ACCOUNT),
-                successCallbackHelper::notifyCalled,
+        mFakeHelper.runPasswordCheckupInBackground(PasswordCheckReferrer.SAFETY_CHECK,
+                Optional.of(TEST_ACCOUNT), successCallbackHelper::notifyCalled,
                 failureCallbackHelper::notifyCalled);
 
         // Move the clock forward
@@ -164,10 +135,8 @@ public class FakePasswordCheckupClientHelperTest {
         final PayloadCallbackHelper<Exception> failureCallbackHelper =
                 new PayloadCallbackHelper<>();
 
-        mFakeHelper.getBreachedCredentialsCount(
-                PasswordCheckReferrer.SAFETY_CHECK,
-                Optional.of(TEST_ACCOUNT),
-                successCallbackHelper::notifyCalled,
+        mFakeHelper.getBreachedCredentialsCount(PasswordCheckReferrer.SAFETY_CHECK,
+                Optional.of(TEST_ACCOUNT), successCallbackHelper::notifyCalled,
                 failureCallbackHelper::notifyCalled);
 
         // Move the clock forward
@@ -188,10 +157,8 @@ public class FakePasswordCheckupClientHelperTest {
         final PayloadCallbackHelper<Exception> failureCallbackHelper =
                 new PayloadCallbackHelper<>();
 
-        mFakeHelper.getBreachedCredentialsCount(
-                PasswordCheckReferrer.SAFETY_CHECK,
-                Optional.of(TEST_ACCOUNT),
-                successCallbackHelper::notifyCalled,
+        mFakeHelper.getBreachedCredentialsCount(PasswordCheckReferrer.SAFETY_CHECK,
+                Optional.of(TEST_ACCOUNT), successCallbackHelper::notifyCalled,
                 failureCallbackHelper::notifyCalled);
 
         // Move the clock forward

@@ -2,14 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
-import * as Platform from 'devtools/core/platform/platform.js';
-import * as Console from 'devtools/panels/console/console.js';
-
 (async function() {
   TestRunner.addResult(`Tests that console viewport handles selection properly.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
   await TestRunner.showPanel('console');
   await TestRunner.evaluateInPagePromise(`
       function populateConsoleWithMessages(count)
@@ -22,7 +17,7 @@ import * as Console from 'devtools/panels/console/console.js';
     `);
 
   ConsoleTestRunner.fixConsoleViewportDimensions(600, 200);
-  var consoleView = Console.ConsoleView.ConsoleView.instance();
+  var consoleView = Console.ConsoleView.instance();
   var viewport = consoleView.viewport;
   const minimumViewportMessagesCount = 10;
   const messagesCount = 150;
@@ -179,17 +174,17 @@ import * as Console from 'devtools/panels/console/console.js';
   }
 
   ConsoleTestRunner.addConsoleSniffer(messageAdded, true);
-  TestRunner.evaluateInPage(Platform.StringUtilities.sprintf('populateConsoleWithMessages(%d)', messagesCount));
+  TestRunner.evaluateInPage(String.sprintf('populateConsoleWithMessages(%d)', messagesCount));
 
   function dumpSelectionModelElement(model) {
     if (!model)
       return 'null';
-    return Platform.StringUtilities.sprintf('{item: %d, offset: %d}', model.item, model.offset);
+    return String.sprintf('{item: %d, offset: %d}', model.item, model.offset);
   }
 
   function dumpSelectionModel() {
     viewport.refresh();
-    var text = Platform.StringUtilities.sprintf(
+    var text = String.sprintf(
         'anchor = %s, head = %s', dumpSelectionModelElement(viewport.anchorSelection),
         dumpSelectionModelElement(viewport.headSelection));
     TestRunner.addResult(text);
@@ -218,7 +213,7 @@ import * as Console from 'devtools/panels/console/console.js';
 
   async function selectMessages(fromMessage, fromTextOffset, toMessage, toTextOffset) {
     if (Math.abs(toMessage - fromMessage) > minimumViewportMessagesCount) {
-      TestRunner.addResult(Platform.StringUtilities.sprintf(
+      TestRunner.addResult(String.sprintf(
           'FAILURE: Cannot select more than %d messages (requested to select from %d to %d',
           minimumViewportMessagesCount, fromMessage, toMessage));
       TestRunner.completeTest();

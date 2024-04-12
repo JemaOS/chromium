@@ -62,7 +62,7 @@ int CompletionSuggestionLabelView::GetPrefixWidthPx() const {
   return 0;
 }
 
-BEGIN_METADATA(CompletionSuggestionLabelView)
+BEGIN_METADATA(CompletionSuggestionLabelView, views::StyledLabel)
 END_METADATA
 
 }  // namespace ime

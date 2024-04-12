@@ -7,8 +7,6 @@
 
 #include "third_party/blink/public/mojom/permissions/permission.mojom-blink.h"
 #include "third_party/blink/public/mojom/quota/quota_manager_host.mojom-blink.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
@@ -21,10 +19,11 @@
 namespace blink {
 
 class ExecutionContext;
+class ScriptPromise;
+class ScriptPromiseResolver;
 class ScriptState;
-class StorageEstimate;
 
-class StorageManager final : public EventTarget,
+class StorageManager final : public EventTargetWithInlineData,
                              public ExecutionContextClient,
                              public mojom::blink::QuotaChangeListener {
   DEFINE_WRAPPERTYPEINFO();
@@ -33,14 +32,14 @@ class StorageManager final : public EventTarget,
   explicit StorageManager(ExecutionContext*);
   ~StorageManager() override;
 
-  ScriptPromiseTyped<IDLBoolean> persisted(ScriptState*, ExceptionState&);
-  ScriptPromiseTyped<IDLBoolean> persist(ScriptState*, ExceptionState&);
+  ScriptPromise persisted(ScriptState*, ExceptionState&);
+  ScriptPromise persist(ScriptState*, ExceptionState&);
 
-  ScriptPromiseTyped<StorageEstimate> estimate(ScriptState*, ExceptionState&);
+  ScriptPromise estimate(ScriptState*, ExceptionState&);
 
   void Trace(Visitor* visitor) const override;
 
-  // EventTarget
+  // EventTargetWithInlineData
   DEFINE_ATTRIBUTE_EVENT_LISTENER(quotachange, kQuotachange)
   const AtomicString& InterfaceName() const override;
   ExecutionContext* GetExecutionContext() const override;
@@ -59,7 +58,7 @@ class StorageManager final : public EventTarget,
   mojom::blink::PermissionService* GetPermissionService(ExecutionContext*);
 
   void PermissionServiceConnectionError();
-  void PermissionRequestComplete(ScriptPromiseResolverTyped<IDLBoolean>*,
+  void PermissionRequestComplete(ScriptPromiseResolver*,
                                  mojom::blink::PermissionStatus);
 
   // Called when a quota change event listener is added.

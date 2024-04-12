@@ -15,7 +15,6 @@
 #include "base/trace_event/trace_event.h"
 #include "base/types/pass_key.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
-#include "third_party/blink/renderer/bindings/core/v8/frozen_array.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_xr_frame_request_callback.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_xr_hit_test_options_init.h"
@@ -32,7 +31,7 @@
 #include "third_party/blink/renderer/core/resize_observer/resize_observer.h"
 #include "third_party/blink/renderer/core/resize_observer/resize_observer_entry.h"
 #include "third_party/blink/renderer/modules/event_target_modules.h"
-#include "third_party/blink/renderer/modules/xr/vr_service_type_converters.h"
+#include "third_party/blink/renderer/modules/xr/type_converters.h"
 #include "third_party/blink/renderer/modules/xr/xr_anchor_set.h"
 #include "third_party/blink/renderer/modules/xr/xr_bounded_reference_space.h"
 #include "third_party/blink/renderer/modules/xr/xr_camera.h"
@@ -123,7 +122,7 @@ const float kMaxDefaultFramebufferScale = 1.0f;
 const unsigned int kMonoView = 0;
 
 // Returns the session feature corresponding to the given reference space type.
-std::optional<device::mojom::XRSessionFeature> MapReferenceSpaceTypeToFeature(
+absl::optional<device::mojom::XRSessionFeature> MapReferenceSpaceTypeToFeature(
     device::mojom::blink::XRReferenceSpaceType type) {
   switch (type) {
     case device::mojom::blink::XRReferenceSpaceType::kViewer:
@@ -139,7 +138,7 @@ std::optional<device::mojom::XRSessionFeature> MapReferenceSpaceTypeToFeature(
   }
 
   NOTREACHED();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::unique_ptr<gfx::Transform> getPoseMatrix(
@@ -154,7 +153,7 @@ std::unique_ptr<gfx::Transform> getPoseMatrix(
   return std::make_unique<gfx::Transform>(device_pose.ToTransform());
 }
 
-std::optional<device::mojom::blink::EntityTypeForHitTest>
+absl::optional<device::mojom::blink::EntityTypeForHitTest>
 EntityTypeForHitTestFromString(const String& string) {
   if (string == "plane")
     return device::mojom::blink::EntityTypeForHitTest::PLANE;
@@ -163,7 +162,7 @@ EntityTypeForHitTestFromString(const String& string) {
     return device::mojom::blink::EntityTypeForHitTest::POINT;
 
   NOTREACHED();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // Returns a vector of entity types from hit test options, without duplicates.
@@ -337,36 +336,29 @@ XRSession::XRSession(
     device::mojom::blink::XRInteractionMode interaction_mode,
     device::mojom::blink::XRSessionDeviceConfigPtr device_config,
     bool sensorless_session,
-    XRSessionFeatureSet enabled_feature_set)
+    XRSessionFeatureSet enabled_features)
     : ActiveScriptWrappable<XRSession>({}),
-      frame_tracked_images_(
-          MakeGarbageCollected<FrozenArray<XRImageTrackingResult>>()),
       xr_(xr),
       mode_(mode),
       environment_integration_(
           mode == device::mojom::blink::XRSessionMode::kImmersiveAr),
-      enabled_feature_set_(std::move(enabled_feature_set)),
+      enabled_features_(std::move(enabled_features)),
       plane_manager_(
           MakeGarbageCollected<XRPlaneManager>(base::PassKey<XRSession>{},
                                                this)),
       depth_manager_(
-          CreateDepthManagerIfEnabled(enabled_feature_set_, *device_config)),
+          CreateDepthManagerIfEnabled(enabled_features_, *device_config)),
       input_sources_(MakeGarbageCollected<XRInputSourceArray>()),
       client_receiver_(this, xr->GetExecutionContext()),
+      input_receiver_(this, xr->GetExecutionContext()),
       callback_collection_(
           MakeGarbageCollected<XRFrameRequestCallbackCollection>(
               xr->GetExecutionContext())),
+      uses_input_eventing_(device_config->uses_input_eventing),
       supports_viewport_scaling_(immersive() &&
                                  device_config->supports_viewport_scaling),
       enable_anti_aliasing_(device_config->enable_anti_aliasing),
       sensorless_session_(sensorless_session) {
-  FrozenArray<IDLString>::VectorType enabled_features;
-  for (const auto& feature : enabled_feature_set_) {
-    enabled_features.push_back(XRSessionFeatureToString(feature));
-  }
-  enabled_features_ =
-      MakeGarbageCollected<FrozenArray<IDLString>>(std::move(enabled_features));
-
   client_receiver_.Bind(
       std::move(client_receiver),
       xr->GetExecutionContext()->GetTaskRunner(TaskType::kMiscPlatformAPI));
@@ -411,8 +403,8 @@ XRSession::XRSession(
 
 void XRSession::SetDOMOverlayElement(Element* element) {
   DVLOG(2) << __func__ << ": element=" << element;
-  DCHECK(enabled_feature_set_.Contains(
-      device::mojom::XRSessionFeature::DOM_OVERLAY));
+  DCHECK(
+      enabled_features_.Contains(device::mojom::XRSessionFeature::DOM_OVERLAY));
   DCHECK(element);
 
   overlay_element_ = element;
@@ -438,8 +430,13 @@ const String XRSession::visibilityState() const {
   }
 }
 
-const FrozenArray<IDLString>& XRSession::enabledFeatures() const {
-  return *enabled_features_.Get();
+Vector<String> XRSession::enabledFeatures() const {
+  Vector<String> enabled_features;
+  for (const auto& feature : enabled_features_) {
+    enabled_features.push_back(XRSessionFeatureToString(feature));
+  }
+
+  return enabled_features;
 }
 
 XRAnchorSet* XRSession::TrackedAnchors() const {
@@ -468,6 +465,13 @@ ExecutionContext* XRSession::GetExecutionContext() const {
 
 const AtomicString& XRSession::InterfaceName() const {
   return event_target_names::kXRSession;
+}
+
+mojo::PendingAssociatedRemote<device::mojom::blink::XRInputSourceButtonListener>
+XRSession::GetInputClickListener() {
+  DCHECK(!input_receiver_.is_bound());
+  return input_receiver_.BindNewEndpointAndPassRemote(
+      xr_->GetExecutionContext()->GetTaskRunner(TaskType::kMiscPlatformAPI));
 }
 
 void XRSession::updateRenderState(XRRenderStateInit* init,
@@ -583,15 +587,14 @@ void XRSession::UpdateStageParameters(
   }
 }
 
-ScriptPromiseTyped<IDLUndefined> XRSession::updateTargetFrameRate(
-    float rate,
+ScriptPromise XRSession::updateTargetFrameRate(float rate,
     ExceptionState& exception_state) {
   exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                     kSessionNotHaveSetFrameRate);
-  return ScriptPromiseTyped<IDLUndefined>();
+  return ScriptPromise();
 }
 
-ScriptPromiseTyped<XRReferenceSpace> XRSession::requestReferenceSpace(
+ScriptPromise XRSession::requestReferenceSpace(
     ScriptState* script_state,
     const String& type,
     ExceptionState& exception_state) {
@@ -600,7 +603,7 @@ ScriptPromiseTyped<XRReferenceSpace> XRSession::requestReferenceSpace(
   if (ended_) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       kSessionEnded);
-    return ScriptPromiseTyped<XRReferenceSpace>();
+    return ScriptPromise();
   }
 
   device::mojom::blink::XRReferenceSpaceType requested_type =
@@ -610,7 +613,7 @@ ScriptPromiseTyped<XRReferenceSpace> XRSession::requestReferenceSpace(
       requested_type != device::mojom::blink::XRReferenceSpaceType::kViewer) {
     exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
                                       kReferenceSpaceNotSupported);
-    return ScriptPromiseTyped<XRReferenceSpace>();
+    return ScriptPromise();
   }
 
   // If the session feature required by this reference space type is not
@@ -619,7 +622,7 @@ ScriptPromiseTyped<XRReferenceSpace> XRSession::requestReferenceSpace(
   if (!type_as_feature) {
     exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
                                       kReferenceSpaceNotSupported);
-    return ScriptPromiseTyped<XRReferenceSpace>();
+    return ScriptPromise();
   }
 
   // Report attempt to use this feature
@@ -631,7 +634,7 @@ ScriptPromiseTyped<XRReferenceSpace> XRSession::requestReferenceSpace(
     DVLOG(2) << __func__ << ": feature not enabled, type=" << type;
     exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
                                       kReferenceSpaceNotSupported);
-    return ScriptPromiseTyped<XRReferenceSpace>();
+    return ScriptPromise();
   }
 
   XRReferenceSpace* reference_space = nullptr;
@@ -661,27 +664,33 @@ ScriptPromiseTyped<XRReferenceSpace> XRSession::requestReferenceSpace(
   if (!reference_space) {
     exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
                                       kReferenceSpaceNotSupported);
-    return ScriptPromiseTyped<XRReferenceSpace>();
+    return ScriptPromise();
   }
 
   DCHECK(reference_space);
   reference_spaces_.push_back(reference_space);
-  return ToResolvedPromise<XRReferenceSpace>(script_state, reference_space);
+
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
+  resolver->Resolve(reference_space);
+
+  return promise;
 }
 
-ScriptPromiseTyped<XRAnchor> XRSession::CreateAnchorHelper(
+ScriptPromise XRSession::CreateAnchorHelper(
     ScriptState* script_state,
     const gfx::Transform& native_origin_from_anchor,
     const device::mojom::blink::XRNativeOriginInformationPtr&
         native_origin_information,
-    std::optional<uint64_t> maybe_plane_id,
+    absl::optional<uint64_t> maybe_plane_id,
     ExceptionState& exception_state) {
   DVLOG(2) << __func__;
 
   if (ended_) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       kSessionEnded);
-    return ScriptPromiseTyped<XRAnchor>();
+    return ScriptPromise();
   }
 
   // Reject the promise if device doesn't support the anchors API.
@@ -690,7 +699,7 @@ ScriptPromiseTyped<XRAnchor> XRSession::CreateAnchorHelper(
         DOMExceptionCode::kInvalidStateError,
         kFeatureNotSupportedByDevicePrefix +
             XRSessionFeatureToString(device::mojom::XRSessionFeature::ANCHORS));
-    return ScriptPromiseTyped<XRAnchor>();
+    return ScriptPromise();
   }
 
   auto maybe_native_origin_from_anchor_pose =
@@ -699,7 +708,7 @@ ScriptPromiseTyped<XRAnchor> XRSession::CreateAnchorHelper(
   if (!maybe_native_origin_from_anchor_pose) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       kUnableToDecomposeMatrix);
-    return ScriptPromiseTyped<XRAnchor>();
+    return ScriptPromise();
   }
 
   DVLOG(3) << __func__
@@ -708,9 +717,9 @@ ScriptPromiseTyped<XRAnchor> XRSession::CreateAnchorHelper(
            << ", maybe_native_origin_from_anchor_pose->position()= "
            << maybe_native_origin_from_anchor_pose->position().ToString();
 
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<XRAnchor>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
 
   if (maybe_plane_id) {
     xr_->xrEnvironmentProviderRemote()->CreatePlaneAnchor(
@@ -731,7 +740,7 @@ ScriptPromiseTyped<XRAnchor> XRSession::CreateAnchorHelper(
   return promise;
 }
 
-std::optional<XRSession::ReferenceSpaceInformation>
+absl::optional<XRSession::ReferenceSpaceInformation>
 XRSession::GetStationaryReferenceSpace() const {
   // For anchor creation, we should first attempt to use the local space as it
   // is supposed to be more stable, but if that is unavailable, we can try using
@@ -750,7 +759,7 @@ XRSession::GetStationaryReferenceSpace() const {
 
   if (!mojo_from_space) {
     // Unbounded is also not available.
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   ReferenceSpaceInformation result;
@@ -799,10 +808,10 @@ XRInputSourceArray* XRSession::inputSources(ScriptState* script_state) const {
     did_log_getInputSources_ = true;
   }
 
-  return input_sources_.Get();
+  return input_sources_;
 }
 
-ScriptPromiseTyped<XRHitTestSource> XRSession::requestHitTestSource(
+ScriptPromise XRSession::requestHitTestSource(
     ScriptState* script_state,
     XRHitTestOptionsInit* options_init,
     ExceptionState& exception_state) {
@@ -888,10 +897,9 @@ ScriptPromiseTyped<XRHitTestSource> XRSession::requestHitTestSource(
 
   ray_mojo->direction = origin_from_ray.MapPoint({0, 0, -1}).OffsetFromOrigin();
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<XRHitTestSource>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
   xr_->xrEnvironmentProviderRemote()->SubscribeToHitTest(
       maybe_native_origin->Clone(), entity_types, std::move(ray_mojo),
@@ -902,8 +910,7 @@ ScriptPromiseTyped<XRHitTestSource> XRSession::requestHitTestSource(
   return promise;
 }
 
-ScriptPromiseTyped<XRTransientInputHitTestSource>
-XRSession::requestHitTestSourceForTransientInput(
+ScriptPromise XRSession::requestHitTestSourceForTransientInput(
     ScriptState* script_state,
     XRTransientInputHitTestOptionsInit* options_init,
     ExceptionState& exception_state) {
@@ -955,10 +962,9 @@ XRSession::requestHitTestSourceForTransientInput(
                          static_cast<float>(offsetRay->direction()->y()),
                          static_cast<float>(offsetRay->direction()->z())};
 
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<XRTransientInputHitTestSource>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
 
   xr_->xrEnvironmentProviderRemote()->SubscribeToHitTestForTransientInput(
       options_init->profile(), entity_types, std::move(ray_mojo),
@@ -971,7 +977,7 @@ XRSession::requestHitTestSourceForTransientInput(
 }
 
 void XRSession::OnSubscribeToHitTestResult(
-    ScriptPromiseResolverTyped<XRHitTestSource>* resolver,
+    ScriptPromiseResolver* resolver,
     device::mojom::SubscribeToHitTestResult result,
     uint64_t subscription_id) {
   DVLOG(2) << __func__ << ": result=" << result
@@ -997,7 +1003,7 @@ void XRSession::OnSubscribeToHitTestResult(
 }
 
 void XRSession::OnSubscribeToHitTestForTransientInputResult(
-    ScriptPromiseResolverTyped<XRTransientInputHitTestSource>* resolver,
+    ScriptPromiseResolver* resolver,
     device::mojom::SubscribeToHitTestResult result,
     uint64_t subscription_id) {
   DVLOG(2) << __func__ << ": result=" << result
@@ -1023,10 +1029,9 @@ void XRSession::OnSubscribeToHitTestForTransientInputResult(
   resolver->Resolve(hit_test_source);
 }
 
-void XRSession::OnCreateAnchorResult(
-    ScriptPromiseResolverTyped<XRAnchor>* resolver,
-    device::mojom::CreateAnchorResult result,
-    uint64_t id) {
+void XRSession::OnCreateAnchorResult(ScriptPromiseResolver* resolver,
+                                     device::mojom::CreateAnchorResult result,
+                                     uint64_t id) {
   DVLOG(2) << __func__ << ": result=" << result << ", id=" << id;
 
   DCHECK(create_anchor_promises_.Contains(resolver));
@@ -1084,9 +1089,9 @@ void XRSession::OnEnvironmentProviderError() {
                                      kDeviceDisconnected);
   }
 
-  HeapVector<Member<ImageScoreResolverType>> image_score_promises;
+  HeapVector<Member<ScriptPromiseResolver>> image_score_promises;
   image_scores_resolvers_.swap(image_score_promises);
-  for (auto& resolver : image_score_promises) {
+  for (ScriptPromiseResolver* resolver : image_score_promises) {
     ScriptState* resolver_script_state = resolver->GetScriptState();
     if (!IsInParallelAlgorithmRunnable(resolver->GetExecutionContext(),
                                        resolver_script_state)) {
@@ -1148,7 +1153,7 @@ void XRSession::ProcessAnchorsData(
 
       XRAnchor* xr_anchor =
           MakeGarbageCollected<XRAnchor>(anchor->id, this, *anchor);
-      resolver_it->value->DowncastTo<XRAnchor>()->Resolve(xr_anchor);
+      resolver_it->value->Resolve(xr_anchor);
       anchor_ids_to_pending_anchor_promises_.erase(resolver_it);
 
       updated_anchors.insert(anchor->id, xr_anchor);
@@ -1294,14 +1299,13 @@ XRWebGLDepthInformation* XRSession::GetWebGLDepthInformation(
   return depth_manager_->GetWebGLDepthInformation(xr_frame, exception_state);
 }
 
-ScriptPromiseTyped<XRLightProbe> XRSession::requestLightProbe(
-    ScriptState* script_state,
-    XRLightProbeInit* light_probe_init,
-    ExceptionState& exception_state) {
+ScriptPromise XRSession::requestLightProbe(ScriptState* script_state,
+                                           XRLightProbeInit* light_probe_init,
+                                           ExceptionState& exception_state) {
   if (ended_) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       kSessionEnded);
-    return ScriptPromiseTyped<XRLightProbe>();
+    return ScriptPromise();
   }
 
   if (!IsFeatureEnabled(device::mojom::XRSessionFeature::LIGHT_ESTIMATION)) {
@@ -1310,7 +1314,7 @@ ScriptPromiseTyped<XRLightProbe> XRSession::requestLightProbe(
         kFeatureNotSupportedBySessionPrefix +
             XRSessionFeatureToString(
                 device::mojom::XRSessionFeature::LIGHT_ESTIMATION));
-    return ScriptPromiseTyped<XRLightProbe>();
+    return ScriptPromise();
   }
 
   if (light_probe_init->reflectionFormat() != "srgba8" &&
@@ -1320,8 +1324,12 @@ ScriptPromiseTyped<XRLightProbe> XRSession::requestLightProbe(
         "Reflection format \"" +
             IDLEnumAsString(light_probe_init->reflectionFormat()) +
             "\" not supported.");
-    return ScriptPromiseTyped<XRLightProbe>();
+    return ScriptPromise();
   }
+
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
   if (!world_light_probe_) {
     // TODO(https://crbug.com/1147569): This is problematic because it means the
@@ -1330,26 +1338,27 @@ ScriptPromiseTyped<XRLightProbe> XRSession::requestLightProbe(
     world_light_probe_ =
         MakeGarbageCollected<XRLightProbe>(this, light_probe_init);
   }
-  return ToResolvedPromise<XRLightProbe>(script_state, world_light_probe_);
+
+  resolver->Resolve(world_light_probe_);
+
+  return promise;
 }
 
-ScriptPromiseTyped<IDLUndefined> XRSession::end(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise XRSession::end(ScriptState* script_state,
+                             ExceptionState& exception_state) {
   DVLOG(2) << __func__;
   // Don't allow a session to end twice.
   if (ended_) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       kSessionEnded);
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   ForceEnd(ShutdownPolicy::kWaitForResponse);
 
-  end_session_resolver_ =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state, exception_state.GetContext());
-  auto promise = end_session_resolver_->Promise();
+  end_session_resolver_ = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = end_session_resolver_->Promise();
 
   DVLOG(1) << __func__ << ": returning promise";
   return promise;
@@ -1663,8 +1672,7 @@ void XRSession::UpdatePresentationFrameState(
     bool emulated_position) {
   TRACE_EVENT0("gpu", __func__);
   DVLOG(2) << __func__ << " : frame_data valid? " << (frame_data ? true : false)
-           << ", emulated_position=" << emulated_position
-           << ", frame_id=" << frame_id;
+           << ", emulated_position=" << emulated_position;
   // Don't process any outstanding frames once the session is ended.
   if (ended_)
     return;
@@ -1676,7 +1684,7 @@ void XRSession::UpdatePresentationFrameState(
     // Apply dynamic viewport scaling if available.
     if (supports_viewport_scaling_) {
       float gpu_load = frame_data->rendering_time_ratio;
-      std::optional<double> scale = std::nullopt;
+      absl::optional<double> scale = absl::nullopt;
       if (gpu_load > 0.0f) {
         if (!viewport_scaler_) {
           // Lazily create an instance of the viewport scaler on first use.
@@ -1730,20 +1738,24 @@ void XRSession::UpdatePresentationFrameState(
     // after OnInputStateChangeInternal which updated input sources.
     UpdateWorldUnderstandingStateForFrame(timestamp, frame_data);
 
-    ProcessInputSourceEvents(input_states);
+    // If this session uses input eventing, XR select events are handled via
+    // OnButtonEvent, so they need to be ignored here to avoid duplicate events.
+    if (!uses_input_eventing_) {
+      ProcessInputSourceEvents(input_states);
+    }
   } else {
     UpdateWorldUnderstandingStateForFrame(timestamp, frame_data);
   }
 }
 
-ScriptPromiseTyped<IDLArray<V8XRImageTrackingScore>>
-XRSession::getTrackedImageScores(ScriptState* script_state,
-                                 ExceptionState& exception_state) {
+ScriptPromise XRSession::getTrackedImageScores(
+    ScriptState* script_state,
+    ExceptionState& exception_state) {
   DVLOG(3) << __func__;
   if (ended_) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       kSessionEnded);
-    return ScriptPromiseTyped<IDLArray<V8XRImageTrackingScore>>();
+    return ScriptPromise();
   }
 
   if (!IsFeatureEnabled(device::mojom::XRSessionFeature::IMAGE_TRACKING)) {
@@ -1752,13 +1764,12 @@ XRSession::getTrackedImageScores(ScriptState* script_state,
         kFeatureNotSupportedBySessionPrefix +
             XRSessionFeatureToString(
                 device::mojom::XRSessionFeature::IMAGE_TRACKING));
-    return ScriptPromiseTyped<IDLArray<V8XRImageTrackingScore>>();
+    return ScriptPromise();
   }
 
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLArray<V8XRImageTrackingScore>>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
 
   if (tracked_image_scores_available_) {
     DVLOG(3) << __func__ << ": returning existing results";
@@ -1774,37 +1785,32 @@ XRSession::getTrackedImageScores(ScriptState* script_state,
 void XRSession::ProcessTrackedImagesData(
     const device::mojom::blink::XRTrackedImagesData* images_data) {
   DVLOG(3) << __func__;
+  frame_tracked_images_.clear();
 
   if (!images_data) {
-    frame_tracked_images_ =
-        MakeGarbageCollected<FrozenArray<XRImageTrackingResult>>();
     return;
   }
 
-  HeapVector<Member<XRImageTrackingResult>> frame_tracked_images;
   for (const auto& image : images_data->images_data) {
     DVLOG(3) << __func__ << ": image index=" << image->index;
-    frame_tracked_images.push_back(
-        MakeGarbageCollected<XRImageTrackingResult>(this, *image));
+    XRImageTrackingResult* result =
+        MakeGarbageCollected<XRImageTrackingResult>(this, *image);
+    frame_tracked_images_.push_back(result);
   }
-  frame_tracked_images_ =
-      MakeGarbageCollected<FrozenArray<XRImageTrackingResult>>(
-          std::move(frame_tracked_images));
 
   if (images_data->image_trackable_scores) {
     DVLOG(3) << ": got image_trackable_scores";
     DCHECK(!tracked_image_scores_available_);
     auto& scores = images_data->image_trackable_scores.value();
     for (WTF::wtf_size_t index = 0; index < scores.size(); ++index) {
-      tracked_image_scores_.push_back(V8XRImageTrackingScore(
-          scores[index] ? V8XRImageTrackingScore::Enum::kTrackable
-                        : V8XRImageTrackingScore::Enum::kUntrackable));
+      tracked_image_scores_.push_back(scores[index] ? "trackable"
+                                                    : "untrackable");
       DVLOG(3) << __func__ << ": score[" << index
-               << "]=" << tracked_image_scores_[index].AsCStr();
+               << "]=" << tracked_image_scores_[index];
     }
-    HeapVector<Member<ImageScoreResolverType>> image_score_promises;
+    HeapVector<Member<ScriptPromiseResolver>> image_score_promises;
     image_scores_resolvers_.swap(image_score_promises);
-    for (auto& resolver : image_score_promises) {
+    for (ScriptPromiseResolver* resolver : image_score_promises) {
       DVLOG(3) << __func__ << ": resolving promise";
       resolver->Resolve(tracked_image_scores_);
     }
@@ -1812,7 +1818,7 @@ void XRSession::ProcessTrackedImagesData(
   }
 }
 
-const FrozenArray<XRImageTrackingResult>& XRSession::ImageTrackingResults(
+HeapVector<Member<XRImageTrackingResult>> XRSession::ImageTrackingResults(
     ExceptionState& exception_state) {
   if (!IsFeatureEnabled(device::mojom::XRSessionFeature::IMAGE_TRACKING)) {
     exception_state.ThrowDOMException(
@@ -1820,10 +1826,10 @@ const FrozenArray<XRImageTrackingResult>& XRSession::ImageTrackingResults(
         kFeatureNotSupportedBySessionPrefix +
             XRSessionFeatureToString(
                 device::mojom::XRSessionFeature::IMAGE_TRACKING));
-    return *MakeGarbageCollected<FrozenArray<XRImageTrackingResult>>();
+    return {};
   }
 
-  return *frame_tracked_images_.Get();
+  return frame_tracked_images_;
 }
 
 void XRSession::UpdateWorldUnderstandingStateForFrame(
@@ -1849,7 +1855,7 @@ void XRSession::UpdateWorldUnderstandingStateForFrame(
       world_light_probe_->ProcessLightEstimationData(light_data, timestamp);
     }
 
-    camera_image_size_ = std::nullopt;
+    camera_image_size_ = absl::nullopt;
     if (frame_data->camera_image_size.has_value()) {
       // Let's store the camera image size. The texture ID will be filled out on
       // the XRWebGLLayer by the session once the frame starts
@@ -1871,13 +1877,13 @@ void XRSession::UpdateWorldUnderstandingStateForFrame(
       world_light_probe_->ProcessLightEstimationData(nullptr, timestamp);
     }
 
-    camera_image_size_ = std::nullopt;
+    camera_image_size_ = absl::nullopt;
   }
 }
 
 bool XRSession::IsFeatureEnabled(
     device::mojom::XRSessionFeature feature) const {
-  return enabled_feature_set_.Contains(feature);
+  return enabled_features_.Contains(feature);
 }
 
 void XRSession::SetMetricsReporter(std::unique_ptr<MetricsReporter> reporter) {
@@ -1887,8 +1893,8 @@ void XRSession::SetMetricsReporter(std::unique_ptr<MetricsReporter> reporter) {
 
 void XRSession::OnFrame(
     double timestamp,
-    const std::optional<gpu::MailboxHolder>& output_mailbox_holder,
-    const std::optional<gpu::MailboxHolder>& camera_image_mailbox_holder) {
+    const absl::optional<gpu::MailboxHolder>& output_mailbox_holder,
+    const absl::optional<gpu::MailboxHolder>& camera_image_mailbox_holder) {
   TRACE_EVENT0("gpu", __func__);
   DVLOG(2) << __func__ << ": ended_=" << ended_
            << ", pending_frame_=" << pending_frame_;
@@ -1999,11 +2005,11 @@ bool XRSession::CanEnableAntiAliasing() const {
   return enable_anti_aliasing_;
 }
 
-std::optional<gfx::Transform> XRSession::GetMojoFrom(
+absl::optional<gfx::Transform> XRSession::GetMojoFrom(
     device::mojom::blink::XRReferenceSpaceType space_type) const {
   if (!CanReportPoses()) {
     DVLOG(2) << __func__ << ": cannot report poses, returning nullopt";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   switch (space_type) {
@@ -2013,7 +2019,7 @@ std::optional<gfx::Transform> XRSession::GetMojoFrom(
           return gfx::Transform();
         }
 
-        return std::nullopt;
+        return absl::nullopt;
       }
 
       return *mojo_from_viewer_;
@@ -2029,7 +2035,7 @@ std::optional<gfx::Transform> XRSession::GetMojoFrom(
     case device::mojom::blink::XRReferenceSpaceType::kBoundedFloor:
       // Information about -floor spaces is currently stored elsewhere (in
       // stage_parameters_). It probably should eventually move here.
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
@@ -2059,6 +2065,14 @@ void XRSession::UpdateCanvasDimensions(Element* element) {
   }
 
   canvas_was_resized_ = true;
+}
+
+void XRSession::OnButtonEvent(
+    device::mojom::blink::XRInputSourceStatePtr input_state) {
+  DCHECK(uses_input_eventing_);
+  auto input_states = base::make_span(&input_state, 1u);
+  OnInputStateChangeInternal(last_frame_id_, input_states);
+  ProcessInputSourceEvents(input_states);
 }
 
 void XRSession::OnInputStateChangeInternal(
@@ -2366,7 +2380,7 @@ const HeapVector<Member<XRViewData>>& XRSession::views() {
       // In non-immersive mode, if there is no explicit projection matrix
       // provided, the projection matrix must be aligned with the
       // output canvas dimensions.
-      std::optional<double> inline_vertical_fov =
+      absl::optional<double> inline_vertical_fov =
           render_state_->inlineVerticalFieldOfView();
 
       // inlineVerticalFieldOfView should only be null in immersive mode.
@@ -2393,13 +2407,13 @@ void XRSession::Trace(Visitor* visitor) const {
   visitor->Trace(world_light_probe_);
   visitor->Trace(pending_render_state_);
   visitor->Trace(end_session_resolver_);
-  visitor->Trace(enabled_features_);
   visitor->Trace(input_sources_);
   visitor->Trace(resize_observer_);
   visitor->Trace(canvas_input_provider_);
   visitor->Trace(overlay_element_);
   visitor->Trace(dom_overlay_state_);
   visitor->Trace(client_receiver_);
+  visitor->Trace(input_receiver_);
   visitor->Trace(callback_collection_);
   visitor->Trace(create_anchor_promises_);
   visitor->Trace(request_hit_test_source_promises_);
@@ -2414,7 +2428,7 @@ void XRSession::Trace(Visitor* visitor) const {
   visitor->Trace(views_);
   visitor->Trace(frame_tracked_images_);
   visitor->Trace(image_scores_resolvers_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
 }
 
 }  // namespace blink

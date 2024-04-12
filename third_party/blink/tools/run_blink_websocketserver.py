@@ -41,4 +41,9 @@ on WebSocket, you can navigate to:
 from blinkpy.web_tests.servers import cli_wrapper
 from blinkpy.web_tests.servers import pywebsocket
 
-cli_wrapper.main(pywebsocket.PyWebSocket, description=__doc__)
+option, args = cli_wrapper.parse_python_server_options()
+cli_wrapper.main(
+    pywebsocket.PyWebSocket,
+    argv=args,
+    description=__doc__,
+    python_executable=option.python_executable)

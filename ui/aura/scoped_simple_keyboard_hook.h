@@ -5,13 +5,12 @@
 #ifndef UI_AURA_SCOPED_SIMPLE_KEYBOARD_HOOK_H_
 #define UI_AURA_SCOPED_SIMPLE_KEYBOARD_HOOK_H_
 
-#include <optional>
-
 #include "base/containers/flat_set.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/scoped_keyboard_hook.h"
 
 namespace ui {
-enum class DomCode : uint32_t;
+enum class DomCode;
 }
 
 namespace aura {
@@ -24,7 +23,7 @@ namespace aura {
 class ScopedSimpleKeyboardHook : public ScopedKeyboardHook {
  public:
   explicit ScopedSimpleKeyboardHook(
-      std::optional<base::flat_set<ui::DomCode>> dom_codes);
+      absl::optional<base::flat_set<ui::DomCode>> dom_codes);
 
   ScopedSimpleKeyboardHook(const ScopedSimpleKeyboardHook&) = delete;
   ScopedSimpleKeyboardHook& operator=(const ScopedSimpleKeyboardHook&) = delete;
@@ -35,7 +34,7 @@ class ScopedSimpleKeyboardHook : public ScopedKeyboardHook {
   bool IsKeyLocked(ui::DomCode dom_code) override;
 
  private:
-  std::optional<base::flat_set<ui::DomCode>> dom_codes_;
+  absl::optional<base::flat_set<ui::DomCode>> dom_codes_;
 };
 
 }  // namespace aura

@@ -13,7 +13,7 @@
 #include "ui/base/ui_base_paths.h"
 
 #if BUILDFLAG(IS_MAC)
-#include "base/apple/bundle_locations.h"
+#include "base/mac/bundle_locations.h"
 #include "base/test/mock_chrome_application_mac.h"
 #endif
 
@@ -56,7 +56,7 @@ void UIBaseTestSuite::Initialize() {
 
   // On Mac, a test Framework bundle is created that links locale.pak and
   // chrome_100_percent.pak at the appropriate places to ui_test.pak.
-  base::apple::SetOverrideFrameworkBundlePath(
+  base::mac::SetOverrideFrameworkBundlePath(
       exe_path.AppendASCII("ui_unittests Framework.framework"));
   ui::ResourceBundle::InitSharedInstanceWithLocale(
       "en-US", NULL, ui::ResourceBundle::LOAD_COMMON_RESOURCES);
@@ -87,10 +87,8 @@ void UIBaseTestSuite::Initialize() {
 #if BUILDFLAG(IS_ANDROID)
   result =
       base::PathService::Get(ui::DIR_RESOURCE_PAKS_ANDROID, &dir_resources);
-#elif BUILDFLAG(IS_MAC)
+#elif BUILDFLAG(IS_APPLE)
   result = base::PathService::Get(base::DIR_MODULE, &dir_resources);
-#elif BUILDFLAG(IS_IOS)
-  result = base::PathService::Get(base::DIR_ASSETS, &dir_resources);
 #else
   dir_resources = assets_path;
   result = true;
@@ -106,7 +104,7 @@ void UIBaseTestSuite::Shutdown() {
   ui::ResourceBundle::CleanupSharedInstance();
 
 #if BUILDFLAG(IS_MAC)
-  base::apple::SetOverrideFrameworkBundlePath({});
+  base::mac::SetOverrideFrameworkBundlePath({});
 #endif
   base::TestSuite::Shutdown();
 }

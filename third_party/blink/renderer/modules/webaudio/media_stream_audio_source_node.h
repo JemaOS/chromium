@@ -59,7 +59,7 @@ class MediaStreamAudioSourceNode final
                              std::unique_ptr<AudioSourceProvider>);
 
   // V8 binding
-  MediaStream* getMediaStream() const { return media_stream_.Get(); }
+  MediaStream* getMediaStream() const { return media_stream_; }
 
   // AudioSourceProviderClient
   void SetFormat(uint32_t number_of_channels, float sample_rate) override;

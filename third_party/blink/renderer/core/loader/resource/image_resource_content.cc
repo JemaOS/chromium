@@ -51,8 +51,6 @@ class NullImageResourceInfo final
   const KURL& Url() const override { return url_; }
   base::TimeTicks LoadResponseEnd() const override { return base::TimeTicks(); }
   base::TimeTicks LoadStart() const override { return base::TimeTicks(); }
-  base::TimeTicks LoadEnd() const override { return base::TimeTicks(); }
-  base::TimeTicks DiscoveryTime() const override { return base::TimeTicks(); }
   const ResourceResponse& GetResponse() const override { return response_; }
   bool IsCacheValidator() const override { return false; }
   bool IsAccessAllowed(
@@ -60,8 +58,8 @@ class NullImageResourceInfo final
     return true;
   }
   bool HasCacheControlNoStoreHeader() const override { return false; }
-  std::optional<ResourceError> GetResourceError() const override {
-    return std::nullopt;
+  absl::optional<ResourceError> GetResourceError() const override {
+    return absl::nullopt;
   }
 
   void SetDecodedSize(size_t) override {}
@@ -80,8 +78,8 @@ class NullImageResourceInfo final
     return nullptr;
   }
 
-  std::optional<WebURLRequest::Priority> RequestPriority() const override {
-    return std::nullopt;
+  absl::optional<WebURLRequest::Priority> RequestPriority() const override {
+    return absl::nullopt;
   }
 
   const KURL url_;
@@ -116,10 +114,6 @@ ImageResourceContent* ImageResourceContent::Fetch(FetchParameters& params,
   ImageResource* resource = ImageResource::Fetch(params, fetcher);
   if (!resource)
     return nullptr;
-  resource->GetContent()->SetIsLoadedFromMemoryCache(
-      resource->IsLoadedFromMemoryCache());
-  resource->GetContent()->SetIsPreloadedWithEarlyHints(
-      resource->IsPreloadedByEarlyHints());
   return resource->GetContent();
 }
 
@@ -201,12 +195,6 @@ static void PriorityFromObserver(
     ResourcePriority& priority,
     ResourcePriority& priority_excluding_image_loader) {
   ResourcePriority next_priority = observer->ComputeResourcePriority();
-  if (next_priority.is_lcp_resource) {
-    // Mark the resource as predicted LCP despite its visibility.
-    priority.is_lcp_resource = true;
-    priority_excluding_image_loader.is_lcp_resource = true;
-  }
-
   if (next_priority.visibility == ResourcePriority::kNotVisible)
     return;
 
@@ -234,7 +222,7 @@ ImageResourceContent::PriorityFromObservers() const {
   return std::make_pair(priority, priority_excluding_image_loader);
 }
 
-std::optional<WebURLRequest::Priority> ImageResourceContent::RequestPriority()
+absl::optional<WebURLRequest::Priority> ImageResourceContent::RequestPriority()
     const {
   return info_->RequestPriority();
 }
@@ -470,10 +458,6 @@ ImageResourceContent::UpdateImageResult ImageResourceContent::UpdateImage(
         return UpdateImageResult::kNoDecodeError;
 
       if (image_) {
-        // Mime type could be null, see https://crbug.com/1485926.
-        if (!image_->MimeType()) {
-          return UpdateImageResult::kShouldDecodeError;
-        }
         const HashSet<String>* unsupported_mime_types =
             info_->GetUnsupportedImageMimeTypes();
         if (unsupported_mime_types &&
@@ -717,16 +701,12 @@ AtomicString ImageResourceContent::MediaType() const {
   return AtomicString(image_->FilenameExtension());
 }
 
-void ImageResourceContent::SetIsBroken() {
-  is_broken_ = true;
-}
-
-bool ImageResourceContent::IsBroken() const {
-  return is_broken_;
-}
-
 base::TimeTicks ImageResourceContent::DiscoveryTime() const {
-  return info_->DiscoveryTime();
+  return discovery_time_;
+}
+
+void ImageResourceContent::SetDiscoveryTime(base::TimeTicks discovery_time) {
+  discovery_time_ = discovery_time;
 }
 
 base::TimeTicks ImageResourceContent::LoadStart() const {
@@ -734,10 +714,6 @@ base::TimeTicks ImageResourceContent::LoadStart() const {
 }
 
 base::TimeTicks ImageResourceContent::LoadEnd() const {
-  return info_->LoadEnd();
-}
-
-base::TimeTicks ImageResourceContent::LoadResponseEnd() const {
   return info_->LoadResponseEnd();
 }
 
@@ -757,7 +733,7 @@ const ResourceResponse& ImageResourceContent::GetResponse() const {
   return info_->GetResponse();
 }
 
-std::optional<ResourceError> ImageResourceContent::GetResourceError() const {
+absl::optional<ResourceError> ImageResourceContent::GetResourceError() const {
   return info_->GetResourceError();
 }
 

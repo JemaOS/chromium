@@ -195,7 +195,7 @@ bool NotificationBlockedMessageDelegate::Delegate::ShouldUseQuietUI() {
   return permission_prompt_->ShouldCurrentRequestUseQuietUI();
 }
 
-std::optional<permissions::PermissionUiSelector::QuietUiReason>
+absl::optional<permissions::PermissionUiSelector::QuietUiReason>
 NotificationBlockedMessageDelegate::Delegate::ReasonForUsingQuietUi() {
   return permission_prompt_->ReasonForUsingQuietUi();
 }

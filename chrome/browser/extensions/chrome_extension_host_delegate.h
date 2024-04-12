@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_EXTENSIONS_CHROME_EXTENSION_HOST_DELEGATE_H_
 
 #include "extensions/browser/extension_host_delegate.h"
-#include "extensions/common/extension_id.h"
 
 namespace extensions {
 
@@ -21,7 +20,7 @@ class ChromeExtensionHostDelegate : public ExtensionHostDelegate {
   void OnMainFrameCreatedForBackgroundPage(ExtensionHost* host) override;
   content::JavaScriptDialogManager* GetJavaScriptDialogManager() override;
   void CreateTab(std::unique_ptr<content::WebContents> web_contents,
-                 const ExtensionId& extension_id,
+                 const std::string& extension_id,
                  WindowOpenDisposition disposition,
                  const blink::mojom::WindowFeatures& window_features,
                  bool user_gesture) override;
@@ -30,7 +29,7 @@ class ChromeExtensionHostDelegate : public ExtensionHostDelegate {
                                  content::MediaResponseCallback callback,
                                  const Extension* extension) override;
   bool CheckMediaAccessPermission(content::RenderFrameHost* render_frame_host,
-                                  const url::Origin& security_origin,
+                                  const GURL& security_origin,
                                   blink::mojom::MediaStreamType type,
                                   const Extension* extension) override;
   content::PictureInPictureResult EnterPictureInPicture(

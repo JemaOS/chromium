@@ -4,7 +4,7 @@
 
 #include "ash/system/caps_lock_notification_controller.h"
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/constants/notifier_catalogs.h"
 #include "ash/public/cpp/notification_utils.h"
 #include "ash/resources/vector_icons/vector_icons.h"
@@ -104,7 +104,8 @@ void CapsLockNotificationController::OnCapsLockChanged(bool enabled) {
   if (enabled) {
     base::RecordAction(base::UserMetricsAction("StatusArea_CapsLock_Popup"));
     MessageCenter::Get()->AddNotification(CreateNotification());
-  } else {
+  } else if (MessageCenter::Get()->FindVisibleNotificationById(
+                 kCapsLockNotificationId)) {
     MessageCenter::Get()->RemoveNotification(kCapsLockNotificationId, false);
   }
 }

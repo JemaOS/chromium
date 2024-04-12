@@ -75,8 +75,7 @@ void OverlayPanelContent::RemoveLastHistoryEntry(
     jlong search_start_time_ms) {
   // The deletion window is from the time a search URL was put in history, up
   // to a short amount of time later.
-  base::Time begin_time =
-      base::Time::FromMillisecondsSinceUnixEpoch(search_start_time_ms);
+  base::Time begin_time = base::Time::FromJsTime(search_start_time_ms);
   base::Time end_time =
       begin_time + base::Seconds(kHistoryDeletionWindowSeconds);
 
@@ -90,10 +89,10 @@ void OverlayPanelContent::RemoveLastHistoryEntry(
     std::set<GURL> restrict_set;
     restrict_set.insert(
         GURL(base::android::ConvertJavaStringToUTF8(env, search_url)));
-    service->ExpireHistoryBetween(
-        restrict_set, history::kNoAppIdFilter, begin_time, end_time,
-        /*user_initiated*/ false, base::BindOnce(&OnHistoryDeletionDone),
-        &history_task_tracker_);
+    service->ExpireHistoryBetween(restrict_set, begin_time, end_time,
+                                  /*user_initiated*/ false,
+                                  base::BindOnce(&OnHistoryDeletionDone),
+                                  &history_task_tracker_);
   }
 }
 
@@ -112,7 +111,6 @@ void OverlayPanelContent::SetWebContents(
   // TODO(pedrosimonetti): Confirm with dtrainor@ if the comment above
   // is accurate.
   web_contents_.reset(web_contents);
-  web_contents_->SetOwnerLocationForDebug(FROM_HERE);
 
   web_contents_->SetIsOverlayContent(true);
   // TODO(pedrosimonetti): confirm if we need this after promoting it

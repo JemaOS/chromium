@@ -191,7 +191,7 @@ void ProcessedLocalAudioSource::SendLogMessageWithSessionId(
                  "]");
 }
 
-std::optional<blink::AudioProcessingProperties>
+absl::optional<blink::AudioProcessingProperties>
 ProcessedLocalAudioSource::GetAudioProcessingProperties() const {
   return audio_processing_properties_;
 }
@@ -310,72 +310,6 @@ bool ProcessedLocalAudioSource::EnsureSourceIsStarted() {
       device_is_modified = true;
     }
   }
-
-#if BUILDFLAG(IS_CHROMEOS)
-  if (base::FeatureList::IsEnabled(media::kCrOSSystemVoiceIsolationOption) &&
-      device().input.effects() &
-          media::AudioParameters::VOICE_ISOLATION_SUPPORTED) {
-    // Disable voice isolation on the device if browser-based echo
-    // cancellation is, since that otherwise breaks the AEC.
-    const bool browser_based_aec_active =
-        audio_processing_properties_.echo_cancellation_type ==
-        AudioProcessingProperties::EchoCancellationType::kEchoCancellationAec3;
-    const bool disable_system_voice_isolation_due_to_browser_aec =
-        browser_based_aec_active;
-
-    if (disable_system_voice_isolation_due_to_browser_aec ||
-        audio_processing_properties_.voice_isolation ==
-            AudioProcessingProperties::VoiceIsolationType::
-                kVoiceIsolationDisabled) {
-      // Force voice isolation to be disabled.
-      modified_device.input.set_effects(
-          modified_device.input.effects() |
-          media::AudioParameters::CLIENT_CONTROLLED_VOICE_ISOLATION);
-
-      modified_device.input.set_effects(
-          modified_device.input.effects() &
-          ~media::AudioParameters::VOICE_ISOLATION);
-    } else if (audio_processing_properties_.voice_isolation ==
-               AudioProcessingProperties::VoiceIsolationType::
-                   kVoiceIsolationEnabled) {
-      // Force voice isolation to be enabled.
-      modified_device.input.set_effects(
-          modified_device.input.effects() |
-          media::AudioParameters::CLIENT_CONTROLLED_VOICE_ISOLATION);
-
-      modified_device.input.set_effects(
-          modified_device.input.effects() |
-          media::AudioParameters::VOICE_ISOLATION);
-    } else {
-      // Turn off voice isolation control.
-      modified_device.input.set_effects(
-          modified_device.input.effects() &
-          ~media::AudioParameters::CLIENT_CONTROLLED_VOICE_ISOLATION);
-    }
-
-    if ((modified_device.input.effects() &
-         media::AudioParameters::CLIENT_CONTROLLED_VOICE_ISOLATION) !=
-            (device().input.effects() &
-             media::AudioParameters::CLIENT_CONTROLLED_VOICE_ISOLATION) ||
-        (modified_device.input.effects() &
-         media::AudioParameters::VOICE_ISOLATION) ||
-        (device().input.effects() & media::AudioParameters::VOICE_ISOLATION)) {
-      device_is_modified = true;
-    }
-  }
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS)
-  if (base::FeatureList::IsEnabled(media::kIgnoreUiGains)) {
-    // Ignore UI Gains if AGC is running in either browser or system
-    if (audio_processing_properties_.GainControlEnabled()) {
-      modified_device.input.set_effects(
-          modified_device.input.effects() |
-          media::AudioParameters::IGNORE_UI_GAINS);
-      device_is_modified = true;
-    }
-  }
-#endif
 
   if (device_is_modified)
     SetDevice(modified_device);
@@ -555,15 +489,12 @@ void ProcessedLocalAudioSource::OnCaptureStarted() {
   started_callback_.Run(this, mojom::blink::MediaStreamRequestResult::OK, "");
 }
 
-void ProcessedLocalAudioSource::Capture(
-    const media::AudioBus* audio_bus,
-    base::TimeTicks audio_capture_time,
-    const media::AudioGlitchInfo& glitch_info,
-    double volume,
-    bool key_pressed) {
+void ProcessedLocalAudioSource::Capture(const media::AudioBus* audio_bus,
+                                        base::TimeTicks audio_capture_time,
+                                        double volume,
+                                        bool key_pressed) {
   TRACE_EVENT1("audio", "ProcessedLocalAudioSource::Capture", "capture-time",
                audio_capture_time);
-  glitch_info_accumulator_.Add(glitch_info);
   // Maximum number of channels used by the sinks.
   int num_preferred_channels = NumPreferredChannels();
   if (media_stream_audio_processor_) {
@@ -589,7 +520,7 @@ void ProcessedLocalAudioSource::Capture(
   // along.
   force_report_nonzero_energy_ = false;
   DeliverProcessedAudio(*audio_bus, audio_capture_time,
-                        /*new_volume=*/std::nullopt);
+                        /*new_volume=*/absl::nullopt);
 }
 
 void ProcessedLocalAudioSource::OnCaptureError(
@@ -637,12 +568,11 @@ void ProcessedLocalAudioSource::SetOutputDeviceForAec(
 void ProcessedLocalAudioSource::DeliverProcessedAudio(
     const media::AudioBus& processed_audio,
     base::TimeTicks audio_capture_time,
-    std::optional<double> new_volume) {
+    absl::optional<double> new_volume) {
   TRACE_EVENT1("audio", "ProcessedLocalAudioSource::DeliverProcessedAudio",
                "capture-time", audio_capture_time);
   level_calculator_.Calculate(processed_audio, force_report_nonzero_energy_);
-  DeliverDataToTracks(processed_audio, audio_capture_time,
-                      glitch_info_accumulator_.GetAndReset());
+  DeliverDataToTracks(processed_audio, audio_capture_time);
 
   if (new_volume) {
     PostCrossThreadTask(

@@ -15,7 +15,6 @@
 #include "extensions/browser/api/runtime/runtime_api_delegate.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_registry_observer.h"
-#include "extensions/common/extension_id.h"
 
 namespace base {
 class TickClock;
@@ -50,8 +49,8 @@ class ChromeRuntimeAPIDelegate : public extensions::RuntimeAPIDelegate,
   // extensions::RuntimeAPIDelegate implementation.
   void AddUpdateObserver(extensions::UpdateObserver* observer) override;
   void RemoveUpdateObserver(extensions::UpdateObserver* observer) override;
-  void ReloadExtension(const extensions::ExtensionId& extension_id) override;
-  bool CheckForUpdates(const extensions::ExtensionId& extension_id,
+  void ReloadExtension(const std::string& extension_id) override;
+  bool CheckForUpdates(const std::string& extension_id,
                        UpdateCheckCallback callback) override;
   void OpenURL(const GURL& uninstall_url) override;
   bool GetPlatformInfo(extensions::api::runtime::PlatformInfo* info) override;
@@ -64,10 +63,10 @@ class ChromeRuntimeAPIDelegate : public extensions::RuntimeAPIDelegate,
                             const extensions::Extension* extension,
                             bool is_update) override;
 
-  void OnExtensionUpdateFound(const extensions::ExtensionId& extension_id,
+  void OnExtensionUpdateFound(const std::string& id,
                               const base::Version& version);
-  void UpdateCheckComplete(const extensions::ExtensionId& extension_id);
-  void CallUpdateCallbacks(const extensions::ExtensionId& extension_id,
+  void UpdateCheckComplete(const std::string& extension_id);
+  void CallUpdateCallbacks(const std::string& extension_id,
                            const UpdateCheckResult& result);
 
   raw_ptr<content::BrowserContext> browser_context_;

@@ -52,9 +52,9 @@ class BookmarkEditorView : public BookmarkEditor,
                            public views::ContextMenuController,
                            public ui::SimpleMenuModel::Delegate,
                            public bookmarks::BookmarkModelObserver {
-  METADATA_HEADER(BookmarkEditorView, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(BookmarkEditorView);
+
   // Type of node in the tree. Public purely for testing.
   typedef ui::TreeNodeWithValue<int64_t> EditorNode;
 
@@ -119,23 +119,31 @@ class BookmarkEditorView : public BookmarkEditor,
 
   // bookmarks::BookmarkModelObserver:
   // Any structural change results in resetting the tree model.
-  void BookmarkModelLoaded(bool ids_reassigned) override {}
-  void BookmarkNodeMoved(const bookmarks::BookmarkNode* old_parent,
+  void BookmarkModelLoaded(bookmarks::BookmarkModel* model,
+                           bool ids_reassigned) override {}
+  void BookmarkNodeMoved(bookmarks::BookmarkModel* model,
+                         const bookmarks::BookmarkNode* old_parent,
                          size_t old_index,
                          const bookmarks::BookmarkNode* new_parent,
                          size_t new_index) override;
-  void BookmarkNodeAdded(const bookmarks::BookmarkNode* parent,
+  void BookmarkNodeAdded(bookmarks::BookmarkModel* model,
+                         const bookmarks::BookmarkNode* parent,
                          size_t index,
                          bool added_by_user) override;
-  void BookmarkNodeRemoved(const bookmarks::BookmarkNode* parent,
+  void BookmarkNodeRemoved(bookmarks::BookmarkModel* model,
+                           const bookmarks::BookmarkNode* parent,
                            size_t index,
                            const bookmarks::BookmarkNode* node,
                            const std::set<GURL>& removed_urls) override;
-  void BookmarkAllUserNodesRemoved(const std::set<GURL>& removed_urls) override;
-  void BookmarkNodeChanged(const bookmarks::BookmarkNode* node) override {}
+  void BookmarkAllUserNodesRemoved(bookmarks::BookmarkModel* model,
+                                   const std::set<GURL>& removed_urls) override;
+  void BookmarkNodeChanged(bookmarks::BookmarkModel* model,
+                           const bookmarks::BookmarkNode* node) override {}
   void BookmarkNodeChildrenReordered(
+      bookmarks::BookmarkModel* model,
       const bookmarks::BookmarkNode* node) override;
   void BookmarkNodeFaviconChanged(
+      bookmarks::BookmarkModel* model,
       const bookmarks::BookmarkNode* node) override {}
 
   // Creates the necessary sub-views, configures them, adds them to the layout,

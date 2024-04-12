@@ -12,7 +12,6 @@
 
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
 #include "base/command_line.h"
 #include "base/containers/contains.h"
 #include "base/containers/flat_set.h"
@@ -27,7 +26,6 @@
 #include "base/strings/string_util.h"
 #include "base/system/sys_info.h"
 #include "base/values.h"
-#include "chrome/browser/ash/crostini/crostini_features.h"
 #include "chrome/browser/ash/crostini/crostini_pref_names.h"
 #include "chrome/browser/ash/crostini/crostini_util.h"
 #include "chrome/browser/ash/guest_os/guest_id.h"
@@ -48,6 +46,7 @@
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/extensions/api/terminal_private.h"
 #include "chromeos/ash/components/dbus/cicerone/cicerone_client.h"
@@ -274,7 +273,7 @@ TerminalPrivateOpenTerminalProcessFunction::
 
 ExtensionFunction::ResponseAction
 TerminalPrivateOpenTerminalProcessFunction::Run() {
-  std::optional<OpenTerminalProcess::Params> params =
+  absl::optional<OpenTerminalProcess::Params> params =
       OpenTerminalProcess::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -284,7 +283,7 @@ TerminalPrivateOpenTerminalProcessFunction::Run() {
 ExtensionFunction::ResponseAction
 TerminalPrivateOpenTerminalProcessFunction::OpenProcess(
     const std::string& process_name,
-    std::optional<std::vector<std::string>> args) {
+    absl::optional<std::vector<std::string>> args) {
   const std::string& user_id_hash =
       extensions::ExtensionsBrowserClient::Get()->GetUserIdHashFromContext(
           browser_context());
@@ -345,14 +344,6 @@ TerminalPrivateOpenTerminalProcessFunction::OpenProcess(
     if (!container_features.empty())
       cmdline.AppendSwitchASCII(kSwitchContainerFeatures, container_features);
 
-    // Append trailing passthrough args if any.  E.g. `-- vim file.txt`
-    auto passthrough_args = params_args.GetArgs();
-    if (!passthrough_args.empty()) {
-      cmdline.AppendArg("--");
-      for (const auto& arg : passthrough_args) {
-        cmdline.AppendArg(arg);
-      }
-    }
     VLOG(1) << "Starting " << *guest_id_
             << ", cmdline=" << cmdline.GetCommandLineString();
 
@@ -367,7 +358,7 @@ TerminalPrivateOpenTerminalProcessFunction::OpenProcess(
     auto status_printer = std::make_unique<StartupStatusPrinter>(
         base::BindRepeating(&NotifyProcessOutput, browser_context(), startup_id,
                             api::terminal_private::ToString(
-                                api::terminal_private::OutputType::kStdout)),
+                                api::terminal_private::OUTPUT_TYPE_STDOUT)),
         verbose);
     if (provider) {
       startup_status_ =
@@ -447,7 +438,7 @@ void TerminalPrivateOpenTerminalProcessFunction::OnGetVshSession(
     const std::string& user_id_hash,
     base::CommandLine cmdline,
     const std::string& terminal_id,
-    std::optional<vm_tools::cicerone::GetVshSessionResponse> response) {
+    absl::optional<vm_tools::cicerone::GetVshSessionResponse> response) {
   if (!response || !response->success()) {
     LOG(WARNING) << "Failed to get vsh session for " << terminal_id << ": "
                  << (response ? response->failure_reason() : "empty response");
@@ -531,7 +522,7 @@ TerminalPrivateOpenVmshellProcessFunction::
 
 ExtensionFunction::ResponseAction
 TerminalPrivateOpenVmshellProcessFunction::Run() {
-  std::optional<OpenVmshellProcess::Params> params =
+  absl::optional<OpenVmshellProcess::Params> params =
       OpenVmshellProcess::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -542,7 +533,7 @@ TerminalPrivateOpenVmshellProcessFunction::Run() {
 TerminalPrivateSendInputFunction::~TerminalPrivateSendInputFunction() = default;
 
 ExtensionFunction::ResponseAction TerminalPrivateSendInputFunction::Run() {
-  std::optional<SendInput::Params> params = SendInput::Params::Create(args());
+  absl::optional<SendInput::Params> params = SendInput::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   if (!TerminalTabHelper::ValidateTerminalId(GetSenderWebContents(),
@@ -585,7 +576,7 @@ TerminalPrivateCloseTerminalProcessFunction::
 
 ExtensionFunction::ResponseAction
 TerminalPrivateCloseTerminalProcessFunction::Run() {
-  std::optional<CloseTerminalProcess::Params> params =
+  absl::optional<CloseTerminalProcess::Params> params =
       CloseTerminalProcess::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -616,7 +607,7 @@ TerminalPrivateOnTerminalResizeFunction::
 
 ExtensionFunction::ResponseAction
 TerminalPrivateOnTerminalResizeFunction::Run() {
-  std::optional<OnTerminalResize::Params> params =
+  absl::optional<OnTerminalResize::Params> params =
       OnTerminalResize::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -657,7 +648,7 @@ void TerminalPrivateOnTerminalResizeFunction::RespondOnUIThread(bool success) {
 TerminalPrivateAckOutputFunction::~TerminalPrivateAckOutputFunction() = default;
 
 ExtensionFunction::ResponseAction TerminalPrivateAckOutputFunction::Run() {
-  std::optional<AckOutput::Params> params = AckOutput::Params::Create(args());
+  absl::optional<AckOutput::Params> params = AckOutput::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   // Every running terminal page will call ackOutput(), but we should only react
@@ -684,7 +675,8 @@ TerminalPrivateOpenWindowFunction::~TerminalPrivateOpenWindowFunction() =
     default;
 
 ExtensionFunction::ResponseAction TerminalPrivateOpenWindowFunction::Run() {
-  std::optional<OpenWindow::Params> params = OpenWindow::Params::Create(args());
+  absl::optional<OpenWindow::Params> params =
+      OpenWindow::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   const std::string* url = &guest_os::GetTerminalHomeUrl();
@@ -701,7 +693,7 @@ ExtensionFunction::ResponseAction TerminalPrivateOpenWindowFunction::Run() {
   }
 
   if (as_tab) {
-    auto* browser = chrome::FindBrowserWithTab(GetSenderWebContents());
+    auto* browser = chrome::FindBrowserWithWebContents(GetSenderWebContents());
     if (browser) {
       chrome::AddTabAt(browser, GURL(*url), -1, true);
     } else {
@@ -710,7 +702,7 @@ ExtensionFunction::ResponseAction TerminalPrivateOpenWindowFunction::Run() {
   } else {
     guest_os::LaunchTerminalWithUrl(
         Profile::FromBrowserContext(browser_context()),
-        display::kInvalidDisplayId, /*restore_id=*/0, GURL(*url));
+        display::kInvalidDisplayId, GURL(*url));
   }
 
   return RespondNow(NoArguments());
@@ -731,21 +723,10 @@ TerminalPrivateOpenSettingsSubpageFunction::
 
 ExtensionFunction::ResponseAction
 TerminalPrivateOpenSettingsSubpageFunction::Run() {
-  Profile* profile = ProfileManager::GetActiveUserProfile();
   // Ignore params->subpage for now, and always open crostini.
-  if (ash::features::IsOsSettingsRevampWayfindingEnabled()) {
-    if (crostini::CrostiniFeatures::Get()->IsEnabled(profile)) {
-      chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(
-          profile, chromeos::settings::mojom::kCrostiniDetailsSubpagePath);
-    } else {
-      chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(
-          profile, chromeos::settings::mojom::kAboutChromeOsSectionPath,
-          chromeos::settings::mojom::Setting::kSetUpCrostini);
-    }
-  } else {
-    chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(
-        profile, chromeos::settings::mojom::kCrostiniSectionPath);
-  }
+  chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(
+      ProfileManager::GetActiveUserProfile(),
+      chromeos::settings::mojom::kCrostiniSectionPath);
   return RespondNow(NoArguments());
 }
 
@@ -753,16 +734,24 @@ TerminalPrivateGetOSInfoFunction::~TerminalPrivateGetOSInfoFunction() = default;
 
 ExtensionFunction::ResponseAction TerminalPrivateGetOSInfoFunction::Run() {
   base::Value::Dict info;
+  info.Set("alternative_emulator",
+           base::FeatureList::IsEnabled(
+               ash::features::kTerminalAlternativeEmulator));
+  info.Set("multi_profile",
+           base::FeatureList::IsEnabled(ash::features::kTerminalMultiProfile));
+  info.Set("sftp", base::FeatureList::IsEnabled(ash::features::kTerminalSftp));
   info.Set("tast", extensions::ExtensionRegistry::Get(browser_context())
                        ->enabled_extensions()
                        .Contains(extension_misc::kGuestModeTestExtensionId));
+  info.Set("tmux_integration", base::FeatureList::IsEnabled(
+                                   ash::features::kTerminalTmuxIntegration));
   return RespondNow(WithArguments(std::move(info)));
 }
 
 TerminalPrivateGetPrefsFunction::~TerminalPrivateGetPrefsFunction() = default;
 
 ExtensionFunction::ResponseAction TerminalPrivateGetPrefsFunction::Run() {
-  std::optional<GetPrefs::Params> params = GetPrefs::Params::Create(args());
+  absl::optional<GetPrefs::Params> params = GetPrefs::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   PrefService* service =
       Profile::FromBrowserContext(browser_context())->GetPrefs();
@@ -786,7 +775,7 @@ ExtensionFunction::ResponseAction TerminalPrivateGetPrefsFunction::Run() {
 TerminalPrivateSetPrefsFunction::~TerminalPrivateSetPrefsFunction() = default;
 
 ExtensionFunction::ResponseAction TerminalPrivateSetPrefsFunction::Run() {
-  std::optional<SetPrefs::Params> params = SetPrefs::Params::Create(args());
+  absl::optional<SetPrefs::Params> params = SetPrefs::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   PrefService* service =

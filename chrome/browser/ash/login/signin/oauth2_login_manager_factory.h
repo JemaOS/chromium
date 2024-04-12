@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_LOGIN_SIGNIN_OAUTH2_LOGIN_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_ASH_LOGIN_SIGNIN_OAUTH2_LOGIN_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -31,13 +31,13 @@ class OAuth2LoginManagerFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<OAuth2LoginManagerFactory>;
+  friend struct base::DefaultSingletonTraits<OAuth2LoginManagerFactory>;
 
   OAuth2LoginManagerFactory();
   ~OAuth2LoginManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

@@ -22,19 +22,23 @@
     calculateExpectedScroll(overflowElement, SCROLL_AMOUNT, SCROLL_AMOUNT)
   );
 
-  let eventHandlerResolve;
+  var eventHandlerResolve;
   eventHandlerPromise = new Promise(function(resolve) {
       eventHandlerResolve = resolve;
   });
 
   promise_test (async () => {
-    const x = overflowElement.offsetLeft + 5;
-    const y = overflowElement.offsetTop + 5
+    var x = overflowElement.offsetLeft + 5;
+    var y = overflowElement.offsetTop + 5
     await mouseMoveTo(x, y);
-    await gestureScroll(() => {
-      return smoothScroll(SCROLL_AMOUNT, x, y, GestureSourceType.MOUSE_INPUT,
-        "downright", SPEED_INSTANT, !isPercentBasedScrollingEnabled());
-    }, overflowElement);
+    await smoothScroll(SCROLL_AMOUNT, x, y, GestureSourceType.MOUSE_INPUT,
+      "downright", SPEED_INSTANT, !isPercentBasedScrollingEnabled());
+    await waitForAnimationEndTimeBased(() => {
+      return overflowElement.scrollTop;
+    });
+    await waitForAnimationEndTimeBased(() => {
+      return overflowElement.scrollLeft;
+    });
 
     assert_approx_equals(overflowElement.scrollTop, expectedScrollTop, 0.001);
     assert_approx_equals(overflowElement.scrollLeft, expectedScrollLeft, 0.001);

@@ -12,7 +12,9 @@ import androidx.test.uiautomator.UiObject2;
 import java.util.Arrays;
 import java.util.List;
 
-/** Locates a child node based on its position relative to its siblings. */
+/**
+ * Locates a child node based on its position relative to its siblings.
+ */
 class ChildIndexUi2Locator implements IUi2Locator {
     private final int mFirstChildIndex;
     private final int[] mDescendantIndices;
@@ -55,11 +57,8 @@ class ChildIndexUi2Locator implements IUi2Locator {
     @Override
     public String toString() {
         return "ChildIndex{"
-                + "mFirstChildIndex="
-                + mFirstChildIndex
-                + ", mDescendantIndices="
-                + Arrays.toString(mDescendantIndices)
-                + '}';
+                + "mFirstChildIndex=" + mFirstChildIndex
+                + ", mDescendantIndices=" + Arrays.toString(mDescendantIndices) + '}';
     }
 
     // Go through list of descendants to find the last child.

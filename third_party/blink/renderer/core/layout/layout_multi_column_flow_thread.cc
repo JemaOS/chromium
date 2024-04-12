@@ -26,18 +26,19 @@
 #include "third_party/blink/renderer/core/layout/layout_multi_column_flow_thread.h"
 
 #include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
-#include "third_party/blink/renderer/core/layout/fragmentation_utils.h"
 #include "third_party/blink/renderer/core/layout/geometry/writing_mode_converter.h"
 #include "third_party/blink/renderer/core/layout/layout_multi_column_set.h"
 #include "third_party/blink/renderer/core/layout/layout_multi_column_spanner_placeholder.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/multi_column_fragmentainer_group.h"
-#include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_fragmentation_utils.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_physical_box_fragment.h"
+#include "third_party/blink/renderer/core/layout/view_fragmentation_context.h"
 
 namespace blink {
 
 #if DCHECK_IS_ON()
-const LayoutBoxModelObject* LayoutMultiColumnFlowThread::style_changed_object_;
+const LayoutBox* LayoutMultiColumnFlowThread::style_changed_box_;
 #endif
 bool LayoutMultiColumnFlowThread::could_contain_spanners_;
 bool LayoutMultiColumnFlowThread::toggle_spanners_if_needed_;
@@ -54,6 +55,7 @@ LayoutMultiColumnFlowThread::~LayoutMultiColumnFlowThread() = default;
 void LayoutMultiColumnFlowThread::Trace(Visitor* visitor) const {
   visitor->Trace(last_set_worked_on_);
   LayoutFlowThread::Trace(visitor);
+  FragmentationContext::Trace(visitor);
 }
 
 LayoutMultiColumnFlowThread* LayoutMultiColumnFlowThread::CreateAnonymous(
@@ -342,10 +344,11 @@ void LayoutMultiColumnFlowThread::EvacuateAndDestroy() {
   Destroy();
 }
 
-PhysicalOffset LayoutMultiColumnFlowThread::ColumnOffset(
-    const PhysicalOffset& point) const {
+LayoutSize LayoutMultiColumnFlowThread::ColumnOffset(
+    const LayoutPoint& point) const {
   NOT_DESTROYED();
-  return FlowThreadTranslationAtPoint(point);
+  return FlowThreadTranslationAtPoint(point,
+                                      CoordinateSpaceConversion::kContaining);
 }
 
 bool LayoutMultiColumnFlowThread::IsPageLogicalHeightKnown() const {
@@ -353,25 +356,28 @@ bool LayoutMultiColumnFlowThread::IsPageLogicalHeightKnown() const {
   return all_columns_have_known_height_;
 }
 
-PhysicalOffset LayoutMultiColumnFlowThread::FlowThreadTranslationAtOffset(
+LayoutSize LayoutMultiColumnFlowThread::FlowThreadTranslationAtOffset(
     LayoutUnit offset_in_flow_thread,
-    PageBoundaryRule rule) const {
+    PageBoundaryRule rule,
+    CoordinateSpaceConversion mode) const {
   NOT_DESTROYED();
   if (!HasValidColumnSetInfo())
-    return PhysicalOffset();
+    return LayoutSize(0, 0);
   LayoutMultiColumnSet* column_set =
       ColumnSetAtBlockOffset(offset_in_flow_thread, rule);
   if (!column_set)
-    return PhysicalOffset();
-  return column_set->FlowThreadTranslationAtOffset(offset_in_flow_thread, rule);
+    return LayoutSize(0, 0);
+  return column_set->FlowThreadTranslationAtOffset(offset_in_flow_thread, rule,
+                                                   mode);
 }
 
-PhysicalOffset LayoutMultiColumnFlowThread::FlowThreadTranslationAtPoint(
-    const PhysicalOffset& flow_thread_point) const {
+LayoutSize LayoutMultiColumnFlowThread::FlowThreadTranslationAtPoint(
+    const LayoutPoint& flow_thread_point,
+    CoordinateSpaceConversion mode) const {
   NOT_DESTROYED();
-  LayoutUnit block_offset = CreateWritingModeConverter()
-                                .ToLogical(flow_thread_point, {})
-                                .block_offset;
+  LayoutPoint flipped_point = DeprecatedFlipForWritingMode(flow_thread_point);
+  LayoutUnit block_offset =
+      IsHorizontalWritingMode() ? flipped_point.Y() : flipped_point.X();
 
   // If block direction is flipped, points at a column boundary belong in the
   // former column, not the latter.
@@ -379,15 +385,22 @@ PhysicalOffset LayoutMultiColumnFlowThread::FlowThreadTranslationAtPoint(
                               ? kAssociateWithFormerPage
                               : kAssociateWithLatterPage;
 
-  return FlowThreadTranslationAtOffset(block_offset, rule);
+  return FlowThreadTranslationAtOffset(block_offset, rule, mode);
 }
 
-PhysicalOffset LayoutMultiColumnFlowThread::VisualPointToFlowThreadPoint(
-    const PhysicalOffset& visual_point) const {
+LayoutPoint LayoutMultiColumnFlowThread::FlowThreadPointToVisualPoint(
+    const LayoutPoint& flow_thread_point) const {
   NOT_DESTROYED();
-  WritingModeConverter converter(
-      {StyleRef().GetWritingMode(), TextDirection::kLtr}, Size());
-  LayoutUnit block_offset = converter.ToLogical(visual_point, {}).block_offset;
+  return flow_thread_point +
+         FlowThreadTranslationAtPoint(flow_thread_point,
+                                      CoordinateSpaceConversion::kVisual);
+}
+
+LayoutPoint LayoutMultiColumnFlowThread::VisualPointToFlowThreadPoint(
+    const LayoutPoint& visual_point) const {
+  NOT_DESTROYED();
+  LayoutUnit block_offset =
+      IsHorizontalWritingMode() ? visual_point.Y() : visual_point.X();
   const LayoutMultiColumnSet* column_set = nullptr;
   for (const LayoutMultiColumnSet* candidate = FirstMultiColumnSet(); candidate;
        candidate = candidate->NextSiblingMultiColumnSet()) {
@@ -395,15 +408,9 @@ PhysicalOffset LayoutMultiColumnFlowThread::VisualPointToFlowThreadPoint(
     if (candidate->LogicalBottom() > block_offset)
       break;
   }
-  if (!column_set) {
-    return visual_point;
-  }
-  const PhysicalOffset flow_thread_offset = PhysicalLocation();
-  const PhysicalOffset column_set_offset = column_set->PhysicalLocation();
-  const PhysicalOffset point_in_set =
-      visual_point + flow_thread_offset - column_set_offset;
-  return converter.ToPhysical(
-      column_set->VisualPointToFlowThreadPoint(point_in_set), {});
+  return column_set ? column_set->VisualPointToFlowThreadPoint(ToLayoutPoint(
+                          visual_point + Location() - column_set->Location()))
+                    : visual_point;
 }
 
 LayoutMultiColumnSet* LayoutMultiColumnFlowThread::ColumnSetAtBlockOffset(
@@ -523,9 +530,72 @@ LayoutMultiColumnFlowThread* LayoutMultiColumnFlowThread::EnclosingFlowThread(
       LocateFlowThreadContainingBlockOf(*MultiColumnBlockFlow(), constraint));
 }
 
+FragmentationContext*
+LayoutMultiColumnFlowThread::EnclosingFragmentationContext(
+    AncestorSearchConstraint constraint) const {
+  NOT_DESTROYED();
+  // If this multicol container is strictly unbreakable (due to having
+  // scrollbars, for instance), it's also strictly unbreakable in any outer
+  // fragmentation context. As such, what kind of fragmentation that goes on
+  // inside this multicol container is completely opaque to the ancestors.
+  if (constraint == kIsolateUnbreakableContainers &&
+      MultiColumnBlockFlow()->IsMonolithic()) {
+    return nullptr;
+  }
+  if (auto* enclosing_flow_thread = EnclosingFlowThread(constraint))
+    return enclosing_flow_thread;
+  return View()->FragmentationContext();
+}
+
 void LayoutMultiColumnFlowThread::SetColumnCountFromNG(unsigned column_count) {
   NOT_DESTROYED();
   column_count_ = column_count;
+}
+
+void LayoutMultiColumnFlowThread::StartLayoutFromNG() {
+  NOT_DESTROYED();
+  DCHECK(!RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled());
+  last_set_worked_on_ = DynamicTo<LayoutMultiColumnSet>(FirstMultiColumnBox());
+}
+
+LayoutMultiColumnSet* LayoutMultiColumnFlowThread::PendingColumnSetForNG()
+    const {
+  NOT_DESTROYED();
+  DCHECK(!RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled());
+  if (last_set_worked_on_ &&
+      !last_set_worked_on_->FirstFragmentainerGroup().IsLogicalHeightKnown()) {
+    DCHECK_EQ(last_set_worked_on_->FragmentainerGroups().size(), 1u);
+    return last_set_worked_on_;
+  }
+  return nullptr;
+}
+
+void LayoutMultiColumnFlowThread::AppendNewFragmentainerGroupFromNG() {
+  NOT_DESTROYED();
+  DCHECK(!RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled());
+  if (!last_set_worked_on_) {
+    // There may be no column sets at all (when there's no content inside the
+    // multicol container). Still the multicol container itself may take up
+    // space and become fragmented, due to its specified block-size, padding,
+    // etc. The NG code doesn't care about this when calling this method. Just
+    // bail. It may also be that we haven't gotten to the first column set yet.
+    // This may happen when NG lays out an empty column (before a spanner) where
+    // legacy doesn't think that there should be a column.
+    return;
+  }
+  last_set_worked_on_->AppendNewFragmentainerGroup();
+}
+
+void LayoutMultiColumnFlowThread::SetCurrentColumnBlockSizeFromNG(
+    LayoutUnit block_size) {
+  NOT_DESTROYED();
+  DCHECK(!RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled());
+  // There are cases where NG creates an empty column even if we don't create a
+  // column set.
+  if (!last_set_worked_on_)
+    return;
+  last_set_worked_on_->LastFragmentainerGroup().SetColumnBlockSizeFromNG(
+      block_size);
 }
 
 void LayoutMultiColumnFlowThread::FinishLayoutFromNG(
@@ -537,9 +607,65 @@ void LayoutMultiColumnFlowThread::FinishLayoutFromNG(
     column_box->ClearNeedsLayout();
   }
 
+  if (!RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled()) {
+    // If we have a trailing column set, finish it.
+    if (auto* last_column_set =
+            DynamicTo<LayoutMultiColumnSet>(LastMultiColumnBox())) {
+      last_column_set->EndFlow(flow_thread_offset);
+      last_column_set->FinishLayoutFromNG();
+    }
+  }
+
   ValidateColumnSets();
+  if (!RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled()) {
+    SetLogicalHeight(flow_thread_offset);
+  }
   ClearNeedsLayout();
   last_set_worked_on_ = nullptr;
+}
+
+void LayoutMultiColumnFlowThread::CalculateColumnCountAndWidth(
+    LayoutUnit& width,
+    unsigned& count) const {
+  NOT_DESTROYED();
+  LayoutBlock* column_block = MultiColumnBlockFlow();
+  const ComputedStyle* column_style = column_block->Style();
+  LayoutUnit available_width = column_block->ContentLogicalWidth();
+  LayoutUnit column_gap = ColumnGap(*column_style, available_width);
+  LayoutUnit computed_column_width =
+      max(LayoutUnit(1), LayoutUnit(column_style->ColumnWidth()));
+  unsigned computed_column_count = max<int>(1, column_style->ColumnCount());
+
+  DCHECK(!column_style->HasAutoColumnCount() ||
+         !column_style->HasAutoColumnWidth());
+  if (column_style->HasAutoColumnWidth() &&
+      !column_style->HasAutoColumnCount()) {
+    count = computed_column_count;
+    width = ((available_width - ((count - 1) * column_gap)) / count)
+                .ClampNegativeToZero();
+  } else if (!column_style->HasAutoColumnWidth() &&
+             column_style->HasAutoColumnCount()) {
+    count = std::max(LayoutUnit(1), (available_width + column_gap) /
+                                        (computed_column_width + column_gap))
+                .ToUnsigned();
+    width = ((available_width + column_gap) / count) - column_gap;
+  } else {
+    count = std::max(std::min(LayoutUnit(computed_column_count),
+                              (available_width + column_gap) /
+                                  (computed_column_width + column_gap)),
+                     LayoutUnit(1))
+                .ToUnsigned();
+    width = ((available_width + column_gap) / count) - column_gap;
+  }
+}
+
+LayoutUnit LayoutMultiColumnFlowThread::ColumnGap(const ComputedStyle& style,
+                                                  LayoutUnit available_width) {
+  if (const absl::optional<Length>& column_gap = style.ColumnGap())
+    return ValueForLength(*column_gap, available_width);
+
+  // "1em" is recommended as the normal gap setting. Matches <p> margins.
+  return LayoutUnit(style.GetFontDescription().ComputedSize());
 }
 
 void LayoutMultiColumnFlowThread::CreateAndInsertMultiColumnSet(
@@ -703,6 +829,27 @@ void LayoutMultiColumnFlowThread::WillBeRemovedFromTree() {
     column_set->DetachFromFlowThread();
   MultiColumnBlockFlow()->ResetMultiColumnFlowThread();
   LayoutFlowThread::WillBeRemovedFromTree();
+}
+
+void LayoutMultiColumnFlowThread::SkipColumnSpanner(
+    const LayoutBox* layout_object,
+    LayoutUnit logical_top_in_flow_thread) {
+  NOT_DESTROYED();
+  DCHECK(!RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled());
+  DCHECK(layout_object->IsColumnSpanAll());
+
+  last_set_worked_on_ = nullptr;
+
+  LayoutMultiColumnSpannerPlaceholder* placeholder =
+      layout_object->SpannerPlaceholder();
+  LayoutBox* previous_column_box = placeholder->PreviousSiblingMultiColumnBox();
+  if (auto* previous_set = DynamicTo<LayoutMultiColumnSet>(previous_column_box))
+    previous_set->EndFlow(logical_top_in_flow_thread);
+  LayoutBox* next_column_box = placeholder->NextSiblingMultiColumnBox();
+  if (auto* next_set = DynamicTo<LayoutMultiColumnSet>(next_column_box)) {
+    last_set_worked_on_ = next_set;
+    next_set->BeginFlow(logical_top_in_flow_thread);
+  }
 }
 
 // When processing layout objects to remove or when processing layout objects
@@ -888,7 +1035,7 @@ void LayoutMultiColumnFlowThread::FlowThreadDescendantWillBeRemoved(
 }
 
 static inline bool NeedsToReinsertIntoFlowThread(
-    const LayoutBoxModelObject& object,
+    const LayoutBox& box,
     const ComputedStyle& old_style,
     const ComputedStyle& new_style) {
   // If we've become (or are about to become) a container for absolutely
@@ -896,17 +1043,15 @@ static inline bool NeedsToReinsertIntoFlowThread(
   // re-evaluate the need for column sets. There may be out-of-flow descendants
   // further down that become part of the flow thread, or cease to be part of
   // the flow thread, because of this change.
-  if (object.ComputeIsFixedContainer(&old_style) !=
-      object.ComputeIsFixedContainer(&new_style)) {
+  if (box.ComputeIsFixedContainer(&old_style) !=
+      box.ComputeIsFixedContainer(&new_style))
     return true;
-  }
   return old_style.GetPosition() != new_style.GetPosition();
 }
 
-static inline bool NeedsToRemoveFromFlowThread(
-    const LayoutBoxModelObject& object,
-    const ComputedStyle& old_style,
-    const ComputedStyle& new_style) {
+static inline bool NeedsToRemoveFromFlowThread(const LayoutBox& box,
+                                               const ComputedStyle& old_style,
+                                               const ComputedStyle& new_style) {
   // This function is called BEFORE computed style update. If an in-flow
   // descendant goes out-of-flow, we may have to remove column sets and spanner
   // placeholders. Note that we may end up with false positives here, since some
@@ -919,12 +1064,12 @@ static inline bool NeedsToRemoveFromFlowThread(
   // been updated.
   return (new_style.HasOutOfFlowPosition() &&
           !old_style.HasOutOfFlowPosition()) ||
-         NeedsToReinsertIntoFlowThread(object, old_style, new_style);
+         NeedsToReinsertIntoFlowThread(box, old_style, new_style);
 }
 
 static inline bool NeedsToInsertIntoFlowThread(
     const LayoutMultiColumnFlowThread* flow_thread,
-    const LayoutBoxModelObject* descendant,
+    const LayoutBox* descendant,
     const ComputedStyle& old_style,
     const ComputedStyle& new_style) {
   // This function is called AFTER computed style update. If an out-of-flow
@@ -949,7 +1094,7 @@ static inline bool NeedsToInsertIntoFlowThread(
 }
 
 void LayoutMultiColumnFlowThread::FlowThreadDescendantStyleWillChange(
-    LayoutBoxModelObject* descendant,
+    LayoutBox* descendant,
     StyleDifference diff,
     const ComputedStyle& new_style) {
   NOT_DESTROYED();
@@ -958,12 +1103,12 @@ void LayoutMultiColumnFlowThread::FlowThreadDescendantStyleWillChange(
                                   new_style)) {
     FlowThreadDescendantWillBeRemoved(descendant);
 #if DCHECK_IS_ON()
-    style_changed_object_ = nullptr;
+    style_changed_box_ = nullptr;
 #endif
     return;
   }
 #if DCHECK_IS_ON()
-  style_changed_object_ = descendant;
+  style_changed_box_ = descendant;
 #endif
   // Keep track of whether this object was of such a type that it could contain
   // column-span:all descendants. If the style change in progress changes this
@@ -975,14 +1120,14 @@ void LayoutMultiColumnFlowThread::FlowThreadDescendantStyleWillChange(
 }
 
 void LayoutMultiColumnFlowThread::FlowThreadDescendantStyleDidChange(
-    LayoutBoxModelObject* descendant,
+    LayoutBox* descendant,
     StyleDifference diff,
     const ComputedStyle& old_style) {
   NOT_DESTROYED();
 
 #if DCHECK_IS_ON()
-  const auto* style_changed_box = style_changed_object_;
-  style_changed_object_ = nullptr;
+  const auto* style_changed_box = style_changed_box_;
+  style_changed_box_ = nullptr;
 #endif
 
   bool toggle_spanners_if_needed = toggle_spanners_if_needed_;
@@ -1004,7 +1149,7 @@ void LayoutMultiColumnFlowThread::FlowThreadDescendantStyleDidChange(
     FlowThreadDescendantWillBeRemoved(descendant);
 
     CreateAndInsertSpannerPlaceholder(
-        To<LayoutBox>(descendant),
+        descendant,
         NextInPreOrderAfterChildrenSkippingOutOfFlow(this, descendant));
     return;
   }
@@ -1028,7 +1173,7 @@ void LayoutMultiColumnFlowThread::FlowThreadDescendantStyleDidChange(
 }
 
 void LayoutMultiColumnFlowThread::ToggleSpannersInSubtree(
-    LayoutBoxModelObject* descendant) {
+    LayoutBox* descendant) {
   NOT_DESTROYED();
   DCHECK_NE(could_contain_spanners_,
             CanContainSpannerInParentFragmentationContext(*descendant));
@@ -1075,18 +1220,46 @@ void LayoutMultiColumnFlowThread::ToggleSpannersInSubtree(
   }
 }
 
-LayoutPoint LayoutMultiColumnFlowThread::LocationInternal() const {
+MinMaxSizes LayoutMultiColumnFlowThread::PreferredLogicalWidths() const {
   NOT_DESTROYED();
-  if (!HasValidCachedGeometry() && EverHadLayout()) {
+  NOTREACHED_NORETURN();
+}
+
+MinMaxSizes LayoutMultiColumnFlowThread::ComputeIntrinsicLogicalWidths() const {
+  NOT_DESTROYED();
+  NOTREACHED_NORETURN();
+}
+
+void LayoutMultiColumnFlowThread::ComputeLogicalHeight(
+    LayoutUnit logical_height,
+    LayoutUnit logical_top,
+    LogicalExtentComputedValues& computed_values) const {
+  NOT_DESTROYED();
+  NOTREACHED_NORETURN();
+}
+
+void LayoutMultiColumnFlowThread::UpdateLogicalWidth() {
+  NOT_DESTROYED();
+  DCHECK(!RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled());
+  LayoutUnit column_width;
+  CalculateColumnCountAndWidth(column_width, column_count_);
+  SetLogicalWidth(column_width);
+}
+
+LayoutPoint LayoutMultiColumnFlowThread::Location() const {
+  NOT_DESTROYED();
+  if (RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled() &&
+      !HasValidCachedGeometry() && EverHadLayout()) {
     // const_cast in order to update the cached value.
     const_cast<LayoutMultiColumnFlowThread*>(this)->UpdateGeometry();
   }
   return frame_location_;
 }
 
-PhysicalSize LayoutMultiColumnFlowThread::Size() const {
+LayoutSize LayoutMultiColumnFlowThread::Size() const {
   NOT_DESTROYED();
-  if (!HasValidCachedGeometry() && EverHadLayout()) {
+  if (RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled() &&
+      !HasValidCachedGeometry() && EverHadLayout()) {
     // const_cast in order to update the cached value.
     const_cast<LayoutMultiColumnFlowThread*>(this)->UpdateGeometry();
   }
@@ -1095,21 +1268,22 @@ PhysicalSize LayoutMultiColumnFlowThread::Size() const {
 
 void LayoutMultiColumnFlowThread::UpdateGeometry() {
   NOT_DESTROYED();
+  DCHECK(RuntimeEnabledFeatures::LayoutNGNoCopyBackEnabled());
   SetHasValidCachedGeometry(true);
   frame_location_ = LayoutPoint();
   LogicalSize thread_size;
   const LayoutBlockFlow* container = MultiColumnBlockFlow();
   if (container->PhysicalFragmentCount() == 0u) {
-    frame_size_ = PhysicalSize();
+    frame_size_ = LayoutSize();
     return;
   }
   const auto* first_fragment = container->GetPhysicalFragment(0);
   WritingModeConverter converter(first_fragment->Style().GetWritingDirection());
   bool has_processed_first_column_in_flow_thread = false;
-  const BlockBreakToken* break_token = nullptr;
+  const NGBlockBreakToken* break_token = nullptr;
   for (const auto& container_fragment : container->PhysicalFragments()) {
     for (const auto& link : container_fragment.Children()) {
-      const auto& child_fragment = To<PhysicalBoxFragment>(*link);
+      const auto& child_fragment = To<NGPhysicalBoxFragment>(*link);
       if (!child_fragment.IsFragmentainerBox()) {
         continue;
       }
@@ -1125,13 +1299,13 @@ void LayoutMultiColumnFlowThread::UpdateGeometry() {
         has_processed_first_column_in_flow_thread = true;
       }
     }
-    break_token = container_fragment.GetBreakToken();
+    break_token = container_fragment.BreakToken();
     if (!break_token || break_token->IsRepeated() ||
         break_token->IsAtBlockEnd()) {
       break;
     }
   }
-  frame_size_ = converter.ToPhysical(thread_size);
+  frame_size_ = converter.ToPhysical(thread_size).ToLayoutSize();
 }
 
 }  // namespace blink

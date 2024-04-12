@@ -21,9 +21,7 @@ using EventLatencyMetricsTest = InProcessBrowserTest;
 
 // Ash.EventLatency metrics should not be recorded when the target window
 // is backing web contents.
-// Disabled due to flakes; see https://crbug.com/1504093.
-IN_PROC_BROWSER_TEST_F(EventLatencyMetricsTest,
-                       DISABLED_NoReportForWebContents) {
+IN_PROC_BROWSER_TEST_F(EventLatencyMetricsTest, NoReportForWebContents) {
   base::HistogramTester histogram_tester;
 
   const GURL url = ui_test_utils::GetTestUrl(

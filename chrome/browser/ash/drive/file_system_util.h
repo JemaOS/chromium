@@ -5,9 +5,9 @@
 #ifndef CHROME_BROWSER_ASH_DRIVE_FILE_SYSTEM_UTIL_H_
 #define CHROME_BROWSER_ASH_DRIVE_FILE_SYSTEM_UTIL_H_
 
-#include <ostream>
-
 #include "base/files/file_path.h"
+#include "components/drive/file_errors.h"
+#include "url/gurl.h"
 
 class Profile;
 
@@ -26,72 +26,32 @@ bool IsUnderDriveMountPoint(const base::FilePath& path);
 
 // Gets the cache root path (i.e. <user_profile_dir>/GCache/v1) from the
 // profile.
-base::FilePath GetCacheRootPath(const Profile* profile);
+base::FilePath GetCacheRootPath(Profile* profile);
 
 // Returns true if Drive is available for the given Profile.
-bool IsDriveAvailableForProfile(const Profile* profile);
+bool IsDriveAvailableForProfile(Profile* profile);
 
 // Returns true if Drive is currently enabled for the given Profile.
-bool IsDriveEnabledForProfile(const Profile* profile);
+bool IsDriveEnabledForProfile(Profile* profile);
 
-// Drive availability for a given profile.
-enum class DriveAvailability {
-  kAvailable,
-  kNotAvailableWhenDisableDrivePreferenceSet,
-  kNotAvailableForAccountType,
-  kNotAvailableForUninitialisedLoginState,
-  kNotAvailableInIncognito,
-  kNotAvailableForTestImage,
-};
-
-// Returns the Drive availability for a given profile. Checks if Drive is
-// enabled or if Drive is available for the given profile.
-DriveAvailability CheckDriveEnabledAndDriveAvailabilityForProfile(
-    const Profile* const profile);
-
-// Returns true if the bulk-pinning feature should be available and visible in
-// the given Profile. Several conditions need to be met for the bulk-pinning
-// feature to be available. This does not indicate whether the bulk-pinning
-// feature has been activated (turned on) by the user. It merely indicates
-// whether the bulk-pinning feature is available and can be turned on by the
-// user if they choose to.
-[[nodiscard]] bool IsDriveFsBulkPinningAvailable(const Profile* profile);
-[[nodiscard]] bool IsDriveFsBulkPinningAvailable();
-[[nodiscard]] bool IsOobeDrivePinningAvailable(const Profile* profile);
-[[nodiscard]] bool IsOobeDrivePinningAvailable();
-[[nodiscard]] bool IsOobeDrivePinningScreenEnabled();
-
-// Connection status to Drive.
-enum class ConnectionStatus {
+// Enum type for describing the current connection status to Drive.
+enum ConnectionStatusType {
   // Disconnected because Drive service is unavailable for this account (either
   // disabled by a flag or the account has no Google account (e.g., guests)).
-  kNoService,
+  DRIVE_DISCONNECTED_NOSERVICE,
   // Disconnected because no network is available.
-  kNoNetwork,
+  DRIVE_DISCONNECTED_NONETWORK,
   // Disconnected because authentication is not ready.
-  kNotReady,
-  // Connected by metered network (eg cellular network, or metered WiFi.)
-  // Background sync is disabled.
-  kMetered,
-  // Connected without limitation (WiFi, Ethernet, or cellular with the
+  DRIVE_DISCONNECTED_NOTREADY,
+  // Connected by cellular network. Background sync is disabled.
+  DRIVE_CONNECTED_METERED,
+  // Connected without condition (WiFi, Ethernet, or cellular with the
   // disable-sync preference turned off.)
-  kConnected,
+  DRIVE_CONNECTED,
 };
 
-std::ostream& operator<<(std::ostream& out, ConnectionStatus status);
-
-// Sets the Drive connection status for testing purposes.
-void SetDriveConnectionStatusForTesting(ConnectionStatus status);
-
 // Returns the Drive connection status for the |profile|.
-ConnectionStatus GetDriveConnectionStatus(Profile* profile);
-
-// Returns true if the supplied mime type is of a pinnable type. This indicates
-// the file can be made available offline.
-bool IsPinnableGDocMimeType(const std::string& mime_type);
-
-// Computes the total content cache size (minus the chunks.db* metadata files).
-int64_t ComputeDriveFsContentCacheSize(const base::FilePath& path);
+ConnectionStatusType GetDriveConnectionStatus(Profile* profile);
 
 }  // namespace util
 }  // namespace drive

@@ -4,7 +4,9 @@
 
 package org.chromium.chrome.browser.provider;
 
-/** Copy of android.provider.BaseColumns. */
+/**
+ * Copy of android.provider.BaseColumns.
+ */
 public interface BaseColumns {
     /**
      * The unique ID for a row.

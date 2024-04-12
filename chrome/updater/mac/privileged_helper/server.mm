@@ -16,29 +16,30 @@
 #import "base/task/sequenced_task_runner.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
-#include "chrome/updater/constants.h"
 #include "chrome/updater/mac/privileged_helper/helper_branding.h"
 #include "chrome/updater/updater_branding.h"
 
 namespace updater {
 
 namespace {
-constexpr int kServerKeepAliveSeconds = 1;
+int kServerKeepAliveSeconds = 1;
 }
 
-PrivilegedHelperServer::PrivilegedHelperServer() = default;
+PrivilegedHelperServer::PrivilegedHelperServer()
+    : main_task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
+      service_(base::MakeRefCounted<PrivilegedHelperService>()) {}
 PrivilegedHelperServer::~PrivilegedHelperServer() = default;
 
-int PrivilegedHelperServer::Initialize() {
+void PrivilegedHelperServer::Initialize() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  service_delegate_ = [[PrivilegedHelperServiceXPCDelegate alloc]
+  service_delegate_.reset([[PrivilegedHelperServiceXPCDelegate alloc]
       initWithService:service_
-               server:scoped_refptr<PrivilegedHelperServer>(this)];
-  service_listener_ = [[NSXPCListener alloc]
-      initWithMachServiceName:base::SysUTF8ToNSString(PRIVILEGED_HELPER_NAME)];
-  service_listener_.delegate = service_delegate_;
+               server:scoped_refptr<PrivilegedHelperServer>(this)]);
+  service_listener_.reset([[NSXPCListener alloc]
+      initWithMachServiceName:base::SysUTF8ToNSString(PRIVILEGED_HELPER_NAME)]);
+  service_listener_.get().delegate = service_delegate_.get();
+
   [service_listener_ resume];
-  return kErrorOk;
 }
 
 void PrivilegedHelperServer::FirstTaskRun() {
@@ -47,8 +48,8 @@ void PrivilegedHelperServer::FirstTaskRun() {
 
 void PrivilegedHelperServer::Uninitialize() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  service_delegate_ = nil;
-  service_listener_ = nil;
+  service_delegate_.reset();
+  service_listener_.reset();
   Uninstall();
 }
 

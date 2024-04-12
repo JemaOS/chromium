@@ -115,8 +115,7 @@ StateStore::StateStore(Profile* profile)
 
   // Apply the platform data.
   Transaction transaction(this);
-  std::optional<base::Value::Dict> value_dict(
-      platform_state_store::Load(profile_));
+  absl::optional<base::Value::Dict> value_dict(platform_state_store::Load(profile_));
   if (value_dict.has_value()) {
     if (value_dict->empty()) {
       transaction.ClearAll();

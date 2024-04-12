@@ -2,26 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
-
 #include "ash/public/cpp/keyboard/keyboard_controller.h"
 #include "ash/public/cpp/login_screen_test_api.h"
 #include "ash/public/cpp/shelf_config.h"
 #include "ash/public/cpp/shelf_test_api.h"
 #include "ash/session/session_controller_impl.h"
 #include "ash/shell.h"
-#include "base/check_deref.h"
 #include "base/feature_list.h"
+#include "base/run_loop.h"
+#include "base/test/bind.h"
 #include "base/test/gtest_tags.h"
-#include "base/test/test_future.h"
 #include "base/time/time.h"
+#include "chrome/browser/ash/app_mode/app_session_ash.h"
 #include "chrome/browser/ash/app_mode/kiosk_app_types.h"
 #include "chrome/browser/ash/app_mode/kiosk_profile_loader.h"
-#include "chrome/browser/ash/app_mode/kiosk_system_session.h"
 #include "chrome/browser/ash/app_mode/web_app/web_kiosk_app_manager.h"
 #include "chrome/browser/ash/login/app_mode/kiosk_launch_controller.h"
 #include "chrome/browser/ash/login/app_mode/test/kiosk_base_test.h"
 #include "chrome/browser/ash/login/app_mode/test/kiosk_test_helpers.h"
+#include "chrome/browser/ash/login/app_mode/test/test_browser_closed_waiter.h"
 #include "chrome/browser/ash/login/app_mode/test/web_kiosk_base_test.h"
 #include "chrome/browser/ash/login/test/js_checker.h"
 #include "chrome/browser/ash/login/test/oobe_screen_waiter.h"
@@ -29,15 +28,16 @@
 #include "chrome/browser/ash/ownership/fake_owner_settings_service.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
-#include "chrome/browser/ui/test/test_browser_closed_waiter.h"
 #include "chrome/browser/ui/webui/ash/login/error_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/gaia_screen_handler.h"
 #include "chrome/browser/web_applications/external_install_options.h"
 #include "chrome/browser/web_applications/externally_managed_app_manager.h"
+#include "chrome/browser/web_applications/mojom/user_display_mode.mojom.h"
 #include "chrome/browser/web_applications/web_app_constants.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/common/chrome_features.h"
+#include "components/account_id/account_id.h"
 #include "components/webapps/browser/install_result_code.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/url_loader_interceptor.h"
@@ -47,55 +47,19 @@
 namespace ash {
 namespace {
 
-using ::base::test::TestFuture;
 using ::testing::_;
 
+const char kAppLaunchUrl[] = "https://app.com/launch";
+const char16_t kAppTitle[] = u"title.";
 const test::UIPath kNetworkConfigureScreenContinueButton = {"error-message",
                                                             "continueButton"};
 
-std::optional<Profile*> LoadKioskProfile(const AccountId& account_id) {
-  TestFuture<std::optional<Profile*>> profile_future;
-  auto profile_loader = LoadProfile(
-      account_id, KioskAppType::kWebApp,
-      base::BindOnce([](KioskProfileLoader::Result result) {
-        return result.has_value() ? std::make_optional(result.value())
-                                  : std::nullopt;
-      }).Then(profile_future.GetCallback()));
-  return profile_future.Take();
-}
-
-// TODO(b/322497609) Replace `URLLoaderInterceptor` with `EmbeddedTestServer`.
-content::URLLoaderInterceptor SimplePageInterceptor() {
-  return content::URLLoaderInterceptor(base::BindRepeating(
-      [](content::URLLoaderInterceptor::RequestParams* params) {
-        content::URLLoaderInterceptor::WriteResponse(
-            "content/test/data/simple_page.html", params->client.get());
-        return true;
-      }));
-}
-
-bool InstallKioskWebAppInProvider(Profile& profile) {
-  // Serve a real page to avoid installing a placeholder app.
-  auto url_interceptor = SimplePageInterceptor();
-
-  TestFuture<bool> success_future;
-
-  auto* provider = web_app::WebAppProvider::GetForLocalAppsUnchecked(&profile);
-
-  web_app::ExternalInstallOptions install_options(
-      GURL(kAppInstallUrl), web_app::mojom::UserDisplayMode::kStandalone,
-      web_app::ExternalInstallSource::kKiosk);
-  install_options.install_placeholder = true;
-
-  provider->externally_managed_app_manager().InstallNow(
-      install_options,
-      base::BindOnce([](const GURL& install_url,
-                        web_app::ExternallyManagedAppManager::InstallResult
-                            result) {
-        return webapps::IsSuccess(result.code);
-      }).Then(success_future.GetCallback()));
-  return success_future.Wait();
-}
+class FakeKioskProfileLoaderDelegate : public KioskProfileLoader::Delegate {
+ public:
+  MOCK_METHOD1(OnProfileLoaded, void(Profile*));
+  MOCK_METHOD1(OnProfileLoadFailed, void(KioskAppLaunchError::Error));
+  MOCK_METHOD1(OnOldEncryptionDetected, void(std::unique_ptr<UserContext>));
+};
 
 class WebKioskTest : public WebKioskBaseTest {
  public:
@@ -104,12 +68,53 @@ class WebKioskTest : public WebKioskBaseTest {
   WebKioskTest(const WebKioskTest&) = delete;
   WebKioskTest& operator=(const WebKioskTest&) = delete;
 
-  void EnsureAppIsInstalled() {
-    std::optional<Profile*> profile = LoadKioskProfile(account_id());
-    ASSERT_TRUE(profile.has_value());
-    ASSERT_TRUE(InstallKioskWebAppInProvider(CHECK_DEREF(*profile)))
-        << "App was not installed";
-    Shell::Get()->session_controller()->RequestSignOut();
+  void MakeAppAlreadyInstalled() {
+    if (!base::FeatureList::IsEnabled(::features::kKioskEnableAppService)) {
+      WebAppInstallInfo info;
+      info.start_url = GURL(kAppLaunchUrl);
+      info.title = kAppTitle;
+      WebKioskAppManager::Get()->UpdateAppByAccountId(account_id(), info);
+      return;
+    }
+
+    // Intercept URL loader to avoid installing a placeholder app.
+    content::URLLoaderInterceptor url_interceptor(base::BindRepeating(
+        [](content::URLLoaderInterceptor::RequestParams* params) {
+          content::URLLoaderInterceptor::WriteResponse(
+              "content/test/data/simple_page.html", params->client.get());
+          return true;
+        }));
+
+    FakeKioskProfileLoaderDelegate fake_delegate;
+    KioskProfileLoader profile_loader(account_id(), KioskAppType::kWebApp,
+                                      &fake_delegate);
+
+    base::RunLoop loop;
+    EXPECT_CALL(fake_delegate, OnProfileLoaded(_))
+        .WillOnce([&loop](Profile* profile) {
+          // When Kiosk profile is loaded, install Kiosk web app to
+          // WebAppProvider.
+          auto* provider =
+              web_app::WebAppProvider::GetForLocalAppsUnchecked(profile);
+          web_app::ExternalInstallOptions install_options(
+              GURL(kAppInstallUrl),
+              web_app::mojom::UserDisplayMode::kStandalone,
+              web_app::ExternalInstallSource::kKiosk);
+          install_options.install_placeholder = true;
+          provider->externally_managed_app_manager().InstallNow(
+              install_options,
+              base::BindLambdaForTesting(
+                  [&loop](const GURL& install_url,
+                          web_app::ExternallyManagedAppManager::InstallResult
+                              result) {
+                    ASSERT_TRUE(webapps::IsSuccess(result.code));
+                    Shell::Get()->session_controller()->RequestSignOut();
+                    loop.Quit();
+                  }));
+        });
+
+    profile_loader.Start();
+    loop.Run();
   }
 
   void SetBlockAppLaunch(bool block) {
@@ -163,7 +168,7 @@ class WebKioskTest : public WebKioskBaseTest {
   }
 
  private:
-  std::optional<base::AutoReset<bool>> block_app_launch_override_;
+  std::unique_ptr<base::AutoReset<bool>> block_app_launch_override_;
 };
 
 // Runs the kiosk app when the network is always present.
@@ -199,7 +204,7 @@ IN_PROC_BROWSER_TEST_F(WebKioskTest, NetworkTimeout) {
 // launching offline.
 IN_PROC_BROWSER_TEST_F(WebKioskTest, PRE_AlreadyInstalledOffline) {
   PrepareAppLaunch();
-  EnsureAppIsInstalled();
+  MakeAppAlreadyInstalled();
 }
 
 // Runs the kiosk app offline when it has been already installed.
@@ -238,7 +243,7 @@ IN_PROC_BROWSER_TEST_F(WebKioskTest, LaunchWithConfigureAcceleratorPressed) {
 IN_PROC_BROWSER_TEST_F(WebKioskTest,
                        PRE_AlreadyInstalledWithConfigureAcceleratorPressed) {
   PrepareAppLaunch();
-  EnsureAppIsInstalled();
+  MakeAppAlreadyInstalled();
 }
 
 // In case when the app was already installed, we should expect to be able to
@@ -301,8 +306,8 @@ IN_PROC_BROWSER_TEST_F(WebKioskTest, KeyboardConfigPolicy) {
 IN_PROC_BROWSER_TEST_F(WebKioskTest, OpenA11ySettings) {
   InitializeRegularOnlineKiosk();
 
-  Browser* settings_browser = OpenA11ySettingsBrowser(
-      WebKioskAppManager::Get()->kiosk_system_session());
+  Browser* settings_browser =
+      OpenA11ySettingsBrowser(WebKioskAppManager::Get()->app_session());
 
   // Make sure the settings browser was opened.
   ASSERT_NE(settings_browser, nullptr);
@@ -316,24 +321,23 @@ IN_PROC_BROWSER_TEST_F(WebKioskTest, CloseSettingWindowIfOnlyOpen) {
   EXPECT_EQ(BrowserList::GetInstance()->size(), 1u);
   Browser* initial_browser = BrowserList::GetInstance()->get(0);
 
-  KioskSystemSession* session =
-      WebKioskAppManager::Get()->kiosk_system_session();
+  AppSessionAsh* app_session = WebKioskAppManager::Get()->app_session();
 
-  Browser* settings_browser = OpenA11ySettingsBrowser(session);
+  Browser* settings_browser = OpenA11ySettingsBrowser(app_session);
   // Make sure the settings browser was opened.
   ASSERT_NE(settings_browser, nullptr);
   EXPECT_EQ(BrowserList::GetInstance()->size(), 2u);
 
   // Close the initial browser.
   initial_browser->window()->Close();
-  // Ensure `settings_browser` is closed too.
+  // Ensure |settings_browser| is closed too.
   TestBrowserClosedWaiter settings_browser_closed_waiter{settings_browser};
-  ASSERT_TRUE(settings_browser_closed_waiter.WaitUntilClosed());
+  settings_browser_closed_waiter.WaitUntilClosed();
 
   // No browsers are opened in the web kiosk session, so it should be
   // terminated.
   EXPECT_EQ(BrowserList::GetInstance()->size(), 0u);
-  EXPECT_TRUE(session->is_shutting_down());
+  EXPECT_TRUE(app_session->is_shutting_down());
 }
 
 // Closing the a11y settings window should not exit the web app kiosk
@@ -343,23 +347,22 @@ IN_PROC_BROWSER_TEST_F(WebKioskTest, NotExitIfCloseSettingsWindow) {
   // The initial browser should exist in the web kiosk session.
   EXPECT_EQ(BrowserList::GetInstance()->size(), 1u);
 
-  KioskSystemSession* session =
-      WebKioskAppManager::Get()->kiosk_system_session();
+  AppSessionAsh* app_session = WebKioskAppManager::Get()->app_session();
 
-  Browser* settings_browser = OpenA11ySettingsBrowser(session);
+  Browser* settings_browser = OpenA11ySettingsBrowser(app_session);
   // Make sure the settings browser was opened.
   ASSERT_NE(settings_browser, nullptr);
   EXPECT_EQ(BrowserList::GetInstance()->size(), 2u);
 
-  // Close `settings_browser` and ensure it is closed.
+  // Close |settings_browser| and ensure it is closed.
   settings_browser->window()->Close();
   TestBrowserClosedWaiter settings_browser_closed_waiter{settings_browser};
-  ASSERT_TRUE(settings_browser_closed_waiter.WaitUntilClosed());
+  settings_browser_closed_waiter.WaitUntilClosed();
 
   // The initial browsers should still be opened and so the kiosk session should
   // not be terminated.
   EXPECT_EQ(BrowserList::GetInstance()->size(), 1u);
-  EXPECT_FALSE(session->is_shutting_down());
+  EXPECT_FALSE(app_session->is_shutting_down());
 }
 
 }  // namespace

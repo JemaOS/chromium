@@ -8,15 +8,20 @@
 #import <Foundation/Foundation.h>
 #import <UserNotifications/UserNotifications.h>
 
+#include "base/mac/scoped_nsobject.h"
+
+API_AVAILABLE(macosx(10.14))
 @interface FakeUNNotification : NSObject
-@property(nonatomic, strong, nullable) UNNotificationRequest* request;
+@property(nonatomic, retain, nullable) UNNotificationRequest* request;
 @end
 
+API_AVAILABLE(macosx(10.14))
 @interface FakeUNNotificationSettings : NSObject
 @property(nonatomic, assign) UNAlertStyle alertStyle;
 @property(nonatomic, assign) UNAuthorizationStatus authorizationStatus;
 @end
 
+API_AVAILABLE(macosx(10.14))
 @interface FakeUNUserNotificationCenter : NSObject
 - (nullable instancetype)init;
 - (void)setDelegate:(id<UNUserNotificationCenterDelegate> _Nullable)delegate;

@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -17,6 +16,7 @@
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/bindings/remote_set.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -41,11 +41,6 @@ class RemoteAppsProxyLacros
       public remote_apps::mojom::RemoteAppsFactory,
       public KeyedService {
  public:
-  static constexpr char kErrorNoAshRemoteConnected[] =
-      "No Ash remote connected";
-  static constexpr char kErrorSetPinnedAppsNotAvailable[] =
-      "Ash version of remote apps API doesn't support SetPinnedApps method";
-
   static std::unique_ptr<RemoteAppsProxyLacros> CreateForTesting(
       Profile* profile,
       mojo::Remote<remote_apps::mojom::RemoteAppsLacrosBridge>&
@@ -83,14 +78,10 @@ class RemoteAppsProxyLacros
                  DeleteAppCallback callback) override;
   void SortLauncherWithRemoteAppsFirst(
       SortLauncherWithRemoteAppsFirstCallback callback) override;
-  void SetPinnedApps(const std::vector<std::string>& app_ids,
-                     SetPinnedAppsCallback callback) override;
 
   // remote_apps::mojom::RemoteAppLaunchObserver:
   void OnRemoteAppLaunched(const std::string& app_id,
                            const std::string& source_id) override;
-
-  uint32_t AshRemoteAppsVersionForTests() const;
 
  private:
   using RemoteIds = std::map<std::string, mojo::RemoteSetElementId>;
@@ -103,13 +94,6 @@ class RemoteAppsProxyLacros
           remote_apps_lacros_bridge);
 
   void DisconnectHandler(mojo::RemoteSetElementId id);
-
-  void OnVersionForAppPinningReady(const std::vector<std::string>& app_ids,
-                                   SetPinnedAppsCallback callback,
-                                   uint32_t interface_version);
-  void SetPinnedAppsImpl(const std::vector<std::string>& app_ids,
-                         SetPinnedAppsCallback callback,
-                         uint32_t interface_version);
 
   // Endpoints to communicate with extensions.
   mojo::ReceiverSet<remote_apps::mojom::RemoteAppsFactory>
@@ -126,7 +110,6 @@ class RemoteAppsProxyLacros
 
   raw_ptr<extensions::EventRouter> event_router_ = nullptr;
   RemoteIds source_id_to_remote_id_map_;
-  bool is_ash_remote_apps_remote_version_known_ = false;
 };
 
 }  // namespace chromeos

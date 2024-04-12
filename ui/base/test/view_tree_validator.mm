@@ -5,7 +5,6 @@
 #include "ui/base/test/view_tree_validator.h"
 
 #include <Cocoa/Cocoa.h>
-
 #include "base/mac/mac_util.h"
 #include "base/strings/sys_string_conversions.h"
 
@@ -36,14 +35,14 @@ bool IgnoreChildBoundsChecks(NSView* view) {
   // On macOS 10.14+, NSButton has a subview of a private helper class whose
   // bounds extend a bit outside the NSButton itself. We don't care about this
   // helper class's bounds being outside the button.
-  return [view isKindOfClass:[NSButton class]];
+  return base::mac::IsAtLeastOS10_14() && [view isKindOfClass:[NSButton class]];
 }
 
 }  // namespace
 
 namespace ui {
 
-std::optional<ViewTreeProblemDetails> ValidateViewTree(NSView* root) {
+absl::optional<ViewTreeProblemDetails> ValidateViewTree(NSView* root) {
   NSArray* allViews = CollectSubviews(root);
 
   for (NSView* view in allViews) {
@@ -52,9 +51,8 @@ std::optional<ViewTreeProblemDetails> ValidateViewTree(NSView* root) {
     for (NSView* child in view.subviews) {
       if (!NSContainsRect(view.bounds, child.frame) &&
           !IgnoreChildBoundsChecks(view)) {
-        return std::optional<ViewTreeProblemDetails>(
-            {ViewTreeProblemDetails::ProblemType::kViewOutsideParent, child,
-             view});
+        return absl::optional<ViewTreeProblemDetails>(
+            {ViewTreeProblemDetails::VIEW_OUTSIDE_PARENT, child, view});
       }
     }
 
@@ -72,23 +70,23 @@ std::optional<ViewTreeProblemDetails> ValidateViewTree(NSView* root) {
         continue;
       if ([view isDescendantOf:other] || [other isDescendantOf:view])
         continue;
-      return std::optional<ViewTreeProblemDetails>(
-          {ViewTreeProblemDetails::ProblemType::kViewsOverlap, view, other});
+      return absl::optional<ViewTreeProblemDetails>(
+          {ViewTreeProblemDetails::VIEWS_OVERLAP, view, other});
     }
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::string ViewTreeProblemDetails::ToString() {
   NSString* s;
   switch (type) {
-    case ProblemType::kViewOutsideParent:
+    case VIEW_OUTSIDE_PARENT:
       s = [NSString stringWithFormat:@"View %@ [%@] outside parent %@ [%@]",
                                      view_a, NSStringFromRect(view_a.frame),
                                      view_b, NSStringFromRect(view_b.frame)];
       break;
-    case ProblemType::kViewsOverlap:
+    case VIEWS_OVERLAP:
       s = [NSString stringWithFormat:@"Views %@ [%@] and %@ [%@] overlap",
                                      view_a, NSStringFromRect(view_a.frame),
                                      view_b, NSStringFromRect(view_b.frame)];

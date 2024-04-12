@@ -40,14 +40,9 @@ class ImageSearcherOptions:
     embedding_options: Embedding options for the image searcher task.
     search_options: Search options for the image searcher task.
   """
-
   base_options: _BaseOptions
-  embedding_options: _EmbeddingOptions = dataclasses.field(
-      default_factory=_EmbeddingOptions
-  )
-  search_options: _SearchOptions = dataclasses.field(
-      default_factory=_SearchOptions
-  )
+  embedding_options: _EmbeddingOptions = _EmbeddingOptions()
+  search_options: _SearchOptions = _SearchOptions()
 
 
 class ImageSearcher(object):

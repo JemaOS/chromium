@@ -14,7 +14,6 @@
 #include "chrome/browser/ui/views/tabs/tab_slot_view.h"
 #include "chrome/browser/ui/views/tabs/z_orderable_tab_container_element.h"
 #include "components/tab_groups/tab_group_id.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/animation/bounds_animator.h"
 #include "ui/views/view.h"
 #include "ui/views/view_model.h"
@@ -31,8 +30,6 @@ class TabStrip;
 // strongly discouraged outside of that context, as the interface will likely go
 // away after that project is completed.
 class TabContainer : public views::View, public BrowserRootView::DropTarget {
-  METADATA_HEADER(TabContainer, views::View)
-
  public:
   // This callback is used when calculating animation targets that may increase
   // the width of the tabstrip.
@@ -47,8 +44,8 @@ class TabContainer : public views::View, public BrowserRootView::DropTarget {
   virtual void RemoveTab(int index, bool was_active) = 0;
   virtual void SetTabPinned(int model_index, TabPinned pinned) = 0;
   // Changes the active tab from |prev_active_index| to |new_active_index|.
-  virtual void SetActiveTab(std::optional<size_t> prev_active_index,
-                            std::optional<size_t> new_active_index) = 0;
+  virtual void SetActiveTab(absl::optional<size_t> prev_active_index,
+                            absl::optional<size_t> new_active_index) = 0;
 
   // Removes the tab at `model_index` from the TabContainer's data structures so
   // it can be reparented elsewhere. Unlike RemoveTab, it does not animate the
@@ -91,14 +88,14 @@ class TabContainer : public views::View, public BrowserRootView::DropTarget {
   virtual void NotifyTabGroupEditorBubbleOpened() = 0;
   virtual void NotifyTabGroupEditorBubbleClosed() = 0;
 
-  virtual std::optional<int> GetModelIndexOf(
+  virtual absl::optional<int> GetModelIndexOf(
       const TabSlotView* slot_view) const = 0;
   virtual Tab* GetTabAtModelIndex(int index) const = 0;
   virtual int GetTabCount() const = 0;
 
   // Returns the model index of the first tab after (or including) `tab` which
   // is not closing.
-  virtual std::optional<int> GetModelIndexOfFirstNonClosingTab(
+  virtual absl::optional<int> GetModelIndexOfFirstNonClosingTab(
       Tab* tab) const = 0;
 
   virtual void UpdateHoverCard(
@@ -109,9 +106,9 @@ class TabContainer : public views::View, public BrowserRootView::DropTarget {
 
   virtual bool IsRectInContentArea(const gfx::Rect& rect) = 0;
 
-  virtual std::optional<ZOrderableTabContainerElement>
+  virtual absl::optional<ZOrderableTabContainerElement>
   GetLeadingElementForZOrdering() const = 0;
-  virtual std::optional<ZOrderableTabContainerElement>
+  virtual absl::optional<ZOrderableTabContainerElement>
   GetTrailingElementForZOrdering() const = 0;
 
   // Animation stuff. Will be public until fully moved down into TabContainer.
@@ -148,7 +145,7 @@ class TabContainer : public views::View, public BrowserRootView::DropTarget {
   // See |in_tab_close_| for details on tab closing mode. |source| is the input
   // method used to enter tab closing mode, which determines how it is exited
   // due to user inactivity.
-  virtual void EnterTabClosingMode(std::optional<int> override_width,
+  virtual void EnterTabClosingMode(absl::optional<int> override_width,
                                    CloseTabSource source) = 0;
   virtual void ExitTabClosingMode() = 0;
 

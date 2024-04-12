@@ -2,17 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 
-import type {ACMatchClassification, AutocompleteControllerType, AutocompleteMatch, DictionaryEntry, OmniboxResponse, Signals} from './omnibox.mojom-webui.js';
+import {ACMatchClassification, AutocompleteAdditionalInfo, AutocompleteMatch, OmniboxResponse} from './omnibox.mojom-webui.js';
 import {OmniboxElement} from './omnibox_element.js';
-import type {DisplayInputs} from './omnibox_input.js';
-import {OmniboxInput} from './omnibox_input.js';
-// @ts-ignore:next-line
-import outputColumnWidthSheet from './omnibox_output_column_widths.css' assert {type : 'css'};
-import {clearChildren, createEl} from './omnibox_util.js';
-// @ts-ignore:next-line
-import outputResultsGroupSheet from './output_results_group.css' assert {type : 'css'};
+import {DisplayInputs, OmniboxInput} from './omnibox_input.js';
 
 interface ResultsDetails {
   cursorPosition: number;
@@ -21,6 +15,12 @@ interface ResultsDetails {
   type: string;
   host: string;
   isTypedHost: boolean;
+}
+
+function clearChildren(element: Element) {
+  while (element.firstChild) {
+    element.firstChild.remove();
+  }
 }
 
 export class OmniboxOutput extends OmniboxElement {
@@ -101,8 +101,7 @@ export class OmniboxOutput extends OmniboxElement {
     this.updateFilterHighlights();
   }
 
-  updateAnswerImage(
-      _controllerType: AutocompleteControllerType, url: string, data: string) {
+  updateAnswerImage(url: string, data: string) {
     this.outputMatches.forEach(match => match.updateAnswerImage(url, data));
   }
 
@@ -179,8 +178,6 @@ class OutputResultsGroup extends OmniboxElement {
 
   constructor() {
     super('output-results-group-template');
-    this.shadowRoot!.adoptedStyleSheets =
-        [outputColumnWidthSheet, outputResultsGroupSheet];
   }
 
   setResultsGroup(resultsGroup: OmniboxResponse) {
@@ -210,11 +207,14 @@ class OutputResultsGroup extends OmniboxElement {
     customElements.whenDefined(outputResultsDetails.localName)
         .then(() => outputResultsDetails.setDetails(this.details));
 
-    const table = this.$('#table');
-    const head = createEl('thead', table, ['head']);
-    const row = createEl('tr', head);
+    const head = document.createElement('thead');
+    head.classList.add('head');
+    const row = document.createElement('tr');
     this.headers.forEach(cell => row.appendChild(cell));
+    head.appendChild(row);
+    const table = this.$('#table');
     assert(table);
+    table.appendChild(head);
 
     table.appendChild(this.combinedResults);
     this.individualResultsList.forEach(results => {
@@ -226,9 +226,14 @@ class OutputResultsGroup extends OmniboxElement {
   }
 
   private renderInnerHeader(results: OutputResultsTable): HTMLElement {
-    const head = createEl('tbody', null, ['head']);
-    const row = createEl('tr', head);
-    createEl('th', row, [], results.innerHeaderText).colSpan = COLUMNS.length;
+    const head = document.createElement('tbody');
+    head.classList.add('head');
+    const row = document.createElement('tr');
+    const cell = document.createElement('th');
+    cell.colSpan = COLUMNS.length;
+    cell.textContent = results.innerHeaderText;
+    row.appendChild(cell);
+    head.appendChild(row);
     return head;
   }
 
@@ -327,10 +332,11 @@ class OutputMatch extends HTMLTableRowElement {
 
   constructor(match: AutocompleteMatch) {
     super();
+    let mouseMoved = false;
+    this.addEventListener('mousedown', () => mouseMoved = false);
+    this.addEventListener('mousemove', () => mouseMoved = true);
     this.addEventListener(
-        'click',
-        () => !document.getSelection()?.toString() &&
-            this.classList.toggle('expanded'));
+        'click', () => !mouseMoved && this.classList.toggle('expanded'));
 
     COLUMNS.forEach(column => {
       const property = column.create(match);
@@ -389,12 +395,20 @@ class OutputHeader extends HTMLTableCellElement {
     super();
     this.classList.add(column.headerClassName);
 
-    const container =
-        createEl(column.url ? 'a' : 'div', this, ['header-container']);
+    let container: HTMLAnchorElement|HTMLDivElement;
     if (column.url) {
-      (container as HTMLAnchorElement).href = column.url;
+      container = document.createElement('a');
+      container.href = column.url;
+    } else {
+      container = document.createElement('div');
     }
-    column.headerText.forEach(text => createEl('span', container, [], text));
+    container.classList.add('header-container');
+    column.headerText.forEach(text => {
+      const part = document.createElement('span');
+      part.textContent = text;
+      container.appendChild(part);
+    });
+    this.appendChild(container);
 
     this.title = column.tooltip;
   }
@@ -424,16 +438,32 @@ abstract class FlexWrappingOutputProperty extends OutputProperty {
     // scrollContainer.
     // Flex gutters may provide a cleaner alternative once implemented.
     // https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flexible_Box_Layout/Mastering_Wrapping_of_Flex_Items#Creating_gutters_between_items
-    const scrollContainer = createEl('div', this);
-    this.container = createEl('div', scrollContainer, ['pair-container']);
+    const scrollContainer = document.createElement('div');
+    this.appendChild(scrollContainer);
+
+    this.container = document.createElement('div');
+    this.container.classList.add('pair-container');
+    scrollContainer.appendChild(this.container);
+
+    return this;
   }
 }
 
 class OutputPairProperty extends FlexWrappingOutputProperty {
   constructor(value1: string, value2: string) {
     super(`${value1}.${value2}`);
-    createEl('div', this.container, ['pair-item'], value1);
-    createEl('div', this.container, ['pair-item'], value2);
+
+    const first = document.createElement('div');
+    first.classList.add('pair-item');
+    first.textContent = value1;
+    this.container.appendChild(first);
+
+    const second = document.createElement('div');
+    second.classList.add('pair-item');
+    second.textContent = value2;
+    this.container.appendChild(second);
+
+    return this;
   }
 }
 
@@ -441,11 +471,16 @@ class OutputOverlappingPairProperty extends OutputPairProperty {
   constructor(value1: string, value2: string) {
     const overlap = value1.endsWith(value2);
     super(value2 && overlap ? value1.slice(0, -value2.length) : value1, value2);
-    createEl(
-        'div', this.container, ['overlap-warning'],
-        overlap ? '' :
-                  `btw, these texts do not overlap; '${
-                      value2}' was expected to be a suffix of '${value1}'`);
+
+    const notOverlapWarning = document.createElement('div');
+    notOverlapWarning.classList.add('overlap-warning');
+    notOverlapWarning.textContent = overlap ?
+        '' :
+        `btw, these texts do not overlap; '${
+            value2}' was expected to be a suffix of '${value1}'`;
+    this.container.appendChild(notOverlapWarning);
+
+    return this;
   }
 }
 
@@ -461,21 +496,32 @@ class OutputAnswerProperty extends FlexWrappingOutputProperty {
 
     this.image = image;
 
-    this.imageElement = createEl('img', this.container, ['pair-item']);
+    this.imageElement = document.createElement('img');
+    this.imageElement.classList.add('pair-item');
+    this.container.appendChild(this.imageElement);
 
-    const contentsDiv =
-        createEl('div', this.container, ['pair-item', 'contents']);
+    const contentsDiv = document.createElement('div');
+    contentsDiv.classList.add('pair-item', 'contents');
     OutputAnswerProperty.renderClassifiedText(
         contentsDiv, contents, contentsClassification);
+    this.container.appendChild(contentsDiv);
 
-    const descriptionDiv =
-        createEl('div', this.container, ['pair-item', 'description']);
+    const descriptionDiv = document.createElement('div');
+    descriptionDiv.classList.add('pair-item', 'description');
     OutputAnswerProperty.renderClassifiedText(
         descriptionDiv, description, descriptionClassification);
+    this.container.appendChild(descriptionDiv);
 
-    createEl('div', this.container, ['pair-item', 'answer'], answer);
-    createEl('a', this.container, ['pair-item', 'image-url'], image).href =
-        image;
+    const answerDiv = document.createElement('div');
+    answerDiv.classList.add('pair-item', 'answer');
+    answerDiv.textContent = answer;
+    this.container.appendChild(answerDiv);
+
+    const imageUrl = document.createElement('a');
+    imageUrl.classList.add('pair-item', 'image-url');
+    imageUrl.textContent = image;
+    imageUrl.href = image;
+    this.container.appendChild(imageUrl);
   }
 
   setAnswerImageData(imageData: string) {
@@ -487,10 +533,10 @@ class OutputAnswerProperty extends FlexWrappingOutputProperty {
       classes: ACMatchClassification[]) {
     clearChildren(container);
     OutputAnswerProperty.classify(string, classes)
-        .forEach(
-            ({string, style}) => createEl(
-                'span', container, OutputAnswerProperty.styleToClasses(style),
-                string));
+        .map(
+            ({string, style}) => OutputJsonProperty.renderJsonWord(
+                string, OutputAnswerProperty.styleToClasses(style)))
+        .forEach(span => container.appendChild(span));
   }
 
   private static classify(string: string, classes: ACMatchClassification[]):
@@ -514,48 +560,90 @@ class OutputAnswerProperty extends FlexWrappingOutputProperty {
 class OutputBooleanProperty extends OutputProperty {
   constructor(value: boolean, filterName: string) {
     super((value ? 'is: ' : 'not: ') + filterName);
-    createEl('div', this, ['icon', value ? 'check-icon' : 'x-icon']);
+
+    const icon = document.createElement('div');
+    icon.classList.add(value ? 'check-mark' : 'x-mark');
+    this.appendChild(icon);
+
+    return this;
   }
 }
 
-class OutputDictionaryProperty extends OutputProperty {
-  protected readonly container: HTMLElement;
+class OutputJsonProperty extends OutputProperty {
+  private static classifications: Array<{re: RegExp, clazz: string}>;
+  private static spaceRegex: RegExp;
 
-  constructor(value: DictionaryEntry[]) {
+  constructor(json: string) {
+    super(JSON.stringify(json, null, 2));
+
+    const pre = document.createElement('pre');
+    pre.classList.add('json');
+    json.split(/("(?:[^"\\]|\\.)*":?|\w+)/)
+        .map(word => {
+          return OutputJsonProperty.renderJsonWord(
+              word, [OutputJsonProperty.classifyJsonWord(word)]);
+        })
+        .forEach(jsonSpan => pre.appendChild(jsonSpan));
+    this.appendChild(pre);
+
+    return this;
+  }
+
+  static renderJsonWord(word: string, classes: string[]): HTMLElement {
+    const span = document.createElement('span');
+    span.classList.add(...classes);
+    span.textContent = word;
+    return span;
+  }
+
+  static classifyJsonWord(word: string): string {
+    // Statically creating the regexes only once.
+    OutputJsonProperty.classifications = OutputJsonProperty.classifications || [
+      {re: /^"[^]*":$/, clazz: 'key'},
+      {re: /^"[^]*"$/, clazz: 'string'},
+      {re: /true|false/, clazz: 'boolean'},
+      {re: /null/, clazz: 'null'},
+    ];
+    OutputJsonProperty.spaceRegex = OutputJsonProperty.spaceRegex || /^\s*$/;
+
+    if (Number.isNaN(Number(word))) {
+      const classification =
+          OutputJsonProperty.classifications.find(({re}) => re.test(word));
+      return classification && classification.clazz || '';
+    } else if (!OutputJsonProperty.spaceRegex.test(word)) {
+      return 'number';
+    }
+    return '';
+  }
+}
+
+class OutputAdditionalInfoProperty extends OutputProperty {
+  constructor(value: AutocompleteAdditionalInfo[]) {
     super(value.map(({key, value}) => `${key}: ${value}`).join('\n'));
-    this.container = createEl('div', this);
-    const pre = createEl('pre', this.container, ['json']);
+
+    const container = document.createElement('div');
+
+    const pre = document.createElement('pre');
+    pre.classList.add('json');
     value.forEach(({key, value}) => {
-      createEl('span', pre, ['key'], key + ': ');
-      createEl('span', pre, ['value'], value + '\n');
+      pre.appendChild(OutputJsonProperty.renderJsonWord(key + ': ', ['key']));
+      pre.appendChild(
+          OutputJsonProperty.renderJsonWord(value + '\n', ['number']));
     });
-  }
-}
+    container.appendChild(pre);
 
-class OutputScoringSignalsProperty extends OutputDictionaryProperty {
-  constructor(value: Signals) {
-    super(Object.entries(value)
-              .filter(([, value]) => value)
-              .map(([key, value]) => ({
-                     key,
-                     value,
-                   } as DictionaryEntry)));
-    const link = createEl('a', null, ['icon', 'edit-icon']);
-    link.href = `chrome://omnibox/ml?signals=${Object.values(value).join()}`;
-    this.container.insertBefore(link, this.container.firstChild);
-  }
-}
-
-class OutputAdditionalInfoProperty extends OutputDictionaryProperty {
-  constructor(value: DictionaryEntry[]) {
-    super(value);
-    const link = createEl('a', null, ['icon', 'download-icon']);
+    const link = document.createElement('a');
     link.download = 'AdditionalInfo.json';
     link.href = OutputAdditionalInfoProperty.createDownloadLink(value);
-    this.container.insertBefore(link, this.container.firstChild);
+    container.appendChild(link);
+
+    this.appendChild(container);
+
+    return this;
   }
 
-  private static createDownloadLink(value: DictionaryEntry[]): string {
+  private static createDownloadLink(value: AutocompleteAdditionalInfo[]):
+      string {
     const obj = value.reduce((obj: Record<string, string>, {key, value}) => {
       obj[key] = value;
       return obj;
@@ -571,22 +659,41 @@ class OutputUrlProperty extends FlexWrappingOutputProperty {
       destinationUrl: string, isSearchType: boolean,
       strippedDestinationUrl: string) {
     super(destinationUrl);
-    const iconAndUrlContainer = createEl('div', this.container, ['pair-item']);
+
+    const iconAndUrlContainer = document.createElement('div');
+    iconAndUrlContainer.classList.add('pair-item');
+    this.container.appendChild(iconAndUrlContainer);
+
     if (!isSearchType) {
-      createEl('img', iconAndUrlContainer).src =
-          `chrome://favicon/${destinationUrl}`;
+      const icon = document.createElement('img');
+      icon.src = `chrome://favicon/${destinationUrl}`;
+      iconAndUrlContainer.appendChild(icon);
     }
-    createEl('a', iconAndUrlContainer, [], destinationUrl).href =
-        destinationUrl;
-    createEl('a', this.container, ['pair-item'], strippedDestinationUrl).href =
-        strippedDestinationUrl;
+
+    const urlLink = document.createElement('a');
+    urlLink.textContent = destinationUrl;
+    urlLink.href = destinationUrl;
+    iconAndUrlContainer.appendChild(urlLink);
+
+    const strippedUrlLink = document.createElement('a');
+    strippedUrlLink.classList.add('pair-item');
+    strippedUrlLink.textContent = strippedDestinationUrl;
+    strippedUrlLink.href = strippedDestinationUrl;
+    this.container.appendChild(strippedUrlLink);
+
+    return this;
   }
 }
 
 class OutputTextProperty extends OutputProperty {
   constructor(text: string) {
     super(text);
-    createEl('div', this, [], text);
+
+    const div = document.createElement('div');
+    div.textContent = text;
+    this.appendChild(div);
+
+    return this;
   }
 }
 
@@ -763,10 +870,6 @@ const COLUMNS: Column[] = [
       'pedal-id', false, 'Pedal ID\nThe ID of attached Pedal, or zero if none.',
       match => new OutputTextProperty(String(match.pedalId))),
   new Column(
-      ['Scoring Signals'], '', 'scoring-signals', false,
-      'Scoring Signals\nSignals used by the ML Model to score suggestions.',
-      match => new OutputScoringSignalsProperty(match.scoringSignals)),
-  new Column(
       ['Additional Info'], '', 'additional-info', true,
       'Additional Info\nProvider-specific information about the result.',
       match => new OutputAdditionalInfoProperty(match.additionalInfo)),
@@ -789,8 +892,7 @@ customElements.define(
 customElements.define(
     'output-boolean-property', OutputBooleanProperty, {extends: 'td'});
 customElements.define(
-    'output-scoring-signals-property', OutputScoringSignalsProperty,
-    {extends: 'td'});
+    'output-json-property', OutputJsonProperty, {extends: 'td'});
 customElements.define(
     'output-additional-info-property', OutputAdditionalInfoProperty,
     {extends: 'td'});

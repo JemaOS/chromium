@@ -4,7 +4,6 @@
 
 #include "chrome/browser/new_tab_page/one_google_bar/one_google_bar_service_factory.h"
 
-#include <optional>
 #include <string>
 
 #include "base/feature_list.h"
@@ -20,6 +19,7 @@
 #include "components/signin/core/browser/cookie_settings_util.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/storage_partition.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 // static
 OneGoogleBarService* OneGoogleBarServiceFactory::GetForProfile(
@@ -30,8 +30,7 @@ OneGoogleBarService* OneGoogleBarServiceFactory::GetForProfile(
 
 // static
 OneGoogleBarServiceFactory* OneGoogleBarServiceFactory::GetInstance() {
-  static base::NoDestructor<OneGoogleBarServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<OneGoogleBarServiceFactory>::get();
 }
 
 OneGoogleBarServiceFactory::OneGoogleBarServiceFactory()
@@ -49,20 +48,19 @@ OneGoogleBarServiceFactory::OneGoogleBarServiceFactory()
 
 OneGoogleBarServiceFactory::~OneGoogleBarServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-OneGoogleBarServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* OneGoogleBarServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   signin::IdentityManager* identity_manager =
       IdentityManagerFactory::GetForProfile(profile);
-  scoped_refptr<content_settings::CookieSettings> cookie_settings =
-      CookieSettingsFactory::GetForProfile(profile);
+  content_settings::CookieSettings* cookie_settings =
+      CookieSettingsFactory::GetForProfile(profile).get();
   auto url_loader_factory = context->GetDefaultStoragePartition()
                                 ->GetURLLoaderFactoryForBrowserProcess();
-  return std::make_unique<OneGoogleBarService>(
+  return new OneGoogleBarService(
       identity_manager,
       std::make_unique<OneGoogleBarLoaderImpl>(
           url_loader_factory, g_browser_process->GetApplicationLocale(),
           AccountConsistencyModeManager::IsMirrorEnabledForProfile(profile) &&
-              signin::SettingsAllowSigninCookies(cookie_settings.get())));
+              signin::SettingsAllowSigninCookies(cookie_settings)));
 }

@@ -7,7 +7,6 @@
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/css/font_face_cache.h"
 #include "third_party/blink/renderer/core/css/font_face_set_load_event.h"
-#include "third_party/blink/renderer/platform/font_family_names.h"
 #include "third_party/blink/renderer/platform/fonts/font.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
@@ -15,11 +14,7 @@
 namespace blink {
 
 const int FontFaceSet::kDefaultFontSize = 10;
-
-// static
-const AtomicString& FontFaceSet::DefaultFontFamily() {
-  return font_family_names::kSansSerif;
-}
+const char FontFaceSet::kDefaultFontFamily[] = "sans-serif";
 
 void FontFaceSet::HandlePendingEventsAndPromisesSoon() {
   if (!pending_task_queued_) {
@@ -132,7 +127,7 @@ void FontFaceSet::Trace(Visitor* visitor) const {
   visitor->Trace(failed_fonts_);
   visitor->Trace(ready_);
   ExecutionContextClient::Trace(visitor);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   FontFace::LoadFontCallback::Trace(visitor);
 }
 
@@ -181,21 +176,21 @@ void FontFaceSet::LoadFontPromiseResolver::LoadFonts() {
   }
 }
 
-ScriptPromiseTyped<IDLSequence<FontFace>> FontFaceSet::load(
-    ScriptState* script_state,
-    const String& font_string,
-    const String& text) {
+ScriptPromise FontFaceSet::load(ScriptState* script_state,
+                                const String& font_string,
+                                const String& text) {
   if (!InActiveContext()) {
-    return ScriptPromiseTyped<IDLSequence<FontFace>>();
+    return ScriptPromise();
   }
 
   Font font;
   if (!ResolveFontStyle(font_string, font)) {
-    return ScriptPromiseTyped<IDLSequence<FontFace>>::RejectWithDOMException(
-        script_state,
-        MakeGarbageCollected<DOMException>(
-            DOMExceptionCode::kSyntaxError,
-            "Could not resolve '" + font_string + "' as a font."));
+    auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+    ScriptPromise promise = resolver->Promise();
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kSyntaxError,
+        "Could not resolve '" + font_string + "' as a font."));
+    return promise;
   }
 
   FontFaceCache* font_face_cache = GetFontSelector()->GetFontFaceCache();
@@ -214,7 +209,7 @@ ScriptPromiseTyped<IDLSequence<FontFace>> FontFaceSet::load(
 
   auto* resolver =
       MakeGarbageCollected<LoadFontPromiseResolver>(faces, script_state);
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
   // After this, resolver->promise() may return null.
   resolver->LoadFonts();
   return promise;
@@ -238,26 +233,32 @@ bool FontFaceSet::check(const String& font_string,
   FontSelector* font_selector = GetFontSelector();
   FontFaceCache* font_face_cache = font_selector->GetFontFaceCache();
 
-  unsigned index = 0;
-  while (index < text.length()) {
-    UChar32 c = text.CharacterStartingAt(index);
-    index += U16_LENGTH(c);
-
-    for (const FontFamily* f = &font.GetFontDescription().Family(); f;
-         f = f->Next()) {
-      if (f->FamilyIsGeneric() || font_selector->IsPlatformFamilyMatchAvailable(
-                                      font.GetFontDescription(), *f)) {
-        continue;
-      }
-
-      CSSSegmentedFontFace* face =
-          font_face_cache->Get(font.GetFontDescription(), f->FamilyName());
-      if (face && !face->CheckFont(c)) {
+  bool has_loaded_faces = false;
+  for (const FontFamily* f = &font.GetFontDescription().Family(); f;
+       f = f->Next()) {
+    if (f->FamilyIsGeneric()) {
+      continue;
+    }
+    CSSSegmentedFontFace* face =
+        font_face_cache->Get(font.GetFontDescription(), f->FamilyName());
+    if (face) {
+      if (!face->CheckFont(text)) {
         return false;
       }
+      has_loaded_faces = true;
     }
   }
-  return true;
+  if (has_loaded_faces) {
+    return true;
+  }
+  for (const FontFamily* f = &font.GetFontDescription().Family(); f;
+       f = f->Next()) {
+    if (font_selector->IsPlatformFamilyMatchAvailable(font.GetFontDescription(),
+                                                      *f)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void FontFaceSet::FireDoneEvent() {

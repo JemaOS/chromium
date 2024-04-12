@@ -19,8 +19,6 @@
 #include "third_party/skia/include/core/SkPath.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/animation/throb_animation.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/geometry/insets.h"
@@ -45,8 +43,6 @@ constexpr SkScalar kStrokeWidth = SkIntToScalar(2);
 constexpr int kVerticalButtonPadding = 0;
 
 class PageSwitcherButton : public IconButton {
-  METADATA_HEADER(PageSwitcherButton, IconButton)
-
  public:
   PageSwitcherButton(PressedCallback callback,
                      const std::u16string& accesible_name)
@@ -127,9 +123,6 @@ PageSwitcherButton* GetButtonByIndex(views::View* buttons, size_t index) {
   return static_cast<PageSwitcherButton*>(buttons->children()[index]);
 }
 
-BEGIN_METADATA(PageSwitcherButton)
-END_METADATA
-
 }  // namespace
 
 PageSwitcher::PageSwitcher(PaginationModel* model)
@@ -159,7 +152,7 @@ gfx::Size PageSwitcher::CalculatePreferredSize() const {
                    buttons_->GetPreferredSize().height());
 }
 
-void PageSwitcher::Layout(PassKey) {
+void PageSwitcher::Layout() {
   gfx::Rect rect(GetContentsBounds());
   if (rect.IsEmpty())
     return;
@@ -168,11 +161,15 @@ void PageSwitcher::Layout(PassKey) {
   buttons_->SetBoundsRect(rect);
 }
 
+const char* PageSwitcher::GetClassName() const {
+  return "PageSwitcher";
+}
+
 void PageSwitcher::OnThemeChanged() {
   views::View::OnThemeChanged();
   if (!buttons_)
     return;
-  for (views::View* child : buttons_->children()) {
+  for (auto* child : buttons_->children()) {
     if (child->GetVisible())
       child->SchedulePaint();
   }
@@ -223,8 +220,5 @@ void PageSwitcher::SelectedPageChanged(int old_selected, int new_selected) {
     GetButtonByIndex(buttons_, static_cast<size_t>(new_selected))
         ->SetSelected(true);
 }
-
-BEGIN_METADATA(PageSwitcher)
-END_METADATA
 
 }  // namespace ash

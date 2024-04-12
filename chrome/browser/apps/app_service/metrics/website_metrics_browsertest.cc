@@ -2,20 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/apps/app_service/metrics/website_metrics.h"
-
-#include <memory>
-#include <optional>
 #include <set>
 
-#include "base/command_line.h"
 #include "base/containers/contains.h"
 #include "base/json/values_util.h"
+#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/time/time.h"
 #include "build/chromeos_buildflags.h"
-#include "chrome/browser/apps/app_service/metrics/website_metrics_browser_test_mixin.h"
-#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/apps/app_service/app_service_proxy.h"
+#include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
@@ -23,29 +19,30 @@
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
-#include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/common/chrome_switches.h"
-#include "chrome/test/base/mixin_based_in_process_browser_test.h"
+#include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/ukm/test_ukm_recorder.h"
-#include "components/webapps/browser/banners/installable_web_app_check_result.h"
-#include "components/webapps/browser/banners/web_app_banner_data.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/page_navigator.h"
-#include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/test_navigation_observer.h"
 #include "content/public/test/test_utils.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/wm/core/window_util.h"
 #include "url/gurl.h"
 
-using ::testing::_;
-using ::testing::Eq;
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chrome/browser/apps/app_service/metrics/app_platform_metrics_service.h"
+#endif
+
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+#include "chrome/browser/apps/app_service/metrics/website_metrics_service_lacros.h"
+#endif
 
 namespace apps {
 
@@ -74,11 +71,8 @@ class TestWebsiteMetrics : public WebsiteMetrics {
   }
 
   void OnInstallableWebAppStatusUpdated(
-      content::WebContents* web_contents,
-      webapps::InstallableWebAppCheckResult result,
-      const std::optional<webapps::WebAppBannerData>& data) override {
-    WebsiteMetrics::OnInstallableWebAppStatusUpdated(web_contents, result,
-                                                     data);
+      content::WebContents* web_contents) override {
+    WebsiteMetrics::OnInstallableWebAppStatusUpdated(web_contents);
     if (webcontents_to_ukm_key_.find(web_contents) ==
             webcontents_to_ukm_key_.end() ||
         webcontents_to_ukm_key_[web_contents] != ukm_key_) {
@@ -96,92 +90,115 @@ class TestWebsiteMetrics : public WebsiteMetrics {
   GURL ukm_key_;
 };
 
-// Mock observer for the `WebsiteMetrics` component used for testing purposes.
-class MockObserver : public WebsiteMetrics::Observer {
- public:
-  MockObserver() = default;
-  MockObserver(const MockObserver&) = delete;
-  MockObserver& operator=(const MockObserver&) = delete;
-  ~MockObserver() override = default;
-
-  MOCK_METHOD(void,
-              OnUrlOpened,
-              (const GURL& gurl, ::content::WebContents* web_contents),
-              (override));
-
-  MOCK_METHOD(void,
-              OnUrlClosed,
-              (const GURL& gurl, ::content::WebContents* web_contents),
-              (override));
-
-  MOCK_METHOD(void,
-              OnUrlUsage,
-              (const GURL& gurl, base::TimeDelta running_time),
-              (override));
-
-  MOCK_METHOD(void, OnWebsiteMetricsDestroyed, (), (override));
-};
-
-class WebsiteMetricsBrowserTest : public MixinBasedInProcessBrowserTest {
+class WebsiteMetricsBrowserTest : public InProcessBrowserTest {
  protected:
   void SetUpOnMainThread() override {
-    MixinBasedInProcessBrowserTest::SetUpOnMainThread();
+    InProcessBrowserTest::SetUpOnMainThread();
+
     test_ukm_recorder_ = std::make_unique<ukm::TestAutoSetUkmRecorder>();
 
     embedded_test_server()->ServeFilesFromSourceDirectory(
         "chrome/test/data/banners");
     ASSERT_TRUE(embedded_test_server()->Start());
+
+    Profile* profile = ProfileManager::GetPrimaryUserProfile();
+    auto* proxy = apps::AppServiceProxyFactory::GetForProfile(profile);
+    DCHECK(proxy);
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+    auto metrics_service_ =
+        std::make_unique<WebsiteMetricsServiceLacros>(profile);
+    website_metrics_service_ = metrics_service_.get();
+    proxy->SetWebsiteMetricsServiceForTesting(std::move(metrics_service_));
+    auto website_metrics_ptr = std::make_unique<apps::WebsiteMetrics>(
+        ProfileManager::GetPrimaryUserProfile(),
+        /*user_type_by_device_type=*/0);
+    website_metrics_service_->SetWebsiteMetricsForTesting(
+        std::move(website_metrics_ptr));
+    website_metrics_service_->Start();
+#else
+    auto metrics_service_ =
+        std::make_unique<AppPlatformMetricsService>(profile);
+    app_platform_metrics_service_ = metrics_service_.get();
+    proxy->SetAppPlatformMetricsServiceForTesting(std::move(metrics_service_));
+    app_platform_metrics_service_->Start(proxy->AppRegistryCache(),
+                                         proxy->InstanceRegistry());
+#endif
   }
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
-    command_line->AppendSwitch(::switches::kNoStartupWindow);
+    InProcessBrowserTest ::SetUpCommandLine(command_line);
+    command_line->AppendSwitch(switches::kNoStartupWindow);
   }
 
   Browser* CreateBrowser() {
-    return website_metrics_browser_test_mixin_.CreateBrowser();
+    Profile* profile = ProfileManager::GetPrimaryUserProfile();
+    Browser::CreateParams params(profile, true /* user_gesture */);
+    Browser* browser = Browser::Create(params);
+    browser->window()->Show();
+    auto* window = browser->window()->GetNativeWindow();
+    wm::GetActivationClient(window->GetRootWindow())->ActivateWindow(window);
+    return browser;
   }
 
   Browser* CreateAppBrowser(const std::string& app_id) {
+    Profile* profile = ProfileManager::GetPrimaryUserProfile();
     auto params = Browser::CreateParams::CreateForApp(
         "_crx_" + app_id, true /* trusted_source */,
         gfx::Rect(), /* window_bounts */
-        profile(), true /* user_gesture */);
+        profile, true /* user_gesture */);
     Browser* browser = Browser::Create(params);
     browser->window()->Show();
     return browser;
   }
 
-  ::content::WebContents* InsertForegroundTab(Browser* browser,
-                                              const std::string& url) {
-    return website_metrics_browser_test_mixin_.InsertForegroundTab(browser,
-                                                                   url);
-  }
-
-  ::content::WebContents* InsertBackgroundTab(Browser* browser,
-                                              const std::string& url) {
-    return website_metrics_browser_test_mixin_.InsertBackgroundTab(browser,
-                                                                   url);
+  content::WebContents* NavigateAndWait(Browser* browser,
+                                        const std::string& url,
+                                        WindowOpenDisposition disposition) {
+    NavigateParams params(browser, GURL(url),
+                          ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
+    params.disposition = disposition;
+    Navigate(&params);
+    auto* contents = params.navigated_or_inserted_contents;
+    DCHECK_EQ(chrome::FindBrowserWithWebContents(
+                  params.navigated_or_inserted_contents),
+              browser);
+    content::TestNavigationObserver observer(contents);
+    observer.Wait();
+    return contents;
   }
 
   void NavigateActiveTab(Browser* browser, const std::string& url) {
-    return website_metrics_browser_test_mixin_.NavigateActiveTab(browser, url);
+    NavigateAndWait(browser, url, WindowOpenDisposition::CURRENT_TAB);
   }
 
-  webapps::AppId InstallWebApp(
+  content::WebContents* InsertForegroundTab(Browser* browser,
+                                            const std::string& url) {
+    return NavigateAndWait(browser, url,
+                           WindowOpenDisposition::NEW_FOREGROUND_TAB);
+  }
+
+  content::WebContents* InsertBackgroundTab(Browser* browser,
+                                            const std::string& url) {
+    return NavigateAndWait(browser, url,
+                           WindowOpenDisposition::NEW_BACKGROUND_TAB);
+  }
+
+  web_app::AppId InstallWebApp(
       const std::string& start_url,
       web_app::mojom::UserDisplayMode user_display_mode) {
-    auto info = std::make_unique<web_app::WebAppInstallInfo>();
+    auto info = std::make_unique<WebAppInstallInfo>();
     info->start_url = GURL(start_url);
     info->user_display_mode = user_display_mode;
-    auto app_id = web_app::test::InstallWebApp(profile(), std::move(info));
+    Profile* profile = ProfileManager::GetPrimaryUserProfile();
+    auto app_id = web_app::test::InstallWebApp(profile, std::move(info));
     return app_id;
   }
 
-  webapps::AppId InstallWebAppOpeningAsTab(const std::string& start_url) {
+  web_app::AppId InstallWebAppOpeningAsTab(const std::string& start_url) {
     return InstallWebApp(start_url, web_app::mojom::UserDisplayMode::kBrowser);
   }
 
-  webapps::AppId InstallWebAppOpeningAsWindow(const std::string& start_url) {
+  web_app::AppId InstallWebAppOpeningAsWindow(const std::string& start_url) {
     return InstallWebApp(start_url,
                          web_app::mojom::UserDisplayMode::kStandalone);
   }
@@ -192,7 +209,9 @@ class WebsiteMetricsBrowserTest : public MixinBasedInProcessBrowserTest {
   }
 
   void VerifyUrlInfoInPref(const GURL& url, bool promotable) {
-    const auto& dict = profile()->GetPrefs()->GetDict(kWebsiteUsageTime);
+    const auto& dict =
+        ProfileManager::GetPrimaryUserProfile()->GetPrefs()->GetDict(
+            kWebsiteUsageTime);
 
     const auto* url_info = dict.FindDict(url.spec());
     ASSERT_TRUE(url_info);
@@ -203,7 +222,9 @@ class WebsiteMetricsBrowserTest : public MixinBasedInProcessBrowserTest {
   }
 
   void VerifyNoUrlInfoInPref(const GURL& url) {
-    const auto& dict = profile()->GetPrefs()->GetDict(kWebsiteUsageTime);
+    const auto& dict =
+        ProfileManager::GetPrimaryUserProfile()->GetPrefs()->GetDict(
+            kWebsiteUsageTime);
 
     const auto* url_info = dict.FindDict(url.spec());
     ASSERT_FALSE(url_info);
@@ -213,7 +234,7 @@ class WebsiteMetricsBrowserTest : public MixinBasedInProcessBrowserTest {
     const auto entries =
         test_ukm_recorder()->GetEntriesByName("ChromeOS.WebsiteUsageTime");
     int count = 0;
-    for (const ukm::mojom::UkmEntry* entry : entries) {
+    for (const auto* entry : entries) {
       const ukm::UkmSource* src =
           test_ukm_recorder()->GetSourceForSourceId(entry->source_id);
       if (src == nullptr || src->url() != url) {
@@ -228,7 +249,7 @@ class WebsiteMetricsBrowserTest : public MixinBasedInProcessBrowserTest {
     const auto entries =
         test_ukm_recorder()->GetEntriesByName("ChromeOS.WebsiteUsageTime");
     int count = 0;
-    for (const ukm::mojom::UkmEntry* entry : entries) {
+    for (const auto* entry : entries) {
       const ukm::UkmSource* src =
           test_ukm_recorder()->GetSourceForSourceId(entry->source_id);
       if (src == nullptr || src->url() != url) {
@@ -238,6 +259,26 @@ class WebsiteMetricsBrowserTest : public MixinBasedInProcessBrowserTest {
       test_ukm_recorder()->ExpectEntryMetric(entry, "Promotable", promotable);
     }
     ASSERT_EQ(1, count);
+  }
+
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+  WebsiteMetricsServiceLacros* MetricsService() {
+    return website_metrics_service_;
+  }
+#else
+  AppPlatformMetricsService* MetricsService() {
+    return app_platform_metrics_service_;
+  }
+#endif
+
+  WebsiteMetrics* website_metrics() {
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+    DCHECK(website_metrics_service_);
+    return website_metrics_service_->website_metrics_.get();
+#else
+    DCHECK(app_platform_metrics_service_);
+    return app_platform_metrics_service_->website_metrics_.get();
+#endif
   }
 
   base::flat_map<aura::Window*, content::WebContents*>&
@@ -263,15 +304,13 @@ class WebsiteMetricsBrowserTest : public MixinBasedInProcessBrowserTest {
     return test_ukm_recorder_.get();
   }
 
-  Profile* profile() { return ProfileManager::GetPrimaryUserProfile(); }
-
-  WebsiteMetrics* website_metrics() {
-    return website_metrics_browser_test_mixin_.website_metrics();
-  }
-
  protected:
-  WebsiteMetricsBrowserTestMixin website_metrics_browser_test_mixin_{
-      &mixin_host_};
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  raw_ptr<AppPlatformMetricsService, ExperimentalAsh>
+      app_platform_metrics_service_ = nullptr;
+#else
+  WebsiteMetricsServiceLacros* website_metrics_service_ = nullptr;
+#endif
   std::unique_ptr<ukm::TestAutoSetUkmRecorder> test_ukm_recorder_;
 };
 
@@ -429,11 +468,10 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, ForegroundTabNavigate) {
 }
 
 IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, NavigateToBackgroundTab) {
-  auto website_metrics_ptr =
-      std::make_unique<apps::TestWebsiteMetrics>(profile());
-  auto* const metrics = website_metrics_ptr.get();
-  website_metrics_browser_test_mixin_.metrics_service()
-      ->SetWebsiteMetricsForTesting(std::move(website_metrics_ptr));
+  auto website_metrics_ptr = std::make_unique<apps::TestWebsiteMetrics>(
+      ProfileManager::GetPrimaryUserProfile());
+  auto* metrics = website_metrics_ptr.get();
+  MetricsService()->SetWebsiteMetricsForTesting(std::move(website_metrics_ptr));
 
   Browser* browser = CreateBrowser();
   auto* window = browser->window()->GetNativeWindow();
@@ -489,11 +527,10 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, NavigateToBackgroundTab) {
 }
 
 IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, ActiveBackgroundTab) {
-  auto website_metrics_ptr =
-      std::make_unique<apps::TestWebsiteMetrics>(profile());
-  auto* const metrics = website_metrics_ptr.get();
-  website_metrics_browser_test_mixin_.metrics_service()
-      ->SetWebsiteMetricsForTesting(std::move(website_metrics_ptr));
+  auto website_metrics_ptr = std::make_unique<apps::TestWebsiteMetrics>(
+      ProfileManager::GetPrimaryUserProfile());
+  auto* metrics = website_metrics_ptr.get();
+  MetricsService()->SetWebsiteMetricsForTesting(std::move(website_metrics_ptr));
 
   Browser* browser = CreateBrowser();
   auto* window = browser->window()->GetNativeWindow();
@@ -563,11 +600,10 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, ActiveBackgroundTab) {
 }
 
 IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, NavigateToUrlWithManifest) {
-  auto website_metrics_ptr =
-      std::make_unique<apps::TestWebsiteMetrics>(profile());
-  auto* const metrics = website_metrics_ptr.get();
-  website_metrics_browser_test_mixin_.metrics_service()
-      ->SetWebsiteMetricsForTesting(std::move(website_metrics_ptr));
+  auto website_metrics_ptr = std::make_unique<apps::TestWebsiteMetrics>(
+      ProfileManager::GetPrimaryUserProfile());
+  auto* metrics = website_metrics_ptr.get();
+  MetricsService()->SetWebsiteMetricsForTesting(std::move(website_metrics_ptr));
 
   Browser* browser = CreateBrowser();
   auto* window = browser->window()->GetNativeWindow();
@@ -746,19 +782,12 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, MultipleBrowser) {
   EXPECT_TRUE(url_infos().empty());
 }
 
-// TODO(crbug.com/1441731): Test is flaky.
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-#define MAYBE_MoveActivatedTabToNewBrowser DISABLED_MoveActivatedTabToNewBrowser
-#else
-#define MAYBE_MoveActivatedTabToNewBrowser MoveActivatedTabToNewBrowser
-#endif
 IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest,
-                       MAYBE_MoveActivatedTabToNewBrowser) {
-  auto website_metrics_ptr =
-      std::make_unique<apps::TestWebsiteMetrics>(profile());
-  auto* const metrics = website_metrics_ptr.get();
-  website_metrics_browser_test_mixin_.metrics_service()
-      ->SetWebsiteMetricsForTesting(std::move(website_metrics_ptr));
+                       MoveActivatedTabToNewBrowser) {
+  auto website_metrics_ptr = std::make_unique<apps::TestWebsiteMetrics>(
+      ProfileManager::GetPrimaryUserProfile());
+  auto* metrics = website_metrics_ptr.get();
+  MetricsService()->SetWebsiteMetricsForTesting(std::move(website_metrics_ptr));
 
   // Create a browser with two tabs.
   auto* browser1 = CreateBrowser();
@@ -796,11 +825,11 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest,
   wm::GetActivationClient(window1->GetRootWindow())->DeactivateWindow(window1);
 
   // Detach `tab1`.
-  std::unique_ptr<tabs::TabModel> detached_tab =
-      browser1->tab_strip_model()->DetachTabAtForInsertion(0);
+  auto detached =
+      browser1->tab_strip_model()->DetachWebContentsAtForInsertion(0);
 
   // Attach `tab1` to `browser2`.
-  browser2->tab_strip_model()->InsertDetachedTabAt(0, std::move(detached_tab),
+  browser2->tab_strip_model()->InsertWebContentsAt(0, std::move(detached),
                                                    AddTabTypes::ADD_ACTIVE);
   auto* tab3 = browser2->tab_strip_model()->GetWebContentsAt(0);
 
@@ -923,11 +952,11 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest,
   wm::GetActivationClient(window1->GetRootWindow())->DeactivateWindow(window1);
 
   // Detach `tab2`.
-  std::unique_ptr<tabs::TabModel> detached_tab =
-      browser1->tab_strip_model()->DetachTabAtForInsertion(1);
+  auto detached =
+      browser1->tab_strip_model()->DetachWebContentsAtForInsertion(1);
 
   // Attach `tab2` to `browser2`.
-  browser2->tab_strip_model()->InsertDetachedTabAt(0, std::move(detached_tab),
+  browser2->tab_strip_model()->InsertWebContentsAt(0, std::move(detached),
                                                    AddTabTypes::ADD_ACTIVE);
   auto* tab3 = browser2->tab_strip_model()->GetWebContentsAt(0);
 
@@ -1006,7 +1035,7 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, WindowedWebApp) {
   EXPECT_TRUE(webcontents_to_ukm_key().empty());
 }
 
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, OnHistoryDeletions) {
+IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, OnURLsDeleted) {
   // Setup: two browsers with one tabs each.
   auto* browser1 = CreateBrowser();
   auto* window1 = browser1->window()->GetNativeWindow();
@@ -1035,12 +1064,12 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, OnHistoryDeletions) {
   VerifyUrlInfo(GURL("https://b.example.org"),
                 /*is_activated=*/true, /*promotable=*/false);
 
-  // Simulate OnHistoryDeletions is called for an expiration. Nothing should be
+  // Simulate OnURLsDeleted is called for an expiration. Nothing should be
   // cleared.
   auto info = history::DeletionInfo(
       history::DeletionTimeRange(base::Time(), base::Time::Now()),
-      /*is_from_expiration=*/true, {}, {}, std::optional<std::set<GURL>>());
-  website_metrics()->OnHistoryDeletions(nullptr, info);
+      /*is_from_expiration=*/true, {}, {}, absl::optional<std::set<GURL>>());
+  website_metrics()->OnURLsDeleted(nullptr, info);
   EXPECT_EQ(2u, window_to_web_contents().size());
   EXPECT_EQ(2u, webcontents_to_observer_map().size());
   EXPECT_TRUE(base::Contains(webcontents_to_observer_map(),
@@ -1066,9 +1095,9 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, OnHistoryDeletions) {
   VerifyUrlInfoInPref(GURL("https://b.example.org"),
                       /*promotable=*/false);
 
-  // Simulate OnHistoryDeletions again for an expiration. The prefs should not
-  // be affected
-  website_metrics()->OnHistoryDeletions(nullptr, info);
+  // Simulate OnURLsDeleted again for an expiration. The prefs should not be
+  // affected
+  website_metrics()->OnURLsDeleted(nullptr, info);
   EXPECT_EQ(2u, webcontents_to_ukm_key().size());
   EXPECT_EQ(2u, url_infos().size());
   EXPECT_EQ(webcontents_to_ukm_key()[tab_app1], GURL("https://a.example.org"));
@@ -1078,10 +1107,10 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, OnHistoryDeletions) {
   VerifyUrlInfoInPref(GURL("https://b.example.org"),
                       /*promotable=*/false);
 
-  // Simulate OnHistoryDeletions for a non-expiration and ensure prefs and
+  // Simulate OnURLsDeleted for a non-expiration and ensure prefs and
   // in-memory usage data is cleared.
-  website_metrics()->OnHistoryDeletions(nullptr,
-                                        history::DeletionInfo::ForAllHistory());
+  website_metrics()->OnURLsDeleted(nullptr,
+                                   history::DeletionInfo::ForAllHistory());
   EXPECT_EQ(2u, window_to_web_contents().size());
   EXPECT_EQ(2u, webcontents_to_observer_map().size());
   EXPECT_TRUE(webcontents_to_ukm_key().empty());
@@ -1129,198 +1158,6 @@ IN_PROC_BROWSER_TEST_F(WebsiteMetricsBrowserTest, OnHistoryDeletions) {
   VerifyUsageTimeUkm(GURL("https://d.example.org"),
                      /*promotable=*/false);
   EXPECT_TRUE(url_infos().empty());
-}
-
-class WebsiteMetricsObserverBrowserTest : public WebsiteMetricsBrowserTest {
- protected:
-  void TearDownOnMainThread() override {
-    // Unregister observer to prevent noise during teardown.
-    website_metrics()->RemoveObserver(&observer_);
-    WebsiteMetricsBrowserTest::TearDownOnMainThread();
-  }
-
-  MockObserver observer_;
-};
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest, NotifyOnUrlOpened) {
-  const std::string& kUrl = "https://a.example.org";
-  auto* const browser = CreateBrowser();
-  auto* const window = browser->window()->GetNativeWindow();
-
-  website_metrics()->AddObserver(&observer_);
-  EXPECT_CALL(observer_, OnUrlOpened)
-      .WillOnce([&](const GURL& url, ::content::WebContents* web_contents) {
-        EXPECT_THAT(url, Eq(GURL(kUrl)));
-        EXPECT_THAT(web_contents, Eq(window_to_web_contents()[window]));
-      });
-  InsertForegroundTab(browser, kUrl);
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest,
-                       NotifyOnBackgroundUrlOpened) {
-  const std::string& kUrl = "https://a.example.org";
-  auto* const browser = CreateBrowser();
-  NavigateActiveTab(browser, kUrl);
-  website_metrics()->AddObserver(&observer_);
-
-  const std::string& kBackgroundUrl = "https://b.example.org";
-  EXPECT_CALL(observer_, OnUrlOpened(GURL(kBackgroundUrl), _)).Times(1);
-  InsertBackgroundTab(browser, kBackgroundUrl);
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest,
-                       NotifyUrlOpenedClosedOnContentNavigation) {
-  const std::string& kOldUrl = "https://a.example.org";
-  auto* const browser = CreateBrowser();
-  auto* const window = browser->window()->GetNativeWindow();
-  NavigateActiveTab(browser, kOldUrl);
-  website_metrics()->AddObserver(&observer_);
-
-  // Navigate to a different URL and verify observer is notified.
-  const std::string& kNewUrl = "https://b.example.org";
-  ::content::WebContents* const active_web_contents =
-      window_to_web_contents()[window];
-  EXPECT_CALL(observer_, OnUrlOpened(GURL(kNewUrl), active_web_contents))
-      .Times(1);
-  EXPECT_CALL(observer_, OnUrlClosed(GURL(kOldUrl), active_web_contents))
-      .Times(1);
-  NavigateActiveTab(browser, kNewUrl);
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest,
-                       NotifyUrlClosedOnContentNavigationToRegisteredWebApp) {
-  const std::string& kWebAppUrl = "https://b.example.org";
-  InstallWebAppOpeningAsTab(kWebAppUrl);
-
-  auto* const browser = CreateBrowser();
-  auto* const window = browser->window()->GetNativeWindow();
-  const std::string& kOldUrl = "https://a.example.org";
-  NavigateActiveTab(browser, kOldUrl);
-  website_metrics()->AddObserver(&observer_);
-
-  // Navigate to the web app and verify observer is notified of URL close.
-  const auto window_it = window_to_web_contents().find(window);
-  ASSERT_NE(window_it, window_to_web_contents().end());
-  ::content::WebContents* const active_web_contents = window_it->second;
-  EXPECT_CALL(observer_, OnUrlClosed(GURL(kOldUrl), active_web_contents))
-      .Times(1);
-  NavigateActiveTab(browser, kWebAppUrl);
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest,
-                       NotifyUrlOpenedOnContentNavigationFromRegisteredWebApp) {
-  const std::string& kWebAppUrl = "https://b.example.org";
-  InstallWebAppOpeningAsTab(kWebAppUrl);
-  website_metrics()->AddObserver(&observer_);
-
-  auto* const browser = CreateBrowser();
-  auto* const window = browser->window()->GetNativeWindow();
-  NavigateActiveTab(browser, kWebAppUrl);
-
-  // Navigate to the URL from the web app and verify observer is notified of URL
-  // open.
-  const std::string& kNewUrl = "https://a.example.org";
-  const auto window_it = window_to_web_contents().find(window);
-  ASSERT_NE(window_it, window_to_web_contents().end());
-  ::content::WebContents* const active_web_contents = window_it->second;
-  EXPECT_CALL(observer_, OnUrlOpened(GURL(kNewUrl), active_web_contents))
-      .Times(1);
-  NavigateActiveTab(browser, kNewUrl);
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest,
-                       DoNotNotifyIfUrlAlreadyOpenInRenderFrame) {
-  const std::string& kUrl = "https://a.example.org";
-  auto* const browser = CreateBrowser();
-  NavigateActiveTab(browser, kUrl);
-  website_metrics()->AddObserver(&observer_);
-
-  EXPECT_CALL(observer_, OnUrlOpened).Times(0);
-  NavigateActiveTab(browser, kUrl);
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest,
-                       NotifyUrlClosedOnTabClose) {
-  const std::string& kUrl = "https://a.example.org";
-  auto* const browser = CreateBrowser();
-  auto* const window = browser->window()->GetNativeWindow();
-  NavigateActiveTab(browser, kUrl);
-  website_metrics()->AddObserver(&observer_);
-
-  // Close the tab and verify observer is notified.
-  EXPECT_CALL(observer_,
-              OnUrlClosed(GURL(kUrl), window_to_web_contents()[window]))
-      .Times(1);
-  browser->tab_strip_model()->CloseAllTabs();
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest,
-                       NotifyUrlClosedOnWindowClose) {
-  // Open URLs in two separate tabs.
-  const std::string& kUrl1 = "https://a.example.org";
-  const std::string& kUrl2 = "https://b.example.org";
-  auto* const browser = CreateBrowser();
-  auto* const window = browser->window()->GetNativeWindow();
-  NavigateActiveTab(browser, kUrl1);
-  InsertBackgroundTab(browser, kUrl2);
-  website_metrics()->AddObserver(&observer_);
-
-  // Simulate window closure and verify observer is notified accordingly.
-  const std::string& kNewUrl = "https://b.example.org";
-  EXPECT_CALL(observer_,
-              OnUrlClosed(GURL(kUrl1), window_to_web_contents()[window]))
-      .Times(1);
-  EXPECT_CALL(observer_, OnUrlClosed(GURL(kUrl2), _)).Times(1);
-  browser->tab_strip_model()->CloseAllTabs();
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest,
-                       NotifyOnWebsiteMetricsDestroyed) {
-  // Test with a separate instance of website metrics so we do not affect
-  // pre-existing test teardown fixtures.
-  std::unique_ptr<WebsiteMetrics> owned_website_metrics =
-      std::make_unique<WebsiteMetrics>(profile(),
-                                       /*user_type_by_device_type=*/0);
-  owned_website_metrics->AddObserver(&observer_);
-  EXPECT_CALL(observer_, OnWebsiteMetricsDestroyed).Times(1);
-  owned_website_metrics.reset();
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest, NotifyOnUrlUsage) {
-  const std::string& kUrl = "https://a.example.org";
-  auto* const browser = CreateBrowser();
-  NavigateActiveTab(browser, kUrl);
-  website_metrics()->AddObserver(&observer_);
-
-  EXPECT_CALL(observer_, OnUrlUsage)
-      .WillOnce([&](const GURL& url, base::TimeDelta running_time) {
-        EXPECT_THAT(url, Eq(GURL(kUrl)));
-        EXPECT_TRUE(running_time.is_positive());
-      });
-  website_metrics()->OnFiveMinutes();
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest,
-                       DoNotNotifyBackgroundUrlUsage) {
-  const std::string& kUrl = "https://a.example.org";
-  const std::string& kBackgroundUrl = "https://b.example.org";
-  auto* const browser = CreateBrowser();
-  NavigateActiveTab(browser, kUrl);
-  InsertBackgroundTab(browser, kBackgroundUrl);
-  website_metrics()->AddObserver(&observer_);
-
-  EXPECT_CALL(observer_, OnUrlUsage(GURL(kUrl), _)).Times(1);
-  EXPECT_CALL(observer_, OnUrlUsage(GURL(kBackgroundUrl), _)).Times(0);
-  website_metrics()->OnFiveMinutes();
-}
-
-IN_PROC_BROWSER_TEST_F(WebsiteMetricsObserverBrowserTest, NoUrlUsage) {
-  CreateBrowser();
-  website_metrics()->AddObserver(&observer_);
-
-  // Verify observer is not notified because there is no web content usage.
-  EXPECT_CALL(observer_, OnUrlUsage).Times(0);
-  website_metrics()->OnFiveMinutes();
 }
 
 }  // namespace apps

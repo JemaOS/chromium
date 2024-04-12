@@ -25,7 +25,6 @@
 #include "chrome/browser/ui/views/task_manager_view.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
-#include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/prefs/pref_service.h"
@@ -44,12 +43,6 @@
 #include "ui/events/test/event_generator.h"
 #include "ui/views/controls/table/table_view.h"
 #include "ui/views/test/widget_test.h"
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "ash/constants/app_types.h"
-#include "ui/aura/client/aura_constants.h"
-#include "ui/aura/window.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 namespace task_manager {
 
@@ -115,7 +108,7 @@ class TaskManagerViewTest : public InProcessBrowserTest {
 
   // Returns the current TaskManagerTableModel index for a particular tab. Don't
   // cache this value, since it can change whenever the message loop runs.
-  std::optional<size_t> FindRowForTab(content::WebContents* tab) {
+  absl::optional<size_t> FindRowForTab(content::WebContents* tab) {
     SessionID tab_id = sessions::SessionTabHelper::IdForTab(tab);
     std::unique_ptr<TaskManagerTester> tester =
         TaskManagerTester::Create(base::RepeatingClosure());
@@ -123,7 +116,7 @@ class TaskManagerViewTest : public InProcessBrowserTest {
       if (tester->GetTabId(i) == tab_id)
         return i;
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   void HideTaskManagerSync() {
@@ -141,13 +134,6 @@ class TaskManagerViewTest : public InProcessBrowserTest {
 IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, AllColumnsHaveStringIds) {
   for (size_t i = 0; i < kColumnsSize; ++i)
     EXPECT_NE("", GetColumnIdAsString(kColumns[i].id));
-}
-
-// Test that all defined columns can be sorted
-IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, AllColumnsHaveSortable) {
-  for (size_t i = 0; i < kColumnsSize; ++i) {
-    EXPECT_TRUE(kColumns[i].sortable);
-  }
 }
 
 // In the case of no settings stored in the user preferences local store, test
@@ -227,52 +213,6 @@ IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, ColumnsSettingsAreRestored) {
     EXPECT_EQ(!kColumns[i].default_visibility,
               table->IsColumnVisible(kColumns[i].id));
   }
-}
-
-// Test hiding all visible columns and keeping them normal when reopened
-IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, HideAllColumnsAndRestored) {
-  ASSERT_NO_FATAL_FAILURE(ClearStoredColumnSettings());
-
-  chrome::ShowTaskManager(browser());
-  TaskManagerView* view = GetView();
-  ASSERT_TRUE(view);
-  views::TableView* table = GetTable();
-  ASSERT_TRUE(table);
-
-  EXPECT_FALSE(table->GetIsSorted());
-
-  // hide all visible columns except IDS_TASK_MANAGER_TASK_COLUMN
-  int task_column_index = -1;
-  for (size_t i = 0; i < kColumnsSize; ++i) {
-    EXPECT_EQ(kColumns[i].default_visibility,
-              table->IsColumnVisible(kColumns[i].id));
-    if (kColumns[i].id == IDS_TASK_MANAGER_TASK_COLUMN) {
-      task_column_index = i;
-      ASSERT_EQ(kColumns[i].default_visibility,
-                table->IsColumnVisible(kColumns[i].id));
-      continue;
-    }
-    if (kColumns[i].default_visibility) {
-      ToggleColumnVisibility(view, kColumns[i].id);
-    }
-  }
-  EXPECT_EQ(table->visible_columns().size(), 1u);
-  // hide IDS_TASK_MANAGER_TASK_COLUMN
-  ASSERT_EQ(task_column_index, 0);
-  ToggleColumnVisibility(view, kColumns[task_column_index].id);
-  EXPECT_EQ(table->visible_columns().size(), 1u);
-  EXPECT_TRUE(table->IsColumnVisible(kColumns[task_column_index].id));
-
-  // Close the task manager view and re-open. Expect
-  // IDS_TASK_MANAGER_TASK_COLUMN visibility
-  HideTaskManagerSync();
-  ASSERT_FALSE(GetView());
-  chrome::ShowTaskManager(browser());
-  table = GetTable();
-  ASSERT_TRUE(table);
-
-  EXPECT_EQ(table->visible_columns().size(), 1u);
-  EXPECT_TRUE(table->IsColumnVisible(kColumns[task_column_index].id));
 }
 
 IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, InitialSelection) {
@@ -356,7 +296,7 @@ IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, DISABLED_SelectionConsistency) {
 
   // Add 3 rows above the selection. The selected tab should not change.
   for (int i = 0; i < 3; ++i) {
-    ASSERT_TRUE(content::ExecJs(tabs[0], "window.open('title3.html');"));
+    ASSERT_TRUE(content::ExecuteScript(tabs[0], "window.open('title3.html');"));
     EXPECT_EQ(GetTable()->GetFirstSelectedRow(), FindRowForTab(tabs[1]));
   }
   ASSERT_NO_FATAL_FAILURE(WaitForTaskManagerRows((rows += 3), pattern));
@@ -365,7 +305,7 @@ IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, DISABLED_SelectionConsistency) {
 
   // Add 2 rows below the selection. The selected tab should not change.
   for (int i = 0; i < 2; ++i) {
-    ASSERT_TRUE(content::ExecJs(tabs[2], "window.open('title3.html');"));
+    ASSERT_TRUE(content::ExecuteScript(tabs[2], "window.open('title3.html');"));
     EXPECT_EQ(GetTable()->GetFirstSelectedRow(), FindRowForTab(tabs[1]));
   }
   ASSERT_NO_FATAL_FAILURE(WaitForTaskManagerRows((rows += 2), pattern));
@@ -374,7 +314,7 @@ IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, DISABLED_SelectionConsistency) {
 
   // Add a new row in the same process as the selection. The selected tab should
   // not change.
-  ASSERT_TRUE(content::ExecJs(tabs[1], "window.open('title3.html');"));
+  ASSERT_TRUE(content::ExecuteScript(tabs[1], "window.open('title3.html');"));
   EXPECT_EQ(GetTable()->GetFirstSelectedRow(), FindRowForTab(tabs[1]));
   ASSERT_NO_FATAL_FAILURE(WaitForTaskManagerRows((rows += 1), pattern));
   EXPECT_EQ(GetTable()->GetFirstSelectedRow(), FindRowForTab(tabs[1]));
@@ -455,15 +395,4 @@ IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, CloseByAccelerator) {
 
   EXPECT_TRUE(GetView()->GetWidget()->IsClosed());
 }
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-IN_PROC_BROWSER_TEST_F(TaskManagerViewTest, AppType) {
-  chrome::ShowTaskManager(browser());
-
-  EXPECT_EQ(static_cast<int>(ash::AppType::SYSTEM_APP),
-            GetView()->GetWidget()->GetNativeWindow()->GetProperty(
-                aura::client::kAppType));
-}
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
 }  // namespace task_manager

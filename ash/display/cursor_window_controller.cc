@@ -4,14 +4,12 @@
 
 #include "ash/display/cursor_window_controller.h"
 
-#include <optional>
-
 #include "ash/accessibility/magnifier/fullscreen_magnifier_controller.h"
 #include "ash/capture_mode/capture_mode_camera_controller.h"
 #include "ash/capture_mode/capture_mode_controller.h"
 #include "ash/capture_mode/capture_mode_session.h"
+#include "ash/color_enhancement/color_enhancement_controller.h"
 #include "ash/constants/ash_constants.h"
-#include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
 #include "ash/curtain/security_curtain_controller.h"
@@ -24,13 +22,11 @@
 #include "base/command_line.h"
 #include "base/metrics/histogram_macros.h"
 #include "components/prefs/pref_service.h"
-#include "ui/accessibility/accessibility_features.h"
 #include "ui/aura/env.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_delegate.h"
 #include "ui/base/hit_test.h"
 #include "ui/base/resource/resource_bundle.h"
-#include "ui/base/resource/resource_scale_factor.h"
 #include "ui/compositor/paint_recorder.h"
 #include "ui/display/display.h"
 #include "ui/display/manager/display_manager.h"
@@ -47,6 +43,10 @@
 namespace ash {
 
 namespace {
+
+const int kMinLargeCursorSize = 25;
+const int kMaxLargeCursorSize = 64;
+const int kWideDisplayThreshold = 2400;
 
 SkBitmap GetColorAdjustedBitmap(const gfx::ImageSkiaRep& image_rep,
                                 SkColor cursor_color) {
@@ -95,32 +95,6 @@ SkBitmap GetColorAdjustedBitmap(const gfx::ImageSkiaRep& image_rep,
   return recolored;
 }
 
-std::vector<gfx::ImageSkia> GetCursorImages(
-    ui::CursorSize cursor_size,
-    ui::mojom::CursorType type,
-    int target_cursor_size_in_dip,
-    float dsf,
-    gfx::Point* out_hotspot_in_physical_pixels) {
-  std::vector<gfx::ImageSkia> images;
-  // Rotation is handled in viz (for aura::Window based cursor)
-  // or fast ink canvas (for fast ink based cursor), so don't do any
-  // rotation here.
-  std::optional<ui::CursorData> cursor_data = wm::GetCursorData(
-      type, cursor_size, dsf,
-      cursor_size == ui::CursorSize::kLarge
-          ? std::make_optional(target_cursor_size_in_dip * dsf)
-          : std::nullopt,
-      display::Display::ROTATE_0);
-  if (!cursor_data) {
-    return images;
-  }
-  *out_hotspot_in_physical_pixels = cursor_data->hotspot;
-  for (const auto& bitmap : cursor_data->bitmaps) {
-    images.push_back(gfx::ImageSkia::CreateFromBitmap(bitmap, dsf));
-  }
-  return images;
-}
-
 // The ImageSkiaSource that translate the color of the cursor.
 class CursorImageSource : public gfx::ImageSkiaSource {
  public:
@@ -161,7 +135,7 @@ class CursorWindowDelegate : public aura::WindowDelegate {
   void OnBoundsChanged(const gfx::Rect& old_bounds,
                        const gfx::Rect& new_bounds) override {}
   gfx::NativeCursor GetCursor(const gfx::Point& point) override {
-    return gfx::NativeCursor{};
+    return gfx::kNullCursor;
   }
   int GetNonClientComponent(const gfx::Point& point) const override {
     return HTNOWHERE;
@@ -176,7 +150,7 @@ class CursorWindowDelegate : public aura::WindowDelegate {
   void OnPaint(const ui::PaintContext& context) override {
     // No need to cache the output here, the CursorWindow is not invalidated.
     ui::PaintRecorder recorder(context, size_);
-    recorder.canvas()->DrawImageInt(cursor_images_[paint_image_index_], 0, 0);
+    recorder.canvas()->DrawImageInt(cursor_image_, 0, 0);
   }
   void OnDeviceScaleFactorChanged(float old_device_scale_factor,
                                   float new_device_scale_factor) override {}
@@ -186,61 +160,25 @@ class CursorWindowDelegate : public aura::WindowDelegate {
   bool HasHitTestMask() const override { return false; }
   void GetHitTestMask(SkPath* mask) const override {}
 
-  // Updates cursor animation. If cursor_images_ has more than 1 image,
-  // start the timer to schedule frame painting.
-  void UpdateAnimation() {
-    paint_image_index_ = 0;
-    if (!cursor_window_) {
-      if (animated_cursor_timer_.IsRunning()) {
-        animated_cursor_timer_.Stop();
-      }
-      return;
-    }
-    if (cursor_images_.size() == 1) {
-      animated_cursor_timer_.Stop();
-    } else if (cursor_images_.size() > 1) {
-      animated_cursor_timer_.Start(
-          FROM_HERE, base::Milliseconds(16),
-          base::BindRepeating(&CursorWindowDelegate::AdvanceFrame,
-                              base::Unretained(this)));
-    }
-  }
-
-  // Schedules to paint the next frame.
-  void AdvanceFrame() {
-    paint_image_index_ = (paint_image_index_ + 1) % cursor_images_.size();
-    cursor_window_->SchedulePaintInRect(gfx::Rect(size_));
-  }
-
   // Sets the cursor image for the |display|'s scale factor.
-  void SetCursorImage(const gfx::Size& size,
-                      const std::vector<gfx::ImageSkia>& images) {
+  void SetCursorImage(const gfx::Size& size, const gfx::ImageSkia& image) {
     size_ = size;
-    cursor_images_ = images;
-    UpdateAnimation();
-  }
-
-  void SetCursorWindow(aura::Window* window) {
-    cursor_window_ = window;
-    UpdateAnimation();
+    cursor_image_ = image;
   }
 
   const gfx::Size& size() const { return size_; }
-  const std::vector<gfx::ImageSkia>& cursor_images() const {
-    return cursor_images_;
-  }
+  const gfx::ImageSkia& cursor_image() const { return cursor_image_; }
 
  private:
-  std::vector<gfx::ImageSkia> cursor_images_;
-  int paint_image_index_ = 0;
-  raw_ptr<aura::Window> cursor_window_;
-  base::RepeatingTimer animated_cursor_timer_;
+  gfx::ImageSkia cursor_image_;
   gfx::Size size_;
 };
 
 CursorWindowController::CursorWindowController()
     : delegate_(new CursorWindowDelegate()),
-      is_fast_ink_enabled_(features::IsFastInkForSoftwareCursorEnabled()) {}
+      is_cursor_motion_blur_enabled_(
+          base::CommandLine::ForCurrentProcess()->HasSwitch(
+              switches::kAshEnableCursorMotionBlur)) {}
 
 CursorWindowController::~CursorWindowController() {
   SetContainer(NULL);
@@ -257,10 +195,7 @@ void CursorWindowController::RemoveObserver(Observer* observer) {
 void CursorWindowController::SetLargeCursorSizeInDip(
     int large_cursor_size_in_dip) {
   large_cursor_size_in_dip =
-      std::min(large_cursor_size_in_dip,
-               ::features::IsAccessibilityExtraLargeCursorEnabled()
-                   ? kMaxExtraLargeCursorSize
-                   : kMaxLargeCursorSize);
+      std::min(large_cursor_size_in_dip, kMaxLargeCursorSize);
   large_cursor_size_in_dip =
       std::max(large_cursor_size_in_dip, kMinLargeCursorSize);
 
@@ -282,6 +217,9 @@ void CursorWindowController::SetCursorColor(SkColor cursor_color) {
 }
 
 bool CursorWindowController::ShouldEnableCursorCompositing() {
+  if (is_cursor_motion_blur_enabled_)
+    return true;
+
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kForceShowCursor)) {
     return false;
@@ -314,6 +252,23 @@ bool CursorWindowController::ShouldEnableCursorCompositing() {
     return true;
   }
 
+  // On specific CrOS devices (e.g. herobrine), driving a wide display requires
+  // more display hardware resources than a lower-resolution panel. If a wide
+  // display is connected as an external monitor, we can run out of hardware
+  // planes to display a separate cursor. As a result, we need to force the
+  // software cursor in this scenario.
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kSwCursorOnWideDisplays) &&
+      display_manager->num_connected_displays() > 1) {
+    for (const auto& display : display::Screen::GetScreen()->GetAllDisplays()) {
+      DCHECK(display.is_valid());
+      if (display.is_valid() &&
+          display.size().width() >= kWideDisplayThreshold) {
+        return true;
+      }
+    }
+  }
+
   if (shell->fullscreen_magnifier_controller()->IsEnabled())
     return true;
 
@@ -340,6 +295,11 @@ bool CursorWindowController::ShouldEnableCursorCompositing() {
                               displays_ctm_support);
     if (displays_ctm_support != DisplayColorManager::DisplayCtmSupport::kAll)
       return true;
+  }
+
+  if (shell->color_enhancement_controller()
+          ->ShouldEnableCursorCompositingForSepia()) {
+    return true;
   }
 
   return prefs->GetBoolean(prefs::kAccessibilityLargeCursorEnabled) ||
@@ -437,24 +397,6 @@ void CursorWindowController::SetVisibility(bool visible) {
   UpdateCursorVisibility();
 }
 
-void CursorWindowController::OnWindowBoundsChanged(
-    aura::Window* window,
-    const gfx::Rect& old_bounds,
-    const gfx::Rect& new_bounds,
-    ui::PropertyChangeReason reason) {
-  DCHECK_EQ(container_, window);
-
-  if (cursor_view_widget_) {
-    UpdateCursorView();
-  }
-}
-
-void CursorWindowController::OnWindowDestroying(aura::Window* window) {
-  DCHECK_EQ(container_, window);
-
-  scoped_container_observer_.Reset();
-}
-
 const aura::Window* CursorWindowController::GetContainerForTest() const {
   return container_;
 }
@@ -471,26 +413,19 @@ void CursorWindowController::SetContainer(aura::Window* container) {
   if (container_ == container) {
     return;
   }
-
-  scoped_container_observer_.Reset();
-
   container_ = container;
   if (!container) {
-    delegate_->SetCursorWindow(nullptr);
     cursor_window_.reset();
     cursor_view_widget_.reset();
     return;
   }
 
-  scoped_container_observer_.Observe(container_);
-
   bounds_in_screen_ = display_.bounds();
   rotation_ = display_.rotation();
 
-  if (is_fast_ink_enabled_) {
+  if (is_cursor_motion_blur_enabled_) {
     UpdateCursorView();
   } else {
-    delegate_->SetCursorWindow(nullptr);
     // Reusing the window does not work when the display is disconnected.
     // Just creates a new one instead. crbug.com/384218.
     cursor_window_ = std::make_unique<aura::Window>(delegate_.get());
@@ -498,7 +433,6 @@ void CursorWindowController::SetContainer(aura::Window* container) {
     cursor_window_->Init(ui::LAYER_TEXTURED);
     cursor_window_->SetEventTargetingPolicy(aura::EventTargetingPolicy::kNone);
     cursor_window_->set_owned_by_parent(false);
-    delegate_->SetCursorWindow(cursor_window_.get());
     // Call UpdateCursorImage() to figure out |cursor_window_|'s desired size.
     UpdateCursorImage();
     container->AddChild(cursor_window_.get());
@@ -526,78 +460,64 @@ void CursorWindowController::UpdateCursorImage() {
     return;
   }
 
-  std::vector<gfx::ImageSkia> images;
+  float cursor_scale;
+  gfx::ImageSkia image;
   gfx::Point hot_point_in_physical_pixels;
-
   if (cursor_.type() == ui::mojom::CursorType::kCustom) {
-    // Custom cursor.
-    SkBitmap bitmap = cursor_.custom_bitmap();
-    gfx::Point hotspot = cursor_.custom_hotspot();
+    const SkBitmap& bitmap = cursor_.custom_bitmap();
     if (bitmap.isNull()) {
       return;
     }
-    float cursor_scale = cursor_.image_scale_factor();
-
-    // Custom cursor's bitmap is already rotated. Revert the rotation because
-    // software cursor's rotation is handled by viz.
-    // TODO(b/320398214): Custom cursor's scaling and rotation
-    // should be handled in ash.
-    const display::Display::Rotation inverted_rotation =
-        static_cast<display::Display::Rotation>(
-            (4 - static_cast<int>(display_.rotation())) % 4);
-    wm::ScaleAndRotateCursorBitmapAndHotpoint(1.0f, inverted_rotation, &bitmap,
-                                              &hotspot);
-    images.push_back(gfx::ImageSkia::CreateFromBitmap(bitmap, cursor_scale));
-    hot_point_in_physical_pixels = hotspot;
-
-    // Use `gfx::ToFlooredPoint` as `ImageSkiaRep::GetWidth` is implemented as
-    // `return static_cast<int>(pixel_width() / scale());`.
-    hot_point_ = gfx::ToFlooredPoint(
-        gfx::ConvertPointToDips(hot_point_in_physical_pixels, cursor_scale));
-
-    // Rescale cursor size. This is used with the combination of accessibility
-    // large cursor. We don't need to care about the case where cursor
-    // compositing is disabled as we always use cursor compositing if
-    // accessibility large cursor is enabled.
-    if (cursor_size_ == ui::CursorSize::kLarge &&
-        large_cursor_size_in_dip_ != images[0].size().height()) {
-      const float rescale = static_cast<float>(large_cursor_size_in_dip_) /
-                            static_cast<float>(images[0].size().height());
-      hot_point_ = gfx::ScaleToCeiledPoint(hot_point_, rescale);
-      for (size_t i = 0; i < images.size(); ++i) {
-        images[i] = gfx::ImageSkiaOperations::CreateResizedImage(
-            images[i], skia::ImageOperations::ResizeMethod::RESIZE_BEST,
-            gfx::ScaleToCeiledSize(images[i].size(), rescale));
-      }
-    }
+    cursor_scale = cursor_.image_scale_factor();
+    image = gfx::ImageSkia::CreateFromBitmap(bitmap, cursor_scale);
+    hot_point_in_physical_pixels = cursor_.custom_hotspot();
   } else {
-    // Standard cursor.
-    const float dsf = display_.device_scale_factor();
-
-    images =
-        GetCursorImages(cursor_size_, cursor_.type(), large_cursor_size_in_dip_,
-                        dsf, &hot_point_in_physical_pixels);
-    if (images.empty()) {
+    // Do not use the device scale factor, as the cursor will be scaled
+    // by compositor. HW cursor will not be scaled by display zoom, so the
+    // physical size will be inconsistent.
+    int resource_id;
+    cursor_scale =
+        gfx::ImageSkia::MapToResourceScale(display_.device_scale_factor());
+    if (!wm::GetCursorDataFor(cursor_size_, cursor_.type(), cursor_scale,
+                              &resource_id, &hot_point_in_physical_pixels)) {
       return;
     }
-    hot_point_ = gfx::ToFlooredPoint(
-        gfx::ConvertPointToDips(hot_point_in_physical_pixels, dsf));
+    image =
+        *ui::ResourceBundle::GetSharedInstance().GetImageSkiaNamed(resource_id);
+  }
+  // Use `gfx::ToFlooredPoint` as `ImageSkiaRep::GetWidth` is implemented as
+  // `return static_cast<int>(pixel_width() / scale());`.
+  hot_point_ = gfx::ToFlooredPoint(
+      gfx::ConvertPointToDips(hot_point_in_physical_pixels, cursor_scale));
+
+  gfx::ImageSkia resized = image;
+
+  // Rescale cursor size. This is used with the combination of accessibility
+  // large cursor. We don't need to care about the case where cursor
+  // compositing is disabled as we always use cursor compositing if
+  // accessibility large cursor is enabled.
+  if (cursor_size_ == ui::CursorSize::kLarge &&
+      large_cursor_size_in_dip_ != image.size().width()) {
+    float rescale = static_cast<float>(large_cursor_size_in_dip_) /
+                    static_cast<float>(image.size().width());
+    resized = gfx::ImageSkiaOperations::CreateResizedImage(
+        image, skia::ImageOperations::ResizeMethod::RESIZE_BEST,
+        gfx::ScaleToCeiledSize(image.size(), rescale));
+    hot_point_ = gfx::ScaleToCeiledPoint(hot_point_, rescale);
   }
 
   if (cursor_color_ != kDefaultCursorColor) {
-    for (size_t i = 0; i < images.size(); ++i) {
-      images[i] = gfx::ImageSkia(
-          std::make_unique<CursorImageSource>(images[i], cursor_color_),
-          images[i].size());
-    }
+    resized = gfx::ImageSkia(
+        std::make_unique<CursorImageSource>(resized, cursor_color_),
+        resized.size());
   }
 
-  delegate_->SetCursorImage(images[0].size(), images);
+  delegate_->SetCursorImage(resized.size(), resized);
 
   if (cursor_view_widget_) {
     static_cast<CursorView*>(cursor_view_widget_->GetContentsView())
-        ->SetCursorImages(delegate_->cursor_images(), delegate_->size(),
-                          hot_point_);
+        ->SetCursorImage(delegate_->cursor_image(), delegate_->size(),
+                         hot_point_);
   }
   if (cursor_window_) {
     cursor_window_->SetBounds(gfx::Rect(delegate_->size()));
@@ -623,18 +543,14 @@ void CursorWindowController::UpdateCursorVisibility() {
 }
 
 void CursorWindowController::UpdateCursorView() {
-  // Return if the container's size is not updated yet.
-  if (container_->GetBoundsInRootWindow().size() != bounds_in_screen_.size()) {
-    return;
-  }
-
-  cursor_view_widget_ = CursorView::Create(
-      aura::Env::GetInstance()->last_mouse_location(), container_);
+  cursor_view_widget_ =
+      CursorView::Create(aura::Env::GetInstance()->last_mouse_location(),
+                         is_cursor_motion_blur_enabled_, container_);
   UpdateCursorImage();
 }
 
 const gfx::ImageSkia& CursorWindowController::GetCursorImageForTest() const {
-  return delegate_->cursor_images()[0];
+  return delegate_->cursor_image();
 }
 
 }  // namespace ash

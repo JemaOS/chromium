@@ -13,16 +13,17 @@ import android.text.format.DateUtils;
 
 import androidx.annotation.IntDef;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.ContextUtils;
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.compat.ApiHelperForN;
 import org.chromium.base.metrics.RecordHistogram;
 
-/** Utilities to support startup metrics - Android version. */
+/**
+ * Utilities to support startup metrics - Android version.
+ */
 @JNINamespace("chrome::android")
 public class UmaUtils {
     /** Observer for this class. */
@@ -67,18 +68,10 @@ public class UmaUtils {
      * These values are persisted to logs. Entries should not be renumbered and
      * numeric values should never be reused.
      */
-    @IntDef({
-        StandbyBucketStatus.ACTIVE,
-        StandbyBucketStatus.WORKING_SET,
-        StandbyBucketStatus.FREQUENT,
-        StandbyBucketStatus.RARE,
-        StandbyBucketStatus.RESTRICTED,
-        StandbyBucketStatus.UNSUPPORTED,
-        StandbyBucketStatus.EXEMPTED,
-        StandbyBucketStatus.NEVER,
-        StandbyBucketStatus.OTHER,
-        StandbyBucketStatus.COUNT
-    })
+    @IntDef({StandbyBucketStatus.ACTIVE, StandbyBucketStatus.WORKING_SET,
+            StandbyBucketStatus.FREQUENT, StandbyBucketStatus.RARE, StandbyBucketStatus.RESTRICTED,
+            StandbyBucketStatus.UNSUPPORTED, StandbyBucketStatus.EXEMPTED,
+            StandbyBucketStatus.NEVER, StandbyBucketStatus.OTHER, StandbyBucketStatus.COUNT})
     private @interface StandbyBucketStatus {
         int ACTIVE = 0;
         int WORKING_SET = 1;
@@ -146,28 +139,24 @@ public class UmaUtils {
         return sForegroundStartWithNativeTimeMs != 0;
     }
 
-    /** Determines if Chrome was brought to background. */
+    /**
+     * Determines if Chrome was brought to background.
+     */
     public static boolean hasComeToBackgroundWithNative() {
         return sBackgroundWithNativeTimeMs != 0;
     }
 
     /**
-     * Determines if this client is eligible to send metrics based on sampling. If it is, and there
-     * was user consent, then metrics should be reported.
+     * Determines if this client is eligible to send metrics and crashes based on sampling. If it
+     * is, and there was user consent, then metrics and crashes would be reported
      */
-    public static boolean isClientInSampleForMetrics() {
-        return UmaUtilsJni.get().isClientInSampleForMetrics();
+    public static boolean isClientInMetricsReportingSample() {
+        return UmaUtilsJni.get().isClientInMetricsReportingSample();
     }
 
     /**
-     * Determines if this client is eligible to send crashes based on sampling. If it is, and there
-     * was user consent, then crashes should be reported.
+     * Records various levels of background restrictions imposed by android on chrome.
      */
-    public static boolean isClientInSampleForCrashes() {
-        return UmaUtilsJni.get().isClientInSampleForCrashes();
-    }
-
-    /** Records various levels of background restrictions imposed by android on chrome. */
     public static void recordBackgroundRestrictions() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return;
         Context context = ContextUtils.getApplicationContext();
@@ -178,30 +167,56 @@ public class UmaUtils {
                 "Android.BackgroundRestrictions.IsBackgroundRestricted", isBackgroundRestricted);
 
         int standbyBucketUma = getStandbyBucket(context);
-        RecordHistogram.recordEnumeratedHistogram(
-                "Android.BackgroundRestrictions.StandbyBucket",
-                standbyBucketUma,
-                StandbyBucketStatus.COUNT);
+        RecordHistogram.recordEnumeratedHistogram("Android.BackgroundRestrictions.StandbyBucket",
+                standbyBucketUma, StandbyBucketStatus.COUNT);
 
-        if (isBackgroundRestricted) {
-            RecordHistogram.recordEnumeratedHistogram(
-                    "Android.BackgroundRestrictions.StandbyBucket.WithUserRestriction",
-                    standbyBucketUma,
-                    StandbyBucketStatus.COUNT);
-        }
+        String histogramNameSplitByUserRestriction = isBackgroundRestricted
+                ? "Android.BackgroundRestrictions.StandbyBucket.WithUserRestriction"
+                : "Android.BackgroundRestrictions.StandbyBucket.WithoutUserRestriction";
+        RecordHistogram.recordEnumeratedHistogram(
+                histogramNameSplitByUserRestriction, standbyBucketUma, StandbyBucketStatus.COUNT);
     }
 
     /** Record minidump uploading time split by background restriction status. */
     public static void recordMinidumpUploadingTime(long taskDurationMs) {
+        RecordHistogram.recordCustomTimesHistogram("Stability.Android.MinidumpUploadingTime",
+                taskDurationMs, 1, DateUtils.DAY_IN_MILLIS, 50);
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return;
         RecordHistogram.recordCustomTimesHistogram(
-                "Stability.Android.MinidumpUploadingTime",
-                taskDurationMs,
-                1,
-                DateUtils.DAY_IN_MILLIS,
-                50);
+                "Stability.Android.MinidumpUploadingTime." + getHistogramPatternForStandbyStatus(),
+                taskDurationMs, 1, DateUtils.DAY_IN_MILLIS, 50);
     }
 
-    private static @StandbyBucketStatus int getStandbyBucket(Context context) {
+    private static String getHistogramPatternForStandbyStatus() {
+        int standbyBucket = getStandbyBucket(ContextUtils.getApplicationContext());
+        switch (standbyBucket) {
+            case StandbyBucketStatus.ACTIVE:
+                return "Active";
+            case StandbyBucketStatus.WORKING_SET:
+                return "WorkingSet";
+            case StandbyBucketStatus.FREQUENT:
+                return "Frequent";
+            case StandbyBucketStatus.RARE:
+                return "Rare";
+            case StandbyBucketStatus.RESTRICTED:
+                return "Restricted";
+            case StandbyBucketStatus.UNSUPPORTED:
+                return "Unsupported";
+            case StandbyBucketStatus.EXEMPTED:
+                return "Exempted";
+            case StandbyBucketStatus.NEVER:
+                return "Never";
+            case StandbyBucketStatus.OTHER:
+                return "Other";
+            default:
+                assert false : "Unexpected standby bucket " + standbyBucket;
+                return "Unknown";
+        }
+    }
+
+    @StandbyBucketStatus
+    private static int getStandbyBucket(Context context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return StandbyBucketStatus.UNSUPPORTED;
 
         UsageStatsManager usageStatsManager =
@@ -258,10 +273,7 @@ public class UmaUtils {
 
     @NativeMethods
     interface Natives {
-        boolean isClientInSampleForMetrics();
-
-        boolean isClientInSampleForCrashes();
-
+        boolean isClientInMetricsReportingSample();
         void recordMetricsReportingDefaultOptIn(boolean optIn);
     }
 }

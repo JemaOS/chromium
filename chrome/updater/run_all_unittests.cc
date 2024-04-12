@@ -18,7 +18,7 @@
 #include "chrome/updater/test/integration_test_commands.h"
 #include "chrome/updater/test_scope.h"
 #include "chrome/updater/updater_scope.h"
-#include "chrome/updater/util/unit_test_util.h"
+#include "chrome/updater/util/unittest_util.h"
 
 #if BUILDFLAG(IS_WIN)
 #include <shlobj.h>
@@ -41,17 +41,15 @@ namespace {
 void FixExecutionPriorities() {
   const HANDLE process = ::GetCurrentProcess();
   const DWORD priority_class = ::GetPriorityClass(process);
-  if (priority_class == NORMAL_PRIORITY_CLASS) {
+  if (priority_class == NORMAL_PRIORITY_CLASS)
     return;
-  }
   ::SetPriorityClass(process, NORMAL_PRIORITY_CLASS);
 
   static const auto set_process_information_fn =
       reinterpret_cast<decltype(&::SetProcessInformation)>(::GetProcAddress(
           ::GetModuleHandle(L"Kernel32.dll"), "SetProcessInformation"));
-  if (!set_process_information_fn) {
+  if (!set_process_information_fn)
     return;
-  }
   MEMORY_PRIORITY_INFORMATION memory_priority = {};
   memory_priority.MemoryPriority = MEMORY_PRIORITY_NORMAL;
   set_process_information_fn(process, ProcessMemoryPriority, &memory_priority,
@@ -89,9 +87,8 @@ class ScopedSymbolPath {
     if (reg_key.Valid() && !reg_key.HasValue(kNtSymbolPathEnVar)) {
       is_owned = reg_key.WriteValue(kNtSymbolPathEnVar, symbol_path.c_str()) ==
                  ERROR_SUCCESS;
-      if (!is_owned) {
+      if (!is_owned)
         return;
-      }
       BroadcastEnvironmentChange();
       VLOG(0) << "Symbol path for " << (is_system_ ? "system" : "user")
               << " set to: " << symbol_path;
@@ -99,9 +96,8 @@ class ScopedSymbolPath {
   }
 
   ~ScopedSymbolPath() {
-    if (!is_owned) {
+    if (!is_owned)
       return;
-    }
     base::win::RegKey reg_key(rootkey_, subkey_.c_str(), KEY_WRITE);
     if (reg_key.Valid()) {
       reg_key.DeleteValue(kNtSymbolPathEnVar);
@@ -170,12 +166,13 @@ int main(int argc, char** argv) {
 #if BUILDFLAG(IS_WIN)
   updater::test::MaybeExcludePathsFromWindowsDefender();
 
-  VLOG(0) << "Process priority: " << base::Process::Current().GetOSPriority();
+  VLOG(0) << "Process priority: " << base::Process::Current().GetPriority();
   VLOG(0) << updater::GetUACState();
 
-  // The test suite runner expects the swarming task to run with normal priority
-  // but for some reason, on the updater bots with UAC on, the swarming task
-  // runs with a priority below normal (see crbug.com/1245429).
+  // TODO(crbug.com/1245429): remove when the bug is fixed.
+  // Typically, the test suite runner expects the swarming task to run with
+  // normal priority but for some reason, on the updater bots with UAC on, the
+  // swarming task runs with a priority below normal.
   FixExecutionPriorities();
 
   auto scoped_com_initializer =
@@ -198,7 +195,7 @@ int main(int argc, char** argv) {
 
   // Use the {ISOLATED_OUTDIR} as a log destination for the test suite.
   base::TestSuite test_suite(argc, argv);
-  updater::test::InitLoggingForUnitTest(base::FilePath([] {
+  updater::test::InitLoggingForUnitTest(base::FilePath([]() {
     switch (updater::GetTestScope()) {
       case updater::UpdaterScope::kSystem:
         return FILE_PATH_LITERAL("updater_test_system.log");
@@ -208,7 +205,7 @@ int main(int argc, char** argv) {
   }()));
   chrome::RegisterPathProvider();
   return base::LaunchUnitTestsWithOptions(
-      argc, argv, 1, 10, true, base::BindRepeating([] {
+      argc, argv, 1, 10, true, base::BindRepeating([]() {
         LOG(ERROR) << "A test timeout has occured in "
                    << updater::test::GetTestName();
         updater::test::CreateIntegrationTestCommands()->PrintLog();

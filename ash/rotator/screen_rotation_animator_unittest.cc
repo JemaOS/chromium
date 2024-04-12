@@ -19,7 +19,7 @@
 #include "ash/test/ash_test_base.h"
 #include "ash/test/ash_test_helper.h"
 #include "ash/wallpaper/wallpaper_controller_impl.h"
-#include "ash/wm/tablet_mode/tablet_mode_controller_test_api.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/run_loop.h"
@@ -162,7 +162,6 @@ class ScreenRotationAnimatorSlowAnimationTest : public AshTestBase {
 
   // AshTestBase:
   void SetUp() override;
-  void TearDown() override;
 
  protected:
   int64_t display_id() const { return display_.id(); }
@@ -197,11 +196,6 @@ void ScreenRotationAnimatorSlowAnimationTest::SetUp() {
           ui::ScopedAnimationDurationScaleMode::SLOW_DURATION);
 }
 
-void ScreenRotationAnimatorSlowAnimationTest::TearDown() {
-  animator_.reset();
-  AshTestBase::TearDown();
-}
-
 class ScreenRotationAnimatorSmoothAnimationTest
     : public AshTestBase,
       public testing::WithParamInterface<bool> {
@@ -217,7 +211,6 @@ class ScreenRotationAnimatorSmoothAnimationTest
 
   // AshTestBase:
   void SetUp() override;
-  void TearDown() override;
 
   void RemoveSecondaryDisplay(const std::string& specs);
   void QuitWaitForCopyCallback();
@@ -282,11 +275,6 @@ void ScreenRotationAnimatorSmoothAnimationTest::SetUp() {
   non_zero_duration_mode_ =
       std::make_unique<ui::ScopedAnimationDurationScaleMode>(
           ui::ScopedAnimationDurationScaleMode::SLOW_DURATION);
-}
-
-void ScreenRotationAnimatorSmoothAnimationTest::TearDown() {
-  animator_.reset();
-  AshTestBase::TearDown();
 }
 
 void ScreenRotationAnimatorSmoothAnimationTest::SetScreenRotationAnimator(
@@ -422,7 +410,7 @@ TEST_F(ScreenRotationAnimatorSlowAnimationTest, ShouldCompleteAnimations) {
 // The OverviewButton should be hidden.
 TEST_F(ScreenRotationAnimatorSlowAnimationTest,
        OverviewButtonTrayHideAnimationAlwaysCompletes) {
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
 
   // Long duration for hide animation, to allow it to be interrupted.
   ui::ScopedAnimationDurationScaleMode hide_duration(
@@ -661,7 +649,7 @@ TEST_P(ScreenRotationAnimatorSmoothAnimationTest,
 TEST_P(ScreenRotationAnimatorSmoothAnimationTest,
        OverviewButtonTrayHideAnimationAlwaysCompletes) {
   UpdateDisplayWithParam();
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
 
   // Long duration for hide animation, to allow it to be interrupted.
   ui::ScopedAnimationDurationScaleMode hide_duration(
@@ -733,7 +721,7 @@ TEST_P(ScreenRotationAnimatorSmoothAnimationTest, DisplayChangeDuringCopy) {
   const int64_t internal_display_id =
       display::test::DisplayManagerTestApi(display_manager())
           .SetFirstDisplayAsInternalDisplay();
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
 
   aura::Window* root_window =
       Shell::GetRootWindowForDisplayId(internal_display_id);
@@ -757,7 +745,7 @@ TEST_P(ScreenRotationAnimatorSmoothAnimationTest, DisplayChangeDuringCopy) {
 
   EXPECT_TRUE(animator->IsRotating());
   display_manager()->UpdateDisplays();
-  ash::TabletModeControllerTestApi().LeaveTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(false);
   EXPECT_FALSE(animator->IsRotating());
 
   WaitForCopyCallback();

@@ -16,8 +16,7 @@
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
 namespace blink {
-class ItemDetails;
-class PurchaseDetails;
+
 class ScriptState;
 
 class DigitalGoodsService final : public ScriptWrappable {
@@ -30,14 +29,10 @@ class DigitalGoodsService final : public ScriptWrappable {
   ~DigitalGoodsService() override;
 
   // IDL Interface:
-  ScriptPromiseTyped<IDLSequence<ItemDetails>> getDetails(
-      ScriptState*,
-      const Vector<String>& item_ids);
-  ScriptPromiseTyped<IDLSequence<PurchaseDetails>> listPurchases(ScriptState*);
-  ScriptPromiseTyped<IDLSequence<PurchaseDetails>> listPurchaseHistory(
-      ScriptState*);
-  ScriptPromiseTyped<IDLUndefined> consume(ScriptState*,
-                                           const String& purchase_token);
+  ScriptPromise getDetails(ScriptState*, const Vector<String>& item_ids);
+  ScriptPromise listPurchases(ScriptState*);
+  ScriptPromise listPurchaseHistory(ScriptState*);
+  ScriptPromise consume(ScriptState*, const String& purchase_token);
 
   void Trace(Visitor* visitor) const override;
 

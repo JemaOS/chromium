@@ -12,7 +12,8 @@
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ash/kerberos/kerberos_credentials_manager.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 // Updates Kerberos credentials in SmbService after receiving a
 // `OnKerberosEnabledStateChanged` or `OnAccountsChanged` notification from
@@ -56,6 +57,7 @@ class SmbKerberosCredentialsUpdater
   const ActiveAccountChangedCallback active_account_changed_callback_;
 };
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_SMB_CLIENT_SMB_KERBEROS_CREDENTIALS_UPDATER_H_

@@ -14,6 +14,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar.OnMenuItemClickListener;
 import androidx.core.view.MenuCompat;
 
+import org.chromium.base.Callback;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.bookmarks.BookmarkUiState.BookmarkUiMode;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
@@ -24,20 +25,18 @@ import org.chromium.components.browser_ui.util.ToolbarUtils;
 import org.chromium.components.browser_ui.widget.selectable_list.SelectableListToolbar;
 import org.chromium.components.browser_ui.widget.selectable_list.SelectionDelegate;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-
 /**
- * Main toolbar of bookmark UI. It is responsible for displaying title and buttons associated with
- * the current context.
+ * Main toolbar of bookmark UI. It is responsible for displaying title and buttons
+ * associated with the current context.
  */
 public class BookmarkToolbar extends SelectableListToolbar<BookmarkId>
         implements OnMenuItemClickListener, OnClickListener {
     // TODO(crbug.com/1425201): Remove BookmarkModel reference.
     private BookmarkModel mBookmarkModel;
     private BookmarkOpener mBookmarkOpener;
-    private SelectionDelegate<BookmarkId> mSelectionDelegate;
+    private SelectionDelegate mSelectionDelegate;
 
     // The current folder can be null before being set by the mediator.
     private @Nullable BookmarkItem mCurrentFolder;
@@ -48,13 +47,9 @@ public class BookmarkToolbar extends SelectableListToolbar<BookmarkId>
     private boolean mIsSelectionUiShowing;
     private boolean mSearchButtonVisible;
     private boolean mEditButtonVisible;
-    private boolean mNewFolderButtonVisible;
-    private boolean mNewFolderButtonEnabled;
 
-    private List<Integer> mSortMenuIds;
-    private boolean mSortMenuIdsEnabled;
-
-    private Runnable mNavigateBackRunnable;
+    private Runnable mOpenSearchUiRunnable;
+    private Callback<BookmarkId> mOpenFolderCallback;
     private Function<Integer, Boolean> mMenuIdClickedFunction;
 
     public BookmarkToolbar(Context context, AttributeSet attrs) {
@@ -92,12 +87,10 @@ public class BookmarkToolbar extends SelectableListToolbar<BookmarkId>
             showNormalView();
         }
 
-        if (!BookmarkFeatures.isAndroidImprovedBookmarksEnabled()) {
-            if (mBookmarkUiMode == BookmarkUiMode.SEARCHING) {
-                showSearchView(mSoftKeyboardVisible);
-            } else {
-                hideSearchView(/* notify= */ false);
-            }
+        if (mBookmarkUiMode == BookmarkUiMode.SEARCHING) {
+            showSearchView(mSoftKeyboardVisible);
+        } else {
+            hideSearchView(/*notify=*/false);
         }
     }
 
@@ -132,39 +125,12 @@ public class BookmarkToolbar extends SelectableListToolbar<BookmarkId>
         getMenu().findItem(R.id.edit_menu_id).setVisible(visible);
     }
 
-    void setNewFolderButtonVisible(boolean visible) {
-        // The new folder button is only visible when improved bookmarks is enabled.
-        if (!BookmarkFeatures.isAndroidImprovedBookmarksEnabled()) return;
-        mNewFolderButtonVisible = visible;
-        getMenu().findItem(R.id.create_new_folder_menu_id).setVisible(visible);
-    }
-
-    void setNewFolderButtonEnabled(boolean enabled) {
-        // The new folder button is only visible when improved bookmarks is enabled.
-        if (!BookmarkFeatures.isAndroidImprovedBookmarksEnabled()) return;
-        mNewFolderButtonEnabled = enabled;
-        getMenu().findItem(R.id.create_new_folder_menu_id).setEnabled(enabled);
-    }
-
     void setNavigationButtonState(@NavigationButton int navigationButtonState) {
         setNavigationButton(navigationButtonState);
     }
 
     void setCheckedSortMenuId(@IdRes int id) {
         getMenu().findItem(id).setChecked(true);
-    }
-
-    void setSortMenuIds(List<Integer> sortMenuIds) {
-        if (!BookmarkFeatures.isAndroidImprovedBookmarksEnabled()) return;
-        mSortMenuIds = sortMenuIds;
-    }
-
-    void setSortMenuIdsEnabled(boolean enabled) {
-        if (!BookmarkFeatures.isAndroidImprovedBookmarksEnabled()) return;
-        mSortMenuIdsEnabled = enabled;
-        for (Integer id : mSortMenuIds) {
-            getMenu().findItem(id).setEnabled(enabled);
-        }
     }
 
     void setCheckedViewMenuId(@IdRes int id) {
@@ -175,16 +141,16 @@ public class BookmarkToolbar extends SelectableListToolbar<BookmarkId>
         mCurrentFolder = mBookmarkModel.getBookmarkById(folder);
     }
 
-    void setNavigateBackRunnable(Runnable navigateBackRunnable) {
-        mNavigateBackRunnable = navigateBackRunnable;
+    void setOpenSearchUiRunnable(Runnable runnable) {
+        mOpenSearchUiRunnable = runnable;
+    }
+
+    void setOpenFolderCallback(Callback<BookmarkId> openFolderCallback) {
+        mOpenFolderCallback = openFolderCallback;
     }
 
     void setMenuIdClickedFunction(Function<Integer, Boolean> menuIdClickedFunction) {
         mMenuIdClickedFunction = menuIdClickedFunction;
-    }
-
-    void fakeSelectionStateChange() {
-        onSelectionStateChange(new ArrayList<>(mSelectionDelegate.getSelectedItems()));
     }
 
     // OnMenuItemClickListener implementation.
@@ -198,14 +164,14 @@ public class BookmarkToolbar extends SelectableListToolbar<BookmarkId>
     // SelectableListToolbar implementation.
 
     @Override
-    public void onSearchNavigationBack() {
+    public void onNavigationBack() {
         if (isSearching()) {
-            super.onSearchNavigationBack();
+            super.onNavigationBack();
             return;
         }
 
         // The navigation button shouldn't be visible unless the current folder is non-null.
-        mNavigateBackRunnable.run();
+        mOpenFolderCallback.onResult(mCurrentFolder.getParentId());
     }
 
     @Override
@@ -215,9 +181,6 @@ public class BookmarkToolbar extends SelectableListToolbar<BookmarkId>
         // SelectableListToolbar will show/hide the entire group.
         setSearchButtonVisible(mSearchButtonVisible);
         setEditButtonVisible(mEditButtonVisible);
-        setNewFolderButtonVisible(mNewFolderButtonVisible);
-        setNewFolderButtonEnabled(mNewFolderButtonEnabled);
-        setSortMenuIdsEnabled(mSortMenuIdsEnabled);
     }
 
     @Override

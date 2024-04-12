@@ -4,15 +4,14 @@
 
 #include "chrome/browser/ash/app_restore/arc_app_queue_restore_handler.h"
 
-#include <list>
 #include <utility>
 #include <vector>
 
 #include "ash/components/arc/arc_util.h"
 #include "ash/components/arc/metrics/arc_metrics_constants.h"
-#include "ash/root_window_controller.h"
 #include "ash/shell.h"
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/metrics/histogram_functions.h"
@@ -106,7 +105,7 @@ ArcAppQueueRestoreHandler::ArcAppQueueRestoreHandler() {
 
   auto* manager = GetSchedulerConfigurationManager();
   if (manager) {
-    std::optional<std::pair<bool, size_t>> scheduler_configuration =
+    absl::optional<std::pair<bool, size_t>> scheduler_configuration =
         manager->GetLastReply();
     if (scheduler_configuration) {
       // Logical CPU core number should consider system HyperThread status.
@@ -179,8 +178,9 @@ void ArcAppQueueRestoreHandler::OnAppConnectionReady() {
                               windows_.size() + no_stack_windows_.size());
 
   // Receive the memory pressure level.
-  if (ResourcedClient::Get() && !resourced_client_observer_.IsObserving())
+  if (ResourcedClient::Get() && !resourced_client_observer_.IsObserving()) {
     resourced_client_observer_.Observe(ResourcedClient::Get());
+  }
 
   // Receive the system CPU usage rate.
   if (!probe_service_ || !probe_service_.is_connected()) {
@@ -260,8 +260,9 @@ bool ArcAppQueueRestoreHandler::IsAppPendingRestore(
 }
 
 void ArcAppQueueRestoreHandler::OnAppUpdate(const apps::AppUpdate& update) {
-  if (!update.ReadinessChanged() || update.AppType() != apps::AppType::kArc)
+  if (!update.ReadinessChanged() || update.AppType() != apps::AppType::kArc) {
     return;
+  }
 
   if (!apps_util::IsInstalled(update.Readiness())) {
     RemoveWindowsForApp(update.AppId());
@@ -280,7 +281,7 @@ void ArcAppQueueRestoreHandler::OnAppUpdate(const apps::AppUpdate& update) {
 
 void ArcAppQueueRestoreHandler::OnAppRegistryCacheWillBeDestroyed(
     apps::AppRegistryCache* cache) {
-  app_registry_cache_observer_.Reset();
+  apps::AppRegistryCache::Observer::Observe(nullptr);
 }
 
 void ArcAppQueueRestoreHandler::OnWindowActivated(
@@ -310,9 +311,8 @@ void ArcAppQueueRestoreHandler::OnWindowInitialized(aura::Window* window) {
   // is a top level views widget. Tooltips, menus, and other kinds of transient
   // windows that can't activate are filtered out.
   if (window->GetType() != aura::client::WINDOW_TYPE_NORMAL ||
-      !window->delegate()) {
+      !window->delegate())
     return;
-  }
   views::Widget* widget = views::Widget::GetWidgetForNativeWindow(window);
   if (!widget || !widget->is_top_level() ||
       !arc::GetWindowSessionId(window).has_value()) {
@@ -367,9 +367,9 @@ void ArcAppQueueRestoreHandler::AddWindows(const std::string& app_id) {
   DCHECK(it != handler_->restore_data()->app_id_to_launch_list().end());
   const auto& launch_list = it->second;
   for (const auto& [window_id, app_restore_data] : launch_list) {
-    if (app_restore_data->window_info.activation_index.has_value()) {
-      windows_[app_restore_data->window_info.activation_index.value()] = {
-          app_id, window_id};
+    if (app_restore_data->activation_index.has_value()) {
+      windows_[app_restore_data->activation_index.value()] = {app_id,
+                                                              window_id};
     } else {
       no_stack_windows_.push_back({app_id, window_id});
     }
@@ -419,8 +419,7 @@ void ArcAppQueueRestoreHandler::PrepareAppLaunching(const std::string& app_id) {
   }
 
   // Activate ARC in case still not active.
-  arc::ArcSessionManager::Get()->AllowActivation(
-      arc::ArcSessionManager::AllowActivationReason::kRestoreApps);
+  arc::ArcSessionManager::Get()->AllowActivation();
 
   for (const auto& [window_id, app_restore_data] : launch_list) {
     handler_->RecordRestoredAppLaunch(apps::AppTypeName::kArc);
@@ -496,7 +495,7 @@ void ArcAppQueueRestoreHandler::PrepareAppLaunching(const std::string& app_id) {
 
 void ArcAppQueueRestoreHandler::OnMemoryPressure(
     ResourcedClient::PressureLevel level,
-    memory_pressure::ReclaimTarget) {
+    uint64_t reclaim_target_kb) {
   pressure_level_ = level;
 }
 
@@ -514,10 +513,8 @@ bool ArcAppQueueRestoreHandler::CanLaunchApp() {
   bool is_under_memory_pressure = IsUnderMemoryPressure();
   if (is_under_memory_pressure)
     was_memory_pressured_ = true;
-  bool is_root_window_controller_initialized =
-      !RootWindowController::root_window_controllers().empty();
-  return !is_under_cpu_usage_limiting && !is_under_memory_pressure &&
-         is_root_window_controller_initialized;
+
+  return !is_under_cpu_usage_limiting && !is_under_memory_pressure;
 }
 
 bool ArcAppQueueRestoreHandler::IsUnderMemoryPressure() {
@@ -578,7 +575,7 @@ void ArcAppQueueRestoreHandler::MaybeLaunchApp() {
     const WindowInfo info = *it;
     LaunchAppWindow(info.app_id, info.window_id);
     MaybeReStartTimer(kAppLaunchDelay);
-    std::erase(pending_windows_, info);
+    base::Erase(pending_windows_, info);
     return;
   }
 
@@ -607,7 +604,7 @@ void ArcAppQueueRestoreHandler::MaybeLaunchApp() {
     const WindowInfo info = *it;
     LaunchAppWindow(info.app_id, info.window_id);
     MaybeReStartTimer(kAppLaunchDelay);
-    std::erase(no_stack_windows_, info);
+    base::Erase(no_stack_windows_, info);
   }
 }
 
@@ -841,25 +838,23 @@ void ArcAppQueueRestoreHandler::RecordRestoreResult() {
 
   ArcRestoreState restore_state = ArcRestoreState::kFailedWithUnknown;
   if (isFinished) {
-    if (was_cpu_usage_limited_ && was_memory_pressured_) {
+    if (was_cpu_usage_limited_ && was_memory_pressured_)
       restore_state =
           ArcRestoreState::kSuccessWithMemoryPressureAndCPUUsageRateLimiting;
-    } else if (was_cpu_usage_limited_) {
+    else if (was_cpu_usage_limited_)
       restore_state = ArcRestoreState::kSuccessWithCPUUsageRateLimiting;
-    } else if (was_memory_pressured_) {
+    else if (was_memory_pressured_)
       restore_state = ArcRestoreState::kSuccessWithMemoryPressure;
-    } else {
+    else
       restore_state = ArcRestoreState::kSuccess;
-    }
   } else {
-    if (was_cpu_usage_limited_ && was_memory_pressured_) {
+    if (was_cpu_usage_limited_ && was_memory_pressured_)
       restore_state =
           ArcRestoreState::kFailedWithMemoryPressureAndCPUUsageRateLimiting;
-    } else if (was_cpu_usage_limited_) {
+    else if (was_cpu_usage_limited_)
       restore_state = ArcRestoreState::kFailedWithCPUUsageRateLimiting;
-    } else if (was_memory_pressured_) {
+    else if (was_memory_pressured_)
       restore_state = ArcRestoreState::kFailedWithMemoryPressure;
-    }
     // For other cases, mark the failed state as "unknown".
   }
 

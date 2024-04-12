@@ -7,16 +7,16 @@
 
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/ui/webui/side_panel/user_notes/user_notes.mojom.h"
-#include "chrome/browser/ui/webui/top_chrome/top_chrome_web_ui_controller.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
+#include "ui/webui/mojo_bubble_web_ui_controller.h"
 
 class Browser;
 class UserNotesPageHandler;
 
 class UserNotesSidePanelUI
-    : public TopChromeWebUIController,
+    : public ui::MojoBubbleWebUIController,
       public side_panel::mojom::UserNotesPageHandlerFactory {
  public:
   explicit UserNotesSidePanelUI(content::WebUI* web_ui);
@@ -34,8 +34,6 @@ class UserNotesSidePanelUI
   void StartNoteCreation(bool wait_for_tab_change);
 
   void set_browser(Browser* browser) { browser_ = browser; }
-
-  static constexpr std::string GetWebUIName() { return "UserNotesSidePanel"; }
 
  private:
   // user_notes::mojom::UserNotesPageHandlerFactory

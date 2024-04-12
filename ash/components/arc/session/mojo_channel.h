@@ -58,7 +58,8 @@ class MojoChannel : public MojoChannelBase {
   }
 
   // Externally owned ConnectionHolder instance.
-  const raw_ptr<ConnectionHolder<InstanceType, HostType>> holder_;
+  const raw_ptr<ConnectionHolder<InstanceType, HostType>, ExperimentalAsh>
+      holder_;
 
   // Put as a last member to ensure that any callback tied to the |remote_|
   // is not invoked.

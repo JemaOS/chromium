@@ -5,11 +5,10 @@
 // clang-format off
 import 'chrome://settings/lazy_load.js';
 
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {SettingsDoNotTrackToggleElement} from 'chrome://settings/lazy_load.js';
-import type {SettingsToggleButtonElement} from 'chrome://settings/settings.js';
+import {SettingsDoNotTrackToggleElement} from 'chrome://settings/lazy_load.js';
 import {MetricsBrowserProxyImpl, PrivacyElementInteractions} from 'chrome://settings/settings.js';
+
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 
 import {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
@@ -19,10 +18,6 @@ import {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
 suite('CrSettingsDoNotTrackToggleTest', function() {
   let testMetricsBrowserProxy: TestMetricsBrowserProxy;
   let testElement: SettingsDoNotTrackToggleElement;
-
-  function toggle(): SettingsToggleButtonElement {
-    return testElement.shadowRoot!.querySelector('#toggle')!;
-  }
 
   setup(function() {
     testMetricsBrowserProxy = new TestMetricsBrowserProxy();
@@ -45,32 +40,28 @@ suite('CrSettingsDoNotTrackToggleTest', function() {
   });
 
   test('logDoNotTrackClick', async function() {
-    toggle().click();
+    testElement.$.toggle.click();
     const result =
         await testMetricsBrowserProxy.whenCalled('recordSettingsPageHistogram');
     assertEquals(PrivacyElementInteractions.DO_NOT_TRACK, result);
   });
 
   test('DialogAndToggleBehavior', function() {
-    toggle().click();
+    testElement.$.toggle.click();
     flush();
-    assertTrue(toggle().checked);
+    assertTrue(testElement.$.toggle.checked);
 
-    assertEquals(
-        testElement.shadowRoot!.querySelector<HTMLAnchorElement>(
-                                   'a[href]')!.getAttribute('aria-description'),
-        loadTimeData.getString('opensInNewTab'));
     testElement.shadowRoot!.querySelector<HTMLElement>(
                                '.cancel-button')!.click();
-    assertFalse(toggle().checked);
+    assertFalse(testElement.$.toggle.checked);
     assertFalse(testElement.prefs.enable_do_not_track.value);
 
-    toggle().click();
+    testElement.$.toggle.click();
     flush();
-    assertTrue(toggle().checked);
+    assertTrue(testElement.$.toggle.checked);
     testElement.shadowRoot!.querySelector<HTMLElement>(
                                '.action-button')!.click();
-    assertTrue(toggle().checked);
+    assertTrue(testElement.$.toggle.checked);
     assertTrue(testElement.prefs.enable_do_not_track.value);
   });
 });

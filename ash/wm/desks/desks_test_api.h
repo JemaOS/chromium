@@ -5,7 +5,8 @@
 #ifndef ASH_WM_DESKS_DESKS_TEST_API_H_
 #define ASH_WM_DESKS_DESKS_TEST_API_H_
 
-#include "ash/wm/desks/desk_bar_view_base.h"
+#include "base/time/clock.h"
+#include "third_party/skia/include/core/SkColor.h"
 
 namespace aura {
 class Window;
@@ -13,7 +14,6 @@ class Window;
 
 namespace views {
 class LabelButton;
-class MenuItemView;
 class ScrollView;
 class View;
 }  // namespace views
@@ -39,50 +39,28 @@ class DesksTestApi {
   DesksTestApi() = delete;
 
   // Getters for elements inside the desks.
-  static ScrollArrowButton* GetDeskBarLeftScrollButton(
-      DeskBarViewBase::Type type);
-  static ScrollArrowButton* GetDeskBarRightScrollButton(
-      DeskBarViewBase::Type type);
-  static views::ScrollView* GetDeskBarScrollView(DeskBarViewBase::Type type);
-  static const DeskMiniView* GetDeskBarDragView(DeskBarViewBase::Type type);
-  static DeskActionContextMenu* GetContextMenuForDesk(
-      DeskBarViewBase::Type type,
-      int index);
+  static ScrollArrowButton* GetDesksBarLeftScrollButton();
+  static ScrollArrowButton* GetDesksBarRightScrollButton();
+  static views::ScrollView* GetDesksBarScrollView();
+  static const DeskMiniView* GetDesksBarDragView();
+  static DeskActionContextMenu* GetContextMenuForDesk(int index);
   static views::LabelButton* GetCloseAllUndoToastDismissButton();
-  static const ui::SimpleMenuModel& GetContextMenuModelForDesk(
-      DeskBarViewBase::Type type,
-      int index);
-  static views::View* GetHighlightOverlayForDeskPreview(
-      DeskBarViewBase::Type type,
-      int index);
+  static const ui::SimpleMenuModel& GetContextMenuModelForDesk(int index);
+  static views::View* GetHighlightOverlayForDeskPreview(int index);
   static ui::LayerTreeOwner* GetMirroredContentsLayerTreeForRootAndDesk(
       aura::Window* root,
       Desk* desk);
-  static views::Label* GetDeskShortcutLabel(DeskMiniView* mini_view);
-  static bool IsDeskShortcutViewVisible(DeskMiniView* mini_view);
-  static DeskProfilesButton* GetDeskProfileButton(DeskMiniView* mini_view);
-  static views::MenuItemView* GetDeskActionContextMenuItem(
-      DeskActionContextMenu* menu,
-      int command_id);
   static bool HasVerticalDotsButton();
   static bool DesksControllerHasDesk(Desk* desk);
   static bool DesksControllerCanUndoDeskRemoval();
-  static bool IsContextMenuRunningForDesk(DeskBarViewBase::Type type,
-                                          int index);
+  static bool IsContextMenuRunningForDesk(int index);
 
-  static bool IsDeskBarLeftGradientVisible(DeskBarViewBase::Type type);
-  static bool IsDeskBarRightGradientVisible(DeskBarViewBase::Type type);
+  static bool IsDesksBarLeftGradientVisible();
+  static bool IsDesksBarRightGradientVisible();
 
   // Resets `first_day_visited_` and `last_day_visited_` of `desk` for testing
   // to the current date.
   static void ResetDeskVisitedMetrics(Desk* desk);
-
-  // Waits for `desk_bar_view` to finish its UI update.
-  static void WaitForDeskBarUiUpdate(DeskBarViewBase* desk_bar_view);
-
-  // Invoke `done` when `desk_bar_view` finishes its UI updates.
-  static void SetDeskBarUiUpdateCallback(DeskBarViewBase* desk_bar_view,
-                                         base::OnceClosure done);
 };
 
 }  // namespace ash

@@ -20,6 +20,7 @@
 #include "chrome/browser/image_editor/image_editor_component_info.h"
 #include "chrome/browser/image_editor/screenshot_flow.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/share/share_features.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_navigator.h"
@@ -136,7 +137,7 @@ void ScreenshotCapturedBubble::Init() {
                                 .SetPreferredSize(
                                     GetImageSize() +
                                     gfx::Size(border_radius, border_radius))
-                                .SetImage(ui::ImageModel::FromImage(image_))
+                                .SetImage(image_.ToImageSkia())
                                 .SetVisible(true)
                                 .CopyAddressTo(&image_view_)));
 
@@ -147,7 +148,7 @@ void ScreenshotCapturedBubble::Init() {
               weak_factory_.GetWeakPtr()))
           .SetText(l10n_util::GetStringUTF16(
               IDS_BROWSER_SHARING_SCREENSHOT_DIALOG_DOWNLOAD_BUTTON_LABEL))
-          .SetStyle(ui::ButtonStyle::kProminent)
+          .SetProminent(true)
           .Build();
 
   auto download_row = views::Builder<views::TableLayoutView>();
@@ -183,7 +184,7 @@ void ScreenshotCapturedBubble::DownloadButtonPressed() {
   if (!web_contents_)
     return;
 
-  Browser* browser = chrome::FindBrowserWithTab(web_contents_.get());
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents_.get());
   content::DownloadManager* download_manager =
       browser->profile()->GetDownloadManager();
   // TODO(crbug.com/1186839): Update the annotation's |setting| and
@@ -236,7 +237,7 @@ gfx::Size ScreenshotCapturedBubble::GetImageSize() {
                    scale_factor * image_.Height());
 }
 
-BEGIN_METADATA(ScreenshotCapturedBubble)
+BEGIN_METADATA(ScreenshotCapturedBubble, LocationBarBubbleDelegateView)
 END_METADATA
 
 }  // namespace sharing_hub

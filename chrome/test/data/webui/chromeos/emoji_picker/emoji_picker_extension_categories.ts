@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {EMOJI_TEXT_BUTTON_CLICK} from 'chrome://emoji-picker/emoji_picker.js';
-import {CrIconButtonElement} from 'chrome://resources/ash/common/cr_elements/cr_icon_button/cr_icon_button.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {EMOJI_TEXT_BUTTON_CLICK} from 'chrome://emoji-picker/events.js';
+import {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertFalse, assertGT, assertTrue} from 'chrome://webui-test/chai_assert.js';
 
@@ -58,7 +58,7 @@ export function categoryTestSuite(category: string) {
 
     test(
         category + ' category button should be active after clicking at it.',
-        async () => {
+        () => {
           const allCategoryButtons =
               Array
                   .from(findInEmojiPicker('emoji-search')!.shadowRoot!
@@ -69,9 +69,6 @@ export function categoryTestSuite(category: string) {
           const categoryButton = allCategoryButtons[categoryIndex];
           categoryButton!.click();
           flush();
-          await waitForCondition(
-              () => isCategoryButtonActive(categoryButton),
-              'wait for category button active');
           assertTrue(isCategoryButtonActive(categoryButton));
           allCategoryButtons.forEach((categoryButtonItem, index) => {
             if (index !== categoryIndex) {

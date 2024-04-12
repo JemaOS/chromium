@@ -16,7 +16,8 @@
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 namespace {
 
 class TestingProvidedFileSystem : public FakeProvidedFileSystem {
@@ -24,7 +25,7 @@ class TestingProvidedFileSystem : public FakeProvidedFileSystem {
   TestingProvidedFileSystem()
       : FakeProvidedFileSystem(ProvidedFileSystemInfo()) {}
 
-  ~TestingProvidedFileSystem() override = default;
+  ~TestingProvidedFileSystem() override {}
 
   AbortCallback OpenFile(const base::FilePath& file_path,
                          OpenFileMode mode,
@@ -65,7 +66,7 @@ class TestingProvidedFileSystem : public FakeProvidedFileSystem {
 typedef std::vector<std::pair<int, base::File::Error>> OpenLog;
 
 void LogOpen(OpenLog* log, int file_handle, base::File::Error result) {
-  log->emplace_back(file_handle, result);
+  log->push_back(std::make_pair(file_handle, result));
 }
 
 }  // namespace
@@ -129,4 +130,5 @@ TEST(ScopedFileOpenerTest, CloseAfterAborting) {
   EXPECT_EQ(0u, file_system.close_requests().size());
 }
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

@@ -24,7 +24,7 @@ DevicePosture* NavigatorDevicePosture::devicePosture(Navigator& navigator) {
     supplement = MakeGarbageCollected<NavigatorDevicePosture>(navigator);
     ProvideTo(navigator, supplement);
   }
-  return supplement->posture_.Get();
+  return supplement->posture_;
 }
 
 NavigatorDevicePosture::NavigatorDevicePosture(Navigator& navigator)

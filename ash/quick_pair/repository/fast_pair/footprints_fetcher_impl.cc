@@ -6,13 +6,13 @@
 
 #include "ash/quick_pair/common/fast_pair/fast_pair_http_result.h"
 #include "ash/quick_pair/common/fast_pair/fast_pair_metrics.h"
+#include "ash/quick_pair/common/logging.h"
 #include "ash/quick_pair/proto/fastpair.pb.h"
 #include "ash/quick_pair/proto/fastpair_data.pb.h"
 #include "ash/quick_pair/repository/oauth_http_fetcher.h"
 #include "base/base64.h"
 #include "base/json/json_reader.h"
 #include "base/strings/stringprintf.h"
-#include "components/cross_device/logging/logging.h"
 #include "google_apis/gaia/gaia_constants.h"
 #include "google_apis/google_api_keys.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
@@ -94,34 +94,33 @@ void FootprintsFetcherImpl::OnGetComplete(
     std::unique_ptr<HttpFetcher> http_fetcher,
     std::unique_ptr<std::string> response_body,
     std::unique_ptr<FastPairHttpResult> http_result) {
-  CD_LOG(VERBOSE, Feature::FP)
-      << __func__ << ": HTTP result: "
-      << (http_result ? http_result->ToString() : "[null]");
+  QP_LOG(VERBOSE) << __func__ << ": HTTP result: "
+                  << (http_result ? http_result->ToString() : "[null]");
 
   if (http_result)
     RecordFootprintsFetcherGetResult(*http_result);
 
   if (!response_body) {
-    CD_LOG(WARNING, Feature::FP) << __func__ << ": No response.";
-    std::move(callback).Run(std::nullopt);
+    QP_LOG(WARNING) << __func__ << ": No response.";
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
   nearby::fastpair::UserReadDevicesResponse devices;
   if (!devices.ParseFromString(*response_body)) {
-    CD_LOG(WARNING, Feature::FP) << __func__ << ": Failed to parse.";
-    std::move(callback).Run(std::nullopt);
+    QP_LOG(WARNING) << __func__ << ": Failed to parse.";
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
-  CD_LOG(VERBOSE, Feature::FP)
+  QP_LOG(VERBOSE)
       << __func__
       << ": Successfully retrived footprints data.  Paired devices:";
   for (const auto& info : devices.fast_pair_info()) {
     if (info.has_device()) {
       nearby::fastpair::StoredDiscoveryItem device;
       if (device.ParseFromString(info.device().discovery_item_bytes())) {
-        CD_LOG(VERBOSE, Feature::FP) << device.title();
+        QP_LOG(VERBOSE) << device.title();
       }
     }
   }
@@ -146,28 +145,26 @@ void FootprintsFetcherImpl::OnPostComplete(
     std::unique_ptr<HttpFetcher> http_fetcher,
     std::unique_ptr<std::string> response_body,
     std::unique_ptr<FastPairHttpResult> http_result) {
-  CD_LOG(VERBOSE, Feature::FP)
-      << __func__ << ": HTTP result: "
-      << (http_result ? http_result->ToString() : "[null]");
+  QP_LOG(VERBOSE) << __func__ << ": HTTP result: "
+                  << (http_result ? http_result->ToString() : "[null]");
 
   if (http_result)
     RecordFootprintsFetcherPostResult(*http_result);
 
   if (!response_body) {
-    CD_LOG(WARNING, Feature::FP) << __func__ << ": No response.";
+    QP_LOG(WARNING) << __func__ << ": No response.";
     std::move(callback).Run(/*success=*/false);
     return;
   }
 
-  CD_LOG(VERBOSE, Feature::FP)
-      << __func__ << ": Successfully saved new footprints data.";
+  QP_LOG(VERBOSE) << __func__ << ": Successfully saved new footprints data.";
   std::move(callback).Run(/*success=*/true);
 }
 
 void FootprintsFetcherImpl::DeleteUserDevice(const std::string& hex_account_key,
                                              DeleteDeviceCallback callback) {
-  CD_LOG(VERBOSE, Feature::FP)
-      << __func__ << " Deleting user device for acc key " << hex_account_key;
+  QP_LOG(VERBOSE) << __func__ << " Deleting user device for acc key "
+                  << hex_account_key;
   auto http_fetcher = CreateHttpFetcher();
   auto* raw_http_fetcher = http_fetcher.get();
   raw_http_fetcher->ExecuteDeleteRequest(
@@ -182,21 +179,19 @@ void FootprintsFetcherImpl::OnDeleteComplete(
     std::unique_ptr<HttpFetcher> http_fetcher,
     std::unique_ptr<std::string> response_body,
     std::unique_ptr<FastPairHttpResult> http_result) {
-  CD_LOG(VERBOSE, Feature::FP)
-      << __func__ << ": HTTP result: "
-      << (http_result ? http_result->ToString() : "[null]");
+  QP_LOG(VERBOSE) << __func__ << ": HTTP result: "
+                  << (http_result ? http_result->ToString() : "[null]");
 
   if (http_result)
     RecordFootprintsFetcherDeleteResult(*http_result);
 
   if (!response_body) {
-    CD_LOG(WARNING, Feature::FP) << __func__ << ": No response.";
+    QP_LOG(WARNING) << __func__ << ": No response.";
     std::move(callback).Run(/*success=*/false);
     return;
   }
 
-  CD_LOG(VERBOSE, Feature::FP)
-      << __func__ << ": Successfully deleted footprints data.";
+  QP_LOG(VERBOSE) << __func__ << ": Successfully deleted footprints data.";
   std::move(callback).Run(/*success=*/true);
 }
 

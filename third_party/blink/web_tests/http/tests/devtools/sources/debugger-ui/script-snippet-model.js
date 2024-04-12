@@ -2,23 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as Console from 'devtools/panels/console/console.js';
-import * as Snippets from 'devtools/panels/snippets/snippets.js';
-import * as UIModule from 'devtools/ui/legacy/legacy.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-import * as Workspace from 'devtools/models/workspace/workspace.js';
-
 (async function() {
   TestRunner.addResult(`Tests script snippet model.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
+  await TestRunner.loadLegacyModule('snippets');
 
   await TestRunner.showPanel('sources');
   await TestRunner.loadHTML('<p></p>');
 
-  const workspace = Workspace.Workspace.WorkspaceImpl.instance();
+  const workspace = Workspace.workspace;
   const snippetsProject = Snippets.ScriptSnippetFileSystem.findSnippetsProject();
   SourcesTestRunner.runDebuggerTestSuite([
     async function testCreateEditRenameRemove(next) {
@@ -119,26 +112,26 @@ doesNothing;
       uiSourceCode3.setWorkingCopy('// This snippet uses Command Line API.\n$$("p").length');
 
       TestRunner.addResult('Run Snippet1..');
-      Snippets.ScriptSnippetFileSystem.evaluateScriptSnippet(uiSourceCode1);
+      Snippets.evaluateScriptSnippet(uiSourceCode1);
       await ConsoleTestRunner.waitUntilMessageReceivedPromise();
       await ConsoleTestRunner.dumpConsoleMessages();
 
       const functionPromise = TestRunner.addSnifferPromise(
-          Console.ConsoleViewMessage.ConsoleViewMessage.prototype,
+          Console.ConsoleViewMessage.prototype,
           'formattedParameterAsFunctionForTest');
       TestRunner.addResult('Run Snippet2..');
-      Snippets.ScriptSnippetFileSystem.evaluateScriptSnippet(uiSourceCode2);
+      Snippets.evaluateScriptSnippet(uiSourceCode2);
       await ConsoleTestRunner.waitUntilMessageReceivedPromise();
       await functionPromise;
       await ConsoleTestRunner.dumpConsoleMessages();
 
       TestRunner.addResult('Run Snippet1..');
-      Snippets.ScriptSnippetFileSystem.evaluateScriptSnippet(uiSourceCode1);
+      Snippets.evaluateScriptSnippet(uiSourceCode1);
       await ConsoleTestRunner.waitUntilMessageReceivedPromise();
       await ConsoleTestRunner.dumpConsoleMessages();
 
       TestRunner.addResult('Run Snippet3..');
-      Snippets.ScriptSnippetFileSystem.evaluateScriptSnippet(uiSourceCode3);
+      Snippets.evaluateScriptSnippet(uiSourceCode3);
       await ConsoleTestRunner.waitUntilMessageReceivedPromise();
       await ConsoleTestRunner.dumpConsoleMessages();
 
@@ -157,7 +150,7 @@ doesNothing;
       uiSourceCode1.setWorkingCopy('// This snippet does nothing.\nvar i=2+2;\n');
 
       TestRunner.addResult('Run Snippet1..');
-      Snippets.ScriptSnippetFileSystem.evaluateScriptSnippet(uiSourceCode1);
+      Snippets.evaluateScriptSnippet(uiSourceCode1);
       await ConsoleTestRunner.waitUntilMessageReceivedPromise();
       await ConsoleTestRunner.dumpConsoleMessages();
 
@@ -169,7 +162,7 @@ doesNothing;
 
     async function testEvaluateWithWorker(next) {
       TestRunner.addSniffer(
-          SDK.RuntimeModel.RuntimeModel.prototype, 'executionContextCreated',
+          SDK.RuntimeModel.prototype, 'executionContextCreated',
           contextCreated);
       TestRunner.evaluateInPagePromise(`
           var workerScript = "postMessage('Done.');";
@@ -179,16 +172,16 @@ doesNothing;
 
       async function contextCreated() {
         // Take the only execution context from the worker's RuntimeModel.
-        UIModule.Context.Context.instance().setFlavor(SDK.RuntimeModel.ExecutionContext, this.executionContexts()[0]);
+        UI.context.setFlavor(SDK.ExecutionContext, this.executionContexts()[0]);
 
         const uiSourceCode1 = await snippetsProject.createFile('', null, '');
         await uiSourceCode1.rename('Snippet1');
         uiSourceCode1.setWorkingCopy('2 + 2');
 
         TestRunner.addResult('Run Snippet1..');
-        Snippets.ScriptSnippetFileSystem.evaluateScriptSnippet(uiSourceCode1);
+        Snippets.evaluateScriptSnippet(uiSourceCode1);
         await new Promise(fulfill => {
-          SDK.TargetManager.TargetManager.instance().addModelListener(SDK.ConsoleModel.ConsoleModel, SDK.ConsoleModel.Events.MessageAdded, fulfill);
+          SDK.targetManager.addModelListener(SDK.ConsoleModel, SDK.ConsoleModel.Events.MessageAdded, fulfill);
         });
         await ConsoleTestRunner.dumpConsoleMessages();
 

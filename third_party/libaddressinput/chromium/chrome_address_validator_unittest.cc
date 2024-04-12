@@ -102,7 +102,7 @@ class LargeAddressValidatorTest : public testing::Test {
   LargeAddressValidatorTest() {}
   virtual ~LargeAddressValidatorTest() {}
 
-  static void SetUpTestSuite() {
+  static void SetUpTestCase() {
     validator_ =
         new AddressValidator(std::unique_ptr<Source>(new TestdataSource(true)),
                              std::unique_ptr<Storage>(new NullStorage), NULL);

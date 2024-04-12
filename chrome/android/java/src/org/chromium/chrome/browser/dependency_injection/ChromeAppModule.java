@@ -11,11 +11,7 @@ import android.content.Context;
 
 import androidx.browser.trusted.TrustedWebActivityServiceConnectionPool;
 
-import dagger.Module;
-import dagger.Provides;
-
 import org.chromium.base.ContextUtils;
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.WarmupManager;
 import org.chromium.chrome.browser.app.tabmodel.AsyncTabParamsManagerSingleton;
 import org.chromium.chrome.browser.browserservices.metrics.TrustedWebActivityUmaRecorder;
@@ -23,32 +19,34 @@ import org.chromium.chrome.browser.browserservices.permissiondelegation.Installe
 import org.chromium.chrome.browser.init.ChromeBrowserInitializer;
 import org.chromium.chrome.browser.night_mode.SystemNightModeMonitor;
 import org.chromium.chrome.browser.notifications.channels.SiteChannelsManager;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.tabmodel.AsyncTabParamsManager;
 import org.chromium.chrome.browser.webapps.WebappRegistry;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-/** Module for {@link ChromeAppComponent}. */
+import dagger.Module;
+import dagger.Provides;
+
+/**
+ * Module for {@link ChromeAppComponent}.
+ */
 @Module
 public class ChromeAppModule {
     /** See {@link ModuleFactoryOverrides} */
-    public interface Factory {
-        ChromeAppModule create();
-    }
+    public interface Factory { ChromeAppModule create(); }
 
     @Provides
     @Named(LAST_USED_REGULAR_PROFILE)
     public Profile provideLastUsedRegularProfile() {
-        return ProfileManager.getLastUsedRegularProfile();
+        return Profile.getLastUsedRegularProfile();
     }
 
     @Provides
-    public SharedPreferencesManager providesChromeSharedPreferences() {
-        return ChromeSharedPreferences.getInstance();
+    public SharedPreferencesManager providesSharedPreferencesManager() {
+        return SharedPreferencesManager.getInstance();
     }
 
     @Provides

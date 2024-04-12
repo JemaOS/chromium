@@ -7,13 +7,13 @@
 #include "ui/views/view.h"
 
 ContentsLayoutManager::ContentsLayoutManager(views::View* devtools_view,
-                                             views::View* contents_view,
-                                             views::View* watermark_view)
+                                             views::View* contents_view)
     : devtools_view_(devtools_view),
       contents_view_(contents_view),
-      watermark_view_(watermark_view) {}
+      host_(nullptr) {}
 
-ContentsLayoutManager::~ContentsLayoutManager() = default;
+ContentsLayoutManager::~ContentsLayoutManager() {
+}
 
 void ContentsLayoutManager::SetContentsResizingStrategy(
     const DevToolsContentsResizingStrategy& strategy) {
@@ -21,19 +21,15 @@ void ContentsLayoutManager::SetContentsResizingStrategy(
     return;
 
   strategy_.CopyFrom(strategy);
-  InvalidateHost(true);
+  if (host_)
+    host_->InvalidateLayout();
 }
 
-views::ProposedLayout ContentsLayoutManager::CalculateProposedLayout(
-    const views::SizeBounds& size_bounds) const {
-  views::ProposedLayout layouts;
+void ContentsLayoutManager::Layout(views::View* contents_container) {
+  DCHECK(host_ == contents_container);
 
-  // If the |size_bounds| isn't bounded, the preferred size is being requested.
-  if (!size_bounds.is_fully_bounded()) {
-    return layouts;
-  }
-  int height = size_bounds.height().value();
-  int width = size_bounds.width().value();
+  int height = contents_container->height();
+  int width = contents_container->width();
 
   gfx::Size container_size(width, height);
   gfx::Rect new_devtools_bounds;
@@ -44,21 +40,16 @@ views::ProposedLayout ContentsLayoutManager::CalculateProposedLayout(
 
   // DevTools cares about the specific position, so we have to compensate RTL
   // layout here.
-  layouts.child_layouts.emplace_back(
-      devtools_view_.get(), devtools_view_->GetVisible(),
-      host_view()->GetMirroredRect(new_devtools_bounds),
-      views::SizeBounds(container_size));
-  layouts.child_layouts.emplace_back(
-      contents_view_.get(), contents_view_->GetVisible(),
-      host_view()->GetMirroredRect(new_contents_bounds),
-      views::SizeBounds(container_size));
+  devtools_view_->SetBoundsRect(host_->GetMirroredRect(new_devtools_bounds));
+  contents_view_->SetBoundsRect(host_->GetMirroredRect(new_contents_bounds));
+}
 
-  // Enterprise watermark view is always overlaid, even when empty.
-  if (watermark_view_) {
-    layouts.child_layouts.emplace_back(
-        watermark_view_.get(), watermark_view_->GetVisible(),
-        gfx::Rect(0, 0, width, height), views::SizeBounds(container_size));
-  }
-  layouts.host_size = gfx::Size(width, height);
-  return layouts;
+gfx::Size ContentsLayoutManager::GetPreferredSize(
+    const views::View* host) const {
+  return gfx::Size();
+}
+
+void ContentsLayoutManager::Installed(views::View* host) {
+  DCHECK(!host_);
+  host_ = host;
 }

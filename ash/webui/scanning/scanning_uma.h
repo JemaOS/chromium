@@ -5,11 +5,13 @@
 #ifndef ASH_WEBUI_SCANNING_SCANNING_UMA_H_
 #define ASH_WEBUI_SCANNING_SCANNING_UMA_H_
 
-namespace ash::scanning {
+namespace ash {
+namespace scanning {
 
 // The enums below are used in histograms, do not remove/renumber entries. If
 // you're adding to any of these enums, update the corresponding enum listing in
-// tools/metrics/histograms/metadata/scanning/enums.xml.
+// tools/metrics/histograms/enums.xml.
+
 enum class ScanCompleteAction {
   kDoneButtonClicked = 0,
   kFilesAppOpened = 1,
@@ -51,6 +53,7 @@ enum class ScanJobSettingsResolution {
 // Converts resolution integer value to a ScanJobSettingsResolution enum value.
 ScanJobSettingsResolution GetResolutionEnumValue(const int resolution);
 
-}  // namespace ash::scanning
+}  // namespace scanning
+}  // namespace ash
 
 #endif  // ASH_WEBUI_SCANNING_SCANNING_UMA_H_

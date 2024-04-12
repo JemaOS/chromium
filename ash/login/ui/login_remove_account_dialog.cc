@@ -14,13 +14,9 @@
 #include "base/memory/raw_ptr.h"
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "chromeos/strings/grit/chromeos_strings.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/views/accessibility/view_accessibility.h"
@@ -70,15 +66,13 @@ class TrappedFocusSearch : public views::FocusSearch {
   }
 
  private:
-  const raw_ptr<views::View> trapped_focus_;
+  const raw_ptr<views::View, ExperimentalAsh> trapped_focus_;
 };
 
 }  // namespace
 
 // A system label button that dismisses its bubble dialog parent on key event.
 class RemoveUserButton : public PillButton {
-  METADATA_HEADER(RemoveUserButton, PillButton)
-
  public:
   RemoveUserButton(PressedCallback callback, LoginRemoveAccountDialog* bubble)
       : PillButton(std::move(callback),
@@ -114,11 +108,8 @@ class RemoveUserButton : public PillButton {
     }
   }
 
-  raw_ptr<LoginRemoveAccountDialog> bubble_;
+  raw_ptr<LoginRemoveAccountDialog, ExperimentalAsh> bubble_;
 };
-
-BEGIN_METADATA(RemoveUserButton)
-END_METADATA
 
 LoginRemoveAccountDialog::TestApi::TestApi(LoginRemoveAccountDialog* bubble)
     : bubble_(bubble) {}
@@ -168,21 +159,16 @@ LoginRemoveAccountDialog::LoginRemoveAccountDialog(
         views::BoxLayout::Orientation::kVertical, gfx::Insets(),
         kVerticalMarginUsernameMailDp));
     AddChildView(container);
-    const bool is_jelly = chromeos::features::IsJellyrollEnabled();
     username_label_ =
         container->AddChildView(login_views_utils::CreateThemedBubbleLabel(
-            display_username, nullptr,
-            is_jelly ? static_cast<ui::ColorId>(cros_tokens::kCrosSysOnSurface)
-                     : kColorAshTextColorPrimary,
+            display_username, nullptr, kColorAshTextColorPrimary,
             gfx::FontList({login_views_utils::kGoogleSansFont},
                           gfx::Font::FontStyle::NORMAL, kFontSizeUsername,
                           gfx::Font::Weight::MEDIUM),
             kLineHeightUsername));
     email_label_ =
         container->AddChildView(login_views_utils::CreateThemedBubbleLabel(
-            email, nullptr,
-            is_jelly ? static_cast<ui::ColorId>(cros_tokens::kCrosSysSecondary)
-                     : kColorAshTextColorSecondary));
+            email, nullptr, kColorAshTextColorSecondary));
   }
 
   // Add a warning text if the user is managed.
@@ -207,7 +193,7 @@ LoginRemoveAccountDialog::LoginRemoveAccountDialog(
     std::u16string part1 = l10n_util::GetStringUTF16(
         IDS_ASH_LOGIN_POD_NON_OWNER_USER_REMOVE_WARNING_PART_1);
     std::u16string part2 = l10n_util::GetStringFUTF16(
-        type == user_manager::UserType::kChild
+        type == user_manager::UserType::USER_TYPE_CHILD
             ? IDS_ASH_LOGIN_POD_NON_OWNER_USER_REMOVE_WARNING_PART_2_SUPERVISED_USER
             : IDS_ASH_LOGIN_POD_NON_OWNER_USER_REMOVE_WARNING_PART_2,
         email);
@@ -246,6 +232,20 @@ LoginRemoveAccountDialog::LoginRemoveAccountDialog(
 
 LoginRemoveAccountDialog::~LoginRemoveAccountDialog() = default;
 
+void LoginRemoveAccountDialog::ResetState() {
+  if (management_disclosure_label_) {
+    management_disclosure_label_->SetVisible(true);
+  }
+  if (remove_user_confirm_data_) {
+    remove_user_confirm_data_->SetVisible(false);
+    remove_user_button_->SetAlert(false);
+    // Reset button's description to none.
+    remove_user_button_->GetViewAccessibility().OverrideDescription(
+        std::u16string(),
+        ax::mojom::DescriptionFrom::kAttributeExplicitlyEmpty);
+  }
+}
+
 LoginButton* LoginRemoveAccountDialog::GetBubbleOpener() const {
   return bubble_opener_;
 }
@@ -260,6 +260,10 @@ void LoginRemoveAccountDialog::RequestFocus() {
 
 bool LoginRemoveAccountDialog::HasFocus() const {
   return remove_user_button_ && remove_user_button_->HasFocus();
+}
+
+const char* LoginRemoveAccountDialog::GetClassName() const {
+  return "LoginRemoveAccountDialog";
 }
 
 void LoginRemoveAccountDialog::GetAccessibleNodeData(
@@ -309,11 +313,11 @@ void LoginRemoveAccountDialog::RemoveUserButtonPressed() {
     }
     remove_user_button_->SetAlert(true);
 
-    DeprecatedLayoutImmediately();
+    Layout();
 
     // Change the node's description to force assistive technologies, like
     // ChromeVox, to report the updated description.
-    remove_user_button_->GetViewAccessibility().SetDescription(
+    remove_user_button_->GetViewAccessibility().OverrideDescription(
         warning_message_);
     if (on_remove_user_warning_shown_) {
       std::move(on_remove_user_warning_shown_).Run();
@@ -330,8 +334,5 @@ void LoginRemoveAccountDialog::RemoveUserButtonPressed() {
     std::move(on_remove_user_requested_).Run();
   }
 }
-
-BEGIN_METADATA(LoginRemoveAccountDialog)
-END_METADATA
 
 }  // namespace ash

@@ -4,8 +4,6 @@
 
 #include "chrome/browser/apps/almanac_api_client/device_info_manager.h"
 
-#include <optional>
-
 #include "base/files/file_util.h"
 #include "base/functional/callback.h"
 #include "base/strings/string_piece.h"
@@ -22,6 +20,7 @@
 #include "components/language/core/browser/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/version_info/version_info.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -37,9 +36,10 @@ apps::proto::ClientDeviceContext::Channel ConvertChannelTypeToProto(
     case version_info::Channel::STABLE:
       return apps::proto::ClientDeviceContext::CHANNEL_STABLE;
     case version_info::Channel::UNKNOWN:
-      // The default channel is used for builds without a channel (e.g.
-      // local builds).
-      return apps::proto::ClientDeviceContext::CHANNEL_DEFAULT;
+      // The "unknown" channel is used for builds without a channel (e.g.
+      // local builds). The API refers to this as "internal" to avoid confusion
+      // with the "unknown" default enum value.
+      return apps::proto::ClientDeviceContext::CHANNEL_INTERNAL;
   }
 }
 
@@ -53,8 +53,6 @@ apps::proto::ClientUserContext::UserType ConvertStringUserTypeToProto(
     return apps::proto::ClientUserContext::USERTYPE_CHILD;
   } else if (user_type == apps::kUserTypeGuest) {
     return apps::proto::ClientUserContext::USERTYPE_GUEST;
-  } else if (user_type == apps::kUserTypeManagedGuest) {
-    return apps::proto::ClientUserContext::USERTYPE_MANAGED_GUEST;
   }
   return apps::proto::ClientUserContext::USERTYPE_UNKNOWN;
 }
@@ -63,10 +61,10 @@ apps::proto::ClientUserContext::UserType ConvertStringUserTypeToProto(
 // object. Called on a background thread, since loading these values may block.
 apps::DeviceInfo LoadVersionAndCustomLabel(apps::DeviceInfo info) {
   info.version_info.ash_chrome = version_info::GetVersionNumber();
-  std::optional<std::string> platform_version =
+  absl::optional<std::string> platform_version =
       chromeos::version_loader::GetVersion(
           chromeos::version_loader::VERSION_SHORT);
-  info.version_info.platform = platform_version.value_or("");
+  info.version_info.platform = platform_version.value_or("unknown");
   info.version_info.channel = chrome::GetChannel();
 
   // Load device identifiers from chromeos-config, as per
@@ -150,9 +148,9 @@ void DeviceInfoManager::GetDeviceInfo(
 
   ash::system::StatisticsProvider* provider =
       ash::system::StatisticsProvider::GetInstance();
-  std::optional<base::StringPiece> hwid =
+  absl::optional<base::StringPiece> hwid =
       provider->GetMachineStatistic(ash::system::kHardwareClassKey);
-  device_info.hardware_id = std::string(hwid.value_or(""));
+  device_info.hardware_id = std::string(hwid.value_or("unknown"));
 
   // Locale
   PrefService* prefs = profile_->GetPrefs();

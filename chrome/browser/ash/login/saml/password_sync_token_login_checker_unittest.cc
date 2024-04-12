@@ -6,6 +6,7 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/time/default_clock.h"
 #include "chrome/browser/ash/login/saml/password_sync_token_checkers_collection.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/test/base/scoped_testing_local_state.h"
@@ -13,6 +14,7 @@
 #include "components/user_manager/scoped_user_manager.h"
 #include "components/user_manager/user_names.h"
 #include "content/public/test/browser_task_environment.h"
+#include "testing/gmock/include/gmock/gmock.h"
 
 namespace ash {
 namespace {
@@ -43,19 +45,23 @@ class PasswordSyncTokenLoginCheckerTest : public testing::Test {
 
   ScopedTestingLocalState scoped_local_state_;
   std::unique_ptr<net::BackoffEntry> sync_token_retry_backoff_;
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_;
+  raw_ptr<FakeChromeUserManager, ExperimentalAsh> user_manager_ = nullptr;
+  std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
   std::unique_ptr<PasswordSyncTokenLoginChecker> checker_;
 };
 
 PasswordSyncTokenLoginCheckerTest::PasswordSyncTokenLoginCheckerTest()
     : scoped_local_state_(TestingBrowserProcess::GetGlobal()) {
-  fake_user_manager_.Reset(std::make_unique<ash::FakeChromeUserManager>());
+  auto fake_user_manager = std::make_unique<FakeChromeUserManager>();
+  scoped_user_manager_ = std::make_unique<user_manager::ScopedUserManager>(
+      std::move(fake_user_manager));
 
   sync_token_retry_backoff_ = std::make_unique<net::BackoffEntry>(
       &PasswordSyncTokenCheckersCollection::kFetchTokenRetryBackoffPolicy);
-  fake_user_manager_->AddUser(saml_login_account_id_);
-  fake_user_manager_->SwitchActiveUser(saml_login_account_id_);
+  user_manager_ =
+      static_cast<FakeChromeUserManager*>(user_manager::UserManager::Get());
+  user_manager_->AddUser(saml_login_account_id_);
+  user_manager_->SwitchActiveUser(saml_login_account_id_);
 }
 
 void PasswordSyncTokenLoginCheckerTest::CreatePasswordSyncTokenLoginChecker() {
@@ -76,8 +82,8 @@ TEST_F(PasswordSyncTokenLoginCheckerTest, SyncTokenValid) {
   CreatePasswordSyncTokenLoginChecker();
   checker_->CheckForPasswordNotInSync();
   OnTokenVerified(true);
-  EXPECT_FALSE(fake_user_manager_->FindUser(saml_login_account_id_)
-                   ->force_online_signin());
+  EXPECT_FALSE(
+      user_manager_->FindUser(saml_login_account_id_)->force_online_signin());
   test_environment_.FastForwardBy(kSamlTokenDelay);
   EXPECT_TRUE(checker_->IsCheckPending());
 }
@@ -86,8 +92,8 @@ TEST_F(PasswordSyncTokenLoginCheckerTest, SyncTokenInvalid) {
   CreatePasswordSyncTokenLoginChecker();
   checker_->CheckForPasswordNotInSync();
   OnTokenVerified(false);
-  EXPECT_TRUE(fake_user_manager_->FindUser(saml_login_account_id_)
-                  ->force_online_signin());
+  EXPECT_TRUE(
+      user_manager_->FindUser(saml_login_account_id_)->force_online_signin());
   test_environment_.FastForwardBy(kSamlTokenDelay);
   EXPECT_FALSE(checker_->IsCheckPending());
 }

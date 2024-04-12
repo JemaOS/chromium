@@ -8,9 +8,10 @@ import {FakeShimlessRmaService} from 'chrome://shimless-rma/fake_shimless_rma_se
 import {HardwareErrorPage} from 'chrome://shimless-rma/hardware_error_page.js';
 import {setShimlessRmaServiceForTesting} from 'chrome://shimless-rma/mojo_interface_provider.js';
 import {ShimlessRma} from 'chrome://shimless-rma/shimless_rma.js';
-import {ShutdownMethod} from 'chrome://shimless-rma/shimless_rma.mojom-webui.js';
-import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
+import {ShutdownMethod} from 'chrome://shimless-rma/shimless_rma_types.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
+
+import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 
 /** @type {number} */
 const ERROR_CODE = 1004;
@@ -30,7 +31,7 @@ suite('hardwareErrorPageTest', function() {
   let service = null;
 
   setup(() => {
-    document.body.innerHTML = trustedTypes.emptyHTML;
+    document.body.innerHTML = '';
     service = new FakeShimlessRmaService();
     setShimlessRmaServiceForTesting(service);
   });

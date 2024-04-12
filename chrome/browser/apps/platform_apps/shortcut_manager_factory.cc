@@ -4,7 +4,7 @@
 
 #include "chrome/browser/apps/platform_apps/shortcut_manager_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/apps/platform_apps/shortcut_manager.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/web_applications/extensions/web_app_extension_shortcut.h"
@@ -19,8 +19,7 @@ AppShortcutManager* AppShortcutManagerFactory::GetForProfile(Profile* profile) {
 }
 
 AppShortcutManagerFactory* AppShortcutManagerFactory::GetInstance() {
-  static base::NoDestructor<AppShortcutManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<AppShortcutManagerFactory>::get();
 }
 
 AppShortcutManagerFactory::AppShortcutManagerFactory()
@@ -36,10 +35,9 @@ AppShortcutManagerFactory::AppShortcutManagerFactory()
       base::BindRepeating(&web_app::UpdateShortcutsForAllApps));
 }
 
-AppShortcutManagerFactory::~AppShortcutManagerFactory() = default;
+AppShortcutManagerFactory::~AppShortcutManagerFactory() {}
 
-std::unique_ptr<KeyedService>
-AppShortcutManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AppShortcutManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   if (!profile)
@@ -49,7 +47,7 @@ AppShortcutManagerFactory::BuildServiceInstanceForBrowserContext(
   if (!web_app::AreWebAppsEnabled(profile))
     return nullptr;
 
-  return std::make_unique<AppShortcutManager>(profile);
+  return new AppShortcutManager(profile);
 }
 
 bool AppShortcutManagerFactory::ServiceIsCreatedWithBrowserContext() const {

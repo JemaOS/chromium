@@ -19,24 +19,20 @@
 #include "chrome/browser/apps/platform_apps/app_browsertest_util.h"
 #include "chrome/browser/ash/app_list/app_list_client_impl.h"
 #include "chrome/browser/ash/app_list/app_service/app_service_app_item.h"
-#include "chrome/browser/ash/app_list/apps_collections_util.h"
 #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_process.h"
 #include "chrome/browser/web_applications/test/with_crosapi_param.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/account_id/account_id.h"
 #include "components/services/app_service/public/cpp/app_types.h"
 #include "components/services/app_service/public/cpp/app_update.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_utils.h"
-#include "ui/display/screen.h"
 #include "ui/events/event_constants.h"
 
 using web_app::test::CrosapiParam;
@@ -56,23 +52,25 @@ void UpdateAppRegistryCache(Profile* profile,
 
   std::vector<apps::AppPtr> apps;
   apps.push_back(std::move(app));
-  apps::AppServiceProxyFactory::GetForProfile(profile)->OnApps(
-      std::move(apps), apps::AppType::kChromeApp,
-      false /* should_notify_initialized */);
+  apps::AppServiceProxyFactory::GetForProfile(profile)
+      ->AppRegistryCache()
+      .OnApps(std::move(apps), apps::AppType::kChromeApp,
+              false /* should_notify_initialized */);
 }
 
-void UpdateShortNameInRegistryCache(Profile* profile,
-                                    const std::string& app_id,
-                                    const std::string& short_name) {
+void UpdateAppNameInRegistryCache(Profile* profile,
+                                  const std::string& app_id,
+                                  const std::string& app_name) {
   apps::AppPtr app =
       std::make_unique<apps::App>(apps::AppType::kChromeApp, app_id);
-  app->short_name = short_name;
+  app->name = app_name;
 
   std::vector<apps::AppPtr> apps;
   apps.push_back(std::move(app));
-  apps::AppServiceProxyFactory::GetForProfile(profile)->OnApps(
-      std::move(apps), apps::AppType::kChromeApp,
-      false /* should_notify_initialized */);
+  apps::AppServiceProxyFactory::GetForProfile(profile)
+      ->AppRegistryCache()
+      .OnApps(std::move(apps), apps::AppType::kChromeApp,
+              false /* should_notify_initialized */);
 }
 
 ash::AppListItem* GetAppListItem(const std::string& id) {
@@ -199,12 +197,11 @@ IN_PROC_BROWSER_TEST_F(AppServiceAppItemBrowserTest, UpdateAppNameInLauncher) {
   ASSERT_TRUE(extension_app);
 
   ash::AcceleratorController::Get()->PerformActionIfEnabled(
-      ash::AcceleratorAction::kToggleAppList, {});
+      ash::TOGGLE_APP_LIST, {});
   ash::AppListTestApi app_list_test_api;
   app_list_test_api.WaitForBubbleWindow(/*wait_for_opening_animation=*/false);
 
-  UpdateShortNameInRegistryCache(profile(), extension_app->id(),
-                                 "Updated Name");
+  UpdateAppNameInRegistryCache(profile(), extension_app->id(), "Updated Name");
 
   EXPECT_EQ(u"Updated Name",
             app_list_test_api.GetAppListItemViewName(extension_app->id()));
@@ -214,7 +211,7 @@ IN_PROC_BROWSER_TEST_F(AppServiceAppItemBrowserTest,
                        ActivateAppRecordsNewInstallHistogram) {
   base::HistogramTester histograms;
   {
-    ASSERT_FALSE(display::Screen::GetScreen()->InTabletMode());
+    ASSERT_FALSE(ash::TabletMode::Get()->InTabletMode());
 
     // Simulate a user-installed chrome app item.
     std::unique_ptr<AppServiceAppItem> app_item =
@@ -245,46 +242,14 @@ IN_PROC_BROWSER_TEST_F(AppServiceAppItemBrowserTest,
   }
 }
 
-// Test app collection name is set for item in the launcher.
-IN_PROC_BROWSER_TEST_F(AppServiceAppItemBrowserTest,
-                       AppCollectionIsPassedToLauncher) {
-  apps::AppPtr app = std::make_unique<apps::App>(
-      apps::AppType::kUnknown, apps_util::kTestAppIdWithCollection);
-  app->readiness = apps::Readiness::kReady;
-  app->show_in_launcher = true;
-
-  std::vector<apps::AppPtr> apps;
-  apps.push_back(std::move(app));
-  apps::AppServiceProxyFactory::GetForProfile(profile())->OnApps(
-      std::move(apps), apps::AppType::kUnknown,
-      false /* should_notify_initialized */);
-
-  ash::AppListItem* item = GetAppListItem(apps_util::kTestAppIdWithCollection);
-  ASSERT_TRUE(item);
-
-  EXPECT_EQ(item->collection_id(), ash::AppCollection::kEssentials);
-}
-
 class AppServiceSystemWebAppItemBrowserTest
     : public AppServiceAppItemBrowserTest,
-      public WithCrosapiParam {
-  void SetUpOnMainThread() override {
-    AppServiceAppItemBrowserTest::SetUpOnMainThread();
-    if (browser() == nullptr) {
-      // Create a new Ash browser window so test code using browser() can work
-      // even when Lacros is the only browser.
-      // TODO(crbug.com/1450158): Remove uses of browser() from such tests.
-      chrome::NewEmptyWindow(ProfileManager::GetActiveUserProfile());
-      SelectFirstBrowser();
-    }
-    VerifyLacrosStatus();
-  }
-};
+      public WithCrosapiParam {};
 
 IN_PROC_BROWSER_TEST_P(AppServiceSystemWebAppItemBrowserTest, Activate) {
   Profile* const profile = browser()->profile();
   ash::SystemWebAppManager::GetForTest(profile)->InstallSystemAppsForTesting();
-  const webapps::AppId app_id = web_app::kHelpAppId;
+  const web_app::AppId app_id = web_app::kHelpAppId;
 
   auto help_app = std::make_unique<apps::App>(apps::AppType::kWeb, app_id);
   apps::AppUpdate app_update(/*state=*/nullptr, /*delta=*/help_app.get(),
@@ -301,7 +266,10 @@ IN_PROC_BROWSER_TEST_P(AppServiceSystemWebAppItemBrowserTest, Activate) {
   // Verify that a launch no longer occurs.
   web_app::WebAppLaunchProcess::SetOpenApplicationCallbackForTesting(
       base::BindLambdaForTesting(
-          [](apps::AppLaunchParams params) { NOTREACHED(); }));
+          [](apps::AppLaunchParams&& params) -> content::WebContents* {
+            NOTREACHED();
+            return nullptr;
+          }));
 
   app_item.PerformActivate(ui::EF_NONE);
 }

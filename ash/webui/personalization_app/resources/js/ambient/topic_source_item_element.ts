@@ -6,14 +6,14 @@
  * @fileoverview This component displays a topic (image) source.
  */
 
-import 'chrome://resources/ash/common/cr_elements/cr_radio_button/cr_radio_button_style.css.js';
-import 'chrome://resources/ash/common/cr_elements/cr_icon_button/cr_icon_button.js';
-import 'chrome://resources/ash/common/cr_elements/cr_shared_style.css.js';
-import 'chrome://resources/ash/common/cr_elements/cr_shared_vars.css.js';
+import 'chrome://resources/cr_elements/cr_radio_button/cr_radio_button_style.css.js';
+import 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import 'chrome://resources/cr_elements/cr_shared_style.css.js';
+import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 
 import {TopicSource} from '../../personalization_app.mojom-webui.js';
-import {PersonalizationRouterElement} from '../personalization_router_element.js';
+import {PersonalizationRouter} from '../personalization_router_element.js';
 import {WithPersonalizationStore} from '../personalization_store.js';
 import {isSelectionEvent} from '../utils.js';
 
@@ -22,7 +22,7 @@ import {getAmbientProvider} from './ambient_interface_provider.js';
 import {getTemplate} from './topic_source_item_element.html.js';
 import {getTopicSourceName} from './utils.js';
 
-export class TopicSourceItemElement extends WithPersonalizationStore {
+export class TopicSourceItem extends WithPersonalizationStore {
   static get is() {
     return 'topic-source-item';
   }
@@ -90,8 +90,7 @@ export class TopicSourceItemElement extends WithPersonalizationStore {
     event.preventDefault();
     event.stopPropagation();
     setTopicSource(this.topicSource, getAmbientProvider(), this.getStore());
-    PersonalizationRouterElement.instance().selectAmbientAlbums(
-        this.topicSource);
+    PersonalizationRouter.instance().selectAmbientAlbums(this.topicSource);
   }
 
   private getItemName_(): string {
@@ -136,8 +135,8 @@ export class TopicSourceItemElement extends WithPersonalizationStore {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'topic-source-item': TopicSourceItemElement;
+    'topic-source-item': TopicSourceItem;
   }
 }
 
-customElements.define(TopicSourceItemElement.is, TopicSourceItemElement);
+customElements.define(TopicSourceItem.is, TopicSourceItem);

@@ -55,8 +55,7 @@ class VIEWS_EXPORT WidgetDelegate
     std::u16string accessible_title;
 
     // Whether the window should display controls for the user to minimize,
-    // maximize, resize it, or go into fullscreen.
-    bool can_fullscreen = false;
+    // maximize, or resize it.
     bool can_maximize = false;
     bool can_minimize = false;
     bool can_resize = false;
@@ -85,7 +84,7 @@ class VIEWS_EXPORT WidgetDelegate
 
     // The widget's initially focused view, if any. This can only be set before
     // this WidgetDelegate is used to initialize a Widget.
-    std::optional<View*> initially_focused_view;
+    absl::optional<View*> initially_focused_view;
 
     // The widget's internal name, used to identify it in window-state
     // restoration (if this widget participates in that) and in debugging
@@ -95,6 +94,11 @@ class VIEWS_EXPORT WidgetDelegate
     // The widget's modality type. Note that MODAL_TYPE_SYSTEM does not work at
     // all on Mac.
     ui::ModalType modal_type = ui::MODAL_TYPE_NONE;
+
+    // Whether this WidgetDelegate should delete itself when the Widget for
+    // which it is the delegate is about to be destroyed.
+    // See https://crbug.com/1119898 for more details.
+    bool owned_by_widget = false;
 
     // Whether to show a close button in the widget frame.
     bool show_close_button = true;
@@ -150,10 +154,7 @@ class VIEWS_EXPORT WidgetDelegate
   virtual DialogDelegate* AsDialogDelegate();
 
   // Returns true if the window can be resized.
-  virtual bool CanResize() const;
-
-  // Returns true if the window can go into fullscreen.
-  virtual bool CanFullscreen() const;
+  bool CanResize() const;
 
   // Returns true if the window can be maximized.
   virtual bool CanMaximize() const;
@@ -190,7 +191,7 @@ class VIEWS_EXPORT WidgetDelegate
   virtual ui::ImageModel GetWindowIcon();
 
   // Returns true if a window icon should be shown.
-  virtual bool ShouldShowWindowIcon() const;
+  bool ShouldShowWindowIcon() const;
 
   // Execute a command in the window's controller. Returns true if the command
   // was handled, false if it was not.
@@ -326,7 +327,6 @@ class VIEWS_EXPORT WidgetDelegate
   // setters, there is no need to override the corresponding virtual getters.
   void SetAccessibleWindowRole(ax::mojom::Role role);
   void SetAccessibleTitle(std::u16string title);
-  void SetCanFullscreen(bool can_fullscreen);
   void SetCanMaximize(bool can_maximize);
   void SetCanMinimize(bool can_minimize);
   void SetCanResize(bool can_resize);
@@ -379,18 +379,7 @@ class VIEWS_EXPORT WidgetDelegate
   bool enable_arrow_key_traversal() const {
     return params_.enable_arrow_key_traversal;
   }
-  // Rotates focus for panes contained in the current widget from the provided
-  // view. If wrapping is enabled, rotation will continue after reaching the
-  // end. This method will return  true if a rotation was performed and false
-  // otherwise.
-  // If the provided |focused_view| is not included by the widget's panes,
-  // the method will not perform any rotation unless |enable_wrapping| is
-  // set to true.
-  virtual bool RotatePaneFocusFromView(views::View* focused_view,
-                                       bool forward,
-                                       bool enable_wrapping);
-
-  bool owned_by_widget() const { return owned_by_widget_; }
+  bool owned_by_widget() const { return params_.owned_by_widget; }
 
   void set_internal_name(std::string name) { params_.internal_name = name; }
   std::string internal_name() const { return params_.internal_name; }
@@ -407,23 +396,22 @@ class VIEWS_EXPORT WidgetDelegate
 
   // The Widget that was initialized with this instance as its WidgetDelegate,
   // if any.
-  raw_ptr<Widget, AcrossTasksDanglingUntriaged> widget_ = nullptr;
+  raw_ptr<Widget, DanglingUntriaged> widget_ = nullptr;
   Params params_;
 
-  raw_ptr<View, AcrossTasksDanglingUntriaged> default_contents_view_ = nullptr;
+  raw_ptr<View, DanglingUntriaged> default_contents_view_ = nullptr;
   bool contents_view_taken_ = false;
   bool can_activate_ = true;
 
-  raw_ptr<View, AcrossTasksDanglingUntriaged> unowned_contents_view_ = nullptr;
+  raw_ptr<View, DanglingUntriaged> unowned_contents_view_ = nullptr;
   std::unique_ptr<View> owned_contents_view_;
-
-  // Whether this WidgetDelegate should delete itself when the Widget for
-  // which it is the delegate is about to be destroyed.
-  // See https://crbug.com/1119898 for more details.
-  bool owned_by_widget_ = false;
 
   // Managed by Widget. Ensures |this| outlives its Widget.
   bool can_delete_this_ = true;
+
+  // Used to ensure that a client Delete callback doesn't actually destruct the
+  // WidgetDelegate if the client has given ownership to the Widget.
+  raw_ptr<bool> destructor_ran_ = nullptr;
 
   // This is stored as a unique_ptr to make it easier to check in the
   // registration methods whether a callback is being registered too late in the
@@ -442,9 +430,9 @@ class VIEWS_EXPORT WidgetDelegate
 // implementation is-a View. Note that WidgetDelegateView is not owned by
 // view's hierarchy and is expected to be deleted on DeleteDelegate call.
 class VIEWS_EXPORT WidgetDelegateView : public WidgetDelegate, public View {
-  METADATA_HEADER(WidgetDelegateView, View)
-
  public:
+  METADATA_HEADER(WidgetDelegateView);
+
   WidgetDelegateView();
   WidgetDelegateView(const WidgetDelegateView&) = delete;
   WidgetDelegateView& operator=(const WidgetDelegateView&) = delete;

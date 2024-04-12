@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/eche_app/eche_app_manager_factory.h"
 
-#include <memory>
-#include <optional>
 #include <string>
 
 #include "ash/constants/ash_features.h"
@@ -25,7 +23,6 @@
 #include "base/system/sys_info.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/device_sync/device_sync_client_factory.h"
-#include "chrome/browser/ash/eche_app/eche_app_accessibility_provider_proxy.h"
 #include "chrome/browser/ash/eche_app/eche_app_notification_controller.h"
 #include "chrome/browser/ash/multidevice_setup/multidevice_setup_client_factory.h"
 #include "chrome/browser/ash/phonehub/phone_hub_manager_factory.h"
@@ -37,7 +34,6 @@
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
-#include "chrome/common/channel_info.h"
 #include "chromeos/ash/components/multidevice/logging/logging.h"
 #include "chromeos/ash/components/phonehub/phone_hub_manager.h"
 #include "chromeos/ash/services/secure_channel/presence_monitor_impl.h"
@@ -47,7 +43,7 @@
 #include "components/account_id/account_id.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/user_manager/user_manager.h"
-#include "components/version_info/channel.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/chromeos/devicetype_utils.h"
 #include "ui/gfx/image/image.h"
@@ -70,19 +66,10 @@ void StreamGoBack(Profile* profile) {
   eche_app_manager->StreamGoBack();
 }
 
-void BubbleShown(Profile* profile, AshWebView* view) {
-  EcheAppManager* eche_app_manager =
-      EcheAppManagerFactory::GetForProfile(profile);
-  // `eche_app_manager` is null during tests.
-  if (eche_app_manager) {
-    eche_app_manager->BubbleShown(view);
-  }
-}
-
 void LaunchWebApp(const std::string& package_name,
-                  const std::optional<int64_t>& notification_id,
+                  const absl::optional<int64_t>& notification_id,
                   const std::u16string& visible_name,
-                  const std::optional<int64_t>& user_id,
+                  const absl::optional<int64_t>& user_id,
                   const gfx::Image& icon,
                   const std::u16string& phone_name,
                   AppsLaunchInfoProvider* apps_launch_info_provider,
@@ -112,7 +99,8 @@ void LaunchWebApp(const std::string& package_name,
   url.append(visible_name);
   url.append(u"&timestamp=");
 
-  int64_t now_ms = base::Time::Now().InMillisecondsSinceUnixEpoch();
+  double now_seconds = base::Time::Now().ToDoubleT();
+  int64_t now_ms = static_cast<int64_t>(now_seconds * 1000);
   url.append(base::NumberToString16(now_ms));
 
   if (user_id.has_value()) {
@@ -121,20 +109,18 @@ void LaunchWebApp(const std::string& package_name,
   }
   const auto gurl = GURL(url);
 
-  return LaunchBubble(
-      gurl, icon, visible_name, phone_name,
-      apps_launch_info_provider->GetConnectionStatusFromLastAttempt(),
-      apps_launch_info_provider->entry_point(),
-      base::BindOnce(&EnsureStreamClose, profile),
-      base::BindRepeating(&StreamGoBack, profile),
-      base::BindRepeating(&BubbleShown, profile));
+  return LaunchBubble(gurl, icon, visible_name, phone_name,
+                      apps_launch_info_provider->GetConnectionStatusForUi(),
+                      apps_launch_info_provider->entry_point(),
+                      base::BindOnce(&EnsureStreamClose, profile),
+                      base::BindRepeating(&StreamGoBack, profile));
 }
 
 void RelaunchLast(Profile* profile) {
   std::unique_ptr<LaunchedAppInfo> last_launched_app_info =
       EcheAppManagerFactory::GetInstance()->GetLastLaunchedAppInfo();
   EcheAppManagerFactory::LaunchEcheApp(
-      profile, std::nullopt, last_launched_app_info->package_name(),
+      profile, absl::nullopt, last_launched_app_info->package_name(),
       last_launched_app_info->visible_name(), last_launched_app_info->user_id(),
       last_launched_app_info->icon(), last_launched_app_info->phone_name(),
       last_launched_app_info->apps_launch_info_provider());
@@ -146,7 +132,7 @@ LaunchedAppInfo::~LaunchedAppInfo() = default;
 LaunchedAppInfo::LaunchedAppInfo(
     const std::string& package_name,
     const std::u16string& visible_name,
-    const std::optional<int64_t>& user_id,
+    const absl::optional<int64_t>& user_id,
     const gfx::Image& icon,
     const std::u16string& phone_name,
     AppsLaunchInfoProvider* apps_launch_info_provider) {
@@ -170,16 +156,15 @@ EcheAppManager* EcheAppManagerFactory::GetForProfile(Profile* profile) {
 
 // static
 EcheAppManagerFactory* EcheAppManagerFactory::GetInstance() {
-  static base::NoDestructor<EcheAppManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<EcheAppManagerFactory>::get();
 }
 
 // static
 void EcheAppManagerFactory::ShowNotification(
     base::WeakPtr<EcheAppManagerFactory> weak_ptr,
     Profile* profile,
-    const std::optional<std::u16string>& title,
-    const std::optional<std::u16string>& message,
+    const absl::optional<std::u16string>& title,
+    const absl::optional<std::u16string>& message,
     std::unique_ptr<LaunchAppHelper::NotificationInfo> info) {
   if (!weak_ptr->notification_controller_) {
     weak_ptr->notification_controller_ =
@@ -219,10 +204,10 @@ void EcheAppManagerFactory::CloseNotification(
 // static
 void EcheAppManagerFactory::LaunchEcheApp(
     Profile* profile,
-    const std::optional<int64_t>& notification_id,
+    const absl::optional<int64_t>& notification_id,
     const std::string& package_name,
     const std::u16string& visible_name,
-    const std::optional<int64_t>& user_id,
+    const absl::optional<int64_t>& user_id,
     const gfx::Image& icon,
     const std::u16string& phone_name,
     AppsLaunchInfoProvider* apps_launch_info_provider) {
@@ -255,8 +240,7 @@ void EcheAppManagerFactory::RegisterProfilePrefs(
   AppsAccessManagerImpl::RegisterPrefs(registry);
 }
 
-std::unique_ptr<KeyedService>
-EcheAppManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* EcheAppManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   if (!features::IsPhoneHubEnabled() || !features::IsEcheSWAEnabled())
     return nullptr;
@@ -289,11 +273,10 @@ EcheAppManagerFactory::BuildServiceInstanceForBrowserContext(
           secure_channel::PresenceMonitorClientImpl::Factory::Create(
               std::move(presence_monitor));
 
-  std::unique_ptr<EcheAppManager> eche_app_manager = std::make_unique<EcheAppManager>(
+  auto* eche_app_manager = new EcheAppManager(
       profile->GetPrefs(), GetSystemInfo(profile), phone_hub_manager,
       device_sync_client, multidevice_setup_client, secure_channel_client,
       std::move(presence_monitor_client),
-      std::make_unique<EcheAppAccessibilityProviderProxy>(),
       base::BindRepeating(&EcheAppManagerFactory::LaunchEcheApp, profile),
       base::BindRepeating(&EcheAppManagerFactory::ShowNotification,
                           weak_ptr_factory_.GetMutableWeakPtr(), profile),
@@ -331,19 +314,12 @@ std::unique_ptr<SystemInfo> EcheAppManagerFactory::GetSystemInfo(
       gaia_id = account_id.GetGaiaId();
     }
   }
-
-  SystemInfo::Builder system_info;
-  system_info.SetDeviceName(device_name)
+  return SystemInfo::Builder()
+      .SetDeviceName(device_name)
       .SetBoardName(board_name)
       .SetGaiaId(gaia_id)
-      .SetDeviceType(base::UTF16ToUTF8(device_type));
-
-  if (features::IsEcheMetricsRevampEnabled()) {
-    system_info.SetOsVersion(base::SysInfo::OperatingSystemVersion())
-        .SetChannel(chrome::GetChannelName(chrome::WithExtendedStable(true)));
-  }
-
-  return system_info.Build();
+      .SetDeviceType(base::UTF16ToUTF8(device_type))
+      .Build();
 }
 
 void EcheAppManagerFactory::SetLastLaunchedAppInfo(

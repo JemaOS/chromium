@@ -5,7 +5,6 @@
 #include "chrome/browser/new_tab_page/one_google_bar/one_google_bar_service.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -17,6 +16,7 @@
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using testing::Eq;
 using testing::InSequence;
@@ -37,7 +37,7 @@ class FakeOneGoogleBarLoader : public OneGoogleBarLoader {
   size_t GetCallbackCount() const { return callbacks_.size(); }
 
   void RespondToAllCallbacks(Status status,
-                             const std::optional<OneGoogleBarData>& data) {
+                             const absl::optional<OneGoogleBarData>& data) {
     for (OneGoogleCallback& callback : callbacks_) {
       std::move(callback).Run(status, data);
     }
@@ -80,13 +80,13 @@ class OneGoogleBarServiceTest : public testing::Test {
   signin::IdentityTestEnvironment identity_env_;
 
   // Owned by the service.
-  raw_ptr<FakeOneGoogleBarLoader, DanglingUntriaged> loader_;
+  raw_ptr<FakeOneGoogleBarLoader> loader_;
 
   std::unique_ptr<OneGoogleBarService> service_;
 };
 
 TEST_F(OneGoogleBarServiceTest, RefreshesOnRequest) {
-  ASSERT_THAT(service()->one_google_bar_data(), Eq(std::nullopt));
+  ASSERT_THAT(service()->one_google_bar_data(), Eq(absl::nullopt));
 
   // Request a refresh. That should arrive at the loader.
   service()->Refresh();
@@ -115,7 +115,7 @@ TEST_F(OneGoogleBarServiceTest, RefreshesOnRequest) {
 TEST_F(OneGoogleBarServiceTest, NotifiesObserverOnChanges) {
   InSequence s;
 
-  ASSERT_THAT(service()->one_google_bar_data(), Eq(std::nullopt));
+  ASSERT_THAT(service()->one_google_bar_data(), Eq(absl::nullopt));
 
   StrictMock<MockOneGoogleBarServiceObserver> observer;
   service()->AddObserver(&observer);
@@ -123,8 +123,9 @@ TEST_F(OneGoogleBarServiceTest, NotifiesObserverOnChanges) {
   // Empty result from a fetch should result in a notification.
   service()->Refresh();
   EXPECT_CALL(observer, OnOneGoogleBarDataUpdated());
-  loader()->RespondToAllCallbacks(OneGoogleBarLoader::Status::OK, std::nullopt);
-  EXPECT_THAT(service()->one_google_bar_data(), Eq(std::nullopt));
+  loader()->RespondToAllCallbacks(OneGoogleBarLoader::Status::OK,
+                                  absl::nullopt);
+  EXPECT_THAT(service()->one_google_bar_data(), Eq(absl::nullopt));
 
   // Non-empty response should result in a notification.
   service()->Refresh();
@@ -168,7 +169,7 @@ TEST_F(OneGoogleBarServiceTest, KeepsCacheOnTransientError) {
   service()->Refresh();
   EXPECT_CALL(observer, OnOneGoogleBarDataUpdated());
   loader()->RespondToAllCallbacks(OneGoogleBarLoader::Status::TRANSIENT_ERROR,
-                                  std::nullopt);
+                                  absl::nullopt);
   // Cached data should still be there.
   EXPECT_THAT(service()->one_google_bar_data(), Eq(data));
 
@@ -190,9 +191,9 @@ TEST_F(OneGoogleBarServiceTest, ClearsCacheOnFatalError) {
   service()->Refresh();
   EXPECT_CALL(observer, OnOneGoogleBarDataUpdated());
   loader()->RespondToAllCallbacks(OneGoogleBarLoader::Status::FATAL_ERROR,
-                                  std::nullopt);
+                                  absl::nullopt);
   // Cached data should be gone now.
-  EXPECT_THAT(service()->one_google_bar_data(), Eq(std::nullopt));
+  EXPECT_THAT(service()->one_google_bar_data(), Eq(absl::nullopt));
 
   service()->RemoveObserver(&observer);
 }
@@ -211,7 +212,7 @@ TEST_F(OneGoogleBarServiceTest, ResetsOnSignIn) {
   // Sign in. This should clear the cached data and notify the observer.
   EXPECT_CALL(observer, OnOneGoogleBarDataUpdated());
   SignIn();
-  EXPECT_THAT(service()->one_google_bar_data(), Eq(std::nullopt));
+  EXPECT_THAT(service()->one_google_bar_data(), Eq(absl::nullopt));
 
   service()->RemoveObserver(&observer);
 }
@@ -232,13 +233,13 @@ TEST_F(OneGoogleBarServiceTest, ResetsOnSignOut) {
   // Sign in. This should clear the cached data and notify the observer.
   EXPECT_CALL(observer, OnOneGoogleBarDataUpdated());
   SignOut();
-  EXPECT_THAT(service()->one_google_bar_data(), Eq(std::nullopt));
+  EXPECT_THAT(service()->one_google_bar_data(), Eq(absl::nullopt));
 
   service()->RemoveObserver(&observer);
 }
 
 TEST_F(OneGoogleBarServiceTest, DoesNotNotifyObserverOnSignInIfNoCachedData) {
-  ASSERT_THAT(service()->one_google_bar_data(), Eq(std::nullopt));
+  ASSERT_THAT(service()->one_google_bar_data(), Eq(absl::nullopt));
 
   StrictMock<MockOneGoogleBarServiceObserver> observer;
   service()->AddObserver(&observer);
@@ -246,13 +247,13 @@ TEST_F(OneGoogleBarServiceTest, DoesNotNotifyObserverOnSignInIfNoCachedData) {
   // Sign in. This should *not* notify the observer, since there was no cached
   // data before.
   SignIn();
-  EXPECT_THAT(service()->one_google_bar_data(), Eq(std::nullopt));
+  EXPECT_THAT(service()->one_google_bar_data(), Eq(absl::nullopt));
 
   service()->RemoveObserver(&observer);
 }
 
 TEST_F(OneGoogleBarServiceTest, UpdatesLanguageCode) {
-  ASSERT_THAT(service()->one_google_bar_data(), Eq(std::nullopt));
+  ASSERT_THAT(service()->one_google_bar_data(), Eq(absl::nullopt));
 
   // Request a refresh. That should arrive at the loader.
   service()->Refresh();

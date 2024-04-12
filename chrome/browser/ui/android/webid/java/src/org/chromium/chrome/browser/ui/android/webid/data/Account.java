@@ -4,8 +4,7 @@
 
 package org.chromium.chrome.browser.ui.android.webid.data;
 
-import org.jni_zero.CalledByNative;
-
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.url.GURL;
 
 /**
@@ -13,34 +12,35 @@ import org.chromium.url.GURL;
  * Account Selection sheet.
  */
 public class Account {
-    private final String mId;
+    private final String mSubject;
     private final String mEmail;
     private final String mName;
     private final String mGivenName;
     private final GURL mPictureUrl;
+    private final String[] mHints;
     private final boolean mIsSignIn;
 
     /**
-     * @param id The account ID.
+     * @param subject Subject shown to the user.
      * @param email Email shown to the user.
      * @param givenName Given name.
      * @param picture picture URL of the avatar shown to the user.
-     * @param isSignIn whether this account is a sign in or a sign up.
      */
     @CalledByNative
-    public Account(
-            String id,
-            String email,
-            String name,
-            String givenName,
-            GURL pictureUrl,
-            boolean isSignIn) {
-        mId = id;
+    public Account(String subject, String email, String name, String givenName, GURL pictureUrl,
+            String[] hints, boolean isSignIn) {
+        assert subject != null : "Account subject is null!";
+        mSubject = subject;
         mEmail = email;
         mName = name;
         mGivenName = givenName;
         mPictureUrl = pictureUrl;
+        mHints = hints;
         mIsSignIn = isSignIn;
+    }
+
+    public String getSubject() {
+        return mSubject;
     }
 
     public String getEmail() {
@@ -59,13 +59,17 @@ public class Account {
         return mPictureUrl;
     }
 
+    public String[] getHints() {
+        return mHints;
+    }
+
     public boolean isSignIn() {
         return mIsSignIn;
     }
 
     // Return all the String fields. Note that this excludes non-string fields, in particular
-    // mPictureUrl.
+    // mPictureUrl and mHints.
     public String[] getStringFields() {
-        return new String[] {mId, mEmail, mName, mGivenName};
+        return new String[] {mSubject, mEmail, mName, mGivenName};
     }
 }

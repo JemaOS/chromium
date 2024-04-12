@@ -9,7 +9,6 @@ import android.graphics.drawable.Drawable;
 import androidx.annotation.Nullable;
 
 import org.chromium.url.GURL;
-
 /**
  * Base implementation of DropdownItem which is used to get default settings to
  * show the item.

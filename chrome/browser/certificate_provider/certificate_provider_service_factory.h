@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace content {
@@ -34,7 +34,7 @@ class CertificateProviderServiceFactory : public ProfileKeyedServiceFactory {
       const CertificateProviderServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<CertificateProviderServiceFactory>;
+  friend struct base::DefaultSingletonTraits<CertificateProviderServiceFactory>;
 
   CertificateProviderServiceFactory();
 

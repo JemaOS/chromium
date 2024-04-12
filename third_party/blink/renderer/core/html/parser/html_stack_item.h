@@ -31,7 +31,6 @@
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/mathml_names.h"
 #include "third_party/blink/renderer/core/svg_names.h"
-#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
 namespace blink {
@@ -118,12 +117,6 @@ class HTMLStackItem final : public GarbageCollected<HTMLStackItem> {
   Attribute* GetAttributeItem(const QualifiedName& attribute_name) {
     DCHECK(LocalName());
     return FindAttributeInVector(Attributes(), attribute_name);
-  }
-  bool HasParsePartsAttribute() {
-    if (!LocalName() || !RuntimeEnabledFeatures::DOMPartsAPIEnabled()) {
-      return false;
-    }
-    return GetAttributeItem(html_names::kParsepartsAttr);
   }
 
   html_names::HTMLTag GetHTMLTag() const { return token_name_.GetHTMLTag(); }
@@ -303,11 +296,11 @@ class HTMLStackItem final : public GarbageCollected<HTMLStackItem> {
     return false;
   }
 
-  HTMLStackItem* NextItemInStack() { return next_item_in_stack_.Get(); }
+  HTMLStackItem* NextItemInStack() { return next_item_in_stack_; }
 
   bool IsAboveItemInStack(const HTMLStackItem* item) const {
     DCHECK(item);
-    HTMLStackItem* below = next_item_in_stack_.Get();
+    HTMLStackItem* below = next_item_in_stack_;
     while (below) {
       if (below == item) {
         return true;

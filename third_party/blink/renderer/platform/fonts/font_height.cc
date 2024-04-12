@@ -6,10 +6,13 @@
 
 namespace blink {
 
-void FontHeight::AddLeading(const FontHeight& start_and_end_leading) {
+void FontHeight::AddLeading(LayoutUnit line_height) {
   DCHECK(!IsEmpty());
-  ascent += start_and_end_leading.ascent;
-  descent += start_and_end_leading.descent;
+  LayoutUnit half_leading = (line_height - (ascent + descent)) / 2;
+  // TODO(kojii): floor() is to make text dump compatible with legacy test
+  // results. Revisit when we paint.
+  ascent += half_leading.Floor();
+  descent = line_height - ascent;
 }
 
 void FontHeight::Move(LayoutUnit delta) {

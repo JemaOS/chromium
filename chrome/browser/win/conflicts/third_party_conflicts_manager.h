@@ -6,19 +6,19 @@
 #define CHROME_BROWSER_WIN_CONFLICTS_THIRD_PARTY_CONFLICTS_MANAGER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
+#include "base/strings/string_piece_forward.h"
 #include "chrome/browser/win/conflicts/module_blocklist_cache_updater.h"
 #include "chrome/browser/win/conflicts/module_database_observer.h"
 #include "chrome/browser/win/conflicts/module_list_component_updater.h"
 #include "chrome/chrome_elf/third_party_dlls/packed_list_format.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class IncompatibleApplicationsUpdater;
 class InstalledApplications;
@@ -95,7 +95,7 @@ class ThirdPartyConflictsManager : public ModuleDatabaseObserver {
   // Invoked when the Third Party Module List component is registered with the
   // component update service. Checks if the component is currently installed or
   // if an update is required.
-  void OnModuleListComponentRegistered(std::string_view component_id,
+  void OnModuleListComponentRegistered(base::StringPiece component_id,
                                        const base::Version& component_version);
 
   // Loads the |module_list_filter_| using the Module List at |path|.
@@ -237,7 +237,7 @@ class ThirdPartyConflictsManager : public ModuleDatabaseObserver {
       incompatible_applications_updater_;
 
   // The final state of this instance.
-  std::optional<State> terminal_state_;
+  absl::optional<State> terminal_state_;
 
   // The callback that is invoked when |state_| changes.
   OnInitializationCompleteCallback on_initialization_complete_callback_;

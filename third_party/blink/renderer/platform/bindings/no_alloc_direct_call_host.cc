@@ -7,6 +7,9 @@
 
 namespace blink {
 
+NoAllocDirectCallHost::NoAllocDirectCallHost()
+    : heap_handle_(ThreadState::Current()->cpp_heap().GetHeapHandle()) {}
+
 void NoAllocDirectCallHost::PostDeferrableAction(DeferrableAction&& action) {
   if (IsInFastMode()) {
     deferred_actions_.push_back(std::move(action));

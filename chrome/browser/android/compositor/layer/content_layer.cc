@@ -97,7 +97,8 @@ void ContentLayer::SetProperties(int id,
   }
 
   if (static_opacity > 0) {
-    ThumbnailLayer* static_layer = tab_content_manager_->GetStaticLayer(id);
+    ThumbnailLayer* static_layer =
+        tab_content_manager_->GetOrCreateStaticLayer(id, !live_layer_draws);
     if (static_layer) {
       static_layer->layer()->SetIsDrawable(true);
       if (should_clip) {

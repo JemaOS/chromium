@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   function printNodeAndChildren(node, leadingSpace = "") {
     // TODO(crbug.com/1063155): remove this workaround when
     // RuntimeEnabledFeatures::AccessibilityExposeHTMLElementEnabled()

@@ -17,7 +17,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
-#include "base/check.h"
 #include "base/logging.h"
 #include "build/build_config.h"
 #include "util/misc/paths.h"

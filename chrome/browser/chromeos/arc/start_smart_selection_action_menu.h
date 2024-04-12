@@ -42,8 +42,6 @@ class StartSmartSelectionActionMenu : public RenderViewContextMenuObserver {
   bool IsCommandIdChecked(int command_id) override;
   bool IsCommandIdEnabled(int command_id) override;
   void ExecuteCommand(int command_id) override;
-  void OnContextMenuShown(const content::ContextMenuParams& params,
-                          const gfx::Rect& bounds_in_screen) override;
 
  private:
   void HandleTextSelectionActions(

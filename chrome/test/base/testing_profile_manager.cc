@@ -11,7 +11,6 @@
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_refptr.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/test_file_util.h"
@@ -21,18 +20,18 @@
 #include "chrome/browser/profiles/profile_attributes_entry.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_destroyer.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/test/base/fake_profile_manager.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "components/supervised_user/core/common/buildflags.h"
 #include "components/sync_preferences/pref_service_syncable.h"
-#include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/profiles/profile_helper.h"
-#include "chromeos/ash/components/browser_context_helper/browser_context_types.h"
+#include "chrome/browser/profiles/profile_types_ash.h"
 #include "components/account_id/account_id.h"
 #include "components/user_manager/fake_user_manager.h"
 #endif
@@ -78,10 +77,8 @@ TestingProfileManager::~TestingProfileManager() {
   browser_process_->SetProfileManager(nullptr);
 }
 
-bool TestingProfileManager::SetUp(
-    const base::FilePath& profiles_path,
-    std::unique_ptr<ProfileManager> profile_manager) {
-  SetUpInternal(profiles_path, std::move(profile_manager));
+bool TestingProfileManager::SetUp(const base::FilePath& profiles_path) {
+  SetUpInternal(profiles_path);
   return called_set_up_;
 }
 
@@ -92,16 +89,15 @@ TestingProfile* TestingProfileManager::CreateTestingProfile(
     int avatar_id,
     TestingProfile::TestingFactories testing_factories,
     bool is_supervised_profile,
-    std::optional<bool> is_new_profile,
-    std::optional<std::unique_ptr<policy::PolicyService>> policy_service,
-    bool is_main_profile,
-    scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory) {
+    absl::optional<bool> is_new_profile,
+    absl::optional<std::unique_ptr<policy::PolicyService>> policy_service,
+    bool is_main_profile) {
   DCHECK(called_set_up_);
 
   // Create a path for the profile based on the name.
   base::FilePath profile_path(profiles_path_);
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  if (ash::IsUserBrowserContextBaseName(base::FilePath(profile_name))) {
+  if (IsUserProfilePath(base::FilePath(profile_name))) {
     const std::string fake_email =
         profile_name.find('@') == std::string::npos
             ? base::ToLowerASCII(profile_name) + "@test"
@@ -133,10 +129,9 @@ TestingProfile* TestingProfileManager::CreateTestingProfile(
   builder.SetIsMainProfile(is_main_profile);
 #endif
 
-  builder.AddTestingFactories(testing_factories);
+  for (TestingProfile::TestingFactories::value_type& pair : testing_factories)
+    builder.AddTestingFactory(pair.first, std::move(pair.second));
   testing_factories.clear();
-
-  builder.SetSharedURLLoaderFactory(shared_url_loader_factory);
 
   std::unique_ptr<TestingProfile> profile = builder.Build();
   TestingProfile* profile_ptr = profile.get();
@@ -163,25 +158,21 @@ TestingProfile* TestingProfileManager::CreateTestingProfile(
 
 TestingProfile* TestingProfileManager::CreateTestingProfile(
     const std::string& name,
-    bool is_main_profile,
-    scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory) {
+    bool is_main_profile) {
   DCHECK(called_set_up_);
-  return CreateTestingProfile(name, /*testing_factories=*/{}, is_main_profile,
-                              shared_url_loader_factory);
+  return CreateTestingProfile(name, /*testing_factories=*/{}, is_main_profile);
 }
 
 TestingProfile* TestingProfileManager::CreateTestingProfile(
     const std::string& name,
     TestingProfile::TestingFactories testing_factories,
-    bool is_main_profile,
-    scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory) {
+    bool is_main_profile) {
   DCHECK(called_set_up_);
   return CreateTestingProfile(
       name, std::unique_ptr<sync_preferences::PrefServiceSyncable>(),
-      base::UTF8ToUTF16(name), /*avatar_id=*/0, std::move(testing_factories),
-      /*is_supervised_profile=*/false, /*is_new_profile=*/std::nullopt,
-      /*policy_service=*/std::nullopt, is_main_profile,
-      shared_url_loader_factory);
+      base::UTF8ToUTF16(name), 0, std::move(testing_factories),
+      /*is_supervised_profile=*/false, /*is_new_profile=*/absl::nullopt,
+      /*policy_service=*/absl::nullopt, is_main_profile);
 }
 
 TestingProfile* TestingProfileManager::CreateGuestProfile() {
@@ -330,9 +321,7 @@ void TestingProfileManager::OnProfileWillBeDestroyed(Profile* profile) {
   profile_observations_.RemoveObservation(profile);
 }
 
-void TestingProfileManager::SetUpInternal(
-    const base::FilePath& profiles_path,
-    std::unique_ptr<ProfileManager> profile_manager) {
+void TestingProfileManager::SetUpInternal(const base::FilePath& profiles_path) {
   ASSERT_FALSE(browser_process_->profile_manager())
       << "ProfileManager already exists";
 
@@ -350,8 +339,7 @@ void TestingProfileManager::SetUpInternal(
       chrome::DIR_USER_DATA, profiles_path_);
 
   auto profile_manager_unique =
-      profile_manager ? std::move(profile_manager)
-                      : std::make_unique<FakeProfileManager>(profiles_path_);
+      std::make_unique<FakeProfileManager>(profiles_path_);
   profile_manager_ = profile_manager_unique.get();
   browser_process_->SetProfileManager(std::move(profile_manager_unique));
 

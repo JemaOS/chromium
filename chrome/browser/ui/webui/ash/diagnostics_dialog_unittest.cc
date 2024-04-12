@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ui/webui/ash/diagnostics_dialog.h"
 
-#include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/webui/ash/system_web_dialog_delegate.h"
 #include "components/session_manager/core/session_manager.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -26,7 +25,7 @@ class DiagnosticsDialogTest : public testing::Test {
   }
 
  protected:
-  raw_ptr<DiagnosticsDialog> diagnostics_dialog;
+  DiagnosticsDialog* diagnostics_dialog;
 
  private:
   session_manager::SessionManager session_manager_;

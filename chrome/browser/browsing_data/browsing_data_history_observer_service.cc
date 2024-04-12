@@ -7,7 +7,6 @@
 #include <tuple>
 
 #include "base/functional/callback_helpers.h"
-#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "chrome/browser/browsing_data/navigation_entry_remover.h"
 #include "chrome/browser/history/history_service_factory.h"
@@ -124,7 +123,7 @@ BrowsingDataHistoryObserverService::BrowsingDataHistoryObserverService(
 
 BrowsingDataHistoryObserverService::~BrowsingDataHistoryObserverService() {}
 
-void BrowsingDataHistoryObserverService::OnHistoryDeletions(
+void BrowsingDataHistoryObserverService::OnURLsDeleted(
     history::HistoryService* history_service,
     const history::DeletionInfo& deletion_info) {
   if (!deletion_info.is_from_expiration())
@@ -185,11 +184,11 @@ BrowsingDataHistoryObserverService::Factory::Factory()
 #endif
 }
 
-std::unique_ptr<KeyedService> BrowsingDataHistoryObserverService::Factory::
-    BuildServiceInstanceForBrowserContext(
-        content::BrowserContext* context) const {
+KeyedService*
+BrowsingDataHistoryObserverService::Factory::BuildServiceInstanceFor(
+    content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<BrowsingDataHistoryObserverService>(profile);
+  return new BrowsingDataHistoryObserverService(profile);
 }
 
 bool BrowsingDataHistoryObserverService::Factory::

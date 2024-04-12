@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_ARC_INSTANCE_THROTTLE_ARC_POWER_THROTTLE_OBSERVER_H_
 
 #include "ash/components/arc/power/arc_power_bridge.h"
-#include "base/scoped_observation.h"
 #include "base/timer/timer.h"
 #include "chrome/browser/ash/throttle_observer.h"
 
@@ -32,13 +31,9 @@ class ArcPowerThrottleObserver : public ash::ThrottleObserver,
 
   // ArcPowerBridge::Observer:
   void OnPreAnr(mojom::AnrType type) override;
-  void OnWillDestroyArcPowerBridge() override;
 
  private:
   base::OneShotTimer timer_;
-
-  base::ScopedObservation<ArcPowerBridge, ArcPowerBridge::Observer>
-      powerbridge_observation_{this};
 };
 
 }  // namespace arc

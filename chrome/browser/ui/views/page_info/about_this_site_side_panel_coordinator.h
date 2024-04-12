@@ -14,7 +14,6 @@
 
 class BrowserView;
 class AboutThisSiteSidePanelView;
-class SidePanelUI;
 
 namespace views {
 class View;
@@ -46,8 +45,6 @@ class AboutThisSideSidePanelCoordinator
 
   BrowserView* GetBrowserView() const;
 
-  SidePanelUI* GetSidePanelUI();
-
   // Called when SidePanel is opened.
   std::unique_ptr<views::View> CreateAboutThisSiteWebView();
 
@@ -74,7 +71,7 @@ class AboutThisSideSidePanelCoordinator
 
   // Stores the OpenURLParams that were last registered and the URL of the
   // site that these params belong to.
-  std::optional<URLInfo> last_url_info_;
+  absl::optional<URLInfo> last_url_info_;
 
   // Stores whether a SidePanel entry has been shown yet or is just registered
   // at pageload. Used to differentiate SidePanels previously opened or opened

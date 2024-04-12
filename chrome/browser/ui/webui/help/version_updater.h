@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_UI_WEBUI_HELP_VERSION_UPDATER_H_
 #define CHROME_BROWSER_UI_WEBUI_HELP_VERSION_UPDATER_H_
 
-#include <memory>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -13,9 +12,8 @@
 #include "build/chromeos_buildflags.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include <optional>
-
 #include "chromeos/ash/components/dbus/update_engine/update_engine_client.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/cros_system_api/dbus/update_engine/dbus-constants.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
@@ -40,7 +38,6 @@ class VersionUpdater {
     FAILED_DOWNLOAD,
     DISABLED,
     DISABLED_BY_ADMIN,
-    UPDATE_TO_ROLLBACK_VERSION_DISALLOWED,
     DEFERRED
   };
 
@@ -59,7 +56,7 @@ class VersionUpdater {
   using EolInfoCallback =
       base::OnceCallback<void(ash::UpdateEngineClient::EolInfo eol_info)>;
   using IsFeatureEnabledCallback =
-      base::OnceCallback<void(std::optional<bool>)>;
+      base::OnceCallback<void(absl::optional<bool>)>;
 #endif
 
   // Used to update the client of status changes.
@@ -91,8 +88,7 @@ class VersionUpdater {
   // specialization. |web_contents| may be null, in which case any required UX
   // (e.g., UAC to elevate on Windows) may not be associated with any existing
   // browser windows.
-  static std::unique_ptr<VersionUpdater> Create(
-      content::WebContents* web_contents);
+  static VersionUpdater* Create(content::WebContents* web_contents);
 
   // Begins the update process by checking for update availability.
   // |status_callback| is called for each status update. |promote_callback|

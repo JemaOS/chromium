@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {SeaPenActions} from 'chrome://resources/ash/common/sea_pen/sea_pen_actions.js';
-import {Action} from 'chrome://resources/js/store.js';
+import {Action} from 'chrome://resources/ash/common/store/store.js';
 
 import {AmbientActions} from './ambient/ambient_actions.js';
 import {KeyboardBacklightActions} from './keyboard_backlight/keyboard_backlight_actions.js';
@@ -20,11 +19,11 @@ export enum PersonalizationActionName {
   SET_ERROR = 'set_error',
 }
 
-export interface DismissErrorAction extends Action {
-  id: string|null;
-  fromUser: boolean;
-  name: PersonalizationActionName.DISMISS_ERROR;
-}
+export type DismissErrorAction = Action&{
+  id: string | null,
+  fromUser: boolean,
+  name: PersonalizationActionName.DISMISS_ERROR,
+};
 
 /**
  * Dismiss the current error if there is any.
@@ -36,10 +35,10 @@ export function dismissErrorAction(
   return {id, fromUser, name: PersonalizationActionName.DISMISS_ERROR};
 }
 
-export interface SetErrorAction extends Action {
-  error: PersonalizationStateError;
-  name: PersonalizationActionName.SET_ERROR;
-}
+export type SetErrorAction = Action&{
+  error: PersonalizationStateError,
+  name: PersonalizationActionName.SET_ERROR,
+};
 
 /** Sets the current error. */
 export function setErrorAction(error: PersonalizationStateError):
@@ -47,6 +46,5 @@ export function setErrorAction(error: PersonalizationStateError):
   return {error, name: PersonalizationActionName.SET_ERROR};
 }
 
-export type Actions =
-    AmbientActions|KeyboardBacklightActions|ThemeActions|UserActions|
-    WallpaperActions|DismissErrorAction|SetErrorAction|SeaPenActions;
+export type Actions = AmbientActions|KeyboardBacklightActions|ThemeActions|
+    UserActions|WallpaperActions|DismissErrorAction|SetErrorAction;

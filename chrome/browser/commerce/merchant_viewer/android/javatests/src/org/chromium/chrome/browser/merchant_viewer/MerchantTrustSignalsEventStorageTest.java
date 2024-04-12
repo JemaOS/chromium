@@ -21,7 +21,7 @@ import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
-import org.chromium.chrome.browser.profiles.ProfileManager;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.test.ChromeBrowserTestRule;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
@@ -32,12 +32,15 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/** Tests related to {@link MerchantTrustSignalsEventStorage}. */
+/**
+ * Tests related to {@link MerchantTrustSignalsEventStorage}.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @Batch(Batch.PER_CLASS)
 public class MerchantTrustSignalsEventStorageTest {
-    @Rule public final ChromeBrowserTestRule mBrowserTestRule = new ChromeBrowserTestRule();
+    @Rule
+    public final ChromeBrowserTestRule mBrowserTestRule = new ChromeBrowserTestRule();
 
     private static final String KEY_1 = "www.amazon.com";
     private static final String KEY_2 = "www.costco.com";
@@ -56,12 +59,9 @@ public class MerchantTrustSignalsEventStorageTest {
 
     @Before
     public void setUp() throws Exception {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mStorage =
-                            new MerchantTrustSignalsEventStorage(
-                                    ProfileManager.getLastUsedRegularProfile());
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mStorage = new MerchantTrustSignalsEventStorage(Profile.getLastUsedRegularProfile());
+        });
 
         mEvent1 = new MerchantTrustSignalsEvent(KEY_1, TIMESTAMP_1);
         mEvent2 = new MerchantTrustSignalsEvent(KEY_2, TIMESTAMP_2);
@@ -70,10 +70,9 @@ public class MerchantTrustSignalsEventStorageTest {
 
     @After
     public void tearDown() throws Exception {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mStorage.deleteAll();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mStorage.deleteAll();
+        });
     }
 
     @MediumTest
@@ -117,50 +116,42 @@ public class MerchantTrustSignalsEventStorageTest {
     private void save(MerchantTrustSignalsEvent event) throws TimeoutException {
         CallbackHelper ch = new CallbackHelper();
         int chCount = ch.getCallCount();
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mStorage.saveWithCallback(
-                            event,
-                            new Runnable() {
-                                @Override
-                                public void run() {
-                                    ch.notifyCalled();
-                                }
-                            });
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mStorage.saveWithCallback(event, new Runnable() {
+                @Override
+                public void run() {
+                    ch.notifyCalled();
+                }
+            });
+        });
         ch.waitForCallback(chCount);
     }
 
     private void delete(MerchantTrustSignalsEvent event) throws TimeoutException {
         CallbackHelper ch = new CallbackHelper();
         int chCount = ch.getCallCount();
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mStorage.deleteForTesting(
-                            event,
-                            new Runnable() {
-                                @Override
-                                public void run() {
-                                    ch.notifyCalled();
-                                }
-                            });
-                });
+        ThreadUtils.runOnUiThreadBlocking(() -> {
+            mStorage.deleteForTesting(event, new Runnable() {
+                @Override
+                public void run() {
+                    ch.notifyCalled();
+                }
+            });
+        });
         ch.waitForCallback(chCount);
     }
 
     private void deleteAll() throws TimeoutException {
         CallbackHelper ch = new CallbackHelper();
         int chCount = ch.getCallCount();
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mStorage.deleteAllForTesting(
-                            new Runnable() {
-                                @Override
-                                public void run() {
-                                    ch.notifyCalled();
-                                }
-                            });
-                });
+        ThreadUtils.runOnUiThreadBlocking(() -> {
+            mStorage.deleteAllForTesting(new Runnable() {
+                @Override
+                public void run() {
+                    ch.notifyCalled();
+                }
+            });
+        });
         ch.waitForCallback(chCount);
     }
 

@@ -2,15 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as SourcesModule from 'devtools/panels/sources/sources.js';
-
 (async function() {
   TestRunner.addResult(
       `Tests that evaluation in console works fine when script is paused. It also checks that stack and global variables are accessible from the console.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.evaluateInPagePromise(`
       var globalVar = { b: 1 };
@@ -33,7 +29,7 @@ import * as SourcesModule from 'devtools/panels/sources/sources.js';
   function step1() {
     SourcesTestRunner.runTestFunctionAndWaitUntilPaused();
     TestRunner.addSniffer(
-              SourcesModule.CallStackSidebarPane.CallStackSidebarPane.prototype, 'updatedForTest', step2);
+              Sources.CallStackSidebarPane.prototype, 'updatedForTest', step2);
   }
 
   function step2(callFrames) {
@@ -42,7 +38,7 @@ import * as SourcesModule from 'devtools/panels/sources/sources.js';
 
   function step3(callFrames, result) {
     TestRunner.addResult('Evaluated script on the top frame: ' + result);
-    var pane = SourcesModule.CallStackSidebarPane.CallStackSidebarPane.instance();
+    var pane = Sources.CallStackSidebarPane.instance();
     pane.selectNextCallFrameOnStack();
     TestRunner.deprecatedRunAfterPendingDispatches(step4);
   }

@@ -16,9 +16,7 @@
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
 #include "chrome/browser/ui/web_applications/web_app_controller_browsertest.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
-#include "chrome/common/chrome_features.h"
 #include "chrome/test/base/ui_test_utils.h"
-#include "content/public/browser/notification_service.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -103,20 +101,14 @@ class PWAMixedContentBrowserTestWithAutoupgradesDisabled
 };
 
 // Tests that creating a shortcut app but not installing a PWA is available for
-// a non-installable site, unless the universal install feature flag is enabled.
+// a non-installable site.
 IN_PROC_BROWSER_TEST_F(PWAMixedContentBrowserTest,
                        ShortcutMenuOptionsForNonInstallableSite) {
   EXPECT_FALSE(
       NavigateAndAwaitInstallabilityCheck(browser(), GetMixedContentAppURL()));
 
   EXPECT_EQ(GetAppMenuCommandState(IDC_CREATE_SHORTCUT, browser()), kEnabled);
-
-  AppMenuCommandState expected_command_state =
-      base::FeatureList::IsEnabled(features::kWebAppUniversalInstall)
-          ? kEnabled
-          : kNotPresent;
-  EXPECT_EQ(GetAppMenuCommandState(IDC_INSTALL_PWA, browser()),
-            expected_command_state);
+  EXPECT_EQ(GetAppMenuCommandState(IDC_INSTALL_PWA, browser()), kNotPresent);
 }
 
 // Tests that mixed content is loaded inside PWA windows.
@@ -125,7 +117,7 @@ IN_PROC_BROWSER_TEST_F(PWAMixedContentBrowserTestWithAutoupgradesDisabled,
   ASSERT_TRUE(embedded_test_server()->Start());
 
   const GURL app_url = GetMixedContentAppURL();
-  const webapps::AppId app_id = InstallPWA(app_url);
+  const AppId app_id = InstallPWA(app_url);
   Browser* const app_browser = LaunchWebAppBrowserAndWait(app_id);
   CHECK(app_browser);
   web_app::CheckMixedContentLoaded(app_browser);
@@ -138,7 +130,7 @@ IN_PROC_BROWSER_TEST_F(PWAMixedContentBrowserTestWithAutoupgradesDisabled,
   ASSERT_TRUE(embedded_test_server()->Start());
 
   const GURL app_url = GetMixedContentAppURL();
-  const webapps::AppId app_id = InstallPWA(app_url);
+  const AppId app_id = InstallPWA(app_url);
   Browser* const app_browser = LaunchWebAppBrowserAndWait(app_id);
 
   // Mixed content should be able to load in web app windows.
@@ -175,9 +167,9 @@ IN_PROC_BROWSER_TEST_F(PWAMixedContentBrowserTestWithAutoupgradesDisabled,
   ASSERT_TRUE(embedded_test_server()->Start());
 
   const GURL app_url = GetMixedContentAppURL();
-  const webapps::AppId app_id = InstallPWA(app_url);
+  const AppId app_id = InstallPWA(app_url);
 
-  EXPECT_TRUE(ui_test_utils::NavigateToURL(browser(), GetMixedContentAppURL()));
+  NavigateToURLAndWait(browser(), GetMixedContentAppURL());
   content::WebContents* tab_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
   ASSERT_EQ(tab_contents->GetLastCommittedURL(), GetMixedContentAppURL());
@@ -211,7 +203,7 @@ IN_PROC_BROWSER_TEST_F(PWAMixedContentBrowserTestWithAutoupgradesDisabled,
 // Tests that mixed content is not loaded inside iframes in PWA windows.
 IN_PROC_BROWSER_TEST_F(PWAMixedContentBrowserTest, IFrameMixedContentInPWA) {
   const GURL app_url = GetSecureIFrameAppURL();
-  const webapps::AppId app_id = InstallPWA(app_url);
+  const AppId app_id = InstallPWA(app_url);
   Browser* const app_browser = LaunchWebAppBrowserAndWait(app_id);
 
   CheckMixedContentFailedToLoad(app_browser);
@@ -225,9 +217,9 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_TRUE(embedded_test_server()->Start());
 
   const GURL app_url = GetSecureIFrameAppURL();
-  const webapps::AppId app_id = InstallPWA(app_url);
+  const AppId app_id = InstallPWA(app_url);
 
-  EXPECT_TRUE(ui_test_utils::NavigateToURL(browser(), app_url));
+  NavigateToURLAndWait(browser(), app_url);
   CheckMixedContentFailedToLoad(browser());
 
   Browser* const app_browser = ReparentWebContentsIntoAppBrowser(
@@ -261,7 +253,7 @@ IN_PROC_BROWSER_TEST_F(PWAMixedContentBrowserTestWithAutoupgradesDisabled,
   ASSERT_TRUE(embedded_test_server()->Start());
 
   const GURL app_url = GetSecureIFrameAppURL();
-  const webapps::AppId app_id = InstallPWA(app_url);
+  const AppId app_id = InstallPWA(app_url);
   Browser* const app_browser = LaunchWebAppBrowserAndWait(app_id);
 
   chrome::OpenInChrome(app_browser);

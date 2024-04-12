@@ -4,12 +4,10 @@
 
 #include "chrome/browser/ui/ash/shelf/app_service/exo_app_type_resolver.h"
 
-#include <optional>
-#include <string_view>
-
 #include "ash/components/arc/arc_util.h"
 #include "ash/constants/app_types.h"
 #include "ash/wm/window_properties.h"
+#include "base/strings/string_piece.h"
 #include "chrome/browser/ash/borealis/borealis_window_manager.h"
 #include "chrome/browser/ash/plugin_vm/plugin_vm_util.h"
 #include "chromeos/crosapi/cpp/crosapi_constants.h"
@@ -17,20 +15,22 @@
 #include "components/app_restore/app_restore_utils.h"
 #include "components/app_restore/window_properties.h"
 #include "components/exo/permission.h"
+#include "components/exo/shell_surface_util.h"
 #include "components/exo/window_properties.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/base/class_property.h"
 
 namespace {
 
 // Returns true, if the given ID represents Lacros.
-bool IsLacrosAppId(std::string_view app_id) {
+bool IsLacrosAppId(base::StringPiece app_id) {
   return base::StartsWith(app_id, crosapi::kLacrosAppIdPrefix);
 }
 
 // Adds ARC specific properties.
-void UpdatePropertiesForArc(std::optional<int> task_id,
-                            std::optional<int> session_id,
+void UpdatePropertiesForArc(absl::optional<int> task_id,
+                            absl::optional<int> session_id,
                             exo::ProtectedNativePixmapQueryDelegate*
                                 protected_native_pixmap_query_client,
                             ui::PropertyHandler& out_properties_container) {
@@ -76,6 +76,9 @@ void ExoAppTypeResolver::PopulateProperties(
   if (IsLacrosAppId(params.app_id)) {
     out_properties_container.SetProperty(
         aura::client::kAppType, static_cast<int>(ash::AppType::LACROS));
+    // Make sure Lacros is treated as opaque for occlusion tracking purposes.
+    out_properties_container.SetProperty(
+        chromeos::kWindowManagerManagesOpacityKey, true);
     // Lacros is trusted not to abuse window activation, so grant it a
     // non-expiring permission to activate.
     out_properties_container.SetProperty(
@@ -121,6 +124,15 @@ void ExoAppTypeResolver::PopulateProperties(
     // Auto-maximize causes compatibility issues, and we don't need it anyway.
     out_properties_container.SetProperty(chromeos::kAutoMaximizeXdgShellEnabled,
                                          false);
+
+    // In some instances we don't want new borealis windows to steal focus,
+    // instead they are created as minimized windows.
+    // TODO(b/210569001): this is intended to be a temporary solution.
+    if (borealis::BorealisWindowManager::ShouldNewWindowBeMinimized(
+            params.app_id.empty() ? params.startup_id : params.app_id)) {
+      out_properties_container.SetProperty(aura::client::kShowStateKey,
+                                           ui::SHOW_STATE_MINIMIZED);
+    }
     return;
   }
 }

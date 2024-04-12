@@ -14,8 +14,6 @@ export interface AppearanceBrowserProxy {
   /** @return Whether the current profile is a child account. */
   isChildAccount(): boolean;
 
-  recordHoverCardImagesEnabledChanged(enabled: boolean): void;
-
   useDefaultTheme(): void;
 
   // <if expr="is_linux">
@@ -37,11 +35,6 @@ export class AppearanceBrowserProxyImpl implements AppearanceBrowserProxy {
 
   isChildAccount() {
     return loadTimeData.getBoolean('isChildAccount');
-  }
-
-  recordHoverCardImagesEnabledChanged(enabled: boolean) {
-    chrome.metricsPrivate.recordBoolean(
-        'Settings.HoverCards.ImagePreview.Enabled', enabled);
   }
 
   useDefaultTheme() {

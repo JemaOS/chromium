@@ -47,8 +47,6 @@ class FakeVcManagerMojoClient : public mojom::VideoConferenceManagerClient {
       bool disabled,
       SetSystemMediaDeviceStatusCallback callback) override {}
 
-  void StopAllScreenShare() override {}
-
   mojo::Receiver<mojom::VideoConferenceManagerClient> receiver_{this};
   mojo::Remote<mojom::VideoConferenceManager> remote_;
   base::UnguessableToken id_{base::UnguessableToken::Create()};
@@ -74,8 +72,6 @@ class FakeVcManagerCppClient : public mojom::VideoConferenceManagerClient {
       mojom::VideoConferenceMediaDevice device,
       bool disabled,
       SetSystemMediaDeviceStatusCallback callback) override {}
-
-  void StopAllScreenShare() override {}
 
   base::UnguessableToken id_{base::UnguessableToken::Create()};
 };
@@ -133,17 +129,16 @@ class VideoConferenceAshBrowserTest : public InProcessBrowserTest {
   VideoConferenceAshBrowserTest& operator=(
       const VideoConferenceAshBrowserTest&) = delete;
 
-  void SetUp() override {
-    scoped_feature_list_.InitAndEnableFeature(
-        ash::features::kFeatureManagementVideoConference);
-
-    InProcessBrowserTest::SetUp();
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    command_line->AppendSwitch(
+        ::ash::switches::kCameraEffectsSupportedByHardware);
   }
 
   ~VideoConferenceAshBrowserTest() override = default;
 
  private:
-  base::test::ScopedFeatureList scoped_feature_list_;
+  base::test::ScopedFeatureList scoped_feature_list_{
+      ash::features::kVideoConference};
 };
 
 // Tests |VideoConferenceManagerAsh| api calls don't crash. Tests calls over

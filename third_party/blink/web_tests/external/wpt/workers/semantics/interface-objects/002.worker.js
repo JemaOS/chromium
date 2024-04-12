@@ -1,8 +1,6 @@
 importScripts("/resources/testharness.js");
 var unexpected = [
   // https://html.spec.whatwg.org/
-  "SharedWorker",
-  "CanvasPath",
   "SharedWorkerGlobalScope",
   "AbstractView",
   "AbstractWorker",

@@ -13,7 +13,6 @@
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/values.h"
 #include "chrome/browser/extensions/test_extension_service.h"
 #include "chrome/browser/sync_file_system/drive_backend/metadata_database.h"
 #include "chrome/browser/sync_file_system/drive_backend/metadata_database.pb.h"
@@ -28,6 +27,7 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/extension_set.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/leveldatabase/leveldb_chrome.h"
 
@@ -98,7 +98,8 @@ class MockExtensionService : public TestExtensionService {
   extensions::ExtensionRegistry registry_;
 };
 
-class SyncWorkerTest : public testing::Test {
+class SyncWorkerTest : public testing::Test,
+                       public base::SupportsWeakPtr<SyncWorkerTest> {
  public:
   SyncWorkerTest() {}
 
@@ -161,10 +162,6 @@ class SyncWorkerTest : public testing::Test {
     return sync_worker_->GetMetadataDatabase();
   }
 
-  base::WeakPtr<SyncWorkerTest> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
  private:
   content::BrowserTaskEnvironment task_environment_;
   base::ScopedTempDir profile_dir_;
@@ -172,7 +169,6 @@ class SyncWorkerTest : public testing::Test {
 
   std::unique_ptr<MockExtensionService> extension_service_;
   std::unique_ptr<SyncWorker> sync_worker_;
-  base::WeakPtrFactory<SyncWorkerTest> weak_ptr_factory_{this};
 };
 
 TEST_F(SyncWorkerTest, EnableOrigin) {
@@ -212,10 +208,11 @@ TEST_F(SyncWorkerTest, UpdateRegisteredApps) {
   for (int i = 0; i < 3; i++) {
     scoped_refptr<const extensions::Extension> extension =
         extensions::ExtensionBuilder()
-            .SetManifest(base::Value::Dict()
+            .SetManifest(extensions::DictionaryBuilder()
                              .Set("name", "foo")
                              .Set("version", "1.0")
-                             .Set("manifest_version", 2))
+                             .Set("manifest_version", 2)
+                             .Build())
             .SetID(base::StringPrintf("app_%d", i))
             .Build();
     extension_service()->AddExtension(extension.get());

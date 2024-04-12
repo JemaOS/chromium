@@ -17,9 +17,9 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
+#include "chrome/browser/ash/authpolicy/authpolicy_helper.h"
 #include "chrome/browser/ash/lock_screen_apps/state_controller.h"
 #include "chrome/browser/ash/login/challenge_response_auth_keys_loader.h"
-#include "chrome/browser/ash/login/lock/screen_locker.h"
 #include "chrome/browser/ash/login/lock_screen_utils.h"
 #include "chrome/browser/ash/login/mojo_system_info_dispatcher.h"
 #include "chrome/browser/ash/login/quick_unlock/pin_backend.h"
@@ -45,8 +45,9 @@
 
 namespace ash {
 
-ViewsScreenLocker::ViewsScreenLocker()
-    : system_info_updater_(std::make_unique<MojoSystemInfoDispatcher>()) {
+ViewsScreenLocker::ViewsScreenLocker(ScreenLocker* screen_locker)
+    : screen_locker_(screen_locker),
+      system_info_updater_(std::make_unique<MojoSystemInfoDispatcher>()) {
   LoginScreenClientImpl::Get()->SetDelegate(this);
   user_board_view_mojo_ = std::make_unique<UserBoardViewMojo>();
   user_selection_screen_ =
@@ -59,10 +60,10 @@ ViewsScreenLocker::~ViewsScreenLocker() {
   LoginScreenClientImpl::Get()->SetDelegate(nullptr);
 }
 
-void ViewsScreenLocker::Init(const user_manager::UserList& users) {
+void ViewsScreenLocker::Init() {
   VLOG(1) << "b/228873153 : ViewsScreenLocker::Init()";
   lock_time_ = base::TimeTicks::Now();
-  user_selection_screen_->Init(users);
+  user_selection_screen_->Init(screen_locker_->GetUsersToShow());
 
   // Reset Caps Lock state when lock screen is shown.
   input_method::InputMethodManager::Get()->GetImeKeyboard()->SetCapsLockEnabled(
@@ -87,7 +88,19 @@ void ViewsScreenLocker::Init(const user_manager::UserList& users) {
   user_selection_screen_->InitEasyUnlock();
   UMA_HISTOGRAM_TIMES("LockScreen.LockReady",
                       base::TimeTicks::Now() - lock_time_);
+  screen_locker_->ScreenLockReady();
   lock_screen_apps::StateController::Get()->SetFocusCyclerDelegate(this);
+}
+
+void ViewsScreenLocker::ShowErrorMessage(
+    int error_msg_id,
+    HelpAppLauncher::HelpTopic help_topic_id) {
+  // TODO(xiaoyinh): Complete the implementation here.
+  NOTIMPLEMENTED();
+}
+
+void ViewsScreenLocker::ClearErrors() {
+  NOTIMPLEMENTED();
 }
 
 void ViewsScreenLocker::OnAshLockAnimationFinished() {
@@ -107,14 +120,13 @@ void ViewsScreenLocker::HandleAuthenticateUserWithPasswordOrPin(
   auto user_context = std::make_unique<UserContext>(*user);
   user_context->SetKey(
       Key(Key::KEY_TYPE_PASSWORD_PLAIN, std::string(), password));
-  if (!authenticated_by_pin) {
-    user_context->SetLocalPasswordInput(LocalPasswordInput{password});
-  }
   user_context->SetIsUsingPin(authenticated_by_pin);
   user_context->SetSyncPasswordData(password_manager::PasswordHashData(
       account_id.GetUserEmail(), base::UTF8ToUTF16(password),
       false /*force_update*/));
-  if (account_id.GetAccountType() == AccountType::ACTIVE_DIRECTORY) {
+  if (account_id.GetAccountType() == AccountType::ACTIVE_DIRECTORY &&
+      (user_context->GetUserType() !=
+       user_manager::UserType::USER_TYPE_ACTIVE_DIRECTORY)) {
     LOG(FATAL) << "Incorrect Active Directory user type "
                << user_context->GetUserType();
   }
@@ -142,6 +154,10 @@ void ViewsScreenLocker::HandleOnFocusPod(const AccountId& account_id) {
   user_selection_screen_->HandleFocusPod(account_id);
 
   WallpaperControllerClientImpl::Get()->ShowUserWallpaper(account_id);
+}
+
+void ViewsScreenLocker::HandleOnNoPodFocused() {
+  user_selection_screen_->HandleNoPodFocused();
 }
 
 bool ViewsScreenLocker::HandleFocusLockScreenApps(bool reverse) {

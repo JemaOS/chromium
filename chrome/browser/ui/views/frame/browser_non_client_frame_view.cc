@@ -104,7 +104,7 @@ bool BrowserNonClientFrameView::HasVisibleBackgroundTabShapes(
   TabStrip* const tab_strip = browser_view_->tabstrip();
 
   const bool active = ShouldPaintAsActive(active_state);
-  const std::optional<int> bg_id =
+  const absl::optional<int> bg_id =
       tab_strip->GetCustomBackgroundId(active_state);
   if (bg_id.has_value()) {
     // If the theme has a custom tab background image, assume tab shapes are
@@ -134,10 +134,8 @@ bool BrowserNonClientFrameView::HasVisibleBackgroundTabShapes(
 
   // Background tab shapes are visible iff the tab color differs from the frame
   // color.
-  return TabStyle::Get()->GetTabBackgroundColor(
-             TabStyle::TabSelectionState::kInactive,
-             /*hovered=*/false, ShouldPaintAsActive(active_state),
-             *GetColorProvider()) != GetFrameColor(active_state);
+  return tab_strip->GetTabBackgroundColor(TabActive::kInactive, active_state) !=
+         GetFrameColor(active_state);
 }
 
 bool BrowserNonClientFrameView::EverHasVisibleBackgroundTabShapes() const {
@@ -165,7 +163,7 @@ SkColor BrowserNonClientFrameView::GetFrameColor(
                                           : ui::kColorFrameInactive);
 }
 
-std::optional<int> BrowserNonClientFrameView::GetCustomBackgroundId(
+absl::optional<int> BrowserNonClientFrameView::GetCustomBackgroundId(
     BrowserFrameActiveState active_state) const {
   const ui::ThemeProvider* tp = GetThemeProvider();
   const bool incognito = browser_view_->GetIncognito();
@@ -187,7 +185,7 @@ std::optional<int> BrowserNonClientFrameView::GetCustomBackgroundId(
       tp->HasCustomImage(id) || (!active && tp->HasCustomImage(active_id)) ||
       tp->HasCustomImage(IDR_THEME_FRAME) ||
       (incognito && tp->HasCustomImage(IDR_THEME_FRAME_INCOGNITO));
-  return has_custom_image ? std::make_optional(id) : std::nullopt;
+  return has_custom_image ? absl::make_optional(id) : absl::nullopt;
 }
 
 void BrowserNonClientFrameView::UpdateMinimumSize() {}
@@ -317,5 +315,5 @@ int BrowserNonClientFrameView::GetSystemMenuY() const {
 }
 #endif  // BUILDFLAG(IS_WIN)
 
-BEGIN_METADATA(BrowserNonClientFrameView)
+BEGIN_METADATA(BrowserNonClientFrameView, views::NonClientFrameView)
 END_METADATA

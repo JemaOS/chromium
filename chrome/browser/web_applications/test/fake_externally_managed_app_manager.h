@@ -7,12 +7,12 @@
 
 #include <vector>
 
-#include "chrome/browser/web_applications/externally_managed_app_manager.h"
+#include "chrome/browser/web_applications/externally_managed_app_manager_impl.h"
 #include "components/webapps/browser/install_result_code.h"
 
 namespace web_app {
 
-class FakeExternallyManagedAppManager : public ExternallyManagedAppManager {
+class FakeExternallyManagedAppManager : public ExternallyManagedAppManagerImpl {
  public:
   explicit FakeExternallyManagedAppManager(Profile* profile);
   ~FakeExternallyManagedAppManager() override;

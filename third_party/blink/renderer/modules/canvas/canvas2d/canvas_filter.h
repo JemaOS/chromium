@@ -13,11 +13,8 @@
 
 namespace blink {
 
-class Element;
-class ExceptionState;
 class ExecutionContext;
-class Font;
-class ScriptState;
+class ExceptionState;
 
 // This class stores an unresolved filter on CanvasRenderingContext2DState that
 // has been created from the CanvasFilter javascript object. It will be parsed
@@ -26,20 +23,9 @@ class MODULES_EXPORT CanvasFilter final : public ScriptWrappable {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  static CanvasFilter* Create(ScriptState* script_state,
+  static CanvasFilter* Create(ExecutionContext* execution_context,
                               const V8CanvasFilterInput* init,
                               ExceptionState& exception_state);
-
-  // The `style_resolution_host` is an optional argument that is only used when
-  // the filter is defined with a CSS String. In case `filter_input` is a string
-  // and `style_resolution_host` is nullptr, the filter operations will be
-  // computed without using style resolution.
-  static FilterOperations CreateFilterOperations(
-      const V8CanvasFilterInput& filter_input,
-      const Font& font,
-      Element* style_resolution_host,
-      ExecutionContext& execution_context,
-      ExceptionState& exception_state);
 
   explicit CanvasFilter(FilterOperations filter_operations);
 

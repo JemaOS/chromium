@@ -4,7 +4,6 @@
 
 GEN_INCLUDE(['../../common/testing/e2e_test_base.js']);
 GEN_INCLUDE(['../../common/testing/mock_accessibility_private.js']);
-GEN_INCLUDE(['../../common/testing/mock_audio.js']);
 GEN_INCLUDE(['../../common/testing/mock_input_ime.js']);
 GEN_INCLUDE(['../../common/testing/mock_input_method_private.js']);
 GEN_INCLUDE(['../../common/testing/mock_language_settings_private.js']);
@@ -64,9 +63,6 @@ DictationE2ETestBase = class extends E2ETestBase {
     this.mockSpeechRecognitionPrivate = new MockSpeechRecognitionPrivate();
     chrome.speechRecognitionPrivate = this.mockSpeechRecognitionPrivate;
 
-    this.mockAudio = new MockAudio();
-    chrome.audio = this.mockAudio;
-
     this.dictationEngineId =
         '_ext_ime_egfdjlfmgnehecnclamagfafdccgfndpdictation';
 
@@ -94,7 +90,10 @@ DictationE2ETestBase = class extends E2ETestBase {
     };
 
     // Re-initialize AccessibilityCommon with mock APIs.
-    accessibilityCommon = new AccessibilityCommon();
+    const reinit = module => {
+      accessibilityCommon = new module.AccessibilityCommon();
+    };
+    import('/accessibility_common/accessibility_common_loader.js').then(reinit);
   }
 
   /** @override */
@@ -102,17 +101,21 @@ DictationE2ETestBase = class extends E2ETestBase {
     await super.setUpDeferred();
 
     // Wait for the Dictation module to load and set the Dictation locale.
-    await new Promise(
-        resolve =>
-            chrome.accessibilityFeatures.dictation.set({value: true}, resolve));
+    await importModule(
+        'Dictation', '/accessibility_common/dictation/dictation.js');
     assertNotNullNorUndefined(Dictation);
+    await importModule(
+        'LocaleInfo', '/accessibility_common/dictation/locale_info.js');
+    await new Promise(resolve => {
+      chrome.accessibilityFeatures.dictation.set({value: true}, resolve);
+    });
     await this.setPref(Dictation.DICTATION_LOCALE_PREF, 'en-US');
 
     // By default, Dictation JS tests should use regex parsing.
     accessibilityCommon.dictation_.disablePumpkinForTesting();
     // Increase Dictation's NO_FOCUSED_IME timeout to reduce flakiness on slower
     // builds.
-    accessibilityCommon.dictation_.setNoFocusedImeTimeoutForTesting(20 * 1000);
+    accessibilityCommon.dictation_.increaseNoFocusedImeTimeoutForTesting();
   }
 
   /** @override */
@@ -136,7 +139,7 @@ DictationE2ETestBase = class extends E2ETestBase {
     super.testGenPreamble();
 
     GEN(`
-  GetProfile()->GetPrefs()->SetBoolean(
+  browser()->profile()->GetPrefs()->SetBoolean(
         ash::prefs::kDictationAcceleratorDialogHasBeenAccepted, true);
 
   base::OnceClosure load_cb =
@@ -265,7 +268,33 @@ DictationE2ETestBase = class extends E2ETestBase {
 
   /** @return {boolean} */
   getDictationActive() {
-    return accessibilityCommon.dictation_.active_;
+    return this.mockAccessibilityPrivate.getDictationActive();
+  }
+
+  /**
+   * Async function to get a preference value from Settings.
+   * @param {string} name
+   * @return {!Promise<*>}
+   */
+  async getPref(name) {
+    return new Promise(resolve => {
+      chrome.settingsPrivate.getPref(name, ret => {
+        resolve(ret);
+      });
+    });
+  }
+
+  /**
+   * Async function to set a preference value in Settings.
+   * @param {string} name
+   * @return {!Promise}
+   */
+  async setPref(name, value) {
+    return new Promise(resolve => {
+      chrome.settingsPrivate.setPref(name, value, undefined, () => {
+        resolve();
+      });
+    });
   }
 
   /** @return {InputTextStrategy} */

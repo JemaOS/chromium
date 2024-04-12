@@ -5,13 +5,14 @@
 #ifndef CHROME_BROWSER_PRINTING_TEST_PRINT_VIEW_MANAGER_H_
 #define CHROME_BROWSER_PRINTING_TEST_PRINT_VIEW_MANAGER_H_
 
-#include <optional>
+#include <memory>
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/run_loop.h"
 #include "chrome/browser/printing/print_view_manager.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace printing {
 
@@ -29,12 +30,6 @@ class TestPrintViewManager : public PrintViewManager {
   TestPrintViewManager& operator=(const TestPrintViewManager&) = delete;
   ~TestPrintViewManager() override;
 
-#if BUILDFLAG(IS_WIN)
-  void set_simulate_pdf_conversion_error_on_page_index(uint32_t page_index) {
-    simulate_pdf_conversion_error_on_page_index_ = page_index;
-  }
-#endif
-
   bool StartPrinting(content::WebContents* contents);
 
   void WaitUntilPreviewIsShownOrCancelled();
@@ -43,7 +38,7 @@ class TestPrintViewManager : public PrintViewManager {
     return snooped_params_;
   }
 
-  const std::optional<bool>& print_now_result() const {
+  const absl::optional<bool>& print_now_result() const {
     return print_now_result_;
   }
 
@@ -52,6 +47,7 @@ class TestPrintViewManager : public PrintViewManager {
 
   // `PrintViewManagerBase` overrides.
   bool PrintNow(content::RenderFrameHost* rfh) override;
+  bool CreateNewPrintJob(std::unique_ptr<PrinterQuery> query) override;
 
  protected:
   // This field is not a raw_ptr<> because it was filtered by the rewriter for:
@@ -59,11 +55,6 @@ class TestPrintViewManager : public PrintViewManager {
   RAW_PTR_EXCLUSION base::RunLoop* run_loop_ = nullptr;
 
  private:
-  // `PrintViewManagerBase` overrides.
-  scoped_refptr<PrintJob> CreatePrintJob(
-      PrintJobManager* print_job_manager) override;
-
-  // `PrintViewManager` overrides
   void PrintPreviewAllowedForTesting() override;
 
   // printing::mojom::PrintManagerHost:
@@ -71,10 +62,7 @@ class TestPrintViewManager : public PrintViewManager {
                            UpdatePrintSettingsCallback callback) override;
 
   mojom::PrintPagesParamsPtr snooped_params_;
-  std::optional<bool> print_now_result_;
-#if BUILDFLAG(IS_WIN)
-  std::optional<uint32_t> simulate_pdf_conversion_error_on_page_index_;
-#endif
+  absl::optional<bool> print_now_result_;
   OnDidCreatePrintJobCallback on_did_create_print_job_;
 };
 

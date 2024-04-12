@@ -62,5 +62,6 @@ CrostiniPackageInstallFailureView::CrostiniPackageInstallFailureView(
 CrostiniPackageInstallFailureView::~CrostiniPackageInstallFailureView() =
     default;
 
-BEGIN_METADATA(CrostiniPackageInstallFailureView)
+BEGIN_METADATA(CrostiniPackageInstallFailureView,
+               views::BubbleDialogDelegateView)
 END_METADATA

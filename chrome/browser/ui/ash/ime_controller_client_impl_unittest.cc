@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/ash/ime_controller_client_impl.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -50,12 +49,10 @@ class TestInputMethodManager : public MockInputMethodManager {
       std::vector<std::string> languages({"en-US"});
       InputMethodDescriptor ime1("id1", "name1", "indicator1", layout,
                                  languages, true /* is_login_keyboard */,
-                                 GURL(), GURL(),
-                                 /*handwriting_language=*/std::nullopt);
+                                 GURL(), GURL());
       InputMethodDescriptor ime2("id2", "name2", "indicator2", layout,
                                  languages, false /* is_login_keyboard */,
-                                 GURL(), GURL(),
-                                 /*handwriting_language=*/std::nullopt);
+                                 GURL(), GURL());
       current_ime_id_ = ime1.id();
       input_methods_ = {ime1, ime2};
     }

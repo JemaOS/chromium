@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_BOREALIS_BOREALIS_TASK_H_
 
 #include <memory>
-#include "base/callback_list.h"
 #include "base/files/file.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -14,9 +13,9 @@
 #include "chrome/browser/ash/borealis/borealis_context_manager.h"
 #include "chrome/browser/ash/borealis/borealis_features.h"
 #include "chrome/browser/ash/borealis/borealis_launch_options.h"
+#include "chrome/browser/ash/borealis/borealis_launch_watcher.h"
 #include "chrome/browser/ash/borealis/borealis_metrics.h"
 #include "chrome/browser/ash/guest_os/guest_os_dlc_helper.h"
-#include "chrome/browser/ash/guest_os/guest_os_session_tracker.h"
 #include "chrome/browser/ash/guest_os/public/guest_os_wayland_server.h"
 #include "chromeos/ash/components/dbus/concierge/concierge_client.h"
 
@@ -104,7 +103,7 @@ class CreateDiskImage : public BorealisTask {
   void OnConciergeAvailable(BorealisContext* context, bool is_available);
   void OnCreateDiskImage(
       BorealisContext* context,
-      std::optional<vm_tools::concierge::CreateDiskImageResponse> response);
+      absl::optional<vm_tools::concierge::CreateDiskImageResponse> response);
   base::WeakPtrFactory<CreateDiskImage> weak_factory_{this};
 };
 
@@ -117,25 +116,25 @@ class StartBorealisVm : public BorealisTask {
 
  private:
   void StartBorealisWithExternalDisk(BorealisContext* context,
-                                     std::optional<base::File> external_disk);
+                                     absl::optional<base::File> external_disk);
   void OnStartBorealisVm(
       BorealisContext* context,
-      std::optional<vm_tools::concierge::StartVmResponse> response);
+      absl::optional<vm_tools::concierge::StartVmResponse> response);
   base::WeakPtrFactory<StartBorealisVm> weak_factory_{this};
 };
 
 // Waits for the startup daemon to signal completion.
 class AwaitBorealisStartup : public BorealisTask {
  public:
-  AwaitBorealisStartup();
+  AwaitBorealisStartup(Profile* profile, std::string vm_name);
   ~AwaitBorealisStartup() override;
   void RunInternal(BorealisContext* context) override;
+  BorealisLaunchWatcher& GetWatcherForTesting();
 
  private:
-  void OnContainerStarted(BorealisContext* context, guest_os::GuestInfo info);
-  void OnTimeout();
-
-  base::CallbackListSubscription subscription_;
+  void OnAwaitBorealisStartup(BorealisContext* context,
+                              absl::optional<std::string> container);
+  BorealisLaunchWatcher watcher_;
   base::WeakPtrFactory<AwaitBorealisStartup> weak_factory_{this};
 };
 
@@ -149,8 +148,23 @@ class UpdateChromeFlags : public BorealisTask {
  private:
   void OnFlagsUpdated(BorealisContext* context, std::string error);
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
   base::WeakPtrFactory<UpdateChromeFlags> weak_factory_{this};
+};
+
+// Checks the size of the disk and adjusts it if necessary.
+class SyncBorealisDisk : public BorealisTask {
+ public:
+  SyncBorealisDisk();
+  ~SyncBorealisDisk() override;
+  void RunInternal(BorealisContext* context) override;
+
+ private:
+  void OnSyncBorealisDisk(
+      BorealisContext* context,
+      Expected<BorealisSyncDiskSizeResult,
+               Described<BorealisSyncDiskSizeResult>> result);
+  base::WeakPtrFactory<SyncBorealisDisk> weak_factory_{this};
 };
 
 }  // namespace borealis

@@ -30,7 +30,15 @@ namespace {
 const PwaDomain kDomains[] = {PwaDomain::kProdAndroid, PwaDomain::kProdGoogle,
                               PwaDomain::kStaging};
 
+const char kLastSuccessfulDomainPref[] = "android_sms.last_successful_domain";
+
 }  // namespace
+
+// static
+void AndroidSmsAppManagerImpl::RegisterProfilePrefs(
+    PrefRegistrySimple* registry) {
+  registry->RegisterStringPref(kLastSuccessfulDomainPref, std::string());
+}
 
 AndroidSmsAppManagerImpl::PwaDelegate::PwaDelegate() = default;
 
@@ -97,10 +105,10 @@ AndroidSmsAppManagerImpl::AndroidSmsAppManagerImpl(
 
 AndroidSmsAppManagerImpl::~AndroidSmsAppManagerImpl() = default;
 
-std::optional<GURL> AndroidSmsAppManagerImpl::GetCurrentAppUrl() {
-  std::optional<PwaDomain> domain = GetInstalledPwaDomain();
+absl::optional<GURL> AndroidSmsAppManagerImpl::GetCurrentAppUrl() {
+  absl::optional<PwaDomain> domain = GetInstalledPwaDomain();
   if (!domain)
-    return std::nullopt;
+    return absl::nullopt;
 
   return GetAndroidMessagesURL(false /* use_install_url */, *domain);
 }
@@ -110,7 +118,8 @@ void AndroidSmsAppManagerImpl::SetUpAndroidSmsApp() {
   if (is_new_app_setup_in_progress_)
     return;
 
-  std::optional<PwaDomain> migrating_from = GetInstalledPwaDomainForMigration();
+  absl::optional<PwaDomain> migrating_from =
+      GetInstalledPwaDomainForMigration();
 
   // If the preferred domain is already installed, no migration is happening at
   // all.
@@ -133,12 +142,20 @@ void AndroidSmsAppManagerImpl::SetUpAndLaunchAndroidSmsApp() {
 }
 
 void AndroidSmsAppManagerImpl::TearDownAndroidSmsApp() {
-  std::optional<GURL> installed_app_url = GetCurrentAppUrl();
+  pref_service_->SetString(kLastSuccessfulDomainPref, std::string());
+
+  absl::optional<GURL> installed_app_url = GetCurrentAppUrl();
   if (!installed_app_url)
     return;
 
   setup_controller_->DeleteRememberDeviceByDefaultCookie(*installed_app_url,
                                                          base::DoNothing());
+}
+
+bool AndroidSmsAppManagerImpl::HasAppBeenManuallyUninstalledByUser() {
+  GURL url = GetAndroidMessagesURL(true /* use_install_url */);
+  return pref_service_->GetString(kLastSuccessfulDomainPref) == url.spec() &&
+         !setup_controller_->GetPwa(url);
 }
 
 bool AndroidSmsAppManagerImpl::IsAppInstalled() {
@@ -156,7 +173,7 @@ void AndroidSmsAppManagerImpl::ExecuteOnAppRegistryReady(
   pwa_delegate_->ExecuteOnAppRegistryReady(profile_, std::move(task));
 }
 
-std::optional<PwaDomain> AndroidSmsAppManagerImpl::GetInstalledPwaDomain() {
+absl::optional<PwaDomain> AndroidSmsAppManagerImpl::GetInstalledPwaDomain() {
   PwaDomain preferred_domain = GetPreferredPwaDomain();
   if (setup_controller_->GetPwa(GetAndroidMessagesURL(
           true /* use_install_url */, preferred_domain))) {
@@ -167,7 +184,7 @@ std::optional<PwaDomain> AndroidSmsAppManagerImpl::GetInstalledPwaDomain() {
   return GetInstalledPwaDomainForMigration();
 }
 
-std::optional<PwaDomain>
+absl::optional<PwaDomain>
 AndroidSmsAppManagerImpl::GetInstalledPwaDomainForMigration() {
   for (auto* it = std::begin(kDomains); it != std::end(kDomains); ++it) {
     if (setup_controller_->GetPwa(
@@ -176,14 +193,14 @@ AndroidSmsAppManagerImpl::GetInstalledPwaDomainForMigration() {
     }
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void AndroidSmsAppManagerImpl::CompleteAsyncInitialization() {
   // Must wait until the app registry is ready before querying the current url.
   last_installed_url_ = GetCurrentAppUrl();
 
-  std::optional<PwaDomain> domain = GetInstalledPwaDomain();
+  absl::optional<PwaDomain> domain = GetInstalledPwaDomain();
 
   // If no app was installed before this object was created, there is nothing
   // else to initialize.
@@ -203,7 +220,7 @@ void AndroidSmsAppManagerImpl::CompleteAsyncInitialization() {
 }
 
 void AndroidSmsAppManagerImpl::NotifyInstalledAppUrlChangedIfNecessary() {
-  std::optional<GURL> installed_app_url = GetCurrentAppUrl();
+  absl::optional<GURL> installed_app_url = GetCurrentAppUrl();
   if (last_installed_url_ == installed_app_url)
     return;
 
@@ -212,12 +229,12 @@ void AndroidSmsAppManagerImpl::NotifyInstalledAppUrlChangedIfNecessary() {
 }
 
 void AndroidSmsAppManagerImpl::OnSetUpNewAppResult(
-    const std::optional<PwaDomain>& migrating_from,
+    const absl::optional<PwaDomain>& migrating_from,
     const GURL& install_url,
     bool success) {
   is_new_app_setup_in_progress_ = false;
 
-  std::optional<webapps::AppId> new_pwa = setup_controller_->GetPwa(
+  absl::optional<web_app::AppId> new_pwa = setup_controller_->GetPwa(
       GetAndroidMessagesURL(true /* use_install_url */));
 
   // If the app failed to install or the PWA does not exist, do not launch.
@@ -226,6 +243,9 @@ void AndroidSmsAppManagerImpl::OnSetUpNewAppResult(
     return;
   }
 
+  if (success)
+    pref_service_->SetString(kLastSuccessfulDomainPref, install_url.spec());
+
   // If there is no PWA installed at the old URL, no migration is needed and
   // setup is finished.
   if (!migrating_from) {
@@ -233,7 +253,7 @@ void AndroidSmsAppManagerImpl::OnSetUpNewAppResult(
     return;
   }
 
-  std::optional<webapps::AppId> old_pwa = setup_controller_->GetPwa(
+  absl::optional<web_app::AppId> old_pwa = setup_controller_->GetPwa(
       GetAndroidMessagesURL(true /* use_install_url */, *migrating_from));
 
   // Transfer attributes from the old PWA to the new one. This ensures that the
@@ -259,7 +279,7 @@ void AndroidSmsAppManagerImpl::OnSetUpNewAppResult(
 }
 
 void AndroidSmsAppManagerImpl::OnRemoveOldAppResult(
-    const std::optional<PwaDomain>& migrating_from,
+    const absl::optional<PwaDomain>& migrating_from,
     bool success) {
   // If app removal fails, log an error but continue anyway, since clients
   // should still be notified of the URL change.
@@ -281,7 +301,7 @@ void AndroidSmsAppManagerImpl::HandleAppSetupFinished() {
   is_app_launch_pending_ = false;
 
   // If launch was requested but setup failed, there is no app to launch.
-  std::optional<PwaDomain> domain = GetInstalledPwaDomain();
+  absl::optional<PwaDomain> domain = GetInstalledPwaDomain();
   if (!domain)
     return;
 

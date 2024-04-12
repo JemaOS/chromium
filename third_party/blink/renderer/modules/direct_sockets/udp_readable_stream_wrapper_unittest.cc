@@ -27,7 +27,6 @@
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_receiver.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/wtf/gc_plugin.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_uchar.h"
@@ -93,7 +92,7 @@ class StreamCreator : public GarbageCollected<StreamCreator> {
 
   ~StreamCreator() = default;
 
-  UDPReadableStreamWrapper* Create(V8TestingScope& scope) {
+  UDPReadableStreamWrapper* Create(const V8TestingScope& scope) {
     scoped_refptr<base::SingleThreadTaskRunner> task_runner =
         scope.GetExecutionContext()->GetTaskRunner(TaskType::kNetworking);
     auto* udp_socket =
@@ -108,13 +107,7 @@ class StreamCreator : public GarbageCollected<StreamCreator> {
     auto* script_state = scope.GetScriptState();
     stream_wrapper_ = MakeGarbageCollected<UDPReadableStreamWrapper>(
         script_state, base::DoNothing(), udp_socket, std::move(receiver));
-
-    // Ensure that udp_socket->ReceiveMore(...) call from
-    // UDPReadableStreamWrapper constructor completes.
-    scope.PerformMicrotaskCheckpoint();
-    test::RunPendingTasks();
-
-    return stream_wrapper_.Get();
+    return stream_wrapper_;
   }
 
   void Trace(Visitor* visitor) const {
@@ -176,7 +169,6 @@ String UDPMessageDataToString(const UDPMessage* message) {
 }
 
 TEST(UDPReadableStreamWrapperTest, Create) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   ScopedStreamCreator stream_creator(
@@ -187,7 +179,6 @@ TEST(UDPReadableStreamWrapperTest, Create) {
 }
 
 TEST(UDPReadableStreamWrapperTest, ReadUdpMessage) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   ScopedStreamCreator stream_creator(
@@ -195,6 +186,11 @@ TEST(UDPReadableStreamWrapperTest, ReadUdpMessage) {
 
   auto* udp_readable_stream_wrapper = stream_creator->Create(scope);
   auto& fake_udp_socket = stream_creator->fake_udp_socket();
+
+  // Ensure that udp_socket_->ReceiveMore(...) call from
+  // UDPReadableStreamWrapper constructor lands before calling
+  // fake_udp_socket.ProvideRequestedDiagrams().
+  test::RunPendingTasks();
 
   fake_udp_socket.ProvideRequestedDatagrams();
 
@@ -216,7 +212,6 @@ TEST(UDPReadableStreamWrapperTest, ReadUdpMessage) {
 }
 
 TEST(UDPReadableStreamWrapperTest, ReadDelayedUdpMessage) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   ScopedStreamCreator stream_creator(
@@ -224,6 +219,11 @@ TEST(UDPReadableStreamWrapperTest, ReadDelayedUdpMessage) {
   auto* udp_readable_stream_wrapper = stream_creator->Create(scope);
 
   auto& fake_udp_socket = stream_creator->fake_udp_socket();
+
+  // Ensure that udp_socket_->ReceiveMore(...) call from
+  // UDPReadableStreamWrapper constructor lands before calling
+  // fake_udp_socket.ProvideRequestedDiagrams().
+  test::RunPendingTasks();
 
   auto* script_state = scope.GetScriptState();
   auto* reader =
@@ -245,15 +245,19 @@ TEST(UDPReadableStreamWrapperTest, ReadDelayedUdpMessage) {
 }
 
 TEST(UDPReadableStreamWrapperTest, ReadEmptyUdpMessage) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   ScopedStreamCreator stream_creator(
       MakeGarbageCollected<StreamCreator>(scope));
   auto* udp_readable_stream_wrapper = stream_creator->Create(scope);
 
-  // Send empty datagrams.
   auto& fake_udp_socket = stream_creator->fake_udp_socket();
+  // Ensure that udp_socket_->ReceiveMore(...) call from
+  // UDPReadableStreamWrapper constructor lands before calling
+  // fake_udp_socket.ProvideRequestedDiagrams().
+  test::RunPendingTasks();
+
+  // Send empty datagrams.
   fake_udp_socket.SetTestingDatagram({});
   fake_udp_socket.ProvideRequestedDatagrams();
 
@@ -275,12 +279,16 @@ TEST(UDPReadableStreamWrapperTest, ReadEmptyUdpMessage) {
 }
 
 TEST(UDPReadableStreamWrapperTest, CancelStreamFromReader) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   ScopedStreamCreator stream_creator(
       MakeGarbageCollected<StreamCreator>(scope));
   auto* udp_readable_stream_wrapper = stream_creator->Create(scope);
+
+  // Ensure that udp_socket_->ReceiveMore(...) call from
+  // UDPReadableStreamWrapper constructor lands before calling
+  // fake_udp_socket.ProvideRequestedDiagrams().
+  test::RunPendingTasks();
 
   auto* script_state = scope.GetScriptState();
   auto* reader =
@@ -305,12 +313,16 @@ TEST(UDPReadableStreamWrapperTest, CancelStreamFromReader) {
 }
 
 TEST(UDPReadableStreamWrapperTest, ReadRejectsOnError) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   ScopedStreamCreator stream_creator(
       MakeGarbageCollected<StreamCreator>(scope));
   auto* udp_readable_stream_wrapper = stream_creator->Create(scope);
+
+  // Ensure that udp_socket_->ReceiveMore(...) call from
+  // UDPReadableStreamWrapper constructor lands before calling
+  // fake_udp_socket.ProvideRequestedDiagrams().
+  test::RunPendingTasks();
 
   auto* script_state = scope.GetScriptState();
   auto* reader =

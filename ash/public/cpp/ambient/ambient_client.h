@@ -55,10 +55,6 @@ class ASH_PUBLIC_EXPORT AmbientClient {
   virtual scoped_refptr<network::SharedURLLoaderFactory>
   GetURLLoaderFactory() = 0;
 
-  // Return the URL loader factory associated with the sign in profile.
-  virtual scoped_refptr<network::SharedURLLoaderFactory>
-  GetSigninURLLoaderFactory() = 0;
-
   // Requests a connection to the device service's |WakeLockProvider|
   // from the browser.
   virtual void RequestWakeLockProvider(

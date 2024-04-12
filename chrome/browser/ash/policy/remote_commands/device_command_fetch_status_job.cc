@@ -47,13 +47,13 @@ void DeviceCommandFetchStatusJob::RunImpl(CallbackWithResult result_callback) {
         unique_id());
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(result_callback),
-                                  ResultType::kSuccess, std::nullopt));
+                                  ResultType::kSuccess, absl::nullopt));
     return;
   }
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(result_callback),
-                                ResultType::kFailure, std::nullopt));
+                                ResultType::kFailure, absl::nullopt));
 }
 
 }  // namespace policy

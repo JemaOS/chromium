@@ -69,6 +69,7 @@ class VIEWS_EXPORT SquareInkDropRipple : public InkDropRipple {
   void set_activated_shape(ActivatedShape shape) { activated_shape_ = shape; }
 
   // InkDropRipple:
+  void SnapToActivated() override;
   ui::Layer* GetRootLayer() override;
 
  private:
@@ -98,7 +99,6 @@ class VIEWS_EXPORT SquareInkDropRipple : public InkDropRipple {
   // InkDropRipple:
   void AnimateStateChange(InkDropState old_ink_drop_state,
                           InkDropState new_ink_drop_state) override;
-  void SetStateToActivated() override;
   void SetStateToHidden() override;
   void AbortAllAnimations() override;
 

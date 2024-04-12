@@ -11,9 +11,9 @@
 
 // A view displaying user information for a passkey.
 class PasskeyDetailView : public views::View {
-  METADATA_HEADER(PasskeyDetailView, views::View)
-
  public:
+  METADATA_HEADER(PasskeyDetailView);
+
   explicit PasskeyDetailView(const device::PublicKeyCredentialUserEntity& user);
 
   // views::View:

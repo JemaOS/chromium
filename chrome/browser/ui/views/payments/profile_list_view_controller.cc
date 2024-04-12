@@ -65,10 +65,6 @@ class ProfileItem : public PaymentRequestItemList::Item {
 
   ~ProfileItem() override {}
 
-  base::WeakPtr<PaymentRequestRowView> AsWeakPtr() override {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
  private:
   // PaymentRequestItemList::Item:
   std::unique_ptr<views::View> CreateContentView(
@@ -106,7 +102,6 @@ class ProfileItem : public PaymentRequestItemList::Item {
 
   base::WeakPtr<ProfileListViewController> controller_;
   raw_ptr<autofill::AutofillProfile> profile_;
-  base::WeakPtrFactory<ProfileItem> weak_ptr_factory_{this};
 };
 
 // The ProfileListViewController subtype for the Shipping address list
@@ -172,8 +167,7 @@ class ShippingProfileViewController : public ProfileListViewController,
     return state()->profile_comparator()->IsShippingComplete(&profile);
   }
 
-  std::vector<raw_ptr<autofill::AutofillProfile, VectorExperimental>>
-  GetProfiles() override {
+  std::vector<autofill::AutofillProfile*> GetProfiles() override {
     return state()->shipping_profiles();
   }
 
@@ -295,8 +289,7 @@ class ContactProfileViewController : public ProfileListViewController {
     return state()->profile_comparator()->IsContactInfoComplete(&profile);
   }
 
-  std::vector<raw_ptr<autofill::AutofillProfile, VectorExperimental>>
-  GetProfiles() override {
+  std::vector<autofill::AutofillProfile*> GetProfiles() override {
     return state()->contact_profiles();
   }
 
@@ -362,7 +355,7 @@ void ProfileListViewController::PopulateList() {
 
   list_.Clear();
 
-  for (autofill::AutofillProfile* profile : GetProfiles()) {
+  for (auto* profile : GetProfiles()) {
     list_.AddItem(std::make_unique<ProfileItem>(
         profile, spec(), state(), &list_, weak_ptr_factory_.GetWeakPtr(),
         dialog(), profile == selected_profile, IsEnabled(profile)));
@@ -375,9 +368,8 @@ bool ProfileListViewController::ShouldShowPrimaryButton() {
 
 PaymentRequestSheetController::ButtonCallback
 ProfileListViewController::GetSecondaryButtonCallback() {
-  return base::BindRepeating(
-      &ProfileListViewController::OnCreateNewProfileButtonClicked,
-      base::Unretained(this));
+  return base::BindRepeating(&ProfileListViewController::ShowEditor,
+                             base::Unretained(this), nullptr);
 }
 
 void ProfileListViewController::FillContentView(views::View* content_view) {
@@ -398,12 +390,6 @@ void ProfileListViewController::FillContentView(views::View* content_view) {
 base::WeakPtr<PaymentRequestSheetController>
 ProfileListViewController::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
-}
-
-void ProfileListViewController::OnCreateNewProfileButtonClicked(
-    const ui::Event& event) {
-  // nullptr means 'create a new profile'
-  ShowEditor(nullptr);
 }
 
 }  // namespace payments

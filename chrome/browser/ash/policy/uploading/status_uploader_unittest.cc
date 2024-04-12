@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/policy/uploading/status_uploader.h"
 
 #include <memory>
-#include <tuple>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -14,7 +13,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/test/gmock_move_support.h"
-#include "base/test/task_environment.h"
 #include "base/test/test_simple_task_runner.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/policy/core/device_local_account.h"
@@ -44,14 +42,13 @@ namespace {
 
 constexpr base::TimeDelta kDefaultStatusUploadDelay = base::Hours(1);
 constexpr base::TimeDelta kMinImmediateUploadInterval = base::Seconds(10);
-constexpr base::TimeDelta kMinimumScreenshotIdlenessCutoff = base::Minutes(5);
 
 // Using a DeviceStatusCollector to have a concrete StatusCollector, but the
 // exact type doesn't really matter, as it is being mocked.
 class MockDeviceStatusCollector : public DeviceStatusCollector {
  public:
   explicit MockDeviceStatusCollector(PrefService* local_state)
-      : DeviceStatusCollector(local_state, nullptr, nullptr, nullptr) {}
+      : DeviceStatusCollector(local_state, nullptr, nullptr) {}
   MOCK_METHOD1(GetStatusAsync, void(StatusCollectorCallback));
 
   MOCK_METHOD0(OnSubmittedSuccessfully, void());
@@ -164,19 +161,11 @@ class StatusUploaderTest : public testing::Test {
                                             kDefaultStatusUploadDelay);
   }
 
-  void MockUserInput() {
-    ui::MouseEvent e(ui::ET_MOUSE_PRESSED, gfx::Point(), gfx::Point(),
-                     ui::EventTimeForNow(), 0, 0);
-    const ui::PlatformEvent& native_event = &e;
-    ui::UserActivityDetector::Get()->DidProcessEvent(native_event);
-  }
-
-  content::BrowserTaskEnvironment task_environment_{
-      content::BrowserTaskEnvironment::TimeSource::MOCK_TIME};
+  content::BrowserTaskEnvironment task_environment_;
   scoped_refptr<base::TestSimpleTaskRunner> task_runner_;
   ash::ScopedTestingCrosSettings scoped_testing_cros_settings_;
   std::unique_ptr<MockDeviceStatusCollector> collector_;
-  raw_ptr<MockDeviceStatusCollector, DanglingUntriaged> collector_ptr_;
+  raw_ptr<MockDeviceStatusCollector, ExperimentalAsh> collector_ptr_;
   ui::UserActivityDetector detector_;
   MockCloudPolicyClient client_;
   TestingPrefServiceSimple prefs_;
@@ -309,30 +298,23 @@ TEST_F(StatusUploaderTest, ChangeFrequency) {
                                    true /* upload_success */);
 }
 
-TEST_F(StatusUploaderTest, ScreenshotUploadAllowOnlyAfterCutoffTime) {
+TEST_F(StatusUploaderTest, NoUploadAfterUserInput) {
   auto uploader = CreateStatusUploader();
   // Should allow data upload before there is user input.
-  EXPECT_TRUE(uploader->IsScreenshotAllowed());
+  EXPECT_TRUE(uploader->IsSessionDataUploadAllowed());
 
-  MockUserInput();
-  EXPECT_FALSE(uploader->IsScreenshotAllowed());
-
-  MockUserInput();
-  task_environment_.AdvanceClock(kMinimumScreenshotIdlenessCutoff -
-                                 base::Seconds(1));
-  EXPECT_FALSE(uploader->IsScreenshotAllowed());
-
-  // Screenshot is allowed again after a period of inactivity
-  MockUserInput();
-  task_environment_.AdvanceClock(kMinimumScreenshotIdlenessCutoff +
-                                 base::Seconds(1));
-  EXPECT_TRUE(uploader->IsScreenshotAllowed());
+  // Now mock user input, and no session data should be allowed.
+  ui::MouseEvent e(ui::ET_MOUSE_PRESSED, gfx::Point(), gfx::Point(),
+                   ui::EventTimeForNow(), 0, 0);
+  const ui::PlatformEvent& native_event = &e;
+  ui::UserActivityDetector::Get()->DidProcessEvent(native_event);
+  EXPECT_FALSE(uploader->IsSessionDataUploadAllowed());
 }
 
 TEST_F(StatusUploaderTest, NoUploadAfterVideoCapture) {
   auto uploader = CreateStatusUploader();
   // Should allow data upload before there is video capture.
-  EXPECT_TRUE(uploader->IsScreenshotAllowed());
+  EXPECT_TRUE(uploader->IsSessionDataUploadAllowed());
 
   // Now mock video capture, and no session data should be allowed.
   MediaCaptureDevicesDispatcher::GetInstance()->OnMediaRequestStateChanged(
@@ -340,7 +322,7 @@ TEST_F(StatusUploaderTest, NoUploadAfterVideoCapture) {
       blink::mojom::MediaStreamType::DEVICE_VIDEO_CAPTURE,
       content::MEDIA_REQUEST_STATE_OPENING);
   base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(uploader->IsScreenshotAllowed());
+  EXPECT_FALSE(uploader->IsSessionDataUploadAllowed());
 }
 
 TEST_F(StatusUploaderTest, ScheduleImmediateStatusUpload) {

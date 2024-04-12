@@ -5,6 +5,7 @@
 #include "chrome/browser/ash/sharesheet/copy_to_clipboard_share_action.h"
 
 #include "ash/public/cpp/system/toast_data.h"
+#include "ash/public/cpp/tablet_mode.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "chrome/browser/sharesheet/share_action/share_action_cache.h"
 #include "chrome/browser/sharesheet/sharesheet_metrics.h"
@@ -22,7 +23,8 @@
 #include "ui/chromeos/strings/grit/ui_chromeos_strings.h"
 #include "url/gurl.h"
 
-namespace ash::sharesheet {
+namespace ash {
+namespace sharesheet {
 
 namespace {
 
@@ -155,7 +157,7 @@ TEST_F(CopyToClipboardShareActionTest,
           IDS_SHARESHEET_COPY_TO_CLIPBOARD_SHARE_ACTION_LABEL));
   storage::FileSystemURL url1 = ::sharesheet::FileInNonNativeFileSystemType(
       profile(), base::FilePath(::sharesheet::kTestPdfFile));
-  EXPECT_TRUE(copy_action->ShouldShowAction(
+  EXPECT_FALSE(copy_action->ShouldShowAction(
       apps_util::MakeShareIntent({url1.ToGURL()}, {::sharesheet::kMimeTypePdf}),
       /* contains_hosted_document= */ false));
 }
@@ -235,4 +237,40 @@ TEST_F(CopyToClipboardShareActionTest, CopyToClipboardMultipleImageFiles) {
       ::sharesheet::SharesheetMetrics::MimeType::kImageFile, 1);
 }
 
-}  // namespace ash::sharesheet
+TEST_F(CopyToClipboardShareActionTest, CopyToClipboardRecordFormFactorTablet) {
+  base::HistogramTester histograms;
+
+  // Set Tablet mode
+  ash::TabletMode::Get()->SetEnabledForTest(true);
+
+  // Invoke copy to clipboard action then check metrics update
+  auto* copy_action =
+      share_action_cache()->GetActionFromName(l10n_util::GetStringUTF16(
+          IDS_SHARESHEET_COPY_TO_CLIPBOARD_SHARE_ACTION_LABEL));
+  copy_action->LaunchAction(/*controller=*/nullptr, /*root_view=*/nullptr,
+                            ::sharesheet::CreateValidTextIntent());
+  histograms.ExpectBucketCount(
+      ::sharesheet::kSharesheetCopyToClipboardFormFactorResultHistogram,
+      ::sharesheet::SharesheetMetrics::FormFactor::kTablet, 1);
+}
+
+TEST_F(CopyToClipboardShareActionTest,
+       CopyToClipboardRecordFormFactorClamshell) {
+  base::HistogramTester histograms;
+
+  // Set Clamshell mode
+  ash::TabletMode::Get()->SetEnabledForTest(false);
+
+  // Invoke copy to clipboard action then check metrics update
+  auto* copy_action =
+      share_action_cache()->GetActionFromName(l10n_util::GetStringUTF16(
+          IDS_SHARESHEET_COPY_TO_CLIPBOARD_SHARE_ACTION_LABEL));
+  copy_action->LaunchAction(/*controller=*/nullptr, /*root_view=*/nullptr,
+                            ::sharesheet::CreateValidTextIntent());
+  histograms.ExpectBucketCount(
+      ::sharesheet::kSharesheetCopyToClipboardFormFactorResultHistogram,
+      ::sharesheet::SharesheetMetrics::FormFactor::kClamshell, 1);
+}
+
+}  // namespace sharesheet
+}  // namespace ash

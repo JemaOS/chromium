@@ -4,7 +4,6 @@
 
 #include "ash/wallpaper/wallpaper_image_downloader.h"
 
-#include <optional>
 #include <string>
 
 #include "ash/public/cpp/image_downloader.h"
@@ -15,6 +14,7 @@
 #include "components/account_id/account_id.h"
 #include "net/http/http_request_headers.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/display/screen.h"
 #include "ui/gfx/geometry/size.h"
 #include "url/gurl.h"
@@ -126,7 +126,7 @@ WallpaperImageDownloaderImpl::~WallpaperImageDownloaderImpl() = default;
 void WallpaperImageDownloaderImpl::DownloadGooglePhotosImage(
     const GURL& url,
     const AccountId& account_id,
-    const std::optional<std::string>& access_token,
+    const absl::optional<std::string>& access_token,
     ImageDownloader::DownloadCallback callback) const {
   GURL url_with_dimensions = AddDimensionsToGooglePhotosURL(url);
 

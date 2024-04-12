@@ -13,9 +13,8 @@
 
 namespace blink {
 
-WorkletPendingTasks::WorkletPendingTasks(
-    Worklet* worklet,
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver)
+WorkletPendingTasks::WorkletPendingTasks(Worklet* worklet,
+                                         ScriptPromiseResolver* resolver)
     : resolver_(resolver), worklet_(worklet) {
   DCHECK(IsMainThread());
 }

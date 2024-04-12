@@ -4,7 +4,6 @@
 
 #include "third_party/blink/renderer/core/page/scrolling/element_fragment_anchor.h"
 
-#include "base/trace_event/typed_macros.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_scroll_into_view_options.h"
 #include "third_party/blink/renderer/core/accessibility/ax_object_cache.h"
 #include "third_party/blink/renderer/core/display_lock/display_lock_context.h"
@@ -81,7 +80,11 @@ ElementFragmentAnchor* ElementFragmentAnchor::TryCreate(const KURL& url,
     return nullptr;
 
   HTMLDetailsElement::ExpandDetailsAncestors(*anchor_node);
-  DisplayLockUtilities::RevealHiddenUntilFoundAncestors(*anchor_node);
+
+  if (RuntimeEnabledFeatures::BeforeMatchEventEnabled(
+          frame.GetDocument()->GetExecutionContext())) {
+    DisplayLockUtilities::RevealHiddenUntilFoundAncestors(*anchor_node);
+  }
 
   return MakeGarbageCollected<ElementFragmentAnchor>(*anchor_node, frame);
 }
@@ -95,7 +98,6 @@ ElementFragmentAnchor::ElementFragmentAnchor(Node& anchor_node,
 }
 
 bool ElementFragmentAnchor::Invoke() {
-  TRACE_EVENT("blink", "ElementFragmentAnchor::Invoke");
   if (!frame_ || !anchor_node_)
     return false;
 
@@ -137,13 +139,6 @@ void ElementFragmentAnchor::Installed() {
   if (frame_->GetDocument()->HaveRenderBlockingResourcesLoaded())
     ApplyFocusIfNeeded();
 
-  if (needs_focus_) {
-    // Attempts to focus the anchor if we couldn't focus above. This can cause
-    // script to run so we can't do it from Invoke.
-    frame_->GetDocument()->EnqueueAnimationFrameTask(WTF::BindOnce(
-        &ElementFragmentAnchor::ApplyFocusIfNeeded, WrapPersistent(this)));
-  }
-
   needs_invoke_ = true;
 }
 
@@ -164,6 +159,10 @@ void ElementFragmentAnchor::Trace(Visitor* visitor) const {
   FragmentAnchor::Trace(visitor);
 }
 
+void ElementFragmentAnchor::PerformScriptableActions() {
+  ApplyFocusIfNeeded();
+}
+
 void ElementFragmentAnchor::ApplyFocusIfNeeded() {
   // SVG images can load synchronously during style recalc but it's ok to focus
   // since we disallow scripting. For everything else, focus() could run script
@@ -174,14 +173,11 @@ void ElementFragmentAnchor::ApplyFocusIfNeeded() {
   if (!needs_focus_)
     return;
 
-  if (!anchor_node_) {
-    needs_focus_ = false;
+  if (!frame_->GetDocument()->HaveRenderBlockingResourcesLoaded())
     return;
-  }
 
-  if (!frame_->GetDocument()->HaveRenderBlockingResourcesLoaded()) {
+  if (!anchor_node_)
     return;
-  }
 
   frame_->GetDocument()->UpdateStyleAndLayoutTree();
 
@@ -206,7 +202,7 @@ void ElementFragmentAnchor::ApplyFocusIfNeeded() {
   // clear focus, which matches the behavior of other browsers.
   auto* element = DynamicTo<Element>(anchor_node_.Get());
   if (element && element->IsFocusable()) {
-    element->Focus();
+    element->Focus(FocusParams(/*gate_on_user_activation=*/true));
   } else {
     frame_->GetDocument()->SetSequentialFocusNavigationStartingPoint(
         anchor_node_);

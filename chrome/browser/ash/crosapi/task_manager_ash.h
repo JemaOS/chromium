@@ -44,8 +44,7 @@ class TaskManagerAsh : public mojom::TaskManager {
 
   using GetTaskManagerTasksCallback =
       base::OnceCallback<void(std::vector<crosapi::mojom::TaskPtr>,
-                              std::vector<crosapi::mojom::TaskGroupPtr>,
-                              const std::optional<std::string>&)>;
+                              std::vector<crosapi::mojom::TaskGroupPtr>)>;
   // Gets lacros task data. Forward the call to the registered remote providers.
   void GetTaskManagerTasks(GetTaskManagerTasksCallback callback);
 
@@ -84,7 +83,7 @@ class TaskManagerAsh : public mojom::TaskManager {
   std::map<base::UnguessableToken, mojo::Remote<mojom::TaskManagerProvider>>
       task_manager_providers_;
 
-  raw_ptr<Observer> observer_ = nullptr;
+  raw_ptr<Observer, ExperimentalAsh> observer_ = nullptr;
 
   int64_t refresh_flags_ = task_manager::REFRESH_TYPE_NONE;
 

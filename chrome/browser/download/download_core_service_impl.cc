@@ -117,10 +117,10 @@ bool DownloadCoreServiceImpl::HasCreatedDownloadManager() {
   return download_manager_created_;
 }
 
-int DownloadCoreServiceImpl::BlockingShutdownCount() const {
+int DownloadCoreServiceImpl::NonMaliciousDownloadCount() const {
   if (!download_manager_created_)
     return 0;
-  return profile_->GetDownloadManager()->BlockingShutdownCount();
+  return profile_->GetDownloadManager()->NonMaliciousInProgressCount();
 }
 
 void DownloadCoreServiceImpl::CancelDownloads() {

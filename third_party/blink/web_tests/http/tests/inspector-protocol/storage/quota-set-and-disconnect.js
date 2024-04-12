@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function (testRunner) {
   const { page, session, dp } = await testRunner.startBlank(
     `Tests that disconnecting immediatelly after setting a quota works.\n`);
   testRunner.log('Initial storage');

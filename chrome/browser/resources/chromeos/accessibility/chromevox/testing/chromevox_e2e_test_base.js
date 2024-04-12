@@ -131,6 +131,24 @@ ChromeVoxE2ETest = class extends E2ETestBase {
   /** @override */
   async setUpDeferred() {
     await super.setUpDeferred();
+    // Alphabetical based on file path.
+    await importModule(
+        'AbstractEarcons', '/chromevox/background/abstract_earcons.js');
+    await importModule(
+        'BaseAutomationHandler',
+        '/chromevox/background/event/base_automation_handler.js');
+    await importModule(
+        'ChromeVoxState', '/chromevox/background/chromevox_state.js');
+    await importModule(
+        'CommandHandlerInterface',
+        '/chromevox/background/command_handler_interface.js');
+    await importModule(
+        'GestureCommandHandler',
+        '/chromevox/background/gesture_command_handler.js');
+    await importModule(
+        'OutputRoleInfo', '/chromevox/background/output/output_role_info.js');
+    await importModule(
+        'OutputContextOrder', '/chromevox/background/output/output_types.js');
 
     // For tests, enable announcement of events we trigger via automation.
     BaseAutomationHandler.announceActions = true;
@@ -139,6 +157,7 @@ ChromeVoxE2ETest = class extends E2ETestBase {
       this.originalOutputContextValues_[role] =
           OutputRoleInfo[role]['contextOrder'];
     }
+    await MockFeedback.imports();
     await ChromeVoxState.ready();
   }
 

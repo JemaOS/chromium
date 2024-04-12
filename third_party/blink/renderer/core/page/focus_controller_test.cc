@@ -8,11 +8,8 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/input/focus_type.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
-#include "third_party/blink/renderer/core/css/properties/longhands.h"
-#include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
-#include "third_party/blink/renderer/core/html/html_slot_element.h"
 #include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 
@@ -41,7 +38,7 @@ TEST_F(FocusControllerTest, DoNotCrash1) {
       "tabindex='0'></p>");
   // <div> with shadow root
   auto* host = To<Element>(GetDocument().body()->firstChild());
-  host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+  host->AttachShadowRootInternal(ShadowRootType::kOpen);
   // "This test is for crbug.com/609012"
   Node* text = host->nextSibling();
   // <p>
@@ -65,7 +62,7 @@ TEST_F(FocusControllerTest, DoNotCrash2) {
   Node* text = target->nextSibling();
   // <div> with shadow root
   auto* host = To<Element>(text->nextSibling());
-  host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+  host->AttachShadowRootInternal(ShadowRootType::kOpen);
 
   // Set sequential focus navigation point at text node.
   GetDocument().SetSequentialFocusNavigationStartingPoint(text);
@@ -293,53 +290,6 @@ TEST_F(FocusControllerTest,
                          recover_username, mojom::blink::FocusType::kForward));
 }
 
-// Test for FocusController::FindScopeOwnerSlot().
-TEST_F(FocusControllerTest, FindScopeOwnerSlot) {
-  const char* main_html =
-      "<div id='host'>"
-      "<div id='inner1'></div>"
-      "<div id='inner2'></div>"
-      "</div>";
-
-  GetDocument().body()->setInnerHTML(String::FromUTF8(main_html));
-  auto* host = To<Element>(GetDocument().body()->firstChild());
-  ShadowRoot& shadow_root =
-      host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
-  shadow_root.setInnerHTML(String::FromUTF8("<slot></slot>"));
-
-  Element* inner1 = GetDocument().QuerySelector(AtomicString("#inner1"));
-  Element* inner2 = GetDocument().QuerySelector(AtomicString("#inner2"));
-  auto* slot =
-      To<HTMLSlotElement>(shadow_root.QuerySelector(AtomicString("slot")));
-
-  EXPECT_EQ(nullptr, FocusController::FindScopeOwnerSlot(*host));
-  EXPECT_EQ(nullptr, FocusController::FindScopeOwnerSlot(*slot));
-  EXPECT_EQ(slot, FocusController::FindScopeOwnerSlot(*inner1));
-  EXPECT_EQ(slot, FocusController::FindScopeOwnerSlot(*inner2));
-}
-
-// crbug.com/1508258
-TEST_F(FocusControllerTest, FocusHasChangedShouldInvalidateFocusStyle) {
-  SetBodyInnerHTML(
-      "<style>#host:focus { color:#A0A0A0; }</style>"
-      "<div id=host></div>");
-  auto& controller = GetFocusController();
-  controller.SetFocused(false);
-
-  auto* host = GetElementById("host");
-  ShadowRoot& shadow_root =
-      host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
-  shadow_root.setInnerHTML("<div tabindex=0></div>");
-  To<Element>(shadow_root.firstChild())->Focus();
-
-  controller.SetActive(true);
-  controller.SetFocused(true);
-  GetDocument().UpdateStyleAndLayoutTree();
-  const auto* style = host->GetComputedStyle();
-  EXPECT_EQ(Color(0xA0, 0xA0, 0xA0),
-            style->VisitedDependentColor(GetCSSPropertyColor()));
-}
-
 class FocusControllerTestWithIframes : public RenderingTest {
  public:
   FocusControllerTestWithIframes()
@@ -369,7 +319,7 @@ TEST_F(FocusControllerTestWithIframes,
   ASSERT_TRUE(child_frame);
   Document* child_document = child_frame->GetDocument();
   ASSERT_TRUE(child_document);
-  Element* checkbox = child_document->getElementById(AtomicString("checkbox"));
+  Element* checkbox = child_document->getElementById("checkbox");
   ASSERT_TRUE(checkbox);
 
   // |NextFocusableElementForImeAndAutofill| finds another element that needs

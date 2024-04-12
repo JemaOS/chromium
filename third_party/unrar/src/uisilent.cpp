@@ -32,12 +32,12 @@ void uiMsgStore::Msg()
 {
 }
 
-bool uiGetPassword(UIPASSWORD_TYPE Type,
-                   const wchar* FileName,
-                   SecPassword* Password,
-                   CheckPassword* CheckPwd) {
+
+bool uiGetPassword(UIPASSWORD_TYPE Type,const wchar *FileName,SecPassword *Password)
+{
   return false;
 }
+
 
 bool uiIsGlobalPasswordSet()
 {

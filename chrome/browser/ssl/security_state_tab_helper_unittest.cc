@@ -77,7 +77,7 @@ class SecurityStateTabHelperHistogramTest
   void NavigateToHTTPS() { NavigateAndCommit(GURL("https://example.test")); }
 
  private:
-  raw_ptr<SecurityStateTabHelper, DanglingUntriaged> helper_;
+  raw_ptr<SecurityStateTabHelper> helper_;
 };
 
 TEST_F(SecurityStateTabHelperHistogramTest, FormSubmissionHistogram) {

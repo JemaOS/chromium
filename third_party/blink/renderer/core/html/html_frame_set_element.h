@@ -24,11 +24,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_HTML_FRAME_SET_ELEMENT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_HTML_FRAME_SET_ELEMENT_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
-#include "third_party/blink/renderer/core/frame/window_event_handlers.h"
 #include "third_party/blink/renderer/core/html/html_dimension.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 
@@ -37,8 +35,7 @@ namespace blink {
 class FrameEdgeInfo;
 class MouseEvent;
 
-class HTMLFrameSetElement final : public HTMLElement,
-                                  public WindowEventHandlers {
+class HTMLFrameSetElement final : public HTMLElement {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
@@ -100,10 +97,6 @@ class HTMLFrameSetElement final : public HTMLElement,
   InsertionNotificationRequest InsertedInto(ContainerNode&) override;
   void WillRecalcStyle(const StyleRecalcChange) override;
 
-  Document& GetDocumentForWindowEventHandler() const override {
-    return GetDocument();
-  }
-
   void ResizeChildrenData();
 
   class ResizeAxis {
@@ -151,8 +144,8 @@ class HTMLFrameSetElement final : public HTMLElement,
   Vector<bool> allow_border_rows_;
   Vector<bool> allow_border_cols_;
 
-  std::optional<int> border_;
-  std::optional<bool> frameborder_;
+  absl::optional<int> border_;
+  absl::optional<bool> frameborder_;
   bool is_edge_info_dirty_ = true;
   bool is_resizing_ = false;
 };

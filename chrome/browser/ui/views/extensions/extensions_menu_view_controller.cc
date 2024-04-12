@@ -4,22 +4,15 @@
 
 #include "chrome/browser/ui/views/extensions/extensions_menu_view_controller.h"
 
-#include <algorithm>
-
 #include "base/functional/bind.h"
 #include "base/i18n/case_conversion.h"
-#include "base/metrics/user_metrics.h"
-#include "base/metrics/user_metrics_action.h"
 #include "base/notreached.h"
-#include "chrome/browser/extensions/extension_action_runner.h"
-#include "chrome/browser/extensions/permissions/site_permissions_helper.h"
-#include "chrome/browser/extensions/tab_helper.h"
+#include "chrome/browser/extensions/site_permissions_helper.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/extensions/extension_action_view_controller.h"
 #include "chrome/browser/ui/extensions/extensions_container.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
-#include "chrome/browser/ui/toolbar/toolbar_action_view_controller.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/extensions/extensions_dialogs_utils.h"
 #include "chrome/browser/ui/views/extensions/extensions_menu_item_view.h"
@@ -102,9 +95,7 @@ bool HasEnterpriseForcedAccess(const extensions::Extension& extension,
 // Returns whether the site setting toggle for `web_contents` should be visible.
 bool IsSiteSettingsToggleVisible(const ToolbarActionsModel& toolbar_model,
                                  content::WebContents* web_contents) {
-  const GURL& url = web_contents->GetLastCommittedURL();
-  return !toolbar_model.IsRestrictedUrl(url) &&
-         !toolbar_model.IsPolicyBlockedHost(url);
+  return !toolbar_model.IsRestrictedUrl(web_contents->GetLastCommittedURL());
 }
 
 // Returns whether the site settings toggle for `web_contents` should be on.
@@ -166,12 +157,8 @@ bool CanUserCustomizeExtensionSiteAccess(
     return false;
   }
 
-  if (extension.permissions_data()->IsPolicyBlockedHost(url)) {
-    // Users can't customize the site access of policy-blocked sites.
-    return false;
-  }
-
-  if (HasEnterpriseForcedAccess(extension, profile)) {
+  bool enterprise_forced_access = HasEnterpriseForcedAccess(extension, profile);
+  if (enterprise_forced_access) {
     // Users can't customize the site access of enterprise-installed extensions.
     return false;
   }
@@ -212,31 +199,6 @@ ExtensionMenuItemView::SitePermissionsButtonState GetSitePermissionsButtonState(
              : ExtensionMenuItemView::SitePermissionsButtonState::kDisabled;
 }
 
-// Returns the sites access displayed by the `extension`'s site permissions
-// button.
-ExtensionMenuItemView::SitePermissionsButtonAccess
-GetSitePermissionsButtonAccess(const extensions::Extension& extension,
-                               Profile& profile,
-                               const ToolbarActionsModel& toolbar_model,
-                               content::WebContents& web_contents) {
-  auto site_interaction = SitePermissionsHelper(&profile).GetSiteInteraction(
-      extension, &web_contents);
-  if (site_interaction == SitePermissionsHelper::SiteInteraction::kNone) {
-    return ExtensionMenuItemView::SitePermissionsButtonAccess::kNone;
-  }
-
-  auto site_access = PermissionsManager::Get(&profile)->GetUserSiteAccess(
-      extension, web_contents.GetLastCommittedURL());
-  switch (site_access) {
-    case PermissionsManager::UserSiteAccess::kOnClick:
-      return ExtensionMenuItemView::SitePermissionsButtonAccess::kOnClick;
-    case PermissionsManager::UserSiteAccess::kOnSite:
-      return ExtensionMenuItemView::SitePermissionsButtonAccess::kOnSite;
-    case PermissionsManager::UserSiteAccess::kOnAllSites:
-      return ExtensionMenuItemView::SitePermissionsButtonAccess::kOnAllSites;
-  }
-}
-
 // Returns the state for the `extension`'s site access toggle button.
 ExtensionMenuItemView::SiteAccessToggleState GetSiteAccessToggleState(
     const extensions::Extension& extension,
@@ -248,67 +210,12 @@ ExtensionMenuItemView::SiteAccessToggleState GetSiteAccessToggleState(
     return ExtensionMenuItemView::SiteAccessToggleState::kHidden;
   }
 
-  // Button is on iff the extension has access to the site.
-  auto site_interaction = SitePermissionsHelper(&profile).GetSiteInteraction(
-      extension, &web_contents);
-  return site_interaction == SitePermissionsHelper::SiteInteraction::kGranted
-             ? ExtensionMenuItemView::SiteAccessToggleState::kOn
-             : ExtensionMenuItemView::SiteAccessToggleState::kOff;
-}
-
-// Returns the state for the message section in the menu.
-ExtensionsMenuMainPageView::MessageSectionState GetMessageSectionState(
-    Profile& profile,
-    const ToolbarActionsModel& toolbar_model,
-    content::WebContents& web_contents) {
-  const GURL& url = web_contents.GetLastCommittedURL();
-  if (toolbar_model.IsRestrictedUrl(url)) {
-    return ExtensionsMenuMainPageView::MessageSectionState::kRestrictedAccess;
-  }
-
-  if (toolbar_model.IsPolicyBlockedHost(url)) {
-    return ExtensionsMenuMainPageView::MessageSectionState::
-        kPolicyBlockedAccess;
-  }
-
-  PermissionsManager::UserSiteSetting site_setting =
-      PermissionsManager::Get(&profile)->GetUserSiteSetting(
-          web_contents.GetPrimaryMainFrame()->GetLastCommittedOrigin());
-  bool reload_required =
-      extensions::TabHelper::FromWebContents(&web_contents)->IsReloadRequired();
-
-  if (site_setting ==
-      PermissionsManager::UserSiteSetting::kBlockAllExtensions) {
-    return reload_required ? ExtensionsMenuMainPageView::MessageSectionState::
-                                 kUserBlockedAccessReload
-                           : ExtensionsMenuMainPageView::MessageSectionState::
-                                 kUserBlockedAccess;
-  }
-
-  return reload_required ? ExtensionsMenuMainPageView::MessageSectionState::
-                               kUserCustomizedAccessReload
-                         : ExtensionsMenuMainPageView::MessageSectionState::
-                               kUserCustomizedAccess;
-}
-
-void LogSiteAccessUpdate(PermissionsManager::UserSiteAccess site_access) {
-  switch (site_access) {
-    case PermissionsManager::UserSiteAccess::kOnClick:
-      base::RecordAction(
-          base::UserMetricsAction("Extensions.Menu.OnClickSelected"));
-      break;
-    case PermissionsManager::UserSiteAccess::kOnSite:
-      base::RecordAction(
-          base::UserMetricsAction("Extensions.Menu.OnSiteSelected"));
-      break;
-    case PermissionsManager::UserSiteAccess::kOnAllSites:
-      base::RecordAction(
-          base::UserMetricsAction("Extensions.Menu.OnAllSitesSelected"));
-      break;
-    default:
-      NOTREACHED() << "Unknown site access";
-      break;
-  }
+  PermissionsManager::UserSiteAccess site_access =
+      PermissionsManager::Get(&profile)->GetUserSiteAccess(
+          extension, web_contents.GetLastCommittedURL());
+  return site_access == PermissionsManager::UserSiteAccess::kOnClick
+             ? ExtensionMenuItemView::SiteAccessToggleState::kOff
+             : ExtensionMenuItemView::SiteAccessToggleState::kOn;
 }
 
 }  // namespace
@@ -343,7 +250,7 @@ void ExtensionsMenuViewController::OpenMainPage() {
 }
 
 void ExtensionsMenuViewController::OpenSitePermissionsPage(
-    const extensions::ExtensionId& extension_id) {
+    extensions::ExtensionId extension_id) {
   CHECK(CanUserCustomizeExtensionSiteAccess(
       *GetExtension(browser_, extension_id), *browser_->profile(),
       *toolbar_model_, *GetActiveWebContents()));
@@ -355,9 +262,6 @@ void ExtensionsMenuViewController::OpenSitePermissionsPage(
                             GetActiveWebContents());
 
   SwitchToPage(std::move(site_permissions_page));
-
-  base::RecordAction(
-      base::UserMetricsAction("Extensions.Menu.SitePermissionsPageOpened"));
 }
 
 void ExtensionsMenuViewController::CloseBubble() {
@@ -366,180 +270,16 @@ void ExtensionsMenuViewController::CloseBubble() {
 }
 
 void ExtensionsMenuViewController::OnSiteAccessSelected(
-    const extensions::ExtensionId& extension_id,
+    extensions::ExtensionId extension_id,
     PermissionsManager::UserSiteAccess site_access) {
-  LogSiteAccessUpdate(site_access);
-
   SitePermissionsHelper permissions(browser_->profile());
   permissions.UpdateSiteAccess(*GetExtension(browser_, extension_id),
                                GetActiveWebContents(), site_access);
 }
 
-void ExtensionsMenuViewController::OnSiteSettingsToggleButtonPressed(
-    bool is_on) {
-  content::WebContents* web_contents = GetActiveWebContents();
-  const url::Origin& origin =
-      web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin();
-  PermissionsManager::UserSiteSetting site_setting =
-      is_on ? PermissionsManager::UserSiteSetting::kCustomizeByExtension
-            : PermissionsManager::UserSiteSetting::kBlockAllExtensions;
-
-  extensions::TabHelper::FromWebContents(web_contents)
-      ->SetReloadRequired(site_setting);
-  PermissionsManager::Get(browser_->profile())
-      ->UpdateUserSiteSetting(origin, site_setting);
-
-  if (is_on) {
-    base::RecordAction(
-        base::UserMetricsAction("Extensions.Menu.AllowByExtensionSelected"));
-  } else {
-    base::RecordAction(
-        base::UserMetricsAction("Extensions.Menu.ExtensionsBlockedSelected"));
-  }
-}
-
-void ExtensionsMenuViewController::OnExtensionToggleSelected(
-    const extensions::ExtensionId& extension_id,
-    bool is_on) {
-  const extensions::Extension* extension = GetExtension(browser_, extension_id);
-  content::WebContents* web_contents = GetActiveWebContents();
-  CHECK(CanUserCustomizeExtensionSiteAccess(*extension, *browser_->profile(),
-                                            *toolbar_model_, *web_contents));
-
-  SitePermissionsHelper permissions_helper(browser_->profile());
-  auto* permissions_manager = PermissionsManager::Get(browser_->profile());
-  auto current_site_access = permissions_manager->GetUserSiteAccess(
-      *GetExtension(browser_, extension_id),
-      GetActiveWebContents()->GetLastCommittedURL());
-  PermissionsManager::ExtensionSiteAccess extension_site_access =
-      permissions_manager->GetSiteAccess(*extension,
-                                         web_contents->GetLastCommittedURL());
-
-  // Grant extension site access when extension is toggled on.
-  if (is_on) {
-    DCHECK_EQ(current_site_access,
-              PermissionsManager::UserSiteAccess::kOnClick);
-
-    // Update site access when extension requested host permissions for the
-    // current site (that is, site access was withheld).
-    if (extension_site_access.withheld_site_access ||
-        extension_site_access.withheld_all_sites_access) {
-      // Restore to previous access by looking whether broad site access was
-      // previously granted.
-      PermissionsManager::UserSiteAccess new_site_access =
-          permissions_manager->HasPreviousBroadSiteAccess(extension_id)
-              ? PermissionsManager::UserSiteAccess::kOnAllSites
-              : PermissionsManager::UserSiteAccess::kOnSite;
-      permissions_helper.UpdateSiteAccess(*extension, web_contents,
-                                          new_site_access);
-      return;
-    }
-
-    // Otherwise, grant one-time access (e.g. extension with activeTab is
-    // granted access).
-    extensions::ExtensionActionRunner* action_runner =
-        extensions::ExtensionActionRunner::GetForWebContents(web_contents);
-    if (action_runner) {
-      action_runner->GrantTabPermissions({extension});
-    }
-    return;
-  }
-
-  // Revoke extension's site access when extension is toggled off.
-
-  // Update site access to "on click" when extension requested, and was granted,
-  // host permissions for the current site (that is, extension has site access).
-  if (extension_site_access.has_site_access ||
-      extension_site_access.has_all_sites_access) {
-    DCHECK_NE(current_site_access,
-              PermissionsManager::UserSiteAccess::kOnClick);
-    permissions_helper.UpdateSiteAccess(
-        *extension, web_contents, PermissionsManager::UserSiteAccess::kOnClick);
-    return;
-  }
-
-  // Otherwise, extension has one-time access and we need to clear tab
-  // permissions (e.g extension with activeTab was granted one-time access).
-  DCHECK_EQ(current_site_access, PermissionsManager::UserSiteAccess::kOnClick);
-  extensions::TabHelper::FromWebContents(web_contents)
-      ->active_tab_permission_granter()
-      ->ClearActiveExtensionAndNotify(extension_id);
-
-  auto* action_runner =
-      extensions::ExtensionActionRunner::GetForWebContents(web_contents);
-  if (action_runner) {
-    action_runner->ShowReloadPageBubble({extension_id});
-  }
-}
-
-void ExtensionsMenuViewController::OnReloadPageButtonClicked() {
-  GetActiveWebContents()->GetController().Reload(content::ReloadType::NORMAL,
-                                                 false);
-}
-
-void ExtensionsMenuViewController::OnAllowExtensionClicked(
-    const extensions::ExtensionId& extension_id) {
-  content::WebContents* web_contents = GetActiveWebContents();
-  extensions::ExtensionActionRunner* action_runner =
-      extensions::ExtensionActionRunner::GetForWebContents(web_contents);
-  if (!action_runner) {
-    return;
-  }
-
-  base::RecordAction(base::UserMetricsAction(
-      "Extensions.Toolbar.ExtensionActivatedFromAllowingRequestAccessInMenu"));
-  action_runner->GrantTabPermissions({GetExtension(browser_, extension_id)});
-  // TODO(crbug.com/1445399): Granting tab permission but not accepting the
-  // reload page means we grant tab permissions but the action is not executed.
-  // This causes a mismatch between the request access button in the toolbar,
-  // and the request access section in the menu when the extension is granted
-  // tab permission by one item but the action is not run.
-}
-
-void ExtensionsMenuViewController::OnDismissExtensionClicked(
-    const extensions::ExtensionId& extension_id) {
-  extensions::TabHelper* tab_helper =
-      extensions::TabHelper::FromWebContents(GetActiveWebContents());
-  if (tab_helper) {
-    tab_helper->DismissExtensionRequests(extension_id);
-  }
-
-  base::RecordAction(base::UserMetricsAction(
-      "Extensions.Toolbar.ExtensionRequestDismissedFromMenu"));
-}
-
-void ExtensionsMenuViewController::OnShowRequestsTogglePressed(
-    const extensions::ExtensionId& extension_id,
-    bool is_on) {
-  extensions::SitePermissionsHelper(browser_->profile())
-      .SetShowAccessRequestsInToolbar(extension_id, is_on);
-
-  if (is_on) {
-    base::RecordAction(base::UserMetricsAction(
-        "Extensions.Menu.ShowRequestsInToolbarPressed"));
-  } else {
-    base::RecordAction(base::UserMetricsAction(
-        "Extensions.Menu.HideRequestsInToolbarPressed"));
-  }
-}
-
 void ExtensionsMenuViewController::TabChangedAt(content::WebContents* contents,
                                                 int index,
                                                 TabChangeType change_type) {
-  bool should_update_page = false;
-  switch (change_type) {
-    case TabChangeType::kAll:
-      should_update_page = true;
-      break;
-    case TabChangeType::kLoadingOnly:
-      should_update_page = false;
-      break;
-  }
-
-  if (!should_update_page || GetActiveWebContents() != contents) {
-    return;
-  }
-
   UpdatePage(contents);
 }
 
@@ -547,14 +287,12 @@ void ExtensionsMenuViewController::OnTabStripModelChanged(
     TabStripModel* tab_strip_model,
     const TabStripModelChange& change,
     const TabStripSelectionChange& selection) {
-  CHECK_EQ(tab_strip_model, browser_->tab_strip_model());
-  content::WebContents* web_contents = GetActiveWebContents();
-
+  content::WebContents* web_contents = tab_strip_model->GetActiveWebContents();
   if (!selection.active_tab_changed() || !web_contents) {
     return;
   }
 
-  UpdatePage(web_contents);
+  UpdatePage(GetActiveWebContents());
 }
 
 void ExtensionsMenuViewController::UpdatePage(
@@ -565,7 +303,7 @@ void ExtensionsMenuViewController::UpdatePage(
     return;
   }
 
-  auto* site_permissions_page = GetSitePermissionsPage(current_page_.view());
+  auto* site_permissions_page = GetSitePermissionsPage(current_page_);
   if (site_permissions_page) {
     // Update site permissions page if the extension can have one.
     if (CanUserCustomizeExtensionSiteAccess(
@@ -580,7 +318,7 @@ void ExtensionsMenuViewController::UpdatePage(
     return;
   }
 
-  ExtensionsMenuMainPageView* main_page = GetMainPage(current_page_.view());
+  ExtensionsMenuMainPageView* main_page = GetMainPage(current_page_);
   DCHECK(main_page);
   UpdateMainPage(main_page, web_contents);
 }
@@ -590,77 +328,14 @@ void ExtensionsMenuViewController::UpdateMainPage(
     content::WebContents* web_contents) {
   CHECK(web_contents);
 
-  // Update subheader.
   std::u16string current_site = GetCurrentHost(web_contents);
   bool is_site_settings_toggle_visible =
       IsSiteSettingsToggleVisible(*toolbar_model_, web_contents);
   bool is_site_settings_toggle_on =
       IsSiteSettingsToggleOn(browser_, web_contents);
-  main_page->UpdateSubheader(current_site, is_site_settings_toggle_visible,
-                             is_site_settings_toggle_on);
+  main_page->Update(current_site, is_site_settings_toggle_visible,
+                    is_site_settings_toggle_on);
 
-  // Update message section.
-  ExtensionsMenuMainPageView::MessageSectionState message_section_state =
-      GetMessageSectionState(*browser_->profile(), *toolbar_model_,
-                             *web_contents);
-  bool has_enterprise_extensions = false;
-  // Only kUserBlockedAccess or kPolicyBlockedAccess states care whether there
-  // are any extensions installed by enterprise.
-  if (message_section_state ==
-          ExtensionsMenuMainPageView::MessageSectionState::kUserBlockedAccess ||
-      message_section_state == ExtensionsMenuMainPageView::MessageSectionState::
-                                   kPolicyBlockedAccess) {
-    has_enterprise_extensions = std::any_of(
-        toolbar_model_->action_ids().begin(),
-        toolbar_model_->action_ids().end(),
-        [this](const ToolbarActionsModel::ActionId extension_id) {
-          auto* extension = GetExtension(browser_, extension_id);
-          return HasEnterpriseForcedAccess(*extension, *browser_->profile());
-        });
-  }
-  main_page->UpdateMessageSection(message_section_state,
-                                  has_enterprise_extensions);
-
-  if (message_section_state ==
-      ExtensionsMenuMainPageView::MessageSectionState::kUserCustomizedAccess) {
-    int index = 0;
-    std::vector<std::string> extension_ids =
-        SortExtensionsByName(*toolbar_model_);
-    for (const auto& extension_id : extension_ids) {
-      SitePermissionsHelper::SiteInteraction site_interaction =
-          SitePermissionsHelper(browser_->profile())
-              .GetSiteInteraction(*GetExtension(browser_, extension_id),
-                                  web_contents);
-      bool dismissed_requests =
-          extensions::TabHelper::FromWebContents(web_contents)
-              ->HasExtensionDismissedRequests(extension_id);
-
-      if (site_interaction ==
-              SitePermissionsHelper::SiteInteraction::kWithheld &&
-          !dismissed_requests) {
-        // Add or update the extension entry in the message section when
-        // the extension is requesting access and can show requests.
-        ToolbarActionViewController* action_controller =
-            extensions_container_->GetActionForId(extension_id);
-        std::u16string name = action_controller->GetActionName();
-        const int icon_size = ChromeLayoutProvider::Get()->GetDistanceMetric(
-            DISTANCE_EXTENSIONS_MENU_EXTENSION_ICON_SIZE);
-        ui::ImageModel icon = action_controller->GetIcon(
-            web_contents, gfx::Size(icon_size, icon_size));
-
-        main_page->AddOrUpdateExtensionRequestingAccess(extension_id, name,
-                                                        icon, index);
-        ++index;
-      } else {
-        // Otherwise remove its entry, if existent.
-        main_page->RemoveExtensionRequestingAccess(extension_id);
-      }
-    }
-  }
-
-  // Update menu items.
-  // TODO(crbug.com/1390952): Reorder the extensions after updating them, since
-  // their names can change.
   std::vector<ExtensionMenuItemView*> menu_items = main_page->GetMenuItems();
   for (auto* menu_item : menu_items) {
     const extensions::Extension* extension =
@@ -673,17 +348,7 @@ void ExtensionsMenuViewController::UpdateMainPage(
     ExtensionMenuItemView::SitePermissionsButtonState
         site_permissions_button_state = GetSitePermissionsButtonState(
             *extension, *browser_->profile(), *toolbar_model_, *web_contents);
-    ExtensionMenuItemView::SitePermissionsButtonAccess
-        site_permissions_button_access = GetSitePermissionsButtonAccess(
-            *extension, *browser_->profile(), *toolbar_model_, *web_contents);
-    menu_item->Update(site_access_toggle_state, site_permissions_button_state,
-                      site_permissions_button_access);
-  }
-
-  // Items can be added/removed from the menu, thus we need to resize the menu
-  // contents (e.g extension is added to the requests section).
-  if (bubble_delegate_->GetBubbleFrameView()) {
-    bubble_delegate_->SizeToContents();
+    menu_item->Update(site_access_toggle_state, site_permissions_button_state);
   }
 }
 
@@ -692,33 +357,27 @@ void ExtensionsMenuViewController::UpdateSitePermissionsPage(
     content::WebContents* web_contents) {
   CHECK(web_contents);
 
-  auto* permissions_manager = PermissionsManager::Get(browser_->profile());
-  SitePermissionsHelper permissions_helper(browser_->profile());
-
   extensions::ExtensionId extension_id = site_permissions_page->extension_id();
-  const extensions::Extension* extension = GetExtension(browser_, extension_id);
-  const GURL& url = web_contents->GetLastCommittedURL();
   const int icon_size = ChromeLayoutProvider::Get()->GetDistanceMetric(
       DISTANCE_EXTENSIONS_MENU_EXTENSION_ICON_SIZE);
-  ToolbarActionViewController* action_controller =
-      extensions_container_->GetActionForId(extension_id);
+  std::unique_ptr<ExtensionActionViewController> action_controller =
+      ExtensionActionViewController::Create(extension_id, browser_,
+                                            extensions_container_);
 
   std::u16string extension_name = action_controller->GetActionName();
-  ui::ImageModel extension_icon =
-      action_controller->GetIcon(web_contents, gfx::Size(icon_size, icon_size));
+  ui::ImageModel extension_icon = action_controller->GetIcon(
+      GetActiveWebContents(), gfx::Size(icon_size, icon_size));
   std::u16string current_site = GetCurrentHost(web_contents);
-  PermissionsManager::UserSiteAccess user_site_access =
-      permissions_manager->GetUserSiteAccess(*extension, url);
+  extensions::PermissionsManager::UserSiteAccess user_site_access =
+      PermissionsManager::Get(browser_->profile())
+          ->GetUserSiteAccess(*GetExtension(browser_, extension_id),
+                              GetActiveWebContents()->GetLastCommittedURL());
   bool is_show_requests_toggle_on =
-      permissions_helper.ShowAccessRequestsInToolbar(extension_id);
-  bool is_on_site_enabled = permissions_manager->CanUserSelectSiteAccess(
-      *extension, url, PermissionsManager::UserSiteAccess::kOnSite);
-  bool is_on_all_sites_enabled = permissions_manager->CanUserSelectSiteAccess(
-      *extension, url, PermissionsManager::UserSiteAccess::kOnAllSites);
+      extensions::SitePermissionsHelper(browser_->profile())
+          .ShowAccessRequestsInToolbar(extension_id);
 
   site_permissions_page->Update(extension_name, extension_icon, current_site,
-                                user_site_access, is_show_requests_toggle_on,
-                                is_on_site_enabled, is_on_all_sites_enabled);
+                                user_site_access, is_show_requests_toggle_on);
 }
 
 void ExtensionsMenuViewController::OnToolbarActionAdded(
@@ -727,19 +386,34 @@ void ExtensionsMenuViewController::OnToolbarActionAdded(
 
   // Do nothing when site permission page is opened as a new extension doesn't
   // affect the site permissions page of another extension.
-  if (GetSitePermissionsPage(current_page_.view())) {
+  if (GetSitePermissionsPage(current_page_)) {
     return;
   }
 
   // Insert a menu item for the extension when main page is opened.
-  auto* main_page = GetMainPage(current_page_.view());
+  auto* main_page = GetMainPage(current_page_);
   DCHECK(main_page);
-  int index = FindIndex(*toolbar_model_, action_id);
-  InsertMenuItemMainPage(main_page, action_id, index);
 
-  // TODO(crbug.com/1390952): Update message section once
-  // such section is implemented (if the extension added requests
-  // site access, it needs to be added to such section).
+  int index = FindIndex(*toolbar_model_, action_id);
+  std::unique_ptr<ExtensionActionViewController> action_controller =
+      ExtensionActionViewController::Create(action_id, browser_,
+                                            extensions_container_);
+  ExtensionMenuItemView::SiteAccessToggleState site_access_toggle_state =
+      GetSiteAccessToggleState(*action_controller->extension(),
+                               *browser_->profile(), *toolbar_model_,
+                               *GetActiveWebContents());
+  ExtensionMenuItemView::SitePermissionsButtonState
+      site_permissions_button_state = GetSitePermissionsButtonState(
+          *action_controller->extension(), *browser_->profile(),
+          *toolbar_model_, *GetActiveWebContents());
+
+  main_page->CreateAndInsertMenuItem(std::move(action_controller), action_id,
+                                     site_access_toggle_state,
+                                     site_permissions_button_state, index);
+
+  // TODO(crbug.com/1390952): Update requests access section once such section
+  // is implemented (if the extension added requests site access, it needs to be
+  // added to such section).
   bubble_delegate_->SizeToContents();
 }
 
@@ -747,7 +421,7 @@ void ExtensionsMenuViewController::OnToolbarActionRemoved(
     const ToolbarActionsModel::ActionId& action_id) {
   DCHECK(current_page_);
 
-  auto* site_permissions_page = GetSitePermissionsPage(current_page_.view());
+  auto* site_permissions_page = GetSitePermissionsPage(current_page_);
   if (site_permissions_page) {
     // Return to the main page if site permissions page belongs to the extension
     // removed.
@@ -758,11 +432,11 @@ void ExtensionsMenuViewController::OnToolbarActionRemoved(
   }
 
   // Remove the menu item for the extension when main page is opened.
-  auto* main_page = GetMainPage(current_page_.view());
+  auto* main_page = GetMainPage(current_page_);
   DCHECK(main_page);
   main_page->RemoveMenuItem(action_id);
 
-  // TODO(crbug.com/1390952): Update message section (if the extension
+  // TODO(crbug.com/1390952): Update requests access section (if the extension
   // removed was in the section, it needs to be removed).
   bubble_delegate_->SizeToContents();
 }
@@ -778,9 +452,9 @@ void ExtensionsMenuViewController::OnToolbarModelInitialized() {
   // Toolbar model should have been initialized if site permissions page is
   // open, since this page can only be reached after main page was populated
   // after toolbar model was initialized.
-  CHECK(!GetSitePermissionsPage(current_page_.view()));
+  CHECK(!GetSitePermissionsPage(current_page_));
 
-  auto* main_page = GetMainPage(current_page_.view());
+  auto* main_page = GetMainPage(current_page_);
   DCHECK(main_page);
   PopulateMainPage(main_page);
 }
@@ -790,11 +464,11 @@ void ExtensionsMenuViewController::OnToolbarPinnedActionsChanged() {
 
   // Do nothing when site permissions page is opened as it doesn't have pin
   // buttons.
-  if (GetSitePermissionsPage(current_page_.view())) {
+  if (GetSitePermissionsPage(current_page_)) {
     return;
   }
 
-  auto* main_page = GetMainPage(current_page_.view());
+  auto* main_page = GetMainPage(current_page_);
   DCHECK(main_page);
 
   std::vector<ExtensionMenuItemView*> menu_items = main_page->GetMenuItems();
@@ -809,7 +483,7 @@ void ExtensionsMenuViewController::OnUserPermissionsSettingsChanged(
     const PermissionsManager::UserPermissionsSettings& settings) {
   DCHECK(current_page_);
 
-  if (GetSitePermissionsPage(current_page_.view())) {
+  if (GetSitePermissionsPage(current_page_)) {
     // Site permissions page can only be opened when site setting is set to
     // "customize by extension". Thus, when site settings changed, we have to
     // return to main page.
@@ -822,9 +496,8 @@ void ExtensionsMenuViewController::OnUserPermissionsSettingsChanged(
     return;
   }
 
-  ExtensionsMenuMainPageView* main_page = GetMainPage(current_page_.view());
-  DCHECK(main_page);
-  UpdateMainPage(main_page, GetActiveWebContents());
+  DCHECK(GetMainPage(current_page_));
+  UpdatePage(GetActiveWebContents());
 
   // TODO(crbug.com/1390952): Update the "highlighted section" based on the
   // `site_setting` and whether a page refresh is needed.
@@ -840,53 +513,39 @@ void ExtensionsMenuViewController::OnShowAccessRequestsInToolbarChanged(
 
   // Changing whether an extension can show requests access in the toolbar only
   // affects the site permissions page for such extension.
-  auto* site_permissions_page = GetSitePermissionsPage(current_page_.view());
+  auto* site_permissions_page = GetSitePermissionsPage(current_page_);
   if (site_permissions_page &&
       site_permissions_page->extension_id() == extension_id) {
     site_permissions_page->UpdateShowRequestsToggle(can_show_requests);
   }
 }
 
-void ExtensionsMenuViewController::OnExtensionDismissedRequests(
-    const extensions::ExtensionId& extension_id,
-    const url::Origin& origin) {
-  DCHECK(current_page_);
-
-  // Extension can only dismiss requests from the menu's main page. if it has
-  // navigated to another site in between, do nothing (navigation listeners will
-  // handle menu updates).
-  auto* main_page = GetMainPage(current_page_.view());
-  if (!main_page ||
-      GetActiveWebContents()->GetPrimaryMainFrame()->GetLastCommittedOrigin() !=
-          origin) {
-    return;
-  }
-
-  main_page->RemoveExtensionRequestingAccess(extension_id);
-  if (bubble_delegate_->GetBubbleFrameView()) {
-    bubble_delegate_->SizeToContents();
-  }
+void ExtensionsMenuViewController::OnViewIsDeleting(
+    views::View* observed_view) {
+  DCHECK_EQ(observed_view, current_page_);
+  current_page_ = nullptr;
 }
 
 ExtensionsMenuMainPageView*
 ExtensionsMenuViewController::GetMainPageViewForTesting() {
   DCHECK(current_page_);
-  return GetMainPage(current_page_.view());
+  return GetMainPage(current_page_);
 }
 
 ExtensionsMenuSitePermissionsPageView*
 ExtensionsMenuViewController::GetSitePermissionsPageForTesting() {
   DCHECK(current_page_);
-  return GetSitePermissionsPage(current_page_.view());
+  return GetSitePermissionsPage(current_page_);
 }
 
 void ExtensionsMenuViewController::SwitchToPage(
     std::unique_ptr<views::View> page) {
   if (current_page_) {
-    bubble_contents_->RemoveChildViewT(current_page_.view());
+    bubble_contents_->RemoveChildViewT(current_page_.get());
   }
   DCHECK(!current_page_);
-  current_page_.SetView(bubble_contents_->AddChildView(std::move(page)));
+  current_page_ = bubble_contents_->AddChildView(std::move(page));
+  current_page_->AddObserver(this);
 
   // Only resize the menu if the bubble is created, since page could be added to
   // the menu beforehand and delegate wouldn't know the bubble bounds.
@@ -897,43 +556,27 @@ void ExtensionsMenuViewController::SwitchToPage(
 
 void ExtensionsMenuViewController::PopulateMainPage(
     ExtensionsMenuMainPageView* main_page) {
-  // TODO(crbug.com/1390952): We should update the subheader here since it
-  // despends in `toolbar_model_`.
   std::vector<std::string> sorted_ids = SortExtensionsByName(*toolbar_model_);
   for (size_t i = 0; i < sorted_ids.size(); ++i) {
-    InsertMenuItemMainPage(main_page, sorted_ids[i], i);
+    // TODO(emiliapaz): Under MVC architecture, view should not own the view
+    // controller. However, the current extensions structure depends on this
+    // thus a major restructure is needed.
+    std::unique_ptr<ExtensionActionViewController> action_controller =
+        ExtensionActionViewController::Create(sorted_ids[i], browser_,
+                                              extensions_container_);
+    ExtensionMenuItemView::SiteAccessToggleState site_access_toggle_state =
+        GetSiteAccessToggleState(*action_controller->extension(),
+                                 *browser_->profile(), *toolbar_model_,
+                                 *GetActiveWebContents());
+    ExtensionMenuItemView::SitePermissionsButtonState
+        site_permissions_button_state = GetSitePermissionsButtonState(
+            *action_controller->extension(), *browser_->profile(),
+            *toolbar_model_, *GetActiveWebContents());
+
+    main_page->CreateAndInsertMenuItem(std::move(action_controller),
+                                       sorted_ids[i], site_access_toggle_state,
+                                       site_permissions_button_state, i);
   }
-}
-
-void ExtensionsMenuViewController::InsertMenuItemMainPage(
-    ExtensionsMenuMainPageView* main_page,
-    const extensions::ExtensionId& extension_id,
-    int index) {
-  // TODO(emiliapaz): Under MVC architecture, view should not own the view
-  // controller. However, the current extensions structure depends on this
-  // thus a major restructure is needed.
-  std::unique_ptr<ExtensionActionViewController> action_controller =
-      ExtensionActionViewController::Create(extension_id, browser_,
-                                            extensions_container_);
-  const extensions::Extension* extension = action_controller->extension();
-  Profile* profile = browser_->profile();
-  content::WebContents* web_contents = GetActiveWebContents();
-
-  bool is_enterprise = HasEnterpriseForcedAccess(*extension, *profile);
-  ExtensionMenuItemView::SiteAccessToggleState site_access_toggle_state =
-      GetSiteAccessToggleState(*extension, *profile, *toolbar_model_,
-                               *web_contents);
-  ExtensionMenuItemView::SitePermissionsButtonState
-      site_permissions_button_state = GetSitePermissionsButtonState(
-          *extension, *profile, *toolbar_model_, *web_contents);
-  ExtensionMenuItemView::SitePermissionsButtonAccess
-      site_permissions_button_access = GetSitePermissionsButtonAccess(
-          *extension, *profile, *toolbar_model_, *web_contents);
-
-  main_page->CreateAndInsertMenuItem(std::move(action_controller), extension_id,
-                                     is_enterprise, site_access_toggle_state,
-                                     site_permissions_button_state,
-                                     site_permissions_button_access, index);
 }
 
 content::WebContents* ExtensionsMenuViewController::GetActiveWebContents()

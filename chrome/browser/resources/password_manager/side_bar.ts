@@ -4,20 +4,18 @@
 
 import 'chrome://resources/cr_elements/cr_menu_selector/cr_menu_selector.js';
 import 'chrome://resources/cr_elements/cr_nav_menu_item_style.css.js';
-import 'chrome://resources/cr_elements/cr_ripple/cr_ripple.js';
 import 'chrome://resources/cr_elements/icons.html.js';
 import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
+import 'chrome://resources/polymer/v3_0/paper-ripple/paper-ripple.js';
+import './shared_style.css.js';
 import './icons.html.js';
 
-import {HelpBubbleMixin} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
-import type {CrMenuSelector} from 'chrome://resources/cr_elements/cr_menu_selector/cr_menu_selector.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {CrMenuSelector} from 'chrome://resources/cr_elements/cr_menu_selector/cr_menu_selector.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {CredentialsChangedListener} from './password_manager_proxy.js';
-import {PasswordManagerImpl} from './password_manager_proxy.js';
-import type {Route} from './router.js';
-import {Page, RouteObserverMixin, Router, UrlParam} from './router.js';
+import {CredentialsChangedListener, PasswordManagerImpl} from './password_manager_proxy.js';
+import {Page, Route, RouteObserverMixin, Router, UrlParam} from './router.js';
 import {getTemplate} from './side_bar.html.js';
 
 /**
@@ -38,22 +36,16 @@ enum PasswordCheckReferrer {
   COUNT = 4,
 }
 
+
 export interface PasswordManagerSideBarElement {
   $: {
-    menu: CrMenuSelector,
-    compromisedPasswords: HTMLElement,
-    settings: HTMLElement,
+    'menu': CrMenuSelector,
+    'compromisedPasswords': HTMLElement,
   };
 }
 
-const PASSWORD_MANAGER_SETTINGS_MENU_ITEM_ELEMENT_ID =
-    'PasswordManagerUI::kSettingsMenuItemElementId';
-
-const PasswordManagerSideBarElementBase =
-    HelpBubbleMixin(RouteObserverMixin(PolymerElement));
-
-export class PasswordManagerSideBarElement extends
-    PasswordManagerSideBarElementBase {
+export class PasswordManagerSideBarElement extends RouteObserverMixin
+(PolymerElement) {
   static get is() {
     return 'password-manager-side-bar';
   }
@@ -94,8 +86,6 @@ export class PasswordManagerSideBarElement extends
                     });
               })
               .length;
-      this.registerHelpBubble(
-          PASSWORD_MANAGER_SETTINGS_MENU_ITEM_ELEMENT_ID, this.$.settings);
     };
 
     PasswordManagerImpl.getInstance().getInsecureCredentials().then(
@@ -126,8 +116,6 @@ export class PasswordManagerSideBarElement extends
           'PasswordManager.BulkCheck.PasswordCheckReferrer',
           PasswordCheckReferrer.PASSWORD_SETTINGS, PasswordCheckReferrer.COUNT);
     }
-    this.dispatchEvent(
-        new CustomEvent('close-drawer', {bubbles: true, composed: true}));
   }
 
   private getSelectedPage_(): string {

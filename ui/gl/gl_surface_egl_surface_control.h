@@ -6,9 +6,7 @@
 #define UI_GL_GL_SURFACE_EGL_SURFACE_CONTROL_H_
 
 #include <android/native_window.h>
-
 #include <memory>
-#include <optional>
 #include <queue>
 
 #include "base/android/scoped_hardware_buffer_handle.h"
@@ -17,6 +15,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/android/android_surface_control_compat.h"
 #include "ui/gfx/color_space.h"
 #include "ui/gfx/frame_data.h"
@@ -66,7 +65,7 @@ class GL_EXPORT GLSurfaceEGLSurfaceControl : public Presenter {
   bool SupportsPlaneGpuFences() const override;
   void SetFrameRate(float frame_rate) override;
   void SetChoreographerVsyncIdForNextFrame(
-      std::optional<int64_t> choreographer_vsync_id) override;
+      absl::optional<int64_t> choreographer_vsync_id) override;
 
  private:
   GLSurfaceEGLSurfaceControl(
@@ -90,7 +89,12 @@ class GL_EXPORT GLSurfaceEGLSurfaceControl : public Presenter {
     gfx::OverlayTransform transform = gfx::OVERLAY_TRANSFORM_NONE;
     bool opaque = true;
     gfx::ColorSpace color_space;
-    std::optional<gfx::HDRMetadata> hdr_metadata;
+    absl::optional<gfx::HDRMetadata> hdr_metadata;
+
+    // Indicates whether buffer for this layer was updated in the currently
+    // pending transaction, or the last transaction submitted if there isn't
+    // one pending.
+    bool buffer_updated_in_pending_transaction = true;
 
     // Indicates whether the |surface| will be visible or hidden.
     bool visibility = true;
@@ -168,7 +172,7 @@ class GL_EXPORT GLSurfaceEGLSurfaceControl : public Presenter {
       SwapCompletionCallback completion_callback,
       PresentationCallback presentation_callback,
       ResourceRefs released_resources,
-      std::optional<PrimaryPlaneFences> primary_plane_fences,
+      absl::optional<PrimaryPlaneFences> primary_plane_fences,
       gfx::SurfaceControl::TransactionStats transaction_stats);
 
   // Called on the |gpu_task_runner_| when a transaction is committed by the
@@ -181,7 +185,7 @@ class GL_EXPORT GLSurfaceEGLSurfaceControl : public Presenter {
   const std::string child_surface_name_;
 
   // Holds the surface state changes made since the last call to SwapBuffers.
-  std::optional<gfx::SurfaceControl::Transaction> pending_transaction_;
+  absl::optional<gfx::SurfaceControl::Transaction> pending_transaction_;
   size_t pending_surfaces_count_ = 0u;
   // Resources in the pending frame, for which updates are being
   // collected in |pending_transaction_|. These are resources for which the
@@ -191,7 +195,7 @@ class GL_EXPORT GLSurfaceEGLSurfaceControl : public Presenter {
 
   // The fences associated with the primary plane (renderer by the display
   // compositor) for the pending frame.
-  std::optional<PrimaryPlaneFences> primary_plane_fences_;
+  absl::optional<PrimaryPlaneFences> primary_plane_fences_;
 
   // Transactions waiting to be applied once the previous transaction is acked.
   std::queue<gfx::SurfaceControl::Transaction> pending_transaction_queue_;
@@ -236,7 +240,7 @@ class GL_EXPORT GLSurfaceEGLSurfaceControl : public Presenter {
   const bool use_target_deadline_;
   const bool using_on_commit_callback_;
 
-  std::optional<int64_t> choreographer_vsync_id_for_next_frame_;
+  absl::optional<int64_t> choreographer_vsync_id_for_next_frame_;
 
   base::WeakPtrFactory<GLSurfaceEGLSurfaceControl> weak_factory_{this};
 };

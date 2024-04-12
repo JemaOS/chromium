@@ -9,45 +9,27 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.ContextUtils;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.browserservices.intents.WebappInfo;
 import org.chromium.components.webapk.lib.client.WebApkValidator;
 import org.chromium.components.webapps.ShortcutSource;
 
-/** Delegate for retrieving WebApkInfo. */
+/**
+ * Delegate for retrieving WebApkInfo.
+ */
 public class WebApkHandlerDelegate {
     private long mNativePointer;
 
     @NativeMethods
     interface Natives {
-        void onWebApkInfoRetrieved(
-                long nativeWebApkHandlerDelegate,
-                String name,
-                String shortName,
-                String packageName,
-                String id,
-                int shellApkVersion,
-                int versionCode,
-                String uri,
-                String scope,
-                String manifestUrl,
-                String manifestStartUrl,
-                String manifestId,
-                int displayMode,
-                int orientation,
-                long themeColor,
-                long backgroundColor,
-                long darkThemeColor,
-                long darkBackgroundColor,
-                long lastUpdateCheckTimeMs,
-                long lastUpdateCompletionTimeMs,
-                boolean relaxUpdates,
-                String backingBrowserPackageName,
-                boolean isBackingBrowser,
-                String updateStatus);
+        void onWebApkInfoRetrieved(long nativeWebApkHandlerDelegate, String name, String shortName,
+                String packageName, String id, int shellApkVersion, int versionCode, String uri,
+                String scope, String manifestUrl, String manifestStartUrl, String manifestId,
+                int displayMode, int orientation, long themeColor, long backgroundColor,
+                long lastUpdateCheckTimeMs, long lastUpdateCompletionTimeMs, boolean relaxUpdates,
+                String backingBrowserPackageName, boolean isBackingBrowser, String updateStatus);
     }
 
     private WebApkHandlerDelegate(long nativePointer) {
@@ -63,13 +45,17 @@ public class WebApkHandlerDelegate {
         return new WebApkHandlerDelegate(nativePointer);
     }
 
-    /** Invalidates the native pointer to WebApkHandlerDelegate. */
+    /**
+     * Invalidates the native pointer to WebApkHandlerDelegate.
+     */
     @CalledByNative
     public void reset() {
         mNativePointer = 0;
     }
 
-    /** Calls the native WebApkHandlerDelegate with information for each installed WebAPK. */
+    /**
+     * Calls the native WebApkHandlerDelegate with information for each installed WebAPK.
+     */
     @CalledByNative
     @SuppressWarnings("QueryPermissionsNeeded")
     public void retrieveWebApks() {
@@ -81,8 +67,7 @@ public class WebApkHandlerDelegate {
         for (PackageInfo packageInfo : packageManager.getInstalledPackages(0)) {
             if (WebApkValidator.isValidWebApk(context, packageInfo.packageName)) {
                 ChromeWebApkHost.checkChromeBacksWebApkAsync(
-                        packageInfo.packageName,
-                        (backedByBrowser, backingBrowser) -> {
+                        packageInfo.packageName, (backedByBrowser, backingBrowser) -> {
                             onGotBackingBrowser(packageInfo, backedByBrowser, backingBrowser);
                         });
             }
@@ -96,17 +81,10 @@ public class WebApkHandlerDelegate {
         }
         // Pass non-null URL parameter so that {@link WebApkInfo#create()}
         // return value is non-null
-        WebappInfo webApkInfo =
-                WebappInfo.create(
-                        WebApkIntentDataProviderFactory.create(
-                                new Intent(),
-                                packageInfo.packageName,
-                                "",
-                                ShortcutSource.UNKNOWN,
-                                /* forceNavigation= */ false,
-                                /* canUseSplashFromContentProvider= */ false,
-                                /* shareData= */ null,
-                                /* shareDataActivityClassName= */ null));
+        WebappInfo webApkInfo = WebappInfo.create(WebApkIntentDataProviderFactory.create(
+                new Intent(), packageInfo.packageName, "", ShortcutSource.UNKNOWN,
+                false /* forceNavigation */, false /* isSplashProvidedByWebApk */,
+                null /* shareData */, null /* shareDataActivityClassName */));
         if (webApkInfo == null) {
             return;
         }
@@ -124,31 +102,13 @@ public class WebApkHandlerDelegate {
             relaxUpdatesForStorage = storage.shouldRelaxUpdates();
             updateStatus = storage.getUpdateStatus();
         }
-        WebApkHandlerDelegateJni.get()
-                .onWebApkInfoRetrieved(
-                        mNativePointer,
-                        webApkInfo.name(),
-                        webApkInfo.shortName(),
-                        webApkInfo.webApkPackageName(),
-                        webApkInfo.id(),
-                        webApkInfo.shellApkVersion(),
-                        packageInfo.versionCode,
-                        webApkInfo.url(),
-                        webApkInfo.scopeUrl(),
-                        webApkInfo.manifestUrl(),
-                        webApkInfo.manifestStartUrl(),
-                        webApkInfo.manifestId(),
-                        webApkInfo.displayMode(),
-                        webApkInfo.orientation(),
-                        webApkInfo.toolbarColor(),
-                        webApkInfo.backgroundColor(),
-                        webApkInfo.darkToolbarColor(),
-                        webApkInfo.darkBackgroundColor(),
-                        lastUpdateCheckTimeMsForStorage,
-                        lastUpdateCompletionTimeMsInStorage,
-                        relaxUpdatesForStorage,
-                        backingBrowserPackageName,
-                        isBackingBrowser,
-                        updateStatus);
+        WebApkHandlerDelegateJni.get().onWebApkInfoRetrieved(mNativePointer, webApkInfo.name(),
+                webApkInfo.shortName(), webApkInfo.webApkPackageName(), webApkInfo.id(),
+                webApkInfo.shellApkVersion(), packageInfo.versionCode, webApkInfo.url(),
+                webApkInfo.scopeUrl(), webApkInfo.manifestUrl(), webApkInfo.manifestStartUrl(),
+                webApkInfo.manifestId(), webApkInfo.displayMode(), webApkInfo.orientation(),
+                webApkInfo.toolbarColor(), webApkInfo.backgroundColor(),
+                lastUpdateCheckTimeMsForStorage, lastUpdateCompletionTimeMsInStorage,
+                relaxUpdatesForStorage, backingBrowserPackageName, isBackingBrowser, updateStatus);
     }
 }

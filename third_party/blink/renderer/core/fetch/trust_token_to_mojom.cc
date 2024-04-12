@@ -15,28 +15,28 @@ using OperationType = V8OperationType::Enum;
 using RefreshPolicy = V8RefreshPolicy::Enum;
 using network::mojom::blink::TrustTokenOperationType;
 
-PSTFeatures GetPSTFeatures(const ExecutionContext& execution_context) {
-  PSTFeatures features;
-  features.issuance_enabled = execution_context.IsFeatureEnabled(
-      mojom::blink::PermissionsPolicyFeature::kPrivateStateTokenIssuance);
-  features.redemption_enabled = execution_context.IsFeatureEnabled(
-      mojom::blink::PermissionsPolicyFeature::kTrustTokenRedemption);
-  return features;
-}
-
 bool ConvertTrustTokenToMojomAndCheckPermissions(
     const PrivateToken& in,
-    const PSTFeatures& pst_features,
+    const ExecutionContext* execution_context,
     ExceptionState* exception_state,
     network::mojom::blink::TrustTokenParams* out) {
-  // The current implementation always has these fields; the implementation
-  // always initializes them, and the hasFoo functions always return true. These
-  // DCHECKs serve as canaries for implementation changes.
-  DCHECK(in.hasOperation());
-  DCHECK(in.hasVersion());
+  DCHECK(in.hasOperation());  // field is required in IDL
 
-  // only version 1 exists at this time
-  DCHECK_EQ(in.version().AsEnum(), VersionType::k1);
+  // get token version
+  if (in.hasVersion()) {
+    // only version 1 is supported
+    if (in.version().AsEnum() == VersionType::k1) {
+      out->version =
+          network::mojom::blink::TrustTokenMajorVersion::kPrivateStateTokenV1;
+    } else {
+      exception_state->ThrowTypeError("privateToken: unknown token version.");
+      return false;
+    }
+  } else {
+    exception_state->ThrowTypeError(
+        "trustToken: token version is not specified.");
+    return false;
+  }
 
   if (in.operation().AsEnum() == OperationType::kTokenRequest) {
     out->operation = network::mojom::blink::TrustTokenOperationType::kIssuance;
@@ -100,18 +100,21 @@ bool ConvertTrustTokenToMojomAndCheckPermissions(
   switch (out->operation) {
     case TrustTokenOperationType::kRedemption:
     case TrustTokenOperationType::kSigning:
-      if (!pst_features.redemption_enabled) {
+      if (!execution_context->IsFeatureEnabled(
+              mojom::blink::PermissionsPolicyFeature::kTrustTokenRedemption)) {
         exception_state->ThrowDOMException(
             DOMExceptionCode::kNotAllowedError,
             "Private State Token Redemption ('token-redemption') and signing "
             "('send-redemption-record') operations require that the "
-            "private-state-token-redemption "
+            "trust-token-redemption "
             "Permissions Policy feature be enabled.");
         return false;
       }
       break;
     case TrustTokenOperationType::kIssuance:
-      if (!pst_features.issuance_enabled) {
+      if (!execution_context->IsFeatureEnabled(
+              mojom::blink::PermissionsPolicyFeature::
+                  kPrivateStateTokenIssuance)) {
         exception_state->ThrowDOMException(
             DOMExceptionCode::kNotAllowedError,
             "Private State Token Issuance ('token-request') operation "
@@ -144,11 +147,6 @@ DOMException* TrustTokenErrorToDOMException(
           "the request to its initial destination",
           DOMException::GetErrorName(
               DOMExceptionCode::kNoModificationAllowedError));
-    case network::mojom::blink::TrustTokenOperationStatus::kMissingIssuerKeys:
-      return DOMException::Create(
-          "No keys currently available for PST issuer. Issuer may need to "
-          "register their key commitments.",
-          DOMException::GetErrorName(DOMExceptionCode::kInvalidStateError));
     case network::mojom::blink::TrustTokenOperationStatus::kFailedPrecondition:
       return DOMException::Create(
           "Precondition failed during Trust Tokens operation",

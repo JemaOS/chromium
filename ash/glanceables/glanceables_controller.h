@@ -1,97 +1,80 @@
-// Copyright 2023 The Chromium Authors
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef ASH_GLANCEABLES_GLANCEABLES_CONTROLLER_H_
 #define ASH_GLANCEABLES_GLANCEABLES_CONTROLLER_H_
 
+#include <memory>
+
+#include "ash/ambient/ambient_weather_controller.h"
 #include "ash/ash_export.h"
-#include "ash/public/cpp/session/session_observer.h"
-#include "base/containers/flat_map.h"
+#include "ash/public/cpp/tablet_mode_observer.h"
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
-#include "components/account_id/account_id.h"
+#include "ui/wm/public/activation_change_observer.h"
 
-class PrefRegistrySimple;
+namespace views {
+class Widget;
+}  // namespace views
 
 namespace ash {
 
-namespace api {
-class TasksClient;
-}  // namespace api
+class GlanceablesDelegate;
+class GlanceablesView;
 
-class GlanceablesClassroomClient;
-
-// Root glanceables controller.
-class ASH_EXPORT GlanceablesController : public SessionObserver {
+// Controls the "welcome back" glanceables screen shown on login.
+class ASH_EXPORT GlanceablesController : public wm::ActivationChangeObserver,
+                                         public TabletModeObserver {
  public:
-  // Convenience wrapper to pass all clients from browser to ash at once.
-  struct ClientsRegistration {
-    raw_ptr<GlanceablesClassroomClient, DanglingUntriaged> classroom_client =
-        nullptr;
-    raw_ptr<api::TasksClient, DanglingUntriaged> tasks_client = nullptr;
-  };
-
   GlanceablesController();
   GlanceablesController(const GlanceablesController&) = delete;
   GlanceablesController& operator=(const GlanceablesController&) = delete;
   ~GlanceablesController() override;
 
-  // Registers syncable user profile prefs with the specified `registry`.
-  static void RegisterUserProfilePrefs(PrefRegistrySimple* registry);
+  // Initializes the controller and sets the delegate.
+  void Init(std::unique_ptr<GlanceablesDelegate> delegate);
 
-  // Clears glanceables user state set in `prefs` - for example, the most
-  // recently selected glanceable list.
-  static void ClearUserStatePrefs(PrefService* prefs);
+  // Creates the UI and starts fetching data.
+  void ShowOnLogin();
 
-  // SessionObserver:
-  void OnActiveUserSessionChanged(const AccountId& account_id) override;
+  // Returns true if the glanceables screen is showing.
+  bool IsShowing() const;
 
-  // Whether glanceanbles are available to the `active_account_id_`.
-  // Glanceables are available if the feature is enabled for the user and it has
-  // at least one registered client.
-  bool AreGlanceablesAvailable() const;
+  // Creates the glanceables widget and view.
+  void CreateUi();
 
-  // Updates `clients_registry_` for a specific `account_id`.
-  void UpdateClientsRegistration(const AccountId& account_id,
-                                 const ClientsRegistration& registration);
+  // Destroys the glanceables widget and view.
+  void DestroyUi();
 
-  // Returns a classroom client pointer associated with the
-  // `active_account_id_`. Could return `nullptr`.
-  GlanceablesClassroomClient* GetClassroomClient() const;
+  // wm::ActivationChangeObserver:
+  void OnWindowActivated(wm::ActivationChangeObserver::ActivationReason reason,
+                         aura::Window* gained_focus,
+                         aura::Window* lost_focus) override;
 
-  // Returns a tasks client pointer associated with the `active_account_id_`.
-  // Could return `nullptr`.
-  api::TasksClient* GetTasksClient() const;
-
-  // Informs registered glanceables clients that the glanceables bubble UI has
-  // been closed and logs metrics.
-  void NotifyGlanceablesBubbleClosed();
-
-  // Informs registered glanceables clients that the glanceables bubble UI has
-  // been closed and logs metrics.
-  void RecordGlanceablesBubbleShowTime(base::TimeTicks bubble_show_timestamp);
-
-  base::TimeTicks last_bubble_show_time() { return last_bubble_show_time_; }
-  size_t bubble_shown_count() { return bubble_shown_count_; }
+  // TabletModeObserver:
+  void OnTabletModeStarted() override;
 
  private:
-  // The currently active user account id.
-  AccountId active_account_id_;
+  friend class GlanceablesTest;
 
-  // Keeps track of all created clients (owned by `GlanceablesKeyedService`) per
-  // account id.
-  base::flat_map<AccountId, ClientsRegistration> clients_registry_;
+  // Triggers a fetch of data from the server.
+  void FetchData();
 
-  // Keeps track of the time that the user logged in.
-  base::Time login_time_;
+  // Adds blur to `widget_` and semiopaque black background to `view_`.
+  // TODO(crbug.com/1354343): investigate if there's a more efficient way to do
+  // this.
+  void ApplyBackdrop() const;
 
-  // Keeps track of the last time the glanceables bubble was shown.
-  base::TimeTicks last_bubble_show_time_;
+  std::unique_ptr<GlanceablesDelegate> delegate_;
+  std::unique_ptr<views::Widget> widget_;
+  raw_ptr<GlanceablesView, ExperimentalAsh> view_ = nullptr;
+  std::unique_ptr<AmbientWeatherController::ScopedRefresher> weather_refresher_;
 
-  // The number of times the glanceables bubble had been shown within a user
-  // session.
-  size_t bubble_shown_count_ = 0;
+  // The start of current month in UTC. Used for fetching calendar events.
+  // TODO(crbug.com/1353495): Update value at the beginning of the next month
+  // and trigger another fetch.
+  base::Time start_of_month_utc_;
 };
 
 }  // namespace ash

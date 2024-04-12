@@ -35,7 +35,7 @@ class MODULES_EXPORT MLModel final : public ScriptWrappable {
   ~MLModel() override;
 
   // IDL Interface:
-  ScriptPromiseTyped<IDLRecord<IDLString, MLTensor>> compute(
+  ScriptPromise compute(
       ScriptState* script_state,
       const HeapVector<std::pair<String, Member<MLTensor>>>& inputs,
       ExceptionState& exception_state);
@@ -47,9 +47,9 @@ class MODULES_EXPORT MLModel final : public ScriptWrappable {
  private:
   void OnComputeResult(
       ScriptState* script_state,
-      ScriptPromiseResolverTyped<IDLRecord<IDLString, MLTensor>>* resolver,
+      ScriptPromiseResolver* resolver,
       ml::model_loader::mojom::blink::ComputeResult result,
-      const std::optional<HashMap<String, Vector<uint8_t>>>& outputs);
+      const absl::optional<HashMap<String, Vector<uint8_t>>>& outputs);
 
   HeapMojoRemote<ml::model_loader::mojom::blink::Model> remote_model_;
 

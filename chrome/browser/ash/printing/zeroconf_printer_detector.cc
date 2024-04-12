@@ -5,14 +5,15 @@
 #include "chrome/browser/ash/printing/zeroconf_printer_detector.h"
 
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/containers/fixed_flat_set.h"
 #include "base/hash/md5.h"
 #include "base/ranges/algorithm.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
@@ -52,7 +53,7 @@ constexpr std::array<const char*, 6> kServiceNames = {
 // protocol.  Don't allow IPP/IPPS connections for printers in this list.
 // Printers in this list should be all lowercase.  See b/268531843 for more
 // context.
-constexpr auto kIppRejectList = base::MakeFixedFlatSet<std::string_view>({
+constexpr auto kIppRejectList = base::MakeFixedFlatSet<base::StringPiece>({
     "brother mfc-9340cdw",
     "canon e480 series",
     "canon ib4000 series",
@@ -100,9 +101,9 @@ class ParsedMetadata {
         // Malformed, skip it.
         continue;
       }
-      std::string_view key(m.data(), equal_pos);
-      std::string_view value(m.data() + equal_pos + 1,
-                             m.length() - (equal_pos + 1));
+      base::StringPiece key(m.data(), equal_pos);
+      base::StringPiece value(m.data() + equal_pos + 1,
+                              m.length() - (equal_pos + 1));
       if (key == "note") {
         note = std::string(value);
       } else if (key == "pdl") {
@@ -254,13 +255,13 @@ bool ConvertToPrinter(const std::string& service_type,
         metadata.pdl, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     if (!media_types.empty() && !media_types.back().empty()) {
       // Prune any empty splits.
-      std::erase_if(media_types, [](std::string_view s) { return s.empty(); });
+      base::EraseIf(media_types, [](base::StringPiece s) { return s.empty(); });
 
       base::ranges::transform(
           media_types,
           std::back_inserter(
               detected_printer->ppd_search_data.supported_document_formats),
-          [](std::string_view s) { return base::ToLowerASCII(s); });
+          [](base::StringPiece s) { return base::ToLowerASCII(s); });
     }
   }
 

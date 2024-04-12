@@ -38,17 +38,15 @@ ArcApplicationNotifierController::GetNotifierList(Profile* profile) {
     return std::vector<ash::NotifierMetadata>();
 
   last_used_profile_ = profile;
-  auto* cache =
-      &apps::AppServiceProxyFactory::GetForProfile(profile)->AppRegistryCache();
-  if (!app_registry_cache_observer_.IsObservingSource(cache)) {
-    app_registry_cache_observer_.Reset();
-    app_registry_cache_observer_.Observe(cache);
-  }
+  apps::AppServiceProxy* service =
+      apps::AppServiceProxyFactory::GetForProfile(profile);
+  Observe(&(service->AppRegistryCache()));
 
   package_to_app_ids_.clear();
   std::vector<NotifierDataset> notifier_dataset;
 
-  cache->ForEachApp([&notifier_dataset](const apps::AppUpdate& update) {
+  service->AppRegistryCache().ForEachApp([&notifier_dataset](
+                                             const apps::AppUpdate& update) {
     if (update.AppType() != apps::AppType::kArc)
       return;
 
@@ -56,14 +54,15 @@ ArcApplicationNotifierController::GetNotifierList(Profile* profile) {
       if (permission->permission_type != apps::PermissionType::kNotifications) {
         continue;
       }
+      DCHECK(absl::holds_alternative<bool>(permission->value->value));
       // Do not include notifier metadata for system apps.
       if (update.InstallReason() == apps::InstallReason::kSystem) {
         return;
       }
-      notifier_dataset.emplace_back(
-          update.AppId() /*app_id*/, update.Name() /*app_name*/,
+      notifier_dataset.push_back(NotifierDataset{
+          update.AppId() /*app_id*/, update.ShortName() /*app_name*/,
           update.PublisherId() /*publisher_id*/,
-          permission->IsPermissionEnabled() /*enabled*/);
+          absl::get<bool>(permission->value->value) /*enabled*/});
     }
   });
 
@@ -99,7 +98,8 @@ void ArcApplicationNotifierController::SetNotifierEnabled(
 
   last_used_profile_ = profile;
   auto permission = std::make_unique<apps::Permission>(
-      apps::PermissionType::kNotifications, enabled,
+      apps::PermissionType::kNotifications,
+      std::make_unique<apps::PermissionValue>(enabled),
       /*is_managed=*/false);
   apps::AppServiceProxy* service =
       apps::AppServiceProxyFactory::GetForProfile(profile);
@@ -119,7 +119,7 @@ void ArcApplicationNotifierController::CallLoadIcon(
       last_used_profile_));
 
   apps::AppServiceProxyFactory::GetForProfile(last_used_profile_)
-      ->LoadIcon(app_id, apps::IconType::kStandard,
+      ->LoadIcon(apps::AppType::kArc, app_id, apps::IconType::kStandard,
                  message_center::kQuickSettingIconSizeInDp,
                  allow_placeholder_icon,
                  base::BindOnce(&ArcApplicationNotifierController::OnLoadIcon,
@@ -167,7 +167,7 @@ void ArcApplicationNotifierController::OnAppUpdate(
 
 void ArcApplicationNotifierController::OnAppRegistryCacheWillBeDestroyed(
     apps::AppRegistryCache* cache) {
-  app_registry_cache_observer_.Reset();
+  Observe(nullptr);
 }
 
 }  // namespace arc

@@ -15,12 +15,9 @@
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
 
+class SavedTabGroupModel;
 class TabStripModel;
 class Profile;
-
-namespace tab_groups {
-
-class SavedTabGroupModel;
 
 // Serves to maintain and listen to browsers who contain saved tab groups and
 // update the model if a saved tab group was changed.
@@ -46,19 +43,11 @@ class SavedTabGroupModelListener : public BrowserListObserver,
   // corresponding local group.
   void ConnectToLocalTabGroup(
       const SavedTabGroup& saved_tab_group,
-      std::map<content::WebContents*, base::Uuid> web_contents_map);
+      std::vector<std::pair<content::WebContents*, base::Uuid>> mapping);
 
   // Stop updating the saved group corresponding to the local group with id
   // `tab_group_id` when the local group changes.
   void DisconnectLocalTabGroup(tab_groups::TabGroupId tab_group_id);
-
-  // The saved group corresponding to `local_group_id` was removed, so we must
-  // remove the local group to match.
-  void RemoveLocalGroupFromSync(tab_groups::TabGroupId local_group_id);
-
-  // Updates the local group with id `local_group_id` to match the current state
-  // of the saved tab group, if it is open locally.
-  void UpdateLocalGroupFromSync(tab_groups::TabGroupId local_group_id);
 
   // BrowserListObserver:
   void OnBrowserAdded(Browser* browser) override;
@@ -66,14 +55,9 @@ class SavedTabGroupModelListener : public BrowserListObserver,
 
   // TabStripModelObserver:
   void OnTabGroupChanged(const TabGroupChange& change) override;
-  void TabGroupedStateChanged(std::optional<tab_groups::TabGroupId> group,
+  void TabGroupedStateChanged(absl::optional<tab_groups::TabGroupId> group,
                               content::WebContents* contents,
                               int index) override;
-  void OnTabStripModelChanged(
-      TabStripModel* tab_strip_model,
-      const TabStripModelChange& change,
-      const TabStripSelectionChange& selection) override;
-
   void WillCloseAllTabs(TabStripModel* tab_strip_model) override;
 
   // Testing Accessors.
@@ -92,8 +76,9 @@ class SavedTabGroupModelListener : public BrowserListObserver,
       local_tab_group_listeners_;
   raw_ptr<SavedTabGroupModel> model_ = nullptr;
   raw_ptr<Profile> profile_;
-};
 
-}  // namespace tab_groups
+  // Use to prevent double-observation. See https://crbug.com/1426389.
+  std::unordered_set<Browser*> observed_browsers_;
+};
 
 #endif  // CHROME_BROWSER_UI_TABS_SAVED_TAB_GROUPS_SAVED_TAB_GROUP_MODEL_LISTENER_H_

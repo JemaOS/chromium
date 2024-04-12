@@ -33,8 +33,6 @@
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
-#include "third_party/blink/renderer/platform/fonts/font_description.h"
-#include "third_party/blink/renderer/platform/fonts/simple_font_data.h"
 
 namespace blink {
 
@@ -197,69 +195,6 @@ int FontSizeFunctions::LegacyFontSize(const Document* document,
 
   return FindNearestLegacyFontSize<float>(pixel_font_size, kFontSizeFactors,
                                           medium_size);
-}
-
-static float AspectValue(const SimpleFontData& font_data,
-                         FontSizeAdjust::Metric metric,
-                         float computed_size) {
-  DCHECK(computed_size);
-  const FontMetrics& font_metrics = font_data.GetFontMetrics();
-  // FIXME: The behavior for missing metrics has yet to be defined.
-  // https://github.com/w3c/csswg-drafts/issues/6384
-  float aspect_value = 1.0;
-  switch (metric) {
-    case FontSizeAdjust::Metric::kCapHeight:
-      if (font_metrics.CapHeight() > 0) {
-        aspect_value = font_metrics.CapHeight() / computed_size;
-      }
-      break;
-    case FontSizeAdjust::Metric::kChWidth:
-      if (font_metrics.HasZeroWidth()) {
-        aspect_value = font_metrics.ZeroWidth() / computed_size;
-      }
-      break;
-    case FontSizeAdjust::Metric::kIcWidth:
-      if (const std::optional<float> size =
-              font_data.IdeographicAdvanceWidth()) {
-        aspect_value = *size / computed_size;
-      }
-      break;
-    case FontSizeAdjust::Metric::kExHeight:
-    default:
-      if (font_metrics.HasXHeight()) {
-        aspect_value = font_metrics.XHeight() / computed_size;
-      }
-  }
-  return aspect_value;
-}
-
-std::optional<float> FontSizeFunctions::FontAspectValue(
-    const SimpleFontData* font_data,
-    FontSizeAdjust::Metric metric,
-    float computed_size) {
-  if (!font_data || !computed_size) {
-    return std::nullopt;
-  }
-  return AspectValue(*font_data, metric, computed_size);
-}
-
-std::optional<float> FontSizeFunctions::MetricsMultiplierAdjustedFontSize(
-    const SimpleFontData* font_data,
-    const FontDescription& font_description) {
-  DCHECK(font_data);
-  const float computed_size = font_description.ComputedSize();
-  const FontSizeAdjust size_adjust = font_description.SizeAdjust();
-  if (!computed_size ||
-      size_adjust.Value() == FontSizeAdjust::kFontSizeAdjustNone) {
-    return std::nullopt;
-  }
-
-  float aspect_value =
-      AspectValue(*font_data, size_adjust.GetMetric(), computed_size);
-  if (!aspect_value) {
-    return std::nullopt;
-  }
-  return (size_adjust.Value() / aspect_value) * computed_size;
 }
 
 }  // namespace blink

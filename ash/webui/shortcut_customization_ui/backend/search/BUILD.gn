@@ -9,11 +9,10 @@ assert(is_chromeos_ash, "Non-ChromeOS builds cannot depend on //ash")
 
 mojom("mojo_bindings") {
   disable_variants = true
-  generate_legacy_js_bindings = true
 
   sources = [ "search.mojom" ]
 
-  webui_module_path = "/"
+  webui_module_path = "/ash/webui/shortcut_customization_ui/backend/search"
 
   public_deps = [
     "//ash/public/mojom:accelerator_info",

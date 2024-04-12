@@ -15,8 +15,6 @@ RemoteChangeProcessorWrapper::RemoteChangeProcessorWrapper(
     RemoteChangeProcessor* remote_change_processor)
     : remote_change_processor_(remote_change_processor) {}
 
-RemoteChangeProcessorWrapper::~RemoteChangeProcessorWrapper() = default;
-
 void RemoteChangeProcessorWrapper::PrepareForProcessRemoteChange(
     const storage::FileSystemURL& url,
     RemoteChangeProcessor::PrepareChangeCallback callback) {

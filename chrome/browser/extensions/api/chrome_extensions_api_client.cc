@@ -7,7 +7,6 @@
 #include <memory>
 #include <utility>
 
-#include "base/check.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
@@ -37,19 +36,14 @@
 #include "chrome/browser/guest_view/mime_handler_view/chrome_mime_handler_view_guest_delegate.h"
 #include "chrome/browser/guest_view/web_view/chrome_web_view_guest_delegate.h"
 #include "chrome/browser/guest_view/web_view/chrome_web_view_permission_helper_delegate.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search/instant_service.h"
 #include "chrome/browser/search/instant_service_factory.h"
-#include "chrome/browser/supervised_user/supervised_user_extensions_delegate_impl.h"
-#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
-#include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_navigator.h"
-#include "chrome/browser/ui/browser_navigator_params.h"
-#include "chrome/browser/ui/webui/devtools/devtools_ui.h"
+#include "chrome/browser/ui/webui/devtools_ui.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
 #include "components/signin/core/browser/signin_header_helper.h"
+#include "components/supervised_user/core/common/buildflags.h"
 #include "components/value_store/value_store_factory.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -69,8 +63,6 @@
 #include "pdf/buildflags.h"
 #include "printing/buildflags/buildflags.h"
 #include "services/network/public/mojom/fetch_api.mojom-shared.h"
-#include "ui/base/page_transition_types.h"
-#include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -92,8 +84,20 @@
 #include "chrome/browser/extensions/clipboard_extension_helper_chromeos.h"
 #endif
 
+#if BUILDFLAG(ENABLE_PDF)
+#include "chrome/browser/ui/pdf/chrome_pdf_web_contents_helper_client.h"
+#include "components/pdf/browser/pdf_web_contents_helper.h"
+#endif
+
 #if BUILDFLAG(ENABLE_PRINTING)
 #include "chrome/browser/printing/printing_init.h"
+#endif
+
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+// TODO(https://crbug.com/1060801): Here and elsewhere, possibly switch build
+// flag to #if BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/supervised_user/supervised_user_extensions_delegate_impl.h"
+#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
 #endif
 
 namespace extensions {
@@ -121,6 +125,10 @@ void ChromeExtensionsAPIClient::AttachWebContentsHelpers(
   favicon::CreateContentFaviconDriverForWebContents(web_contents);
 #if BUILDFLAG(ENABLE_PRINTING)
   printing::InitializePrintingForWebContents(web_contents);
+#endif
+#if BUILDFLAG(ENABLE_PDF)
+  pdf::PDFWebContentsHelper::CreateForWebContentsWithClient(
+      web_contents, std::make_unique<ChromePDFWebContentsHelperClient>());
 #endif
 }
 
@@ -185,19 +193,17 @@ void ChromeExtensionsAPIClient::NotifyWebRequestWithheld(
 
   // Track down the ExtensionActionRunner and the extension. Since this is
   // asynchronous, we could hit a null anywhere along the path.
-  content::RenderFrameHost* render_frame_host =
+  content::RenderFrameHost* rfh =
       content::RenderFrameHost::FromID(render_process_id, render_frame_id);
-  if (!render_frame_host) {
+  if (!rfh)
     return;
-  }
   // We don't count subframes and prerendering blocked actions as yet, since
   // there's no way to surface this to the user. Ignore these (which is also
   // what we do for content scripts).
-  if (!render_frame_host->IsInPrimaryMainFrame()) {
+  if (!rfh->IsInPrimaryMainFrame())
     return;
-  }
   content::WebContents* web_contents =
-      content::WebContents::FromRenderFrameHost(render_frame_host);
+      content::WebContents::FromRenderFrameHost(rfh);
   if (!web_contents)
     return;
   extensions::ExtensionActionRunner* runner =
@@ -223,7 +229,7 @@ void ChromeExtensionsAPIClient::NotifyWebRequestWithheld(
   if (!extension->permissions_data()
            ->withheld_permissions()
            .explicit_hosts()
-           .MatchesURL(render_frame_host->GetLastCommittedURL())) {
+           .MatchesURL(rfh->GetLastCommittedURL())) {
     return;
   }
 
@@ -281,20 +287,6 @@ void ChromeExtensionsAPIClient::ClearActionCount(
   }
 }
 
-void ChromeExtensionsAPIClient::OpenFileUrl(
-    const GURL& file_url,
-    content::BrowserContext* browser_context) {
-  CHECK(file_url.is_valid());
-  CHECK(file_url.SchemeIsFile());
-  Profile* profile = Profile::FromBrowserContext(browser_context);
-  NavigateParams navigate_params(profile, file_url,
-                                 ui::PAGE_TRANSITION_FROM_API);
-  navigate_params.disposition = WindowOpenDisposition::CURRENT_TAB;
-  navigate_params.browser =
-      chrome::FindTabbedBrowser(profile, /*match_original_profiles=*/false);
-  Navigate(&navigate_params);
-}
-
 AppViewGuestDelegate* ChromeExtensionsAPIClient::CreateAppViewGuestDelegate()
     const {
   return new ChromeAppViewGuestDelegate();
@@ -307,8 +299,9 @@ ChromeExtensionsAPIClient::CreateExtensionOptionsGuestDelegate(
 }
 
 std::unique_ptr<guest_view::GuestViewManagerDelegate>
-ChromeExtensionsAPIClient::CreateGuestViewManagerDelegate() const {
-  return std::make_unique<ChromeGuestViewManagerDelegate>();
+ChromeExtensionsAPIClient::CreateGuestViewManagerDelegate(
+    content::BrowserContext* context) const {
+  return std::make_unique<ChromeGuestViewManagerDelegate>(context);
 }
 
 std::unique_ptr<MimeHandlerViewGuestDelegate>
@@ -410,8 +403,12 @@ ManagementAPIDelegate* ChromeExtensionsAPIClient::CreateManagementAPIDelegate()
 std::unique_ptr<SupervisedUserExtensionsDelegate>
 ChromeExtensionsAPIClient::CreateSupervisedUserExtensionsDelegate(
     content::BrowserContext* browser_context) const {
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
   return std::make_unique<SupervisedUserExtensionsDelegateImpl>(
       browser_context);
+#else
+  return nullptr;
+#endif
 }
 
 std::unique_ptr<DisplayInfoProvider>
@@ -503,7 +500,9 @@ ChromeExtensionsAPIClient::GetFactoryDependencies() {
   // clang-format off
   return {
       InstantServiceFactory::GetInstance(),
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
       SupervisedUserServiceFactory::GetInstance(),
+#endif
   };
   // clang-format on
 }

@@ -75,10 +75,10 @@ class FileSurface : public SurfaceOzoneCanvas {
   // SurfaceOzoneCanvas overrides:
   void ResizeCanvas(const gfx::Size& viewport_size, float scale) override {
     SkSurfaceProps props = skia::LegacyDisplayGlobals::GetSkSurfaceProps();
-    surface_ =
-        SkSurfaces::Raster(SkImageInfo::MakeN32Premul(viewport_size.width(),
-                                                      viewport_size.height()),
-                           &props);
+    surface_ = SkSurface::MakeRaster(
+        SkImageInfo::MakeN32Premul(viewport_size.width(),
+                                   viewport_size.height()),
+        &props);
   }
   SkCanvas* GetCanvas() override { return surface_->getCanvas(); }
   void PresentCanvas(const gfx::Rect& damage) override {
@@ -167,7 +167,7 @@ class TestPixmap : public gfx::NativePixmap {
       std::vector<gfx::GpuFence> release_fences) override {
     return true;
   }
-  gfx::NativePixmapHandle ExportHandle() const override {
+  gfx::NativePixmapHandle ExportHandle() override {
     return gfx::NativePixmapHandle();
   }
 
@@ -260,7 +260,7 @@ scoped_refptr<gfx::NativePixmap> HeadlessSurfaceFactory::CreateNativePixmap(
     gfx::Size size,
     gfx::BufferFormat format,
     gfx::BufferUsage usage,
-    std::optional<gfx::Size> framebuffer_size) {
+    absl::optional<gfx::Size> framebuffer_size) {
   return new TestPixmap(format);
 }
 

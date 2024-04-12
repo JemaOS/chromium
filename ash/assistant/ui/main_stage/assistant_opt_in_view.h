@@ -25,9 +25,9 @@ class AssistantViewDelegate;
 class COMPONENT_EXPORT(ASSISTANT_UI) AssistantOptInView
     : public views::View,
       public AssistantStateObserver {
-  METADATA_HEADER(AssistantOptInView, views::View)
-
  public:
+  METADATA_HEADER(AssistantOptInView);
+
   explicit AssistantOptInView(AssistantViewDelegate* delegate_);
   AssistantOptInView(const AssistantOptInView&) = delete;
   AssistantOptInView& operator=(const AssistantOptInView&) = delete;
@@ -45,11 +45,12 @@ class COMPONENT_EXPORT(ASSISTANT_UI) AssistantOptInView
 
   void OnButtonPressed();
 
-  raw_ptr<views::StyledLabel> label_;  // Owned by view hierarchy.
+  raw_ptr<views::StyledLabel, ExperimentalAsh>
+      label_;  // Owned by view hierarchy.
 
-  raw_ptr<views::Button> container_;
+  raw_ptr<views::Button, ExperimentalAsh> container_;
 
-  raw_ptr<AssistantViewDelegate> delegate_;
+  raw_ptr<AssistantViewDelegate, ExperimentalAsh> delegate_;
 };
 
 }  // namespace ash

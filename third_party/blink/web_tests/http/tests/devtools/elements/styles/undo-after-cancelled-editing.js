@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Verifies that cancelling property value editing doesn't affect undo stack.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <style>
@@ -28,7 +24,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
     function addNewProperty(next) {
       var section = ElementsTestRunner.firstMatchedStyleSection();
       var newProperty = section.addNewBlankProperty();
-      newProperty.startEditingName();
+      newProperty.startEditing();
       newProperty.nameElement.textContent = 'color';
       newProperty.nameElement.dispatchEvent(TestRunner.createKeyEvent('Enter'));
       newProperty.valueElement.textContent = 'blue';
@@ -39,7 +35,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
     async function editProperty(next) {
       treeElement = ElementsTestRunner.getMatchedStylePropertyTreeItem('color');
       await ElementsTestRunner.dumpSelectedElementStyles(true, false, true);
-      treeElement.startEditingName();
+      treeElement.startEditing();
       treeElement.nameElement.textContent = 'color';
       treeElement.nameElement.dispatchEvent(TestRunner.createKeyEvent('Enter'));
 
@@ -55,7 +51,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
 
     async function undoStyles(next) {
       await ElementsTestRunner.dumpSelectedElementStyles(true, false, true);
-      SDK.DOMModel.DOMModelUndoStack.instance().undo();
+      SDK.domModelUndoStack.undo();
       ElementsTestRunner.waitForStyles('inspected', next, true);
     },
 

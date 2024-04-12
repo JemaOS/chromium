@@ -59,10 +59,6 @@ class SiteDataCacheFacadeFactory : public ProfileKeyedServiceFactory {
   static std::unique_ptr<base::AutoReset<bool>> EnableForTesting();
   static void DisassociateForTesting(Profile* profile);
 
-  // Returns the SiteDataCacheFacade for `profile` so that it can be directly
-  // manipulated in tests.
-  SiteDataCacheFacade* GetProfileFacadeForTesting(Profile* profile);
-
  protected:
   friend class base::NoDestructor<SiteDataCacheFacadeFactory>;
   friend class SiteDataCacheFacade;
@@ -84,7 +80,7 @@ class SiteDataCacheFacadeFactory : public ProfileKeyedServiceFactory {
 
  private:
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;

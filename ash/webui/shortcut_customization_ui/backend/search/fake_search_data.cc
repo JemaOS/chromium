@@ -13,22 +13,20 @@
 
 namespace ash::shortcut_ui::fake_search_data {
 
-ash::mojom::AcceleratorInfoPtr CreateFakeStandardAcceleratorInfo(
-    ash::mojom::AcceleratorState state) {
+ash::mojom::AcceleratorInfoPtr CreateFakeStandardAcceleratorInfo() {
   return ash::mojom::AcceleratorInfo::New(
       /*type=*/ash::mojom::AcceleratorType::kDefault,
-      /*state=*/state,
+      /*state=*/ash::mojom::AcceleratorState::kEnabled,
       /*locked=*/true,
       /*layout_properties=*/
       ash::mojom::LayoutStyleProperties::NewStandardAccelerator(
-          ash::mojom::StandardAcceleratorProperties::New(
-              ui::Accelerator(), u"FakeKey", std::nullopt)));
+          ash::mojom::StandardAcceleratorProperties::New(ui::Accelerator(),
+                                                         u"FakeKey")));
 }
 
-std::vector<ash::mojom::AcceleratorInfoPtr> CreateFakeAcceleratorInfoList(
-    ash::mojom::AcceleratorState state) {
+std::vector<ash::mojom::AcceleratorInfoPtr> CreateFakeAcceleratorInfoList() {
   std::vector<ash::mojom::AcceleratorInfoPtr> accelerator_info_list;
-  accelerator_info_list.push_back(CreateFakeStandardAcceleratorInfo(state));
+  accelerator_info_list.push_back(CreateFakeStandardAcceleratorInfo());
   return accelerator_info_list;
 }
 

@@ -8,7 +8,6 @@
 #include <memory>
 
 #include "base/callback_list.h"
-#include "base/feature_list.h"
 #include "chrome/browser/apps/app_discovery_service/app_discovery_util.h"
 #include "components/keyed_service/core/keyed_service.h"
 
@@ -41,10 +40,10 @@ class AppDiscoveryService : public KeyedService {
   // |callback| is called when a response to the request is ready.
   void GetApps(ResultType result_type, ResultCallback callback);
 
-  // Queries for an app's icon, identified by |icon_id|.
+  // Queries for an app's icon, identified by |app_id|.
   // |callback| is called when a response to the request is ready.
   // Virtual for testing.
-  virtual void GetIcon(const std::string& icon_id,
+  virtual void GetIcon(const std::string& app_id,
                        int32_t size_hint_in_dip,
                        ResultType result_type,
                        GetIconCallback callback);

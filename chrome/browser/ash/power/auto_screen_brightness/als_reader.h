@@ -12,6 +12,7 @@
 #include "base/observer_list.h"
 #include "base/sequence_checker.h"
 #include "base/task/sequenced_task_runner.h"
+#include "chromeos/components/sensors/buildflags.h"
 
 namespace ash {
 namespace power {
@@ -71,6 +72,11 @@ class AlsReader {
   friend LightProviderMojo;
   friend LightSamplesObserver;
 
+#if !BUILDFLAG(USE_IIOSERVICE)
+  // Called when we've retrieved the number of ALS present.
+  void OnNumAlsRetrieved(int num_als);
+#endif  // !BUILDFLAG(USE_IIOSERVICE)
+
   void SetLux(int lux);
   void SetAlsInitStatus(AlsInitStatus status);
   void SetAlsInitStatusForTesting(AlsInitStatus status);
@@ -96,7 +102,7 @@ class LightProviderInterface {
  protected:
   explicit LightProviderInterface(AlsReader* als_reader);
 
-  raw_ptr<AlsReader, DanglingUntriaged> als_reader_;
+  raw_ptr<AlsReader, ExperimentalAsh> als_reader_;
 };
 
 }  // namespace auto_screen_brightness

@@ -2,15 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {BindingsTestRunner} from 'bindings_test_runner';
-
-import * as Host from 'devtools/core/host/host.js';
-import * as Persistence from 'devtools/models/persistence/persistence.js';
-import * as Workspace from 'devtools/models/workspace/workspace.js';
-
 (async function() {
   TestRunner.addResult(`Ensures iframes are overridable if overrides are setup.\n`);
+  await TestRunner.loadTestModule('bindings_test_runner');
+  await TestRunner.loadLegacyModule('sources');
 
   var fileSystemPath = 'file:///tmp/';
 
@@ -46,7 +41,7 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
     TestRunner.addResult('Creating UISourcecode for url: ' + url);
     TestRunner.evaluateInPagePromise(`document.getElementById('test-iframe').src = '${url}'`)
     var networkUISourceCode = await TestRunner.waitForEvent(
-        Workspace.Workspace.Events.UISourceCodeAdded, Workspace.Workspace.WorkspaceImpl.instance(),
+        Workspace.Workspace.Events.UISourceCodeAdded, Workspace.workspace,
         uiSourceCode => uiSourceCode.url().startsWith('http'));
     if (!networkUISourceCode) {
       TestRunner.addResult('ERROR: No uiSourceCode');
@@ -56,7 +51,7 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
     TestRunner.addResult('Found network UISourceCode: ' + networkUISourceCode.url());
 
     TestRunner.addResult('Saving network UISourceCode');
-    Persistence.NetworkPersistenceManager.NetworkPersistenceManager.instance().saveUISourceCodeForOverrides(networkUISourceCode);
+    Persistence.networkPersistenceManager.saveUISourceCodeForOverrides(networkUISourceCode);
     var newFile = await waitForNextCreatedFile();
     TestRunner.addResult('Created File: ' + newFile);
     TestRunner.addResult('');
@@ -65,7 +60,7 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
   async function waitForNextCreatedFile() {
     return new Promise(result => {
       TestRunner.addSniffer(
-          Persistence.NetworkPersistenceManager.NetworkPersistenceManager.instance(), 'fileCreatedForTest',
+          Persistence.networkPersistenceManager, 'fileCreatedForTest',
           (path, name) => result(path + '/' + name), false);
     });
   }

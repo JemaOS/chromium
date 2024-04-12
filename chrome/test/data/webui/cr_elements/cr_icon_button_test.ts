@@ -8,10 +8,10 @@ import 'chrome://resources/cr_elements/icons.html.js';
 import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 
 import {getTrustedHTML} from 'chrome://resources/js/static_types.js';
-import type {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import {downAndUp, pressAndReleaseKeyOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-interactions.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.js';
+import {eventToPromise} from 'chrome://webui-test/test_util.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 
 // clang-format on
@@ -31,64 +31,28 @@ suite('cr-icon-button', function() {
     await flushTasks();
   });
 
-  test('enabled/disabled', async () => {
-    assertFalse(button.disabled);
-    assertFalse(button.hasAttribute('disabled'));
+  test('enabled/disabled', () => {
     assertEquals('0', button.getAttribute('tabindex'));
     assertEquals('false', button.getAttribute('aria-disabled'));
     button.disabled = true;
-    await button.updateComplete;
-    assertTrue(button.hasAttribute('disabled'));
     assertEquals('-1', button.getAttribute('tabindex'));
     assertEquals('true', button.getAttribute('aria-disabled'));
   });
 
-  // This test documents previously undefined behavior of cr-icon-button when a
-  // 'tabindex' attribute is set by the parent, which seems to be actually
-  // relied upon by cr-icon-button client code. The behavior below should
-  // possibly be improved to preserve the original tabindex upon re-enabling.
-  test('external tabindex', async () => {
-    document.body.innerHTML =
-        getTrustedHTML`<cr-icon-button tabindex="10"></cr-icon-button>`;
-    button = document.body.querySelector('cr-icon-button')!;
-
-    // Check that initial tabindex value is preserved post-initialization.
-    assertFalse(button.disabled);
-    assertEquals('10', button.getAttribute('tabindex'));
-
-    // Check that tabindex updates when disabled.
-    button.disabled = true;
-    await microtasksFinished();
-    assertEquals('-1', button.getAttribute('tabindex'));
-
-    // Check that tabindex resets to 0 and not the initial value after
-    // re-enabling.
-    button.disabled = false;
-    await microtasksFinished();
-    assertEquals('0', button.getAttribute('tabindex'));
-  });
-
-  test('iron-icon created, reused, removed based on |ironIcon|', async () => {
+  test('iron-icon is created, reused and removed based on |ironIcon|', () => {
     assertFalse(!!button.shadowRoot!.querySelector('iron-icon'));
     button.ironIcon = 'icon-key';
-    await button.updateComplete;
-
     assertTrue(!!button.shadowRoot!.querySelector('iron-icon'));
     button.shadowRoot!.querySelector('iron-icon')!.icon = 'icon-key';
     button.ironIcon = 'another-icon-key';
-    await button.updateComplete;
-
     assertEquals(1, button.shadowRoot!.querySelectorAll('iron-icon').length);
     button.shadowRoot!.querySelector('iron-icon')!.icon = 'another-icon-key';
     button.ironIcon = '';
-    await button.updateComplete;
-
     assertFalse(!!button.shadowRoot!.querySelector('iron-icon'));
   });
 
-  test('iron-icon children svg and img elements role set to none', async () => {
+  test('iron-icon children svg and img elements have role set to none', () => {
     button.ironIcon = 'cr:clear';
-    await button.updateComplete;
     assertTrue(!!button.shadowRoot);
     const ironIcons = button.shadowRoot!.querySelectorAll('iron-icon');
     assertEquals(1, ironIcons.length);
@@ -97,16 +61,16 @@ suite('cr-icon-button', function() {
     assertEquals(iconChildren[0]!.getAttribute('role'), 'none');
   });
 
-  test('enter emits click event', () => {
+  test('enter emits click event', async () => {
     const wait = eventToPromise('click', button);
     pressAndReleaseKeyOn(button, -1, [], 'Enter');
-    return wait;
+    await wait;
   });
 
-  test('space emits click event', () => {
+  test('space emits click event', async () => {
     const wait = eventToPromise('click', button);
     pressAndReleaseKeyOn(button, -1, [], ' ');
-    return wait;
+    await wait;
   });
 
   test('space up does not click without space down', () => {
@@ -160,9 +124,29 @@ suite('cr-icon-button', function() {
     button.removeEventListener('click', clickHandler);
   });
 
-  test('multiple iron icons', async () => {
+  test('when tabindex is -1, it stays -1', async () => {
+    document.body.innerHTML =
+        getTrustedHTML`<cr-icon-button custom-tab-index="-1"></cr-icon-button>`;
+    await flushTasks();
+    button = document.body.querySelector('cr-icon-button')!;
+    assertEquals('-1', button.getAttribute('tabindex'));
+    button.disabled = true;
+    assertEquals('-1', button.getAttribute('tabindex'));
+    button.disabled = false;
+    assertEquals('-1', button.getAttribute('tabindex'));
+  });
+
+  test('tabindex update', () => {
+    button = document.createElement('cr-icon-button')!;
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    document.body.appendChild(button);
+    assertEquals('0', button.getAttribute('tabindex'));
+    button.customTabIndex = 1;
+    assertEquals('1', button.getAttribute('tabindex'));
+  });
+
+  test('multiple iron icons', () => {
     button.ironIcon = 'icon1,icon2';
-    await button.updateComplete;
     const elements = button.shadowRoot!.querySelectorAll('iron-icon');
     assertEquals(2, elements.length);
     assertEquals('icon1', elements[0]!.icon);

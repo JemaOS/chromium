@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename t>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 class Profile;
@@ -28,13 +28,13 @@ class SecurityEventRecorderFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<SecurityEventRecorderFactory>;
+  friend struct base::DefaultSingletonTraits<SecurityEventRecorderFactory>;
 
   SecurityEventRecorderFactory();
   ~SecurityEventRecorderFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 #endif  // CHROME_BROWSER_SECURITY_EVENTS_SECURITY_EVENT_RECORDER_FACTORY_H_

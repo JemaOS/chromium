@@ -2,21 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "chrome/updater/net/network.h"
+
 #import <Foundation/Foundation.h>
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
-#import "base/apple/foundation_util.h"
 #include "base/containers/flat_map.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
+#import "base/mac/foundation_util.h"
+#import "base/mac/scoped_nsobject.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/sequence_checker.h"
 #include "base/strings/string_util.h"
@@ -25,9 +27,9 @@
 #include "chrome/updater/constants.h"
 #include "chrome/updater/net/network.h"
 #include "chrome/updater/policy/service.h"
-#include "chrome/updater/util/util.h"
 #include "components/update_client/network.h"
-#import "net/base/apple/url_conversions.h"
+#import "net/base/mac/url_conversions.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 using ResponseStartedCallback =
@@ -89,7 +91,7 @@ using DownloadToFileCompleteCallback =
 
 @implementation CRUUpdaterNetworkDataDelegate {
   PostRequestCompleteCallback _postRequestCompleteCallback;
-  NSMutableData* __strong _downloadedData;
+  base::scoped_nsobject<NSMutableData> _downloadedData;
 }
 
 - (instancetype)
@@ -102,7 +104,7 @@ using DownloadToFileCompleteCallback =
           initWithResponseStartedCallback:std::move(responseStartedCallback)
                          progressCallback:progressCallback]) {
     _postRequestCompleteCallback = std::move(postRequestCompleteCallback);
-    _downloadedData = [[NSMutableData alloc] init];
+    _downloadedData.reset([[NSMutableData alloc] init]);
   }
   return self;
 }
@@ -220,18 +222,17 @@ using DownloadToFileCompleteCallback =
     willCacheResponse:(NSCachedURLResponse*)proposedResponse
     completionHandler:
         (void (^)(NSCachedURLResponse* _Nullable))completionHandler {
-  completionHandler(nullptr);
+  completionHandler(NULL);
 }
 
 - (void)URLSession:(NSURLSession*)session
                  downloadTask:(NSURLSessionDownloadTask*)downloadTask
     didFinishDownloadingToURL:(NSURL*)location {
-  if (!location) {
+  if (!location)
     return;
-  }
 
   const base::FilePath tempPath =
-      base::apple::NSStringToFilePath([location path]);
+      base::mac::NSStringToFilePath([location path]);
   _moveTempFileSuccessful = base::Move(tempPath, _filePath);
   if (!_moveTempFileSuccessful) {
     DPLOG(ERROR)
@@ -298,7 +299,7 @@ class NetworkFetcher : public update_client::NetworkFetcher {
       update_client::NetworkFetcher::PostRequestCompleteCallback
           post_request_complete_callback) override;
 
-  base::OnceClosure DownloadToFile(
+  void DownloadToFile(
       const GURL& url,
       const base::FilePath& file_path,
       update_client::NetworkFetcher::ResponseStartedCallback
@@ -325,26 +326,25 @@ void NetworkFetcher::PostRequest(
     PostRequestCompleteCallback post_request_complete_callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  CRUUpdaterNetworkDataDelegate* delegate =
+  base::scoped_nsobject<CRUUpdaterNetworkDataDelegate> delegate(
       [[CRUUpdaterNetworkDataDelegate alloc]
           initWithResponseStartedCallback:std::move(response_started_callback)
                          progressCallback:progress_callback
               postRequestCompleteCallback:std::move(
-                                              post_request_complete_callback)];
+                                              post_request_complete_callback)]);
 
   NSURLSession* session =
-      [NSURLSession sessionWithConfiguration:NSURLSessionConfiguration
-                                                 .defaultSessionConfiguration
+      [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration
+                                                 defaultSessionConfiguration]
                                     delegate:delegate
                                delegateQueue:nil];
 
-  NSMutableURLRequest* urlRequest =
-      [[NSMutableURLRequest alloc] initWithURL:net::NSURLWithGURL(url)];
-  urlRequest.HTTPMethod = @"POST";
-  urlRequest.HTTPBody = [[NSData alloc] initWithBytes:post_data.c_str()
-                                               length:post_data.size()];
-  [urlRequest setValue:base::SysUTF8ToNSString(GetUpdaterUserAgent())
-      forHTTPHeaderField:@"User-Agent"];
+  base::scoped_nsobject<NSMutableURLRequest> urlRequest(
+      [[NSMutableURLRequest alloc] initWithURL:net::NSURLWithGURL(url)]);
+  [urlRequest setHTTPMethod:@"POST"];
+  base::scoped_nsobject<NSData> body(
+      [[NSData alloc] initWithBytes:post_data.c_str() length:post_data.size()]);
+  [urlRequest setHTTPBody:body];
   [urlRequest addValue:base::SysUTF8ToNSString(content_type)
       forHTTPHeaderField:@"Content-Type"];
 
@@ -360,7 +360,7 @@ void NetworkFetcher::PostRequest(
   [dataTask resume];
 }
 
-base::OnceClosure NetworkFetcher::DownloadToFile(
+void NetworkFetcher::DownloadToFile(
     const GURL& url,
     const base::FilePath& file_path,
     ResponseStartedCallback response_started_callback,
@@ -368,29 +368,26 @@ base::OnceClosure NetworkFetcher::DownloadToFile(
     DownloadToFileCompleteCallback download_to_file_complete_callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  CRUUpdaterNetworkDownloadDelegate* delegate =
+  base::scoped_nsobject<CRUUpdaterNetworkDownloadDelegate> delegate(
       [[CRUUpdaterNetworkDownloadDelegate alloc]
           initWithResponseStartedCallback:std::move(response_started_callback)
                          progressCallback:progress_callback
                                  filePath:file_path
            downloadToFileCompleteCallback:
-               std::move(download_to_file_complete_callback)];
+               std::move(download_to_file_complete_callback)]);
 
   NSURLSession* session =
-      [NSURLSession sessionWithConfiguration:NSURLSessionConfiguration
-                                                 .defaultSessionConfiguration
+      [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration
+                                                 defaultSessionConfiguration]
                                     delegate:delegate
                                delegateQueue:nil];
 
-  NSMutableURLRequest* urlRequest =
-      [[NSMutableURLRequest alloc] initWithURL:net::NSURLWithGURL(url)];
-  [urlRequest setValue:base::SysUTF8ToNSString(GetUpdaterUserAgent())
-      forHTTPHeaderField:@"User-Agent"];
+  base::scoped_nsobject<NSMutableURLRequest> urlRequest(
+      [[NSMutableURLRequest alloc] initWithURL:net::NSURLWithGURL(url)]);
 
   NSURLSessionDownloadTask* downloadTask =
       [session downloadTaskWithRequest:urlRequest];
   [downloadTask resume];
-  return base::DoNothing();
 }
 
 }  // namespace
@@ -398,7 +395,7 @@ base::OnceClosure NetworkFetcher::DownloadToFile(
 class NetworkFetcherFactory::Impl {};
 
 NetworkFetcherFactory::NetworkFetcherFactory(
-    std::optional<PolicyServiceProxyConfiguration>) {}
+    absl::optional<PolicyServiceProxyConfiguration>) {}
 NetworkFetcherFactory::~NetworkFetcherFactory() = default;
 
 std::unique_ptr<update_client::NetworkFetcher> NetworkFetcherFactory::Create()

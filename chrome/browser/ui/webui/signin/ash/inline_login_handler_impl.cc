@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/webui/signin/ash/inline_login_handler_impl.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "ash/constants/ash_pref_names.h"
@@ -15,7 +14,6 @@
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
-#include "base/uuid.h"
 #include "base/values.h"
 #include "chrome/browser/ash/account_manager/account_apps_availability.h"
 #include "chrome/browser/ash/account_manager/account_apps_availability_factory.h"
@@ -41,9 +39,6 @@
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
-#include "components/user_manager/known_user.h"
-#include "components/user_manager/user.h"
-#include "components/user_manager/user_manager.h"
 #include "crypto/sha2.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "google_apis/gaia/gaia_urls.h"
@@ -70,38 +65,39 @@ constexpr char kAccountKeyFullName[] = "fullName";
 constexpr char kAccountKeyImage[] = "image";
 
 std::string AnonymizeAccountEmail(const std::string& email) {
-  std::string result = base::Base64Encode(crypto::SHA256HashString(email));
+  std::string result;
+  base::Base64Encode(crypto::SHA256HashString(email), &result);
   return result + "@example.com";
 }
 
 // Returns a base64-encoded hash code of "signin_scoped_device_id:gaia_id".
 std::string GetAccountDeviceId(const std::string& signin_scoped_device_id,
                                const std::string& gaia_id) {
-  return base::Base64Encode(
-      crypto::SHA256HashString(signin_scoped_device_id + ":" + gaia_id));
+  std::string account_device_id;
+  base::Base64Encode(
+      crypto::SHA256HashString(signin_scoped_device_id + ":" + gaia_id),
+      &account_device_id);
+  return account_device_id;
 }
 
-bool IsPrimaryAccountBeingReauthenticated(
-    Profile* profile,
-    const std::optional<std::string>& email) {
+std::string GetInlineLoginFlowName(Profile* profile, const std::string* email) {
+  DCHECK(profile);
+  if (!profile->IsChild()) {
+    return kCrosAddAccountFlow;
+  }
+
   std::string primary_account_email =
       IdentityManagerFactory::GetForProfile(profile)
           ->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin)
           .email;
-
-  return email && gaia::AreEmailsSame(primary_account_email, *email);
-}
-
-std::string GetInlineLoginFlowName(Profile* profile,
-                                   const std::optional<std::string>& email) {
-  DCHECK(profile);
-  if (profile->IsChild() &&
-      !IsPrimaryAccountBeingReauthenticated(profile, email)) {
-    // Child user is adding / reauthenticating a secondary account.
-    return kCrosAddAccountEduFlow;
+  // If provided email is for primary account - it's a reauthentication, use
+  // normal add account flow.
+  if (email && gaia::AreEmailsSame(primary_account_email, *email)) {
+    return kCrosAddAccountFlow;
   }
 
-  return kCrosAddAccountFlow;
+  // Child user is adding/reauthenticating a secondary account.
+  return kCrosAddAccountEduFlow;
 }
 
 const SkBitmap& GetDefaultAccountIcon() {
@@ -136,24 +132,6 @@ base::Value::Dict GaiaAccountToValue(const ::account_manager::Account& account,
   return ::account_manager::Account{
       ::account_manager::AccountKey{*id, account_manager::AccountType::kGaia},
       *email};
-}
-
-std::string GetDeviceId(user_manager::KnownUser& known_user,
-                        const AccountId& device_account_id,
-                        const std::optional<std::string>& initial_email) {
-  if (!initial_email ||
-      !gaia::AreEmailsSame(*initial_email, device_account_id.GetUserEmail())) {
-    // Return a random GUID for account additions (`!initial_email`) and
-    // Secondary Account reauth.
-    return base::Uuid::GenerateRandomV4().AsLowercaseString();
-  }
-
-  std::string device_id = known_user.GetDeviceId(device_account_id);
-  if (device_id.empty()) {
-    // This should not happen but we need to handle this gracefully.
-    device_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
-  }
-  return device_id;
 }
 
 class EduCoexistenceChildSigninHelper : public SigninHelper {
@@ -227,10 +205,10 @@ class EduCoexistenceChildSigninHelper : public SigninHelper {
 
  private:
   // Unowned pointer to pref service.
-  const raw_ptr<PrefService> pref_service_;
+  const raw_ptr<PrefService, ExperimentalAsh> pref_service_;
 
   // Unowned pointer to the WebUI through which the account was added.
-  const raw_ptr<const content::WebUI> web_ui_;
+  const raw_ptr<const content::WebUI, ExperimentalAsh> web_ui_;
 
   // Added account email.
   const std::string account_email_;
@@ -285,28 +263,21 @@ void InlineLoginHandlerImpl::RegisterMessages() {
       base::BindRepeating(
           &InlineLoginHandlerImpl::OpenGuestWindowAndCloseDialog,
           base::Unretained(this)));
-  web_ui()->RegisterMessageCallback(
-      "getDeviceId", base::BindRepeating(&InlineLoginHandlerImpl::GetDeviceId,
-                                         base::Unretained(this)));
 }
 
 void InlineLoginHandlerImpl::SetExtraInitParams(base::Value::Dict& params) {
-  std::string* email = params.FindString("email");
-  if (email && !email->empty()) {
-    initial_email_ = *email;
-  }
   const GaiaUrls* const gaia_urls = GaiaUrls::GetInstance();
   params.Set("clientId", gaia_urls->oauth2_chrome_client_id());
 
   const GURL& url = gaia_urls->embedded_setup_chromeos_url();
   params.Set("gaiaPath", url.path().substr(1));
 
-  std::optional<std::string> version = chromeos::version_loader::GetVersion(
+  absl::optional<std::string> version = chromeos::version_loader::GetVersion(
       chromeos::version_loader::VERSION_SHORT);
   params.Set("platformVersion", version.value_or("0.0.0.0"));
   params.Set("constrained", "1");
   params.Set("flow", GetInlineLoginFlowName(Profile::FromWebUI(web_ui()),
-                                            initial_email_));
+                                            params.FindString("email")));
   params.Set("dontResizeNonEmbeddedPages", true);
   params.Set("enableGaiaActionButtons", true);
   params.Set("forceDarkMode",
@@ -516,18 +487,6 @@ void InlineLoginHandlerImpl::OpenGuestWindowAndCloseDialog(
   }
 
   close_dialog_closure_.Run();
-}
-
-void InlineLoginHandlerImpl::GetDeviceId(const base::Value::List& args) {
-  CHECK_EQ(1u, args.size());
-  const std::string& callback_id = args[0].GetString();
-
-  user_manager::KnownUser known_user{g_browser_process->local_state()};
-  const AccountId& device_account_id =
-      user_manager::UserManager::Get()->GetPrimaryUser()->GetAccountId();
-  ResolveJavascriptCallback(
-      callback_id,
-      ::ash::GetDeviceId(known_user, device_account_id, initial_email_));
 }
 
 }  // namespace ash

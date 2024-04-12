@@ -5,16 +5,13 @@
 #ifndef CHROME_BROWSER_WEB_APPLICATIONS_WEB_APP_PROTO_UTILS_H_
 #define CHROME_BROWSER_WEB_APPLICATIONS_WEB_APP_PROTO_UTILS_H_
 
-#include <optional>
 #include <vector>
 
 #include "chrome/browser/web_applications/proto/web_app.pb.h"
-#include "chrome/browser/web_applications/proto/web_app_tab_strip.pb.h"
-#include "chrome/browser/web_applications/proto/web_app_url_pattern.pb.h"
 #include "chrome/browser/web_applications/web_app.h"
 #include "components/sync/protocol/web_app_specifics.pb.h"
 #include "content/browser/background_fetch/background_fetch.pb.h"
-#include "third_party/blink/public/common/safe_url_pattern.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace apps {
 struct IconInfo;
@@ -30,11 +27,11 @@ using RepeatedIconInfosProto =
 using RepeatedImageResourceProto =
     const ::google::protobuf::RepeatedPtrField<content::proto::ImageResource>;
 
-std::optional<std::vector<apps::IconInfo>> ParseAppIconInfos(
+absl::optional<std::vector<apps::IconInfo>> ParseAppIconInfos(
     const char* container_name_for_logging,
     const RepeatedIconInfosProto& manifest_icons_proto);
 
-std::optional<std::vector<blink::Manifest::ImageResource>>
+absl::optional<std::vector<blink::Manifest::ImageResource>>
 ParseAppImageResource(const char* container_name_for_logging,
                       const RepeatedImageResourceProto& manifest_icons_proto);
 
@@ -48,20 +45,16 @@ sync_pb::WebAppIconInfo AppIconInfoToSyncProto(const apps::IconInfo& icon_info);
 content::proto::ImageResource AppImageResourceToProto(
     const blink::Manifest::ImageResource& image_resource);
 
-std::optional<WebApp::SyncFallbackData> ParseSyncFallbackDataStruct(
+absl::optional<WebApp::SyncFallbackData> ParseSyncFallbackDataStruct(
     const sync_pb::WebAppSpecifics& sync_proto);
+
+::sync_pb::WebAppSpecifics::UserDisplayMode ToWebAppSpecificsUserDisplayMode(
+    DisplayMode user_display_mode);
 
 RunOnOsLoginMode ToRunOnOsLoginMode(WebAppProto::RunOnOsLoginMode mode);
 
 WebAppProto::RunOnOsLoginMode ToWebAppProtoRunOnOsLoginMode(
     RunOnOsLoginMode mode);
-
-std::optional<blink::SafeUrlPattern> ToUrlPattern(
-    const proto::UrlPattern& proto_url_pattern);
-
-proto::UrlPattern ToUrlPatternProto(const blink::SafeUrlPattern& url_pattern);
-
-std::optional<TabStrip> ProtoToTabStrip(proto::TabStrip tab_strip_proto);
 
 }  // namespace web_app
 

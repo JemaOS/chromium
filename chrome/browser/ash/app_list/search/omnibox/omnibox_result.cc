@@ -103,6 +103,8 @@ OmniboxResult::OmniboxResult(Profile* profile,
     dedup_priority_ = kDefaultPriority;
   }
 
+  SetIsOmniboxSearch(
+      crosapi::OptionalBoolIsTrue(search_result_->is_omnibox_search));
   SetSkipUpdateAnimation(search_result_->metrics_type ==
                          CrosApiSearchResult::MetricsType::kSearchWhatYouTyped);
 
@@ -128,16 +130,27 @@ OmniboxResult::~OmniboxResult() {
 void OmniboxResult::UpdateRelevance() {
   double normalized_autocomplete_relevance =
       search_result_->relevance / kMaxOmniboxScore;
+  bool fuzzy_match_cutoff_enabled = base::GetFieldTrialParamByFeatureAsBool(
+      search_features::kLauncherFuzzyMatchForOmnibox, "enable_cutoff", false);
+  bool fuzzy_match_relevance_enabled = base::GetFieldTrialParamByFeatureAsBool(
+      search_features::kLauncherFuzzyMatchForOmnibox, "enable_relevance",
+      false);
 
-  if (search_features::isLauncherFuzzyMatchForOmniboxEnabled()) {
-    double title_relevance = CalculateTitleRelevance();
+  if (!fuzzy_match_cutoff_enabled && !fuzzy_match_relevance_enabled) {
+    // Derive relevance from autocomplete relevance and normalize it to [0, 1].
+    set_relevance(normalized_autocomplete_relevance);
+    return;
+  }
+
+  double title_relevance = CalculateTitleRelevance();
+  if (fuzzy_match_cutoff_enabled) {
     if (title_relevance < kRelevanceThreshold) {
       scoring().set_filtered(true);
     }
+    set_relevance(normalized_autocomplete_relevance);
+  } else {
+    set_relevance((normalized_autocomplete_relevance + title_relevance) / 2);
   }
-
-  // Derive relevance from autocomplete relevance and normalize it to [0, 1].
-  set_relevance(normalized_autocomplete_relevance);
 }
 
 double OmniboxResult::CalculateTitleRelevance() const {
@@ -153,10 +166,6 @@ double OmniboxResult::CalculateTitleRelevance() const {
   FuzzyTokenizedStringMatch match;
   return match.Relevance(tokenized_query, tokenized_title, kUseWeightedRatio,
                          kStripDiacritics, kUseAcronymMatcher);
-}
-
-std::optional<GURL> OmniboxResult::url() const {
-  return search_result_->destination_url;
 }
 
 void OmniboxResult::Open(int event_flags) {
@@ -189,9 +198,8 @@ ash::SearchResultType OmniboxResult::GetSearchResultType() const {
       return ash::OMNIBOX_SEARCH_SUGGEST_ENTITY;
     case CrosApiSearchResult::MetricsType::kNavSuggest:
       return ash::OMNIBOX_NAVSUGGEST;
-    case CrosApiSearchResult::MetricsType::kCalculator:
-      return ash::OMNIBOX_CALCULATOR;
-    case CrosApiSearchResult::MetricsType::kUnset:
+
+    default:
       return ash::SEARCH_RESULT_TYPE_BOUNDARY;
   }
 }
@@ -205,7 +213,7 @@ void OmniboxResult::OnFaviconReceived(const gfx::ImageSkia& icon) {
   // By contract, this is never called with an empty |icon|.
   DCHECK(!icon.isNull());
   search_result_->favicon = icon;
-  SetIcon(IconInfo(ui::ImageModel::FromImageSkia(icon), kFaviconDimension));
+  SetIcon(IconInfo(icon, kFaviconDimension));
 }
 
 void OmniboxResult::UpdateIcon() {
@@ -217,9 +225,8 @@ void OmniboxResult::UpdateIcon() {
   // Use a favicon if eligible. In the event that a favicon becomes available
   // asynchronously, it will be sent to us over Mojo and we will update our
   // icon.
-  gfx::ImageSkia icon = search_result_->favicon;
-  if (!icon.isNull()) {
-    SetIcon(IconInfo(ui::ImageModel::FromImageSkia(icon), kFaviconDimension));
+  if (!search_result_->favicon.isNull()) {
+    SetIcon(IconInfo(search_result_->favicon, kFaviconDimension));
     return;
   }
 
@@ -232,16 +239,15 @@ void OmniboxResult::SetGenericIcon() {
   // the generic bookmark or another generic icon as appropriate.
   if (search_result_->omnibox_type ==
       CrosApiSearchResult::OmniboxType::kBookmark) {
-    SetIcon(IconInfo(ui::ImageModel::FromVectorIcon(omnibox::kBookmarkIcon,
-                                                    GetGenericIconColor(),
-                                                    kSystemIconDimension),
-
-                     kSystemIconDimension));
+    SetIcon(IconInfo(
+        gfx::CreateVectorIcon(omnibox::kBookmarkIcon, kSystemIconDimension,
+                              GetGenericIconColor()),
+        kSystemIconDimension));
   } else {
-    SetIcon(IconInfo(ui::ImageModel::FromVectorIcon(
-                         TypeToVectorIcon(search_result_->omnibox_type),
-                         GetGenericIconColor(), kSystemIconDimension),
-                     kSystemIconDimension));
+    SetIcon(IconInfo(
+        gfx::CreateVectorIcon(TypeToVectorIcon(search_result_->omnibox_type),
+                              kSystemIconDimension, GetGenericIconColor()),
+        kSystemIconDimension));
   }
 }
 
@@ -312,8 +318,7 @@ void OmniboxResult::OnFetchComplete(const GURL& url, const SkBitmap* bitmap) {
   if (!bitmap)
     return;
 
-  IconInfo icon_info(ui::ImageModel::FromImageSkia(
-                         gfx::ImageSkia::CreateFrom1xBitmap(*bitmap)),
+  IconInfo icon_info(gfx::ImageSkia::CreateFrom1xBitmap(*bitmap),
                      kImageIconDimension, IconShape::kRoundedRectangle);
   SetIcon(icon_info);
 }

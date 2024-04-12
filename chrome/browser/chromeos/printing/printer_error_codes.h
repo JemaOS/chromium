@@ -25,7 +25,6 @@ enum class PrinterErrorCode {
   FILTER_FAILED,
   UNKNOWN_ERROR,
   CLIENT_UNAUTHORIZED,
-  EXPIRED_CERTIFICATE,
 };
 
 // Extracts an PrinterErrorCode from PrinterStatus#reasons. Returns NO_ERROR if

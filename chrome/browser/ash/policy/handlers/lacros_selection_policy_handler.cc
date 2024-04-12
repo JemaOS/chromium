@@ -34,13 +34,13 @@ void LacrosSelectionPolicyHandler::ApplyPolicySettings(
     prefs->SetInteger(prefs::kLacrosSelection, static_cast<int>(*enum_value));
 }
 
-std::optional<crosapi::browser_util::LacrosSelectionPolicy>
+absl::optional<crosapi::browser_util::LacrosSelectionPolicy>
 LacrosSelectionPolicyHandler::GetValue(const PolicyMap& policies,
                                        PolicyErrorMap* errors) {
   const base::Value* value;
   const bool value_found = CheckAndGetValue(policies, errors, &value) && value;
   if (!value_found)
-    return std::nullopt;
+    return absl::nullopt;
 
   auto parsed =
       crosapi::browser_util::ParseLacrosSelectionPolicy(value->GetString());

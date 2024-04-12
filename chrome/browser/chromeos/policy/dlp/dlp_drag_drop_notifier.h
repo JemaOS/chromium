@@ -19,12 +19,12 @@ class DlpDragDropNotifier : public DlpDataTransferNotifier {
 
   // DlpDataTransferNotifier::
   void NotifyBlockedAction(
-      base::optional_ref<const ui::DataTransferEndpoint> data_src,
-      base::optional_ref<const ui::DataTransferEndpoint> data_dst) override;
+      const ui::DataTransferEndpoint* const data_src,
+      const ui::DataTransferEndpoint* const data_dst) override;
 
   // Warns the user that this drop action is not recommended.
-  void WarnOnDrop(base::optional_ref<const ui::DataTransferEndpoint> data_src,
-                  base::optional_ref<const ui::DataTransferEndpoint> data_dst,
+  void WarnOnDrop(const ui::DataTransferEndpoint* const data_src,
+                  const ui::DataTransferEndpoint* const data_dst,
                   base::OnceClosure drop_cb);
 
  protected:

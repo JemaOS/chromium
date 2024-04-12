@@ -208,5 +208,6 @@ void ExtensionInstallFrictionDialogView::ClickLearnMoreLinkForTesting() {
   OnLearnMoreLinkClicked();
 }
 
-BEGIN_METADATA(ExtensionInstallFrictionDialogView)
+BEGIN_METADATA(ExtensionInstallFrictionDialogView,
+               views::BubbleDialogDelegateView)
 END_METADATA

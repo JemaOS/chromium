@@ -21,7 +21,7 @@ function checkExpectations() {
   chrome.test.succeed();
 }
 
-var getURL = chrome.runtime.getURL;
+var getURL = chrome.extension.getURL;
 
 chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
   console.log('---onUpdated: ' + info.status + ', ' + info.url + '. ' +

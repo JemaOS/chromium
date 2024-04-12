@@ -4,19 +4,6 @@
     "args": ["--enable-features=BackForwardCache"]
   },
   {
-    "name": "background-resource-fetch",
-    "args": ["--enable-features=BackgroundResourceFetch"],
-    "smoke_file": "TestLists/background-resource-fetch"
-  },
-  {
-    "name": "chrome-for-testing",
-    "args": [],
-    "comments": [
-      "Used to gate Chrome for Testing (goo.gle/chrome-for-testing) ",
-      "expectation differences. Does not require a runtime flag."
-    ]
-  },
-  {
     "name": "devtools-tab-target",
     "args": ["--content-shell-devtools-tab-target"]
   },
@@ -47,7 +34,7 @@
   {
     "name": "highdpi",
     "args": ["--force-device-scale-factor=1.5"],
-    "smoke_file": "TestLists/highdpi"
+    "smoke_file": "SmokeTests/highdpi"
   },
   {
     "name": "skia-vulkan-swiftshader",
@@ -57,14 +44,13 @@
           "--use-vulkan=swiftshader",
           "--disable-vulkan-fallback-to-gl-for-testing"
     ],
-    "smoke_file": "TestLists/skia-vulkan-swiftshader"
+    "smoke_file": "SmokeTests/skia-vulkan-swiftshader"
   },
   {
     "name": "webgpu",
     "args": [
           "--enable-unsafe-webgpu",
-          "--enable-dawn-features=allow_unsafe_apis",
-          "--disable-dawn-features=use_dxc",
+          "--disable-dawn-features=disallow_unsafe_apis",
           "--enable-webgpu-developer-features",
           "--use-gpu-in-tests",
           "--enable-accelerated-2d-canvas",
@@ -73,7 +59,7 @@
     "comments": [
           "--enable-unsafe-webgpu makes sure WebGPU is enabled even if it",
           "isn't launched in stable on that configuration yet",
-          "--enable-dawn-features=allow_unsafe_apis is added so 'unsafe'",
+          "--disable-dawn-features=disallow_unsafe_apis is added so 'unsafe'",
           "APIs can be tested with WebGPU CTS",
           "--enable-webgpu-developer-features exposes extra WebGPU API",
           "features useful for testing but not generally available.",
@@ -91,8 +77,7 @@
     "args": [
           "--enable-unsafe-webgpu",
           "--use-webgpu-adapter=swiftshader",
-          "--enable-dawn-features=allow_unsafe_apis",
-          "--disable-dawn-features=use_dxc",
+          "--disable-dawn-features=disallow_unsafe_apis",
           "--enable-webgpu-developer-features",
           "--use-gpu-in-tests",
           "--enable-accelerated-2d-canvas"
@@ -100,7 +85,7 @@
     "comments": [
           "--enable-unsafe-webgpu makes sure WebGPU is enabled even if it",
           "isn't launched in stable on that configuration yet",
-          "--enable-dawn-features=allow_unsafe_apis is added so 'unsafe'",
+          "--disable-dawn-features=disallow_unsafe_apis is added so 'unsafe'",
           "APIs can be tested with WebGPU CTS",
           "--enable-webgpu-developer-features exposes extra WebGPU API",
           "features useful for testing but not generally available.",
@@ -118,8 +103,7 @@
           "--enable-unsafe-webgpu",
           "--use-webgpu-adapter=swiftshader",
           "--enable-dawn-backend-validation",
-          "--enable-dawn-features=allow_unsafe_apis",
-          "--disable-dawn-features=use_dxc",
+          "--disable-dawn-features=disallow_unsafe_apis",
           "--enable-webgpu-developer-features",
           "--use-gpu-in-tests",
           "--enable-accelerated-2d-canvas"
@@ -127,7 +111,7 @@
     "comments": [
           "--enable-unsafe-webgpu makes sure WebGPU is enabled even if it",
           "isn't launched in stable on that configuration yet",
-          "--enable-dawn-features=allow_unsafe_apis is added so 'unsafe'",
+          "--disable-dawn-features=disallow_unsafe_apis is added so 'unsafe'",
           "APIs can be tested with WebGPU CTS",
           "--enable-webgpu-developer-features exposes extra WebGPU API",
           "features useful for testing but not generally available.",
@@ -144,8 +128,7 @@
     "args": [
           "--enable-unsafe-webgpu",
           "--enable-dawn-backend-validation",
-          "--enable-dawn-features=allow_unsafe_apis",
-          "--disable-dawn-features=use_dxc",
+          "--disable-dawn-features=disallow_unsafe_apis",
           "--enable-webgpu-developer-features",
           "--use-gpu-in-tests",
           "--enable-accelerated-2d-canvas",
@@ -154,7 +137,7 @@
     "comments": [
           "--enable-unsafe-webgpu makes sure WebGPU is enabled even if it",
           "isn't launched in stable on that configuration yet",
-          "--enable-dawn-features=allow_unsafe_apis is added so 'unsafe'",
+          "--disable-dawn-features=disallow_unsafe_apis is added so 'unsafe'",
           "APIs can be tested with WebGPU CTS",
           "--enable-webgpu-developer-features exposes extra WebGPU API",
           "features useful for testing but not generally available.",
@@ -172,8 +155,7 @@
     "args": [
           "--enable-unsafe-webgpu",
           "--enable-dawn-backend-validation=partial",
-          "--enable-dawn-features=allow_unsafe_apis",
-          "--disable-dawn-features=use_dxc",
+          "--disable-dawn-features=disallow_unsafe_apis",
           "--enable-webgpu-developer-features",
           "--use-gpu-in-tests",
           "--enable-accelerated-2d-canvas",
@@ -182,7 +164,7 @@
     "comments": [
           "--enable-unsafe-webgpu makes sure WebGPU is enabled even if it",
           "isn't launched in stable on that configuration yet",
-          "--enable-dawn-features=allow_unsafe_apis is added so 'unsafe'",
+          "--disable-dawn-features=disallow_unsafe_apis is added so 'unsafe'",
           "APIs can be tested with WebGPU CTS",
           "--enable-webgpu-developer-features exposes extra WebGPU API",
           "features useful for testing but not generally available.",
@@ -193,15 +175,6 @@
           "tests are using GPU rather than CPU",
           "--use-webgpu-power-preference=default-high-performance indicates",
           "it uses high-performance gpu when not explicitly specified"
-    ]
-  },
-  {
-    "name": "enable-skia-graphite",
-    "args": [
-      "--enable-skia-graphite"
-    ],
-    "comments": [
-      "Used to test Chrome with Skia Graphite."
     ]
   }
 ]

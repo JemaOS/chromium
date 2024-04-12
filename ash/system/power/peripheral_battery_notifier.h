@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <map>
-#include <optional>
 
 #include "ash/ash_export.h"
 #include "ash/system/power/peripheral_battery_listener.h"
@@ -18,6 +17,7 @@
 #include "base/time/time.h"
 #include "chromeos/dbus/power/power_manager_client.h"
 #include "device/bluetooth/bluetooth_adapter.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
@@ -53,12 +53,12 @@ class ASH_EXPORT PeripheralBatteryNotifier
 
   struct NotificationInfo {
     NotificationInfo();
-    NotificationInfo(std::optional<uint8_t> level,
+    NotificationInfo(absl::optional<uint8_t> level,
                      base::TimeTicks last_notification_timestamp);
     ~NotificationInfo();
     NotificationInfo(const NotificationInfo& info);
     // Battery level within range [0, 100].
-    std::optional<uint8_t> level;
+    absl::optional<uint8_t> level;
     base::TimeTicks last_notification_timestamp;
     bool ever_notified;
   };
@@ -96,7 +96,8 @@ class ASH_EXPORT PeripheralBatteryNotifier
   // provided by PeripheralBatteryListener.
   std::map<std::string, NotificationInfo> battery_notifications_;
 
-  raw_ptr<PeripheralBatteryListener> peripheral_battery_listener_;
+  raw_ptr<PeripheralBatteryListener, ExperimentalAsh>
+      peripheral_battery_listener_;
 };
 
 }  // namespace ash

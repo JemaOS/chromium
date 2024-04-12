@@ -4,6 +4,7 @@
 
 #import <Cocoa/Cocoa.h>
 
+#include "base/mac/scoped_nsobject.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/platform_test.h"
 #include "ui/base/cocoa/base_view.h"
@@ -15,19 +16,20 @@ class BaseViewTest : public ui::CocoaTest {
  public:
   BaseViewTest() {
     NSRect frame = NSMakeRect(0, 0, 100, 100);
-    BaseView* view = [[BaseView alloc] initWithFrame:frame];
-    [test_window().contentView addSubview:view];
-    view_ = view;
+    base::scoped_nsobject<BaseView> view(
+        [[BaseView alloc] initWithFrame:frame]);
+    view_ = view.get();
+    [[test_window() contentView] addSubview:view_];
   }
 
-  BaseView* __weak view_;
+  BaseView* view_;  // weak
 };
 
 TEST_F(BaseViewTest, RemoveFromSuperviewWorks) {
-  NSView* view = view_;
-  EXPECT_EQ(test_window().contentView, view.superview);
+  base::scoped_nsobject<NSView> view([view_ retain]);
+  EXPECT_EQ([test_window() contentView], [view superview]);
   [view removeFromSuperview];
-  EXPECT_FALSE(view.superview);
+  EXPECT_FALSE([view superview]);
 }
 
 // Convert a rect in |view_|'s Cocoa coordinate system to gfx::Rect's top-left

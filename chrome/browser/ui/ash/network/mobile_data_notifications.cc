@@ -10,7 +10,6 @@
 #include "ash/public/cpp/notification_utils.h"
 #include "base/functional/bind.h"
 #include "base/time/time.h"
-#include "base/trace_event/trace_event.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/notifications/system_notification_helper.h"
 #include "chrome/browser/profiles/profile.h"
@@ -97,7 +96,6 @@ void MobileDataNotifications::ActiveUserChanged(
 }
 
 void MobileDataNotifications::OnSessionStateChanged() {
-  TRACE_EVENT0("ui", "MobileDataNotifications::OnSessionStateChanged");
   ShowOptionalMobileDataNotification();
 }
 

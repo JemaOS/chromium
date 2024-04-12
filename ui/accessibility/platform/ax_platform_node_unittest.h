@@ -11,13 +11,13 @@
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/accessibility/ax_tree_id.h"
 #include "ui/accessibility/ax_tree_update.h"
+#include "ui/accessibility/platform/ax_platform_node.h"
+#include "ui/accessibility/single_ax_tree_manager.h"
 #include "ui/accessibility/test_ax_tree_update.h"
-#include "ui/accessibility/test_single_ax_tree_manager.h"
 
 namespace ui {
 
-class AXPlatformNodeTest : public ::testing::Test,
-                           public TestSingleAXTreeManager {
+class AXPlatformNodeTest : public ::testing::Test, public SingleAXTreeManager {
  public:
   AXPlatformNodeTest();
   ~AXPlatformNodeTest() override;
@@ -40,6 +40,14 @@ class AXPlatformNodeTest : public ::testing::Test,
       bool option_2_is_selected,
       bool option_3_is_selected,
       const std::vector<ax::mojom::State>& additional_state);
+};
+
+class ScopedAXModeSetter {
+ public:
+  explicit ScopedAXModeSetter(AXMode new_mode) {
+    AXPlatformNode::SetAXMode(new_mode);
+  }
+  ~ScopedAXModeSetter() { AXPlatformNode::SetAXMode(ui::AXMode::kNone); }
 };
 
 }  // namespace ui

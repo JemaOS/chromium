@@ -76,7 +76,7 @@ size_t MockInputMethodManager::State::GetNumEnabledInputMethods() const {
 }
 
 void MockInputMethodManager::State::SetEnabledExtensionImes(
-    base::span<const std::string> ids) {}
+    std::vector<std::string>* ids) {}
 
 void MockInputMethodManager::State::SetInputMethodLoginDefault() {}
 
@@ -194,12 +194,7 @@ bool MockInputMethodManager::IsLoginKeyboard(const std::string& layout) const {
   return true;
 }
 
-std::string MockInputMethodManager::GetMigratedInputMethodID(
-    const std::string& input_method_id) {
-  return "";
-}
-
-bool MockInputMethodManager::GetMigratedInputMethodIDs(
+bool MockInputMethodManager::MigrateInputMethods(
     std::vector<std::string>* input_method_ids) {
   return false;
 }

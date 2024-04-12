@@ -2,12 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
-
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_switches.h"
 #include "ash/public/cpp/login_screen_test_api.h"
-#include "base/check_deref.h"
 #include "base/command_line.h"
 #include "base/containers/contains.h"
 #include "base/location.h"
@@ -23,14 +20,13 @@
 #include "chrome/browser/ash/login/test/js_checker.h"
 #include "chrome/browser/ash/login/test/login_manager_mixin.h"
 #include "chrome/browser/ash/login/test/oobe_screen_waiter.h"
-#include "chrome/browser/ash/login/test/scoped_policy_update.h"
 #include "chrome/browser/ash/login/test/user_adding_screen_utils.h"
 #include "chrome/browser/ash/login/ui/login_display_host.h"
 #include "chrome/browser/ash/login/ui/user_adding_screen.h"
-#include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/ash/policy/core/device_policy_builder.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
+#include "chrome/browser/ash/settings/scoped_testing_cros_settings.h"
 #include "chrome/browser/ash/settings/stub_cros_settings_provider.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/ui/ash/login_screen_shown_observer.h"
@@ -38,11 +34,8 @@
 #include "chrome/common/pref_names.h"
 #include "chromeos/ash/components/login/auth/public/user_context.h"
 #include "chromeos/ash/components/settings/cros_settings_names.h"
-#include "components/account_id/account_id.h"
 #include "components/prefs/pref_service.h"
 #include "components/user_manager/known_user.h"
-#include "components/user_manager/scoped_user_manager.h"
-#include "components/user_manager/user_manager.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_utils.h"
 
@@ -62,7 +55,7 @@ constexpr char kTestUser3GaiaId[] = "3333333333";
 
 void Append_en_US_InputMethod(std::vector<std::string>* out) {
   out->push_back("xkb:us::eng");
-  input_method::InputMethodManager::Get()->GetMigratedInputMethodIDs(out);
+  input_method::InputMethodManager::Get()->MigrateInputMethods(out);
 }
 
 void Append_en_US_InputMethods(std::vector<std::string>* out) {
@@ -77,7 +70,7 @@ void Append_en_US_InputMethods(std::vector<std::string>* out) {
   out->push_back("xkb:us:colemak:eng");
   out->push_back("xkb:us:workman:eng");
   out->push_back("xkb:us:workman-intl:eng");
-  input_method::InputMethodManager::Get()->GetMigratedInputMethodIDs(out);
+  input_method::InputMethodManager::Get()->MigrateInputMethods(out);
 }
 
 }  // anonymous namespace
@@ -96,7 +89,7 @@ class LoginUIKeyboardTest : public LoginManagerTest {
     user_input_methods.push_back("xkb:fr::fra");
     user_input_methods.push_back("xkb:de::ger");
 
-    input_method::InputMethodManager::Get()->GetMigratedInputMethodIDs(
+    input_method::InputMethodManager::Get()->MigrateInputMethods(
         &user_input_methods);
 
     LoginManagerTest::SetUpOnMainThread();
@@ -245,24 +238,16 @@ class LoginUIKeyboardTestWithUsersAndOwner : public LoginManagerTest {
   LoginUIKeyboardTestWithUsersAndOwner() = default;
   ~LoginUIKeyboardTestWithUsersAndOwner() override {}
 
-  void SetUp() override {
-    LoginManagerTest::SetUp();
-
-    auto user_manager = std::make_unique<ash::FakeChromeUserManager>();
-    scoped_user_manager_ = std::make_unique<user_manager::ScopedUserManager>(
-        std::move(user_manager));
-  }
-
   void SetUpOnMainThread() override {
     user_input_methods.push_back("xkb:fr::fra");
     user_input_methods.push_back("xkb:de::ger");
     user_input_methods.push_back("xkb:pl::pol");
 
-    input_method::InputMethodManager::Get()->GetMigratedInputMethodIDs(
+    input_method::InputMethodManager::Get()->MigrateInputMethods(
         &user_input_methods);
 
-    GetFakeUserManager().SetOwnerId(
-        AccountId::FromUserEmailGaiaId(kTestUser3, kTestUser3GaiaId));
+    scoped_testing_cros_settings_.device_settings()->Set(
+        kDeviceOwner, base::Value(kTestUser3));
 
     LoginManagerTest::SetUpOnMainThread();
   }
@@ -285,16 +270,11 @@ class LoginUIKeyboardTestWithUsersAndOwner : public LoginManagerTest {
                            user_input_methods[2]);
   }
 
-  ash::FakeChromeUserManager& GetFakeUserManager() {
-    return CHECK_DEREF(static_cast<ash::FakeChromeUserManager*>(
-        user_manager::UserManager::Get()));
-  }
-
   void CheckGaiaKeyboard();
 
  protected:
   std::vector<std::string> user_input_methods;
-  std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
+  ScopedTestingCrosSettings scoped_testing_cros_settings_;
 };
 
 void LoginUIKeyboardTestWithUsersAndOwner::CheckGaiaKeyboard() {
@@ -392,7 +372,7 @@ IN_PROC_BROWSER_TEST_F(LoginUIKeyboardPolicy, RestrictInputMethods) {
   ASSERT_EQ(imm->GetActiveIMEState()->GetAllowedInputMethodIds().size(), 1U);
   ASSERT_EQ(imm->GetActiveIMEState()->GetNumEnabledInputMethods(), 1U);
 
-  input_method::InputMethodManager::Get()->GetMigratedInputMethodIDs(
+  input_method::InputMethodManager::Get()->MigrateInputMethods(
       &allowed_input_method);
   ASSERT_EQ(imm->GetActiveIMEState()->GetCurrentInputMethod().id(),
             allowed_input_method.front());
@@ -437,7 +417,7 @@ IN_PROC_BROWSER_TEST_F(LoginUIDevicePolicyUserAdding, PolicyNotHonored) {
 
   std::vector<std::string> allowed_input_method{"xkb:de::ger"};
   SetAllowedInputMethod(allowed_input_method.front());
-  input_method::InputMethodManager::Get()->GetMigratedInputMethodIDs(
+  input_method::InputMethodManager::Get()->MigrateInputMethods(
       &allowed_input_method);
 
   test::ShowUserAddingScreen();

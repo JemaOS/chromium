@@ -53,10 +53,9 @@ Permissions::Permissions(NavigatorBase& navigator)
       ExecutionContextLifecycleObserver(navigator.GetExecutionContext()),
       service_(navigator.GetExecutionContext()) {}
 
-ScriptPromiseTyped<PermissionStatus> Permissions::query(
-    ScriptState* script_state,
-    const ScriptValue& raw_permission,
-    ExceptionState& exception_state) {
+ScriptPromise Permissions::query(ScriptState* script_state,
+                                 const ScriptValue& raw_permission,
+                                 ExceptionState& exception_state) {
   // https://www.w3.org/TR/permissions/#query-method
   // If this's relevant global object is a Window object, and if the current
   // settings object's associated Document is not fully active, return a promise
@@ -73,19 +72,18 @@ ScriptPromiseTyped<PermissionStatus> Permissions::query(
       }
       exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                         "The document is not active");
-      return ScriptPromiseTyped<PermissionStatus>();
+      return ScriptPromise();
     }
   }
 
   PermissionDescriptorPtr descriptor =
       ParsePermissionDescriptor(script_state, raw_permission, exception_state);
   if (exception_state.HadException())
-    return ScriptPromiseTyped<PermissionStatus>();
+    return ScriptPromise();
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<PermissionStatus>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
   // If the current origin is a file scheme, it will unlikely return a
   // meaningful value because most APIs are broken on file scheme and no
@@ -99,21 +97,19 @@ ScriptPromiseTyped<PermissionStatus> Permissions::query(
   return promise;
 }
 
-ScriptPromiseTyped<PermissionStatus> Permissions::request(
-    ScriptState* script_state,
-    const ScriptValue& raw_permission,
-    ExceptionState& exception_state) {
+ScriptPromise Permissions::request(ScriptState* script_state,
+                                   const ScriptValue& raw_permission,
+                                   ExceptionState& exception_state) {
   PermissionDescriptorPtr descriptor =
       ParsePermissionDescriptor(script_state, raw_permission, exception_state);
   if (exception_state.HadException())
-    return ScriptPromiseTyped<PermissionStatus>();
+    return ScriptPromise();
 
   ExecutionContext* context = ExecutionContext::From(script_state);
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<PermissionStatus>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
   PermissionDescriptorPtr descriptor_copy = descriptor->Clone();
   LocalDOMWindow* window = DynamicTo<LocalDOMWindow>(context);
@@ -127,19 +123,17 @@ ScriptPromiseTyped<PermissionStatus> Permissions::request(
   return promise;
 }
 
-ScriptPromiseTyped<PermissionStatus> Permissions::revoke(
-    ScriptState* script_state,
-    const ScriptValue& raw_permission,
-    ExceptionState& exception_state) {
+ScriptPromise Permissions::revoke(ScriptState* script_state,
+                                  const ScriptValue& raw_permission,
+                                  ExceptionState& exception_state) {
   PermissionDescriptorPtr descriptor =
       ParsePermissionDescriptor(script_state, raw_permission, exception_state);
   if (exception_state.HadException())
-    return ScriptPromiseTyped<PermissionStatus>();
+    return ScriptPromise();
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<PermissionStatus>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
   PermissionDescriptorPtr descriptor_copy = descriptor->Clone();
   GetService(ExecutionContext::From(script_state))
@@ -150,7 +144,7 @@ ScriptPromiseTyped<PermissionStatus> Permissions::revoke(
   return promise;
 }
 
-ScriptPromiseTyped<IDLSequence<PermissionStatus>> Permissions::requestAll(
+ScriptPromise Permissions::requestAll(
     ScriptState* script_state,
     const HeapVector<ScriptValue>& raw_permissions,
     ExceptionState& exception_state) {
@@ -166,7 +160,7 @@ ScriptPromiseTyped<IDLSequence<PermissionStatus>> Permissions::requestAll(
     auto descriptor = ParsePermissionDescriptor(script_state, raw_permission,
                                                 exception_state);
     if (exception_state.HadException())
-      return ScriptPromiseTyped<IDLSequence<PermissionStatus>>();
+      return ScriptPromise();
 
     // Only append permissions types that are not already present in the vector.
     wtf_size_t internal_index = kNotFound;
@@ -183,10 +177,9 @@ ScriptPromiseTyped<IDLSequence<PermissionStatus>> Permissions::requestAll(
     caller_index_to_internal_index[i] = internal_index;
   }
 
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLSequence<PermissionStatus>>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
 
   Vector<PermissionDescriptorPtr> internal_permissions_copy;
   internal_permissions_copy.reserve(internal_permissions.size());
@@ -237,10 +230,9 @@ void Permissions::ServiceConnectionError() {
   service_.reset();
 }
 
-void Permissions::TaskComplete(
-    ScriptPromiseResolverTyped<PermissionStatus>* resolver,
-    mojom::blink::PermissionDescriptorPtr descriptor,
-    mojom::blink::PermissionStatus result) {
+void Permissions::TaskComplete(ScriptPromiseResolver* resolver,
+                               mojom::blink::PermissionDescriptorPtr descriptor,
+                               mojom::blink::PermissionStatus result) {
   if (!resolver->GetExecutionContext() ||
       resolver->GetExecutionContext()->IsContextDestroyed())
     return;
@@ -318,14 +310,13 @@ void Permissions::VerifyPermissionsAndReturnStatus(
     if (listener) {
       // If it's not a bulk request, return the first (and only) result.
       if (!is_bulk_request) {
-        resolver->DowncastTo<PermissionStatus>()->Resolve(
-            PermissionStatus::Take(listener, resolver));
+        resolver->Resolve(PermissionStatus::Take(listener, resolver));
         return;
       }
       result.push_back(PermissionStatus::Take(listener, resolver));
     }
   }
-  resolver->DowncastTo<IDLSequence<PermissionStatus>>()->Resolve(result);
+  resolver->Resolve(result);
 }
 
 void Permissions::PermissionVerificationComplete(
@@ -367,7 +358,7 @@ PermissionStatusListener* Permissions::GetOrCreatePermissionStatusListener(
   return listeners_.at(*type);
 }
 
-std::optional<PermissionType> Permissions::GetPermissionType(
+absl::optional<PermissionType> Permissions::GetPermissionType(
     const mojom::blink::PermissionDescriptor& descriptor) {
   return PermissionDescriptorInfoToPermissionType(
       descriptor.name,

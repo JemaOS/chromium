@@ -6,7 +6,6 @@
 
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-blink.h"
-#include "third_party/blink/renderer/core/css/media_feature_names.h"
 
 namespace blink {
 
@@ -15,78 +14,42 @@ TEST(MediaFeatureOverrides, GetOverrideInitial) {
 
   EXPECT_FALSE(overrides.GetColorGamut().has_value());
   EXPECT_FALSE(overrides.GetPreferredColorScheme().has_value());
-  EXPECT_FALSE(overrides.GetPrefersReducedTransparency().has_value());
 }
 
 TEST(MediaFeatureOverrides, SetOverrideInvalid) {
   MediaFeatureOverrides overrides;
 
-  overrides.SetOverride(media_feature_names::kPrefersColorSchemeMediaFeature,
-                        "1px");
+  overrides.SetOverride("prefers-color-scheme", "1px");
   EXPECT_FALSE(overrides.GetPreferredColorScheme().has_value());
 
-  overrides.SetOverride(media_feature_names::kPrefersColorSchemeMediaFeature,
-                        "orange");
-  EXPECT_FALSE(overrides.GetPreferredColorScheme().has_value());
-
-  overrides.SetOverride(
-      media_feature_names::kPrefersReducedTransparencyMediaFeature, "orange");
+  overrides.SetOverride("prefers-color-scheme", "orange");
   EXPECT_FALSE(overrides.GetPreferredColorScheme().has_value());
 }
 
 TEST(MediaFeatureOverrides, SetOverrideValid) {
   MediaFeatureOverrides overrides;
 
-  overrides.SetOverride(media_feature_names::kPrefersColorSchemeMediaFeature,
-                        "light");
+  overrides.SetOverride("prefers-color-scheme", "light");
   EXPECT_EQ(mojom::blink::PreferredColorScheme::kLight,
             overrides.GetPreferredColorScheme());
 
-  overrides.SetOverride(media_feature_names::kPrefersColorSchemeMediaFeature,
-                        "dark");
+  overrides.SetOverride("prefers-color-scheme", "dark");
   EXPECT_EQ(mojom::blink::PreferredColorScheme::kDark,
             overrides.GetPreferredColorScheme());
-
-  overrides.SetOverride(
-      media_feature_names::kPrefersReducedTransparencyMediaFeature, "reduce");
-  EXPECT_TRUE(overrides.GetPrefersReducedTransparency().value());
-
-  overrides.SetOverride(
-      media_feature_names::kPrefersReducedTransparencyMediaFeature,
-      "no-preference");
-  EXPECT_FALSE(overrides.GetPrefersReducedTransparency().value());
 }
 
 TEST(MediaFeatureOverrides, ResetOverride) {
   MediaFeatureOverrides overrides;
 
-  overrides.SetOverride(media_feature_names::kPrefersColorSchemeMediaFeature,
-                        "light");
+  overrides.SetOverride("prefers-color-scheme", "light");
   EXPECT_TRUE(overrides.GetPreferredColorScheme().has_value());
-  overrides.SetOverride(media_feature_names::kPrefersColorSchemeMediaFeature,
-                        "");
+  overrides.SetOverride("prefers-color-scheme", "");
   EXPECT_FALSE(overrides.GetPreferredColorScheme().has_value());
 
-  overrides.SetOverride(media_feature_names::kPrefersColorSchemeMediaFeature,
-                        "light");
+  overrides.SetOverride("prefers-color-scheme", "light");
   EXPECT_TRUE(overrides.GetPreferredColorScheme().has_value());
-  overrides.SetOverride(media_feature_names::kPrefersColorSchemeMediaFeature,
-                        "invalid");
+  overrides.SetOverride("prefers-color-scheme", "invalid");
   EXPECT_FALSE(overrides.GetPreferredColorScheme().has_value());
-
-  overrides.SetOverride(
-      media_feature_names::kPrefersReducedTransparencyMediaFeature, "reduce");
-  EXPECT_TRUE(overrides.GetPrefersReducedTransparency().has_value());
-  overrides.SetOverride(
-      media_feature_names::kPrefersReducedTransparencyMediaFeature, "");
-  EXPECT_FALSE(overrides.GetPrefersReducedTransparency().has_value());
-
-  overrides.SetOverride(
-      media_feature_names::kPrefersReducedTransparencyMediaFeature, "reduce");
-  EXPECT_TRUE(overrides.GetPrefersReducedTransparency().has_value());
-  overrides.SetOverride(
-      media_feature_names::kPrefersReducedTransparencyMediaFeature, "invalid");
-  EXPECT_FALSE(overrides.GetPrefersReducedTransparency().has_value());
 }
 
 }  // namespace blink

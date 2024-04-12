@@ -5,8 +5,8 @@
 #include "ui/gfx/animation/keyframe/keyframe_effect.h"
 
 #include <algorithm>
-#include <vector>
 
+#include "base/containers/cxx20_erase.h"
 #include "ui/gfx/animation/keyframe/animation_curve.h"
 #include "ui/gfx/animation/keyframe/keyframed_animation_curve.h"
 
@@ -187,8 +187,8 @@ void KeyframeEffect::RemoveAllKeyframeModels() {
   RemoveKeyframeModelRange(keyframe_models_.begin(), keyframe_models_.end());
 }
 
-bool KeyframeEffect::Tick(base::TimeTicks monotonic_time) {
-  return TickInternal(monotonic_time, true);
+void KeyframeEffect::Tick(base::TimeTicks monotonic_time) {
+  TickInternal(monotonic_time, true);
 }
 
 void KeyframeEffect::RemoveKeyframeModelRange(
@@ -201,8 +201,7 @@ void KeyframeEffect::TickKeyframeModel(base::TimeTicks monotonic_time,
                                        KeyframeModel* keyframe_model) {
   if ((keyframe_model->run_state() != KeyframeModel::STARTING &&
        keyframe_model->run_state() != KeyframeModel::RUNNING &&
-       keyframe_model->run_state() != KeyframeModel::PAUSED &&
-       keyframe_model->run_state() != KeyframeModel::WAITING_FOR_DELETION) ||
+       keyframe_model->run_state() != KeyframeModel::PAUSED) ||
       !keyframe_model->HasActiveTime(monotonic_time)) {
     return;
   }
@@ -213,21 +212,19 @@ void KeyframeEffect::TickKeyframeModel(base::TimeTicks monotonic_time,
   curve->Tick(trimmed, keyframe_model->TargetProperty(), keyframe_model);
 }
 
-bool KeyframeEffect::TickInternal(base::TimeTicks monotonic_time,
+void KeyframeEffect::TickInternal(base::TimeTicks monotonic_time,
                                   bool include_infinite_animations) {
   StartKeyframeModels(monotonic_time, include_infinite_animations);
 
-  bool active = false;
   for (auto& keyframe_model : keyframe_models_) {
     if (!include_infinite_animations &&
         keyframe_model->iterations() == std::numeric_limits<double>::infinity())
       continue;
     TickKeyframeModel(monotonic_time, keyframe_model.get());
-    active = true;
   }
 
   // Remove finished keyframe_models.
-  std::erase_if(
+  base::EraseIf(
       keyframe_models_,
       [monotonic_time](const std::unique_ptr<KeyframeModel>& keyframe_model) {
         return !keyframe_model->is_finished() &&
@@ -235,7 +232,6 @@ bool KeyframeEffect::TickInternal(base::TimeTicks monotonic_time,
       });
 
   StartKeyframeModels(monotonic_time, include_infinite_animations);
-  return active;
 }
 
 void KeyframeEffect::FinishAll() {

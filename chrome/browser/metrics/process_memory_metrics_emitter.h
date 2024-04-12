@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_METRICS_PROCESS_MEMORY_METRICS_EMITTER_H_
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/containers/flat_map.h"
@@ -17,6 +16,7 @@
 #include "base/time/time.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/resource_coordinator/public/cpp/memory_instrumentation/global_memory_dump.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ukm {
 class UkmRecorder;
@@ -77,8 +77,8 @@ class ProcessMemoryMetricsEmitter
 
   // Virtual for testing. Returns the process uptime of the given process. Does
   // not return a value when the process startup time is not set.
-  virtual std::optional<base::TimeDelta> GetProcessUptime(base::TimeTicks now,
-                                                          base::ProcessId pid);
+  virtual absl::optional<base::TimeDelta> GetProcessUptime(base::TimeTicks now,
+                                                           base::ProcessId pid);
 
  private:
   friend class base::RefCountedThreadSafe<ProcessMemoryMetricsEmitter>;

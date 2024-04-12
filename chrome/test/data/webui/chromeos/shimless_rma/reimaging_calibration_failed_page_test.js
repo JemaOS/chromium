@@ -9,9 +9,10 @@ import {FakeShimlessRmaService} from 'chrome://shimless-rma/fake_shimless_rma_se
 import {setShimlessRmaServiceForTesting} from 'chrome://shimless-rma/mojo_interface_provider.js';
 import {ReimagingCalibrationFailedPage} from 'chrome://shimless-rma/reimaging_calibration_failed_page.js';
 import {ShimlessRma} from 'chrome://shimless-rma/shimless_rma.js';
-import {CalibrationComponentStatus, CalibrationStatus, ComponentType} from 'chrome://shimless-rma/shimless_rma.mojom-webui.js';
-import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertNotReached, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
+import {CalibrationComponentStatus, CalibrationStatus, ComponentType} from 'chrome://shimless-rma/shimless_rma_types.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
+
+import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertNotReached, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 
 // TODO(crbug/1296829): Add a non-flaky test for keyboard navigation.
 suite('reimagingCalibrationFailedPageTest', function() {
@@ -29,7 +30,7 @@ suite('reimagingCalibrationFailedPageTest', function() {
   let service = null;
 
   setup(() => {
-    document.body.innerHTML = trustedTypes.emptyHTML;
+    document.body.innerHTML = '';
     service = new FakeShimlessRmaService();
     setShimlessRmaServiceForTesting(service);
   });
@@ -76,12 +77,12 @@ suite('reimagingCalibrationFailedPageTest', function() {
   }
 
   /**
-   * Get getComponentsList private member for testing.
+   * Get getComponentsList_ private member for testing.
    * @suppress {visibility} // access private member
    * @return {!Array<!CalibrationComponentStatus>}
    */
   function getComponentsList() {
-    return component.getComponentsList();
+    return component.getComponentsList_();
   }
 
 

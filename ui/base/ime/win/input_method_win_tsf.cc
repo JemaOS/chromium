@@ -8,7 +8,6 @@
 #include "ui/base/ime/virtual_keyboard_controller.h"
 #include "ui/base/ime/win/tsf_bridge.h"
 #include "ui/base/ime/win/tsf_event_router.h"
-#include "ui/base/ime/win/tsf_input_scope.h"
 
 namespace ui {
 
@@ -178,14 +177,6 @@ void InputMethodWinTSF::ConfirmCompositionText() {
 
   if (ui::TSFBridge::GetInstance())
     ui::TSFBridge::GetInstance()->ConfirmComposition();
-}
-
-void InputMethodWinTSF::OnUrlChanged() {
-  if (!ui::TSFBridge::GetInstance()) {
-    return;
-  }
-
-  ui::TSFBridge::GetInstance()->OnUrlChanged();
 }
 
 }  // namespace ui

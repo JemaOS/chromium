@@ -33,15 +33,6 @@
 #include <android/api-level.h>
 #endif
 
-// crbug.com/1474421: Used to debug clusterfuzz in_process_fuzzer failures.
-// Remove this once the bug is fixed.
-#if __has_include("chrome/test/fuzzing/in_process_fuzzer_buildflags.h")
-#include "chrome/test/fuzzing/in_process_fuzzer_buildflags.h"  // nogncheck
-#define DEBUG_CLUSTERFUZZ_FAILURE BUILDFLAG(DEBUG_CLUSTERFUZZ_FAILURE)
-#else
-#define DEBUG_CLUSTERFUZZ_FAILURE 0
-#endif
-
 extern char** environ;
 
 namespace crashpad {
@@ -199,8 +190,7 @@ bool SpawnSubprocess(const std::vector<std::string>& argv,
 
     auto execve_fp = use_path ? execvpe : execve;
     execve_fp(argv_for_spawn[0], argv_for_spawn, envp_for_spawn);
-    PLOG(FATAL) << (use_path ? "execvpe" : "execve") << " "
-                << argv_for_spawn[0];
+    PLOG(FATAL) << (use_path ? "execvpe" : "execve");
 #else
 #if BUILDFLAG(IS_APPLE)
     PosixSpawnAttr attr;
@@ -221,12 +211,6 @@ bool SpawnSubprocess(const std::vector<std::string>& argv,
     const posix_spawn_file_actions_t* file_actions_p = nullptr;
 #endif
 
-#if DEBUG_CLUSTERFUZZ_FAILURE
-    // crbug.com/1474421: Used to debug clusterfuzz in_process_fuzzer failures.
-    // Log at WARNING level to ensure it gets logged in.
-    // Remove this once the bug is fixed.
-    LOG(WARNING) << "[DEBUG] " << std::string(argv_for_spawn[0]);
-#endif
     auto posix_spawn_fp = use_path ? posix_spawnp : posix_spawn;
     if ((errno = posix_spawn_fp(nullptr,
                                 argv_for_spawn[0],
@@ -234,8 +218,7 @@ bool SpawnSubprocess(const std::vector<std::string>& argv,
                                 attr_p,
                                 argv_for_spawn,
                                 envp_for_spawn)) != 0) {
-      PLOG(FATAL) << (use_path ? "posix_spawnp" : "posix_spawn") << " "
-                  << argv_for_spawn[0];
+      PLOG(FATAL) << (use_path ? "posix_spawnp" : "posix_spawn");
     }
 
     // _exit() instead of exit(), because fork() was called.

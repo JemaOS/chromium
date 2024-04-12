@@ -8,6 +8,7 @@
 #include "components/security_interstitials/content/security_interstitial_controller_client.h"
 #include "components/security_interstitials/content/settings_page_helper.h"
 #include "ui/base/resource/resource_bundle.h"
+#include "ui/base/webui/jstemplate_builder.h"
 #include "ui/base/webui/web_ui_util.h"
 
 namespace security_interstitials {
@@ -20,18 +21,17 @@ TestSafeBrowsingBlockingPageQuiet::TestSafeBrowsingBlockingPageQuiet(
     const UnsafeResourceList& unsafe_resources,
     const BaseSafeBrowsingErrorUI::SBErrorDisplayOptions& display_options,
     bool is_giant_webview)
-    : BaseBlockingPage(ui_manager,
-                       web_contents,
-                       main_frame_url,
-                       unsafe_resources,
-                       CreateControllerClient(
-                           web_contents,
-                           unsafe_resources,
-                           ui_manager,
-                           nullptr,
-                           /* settings_page_helper */ nullptr,
-                           /* blocked_page_shown_timestamp */ std::nullopt),
-                       display_options),
+    : BaseBlockingPage(
+          ui_manager,
+          web_contents,
+          main_frame_url,
+          unsafe_resources,
+          CreateControllerClient(web_contents,
+                                 unsafe_resources,
+                                 ui_manager,
+                                 nullptr,
+                                 /* settings_page_helper */ nullptr),
+          display_options),
       sb_error_ui_(unsafe_resources[0].url,
                    main_frame_url,
                    GetInterstitialReason(unsafe_resources),
@@ -68,7 +68,8 @@ std::string TestSafeBrowsingBlockingPageQuiet::GetHTML() {
       ui::ResourceBundle::GetSharedInstance().LoadDataResourceString(
           IDR_SECURITY_INTERSTITIAL_QUIET_HTML);
   webui::AppendWebUiCssTextDefaults(&html);
-  return webui::GetLocalizedHtml(html, load_time_data);
+  html = webui::GetI18nTemplateHtml(html, load_time_data);
+  return html;
 }
 
 }  // namespace security_interstitials

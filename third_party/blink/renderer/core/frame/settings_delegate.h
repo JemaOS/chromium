@@ -70,6 +70,7 @@ class CORE_EXPORT SettingsDelegate {
     kPaint,
     kScrollbarLayout,
     kColorScheme,
+    kSpatialNavigation,
     kUniversalAccess,
     kVisionDeficiency,
   };

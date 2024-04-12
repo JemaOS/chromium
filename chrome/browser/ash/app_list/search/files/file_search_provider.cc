@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ash/app_list/search/files/file_search_provider.h"
 
+#include <cctype>
 #include <cmath>
 #include <utility>
 
@@ -18,24 +19,22 @@
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "base/time/time.h"
-#include "chrome/browser/ash/app_list/search/files/diacritics_checker.h"
 #include "chrome/browser/ash/app_list/search/files/file_result.h"
-#include "chrome/browser/ash/app_list/search/search_features.h"
-#include "chrome/browser/ash/app_list/search/types.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
 #include "chrome/browser/ash/file_manager/trash_common_util.h"
+#include "chrome/browser/ash/input_method/diacritics_checker.h"
 #include "chrome/browser/profiles/profile.h"
 
 namespace app_list {
 
 namespace {
 
+using ::ash::input_method::HasDiacritics;
 using ::ash::string_matching::TokenizedString;
 
 constexpr char kFileSearchSchema[] = "file_search://";
 constexpr int kMaxResults = 25;
 constexpr int kSearchTimeoutMs = 100;
-constexpr double kRelevanceThreshold = 0.79;
 
 // Construct a case-insensitive and accent-insensitive fnmatch query from
 // |query|. E.g. for abc123, the result would be *[aAáàâäāåÁÀÂÄĀÅ][bB][cC]123*.
@@ -67,7 +66,7 @@ std::string CreateFnmatchQuery(const std::u16string& query_input) {
             query.substr(sequence_start, i - sequence_start));
       }
 
-      auto it = conversion_map.find(query[i]);
+      auto* it = conversion_map.find(query[i]);
       if (it != conversion_map.end()) {
         std::u16string piece(it->second);
         query_pieces.push_back(std::move(piece));
@@ -95,12 +94,12 @@ std::vector<FileSearchProvider::FileInfo> SearchFilesByPattern(
     const base::FilePath& root_path,
     const std::u16string& query,
     const base::TimeTicks& query_start_time,
-    const std::vector<base::FilePath> trash_paths,
-    const int file_type) {
+    const std::vector<base::FilePath> trash_paths) {
   base::FileEnumerator enumerator(
       root_path,
-      /*recursive=*/true, file_type, CreateFnmatchQuery(query),
-      base::FileEnumerator::FolderSearchPolicy::ALL);
+      /*recursive=*/true,
+      base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES,
+      CreateFnmatchQuery(query), base::FileEnumerator::FolderSearchPolicy::ALL);
 
   const auto time_limit = base::Milliseconds(kSearchTimeoutMs);
   bool timed_out = false;
@@ -132,12 +131,10 @@ std::vector<FileSearchProvider::FileInfo> SearchFilesByPattern(
 
 }  // namespace
 
-FileSearchProvider::FileSearchProvider(Profile* profile, int file_type)
-    : SearchProvider(SearchCategory::kFiles),
-      profile_(profile),
+FileSearchProvider::FileSearchProvider(Profile* profile)
+    : profile_(profile),
       thumbnail_loader_(profile),
-      root_path_(file_manager::util::GetMyFilesFolderForProfile(profile)),
-      file_type_(file_type) {
+      root_path_(file_manager::util::GetMyFilesFolderForProfile(profile)) {
   DCHECK(profile_);
   DCHECK(!root_path_.empty());
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -171,13 +168,13 @@ void FileSearchProvider::Start(const std::u16string& query) {
           it.first.Append(it.second.relative_folder_path));
     }
   }
+
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_BLOCKING},
       base::BindOnce(SearchFilesByPattern, root_path_, query, query_start_time_,
                      (file_manager::trash::IsTrashEnabledForProfile(profile_)
                           ? trash_paths_
-                          : std::vector<base::FilePath>()),
-                     file_type_),
+                          : std::vector<base::FilePath>())),
       base::BindOnce(&FileSearchProvider::OnSearchComplete,
                      weak_factory_.GetWeakPtr()));
 }
@@ -198,10 +195,6 @@ void FileSearchProvider::OnSearchComplete(
     double relevance = FileResult::CalculateRelevance(
         last_tokenized_query_, path.path, path.last_accessed);
     DCHECK((relevance >= 0.0) && (relevance <= 1.0));
-    if (search_features::IsLauncherFuzzyMatchAcrossProvidersEnabled() &&
-        relevance < kRelevanceThreshold) {
-      continue;
-    }
     results.push_back(MakeResult(path, relevance));
   }
 

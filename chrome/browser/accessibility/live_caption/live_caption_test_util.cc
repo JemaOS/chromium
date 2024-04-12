@@ -33,9 +33,8 @@ namespace {
 
 // Chrome feature flags that gate Live Caption.
 std::vector<base::test::FeatureRef> RequiredFeatureFlags() {
-  std::vector<base::test::FeatureRef> features = {
-      media::kLiveCaption, media::kLiveTranslate,
-      media::kLiveCaptionAutomaticLanguageDownload};
+  std::vector<base::test::FeatureRef> features = {media::kLiveCaption,
+                                                  media::kLiveTranslate};
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   features.push_back(ash::features::kOnDeviceSpeechRecognition);
 #endif
@@ -84,10 +83,6 @@ void LiveCaptionBrowserTest::SetLiveCaptionEnabledOnProfile(bool enabled,
 void LiveCaptionBrowserTest::SetLiveTranslateEnabled(bool enabled) {
   browser()->profile()->GetPrefs()->SetBoolean(prefs::kLiveTranslateEnabled,
                                                enabled);
-  browser()->profile()->GetPrefs()->SetString(prefs::kLiveCaptionLanguageCode,
-                                              "en-US");
-  browser()->profile()->GetPrefs()->SetString(
-      prefs::kLiveTranslateTargetLanguageCode, "fr-FR");
 }
 
 }  // namespace captions

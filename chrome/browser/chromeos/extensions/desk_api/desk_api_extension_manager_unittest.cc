@@ -101,7 +101,8 @@ void SetDeskAPIPolicies(PrefService* pref_service,
 
 void EnableDeskAPI(PrefService* pref_service) {
   // Create an arbitrary allowlist.
-  auto allowlist = base::Value::List().Append("http://*.domain1.com/*");
+  base::Value::List allowlist;
+  allowlist.Append("http://*.domain1.com/*");
   SetDeskAPIPolicies(pref_service, true, allowlist);
 }
 
@@ -134,9 +135,9 @@ class DeskApiExtensionManagerTest : public ::testing::Test {
   content::BrowserTaskEnvironment task_environment_;
   TestingProfileManager profile_manager_;
 
-  raw_ptr<TestingProfile, DanglingUntriaged> affiliated_user_profile_;
-  raw_ptr<TestingProfile, DanglingUntriaged> incognito_profile_;
-  raw_ptr<TestingProfile, DanglingUntriaged> unaffiliated_user_profile_;
+  raw_ptr<TestingProfile> affiliated_user_profile_;
+  raw_ptr<TestingProfile> incognito_profile_;
+  raw_ptr<TestingProfile> unaffiliated_user_profile_;
 };
 
 TEST_F(DeskApiExtensionManagerTest, ExtensionNotInstalledOnInitWhenPrefNotSet) {
@@ -288,8 +289,9 @@ TEST_F(DeskApiExtensionManagerTest, GenerateManifestFromPolicyAllowlist) {
   constexpr char test_domain1[] = "http://*.domain1.com/*";
   constexpr char test_domain2[] = "http://*.domain2.com/*";
 
-  auto domain_allowlist =
-      base::Value::List().Append(test_domain1).Append(test_domain2);
+  base::Value::List domain_allowlist;
+  domain_allowlist.Append(test_domain1);
+  domain_allowlist.Append(test_domain2);
 
   SetDeskAPIPolicies(affiliated_user_profile_->GetPrefs(), true,
                      domain_allowlist);
@@ -319,8 +321,9 @@ TEST_F(DeskApiExtensionManagerTest, GenerateManifestIgnoresInvalidURLPattern) {
   constexpr char test_domain1[] = "http://*.domain1.com/*";
   constexpr char test_domain2[] = "\"Invalid URL Pattern\"";
 
-  auto domain_allowlist =
-      base::Value::List().Append(test_domain1).Append(test_domain2);
+  base::Value::List domain_allowlist;
+  domain_allowlist.Append(test_domain1);
+  domain_allowlist.Append(test_domain2);
 
   SetDeskAPIPolicies(affiliated_user_profile_->GetPrefs(), true,
                      domain_allowlist);

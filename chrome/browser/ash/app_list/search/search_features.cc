@@ -19,54 +19,27 @@ BASE_FEATURE(kLauncherKeywordExtractionScoring,
 
 BASE_FEATURE(kLauncherQueryFederatedAnalyticsPHH,
              "LauncherQueryFederatedAnalyticsPHH",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kLauncherFuzzyMatchAcrossProviders,
-             "LauncherFuzzyMatchAcrossProviders",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLauncherFuzzyMatchForOmnibox,
              "LauncherFuzzyMatchForOmnibox",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLauncherImageSearch,
              "LauncherImageSearch",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kLauncherLocalImageSearchConfidence,
-             "LauncherLocalImageSearchConfidence",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kLauncherLocalImageSearchRelevance,
-             "LauncherLocalImageSearchRelevance",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kLauncherImageSearchIca,
-             "LauncherImageSearchIca",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kICASupportedByHardware,
-             "ICASupportedByHardware",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kLauncherImageSearchOcr,
-             "LauncherImageSearchOcr",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLauncherSystemInfoAnswerCards,
              "LauncherSystemInfoAnswerCards",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kLauncherManateeForKeyboardShortcuts,
-             "LauncherManateeForKeyboardShortcuts",
+BASE_FEATURE(kLauncherOmniboxPublishLogicLog,
+             "LauncherOmniboxPublishLogicLog",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// TODO(b/330386392): kLauncherGameSearch can be removed because if there's no
-// payload, there will be no result.
 bool IsLauncherGameSearchEnabled() {
   return base::FeatureList::IsEnabled(kLauncherGameSearch) ||
-         chromeos::features::IsCloudGamingDeviceEnabled() ||
-         chromeos::features::IsAlmanacLauncherPayloadEnabled();
+         chromeos::features::IsCloudGamingDeviceEnabled();
 }
 
 bool IsLauncherKeywordExtractionScoringEnabled() {
@@ -77,34 +50,20 @@ bool IsLauncherQueryFederatedAnalyticsPHHEnabled() {
   return base::FeatureList::IsEnabled(kLauncherQueryFederatedAnalyticsPHH);
 }
 
-bool IsLauncherFuzzyMatchAcrossProvidersEnabled() {
-  return base::FeatureList::IsEnabled(kLauncherFuzzyMatchAcrossProviders);
-}
-
 bool isLauncherFuzzyMatchForOmniboxEnabled() {
   return base::FeatureList::IsEnabled(kLauncherFuzzyMatchForOmnibox);
 }
 
-// Only enable image search for ICA supported devices.
 bool IsLauncherImageSearchEnabled() {
-  return base::FeatureList::IsEnabled(kLauncherImageSearch) &&
-         base::FeatureList::IsEnabled(kICASupportedByHardware);
-}
-
-bool IsLauncherImageSearchIcaEnabled() {
-  return base::FeatureList::IsEnabled(kLauncherImageSearchIca);
-}
-
-bool IsLauncherImageSearchOcrEnabled() {
-  return base::FeatureList::IsEnabled(kLauncherImageSearchOcr);
+  return base::FeatureList::IsEnabled(kLauncherImageSearch);
 }
 
 bool isLauncherSystemInfoAnswerCardsEnabled() {
   return base::FeatureList::IsEnabled(kLauncherSystemInfoAnswerCards);
 }
 
-bool isLauncherManateeForKeyboardShortcutsEnabled() {
-  return base::FeatureList::IsEnabled(kLauncherManateeForKeyboardShortcuts);
+bool isLauncherOmniboxPublishLogicLogEnabled() {
+  return base::FeatureList::IsEnabled(kLauncherOmniboxPublishLogicLog);
 }
 
 }  // namespace search_features

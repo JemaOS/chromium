@@ -74,7 +74,7 @@ GainNode* GainNode::Create(BaseAudioContext* context,
 }
 
 AudioParam* GainNode::gain() const {
-  return gain_.Get();
+  return gain_;
 }
 
 void GainNode::Trace(Visitor* visitor) const {

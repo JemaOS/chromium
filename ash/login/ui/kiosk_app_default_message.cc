@@ -8,13 +8,11 @@
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
 #include "ash/style/ash_color_id.h"
-#include "ash/style/typography.h"
 #include "ash/system/tray/tray_popup_utils.h"
 #include "ash/system/tray/tray_utils.h"
 #include "components/vector_icons/vector_icons.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/image/image_skia_operations.h"
@@ -69,8 +67,8 @@ KioskAppDefaultMessage::KioskAppDefaultMessage()
   title_->SetLineHeight(kTitleLineHeight);
   title_->SetMultiLine(true);
   title_->SetEnabledColorId(kColorAshTextColorPrimary);
-  title_->SetAutoColorReadabilityEnabled(false);
-  TypographyProvider::Get()->StyleLabel(TypographyToken::kCrosBody2, *title_);
+  TrayPopupUtils::SetLabelFontList(title_,
+                                   TrayPopupUtils::FontStyle::kSmallTitle);
 }
 
 KioskAppDefaultMessage::~KioskAppDefaultMessage() = default;
@@ -99,8 +97,5 @@ gfx::Point KioskAppDefaultMessage::CalculatePosition() {
                     parent()->GetLocalBounds().height() / 2) -
          gfx::Vector2d(width() / 2, height());
 }
-
-BEGIN_METADATA(KioskAppDefaultMessage)
-END_METADATA
 
 }  // namespace ash

@@ -13,7 +13,6 @@
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
 #include "base/strings/strcat.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/scoped_feature_list.h"
@@ -22,18 +21,17 @@
 #include "chrome/browser/download/chrome_download_manager_delegate.h"
 #include "chrome/browser/download/download_core_service.h"
 #include "chrome/browser/download/download_core_service_factory.h"
-#include "chrome/browser/download/download_item_warning_data.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/enterprise/connectors/common.h"
 #include "chrome/browser/enterprise/connectors/connectors_prefs.h"
 #include "chrome/browser/enterprise/connectors/connectors_service.h"
 #include "chrome/browser/enterprise/connectors/reporting/realtime_reporting_client_factory.h"
-#include "chrome/browser/enterprise/connectors/test/deep_scanning_test_utils.h"
 #include "chrome/browser/extensions/api/safe_browsing_private/safe_browsing_private_event_router.h"
 #include "chrome/browser/extensions/api/safe_browsing_private/safe_browsing_private_event_router_factory.h"
 #include "chrome/browser/policy/dm_token_utils.h"
 #include "chrome/browser/safe_browsing/cloud_content_scanning/binary_fcm_service.h"
 #include "chrome/browser/safe_browsing/cloud_content_scanning/cloud_binary_upload_service.h"
+#include "chrome/browser/safe_browsing/cloud_content_scanning/deep_scanning_test_utils.h"
 #include "chrome/browser/safe_browsing/cloud_content_scanning/deep_scanning_utils.h"
 #include "chrome/browser/safe_browsing/download_protection/download_protection_service.h"
 #include "chrome/browser/safe_browsing/download_protection/download_protection_util.h"
@@ -149,10 +147,6 @@ class FakeBinaryUploadService : public BinaryUploadService {
 
   void MaybeCancelRequests(std::unique_ptr<CancelRequests> cancel) override {}
 
-  base::WeakPtr<BinaryUploadService> AsWeakPtr() override {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
   void SetResponse(const base::FilePath& path,
                    BinaryUploadService::Result result,
                    enterprise_connectors::ContentAnalysisResponse response) {
@@ -200,7 +194,6 @@ class FakeBinaryUploadService : public BinaryUploadService {
   base::RepeatingClosure quit_on_last_request_;
   size_t num_finished_requests_ = 0;
   size_t num_acks_ = 0;
-  base::WeakPtrFactory<FakeBinaryUploadService> weak_ptr_factory_{this};
 };
 
 class FakeDownloadProtectionService : public DownloadProtectionService {
@@ -278,7 +271,8 @@ class DeepScanningRequestTest : public testing::Test {
     EXPECT_CALL(item_, RequireSafetyChecks()).WillRepeatedly(Return(true));
     content::DownloadItemUtils::AttachInfoForTesting(&item_, profile_, nullptr);
 
-    SetDMTokenForTesting(policy::DMToken::CreateValidToken("dm_token"));
+    SetDMTokenForTesting(
+        policy::DMToken::CreateValidTokenForTesting("dm_token"));
 
     DownloadCoreServiceFactory::GetForBrowserContext(profile_)
         ->SetDownloadManagerDelegateForTesting(
@@ -286,7 +280,7 @@ class DeepScanningRequestTest : public testing::Test {
   }
 
   void TearDown() override {
-    SetDMTokenForTesting(policy::DMToken::CreateEmptyToken());
+    SetDMTokenForTesting(policy::DMToken::CreateEmptyTokenForTesting());
   }
 
   void AddUrlToProfilePrefList(const char* pref_name, const GURL& url) {
@@ -300,7 +294,7 @@ class DeepScanningRequestTest : public testing::Test {
   }
 
   void ValidateDefaultSettings(
-      const std::optional<enterprise_connectors::AnalysisSettings>& settings) {
+      const absl::optional<enterprise_connectors::AnalysisSettings>& settings) {
     ASSERT_TRUE(settings.has_value());
 
     enterprise_connectors::AnalysisSettings default_settings;
@@ -326,6 +320,8 @@ class DeepScanningRequestTest : public testing::Test {
               default_settings.block_large_files);
     ASSERT_EQ(settings.value().block_password_protected_files,
               default_settings.block_password_protected_files);
+    ASSERT_EQ(settings.value().block_unsupported_file_types,
+              default_settings.block_unsupported_file_types);
     ASSERT_EQ(settings.value().block_until_verdict,
               default_settings.block_until_verdict);
     ASSERT_EQ(settings.value().cloud_or_local_settings.analysis_url(),
@@ -334,7 +330,7 @@ class DeepScanningRequestTest : public testing::Test {
 
   void SetLastResult(DownloadCheckResult result) { last_result_ = result; }
 
-  std::optional<enterprise_connectors::AnalysisSettings> settings() {
+  absl::optional<enterprise_connectors::AnalysisSettings> settings() {
     return DeepScanningRequest::ShouldUploadBinary(&item_);
   }
 
@@ -365,9 +361,9 @@ class DeepScanningRequestFeaturesEnabledTest : public DeepScanningRequestTest {
 };
 
 TEST_F(DeepScanningRequestFeaturesEnabledTest, ChecksFeatureFlags) {
-  enterprise_connectors::test::SetAnalysisConnector(
-      profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-      kScanForDlpAndMalware);
+  SetAnalysisConnector(profile_->GetPrefs(),
+                       enterprise_connectors::FILE_DOWNLOADED,
+                       kScanForDlpAndMalware);
 
   // Try each request with settings indicating both DLP and Malware requests
   // should be sent to show features work correctly.
@@ -399,7 +395,7 @@ TEST_F(DeepScanningRequestFeaturesEnabledTest, ChecksFeatureFlags) {
   {
     base::RunLoop run_loop;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](base::RepeatingClosure closure, DownloadCheckResult result) {
@@ -408,9 +404,7 @@ TEST_F(DeepScanningRequestFeaturesEnabledTest, ChecksFeatureFlags) {
               }
             },
             run_loop.QuitClosure()),
-        &download_protection_service_, dlp_and_malware_settings(),
-        /*password=*/std::nullopt);
-
+        &download_protection_service_, dlp_and_malware_settings());
     request.Start();
     run_loop.Run();
     expect_dlp_and_malware_tags();
@@ -423,12 +417,12 @@ class DeepScanningRequestAllFeaturesEnabledTest
 TEST_F(DeepScanningRequestAllFeaturesEnabledTest,
        GeneratesCorrectRequestFromPolicy) {
   {
-    enterprise_connectors::test::SetAnalysisConnector(
-        profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-        kScanForDlpAndMalware);
+    SetAnalysisConnector(profile_->GetPrefs(),
+                         enterprise_connectors::FILE_DOWNLOADED,
+                         kScanForDlpAndMalware);
     base::RunLoop run_loop;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](base::RepeatingClosure closure, DownloadCheckResult result) {
@@ -437,9 +431,7 @@ TEST_F(DeepScanningRequestAllFeaturesEnabledTest,
               }
             },
             run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
-
+        &download_protection_service_, settings().value());
     request.Start();
     run_loop.Run();
     EXPECT_EQ(2, download_protection_service_.GetFakeBinaryUploadService()
@@ -467,19 +459,15 @@ TEST_F(DeepScanningRequestAllFeaturesEnabledTest,
                   .request_data()
                   .content_type(),
               "application/octet-stream");
-    EXPECT_EQ(download_protection_service_.GetFakeBinaryUploadService()
-                  ->last_request()
-                  .reason(),
-              enterprise_connectors::ContentAnalysisRequest::NORMAL_DOWNLOAD);
   }
 
   {
     base::RunLoop run_loop;
-    enterprise_connectors::test::SetAnalysisConnector(
-        profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-        kScanForMalware);
+    SetAnalysisConnector(profile_->GetPrefs(),
+                         enterprise_connectors::FILE_DOWNLOADED,
+                         kScanForMalware);
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](base::RepeatingClosure closure, DownloadCheckResult result) {
@@ -488,9 +476,7 @@ TEST_F(DeepScanningRequestAllFeaturesEnabledTest,
               }
             },
             run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
-
+        &download_protection_service_, settings().value());
     request.Start();
     run_loop.Run();
     EXPECT_EQ(1, download_protection_service_.GetFakeBinaryUploadService()
@@ -500,19 +486,14 @@ TEST_F(DeepScanningRequestAllFeaturesEnabledTest,
               download_protection_service_.GetFakeBinaryUploadService()
                   ->last_request()
                   .tags(0));
-    EXPECT_EQ(download_protection_service_.GetFakeBinaryUploadService()
-                  ->last_request()
-                  .reason(),
-              enterprise_connectors::ContentAnalysisRequest::NORMAL_DOWNLOAD);
   }
 
   {
     base::RunLoop run_loop;
-    enterprise_connectors::test::SetAnalysisConnector(
-        profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-        kScanForDlp);
+    SetAnalysisConnector(profile_->GetPrefs(),
+                         enterprise_connectors::FILE_DOWNLOADED, kScanForDlp);
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](base::RepeatingClosure closure, DownloadCheckResult result) {
@@ -521,9 +502,7 @@ TEST_F(DeepScanningRequestAllFeaturesEnabledTest,
               }
             },
             run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
-
+        &download_protection_service_, settings().value());
     request.Start();
     run_loop.Run();
     EXPECT_EQ(1, download_protection_service_.GetFakeBinaryUploadService()
@@ -532,22 +511,18 @@ TEST_F(DeepScanningRequestAllFeaturesEnabledTest,
     EXPECT_EQ("dlp", download_protection_service_.GetFakeBinaryUploadService()
                          ->last_request()
                          .tags(0));
-    EXPECT_EQ(download_protection_service_.GetFakeBinaryUploadService()
-                  ->last_request()
-                  .reason(),
-              enterprise_connectors::ContentAnalysisRequest::NORMAL_DOWNLOAD);
   }
 
   {
     base::RunLoop run_loop;
-    enterprise_connectors::test::SetAnalysisConnector(
-        profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED, kNoScan);
+    SetAnalysisConnector(profile_->GetPrefs(),
+                         enterprise_connectors::FILE_DOWNLOADED, kNoScan);
     EXPECT_FALSE(settings().has_value());
     enterprise_connectors::AnalysisSettings analysis_settings;
     analysis_settings.block_until_verdict =
         enterprise_connectors::BlockUntilVerdict::kBlock;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](base::RepeatingClosure closure, DownloadCheckResult result) {
@@ -556,19 +531,13 @@ TEST_F(DeepScanningRequestAllFeaturesEnabledTest,
               }
             },
             run_loop.QuitClosure()),
-        &download_protection_service_, std::move(analysis_settings),
-        /*password=*/std::nullopt);
-
+        &download_protection_service_, std::move(analysis_settings));
     request.Start();
     run_loop.Run();
     EXPECT_TRUE(download_protection_service_.GetFakeBinaryUploadService()
                     ->last_request()
                     .tags()
                     .empty());
-    EXPECT_EQ(download_protection_service_.GetFakeBinaryUploadService()
-                  ->last_request()
-                  .reason(),
-              enterprise_connectors::ContentAnalysisRequest::NORMAL_DOWNLOAD);
   }
 }
 
@@ -578,11 +547,9 @@ TEST_F(DeepScanningAPPRequestTest, GeneratesCorrectRequestForConsumer) {
   enterprise_connectors::AnalysisSettings settings;
   settings.tags = {{"malware", enterprise_connectors::TagSettings()}};
   DeepScanningRequest request(
-      &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_CONSUMER_PROMPT,
+      &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_CONSUMER_PROMPT,
       DownloadCheckResult::SAFE, base::DoNothing(),
-      &download_protection_service_, std::move(settings),
-      /*password=*/std::nullopt);
-
+      &download_protection_service_, std::move(settings));
   request.Start();
 
   EXPECT_EQ(1, download_protection_service_.GetFakeBinaryUploadService()
@@ -618,22 +585,20 @@ class DeepScanningReportingTest : public DeepScanningRequestTest {
         ->SetBrowserCloudPolicyClientForTesting(client_.get());
     identity_test_environment_.MakePrimaryAccountAvailable(
         kUserName, signin::ConsentLevel::kSync);
-    enterprise_connectors::RealtimeReportingClientFactory::GetForProfile(
-        profile_)
+    extensions::SafeBrowsingPrivateEventRouterFactory::GetForProfile(profile_)
         ->SetIdentityManagerForTesting(
             identity_test_environment_.identity_manager());
 
-    enterprise_connectors::test::SetOnSecurityEventReporting(
-        profile_->GetPrefs(), true);
+    SetOnSecurityEventReporting(profile_->GetPrefs(), true);
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
     fake_statistics_provider_.SetMachineStatistic(
         ash::system::kSerialNumberKeyForTest, "fake_serial_number");
 #endif
 
-    enterprise_connectors::test::SetAnalysisConnector(
-        profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-        kScanForDlpAndMalware);
+    SetAnalysisConnector(profile_->GetPrefs(),
+                         enterprise_connectors::FILE_DOWNLOADED,
+                         kScanForDlpAndMalware);
   }
 
   void TearDown() override {
@@ -655,7 +620,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
   {
     base::RunLoop run_loop;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -667,8 +632,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
     response.set_request_token(kScanId);
@@ -696,13 +660,12 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::WARN);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectDangerousDeepScanningResultAndSensitiveDataEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]'
         // '[:upper:]'
         /*sha256*/
@@ -716,8 +679,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         /*result*/ EventResultToString(EventResult::WARNED),
         /*username*/ kUserName,
         /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*scan_id*/ kScanId,
-        /*content_transfer_method*/ std::nullopt);
+        /*scan_id*/ kScanId);
 
     request.Start();
 
@@ -729,7 +691,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
   {
     base::RunLoop run_loop;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -741,8 +703,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
     response.set_request_token(kScanId);
@@ -770,13 +731,12 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::WARN);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectDangerousDeepScanningResultAndSensitiveDataEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]'
         // '[:upper:]'
         /*sha256*/
@@ -790,8 +750,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         /*result*/ EventResultToString(EventResult::WARNED),
         /*username*/ kUserName,
         /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*scan_id*/ kScanId,
-        /*content_transfer_method*/ std::nullopt);
+        /*scan_id*/ kScanId);
 
     request.Start();
 
@@ -803,7 +762,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
   {
     base::RunLoop run_loop;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -815,8 +774,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
     response.set_request_token(kScanId);
@@ -836,13 +794,12 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::BLOCK);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectSensitiveDataEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]' '[:upper:]'
         /*sha256*/
         "76E00EB33811F5778A5EE557512C30D9341D4FEB07646BCE3E4DB13F9428573C",
@@ -854,8 +811,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         EventResultToString(EventResult::BLOCKED),
         /*username*/ kUserName,
         /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*scan_id*/ kScanId,
-        /*content_transfer_method*/ std::nullopt);
+        /*scan_id*/ kScanId);
 
     request.Start();
 
@@ -867,7 +823,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
   {
     base::RunLoop run_loop;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -879,8 +835,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
     response.set_request_token(kScanId);
@@ -900,13 +855,12 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::WARN);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectSensitiveDataEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]' '[:upper:]'
         /*sha256*/
         "76E00EB33811F5778A5EE557512C30D9341D4FEB07646BCE3E4DB13F9428573C",
@@ -918,8 +872,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         EventResultToString(EventResult::WARNED),
         /*username*/ kUserName,
         /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*scan_id*/ kScanId,
-        /*content_transfer_method*/ std::nullopt);
+        /*scan_id*/ kScanId);
 
     request.Start();
 
@@ -931,7 +884,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
   {
     base::RunLoop run_loop;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -943,8 +896,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
     response.set_request_token(kScanId);
@@ -968,13 +920,12 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::BLOCK);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectSensitiveDataEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]' '[:upper:]'
         /*sha256*/
         "76E00EB33811F5778A5EE557512C30D9341D4FEB07646BCE3E4DB13F9428573C",
@@ -986,8 +937,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         EventResultToString(EventResult::BLOCKED),
         /*username*/ kUserName,
         /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*scan_id*/ kScanId,
-        /*content_transfer_method*/ std::nullopt);
+        /*scan_id*/ kScanId);
 
     request.Start();
 
@@ -999,7 +949,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
   {
     base::RunLoop run_loop;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -1011,8 +961,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
 
@@ -1027,13 +976,12 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::ALLOW);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectUnscannedFileEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]' '[:upper:]'
         /*sha256*/
         "76E00EB33811F5778A5EE557512C30D9341D4FEB07646BCE3E4DB13F9428573C",
@@ -1045,8 +993,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         /*result*/
         EventResultToString(EventResult::ALLOWED),
         /*username*/ kUserName,
-        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*content_transfer_method*/ std::nullopt);
+        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe());
 
     request.Start();
 
@@ -1058,7 +1005,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
   {
     base::RunLoop run_loop;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -1070,8 +1017,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
 
@@ -1086,13 +1032,12 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::ALLOW);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectUnscannedFileEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]' '[:upper:]'
         /*sha256*/
         "76E00EB33811F5778A5EE557512C30D9341D4FEB07646BCE3E4DB13F9428573C",
@@ -1104,8 +1049,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         /*result*/
         EventResultToString(EventResult::ALLOWED),
         /*username*/ kUserName,
-        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*content_transfer_method*/ std::nullopt);
+        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe());
 
     request.Start();
 
@@ -1118,7 +1062,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
     base::RunLoop run_loop;
     // The DownloadCheckResult passed below should be used if scanning fails.
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::DANGEROUS,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -1130,8 +1074,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     EXPECT_CALL(item_, GetDangerType())
         .WillRepeatedly(Return(download::DownloadDangerType::
@@ -1150,13 +1093,12 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::WARN);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectUnscannedFileEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]' '[:upper:]'
         /*sha256*/
         "76E00EB33811F5778A5EE557512C30D9341D4FEB07646BCE3E4DB13F9428573C",
@@ -1168,8 +1110,7 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
         /*result*/
         EventResultToString(EventResult::WARNED),
         /*username*/ kUserName,
-        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*content_transfer_reason*/ std::nullopt);
+        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe());
 
     request.Start();
 
@@ -1177,132 +1118,6 @@ TEST_F(DeepScanningReportingTest, ProcessesResponseCorrectly) {
 
     EXPECT_EQ(DownloadCheckResult::DANGEROUS, last_result_);
   }
-}
-
-TEST_F(DeepScanningReportingTest, ConsumerEncryptedArchiveSuccess) {
-  base::RunLoop run_loop;
-  DeepScanningRequest request(
-      &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_CONSUMER_PROMPT,
-      DownloadCheckResult::SAFE,
-      base::BindRepeating(
-          [](DeepScanningRequestTest* test, base::RepeatingClosure quit_closure,
-             DownloadCheckResult result) {
-            test->SetLastResult(result);
-            if (result != DownloadCheckResult::ASYNC_SCANNING) {
-              quit_closure.Run();
-            }
-          },
-          base::Unretained(this), run_loop.QuitClosure()),
-      &download_protection_service_, settings().value(),
-      /*password=*/std::nullopt);
-
-  enterprise_connectors::ContentAnalysisResponse response;
-  response.set_request_token(kScanId);
-
-  auto* malware_result = response.add_results();
-  malware_result->set_tag("malware");
-  malware_result->set_status(
-      enterprise_connectors::ContentAnalysisResponse::Result::SUCCESS);
-
-  download_protection_service_.GetFakeBinaryUploadService()->SetResponse(
-      download_path_, BinaryUploadService::Result::SUCCESS, response);
-  download_protection_service_.GetFakeBinaryUploadService()
-      ->SetExpectedFinalAction(
-          enterprise_connectors::ContentAnalysisAcknowledgement::ALLOW);
-
-  DownloadItemWarningData::SetIsEncryptedArchive(&item_, true);
-  EXPECT_FALSE(DownloadItemWarningData::HasIncorrectPassword(&item_));
-
-  request.Start();
-
-  run_loop.Run();
-
-  EXPECT_FALSE(DownloadItemWarningData::HasIncorrectPassword(&item_));
-}
-
-TEST_F(DeepScanningReportingTest, ConsumerEncryptedArchiveFailed) {
-  base::RunLoop run_loop;
-  DeepScanningRequest request(
-      &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_CONSUMER_PROMPT,
-      DownloadCheckResult::SAFE,
-      base::BindRepeating(
-          [](DeepScanningRequestTest* test, base::RepeatingClosure quit_closure,
-             DownloadCheckResult result) {
-            test->SetLastResult(result);
-            if (result != DownloadCheckResult::ASYNC_SCANNING) {
-              quit_closure.Run();
-            }
-          },
-          base::Unretained(this), run_loop.QuitClosure()),
-      &download_protection_service_, settings().value(),
-      /*password=*/std::nullopt);
-
-  enterprise_connectors::ContentAnalysisResponse response;
-  response.set_request_token(kScanId);
-
-  auto* malware_result = response.add_results();
-  malware_result->set_tag("malware");
-  malware_result->set_status(
-      enterprise_connectors::ContentAnalysisResponse::Result::SUCCESS);
-  malware_result->set_status_error_message(
-      enterprise_connectors::ContentAnalysisResponse::Result::
-          DECRYPTION_FAILED);
-
-  download_protection_service_.GetFakeBinaryUploadService()->SetResponse(
-      download_path_, BinaryUploadService::Result::SUCCESS, response);
-  download_protection_service_.GetFakeBinaryUploadService()
-      ->SetExpectedFinalAction(
-          enterprise_connectors::ContentAnalysisAcknowledgement::ALLOW);
-
-  DownloadItemWarningData::SetIsEncryptedArchive(&item_, true);
-  EXPECT_FALSE(DownloadItemWarningData::HasIncorrectPassword(&item_));
-
-  request.Start();
-
-  run_loop.Run();
-
-  EXPECT_TRUE(DownloadItemWarningData::HasIncorrectPassword(&item_));
-}
-
-TEST_F(DeepScanningReportingTest, ConsumerUnencryptedArchive) {
-  base::RunLoop run_loop;
-  DeepScanningRequest request(
-      &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_CONSUMER_PROMPT,
-      DownloadCheckResult::SAFE,
-      base::BindRepeating(
-          [](DeepScanningRequestTest* test, base::RepeatingClosure quit_closure,
-             DownloadCheckResult result) {
-            test->SetLastResult(result);
-            if (result != DownloadCheckResult::ASYNC_SCANNING) {
-              quit_closure.Run();
-            }
-          },
-          base::Unretained(this), run_loop.QuitClosure()),
-      &download_protection_service_, settings().value(),
-      /*password=*/std::nullopt);
-
-  enterprise_connectors::ContentAnalysisResponse response;
-  response.set_request_token(kScanId);
-
-  auto* malware_result = response.add_results();
-  malware_result->set_tag("malware");
-  malware_result->set_status(
-      enterprise_connectors::ContentAnalysisResponse::Result::SUCCESS);
-
-  download_protection_service_.GetFakeBinaryUploadService()->SetResponse(
-      download_path_, BinaryUploadService::Result::SUCCESS, response);
-  download_protection_service_.GetFakeBinaryUploadService()
-      ->SetExpectedFinalAction(
-          enterprise_connectors::ContentAnalysisAcknowledgement::ALLOW);
-
-  DownloadItemWarningData::SetIsEncryptedArchive(&item_, false);
-  EXPECT_FALSE(DownloadItemWarningData::HasIncorrectPassword(&item_));
-
-  request.Start();
-
-  run_loop.Run();
-
-  EXPECT_FALSE(DownloadItemWarningData::HasIncorrectPassword(&item_));
 }
 
 TEST_F(DeepScanningReportingTest, MultipleFiles) {
@@ -1355,7 +1170,7 @@ TEST_F(DeepScanningReportingTest, MultipleFiles) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::ALLOW);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectNoReport();
 
     request.Start();
@@ -1424,13 +1239,12 @@ TEST_F(DeepScanningReportingTest, MultipleFiles) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::ALLOW);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectUnscannedFileEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ secondary_files_targets_[0].AsUTF8Unsafe(),
+        /*filename*/ secondary_files_targets_[0].BaseName().AsUTF8Unsafe(),
         // printf "foo.txt" | sha256sum |  tr '[:lower:]' '[:upper:]'
         /*sha256*/
         "DDAB29FF2C393EE52855D21A240EB05F775DF88E3CE347DF759F0C4B80356C35",
@@ -1441,8 +1255,7 @@ TEST_F(DeepScanningReportingTest, MultipleFiles) {
         /*size*/ std::string("foo.exe").size(),
         /*result*/ EventResultToString(EventResult::ALLOWED),
         /*username*/ kUserName,
-        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*content_transfer_reason*/ std::nullopt);
+        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe());
 
     request.Start();
     run_loop.Run();
@@ -1520,15 +1333,14 @@ TEST_F(DeepScanningReportingTest, MultipleFiles) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::BLOCK);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectSensitiveDataEvents(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
         {
-            secondary_files_targets_[0].AsUTF8Unsafe(),
-            secondary_files_targets_[1].AsUTF8Unsafe(),
+            secondary_files_targets_[0].BaseName().AsUTF8Unsafe(),
+            secondary_files_targets_[1].BaseName().AsUTF8Unsafe(),
         },
         // printf "foo.txt" | sha256sum |  tr '[:lower:]' '[:upper:]'
         // printf "bar.txt" | sha256sum |  tr '[:lower:]' '[:upper:]'
@@ -1552,8 +1364,7 @@ TEST_F(DeepScanningReportingTest, MultipleFiles) {
         {
             kScanId + std::string("0"),
             kScanId + std::string("1"),
-        },
-        /*content_transfer_reason*/ std::nullopt);
+        });
 
     request.Start();
     run_loop.Run();
@@ -1571,7 +1382,7 @@ TEST_F(DeepScanningReportingTest, MultipleFiles) {
 TEST_F(DeepScanningReportingTest, Timeout) {
   base::RunLoop run_loop;
   DeepScanningRequest request(
-      &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+      &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
       DownloadCheckResult::SAFE,
       base::BindRepeating(
           [](DeepScanningRequestTest* test, base::RepeatingClosure quit_closure,
@@ -1582,20 +1393,18 @@ TEST_F(DeepScanningReportingTest, Timeout) {
             }
           },
           base::Unretained(this), run_loop.QuitClosure()),
-      &download_protection_service_, settings().value(),
-      /*password=*/std::nullopt);
+      &download_protection_service_, settings().value());
 
   download_protection_service_.GetFakeBinaryUploadService()->SetResponse(
       download_path_, BinaryUploadService::Result::TIMEOUT,
       enterprise_connectors::ContentAnalysisResponse());
 
-  enterprise_connectors::test::EventReportValidator validator(client_.get());
+  EventReportValidator validator(client_.get());
   validator.ExpectUnscannedFileEvent(
       /*url*/ "https://example.com/download.exe",
-      /*tab_url*/ "https://example.com/",
       /*source*/ "",
       /*destination*/ "",
-      /*filename*/ download_path_.AsUTF8Unsafe(),
+      /*filename*/ "download.exe",
       // printf "download contents" | sha256sum |  tr '[:lower:]' '[:upper:]'
       /*sha256*/
       "76E00EB33811F5778A5EE557512C30D9341D4FEB07646BCE3E4DB13F9428573C",
@@ -1607,8 +1416,7 @@ TEST_F(DeepScanningReportingTest, Timeout) {
       /*result*/
       EventResultToString(EventResult::ALLOWED),
       /*username*/ kUserName,
-      /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-      /*content_transfer_reason*/ std::nullopt);
+      /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe());
 
   request.Start();
 
@@ -1680,14 +1488,13 @@ INSTANTIATE_TEST_SUITE_P(
         DownloadPrefs::DownloadRestriction::MALICIOUS_FILES));
 
 TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
-  enterprise_connectors::test::SetAnalysisConnector(
-      profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-      kScanForMalware);
+  SetAnalysisConnector(profile_->GetPrefs(),
+                       enterprise_connectors::FILE_DOWNLOADED, kScanForMalware);
   {
     base::RunLoop run_loop;
 
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -1699,8 +1506,7 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
     response.set_request_token(kScanId);
@@ -1718,13 +1524,12 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
     download_protection_service_.GetFakeBinaryUploadService()
         ->SetExpectedFinalAction(expected_final_action());
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectDangerousDeepScanningResult(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]'
         // '[:upper:]'
         /*sha256*/
@@ -1749,7 +1554,7 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
     base::RunLoop run_loop;
 
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -1761,8 +1566,7 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
     response.set_request_token(kScanId);
@@ -1781,13 +1585,12 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::WARN);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectDangerousDeepScanningResult(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]'
         // '[:upper:]'
         /*sha256*/
@@ -1812,7 +1615,7 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
   {
     base::RunLoop run_loop;
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::SAFE,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -1824,8 +1627,7 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
     response.set_request_token(kScanId);
@@ -1836,13 +1638,12 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::BLOCK);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectUnscannedFileEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]' '[:upper:]'
         /*sha256*/
         "76E00EB33811F5778A5EE557512C30D9341D4FEB07646BCE3E4DB13F9428573C",
@@ -1854,8 +1655,7 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
         /*result*/
         EventResultToString(expected_event_result_for_safe_large_file()),
         /*username*/ kUserName,
-        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*content_transfer_reason*/ std::nullopt);
+        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe());
 
     request.Start();
 
@@ -1873,7 +1673,7 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
         .WillRepeatedly(Return(download::DownloadDangerType::
                                    DOWNLOAD_DANGER_TYPE_DANGEROUS_CONTENT));
     DeepScanningRequest request(
-        &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+        &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
         DownloadCheckResult::DANGEROUS,
         base::BindRepeating(
             [](DeepScanningRequestTest* test,
@@ -1885,8 +1685,7 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
               }
             },
             base::Unretained(this), run_loop.QuitClosure()),
-        &download_protection_service_, settings().value(),
-        /*password=*/std::nullopt);
+        &download_protection_service_, settings().value());
 
     enterprise_connectors::ContentAnalysisResponse response;
     response.set_request_token(kScanId);
@@ -1897,13 +1696,12 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
         ->SetExpectedFinalAction(
             enterprise_connectors::ContentAnalysisAcknowledgement::BLOCK);
 
-    enterprise_connectors::test::EventReportValidator validator(client_.get());
+    EventReportValidator validator(client_.get());
     validator.ExpectUnscannedFileEvent(
         /*url*/ "https://example.com/download.exe",
-        /*tab_url*/ "https://example.com/",
         /*source*/ "",
         /*destination*/ "",
-        /*filename*/ download_path_.AsUTF8Unsafe(),
+        /*filename*/ "download.exe",
         // printf "download contents" | sha256sum |  tr '[:lower:]' '[:upper:]'
         /*sha256*/
         "76E00EB33811F5778A5EE557512C30D9341D4FEB07646BCE3E4DB13F9428573C",
@@ -1914,8 +1712,7 @@ TEST_P(DeepScanningDownloadRestrictionsTest, GeneratesCorrectReport) {
         /*size*/ std::string("download contents").size(),
         /*result*/ EventResultToString(expected_event_result_for_malware()),
         /*username*/ kUserName,
-        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe(),
-        /*content_transfer_reason*/ std::nullopt);
+        /*profile_identifier*/ profile_->GetPath().AsUTF8Unsafe());
 
     request.Start();
 
@@ -1930,9 +1727,8 @@ class DeepScanningRequestConnectorsFeatureTest
 
 TEST_F(DeepScanningRequestConnectorsFeatureTest,
        ShouldUploadBinary_MalwareListPolicy) {
-  enterprise_connectors::test::SetAnalysisConnector(
-      profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-      kScanForMalware);
+  SetAnalysisConnector(profile_->GetPrefs(),
+                       enterprise_connectors::FILE_DOWNLOADED, kScanForMalware);
 
   content::DownloadItemUtils::AttachInfoForTesting(&item_, profile_, nullptr);
   EXPECT_CALL(item_, GetURL()).WillRepeatedly(ReturnRef(download_url_));
@@ -1947,10 +1743,10 @@ TEST_F(DeepScanningRequestConnectorsFeatureTest,
 
   // With the new malware policy list set, the item should not be uploaded since
   // DeepScanningRequest honours that policy.
-  enterprise_connectors::test::SetAnalysisConnector(
-      profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-      base::StringPrintf(
-          R"({
+  SetAnalysisConnector(profile_->GetPrefs(),
+                       enterprise_connectors::FILE_DOWNLOADED,
+                       base::StringPrintf(
+                           R"({
                             "service_provider": "google",
                             "enable": [
                               {"url_list": ["*"], "tags": ["malware"]}
@@ -1960,14 +1756,14 @@ TEST_F(DeepScanningRequestConnectorsFeatureTest,
                             ],
                             "block_until_verdict": 1
                           })",
-          download_url_.host().c_str()));
+                           download_url_.host().c_str()));
   EXPECT_FALSE(settings().has_value());
 }
 
 TEST_F(DeepScanningRequestConnectorsFeatureTest, ShouldUploadBinary_FileURLs) {
-  enterprise_connectors::test::SetAnalysisConnector(
-      profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-      kScanForDlpAndMalware);
+  SetAnalysisConnector(profile_->GetPrefs(),
+                       enterprise_connectors::FILE_DOWNLOADED,
+                       kScanForDlpAndMalware);
 
   content::DownloadItemUtils::AttachInfoForTesting(&item_, profile_, nullptr);
 
@@ -1991,13 +1787,13 @@ TEST_F(DeepScanningRequestConnectorsFeatureTest, ShouldUploadBinary_FileURLs) {
 }
 
 TEST_F(DeepScanningRequestAllFeaturesEnabledTest, PopulatesRequest) {
-  enterprise_connectors::test::SetAnalysisConnector(
-      profile_->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-      kScanForDlpAndMalware);
+  SetAnalysisConnector(profile_->GetPrefs(),
+                       enterprise_connectors::FILE_DOWNLOADED,
+                       kScanForDlpAndMalware);
 
   base::RunLoop run_loop;
   DeepScanningRequest request(
-      &item_, DownloadItemWarningData::DeepScanTrigger::TRIGGER_POLICY,
+      &item_, DeepScanningRequest::DeepScanTrigger::TRIGGER_POLICY,
       DownloadCheckResult::SAFE,
       base::BindRepeating(
           [](base::RepeatingClosure closure, DownloadCheckResult result) {
@@ -2006,9 +1802,7 @@ TEST_F(DeepScanningRequestAllFeaturesEnabledTest, PopulatesRequest) {
             }
           },
           run_loop.QuitClosure()),
-      &download_protection_service_, settings().value(),
-      /*password=*/std::nullopt);
-
+      &download_protection_service_, settings().value());
   request.Start();
   run_loop.Run();
   EXPECT_EQ(download_protection_service_.GetFakeBinaryUploadService()

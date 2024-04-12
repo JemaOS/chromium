@@ -131,8 +131,8 @@ struct SystemEventTimes {
 
   SystemEventTimes() = default;
 
-  std::optional<base::TimeTicks> boot_time;
-  std::optional<base::TimeTicks> update_reboot_needed_time;
+  absl::optional<base::TimeTicks> boot_time;
+  absl::optional<base::TimeTicks> update_reboot_needed_time;
 };
 
 SystemEventTimes GetSystemEventTimes() {

@@ -6,12 +6,11 @@ package org.chromium.chrome.browser.offlinepages;
 
 import android.text.format.DateUtils;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.device.DeviceConditions;
 
 /**
@@ -31,12 +30,9 @@ public class BackgroundSchedulerBridge {
     //     separately determine if not allowed by policy.
     public static boolean startScheduledProcessing(
             DeviceConditions deviceConditions, Callback<Boolean> callback) {
-        return BackgroundSchedulerBridgeJni.get()
-                .startScheduledProcessing(
-                        deviceConditions.isPowerConnected(),
-                        deviceConditions.getBatteryPercentage(),
-                        deviceConditions.getNetConnectionType(),
-                        callback);
+        return BackgroundSchedulerBridgeJni.get().startScheduledProcessing(
+                deviceConditions.isPowerConnected(), deviceConditions.getBatteryPercentage(),
+                deviceConditions.getNetConnectionType(), callback);
     }
 
     /**
@@ -55,8 +51,8 @@ public class BackgroundSchedulerBridge {
 
     @CalledByNative
     private static void backupSchedule(TriggerConditions triggerConditions, long delayInSeconds) {
-        BackgroundScheduler.getInstance()
-                .scheduleBackup(triggerConditions, DateUtils.SECOND_IN_MILLIS * delayInSeconds);
+        BackgroundScheduler.getInstance().scheduleBackup(
+                triggerConditions, DateUtils.SECOND_IN_MILLIS * delayInSeconds);
     }
 
     @CalledByNative
@@ -84,10 +80,8 @@ public class BackgroundSchedulerBridge {
      * trigger conditions.
      */
     @CalledByNative
-    private static TriggerConditions createTriggerConditions(
-            boolean requirePowerConnected,
-            int minimumBatteryPercentage,
-            boolean requireUnmeteredNetwork) {
+    private static TriggerConditions createTriggerConditions(boolean requirePowerConnected,
+            int minimumBatteryPercentage, boolean requireUnmeteredNetwork) {
         return new TriggerConditions(
                 requirePowerConnected, minimumBatteryPercentage, requireUnmeteredNetwork);
     }
@@ -95,11 +89,8 @@ public class BackgroundSchedulerBridge {
     @NativeMethods
     interface Natives {
         /** Instructs the native RequestCoordinator to start processing. */
-        boolean startScheduledProcessing(
-                boolean powerConnected,
-                int batteryPercentage,
-                int netConnectionType,
-                Callback<Boolean> callback);
+        boolean startScheduledProcessing(boolean powerConnected, int batteryPercentage,
+                int netConnectionType, Callback<Boolean> callback);
 
         /** Instructs the native RequestCoordinator to stop processing. */
         void stopScheduledProcessing();

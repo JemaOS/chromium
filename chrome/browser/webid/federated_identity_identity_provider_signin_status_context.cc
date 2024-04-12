@@ -25,15 +25,15 @@ FederatedIdentityIdentityProviderSigninStatusContext::
           HostContentSettingsMapFactory::GetForProfile(
               Profile::FromBrowserContext(browser_context))) {}
 
-std::optional<bool>
+absl::optional<bool>
 FederatedIdentityIdentityProviderSigninStatusContext::GetSigninStatus(
     const url::Origin& identity_provider) {
   auto granted_object =
       GetGrantedObject(identity_provider, identity_provider.Serialize());
   if (!granted_object)
-    return std::nullopt;
+    return absl::nullopt;
 
-  return granted_object->value.FindBool(kIdpSigninStatusKey);
+  return granted_object->value.GetDict().FindBool(kIdpSigninStatusKey);
 }
 
 void FederatedIdentityIdentityProviderSigninStatusContext::SetSigninStatus(
@@ -47,26 +47,27 @@ void FederatedIdentityIdentityProviderSigninStatusContext::SetSigninStatus(
   new_object.Set(kIdpSigninStatusKey, base::Value(signin_status));
   if (granted_object) {
     UpdateObjectPermission(identity_provider, granted_object->value,
-                           std::move(new_object));
+                           base::Value(std::move(new_object)));
   } else {
-    GrantObjectPermission(identity_provider, std::move(new_object));
+    GrantObjectPermission(identity_provider,
+                          base::Value(std::move(new_object)));
   }
 }
 
 std::string
 FederatedIdentityIdentityProviderSigninStatusContext::GetKeyForObject(
-    const base::Value::Dict& object) {
-  return *object.FindString(kIdpKey);
+    const base::Value& object) {
+  return *object.GetDict().FindString(kIdpKey);
 }
 
 bool FederatedIdentityIdentityProviderSigninStatusContext::IsValidObject(
-    const base::Value::Dict& object) {
-  return object.FindString(kIdpKey);
+    const base::Value& object) {
+  return object.is_dict() && object.GetDict().FindString(kIdpKey);
 }
 
 std::u16string
 FederatedIdentityIdentityProviderSigninStatusContext::GetObjectDisplayName(
-    const base::Value::Dict& object) {
+    const base::Value& object) {
   DCHECK(IsValidObject(object));
-  return base::UTF8ToUTF16(*object.FindString(kIdpKey));
+  return base::UTF8ToUTF16(*object.GetDict().FindString(kIdpKey));
 }

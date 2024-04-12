@@ -32,8 +32,6 @@ class LayoutSVGHiddenContainer : public LayoutSVGContainer {
  public:
   explicit LayoutSVGHiddenContainer(SVGElement*);
 
-  void SetNeedsTransformUpdate() override { NOT_DESTROYED(); }
-
   const char* GetName() const override {
     NOT_DESTROYED();
     return "LayoutSVGHiddenContainer";
@@ -42,9 +40,10 @@ class LayoutSVGHiddenContainer : public LayoutSVGContainer {
  protected:
   void UpdateLayout() override;
 
-  bool IsSVGHiddenContainer() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectSVGHiddenContainer ||
+           LayoutSVGContainer::IsOfType(type);
   }
 
  private:
@@ -68,14 +67,6 @@ class LayoutSVGHiddenContainer : public LayoutSVGContainer {
                    const PhysicalOffset& accumulated_offset,
                    HitTestPhase) final;
 };
-
-template <>
-struct DowncastTraits<LayoutSVGHiddenContainer> {
-  static bool AllowFrom(const LayoutObject& object) {
-    return object.IsSVGHiddenContainer();
-  }
-};
-
 }  // namespace blink
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_SVG_LAYOUT_SVG_HIDDEN_CONTAINER_H_

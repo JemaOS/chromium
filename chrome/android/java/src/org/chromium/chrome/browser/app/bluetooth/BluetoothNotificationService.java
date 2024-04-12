@@ -9,7 +9,8 @@ import org.chromium.chrome.browser.base.SplitCompatService;
 
 /** See {@link BluetoothNotificationServiceImpl}. */
 public class BluetoothNotificationService extends SplitCompatService {
-    private static @IdentifierNameString String sImplClassName =
+    @IdentifierNameString
+    private static String sImplClassName =
             "org.chromium.chrome.browser.app.bluetooth.BluetoothNotificationServiceImpl";
 
     public BluetoothNotificationService() {

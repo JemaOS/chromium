@@ -10,7 +10,6 @@
 
 #include "base/functional/callback_forward.h"
 #include "base/gtest_prod_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/threading/thread_checker.h"
@@ -23,7 +22,6 @@
 #include "third_party/blink/renderer/modules/mediastream/user_media_request.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
-#include "third_party/blink/renderer/platform/heap/prefinalizer.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_descriptor.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_wrapper_mode.h"
@@ -31,7 +29,6 @@
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
 namespace blink {
-
 class AudioCaptureSettings;
 class LocalFrame;
 class MediaStreamAudioSource;
@@ -50,8 +47,6 @@ class WebString;
 // render thread. There should be only one UserMediaProcessor per frame.
 class MODULES_EXPORT UserMediaProcessor
     : public GarbageCollected<UserMediaProcessor> {
-  USING_PRE_FINALIZER(UserMediaProcessor, StopAllProcessing);
-
  public:
   using MediaDevicesDispatcherCallback = base::RepeatingCallback<
       blink::mojom::blink::MediaDevicesDispatcherHost*()>;
@@ -94,7 +89,7 @@ class MODULES_EXPORT UserMediaProcessor
 
   bool HasActiveSources() const;
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+#if !BUILDFLAG(IS_ANDROID)
   void FocusCapturedSurface(const String& label, bool focus);
 #endif
 
@@ -106,7 +101,7 @@ class MODULES_EXPORT UserMediaProcessor
       const mojom::blink::MediaStreamStateChange new_state);
   void OnDeviceCaptureConfigurationChange(const MediaStreamDevice& device);
   void OnDeviceCaptureHandleChange(const MediaStreamDevice& device);
-  void OnZoomLevelChange(const MediaStreamDevice& device, int zoom_level);
+
   void set_media_stream_dispatcher_host_for_testing(
       mojo::PendingRemote<blink::mojom::blink::MediaStreamDispatcherHost>
           dispatcher_host) {
@@ -209,10 +204,10 @@ class MODULES_EXPORT UserMediaProcessor
   void StartTracks(const String& label);
 
   blink::MediaStreamComponent* CreateVideoTrack(
-      const std::optional<blink::MediaStreamDevice>& device);
+      const absl::optional<blink::MediaStreamDevice>& device);
 
   blink::MediaStreamComponent* CreateAudioTrack(
-      const std::optional<blink::MediaStreamDevice>& device);
+      const absl::optional<blink::MediaStreamDevice>& device);
 
   // Callback function triggered when all native versions of the
   // underlying media sources and tracks have been created and started.
@@ -293,21 +288,19 @@ class MODULES_EXPORT UserMediaProcessor
       const blink::VideoCaptureSettings& settings);
   void SelectVideoContentSettings();
 
-  std::optional<base::UnguessableToken> DetermineExistingAudioSessionId(
-      const blink::AudioCaptureSettings& settings);
-
-  WTF::HashMap<String, base::UnguessableToken>
-  DetermineExistingAudioSessionIds();
+  absl::optional<base::UnguessableToken> DetermineExistingAudioSessionId();
 
   void GenerateStreamForCurrentRequestInfo(
-      WTF::HashMap<String, base::UnguessableToken>
-          requested_audio_capture_session_ids = {});
+      absl::optional<base::UnguessableToken>
+          requested_audio_capture_session_id = absl::nullopt,
+      blink::mojom::StreamSelectionStrategy strategy =
+          blink::mojom::StreamSelectionStrategy::SEARCH_BY_DEVICE_ID);
 
   WebMediaStreamDeviceObserver* GetMediaStreamDeviceObserver();
 
   // Owned by the test.
-  raw_ptr<WebMediaStreamDeviceObserver, DanglingUntriaged>
-      media_stream_device_observer_for_testing_ = nullptr;
+  WebMediaStreamDeviceObserver* media_stream_device_observer_for_testing_ =
+      nullptr;
 
   LocalStreamSources local_sources_;
   LocalStreamSources pending_local_sources_;

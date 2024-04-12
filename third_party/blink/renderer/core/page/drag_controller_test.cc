@@ -85,10 +85,7 @@ class DragControllerSimTest : public SimTest {};
 // Drop clears out the Autoscroll state. Regression test for
 // https://crbug.com/733996.
 TEST_F(DragControllerSimTest, DropURLOnNonNavigatingClearsState) {
-  auto renderer_preferences = WebView().GetRendererPreferences();
-  renderer_preferences.can_accept_load_drops = false;
-  WebView().SetRendererPreferences(renderer_preferences);
-
+  WebView().GetPage()->GetSettings().SetNavigateOnDragDrop(false);
   WebView().MainFrameViewWidget()->Resize(gfx::Size(800, 600));
   SimRequest main_resource("https://example.com/test.html", "text/html");
 
@@ -101,26 +98,22 @@ TEST_F(DragControllerSimTest, DropURLOnNonNavigatingClearsState) {
 
   Compositor().BeginFrame();
 
-  WebDragData drag_data;
-  WebDragData::StringItem item;
-  item.type = "text/uri-list";
-  item.data = WebString::FromUTF8("https://www.example.com/index.html");
-  drag_data.AddItem(item);
+  DataObject* object = DataObject::Create();
+  object->SetURLAndTitle("https://www.example.com/index.html", "index");
+  DragData data(
+      object, gfx::PointF(10, 10), gfx::PointF(10, 10),
+      static_cast<DragOperationsMask>(kDragOperationCopy | kDragOperationLink |
+                                      kDragOperationMove));
 
-  const gfx::PointF client_point(10, 10);
-  const gfx::PointF screen_point(10, 10);
-  WebFrameWidget* widget = WebView().MainFrameImpl()->FrameWidget();
-  widget->DragTargetDragEnter(drag_data, client_point, screen_point,
-                              kDragOperationCopy, 0, base::DoNothing());
+  WebView().GetPage()->GetDragController().DragEnteredOrUpdated(
+      &data, *GetDocument().GetFrame());
 
   // The page should tell the AutoscrollController about the drag.
   EXPECT_TRUE(
       WebView().GetPage()->GetAutoscrollController().AutoscrollInProgress());
 
-  widget->DragTargetDrop(drag_data, client_point, screen_point, 0,
-                         base::DoNothing());
-  frame_test_helpers::PumpPendingRequestsForFrameToLoad(
-      WebView().MainFrameImpl());
+  WebView().GetPage()->GetDragController().PerformDrag(
+      &data, *GetDocument().GetFrame());
 
   // Once we've "performed" the drag (in which nothing happens), the
   // AutoscrollController should have been cleared.
@@ -132,6 +125,7 @@ TEST_F(DragControllerSimTest, DropURLOnNonNavigatingClearsState) {
 // lifecycle updates for frames - are accounted for in the DragController.
 // Regression test for https://crbug.com/685030
 TEST_F(DragControllerSimTest, ThrottledDocumentHandled) {
+  WebView().GetPage()->GetSettings().SetNavigateOnDragDrop(false);
   WebView().MainFrameViewWidget()->Resize(gfx::Size(800, 600));
   SimRequest main_resource("https://example.com/test.html", "text/html");
 
@@ -144,12 +138,12 @@ TEST_F(DragControllerSimTest, ThrottledDocumentHandled) {
       "  document.addEventListener('dragenter', e => e.preventDefault());"
       "</script>");
 
-  DataObject* object = DataObject::CreateFromString("hello world");
+  DataObject* object = DataObject::Create();
+  object->SetURLAndTitle("https://www.example.com/index.html", "index");
   DragData data(
       object, gfx::PointF(10, 10), gfx::PointF(10, 10),
       static_cast<DragOperationsMask>(kDragOperationCopy | kDragOperationLink |
-                                      kDragOperationMove),
-      false);
+                                      kDragOperationMove));
 
   WebView().GetPage()->GetDragController().DragEnteredOrUpdated(
       &data, *GetDocument().GetFrame());
@@ -423,7 +417,7 @@ TEST_F(DragControllerTest, DragImageOffsetWithPageScaleFactor) {
 
   auto& drag_state = GetFrame().GetPage()->GetDragController().GetDragState();
   drag_state.drag_type_ = kDragSourceActionSelection;
-  drag_state.drag_src_ = GetDocument().getElementById(AtomicString("drag"));
+  drag_state.drag_src_ = GetDocument().getElementById("drag");
   drag_state.drag_data_transfer_ = DataTransfer::Create(
       DataTransfer::kDragAndDrop, DataTransferAccessPolicy::kWritable,
       DataObject::Create());
@@ -467,7 +461,7 @@ TEST_F(DragControllerTest, DragLinkWithPageScaleFactor) {
 
   auto& drag_state = GetFrame().GetPage()->GetDragController().GetDragState();
   drag_state.drag_type_ = kDragSourceActionLink;
-  drag_state.drag_src_ = GetDocument().getElementById(AtomicString("drag"));
+  drag_state.drag_src_ = GetDocument().getElementById("drag");
   drag_state.drag_data_transfer_ = DataTransfer::Create(
       DataTransfer::kDragAndDrop, DataTransferAccessPolicy::kWritable,
       DataObject::Create());
@@ -476,7 +470,7 @@ TEST_F(DragControllerTest, DragLinkWithPageScaleFactor) {
 
   gfx::Size link_image_size = GetChromeClient().last_drag_image_size;
   // The drag link image should be a textual representation of the drag url in a
-  // system font (see: DeriveDragLabelFont in drag_image.cc) and should not be
+  // system font (see: DragImageForLink in DragController.cpp) and should not be
   // an empty image.
   EXPECT_GT(link_image_size.Area64(), 0u);
   // Unlike the drag image in DragImageOffsetWithPageScaleFactor, the link

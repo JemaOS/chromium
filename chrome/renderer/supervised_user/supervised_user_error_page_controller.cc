@@ -12,10 +12,18 @@
 #include "content/public/renderer/render_frame.h"
 #include "gin/handle.h"
 #include "gin/object_template_builder.h"
-#include "third_party/blink/public/platform/scheduler/web_agent_group_scheduler.h"
+#include "third_party/blink/public/web/blink.h"
 #include "third_party/blink/public/web/web_local_frame.h"
 #include "v8/include/v8-context.h"
 #include "v8/include/v8-microtask-queue.h"
+
+namespace {
+
+bool IsOutermostMainFrame(content::RenderFrame* render_frame) {
+  return render_frame->IsMainFrame() && !render_frame->IsInFencedFrameTree();
+}
+
+}  // namespace
 
 gin::WrapperInfo SupervisedUserErrorPageController::kWrapperInfo = {
     gin::kEmbedderNativeGin};
@@ -23,10 +31,10 @@ gin::WrapperInfo SupervisedUserErrorPageController::kWrapperInfo = {
 void SupervisedUserErrorPageController::Install(
     content::RenderFrame* render_frame,
     base::WeakPtr<SupervisedUserErrorPageControllerDelegate> delegate) {
-  blink::WebLocalFrame* web_frame = render_frame->GetWebFrame();
-  v8::Isolate* isolate = web_frame->GetAgentGroupScheduler()->Isolate();
+  v8::Isolate* isolate = blink::MainThreadIsolate();
   v8::HandleScope handle_scope(isolate);
-  v8::Local<v8::Context> context = web_frame->MainWorldScriptContext();
+  v8::Local<v8::Context> context =
+      render_frame->GetWebFrame()->MainWorldScriptContext();
   if (context.IsEmpty())
     return;
 
@@ -78,10 +86,15 @@ void SupervisedUserErrorPageController::RequestUrlAccessLocal() {
   }
 }
 
+void SupervisedUserErrorPageController::Feedback() {
+  if (delegate_)
+    delegate_->Feedback();
+}
+
 void SupervisedUserErrorPageController::OnRequestUrlAccessRemote(bool success) {
   std::string result = success ? "true" : "false";
   std::string is_outermost_main_frame =
-      render_frame_->GetWebFrame()->IsOutermostMainFrame() ? "true" : "false";
+      IsOutermostMainFrame(render_frame_) ? "true" : "false";
   std::string js =
       base::StringPrintf("setRequestStatus(%s, %s)", result.c_str(),
                          is_outermost_main_frame.c_str());
@@ -97,5 +110,6 @@ SupervisedUserErrorPageController::GetObjectTemplateBuilder(
           .SetMethod("requestUrlAccessRemote",
                      &SupervisedUserErrorPageController::RequestUrlAccessRemote)
           .SetMethod("requestUrlAccessLocal",
-                     &SupervisedUserErrorPageController::RequestUrlAccessLocal);
+                     &SupervisedUserErrorPageController::RequestUrlAccessLocal)
+          .SetMethod("feedback", &SupervisedUserErrorPageController::Feedback);
 }

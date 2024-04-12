@@ -54,10 +54,8 @@ class ImageFallbackContentBuilder {
 
  public:
   ImageFallbackContentBuilder(const ShadowRoot& shadow_root)
-      : place_holder_(
-            shadow_root.getElementById(AtomicString("alttext-container"))),
-        broken_image_(
-            shadow_root.getElementById(AtomicString("alttext-image"))) {}
+      : place_holder_(shadow_root.getElementById("alttext-container")),
+        broken_image_(shadow_root.getElementById("alttext-image")) {}
 
   bool HasContentElements() const { return place_holder_ && broken_image_; }
 
@@ -168,22 +166,22 @@ void HTMLImageFallbackHelper::CustomStyleForAltText(
   if (element.GetDocument().InQuirksMode()) {
     // Mimic the behaviour of the image host by setting symmetric dimensions if
     // only one dimension is specified.
-    if (!builder.Width().IsAuto() && builder.Height().IsAuto()) {
-      builder.SetHeight(builder.Width());
-    } else if (!builder.Height().IsAuto() && builder.Width().IsAuto()) {
-      builder.SetWidth(builder.Height());
+    if (!builder.UsedWidth().IsAuto() && builder.UsedHeight().IsAuto()) {
+      builder.SetHeight(builder.UsedWidth());
+    } else if (!builder.UsedHeight().IsAuto() && builder.UsedWidth().IsAuto()) {
+      builder.SetWidth(builder.UsedHeight());
     }
 
-    if (!builder.Width().IsAuto() && !builder.Height().IsAuto()) {
+    if (!builder.UsedWidth().IsAuto() && !builder.UsedHeight().IsAuto()) {
       fallback.AlignToBaseline();
     }
   }
 
   bool has_intrinsic_dimensions =
-      !builder.Width().IsAuto() && !builder.Height().IsAuto();
+      !builder.UsedWidth().IsAuto() && !builder.UsedHeight().IsAuto();
   bool has_dimensions_from_ar =
       !builder.AspectRatio().IsAuto() &&
-      (!builder.Width().IsAuto() || !builder.Height().IsAuto());
+      (!builder.UsedWidth().IsAuto() || !builder.UsedHeight().IsAuto());
   bool has_no_alt_attribute =
       element.getAttribute(html_names::kAltAttr).empty();
   bool treat_as_replaced =
@@ -198,13 +196,13 @@ void HTMLImageFallbackHelper::CustomStyleForAltText(
     // attribute, or the Document is in quirks mode The user agent is expected
     // to treat the element as a replaced element whose content is the text that
     // the element represents, if any."
-    fallback.ShowAsReplaced(builder.Width(), builder.Height(),
+    fallback.ShowAsReplaced(builder.UsedWidth(), builder.UsedHeight(),
                             builder.EffectiveZoom());
 
     // 16px for the image and 2px for its top/left border/padding offset.
     int pixels_for_alt_image = 18;
-    if (ImageSmallerThanAltImage(pixels_for_alt_image, builder.Width(),
-                                 builder.Height())) {
+    if (ImageSmallerThanAltImage(pixels_for_alt_image, builder.UsedWidth(),
+                                 builder.UsedHeight())) {
       fallback.HideBrokenImageIcon();
     } else {
       fallback.ShowBorder();

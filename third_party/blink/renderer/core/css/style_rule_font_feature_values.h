@@ -144,7 +144,7 @@ class CORE_EXPORT StyleRuleFontFeatureValues : public StyleRuleBase {
   }
 
   void SetCascadeLayer(const CascadeLayer* layer) { layer_ = layer; }
-  const CascadeLayer* GetCascadeLayer() const { return layer_.Get(); }
+  const CascadeLayer* GetCascadeLayer() const { return layer_; }
 
   void TraceAfterDispatch(blink::Visitor*) const;
 

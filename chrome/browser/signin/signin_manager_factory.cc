@@ -4,15 +4,16 @@
 
 #include "chrome/browser/signin/signin_manager_factory.h"
 
+#include "base/logging.h"
+#include "build/build_config.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/chrome_signin_client_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "components/signin/public/base/signin_switches.h"
+#include "chrome/browser/signin/signin_features.h"
 
 // static
 SigninManagerFactory* SigninManagerFactory::GetInstance() {
-  static base::NoDestructor<SigninManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<SigninManagerFactory>::get();
 }
 
 // static
@@ -23,28 +24,26 @@ SigninManager* SigninManagerFactory::GetForProfile(Profile* profile) {
 }
 
 SigninManagerFactory::SigninManagerFactory()
-    : ProfileKeyedServiceFactory("SigninManager") {
+    : ProfileKeyedServiceFactory(
+          "SigninManager",
+          ProfileSelections::Builder()
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
+              .Build()) {
   DependsOn(IdentityManagerFactory::GetInstance());
   DependsOn(ChromeSigninClientFactory::GetInstance());
 }
 
 SigninManagerFactory::~SigninManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-SigninManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SigninManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  // The `SigninManager` isn't needed to update the primary account as it is
-  // set/cleared only on explicit user action (e.g. Sign in/Sign out from chrome
-  // UI).
-  if (switches::IsExplicitBrowserSigninUIOnDesktopEnabled(
-          switches::ExplicitBrowserSigninPhase::kFull)) {
-    return nullptr;
-  }
-
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<SigninManager>(
-      *profile->GetPrefs(), *IdentityManagerFactory::GetForProfile(profile),
-      *ChromeSigninClientFactory::GetForProfile(profile));
+  return new SigninManager(profile->GetPrefs(),
+                           IdentityManagerFactory::GetForProfile(profile),
+                           ChromeSigninClientFactory::GetForProfile(profile));
 }
 
 bool SigninManagerFactory::ServiceIsCreatedWithBrowserContext() const {

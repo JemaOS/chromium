@@ -62,7 +62,14 @@ class QuickUnlockStorage : public KeyedService {
   // attempt. This always returns false if HasStrongAuth returns false.
   bool TryAuthenticatePin(const Key& key, Purpose purpose);
 
-  // TODO(b/271249180): cleanup remaining AuthToken refs:
+  // Creates a new authentication token to be used by the quickSettingsPrivate
+  // API for authenticating requests. Resets the expiration timer and
+  // invalidates any previously issued tokens.
+  std::string CreateAuthToken(const UserContext& user_context);
+
+  // Returns true if the current authentication token has expired.
+  bool GetAuthTokenExpired();
+
   // Returns the auth token if it is valid or nullptr if it is expired or has
   // not been created. May return nullptr.
   AuthToken* GetAuthToken();
@@ -92,11 +99,10 @@ class QuickUnlockStorage : public KeyedService {
   // KeyedService:
   void Shutdown() override;
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
   base::Time last_strong_auth_;
-  // TODO(b/271249180): cleanup remaining AuthToken refs:
   std::unique_ptr<AuthToken> auth_token_;
-  raw_ptr<base::Clock> clock_;
+  raw_ptr<base::Clock, ExperimentalAsh> clock_;
   std::unique_ptr<FingerprintStorage> fingerprint_storage_;
   std::unique_ptr<PinStoragePrefs> pin_storage_prefs_;
 };

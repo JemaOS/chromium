@@ -58,7 +58,7 @@ class MIDIMessageEvent final : public Event {
   MIDIMessageEvent(const AtomicString& type,
                    const MIDIMessageEventInit* initializer);
 
-  DOMUint8Array* data() { return data_.Get(); }
+  DOMUint8Array* data() { return data_; }
 
   const AtomicString& InterfaceName() const override {
     return event_interface_names::kMIDIMessageEvent;

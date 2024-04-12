@@ -35,7 +35,7 @@ import java.util.concurrent.TimeoutException;
 /**
  * Integration tests for the native BrowsingDataRemover.
  *
- * <p>BrowsingDataRemover is used to delete data from various data storage backends. However, for
+ * BrowsingDataRemover is used to delete data from various data storage backends. However, for
  * those backends that live in the Java code, it is not possible to test whether deletions were
  * successful in its own unit tests. This test can do so.
  */
@@ -62,8 +62,7 @@ public class BrowsingDataRemoverIntegrationTest {
     /**
      * Tests that web apps are unregistered after clearing with the "cookies and site data" option.
      * TODO(msramek): Expose more granular datatypes to the Java code, so we can directly test
-     * BrowsingDataRemover::RemoveDataMask::REMOVE_WEBAPP_DATA instead of
-     * BrowsingDataType.SITE_DATA.
+     * BrowsingDataRemover::RemoveDataMask::REMOVE_WEBAPP_DATA instead of BrowsingDataType.COOKIES.
      */
     @Test
     @MediumTest
@@ -81,45 +80,33 @@ public class BrowsingDataRemoverIntegrationTest {
 
         CallbackHelper dataClearedExcludingDomainHelper = new CallbackHelper();
         // Clear cookies and site data excluding the registrable domain "google.com".
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    BrowsingDataBridge.getForProfile(mActivityTestRule.getProfile(false))
-                            .clearBrowsingDataExcludingDomains(
-                                    new OnClearBrowsingDataListener() {
-                                        @Override
-                                        public void onBrowsingDataCleared() {
-                                            dataClearedExcludingDomainHelper.notifyCalled();
-                                        }
-                                    },
-                                    new int[] {BrowsingDataType.SITE_DATA},
-                                    TimePeriod.ALL_TIME,
-                                    new String[] {"google.com"},
-                                    new int[] {1},
-                                    new String[0],
-                                    new int[0]);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            BrowsingDataBridge.getInstance().clearBrowsingDataExcludingDomains(
+                    new OnClearBrowsingDataListener() {
+                        @Override
+                        public void onBrowsingDataCleared() {
+                            dataClearedExcludingDomainHelper.notifyCalled();
+                        }
+                    },
+                    new int[] {BrowsingDataType.COOKIES}, TimePeriod.ALL_TIME,
+                    new String[] {"google.com"}, new int[] {1}, new String[0], new int[0]);
+        });
         dataClearedExcludingDomainHelper.waitForFirst();
 
         // The last two webapps should have been unregistered.
-        Assert.assertEquals(
-                new HashSet<String>(Arrays.asList("webapp1")),
+        Assert.assertEquals(new HashSet<String>(Arrays.asList("webapp1")),
                 WebappRegistry.getRegisteredWebappIdsForTesting());
 
         CallbackHelper dataClearedNoUrlFilterHelper = new CallbackHelper();
         // Clear cookies and site data with no url filter.
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    BrowsingDataBridge.getForProfile(mActivityTestRule.getProfile(false))
-                            .clearBrowsingData(
-                                    new OnClearBrowsingDataListener() {
-                                        @Override
-                                        public void onBrowsingDataCleared() {
-                                            dataClearedNoUrlFilterHelper.notifyCalled();
-                                        }
-                                    },
-                                    new int[] {BrowsingDataType.SITE_DATA},
-                                    TimePeriod.ALL_TIME);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            BrowsingDataBridge.getInstance().clearBrowsingData(new OnClearBrowsingDataListener() {
+                @Override
+                public void onBrowsingDataCleared() {
+                    dataClearedNoUrlFilterHelper.notifyCalled();
+                }
+            }, new int[] {BrowsingDataType.COOKIES}, TimePeriod.ALL_TIME);
+        });
         dataClearedNoUrlFilterHelper.waitForFirst();
 
         // All webapps should have been unregistered.
@@ -142,14 +129,10 @@ public class BrowsingDataRemoverIntegrationTest {
 
         Assert.assertTrue(mStore.getRelationships().contains(relationship));
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    BrowsingDataBridge.getForProfile(mActivityTestRule.getProfile(false))
-                            .clearBrowsingData(
-                                    callbackHelper::notifyCalled,
-                                    new int[] {BrowsingDataType.HISTORY},
-                                    TimePeriod.ALL_TIME);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            BrowsingDataBridge.getInstance().clearBrowsingData(callbackHelper::notifyCalled,
+                    new int[] {BrowsingDataType.HISTORY}, TimePeriod.ALL_TIME);
+        });
 
         callbackHelper.waitForCallback(0);
         Assert.assertTrue(mStore.getRelationships().isEmpty());

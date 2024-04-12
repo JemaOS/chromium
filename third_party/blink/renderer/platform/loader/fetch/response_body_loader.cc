@@ -23,7 +23,6 @@
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/navigation_body_loader.h"
 #include "third_party/blink/renderer/platform/wtf/deque.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
-#include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 namespace blink {
 
@@ -45,9 +44,7 @@ class ResponseBodyLoader::DelegatingBytesConsumer final
     if (loader_->IsAborted()) {
       return Result::kError;
     }
-    // When the loader is suspended for non back/forward cache reason, return
-    // with kShouldWait.
-    if (IsSuspendedButNotForBackForwardCache()) {
+    if (loader_->IsSuspended()) {
       return Result::kShouldWait;
     }
     if (state_ == State::kCancelled) {
@@ -145,20 +142,8 @@ class ResponseBodyLoader::DelegatingBytesConsumer final
       return PublicState::kErrored;
     return bytes_consumer_->GetPublicState();
   }
-  Error GetError() const override {
-    if (bytes_consumer_->GetPublicState() == PublicState::kErrored) {
-      return bytes_consumer_->GetError();
-    }
-    DCHECK(loader_->IsAborted());
-    return Error{"Response body loading was aborted"};
-  }
-  String DebugName() const override {
-    StringBuilder builder;
-    builder.Append("DelegatingBytesConsumer(");
-    builder.Append(bytes_consumer_->DebugName());
-    builder.Append(")");
-    return builder.ToString();
-  }
+  Error GetError() const override { return bytes_consumer_->GetError(); }
+  String DebugName() const override { return "DelegatingBytesConsumer"; }
 
   void Abort() {
     if (state_ != State::kLoading) {
@@ -180,14 +165,10 @@ class ResponseBodyLoader::DelegatingBytesConsumer final
     base::AutoReset<bool> auto_reset_for_waiting_for_lookahead_bytes(
         &waiting_for_lookahead_bytes_, false);
 
-    // Do not proceed to read the data if loader is aborted, suspended for non
-    // back/forward cache reason, or the state is cancelled.
-    if (loader_->IsAborted() || IsSuspendedButNotForBackForwardCache() ||
+    if (loader_->IsAborted() || loader_->IsSuspended() ||
         state_ == State::kCancelled) {
       return;
     }
-
-    // Proceed to read the data, even if in back/forward cache.
     while (state_ == State::kLoading) {
       // Peek available bytes from |bytes_consumer_| and report them to
       // |loader_|.
@@ -295,10 +276,6 @@ class ResponseBodyLoader::DelegatingBytesConsumer final
                                       WrapWeakPersistent(loader_.Get())));
       }
     }
-  }
-
-  bool IsSuspendedButNotForBackForwardCache() {
-    return loader_->IsSuspended() && !loader_->IsSuspendedForBackForwardCache();
   }
 
   const Member<BytesConsumer> bytes_consumer_;
@@ -498,7 +475,7 @@ void ResponseBodyLoader::DidBufferLoadWhileInBackForwardCache(
   if (!back_forward_cache_loader_helper_)
     return;
   back_forward_cache_loader_helper_->DidBufferLoadWhileInBackForwardCache(
-      /*update_process_wide_count=*/true, num_bytes);
+      num_bytes);
 }
 
 void ResponseBodyLoader::Start() {
@@ -546,12 +523,9 @@ void ResponseBodyLoader::Suspend(LoaderFreezeMode mode) {
 
 void ResponseBodyLoader::EvictFromBackForwardCacheIfDrainedAsBytesConsumer() {
   if (drained_as_bytes_consumer_) {
-    if (!base::FeatureList::IsEnabled(
-            features::kAllowDatapipeDrainedAsBytesConsumerInBFCache)) {
-      EvictFromBackForwardCache(
-          mojom::blink::RendererEvictionReason::
-              kNetworkRequestDatapipeDrainedAsBytesConsumer);
-    }
+    EvictFromBackForwardCache(
+        mojom::blink::RendererEvictionReason::
+            kNetworkRequestDatapipeDrainedAsBytesConsumer);
   }
 }
 

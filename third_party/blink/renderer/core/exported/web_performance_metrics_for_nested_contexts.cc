@@ -7,7 +7,6 @@
 #include "third_party/blink/renderer/core/timing/window_performance.h"
 
 namespace blink {
-
 void WebPerformanceMetricsForNestedContexts::Reset() {
   private_.Reset();
 }
@@ -28,17 +27,17 @@ WebPerformanceMetricsForNestedContexts::operator=(
   return *this;
 }
 
-std::optional<base::TimeTicks>
+absl::optional<base::TimeTicks>
 WebPerformanceMetricsForNestedContexts::UnloadStart() const {
   return private_->timingForReporting()->UnloadStart();
 }
 
-std::optional<base::TimeTicks>
+absl::optional<base::TimeTicks>
 WebPerformanceMetricsForNestedContexts::UnloadEnd() const {
   return private_->timingForReporting()->UnloadEnd();
 }
 
-std::optional<base::TimeTicks>
+absl::optional<base::TimeTicks>
 WebPerformanceMetricsForNestedContexts::CommitNavigationEnd() const {
   return private_->timingForReporting()->CommitNavigationEnd();
 }

@@ -27,7 +27,6 @@
 #include "chrome/browser/navigation_predictor/navigation_predictor_preconnect_client.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
-#include "chrome/browser/predictors/lcp_critical_path_predictor/lcp_critical_path_predictor_util.h"
 #include "chrome/browser/predictors/loading_predictor.h"
 #include "chrome/browser/predictors/loading_predictor_factory.h"
 #include "chrome/browser/predictors/loading_test_util.h"
@@ -46,7 +45,6 @@
 #include "components/no_state_prefetch/browser/no_state_prefetch_manager.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/proto/hints.pb.h"
-#include "components/page_load_metrics/browser/page_load_metrics_test_waiter.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/navigation_handle.h"
@@ -55,7 +53,6 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/common/referrer.h"
-#include "content/public/test/back_forward_cache_util.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/prerender_test_util.h"
@@ -106,7 +103,8 @@ std::string GetPathWithPortReplacement(const std::string& path, uint16_t port) {
 }
 
 GURL GetDataURLWithContent(const std::string& content) {
-  std::string encoded_content = base::Base64Encode(content);
+  std::string encoded_content;
+  base::Base64Encode(content, &encoded_content);
   std::string data_uri_content = "data:text/html;base64," + encoded_content;
   return GURL(data_uri_content);
 }
@@ -139,18 +137,7 @@ class PredictorInitializer : public TestObserver {
   void OnPredictorInitialized() override { run_loop_.Quit(); }
 
  private:
-  raw_ptr<ResourcePrefetchPredictor> predictor_ = nullptr;
-  base::RunLoop run_loop_;
-};
-
-class LcpElementLearnWaiter : public TestObserver {
- public:
-  explicit LcpElementLearnWaiter(ResourcePrefetchPredictor* predictor)
-      : TestObserver(predictor) {}
-  void Wait() { run_loop_.Run(); }
-
- private:
-  void OnLcppLearned() override { run_loop_.Quit(); }
+  raw_ptr<ResourcePrefetchPredictor> predictor_;
   base::RunLoop run_loop_;
 };
 
@@ -173,11 +160,10 @@ class TestPreconnectManagerObserver : public PreconnectManager::Observer {
       bool success) override {
     ResolveHostRequestInfo preconnect_info{url.host(),
                                            network_anonymization_key};
-    if (success) {
+    if (success)
       successful_dns_lookups_.insert(preconnect_info);
-    } else {
+    else
       unsuccessful_dns_lookups_.insert(preconnect_info);
-    }
     CheckForWaitingLoop();
   }
 
@@ -187,11 +173,10 @@ class TestPreconnectManagerObserver : public PreconnectManager::Observer {
       bool success) override {
     ResolveProxyRequestInfo resolve_info{url::Origin::Create(url),
                                          network_anonymization_key};
-    if (success) {
+    if (success)
       successful_proxy_lookups_.insert(resolve_info);
-    } else {
+    else
       unsuccessful_proxy_lookups_.insert(resolve_info);
-    }
     CheckForWaitingLoop();
   }
 
@@ -309,9 +294,8 @@ class TestPreconnectManagerObserver : public PreconnectManager::Observer {
         waiting_on_dns_ = ResolveHostRequestInfo();
         break;
       case WaitEvent::kProxy:
-        if (!HasProxyBeenLookedUp(waiting_on_proxy_)) {
+        if (!HasProxyBeenLookedUp(waiting_on_proxy_))
           return;
-        }
         waiting_on_proxy_ = ResolveProxyRequestInfo();
         break;
     }
@@ -368,9 +352,8 @@ class TestPrefetchManagerObserver : public PrefetchManager::Observer {
   void WaitForPrefetchesForNavigation(const GURL& url) {
     DCHECK(waiting_url_.is_empty());
     DCHECK(!url.is_empty());
-    if (done_urls_.find(url) != done_urls_.end()) {
+    if (done_urls_.find(url) != done_urls_.end())
       return;
-    }
     waiting_url_ = url;
     base::RunLoop loop;
     done_callback_ = loop.QuitClosure();
@@ -439,7 +422,7 @@ class LoadingPredictorBrowserTest : public InProcessBrowserTest {
     preconnect_manager_observer_ =
         std::make_unique<TestPreconnectManagerObserver>(
             loading_predictor_->preconnect_manager());
-    if (base::FeatureList::IsEnabled(features::kLoadingPredictorPrefetch)) {
+    if (loading_predictor_->prefetch_manager()) {
       prefetch_manager_observer_ =
           std::make_unique<TestPrefetchManagerObserver>(
               *loading_predictor_->prefetch_manager());
@@ -448,8 +431,6 @@ class LoadingPredictorBrowserTest : public InProcessBrowserTest {
         loading_predictor_->resource_prefetch_predictor());
     initializer.EnsurePredictorInitialized();
   }
-
-  void TearDownOnMainThread() override { loading_predictor_ = nullptr; }
 
   // Navigates to an URL without blocking until the navigation finishes.
   // Returns an observer that can be used to wait for the navigation
@@ -493,9 +474,8 @@ class LoadingPredictorBrowserTest : public InProcessBrowserTest {
     auto prediction = std::make_unique<PreconnectPrediction>();
     bool has_prediction = loading_predictor_->resource_prefetch_predictor()
                               ->PredictPreconnectOrigins(url, prediction.get());
-    if (!has_prediction) {
+    if (!has_prediction)
       return nullptr;
-    }
     return prediction;
   }
 
@@ -520,9 +500,8 @@ class LoadingPredictorBrowserTest : public InProcessBrowserTest {
 
   static std::unique_ptr<net::test_server::HttpResponse> HandleFaviconRequest(
       const net::test_server::HttpRequest& request) {
-    if (request.relative_url != "/favicon.ico") {
+    if (request.relative_url != "/favicon.ico")
       return nullptr;
-    }
 
     auto http_response =
         std::make_unique<net::test_server::BasicHttpResponse>();
@@ -560,7 +539,7 @@ class LoadingPredictorBrowserTest : public InProcessBrowserTest {
   net::EmbeddedTestServer preconnecting_test_server_;
 
  private:
-  raw_ptr<LoadingPredictor> loading_predictor_ = nullptr;
+  raw_ptr<LoadingPredictor, DanglingUntriaged> loading_predictor_ = nullptr;
   std::unique_ptr<net::test_server::ConnectionTracker> connection_tracker_;
   std::unique_ptr<net::test_server::ConnectionTracker>
       preconnecting_server_connection_tracker_;
@@ -900,119 +879,6 @@ IN_PROC_BROWSER_TEST_F(LoadingPredictorBrowserTest, PreconnectNonCors) {
   EXPECT_EQ(0u, connection_tracker()->GetReadSocketCount());
 }
 
-// TODO(crbug.com/1419756): isolate test per feature.  Currently, it has
-// test for script observer and fonts.
-class LCPCriticalPathPredictorBrowserTest : public LoadingPredictorBrowserTest {
- public:
-  LCPCriticalPathPredictorBrowserTest() {
-    scoped_feature_list_.InitWithFeatures(
-        {blink::features::kLCPCriticalPathPredictor}, {});
-  }
-
-  std::vector<std::string> ExpectLcpElementLocatorsPrediction(
-      const base::Location& from_here,
-      const GURL& url,
-      size_t expected_locator_count) {
-    auto lcpp_data =
-        loading_predictor()->resource_prefetch_predictor()->GetLcppData(url);
-    std::vector<std::string> locators;
-    if (lcpp_data) {
-      std::optional<blink::mojom::LCPCriticalPathPredictorNavigationTimeHint>
-          hint = ConvertLcppDataToLCPCriticalPathPredictorNavigationTimeHint(
-              *lcpp_data);
-      if (hint) {
-        locators = hint->lcp_element_locators;
-      }
-    }
-    EXPECT_EQ(expected_locator_count, locators.size()) << from_here.ToString();
-    return locators;
-  }
-
-  void NavigateAndWaitForLcpElement(const base::Location& from_here,
-                                    const GURL& url) {
-    LcpElementLearnWaiter lcp_element_waiter(
-        loading_predictor()->resource_prefetch_predictor());
-    page_load_metrics::PageLoadMetricsTestWaiter waiter(
-        browser()->tab_strip_model()->GetActiveWebContents());
-    waiter.AddPageExpectation(page_load_metrics::PageLoadMetricsTestWaiter::
-                                  TimingField::kLargestContentfulPaint);
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url))
-        << from_here.ToString();
-    waiter.Wait();
-    // Navigate to about:blank to force recording a LCP element.
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")))
-        << from_here.ToString();
-    lcp_element_waiter.Wait();
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-// Tests that the LoadingPredictor has a LCP critical path predictor
-// (LCPP) prediction after navigating to it.
-// LCPP:
-// https://docs.google.com/document/d/18qTNRyv_9K2CtvVrl_ancLzPxiAnfAcbvrCNegU9IBM
-// LCP: https://web.dev/lcp/
-IN_PROC_BROWSER_TEST_F(LCPCriticalPathPredictorBrowserTest,
-                       LearnLCPPFromNavigation) {
-  const GURL kUrlA =
-      embedded_test_server()->GetURL("p.com", "/predictors/load_image_a.html");
-  const GURL kUrlB =
-      embedded_test_server()->GetURL("p.com", "/predictors/load_image_b.html");
-  const GURL kUrlC =
-      embedded_test_server()->GetURL("q.com", "/predictors/load_image_a.html");
-
-  // There is no knowledge in the beginning.
-  ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlA,
-                                     /*expected_locator_count=*/0);
-  ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlB,
-                                     /*expected_locator_count=*/0);
-  ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlC,
-                                     /*expected_locator_count=*/0);
-
-  NavigateAndWaitForLcpElement(FROM_HERE, kUrlA);
-  // The locators should contain [lcp_element_for_a].
-  std::vector<std::string> locators_1 =
-      ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlA,
-                                         /*expected_locator_count=*/1);
-  std::vector<std::string> locators_2 =
-      ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlB,
-                                         /*expected_locator_count=*/1);
-  EXPECT_EQ(locators_1, locators_2);
-  // The locator is encoded in a binary form. So storing the locator for a LCP
-  // node for kUrlA to use later validation.
-  const std::string& locator_for_a = locators_2[0];
-  ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlC,
-                                     /*expected_locator_count=*/0);
-
-  NavigateAndWaitForLcpElement(FROM_HERE, kUrlB);
-  // The locators should contain [lcp_element_for_a, lcp_element_for_b].
-  std::vector<std::string> locators_3 =
-      ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlA,
-                                         /*expected_locator_count=*/2);
-  std::vector<std::string> locators_4 =
-      ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlB,
-                                         /*expected_locator_count=*/2);
-  EXPECT_EQ(locators_3, locators_4);
-  ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlC,
-                                     /*expected_locator_count=*/0);
-
-  NavigateAndWaitForLcpElement(FROM_HERE, kUrlB);
-  std::vector<std::string> locators_5 =
-      ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlA,
-                                         /*expected_locator_count=*/2);
-  std::vector<std::string> locators_6 =
-      ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlB,
-                                         /*expected_locator_count=*/2);
-  // The locators should contain [lcp_element_for_b, lcp_element_for_a].
-  // lcp_element_for_b must come first because we navigated to kUrlB twice.
-  EXPECT_EQ(locators_5, locators_6);
-  ExpectLcpElementLocatorsPrediction(FROM_HERE, kUrlC,
-                                     /*expected_locator_count=*/0);
-  EXPECT_EQ(locator_for_a, locators_6[1]);
-}
-
 enum class NetworkIsolationKeyMode {
   kDisabled,
   kEnabled,
@@ -1079,7 +945,7 @@ class LoadingPredictorNetworkIsolationKeyBrowserTest
                                          TRAFFIC_ANNOTATION_FOR_TESTS);
     simple_loader->DownloadToStringOfUnboundedSizeUntilCrashAndDie(
         browser()->profile()->GetURLLoaderFactory().get(),
-        simple_loader_helper.GetCallbackDeprecated());
+        simple_loader_helper.GetCallback());
     simple_loader_helper.WaitForCallback();
     ASSERT_TRUE(simple_loader_helper.response_body());
     if (url.IntPort() == embedded_test_server()->port()) {
@@ -1275,9 +1141,8 @@ IN_PROC_BROWSER_TEST_P(LoadingPredictorNetworkIsolationKeyBrowserTest,
 
     // Verify that the redirect from |redirecting_url| to |destination_url| was
     // learned and preconnected to.
-    if (i == 1) {
+    if (i == 1)
       preconnecting_server_connection_tracker()->WaitForAcceptedConnections(1);
-    }
     EXPECT_EQ(0u, connection_tracker()->GetReadSocketCount());
 
     // Verify that the preconnects to |embedded_test_server| were made using
@@ -1298,7 +1163,7 @@ IN_PROC_BROWSER_TEST_P(LoadingPredictorNetworkIsolationKeyBrowserTest,
                                          TRAFFIC_ANNOTATION_FOR_TESTS);
     simple_loader->DownloadToStringOfUnboundedSizeUntilCrashAndDie(
         browser()->profile()->GetURLLoaderFactory().get(),
-        simple_loader_helper.GetCallbackDeprecated());
+        simple_loader_helper.GetCallback());
     simple_loader_helper.WaitForCallback();
     ASSERT_TRUE(simple_loader_helper.response_body());
     EXPECT_EQ(2u, connection_tracker()->GetAcceptedSocketCount());
@@ -1821,19 +1686,10 @@ IN_PROC_BROWSER_TEST_P(LoadingPredictorBrowserTestWithOptimizationGuide,
   content::AwaitDocumentOnLoadCompleted(observer->web_contents());
   ASSERT_TRUE(observer->WaitForNavigationFinished());
 
-  // Navigate to another URL and wait until the previous RFH is destroyed (i.e.
-  // until the optimization guide prediction is cleared and metrics are
-  // recorded).
-  content::RenderFrameHostWrapper rfh(
-      observer->web_contents()->GetPrimaryMainFrame());
-  // Disable BFCache to ensure the navigation below unloads |rfh|.
-  content::DisableBackForwardCacheForTesting(
-      browser()->tab_strip_model()->GetActiveWebContents(),
-      content::BackForwardCache::DisableForTestingReason::
-          TEST_REQUIRES_NO_CACHING);
+  // Navigate to another URL - make sure optimization guide prediction is
+  // cleared.
   ASSERT_TRUE(ui_test_utils::NavigateToURL(
       browser(), embedded_test_server()->GetURL("nohints.com", "/")));
-  ASSERT_TRUE(rfh.WaitUntilRenderFrameDeleted());
 
   histogram_tester.ExpectUniqueSample(
       "LoadingPredictor.PreconnectLearningRecall.OptimizationGuide", 0, 1);
@@ -1998,9 +1854,8 @@ class LoadingPredictorPrefetchBrowserTest
 
   // Returns once all expected requests have been received.
   void WaitForRequests() {
-    if (expected_requests_.empty()) {
+    if (expected_requests_.empty())
       return;
-    }
     base::RunLoop loop;
     quit_ = loop.QuitClosure();
     loop.Run();
@@ -2019,9 +1874,8 @@ class LoadingPredictorPrefetchBrowserTest
     // (which includes host+port).
     GURL url = request.GetURL();
     auto host_iter = request.headers.find("Host");
-    if (host_iter != request.headers.end()) {
+    if (host_iter != request.headers.end())
       url = GURL("http://" + host_iter->second + request.relative_url);
-    }
 
     // Remove the expected request.
     auto it = expected_requests_.find(url);
@@ -2030,9 +1884,8 @@ class LoadingPredictorPrefetchBrowserTest
     expected_requests_.erase(it);
 
     // Finish if done.
-    if (expected_requests_.empty() && quit_) {
+    if (expected_requests_.empty() && quit_)
       std::move(quit_).Run();
-    }
   }
 
   base::flat_set<GURL> expected_requests_;
@@ -2042,9 +1895,8 @@ class LoadingPredictorPrefetchBrowserTest
 // Tests that the LoadingPredictor performs prefetching
 // for a navigation which it has a prediction for and there isn't a local
 // prediction available.
-IN_PROC_BROWSER_TEST_P(
-    LoadingPredictorPrefetchBrowserTest,
-    DISABLED_PrepareForPageLoadWithPredictionForPrefetchNoLocalHint) {
+IN_PROC_BROWSER_TEST_P(LoadingPredictorPrefetchBrowserTest,
+                       DISABLED_PrepareForPageLoadWithPredictionForPrefetchNoLocalHint) {
   GURL url = embedded_test_server()->GetURL(
       "test.com", GetPathWithPortReplacement(kHtmlSubresourcesPath,
                                              embedded_test_server()->port()));
@@ -2209,7 +2061,7 @@ IN_PROC_BROWSER_TEST_P(
               Optional(network::CorsErrorStatus(
                   network::mojom::CorsError::kInsecurePrivateNetwork,
                   network::mojom::IPAddressSpace::kUnknown,
-                  network::mojom::IPAddressSpace::kLocal)));
+                  network::mojom::IPAddressSpace::kLoopback)));
 }
 
 // This fixture is for disabling prefetching via test suite instantiation to
@@ -2319,65 +2171,65 @@ INSTANTIATE_TEST_SUITE_P(
         /*IsPrefetchEnabled()=*/testing::Values(true),
         /*GetSubresourceType()=*/testing::Values("all")));
 
-// Tests that LoadingPredictorTabHelper ignores prerender navigations and
-// page activations.
-class LoadingPredictorMultiplePageBrowserTest
-    : public LoadingPredictorBrowserTest {
+// Tests that features work when there are multiple FrameTrees in a WebContents.
+class MultiPageBrowserTest : public InProcessBrowserTest {
  public:
-  LoadingPredictorMultiplePageBrowserTest()
-      : prerender_test_helper_(base::BindRepeating(
-            &LoadingPredictorMultiplePageBrowserTest::GetWebContents,
-            base::Unretained(this))) {}
-
-  content::test::PrerenderTestHelper& prerender_test_helper() {
-    return prerender_test_helper_;
-  }
-
-  content::WebContents* GetWebContents() {
-    return browser()->tab_strip_model()->GetActiveWebContents();
-  }
+  MultiPageBrowserTest()
+      : prerender_test_helper_(
+            base::BindRepeating(&MultiPageBrowserTest::GetWebContents,
+                                base::Unretained(this))) {}
 
  protected:
   void SetUp() override {
-    prerender_test_helper_.RegisterServerRequestMonitor(embedded_test_server());
-    LoadingPredictorBrowserTest::SetUp();
+    prerender_test_helper_.SetUp(embedded_test_server());
+    InProcessBrowserTest::SetUp();
+  }
+  void SetUpOnMainThread() override {
+    test_server_handle_ = embedded_test_server()->StartAndReturnHandle();
+    web_contents_ = browser()->tab_strip_model()->GetActiveWebContents();
   }
 
- private:
+  content::WebContents* web_contents() { return web_contents_; }
+
   content::test::PrerenderTestHelper prerender_test_helper_;
+
+ private:
+  content::WebContents* GetWebContents() { return web_contents_; }
+
+  net::test_server::EmbeddedTestServerHandle test_server_handle_;
+  raw_ptr<content::WebContents, DanglingUntriaged> web_contents_;
 };
 
-IN_PROC_BROWSER_TEST_F(LoadingPredictorMultiplePageBrowserTest,
-                       PrerenderNavigationNotObserved) {
+IN_PROC_BROWSER_TEST_F(MultiPageBrowserTest, LoadingPredictor) {
   GURL first_main = embedded_test_server()->GetURL("/title1.html");
   GURL prerender = embedded_test_server()->GetURL("/title2.html");
   GURL second_main = embedded_test_server()->GetURL("/title3.html");
   auto* loading_predictor =
       predictors::LoadingPredictorFactory::GetForProfile(browser()->profile());
 
-  // Start navigation in the primary main frame.
+  // Start navigationin primary FrameTree.
   auto first_main_observer = std::make_unique<content::TestNavigationManager>(
-      GetWebContents(), first_main);
-  GetWebContents()->GetController().LoadURL(first_main, content::Referrer(),
-                                            ui::PAGE_TRANSITION_TYPED,
-                                            std::string());
+      web_contents(), first_main);
+  web_contents()->GetController().LoadURL(first_main, content::Referrer(),
+                                          ui::PAGE_TRANSITION_TYPED,
+                                          std::string());
   ASSERT_TRUE(first_main_observer->WaitForRequestStart());
   EXPECT_EQ(1u, loading_predictor->GetActiveNavigationsSizeForTesting());
   ASSERT_TRUE(first_main_observer->WaitForNavigationFinished());
   EXPECT_EQ(0u, loading_predictor->GetActiveNavigationsSizeForTesting());
-  content::WaitForLoadStop(GetWebContents());
+  content::WaitForLoadStop(web_contents());
   EXPECT_EQ(1u, loading_predictor->GetTotalHintsActivatedForTesting());
 
-  // Start a prerender and a navigation in the primary main frame so we have 2
+  // Start a pre-render and a navigation in the main frame so we have 2
   // concurrent navigations.
   auto prerender_observer = std::make_unique<content::TestNavigationManager>(
-      GetWebContents(), prerender);
+      web_contents(), prerender);
   auto second_main_observer = std::make_unique<content::TestNavigationManager>(
-      GetWebContents(), second_main);
-  prerender_test_helper().AddPrerenderAsync(prerender);
-  GetWebContents()->GetController().LoadURL(second_main, content::Referrer(),
-                                            ui::PAGE_TRANSITION_TYPED,
-                                            std::string());
+      web_contents(), second_main);
+  prerender_test_helper_.AddPrerenderAsync(prerender);
+  web_contents()->GetController().LoadURL(second_main, content::Referrer(),
+                                          ui::PAGE_TRANSITION_TYPED,
+                                          std::string());
   ASSERT_TRUE(prerender_observer->WaitForRequestStart());
   ASSERT_TRUE(second_main_observer->WaitForRequestStart());
   EXPECT_EQ(1u, loading_predictor->GetActiveNavigationsSizeForTesting());
@@ -2386,59 +2238,7 @@ IN_PROC_BROWSER_TEST_F(LoadingPredictorMultiplePageBrowserTest,
   ASSERT_TRUE(second_main_observer->WaitForNavigationFinished());
   EXPECT_EQ(0u, loading_predictor->GetActiveNavigationsSizeForTesting());
 
-  content::WaitForLoadStop(GetWebContents());
-  EXPECT_EQ(2u, loading_predictor->GetTotalHintsActivatedForTesting());
-}
-
-IN_PROC_BROWSER_TEST_F(LoadingPredictorMultiplePageBrowserTest,
-                       PrerenderActivationNotObserved) {
-  GURL main_url = embedded_test_server()->GetURL("/title1.html");
-  GURL prerender_url = embedded_test_server()->GetURL("/title2.html");
-  auto* loading_predictor =
-      predictors::LoadingPredictorFactory::GetForProfile(browser()->profile());
-
-  // Navigate primary main frame.
-  GetWebContents()->GetController().LoadURL(
-      main_url, content::Referrer(), ui::PAGE_TRANSITION_TYPED, std::string());
-  content::WaitForLoadStop(GetWebContents());
-  EXPECT_EQ(1u, loading_predictor->GetTotalHintsActivatedForTesting());
-
-  // Start a prerender.
-  prerender_test_helper().AddPrerender(prerender_url);
-  EXPECT_EQ(1u, loading_predictor->GetTotalHintsActivatedForTesting());
-
-  // Activate the prerender.
-  prerender_test_helper().NavigatePrimaryPage(prerender_url);
-  EXPECT_EQ(1u, loading_predictor->GetTotalHintsActivatedForTesting());
-}
-
-// TODO(crbug.com/325336071): Re-enable this test
-#if BUILDFLAG(IS_LINUX)
-#define MAYBE_BackForwardCacheNavigationNotObserved \
-  DISABLED_BackForwardCacheNavigationNotObserved
-#else
-#define MAYBE_BackForwardCacheNavigationNotObserved \
-  BackForwardCacheNavigationNotObserved
-#endif
-IN_PROC_BROWSER_TEST_F(LoadingPredictorMultiplePageBrowserTest,
-                       MAYBE_BackForwardCacheNavigationNotObserved) {
-  GURL url_1 = embedded_test_server()->GetURL("a.com", "/title1.html");
-  GURL url_2 = embedded_test_server()->GetURL("b.com", "/title2.html");
-  auto* loading_predictor =
-      predictors::LoadingPredictorFactory::GetForProfile(browser()->profile());
-
-  // Navigate primary main frame twice.
-  ASSERT_TRUE(content::NavigateToURL(GetWebContents(), url_1));
-  content::RenderFrameHostWrapper rfh_1(
-      GetWebContents()->GetPrimaryMainFrame());
-  ASSERT_TRUE(content::NavigateToURL(GetWebContents(), url_2));
-  ASSERT_EQ(rfh_1->GetLifecycleState(),
-            content::RenderFrameHost::LifecycleState::kInBackForwardCache);
-  EXPECT_EQ(2u, loading_predictor->GetTotalHintsActivatedForTesting());
-
-  // Go back (using BackForwardCache).
-  ASSERT_TRUE(content::HistoryGoBack(GetWebContents()));
-  ASSERT_EQ(GetWebContents()->GetPrimaryMainFrame(), rfh_1.get());
+  content::WaitForLoadStop(web_contents());
   EXPECT_EQ(2u, loading_predictor->GetTotalHintsActivatedForTesting());
 }
 

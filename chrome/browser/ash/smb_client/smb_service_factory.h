@@ -5,11 +5,12 @@
 #ifndef CHROME_BROWSER_ASH_SMB_CLIENT_SMB_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_ASH_SMB_CLIENT_SMB_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "content/public/browser/browser_context.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 class SmbService;
 
@@ -30,19 +31,20 @@ class SmbServiceFactory : public ProfileKeyedServiceFactory {
   SmbServiceFactory& operator=(const SmbServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<SmbServiceFactory>;
+  friend struct base::DefaultSingletonTraits<SmbServiceFactory>;
 
   SmbServiceFactory();
   ~SmbServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;
 };
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_SMB_CLIENT_SMB_SERVICE_FACTORY_H_

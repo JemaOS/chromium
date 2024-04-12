@@ -27,7 +27,7 @@ void ArcAppSyncMetricsHelper::SetTimeSyncStarted() {
 }
 
 void ArcAppSyncMetricsHelper::OnAppInstalled(
-    std::optional<uint64_t> app_size_in_bytes) {
+    absl::optional<uint64_t> app_size_in_bytes) {
   time_last_install_finished_ = base::TimeTicks::Now();
   num_installed_apps_++;
 

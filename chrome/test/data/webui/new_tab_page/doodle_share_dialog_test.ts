@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {DoodleShareDialogElement} from 'chrome://new-tab-page/new_tab_page.js';
-import {WindowProxy} from 'chrome://new-tab-page/new_tab_page.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
+
+import {DoodleShareDialogElement, WindowProxy} from 'chrome://new-tab-page/new_tab_page.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {TestMock} from 'chrome://webui-test/test_mock.js';
+import {TestMock} from 'chrome://webui-test/test_mock.js';
 
 import {installMock} from './test_support.js';
 

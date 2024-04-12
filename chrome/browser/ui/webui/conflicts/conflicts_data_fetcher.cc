@@ -67,7 +67,7 @@ constexpr char kAllowedSameDirectory[] =
 void AppendString(base::StringPiece input, std::string* output) {
   if (!output->empty())
     *output += ", ";
-  output->append(input);
+  output->append(input.data(), input.size());
 }
 
 // Returns a string describing the current module blocking status: loaded or
@@ -240,7 +240,7 @@ enum ThirdPartyFeaturesStatus {
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 ThirdPartyFeaturesStatus GetThirdPartyFeaturesStatus(
-    std::optional<ThirdPartyConflictsManager::State>
+    absl::optional<ThirdPartyConflictsManager::State>
         third_party_conflicts_manager_state) {
   // The ThirdPartyConflictsManager instance exists if we have its state.
   if (third_party_conflicts_manager_state.has_value()) {
@@ -326,7 +326,7 @@ void OnConflictsDataFetched(
 void OnModuleDataFetched(ConflictsDataFetcher::OnConflictsDataFetchedCallback
                              on_conflicts_data_fetched_callback,
                          base::Value::Dict results,
-                         std::optional<ThirdPartyConflictsManager::State>
+                         absl::optional<ThirdPartyConflictsManager::State>
                              third_party_conflicts_manager_state) {
   OnConflictsDataFetched(
       std::move(on_conflicts_data_fetched_callback), std::move(results),
@@ -405,7 +405,7 @@ void ConflictsDataFetcher::GetListOfModules() {
   module_list_ = base::Value::List();
 
   auto* module_database = ModuleDatabase::GetInstance();
-  module_database->StartInspection();
+  module_database->ForceStartInspection();
   module_database->AddObserver(this);
 }
 
@@ -462,7 +462,7 @@ void ConflictsDataFetcher::OnModuleDatabaseIdle() {
   base::Value::Dict results;
   results.Set("moduleCount", static_cast<int>(module_list_->size()));
   results.Set("moduleList", std::move(*module_list_));
-  module_list_ = std::nullopt;
+  module_list_ = absl::nullopt;
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   // The state of third-party features must be determined on the UI thread.

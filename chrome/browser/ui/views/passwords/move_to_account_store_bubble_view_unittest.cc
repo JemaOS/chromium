@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ui/views/passwords/move_to_account_store_bubble_view.h"
 
-#include <utility>
-
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
@@ -33,7 +31,7 @@ class MoveToAccountStoreBubbleViewTest : public PasswordBubbleViewTestBase {
   void TearDown() override;
 
  protected:
-  raw_ptr<MoveToAccountStoreBubbleView> view_ = nullptr;
+  raw_ptr<MoveToAccountStoreBubbleView> view_;
 };
 
 void MoveToAccountStoreBubbleViewTest::CreateViewAndShow() {
@@ -50,9 +48,8 @@ void MoveToAccountStoreBubbleViewTest::CreateViewAndShow() {
 }
 
 void MoveToAccountStoreBubbleViewTest::TearDown() {
-  std::exchange(view_, nullptr)
-      ->GetWidget()
-      ->CloseWithReason(views::Widget::ClosedReason::kCloseButtonClicked);
+  view_->GetWidget()->CloseWithReason(
+      views::Widget::ClosedReason::kCloseButtonClicked);
 
   PasswordBubbleViewTestBase::TearDown();
 }

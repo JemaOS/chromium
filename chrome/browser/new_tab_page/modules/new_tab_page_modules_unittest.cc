@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,36 +19,15 @@
 
 namespace ntp {
 
-const std::vector<base::test::FeatureRef>& kAllModuleFeatures = {
-    ntp_features::kNtpChromeCartModule,
-    ntp_features::kNtpDriveModule,
-    ntp_features::kNtpFeedModule,
-    ntp_features::kNtpHistoryClustersModule,
-    ntp_features::kNtpRecipeTasksModule,
-};
-
-std::vector<base::test::FeatureRef> ComputeDisabledFeaturesList(
-    const std::vector<base::test::FeatureRef>& features,
-    const std::vector<base::test::FeatureRef>& enabled_features) {
-  std::vector<base::test::FeatureRef> disabled_features;
-  std::copy_if(features.begin(), features.end(),
-               std::back_inserter(disabled_features),
-               [&enabled_features](base::test::FeatureRef feature_to_copy) {
-                 return !base::Contains(enabled_features, feature_to_copy);
-               });
-  return disabled_features;
-}
-
-TEST(NewTabPageModulesTest, MakeModuleIdNames_SingleModuleEnabled) {
-  const std::vector<base::test::FeatureRef>& some_module_features = {
-      ntp_features::kNtpRecipeTasksModule, ntp_features::kNtpFeedModule,
-      ntp_features::kNtpHistoryClustersModule};
-  for (auto& feature : some_module_features) {
+TEST(NewTabPageModulesTest, MakeModuleIdNames) {
+  const std::vector<base::test::FeatureRef>& module_features = {
+      ntp_features::kNtpRecipeTasksModule, ntp_features::kNtpChromeCartModule,
+      ntp_features::kNtpFeedModule, ntp_features::kNtpHistoryClustersModule};
+  for (auto& feature : module_features) {
     base::test::ScopedFeatureList features;
     features.InitWithFeatures(
         /*enabled_features=*/{feature},
-        /*disabled_features=*/ComputeDisabledFeaturesList(some_module_features,
-                                                          {feature}));
+        /*disabled_features=*/{});
 
     const std::vector<std::pair<const std::string, int>> module_id_names =
         MakeModuleIdNames(false);
@@ -57,14 +35,23 @@ TEST(NewTabPageModulesTest, MakeModuleIdNames_SingleModuleEnabled) {
   }
 }
 
+TEST(NewTabPageModulesTest, MakeModuleIdNames_NoDriveModule) {
+  base::test::ScopedFeatureList features;
+  features.InitWithFeatures(
+      /*enabled_features=*/{ntp_features::kNtpRecipeTasksModule},
+      /*disabled_features=*/{});
+
+  const std::vector<std::pair<const std::string, int>> module_id_names =
+      MakeModuleIdNames(false);
+  ASSERT_EQ(1u, module_id_names.size());
+}
+
 TEST(NewTabPageModulesTest, MakeModuleIdNames_WithDriveModule) {
   base::test::ScopedFeatureList features;
-  const std::vector<base::test::FeatureRef>& enabled_features = {
-      ntp_features::kNtpRecipeTasksModule, ntp_features::kNtpDriveModule};
   features.InitWithFeatures(
-      /*enabled_features=*/enabled_features,
-      /*disabled_features=*/ComputeDisabledFeaturesList(kAllModuleFeatures,
-                                                        enabled_features));
+      /*enabled_features=*/{ntp_features::kNtpRecipeTasksModule,
+                            ntp_features::kNtpDriveModule},
+      /*disabled_features=*/{});
 
   const std::vector<std::pair<const std::string, int>> module_id_names =
       MakeModuleIdNames(true);
@@ -76,11 +63,11 @@ TEST(NewTabPageModulesTest, MakeModuleIdNames_DummyModules) {
   base::test::ScopedFeatureList features;
   features.InitWithFeatures(
       /*enabled_features=*/{ntp_features::kNtpDummyModules},
-      /*disabled_features=*/kAllModuleFeatures);
+      /*disabled_features=*/{});
 
   const std::vector<std::pair<const std::string, int>> module_id_names =
       MakeModuleIdNames(false);
-  ASSERT_EQ(1u, module_id_names.size());
+  ASSERT_EQ(12u, module_id_names.size());
 }
 #endif
 

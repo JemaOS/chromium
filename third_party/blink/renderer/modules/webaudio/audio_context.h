@@ -5,7 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_AUDIO_CONTEXT_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_AUDIO_CONTEXT_H_
 
-#include "base/gtest_prod_util.h"
 #include "third_party/blink/public/mojom/mediastream/media_devices.mojom-blink.h"
 #include "third_party/blink/public/mojom/permissions/permission.mojom-blink.h"
 #include "third_party/blink/public/mojom/webaudio/audio_context_manager.mojom-blink.h"
@@ -29,10 +28,9 @@ namespace blink {
 
 class AudioContextOptions;
 class AudioTimestamp;
-class ExecutionContext;
+class Document;
 class ExceptionState;
 class HTMLMediaElement;
-class LocalDOMWindow;
 class MediaElementAudioSourceNode;
 class MediaStream;
 class MediaStreamAudioDestinationNode;
@@ -48,13 +46,13 @@ class MODULES_EXPORT AudioContext : public BaseAudioContext,
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  static AudioContext* Create(ExecutionContext*,
+  static AudioContext* Create(Document&,
                               const AudioContextOptions*,
                               ExceptionState&);
 
-  AudioContext(LocalDOMWindow&,
+  AudioContext(Document&,
                const WebAudioLatencyHint&,
-               std::optional<float> sample_rate,
+               absl::optional<float> sample_rate,
                WebAudioSinkDescriptor sink_descriptor);
   ~AudioContext() override;
 
@@ -66,12 +64,11 @@ class MODULES_EXPORT AudioContext : public BaseAudioContext,
   void ContextDestroyed() final;
   bool HasPendingActivity() const override;
 
-  ScriptPromiseTyped<IDLUndefined> closeContext(ScriptState*, ExceptionState&);
+  ScriptPromise closeContext(ScriptState*, ExceptionState&);
   bool IsContextCleared() const final;
 
-  ScriptPromiseTyped<IDLUndefined> suspendContext(ScriptState*,
-                                                  ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> resumeContext(ScriptState*, ExceptionState&);
+  ScriptPromise suspendContext(ScriptState*, ExceptionState&);
+  ScriptPromise resumeContext(ScriptState*, ExceptionState&);
 
   bool HasRealtimeConstraint() final { return true; }
 
@@ -105,10 +102,6 @@ class MODULES_EXPORT AudioContext : public BaseAudioContext,
 
   AudioCallbackMetric GetCallbackMetric() const;
 
-  // Returns the audio buffer size set for the underlying audio callback in the
-  // AudioDestination under blink/renderer/platform.
-  uint32_t PlatformBufferSize() const;
-
   // mojom::blink::PermissionObserver
   void OnPermissionStatusChange(mojom::blink::PermissionStatus) override;
 
@@ -116,12 +109,10 @@ class MODULES_EXPORT AudioContext : public BaseAudioContext,
 
   WebAudioSinkDescriptor GetSinkDescriptor() const { return sink_descriptor_; }
 
-  ScriptPromiseTyped<IDLUndefined> setSinkId(
-      ScriptState*,
-      const V8UnionAudioSinkOptionsOrString*,
-      ExceptionState&);
+  ScriptPromise setSinkId(ScriptState*,
+                          const V8UnionAudioSinkOptionsOrString*,
+                          ExceptionState&);
 
-  void NotifySetSinkIdBegins();
   void NotifySetSinkIdIsDone(WebAudioSinkDescriptor);
 
   HeapDeque<Member<SetSinkIdResolver>>& GetSetSinkIdResolver() {
@@ -135,8 +126,6 @@ class MODULES_EXPORT AudioContext : public BaseAudioContext,
   // A helper function to validate the given sink descriptor. See:
   // webaudio.github.io/web-audio-api/#validating-sink-identifier
   bool IsValidSinkDescriptor(const WebAudioSinkDescriptor&);
-
-  void OnRenderError();
 
  protected:
   void Uninitialize() final;
@@ -236,12 +225,8 @@ class MODULES_EXPORT AudioContext : public BaseAudioContext,
   // updated.
   void UpdateV8SinkId();
 
-  // Called on prerendering activation time if this AudioContext is blocked by
-  // prerendering.
-  void ResumeOnPrerenderActivation();
-
   unsigned context_id_;
-  Member<ScriptPromiseResolverTyped<IDLUndefined>> close_resolver_;
+  Member<ScriptPromiseResolver> close_resolver_;
 
   AudioIOPosition output_position_;
   AudioCallbackMetric callback_metric_;
@@ -249,19 +234,15 @@ class MODULES_EXPORT AudioContext : public BaseAudioContext,
   // Whether a user gesture is required to start this AudioContext.
   bool user_gesture_required_ = false;
 
-  // Whether this AudioContext is blocked to start because the page is still in
-  // prerendering state.
-  bool blocked_by_prerendering_ = false;
-
   // Autoplay status associated with this AudioContext, if any.
   // Will only be set if there is an autoplay policy in place.
   // Will never be set for OfflineAudioContext.
-  std::optional<AutoplayStatus> autoplay_status_;
+  absl::optional<AutoplayStatus> autoplay_status_;
 
   // Autoplay unlock type for this AudioContext.
   // Will only be set if there is an autoplay policy in place.
   // Will never be set for OfflineAudioContext.
-  std::optional<AutoplayUnlockType> autoplay_unlock_type_;
+  absl::optional<AutoplayUnlockType> autoplay_unlock_type_;
 
   // Records if start() was ever called for any source node in this context.
   bool source_node_started_ = false;
@@ -317,10 +298,6 @@ class MODULES_EXPORT AudioContext : public BaseAudioContext,
 
   // Stores a list of identifiers for output device.
   HashSet<String> output_device_ids_;
-
-  // `wasRunning` flag for `setSinkId()` state transition. See the
-  // implementation of `NotifySetSinkIdBegins()` for details.
-  bool sink_transition_flag_was_running_ = false;
 };
 
 }  // namespace blink

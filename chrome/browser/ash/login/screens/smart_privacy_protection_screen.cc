@@ -25,11 +25,11 @@ constexpr const char kUserActionShowLearnMore[] = "show-learn-more";
 // static
 std::string SmartPrivacyProtectionScreen::GetResultString(Result result) {
   switch (result) {
-    case Result::kProceedWithFeatureOn:
+    case Result::PROCEED_WITH_FEATURE_ON:
       return "ContinueWithFeatureOn";
-    case Result::kProceedWithFeatureOff:
+    case Result::PROCEED_WITH_FEATURE_OFF:
       return "ContinueWithFeatureOff";
-    case Result::kNotApplicable:
+    case Result::NOT_APPLICABLE:
       return BaseScreen::kNotApplicable;
   }
 }
@@ -52,7 +52,7 @@ bool SmartPrivacyProtectionScreen::MaybeSkip(WizardContext& context) {
       features::IsQuickDimEnabled() && !DemoSession::IsDeviceInDemoMode()) {
     return false;
   }
-  exit_callback_.Run(Result::kNotApplicable);
+  exit_callback_.Run(Result::NOT_APPLICABLE);
   return true;
 }
 
@@ -69,11 +69,11 @@ void SmartPrivacyProtectionScreen::OnUserAction(const base::Value::List& args) {
     Profile* profile = ProfileManager::GetActiveUserProfile();
     profile->GetPrefs()->SetBoolean(prefs::kPowerQuickDimEnabled,
                                     features::IsQuickDimEnabled());
-    exit_callback_.Run(Result::kProceedWithFeatureOn);
+    exit_callback_.Run(Result::PROCEED_WITH_FEATURE_ON);
   } else if (action_id == kUserActionFeatureTurnOff) {
     Profile* profile = ProfileManager::GetActiveUserProfile();
     profile->GetPrefs()->SetBoolean(prefs::kPowerQuickDimEnabled, false);
-    exit_callback_.Run(Result::kProceedWithFeatureOff);
+    exit_callback_.Run(Result::PROCEED_WITH_FEATURE_OFF);
   } else if (action_id == kUserActionShowLearnMore) {
     // TODO(crbug.com/1293320): add p-link once available
   } else {

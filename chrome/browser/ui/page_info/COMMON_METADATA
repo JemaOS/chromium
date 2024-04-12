@@ -1,6 +1,4 @@
-monorail: {
+monorail {
   component: "UI>Browser>Bubbles>PageInfo"
 }
-buganizer_public: {
-  component_id: 1457025
-}
+team_email: "security-enamel@chromium.org"

@@ -25,7 +25,9 @@ namespace {
 // Fake delegate that stubs out device settings retrieval for testing purposes.
 class TestDelegate : public DeviceReportingSettingsLacros::Delegate {
  public:
-  TestDelegate() : device_settings_(crosapi::mojom::DeviceSettings::New()) {}
+  TestDelegate()
+      : device_settings_owned_(crosapi::mojom::DeviceSettings::New()),
+        device_settings_(device_settings_owned_.get()) {}
   TestDelegate(const TestDelegate& other) = delete;
   TestDelegate& operator=(const TestDelegate& other) = delete;
   ~TestDelegate() override = default;
@@ -36,35 +38,30 @@ class TestDelegate : public DeviceReportingSettingsLacros::Delegate {
   }
 
   crosapi::mojom::DeviceSettings* GetDeviceSettings() override {
-    return device_settings_.get();
+    return device_settings_;
   }
 
   // Updates device settings and notifies the `DeviceSettingsObserver` of this
   // change.
-  void UpdateDeviceSettings(crosapi::mojom::DeviceSettingsPtr device_settings) {
-    device_settings_ = std::move(device_settings);
+  void UpdateDeviceSettings(crosapi::mojom::DeviceSettings* device_settings) {
+    device_settings_ = device_settings;
     device_reporting_settings_->OnDeviceSettingsUpdated();
+    device_settings_owned_.reset();
   }
 
  private:
   raw_ptr<DeviceReportingSettingsLacros> device_reporting_settings_;
-  crosapi::mojom::DeviceSettingsPtr device_settings_;
+  crosapi::mojom::DeviceSettingsPtr device_settings_owned_;
+  raw_ptr<crosapi::mojom::DeviceSettings> device_settings_;
 };
 
 class DeviceReportingSettingsLacrosTest : public ::testing::Test {
  protected:
-  // ::testing::Test:
   void SetUp() override {
-    Test::SetUp();
     auto test_delegate = std::make_unique<TestDelegate>();
     delegate_ = test_delegate.get();
     device_reporting_settings_ =
         DeviceReportingSettingsLacros::CreateForTest(std::move(test_delegate));
-  }
-  void TearDown() override {
-    delegate_ = nullptr;
-    device_reporting_settings_.reset();
-    Test::TearDown();
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -82,10 +79,6 @@ TEST_F(DeviceReportingSettingsLacrosTest, GetInvalidDeviceSetting) {
   int int_value;
   EXPECT_FALSE(device_reporting_settings_->GetInteger(
       ::policy::key::kReportDeviceNetworkStatus, &int_value));
-
-  // Cannot get reporting enabled from an integer setting.
-  EXPECT_FALSE(device_reporting_settings_->GetReportingEnabled(
-      ::policy::key::kReportUploadFrequency, &bool_value));
 }
 
 TEST_F(DeviceReportingSettingsLacrosTest, GetBoolean) {
@@ -93,23 +86,10 @@ TEST_F(DeviceReportingSettingsLacrosTest, GetBoolean) {
       crosapi::mojom::DeviceSettings::New();
   device_settings_ptr->report_device_network_status =
       crosapi::mojom::DeviceSettings::OptionalBool::kTrue;
-  delegate_->UpdateDeviceSettings(std::move(device_settings_ptr));
+  delegate_->UpdateDeviceSettings(device_settings_ptr.get());
 
   bool value = false;
   ASSERT_TRUE(device_reporting_settings_->GetBoolean(
-      ::policy::key::kReportDeviceNetworkStatus, &value));
-  EXPECT_TRUE(value);
-}
-
-TEST_F(DeviceReportingSettingsLacrosTest, GetReportingEnabled) {
-  crosapi::mojom::DeviceSettingsPtr device_settings_ptr =
-      crosapi::mojom::DeviceSettings::New();
-  device_settings_ptr->report_device_network_status =
-      crosapi::mojom::DeviceSettings::OptionalBool::kTrue;
-  delegate_->UpdateDeviceSettings(std::move(device_settings_ptr));
-
-  bool value = false;
-  ASSERT_TRUE(device_reporting_settings_->GetReportingEnabled(
       ::policy::key::kReportDeviceNetworkStatus, &value));
   EXPECT_TRUE(value);
 }
@@ -123,7 +103,7 @@ TEST_F(DeviceReportingSettingsLacrosTest, GetInteger) {
   crosapi::mojom::DeviceSettingsPtr device_settings_ptr =
       crosapi::mojom::DeviceSettings::New();
   device_settings_ptr->report_upload_frequency = std::move(upload_frequency);
-  delegate_->UpdateDeviceSettings(std::move(device_settings_ptr));
+  delegate_->UpdateDeviceSettings(device_settings_ptr.get());
 
   int value = -1;
   ASSERT_TRUE(device_reporting_settings_->GetInteger(
@@ -153,7 +133,7 @@ TEST_F(DeviceReportingSettingsLacrosTest,
       crosapi::mojom::DeviceSettings::New();
   device_settings_ptr->report_device_network_status =
       crosapi::mojom::DeviceSettings::OptionalBool::kTrue;
-  delegate_->UpdateDeviceSettings(std::move(device_settings_ptr));
+  delegate_->UpdateDeviceSettings(device_settings_ptr.get());
   EXPECT_TRUE(callback_called);
 
   // Verify we can retrieve the updated setting now.
@@ -179,7 +159,7 @@ TEST_F(DeviceReportingSettingsLacrosTest,
       crosapi::mojom::NullableInt64::New();
   upload_frequency->value = 100;
   device_settings_ptr->report_upload_frequency = std::move(upload_frequency);
-  delegate_->UpdateDeviceSettings(std::move(device_settings_ptr));
+  delegate_->UpdateDeviceSettings(device_settings_ptr.get());
   EXPECT_FALSE(callback_called);
 }
 
@@ -190,7 +170,7 @@ TEST_F(DeviceReportingSettingsLacrosTest,
       crosapi::mojom::DeviceSettings::New();
   device_settings_ptr->report_device_network_status =
       crosapi::mojom::DeviceSettings::OptionalBool::kTrue;
-  delegate_->UpdateDeviceSettings(std::move(device_settings_ptr));
+  delegate_->UpdateDeviceSettings(device_settings_ptr.get());
 
   // Register observer.
   bool callback_called = false;
@@ -202,10 +182,7 @@ TEST_F(DeviceReportingSettingsLacrosTest,
 
   // Verify callback isn't triggered since there is no change to the device
   // setting.
-  device_settings_ptr = crosapi::mojom::DeviceSettings::New();
-  device_settings_ptr->report_device_network_status =
-      crosapi::mojom::DeviceSettings::OptionalBool::kTrue;
-  delegate_->UpdateDeviceSettings(std::move(device_settings_ptr));
+  delegate_->UpdateDeviceSettings(device_settings_ptr.get());
   EXPECT_FALSE(callback_called);
 }
 

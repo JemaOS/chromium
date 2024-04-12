@@ -8,7 +8,6 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/input/web_keyboard_event.h"
 #include "third_party/blink/renderer/core/events/keyboard_event.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 namespace {
@@ -43,7 +42,6 @@ class TypeAheadTest : public ::testing::Test {
  protected:
   TypeAheadTest() : type_ahead_(&test_source_) {}
 
-  test::TaskEnvironment task_environment_;
   TestTypeAheadDataSource test_source_;
   TypeAhead type_ahead_;
 };

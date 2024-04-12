@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "ash/system/phonehub/phone_hub_app_count_icon.h"
+#include "phone_hub_app_count_icon.h"
 
 #include "ash/style/ash_color_provider.h"
 #include "base/i18n/number_formatting.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/font.h"
 #include "ui/gfx/font_list.h"
@@ -61,8 +60,4 @@ AppCountIcon::AppCountIcon(const int count)
                       count,
                       AppIcon::kSizeSmall)),
               AppIcon::kSizeSmall) {}
-
-BEGIN_METADATA(AppCountIcon)
-END_METADATA
-
 }  // namespace ash

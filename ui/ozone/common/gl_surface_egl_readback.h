@@ -32,6 +32,7 @@ class GLSurfaceEglReadback : public gl::PbufferGLSurfaceEGL {
               float scale_factor,
               const gfx::ColorSpace& color_space,
               bool has_alpha) override;
+  bool IsOffscreen() override;
   gfx::SwapResult SwapBuffers(PresentationCallback callback,
                               gfx::FrameData data) override;
   gfx::SurfaceOrigin GetOrigin() const override;

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_DRIVE_DRIVE_NOTIFICATION_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_DRIVE_DRIVE_NOTIFICATION_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -33,13 +33,13 @@ class DriveNotificationManagerFactory : public ProfileKeyedServiceFactory {
   static DriveNotificationManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<DriveNotificationManagerFactory>;
+  friend struct base::DefaultSingletonTraits<DriveNotificationManagerFactory>;
 
   DriveNotificationManagerFactory();
   ~DriveNotificationManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

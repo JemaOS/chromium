@@ -27,8 +27,6 @@
 namespace {
 
 class PinTextfield : public views::Textfield {
-  METADATA_HEADER(PinTextfield, views::Textfield)
-
  public:
   PinTextfield(views::TextfieldController* controller, views::View* label) {
     SetTextInputType(ui::TextInputType::TEXT_INPUT_TYPE_PASSWORD);
@@ -50,9 +48,6 @@ class PinTextfield : public views::Textfield {
         GetColorProvider()->GetColor(kColorWebAuthnPinTextfieldBottomBorder)));
   }
 };
-
-BEGIN_METADATA(PinTextfield)
-END_METADATA
 
 }  // namespace
 
@@ -94,8 +89,8 @@ AuthenticatorClientPinEntryView::AuthenticatorClientPinEntryView(
 
   if (show_confirmation_text_field_) {
     DCHECK(confirmation_label_);
-    confirmation_text_field_ =
-        AddChildView(std::make_unique<PinTextfield>(this, confirmation_label_));
+    confirmation_text_field_ = AddChildView(
+        std::make_unique<PinTextfield>(this, confirmation_label_));
   } else {
     AddChildView(std::make_unique<views::View>());
   }
@@ -112,9 +107,8 @@ void AuthenticatorClientPinEntryView::OnThemeChanged() {
   const auto* const color_provider = GetColorProvider();
   const SkColor label_color = color_provider->GetColor(ui::kColorAccent);
   pin_label_->SetEnabledColor(label_color);
-  if (confirmation_label_) {
+  if (confirmation_label_)
     confirmation_label_->SetEnabledColor(label_color);
-  }
 }
 
 void AuthenticatorClientPinEntryView::ContentsChanged(
@@ -137,5 +131,5 @@ bool AuthenticatorClientPinEntryView::HandleKeyEvent(
   return false;
 }
 
-BEGIN_METADATA(AuthenticatorClientPinEntryView)
+BEGIN_METADATA(AuthenticatorClientPinEntryView, views::View)
 END_METADATA

@@ -15,17 +15,15 @@ import '//resources/cr_elements/cr_shared_vars.css.js';
 import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
 import '/shared/settings/people_page/profile_info_browser_proxy.js';
 import '../icons.html.js';
-import '/shared/settings/prefs/prefs.js';
+import 'chrome://resources/cr_components/settings_prefs/prefs.js';
 import '../settings_shared.css.js';
 
-import type {CrButtonElement} from '//resources/cr_elements/cr_button/cr_button.js';
+import {CrButtonElement} from '//resources/cr_elements/cr_button/cr_button.js';
 import {WebUiListenerMixin} from '//resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from '//resources/js/assert.js';
-import type {DomRepeatEvent} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {StoredAccount, SyncBrowserProxy, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
-import {StatusAction, SyncBrowserProxyImpl} from '/shared/settings/people_page/sync_browser_proxy.js';
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
+import {assert} from '//resources/js/assert_ts.js';
+import {DomRepeatEvent, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {StatusAction, StoredAccount, SyncBrowserProxy, SyncBrowserProxyImpl, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
+import {PrefsMixin} from 'chrome://resources/cr_components/settings_prefs/prefs_mixin.js';
 
 import {loadTimeData} from '../i18n_setup.js';
 import {Router} from '../router.js';
@@ -115,14 +113,6 @@ export class SettingsSyncAccountControlElement extends
         reflectToAttribute: true,
       },
 
-      // This property should be set by the parent only and should not change
-      // after the element is created.
-      hideBanner: {
-        type: Boolean,
-        value: false,
-        reflectToAttribute: true,
-      },
-
       shouldShowAvatarRow_: {
         type: Boolean,
         value: false,
@@ -162,7 +152,6 @@ export class SettingsSyncAccountControlElement extends
   showingPromo: boolean;
   embeddedInSubpage: boolean;
   hideButtons: boolean;
-  hideBanner: boolean;
   private shouldShowAvatarRow_: boolean;
   private subLabel_: string;
   private showSetupButtons_: boolean;
@@ -226,19 +215,13 @@ export class SettingsSyncAccountControlElement extends
     return loadTimeData.substituteString(label, name);
   }
 
-  private getAccountLabel_(
-      signedInLabel: string, syncingLabel: string, account: string): string {
+  private getAccountLabel_(label: string, account: string): string {
     if (this.syncStatus.firstSetupInProgress) {
       return this.syncStatus.statusText || account;
     }
-
-    if (this.syncStatus.signedIn && !this.syncStatus.hasError &&
-        !this.syncStatus.disabled) {
-      return loadTimeData.substituteString(syncingLabel, account);
-    }
-
-    return (this.shownAccount_ && this.shownAccount_!.isPrimaryAccount) ?
-        loadTimeData.substituteString(signedInLabel, account) :
+    return this.syncStatus.signedIn && !this.syncStatus.hasError &&
+            !this.syncStatus.disabled ?
+        loadTimeData.substituteString(label, account) :
         account;
   }
 
@@ -316,24 +299,6 @@ export class SettingsSyncAccountControlElement extends
         !this.getPref('signin.allowed_on_next_startup').value;
   }
 
-  /**
-   * Determines whether the banner should be hidden, in the case where the user
-   * has sync enabled or if the property to hide the banner was explicitly set.
-   */
-  private shouldHideBanner_(): boolean {
-    return this.hideBanner || (!!this.syncStatus && !!this.syncStatus.signedIn);
-  }
-
-  /**
-   * Determines whether the sync button should be hidden, in the case where the
-   * user has sync enabled or if the property to hide the banner was explicitly
-   * set.
-   */
-  private shouldHideSyncButton_(): boolean {
-    return this.hideButtons ||
-        (!!this.syncStatus && !!this.syncStatus.signedIn);
-  }
-
   private shouldShowTurnOffButton_(): boolean {
     // <if expr="chromeos_ash">
     if (this.syncStatus.domain) {
@@ -367,7 +332,7 @@ export class SettingsSyncAccountControlElement extends
       return false;
     }
     // </if>
-    return !this.syncStatus.signedIn && !this.hideButtons &&
+    return !this.syncStatus.signedIn &&
         (!loadTimeData.getBoolean('turnOffSyncAllowedForManagedProfiles') ||
          !this.syncStatus.domain);
   }

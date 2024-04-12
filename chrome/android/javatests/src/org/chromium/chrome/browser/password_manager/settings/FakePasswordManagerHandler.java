@@ -4,20 +4,20 @@
 
 package org.chromium.chrome.browser.password_manager.settings;
 
-import android.app.Activity;
 import android.content.Context;
 
 import androidx.annotation.Nullable;
 
 import org.chromium.base.Callback;
 import org.chromium.base.IntStringCallback;
-import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.settings.SettingsLauncher;
 
 import java.util.ArrayList;
 
-/** Fake implementation for the PasswordManagerHandler. */
-public final class FakePasswordManagerHandler implements PasswordManagerHandler {
+/**
+ * Fake implementation for the PasswordManagerHandler.
+ */
+final class FakePasswordManagerHandler implements PasswordManagerHandler {
     // This class has exactly one observer, set on construction and expected to last at least as
     // long as this object (a good candidate is the owner of this object).
     private final PasswordListObserver mObserver;
@@ -29,17 +29,16 @@ public final class FakePasswordManagerHandler implements PasswordManagerHandler 
     private ArrayList<String> mSavedPasswordExeptions = new ArrayList<>();
 
     // The following three data members are set once {@link #serializePasswords()} is called.
-    @Nullable private IntStringCallback mExportSuccessCallback;
+    @Nullable
+    private IntStringCallback mExportSuccessCallback;
 
-    @Nullable private Callback<String> mExportErrorCallback;
+    @Nullable
+    private Callback<String> mExportErrorCallback;
 
-    @Nullable private String mExportTargetPath;
+    @Nullable
+    private String mExportTargetPath;
 
-    private boolean mShowWarningWasCalled;
-
-    private int mSerializationInvocationCount;
-
-    public void setSavedPasswords(ArrayList<SavedPasswordEntry> savedPasswords) {
+    void setSavedPasswords(ArrayList<SavedPasswordEntry> savedPasswords) {
         mSavedPasswords = savedPasswords;
     }
 
@@ -47,7 +46,7 @@ public final class FakePasswordManagerHandler implements PasswordManagerHandler 
         mSavedPasswordExeptions = savedPasswordExceptions;
     }
 
-    public IntStringCallback getExportSuccessCallback() {
+    IntStringCallback getExportSuccessCallback() {
         return mExportSuccessCallback;
     }
 
@@ -59,27 +58,12 @@ public final class FakePasswordManagerHandler implements PasswordManagerHandler 
         return mExportTargetPath;
     }
 
-    boolean wasShowWarningCalled() {
-        return mShowWarningWasCalled;
-    }
-
     /**
      * Constructor.
-     *
      * @param observer The only observer.
      */
-    public FakePasswordManagerHandler(PasswordListObserver observer) {
+    FakePasswordManagerHandler(PasswordListObserver observer) {
         mObserver = observer;
-        mSerializationInvocationCount = 0;
-    }
-
-    /**
-     * A getter for the faked contents of the password store.
-     *
-     * @return the faked contents of the password store.
-     */
-    public ArrayList<SavedPasswordEntry> getSavedPasswordEntriesForTesting() {
-        return mSavedPasswords;
     }
 
     @Override
@@ -121,27 +105,11 @@ public final class FakePasswordManagerHandler implements PasswordManagerHandler 
         mExportSuccessCallback = successCallback;
         mExportErrorCallback = errorCallback;
         mExportTargetPath = targetPath;
-        mSerializationInvocationCount += 1;
     }
 
     @Override
     public void showPasswordEntryEditingView(
             Context context, SettingsLauncher launcher, int index, boolean isBlockedCredential) {
         assert false : "Define this method before starting to use it in tests.";
-    }
-
-    @Override
-    public void showMigrationWarning(
-            Activity activity, BottomSheetController bottomSheetController) {
-        mShowWarningWasCalled = true;
-    }
-
-    @Override
-    public boolean isWaitingForPasswordStore() {
-        return false;
-    }
-
-    public int getSerializationInvocationCount() {
-        return mSerializationInvocationCount;
     }
 }

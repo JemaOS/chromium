@@ -9,7 +9,6 @@
 #include "base/logging.h"
 #include "chrome/browser/ash/scanning/zeroconf_scanner_detector.h"
 #include "net/base/ip_address.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace ash {
@@ -52,18 +51,13 @@ class CreateSaneScannerServiceTypeTest
 TEST_P(CreateSaneScannerServiceTypeTest, SupportedServiceType) {
   net::IPAddress ip_address = IpAddressFromString("101.102.103.104");
 
-  std::optional<Scanner> maybe_scanner = CreateSaneScanner(
-      "EPSON scanner", params().service_type, "EPSON", "Model", "UUID", "eSCL",
-      {"pdl-1", "pdl-2"}, ip_address, 8080);
+  absl::optional<Scanner> maybe_scanner = CreateSaneScanner(
+      "EPSON scanner", params().service_type, "eSCL", ip_address, 8080);
 
   ASSERT_TRUE(maybe_scanner.has_value());
   auto scanner = maybe_scanner.value();
 
   EXPECT_EQ(scanner.display_name, "EPSON scanner");
-  EXPECT_EQ(scanner.manufacturer, "EPSON");
-  EXPECT_EQ(scanner.model, "Model");
-  EXPECT_EQ(scanner.uuid, "UUID");
-  EXPECT_THAT(scanner.pdl, testing::ElementsAre("pdl-1", "pdl-2"));
 
   auto device_names = scanner.device_names[params().protocol];
   ASSERT_TRUE(device_names.size() > 0);
@@ -109,9 +103,8 @@ class CreateSaneScannerSlashTest
 // Test that the correct scanner name is constructed for scanners which report
 // rs values with slashes.
 TEST_P(CreateSaneScannerSlashTest, DropsSlash) {
-  std::optional<Scanner> maybe_scanner =
-      CreateSaneScanner("name", ZeroconfScannerDetector::kEsclServiceType,
-                        "Manufacturer", "Model", /*uuid=*/"", rs(), /*pdl=*/{},
+  absl::optional<Scanner> maybe_scanner =
+      CreateSaneScanner("name", ZeroconfScannerDetector::kEsclServiceType, rs(),
                         IpAddressFromString("101.102.103.104"), 8080);
 
   ASSERT_TRUE(maybe_scanner.has_value());
@@ -128,41 +121,34 @@ INSTANTIATE_TEST_SUITE_P(,
                          CreateSaneScannerSlashTest,
                          testing::Values("/eSCL", "eSCL/", "/eSCL/"));
 
-// Test that CreateSaneScanner handles scanners which don't report an rs value,
-// manufacturer value, nor model value.
+// Test that CreateSaneScanner handles scanners which don't report an rs value.
 TEST(CreateSaneScanner, NoRsValue) {
-  std::optional<Scanner> maybe_scanner = CreateSaneScanner(
-      "name", ZeroconfScannerDetector::kEsclServiceType, /*manufacturer=*/"",
-      /*model=*/"", /*uuid=*/"", /*rs=*/std::nullopt, /*pdl=*/{},
+  absl::optional<Scanner> maybe_scanner = CreateSaneScanner(
+      "name", ZeroconfScannerDetector::kEsclServiceType, absl::nullopt,
       IpAddressFromString("101.102.103.104"), 8080);
 
   ASSERT_TRUE(maybe_scanner.has_value());
 
-  auto scanner = maybe_scanner.value();
-  auto device_names = scanner.device_names[ScanProtocol::kEscl];
+  auto device_names = maybe_scanner.value().device_names[ScanProtocol::kEscl];
   ASSERT_TRUE(device_names.size() > 0);
   EXPECT_EQ(device_names.begin()->device_name,
             "airscan:escl:name:http://101.102.103.104:8080/eSCL/");
-  EXPECT_TRUE(scanner.manufacturer.empty());
-  EXPECT_TRUE(scanner.model.empty());
-  EXPECT_TRUE(scanner.uuid.empty());
 }
 
 // Test that CreateSaneScanner fails when an invalid IP address is passed in.
 TEST(CreateSaneScanner, InvalidIpAddress) {
-  std::optional<Scanner> maybe_scanner = CreateSaneScanner(
-      "name", ZeroconfScannerDetector::kEsclServiceType, "Manufacturer",
-      "Model", /*uuid=*/"", "eSCL", /*pdl=*/{}, net::IPAddress(), 8080);
+  absl::optional<Scanner> maybe_scanner =
+      CreateSaneScanner("name", ZeroconfScannerDetector::kEsclServiceType,
+                        "eSCL", net::IPAddress(), 8080);
 
   EXPECT_FALSE(maybe_scanner.has_value());
 }
 
 // Test that CreateSaneScanner fails for a generic, non-Epson scanner.
 TEST(CreateSaneScanner, GenericNonEpsonScanner) {
-  std::optional<Scanner> maybe_scanner = CreateSaneScanner(
+  absl::optional<Scanner> maybe_scanner = CreateSaneScanner(
       "name", ZeroconfScannerDetector::kGenericScannerServiceType,
-      "Manufacturer", "Model", /*uuid=*/"", std::nullopt, /*pdl=*/{},
-      IpAddressFromString("101.102.103.104"), 8080);
+      absl::nullopt, IpAddressFromString("101.102.103.104"), 8080);
 
   EXPECT_FALSE(maybe_scanner.has_value());
 }

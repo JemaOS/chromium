@@ -55,8 +55,7 @@ TEST_F(VideoFillingViewportTest, MostlyFillingViewport) {
   )HTML");
   Compositor().BeginFrame();
 
-  auto* element =
-      To<HTMLVideoElement>(GetDocument().getElementById(AtomicString("video")));
+  auto* element = To<HTMLVideoElement>(GetDocument().getElementById("video"));
 
   DoCompositeAndPropagate();
   EXPECT_TRUE(IsMostlyFillingViewport(element));
@@ -75,8 +74,7 @@ TEST_F(VideoFillingViewportTest, NotMostlyFillingViewport) {
   )HTML");
   Compositor().BeginFrame();
 
-  auto* element =
-      To<HTMLVideoElement>(GetDocument().getElementById(AtomicString("video")));
+  auto* element = To<HTMLVideoElement>(GetDocument().getElementById("video"));
   DoCompositeAndPropagate();
   EXPECT_FALSE(IsMostlyFillingViewport(element));
 }
@@ -94,15 +92,14 @@ TEST_F(VideoFillingViewportTest, FillingViewportChanged) {
   )HTML");
   Compositor().BeginFrame();
 
-  auto* element =
-      To<HTMLVideoElement>(GetDocument().getElementById(AtomicString("video")));
+  auto* element = To<HTMLVideoElement>(GetDocument().getElementById("video"));
 
   DoCompositeAndPropagate();
   EXPECT_TRUE(IsMostlyFillingViewport(element));
 
-  element->setAttribute(
-      html_names::kStyleAttr,
-      AtomicString("position:fixed; left:0; top:0; width:80%; height:80%;"));
+  element->setAttribute("style",
+                        "position:fixed; left:0; top:0; width:80%; height:80%;",
+                        ASSERT_NO_EXCEPTION);
   DoCompositeAndPropagate();
   EXPECT_FALSE(IsMostlyFillingViewport(element));
 }
@@ -120,8 +117,7 @@ TEST_F(VideoFillingViewportTest, LargeVideo) {
   )HTML");
   Compositor().BeginFrame();
 
-  auto* element =
-      To<HTMLVideoElement>(GetDocument().getElementById(AtomicString("video")));
+  auto* element = To<HTMLVideoElement>(GetDocument().getElementById("video"));
 
   DoCompositeAndPropagate();
   EXPECT_TRUE(IsMostlyFillingViewport(element));
@@ -140,16 +136,14 @@ TEST_F(VideoFillingViewportTest, VideoScrollOutHalf) {
   )HTML");
   Compositor().BeginFrame();
 
-  auto* element =
-      To<HTMLVideoElement>(GetDocument().getElementById(AtomicString("video")));
+  auto* element = To<HTMLVideoElement>(GetDocument().getElementById("video"));
 
   DoCompositeAndPropagate();
   EXPECT_TRUE(IsMostlyFillingViewport(element));
 
   element->setAttribute(
-      html_names::kStyleAttr,
-      AtomicString(
-          "position:fixed; left:0; top:240px; width:100%; height:100%;"));
+      "style", "position:fixed; left:0; top:240px; width:100%; height:100%;",
+      ASSERT_NO_EXCEPTION);
   DoCompositeAndPropagate();
   EXPECT_FALSE(IsMostlyFillingViewport(element));
 }

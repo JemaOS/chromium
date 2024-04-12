@@ -161,8 +161,7 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<blink::ImageDecoder> decoder = blink::ImageDecoder::Create(
       WTF::SharedBuffer::Create(src.data(), src.size()), data_complete,
       blink::ImageDecoder::kAlphaNotPremultiplied,
-      blink::ImageDecoder::kDefaultBitDepth, blink::ColorBehavior::kIgnore,
-      blink::Platform::GetMaxDecodedImageBytes());
+      blink::ImageDecoder::kDefaultBitDepth, blink::ColorBehavior::Ignore());
 
   const size_t frame_count = decoder->FrameCount();
   if (frame_count == 0) {

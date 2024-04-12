@@ -17,29 +17,11 @@
 
 namespace extensions {
 
-namespace {
-
-static constexpr char kBackgroundDisallowedWarning[] =
-    "'background' is only allowed for extensions, legacy packaged "
-    "apps, hosted apps, login screen extensions, and chromeos "
-    "system extensions, but this is a packaged app.";
-
-static constexpr char kBackgroundScriptsDisallowedWarning[] =
-    "'background.scripts' is only allowed for extensions, legacy packaged "
-    "apps, hosted apps, login screen extensions, and chromeos system "
-    "extensions, but this is a packaged app.";
-
-static constexpr char kBackgroundPageDisallowedWarning[] =
-    "'background.page' is only allowed for extensions, legacy packaged "
-    "apps, hosted apps, login screen extensions, and chromeos system "
-    "extensions, but this is a packaged app.";
-
-}  // namespace
-
 namespace errors = manifest_errors;
 namespace keys = manifest_keys;
 
-using PlatformAppsManifestTest = ChromeManifestTest;
+class PlatformAppsManifestTest : public ChromeManifestTest {
+};
 
 TEST_F(PlatformAppsManifestTest, PlatformApps) {
   scoped_refptr<Extension> extension =
@@ -72,6 +54,14 @@ TEST_F(PlatformAppsManifestTest, PlatformApps) {
           "init_invalid_platform_app_1.json",
           "'app.launch' is only allowed for legacy packaged apps and hosted "
           "apps, but this is a packaged app."),
+      Testcase("init_invalid_platform_app_4.json",
+               "'background' is only allowed for extensions, legacy packaged "
+               "apps, hosted apps, login screen extensions, and chromeos "
+               "system extensions, but this is a packaged app."),
+      Testcase("init_invalid_platform_app_5.json",
+               "'background' is only allowed for extensions, legacy packaged "
+               "apps, hosted apps, login screen extensions, and chromeos "
+               "system extensions, but this is a packaged app."),
       Testcase("incognito_invalid_platform_app.json",
                "'incognito' is only allowed for extensions and legacy packaged "
                "apps, "
@@ -79,13 +69,6 @@ TEST_F(PlatformAppsManifestTest, PlatformApps) {
   };
   RunTestcases(warning_testcases, std::size(warning_testcases),
                EXPECT_TYPE_WARNING);
-
-  LoadAndExpectWarnings(
-      "init_invalid_platform_app_4.json",
-      {kBackgroundDisallowedWarning, kBackgroundScriptsDisallowedWarning});
-  LoadAndExpectWarnings(
-      "init_invalid_platform_app_5.json",
-      {kBackgroundDisallowedWarning, kBackgroundPageDisallowedWarning});
 }
 
 TEST_F(PlatformAppsManifestTest, PlatformAppContentSecurityPolicy) {
@@ -139,7 +122,7 @@ TEST_F(PlatformAppsManifestTest, CertainApisRequirePlatformApps) {
   // testing. The requirements are that (1) it be a valid platform app, and (2)
   // it contain no permissions dictionary.
   std::string error;
-  std::optional<base::Value::Dict> platform_app_manifest =
+  absl::optional<base::Value::Dict> platform_app_manifest =
       LoadManifest("init_valid_platform_app.json", &error);
   ASSERT_TRUE(platform_app_manifest);
 

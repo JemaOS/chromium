@@ -13,15 +13,13 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "base/memory/ref_counted.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
 #include "cc/paint/skottie_wrapper.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/lottie/animation.h"
 #include "ui/views/border.h"
@@ -43,8 +41,6 @@ namespace {
 // it in a view as AnimatedImageView.
 // See https://skia.org/user/modules/skottie for more info on skottie.
 class AnimationGallery : public BoxLayoutView, public TextfieldController {
-  METADATA_HEADER(AnimationGallery, BoxLayoutView)
-
  public:
   AnimationGallery() {
     View* image_view_container = nullptr;
@@ -129,15 +125,18 @@ class AnimationGallery : public BoxLayoutView, public TextfieldController {
     InvalidateLayout();
   }
 
-  raw_ptr<AnimatedImageView> animated_image_view_ = nullptr;
-  raw_ptr<Textfield> size_input_ = nullptr;
-  raw_ptr<Textfield> file_chooser_ = nullptr;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION AnimatedImageView* animated_image_view_ = nullptr;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION Textfield* size_input_ = nullptr;
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #addr-of
+  RAW_PTR_EXCLUSION Textfield* file_chooser_ = nullptr;
 
   int size_ = 0;
 };
-
-BEGIN_METADATA(AnimationGallery)
-END_METADATA
 
 }  // namespace
 

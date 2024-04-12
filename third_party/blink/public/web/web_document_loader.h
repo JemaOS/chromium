@@ -134,17 +134,12 @@ class BLINK_EXPORT WebDocumentLoader {
   // committed in this WebDocumentLoader had transient activation.
   virtual bool LastNavigationHadTransientUserActivation() const = 0;
 
-  // Sets the CodeCacheHosts for this loader.
+  // Sets the CodeCacheHost for this loader.
   virtual void SetCodeCacheHost(
-      CrossVariantMojoRemote<mojom::CodeCacheHostInterfaceBase> code_cache_host,
       CrossVariantMojoRemote<mojom::CodeCacheHostInterfaceBase>
-          code_cache_host_for_background) = 0;
+          code_cache_host) = 0;
 
   virtual WebString OriginCalculationDebugInfo() const = 0;
-
-  // Whether the frame holding this document has loaded a document that is not
-  // an initial empty document.
-  virtual bool HasLoadedNonInitialEmptyDocument() const = 0;
 
  protected:
   ~WebDocumentLoader() = default;

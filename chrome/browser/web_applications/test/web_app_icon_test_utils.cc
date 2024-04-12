@@ -87,8 +87,7 @@ bool AreColorsEqual(SkColor expected_color,
          abs_error_b <= threshold && abs_error_a <= threshold;
 }
 
-base::FilePath GetAppIconsAnyDir(Profile* profile,
-                                 const webapps::AppId& app_id) {
+base::FilePath GetAppIconsAnyDir(Profile* profile, const AppId& app_id) {
   base::FilePath web_apps_root_directory = GetWebAppsRootDirectory(profile);
   base::FilePath app_dir =
       GetManifestResourcesDirectoryForApp(web_apps_root_directory, app_id);
@@ -96,8 +95,7 @@ base::FilePath GetAppIconsAnyDir(Profile* profile,
   return icons_dir;
 }
 
-base::FilePath GetAppIconsMaskableDir(Profile* profile,
-                                      const webapps::AppId& app_id) {
+base::FilePath GetAppIconsMaskableDir(Profile* profile, const AppId& app_id) {
   base::FilePath web_apps_root_directory = GetWebAppsRootDirectory(profile);
   base::FilePath app_dir =
       GetManifestResourcesDirectoryForApp(web_apps_root_directory, app_id);
@@ -105,8 +103,7 @@ base::FilePath GetAppIconsMaskableDir(Profile* profile,
   return icons_dir;
 }
 
-base::FilePath GetOtherIconsDir(Profile* profile,
-                                const webapps::AppId& app_id) {
+base::FilePath GetOtherIconsDir(Profile* profile, const AppId& app_id) {
   base::FilePath web_apps_root_directory = GetWebAppsRootDirectory(profile);
   base::FilePath app_dir =
       GetManifestResourcesDirectoryForApp(web_apps_root_directory, app_id);
@@ -248,7 +245,7 @@ void AddIconsToWebAppInstallInfo(
 
 void IconManagerWriteGeneratedIcons(
     WebAppIconManager& icon_manager,
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     const std::vector<GeneratedIconsInfo>& icons_info) {
   IconBitmaps icon_bitmaps;
 
@@ -274,7 +271,7 @@ void IconManagerWriteGeneratedIcons(
 }
 
 SkColor IconManagerReadAppIconPixel(WebAppIconManager& icon_manager,
-                                    const webapps::AppId& app_id,
+                                    const AppId& app_id,
                                     SquareSizePx size_px,
                                     int x,
                                     int y) {

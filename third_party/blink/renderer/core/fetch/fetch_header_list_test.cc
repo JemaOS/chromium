@@ -8,7 +8,6 @@
 
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
@@ -18,7 +17,6 @@ namespace blink {
 namespace {
 
 TEST(FetchHeaderListTest, Append) {
-  test::TaskEnvironment task_environment;
   auto* headerList = MakeGarbageCollected<FetchHeaderList>();
   headerList->Append("ConTenT-TyPe", "text/plain");
   headerList->Append("content-type", "application/xml");
@@ -40,7 +38,6 @@ TEST(FetchHeaderListTest, Append) {
 }
 
 TEST(FetchHeaderListTest, Set) {
-  test::TaskEnvironment task_environment;
   auto* headerList = MakeGarbageCollected<FetchHeaderList>();
   headerList->Append("ConTenT-TyPe", "text/plain");
   headerList->Append("content-type", "application/xml");
@@ -64,7 +61,6 @@ TEST(FetchHeaderListTest, Set) {
 }
 
 TEST(FetchHeaderListTest, Erase) {
-  test::TaskEnvironment task_environment;
   auto* headerList = MakeGarbageCollected<FetchHeaderList>();
   headerList->Remove("foo");
   EXPECT_EQ(0U, headerList->size());
@@ -87,7 +83,6 @@ TEST(FetchHeaderListTest, Erase) {
 }
 
 TEST(FetchHeaderListTest, Combine) {
-  test::TaskEnvironment task_environment;
   auto* headerList = MakeGarbageCollected<FetchHeaderList>();
   headerList->Append("ConTenT-TyPe", "text/plain");
   headerList->Append("content-type", "application/xml");
@@ -101,7 +96,6 @@ TEST(FetchHeaderListTest, Combine) {
 }
 
 TEST(FetchHeaderListTest, SetCookie) {
-  test::TaskEnvironment task_environment;
   const String values[] = {"foo=bar", "bar=baz; Domain=example.com",
                            "fizz=buzz; Expires=Thu, 01 Jan 1970 00:00:00 GMT"};
 
@@ -120,7 +114,6 @@ TEST(FetchHeaderListTest, SetCookie) {
 }
 
 TEST(FetchHeaderListTest, Contains) {
-  test::TaskEnvironment task_environment;
   auto* headerList = MakeGarbageCollected<FetchHeaderList>();
   headerList->Append("ConTenT-TyPe", "text/plain");
   headerList->Append("content-type", "application/xml");
@@ -131,7 +124,6 @@ TEST(FetchHeaderListTest, Contains) {
 }
 
 TEST(FetchHeaderListTest, SortAndCombine) {
-  test::TaskEnvironment task_environment;
   auto* headerList = MakeGarbageCollected<FetchHeaderList>();
   EXPECT_TRUE(headerList->SortAndCombine().empty());
   headerList->Append("Set-cookie", "foo=bar");

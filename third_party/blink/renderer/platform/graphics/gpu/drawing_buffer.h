@@ -36,7 +36,6 @@
 
 #include "base/containers/span.h"
 #include "base/functional/function_ref.h"
-#include "base/memory/raw_ptr.h"
 #include "cc/layers/texture_layer_client.h"
 #include "cc/resources/cross_thread_shared_bitmap.h"
 #include "cc/resources/shared_bitmap_id_registrar.h"
@@ -67,6 +66,10 @@ namespace cc {
 class Layer;
 }
 
+namespace gfx {
+class GpuMemoryBuffer;
+}
+
 namespace gpu {
 namespace gles2 {
 class GLES2Interface;
@@ -91,9 +94,6 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
     // Returns true if the DrawingBuffer is currently bound for draw.
     virtual bool DrawingBufferClientIsBoundForDraw() = 0;
     virtual void DrawingBufferClientRestoreScissorTest() = 0;
-    // Interrupt and restore pixel local storage, if it was active.
-    virtual void DrawingBufferClientInterruptPixelLocalStorage() = 0;
-    virtual void DrawingBufferClientRestorePixelLocalStorage() = 0;
     // Restores the mask and clear value for color, depth, and stencil buffers.
     virtual void DrawingBufferClientRestoreMaskAndClearValues() = 0;
     // Assume client knows the GL/WebGL version and restore necessary params
@@ -109,8 +109,7 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
     virtual void DrawingBufferClientRestorePixelPackBufferBinding() = 0;
     virtual bool
     DrawingBufferClientUserAllocatedMultisampledRenderbuffers() = 0;
-    virtual void DrawingBufferClientForceLostContextWithAutoRecovery(
-        const char* reason) = 0;
+    virtual void DrawingBufferClientForceLostContextWithAutoRecovery() = 0;
   };
 
   enum PreserveDrawingBuffer {
@@ -203,7 +202,7 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
   // Note that in rare situations on macOS the drawing buffer can be destroyed
   // during the resolve process, specifically during automatic graphics
   // switching. In this scenario this method returns false.
-  [[nodiscard]] bool ResolveAndBindForReadAndDraw();
+  bool ResolveAndBindForReadAndDraw();
 
   bool Multisample() const;
 
@@ -220,7 +219,8 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
 
   void SetIsInHiddenPage(bool);
   void SetFilterQuality(cc::PaintFlags::FilterQuality);
-  void SetHdrMetadata(const gfx::HDRMetadata& hdr_metadata);
+  void SetHDRConfiguration(gfx::HDRMode hdr_mode,
+                           absl::optional<gfx::HDRMetadata> hdr_metadata);
   cc::PaintFlags::FilterQuality FilterQuality() const {
     return filter_quality_;
   }
@@ -314,6 +314,22 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
     low_latency_enabled_ = low_latency_enabled;
   }
 
+  // This class helps implement correct semantics for BlitFramebuffer
+  // when the DrawingBuffer is using a CHROMIUM image for its backing
+  // store and RGB emulation is in use (basically, macOS only).
+  class PLATFORM_EXPORT ScopedRGBEmulationForBlitFramebuffer {
+    STACK_ALLOCATED();
+
+   public:
+    ScopedRGBEmulationForBlitFramebuffer(DrawingBuffer*,
+                                         bool is_user_draw_framebuffer_bound);
+    ~ScopedRGBEmulationForBlitFramebuffer();
+
+   private:
+    scoped_refptr<DrawingBuffer> drawing_buffer_;
+    bool doing_work_ = false;
+  };
+
   scoped_refptr<CanvasResource> ExportCanvasResource();
 
   scoped_refptr<CanvasResource> ExportLowLatencyCanvasResource(
@@ -329,7 +345,6 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
                 std::unique_ptr<Extensions3DUtil>,
                 Client*,
                 bool discard_framebuffer_supported,
-                bool texture_storage_enabled,
                 bool want_alpha_channel,
                 bool premultiplied_alpha,
                 PreserveDrawingBuffer,
@@ -389,7 +404,7 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
    private:
     scoped_refptr<DrawingBuffer> drawing_buffer_;
     // The previous state restorer, in case restorers are nested.
-    raw_ptr<ScopedStateRestorer> previous_state_restorer_ = nullptr;
+    ScopedStateRestorer* previous_state_restorer_ = nullptr;
     bool clear_state_dirty_ = false;
     bool pixel_pack_parameters_dirty_ = false;
     bool texture_binding_dirty_ = false;
@@ -407,8 +422,9 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
                 SkAlphaType alpha_type,
                 GLenum texture_target,
                 GLuint texture_id,
+                std::unique_ptr<gfx::GpuMemoryBuffer>,
                 bool is_overlay_candidate,
-                scoped_refptr<gpu::ClientSharedImage> shared_image);
+                gpu::Mailbox mailbox);
     ColorBuffer(const ColorBuffer&) = delete;
     ColorBuffer& operator=(const ColorBuffer&) = delete;
     ~ColorBuffer();
@@ -427,10 +443,11 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
     const SkAlphaType alpha_type;
     const GLenum texture_target;
     const GLuint texture_id;
+    std::unique_ptr<gfx::GpuMemoryBuffer> gpu_memory_buffer;
     const bool is_overlay_candidate;
 
-    // The shared image used to send this buffer to the compositor.
-    scoped_refptr<gpu::ClientSharedImage> shared_image;
+    // The mailbox used to send this buffer to the compositor.
+    gpu::Mailbox mailbox;
 
     // The sync token for when this buffer was sent to the compositor.
     gpu::SyncToken produce_sync_token;
@@ -467,19 +484,8 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
   // The same as resolveAndBindForReadAndDraw(), but leaves GL state dirty.
   void ResolveMultisampleFramebufferInternal();
 
-  enum DiscardBehavior {
-    // A public entry point is requesting the resolve. Do not discard
-    // framebuffer attachments which would otherwise be considered
-    // transient.
-    kDontDiscard,
-
-    // The compositor is requesting the resolve. Discard framebuffer
-    // attachments which are considered transient.
-    kDiscardAllowed
-  };
-
   // Resolves m_multisampleFBO into m_fbo, if multisampling.
-  void ResolveIfNeeded(DiscardBehavior discardBehavior);
+  void ResolveIfNeeded();
 
   enum CheckForDestructionResult {
     kDestroyedOrLost,
@@ -493,8 +499,7 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
   //  - Checks whether the context has been lost
   // If all of the above checks pass, resolves the multisampled
   // renderbuffer if needed.
-  CheckForDestructionResult CheckForDestructionAndChangeAndResolveIfNeeded(
-      DiscardBehavior discardBehavior);
+  CheckForDestructionResult CheckForDestructionAndChangeAndResolveIfNeeded();
 
   bool PrepareTransferableResourceInternal(
       cc::SharedBitmapIdRegistrar* bitmap_registrar,
@@ -585,18 +590,17 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
   void ResolveAndPresentSwapChainIfNeeded();
 
   // Weak, reset by beginDestruction.
-  raw_ptr<Client> client_ = nullptr;
+  Client* client_ = nullptr;
 
   const PreserveDrawingBuffer preserve_drawing_buffer_;
   const WebGLVersion webgl_version_;
 
   std::unique_ptr<WebGraphicsContext3DProviderWrapper> context_provider_;
   // Lifetime is tied to the m_contextProvider.
-  raw_ptr<gpu::gles2::GLES2Interface, DanglingUntriaged> gl_;
+  gpu::gles2::GLES2Interface* gl_;
   std::unique_ptr<Extensions3DUtil> extensions_util_;
   gfx::Size size_;
   const bool discard_framebuffer_supported_;
-  const bool texture_storage_enabled_;
 
   // The alpha type that was requested (opaque, premul, or unpremul).
   SkAlphaType requested_alpha_type_;
@@ -616,7 +620,7 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
   // The current state restorer, which is used to track state dirtying. It is an
   // error to dirty state shared with WebGL while there is no existing state
   // restorer.
-  raw_ptr<ScopedStateRestorer> state_restorer_ = nullptr;
+  ScopedStateRestorer* state_restorer_ = nullptr;
 
   // This is used when the user requests either a depth or stencil buffer.
   GLuint depth_stencil_buffer_ = 0;
@@ -653,7 +657,6 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
   // True if resolveIfNeeded() has been called since the last time
   // markContentsChanged() had been called.
   bool contents_change_resolved_ = false;
-  bool transient_framebuffers_discarded_ = false;
   bool buffer_clear_needed_ = false;
 
   // Whether the client wants a depth or stencil buffer.
@@ -672,7 +675,8 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
   bool is_hidden_ = false;
   bool has_eqaa_support = false;
 
-  gfx::HDRMetadata hdr_metadata_;
+  gfx::HDRMode hdr_mode_ = gfx::HDRMode::kDefault;
+  absl::optional<gfx::HDRMetadata> hdr_metadata_;
   cc::PaintFlags::FilterQuality filter_quality_ =
       cc::PaintFlags::FilterQuality::kLow;
 

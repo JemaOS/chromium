@@ -10,7 +10,6 @@
 
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/trace_event/trace_event.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/inspector/devtools_agent.h"
@@ -21,7 +20,7 @@
 #include "third_party/blink/renderer/core/inspector/protocol/protocol.h"
 #include "third_party/blink/renderer/core/inspector/v8_inspector_string.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
-#include "third_party/blink/renderer/platform/heap/cross_thread_handle.h"
+#include "third_party/blink/renderer/platform/heap/cross_thread_persistent.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/web_test_support.h"
@@ -57,7 +56,7 @@ class DevToolsSession::IOSession : public mojom::blink::DevToolsSession {
  public:
   IOSession(scoped_refptr<base::SingleThreadTaskRunner> io_task_runner,
             scoped_refptr<InspectorTaskRunner> inspector_task_runner,
-            CrossThreadWeakHandle<::blink::DevToolsSession> session,
+            CrossThreadWeakPersistent<::blink::DevToolsSession> session,
             mojo::PendingReceiver<mojom::blink::DevToolsSession> receiver)
       : io_task_runner_(io_task_runner),
         inspector_task_runner_(inspector_task_runner),
@@ -83,10 +82,9 @@ class DevToolsSession::IOSession : public mojom::blink::DevToolsSession {
     // an instrumentation pause.
     receiver_.set_disconnect_handler(WTF::BindOnce(
         [](scoped_refptr<InspectorTaskRunner> inspector_task_runner,
-           CrossThreadWeakHandle<::blink::DevToolsSession> session) {
+           CrossThreadWeakPersistent<::blink::DevToolsSession> session) {
           inspector_task_runner->AppendTask(CrossThreadBindOnce(
-              &::blink::DevToolsSession::DetachFromV8,
-              MakeUnwrappingCrossThreadWeakHandle(session)));
+              &::blink::DevToolsSession::DetachFromV8, session));
         },
         inspector_task_runner_, session_));
   }
@@ -111,21 +109,19 @@ class DevToolsSession::IOSession : public mojom::blink::DevToolsSession {
                         base::checked_cast<wtf_size_t>(message.size()));
     if (ShouldInterruptForMethod(method)) {
       inspector_task_runner_->AppendTask(CrossThreadBindOnce(
-          &::blink::DevToolsSession::DispatchProtocolCommandImpl,
-          MakeUnwrappingCrossThreadWeakHandle(session_), call_id, method,
-          std::move(message_copy)));
+          &::blink::DevToolsSession::DispatchProtocolCommandImpl, session_,
+          call_id, method, std::move(message_copy)));
     } else {
       inspector_task_runner_->AppendTaskDontInterrupt(CrossThreadBindOnce(
-          &::blink::DevToolsSession::DispatchProtocolCommandImpl,
-          MakeUnwrappingCrossThreadWeakHandle(session_), call_id, method,
-          std::move(message_copy)));
+          &::blink::DevToolsSession::DispatchProtocolCommandImpl, session_,
+          call_id, method, std::move(message_copy)));
     }
   }
 
  private:
   scoped_refptr<base::SingleThreadTaskRunner> io_task_runner_;
   scoped_refptr<InspectorTaskRunner> inspector_task_runner_;
-  CrossThreadWeakHandle<::blink::DevToolsSession> session_;
+  CrossThreadWeakPersistent<::blink::DevToolsSession> session_;
   mojo::Receiver<mojom::blink::DevToolsSession> receiver_{this};
 };
 
@@ -153,9 +149,9 @@ DevToolsSession::DevToolsSession(
       session_waits_for_debugger_(session_waits_for_debugger) {
   receiver_.Bind(std::move(main_receiver), mojo_task_runner);
 
-  io_session_ =
-      new IOSession(agent_->io_task_runner_, agent_->inspector_task_runner_,
-                    MakeCrossThreadWeakHandle(this), std::move(io_receiver));
+  io_session_ = new IOSession(
+      agent_->io_task_runner_, agent_->inspector_task_runner_,
+      WrapCrossThreadWeakPersistent(this), std::move(io_receiver));
 
   host_remote_.Bind(std::move(host_remote), mojo_task_runner);
   host_remote_.set_disconnect_handler(
@@ -241,14 +237,13 @@ void DevToolsSession::DispatchProtocolCommandImpl(
   TRACE_EVENT_WITH_FLOW1(
       "devtools", "DevToolsSession::DispatchProtocolCommandImpl", call_id,
       TRACE_EVENT_FLAG_FLOW_OUT | TRACE_EVENT_FLAG_FLOW_IN, "call_id", call_id);
-  TRACE_EVENT1("devtools", "api_call", "method_name", method);
 
   // IOSession does not provide ordering guarantees relative to
   // Session, so a command may come to IOSession after Session is detached,
   // and get posted to main thread to this method.
   //
   // At the same time, Session may not be garbage collected yet
-  // (even though already detached), and CrossThreadWeakHandle<Session>
+  // (even though already detached), and CrossThreadWeakPersistent<Session>
   // will still be valid.
   //
   // Both these factors combined may lead to this method being called after

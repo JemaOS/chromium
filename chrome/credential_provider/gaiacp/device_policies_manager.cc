@@ -62,7 +62,8 @@ base::FilePath GetOmahaPolicyFilePath() {
     return base::FilePath();
   }
 
-  std::string encoded_omaha_policy_type = base::Base64Encode(kOmahaPolicyType);
+  std::string encoded_omaha_policy_type;
+  base::Base64Encode(kOmahaPolicyType, &encoded_omaha_policy_type);
   policy_dir = policy_dir.Append(GetInstallParentDirectoryName())
                    .AppendASCII(kOmahaPoliciesDirName)
                    .AppendASCII(encoded_omaha_policy_type);

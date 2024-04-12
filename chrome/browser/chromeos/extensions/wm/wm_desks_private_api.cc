@@ -5,7 +5,6 @@
 #include "chrome/browser/chromeos/extensions/wm/wm_desks_private_api.h"
 
 #include <memory>
-#include <optional>
 
 #include "base/functional/bind.h"
 #include "base/json/json_writer.h"
@@ -15,6 +14,7 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/extensions/api/wm_desks_private.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
 #include "chrome/browser/chromeos/extensions/wm/wm_desks_private_feature_lacros.h"
@@ -74,7 +74,7 @@ WmDesksPrivateGetDeskTemplateJsonFunction::
 
 ExtensionFunction::ResponseAction
 WmDesksPrivateGetDeskTemplateJsonFunction::Run() {
-  std::optional<api::wm_desks_private::GetDeskTemplateJson::Params> params =
+  absl::optional<api::wm_desks_private::GetDeskTemplateJson::Params> params =
       api::wm_desks_private::GetDeskTemplateJson::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -116,7 +116,7 @@ WmDesksPrivateLaunchDeskFunction::WmDesksPrivateLaunchDeskFunction() = default;
 WmDesksPrivateLaunchDeskFunction::~WmDesksPrivateLaunchDeskFunction() = default;
 
 ExtensionFunction::ResponseAction WmDesksPrivateLaunchDeskFunction::Run() {
-  std::optional<api::wm_desks_private::LaunchDesk::Params> params =
+  absl::optional<api::wm_desks_private::LaunchDesk::Params> params =
       api::wm_desks_private::LaunchDesk::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   auto& launch_options = params->launch_options;
@@ -145,16 +145,12 @@ WmDesksPrivateRemoveDeskFunction::WmDesksPrivateRemoveDeskFunction() = default;
 WmDesksPrivateRemoveDeskFunction::~WmDesksPrivateRemoveDeskFunction() = default;
 
 ExtensionFunction::ResponseAction WmDesksPrivateRemoveDeskFunction::Run() {
-  std::optional<api::wm_desks_private::RemoveDesk::Params> params =
+  absl::optional<api::wm_desks_private::RemoveDesk::Params> params =
       api::wm_desks_private::RemoveDesk::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   bool combine_desk = params->remove_desk_options
                           ? params->remove_desk_options->combine_desks
                           : false;
-  bool allow_undo =
-      params->remove_desk_options
-          ? params->remove_desk_options->allow_undo.value_or(false)
-          : false;
   base::Uuid uuid = base::Uuid::ParseCaseInsensitive(params->desk_id);
   if (!uuid.is_valid()) {
     base::UmaHistogramBoolean(kApiRemoveDeskResult, false);
@@ -162,7 +158,7 @@ ExtensionFunction::ResponseAction WmDesksPrivateRemoveDeskFunction::Run() {
   }
   std::unique_ptr<WMDesksPrivateFeature> desk_impl = GetDeskFeatureImpl();
   desk_impl->RemoveDesk(
-      uuid, combine_desk, allow_undo,
+      uuid, combine_desk,
       base::BindOnce(&WmDesksPrivateRemoveDeskFunction::OnRemoveDesk, this));
   return did_respond() ? AlreadyResponded() : RespondLater();
 }
@@ -209,7 +205,7 @@ WmDesksPrivateSetWindowPropertiesFunction::
 
 ExtensionFunction::ResponseAction
 WmDesksPrivateSetWindowPropertiesFunction::Run() {
-  std::optional<api::wm_desks_private::SetWindowProperties::Params> params =
+  absl::optional<api::wm_desks_private::SetWindowProperties::Params> params =
       api::wm_desks_private::SetWindowProperties::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   std::unique_ptr<WMDesksPrivateFeature> desk_impl = GetDeskFeatureImpl();
@@ -261,7 +257,7 @@ WmDesksPrivateDeleteSavedDeskFunction::
     ~WmDesksPrivateDeleteSavedDeskFunction() = default;
 
 ExtensionFunction::ResponseAction WmDesksPrivateDeleteSavedDeskFunction::Run() {
-  std::optional<api::wm_desks_private::DeleteSavedDesk::Params> params =
+  absl::optional<api::wm_desks_private::DeleteSavedDesk::Params> params =
       api::wm_desks_private::DeleteSavedDesk::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   base::Uuid uuid = base::Uuid::ParseCaseInsensitive(params->saved_desk_uuid);
@@ -293,7 +289,7 @@ WmDesksPrivateRecallSavedDeskFunction::
     ~WmDesksPrivateRecallSavedDeskFunction() = default;
 
 ExtensionFunction::ResponseAction WmDesksPrivateRecallSavedDeskFunction::Run() {
-  std::optional<api::wm_desks_private::RecallSavedDesk::Params> params =
+  absl::optional<api::wm_desks_private::RecallSavedDesk::Params> params =
       api::wm_desks_private::RecallSavedDesk::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   base::Uuid uuid = base::Uuid::ParseCaseInsensitive(params->saved_desk_uuid);
@@ -347,7 +343,7 @@ WmDesksPrivateSwitchDeskFunction::WmDesksPrivateSwitchDeskFunction() = default;
 WmDesksPrivateSwitchDeskFunction::~WmDesksPrivateSwitchDeskFunction() = default;
 
 ExtensionFunction::ResponseAction WmDesksPrivateSwitchDeskFunction::Run() {
-  std::optional<api::wm_desks_private::SwitchDesk::Params> params =
+  absl::optional<api::wm_desks_private::SwitchDesk::Params> params =
       api::wm_desks_private::SwitchDesk::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   base::Uuid uuid = base::Uuid::ParseCaseInsensitive(params->desk_uuid);

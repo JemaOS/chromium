@@ -13,7 +13,7 @@
 namespace ash {
 
 // Interface of the demo mode setup screen view.
-class DemoSetupScreenView {
+class DemoSetupScreenView : public base::SupportsWeakPtr<DemoSetupScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"demo-setup",
                                                        "DemoSetupScreen"};
@@ -33,15 +33,12 @@ class DemoSetupScreenView {
   // Handles setup failure.
   virtual void OnSetupFailed(
       const DemoSetupController::DemoSetupError& error) = 0;
-
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<DemoSetupScreenView> AsWeakPtr() = 0;
 };
 
 // WebUI implementation of DemoSetupScreenView. It controls UI, receives UI
 // events and notifies the Delegate.
-class DemoSetupScreenHandler final : public BaseScreenHandler,
-                                     public DemoSetupScreenView {
+class DemoSetupScreenHandler : public BaseScreenHandler,
+                               public DemoSetupScreenView {
  public:
   using TView = DemoSetupScreenView;
 
@@ -58,7 +55,6 @@ class DemoSetupScreenHandler final : public BaseScreenHandler,
       DemoSetupController::DemoSetupStep current_step) override;
   void OnSetupFailed(const DemoSetupController::DemoSetupError& error) override;
   void OnSetupSucceeded() override;
-  base::WeakPtr<DemoSetupScreenView> AsWeakPtr() override;
 
   // BaseScreenHandler:
   void DeclareLocalizedValues(
@@ -66,9 +62,6 @@ class DemoSetupScreenHandler final : public BaseScreenHandler,
 
   // BaseWebUIHandler:
   void GetAdditionalParameters(base::Value::Dict* parameters) override;
-
- private:
-  base::WeakPtrFactory<DemoSetupScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

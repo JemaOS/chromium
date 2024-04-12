@@ -103,14 +103,14 @@ double RTCSctpTransport::maxMessageSize() const {
   return std::numeric_limits<double>::infinity();
 }
 
-std::optional<int16_t> RTCSctpTransport::maxChannels() const {
+absl::optional<int16_t> RTCSctpTransport::maxChannels() const {
   if (!current_state_.MaxChannels())
-    return std::nullopt;
+    return absl::nullopt;
   return current_state_.MaxChannels().value();
 }
 
 RTCDtlsTransport* RTCSctpTransport::transport() const {
-  return dtls_transport_.Get();
+  return dtls_transport_;
 }
 
 rtc::scoped_refptr<webrtc::SctpTransportInterface>
@@ -162,7 +162,7 @@ ExecutionContext* RTCSctpTransport::GetExecutionContext() const {
 
 void RTCSctpTransport::Trace(Visitor* visitor) const {
   visitor->Trace(dtls_transport_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextClient::Trace(visitor);
   SctpTransportProxy::Delegate::Trace(visitor);
 }

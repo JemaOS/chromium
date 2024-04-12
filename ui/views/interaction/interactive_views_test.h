@@ -11,26 +11,21 @@
 #include <type_traits>
 #include <utility>
 
-#include "base/callback_list.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/strings/stringprintf.h"
-#include "base/test/bind.h"
-#include "base/time/time.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
-#include "ui/base/interaction/element_identifier.h"
 #include "ui/base/interaction/element_tracker.h"
+#include "ui/base/interaction/interaction_test_util.h"
 #include "ui/base/interaction/interactive_test.h"
 #include "ui/base/interaction/interactive_test_internal.h"
-#include "ui/base/metadata/metadata_types.h"
 #include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/interaction/interaction_test_util_mouse.h"
 #include "ui/views/interaction/interactive_views_test_internal.h"
-#include "ui/views/interaction/polling_view_observer.h"
 #include "ui/views/test/views_test_base.h"
 #include "ui/views/view.h"
 #include "ui/views/view_utils.h"
@@ -130,8 +125,8 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
   template <typename C,
             typename V = internal::ViewArgType<0, C>,
             typename R = std::remove_cv_t<
-                std::remove_pointer_t<ui::test::internal::ReturnTypeOf<C>>>>
-    requires ui::test::internal::HasSignature<C, R*(V*)>
+                std::remove_pointer_t<ui::test::internal::ReturnTypeOf<C>>>,
+            typename = ui::test::internal::RequireSignature<C, R*(V*)>>
   [[nodiscard]] static StepBuilder NameViewRelative(
       ElementSpecifier relative_to,
       base::StringPiece name,
@@ -150,7 +145,6 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
 
   // Names the `index` (0-indexed) child view of `parent` that is of type `V`.
   template <typename V>
-    requires internal::IsView<V>
   [[nodiscard]] static StepBuilder NameChildViewByType(ElementSpecifier parent,
                                                        base::StringPiece name,
                                                        size_t index = 0);
@@ -158,7 +152,6 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
   // Names the `index` (0-indexed) descendant view of `parent` in depth-first
   // traversal order that is of type `V`.
   template <typename V>
-    requires internal::IsView<V>
   [[nodiscard]] static StepBuilder NameDescendantViewByType(
       ElementSpecifier ancestor,
       base::StringPiece name,
@@ -166,28 +159,30 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
 
   // As WithElement(), but `view` should resolve to a TrackedElementViews
   // wrapping a view of type `V`.
-  template <typename F, typename V = internal::ViewArgType<0, F>>
-    requires ui::test::internal::HasSignature<F, void(V*)>
+  template <typename F,
+            typename V = internal::ViewArgType<0, F>,
+            typename = ui::test::internal::RequireSignature<F, void(V*)>>
   [[nodiscard]] static StepBuilder WithView(ElementSpecifier view,
                                             F&& function);
 
   // As CheckElement(), but `view` should resolve to a TrackedElementViews
   // wrapping a view of type `V`.
-  template <typename F, typename V = internal::ViewArgType<0, F>>
-  // NOLINTNEXTLINE(readability/casting)
-    requires ui::test::internal::HasSignature<F, bool(V*)>
+  template <typename F,
+            typename V = internal::ViewArgType<0, F>,
+            typename = ui::test::internal::RequireSignature<
+                F,
+                bool(V*)>>  // NOLINT(readability/casting)
   [[nodiscard]] static StepBuilder CheckView(ElementSpecifier view, F&& check);
 
   // As CheckView(), but checks that the result of calling `function` on `view`
   // matches `matcher`. If not, the mismatch is printed and the test fails.
   //
-  // `matcher` can be any type `M` that resolves or converts to type
-  // `Matcher<R>`.
+  // `matcher` should resolve or convert to type `Matcher<R>`.
   template <typename F,
             typename M,
             typename R = ui::test::internal::ReturnTypeOf<F>,
-            typename V = internal::ViewArgType<0, F>>
-    requires ui::test::internal::HasSignature<F, R(V*)>
+            typename V = internal::ViewArgType<0, F>,
+            typename = ui::test::internal::RequireSignature<F, R(V*)>>
   [[nodiscard]] static StepBuilder CheckView(ElementSpecifier view,
                                              F&& function,
                                              M&& matcher);
@@ -196,95 +191,11 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
   // calling `property` on `view`. On failure, logs the matcher error and fails
   // the test.
   //
-  // `V` is the View class, `R` is the type of the property being checked, and
-  // `M` is the type of the matcher, or the constant that will be converted to
-  // an equality matcher (e.g. `1` would be converted to `testing::Eq(1)`).
-  //
   // `matcher` must resolve or convert to type `Matcher<R>`.
   template <typename V, typename R, typename M>
-    requires internal::IsView<V>
   [[nodiscard]] static StepBuilder CheckViewProperty(ElementSpecifier view,
                                                      R (V::*property)() const,
                                                      M&& matcher);
-
-  // Adds a step that waits for `property` to match `matcher` on `view`. The
-  // `add_listener` method must be specified in this version of the function.
-  //
-  // `V` is the View class, `R` is the type of the property being checked, and
-  // `M` is the type of the matcher, or the constant that will be converted to
-  // an equality matcher (e.g. `1` would be converted to `testing::Eq(1)`).
-  //
-  // NOTE: Prefer using the `WaitForViewProperty` macro as it is more concise
-  // and creates its own unique event (so you don't have to specify one). For
-  // example, the following are equivalent:
-  // ```
-  //   WaitForViewPropertyCallback(
-  //       kMyViewId,
-  //       &View::GetEnabled,
-  //       &View::AddEnabledChangedListener,
-  //       true,
-  //       kMyCustomEventType)
-  // ```
-  // and:
-  // ```
-  //   WaitForViewProperty(kMyViewId, View, Enabled, true)
-  // ```
-  //
-  // Usage notes:
-  // - Do not use with the "Visible" property; use `WaitForShow()` and
-  //   `WaitForHide()` instead.
-  // - Specify a unique `event` to avoid collisions between parallel or
-  //   subsequent wait steps.
-  template <typename V, typename R, typename M>
-    requires internal::IsView<V>
-  [[nodiscard]] static MultiStep WaitForViewPropertyCallback(
-      ElementSpecifier view,
-      R (V::*property)() const,
-      base::CallbackListSubscription (V::*add_listener)(
-          ui::metadata::PropertyChangedCallback),
-      M&& matcher,
-      ui::CustomElementEventType event);
-
-  // Creates a state observer with `id` which polls the view in the current
-  // context with `view_id`. If the view is present, uses `callback` to update
-  // the state value; otherwise the value is `std::nullopt` (the actual state
-  // value is of type `std::optional<T>`).
-  //
-  // The element, if present, must resolve to a View of the correct type, or the
-  // test will fail.
-  //
-  // See `PollState()` and `PollElement()` for usage details and caveats.
-  // Specifically be aware that polling may miss a transient state; prefer to
-  // send a custom event or use `WaitForViewPropertyCallback()` if possible.
-  template <typename T, typename V, typename C>
-    requires internal::IsView<V> &&
-             ui::test::internal::HasSignature<C, T(const V*)>
-  [[nodiscard]] StepBuilder PollView(
-      ui::test::StateIdentifier<PollingViewObserver<T, V>> id,
-      ui::ElementIdentifier view_id,
-      C&& callback,
-      base::TimeDelta polling_interval = ui::test::PollingStateObserver<
-          std::optional<T>>::kDefaultPollingInterval);
-
-  // Creates a state observer with `id` which polls `property` on the view in
-  // the current context with `view_id`. If the view is not present, the state
-  // value will be set to `std::nullopt` (the actual state value is of type
-  // `std::optional<T>`).
-  //
-  // The element, if present, must resolve to a View of the correct type, or the
-  // test will fail.
-  //
-  // See `PollState()` and `PollElement()` for usage details and caveats.
-  // Specifically be aware that polling may miss a transient state; prefer to
-  // send a custom event or use `WaitForViewPropertyCallback()` if possible.
-  template <typename R, typename V, typename T = std::remove_cvref_t<R>>
-    requires internal::IsView<V>
-  [[nodiscard]] StepBuilder PollViewProperty(
-      ui::test::StateIdentifier<PollingViewPropertyObserver<T, V>> id,
-      ui::ElementIdentifier view_id,
-      R (V::*property)() const,
-      base::TimeDelta polling_interval = ui::test::PollingStateObserver<
-          std::optional<T>>::kDefaultPollingInterval);
 
   // Scrolls `view` into the visible viewport if it is currently scrolled
   // outside its container. The view must be otherwise present and visible.
@@ -305,11 +216,11 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
       // created; use gfx::Point* if you want to capture a point during sequence
       // execution.
       gfx::Point,
-      // As above, but the position is read from the reference on execution
+      // As above, but the position is read from the memory address on execution
       // instead of copied when the test sequence is constructed. Use this when
       // you want to calculate and cache a point during test execution for later
       // use. The pointer must remain valid through the end of the test.
-      std::reference_wrapper<gfx::Point>,
+      gfx::Point*,
       // Use the return value of the supplied callback
       AbsolutePositionCallback>;
 
@@ -360,10 +271,10 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
   template <typename C,
             typename T,
             typename U = MultiStep,
-            typename V = internal::ViewArgType<0, C>>
-    requires ui::test::internal::HasSignature<
-        C,
-        bool(const V*)>  // NOLINT(readability/casting)
+            typename V = internal::ViewArgType<0, C>,
+            typename = ui::test::internal::RequireSignature<
+                C,
+                bool(const V*)>>  // NOLINT(readability/casting)
   [[nodiscard]] static StepBuilder IfView(ElementSpecifier element,
                                           C&& condition,
                                           T&& then_steps,
@@ -377,8 +288,8 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
             typename T,
             typename U = MultiStep,
             typename R = ui::test::internal::ReturnTypeOf<F>,
-            typename V = internal::ViewArgType<0, F>>
-    requires ui::test::internal::HasSignature<F, R(const V*)>
+            typename V = internal::ViewArgType<0, F>,
+            typename = ui::test::internal::RequireSignature<F, R(const V*)>>
   [[nodiscard]] static StepBuilder IfViewMatches(ElementSpecifier element,
                                                  F&& function,
                                                  M&& matcher,
@@ -396,7 +307,6 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
             typename V,
             typename T,
             typename U = MultiStep>
-    requires internal::IsView<V>
   [[nodiscard]] static StepBuilder IfViewPropertyMatches(
       ElementSpecifier element,
       R (V::*property)() const,
@@ -407,7 +317,7 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
   // Sets the context widget. Must be called before RunTestSequence() or any of
   // the mouse functions.
   void SetContextWidget(Widget* context_widget);
-  Widget* context_widget() { return context_widget_.get(); }
+  Widget* context_widget() { return context_widget_; }
 
  protected:
   explicit InteractiveViewsTestApi(
@@ -439,7 +349,7 @@ class InteractiveViewsTestApi : public ui::test::InteractiveTestApi {
   // Creates the follow-up step for a mouse action.
   StepBuilder CreateMouseFollowUpStep(const base::StringPiece& description);
 
-  base::WeakPtr<Widget> context_widget_;
+  base::raw_ptr<Widget, DanglingUntriaged> context_widget_ = nullptr;
 };
 
 // Template that adds InteractiveViewsTestApi to any test fixture. Prefer to use
@@ -510,8 +420,7 @@ bool InteractiveViewsTestApi::RunTestSequence(Args&&... steps) {
 }
 
 // static
-template <typename C, typename V, typename R>
-  requires ui::test::internal::HasSignature<C, R*(V*)>
+template <typename C, typename V, typename R, typename>
 ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::NameViewRelative(
     ElementSpecifier relative_to,
     base::StringPiece name,
@@ -565,8 +474,7 @@ ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::NameViewRelative(
 }
 
 // static
-template <typename F, typename V>
-  requires ui::test::internal::HasSignature<F, void(V*)>
+template <typename F, typename V, typename>
 ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::WithView(
     ElementSpecifier view,
     F&& function) {
@@ -582,10 +490,7 @@ ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::WithView(
 }
 
 // static
-template <typename C, typename T, typename U, typename V>
-  requires ui::test::internal::HasSignature<
-      C,
-      bool(const V*)>  // NOLINT(readability/casting)
+template <typename C, typename T, typename U, typename V, typename>
 ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::IfView(
     ElementSpecifier element,
     C&& condition,
@@ -611,8 +516,8 @@ template <typename F,
           typename T,
           typename U,
           typename R,
-          typename V>
-  requires ui::test::internal::HasSignature<F, R(const V*)>
+          typename V,
+          typename>
 ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::IfViewMatches(
     ElementSpecifier element,
     F&& function,
@@ -637,7 +542,6 @@ ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::IfViewMatches(
 
 // static
 template <typename R, typename M, typename V, typename T, typename U>
-  requires internal::IsView<V>
 ui::InteractionSequence::StepBuilder
 InteractiveViewsTestApi::IfViewPropertyMatches(ElementSpecifier element,
                                                R (V::*property)() const,
@@ -658,56 +562,54 @@ InteractiveViewsTestApi::IfViewPropertyMatches(ElementSpecifier element,
 
 // static
 template <typename V>
-  requires internal::IsView<V>
 ui::InteractionSequence::StepBuilder
 InteractiveViewsTestApi::NameChildViewByType(ElementSpecifier parent,
                                              base::StringPiece name,
                                              size_t index) {
-  return std::move(NameChildView(parent, name,
-                                 base::BindRepeating(
-                                     [](size_t& index, const View* view) {
-                                       if (IsViewClass<V>(view)) {
-                                         if (index == 0) {
-                                           return true;
-                                         }
-                                         --index;
-                                       }
-                                       return false;
-                                     },
-                                     base::OwnedRef(index)))
-                       .SetDescription(base::StringPrintf(
-                           "NameChildViewByType<%s>( \"%s\" %zu )",
-                           V::MetaData()->type_name(), name.data(), index)));
+  return std::move(
+      NameChildView(parent, name,
+                    base::BindRepeating(
+                        [](size_t& index, const View* view) {
+                          if (IsViewClass<V>(view)) {
+                            if (index == 0) {
+                              return true;
+                            }
+                            --index;
+                          }
+                          return false;
+                        },
+                        base::OwnedRef(index)))
+          .SetDescription(base::StringPrintf(
+              "NameChildViewByType<%s>( \"%s\" %zu )",
+              V::MetaData()->type_name().c_str(), name.data(), index)));
 }
 
 // static
 template <typename V>
-  requires internal::IsView<V>
 ui::InteractionSequence::StepBuilder
 InteractiveViewsTestApi::NameDescendantViewByType(ElementSpecifier ancestor,
                                                   base::StringPiece name,
                                                   size_t index) {
-  return std::move(NameDescendantView(ancestor, name,
-                                      base::BindRepeating(
-                                          [](size_t& index, const View* view) {
-                                            if (IsViewClass<V>(view)) {
-                                              if (index == 0) {
-                                                return true;
-                                              }
-                                              --index;
-                                            }
-                                            return false;
-                                          },
-                                          base::OwnedRef(index)))
-                       .SetDescription(base::StringPrintf(
-                           "NameDescendantViewByType<%s>( \"%s\" %zu )",
-                           V::MetaData()->type_name(), name.data(), index)));
+  return std::move(
+      NameDescendantView(ancestor, name,
+                         base::BindRepeating(
+                             [](size_t& index, const View* view) {
+                               if (IsViewClass<V>(view)) {
+                                 if (index == 0) {
+                                   return true;
+                                 }
+                                 --index;
+                               }
+                               return false;
+                             },
+                             base::OwnedRef(index)))
+          .SetDescription(base::StringPrintf(
+              "NameDescendantViewByType<%s>( \"%s\" %zu )",
+              V::MetaData()->type_name().c_str(), name.data(), index)));
 }
 
 // static
-template <typename F, typename V>
-// NOLINTNEXTLINE(readability/casting)
-  requires ui::test::internal::HasSignature<F, bool(V*)>
+template <typename F, typename, typename>
 ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::CheckView(
     ElementSpecifier view,
     F&& check) {
@@ -715,8 +617,7 @@ ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::CheckView(
 }
 
 // static
-template <typename F, typename M, typename R, typename V>
-  requires ui::test::internal::HasSignature<F, R(V*)>
+template <typename F, typename M, typename R, typename V, typename>
 ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::CheckView(
     ElementSpecifier view,
     F&& function,
@@ -740,7 +641,6 @@ ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::CheckView(
 
 // static
 template <typename V, typename R, typename M>
-  requires internal::IsView<V>
 ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::CheckViewProperty(
     ElementSpecifier view,
     R (V::*property)() const,
@@ -758,147 +658,6 @@ ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::CheckViewProperty(
       },
       property, testing::Matcher<R>(std::forward<M>(matcher))));
   return builder;
-}
-
-// static
-template <typename V, typename R, typename M>
-  requires internal::IsView<V>
-ui::test::InteractiveTestApi::MultiStep
-InteractiveViewsTestApi::WaitForViewPropertyCallback(
-    ElementSpecifier view,
-    R (V::*property)() const,
-    base::CallbackListSubscription (V::*add_listener)(
-        ui::metadata::PropertyChangedCallback),
-    M&& matcher,
-    ui::CustomElementEventType event_type) {
-  // Need to make this ref-counted to ensure it lives long enough to actually
-  // listen for the state change.
-  using RefCountedSubscription =
-      scoped_refptr<base::RefCountedData<base::CallbackListSubscription>>;
-  RefCountedSubscription subscription =
-      base::MakeRefCounted<RefCountedSubscription::element_type>();
-  const std::string format_string = base::StringPrintf(
-      "WaitForProperty( %%s, \"%s\" )", event_type.GetName().c_str());
-
-  // The first step will check the property, and either immediately send the
-  // event or install the observer that will send the event when the state
-  // achieves the correct value.
-  auto observe_property = base::BindOnce(
-      [](RefCountedSubscription subscription, R (V::*property)() const,
-         base::CallbackListSubscription (V::*add_listener)(
-             ui::metadata::PropertyChangedCallback),
-         ui::CustomElementEventType event_type, testing::Matcher<R> matcher,
-         ui::TrackedElement* el) {
-        auto* const view = AsView<V>(el);
-        if (matcher.Matches((view->*property)())) {
-          // Property is already in the desired state, send event immediately.
-          ui::ElementTracker::GetFrameworkDelegate()->NotifyCustomEvent(
-              el, event_type);
-        } else {
-          // Watch the property for a value that satisfies the matcher.
-          subscription->data = (view->*add_listener)(base::BindRepeating(
-              [](V* view, R (V::*property)() const,
-                 ui::CustomElementEventType event_type,
-                 testing::Matcher<R> matcher) {
-                if (matcher.Matches((view->*property)())) {
-                  ElementTrackerViews::GetInstance()->NotifyCustomEvent(
-                      event_type, view);
-                }
-              },
-              view, property, event_type, std::move(matcher)));
-        }
-      },
-      subscription, property, add_listener, event_type,
-      testing::Matcher<R>(std::forward<M>(matcher)));
-
-  return Steps(std::move(AfterShow(view, std::move(observe_property))
-                             .SetMustRemainVisible(true)
-                             .FormatDescription(format_string)),
-               std::move(AfterEvent(view, event_type, [subscription]() {
-                           // Need to reference subscription by value so that it
-                           // is not discarded until this step runs or the
-                           // sequence fails.
-                           subscription->data =
-                               base::CallbackListSubscription();
-                         }).FormatDescription(format_string)));
-}
-
-// Waits for a property named `Property` to have a value that matches `matcher`
-// on View `view` of View class `Class`. Convenience method for
-// `InteractiveViewsTestApi::WaitForClassPropertyCallback`.
-//
-// Do not use with the "Visible" property; use `WaitForShow()` or
-// `WaitForHide()` instead.
-#define WaitForViewProperty(view, Class, Property, matcher)                    \
-  []() {                                                                       \
-    DEFINE_MACRO_CUSTOM_ELEMENT_EVENT_TYPE(__FILE__, __LINE__,                 \
-                                           kWaitFor##Property##Event);         \
-    return WaitForViewPropertyCallback((view), &Class::Get##Property,          \
-                                       &Class::Add##Property##ChangedCallback, \
-                                       (matcher), kWaitFor##Property##Event);  \
-  }()
-
-template <typename T, typename V, typename C>
-  requires internal::IsView<V> &&
-           ui::test::internal::HasSignature<C, T(const V*)>
-ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::PollView(
-    ui::test::StateIdentifier<PollingViewObserver<T, V>> id,
-    ui::ElementIdentifier view_id,
-    C&& callback,
-    base::TimeDelta polling_interval) {
-  using Cb = PollingViewObserver<T, V>::PollViewCallback;
-  Cb cb = ui::test::internal::MaybeBindRepeating(std::forward<C>(callback));
-  auto step =
-      WithElement(ui::test::internal::kInteractiveTestPivotElementId,
-                  base::BindOnce(
-                      [](InteractiveViewsTestApi* api, ui::ElementIdentifier id,
-                         ui::ElementIdentifier view_id, Cb callback,
-                         base::TimeDelta polling_interval,
-                         ui::InteractionSequence* seq, ui::TrackedElement* el) {
-                        api->test_impl().AddStateObserver(
-                            id, el->context(),
-                            std::make_unique<PollingViewObserver<T, V>>(
-                                view_id,
-                                seq->IsCurrentStepInAnyContextForTesting()
-                                    ? std::nullopt
-                                    : std::make_optional(el->context()),
-                                std::move(callback), polling_interval));
-                      },
-                      base::Unretained(this), id.identifier(), view_id, cb,
-                      polling_interval));
-  step.SetDescription(
-      base::StringPrintf("PollView(%s)", view_id.GetName().c_str()));
-  return step;
-}
-
-template <typename R, typename V, typename T>
-  requires internal::IsView<V>
-ui::InteractionSequence::StepBuilder InteractiveViewsTestApi::PollViewProperty(
-    ui::test::StateIdentifier<PollingViewPropertyObserver<T, V>> id,
-    ui::ElementIdentifier view_id,
-    R (V::*property)() const,
-    base::TimeDelta polling_interval) {
-  auto step = WithElement(
-      ui::test::internal::kInteractiveTestPivotElementId,
-      base::BindOnce(
-          [](InteractiveViewsTestApi* api, ui::ElementIdentifier id,
-             ui::ElementIdentifier view_id, R (V::*property)() const,
-             base::TimeDelta polling_interval, ui::InteractionSequence* seq,
-             ui::TrackedElement* el) {
-            api->test_impl().AddStateObserver(
-                id, el->context(),
-                std::make_unique<PollingViewPropertyObserver<T, V>>(
-                    view_id,
-                    seq->IsCurrentStepInAnyContextForTesting()
-                        ? std::nullopt
-                        : std::make_optional(el->context()),
-                    property, polling_interval));
-          },
-          base::Unretained(this), id.identifier(), view_id, property,
-          polling_interval));
-  step.SetDescription(
-      base::StringPrintf("PollViewProperty(%s)", view_id.GetName().c_str()));
-  return step;
 }
 
 }  // namespace views::test

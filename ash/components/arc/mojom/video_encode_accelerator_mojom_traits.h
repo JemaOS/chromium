@@ -27,6 +27,16 @@ struct EnumTraits<arc::mojom::VideoFrameStorageType,
 };
 
 template <>
+struct EnumTraits<arc::mojom::VideoEncodeAccelerator_Error,
+                  media::VideoEncodeAccelerator::Error> {
+  static arc::mojom::VideoEncodeAccelerator_Error ToMojom(
+      media::VideoEncodeAccelerator::Error input);
+
+  static bool FromMojom(arc::mojom::VideoEncodeAccelerator_Error input,
+                        media::VideoEncodeAccelerator::Error* output);
+};
+
+template <>
 struct StructTraits<arc::mojom::VideoEncodeProfileDataView,
                     media::VideoEncodeAccelerator::SupportedProfile> {
   static media::VideoCodecProfile profile(
@@ -100,12 +110,12 @@ struct StructTraits<arc::mojom::VideoEncodeAcceleratorConfigDataView,
 
   static uint32_t initial_framerate(
       const media::VideoEncodeAccelerator::Config& input) {
-    return input.framerate;
+    return input.initial_framerate.value_or(0);
   }
 
-  static uint32_t has_initial_framerate_deprecated(
+  static bool has_initial_framerate(
       const media::VideoEncodeAccelerator::Config& input) {
-    return true;
+    return input.initial_framerate.has_value();
   }
 
   static uint32_t gop_length(
@@ -130,7 +140,9 @@ struct StructTraits<arc::mojom::VideoEncodeAcceleratorConfigDataView,
 
   static arc::mojom::VideoFrameStorageType storage_type(
       const media::VideoEncodeAccelerator::Config& input) {
-    switch (input.storage_type) {
+    auto storage_type = input.storage_type.value_or(
+        media::VideoEncodeAccelerator::Config::StorageType::kShmem);
+    switch (storage_type) {
       case media::VideoEncodeAccelerator::Config::StorageType::kShmem:
         return arc::mojom::VideoFrameStorageType::SHMEM;
       case media::VideoEncodeAccelerator::Config::StorageType::kGpuMemoryBuffer:

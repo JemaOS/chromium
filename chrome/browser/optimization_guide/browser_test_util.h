@@ -11,8 +11,6 @@
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "components/optimization_guide/proto/models.pb.h"
 
-class Profile;
-
 namespace base {
 class HistogramTester;
 }  // namespace base
@@ -30,15 +28,11 @@ int RetryForHistogramUntilCountReached(
 std::unique_ptr<optimization_guide::proto::GetModelsResponse>
 BuildGetModelsResponse();
 
-// Enables sign-in with the account having model execution capability.
-void EnableSigninAndModelExecutionCapability(Profile* profile);
-
 // Helper to receive modelinfo updates.
 class ModelFileObserver : public OptimizationTargetModelObserver {
  public:
   using ModelFileReceivedCallback =
-      base::OnceCallback<void(proto::OptimizationTarget,
-                              base::optional_ref<const ModelInfo>)>;
+      base::OnceCallback<void(proto::OptimizationTarget, const ModelInfo&)>;
 
   ModelFileObserver();
   ~ModelFileObserver() override;
@@ -47,24 +41,24 @@ class ModelFileObserver : public OptimizationTargetModelObserver {
     file_received_callback_ = std::move(callback);
   }
 
-  std::optional<proto::OptimizationTarget> optimization_target() const {
+  absl::optional<proto::OptimizationTarget> optimization_target() const {
     return optimization_target_;
   }
 
-  std::optional<ModelInfo> model_info() { return model_info_; }
+  absl::optional<ModelInfo> model_info() { return model_info_; }
 
   // OptimizationTargetModelObserver implementation:
   void OnModelUpdated(proto::OptimizationTarget optimization_target,
-                      base::optional_ref<const ModelInfo> model_info) override;
+                      const ModelInfo& model_info) override;
 
  private:
   ModelFileReceivedCallback file_received_callback_;
 
   // Holds the optimization target that was received from modelinfo updates.
-  std::optional<proto::OptimizationTarget> optimization_target_;
+  absl::optional<proto::OptimizationTarget> optimization_target_;
 
   // Holds the modelinfo that was received from modelinfo updates.
-  std::optional<ModelInfo> model_info_;
+  absl::optional<ModelInfo> model_info_;
 };
 
 }  // namespace optimization_guide

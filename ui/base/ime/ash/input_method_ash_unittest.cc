@@ -11,14 +11,12 @@
 #include <queue>
 #include <string>
 
-#include "ash/constants/ash_features.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/i18n/char_iterator.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -29,7 +27,6 @@
 #include "ui/base/ime/ash/text_input_method.h"
 #include "ui/base/ime/composition_text.h"
 #include "ui/base/ime/dummy_text_input_client.h"
-#include "ui/base/ime/events.h"
 #include "ui/base/ime/fake_text_input_client.h"
 #include "ui/base/ime/ime_key_event_dispatcher.h"
 #include "ui/base/ime/text_input_client.h"
@@ -393,7 +390,7 @@ class InputMethodAshTest : public ui::ImeKeyEventDispatcher,
 
   bool stop_propagation_post_ime_;
 
-  raw_ptr<TestInputMethodManager, DanglingUntriaged> input_method_manager_;
+  raw_ptr<TestInputMethodManager, ExperimentalAsh> input_method_manager_;
 
   base::test::TaskEnvironment task_environment_;
 };
@@ -1210,7 +1207,7 @@ TEST_F(InputMethodAshKeyEventTest, StopPropagationTest) {
 }
 
 TEST_F(InputMethodAshKeyEventTest, DeadKeyPressTest) {
-  base::test::ScopedFeatureList feature_list(features::kInputMethodDeadKeyFix);
+  // Preparation.
   input_type_ = ui::TEXT_INPUT_TYPE_TEXT;
   input_method_ash_->OnTextInputTypeChanged(this);
 
@@ -1225,128 +1222,11 @@ TEST_F(InputMethodAshKeyEventTest, DeadKeyPressTest) {
   const ui::KeyEvent& key_event = dispatched_key_event_;
 
   EXPECT_EQ(ui::ET_KEY_PRESSED, key_event.type());
-  EXPECT_EQ(eventA.key_code(), key_event.key_code());
+  EXPECT_EQ(ui::VKEY_PROCESSKEY, key_event.key_code());
   EXPECT_EQ(eventA.code(), key_event.code());
   EXPECT_EQ(eventA.flags(), key_event.flags());
-  EXPECT_EQ(eventA.GetDomKey(), key_event.GetDomKey());
+  EXPECT_EQ(ui::DomKey::PROCESS, key_event.GetDomKey());
   EXPECT_EQ(eventA.time_stamp(), key_event.time_stamp());
-}
-
-TEST_F(InputMethodAshTest, UnhandledDeadKeyForNonTerminalSendsDeadKeys) {
-  base::test::ScopedFeatureList feature_list(features::kInputMethodDeadKeyFix);
-
-  for (const GURL& url : {
-           GURL("chrome-untrusted://emoji"),
-           GURL("chrome://crosh"),
-           GURL("chrome://terminal"),
-       }) {
-    FakeTextInputClient fake_text_input_client(ui::TEXT_INPUT_TYPE_TEXT);
-    fake_text_input_client.SetUrl(url);
-    InputMethodAsh ime(this);
-    ime.SetFocusedTextInputClient(&fake_text_input_client);
-
-    ui::KeyEvent key_press(ui::ET_KEY_PRESSED,
-                           ui::VKEY_OEM_4,  // '['
-                           ui::DomCode::BRACKET_LEFT, 0,
-                           ui::DomKey::DeadKeyFromCombiningCharacter('^'),
-                           ui::EventTimeForNow());
-    ime.DispatchKeyEvent(&key_press);
-    std::move(mock_ime_engine_handler_->last_passed_callback())
-        .Run(ui::ime::KeyEventHandledState::kNotHandled);
-    const ui::KeyEvent dispatched_key_press = dispatched_key_event_;
-
-    ui::KeyEvent key_release(ui::ET_KEY_RELEASED,
-                             ui::VKEY_OEM_4,  // '['
-                             ui::DomCode::BRACKET_LEFT, 0,
-                             ui::DomKey::DeadKeyFromCombiningCharacter('^'),
-                             ui::EventTimeForNow());
-    ime.DispatchKeyEvent(&key_release);
-    std::move(mock_ime_engine_handler_->last_passed_callback())
-        .Run(ui::ime::KeyEventHandledState::kNotHandled);
-    const ui::KeyEvent dispatched_key_release = dispatched_key_event_;
-
-    EXPECT_EQ(dispatched_key_press.type(), ui::ET_KEY_PRESSED);
-    EXPECT_EQ(dispatched_key_press.key_code(), ui::VKEY_OEM_4);
-    EXPECT_EQ(dispatched_key_press.code(), ui::DomCode::BRACKET_LEFT);
-    EXPECT_EQ(dispatched_key_press.GetDomKey(),
-              ui::DomKey::DeadKeyFromCombiningCharacter('^'));
-    EXPECT_EQ(dispatched_key_release.type(), ui::ET_KEY_RELEASED);
-    EXPECT_EQ(dispatched_key_release.key_code(), ui::VKEY_OEM_4);
-    EXPECT_EQ(dispatched_key_release.code(), ui::DomCode::BRACKET_LEFT);
-    EXPECT_EQ(dispatched_key_release.GetDomKey(),
-              ui::DomKey::DeadKeyFromCombiningCharacter('^'));
-  }
-}
-
-TEST_F(InputMethodAshTest, UnhandledDeadKeyForTerminalSendsDeadKeys) {
-  for (const GURL& url : {
-           GURL("chrome-untrusted://crosh"),
-           GURL("chrome-untrusted://croshy"),
-           GURL("chrome-untrusted://crosh/"),
-           GURL("chrome-untrusted://crosh/a?b=1&c=2#d"),
-           GURL("chrome-untrusted://terminal"),
-           GURL("chrome-untrusted://terminaly"),
-           GURL("chrome-untrusted://terminal/"),
-           GURL("chrome-untrusted://terminal/a?b=1&c=2#d"),
-       }) {
-    FakeTextInputClient fake_text_input_client(ui::TEXT_INPUT_TYPE_TEXT);
-    fake_text_input_client.SetUrl(url);
-    InputMethodAsh ime(this);
-    ime.SetFocusedTextInputClient(&fake_text_input_client);
-
-    ui::KeyEvent key_press(ui::ET_KEY_PRESSED,
-                           ui::VKEY_OEM_4,  // '['
-                           ui::DomCode::BRACKET_LEFT, 0,
-                           ui::DomKey::DeadKeyFromCombiningCharacter('^'),
-                           ui::EventTimeForNow());
-    ime.DispatchKeyEvent(&key_press);
-    std::move(mock_ime_engine_handler_->last_passed_callback())
-        .Run(ui::ime::KeyEventHandledState::kNotHandled);
-    const ui::KeyEvent dispatched_key_press = dispatched_key_event_;
-
-    ui::KeyEvent key_release(ui::ET_KEY_RELEASED,
-                             ui::VKEY_OEM_4,  // '['
-                             ui::DomCode::BRACKET_LEFT, 0,
-                             ui::DomKey::DeadKeyFromCombiningCharacter('^'),
-                             ui::EventTimeForNow());
-    ime.DispatchKeyEvent(&key_release);
-    std::move(mock_ime_engine_handler_->last_passed_callback())
-        .Run(ui::ime::KeyEventHandledState::kNotHandled);
-    const ui::KeyEvent dispatched_key_release = dispatched_key_event_;
-
-    EXPECT_EQ(dispatched_key_press.type(), ui::ET_KEY_PRESSED);
-    EXPECT_EQ(dispatched_key_press.key_code(), ui::VKEY_OEM_4);
-    EXPECT_EQ(dispatched_key_press.code(), ui::DomCode::BRACKET_LEFT);
-    EXPECT_EQ(dispatched_key_press.GetDomKey(),
-              ui::DomKey::DeadKeyFromCombiningCharacter('^'));
-    EXPECT_EQ(dispatched_key_release.type(), ui::ET_KEY_RELEASED);
-    EXPECT_EQ(dispatched_key_release.key_code(), ui::VKEY_OEM_4);
-    EXPECT_EQ(dispatched_key_release.code(), ui::DomCode::BRACKET_LEFT);
-    EXPECT_EQ(dispatched_key_release.GetDomKey(),
-              ui::DomKey::DeadKeyFromCombiningCharacter('^'));
-  }
-}
-
-TEST_F(InputMethodAshTest, DeadKeyHandledByAssistiveSendsProcessKey) {
-  FakeTextInputClient fake_text_input_client(ui::TEXT_INPUT_TYPE_TEXT);
-  fake_text_input_client.SetUrl(GURL("chrome-untrusted://crosh"));
-  InputMethodAsh ime(this);
-  ime.SetFocusedTextInputClient(&fake_text_input_client);
-
-  ui::KeyEvent key_press(ui::ET_KEY_PRESSED,
-                         ui::VKEY_OEM_4,  // '['
-                         ui::DomCode::BRACKET_LEFT, 0,
-                         ui::DomKey::DeadKeyFromCombiningCharacter('^'),
-                         ui::EventTimeForNow());
-  ime.DispatchKeyEvent(&key_press);
-  std::move(mock_ime_engine_handler_->last_passed_callback())
-      .Run(ui::ime::KeyEventHandledState::kHandledByAssistiveSuggester);
-  const ui::KeyEvent dispatched_key_press = dispatched_key_event_;
-
-  EXPECT_EQ(dispatched_key_press.type(), ui::ET_KEY_PRESSED);
-  EXPECT_EQ(dispatched_key_press.key_code(), ui::VKEY_PROCESSKEY);
-  EXPECT_EQ(dispatched_key_press.code(), ui::DomCode::BRACKET_LEFT);
-  EXPECT_EQ(dispatched_key_press.GetDomKey(), ui::DomKey::PROCESS);
 }
 
 TEST_F(InputMethodAshKeyEventTest, KeyboardImeFlags) {
@@ -1375,66 +1255,6 @@ TEST_F(InputMethodAshKeyEventTest, KeyboardImeFlags) {
     EXPECT_EQ(ui::kPropertyKeyboardImeIgnoredFlag,
               ui::GetKeyboardImeFlags(key_event));
   }
-}
-
-TEST_F(InputMethodAshKeyEventTest, HandledKeyEventDoesNotSuppressAutoRepeat) {
-  // Preparation.
-  input_type_ = ui::TEXT_INPUT_TYPE_TEXT;
-  input_method_ash_->OnTextInputTypeChanged(this);
-
-  {
-    ui::KeyEvent eventA(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A, 0,
-                        ui::DomKey::FromCharacter('a'), ui::EventTimeForNow());
-    input_method_ash_->ProcessKeyEventPostIME(
-        &eventA, ui::ime::KeyEventHandledState::kHandledByIME,
-        /*stopped_propagation=*/true);
-
-    EXPECT_FALSE(
-        ui::HasKeyEventSuppressAutoRepeat(*dispatched_key_event_.properties()));
-  }
-
-  {
-    ui::KeyEvent eventA(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A, 0,
-                        ui::DomKey::FromCharacter('a'), ui::EventTimeForNow());
-    input_method_ash_->ProcessKeyEventPostIME(
-        &eventA, ui::ime::KeyEventHandledState::kHandledByAssistiveSuggester,
-        /*stopped_propagation=*/true);
-
-    EXPECT_FALSE(
-        ui::HasKeyEventSuppressAutoRepeat(*dispatched_key_event_.properties()));
-  }
-}
-
-TEST_F(InputMethodAshKeyEventTest,
-       NotHandledKeyEventDoesNotSuppressAutoRepeat) {
-  // Preparation.
-  input_type_ = ui::TEXT_INPUT_TYPE_TEXT;
-  input_method_ash_->OnTextInputTypeChanged(this);
-
-  ui::KeyEvent eventA(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A, 0,
-                      ui::DomKey::FromCharacter('a'), ui::EventTimeForNow());
-  input_method_ash_->ProcessKeyEventPostIME(
-      &eventA, ui::ime::KeyEventHandledState::kNotHandled,
-      /*stopped_propagation=*/false);
-
-  EXPECT_FALSE(
-      ui::HasKeyEventSuppressAutoRepeat(*dispatched_key_event_.properties()));
-}
-
-TEST_F(InputMethodAshKeyEventTest,
-       NotHandledSuppressKeyEventSuppressesAutoRepeat) {
-  // Preparation.
-  input_type_ = ui::TEXT_INPUT_TYPE_TEXT;
-  input_method_ash_->OnTextInputTypeChanged(this);
-
-  ui::KeyEvent eventA(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A, 0,
-                      ui::DomKey::FromCharacter('a'), ui::EventTimeForNow());
-  input_method_ash_->ProcessKeyEventPostIME(
-      &eventA, ui::ime::KeyEventHandledState::kNotHandledSuppressAutoRepeat,
-      /*stopped_propagation=*/false);
-
-  EXPECT_TRUE(
-      ui::HasKeyEventSuppressAutoRepeat(*dispatched_key_event_.properties()));
 }
 
 TEST_F(InputMethodAshKeyEventTest,
@@ -1493,9 +1313,7 @@ TEST_F(InputMethodAshKeyEventTest, SetAutocorrectRangeRunsAfterKeyEvent) {
   input_method_ash_->CommitText(
       u"a", TextInputClient::InsertTextCursorBehavior::kMoveCursorAfterText);
 
-  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A,
-                     ui::EF_NONE, ui::DomKey::FromCharacter('a'),
-                     ui::EventTimeForNow());
+  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::EF_NONE);
   input_method_ash_->DispatchKeyEvent(&event);
 
   bool callback_called = false;
@@ -1552,9 +1370,7 @@ TEST_F(InputMethodAshKeyEventTest,
   // Disable autocorrect range to make it return false.
   set_autocorrect_enabled(false);
 
-  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A,
-                     ui::EF_NONE, ui::DomKey::FromCharacter('a'),
-                     ui::EventTimeForNow());
+  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::EF_NONE);
   input_method_ash_->DispatchKeyEvent(&event);
 
   bool callback_called = false;
@@ -1585,9 +1401,7 @@ TEST_F(
   input_method_ash_->CommitText(
       u"a", TextInputClient::InsertTextCursorBehavior::kMoveCursorAfterText);
 
-  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A,
-                     ui::EF_NONE, ui::DomKey::FromCharacter('a'),
-                     ui::EventTimeForNow());
+  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::EF_NONE);
   input_method_ash_->DispatchKeyEvent(&event);
 
   bool first_set_callback_called = false;
@@ -1628,9 +1442,7 @@ TEST_F(InputMethodAshKeyEventTest,
   InputMethodAsh ime(this);
   ime.SetFocusedTextInputClient(&fake_text_input_client);
 
-  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A,
-                     ui::EF_NONE, ui::DomKey::FromCharacter('a'),
-                     ui::EventTimeForNow());
+  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::EF_NONE);
   ime.DispatchKeyEvent(&event);
   ime.CommitText(
       u"a", TextInputClient::InsertTextCursorBehavior::kMoveCursorAfterText);
@@ -1651,9 +1463,7 @@ TEST_F(InputMethodAshKeyEventTest,
   InputMethodAsh ime(this);
   ime.SetFocusedTextInputClient(&fake_text_input_client);
 
-  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A,
-                     ui::EF_NONE, ui::DomKey::FromCharacter('a'),
-                     ui::EventTimeForNow());
+  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::EF_NONE);
   ime.DispatchKeyEvent(&event);
   ime.CommitText(
       u"a", TextInputClient::InsertTextCursorBehavior::kMoveCursorBeforeText);
@@ -1680,9 +1490,7 @@ TEST_F(InputMethodAshKeyEventTest, CommitTextEmptyRunsAfterKeyEvent) {
   composition.text = u"hello";
   ime.UpdateCompositionText(composition, /*cursor_pos=*/5, /*visible=*/true);
 
-  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A,
-                     ui::EF_NONE, ui::DomKey::FromCharacter('a'),
-                     ui::EventTimeForNow());
+  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::EF_NONE);
   ime.DispatchKeyEvent(&event);
   ime.CommitText(
       u"", TextInputClient::InsertTextCursorBehavior::kMoveCursorBeforeText);
@@ -1740,10 +1548,8 @@ TEST_F(InputMethodAshTest, CommitTextThenKeyEventOnlyInsertsOnce) {
 
   ime.CommitText(
       u"a", TextInputClient::InsertTextCursorBehavior::kMoveCursorAfterText);
-  ui::KeyEvent event(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::DomCode::US_A,
-                     ui::EF_NONE, ui::DomKey::FromCharacter('a'),
-                     ui::EventTimeForNow());
-  ime.DispatchKeyEvent(&event);
+  ui::KeyEvent key(ui::ET_KEY_PRESSED, ui::VKEY_A, ui::EF_NONE);
+  ime.DispatchKeyEvent(&key);
   std::move(mock_ime_engine_handler_->last_passed_callback())
       .Run(ui::ime::KeyEventHandledState::kHandledByIME);
 
@@ -1772,9 +1578,9 @@ TEST_F(InputMethodAshTest, GetsGrammarFragments) {
   EXPECT_EQ(input_method_ash_->GetGrammarFragmentAtCursor(), fragment);
 
   input_method_ash_->SetEditableSelectionRange(gfx::Range(7, 7));
-  EXPECT_EQ(input_method_ash_->GetGrammarFragmentAtCursor(), std::nullopt);
+  EXPECT_EQ(input_method_ash_->GetGrammarFragmentAtCursor(), absl::nullopt);
   input_method_ash_->SetEditableSelectionRange(gfx::Range(4, 7));
-  EXPECT_EQ(input_method_ash_->GetGrammarFragmentAtCursor(), std::nullopt);
+  EXPECT_EQ(input_method_ash_->GetGrammarFragmentAtCursor(), absl::nullopt);
 }
 
 }  // namespace ash

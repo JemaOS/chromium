@@ -25,9 +25,7 @@
 
 #include "third_party/blink/renderer/core/script/pending_script.h"
 
-#include <optional>
-
-#include "base/trace_event/trace_event.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/script/script_type.mojom-shared.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
@@ -42,6 +40,7 @@
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/scheduler/public/frame_scheduler.h"
 #include "third_party/blink/renderer/platform/scheduler/public/task_attribution_tracker.h"
+#include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 
 namespace blink {
 
@@ -62,8 +61,7 @@ WebScopedVirtualTimePauser CreateWebScopedVirtualTimePauser(
 // See the comment about |is_in_document_write| in ScriptLoader::PrepareScript()
 // about IsInDocumentWrite() use here.
 PendingScript::PendingScript(ScriptElementBase* element,
-                             const TextPosition& starting_position,
-                             scheduler::TaskAttributionInfo* parent_task)
+                             const TextPosition& starting_position)
     : element_(element),
       starting_position_(starting_position),
       virtual_time_pauser_(CreateWebScopedVirtualTimePauser(element)),
@@ -71,8 +69,7 @@ PendingScript::PendingScript(ScriptElementBase* element,
       original_element_document_(&element->GetDocument()),
       original_execution_context_(element->GetExecutionContext()),
       created_during_document_write_(
-          element->GetDocument().IsInDocumentWrite()),
-      parent_task_(parent_task) {}
+          element->GetDocument().IsInDocumentWrite()) {}
 
 PendingScript::~PendingScript() {}
 
@@ -163,13 +160,14 @@ void PendingScript::ExecuteScriptBlock() {
     return;
   }
 
-  std::optional<scheduler::TaskAttributionTracker::TaskScope>
+  std::unique_ptr<scheduler::TaskAttributionTracker::TaskScope>
       task_attribution_scope;
   if (ScriptState* script_state = ToScriptStateForMainWorld(frame)) {
-    if (auto* tracker = scheduler::TaskAttributionTracker::From(
-            script_state->GetIsolate())) {
+    DCHECK(ThreadScheduler::Current());
+    if (auto* tracker =
+            ThreadScheduler::Current()->GetTaskAttributionTracker()) {
       task_attribution_scope = tracker->CreateTaskScope(
-          script_state, parent_task_,
+          script_state, absl::nullopt,
           scheduler::TaskAttributionTracker::TaskScopeType::kScriptExecution);
     }
   }
@@ -324,7 +322,6 @@ void PendingScript::Trace(Visitor* visitor) const {
   visitor->Trace(client_);
   visitor->Trace(original_execution_context_);
   visitor->Trace(original_element_document_);
-  visitor->Trace(parent_task_);
 }
 
 bool PendingScript::IsControlledByScriptRunner() const {

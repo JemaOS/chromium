@@ -159,13 +159,11 @@ class UserTest(unittest.TestCase):
 
     def test_confirm_use_default_noninteractive(self):
         platform_info = MockPlatformInfo(interactive=False)
-        mock_input = mock.Mock(side_effect=EOFError)
-        self.assertTrue(
-            User(platform_info).confirm(default=User.DEFAULT_YES,
-                                        input_func=mock_input))
-        self.assertFalse(
-            User(platform_info).confirm(default=User.DEFAULT_NO,
-                                        input_func=mock_input))
+        with mock.patch('builtins.input', side_effect=EOFError):
+            self.assertTrue(
+                User(platform_info).confirm(default=User.DEFAULT_YES))
+            self.assertFalse(
+                User(platform_info).confirm(default=User.DEFAULT_NO))
 
     def test_confirm_not_y_means_no(self):
         self.check_confirm(

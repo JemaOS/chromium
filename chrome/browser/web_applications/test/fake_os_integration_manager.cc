@@ -4,8 +4,6 @@
 
 #include "chrome/browser/web_applications/test/fake_os_integration_manager.h"
 
-#include <string_view>
-
 #include "base/containers/contains.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/test/bind.h"
@@ -30,9 +28,7 @@ FakeOsIntegrationManager::FakeOsIntegrationManager(
                            std::move(shortcut_manager),
                            std::move(file_handler_manager),
                            std::move(protocol_handler_manager),
-                           std::move(url_handler_manager)),
-      scoped_suppress_(
-          std::make_unique<OsIntegrationManager::ScopedSuppressForTesting>()) {
+                           std::move(url_handler_manager)) {
   if (!this->shortcut_manager()) {
     set_shortcut_manager(std::make_unique<TestShortcutManager>(profile));
   }
@@ -47,15 +43,14 @@ FakeOsIntegrationManager::FakeOsIntegrationManager(
 
 FakeOsIntegrationManager::~FakeOsIntegrationManager() = default;
 
-void FakeOsIntegrationManager::SetNextCreateShortcutsResult(
-    const webapps::AppId& app_id,
-    bool success) {
+void FakeOsIntegrationManager::SetNextCreateShortcutsResult(const AppId& app_id,
+                                                            bool success) {
   CHECK(!base::Contains(next_create_shortcut_results_, app_id));
   next_create_shortcut_results_[app_id] = success;
 }
 
 void FakeOsIntegrationManager::InstallOsHooks(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     InstallOsHooksCallback callback,
     std::unique_ptr<WebAppInstallInfo> web_app_info,
     InstallOsHooksOptions options) {
@@ -97,7 +92,7 @@ void FakeOsIntegrationManager::InstallOsHooks(
 }
 
 void FakeOsIntegrationManager::UninstallOsHooks(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     const OsHooksOptions& os_hooks,
     UninstallOsHooksCallback callback) {
   if (os_hooks[OsHookType::kRunOnOsLogin]) {
@@ -109,7 +104,7 @@ void FakeOsIntegrationManager::UninstallOsHooks(
 }
 
 void FakeOsIntegrationManager::UninstallAllOsHooks(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     UninstallOsHooksCallback callback) {
   OsHooksOptions os_hooks;
   os_hooks.set();
@@ -117,8 +112,8 @@ void FakeOsIntegrationManager::UninstallAllOsHooks(
 }
 
 void FakeOsIntegrationManager::UpdateOsHooks(
-    const webapps::AppId& app_id,
-    std::string_view old_name,
+    const AppId& app_id,
+    base::StringPiece old_name,
     FileHandlerUpdateAction file_handlers_need_os_update,
     const WebAppInstallInfo& web_app_info,
     UninstallOsHooksCallback callback) {
@@ -128,6 +123,25 @@ void FakeOsIntegrationManager::UpdateOsHooks(
   OsHooksErrors os_hooks_errors;
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), os_hooks_errors));
+}
+
+void FakeOsIntegrationManager::Synchronize(
+    const AppId& app_id,
+    base::OnceClosure callback,
+    absl::optional<SynchronizeOsOptions> options) {
+  // Holding a scoped_supress ensures that execution is skipped during the
+  // entire Synchronization flow. See
+  // OsIntegrationManager::StartSubManagerExecutionIfRequired() for more
+  // information.
+  auto scoped_supress =
+      std::make_unique<OsIntegrationManager::ScopedSuppressForTesting>();
+  auto scoped_supress_callback = base::BindOnce(
+      [&](std::unique_ptr<OsIntegrationManager::ScopedSuppressForTesting>
+              scoped_supress) {},
+      std::move(scoped_supress));
+  OsIntegrationManager::Synchronize(
+      app_id, std::move(callback).Then(std::move(scoped_supress_callback)),
+      options);
 }
 
 void FakeOsIntegrationManager::SetFileHandlerManager(
@@ -151,23 +165,23 @@ FakeOsIntegrationManager::AsTestOsIntegrationManager() {
 }
 
 TestShortcutManager::TestShortcutManager(Profile* profile)
-    : WebAppShortcutManager(profile, nullptr, nullptr) {}
+    : WebAppShortcutManager(profile, nullptr, nullptr, nullptr) {}
 
 TestShortcutManager::~TestShortcutManager() = default;
 
 std::unique_ptr<ShortcutInfo> TestShortcutManager::BuildShortcutInfo(
-    const webapps::AppId& app_id) {
+    const AppId& app_id) {
   return nullptr;
 }
 
 void TestShortcutManager::SetShortcutInfoForApp(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     std::unique_ptr<ShortcutInfo> shortcut_info) {
   shortcut_info_map_[app_id] = std::move(shortcut_info);
 }
 
 void TestShortcutManager::GetShortcutInfoForApp(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     GetShortcutInfoCallback callback) {
   if (shortcut_info_map_.find(app_id) != shortcut_info_map_.end()) {
     std::move(callback).Run(std::move(shortcut_info_map_[app_id]));

@@ -86,7 +86,7 @@ TEST_F(PositionIteratorTest, DecrementFromInputElementAfterChildren) {
   // FlatTree is "ABC" <input><div>123</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree::LastPositionInNode(input_element)),
       ElementsAre("---E INPUT@1 INPUT@afterAnchor",
@@ -108,7 +108,7 @@ TEST_F(PositionIteratorTest, DecrementFromInInputElementAfterNode) {
   // FlatTree is "ABC" <input><div>123</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree::AfterNode(input_element)),
       ElementsAre("---E INPUT@1 INPUT@afterAnchor",
@@ -130,7 +130,7 @@ TEST_F(PositionIteratorTest, DecrementFromInInputElementBeforeNode) {
   // FlatTree is "ABC" <input><div>123</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree::BeforeNode(input_element)),
       ElementsAre("-S-- INPUT@0 INPUT@offsetInAnchor[0] INPUT@beforeAnchor",
@@ -149,7 +149,7 @@ TEST_F(PositionIteratorTest, DecrementFromInInputElementInnerEditorAfterNode) {
   // FlatTree is "ABC" <input><div>"123"</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   // `PositionIterator` stops at `<input>`.
   EXPECT_THAT(
       ScanBackward(
@@ -166,7 +166,7 @@ TEST_F(PositionIteratorTest, DecrementFromInInputElementOffset0) {
   // FlatTree is "ABC" <input><div>"123"</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree(input_element, 0)),
       ElementsAre("-S-- INPUT@0 INPUT@offsetInAnchor[0] INPUT@beforeAnchor",
@@ -185,7 +185,7 @@ TEST_F(PositionIteratorTest, DecrementFromInInputElementOffset1) {
   // FlatTree is "ABC" <input><div>"123"</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree(input_element, 1)),
       ElementsAre("---E INPUT@1 INPUT@afterAnchor",
@@ -206,8 +206,8 @@ TEST_F(PositionIteratorTest, DecrementFromInInputElementOffset1) {
 TEST_F(PositionIteratorTest, DecrementFromObjectElementAfterChildren) {
   // FlatTree is "ABC" <object><slot></slot></object> "XYZ".
   SetBodyContent("ABC<object></object>XYZ");
-  const auto& object_element = *To<HTMLObjectElement>(
-      GetDocument().QuerySelector(AtomicString("object")));
+  const auto& object_element =
+      *To<HTMLObjectElement>(GetDocument().QuerySelector("object"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree::LastPositionInNode(object_element)),
       ElementsAre("---E OBJECT@1 OBJECT@afterAnchor",
@@ -227,8 +227,8 @@ TEST_F(PositionIteratorTest, DecrementFromObjectElementAfterChildren) {
 TEST_F(PositionIteratorTest, DecrementFromObjectElementAfterNode) {
   // FlatTree is "ABC" <object><slot></slot></object> "XYZ".
   SetBodyContent("ABC<object></object>XYZ");
-  const auto& object_element = *To<HTMLObjectElement>(
-      GetDocument().QuerySelector(AtomicString("object")));
+  const auto& object_element =
+      *To<HTMLObjectElement>(GetDocument().QuerySelector("object"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree::AfterNode(object_element)),
       ElementsAre("---E OBJECT@1 OBJECT@afterAnchor",
@@ -248,8 +248,8 @@ TEST_F(PositionIteratorTest, DecrementFromObjectElementAfterNode) {
 TEST_F(PositionIteratorTest, DecrementFromObjectElementBeforeNode) {
   // FlatTree is "ABC" <object><slot></slot></object> "XYZ".
   SetBodyContent("ABC<object></object>XYZ");
-  const auto& object_element = *To<HTMLObjectElement>(
-      GetDocument().QuerySelector(AtomicString("object")));
+  const auto& object_element =
+      *To<HTMLObjectElement>(GetDocument().QuerySelector("object"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree::BeforeNode(object_element)),
       ElementsAre("-S-- OBJECT@0 OBJECT@offsetInAnchor[0] OBJECT@beforeAnchor",
@@ -267,8 +267,8 @@ TEST_F(PositionIteratorTest, DecrementFromObjectElementBeforeNode) {
 TEST_F(PositionIteratorTest, DecrementFromObjectElementOffset0) {
   // FlatTree is "ABC" <object><slot></slot></object> "XYZ".
   SetBodyContent("ABC<object></object>XYZ");
-  const auto& object_element = *To<HTMLObjectElement>(
-      GetDocument().QuerySelector(AtomicString("object")));
+  const auto& object_element =
+      *To<HTMLObjectElement>(GetDocument().QuerySelector("object"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree(object_element, 0)),
       ElementsAre("-S-- OBJECT@0 OBJECT@offsetInAnchor[0] OBJECT@beforeAnchor",
@@ -286,8 +286,8 @@ TEST_F(PositionIteratorTest, DecrementFromObjectElementOffset0) {
 TEST_F(PositionIteratorTest, DecrementFromObjectElementOffset1) {
   // FlatTree is "ABC" <object><slot></slot></object> "XYZ".
   SetBodyContent("ABC<object></object>XYZ");
-  const auto& object_element = *To<HTMLObjectElement>(
-      GetDocument().QuerySelector(AtomicString("object")));
+  const auto& object_element =
+      *To<HTMLObjectElement>(GetDocument().QuerySelector("object"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree(object_element, 1)),
       ElementsAre("---E OBJECT@1 OBJECT@afterAnchor",
@@ -308,15 +308,14 @@ TEST_F(PositionIteratorTest, DecrementFromSelectElementAfterChildren) {
   // FlatTree is "ABC"
   // <select><div>""</div><slot><option></option></slot></select> "XYZ".
   SetBodyContent("ABC<select><option></option></select>XYZ");
-  const auto& select_element = *To<HTMLSelectElement>(
-      GetDocument().QuerySelector(AtomicString("select")));
+  const auto& select_element =
+      *To<HTMLSelectElement>(GetDocument().QuerySelector("select"));
   for (const Node* node = &select_element; node;
        node = FlatTreeTraversal::Next(*node))
     DVLOG(0) << node << " " << FlatTreeTraversal::Parent(*node);
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree::LastPositionInNode(select_element)),
       ElementsAre("---E SELECT@1 SELECT@afterAnchor",
-                  "---E SELECT@1 SELECT@afterAnchor",
                   "---E SELECT@1 SELECT@afterAnchor",
                   "-S-E SELECT@0 SELECT@beforeAnchor SELECT@afterAnchor",
                   "---- BODY BODY@offsetInAnchor[1]",
@@ -334,12 +333,11 @@ TEST_F(PositionIteratorTest, DecrementFromSelectElementAfterNode) {
   // FlatTree is "ABC"
   // <select><div>""</div><slot><option></option></slot></select> "XYZ".
   SetBodyContent("ABC<select><option></option></select>XYZ");
-  const auto& select_element = *To<HTMLSelectElement>(
-      GetDocument().QuerySelector(AtomicString("select")));
+  const auto& select_element =
+      *To<HTMLSelectElement>(GetDocument().QuerySelector("select"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree::AfterNode(select_element)),
       ElementsAre("---E SELECT@1 SELECT@afterAnchor",
-                  "---E SELECT@1 SELECT@afterAnchor",
                   "---E SELECT@1 SELECT@afterAnchor",
                   "-S-E SELECT@0 SELECT@beforeAnchor SELECT@afterAnchor",
                   "---- BODY BODY@offsetInAnchor[1]",
@@ -357,8 +355,8 @@ TEST_F(PositionIteratorTest, DecrementFromSelectElementBeforeNode) {
   // FlatTree is "ABC"
   // <select><div>""</div><slot><option></option></slot></select> "XYZ".
   SetBodyContent("ABC<select><option></option></select>XYZ");
-  const auto& select_element = *To<HTMLSelectElement>(
-      GetDocument().QuerySelector(AtomicString("select")));
+  const auto& select_element =
+      *To<HTMLSelectElement>(GetDocument().QuerySelector("select"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree::BeforeNode(select_element)),
       ElementsAre("-S-- SELECT@0 SELECT@offsetInAnchor[0] SELECT@beforeAnchor",
@@ -377,8 +375,8 @@ TEST_F(PositionIteratorTest, DecrementFromSelectElementOffset0) {
   // FlatTree is "ABC"
   // <select><div>""</div><slot><option></option></slot></select> "XYZ".
   SetBodyContent("ABC<select><option></option></select>XYZ");
-  const auto& select_element = *To<HTMLSelectElement>(
-      GetDocument().QuerySelector(AtomicString("select")));
+  const auto& select_element =
+      *To<HTMLSelectElement>(GetDocument().QuerySelector("select"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree(select_element, 0)),
       ElementsAre("-S-- SELECT@0 SELECT@offsetInAnchor[0] SELECT@beforeAnchor",
@@ -397,18 +395,14 @@ TEST_F(PositionIteratorTest, DecrementFromSelectElementOffset1) {
   // FlatTree is "ABC"
   // <select><div>""</div><slot><option></option></slot></select> "XYZ".
   SetBodyContent("ABC<select><option></option></select>XYZ");
-  const auto& select_element = *To<HTMLSelectElement>(
-      GetDocument().QuerySelector(AtomicString("select")));
+  const auto& select_element =
+      *To<HTMLSelectElement>(GetDocument().QuerySelector("select"));
   EXPECT_THAT(
       ScanBackward(PositionInFlatTree(select_element, 1)),
       ElementsAre("---- SELECT@1 SELECT@offsetInAnchor[1] SELECT@beforeAnchor",
-                  "---E SLOT id=\"select-button\" SLOT "
-                  "id=\"select-button\"@afterChildren",
                   "---E DIV DIV@afterChildren",
                   "-S-E #text \"\"@0 #text \"\"@offsetInAnchor[0]",
-                  "-S-- DIV DIV@offsetInAnchor[0]",
-                  "-S-- SLOT id=\"select-button\" SLOT "
-                  "id=\"select-button\"@offsetInAnchor[0]"));
+                  "-S-- DIV DIV@offsetInAnchor[0]"));
 }
 
 TEST_F(PositionIteratorTest, DecrementWithBrInOption) {
@@ -693,7 +687,7 @@ TEST_F(PositionIteratorTest, IncrementFromInputElementAfterChildren) {
   // FlatTree is "ABC" <input><div>123</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree::LastPositionInNode(input_element)),
       ElementsAre(
@@ -709,7 +703,7 @@ TEST_F(PositionIteratorTest, IncrementFromInputElementAfterNode) {
   // FlatTree is "ABC" <input><div>123</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree::AfterNode(input_element)),
       ElementsAre(
@@ -725,7 +719,7 @@ TEST_F(PositionIteratorTest, IncrementFromInputElementBeforeNode) {
   // FlatTree is "ABC" <input><div>123</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree::BeforeNode(input_element)),
       ElementsAre("-S-- INPUT@0 INPUT@offsetInAnchor[0] INPUT@beforeAnchor",
@@ -741,7 +735,7 @@ TEST_F(PositionIteratorTest, IncrementFromInputElementOffset0) {
   // FlatTree is "ABC" <input><div>123</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree(input_element, 0)),
       ElementsAre("-S-- INPUT@0 INPUT@offsetInAnchor[0] INPUT@beforeAnchor",
@@ -757,7 +751,7 @@ TEST_F(PositionIteratorTest, IncrementFromInputElementOffset1) {
   // FlatTree is "ABC" <input><div>123</div></input> "XYZ".
   SetBodyContent("ABC<input value=123>XYZ");
   const auto& input_element =
-      *To<HTMLInputElement>(GetDocument().QuerySelector(AtomicString("input")));
+      *To<HTMLInputElement>(GetDocument().QuerySelector("input"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree(input_element, 1)),
       ElementsAre(
@@ -772,8 +766,8 @@ TEST_F(PositionIteratorTest, IncrementFromInputElementOffset1) {
 TEST_F(PositionIteratorTest, IncrementFromObjectElementAfterChildren) {
   // FlatTree is "ABC" <object><slot></slot></object> "XYZ".
   SetBodyContent("ABC<object></object>XYZ");
-  const auto& object_element = *To<HTMLObjectElement>(
-      GetDocument().QuerySelector(AtomicString("object")));
+  const auto& object_element =
+      *To<HTMLObjectElement>(GetDocument().QuerySelector("object"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree::LastPositionInNode(object_element)),
       ElementsAre("---E OBJECT@1 OBJECT@afterAnchor",
@@ -789,8 +783,8 @@ TEST_F(PositionIteratorTest, IncrementFromObjectElementAfterChildren) {
 TEST_F(PositionIteratorTest, IncrementFromObjectElementAfterNode) {
   // FlatTree is "ABC" <object><slot></slot></object> "XYZ".
   SetBodyContent("ABC<object></object>XYZ");
-  const auto& object_element = *To<HTMLObjectElement>(
-      GetDocument().QuerySelector(AtomicString("object")));
+  const auto& object_element =
+      *To<HTMLObjectElement>(GetDocument().QuerySelector("object"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree::AfterNode(object_element)),
       ElementsAre("---E OBJECT@1 OBJECT@afterAnchor",
@@ -806,8 +800,8 @@ TEST_F(PositionIteratorTest, IncrementFromObjectElementAfterNode) {
 TEST_F(PositionIteratorTest, IncrementFromObjectElementBeforeNode) {
   // FlatTree is "ABC" <object><slot></slot></object> "XYZ".
   SetBodyContent("ABC<object></object>XYZ");
-  const auto& object_element = *To<HTMLObjectElement>(
-      GetDocument().QuerySelector(AtomicString("object")));
+  const auto& object_element =
+      *To<HTMLObjectElement>(GetDocument().QuerySelector("object"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree::BeforeNode(object_element)),
       ElementsAre("-S-- OBJECT@0 OBJECT@offsetInAnchor[0] OBJECT@beforeAnchor",
@@ -825,8 +819,8 @@ TEST_F(PositionIteratorTest, IncrementFromObjectElementBeforeNode) {
 TEST_F(PositionIteratorTest, IncrementFromObjectElementOffset0) {
   // FlatTree is "ABC" <object><slot></slot></object> "XYZ".
   SetBodyContent("ABC<object></object>XYZ");
-  const auto& object_element = *To<HTMLObjectElement>(
-      GetDocument().QuerySelector(AtomicString("object")));
+  const auto& object_element =
+      *To<HTMLObjectElement>(GetDocument().QuerySelector("object"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree(object_element, 0)),
       ElementsAre("-S-- OBJECT@0 OBJECT@offsetInAnchor[0] OBJECT@beforeAnchor",
@@ -844,8 +838,8 @@ TEST_F(PositionIteratorTest, IncrementFromObjectElementOffset0) {
 TEST_F(PositionIteratorTest, IncrementFromObjectElementOffset1) {
   // FlatTree is "ABC" <object><slot></slot></object> "XYZ".
   SetBodyContent("ABC<object></object>XYZ");
-  const auto& object_element = *To<HTMLObjectElement>(
-      GetDocument().QuerySelector(AtomicString("object")));
+  const auto& object_element =
+      *To<HTMLObjectElement>(GetDocument().QuerySelector("object"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree(object_element, 1)),
       ElementsAre("---E OBJECT@1 OBJECT@afterAnchor",
@@ -862,8 +856,8 @@ TEST_F(PositionIteratorTest, IncrementFromSelectElementAfterChildren) {
   // FlatTree is "ABC"
   // <select><div>""</div><slot><option></option></slot></select> "XYZ".
   SetBodyContent("ABC<select><option></option></select>XYZ");
-  const auto& select_element = *To<HTMLSelectElement>(
-      GetDocument().QuerySelector(AtomicString("select")));
+  const auto& select_element =
+      *To<HTMLSelectElement>(GetDocument().QuerySelector("select"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree::LastPositionInNode(select_element)),
       ElementsAre("---E SELECT@1 SELECT@afterAnchor",
@@ -880,8 +874,8 @@ TEST_F(PositionIteratorTest, IncrementFromSelectElementAfterNode) {
   // FlatTree is "ABC"
   // <select><div>""</div><slot><option></option></slot></select> "XYZ".
   SetBodyContent("ABC<select><option></option></select>XYZ");
-  const auto& select_element = *To<HTMLSelectElement>(
-      GetDocument().QuerySelector(AtomicString("select")));
+  const auto& select_element =
+      *To<HTMLSelectElement>(GetDocument().QuerySelector("select"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree::AfterNode(select_element)),
       ElementsAre("---E SELECT@1 SELECT@afterAnchor",
@@ -898,50 +892,42 @@ TEST_F(PositionIteratorTest, IncrementFromSelectElementBeforeNode) {
   // FlatTree is "ABC"
   // <select><div>""</div><slot><option></option></slot></select> "XYZ".
   SetBodyContent("ABC<select><option></option></select>XYZ");
-  const auto& select_element = *To<HTMLSelectElement>(
-      GetDocument().QuerySelector(AtomicString("select")));
+  const auto& select_element =
+      *To<HTMLSelectElement>(GetDocument().QuerySelector("select"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree::BeforeNode(select_element)),
       ElementsAre("-S-- SELECT@0 SELECT@offsetInAnchor[0] SELECT@beforeAnchor",
-                  "-S-- SLOT id=\"select-button\" SLOT "
-                  "id=\"select-button\"@offsetInAnchor[0]",
                   "-S-- DIV DIV@offsetInAnchor[0]",
                   "-S-E #text \"\"@0 #text \"\"@offsetInAnchor[0]",
-                  "---E DIV DIV@afterChildren",
-                  "---E SLOT id=\"select-button\" SLOT "
-                  "id=\"select-button\"@afterChildren"));
+                  "---E DIV DIV@afterChildren"));
 }
 
 TEST_F(PositionIteratorTest, IncrementFromSelectElementOffset0) {
   // FlatTree is "ABC"
   // <select><div>""</div><slot><option></option></slot></select> "XYZ".
   SetBodyContent("ABC<select><option></option></select>XYZ");
-  const auto& select_element = *To<HTMLSelectElement>(
-      GetDocument().QuerySelector(AtomicString("select")));
+  const auto& select_element =
+      *To<HTMLSelectElement>(GetDocument().QuerySelector("select"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree(select_element, 0)),
       ElementsAre("-S-- SELECT@0 SELECT@offsetInAnchor[0] SELECT@beforeAnchor",
-                  "-S-- SLOT id=\"select-button\" SLOT "
-                  "id=\"select-button\"@offsetInAnchor[0]",
                   "-S-- DIV DIV@offsetInAnchor[0]",
                   "-S-E #text \"\"@0 #text \"\"@offsetInAnchor[0]",
-                  "---E DIV DIV@afterChildren",
-                  "---E SLOT id=\"select-button\" SLOT "
-                  "id=\"select-button\"@afterChildren"));
+                  "---E DIV DIV@afterChildren"));
 }
 
 TEST_F(PositionIteratorTest, IncrementFromSelectElementOffset1) {
   // FlatTree is "ABC"
   // <select><div>""</div><slot><option></option></slot></select> "XYZ".
   SetBodyContent("ABC<select><option></option></select>XYZ");
-  const auto& select_element = *To<HTMLSelectElement>(
-      GetDocument().QuerySelector(AtomicString("select")));
+  const auto& select_element =
+      *To<HTMLSelectElement>(GetDocument().QuerySelector("select"));
   EXPECT_THAT(
       ScanForward(PositionInFlatTree(select_element, 1)),
       ElementsAre("---- SELECT@1 SELECT@offsetInAnchor[1] SELECT@beforeAnchor",
-                  "-S-E SLOT id=\"select-datalist\" SLOT "
-                  "id=\"select-datalist\"@beforeAnchor SLOT "
-                  "id=\"select-datalist\"@offsetInAnchor[0]"));
+                  "-S-- SLOT SLOT@offsetInAnchor[0]",
+                  "-S-E OPTION OPTION@beforeAnchor OPTION@offsetInAnchor[0]",
+                  "---E SLOT SLOT@afterChildren"));
 }
 
 TEST_F(PositionIteratorTest, IncrementWithCollapsedSpace) {

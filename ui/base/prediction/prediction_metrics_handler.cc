@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -149,7 +149,7 @@ void PredictionMetricsHandler::EvaluatePrediction() {
 void PredictionMetricsHandler::Reset() {
   events_queue_.clear();
   predicted_events_queue_.clear();
-  last_predicted_ = std::nullopt;
+  last_predicted_ = absl::nullopt;
 }
 
 int PredictionMetricsHandler::GetInterpolatedEventForPredictedEvent(

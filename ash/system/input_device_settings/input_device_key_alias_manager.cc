@@ -4,9 +4,8 @@
 
 #include "ash/system/input_device_settings/input_device_key_alias_manager.h"
 
-#include <string_view>
-
 #include "ash/system/input_device_settings/input_device_settings_utils.h"
+#include "base/strings/string_piece.h"
 
 namespace ash {
 namespace {
@@ -18,9 +17,8 @@ namespace {
 // used as the primary key for a set of keys belonging to a device.
 static constexpr std::pair<const char*, const char*>
     kAliasToPrimaryDeviceKeyMap[] = {
-        // Apple Magic Keyboard with Numeric Pad {Bluetooth, USB}
-        {"004c:026c", "05ac:026c"},
-        {"046d:b35b", "046d:408a"}  // Logitech MX Keys {Bluetooth, Receiver}
+        // Apple Magic Keyboard
+        {"05ac:026c", "004c:026c"},
 };
 
 }  // namespace
@@ -42,7 +40,7 @@ std::string InputDeviceKeyAliasManager::GetAliasedDeviceKey(
 
 const base::flat_set<std::string>*
 InputDeviceKeyAliasManager::GetAliasesForPrimaryDeviceKey(
-    std::string_view primary_device_key) const {
+    base::StringPiece primary_device_key) const {
   const auto it = primary_key_to_aliases_map_.find(primary_device_key);
   return it == primary_key_to_aliases_map_.end() ? nullptr : &it->second;
 }

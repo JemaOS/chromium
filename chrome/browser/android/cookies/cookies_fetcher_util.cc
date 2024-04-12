@@ -41,31 +41,23 @@ void OnCookiesFetchFinished(const net::CookieList& cookies) {
       Java_CookiesFetcher_createCookiesArray(env, cookies.size());
 
   int index = 0;
-  for (const auto& cookie : cookies) {
-    // TODO (crbug.com/326605834) Once ancestor chain bit changes are
-    // implemented update this method utilize the ancestor bit.
-    base::expected<net::CookiePartitionKey::SerializedCookiePartitionKey,
-                   std::string>
-        key_serialized_result =
-            net::CookiePartitionKey::Serialize(cookie.PartitionKey());
-    if (!key_serialized_result.has_value()) {
+  for (auto i = cookies.cbegin(); i != cookies.cend(); ++i) {
+    std::string pk;
+    if (!net::CookiePartitionKey::Serialize(i->PartitionKey(), pk))
       continue;
-    }
     ScopedJavaLocalRef<jobject> java_cookie = Java_CookiesFetcher_createCookie(
-        env, base::android::ConvertUTF8ToJavaString(env, cookie.Name()),
-        base::android::ConvertUTF8ToJavaString(env, cookie.Value()),
-        base::android::ConvertUTF8ToJavaString(env, cookie.Domain()),
-        base::android::ConvertUTF8ToJavaString(env, cookie.Path()),
-        cookie.CreationDate().ToDeltaSinceWindowsEpoch().InMicroseconds(),
-        cookie.ExpiryDate().ToDeltaSinceWindowsEpoch().InMicroseconds(),
-        cookie.LastAccessDate().ToDeltaSinceWindowsEpoch().InMicroseconds(),
-        cookie.LastUpdateDate().ToDeltaSinceWindowsEpoch().InMicroseconds(),
-        cookie.SecureAttribute(), cookie.IsHttpOnly(),
-        static_cast<int>(cookie.SameSite()), cookie.Priority(),
-        base::android::ConvertUTF8ToJavaString(
-            env, key_serialized_result->TopLevelSite()),
-        static_cast<int>(cookie.SourceScheme()), cookie.SourcePort(),
-        static_cast<int>(cookie.SourceType()));
+        env, base::android::ConvertUTF8ToJavaString(env, i->Name()),
+        base::android::ConvertUTF8ToJavaString(env, i->Value()),
+        base::android::ConvertUTF8ToJavaString(env, i->Domain()),
+        base::android::ConvertUTF8ToJavaString(env, i->Path()),
+        i->CreationDate().ToDeltaSinceWindowsEpoch().InMicroseconds(),
+        i->ExpiryDate().ToDeltaSinceWindowsEpoch().InMicroseconds(),
+        i->LastAccessDate().ToDeltaSinceWindowsEpoch().InMicroseconds(),
+        i->LastUpdateDate().ToDeltaSinceWindowsEpoch().InMicroseconds(),
+        i->IsSecure(), i->IsHttpOnly(), static_cast<int>(i->SameSite()),
+        i->Priority(), i->IsSameParty(),
+        base::android::ConvertUTF8ToJavaString(env, pk),
+        static_cast<int>(i->SourceScheme()), i->SourcePort());
     env->SetObjectArrayElement(joa.obj(), index++, java_cookie.obj());
   }
 
@@ -105,27 +97,19 @@ static void JNI_CookiesFetcher_RestoreCookies(
     jboolean httponly,
     jint same_site,
     jint priority,
+    jboolean same_party,
     const JavaParamRef<jstring>& partition_key,
     jint source_scheme,
-    jint source_port,
-    jint source_type) {
+    jint source_port) {
   if (!ProfileManager::GetPrimaryUserProfile()->HasPrimaryOTRProfile())
     return;  // Don't create it. There is nothing to do.
 
   std::string domain_str(base::android::ConvertJavaStringToUTF8(env, domain));
   std::string path_str(base::android::ConvertJavaStringToUTF8(env, path));
 
-  std::string top_level_site =
-      base::android::ConvertJavaStringToUTF8(env, partition_key);
-  if (top_level_site.empty()) {
-    return;
-  }
-  // TODO (crbug.com/326605834) Once ancestor chain bit changes are
-  // implemented update this method utilize the ancestor bit.
-  base::expected<net::CookiePartitionKey, std::string>
-      serialized_cookie_partition_key =
-          net::CookiePartitionKey::FromUntrustedInput(top_level_site);
-  if (!serialized_cookie_partition_key.has_value()) {
+  absl::optional<net::CookiePartitionKey> pk;
+  if (!net::CookiePartitionKey::Deserialize(
+          base::android::ConvertJavaStringToUTF8(env, partition_key), pk)) {
     return;
   }
 
@@ -142,10 +126,8 @@ static void JNI_CookiesFetcher_RestoreCookies(
           base::Time::FromDeltaSinceWindowsEpoch(
               base::Microseconds(last_update)),
           secure, httponly, static_cast<net::CookieSameSite>(same_site),
-          static_cast<net::CookiePriority>(priority),
-          serialized_cookie_partition_key.value(),
-          static_cast<net::CookieSourceScheme>(source_scheme), source_port,
-          static_cast<net::CookieSourceType>(source_type));
+          static_cast<net::CookiePriority>(priority), same_party, pk,
+          static_cast<net::CookieSourceScheme>(source_scheme), source_port);
   // FromStorage() uses a less strict version of IsCanonical(), we need to check
   // the stricter version as well here. This is safe because this function is
   // only used for incognito cookies which don't survive Chrome updates and

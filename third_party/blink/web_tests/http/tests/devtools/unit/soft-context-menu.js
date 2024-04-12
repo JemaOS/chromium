@@ -1,10 +1,5 @@
-
-import {TestRunner} from 'test_runner';
-
-import * as Platform from 'devtools/core/platform/platform.js';
-import * as UI from 'devtools/ui/legacy/legacy.js';
 (async function() {
-  var menu = new UI.SoftContextMenu.SoftContextMenu([{
+  var menu = new UI.SoftContextMenu([{
     type: 'item',
     label: 'First',
     enabled: true
@@ -28,7 +23,7 @@ import * as UI from 'devtools/ui/legacy/legacy.js';
     enabled: true
   }], item => TestRunner.addResult('Item Selected: ' + item));
 
-  var initialFocusedElement = UI.InspectorView.InspectorView.instance().element.createChild('div');
+  var initialFocusedElement = UI.inspectorView.element.createChild('div');
   initialFocusedElement.textContent = 'Initial Focused Element';
   initialFocusedElement.tabIndex = -1;
   initialFocusedElement.focus();

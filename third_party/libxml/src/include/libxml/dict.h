@@ -13,7 +13,6 @@
 
 #include <stddef.h>
 #include <libxml/xmlversion.h>
-#include <libxml/xmlstring.h>
 
 #ifdef __cplusplus
 extern "C" {

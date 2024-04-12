@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-
 (async function() {
   TestRunner.addResult(`This text should be autosized to 40px computed font-size (16 * 800/320).\n`);
   await TestRunner.loadHTML(`

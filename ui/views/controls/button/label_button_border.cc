@@ -33,13 +33,11 @@ void PaintHelper(LabelButtonAssetBorder* border,
                  ui::NativeTheme::State state,
                  const gfx::Rect& rect,
                  const ui::NativeTheme::ExtraParams& extra) {
-  const auto& button = absl::get<ui::NativeTheme::ButtonExtraParams>(extra);
-  Painter* painter =
-      border->GetPainter(button.is_focused, Button::GetButtonStateFrom(state));
+  Painter* painter = border->GetPainter(extra.button.is_focused,
+                                        Button::GetButtonStateFrom(state));
   // Paint any corresponding unfocused painter if there is no focused painter.
-  if (!painter && button.is_focused) {
+  if (!painter && extra.button.is_focused)
     painter = border->GetPainter(false, Button::GetButtonStateFrom(state));
-  }
   if (painter)
     Painter::PaintPainterAt(canvas, painter, rect);
 }
@@ -92,8 +90,7 @@ void LabelButtonAssetBorder::Paint(const View& view, gfx::Canvas* canvas) {
   const NativeThemeDelegate* native_theme_delegate =
       static_cast<const LabelButton*>(&view);
   gfx::Rect rect(native_theme_delegate->GetThemePaintRect());
-  ui::NativeTheme::ExtraParams extra(
-      absl::in_place_type<ui::NativeTheme::ButtonExtraParams>);
+  ui::NativeTheme::ExtraParams extra;
   const gfx::Animation* animation = native_theme_delegate->GetThemeAnimation();
   ui::NativeTheme::State state = native_theme_delegate->GetThemeState(&extra);
 

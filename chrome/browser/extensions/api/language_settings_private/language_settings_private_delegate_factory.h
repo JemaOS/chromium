@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_API_LANGUAGE_SETTINGS_PRIVATE_LANGUAGE_SETTINGS_PRIVATE_DELEGATE_FACTORY_H_
 #define CHROME_BROWSER_EXTENSIONS_API_LANGUAGE_SETTINGS_PRIVATE_LANGUAGE_SETTINGS_PRIVATE_DELEGATE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace extensions {
@@ -37,13 +37,14 @@ class LanguageSettingsPrivateDelegateFactory
   bool ServiceIsCreatedWithBrowserContext() const override;
 
  private:
-  friend base::NoDestructor<LanguageSettingsPrivateDelegateFactory>;
+  friend struct base::DefaultSingletonTraits<
+      LanguageSettingsPrivateDelegateFactory>;
 
   LanguageSettingsPrivateDelegateFactory();
   ~LanguageSettingsPrivateDelegateFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

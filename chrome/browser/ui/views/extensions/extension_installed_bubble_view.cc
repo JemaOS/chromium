@@ -18,8 +18,8 @@
 #include "chrome/browser/ui/extensions/extension_install_ui_default.h"
 #include "chrome/browser/ui/extensions/extension_installed_bubble_model.h"
 #include "chrome/browser/ui/extensions/extension_installed_waiter.h"
-#include "chrome/browser/ui/signin/bubble_signin_promo_delegate.h"
 #include "chrome/browser/ui/singleton_tabs.h"
+#include "chrome/browser/ui/sync/bubble_sync_promo_delegate.h"
 #include "chrome/browser/ui/sync/sync_promo_ui.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/extensions/extensions_toolbar_button.h"
@@ -27,7 +27,7 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "extensions/common/extension.h"
@@ -41,7 +41,7 @@
 #include "ui/views/layout/box_layout.h"
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ui/views/promos/bubble_signin_promo_view.h"
+#include "chrome/browser/ui/views/sync/bubble_sync_promo_view.h"
 #endif
 
 namespace {
@@ -83,12 +83,12 @@ views::View* AnchorViewForBrowser(const ExtensionInstalledBubbleModel* model,
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
 std::unique_ptr<views::View> CreateSigninPromoView(
     Profile* profile,
-    BubbleSignInPromoDelegate* delegate) {
-  return std::make_unique<BubbleSignInPromoView>(
+    BubbleSyncPromoDelegate* delegate) {
+  return std::make_unique<BubbleSyncPromoView>(
       profile, delegate,
       signin_metrics::AccessPoint::ACCESS_POINT_EXTENSION_INSTALL_BUBBLE,
       IDS_EXTENSION_INSTALLED_DICE_PROMO_SYNC_MESSAGE,
-      ui::ButtonStyle::kProminent);
+      /*dice_signin_button_prominent=*/true);
 }
 #endif
 
@@ -103,11 +103,10 @@ std::unique_ptr<views::View> CreateSigninPromoView(
 //                      bar which is shown while the Bubble is shown.
 //    GENERIC        -> The app menu. This case includes pageActions that don't
 //                      specify a default icon.
-class ExtensionInstalledBubbleView : public BubbleSignInPromoDelegate,
+class ExtensionInstalledBubbleView : public BubbleSyncPromoDelegate,
                                      public views::BubbleDialogDelegateView {
-  METADATA_HEADER(ExtensionInstalledBubbleView, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(ExtensionInstalledBubbleView);
   ExtensionInstalledBubbleView(
       Browser* browser,
       std::unique_ptr<ExtensionInstalledBubbleModel> model);
@@ -128,8 +127,8 @@ class ExtensionInstalledBubbleView : public BubbleSignInPromoDelegate,
   // views::BubbleDialogDelegateView:
   void Init() override;
 
-  // BubbleSignInPromoDelegate:
-  void OnSignIn(const AccountInfo& account_info) override;
+  // BubbleSyncPromoDelegate:
+  void OnEnableSync(const AccountInfo& account_info) override;
 
   void LinkClicked();
 
@@ -219,12 +218,11 @@ void ExtensionInstalledBubbleView::Init() {
       provider->GetDistanceMetric(views::DISTANCE_RELATED_CONTROL_VERTICAL));
   layout->set_minimum_cross_axis_size(kRightColumnWidth);
   // Indent by the size of the icon.
-  layout->set_inside_border_insets(
-      gfx::Insets::TLBR(0,
-                        GetWindowIcon().Size().width() +
-                            provider->GetDistanceMetric(
-                                views::DISTANCE_UNRELATED_CONTROL_HORIZONTAL),
-                        0, 0));
+  layout->set_inside_border_insets(gfx::Insets::TLBR(
+      0,
+      GetWindowIcon().Size().width() +
+          provider->GetDistanceMetric(DISTANCE_UNRELATED_CONTROL_HORIZONTAL),
+      0, 0));
   layout->set_cross_axis_alignment(
       views::BoxLayout::CrossAxisAlignment::kStart);
   SetLayoutManager(std::move(layout));
@@ -245,7 +243,7 @@ void ExtensionInstalledBubbleView::Init() {
   }
 }
 
-void ExtensionInstalledBubbleView::OnSignIn(const AccountInfo& account) {
+void ExtensionInstalledBubbleView::OnEnableSync(const AccountInfo& account) {
   signin_ui_util::EnableSyncFromSingleAccountPromo(
       browser_->profile(), account,
       signin_metrics::AccessPoint::ACCESS_POINT_EXTENSION_INSTALL_BUBBLE);
@@ -260,7 +258,7 @@ void ExtensionInstalledBubbleView::LinkClicked() {
   GetWidget()->Close();
 }
 
-BEGIN_METADATA(ExtensionInstalledBubbleView)
+BEGIN_METADATA(ExtensionInstalledBubbleView, views::BubbleDialogDelegateView)
 END_METADATA
 
 void ShowUiOnToolbarMenu(scoped_refptr<const extensions::Extension> extension,

@@ -66,7 +66,7 @@ COMPONENT_EXPORT(AX_PLATFORM)
 std::string RoleVariantToString(const base::win::ScopedVariant& role);
 
 COMPONENT_EXPORT(AX_PLATFORM)
-std::optional<std::string> GetIAccessible2Attribute(
+absl::optional<std::string> GetIAccessible2Attribute(
     Microsoft::WRL::ComPtr<IAccessible2> element,
     std::string attribute);
 COMPONENT_EXPORT(AX_PLATFORM)
@@ -77,7 +77,8 @@ std::vector<Microsoft::WRL::ComPtr<IAccessible>> IAccessibleChildrenOf(
 
 // Returns IA2 Interfaces
 template <typename ServiceType>
-HRESULT IA2QueryInterface(IUnknown* accessible, ServiceType** out_accessible) {
+HRESULT IA2QueryInterface(IAccessible* accessible,
+                          ServiceType** out_accessible) {
   // IA2 Spec dictates that IServiceProvider should be used instead of
   // QueryInterface when retrieving IAccessible2.
   Microsoft::WRL::ComPtr<IServiceProvider> service_provider;

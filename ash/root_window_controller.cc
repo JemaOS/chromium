@@ -3,9 +3,11 @@
 // found in the LICENSE file.
 
 #include "ash/root_window_controller.h"
+#include "base/memory/raw_ptr.h"
 
 #include <algorithm>
 #include <memory>
+#include <queue>
 #include <vector>
 
 #include "ash/accessibility/chromevox/touch_exploration_controller.h"
@@ -24,15 +26,17 @@
 #include "ash/keyboard/keyboard_controller_impl.h"
 #include "ash/keyboard/ui/keyboard_layout_manager.h"
 #include "ash/keyboard/ui/keyboard_ui_controller.h"
+#include "ash/keyboard/ui/keyboard_util.h"
 #include "ash/keyboard/virtual_keyboard_container_layout_manager.h"
 #include "ash/lock_screen_action/lock_screen_action_background_controller.h"
 #include "ash/login_status.h"
 #include "ash/public/cpp/app_menu_constants.h"
+#include "ash/public/cpp/shelf_types.h"
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/public/cpp/window_properties.h"
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/root_window_settings.h"
-#include "ash/rotator/screen_rotation_animator.h"
+#include "ash/scoped_animation_disabler.h"
 #include "ash/screen_util.h"
 #include "ash/session/session_controller_impl.h"
 #include "ash/shelf/shelf.h"
@@ -49,9 +53,8 @@
 #include "ash/touch/touch_hud_debug.h"
 #include "ash/touch/touch_hud_projection.h"
 #include "ash/touch/touch_observer_hud.h"
-#include "ash/wallpaper/views/wallpaper_widget_controller.h"
+#include "ash/wallpaper/wallpaper_widget_controller.h"
 #include "ash/wm/always_on_top_controller.h"
-#include "ash/wm/bounds_tracker/window_bounds_tracker.h"
 #include "ash/wm/container_finder.h"
 #include "ash/wm/desks/desks_controller.h"
 #include "ash/wm/desks/desks_util.h"
@@ -61,29 +64,24 @@
 #include "ash/wm/lock_layout_manager.h"
 #include "ash/wm/mru_window_tracker.h"
 #include "ash/wm/overlay_layout_manager.h"
-#include "ash/wm/overview/birch/birch_bar_context_menu_model.h"
-#include "ash/wm/overview/birch/birch_bar_menu_model_adapter.h"
 #include "ash/wm/overview/overview_controller.h"
-#include "ash/wm/overview/overview_grid.h"
 #include "ash/wm/overview/overview_session.h"
-#include "ash/wm/overview/overview_utils.h"
 #include "ash/wm/root_window_layout_manager.h"
 #include "ash/wm/splitview/split_view_controller.h"
-#include "ash/wm/splitview/split_view_overview_session.h"
 #include "ash/wm/splitview/split_view_utils.h"
+#include "ash/wm/stacking_controller.h"
 #include "ash/wm/switchable_windows.h"
 #include "ash/wm/system_modal_container_layout_manager.h"
-#include "ash/wm/window_parenting_controller.h"
+#include "ash/wm/system_wallpaper_controller.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "ash/wm/window_properties.h"
 #include "ash/wm/window_state.h"
 #include "ash/wm/window_util.h"
-#include "ash/wm/wm_metrics.h"
 #include "ash/wm/work_area_insets.h"
 #include "ash/wm/workspace/workspace_layout_manager.h"
 #include "ash/wm/workspace_controller.h"
 #include "base/command_line.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/ranges/algorithm.h"
 #include "base/task/single_thread_task_runner.h"
@@ -101,14 +99,15 @@
 #include "ui/base/models/menu_model.h"
 #include "ui/base/models/simple_menu_model.h"
 #include "ui/compositor/layer.h"
-#include "ui/display/screen.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/events/event_utils.h"
+#include "ui/views/controls/menu/menu_model_adapter.h"
 #include "ui/views/controls/menu/menu_runner.h"
+#include "ui/views/view_model.h"
+#include "ui/views/view_model_utils.h"
 #include "ui/views/widget/widget.h"
 #include "ui/wm/core/capture_controller.h"
 #include "ui/wm/core/coordinate_conversion.h"
-#include "ui/wm/core/scoped_animation_disabler.h"
 #include "ui/wm/core/visibility_controller.h"
 #include "ui/wm/core/window_properties.h"
 #include "ui/wm/core/window_util.h"
@@ -205,12 +204,8 @@ void ReparentWindow(aura::Window* window, aura::Window* new_parent) {
   gfx::Rect restore_bounds;
   const bool has_restore_bounds = state && state->HasRestoreBounds();
 
-  auto* window_bounds_tracker = Shell::Get()->window_bounds_tracker();
-  // `WindowBoundsTracker` will handle the window's bounds on root window
-  // changes if the feature `kWindowBoundsTracker` is enabled.
   const bool update_bounds =
-      state && (state->IsNormalStateType() || state->IsMinimized()) &&
-      !window_bounds_tracker;
+      state && (state->IsNormalOrSnapped() || state->IsMinimized());
   gfx::Rect work_area_in_new_parent =
       screen_util::GetDisplayWorkAreaBoundsInParent(new_parent);
 
@@ -227,13 +222,9 @@ void ReparentWindow(aura::Window* window, aura::Window* new_parent) {
     restore_bounds.AdjustToFit(work_area_in_new_parent);
   }
 
-  if (window_bounds_tracker) {
-    window_bounds_tracker->AddWindowDisplayIdOnDisplayRemoval(window);
-  }
-
   new_parent->AddChild(window);
 
-  // Snapped windows have bounds handled by the layout manager in AddChild().
+  // Docked windows have bounds handled by the layout manager in AddChild().
   if (update_bounds) {
     window->SetBounds(local_bounds);
   }
@@ -277,7 +268,7 @@ void ReparentAllWindows(aura::Window* src, aura::Window* dst) {
     }
   }
 
-  const std::vector<raw_ptr<aura::Window, VectorExperimental>> mru_list =
+  const std::vector<aura::Window*> mru_list =
       Shell::Get()->mru_window_tracker()->BuildWindowForCycleList(kAllDesks);
   for (int id : container_ids) {
     aura::Window* src_container = src->GetChildById(id);
@@ -429,13 +420,13 @@ class RootWindowTargeter : public aura::WindowTargeter {
   ui::EventType last_mouse_event_type_ = ui::ET_UNKNOWN;
 };
 
-class ShelfMenuModelAdapter : public AppMenuModelAdapter {
+class RootWindowMenuModelAdapter : public AppMenuModelAdapter {
  public:
-  ShelfMenuModelAdapter(std::unique_ptr<ui::SimpleMenuModel> model,
-                        views::Widget* widget_owner,
-                        ui::MenuSourceType source_type,
-                        base::OnceClosure on_menu_closed_callback,
-                        bool is_tablet_mode)
+  RootWindowMenuModelAdapter(std::unique_ptr<ui::SimpleMenuModel> model,
+                             views::Widget* widget_owner,
+                             ui::MenuSourceType source_type,
+                             base::OnceClosure on_menu_closed_callback,
+                             bool is_tablet_mode)
       : AppMenuModelAdapter(std::string(),
                             std::move(model),
                             widget_owner,
@@ -443,10 +434,11 @@ class ShelfMenuModelAdapter : public AppMenuModelAdapter {
                             std::move(on_menu_closed_callback),
                             is_tablet_mode) {}
 
-  ShelfMenuModelAdapter(const ShelfMenuModelAdapter&) = delete;
-  ShelfMenuModelAdapter& operator=(const ShelfMenuModelAdapter&) = delete;
+  RootWindowMenuModelAdapter(const RootWindowMenuModelAdapter&) = delete;
+  RootWindowMenuModelAdapter& operator=(const RootWindowMenuModelAdapter&) =
+      delete;
 
-  ~ShelfMenuModelAdapter() override = default;
+  ~RootWindowMenuModelAdapter() override = default;
 
  private:
   // AppMenuModelAdapter overrides:
@@ -454,23 +446,21 @@ class ShelfMenuModelAdapter : public AppMenuModelAdapter {
     const base::TimeDelta user_journey_time =
         base::TimeTicks::Now() - menu_open_time();
 
-    UMA_HISTOGRAM_TIMES("Apps.ContextMenuUserJourneyTimeV2.Desktop",
+    UMA_HISTOGRAM_TIMES("Apps.ContextMenuUserJourneyTime.Desktop",
                         user_journey_time);
-    UMA_HISTOGRAM_ENUMERATION("Apps.ContextMenuShowSourceV2.Desktop",
+    UMA_HISTOGRAM_ENUMERATION("Apps.ContextMenuShowSource.Desktop",
                               source_type(), ui::MENU_SOURCE_TYPE_LAST);
     if (is_tablet_mode()) {
-      UMA_HISTOGRAM_TIMES(
-          "Apps.ContextMenuUserJourneyTimeV2.Desktop.TabletMode",
-          user_journey_time);
-      UMA_HISTOGRAM_ENUMERATION(
-          "Apps.ContextMenuShowSourceV2.Desktop.TabletMode", source_type(),
-          ui::MENU_SOURCE_TYPE_LAST);
+      UMA_HISTOGRAM_TIMES("Apps.ContextMenuUserJourneyTime.Desktop.TabletMode",
+                          user_journey_time);
+      UMA_HISTOGRAM_ENUMERATION("Apps.ContextMenuShowSource.Desktop.TabletMode",
+                                source_type(), ui::MENU_SOURCE_TYPE_LAST);
     } else {
       UMA_HISTOGRAM_TIMES(
-          "Apps.ContextMenuUserJourneyTimeV2.Desktop.ClamshellMode",
+          "Apps.ContextMenuUserJourneyTime.Desktop.ClamshellMode",
           user_journey_time);
       UMA_HISTOGRAM_ENUMERATION(
-          "Apps.ContextMenuShowSourceV2.Desktop.ClamshellMode", source_type(),
+          "Apps.ContextMenuShowSource.Desktop.ClamshellMode", source_type(),
           ui::MENU_SOURCE_TYPE_LAST);
     }
   }
@@ -499,7 +489,7 @@ class FillLayoutManager : public aura::LayoutManager {
   void Relayout() {
     // Fill the window that is set to be maximizable.
     const gfx::Rect fullscreen(container_->bounds().size());
-    for (aura::Window* child : container_->children()) {
+    for (auto* child : container_->children()) {
       const int resize_behavior =
           child->GetProperty(aura::client::kResizeBehaviorKey);
       if (resize_behavior & aura::client::kResizeBehaviorCanMaximize) {
@@ -508,7 +498,7 @@ class FillLayoutManager : public aura::LayoutManager {
     }
   }
 
-  raw_ptr<aura::Window> container_;
+  raw_ptr<aura::Window, ExperimentalAsh> container_;
 };
 
 }  // namespace
@@ -518,7 +508,7 @@ std::vector<RootWindowController*>*
     RootWindowController::root_window_controllers_ = nullptr;
 
 RootWindowController::~RootWindowController() {
-  Shutdown(/*destination_root=*/nullptr);
+  Shutdown();
   DCHECK(!wallpaper_widget_controller_.get());
   work_area_insets_.reset();
   ash_host_.reset();
@@ -620,12 +610,10 @@ bool RootWindowController::CanWindowReceiveEvents(aura::Window* window) {
   window_util::GetBlockingContainersForRoot(
       GetRootWindow(), &blocking_container, &modal_container);
   SystemModalContainerLayoutManager* modal_layout_manager = nullptr;
-  if (modal_container && modal_container->layout_manager()) {
-    modal_layout_manager = static_cast<SystemModalContainerLayoutManager*>(
-        modal_container->layout_manager());
-  }
+  modal_layout_manager = static_cast<SystemModalContainerLayoutManager*>(
+      modal_container->layout_manager());
 
-  if (modal_layout_manager && modal_layout_manager->has_window_dimmer()) {
+  if (modal_layout_manager->has_window_dimmer()) {
     blocking_container = modal_container;
   } else {
     modal_container = nullptr;  // Don't check modal dialogs.
@@ -682,40 +670,16 @@ const aura::Window* RootWindowController::GetContainer(int container_id) const {
   return window_tree_host_->window()->GetChildById(container_id);
 }
 
-ScreenRotationAnimator* RootWindowController::GetScreenRotationAnimator() {
-  if (is_shutting_down_) {
-    return nullptr;
-  }
-
-  if (!screen_rotation_animator_) {
-    screen_rotation_animator_ =
-        std::make_unique<ScreenRotationAnimator>(GetRootWindow());
-  }
-
-  return screen_rotation_animator_.get();
-}
-
-void RootWindowController::Shutdown(aura::Window* destination_root) {
-  is_shutting_down_ = true;
-
-  if (destination_root) {
-    MoveWindowsTo(destination_root);
-  }
-
-  // Destroy the `screen_rotation_animator_` now to avoid any potential crashes
-  // if there's any ongoing animation. See http://b/293667233.
-  screen_rotation_animator_.reset();
-
-  aura::Window* root_window = GetRootWindow();
-  auto targeter = root_window->SetEventTargeter(
+void RootWindowController::Shutdown() {
+  auto targeter = GetRootWindow()->SetEventTargeter(
       std::make_unique<aura::NullWindowTargeter>());
 
   touch_exploration_manager_.reset();
   wallpaper_widget_controller_.reset();
-  EndSplitViewOverviewSession(SplitViewOverviewSessionExitPoint::kShutdown);
   CloseAmbientWidget(/*immediately=*/true);
 
   CloseChildWindows();
+  aura::Window* root_window = GetRootWindow();
   GetRootWindowSettings(root_window)->controller = nullptr;
   // Forget with the display ID so that display lookup
   // ends up with invalid display.
@@ -723,7 +687,8 @@ void RootWindowController::Shutdown(aura::Window* destination_root) {
   if (ash_host_) {
     ash_host_->PrepareForShutdown();
   }
-  window_parenting_controller_.reset();
+
+  system_wallpaper_.reset();
   security_curtain_widget_controller_.reset();
   lock_screen_action_background_controller_.reset();
   aura::client::SetScreenPositionClient(root_window, nullptr);
@@ -814,6 +779,23 @@ void RootWindowController::CloseChildWindows() {
   ::wm::SetTooltipClient(GetRootWindow(), nullptr);
 }
 
+void RootWindowController::MoveWindowsTo(aura::Window* dst) {
+  // Suspend unnecessary updates of the shelf visibility indefinitely since it
+  // is going away.
+  if (GetShelfLayoutManager()) {
+    GetShelfLayoutManager()->SuspendVisibilityUpdateForShutdown();
+  }
+
+  // Clear the workspace controller to avoid a lot of unnecessary operations
+  // when window are removed.
+  // TODO(afakhry): Should we also clear the WorkspaceLayoutManagers of the pip,
+  // always-on-top, and other containers?
+  aura::Window* root = GetRootWindow();
+  ClearWorkspaceControllers(root);
+
+  ReparentAllWindows(root, dst);
+}
+
 void RootWindowController::InitTouchHuds() {
   // Enable touch debugging features when each display is initialized.
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
@@ -845,17 +827,66 @@ void RootWindowController::SetTouchAccessibilityAnchorPoint(
 
 void RootWindowController::ShowContextMenu(const gfx::Point& location_in_screen,
                                            ui::MenuSourceType source_type) {
-  // Show birch bar context menu in clamshell mode Overview without a partial
-  // split screen.
-  // TODO(http://325963519): remove the tablet mode restriction when tablet mode
-  // birch bar is implemented.
-  if (features::IsForestFeatureEnabled() &&
-      OverviewController::Get()->InOverviewSession() &&
-      !display::Screen::GetScreen()->InTabletMode() &&
-      !split_view_overview_session_) {
-    root_window_menu_model_adapter_ = BuildBirchMenuModelAdapter(source_type);
-  } else {
-    root_window_menu_model_adapter_ = BuildShelfMenuModelAdapter(source_type);
+  const int64_t display_id = display::Screen::GetScreen()
+                                 ->GetDisplayNearestWindow(GetRootWindow())
+                                 .id();
+
+  const bool tablet_mode =
+      Shell::Get()->tablet_mode_controller()->InTabletMode();
+  root_window_menu_model_adapter_ =
+      std::make_unique<RootWindowMenuModelAdapter>(
+          std::make_unique<ShelfContextMenuModel>(nullptr, display_id),
+          wallpaper_widget_controller()->GetWidget(), source_type,
+          base::BindOnce(&RootWindowController::OnMenuClosed,
+                         base::Unretained(this)),
+          tablet_mode);
+
+  // Appends the apps sort options in ShelfContextMenuModel in tablet mode. Note
+  // that the launcher UI is fullscreen in tablet mode, so the whole root window
+  // can be perceived by users to be part of the launcher.
+  auto* const app_list_controller = Shell::Get()->app_list_controller();
+  if (tablet_mode && app_list_controller->IsVisible(display_id) &&
+      app_list_controller->GetCurrentAppListPage() ==
+          AppListState::kStateApps) {
+    ui::SimpleMenuModel* menu_model = root_window_menu_model_adapter_->model();
+    sort_apps_submenu_ = std::make_unique<ui::SimpleMenuModel>(
+        static_cast<ShelfContextMenuModel*>(menu_model));
+    sort_apps_submenu_->AddItemWithIcon(
+        REORDER_BY_NAME_ALPHABETICAL,
+        l10n_util::GetStringUTF16(
+            IDS_ASH_LAUNCHER_APPS_GRID_CONTEXT_MENU_REORDER_BY_NAME),
+        ui::ImageModel::FromVectorIcon(kSortAlphabeticalIcon,
+                                       ui::kColorAshSystemUIMenuIcon));
+    sort_apps_submenu_->AddItemWithIcon(
+        REORDER_BY_COLOR,
+        l10n_util::GetStringUTF16(
+            IDS_ASH_LAUNCHER_APPS_GRID_CONTEXT_MENU_REORDER_BY_COLOR),
+        ui::ImageModel::FromVectorIcon(kSortColorIcon,
+                                       ui::kColorAshSystemUIMenuIcon));
+    menu_model->AddSeparator(ui::NORMAL_SEPARATOR);
+    menu_model->AddSubMenuWithIcon(
+        REORDER_SUBMENU,
+        l10n_util::GetStringUTF16(
+            IDS_ASH_LAUNCHER_APPS_GRID_CONTEXT_MENU_REORDER_TITLE),
+        sort_apps_submenu_.get(),
+        ui::ImageModel::FromVectorIcon(kReorderIcon,
+                                       ui::kColorAshSystemUIMenuIcon));
+
+    // Append the "Show all suggestions" / "Hide all suggestions" item.
+    menu_model->AddSeparator(ui::NORMAL_SEPARATOR);
+    if (app_list_controller->ShouldHideContinueSection()) {
+      menu_model->AddItemWithIcon(
+          ShelfContextMenuModel::MENU_SHOW_CONTINUE_SECTION,
+          l10n_util::GetStringUTF16(IDS_ASH_LAUNCHER_SHOW_CONTINUE_SECTION),
+          ui::ImageModel::FromVectorIcon(kLauncherShowContinueSectionIcon,
+                                         ui::kColorAshSystemUIMenuIcon));
+    } else {
+      menu_model->AddItemWithIcon(
+          ShelfContextMenuModel::MENU_HIDE_CONTINUE_SECTION,
+          l10n_util::GetStringUTF16(IDS_ASH_LAUNCHER_HIDE_CONTINUE_SECTION),
+          ui::ImageModel::FromVectorIcon(kLauncherHideContinueSectionIcon,
+                                         ui::kColorAshSystemUIMenuIcon));
+    }
   }
 
   root_window_menu_model_adapter_->Run(
@@ -880,7 +911,7 @@ void RootWindowController::HideContextMenuNoAnimation() {
   views::Widget* submenu_widget =
       root_window_menu_model_adapter_->GetSubmenuWidget();
   DCHECK(submenu_widget);
-  wm::ScopedAnimationDisabler disable(submenu_widget->GetNativeWindow());
+  ScopedAnimationDisabler disable(submenu_widget->GetNativeWindow());
   root_window_menu_model_adapter_->Cancel();
 }
 
@@ -901,7 +932,7 @@ void RootWindowController::CreateAmbientWidget() {
   DCHECK(!ambient_widget_);
 
   auto* ambient_controller = Shell::Get()->ambient_controller();
-  if (ambient_controller) {
+  if (ambient_controller && ambient_controller->IsShown()) {
     ambient_widget_ = ambient_controller->CreateWidget(
         GetRootWindow()->GetChildById(kShellWindowId_AmbientModeContainer));
   }
@@ -943,45 +974,6 @@ RootWindowController::security_curtain_widget_controller() {
   return security_curtain_widget_controller_.get();
 }
 
-void RootWindowController::StartSplitViewOverviewSession(
-    aura::Window* window,
-    std::optional<OverviewStartAction> action,
-    std::optional<OverviewEnterExitType> type,
-    WindowSnapActionSource snap_action_source) {
-  if (split_view_overview_session_) {
-    return;
-  }
-
-  // TODO(michelefan): Remove the `StartOverview()` here, this is currently
-  // added to limit `SplitViewOverviewSession` creation and usage to clamshell
-  // only.
-  if (Shell::Get()->IsInTabletMode()) {
-    OverviewController::Get()->StartOverview(
-        action.value_or(OverviewStartAction::kSplitView),
-        type.value_or(OverviewEnterExitType::kNormal));
-    return;
-  }
-
-  CHECK(OverviewController::Get()->CanEnterOverview());
-  split_view_overview_session_ =
-      std::make_unique<SplitViewOverviewSession>(window, snap_action_source);
-  split_view_overview_session_->Init(action, type);
-}
-
-void RootWindowController::EndSplitViewOverviewSession(
-    SplitViewOverviewSessionExitPoint exit_point) {
-  if (!is_shutting_down_ && split_view_overview_session_) {
-    split_view_overview_session_
-        ->RecordSplitViewOverviewSessionExitPointMetrics(exit_point);
-  }
-  split_view_overview_session_.reset();
-}
-
-void RootWindowController::SetScreenRotationAnimatorForTest(
-    std::unique_ptr<ScreenRotationAnimator> animator) {
-  screen_rotation_animator_ = std::move(animator);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // RootWindowController, private:
 
@@ -1003,26 +995,10 @@ RootWindowController::RootWindowController(AshWindowTreeHost* ash_host)
   aura::Window* root_window = GetRootWindow();
   GetRootWindowSettings(root_window)->controller = this;
 
-  window_parenting_controller_ =
-      std::make_unique<WindowParentingController>(root_window);
+  stacking_controller_ = std::make_unique<StackingController>();
+  aura::client::SetWindowParentingClient(root_window,
+                                         stacking_controller_.get());
   capture_client_ = std::make_unique<::wm::ScopedCaptureClient>(root_window);
-}
-
-void RootWindowController::MoveWindowsTo(aura::Window* dst) {
-  // Suspend unnecessary updates of the shelf visibility indefinitely since it
-  // is going away.
-  if (GetShelfLayoutManager()) {
-    GetShelfLayoutManager()->SuspendVisibilityUpdateForShutdown();
-  }
-
-  // Clear the workspace controller to avoid a lot of unnecessary operations
-  // when window are removed.
-  // TODO(afakhry): Should we also clear the WorkspaceLayoutManagers of the pip,
-  // always-on-top, and other containers?
-  aura::Window* root = GetRootWindow();
-  ClearWorkspaceControllers(root);
-
-  ReparentAllWindows(root, dst);
 }
 
 void RootWindowController::Init(RootWindowType root_window_type) {
@@ -1040,6 +1016,7 @@ void RootWindowController::Init(RootWindowType root_window_type) {
   root_window_layout_manager_ = root_window_layout_manager.get();
 
   CreateContainers();
+  CreateSystemWallpaper(root_window_type);
 
   InitLayoutManagers(std::move(root_window_layout_manager));
   InitTouchHuds();
@@ -1058,7 +1035,7 @@ void RootWindowController::Init(RootWindowType root_window_type) {
       std::make_unique<WallpaperWidgetController>(root_window);
 
   wallpaper_widget_controller_->Init(
-      shell->session_controller()->IsUserSessionBlocked());
+      Shell::Get()->session_controller()->IsUserSessionBlocked());
   root_window_layout_manager_->OnWindowResized();
 
   CreateAmbientWidget();
@@ -1066,7 +1043,7 @@ void RootWindowController::Init(RootWindowType root_window_type) {
   // Explicitly update the desks controller before notifying the ShellObservers.
   // This is to make sure the desks' states are correct before clients are
   // updated.
-  shell->desks_controller()->OnRootWindowAdded(root_window);
+  Shell::Get()->desks_controller()->OnRootWindowAdded(root_window);
 
   if (root_window_type == RootWindowType::PRIMARY) {
     shell->keyboard_controller()->RebuildKeyboardIfEnabled();
@@ -1186,6 +1163,15 @@ void RootWindowController::CreateContainers() {
   wallpaper_container->SetLayoutManager(
       std::make_unique<FillLayoutManager>(wallpaper_container));
 
+  if (features::AreGlanceablesEnabled()) {
+    aura::Window* glanceables_container =
+        CreateContainer(kShellWindowId_GlanceablesContainer,
+                        "GlanceablesContainer", magnified_container);
+    glanceables_container->SetProperty(::wm::kUsesScreenCoordinatesKey, true);
+    glanceables_container->SetLayoutManager(
+        std::make_unique<FillLayoutManager>(glanceables_container));
+  }
+
   aura::Window* non_lock_screen_containers =
       CreateContainer(kShellWindowId_NonLockScreenContainersContainer,
                       "NonLockScreenContainersContainer", magnified_container);
@@ -1216,17 +1202,9 @@ void RootWindowController::CreateContainers() {
   CreateContainer(kShellWindowId_UnparentedContainer, "UnparentedContainer",
                   non_lock_screen_containers);
 
-  aura::Window* shutdown_screenshot_container = non_lock_screen_containers;
-  if (features::IsForestFeatureEnabled()) {
-    shutdown_screenshot_container = CreateContainer(
-        kShellWindowId_ShutdownScreenshotContainer,
-        "ShutdownScreenshotContainer", non_lock_screen_containers);
-  }
-
   for (const auto& id : desks_util::GetDesksContainersIds()) {
-    aura::Window* container =
-        CreateContainer(id, desks_util::GetDeskContainerName(id),
-                        shutdown_screenshot_container);
+    aura::Window* container = CreateContainer(
+        id, desks_util::GetDeskContainerName(id), non_lock_screen_containers);
     ::wm::SetChildWindowVisibilityChangesAnimated(container);
     container->SetProperty(::wm::kUsesScreenCoordinatesKey, true);
     container->SetProperty(kForceVisibleInMiniViewKey, true);
@@ -1240,13 +1218,13 @@ void RootWindowController::CreateContainers() {
 
   aura::Window* always_on_top_container =
       CreateContainer(kShellWindowId_AlwaysOnTopContainer,
-                      "AlwaysOnTopContainer", shutdown_screenshot_container);
+                      "AlwaysOnTopContainer", non_lock_screen_containers);
   ::wm::SetChildWindowVisibilityChangesAnimated(always_on_top_container);
   always_on_top_container->SetProperty(::wm::kUsesScreenCoordinatesKey, true);
 
   aura::Window* float_container =
       CreateContainer(kShellWindowId_FloatContainer, "FloatContainer",
-                      shutdown_screenshot_container);
+                      non_lock_screen_containers);
   wm::SetChildWindowVisibilityChangesAnimated(float_container);
   float_container->SetProperty(wm::kUsesScreenCoordinatesKey, true);
   window_util::SetChildrenUseExtendedHitRegionForWindow(float_container);
@@ -1323,12 +1301,6 @@ void RootWindowController::CreateContainers() {
   settings_bubble_container->SetProperty(::wm::kUsesScreenCoordinatesKey, true);
   settings_bubble_container->SetProperty(kLockedToRootKey, true);
 
-  aura::Window* help_bubble_container =
-      CreateContainer(kShellWindowId_HelpBubbleContainer, "HelpBubbleContainer",
-                      lock_screen_related_containers);
-  ::wm::SetChildWindowVisibilityChangesAnimated(help_bubble_container);
-  help_bubble_container->SetProperty(::wm::kUsesScreenCoordinatesKey, true);
-
   aura::Window* virtual_keyboard_parent_container = CreateContainer(
       kShellWindowId_ImeWindowParentContainer, "ImeWindowParentContainer",
       lock_screen_related_containers);
@@ -1402,16 +1374,6 @@ void RootWindowController::CreateContainers() {
 
   CreateContainer(kShellWindowId_PowerButtonAnimationContainer,
                   "PowerButtonAnimationContainer", magnified_container);
-
-  // Make sure booting animation container is always on top of all other
-  // siblings under the `magnified_container`.
-  if (ash::features::IsBootAnimationEnabled()) {
-    aura::Window* booting_animation_container =
-        CreateContainer(kShellWindowId_BootingAnimationContainer,
-                        "BootingAnimationContainer", magnified_container);
-    booting_animation_container->SetLayoutManager(
-        std::make_unique<FillLayoutManager>(booting_animation_container));
-  }
 }
 
 aura::Window* RootWindowController::CreateContainer(int window_id,
@@ -1430,6 +1392,23 @@ aura::Window* RootWindowController::CreateContainer(int window_id,
   return window;
 }
 
+void RootWindowController::CreateSystemWallpaper(
+    RootWindowType root_window_type) {
+  SkColor color = SK_ColorBLACK;
+  // The splash screen appears on the primary display at boot. If this is a
+  // secondary monitor (either connected at boot or connected later) or if the
+  // browser restarted for a second login then don't use the boot color.
+  const bool is_boot_splash_screen =
+      root_window_type == RootWindowType::PRIMARY &&
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kFirstExecAfterBoot);
+  if (is_boot_splash_screen) {
+    color = kChromeOsBootColor;
+  }
+  system_wallpaper_ =
+      std::make_unique<SystemWallpaperController>(GetRootWindow(), color);
+}
+
 AccessibilityPanelLayoutManager*
 RootWindowController::GetAccessibilityPanelLayoutManager() const {
   aura::Window* container = const_cast<aura::Window*>(
@@ -1437,89 +1416,6 @@ RootWindowController::GetAccessibilityPanelLayoutManager() const {
   auto* layout_manager = static_cast<AccessibilityPanelLayoutManager*>(
       container->layout_manager());
   return layout_manager;
-}
-
-std::unique_ptr<AppMenuModelAdapter>
-RootWindowController::BuildBirchMenuModelAdapter(
-    ui::MenuSourceType source_type) {
-  const bool is_birch_bar_showing = GetOverviewSession()
-                                        ->GetGridWithRootWindow(GetRootWindow())
-                                        ->IsBirchBarShowing();
-
-  return std::make_unique<BirchBarMenuModelAdapter>(
-      std::make_unique<BirchBarContextMenuModel>(
-          nullptr, is_birch_bar_showing
-                       ? BirchBarContextMenuModel::Type::kExpandedBarMenu
-                       : BirchBarContextMenuModel::Type::kCollapsedBarMenu),
-      wallpaper_widget_controller()->GetWidget(), source_type,
-      base::BindOnce(&RootWindowController::OnMenuClosed,
-                     base::Unretained(this)),
-      display::Screen::GetScreen()->InTabletMode());
-}
-
-std::unique_ptr<AppMenuModelAdapter>
-RootWindowController::BuildShelfMenuModelAdapter(
-    ui::MenuSourceType source_type) {
-  const bool tablet_mode = display::Screen::GetScreen()->InTabletMode();
-  const int64_t display_id = display::Screen::GetScreen()
-                                 ->GetDisplayNearestWindow(GetRootWindow())
-                                 .id();
-  auto shelf_menu_model_adapter = std::make_unique<ShelfMenuModelAdapter>(
-      std::make_unique<ShelfContextMenuModel>(nullptr, display_id,
-                                              /*menu_in_shelf=*/false),
-      wallpaper_widget_controller()->GetWidget(), source_type,
-      base::BindOnce(&RootWindowController::OnMenuClosed,
-                     base::Unretained(this)),
-      tablet_mode);
-
-  // Appends the apps sort options in ShelfContextMenuModel in tablet mode.
-  // Note that the launcher UI is fullscreen in tablet mode, so the whole root
-  // window can be perceived by users to be part of the launcher.
-  auto* const app_list_controller = Shell::Get()->app_list_controller();
-  if (tablet_mode && app_list_controller->IsVisible(display_id) &&
-      app_list_controller->GetCurrentAppListPage() ==
-          AppListState::kStateApps) {
-    ui::SimpleMenuModel* menu_model = shelf_menu_model_adapter->model();
-    sort_apps_submenu_ = std::make_unique<ui::SimpleMenuModel>(
-        static_cast<ShelfContextMenuModel*>(menu_model));
-    sort_apps_submenu_->AddItemWithIcon(
-        REORDER_BY_NAME_ALPHABETICAL,
-        l10n_util::GetStringUTF16(
-            IDS_ASH_LAUNCHER_APPS_GRID_CONTEXT_MENU_REORDER_BY_NAME),
-        ui::ImageModel::FromVectorIcon(kSortAlphabeticalIcon,
-                                       ui::kColorAshSystemUIMenuIcon));
-    sort_apps_submenu_->AddItemWithIcon(
-        REORDER_BY_COLOR,
-        l10n_util::GetStringUTF16(
-            IDS_ASH_LAUNCHER_APPS_GRID_CONTEXT_MENU_REORDER_BY_COLOR),
-        ui::ImageModel::FromVectorIcon(kSortColorIcon,
-                                       ui::kColorAshSystemUIMenuIcon));
-    menu_model->AddSeparator(ui::NORMAL_SEPARATOR);
-    menu_model->AddSubMenuWithIcon(
-        REORDER_SUBMENU,
-        l10n_util::GetStringUTF16(
-            IDS_ASH_LAUNCHER_APPS_GRID_CONTEXT_MENU_REORDER_TITLE),
-        sort_apps_submenu_.get(),
-        ui::ImageModel::FromVectorIcon(kReorderIcon,
-                                       ui::kColorAshSystemUIMenuIcon));
-
-    // Append the "Show all suggestions" / "Hide all suggestions" item.
-    menu_model->AddSeparator(ui::NORMAL_SEPARATOR);
-    if (app_list_controller->ShouldHideContinueSection()) {
-      menu_model->AddItemWithIcon(
-          ShelfContextMenuModel::MENU_SHOW_CONTINUE_SECTION,
-          l10n_util::GetStringUTF16(IDS_ASH_LAUNCHER_SHOW_CONTINUE_SECTION),
-          ui::ImageModel::FromVectorIcon(kLauncherShowContinueSectionIcon,
-                                         ui::kColorAshSystemUIMenuIcon));
-    } else {
-      menu_model->AddItemWithIcon(
-          ShelfContextMenuModel::MENU_HIDE_CONTINUE_SECTION,
-          l10n_util::GetStringUTF16(IDS_ASH_LAUNCHER_HIDE_CONTINUE_SECTION),
-          ui::ImageModel::FromVectorIcon(kLauncherHideContinueSectionIcon,
-                                         ui::kColorAshSystemUIMenuIcon));
-    }
-  }
-  return shelf_menu_model_adapter;
 }
 
 void RootWindowController::OnMenuClosed() {

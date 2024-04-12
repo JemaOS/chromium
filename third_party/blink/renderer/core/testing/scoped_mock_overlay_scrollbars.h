@@ -69,9 +69,8 @@ class ScopedMockOverlayScrollbars {
     // platform independent.
     if (use_mock_overlay_scrollbars_)
       return true;
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_IOS) || \
-    BUILDFLAG(IS_FUCHSIA)
-    // Non-overlay scrollbar is not supported on these platforms.
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_IOS)
+    // Non-overlay scrollbar is not supported on Android, ChromeOS and iOS.
     return false;
 #else
     return true;
@@ -85,9 +84,9 @@ class ScopedMockOverlayScrollbars {
 };
 
 // This is used in tests that needs non-overlay scrollbars. To make sure the
-// 'return' works, this macro must be used in a test directly, not in a function
+// 'return' work, this macro must be used in a test directly, not in a function
 // called by a test or a compound statement.
-#define USE_NON_OVERLAY_SCROLLBARS_OR_QUIT()                 \
+#define USE_NON_OVERLAY_SCROLLBARS()                         \
   ScopedMockOverlayScrollbars non_overlay_scrollbars(false); \
   if (!non_overlay_scrollbars.IsSuccessful())                \
   return

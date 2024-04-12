@@ -43,7 +43,7 @@ class MODULES_EXPORT AudioWorkletProcessor : public ScriptWrappable {
   AudioWorkletProcessor(AudioWorkletGlobalScope*,
                         const String& name,
                         MessagePort*);
-  ~AudioWorkletProcessor() override;
+  ~AudioWorkletProcessor() override = default;
 
   // `AudioWorkletHandler` invokes this method to process audio.
   bool Process(

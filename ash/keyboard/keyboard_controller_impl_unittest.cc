@@ -5,7 +5,6 @@
 #include "ash/keyboard/keyboard_controller_impl.h"
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <utility>
 
@@ -28,6 +27,7 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/window.h"
 #include "ui/display/manager/display_manager.h"
 #include "ui/display/test/display_manager_test_api.h"
@@ -122,7 +122,7 @@ class TestContainerBehavior : public keyboard::ContainerBehavior {
   gfx::Rect occluded_bounds_;
   gfx::Rect draggable_area_;
   gfx::Rect area_to_remain_on_screen_;
-  std::optional<gfx::Rect> adjusted_bounds_in_screen_;
+  absl::optional<gfx::Rect> adjusted_bounds_in_screen_;
 };
 
 class KeyboardControllerImplTest : public AshTestBase {
@@ -185,16 +185,15 @@ class KeyboardControllerImplTest : public AshTestBase {
   }
 
   void SetKeyboardConfigToPref(const base::Value& value) {
-    auto features = base::Value::Dict()
-                        .Set("auto_complete_enabled", value.Clone())
-                        .Set("auto_correct_enabled", value.Clone())
-                        .Set("handwriting_enabled", value.Clone())
-                        .Set("spell_check_enabled", value.Clone())
-                        .Set("voice_input_enabled", value.Clone());
+    base::Value features(base::Value::Type::DICT);
+    features.SetKey("auto_complete_enabled", value.Clone());
+    features.SetKey("auto_correct_enabled", value.Clone());
+    features.SetKey("handwriting_enabled", value.Clone());
+    features.SetKey("spell_check_enabled", value.Clone());
+    features.SetKey("voice_input_enabled", value.Clone());
     PrefService* prefs =
         Shell::Get()->session_controller()->GetLastActiveUserPrefService();
-    prefs->SetDict(prefs::kAccessibilityVirtualKeyboardFeatures,
-                   std::move(features));
+    prefs->Set(prefs::kAccessibilityVirtualKeyboardFeatures, features);
   }
 
   void VerifyKeyboardConfig(const KeyboardConfig& config, bool expected_value) {

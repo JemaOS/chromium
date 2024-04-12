@@ -2,9 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/ui/autofill/autofill_keyboard_accessory_adapter.h"
-
 #include <cstddef>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -14,13 +13,10 @@
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/test/gmock_move_support.h"
-#include "base/test/metrics/histogram_tester.h"
-#include "base/types/cxx23_to_underlying.h"
 #include "build/build_config.h"
 #include "chrome/browser/autofill/mock_autofill_popup_controller.h"
+#include "chrome/browser/ui/autofill/autofill_keyboard_accessory_adapter.h"
 #include "chrome/browser/ui/autofill/autofill_popup_view.h"
-#include "components/autofill/core/browser/autofill_test_utils.h"
 #include "components/autofill/core/browser/ui/popup_item_ids.h"
 #include "components/autofill/core/browser/ui/suggestion.h"
 #include "components/autofill/core/common/aliases.h"
@@ -47,23 +43,21 @@ class MockAccessoryView
   MockAccessoryView(const MockAccessoryView&) = delete;
   MockAccessoryView& operator=(const MockAccessoryView&) = delete;
 
-  MOCK_METHOD(bool, Initialize, ());
-  MOCK_METHOD(void, Hide, ());
-  MOCK_METHOD(void, Show, ());
-  MOCK_METHOD(void, AxAnnounce, (const std::u16string&));
-  MOCK_METHOD(void,
-              ConfirmDeletion,
-              (const std::u16string&,
-               const std::u16string&,
-               base::OnceCallback<void(bool)>));
+  MOCK_METHOD0(Initialize, bool());
+  MOCK_METHOD0(Hide, void());
+  MOCK_METHOD0(Show, void());
+  MOCK_METHOD1(AxAnnounce, void(const std::u16string&));
+  MOCK_METHOD3(ConfirmDeletion,
+               void(const std::u16string&,
+                    const std::u16string&,
+                    base::OnceClosure));
 };
 
 Suggestion createPasswordEntry(std::string password,
                                std::string username,
                                std::string psl_origin) {
-  Suggestion s(/*main_text=*/username, /*label=*/psl_origin,
-               /*icon=*/Suggestion::Icon::kNoIcon,
-               PopupItemId::kAutocompleteEntry);
+  Suggestion s(/*value=*/username, /*label=*/psl_origin, /*icon=*/"",
+               PopupItemId::POPUP_ITEM_ID_AUTOCOMPLETE_ENTRY);
   s.additional_label = ASCIIToUTF16(password);
   return s;
 }
@@ -78,8 +72,9 @@ std::vector<Suggestion> createSuggestions() {
 
 std::vector<Suggestion> createSuggestions(int clearItemOffset) {
   std::vector<Suggestion> suggestions = createSuggestions();
-  suggestions.emplace(suggestions.begin() + clearItemOffset, "Clear", "",
-                      Suggestion::Icon::kNoIcon, PopupItemId::kClearForm);
+  suggestions.emplace(
+      suggestions.begin() + clearItemOffset,
+      Suggestion("Clear", "", "", PopupItemId::POPUP_ITEM_ID_CLEAR_FORM));
   return suggestions;
 }
 
@@ -104,24 +99,20 @@ std::string SuggestionLabelsToString(
 
 // Matcher returning true if suggestions have equal members.
 MATCHER_P(equalsSuggestion, other, "") {
-  if (arg.popup_item_id != other.popup_item_id) {
-    *result_listener << "has a different popup_item_id:\n"
-                     << ::testing::PrintToString(arg) << "\n";
+  if (arg.frontend_id != other.frontend_id) {
+    *result_listener << "has frontend_id " << arg.frontend_id;
     return false;
   }
   if (arg.main_text != other.main_text) {
-    *result_listener << "has a different main_text:\n"
-                     << ::testing::PrintToString(arg) << "\n";
+    *result_listener << "has main_text " << arg.main_text.value;
     return false;
   }
   if (arg.labels != other.labels) {
-    *result_listener << "has different labels:\n"
-                     << SuggestionLabelsToString(arg.labels) << "\n";
+    *result_listener << "has labels " << SuggestionLabelsToString(arg.labels);
     return false;
   }
   if (arg.icon != other.icon) {
-    *result_listener << "has a different icon:\n"
-                     << ::testing::PrintToString(arg) << "\n";
+    *result_listener << "has icon " << arg.icon;
     return false;
   }
   return true;
@@ -244,62 +235,17 @@ TEST_F(AutofillKeyboardAccessoryAdapterTest, RemoveAfterConfirmation) {
   controller()->set_suggestions(createSuggestions());
   NotifyAboutSuggestions();
 
-  base::OnceCallback<void(bool)> deletion_callback;
+  base::OnceClosure confirm;
   EXPECT_CALL(*controller(), GetRemovalConfirmationText(0, _, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*view(), ConfirmDeletion)
-      .WillOnce(MoveArg<2>(&deletion_callback));
-  EXPECT_TRUE(adapter_as_controller()->RemoveSuggestion(
-      0, AutofillMetrics::SingleEntryRemovalMethod::kKeyboardAccessory));
+  EXPECT_CALL(*view(), ConfirmDeletion(_, _, _))
+      .WillOnce(WithArg<2>(Invoke([&](base::OnceClosure closure) -> void {
+        confirm = std::move(closure);
+      })));
+  EXPECT_TRUE(adapter_as_controller()->RemoveSuggestion(0));
 
-  EXPECT_CALL(
-      *controller(),
-      RemoveSuggestion(
-          0, AutofillMetrics::SingleEntryRemovalMethod::kKeyboardAccessory))
-      .WillOnce(Return(true));
-  std::move(deletion_callback).Run(/*confirmed=*/true);
-}
-
-TEST_F(AutofillKeyboardAccessoryAdapterTest,
-       MetricsAfterAddressDeletionDeclined) {
-  controller()->set_suggestions({test::CreateAutofillSuggestion(
-      PopupItemId::kAddressEntry, u"Your address")});
-  NotifyAboutSuggestions();
-
-  base::HistogramTester histogram;
-  base::OnceCallback<void(bool)> deletion_callback;
-  EXPECT_CALL(*controller(), GetRemovalConfirmationText(0, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*view(), ConfirmDeletion)
-      .WillOnce(MoveArg<2>(&deletion_callback));
-  EXPECT_TRUE(adapter_as_controller()->RemoveSuggestion(
-      0, AutofillMetrics::SingleEntryRemovalMethod::kKeyboardAccessory));
-  EXPECT_CALL(*controller(), RemoveSuggestion).Times(0);
-
-  std::move(deletion_callback).Run(/*confirmed=*/false);
-  histogram.ExpectUniqueSample("Autofill.ProfileDeleted.ExtendedMenu", 0, 1);
-  histogram.ExpectUniqueSample("Autofill.ProfileDeleted.Any", 0, 1);
-}
-
-TEST_F(AutofillKeyboardAccessoryAdapterTest,
-       MetricsAfterCreditCardDeletionDeclined) {
-  controller()->set_suggestions({test::CreateAutofillSuggestion(
-      PopupItemId::kCreditCardEntry, u"Your credit card")});
-  NotifyAboutSuggestions();
-
-  base::HistogramTester histogram;
-  base::OnceCallback<void(bool)> deletion_callback;
-  EXPECT_CALL(*controller(), GetRemovalConfirmationText(0, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*view(), ConfirmDeletion)
-      .WillOnce(MoveArg<2>(&deletion_callback));
-  EXPECT_TRUE(adapter_as_controller()->RemoveSuggestion(
-      0, AutofillMetrics::SingleEntryRemovalMethod::kKeyboardAccessory));
-  EXPECT_CALL(*controller(), RemoveSuggestion).Times(0);
-
-  std::move(deletion_callback).Run(/*confirmed=*/false);
-  histogram.ExpectUniqueSample("Autofill.ProfileDeleted.ExtendedMenu", 0, 0);
-  histogram.ExpectUniqueSample("Autofill.ProfileDeleted.Any", 0, 0);
+  EXPECT_CALL(*controller(), RemoveSuggestion(0)).WillOnce(Return(true));
+  std::move(confirm).Run();
 }
 
 }  // namespace autofill

@@ -15,7 +15,6 @@
 #include "chrome/browser/extensions/api/settings_private/settings_private_delegate.h"
 #include "chrome/browser/extensions/api/settings_private/settings_private_delegate_factory.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/common/extensions/api/settings_private.h"
 #include "chrome/common/pref_names.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
@@ -92,7 +91,7 @@ INSTANTIATE_TEST_SUITE_P(PersistentBackground,
                          ::testing::Values(ContextType::kPersistentBackground));
 INSTANTIATE_TEST_SUITE_P(ServiceWorker,
                          SettingsPrivateApiTest,
-                         ::testing::Values(ContextType::kPersistentBackground));
+                         ::testing::Values(ContextType::kServiceWorker));
 
 }  // namespace
 
@@ -128,8 +127,7 @@ IN_PROC_BROWSER_TEST_P(SettingsPrivateApiTest, GetPartiallyManagedPref) {
   provider->SetWebsiteSetting(
       ContentSettingsPattern::Wildcard(), ContentSettingsPattern::Wildcard(),
       ContentSettingsType::COOKIES,
-      base::Value(ContentSetting::CONTENT_SETTING_ALLOW), /*constraints=*/{},
-      content_settings::PartitionKey::GetDefaultForTesting());
+      base::Value(ContentSetting::CONTENT_SETTING_ALLOW));
   content_settings::TestUtils::OverrideProvider(
       HostContentSettingsMapFactory::GetForProfile(profile()),
       std::move(provider), HostContentSettingsMap::POLICY_PROVIDER);
@@ -142,19 +140,6 @@ IN_PROC_BROWSER_TEST_P(SettingsPrivateApiTest, GetAllPrefs) {
 
 IN_PROC_BROWSER_TEST_P(SettingsPrivateApiTest, OnPrefsChanged) {
   EXPECT_TRUE(RunSettingsSubtest("onPrefsChanged")) << message_;
-}
-
-IN_PROC_BROWSER_TEST_P(SettingsPrivateApiTest, GetManagedByParentPref) {
-  auto provider = std::make_unique<content_settings::MockProvider>();
-  provider->SetWebsiteSetting(
-      ContentSettingsPattern::Wildcard(), ContentSettingsPattern::Wildcard(),
-      ContentSettingsType::COOKIES,
-      base::Value(ContentSetting::CONTENT_SETTING_BLOCK), /*constraints=*/{},
-      content_settings::PartitionKey::GetDefaultForTesting());
-  content_settings::TestUtils::OverrideProvider(
-      HostContentSettingsMapFactory::GetForProfile(profile()),
-      std::move(provider), HostContentSettingsMap::SUPERVISED_PROVIDER);
-  EXPECT_TRUE(RunSettingsSubtest("getManagedByParentPref")) << message_;
 }
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)

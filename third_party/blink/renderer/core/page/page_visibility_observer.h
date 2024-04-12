@@ -42,7 +42,7 @@ class CORE_EXPORT PageVisibilityObserver : public GarbageCollectedMixin {
   // Call before clearing an observer list.
   void ObserverSetWillBeCleared();
 
-  Page* GetPage() const { return page_.Get(); }
+  Page* GetPage() const { return page_; }
   void SetPage(Page*);
 
   void Trace(Visitor* visitor) const override;

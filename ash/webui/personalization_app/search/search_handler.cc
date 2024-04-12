@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "ash/constants/ash_features.h"
@@ -24,6 +23,7 @@
 #include "chromeos/strings/grit/chromeos_strings.h"
 #include "components/prefs/pref_service.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace ash::personalization_app {
@@ -92,7 +92,7 @@ void SearchHandler::OnLocalSearchDone(
     SearchCallback callback,
     uint32_t max_num_results,
     local_search_service::ResponseStatus response_status,
-    const std::optional<std::vector<local_search_service::Result>>&
+    const absl::optional<std::vector<local_search_service::Result>>&
         local_search_service_results) {
   if (response_status != local_search_service::ResponseStatus::kSuccess) {
     LOG(ERROR) << "Cannot search; LocalSearchService returned "
@@ -122,7 +122,7 @@ void SearchHandler::OnLocalSearchDone(
 
     search_results.push_back(mojom::SearchResult::New(
         /*id=*/search_concept->id,
-        /*text=*/SearchTagRegistry::MessageIdToString(matching_content_id),
+        /*text=*/l10n_util::GetStringUTF16(matching_content_id),
         /*relative_url=*/search_concept->relative_url,
         /*relevance_score=*/local_result.score));
   }

@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_EXTENSIONS_API_IDENTITY_IDENTITY_GET_AUTH_TOKEN_FUNCTION_H_
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 
@@ -25,6 +24,7 @@
 #include "extensions/browser/extension_function_histogram_value.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "google_apis/gaia/oauth2_mint_token_flow.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/crosapi/device_oauth2_token_service_ash.h"
@@ -42,9 +42,15 @@ struct AccessTokenInfo;
 namespace extensions {
 class IdentityGetAuthTokenError;
 
+BASE_DECLARE_FEATURE(kGetAuthTokenCheckInteractivity);
+
 // Exposed for testing
-inline constexpr base::TimeDelta kGetAuthTokenInactivityTime =
+constexpr base::TimeDelta kDefaultGetAuthTokenInactivityThreshold =
     base::Minutes(10);
+extern const char kGetAuthTokenActivityStatusHistogramBaseName[];
+extern const char kGetAuthTokenIdleTimeHistogramBaseName[];
+extern const char kGetAuthTokenHistogramConsentSuffix[];
+extern const char kGetAuthTokenHistogramSigninSuffix[];
 
 // identity.getAuthToken fetches an OAuth 2 function for the
 // caller. The request has three sub-flows: non-interactive,
@@ -72,6 +78,9 @@ class IdentityGetAuthTokenFunction : public ExtensionFunction,
   // Interactive requests showing UIs (like a signin tab or a consent window)
   // may be rejected to avoid creating unwanted or out-of-context user
   // interruption.
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  // Exposed for testing.
   enum class InteractivityStatus {
     // Interactivity was not requested.
     kNotRequested = 0,
@@ -86,6 +95,11 @@ class IdentityGetAuthTokenFunction : public ExtensionFunction,
     // Interactivity was requested. There is no user gesture but it is allowed
     // because the user was recently active.
     kAllowedWithActivity = 4,
+    // Interactivity was requested, and it is allowed because the idle checks
+    // are disabled.
+    kAllowedNoIdleCheck = 5,
+
+    kMaxValue = kAllowedNoIdleCheck,
   };
 
   DECLARE_EXTENSION_FUNCTION("identity.getAuthToken",
@@ -121,7 +135,7 @@ class IdentityGetAuthTokenFunction : public ExtensionFunction,
 
   // Invoked on completion of the access token fetcher.
   // Exposed for testing.
-  void OnGetAccessTokenComplete(const std::optional<std::string>& access_token,
+  void OnGetAccessTokenComplete(const absl::optional<std::string>& access_token,
                                 base::Time expiration_time,
                                 const GoogleServiceAuthError& error);
 
@@ -247,10 +261,13 @@ class IdentityGetAuthTokenFunction : public ExtensionFunction,
   // Returns true if extensions are restricted to the primary account.
   bool IsPrimaryAccountOnly() const;
 
+  // Records metrics related to user activity.
+  void RecordInteractivityMetrics(InteractionType interaction_type);
+
   // Computes the interactivity status for consent and sign-in based on the
   // "interactive" parameter, the idle state and whether signin is allowed.
   void ComputeInteractivityStatus(
-      const std::optional<api::identity::TokenDetails>& details);
+      const absl::optional<api::identity::TokenDetails>& details);
 
   // Returns an error for cases when interactivity is not allowed. Must not be
   // called when interactivity is allowed.

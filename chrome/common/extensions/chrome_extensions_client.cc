@@ -19,7 +19,7 @@
 #include "chrome/common/extensions/manifest_handlers/theme_handler.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "content/public/common/url_constants.h"
 #include "extensions/common/api/extension_action/action_info.h"
 #include "extensions/common/constants.h"
@@ -38,6 +38,9 @@
 #include "services/network/public/mojom/cors_origin_pattern.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "url/gurl.h"
+//---***JEMAOS BEGIN***---
+#include "jemaos/extensions/common/jemaos_extensions_api_provider.h"
+//---***JEMAOS END***---
 
 namespace extensions {
 
@@ -54,6 +57,9 @@ const char kExtensionBlocklistHttpsUrlPrefix[] =
 ChromeExtensionsClient::ChromeExtensionsClient() {
   AddAPIProvider(std::make_unique<ChromeExtensionsAPIProvider>());
   AddAPIProvider(std::make_unique<CoreExtensionsAPIProvider>());
+  //---***JEMAOS BEGIN***---
+  AddAPIProvider(std::make_unique<JemaOSExtensionsAPIProvider>());
+  //---***JEMAOS END***---
 }
 
 ChromeExtensionsClient::~ChromeExtensionsClient() {
@@ -207,7 +213,7 @@ void ChromeExtensionsClient::AddOriginAccessPermissions(
   // Allow component extensions to access chrome://theme/.
   //
   // We don't want to grant these permissions to inactive component extensions,
-  // to avoid granting them in "unprivileged" (non-extension) processes.  If a
+  // to avoid granting them in "unblessed" (non-extension) processes.  If a
   // component extension somehow starts as inactive and becomes active later,
   // we'll re-init the origin permissions, so there's no danger in being
   // conservative. Components shouldn't be subject to enterprise policy controls
@@ -235,7 +241,7 @@ void ChromeExtensionsClient::AddOriginAccessPermissions(
   }
 }
 
-std::optional<int> ChromeExtensionsClient::GetExtensionExtendedErrorCode()
+absl::optional<int> ChromeExtensionsClient::GetExtensionExtendedErrorCode()
     const {
   return static_cast<int>(ChromeResourceRequestBlockedReason::kExtension);
 }

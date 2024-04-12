@@ -840,7 +840,7 @@ FastPositionIteratorAlgorithm<Strategy>::ComputePosition() const {
         return PositionType(*container_node_, offset_in_container_);
       return BeforeOrAfterPosition();
     case kContainerNode:
-      if (ChildAfterPosition()) {
+      if (Node* child_after_position = ChildAfterPosition()) {
         EnsureOffsetInContainer();
         return PositionType(*container_node_, offset_in_container_);
       }

@@ -34,8 +34,7 @@ ClientSideDetectionService* ClientSideDetectionServiceFactory::GetForProfile(
 // static
 ClientSideDetectionServiceFactory*
 ClientSideDetectionServiceFactory::GetInstance() {
-  static base::NoDestructor<ClientSideDetectionServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<ClientSideDetectionServiceFactory>::get();
 }
 
 ClientSideDetectionServiceFactory::ClientSideDetectionServiceFactory()
@@ -43,21 +42,21 @@ ClientSideDetectionServiceFactory::ClientSideDetectionServiceFactory()
           "ClientSideDetectionService",
           ProfileSelections::Builder()
               .WithRegular(ProfileSelection::kOriginalOnly)
-              // ChromeOS creates various profiles (login, lock screen...) that
-              // do not display web content and thus do not need the
-              // client side phishing detection
-              .WithAshInternals(ProfileSelection::kNone)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
-std::unique_ptr<KeyedService>
-ClientSideDetectionServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ClientSideDetectionServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
   auto* opt_guide = OptimizationGuideKeyedServiceFactory::GetForProfile(
       Profile::FromBrowserContext(context));
 
-  if (!opt_guide) {
+  if (base::FeatureList::IsEnabled(
+          kClientSideDetectionModelOptimizationGuide) &&
+      !opt_guide) {
     return nullptr;
   }
 
@@ -65,18 +64,9 @@ ClientSideDetectionServiceFactory::BuildServiceInstanceForBrowserContext(
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::MayBlock(), base::TaskPriority::BEST_EFFORT});
 
-  return std::make_unique<ClientSideDetectionService>(
+  return new ClientSideDetectionService(
       std::make_unique<ChromeClientSideDetectionServiceDelegate>(profile),
       opt_guide, background_task_runner);
-}
-
-bool ClientSideDetectionServiceFactory::ServiceIsCreatedWithBrowserContext()
-    const {
-  return true;
-}
-
-bool ClientSideDetectionServiceFactory::ServiceIsNULLWhileTesting() const {
-  return true;
 }
 
 }  // namespace safe_browsing

@@ -15,6 +15,7 @@
 #include "ash/keyboard/ui/test/keyboard_test_util.h"
 #include "ash/public/cpp/keyboard/keyboard_switches.h"
 #include "ash/public/cpp/locale_update_controller.h"
+#include "ash/public/cpp/system_tray_observer.h"
 #include "ash/session/session_controller_impl.h"
 #include "ash/session/test_session_controller_client.h"
 #include "ash/shelf/drag_handle.h"
@@ -33,14 +34,12 @@
 #include "ash/system/status_area_widget_test_helper.h"
 #include "ash/system/tray/status_area_overflow_button_tray.h"
 #include "ash/system/tray/system_tray_notifier.h"
-#include "ash/system/tray/system_tray_observer.h"
 #include "ash/system/unified/date_tray.h"
 #include "ash/system/unified/unified_system_tray.h"
-#include "ash/system/unified/unified_system_tray_bubble.h"
 #include "ash/system/virtual_keyboard/virtual_keyboard_tray.h"
 #include "ash/test/ash_test_base.h"
 #include "ash/test/test_ash_web_view_factory.h"
-#include "ash/wm/tablet_mode/tablet_mode_controller_test_api.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "base/command_line.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
@@ -52,8 +51,6 @@
 #include "components/proxy_config/pref_proxy_config_tracker_impl.h"
 #include "components/session_manager/session_manager_types.h"
 #include "ui/events/event.h"
-#include "ui/events/event_constants.h"
-#include "ui/events/keycodes/keyboard_codes_posix.h"
 #include "ui/events/test/event_generator.h"
 #include "ui/gfx/image/image.h"
 
@@ -61,13 +58,7 @@ using session_manager::SessionState;
 
 namespace ash {
 
-class StatusAreaWidgetTest : public AshTestBase {
- protected:
-  TrayBackgroundView::RoundedCornerBehavior GetTrayCornerBehavior(
-      TrayBackgroundView* tray) {
-    return tray->corner_behavior_;
-  }
-};
+using StatusAreaWidgetTest = AshTestBase;
 
 // Tests that status area trays are constructed.
 TEST_F(StatusAreaWidgetTest, Basics) {
@@ -161,72 +152,6 @@ TEST_F(StatusAreaWidgetTest, HandleOnLocaleChange) {
             dictation_button->layer()->bounds().x());
 
   base::i18n::SetRTLForTesting(false);
-}
-
-TEST_F(StatusAreaWidgetTest, OpenTrayBubble) {
-  Shell::Get()->ime_controller()->ShowImeMenuOnShelf(true);
-
-  StatusAreaWidget* status_area = GetPrimaryShelf()->GetStatusAreaWidget();
-  TrayBackgroundView* ime_menu = status_area->ime_menu_tray();
-  UnifiedSystemTray* system_tray = status_area->unified_system_tray();
-
-  // Clicking on the system tray should set the open tray bubble in
-  // `status_area`.
-  LeftClickOn(system_tray);
-
-  EXPECT_EQ(status_area->open_shelf_pod_bubble(),
-            system_tray->bubble()->GetBubbleView());
-
-  // Clicking on the ime menu should set the open tray bubble in
-  // `status_area`.
-  LeftClickOn(ime_menu);
-
-  EXPECT_EQ(status_area->open_shelf_pod_bubble(), ime_menu->GetBubbleView());
-}
-
-TEST_F(StatusAreaWidgetTest, OnlyOneOpenTrayBubble) {
-  Shell::Get()->ime_controller()->ShowImeMenuOnShelf(true);
-
-  StatusAreaWidget* status_area = GetPrimaryShelf()->GetStatusAreaWidget();
-  TrayBackgroundView* ime_menu = status_area->ime_menu_tray();
-  UnifiedSystemTray* system_tray = status_area->unified_system_tray();
-
-  LeftClickOn(ime_menu);
-  ASSERT_EQ(status_area->open_shelf_pod_bubble(), ime_menu->GetBubbleView());
-
-  // Open Quick Settings through the accelerator.
-  Shell::Get()->accelerator_controller()->PerformActionIfEnabled(
-      AcceleratorAction::kToggleSystemTrayBubble, {});
-
-  // When there's an open shelf pod bubble and we open another bubble through
-  // shortcuts, the previous bubble should hide for the next one to show.
-  EXPECT_FALSE(ime_menu->GetBubbleView());
-  ASSERT_TRUE(system_tray->bubble());
-
-  EXPECT_EQ(status_area->open_shelf_pod_bubble(),
-            system_tray->bubble()->GetBubbleView());
-}
-
-// The corner radius of the date tray changes based on the visibility of the
-// `NotificationCenterTray`. The date tray should have rounded corners on the
-// left if the `NotificationCenterTray` is not visible and no rounded corners
-// otherwise.
-TEST_F(StatusAreaWidgetTest, DateTrayRoundedCornerBehavior) {
-  StatusAreaWidget* status_area =
-      StatusAreaWidgetTestHelper::GetStatusAreaWidget();
-  EXPECT_FALSE(status_area->notification_center_tray()->GetVisible());
-  EXPECT_EQ(GetTrayCornerBehavior(status_area->date_tray()),
-            TrayBackgroundView::RoundedCornerBehavior::kStartRounded);
-
-  status_area->notification_center_tray()->SetVisiblePreferred(true);
-
-  EXPECT_EQ(GetTrayCornerBehavior(status_area->date_tray()),
-            TrayBackgroundView::RoundedCornerBehavior::kNotRounded);
-
-  status_area->notification_center_tray()->SetVisiblePreferred(false);
-
-  EXPECT_EQ(GetTrayCornerBehavior(status_area->date_tray()),
-            TrayBackgroundView::RoundedCornerBehavior::kStartRounded);
 }
 
 class SystemTrayFocusTestObserver : public SystemTrayObserver {
@@ -559,13 +484,13 @@ class StatusAreaWidgetCollapseStateTest : public AshTestBase {
     return status_area_->collapse_state();
   }
 
-  raw_ptr<StatusAreaWidget, DanglingUntriaged> status_area_;
-  raw_ptr<StatusAreaOverflowButtonTray, DanglingUntriaged> overflow_button_;
-  raw_ptr<TrayBackgroundView, DanglingUntriaged> virtual_keyboard_;
-  raw_ptr<TrayBackgroundView, DanglingUntriaged> ime_menu_;
-  raw_ptr<TrayBackgroundView, DanglingUntriaged> palette_;
-  raw_ptr<TrayBackgroundView, DanglingUntriaged> dictation_button_;
-  raw_ptr<TrayBackgroundView, DanglingUntriaged> select_to_speak_;
+  raw_ptr<StatusAreaWidget, ExperimentalAsh> status_area_;
+  raw_ptr<StatusAreaOverflowButtonTray, ExperimentalAsh> overflow_button_;
+  raw_ptr<TrayBackgroundView, ExperimentalAsh> virtual_keyboard_;
+  raw_ptr<TrayBackgroundView, ExperimentalAsh> ime_menu_;
+  raw_ptr<TrayBackgroundView, ExperimentalAsh> palette_;
+  raw_ptr<TrayBackgroundView, ExperimentalAsh> dictation_button_;
+  raw_ptr<TrayBackgroundView, ExperimentalAsh> select_to_speak_;
 };
 
 TEST_F(StatusAreaWidgetCollapseStateTest, TrayVisibility) {
@@ -636,7 +561,10 @@ TEST_F(StatusAreaWidgetCollapseStateTest, ClickOverflowButton) {
   EXPECT_TRUE(overflow_button_->GetVisible());
 
   // Click overflow button.
-  LeftClickOn(overflow_button_);
+  gfx::Point point = overflow_button_->GetBoundsInScreen().origin();
+  ui::MouseEvent click(ui::ET_MOUSE_PRESSED, point, point,
+                       base::TimeTicks::Now(), 0, 0);
+  overflow_button_->PerformAction(click);
 
   // All tray buttons should be visible in the expanded state.
   EXPECT_EQ(StatusAreaWidget::CollapseState::EXPANDED, collapse_state());
@@ -647,7 +575,7 @@ TEST_F(StatusAreaWidgetCollapseStateTest, ClickOverflowButton) {
   EXPECT_TRUE(overflow_button_->GetVisible());
 
   // Clicking the overflow button again should go back to the collapsed state.
-  LeftClickOn(overflow_button_);
+  overflow_button_->PerformAction(click);
   EXPECT_EQ(StatusAreaWidget::CollapseState::COLLAPSED, collapse_state());
   EXPECT_FALSE(select_to_speak_->GetVisible());
   EXPECT_FALSE(ime_menu_->GetVisible());
@@ -719,7 +647,7 @@ TEST_F(StatusAreaWidgetCollapseStateTest,
        HideDragHandleOnOverlapInExpandedState) {
   std::unique_ptr<aura::Window> test_window =
       CreateTestWindow(gfx::Rect(0, 0, 400, 400));
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
   status_area_->UpdateCollapseState();
 
   // By default, status area is collapsed.
@@ -743,7 +671,7 @@ TEST_F(StatusAreaWidgetCollapseStateTest,
        HideDragHandleWithNudgeOnOverlapInExpandedState) {
   std::unique_ptr<aura::Window> test_window =
       CreateTestWindow(gfx::Rect(0, 0, 400, 400));
-  ash::TabletModeControllerTestApi().EnterTabletMode();
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
   status_area_->UpdateCollapseState();
 
   // By default, status area is collapsed.
@@ -772,6 +700,47 @@ TEST_F(StatusAreaWidgetCollapseStateTest,
   EXPECT_FALSE(drag_handle->GetVisible());
   EXPECT_FALSE(drag_handle->drag_handle_nudge());
   EXPECT_TRUE(!drag_handle_widget || drag_handle_widget->IsClosed());
+}
+
+class StatusAreaWidgetQSRevampTest : public AshTestBase {
+ protected:
+  void SetUp() override {
+    scoped_feature_list_.InitAndEnableFeature(features::kQsRevamp);
+    AshTestBase::SetUp();
+  }
+
+  TrayBackgroundView::RoundedCornerBehavior GetTrayCornerBehavior(
+      TrayBackgroundView* tray) {
+    return tray->corner_behavior_;
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+// The corner radius of the date tray changes based on the visibility of the
+// `NotificationCenterTray`. The date tray should have rounded corners on the
+// left if the `NotificationCenterTray` is not visible and no rounded corners
+// otherwise.
+TEST_F(StatusAreaWidgetQSRevampTest, DateTrayRoundedCornerBehavior) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kQsRevamp);
+
+  StatusAreaWidget* status_area =
+      StatusAreaWidgetTestHelper::GetStatusAreaWidget();
+  EXPECT_FALSE(status_area->notification_center_tray()->GetVisible());
+  EXPECT_EQ(GetTrayCornerBehavior(status_area->date_tray()),
+            TrayBackgroundView::RoundedCornerBehavior::kStartRounded);
+
+  status_area->notification_center_tray()->SetVisiblePreferred(true);
+
+  EXPECT_EQ(GetTrayCornerBehavior(status_area->date_tray()),
+            TrayBackgroundView::RoundedCornerBehavior::kNotRounded);
+
+  status_area->notification_center_tray()->SetVisiblePreferred(false);
+
+  EXPECT_EQ(GetTrayCornerBehavior(status_area->date_tray()),
+            TrayBackgroundView::RoundedCornerBehavior::kStartRounded);
 }
 
 class StatusAreaWidgetEcheTest : public AshTestBase {
@@ -813,30 +782,6 @@ TEST_F(StatusAreaWidgetEcheTest, EcheTrayShowHide) {
 
   // Auto-hidden shelf would not be forced to be visible.
   EXPECT_FALSE(status_area->ShouldShowShelf());
-}
-
-// Tests that `StatusAreaWidget` keep track of its `open_shelf_pod_bubble()`
-// when eche is showing/hiding its bubble.
-TEST_F(StatusAreaWidgetEcheTest, StatusAreaOpenTrayBubble) {
-  StatusAreaWidget* status_area =
-      StatusAreaWidgetTestHelper::GetStatusAreaWidget();
-  auto* eche_tray = status_area->eche_tray();
-  SkBitmap bitmap;
-  bitmap.allocN32Pixels(30, 30);
-  gfx::ImageSkia image_skia = gfx::ImageSkia::CreateFrom1xBitmap(bitmap);
-  image_skia.MakeThreadSafe();
-  eche_tray->LoadBubble(
-      GURL("http://google.com"), gfx::Image(image_skia), u"app 1",
-      u"your phone",
-      eche_app::mojom::ConnectionStatus::kConnectionStatusDisconnected,
-      eche_app::mojom::AppStreamLaunchEntryPoint::APPS_LIST);
-  eche_tray->ShowBubble();
-
-  EXPECT_EQ(eche_tray->GetBubbleView(), status_area->open_shelf_pod_bubble());
-
-  eche_tray->HideBubble();
-
-  EXPECT_EQ(nullptr, status_area->open_shelf_pod_bubble());
 }
 
 }  // namespace ash

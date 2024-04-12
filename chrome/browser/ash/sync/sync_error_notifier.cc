@@ -6,8 +6,6 @@
 
 #include "ash/constants/notifier_catalogs.h"
 #include "ash/public/cpp/notification_utils.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
-#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
@@ -21,17 +19,17 @@
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service_factory.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/theme_resources.h"
 #include "components/account_id/account_id.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_service_utils.h"
-#include "components/sync/service/sync_user_settings.h"
-#include "components/trusted_vault/features.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_service_utils.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "components/user_manager/user_manager.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -59,7 +57,7 @@ void ShowSyncSetup(Profile* profile) {
     return;
   }
 
-  if (crosapi::browser_util::IsLacrosEnabled()) {
+  if (crosapi::browser_util::IsLacrosPrimaryBrowser()) {
     chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(
         profile, chromeos::settings::mojom::kSyncSetupSubpagePath);
   } else {
@@ -70,33 +68,17 @@ void ShowSyncSetup(Profile* profile) {
 }
 
 void TriggerSyncKeyRetrieval(Profile* profile) {
-  if (!crosapi::browser_util::IsAshWebBrowserEnabled() &&
-      base::FeatureList::IsEnabled(
-          trusted_vault::kChromeOSTrustedVaultUseWebUIDialog)) {
-    OpenDialogForSyncKeyRetrieval(
-        profile, syncer::TrustedVaultUserActionTriggerForUMA::kNotification);
-  } else {
-    // TODO(crbug.com/1434656): clean up once not reachable.
-    chrome::ScopedTabbedBrowserDisplayer displayer(profile);
-    OpenTabForSyncKeyRetrieval(
-        displayer.browser(),
-        syncer::TrustedVaultUserActionTriggerForUMA::kNotification);
-  }
+  chrome::ScopedTabbedBrowserDisplayer displayer(profile);
+  OpenTabForSyncKeyRetrieval(
+      displayer.browser(),
+      syncer::TrustedVaultUserActionTriggerForUMA::kNotification);
 }
 
 void TriggerSyncRecoverabilityDegradedFix(Profile* profile) {
-  if (!crosapi::browser_util::IsAshWebBrowserEnabled() &&
-      base::FeatureList::IsEnabled(
-          trusted_vault::kChromeOSTrustedVaultUseWebUIDialog)) {
-    OpenDialogForSyncKeyRecoverabilityDegraded(
-        profile, syncer::TrustedVaultUserActionTriggerForUMA::kNotification);
-  } else {
-    // TODO(crbug.com/1434656): clean up once not reachable.
-    chrome::ScopedTabbedBrowserDisplayer displayer(profile);
-    OpenTabForSyncKeyRecoverabilityDegraded(
-        displayer.browser(),
-        syncer::TrustedVaultUserActionTriggerForUMA::kNotification);
-  }
+  chrome::ScopedTabbedBrowserDisplayer displayer(profile);
+  OpenTabForSyncKeyRecoverabilityDegraded(
+      displayer.browser(),
+      syncer::TrustedVaultUserActionTriggerForUMA::kNotification);
 }
 
 BubbleViewParameters GetBubbleViewParameters(
@@ -114,8 +96,7 @@ BubbleViewParameters GetBubbleViewParameters(
     return params;
   }
 
-  if (sync_service->GetUserSettings()
-          ->IsTrustedVaultKeyRequiredForPreferredDataTypes()) {
+  if (ShouldShowSyncKeysMissingError(sync_service, profile->GetPrefs())) {
     BubbleViewParameters params;
     params.title_id =
         sync_service->GetUserSettings()->IsEncryptEverythingEnabled()
@@ -131,8 +112,8 @@ BubbleViewParameters GetBubbleViewParameters(
     return params;
   }
 
-  DCHECK(
-      sync_service->GetUserSettings()->IsTrustedVaultRecoverabilityDegraded());
+  DCHECK(ShouldShowTrustedVaultDegradedRecoverabilityError(
+      sync_service, profile->GetPrefs()));
 
   BubbleViewParameters params;
   params.title_id = IDS_SYNC_NEEDS_VERIFICATION_BUBBLE_VIEW_TITLE;
@@ -173,9 +154,9 @@ void SyncErrorNotifier::OnStateChanged(syncer::SyncService* service) {
 
   const bool should_display_notification =
       ShouldShowSyncPassphraseError(sync_service_) ||
-      sync_service_->GetUserSettings()
-          ->IsTrustedVaultKeyRequiredForPreferredDataTypes() ||
-      sync_service_->GetUserSettings()->IsTrustedVaultRecoverabilityDegraded();
+      ShouldShowSyncKeysMissingError(service, profile_->GetPrefs()) ||
+      ShouldShowTrustedVaultDegradedRecoverabilityError(service,
+                                                        profile_->GetPrefs());
 
   if (should_display_notification == notification_displayed_) {
     return;

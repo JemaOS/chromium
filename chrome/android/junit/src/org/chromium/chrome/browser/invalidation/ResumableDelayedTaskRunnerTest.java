@@ -19,11 +19,14 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 
 import java.util.concurrent.TimeUnit;
 
-/** Tests for the {@link ResumableDelayedTaskRunner}. */
+/**
+ * Tests for the {@link ResumableDelayedTaskRunner}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class ResumableDelayedTaskRunnerTest {
-    @Mock Runnable mRunnable;
+    @Mock
+    Runnable mRunnable;
 
     @Before
     public void setup() {
@@ -33,7 +36,7 @@ public class ResumableDelayedTaskRunnerTest {
     @Test
     public void testResume() {
         ResumableDelayedTaskRunner runner = new ResumableDelayedTaskRunner();
-        runner.setRunnable(mRunnable, /* delayMs= */ 2000);
+        runner.setRunnable(mRunnable, /*delayMs=*/2000);
         runner.resume();
 
         Robolectric.getForegroundThreadScheduler().advanceBy(1500, TimeUnit.MILLISECONDS);
@@ -46,7 +49,7 @@ public class ResumableDelayedTaskRunnerTest {
     @Test
     public void testPause() {
         ResumableDelayedTaskRunner runner = new ResumableDelayedTaskRunner();
-        runner.setRunnable(mRunnable, /* delayMs= */ 2000);
+        runner.setRunnable(mRunnable, /*delayMs=*/2000);
         runner.resume();
 
         runner.pause();
@@ -63,7 +66,7 @@ public class ResumableDelayedTaskRunnerTest {
     @Test
     public void testCancel() {
         ResumableDelayedTaskRunner runner = new ResumableDelayedTaskRunner();
-        runner.setRunnable(mRunnable, /* delayMs= */ 2000);
+        runner.setRunnable(mRunnable, /*delayMs=*/2000);
         runner.resume();
 
         runner.cancel();

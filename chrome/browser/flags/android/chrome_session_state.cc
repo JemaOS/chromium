@@ -14,11 +14,14 @@
 
 using chrome::android::ActivityType;
 using chrome::android::DarkModeState;
+using chrome::android::MultipleUserProfilesState;
 
 namespace {
 ActivityType activity_type = ActivityType::kPreFirstTab;
 bool is_in_multi_window_mode = false;
 DarkModeState dark_mode_state = DarkModeState::kUnknown;
+MultipleUserProfilesState multiple_user_profiles_state =
+    MultipleUserProfilesState::kUnknown;
 
 // Name of local state pref to persist the last |chrome::android::ActivityType|.
 const char kLastActivityTypePref[] =
@@ -94,14 +97,14 @@ void RegisterActivityTypePrefs(PrefRegistrySimple* registry) {
   registry->RegisterIntegerPref(kLastActivityTypePref, -1);
 }
 
-std::optional<chrome::android::ActivityType> GetActivityTypeFromLocalState(
+absl::optional<chrome::android::ActivityType> GetActivityTypeFromLocalState(
     PrefService* local_state) {
   auto value = local_state->GetInteger(kLastActivityTypePref);
   if (value >= static_cast<int>(ActivityType::kTabbed) &&
       value <= static_cast<int>(ActivityType::kMaxValue)) {
     return static_cast<ActivityType>(value);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void SaveActivityTypeToLocalState(PrefService* local_state,
@@ -110,10 +113,12 @@ void SaveActivityTypeToLocalState(PrefService* local_state,
 }
 
 MultipleUserProfilesState GetMultipleUserProfilesState() {
-  static MultipleUserProfilesState multiple_user_profiles_state =
-      static_cast<MultipleUserProfilesState>(
-          Java_ChromeSessionState_getMultipleUserProfilesState(
-              jni_zero::AttachCurrentThread()));
+  if (multiple_user_profiles_state != MultipleUserProfilesState::kUnknown) {
+    return multiple_user_profiles_state;
+  }
+  multiple_user_profiles_state = static_cast<MultipleUserProfilesState>(
+      Java_ChromeSessionState_getMultipleUserProfilesState(
+          base::android::AttachCurrentThread()));
   return multiple_user_profiles_state;
 }
 

@@ -77,9 +77,8 @@
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/login/test/local_state_mixin.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
-#include "chromeos/components/kiosk/kiosk_test_utils.h"  // nogncheck
+#include "chromeos/ash/components/login/login_state/login_state.h"
 #include "chromeos/dbus/power/fake_power_manager_client.h"
 #include "components/user_manager/scoped_user_manager.h"
 #endif
@@ -144,7 +143,7 @@ class TabsAddedNotificationObserver : public TabStripModelObserver {
       return;
 
     for (auto& tab : change.GetInsert()->contents)
-      observed_tabs_.push_back(tab.contents.get());
+      observed_tabs_.push_back(tab.contents);
 
     if (observed_tabs_.size() >= observations_)
       run_loop_.Quit();
@@ -152,14 +151,12 @@ class TabsAddedNotificationObserver : public TabStripModelObserver {
 
   void Wait() { run_loop_.Run(); }
 
-  const std::vector<raw_ptr<content::WebContents, VectorExperimental>>& tabs() {
-    return observed_tabs_;
-  }
+  const std::vector<content::WebContents*>& tabs() { return observed_tabs_; }
 
  private:
   base::RunLoop run_loop_;
   size_t observations_;
-  std::vector<raw_ptr<content::WebContents, VectorExperimental>> observed_tabs_;
+  std::vector<content::WebContents*> observed_tabs_;
 };
 
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
@@ -552,6 +549,8 @@ IN_PROC_BROWSER_TEST_F(PlatformAppBrowserTest, MAYBE_Iframes) {
 
 // Tests that platform apps can perform filesystem: URL navigations.
 IN_PROC_BROWSER_TEST_F(PlatformAppBrowserTest, AllowFileSystemURLNavigation) {
+  // TODO(https://crbug.com/1332598): Remove this test when removing filesystem:
+  // navigation for good.
   if (!base::FeatureList::IsEnabled(
           blink::features::kFileSystemUrlNavigationForChromeAppsOnly)) {
     GTEST_SKIP();
@@ -950,14 +949,7 @@ IN_PROC_BROWSER_TEST_F(PlatformAppBrowserTest,
 
 namespace {
 
-// TODO(crbug.com/1487630): flaky on Linux dbg.
-#if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
-#define MAYBE_PlatformAppDevToolsBrowserTest \
-  DISABLED_PlatformAppDevToolsBrowserTest
-#else
-#define MAYBE_PlatformAppDevToolsBrowserTest PlatformAppDevToolsBrowserTest
-#endif
-class MAYBE_PlatformAppDevToolsBrowserTest : public PlatformAppBrowserTest {
+class PlatformAppDevToolsBrowserTest : public PlatformAppBrowserTest {
  protected:
   enum TestFlags {
     RELAUNCH = 0x1,
@@ -967,8 +959,8 @@ class MAYBE_PlatformAppDevToolsBrowserTest : public PlatformAppBrowserTest {
   void RunTestWithDevTools(const char* name, int test_flags);
 };
 
-void MAYBE_PlatformAppDevToolsBrowserTest::RunTestWithDevTools(const char* name,
-                                                               int test_flags) {
+void PlatformAppDevToolsBrowserTest::RunTestWithDevTools(const char* name,
+                                                         int test_flags) {
   using content::DevToolsAgentHost;
   const Extension* extension = LoadAndLaunchPlatformApp(name, "Launched");
   ASSERT_TRUE(extension);
@@ -1007,11 +999,11 @@ void MAYBE_PlatformAppDevToolsBrowserTest::RunTestWithDevTools(const char* name,
 
 }  // namespace
 
-IN_PROC_BROWSER_TEST_F(MAYBE_PlatformAppDevToolsBrowserTest, ReOpenedWithID) {
+IN_PROC_BROWSER_TEST_F(PlatformAppDevToolsBrowserTest, ReOpenedWithID) {
   RunTestWithDevTools("minimal_id", RELAUNCH | HAS_ID);
 }
 
-IN_PROC_BROWSER_TEST_F(MAYBE_PlatformAppDevToolsBrowserTest, ReOpenedWithURL) {
+IN_PROC_BROWSER_TEST_F(PlatformAppDevToolsBrowserTest, ReOpenedWithURL) {
   RunTestWithDevTools("minimal", RELAUNCH);
 }
 
@@ -1371,9 +1363,8 @@ class PlatformAppIncognitoBrowserTest : public PlatformAppBrowserTest,
 IN_PROC_BROWSER_TEST_F(PlatformAppIncognitoBrowserTest,
                        MAYBE_IncognitoComponentApp) {
   // Get the file manager app.
-  const Extension* file_manager =
-      extension_registry()->enabled_extensions().GetByID(
-          extension_misc::kFilesManagerAppId);
+  const Extension* file_manager = extension_registry()->GetExtensionById(
+      extension_misc::kFilesManagerAppId, ExtensionRegistry::ENABLED);
   ASSERT_TRUE(file_manager != nullptr);
   Profile* incognito_profile =
       profile()->GetPrimaryOTRProfile(/*create_if_needed=*/true);
@@ -1403,22 +1394,11 @@ IN_PROC_BROWSER_TEST_F(PlatformAppIncognitoBrowserTest,
   }
 }
 
-class RestartKioskDeviceTest : public PlatformAppBrowserTest,
-                               public ash::LocalStateMixin::Delegate {
+class RestartDeviceTest : public PlatformAppBrowserTest {
  public:
-  void SetUpLocalState() override {
-    // Until EnterKioskSession is called, the setup and the test run in a
-    // regular user session. Marking another user as the owner prevents the
-    // current user from taking ownership and overriding the kiosk mode.
-    user_manager::UserManager::Get()->RecordOwner(
-        AccountId::FromUserEmail("not_current_user@example.com"));
-  }
-
   void SetUpOnMainThread() override {
-    user_manager_.Reset(std::make_unique<ash::FakeChromeUserManager>());
-    chromeos::SetUpFakeKioskSession();
-
     PlatformAppBrowserTest::SetUpOnMainThread();
+
     // Disable "faked" shutdown of Chrome if the OS was supposed to restart.
     // The fakes this test injects would cause it to crash.
     chromeos::FakePowerManagerClient* fake_power_manager_client =
@@ -1429,7 +1409,7 @@ class RestartKioskDeviceTest : public PlatformAppBrowserTest,
 
   void TearDownOnMainThread() override {
     PlatformAppBrowserTest::TearDownOnMainThread();
-    user_manager_.Reset();
+    user_manager_enabler_.reset();
   }
 
  protected:
@@ -1437,15 +1417,20 @@ class RestartKioskDeviceTest : public PlatformAppBrowserTest,
     return chromeos::FakePowerManagerClient::Get()->num_request_restart_calls();
   }
 
+  void EnterKioskSession() {
+    ash::LoginState::Get()->SetLoggedInState(
+        ash::LoginState::LoggedInState::LOGGED_IN_ACTIVE,
+        ash::LoginState::LoggedInUserType::LOGGED_IN_USER_KIOSK);
+  }
+
  private:
-  ash::LocalStateMixin local_state_mixin_{&mixin_host_, this};
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      user_manager_;
+  std::unique_ptr<user_manager::ScopedUserManager> user_manager_enabler_;
 };
 
 // Tests that chrome.runtime.restart would request device restart in
 // ChromeOS kiosk mode.
-IN_PROC_BROWSER_TEST_F(RestartKioskDeviceTest, Restart) {
+IN_PROC_BROWSER_TEST_F(RestartDeviceTest, Restart) {
+  EnterKioskSession();
   ASSERT_EQ(0, num_request_restart_calls());
 
   ExtensionTestMessageListener launched_listener("Launched",
@@ -1587,11 +1572,16 @@ IN_PROC_BROWSER_TEST_F(PlatformAppBrowserTest, MAYBE_VideoPictureInPicture) {
           GetOrCreateVideoPictureInPictureController(web_contents);
   EXPECT_FALSE(window_controller->GetWindowForTesting());
 
-  EXPECT_EQ(true, content::EvalJs(web_contents, "enterPictureInPicture();"));
+  bool result = false;
+  ASSERT_TRUE(content::ExecuteScriptAndExtractBool(
+      web_contents, "enterPictureInPicture();", &result));
+  EXPECT_TRUE(result);
   ASSERT_TRUE(window_controller->GetWindowForTesting());
   EXPECT_TRUE(window_controller->GetWindowForTesting()->IsVisible());
 
-  EXPECT_EQ(true, content::EvalJs(web_contents, "exitPictureInPicture();"));
+  ASSERT_TRUE(content::ExecuteScriptAndExtractBool(
+      web_contents, "exitPictureInPicture();", &result));
+  EXPECT_TRUE(result);
   EXPECT_FALSE(window_controller->GetWindowForTesting()->IsVisible());
 }
 

@@ -21,7 +21,6 @@
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile_manager.h"
 #include "components/metrics/client_info.h"
-#include "components/metrics/content/subprocess_metrics_provider.h"
 #include "components/metrics/file_metrics_provider.h"
 #include "components/metrics/metrics_service.h"
 #include "components/metrics/metrics_state_manager.h"
@@ -29,7 +28,6 @@
 #include "components/metrics/unsent_log_store.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/ukm/ukm_service.h"
-#include "components/variations/synthetic_trial_registry.h"
 #include "content/public/test/browser_task_environment.h"
 #include "extensions/buildflags/buildflags.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -43,7 +41,6 @@
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chromeos/ash/components/login/login_state/login_state.h"
 #include "chromeos/dbus/power/power_manager_client.h"
-#include "components/metrics/structured/structured_metrics_features.h"  // nogncheck
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -54,14 +51,9 @@ class TestChromeMetricsServiceClient : public ChromeMetricsServiceClient {
  public:
   // Equivalent to ChromeMetricsServiceClient::Create
   static std::unique_ptr<TestChromeMetricsServiceClient> Create(
-      metrics::MetricsStateManager* metrics_state_manager,
-      variations::SyntheticTrialRegistry* synthetic_trial_registry) {
-    // Needed because RegisterMetricsServiceProviders() checks for this.
-    metrics::SubprocessMetricsProvider::CreateInstance();
-
+      metrics::MetricsStateManager* metrics_state_manager) {
     std::unique_ptr<TestChromeMetricsServiceClient> client(
-        new TestChromeMetricsServiceClient(metrics_state_manager,
-                                           synthetic_trial_registry));
+        new TestChromeMetricsServiceClient(metrics_state_manager));
     client->Initialize();
 
     return client;
@@ -69,9 +61,8 @@ class TestChromeMetricsServiceClient : public ChromeMetricsServiceClient {
 
  private:
   explicit TestChromeMetricsServiceClient(
-      metrics::MetricsStateManager* state_manager,
-      variations::SyntheticTrialRegistry* synthetic_trial_registry)
-      : ChromeMetricsServiceClient(state_manager, synthetic_trial_registry) {}
+      metrics::MetricsStateManager* state_manager)
+      : ChromeMetricsServiceClient(state_manager) {}
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   void AsyncInitSystemProfileProvider() override {}
@@ -92,8 +83,6 @@ class ChromeMetricsServiceClientTest : public testing::Test {
   void SetUp() override {
     testing::Test::SetUp();
     metrics::MetricsService::RegisterPrefs(prefs_.registry());
-    synthetic_trial_registry_ =
-        std::make_unique<variations::SyntheticTrialRegistry>();
     metrics_state_manager_ = metrics::MetricsStateManager::Create(
         &prefs_, &enabled_state_provider_, std::wstring(), base::FilePath());
     metrics_state_manager_->InstantiateFieldTrialList();
@@ -124,7 +113,6 @@ class ChromeMetricsServiceClientTest : public testing::Test {
   TestingProfileManager profile_manager_;
   base::UserActionTester user_action_runner_;
   std::unique_ptr<metrics::MetricsStateManager> metrics_state_manager_;
-  std::unique_ptr<variations::SyntheticTrialRegistry> synthetic_trial_registry_;
   metrics::TestEnabledStateProvider enabled_state_provider_;
   base::test::ScopedFeatureList scoped_feature_list_;
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -185,8 +173,7 @@ TEST_F(ChromeMetricsServiceClientTest, TestRegisterUKMProviders) {
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
   std::unique_ptr<ChromeMetricsServiceClient> chrome_metrics_service_client =
-      TestChromeMetricsServiceClient::Create(metrics_state_manager_.get(),
-                                             synthetic_trial_registry_.get());
+      TestChromeMetricsServiceClient::Create(metrics_state_manager_.get());
   size_t observed_count = chrome_metrics_service_client->GetUkmService()
                               ->metrics_providers_.GetProviders()
                               .size();
@@ -203,7 +190,7 @@ TEST_F(ChromeMetricsServiceClientTest, TestRegisterMetricsServiceProviders) {
   size_t expected_providers = 2;
 
   // This is the number of metrics providers that are outside any #if macros.
-  expected_providers += 21;
+  expected_providers += 22;
 
   int sample_rate;
   if (ChromeMetricsServicesManagerClient::GetSamplingRatePerMille(
@@ -223,8 +210,8 @@ TEST_F(ChromeMetricsServiceClientTest, TestRegisterMetricsServiceProviders) {
 
 #if BUILDFLAG(IS_ANDROID)
   // AndroidMetricsProvider, ChromeAndroidMetricsProvider,
-  // PageLoadMetricsProvider, GmsMetricsProvider.
-  expected_providers += 4;
+  // and PageLoadMetricsProvider.
+  expected_providers += 3;
 #else
   // performance_manager::MetricsProvider
   expected_providers += 1;
@@ -243,19 +230,11 @@ TEST_F(ChromeMetricsServiceClientTest, TestRegisterMetricsServiceProviders) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // AmbientModeMetricsProvider, AssistantServiceMetricsProvider,
   // CrosHealthdMetricsProvider, ChromeOSMetricsProvider,
-  // ChromeOSHistogramMetricsProvider,
-  // KeyboardBacklightColorMetricsProvider,
-  // PersonalizationAppThemeMetricsProvider, PrinterMetricsProvider,
-  // FamilyUserMetricsProvider, FamilyLinkUserMetricsProvider,
-  // UpdateEngineMetricsProvider, OsSettingsMetricsProvider,
-  // UserTypeByDeviceTypeMetricsProvider, and WallpaperMetricsProvider.
-  expected_providers += 14;
-
-  // StructuredMetricsProvider.
-  if (!base::FeatureList::IsEnabled(
-          metrics::structured::kEnabledStructuredMetricsService)) {
-    expected_providers++;
-  }
+  // KeyboardBacklightColorMetricsProvider, PrinterMetricsProvider,
+  // HashedLoggingMetricsProvider, FamilyUserMetricsProvider,
+  // FamilyLinkUserMetricsProvider, UpdateEngineMetricsProvider,
+  // and UserTypeByDeviceTypeMetricsProvider.
+  expected_providers += 11;
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
@@ -263,6 +242,10 @@ TEST_F(ChromeMetricsServiceClientTest, TestRegisterMetricsServiceProviders) {
   // AccessibilityMetricsProvider
   expected_providers += 2;
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
+
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+  expected_providers++;  // UpgradeMetricsProvider
+#endif  //! BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
 
 #if BUILDFLAG(IS_MAC)
   expected_providers++;  // PowerMetricsProvider
@@ -286,13 +269,14 @@ TEST_F(ChromeMetricsServiceClientTest, TestRegisterMetricsServiceProviders) {
   expected_providers += 1;
 #endif
 
-#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS_LACROS) || BUILDFLAG(IS_ANDROID)
   expected_providers++;  // FamilyLinkUserMetricsProvider
 #endif
 
   std::unique_ptr<TestChromeMetricsServiceClient>
-      chrome_metrics_service_client = TestChromeMetricsServiceClient::Create(
-          metrics_state_manager_.get(), synthetic_trial_registry_.get());
+      chrome_metrics_service_client =
+          TestChromeMetricsServiceClient::Create(metrics_state_manager_.get());
   EXPECT_EQ(expected_providers,
             chrome_metrics_service_client->GetMetricsService()
                 ->delegating_provider_.GetProviders()
@@ -334,8 +318,8 @@ TEST_F(ChromeMetricsServiceClientTest, IsWebstoreExtension) {
 
 TEST_F(ChromeMetricsServiceClientTest, GetUploadSigningKey_NotEmpty) {
   std::unique_ptr<TestChromeMetricsServiceClient>
-      chrome_metrics_service_client = TestChromeMetricsServiceClient::Create(
-          metrics_state_manager_.get(), synthetic_trial_registry_.get());
+      chrome_metrics_service_client =
+          TestChromeMetricsServiceClient::Create(metrics_state_manager_.get());
   [[maybe_unused]] const std::string signing_key =
       chrome_metrics_service_client->GetUploadSigningKey();
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -346,8 +330,8 @@ TEST_F(ChromeMetricsServiceClientTest, GetUploadSigningKey_NotEmpty) {
 
 TEST_F(ChromeMetricsServiceClientTest, GetUploadSigningKey_CanSignLogs) {
   std::unique_ptr<TestChromeMetricsServiceClient>
-      chrome_metrics_service_client = TestChromeMetricsServiceClient::Create(
-          metrics_state_manager_.get(), synthetic_trial_registry_.get());
+      chrome_metrics_service_client =
+          TestChromeMetricsServiceClient::Create(metrics_state_manager_.get());
   const std::string signing_key =
       chrome_metrics_service_client->GetUploadSigningKey();
 

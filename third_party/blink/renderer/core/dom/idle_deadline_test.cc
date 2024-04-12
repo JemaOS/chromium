@@ -11,7 +11,6 @@
 #include "third_party/blink/public/platform/scheduler/web_agent_group_scheduler.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 #include "third_party/blink/renderer/platform/testing/scoped_scheduler_overrider.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 namespace {
@@ -60,7 +59,6 @@ class IdleDeadlineTest : public testing::Test {
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   scoped_refptr<base::TestMockTimeTaskRunner> test_task_runner_;
 };
 

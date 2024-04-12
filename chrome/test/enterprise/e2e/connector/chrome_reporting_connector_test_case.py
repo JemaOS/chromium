@@ -2,25 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import json
 import os
 import re
 import time
-from typing import Any
-
-from infra import ChromeEnterpriseTestCase
 
 from .verifyable import Verifyable
 from .verifyContent import VerifyContent
-
-
-def parse_to_json(source: str, pattern: str) -> Any:
-  """Matches string with a regex and loads to a Json object."""
-  matcher = re.search(pattern, source)
-  if matcher:
-    json_string = matcher.group(0)
-    return json.loads(json_string)
-  return None
+from infra import ChromeEnterpriseTestCase
 
 
 class ChromeReportingConnectorTestCase(ChromeEnterpriseTestCase):
@@ -37,16 +25,6 @@ class ChromeReportingConnectorTestCase(ChromeEnterpriseTestCase):
       This is for the before all step"""
     self.EnableUITest(self.win_config['client'])
     self.InstallChrome(self.win_config['client'])
-
-  def GetEncryptedReportingAPIKey(self):
-    """Returns the API key required to get events from the
-    ChromeOS Insights and Intelligence team's encrypted reporting server."""
-    return self.GetFileFromGCSBucket('secrets/EncryptedReportingAPIKey')
-
-  def GetManagedChromeDomainEnrollmentToken(self):
-    """Get the enrollment token for the managedchrome.com domain"""
-    return self.GetFileFromGCSBucket(
-        'secrets/ManagedChromeDomain-enrollmentToken')
 
   def GetCELabDefaultToken(self):
     """Get default celab org enrollment token from GCS bucket"""
@@ -68,18 +46,14 @@ class ChromeReportingConnectorTestCase(ChromeEnterpriseTestCase):
   def TriggerUnsafeBrowsingEvent(self):
     """Run UI script to trigger safe browsing event and return deviceId"""
     localDir = os.path.dirname(os.path.abspath(__file__))
-    # Copy histogram util package to vm instance.
-    self.EnableHistogramSupport(self.win_config['client'], localDir)
-
-    output = self.RunUITest(
+    deviceId = self.RunUITest(
         self.win_config['client'],
         os.path.join(localDir, 'common', 'realtime_reporting_ui_test.py'),
         timeout=600)
-    result = parse_to_json(output, '(?<=Result:).*')
-    self.assertIsNotNone(result)
-    deviceId = result['DeviceId']
-    histogram = result['Histogram']
-    return deviceId, histogram
+    deviceId = re.search(r'DeviceId:.*$',
+                         deviceId.strip()).group(0).replace('DeviceId:',
+                                                            '').rstrip("\\rn'")
+    return deviceId
 
   def TryVerifyUntilTimeout(self,
                             verifyClass: Verifyable,

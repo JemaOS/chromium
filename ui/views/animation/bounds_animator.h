@@ -134,7 +134,7 @@ class VIEWS_EXPORT BoundsAnimator : public AnimationDelegateViews {
     std::unique_ptr<gfx::AnimationDelegate> delegate;
 
     // Will only exist if |use_transforms_| is true.
-    std::optional<gfx::Transform> target_transform;
+    absl::optional<gfx::Transform> target_transform;
   };
 
   // Used by AnimationEndedOrCanceled.

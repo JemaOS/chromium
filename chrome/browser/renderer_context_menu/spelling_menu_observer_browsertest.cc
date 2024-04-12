@@ -305,20 +305,8 @@ IN_PROC_BROWSER_TEST_F(SpellingMenuObserverTest,
   InitMenu("wtree", "wee");
   EXPECT_EQ(7U, menu()->GetMenuSize());
 
-  std::set<std::u16string> suggestions(
-      {u"tree", u"twee", u"wee", u"ware", u"were"});
-  bool wee_suggested = false;
-  for (unsigned int i = 1; i < menu()->GetMenuSize(); i++) {
-    MockRenderViewContextMenu::MockMenuItem item;
-    menu()->GetMenuItem(i, &item);
-    if (!item.title.compare(u"wee")) {
-      wee_suggested = true;
-      break;
-    }
-  }
-  EXPECT_TRUE(wee_suggested);
   // Read all the context-menu items added by this test and verify they are
-  // among the expected possibilities.
+  // expected ones.
   MockRenderViewContextMenu::MockMenuItem item;
   // First separator.
   menu()->GetMenuItem(0, &item);
@@ -330,19 +318,21 @@ IN_PROC_BROWSER_TEST_F(SpellingMenuObserverTest,
   EXPECT_EQ(IDC_SPELLCHECK_SUGGESTION_0, item.command_id);
   EXPECT_TRUE(item.enabled);
   EXPECT_FALSE(item.hidden);
-  EXPECT_TRUE(suggestions.contains(item.title));
+  EXPECT_EQ(u"tree", item.title);
   // Second suggestion.
   menu()->GetMenuItem(2, &item);
   EXPECT_EQ(IDC_SPELLCHECK_SUGGESTION_0 + 1, item.command_id);
   EXPECT_TRUE(item.enabled);
   EXPECT_FALSE(item.hidden);
-  EXPECT_TRUE(suggestions.contains(item.title));
+  EXPECT_EQ(u"wee", item.title);
   // Third suggestion.
   menu()->GetMenuItem(3, &item);
   EXPECT_EQ(IDC_SPELLCHECK_SUGGESTION_0 + 2, item.command_id);
   EXPECT_TRUE(item.enabled);
   EXPECT_FALSE(item.hidden);
-  EXPECT_TRUE(suggestions.contains(item.title));
+  // Some versions of Windows spell checker return "ware", some "were".
+  // Just verify that it starts with "w".
+  EXPECT_TRUE(base::StartsWith(item.title, u"w"));
   // Second separator.
   menu()->GetMenuItem(4, &item);
   EXPECT_EQ(-1, item.command_id);

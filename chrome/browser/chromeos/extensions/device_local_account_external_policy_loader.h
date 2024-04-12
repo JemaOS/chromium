@@ -5,10 +5,9 @@
 #ifndef CHROME_BROWSER_CHROMEOS_EXTENSIONS_DEVICE_LOCAL_ACCOUNT_EXTERNAL_POLICY_LOADER_H_
 #define CHROME_BROWSER_CHROMEOS_EXTENSIONS_DEVICE_LOCAL_ACCOUNT_EXTERNAL_POLICY_LOADER_H_
 
-#include <optional>
-
 #include "base/values.h"
 #include "chrome/browser/extensions/external_loader.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace chromeos {
 
@@ -39,7 +38,7 @@ class DeviceLocalAccountExternalPolicyLoader
   // If the cache was started, it must be stopped before |this| is destroyed.
   ~DeviceLocalAccountExternalPolicyLoader() override;
 
-  std::optional<base::Value::Dict> prefs_;
+  absl::optional<base::Value::Dict> prefs_;
 };
 
 }  // namespace chromeos

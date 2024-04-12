@@ -21,7 +21,8 @@ class FileStreamWriter;
 class WatcherManager;
 }  // namespace storage
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 // Delegate implementation of the some methods in FileSystemBackend
 // for provided file systems.
@@ -33,8 +34,6 @@ class BackendDelegate : public FileSystemBackendDelegate {
   BackendDelegate& operator=(const BackendDelegate&) = delete;
 
   ~BackendDelegate() override;
-
-  static std::unique_ptr<FileSystemBackendDelegate> MakeUnique();
 
   // FileSystemBackend::Delegate overrides.
   storage::AsyncFileUtil* GetAsyncFileUtil(
@@ -59,6 +58,7 @@ class BackendDelegate : public FileSystemBackendDelegate {
   std::unique_ptr<storage::WatcherManager> watcher_manager_;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_FILEAPI_BACKEND_DELEGATE_H_

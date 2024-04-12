@@ -7,15 +7,15 @@
  * mobile networks.
  */
 
-import '//resources/ash/common/cr_elements/cr_button/cr_button.js';
-import '//resources/ash/common/cr_elements/md_select.css.js';
-import '//resources/ash/common/cr_elements/cr_shared_style.css.js';
+import '//resources/cr_elements/cr_button/cr_button.js';
+import '//resources/cr_elements/md_select.css.js';
+import '//resources/cr_elements/cr_shared_style.css.js';
 import '//resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
 import './network_shared.css.js';
 
 import {I18nBehavior} from '//resources/ash/common/i18n_behavior.js';
 import {Polymer} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {CrosNetworkConfigInterface, FoundNetworkProperties, ManagedProperties} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
+import {CrosNetworkConfigRemote, FoundNetworkProperties, ManagedProperties} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
 import {ConnectionStateType, NetworkType} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/network_types.mojom-webui.js';
 
 import {MojoInterfaceProvider, MojoInterfaceProviderImpl} from './mojo_interface_provider.js';
@@ -71,7 +71,7 @@ Polymer({
   /** @private {boolean} */
   scanRequested_: false,
 
-  /** @private {?CrosNetworkConfigInterface} */
+  /** @private {?CrosNetworkConfigRemote} */
   networkConfig_: null,
 
   /** @override */
@@ -80,7 +80,7 @@ Polymer({
   },
 
   /**
-   * @return {?CrosNetworkConfigInterface}
+   * @return {?CrosNetworkConfigRemote}
    * @private
    */
   getNetworkConfig_() {

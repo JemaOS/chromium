@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <limits>
 
-#include "base/check_op.h"
 #include "base/logging.h"
 #include "base/memory/page_size.h"
 #include "base/numerics/safe_conversions.h"

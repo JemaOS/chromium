@@ -4,7 +4,6 @@
 
 #include "chrome/browser/search/background/ntp_background_service_factory.h"
 
-#include <optional>
 #include <string>
 
 #include "base/feature_list.h"
@@ -15,6 +14,7 @@
 #include "components/search/ntp_features.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/storage_partition.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 // static
 NtpBackgroundService* NtpBackgroundServiceFactory::GetForProfile(
@@ -25,8 +25,7 @@ NtpBackgroundService* NtpBackgroundServiceFactory::GetForProfile(
 
 // static
 NtpBackgroundServiceFactory* NtpBackgroundServiceFactory::GetInstance() {
-  static base::NoDestructor<NtpBackgroundServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<NtpBackgroundServiceFactory>::get();
 }
 
 NtpBackgroundServiceFactory::NtpBackgroundServiceFactory()
@@ -41,13 +40,12 @@ NtpBackgroundServiceFactory::NtpBackgroundServiceFactory()
 
 NtpBackgroundServiceFactory::~NtpBackgroundServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-NtpBackgroundServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* NtpBackgroundServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   // TODO(crbug.com/914898): Background service URLs should be
   // configurable server-side, so they can be changed mid-release.
 
   auto url_loader_factory = context->GetDefaultStoragePartition()
                                 ->GetURLLoaderFactoryForBrowserProcess();
-  return std::make_unique<NtpBackgroundService>(url_loader_factory);
+  return new NtpBackgroundService(url_loader_factory);
 }

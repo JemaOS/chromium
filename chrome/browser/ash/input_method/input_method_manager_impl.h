@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "base/containers/flat_set.h"
-#include "base/containers/span.h"
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "base/threading/thread_checker.h"
@@ -93,7 +92,7 @@ class InputMethodManagerImpl : public InputMethodManager,
     const InputMethodDescriptor* GetInputMethodFromId(
         const std::string& input_method_id) const override;
     size_t GetNumEnabledInputMethods() const override;
-    void SetEnabledExtensionImes(base::span<const std::string> ids) override;
+    void SetEnabledExtensionImes(std::vector<std::string>* ids) override;
     void SetInputMethodLoginDefault() override;
     void SetInputMethodLoginDefaultFromVPD(const std::string& locale,
                                            const std::string& layout) override;
@@ -135,9 +134,10 @@ class InputMethodManagerImpl : public InputMethodManager,
     const InputMethodDescriptor* LookupInputMethod(
         const std::string& input_method_id);
 
-    const raw_ptr<Profile, DanglingUntriaged> profile_;
+    const raw_ptr<Profile, DanglingUntriaged | ExperimentalAsh> profile_;
 
-    const raw_ptr<InputMethodManagerImpl, DanglingUntriaged> manager_;
+    const raw_ptr<InputMethodManagerImpl, DanglingUntriaged | ExperimentalAsh>
+        manager_;
 
     std::string last_used_input_method_id_;
 
@@ -180,8 +180,7 @@ class InputMethodManagerImpl : public InputMethodManager,
   InputMethodManagerImpl(std::unique_ptr<InputMethodDelegate> delegate,
                          std::unique_ptr<ComponentExtensionIMEManagerDelegate>
                              component_extension_ime_manager_delegate,
-                         bool enable_extension_loading,
-                         std::unique_ptr<ImeKeyboard> ime_keyboard);
+                         bool enable_extension_loading);
 
   InputMethodManagerImpl(const InputMethodManagerImpl&) = delete;
   InputMethodManagerImpl& operator=(const InputMethodManagerImpl&) = delete;
@@ -191,6 +190,8 @@ class InputMethodManagerImpl : public InputMethodManager,
   // Sets |candidate_window_controller_|.
   void SetCandidateWindowControllerForTesting(
       CandidateWindowController* candidate_window_controller);
+  // Sets |keyboard_|.
+  void SetImeKeyboardForTesting(ImeKeyboard* keyboard);
 
   // InputMethodManager override:
   void AddObserver(InputMethodManager::Observer* observer) override;
@@ -225,10 +226,7 @@ class InputMethodManagerImpl : public InputMethodManager,
   InputMethodUtil* GetInputMethodUtil() override;
   ComponentExtensionIMEManager* GetComponentExtensionIMEManager() override;
   bool IsLoginKeyboard(const std::string& layout) const override;
-  std::string GetMigratedInputMethodID(
-      const std::string& input_method_id) override;
-  bool GetMigratedInputMethodIDs(
-      std::vector<std::string>* input_method_ids) override;
+  bool MigrateInputMethods(std::vector<std::string>* input_method_ids) override;
   scoped_refptr<InputMethodManager::State> CreateNewState(
       Profile* profile) override;
   scoped_refptr<InputMethodManager::State> GetActiveIMEState() override;
@@ -242,9 +240,6 @@ class InputMethodManagerImpl : public InputMethodManager,
   void CandidateClicked(int index) override;
   void CandidateWindowOpened() override;
   void CandidateWindowClosed() override;
-
-  // Notifies all observers that the input method has been changed.
-  void NotifyInputMethodChanged(bool show_message, bool success);
 
   // AssistiveWindowControllerDelegate overrides:
   void AssistiveWindowButtonClicked(

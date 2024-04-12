@@ -80,7 +80,7 @@ bool FlatlandSysmemNativePixmap::ScheduleOverlayPlane(
   return false;
 }
 
-gfx::NativePixmapHandle FlatlandSysmemNativePixmap::ExportHandle() const {
+gfx::NativePixmapHandle FlatlandSysmemNativePixmap::ExportHandle() {
   return gfx::CloneHandleForIPC(handle_);
 }
 

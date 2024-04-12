@@ -10,7 +10,8 @@
 
 namespace ash {
 
-class EncryptionMigrationScreenView {
+class EncryptionMigrationScreenView
+    : public base::SupportsWeakPtr<EncryptionMigrationScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{
       "encryption-migration", "EncryptionMigrationScreen"};
@@ -40,13 +41,11 @@ class EncryptionMigrationScreenView {
                                     int64_t necessarySpaceSize) = 0;
   virtual void SetNecessaryBatteryPercent(double batteryPercent) = 0;
   virtual void SetMigrationProgress(double progress) = 0;
-  virtual base::WeakPtr<EncryptionMigrationScreenView> AsWeakPtr() = 0;
 };
 
 // WebUI implementation of EncryptionMigrationScreenView
-class EncryptionMigrationScreenHandler final
-    : public EncryptionMigrationScreenView,
-      public BaseScreenHandler {
+class EncryptionMigrationScreenHandler : public EncryptionMigrationScreenView,
+                                         public BaseScreenHandler {
  public:
   using TView = EncryptionMigrationScreenView;
 
@@ -70,14 +69,10 @@ class EncryptionMigrationScreenHandler final
                             int64_t necessarySpaceSize) override;
   void SetNecessaryBatteryPercent(double batteryPercent) override;
   void SetMigrationProgress(double progress) override;
-  base::WeakPtr<EncryptionMigrationScreenView> AsWeakPtr() override;
 
   // BaseScreenHandler implementation:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
- private:
-  base::WeakPtrFactory<EncryptionMigrationScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

@@ -54,8 +54,6 @@ _GN_PATH = os.path.join(_CHROMIUM_SRC, 'third_party', 'depot_tools', 'gn')
 _GRADLEW = os.path.join(_CHROMIUM_SRC, 'third_party', 'gradle_wrapper',
                         'gradlew')
 
-_JAVA_HOME = os.path.join(_CHROMIUM_SRC, 'third_party', 'jdk', 'current')
-
 # Git-controlled files needed by, but not updated by this tool.
 # Relative to _PRIMARY_ANDROID_DEPS_DIR.
 _PRIMARY_ANDROID_DEPS_FILES = [
@@ -143,10 +141,7 @@ def RunCommand(args, print_stdout=False, cwd=None):
   """
     logging.debug('Run %s', args)
     stdout = None if print_stdout else subprocess.PIPE
-    # Explicitly set JAVA_HOME since some bots do not have this already set.
-    env = os.environ.copy()
-    env['JAVA_HOME'] = _JAVA_HOME
-    p = subprocess.Popen(args, stdout=stdout, cwd=cwd, env=env)
+    p = subprocess.Popen(args, stdout=stdout, cwd=cwd)
     pout, _ = p.communicate()
     if p.returncode != 0:
         RaiseCommandException(args, p.returncode, None, pout)
@@ -167,13 +162,7 @@ def RunCommandAndGetOutput(args):
     messages.
   """
     logging.debug('Run %s', args)
-    # Explicitly set JAVA_HOME since some bots do not have this already set.
-    env = os.environ.copy()
-    env['JAVA_HOME'] = _JAVA_HOME
-    p = subprocess.Popen(args,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
-                         env=env)
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     pout, perr = p.communicate()
     if p.returncode != 0:
         RaiseCommandException(args, p.returncode, pout, perr)
@@ -508,9 +497,6 @@ def main():
     parser.add_argument('--override-artifact',
                         action='append',
                         help='lib_subpath:url of .aar / .jar to override.')
-    parser.add_argument('--no-subprojects',
-                        action='store_true',
-                        help='Ignore subprojects.txt for faster runs.')
     parser.add_argument('-v',
                         '--verbose',
                         dest='verbose_count',
@@ -544,11 +530,8 @@ def main():
              _CUSTOM_ANDROID_DEPS_FILES,
              src_path_must_exist=is_primary_android_deps)
 
-        if args.no_subprojects:
-            subprojects = None
-        else:
-            subprojects = _ParseSubprojects(
-                os.path.join(args.android_deps_dir, 'subprojects.txt'))
+        subprojects = _ParseSubprojects(
+            os.path.join(args.android_deps_dir, 'subprojects.txt'))
         subproject_dirs = []
         if subprojects:
             for (index, subproject) in enumerate(subprojects):

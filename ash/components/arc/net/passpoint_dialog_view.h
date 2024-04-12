@@ -6,13 +6,12 @@
 #define ASH_COMPONENTS_ARC_NET_PASSPOINT_DIALOG_VIEW_H_
 
 #include <memory>
-#include <string_view>
 
 #include "ash/components/arc/mojom/net.mojom.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-
+#include "base/strings/string_piece.h"
 #include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/styled_label.h"
 #include "ui/views/layout/box_layout_view.h"
@@ -45,7 +44,7 @@ class PasspointDialogView : public views::BoxLayoutView {
     }
 
    private:
-    const raw_ptr<PasspointDialogView> view_;
+    const raw_ptr<PasspointDialogView, ExperimentalAsh> view_;
   };
 
   PasspointDialogView(mojom::PasspointApprovalRequestPtr request,
@@ -62,7 +61,6 @@ class PasspointDialogView : public views::BoxLayoutView {
 
   // views::View:
   gfx::Size CalculatePreferredSize() const override;
-  void AddedToWidget() override;
 
  private:
   // Get width to be used by label. This is calculated by getting the dialog's
@@ -71,22 +69,22 @@ class PasspointDialogView : public views::BoxLayoutView {
 
   std::unique_ptr<views::View> MakeBaseLabelView(bool is_expiring);
   std::unique_ptr<views::View> MakeSubscriptionLabelView(
-      std::string_view friendly_name);
-  std::unique_ptr<views::View> MakeContentsView(bool is_expiring,
-                                                std::string_view friendly_name);
+      base::StringPiece friendly_name);
+  std::unique_ptr<views::View> MakeContentsView(
+      bool is_expiring,
+      base::StringPiece friendly_name);
   std::unique_ptr<views::View> MakeButtonsView();
 
   void OnLearnMoreClicked();
   void OnButtonClicked(bool allow);
 
-  std::u16string app_name_;
   PasspointDialogCallback callback_;
 
   // Added for testing.
-  raw_ptr<views::StyledLabel> body_text_{nullptr};
-  raw_ptr<views::StyledLabel> body_subscription_text_{nullptr};
-  raw_ptr<views::MdTextButton> allow_button_{nullptr};
-  raw_ptr<views::MdTextButton> dont_allow_button_{nullptr};
+  views::StyledLabel* body_text_{nullptr};
+  views::StyledLabel* body_subscription_text_{nullptr};
+  views::MdTextButton* allow_button_{nullptr};
+  views::MdTextButton* dont_allow_button_{nullptr};
 
   base::WeakPtrFactory<PasspointDialogView> weak_factory_{this};
 };

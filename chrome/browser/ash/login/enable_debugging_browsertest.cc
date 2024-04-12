@@ -214,12 +214,10 @@ class EnableDebuggingTestBase : public OobeBaseTest {
   void ShowRemoveProtectionScreen() {
     debug_daemon_client_->SetDebuggingFeaturesStatus(
         DebugDaemonClient::DEV_FEATURE_NONE);
-    WaitForOobeUI();
+    OobeBaseTest::MaybeWaitForLoginScreenLoad();
     test::OobeJS().ExpectHidden(kDebuggingScreenId);
     InvokeEnableDebuggingScreen();
-    test::OobeJS()
-        .CreateVisibilityWaiter(true, kRemoveProtectionDialog)
-        ->Wait();
+    test::OobeJS().ExpectVisiblePath(kRemoveProtectionDialog);
     test::OobeJS().ExpectVisiblePath(kRemoveProtectionButton);
     test::OobeJS().ExpectVisiblePath(kHelpLink);
     debug_daemon_client_->WaitUntilCalled();
@@ -229,10 +227,10 @@ class EnableDebuggingTestBase : public OobeBaseTest {
   void ShowSetupScreen() {
     debug_daemon_client_->SetDebuggingFeaturesStatus(
         debugd::DevFeatureFlag::DEV_FEATURE_ROOTFS_VERIFICATION_REMOVED);
-    WaitForOobeUI();
+    OobeBaseTest::MaybeWaitForLoginScreenLoad();
     test::OobeJS().ExpectHidden(kDebuggingScreenId);
     InvokeEnableDebuggingScreen();
-    test::OobeJS().CreateVisibilityWaiter(true, kSetupDialog)->Wait();
+    test::OobeJS().ExpectVisiblePath(kSetupDialog);
     debug_daemon_client_->WaitUntilCalled();
     base::RunLoop().RunUntilIdle();
 
@@ -345,10 +343,10 @@ IN_PROC_BROWSER_TEST_F(EnableDebuggingDevTest, ShowOnTestImages) {
   debug_daemon_client_->SetDebuggingFeaturesStatus(
       debugd::DevFeatureFlag::DEV_FEATURE_SSH_SERVER_CONFIGURED |
       debugd::DevFeatureFlag::DEV_FEATURE_SYSTEM_ROOT_PASSWORD_SET);
-  WaitForOobeUI();
+  OobeBaseTest::MaybeWaitForLoginScreenLoad();
   test::OobeJS().ExpectHidden(kDebuggingScreenId);
   InvokeEnableDebuggingScreen();
-  test::OobeJS().CreateVisibilityWaiter(true, kRemoveProtectionDialog)->Wait();
+  test::OobeJS().ExpectVisiblePath(kRemoveProtectionDialog);
   debug_daemon_client_->WaitUntilCalled();
   base::RunLoop().RunUntilIdle();
 
@@ -362,7 +360,7 @@ IN_PROC_BROWSER_TEST_F(EnableDebuggingDevTest, WaitForDebugDaemon) {
   debug_daemon_client_->SetServiceIsAvailable(false);
   debug_daemon_client_->SetDebuggingFeaturesStatus(
       DebugDaemonClient::DEV_FEATURE_NONE);
-  WaitForOobeUI();
+  OobeBaseTest::MaybeWaitForLoginScreenLoad();
 
   // Invoking UI and it should land on wait-view.
   test::OobeJS().ExpectHidden(kDebuggingScreenId);
@@ -381,7 +379,6 @@ using EnableDebuggingTest = EnableDebuggingTestBase;
 
 // Try to show enable debugging dialog, we should see error screen here.
 IN_PROC_BROWSER_TEST_F(EnableDebuggingTest, NoShowInNonDevMode) {
-  WaitForOobeUI();
   test::OobeJS().ExpectHidden(kDebuggingScreenId);
   InvokeEnableDebuggingScreen();
   test::OobeJS().CreateVisibilityWaiter(true, kErrorDialog)->Wait();

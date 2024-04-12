@@ -39,10 +39,9 @@ class EnterpriseActivityStorageTest : public ::testing::Test {
   static testing::Matcher<em::TimePeriod> EqActivity(
       const base::Time& start_time,
       const base::Time& end_time) {
-    return AllOf(Property(&em::TimePeriod::start_timestamp,
-                          start_time.InMillisecondsSinceUnixEpoch()),
-                 Property(&em::TimePeriod::end_timestamp,
-                          end_time.InMillisecondsSinceUnixEpoch()));
+    return AllOf(
+        Property(&em::TimePeriod::start_timestamp, start_time.ToJavaTime()),
+        Property(&em::TimePeriod::end_timestamp, end_time.ToJavaTime()));
   }
 
   base::Time MakeLocalTime(const std::string& time_string) {

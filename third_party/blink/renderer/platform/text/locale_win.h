@@ -66,8 +66,10 @@ class PLATFORM_EXPORT LocaleWin : public Locale {
   explicit LocaleWin(LCID, bool defaults_for_locale);
   String GetLocaleInfoString(LCTYPE);
   void GetLocaleInfo(LCTYPE, DWORD&);
-
-  // Locale:
+  void EnsureShortMonthLabels();
+  void EnsureMonthLabels();
+  void EnsureWeekDayShortLabels();
+  // Locale function:
   void InitializeLocaleData() override;
 
   LCID lcid_;

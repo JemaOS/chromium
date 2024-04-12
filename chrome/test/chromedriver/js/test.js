@@ -58,19 +58,14 @@ function runTest(test, onPass) {
  */
 function runTests() {
   window.CDCJStestRunStatus;
-  let tests = [];
-  for (let i in window) {
+  var tests = [];
+  for (var i in window) {
     if (i.indexOf('test') == 0)
       tests.push(window[i]);
   }
-
-  if (tests.length == 0) {
-    window.CDCJStestRunStatus = "FAIL: no tests found, compilation error?";
-    return;
-  }
-
   console.log('Running %d tests...', tests.length);
-  let testNo = 0;
+
+  var testNo = 0;
   function runNextTest() {
     if (testNo >= tests.length) {
       window.CDCJStestRunStatus = "PASS"
@@ -83,7 +78,7 @@ function runTests() {
       runNextTest();
     }
 
-    let test = tests[testNo];
+    var test = tests[testNo];
     console.log('Running (%d/%d) -- %s', testNo + 1, tests.length, test.name);
     runTest(test, onPass);
   }

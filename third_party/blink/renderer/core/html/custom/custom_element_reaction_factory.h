@@ -9,10 +9,6 @@
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 
-namespace WTF {
-class String;
-}  // namespace WTF
-
 namespace blink {
 
 class CustomElementDefinition;
@@ -51,7 +47,7 @@ class CustomElementReactionFactory {
   static CustomElementReaction& CreateFormStateRestore(
       CustomElementDefinition& definition,
       const V8ControlValue* value,
-      const WTF::String& mode);
+      const String& mode);
 };
 
 }  // namespace blink

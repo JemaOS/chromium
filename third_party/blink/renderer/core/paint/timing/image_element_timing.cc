@@ -5,7 +5,6 @@
 #include "third_party/blink/renderer/core/paint/timing/image_element_timing.h"
 
 #include "base/time/time.h"
-#include "components/viz/common/frame_timing_details.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
@@ -69,7 +68,7 @@ void ImageElementTiming::NotifyImageFinished(
     return;
 
   const auto& insertion_result = images_notified_.insert(
-      MediaRecordId::GenerateHash(&layout_object, cached_image), ImageInfo());
+      std::make_pair(&layout_object, cached_image), ImageInfo());
   if (insertion_result.is_new_entry)
     insertion_result.stored_value->value.load_time_ = base::TimeTicks::Now();
 }
@@ -98,8 +97,8 @@ void ImageElementTiming::NotifyImagePainted(
   if (!internal::IsExplicitlyRegisteredForTiming(layout_object))
     return;
 
-  auto it = images_notified_.find(
-      MediaRecordId::GenerateHash(&layout_object, &cached_image));
+  auto it =
+      images_notified_.find(std::make_pair(&layout_object, &cached_image));
   // It is possible that the pair is not in |images_notified_|. See
   // https://crbug.com/1027948
   if (it != images_notified_.end() && !it->value.is_painted_) {
@@ -141,7 +140,7 @@ void ImageElementTiming::NotifyImagePaintedInternal(
     return;
 
   RespectImageOrientationEnum respect_orientation =
-      layout_object.StyleRef().ImageOrientation();
+      LayoutObject::ShouldRespectImageOrientation(&layout_object);
 
   gfx::RectF intersection_rect = ElementTimingUtils::ComputeIntersectionRect(
       frame, image_border, current_paint_chunk_properties);
@@ -175,10 +174,9 @@ void ImageElementTiming::NotifyImagePaintedInternal(
   // PerformanceElementTiming entry should be the URL trimmed to 100 characters.
   // If it is not, then pass in the full URL regardless of the length to be
   // consistent with Resource Timing.
-  const String& image_string = url.GetString();
   const String& image_url = url.ProtocolIsData()
-                                ? image_string.Left(kInlineImageMaxChars)
-                                : image_string;
+                                ? url.GetString().Left(kInlineImageMaxChars)
+                                : url.GetString();
   element_timings_.emplace_back(MakeGarbageCollected<ElementTimingInfo>(
       image_url, intersection_rect, load_time, attr,
       cached_image.IntrinsicSize(respect_orientation), id, element));
@@ -220,8 +218,7 @@ void ImageElementTiming::NotifyBackgroundImagePainted(
 
   ImageInfo& info =
       images_notified_
-          .insert(MediaRecordId::GenerateHash(layout_object, cached_image),
-                  ImageInfo())
+          .insert(std::make_pair(layout_object, cached_image), ImageInfo())
           .stored_value->value;
   if (!info.is_painted_) {
     info.is_painted_ = true;
@@ -232,9 +229,7 @@ void ImageElementTiming::NotifyBackgroundImagePainted(
 }
 
 void ImageElementTiming::ReportImagePaintPresentationTime(
-    const viz::FrameTimingDetails& presentation_details) {
-  base::TimeTicks timestamp =
-      presentation_details.presentation_feedback.timestamp;
+    base::TimeTicks timestamp) {
   WindowPerformance* performance =
       DOMWindowPerformance::performance(*GetSupplementable());
   if (performance) {
@@ -251,7 +246,7 @@ void ImageElementTiming::ReportImagePaintPresentationTime(
 
 void ImageElementTiming::NotifyImageRemoved(const LayoutObject* layout_object,
                                             const ImageResourceContent* image) {
-  images_notified_.erase(MediaRecordId::GenerateHash(layout_object, image));
+  images_notified_.erase(std::make_pair(layout_object, image));
 }
 
 void ImageElementTiming::Trace(Visitor* visitor) const {

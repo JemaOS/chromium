@@ -5,11 +5,9 @@
 #ifndef UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_ZCR_COLOR_SPACE_CREATOR_H_
 #define UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_ZCR_COLOR_SPACE_CREATOR_H_
 
-#include <cstdint>
-#include <optional>
-
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/color_space.h"
 #include "ui/ozone/platform/wayland/host/wayland_connection.h"
 #include "ui/ozone/platform/wayland/host/wayland_zcr_color_space.h"
@@ -22,7 +20,7 @@ class WaylandZcrColorSpaceCreator {
  public:
   using CreatorResultCallback =
       base::OnceCallback<void(scoped_refptr<WaylandZcrColorSpace>,
-                              std::optional<uint32_t>)>;
+                              absl::optional<uint32_t>)>;
   WaylandZcrColorSpaceCreator(wl::Object<zcr_color_space_creator_v1> creator,
                               CreatorResultCallback on_creation);
   WaylandZcrColorSpaceCreator(const WaylandZcrColorSpaceCreator&) = delete;
@@ -31,12 +29,12 @@ class WaylandZcrColorSpaceCreator {
   ~WaylandZcrColorSpaceCreator();
 
  private:
-  // zcr_color_space_creator_v1_listener callbacks:
+  // zcr_color_space_creator_v1_listener
   static void OnCreated(void* data,
-                        zcr_color_space_creator_v1* csc,
-                        zcr_color_space_v1* color_space);
+                        struct zcr_color_space_creator_v1* css,
+                        struct zcr_color_space_v1* color_space);
   static void OnError(void* data,
-                      zcr_color_space_creator_v1* csc,
+                      struct zcr_color_space_creator_v1* css,
                       uint32_t error);
 
   wl::Object<zcr_color_space_creator_v1> zcr_color_space_creator_;

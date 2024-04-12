@@ -34,7 +34,7 @@ void MockPairerBroker::NotifyPairFailure(scoped_refptr<Device> device,
 
 void MockPairerBroker::NotifyAccountKeyWrite(
     scoped_refptr<Device> device,
-    std::optional<AccountKeyFailure> failure) {
+    absl::optional<AccountKeyFailure> failure) {
   for (auto& obs : observers_)
     obs.OnAccountKeyWrite(device, failure);
 }

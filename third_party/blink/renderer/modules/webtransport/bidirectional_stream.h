@@ -35,9 +35,9 @@ class MODULES_EXPORT BidirectionalStream final : public ScriptWrappable {
   void Init(ExceptionState&);
 
   // Implementation of web_transport_bidirectional_stream.idl.
-  WritableStream* writable() const { return send_stream_.Get(); }
+  WritableStream* writable() const { return send_stream_; }
 
-  ReadableStream* readable() const { return receive_stream_.Get(); }
+  ReadableStream* readable() const { return receive_stream_; }
 
   OutgoingStream* GetOutgoingStream() {
     return send_stream_->GetOutgoingStream();

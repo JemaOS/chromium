@@ -15,14 +15,19 @@ namespace {
 
 // Helper class used to wait for |OnFileSystemMounted| event from a drive file
 // system.
-class DriveMountPointWaiter : public drive::DriveIntegrationService::Observer {
+class DriveMountPointWaiter : public drive::DriveIntegrationServiceObserver {
  public:
-  explicit DriveMountPointWaiter(drive::DriveIntegrationService* service)
-      : service_(service) {
-    Observe(service_);
+  explicit DriveMountPointWaiter(
+      drive::DriveIntegrationService* integration_service)
+      : integration_service_(integration_service) {
+    integration_service_->AddObserver(this);
   }
 
-  // DriveIntegrationService::Observer implementation.
+  ~DriveMountPointWaiter() override {
+    integration_service_->RemoveObserver(this);
+  }
+
+  // DriveIntegrationServiceObserver override.
   void OnFileSystemMounted() override {
     // Note that it is OK for |run_loop_.Quit| to be called before
     // |run_loop_.Run|. In this case |Run| will return immediately.
@@ -33,7 +38,7 @@ class DriveMountPointWaiter : public drive::DriveIntegrationService::Observer {
   void Wait() { run_loop_.Run(); }
 
  private:
-  const raw_ptr<drive::DriveIntegrationService> service_;
+  raw_ptr<drive::DriveIntegrationService, ExperimentalAsh> integration_service_;
   base::RunLoop run_loop_;
 };
 
@@ -58,9 +63,9 @@ void WaitUntilDriveMountPointIsAdded(Profile* profile) {
     return;
   }
 
-  DriveMountPointWaiter waiter(integration_service);
+  DriveMountPointWaiter mount_point_waiter(integration_service);
   VLOG(1) << "Waiting for drive mount point to get mounted.";
-  waiter.Wait();
+  mount_point_waiter.Wait();
   VLOG(1) << "Drive mount point found.";
 }
 

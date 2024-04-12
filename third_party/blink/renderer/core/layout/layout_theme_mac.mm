@@ -40,10 +40,10 @@ Color GetSystemColor(MacSystemColorID color_id,
   // here instead if forced colors mode is enabled.
 
   // In tests, a WebSandboxSupport may not be set up. Just return a dummy
-  // color, in this case opaque black.
+  // color, in this case, black.
   auto* sandbox_support = Platform::Current()->GetSandboxSupport();
   if (!sandbox_support)
-    return Color(0, 0, 0, 255);
+    return Color();
   return Color::FromSkColor(
       sandbox_support->GetSystemColor(color_id, color_scheme));
 }
@@ -86,19 +86,33 @@ Color LayoutThemeMac::PlatformGrammarMarkerUnderlineColor() const {
 
 bool LayoutThemeMac::IsAccentColorCustomized(
     mojom::blink::ColorScheme color_scheme) const {
-  static const Color kControlBlueAccentColor =
-      GetSystemColor(MacSystemColorID::kControlAccentBlueColor, color_scheme);
-  if (kControlBlueAccentColor ==
-      GetSystemColor(MacSystemColorID::kControlAccentColor, color_scheme)) {
-    return false;
+  if (@available(macOS 10.14, *)) {
+    static const Color kControlBlueAccentColor =
+        GetSystemColor(MacSystemColorID::kControlAccentBlueColor, color_scheme);
+    if (kControlBlueAccentColor ==
+        GetSystemColor(MacSystemColorID::kControlAccentColor, color_scheme)) {
+      return false;
+    }
+  } else {
+    NSInteger user_custom_color = [[NSUserDefaults standardUserDefaults]
+        integerForKey:@"AppleAquaColorVariant"];
+    if (user_custom_color == NSBlueControlTint ||
+        user_custom_color == NSDefaultControlTint) {
+      return false;
+    }
   }
-
   return true;
 }
 
-Color LayoutThemeMac::GetSystemAccentColor(
+Color LayoutThemeMac::GetAccentColor(
     mojom::blink::ColorScheme color_scheme) const {
-  return GetSystemColor(MacSystemColorID::kControlAccentColor, color_scheme);
+  if (@available(macOS 10.14, *)) {
+    return GetSystemColor(MacSystemColorID::kControlAccentColor, color_scheme);
+  } else {
+    return Color::FromRGBA32(
+        static_cast<RGBA32>([[NSUserDefaults standardUserDefaults]
+            integerForKey:@"AppleAquaColorVariant"]));
+  }
 }
 
 Color LayoutThemeMac::GetCustomFocusRingColor(

@@ -20,9 +20,9 @@ namespace ash {
 // buttons. If they're not provided, the default values will be applied.
 class ASH_EXPORT RadioButtonGroup : public OptionButtonGroup,
                                     public OptionButtonBase::Delegate {
-  METADATA_HEADER(RadioButtonGroup, OptionButtonGroup)
-
  public:
+  METADATA_HEADER(RadioButtonGroup);
+
   explicit RadioButtonGroup(int group_width);
 
   RadioButtonGroup(int group_width,
@@ -30,8 +30,7 @@ class ASH_EXPORT RadioButtonGroup : public OptionButtonGroup,
                    int between_child_spacing,
                    RadioButton::IconDirection icon_direction,
                    RadioButton::IconType icon_type,
-                   const gfx::Insets& radio_button_padding,
-                   int image_label_spacing);
+                   const gfx::Insets& radio_button_padding);
   RadioButtonGroup(const RadioButtonGroup&) = delete;
   RadioButtonGroup& operator=(const RadioButtonGroup&) = delete;
   ~RadioButtonGroup() override;

@@ -10,14 +10,11 @@
 
 #include "base/component_export.h"
 #include "base/memory/weak_ptr.h"
-#include "chromeos/ash/components/network/network_metadata_observer.h"
 #include "chromeos/services/network_config/public/cpp/cros_network_config_observer.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 
 namespace ash {
-
-class NetworkMetadataStore;
 
 namespace traffic_counters {
 
@@ -30,8 +27,7 @@ namespace traffic_counters {
 // years. Similarly, if the user specified day was 31, the actual day of reset
 // for April would be April 30th.
 class COMPONENT_EXPORT(CHROMEOS_NETWORK) TrafficCountersHandler
-    : public chromeos::network_config::CrosNetworkConfigObserver,
-      public NetworkMetadataObserver {
+    : public chromeos::network_config::CrosNetworkConfigObserver {
  public:
   using TimeGetter = base::RepeatingCallback<base::Time()>;
 
@@ -44,30 +40,28 @@ class COMPONENT_EXPORT(CHROMEOS_NETWORK) TrafficCountersHandler
   // a timer to do so periodically.
   void Start();
 
-  // CrosNetworkConfigObserver:
+  // CrosNetworkConfigObserver
   void OnActiveNetworksChanged(
       std::vector<chromeos::network_config::mojom::NetworkStatePropertiesPtr>
           active_networks) override;
-
-  // NetworkMetadataObserver:
-  void OnNetworkUpdate(const std::string& guid,
-                       const base::Value::Dict* set_properties) override;
 
   void SetTimeGetterForTest(TimeGetter time_getter);
   void RunForTesting();
 
  private:
-  void RunActive();
+  void RunAll();
+  void RunWithFilter(chromeos::network_config::mojom::FilterType filter_type);
   void OnNetworkStateListReceived(
       std::vector<chromeos::network_config::mojom::NetworkStatePropertiesPtr>
           networks);
+  bool GetAutoResetEnabled(std::string guid);
   void OnManagedPropertiesReceived(
       std::string guid,
       chromeos::network_config::mojom::ManagedPropertiesPtr managed_properties);
-  // Returns a base::Time::Exploded object representing the current time. This
-  // allows easy modification of the date values, which we can use to compare
-  // different dates.
-  base::Time::Exploded CurrentDateExploded();
+  bool ShouldReset(std::string guid, base::Time last_reset_time);
+  base::Time GetExpectedLastResetTime(
+      const base::Time::Exploded& current_time_exploded,
+      int user_specified_reset_day);
 
   // Callback used to get the time. Mocked out in tests.
   TimeGetter time_getter_;
@@ -76,8 +70,6 @@ class COMPONENT_EXPORT(CHROMEOS_NETWORK) TrafficCountersHandler
   // Remote for sending requests to the CrosNetworkConfig service.
   mojo::Remote<chromeos::network_config::mojom::CrosNetworkConfig>
       remote_cros_network_config_;
-  // Pointer to access network metadata.
-  base::WeakPtr<NetworkMetadataStore> network_metadata_store_;
   // Receiver for the CrosNetworkConfigObserver events.
   mojo::Receiver<chromeos::network_config::mojom::CrosNetworkConfigObserver>
       cros_network_config_observer_receiver_{this};

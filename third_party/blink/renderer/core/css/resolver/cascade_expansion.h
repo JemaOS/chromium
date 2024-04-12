@@ -72,14 +72,12 @@ constexpr wtf_size_t kMaxMatchedPropertiesIndex =
 // Usage:
 //
 //   ExpandCascade(..., [](CascadePriority cascade_priority,
-//                         const AtomicString& name) {
-//                           DoStuffWithCustomProperty(...)
-//                         },
-//                      [](CascadePriority cascade_priority,
-//                         CSSPropertyID id) {
-//                           DoStuffWithRegularProperty(...)
-//                         });
-//
+//                         const CSSProperty& css_property,
+//                         const CSSPropertyName& name,
+//                         const CSSValue&
+//                         css_value, uint16_t tree_order) {
+//                           DoStuff(...)
+//                         }
 //
 // The css_property and name references are not guaranteed to live past the end
 // of the callback. The name is guaranteed to be identical to
@@ -88,13 +86,11 @@ constexpr wtf_size_t kMaxMatchedPropertiesIndex =
 //
 // The implementation is in cascade_expansion-inl.h, which you will need to
 // include if you use this function.
-
-template <class CustomPropertyCallback, class RegularPropertyCallback>
+template <class Callback>
 void ExpandCascade(const MatchedProperties& matched_properties,
                    const Document& document,
                    wtf_size_t matched_properties_index,
-                   CustomPropertyCallback&& custom_property_callback,
-                   RegularPropertyCallback&& regular_property_callback);
+                   Callback&& callback);
 
 }  // namespace blink
 

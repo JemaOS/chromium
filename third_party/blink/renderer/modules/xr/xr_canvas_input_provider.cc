@@ -96,7 +96,7 @@ void XRCanvasInputProvider::OnPointerUp(PointerEvent* event) {
 }
 
 XRInputSource* XRCanvasInputProvider::GetInputSource() {
-  return input_source_.Get();
+  return input_source_;
 }
 
 void XRCanvasInputProvider::UpdateInputSource(PointerEvent* event) {

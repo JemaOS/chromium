@@ -3,9 +3,7 @@
 // found in the LICENSE file.
 
 #include "third_party/blink/public/common/origin_trials/trial_token.h"
-
 #include <memory>
-#include <optional>
 
 #include "base/base64.h"
 #include "base/big_endian.h"
@@ -16,6 +14,7 @@
 #include "base/strings/string_piece.h"
 #include "base/time/time.h"
 #include "base/values.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/origin_trials/origin_trials.h"
 #include "third_party/boringssl/src/include/openssl/curve25519.h"
 #include "url/gurl.h"
@@ -148,10 +147,10 @@ OriginTrialTokenStatus TrialToken::Extract(
   }
 
   // Extract the length of the signed data (Big-endian).
-  uint32_t payload_length =
-      base::numerics::U32FromBigEndian(base::as_byte_span(token_contents)
-                                           .subspan(kPayloadLengthOffset)
-                                           .first<4>());
+  uint32_t payload_length;
+  base::ReadBigEndian(
+      reinterpret_cast<const uint8_t*>(&(token_contents[kPayloadLengthOffset])),
+      &payload_length);
 
   // Validate that the stated length matches the actual payload length.
   if (payload_length != token_contents.length() - kPayloadOffset) {
@@ -191,7 +190,7 @@ std::unique_ptr<TrialToken> TrialToken::Parse(const std::string& token_payload,
     return nullptr;
   }
 
-  std::optional<base::Value> data = base::JSONReader::Read(token_payload);
+  absl::optional<base::Value> data = base::JSONReader::Read(token_payload);
   if (!data || !data->is_dict()) {
     return nullptr;
   }
@@ -258,10 +257,9 @@ std::unique_ptr<TrialToken> TrialToken::Parse(const std::string& token_payload,
     }
   }
 
-  return base::WrapUnique(
-      new TrialToken(origin, is_subdomain, *feature_name,
-                     base::Time::FromSecondsSinceUnixEpoch(expiry_timestamp),
-                     is_third_party, usage));
+  return base::WrapUnique(new TrialToken(
+      origin, is_subdomain, *feature_name,
+      base::Time::FromDoubleT(expiry_timestamp), is_third_party, usage));
 }
 
 bool TrialToken::ValidateOrigin(const url::Origin& origin) const {
@@ -274,10 +272,6 @@ bool TrialToken::ValidateOrigin(const url::Origin& origin) const {
     return true;
   }
 
-  // TODO(crbug.com/1227440): `OriginTrials::MatchesTokenOrigin()` is meant to
-  // mirror the logic used in this method (below). Find a way to share/reuse
-  // this logic. Otherwise, the logic could change in one place and not the
-  // other.
   if (match_subdomains_) {
     return origin.scheme() == origin_.scheme() &&
            origin.DomainIs(origin_.host()) && origin.port() == origin_.port();

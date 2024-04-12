@@ -35,9 +35,8 @@ namespace payments {
 
 namespace {
 
-const base::Time kJanuary2017 =
-    base::Time::FromSecondsSinceUnixEpoch(1484505871);
-const base::Time kJune2017 = base::Time::FromSecondsSinceUnixEpoch(1497552271);
+const base::Time kJanuary2017 = base::Time::FromDoubleT(1484505871);
+const base::Time kJune2017 = base::Time::FromDoubleT(1497552271);
 
 }  // namespace
 

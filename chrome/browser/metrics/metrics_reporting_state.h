@@ -31,9 +31,6 @@ enum class ChangeMetricsReportingStateCalledFrom {
   // Called from Chrome OS on settings creation/initialization. This happens
   // once on each log in.
   kCrosMetricsSettingsCreated,
-
-  // Called on ChromeOS from Lacros on initialization to initialize state.
-  kCrosMetricsInitializedFromAsh,
 };
 
 // Changes metrics reporting state without caring about the success of the

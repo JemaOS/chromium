@@ -103,10 +103,7 @@ void TestDataDevice::StartDrag(TestDataSource* source,
   CHECK(manager_);
   drag_serial_ = serial;
   manager_->set_data_source(source);
-  if (auto_send_start_drag_events_) {
-    SendOfferAndEnter(origin, {});
-  }
-  auto_send_start_drag_events_ = true;
+  SendOfferAndEnter(origin, {});
   wl_client_flush(wl_resource_get_client(resource()));
 }
 

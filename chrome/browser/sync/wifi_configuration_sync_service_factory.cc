@@ -4,7 +4,7 @@
 
 #include "chrome/browser/sync/wifi_configuration_sync_service_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/model_type_store_service_factory.h"
@@ -31,8 +31,7 @@ WifiConfigurationSyncServiceFactory::GetForProfile(Profile* profile,
 // static
 WifiConfigurationSyncServiceFactory*
 WifiConfigurationSyncServiceFactory::GetInstance() {
-  static base::NoDestructor<WifiConfigurationSyncServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<WifiConfigurationSyncServiceFactory>::get();
 }
 
 // static
@@ -45,22 +44,22 @@ bool WifiConfigurationSyncServiceFactory::ShouldRunInProfile(
 }
 
 WifiConfigurationSyncServiceFactory::WifiConfigurationSyncServiceFactory()
-    : ProfileKeyedServiceFactory("WifiConfigurationSyncService",
-                                 ProfileSelections::Builder()
-                                     .WithGuest(ProfileSelection::kOriginalOnly)
-                                     .WithAshInternals(ProfileSelection::kNone)
-                                     .Build()) {
+    : ProfileKeyedServiceFactory(
+          "WifiConfigurationSyncService",
+          ProfileSelections::Builder()
+              .WithGuest(ProfileSelections::kRegularProfileDefault)
+              .WithAshInternals(ProfileSelection::kNone)
+              .Build()) {
   DependsOn(ModelTypeStoreServiceFactory::GetInstance());
 }
 
 WifiConfigurationSyncServiceFactory::~WifiConfigurationSyncServiceFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-WifiConfigurationSyncServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* WifiConfigurationSyncServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<ash::sync_wifi::WifiConfigurationSyncService>(
+  return new ash::sync_wifi::WifiConfigurationSyncService(
       chrome::GetChannel(), profile->GetPrefs(),
       ModelTypeStoreServiceFactory::GetForProfile(profile)->GetStoreFactory());
 }

@@ -17,9 +17,8 @@ limitations under the License.
 @implementation TFLClassifications
 
 - (instancetype)initWithHeadIndex:(NSInteger)headIndex
-                         headName:(nullable NSString *)headName
-                       categories:(NSArray<TFLCategory *> *)categories {
-  
+                         headName:(nullable NSString*)headName
+                       categories:(NSArray<TFLCategory*>*)categories {
   self = [super init];
   if (self) {
     _headIndex = headIndex;
@@ -30,17 +29,18 @@ limitations under the License.
 }
 
 - (instancetype)initWithHeadIndex:(NSInteger)headIndex
-                       categories:(NSArray<TFLCategory *> *)categories {
+                       categories:(NSArray<TFLCategory*>*)categories {
   return [self initWithHeadIndex:headIndex headName:nil categories:categories];
 }
 
 @end
 
 @implementation TFLClassificationResult {
-  NSArray<TFLClassifications *> *_classifications;
+  NSArray<TFLClassifications*>* _classifications;
 }
 
-- (instancetype)initWithClassifications:(NSArray<TFLClassifications *> *)classifications {
+- (instancetype)initWithClassifications:
+    (NSArray<TFLClassifications*>*)classifications {
   self = [super init];
   if (self) {
     _classifications = classifications;

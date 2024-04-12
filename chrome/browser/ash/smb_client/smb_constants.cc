@@ -4,9 +4,11 @@
 
 #include "chrome/browser/ash/smb_client/smb_constants.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 const char kSmbScheme[] = "smb";
 const char kSmbSchemePrefix[] = "smb://";
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

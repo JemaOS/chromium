@@ -17,6 +17,8 @@ import org.junit.runner.RunWith;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.UrlUtils;
+import org.chromium.chrome.browser.download.DownloadController;
+import org.chromium.chrome.browser.download.DownloadInfo;
 import org.chromium.chrome.browser.download.DownloadTestRule;
 import org.chromium.chrome.browser.download.DownloadTestRule.CustomMainActivityStart;
 import org.chromium.chrome.browser.download.items.OfflineContentAggregatorFactory;
@@ -30,7 +32,6 @@ import org.chromium.components.offline_items_collection.UpdateDelta;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
 import org.chromium.net.test.EmbeddedTestServer;
-import org.chromium.net.test.ServerCertificate;
 import org.chromium.ui.base.PageTransition;
 
 import java.util.List;
@@ -41,12 +42,36 @@ import java.util.concurrent.TimeUnit;
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 public class MHTMLPageTest implements CustomMainActivityStart {
-    @Rule public DownloadTestRule mDownloadTestRule = new DownloadTestRule(this);
+    @Rule
+    public DownloadTestRule mDownloadTestRule = new DownloadTestRule(this);
 
     private static final int TIMEOUT_MS = 5000;
     private static final String[] TEST_FILES = new String[] {"hello.mhtml", "test.mht"};
 
     private EmbeddedTestServer mTestServer;
+
+    private static class TestDownloadNotificationService implements DownloadController.Observer {
+        private Semaphore mSemaphore;
+
+        TestDownloadNotificationService(Semaphore semaphore) {
+            mSemaphore = semaphore;
+        }
+
+        @Override
+        public void onDownloadCompleted(final DownloadInfo downloadInfo) {}
+
+        @Override
+        public void onDownloadUpdated(final DownloadInfo downloadInfo) {
+            mSemaphore.release();
+        }
+
+        @Override
+        public void onDownloadCancelled(final DownloadInfo downloadInfo) {}
+
+        @Override
+        public void onDownloadInterrupted(
+                final DownloadInfo downloadInfo, boolean isAutoResumable) {}
+    }
 
     /**
      * Observes the download updates from the new download backend. Depending on whether the new
@@ -75,9 +100,8 @@ public class MHTMLPageTest implements CustomMainActivityStart {
     @Before
     public void setUp() {
         deleteTestFiles();
-        mTestServer =
-                EmbeddedTestServer.createAndStartHTTPSServer(
-                        ApplicationProvider.getApplicationContext(), ServerCertificate.CERT_OK);
+        mTestServer = EmbeddedTestServer.createAndStartServer(
+                ApplicationProvider.getApplicationContext());
     }
 
     @After
@@ -100,14 +124,14 @@ public class MHTMLPageTest implements CustomMainActivityStart {
         final Tab tab = mDownloadTestRule.getActivity().getActivityTab();
         final Semaphore semaphore = new Semaphore(0);
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    OfflineContentAggregatorFactory.get()
-                            .addObserver(new TestNewDownloadBackendObserver(semaphore));
-                    tab.loadUrl(
-                            new LoadUrlParams(
-                                    url, PageTransition.TYPED | PageTransition.FROM_ADDRESS_BAR));
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            DownloadController.setDownloadNotificationService(
+                    new TestDownloadNotificationService(semaphore));
+            OfflineContentAggregatorFactory.get().addObserver(
+                    new TestNewDownloadBackendObserver(semaphore));
+            tab.loadUrl(
+                    new LoadUrlParams(url, PageTransition.TYPED | PageTransition.FROM_ADDRESS_BAR));
+        });
 
         Assert.assertTrue(semaphore.tryAcquire(TIMEOUT_MS, TimeUnit.MILLISECONDS));
     }
@@ -120,14 +144,14 @@ public class MHTMLPageTest implements CustomMainActivityStart {
         final Tab tab = mDownloadTestRule.getActivity().getActivityTab();
         final Semaphore semaphore = new Semaphore(0);
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    OfflineContentAggregatorFactory.get()
-                            .addObserver(new TestNewDownloadBackendObserver(semaphore));
-                    tab.loadUrl(
-                            new LoadUrlParams(
-                                    url, PageTransition.TYPED | PageTransition.FROM_ADDRESS_BAR));
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            DownloadController.setDownloadNotificationService(
+                    new TestDownloadNotificationService(semaphore));
+            OfflineContentAggregatorFactory.get().addObserver(
+                    new TestNewDownloadBackendObserver(semaphore));
+            tab.loadUrl(
+                    new LoadUrlParams(url, PageTransition.TYPED | PageTransition.FROM_ADDRESS_BAR));
+        });
 
         Assert.assertTrue(semaphore.tryAcquire(TIMEOUT_MS, TimeUnit.MILLISECONDS));
     }

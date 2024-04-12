@@ -4,28 +4,13 @@
 
 #include "chrome/browser/ash/file_system_provider/provided_file_system_interface.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
-CloudIdentifier::CloudIdentifier(const std::string& provider_name,
-                                 const std::string& id)
-    : provider_name(provider_name), id(id) {}
+EntryMetadata::EntryMetadata() {}
 
-bool CloudIdentifier::operator==(const CloudIdentifier& other) const {
-  return provider_name == other.provider_name && id == other.id;
+EntryMetadata::~EntryMetadata() {
 }
-
-CloudFileInfo::CloudFileInfo(const std::string& version_tag)
-    : version_tag(version_tag) {}
-
-CloudFileInfo::~CloudFileInfo() = default;
-
-bool CloudFileInfo::operator==(const CloudFileInfo& other) const {
-  return version_tag == other.version_tag;
-}
-
-EntryMetadata::EntryMetadata() = default;
-
-EntryMetadata::~EntryMetadata() = default;
 
 OpenedFile::OpenedFile(const base::FilePath& file_path, OpenFileMode mode)
     : file_path(file_path), mode(mode) {}
@@ -33,12 +18,8 @@ OpenedFile::OpenedFile(const base::FilePath& file_path, OpenFileMode mode)
 OpenedFile::OpenedFile() : mode(OPEN_FILE_MODE_READ) {
 }
 
-OpenedFile::~OpenedFile() = default;
+OpenedFile::~OpenedFile() {
+}
 
-ScopedUserInteraction::ScopedUserInteraction() = default;
-ScopedUserInteraction::~ScopedUserInteraction() = default;
-ScopedUserInteraction::ScopedUserInteraction(ScopedUserInteraction&&) = default;
-ScopedUserInteraction& ScopedUserInteraction::operator=(
-    ScopedUserInteraction&&) = default;
-
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

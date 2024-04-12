@@ -28,8 +28,6 @@ export class AlertIndicatorsElement extends CustomElement {
 
     this.alertIndicators_ = new Map([
       [TabAlertState.kMediaRecording, recordingIndicator],
-      [TabAlertState.kAudioRecording, recordingIndicator],
-      [TabAlertState.kVideoRecording, recordingIndicator],
       [TabAlertState.kTabCapturing, new AlertIndicatorElement()],
       [TabAlertState.kAudioPlaying, audioIndicator],
       [TabAlertState.kAudioMuting, audioIndicator],

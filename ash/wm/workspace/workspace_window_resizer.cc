@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "ash/wm/workspace/workspace_window_resizer.h"
-#include "base/memory/raw_ptr.h"
 
 #include <cmath>
 #include <utility>
@@ -14,16 +13,18 @@
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/public/cpp/window_properties.h"
 #include "ash/root_window_controller.h"
+#include "ash/scoped_animation_disabler.h"
 #include "ash/screen_util.h"
 #include "ash/session/session_controller_impl.h"
 #include "ash/shell.h"
+#include "ash/utility/haptics_util.h"
 #include "ash/wm/default_window_resizer.h"
 #include "ash/wm/desks/desks_util.h"
 #include "ash/wm/drag_window_resizer.h"
 #include "ash/wm/float/tablet_mode_float_window_resizer.h"
 #include "ash/wm/overview/overview_controller.h"
 #include "ash/wm/pip/pip_window_resizer.h"
-#include "ash/wm/tile_group/window_splitter.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "ash/wm/toplevel_window_event_handler.h"
 #include "ash/wm/window_animations.h"
 #include "ash/wm/window_positioning_utils.h"
@@ -37,7 +38,7 @@
 #include "base/metrics/user_metrics.h"
 #include "base/ranges/algorithm.h"
 #include "chromeos/ui/base/window_properties.h"
-#include "chromeos/utils/haptics_util.h"
+#include "chromeos/ui/wm/features.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/client/window_types.h"
 #include "ui/aura/window.h"
@@ -45,13 +46,13 @@
 #include "ui/base/class_property.h"
 #include "ui/base/hit_test.h"
 #include "ui/compositor/layer.h"
+#include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/events/devices/haptic_touchpad_effects.h"
 #include "ui/gfx/geometry/point_conversions.h"
 #include "ui/gfx/geometry/transform.h"
 #include "ui/wm/core/coordinate_conversion.h"
 #include "ui/wm/core/cursor_manager.h"
-#include "ui/wm/core/scoped_animation_disabler.h"
 
 namespace ash {
 
@@ -519,7 +520,7 @@ std::unique_ptr<WindowResizer> CreateWindowResizer(
     return std::make_unique<PipWindowResizer>(window_state);
   }
 
-  if (display::Screen::GetScreen()->InTabletMode()) {
+  if (Shell::Get()->tablet_mode_controller()->InTabletMode()) {
     return CreateWindowResizerForTabletMode(window, point_in_parent,
                                             window_component, source);
   }
@@ -652,8 +653,7 @@ WorkspaceWindowResizer::~WorkspaceWindowResizer() {
 // static
 std::unique_ptr<WorkspaceWindowResizer> WorkspaceWindowResizer::Create(
     WindowState* window_state,
-    const std::vector<raw_ptr<aura::Window, VectorExperimental>>&
-        attached_windows) {
+    const std::vector<aura::Window*>& attached_windows) {
   return base::WrapUnique(
       new WorkspaceWindowResizer(window_state, attached_windows));
 }
@@ -668,15 +668,13 @@ void WorkspaceWindowResizer::Drag(const gfx::PointF& location_in_parent,
       return;
     }
   }
-  gfx::PointF location_in_screen = location_in_parent;
-  wm::ConvertPointToScreen(GetTarget()->parent(), &location_in_screen);
-  last_location_in_screen_ = location_in_screen;
+  last_location_in_parent_ = location_in_parent;
 
   int sticky_size;
   if (event_flags & ui::EF_CONTROL_DOWN) {
     sticky_size = 0;
   } else if ((details().bounds_change & kBoundsChange_Resizes) &&
-             details().source == wm::WINDOW_MOVE_SOURCE_TOUCH) {
+             details().source == ::wm::WINDOW_MOVE_SOURCE_TOUCH) {
     sticky_size = kScreenEdgeInsetForTouchDrag;
   } else {
     sticky_size = kScreenEdgeInset;
@@ -760,11 +758,13 @@ void WorkspaceWindowResizer::Drag(const gfx::PointF& location_in_parent,
     return;
   }
 
+  gfx::PointF location_in_screen = location_in_parent;
+  ::wm::ConvertPointToScreen(GetTarget()->parent(), &location_in_screen);
   if (!can_snap_to_maximize_) {
     gfx::PointF initial_location_in_screen =
         details().initial_location_in_parent;
-    wm::ConvertPointToScreen(GetTarget()->parent(),
-                             &initial_location_in_screen);
+    ::wm::ConvertPointToScreen(GetTarget()->parent(),
+                               &initial_location_in_screen);
     // When repositioning windows across the top of the screen, only trigger a
     // snap when there is significant vertical movement.
     can_snap_to_maximize_ =
@@ -818,19 +818,14 @@ void WorkspaceWindowResizer::Drag(const gfx::PointF& location_in_parent,
     }
     dwell_location_in_screen_.reset();
   }
-
-  if (window_splitter_) {
-    // Still need to call this when another snap type takes precedence, so that
-    // the window splitter can remove its own preview if showing.
-    window_splitter_->UpdateDrag(location_in_screen,
-                                 /*can_split=*/snap_type == SnapType::kNone);
-  }
 }
 
 void WorkspaceWindowResizer::CompleteDrag() {
   tab_dragging_recorder_.reset();
 
-  window_state()->OnCompleteDrag(last_location_in_screen_);
+  gfx::PointF last_location_in_screen = last_location_in_parent_;
+  wm::ConvertPointToScreen(GetTarget()->parent(), &last_location_in_screen);
+  window_state()->OnCompleteDrag(last_location_in_screen);
   EndDragForAttachedWindows(/*revert_drag=*/false);
 
   if (!did_move_or_resize_) {
@@ -838,7 +833,7 @@ void WorkspaceWindowResizer::CompleteDrag() {
   }
 
   ResetFrameRestoreLookKey(window_state());
-  window_state()->SetBoundsChangedByUser(true);
+  window_state()->set_bounds_changed_by_user(true);
   snap_phantom_window_controller_.reset();
 
   // If the window's state type changed over the course of the drag do not snap
@@ -853,7 +848,7 @@ void WorkspaceWindowResizer::CompleteDrag() {
     if (!window_state()->HasRestoreBounds()) {
       // Use `restore_bounds_for_gesture_` for touch dragging which is inside
       // parent's bounds and would not put window to different display.
-      gfx::Rect bounds = details().source == wm::WINDOW_MOVE_SOURCE_TOUCH
+      gfx::Rect bounds = details().source == ::wm::WINDOW_MOVE_SOURCE_TOUCH
                              ? restore_bounds_for_gesture_
                          : details().restore_bounds_in_parent.IsEmpty()
                              ? details().initial_bounds_in_parent
@@ -866,18 +861,18 @@ void WorkspaceWindowResizer::CompleteDrag() {
     WMEventType type;
     switch (snap_type_) {
       case SnapType::kPrimary: {
-        base::RecordAction(base::UserMetricsAction("WindowDrag_MaximizeLeft"));
-        const WindowSnapWMEvent snap_primary_event(
-            WM_EVENT_SNAP_PRIMARY,
+        window_state()->set_snap_action_source(
             WindowSnapActionSource::kDragWindowToEdgeToSnap);
+        base::RecordAction(base::UserMetricsAction("WindowDrag_MaximizeLeft"));
+        const WMEvent snap_primary_event(WM_EVENT_SNAP_PRIMARY);
         window_state()->OnWMEvent(&snap_primary_event);
         return;
       }
       case SnapType::kSecondary: {
-        base::RecordAction(base::UserMetricsAction("WindowDrag_MaximizeRight"));
-        const WindowSnapWMEvent snap_secondary_event(
-            WM_EVENT_SNAP_SECONDARY,
+        window_state()->set_snap_action_source(
             WindowSnapActionSource::kDragWindowToEdgeToSnap);
+        base::RecordAction(base::UserMetricsAction("WindowDrag_MaximizeRight"));
+        const WMEvent snap_secondary_event(WM_EVENT_SNAP_SECONDARY);
         window_state()->OnWMEvent(&snap_secondary_event);
         return;
       }
@@ -926,7 +921,7 @@ void WorkspaceWindowResizer::CompleteDrag() {
       // Since we saved the current bounds to the restore bounds, the restore
       // animation will use the current bounds as the target bounds, so we can
       // disable the animation here.
-      wm::ScopedAnimationDisabler disabler(window_state()->window());
+      ScopedAnimationDisabler disabler(window_state()->window());
       window_state()->Restore();
     }
     return;
@@ -946,28 +941,36 @@ void WorkspaceWindowResizer::CompleteDrag() {
     // Since we saved the current bounds to the restore bounds, the restore
     // animation will use the current bounds as the target bounds, so we can
     // disable the animation here.
-    wm::ScopedAnimationDisabler disabler(window_state()->window());
+    ScopedAnimationDisabler disabler(window_state()->window());
     window_state()->Restore();
     return;
   }
 
-  DCHECK(window_state()->IsNormalStateType() || window_state()->IsFloated());
+  if (window_state()->IsFloated()) {
+    // Update the restore bounds of a floated window in case it has changed
+    // displays.
+    if (!details().restore_bounds_in_parent.IsEmpty()) {
+      window_state()->SetRestoreBoundsInParent(
+          details().restore_bounds_in_parent);
+    }
+    return;
+  }
+
+  DCHECK(window_state()->IsNormalStateType());
   // The window was normal and stays normal. This is a user
   // resize/drag and so the current bounds should be maintained, clearing
   // any prior restore bounds.
   window_state()->ClearRestoreBounds();
-
-  if (window_splitter_) {
-    window_splitter_->CompleteDrag(last_location_in_screen_);
-  }
 }
 
 void WorkspaceWindowResizer::RevertDrag() {
   tab_dragging_recorder_.reset();
 
-  window_state()->OnRevertDrag(last_location_in_screen_);
+  gfx::PointF last_location_in_screen = last_location_in_parent_;
+  wm::ConvertPointToScreen(GetTarget()->parent(), &last_location_in_screen);
+  window_state()->OnRevertDrag(last_location_in_screen);
   EndDragForAttachedWindows(/*revert_drag=*/true);
-  window_state()->SetBoundsChangedByUser(initial_bounds_changed_by_user_);
+  window_state()->set_bounds_changed_by_user(initial_bounds_changed_by_user_);
   snap_phantom_window_controller_.reset();
 
   if (!did_move_or_resize_) {
@@ -999,10 +1002,6 @@ void WorkspaceWindowResizer::RevertDrag() {
       attached_windows_[i]->SetBounds(bounds);
       last_y = attached_windows_[i]->bounds().bottom();
     }
-  }
-
-  if (window_splitter_) {
-    window_splitter_->Disengage();
   }
 }
 
@@ -1063,8 +1062,7 @@ void WorkspaceWindowResizer::FlingOrSwipe(ui::GestureEvent* event) {
 
 WorkspaceWindowResizer::WorkspaceWindowResizer(
     WindowState* window_state,
-    const std::vector<raw_ptr<aura::Window, VectorExperimental>>&
-        attached_windows)
+    const std::vector<aura::Window*>& attached_windows)
     : WindowResizer(window_state),
       attached_windows_(attached_windows),
       initial_bounds_changed_by_user_(window_state_->bounds_changed_by_user()) {
@@ -1074,7 +1072,7 @@ WorkspaceWindowResizer::WorkspaceWindowResizer(
   // being moved or resized with touch, so do not lock the cursor.
   // If the window state is controlled by a client, which may set the
   // cursor by itself, don't lock the cursor.
-  if (details().source != wm::WINDOW_MOVE_SOURCE_TOUCH &&
+  if (details().source != ::wm::WINDOW_MOVE_SOURCE_TOUCH &&
       !window_state->allow_set_bounds_direct()) {
     Shell::Get()->cursor_manager()->LockCursor();
     did_lock_cursor_ = true;
@@ -1119,10 +1117,6 @@ WorkspaceWindowResizer::WorkspaceWindowResizer(
       window_state->window()->parent()->bounds().size());
   if (!parent_local_bounds.Intersects(restore_bounds_for_gesture_)) {
     restore_bounds_for_gesture_.AdjustToFit(parent_local_bounds);
-  }
-
-  if (features::IsWindowSplittingEnabled()) {
-    window_splitter_ = std::make_unique<WindowSplitter>(window_state->window());
   }
 
   std::unique_ptr<ash::PresentationTimeRecorder> recorder =
@@ -1298,11 +1292,11 @@ void WorkspaceWindowResizer::MagneticallySnapToOtherWindows(
     gfx::Rect* bounds) {
   if (UpdateMagnetismWindow(display, *bounds, kAllMagnetismEdges)) {
     gfx::Rect bounds_in_screen = *bounds;
-    wm::ConvertRectToScreen(GetTarget()->parent(), &bounds_in_screen);
+    ::wm::ConvertRectToScreen(GetTarget()->parent(), &bounds_in_screen);
     gfx::Point point = OriginForMagneticAttach(
         bounds_in_screen, magnetism_window_->GetBoundsInScreen(),
         magnetism_edge_);
-    wm::ConvertPointFromScreen(GetTarget()->parent(), &point);
+    ::wm::ConvertPointFromScreen(GetTarget()->parent(), &point);
     bounds->set_origin(point);
   }
 }
@@ -1314,11 +1308,11 @@ void WorkspaceWindowResizer::MagneticallySnapResizeToOtherWindows(
       WindowComponentToMagneticEdge(details().window_component);
   if (UpdateMagnetismWindow(display, *bounds, edges)) {
     gfx::Rect bounds_in_screen = *bounds;
-    wm::ConvertRectToScreen(GetTarget()->parent(), &bounds_in_screen);
+    ::wm::ConvertRectToScreen(GetTarget()->parent(), &bounds_in_screen);
     *bounds = BoundsForMagneticResizeAttach(
         bounds_in_screen, magnetism_window_->GetBoundsInScreen(),
         magnetism_edge_);
-    wm::ConvertRectFromScreen(GetTarget()->parent(), bounds);
+    ::wm::ConvertRectFromScreen(GetTarget()->parent(), bounds);
   }
 }
 
@@ -1330,7 +1324,7 @@ bool WorkspaceWindowResizer::UpdateMagnetismWindow(
 
   // |bounds| are in coordinates of original window's parent.
   gfx::Rect bounds_in_screen = bounds;
-  wm::ConvertRectToScreen(GetTarget()->parent(), &bounds_in_screen);
+  ::wm::ConvertRectToScreen(GetTarget()->parent(), &bounds_in_screen);
   MagnetismMatcher matcher(bounds_in_screen, edges);
 
   // If we snapped to a window then check it first. That way we don't bounce
@@ -1360,8 +1354,7 @@ bool WorkspaceWindowResizer::UpdateMagnetismWindow(
   aura::Window* container =
       desks_util::GetActiveDeskContainerForRoot(root_window);
   DCHECK(container);
-  const std::vector<raw_ptr<aura::Window, VectorExperimental>>& children =
-      container->children();
+  const std::vector<aura::Window*>& children = container->children();
   for (auto i = children.rbegin();
        i != children.rend() && !matcher.AreEdgesObscured(); ++i) {
     // Ignore already attached windows.
@@ -1392,7 +1385,8 @@ bool WorkspaceWindowResizer::UpdateMagnetismWindow(
 void WorkspaceWindowResizer::AdjustBoundsForMainWindow(int sticky_size,
                                                        gfx::Rect* bounds) {
   gfx::Point last_location_in_screen =
-      gfx::ToRoundedPoint(last_location_in_screen_);
+      gfx::ToRoundedPoint(last_location_in_parent_);
+  wm::ConvertPointToScreen(GetTarget()->parent(), &last_location_in_screen);
   display::Display display =
       display::Screen::GetScreen()->GetDisplayNearestPoint(
           last_location_in_screen);
@@ -1608,7 +1602,7 @@ void WorkspaceWindowResizer::UpdateSnapPhantomWindow(
 
   // Fire a haptic event if necessary.
   if (need_haptic_feedback) {
-    chromeos::haptics_util::PlayHapticTouchpadEffect(
+    haptics_util::PlayHapticTouchpadEffect(
         ui::HapticTouchpadEffect::kSnap,
         ui::HapticTouchpadEffectStrength::kMedium);
   }
@@ -1623,10 +1617,9 @@ void WorkspaceWindowResizer::RestackWindows() {
   using IndexToWindowMap = std::map<size_t, aura::Window*>;
   IndexToWindowMap map;
   aura::Window* parent = GetTarget()->parent();
-  const std::vector<raw_ptr<aura::Window, VectorExperimental>>& windows(
-      parent->children());
+  const std::vector<aura::Window*>& windows(parent->children());
   map[base::ranges::find(windows, GetTarget()) - windows.begin()] = GetTarget();
-  for (aura::Window* attached_window : attached_windows_) {
+  for (auto* attached_window : attached_windows_) {
     if (attached_window->parent() != parent) {
       return;
     }
@@ -1714,20 +1707,20 @@ void WorkspaceWindowResizer::SetWindowStateTypeFromGesture(
     case WindowStateType::kPrimarySnapped:
       if (window_state->CanSnap()) {
         window_state->SetRestoreBoundsInParent(restore_bounds_for_gesture_);
-
-        const WindowSnapWMEvent event(
-            WM_EVENT_SNAP_PRIMARY,
+        window_state->set_snap_action_source(
             WindowSnapActionSource::kDragWindowToEdgeToSnap);
+
+        const WMEvent event(WM_EVENT_SNAP_PRIMARY);
         window_state->OnWMEvent(&event);
       }
       break;
     case WindowStateType::kSecondarySnapped:
       if (window_state->CanSnap()) {
         window_state->SetRestoreBoundsInParent(restore_bounds_for_gesture_);
-
-        const WindowSnapWMEvent event(
-            WM_EVENT_SNAP_SECONDARY,
+        window_state->set_snap_action_source(
             WindowSnapActionSource::kDragWindowToEdgeToSnap);
+
+        const WMEvent event(WM_EVENT_SNAP_SECONDARY);
         window_state->OnWMEvent(&event);
       }
       break;
@@ -1754,11 +1747,11 @@ void WorkspaceWindowResizer::StartDragForAttachedWindows() {
   }
   DCHECK(window_component == HTLEFT || window_component == HTTOP);
 
-  for (aura::Window* window : attached_windows_) {
+  for (auto* window : attached_windows_) {
     WindowState* window_state = WindowState::Get(window);
     window_state->CreateDragDetails(details().initial_location_in_parent,
                                     window_component,
-                                    wm::WINDOW_MOVE_SOURCE_MOUSE);
+                                    ::wm::WINDOW_MOVE_SOURCE_MOUSE);
     window_state->OnDragStarted(window_component);
   }
 }
@@ -1768,17 +1761,12 @@ void WorkspaceWindowResizer::EndDragForAttachedWindows(bool revert_drag) {
     return;
   }
 
-  // TODO(aluh): Figure out why location is in parent coord here,
-  // but in screen coord for the rest of the class.
-  gfx::PointF last_location_in_parent = last_location_in_screen_;
-  wm::ConvertPointFromScreen(GetTarget()->parent(), &last_location_in_parent);
-
-  for (aura::Window* window : attached_windows_) {
+  for (auto* window : attached_windows_) {
     WindowState* window_state = WindowState::Get(window);
     if (revert_drag) {
-      window_state->OnRevertDrag(last_location_in_parent);
+      window_state->OnRevertDrag(last_location_in_parent_);
     } else {
-      window_state->OnCompleteDrag(last_location_in_parent);
+      window_state->OnCompleteDrag(last_location_in_parent_);
     }
     window_state->DeleteDragDetails();
   }

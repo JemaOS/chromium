@@ -11,11 +11,15 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.MimeTypeMap;
 
-import org.chromium.base.BuildInfo;
+import androidx.annotation.IntDef;
+
 import org.chromium.base.IntentUtils;
 import org.chromium.base.Log;
+import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.chrome.browser.customtabs.CustomTabIntentDataProvider;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.Locale;
 
 /**
@@ -25,6 +29,18 @@ import java.util.Locale;
 public class MediaLauncherActivity extends Activity {
     private static final String TAG = "MediaLauncher";
 
+    // UMA histogram values for media types the user can open.
+    // Keep in sync with MediaLauncherActivityMediaType enum in enums.xml.
+    @IntDef({MediaType.AUDIO, MediaType.IMAGE, MediaType.VIDEO, MediaType.UNKNOWN})
+    @Retention(RetentionPolicy.SOURCE)
+    @interface MediaType {
+        int AUDIO = 0;
+        int IMAGE = 1;
+        int VIDEO = 2;
+        int UNKNOWN = 3;
+        int NUM_ENTRIES = 4;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -32,8 +48,12 @@ public class MediaLauncherActivity extends Activity {
         Intent input = IntentUtils.sanitizeIntent(getIntent());
         Uri contentUri = input.getData();
         String mimeType = getMIMEType(contentUri);
+        int mediaType = MediaViewerUtils.getMediaTypeFromMIMEType(mimeType);
 
-        if (!MediaViewerUtils.isMediaMIMEType(mimeType)) {
+        RecordHistogram.recordEnumeratedHistogram(
+                "MediaLauncherActivity.MediaType", mediaType, MediaType.NUM_ENTRIES);
+
+        if (mediaType == MediaType.UNKNOWN) {
             // With our intent-filter, we should only receive implicit intents with media MIME
             // types. If we receive a non-media MIME type, it is likely a malicious explicit intent,
             // so we should not proceed.
@@ -41,26 +61,22 @@ public class MediaLauncherActivity extends Activity {
             return;
         }
 
-        boolean allowShareAction = !BuildInfo.getInstance().isAutomotive;
         // TODO(https://crbug.com/800880): Determine file:// URI when possible.
-        Intent intent =
-                MediaViewerUtils.getMediaViewerIntent(
-                        contentUri,
-                        contentUri,
-                        mimeType,
-                        /* allowExternalAppHandlers= */ false,
-                        allowShareAction,
-                        this);
+        Intent intent = MediaViewerUtils.getMediaViewerIntent(
+                contentUri, contentUri, mimeType, false /* allowExternalAppHandlers */, this);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        intent.putExtra(
-                CustomTabIntentDataProvider.EXTRA_BROWSER_LAUNCH_SOURCE,
+        intent.putExtra(CustomTabIntentDataProvider.EXTRA_BROWSER_LAUNCH_SOURCE,
                 CustomTabIntentDataProvider.LaunchSourceType.MEDIA_LAUNCHER_ACTIVITY);
 
+        boolean success = false;
         try {
             startActivity(intent);
+            success = true;
         } catch (SecurityException e) {
             Log.w(TAG, "Cannot open content URI: " + contentUri.toString(), e);
         }
+
+        RecordHistogram.recordBooleanHistogram("MediaLauncherActivity.LaunchResult", success);
 
         finish();
     }
@@ -74,8 +90,8 @@ public class MediaLauncherActivity extends Activity {
         // Otherwise, use the file extension.
         String filteredUri = filterURI(uri);
         String fileExtension = MimeTypeMap.getFileExtensionFromUrl(filteredUri);
-        return MimeTypeMap.getSingleton()
-                .getMimeTypeFromExtension(fileExtension.toLowerCase(Locale.ROOT));
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(
+                fileExtension.toLowerCase(Locale.ROOT));
     }
 
     // MimeTypeMap.getFileExtensionFromUrl fails when the file name includes certain special

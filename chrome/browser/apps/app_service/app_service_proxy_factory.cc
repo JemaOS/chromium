@@ -83,8 +83,7 @@ AppServiceProxy* AppServiceProxyFactory::GetForProfile(Profile* profile) {
 
 // static
 AppServiceProxyFactory* AppServiceProxyFactory::GetInstance() {
-  static base::NoDestructor<AppServiceProxyFactory> instance;
-  return instance.get();
+  return base::Singleton<AppServiceProxyFactory>::get();
 }
 
 AppServiceProxyFactory::AppServiceProxyFactory()

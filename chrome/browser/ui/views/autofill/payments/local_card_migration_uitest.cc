@@ -45,7 +45,7 @@
 #include "chrome/browser/ui/views/page_action/page_action_icon_loading_indicator_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_icon_view.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
-#include "chrome/browser/webdata_services/web_data_service_factory.h"
+#include "chrome/browser/web_data_service_factory.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -61,10 +61,9 @@
 #include "components/autofill/core/browser/payments/payments_util.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
 #include "components/autofill/core/browser/personal_data_manager_observer.h"
-#include "components/autofill/core/browser/personal_data_manager_test_utils.h"
 #include "components/autofill/core/browser/test_autofill_manager_waiter.h"
 #include "components/autofill/core/browser/test_event_waiter.h"
-#include "components/autofill/core/browser/webdata/payments/payments_autofill_table.h"
+#include "components/autofill/core/browser/webdata/autofill_table.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
@@ -148,6 +147,14 @@ constexpr double kFakeGeolocationLongitude = 4.56;
 
 }  // namespace
 
+class PersonalDataLoadedObserverMock : public PersonalDataManagerObserver {
+ public:
+  PersonalDataLoadedObserverMock() = default;
+  ~PersonalDataLoadedObserverMock() override = default;
+
+  MOCK_METHOD0(OnPersonalDataChanged, void());
+};
+
 class LocalCardMigrationBrowserTest
     : public SyncTest,
       public LocalCardMigrationManager::ObserverForTest {
@@ -159,8 +166,8 @@ class LocalCardMigrationBrowserTest
  protected:
   class TestAutofillManager : public BrowserAutofillManager {
    public:
-    explicit TestAutofillManager(ContentAutofillDriver* driver)
-        : BrowserAutofillManager(driver, "en-US") {}
+    TestAutofillManager(ContentAutofillDriver* driver, AutofillClient* client)
+        : BrowserAutofillManager(driver, client, "en-US") {}
 
     testing::AssertionResult WaitForFormsSeen(int min_num_awaited_calls) {
       return forms_seen_waiter_.Wait(min_num_awaited_calls);
@@ -180,10 +187,7 @@ class LocalCardMigrationBrowserTest
     RECEIVED_MIGRATE_CARDS_RESPONSE
   };
 
-  LocalCardMigrationBrowserTest() : SyncTest(SINGLE_CLIENT) {
-    feature_list_.InitAndDisableFeature(
-        features::kAutofillEnableNewCardArtAndNetworkImages);
-  }
+  LocalCardMigrationBrowserTest() : SyncTest(SINGLE_CLIENT) {}
 
   ~LocalCardMigrationBrowserTest() override {}
 
@@ -199,21 +203,21 @@ class LocalCardMigrationBrowserTest
     ASSERT_TRUE(SetupClients());
     chrome::NewTab(GetBrowser(0));
 
-    // Set up the URL loader factory for the PaymentsNetworkInterface so we can
-    // intercept those network requests too.
+    // Set up the URL loader factory for the payments client so we can intercept
+    // those network requests too.
     test_shared_loader_factory_ =
         base::MakeRefCounted<network::WeakWrapperSharedURLLoaderFactory>(
             &test_url_loader_factory_);
     ContentAutofillClient* client =
         ContentAutofillClient::FromWebContents(GetActiveWebContents());
-    client->GetPaymentsAutofillClient()
-        ->GetPaymentsNetworkInterface()
-        ->set_url_loader_factory_for_testing(test_shared_loader_factory_);
+    client->GetPaymentsClient()->set_url_loader_factory_for_testing(
+        test_shared_loader_factory_);
 
     // Set up this class as the ObserverForTest implementation.
-    client->GetFormDataImporter()
-        ->local_card_migration_manager()
-        ->SetEventObserverForTesting(this);
+    local_card_migration_manager_ =
+        client->GetFormDataImporter()->local_card_migration_manager_.get();
+
+    local_card_migration_manager_->SetEventObserverForTesting(this);
     personal_data_ = PersonalDataManagerFactory::GetForProfile(GetProfile(0));
 
     // Wait for Personal Data Manager to be fully loaded to prevent that
@@ -239,6 +243,7 @@ class LocalCardMigrationBrowserTest
 
   void TearDownOnMainThread() override {
     personal_data_ = nullptr;
+    local_card_migration_manager_ = nullptr;
 
     SyncTest::TearDownOnMainThread();
   }
@@ -247,7 +252,7 @@ class LocalCardMigrationBrowserTest
       AutofillWebDataService* wds,
       const PaymentsCustomerData& customer_data) {
     DCHECK(wds->GetDBTaskRunner()->RunsTasksInCurrentSequence());
-    PaymentsAutofillTable::FromWebDatabase(wds->GetDatabase())
+    AutofillTable::FromWebDatabase(wds->GetDatabase())
         ->SetPaymentsCustomerData(&customer_data);
   }
 
@@ -320,7 +325,7 @@ class LocalCardMigrationBrowserTest
                                                 : test::NextYear().c_str(),
                             "1");
     local_card.set_guid("00000000-0000-0000-0000-" + card_number.substr(0, 12));
-    local_card.set_record_type(CreditCard::RecordType::kLocalCard);
+    local_card.set_record_type(CreditCard::LOCAL_CARD);
     if (set_nickname)
       local_card.SetNickname(u"card nickname");
 
@@ -334,7 +339,7 @@ class LocalCardMigrationBrowserTest
                             "12", test::NextYear().c_str(), "1");
     server_card.set_guid("00000000-0000-0000-0000-" +
                          card_number.substr(0, 12));
-    server_card.set_record_type(CreditCard::RecordType::kFullServerCard);
+    server_card.set_record_type(CreditCard::FULL_SERVER_CARD);
     server_card.set_server_id("full_id_" + card_number);
     AddTestServerCreditCard(GetProfile(0), server_card);
     return server_card;
@@ -362,17 +367,17 @@ class LocalCardMigrationBrowserTest
 
     const std::string click_fill_button_js =
         "(function() { document.getElementById('fill_form').click(); })();";
-    ASSERT_TRUE(content::ExecJs(web_contents, click_fill_button_js));
+    ASSERT_TRUE(content::ExecuteScript(web_contents, click_fill_button_js));
 
     const std::string fill_cc_number_js =
         "(function() { document.getElementsByName(\"cc_number\")[0].value = " +
         card_number + "; })();";
-    ASSERT_TRUE(content::ExecJs(web_contents, fill_cc_number_js));
+    ASSERT_TRUE(content::ExecuteScript(web_contents, fill_cc_number_js));
 
     const std::string click_submit_button_js =
         "(function() { document.getElementById('submit').click(); })();";
     content::TestNavigationObserver nav_observer(web_contents);
-    ASSERT_TRUE(content::ExecJs(web_contents, click_submit_button_js));
+    ASSERT_TRUE(content::ExecuteScript(web_contents, click_submit_button_js));
     nav_observer.Wait();
   }
 
@@ -485,13 +490,13 @@ class LocalCardMigrationBrowserTest
     return icon;
   }
 
-  views::View* close_button() {
+  views::View* GetCloseButton() {
     LocalCardMigrationBubbleViews* local_card_migration_bubble_views =
         static_cast<LocalCardMigrationBubbleViews*>(
             GetLocalCardMigrationOfferBubbleViews());
     CHECK(local_card_migration_bubble_views);
     return local_card_migration_bubble_views->GetBubbleFrameView()
-        ->close_button();
+        ->GetCloseButtonForTesting();
   }
 
   views::View* GetCardListView() {
@@ -519,6 +524,8 @@ class LocalCardMigrationBrowserTest
 
   void WaitForCardDeletion() { WaitForPersonalDataChange(GetProfile(0)); }
 
+  raw_ptr<LocalCardMigrationManager, DanglingUntriaged>
+      local_card_migration_manager_ = nullptr;
   raw_ptr<PersonalDataManager> personal_data_ = nullptr;
   PersonalDataLoadedObserverMock personal_data_observer_;
 
@@ -528,7 +535,6 @@ class LocalCardMigrationBrowserTest
   network::TestURLLoaderFactory test_url_loader_factory_;
   scoped_refptr<network::SharedURLLoaderFactory> test_shared_loader_factory_;
   std::unique_ptr<device::ScopedGeolocationOverrider> geolocation_overrider_;
-  base::test::ScopedFeatureList feature_list_;
 };
 
 class LocalCardMigrationBrowserUiTest
@@ -555,10 +561,8 @@ class LocalCardMigrationBrowserUiTest
 };
 
 // Ensures that migration is not offered when user saves a new card.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_UsingNewCardDoesNotShowIntermediateMigrationOffer) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       UsingNewCardDoesNotShowIntermediateMigrationOffer) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -575,8 +579,7 @@ IN_PROC_BROWSER_TEST_F(
 // Ensures that migration is not offered when payments declines the cards.
 IN_PROC_BROWSER_TEST_F(
     LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_IntermediateMigrationOfferDoesNotShowWhenPaymentsDeclines) {
+    IntermediateMigrationOfferDoesNotShowWhenPaymentsDeclines) {
   base::HistogramTester histogram_tester;
   SetUploadDetailsRpcPaymentsDeclines();
 
@@ -593,10 +596,8 @@ IN_PROC_BROWSER_TEST_F(
 
 // Ensures that the intermediate migration bubble is not shown after reusing
 // a saved server card, if there are no other cards to migrate.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ReusingServerCardDoesNotShowIntermediateMigrationOffer) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ReusingServerCardDoesNotShowIntermediateMigrationOffer) {
   base::HistogramTester histogram_tester;
 
   SaveServerCard(kFirstCardNumber);
@@ -613,8 +614,7 @@ IN_PROC_BROWSER_TEST_F(
 // a saved server card, if there is at least one card to migrate.
 IN_PROC_BROWSER_TEST_F(
     LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ReusingServerCardWithMigratableLocalCardShowIntermediateMigrationOffer) {
+    ReusingServerCardWithMigratableLocalCardShowIntermediateMigrationOffer) {
   base::HistogramTester histogram_tester;
 
   SaveServerCard(kFirstCardNumber);
@@ -641,10 +641,8 @@ IN_PROC_BROWSER_TEST_F(
 
 // Ensures that the intermediate migration bubble is not shown after reusing
 // a previously saved local card, if there are no other cards to migrate.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ReusingLocalCardDoesNotShowIntermediateMigrationOffer) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ReusingLocalCardDoesNotShowIntermediateMigrationOffer) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -660,10 +658,8 @@ IN_PROC_BROWSER_TEST_F(
 
 // Ensures that the intermediate migration bubble is triggered after reusing
 // a saved local card, if there are multiple local cards available to migrate.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ReusingLocalCardShowsIntermediateMigrationOffer) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ReusingLocalCardShowsIntermediateMigrationOffer) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -689,16 +685,14 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 // Ensures that clicking [X] on the offer bubble makes the bubble disappear.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClickingCloseClosesBubble) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClickingCloseClosesBubble) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
   SaveLocalCard(kSecondCardNumber);
   UseCardAndWaitForMigrationOffer(kFirstCardNumber);
-  ClickOnDialogViewAndWait(close_button(),
+  ClickOnDialogViewAndWait(GetCloseButton(),
                            GetLocalCardMigrationOfferBubbleViews());
 
   // No bubble should be showing.
@@ -711,10 +705,8 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 // Ensures that the credit card icon will show in location bar.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_CreditCardIconShownInLocationBar) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       CreditCardIconShownInLocationBar) {
   SaveServerCard(kFirstCardNumber);
   SaveLocalCard(kSecondCardNumber);
   UseCardAndWaitForMigrationOffer(kFirstCardNumber);
@@ -724,16 +716,14 @@ IN_PROC_BROWSER_TEST_F(
 
 // Ensures that clicking on the credit card icon in the omnibox reopens the
 // offer bubble after closing it.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClickingOmniboxIconReshowsBubble) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClickingOmniboxIconReshowsBubble) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
   SaveLocalCard(kSecondCardNumber);
   UseCardAndWaitForMigrationOffer(kFirstCardNumber);
-  ClickOnDialogViewAndWait(close_button(),
+  ClickOnDialogViewAndWait(GetCloseButton(),
                            GetLocalCardMigrationOfferBubbleViews());
   ClickOnView(GetLocalCardMigrationIconView());
 
@@ -757,10 +747,8 @@ IN_PROC_BROWSER_TEST_F(
 
 // Ensures that accepting the intermediate migration offer opens up the main
 // migration dialog.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClickingContinueOpensDialog) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClickingContinueOpensDialog) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -795,10 +783,8 @@ IN_PROC_BROWSER_TEST_F(
 
 // Ensures that the migration dialog contains all the valid card stored in
 // Chrome browser local storage.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_DialogContainsAllValidMigratableCard) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       DialogContainsAllValidMigratableCard) {
   base::HistogramTester histogram_tester;
 
   CreditCard first_card = SaveLocalCard(kFirstCardNumber);
@@ -815,17 +801,15 @@ IN_PROC_BROWSER_TEST_F(
   // Cards will be added to database in a reversed order.
   EXPECT_EQ(static_cast<MigratableCardView*>(card_list_view->children()[0])
                 ->GetCardIdentifierString(),
-            second_card.CardNameAndLastFourDigits());
+            second_card.CardIdentifierStringForAutofillDisplay());
   EXPECT_EQ(static_cast<MigratableCardView*>(card_list_view->children()[1])
                 ->GetCardIdentifierString(),
-            first_card.CardNameAndLastFourDigits());
+            first_card.CardIdentifierStringForAutofillDisplay());
 }
 
 // Ensures that rejecting the main migration dialog closes the dialog.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClickingCancelClosesDialog) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClickingCancelClosesDialog) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -854,10 +838,8 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 // Ensures that accepting the main migration dialog closes the dialog.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClickingSaveClosesDialog) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClickingSaveClosesDialog) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -888,10 +870,8 @@ IN_PROC_BROWSER_TEST_F(
 
 // Ensures local cards will be deleted from browser local storage after being
 // successfully migrated.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_DeleteSuccessfullyMigratedCardsFromLocal) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       DeleteSuccessfullyMigratedCardsFromLocal) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -908,10 +888,8 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 // Ensures that accepting the main migration dialog adds strikes.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_AcceptingDialogAddsLocalCardMigrationStrikes) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       AcceptingDialogAddsLocalCardMigrationStrikes) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -930,10 +908,8 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 // Ensures that rejecting the main migration dialog adds strikes.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_RejectingDialogAddsLocalCardMigrationStrikes) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       RejectingDialogAddsLocalCardMigrationStrikes) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -952,16 +928,14 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 // Ensures that rejecting the migration bubble adds strikes.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClosingBubbleAddsLocalCardMigrationStrikes) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClosingBubbleAddsLocalCardMigrationStrikes) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
   SaveLocalCard(kSecondCardNumber);
   UseCardAndWaitForMigrationOffer(kFirstCardNumber);
-  ClickOnDialogViewAndWait(close_button(),
+  ClickOnDialogViewAndWait(GetCloseButton(),
                            GetLocalCardMigrationOfferBubbleViews());
 
   // No bubble should be showing.
@@ -977,20 +951,18 @@ IN_PROC_BROWSER_TEST_F(
 // Ensures that rejecting the migration bubble repeatedly adds strikes every
 // time, even for the same tab. Currently, it adds 3 strikes (out of 6), so this
 // test can reliably test it being added twice.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClosingBubbleAgainAddsLocalCardMigrationStrikes) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClosingBubbleAgainAddsLocalCardMigrationStrikes) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
   SaveLocalCard(kSecondCardNumber);
   UseCardAndWaitForMigrationOffer(kFirstCardNumber);
-  ClickOnDialogViewAndWait(close_button(),
+  ClickOnDialogViewAndWait(GetCloseButton(),
                            GetLocalCardMigrationOfferBubbleViews());
   // Do it again for the same tab.
   UseCardAndWaitForMigrationOffer(kFirstCardNumber);
-  ClickOnDialogViewAndWait(close_button(),
+  ClickOnDialogViewAndWait(GetCloseButton(),
                            GetLocalCardMigrationOfferBubbleViews());
 
   // No bubble should be showing.
@@ -1011,14 +983,12 @@ IN_PROC_BROWSER_TEST_F(
 
 // Ensures that reshowing and closing bubble after previously closing it does
 // not add strikes.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ReshowingBubbleDoesNotAddStrikes) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ReshowingBubbleDoesNotAddStrikes) {
   SaveLocalCard(kFirstCardNumber);
   SaveLocalCard(kSecondCardNumber);
   UseCardAndWaitForMigrationOffer(kFirstCardNumber);
-  ClickOnDialogViewAndWait(close_button(),
+  ClickOnDialogViewAndWait(GetCloseButton(),
                            GetLocalCardMigrationOfferBubbleViews());
   base::HistogramTester histogram_tester;
   ClickOnView(GetLocalCardMigrationIconView());
@@ -1029,7 +999,7 @@ IN_PROC_BROWSER_TEST_F(
                            GetLocalCardMigrationOfferBubbleViews())
           ->GetVisible());
 
-  ClickOnDialogViewAndWait(close_button(),
+  ClickOnDialogViewAndWait(GetCloseButton(),
                            GetLocalCardMigrationOfferBubbleViews());
 
   // Metrics
@@ -1037,10 +1007,8 @@ IN_PROC_BROWSER_TEST_F(
       "Autofill.LocalCardMigrationBubbleOffer.FirstShow", 0);
 }
 
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClosedReason_BubbleAccepted) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClosedReason_BubbleAccepted) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -1054,16 +1022,14 @@ IN_PROC_BROWSER_TEST_F(
                   autofill_metrics::LOCAL_CARD_MIGRATION_BUBBLE_ACCEPTED, 1)));
 }
 
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClosedReason_BubbleClosed) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClosedReason_BubbleClosed) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
   SaveLocalCard(kSecondCardNumber);
   UseCardAndWaitForMigrationOffer(kFirstCardNumber);
-  ClickOnDialogViewAndWait(close_button(),
+  ClickOnDialogViewAndWait(GetCloseButton(),
                            GetLocalCardMigrationOfferBubbleViews());
 
   EXPECT_THAT(histogram_tester.GetAllSamples(
@@ -1072,10 +1038,8 @@ IN_PROC_BROWSER_TEST_F(
                   autofill_metrics::LOCAL_CARD_MIGRATION_BUBBLE_CLOSED, 1)));
 }
 
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClosedReason_BubbleNotInteracted) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClosedReason_BubbleNotInteracted) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -1093,10 +1057,8 @@ IN_PROC_BROWSER_TEST_F(
           autofill_metrics::LOCAL_CARD_MIGRATION_BUBBLE_NOT_INTERACTED, 1)));
 }
 
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_ClosedReason_BubbleLostFocus) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest,
+                       ClosedReason_BubbleLostFocus) {
   base::HistogramTester histogram_tester;
 
   SaveLocalCard(kFirstCardNumber);
@@ -1117,10 +1079,7 @@ IN_PROC_BROWSER_TEST_F(
 
 // Tests to ensure the card nickname is shown correctly in the local card
 // migration dialog.
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_CardIdentifierString) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest, CardIdentifierString) {
   base::HistogramTester histogram_tester;
 
   CreditCard first_card = SaveLocalCard(
@@ -1143,10 +1102,7 @@ IN_PROC_BROWSER_TEST_F(
             first_card.NicknameAndLastFourDigitsForTesting());
 }
 
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_IconViewAccessibleName) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserTest, IconViewAccessibleName) {
   EXPECT_EQ(GetLocalCardMigrationIconView()->GetAccessibleName(),
             l10n_util::GetStringUTF16(IDS_TOOLTIP_MIGRATE_LOCAL_CARD));
   EXPECT_EQ(
@@ -1154,10 +1110,7 @@ IN_PROC_BROWSER_TEST_F(
       l10n_util::GetStringUTF16(IDS_TOOLTIP_MIGRATE_LOCAL_CARD));
 }
 
-IN_PROC_BROWSER_TEST_F(
-    LocalCardMigrationBrowserUiTest,
-    // TODO(crbug.com/1007051): Flaky, but feature should soon be removed.
-    DISABLED_InvokeUi_default) {
+IN_PROC_BROWSER_TEST_F(LocalCardMigrationBrowserUiTest, InvokeUi_default) {
   ShowAndVerifyUi();
 }
 

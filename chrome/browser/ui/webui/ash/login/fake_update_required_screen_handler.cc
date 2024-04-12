@@ -6,16 +6,9 @@
 
 namespace ash {
 
-FakeUpdateRequiredScreenHandler::FakeUpdateRequiredScreenHandler() = default;
-FakeUpdateRequiredScreenHandler::~FakeUpdateRequiredScreenHandler() = default;
-
 void FakeUpdateRequiredScreenHandler::SetUIState(
     UpdateRequiredView::UIState ui_state) {
   ui_state_ = ui_state;
-}
-
-base::WeakPtr<UpdateRequiredView> FakeUpdateRequiredScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
 }
 
 }  // namespace ash

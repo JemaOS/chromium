@@ -3,15 +3,10 @@
 // found in the LICENSE file.
 
 #include "base/memory/scoped_refptr.h"
-#include "base/metrics/histogram_base.h"
-#include "base/test/metrics/histogram_tester.h"
-#include "base/test/spin_wait.h"
 #include "base/test/test_future.h"
-#include "base/test/test_timeouts.h"
 #include "base/time/time.h"
 #include "chrome/browser/chromeos/extensions/wm/wm_desks_private_api.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chromeos/crosapi/mojom/desk.mojom.h"
 #include "chromeos/crosapi/mojom/test_controller.mojom.h"
 #include "chromeos/lacros/lacros_service.h"
@@ -20,22 +15,29 @@
 
 namespace extensions {
 
+namespace {
+constexpr base::TimeDelta kWaitForAnimationTimeout = base::Seconds(20);
+}
+
+// TODO(aprilzhou): Add lacros test for switch desk once switching desk is
+// implemented in lacros.
 class DesksExtensionApiLacrosTest : public extensions::ExtensionApiTest {
  public:
   DesksExtensionApiLacrosTest() = default;
   ~DesksExtensionApiLacrosTest() override = default;
-  bool CheckIsSavedDeskStorageReady(chromeos::LacrosService* service) {
-    base::test::TestFuture<bool> future;
-    service->GetRemote<crosapi::mojom::TestController>()
-        ->IsSavedDeskStorageReady(future.GetCallback());
-    return future.Get();
-  }
-
-  bool CheckAreDesksModified(chromeos::LacrosService* service) {
-    base::test::TestFuture<bool> future;
-    service->GetRemote<crosapi::mojom::TestController>()->AreDesksBeingModified(
-        future.GetCallback());
-    return future.Get();
+  void WaitForDeskAnimation(chromeos::LacrosService* lacros_service,
+                            base::TimeDelta animation_timeout) {
+    auto are_desks_being_modified = true;
+    auto start = base::Time::NowFromSystemTime();
+    while (are_desks_being_modified) {
+      base::test::TestFuture<bool> future;
+      lacros_service->GetRemote<crosapi::mojom::TestController>()
+          ->AreDesksBeingModified(future.GetCallback());
+      are_desks_being_modified = future.Get();
+      auto now = base::Time::NowFromSystemTime();
+      if (start + animation_timeout < now)
+        FAIL() << "Desk animation timeout";
+    }
   }
 };
 
@@ -47,18 +49,11 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest,
   chromeos::LacrosService* lacros_service = chromeos::LacrosService::Get();
 
   if (!lacros_service->IsAvailable<crosapi::mojom::Desk>() ||
-      lacros_service->GetInterfaceVersion<crosapi::mojom::Desk>() <
+      lacros_service->GetInterfaceVersion(crosapi::mojom::Desk::Uuid_) <
           static_cast<int>(crosapi::mojom::Desk::MethodMinVersions::
-                               kGetSavedDesksMinVersion) ||
-      lacros_service->GetInterfaceVersion<crosapi::mojom::TestController>() <
-          static_cast<int>(crosapi::mojom::TestController::MethodMinVersions::
-                               kIsSavedDeskStorageReadyMinVersion)) {
+                               kGetSavedDesksMinVersion)) {
     GTEST_SKIP() << "Unsupported ash version.";
   }
-
-  SPIN_FOR_TIMEDELTA_OR_UNTIL_TRUE(
-      TestTimeouts::action_max_timeout(),
-      CheckIsSavedDeskStorageReady(lacros_service) == true);
   // This loads and runs an extension from
   // chrome/test/data/extensions/api_test/wm_desks_private.
   ASSERT_TRUE(RunExtensionTest("wm_desks_private")) << message_;
@@ -80,9 +75,7 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest, ListDesksTest) {
 }
 
 // Tests launch and close a desk.
-// Disable due to flakiness (crbug.com/1442077)
-IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest,
-                       DISABLED_LaunchAndCloseDeskTest) {
+IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest, LaunchAndCloseDeskTest) {
   auto* lacros_service = chromeos::LacrosService::Get();
   if (!lacros_service->IsAvailable<crosapi::mojom::Desk>()) {
     GTEST_SKIP() << "Unsupported ash version.";
@@ -100,10 +93,7 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest,
       base::Uuid::ParseCaseInsensitive(desk_id->GetString()).is_valid());
 
   // Wait for launch desk animation to settle.
-  SPIN_FOR_TIMEDELTA_OR_UNTIL_TRUE(
-      TestTimeouts::action_max_timeout(),
-      CheckAreDesksModified(lacros_service) == false);
-
+  WaitForDeskAnimation(lacros_service, kWaitForAnimationTimeout);
   histogram_tester.ExpectBucketCount("Ash.DeskApi.LaunchDesk.Result", 1, 1);
 
   // Remove a desk.
@@ -111,58 +101,11 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest,
       base::MakeRefCounted<WmDesksPrivateRemoveDeskFunction>();
   api_test_utils::RunFunctionAndReturnSingleResult(
       remove_desk_function.get(),
-      R"([")" + desk_id->GetString() +
-          R"(", { "combineDesks": false, "allowUndo": false }])",
+      R"([")" + desk_id->GetString() + R"(", { "combineDesks": false }])",
       profile());
 
   // Wait for remove desk animation to settle.
-  SPIN_FOR_TIMEDELTA_OR_UNTIL_TRUE(
-      TestTimeouts::action_max_timeout(),
-      CheckAreDesksModified(lacros_service) == false);
-  histogram_tester.ExpectBucketCount("Ash.DeskApi.RemoveDesk.Result", 1, 1);
-}
-
-// Tests launch and removes desk. Waits for undo toast to expire.
-// Disabled due to flakiness
-IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest,
-                       DISABLED_LaunchAndAttemptUndo) {
-  auto* lacros_service = chromeos::LacrosService::Get();
-  if (!lacros_service->IsAvailable<crosapi::mojom::Desk>()) {
-    GTEST_SKIP() << "Unsupported ash version.";
-  }
-
-  // Launch a desk.
-  auto launch_desk_function =
-      base::MakeRefCounted<WmDesksPrivateLaunchDeskFunction>();
-  base::HistogramTester histogram_tester;
-  // The RunFunctionAndReturnSingleResult already asserts no error
-  auto desk_id = api_test_utils::RunFunctionAndReturnSingleResult(
-      launch_desk_function.get(), R"([{"deskName":"test"}])", profile());
-  EXPECT_TRUE(desk_id->is_string());
-  EXPECT_TRUE(
-      base::Uuid::ParseCaseInsensitive(desk_id->GetString()).is_valid());
-
-  // Wait for launch desk animation to settle.
-  SPIN_FOR_TIMEDELTA_OR_UNTIL_TRUE(
-      TestTimeouts::action_max_timeout(),
-      CheckAreDesksModified(lacros_service) == false);
-
-  histogram_tester.ExpectBucketCount("Ash.DeskApi.LaunchDesk.Result", 1, 1);
-
-  // Remove a desk.
-  auto remove_desk_function =
-      base::MakeRefCounted<WmDesksPrivateRemoveDeskFunction>();
-  api_test_utils::RunFunctionAndReturnSingleResult(
-      remove_desk_function.get(),
-      R"([")" + desk_id->GetString() +
-          R"(", { "combineDesks": false, "allowUndo": true }])",
-      profile());
-
-  // Wait for remove desk animation to settle.
-  SPIN_FOR_TIMEDELTA_OR_UNTIL_TRUE(
-      TestTimeouts::action_max_timeout(),
-      CheckAreDesksModified(lacros_service) == false);
-
+  WaitForDeskAnimation(lacros_service, kWaitForAnimationTimeout);
   histogram_tester.ExpectBucketCount("Ash.DeskApi.RemoveDesk.Result", 1, 1);
 }
 
@@ -185,13 +128,11 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest,
 }
 
 // Tests switch to different desk show trigger animation.
-// Disable due to flakiness (crbug.com/1442077)
-IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest,
-                       DISABLED_SwitchToDifferentDeskTest) {
+IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest, SwitchToDifferentDeskTest) {
   auto* lacros_service = chromeos::LacrosService::Get();
 
   if (!lacros_service->IsAvailable<crosapi::mojom::Desk>() ||
-      lacros_service->GetInterfaceVersion<crosapi::mojom::Desk>() <
+      lacros_service->GetInterfaceVersion(crosapi::mojom::Desk::Uuid_) <
           static_cast<int>(
               crosapi::mojom::Desk::MethodMinVersions::kSwitchDeskMinVersion)) {
     GTEST_SKIP() << "Unsupported ash version.";
@@ -218,9 +159,7 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest,
   EXPECT_TRUE(
       base::Uuid::ParseCaseInsensitive(desk_id_1->GetString()).is_valid());
   // Waiting for desk launch animation to settle
-  SPIN_FOR_TIMEDELTA_OR_UNTIL_TRUE(
-      TestTimeouts::action_max_timeout(),
-      CheckAreDesksModified(lacros_service) == false);
+  WaitForDeskAnimation(lacros_service, kWaitForAnimationTimeout);
 
   // Switches to the previous desk.
   auto switch_desk_function =
@@ -229,9 +168,8 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest,
   api_test_utils::RunFunctionAndReturnSingleResult(
       switch_desk_function.get(), R"([")" + desk_id->GetString() + R"("])",
       profile());
-  SPIN_FOR_TIMEDELTA_OR_UNTIL_TRUE(
-      TestTimeouts::action_max_timeout(),
-      CheckAreDesksModified(lacros_service) == false);
+
+  WaitForDeskAnimation(lacros_service, kWaitForAnimationTimeout);
 
   auto get_active_desk_function_ =
       base::MakeRefCounted<WmDesksPrivateGetActiveDeskFunction>();
@@ -250,9 +188,7 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest,
       profile());
 
   // Wait for remove desk animation to settle.
-  SPIN_FOR_TIMEDELTA_OR_UNTIL_TRUE(
-      TestTimeouts::action_max_timeout(),
-      CheckAreDesksModified(lacros_service) == false);
+  WaitForDeskAnimation(lacros_service, kWaitForAnimationTimeout);
 }
 
 // Tests switch to current desk should skip animation.
@@ -260,7 +196,7 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest, SwitchToCurrentDeskTest) {
   auto* lacros_service = chromeos::LacrosService::Get();
 
   if (!lacros_service->IsAvailable<crosapi::mojom::Desk>() ||
-      lacros_service->GetInterfaceVersion<crosapi::mojom::Desk>() <
+      lacros_service->GetInterfaceVersion(crosapi::mojom::Desk::Uuid_) <
           static_cast<int>(
               crosapi::mojom::Desk::MethodMinVersions::kSwitchDeskMinVersion)) {
     GTEST_SKIP() << "Unsupported ash version.";
@@ -297,7 +233,7 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest, GetDeskByIDTest) {
   auto* lacros_service = chromeos::LacrosService::Get();
 
   if (!lacros_service->IsAvailable<crosapi::mojom::Desk>() ||
-      lacros_service->GetInterfaceVersion<crosapi::mojom::Desk>() <
+      lacros_service->GetInterfaceVersion(crosapi::mojom::Desk::Uuid_) <
           static_cast<int>(crosapi::mojom::Desk::MethodMinVersions::
                                kGetDeskByIDMinVersion)) {
     GTEST_SKIP() << "Unsupported ash version.";
@@ -327,7 +263,7 @@ IN_PROC_BROWSER_TEST_F(DesksExtensionApiLacrosTest, GetDeskByInvalidIDTest) {
   auto* lacros_service = chromeos::LacrosService::Get();
 
   if (!lacros_service->IsAvailable<crosapi::mojom::Desk>() ||
-      lacros_service->GetInterfaceVersion<crosapi::mojom::Desk>() <
+      lacros_service->GetInterfaceVersion(crosapi::mojom::Desk::Uuid_) <
           static_cast<int>(crosapi::mojom::Desk::MethodMinVersions::
                                kGetDeskByIDMinVersion)) {
     GTEST_SKIP() << "Unsupported ash version.";

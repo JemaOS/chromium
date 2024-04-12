@@ -8,7 +8,6 @@
 
 #include "ash/ash_export.h"
 #include "base/environment.h"
-#include "base/functional/callback_helpers.h"
 #include "base/i18n/time_formatting.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
@@ -112,10 +111,10 @@ std::unique_ptr<google_apis::calendar::EventList> CreateMockEventList(
   return event_list;
 }
 
-ASH_EXPORT bool IsTheSameMonth(const base::Time date_a,
-                               const base::Time date_b) {
-  return base::UnlocalizedTimeFormatWithPattern(date_a, "MM YYYY") ==
-         base::UnlocalizedTimeFormatWithPattern(date_b, "MM YYYY");
+ASH_EXPORT bool IsTheSameMonth(const base::Time& date_a,
+                               const base::Time& date_b) {
+  return base::TimeFormatWithPattern(date_a, "MM YYYY") ==
+         base::TimeFormatWithPattern(date_b, "MM YYYY");
 }
 
 base::Time GetTimeFromString(const char* start_time) {
@@ -129,20 +128,10 @@ CalendarClientTestImpl::CalendarClientTestImpl() = default;
 
 CalendarClientTestImpl::~CalendarClientTestImpl() = default;
 
-base::OnceClosure CalendarClientTestImpl::GetCalendarList(
-    google_apis::calendar::CalendarListCallback callback) {
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(std::move(callback), error_, std::move(calendars_)),
-      task_delay_);
-
-  return base::DoNothing();
-}
-
 base::OnceClosure CalendarClientTestImpl::GetEventList(
     google_apis::calendar::CalendarEventListCallback callback,
-    const base::Time start_time,
-    const base::Time end_time) {
+    const base::Time& start_time,
+    const base::Time& end_time) {
   // Give it a little bit of time to mock the api calling. This duration is a
   // little longer than the settle down duration, so in the test after the
   // animation settled down it can still be with `kFetching` status until
@@ -153,22 +142,6 @@ base::OnceClosure CalendarClientTestImpl::GetEventList(
       task_delay_);
 
   return base::DoNothing();
-}
-
-base::OnceClosure CalendarClientTestImpl::GetEventList(
-    google_apis::calendar::CalendarEventListCallback callback,
-    const base::Time start_time,
-    const base::Time end_time,
-    const std::string& calendar_id,
-    const std::string& calendar_color_id) {
-  // TODO(b/308696020): Implement Test Client changes in conjunction with
-  // Calendar Model changes.
-  return base::DoNothing();
-}
-
-void CalendarClientTestImpl::SetCalendarList(
-    std::unique_ptr<google_apis::calendar::CalendarList> calendars) {
-  calendars_ = std::move(calendars);
 }
 
 void CalendarClientTestImpl::SetEventList(

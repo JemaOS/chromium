@@ -64,19 +64,6 @@ const char* const kPersistentPrefNames[] = {
     ash::prefs::kAccessibilityChromeVoxVirtualBrailleColumns,
     ash::prefs::kAccessibilityChromeVoxVirtualBrailleRows,
     ash::prefs::kAccessibilityChromeVoxVoiceName,
-    ash::prefs::kAccessibilityColorCorrectionEnabled,
-    ash::prefs::kAccessibilityColorVisionCorrectionAmount,
-    ash::prefs::kAccessibilityColorVisionCorrectionType,
-    ash::prefs::kAccessibilityReducedAnimationsEnabled,
-    ash::prefs::kAccessibilityFaceGazeEnabled,
-    ash::prefs::kAccessibilityFaceGazeCursorSpeedUp,
-    ash::prefs::kAccessibilityFaceGazeCursorSpeedDown,
-    ash::prefs::kAccessibilityFaceGazeCursorSpeedLeft,
-    ash::prefs::kAccessibilityFaceGazeCursorSpeedRight,
-    ash::prefs::kAccessibilityFaceGazeCursorSmoothing,
-    ash::prefs::kAccessibilityFaceGazeCursorUseAcceleration,
-    ash::prefs::kAccessibilityFaceGazeGesturesToMacros,
-    ash::prefs::kAccessibilityFaceGazeGesturesToConfidence,
     ash::prefs::kAccessibilityHighContrastEnabled,
     ash::prefs::kAccessibilityScreenMagnifierCenterFocus,
     ash::prefs::kAccessibilityScreenMagnifierEnabled,
@@ -91,14 +78,7 @@ const char* const kPersistentPrefNames[] = {
     ash::prefs::kAccessibilityAutoclickRevertToLeftClick,
     ash::prefs::kAccessibilityAutoclickStabilizePosition,
     ash::prefs::kAccessibilityAutoclickMovementThreshold,
-    ash::prefs::kAccessibilityMouseKeysEnabled,
-    ash::prefs::kAccessibilityMouseKeysShortcutToPauseEnabled,
-    ash::prefs::kAccessibilityMouseKeysDisableInTextFields,
-    ash::prefs::kAccessibilityMouseKeysAcceleration,
-    ash::prefs::kAccessibilityMouseKeysMaxSpeed,
-    ash::prefs::kAccessibilityMouseKeysDominantHand,
     ash::prefs::kAccessibilityCaretHighlightEnabled,
-    ash::prefs::kAccessibilityCaretBlinkInterval,
     ash::prefs::kAccessibilityCursorHighlightEnabled,
     ash::prefs::kAccessibilityCursorColorEnabled,
     ash::prefs::kAccessibilityCursorColor,
@@ -153,6 +133,7 @@ const char* const kPersistentPrefNames[] = {
     prefs::kBrowserSuppressDefaultBrowserPrompt,
     prefs::kDefaultBrowserLastDeclined,
     prefs::kDefaultBrowserSettingEnabled,
+    prefs::kResetCheckDefaultBrowser,
 
     // Devtools preferences are stored cross profiles as they are not storing
     // user data and just keep debugging environment settings.
@@ -184,7 +165,9 @@ const char* const kPersistentPrefNames[] = {
     prefs::kShowFullscreenToolbar,
 #endif
 
-#if BUILDFLAG(IS_LINUX)
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
+// of lacros-chrome is complete.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
     // Toggleing custom frames affects all open windows in the profile, hence
     // should be written to the regular profile when changed in incognito mode.
     prefs::kUseCustomChromeFrame,

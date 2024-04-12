@@ -19,6 +19,4 @@ dictionary AudioDecoderConfig {
   // Optional byte data required to initialize audio decoders such as Vorbis
   // codebooks.
   AllowSharedBufferSource description;
-
-  [RuntimeEnabled=MediaSourceExtensionsForWebCodecs] DOMString encryptionScheme;
 };

@@ -20,11 +20,6 @@
 #include "content/public/test/test_navigation_observer.h"
 #include "url/gurl.h"
 
-#if BUILDFLAG(ENABLE_SESSION_SERVICE)
-#include "chrome/browser/sessions/session_service.h"
-#include "chrome/browser/sessions/session_service_factory.h"
-#endif  // BUILDFLAG(ENABLE_SESSION_SERVICE)
-
 using history::DeletionInfo;
 
 class NavigationEntryRemoverTest : public InProcessBrowserTest {
@@ -41,8 +36,6 @@ class NavigationEntryRemoverTest : public InProcessBrowserTest {
         path, base::FilePath(FILE_PATH_LITERAL("d.html")));
     about_blank_ = GURL("about:blank");
   }
-
-  Profile* profile() { return browser()->profile(); }
 
   void AddNavigations(Browser* browser, const std::vector<GURL>& urls) {
     for (const GURL& url : urls) {
@@ -61,12 +54,9 @@ class NavigationEntryRemoverTest : public InProcessBrowserTest {
   }
 
   void AddBrowser(Browser* browser, const std::vector<GURL>& urls) {
-    ui_test_utils::BrowserChangeObserver new_browser_observer(
-        nullptr, ui_test_utils::BrowserChangeObserver::ChangeType::kAdded);
     ui_test_utils::NavigateToURLWithDisposition(
         browser, urls[0], WindowOpenDisposition::NEW_WINDOW,
         ui_test_utils::BROWSER_TEST_WAIT_FOR_BROWSER);
-    ui_test_utils::WaitForBrowserSetLastActive(new_browser_observer.Wait());
     AddNavigations(BrowserList::GetInstance()->GetLastActive(),
                    {urls.begin() + 1, urls.end()});
   }
@@ -94,7 +84,7 @@ class NavigationEntryRemoverTest : public InProcessBrowserTest {
                                   base::Time to,
                                   std::set<GURL> restrict_urls = {}) {
     return DeletionInfo(history::DeletionTimeRange(from, to), false, {}, {},
-                        restrict_urls.empty() ? std::optional<std::set<GURL>>()
+                        restrict_urls.empty() ? absl::optional<std::set<GURL>>()
                                               : restrict_urls);
   }
 
@@ -102,17 +92,6 @@ class NavigationEntryRemoverTest : public InProcessBrowserTest {
   void ExpectEntries(const std::vector<GURL>& expected,
                      const std::vector<GURL>& actual) {
     EXPECT_EQ(expected, actual);
-  }
-
-  // Asserts that SessionService::DeleteLastSession has been called `count`
-  // times if session service is enabled for testing.
-  void ExpectDeleteLastSessionCalled(int count) {
-#if BUILDFLAG(ENABLE_SESSION_SERVICE)
-    SessionService* session_service =
-        SessionServiceFactory::GetForProfile(profile());
-    ASSERT_TRUE(session_service);
-    EXPECT_EQ(count, session_service->count_delete_last_session_for_testing());
-#endif  // BUILDFLAG(ENABLE_SESSION_SERVICE)
   }
 
   GURL url_a_;
@@ -168,12 +147,12 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, GoBack) {
 IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, DeleteIndividual) {
   AddNavigations(browser(), {url_a_, url_b_, url_c_, url_d_});
   browsing_data::RemoveNavigationEntries(
-      profile(),
+      browser()->profile(),
       DeletionInfo::ForUrls({history::URLResult(url_b_, base::Time())}, {}));
   ExpectEntries({about_blank_, url_a_, url_c_, url_d_}, GetEntries());
 
   browsing_data::RemoveNavigationEntries(
-      profile(),
+      browser()->profile(),
       DeletionInfo::ForUrls({history::URLResult(url_c_, base::Time())}, {}));
   ExpectEntries({about_blank_, url_a_, url_d_}, GetEntries());
 }
@@ -181,21 +160,21 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, DeleteIndividual) {
 IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, DeleteAfterNavigation) {
   AddNavigations(browser(), {url_a_, url_b_});
   browsing_data::RemoveNavigationEntries(
-      profile(),
+      browser()->profile(),
       DeletionInfo::ForUrls({history::URLResult(url_b_, base::Time())}, {}));
   // The commited entry can't be removed.
   ExpectEntries({about_blank_, url_a_, url_b_}, GetEntries());
 
   AddNavigations(browser(), {url_c_});
   browsing_data::RemoveNavigationEntries(
-      profile(),
+      browser()->profile(),
       DeletionInfo::ForUrls({history::URLResult(url_b_, base::Time())}, {}));
   ExpectEntries({about_blank_, url_a_, url_c_}, GetEntries());
 }
 
 IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, DeleteAll) {
   AddNavigations(browser(), {url_a_, url_b_, url_c_});
-  browsing_data::RemoveNavigationEntries(profile(),
+  browsing_data::RemoveNavigationEntries(browser()->profile(),
                                          DeletionInfo::ForAllHistory());
   ExpectEntries({url_c_}, GetEntries());
 }
@@ -203,7 +182,8 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, DeleteAll) {
 IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, DeleteRestricted) {
   AddNavigations(browser(), {url_a_, url_b_, url_c_});
   browsing_data::RemoveNavigationEntries(
-      profile(), CreateDeletionInfo(base::Time(), base::Time::Now(), {url_b_}));
+      browser()->profile(),
+      CreateDeletionInfo(base::Time(), base::Time::Now(), {url_b_}));
   ExpectEntries({about_blank_, url_a_, url_c_}, GetEntries());
 }
 
@@ -217,12 +197,13 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, DeleteRange) {
   ASSERT_NE(t1, t2);
   ASSERT_NE(t2, t3);
 
-  browsing_data::RemoveNavigationEntries(profile(), CreateDeletionInfo(t2, t3));
+  browsing_data::RemoveNavigationEntries(browser()->profile(),
+                                         CreateDeletionInfo(t2, t3));
   ExpectEntries({about_blank_, url_a_, url_c_, url_d_}, GetEntries());
-  browsing_data::RemoveNavigationEntries(profile(),
+  browsing_data::RemoveNavigationEntries(browser()->profile(),
                                          CreateDeletionInfo(base::Time(), t1));
   ExpectEntries({url_a_, url_c_, url_d_}, GetEntries());
-  browsing_data::RemoveNavigationEntries(profile(),
+  browsing_data::RemoveNavigationEntries(browser()->profile(),
                                          CreateDeletionInfo(t3, base::Time()));
   ExpectEntries({url_a_, url_d_}, GetEntries());
 }
@@ -237,24 +218,24 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, DeleteRangeRestricted) {
   ASSERT_NE(t1, t2);
   ASSERT_NE(t2, t3);
 
-  browsing_data::RemoveNavigationEntries(profile(),
+  browsing_data::RemoveNavigationEntries(browser()->profile(),
                                          CreateDeletionInfo(t1, t3, {url_b_}));
   ExpectEntries({about_blank_, url_a_, url_c_, url_a_}, GetEntries());
   browsing_data::RemoveNavigationEntries(
-      profile(), CreateDeletionInfo(base::Time(), t2, {url_a_}));
+      browser()->profile(), CreateDeletionInfo(base::Time(), t2, {url_a_}));
   ExpectEntries({about_blank_, url_c_, url_a_}, GetEntries());
 }
 
 IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, DeleteAllAfterNavigation) {
   AddNavigations(browser(), {url_a_, url_b_, url_c_});
-  browsing_data::RemoveNavigationEntries(profile(),
+  browsing_data::RemoveNavigationEntries(browser()->profile(),
                                          DeletionInfo::ForAllHistory());
   ExpectEntries({url_c_}, GetEntries());
 
   AddNavigations(browser(), {url_d_});
   ExpectEntries({url_c_, url_d_}, GetEntries());
 
-  browsing_data::RemoveNavigationEntries(profile(),
+  browsing_data::RemoveNavigationEntries(browser()->profile(),
                                          DeletionInfo::ForAllHistory());
   ExpectEntries({url_d_}, GetEntries());
 }
@@ -262,7 +243,7 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, DeleteAllAfterNavigation) {
 IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, TwoTabsDeletion) {
   AddNavigations(browser(), {url_a_, url_b_});
   AddTab(browser(), {url_c_, url_d_});
-  browsing_data::RemoveNavigationEntries(profile(),
+  browsing_data::RemoveNavigationEntries(browser()->profile(),
                                          DeletionInfo::ForAllHistory());
 
   ExpectEntries({url_b_, url_d_}, GetEntries());
@@ -272,7 +253,7 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, TwoWindowsDeletion) {
   AddNavigations(browser(), {url_a_, url_b_});
   AddBrowser(browser(), {url_c_, url_d_});
 
-  browsing_data::RemoveNavigationEntries(profile(),
+  browsing_data::RemoveNavigationEntries(browser()->profile(),
                                          DeletionInfo::ForAllHistory());
 
   ExpectEntries({url_b_, url_d_}, GetEntries());
@@ -282,7 +263,7 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, GoBackAndDelete) {
   AddNavigations(browser(), {url_a_, url_b_, url_c_});
 
   GoBack(browser()->tab_strip_model()->GetActiveWebContents());
-  browsing_data::RemoveNavigationEntries(profile(),
+  browsing_data::RemoveNavigationEntries(browser()->profile(),
                                          DeletionInfo::ForAllHistory());
 
   ExpectEntries({url_b_}, GetEntries());
@@ -296,12 +277,11 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, RecentTabDeletion) {
   chrome::CloseTab(browser());
 
   sessions::TabRestoreService* tab_service =
-      TabRestoreServiceFactory::GetForProfile(profile());
+      TabRestoreServiceFactory::GetForProfile(browser()->profile());
   EXPECT_EQ(2U, tab_service->entries().size());
-  ExpectDeleteLastSessionCalled(0);
 
   browsing_data::RemoveNavigationEntries(
-      profile(),
+      browser()->profile(),
       DeletionInfo::ForUrls({history::URLResult(url_c_, base::Time())}, {}));
   content::RunAllTasksUntilIdle();
   EXPECT_EQ(1U, tab_service->entries().size());
@@ -309,18 +289,14 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, RecentTabDeletion) {
       tab_service->entries().front().get());
   EXPECT_EQ(url_d_, tab->navigations.front().virtual_url());
   EXPECT_TRUE(tab_service->IsLoaded());
-  ExpectDeleteLastSessionCalled(1);
 
   browsing_data::RemoveNavigationEntries(
-      profile(),
+      browser()->profile(),
       DeletionInfo::ForUrls({history::URLResult(url_d_, base::Time())}, {}));
   EXPECT_EQ(0U, tab_service->entries().size());
-  ExpectDeleteLastSessionCalled(2);
 }
 
-// TODO(crbug.com/1487680): flaky.
-IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest,
-                       DISABLED_RecentTabWindowDeletion) {
+IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest, RecentTabWindowDeletion) {
   // Create a new browser with three tabs and close it.
   AddBrowser(browser(), {url_a_});
   Browser* new_browser = BrowserList::GetInstance()->GetLastActive();
@@ -329,18 +305,17 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest,
   chrome::CloseWindow(new_browser);
 
   sessions::TabRestoreService* tab_service =
-      TabRestoreServiceFactory::GetForProfile(profile());
+      TabRestoreServiceFactory::GetForProfile(browser()->profile());
   EXPECT_EQ(1U, tab_service->entries().size());
   ASSERT_EQ(sessions::TabRestoreService::WINDOW,
             tab_service->entries().front()->type);
   auto* window = static_cast<sessions::TabRestoreService::Window*>(
       tab_service->entries().front().get());
   EXPECT_EQ(3U, window->tabs.size());
-  ExpectDeleteLastSessionCalled(0);
 
   // Delete b and d. The last opened tab should be removed.
   browsing_data::RemoveNavigationEntries(
-      profile(),
+      browser()->profile(),
       DeletionInfo::ForUrls({history::URLResult(url_b_, base::Time()),
                              history::URLResult(url_d_, base::Time())},
                             {}));
@@ -357,11 +332,10 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest,
   EXPECT_EQ(1, window->tabs[1]->tabstrip_index);
   EXPECT_EQ(url_a_, window->tabs[0]->navigations.front().virtual_url());
   EXPECT_EQ(url_c_, window->tabs[1]->navigations.front().virtual_url());
-  ExpectDeleteLastSessionCalled(1);
 
   // Delete a. The Window should be converted to a Tab.
   browsing_data::RemoveNavigationEntries(
-      profile(),
+      browser()->profile(),
       DeletionInfo::ForUrls({history::URLResult(url_a_, base::Time())}, {}));
   EXPECT_EQ(1U, tab_service->entries().size());
   ASSERT_EQ(sessions::TabRestoreService::TAB,
@@ -370,26 +344,4 @@ IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest,
       tab_service->entries().front().get());
   EXPECT_EQ(url_c_, tab->navigations.front().virtual_url());
   EXPECT_EQ(0, tab->tabstrip_index);
-  ExpectDeleteLastSessionCalled(2);
-}
-
-// Checks that we do not attempt to delete SessionService data when processing a
-// foreign history delete.
-// Test for crbug.com/1424800.
-IN_PROC_BROWSER_TEST_F(NavigationEntryRemoverTest,
-                       ForeignHistoryDeleteDoesNotDeleteSessionServiceData) {
-  AddNavigations(browser(), {url_a_, url_b_, url_c_, url_d_});
-  const DeletionInfo info =
-      DeletionInfo(history::DeletionTimeRange(base::Time(), base::Time::Now()),
-                   /*is_from_expiration=*/false,
-                   DeletionInfo::Reason::kDeleteAllForeignVisits,
-                   /*deleted_rows=*/{}, /*deleted_visit_ids=*/{},
-                   /*favicon_urls=*/{}, /*restrict_urls=*/{{url_b_}});
-  ExpectDeleteLastSessionCalled(0);
-
-  // Tab restore data is should be selectively deleted but there should not be
-  // a request to delete session service data.
-  browsing_data::RemoveNavigationEntries(profile(), info);
-  ExpectEntries({about_blank_, url_a_, url_c_, url_d_}, GetEntries());
-  ExpectDeleteLastSessionCalled(0);
 }

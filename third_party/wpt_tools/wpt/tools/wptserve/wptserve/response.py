@@ -1,11 +1,10 @@
 # mypy: allow-untyped-defs
 
-import json
-import uuid
-import traceback
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from io import BytesIO
+import json
+import uuid
 
 from hpack.struct import HeaderTuple
 from http.cookies import BaseCookie, Morsel
@@ -204,14 +203,10 @@ class Response:
         elif isinstance(self.content, str):
             yield self.content.encode(self.encoding)
         elif hasattr(self.content, "read"):
-            # Read the file in chunks rather than reading the whole file into
-            # memory at once. (See also ResponseWriter.file_chunk_size)
-            while True:
-                read = self.content.read(32 * 1024)
-                if len(read) == 0:
-                    break
-                yield read
-            self.content.close()
+            if read_file:
+                yield self.content.read()
+            else:
+                yield self.content
         else:
             for item in self.content:
                 if hasattr(item, "__call__"):
@@ -239,46 +234,27 @@ class Response:
         self.write_status_headers()
         self.write_content()
 
-    def set_error(self, code, err=None):
+    def set_error(self, code, message=""):
         """Set the response status headers and return a JSON error object:
 
         {"error": {"code": code, "message": message}}
         code is an int (HTTP status code), and message is a text string.
         """
-        if 500 <= code < 600:
-            message = self._format_server_error(err)
-            self.logger.warning(message)
-        else:
-            if err is None:
-                message = ""
-            else:
-                message = str(err)
-
-        data = json.dumps({"error": {
-            "code": code,
-            "message": message}
-        })
+        err = {"code": code,
+               "message": message}
+        data = json.dumps({"error": err})
         self.status = code
         self.headers = [("Content-Type", "application/json"),
                         ("Content-Length", len(data))]
         self.content = data
-
-    def _format_server_error(self, err):
-        if err is None:
-            suffix = "<no traceback>"
-        elif isinstance(err, str):
-            suffix = err
-        elif self.request.server.config.logging["suppress_handler_traceback"]:
-            frame = traceback.extract_tb(err.__traceback__)[-1]
-            suffix = (f"""File "{frame.filename}", line {frame.lineno} """
-                      f"""in {frame.name} (traceback suppressed)""")
-        else:
-            tb = "\n".join(f"  {line}"
-                           for line in traceback.format_tb(err.__traceback__))
-            suffix = f"""Traceback (most recent call last):
-{tb}  {type(err).__name__}: {err}
-"""
-        return f"Internal server error loading {self.request.url}:\n  {suffix}"
+        if code == 500:
+            if isinstance(message, str) and message:
+                first_line = message.splitlines()[0]
+            else:
+                first_line = "<no message given>"
+            self.logger.error("Exception loading %s: %s" % (self.request.url,
+                                                            first_line))
+            self.logger.info(message)
 
 
 class MultipartContent:

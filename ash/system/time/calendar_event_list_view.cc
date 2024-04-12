@@ -6,15 +6,18 @@
 #include <memory>
 
 #include "ash/bubble/bubble_constants.h"
+#include "ash/constants/ash_features.h"
 #include "ash/public/cpp/ash_typography.h"
 #include "ash/public/cpp/system_tray_client.h"
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
 #include "ash/style/ash_color_id.h"
+#include "ash/style/ash_color_provider.h"
 #include "ash/style/icon_button.h"
 #include "ash/style/pill_button.h"
 #include "ash/system/model/system_tray_model.h"
 #include "ash/system/time/calendar_event_list_item_view.h"
+#include "ash/system/time/calendar_event_list_item_view_jelly.h"
 #include "ash/system/time/calendar_metrics.h"
 #include "ash/system/time/calendar_utils.h"
 #include "ash/system/time/calendar_view_controller.h"
@@ -22,13 +25,15 @@
 #include "chromeos/constants/chromeos_features.h"
 #include "google_apis/calendar/calendar_api_response_types.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/compositor/layer.h"
+#include "ui/gfx/color_palette.h"
 #include "ui/gfx/geometry/rounded_corners_f.h"
+#include "ui/gfx/paint_vector_icon.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/background.h"
+#include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/scroll_view.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/vector_icons.h"
@@ -38,10 +43,12 @@ namespace ash {
 namespace {
 
 // The paddings in `close_button_container_`.
-const auto kCloseButtonContainerInsets = gfx::Insets::VH(8, 16);
+const auto kCloseButtonContainerInsets = gfx::Insets(15);
+const auto kCloseButtonContainerInsetsJelly = gfx::Insets::VH(8, 16);
 
 // The paddings in `CalendarEventListView`.
-constexpr auto kContentInsets = gfx::Insets::TLBR(0, 16, 16, 16);
+constexpr auto kContentInsets = gfx::Insets::TLBR(0, 0, 20, 0);
+constexpr auto kContentInsetsJelly = gfx::Insets::TLBR(0, 16, 16, 16);
 
 // The insets for `CalendarEmptyEventListView`.
 constexpr auto kOpenGoogleCalendarContainerInsets = gfx::Insets::VH(20, 60);
@@ -50,15 +57,20 @@ constexpr auto kOpenGoogleCalendarContainerInsets = gfx::Insets::VH(20, 60);
 constexpr int kOpenGoogleCalendarBorderThickness = 1;
 
 constexpr auto kEventListViewCornerRadius =
+    gfx::RoundedCornersF(0, 0, kBubbleCornerRadius, kBubbleCornerRadius);
+constexpr auto kEventListViewCornerRadiusJelly =
     gfx::RoundedCornersF(24, 24, kBubbleCornerRadius, kBubbleCornerRadius);
 
 constexpr int kScrollViewGradientSize = 16;
 
-// The spacing between the child lists where we separate multi-day and non
-// multi-day events into two separate child list views.
-constexpr int kEventListViewBetweenChildSpacing = 8;
+// The spacing between the child lists. Only applicable to Jelly, where we
+// separate multi-day and non multi-day events into two separate child list
+// views.
+constexpr int kEventListViewBetweenChildSpacing = 0;
+constexpr int kEventListViewBetweenChildSpacingJelly = 8;
 
-// The between child spacing within the child event lists.
+// The between child spacing within the child event lists. Only applicable to
+// Jelly.
 constexpr int kChildEventListBetweenChildSpacing = 2;
 
 }  // namespace
@@ -66,27 +78,21 @@ constexpr int kChildEventListBetweenChildSpacing = 2;
 // A view that's displayed when the user selects a day cell from the calendar
 // month view that has no events. Clicking on it opens Google calendar.
 class CalendarEmptyEventListView : public PillButton {
-  METADATA_HEADER(CalendarEmptyEventListView, PillButton)
-
  public:
   explicit CalendarEmptyEventListView(CalendarViewController* controller)
       : PillButton(views::Button::PressedCallback(base::BindRepeating(
                        &CalendarEmptyEventListView::OpenCalendarDefault,
                        base::Unretained(this))),
                    l10n_util::GetStringUTF16(IDS_ASH_CALENDAR_NO_EVENTS),
-                   chromeos::features::IsJellyEnabled()
-                       ? PillButton::Type::kSecondaryWithoutIcon
-                       : PillButton::Type::kFloatingWithoutIcon,
+                   PillButton::Type::kFloatingWithoutIcon,
                    /*icon=*/nullptr),
         controller_(controller) {
     SetHorizontalAlignment(gfx::HorizontalAlignment::ALIGN_CENTER);
-    if (!chromeos::features::IsJellyEnabled()) {
-      label()->SetTextContext(CONTEXT_CALENDAR_DATE);
-    }
-
-    SetBorder(views::CreateThemedRoundedRectBorder(
+    label()->SetTextContext(CONTEXT_CALENDAR_DATE);
+    SetBorder(views::CreateRoundedRectBorder(
         kOpenGoogleCalendarBorderThickness, GetPreferredSize().height() / 2,
-        kColorAshHairlineBorderColor));
+        AshColorProvider::Get()->GetControlsLayerColor(
+            ColorProvider::ControlsLayerType::kHairlineBorderColor)));
     SetTooltipText(
         l10n_util::GetStringUTF16(IDS_ASH_CALENDAR_NO_EVENT_BUTTON_TOOL_TIP));
   }
@@ -100,25 +106,20 @@ class CalendarEmptyEventListView : public PillButton {
   void OpenCalendarDefault() {
     controller_->OnCalendarEventWillLaunch();
 
-    calendar_metrics::RecordCalendarLaunchedFromEmptyEventList();
-
     GURL finalized_url;
     bool opened_pwa = false;
     DCHECK(controller_->selected_date().has_value());
 
     // Open Google calendar and land on the local day/month/year.
     Shell::Get()->system_tray_model()->client()->ShowCalendarEvent(
-        std::nullopt, controller_->selected_date_midnight(), opened_pwa,
+        absl::nullopt, controller_->selected_date_midnight(), opened_pwa,
         finalized_url);
   }
 
  private:
   // Owned by the parent view. Guaranteed to outlive this.
-  const raw_ptr<CalendarViewController> controller_;
+  const raw_ptr<CalendarViewController, ExperimentalAsh> controller_;
 };
-
-BEGIN_METADATA(CalendarEmptyEventListView)
-END_METADATA
 
 CalendarEventListView::CalendarEventListView(
     CalendarViewController* calendar_view_controller)
@@ -134,26 +135,29 @@ CalendarEventListView::CalendarEventListView(
   layer()->SetFillsBoundsOpaquely(false);
   // Set the bottom corners to be rounded so that `CalendarEventListView` is
   // contained in `CalendarView`.
-  layer()->SetRoundedCornerRadius(kEventListViewCornerRadius);
+  layer()->SetRoundedCornerRadius(features::IsCalendarJellyEnabled()
+                                      ? kEventListViewCornerRadiusJelly
+                                      : kEventListViewCornerRadius);
 
   views::BoxLayout* button_layout = close_button_container_->SetLayoutManager(
       std::make_unique<views::BoxLayout>(
           views::BoxLayout::Orientation::kHorizontal));
   button_layout->set_main_axis_alignment(
       views::BoxLayout::MainAxisAlignment::kEnd);
-  close_button_container_->SetBorder(
-      views::CreateEmptyBorder(kCloseButtonContainerInsets));
+  close_button_container_->SetBorder(views::CreateEmptyBorder(
+      features::IsCalendarJellyEnabled() ? kCloseButtonContainerInsetsJelly
+                                         : kCloseButtonContainerInsets));
 
-  close_button_ =
-      close_button_container_->AddChildView(std::make_unique<IconButton>(
-          views::Button::PressedCallback(
-              base::BindRepeating(&CalendarViewController::CloseEventListView,
-                                  base::Unretained(calendar_view_controller))),
-          IconButton::Type::kMediumFloating, &views::kIcCloseIcon,
-          IDS_ASH_CLOSE_BUTTON_ACCESSIBLE_DESCRIPTION));
+  auto* close_button =
+      new IconButton(views::Button::PressedCallback(base::BindRepeating(
+                         &CalendarViewController::CloseEventListView,
+                         base::Unretained(calendar_view_controller))),
+                     IconButton::Type::kMediumFloating, &views::kIcCloseIcon,
+                     IDS_ASH_CLOSE_BUTTON_ACCESSIBLE_DESCRIPTION);
+  close_button_container_->AddChildView(close_button);
 
   scroll_view_->SetAllowKeyboardScrolling(false);
-  scroll_view_->SetBackgroundColor(std::nullopt);
+  scroll_view_->SetBackgroundColor(absl::nullopt);
   // Gives a min height so the background color can be filled to all the spaces
   // in the available expanded area.
   scroll_view_->ClipHeightTo(
@@ -162,15 +166,21 @@ CalendarEventListView::CalendarEventListView(
   scroll_view_->SetVerticalScrollBarMode(
       views::ScrollView::ScrollBarMode::kHiddenButEnabled);
 
-  // Set up fade in/fade out gradients at top/bottom of scroll view.
-  scroll_view_->SetPaintToLayer(ui::LAYER_NOT_DRAWN);
-  gradient_helper_ = std::make_unique<ScrollViewGradientHelper>(
-      scroll_view_, kScrollViewGradientSize);
+  if (features::IsCalendarJellyEnabled()) {
+    // Set up fade in/fade out gradients at top/bottom of scroll view.
+    scroll_view_->SetPaintToLayer(ui::LAYER_NOT_DRAWN);
+    gradient_helper_ = std::make_unique<ScrollViewGradientHelper>(
+        scroll_view_, kScrollViewGradientSize);
+  }
 
   content_view_->SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical, gfx::Insets(),
-      kEventListViewBetweenChildSpacing));
-  content_view_->SetBorder(views::CreateEmptyBorder(kContentInsets));
+      features::IsCalendarJellyEnabled()
+          ? kEventListViewBetweenChildSpacingJelly
+          : kEventListViewBetweenChildSpacing));
+  content_view_->SetBorder(views::CreateEmptyBorder(
+      features::IsCalendarJellyEnabled() ? kContentInsetsJelly
+                                         : kContentInsets));
 
   UpdateListItems();
 
@@ -184,68 +194,19 @@ CalendarEventListView::~CalendarEventListView() = default;
 
 void CalendarEventListView::OnThemeChanged() {
   views::View::OnThemeChanged();
-  SetBackground(views::CreateSolidBackground(
-      GetColorProvider()->GetColor(cros_tokens::kCrosSysSystemOnBaseOpaque)));
+  auto color =
+      features::IsCalendarJellyEnabled() && chromeos::features::IsJellyEnabled()
+          ? GetColorProvider()->GetColor((cros_tokens::kCrosSysSystemOnBase))
+          : GetColorProvider()->GetColor(kColorAshShieldAndBaseOpaque);
+  SetBackground(views::CreateSolidBackground(color));
 }
 
-void CalendarEventListView::Layout(PassKey) {
-  LayoutSuperclass<views::View>(this);
+void CalendarEventListView::Layout() {
+  views::View::Layout();
 
   if (gradient_helper_) {
     gradient_helper_->UpdateGradientMask();
   }
-
-  // If `CalendarEventListItemView` or the join button is focused, do not scroll
-  // to the current or next event. Otherwise `scroll_view_` won't scroll with
-  // the focus change.
-  if (GetFocusManager() && GetFocusManager()->GetFocusedView()) {
-    const auto focused_view_class_name =
-        std::string_view(GetFocusManager()->GetFocusedView()->GetClassName());
-    if (focused_view_class_name ==
-            std::string_view(CalendarEventListItemView::kViewClassName) ||
-        focused_view_class_name ==
-            std::string_view(PillButton::kViewClassName)) {
-      return;
-    }
-  }
-
-  const std::optional<base::Time> selected_date =
-      calendar_view_controller_->selected_date();
-
-  // If the selected date is not today, do not auto scroll and reset the
-  // `scroll_view_` position. Otherwise the previous position will be preserved.
-  if (!calendar_utils::IsToday(selected_date.value())) {
-    scroll_view_->ScrollToPosition(scroll_view_->vertical_scroll_bar(), 0);
-    return;
-  }
-
-  // Scrolls to the top of `current_or_next_event_view_`. Ignores the multi-day
-  // events on the top if exists.
-  if (current_or_next_event_view_) {
-    auto* multi_day_events_container =
-        GetViewByID(kEventListMultiDayEventsContainer);
-
-    scroll_view_->ScrollToPosition(
-        scroll_view_->vertical_scroll_bar(),
-        (multi_day_events_container
-             ? multi_day_events_container->GetPreferredSize().height() +
-                   kEventListViewBetweenChildSpacing
-             : 0) +
-            (current_or_next_event_view_->GetPreferredSize().height() +
-             kChildEventListBetweenChildSpacing) *
-                current_or_next_event_index_);
-  } else {
-    // If there's no current or next event because there's no single-day event
-    // for today or all events have passed, scroll to the end of the list if
-    // selected date is today.
-    scroll_view_->ScrollToPosition(
-        scroll_view_->vertical_scroll_bar(),
-        scroll_view_->GetVisibleRect().bottom() + kContentInsets.bottom());
-  }
-}
-
-void CalendarEventListView::RequestCloseButtonFocus() {
-  close_button_->RequestFocus();
 }
 
 void CalendarEventListView::OnSelectedDateUpdated() {
@@ -264,81 +225,81 @@ void CalendarEventListView::OnEventsFetched(
 }
 
 std::unique_ptr<views::View> CalendarEventListView::CreateChildEventListView(
-    std::list<google_apis::calendar::CalendarEvent> events,
-    int parent_view_id) {
+    std::list<google_apis::calendar::CalendarEvent> events) {
   auto container = std::make_unique<views::View>();
   container->SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical, gfx::Insets(),
       kChildEventListBetweenChildSpacing));
-  container->SetID(parent_view_id);
 
   const int events_size = events.size();
   for (SingleDayEventList::iterator it = events.begin(); it != events.end();
        ++it) {
     const int event_index = std::distance(events.begin(), it) + 1;
-    auto* event_list_item_view =
-        container->AddChildView(std::make_unique<CalendarEventListItemView>(
-            /*calendar_view_controller=*/calendar_view_controller_,
-            /*selected_date_params=*/
-            SelectedDateParams{
-                calendar_view_controller_->selected_date().value(),
-                calendar_view_controller_->selected_date_midnight(),
-                calendar_view_controller_
-                    ->selected_date_midnight_utc()}, /*event=*/
-            *it,
-            /*ui_params=*/
-            UIParams{/*round_top_corners=*/it == events.begin(),
-                     /*round_bottom_corners=*/it->id() == events.rbegin()->id(),
-                     /*is_up_next_event_list_item=*/false,
-                     /*show_event_list_dot=*/true,
-                     /*fixed_width=*/0},
-            /*event_list_item_index=*/
-            EventListItemIndex{/*item_index=*/event_index,
-                               /*total_count_of_events=*/events_size}));
-
-    // The `current_or_next_event_view_` is the first event that is not an
-    // all-day or multi-day event, and is the ongoing or the following event.
-    if (!current_or_next_event_view_ &&
-        event_list_item_view->is_current_or_next_single_day_event()) {
-      current_or_next_event_view_ = event_list_item_view;
-      current_or_next_event_index_ = event_index - 1;
-    }
+    container->AddChildView(std::make_unique<CalendarEventListItemViewJelly>(
+        /*calendar_view_controller=*/calendar_view_controller_,
+        /*selected_date_params=*/
+        SelectedDateParams{
+            calendar_view_controller_->selected_date().value(),
+            calendar_view_controller_->selected_date_midnight(),
+            calendar_view_controller_->selected_date_midnight_utc()}, /*event=*/
+        *it,
+        /*ui_params=*/
+        UIParams{/*round_top_corners=*/it == events.begin(),
+                 /*round_bottom_corners=*/it->id() == events.rbegin()->id(),
+                 /*show_event_list_dot=*/true,
+                 /*fixed_width=*/0},
+        /*event_list_item_index=*/
+        EventListItemIndex{/*item_index=*/event_index,
+                           /*total_count_of_events=*/events_size}));
   }
 
   return container;
 }
 
 void CalendarEventListView::UpdateListItems() {
-  // Resets `current_or_next_event_view_` and `current_or_next_event_index_`
-  // since the `event_list_view_` has been updated. This has to be reset before
-  // `RemoveAllChildViews()` is called otherwise it will become a dangling ptr.
-  current_or_next_event_view_ = nullptr;
-  current_or_next_event_index_ = 0;
-
   content_view_->RemoveAllChildViews();
 
-  const auto [multi_day_events, all_other_events] =
-      calendar_view_controller_->SelectedDateEventsSplitByMultiDayAndSameDay();
+  if (features::IsCalendarJellyEnabled()) {
+    const auto [multi_day_events, all_other_events] =
+        calendar_view_controller_
+            ->SelectedDateEventsSplitByMultiDayAndSameDay();
 
-  // If we have some events to display, then add them to the `content_view_`
-  // and early return (the following methods in `UpdateListItems` handle empty
-  // state etc).
-  if (!multi_day_events.empty()) {
-    content_view_->AddChildView(CreateChildEventListView(
-        multi_day_events, kEventListMultiDayEventsContainer));
-  }
-  if (!all_other_events.empty()) {
-    content_view_->AddChildView(CreateChildEventListView(
-        all_other_events, kEventListSameDayEventsContainer));
-  }
+    // If we have some events to display, then add them to the `content_view_`
+    // and early return (the following methods in `UpdateListItems` handle empty
+    // state etc).
+    if (!multi_day_events.empty()) {
+      content_view_->AddChildView(CreateChildEventListView(multi_day_events));
+    }
+    if (!all_other_events.empty()) {
+      content_view_->AddChildView(CreateChildEventListView(all_other_events));
+    }
 
-  content_view_->InvalidateLayout();
+    content_view_->InvalidateLayout();
 
-  calendar_metrics::RecordEventListEventCount(multi_day_events.size() +
-                                              all_other_events.size());
+    calendar_metrics::RecordEventListEventCount(multi_day_events.size() +
+                                                all_other_events.size());
 
-  if (!multi_day_events.empty() || !all_other_events.empty()) {
-    return;
+    if (!multi_day_events.empty() || !all_other_events.empty()) {
+      return;
+    }
+  } else {
+    std::list<google_apis::calendar::CalendarEvent> events =
+        calendar_view_controller_->SelectedDateEvents();
+
+    calendar_metrics::RecordEventListEventCount(events.size());
+
+    if (events.size() > 0) {
+      for (auto& event : events) {
+        auto* event_entry = content_view_->AddChildView(
+            std::make_unique<CalendarEventListItemView>(
+                /*calendar_view_controller=*/calendar_view_controller_,
+                /*event=*/event));
+        // Needs to repaint the `content_view_`'s children.
+        event_entry->InvalidateLayout();
+      }
+
+      return;
+    }
   }
 
   // Show "Open in Google calendar"
@@ -352,7 +313,7 @@ void CalendarEventListView::UpdateListItems() {
               calendar_view_controller_));
 
   // There is a corner case when user closes the event list view before this
-  // line of code is executed. Then `selected_date_` is std::nullopt and
+  // line of code is executed. Then `selected_date_` is absl::nullopt and
   // getting its value leads to a crash. Only set accessible name when
   // `selected_date_` has value, since if `event_list_view_` is closed, there'll
   // be no need to set the accessible name.
@@ -372,7 +333,7 @@ void CalendarEventListView::UpdateListItems() {
   empty_list_view->InvalidateLayout();
 }
 
-BEGIN_METADATA(CalendarEventListView);
+BEGIN_METADATA(CalendarEventListView, views::View);
 END_METADATA
 
 }  // namespace ash

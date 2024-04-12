@@ -22,22 +22,31 @@ GPUQuerySet* GPUQuerySet::Create(GPUDevice* device,
   dawn_desc.type = AsDawnEnum(webgpu_desc->type());
   dawn_desc.count = webgpu_desc->count();
 
-  std::string label = webgpu_desc->label().Utf8();
-  if (!label.empty()) {
+  std::unique_ptr<WGPUPipelineStatisticName[]> pipeline_statistics;
+  if (webgpu_desc->hasPipelineStatistics()) {
+    pipeline_statistics = AsDawnEnum<WGPUPipelineStatisticName>(
+        webgpu_desc->pipelineStatistics());
+    dawn_desc.pipelineStatistics = pipeline_statistics.get();
+    dawn_desc.pipelineStatisticsCount =
+        webgpu_desc->pipelineStatistics().size();
+  }
+
+  std::string label;
+  if (webgpu_desc->hasLabel()) {
+    label = webgpu_desc->label().Utf8();
     dawn_desc.label = label.c_str();
   }
 
   GPUQuerySet* query_set = MakeGarbageCollected<GPUQuerySet>(
       device,
-      device->GetProcs().deviceCreateQuerySet(device->GetHandle(), &dawn_desc),
-      webgpu_desc->label());
+      device->GetProcs().deviceCreateQuerySet(device->GetHandle(), &dawn_desc));
+  if (webgpu_desc->hasLabel())
+    query_set->setLabel(webgpu_desc->label());
   return query_set;
 }
 
-GPUQuerySet::GPUQuerySet(GPUDevice* device,
-                         WGPUQuerySet querySet,
-                         const String& label)
-    : DawnObject<WGPUQuerySet>(device, querySet, label) {}
+GPUQuerySet::GPUQuerySet(GPUDevice* device, WGPUQuerySet querySet)
+    : DawnObject<WGPUQuerySet>(device, querySet) {}
 
 void GPUQuerySet::destroy() {
   GetProcs().querySetDestroy(GetHandle());

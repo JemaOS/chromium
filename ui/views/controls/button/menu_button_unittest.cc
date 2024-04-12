@@ -80,55 +80,56 @@ class MenuButtonTest : public ViewsTestBase {
 
   void TearDown() override {
     generator_.reset();
-    widget_.reset();
+    if (widget_ && !widget_->IsClosed())
+      widget_->Close();
+
     ViewsTestBase::TearDown();
   }
 
  protected:
-  Widget* widget() { return widget_.get(); }
-  TestMenuButton* button() {
-    return static_cast<TestMenuButton*>(widget()->GetContentsView());
-  }
+  Widget* widget() { return widget_; }
+  TestMenuButton* button() { return button_; }
   ui::test::EventGenerator* generator() { return generator_.get(); }
-  test::TestInkDrop* ink_drop() {
-    return static_cast<test::TestInkDrop*>(
-        test::InkDropHostTestApi(InkDrop::Get(button())).ink_drop());
+  test::TestInkDrop* ink_drop() { return ink_drop_; }
+
+  gfx::Point GetOutOfButtonLocation() const {
+    return gfx::Point(button_->x() - 1, button_->y() - 1);
   }
 
-  gfx::Point GetOutOfButtonLocation() {
-    return gfx::Point(button()->x() - 1, button()->y() - 1);
-  }
+  void CreateWidget() {
+    DCHECK(!widget_);
 
-  void ConfigureMenuButton(std::unique_ptr<TestMenuButton> test_button) {
-    CHECK(!widget_);
-
-    widget_ = std::make_unique<Widget>();
+    widget_ = new Widget;
     Widget::InitParams params =
         CreateParams(Widget::InitParams::TYPE_WINDOW_FRAMELESS);
-    params.ownership = Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
     params.bounds = gfx::Rect(0, 0, 200, 200);
     widget_->Init(std::move(params));
-    widget_->Show();
+  }
 
+  void ConfigureMenuButton(std::unique_ptr<TestMenuButton> button) {
+    CreateWidget();
     generator_ =
-        std::make_unique<ui::test::EventGenerator>(GetRootWindow(widget()));
+        std::make_unique<ui::test::EventGenerator>(GetRootWindow(widget_));
     // Set initial mouse location in a consistent way so that the menu button we
     // are about to create initializes its hover state in a consistent manner.
     generator_->set_current_screen_location(gfx::Point(10, 10));
 
-    widget_->SetContentsView(std::move(test_button));
-    button()->SetBoundsRect(gfx::Rect(0, 0, 200, 20));
+    button_ = widget_->SetContentsView(std::move(button));
+    button_->SetBoundsRect(gfx::Rect(0, 0, 200, 20));
 
     auto ink_drop = std::make_unique<test::TestInkDrop>();
-    test::InkDropHostTestApi(InkDrop::Get(button()))
+    ink_drop_ = ink_drop.get();
+    test::InkDropHostTestApi(InkDrop::Get(button_))
         .SetInkDrop(std::move(ink_drop));
 
     widget_->Show();
   }
 
  private:
-  std::unique_ptr<Widget> widget_;
+  raw_ptr<Widget> widget_ = nullptr;          // Owned by self.
+  raw_ptr<TestMenuButton> button_ = nullptr;  // Owned by |widget_|.
   std::unique_ptr<ui::test::EventGenerator> generator_;
+  raw_ptr<test::TestInkDrop> ink_drop_ = nullptr;  // Owned by |button_|.
 };
 
 // A Button that will acquire a PressedLock in the pressed callback and

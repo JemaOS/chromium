@@ -17,13 +17,13 @@ namespace sharedStoragePrivate {
 
   interface Functions {
     // Gets all items from shared extension local storage.
-    static void get(GetCallback callback);
+    [supportsPromises] static void get(GetCallback callback);
 
     // Sets given items into shared extension local storage.
-    static void set(object items, SetCallback callback);
+    [supportsPromises] static void set(object items, SetCallback callback);
 
     // Removes item from shared extension local storage.
-    static void remove(
+    [supportsPromises] static void remove(
         DOMString[] keys, RemoveCallback callback);
   };
 };

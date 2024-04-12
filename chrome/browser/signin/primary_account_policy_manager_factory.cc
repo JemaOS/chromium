@@ -24,7 +24,14 @@ PrimaryAccountPolicyManager* PrimaryAccountPolicyManagerFactory::GetForProfile(
 }
 
 PrimaryAccountPolicyManagerFactory::PrimaryAccountPolicyManagerFactory()
-    : ProfileKeyedServiceFactory("PrimaryAccountPolicyManager") {
+    : ProfileKeyedServiceFactory(
+          "PrimaryAccountPolicyManager",
+          ProfileSelections::Builder()
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
+              .Build()) {
   DependsOn(IdentityManagerFactory::GetInstance());
   DependsOn(ChromeSigninClientFactory::GetInstance());
 }
@@ -32,9 +39,8 @@ PrimaryAccountPolicyManagerFactory::PrimaryAccountPolicyManagerFactory()
 PrimaryAccountPolicyManagerFactory::~PrimaryAccountPolicyManagerFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-PrimaryAccountPolicyManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PrimaryAccountPolicyManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<PrimaryAccountPolicyManager>(profile);
+  return new PrimaryAccountPolicyManager(profile);
 }

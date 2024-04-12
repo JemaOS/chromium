@@ -13,7 +13,6 @@
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "base/time/time.h"
@@ -32,6 +31,7 @@ class Layer;
 }
 
 namespace gfx {
+class Animation;
 class AnimationCurve;
 class Rect;
 class Transform;
@@ -40,6 +40,7 @@ class Transform;
 namespace ui {
 class Compositor;
 class ImplicitAnimationObserver;
+class Layer;
 class LayerAnimationSequence;
 class LayerAnimationDelegate;
 class LayerAnimationObserver;
@@ -75,10 +76,10 @@ class COMPOSITOR_EXPORT LayerAnimator : public base::RefCounted<LayerAnimator>,
   LayerAnimator& operator=(const LayerAnimator&) = delete;
 
   // No implicit animations when properties are set.
-  static scoped_refptr<LayerAnimator> CreateDefaultAnimator();
+  static LayerAnimator* CreateDefaultAnimator();
 
   // Implicitly animates when properties are set.
-  static scoped_refptr<LayerAnimator> CreateImplicitAnimator();
+  static LayerAnimator* CreateImplicitAnimator();
 
   // Sets the transform on the delegate. May cause an implicit animation.
   virtual void SetTransform(const gfx::Transform& transform);
@@ -399,7 +400,7 @@ class COMPOSITOR_EXPORT LayerAnimator : public base::RefCounted<LayerAnimator>,
       base::TimeTicks animation_start_time,
       std::unique_ptr<gfx::AnimationCurve> curve) override {}
   void NotifyLocalTimeUpdated(
-      std::optional<base::TimeDelta> local_time) override {}
+      absl::optional<base::TimeDelta> local_time) override {}
 
   // Implementation of LayerThreadedAnimationDelegate.
   void AddThreadedAnimation(
@@ -453,8 +454,7 @@ class COMPOSITOR_EXPORT LayerAnimator : public base::RefCounted<LayerAnimator>,
   // TODO(crbug.com/1248132): Once all references to Add/RemoveObserver
   // functions are removed, delete these, the associated methods other internal
   // related code.
-  base::ObserverList<LayerAnimationObserver>::UncheckedAndDanglingUntriaged
-      observers_;
+  base::ObserverList<LayerAnimationObserver>::Unchecked observers_;
 
   std::vector<std::unique_ptr<ImplicitAnimationObserver>> owned_observer_list_;
 

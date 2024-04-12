@@ -5,17 +5,31 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_PAYMENTS_HTML_IFRAME_ELEMENT_PAYMENTS_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_PAYMENTS_HTML_IFRAME_ELEMENT_PAYMENTS_H_
 
+#include "third_party/blink/renderer/core/html/html_iframe_element.h"
+#include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/supplementable.h"
+
 namespace blink {
 
 class HTMLIFrameElement;
 class QualifiedName;
 
-class HTMLIFrameElementPayments final {
+class HTMLIFrameElementPayments final
+    : public GarbageCollected<HTMLIFrameElementPayments>,
+      public Supplement<HTMLIFrameElement> {
  public:
-  static bool FastHasAttribute(const HTMLIFrameElement&, const QualifiedName&);
+  static const char kSupplementName[];
 
- private:
-  HTMLIFrameElementPayments() = delete;
+  HTMLIFrameElementPayments();
+
+  static bool FastHasAttribute(const HTMLIFrameElement&, const QualifiedName&);
+  static void SetBooleanAttribute(HTMLIFrameElement&,
+                                  const QualifiedName&,
+                                  bool);
+  static HTMLIFrameElementPayments& From(HTMLIFrameElement&);
+  static bool AllowPaymentRequest(HTMLIFrameElement&);
+
+  void Trace(Visitor*) const override;
 };
 
 }  // namespace blink

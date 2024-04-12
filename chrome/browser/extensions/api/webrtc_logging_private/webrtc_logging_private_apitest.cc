@@ -24,14 +24,13 @@
 #include "chrome/browser/media/webrtc/webrtc_event_log_manager.h"
 #include "chrome/browser/media/webrtc/webrtc_event_log_manager_common.h"
 #include "chrome/browser/media/webrtc/webrtc_log_uploader.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "components/policy/core/browser/browser_policy_connector.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/policy_constants.h"
+#include "content/public/browser/notification_service.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_utils.h"
@@ -163,10 +162,12 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
   // Returns the value (NOT whether it had succeeded or failed).
   // TODO(crbug.com/829419): Return success/failure of the executed function.
   template <typename Function>
-  std::optional<base::Value> RunFunction(const base::Value::List& parameters) {
+  absl::optional<base::Value> RunFunction(const base::Value::List& parameters) {
     scoped_refptr<Function> function(CreateFunction<Function>());
-    std::optional<base::Value> result = utils::RunFunctionAndReturnSingleResult(
-        function.get(), ParamsToString(parameters), GetBrowser()->profile());
+    absl::optional<base::Value> result =
+        utils::RunFunctionAndReturnSingleResult(function.get(),
+                                                ParamsToString(parameters),
+                                                GetBrowser()->profile());
     return result;
   }
 
@@ -175,12 +176,13 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
   // Returns the value (NOT whether it had succeeded or failed).
   // TODO(crbug.com/829419): Return success/failure of the executed function.
   template <typename Function>
-  std::optional<base::Value> RunNoArgsFunction() {
+  absl::optional<base::Value> RunNoArgsFunction() {
     base::Value::List params;
     AppendTabIdAndUrl(params);
     scoped_refptr<Function> function(CreateFunction<Function>());
-    std::optional<base::Value> result = utils::RunFunctionAndReturnSingleResult(
-        function.get(), ParamsToString(params), GetBrowser()->profile());
+    absl::optional<base::Value> result =
+        utils::RunFunctionAndReturnSingleResult(
+            function.get(), ParamsToString(params), GetBrowser()->profile());
     return result;
   }
 
@@ -201,7 +203,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
   // TODO(crbug.com/829419): Return success/failure of the executed function.
   bool StartLogging() {
     constexpr bool value_expected = false;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunNoArgsFunction<WebrtcLoggingPrivateStartFunction>();
     return value_expected == value.has_value();
   }
@@ -213,7 +215,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
   // TODO(crbug.com/829419): Return success/failure of the executed function.
   bool StopLogging() {
     constexpr bool value_expected = false;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunNoArgsFunction<WebrtcLoggingPrivateStopFunction>();
     return value_expected == value.has_value();
   }
@@ -225,7 +227,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
   // TODO(crbug.com/829419): Return success/failure of the executed function.
   bool DiscardLog() {
     constexpr bool value_expected = false;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunNoArgsFunction<WebrtcLoggingPrivateDiscardFunction>();
     return value_expected == value.has_value();
   }
@@ -237,7 +239,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
   // TODO(crbug.com/829419): Return success/failure of the executed function.
   bool UploadLog(std::string* report_id) {
     constexpr bool value_expected = true;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunNoArgsFunction<WebrtcLoggingPrivateUploadFunction>();
     const bool value_returned = value.has_value();
     if (value_returned)
@@ -252,7 +254,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
   // TODO(crbug.com/829419): Return success/failure of the executed function.
   bool SetMetaData(const base::Value::List& data) {
     constexpr bool value_expected = false;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunFunction<WebrtcLoggingPrivateSetMetaDataFunction>(data);
     return value_expected == value.has_value();
   }
@@ -268,7 +270,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
     params.Append(incoming);
     params.Append(outgoing);
     constexpr bool value_expected = false;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunFunction<WebrtcLoggingPrivateStartRtpDumpFunction>(params);
     return value_expected == value.has_value();
   }
@@ -284,7 +286,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
     params.Append(incoming);
     params.Append(outgoing);
     constexpr bool value_expected = false;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunFunction<WebrtcLoggingPrivateStopRtpDumpFunction>(params);
     return value_expected == value.has_value();
   }
@@ -299,7 +301,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
     AppendTabIdAndUrl(params);
     params.Append(log_id);
     constexpr bool value_expected = false;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunFunction<WebrtcLoggingPrivateStoreFunction>(params);
     return value_expected == value.has_value();
   }
@@ -314,7 +316,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
     AppendTabIdAndUrl(params);
     params.Append(log_id);
     constexpr bool value_expected = true;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunFunction<WebrtcLoggingPrivateUploadStoredFunction>(params);
     const bool value_returned = value.has_value();
     if (value_returned)
@@ -332,7 +334,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
     AppendTabIdAndUrl(params);
     params.Append(seconds);
     constexpr bool value_expected = true;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunFunction<WebrtcLoggingPrivateStartAudioDebugRecordingsFunction>(
             params);
     return value_expected == value.has_value();
@@ -347,7 +349,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
     base::Value::List params;
     AppendTabIdAndUrl(params);
     constexpr bool value_expected = true;
-    std::optional<base::Value> value =
+    absl::optional<base::Value> value =
         RunFunction<WebrtcLoggingPrivateStopAudioDebugRecordingsFunction>(
             params);
     return value_expected == value.has_value();
@@ -376,7 +378,7 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
       scoped_refptr<WebrtcLoggingPrivateStartEventLoggingFunction> function(
           CreateFunction<WebrtcLoggingPrivateStartEventLoggingFunction>());
 
-      std::optional<base::Value> result =
+      absl::optional<base::Value> result =
           utils::RunFunctionAndReturnSingleResult(
               function.get(), ParamsToString(params), GetBrowser()->profile());
 
@@ -408,7 +410,8 @@ class WebrtcLoggingPrivateApiTest : public extensions::ExtensionApiTest {
     const int lid = 0;
 
     manager->OnPeerConnectionAdded(frame_id, lid, pid, /*url=*/std::string(),
-                                   /*rtc_configuration=*/std::string());
+                                   /*rtc_configuration=*/std::string(),
+                                   /*constraints=*/std::string());
 
     if (!session_id.empty()) {
       manager->OnPeerConnectionSessionIdSet(frame_id, lid, session_id);
@@ -992,7 +995,7 @@ class WebrtcLoggingPrivateApiStartEventLoggingTestInIncognitoMode
   bool WebRtcEventLogCollectionPolicy() const override { return true; }
 
  private:
-  raw_ptr<Browser, AcrossTasksDanglingUntriaged> browser_{
+  raw_ptr<Browser, DanglingUntriaged> browser_{
       nullptr};  // Does not own the object.
 };
 

@@ -9,10 +9,10 @@
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
-#include <optional>
 #include <vector>
 
 #include "chrome/common/extensions/api/enterprise_reporting_private.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace device_signals {
 struct GetFileSystemInfoOptions;
@@ -39,7 +39,7 @@ ConvertFileSystemInfoOptions(
 // Parses and converts the File System info signal values from
 // `aggregation_response` into `arg_list`. If any error occurred during signal
 // collection, it will be returned and `arg_list` will remain unchanged.
-std::optional<ParsedSignalsError> ConvertFileSystemInfoResponse(
+absl::optional<ParsedSignalsError> ConvertFileSystemInfoResponse(
     const device_signals::SignalsAggregationResponse& aggregation_response,
     std::vector<api::enterprise_reporting_private::GetFileSystemInfoResponse>*
         arg_list);
@@ -55,7 +55,7 @@ std::vector<device_signals::GetSettingsOptions> ConvertSettingsOptions(
 // Parses and converts the Settings signal values from `aggregation_response`
 // into `arg_list`. If any error occurred during signal collection, it will be
 // returned and `arg_list` will remain unchanged.
-std::optional<ParsedSignalsError> ConvertSettingsResponse(
+absl::optional<ParsedSignalsError> ConvertSettingsResponse(
     const device_signals::SignalsAggregationResponse& aggregation_response,
     std::vector<api::enterprise_reporting_private::GetSettingsResponse>*
         arg_list);
@@ -67,14 +67,14 @@ std::optional<ParsedSignalsError> ConvertSettingsResponse(
 // Parses and converts the Antivirus signal values from `aggregation_response`
 // into `arg_list`. If any error occurred during signal collection, it will be
 // returned and `arg_list` will remain unchanged.
-std::optional<ParsedSignalsError> ConvertAvProductsResponse(
+absl::optional<ParsedSignalsError> ConvertAvProductsResponse(
     const device_signals::SignalsAggregationResponse& aggregation_response,
     std::vector<api::enterprise_reporting_private::AntiVirusSignal>* arg_list);
 
 // Parses and converts the Hotfix signal values from `aggregation_response` into
 // `arg_list`. If any error occurred during signal collection,  it will be
 // returned and `arg_list` will remain unchanged.
-std::optional<ParsedSignalsError> ConvertHotfixesResponse(
+absl::optional<ParsedSignalsError> ConvertHotfixesResponse(
     const device_signals::SignalsAggregationResponse& aggregation_response,
     std::vector<api::enterprise_reporting_private::HotfixSignal>* arg_list);
 

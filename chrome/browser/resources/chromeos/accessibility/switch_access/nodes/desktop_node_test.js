@@ -5,7 +5,14 @@
 GEN_INCLUDE(['../switch_access_e2e_test_base.js']);
 
 /** Test fixture for the desktop node. */
-SwitchAccessDesktopNodeTest = class extends SwitchAccessE2ETest {};
+SwitchAccessDesktopNodeTest = class extends SwitchAccessE2ETest {
+  async setUpDeferred() {
+    await super.setUpDeferred();
+    await importModule('DesktopNode', '/switch_access/nodes/desktop_node.js');
+    await importModule(
+        'BackButtonNode', '/switch_access/nodes/back_button_node.js');
+  }
+};
 
 TEST_F('SwitchAccessDesktopNodeTest', 'Build', function() {
   this.runWithLoadedDesktop(desktop => {

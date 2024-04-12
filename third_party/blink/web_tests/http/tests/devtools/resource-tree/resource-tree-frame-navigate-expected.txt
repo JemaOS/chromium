@@ -20,12 +20,12 @@ Resources Tree:
 Frames
     top
         iframe (resource-tree-frame-navigate-iframe-before.html)
-            CSS
-                styles-initial-2.css
-            JavaScript
+            Scripts
                 script-initial.js
+            Stylesheets
+                styles-initial-2.css
             resource-tree-frame-navigate-iframe-before.html
-        CSS
+        Stylesheets
             styles-initial.css
         inspected-page.html
 Sources:
@@ -103,12 +103,12 @@ Resources Tree:
 Frames
     top
         iframe (resource-tree-frame-navigate-iframe-after.html)
-            CSS
-                styles-navigated.css
-            JavaScript
+            Scripts
                 script-navigated.js
+            Stylesheets
+                styles-navigated.css
             resource-tree-frame-navigate-iframe-after.html
-        CSS
+        Stylesheets
             styles-initial.css
         inspected-page.html
 Sources:

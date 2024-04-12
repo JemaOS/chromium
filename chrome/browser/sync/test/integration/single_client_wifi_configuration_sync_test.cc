@@ -118,7 +118,8 @@ class LocalWifiConfigurationChecker
   std::vector<chromeos::network_config::mojom::NetworkStatePropertiesPtr>
       networks_;
 
-  raw_ptr<mojo::Remote<chromeos::network_config::mojom::CrosNetworkConfig>>
+  raw_ptr<mojo::Remote<chromeos::network_config::mojom::CrosNetworkConfig>,
+          ExperimentalAsh>
       remote_cros_network_config_;
   mojo::Receiver<chromeos::network_config::mojom::CrosNetworkConfigObserver>
       receiver_{this};

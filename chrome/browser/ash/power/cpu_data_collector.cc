@@ -6,7 +6,6 @@
 
 #include <stddef.h>
 
-#include <string_view>
 #include <vector>
 
 #include "base/functional/bind.h"
@@ -25,55 +24,53 @@ namespace ash {
 namespace {
 // The sampling of CPU idle or CPU freq data should not take more than this
 // limit.
-constexpr int kSamplingDurationLimitMs = 500;
+const int kSamplingDurationLimitMs = 500;
 
 // The CPU data is sampled every |kCpuDataSamplePeriodSec| seconds.
-constexpr int kCpuDataSamplePeriodSec = 30;
+const int kCpuDataSamplePeriodSec = 30;
 
 // The value in the file /sys/devices/system/cpu/cpu<n>/online which indicates
 // that CPU-n is online.
-constexpr int kCpuOnlineStatus = 1;
+const int kCpuOnlineStatus = 1;
 
 // The base of the path to the files and directories which contain CPU data in
 // the sysfs.
-constexpr char kCpuDataPathBase[] = "/sys/devices/system/cpu";
+const char kCpuDataPathBase[] = "/sys/devices/system/cpu";
 
 // Suffix of the path to the file listing the range of possible CPUs on the
 // system.
-constexpr char kPossibleCpuPathSuffix[] = "/possible";
+const char kPossibleCpuPathSuffix[] = "/possible";
 
 // Format of the suffix of the path to the file which contains information
 // about a particular CPU being online or offline.
-constexpr char kCpuOnlinePathSuffixFormat[] = "/cpu%d/online";
+const char kCpuOnlinePathSuffixFormat[] = "/cpu%d/online";
 
 // Format of the suffix of the path to the file which contains freq state
 // information of a CPU.
-constexpr char kCpuFreqTimeInStatePathSuffixFormat[] =
+const char kCpuFreqTimeInStatePathSuffixFormat[] =
     "/cpu%d/cpufreq/stats/time_in_state";
 
 // Format of the suffix of the path to the folder which contains time in state
 // file. If the folder does not exist, current platform does not produce
 // discrete CPU frequency data.
-constexpr char kCpuFreqStatsPathSuffixFormat[] = "/cpu%d/cpufreq/stats";
+const char kCpuFreqStatsPathSuffixFormat[] = "/cpu%d/cpufreq/stats";
 
 // The path to the file which contains cpu freq state information of a CPU
 // in 3.14.0 or newer kernels.
-constexpr char kCpuFreqAllTimeInStatePath[] =
+const char kCpuFreqAllTimeInStatePath[] =
     "/sys/devices/system/cpu/cpufreq/all_time_in_state";
 
 // Format of the suffix of the path to the directory which contains information
 // about an idle state of a CPU on the system.
-constexpr char kCpuIdleStateDirPathSuffixFormat[] = "/cpu%d/cpuidle/state%d";
+const char kCpuIdleStateDirPathSuffixFormat[] = "/cpu%d/cpuidle/state%d";
 
 // Format of the suffix of the path to the file which contains the name of an
 // idle state of a CPU.
-constexpr char kCpuIdleStateNamePathSuffixFormat[] =
-    "/cpu%d/cpuidle/state%d/name";
+const char kCpuIdleStateNamePathSuffixFormat[] = "/cpu%d/cpuidle/state%d/name";
 
 // Format of the suffix of the path which contains information about time spent
 // in an idle state on a CPU.
-constexpr char kCpuIdleStateTimePathSuffixFormat[] =
-    "/cpu%d/cpuidle/state%d/time";
+const char kCpuIdleStateTimePathSuffixFormat[] = "/cpu%d/cpuidle/state%d/time";
 
 // Returns the index at which |str| is in |vector|. If |str| is not present in
 // |vector|, then it is added to it before its index is returned.
@@ -91,8 +88,10 @@ size_t EnsureInVector(const std::string& str,
 
 // Returns true if the |i|-th CPU is online; false otherwise.
 bool CpuIsOnline(const int i) {
-  const std::string cpu_online_file =
-      kCpuDataPathBase + base::StringPrintf(kCpuOnlinePathSuffixFormat, i);
+  const std::string online_file_format = base::StringPrintf(
+      "%s%s", kCpuDataPathBase, kCpuOnlinePathSuffixFormat);
+  const std::string cpu_online_file = base::StringPrintf(
+      online_file_format.c_str(), i);
   if (!base::PathExists(base::FilePath(cpu_online_file))) {
     // If the 'online' status file is missing, then it means that the CPU is
     // not hot-pluggable and hence is always online.
@@ -132,26 +131,26 @@ void SampleCpuIdleData(
     } else {
       idle_sample.cpu_online = true;
 
+      const std::string idle_state_dir_format = base::StringPrintf(
+          "%s%s", kCpuDataPathBase, kCpuIdleStateDirPathSuffixFormat);
       for (int state_count = 0; ; ++state_count) {
-        std::string idle_state_dir =
-            kCpuDataPathBase +
-            base::StringPrintf(kCpuIdleStateDirPathSuffixFormat, cpu,
-                               state_count);
+        std::string idle_state_dir = base::StringPrintf(
+            idle_state_dir_format.c_str(), cpu, state_count);
         // This insures us from the unlikely case wherein the 'cpuidle_stats'
         // kernel module is not loaded. This could happen on a VM.
         if (!base::DirectoryExists(base::FilePath(idle_state_dir)))
           break;
 
-        const std::string name_file_path =
-            kCpuDataPathBase +
-            base::StringPrintf(kCpuIdleStateNamePathSuffixFormat, cpu,
-                               state_count);
+        const std::string name_file_format = base::StringPrintf(
+            "%s%s", kCpuDataPathBase, kCpuIdleStateNamePathSuffixFormat);
+        const std::string name_file_path = base::StringPrintf(
+            name_file_format.c_str(), cpu, state_count);
         DCHECK(base::PathExists(base::FilePath(name_file_path)));
 
-        const std::string time_file_path =
-            kCpuDataPathBase +
-            base::StringPrintf(kCpuIdleStateTimePathSuffixFormat, cpu,
-                               state_count);
+        const std::string time_file_format = base::StringPrintf(
+            "%s%s", kCpuDataPathBase, kCpuIdleStateTimePathSuffixFormat);
+        const std::string time_file_path = base::StringPrintf(
+            time_file_format.c_str(), cpu, state_count);
         DCHECK(base::PathExists(base::FilePath(time_file_path)));
 
         std::string state_name, occupancy_time_string;
@@ -229,9 +228,10 @@ void SampleCpuFreqData(
   } else {
     for (int cpu = 0; cpu < cpu_count; ++cpu) {
       if ((*freq_samples)[cpu].cpu_online) {
+        const std::string time_in_state_path_format = base::StringPrintf(
+            "%s%s", kCpuDataPathBase, kCpuFreqTimeInStatePathSuffixFormat);
         const base::FilePath time_in_state_path(
-            kCpuDataPathBase +
-            base::StringPrintf(kCpuFreqTimeInStatePathSuffixFormat, cpu));
+            base::StringPrintf(time_in_state_path_format.c_str(), cpu));
         if (base::PathExists(time_in_state_path)) {
           if (!CpuDataCollector::ReadCpuFreqTimeInState(
                   time_in_state_path, cpu_freq_state_names,
@@ -241,9 +241,10 @@ void SampleCpuFreqData(
           }
         } else {
           freq_samples->clear();
+          const std::string cpu_freq_stats_path_format = base::StringPrintf(
+              "%s%s", kCpuDataPathBase, kCpuFreqStatsPathSuffixFormat);
           const base::FilePath cpu_freq_stats_path(
-              kCpuDataPathBase +
-              base::StringPrintf(kCpuFreqStatsPathSuffixFormat, cpu));
+              base::StringPrintf(cpu_freq_stats_path_format.c_str(), cpu));
           if (!base::PathExists(cpu_freq_stats_path)) {
             // If the path to 'stats' folder for a single CPU is missing, then
             // current platform does not produce discrete CPU frequency data.
@@ -343,14 +344,14 @@ bool CpuDataCollector::ReadCpuFreqTimeInState(
                             base::TrimPositions::TRIM_TRAILING,
                             &time_in_state_string);
 
-  std::vector<std::string_view> lines = base::SplitStringPiece(
+  std::vector<base::StringPiece> lines = base::SplitStringPiece(
       time_in_state_string, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   for (size_t line_num = 0; line_num < lines.size(); ++line_num) {
     int freq_in_khz;
     int64_t occupancy_time_centisecond;
 
     // Occupancy of each state is in the format "<state> <time>"
-    std::vector<std::string_view> pair = base::SplitStringPiece(
+    std::vector<base::StringPiece> pair = base::SplitStringPiece(
         lines[line_num], " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     if (pair.size() != 2 || !base::StringToInt(pair[0], &freq_in_khz) ||
         !base::StringToInt64(pair[1], &occupancy_time_centisecond)) {
@@ -387,7 +388,7 @@ bool CpuDataCollector::ReadCpuFreqAllTimeInState(
                             base::TrimPositions::TRIM_TRAILING,
                             &all_time_in_state_string);
 
-  std::vector<std::string_view> lines =
+  std::vector<base::StringPiece> lines =
       base::SplitStringPiece(all_time_in_state_string, "\n",
                              base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   // The first line is descriptions in the format "freq\t\tcpu0\t\tcpu1...".
@@ -395,7 +396,7 @@ bool CpuDataCollector::ReadCpuFreqAllTimeInState(
   for (size_t line_num = 1; line_num < lines.size(); ++line_num) {
     // Occupancy of each state is in the format "<state>\t\t<time>\t\t<time>
     // ..."
-    std::vector<std::string_view> array =
+    std::vector<base::StringPiece> array =
         base::SplitStringPiece(lines[line_num], "\t", base::TRIM_WHITESPACE,
                                base::SPLIT_WANT_NONEMPTY);
     int freq_in_khz;

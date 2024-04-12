@@ -11,7 +11,6 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <string_view>
 
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/libjingle_xmpp/xmllite/xmlelement.h"
@@ -71,9 +70,7 @@ TEST(XmlElementTest, TestAttrs) {
   elt.SetAttr(QName("", "a"), "avalue2");
   EXPECT_EQ("<root a=\"avalue2\" b=\"bvalue\"/>", elt.Str());
 
-  // Make sure that `SetAttr` can also be called with an explicit
-  // `std::string_view` object.
-  elt.SetAttr(QName("", "b"), std::string_view("bvalue2"));
+  elt.SetAttr(QName("", "b"), "bvalue2");
   EXPECT_EQ("<root a=\"avalue2\" b=\"bvalue2\"/>", elt.Str());
 
   elt.SetAttr(QName("", "c"), "cvalue");

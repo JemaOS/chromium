@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SAFE_BROWSING_HASH_REALTIME_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_SAFE_BROWSING_HASH_REALTIME_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 
@@ -22,7 +22,7 @@ class HashRealTimeService;
 
 // Singleton that owns HashRealTimeService objects, one for each active
 // Profile. It listens to profile destroy events and destroy its associated
-// service. It returns nullptr if the profile is in incognito or guest mode.
+// service. It returns nullptr if the profile is in the Incognito mode.
 class HashRealTimeServiceFactory : public ProfileKeyedServiceFactory {
  public:
   // Creates the service if it doesn't exist already for the given |profile|.
@@ -37,14 +37,16 @@ class HashRealTimeServiceFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<HashRealTimeServiceFactory>;
+  friend struct base::DefaultSingletonTraits<HashRealTimeServiceFactory>;
 
   HashRealTimeServiceFactory();
   ~HashRealTimeServiceFactory() override = default;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
+
+  static bool IsEnhancedProtectionEnabled(Profile* profile);
 
   static network::mojom::NetworkContext* GetNetworkContext(Profile* profile);
 };

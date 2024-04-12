@@ -10,8 +10,6 @@
 #include "ash/login/ui/non_accessible_view.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/compositor/layer_animation_observer.h"
 #include "ui/views/view.h"
 
 namespace ash {
@@ -33,10 +31,9 @@ class LoginPinInput;
 // When the length changes (e.g.: selecting a user with a different pin length)
 // the internal view `code_input_` is destroyed and a new one is inserted.
 //
-class ASH_EXPORT LoginPinInputView : public views::View,
-                                     public ui::ImplicitAnimationObserver {
-  METADATA_HEADER(LoginPinInputView, views::View)
-
+class ASH_EXPORT LoginPinInputView
+    : public views::View,
+      public base::SupportsWeakPtr<LoginPinInputView> {
  public:
   using OnPinSubmit = base::RepeatingCallback<void(const std::u16string& pin)>;
   using OnPinChanged = base::RepeatingCallback<void(bool is_empty)>;
@@ -49,20 +46,17 @@ class ASH_EXPORT LoginPinInputView : public views::View,
     ~TestApi();
 
     views::View* code_input();
-    std::optional<std::string> GetCode();
+    absl::optional<std::string> GetCode();
     bool IsEmpty();
 
    private:
-    const raw_ptr<LoginPinInputView> view_;
+    const raw_ptr<LoginPinInputView, ExperimentalAsh> view_;
   };
 
   explicit LoginPinInputView();
   LoginPinInputView& operator=(const LoginPinInputView&) = delete;
   LoginPinInputView(const LoginPinInputView&) = delete;
   ~LoginPinInputView() override;
-
-  // ui::ImplicitAnimationObserver:
-  void OnImplicitAnimationsCompleted() override;
 
   // Checks whether PIN auto submit is supported for the given length.
   static bool IsAutosubmitSupported(int length);
@@ -91,10 +85,7 @@ class ASH_EXPORT LoginPinInputView : public views::View,
   gfx::Size CalculatePreferredSize() const override;
   void RequestFocus() override;
   bool OnKeyPressed(const ui::KeyEvent& event) override;
-
-  base::WeakPtr<LoginPinInputView> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
+  const char* GetClassName() const override;
 
  private:
   // The code input will call this when all digits are in.
@@ -110,15 +101,13 @@ class ASH_EXPORT LoginPinInputView : public views::View,
   bool is_read_only_ = false;
 
   // The input field owned by this view.
-  raw_ptr<LoginPinInput, DanglingUntriaged> code_input_ = nullptr;
+  raw_ptr<LoginPinInput, ExperimentalAsh> code_input_ = nullptr;
 
   // Whether the 'Return' key should trigger an unlock with an empty PIN.
   bool authenticate_with_empty_pin_on_return_key_ = false;
 
   OnPinSubmit on_submit_;
   OnPinChanged on_changed_;
-
-  base::WeakPtrFactory<LoginPinInputView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

@@ -36,11 +36,10 @@ SigninManagerAndroidFactory* SigninManagerAndroidFactory::GetInstance() {
   return instance.get();
 }
 
-std::unique_ptr<KeyedService>
-SigninManagerAndroidFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SigninManagerAndroidFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
 
-  return std::make_unique<SigninManagerAndroid>(profile, identity_manager);
+  return new SigninManagerAndroid(profile, identity_manager);
 }

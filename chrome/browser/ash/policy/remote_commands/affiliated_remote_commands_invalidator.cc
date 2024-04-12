@@ -7,7 +7,7 @@
 #include <memory>
 
 #include "base/time/default_clock.h"
-#include "components/policy/core/common/remote_commands/remote_commands_invalidator_impl.h"
+#include "chrome/browser/policy/cloud/remote_commands_invalidator_impl.h"
 
 namespace policy {
 

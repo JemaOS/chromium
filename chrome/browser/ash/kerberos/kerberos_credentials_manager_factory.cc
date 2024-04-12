@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/ash/kerberos/kerberos_credentials_manager.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/browser_process.h"
@@ -32,8 +32,7 @@ KerberosCredentialsManager* KerberosCredentialsManagerFactory::Get(
 // static
 KerberosCredentialsManagerFactory*
 KerberosCredentialsManagerFactory::GetInstance() {
-  static base::NoDestructor<KerberosCredentialsManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<KerberosCredentialsManagerFactory>::get();
 }
 
 KerberosCredentialsManagerFactory::KerberosCredentialsManagerFactory()
@@ -48,8 +47,7 @@ bool KerberosCredentialsManagerFactory::ServiceIsCreatedWithBrowserContext()
   return true;
 }
 
-std::unique_ptr<KeyedService>
-KerberosCredentialsManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* KerberosCredentialsManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   // Verify that UserManager is initialized before calling IsPrimaryProfile.
   if (!user_manager::UserManager::IsInitialized())
@@ -66,7 +64,7 @@ KerberosCredentialsManagerFactory::BuildServiceInstanceForBrowserContext(
     return nullptr;
 
   PrefService* local_state = g_browser_process->local_state();
-  return std::make_unique<KerberosCredentialsManager>(local_state, profile);
+  return new KerberosCredentialsManager(local_state, profile);
 }
 
 }  // namespace ash

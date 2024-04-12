@@ -9,7 +9,6 @@
 #include "base/memory/ref_counted_memory.h"
 #include "base/metrics/statistics_recorder.h"
 #include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
@@ -19,8 +18,8 @@
 #include "build/buildflag.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/sync/bookmark_sync_service_factory.h"
 #include "chrome/browser/sync/device_info_sync_service_factory.h"
-#include "chrome/browser/sync/local_or_syncable_bookmark_sync_service_factory.h"
 #include "chrome/browser/sync/sync_invalidations_service_factory.h"
 #include "chrome/browser/sync/test/integration/bookmarks_helper.h"
 #include "chrome/browser/sync/test/integration/committed_all_nudged_changes_checker.h"
@@ -32,13 +31,13 @@
 #include "components/bookmarks/browser/bookmark_node.h"
 #include "components/bookmarks/browser/url_and_title.h"
 #include "components/bookmarks/common/bookmark_metrics.h"
-#include "components/browser_sync/browser_sync_switches.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/sync/base/client_tag_hash.h"
 #include "components/sync/base/command_line_switches.h"
 #include "components/sync/base/features.h"
 #include "components/sync/base/model_type.h"
+#include "components/sync/driver/sync_service_impl.h"
 #include "components/sync/engine/bookmark_update_preprocessing.h"
 #include "components/sync/engine/cycle/entity_change_metric_recording.h"
 #include "components/sync/engine/loopback_server/loopback_server_entity.h"
@@ -47,8 +46,6 @@
 #include "components/sync/protocol/bookmark_specifics.pb.h"
 #include "components/sync/protocol/entity_specifics.pb.h"
 #include "components/sync/protocol/sync_entity.pb.h"
-#include "components/sync/service/sync_service_impl.h"
-#include "components/sync/service/sync_user_settings.h"
 #include "components/sync/test/bookmark_entity_builder.h"
 #include "components/sync/test/entity_builder_factory.h"
 #include "components/sync/test/fake_server.h"
@@ -62,7 +59,7 @@
 #include "content/public/test/test_launcher.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/base/resource/resource_scale_factor.h"
+#include "ui/base/layout.h"
 
 namespace {
 
@@ -100,8 +97,6 @@ using BookmarkGeneration =
 using testing::Contains;
 using testing::ElementsAre;
 using testing::Eq;
-using testing::IsEmpty;
-using testing::IsNull;
 using testing::Not;
 using testing::NotNull;
 using testing::Pointee;
@@ -149,7 +144,7 @@ class FakeDeviceInfoSyncServiceWithInvalidations
       override {}
 
  private:
-  const raw_ptr<syncer::SyncInvalidationsService> sync_invalidations_service_;
+  raw_ptr<syncer::SyncInvalidationsService> sync_invalidations_service_;
 };
 
 std::unique_ptr<KeyedService> BuildFakeDeviceInfoSyncService(
@@ -158,17 +153,6 @@ std::unique_ptr<KeyedService> BuildFakeDeviceInfoSyncService(
       SyncInvalidationsServiceFactory::GetForProfile(
           Profile::FromBrowserContext(context)));
 }
-
-// Waits until the tasks posted by the error handler have been processed.
-class BookmarksDataTypeErrorChecker : public SingleClientStatusChangeChecker {
- public:
-  using SingleClientStatusChangeChecker::SingleClientStatusChangeChecker;
-
-  bool IsExitConditionSatisfied(std::ostream* os) override {
-    *os << "Waiting for Bookmarks data type error.";
-    return service()->HasAnyDatatypeErrorForTest({syncer::BOOKMARKS});
-  }
-};
 
 class SingleClientBookmarksSyncTest : public SyncTest {
  public:
@@ -217,21 +201,22 @@ class SingleClientBookmarksSyncTestWithEnabledReuploadPreexistingBookmarks
   base::test::ScopedFeatureList features_override_;
 };
 
-class SingleClientBookmarksThrottlingSyncTest : public SyncTest {
+class SingleClientBookmarksSyncTestWithEnabledThrottling : public SyncTest {
  public:
-  SingleClientBookmarksThrottlingSyncTest() : SyncTest(SINGLE_CLIENT) {
-    features_override_.InitAndDisableFeature(
-        syncer::kSyncPollImmediatelyOnEveryStartup);
+  SingleClientBookmarksSyncTestWithEnabledThrottling()
+      : SyncTest(SINGLE_CLIENT) {
+    features_override_.InitAndEnableFeature(
+        syncer::kSyncExtensionTypesThrottling);
   }
 
   void SetUpInProcessBrowserTestFixture() override {
     SyncTest::SetUpInProcessBrowserTestFixture();
     create_services_subscription_ =
         BrowserContextDependencyManager::GetInstance()
-            ->RegisterCreateServicesCallbackForTesting(
-                base::BindRepeating(&SingleClientBookmarksThrottlingSyncTest::
-                                        OnWillCreateBrowserContextServices,
-                                    base::Unretained(this)));
+            ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+                &SingleClientBookmarksSyncTestWithEnabledThrottling::
+                    OnWillCreateBrowserContextServices,
+                base::Unretained(this)));
   }
 
   void OnWillCreateBrowserContextServices(content::BrowserContext* context) {
@@ -260,8 +245,33 @@ class SingleClientBookmarksThrottlingSyncTest : public SyncTest {
   }
 
  private:
-  base::test::ScopedFeatureList features_override_;
   base::CallbackListSubscription create_services_subscription_;
+  base::test::ScopedFeatureList features_override_;
+};
+
+class SingleClientBookmarksSyncTestWithEnforcedBookmarksCountLimit
+    : public SyncTest {
+ public:
+  // Waits until the tasks posted by the error handler have been processed.
+  class BookmarksDataTypeErrorChecker : public SingleClientStatusChangeChecker {
+   public:
+    using SingleClientStatusChangeChecker::SingleClientStatusChangeChecker;
+
+    bool IsExitConditionSatisfied(std::ostream* os) override {
+      *os << "Waiting for Bookmarks data type error.";
+      return service()->HasAnyDatatypeErrorForTest(
+          syncer::ModelTypeSet(syncer::BOOKMARKS));
+    }
+  };
+
+  SingleClientBookmarksSyncTestWithEnforcedBookmarksCountLimit()
+      : SyncTest(SINGLE_CLIENT) {
+    features_override_.InitAndEnableFeature(
+        syncer::kSyncEnforceBookmarksCountLimit);
+  }
+
+ private:
+  base::test::ScopedFeatureList features_override_;
 };
 
 IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest, Sanity) {
@@ -692,7 +702,10 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest,
   // Set the supported scale factors to 1x and 2x such that
   // BookmarkModel::GetFavicon() requests both 1x and 2x.
   // 1x -> for sync, 2x -> for the UI.
-  ui::SetSupportedResourceScaleFactors({ui::k100Percent, ui::k200Percent});
+  std::vector<ui::ResourceScaleFactor> supported_scale_factors;
+  supported_scale_factors.push_back(ui::k100Percent);
+  supported_scale_factors.push_back(ui::k200Percent);
+  ui::SetSupportedResourceScaleFactors(supported_scale_factors);
 
   ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
 
@@ -1091,7 +1104,6 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest,
 }
 
 IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest, E2E_ONLY(SanitySetup)) {
-  ResetSyncForPrimaryAccount();
   ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
 }
 
@@ -1487,224 +1499,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest,
   EXPECT_EQ(1u, GetBookmarkBarNode(kSingleProfileIndex)->children().size());
 }
 
-IN_PROC_BROWSER_TEST_F(
-    SingleClientBookmarksSyncTest,
-    ShouldReportErrorIfIncrementalLocalCreationCrossesMaxCountLimit) {
-  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
-
-  // Set a limit of 4 bookmarks. This is to avoid erroring out when the fake
-  // server sends an update of size 4.
-  LocalOrSyncableBookmarkSyncServiceFactory::GetForProfile(
-      GetProfile(kSingleProfileIndex))
-      ->SetBookmarksLimitForTesting(4);
-
-  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
-  ASSERT_FALSE(GetClient(kSingleProfileIndex)
-                   ->service()
-                   ->HasAnyDatatypeErrorForTest({syncer::BOOKMARKS}));
-
-  // Add 2 new bookmarks to exceed the limit.
-  const BookmarkNode* bookmark_bar_node =
-      GetBookmarkBarNode(kSingleProfileIndex);
-
-  const std::string kTitle1 = "title1";
-  const std::string kUrl1 = "http://www.url1.com";
-  ASSERT_TRUE(AddURL(kSingleProfileIndex,
-                     /*parent=*/bookmark_bar_node, /*index=*/0, kTitle1,
-                     GURL(kUrl1)));
-
-  const std::string kTitle2 = "title2";
-  const std::string kUrl2 = "http://www.url2.com";
-  ASSERT_TRUE(AddURL(kSingleProfileIndex,
-                     /*parent=*/bookmark_bar_node, /*index=*/1, kTitle2,
-                     GURL(kUrl2)));
-
-  // Creation of 2 local bookmarks should exceed the limit of 4.
-  EXPECT_TRUE(
-      BookmarksDataTypeErrorChecker(GetClient(kSingleProfileIndex)->service())
-          .Wait());
-  // Bookmarks should be in an error state. Thus excluding it from the
-  // CheckForDataTypeFailures() check.
-  ExcludeDataTypesFromCheckForDataTypeFailures({syncer::BOOKMARKS});
-}
-
-IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest,
-                       ShouldReportErrorIfBookmarksCountExceedsLimitOnStartup) {
-  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
-
-  // Set a limit of 4 bookmarks. This is to avoid erroring out when the fake
-  // server sends an update of size 4.
-  LocalOrSyncableBookmarkSyncServiceFactory::GetForProfile(
-      GetProfile(kSingleProfileIndex))
-      ->SetBookmarksLimitForTesting(4);
-
-  // Add 2 new bookmarks to exceed the limit.
-  const BookmarkNode* bookmark_bar_node =
-      GetBookmarkBarNode(kSingleProfileIndex);
-
-  const std::string kTitle1 = "title1";
-  const std::string kUrl1 = "http://www.url1.com";
-  ASSERT_TRUE(AddURL(kSingleProfileIndex,
-                     /*parent=*/bookmark_bar_node, /*index=*/0, kTitle1,
-                     GURL(kUrl1)));
-
-  const std::string kTitle2 = "title2";
-  const std::string kUrl2 = "http://www.url2.com";
-  ASSERT_TRUE(AddURL(kSingleProfileIndex,
-                     /*parent=*/bookmark_bar_node, /*index=*/1, kTitle2,
-                     GURL(kUrl2)));
-
-  ASSERT_FALSE(GetClient(kSingleProfileIndex)
-                   ->service()
-                   ->HasAnyDatatypeErrorForTest({syncer::BOOKMARKS}));
-  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
-
-  // We now have 5 local bookmarks(3 permanent + 2 added), which exceeds our
-  // limit of 4 bookmarks.
-  EXPECT_TRUE(
-      BookmarksDataTypeErrorChecker(GetClient(kSingleProfileIndex)->service())
-          .Wait());
-  // Bookmarks should be in an error state. Thus excluding it from the
-  // CheckForDataTypeFailures() check.
-  ExcludeDataTypesFromCheckForDataTypeFailures({syncer::BOOKMARKS});
-}
-
-IN_PROC_BROWSER_TEST_F(
-    SingleClientBookmarksSyncTest,
-    ShouldReportErrorIfBookmarksCountExceedsLimitAfterInitialUpdate) {
-  // Create a bookmark on the server under BookmarkBar with a truncated title.
-  const std::string kTitle1 = "title1";
-  const std::string kUrl1 = "http://www.url1.com";
-  fake_server::EntityBuilderFactory entity_builder_factory;
-  fake_server::BookmarkEntityBuilder bookmark_builder =
-      entity_builder_factory.NewBookmarkEntityBuilder(kTitle1);
-  fake_server_->InjectEntity(bookmark_builder.BuildBookmark(GURL(kUrl1)));
-
-  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
-  // Set a limit of 5 bookmarks. This is to avoid erroring out when the fake
-  // server sends an update of size 5.
-  LocalOrSyncableBookmarkSyncServiceFactory::GetForProfile(
-      GetProfile(kSingleProfileIndex))
-      ->SetBookmarksLimitForTesting(5);
-
-  // Set up 2 preexisting local bookmark under other node.
-  const BookmarkNode* other_node = GetOtherNode(kSingleProfileIndex);
-
-  const std::string kTitle2 = "title2";
-  const std::string kUrl2 = "http://www.url2.com";
-  ASSERT_TRUE(AddURL(kSingleProfileIndex,
-                     /*parent=*/other_node, /*index=*/0, kTitle2, GURL(kUrl2)));
-
-  const std::string kTitle3 = "title3";
-  const std::string kUrl3 = "http://www.url3.com";
-  ASSERT_TRUE(AddURL(kSingleProfileIndex,
-                     /*parent=*/other_node, /*index=*/0, kTitle3, GURL(kUrl3)));
-
-  ASSERT_FALSE(GetClient(kSingleProfileIndex)
-                   ->service()
-                   ->HasAnyDatatypeErrorForTest({syncer::BOOKMARKS}));
-  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
-
-  // We should now have 6 local bookmarks, (3 permanent + 2 locally added + 1
-  // from remote), which exceeeds our limit of 5 bookmarks.
-  EXPECT_TRUE(
-      BookmarksDataTypeErrorChecker(GetClient(kSingleProfileIndex)->service())
-          .Wait());
-  // Note that remote bookmarks being added, even though we error out, is the
-  // current behaviour and is not a requirement.
-  EXPECT_THAT(GetBookmarkBarNode(kSingleProfileIndex)->children(),
-              ElementsAre(bookmarks_helper::IsUrlBookmarkWithTitleAndUrl(
-                  kTitle1, GURL(kUrl1))));
-  // Bookmarks should be in an error state. Thus excluding it from the
-  // CheckForDataTypeFailures() check.
-  ExcludeDataTypesFromCheckForDataTypeFailures({syncer::BOOKMARKS});
-}
-
-IN_PROC_BROWSER_TEST_F(
-    SingleClientBookmarksSyncTest,
-    ShouldReportErrorIfBookmarksCountExceedsLimitAfterIncrementalUpdate) {
-  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
-  // Set a limit of 4 bookmarks. This is to avoid erroring out when the fake
-  // server sends an update of size 4.
-  LocalOrSyncableBookmarkSyncServiceFactory::GetForProfile(
-      GetProfile(kSingleProfileIndex))
-      ->SetBookmarksLimitForTesting(4);
-
-  // Set up a preexisting local bookmark under other node.
-  const BookmarkNode* other_node = GetOtherNode(kSingleProfileIndex);
-
-  const std::string kTitle1 = "title1";
-  const std::string kUrl1 = "http://www.url1.com";
-  ASSERT_TRUE(AddURL(kSingleProfileIndex,
-                     /*parent=*/other_node, /*index=*/0, kTitle1, GURL(kUrl1)));
-
-  ASSERT_FALSE(GetClient(kSingleProfileIndex)
-                   ->service()
-                   ->HasAnyDatatypeErrorForTest({syncer::BOOKMARKS}));
-  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
-
-  // Create a bookmark on the server under BookmarkBar.
-  const std::string kTitle2 = "title2";
-  const std::string kUrl2 = "http://www.url2.com";
-  fake_server::EntityBuilderFactory entity_builder_factory;
-  fake_server::BookmarkEntityBuilder bookmark_builder =
-      entity_builder_factory.NewBookmarkEntityBuilder(kTitle2);
-  fake_server_->InjectEntity(bookmark_builder.BuildBookmark(GURL(kUrl2)));
-
-  EXPECT_TRUE(
-      BookmarksDataTypeErrorChecker(GetClient(kSingleProfileIndex)->service())
-          .Wait());
-  // Note that remote bookmarks being added, even though we error out, is the
-  // current behaviour and is not a requirement.
-  EXPECT_THAT(GetBookmarkBarNode(kSingleProfileIndex)->children(),
-              ElementsAre(bookmarks_helper::IsUrlBookmarkWithTitleAndUrl(
-                  kTitle2, GURL(kUrl2))));
-  // Bookmarks should be in an error state. Thus excluding it from the
-  // CheckForDataTypeFailures() check.
-  ExcludeDataTypesFromCheckForDataTypeFailures({syncer::BOOKMARKS});
-}
-
-IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest,
-                       ShouldReportErrorIfInitialUpdatesCrossMaxCountLimit) {
-  // Create two bookmarks on the server under BookmarkBar with a truncated
-  // title.
-  fake_server::EntityBuilderFactory entity_builder_factory;
-  const std::string kTitle1 = "title1";
-  const std::string kUrl1 = "http://www.url1.com";
-  fake_server_->InjectEntity(
-      entity_builder_factory.NewBookmarkEntityBuilder(kTitle1).BuildBookmark(
-          GURL(kUrl1)));
-
-  const std::string kTitle2 = "title2";
-  const std::string kUrl2 = "http://www.url2.com";
-  fake_server_->InjectEntity(
-      entity_builder_factory.NewBookmarkEntityBuilder(kTitle2).BuildBookmark(
-          GURL(kUrl2)));
-
-  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
-  // Set a limit of 4 bookmarks. This should result in an error when we get an
-  // update of size 5.
-  LocalOrSyncableBookmarkSyncServiceFactory::GetForProfile(
-      GetProfile(kSingleProfileIndex))
-      ->SetBookmarksLimitForTesting(4);
-
-  ASSERT_FALSE(GetClient(kSingleProfileIndex)
-                   ->service()
-                   ->HasAnyDatatypeErrorForTest({syncer::BOOKMARKS}));
-  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
-
-  // Update of size 5 exceeds the limit.
-  EXPECT_TRUE(
-      BookmarksDataTypeErrorChecker(GetClient(kSingleProfileIndex)->service())
-          .Wait());
-  EXPECT_TRUE(GetBookmarkBarNode(kSingleProfileIndex)->children().empty());
-  // Bookmarks should be in an error state. Thus excluding it from the
-  // CheckForDataTypeFailures() check.
-  ExcludeDataTypesFromCheckForDataTypeFailures({syncer::BOOKMARKS});
-}
-
-// Android doesn't currently support PRE_ tests, see crbug.com/40200835 or
-// crbug.com/40145099.
+// Android doesn't currently support PRE_ tests, see crbug.com/1117345.
 #if !BUILDFLAG(IS_ANDROID)
 IN_PROC_BROWSER_TEST_F(
     SingleClientBookmarksSyncTestWithDisabledReuploadBookmarks,
@@ -1751,7 +1546,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest,
                   .Wait());
 
   // Mimic the user being offline (until the next restart), to make sure the
-  // entity is unsync-ed upon browser startup (next test).
+  // entity is unsync-ed upon brower startup (next test).
   fake_server::FakeServerHttpPostProvider::DisableNetwork();
 
   SetTitle(kSingleProfileIndex, bookmark, new_title);
@@ -1759,11 +1554,16 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest,
 
 IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest,
                        ShouldUploadUnsyncedEntityAfterRestart) {
+  ASSERT_TRUE(SetupClients());
+
   const std::string title = "Title";
   const std::string new_title = "New Title";
-  const GURL url = GURL(kBookmarkPageUrl);
+  const GURL url = GURL("http://www.foo.com");
 
-  // Ensure that the server bookmark has the old title.
+  // Ensure that local bookmark has new title and the server has the old one.
+  ASSERT_EQ(1u,
+            CountBookmarksWithTitlesMatching(kSingleProfileIndex, new_title));
+
   const std::vector<sync_pb::SyncEntity> server_bookmarks_before =
       GetFakeServer()->GetSyncEntitiesByModelType(syncer::BOOKMARKS);
   ASSERT_EQ(1u, server_bookmarks_before.size());
@@ -1772,21 +1572,17 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest,
                        .bookmark()
                        .legacy_canonicalized_title());
 
-  // Ensure that local bookmark has the new title.
-  ASSERT_TRUE(SetupClients());
-  const BookmarkNode* node =
-      bookmarks_helper::GetUniqueNodeByURL(kSingleProfileIndex, url);
-  ASSERT_EQ(1u,
-            CountBookmarksWithTitlesMatching(kSingleProfileIndex, new_title));
-
   // Ensure that there is a favicon on the server and local node haven't started
   // loading of favicon.
   ASSERT_TRUE(
       server_bookmarks_before.front().specifics().bookmark().has_favicon());
+  const BookmarkNode* node =
+      bookmarks_helper::GetUniqueNodeByURL(kSingleProfileIndex, url);
   ASSERT_FALSE(node->is_favicon_loading());
   ASSERT_FALSE(node->is_favicon_loaded());
 
-  // Ensure that the new title eventually makes it to the server.
+  ASSERT_TRUE(GetClient(kSingleProfileIndex)->EnableSyncFeature());
+  ASSERT_TRUE(GetClient(kSingleProfileIndex)->AwaitEngineInitialization());
   ASSERT_TRUE(bookmarks_helper::ServerBookmarksEqualityChecker(
                   {{new_title, url}},
                   /*cryptographer=*/nullptr)
@@ -1914,7 +1710,7 @@ IN_PROC_BROWSER_TEST_F(
   // Run a sync cycle to trigger bookmarks reupload on browser startup. This is
   // required since bookmarks get reuploaded only after the latest changes are
   // downloaded to avoid uploading outdated data.
-  GetSyncService(kSingleProfileIndex)->TriggerRefresh({syncer::BOOKMARKS});
+  GetSyncService(kSingleProfileIndex)->TriggerRefresh(syncer::BOOKMARKS);
 
   // Bookmark favicon will be loaded if there are local changes.
   ASSERT_TRUE(
@@ -2061,7 +1857,8 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTest,
                 .value());
 }
 
-IN_PROC_BROWSER_TEST_F(SingleClientBookmarksThrottlingSyncTest, DepleteQuota) {
+IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTestWithEnabledThrottling,
+                       DepleteQuota) {
   ASSERT_TRUE(SetupClients());
 
   // Setup custom quota params: to effectively never refill.
@@ -2094,7 +1891,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksThrottlingSyncTest, DepleteQuota) {
   // Recovering from depleted quota is tested by another test.
 }
 
-IN_PROC_BROWSER_TEST_F(SingleClientBookmarksThrottlingSyncTest,
+IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTestWithEnabledThrottling,
                        DepletedQuotaDoesNotStopCommitCycle) {
   ASSERT_TRUE(SetupClients());
 
@@ -2129,7 +1926,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksThrottlingSyncTest,
                        ModelTypeHistogramValue(syncer::BOOKMARKS)));
 }
 
-IN_PROC_BROWSER_TEST_F(SingleClientBookmarksThrottlingSyncTest,
+IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTestWithEnabledThrottling,
                        DoNotDepleteQuota) {
   ASSERT_TRUE(SetupClients());
 
@@ -2172,7 +1969,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksThrottlingSyncTest,
   histogram_tester.ExpectTotalCount("Sync.ModelTypeCommitWithDepletedQuota", 0);
 }
 
-IN_PROC_BROWSER_TEST_F(SingleClientBookmarksThrottlingSyncTest,
+IN_PROC_BROWSER_TEST_F(SingleClientBookmarksSyncTestWithEnabledThrottling,
                        DepleteQuotaAndRecover) {
   ASSERT_TRUE(SetupClients());
 
@@ -2244,388 +2041,227 @@ IN_PROC_BROWSER_TEST_F(SingleClientBookmarksThrottlingSyncTest,
   }
 }
 
-// On ChromeOS, Sync-the-feature gets started automatically once a primary
-// account is signed in and the transport mode is not a thing.
-#if !BUILDFLAG(IS_CHROMEOS_ASH)
-class SingleClientBookmarksWithAccountStorageSyncTest
-    : public SingleClientBookmarksSyncTest {
- public:
-  SingleClientBookmarksWithAccountStorageSyncTest() {}
-
-  SingleClientBookmarksWithAccountStorageSyncTest(
-      const SingleClientBookmarksWithAccountStorageSyncTest&) = delete;
-  SingleClientBookmarksWithAccountStorageSyncTest& operator=(
-      const SingleClientBookmarksWithAccountStorageSyncTest&) = delete;
-
-  ~SingleClientBookmarksWithAccountStorageSyncTest() override = default;
-
- private:
-  base::test::ScopedFeatureList features_override_{
-      syncer::kEnableBookmarkFoldersForAccountStorage};
-};
-
-IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
-                       ShouldDownloadDataUponSigninAndClearUponSignout) {
-  const std::string kLocalOnlyTitle = "Local Only";
-  const std::string kAccountOnlyTitle = "Account Only";
-
-  fake_server::EntityBuilderFactory entity_builder_factory;
-  fake_server::BookmarkEntityBuilder bookmark_builder =
-      entity_builder_factory.NewBookmarkEntityBuilder(kAccountOnlyTitle);
-  fake_server_->InjectEntity(bookmark_builder.BuildFolder());
-
-  ASSERT_TRUE(SetupClients());
-
-  BookmarkModel* model = GetBookmarkModel(kSingleProfileIndex);
-
-  // Create a local bookmark folder while the user is signed out.
-  model->AddFolder(/*parent=*/model->bookmark_bar_node(), /*index=*/0,
-                   base::UTF8ToUTF16(kLocalOnlyTitle));
-
-  ASSERT_THAT(model->bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kLocalOnlyTitle)));
-  ASSERT_THAT(model->account_bookmark_bar_node(), IsNull());
-
-  // Setup a primary account, but don't actually enable Sync-the-feature (so
-  // that Sync will start in transport mode).
-  ASSERT_TRUE(GetClient(kSingleProfileIndex)->SignInPrimaryAccount());
-  // Note: Depending on the state of feature flags (specifically
-  // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
-  // selected by default.
-  GetSyncService(kSingleProfileIndex)
-      ->GetUserSettings()
-      ->SetSelectedType(syncer::UserSelectableType::kBookmarks, true);
-  ASSERT_TRUE(GetClient(kSingleProfileIndex)->AwaitSyncTransportActive());
-  ASSERT_FALSE(GetSyncService(kSingleProfileIndex)->IsSyncFeatureEnabled());
-  ASSERT_TRUE(GetSyncService(kSingleProfileIndex)
-                  ->GetUserSettings()
-                  ->GetSelectedTypes()
-                  .Has(syncer::UserSelectableType::kBookmarks));
-  ASSERT_TRUE(GetSyncService(kSingleProfileIndex)
-                  ->GetActiveDataTypes()
-                  .Has(syncer::BOOKMARKS));
-
-  EXPECT_THAT(model->bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kLocalOnlyTitle)));
-
-  ASSERT_THAT(model->account_bookmark_bar_node(), NotNull());
-  EXPECT_THAT(model->account_bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kAccountOnlyTitle)));
-
-  // Sign out again.
-  GetClient(kSingleProfileIndex)->SignOutPrimaryAccount();
-  ASSERT_FALSE(GetSyncService(kSingleProfileIndex)
-                   ->GetActiveDataTypes()
-                   .Has(syncer::BOOKMARKS));
-
-  EXPECT_THAT(model->bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kLocalOnlyTitle)));
-  EXPECT_THAT(model->account_bookmark_bar_node(), IsNull());
-}
-
-IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
-                       ShouldHandleMovesAcrossStorageBoundaries) {
-  const std::string kInitiallyLocalTitle = "Initially Local";
-  const std::string kInitiallyAccountTitle = "Initially Account";
-
-  fake_server::EntityBuilderFactory entity_builder_factory;
-  fake_server::BookmarkEntityBuilder bookmark_builder =
-      entity_builder_factory.NewBookmarkEntityBuilder(kInitiallyAccountTitle);
-  fake_server_->InjectEntity(bookmark_builder.BuildFolder());
-
-  ASSERT_TRUE(SetupClients());
-
-  BookmarkModel* model = GetBookmarkModel(kSingleProfileIndex);
-
-  model->AddFolder(/*parent=*/model->bookmark_bar_node(), /*index=*/0,
-                   base::UTF8ToUTF16(kInitiallyLocalTitle));
-
-  // Setup a primary account, but don't actually enable Sync-the-feature (so
-  // that Sync will start in transport mode).
-  ASSERT_TRUE(GetClient(kSingleProfileIndex)->SignInPrimaryAccount());
-  // Note: Depending on the state of feature flags (specifically
-  // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
-  // selected by default.
-  GetSyncService(kSingleProfileIndex)
-      ->GetUserSettings()
-      ->SetSelectedType(syncer::UserSelectableType::kBookmarks, true);
-  ASSERT_TRUE(GetClient(kSingleProfileIndex)->AwaitSyncTransportActive());
-  ASSERT_FALSE(GetSyncService(kSingleProfileIndex)->IsSyncFeatureEnabled());
-  ASSERT_TRUE(GetSyncService(kSingleProfileIndex)
-                  ->GetUserSettings()
-                  ->GetSelectedTypes()
-                  .Has(syncer::UserSelectableType::kBookmarks));
-  ASSERT_TRUE(GetSyncService(kSingleProfileIndex)
-                  ->GetActiveDataTypes()
-                  .Has(syncer::BOOKMARKS));
-
-  ASSERT_THAT(model->bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kInitiallyLocalTitle)));
-  ASSERT_THAT(model->account_bookmark_bar_node(), NotNull());
-  ASSERT_THAT(model->account_bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kInitiallyAccountTitle)));
-
-  // Move the account folder to local only.
-  model->Move(model->account_bookmark_bar_node()->children().front().get(),
-              model->bookmark_bar_node(),
-              /*index=*/1);
-  EXPECT_TRUE(bookmarks_helper::ServerBookmarksEqualityChecker(
-                  {}, /*cryptographer=*/nullptr)
-                  .Wait());
-  EXPECT_THAT(model->account_bookmark_bar_node()->children(), IsEmpty());
-  EXPECT_THAT(model->bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kInitiallyLocalTitle),
-                          IsFolderWithTitle(kInitiallyAccountTitle)));
-
-  // Move one local bookmark to the account.
-  model->Move(model->bookmark_bar_node()->children().front().get(),
-              model->account_bookmark_bar_node(),
-              /*index=*/0);
-  EXPECT_TRUE(bookmarks_helper::ServerBookmarksEqualityChecker(
-                  {{kInitiallyLocalTitle, GURL()}},
-                  /*cryptographer=*/nullptr)
-                  .Wait());
-  EXPECT_THAT(model->account_bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kInitiallyLocalTitle)));
-  EXPECT_THAT(model->bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kInitiallyAccountTitle)));
-}
-
-// Regression test for crbug.com/329278277: turning sync-the-feature on, then
-// off, and later signing in with account bookmarks enabled should lead to all
-// bookmarks being duplicated (local bookmarks and account bookmarks). The user
-// needs to take explicit action (e.g. exercise batch upload flow) to clean up
-// these duplicates (but this part is not covered in the test).
 IN_PROC_BROWSER_TEST_F(
-    SingleClientBookmarksWithAccountStorageSyncTest,
-    ShouldExposeDuplicatedBookmarksAfterTurningSyncOffAndSignIn) {
-  const std::string kTitle1 = "Title 1";
-  const std::string kTitle2 = "Title 2";
+    SingleClientBookmarksSyncTestWithEnforcedBookmarksCountLimit,
+    ShouldReportErrorIfIncrementalLocalCreationCrossesMaxCountLimit) {
+  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
 
-  ASSERT_TRUE(SetupClients());
+  // Set a limit of 4 bookmarks. This is to avoid erroring out when the fake
+  // server sends an update of size 4.
+  BookmarkSyncServiceFactory::GetForProfile(GetProfile(kSingleProfileIndex))
+      ->SetBookmarksLimitForTesting(4);
 
-  BookmarkModel* model = GetBookmarkModel(kSingleProfileIndex);
+  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
+  ASSERT_FALSE(GetClient(kSingleProfileIndex)
+                   ->service()
+                   ->HasAnyDatatypeErrorForTest(
+                       syncer::ModelTypeSet(syncer::BOOKMARKS)));
 
-  // Create two local folders while the user is signed out and sync is off.
-  AddFolder(kSingleProfileIndex, /*parent=*/model->bookmark_bar_node(),
-            /*index=*/0, kTitle1);
-  AddFolder(kSingleProfileIndex, /*parent=*/model->bookmark_bar_node(),
-            /*index=*/1, kTitle2);
+  // Add 2 new bookmarks to exceed the limit.
+  const BookmarkNode* bookmark_bar_node =
+      GetBookmarkBarNode(kSingleProfileIndex);
 
-  ASSERT_TRUE(SetupSync());
-  ASSERT_TRUE(bookmarks_helper::ServerBookmarksEqualityChecker(
-                  {{kTitle1, /*url=*/GURL()}, {kTitle2, /*url=*/GURL()}},
-                  /*cryptographer=*/nullptr)
-                  .Wait());
-  ASSERT_THAT(model->account_bookmark_bar_node(), IsNull());
+  const std::string kTitle1 = "title1";
+  const std::string kUrl1 = "http://www.url1.com";
+  ASSERT_TRUE(AddURL(kSingleProfileIndex,
+                     /*parent=*/bookmark_bar_node, /*index=*/0, kTitle1,
+                     GURL(kUrl1)));
 
-  // Turn Sync off by removing the primary account.
-  GetClient(0)->SignOutPrimaryAccount();
+  const std::string kTitle2 = "title2";
+  const std::string kUrl2 = "http://www.url2.com";
+  ASSERT_TRUE(AddURL(kSingleProfileIndex,
+                     /*parent=*/bookmark_bar_node, /*index=*/1, kTitle2,
+                     GURL(kUrl2)));
 
-  ASSERT_THAT(
-      model->bookmark_bar_node()->children(),
-      ElementsAre(IsFolderWithTitle(kTitle1), IsFolderWithTitle(kTitle2)));
-
-  // Sign in again, but don't actually enable Sync-the-feature (so that Sync
-  // will start in transport mode).
-  ASSERT_TRUE(GetClient(kSingleProfileIndex)->SignInPrimaryAccount());
-  // Note: Depending on the state of feature flags (specifically
-  // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
-  // selected by default.
-  GetSyncService(kSingleProfileIndex)
-      ->GetUserSettings()
-      ->SetSelectedType(syncer::UserSelectableType::kBookmarks, true);
-  ASSERT_TRUE(GetClient(kSingleProfileIndex)->AwaitSyncTransportActive());
-  ASSERT_FALSE(GetSyncService(kSingleProfileIndex)->IsSyncFeatureEnabled());
-  ASSERT_TRUE(GetSyncService(kSingleProfileIndex)
-                  ->GetUserSettings()
-                  ->GetSelectedTypes()
-                  .Has(syncer::UserSelectableType::kBookmarks));
-  ASSERT_TRUE(GetSyncService(kSingleProfileIndex)
-                  ->GetActiveDataTypes()
-                  .Has(syncer::BOOKMARKS));
-  ASSERT_THAT(model->account_bookmark_bar_node(), NotNull());
-
-  // The folders should now be duplicated in local and account bookmarks.
-  EXPECT_THAT(
-      model->bookmark_bar_node()->children(),
-      ElementsAre(IsFolderWithTitle(kTitle1), IsFolderWithTitle(kTitle2)));
-  EXPECT_THAT(
-      model->account_bookmark_bar_node()->children(),
-      ElementsAre(IsFolderWithTitle(kTitle1), IsFolderWithTitle(kTitle2)));
-
-  // Move one folder individually from local to account, involving a UUID
-  // collision.
-  ASSERT_EQ(2u, model->bookmark_bar_node()->children().size());
-  ASSERT_EQ(model->bookmark_bar_node()->children()[0]->uuid(),
-            model->account_bookmark_bar_node()->children()[0]->uuid());
-  model->Move(model->bookmark_bar_node()->children()[0].get(),
-              /*new_parent=*/model->account_bookmark_bar_node(),
-              /*index=*/model->account_bookmark_bar_node()->children().size());
-  EXPECT_THAT(
-      model->account_bookmark_bar_node()->children(),
-      ElementsAre(IsFolderWithTitle(kTitle1), IsFolderWithTitle(kTitle2),
-                  IsFolderWithTitle(kTitle1)));
-
-  // Move one folder individually from account to local, involving a UUID
-  // collision.
-  ASSERT_EQ(1u, model->bookmark_bar_node()->children().size());
-  ASSERT_EQ(model->bookmark_bar_node()->children()[0]->uuid(),
-            model->account_bookmark_bar_node()->children()[1]->uuid());
-  model->Move(model->account_bookmark_bar_node()->children()[1].get(),
-              /*new_parent=*/model->bookmark_bar_node(),
-              /*index=*/model->bookmark_bar_node()->children().size());
-}
-
-// Android doesn't currently support PRE_ tests, see crbug.com/1117345.
-#if !BUILDFLAG(IS_ANDROID)
-IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
-                       PRE_PersistAccountBookmarksAcrossRestarts) {
-  const std::string kInitiallyLocalTitle = "Initially Local";
-  const std::string kInitiallyAccountTitle = "Initially Account";
-
-  fake_server::EntityBuilderFactory entity_builder_factory;
-  fake_server::BookmarkEntityBuilder bookmark_builder =
-      entity_builder_factory.NewBookmarkEntityBuilder(kInitiallyAccountTitle);
-  fake_server_->InjectEntity(bookmark_builder.BuildFolder());
-
-  ASSERT_TRUE(SetupClients());
-
-  BookmarkModel* model = GetBookmarkModel(kSingleProfileIndex);
-
-  model->AddFolder(/*parent=*/model->bookmark_bar_node(), /*index=*/0,
-                   base::UTF8ToUTF16(kInitiallyLocalTitle));
-
-  // Setup a primary account, but don't actually enable Sync-the-feature (so
-  // that Sync will start in transport mode).
-  ASSERT_TRUE(GetClient(kSingleProfileIndex)->SignInPrimaryAccount());
-  // Note: Depending on the state of feature flags (specifically
-  // kReplaceSyncPromosWithSignInPromos), Bookmarks may or may not be considered
-  // selected by default.
-  GetSyncService(kSingleProfileIndex)
-      ->GetUserSettings()
-      ->SetSelectedType(syncer::UserSelectableType::kBookmarks, true);
-  ASSERT_TRUE(GetClient(kSingleProfileIndex)->AwaitSyncTransportActive());
-  ASSERT_FALSE(GetSyncService(kSingleProfileIndex)->IsSyncFeatureEnabled());
-  ASSERT_TRUE(GetSyncService(kSingleProfileIndex)
-                  ->GetUserSettings()
-                  ->GetSelectedTypes()
-                  .Has(syncer::UserSelectableType::kBookmarks));
-  ASSERT_TRUE(GetSyncService(kSingleProfileIndex)
-                  ->GetActiveDataTypes()
-                  .Has(syncer::BOOKMARKS));
-
-  ASSERT_THAT(model->bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kInitiallyLocalTitle)));
-  ASSERT_THAT(model->account_bookmark_bar_node(), NotNull());
-  ASSERT_THAT(model->account_bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kInitiallyAccountTitle)));
-}
-
-IN_PROC_BROWSER_TEST_F(SingleClientBookmarksWithAccountStorageSyncTest,
-                       PersistAccountBookmarksAcrossRestarts) {
-  // Same values as in the PRE_ test.
-  const std::string kInitiallyLocalTitle = "Initially Local";
-  const std::string kInitiallyAccountTitle = "Initially Account";
-
-  // Mimic the user being offline to verify that account bookmarks are loaded
-  // from disk instead of being redownloaded.
-  fake_server::FakeServerHttpPostProvider::DisableNetwork();
-
-  ASSERT_TRUE(SetupClients());
-  ASSERT_TRUE(GetClient(kSingleProfileIndex)->AwaitEngineInitialization());
-  ASSERT_FALSE(GetSyncService(kSingleProfileIndex)->IsSyncFeatureEnabled());
-  ASSERT_TRUE(GetSyncService(kSingleProfileIndex)
-                  ->GetUserSettings()
-                  ->GetSelectedTypes()
-                  .Has(syncer::UserSelectableType::kBookmarks));
-
-  BookmarkModel* model = GetBookmarkModel(kSingleProfileIndex);
-
-  // Local bookmarks should continue to exist (sanity-checking fixture).
-  ASSERT_THAT(model->bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kInitiallyLocalTitle)));
-
-  // Account bookmarks should continue existing even while offline.
-  ASSERT_THAT(model->account_bookmark_bar_node(), NotNull());
-  EXPECT_THAT(model->account_bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kInitiallyAccountTitle)));
-}
-#endif  // !BUILDFLAG(IS_ANDROID)
-
-// Android doesn't currently support PRE_ tests, see crbug.com/40200835 or
-// crbug.com/40145099.
-#if !BUILDFLAG(IS_ANDROID)
-class SingleClientBookmarksSyncTestWithEnabledMigrateSyncingUserToSignedIn
-    : public SingleClientBookmarksWithAccountStorageSyncTest {
- protected:
-  SingleClientBookmarksSyncTestWithEnabledMigrateSyncingUserToSignedIn() {
-    if (content::IsPreTest()) {
-      features_override_.InitAndDisableFeature(
-          switches::kMigrateSyncingUserToSignedIn);
-    } else {
-      features_override_.InitWithFeatures(
-          /*enabled_features=*/{syncer::kReplaceSyncPromosWithSignInPromos,
-                                switches::kMigrateSyncingUserToSignedIn},
-          /*disabled_features=*/{});
-    }
-  }
-
-  const std::string kTestTitle = "Test Title";
-
- private:
-  base::test::ScopedFeatureList features_override_;
-};
-
-IN_PROC_BROWSER_TEST_F(
-    SingleClientBookmarksSyncTestWithEnabledMigrateSyncingUserToSignedIn,
-    PRE_SyncToSigninMigration) {
-  ASSERT_TRUE(SetupClients());
-  AddFolder(kSingleProfileIndex, kTestTitle);
-
-  // Setup sync, wait for its completion, and make sure changes were synced.
-  ASSERT_TRUE(SetupSync());
-  ASSERT_TRUE(BookmarkModelMatchesFakeServerChecker(
-                  kSingleProfileIndex, GetSyncService(kSingleProfileIndex),
-                  GetFakeServer())
-                  .Wait());
-
-  BookmarkModel* model = GetBookmarkModel(kSingleProfileIndex);
-
-  ASSERT_THAT(model->bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kTestTitle)));
-
-  // Sync-the-feature is on, so account bookmarks should not exist.
-  ASSERT_THAT(model->account_bookmark_bar_node(), IsNull());
+  // Creation of 2 local bookmarks should exceed the limit of 4.
+  EXPECT_TRUE(
+      BookmarksDataTypeErrorChecker(GetClient(kSingleProfileIndex)->service())
+          .Wait());
+  // Bookmarks should be in an error state. Thus excluding it from the
+  // CheckForDataTypeFailures() check.
+  ExcludeDataTypesFromCheckForDataTypeFailures(
+      syncer::ModelTypeSet(syncer::BOOKMARKS));
 }
 
 IN_PROC_BROWSER_TEST_F(
-    SingleClientBookmarksSyncTestWithEnabledMigrateSyncingUserToSignedIn,
-    SyncToSigninMigration) {
-  // Mimic the user being offline to verify that account bookmarks are loaded
-  // from disk instead of being redownloaded.
-  fake_server::FakeServerHttpPostProvider::DisableNetwork();
+    SingleClientBookmarksSyncTestWithEnforcedBookmarksCountLimit,
+    ShouldReportErrorIfBookmarksCountExceedsLimitOnStartup) {
+  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
 
-  ASSERT_TRUE(SetupClients());
-  ASSERT_TRUE(GetClient(kSingleProfileIndex)->AwaitEngineInitialization());
-  ASSERT_FALSE(GetSyncService(kSingleProfileIndex)->IsSyncFeatureEnabled());
-  ASSERT_TRUE(GetSyncService(kSingleProfileIndex)
-                  ->GetUserSettings()
-                  ->GetSelectedTypes()
-                  .Has(syncer::UserSelectableType::kBookmarks));
+  // Set a limit of 4 bookmarks. This is to avoid erroring out when the fake
+  // server sends an update of size 4.
+  BookmarkSyncServiceFactory::GetForProfile(GetProfile(kSingleProfileIndex))
+      ->SetBookmarksLimitForTesting(4);
 
-  BookmarkModel* model = GetBookmarkModel(kSingleProfileIndex);
+  // Add 2 new bookmarks to exceed the limit.
+  const BookmarkNode* bookmark_bar_node =
+      GetBookmarkBarNode(kSingleProfileIndex);
 
-  // Local bookmarks should be empty.
-  ASSERT_THAT(model->bookmark_bar_node()->children(), IsEmpty());
+  const std::string kTitle1 = "title1";
+  const std::string kUrl1 = "http://www.url1.com";
+  ASSERT_TRUE(AddURL(kSingleProfileIndex,
+                     /*parent=*/bookmark_bar_node, /*index=*/0, kTitle1,
+                     GURL(kUrl1)));
 
-  // Account bookmarks should continue existing even while offline.
-  ASSERT_THAT(model->account_bookmark_bar_node(), NotNull());
-  EXPECT_THAT(model->account_bookmark_bar_node()->children(),
-              ElementsAre(IsFolderWithTitle(kTestTitle)));
+  const std::string kTitle2 = "title2";
+  const std::string kUrl2 = "http://www.url2.com";
+  ASSERT_TRUE(AddURL(kSingleProfileIndex,
+                     /*parent=*/bookmark_bar_node, /*index=*/1, kTitle2,
+                     GURL(kUrl2)));
+
+  ASSERT_FALSE(GetClient(kSingleProfileIndex)
+                   ->service()
+                   ->HasAnyDatatypeErrorForTest(
+                       syncer::ModelTypeSet(syncer::BOOKMARKS)));
+  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
+
+  // We now have 5 local bookmarks(3 permanent + 2 added), which exceeds our
+  // limit of 4 bookmarks.
+  EXPECT_TRUE(
+      BookmarksDataTypeErrorChecker(GetClient(kSingleProfileIndex)->service())
+          .Wait());
+  // Bookmarks should be in an error state. Thus excluding it from the
+  // CheckForDataTypeFailures() check.
+  ExcludeDataTypesFromCheckForDataTypeFailures(
+      syncer::ModelTypeSet(syncer::BOOKMARKS));
 }
-#endif  // !BUILDFLAG(IS_ANDROID)
 
-#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
+IN_PROC_BROWSER_TEST_F(
+    SingleClientBookmarksSyncTestWithEnforcedBookmarksCountLimit,
+    ShouldReportErrorIfBookmarksCountExceedsLimitAfterInitialUpdate) {
+  // Create a bookmark on the server under BookmarkBar with a truncated title.
+  const std::string kTitle1 = "title1";
+  const std::string kUrl1 = "http://www.url1.com";
+  fake_server::EntityBuilderFactory entity_builder_factory;
+  fake_server::BookmarkEntityBuilder bookmark_builder =
+      entity_builder_factory.NewBookmarkEntityBuilder(kTitle1);
+  fake_server_->InjectEntity(bookmark_builder.BuildBookmark(GURL(kUrl1)));
+
+  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
+  // Set a limit of 5 bookmarks. This is to avoid erroring out when the fake
+  // server sends an update of size 5.
+  BookmarkSyncServiceFactory::GetForProfile(GetProfile(kSingleProfileIndex))
+      ->SetBookmarksLimitForTesting(5);
+
+  // Set up 2 preexisting local bookmark under other node.
+  const BookmarkNode* other_node = GetOtherNode(kSingleProfileIndex);
+
+  const std::string kTitle2 = "title2";
+  const std::string kUrl2 = "http://www.url2.com";
+  ASSERT_TRUE(AddURL(kSingleProfileIndex,
+                     /*parent=*/other_node, /*index=*/0, kTitle2, GURL(kUrl2)));
+
+  const std::string kTitle3 = "title3";
+  const std::string kUrl3 = "http://www.url3.com";
+  ASSERT_TRUE(AddURL(kSingleProfileIndex,
+                     /*parent=*/other_node, /*index=*/0, kTitle3, GURL(kUrl3)));
+
+  ASSERT_FALSE(GetClient(kSingleProfileIndex)
+                   ->service()
+                   ->HasAnyDatatypeErrorForTest(
+                       syncer::ModelTypeSet(syncer::BOOKMARKS)));
+  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
+
+  // We should now have 6 local bookmarks, (3 permanent + 2 locally added + 1
+  // from remote), which exceeeds our limit of 5 bookmarks.
+  EXPECT_TRUE(
+      BookmarksDataTypeErrorChecker(GetClient(kSingleProfileIndex)->service())
+          .Wait());
+  // Note that remote bookmarks being added, even though we error out, is the
+  // current behaviour and is not a requirement.
+  EXPECT_THAT(GetBookmarkBarNode(kSingleProfileIndex)->children(),
+              ElementsAre(bookmarks_helper::IsUrlBookmarkWithTitleAndUrl(
+                  kTitle1, GURL(kUrl1))));
+  // Bookmarks should be in an error state. Thus excluding it from the
+  // CheckForDataTypeFailures() check.
+  ExcludeDataTypesFromCheckForDataTypeFailures(
+      syncer::ModelTypeSet(syncer::BOOKMARKS));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    SingleClientBookmarksSyncTestWithEnforcedBookmarksCountLimit,
+    ShouldReportErrorIfBookmarksCountExceedsLimitAfterIncrementalUpdate) {
+  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
+  // Set a limit of 4 bookmarks. This is to avoid erroring out when the fake
+  // server sends an update of size 4.
+  BookmarkSyncServiceFactory::GetForProfile(GetProfile(kSingleProfileIndex))
+      ->SetBookmarksLimitForTesting(4);
+
+  // Set up a preexisting local bookmark under other node.
+  const BookmarkNode* other_node = GetOtherNode(kSingleProfileIndex);
+
+  const std::string kTitle1 = "title1";
+  const std::string kUrl1 = "http://www.url1.com";
+  ASSERT_TRUE(AddURL(kSingleProfileIndex,
+                     /*parent=*/other_node, /*index=*/0, kTitle1, GURL(kUrl1)));
+
+  ASSERT_FALSE(GetClient(kSingleProfileIndex)
+                   ->service()
+                   ->HasAnyDatatypeErrorForTest(
+                       syncer::ModelTypeSet(syncer::BOOKMARKS)));
+  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
+
+  // Create a bookmark on the server under BookmarkBar.
+  const std::string kTitle2 = "title2";
+  const std::string kUrl2 = "http://www.url2.com";
+  fake_server::EntityBuilderFactory entity_builder_factory;
+  fake_server::BookmarkEntityBuilder bookmark_builder =
+      entity_builder_factory.NewBookmarkEntityBuilder(kTitle2);
+  fake_server_->InjectEntity(bookmark_builder.BuildBookmark(GURL(kUrl2)));
+
+  EXPECT_TRUE(
+      BookmarksDataTypeErrorChecker(GetClient(kSingleProfileIndex)->service())
+          .Wait());
+  // Note that remote bookmarks being added, even though we error out, is the
+  // current behaviour and is not a requirement.
+  EXPECT_THAT(GetBookmarkBarNode(kSingleProfileIndex)->children(),
+              ElementsAre(bookmarks_helper::IsUrlBookmarkWithTitleAndUrl(
+                  kTitle2, GURL(kUrl2))));
+  // Bookmarks should be in an error state. Thus excluding it from the
+  // CheckForDataTypeFailures() check.
+  ExcludeDataTypesFromCheckForDataTypeFailures(
+      syncer::ModelTypeSet(syncer::BOOKMARKS));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    SingleClientBookmarksSyncTestWithEnforcedBookmarksCountLimit,
+    ShouldReportErrorIfInitialUpdatesCrossMaxCountLimit) {
+  // Create two bookmarks on the server under BookmarkBar with a truncated
+  // title.
+  fake_server::EntityBuilderFactory entity_builder_factory;
+  const std::string kTitle1 = "title1";
+  const std::string kUrl1 = "http://www.url1.com";
+  fake_server_->InjectEntity(
+      entity_builder_factory.NewBookmarkEntityBuilder(kTitle1).BuildBookmark(
+          GURL(kUrl1)));
+
+  const std::string kTitle2 = "title2";
+  const std::string kUrl2 = "http://www.url2.com";
+  fake_server_->InjectEntity(
+      entity_builder_factory.NewBookmarkEntityBuilder(kTitle2).BuildBookmark(
+          GURL(kUrl2)));
+
+  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
+  // Set a limit of 4 bookmarks. This should result in an error when we get an
+  // update of size 5.
+  BookmarkSyncServiceFactory::GetForProfile(GetProfile(kSingleProfileIndex))
+      ->SetBookmarksLimitForTesting(4);
+
+  ASSERT_FALSE(GetClient(kSingleProfileIndex)
+                   ->service()
+                   ->HasAnyDatatypeErrorForTest(
+                       syncer::ModelTypeSet(syncer::BOOKMARKS)));
+  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
+
+  // Update of size 5 exceeds the limit.
+  EXPECT_TRUE(
+      BookmarksDataTypeErrorChecker(GetClient(kSingleProfileIndex)->service())
+          .Wait());
+  EXPECT_TRUE(GetBookmarkBarNode(kSingleProfileIndex)->children().empty());
+  // Bookmarks should be in an error state. Thus excluding it from the
+  // CheckForDataTypeFailures() check.
+  ExcludeDataTypesFromCheckForDataTypeFailures(
+      syncer::ModelTypeSet(syncer::BOOKMARKS));
+}
 
 }  // namespace

@@ -17,8 +17,7 @@ namespace smart_reader {
 SmartReaderClientImpl::SmartReaderClientImpl() {
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   // Bind receiver and pass remote to SmartReaderManagerAsh.
-  if (chromeos::LacrosService::Get()
-          ->IsSupported<crosapi::mojom::SmartReaderClient>()) {
+  if (chromeos::LacrosService::Get()->IsSmartReaderClientAvailable()) {
     chromeos::LacrosService::Get()
         ->BindPendingReceiverOrRemote<
             mojo::PendingRemote<crosapi::mojom::SmartReaderClient>,

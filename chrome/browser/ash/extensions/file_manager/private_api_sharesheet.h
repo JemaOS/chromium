@@ -34,18 +34,18 @@ class IsDirectoryCollector;
 class MimeTypeCollector;
 }  // namespace app_file_handler_util
 
-// Implements the chrome.fileManagerPrivate.sharesheetHasTargets
+// Implements the chrome.fileManagerPrivateInternal.sharesheetHasTargets
 // method.
-class FileManagerPrivateSharesheetHasTargetsFunction
+class FileManagerPrivateInternalSharesheetHasTargetsFunction
     : public LoggedExtensionFunction {
  public:
-  FileManagerPrivateSharesheetHasTargetsFunction();
+  FileManagerPrivateInternalSharesheetHasTargetsFunction();
 
-  DECLARE_EXTENSION_FUNCTION("fileManagerPrivate.sharesheetHasTargets",
+  DECLARE_EXTENSION_FUNCTION("fileManagerPrivateInternal.sharesheetHasTargets",
                              FILEMANAGERPRIVATEINTERNAL_SHARESHEETHASTARGETS)
 
  protected:
-  ~FileManagerPrivateSharesheetHasTargetsFunction() override;
+  ~FileManagerPrivateInternalSharesheetHasTargetsFunction() override;
 
   // ExtensionFunction overrides.
   ResponseAction Run() override;
@@ -69,21 +69,22 @@ class FileManagerPrivateSharesheetHasTargetsFunction
   std::unique_ptr<app_file_handler_util::IsDirectoryCollector>
       is_directory_collector_;
   std::vector<GURL> urls_;
-  raw_ptr<Profile> profile_ = nullptr;
+  raw_ptr<Profile, ExperimentalAsh> profile_ = nullptr;
   std::vector<storage::FileSystemURL> file_system_urls_;
+  bool contains_hosted_document_ = false;
 };
 
 // Implements the chrome.fileManagerPrivateInternal.invokeSharesheet method.
-class FileManagerPrivateInvokeSharesheetFunction
+class FileManagerPrivateInternalInvokeSharesheetFunction
     : public LoggedExtensionFunction {
  public:
-  FileManagerPrivateInvokeSharesheetFunction();
+  FileManagerPrivateInternalInvokeSharesheetFunction();
 
-  DECLARE_EXTENSION_FUNCTION("fileManagerPrivate.invokeSharesheet",
+  DECLARE_EXTENSION_FUNCTION("fileManagerPrivateInternal.invokeSharesheet",
                              FILEMANAGERPRIVATEINTERNAL_INVOKESHARESHEET)
 
  protected:
-  ~FileManagerPrivateInvokeSharesheetFunction() override;
+  ~FileManagerPrivateInternalInvokeSharesheetFunction() override;
 
   // ExtensionFunction overrides.
   ResponseAction Run() override;
@@ -110,9 +111,10 @@ class FileManagerPrivateInvokeSharesheetFunction
   std::unique_ptr<app_file_handler_util::IsDirectoryCollector>
       is_directory_collector_;
   std::vector<GURL> urls_;
-  raw_ptr<Profile> profile_ = nullptr;
+  raw_ptr<Profile, ExperimentalAsh> profile_ = nullptr;
   std::vector<storage::FileSystemURL> file_system_urls_;
   std::vector<std::string> dlp_source_urls_;
+  bool contains_hosted_document_ = false;
 };
 
 }  // namespace extensions

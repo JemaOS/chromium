@@ -7,7 +7,6 @@
 #include <memory>
 
 #include "device/vr/public/mojom/vr_service.mojom-blink.h"
-#include "third_party/blink/renderer/bindings/core/v8/frozen_array.h"
 #include "third_party/blink/renderer/modules/xr/xr_reference_space_event.h"
 #include "third_party/blink/renderer/modules/xr/xr_rigid_transform.h"
 #include "third_party/blink/renderer/modules/xr/xr_session.h"
@@ -36,9 +35,7 @@ Member<DOMPointReadOnly> RoundedDOMPoint(const gfx::Point3F& val) {
 XRBoundedReferenceSpace::XRBoundedReferenceSpace(XRSession* session)
     : XRReferenceSpace(
           session,
-          device::mojom::blink::XRReferenceSpaceType::kBoundedFloor),
-      offset_bounds_geometry_(
-          MakeGarbageCollected<FrozenArray<DOMPointReadOnly>>()) {}
+          device::mojom::blink::XRReferenceSpaceType::kBoundedFloor) {}
 
 XRBoundedReferenceSpace::XRBoundedReferenceSpace(
     XRSession* session,
@@ -46,9 +43,7 @@ XRBoundedReferenceSpace::XRBoundedReferenceSpace(
     : XRReferenceSpace(
           session,
           origin_offset,
-          device::mojom::blink::XRReferenceSpaceType::kBoundedFloor),
-      offset_bounds_geometry_(
-          MakeGarbageCollected<FrozenArray<DOMPointReadOnly>>()) {}
+          device::mojom::blink::XRReferenceSpaceType::kBoundedFloor) {}
 
 XRBoundedReferenceSpace::~XRBoundedReferenceSpace() = default;
 
@@ -78,24 +73,20 @@ void XRBoundedReferenceSpace::EnsureUpdated() const {
 
     // We may not have bounds if we've lost tracking after being created.
     // Whether we have them or not, we need to clear the existing bounds.
-    FrozenArray<DOMPointReadOnly>::VectorType offset_bounds_geometry;
+    offset_bounds_geometry_.clear();
     if (stage_parameters->bounds &&
         stage_parameters->bounds->size() >= kMinimumNumberOfBoundVertices) {
       for (const auto& bound : *(stage_parameters->bounds)) {
         gfx::Point3F p = offset_from_native.MapPoint(
             gfx::Point3F(bound.x(), 0.0, bound.z()));
-        offset_bounds_geometry.push_back(RoundedDOMPoint(p));
+        offset_bounds_geometry_.push_back(RoundedDOMPoint(p));
       }
     }
-    offset_bounds_geometry_ =
-        MakeGarbageCollected<FrozenArray<DOMPointReadOnly>>(
-            std::move(offset_bounds_geometry));
   } else {
     // If stage parameters aren't available set the transform to null, which
     // will subsequently cause this reference space to return null poses.
     mojo_from_bounded_native_.reset();
-    offset_bounds_geometry_ =
-        MakeGarbageCollected<FrozenArray<DOMPointReadOnly>>();
+    offset_bounds_geometry_.clear();
   }
 
   // DispatchEvent inherited from core/dom/events/event_target.h isn't const.
@@ -105,19 +96,18 @@ void XRBoundedReferenceSpace::EnsureUpdated() const {
       *XRReferenceSpaceEvent::Create(event_type_names::kReset, mutable_this));
 }
 
-std::optional<gfx::Transform> XRBoundedReferenceSpace::MojoFromNative() const {
+absl::optional<gfx::Transform> XRBoundedReferenceSpace::MojoFromNative() const {
   EnsureUpdated();
 
   if (!mojo_from_bounded_native_)
-    return std::nullopt;
+    return absl::nullopt;
 
   return *mojo_from_bounded_native_;
 }
 
-const FrozenArray<DOMPointReadOnly>& XRBoundedReferenceSpace::boundsGeometry()
-    const {
+HeapVector<Member<DOMPointReadOnly>> XRBoundedReferenceSpace::boundsGeometry() {
   EnsureUpdated();
-  return *offset_bounds_geometry_.Get();
+  return offset_bounds_geometry_;
 }
 
 void XRBoundedReferenceSpace::Trace(Visitor* visitor) const {

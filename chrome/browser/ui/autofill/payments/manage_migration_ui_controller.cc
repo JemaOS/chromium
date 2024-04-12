@@ -48,8 +48,7 @@ void ManageMigrationUiController::ShowOfferDialog(
     const LegalMessageLines& legal_message_lines,
     const std::string& user_email,
     const std::vector<MigratableCreditCard>& migratable_credit_cards,
-    payments::PaymentsAutofillClient::LocalCardMigrationCallback
-        start_migrating_cards_callback) {
+    AutofillClient::LocalCardMigrationCallback start_migrating_cards_callback) {
   flow_step_ = LocalCardMigrationFlowStep::OFFER_DIALOG;
   DCHECK(GetDialogController());
   GetDialogController()->ShowOfferDialog(
@@ -61,8 +60,7 @@ void ManageMigrationUiController::UpdateCreditCardIcon(
     const bool has_server_error,
     const std::u16string& tip_message,
     const std::vector<MigratableCreditCard>& migratable_credit_cards,
-    payments::PaymentsAutofillClient::MigrationDeleteCardCallback
-        delete_local_card_callback) {
+    AutofillClient::MigrationDeleteCardCallback delete_local_card_callback) {
   if (!GetDialogController()) {
     return;
   }

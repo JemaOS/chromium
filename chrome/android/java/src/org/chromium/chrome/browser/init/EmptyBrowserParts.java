@@ -4,11 +4,14 @@
 
 package org.chromium.chrome.browser.init;
 
-/** Empty implementation of the browser parts for easy extension. */
+/**
+ * Empty implementation of the browser parts for easy extension.
+ */
 public class EmptyBrowserParts implements BrowserParts {
 
     @Override
-    public void preInflationStartup() {}
+    public void preInflationStartup() {
+    }
 
     @Override
     public void setContentViewAndLoadLibrary(Runnable onInflationCompleteCallback) {
@@ -16,19 +19,24 @@ public class EmptyBrowserParts implements BrowserParts {
     }
 
     @Override
-    public void postInflationStartup() {}
+    public void postInflationStartup() {
+    }
 
     @Override
-    public void maybePreconnect() {}
+    public void maybePreconnect() {
+    }
 
     @Override
-    public void initializeCompositor() {}
+    public void initializeCompositor() {
+    }
 
     @Override
-    public void initializeState() {}
+    public void initializeState() {
+    }
 
     @Override
-    public void finishNativeInitialization() {}
+    public void finishNativeInitialization() {
+    }
 
     @Override
     public void onStartupFailure(Exception failureCause) {}

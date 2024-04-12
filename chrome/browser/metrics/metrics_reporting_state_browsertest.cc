@@ -5,9 +5,7 @@
 #include "chrome/browser/metrics/metrics_reporting_state.h"
 
 #include <memory>
-#include <optional>
 #include <string>
-#include <string_view>
 
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
@@ -36,6 +34,7 @@
 #include "content/public/test/browser_test.h"
 #include "testing/gmock/include/gmock/gmock-matchers.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/settings/device_settings_cache.h"
@@ -191,11 +190,11 @@ void OnMetricsReportingStateChanged(bool* new_state_ptr,
   std::move(run_loop_closure).Run();
 }
 
-bool HistogramExists(std::string_view name) {
+bool HistogramExists(base::StringPiece name) {
   return base::StatisticsRecorder::FindHistogram(name) != nullptr;
 }
 
-base::HistogramBase::Count GetHistogramDeltaTotalCount(std::string_view name) {
+base::HistogramBase::Count GetHistogramDeltaTotalCount(base::StringPiece name) {
   return base::StatisticsRecorder::FindHistogram(name)
       ->SnapshotDelta()
       ->TotalCount();
@@ -234,7 +233,7 @@ IN_PROC_BROWSER_TEST_P(MetricsReportingStateTestParameterized,
   ASSERT_THAT(local_state_contents, ::testing::NotNull());
 
   // Verify that the metrics reporting state in the file is what's expected.
-  std::optional<bool> metrics_reporting_state =
+  absl::optional<bool> metrics_reporting_state =
       local_state_contents->GetIfDict()->FindBoolByDottedPath(
           metrics::prefs::kMetricsReportingEnabled);
   EXPECT_TRUE(metrics_reporting_state.has_value());

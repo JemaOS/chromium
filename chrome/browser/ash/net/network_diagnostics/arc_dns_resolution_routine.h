@@ -24,8 +24,7 @@ class ArcDnsResolutionRoutine : public NetworkDiagnosticsRoutine {
   using RunArcDnsResolutionCallback = chromeos::network_diagnostics::mojom::
       NetworkDiagnosticsRoutines::RunArcDnsResolutionCallback;
 
-  explicit ArcDnsResolutionRoutine(
-      chromeos::network_diagnostics::mojom::RoutineCallSource source);
+  ArcDnsResolutionRoutine();
   ArcDnsResolutionRoutine(const ArcDnsResolutionRoutine&) = delete;
   ArcDnsResolutionRoutine& operator=(const ArcDnsResolutionRoutine&) = delete;
   ~ArcDnsResolutionRoutine() override;
@@ -56,7 +55,7 @@ class ArcDnsResolutionRoutine : public NetworkDiagnosticsRoutine {
   bool successfully_resolved_hostnames_ = true;
   bool failed_to_get_arc_service_manager_ = false;
   bool failed_to_get_net_instance_service_for_dns_resolution_test_ = false;
-  raw_ptr<arc::mojom::NetInstance, DanglingUntriaged> net_instance_ = nullptr;
+  raw_ptr<arc::mojom::NetInstance, ExperimentalAsh> net_instance_ = nullptr;
   int64_t max_latency_ = 0;
   base::WeakPtrFactory<ArcDnsResolutionRoutine> weak_ptr_factory_{this};
 };

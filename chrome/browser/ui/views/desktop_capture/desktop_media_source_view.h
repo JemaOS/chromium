@@ -29,7 +29,8 @@ struct DesktopMediaSourceViewStyle {
                               const gfx::Rect& icon_rect,
                               const gfx::Rect& label_rect,
                               gfx::HorizontalAlignment text_alignment,
-                              const gfx::Rect& image_rect);
+                              const gfx::Rect& image_rect,
+                              int focus_rectangle_inset);
 
   // This parameter controls how many source items can be displayed in a row.
   // Source items are instances of DesktopMediaSourceView.
@@ -44,14 +45,17 @@ struct DesktopMediaSourceViewStyle {
   gfx::Rect label_rect;
   gfx::HorizontalAlignment text_alignment;
   gfx::Rect image_rect;
+
+  // When a source item is focused, we paint dotted line. This parameter
+  // controls the distance between dotted line and the source view boundary.
+  int focus_rectangle_inset;
 };
 
 // View used for each item in DesktopMediaListView. Shows a single desktop media
 // source as a thumbnail with the title under it.
 class DesktopMediaSourceView : public views::View {
-  METADATA_HEADER(DesktopMediaSourceView, views::View)
-
  public:
+  METADATA_HEADER(DesktopMediaSourceView);
   DesktopMediaSourceView(DesktopMediaListView* parent,
                          content::DesktopMediaID source_id,
                          DesktopMediaSourceViewStyle style);
@@ -93,9 +97,9 @@ class DesktopMediaSourceView : public views::View {
   raw_ptr<DesktopMediaListView> parent_;
   content::DesktopMediaID source_id_;
 
-  raw_ptr<views::ImageView> icon_view_;
-  raw_ptr<views::ImageView> image_view_;
-  raw_ptr<views::Label> label_;
+  raw_ptr<views::ImageView> icon_view_ = new views::ImageView;
+  raw_ptr<views::ImageView> image_view_ = new views::ImageView;
+  raw_ptr<views::Label> label_ = new views::Label;
 
   bool selected_;
 };

@@ -22,7 +22,7 @@ export class EmojiPrefixSearch {
   setCollection(collection: EmojiVariants[]) {
     this.clear();
     for (const record of collection) {
-      if (!record.base.string || !record.base.name) {
+      if (!record.base.string) {
         continue;
       }
       const string = record.base.string;
@@ -79,9 +79,6 @@ export class EmojiPrefixSearch {
     token: string,
     weight: number,
   }> {
-    if (!emoji.base.name) {
-      return [];
-    }
     const PRIMARY_NAME_WEIGHT = 1;
     return this.tokenize(sanitize(emoji.base.name))
         .map((token, pos) => ({

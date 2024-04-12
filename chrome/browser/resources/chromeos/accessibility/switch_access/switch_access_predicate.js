@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {AutomationPredicate} from '/common/automation_predicate.js';
-import {RectUtil} from '/common/rect_util.js';
-import {TestImportManager} from '/common/testing/test_import_manager.js';
+import {AutomationPredicate} from '../common/automation_predicate.js';
+import {RectUtil} from '../common/rect_util.js';
+import {AutomationTreeWalkerRestriction} from '../common/tree_walker.js';
 
 import {SACache} from './cache.js';
 import {SAChildNode, SARootNode} from './nodes/switch_access_node.js';
@@ -46,6 +46,8 @@ export const SwitchAccessPredicate = {
     const defaultActionVerb = node.defaultActionVerb;
     const loc = node.location;
     const parent = node.parent;
+    const role = node.role;
+    const state = node.state;
 
     // Skip things that are offscreen or invisible.
     if (!SwitchAccessPredicate.isVisible(node)) {
@@ -60,15 +62,14 @@ export const SwitchAccessPredicate = {
     }
 
     // These web containers are not directly actionable.
-    if (AutomationPredicate.structuralContainer(node)) {
+    if (role === RoleType.WEB_VIEW || role === RoleType.ROOT_WEB_AREA) {
       cache.isActionable.set(node, false);
       return false;
     }
 
     // Check various indicators that the node is actionable.
-    const actionableRole = AutomationPredicate.roles(
-        [RoleType.BUTTON, RoleType.SLIDER, RoleType.TAB]);
-    if (actionableRole(node)) {
+    if (role === RoleType.BUTTON || role === RoleType.SLIDER ||
+        role === RoleType.TAB) {
       cache.isActionable.set(node, true);
       return true;
     }
@@ -90,7 +91,7 @@ export const SwitchAccessPredicate = {
       return true;
     }
 
-    if (node.role === RoleType.LIST_ITEM &&
+    if (role === RoleType.LIST_ITEM &&
         defaultActionVerb === DefaultActionVerb.CLICK) {
       cache.isActionable.set(node, true);
       return true;
@@ -100,7 +101,7 @@ export const SwitchAccessPredicate = {
     // should menu items.
     // Current heuristic is to show as actionble any focusable item where no
     // child is an interesting subtree.
-    if (node.state[StateType.FOCUSABLE] || node.role === RoleType.MENU_ITEM) {
+    if (state[StateType.FOCUSABLE] || role === RoleType.MENU_ITEM) {
       const result = !node.children.some(
           child => SwitchAccessPredicate.isInterestingSubtree(child, cache));
       cache.isActionable.set(node, result);
@@ -284,6 +285,3 @@ export const SwitchAccessPredicate = {
         SwitchAccessPredicate.isInteresting(node, scope, cache);
   },
 };
-
-TestImportManager.exportForTesting(
-    ['SwitchAccessPredicate', SwitchAccessPredicate]);

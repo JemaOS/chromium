@@ -27,7 +27,7 @@ Keyboard* NavigatorKeyboard::keyboard(Navigator& navigator) {
     supplement = MakeGarbageCollected<NavigatorKeyboard>(navigator);
     ProvideTo(navigator, supplement);
   }
-  return supplement->keyboard_.Get();
+  return supplement->keyboard_;
 }
 
 void NavigatorKeyboard::Trace(Visitor* visitor) const {

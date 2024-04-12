@@ -62,7 +62,7 @@ TEST_F(AccessibilityTest,
 
 TEST_F(AccessibilityTest,
        TextOffsetInFormattingContextWithLayoutBlockFlowAtBlockLevel) {
-  // OffsetMapping does not support block flow objects that are at
+  // NGOffsetMapping does not support block flow objects that are at
   // block-level, so we do not support them as well.
   SetBodyInnerHTML(R"HTML(
       <p>

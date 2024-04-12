@@ -20,7 +20,9 @@ namespace base {
 class FilePath;
 }  // namespace base
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 // Bridge between chrome.fileManagerPrivate.executeCustomAction operation and
 // the providing extension's onExecuteActionRequested event. Created per
@@ -53,6 +55,8 @@ class ExecuteAction : public Operation {
   storage::AsyncFileUtil::StatusCallback callback_;
 };
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_OPERATIONS_EXECUTE_ACTION_H_

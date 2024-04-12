@@ -111,7 +111,7 @@ class BLINK_PLATFORM_EXPORT WebCryptoKeyAlgorithm {
   void Assign(const WebCryptoKeyAlgorithm& other);
   void Reset();
 
-  WebPrivatePtrForRefCounted<WebCryptoKeyAlgorithmPrivate> private_;
+  WebPrivatePtr<WebCryptoKeyAlgorithmPrivate> private_;
 };
 
 }  // namespace blink

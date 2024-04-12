@@ -68,9 +68,7 @@ int GetRepetitionCountWithPolicyOverride(
   return actual_count;
 }
 
-BitmapImage::BitmapImage(ImageObserver* observer,
-                         bool is_multipart,
-                         bool is_transparent_placeholder)
+BitmapImage::BitmapImage(ImageObserver* observer, bool is_multipart)
     : Image(observer, is_multipart),
       animation_policy_(
           mojom::blink::ImageAnimationPolicy::kImageAnimationPolicyAllowed),
@@ -79,29 +77,11 @@ BitmapImage::BitmapImage(ImageObserver* observer,
       preferred_size_is_transposed_(false),
       size_available_(false),
       have_frame_count_(false),
-      is_transparent_placeholder_(is_transparent_placeholder),
       repetition_count_status_(kUnknown),
       repetition_count_(kAnimationNone),
       frame_count_(0) {}
 
 BitmapImage::~BitmapImage() {}
-
-scoped_refptr<BitmapImage> BitmapImage::MaybeCreateTransparentPlaceholderImage(
-    KURL url) {
-  CHECK(IsMainThread());
-  DEFINE_THREAD_SAFE_STATIC_LOCAL(
-      Vector<String>, known_transparent_gifs,
-      ({"data:image/gif;base64,R0lGODlhAQABAIAAAP///////"
-        "yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
-        "data:image/gif;base64,R0lGODlhAQABAID/"
-        "AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="}));
-  if (known_transparent_gifs.Contains(url)) {
-    DEFINE_STATIC_REF(BitmapImage, transparent_placeholder_image,
-                      (base::AdoptRef(new BitmapImage(nullptr, false, true))));
-    return transparent_placeholder_image;
-  }
-  return nullptr;
-}
 
 bool BitmapImage::CurrentFrameHasSingleSecurityOrigin() const {
   return true;
@@ -147,8 +127,8 @@ PaintImage BitmapImage::CreatePaintImage() {
     return PaintImage();
 
   auto completion_state = all_data_received_
-                              ? PaintImage::CompletionState::kDone
-                              : PaintImage::CompletionState::kPartiallyDone;
+                              ? PaintImage::CompletionState::DONE
+                              : PaintImage::CompletionState::PARTIALLY_DONE;
   auto builder =
       CreatePaintImageBuilder()
           .set_paint_image_generator(std::move(generator))
@@ -180,11 +160,6 @@ void BitmapImage::UpdateSize() const {
 }
 
 gfx::Size BitmapImage::SizeWithConfig(SizeConfig config) const {
-  if (is_transparent_placeholder_) {
-    static constexpr gfx::Size kSize{1, 1};
-    return kSize;
-  }
-
   UpdateSize();
   gfx::Size size = size_;
   if (config.apply_density && !density_corrected_size_.IsEmpty())
@@ -210,15 +185,11 @@ bool BitmapImage::ShouldReportByteSizeUMAs(bool data_now_completely_received) {
   if (!decoder_)
     return false;
   return !all_data_received_ && data_now_completely_received &&
-         decoder_->ByteSize() != 0 && IsSizeAvailable() &&
-         decoder_->RepetitionCount() == kAnimationNone &&
-         !decoder_->ImageIsHighBitDepth();
+         decoder_->ByteSize() != 0 && IsSizeAvailable();
 }
 
 Image::SizeAvailability BitmapImage::SetData(scoped_refptr<SharedBuffer> data,
                                              bool all_data_received) {
-  CHECK(!is_transparent_placeholder_ || !data);
-
   if (!data)
     return kSizeAvailable;
 
@@ -234,7 +205,7 @@ Image::SizeAvailability BitmapImage::SetData(scoped_refptr<SharedBuffer> data,
   bool has_enough_data = ImageDecoder::HasSufficientDataToSniffMimeType(*data);
   decoder_ = DeferredImageDecoder::Create(std::move(data), all_data_received,
                                           ImageDecoder::kAlphaPremultiplied,
-                                          ColorBehavior::kTag);
+                                          ColorBehavior::Tag());
   // If we had enough data but couldn't create a decoder, it implies a decode
   // failure.
   if (has_enough_data && !decoder_)
@@ -350,7 +321,7 @@ void BitmapImage::Draw(cc::PaintCanvas* canvas,
   bool is_lazy_generated = image.IsLazyGenerated();
 
   const cc::PaintFlags* image_flags = &flags;
-  std::optional<cc::PaintFlags> dark_mode_flags;
+  absl::optional<cc::PaintFlags> dark_mode_flags;
   if (draw_options.dark_mode_filter) {
     dark_mode_flags = flags;
     draw_options.dark_mode_filter->ApplyFilterToImage(
@@ -396,8 +367,6 @@ bool BitmapImage::IsSizeAvailable() {
 }
 
 PaintImage BitmapImage::PaintImageForCurrentFrame() {
-  CHECK(!is_transparent_placeholder_ || !decoder_);
-
   auto alpha_type = decoder_ ? decoder_->AlphaType() : kUnknown_SkAlphaType;
   if (cached_frame_ && cached_frame_.GetAlphaType() == alpha_type)
     return cached_frame_;
@@ -439,8 +408,6 @@ scoped_refptr<Image> BitmapImage::ImageForDefaultFrame() {
 }
 
 bool BitmapImage::CurrentFrameKnownToBeOpaque() {
-  CHECK(!is_transparent_placeholder_ || !decoder_);
-
   return decoder_ ? decoder_->AlphaType() == kOpaque_SkAlphaType : false;
 }
 

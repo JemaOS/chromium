@@ -2,9 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {ViewerZoomToolbarElement} from 'chrome://print/pdf/pdf_print_wrapper.js';
-import {ToolbarManager} from 'chrome://print/pdf/pdf_print_wrapper.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {ToolbarManager, ViewerZoomToolbarElement} from 'chrome://print/pdf/pdf_print_wrapper.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 
 class MockWindow {
@@ -102,7 +101,18 @@ function makeTapEvent(x: number, y: number): MouseEvent {
   return e;
 }
 
-suite('PdfToolbarManagerTest', function() {
+const pdf_toolbar_manager_test = {
+  suiteName: 'PdfToolbarManagerTest',
+  TestNames: {
+    KeyboardNavigation: 'keyboard navigation',
+    ResetKeyboardNavigation: 'reset keyboard navigation',
+    TouchInteraction: 'touch interaction',
+  },
+};
+
+Object.assign(window, {pdf_toolbar_manager_test});
+
+suite(pdf_toolbar_manager_test.suiteName, function() {
   let mockWindow: MockWindow;
 
   let zoomToolbar: ViewerZoomToolbarElement;
@@ -128,7 +138,7 @@ suite('PdfToolbarManagerTest', function() {
   /**
    * Test that the toolbar will not be hidden when navigating with the tab key.
    */
-  test('KeyboardNavigation', function() {
+  test(pdf_toolbar_manager_test.TestNames.KeyboardNavigation, function() {
     function mouseMove(
         fromX: number, fromY: number, toX: number, toY: number, steps: number) {
       getMouseMoveEvents(fromX, fromY, toX, toY, steps)
@@ -159,7 +169,7 @@ suite('PdfToolbarManagerTest', function() {
    * Simulates focusing and then un-focusing the zoom toolbar buttons from Print
    * Preview.
    */
-  test('ResetKeyboardNavigation', function() {
+  test(pdf_toolbar_manager_test.TestNames.ResetKeyboardNavigation, function() {
     // Move the mouse and wait for a timeout to ensure toolbar is invisible.
     getMouseMoveEvents(200, 200, 800, 800, 5).forEach(function(e: Event) {
       document.dispatchEvent(e);
@@ -200,7 +210,7 @@ suite('PdfToolbarManagerTest', function() {
    * Test that the toolbars can be shown or hidden by tapping with a touch
    * device.
    */
-  test('TouchInteraction', function() {
+  test(pdf_toolbar_manager_test.TestNames.TouchInteraction, function() {
     toolbarManager.resetKeyboardNavigationAndHideToolbar();
     mockWindow.runTimeout();
     assertFalse(zoomToolbar.isVisible());

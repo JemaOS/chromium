@@ -4,8 +4,7 @@
 
 // clang-format off
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {AppProtocolEntry, HandlerEntry, ProtocolEntry, ProtocolHandlersElement} from 'chrome://settings/lazy_load.js';
-import {SiteSettingsPrefsBrowserProxyImpl} from 'chrome://settings/lazy_load.js';
+import {AppProtocolEntry, HandlerEntry, ProtocolEntry, ProtocolHandlersElement, SiteSettingsPrefsBrowserProxyImpl} from 'chrome://settings/lazy_load.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 
 import {TestSiteSettingsPrefsBrowserProxy} from './test_site_settings_prefs_browser_proxy.js';

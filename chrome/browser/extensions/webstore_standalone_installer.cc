@@ -217,12 +217,8 @@ void WebstoreStandaloneInstaller::OnInstallPromptDone(
   }
 
   auto installer = base::MakeRefCounted<WebstoreInstaller>(
-      profile_,
-      base::BindOnce(&WebstoreStandaloneInstaller::OnExtensionInstallSuccess,
-                     weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&WebstoreStandaloneInstaller::OnExtensionInstallFailure,
-                     weak_ptr_factory_.GetWeakPtr()),
-      GetWebContents(), id_, std::move(approval), install_source_);
+      profile_, this, GetWebContents(), id_, std::move(approval),
+      install_source_);
   installer->Start();
 }
 
@@ -243,9 +239,9 @@ void WebstoreStandaloneInstaller::OnWebstoreResponseParseSuccess(
     return;
   }
 
-  std::optional<double> average_rating_setting =
+  absl::optional<double> average_rating_setting =
       webstore_data.FindDouble(kAverageRatingKey);
-  std::optional<int> rating_count_setting =
+  absl::optional<int> rating_count_setting =
       webstore_data.FindInt(kRatingCountKey);
 
   // Manifest, number of users, average rating and rating count are required.
@@ -263,7 +259,7 @@ void WebstoreStandaloneInstaller::OnWebstoreResponseParseSuccess(
   rating_count_ = *rating_count_setting;
 
   // Showing user count is optional.
-  std::optional<bool> show_user_count_opt =
+  absl::optional<bool> show_user_count_opt =
       webstore_data.FindBool(kShowUserCountKey);
   show_user_count_ = show_user_count_opt.value_or(true);
 

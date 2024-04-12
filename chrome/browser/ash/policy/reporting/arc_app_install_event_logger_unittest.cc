@@ -283,8 +283,8 @@ class AppInstallEventLoggerTest : public testing::Test {
 
   content::BrowserTaskEnvironment task_environment_;
   ash::NetworkHandlerTestHelper network_handler_test_helper_;
-  TestingPrefServiceSimple pref_service_;
   TestingProfile profile_;
+  TestingPrefServiceSimple pref_service_;
 
   MockAppInstallEventLoggerDelegate delegate_;
 

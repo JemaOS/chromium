@@ -5,8 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_EDITING_FINDER_FIND_BUFFER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_EDITING_FINDER_FIND_BUFFER_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/display_lock/display_lock_context.h"
 #include "third_party/blink/renderer/core/editing/finder/find_options.h"
@@ -16,8 +15,8 @@
 namespace blink {
 
 class LayoutBlockFlow;
+class NGOffsetMapping;
 class Node;
-class OffsetMapping;
 class WebString;
 
 // Buffer for find-in-page, collects text until it meets a block/other
@@ -33,7 +32,7 @@ class CORE_EXPORT FindBuffer {
       const EphemeralRangeInFlatTree& range,
       String search_text,
       const FindOptions,
-      std::optional<base::TimeDelta> timeout_ms = std::nullopt);
+      absl::optional<base::TimeDelta> timeout_ms = absl::nullopt);
 
   // Returns the closest ancestor of |start_node| (including the node itself)
   // that is block level.
@@ -159,9 +158,9 @@ class CORE_EXPORT FindBuffer {
   void ReplaceNodeWithCharConstants(const Node& node);
 
   // Mapping for position in buffer -> actual node where the text came from,
-  // along with the offset in the OffsetMapping of this find_buffer.
+  // along with the offset in the NGOffsetMapping of this find_buffer.
   // This is needed because when we find a match in the buffer, we want to know
-  // where it's located in the OffsetMapping for this FindBuffer.
+  // where it's located in the NGOffsetMapping for this FindBuffer.
   // Example: (assume there are no whitespace)
   // <div>
   //  aaa
@@ -181,7 +180,7 @@ class CORE_EXPORT FindBuffer {
   // For text node "ddd", oib = 0, oim = 4.
   // Content of |buffer_| = "ddd".
   // Since the LayoutBlockFlow for "aaa" and "ddd" is the same, they have the
-  // same OffsetMapping, the |offset_in_mapping_| for the BufferNodeMapping in
+  // same NGOffsetMapping, the |offset_in_mapping_| for the BufferNodeMapping in
   // run #3 is 4 (the index of first "d" character in the mapping text).
   struct BufferNodeMapping {
     const unsigned offset_in_buffer;
@@ -204,7 +203,7 @@ class CORE_EXPORT FindBuffer {
   Vector<BufferNodeMapping> buffer_node_mappings_;
   TextSearcherICU text_searcher_;
 
-  const OffsetMapping* offset_mapping_ = nullptr;
+  const NGOffsetMapping* offset_mapping_ = nullptr;
 };
 
 }  // namespace blink

@@ -3,4 +3,4 @@
 // found in the LICENSE file.
 
 // Notify the background page that we ran.
-chrome.runtime.sendMessage("execute_script");
+chrome.extension.sendRequest("execute_script");

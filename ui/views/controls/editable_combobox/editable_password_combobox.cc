@@ -140,7 +140,7 @@ bool EditablePasswordCombobox::ArePasswordsRevealed() const {
   return are_passwords_revealed_;
 }
 
-BEGIN_METADATA(EditablePasswordCombobox)
+BEGIN_METADATA(EditablePasswordCombobox, View)
 END_METADATA
 
 }  // namespace views

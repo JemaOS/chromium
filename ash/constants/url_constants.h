@@ -19,10 +19,6 @@ namespace chrome {
 COMPONENT_EXPORT(ASH_CONSTANTS)
 extern const char kAndroidMessagesLearnMoreURL[];
 
-// "Learn more" URL for APN settings.
-COMPONENT_EXPORT(ASH_CONSTANTS)
-extern const char16_t kApnSettingsLearnMoreUrl[];
-
 // The URL for additional help that is given when Linux export/import fails.
 COMPONENT_EXPORT(ASH_CONSTANTS) extern const char kLinuxExportImportHelpURL[];
 

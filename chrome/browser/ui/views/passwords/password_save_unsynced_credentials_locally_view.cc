@@ -12,6 +12,7 @@
 #include "chrome/browser/ui/passwords/ui_utils.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/chrome_typography.h"
+#include "chrome/browser/ui/views/passwords/password_items_view.h"
 #include "chrome/browser/ui/views/passwords/views_utils.h"
 #include "chrome/grit/generated_resources.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -121,7 +122,7 @@ void PasswordSaveUnsyncedCredentialsLocallyView::ButtonPressed(
 
 void PasswordSaveUnsyncedCredentialsLocallyView::OnSaveClicked() {
   std::vector<bool> was_credential_selected;
-  for (const views::Checkbox* checkbox : checkboxes_) {
+  for (const auto* checkbox : checkboxes_) {
     was_credential_selected.push_back(checkbox->GetChecked());
   }
   controller_.OnSaveClicked(was_credential_selected);

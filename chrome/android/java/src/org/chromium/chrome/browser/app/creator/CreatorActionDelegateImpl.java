@@ -4,7 +4,7 @@
 
 package org.chromium.chrome.browser.app.creator;
 
-import android.app.Activity;
+import android.content.Context;
 
 import org.chromium.base.Callback;
 import org.chromium.base.Log;
@@ -12,17 +12,13 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.bookmarks.BookmarkUtils;
 import org.chromium.chrome.browser.creator.CreatorCoordinator;
-import org.chromium.chrome.browser.device_lock.DeviceLockActivityLauncherImpl;
 import org.chromium.chrome.browser.feed.FeedActionDelegate;
-import org.chromium.chrome.browser.feed.R;
 import org.chromium.chrome.browser.feed.signinbottomsheet.SigninBottomSheetCoordinator;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.signin.SyncConsentActivityLauncherImpl;
 import org.chromium.chrome.browser.tab.TabLaunchType;
-import org.chromium.chrome.browser.tabmodel.AsyncTabCreationParams;
-import org.chromium.chrome.browser.tabmodel.document.ChromeAsyncTabLauncher;
+import org.chromium.chrome.browser.tabmodel.document.TabDelegate;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
-import org.chromium.chrome.browser.ui.signin.account_picker.AccountPickerBottomSheetStrings;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.ui.base.WindowAndroid;
@@ -33,49 +29,28 @@ import org.chromium.url.GURL;
 public class CreatorActionDelegateImpl implements FeedActionDelegate {
     private static final String TAG = "Cormorant";
 
-    private final Activity mActivity;
+    private final Context mActivityContext;
     private final Profile mProfile;
     private final SnackbarManager mSnackbarManager;
-    private final CreatorCoordinator mCreatorCoordinator;
-    private final int mParentId;
-    private final BottomSheetController mBottomSheetController;
+    private CreatorCoordinator mCreatorCoordinator;
 
-    public CreatorActionDelegateImpl(
-            Activity activity,
-            Profile profile,
-            SnackbarManager snackbarManager,
-            CreatorCoordinator creatorCoordinator,
-            int parentId,
-            BottomSheetController bottomSheetController) {
-        mActivity = activity;
+    public CreatorActionDelegateImpl(Context activityContext, Profile profile,
+            SnackbarManager snackbarManager, CreatorCoordinator creatorCoordinator) {
+        mActivityContext = activityContext;
         mProfile = profile;
         mSnackbarManager = snackbarManager;
         mCreatorCoordinator = creatorCoordinator;
-        mParentId = parentId;
-        mBottomSheetController = bottomSheetController;
     }
 
     @Override
-    public void openSuggestionUrl(
-            int disposition,
-            LoadUrlParams params,
-            boolean inGroup,
-            Runnable onPageLoaded,
-            Callback<VisitResult> onVisitComplete) {
+    public void openSuggestionUrl(int disposition, LoadUrlParams params, boolean inGroup,
+            Runnable onPageLoaded, Callback<VisitResult> onVisitComplete) {
         // Back-of-card actions
         if (disposition == WindowOpenDisposition.NEW_FOREGROUND_TAB
                 || disposition == WindowOpenDisposition.NEW_BACKGROUND_TAB
                 || disposition == WindowOpenDisposition.OFF_THE_RECORD) {
             boolean offTheRecord = (disposition == WindowOpenDisposition.OFF_THE_RECORD);
-            if (inGroup) {
-                AsyncTabCreationParams asyncParams = new AsyncTabCreationParams(params);
-                new ChromeAsyncTabLauncher(offTheRecord)
-                        .launchNewTab(asyncParams, TabLaunchType.FROM_LINK, mParentId);
-
-            } else {
-                new ChromeAsyncTabLauncher(offTheRecord)
-                        .launchNewTab(params, TabLaunchType.FROM_LINK, null);
-            }
+            new TabDelegate(offTheRecord).createNewTab(params, TabLaunchType.FROM_LINK, null);
             return;
         } else if (disposition == WindowOpenDisposition.CURRENT_TAB) {
             mCreatorCoordinator.requestOpenSheet(new GURL(params.getUrl()));
@@ -90,47 +65,25 @@ public class CreatorActionDelegateImpl implements FeedActionDelegate {
         // TODO(crbug/1399617) Eliminate code duplication with
         //     FeedActionDelegateImpl
         BookmarkModel bookmarkModel = BookmarkModel.getForProfile(mProfile);
-        bookmarkModel.finishLoadingBookmarkModel(
-                () -> {
-                    assert ThreadUtils.runningOnUiThread();
-                    BookmarkUtils.addToReadingList(
-                            mActivity,
-                            bookmarkModel,
-                            title,
-                            new GURL(url),
-                            mSnackbarManager,
-                            mProfile,
-                            mBottomSheetController);
-                });
+        bookmarkModel.finishLoadingBookmarkModel(() -> {
+            assert ThreadUtils.runningOnUiThread();
+            BookmarkUtils.addToReadingList(
+                    new GURL(url), title, mSnackbarManager, bookmarkModel, mActivityContext);
+        });
     }
 
     @Override
     public void showSyncConsentActivity(int signinAccessPoint) {
-        SyncConsentActivityLauncherImpl.get()
-                .launchActivityForPromoDefaultFlow(mActivity, signinAccessPoint, null);
+        SyncConsentActivityLauncherImpl.get().launchActivityForPromoDefaultFlow(
+                mActivityContext, signinAccessPoint, null);
     }
 
     @Override
-    public void showSignInInterstitial(
-            int signinAccessPoint,
-            BottomSheetController mBottomSheetController,
-            WindowAndroid mWindowAndroid) {
-        AccountPickerBottomSheetStrings strings =
-                new AccountPickerBottomSheetStrings(
-                        R.string.signin_account_picker_bottom_sheet_title_for_cormorant_signin,
-                        R.string.signin_account_picker_bottom_sheet_subtitle_for_cormorant_signin,
-                        R.string.close);
+    public void showSignInInterstitial(int signinAccessPoint,
+            BottomSheetController mBottomSheetController, WindowAndroid mWindowAndroid) {
         SigninBottomSheetCoordinator signinCoordinator =
-                new SigninBottomSheetCoordinator(
-                        mWindowAndroid,
-                        DeviceLockActivityLauncherImpl.get(),
-                        mBottomSheetController,
-                        mProfile,
-                        strings,
-                        () -> {
-                            showSyncConsentActivity(signinAccessPoint);
-                        },
-                        signinAccessPoint);
+                new SigninBottomSheetCoordinator(mWindowAndroid, mBottomSheetController, mProfile,
+                        () -> { showSyncConsentActivity(signinAccessPoint); }, signinAccessPoint);
         signinCoordinator.show();
     }
 }

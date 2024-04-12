@@ -6,48 +6,37 @@
 #define CHROME_BROWSER_WEB_APPLICATIONS_WEB_APP_CONSTANTS_H_
 
 #include <stddef.h>
-#include <stdint.h>
 
-#include <initializer_list>
 #include <iosfwd>
-#include <optional>
 #include <string>
 
-#include "base/containers/enum_set.h"
 #include "base/functional/callback_forward.h"
-#include "build/build_config.h"
+#include "components/webapps/browser/installable/installable_metrics.h"
 #include "third_party/blink/public/common/manifest/manifest.h"
 #include "third_party/blink/public/mojom/manifest/display_mode.mojom-forward.h"
-
-namespace webapps {
-enum class WebappUninstallSource;
-}
 
 namespace web_app {
 
 // Installations of Web Apps have different sources of management. Apps can be
 // installed by different management systems - for example an app can be both
-// installed by the user and by policy. Keeping track of which installation
+// installed by the user and by policy. Keeping track of the which installation
 // managers have installed a web app allows for them to be installed by multiple
-// managers at the same time, and uninstalls from one manager doesn't affect
-// another - the app will stay installed as long as at least one management
-// source has it installed.
+// at the same time, and uninstalls from one manager doesn't affect another -
+// the app will stay installed as long as at least one management source has it
+// installed.
 //
 // This enum is also used to rank installation sources, so the ordering matters.
 // This enum should be zero based: values are used as index in a bitset.
 // We don't use this enum values in prefs or metrics: enumerators can be
-// reordered. This enum is not a strongly typed enum class: it supports implicit
+// reordered. This enum is not strongly typed enum class: it supports implicit
 // conversion to int and <> comparison operators.
 namespace WebAppManagement {
 enum Type {
   kMinValue = 0,
   kSystem = kMinValue,
-  kIwaShimlessRma,
   // Installed by Kiosk on Chrome OS.
   kKiosk,
   kPolicy,
-  kIwaPolicy,
-  // Installed by APS (App Preload Service) on ChromeOS as an OEM app.
   kOem,
   kSubApp,
   kWebAppStore,
@@ -56,16 +45,12 @@ enum Type {
   // user-installed apps without overlaps this is the only source that will be
   // set.
   kSync,
-  kIwaUserInstalled,
-  // Installed by APS (App Preload Service) on ChromeOS as a default app. These
-  // have the same UX as kDefault apps, but are are not managed by
-  // PreinstalledWebAppManager.
-  kApsDefault,
+  kCommandLine,
   // This value is used by both the PreinstalledWebAppManager AND the
   // AndroidSmsAppSetupControllerImpl, which is a potential conflict in the
   // future.
   // TODO(dmurph): Add a new source here so that the
-  // AndroidSmsAppSetupControllerImpl has its own source, and migrate those
+  // AndroidSmsAppSetupControllerImpl has it's own source, and migrate those
   // installations to have the new source.
   // https://crbug.com/1314055
   kDefault,
@@ -73,14 +58,7 @@ enum Type {
 };
 
 std::ostream& operator<<(std::ostream& os, WebAppManagement::Type type);
-
-bool IsIwaType(WebAppManagement::Type type);
-
 }  // namespace WebAppManagement
-
-using WebAppManagementTypes = base::EnumSet<WebAppManagement::Type,
-                                            WebAppManagement::kMinValue,
-                                            WebAppManagement::kMaxValue>;
 
 // Type of OS hook.
 //
@@ -159,13 +137,11 @@ enum class ExternalInstallSource {
   // in ash::SystemWebAppManager::RefreshPolicyInstalledApps.
   kSystemInstalled = 3,
 
-  // DEPRECATED: This was used by ApkWebAppInstaller to inject an entry into
-  // the now removed ExternallyInstalledWebAppPrefs to track installation of
-  // APK installed web apps however over time this enum value came to have no
-  // effect. Instead the APK installation is tracked via
-  // webapps::WebappUninstallSource::kArc and
-  // web_app::WebAppManagement::kWebAppStore.
-  // kArc = 4,
+  // Installed from ARC.
+  // There is no call to SynchronizeInstalledApps for this type, as these apps
+  // are not installed via ExternallyManagedAppManager. This is used in
+  // ExternallyInstalledWebAppPrefs to track navigation url to app_id entries.
+  kArc = 4,
 
   // Installed by Kiosk. There is no call to SynchronizeInstalledApps for this
   // type because Kiosk apps are bound to their profiles. They will never be
@@ -209,8 +185,6 @@ enum class RunOnOsLoginMode {
   kMaxValue = kMinimized,
 };
 
-std::ostream& operator<<(std::ostream& os, RunOnOsLoginMode mode);
-
 // Command line parameter representing RunOnOsLoginMode::kWindowed.
 extern const char kRunOnOsLoginModeWindowed[];
 
@@ -225,6 +199,14 @@ enum class RunOnOsLoginPolicy {
   kRunWindowed = 2,
 };
 
+// Number of times IPH can be ignored for this app before it's muted.
+constexpr int kIphMuteAfterConsecutiveAppSpecificIgnores = 3;
+// Number of times IPH can be ignored for any app before it's muted.
+constexpr int kIphMuteAfterConsecutiveAppAgnosticIgnores = 4;
+// Number of days to mute IPH after it's ignored for this app.
+constexpr int kIphAppSpecificMuteTimeSpanDays = 90;
+// Number of days to mute IPH after it's ignored for any app.
+constexpr int kIphAppAgnosticMuteTimeSpanDays = 14;
 // Default threshold for site engagement score if it's not set by field trial
 // param.
 constexpr int kIphFieldTrialParamDefaultSiteEngagementThreshold = 10;
@@ -294,42 +276,12 @@ enum class Result {
   kError
 };
 
-#if BUILDFLAG(IS_CHROMEOS)
-// Represents the exit states of the PWABubbleView. To be used for CrOS events
-// logging.
-//
-// Do not re-use values.
-enum class WebAppInstallStatus : int64_t {
-  kCancelled = 0,
-  kAccepted = 1,
-};
-#endif
-
 using ResultCallback = base::OnceCallback<void(Result)>;
 
-// Management types that can be uninstalled by the user.
-// Note: These work directly with the `webapps::IsUserUninstall` function - any
-// source that returns true there can uninstall these types but not others, and
-// will CHECK-fail in RemoveWebAppJob otherwise.
-constexpr WebAppManagementTypes kUserUninstallableSources = {
-    WebAppManagement::kDefault,
-    WebAppManagement::kApsDefault,
-    WebAppManagement::kSync,
-    WebAppManagement::kWebAppStore,
-    WebAppManagement::kSubApp,
-    WebAppManagement::kOem,
-    WebAppManagement::kOneDriveIntegration,
-    WebAppManagement::kIwaUserInstalled,
-};
-
-// Management types that resulted from a user web app install.
-constexpr WebAppManagementTypes kUserDrivenInstallSources = {
-    WebAppManagement::kSync,
-    WebAppManagement::kWebAppStore,
-    WebAppManagement::kOneDriveIntegration,
-    WebAppManagement::kIwaUserInstalled,
-};
+// Convert the uninstall source to string for easy printing.
+std::string ConvertUninstallSourceToStringType(
+    const webapps::WebappUninstallSource& uninstall_source);
 
 }  // namespace web_app
 
-#endif  // CHROME_BROWSER_WEB_APPLICATIONS_WEB_APP_CONSTANTS_H
+#endif  // CHROME_BROWSER_WEB_APPLICATIONS_WEB_APP_CONSTANTS_H_

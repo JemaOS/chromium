@@ -38,7 +38,7 @@ class WptscreenshotFormatter(BaseFormatter):  # type: ignore
             return
         output = ""
         for item in data["extra"]["reftest_screenshots"]:
-            if not isinstance(item, dict):
+            if type(item) != dict:
                 # Skip the relation string.
                 continue
             checksum = "sha1:" + item["hash"]

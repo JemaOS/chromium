@@ -13,8 +13,6 @@
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "url/gurl.h"
 
-// PartitionKey is ignored by this provider because the content settings should
-// apply across partitions.
 class InstalledWebappProvider : public content_settings::ObservableProvider {
  public:
   // Although not used in the interface of this class, RuleList is the type for
@@ -31,20 +29,16 @@ class InstalledWebappProvider : public content_settings::ObservableProvider {
   // ProviderInterface implementations.
   std::unique_ptr<content_settings::RuleIterator> GetRuleIterator(
       ContentSettingsType content_type,
-      bool incognito,
-      const content_settings::PartitionKey& partition_key) const override;
+      bool incognito) const override;
 
-  bool SetWebsiteSetting(
-      const ContentSettingsPattern& primary_pattern,
-      const ContentSettingsPattern& secondary_pattern,
-      ContentSettingsType content_type,
-      base::Value&& value,
-      const content_settings::ContentSettingConstraints& constraints,
-      const content_settings::PartitionKey& partition_key) override;
+  bool SetWebsiteSetting(const ContentSettingsPattern& primary_pattern,
+                         const ContentSettingsPattern& secondary_pattern,
+                         ContentSettingsType content_type,
+                         base::Value&& value,
+                         const content_settings::ContentSettingConstraints&
+                             constraints = {}) override;
 
-  void ClearAllContentSettingsRules(
-      ContentSettingsType content_type,
-      const content_settings::PartitionKey& partition_key) override;
+  void ClearAllContentSettingsRules(ContentSettingsType content_type) override;
   void ShutdownOnUIThread() override;
 
   void Notify(ContentSettingsType content_type);

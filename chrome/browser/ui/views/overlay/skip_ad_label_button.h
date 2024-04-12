@@ -10,9 +10,9 @@
 
 // A label button representing a skip-ad button.
 class SkipAdLabelButton : public views::LabelButton {
-  METADATA_HEADER(SkipAdLabelButton, views::LabelButton)
-
  public:
+  METADATA_HEADER(SkipAdLabelButton);
+
   explicit SkipAdLabelButton(PressedCallback callback);
   SkipAdLabelButton(const SkipAdLabelButton&) = delete;
   SkipAdLabelButton& operator=(const SkipAdLabelButton&) = delete;

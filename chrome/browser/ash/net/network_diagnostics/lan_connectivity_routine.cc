@@ -32,8 +32,7 @@ void GetNetworkConfigService(
 
 }  // namespace
 
-LanConnectivityRoutine::LanConnectivityRoutine(mojom::RoutineCallSource source)
-    : NetworkDiagnosticsRoutine(source) {
+LanConnectivityRoutine::LanConnectivityRoutine() {
   set_verdict(mojom::RoutineVerdict::kNotRun);
   GetNetworkConfigService(
       remote_cros_network_config_.BindNewPipeAndPassReceiver());

@@ -11,11 +11,9 @@
 #include "ash/multi_capture/multi_capture_service_client.h"
 #include "ash/system/tray/tray_item_view.h"
 #include "base/containers/fixed_flat_set.h"
-#include "base/gtest_prod_util.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 
 namespace url {
 class Origin;
@@ -28,11 +26,8 @@ namespace ash {
 class ASH_EXPORT ScreenCaptureTrayItemView
     : public TrayItemView,
       public MultiCaptureServiceClient::Observer {
-  METADATA_HEADER(ScreenCaptureTrayItemView, TrayItemView)
-
  public:
   struct ScreenCaptureTrayItemMetadata {
-    ScreenCaptureTrayItemMetadata();
     explicit ScreenCaptureTrayItemMetadata(base::TimeTicks time_created);
     ScreenCaptureTrayItemMetadata(ScreenCaptureTrayItemMetadata&& metadata);
     ScreenCaptureTrayItemMetadata& operator=(
@@ -58,19 +53,16 @@ class ASH_EXPORT ScreenCaptureTrayItemView
   ~ScreenCaptureTrayItemView() override;
 
   // views::View:
+  const char* GetClassName() const override;
   views::View* GetTooltipHandlerForPoint(const gfx::Point& point) override;
   std::u16string GetTooltipText(const gfx::Point& point) const override;
 
   // TrayItemView:
   void HandleLocaleChange() override {}
-  void UpdateLabelOrImageViewColor(bool active) override;
 
   // MultiCaptureServiceClient::Observer:
   void MultiCaptureStarted(const std::string& label,
                            const url::Origin& origin) override;
-  void MultiCaptureStartedFromApp(const std::string& label,
-                                  const std::string& app_id,
-                                  const std::string& app_short_name) override;
   void MultiCaptureStopped(const std::string& label) override;
   void MultiCaptureServiceClientDestroyed() override;
 

@@ -8,7 +8,6 @@
 
 #include "ash/constants/notifier_catalogs.h"
 #include "ash/public/cpp/notification_utils.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
@@ -17,6 +16,7 @@
 #include "chrome/browser/notifications/notification_display_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
@@ -53,8 +53,8 @@ class TPMFirmwareUpdateNotificationDelegate
           prefs::kTPMFirmwareUpdateCleanupDismissed, true);
     }
   }
-  void Click(const std::optional<int>& button_index,
-             const std::optional<std::u16string>& reply) override {
+  void Click(const absl::optional<int>& button_index,
+             const absl::optional<std::u16string>& reply) override {
     // Show the about page which contains the line item allowing the user to
     // trigger TPM firmware update installation.
     chrome::SettingsWindowManager::GetInstance()->ShowOSSettings(
@@ -66,7 +66,7 @@ class TPMFirmwareUpdateNotificationDelegate
         NotificationHandler::Type::TRANSIENT, kTPMFirmwareUpdateNotificationId);
   }
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
 };
 
 void OnAvailableUpdateModes(Profile* profile,

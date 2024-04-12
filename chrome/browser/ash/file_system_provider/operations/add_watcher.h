@@ -16,7 +16,9 @@ namespace base {
 class FilePath;
 }  // namespace base
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 // Adds a watcher. If |recursive| is true, than also watches for all of the
 // child entries in within, recursively. Recursive must not be set to true for
@@ -49,6 +51,8 @@ class AddWatcher : public Operation {
   storage::AsyncFileUtil::StatusCallback callback_;
 };
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_OPERATIONS_ADD_WATCHER_H_

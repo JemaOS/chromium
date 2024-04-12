@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SEARCH_PROVIDER_LOGOS_LOGO_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_SEARCH_PROVIDER_LOGOS_LOGO_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -25,13 +25,13 @@ class LogoServiceFactory : public ProfileKeyedServiceFactory {
   LogoServiceFactory& operator=(const LogoServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<LogoServiceFactory>;
+  friend struct base::DefaultSingletonTraits<LogoServiceFactory>;
 
   LogoServiceFactory();
   ~LogoServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

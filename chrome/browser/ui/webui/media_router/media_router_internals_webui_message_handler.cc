@@ -55,11 +55,6 @@ void MediaRouterInternalsWebUIMessageHandler::RegisterMessages() {
                      &MediaRouterInternalsWebUIMessageHandler::HandleGetLogs,
                      base::Unretained(this)));
   web_ui()->RegisterMessageCallback(
-      "getMirroringStats",
-      base::BindRepeating(
-          &MediaRouterInternalsWebUIMessageHandler::HandleGetMirroringStats,
-          base::Unretained(this)));
-  web_ui()->RegisterMessageCallback(
       "setMirroringStatsEnabled",
       base::BindRepeating(&MediaRouterInternalsWebUIMessageHandler::
                               HandleSetMirroringStatsEnabled,
@@ -87,7 +82,7 @@ void MediaRouterInternalsWebUIMessageHandler::HandleGetProviderState(
     return;
   }
 
-  std::optional<mojom::MediaRouteProviderId> provider_id =
+  absl::optional<mojom::MediaRouteProviderId> provider_id =
       ProviderIdFromString(args[1].GetString());
   if (!provider_id) {
     RejectJavascriptCallback(callback_id,
@@ -118,13 +113,6 @@ void MediaRouterInternalsWebUIMessageHandler::OnProviderState(
   } else {
     ResolveJavascriptCallback(callback_id, base::Value());
   }
-}
-
-void MediaRouterInternalsWebUIMessageHandler::HandleGetMirroringStats(
-    const base::Value::List& args) {
-  AllowJavascript();
-  const base::Value& callback_id = args[0];
-  ResolveJavascriptCallback(callback_id, debugger_->GetMirroringStats());
 }
 
 void MediaRouterInternalsWebUIMessageHandler::HandleSetMirroringStatsEnabled(

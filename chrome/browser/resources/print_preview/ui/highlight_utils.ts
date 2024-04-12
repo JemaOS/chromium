@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import type {Range} from 'chrome://resources/js/search_highlight_utils.js';
-import {createEmptySearchBubble, highlight, stripDiacritics} from 'chrome://resources/js/search_highlight_utils.js';
+import {createEmptySearchBubble, highlight, Range, stripDiacritics} from 'chrome://resources/js/search_highlight_utils.js';
 
 /**
  * @param element The element to update. Element should have a shadow root.

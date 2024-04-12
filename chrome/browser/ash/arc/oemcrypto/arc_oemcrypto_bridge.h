@@ -45,7 +45,7 @@ class ArcOemCryptoBridge : public KeyedService,
   static void EnsureFactoryBuilt();
 
  private:
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
 
   // WeakPtrFactory to use for callbacks.

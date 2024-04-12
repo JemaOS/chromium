@@ -14,9 +14,9 @@ namespace views {
 // A badge that displays a small piece of infromational text on a square blue
 // background.
 class VIEWS_EXPORT Badge : public View {
-  METADATA_HEADER(Badge, View)
-
  public:
+  METADATA_HEADER(Badge);
+
   explicit Badge(const std::u16string& text = std::u16string());
 
   Badge(const Badge&) = delete;
@@ -24,7 +24,7 @@ class VIEWS_EXPORT Badge : public View {
 
   ~Badge() override;
 
-  const std::u16string& GetText() const;
+  std::u16string GetText() const;
   void SetText(const std::u16string& text);
 
   // View:

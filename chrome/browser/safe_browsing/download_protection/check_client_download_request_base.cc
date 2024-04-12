@@ -12,7 +12,6 @@
 #include "base/rand_util.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/strcat.h"
-#include "base/task/bind_post_task.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/extensions/api/safe_browsing_private/safe_browsing_private_event_router.h"
 #include "chrome/browser/extensions/api/safe_browsing_private/safe_browsing_private_event_router_factory.h"
@@ -50,6 +49,20 @@ void RecordFileExtensionType(const std::string& metric_name,
                              const base::FilePath& file) {
   base::UmaHistogramSparse(
       metric_name, FileTypePolicies::GetInstance()->UmaValueForFile(file));
+}
+
+bool CheckUrlAgainstAllowlist(
+    const GURL& url,
+    scoped_refptr<SafeBrowsingDatabaseManager> database_manager) {
+  DCHECK_CURRENTLY_ON(base::FeatureList::IsEnabled(kSafeBrowsingOnUIThread)
+                          ? content::BrowserThread::UI
+                          : content::BrowserThread::IO);
+
+  if (!database_manager.get()) {
+    return false;
+  }
+
+  return (url.is_valid() && database_manager->MatchDownloadAllowlistUrl(url));
 }
 
 std::string SanitizeUrl(const std::string& url) {
@@ -129,24 +142,37 @@ void CheckClientDownloadRequestBase::Start() {
     return;
   }
 
-  if (!database_manager_ || !source_url_.is_valid()) {
-    OnUrlAllowlistCheckDone(false);
-    return;
-  }
-
   // If allowlist check passes, FinishRequest() will be called to avoid
   // analyzing file. Otherwise, AnalyzeFile() will be called to continue with
   // analysis.
-  auto callback = base::BindOnce(
-      &CheckClientDownloadRequestBase::OnUrlAllowlistCheckDone, GetWeakPtr());
-  database_manager_->MatchDownloadAllowlistUrl(source_url_,
-                                               std::move(callback));
+  if (base::FeatureList::IsEnabled(kSafeBrowsingOnUIThread)) {
+    auto weak_ptr = GetWeakPtr();
+    bool is_allowlisted =
+        CheckUrlAgainstAllowlist(source_url_, database_manager_);
+    if (!weak_ptr) {
+      // `CheckUrlAgainstAllowlist` could delete this object.
+      return;
+    }
+    OnUrlAllowlistCheckDone(is_allowlisted);
+  } else {
+    content::GetIOThreadTaskRunner({})->PostTaskAndReplyWithResult(
+        FROM_HERE,
+        base::BindOnce(&CheckUrlAgainstAllowlist, source_url_,
+                       database_manager_),
+        base::BindOnce(&CheckClientDownloadRequestBase::OnUrlAllowlistCheckDone,
+                       GetWeakPtr()));
+  }
 }
 
 void CheckClientDownloadRequestBase::FinishRequest(
     DownloadCheckResult result,
     DownloadCheckResultReason reason) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+
+  if (!request_start_time_.is_null()) {
+    base::UmaHistogramEnumeration(
+        "SBClientDownload.DownloadRequestNetworkStats", reason, REASON_MAX);
+  }
 
   auto settings = ShouldUploadBinary(reason);
   if (settings.has_value()) {
@@ -157,6 +183,12 @@ void CheckClientDownloadRequestBase::FinishRequest(
         FROM_HERE, base::BindOnce(std::move(callback_), result));
   }
 
+  if (FileTypePolicies::GetInstance()
+          ->PolicyForFile(target_file_path_, GURL{}, nullptr)
+          .extension() == "exe") {
+    base::UmaHistogramEnumeration("SBClientDownload.CheckDownloadStats.Exe",
+                                  reason, REASON_MAX);
+  }
   base::UmaHistogramEnumeration("SBClientDownload.CheckDownloadStats", reason,
                                 REASON_MAX);
   MaybeLogDocumentMetrics(client_download_request_data_, reason);
@@ -271,79 +303,8 @@ void CheckClientDownloadRequestBase::SanitizeRequest() {
   }
 }
 
-void CheckClientDownloadRequestBase::GetAdditionalPromptResult(
-    const ClientDownloadResponse& response,
-    DownloadCheckResult* result,
-    DownloadCheckResultReason* reason,
-    std::string* token) const {
-  bool local_decryption_prompt = ShouldPromptForLocalDecryption(
-      response.is_suspicious_encrypted_archive());
-  if (local_decryption_prompt) {
-    LogLocalDecryptionEvent(safe_browsing::DeepScanEvent::kPromptShown);
-
-    *result = DownloadCheckResult::PROMPT_FOR_LOCAL_PASSWORD_SCANNING;
-    *reason = DownloadCheckResultReason::REASON_LOCAL_DECRYPTION_PROMPT;
-    *token = response.token();
-  }
-
-  if (ShouldPromptForLocalDecryption(/*server_requests_prompt=*/true)) {
-    base::UmaHistogramBoolean(
-        "SBClientDownload.ServerRequestsLocalDecryptionPrompt",
-        local_decryption_prompt);
-  }
-
-  bool deep_scanning_prompt =
-      ShouldPromptForDeepScanning(response.request_deep_scan());
-  if (deep_scanning_prompt) {
-    *result = DownloadCheckResult::PROMPT_FOR_SCANNING;
-    *reason = DownloadCheckResultReason::REASON_DEEP_SCAN_PROMPT;
-    // Always set the token if Chrome should prompt for deep scanning.
-    // Otherwise, client Safe Browsing reports may be missed when the
-    // verdict is SAFE. See https://crbug.com/1485218.
-    *token = response.token();
-  }
-
-  // Only record the UMA metric if we're in a population that potentially
-  // could prompt for deep scanning.
-  if (ShouldPromptForDeepScanning(/*server_requests_prompt=*/true)) {
-    LogDeepScanningPrompt(deep_scanning_prompt);
-  }
-
-  bool immediate_deep_scan_prompt =
-      ShouldImmediatelyDeepScan(response.request_deep_scan());
-  if (immediate_deep_scan_prompt) {
-    *result = DownloadCheckResult::IMMEDIATE_DEEP_SCAN;
-    *reason = DownloadCheckResultReason::REASON_IMMEDIATE_DEEP_SCAN;
-    // Always set the token if Chrome should prompt for deep scanning.
-    // Otherwise, client Safe Browsing reports may be missed when the
-    // verdict is SAFE. See https://crbug.com/1485218.
-    *token = response.token();
-  }
-
-  // Only record the UMA metric if we're in a population that potentially
-  // could prompt for deep scanning.
-  if (ShouldImmediatelyDeepScan(/*server_requests_prompt=*/true)) {
-    base::UmaHistogramBoolean(
-        "SBClientDownload.ServerRequestsImmediateDeepScan",
-        deep_scanning_prompt);
-  }
-}
-
 void CheckClientDownloadRequestBase::OnRequestBuilt(
     std::unique_ptr<ClientDownloadRequest> request) {
-  if (ShouldPromptForIncorrectPassword()) {
-    LogLocalDecryptionEvent(safe_browsing::DeepScanEvent::kIncorrectPassword);
-    FinishRequest(DownloadCheckResult::PROMPT_FOR_LOCAL_PASSWORD_SCANNING,
-                  REASON_LOCAL_DECRYPTION_PROMPT);
-    return;
-  }
-
-  if (ShouldShowScanFailure()) {
-    FinishRequest(DownloadCheckResult::DEEP_SCANNED_FAILED,
-                  REASON_LOCAL_DECRYPTION_FAILED);
-    return;
-  }
-
   client_download_request_ = std::move(request);
   SanitizeRequest();
 
@@ -354,8 +315,7 @@ void CheckClientDownloadRequestBase::OnRequestBuilt(
            ClientDownloadRequest::RAR_COMPRESSED_EXECUTABLE ||
        client_download_request_->download_type() ==
            ClientDownloadRequest::SEVEN_ZIP_COMPRESSED_EXECUTABLE) &&
-      client_download_request_->archive_summary().parser_status() ==
-          ClientDownloadRequest::ArchiveSummary::VALID &&
+      client_download_request_->archive_valid() &&
       base::ranges::all_of(
           client_download_request_->archived_binary(),
           [](const ClientDownloadRequest::ArchivedBinary& archived_binary) {
@@ -478,6 +438,11 @@ void CheckClientDownloadRequestBase::SendRequest() {
               "from dangerous sites' under Privacy. This feature is enabled by "
               "default."
             chrome_policy {
+              RealTimeDownloadProtectionRequestAllowed {
+                RealTimeDownloadProtectionRequestAllowed: false
+              }
+            }
+            chrome_policy {
               SafeBrowsingProtectionLevel {
                 policy_options {mode: MANDATORY}
                 SafeBrowsingProtectionLevel: 0
@@ -499,13 +464,6 @@ void CheckClientDownloadRequestBase::SendRequest() {
   if (!access_token_.empty()) {
     SetAccessTokenAndClearCookieInResourceRequest(resource_request.get(),
                                                   access_token_);
-  }
-
-  network::mojom::URLLoaderFactory* url_loader_factory =
-      service_->GetURLLoaderFactory(GetBrowserContext()).get();
-  if (!url_loader_factory) {
-    FinishRequest(DownloadCheckResult::UNKNOWN, REASON_SERVER_PING_FAILED);
-    return;
   }
 
   loader_ = network::SimpleURLLoader::Create(std::move(resource_request),
@@ -608,20 +566,30 @@ void CheckClientDownloadRequestBase::OnURLLoaderComplete(
             base::Unretained(WebUIInfoSingleton::GetInstance()),
             std::make_unique<ClientDownloadResponse>(response)));
 
-    GetAdditionalPromptResult(response, &result, &reason, &token);
-
-    if (!token.empty()) {
-      const TailoredVerdictOverrideData& local_override =
-          WebUIInfoSingleton::GetInstance()->tailored_verdict_override();
-      SetDownloadProtectionData(
-          token, response.verdict(),
-          local_override.override_value.value_or(response.tailored_verdict()));
-    }
+    if (!token.empty())
+      SetDownloadProtectionData(token, response.verdict(),
+                                response.tailored_verdict());
 
     bool upload_requested = response.upload();
     MaybeStorePingsForDownload(result, upload_requested,
                                client_download_request_data_,
                                *response_body.get());
+
+    bool should_prompt =
+        ShouldPromptForDeepScanning(response.request_deep_scan());
+    if (should_prompt) {
+      result = DownloadCheckResult::PROMPT_FOR_SCANNING;
+      reason = DownloadCheckResultReason::REASON_DEEP_SCAN_PROMPT;
+      base::UmaHistogramEnumeration("SBClientDownload.DeepScanEvent",
+                                    DeepScanEvent::kPromptShown);
+    }
+
+    // Only record the UMA metric if we're in a population that potentially
+    // could prompt for deep scanning.
+    if (ShouldPromptForDeepScanning(/*server_requests_prompt=*/true)) {
+      base::UmaHistogramBoolean(
+          "SBClientDownload.ServerRequestsDeepScanningPrompt", should_prompt);
+    }
   }
 
   // We don't need the loader anymore.

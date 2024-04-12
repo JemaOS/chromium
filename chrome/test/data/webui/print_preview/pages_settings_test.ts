@@ -4,8 +4,7 @@
 
 import 'chrome://print/print_preview.js';
 
-import type {PrintPreviewPagesSettingsElement, Range} from 'chrome://print/print_preview.js';
-import {PagesValue} from 'chrome://print/print_preview.js';
+import {PagesValue, PrintPreviewPagesSettingsElement, Range} from 'chrome://print/print_preview.js';
 import {keyEventOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-interactions.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -14,7 +13,24 @@ import {eventToPromise} from 'chrome://webui-test/test_util.js';
 
 import {selectOption, triggerInputEvent} from './print_preview_test_utils.js';
 
-suite('PagesSettingsTest', function() {
+const pages_settings_test = {
+  suiteName: 'PagesSettingsTest',
+  TestNames: {
+    PagesDropdown: 'pages dropdown',
+    NoParityOptions: 'no parity options',
+    ParitySelectionMemorized: 'parity selection memorized',
+    ValidPageRanges: 'valid page ranges',
+    InvalidPageRanges: 'invalid page ranges',
+    NupChangesPages: 'nup changes pages',
+    ClearInput: 'clear input',
+    InputNotDisabledOnValidityChange: 'input not disabled on validity change',
+    EnterOnInputTriggersPrint: 'enter on input triggers print',
+  },
+};
+
+Object.assign(window, {pages_settings_test: pages_settings_test});
+
+suite(pages_settings_test.suiteName, function() {
   let pagesSection: PrintPreviewPagesSettingsElement;
 
   const oneToHundred: number[] = Array.from({length: 100}, (_x, i) => i + 1);
@@ -74,7 +90,7 @@ suite('PagesSettingsTest', function() {
 
   // Verifies that the pages setting updates correctly when the dropdown
   // changes.
-  test('PagesDropdown', async () => {
+  test(pages_settings_test.TestNames.PagesDropdown, async () => {
     pagesSection.pageCount = 5;
 
     // Default value is all pages.
@@ -124,7 +140,7 @@ suite('PagesSettingsTest', function() {
 
   // Tests that the odd-only and even-only options are hidden when the document
   // has only one page.
-  test('NoParityOptions', async () => {
+  test(pages_settings_test.TestNames.NoParityOptions, async () => {
     pagesSection.pageCount = 1;
 
     const oddOption = pagesSection.shadowRoot!.querySelector<HTMLOptionElement>(
@@ -139,7 +155,7 @@ suite('PagesSettingsTest', function() {
 
   // Tests that the odd-only and even-only selections are preserved when the
   // page counts change.
-  test('ParitySelectionMemorized', async () => {
+  test(pages_settings_test.TestNames.ParitySelectionMemorized, async () => {
     const select = pagesSection.shadowRoot!.querySelector('select')!;
 
     pagesSection.pageCount = 2;
@@ -161,7 +177,7 @@ suite('PagesSettingsTest', function() {
   });
 
   // Tests that the page ranges set are valid for different user inputs.
-  test('ValidPageRanges', async () => {
+  test(pages_settings_test.TestNames.ValidPageRanges, async () => {
     pagesSection.pageCount = 100;
     const tenToHundred = Array.from({length: 91}, (_x, i) => i + 10);
 
@@ -209,7 +225,7 @@ suite('PagesSettingsTest', function() {
 
   // Tests that the correct error messages are shown for different user
   // inputs.
-  test('InvalidPageRanges', async () => {
+  test(pages_settings_test.TestNames.InvalidPageRanges, async () => {
     pagesSection.pageCount = 100;
     const syntaxError = 'Invalid page range, use e.g. 1-5, 8, 11-13';
 
@@ -245,7 +261,7 @@ suite('PagesSettingsTest', function() {
   // Tests that the pages are set correctly for different values of pages per
   // sheet, and that ranges remain fixed (since they are used for generating
   // the print preview ticket).
-  test('NupChangesPages', async () => {
+  test(pages_settings_test.TestNames.NupChangesPages, async () => {
     pagesSection.pageCount = 100;
     await selectOption(pagesSection, PagesValue.CUSTOM.toString());
     await setCustomInput('1, 2, 3, 1, 56');
@@ -278,7 +294,7 @@ suite('PagesSettingsTest', function() {
   // input does not show an error message but does not reset the preview, and
   // changing focus from an empty input in either case fills in the dropdown
   // with the full page range.
-  test('ClearInput', async () => {
+  test(pages_settings_test.TestNames.ClearInput, async () => {
     pagesSection.pageCount = 3;
     const input = pagesSection.$.pageSettingsCustomInput.inputElement;
     const select = pagesSection.shadowRoot!.querySelector('select')!;
@@ -300,12 +316,10 @@ suite('PagesSettingsTest', function() {
     await setCustomInput('');
     assertEquals(customValue, select.value);
     validateState([1, 2], [{from: 1, to: 2}], '', false);
-    let whenBlurred =
-        eventToPromise('custom-input-blurred-for-test', pagesSection);
+    let whenBlurred = eventToPromise('blur', input);
     input.blur();
 
     await whenBlurred;
-    await pagesSection.$.pageSettingsCustomInput.updateComplete;
     // Blurring a blank field sets the full page range.
     assertEquals(customValue, select.value);
     validateState([1, 2, 3], [], '', false);
@@ -320,7 +334,7 @@ suite('PagesSettingsTest', function() {
     await setCustomInput('');
     assertEquals(customValue, select.value);
     validateState([1, 2, 3], [], '', false);
-    whenBlurred = eventToPromise('custom-input-blurred-for-test', pagesSection);
+    whenBlurred = eventToPromise('blur', input);
     input.blur();
 
     // Blurring an invalid value that has been cleared should reset the
@@ -350,7 +364,7 @@ suite('PagesSettingsTest', function() {
     // Input has been cleared.
     assertEquals('', input.value);
     validateState([1, 2, 3], [], '', false);
-    whenBlurred = eventToPromise('custom-input-blurred-for-test', pagesSection);
+    whenBlurred = eventToPromise('blur', input);
     input.blur();
 
     await whenBlurred;
@@ -359,7 +373,6 @@ suite('PagesSettingsTest', function() {
     // Change the page count. Since the range was set automatically, this
     // should reset it to the new set of all pages.
     pagesSection.pageCount = 2;
-    await pagesSection.$.pageSettingsCustomInput.updateComplete;
     validateState([1, 2], [], '', false);
     assertEquals('1-2', input.value);
   });
@@ -367,7 +380,8 @@ suite('PagesSettingsTest', function() {
   // Verifies that the input is never disabled when the validity of the
   // setting changes.
   test(
-      'InputNotDisabledOnValidityChange', async () => {
+      pages_settings_test.TestNames.InputNotDisabledOnValidityChange,
+      async () => {
         pagesSection.pageCount = 3;
         // In the real UI, the print preview app listens for this event from
         // this section and others and sets disabled to true if any change from
@@ -408,7 +422,7 @@ suite('PagesSettingsTest', function() {
   // element, so that it will be bubbled to the print preview app to trigger a
   // print.
   test(
-      'EnterOnInputTriggersPrint', async () => {
+      pages_settings_test.TestNames.EnterOnInputTriggersPrint, async () => {
         pagesSection.pageCount = 3;
         const input = pagesSection.$.pageSettingsCustomInput.inputElement;
         const whenPrintReceived = eventToPromise('keydown', pagesSection);

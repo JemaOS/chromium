@@ -400,7 +400,7 @@ struct _xmlXPathParserContext {
     int xptr;				/* it this an XPointer expression */
     xmlNodePtr         ancestor;	/* used for walking preceding axis */
 
-    int              valueFrame;        /* always zero for compatibility */
+    int              valueFrame;        /* unused */
 };
 
 /************************************************************************
@@ -515,10 +515,6 @@ XMLPUBFUN xmlXPathContextPtr
 		    xmlXPathNewContext		(xmlDocPtr doc);
 XMLPUBFUN void
 		    xmlXPathFreeContext		(xmlXPathContextPtr ctxt);
-XMLPUBFUN void
-		    xmlXPathSetErrorHandler(xmlXPathContextPtr ctxt,
-					    xmlStructuredErrorFunc handler,
-					    void *context);
 XMLPUBFUN int
 		    xmlXPathContextSetCache(xmlXPathContextPtr ctxt,
 				            int active,

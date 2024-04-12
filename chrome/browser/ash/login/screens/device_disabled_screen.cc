@@ -36,12 +36,13 @@ void DeviceDisabledScreen::ShowImpl() {
     return;
   }
 
-  view_->Show(
-      DeviceDisablingManager()->serial_number(),
-      DeviceDisablingManager()->enrollment_domain(),
-      DeviceDisablingManager()->disabled_message(),
-      // TODO() remove this parameter from DeviceDisabledScreenHandler::Show.
-      /*is_disabled_ad_device=*/false);
+  const bool is_disabled_ad_device =
+      InstallAttributes::Get()->IsActiveDirectoryManaged();
+
+  view_->Show(DeviceDisablingManager()->serial_number(),
+              DeviceDisablingManager()->enrollment_domain(),
+              DeviceDisablingManager()->disabled_message(),
+              is_disabled_ad_device);
   DeviceDisablingManager()->AddObserver(this);
 }
 

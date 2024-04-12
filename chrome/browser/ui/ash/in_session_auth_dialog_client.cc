@@ -35,6 +35,7 @@
 
 using ::ash::AuthenticationError;
 using ::ash::AuthStatusConsumer;
+using ::ash::ExtendedAuthenticator;
 using ::ash::Key;
 using ::ash::UserContext;
 
@@ -79,6 +80,14 @@ bool InSessionAuthDialogClient::IsFingerprintAuthAvailable(
       user_context_->GetAccountId());
 }
 
+ExtendedAuthenticator* InSessionAuthDialogClient::GetExtendedAuthenticator() {
+  // Lazily allocate |extended_authenticator_| so that tests can inject a fake.
+  if (!extended_authenticator_)
+    extended_authenticator_ = ExtendedAuthenticator::Create(this);
+
+  return extended_authenticator_.get();
+}
+
 void InSessionAuthDialogClient::StartFingerprintAuthSession(
     const AccountId& account_id,
     base::OnceCallback<void(bool)> callback) {
@@ -92,7 +101,7 @@ void InSessionAuthDialogClient::StartFingerprintAuthSession(
 void InSessionAuthDialogClient::OnPrepareLegacyFingerprintFactor(
     base::OnceCallback<void(bool)> callback,
     std::unique_ptr<UserContext> user_context,
-    std::optional<AuthenticationError> error) {
+    absl::optional<AuthenticationError> error) {
   user_context_ = std::move(user_context);
 
   if (error.has_value()) {
@@ -120,7 +129,7 @@ void InSessionAuthDialogClient::EndFingerprintAuthSession(
 void InSessionAuthDialogClient::OnTerminateLegacyFingerprintFactor(
     base::OnceClosure callback,
     std::unique_ptr<UserContext> user_context,
-    std::optional<AuthenticationError> error) {
+    absl::optional<AuthenticationError> error) {
   // Proceed to updating the state and running the callback.
   // We need this regardless of whether an error occurred.
   if (error.has_value()) {
@@ -140,9 +149,9 @@ void InSessionAuthDialogClient::CheckPinAuthAvailability(
                      weak_factory_.GetWeakPtr(), std::move(callback));
 
   CHECK(pin_engine_.has_value());
-  pin_engine_->IsPinAuthAvailable(
-      ash::legacy::CryptohomePinEngine::Purpose::kWebAuthn,
-      std::move(user_context_), std::move(on_pin_availability_checked));
+  pin_engine_->IsPinAuthAvailable(ash::CryptohomePinEngine::Purpose::kWebAuthn,
+                                  std::move(user_context_),
+                                  std::move(on_pin_availability_checked));
 }
 
 void InSessionAuthDialogClient::OnCheckPinAuthAvailability(
@@ -192,7 +201,9 @@ void InSessionAuthDialogClient::AuthenticateUserWithPasswordOrPin(
   user_context->SetSyncPasswordData(password_manager::PasswordHashData(
       user->GetAccountId().GetUserEmail(), base::UTF8ToUTF16(secret),
       false /*force_update*/));
-  if (user->GetAccountId().GetAccountType() == AccountType::ACTIVE_DIRECTORY) {
+  if (user->GetAccountId().GetAccountType() == AccountType::ACTIVE_DIRECTORY &&
+      (user_context->GetUserType() !=
+       user_manager::UserType::USER_TYPE_ACTIVE_DIRECTORY)) {
     LOG(FATAL) << "Incorrect Active Directory user type "
                << user_context->GetUserType();
   }
@@ -217,7 +228,7 @@ void InSessionAuthDialogClient::AuthenticateUserWithPasswordOrPin(
 
 void InSessionAuthDialogClient::OnPinAttemptDone(
     std::unique_ptr<UserContext> user_context,
-    std::optional<AuthenticationError> error) {
+    absl::optional<AuthenticationError> error) {
   if (!error.has_value()) {
     OnAuthSuccess(std::move(*user_context));
   } else {
@@ -238,8 +249,8 @@ void InSessionAuthDialogClient::AuthenticateWithPassword(
   // in this `user_context`.
   CHECK(user_context_);
 
-  const auto* password_factor =
-      user_context_->GetAuthFactorsData().FindAnyPasswordFactor();
+  const cryptohome::AuthFactor* password_factor =
+      user_context_->GetAuthFactorsData().FindOnlinePasswordFactor();
   if (!password_factor) {
     LOG(ERROR) << "Could not find password key";
     std::move(pending_auth_state_->callback).Run(false);
@@ -259,7 +270,7 @@ void InSessionAuthDialogClient::OnAuthSessionStarted(
     base::OnceCallback<void(bool)> callback,
     bool user_exists,
     std::unique_ptr<UserContext> user_context,
-    std::optional<AuthenticationError> error) {
+    absl::optional<AuthenticationError> error) {
   if (error.has_value()) {
     LOG(ERROR) << "Failed to start auth session, code "
                << error->get_cryptohome_code();
@@ -286,7 +297,7 @@ void InSessionAuthDialogClient::OnAuthSessionStarted(
 void InSessionAuthDialogClient::OnAuthVerified(
     bool authenticated_by_password,
     std::unique_ptr<UserContext> user_context,
-    std::optional<AuthenticationError> error) {
+    absl::optional<AuthenticationError> error) {
   // Take back ownership of user_context for future auth attempts.
   user_context_ = std::move(user_context);
 

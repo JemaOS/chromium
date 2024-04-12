@@ -25,7 +25,6 @@
 
 #include "third_party/blink/renderer/core/css/css_crossfade_value.h"
 #include "third_party/blink/renderer/core/css/css_gradient_value.h"
-#include "third_party/blink/renderer/core/css/css_image_set_option_value.h"
 #include "third_party/blink/renderer/core/css/css_image_set_value.h"
 #include "third_party/blink/renderer/core/css/css_image_value.h"
 #include "third_party/blink/renderer/core/css/css_paint_value.h"
@@ -48,8 +47,8 @@
 #include "third_party/blink/renderer/core/style/style_generated_image.h"
 #include "third_party/blink/renderer/core/style/style_image.h"
 #include "third_party/blink/renderer/core/style/style_image_set.h"
-#include "third_party/blink/renderer/core/style/style_mask_source_image.h"
 #include "third_party/blink/renderer/core/style/style_pending_image.h"
+#include "third_party/blink/renderer/core/svg/svg_resource.h"
 #include "third_party/blink/renderer/core/svg/svg_tree_scope_resources.h"
 #include "third_party/blink/renderer/platform/geometry/length.h"
 #include "third_party/blink/renderer/platform/loader/fetch/cross_origin_attribute_value.h"
@@ -60,6 +59,12 @@
 namespace blink {
 
 namespace {
+
+bool IsUsingContainerRelativeUnits(const CSSValue& value) {
+  const auto* image_generator_value = DynamicTo<CSSImageGeneratorValue>(value);
+  return image_generator_value &&
+         image_generator_value->IsUsingContainerRelativeUnits();
+}
 
 class StyleImageLoader {
   STACK_ALLOCATED();
@@ -79,14 +84,10 @@ class StyleImageLoader {
   StyleImage* Load(CSSValue&,
                    FetchParameters::ImageRequestBehavior =
                        FetchParameters::ImageRequestBehavior::kNone,
-                   CrossOriginAttributeValue = kCrossOriginAttributeNotSet,
-                   const float override_image_resolution = 0.0f);
+                   CrossOriginAttributeValue = kCrossOriginAttributeNotSet);
 
  private:
   StyleImage* CrossfadeArgument(CSSValue&, CrossOriginAttributeValue);
-  StyleImage* ResolveImageSet(CSSImageSetValue& image_set_value,
-                              FetchParameters::ImageRequestBehavior,
-                              CrossOriginAttributeValue);
 
   Document& document_;
   ComputedStyleBuilder& builder_;
@@ -97,44 +98,40 @@ class StyleImageLoader {
 StyleImage* StyleImageLoader::Load(
     CSSValue& value,
     FetchParameters::ImageRequestBehavior image_request_behavior,
-    CrossOriginAttributeValue cross_origin,
-    const float override_image_resolution) {
+    CrossOriginAttributeValue cross_origin) {
+  const ContainerSizes& container_sizes =
+      IsUsingContainerRelativeUnits(value) ? pre_cached_container_sizes_.Get()
+                                           : ContainerSizes();
+
   if (auto* image_value = DynamicTo<CSSImageValue>(value)) {
     return image_value->CacheImage(document_, image_request_behavior,
-                                   cross_origin, override_image_resolution);
+                                   cross_origin);
   }
 
   if (auto* paint_value = DynamicTo<CSSPaintValue>(value)) {
     auto* image = MakeGarbageCollected<StyleGeneratedImage>(*paint_value,
-                                                            ContainerSizes());
+                                                            container_sizes);
     builder_.AddPaintImage(image);
     return image;
   }
 
   if (auto* crossfade_value = DynamicTo<cssvalue::CSSCrossfadeValue>(value)) {
-    HeapVector<Member<StyleImage>> style_images;
-    for (const auto& [image, percentage] :
-         crossfade_value->GetImagesAndPercentages()) {
-      style_images.push_back(CrossfadeArgument(*image, cross_origin));
-    }
-    return MakeGarbageCollected<StyleCrossfadeImage>(*crossfade_value,
-                                                     std::move(style_images));
+    return MakeGarbageCollected<StyleCrossfadeImage>(
+        *crossfade_value,
+        CrossfadeArgument(crossfade_value->From(), cross_origin),
+        CrossfadeArgument(crossfade_value->To(), cross_origin));
   }
 
   if (auto* image_gradient_value =
           DynamicTo<cssvalue::CSSGradientValue>(value)) {
-    const ContainerSizes& container_sizes =
-        image_gradient_value->IsUsingContainerRelativeUnits()
-            ? pre_cached_container_sizes_.Get()
-            : ContainerSizes();
     return MakeGarbageCollected<StyleGeneratedImage>(*image_gradient_value,
                                                      container_sizes);
   }
 
   if (auto* image_set_value = DynamicTo<CSSImageSetValue>(value)) {
-    StyleImage* style_image =
-        ResolveImageSet(*image_set_value, image_request_behavior, cross_origin);
-    return image_set_value->CacheImage(style_image, device_scale_factor_);
+    return image_set_value->CacheImage(document_, device_scale_factor_,
+                                       image_request_behavior, cross_origin,
+                                       container_sizes);
   }
 
   NOTREACHED();
@@ -158,25 +155,6 @@ StyleImage* StyleImageLoader::CrossfadeArgument(
   }
   return Load(value, FetchParameters::ImageRequestBehavior::kNone,
               cross_origin);
-}
-
-StyleImage* StyleImageLoader::ResolveImageSet(
-    CSSImageSetValue& image_set_value,
-    FetchParameters::ImageRequestBehavior image_request_behavior,
-    CrossOriginAttributeValue cross_origin) {
-  const CSSImageSetOptionValue* option =
-      image_set_value.GetBestOption(device_scale_factor_);
-  if (!option) {
-    return nullptr;
-  }
-  CSSValue& image_value = option->GetImage();
-  // Artificially reject types that are not "supported".
-  if (!IsA<CSSImageValue>(image_value) &&
-      !IsA<cssvalue::CSSGradientValue>(image_value)) {
-    return nullptr;
-  }
-  return Load(image_value, image_request_behavior, cross_origin,
-              option->ComputedResolution());
 }
 
 }  // namespace
@@ -239,9 +217,8 @@ StyleImage* ElementStyleResources::CachedStyleImage(
   if (auto* gradient_value = DynamicTo<cssvalue::CSSGradientValue>(value)) {
     using ContainerSizes = CSSToLengthConversionData::ContainerSizes;
     const ContainerSizes& container_sizes =
-        gradient_value->IsUsingContainerRelativeUnits()
-            ? pre_cached_container_sizes_.Get()
-            : ContainerSizes();
+        IsUsingContainerRelativeUnits(value) ? pre_cached_container_sizes_.Get()
+                                             : ContainerSizes();
     return MakeGarbageCollected<StyleGeneratedImage>(*gradient_value,
                                                      container_sizes);
   }
@@ -309,11 +286,11 @@ void ElementStyleResources::LoadPendingSVGResources(
   for (CSSPropertyID property : pending_svg_resource_properties_) {
     switch (property) {
       case CSSPropertyID::kBackdropFilter:
-        LoadResourcesForFilter(builder.MutableBackdropFilterOperations(),
+        LoadResourcesForFilter(builder.MutableBackdropFilter().Operations(),
                                document);
         break;
       case CSSPropertyID::kFilter:
-        LoadResourcesForFilter(builder.MutableFilterOperations(), document);
+        LoadResourcesForFilter(builder.MutableFilter().Operations(), document);
         break;
       default:
         NOTREACHED();
@@ -326,29 +303,6 @@ static CSSValue* PendingCssValue(StyleImage* style_image) {
     return pending_image->CssValue();
   }
   return nullptr;
-}
-
-StyleImage* ElementStyleResources::LoadMaskSource(CSSValue& pending_value) {
-  if (!RuntimeEnabledFeatures::CSSMaskingInteropEnabled()) {
-    return nullptr;
-  }
-  auto* image_value = DynamicTo<CSSImageValue>(pending_value);
-  if (!image_value) {
-    return nullptr;
-  }
-  if (image_value->IsLocal(element_.GetDocument())) {
-    SVGTreeScopeResources& tree_scope_resources =
-        element_.OriginatingTreeScope().EnsureSVGTreeScopedResources();
-    SVGResource* resource = tree_scope_resources.ResourceForId(
-        image_value->NormalizedFragmentIdentifier());
-    return MakeGarbageCollected<StyleMaskSourceImage>(resource, image_value);
-  }
-  StyleImage* image = image_value->CacheImage(
-      element_.GetDocument(), FetchParameters::ImageRequestBehavior::kNone,
-      kCrossOriginAttributeAnonymous);
-  return MakeGarbageCollected<StyleMaskSourceImage>(
-      To<StyleFetchedImage>(image), image_value->EnsureSVGResource(),
-      image_value);
 }
 
 void ElementStyleResources::LoadPendingImages(ComputedStyleBuilder& builder) {
@@ -447,21 +401,13 @@ void ElementStyleResources::LoadPendingImages(ComputedStyleBuilder& builder) {
         }
         break;
       }
-      case CSSPropertyID::kMaskImage:
       case CSSPropertyID::kWebkitMaskImage: {
         for (FillLayer* mask_layer = &builder.AccessMaskLayers(); mask_layer;
              mask_layer = mask_layer->Next()) {
           if (auto* pending_value = PendingCssValue(mask_layer->GetImage())) {
-            StyleImage* image = nullptr;
-            if (property == CSSPropertyID::kMaskImage) {
-              image = LoadMaskSource(*pending_value);
-            }
-            if (!image) {
-              image = loader.Load(*pending_value,
-                                  FetchParameters::ImageRequestBehavior::kNone,
-                                  kCrossOriginAttributeAnonymous);
-            }
-            mask_layer->SetImage(image);
+            mask_layer->SetImage(loader.Load(
+                *pending_value, FetchParameters::ImageRequestBehavior::kNone,
+                kCrossOriginAttributeAnonymous));
           }
         }
         break;

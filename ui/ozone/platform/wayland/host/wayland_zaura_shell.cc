@@ -10,27 +10,18 @@
 
 #include "base/check.h"
 #include "base/logging.h"
-#include "base/notreached.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/version.h"
-#include "ui/gfx/geometry/rounded_corners_f.h"
 #include "ui/ozone/common/features.h"
 #include "ui/ozone/platform/wayland/host/wayland_connection.h"
 #include "ui/ozone/platform/wayland/host/wayland_output_manager.h"
 #include "ui/ozone/platform/wayland/host/wayland_screen.h"
-#include "ui/ozone/platform/wayland/host/wayland_toplevel_window.h"
-#include "ui/ozone/platform/wayland/host/wayland_window.h"
 
 namespace ui {
 
 namespace {
-
 constexpr uint32_t kMinVersion = 1;
-// Version: 65
-constexpr uint32_t kMaxVersion =
-    ZAURA_TOPLEVEL_CONFIGURE_OCCLUSION_STATE_SINCE_VERSION;
-
-}  // namespace
+constexpr uint32_t kMaxVersion = 50;
+}
 
 // static
 constexpr char WaylandZAuraShell::kInterfaceName[];
@@ -73,19 +64,11 @@ WaylandZAuraShell::WaylandZAuraShell(zaura_shell* aura_shell,
   DCHECK(obj_);
   DCHECK(connection_);
 
-  static constexpr zaura_shell_listener kZAuraShellListener = {
-      .layout_mode = &OnLayoutMode,
-      .bug_fix = &OnBugFix,
-      .desks_changed = &OnDesksChanged,
-      .desk_activation_changed = &OnDeskActivationChanged,
-      .activated = &OnActivated,
-      .set_overview_mode = &OnSetOverviewMode,
-      .unset_overview_mode = &OnUnsetOverviewMode,
-      .compositor_version = &OnCompositorVersion,
-      .all_bug_fixes_sent = &OnAllBugFixesSent,
-      .window_corners_radii = &OnSetWindowCornersRadii};
-  zaura_shell_add_listener(obj_.get(), &kZAuraShellListener, this);
-
+  static constexpr zaura_shell_listener zaura_shell_listener = {
+      &OnLayoutMode, &OnBugFix, &OnDesksChanged, &OnDeskActivationChanged,
+      &OnActivated,
+  };
+  zaura_shell_add_listener(obj_.get(), &zaura_shell_listener, this);
   if (IsWaylandSurfaceSubmissionInPixelCoordinatesEnabled() &&
       zaura_shell_get_version(wl_object()) >=
           ZAURA_TOPLEVEL_SURFACE_SUBMISSION_IN_PIXEL_COORDINATES_SINCE_VERSION) {
@@ -94,6 +77,10 @@ WaylandZAuraShell::WaylandZAuraShell(zaura_shell* aura_shell,
 }
 
 WaylandZAuraShell::~WaylandZAuraShell() = default;
+
+bool WaylandZAuraShell::HasBugFix(uint32_t id) {
+  return bug_fix_ids_.find(id) != bug_fix_ids_.end();
+}
 
 std::string WaylandZAuraShell::GetDeskName(int index) const {
   if (static_cast<size_t>(index) >= desks_.size())
@@ -109,10 +96,6 @@ int WaylandZAuraShell::GetActiveDeskIndex() const {
   return active_desk_index_;
 }
 
-gfx::RoundedCornersF WaylandZAuraShell::GetWindowCornersRadii() const {
-  return window_corners_radii_;
-}
-
 // static
 void WaylandZAuraShell::OnLayoutMode(void* data,
                                      struct zaura_shell* zaura_shell,
@@ -126,14 +109,14 @@ void WaylandZAuraShell::OnLayoutMode(void* data,
     case ZAURA_SHELL_LAYOUT_MODE_WINDOWED:
       connection->set_tablet_layout_state(
           display::TabletState::kInClamshellMode);
-      // `screen` is null in some unit test suites or if it's called earlier
+      // |screen| is null in some unit test suites or if it's called eariler
       // than screen initialization.
       if (screen)
         screen->OnTabletStateChanged(display::TabletState::kInClamshellMode);
       return;
     case ZAURA_SHELL_LAYOUT_MODE_TABLET:
       connection->set_tablet_layout_state(display::TabletState::kInTabletMode);
-      // `screen` is null in some unit test suites or if it's called earlier
+      // |screen| is null in some unit test suites or if it's called eariler
       // than screen initialization.
       if (screen)
         screen->OnTabletStateChanged(display::TabletState::kInTabletMode);
@@ -146,7 +129,8 @@ void WaylandZAuraShell::OnLayoutMode(void* data,
 void WaylandZAuraShell::OnBugFix(void* data,
                                  struct zaura_shell* zaura_shell,
                                  uint32_t id) {
-  NOTIMPLEMENTED_LOG_ONCE();
+  auto* self = static_cast<WaylandZAuraShell*>(data);
+  self->bug_fix_ids_.insert(id);
 }
 
 // static
@@ -176,51 +160,4 @@ void WaylandZAuraShell::OnActivated(void* data,
                                     struct zaura_shell* zaura_shell,
                                     wl_surface* gained_active,
                                     wl_surface* lost_active) {}
-
-// static
-void WaylandZAuraShell::OnSetOverviewMode(void* data,
-                                          struct zaura_shell* zaura_shell) {
-}
-
-// static
-void WaylandZAuraShell::OnUnsetOverviewMode(void* data,
-                                            struct zaura_shell* zaura_shell) {
-}
-
-// static
-void WaylandZAuraShell::OnCompositorVersion(void* data,
-                                            struct zaura_shell* zaura_shell,
-                                            const char* version_label) {
-  auto* self = static_cast<WaylandZAuraShell*>(data);
-
-  self->server_version_.emplace(version_label);
-
-  if (!self->server_version_->IsValid()) {
-    LOG(WARNING) << "Invalid compositor version string received.";
-    return;
-  }
-
-  DCHECK_EQ(self->server_version_->components().size(), 4u);
-  DVLOG(1) << "Wayland compositor version: " << self->server_version_.value();
-}
-
-// static
-void WaylandZAuraShell::OnAllBugFixesSent(void* data,
-                                          struct zaura_shell* zaura_shell) {
-  NOTIMPLEMENTED_LOG_ONCE();
-}
-
-// static
-void WaylandZAuraShell::OnSetWindowCornersRadii(void* data,
-                                                struct zaura_shell* zaura_shell,
-                                                uint32_t upper_left_radius,
-                                                uint32_t upper_right_radius,
-                                                uint32_t lower_right_radius,
-                                                uint32_t lower_left_radius) {
-  auto* self = static_cast<WaylandZAuraShell*>(data);
-  self->window_corners_radii_ =
-      gfx::RoundedCornersF(upper_left_radius, upper_right_radius,
-                           lower_right_radius, lower_left_radius);
-}
-
 }  // namespace ui

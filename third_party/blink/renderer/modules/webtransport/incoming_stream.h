@@ -7,13 +7,12 @@
 
 #include <stdint.h>
 
-#include <optional>
-
 #include "base/functional/callback.h"
 #include "base/logging.h"
 #include "base/types/strong_alias.h"
 #include "mojo/public/cpp/system/data_pipe.h"
 #include "mojo/public/cpp/system/simple_watcher.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_value.h"
@@ -42,7 +41,7 @@ class MODULES_EXPORT IncomingStream final
   };
 
   IncomingStream(ScriptState*,
-                 base::OnceCallback<void(std::optional<uint8_t>)> on_abort,
+                 base::OnceCallback<void(absl::optional<uint8_t>)> on_abort,
                  mojo::ScopedDataPipeConsumerHandle);
   ~IncomingStream();
 
@@ -57,7 +56,7 @@ class MODULES_EXPORT IncomingStream final
   ReadableStream* Readable() const {
     DVLOG(1) << "IncomingStream::readable() called";
 
-    return readable_.Get();
+    return readable_;
   }
 
   // Called from WebTransport via a WebTransportStream class. May execute
@@ -109,7 +108,7 @@ class MODULES_EXPORT IncomingStream final
   void ErrorStreamAbortAndReset(ScriptValue exception);
 
   // Resets the |data_pipe_|.
-  void AbortAndReset(std::optional<uint8_t> code);
+  void AbortAndReset(absl::optional<uint8_t> code);
 
   // Resets |data_pipe_| and clears the watchers.
   // If the pipe is open it will be closed as a side-effect.
@@ -120,7 +119,7 @@ class MODULES_EXPORT IncomingStream final
 
   const Member<ScriptState> script_state_;
 
-  base::OnceCallback<void(std::optional<uint8_t>)> on_abort_;
+  base::OnceCallback<void(absl::optional<uint8_t>)> on_abort_;
 
   mojo::ScopedDataPipeConsumerHandle data_pipe_;
 
@@ -133,7 +132,7 @@ class MODULES_EXPORT IncomingStream final
   State state_ = State::kOpen;
 
   // This is set when OnIncomingStreamClosed() is called.
-  std::optional<bool> fin_received_;
+  absl::optional<bool> fin_received_;
 
   // True when |data_pipe_| has been detected to be closed. The close is not
   // processed until |fin_received_| is also set.

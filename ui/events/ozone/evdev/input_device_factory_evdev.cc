@@ -20,18 +20,15 @@
 #include "base/trace_event/trace_event.h"
 #include "ui/events/devices/device_data_manager.h"
 #include "ui/events/devices/device_util_linux.h"
-#include "ui/events/devices/input_device.h"
-#include "ui/events/devices/keyboard_device.h"
 #include "ui/events/devices/stylus_state.h"
-#include "ui/events/devices/touchpad_device.h"
 #include "ui/events/event_switches.h"
 #include "ui/events/ozone/evdev/device_event_dispatcher_evdev.h"
 #include "ui/events/ozone/evdev/event_converter_evdev_impl.h"
 #include "ui/events/ozone/evdev/event_device_info.h"
 #include "ui/events/ozone/evdev/gamepad_event_converter_evdev.h"
-#include "ui/events/ozone/evdev/imposter_checker_evdev.h"
 #include "ui/events/ozone/evdev/input_controller_evdev.h"
 #include "ui/events/ozone/evdev/input_device_settings_evdev.h"
+#include "ui/events/ozone/evdev/keyboard_imposter_checker_evdev.h"
 #include "ui/events/ozone/evdev/microphone_mute_switch_event_converter_evdev.h"
 #include "ui/events/ozone/evdev/stylus_button_event_converter_evdev.h"
 #include "ui/events/ozone/evdev/tablet_event_converter_evdev.h"
@@ -87,8 +84,7 @@ void SetGestureBoolProperty(GesturePropertyProvider* provider,
 bool IsUncategorizedDevice(const EventConverterEvdev& converter) {
   return !converter.HasTouchscreen() && !converter.HasKeyboard() &&
          !converter.HasMouse() && !converter.HasPointingStick() &&
-         !converter.HasTouchpad() && !converter.HasGamepad() &&
-         !converter.HasGraphicsTablet();
+         !converter.HasTouchpad() && !converter.HasGamepad();
 }
 
 }  // namespace
@@ -105,7 +101,7 @@ InputDeviceFactoryEvdev::InputDeviceFactoryEvdev(
       gesture_property_provider_(new GesturePropertyProvider),
 #endif
       dispatcher_(std::move(dispatcher)),
-      imposter_checker_(new ImposterCheckerEvdev),
+      keyboard_imposter_checker_(new KeyboardImposterCheckerEvdev),
       input_device_opener_(std::move(input_device_opener)),
       input_controller_(input_controller) {
 }
@@ -182,9 +178,9 @@ void InputDeviceFactoryEvdev::AttachInputDevice(
 
     if ((converter->type() == InputDeviceType::INPUT_DEVICE_USB ||
          converter->type() == InputDeviceType::INPUT_DEVICE_BLUETOOTH) &&
-        (converter->HasKeyboard() || converter->HasMouse())) {
+        converter->HasKeyboard()) {
       converter->SetReceivedValidInputCallback(base::BindRepeating(
-          &InputDeviceFactoryEvdev::UpdateDevicesOnImposterOverride,
+          &InputDeviceFactoryEvdev::UpdateKeyboardDevicesOnKeyPress,
           base::Unretained(this)));
     }
 
@@ -197,13 +193,12 @@ void InputDeviceFactoryEvdev::AttachInputDevice(
     // Register device on physical port & get ids of devices on the same
     // physical port.
     std::vector<int> ids_to_check =
-        imposter_checker_->OnDeviceAdded(converters_[path].get());
+        keyboard_imposter_checker_->OnDeviceAdded(converters_[path].get());
     // Check for imposters on all devices that share the same physical port.
     for (const auto& it : converters_) {
       if (base::Contains(ids_to_check, it.second->id()) &&
-          imposter_checker_->FlagSuspectedImposter(it.second.get())) {
+          keyboard_imposter_checker_->FlagIfImposter(it.second.get()))
         UpdateDirtyFlags(it.second.get());
-      }
     }
 
     input_device_factory_metrics_.OnDeviceAttach(converters_[path].get());
@@ -237,15 +232,14 @@ void InputDeviceFactoryEvdev::DetachInputDevice(const base::FilePath& path) {
     // Decrement device count on physical port. Get ids of devices on the same
     // physical port.
     std::vector<int> ids_to_check =
-        imposter_checker_->OnDeviceRemoved(converter.get());
+        keyboard_imposter_checker_->OnDeviceRemoved(converter.get());
     // Check for imposters on all devices that share the same physical port.
     // Declassify any devices as no longer imposters, if the removal of this
     // device changes their status.
     for (const auto& it : converters_) {
       if (base::Contains(ids_to_check, it.second->id()) &&
-          !imposter_checker_->FlagSuspectedImposter(it.second.get())) {
+          !keyboard_imposter_checker_->FlagIfImposter(it.second.get()))
         UpdateDirtyFlags(it.second.get());
-      }
     }
 
     UpdateDirtyFlags(converter.get());
@@ -294,16 +288,6 @@ void InputDeviceFactoryEvdev::GetTouchEventLog(
 #else
   std::move(reply).Run(std::vector<base::FilePath>());
 #endif
-}
-
-void InputDeviceFactoryEvdev::DescribeForLog(
-    InputController::DescribeForLogReply reply) const {
-  std::stringstream str;
-  for (const auto& it : converters_) {
-    it.second->DescribeForLog(str);
-    str << std::endl;
-  }
-  std::move(reply).Run(str.str());
 }
 
 void InputDeviceFactoryEvdev::GetGesturePropertiesService(
@@ -440,11 +424,6 @@ void InputDeviceFactoryEvdev::ApplyInputDeviceSettings() {
           input_device_settings_.internal_keyboard_allowed_keys);
     }
 
-    // Block modifiers on the current converter if the device id exists in
-    // `input_device_settings_.blocked_modifiers_devices`
-    converter->SetBlockModifiers(base::Contains(
-        input_device_settings_.blocked_modifiers_devices, converter->id()));
-
     converter->ApplyDeviceSettings(input_device_settings_);
 
     converter->SetTouchEventLoggingEnabled(
@@ -537,10 +516,6 @@ void InputDeviceFactoryEvdev::UpdateDirtyFlags(
   if (converter->HasTouchpad())
     touchpad_list_dirty_ = true;
 
-  if (converter->HasGraphicsTablet()) {
-    graphics_tablet_list_dirty_ = true;
-  }
-
   if (converter->HasGamepad())
     gamepad_list_dirty_ = true;
 
@@ -561,9 +536,6 @@ void InputDeviceFactoryEvdev::NotifyDevicesUpdated() {
     NotifyPointingStickDevicesUpdated();
   if (touchpad_list_dirty_)
     NotifyTouchpadDevicesUpdated();
-  if (graphics_tablet_list_dirty_) {
-    NotifyGraphicsTabletDevicesUpdated();
-  }
   if (gamepad_list_dirty_)
     NotifyGamepadDevicesUpdated();
   if (uncategorized_list_dirty_)
@@ -577,7 +549,6 @@ void InputDeviceFactoryEvdev::NotifyDevicesUpdated() {
   mouse_list_dirty_ = false;
   pointing_stick_list_dirty_ = false;
   touchpad_list_dirty_ = false;
-  graphics_tablet_list_dirty_ = false;
   gamepad_list_dirty_ = false;
   uncategorized_list_dirty_ = false;
 }
@@ -613,13 +584,11 @@ void InputDeviceFactoryEvdev::NotifyTouchscreensUpdated() {
 
 void InputDeviceFactoryEvdev::NotifyKeyboardsUpdated() {
   base::flat_map<int, std::vector<uint64_t>> key_bits_mapping;
-  std::vector<KeyboardDevice> keyboards;
-  for (auto& converter : converters_) {
-    if (converter.second->HasKeyboard()) {
-      keyboards.emplace_back(converter.second->input_device(),
-                             converter.second->HasAssistantKey());
-      key_bits_mapping[converter.second->id()] =
-          converter.second->GetKeyboardKeyBits();
+  std::vector<InputDevice> keyboards;
+  for (auto it = converters_.begin(); it != converters_.end(); ++it) {
+    if (it->second->HasKeyboard()) {
+      keyboards.push_back(InputDevice(it->second->input_device()));
+      key_bits_mapping[it->second->id()] = it->second->GetKeyboardKeyBits();
     }
   }
   dispatcher_->DispatchKeyboardDevicesUpdated(keyboards,
@@ -632,14 +601,6 @@ void InputDeviceFactoryEvdev::NotifyMouseDevicesUpdated() {
   for (auto& converter : converters_) {
     if (converter.second->HasMouse()) {
       mice.push_back(converter.second->input_device());
-
-      // If the device also has a keyboard, clear the keyboard suspected
-      // imposter field as it only applies to the keyboard
-      // `InputDevice` struct.
-      if (converter.second->HasKeyboard()) {
-        mice.back().suspected_keyboard_imposter = false;
-      }
-
       // Some I2C touchpads falsely claim to be mice, see b/205272718
       if (converter.second->type() !=
           ui::InputDeviceType::INPUT_DEVICE_INTERNAL) {
@@ -656,13 +617,6 @@ void InputDeviceFactoryEvdev::NotifyPointingStickDevicesUpdated() {
   for (auto& converter : converters_) {
     if (converter.second->HasPointingStick()) {
       pointing_sticks.push_back(converter.second->input_device());
-
-      // If the device also has a keyboard, clear the keyboard suspected
-      // imposter field as it only applies to the keyboard
-      // `InputDevice` struct.
-      if (converter.second->HasKeyboard()) {
-        pointing_sticks.back().suspected_keyboard_imposter = false;
-      }
     }
   }
 
@@ -670,36 +624,17 @@ void InputDeviceFactoryEvdev::NotifyPointingStickDevicesUpdated() {
 }
 
 void InputDeviceFactoryEvdev::NotifyTouchpadDevicesUpdated() {
-  std::vector<TouchpadDevice> touchpads;
+  std::vector<InputDevice> touchpads;
   bool has_haptic_touchpad = false;
   for (const auto& it : converters_) {
     if (it.second->HasTouchpad()) {
       if (it.second->HasHapticTouchpad())
         has_haptic_touchpad = true;
-      touchpads.emplace_back(it.second->input_device(),
-                             it.second->HasHapticTouchpad());
-
-      // If the device also has a keyboard, clear the keyboard suspected
-      // imposter field as it only applies to the keyboard
-      // `InputDevice` struct.
-      if (it.second->HasKeyboard()) {
-        touchpads.back().suspected_keyboard_imposter = false;
-      }
+      touchpads.push_back(it.second->input_device());
     }
   }
 
   dispatcher_->DispatchTouchpadDevicesUpdated(touchpads, has_haptic_touchpad);
-}
-
-void InputDeviceFactoryEvdev::NotifyGraphicsTabletDevicesUpdated() {
-  std::vector<InputDevice> graphics_tablets;
-  for (const auto& it : converters_) {
-    if (it.second->HasGraphicsTablet()) {
-      graphics_tablets.push_back(it.second->input_device());
-    }
-  }
-
-  dispatcher_->DispatchGraphicsTabletDevicesUpdated(graphics_tablets);
 }
 
 void InputDeviceFactoryEvdev::NotifyGamepadDevicesUpdated() {
@@ -727,7 +662,7 @@ void InputDeviceFactoryEvdev::NotifyUncategorizedDevicesUpdated() {
   dispatcher_->DispatchUncategorizedDevicesUpdated(uncategorized_devices);
 }
 
-void InputDeviceFactoryEvdev::UpdateDevicesOnImposterOverride(
+void InputDeviceFactoryEvdev::UpdateKeyboardDevicesOnKeyPress(
     const EventConverterEvdev* converter) {
   UpdateDirtyFlags(converter);
   NotifyDevicesUpdated();

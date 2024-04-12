@@ -20,7 +20,7 @@ namespace blink {
 
 class Navigator;
 
-class BatteryManager final : public EventTarget,
+class BatteryManager final : public EventTargetWithInlineData,
                              public ActiveScriptWrappable<BatteryManager>,
                              public Supplement<Navigator>,
                              public ExecutionContextLifecycleStateObserver,
@@ -29,13 +29,12 @@ class BatteryManager final : public EventTarget,
 
  public:
   static const char kSupplementName[];
-  static ScriptPromiseTyped<BatteryManager> getBattery(ScriptState*,
-                                                       Navigator&);
+  static ScriptPromise getBattery(ScriptState*, Navigator&);
   explicit BatteryManager(Navigator&);
   ~BatteryManager() override;
 
   // Returns a promise object that will be resolved with this BatteryManager.
-  ScriptPromiseTyped<BatteryManager> StartRequest(ScriptState*);
+  ScriptPromise StartRequest(ScriptState*);
 
   // EventTarget implementation.
   const WTF::AtomicString& InterfaceName() const override {
@@ -71,7 +70,8 @@ class BatteryManager final : public EventTarget,
   void Trace(Visitor*) const override;
 
  private:
-  using BatteryProperty = ScriptPromiseProperty<BatteryManager, DOMException>;
+  using BatteryProperty =
+      ScriptPromiseProperty<Member<BatteryManager>, Member<DOMException>>;
   Member<BatteryProperty> battery_property_;
   BatteryStatus battery_status_;
   Member<BatteryDispatcher> battery_dispatcher_;

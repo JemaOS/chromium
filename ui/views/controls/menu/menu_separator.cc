@@ -5,7 +5,6 @@
 #include "ui/views/controls/menu/menu_separator.h"
 
 #include "build/build_config.h"
-#include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -24,47 +23,56 @@ MenuSeparator::MenuSeparator(ui::MenuSeparatorType type) : type_(type) {
 }
 
 void MenuSeparator::OnPaint(gfx::Canvas* canvas) {
-  const MenuConfig& menu_config = MenuConfig::instance();
-  if (type_ == ui::SPACING_SEPARATOR ||
-      width() < menu_config.separator_horizontal_border_padding * 2) {
+  if (type_ == ui::SPACING_SEPARATOR)
     return;
-  }
 
-  int y = 0;
+  const MenuConfig& menu_config = MenuConfig::instance();
+  int pos = 0;
   int separator_thickness = menu_config.separator_thickness;
   if (type_ == ui::DOUBLE_SEPARATOR)
     separator_thickness = menu_config.double_separator_thickness;
   switch (type_) {
     case ui::LOWER_SEPARATOR:
-      y = height() - separator_thickness;
+      pos = height() - separator_thickness;
       break;
     case ui::UPPER_SEPARATOR:
       break;
     default:
-      y = (height() - separator_thickness) / 2;
+      pos = (height() - separator_thickness) / 2;
       break;
   }
 
-  gfx::Rect paint_rect(
-      menu_config.separator_horizontal_border_padding, y,
-      width() - menu_config.separator_horizontal_border_padding * 2,
-      separator_thickness);
+  gfx::Rect paint_rect(0, pos, width(), separator_thickness);
   if (type_ == ui::PADDED_SEPARATOR) {
     paint_rect.Inset(
-        gfx::Insets::TLBR(0, menu_config.padded_separator_start_padding, 0, 0));
+        gfx::Insets::TLBR(0, menu_config.padded_separator_left_margin, 0,
+                          menu_config.padded_separator_right_margin));
+  } else {
+    paint_rect.Inset(gfx::Insets::TLBR(0, menu_config.separator_left_margin, 0,
+                                       menu_config.separator_right_margin));
   }
 
   if (menu_config.use_outer_border && type_ != ui::PADDED_SEPARATOR) {
     paint_rect.Inset(gfx::Insets::VH(0, 1));
   }
 
-  ui::NativeTheme::MenuSeparatorExtraParams menu_separator;
-  menu_separator.paint_rect = &paint_rect;
-  menu_separator.type = type_;
+#if BUILDFLAG(IS_WIN)
+  // Hack to get the separator to display correctly on Windows where we may
+  // have fractional scales. We move the separator 1 pixel down to ensure that
+  // it falls within the clipping rect which is scaled up.
+  float device_scale = display::win::GetDPIScale();
+  bool is_fractional_scale =
+      (device_scale - static_cast<int>(device_scale) != 0);
+  if (is_fractional_scale && paint_rect.y() == 0)
+    paint_rect.set_y(1);
+#endif
+
+  ui::NativeTheme::ExtraParams params;
+  params.menu_separator.paint_rect = &paint_rect;
+  params.menu_separator.type = type_;
   GetNativeTheme()->Paint(canvas->sk_canvas(), GetColorProvider(),
                           ui::NativeTheme::kMenuPopupSeparator,
-                          ui::NativeTheme::kNormal, GetLocalBounds(),
-                          ui::NativeTheme::ExtraParams(menu_separator));
+                          ui::NativeTheme::kNormal, GetLocalBounds(), params);
 }
 
 gfx::Size MenuSeparator::CalculatePreferredSize() const {
@@ -106,7 +114,7 @@ void MenuSeparator::SetType(ui::MenuSeparatorType type) {
   OnPropertyChanged(&type_, kPropertyEffectsPreferredSizeChanged);
 }
 
-BEGIN_METADATA(MenuSeparator)
+BEGIN_METADATA(MenuSeparator, View)
 ADD_PROPERTY_METADATA(ui::MenuSeparatorType, Type)
 END_METADATA
 

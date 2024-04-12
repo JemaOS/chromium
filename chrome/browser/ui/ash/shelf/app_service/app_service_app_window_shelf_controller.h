@@ -12,7 +12,6 @@
 #include "ash/public/cpp/shelf_types.h"
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_multi_source_observation.h"
-#include "base/scoped_observation.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_forward.h"
 #include "chrome/browser/ui/ash/shelf/app_service/app_service_instance_registry_helper.h"
 #include "chrome/browser/ui/ash/shelf/app_window_shelf_controller.h"
@@ -40,7 +39,7 @@ class AppServiceAppWindowShelfController
       public apps::InstanceRegistry::Observer,
       public ArcAppWindowDelegate {
  public:
-  using ProfileList = std::vector<raw_ptr<Profile, VectorExperimental>>;
+  using ProfileList = std::vector<Profile*>;
 
   explicit AppServiceAppWindowShelfController(ChromeShelfController* owner);
 
@@ -114,7 +113,7 @@ class AppServiceAppWindowShelfController
  private:
   using AuraWindowToAppWindow =
       std::map<aura::Window*, std::unique_ptr<AppWindowBase>>;
-  using WindowList = std::vector<raw_ptr<aura::Window, VectorExperimental>>;
+  using WindowList = std::vector<aura::Window*>;
 
   void SetWindowActivated(aura::Window* window, bool active);
 
@@ -152,11 +151,8 @@ class AppServiceAppWindowShelfController
   AuraWindowToAppWindow aura_window_to_app_window_;
   base::ScopedMultiSourceObservation<aura::Window, aura::WindowObserver>
       observed_windows_{this};
-  base::ScopedObservation<apps::InstanceRegistry,
-                          apps::InstanceRegistry::Observer>
-      instance_registry_observation_{this};
 
-  raw_ptr<apps::AppServiceProxy> proxy_ = nullptr;
+  raw_ptr<apps::AppServiceProxy, ExperimentalAsh> proxy_ = nullptr;
   std::unique_ptr<AppServiceInstanceRegistryHelper>
       app_service_instance_helper_;
   std::unique_ptr<AppServiceAppWindowArcTracker> arc_tracker_;

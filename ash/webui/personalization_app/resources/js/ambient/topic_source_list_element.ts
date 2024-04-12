@@ -7,18 +7,18 @@
  * behaviors similar to a radio button group, e.g. single selection.
  */
 
-import 'chrome://resources/ash/common/personalization/common.css.js';
-import 'chrome://resources/polymer/v3_0/iron-list/iron-list.js';
+import '../../css/common.css.js';
 import './topic_source_item_element.js';
+import 'chrome://resources/polymer/v3_0/iron-list/iron-list.js';
 
-import {AmbientTheme, TopicSource} from '../../personalization_app.mojom-webui.js';
+import {AnimationTheme, TopicSource} from '../../personalization_app.mojom-webui.js';
 import {isTimeOfDayScreenSaverEnabled} from '../load_time_booleans.js';
 import {WithPersonalizationStore} from '../personalization_store.js';
 
 import {getTemplate} from './topic_source_list_element.html.js';
 import {isValidTopicSourceAndTheme} from './utils.js';
 
-export class TopicSourceListElement extends WithPersonalizationStore {
+export class TopicSourceList extends WithPersonalizationStore {
   static get is() {
     return 'topic-source-list';
   }
@@ -43,7 +43,7 @@ export class TopicSourceListElement extends WithPersonalizationStore {
         },
       },
 
-      selectedAmbientTheme: AmbientTheme,
+      selectedAnimationTheme: AnimationTheme,
 
       selectedTopicSource: TopicSource,
 
@@ -52,21 +52,22 @@ export class TopicSourceListElement extends WithPersonalizationStore {
   }
 
   topicSources: TopicSource[];
-  selectedAmbientTheme: AmbientTheme;
+  selectedAnimationTheme: AnimationTheme;
   selectedTopicSource: TopicSource;
   hasGooglePhotosAlbums: boolean;
 
   override focus() {
-    const elem = this.shadowRoot!.querySelector<HTMLElement>(
-        'topic-source-item[checked]');
+    const elem = this.shadowRoot!.querySelector('topic-source-item[checked]') as
+        HTMLElement;
     if (elem) {
       elem.focus();
     }
   }
 
   private isTopicSourceDisabled_(
-      topicSource: TopicSource, selectedAmbientTheme: AmbientTheme): boolean {
-    return !isValidTopicSourceAndTheme(topicSource, selectedAmbientTheme);
+      topicSource: TopicSource,
+      selectedAnimationTheme: AnimationTheme): boolean {
+    return !isValidTopicSourceAndTheme(topicSource, selectedAnimationTheme);
   }
 
   private isSelected_(
@@ -77,8 +78,8 @@ export class TopicSourceListElement extends WithPersonalizationStore {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'topic-source-list': TopicSourceListElement;
+    'topic-source-list': TopicSourceList;
   }
 }
 
-customElements.define(TopicSourceListElement.is, TopicSourceListElement);
+customElements.define(TopicSourceList.is, TopicSourceList);

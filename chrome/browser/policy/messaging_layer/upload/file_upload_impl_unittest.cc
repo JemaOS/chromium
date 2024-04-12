@@ -4,11 +4,11 @@
 
 #include "chrome/browser/policy/messaging_layer/upload/file_upload_impl.h"
 
-#include <cstddef>
+#include <stddef.h>
+
 #include <memory>
 #include <set>
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "base/containers/contains.h"
@@ -208,8 +208,7 @@ class FakeOAuth2AccessTokenManagerDelegate
   std::unique_ptr<OAuth2AccessTokenFetcher> CreateAccessTokenFetcher(
       const CoreAccountId& account_id,
       scoped_refptr<::network::SharedURLLoaderFactory> url_loader_factory,
-      OAuth2AccessTokenConsumer* consumer,
-      const std::string& token_binding_challenge) override {
+      OAuth2AccessTokenConsumer* consumer) override {
     EXPECT_EQ(CoreAccountId::FromRobotEmail(kRobotAccountId), account_id);
     return GaiaAccessTokenFetcher::
         CreateExchangeRefreshTokenForAccessTokenInstance(
@@ -226,7 +225,7 @@ class FileUploadDelegateTest : public ::testing::Test {
  protected:
   FileUploadDelegateTest() { DETACH_FROM_SEQUENCE(sequence_checker_); }
 
-  const GURL GetServerURL(std::string_view relative_path) const {
+  const GURL GetServerURL(base::StringPiece relative_path) const {
     return test_server_.GetURL(relative_path);
   }
 
@@ -395,9 +394,10 @@ TEST_F(FileUploadDelegateTest, SuccessfulUploadStart) {
       base::StrCat({kUploadMedata, kUploadMetadataContentType}),
       init_done.cb());
   const auto& result = init_done.result();
-  ASSERT_TRUE(result.has_value()) << result.error();
-  ASSERT_THAT(result.value().first, Eq(static_cast<int64_t>(kTestDataSize)));
-  ASSERT_THAT(result.value().second,
+  ASSERT_OK(result) << result.status();
+  ASSERT_THAT(result.ValueOrDie().first,
+              Eq(static_cast<int64_t>(kTestDataSize)));
+  ASSERT_THAT(result.ValueOrDie().second,
               StrEq(base::StrCat(
                   {origin_path(), "\n", GetServerURL(kResumableUrl).spec()})));
 }
@@ -459,7 +459,7 @@ TEST_F(FileUploadDelegateTest, FailedUploadStart) {
     delegate->DoInitiate(origin_path(),
                          /*upload_parameters=*/"ABCD", init_done.cb());
     EXPECT_THAT(
-        init_done.result().error(),
+        init_done.result().status(),
         AllOf(Property(&Status::error_code, Eq(error::INVALID_ARGUMENT)),
               Property(&Status::error_message,
                        StrEq("Cannot parse upload_parameters=`ABCD`"))));
@@ -476,7 +476,7 @@ TEST_F(FileUploadDelegateTest, FailedUploadStart) {
         /*upload_parameters=*/
         base::StrCat({kUploadMedata, kUploadMetadataContentType}),
         init_done.cb());
-    EXPECT_THAT(init_done.result().error(),
+    EXPECT_THAT(init_done.result().status(),
                 AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
                       Property(&Status::error_message,
                                StrEq("Unexpected upload status=final"))));
@@ -493,7 +493,7 @@ TEST_F(FileUploadDelegateTest, FailedUploadStart) {
         /*upload_parameters=*/
         base::StrCat({kUploadMedata, kUploadMetadataContentType}),
         init_done.cb());
-    EXPECT_THAT(init_done.result().error(),
+    EXPECT_THAT(init_done.result().status(),
                 AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
                       Property(&Status::error_message,
                                StrEq("No granularity returned"))));
@@ -510,7 +510,7 @@ TEST_F(FileUploadDelegateTest, FailedUploadStart) {
         /*upload_parameters=*/
         base::StrCat({kUploadMedata, kUploadMetadataContentType}),
         init_done.cb());
-    EXPECT_THAT(init_done.result().error(),
+    EXPECT_THAT(init_done.result().status(),
                 AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
                       Property(&Status::error_message,
                                StrEq("No upload URL returned"))));
@@ -528,7 +528,7 @@ TEST_F(FileUploadDelegateTest, FailedUploadStart) {
         base::StrCat({kUploadMedata, kUploadMetadataContentType}),
         init_done.cb());
     EXPECT_THAT(
-        init_done.result().error(),
+        init_done.result().status(),
         AllOf(
             Property(&Status::error_code, Eq(error::DATA_LOSS)),
             Property(&Status::error_message,
@@ -548,7 +548,7 @@ TEST_F(FileUploadDelegateTest, FailedUploadStart) {
         base::StrCat({kUploadMedata, kUploadMetadataContentType}),
         init_done.cb());
     EXPECT_THAT(
-        init_done.result().error(),
+        init_done.result().status(),
         AllOf(
             Property(&Status::error_code, Eq(error::UNAUTHENTICATED)),
             Property(
@@ -592,11 +592,11 @@ TEST_F(FileUploadDelegateTest, SuccessfulUploadStep) {
       base::StrCat({origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
       ScopedReservation(0uL, memory_resource_), step_done.cb());
   const auto& result = step_done.result();
-  ASSERT_TRUE(result.has_value()) << result.error();
+  ASSERT_OK(result) << result.status();
   ASSERT_THAT(
-      result.value().first,
+      result.ValueOrDie().first,
       Eq(static_cast<int64_t>(kMaxUploadBufferSize + kMaxUploadBufferSize)));
-  ASSERT_THAT(result.value().second,
+  ASSERT_THAT(result.ValueOrDie().second,
               StrEq(base::StrCat(
                   {origin_path(), "\n", GetServerURL(kResumableUrl).spec()})));
 }
@@ -636,9 +636,10 @@ TEST_F(FileUploadDelegateTest, SuccessfulUploadStepTillEnd) {
       base::StrCat({origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
       ScopedReservation(0uL, memory_resource_), step_done.cb());
   const auto& result = step_done.result();
-  ASSERT_TRUE(result.has_value()) << result.error();
-  ASSERT_THAT(result.value().first, Eq(static_cast<int64_t>(kTestDataSize)));
-  ASSERT_THAT(result.value().second,
+  ASSERT_OK(result) << result.status();
+  ASSERT_THAT(result.ValueOrDie().first,
+              Eq(static_cast<int64_t>(kTestDataSize)));
+  ASSERT_THAT(result.ValueOrDie().second,
               StrEq(base::StrCat(
                   {origin_path(), "\n", GetServerURL(kResumableUrl).spec()})));
 }
@@ -674,10 +675,10 @@ TEST_F(FileUploadDelegateTest, UploadStepOutOfMemory) {
       base::StrCat({origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
       std::move(scoped_reservation), step_done.cb());
   const auto& result = step_done.result();
-  ASSERT_TRUE(result.has_value()) << result.error();
-  ASSERT_THAT(result.value().first,
+  ASSERT_OK(result) << result.status();
+  ASSERT_THAT(result.ValueOrDie().first,
               Eq(static_cast<int64_t>(kTestDataSize - kMaxUploadBufferSize)));
-  ASSERT_THAT(result.value().second,
+  ASSERT_THAT(result.ValueOrDie().second,
               StrEq(base::StrCat(
                   {origin_path(), "\n", GetServerURL(kResumableUrl).spec()})));
 }
@@ -758,7 +759,7 @@ TEST_F(FileUploadDelegateTest, UploadStepFailures) {
         base::StrCat({origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
         ScopedReservation(0uL, memory_resource_), step_done.cb());
     const auto& result = step_done.result();
-    ASSERT_THAT(result.error(),
+    ASSERT_THAT(result.status(),
                 AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
                       Property(&Status::error_message,
                                StrEq("Unexpected upload status=unknown"))));
@@ -773,7 +774,7 @@ TEST_F(FileUploadDelegateTest, UploadStepFailures) {
         base::StrCat({origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
         ScopedReservation(0uL, memory_resource_), step_done.cb());
     const auto& result = step_done.result();
-    ASSERT_THAT(result.error(),
+    ASSERT_THAT(result.status(),
                 AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
                       Property(&Status::error_message,
                                StrEq("No upload size returned"))));
@@ -788,7 +789,7 @@ TEST_F(FileUploadDelegateTest, UploadStepFailures) {
         base::StrCat({origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
         ScopedReservation(0uL, memory_resource_), step_done.cb());
     const auto& result = step_done.result();
-    ASSERT_THAT(result.error(),
+    ASSERT_THAT(result.status(),
                 AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
                       Property(&Status::error_message,
                                StrEq("No granularity returned"))));
@@ -804,7 +805,7 @@ TEST_F(FileUploadDelegateTest, UploadStepFailures) {
         ScopedReservation(0uL, memory_resource_), step_done.cb());
     const auto& result = step_done.result();
     ASSERT_THAT(
-        result.error(),
+        result.status(),
         AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
               Property(&Status::error_message,
                        StrEq(base::StrCat(
@@ -821,7 +822,7 @@ TEST_F(FileUploadDelegateTest, UploadStepFailures) {
         base::StrCat({origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
         ScopedReservation(0uL, memory_resource_), step_done.cb());
     const auto& result = step_done.result();
-    ASSERT_THAT(result.error(),
+    ASSERT_THAT(result.status(),
                 AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
                       Property(&Status::error_message,
                                StrEq("Unexpected granularity=12345Z"))));
@@ -836,7 +837,7 @@ TEST_F(FileUploadDelegateTest, UploadStepFailures) {
         base::StrCat({origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
         ScopedReservation(0uL, memory_resource_), step_done.cb());
     const auto& result = step_done.result();
-    ASSERT_THAT(result.error(),
+    ASSERT_THAT(result.status(),
                 AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
                       Property(&Status::error_message,
                                StrEq("Unexpected upload status=unknown"))));
@@ -876,8 +877,9 @@ TEST_F(FileUploadDelegateTest, SuccessfulUploadFinish) {
           {origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
       finish_done.cb());
   const auto& result = finish_done.result();
-  ASSERT_TRUE(result.has_value()) << result.error();
-  ASSERT_THAT(result.value(), StrEq(base::StrCat({"Upload_id=", kUploadId})));
+  ASSERT_OK(result) << result.status();
+  ASSERT_THAT(result.ValueOrDie(),
+              StrEq(base::StrCat({"Upload_id=", kUploadId})));
 }
 
 TEST_F(FileUploadDelegateTest, FinishFailures) {
@@ -942,7 +944,7 @@ TEST_F(FileUploadDelegateTest, FinishFailures) {
             {origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
         finish_done.cb());
     const auto& result = finish_done.result();
-    ASSERT_THAT(result.error(),
+    ASSERT_THAT(result.status(),
                 AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
                       Property(&Status::error_message,
                                "Unexpected upload status=unknown")));
@@ -955,7 +957,7 @@ TEST_F(FileUploadDelegateTest, FinishFailures) {
         finish_done.cb());
     const auto& result = finish_done.result();
     ASSERT_THAT(
-        result.error(),
+        result.status(),
         AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
               Property(&Status::error_message, "No upload size returned")));
   }
@@ -967,7 +969,7 @@ TEST_F(FileUploadDelegateTest, FinishFailures) {
         finish_done.cb());
     const auto& result = finish_done.result();
     ASSERT_THAT(
-        result.error(),
+        result.status(),
         AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
               Property(&Status::error_message, "Unexpected received=12345Z")));
   }
@@ -978,7 +980,7 @@ TEST_F(FileUploadDelegateTest, FinishFailures) {
             {origin_path(), "\n", GetServerURL(kResumableUrl).spec()}),
         finish_done.cb());
     const auto& result = finish_done.result();
-    ASSERT_THAT(result.error(),
+    ASSERT_THAT(result.status(),
                 AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
                       Property(&Status::error_message,
                                "Unexpected upload status=active")));
@@ -991,7 +993,7 @@ TEST_F(FileUploadDelegateTest, FinishFailures) {
         finish_done.cb());
     const auto& result = finish_done.result();
     ASSERT_THAT(
-        result.error(),
+        result.status(),
         AllOf(Property(&Status::error_code, Eq(error::DATA_LOSS)),
               Property(&Status::error_message, "No upload ID returned")));
   }

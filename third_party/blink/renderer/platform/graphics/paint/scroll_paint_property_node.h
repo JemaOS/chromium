@@ -6,13 +6,13 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_PAINT_SCROLL_PAINT_PROPERTY_NODE_H_
 
 #include <algorithm>
-#include <optional>
 
 #include "base/dcheck_is_on.h"
 #include "base/notreached.h"
 #include "cc/input/main_thread_scrolling_reason.h"
 #include "cc/input/overscroll_behavior.h"
 #include "cc/input/scroll_snap_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/platform/graphics/compositor_element_id.h"
 #include "third_party/blink/renderer/platform/graphics/paint/clip_paint_property_node.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_property_node.h"
@@ -27,6 +27,7 @@ class ClipPaintPropertyNode;
 
 using MainThreadScrollingReasons = uint32_t;
 
+// For CompositeScrollAfterPaint.
 enum class CompositedScrollingPreference : uint8_t {
   kDefault,
   kPreferred,
@@ -45,9 +46,9 @@ enum class CompositedScrollingPreference : uint8_t {
 //
 // The scroll tree differs from the other trees because it does not affect
 // geometry directly.
-class PLATFORM_EXPORT ScrollPaintPropertyNode final
-    : public PaintPropertyNodeBase<ScrollPaintPropertyNode,
-                                   ScrollPaintPropertyNode> {
+class PLATFORM_EXPORT ScrollPaintPropertyNode
+    : public PaintPropertyNode<ScrollPaintPropertyNode,
+                               ScrollPaintPropertyNode> {
  public:
   // To make it less verbose and more readable to construct and update a node,
   // a struct with default values is used to represent the state.
@@ -70,6 +71,7 @@ class PLATFORM_EXPORT ScrollPaintPropertyNode final
     bool prevent_viewport_scrolling_from_inner = false;
 
     bool max_scroll_offset_affected_by_page_scale = false;
+    // Used in CompositeScrollAfterPaint.
     CompositedScrollingPreference composited_scrolling_preference =
         CompositedScrollingPreference::kDefault;
     MainThreadScrollingReasons main_thread_scrolling_reasons =
@@ -79,7 +81,7 @@ class PLATFORM_EXPORT ScrollPaintPropertyNode final
     CompositorElementId compositor_element_id;
     cc::OverscrollBehavior overscroll_behavior =
         cc::OverscrollBehavior(cc::OverscrollBehavior::Type::kAuto);
-    std::optional<cc::SnapContainerData> snap_container_data;
+    absl::optional<cc::SnapContainerData> snap_container_data;
 
     PaintPropertyChangeType ComputeChange(const State& other) const;
   };
@@ -92,6 +94,12 @@ class PLATFORM_EXPORT ScrollPaintPropertyNode final
       State&& state) {
     return base::AdoptRef(
         new ScrollPaintPropertyNode(&parent, std::move(state)));
+  }
+  static scoped_refptr<ScrollPaintPropertyNode> CreateAlias(
+      const ScrollPaintPropertyNode&) {
+    // ScrollPaintPropertyNodes cannot be aliases.
+    NOTREACHED();
+    return nullptr;
   }
 
   // The empty AnimationState struct is to meet the requirement of
@@ -114,9 +122,6 @@ class PLATFORM_EXPORT ScrollPaintPropertyNode final
 
   const ScrollPaintPropertyNode& Unalias() const = delete;
 
-  // See PaintPropertyNode::ChangedSequenceNumber().
-  void ClearChangedToRoot(int sequence_number) const;
-
   cc::OverscrollBehavior::Type OverscrollBehaviorX() const {
     return state_.overscroll_behavior.x;
   }
@@ -125,7 +130,7 @@ class PLATFORM_EXPORT ScrollPaintPropertyNode final
     return state_.overscroll_behavior.y;
   }
 
-  std::optional<cc::SnapContainerData> GetSnapContainerData() const {
+  absl::optional<cc::SnapContainerData> GetSnapContainerData() const {
     return state_.snap_container_data;
   }
 
@@ -159,13 +164,20 @@ class PLATFORM_EXPORT ScrollPaintPropertyNode final
     return state_.max_scroll_offset_affected_by_page_scale;
   }
   CompositedScrollingPreference GetCompositedScrollingPreference() const {
+    DCHECK(RuntimeEnabledFeatures::CompositeScrollAfterPaintEnabled());
     return state_.composited_scrolling_preference;
   }
 
-  // Note that this doesn't include main-thread scrolling reasons computed
-  // after paint.
+  // Note that this doesn't include non-composited main-thread scrolling
+  // reasons in CompositeScrollAfterPaint.
   MainThreadScrollingReasons GetMainThreadScrollingReasons() const {
     return state_.main_thread_scrolling_reasons;
+  }
+
+  // Main thread scrolling reason for the threaded scrolling disabled setting.
+  bool ThreadedScrollingDisabled() const {
+    return state_.main_thread_scrolling_reasons &
+           cc::MainThreadScrollingReason::kThreadedScrollingDisabled;
   }
 
   // Main thread scrolling reason for background attachment fixed descendants.
@@ -178,11 +190,11 @@ class PLATFORM_EXPORT ScrollPaintPropertyNode final
     return state_.compositor_element_id;
   }
 
-  std::unique_ptr<JSONObject> ToJSON() const final;
+  std::unique_ptr<JSONObject> ToJSON() const;
 
  private:
   ScrollPaintPropertyNode(const ScrollPaintPropertyNode* parent, State&& state)
-      : PaintPropertyNodeBase(parent), state_(std::move(state)) {
+      : PaintPropertyNode(parent), state_(std::move(state)) {
     Validate();
   }
 

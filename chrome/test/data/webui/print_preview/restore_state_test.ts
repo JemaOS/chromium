@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {NativeInitialSettings, PrintPreviewAppElement, SerializedSettings, Settings, SettingsMixinInterface} from 'chrome://print/print_preview.js';
-import {getInstance, MarginsType, NativeLayerImpl, PluginProxyImpl, ScalingType} from 'chrome://print/print_preview.js';
+import {getInstance, MarginsType, NativeInitialSettings, NativeLayerImpl, PluginProxyImpl, PrintPreviewAppElement, ScalingType, SerializedSettings, Settings, SettingsMixinInterface} from 'chrome://print/print_preview.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
 
 // <if expr="is_chromeos">
@@ -14,7 +13,19 @@ import {NativeLayerStub} from './native_layer_stub.js';
 import {getCddTemplateWithAdvancedSettings, getDefaultInitialSettings} from './print_preview_test_utils.js';
 import {TestPluginProxy} from './test_plugin_proxy.js';
 
-suite('RestoreStateTest', function() {
+
+const restore_state_test = {
+  suiteName: 'RestoreStateTest',
+  TestNames: {
+    RestoreTrueValues: 'restore true values',
+    RestoreFalseValues: 'restore false values',
+    SaveValues: 'save values',
+  },
+};
+
+Object.assign(window, {restore_state_test: restore_state_test});
+
+suite(restore_state_test.suiteName, function() {
   let page: PrintPreviewAppElement;
   let nativeLayer: NativeLayerStub;
 
@@ -101,7 +112,7 @@ suite('RestoreStateTest', function() {
    * 90, dpi = 100, custom square paper, and custom margins.
    */
   test(
-      'RestoreTrueValues', async function() {
+      restore_state_test.TestNames.RestoreTrueValues, async function() {
         const stickySettings: SerializedSettings = {
           version: 2,
           recentDestinations: [],
@@ -111,7 +122,6 @@ suite('RestoreStateTest', function() {
             width_microns: 215900,
             height_microns: 215900,
             custom_display_name: 'CUSTOM_SQUARE',
-            has_borderless_variant: true,
           },
           customMargins: {
             marginTop: 74,
@@ -147,7 +157,7 @@ suite('RestoreStateTest', function() {
    * 120, dpi = 200, letter paper and default margins.
    */
   test(
-      'RestoreFalseValues', async function() {
+      restore_state_test.TestNames.RestoreFalseValues, async function() {
         const stickySettings: SerializedSettings = {
           version: 2,
           recentDestinations: [],
@@ -186,7 +196,7 @@ suite('RestoreStateTest', function() {
    * Tests that setting the settings values results in the correct serialized
    * values being sent to the native layer.
    */
-  test('SaveValues', async function() {
+  test(restore_state_test.TestNames.SaveValues, async function() {
     interface TestCase {
       section: string;
       settingName: string;
@@ -226,7 +236,6 @@ suite('RestoreStateTest', function() {
           width_microns: 215900,
           height_microns: 215900,
           custom_display_name: 'CUSTOM_SQUARE',
-          has_borderless_variant: true,
         },
       },
       {

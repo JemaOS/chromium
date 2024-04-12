@@ -55,4 +55,4 @@
 #define ABSL_TEST_QCHECK_STRCASENE QCHECK_STRCASENE
 
 #include "gtest/gtest.h"
-#include "absl/log/check_test_impl.inc"
+#include "absl/log/check_test_impl.h"

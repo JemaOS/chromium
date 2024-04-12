@@ -1,4 +1,5 @@
 include_rules = [
+    "+base/i18n/rtl.h",
     "+base/json",
     "+base/time/time_override.h",
     "+base/profiler/module_cache.h",

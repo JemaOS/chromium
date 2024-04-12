@@ -44,8 +44,7 @@ std::unique_ptr<PolicyContainer> PolicyContainer::CreateFromWebPolicyContainer(
           container->policies.is_credentialless,
           container->policies.sandbox_flags,
           container->policies.ip_address_space,
-          container->policies.can_navigate_top_without_user_gesture,
-          container->policies.allow_cross_origin_isolation);
+          container->policies.can_navigate_top_without_user_gesture);
 
   return std::make_unique<PolicyContainer>(std::move(container->remote),
                                            std::move(policies));
@@ -74,6 +73,15 @@ void PolicyContainer::AddContentSecurityPolicies(
   }
   policy_container_host_remote_->AddContentSecurityPolicies(
       std::move(policies));
+}
+
+mojo::PendingRemote<mojom::blink::PolicyContainerHostKeepAliveHandle>
+PolicyContainer::IssueKeepAliveHandle() {
+  mojo::PendingRemote<mojom::blink::PolicyContainerHostKeepAliveHandle>
+      keep_alive_remote;
+  policy_container_host_remote_->IssueKeepAliveHandle(
+      keep_alive_remote.InitWithNewPipeAndPassReceiver());
+  return keep_alive_remote;
 }
 
 }  // namespace blink

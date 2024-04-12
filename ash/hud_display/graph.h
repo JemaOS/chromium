@@ -24,26 +24,26 @@ namespace hud_display {
 
 class Graph {
  public:
-  // Graph screen size (that is used during layout) should match (ring buffer
+  // Graph screen size (that is used in Layout()) should match (ring buffer
   // size - 1) to prevent scaling, because RingBuffer always keeps one element
   // unused.
   using Data = base::RingBuffer<float, kHUDGraphWidth + 1>;
 
   enum class Baseline {
-    kBaselineBottom,  // Positive values will be drawn from the bottom border
+    BASELINE_BOTTOM,  // Positive values will be drawn from the bottom border
                       // up.
-    kBaselineTop,     // Positive values will be drawn from the top border down.
+    BASELINE_TOP,     // Positive values will be drawn from the top border down.
   };
 
   // Whether to draw the graph as a filled polygon.
   enum class Fill {
-    kNone,
-    kSolid,
+    NONE,
+    SOLID,
   };
 
   enum class Style {
-    kLines,
-    kSkyline,
+    LINES,
+    SKYLINE,
   };
 
   // |max_data_points| must be less than the ring buffer size.
@@ -103,13 +103,13 @@ class Graph {
 
   // Paths are measured from the top left corner.
   // Partial graph is assumed to be right-justified.
-  // For kBaselineBottom |top_path_| has y values that are less than
-  // |bottom_path_|. (And opposite for the kBaselineTop.)
+  // For BASELINE_BOTTOM |top_path_| has y values that are less than
+  // |bottom_path_|. (And opposite for the BASELINE_TOP.)
   // Paths are calculated by Layout() from the |data_|.
   std::vector<SkPoint> top_path_;
   std::vector<SkPoint> bottom_path_;
   // Bottom path style should follow base graph style.
-  Style bottom_path_style_ = Style::kLines;
+  Style bottom_path_style_ = Style::LINES;
 
   Data data_;
   Data unscaled_data_;

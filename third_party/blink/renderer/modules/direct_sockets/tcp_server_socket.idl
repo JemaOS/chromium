@@ -3,19 +3,17 @@
 // found in the LICENSE file.
 
 [
-    Exposed=(Window,DedicatedWorker),
+    Exposed=(Window,Worker),
     SecureContext,
     RuntimeEnabled=DirectSockets,
     IsolatedContext
 ] interface TCPServerSocket {
-  [CallWith=ScriptState, RaisesException, MeasureAs=TCPServerSocketConstructor]
+  [CallWith=ScriptState, RaisesException]
   constructor(DOMString localAddress, optional TCPServerSocketOptions options = {});
 
-  [CallWith=ScriptState, MeasureAs=TCPServerSocketOpenedAttribute]
-  readonly attribute Promise<TCPServerSocketOpenInfo> opened;
-  [CallWith=ScriptState, MeasureAs=TCPServerSocketClosedAttribute]
-  readonly attribute Promise<undefined> closed;
+  [CallWith=ScriptState] readonly attribute Promise<TCPServerSocketOpenInfo> opened;
+  [CallWith=ScriptState] readonly attribute Promise<void> closed;
 
-  [CallWith=ScriptState, RaisesException, MeasureAs=TCPServerSocketCloseFunction]
-  Promise<undefined> close();
+  [CallWith=ScriptState, RaisesException]
+  Promise<void> close();
 };

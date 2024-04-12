@@ -27,5 +27,5 @@ AppInfoLabel::AppInfoLabel(const std::u16string& text,
   views::FocusRing::Install(this);
 }
 
-BEGIN_METADATA(AppInfoLabel)
+BEGIN_METADATA(AppInfoLabel, views::Label)
 END_METADATA

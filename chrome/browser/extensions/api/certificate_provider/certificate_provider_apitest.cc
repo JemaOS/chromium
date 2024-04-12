@@ -36,8 +36,6 @@
 #include "chrome/browser/extensions/api/certificate_provider/certificate_provider_api.h"
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/extensions/extension_service.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/notifications/request_pin_view_chromeos.h"
 #include "chrome/common/chrome_paths.h"
@@ -57,7 +55,6 @@
 #include "extensions/browser/api/test/test_api_observer.h"
 #include "extensions/browser/api/test/test_api_observer_registry.h"
 #include "extensions/browser/disable_reason.h"
-#include "extensions/browser/extension_host.h"
 #include "extensions/browser/extension_host_test_helper.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_system.h"
@@ -168,10 +165,10 @@ std::string GetPageTextContent(content::WebContents* web_contents) {
 }
 
 std::string GetCertFingerprint1(const net::X509Certificate& cert) {
-  uint8_t hash[base::kSHA1Length];
+  unsigned char hash[base::kSHA1Length];
   base::SHA1HashBytes(CRYPTO_BUFFER_data(cert.cert_buffer()),
                       CRYPTO_BUFFER_len(cert.cert_buffer()), hash);
-  return base::ToLowerASCII(base::HexEncode(hash));
+  return base::ToLowerASCII(base::HexEncode(hash, base::kSHA1Length));
 }
 
 // Generates a gtest failure whenever extension JS reports failure.
@@ -292,7 +289,7 @@ class CertificateProviderApiTest : public extensions::ExtensionApiTest {
 
  protected:
   testing::NiceMock<policy::MockConfigurationPolicyProvider> provider_;
-  raw_ptr<chromeos::CertificateProviderService, AcrossTasksDanglingUntriaged>
+  raw_ptr<chromeos::CertificateProviderService, DanglingUntriaged>
       cert_provider_service_ = nullptr;
   policy::PolicyMap policy_map_;
 
@@ -353,14 +350,17 @@ class CertificateProviderApiMockedExtensionTest
   }
 
   void ExecuteJavascript(const std::string& function) const {
-    ASSERT_TRUE(content::ExecJs(GetExtensionMainFrame(), function));
+    ASSERT_TRUE(content::ExecuteScript(GetExtensionMainFrame(), function));
   }
 
-  // Calls |function| in the extension. |function| needs to return a bool or a
-  // Promise<bool>. If it returns a Promise<bool>, this waits for the promise to
-  // resolve.
+  // Calls |function| in the extension. |function| needs to return a bool. If
+  // that happens at the end of a callback, this will wait for the callback to
+  // complete.
   void ExecuteJavascriptAndWaitForCallback(const std::string& function) const {
-    ASSERT_EQ(true, content::EvalJs(GetExtensionMainFrame(), function));
+    bool success = false;
+    ASSERT_TRUE(content::ExecuteScriptAndExtractBool(GetExtensionMainFrame(),
+                                                     function, &success));
+    ASSERT_TRUE(success);
   }
 
   const extensions::Extension* extension() const { return extension_; }
@@ -401,7 +401,7 @@ class CertificateProviderApiMockedExtensionTest
     ui_test_utils::NavigateToURLWithDisposition(
         browser(), GetHttpsClientCertUrl(),
         WindowOpenDisposition::NEW_FOREGROUND_TAB,
-        ui_test_utils::BROWSER_TEST_NO_WAIT);
+        ui_test_utils::BROWSER_TEST_NONE);
 
     content::WebContents* const https_contents =
         browser()->tab_strip_model()->GetActiveWebContents();
@@ -417,9 +417,11 @@ class CertificateProviderApiMockedExtensionTest
     CheckCertificateProvidedByExtension(*certificate, *extension());
 
     // Fetch the data from the sign request.
-    EXPECT_EQ(
-        expected_request_signature_algorithm,
-        content::EvalJs(GetExtensionMainFrame(), "signatureRequestAlgorithm;"));
+    const std::string request_algorithm =
+        ExecuteScriptAndGetValue(GetExtensionMainFrame(),
+                                 "signatureRequestAlgorithm;")
+            .GetString();
+    EXPECT_EQ(expected_request_signature_algorithm, request_algorithm);
 
     base::test::TestFuture<base::Value> exec_js_future;
     GetExtensionMainFrame()->ExecuteJavaScriptForTests(
@@ -474,7 +476,7 @@ class CertificateProviderApiMockedExtensionTest
     // Proceed through the interstitial to set an SSL bypass for this host.
     content::TestNavigationObserver nav_observer(tab,
                                                  /*number_of_navigations=*/1);
-    ASSERT_TRUE(content::ExecJs(
+    ASSERT_TRUE(content::ExecuteScript(
         tab, "window.certificateErrorPageController.proceed();"));
     nav_observer.Wait();
 
@@ -493,10 +495,9 @@ class CertificateProviderApiMockedExtensionTest
     return certificate_data;
   }
 
-  raw_ptr<content::WebContents, AcrossTasksDanglingUntriaged>
-      extension_contents_ = nullptr;
-  raw_ptr<const extensions::Extension, AcrossTasksDanglingUntriaged>
-      extension_ = nullptr;
+  raw_ptr<content::WebContents, DanglingUntriaged> extension_contents_ =
+      nullptr;
+  raw_ptr<const extensions::Extension, DanglingUntriaged> extension_ = nullptr;
   base::FilePath extension_path_;
 };
 
@@ -602,8 +603,7 @@ class CertificateProviderRequestPinTest : public CertificateProviderApiTest {
     extension_ = LoadExtension(extension_path);
   }
 
-  raw_ptr<const extensions::Extension, AcrossTasksDanglingUntriaged>
-      extension_ = nullptr;
+  raw_ptr<const extensions::Extension, DanglingUntriaged> extension_ = nullptr;
   std::unique_ptr<ExtensionTestMessageListener> command_request_listener_;
 };
 
@@ -646,8 +646,10 @@ IN_PROC_BROWSER_TEST_F(CertificateProviderApiMockedExtensionTest,
                                                /*is_raw_data=*/false);
 
   // Replying to the signature request a second time must fail.
-  ASSERT_EQ(false, content::EvalJs(GetExtensionMainFrame(),
-                                   "replyWithSignatureSecondTime();"));
+  bool success = true;
+  ASSERT_TRUE(content::ExecuteScriptAndExtractBool(
+      GetExtensionMainFrame(), "replyWithSignatureSecondTime();", &success));
+  ASSERT_FALSE(success);
 }
 
 // Tests an extension that provides certificates both proactively with

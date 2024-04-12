@@ -57,8 +57,9 @@ class BackGestureContextualNudgeDelegate
   // Stop tracking the navigation status for |window_|.
   void StopTrackingNavigation();
 
-  raw_ptr<aura::Window> window_ = nullptr;  // Current observed window.
-  const raw_ptr<ash::BackGestureContextualNudgeController>
+  raw_ptr<aura::Window, ExperimentalAsh> window_ =
+      nullptr;  // Current observed window.
+  const raw_ptr<ash::BackGestureContextualNudgeController, ExperimentalAsh>
       controller_;  // Not owned.
 };
 

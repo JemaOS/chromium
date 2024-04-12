@@ -28,8 +28,6 @@
 #include "chrome/browser/ui/browser_dialogs.h"
 #include "chrome/browser/ui/chrome_select_file_policy.h"
 #include "chrome/grit/generated_resources.h"
-#include "components/enterprise/buildflags/buildflags.h"
-#include "components/enterprise/common/proto/connectors.pb.h"
 #include "components/safe_browsing/buildflags.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
@@ -80,9 +78,6 @@ void DeleteFiles(std::vector<base::FilePath> paths) {
 
 bool IsValidProfile(Profile* profile) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  if (!profile) {
-    return false;
-  }
   // No profile manager in unit tests.
   if (!g_browser_process->profile_manager())
     return true;
@@ -91,8 +86,6 @@ bool IsValidProfile(Profile* profile) {
 
 #if BUILDFLAG(FULL_SAFE_BROWSING)
 
-// Safe Browsing checks are only applied when `params->mode` is
-// `kSave`, which is only for PPAPI requests.
 bool IsDownloadAllowedBySafeBrowsing(
     safe_browsing::DownloadCheckResult result) {
   using Result = safe_browsing::DownloadCheckResult;
@@ -115,18 +108,13 @@ bool IsDownloadAllowedBySafeBrowsing(
     // Safe Browsing should only return these results for client downloads, not
     // for PPAPI downloads.
     case Result::ASYNC_SCANNING:
-    case Result::ASYNC_LOCAL_PASSWORD_SCANNING:
     case Result::BLOCKED_PASSWORD_PROTECTED:
     case Result::BLOCKED_TOO_LARGE:
     case Result::SENSITIVE_CONTENT_BLOCK:
     case Result::SENSITIVE_CONTENT_WARNING:
     case Result::DEEP_SCANNED_SAFE:
     case Result::PROMPT_FOR_SCANNING:
-    case Result::PROMPT_FOR_LOCAL_PASSWORD_SCANNING:
     case Result::BLOCKED_UNSUPPORTED_FILE_TYPE:
-    case Result::DEEP_SCANNED_FAILED:
-    case Result::BLOCKED_SCAN_FAILED:
-    case Result::IMMEDIATE_DEEP_SCAN:
       NOTREACHED();
       return true;
   }
@@ -168,9 +156,16 @@ FileSelectHelper::~FileSelectHelper() {
     select_file_dialog_->ListenerDestroyed();
 }
 
-void FileSelectHelper::FileSelected(const ui::SelectedFileInfo& file,
+void FileSelectHelper::FileSelected(const base::FilePath& path,
                                     int index,
                                     void* params) {
+  FileSelectedWithExtraInfo(ui::SelectedFileInfo(path, path), index, params);
+}
+
+void FileSelectHelper::FileSelectedWithExtraInfo(
+    const ui::SelectedFileInfo& file,
+    int index,
+    void* params) {
   if (IsValidProfile(profile_)) {
     base::FilePath path = file.file_path;
     if (dialog_mode_ != FileChooserParams::Mode::kUploadFolder)
@@ -185,7 +180,7 @@ void FileSelectHelper::FileSelected(const ui::SelectedFileInfo& file,
 
   const base::FilePath& path = file.local_path;
   if (dialog_type_ == ui::SelectFileDialog::SELECT_UPLOAD_FOLDER) {
-    StartNewEnumeration(path);
+    PerformContentAnalysisForFolderUploadIfNeeded(path);
     return;
   }
 
@@ -203,6 +198,15 @@ void FileSelectHelper::FileSelected(const ui::SelectedFileInfo& file,
 }
 
 void FileSelectHelper::MultiFilesSelected(
+    const std::vector<base::FilePath>& files,
+    void* params) {
+  std::vector<ui::SelectedFileInfo> selected_files =
+      ui::FilePathListToSelectedFileInfoList(files);
+
+  MultiFilesSelectedWithExtraInfo(selected_files, params);
+}
+
+void FileSelectHelper::MultiFilesSelectedWithExtraInfo(
     const std::vector<ui::SelectedFileInfo>& files,
     void* params) {
   if (!files.empty() && IsValidProfile(profile_)) {
@@ -330,13 +334,11 @@ void FileSelectHelper::PerformContentAnalysisIfNeeded(
   if (AbortIfWebContentsDestroyed())
     return;
 
-#if BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
+#if BUILDFLAG(FULL_SAFE_BROWSING)
   enterprise_connectors::ContentAnalysisDelegate::Data data;
   if (enterprise_connectors::ContentAnalysisDelegate::IsEnabled(
           profile_, web_contents_->GetLastCommittedURL(), &data,
           enterprise_connectors::AnalysisConnector::FILE_ATTACHED)) {
-    data.reason =
-        enterprise_connectors::ContentAnalysisRequest::FILE_PICKER_DIALOG;
     data.paths.reserve(list.size());
     for (const auto& file : list) {
       if (file && file->is_native_file())
@@ -357,10 +359,10 @@ void FileSelectHelper::PerformContentAnalysisIfNeeded(
   }
 #else
   NotifyListenerAndEnd(std::move(list));
-#endif  // BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
+#endif  // BUILDFLAG(FULL_SAFE_BROWSING)
 }
 
-#if BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
+#if BUILDFLAG(FULL_SAFE_BROWSING)
 void FileSelectHelper::ContentAnalysisCompletionCallback(
     std::vector<blink::mojom::FileChooserFileInfoPtr> list,
     const enterprise_connectors::ContentAnalysisDelegate::Data& data,
@@ -373,23 +375,9 @@ void FileSelectHelper::ContentAnalysisCompletionCallback(
   DCHECK_EQ(data.paths.size(), result.paths_results.size());
   DCHECK_GE(list.size(), result.paths_results.size());
 
-  // If the user chooses to upload a folder and the folder contains sensitive
-  // files, block the entire folder and update `result` to reflect the block
-  // verdict for all files scanned.
-  if (dialog_type_ == ui::SelectFileDialog::SELECT_UPLOAD_FOLDER) {
-    if (base::Contains(result.paths_results, false)) {
-      list.clear();
-      for (size_t index = 0; index < data.paths.size(); ++index) {
-        result.paths_results[index] = false;
-      }
-    }
-    // Early return for folder upload, regardless of list being empty or not.
-    NotifyListenerAndEnd(std::move(list));
-    return;
-  }
-
-  // For single or multiple file uploads, remove any files that did not pass the
-  // deep scan. Non-native files are skipped.
+  // Remove any files that did not pass the deep scan. Non-native files are
+  // skipped. There is no need to update `result` since the logic here doesn't
+  // change verdicts.
   size_t i = 0;
   for (auto it = list.begin(); it != list.end();) {
     if ((*it)->is_native_file()) {
@@ -408,7 +396,77 @@ void FileSelectHelper::ContentAnalysisCompletionCallback(
 
   NotifyListenerAndEnd(std::move(list));
 }
-#endif  // BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
+#endif  // BUILDFLAG(FULL_SAFE_BROWSING)
+
+void FileSelectHelper::PerformContentAnalysisForFolderUploadIfNeeded(
+    const base::FilePath& path) {
+#if BUILDFLAG(FULL_SAFE_BROWSING)
+  auto files_scan_data =
+      std::make_unique<enterprise_connectors::FilesScanData>(std::vector{path});
+  auto* files_scan_data_raw = files_scan_data.get();
+  files_scan_data_raw->ExpandPaths(
+      base::BindOnce(&FileSelectHelper::ScanDataCallback, this, path,
+                     std::move(files_scan_data)));
+#else
+  StartNewEnumeration(path);
+#endif  // BUILDFLAG(FULL_SAFE_BROWSING)
+}
+
+#if BUILDFLAG(FULL_SAFE_BROWSING)
+
+void FileSelectHelper::ScanDataCallback(
+    const base::FilePath& path,
+    std::unique_ptr<enterprise_connectors::FilesScanData> files_scan_data) {
+  if (AbortIfWebContentsDestroyed()) {
+    return;
+  }
+
+  enterprise_connectors::ContentAnalysisDelegate::Data data;
+  if (enterprise_connectors::ContentAnalysisDelegate::IsEnabled(
+          profile_, web_contents_->GetLastCommittedURL(), &data,
+          enterprise_connectors::AnalysisConnector::FILE_ATTACHED)) {
+    for (const auto& epath : files_scan_data->expanded_paths()) {
+      data.paths.push_back(epath);
+    }
+  }
+
+  if (data.paths.empty()) {
+    StartNewEnumeration(path);
+  } else {
+    enterprise_connectors::ContentAnalysisDelegate::CreateForWebContents(
+        web_contents_, std::move(data),
+        base::BindOnce(
+            &FileSelectHelper::FolderUploadContentAnalysisCompletionCallback,
+            this, path),
+        safe_browsing::DeepScanAccessPoint::UPLOAD);
+  }
+}
+
+void FileSelectHelper::FolderUploadContentAnalysisCompletionCallback(
+    const base::FilePath& path,
+    const enterprise_connectors::ContentAnalysisDelegate::Data& data,
+    enterprise_connectors::ContentAnalysisDelegate::Result& result) {
+  if (AbortIfWebContentsDestroyed()) {
+    return;
+  }
+
+  DCHECK_EQ(data.text.size(), 0u);
+  DCHECK_EQ(result.text_results.size(), 0u);
+  DCHECK_EQ(data.paths.size(), result.paths_results.size());
+
+  bool all_file_results_allowed = !base::Contains(result.paths_results, false);
+
+  if (all_file_results_allowed) {
+    StartNewEnumeration(path);
+  } else {
+    for (size_t i = 0; i < data.paths.size(); ++i) {
+      result.paths_results[i] = false;
+    }
+    RunFileChooserEnd();
+  }
+}
+
+#endif  // BUILDFLAG(FULL_SAFE_BROWSING)
 
 void FileSelectHelper::NotifyListenerAndEnd(
     std::vector<blink::mojom::FileChooserFileInfoPtr> list) {
@@ -456,6 +514,10 @@ void FileSelectHelper::SetFileSelectListenerForTesting(
 
 void FileSelectHelper::DontAbortOnMissingWebContentsForTesting() {
   abort_on_missing_web_contents_in_tests_ = false;
+}
+
+bool FileSelectHelper::IsDirectoryEnumerationStartedForTesting() {
+  return directory_enumeration_.get() != nullptr;
 }
 
 std::unique_ptr<ui::SelectFileDialog::FileTypeInfo>
@@ -618,9 +680,6 @@ void FileSelectHelper::GetSanitizedFilenameOnUIThread(
   base::FilePath default_file_path = profile_->last_selected_directory().Append(
       GetSanitizedFileName(params->default_file_name));
 #if BUILDFLAG(FULL_SAFE_BROWSING)
-  // Mode `kSave` is only for PPAPI writes, which are checked by Safe Browsing.
-  // See comments on
-  // //third_party/blink/public/mojom/choosers/file_chooser.mojom.
   if (params->mode == FileChooserParams::Mode::kSave) {
     CheckDownloadRequestWithSafeBrowsing(default_file_path, std::move(params));
     return;
@@ -636,9 +695,13 @@ void FileSelectHelper::CheckDownloadRequestWithSafeBrowsing(
   // Download Protection is not supported on Android.
   safe_browsing::SafeBrowsingService* sb_service =
       g_browser_process->safe_browsing_service();
+  bool real_time_download_protection_request_allowed =
+      safe_browsing::IsRealTimeDownloadProtectionRequestAllowed(
+          *profile_->GetPrefs());
 
   if (!sb_service || !sb_service->download_protection_service() ||
-      !sb_service->download_protection_service()->enabled()) {
+      !sb_service->download_protection_service()->enabled() ||
+      !real_time_download_protection_request_allowed) {
     RunFileChooserOnUIThread(default_file_path, std::move(params));
     return;
   }
@@ -812,7 +875,6 @@ void FileSelectHelper::RenderFrameDeleted(
 void FileSelectHelper::WebContentsDestroyed() {
   render_frame_host_ = nullptr;
   web_contents_ = nullptr;
-  profile_ = nullptr;
   CleanUp();
 }
 

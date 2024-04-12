@@ -15,8 +15,8 @@
 #include "chrome/browser/sharing/sharing_sync_preference.h"
 #include "chrome/browser/signin/chrome_device_id_helper.h"
 #include "chrome/browser/sync/sync_invalidations_service_factory.h"
+#include "components/sync/base/sync_prefs.h"
 #include "components/sync/invalidations/sync_invalidations_service.h"
-#include "components/sync/service/sync_prefs.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/webauthn/android/cable_module_android.h"
@@ -59,39 +59,39 @@ bool DeviceInfoSyncClientImpl::GetSendTabToSelfReceivingEnabled() const {
   // for Lacros-Primary. Once Lacros-Only is the only available option, this
   // should simply check whether SendTabToSelf datatype is enabled.
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  return !crosapi::browser_util::IsLacrosEnabled();
+  return !crosapi::browser_util::IsLacrosPrimaryBrowser();
 #else
   return true;
 #endif
 }
 
 // syncer::DeviceInfoSyncClient:
-std::optional<syncer::DeviceInfo::SharingInfo>
+absl::optional<syncer::DeviceInfo::SharingInfo>
 DeviceInfoSyncClientImpl::GetLocalSharingInfo() const {
   return SharingSyncPreference::GetLocalSharingInfoForSync(
       profile_->GetPrefs());
 }
 
 // syncer::DeviceInfoSyncClient:
-std::optional<std::string> DeviceInfoSyncClientImpl::GetFCMRegistrationToken()
+absl::optional<std::string> DeviceInfoSyncClientImpl::GetFCMRegistrationToken()
     const {
   return SyncInvalidationsServiceFactory::GetForProfile(profile_)
       ->GetFCMRegistrationToken();
 }
 
 // syncer::DeviceInfoSyncClient:
-std::optional<syncer::ModelTypeSet>
+absl::optional<syncer::ModelTypeSet>
 DeviceInfoSyncClientImpl::GetInterestedDataTypes() const {
   return SyncInvalidationsServiceFactory::GetForProfile(profile_)
       ->GetInterestedDataTypes();
 }
 
-syncer::DeviceInfo::PhoneAsASecurityKeyInfo::StatusOrInfo
+absl::optional<syncer::DeviceInfo::PhoneAsASecurityKeyInfo>
 DeviceInfoSyncClientImpl::GetPhoneAsASecurityKeyInfo() const {
 #if BUILDFLAG(IS_ANDROID)
   return webauthn::authenticator::GetSyncDataIfRegistered();
 #else
-  return syncer::DeviceInfo::PhoneAsASecurityKeyInfo::NoSupport();
+  return absl::nullopt;
 #endif
 }
 

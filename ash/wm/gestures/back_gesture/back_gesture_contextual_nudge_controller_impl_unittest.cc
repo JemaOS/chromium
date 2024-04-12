@@ -39,15 +39,17 @@ class BackGestureContextualNudgeControllerTest : public NoSessionAshTestBase {
  public:
   explicit BackGestureContextualNudgeControllerTest(bool can_go_back = true)
       : can_go_back_(can_go_back) {
-    scoped_feature_list_.InitAndEnableFeature(
-        features::kHideShelfControlsInTabletMode);
+    scoped_feature_list_.InitWithFeatures(
+        {features::kContextualNudges, features::kHideShelfControlsInTabletMode},
+        {});
   }
   BackGestureContextualNudgeControllerTest(
       base::test::TaskEnvironment::TimeSource time,
       bool can_go_back = true)
       : NoSessionAshTestBase(time), can_go_back_(can_go_back) {
-    scoped_feature_list_.InitAndEnableFeature(
-        features::kHideShelfControlsInTabletMode);
+    scoped_feature_list_.InitWithFeatures(
+        {features::kContextualNudges, features::kHideShelfControlsInTabletMode},
+        {});
   }
   ~BackGestureContextualNudgeControllerTest() override = default;
 
@@ -380,7 +382,14 @@ TEST_F(BackGestureContextualNudgeControllerTest, GesturePerformedMetricTest) {
   GenerateBackSequence();
 }
 
-TEST_P(BackGestureContextualNudgeControllerTestA11yPrefs, TimeoutMetricsTest) {
+// crbug.com/1239200: flaky on linux.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_TimeoutMetricsTest DISABLED_TimeoutMetricsTest
+#else
+#define MAYBE_TimeoutMetricsTest TimeoutMetricsTest
+#endif
+TEST_P(BackGestureContextualNudgeControllerTestA11yPrefs,
+       MAYBE_TimeoutMetricsTest) {
   ui::ScopedAnimationDurationScaleMode non_zero(
       ui::ScopedAnimationDurationScaleMode::NON_ZERO_DURATION);
   std::unique_ptr<aura::Window> window = CreateTestWindow();

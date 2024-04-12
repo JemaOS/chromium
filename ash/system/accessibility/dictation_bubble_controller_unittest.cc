@@ -4,7 +4,7 @@
 
 #include "ash/system/accessibility/dictation_bubble_controller.h"
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/constants/ash_pref_names.h"
 #include "ash/session/session_controller_impl.h"
 #include "ash/shell.h"
@@ -37,8 +37,8 @@ class DictationBubbleControllerTest : public AshTestBase {
   }
 
   void Show(DictationBubbleIconType icon,
-            const std::optional<std::u16string>& text,
-            const std::optional<std::vector<DictationBubbleHintType>>& hints) {
+            const absl::optional<std::u16string>& text,
+            const absl::optional<std::vector<DictationBubbleHintType>>& hints) {
     GetController()->UpdateBubble(
         /*visible=*/true, /*icon=*/icon, /*text=*/text, /*hints=*/hints);
   }
@@ -53,11 +53,6 @@ class DictationBubbleControllerTest : public AshTestBase {
 
   DictationBubbleView* GetView() {
     return GetController()->dictation_bubble_view_;
-  }
-
-  DictationHintView* GetHintView() {
-    DictationBubbleView* view = GetView();
-    return view->hint_view_;
   }
 
   bool IsBubbleVisible() { return GetController()->widget_->IsVisible(); }
@@ -102,8 +97,8 @@ class DictationBubbleControllerTest : public AshTestBase {
 TEST_F(DictationBubbleControllerTest, ShowText) {
   EXPECT_FALSE(GetView());
   Show(DictationBubbleIconType::kHidden,
-       std::optional<std::u16string>(u"Testing"),
-       std::optional<std::vector<DictationBubbleHintType>>());
+       absl::optional<std::u16string>(u"Testing"),
+       absl::optional<std::vector<DictationBubbleHintType>>());
   EXPECT_TRUE(GetView());
   EXPECT_TRUE(IsBubbleVisible());
   EXPECT_EQ(u"Testing", GetBubbleText());
@@ -116,8 +111,8 @@ TEST_F(DictationBubbleControllerTest, ShowText) {
 
 TEST_F(DictationBubbleControllerTest, ShowStandbyImage) {
   EXPECT_FALSE(GetView());
-  Show(DictationBubbleIconType::kStandby, std::optional<std::u16string>(),
-       std::optional<std::vector<DictationBubbleHintType>>());
+  Show(DictationBubbleIconType::kStandby, absl::optional<std::u16string>(),
+       absl::optional<std::vector<DictationBubbleHintType>>());
   EXPECT_TRUE(GetView());
   EXPECT_TRUE(IsBubbleVisible());
   EXPECT_EQ(std::u16string(), GetBubbleText());
@@ -131,8 +126,8 @@ TEST_F(DictationBubbleControllerTest, ShowStandbyImage) {
 TEST_F(DictationBubbleControllerTest, ShowMacroSuccessImage) {
   EXPECT_FALSE(GetView());
   Show(DictationBubbleIconType::kMacroSuccess,
-       std::optional<std::u16string>(u"Macro successfull"),
-       std::optional<std::vector<DictationBubbleHintType>>());
+       absl::optional<std::u16string>(u"Macro successfull"),
+       absl::optional<std::vector<DictationBubbleHintType>>());
   EXPECT_TRUE(GetView());
   EXPECT_TRUE(IsBubbleVisible());
   EXPECT_EQ(u"Macro successfull", GetBubbleText());
@@ -146,8 +141,8 @@ TEST_F(DictationBubbleControllerTest, ShowMacroSuccessImage) {
 TEST_F(DictationBubbleControllerTest, ShowMacroFailImage) {
   EXPECT_FALSE(GetView());
   Show(DictationBubbleIconType::kMacroFail,
-       std::optional<std::u16string>(u"Macro failed"),
-       std::optional<std::vector<DictationBubbleHintType>>());
+       absl::optional<std::u16string>(u"Macro failed"),
+       absl::optional<std::vector<DictationBubbleHintType>>());
   EXPECT_TRUE(GetView());
   EXPECT_TRUE(IsBubbleVisible());
   EXPECT_EQ(u"Macro failed", GetBubbleText());
@@ -170,8 +165,8 @@ TEST_F(DictationBubbleControllerTest, DarkMode) {
   // Show bubble UI.
   EXPECT_FALSE(GetView());
   Show(DictationBubbleIconType::kHidden,
-       std::optional<std::u16string>(u"Testing"),
-       std::optional<std::vector<DictationBubbleHintType>>());
+       absl::optional<std::u16string>(u"Testing"),
+       absl::optional<std::vector<DictationBubbleHintType>>());
   EXPECT_TRUE(GetView());
   EXPECT_TRUE(IsBubbleVisible());
   EXPECT_EQ(u"Testing", GetBubbleText());
@@ -207,8 +202,8 @@ TEST_F(DictationBubbleControllerTest, DarkMode) {
 
 TEST_F(DictationBubbleControllerTest, Hints) {
   EXPECT_FALSE(GetView());
-  Show(DictationBubbleIconType::kStandby, std::optional<std::u16string>(),
-       std::optional<std::vector<DictationBubbleHintType>>());
+  Show(DictationBubbleIconType::kStandby, absl::optional<std::u16string>(),
+       absl::optional<std::vector<DictationBubbleHintType>>());
   EXPECT_TRUE(GetView());
   EXPECT_TRUE(IsBubbleVisible());
 
@@ -222,20 +217,10 @@ TEST_F(DictationBubbleControllerTest, HideBeforeShow) {
   HideAndCheckExpectations();
 
   EXPECT_TRUE(GetView());
-  Show(DictationBubbleIconType::kStandby, std::optional<std::u16string>(),
-       std::optional<std::vector<DictationBubbleHintType>>());
+  Show(DictationBubbleIconType::kStandby, absl::optional<std::u16string>(),
+       absl::optional<std::vector<DictationBubbleHintType>>());
   EXPECT_TRUE(GetView());
   EXPECT_TRUE(IsBubbleVisible());
-
-  HideAndCheckExpectations();
-}
-
-TEST_F(DictationBubbleControllerTest, DictationHintViewClassHasTheRightName) {
-  EXPECT_FALSE(GetView());
-  Show(DictationBubbleIconType::kStandby, std::optional<std::u16string>(),
-       std::optional<std::vector<DictationBubbleHintType>>());
-  EXPECT_TRUE(GetView());
-  EXPECT_STREQ(GetHintView()->GetClassName(), "DictationHintView");
 
   HideAndCheckExpectations();
 }

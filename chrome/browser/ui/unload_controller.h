@@ -14,8 +14,6 @@
 #include "chrome/browser/tab_contents/web_contents_collection.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 
-enum class BrowserClosingStatus;
-
 class Browser;
 class TabStripModel;
 
@@ -59,10 +57,9 @@ class UnloadController : public WebContentsCollection::Observer,
     return is_attempting_to_close_browser_;
   }
 
-  // Called in response to a request to close |browser_|'s window. Returns
-  // `BrowserClosingStatus::kPermitted` if the window can be closed (or other
-  // enum values if closure is not permitted for a given reason).
-  BrowserClosingStatus GetBrowserClosingStatus();
+  // Called in response to a request to close |browser_|'s window. Returns true
+  // when there are no remaining beforeunload handlers to be run.
+  bool ShouldCloseWindow();
 
   // Begins the process of confirming whether the associated browser can be
   // closed. Beforeunload events won't be fired if |skip_beforeunload|
@@ -82,15 +79,14 @@ class UnloadController : public WebContentsCollection::Observer,
   //             AreAllBrowsersCloseable() in application_lifetime.cc. It seems
   //             very similar to ShouldCloseWindow() and some consolidation
   //             could be pursued.
-  bool TabsNeedBeforeUnloadFired() const;
+  bool TabsNeedBeforeUnloadFired();
 
   // Clears all the state associated with processing tabs' beforeunload/unload
   // events since the user cancelled closing the window.
   void CancelWindowClose();
 
  private:
-  typedef std::set<raw_ptr<content::WebContents, SetExperimental>>
-      UnloadListenerSet;
+  typedef std::set<content::WebContents*> UnloadListenerSet;
 
   // WebContentsCollection::Observer:
   void RenderProcessGone(content::WebContents* web_contents,
@@ -105,8 +101,6 @@ class UnloadController : public WebContentsCollection::Observer,
 
   void TabAttachedImpl(content::WebContents* contents);
   void TabDetachedImpl(content::WebContents* contents);
-
-  UnloadListenerSet GetTabsNeedingBeforeUnloadFired() const;
 
   // Processes the next tab that needs it's beforeunload/unload event fired.
   void ProcessPendingTabs(bool skip_beforeunload);
@@ -129,8 +123,6 @@ class UnloadController : public WebContentsCollection::Observer,
   // may result in deleting |tab|. If you know that shouldn't happen (because of
   // the state of the stack), pass in false.
   void ClearUnloadState(content::WebContents* web_contents, bool process_now);
-
-  bool IsUnclosableApp() const;
 
   bool is_calling_before_unload_handlers() {
     return !on_close_confirmed_.is_null();

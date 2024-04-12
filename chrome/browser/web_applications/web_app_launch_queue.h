@@ -8,8 +8,8 @@
 #include <vector>
 
 #include "base/memory/raw_ref.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_launch_params.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/web_contents_observer.h"
 
 class GURL;
@@ -51,12 +51,9 @@ class WebAppLaunchQueue : public content::WebContentsObserver {
 
   void Enqueue(WebAppLaunchParams launch_params);
 
-  const webapps::AppId* GetPendingLaunchAppId() const;
+  const AppId* GetPendingLaunchAppId() const;
 
  private:
-  bool IsInScope(const WebAppLaunchParams& launch_params,
-                 const GURL& current_url);
-
   // Reset self back to the initial state.
   void Reset();
 
@@ -77,7 +74,7 @@ class WebAppLaunchQueue : public content::WebContentsObserver {
 
   // A copy of the last sent launch params ready to resend should the user
   // reload the page.
-  std::optional<WebAppLaunchParams> last_sent_queued_launch_params_;
+  absl::optional<WebAppLaunchParams> last_sent_queued_launch_params_;
 };
 
 }  // namespace web_app

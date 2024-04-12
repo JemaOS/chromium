@@ -94,7 +94,7 @@ void EnableDebuggingScreen::HandleLearnMore() {
 }
 
 void EnableDebuggingScreen::HandleRemoveRootFSProtection() {
-  UpdateUIState(EnableDebuggingScreenView::kUIStateWait);
+  UpdateUIState(EnableDebuggingScreenView::UI_STATE_WAIT);
   DebugDaemonClient::Get()->RemoveRootfsVerification(
       base::BindOnce(&EnableDebuggingScreen::OnRemoveRootfsVerification,
                      weak_ptr_factory_.GetWeakPtr()));
@@ -104,7 +104,7 @@ void EnableDebuggingScreen::HandleRemoveRootFSProtection() {
 // screen and reboots the machine.
 void EnableDebuggingScreen::OnRemoveRootfsVerification(bool success) {
   if (!success) {
-    UpdateUIState(EnableDebuggingScreenView::kUIStateError);
+    UpdateUIState(EnableDebuggingScreenView::UI_STATE_ERROR);
     return;
   }
 
@@ -117,7 +117,7 @@ void EnableDebuggingScreen::OnRemoveRootfsVerification(bool success) {
 }
 
 void EnableDebuggingScreen::WaitForCryptohome() {
-  UpdateUIState(EnableDebuggingScreenView::kUIStateWait);
+  UpdateUIState(EnableDebuggingScreenView::UI_STATE_WAIT);
   UserDataAuthClient* client = UserDataAuthClient::Get();
   client->WaitForServiceToBeAvailable(base::BindOnce(
       &EnableDebuggingScreen::OnCryptohomeDaemonAvailabilityChecked,
@@ -130,7 +130,7 @@ void EnableDebuggingScreen::OnCryptohomeDaemonAvailabilityChecked(
            << service_is_available;
   if (!service_is_available) {
     LOG(ERROR) << "Crypthomed is not available.";
-    UpdateUIState(EnableDebuggingScreenView::kUIStateError);
+    UpdateUIState(EnableDebuggingScreenView::UI_STATE_ERROR);
     return;
   }
 
@@ -145,7 +145,7 @@ void EnableDebuggingScreen::OnDebugDaemonServiceAvailabilityChecked(
            << service_is_available;
   if (!service_is_available) {
     LOG(ERROR) << "Debug daemon is not available.";
-    UpdateUIState(EnableDebuggingScreenView::kUIStateError);
+    UpdateUIState(EnableDebuggingScreenView::UI_STATE_ERROR);
     return;
   }
 
@@ -161,26 +161,26 @@ void EnableDebuggingScreen::OnQueryDebuggingFeatures(bool success,
            << ", success=" << success << ", features=" << features_flag;
   if (!success ||
       features_flag == debugd::DevFeatureFlag::DEV_FEATURES_DISABLED) {
-    UpdateUIState(EnableDebuggingScreenView::kUIStateError);
+    UpdateUIState(EnableDebuggingScreenView::UI_STATE_ERROR);
     return;
   }
 
   if ((features_flag &
        debugd::DevFeatureFlag::DEV_FEATURE_ROOTFS_VERIFICATION_REMOVED) == 0) {
-    UpdateUIState(EnableDebuggingScreenView::kUIStateRemoveProtection);
+    UpdateUIState(EnableDebuggingScreenView::UI_STATE_REMOVE_PROTECTION);
     return;
   }
 
   if ((features_flag & DebugDaemonClient::DEV_FEATURE_ALL_ENABLED) !=
       DebugDaemonClient::DEV_FEATURE_ALL_ENABLED) {
-    UpdateUIState(EnableDebuggingScreenView::kUIStateSetup);
+    UpdateUIState(EnableDebuggingScreenView::UI_STATE_SETUP);
   } else {
-    UpdateUIState(EnableDebuggingScreenView::kUIStateDone);
+    UpdateUIState(EnableDebuggingScreenView::UI_STATE_DONE);
   }
 }
 
 void EnableDebuggingScreen::HandleSetup(const std::string& password) {
-  UpdateUIState(EnableDebuggingScreenView::kUIStateWait);
+  UpdateUIState(EnableDebuggingScreenView::UI_STATE_WAIT);
   DebugDaemonClient::Get()->EnableDebuggingFeatures(
       password,
       base::BindOnce(&EnableDebuggingScreen::OnEnableDebuggingFeatures,
@@ -189,18 +189,18 @@ void EnableDebuggingScreen::HandleSetup(const std::string& password) {
 
 void EnableDebuggingScreen::OnEnableDebuggingFeatures(bool success) {
   if (!success) {
-    UpdateUIState(EnableDebuggingScreenView::kUIStateError);
+    UpdateUIState(EnableDebuggingScreenView::UI_STATE_ERROR);
     return;
   }
 
-  UpdateUIState(EnableDebuggingScreenView::kUIStateDone);
+  UpdateUIState(EnableDebuggingScreenView::UI_STATE_DONE);
 }
 
 void EnableDebuggingScreen::UpdateUIState(
     EnableDebuggingScreenView::UIState state) {
-  if (state == EnableDebuggingScreenView::kUIStateSetup ||
-      state == EnableDebuggingScreenView::kUIStateError ||
-      state == EnableDebuggingScreenView::kUIStateDone) {
+  if (state == EnableDebuggingScreenView::UI_STATE_SETUP ||
+      state == EnableDebuggingScreenView::UI_STATE_ERROR ||
+      state == EnableDebuggingScreenView::UI_STATE_DONE) {
     PrefService* prefs = g_browser_process->local_state();
     prefs->ClearPref(prefs::kDebuggingFeaturesRequested);
     prefs->CommitPendingWrite();

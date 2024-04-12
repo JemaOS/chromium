@@ -9,17 +9,14 @@
 
 #include "ash/ash_export.h"
 #include "ash/wm/splitview/split_view_controller.h"
-#include "ash/wm/splitview/split_view_types.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
+#include "ui/gfx/geometry/point.h"
+#include "ui/gfx/geometry/rect.h"
 
 namespace aura {
 class Window;
 }  // namespace aura
-
-namespace gfx {
-class Rect;
-}  // namespace gfx
 
 namespace views {
 class Widget;
@@ -75,36 +72,36 @@ class ASH_EXPORT SplitViewDragIndicators {
     // snapping region but not snappable.
     kFromFloat,
 
-    // Currently dragging in the |SnapPosition::kPrimary|
+    // Currently dragging in the |SplitViewController::SnapPosition::kPrimary|
     // snap area, and the dragged window is eligible to be snapped in split
     // view.
     kToSnapPrimary,
 
-    // Currently dragging in the |SnapPosition::kSecondary|
+    // Currently dragging in the |SplitViewController::SnapPosition::kSecondary|
     // snap area, and the dragged window is eligible to be snapped in split
     // view.
     kToSnapSecondary
   };
 
-  // |SnapPosition::kPrimary|, if |window_dragging_state|
-  // is |kToSnapLeft| |SnapPosition::kSecondary|, if
+  // |SplitViewController::SnapPosition::kPrimary|, if |window_dragging_state|
+  // is |kToSnapLeft| |SplitViewController::SnapPosition::kSecondary|, if
   // |window_dragging_state| is |kToSnapRight|
-  // |SnapPosition::kNone| otherwise
-  static SnapPosition GetSnapPosition(
+  // |SplitViewController::SnapPosition::kNone| otherwise
+  static SplitViewController::SnapPosition GetSnapPosition(
       WindowDraggingState window_dragging_state);
 
   // |kNoDrag| if |is_dragging| is false or split view is unsupported. If
   // |is_dragging| is true and split view is supported, then:
   // |non_snap_state|, if |snap_position| is
-  // |SnapPosition::kNone|
+  // |SplitViewController::SnapPosition::kNone|
   // |kToSnapLeft|, if |snap_position| is
-  // |SnapPosition::kPrimary|
+  // |SplitViewController::SnapPosition::kPrimary|
   // |kToSnapRight|, if |snap_position| is
-  // |SnapPosition::kSecondary|
+  // |SplitViewController::SnapPosition::kSecondary|
   static WindowDraggingState ComputeWindowDraggingState(
       bool is_dragging,
       WindowDraggingState non_snap_state,
-      SnapPosition snap_position);
+      SplitViewController::SnapPosition snap_position);
 
   explicit SplitViewDragIndicators(aura::Window* root_window);
 
@@ -113,17 +110,14 @@ class ASH_EXPORT SplitViewDragIndicators {
 
   ~SplitViewDragIndicators();
 
-  WindowDraggingState current_window_dragging_state() const {
-    return current_window_dragging_state_;
-  }
-
   void SetDraggedWindow(aura::Window* dragged_window);
   void SetWindowDraggingState(WindowDraggingState window_dragging_state);
   void OnDisplayBoundsChanged();
-  gfx::Rect GetLeftHighlightViewBounds() const;
-
-  gfx::Rect GetRightHighlightViewBoundsForTesting() const;
   bool GetIndicatorTypeVisibilityForTesting(IndicatorType type) const;
+  gfx::Rect GetLeftHighlightViewBounds() const;
+  WindowDraggingState current_window_dragging_state() const {
+    return current_window_dragging_state_;
+  }
 
  private:
   FRIEND_TEST_ALL_PREFIXES(SplitViewDragIndicatorsTest,
@@ -132,8 +126,8 @@ class ASH_EXPORT SplitViewDragIndicators {
   class SplitViewDragIndicatorsView;
 
   // The root content view of |widget_|.
-  raw_ptr<SplitViewDragIndicatorsView, DanglingUntriaged> indicators_view_ =
-      nullptr;
+  raw_ptr<SplitViewDragIndicatorsView, DanglingUntriaged | ExperimentalAsh>
+      indicators_view_ = nullptr;
 
   WindowDraggingState current_window_dragging_state_ =
       WindowDraggingState::kNoDrag;

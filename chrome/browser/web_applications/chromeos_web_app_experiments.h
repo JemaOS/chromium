@@ -5,16 +5,20 @@
 #ifndef CHROME_BROWSER_WEB_APPLICATIONS_CHROMEOS_WEB_APP_EXPERIMENTS_H_
 #define CHROME_BROWSER_WEB_APPLICATIONS_CHROMEOS_WEB_APP_EXPERIMENTS_H_
 
-#include <optional>
-#include <string_view>
 #include <vector>
 
 #include "base/containers/span.h"
-#include "components/webapps/common/web_app_id.h"
+#include "base/strings/string_piece.h"
+#include "chrome/browser/web_applications/web_app_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "url/gurl.h"
 
 static_assert(BUILDFLAG(IS_CHROMEOS), "For Chrome OS only");
+
+namespace content {
+class WebContents;
+}
 
 namespace web_app {
 
@@ -33,22 +37,23 @@ class ChromeOsWebAppExperiments {
   // https://github.com/WICG/manifest-incubations/blob/gh-pages/scope_extensions-explainer.md.
   // At the moment, we are enabling testing of the proposed feature for
   // certain hard-coded web apps.
-  static base::span<const char* const> GetScopeExtensions(
-      const webapps::AppId& app_id);
+  static base::span<const char* const> GetScopeExtensions(const AppId& app_id);
 
   // Returns the max scope score (similar to
   // WebAppRegistrar::GetUrlInAppScopeScore()) for the experimental extended
   // scopes.
-  static size_t GetExtendedScopeScore(const webapps::AppId& app_id,
-                                      std::string_view url_spec);
+  static size_t GetExtendedScopeScore(const AppId& app_id,
+                                      base::StringPiece url_spec);
 
-  // Whether the manifest theme_color and background_color should be ignored for
-  // `app_id`.
-  static bool IgnoreManifestColor(const webapps::AppId& app_id);
+  // A theme color to use for the given page.
+  // This should be used if <meta name="theme_color"> is unset on the page.
+  static absl::optional<SkColor> GetFallbackPageThemeColor(
+      const AppId& app_id,
+      content::WebContents* web_contents);
 
   static void SetAlwaysEnabledForTesting();
   static void SetScopeExtensionsForTesting(
-      std::vector<const char*> scope_extensions_override);
+      std::vector<const char* const> scope_extensions_override);
   static void ClearOverridesForTesting();
 
   ChromeOsWebAppExperiments() = delete;
@@ -57,4 +62,4 @@ class ChromeOsWebAppExperiments {
 
 }  // namespace web_app
 
-#endif  // CHROME_BROWSER_WEB_APPLICATIONS_CHROMEOS_WEB_APP_EXPERIMENTS_H_
+#endif  // CHROME_BROWSER_WEB_APPLICATIONS_CHROMEOS_WEB_APP_ExperimentS_H_

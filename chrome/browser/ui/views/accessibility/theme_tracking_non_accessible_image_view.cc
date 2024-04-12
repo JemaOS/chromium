@@ -35,5 +35,5 @@ void ThemeTrackingNonAccessibleImageView::GetAccessibleNodeData(
   node_data->AddState(ax::mojom::State::kInvisible);
 }
 
-BEGIN_METADATA(ThemeTrackingNonAccessibleImageView)
+BEGIN_METADATA(ThemeTrackingNonAccessibleImageView, ThemeTrackingImageView)
 END_METADATA

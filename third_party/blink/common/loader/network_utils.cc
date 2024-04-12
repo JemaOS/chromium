@@ -15,7 +15,6 @@ namespace network_utils {
 
 namespace {
 
-constexpr char kJsonAcceptHeader[] = "application/json,*/*;q=0.5";
 constexpr char kStylesheetAcceptHeader[] = "text/css,*/*;q=0.1";
 constexpr char kWebBundleAcceptHeader[] = "application/webbundle;v=b2";
 
@@ -44,35 +43,21 @@ const char* ImageAcceptHeader() {
 void SetAcceptHeader(net::HttpRequestHeaders& headers,
                      network::mojom::RequestDestination request_destination) {
   if (request_destination == network::mojom::RequestDestination::kStyle ||
-      request_destination == network::mojom::RequestDestination::kXslt ||
-      request_destination == network::mojom::RequestDestination::kWebBundle ||
-      request_destination == network::mojom::RequestDestination::kJson) {
-    headers.SetHeader(net::HttpRequestHeaders::kAccept,
-                      GetAcceptHeaderForDestination(request_destination));
-    return;
-  }
-  // Calling SetHeaderIfMissing() instead of SetHeader() because JS can
-  // manually set an accept header on an XHR.
-  headers.SetHeaderIfMissing(
-      net::HttpRequestHeaders::kAccept,
-      GetAcceptHeaderForDestination(request_destination));
-}
-
-const char* GetAcceptHeaderForDestination(
-    network::mojom::RequestDestination request_destination) {
-  if (request_destination == network::mojom::RequestDestination::kStyle ||
       request_destination == network::mojom::RequestDestination::kXslt) {
-    return kStylesheetAcceptHeader;
+    headers.SetHeader(net::HttpRequestHeaders::kAccept,
+                      kStylesheetAcceptHeader);
   } else if (request_destination ==
              network::mojom::RequestDestination::kImage) {
-    return ImageAcceptHeader();
+    headers.SetHeaderIfMissing(net::HttpRequestHeaders::kAccept,
+                               ImageAcceptHeader());
   } else if (request_destination ==
              network::mojom::RequestDestination::kWebBundle) {
-    return kWebBundleAcceptHeader;
-  } else if (request_destination == network::mojom::RequestDestination::kJson) {
-    return kJsonAcceptHeader;
+    headers.SetHeader(net::HttpRequestHeaders::kAccept, kWebBundleAcceptHeader);
   } else {
-    return network::kDefaultAcceptHeaderValue;
+    // Calling SetHeaderIfMissing() instead of SetHeader() because JS can
+    // manually set an accept header on an XHR.
+    headers.SetHeaderIfMissing(net::HttpRequestHeaders::kAccept,
+                               network::kDefaultAcceptHeaderValue);
   }
 }
 

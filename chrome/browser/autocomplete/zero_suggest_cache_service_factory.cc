@@ -16,15 +16,13 @@ ZeroSuggestCacheService* ZeroSuggestCacheServiceFactory::GetForProfile(
 
 // static
 ZeroSuggestCacheServiceFactory* ZeroSuggestCacheServiceFactory::GetInstance() {
-  static base::NoDestructor<ZeroSuggestCacheServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<ZeroSuggestCacheServiceFactory>::get();
 }
 
-std::unique_ptr<KeyedService>
-ZeroSuggestCacheServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ZeroSuggestCacheServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<ZeroSuggestCacheService>(
+  return new ZeroSuggestCacheService(
       profile->GetPrefs(), OmniboxFieldTrial::kZeroSuggestCacheMaxSize.Get());
 }
 

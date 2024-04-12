@@ -18,60 +18,71 @@ using webrtc::TransformableFrameInterface;
 RTCEncodedVideoUnderlyingSink::RTCEncodedVideoUnderlyingSink(
     ScriptState* script_state,
     scoped_refptr<blink::RTCEncodedVideoStreamTransformer::Broker>
-        transformer_broker)
-    : transformer_broker_(std::move(transformer_broker)) {
+        transformer_broker,
+    TransformableFrameInterface::Direction expected_direction)
+    : transformer_broker_(std::move(transformer_broker)),
+      expected_direction_(expected_direction) {
   DCHECK(transformer_broker_);
 }
 
-ScriptPromiseTyped<IDLUndefined> RTCEncodedVideoUnderlyingSink::start(
+ScriptPromise RTCEncodedVideoUnderlyingSink::start(
     ScriptState* script_state,
     WritableStreamDefaultController* controller,
     ExceptionState&) {
   // No extra setup needed.
-  return ToResolvedUndefinedPromise(script_state);
+  return ScriptPromise::CastUndefined(script_state);
 }
 
-ScriptPromiseTyped<IDLUndefined> RTCEncodedVideoUnderlyingSink::write(
+ScriptPromise RTCEncodedVideoUnderlyingSink::write(
     ScriptState* script_state,
     ScriptValue chunk,
     WritableStreamDefaultController* controller,
     ExceptionState& exception_state) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  RTCEncodedVideoFrame* encoded_frame = V8RTCEncodedVideoFrame::ToWrappable(
-      script_state->GetIsolate(), chunk.V8Value());
+  RTCEncodedVideoFrame* encoded_frame =
+      V8RTCEncodedVideoFrame::ToImplWithTypeCheck(script_state->GetIsolate(),
+                                                  chunk.V8Value());
   if (!encoded_frame) {
     exception_state.ThrowTypeError("Invalid frame");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   if (!transformer_broker_) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Stream closed");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   auto webrtc_frame = encoded_frame->PassWebRtcFrame();
   if (!webrtc_frame) {
     exception_state.ThrowDOMException(DOMExceptionCode::kOperationError,
                                       "Empty frame");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
+  }
+
+  if (webrtc_frame->GetDirection() ==
+          TransformableFrameInterface::Direction::kReceiver &&
+      expected_direction_ == TransformableFrameInterface::Direction::kSender) {
+    // TODO(crbug.com/1412687): Allow sending received frames.
+    exception_state.ThrowDOMException(DOMExceptionCode::kOperationError,
+                                      "Invalid frame");
+    return ScriptPromise();
   }
 
   transformer_broker_->SendFrameToSink(std::move(webrtc_frame));
-  return ToResolvedUndefinedPromise(script_state);
+  return ScriptPromise::CastUndefined(script_state);
 }
 
-ScriptPromiseTyped<IDLUndefined> RTCEncodedVideoUnderlyingSink::close(
-    ScriptState* script_state,
-    ExceptionState&) {
+ScriptPromise RTCEncodedVideoUnderlyingSink::close(ScriptState* script_state,
+                                                   ExceptionState&) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   // Disconnect from the transformer if the sink is closed.
   if (transformer_broker_)
     transformer_broker_.reset();
-  return ToResolvedUndefinedPromise(script_state);
+  return ScriptPromise::CastUndefined(script_state);
 }
 
-ScriptPromiseTyped<IDLUndefined> RTCEncodedVideoUnderlyingSink::abort(
+ScriptPromise RTCEncodedVideoUnderlyingSink::abort(
     ScriptState* script_state,
     ScriptValue reason,
     ExceptionState& exception_state) {

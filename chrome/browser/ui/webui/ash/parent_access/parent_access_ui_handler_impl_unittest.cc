@@ -6,7 +6,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/base64.h"
@@ -29,15 +28,16 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using ::testing::_;
 
 namespace ash {
 
-class FakeParentAccessUiHandlerDelegate : public ParentAccessUiHandlerDelegate {
+class FakeParentAccessUIHandlerDelegate : public ParentAccessUIHandlerDelegate {
  public:
-  FakeParentAccessUiHandlerDelegate() = default;
-  ~FakeParentAccessUiHandlerDelegate() = default;
+  FakeParentAccessUIHandlerDelegate() = default;
+  ~FakeParentAccessUIHandlerDelegate() = default;
 
   parent_access_ui::mojom::ParentAccessParamsPtr CloneParentAccessParams()
       override {
@@ -60,11 +60,11 @@ class FakeParentAccessUiHandlerDelegate : public ParentAccessUiHandlerDelegate {
     }
   }
 
-  MOCK_METHOD(void, SetApproved, (const std::string&, const base::Time&));
-  MOCK_METHOD(void, SetDeclined, ());
-  MOCK_METHOD(void, SetCanceled, ());
-  MOCK_METHOD(void, SetDisabled, ());
-  MOCK_METHOD(void, SetError, ());
+  MOCK_METHOD2(SetApproved, void(const std::string&, const base::Time&));
+  MOCK_METHOD0(SetDeclined, void());
+  MOCK_METHOD0(SetCanceled, void());
+  MOCK_METHOD0(SetDisabled, void());
+  MOCK_METHOD0(SetError, void());
 
   void set_flow_type(
       parent_access_ui::mojom::ParentAccessParams::FlowType flow_type) {
@@ -78,35 +78,35 @@ class FakeParentAccessUiHandlerDelegate : public ParentAccessUiHandlerDelegate {
   bool is_disabled_ = false;
 };
 
-class ParentAccessUiHandlerImplBaseTest : public testing::Test {
+class ParentAccessUIHandlerImplBaseTest : public testing::Test {
  public:
-  ParentAccessUiHandlerImplBaseTest() {
+  ParentAccessUIHandlerImplBaseTest() {
     identity_test_env_ = std::make_unique<signin::IdentityTestEnvironment>();
     identity_test_env_->MakePrimaryAccountAvailable(
         "testuser@gmail.com", signin::ConsentLevel::kSync);
   }
 
-  ~ParentAccessUiHandlerImplBaseTest() override = default;
+  ~ParentAccessUIHandlerImplBaseTest() override = default;
 
   void TearDown() override { parent_access_ui_handler_.reset(); }
 
  protected:
   base::test::TaskEnvironment task_environment_;
   std::unique_ptr<signin::IdentityTestEnvironment> identity_test_env_;
-  mojo::Remote<parent_access_ui::mojom::ParentAccessUiHandler>
+  mojo::Remote<parent_access_ui::mojom::ParentAccessUIHandler>
       parent_access_ui_handler_remote_;
-  std::unique_ptr<ParentAccessUiHandlerImpl> parent_access_ui_handler_;
-  FakeParentAccessUiHandlerDelegate delegate_;
+  std::unique_ptr<ParentAccessUIHandlerImpl> parent_access_ui_handler_;
+  FakeParentAccessUIHandlerDelegate delegate_;
 };
 
-class ParentAccessUiHandlerImplTestParameterized
-    : public ParentAccessUiHandlerImplBaseTest,
+class ParentAccessUIHandlerImplTestParameterized
+    : public ParentAccessUIHandlerImplBaseTest,
       public testing::WithParamInterface<
           parent_access_ui::mojom::ParentAccessParams::FlowType> {
  public:
-  ParentAccessUiHandlerImplTestParameterized() {
+  ParentAccessUIHandlerImplTestParameterized() {
     delegate_.set_flow_type(GetTestedFlowType());
-    parent_access_ui_handler_ = std::make_unique<ParentAccessUiHandlerImpl>(
+    parent_access_ui_handler_ = std::make_unique<ParentAccessUIHandlerImpl>(
         parent_access_ui_handler_remote_.BindNewPipeAndPassReceiver(),
         identity_test_env_->identity_manager(), &delegate_);
   }
@@ -130,16 +130,16 @@ class ParentAccessUiHandlerImplTestParameterized
 
 INSTANTIATE_TEST_SUITE_P(
     All,
-    ParentAccessUiHandlerImplTestParameterized,
+    ParentAccessUIHandlerImplTestParameterized,
     testing::Values(
         parent_access_ui::mojom::ParentAccessParams::FlowType::kWebsiteAccess,
         parent_access_ui::mojom::ParentAccessParams::FlowType::
             kExtensionAccess));
 
 // Verifies that the webview URL is properly constructed
-TEST_P(ParentAccessUiHandlerImplTestParameterized, GetParentAccessUrl) {
+TEST_P(ParentAccessUIHandlerImplTestParameterized, GetParentAccessURL) {
   base::RunLoop run_loop;
-  parent_access_ui_handler_->GetParentAccessUrl(
+  parent_access_ui_handler_->GetParentAccessURL(
       base::BindLambdaForTesting([&](const std::string& url) -> void {
         GURL webview_url(url);
         ASSERT_TRUE(webview_url.has_query());
@@ -150,7 +150,8 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, GetParentAccessUrl) {
         url::Component key;
         url::Component value;
         std::map<std::string, std::string> query_parts;
-        while (url::ExtractQueryKeyValue(query_str, &query, &key, &value)) {
+        while (url::ExtractQueryKeyValue(query_str.c_str(), &query, &key,
+                                         &value)) {
           query_parts[query_str.substr(key.begin, key.len)] =
               query_str.substr(value.begin, value.len);
         }
@@ -176,13 +177,13 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, GetParentAccessUrl) {
 }
 
 // Verify that the access token is successfully fetched.
-TEST_P(ParentAccessUiHandlerImplTestParameterized, GetOauthTokenSuccess) {
+TEST_P(ParentAccessUIHandlerImplTestParameterized, GetOAuthTokenSuccess) {
   identity_test_env_->SetAutomaticIssueOfAccessTokens(true);
   base::RunLoop run_loop;
-  parent_access_ui_handler_->GetOauthToken(base::BindLambdaForTesting(
-      [&](parent_access_ui::mojom::GetOauthTokenStatus status,
+  parent_access_ui_handler_->GetOAuthToken(base::BindLambdaForTesting(
+      [&](parent_access_ui::mojom::GetOAuthTokenStatus status,
           const std::string& token) -> void {
-        EXPECT_EQ(parent_access_ui::mojom::GetOauthTokenStatus::kSuccess,
+        EXPECT_EQ(parent_access_ui::mojom::GetOAuthTokenStatus::kSuccess,
                   status);
         run_loop.Quit();
       }));
@@ -190,13 +191,13 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, GetOauthTokenSuccess) {
 }
 
 // Verifies that access token fetch errors are recorded.
-TEST_P(ParentAccessUiHandlerImplTestParameterized, GetOauthTokenError) {
+TEST_P(ParentAccessUIHandlerImplTestParameterized, GetOAuthTokenError) {
   base::HistogramTester histogram_tester;
   base::RunLoop run_loop;
-  parent_access_ui_handler_->GetOauthToken(base::BindLambdaForTesting(
-      [&](parent_access_ui::mojom::GetOauthTokenStatus status,
+  parent_access_ui_handler_->GetOAuthToken(base::BindLambdaForTesting(
+      [&](parent_access_ui::mojom::GetOAuthTokenStatus status,
           const std::string& token) -> void {
-        EXPECT_EQ(parent_access_ui::mojom::GetOauthTokenStatus::kError, status);
+        EXPECT_EQ(parent_access_ui::mojom::GetOAuthTokenStatus::kError, status);
         run_loop.Quit();
       }));
 
@@ -210,27 +211,27 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, GetOauthTokenError) {
   // Expect metric to be recorded.
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessWidgetErrorHistogramBase, std::nullopt),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kOAuthError, 1);
+          parent_access::kParentAccessWidgetErrorHistogramBase, absl::nullopt),
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kOAuthError, 1);
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
           parent_access::kParentAccessWidgetErrorHistogramBase,
           GetTestedFlowType()),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kOAuthError, 1);
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kOAuthError, 1);
 }
 
 // Verifies that only one access token fetch is possible at a time.
-TEST_P(ParentAccessUiHandlerImplTestParameterized,
-       GetOauthTokenOnlyOneFetchAtATimeError) {
+TEST_P(ParentAccessUIHandlerImplTestParameterized,
+       GetOAuthTokenOnlyOneFetchAtATimeError) {
   identity_test_env_->SetAutomaticIssueOfAccessTokens(false);
-  parent_access_ui_handler_->GetOauthToken(base::DoNothing());
+  parent_access_ui_handler_->GetOAuthToken(base::DoNothing());
 
   base::RunLoop one_fetch_run_loop;
-  parent_access_ui_handler_->GetOauthToken(base::BindLambdaForTesting(
-      [&](parent_access_ui::mojom::GetOauthTokenStatus status,
+  parent_access_ui_handler_->GetOAuthToken(base::BindLambdaForTesting(
+      [&](parent_access_ui::mojom::GetOAuthTokenStatus status,
           const std::string& token) -> void {
         EXPECT_EQ(
-            parent_access_ui::mojom::GetOauthTokenStatus::kOnlyOneFetchAtATime,
+            parent_access_ui::mojom::GetOAuthTokenStatus::kOnlyOneFetchAtATime,
             status);
         one_fetch_run_loop.Quit();
       }));
@@ -246,7 +247,7 @@ MATCHER_P(EqualsProto,
 }
 
 // Verifies that the parent approvals sequence is handled correctly.
-TEST_P(ParentAccessUiHandlerImplTestParameterized,
+TEST_P(ParentAccessUIHandlerImplTestParameterized,
        OnParentVerifiedAndApproved) {
   base::HistogramTester histogram_tester;
   // Construct the ParentAccessCallback
@@ -264,12 +265,12 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized,
   expire_time->set_nanos(567890);
 
   // Encode the proto in base64.
-  std::string encoded_parent_access_callback =
-      base::Base64Encode(parent_access_callback.SerializeAsString());
+  std::string encoded_parent_access_callback;
+  base::Base64Encode(parent_access_callback.SerializeAsString(),
+                     &encoded_parent_access_callback);
 
-  EXPECT_CALL(delegate_,
-              SetApproved(pat->token(), base::Time::FromSecondsSinceUnixEpoch(
-                                            expire_time->seconds())))
+  EXPECT_CALL(delegate_, SetApproved(pat->token(), base::Time::FromDoubleT(
+                                                       expire_time->seconds())))
       .Times(1);
 
   base::RunLoop run_loop;
@@ -305,7 +306,7 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized,
   parent_access_ui_handler_.reset();
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessFlowResultHistogramBase, std::nullopt),
+          parent_access::kParentAccessFlowResultHistogramBase, absl::nullopt),
       ParentAccessStateTracker::FlowResult::kAccessApproved, 1);
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
@@ -316,11 +317,12 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized,
 
 // Verifies that an unparsable parent access callback proto is handled
 // properly.
-TEST_P(ParentAccessUiHandlerImplTestParameterized,
+TEST_P(ParentAccessUIHandlerImplTestParameterized,
        OnInvalidParentAccessCallback) {
   // Encode the proto in base64.
-  std::string encoded_parent_access_callback =
-      base::Base64Encode("INVALID_SERIALIZED_CALLBACK");
+  std::string encoded_parent_access_callback;
+  base::Base64Encode("INVALID_SERIALIZED_CALLBACK",
+                     &encoded_parent_access_callback);
 
   EXPECT_CALL(delegate_, SetApproved(_, _)).Times(0);
 
@@ -342,7 +344,7 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized,
 
 // Verifies that non-base64 encoded data passed as a parent access callback is
 // handled properly.
-TEST_P(ParentAccessUiHandlerImplTestParameterized,
+TEST_P(ParentAccessUIHandlerImplTestParameterized,
        OnNonBase64ParentAccessCallback) {
   EXPECT_CALL(delegate_, SetApproved(_, _)).Times(0);
 
@@ -363,7 +365,7 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized,
 }
 
 // Verifies that parent declining is handled correctly.
-TEST_P(ParentAccessUiHandlerImplTestParameterized, OnParentDeclined) {
+TEST_P(ParentAccessUIHandlerImplTestParameterized, OnParentDeclined) {
   base::HistogramTester histogram_tester;
   EXPECT_CALL(delegate_, SetDeclined()).Times(1);
 
@@ -379,7 +381,7 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, OnParentDeclined) {
   parent_access_ui_handler_.reset();
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessFlowResultHistogramBase, std::nullopt),
+          parent_access::kParentAccessFlowResultHistogramBase, absl::nullopt),
       ParentAccessStateTracker::FlowResult::kAccessDeclined, 1);
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
@@ -389,7 +391,7 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, OnParentDeclined) {
 }
 
 // Verifies canceling the UI is handled correctly.
-TEST_P(ParentAccessUiHandlerImplTestParameterized, OnCanceled) {
+TEST_P(ParentAccessUIHandlerImplTestParameterized, OnCanceled) {
   base::HistogramTester histogram_tester;
   EXPECT_CALL(delegate_, SetCanceled()).Times(1);
 
@@ -405,7 +407,7 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, OnCanceled) {
   parent_access_ui_handler_.reset();
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessFlowResultHistogramBase, std::nullopt),
+          parent_access::kParentAccessFlowResultHistogramBase, absl::nullopt),
       GetInitialStateForFlow(), 1);
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
@@ -415,7 +417,7 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, OnCanceled) {
 }
 
 // Verifies errors are handled correctly.
-TEST_P(ParentAccessUiHandlerImplTestParameterized, OnError) {
+TEST_P(ParentAccessUIHandlerImplTestParameterized, OnError) {
   base::HistogramTester histogram_tester;
   EXPECT_CALL(delegate_, SetError()).Times(1);
 
@@ -431,7 +433,7 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, OnError) {
   parent_access_ui_handler_.reset();
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessFlowResultHistogramBase, std::nullopt),
+          parent_access::kParentAccessFlowResultHistogramBase, absl::nullopt),
       ParentAccessStateTracker::FlowResult::kError, 1);
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
@@ -441,7 +443,7 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, OnError) {
 }
 
 // Verifies that the ConsentDeclined status is ignored.
-TEST_P(ParentAccessUiHandlerImplTestParameterized, ConsentDeclinedParsed) {
+TEST_P(ParentAccessUIHandlerImplTestParameterized, ConsentDeclinedParsed) {
   base::HistogramTester histogram_tester;
   // Construct the ParentAccessCallback
   kids::platform::parentaccess::client::proto::ParentAccessCallback
@@ -449,8 +451,9 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, ConsentDeclinedParsed) {
   parent_access_callback.mutable_on_consent_declined();
 
   // Encode the proto in base64.
-  std::string encoded_parent_access_callback =
-      base::Base64Encode(parent_access_callback.SerializeAsString());
+  std::string encoded_parent_access_callback;
+  base::Base64Encode(parent_access_callback.SerializeAsString(),
+                     &encoded_parent_access_callback);
 
   base::RunLoop run_loop;
   parent_access_ui_handler_->OnParentAccessCallbackReceived(
@@ -469,17 +472,17 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, ConsentDeclinedParsed) {
   // Expect metric to be recorded.
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessWidgetErrorHistogramBase, std::nullopt),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kUnknownCallback, 1);
+          parent_access::kParentAccessWidgetErrorHistogramBase, absl::nullopt),
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kUnknownCallback, 1);
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
           parent_access::kParentAccessWidgetErrorHistogramBase,
           GetTestedFlowType()),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kUnknownCallback, 1);
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kUnknownCallback, 1);
 }
 
 // Verifies that the OnPageSizeChanged status is ignored.
-TEST_P(ParentAccessUiHandlerImplTestParameterized, OnPageSizeChangedIgnored) {
+TEST_P(ParentAccessUIHandlerImplTestParameterized, OnPageSizeChangedIgnored) {
   base::HistogramTester histogram_tester;
   // Construct the ParentAccessCallback
   kids::platform::parentaccess::client::proto::ParentAccessCallback
@@ -487,8 +490,9 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, OnPageSizeChangedIgnored) {
   parent_access_callback.mutable_on_page_size_changed();
 
   // Encode the proto in base64.
-  std::string encoded_parent_access_callback =
-      base::Base64Encode(parent_access_callback.SerializeAsString());
+  std::string encoded_parent_access_callback;
+  base::Base64Encode(parent_access_callback.SerializeAsString(),
+                     &encoded_parent_access_callback);
 
   base::RunLoop run_loop;
   parent_access_ui_handler_->OnParentAccessCallbackReceived(
@@ -507,17 +511,17 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, OnPageSizeChangedIgnored) {
   // Expect metric to be recorded.
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessWidgetErrorHistogramBase, std::nullopt),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kUnknownCallback, 1);
+          parent_access::kParentAccessWidgetErrorHistogramBase, absl::nullopt),
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kUnknownCallback, 1);
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
           parent_access::kParentAccessWidgetErrorHistogramBase,
           GetTestedFlowType()),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kUnknownCallback, 1);
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kUnknownCallback, 1);
 }
 
 // Verifies that the OnCommunicationEstablished status is ignored.
-TEST_P(ParentAccessUiHandlerImplTestParameterized,
+TEST_P(ParentAccessUIHandlerImplTestParameterized,
        OnCommunicationEstablishedIgnored) {
   base::HistogramTester histogram_tester;
 
@@ -527,8 +531,9 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized,
   parent_access_callback.mutable_on_communication_established();
 
   // Encode the proto in base64.
-  std::string encoded_parent_access_callback =
-      base::Base64Encode(parent_access_callback.SerializeAsString());
+  std::string encoded_parent_access_callback;
+  base::Base64Encode(parent_access_callback.SerializeAsString(),
+                     &encoded_parent_access_callback);
 
   base::RunLoop run_loop;
   parent_access_ui_handler_->OnParentAccessCallbackReceived(
@@ -547,19 +552,19 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized,
   // Expect metric to be recorded.
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessWidgetErrorHistogramBase, std::nullopt),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kUnknownCallback, 1);
+          parent_access::kParentAccessWidgetErrorHistogramBase, absl::nullopt),
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kUnknownCallback, 1);
 }
 
 // Verifies metric is recorded for no delegate error.
-TEST_P(ParentAccessUiHandlerImplTestParameterized,
+TEST_P(ParentAccessUIHandlerImplTestParameterized,
        NoDelegateErrorMetricRecorded) {
   base::HistogramTester histogram_tester;
 
-  // Construct a ParentAccessUiHandler without a delegate.
-  mojo::Remote<parent_access_ui::mojom::ParentAccessUiHandler> remote;
+  // Construct a ParentAccessUIHandler without a delegate.
+  mojo::Remote<parent_access_ui::mojom::ParentAccessUIHandler> remote;
   auto parent_access_ui_handler_no_delegate =
-      std::make_unique<ParentAccessUiHandlerImpl>(
+      std::make_unique<ParentAccessUIHandlerImpl>(
           remote.BindNewPipeAndPassReceiver(),
           identity_test_env_->identity_manager(), nullptr);
 
@@ -574,12 +579,12 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized,
   // Expect metric to be recorded.
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessWidgetErrorHistogramBase, std::nullopt),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kDelegateNotAvailable,
+          parent_access::kParentAccessWidgetErrorHistogramBase, absl::nullopt),
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kDelegateNotAvailable,
       1);
 }
 
-TEST_P(ParentAccessUiHandlerImplTestParameterized,
+TEST_P(ParentAccessUIHandlerImplTestParameterized,
        DecodingErrorMetricRecorded) {
   base::HistogramTester histogram_tester;
   base::RunLoop run_loop;
@@ -595,22 +600,23 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized,
   // Expect metric to be recorded.
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessWidgetErrorHistogramBase, std::nullopt),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kDecodingError, 1);
+          parent_access::kParentAccessWidgetErrorHistogramBase, absl::nullopt),
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kDecodingError, 1);
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
           parent_access::kParentAccessWidgetErrorHistogramBase,
           GetTestedFlowType()),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kDecodingError, 1);
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kDecodingError, 1);
 }
 
 // Verifies metric is recorded when received callback cannot be parsed to proto.
-TEST_P(ParentAccessUiHandlerImplTestParameterized, ParsingErrorMetricRecorded) {
+TEST_P(ParentAccessUIHandlerImplTestParameterized, ParsingErrorMetricRecorded) {
   base::HistogramTester histogram_tester;
 
   // Receive non-parseable callback.
   base::RunLoop run_loop;
-  std::string encoded_not_a_callback = base::Base64Encode("not_a_callback");
+  std::string encoded_not_a_callback;
+  base::Base64Encode("not_a_callback", &encoded_not_a_callback);
   parent_access_ui_handler_->OnParentAccessCallbackReceived(
       encoded_not_a_callback,
       base::BindLambdaForTesting(
@@ -621,17 +627,17 @@ TEST_P(ParentAccessUiHandlerImplTestParameterized, ParsingErrorMetricRecorded) {
   // Expect metric to be recorded.
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessWidgetErrorHistogramBase, std::nullopt),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kParsingError, 1);
+          parent_access::kParentAccessWidgetErrorHistogramBase, absl::nullopt),
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kParsingError, 1);
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
           parent_access::kParentAccessWidgetErrorHistogramBase,
           GetTestedFlowType()),
-      ParentAccessUiHandlerImpl::ParentAccessWidgetError::kParsingError, 1);
+      ParentAccessUIHandlerImpl::ParentAccessWidgetError::kParsingError, 1);
 }
 
 class ExtensionApprovalsDisabledTest
-    : public ParentAccessUiHandlerImplBaseTest {
+    : public ParentAccessUIHandlerImplBaseTest {
  public:
   ExtensionApprovalsDisabledTest() {
     // Only test extensions flow because disabled state is not allowed for web
@@ -639,7 +645,7 @@ class ExtensionApprovalsDisabledTest
     delegate_.set_flow_type(parent_access_ui::mojom::ParentAccessParams::
                                 FlowType::kExtensionAccess);
     delegate_.set_is_disabled(true);
-    parent_access_ui_handler_ = std::make_unique<ParentAccessUiHandlerImpl>(
+    parent_access_ui_handler_ = std::make_unique<ParentAccessUIHandlerImpl>(
         parent_access_ui_handler_remote_.BindNewPipeAndPassReceiver(),
         identity_test_env_->identity_manager(), &delegate_);
   }
@@ -662,7 +668,7 @@ TEST_F(ExtensionApprovalsDisabledTest, OnDisabled) {
   parent_access_ui_handler_.reset();
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessFlowResultHistogramBase, std::nullopt),
+          parent_access::kParentAccessFlowResultHistogramBase, absl::nullopt),
       ParentAccessStateTracker::FlowResult::kRequestsDisabled, 1);
   histogram_tester.ExpectUniqueSample(
       parent_access::GetHistogramTitleForFlowType(

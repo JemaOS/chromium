@@ -52,6 +52,8 @@ public class EphemeralTabSheetContent implements BottomSheetContent {
      */
     private static final int BASE_ANIMATION_DURATION_MS = 218;
 
+    private static final float PEEK_TOOLBAR_HEIGHT_MULTIPLE = 2.f;
+
     /** Ratio of the height when in full mode. Used in half-open variation. */
     private static final float FULL_HEIGHT_RATIO = 0.9f;
 
@@ -85,12 +87,8 @@ public class EphemeralTabSheetContent implements BottomSheetContent {
      * @param intentRequestTracker The {@link IntentRequestTracker} of the current activity.
      * @param onToolbarCreatedCallback Callback invoked to notify observers on toolbar creation.
      */
-    public EphemeralTabSheetContent(
-            Context context,
-            Runnable openNewTabCallback,
-            Runnable toolbarClickCallback,
-            Runnable closeButtonCallback,
-            int maxViewHeight,
+    public EphemeralTabSheetContent(Context context, Runnable openNewTabCallback,
+            Runnable toolbarClickCallback, Runnable closeButtonCallback, int maxViewHeight,
             IntentRequestTracker intentRequestTracker,
             Callback<ViewGroup> onToolbarCreatedCallback) {
         mContext = context;
@@ -133,16 +131,12 @@ public class EphemeralTabSheetContent implements BottomSheetContent {
      * bottom sheet.
      */
     private void createThinWebView(int maxSheetHeight, IntentRequestTracker intentRequestTracker) {
-        mThinWebView =
-                ThinWebViewFactory.create(
-                        mContext, new ThinWebViewConstraints(), intentRequestTracker);
+        mThinWebView = ThinWebViewFactory.create(
+                mContext, new ThinWebViewConstraints(), intentRequestTracker);
 
         mSheetContentView = new FrameLayout(mContext);
-        mThinWebView
-                .getView()
-                .setLayoutParams(
-                        new FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT, maxSheetHeight));
+        mThinWebView.getView().setLayoutParams(
+                new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, maxSheetHeight));
         mSheetContentView.addView(mThinWebView.getView());
     }
 
@@ -164,17 +158,16 @@ public class EphemeralTabSheetContent implements BottomSheetContent {
 
         mOnToolbarCreatedCallback.onResult(mToolbarView);
         final ViewTreeObserver observer = mToolbarView.getViewTreeObserver();
-        observer.addOnPreDrawListener(
-                new ViewTreeObserver.OnPreDrawListener() {
-                    @Override
-                    public boolean onPreDraw() {
-                        // Once the toolbar layout is completed, reflect the change in height
-                        // to the content view.
-                        mToolbarView.getViewTreeObserver().removeOnPreDrawListener(this);
-                        updateContentHeight(maxViewHeight);
-                        return true;
-                    }
-                });
+        observer.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                // Once the toolbar layout is completed, reflect the change in height
+                // to the content view.
+                mToolbarView.getViewTreeObserver().removeOnPreDrawListener(this);
+                updateContentHeight(maxViewHeight);
+                return true;
+            }
+        });
     }
 
     /**

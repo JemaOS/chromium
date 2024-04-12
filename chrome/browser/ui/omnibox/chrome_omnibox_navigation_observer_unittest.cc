@@ -21,6 +21,10 @@
 #include "components/search_engines/template_url_service.h"
 #include "content/public/browser/navigation_details.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/notification_details.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_source.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/navigation_simulator.h"
 #include "net/http/http_response_headers.h"
@@ -69,9 +73,6 @@ class ChromeOmniboxNavigationObserverTest
   static std::u16string policy_search_keyword() {
     return u"policy_search_keyword";
   }
-  static std::u16string starter_pack_keyword() {
-    return u"starter_pack_keyword";
-  }
 
  private:
   // ChromeRenderViewHostTestHarness:
@@ -107,14 +108,8 @@ void ChromeOmniboxNavigationObserverTest::SetUp() {
 
   TemplateURLData policy_turl;
   policy_turl.SetKeyword(policy_search_keyword());
-  policy_turl.created_by_policy =
-      TemplateURLData::CreatedByPolicy::kDefaultSearchProvider;
+  policy_turl.created_by_policy = true;
   factory_util.model()->Add(std::make_unique<TemplateURL>(policy_turl));
-
-  TemplateURLData starter_pack_turl;
-  starter_pack_turl.SetKeyword(starter_pack_keyword());
-  starter_pack_turl.starter_pack_id = 1;
-  factory_util.model()->Add(std::make_unique<TemplateURL>(starter_pack_turl));
 }
 
 namespace {
@@ -153,8 +148,7 @@ TEST_F(ChromeOmniboxNavigationObserverTest, DeleteBrokenCustomSearchEngines) {
       {non_auto_generated_search_keyword(), 404, true},
       {default_search_keyword(), 404, true},
       {prepopulated_search_keyword(), 404, true},
-      {policy_search_keyword(), 404, true},
-      {starter_pack_keyword(), 404, true}};
+      {policy_search_keyword(), 404, true}};
 
   std::u16string query = u" text";
   for (size_t i = 0; i < cases.size(); ++i) {

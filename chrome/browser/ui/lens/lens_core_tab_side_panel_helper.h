@@ -16,6 +16,9 @@ namespace internal {
 // This checks all the basic requirements for the side panel to be enabled.
 bool IsSidePanelEnabled(content::WebContents* web_contents);
 
+// Helper to return if the web contents are viewed in a progressive web app.
+bool IsInProgressiveWebApp(content::WebContents* web_contents);
+
 // Helper to return the template url service from the given web contents.
 TemplateURLService* GetTemplateURLService(content::WebContents* web_contents);
 
@@ -29,6 +32,10 @@ gfx::Size GetSidePanelInitialContentSizeUpperBound(
 // Returns if the v2 unified side panel is enabled when Google is the default
 // search engine.
 bool IsSidePanelEnabledForLens(content::WebContents* web_contents);
+
+// Returns if the v2 unified side panel is enabled when Google is the default
+// search engine for lens region search.
+bool IsSidePanelEnabledForLensRegionSearch(content::WebContents* web_contents);
 
 // Returns if the v2 unified side panel is enabled when Google is NOT the
 // default search engine. The third party search engines needs to opt-in to the

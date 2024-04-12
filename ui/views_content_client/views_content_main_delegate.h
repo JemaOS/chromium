@@ -26,9 +26,9 @@ class ViewsContentMainDelegate : public content::ContentMainDelegate {
   ~ViewsContentMainDelegate() override;
 
   // content::ContentMainDelegate implementation
-  std::optional<int> BasicStartupComplete() override;
+  absl::optional<int> BasicStartupComplete() override;
   void PreSandboxStartup() override;
-  std::optional<int> PreBrowserMain() override;
+  absl::optional<int> PreBrowserMain() override;
   content::ContentClient* CreateContentClient() override;
   content::ContentBrowserClient* CreateContentBrowserClient() override;
 

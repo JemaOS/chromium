@@ -5,28 +5,23 @@
 #ifndef CHROME_BROWSER_RENDERER_CONTEXT_MENU_RENDER_VIEW_CONTEXT_MENU_BROWSERTEST_UTIL_H_
 #define CHROME_BROWSER_RENDERER_CONTEXT_MENU_RENDER_VIEW_CONTEXT_MENU_BROWSERTEST_UTIL_H_
 
-#include <optional>
-#include <vector>
-
 #include "base/run_loop.h"
 #include "chrome/browser/renderer_context_menu/render_view_context_menu.h"
 #include "content/public/browser/context_menu_params.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class RenderViewContextMenu;
 
 class ContextMenuNotificationObserver {
  public:
-  using MenuShownCallback = base::OnceCallback<void(RenderViewContextMenu*)>;
-
-  // Wait for a context menu to be shown, and then execute |command_to_execute|.
-  explicit ContextMenuNotificationObserver(int command_to_execute);
-
   // Wait for a context menu to be shown, and then execute |command_to_execute|
   // with specified |event_flags|. Also executes |callback| after executing the
   // command if provided.
-  ContextMenuNotificationObserver(int command_to_execute,
-                                  int event_flags,
-                                  MenuShownCallback callback);
+  explicit ContextMenuNotificationObserver(
+      int command_to_execute,
+      int event_flags = 0,
+      base::OnceCallback<void(RenderViewContextMenu*)> callback =
+          base::NullCallbackAs<void(RenderViewContextMenu*)>());
 
   ContextMenuNotificationObserver(const ContextMenuNotificationObserver&) =
       delete;
@@ -42,7 +37,7 @@ class ContextMenuNotificationObserver {
 
   int command_to_execute_;
   int event_flags_;
-  MenuShownCallback callback_;
+  base::OnceCallback<void(RenderViewContextMenu*)> callback_;
 };
 
 class ContextMenuWaiter {
@@ -51,7 +46,8 @@ class ContextMenuWaiter {
   explicit ContextMenuWaiter(int command_to_execute);
   // `before_execute` will be run after the context menu is opened and before
   // executing `command_to_execute`.
-  ContextMenuWaiter(int command_to_execute, base::OnceClosure before_execute);
+  explicit ContextMenuWaiter(int command_to_execute,
+                             base::OnceClosure before_execute);
 
   ContextMenuWaiter(const ContextMenuWaiter&) = delete;
   ContextMenuWaiter& operator=(const ContextMenuWaiter&) = delete;
@@ -73,7 +69,7 @@ class ContextMenuWaiter {
   std::vector<int> captured_command_ids_;
 
   base::RunLoop run_loop_;
-  const std::optional<int> maybe_command_to_execute_;
+  absl::optional<int> maybe_command_to_execute_;
   base::OnceClosure before_execute_;
 };
 

@@ -32,8 +32,6 @@ namespace {
 using performance_manager::NodeBase;
 
 const char kHtmlMimeType[] = "text/html";
-const blink::mojom::PermissionStatus kAskPermissionStatus =
-    blink::mojom::PermissionStatus::ASK;
 
 class TestChangeStream : public discards::mojom::GraphChangeStream {
  public:
@@ -140,7 +138,6 @@ class TestChangeStream : public discards::mojom::GraphChangeStream {
 
 class DiscardsGraphDumpImplTest : public testing::Test {
  public:
-  void SetUp() override { graph_.SetUp(); }
   void TearDown() override { graph_.TearDown(); }
 
  protected:
@@ -203,13 +200,11 @@ TEST_F(DiscardsGraphDumpImplTest, ChangeStream) {
   const GURL kExampleUrl("http://www.example.org");
   int64_t next_navigation_id = 1;
   mock_graph.page->OnMainFrameNavigationCommitted(
-      false, now, next_navigation_id++, kExampleUrl, kHtmlMimeType,
-      kAskPermissionStatus);
+      false, now, next_navigation_id++, kExampleUrl, kHtmlMimeType);
   mock_graph.other_page->OnMainFrameNavigationCommitted(
-      false, now, next_navigation_id++, kExampleUrl, kHtmlMimeType,
-      kAskPermissionStatus);
+      false, now, next_navigation_id++, kExampleUrl, kHtmlMimeType);
 
-  auto* main_frame = mock_graph.page->main_frame_node();
+  auto* main_frame = mock_graph.page->GetMainFrameNodeImpl();
   main_frame->OnNavigationCommitted(kExampleUrl, /* same_document */ false);
 
   std::unique_ptr<DiscardsGraphDumpImpl> impl =
@@ -229,16 +224,11 @@ TEST_F(DiscardsGraphDumpImplTest, ChangeStream) {
   task_environment.RunUntilIdle();
 
   // Validate that the initial graph state dump is complete. Note that there is
-  // an update for each node as part of the initial state dump, except the
-  // system node.
-  size_t expected_changes =
-      graph_.GetAllFrameNodes().size() + graph_.GetAllPageNodes().size() +
-      graph_.GetAllProcessNodes().size() + graph_.GetAllWorkerNodes().size();
-  EXPECT_EQ(expected_changes, change_stream.num_changes());
-  EXPECT_EQ(expected_changes, change_stream.id_set().size());
+  // an update for each node as part of the initial state dump.
+  EXPECT_EQ(8u, change_stream.num_changes());
+  EXPECT_EQ(8u, change_stream.id_set().size());
 
-  EXPECT_EQ(graph_.GetAllProcessNodes().size(),
-            change_stream.process_map().size());
+  EXPECT_EQ(2u, change_stream.process_map().size());
   for (const auto& kv : change_stream.process_map()) {
     const auto* process_info = kv.second.get();
     EXPECT_NE(0u, process_info->id);
@@ -246,13 +236,12 @@ TEST_F(DiscardsGraphDumpImplTest, ChangeStream) {
               base::JSONReader::Read(process_info->description_json));
   }
 
-  EXPECT_EQ(graph_.GetAllFrameNodes().size(), change_stream.frame_map().size());
+  EXPECT_EQ(3u, change_stream.frame_map().size());
   for (const auto& kv : change_stream.frame_map()) {
     EXPECT_EQ(base::JSONReader::Read("{\"test\":{\"type\":\"frame\"}}"),
               base::JSONReader::Read(kv.second->description_json));
   }
-  EXPECT_EQ(graph_.GetAllWorkerNodes().size(),
-            change_stream.worker_map().size());
+  EXPECT_EQ(1u, change_stream.worker_map().size());
   for (const auto& kv : change_stream.worker_map()) {
     EXPECT_EQ(base::JSONReader::Read("{\"test\":{\"type\":\"worker\"}}"),
               base::JSONReader::Read(kv.second->description_json));
@@ -279,7 +268,7 @@ TEST_F(DiscardsGraphDumpImplTest, ChangeStream) {
   // Make sure we have one top-level frame per page.
   EXPECT_EQ(change_stream.page_map().size(), top_level_frames);
 
-  EXPECT_EQ(graph_.GetAllPageNodes().size(), change_stream.page_map().size());
+  EXPECT_EQ(2u, change_stream.page_map().size());
   for (const auto& kv : change_stream.page_map()) {
     const auto& page = kv.second;
     EXPECT_NE(0u, page->id);
@@ -291,8 +280,7 @@ TEST_F(DiscardsGraphDumpImplTest, ChangeStream) {
   // Test change notifications.
   const GURL kAnotherURL("http://www.google.com/");
   mock_graph.page->OnMainFrameNavigationCommitted(
-      false, now, next_navigation_id++, kAnotherURL, kHtmlMimeType,
-      kAskPermissionStatus);
+      false, now, next_navigation_id++, kAnotherURL, kHtmlMimeType);
 
   size_t child_frame_id =
       impl_raw->GetNodeIdForTesting(mock_graph.child_frame.get());
@@ -301,8 +289,7 @@ TEST_F(DiscardsGraphDumpImplTest, ChangeStream) {
   task_environment.RunUntilIdle();
 
   // Main frame navigation results in a notification for the url.
-  expected_changes += 1;
-  EXPECT_EQ(expected_changes, change_stream.num_changes());
+  EXPECT_EQ(9u, change_stream.num_changes());
   EXPECT_FALSE(base::Contains(change_stream.id_set(), child_frame_id));
 
   const auto main_page_it = change_stream.page_map().find(
@@ -335,7 +322,7 @@ TEST_F(DiscardsGraphDumpImplTest, ChangeStream) {
               // Check that the descriptions make sense.
               for (auto kv : node_descriptions_json) {
                 keys_received.push_back(kv.first);
-                std::optional<base::Value> v =
+                absl::optional<base::Value> v =
                     base::JSONReader::Read(kv.second);
                 EXPECT_TRUE(v->is_dict());
                 base::Value::Dict* dict = v->GetDict().FindDict("test");

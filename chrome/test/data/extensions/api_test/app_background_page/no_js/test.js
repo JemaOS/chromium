@@ -17,7 +17,7 @@ var launchTabId;
 var backgroundPageLoaded = false;
 
 // Dispatch "tunneled" functions from the live web pages to this testing page.
-chrome.runtime.onMessage.addListener(function(request) {
+chrome.extension.onRequest.addListener(function(request) {
   window[request.name](request.args);
 });
 

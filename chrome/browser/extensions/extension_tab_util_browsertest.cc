@@ -7,7 +7,6 @@
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/extensions/extension_util.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_list.h"
@@ -34,9 +33,15 @@ const GURL& GetActiveUrl(Browser* browser) {
 
 using ExtensionTabUtilBrowserTest = ExtensionBrowserTest;
 
-// TODO(https://crbug.com/811471): Fix and re-enable.
+// Times out on Win debug. https://crbug.com/811471
+#if BUILDFLAG(IS_WIN) && !defined(NDEBUG)
+#define MAYBE_OpenExtensionsOptionsPage DISABLED_OpenExtensionsOptionsPage
+#else
+#define MAYBE_OpenExtensionsOptionsPage OpenExtensionsOptionsPage
+#endif
+
 IN_PROC_BROWSER_TEST_F(ExtensionTabUtilBrowserTest,
-                       DISABLED_OpenExtensionsOptionsPage) {
+                       MAYBE_OpenExtensionsOptionsPage) {
   // Load an extension with an options page that opens in a tab and one that
   // opens in the chrome://extensions page in a view.
   const Extension* options_in_tab =
@@ -342,19 +347,32 @@ IN_PROC_BROWSER_TEST_F(ExtensionTabUtilBrowserTest, RecordNavigationScheme) {
     int expected_bucket;
   } test_cases[] = {
       {kHttpUrl, 0}, {kHttpsUrl, 0}, {kChromeUrl, 1},
-      {kFileUrl, 2}, {kOtherUrl, 4},
+      {kFileUrl, 3}, {kOtherUrl, 4},
   };
   std::string error;
   GURL url;
 
   const Extension* extension =
       LoadExtension(test_data_dir_.AppendASCII("simple_with_file"));
-  ExtensionId id = extension->id();
-  TestExtensionRegistryObserver observer(ExtensionRegistry::Get(profile()), id);
+
+  for (const auto& test_case : test_cases) {
+    base::HistogramTester histogram_tester;
+    auto result_url = ExtensionTabUtil::PrepareURLForNavigation(
+        test_case.url, extension, profile());
+    histogram_tester.ExpectBucketCount("Extensions.Navigation.Scheme",
+                                       test_case.expected_bucket, 1);
+  }
+
   // Allow file access. This will reload the extension, so we need to reset the
   // extension pointer.
+  ExtensionId id = extension->id();
+  TestExtensionRegistryObserver observer(ExtensionRegistry::Get(profile()), id);
   util::SetAllowFileAccess(id, profile(), true);
   extension = observer.WaitForExtensionLoaded().get();
+
+  // The extension has file access. Change expected result to
+  // NavigationScheme::kFileWithPermission.
+  test_cases[3].expected_bucket = 2;
 
   for (const auto& test_case : test_cases) {
     base::HistogramTester histogram_tester;

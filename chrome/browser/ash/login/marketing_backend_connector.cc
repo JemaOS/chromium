@@ -126,8 +126,7 @@ void MarketingBackendConnector::StartTokenFetch() {
       "MarketingBackendConnector", identity_manager, chromebook_scope,
       base::BindOnce(&MarketingBackendConnector::OnAccessTokenRequestCompleted,
                      this),
-      signin::PrimaryAccountAccessTokenFetcher::Mode::kImmediate,
-      signin::ConsentLevel::kSync);
+      signin::PrimaryAccountAccessTokenFetcher::Mode::kImmediate);
 }
 
 void MarketingBackendConnector::OnAccessTokenRequestCompleted(

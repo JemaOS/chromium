@@ -5,11 +5,11 @@
 #ifndef UI_GFX_DISPLAY_COLOR_SPACES_H_
 #define UI_GFX_DISPLAY_COLOR_SPACES_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "skia/ext/skcolorspace_primaries.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkColorSpace.h"
 #include "ui/gfx/buffer_types.h"
 #include "ui/gfx/color_space.h"
@@ -129,11 +129,6 @@ class COLOR_SPACE_EXPORT DisplayColorSpaces {
 
   bool operator==(const DisplayColorSpaces& other) const;
   bool operator!=(const DisplayColorSpaces& other) const;
-
-  // Return true if the two parameters are equal except for their
-  // `hdr_max_luminance_relative_` and `sdr_max_luminance_nits_` members.
-  static bool EqualExceptForHdrParameters(const DisplayColorSpaces& a,
-                                          const DisplayColorSpaces& b);
 
  private:
   // Serialization of DisplayColorSpaces directly accesses members.

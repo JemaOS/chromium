@@ -8,8 +8,6 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
-import android.os.Build.VERSION;
 import android.os.Handler;
 import android.transition.ChangeBounds;
 import android.transition.Fade;
@@ -19,7 +17,6 @@ import android.transition.Transition.TransitionListener;
 import android.transition.TransitionManager;
 import android.transition.TransitionSet;
 import android.util.AttributeSet;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,8 +29,8 @@ import android.widget.TextView;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.content.res.AppCompatResources;
-import androidx.appcompat.widget.TooltipCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.widget.ImageViewCompat;
 
@@ -47,13 +44,15 @@ import org.chromium.chrome.browser.toolbar.R;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarButtonVariant;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarFeatures;
 import org.chromium.chrome.browser.toolbar.optional_button.OptionalButtonConstants.TransitionType;
-import org.chromium.ui.listmenu.ListMenuButton;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuButton;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.function.BooleanSupplier;
 
-/** Toolbar button that performs animated transitions between icons. */
+/**
+ * Toolbar button that performs animated transitions between icons.
+ */
 class OptionalButtonView extends FrameLayout implements TransitionListener {
     private static final int SWAP_TRANSITION_DURATION_MS = 300;
     private static final int HIDE_TRANSITION_DURATION_MS = 225;
@@ -71,8 +70,6 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
     private ViewGroup mTransitionRoot;
     private String mContentDescription;
     private String mActionChipLabelString;
-    private boolean mCurrentButtonSupportsTinting;
-    private ColorStateList mForegroundColorTint;
     private int mBackgroundColorFilter;
     private Runnable mOnBeforeHideTransitionCallback;
     private Callback<Transition> mFakeBeginTransitionForTesting;
@@ -92,28 +89,21 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
     private Callback<Integer> mTransitionStartedCallback;
     private Callback<Integer> mTransitionFinishedCallback;
     private BooleanSupplier mIsAnimationAllowedPredicate;
-    private final Runnable mCollapseActionChipRunnable =
-            new Runnable() {
-                @Override
-                public void run() {
-                    if (mIsAnimationAllowedPredicate.getAsBoolean()) {
-                        animateActionChipCollapse();
-                    } else {
-                        showIcon(false);
-                    }
-                }
-            };
+    private final Runnable mCollapseActionChipRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mIsAnimationAllowedPredicate.getAsBoolean()) {
+                animateActionChipCollapse();
+            } else {
+                showIcon(false);
+            }
+        }
+    };
 
-    @IntDef({
-        State.HIDDEN,
-        State.SHOWING_ICON,
-        State.SHOWING_ACTION_CHIP,
-        State.RUNNING_SHOW_TRANSITION,
-        State.RUNNING_HIDE_TRANSITION,
-        State.RUNNING_ACTION_CHIP_EXPANSION_TRANSITION,
-        State.RUNNING_ACTION_CHIP_COLLAPSE_TRANSITION,
-        State.RUNNING_SWAP_TRANSITION
-    })
+    @IntDef({State.HIDDEN, State.SHOWING_ICON, State.SHOWING_ACTION_CHIP,
+            State.RUNNING_SHOW_TRANSITION, State.RUNNING_HIDE_TRANSITION,
+            State.RUNNING_ACTION_CHIP_EXPANSION_TRANSITION,
+            State.RUNNING_ACTION_CHIP_COLLAPSE_TRANSITION, State.RUNNING_SWAP_TRANSITION})
     @Retention(RetentionPolicy.SOURCE)
     private @interface State {
         int HIDDEN = 0;
@@ -179,7 +169,7 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         if (mTransitionRoot == null || mIsAnimationAllowedPredicate == null) {
             throw new IllegalStateException(
                     "Both transitionRoot and animationAllowedPredicate must be set before starting "
-                            + "a transition");
+                    + "a transition");
         }
 
         boolean isAnimationAllowedByParent = mIsAnimationAllowedPredicate.getAsBoolean();
@@ -216,7 +206,6 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
 
         mCurrentButtonVariant = buttonSpec.getButtonVariant();
         mCanCurrentButtonShow = buttonData.canShow();
-        mCurrentButtonSupportsTinting = buttonSpec.getSupportsTinting();
 
         mIconDrawable = buttonSpec.getDrawable();
         mNextButtonType = buttonSpec.isDynamicAction() ? ButtonType.DYNAMIC : ButtonType.STATIC;
@@ -230,46 +219,21 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         mClickListener = buttonSpec.getOnClickListener();
         mLongClickListener = buttonSpec.getOnLongClickListener();
         mButton.setEnabled(buttonData.isEnabled());
-
-        // Set circular hover highlight for optional button when button variant is profile, share,
-        // voice search and new tab. Set box hover highlight for the rest of button variants.
-        if (buttonData.getButtonSpec().getShouldShowHoverHighlight()) {
-            mButton.setBackgroundResource(R.drawable.toolbar_button_ripple);
-        } else {
-            TypedValue themeRes = new TypedValue();
-            getContext()
-                    .getTheme()
-                    .resolveAttribute(R.attr.selectableItemBackground, themeRes, true);
-            mButton.setBackgroundResource(themeRes.resourceId);
-        }
-
-        // Set hover state tooltip text for optional toolbar buttons(e.g. share, voice search, new
-        // tab and profile).
-        if (buttonSpec.getHoverTooltipTextId() != ButtonSpec.INVALID_TOOLTIP_TEXT_ID
-                && mButton != null
-                && VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            TooltipCompat.setTooltipText(
-                    mButton, getContext().getString(buttonSpec.getHoverTooltipTextId()));
-        } else {
-            TooltipCompat.setTooltipText(mButton, null);
-        }
         mContentDescription = buttonSpec.getContentDescription();
 
         // If the transition root hasn't been laid out then try again after the next layout. This
         // may happen if the view gets initialized while the activity is not visible (e.g. when a
         // setting change forces an activity reset).
         if (!ViewCompat.isLaidOut(mTransitionRoot)) {
-            getViewTreeObserver()
-                    .addOnGlobalLayoutListener(
-                            new OnGlobalLayoutListener() {
-                                @Override
-                                public void onGlobalLayout() {
-                                    if (ViewCompat.isLaidOut(mTransitionRoot)) {
-                                        startTransitionToNewButton(canAnimate);
-                                        getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                                    }
-                                }
-                            });
+            getViewTreeObserver().addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    if(ViewCompat.isLaidOut(mTransitionRoot)){
+                        startTransitionToNewButton(canAnimate);
+                        getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    }
+                }
+            });
         } else {
             startTransitionToNewButton(canAnimate);
         }
@@ -310,28 +274,21 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
     View getBackgroundView() {
         return mBackground;
     }
-
     void setColorStateList(ColorStateList colorStateList) {
-        mForegroundColorTint = colorStateList;
-
-        if (mCurrentButtonSupportsTinting) {
-            ImageViewCompat.setImageTintList(mButton, colorStateList);
-        }
+        ImageViewCompat.setImageTintList(mButton, colorStateList);
+        ImageViewCompat.setImageTintList(mAnimationImage, colorStateList);
         if (colorStateList != null) {
             mActionChipLabel.setTextColor(colorStateList);
         }
     }
 
+    @VisibleForTesting
     void setHandlerForTesting(Handler handler) {
         mHandlerForTesting = handler;
     }
 
     View getButtonView() {
         return mButton;
-    }
-
-    ImageView getAnimationViewForTesting() {
-        return mAnimationImage;
     }
 
     /**
@@ -376,10 +333,8 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         mAnimationImage = findViewById(R.id.swappable_icon_animation_image);
         mActionChipLabel = findViewById(R.id.action_chip_label);
 
-        mBackground.setImageDrawable(
-                AppCompatResources.getDrawable(
-                        getContext(),
-                        R.drawable.modern_toolbar_text_box_background_with_primary_color));
+        mBackground.setImageDrawable(AppCompatResources.getDrawable(
+                getContext(), R.drawable.modern_toolbar_text_box_background_with_primary_color));
     }
 
     /**
@@ -391,7 +346,7 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
     public void onTransitionStart(Transition transition) {
         if (mState != State.RUNNING_ACTION_CHIP_COLLAPSE_TRANSITION) {
             // Disable click listeners during the transitions (except action chip collapse, which
-            // goes to the same icon/action).
+            // goes to the same icon/action.
             mButton.setOnClickListener(null);
             mButton.setOnLongClickListener(null);
             mButton.setContentDescription(null);
@@ -425,8 +380,6 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         } else {
             mButton.setVisibility(VISIBLE);
             mButton.setImageDrawable(mIconDrawable);
-            ImageViewCompat.setImageTintList(
-                    mButton, mCurrentButtonSupportsTinting ? mForegroundColorTint : null);
             mButton.setOnClickListener(mClickListener);
             mButton.setLongClickable(mLongClickListener != null);
             mButton.setOnLongClickListener(mLongClickListener);
@@ -435,11 +388,8 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
 
         // When finished expanding the action chip schedule the collapse transition in 3 seconds.
         if (mState == State.SHOWING_ACTION_CHIP) {
-            getHandler()
-                    .postDelayed(
-                            mCollapseActionChipRunnable,
-                            AdaptiveToolbarFeatures.getContextualPageActionDelayMs(
-                                    mCurrentButtonVariant));
+            getHandler().postDelayed(mCollapseActionChipRunnable,
+                    AdaptiveToolbarFeatures.getContextualPageActionDelayMs(mCurrentButtonVariant));
         }
     }
 
@@ -495,11 +445,8 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         slide.addTarget(mButton);
         slide.addTarget(mBackground);
 
-        transition
-                .addTransition(slide)
-                .addTransition(shrink)
-                .addTransition(fade)
-                .addTransition(changeBounds);
+        transition.addTransition(slide).addTransition(shrink).addTransition(fade).addTransition(
+                changeBounds);
 
         transition.setDuration(HIDE_TRANSITION_DURATION_MS);
         transition.addListener(this);
@@ -519,8 +466,7 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         Fade fade = new Fade();
         ShrinkTransition shrinkTransition = new ShrinkTransition();
 
-        transitionSet
-                .addTransition(changeBounds)
+        transitionSet.addTransition(changeBounds)
                 .addTransition(fade)
                 .addTransition(shrinkTransition);
 
@@ -560,8 +506,7 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
     }
 
     private boolean isRunningTransition() {
-        return mState == State.RUNNING_SHOW_TRANSITION
-                || mState == State.RUNNING_HIDE_TRANSITION
+        return mState == State.RUNNING_SHOW_TRANSITION || mState == State.RUNNING_HIDE_TRANSITION
                 || mState == State.RUNNING_ACTION_CHIP_EXPANSION_TRANSITION
                 || mState == State.RUNNING_ACTION_CHIP_COLLAPSE_TRANSITION
                 || mState == State.RUNNING_SWAP_TRANSITION;
@@ -601,23 +546,17 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         Drawable newIcon = mIconDrawable;
         Drawable oldIcon = mButton.getDrawable();
 
-        ColorStateList oldIconTint = ImageViewCompat.getImageTintList(mButton);
-        ColorStateList newIconTint = mCurrentButtonSupportsTinting ? mForegroundColorTint : null;
-
         // Prepare icons for the transition, these changes are done instantly.
         if (!isRevertingToStatic) {
             // In the default transition we want the new icon to slide from the top and the old one
             // to shrink.
             slidingIcon.setImageDrawable(newIcon);
-            ImageViewCompat.setImageTintList(slidingIcon, newIconTint);
         } else {
             // In the reverse transition we want the new icon to grow and the old icon to slide to
             // the top
             slidingIcon.setImageDrawable(oldIcon);
-            ImageViewCompat.setImageTintList(slidingIcon, oldIconTint);
             slidingIcon.setVisibility(VISIBLE);
             shrinkingIcon.setImageDrawable(newIcon);
-            ImageViewCompat.setImageTintList(shrinkingIcon, newIconTint);
             shrinkingIcon.setVisibility(GONE);
         }
 
@@ -662,14 +601,9 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         mActionChipLabel.setText(mActionChipLabelString);
 
         mAnimationImage.setImageDrawable(mButton.getDrawable());
-        ImageViewCompat.setImageTintList(
-                mAnimationImage, ImageViewCompat.getImageTintList(mButton));
-
         mAnimationImage.setVisibility(VISIBLE);
 
         mButton.setImageDrawable(mIconDrawable);
-        ImageViewCompat.setImageTintList(
-                mButton, mCurrentButtonSupportsTinting ? mForegroundColorTint : null);
         mButton.setVisibility(GONE);
 
         if (AdaptiveToolbarFeatures.shouldUseAlternativeActionChipColor(mCurrentButtonVariant)) {
@@ -691,18 +625,12 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         float actionChipLabelTextWidth =
                 mActionChipLabel.getPaint().measureText(mActionChipLabelString);
 
-        int maxExpandedStateWidthPx =
-                getResources()
-                        .getDimensionPixelSize(
-                                R.dimen.toolbar_phone_optional_button_action_chip_max_width);
+        int maxExpandedStateWidthPx = getResources().getDimensionPixelSize(
+                R.dimen.toolbar_phone_optional_button_action_chip_max_width);
 
-        int expandedStateWidthPx =
-                Math.min(
-                        (int)
-                                (mCollapsedStateWidthPx
-                                        + actionChipLabelTextWidth
-                                        + mExpandedStatePaddingPx),
-                        maxExpandedStateWidthPx);
+        int expandedStateWidthPx = Math.min(
+                (int) (mCollapsedStateWidthPx + actionChipLabelTextWidth + mExpandedStatePaddingPx),
+                maxExpandedStateWidthPx);
 
         setWidth(expandedStateWidthPx);
 
@@ -773,8 +701,6 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         mActionChipLabel.setVisibility(GONE);
 
         mButton.setImageDrawable(mIconDrawable);
-        ImageViewCompat.setImageTintList(
-                mButton, mCurrentButtonSupportsTinting ? mForegroundColorTint : null);
 
         // Begin a transition, all layout changes after this call will be animated. The animation
         // starts at the next frame.
@@ -789,6 +715,7 @@ class OptionalButtonView extends FrameLayout implements TransitionListener {
         mState = State.RUNNING_SHOW_TRANSITION;
     }
 
+    @VisibleForTesting
     public void setFakeBeginDelayedTransitionForTesting(
             Callback<Transition> fakeBeginDelayedTransition) {
         mFakeBeginTransitionForTesting = fakeBeginDelayedTransition;

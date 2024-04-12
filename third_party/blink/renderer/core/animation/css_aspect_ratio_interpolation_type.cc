@@ -71,10 +71,12 @@ class InheritedAspectRatioChecker
   const StyleAspectRatio aspect_ratio_;
 };
 
-InterpolableValue*
+std::unique_ptr<InterpolableValue>
 CSSAspectRatioInterpolationType::CreateInterpolableAspectRatio(
     const StyleAspectRatio& aspect_ratio) {
-  return InterpolableAspectRatio::MaybeCreate(aspect_ratio);
+  std::unique_ptr<InterpolableAspectRatio> result =
+      InterpolableAspectRatio::MaybeCreate(aspect_ratio);
+  return std::move(result);
 }
 
 PairwiseInterpolationValue CSSAspectRatioInterpolationType::MaybeMergeSingles(
@@ -115,8 +117,7 @@ InterpolationValue CSSAspectRatioInterpolationType::MaybeConvertInherit(
 
   StyleAspectRatio inherited_aspect_ratio = state.ParentStyle()->AspectRatio();
   conversion_checkers.push_back(
-      MakeGarbageCollected<InheritedAspectRatioChecker>(
-          inherited_aspect_ratio));
+      std::make_unique<InheritedAspectRatioChecker>(inherited_aspect_ratio));
   if (inherited_aspect_ratio.IsAuto())
     return nullptr;
 

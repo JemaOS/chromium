@@ -5,7 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_BREAKOUT_BOX_MEDIA_STREAM_VIDEO_TRACK_UNDERLYING_SINK_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_BREAKOUT_BOX_MEDIA_STREAM_VIDEO_TRACK_UNDERLYING_SINK_H_
 
-#include "base/memory/raw_ptr.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/streams/underlying_sink_base.h"
 #include "third_party/blink/renderer/modules/breakout_box/pushable_media_stream_video_source.h"
@@ -26,34 +25,24 @@ class MODULES_EXPORT MediaStreamVideoTrackUnderlyingSink
   explicit MediaStreamVideoTrackUnderlyingSink(
       scoped_refptr<PushableMediaStreamVideoSource::Broker> source_broker);
 
-  MediaStreamVideoTrackUnderlyingSink(
-      scoped_refptr<PushableMediaStreamVideoSource::Broker> source_broker,
-      gpu::GpuMemoryBufferManager* gmb_manager);
-
   ~MediaStreamVideoTrackUnderlyingSink() override;
 
   // UnderlyingSinkBase overrides.
-  ScriptPromiseTyped<IDLUndefined> start(
-      ScriptState* script_state,
-      WritableStreamDefaultController* controller,
-      ExceptionState& exception_state) override;
-  ScriptPromiseTyped<IDLUndefined> write(
-      ScriptState* script_state,
-      ScriptValue chunk,
-      WritableStreamDefaultController* controller,
-      ExceptionState& exception_state) override;
-  ScriptPromiseTyped<IDLUndefined> abort(
-      ScriptState* script_state,
-      ScriptValue reason,
-      ExceptionState& exception_state) override;
-  ScriptPromiseTyped<IDLUndefined> close(
-      ScriptState* script_state,
-      ExceptionState& exception_state) override;
+  ScriptPromise start(ScriptState* script_state,
+                      WritableStreamDefaultController* controller,
+                      ExceptionState& exception_state) override;
+  ScriptPromise write(ScriptState* script_state,
+                      ScriptValue chunk,
+                      WritableStreamDefaultController* controller,
+                      ExceptionState& exception_state) override;
+  ScriptPromise abort(ScriptState* script_state,
+                      ScriptValue reason,
+                      ExceptionState& exception_state) override;
+  ScriptPromise close(ScriptState* script_state,
+                      ExceptionState& exception_state) override;
 
   std::unique_ptr<WritableStreamTransferringOptimizer>
   GetTransferringOptimizer();
-
-  gpu::GpuMemoryBufferManager* gmb_manager() { return gmb_manager_; }
 
  private:
   void Disconnect();
@@ -66,13 +55,13 @@ class MODULES_EXPORT MediaStreamVideoTrackUnderlyingSink
   // not have arrived yet, and initializing the
   // WebGraphicsContext3DVideoFramePool may require a round-trip to the main
   // thread.
-  std::optional<ScriptPromiseTyped<IDLUndefined>>
-  MaybeConvertToNV12GMBVideoFrame(ScriptState* script_state,
-                                  scoped_refptr<media::VideoFrame> video_frame,
-                                  base::TimeTicks estimated_capture_time)
+  absl::optional<ScriptPromise> MaybeConvertToNV12GMBVideoFrame(
+      ScriptState* script_state,
+      scoped_refptr<media::VideoFrame> video_frame,
+      base::TimeTicks estimated_capture_time)
       VALID_CONTEXT_REQUIRED(sequence_checker_);
   // Handles callback from WebGraphicsContext3DVideoFramePool::Convert.
-  void ConvertDone(ScriptPromiseResolverTyped<IDLUndefined>* resolver,
+  void ConvertDone(Persistent<ScriptPromiseResolver> resolver,
                    scoped_refptr<media::VideoFrame> orig_video_frame,
                    base::TimeTicks estimated_capture_time,
                    scoped_refptr<media::VideoFrame> converted_video_frame);
@@ -82,9 +71,10 @@ class MODULES_EXPORT MediaStreamVideoTrackUnderlyingSink
 
   std::unique_ptr<WebGraphicsContext3DVideoFramePool> accelerated_frame_pool_
       GUARDED_BY_CONTEXT(sequence_checker_);
+  bool accelerated_frame_pool_callback_in_progress_
+      GUARDED_BY_CONTEXT(sequence_checker_) = false;
   int convert_to_nv12_gmb_failure_count_ GUARDED_BY_CONTEXT(sequence_checker_) =
       0;
-  const raw_ptr<gpu::GpuMemoryBufferManager, DanglingUntriaged> gmb_manager_ = nullptr;
 
   SEQUENCE_CHECKER(sequence_checker_);
 };

@@ -21,7 +21,6 @@
 #include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/display/test/test_screen.h"
 
 namespace arc {
 
@@ -74,15 +73,13 @@ class ArcCpuThrottleObserverTest : public testing::Test {
 
  private:
   content::BrowserTaskEnvironment task_environment_;
-  display::test::TestScreen test_screen_{/*create_display=*/true,
-                                         /*register_screen=*/true};
   TestingPrefServiceSimple local_state_;
-  raw_ptr<ArcMetricsService, DanglingUntriaged> arc_metrics_service_ = nullptr;
+  raw_ptr<ArcMetricsService, ExperimentalAsh> arc_metrics_service_ = nullptr;
   ArcCpuThrottleObserver cpu_throttle_observer_;
   std::unique_ptr<ArcServiceManager> service_manager_;
   std::unique_ptr<ArcSessionManager> session_manager_;
   std::unique_ptr<TestingProfile> testing_profile_;
-  raw_ptr<ArcInstanceThrottle, DanglingUntriaged> test_instance_throttle_;
+  raw_ptr<ArcInstanceThrottle, ExperimentalAsh> test_instance_throttle_;
 };
 
 TEST_F(ArcCpuThrottleObserverTest, TestConstructDestruct) {}
@@ -97,7 +94,7 @@ TEST_F(ArcCpuThrottleObserverTest, TestStatusChanges) {
                                      base::Unretained(&test_observer)));
   EXPECT_TRUE(throttle()->HasServiceObserverForTesting(observer()));
 
-  EXPECT_EQ(1, test_observer.count());
+  EXPECT_EQ(0, test_observer.count());
   EXPECT_EQ(0, test_observer.active_count());
   EXPECT_EQ(0, test_observer.enforced_count());
 
@@ -105,14 +102,14 @@ TEST_F(ArcCpuThrottleObserverTest, TestStatusChanges) {
   EXPECT_FALSE(observer()->enforced());
 
   observer()->OnThrottle(false);  // Not throttled.
-  EXPECT_EQ(2, test_observer.count());
+  EXPECT_EQ(1, test_observer.count());
   EXPECT_EQ(1, test_observer.active_count());
   EXPECT_EQ(0, test_observer.enforced_count());
   EXPECT_TRUE(observer()->active());
   EXPECT_FALSE(observer()->enforced());
 
   observer()->OnThrottle(true);  // Yes, throttled.
-  EXPECT_EQ(3, test_observer.count());
+  EXPECT_EQ(2, test_observer.count());
   EXPECT_EQ(1, test_observer.active_count());
   EXPECT_EQ(0, test_observer.enforced_count());
   EXPECT_FALSE(observer()->active());

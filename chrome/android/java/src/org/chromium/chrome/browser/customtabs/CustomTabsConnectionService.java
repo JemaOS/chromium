@@ -9,7 +9,8 @@ import org.chromium.chrome.browser.base.SplitCompatCustomTabsService;
 
 /** See {@link CustomTabsConnectionServiceImpl}. */
 public class CustomTabsConnectionService extends SplitCompatCustomTabsService {
-    private static @IdentifierNameString String sImplClassName =
+    @IdentifierNameString
+    private static String sImplClassName =
             "org.chromium.chrome.browser.customtabs.CustomTabsConnectionServiceImpl";
 
     public CustomTabsConnectionService() {

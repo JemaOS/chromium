@@ -5,18 +5,17 @@
 #ifndef UI_ACCESSIBILITY_AX_MODE_OBSERVER_H_
 #define UI_ACCESSIBILITY_AX_MODE_OBSERVER_H_
 
-#include "base/observer_list_types.h"
 #include "ui/accessibility/ax_export.h"
 #include "ui/accessibility/ax_mode.h"
 
 namespace ui {
 
-class AX_EXPORT AXModeObserver : public base::CheckedObserver {
+class AX_EXPORT AXModeObserver {
  public:
-  ~AXModeObserver() override;
+  virtual ~AXModeObserver() {}
 
   // Notifies when accessibility mode changes.
-  virtual void OnAXModeAdded(AXMode mode) = 0;
+  virtual void OnAXModeAdded(ui::AXMode mode) = 0;
 };
 
 }  // namespace ui

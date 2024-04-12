@@ -47,7 +47,7 @@ OrgGnomeMutterIdleMonitor::OrgGnomeMutterIdleMonitor()
 
 OrgGnomeMutterIdleMonitor::~OrgGnomeMutterIdleMonitor() = default;
 
-std::optional<base::TimeDelta> OrgGnomeMutterIdleMonitor::GetIdleTime() const {
+absl::optional<base::TimeDelta> OrgGnomeMutterIdleMonitor::GetIdleTime() const {
   DCHECK_CALLED_ON_VALID_THREAD(main_thread_checker_);
 
   switch (service_state_) {
@@ -76,11 +76,11 @@ std::optional<base::TimeDelta> OrgGnomeMutterIdleMonitor::GetIdleTime() const {
       return base::Time::Now() - idle_timestamp_;
 
     case ServiceState::kNotAvailable:
-      return std::nullopt;
+      return absl::nullopt;
 
     default:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 

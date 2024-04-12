@@ -7,14 +7,8 @@
 StorageNotificationServiceFactory::StorageNotificationServiceFactory()
     : ProfileKeyedServiceFactory(
           "StorageNotificationService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
-StorageNotificationServiceFactory::~StorageNotificationServiceFactory() =
-    default;
+          ProfileSelections::BuildForRegularAndIncognito()) {}
+StorageNotificationServiceFactory::~StorageNotificationServiceFactory() {}
 
 // static
 StorageNotificationServiceImpl*
@@ -27,8 +21,7 @@ StorageNotificationServiceFactory::GetForBrowserContext(
 // static
 StorageNotificationServiceFactory*
 StorageNotificationServiceFactory::GetInstance() {
-  static base::NoDestructor<StorageNotificationServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<StorageNotificationServiceFactory>::get();
 }
 
 // static

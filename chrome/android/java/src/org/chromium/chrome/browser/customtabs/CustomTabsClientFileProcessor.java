@@ -15,8 +15,6 @@ import androidx.annotation.WorkerThread;
 import androidx.browser.customtabs.CustomTabsService;
 import androidx.browser.customtabs.CustomTabsSessionToken;
 
-import dagger.Lazy;
-
 import org.chromium.base.FileUtils;
 import org.chromium.base.Log;
 import org.chromium.chrome.browser.browserservices.ui.splashscreen.trustedwebactivity.SplashImageHolder;
@@ -25,7 +23,11 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-/** Processes the files received via Custom Tab connection from client apps. */
+import dagger.Lazy;
+
+/**
+ * Processes the files received via Custom Tab connection from client apps.
+ */
 @Singleton
 public class CustomTabsClientFileProcessor {
 
@@ -36,8 +38,8 @@ public class CustomTabsClientFileProcessor {
     private boolean mTwaSplashImageHolderCreated;
 
     @Inject
-    public CustomTabsClientFileProcessor(
-            @Named(APP_CONTEXT) Context context, Lazy<SplashImageHolder> twaSplashImageHolder) {
+    public CustomTabsClientFileProcessor(@Named(APP_CONTEXT) Context context,
+            Lazy<SplashImageHolder> twaSplashImageHolder) {
         mTwaSplashImageHolder = twaSplashImageHolder;
         mContext = context;
     }
@@ -47,8 +49,8 @@ public class CustomTabsClientFileProcessor {
      * @return {@code true} if successful.
      */
     @WorkerThread
-    public boolean processFile(
-            CustomTabsSessionToken session, Uri uri, int purpose, Bundle extras) {
+    public boolean processFile(CustomTabsSessionToken session, Uri uri,
+            int purpose, Bundle extras) {
         if (uri == null) {
             Log.w(TAG, "Received a null uri");
             return false;
@@ -70,7 +72,9 @@ public class CustomTabsClientFileProcessor {
         return true;
     }
 
-    /** Cleans up files associated with the session that has been disconnected. */
+    /**
+     * Cleans up files associated with the session that has been disconnected.
+     */
     public void onSessionDisconnected(CustomTabsSessionToken session) {
         if (mTwaSplashImageHolderCreated) {
             // If the image still hasn't been claimed, delete it.

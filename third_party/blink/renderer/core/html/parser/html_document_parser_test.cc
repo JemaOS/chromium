@@ -5,10 +5,10 @@
 #include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
 
 #include <memory>
-#include <optional>
 
 #include "base/test/scoped_feature_list.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/html/html_iframe_element.h"
 #include "third_party/blink/renderer/core/html/parser/text_resource_decoder.h"
@@ -65,9 +65,8 @@ class HTMLDocumentParserTest
   HTMLDocumentParser* CreateParser(HTMLDocument& document) {
     auto* parser =
         MakeGarbageCollected<HTMLDocumentParser>(document, GetParam());
-    std::unique_ptr<TextResourceDecoder> decoder(
-        BuildTextResourceDecoder(document.GetFrame(), document.Url(),
-                                 AtomicString("text/html"), g_null_atom));
+    std::unique_ptr<TextResourceDecoder> decoder(BuildTextResourceDecoder(
+        document.GetFrame(), document.Url(), "text/html", g_null_atom));
     parser->SetDecoder(std::move(decoder));
     return parser;
   }
@@ -263,9 +262,8 @@ class HTMLDocumentParserProcessImmediatelyTest : public PageTestBase {
   static HTMLDocumentParser* CreateParser(HTMLDocument& document) {
     auto* parser = MakeGarbageCollected<HTMLDocumentParser>(
         document, kAllowDeferredParsing);
-    std::unique_ptr<TextResourceDecoder> decoder(
-        BuildTextResourceDecoder(document.GetFrame(), document.Url(),
-                                 AtomicString("text/html"), g_null_atom));
+    std::unique_ptr<TextResourceDecoder> decoder(BuildTextResourceDecoder(
+        document.GetFrame(), document.Url(), "text/html", g_null_atom));
     parser->SetDecoder(std::move(decoder));
     return parser;
   }
@@ -288,8 +286,7 @@ class HTMLDocumentParserProcessImmediatelyTest : public PageTestBase {
 
     Document* top_doc =
         web_view_impl->MainFrameImpl()->GetFrame()->GetDocument();
-    auto* iframe =
-        To<HTMLIFrameElement>(top_doc->QuerySelector(AtomicString("iframe")));
+    auto* iframe = To<HTMLIFrameElement>(top_doc->QuerySelector("iframe"));
     Document* child_document = iframe->contentDocument();
     return child_document ? CreateParser(To<HTMLDocument>(*child_document))
                           : nullptr;

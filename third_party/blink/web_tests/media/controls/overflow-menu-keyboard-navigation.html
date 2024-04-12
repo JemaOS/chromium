@@ -11,38 +11,38 @@ function testNavigation(root, elements, next, previous) {
   // Internal copy of the array. They are otherwise passed by reference.
   const list = elements.slice(0);
 
-  assert_equals(root.activeElement, list[0], 'should start with first element active');
+  assert_equals(root.activeElement, list[0]);
 
-  list.forEach((element, index) => {
+  list.forEach(element => {
     if (element == list[0])
       return;
 
     next();
 
-    assert_equals(root.activeElement, element, 'going to the next element should move focus: ' + index);
+    assert_equals(root.activeElement, element);
     assert_equals(
         window.getComputedStyle(element).getPropertyValue('background-color'),
-        'rgb(224, 224, 224)', 'the focused element should be properly styled');
+        'rgb(224, 224, 224)');
   });
 
   // Next action after reaching the end is a no-op.
   next();
-  assert_equals(root.activeElement, list.pop(), 'next from the end is a no-op');
+  assert_equals(root.activeElement, list.pop());
   // pop() will remove the last element which will allow the next iteration to
   // start from n-1.
 
-  list.reverse().forEach((element, index) => {
+  list.reverse().forEach(element => {
     previous();
 
-    assert_equals(root.activeElement, element, 'going to the previous element should move focus: ' + index);
+    assert_equals(root.activeElement, element);
     assert_equals(
         window.getComputedStyle(element).getPropertyValue('background-color'),
-        'rgb(224, 224, 224)', 'the focused element should be properly styled');
+        'rgb(224, 224, 224)');
   });
 
   // Previous element after reaching the beginning is a no-op.
   previous();
-  assert_equals(root.activeElement, list[list.length - 1], 'previous from the beginning is a no-op');
+  assert_equals(root.activeElement, list[list.length - 1]);
 }
 
 async_test(t => {
@@ -52,8 +52,6 @@ async_test(t => {
   const video = document.createElement('video');
   video.controls = true;
   video.src = '../content/test.ogv';
-
-  // Pretend we have a cast device.
   internals.mediaPlayerRemoteRouteAvailabilityChanged(video, true);
 
   [ '../track/captions-webvtt/captions-fast.vtt',
@@ -73,30 +71,28 @@ async_test(t => {
     singleTapOnControl(overflowButton(video), t.step_func_done(() => {
       const menu = overflowMenu(video);
       assert_true(isVisible(menu));
-
-      const elements = [ castOverflowItem(video).parentElement,
-                         captionsOverflowItem(video).parentElement,
-                         playbackSpeedOverflowItem(video).parentElement ];
-      if (document.pictureInPictureEnabled) {
-        elements.push(pictureInPictureOverflowItem(video).parentElement);
-      }
-
       assert_equals(internals.shadowRoot(video).activeElement,
-                    elements[0], 'the original active element should be the first element');
+                    menu.lastElementChild);
 
+      const elements = [ menu.lastElementChild,
+                         menu.lastElementChild.previousSibling,
+                         menu.lastElementChild.previousSibling.previousSibling ];
+
+      if (document.pictureInPictureEnabled)
+        elements.push(menu.lastElementChild.previousSibling.previousSibling.previousSibling);
 
       testNavigation(internals.shadowRoot(video), elements,
-                     () => { eventSender.keyDown('ArrowDown'); },
-                     () => { eventSender.keyDown('ArrowUp'); });
+                     () => { eventSender.keyDown('ArrowUp'); },
+                     () => { eventSender.keyDown('ArrowDown'); });
 
       testNavigation(internals.shadowRoot(video), elements,
-                     () => { eventSender.keyDown('Tab'); },
-                     () => { eventSender.keyDown('Tab', [ 'shiftKey' ]); });
+                     () => { eventSender.keyDown('Tab', [ 'shiftKey' ]); },
+                     () => { eventSender.keyDown('Tab'); });
 
       // Navigating with Shift + Arrow Keys should also work.
       testNavigation(internals.shadowRoot(video), elements,
-                     () => { eventSender.keyDown('ArrowDown', [ 'shiftKey' ]); },
-                     () => { eventSender.keyDown('ArrowUp', [ 'shiftKey' ]); });
+                     () => { eventSender.keyDown('ArrowUp', [ 'shiftKey' ]); },
+                     () => { eventSender.keyDown('ArrowDown', [ 'shiftKey' ]); });
 
       // Closing.
       eventSender.keyDown('Escape');

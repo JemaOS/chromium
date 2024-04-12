@@ -12,8 +12,7 @@
 
 namespace android {
 
-std::vector<std::string> GetBackupBoolPrefNames();
-std::string GetBackupAccountSettingsPrefName();
+std::vector<std::string> GetBackupPrefNames();
 
 // Test interface wrapping the static functions that are only called from Java.
 base::android::ScopedJavaLocalRef<jobjectArray> GetBoolBackupNamesForTesting(
@@ -27,14 +26,6 @@ void SetBoolBackupPrefsForTesting(
     const base::android::JavaParamRef<jobject>& jcaller,
     const base::android::JavaParamRef<jobjectArray>& names,
     const base::android::JavaParamRef<jbooleanArray>& values);
-base::android::ScopedJavaLocalRef<jstring>
-GetAccountSettingsBackupNameForTesting(
-    JNIEnv* env,
-    const base::android::JavaParamRef<jobject>& jcaller);
-base::android::ScopedJavaLocalRef<jstring>
-GetAccountSettingsBackupValueForTesting(
-    JNIEnv* env,
-    const base::android::JavaParamRef<jobject>& jcaller);
 
 }  //  namespace android
 

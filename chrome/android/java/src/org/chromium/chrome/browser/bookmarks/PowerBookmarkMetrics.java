@@ -13,12 +13,8 @@ public class PowerBookmarkMetrics {
     // These values are persisted to logs. Entries should not be renumbered and
     // numeric values should never be reused. Keep up-to-date with the PriceTrackingState enum in
     // tools/metrics/histograms/enums.xml.
-    @IntDef({
-        PriceTrackingState.PRICE_TRACKING_SHOWN,
-        PriceTrackingState.PRICE_TRACKING_ENABLED,
-        PriceTrackingState.PRICE_TRACKING_DISABLED,
-        PriceTrackingState.COUNT
-    })
+    @IntDef({PriceTrackingState.PRICE_TRACKING_SHOWN, PriceTrackingState.PRICE_TRACKING_ENABLED,
+            PriceTrackingState.PRICE_TRACKING_DISABLED, PriceTrackingState.COUNT})
     public @interface PriceTrackingState {
         int PRICE_TRACKING_SHOWN = 0;
         int PRICE_TRACKING_ENABLED = 1;
@@ -29,8 +25,7 @@ public class PowerBookmarkMetrics {
     /** Report the price tracking state for the bookmark save flow surface. */
     public static void reportBookmarkSaveFlowPriceTrackingState(@PriceTrackingState int state) {
         RecordHistogram.recordEnumeratedHistogram(
-                "PowerBookmarks.BookmarkSaveFlow.PriceTrackingEnabled",
-                state,
+                "PowerBookmarks.BookmarkSaveFlow.PriceTrackingEnabled", state,
                 PriceTrackingState.COUNT);
     }
 
@@ -38,8 +33,7 @@ public class PowerBookmarkMetrics {
     public static void reportBookmarkShoppingItemRowPriceTrackingState(
             @PriceTrackingState int state) {
         RecordHistogram.recordEnumeratedHistogram(
-                "PowerBookmarks.BookmarkManager.PriceTrackingEnabled",
-                state,
+                "PowerBookmarks.BookmarkManager.PriceTrackingEnabled", state,
                 PriceTrackingState.COUNT);
     }
 }

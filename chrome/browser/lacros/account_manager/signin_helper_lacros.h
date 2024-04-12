@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_LACROS_ACCOUNT_MANAGER_SIGNIN_HELPER_LACROS_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
@@ -17,6 +16,7 @@
 #include "components/signin/core/browser/consistency_cookie_manager.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class AccountProfileMapper;
 struct CoreAccountId;
@@ -53,7 +53,7 @@ class SigninHelperLacros : public signin::IdentityManager::Observer {
 
   // Callback for `AccountProfileMapper::ShowAddAccountDialog()`.
   void OnAccountAdded(
-      const std::optional<AccountProfileMapper::AddAccountResult>& result);
+      const absl::optional<AccountProfileMapper::AddAccountResult>& result);
 
   // Called once the user has picked an account (either from the picker or by
   // adding it to the OS directly).

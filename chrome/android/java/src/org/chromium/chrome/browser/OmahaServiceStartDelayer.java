@@ -39,9 +39,8 @@ public class OmahaServiceStartDelayer {
      */
     private static boolean isInteractive() {
         PowerManager powerManager =
-                (PowerManager)
-                        ContextUtils.getApplicationContext()
-                                .getSystemService(Context.POWER_SERVICE);
+                (PowerManager) ContextUtils.getApplicationContext().getSystemService(
+                        Context.POWER_SERVICE);
         return powerManager.isInteractive();
     }
 
@@ -63,11 +62,10 @@ public class OmahaServiceStartDelayer {
         if (!isInteractive()) return;
         if (hasRunnableController()) return;
 
-        mRunnableTask =
-                () -> {
-                    if (isInteractive()) mOmahaRunnable.run();
-                    cancelAndCleanup();
-                };
+        mRunnableTask = () -> {
+            if (isInteractive()) mOmahaRunnable.run();
+            cancelAndCleanup();
+        };
         mHandler.postDelayed(mRunnableTask, MS_DELAY_TO_RUN);
     }
 
@@ -87,7 +85,10 @@ public class OmahaServiceStartDelayer {
         }
     }
 
-    /** Sets the runnable that contains the actions to do when the device is interactive. */
+    /**
+     * Sets the runnable that contains the actions to do when the device is interactive.
+     */
+    @VisibleForTesting(otherwise = VisibleForTesting.NONE)
     void setOmahaRunnableForTesting(Runnable runnable) {
         cancelAndCleanup();
         mOmahaRunnable = runnable;

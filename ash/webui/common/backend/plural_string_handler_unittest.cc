@@ -25,8 +25,8 @@ constexpr char kHandlerFunctionName[] = "handlerFunctionName";
 
 class PluralStringHandlerTest : public testing::Test {
  public:
-  PluralStringHandlerTest()
-      : plural_string_handler_(std::make_unique<PluralStringHandler>()) {
+  PluralStringHandlerTest() : task_environment_(), web_ui_() {
+    plural_string_handler_ = std::make_unique<PluralStringHandler>();
     plural_string_handler_->SetWebUIForTest(&web_ui_);
     plural_string_handler_->RegisterMessages();
     // Add edit button label to plural map for testing purposes.
@@ -43,11 +43,12 @@ class PluralStringHandlerTest : public testing::Test {
  protected:
   base::test::TaskEnvironment task_environment_;
   content::TestWebUI web_ui_;
-  const std::unique_ptr<PluralStringHandler> plural_string_handler_;
+  std::unique_ptr<PluralStringHandler> plural_string_handler_;
 };
 
 TEST_F(PluralStringHandlerTest, PluralString) {
-  const size_t call_data_count_before_call = web_ui_.call_data().size();
+  // base::RunLoop run_loop;
+  const int call_data_count_before_call = web_ui_.call_data().size();
   base::Value::List args;
   args.Append(kHandlerFunctionName);
   args.Append("editButtonLabel");
@@ -55,7 +56,7 @@ TEST_F(PluralStringHandlerTest, PluralString) {
   web_ui_.HandleReceivedMessage("getPluralString", args);
   base::RunLoop().RunUntilIdle();
 
-  ASSERT_EQ(call_data_count_before_call + 1, web_ui_.call_data().size());
+  EXPECT_EQ(call_data_count_before_call + 1u, web_ui_.call_data().size());
   const content::TestWebUI::CallData& call_data =
       CallDataAtIndex(call_data_count_before_call);
   EXPECT_EQ("cr.webUIResponse", call_data.function_name());
@@ -65,7 +66,7 @@ TEST_F(PluralStringHandlerTest, PluralString) {
 }
 
 TEST_F(PluralStringHandlerTest, SingularString) {
-  const size_t call_data_count_before_call = web_ui_.call_data().size();
+  const int call_data_count_before_call = web_ui_.call_data().size();
   base::Value::List args;
   args.Append(kHandlerFunctionName);
   args.Append("editButtonLabel");
@@ -73,7 +74,7 @@ TEST_F(PluralStringHandlerTest, SingularString) {
   web_ui_.HandleReceivedMessage("getPluralString", args);
   base::RunLoop().RunUntilIdle();
 
-  ASSERT_EQ(call_data_count_before_call + 1, web_ui_.call_data().size());
+  EXPECT_EQ(call_data_count_before_call + 1u, web_ui_.call_data().size());
   const content::TestWebUI::CallData& call_data =
       CallDataAtIndex(call_data_count_before_call);
   EXPECT_EQ("cr.webUIResponse", call_data.function_name());

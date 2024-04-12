@@ -40,7 +40,6 @@
 #include "third_party/blink/renderer/platform/network/form_data_encoder.h"
 #include "third_party/blink/renderer/platform/network/wrapped_data_pipe_getter.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
-
 namespace blink {
 
 void WebHTTPBody::Initialize() {
@@ -73,7 +72,7 @@ bool WebHTTPBody::ElementAt(size_t index, Element& result) const {
   result.file_path.Reset();
   result.file_start = 0;
   result.file_length = 0;
-  result.modification_time = std::nullopt;
+  result.modification_time = absl::nullopt;
 
   switch (element.type_) {
     case FormDataElement::kData:
@@ -122,7 +121,7 @@ void WebHTTPBody::AppendFileRange(
     const WebString& file_path,
     int64_t file_start,
     int64_t file_length,
-    const std::optional<base::Time>& modification_time) {
+    const absl::optional<base::Time>& modification_time) {
   EnsureMutable();
   private_->AppendFileRange(file_path, file_start, file_length,
                             modification_time);
@@ -131,6 +130,16 @@ void WebHTTPBody::AppendFileRange(
 void WebHTTPBody::AppendBlob(const WebString& uuid) {
   EnsureMutable();
   private_->AppendBlob(uuid, nullptr);
+}
+
+void WebHTTPBody::AppendBlob(
+    const WebString& uuid,
+    uint64_t length,
+    CrossVariantMojoRemote<mojom::BlobInterfaceBase> blob) {
+  EnsureMutable();
+  private_->AppendBlob(
+      uuid, BlobDataHandle::Create(uuid, "" /* type is not necessary */, length,
+                                   std::move(blob)));
 }
 
 void WebHTTPBody::AppendDataPipe(

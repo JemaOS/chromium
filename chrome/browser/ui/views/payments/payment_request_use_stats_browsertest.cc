@@ -23,9 +23,8 @@ namespace payments {
 
 namespace {
 
-const base::Time kSomeDate = base::Time::FromSecondsSinceUnixEpoch(1484505871);
-const base::Time kSomeLaterDate =
-    base::Time::FromSecondsSinceUnixEpoch(1497552271);
+const base::Time kSomeDate = base::Time::FromDoubleT(1484505871);
+const base::Time kSomeLaterDate = base::Time::FromDoubleT(1497552271);
 
 }  // namespace
 
@@ -33,9 +32,7 @@ using PaymentRequestShippingAddressUseStatsTest = PaymentRequestBrowserTestBase;
 
 // Tests that use stats for the shipping address used in a Payment Request are
 // properly updated upon completion.
-// Flaky. https://crbug.com/1495539.
-IN_PROC_BROWSER_TEST_F(PaymentRequestShippingAddressUseStatsTest,
-                       DISABLED_RecordUse) {
+IN_PROC_BROWSER_TEST_F(PaymentRequestShippingAddressUseStatsTest, RecordUse) {
   std::string payment_method_name;
   InstallPaymentApp("a.com", "/payment_request_success_responder.js",
                     &payment_method_name);
@@ -80,9 +77,7 @@ using PaymentRequestContactAddressUseStatsTest = PaymentRequestBrowserTestBase;
 
 // Tests that use stats for the contact address used in a Payment Request are
 // properly updated upon completion.
-// Flaky. https://crbug.com/1495539.
-IN_PROC_BROWSER_TEST_F(PaymentRequestContactAddressUseStatsTest,
-                       DISABLED_RecordUse) {
+IN_PROC_BROWSER_TEST_F(PaymentRequestContactAddressUseStatsTest, RecordUse) {
   std::string payment_method_name;
   InstallPaymentApp("a.com", "/payment_request_success_responder.js",
                     &payment_method_name);
@@ -127,9 +122,8 @@ using PaymentRequestSameShippingAndContactAddressUseStatsTest =
 
 // Tests that use stats for an address that was used both as a shipping and
 // contact address in a Payment Request are properly updated upon completion.
-// Flaky. https://crbug.com/1495539.
 IN_PROC_BROWSER_TEST_F(PaymentRequestSameShippingAndContactAddressUseStatsTest,
-                       DISABLED_RecordUse) {
+                       RecordUse) {
   std::string payment_method_name;
   InstallPaymentApp("a.com", "/payment_request_success_responder.js",
                     &payment_method_name);

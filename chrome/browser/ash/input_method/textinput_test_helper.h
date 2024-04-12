@@ -76,10 +76,6 @@ class TextInputTestHelper : public ui::InputMethodObserver {
   // Sends mouse clicking event to DOM element which has |id| id.
   static bool ClickElement(const std::string& id, content::WebContents* tab);
 
-  // Returns the innerText of the DOM element with ID |id|.
-  static std::string GetElementInnerText(const std::string& id,
-                                         content::WebContents* tab);
-
  private:
   enum WaitImeEventType {
     NO_WAIT,
@@ -106,8 +102,7 @@ class TextInputTestHelper : public ui::InputMethodObserver {
   gfx::Range selection_range_;
   bool focus_state_;
   ui::TextInputType latest_text_input_type_;
-  raw_ptr<ui::InputMethod> input_method_;
-  std::unique_ptr<base::RunLoop> run_loop_;
+  raw_ptr<ui::InputMethod, ExperimentalAsh> input_method_;
 };
 
 }  // namespace input_method

@@ -42,10 +42,9 @@ ExternalLogoutRequestEventHandlerFactory::
 ExternalLogoutRequestEventHandlerFactory::
     ~ExternalLogoutRequestEventHandlerFactory() = default;
 
-std::unique_ptr<KeyedService>
-ExternalLogoutRequestEventHandlerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ExternalLogoutRequestEventHandlerFactory::BuildServiceInstanceFor(
     content::BrowserContext* browser_context) const {
-  return std::make_unique<ExternalLogoutRequestEventHandler>(browser_context);
+  return new ExternalLogoutRequestEventHandler(browser_context);
 }
 
 bool ExternalLogoutRequestEventHandlerFactory::ServiceIsNULLWhileTesting()

@@ -11,7 +11,6 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/logging.h"
-#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
@@ -134,8 +133,7 @@ void BrowserUpdaterClient::IsBrowserRegisteredCompleted(
   std::move(callback).Run(
       std::find_if(apps.begin(), apps.end(),
                    [&](const updater::UpdateService::AppState& app) {
-                     return base::EqualsCaseInsensitiveASCII(app.app_id,
-                                                             app_id);
+                     return app.app_id == app_id;
                    }) != apps.end());
 }
 

@@ -20,7 +20,6 @@
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/install_verifier.h"
 #include "chrome/browser/extensions/updater/extension_updater.h"
-#include "chrome/browser/policy/policy_test_utils.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/common/url_constants.h"
@@ -590,8 +589,6 @@ const char kForceInstallNotEmptyHelp[] =
 
 // See http://crbug.com/57378 for flakiness details.
 IN_PROC_BROWSER_TEST_F(ExtensionManagementTest, ExternalPolicyRefresh) {
-  // Mark as enterprise managed.
-  policy::ScopedDomainEnterpriseManagement scoped_domain;
   const char kExtensionId[] = "ogjcoiohnmldgjemafoockdghcjciccf";
 
   base::ScopedAllowBlockingForTesting allow_blocking;

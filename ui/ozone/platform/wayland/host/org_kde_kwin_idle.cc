@@ -36,9 +36,11 @@ class OrgKdeKwinIdle::Timeout {
   base::TimeDelta GetIdleTime() const;
 
  private:
-  // org_kde_kwin_idle_timeout_listener callbacks:
-  static void OnIdle(void* data, org_kde_kwin_idle_timeout* idle_timeout);
-  static void OnResumed(void* data, org_kde_kwin_idle_timeout* idle_timeout);
+  static void Idle(void* data,
+                   struct org_kde_kwin_idle_timeout* org_kde_kwin_idle_timeout);
+  static void Resumed(
+      void* data,
+      struct org_kde_kwin_idle_timeout* org_kde_kwin_idle_timeout);
 
   wl::Object<org_kde_kwin_idle_timeout> timeout_;
 
@@ -63,7 +65,7 @@ void OrgKdeKwinIdle::Instantiate(WaylandConnection* connection,
     return;
   }
 
-  auto idle = wl::Bind<org_kde_kwin_idle>(registry, name, kMinVersion);
+  auto idle = wl::Bind<struct org_kde_kwin_idle>(registry, name, kMinVersion);
   if (!idle) {
     LOG(ERROR) << "Failed to bind to org_kde_kwin_idle global";
     return;
@@ -78,10 +80,10 @@ OrgKdeKwinIdle::OrgKdeKwinIdle(org_kde_kwin_idle* idle,
 
 OrgKdeKwinIdle::~OrgKdeKwinIdle() = default;
 
-std::optional<base::TimeDelta> OrgKdeKwinIdle::GetIdleTime() const {
-  if (!connection_->seat()) {
-    return std::nullopt;
-  }
+absl::optional<base::TimeDelta> OrgKdeKwinIdle::GetIdleTime() const {
+  if (!connection_->seat())
+    return absl::nullopt;
+
   if (!idle_timeout_) {
     idle_timeout_ =
         std::make_unique<Timeout>(org_kde_kwin_idle_get_idle_timeout(
@@ -92,32 +94,32 @@ std::optional<base::TimeDelta> OrgKdeKwinIdle::GetIdleTime() const {
 
 OrgKdeKwinIdle::Timeout::Timeout(org_kde_kwin_idle_timeout* timeout)
     : timeout_(timeout) {
-  static constexpr org_kde_kwin_idle_timeout_listener kIdleTimeoutListener = {
-      .idle = &OnIdle, .resumed = &OnResumed};
-  org_kde_kwin_idle_timeout_add_listener(timeout, &kIdleTimeoutListener, this);
+  static constexpr org_kde_kwin_idle_timeout_listener kTimeoutListener = {
+      &Idle, &Resumed};
+  org_kde_kwin_idle_timeout_add_listener(timeout, &kTimeoutListener, this);
 }
 
 OrgKdeKwinIdle::Timeout::~Timeout() = default;
 
 base::TimeDelta OrgKdeKwinIdle::Timeout::GetIdleTime() const {
-  if (idle_timestamp_.is_null()) {
+  if (idle_timestamp_.is_null())
     return base::Seconds(0);
-  }
   return base::Time::Now() - idle_timestamp_;
 }
 
 // static
-void OrgKdeKwinIdle::Timeout::OnIdle(void* data,
-                                     org_kde_kwin_idle_timeout* idle_timeout) {
+void OrgKdeKwinIdle::Timeout::Idle(
+    void* data,
+    struct org_kde_kwin_idle_timeout* org_kde_kwin_idle_timeout) {
   auto* self = static_cast<OrgKdeKwinIdle::Timeout*>(data);
   self->idle_timestamp_ =
       base::Time::Now() - base::Microseconds(kIdleThresholdMs);
 }
 
 // static
-void OrgKdeKwinIdle::Timeout::OnResumed(
+void OrgKdeKwinIdle::Timeout::Resumed(
     void* data,
-    org_kde_kwin_idle_timeout* idle_timeout) {
+    struct org_kde_kwin_idle_timeout* org_kde_kwin_idle_timeout) {
   auto* self = static_cast<OrgKdeKwinIdle::Timeout*>(data);
   self->idle_timestamp_ = {};
 }

@@ -5,11 +5,9 @@
 #ifndef CHROME_BROWSER_ASH_APP_LIST_SEARCH_FILES_FILE_SEARCH_PROVIDER_H_
 #define CHROME_BROWSER_ASH_APP_LIST_SEARCH_FILES_FILE_SEARCH_PROVIDER_H_
 
-#include <optional>
 #include <utility>
 #include <vector>
 
-#include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -18,6 +16,7 @@
 #include "chrome/browser/ash/app_list/search/search_provider.h"
 #include "chrome/browser/ui/ash/thumbnail_loader.h"
 #include "chromeos/ash/components/string_matching/tokenized_string.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -40,10 +39,7 @@ class FileSearchProvider : public SearchProvider {
           last_accessed(last_accessed) {}
   };
 
-  explicit FileSearchProvider(
-      Profile* profile,
-      int file_type = base::FileEnumerator::FileType::FILES |
-                      base::FileEnumerator::FileType::DIRECTORIES);
+  explicit FileSearchProvider(Profile* profile);
   ~FileSearchProvider() override;
 
   FileSearchProvider(const FileSearchProvider&) = delete;
@@ -57,7 +53,6 @@ class FileSearchProvider : public SearchProvider {
   void SetRootPathForTesting(const base::FilePath& root_path) {
     root_path_ = root_path;
   }
-  void SetFileTypeForTesting(int file_type) { file_type_ = file_type; }
 
  private:
   void OnSearchComplete(std::vector<FileSearchProvider::FileInfo> paths);
@@ -67,12 +62,11 @@ class FileSearchProvider : public SearchProvider {
 
   base::TimeTicks query_start_time_;
   std::u16string last_query_;
-  std::optional<ash::string_matching::TokenizedString> last_tokenized_query_;
+  absl::optional<ash::string_matching::TokenizedString> last_tokenized_query_;
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
   ash::ThumbnailLoader thumbnail_loader_;
   base::FilePath root_path_;
-  int file_type_;
 
   std::vector<base::FilePath> trash_paths_;
 

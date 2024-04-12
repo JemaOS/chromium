@@ -49,12 +49,6 @@ class InkDropRippleTest
 
   ~InkDropRippleTest() override;
 
-  void ResetInkDropRipple() {
-    observer_.set_ink_drop_ripple(nullptr);
-    test_api_.reset();
-    ink_drop_ripple_.reset();
-  }
-
  protected:
   TestInkDropRippleObserver observer_;
 
@@ -62,7 +56,8 @@ class InkDropRippleTest
 
   std::unique_ptr<InkDropRippleTestApi> test_api_;
 
-  gfx::AnimationTestApi::RenderModeResetter animation_mode_reset_;
+  std::unique_ptr<base::AutoReset<gfx::Animation::RichAnimationRenderMode>>
+      animation_mode_reset_;
 };
 
 InkDropRippleTest::InkDropRippleTest()
@@ -93,9 +88,7 @@ InkDropRippleTest::InkDropRippleTest()
   test_api_->SetDisableAnimationTimers(true);
 }
 
-InkDropRippleTest::~InkDropRippleTest() {
-  ResetInkDropRipple();
-}
+InkDropRippleTest::~InkDropRippleTest() = default;
 
 // Note: First argument is optional and intentionally left blank.
 // (it's a prefix for the generated test cases)
@@ -195,7 +188,7 @@ TEST_P(InkDropRippleTest, AnimationsAbortedDuringDeletion) {
     return;
 
   ink_drop_ripple_->AnimateToState(views::InkDropState::ACTION_PENDING);
-  ResetInkDropRipple();
+  ink_drop_ripple_.reset();
   EXPECT_EQ(1, observer_.last_animation_started_ordinal());
   EXPECT_EQ(2, observer_.last_animation_ended_ordinal());
   EXPECT_EQ(views::InkDropState::ACTION_PENDING,

@@ -181,5 +181,5 @@ void SharingIconView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   PageActionIconView::GetAccessibleNodeData(node_data);
 }
 
-BEGIN_METADATA(SharingIconView)
+BEGIN_METADATA(SharingIconView, PageActionIconView)
 END_METADATA

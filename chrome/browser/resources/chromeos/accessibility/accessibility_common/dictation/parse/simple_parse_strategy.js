@@ -7,22 +7,21 @@
  * it into a Macro.
  */
 
-import {InputController} from '/common/action_fulfillment/input_controller.js';
-import {DeletePrevSentMacro} from '/common/action_fulfillment/macros/delete_prev_sent_macro.js';
-import {InputTextViewMacro, NewLineMacro} from '/common/action_fulfillment/macros/input_text_view_macro.js';
-import {Macro} from '/common/action_fulfillment/macros/macro.js';
-import {MacroName} from '/common/action_fulfillment/macros/macro_names.js';
-import {NavNextSentMacro, NavPrevSentMacro} from '/common/action_fulfillment/macros/nav_sent_macro.js';
-import {RepeatMacro} from '/common/action_fulfillment/macros/repeat_macro.js';
-import * as RepeatableKeyPress from '/common/action_fulfillment/macros/repeatable_key_press_macro.js';
-import {SmartDeletePhraseMacro} from '/common/action_fulfillment/macros/smart_delete_phrase_macro.js';
-import {SmartInsertBeforeMacro} from '/common/action_fulfillment/macros/smart_insert_before_macro.js';
-import {SmartReplacePhraseMacro} from '/common/action_fulfillment/macros/smart_replace_phrase_macro.js';
-import {SmartSelectBetweenMacro} from '/common/action_fulfillment/macros/smart_select_between_macro.js';
-import {ToggleDictationMacro} from '/common/action_fulfillment/macros/toggle_dictation_macro.js';
-
+import {InputController} from '../input_controller.js';
 import {LocaleInfo} from '../locale_info.js';
+import {DeletePrevSentMacro} from '../macros/delete_prev_sent_macro.js';
+import {InputTextViewMacro, NewLineMacro} from '../macros/input_text_view_macro.js';
 import {ListCommandsMacro} from '../macros/list_commands_macro.js';
+import {Macro} from '../macros/macro.js';
+import {MacroName} from '../macros/macro_names.js';
+import {NavNextSentMacro, NavPrevSentMacro} from '../macros/nav_sent_macro.js';
+import {RepeatMacro} from '../macros/repeat_macro.js';
+import * as RepeatableKeyPress from '../macros/repeatable_key_press_macro.js';
+import {SmartDeletePhraseMacro} from '../macros/smart_delete_phrase_macro.js';
+import {SmartInsertBeforeMacro} from '../macros/smart_insert_before_macro.js';
+import {SmartReplacePhraseMacro} from '../macros/smart_replace_phrase_macro.js';
+import {SmartSelectBetweenMacro} from '../macros/smart_select_between_macro.js';
+import {StopListeningMacro} from '../macros/stop_listening_macro.js';
 
 import {ParseStrategy} from './parse_strategy.js';
 
@@ -105,33 +104,15 @@ class SimpleMacroFactory {
 
     const initialArgs = [];
     switch (this.macroName_) {
-      case MacroName.COPY_SELECTED_TEXT:
-      case MacroName.CUT_SELECTED_TEXT:
-      case MacroName.DELETE_ALL_TEXT:
-      case MacroName.DELETE_PREV_CHAR:
-      case MacroName.DELETE_PREV_SENT:
-      case MacroName.DELETE_PREV_WORD:
-      case MacroName.NAV_END_TEXT:
-      case MacroName.NAV_NEXT_CHAR:
-      case MacroName.NAV_NEXT_LINE:
-      case MacroName.NAV_NEXT_SENT:
-      case MacroName.NAV_NEXT_WORD:
-      case MacroName.NAV_START_TEXT:
-      case MacroName.NAV_PREV_CHAR:
-      case MacroName.NAV_PREV_LINE:
-      case MacroName.NAV_PREV_SENT:
-      case MacroName.NAV_PREV_WORD:
       case MacroName.NEW_LINE:
-      case MacroName.SELECT_ALL_TEXT:
-      case MacroName.SELECT_NEXT_CHAR:
-      case MacroName.SELECT_NEXT_WORD:
-      case MacroName.SELECT_PREV_CHAR:
-      case MacroName.SELECT_PREV_WORD:
-      case MacroName.SMART_DELETE_PHRASE:
-      case MacroName.SMART_INSERT_BEFORE:
-      case MacroName.SMART_REPLACE_PHRASE:
-      case MacroName.SMART_SELECT_BTWN_INCL:
+      case MacroName.DELETE_PREV_SENT:
+      case MacroName.NAV_NEXT_SENT:
+      case MacroName.NAV_PREV_SENT:
       case MacroName.UNSELECT_TEXT:
+      case MacroName.SMART_DELETE_PHRASE:
+      case MacroName.SMART_REPLACE_PHRASE:
+      case MacroName.SMART_INSERT_BEFORE:
+      case MacroName.SMART_SELECT_BTWN_INCL:
         initialArgs.push(this.inputController_);
         break;
     }
@@ -214,9 +195,9 @@ class SimpleMacroFactory {
       },
       [MacroName.NEW_LINE]:
           {messageId: 'dictation_command_new_line', build: NewLineMacro},
-      [MacroName.TOGGLE_DICTATION]: {
+      [MacroName.STOP_LISTENING]: {
         messageId: 'dictation_command_stop_listening',
-        build: ToggleDictationMacro,
+        build: StopListeningMacro,
       },
       [MacroName.DELETE_PREV_WORD]: {
         messageId: 'dictation_command_delete_prev_word',
@@ -301,7 +282,7 @@ export class SimpleParseStrategy extends ParseStrategy {
         .add(MacroName.UNSELECT_TEXT)
         .add(MacroName.LIST_COMMANDS)
         .add(MacroName.NEW_LINE)
-        .add(MacroName.TOGGLE_DICTATION)
+        .add(MacroName.STOP_LISTENING)
         .add(MacroName.DELETE_PREV_WORD)
         .add(MacroName.DELETE_PREV_SENT)
         .add(MacroName.NAV_NEXT_WORD)

@@ -19,7 +19,7 @@ constexpr char kSAE[] = "SAE";
 constexpr char kUnsupported[] = "Unsupported";
 }  // namespace
 
-std::optional<mojom::WifiSecurityType> WifiSecurityTypeFromString(
+absl::optional<mojom::WifiSecurityType> WifiSecurityTypeFromString(
     base::StringPiece security_type_string) {
   if (security_type_string == kPSK) {
     return mojom::WifiSecurityType::kPSK;
@@ -49,7 +49,7 @@ std::optional<mojom::WifiSecurityType> WifiSecurityTypeFromString(
     LOG(ERROR) << "Unsupported security type!";
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace ash::quick_start

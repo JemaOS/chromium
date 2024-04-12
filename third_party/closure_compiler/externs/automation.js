@@ -1,4 +1,4 @@
-// Copyright 2024 The Chromium Authors
+// Copyright 2023 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,9 +25,8 @@ chrome.automation.EventType = {
   ACCESS_KEY_CHANGED: 'accessKeyChanged',
   ACTIVE_DESCENDANT_CHANGED: 'activeDescendantChanged',
   ALERT: 'alert',
-  ARIA_ATTRIBUTE_CHANGED_DEPRECATED: 'ariaAttributeChangedDeprecated',
+  ARIA_ATTRIBUTE_CHANGED: 'ariaAttributeChanged',
   ARIA_CURRENT_CHANGED: 'ariaCurrentChanged',
-  ARIA_NOTIFICATIONS_POSTED: 'ariaNotificationsPosted',
   ATOMIC_CHANGED: 'atomicChanged',
   AUTO_COMPLETE_CHANGED: 'autoCompleteChanged',
   AUTOCORRECTION_OCCURED: 'autocorrectionOccured',
@@ -38,6 +37,7 @@ chrome.automation.EventType = {
   CHECKED_STATE_CHANGED: 'checkedStateChanged',
   CHECKED_STATE_DESCRIPTION_CHANGED: 'checkedStateDescriptionChanged',
   CHILDREN_CHANGED: 'childrenChanged',
+  CLASS_NAME_CHANGED: 'classNameChanged',
   CLICKED: 'clicked',
   COLLAPSED: 'collapsed',
   CONTROLS_CHANGED: 'controlsChanged',
@@ -98,7 +98,7 @@ chrome.automation.EventType = {
   MULTISELECTABLE_STATE_CHANGED: 'multiselectableStateChanged',
   NAME_CHANGED: 'nameChanged',
   OBJECT_ATTRIBUTE_CHANGED: 'objectAttributeChanged',
-  ORIENTATION_CHANGED: 'orientationChanged',
+  OTHER_ATTRIBUTE_CHANGED: 'otherAttributeChanged',
   PARENT_CHANGED: 'parentChanged',
   PLACEHOLDER_CHANGED: 'placeholderChanged',
   PORTAL_ACTIVATED: 'portalActivated',
@@ -178,14 +178,13 @@ chrome.automation.RoleType = {
   DATE_TIME: 'dateTime',
   DEFINITION: 'definition',
   DESCRIPTION_LIST: 'descriptionList',
-  DESCRIPTION_LIST_DETAIL: 'descriptionListDetailDeprecated',
-  DESCRIPTION_LIST_TERM_DEPRECATED: 'descriptionListTermDeprecated',
+  DESCRIPTION_LIST_DETAIL: 'descriptionListDetail',
+  DESCRIPTION_LIST_TERM: 'descriptionListTerm',
   DESKTOP: 'desktop',
   DETAILS: 'details',
   DIALOG: 'dialog',
   DIRECTORY: 'directory',
   DISCLOSURE_TRIANGLE: 'disclosureTriangle',
-  DISCLOSURE_TRIANGLE_GROUPED: 'disclosureTriangleGrouped',
   DOC_ABSTRACT: 'docAbstract',
   DOC_ACKNOWLEDGMENTS: 'docAcknowledgments',
   DOC_AFTERWORD: 'docAfterword',
@@ -309,7 +308,7 @@ chrome.automation.RoleType = {
   PLUGIN_OBJECT: 'pluginObject',
   POP_UP_BUTTON: 'popUpButton',
   PORTAL: 'portal',
-  PRE_DEPRECATED: 'preDeprecated',
+  PRE: 'pre',
   PROGRESS_INDICATOR: 'progressIndicator',
   RADIO_BUTTON: 'radioButton',
   RADIO_GROUP: 'radioGroup',
@@ -427,7 +426,6 @@ chrome.automation.ActionType = {
   SHOW_CONTEXT_MENU: 'showContextMenu',
   SIGNAL_END_OF_TEST: 'signalEndOfTest',
   SHOW_TOOLTIP: 'showTooltip',
-  STITCH_CHILD_TREE: 'stitchChildTree',
   START_DUCKING_MEDIA: 'startDuckingMedia',
   STOP_DUCKING_MEDIA: 'stopDuckingMedia',
   SUSPEND_MEDIA: 'suspendMedia',
@@ -801,6 +799,17 @@ chrome.automation.TreeChangeObserverFilter = {
  * @see https://developer.chrome.com/extensions/automation#type-CustomAction
  */
 chrome.automation.CustomAction;
+
+/**
+ * @typedef {{
+ *   startIndex: number,
+ *   endIndex: number,
+ *   language: string,
+ *   probability: number
+ * }}
+ * @see https://developer.chrome.com/extensions/automation#type-LanguageSpan
+ */
+chrome.automation.LanguageSpan;
 
 /**
  * @typedef {{
@@ -1204,8 +1213,7 @@ chrome.automation.AutomationNode.prototype.role;
 chrome.automation.AutomationNode.prototype.state;
 
 /**
- * The rendered location (as a bounding box) of this node in global screen
- * coordinates.
+ * The rendered location (as a bounding box) of this node in global screen coordinates.
  * @type {!chrome.automation.Rect}
  * @see https://developer.chrome.com/extensions/automation#type-location
  */
@@ -1236,8 +1244,7 @@ chrome.automation.AutomationNode.prototype.boundsForRange = function(startIndex,
 chrome.automation.AutomationNode.prototype.unclippedBoundsForRange = function(startIndex, endIndex, callback) {};
 
 /**
- * The location (as a bounding box) of this node in global screen coordinates
- * without applying any clipping from ancestors.
+ * The location (as a bounding box) of this node in global screen coordinates without applying any clipping from ancestors.
  * @type {(!chrome.automation.Rect|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-unclippedLocation
  */
@@ -1251,8 +1258,7 @@ chrome.automation.AutomationNode.prototype.unclippedLocation;
 chrome.automation.AutomationNode.prototype.description;
 
 /**
- * Description of the state of the checkbox. Used only when the node is
- * checkable.
+ * Description of the state of the checkbox. Used only when the node is checkable.
  * @type {(string|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-checkedStateDescription
  */
@@ -1273,9 +1279,7 @@ chrome.automation.AutomationNode.prototype.placeholder;
 chrome.automation.AutomationNode.prototype.roleDescription;
 
 /**
- * The accessible name for this node, via the <a
- * href="http://www.w3.org/TR/wai-aria/#namecalculation"> Accessible Name
- * Calculation</a> process.
+ * The accessible name for this node, via the <a href="http://www.w3.org/TR/wai-aria/#namecalculation"> Accessible Name Calculation</a> process.
  * @type {(string|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-name
  */
@@ -1310,17 +1314,14 @@ chrome.automation.AutomationNode.prototype.tooltip;
 chrome.automation.AutomationNode.prototype.nameFrom;
 
 /**
- * The image annotation for image nodes, which may be a human-readable string
- * that is the contextualized annotation or a status string related to
- * annotations.
+ * The image annotation for image nodes, which may be a human-readable string that is the contextualized annotation or a status string related to annotations.
  * @type {(string|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-imageAnnotation
  */
 chrome.automation.AutomationNode.prototype.imageAnnotation;
 
 /**
- * The value for this node: for example the <code>value</code> attribute of an
- * <code>&lt;input&gt; element.
+ * The value for this node: for example the <code>value</code> attribute of an <code>&lt;input&gt; element.
  * @type {(string|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-value
  */
@@ -1368,42 +1369,28 @@ chrome.automation.AutomationNode.prototype.wordEnds;
 chrome.automation.AutomationNode.prototype.sentenceStarts;
 
 /**
- * The end indexes of each sentence within the node's name. For most nodes, the
- * size of sentenceStarts array should be equal to the size of sentenceEnds
- * array. Two exceptions are (1) node at the begining of a paragraph but the end
- * of the node's sentences is in its following node. Such a node has one more
- * start index. (2) Node at the end of a paragraph but the start of the node's
- * sentences is in its previous node. Such a node has one more end index. For
- * example, <p><b>Hello</b> world.</p> has two nodes. The first one has one
- * start index (i.e., 0) but no end index. The second node has one end index
- * (i.e., 7) but no start index.
+ * The end indexes of each sentence within the node's name. For most nodes, the size of sentenceStarts array should be equal to the size of sentenceEnds array. Two exceptions are (1) node at the begining of a paragraph but the end of the node's sentences is in its following node. Such a node has one more start index. (2) Node at the end of a paragraph but the start of the node's sentences is in its previous node. Such a node has one more end index. For example, <p><b>Hello</b> world.</p> has two nodes. The first one has one start index (i.e., 0) but no end index. The second node has one end index (i.e., 7) but no start index.
  * @type {(!Array<number>|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-sentenceEnds
  */
 chrome.automation.AutomationNode.prototype.sentenceEnds;
 
 /**
- * The start index of each word within the node's name. This is different from
- * wordStarts because it is not restricted to inline text boxes and can be used
- * for any type of element.
+ * The start index of each word within the node's name. This is different from wordStarts because it is not restricted to inline text boxes and can be used for any type of element.
  * @type {(!Array<number>|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-nonInlineTextWordStarts
  */
 chrome.automation.AutomationNode.prototype.nonInlineTextWordStarts;
 
 /**
- * The end index of each word within the node's name. This is different from
- * wordEnds because it is not restricted to inline text boxes and can be used
- * for any type of element.
+ * The end index of each word within the node's name. This is different from wordEnds because it is not restricted to inline text boxes and can be used for any type of element.
  * @type {(!Array<number>|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-nonInlineTextWordEnds
  */
 chrome.automation.AutomationNode.prototype.nonInlineTextWordEnds;
 
 /**
- * The nodes, if any, which this node is specified to control via <a
- * href="http://www.w3.org/TR/wai-aria/#aria-controls">
- * <code>aria-controls</code></a>.
+ * The nodes, if any, which this node is specified to control via <a href="http://www.w3.org/TR/wai-aria/#aria-controls"> <code>aria-controls</code></a>.
  * @type {(!Array<!chrome.automation.AutomationNode>|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-controls
  */
@@ -1417,18 +1404,14 @@ chrome.automation.AutomationNode.prototype.controls;
 chrome.automation.AutomationNode.prototype.describedBy;
 
 /**
- * The nodes, if any, which may optionally be navigated to after this one. See
- * <a href="http://www.w3.org/TR/wai-aria/#aria-flowto">
- * <code>aria-flowto</code></a>.
+ * The nodes, if any, which may optionally be navigated to after this one. See <a href="http://www.w3.org/TR/wai-aria/#aria-flowto"> <code>aria-flowto</code></a>.
  * @type {(!Array<!chrome.automation.AutomationNode>|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-flowTo
  */
 chrome.automation.AutomationNode.prototype.flowTo;
 
 /**
- * The nodes, if any, which form a label for this element. Generally, the text
- * from these elements will also be exposed as the element's accessible name,
- * via the $(ref:automation.AutomationNode.name) attribute.
+ * The nodes, if any, which form a label for this element. Generally, the text from these elements will also be exposed as the element's accessible name, via the $(ref:automation.AutomationNode.name) attribute.
  * @type {(!Array<!chrome.automation.AutomationNode>|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-labelledBy
  */
@@ -1463,11 +1446,11 @@ chrome.automation.AutomationNode.prototype.inPageLinkTarget;
 chrome.automation.AutomationNode.prototype.details;
 
 /**
- * The nodes, if any, that provide an error message for the current node.
- * @type {(!Array<!chrome.automation.AutomationNode>|undefined)}
- * @see https://developer.chrome.com/extensions/automation#type-errorMessages
+ * A node that provides an error message for a current node.
+ * @type {(!chrome.automation.AutomationNode|undefined)}
+ * @see https://developer.chrome.com/extensions/automation#type-errorMessage
  */
-chrome.automation.AutomationNode.prototype.errorMessages;
+chrome.automation.AutomationNode.prototype.errorMessage;
 
 /**
  * Reverse relationship for details.
@@ -1626,16 +1609,14 @@ chrome.automation.AutomationNode.prototype.scrollYMax;
 chrome.automation.AutomationNode.prototype.scrollable;
 
 /**
- * The character index of the start of the selection within this editable text
- * element; -1 if no selection.
+ * The character index of the start of the selection within this editable text element; -1 if no selection.
  * @type {(number|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-textSelStart
  */
 chrome.automation.AutomationNode.prototype.textSelStart;
 
 /**
- * The character index of the end of the selection within this editable text
- * element; -1 if no selection.
+ * The character index of the end of the selection within this editable text element; -1 if no selection.
  * @type {(number|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-textSelEnd
  */
@@ -1649,8 +1630,7 @@ chrome.automation.AutomationNode.prototype.textSelEnd;
 chrome.automation.AutomationNode.prototype.markers;
 
 /**
- * If a selection is present, whether the anchor of the selection comes after
- * its focus in the accessibility tree.
+ * If a selection is present, whether the anchor of the selection comes after its focus in the accessibility tree.
  * @type {(boolean|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-isSelectionBackward
  */
@@ -1811,8 +1791,7 @@ chrome.automation.AutomationNode.prototype.tableColumnCount;
 chrome.automation.AutomationNode.prototype.ariaColumnCount;
 
 /**
- * The zero-based index of the column that this cell is in as specified in the
- * DOM.
+ * The zero-based index of the column that this cell is in as specified in the DOM.
  * @type {(number|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-tableCellColumnIndex
  */
@@ -1882,8 +1861,7 @@ chrome.automation.AutomationNode.prototype.tableColumnIndex;
 chrome.automation.AutomationNode.prototype.tableRowIndex;
 
 /**
- * The type of region if this is the root of a live region. Possible values are
- * 'polite' and 'assertive'.
+ * The type of region if this is the root of a live region. Possible values are 'polite' and 'assertive'.
  * @type {(string|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-liveStatus
  */
@@ -1965,13 +1943,6 @@ chrome.automation.AutomationNode.prototype.isComboBox;
  * @see https://developer.chrome.com/extensions/automation#type-isImage
  */
 chrome.automation.AutomationNode.prototype.isImage;
-
-/**
- * Whether the node contains hidden nodes.
- * @type {boolean}
- * @see https://developer.chrome.com/extensions/automation#type-hasHiddenOffscreenNodes
- */
-chrome.automation.AutomationNode.prototype.hasHiddenOffscreenNodes;
 
 /**
  * Aria auto complete.
@@ -2058,10 +2029,7 @@ chrome.automation.AutomationNode.prototype.detectedLanguage;
 chrome.automation.AutomationNode.prototype.hasPopup;
 
 /**
- * Input restriction, if any, such as readonly or disabled: undefined - enabled
- * control or other object that is not disabled Restriction.DISABLED - disallows
- * input in itself + any descendants Restriction.READONLY - allow
- * focus/selection but not input
+ * Input restriction, if any, such as readonly or disabled: undefined - enabled control or other object that is not disabled Restriction.DISABLED - disallows input in itself + any descendants Restriction.READONLY - allow focus/selection but not input
  * @type {(string|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-restriction
  */
@@ -2166,10 +2134,7 @@ chrome.automation.AutomationNode.prototype.fontSize;
 chrome.automation.AutomationNode.prototype.fontFamily;
 
 /**
- * Indicates whether the object functions as a text field which exposes its
- * descendants. Use cases include the root of a content-editable region, an ARIA
- * textbox which isn't currently editable and which has interactive descendants,
- * and a <body> element that has "design-mode" set to "on".
+ * Indicates whether the object functions as a text field which exposes its descendants. Use cases include the root of a content-editable region, an ARIA textbox which isn't currently editable and which has interactive descendants, and a <body> element that has "design-mode" set to "on".
  * @type {boolean}
  * @see https://developer.chrome.com/extensions/automation#type-nonAtomicTextFieldRoot
  */
@@ -2270,8 +2235,7 @@ chrome.automation.AutomationNode.prototype.previousWindowFocus;
 chrome.automation.AutomationNode.prototype.nextWindowFocus;
 
 /**
- * The index of this node in its parent node's list of children. If this is the
- * root node, this will be undefined.
+ * The index of this node in its parent node's list of children. If this is the root node, this will be undefined.
  * @type {(number|undefined)}
  * @see https://developer.chrome.com/extensions/automation#type-indexInParent
  */
@@ -2515,6 +2479,24 @@ chrome.automation.AutomationNode.prototype.addEventListener = function(eventType
 chrome.automation.AutomationNode.prototype.removeEventListener = function(eventType, listener, capture) {};
 
 /**
+ * <p>Gets the first node in this node's subtree which matches the given CSS
+ * selector and is within the same DOM context.</p><p>If this node doesn't
+ * correspond directly with an HTML node in the DOM, querySelector will be run
+ * on this node's nearest HTML node ancestor. Note that this may result in the
+ * query returning a node which is not a descendant of this node.</p><p>If the
+ * selector matches a node which doesn't directly correspond to an automation
+ * node (for example an element within an ARIA widget, where the ARIA widget
+ * forms one node of the automation tree, or an element which is hidden from
+ * accessibility via hiding it using CSS or using aria-hidden), this will return
+ * the nearest ancestor which does correspond to an automation node.</p>
+ * @param {string} selector
+ * @param {function(!chrome.automation.AutomationNode): void} callback Called
+ *     when the result for a <code>query</code> is available.
+ * @see https://developer.chrome.com/extensions/automation#method-domQuerySelector
+ */
+chrome.automation.AutomationNode.prototype.domQuerySelector = function(selector, callback) {};
+
+/**
  * Finds the first AutomationNode in this node's subtree which matches the given
  * search parameters.
  * @param {!chrome.automation.FindParams} params
@@ -2549,6 +2531,19 @@ chrome.automation.AutomationNode.prototype.matches = function(params) {};
 chrome.automation.AutomationNode.prototype.getNextTextMatch = function(searchStr, backward) {};
 
 /**
+ * Returns the detected languages for the provided string attribute as an array
+ * of LanguageSpan objects. There are several guarantees about the format of the
+ * LanguageSpan array: 1. Is either empty or contains LanguageSpans that cover
+ * all indices in the associated string attribute value. 2. Is sorted by
+ * increasing startIndex (those with smaller startIndex appear first). 3.
+ * LanguageSpans are non-overlapping and contain exactly one language.
+ * @param {string} attribute
+ * @return {!Array<!chrome.automation.LanguageSpan>}
+ * @see https://developer.chrome.com/extensions/automation#method-languageAnnotationForStringAttribute
+ */
+chrome.automation.AutomationNode.prototype.languageAnnotationForStringAttribute = function(attribute) {};
+
+/**
  * Creates a position object backed by Chrome's accessibility position support.
  * @param {!chrome.automation.PositionType} type
  * @param {number} offset
@@ -2558,6 +2553,19 @@ chrome.automation.AutomationNode.prototype.getNextTextMatch = function(searchStr
  */
 chrome.automation.AutomationNode.prototype.createPosition = function(type, offset, isUpstream) {};
 
+
+/**
+ * Get the automation tree for the tab with the given tabId, or the current tab
+ * if no tabID is given, enabling automation if necessary. Returns a tree with a
+ * placeholder root node; listen for the "loadComplete" event to get a
+ * notification that the tree has fully loaded (the previous root node reference
+ * will stop working at or before this point).
+ * @param {number=} tabId
+ * @param {function(!chrome.automation.AutomationNode): void=} callback Called
+ *     when the <code>AutomationNode</code> for the page is available.
+ * @see https://developer.chrome.com/extensions/automation#method-getTree
+ */
+chrome.automation.getTree = function(tabId, callback) {};
 
 /**
  * Get the automation tree for the whole desktop which consists of all on screen

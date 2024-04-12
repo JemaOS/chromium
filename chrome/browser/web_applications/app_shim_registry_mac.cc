@@ -5,33 +5,23 @@
 #include "chrome/browser/web_applications/app_shim_registry_mac.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
-#include "base/base64.h"
-#include "base/debug/dump_without_crashing.h"
-#include "base/logging.h"
 #include "base/no_destructor.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile_manager.h"
-#include "components/os_crypt/sync/os_crypt.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
-#include "crypto/hmac.h"
-#include "crypto/random.h"
 
 namespace {
 const char kAppShims[] = "app_shims";
-const char kAppShimsCdHashHmacKey[] = "app_shims_cdhash_hmac_key";
 const char kInstalledProfiles[] = "installed_profiles";
 const char kLastActiveProfiles[] = "last_active_profiles";
 const char kHandlers[] = "handlers";
 const char kFileHandlerExtensions[] = "extensions";
 const char kFileHandlerMimeTypes[] = "mime_types";
 const char kProtocolHandlers[] = "protocols";
-const char kCdHashHmac[] = "cdhash_hmac";
-const char kNotificationPermissionStatus[] = "notification_permission";
 
 base::Value::List SetToValueList(const std::set<std::string>& values) {
   base::Value::List result;
@@ -72,7 +62,6 @@ AppShimRegistry* AppShimRegistry::Get() {
 
 void AppShimRegistry::RegisterLocalPrefs(PrefRegistrySimple* registry) {
   registry->RegisterDictionaryPref(kAppShims);
-  registry->RegisterStringPref(kAppShimsCdHashHmacKey, "");
 }
 
 std::set<base::FilePath> AppShimRegistry::GetInstalledProfilesForApp(
@@ -80,12 +69,6 @@ std::set<base::FilePath> AppShimRegistry::GetInstalledProfilesForApp(
   std::set<base::FilePath> installed_profiles;
   GetProfilesSetForApp(app_id, kInstalledProfiles, &installed_profiles);
   return installed_profiles;
-}
-
-bool AppShimRegistry::IsAppInstalledInProfile(
-    const std::string& app_id,
-    const base::FilePath& profile) const {
-  return GetInstalledProfilesForApp(app_id).contains(profile);
 }
 
 std::set<base::FilePath> AppShimRegistry::GetLastActiveProfilesForApp(
@@ -137,8 +120,7 @@ void AppShimRegistry::OnAppInstalledForProfile(const std::string& app_id,
       GetLastActiveProfilesForApp(app_id);
   last_active_profiles.insert(profile);
   SetAppInfo(app_id, &installed_profiles, &last_active_profiles,
-             /*handlers=*/nullptr, /*cd_hash_hmac_base64=*/nullptr,
-             /*notification_permission_status=*/nullptr);
+             /*handlers=*/nullptr);
 }
 
 bool AppShimRegistry::OnAppUninstalledForProfile(
@@ -149,8 +131,7 @@ bool AppShimRegistry::OnAppUninstalledForProfile(
   if (found != installed_profiles.end()) {
     installed_profiles.erase(profile);
     SetAppInfo(app_id, &installed_profiles, /*last_active_profiles=*/nullptr,
-               /*handlers=*/nullptr, /*cd_hash_hmac_base64=*/nullptr,
-               /*notification_permission_status=*/nullptr);
+               /*handlers=*/nullptr);
   }
   return installed_profiles.empty();
 }
@@ -159,8 +140,7 @@ void AppShimRegistry::SaveLastActiveProfilesForApp(
     const std::string& app_id,
     std::set<base::FilePath> last_active_profiles) {
   SetAppInfo(app_id, /*installed_profiles=*/nullptr, &last_active_profiles,
-             /*handlers=*/nullptr, /*cd_hash_hmac_base64=*/nullptr,
-             /*notification_permission_status=*/nullptr);
+             /*handlers=*/nullptr);
 }
 
 std::set<std::string> AppShimRegistry::GetInstalledAppsForProfile(
@@ -184,24 +164,6 @@ std::set<std::string> AppShimRegistry::GetInstalledAppsForProfile(
   return result;
 }
 
-std::set<std::string> AppShimRegistry::GetAppsInstalledInMultipleProfiles()
-    const {
-  std::set<std::string> result;
-  if (!GetPrefService()) {
-    return result;
-  }
-  const base::Value::Dict& app_shims = GetPrefService()->GetDict(kAppShims);
-  for (const auto iter_app : app_shims) {
-    const base::Value::List* installed_profiles_list =
-        iter_app.second.GetDict().FindList(kInstalledProfiles);
-    if (!installed_profiles_list || installed_profiles_list->size() <= 1) {
-      continue;
-    }
-    result.insert(iter_app.first);
-  }
-  return result;
-}
-
 void AppShimRegistry::SaveFileHandlersForAppAndProfile(
     const std::string& app_id,
     const base::FilePath& profile,
@@ -214,9 +176,7 @@ void AppShimRegistry::SaveFileHandlersForAppAndProfile(
   if (it->second.IsEmpty())
     handlers.erase(it);
   SetAppInfo(app_id, /*installed_profiles=*/nullptr,
-             /*last_active_profiles=*/nullptr, &handlers,
-             /*cd_hash_hmac_base64=*/nullptr,
-             /*notification_permission_status=*/nullptr);
+             /*last_active_profiles=*/nullptr, &handlers);
 }
 
 void AppShimRegistry::SaveProtocolHandlersForAppAndProfile(
@@ -229,9 +189,7 @@ void AppShimRegistry::SaveProtocolHandlersForAppAndProfile(
   if (it->second.IsEmpty())
     handlers.erase(it);
   SetAppInfo(app_id, /*installed_profiles=*/nullptr,
-             /*last_active_profiles=*/nullptr, &handlers,
-             /*cd_hash_hmac_base64=*/nullptr,
-             /*notification_permission_status=*/nullptr);
+             /*last_active_profiles=*/nullptr, &handlers);
 }
 
 std::map<base::FilePath, AppShimRegistry::HandlerInfo>
@@ -259,151 +217,6 @@ AppShimRegistry::GetHandlersForApp(const std::string& app_id) {
   return result;
 }
 
-bool AppShimRegistry::HasSavedAnyCdHashes() const {
-  return GetPrefService()->HasPrefPath(kAppShimsCdHashHmacKey);
-}
-
-std::optional<AppShimRegistry::HmacKey>
-AppShimRegistry::GetExistingCdHashHmacKey() {
-  std::string key_base64 = GetPrefService()->GetString(kAppShimsCdHashHmacKey);
-  if (key_base64.empty()) {
-    return std::nullopt;
-  }
-
-  // The key used for the HMACs of code directory hash values is encrypted then
-  // base64-encoded before being stored in prefs. Do the inverse operations here
-  // to load the key.
-  std::string encrypted_key;
-  if (base::Base64Decode(key_base64, &encrypted_key)) {
-    std::string key;
-    if (OSCrypt::DecryptString(encrypted_key, &key)) {
-      if (key.length() == kHmacKeySize) {
-        return std::make_optional<HmacKey>(key.begin(), key.end());
-      }
-    }
-  }
-
-  // The stored key was either invalid base64, could not be decrypted by
-  // OSCrypt, or the wrong length. We rely on the caller to generate a new key
-  // and re-create the app shims.
-  LOG(WARNING) << "Key retrieved from preferences was not valid. Discarding.";
-  return std::nullopt;
-}
-
-// Encrypt the key using OSCrypt and base64-encode the encrypted data before
-// storing it in prefs.
-void AppShimRegistry::SaveCdHashHmacKey(const HmacKey& key) {
-  std::string key_str(key.begin(), key.end());
-  std::string encrypted_key_str;
-  bool result = OSCrypt::EncryptString(key_str, &encrypted_key_str);
-  if (!result) {
-    base::debug::DumpWithoutCrashing();
-    return;
-  }
-
-  HmacKey encrypted_key(encrypted_key_str.begin(), encrypted_key_str.end());
-  GetPrefService()->SetString(kAppShimsCdHashHmacKey,
-                              base::Base64Encode(encrypted_key));
-}
-
-AppShimRegistry::HmacKey AppShimRegistry::GetCdHashHmacKey() {
-  if (auto key = GetExistingCdHashHmacKey(); key.has_value()) {
-    return *key;
-  }
-
-  // Either no key was stored in prefs, or the key that was stored could not be
-  // decoded or decrypted. Generate and store a new random key. This will
-  // invalidate any HMACs that were created with a previous key. The caller is
-  // expected to handle this by re-creating the affected app shims and storing
-  // the new code directory hash.
-  HmacKey key(kHmacKeySize);
-  crypto::RandBytes(key);
-
-  SaveCdHashHmacKey(key);
-
-  return key;
-}
-
-void AppShimRegistry::SaveCdHashForApp(const std::string& app_id,
-                                       base::span<const uint8_t> cd_hash) {
-  HmacKey hmac_key = GetCdHashHmacKey();
-  crypto::HMAC hmac(crypto::HMAC::SHA256);
-  CHECK(hmac.Init(hmac_key));
-
-  std::array<uint8_t, 32> cd_hash_hmac;
-  CHECK(hmac.Sign(cd_hash, cd_hash_hmac));
-
-  std::string cd_hash_hmac_base64 = base::Base64Encode(cd_hash_hmac);
-  SetAppInfo(app_id, /*installed_profiles=*/nullptr,
-             /*last_active_profiles=*/nullptr, /*handlers=*/nullptr,
-             &cd_hash_hmac_base64,
-             /*notification_permission_status=*/nullptr);
-}
-
-bool AppShimRegistry::VerifyCdHashForApp(const std::string& app_id,
-                                         base::span<const uint8_t> cd_hash) {
-  const base::Value::Dict& cache = GetPrefService()->GetDict(kAppShims);
-  const base::Value::Dict* app_info = cache.FindDict(app_id);
-  if (!app_info) {
-    LOG(WARNING) << "No info found for app_id";
-    return false;
-  }
-
-  const std::string* cd_hash_hmac_base64 = app_info->FindString(kCdHashHmac);
-  if (!cd_hash_hmac_base64 || cd_hash_hmac_base64->empty()) {
-    LOG(WARNING) << "App shim has no associated code directory hash";
-    return false;
-  }
-
-  auto cd_hash_hmac = base::Base64Decode(*cd_hash_hmac_base64);
-  if (!cd_hash_hmac) {
-    LOG(WARNING) << "App shim's code directory hash could not be decoded";
-    return false;
-  }
-
-  HmacKey hmac_key = GetCdHashHmacKey();
-  crypto::HMAC hmac(crypto::HMAC::SHA256);
-  CHECK(hmac.Init(hmac_key));
-  return hmac.Verify(cd_hash, *cd_hash_hmac);
-}
-
-void AppShimRegistry::SaveNotificationPermissionStatusForApp(
-    const std::string& app_id,
-    mac_notifications::mojom::PermissionStatus status) {
-  SetAppInfo(app_id, /*installed_profiles=*/nullptr,
-             /*last_active_profiles=*/nullptr, /*handlers=*/nullptr,
-             /*cd_hash_hmac_base64=*/nullptr, &status);
-}
-
-mac_notifications::mojom::PermissionStatus
-AppShimRegistry::GetNotificationPermissionStatusForApp(
-    const std::string& app_id) {
-  using PermissionStatus = mac_notifications::mojom::PermissionStatus;
-  const base::Value::Dict& cache = GetPrefService()->GetDict(kAppShims);
-  const base::Value::Dict* app_info = cache.FindDict(app_id);
-  if (!app_info) {
-    return PermissionStatus::kNotDetermined;
-  }
-  std::optional<int> status_as_int =
-      app_info->FindInt(kNotificationPermissionStatus);
-  if (!status_as_int.has_value()) {
-    return PermissionStatus::kNotDetermined;
-  }
-  switch (*status_as_int) {
-    case static_cast<int>(PermissionStatus::kNotDetermined):
-    case static_cast<int>(PermissionStatus::kPromptPending):
-    case static_cast<int>(PermissionStatus::kDenied):
-    case static_cast<int>(PermissionStatus::kGranted):
-      return static_cast<PermissionStatus>(*status_as_int);
-  }
-  return PermissionStatus::kNotDetermined;
-}
-
-base::CallbackListSubscription AppShimRegistry::RegisterAppChangedCallback(
-    base::RepeatingCallback<void(const std::string&)> callback) {
-  return app_changed_callbacks_.Add(std::move(callback));
-}
-
 void AppShimRegistry::SetPrefServiceAndUserDataDirForTesting(
     PrefService* pref_service,
     const base::FilePath& user_data_dir) {
@@ -416,9 +229,6 @@ base::Value::Dict AppShimRegistry::AsDebugDict() const {
 
   return app_shims.Clone();
 }
-
-AppShimRegistry::AppShimRegistry() = default;
-AppShimRegistry::~AppShimRegistry() = default;
 
 PrefService* AppShimRegistry::GetPrefService() const {
   if (override_pref_service_)
@@ -439,10 +249,7 @@ void AppShimRegistry::SetAppInfo(
     const std::string& app_id,
     const std::set<base::FilePath>* installed_profiles,
     const std::set<base::FilePath>* last_active_profiles,
-    const std::map<base::FilePath, HandlerInfo>* handlers,
-    const std::string* cd_hash_hmac_base64,
-    const mac_notifications::mojom::PermissionStatus*
-        notification_permission_status) {
+    const std::map<base::FilePath, HandlerInfo>* handlers) {
   ScopedDictPrefUpdate update(GetPrefService(), kAppShims);
 
   // If there are no installed profiles, clear the app's key.
@@ -490,12 +297,4 @@ void AppShimRegistry::SetAppInfo(
     }
     app_info->Set(kHandlers, std::move(values));
   }
-  if (cd_hash_hmac_base64) {
-    app_info->Set(kCdHashHmac, *cd_hash_hmac_base64);
-  }
-  if (notification_permission_status) {
-    app_info->Set(kNotificationPermissionStatus,
-                  static_cast<int>(*notification_permission_status));
-  }
-  app_changed_callbacks_.Notify(app_id);
 }

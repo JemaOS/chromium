@@ -3,7 +3,8 @@
 // found in the LICENSE file.
 
 [
-  ImplementedAs=CSSHighlightRegistry
+  RuntimeEnabled = HighlightAPI,
+  ImplementedAs = CSSHighlightRegistry
 ]
 partial namespace CSS {
   [CallWith=ScriptState] readonly attribute HighlightRegistry highlights;

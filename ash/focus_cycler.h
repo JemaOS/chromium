@@ -42,7 +42,7 @@ class ASH_EXPORT FocusCycler {
   void RemoveWidget(views::Widget* widget);
 
   // Move focus to the next widget.
-  void RotateFocus(Direction direction, bool move_onto_next_widget = false);
+  void RotateFocus(Direction direction);
 
   // Moves focus the specified widget. Returns true if the widget was activated.
   bool FocusWidget(views::Widget* widget);
@@ -53,10 +53,10 @@ class ASH_EXPORT FocusCycler {
       base::RepeatingCallback<bool(views::Widget*)> callback);
 
  private:
-  std::vector<raw_ptr<views::Widget, VectorExperimental>> widgets_;
+  std::vector<views::Widget*> widgets_;
 
   // See description above getter.
-  raw_ptr<views::Widget> widget_activating_;
+  raw_ptr<views::Widget, ExperimentalAsh> widget_activating_;
 };
 
 }  // namespace ash

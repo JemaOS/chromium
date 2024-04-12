@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ApplicationTestRunner} from 'application_test_runner';
-
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Tests the way service worker manager manages targets.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('application_test_runner');
     // Note: every test that uses a storage API must manually clean-up state from previous tests.
   await ApplicationTestRunner.resetState();
 
@@ -18,11 +14,11 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
   var scope = 'http://127.0.0.1:8000/devtools/service-workers/resources/scope1/';
   ApplicationTestRunner.registerServiceWorker(scriptURL, scope);
 
-  SDK.TargetManager.TargetManager.instance().observeTargets({
+  SDK.targetManager.observeTargets({
     targetAdded: function(target) {
       TestRunner.addResult('Target added: ' + target.name() + '; type: ' + target.type());
       if (target.type() === SDK.Target.Type.ServiceWorker) {
-        var serviceWorkerManager = SDK.TargetManager.TargetManager.instance().primaryPageTarget().model(SDK.ServiceWorkerManager.ServiceWorkerManager);
+        var serviceWorkerManager = SDK.targetManager.primaryPageTarget().model(SDK.ServiceWorkerManager);
         // Allow agents to do rountrips.
         TestRunner.deprecatedRunAfterPendingDispatches(function() {
           for (var registration of serviceWorkerManager.registrations().values())

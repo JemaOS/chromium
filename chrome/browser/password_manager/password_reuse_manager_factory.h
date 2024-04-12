@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_PASSWORD_MANAGER_PASSWORD_REUSE_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_PASSWORD_MANAGER_PASSWORD_REUSE_MANAGER_FACTORY_H_
 
-#include <memory>
-
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -30,7 +28,7 @@ class PasswordReuseManagerFactory : public ProfileKeyedServiceFactory {
       Profile* profile);
 
  private:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

@@ -18,7 +18,9 @@ namespace base {
 class FilePath;
 }  // namespace base
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 // Bridge between fileapi get actions operation and providing extension's get
 // actions request. Created per request.
@@ -48,6 +50,8 @@ class GetActions : public Operation {
   ProvidedFileSystemInterface::GetActionsCallback callback_;
 };
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_OPERATIONS_GET_ACTIONS_H_

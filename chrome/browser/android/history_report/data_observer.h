@@ -44,32 +44,40 @@ class DataObserver : public bookmarks::BookmarkModelObserver,
   ~DataObserver() override;
 
   // BookmarkModelObserver implementation.
-  void BookmarkModelLoaded(bool ids_reassigned) override;
-  void BookmarkModelBeingDeleted() override;
-  void BookmarkNodeMoved(const bookmarks::BookmarkNode* old_parent,
+  void BookmarkModelLoaded(bookmarks::BookmarkModel* model,
+                           bool ids_reassigned) override;
+  void BookmarkModelBeingDeleted(bookmarks::BookmarkModel* model) override;
+  void BookmarkNodeMoved(bookmarks::BookmarkModel* model,
+                         const bookmarks::BookmarkNode* old_parent,
                          size_t old_index,
                          const bookmarks::BookmarkNode* new_parent,
                          size_t new_index) override;
-  void BookmarkNodeAdded(const bookmarks::BookmarkNode* parent,
+  void BookmarkNodeAdded(bookmarks::BookmarkModel* model,
+                         const bookmarks::BookmarkNode* parent,
                          size_t index,
                          bool added_by_user) override;
-  void BookmarkNodeRemoved(const bookmarks::BookmarkNode* parent,
+  void BookmarkNodeRemoved(bookmarks::BookmarkModel* model,
+                           const bookmarks::BookmarkNode* parent,
                            size_t old_index,
                            const bookmarks::BookmarkNode* node,
                            const std::set<GURL>& removed_urls) override;
   void BookmarkAllUserNodesRemoved(
+      bookmarks::BookmarkModel* model,
       const std::set<GURL>& removed_urls) override;
-  void BookmarkNodeChanged(const bookmarks::BookmarkNode* node) override;
-  void BookmarkNodeFaviconChanged(const bookmarks::BookmarkNode* node) override;
+  void BookmarkNodeChanged(bookmarks::BookmarkModel* model,
+                           const bookmarks::BookmarkNode* node) override;
+  void BookmarkNodeFaviconChanged(bookmarks::BookmarkModel* model,
+                                  const bookmarks::BookmarkNode* node) override;
   void BookmarkNodeChildrenReordered(
+      bookmarks::BookmarkModel* model,
       const bookmarks::BookmarkNode* node) override;
 
   // HistoryServiceObserver implementation.
   void OnURLVisited(history::HistoryService* history_service,
                     const history::URLRow& url_row,
                     const history::VisitRow& new_visit) override;
-  void OnHistoryDeletions(history::HistoryService* history_service,
-                          const history::DeletionInfo& deletion_info) override;
+  void OnURLsDeleted(history::HistoryService* history_service,
+                     const history::DeletionInfo& deletion_info) override;
   void HistoryServiceBeingDeleted(
       history::HistoryService* history_service) override;
 

@@ -37,6 +37,9 @@
 #if !BUILDFLAG(IS_ANDROID)
 #include "third_party/blink/public/web/web_picture_in_picture_window_options.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_document_picture_in_picture_options.h"
+#include "third_party/blink/renderer/core/css/style_engine.h"
+#include "third_party/blink/renderer/core/css/style_sheet_contents.h"
+#include "third_party/blink/renderer/core/css/style_sheet_list.h"
 #include "third_party/blink/renderer/modules/document_picture_in_picture/document_picture_in_picture.h"
 #include "third_party/blink/renderer/modules/document_picture_in_picture/document_picture_in_picture_event.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -123,7 +126,7 @@ PictureInPictureControllerImpl::IsElementAllowed(
 
 void PictureInPictureControllerImpl::EnterPictureInPicture(
     HTMLVideoElement* video_element,
-    ScriptPromiseResolverTyped<PictureInPictureWindow>* resolver) {
+    ScriptPromiseResolver* resolver) {
   if (!video_element->GetWebMediaPlayer()) {
     if (resolver) {
       // TODO(crbug.com/1293949): Add an error message.
@@ -189,7 +192,7 @@ void PictureInPictureControllerImpl::EnterPictureInPicture(
 
 void PictureInPictureControllerImpl::OnEnteredPictureInPicture(
     HTMLVideoElement* element,
-    ScriptPromiseResolverTyped<PictureInPictureWindow>* resolver,
+    ScriptPromiseResolver* resolver,
     mojo::PendingRemote<mojom::blink::PictureInPictureSession> session_remote,
     const gfx::Size& picture_in_picture_window_size) {
   // If |session_ptr| is null then Picture-in-Picture is not supported by the
@@ -267,7 +270,7 @@ void PictureInPictureControllerImpl::OnEnteredPictureInPicture(
 
 void PictureInPictureControllerImpl::ExitPictureInPicture(
     HTMLVideoElement* element,
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver) {
+    ScriptPromiseResolver* resolver) {
   if (!EnsureService())
     return;
 
@@ -281,7 +284,7 @@ void PictureInPictureControllerImpl::ExitPictureInPicture(
 }
 
 void PictureInPictureControllerImpl::OnExitedPictureInPicture(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver) {
+    ScriptPromiseResolver* resolver) {
   DCHECK(GetSupplementable());
 
   // Bail out if document is not active.
@@ -308,8 +311,6 @@ void PictureInPictureControllerImpl::OnExitedPictureInPicture(
         event_type_names::kLeavepictureinpicture,
         WrapPersistent(picture_in_picture_window_.Get())));
 
-    picture_in_picture_window_ = nullptr;
-
     // Register the video frame sink back to the element when the PiP window
     // is closed and if the video is not unset.
     if (element->GetWebMediaPlayer()) {
@@ -323,11 +324,11 @@ void PictureInPictureControllerImpl::OnExitedPictureInPicture(
 
 PictureInPictureWindow* PictureInPictureControllerImpl::pictureInPictureWindow()
     const {
-  return picture_in_picture_window_.Get();
+  return picture_in_picture_window_;
 }
 
 Element* PictureInPictureControllerImpl::PictureInPictureElement() const {
-  return picture_in_picture_element_.Get();
+  return picture_in_picture_element_;
 }
 
 Element* PictureInPictureControllerImpl::PictureInPictureElement(
@@ -347,11 +348,6 @@ bool PictureInPictureControllerImpl::IsPictureInPictureElement(
 #if !BUILDFLAG(IS_ANDROID)
 LocalDOMWindow* PictureInPictureControllerImpl::documentPictureInPictureWindow()
     const {
-  return document_picture_in_picture_window_.Get();
-}
-
-LocalDOMWindow*
-PictureInPictureControllerImpl::GetDocumentPictureInPictureWindow() const {
   return document_picture_in_picture_window_;
 }
 
@@ -359,7 +355,7 @@ void PictureInPictureControllerImpl::CreateDocumentPictureInPictureWindow(
     ScriptState* script_state,
     LocalDOMWindow& opener,
     DocumentPictureInPictureOptions* options,
-    ScriptPromiseResolverTyped<DOMWindow>* resolver,
+    ScriptPromiseResolver* resolver,
     ExceptionState& exception_state) {
   if (!LocalFrame::ConsumeTransientUserActivation(opener.GetFrame())) {
     exception_state.ThrowDOMException(DOMExceptionCode::kNotAllowedError,
@@ -371,7 +367,7 @@ void PictureInPictureControllerImpl::CreateDocumentPictureInPictureWindow(
   WebPictureInPictureWindowOptions web_options;
   web_options.width = options->width();
   web_options.height = options->height();
-  web_options.disallow_return_to_opener = options->disallowReturnToOpener();
+  web_options.initial_aspect_ratio = options->initialAspectRatio();
 
   // If either width or height is specified, then both must be specified.
   if (web_options.width > 0 && web_options.height == 0) {
@@ -389,15 +385,8 @@ void PictureInPictureControllerImpl::CreateDocumentPictureInPictureWindow(
   auto* dom_window = opener.openPictureInPictureWindow(
       script_state->GetIsolate(), web_options, exception_state);
 
-  if (!dom_window) {
-    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
-                                      "Internal error: no window");
-    resolver->Reject(exception_state);
-    return;
-  }
-
   // If we can't create a window, reject the promise with the exception state.
-  if (exception_state.HadException()) {
+  if (!dom_window || exception_state.HadException()) {
     resolver->Reject(exception_state);
     return;
   }
@@ -415,6 +404,27 @@ void PictureInPictureControllerImpl::CreateDocumentPictureInPictureWindow(
   Document* pip_document = local_dom_window->document();
   DCHECK(pip_document);
   pip_document->SetBaseURLOverride(opener.document()->BaseURL());
+
+  // Copy style sheets, if requested.
+  if (options->copyStyleSheets()) {
+    StyleSheetList& list = opener.document()->StyleSheets();
+    for (unsigned i = 0; i < list.length(); i++) {
+      StyleSheet* sheet = list.item(i);
+      if (!sheet->IsCSSStyleSheet() || sheet->disabled()) {
+        continue;
+      }
+      CSSStyleSheet* css = To<CSSStyleSheet>(sheet);
+      StyleSheetContents* contents = css->Contents();
+
+      // Inject the style sheet. It will not stay in sync with the opener.
+      //
+      // `key` is arbitrary; it just has to avoid conflicting with any other
+      // injected style sheets. Typically, only extensions do that, so it's
+      // fairly rare.
+      pip_document->GetStyleEngine().InjectSheet(
+          /*key=*/AtomicString::Number(i), contents);
+    }
+  }
 
   SetMayThrottleIfUndrawnFrames(false);
 
@@ -539,9 +549,8 @@ void PictureInPictureControllerImpl::OnStopped() {
 
 void PictureInPictureControllerImpl::SetMayThrottleIfUndrawnFrames(
     bool may_throttle) {
-  if (!GetSupplementable()->GetFrame() ||
-      !GetSupplementable()->GetFrame()->GetWidgetForLocalRoot()) {
-    // Tests do not always have a frame or widget.
+  if (!GetSupplementable()->GetFrame()->GetWidgetForLocalRoot()) {
+    // Tests do not always have a widget.
     return;
   }
   GetSupplementable()

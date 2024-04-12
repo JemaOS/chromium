@@ -6,8 +6,6 @@
 
 #include <fcntl.h>
 
-#include <optional>
-
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
@@ -16,11 +14,13 @@
 #include "base/task/thread_pool.h"
 #include "chrome/browser/ash/crosapi/crosapi_manager.h"
 #include "chrome/browser/ash/crosapi/crosapi_util.h"
+#include "chrome/browser/ash/crosapi/environment_provider.h"
 #include "chrome/common/chrome_paths.h"
 #include "components/account_manager_core/account.h"
 #include "mojo/public/cpp/platform/named_platform_channel.h"
 #include "mojo/public/cpp/platform/platform_channel.h"
 #include "mojo/public/cpp/platform/socket_utils_posix.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace crosapi {
 
@@ -47,7 +47,9 @@ base::ScopedFD CreateSocketForTesting(const base::FilePath& socket_path) {
 }  // namespace
 
 TestMojoConnectionManager::TestMojoConnectionManager(
-    const base::FilePath& socket_path) {
+    const base::FilePath& socket_path,
+    EnvironmentProvider* environment_provider)
+    : environment_provider_(environment_provider) {
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock()},
       base::BindOnce(&CreateSocketForTesting, socket_path),
@@ -85,9 +87,10 @@ void TestMojoConnectionManager::OnTestingSocketAvailable() {
       }));
 
   base::ScopedFD startup_fd = browser_util::CreateStartupData(
+      environment_provider_,
       browser_util::InitialBrowserAction(
           mojom::InitialBrowserAction::kUseStartupPreference),
-      /*is_keep_alive_enabled=*/false, std::nullopt);
+      /*is_keep_alive_enabled=*/false, absl::nullopt);
   if (!startup_fd.is_valid()) {
     LOG(ERROR) << "Failed to create startup data";
     return;

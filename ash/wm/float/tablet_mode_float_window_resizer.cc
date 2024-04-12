@@ -8,6 +8,7 @@
 #include "ash/wm/drag_details.h"
 #include "ash/wm/float/float_controller.h"
 #include "ash/wm/window_state.h"
+#include "chromeos/ui/wm/features.h"
 #include "ui/aura/window.h"
 #include "ui/base/hit_test.h"
 
@@ -27,6 +28,7 @@ TabletModeFloatWindowResizer::TabletModeFloatWindowResizer(
     WindowState* window_state)
     : WindowResizer(window_state),
       last_location_in_parent_(details().initial_location_in_parent) {
+  CHECK(chromeos::wm::features::IsWindowLayoutMenuEnabled());
   window_state->OnDragStarted(HTCAPTION);
 }
 

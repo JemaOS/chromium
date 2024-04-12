@@ -50,7 +50,9 @@ bool Retrieve(em::PolicyData* policy, PrefService* local_state) {
 
 std::string PolicyDataToString(const em::PolicyData& policy) {
   const std::string policy_string = policy.SerializeAsString();
-  return base::Base64Encode(policy_string);
+  std::string encoded;
+  base::Base64Encode(policy_string, &encoded);
+  return encoded;
 }
 
 }  // namespace device_settings_cache

@@ -15,7 +15,6 @@
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/grit/generated_resources.h"
-#include "components/history_clusters/core/features.h"
 #include "components/page_image_service/features.h"
 #include "components/search/ntp_features.h"
 #include "components/signin/public/identity_manager/accounts_in_cookie_jar_info.h"
@@ -28,18 +27,10 @@ const std::vector<std::pair<const std::string, int>> MakeModuleIdNames(
     bool drive_module_enabled) {
   std::vector<std::pair<const std::string, int>> details;
 
-  if (drive_module_enabled) {
-    details.emplace_back("drive", IDS_NTP_MODULES_DRIVE_SENTENCE);
-  }
-
-  if (base::FeatureList::IsEnabled(ntp_features::kNtpTabResumptionModule)) {
-    details.emplace_back("tab_resumption", IDS_NTP_TAB_RESUMPTION_TITLE);
-  }
-
-  if (IsHistoryClustersModuleEnabled() &&
+  if (base::FeatureList::IsEnabled(ntp_features::kNtpHistoryClustersModule) &&
       base::FeatureList::IsEnabled(page_image_service::kImageService)) {
     details.emplace_back("history_clusters",
-                         IDS_OMNIBOX_HISTORY_CLUSTERS_SEARCH_HINT);
+                         IDS_HISTORY_CLUSTERS_JOURNEYS_TAB_LABEL);
   }
 
   if (IsRecipeTasksModuleEnabled()) {
@@ -66,6 +57,10 @@ const std::vector<std::pair<const std::string, int>> MakeModuleIdNames(
     details.emplace_back("chrome_cart", IDS_NTP_MODULES_CART_SENTENCE);
   }
 
+  if (drive_module_enabled) {
+    details.emplace_back("drive", IDS_NTP_MODULES_DRIVE_SENTENCE);
+  }
+
   if (base::FeatureList::IsEnabled(ntp_features::kNtpPhotosModule)) {
     details.emplace_back("photos", IDS_NTP_MODULES_PHOTOS_MEMORIES_TITLE);
   }
@@ -77,6 +72,11 @@ const std::vector<std::pair<const std::string, int>> MakeModuleIdNames(
 #if !defined(OFFICIAL_BUILD)
   if (base::FeatureList::IsEnabled(ntp_features::kNtpDummyModules)) {
     details.emplace_back("dummy", IDS_NTP_MODULES_DUMMY_TITLE);
+
+    for (int i = 2; i <= 12; i++) {
+      details.emplace_back(base::StringPrintf("dummy%d", i),
+                           IDS_NTP_MODULES_DUMMY2_TITLE);
+    }
   }
 #endif
 

@@ -4,19 +4,19 @@
 
 #include "chrome/browser/browsing_data/chrome_browsing_data_lifetime_manager_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/browsing_data/chrome_browsing_data_lifetime_manager.h"
 #include "chrome/browser/browsing_data/chrome_browsing_data_remover_delegate_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/sync/sync_service_factory.h"
+#include "components/browsing_data/core/features.h"
 #include "content/public/browser/browser_context.h"
 #include "extensions/buildflags/buildflags.h"
+
 // static
 ChromeBrowsingDataLifetimeManagerFactory*
 ChromeBrowsingDataLifetimeManagerFactory::GetInstance() {
-  static base::NoDestructor<ChromeBrowsingDataLifetimeManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<ChromeBrowsingDataLifetimeManagerFactory>::get();
 }
 
 // static
@@ -35,15 +35,16 @@ ChromeBrowsingDataLifetimeManagerFactory::
               .WithGuest(ProfileSelection::kOffTheRecordOnly)
               .Build()) {
   DependsOn(ChromeBrowsingDataRemoverDelegateFactory::GetInstance());
-  DependsOn(SyncServiceFactory::GetInstance());
 }
 
 ChromeBrowsingDataLifetimeManagerFactory::
     ~ChromeBrowsingDataLifetimeManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-ChromeBrowsingDataLifetimeManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ChromeBrowsingDataLifetimeManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
+  if (!base::FeatureList::IsEnabled(
+          browsing_data::features::kEnableBrowsingDataLifetimeManager))
+    return nullptr;
 #if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
   Profile* profile = Profile::FromBrowserContext(context);
   // This condition still needs to be explicitly stated here despite having
@@ -53,7 +54,7 @@ ChromeBrowsingDataLifetimeManagerFactory::BuildServiceInstanceForBrowserContext(
   if (profile->IsGuestSession() && !profile->IsOffTheRecord())
     return nullptr;
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
-  return std::make_unique<ChromeBrowsingDataLifetimeManager>(context);
+  return new ChromeBrowsingDataLifetimeManager(context);
 }
 
 bool ChromeBrowsingDataLifetimeManagerFactory::

@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_BOREALIS_BOREALIS_METRICS_H_
 
 #include "base/time/time.h"
-#include "chrome/browser/ash/borealis/borealis_types.mojom-forward.h"
 
 namespace borealis {
 
@@ -24,6 +23,26 @@ extern const char kBorealisUninstallResultHistogram[];
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
+enum class BorealisInstallResult {
+  kSuccess = 0,
+  kCancelled = 1,
+  kBorealisNotAllowed = 2,
+  kBorealisInstallInProgress = 3,
+  kDlcInternalError = 4,
+  kDlcUnsupportedError = 5,
+  kDlcBusyError = 6,
+  kDlcNeedRebootError = 7,
+  kDlcNeedSpaceError = 8,
+  kDlcUnknownError = 9,
+  kOffline = 10,
+  kDlcNeedUpdateError = 11,
+  kStartupFailed = 12,
+  kMainAppNotPresent = 13,
+  kMaxValue = kMainAppNotPresent,
+};
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class BorealisUninstallResult {
   kSuccess = 0,
   kAlreadyInProgress = 1,
@@ -38,27 +57,14 @@ enum class BorealisUninstallResult {
 enum class BorealisStartupResult {
   kSuccess = 0,
   kCancelled = 1,
-  // kMountFailed = 2, // No longer used, expanded into kDlc*.
+  kMountFailed = 2,
   kDiskImageFailed = 3,
   kStartVmFailed = 4,
   kAwaitBorealisStartupFailed = 5,
   kSyncDiskFailed = 6,
   kRequestWaylandFailed = 7,
   kDisallowed = 8,
-  kDlcCancelled = 9,
-  kDlcOffline = 10,
-  kDlcNeedUpdateError = 11,
-  kDlcNeedRebootError = 12,
-  kDlcNeedSpaceError = 13,
-  kDlcBusyError = 14,
-  kDlcInternalError = 15,
-  kDlcUnsupportedError = 16,
-  kDlcUnknownError = 17,
-  kConciergeUnavailable = 18,
-  kEmptyDiskResponse = 19,
-  kStartVmEmptyResponse = 20,
-  // Remember to add new entries to histograms/enums.xml.
-  kMaxValue = kStartVmEmptyResponse,
+  kMaxValue = kDisallowed,
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -115,8 +121,7 @@ enum class BorealisShutdownResult {
 };
 
 void RecordBorealisInstallNumAttemptsHistogram();
-void RecordBorealisInstallResultHistogram(
-    borealis::mojom::InstallResult install_result);
+void RecordBorealisInstallResultHistogram(BorealisInstallResult install_result);
 void RecordBorealisInstallOverallTimeHistogram(base::TimeDelta install_time);
 void RecordBorealisUninstallNumAttemptsHistogram();
 void RecordBorealisUninstallResultHistogram(

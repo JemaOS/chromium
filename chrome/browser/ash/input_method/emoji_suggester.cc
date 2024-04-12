@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/input_method/emoji_suggester.h"
 
-#include <optional>
-
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
 #include "base/files/file_util.h"
@@ -26,6 +24,7 @@
 #include "chromeos/ash/services/ime/public/cpp/assistive_suggestions.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "components/strings/grit/components_strings.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/events/keycodes/dom/dom_code.h"
 
@@ -37,7 +36,6 @@ namespace {
 using AssistiveSuggestion = ime::AssistiveSuggestion;
 using AssistiveSuggestionMode = ime::AssistiveSuggestionMode;
 using AssistiveSuggestionType = ime::AssistiveSuggestionType;
-using SuggestionsTextContext = ime::SuggestionsTextContext;
 
 constexpr char kEmojiSuggesterShowSettingCount[] =
     "emoji_suggester.show_setting_count";
@@ -50,10 +48,8 @@ const int kMaxSuggestionSize = kMaxSuggestionIndex + 1;
 const int kNoneHighlighted = -1;
 
 std::string ReadEmojiDataFromFile() {
-  if (!base::DirectoryExists(
-          base::FilePath(ime::kBundledInputMethodsDirPath))) {
-    return std::string();
-  }
+  if (!base::DirectoryExists(base::FilePath(ime::kBundledInputMethodsDirPath)))
+    return base::EmptyString();
 
   std::string emoji_data;
   base::FilePath::StringType path(ime::kBundledInputMethodsDirPath);
@@ -163,12 +159,11 @@ void EmojiSuggester::OnFocus(int context_id) {
 }
 
 void EmojiSuggester::OnBlur() {
-  focused_context_id_ = std::nullopt;
+  focused_context_id_ = absl::nullopt;
 }
 
 void EmojiSuggester::OnExternalSuggestionsUpdated(
-    const std::vector<AssistiveSuggestion>& suggestions,
-    const std::optional<SuggestionsTextContext>& context) {
+    const std::vector<AssistiveSuggestion>& suggestions) {
   // EmojiSuggester doesn't utilize any suggestions produced externally, so
   // ignore this call.
 }
@@ -318,8 +313,7 @@ bool EmojiSuggester::AcceptSuggestion(size_t index) {
   std::string error;
   suggestion_handler_->AcceptSuggestionCandidate(
       *focused_context_id_, candidates_[index],
-      /* delete_previous_utf16_len=*/0, /*use_replace_surrounding_text=*/false,
-      &error);
+      /* delete_previous_utf16_len=*/0, &error);
 
   if (!error.empty()) {
     LOG(ERROR) << "Failed to accept suggestion. " << error;

@@ -5,7 +5,6 @@
 #include "ui/wm/core/window_util.h"
 
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/window.h"
 #include "ui/compositor/layer.h"
@@ -26,7 +25,7 @@ namespace {
 void CloneChildren(ui::Layer* to_clone,
                    ui::Layer* parent,
                    const wm::MapLayerFunc& map_func) {
-  typedef std::vector<raw_ptr<ui::Layer, VectorExperimental>> Layers;
+  typedef std::vector<ui::Layer*> Layers;
   // Make a copy of the children since RecreateLayer() mutates it.
   Layers children(to_clone->children());
   for (Layers::const_iterator i = children.begin(); i != children.end(); ++i) {
@@ -39,7 +38,6 @@ void CloneChildren(ui::Layer* to_clone,
       CloneChildren(owner->layer(), old_layer, map_func);
     }
   }
-  parent->set_no_mutation(true);
 }
 
 // Invokes Mirror() on all the children of |to_mirror|, adding the newly cloned
@@ -49,7 +47,7 @@ void CloneChildren(ui::Layer* to_clone,
 void MirrorChildren(ui::Layer* to_mirror,
                     ui::Layer* parent,
                     bool sync_bounds) {
-  for (ui::Layer* child : to_mirror->children()) {
+  for (auto* child : to_mirror->children()) {
     ui::Layer* mirror = child->Mirror().release();
     mirror->set_sync_bounds_with_source(sync_bounds);
     parent->Add(mirror);
@@ -142,10 +140,6 @@ bool WindowStateIs(const aura::Window* window, ui::WindowShowState state) {
   return window->GetProperty(aura::client::kShowStateKey) == state;
 }
 
-ui::WindowShowState GetWindowState(const aura::Window* window) {
-  return window->GetProperty(aura::client::kShowStateKey);
-}
-
 void SetWindowState(aura::Window* window, ui::WindowShowState state) {
   window->SetProperty(aura::client::kShowStateKey, state);
 }
@@ -215,15 +209,14 @@ const aura::Window* GetTransientParent(const aura::Window* window) {
   return manager ? manager->transient_parent() : nullptr;
 }
 
-const std::vector<raw_ptr<aura::Window, VectorExperimental>>&
-GetTransientChildren(const aura::Window* window) {
+const std::vector<aura::Window*>& GetTransientChildren(
+    const aura::Window* window) {
   const TransientWindowManager* manager =
       TransientWindowManager::GetIfExists(window);
   if (manager)
     return manager->transient_children();
 
-  static std::vector<raw_ptr<aura::Window, VectorExperimental>>* shared =
-      new std::vector<raw_ptr<aura::Window, VectorExperimental>>;
+  static std::vector<aura::Window*>* shared = new std::vector<aura::Window*>;
   return *shared;
 }
 

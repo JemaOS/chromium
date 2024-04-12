@@ -7,7 +7,6 @@
 
 #include <functional>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -22,6 +21,7 @@
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 #include "third_party/abseil-cpp/absl/synchronization/mutex.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/abseil-cpp/absl/types/span.h"
 
 namespace ipcz {
@@ -51,13 +51,17 @@ class Node : public APIObjectImpl<Node, APIObject::kNode> {
   };
 
   // Constructs a new node of the given `type`, using `driver` to support IPC.
-  // Note that `driver` must outlive the Node.
+  // Note that `driver` must outlive the Node. `driver_node` is an arbitrary
+  // driver-specific handle that may be used for additional context when
+  // interfacing with the driver regarding this node.
   Node(Type type,
        const IpczDriver& driver,
+       IpczDriverHandle driver_node,
        const IpczCreateNodeOptions* options = nullptr);
 
   Type type() const { return type_; }
   const IpczDriver& driver() const { return driver_; }
+  IpczDriverHandle driver_node() const { return driver_node_; }
   const IpczCreateNodeOptions& options() const { return options_; }
 
   // APIObject:
@@ -77,12 +81,18 @@ class Node : public APIObjectImpl<Node, APIObject::kNode> {
   // Gets a reference to the node's broker link, if it has one.
   Ref<NodeLink> GetBrokerLink();
 
+  // Sets this node's assigned name as given by a broker. NodeConnector is
+  // responsible for calling on non-broker Nodes this after receiving the
+  // expected handshake from a broker. Must not be called on broker nodes, as
+  // they assign their own name at construction time.
+  void SetAssignedName(const NodeName& name);
+
   // Registers a new connection for the given `remote_node_name`.
   bool AddConnection(const NodeName& remote_node_name, Connection connection);
 
   // Returns a copy of the Connection to the remote node named by `name`, or
   // null if this node has no connection to that node.
-  std::optional<Node::Connection> GetConnection(const NodeName& name);
+  absl::optional<Node::Connection> GetConnection(const NodeName& name);
 
   // Returns a reference to the NodeLink used by this Node to communicate with
   // the remote node identified by `name`; or null if this node has no NodeLink
@@ -150,10 +160,8 @@ class Node : public APIObjectImpl<Node, APIObject::kNode> {
   // the relay source directly.
   bool AcceptRelayedMessage(msg::AcceptRelayedMessage& accept);
 
-  // Drops the connection running over `connection_link` between this node and
-  // another.
-  void DropConnection(const OperationContext& context,
-                      const NodeLink& connection_link);
+  // Drops this node's connection to the named node, if one exists.
+  void DropConnection(const OperationContext& context, const NodeName& name);
 
   // Asynchronously waits for this Node to acquire a broker link and then
   // invokes `callback` with it. If this node already has a broker link then the
@@ -188,6 +196,7 @@ class Node : public APIObjectImpl<Node, APIObject::kNode> {
 
   const Type type_;
   const IpczDriver& driver_;
+  const IpczDriverHandle driver_node_;
   const IpczCreateNodeOptions options_;
 
   absl::Mutex mutex_;

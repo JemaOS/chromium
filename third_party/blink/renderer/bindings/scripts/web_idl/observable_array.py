@@ -9,7 +9,7 @@ from .composition_parts import WithCodeGeneratorInfo
 from .composition_parts import WithComponent
 from .composition_parts import WithDebugInfo
 from .composition_parts import WithIdentifier
-from .idl_type import IdlType
+from .idl_type import IdlType  # pylint: disable=cyclic-import
 
 
 class ObservableArray(WithIdentifier, WithCodeGeneratorInfo, WithComponent,
@@ -41,7 +41,7 @@ class ObservableArray(WithIdentifier, WithCodeGeneratorInfo, WithComponent,
                                        code_generator_info,
                                        readonly=True)
         WithComponent.__init__(self, components, readonly=True)
-        WithDebugInfo.__init__(self, idl_type.debug_info)
+        WithDebugInfo.__init__(self)
 
         self._idl_type = idl_type
         self._user_attributes = tuple(attributes)

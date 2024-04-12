@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
@@ -17,6 +16,7 @@
 #include "chrome/browser/sharing/sharing_send_message_result.h"
 #include "components/gcm_driver/gcm_app_handler.h"
 #include "components/sync_device_info/device_info.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace gcm {
 class GCMDriver;
@@ -71,10 +71,10 @@ class SharingFCMHandler : public gcm::GCMAppHandler {
   void OnMessagesDeleted(const std::string& app_id) override;
 
  private:
-  std::optional<chrome_browser_sharing::FCMChannelConfiguration> GetFCMChannel(
+  absl::optional<chrome_browser_sharing::FCMChannelConfiguration> GetFCMChannel(
       const chrome_browser_sharing::SharingMessage& original_message);
 
-  std::optional<chrome_browser_sharing::ServerChannelConfiguration>
+  absl::optional<chrome_browser_sharing::ServerChannelConfiguration>
   GetServerChannel(
       const chrome_browser_sharing::SharingMessage& original_message);
 
@@ -85,11 +85,12 @@ class SharingFCMHandler : public gcm::GCMAppHandler {
   void SendAckMessage(
       std::string original_message_id,
       chrome_browser_sharing::MessageType original_message_type,
-      std::optional<chrome_browser_sharing::FCMChannelConfiguration>
+      absl::optional<chrome_browser_sharing::FCMChannelConfiguration>
           fcm_channel,
-      std::optional<chrome_browser_sharing::ServerChannelConfiguration>
+      absl::optional<chrome_browser_sharing::ServerChannelConfiguration>
           server_channel,
       SharingDevicePlatform sender_device_type,
+      base::TimeTicks message_received_time,
       std::unique_ptr<chrome_browser_sharing::ResponseMessage> response);
 
   void OnAckMessageSent(
@@ -98,10 +99,10 @@ class SharingFCMHandler : public gcm::GCMAppHandler {
       SharingDevicePlatform sender_device_type,
       int trace_id,
       SharingSendMessageResult result,
-      std::optional<std::string> message_id,
+      absl::optional<std::string> message_id,
       SharingChannelType channel_type);
 
-  const raw_ptr<gcm::GCMDriver, AcrossTasksDanglingUntriaged> gcm_driver_;
+  const raw_ptr<gcm::GCMDriver, DanglingUntriaged> gcm_driver_;
   raw_ptr<syncer::DeviceInfoTracker, DanglingUntriaged> device_info_tracker_;
   raw_ptr<SharingFCMSender, DanglingUntriaged> sharing_fcm_sender_;
   raw_ptr<SharingHandlerRegistry, DanglingUntriaged> handler_registry_;

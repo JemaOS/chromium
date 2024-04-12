@@ -75,12 +75,12 @@ class UserImageSyncObserver
   // Gets synced image index. Returns false if user has no needed preferences.
   bool GetSyncedImageIndex(int* result);
 
-  raw_ptr<const user_manager::User> user_;
+  raw_ptr<const user_manager::User, ExperimentalAsh> user_;
   std::unique_ptr<PrefChangeRegistrar> pref_change_registrar_;
   base::ScopedObservation<session_manager::SessionManager,
                           session_manager::SessionManagerObserver>
       session_observation_{this};
-  raw_ptr<sync_preferences::PrefServiceSyncable> prefs_;
+  raw_ptr<sync_preferences::PrefServiceSyncable, ExperimentalAsh> prefs_;
   bool is_synced_;
   // Indicates if local user image changed during initialization.
   bool local_image_changed_;

@@ -5,7 +5,6 @@
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/installer/management_service/rotate_util.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -19,6 +18,7 @@
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/installer/key_rotation_manager.h"
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/installer/management_service/metrics_utils.h"
 #include "components/version_info/channel.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace enterprise_connectors {
@@ -36,16 +36,16 @@ constexpr char kStableChannelHostName[] = "m.google.com";
 // Returns decoded value from the base-64 `encoded_value`, or null
 // in case of a decoding error. The returned value is an opaque binary
 // blob and should not be treated as an ASCII or UTF-8 string.
-std::optional<std::string> Decode(const std::string& encoded_value) {
+absl::optional<std::string> Decode(const std::string& encoded_value) {
   if (encoded_value.empty())
-    return std::nullopt;
+    return absl::nullopt;
 
   std::string value;
   if (!base::Base64Decode(encoded_value, &value)) {
     RecordFailure(
         ManagementServiceError::kIncorrectlyEncodedArgument,
         "Argument passed on the command line is not correctly encoded.");
-    return std::nullopt;
+    return absl::nullopt;
   }
   return value;
 }
@@ -64,7 +64,7 @@ KeyRotationResult RotateDeviceTrustKey(
   auto nonce = command_line.GetSwitchValueASCII(switches::kNonce);
   // The nonce command line argument is optional. If none is specified use
   // an empty string, however if one is specified we decode it.
-  std::optional<std::string> decoded_nonce;
+  absl::optional<std::string> decoded_nonce;
   if (nonce.empty()) {
     decoded_nonce.emplace();
   } else {

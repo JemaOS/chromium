@@ -19,9 +19,9 @@
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/autofill/chrome_autofill_client.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
-#include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/autofill/core/browser/autofill_test_utils.h"
+#include "components/autofill/core/browser/geo/country_names.h"
 #include "components/autofill/core/browser/test_personal_data_manager.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
@@ -33,11 +33,6 @@
 namespace autofill {
 
 namespace {
-
-using profile_ref = base::optional_ref<const AutofillProfile>;
-using ::testing::AllOf;
-using ::testing::Property;
-
 std::unique_ptr<KeyedService> CreateTestSyncService(
     content::BrowserContext* context) {
   return std::make_unique<syncer::TestSyncService>();
@@ -70,6 +65,8 @@ class SaveUpdateAddressProfilePromptControllerTest
     original_profile_ = test::GetFullProfile();
     original_profile_.SetInfo(NAME_FULL, u"John Doe", GetLocale());
     original_profile_.SetInfo(PHONE_HOME_WHOLE_NUMBER, u"", GetLocale());
+
+    CountryNames::SetLocaleString(GetLocale());
   }
 
   TestingProfile::TestingFactories GetTestingFactories() const override {
@@ -81,7 +78,8 @@ class SaveUpdateAddressProfilePromptControllerTest
 
   // Profile with verified data as it is returned from Java.
   AutofillProfile GetFullProfileWithVerifiedData() {
-    AutofillProfile profile(AddressCountryCode("US"));
+    AutofillProfile profile(base::Uuid::GenerateRandomV4().AsLowercaseString(),
+                            test::kEmptyOrigin);
     profile.SetRawInfoWithVerificationStatus(NAME_FULL, u"Mona J. Liza",
                                              VerificationStatus::kUserVerified);
     test::SetProfileInfo(&profile, "", "", "", "email@example.com",
@@ -100,11 +98,9 @@ class SaveUpdateAddressProfilePromptControllerTest
   signin::IdentityTestEnvironment identity_test_env_;
   autofill::TestPersonalDataManager test_personal_data_;
   std::unique_ptr<syncer::TestSyncService> sync_service_;
-  raw_ptr<MockSaveUpdateAddressProfilePromptView> prompt_view_ = nullptr;
-  AutofillProfile profile_{
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode};
-  AutofillProfile original_profile_{
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode};
+  raw_ptr<MockSaveUpdateAddressProfilePromptView> prompt_view_;
+  AutofillProfile profile_;
+  AutofillProfile original_profile_;
   bool is_update_;
   base::MockCallback<AutofillClient::AddressProfileSavePromptCallback>
       decision_callback_;
@@ -180,9 +176,10 @@ TEST_F(SaveUpdateAddressProfilePromptControllerTest,
   SetUpController(/*is_update=*/false, /*is_migration_to_account=*/false);
   controller_->DisplayPrompt();
 
-  EXPECT_CALL(decision_callback_,
-              Run(AutofillClient::AddressPromptUserDecision::kAccepted,
-                  Property(&profile_ref::has_value, false)));
+  EXPECT_CALL(
+      decision_callback_,
+      Run(AutofillClient::SaveAddressProfileOfferUserDecision::kAccepted,
+          profile_));
   controller_->OnUserAccepted(env_, mock_caller_);
 }
 
@@ -191,9 +188,10 @@ TEST_F(SaveUpdateAddressProfilePromptControllerTest,
   SetUpController(/*is_update=*/false, /*is_migration_to_account=*/false);
   controller_->DisplayPrompt();
 
-  EXPECT_CALL(decision_callback_,
-              Run(AutofillClient::AddressPromptUserDecision::kDeclined,
-                  Property(&profile_ref::has_value, false)));
+  EXPECT_CALL(
+      decision_callback_,
+      Run(AutofillClient::SaveAddressProfileOfferUserDecision::kDeclined,
+          profile_));
   controller_->OnUserDeclined(env_, mock_caller_);
 }
 
@@ -204,8 +202,8 @@ TEST_F(SaveUpdateAddressProfilePromptControllerTest,
   controller_->DisplayPrompt();
 
   EXPECT_CALL(decision_callback_,
-              Run(AutofillClient::AddressPromptUserDecision::kNever,
-                  Property(&profile_ref::has_value, false)));
+              Run(AutofillClient::SaveAddressProfileOfferUserDecision::kNever,
+                  profile_));
   controller_->OnUserDeclined(env_, mock_caller_);
 }
 
@@ -215,14 +213,13 @@ TEST_F(SaveUpdateAddressProfilePromptControllerTest,
   controller_->DisplayPrompt();
 
   AutofillProfile edited_profile = GetFullProfileWithVerifiedData();
-  EXPECT_CALL(decision_callback_,
-              Run(AutofillClient::AddressPromptUserDecision::kEditAccepted,
-                  AllOf(Property(&profile_ref::has_value, true),
-                        Property(&profile_ref::value, edited_profile))));
+  EXPECT_CALL(
+      decision_callback_,
+      Run(AutofillClient::SaveAddressProfileOfferUserDecision::kEditAccepted,
+          edited_profile));
   base::android::ScopedJavaLocalRef<jobject> edited_profile_java =
-      edited_profile.CreateJavaObject(
-          g_browser_process->GetApplicationLocale());
-
+      PersonalDataManagerAndroid::CreateJavaProfileFromNative(env_,
+                                                              edited_profile);
   controller_->OnUserEdited(
       env_, mock_caller_,
       base::android::JavaParamRef<jobject>(env_, edited_profile_java.obj()));
@@ -243,8 +240,8 @@ TEST_F(SaveUpdateAddressProfilePromptControllerTest,
   controller_->DisplayPrompt();
 
   EXPECT_CALL(decision_callback_,
-              Run(AutofillClient::AddressPromptUserDecision::kIgnored,
-                  Property(&profile_ref::has_value, false)));
+              Run(AutofillClient::SaveAddressProfileOfferUserDecision::kIgnored,
+                  profile_));
   controller_.reset();
 }
 
@@ -277,7 +274,8 @@ TEST_F(SaveUpdateAddressProfilePromptControllerTest,
        ReturnsCorrectStringsToDisplayWhenMigrateLocalAddress) {
   sync_service_->GetUserSettings()->SetSelectedTypes(
       /*sync_everything=*/false,
-      /*types=*/{syncer::UserSelectableType::kPasswords});
+      /*types=*/syncer::UserSelectableTypeSet(
+          syncer::UserSelectableType::kPasswords));
   SigninUser();
   SetUpController(/*is_update=*/false, /*is_migration_to_account=*/true);
 
@@ -308,7 +306,8 @@ TEST_F(SaveUpdateAddressProfilePromptControllerTest,
        ReturnsCorrectStringsToDisplayWhenMigrateSyncAddress) {
   sync_service_->GetUserSettings()->SetSelectedTypes(
       /*sync_everything=*/false,
-      /*types=*/{syncer::UserSelectableType::kAutofill});
+      /*types=*/syncer::UserSelectableTypeSet(
+          syncer::UserSelectableType::kAutofill));
   SigninUser();
   SetUpController(/*is_update=*/false, /*is_migration_to_account=*/true);
 

@@ -9,14 +9,17 @@
 
 namespace blink {
 
-std::ostream& operator<<(std::ostream& ostream,
-                         const DeprecatedLayoutSize& size) {
+std::ostream& operator<<(std::ostream& ostream, const LayoutSize& size) {
   return ostream << size.ToString();
 }
 
-String DeprecatedLayoutSize::ToString() const {
+String LayoutSize::ToString() const {
   return String::Format("%sx%s", Width().ToString().Ascii().c_str(),
                         Height().ToString().Ascii().c_str());
+}
+
+WTF::TextStream& operator<<(WTF::TextStream& ts, const LayoutSize& size) {
+  return ts << gfx::SizeF(size).ToString();
 }
 
 }  // namespace blink

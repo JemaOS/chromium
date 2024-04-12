@@ -17,7 +17,7 @@ class BrowserContext;
 class PasskeyModelFactory : public ProfileKeyedServiceFactory {
  public:
   static PasskeyModelFactory* GetInstance();
-  static webauthn::PasskeyModel* GetForProfile(Profile* profile);
+  static PasskeyModel* GetForProfile(Profile* profile);
 
  private:
   friend class base::NoDestructor<PasskeyModelFactory>;
@@ -26,7 +26,7 @@ class PasskeyModelFactory : public ProfileKeyedServiceFactory {
   ~PasskeyModelFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

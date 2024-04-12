@@ -38,8 +38,9 @@ enum class ExternalPromptNotificationType {
 struct VR_BASE_EXPORT WebVrModel {
   WebVrState state = kWebVrNoTimeoutPending;
   bool has_received_permissions = false;
+  bool showing_hosted_ui = false;
   bool IsImmersiveWebXrVisible() const {
-    return state == kWebVrPresenting &&
+    return state == kWebVrPresenting && !showing_hosted_ui &&
            external_prompt_notification ==
                ExternalPromptNotificationType::kPromptNone;
   }

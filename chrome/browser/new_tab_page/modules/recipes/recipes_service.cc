@@ -4,10 +4,8 @@
 
 #include "chrome/browser/new_tab_page/modules/recipes/recipes_service.h"
 
-#include <list>
-
 #include "base/containers/contains.h"
-#include "base/hash/hash.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_number_conversions.h"
@@ -171,7 +169,7 @@ void RecipesService::OnDataLoaded(network::SimpleURLLoader* loader,
                                   std::unique_ptr<std::string> response) {
   auto net_error = loader->NetError();
   bool loaded_from_cache = loader->LoadedFromCache();
-  std::erase_if(loaders_, [loader](const auto& target) {
+  base::EraseIf(loaders_, [loader](const auto& target) {
     return loader == target.get();
   });
 
@@ -231,7 +229,7 @@ void RecipesService::OnJsonParsed(
       const base::Value::Dict& recipe_dict = recipe.GetDict();
       const auto* name = recipe_dict.FindString("name");
       const auto* image_url = recipe_dict.FindString("image_url");
-      const std::optional<int> viewed_timestamp =
+      const absl::optional<int> viewed_timestamp =
           recipe_dict.FindIntByDottedPath("viewed_timestamp.seconds");
       const auto* site_name = recipe_dict.FindString("site_name");
       const auto* target_url = recipe_dict.FindString("target_url");

@@ -102,7 +102,7 @@ class InteractionSequenceViewsTest : public ViewsTestBase {
 
     menu_element_ = ui::SafeElementReference(
         ui::ElementTracker::GetElementTracker()->GetFirstMatchingElement(
-            id, ElementTrackerViews::GetContextForView(contents())));
+            id, ElementTrackerViews::GetContextForView(contents_)));
     Widget* const menu_widget = ElementToView(menu_element_.get())->GetWidget();
     test::WidgetVisibleWaiter visible_waiter(menu_widget);
     visible_waiter.Wait();
@@ -116,7 +116,7 @@ class InteractionSequenceViewsTest : public ViewsTestBase {
 
   void ShowBubble(ui::ElementIdentifier id) {
     auto delegate = std::make_unique<BubbleDialogDelegateView>(
-        contents(), BubbleBorder::Arrow::TOP_LEFT);
+        contents_, BubbleBorder::Arrow::TOP_LEFT);
     label_button_ = delegate->AddChildView(std::make_unique<LabelButton>());
     label_button_->SetProperty(kElementIdentifierKey, id);
     no_id_view_ = delegate->AddChildView(std::make_unique<LabelButton>());
@@ -129,9 +129,9 @@ class InteractionSequenceViewsTest : public ViewsTestBase {
 
   void CloseBubble() {
     DCHECK(bubble_widget_);
+    bubble_widget_->CloseNow();
+    bubble_widget_ = nullptr;
     label_button_ = nullptr;
-    no_id_view_ = nullptr;
-    bubble_widget_.ExtractAsDangling()->CloseNow();
   }
 
   void Activate(View* view) {
@@ -142,7 +142,8 @@ class InteractionSequenceViewsTest : public ViewsTestBase {
   void SetUp() override {
     ViewsTestBase::SetUp();
     widget_ = CreateWidget();
-    contents()->SetProperty(kElementIdentifierKey, kContentsElementID);
+    contents_ = widget_->GetContentsView();
+    contents_->SetProperty(kElementIdentifierKey, kContentsElementID);
   }
 
   void TearDown() override {
@@ -151,6 +152,7 @@ class InteractionSequenceViewsTest : public ViewsTestBase {
     if (menu_runner_)
       CloseMenu();
     widget_.reset();
+    contents_ = nullptr;
     ViewsTestBase::TearDown();
   }
 
@@ -158,8 +160,6 @@ class InteractionSequenceViewsTest : public ViewsTestBase {
   ui::ElementContext context() const {
     return ui::ElementContext(widget_.get());
   }
-
-  View* contents() { return widget_->GetContentsView(); }
 
   virtual void CreateAndRunMenu(ui::ElementIdentifier id) {
     menu_model_ = std::make_unique<ui::SimpleMenuModel>(nullptr);
@@ -176,6 +176,7 @@ class InteractionSequenceViewsTest : public ViewsTestBase {
   }
 
   std::unique_ptr<Widget> widget_;
+  raw_ptr<View> contents_ = nullptr;
   raw_ptr<Widget> bubble_widget_ = nullptr;
   raw_ptr<LabelButton> label_button_ = nullptr;
   raw_ptr<LabelButton> no_id_view_ = nullptr;
@@ -187,8 +188,7 @@ class InteractionSequenceViewsTest : public ViewsTestBase {
 TEST_F(InteractionSequenceViewsTest, DestructWithInitialViewAborts) {
   UNCALLED_MOCK_CALLBACK(ui::InteractionSequence::AbortedCallback, aborted);
   UNCALLED_MOCK_CALLBACK(ui::InteractionSequence::CompletedCallback, completed);
-  auto* const starting_view =
-      contents()->AddChildView(std::make_unique<View>());
+  auto* const starting_view = contents_->AddChildView(std::make_unique<View>());
   starting_view->SetProperty(kElementIdentifierKey, kTestElementID);
   auto sequence =
       ui::InteractionSequence::Builder()
@@ -202,14 +202,13 @@ TEST_F(InteractionSequenceViewsTest, DestructWithInitialViewAborts) {
           .Build();
   sequence->Start();
   EXPECT_CALL_IN_SCOPE(aborted, Run,
-                       contents()->RemoveChildViewT(starting_view));
+                       contents_->RemoveChildViewT(starting_view));
 }
 
 TEST_F(InteractionSequenceViewsTest, DestructWithInitialViewBeforeStartAborts) {
   UNCALLED_MOCK_CALLBACK(ui::InteractionSequence::AbortedCallback, aborted);
   UNCALLED_MOCK_CALLBACK(ui::InteractionSequence::CompletedCallback, completed);
-  auto* const starting_view =
-      contents()->AddChildView(std::make_unique<View>());
+  auto* const starting_view = contents_->AddChildView(std::make_unique<View>());
   starting_view->SetProperty(kElementIdentifierKey, kTestElementID);
   auto sequence =
       ui::InteractionSequence::Builder()
@@ -221,17 +220,16 @@ TEST_F(InteractionSequenceViewsTest, DestructWithInitialViewBeforeStartAborts) {
                        .SetType(ui::InteractionSequence::StepType::kActivated)
                        .Build())
           .Build();
-  contents()->RemoveChildViewT(starting_view);
+  contents_->RemoveChildViewT(starting_view);
   EXPECT_CALL_IN_SCOPE(aborted, Run, sequence->Start());
 }
 
 TEST_F(InteractionSequenceViewsTest, WrongWithInitialViewDoesNotStartSequence) {
   UNCALLED_MOCK_CALLBACK(ui::InteractionSequence::AbortedCallback, aborted);
   UNCALLED_MOCK_CALLBACK(ui::InteractionSequence::CompletedCallback, completed);
-  auto* const starting_view =
-      contents()->AddChildView(std::make_unique<View>());
+  auto* const starting_view = contents_->AddChildView(std::make_unique<View>());
   starting_view->SetProperty(kElementIdentifierKey, kTestElementID);
-  auto* const other_view = contents()->AddChildView(std::make_unique<View>());
+  auto* const other_view = contents_->AddChildView(std::make_unique<View>());
   other_view->SetProperty(kElementIdentifierKey, kTestElementID);
   auto sequence =
       ui::InteractionSequence::Builder()
@@ -256,8 +254,7 @@ TEST_F(InteractionSequenceViewsTest,
   UNCALLED_MOCK_CALLBACK(ui::InteractionSequence::StepEndCallback, step2_end);
   UNCALLED_MOCK_CALLBACK(ui::InteractionSequence::StepStartCallback,
                          step3_start);
-  auto* const starting_view =
-      contents()->AddChildView(std::make_unique<View>());
+  auto* const starting_view = contents_->AddChildView(std::make_unique<View>());
   starting_view->SetProperty(kElementIdentifierKey, kTestElementID);
   auto sequence =
       ui::InteractionSequence::Builder()
@@ -284,9 +281,9 @@ TEST_F(InteractionSequenceViewsTest,
                        .Build())
           .Build();
   sequence->Start();
-  auto* const second_view = contents()->AddChildView(std::make_unique<View>());
+  auto* const second_view = contents_->AddChildView(std::make_unique<View>());
   second_view->SetProperty(kElementIdentifierKey, kTestElementID2);
-  auto* const third_view = contents()->AddChildView(std::make_unique<View>());
+  auto* const third_view = contents_->AddChildView(std::make_unique<View>());
   third_view->SetProperty(kElementIdentifierKey, kTestElementID3);
   third_view->SetVisible(false);
 
@@ -296,7 +293,7 @@ TEST_F(InteractionSequenceViewsTest,
                        Activate(second_view));
 
   // Destroying the second view should NOT break the sequence.
-  contents()->RemoveChildViewT(second_view);
+  contents_->RemoveChildViewT(second_view);
 
   // Showing the third view at this point continues the sequence.
   EXPECT_CALLS_IN_SCOPE_3(step2_end, Run, step3_start, Run, completed, Run,
@@ -313,7 +310,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToBubble) {
       ui::InteractionSequence::Builder()
           .SetAbortedCallback(aborted.Get())
           .SetCompletedCallback(completed.Get())
-          .AddStep(InteractionSequenceViews::WithInitialView(contents()))
+          .AddStep(InteractionSequenceViews::WithInitialView(contents_))
           .AddStep(ui::InteractionSequence::StepBuilder()
                        .SetElementID(kTestElementID)
                        .SetType(ui::InteractionSequence::StepType::kActivated)
@@ -330,7 +327,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToBubble) {
                        .SetStartCallback(step3.Get())
                        .Build())
           .Build();
-  auto* const button = contents()->AddChildView(
+  auto* const button = contents_->AddChildView(
       std::make_unique<LabelButton>(Button::PressedCallback(
           base::BindRepeating(&InteractionSequenceViewsTest::ShowBubble,
                               base::Unretained(this), kTestElementID2))));
@@ -357,7 +354,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToBubbleThenAbort) {
       ui::InteractionSequence::Builder()
           .SetAbortedCallback(aborted.Get())
           .SetCompletedCallback(completed.Get())
-          .AddStep(InteractionSequenceViews::WithInitialView(contents()))
+          .AddStep(InteractionSequenceViews::WithInitialView(contents_))
           .AddStep(ui::InteractionSequence::StepBuilder()
                        .SetElementID(kTestElementID)
                        .SetType(ui::InteractionSequence::StepType::kActivated)
@@ -374,7 +371,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToBubbleThenAbort) {
                        .SetStartCallback(step3.Get())
                        .Build())
           .Build();
-  auto* const button = contents()->AddChildView(
+  auto* const button = contents_->AddChildView(
       std::make_unique<LabelButton>(Button::PressedCallback(
           base::BindRepeating(&InteractionSequenceViewsTest::ShowBubble,
                               base::Unretained(this), kTestElementID2))));
@@ -397,7 +394,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToMenuAndViewMenuItem) {
       ui::InteractionSequence::Builder()
           .SetAbortedCallback(aborted.Get())
           .SetCompletedCallback(completed.Get())
-          .AddStep(InteractionSequenceViews::WithInitialView(contents()))
+          .AddStep(InteractionSequenceViews::WithInitialView(contents_))
           .AddStep(ui::InteractionSequence::StepBuilder()
                        .SetElementID(kTestElementID)
                        .SetType(ui::InteractionSequence::StepType::kActivated)
@@ -410,7 +407,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToMenuAndViewMenuItem) {
                        .Build())
           .Build();
 
-  auto* const button = contents()->AddChildView(
+  auto* const button = contents_->AddChildView(
       std::make_unique<LabelButton>(Button::PressedCallback(
           base::BindRepeating(&InteractionSequenceViewsTest::ShowMenu,
                               base::Unretained(this), kTestElementID2))));
@@ -432,7 +429,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToMenuThenCloseMenuToCancel) {
       ui::InteractionSequence::Builder()
           .SetAbortedCallback(aborted.Get())
           .SetCompletedCallback(completed.Get())
-          .AddStep(InteractionSequenceViews::WithInitialView(contents()))
+          .AddStep(InteractionSequenceViews::WithInitialView(contents_))
           .AddStep(ui::InteractionSequence::StepBuilder()
                        .SetElementID(kTestElementID)
                        .SetType(ui::InteractionSequence::StepType::kActivated)
@@ -449,7 +446,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToMenuThenCloseMenuToCancel) {
                        .SetStartCallback(step3.Get())
                        .Build())
           .Build();
-  auto* const button = contents()->AddChildView(
+  auto* const button = contents_->AddChildView(
       std::make_unique<LabelButton>(Button::PressedCallback(
           base::BindRepeating(&InteractionSequenceViewsTest::ShowMenu,
                               base::Unretained(this), kTestElementID2))));
@@ -474,7 +471,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToMenuWithMenuButton) {
       ui::InteractionSequence::Builder()
           .SetAbortedCallback(aborted.Get())
           .SetCompletedCallback(completed.Get())
-          .AddStep(InteractionSequenceViews::WithInitialView(contents()))
+          .AddStep(InteractionSequenceViews::WithInitialView(contents_))
           .AddStep(ui::InteractionSequence::StepBuilder()
                        .SetElementID(kTestElementID)
                        .SetType(ui::InteractionSequence::StepType::kActivated)
@@ -487,7 +484,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToMenuWithMenuButton) {
                        .Build())
           .Build();
 
-  auto* const button = contents()->AddChildView(
+  auto* const button = contents_->AddChildView(
       std::make_unique<MenuButton>(Button::PressedCallback(
           base::BindRepeating(&InteractionSequenceViewsTest::ShowMenu,
                               base::Unretained(this), kTestElementID2))));
@@ -509,7 +506,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToMenuAndActivateMenuItem) {
       ui::InteractionSequence::Builder()
           .SetAbortedCallback(aborted.Get())
           .SetCompletedCallback(completed.Get())
-          .AddStep(InteractionSequenceViews::WithInitialView(contents()))
+          .AddStep(InteractionSequenceViews::WithInitialView(contents_))
           .AddStep(ui::InteractionSequence::StepBuilder()
                        .SetElementID(kTestElementID)
                        .SetType(ui::InteractionSequence::StepType::kActivated)
@@ -526,7 +523,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionToMenuAndActivateMenuItem) {
                        .SetStartCallback(step3.Get())
                        .Build())
           .Build();
-  auto* const button = contents()->AddChildView(
+  auto* const button = contents_->AddChildView(
       std::make_unique<LabelButton>(Button::PressedCallback(
           base::BindRepeating(&InteractionSequenceViewsTest::ShowMenu,
                               base::Unretained(this), kTestElementID2))));
@@ -556,7 +553,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionOnKeyboardMenuActivation) {
       ui::InteractionSequence::Builder()
           .SetAbortedCallback(aborted.Get())
           .SetCompletedCallback(completed.Get())
-          .AddStep(InteractionSequenceViews::WithInitialView(contents()))
+          .AddStep(InteractionSequenceViews::WithInitialView(contents_))
           .AddStep(ui::InteractionSequence::StepBuilder()
                        .SetElementID(kTestElementID)
                        .SetType(ui::InteractionSequence::StepType::kActivated)
@@ -573,7 +570,7 @@ TEST_F(InteractionSequenceViewsTest, TransitionOnKeyboardMenuActivation) {
                        .SetStartCallback(step3.Get())
                        .Build())
           .Build();
-  auto* const button = contents()->AddChildView(
+  auto* const button = contents_->AddChildView(
       std::make_unique<LabelButton>(Button::PressedCallback(
           base::BindRepeating(&InteractionSequenceViewsTest::ShowMenu,
                               base::Unretained(this), kTestElementID2))));
@@ -609,7 +606,7 @@ TEST_F(InteractionSequenceViewsTest, NameView_NameViewWithIdentifier) {
       ui::InteractionSequence::Builder()
           .SetAbortedCallback(aborted.Get())
           .SetCompletedCallback(completed.Get())
-          .AddStep(InteractionSequenceViews::WithInitialView(contents()))
+          .AddStep(InteractionSequenceViews::WithInitialView(contents_))
           .AddStep(ui::InteractionSequence::StepBuilder()
                        .SetElementID(kTestElementID)
                        .SetType(ui::InteractionSequence::StepType::kActivated)
@@ -626,7 +623,7 @@ TEST_F(InteractionSequenceViewsTest, NameView_NameViewWithIdentifier) {
                        .SetStartCallback(step3.Get())
                        .Build())
           .Build();
-  auto* const button = contents()->AddChildView(
+  auto* const button = contents_->AddChildView(
       std::make_unique<LabelButton>(Button::PressedCallback(
           base::BindRepeating(&InteractionSequenceViewsTest::ShowBubble,
                               base::Unretained(this), kTestElementID2))));
@@ -657,7 +654,7 @@ TEST_F(InteractionSequenceViewsTest, NameView_NameViewWithNoIdentifier) {
       ui::InteractionSequence::Builder()
           .SetAbortedCallback(aborted.Get())
           .SetCompletedCallback(completed.Get())
-          .AddStep(InteractionSequenceViews::WithInitialView(contents()))
+          .AddStep(InteractionSequenceViews::WithInitialView(contents_))
           .AddStep(ui::InteractionSequence::StepBuilder()
                        .SetElementID(kTestElementID)
                        .SetType(ui::InteractionSequence::StepType::kActivated)
@@ -674,7 +671,7 @@ TEST_F(InteractionSequenceViewsTest, NameView_NameViewWithNoIdentifier) {
                        .SetStartCallback(step3.Get())
                        .Build())
           .Build();
-  auto* const button = contents()->AddChildView(
+  auto* const button = contents_->AddChildView(
       std::make_unique<LabelButton>(Button::PressedCallback(
           base::BindRepeating(&InteractionSequenceViewsTest::ShowBubble,
                               base::Unretained(this), kTestElementID2))));

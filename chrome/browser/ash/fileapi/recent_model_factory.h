@@ -5,9 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_FILEAPI_RECENT_MODEL_FACTORY_H_
 #define CHROME_BROWSER_ASH_FILEAPI_RECENT_MODEL_FACTORY_H_
 
-#include <memory>
-
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -28,13 +26,13 @@ class RecentModelFactory : public ProfileKeyedServiceFactory {
   RecentModelFactory& operator=(const RecentModelFactory&) = delete;
 
  private:
-  friend base::NoDestructor<RecentModelFactory>;
+  friend struct base::DefaultSingletonTraits<RecentModelFactory>;
 
   RecentModelFactory();
   ~RecentModelFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

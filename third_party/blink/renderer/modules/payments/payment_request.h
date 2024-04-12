@@ -10,7 +10,6 @@
 #include "third_party/blink/public/mojom/payments/payment_request.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_value.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_payment_method_data.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_payment_options.h"
@@ -36,10 +35,11 @@ class PaymentAddress;
 class PaymentDetailsInit;
 class PaymentRequestUpdateEvent;
 class PaymentResponse;
+class ScriptPromiseResolver;
 class ScriptState;
 
 class MODULES_EXPORT PaymentRequest final
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public payments::mojom::blink::PaymentRequestClient,
       public PaymentStateResolver,
       public PaymentRequestDelegate,
@@ -73,11 +73,11 @@ class MODULES_EXPORT PaymentRequest final
 
   ~PaymentRequest() override;
 
-  ScriptPromiseTyped<PaymentResponse> show(ScriptState*, ExceptionState&);
-  ScriptPromiseTyped<PaymentResponse> show(ScriptState*,
-                                           ScriptPromise details_promise,
-                                           ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> abort(ScriptState*, ExceptionState&);
+  ScriptPromise show(ScriptState*, ExceptionState&);
+  ScriptPromise show(ScriptState*,
+                     ScriptPromise details_promise,
+                     ExceptionState&);
+  ScriptPromise abort(ScriptState*, ExceptionState&);
 
   const String& id() const { return id_; }
   PaymentAddress* getShippingAddress() const { return shipping_address_.Get(); }
@@ -88,24 +88,23 @@ class MODULES_EXPORT PaymentRequest final
   DEFINE_ATTRIBUTE_EVENT_LISTENER(shippingoptionchange, kShippingoptionchange)
   DEFINE_ATTRIBUTE_EVENT_LISTENER(paymentmethodchange, kPaymentmethodchange)
 
-  ScriptPromiseTyped<IDLBoolean> canMakePayment(ScriptState*, ExceptionState&);
-  ScriptPromiseTyped<IDLBoolean> hasEnrolledInstrument(ScriptState*,
-                                                       ExceptionState&);
+  ScriptPromise canMakePayment(ScriptState*, ExceptionState&);
+  ScriptPromise hasEnrolledInstrument(ScriptState*, ExceptionState&);
 
   // ScriptWrappable:
   bool HasPendingActivity() const override;
 
-  // EventTarget:
+  // EventTargetWithInlineData:
   const AtomicString& InterfaceName() const override;
   ExecutionContext* GetExecutionContext() const override;
 
   // PaymentStateResolver:
-  ScriptPromiseTyped<IDLUndefined> Complete(ScriptState*,
-                                            PaymentComplete result,
-                                            ExceptionState&) override;
-  ScriptPromiseTyped<IDLUndefined> Retry(ScriptState*,
-                                         const PaymentValidationErrors*,
-                                         ExceptionState&) override;
+  ScriptPromise Complete(ScriptState*,
+                         PaymentComplete result,
+                         ExceptionState&) override;
+  ScriptPromise Retry(ScriptState*,
+                      const PaymentValidationErrors*,
+                      ExceptionState&) override;
 
   // PaymentRequestDelegate:
   void OnUpdatePaymentDetails(const ScriptValue& details_script_value) override;
@@ -178,14 +177,13 @@ class MODULES_EXPORT PaymentRequest final
   String shipping_option_;
   String shipping_type_;
   HashSet<String> method_names_;
-  Member<ScriptPromiseResolverTyped<PaymentResponse>>
+  Member<ScriptPromiseResolver>
       accept_resolver_;  // the resolver for the show() promise.
-  Member<ScriptPromiseResolverTyped<IDLUndefined>> complete_resolver_;
-  Member<ScriptPromiseResolverTyped<IDLUndefined>> retry_resolver_;
-  Member<ScriptPromiseResolverTyped<IDLUndefined>> abort_resolver_;
-  Member<ScriptPromiseResolverTyped<IDLBoolean>> can_make_payment_resolver_;
-  Member<ScriptPromiseResolverTyped<IDLBoolean>>
-      has_enrolled_instrument_resolver_;
+  Member<ScriptPromiseResolver> complete_resolver_;
+  Member<ScriptPromiseResolver> retry_resolver_;
+  Member<ScriptPromiseResolver> abort_resolver_;
+  Member<ScriptPromiseResolver> can_make_payment_resolver_;
+  Member<ScriptPromiseResolver> has_enrolled_instrument_resolver_;
 
   // When not null, reject show(), resolve canMakePayment() and
   // hasEnrolledInstrument() with false.

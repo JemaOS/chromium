@@ -96,23 +96,48 @@ class SecurePaymentConfirmationAuthenticatorTestBase
             .ExtractString();
     ASSERT_EQ(std::string::npos, response.find("Error")) << response;
 
-    std::optional<base::Value> value = base::JSONReader::Read(response);
+    absl::optional<base::Value> value = base::JSONReader::Read(response);
     ASSERT_TRUE(value.has_value());
     ASSERT_TRUE(value->is_dict());
-    const auto& value_dict = value->GetDict();
 
-    const std::string* webidl_type = value_dict.FindString("webIdlType");
+    std::string* webidl_type = value->FindStringKey("webIdlType");
     ASSERT_NE(nullptr, webidl_type) << response;
 
-    const std::string* type = value_dict.FindString("type");
+    std::string* type = value->FindStringKey("type");
     ASSERT_NE(nullptr, type) << response;
 
-    const std::string* id = value_dict.FindString("id");
+    std::string* id = value->FindStringKey("id");
     ASSERT_NE(nullptr, id) << response;
 
     if (out_info) {
       *out_info = {*webidl_type, *type, *id};
     }
+  }
+
+  void ExpectEnrollSystemPromptResult(
+      SecurePaymentConfirmationEnrollSystemPromptResult result,
+      int count) {
+    histogram_tester_.ExpectTotalCount(
+        "PaymentRequest.SecurePaymentConfirmation.Funnel."
+        "EnrollSystemPromptResult",
+        count);
+    histogram_tester_.ExpectBucketCount(
+        "PaymentRequest.SecurePaymentConfirmation.Funnel."
+        "EnrollSystemPromptResult",
+        result, count);
+  }
+
+  void ExpectAuthSystemPromptResult(
+      SecurePaymentConfirmationSystemPromptResult result,
+      int count) {
+    histogram_tester_.ExpectTotalCount(
+        "PaymentRequest.SecurePaymentConfirmation.Funnel."
+        "SystemPromptResult",
+        count);
+    histogram_tester_.ExpectBucketCount(
+        "PaymentRequest.SecurePaymentConfirmation.Funnel."
+        "SystemPromptResult",
+        result, count);
   }
 
   void ObserveEvent(Event event) {
@@ -152,12 +177,16 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationAuthenticatorCreateTest,
   // Verify that the correct metrics are recorded.
   histogram_tester_.ExpectTotalCount(
       "PaymentRequest.SecurePaymentConfirmationCredentialIdSizeInBytes", 1U);
+  ExpectEnrollSystemPromptResult(
+      SecurePaymentConfirmationEnrollSystemPromptResult::kAccepted, 1);
 
   // Check that we can create a second credential, and that the tracked metrics
   // update.
   CreatePaymentCredential();
   histogram_tester_.ExpectTotalCount(
       "PaymentRequest.SecurePaymentConfirmationCredentialIdSizeInBytes", 2U);
+  ExpectEnrollSystemPromptResult(
+      SecurePaymentConfirmationEnrollSystemPromptResult::kAccepted, 2);
 }
 
 // b.com cannot create a credential with RP = "a.com".
@@ -247,7 +276,7 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationAuthenticatorGetTest,
           .ExtractString();
 
   ASSERT_EQ(std::string::npos, response.find("Error"));
-  std::optional<base::Value> value = base::JSONReader::Read(response);
+  absl::optional<base::Value> value = base::JSONReader::Read(response);
   ASSERT_TRUE(value.has_value());
   ASSERT_TRUE(value->is_dict());
   const base::Value::Dict& value_dict = value->GetDict();
@@ -259,7 +288,7 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationAuthenticatorGetTest,
   ASSERT_NE(nullptr, origin) << response;
   EXPECT_EQ(https_server()->GetURL("b.com", "/"), GURL(*origin));
 
-  std::optional<bool> cross_origin = value_dict.FindBool("crossOrigin");
+  absl::optional<bool> cross_origin = value_dict.FindBool("crossOrigin");
   ASSERT_TRUE(cross_origin.has_value()) << response;
   EXPECT_TRUE(cross_origin.value());
 
@@ -280,6 +309,10 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationAuthenticatorGetTest,
   ASSERT_NE(nullptr, rpId) << response;
   EXPECT_EQ("a.com", *rpId);
 
+  ExpectEnrollSystemPromptResult(
+      SecurePaymentConfirmationEnrollSystemPromptResult::kAccepted, 1);
+  ExpectAuthSystemPromptResult(
+      SecurePaymentConfirmationSystemPromptResult::kAccepted, 1);
   ExpectEvent2Histogram({Event2::kInitiated, Event2::kShown, Event2::kCompleted,
                          Event2::kPayClicked, Event2::kHadInitialFormOfPayment,
                          Event2::kRequestMethodSecurePaymentConfirmation,
@@ -315,7 +348,7 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationAuthenticatorGetTest,
           .ExtractString();
 
   ASSERT_EQ(std::string::npos, response.find("Error"));
-  std::optional<base::Value> value = base::JSONReader::Read(response);
+  absl::optional<base::Value> value = base::JSONReader::Read(response);
   ASSERT_TRUE(value.has_value());
   ASSERT_TRUE(value->is_dict());
 
@@ -329,6 +362,10 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationAuthenticatorGetTest,
       dict.FindStringByDottedPath("payment.payeeOrigin");
   ASSERT_EQ(nullptr, payee_origin) << response;
 
+  ExpectEnrollSystemPromptResult(
+      SecurePaymentConfirmationEnrollSystemPromptResult::kAccepted, 1);
+  ExpectAuthSystemPromptResult(
+      SecurePaymentConfirmationSystemPromptResult::kAccepted, 1);
   ExpectEvent2Histogram({Event2::kInitiated, Event2::kShown, Event2::kCompleted,
                          Event2::kPayClicked, Event2::kHadInitialFormOfPayment,
                          Event2::kRequestMethodSecurePaymentConfirmation,
@@ -365,7 +402,7 @@ IN_PROC_BROWSER_TEST_F(
           .ExtractString();
 
   ASSERT_EQ(std::string::npos, response.find("Error"));
-  std::optional<base::Value> value = base::JSONReader::Read(response);
+  absl::optional<base::Value> value = base::JSONReader::Read(response);
   ASSERT_TRUE(value.has_value());
   ASSERT_TRUE(value->is_dict());
 
@@ -380,6 +417,10 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_NE(nullptr, payee_origin) << response;
   EXPECT_EQ(GURL("https://example-payee-origin.test"), GURL(*payee_origin));
 
+  ExpectEnrollSystemPromptResult(
+      SecurePaymentConfirmationEnrollSystemPromptResult::kAccepted, 1);
+  ExpectAuthSystemPromptResult(
+      SecurePaymentConfirmationSystemPromptResult::kAccepted, 1);
   ExpectEvent2Histogram({Event2::kInitiated, Event2::kShown, Event2::kCompleted,
                          Event2::kPayClicked, Event2::kHadInitialFormOfPayment,
                          Event2::kRequestMethodSecurePaymentConfirmation,
@@ -485,6 +526,10 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationAuthenticatorGetTest,
           content::JsReplace("getTotalAmountFromClientData($1, $2);",
                              credential_info.id, "0.01")));
 
+  ExpectEnrollSystemPromptResult(
+      SecurePaymentConfirmationEnrollSystemPromptResult::kAccepted, 1);
+  ExpectAuthSystemPromptResult(
+      SecurePaymentConfirmationSystemPromptResult::kCanceled, 1);
   // WebAuthn dialog failure is recorded as kOtherAborted. Since we made it
   // past the Transaction UX to the WebAuthn dialog, we should still log
   // kPayClicked and kSelectedSecurePaymentConfirmation.
@@ -540,6 +585,11 @@ IN_PROC_BROWSER_TEST_F(SecurePaymentConfirmationAuthenticatorGetTest,
           content::JsReplace(
               "getTotalAmountFromClientDataWithModifierAndShowPromise($1, $2);",
               credential_info.id, "0.04")));
+
+  ExpectEnrollSystemPromptResult(
+      SecurePaymentConfirmationEnrollSystemPromptResult::kAccepted, 1);
+  ExpectAuthSystemPromptResult(
+      SecurePaymentConfirmationSystemPromptResult::kAccepted, 4);
 }
 
 }  // namespace

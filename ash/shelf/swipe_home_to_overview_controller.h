@@ -5,11 +5,10 @@
 #ifndef ASH_SHELF_SWIPE_HOME_TO_OVERVIEW_CONTROLLER_H_
 #define ASH_SHELF_SWIPE_HOME_TO_OVERVIEW_CONTROLLER_H_
 
-#include <optional>
-
 #include "ash/ash_export.h"
 #include "base/functional/callback_helpers.h"
 #include "base/timer/timer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/point_f.h"
 
 namespace ash {
@@ -49,7 +48,7 @@ class ASH_EXPORT SwipeHomeToOverviewController {
             float scroll_x,
             float scroll_y);
   void EndDrag(const gfx::PointF& location_in_screen,
-               std::optional<float> velocity_y);
+               absl::optional<float> velocity_y);
   void CancelDrag();
 
   base::OneShotTimer* overview_transition_timer_for_testing() {

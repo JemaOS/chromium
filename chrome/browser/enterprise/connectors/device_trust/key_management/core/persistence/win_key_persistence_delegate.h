@@ -26,12 +26,8 @@ class WinKeyPersistenceDelegate : public KeyPersistenceDelegate {
   bool CheckRotationPermissions() override;
   bool StoreKeyPair(KeyPersistenceDelegate::KeyTrustLevel trust_level,
                     std::vector<uint8_t> wrapped) override;
-  scoped_refptr<SigningKeyPair> LoadKeyPair(
-      KeyStorageType type,
-      LoadPersistedKeyResult* result) override;
-  scoped_refptr<SigningKeyPair> CreateKeyPair() override;
-  bool PromoteTemporaryKeyPair() override;
-  bool DeleteKeyPair(KeyStorageType type) override;
+  std::unique_ptr<SigningKeyPair> LoadKeyPair() override;
+  std::unique_ptr<SigningKeyPair> CreateKeyPair() override;
 };
 
 }  // namespace enterprise_connectors

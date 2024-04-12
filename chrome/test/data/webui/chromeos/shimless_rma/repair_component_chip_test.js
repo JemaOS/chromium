@@ -14,7 +14,7 @@ suite('repairComponentChipTest', function() {
   let component = null;
 
   setup(() => {
-    document.body.innerHTML = trustedTypes.emptyHTML;
+    document.body.innerHTML = '';
   });
 
   teardown(() => {

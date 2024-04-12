@@ -14,22 +14,16 @@
 
 #include "absl/strings/str_format.h"
 
-#include <cerrno>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
-#include <ostream>
-#include <sstream>
 #include <string>
-#include <type_traits>
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "absl/base/config.h"
-#include "absl/base/macros.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 
 namespace absl {
 ABSL_NAMESPACE_BEGIN
@@ -634,10 +628,6 @@ TEST(StrFormat, BehavesAsDocumented) {
   const int& something = *reinterpret_cast<const int*>(ptr_value);
   EXPECT_EQ(StrFormat("%p", &something), StrFormat("0x%x", ptr_value));
 
-  // The output of formatting a null pointer is not documented as being a
-  // specific thing, but the attempt should at least compile.
-  (void)StrFormat("%p", nullptr);
-
   // Output widths are supported, with optional flags.
   EXPECT_EQ(StrFormat("%3d", 1), "  1");
   EXPECT_EQ(StrFormat("%3d", 123456), "123456");
@@ -648,8 +638,6 @@ TEST(StrFormat, BehavesAsDocumented) {
   EXPECT_EQ(StrFormat("%#o", 10), "012");
   EXPECT_EQ(StrFormat("%#x", 15), "0xf");
   EXPECT_EQ(StrFormat("%04d", 8), "0008");
-  EXPECT_EQ(StrFormat("%#04x", 0), "0000");
-  EXPECT_EQ(StrFormat("%#04x", 1), "0x01");
   // Posix positional substitution.
   EXPECT_EQ(absl::StrFormat("%2$s, %3$s, %1$s!", "vici", "veni", "vidi"),
             "veni, vidi, vici!");

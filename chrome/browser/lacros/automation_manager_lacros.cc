@@ -42,8 +42,8 @@ void AutomationManagerLacros::DispatchAccessibilityEvents(
   // TODO: we probably don't want to check every time but only once and cache
   // the value(s). Also, we need to check all accessibility enums, structs
   // reachable from AXTreeUpdate and AXEvent.
-  int remote_version = chromeos::LacrosService::Get()
-                           ->GetInterfaceVersion<crosapi::mojom::Automation>();
+  int remote_version = chromeos::LacrosService::Get()->GetInterfaceVersion(
+      crosapi::mojom::Automation::Uuid_);
   if (remote_version < 0 ||
       crosapi::mojom::Automation::kDispatchAccessibilityEventsMinVersion >
           static_cast<uint32_t>(remote_version)) {
@@ -56,14 +56,14 @@ void AutomationManagerLacros::DispatchAccessibilityEvents(
 }
 
 void AutomationManagerLacros::DispatchAccessibilityLocationChange(
-    const content::AXLocationChangeNotificationDetails& details) {
-  ui::AXTreeID tree_id = details.ax_tree_id;
+    const ExtensionMsg_AccessibilityLocationChangeParams& params) {
+  ui::AXTreeID tree_id = params.tree_id;
   if (!tree_id.token())
     return;
 
   DCHECK(automation_remote_);
   automation_remote_->DispatchAccessibilityLocationChange(
-      *tree_id.token(), details.id, details.new_location);
+      *tree_id.token(), params.id, params.new_location);
 }
 
 void AutomationManagerLacros::DispatchTreeDestroyedEvent(ui::AXTreeID tree_id) {
@@ -84,7 +84,7 @@ void AutomationManagerLacros::DispatchActionResult(
 
 void AutomationManagerLacros::DispatchGetTextLocationDataResult(
     const ui::AXActionData& data,
-    const std::optional<gfx::Rect>& rect) {
+    const absl::optional<gfx::Rect>& rect) {
   // Unsupported by Laros.
 }
 

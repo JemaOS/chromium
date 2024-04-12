@@ -39,7 +39,6 @@
 #include <functional>
 #include <type_traits>
 
-#include "absl/base/attributes.h"
 #include "absl/base/config.h"
 
 // Defines the default alignment. `__STDCPP_DEFAULT_NEW_ALIGNMENT__` is a C++17
@@ -152,8 +151,8 @@ template <typename... Ts>
 struct disjunction : std::false_type {};
 
 template <typename T, typename... Ts>
-struct disjunction<T, Ts...>
-    : std::conditional<T::value, T, disjunction<Ts...>>::type {};
+struct disjunction<T, Ts...> :
+      std::conditional<T::value, T, disjunction<Ts...>>::type {};
 
 template <typename T>
 struct disjunction<T> : T {};
@@ -279,7 +278,6 @@ using remove_extent_t = typename std::remove_extent<T>::type;
 template <typename T>
 using remove_all_extents_t = typename std::remove_all_extents<T>::type;
 
-ABSL_INTERNAL_DISABLE_DEPRECATED_DECLARATION_WARNING
 namespace type_traits_internal {
 // This trick to retrieve a default alignment is necessary for our
 // implementation of aligned_storage_t to be consistent with any
@@ -298,7 +296,6 @@ struct default_alignment_of_aligned_storage<
 template <size_t Len, size_t Align = type_traits_internal::
                           default_alignment_of_aligned_storage<Len>::value>
 using aligned_storage_t = typename std::aligned_storage<Len, Align>::type;
-ABSL_INTERNAL_RESTORE_DEPRECATED_DECLARATION_WARNING
 
 template <typename T>
 using decay_t = typename std::decay<T>::type;
@@ -315,23 +312,22 @@ using common_type_t = typename std::common_type<T...>::type;
 template <typename T>
 using underlying_type_t = typename std::underlying_type<T>::type;
 
+
 namespace type_traits_internal {
 
 #if (defined(__cpp_lib_is_invocable) && __cpp_lib_is_invocable >= 201703L) || \
     (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
 // std::result_of is deprecated (C++17) or removed (C++20)
-template <typename>
-struct result_of;
-template <typename F, typename... Args>
+template<typename> struct result_of;
+template<typename F, typename... Args>
 struct result_of<F(Args...)> : std::invoke_result<F, Args...> {};
 #else
-template <typename F>
-using result_of = std::result_of<F>;
+template<typename F> using result_of = std::result_of<F>;
 #endif
 
 }  // namespace type_traits_internal
 
-template <typename F>
+template<typename F>
 using result_of_t = typename type_traits_internal::result_of<F>::type;
 
 namespace type_traits_internal {
@@ -464,23 +460,20 @@ namespace type_traits_internal {
 // Make the swap-related traits/function accessible from this namespace.
 using swap_internal::IsNothrowSwappable;
 using swap_internal::IsSwappable;
-using swap_internal::StdSwapIsUnconstrained;
 using swap_internal::Swap;
+using swap_internal::StdSwapIsUnconstrained;
 
 }  // namespace type_traits_internal
 
 // absl::is_trivially_relocatable<T>
 //
 // Detects whether a type is known to be "trivially relocatable" -- meaning it
-// can be relocated from one place to another as if by memcpy/memmove.
-// This implies that its object representation doesn't depend on its address,
-// and also none of its special member functions do anything strange.
+// can be relocated without invoking the constructor/destructor, using a form of
+// move elision.
 //
-// This trait is conservative. If it's true then the type is definitely
-// trivially relocatable, but if it's false then the type may or may not be. For
-// example, std::vector<int> is trivially relocatable on every known STL
-// implementation, but absl::is_trivially_relocatable<std::vector<int>> remains
-// false.
+// This trait is conservative, for backwards compatibility. If it's true then
+// the type is definitely trivially relocatable, but if it's false then the type
+// may or may not be.
 //
 // Example:
 //
@@ -504,35 +497,19 @@ using swap_internal::Swap;
 // there.
 //
 // TODO(b/275003464): remove the opt-out once the bug is fixed.
-//
-// Starting with Xcode 15, the Apple compiler will falsely say a type
-// with a user-provided move constructor is trivially relocatable
-// (b/324278148). We will opt out without a version check, due to
-// the fluidity of Apple versions.
-//
-// TODO(b/324278148): If all versions we use have the bug fixed, then
-// remove the condition.
-//
-// Clang on all platforms fails to detect that a type with a user-provided
-// move-assignment operator is not trivially relocatable. So in fact we
-// opt out of Clang altogether, for now.
-//
-// TODO(b/325479096): Remove the opt-out once Clang's behavior is fixed.
-//
-// According to https://github.com/abseil/abseil-cpp/issues/1479, this does not
-// work with NVCC either.
 #if ABSL_HAVE_BUILTIN(__is_trivially_relocatable) && \
-    (defined(__cpp_impl_trivially_relocatable) ||    \
-     (!defined(__clang__) && !defined(__APPLE__) && !defined(__NVCC__)))
+    !(defined(__clang__) && (defined(_WIN32) || defined(_WIN64)))
 template <class T>
 struct is_trivially_relocatable
     : std::integral_constant<bool, __is_trivially_relocatable(T)> {};
 #else
 // Otherwise we use a fallback that detects only those types we can feasibly
-// detect. Any type that is trivially copyable is by definition trivially
-// relocatable.
+// detect. Any time that has trivial move-construction and destruction
+// operations is by definition trivally relocatable.
 template <class T>
-struct is_trivially_relocatable : std::is_trivially_copyable<T> {};
+struct is_trivially_relocatable
+    : absl::conjunction<absl::is_trivially_move_constructible<T>,
+                        absl::is_trivially_destructible<T>> {};
 #endif
 
 // absl::is_constant_evaluated()

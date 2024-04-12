@@ -87,8 +87,7 @@ void ChromeAppWindowClient::OpenDevToolsWindow(
     base::OnceClosure callback) {
   scoped_refptr<content::DevToolsAgentHost> agent(
       content::DevToolsAgentHost::GetOrCreateFor(web_contents));
-  DevToolsWindow::OpenDevToolsWindow(web_contents,
-                                     DevToolsOpenedByAction::kTargetReload);
+  DevToolsWindow::OpenDevToolsWindow(web_contents);
 
   DevToolsWindow* devtools_window =
       DevToolsWindow::FindDevToolsWindow(agent.get());

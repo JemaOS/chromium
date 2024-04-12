@@ -10,28 +10,26 @@ import androidx.preference.PreferenceFragmentCompat;
 import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncher;
 import org.chromium.chrome.browser.password_check.PasswordCheckComponentUi.CustomTabIntentHelper;
 import org.chromium.chrome.browser.password_check.PasswordCheckComponentUi.TrustedIntentHelper;
-import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.components.browser_ui.settings.SettingsLauncher;
 
-/** Use {@link #create()} to instantiate a {@link PasswordCheckComponentUi}. */
+/**
+ * Use {@link #create()} to instantiate a {@link PasswordCheckComponentUi}.
+ */
 public class PasswordCheckComponentUiFactory {
-    /** The factory used to create components that connect to this fragment and provide data. */
+    /**
+     * The factory used to create components that connect to this fragment and provide data.
+     */
     interface CreationStrategy {
         /**
          * Returns a component that connects to the given fragment and manipulates its data.
-         *
          * @param fragmentView A {@link PasswordCheckFragmentView}.
          * @param helpAndFeedbackLauncher A {@link HelpAndFeedbackLauncher}.
-         * @param profile The {link Profile} associated with the current session.
          * @return A non-null {@link PasswordCheckComponentUi}.
          */
-        PasswordCheckComponentUi create(
-                PasswordCheckFragmentView fragmentView,
-                HelpAndFeedbackLauncher helpAndFeedbackLauncher,
-                SettingsLauncher settingsLauncher,
+        PasswordCheckComponentUi create(PasswordCheckFragmentView fragmentView,
+                HelpAndFeedbackLauncher helpAndFeedbackLauncher, SettingsLauncher settingsLauncher,
                 CustomTabIntentHelper customTabIntentHelper,
-                TrustedIntentHelper trustedIntentHelper,
-                Profile profile);
+                TrustedIntentHelper trustedIntentHelper);
     }
 
     private static CreationStrategy sCreationStrategy = PasswordCheckCoordinator::new;
@@ -40,25 +38,15 @@ public class PasswordCheckComponentUiFactory {
 
     /**
      * Creates a {@link PasswordCheckComponentUi}.
-     *
      * @param fragmentView the view which will be managed by the coordinator.
-     * @param profile The {link Profile} associated with the current session.
      * @return A {@link PasswordCheckComponentUi}.
      */
-    public static PasswordCheckComponentUi create(
-            PreferenceFragmentCompat fragmentView,
-            HelpAndFeedbackLauncher helpAndFeedbackLauncher,
-            SettingsLauncher settingsLauncher,
-            CustomTabIntentHelper customTabIntentHelper,
-            TrustedIntentHelper trustedIntentHelper,
-            Profile profile) {
-        return sCreationStrategy.create(
-                (PasswordCheckFragmentView) fragmentView,
-                helpAndFeedbackLauncher,
-                settingsLauncher,
-                customTabIntentHelper,
-                trustedIntentHelper,
-                profile);
+    public static PasswordCheckComponentUi create(PreferenceFragmentCompat fragmentView,
+            HelpAndFeedbackLauncher helpAndFeedbackLauncher, SettingsLauncher settingsLauncher,
+            CustomTabIntentHelper customTabIntentHelper, TrustedIntentHelper trustedIntentHelper) {
+        return sCreationStrategy.create((PasswordCheckFragmentView) fragmentView,
+                helpAndFeedbackLauncher, settingsLauncher, customTabIntentHelper,
+                trustedIntentHelper);
     }
 
     @VisibleForTesting

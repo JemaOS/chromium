@@ -8,7 +8,6 @@
 #include "chrome/browser/extensions/api/side_panel/side_panel_service.h"
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/extensions/extension_service.h"
-#include "chrome/browser/profiles/profile.h"
 #include "components/version_info/channel.h"
 #include "content/public/test/browser_test.h"
 #include "extensions/browser/disable_reason.h"
@@ -140,10 +139,6 @@ IN_PROC_BROWSER_TEST_F(SidePanelApiWithExtensionTest, ExtensionRegistry) {
     EXPECT_EQ("default_path.html", options.path.value());
     EXPECT_FALSE(service->HasExtensionPanelOptionsForTest(extension->id()));
   }
-}
-
-IN_PROC_BROWSER_TEST_F(SidePanelApiTest, OpenPanelErrors) {
-  ASSERT_TRUE(RunExtensionTest("side_panel/open_panel_errors"));
 }
 
 }  // namespace extensions

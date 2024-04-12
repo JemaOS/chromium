@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/files/file_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/path_service.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
@@ -28,14 +27,14 @@
 namespace cups_proxy {
 namespace {
 
-// Returns std::nullopt on failure.
-std::optional<std::string> GetTestFile(std::string test_name) {
+// Returns absl::nullopt on failure.
+absl::optional<std::string> GetTestFile(std::string test_name) {
   base::ScopedAllowBlockingForTesting allow_blocking;
 
   // Build file path.
   base::FilePath path;
   if (!base::PathService::Get(Paths::DIR_TEST_DATA, &path)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   path = path.Append(FILE_PATH_LITERAL(test_name))
@@ -44,7 +43,7 @@ std::optional<std::string> GetTestFile(std::string test_name) {
   // Read in file contents.
   std::string contents;
   if (!base::ReadFileToString(path, &contents)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return contents;
@@ -212,7 +211,7 @@ class SocketManagerTest : public testing::Test {
   std::unique_ptr<FakeServiceDelegate> delegate_;
 
   // Not owned.
-  raw_ptr<FakeSocket> socket_;
+  FakeSocket* socket_;
 
   std::unique_ptr<SocketManager> manager_;
   base::WeakPtrFactory<SocketManagerTest> weak_factory_{this};
@@ -233,7 +232,7 @@ class SocketManagerTest : public testing::Test {
 // All socket accesses are resolved synchronously.
 TEST_F(SocketManagerTest, SyncEverything) {
   // Read request & response
-  std::optional<std::string> http_handshake = GetTestFile("basic_handshake");
+  absl::optional<std::string> http_handshake = GetTestFile("basic_handshake");
   EXPECT_TRUE(http_handshake);
 
   // Pre-load |socket_| with request/response.

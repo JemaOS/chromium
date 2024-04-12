@@ -51,17 +51,16 @@ EyeDropper* EyeDropper::Create(ExecutionContext* context) {
   return MakeGarbageCollected<EyeDropper>(context);
 }
 
-ScriptPromiseTyped<ColorSelectionResult> EyeDropper::open(
-    ScriptState* script_state,
-    const ColorSelectionOptions* options,
-    ExceptionState& exception_state) {
+ScriptPromise EyeDropper::open(ScriptState* script_state,
+                               const ColorSelectionOptions* options,
+                               ExceptionState& exception_state) {
   DCHECK(RuntimeEnabledFeatures::EyeDropperAPIEnabled());
 
   if (!script_state->ContextIsValid()) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "The object is no longer associated with a window.");
-    return ScriptPromiseTyped<ColorSelectionResult>();
+    return ScriptPromise();
   }
 
   LocalDOMWindow* window = LocalDOMWindow::From(script_state);
@@ -69,27 +68,26 @@ ScriptPromiseTyped<ColorSelectionResult> EyeDropper::open(
     exception_state.ThrowDOMException(
         DOMExceptionCode::kNotAllowedError,
         "EyeDropper::open() requires user gesture.");
-    return ScriptPromiseTyped<ColorSelectionResult>();
+    return ScriptPromise();
   }
 
   if (!::features::IsEyeDropperEnabled()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kOperationError,
                                       kNotAvailableMessage);
-    return ScriptPromiseTyped<ColorSelectionResult>();
+    return ScriptPromise();
   }
 
   if (eye_dropper_chooser_.is_bound()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "EyeDropper is already open.");
-    return ScriptPromiseTyped<ColorSelectionResult>();
+    return ScriptPromise();
   }
 
   std::unique_ptr<ScopedAbortState> end_chooser_abort_state = nullptr;
   std::unique_ptr<ScopedAbortState> response_handler_abort_state = nullptr;
   if (auto* signal = options->getSignalOr(nullptr)) {
     if (signal->aborted()) {
-      return ScriptPromiseTyped<ColorSelectionResult>::Reject(
-          script_state, signal->reason(script_state));
+      return ScriptPromise::Reject(script_state, signal->reason(script_state));
     }
     auto* handle = signal->AddAlgorithm(
         MakeGarbageCollected<OpenAbortAlgorithm>(this, signal));
@@ -99,10 +97,9 @@ ScriptPromiseTyped<ColorSelectionResult> EyeDropper::open(
         std::make_unique<ScopedAbortState>(signal, handle);
   }
 
-  resolver_ =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<ColorSelectionResult>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver_->Promise();
+  resolver_ = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver_->Promise();
 
   auto* frame = window->GetFrame();
   frame->GetBrowserInterfaceBroker().GetInterface(
@@ -134,7 +131,7 @@ void EyeDropper::AbortCallback(AbortSignal* signal) {
 
 void EyeDropper::EyeDropperResponseHandler(
     std::unique_ptr<ScopedAbortState> scoped_abort_state,
-    ScriptPromiseResolverTyped<ColorSelectionResult>* resolver,
+    ScriptPromiseResolver* resolver,
     bool success,
     uint32_t color) {
   eye_dropper_chooser_.reset();

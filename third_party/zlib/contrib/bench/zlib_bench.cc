@@ -236,11 +236,7 @@ void check_file(const Data& file, zlib_wrapper type, int mode) {
     error_exit("check file: error writing output", 3);
 }
 
-void zlib_file(const char* name,
-               zlib_wrapper type,
-               int width,
-               int check,
-               bool output_csv_format) {
+void zlib_file(const char* name, zlib_wrapper type, int width, int check) {
   /*
    * Read the file data.
    */
@@ -261,9 +257,7 @@ void zlib_file(const char* name,
    * Report compression strategy and file name.
    */
   const char* strategy = zlib_level_strategy_name(zlib_compression_level);
-  if (!output_csv_format) {
-    printf("%s%-40s :\n", strategy, name);
-  }
+  printf("%s%-40s :\n", strategy, name);
 
   /*
    * Chop the data into blocks.
@@ -335,28 +329,19 @@ void zlib_file(const char* name,
   std::sort(ctime, ctime + runs);
   std::sort(utime, utime + runs);
 
-  double deflate_rate_med, inflate_rate_med, deflate_rate_max, inflate_rate_max;
-  deflate_rate_med = length * repeats / mega_byte / ctime[runs / 2];
-  inflate_rate_med = length * repeats / mega_byte / utime[runs / 2];
-  deflate_rate_max = length * repeats / mega_byte / ctime[0];
-  inflate_rate_max = length * repeats / mega_byte / utime[0];
-  double compress_ratio = output_length * 100.0 / length;
+  double deflate_rate_med = length * repeats / mega_byte / ctime[runs / 2];
+  double inflate_rate_med = length * repeats / mega_byte / utime[runs / 2];
+  double deflate_rate_max = length * repeats / mega_byte / ctime[0];
+  double inflate_rate_max = length * repeats / mega_byte / utime[0];
 
-  if (!output_csv_format) {
-    // type, block size, compression ratio, etc
-    printf("%s: [b %dM] bytes %*d -> %*u %4.2f%%", zlib_wrapper_name(type),
-           block_size / (1 << 20), width, length, width,
-           unsigned(output_length), compress_ratio);
+  // type, block size, compression ratio, etc
+  printf("%s: [b %dM] bytes %*d -> %*u %4.2f%%",
+    zlib_wrapper_name(type), block_size / (1 << 20), width, length, width,
+    unsigned(output_length), output_length * 100.0 / length);
 
-    // compress / uncompress median (max) rates
-    printf(" comp %5.1f (%5.1f) MB/s uncomp %5.1f (%5.1f) MB/s\n",
-           deflate_rate_med, deflate_rate_max, inflate_rate_med,
-           inflate_rate_max);
-  } else {
-    printf("%s\t%.5lf\t%.5lf\t%.5lf\t%.5lf\t%.5lf\n", name, deflate_rate_med,
-           inflate_rate_med, deflate_rate_max, inflate_rate_max,
-           compress_ratio);
-  }
+  // compress / uncompress median (max) rates
+  printf(" comp %5.1f (%5.1f) MB/s uncomp %5.1f (%5.1f) MB/s\n",
+    deflate_rate_med, deflate_rate_max, inflate_rate_med, inflate_rate_max);
 }
 
 static int argn = 1;
@@ -378,10 +363,8 @@ void get_field_width(int argc, char* argv[], int& value) {
 }
 
 void usage_exit(const char* program) {
-  static auto* options =
-      "gzip|zlib|raw"
-      " [--compression 0:9] [--huffman|--rle] [--field width] [--check]"
-      " [--csv]";
+  static auto* options = "gzip|zlib|raw"
+    " [--compression 0:9] [--huffman|--rle] [--field width] [--check]";
   printf("usage: %s %s files ...\n", program, options);
   printf("zlib version: %s\n", ZLIB_VERSION);
   exit(1);
@@ -400,7 +383,7 @@ int main(int argc, char* argv[]) {
 
   int size_field_width = 0;
   int file_check = 0;
-  bool output_csv = false;
+
   while (argn < argc && argv[argn][0] == '-') {
     if (get_option(argc, argv, "--compression")) {
       if (!get_compression(argc, argv, zlib_compression_level))
@@ -415,11 +398,6 @@ int main(int argc, char* argv[]) {
       file_check = 2;
     } else if (get_option(argc, argv, "--field")) {
       get_field_width(argc, argv, size_field_width);
-    } else if (get_option(argc, argv, "--csv")) {
-      output_csv = true;
-      printf(
-          "filename\tcompression\tdecompression\tcomp_max\t"
-          "decomp_max\tcompress_ratio\n");
     } else {
       usage_exit(argv[0]);
     }
@@ -430,9 +408,8 @@ int main(int argc, char* argv[]) {
 
   if (size_field_width < 6)
     size_field_width = 6;
-  while (argn < argc) {
-    zlib_file(argv[argn++], type, size_field_width, file_check, output_csv);
-  }
+  while (argn < argc)
+    zlib_file(argv[argn++], type, size_field_width, file_check);
 
   return 0;
 }

@@ -91,9 +91,8 @@ class MenuTestBase : public ViewEventTestBase,
   void ButtonPressed();
 
   raw_ptr<views::MenuButton> button_ = nullptr;
-  std::unique_ptr<views::MenuRunner> menu_runner_;
-  // Owned by `menu_runner_`.
   raw_ptr<views::MenuItemView> menu_ = nullptr;
+  std::unique_ptr<views::MenuRunner> menu_runner_;
 
   // The command id of the last pressed menu item since the menu was opened.
   int last_command_;

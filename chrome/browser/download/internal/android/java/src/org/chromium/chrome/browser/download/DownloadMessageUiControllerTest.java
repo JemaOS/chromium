@@ -7,7 +7,7 @@ package org.chromium.chrome.browser.download;
 import android.content.Context;
 
 import androidx.annotation.Nullable;
-import androidx.test.core.app.ApplicationProvider;
+import androidx.test.InstrumentationRegistry;
 import androidx.test.filters.SmallTest;
 
 import org.hamcrest.Matchers;
@@ -31,7 +31,6 @@ import org.chromium.components.offline_items_collection.OfflineItem;
 import org.chromium.components.offline_items_collection.OfflineItemState;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
 import org.chromium.ui.modaldialog.ModalDialogManager;
-import org.chromium.url.GURL;
 import org.chromium.url.JUnitTestGURLs;
 
 import java.util.UUID;
@@ -43,7 +42,8 @@ import java.util.UUID;
 @RunWith(ChromeJUnit4ClassRunner.class)
 @Batch(Batch.PER_CLASS)
 public class DownloadMessageUiControllerTest {
-    @Rule public final ChromeBrowserTestRule mBrowserTestRule = new ChromeBrowserTestRule();
+    @Rule
+    public final ChromeBrowserTestRule mBrowserTestRule = new ChromeBrowserTestRule();
 
     private static final String MESSAGE_DOWNLOADING_FILE = "Downloading file…";
     private static final String MESSAGE_DOWNLOADING_TWO_FILES = "Downloading 2 files…";
@@ -57,10 +57,6 @@ public class DownloadMessageUiControllerTest {
     private static final String DESCRIPTION_DOWNLOADING = "See notification for download status";
     private static final String DESCRIPTION_DOWNLOAD_COMPLETE = "(0.01 KB) www.example.com";
 
-    private static final GURL LONG_URL_NEEDS_ELIDING =
-            new GURL("https://veryveryveryverylongsubdomain.example.com/");
-    private static final String DESCRIPTION_DOWNLOAD_COMPLETE_ELIDED = "(0.01 KB) example.com";
-
     private static final String TEST_FILE_NAME = "TestFile";
     private static final long TEST_TO_NEXT_STEP_DELAY = 100;
 
@@ -69,24 +65,25 @@ public class DownloadMessageUiControllerTest {
     @Before
     public void before() {
         TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mTestController = new TestDownloadMessageUiController();
-                });
+                () -> { mTestController = new TestDownloadMessageUiController(); });
     }
 
     static class TestDelegate implements DownloadMessageUiController.Delegate {
         @Override
-        public @Nullable Context getContext() {
-            return ApplicationProvider.getApplicationContext();
+        @Nullable
+        public Context getContext() {
+            return InstrumentationRegistry.getTargetContext();
         }
 
         @Override
-        public @Nullable MessageDispatcher getMessageDispatcher() {
+        @Nullable
+        public MessageDispatcher getMessageDispatcher() {
             return null;
         }
 
         @Override
-        public @Nullable ModalDialogManager getModalDialogManager() {
+        @Nullable
+        public ModalDialogManager getModalDialogManager() {
             return null;
         }
 
@@ -157,17 +154,16 @@ public class DownloadMessageUiControllerTest {
     private static void markItemComplete(OfflineItem item) {
         item.state = OfflineItemState.COMPLETE;
         item.title = TEST_FILE_NAME;
-        item.url = JUnitTestGURLs.EXAMPLE_URL;
+        item.url = JUnitTestGURLs.getGURL(JUnitTestGURLs.EXAMPLE_URL);
         item.receivedBytes = 10L;
         item.totalSizeBytes = 10L;
     }
 
     private void waitForMessage(String message) {
-        CriteriaHelper.pollInstrumentationThread(
-                () -> {
-                    Criteria.checkThat(mTestController.mInfo, Matchers.notNullValue());
-                    Criteria.checkThat(mTestController.mInfo.message, Matchers.is(message));
-                });
+        CriteriaHelper.pollInstrumentationThread(() -> {
+            Criteria.checkThat(mTestController.mInfo, Matchers.notNullValue());
+            Criteria.checkThat(mTestController.mInfo.message, Matchers.is(message));
+        });
     }
 
     @Test
@@ -426,18 +422,5 @@ public class DownloadMessageUiControllerTest {
         item.state = OfflineItemState.IN_PROGRESS;
         mTestController.onItemUpdated(item);
         mTestController.verifyMessageGone();
-    }
-
-    @Test
-    @SmallTest
-    @Feature({"Download"})
-    public void testLongUrlsAreElided() {
-        OfflineItem item = createOfflineItem(OfflineItemState.PENDING);
-        markItemComplete(item);
-        item.url = LONG_URL_NEEDS_ELIDING;
-        mTestController.onItemUpdated(item);
-
-        mTestController.verify(
-                MESSAGE_SINGLE_DOWNLOAD_COMPLETE, DESCRIPTION_DOWNLOAD_COMPLETE_ELIDED);
     }
 }

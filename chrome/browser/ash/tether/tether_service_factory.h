@@ -14,7 +14,7 @@ class BrowserContext;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace ash {
@@ -32,13 +32,13 @@ class TetherServiceFactory : public ProfileKeyedServiceFactory {
   TetherServiceFactory& operator=(const TetherServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<TetherServiceFactory>;
+  friend struct base::DefaultSingletonTraits<TetherServiceFactory>;
 
   TetherServiceFactory();
   ~TetherServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;

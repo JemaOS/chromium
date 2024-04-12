@@ -11,21 +11,19 @@
 #include "chrome/test/base/testing_browser_process.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-TEST(PrefsAshObserver, DnsOverHttpsEffectiveTemplatesChromeOSChanged) {
+TEST(PrefsAshObserver, LocalStateUpdatedOnChange) {
   base::test::TaskEnvironment task_environment;
 
   ScopedTestingLocalState local_state(TestingBrowserProcess::GetGlobal());
   local_state.Get()->SetString(prefs::kDnsOverHttpsMode, "automatic");
-  local_state.Get()->SetString(prefs::kDnsOverHttpsEffectiveTemplatesChromeOS,
-                               "");
+  local_state.Get()->SetString(prefs::kDnsOverHttpsTemplates, "");
 
   PrefsAshObserver observer(local_state.Get());
   observer.OnDnsOverHttpsModeChanged(base::Value("off"));
   EXPECT_EQ("off", local_state.Get()->GetString(prefs::kDnsOverHttpsMode));
 
-  observer.OnDnsOverHttpsEffectiveTemplatesChromeOSChanged(
+  observer.OnDnsOverHttpsTemplatesChanged(
       base::Value("https://dns.google/dns-query{?dns}"));
   EXPECT_EQ("https://dns.google/dns-query{?dns}",
-            local_state.Get()->GetString(
-                prefs::kDnsOverHttpsEffectiveTemplatesChromeOS));
+            local_state.Get()->GetString(prefs::kDnsOverHttpsTemplates));
 }

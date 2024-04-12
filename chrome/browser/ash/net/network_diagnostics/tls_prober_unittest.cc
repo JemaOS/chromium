@@ -5,14 +5,13 @@
 #include "chrome/browser/ash/net/network_diagnostics/tls_prober.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
 #include "base/functional/bind.h"
+#include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/test/bind.h"
-#include "base/test/test_future.h"
+#include "chrome/browser/ash/net/network_diagnostics/fake_host_resolver.h"
 #include "chrome/browser/ash/net/network_diagnostics/fake_network_context.h"
 #include "content/public/browser/network_service_instance.h"
 #include "content/public/test/browser_task_environment.h"
@@ -30,8 +29,10 @@
 #include "services/network/network_service.h"
 #include "services/network/test/test_network_context.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
-namespace ash::network_diagnostics {
+namespace ash {
+namespace network_diagnostics {
 
 namespace {
 
@@ -48,9 +49,9 @@ class TlsProberWithFakeNetworkContextTest : public ::testing::Test {
       const TlsProberWithFakeNetworkContextTest&) = delete;
 
   void InitializeProberNetworkContext(
-      std::unique_ptr<FakeNetworkContext::DnsResult> fake_dns_result,
-      std::optional<net::Error> tcp_connect_code,
-      std::optional<net::Error> tls_upgrade_code) {
+      std::unique_ptr<FakeHostResolver::DnsResult> fake_dns_result,
+      absl::optional<net::Error> tcp_connect_code,
+      absl::optional<net::Error> tls_upgrade_code) {
     fake_network_context_ = std::make_unique<FakeNetworkContext>();
     fake_network_context_->set_fake_dns_result(std::move(fake_dns_result));
     fake_network_context_->SetTCPConnectCode(tcp_connect_code);
@@ -59,17 +60,15 @@ class TlsProberWithFakeNetworkContextTest : public ::testing::Test {
 
   void CreateAndExecuteTlsProber(net::HostPortPair host_port_pair,
                                  bool negotiate_tls,
-                                 int expected_result,
-                                 ProbeExitEnum expected_exit_enum) {
-    base::test::TestFuture<int, ProbeExitEnum> future;
+                                 TlsProber::TlsProbeCompleteCallback callback) {
+    ASSERT_TRUE(fake_network_context_);
     tls_prober_ = std::make_unique<TlsProber>(
-        base::BindLambdaForTesting([&]() -> network::mojom::NetworkContext* {
-          return fake_network_context();
-        }),
-        host_port_pair, negotiate_tls, future.GetCallback());
-    auto [probe_result, probe_exit_enum] = future.Take();
-    ASSERT_EQ(probe_result, expected_result);
-    ASSERT_EQ(probe_exit_enum, expected_exit_enum);
+        base::BindRepeating(
+            [](network::mojom::NetworkContext* network_context) {
+              return network_context;
+            },
+            fake_network_context_.get()),
+        host_port_pair, negotiate_tls, std::move(callback));
   }
 
   FakeNetworkContext* fake_network_context() {
@@ -92,89 +91,174 @@ class TlsProberWithFakeNetworkContextTest : public ::testing::Test {
 
 TEST_F(TlsProberWithFakeNetworkContextTest,
        SocketConnectedAndUpgradedSuccessfully) {
-  auto fake_dns_result = std::make_unique<FakeNetworkContext::DnsResult>(
+  auto fake_dns_result = std::make_unique<FakeHostResolver::DnsResult>(
       net::OK, net::ResolveErrorInfo(net::OK), net::AddressList(kFakeIPAddress),
-      /*endpoint_results_with_metadata=*/std::nullopt);
+      /*endpoint_results_with_metadata=*/absl::nullopt);
   net::Error tcp_connect_code = net::OK;
   net::Error tls_upgrade_code = net::OK;
   InitializeProberNetworkContext(std::move(fake_dns_result), tcp_connect_code,
                                  tls_upgrade_code);
-  CreateAndExecuteTlsProber(kFakeTlsHostPortPair, /*negotiate_tls=*/true,
-                            net::OK, ProbeExitEnum::kSuccess);
+  int probe_result = -1;
+  ProbeExitEnum probe_exit_enum = ProbeExitEnum::kTcpConnectionFailure;
+  base::RunLoop run_loop;
+  CreateAndExecuteTlsProber(
+      kFakeTlsHostPortPair, /*negotiate_tls=*/true,
+      base::BindOnce(
+          [](int* probe_result, ProbeExitEnum* probe_exit_enum,
+             base::OnceClosure quit_closure, int result,
+             ProbeExitEnum exit_enum) {
+            *probe_result = result;
+            *probe_exit_enum = exit_enum;
+            std::move(quit_closure).Run();
+          },
+          &probe_result, &probe_exit_enum, run_loop.QuitClosure()));
+  run_loop.Run();
+  EXPECT_EQ(net::OK, probe_result);
+  EXPECT_EQ(ProbeExitEnum::kSuccess, probe_exit_enum);
 }
 
 TEST_F(TlsProberWithFakeNetworkContextTest, FailedDnsLookup) {
-  auto fake_dns_result = std::make_unique<FakeNetworkContext::DnsResult>(
+  auto fake_dns_result = std::make_unique<FakeHostResolver::DnsResult>(
       net::ERR_NAME_NOT_RESOLVED,
-      net::ResolveErrorInfo(net::ERR_NAME_NOT_RESOLVED),
-      /*resolved_addresses=*/std::nullopt,
-      /*endpoint_results_with_metadata=*/std::nullopt);
+      net::ResolveErrorInfo(net::ERR_NAME_NOT_RESOLVED), net::AddressList(),
+      /*endpoint_results_with_metadata=*/absl::nullopt);
   // Neither TCP connect nor TLS upgrade should not be called in this scenario.
   InitializeProberNetworkContext(std::move(fake_dns_result),
-                                 /*tcp_connect_code=*/std::nullopt,
-                                 /*tls_upgrade_code=*/std::nullopt);
-  CreateAndExecuteTlsProber(kFakeTlsHostPortPair, /*negotiate_tls=*/true,
-                            net::ERR_NAME_NOT_RESOLVED,
-                            ProbeExitEnum::kDnsFailure);
+                                 /*tcp_connect_code=*/absl::nullopt,
+                                 /*tls_upgrade_code=*/absl::nullopt);
+  int probe_result = -1;
+  ProbeExitEnum probe_exit_enum = ProbeExitEnum::kSuccess;
+  base::RunLoop run_loop;
+  CreateAndExecuteTlsProber(
+      kFakeTlsHostPortPair, /*negotiate_tls=*/true,
+      base::BindOnce(
+          [](int* probe_result, ProbeExitEnum* probe_exit_enum,
+             base::OnceClosure quit_closure, int result,
+             ProbeExitEnum exit_enum) {
+            *probe_result = result;
+            *probe_exit_enum = exit_enum;
+            std::move(quit_closure).Run();
+          },
+          &probe_result, &probe_exit_enum, run_loop.QuitClosure()));
+  run_loop.Run();
+  EXPECT_EQ(net::ERR_NAME_NOT_RESOLVED, probe_result);
+  EXPECT_EQ(ProbeExitEnum::kDnsFailure, probe_exit_enum);
 }
 
 TEST_F(TlsProberWithFakeNetworkContextTest, MojoDisconnectDuringDnsLookup) {
   // Host resolution will not be successful due to Mojo disconnect. Neither TCP
   // connect nor TLS upgrade should not be called in this scenario.
   InitializeProberNetworkContext(/*fake_dns_result=*/{},
-                                 /*tcp_connect_code=*/std::nullopt,
-                                 /*tls_upgrade_code=*/std::nullopt);
+                                 /*tcp_connect_code=*/absl::nullopt,
+                                 /*tls_upgrade_code=*/absl::nullopt);
   fake_network_context()->set_disconnect_during_host_resolution(true);
-  CreateAndExecuteTlsProber(kFakeTlsHostPortPair, /*negotiate_tls=*/true,
-                            net::ERR_FAILED, ProbeExitEnum::kDnsFailure);
+  int probe_result = -1;
+  ProbeExitEnum probe_exit_enum = ProbeExitEnum::kSuccess;
+  base::RunLoop run_loop;
+  CreateAndExecuteTlsProber(
+      kFakeTlsHostPortPair, /*negotiate_tls=*/true,
+      base::BindOnce(
+          [](int* probe_result, ProbeExitEnum* probe_exit_enum,
+             base::OnceClosure quit_closure, int result,
+             ProbeExitEnum exit_enum) {
+            *probe_result = result;
+            *probe_exit_enum = exit_enum;
+            std::move(quit_closure).Run();
+          },
+          &probe_result, &probe_exit_enum, run_loop.QuitClosure()));
+  run_loop.Run();
+  EXPECT_EQ(net::ERR_NAME_NOT_RESOLVED, probe_result);
+  EXPECT_EQ(ProbeExitEnum::kDnsFailure, probe_exit_enum);
 }
 
 TEST_F(TlsProberWithFakeNetworkContextTest, FailedTcpConnection) {
-  auto fake_dns_result = std::make_unique<FakeNetworkContext::DnsResult>(
+  auto fake_dns_result = std::make_unique<FakeHostResolver::DnsResult>(
       net::OK, net::ResolveErrorInfo(net::OK), net::AddressList(kFakeIPAddress),
-      /*endpoint_results_with_metadata=*/std::nullopt);
+      /*endpoint_results_with_metadata=*/absl::nullopt);
   net::Error tcp_connect_code = net::ERR_CONNECTION_FAILED;
   // TLS upgrade should not be called in this scenario.
   InitializeProberNetworkContext(std::move(fake_dns_result), tcp_connect_code,
-                                 /*tls_upgrade_code=*/std::nullopt);
-  CreateAndExecuteTlsProber(kFakeTlsHostPortPair, /*negotiate_tls=*/true,
-                            net::ERR_CONNECTION_FAILED,
-                            ProbeExitEnum::kTcpConnectionFailure);
+                                 /*tls_upgrade_code=*/absl::nullopt);
+  int probe_result = -1;
+  ProbeExitEnum probe_exit_enum = ProbeExitEnum::kSuccess;
+  base::RunLoop run_loop;
+  CreateAndExecuteTlsProber(
+      kFakeTlsHostPortPair, /*negotiate_tls=*/true,
+      base::BindOnce(
+          [](int* probe_result, ProbeExitEnum* probe_exit_enum,
+             base::OnceClosure quit_closure, int result,
+             ProbeExitEnum exit_enum) {
+            *probe_result = result;
+            *probe_exit_enum = exit_enum;
+            std::move(quit_closure).Run();
+          },
+          &probe_result, &probe_exit_enum, run_loop.QuitClosure()));
+  run_loop.Run();
+  EXPECT_EQ(net::ERR_CONNECTION_FAILED, probe_result);
+  EXPECT_EQ(ProbeExitEnum::kTcpConnectionFailure, probe_exit_enum);
 }
 
 TEST_F(TlsProberWithFakeNetworkContextTest, FailedTlsUpgrade) {
-  auto fake_dns_result = std::make_unique<FakeNetworkContext::DnsResult>(
+  auto fake_dns_result = std::make_unique<FakeHostResolver::DnsResult>(
       net::OK, net::ResolveErrorInfo(net::OK), net::AddressList(kFakeIPAddress),
-      /*endpoint_results_with_metadata=*/std::nullopt);
+      /*endpoint_results_with_metadata=*/absl::nullopt);
   net::Error tcp_connect_code = net::OK;
   net::Error tls_upgrade_code = net::ERR_SSL_PROTOCOL_ERROR;
   InitializeProberNetworkContext(std::move(fake_dns_result), tcp_connect_code,
                                  tls_upgrade_code);
-  CreateAndExecuteTlsProber(kFakeTlsHostPortPair, /*negotiate_tls=*/true,
-                            net::ERR_SSL_PROTOCOL_ERROR,
-                            ProbeExitEnum::kTlsUpgradeFailure);
+  int probe_result = -1;
+  ProbeExitEnum probe_exit_enum = ProbeExitEnum::kSuccess;
+  base::RunLoop run_loop;
+  CreateAndExecuteTlsProber(
+      kFakeTlsHostPortPair, /*negotiate_tls=*/true,
+      base::BindOnce(
+          [](int* probe_result, ProbeExitEnum* probe_exit_enum,
+             base::OnceClosure quit_closure, int result,
+             ProbeExitEnum exit_enum) {
+            *probe_result = result;
+            *probe_exit_enum = exit_enum;
+            std::move(quit_closure).Run();
+          },
+          &probe_result, &probe_exit_enum, run_loop.QuitClosure()));
+  run_loop.Run();
+  EXPECT_EQ(net::ERR_SSL_PROTOCOL_ERROR, probe_result);
+  EXPECT_EQ(ProbeExitEnum::kTlsUpgradeFailure, probe_exit_enum);
 }
 
 TEST_F(TlsProberWithFakeNetworkContextTest,
        MojoDisconnectedDuringTcpConnectionAttempt) {
-  auto fake_dns_result = std::make_unique<FakeNetworkContext::DnsResult>(
+  auto fake_dns_result = std::make_unique<FakeHostResolver::DnsResult>(
       net::OK, net::ResolveErrorInfo(net::OK), net::AddressList(kFakeIPAddress),
-      /*endpoint_results_with_metadata=*/std::nullopt);
+      /*endpoint_results_with_metadata=*/absl::nullopt);
   // Since the TCP connection is disconnected, no connection codes are needed.
   InitializeProberNetworkContext(std::move(fake_dns_result),
-                                 /*tcp_connect_code=*/std::nullopt,
-                                 /*tls_upgrade_code=*/std::nullopt);
+                                 /*tcp_connect_code=*/absl::nullopt,
+                                 /*tls_upgrade_code=*/absl::nullopt);
   fake_network_context()->set_disconnect_during_tcp_connection_attempt(true);
-  CreateAndExecuteTlsProber(kFakeTlsHostPortPair, /*negotiate_tls=*/true,
-                            net::ERR_FAILED,
-                            ProbeExitEnum::kMojoDisconnectFailure);
+  int probe_result = -1;
+  ProbeExitEnum probe_exit_enum = ProbeExitEnum::kSuccess;
+  base::RunLoop run_loop;
+  CreateAndExecuteTlsProber(
+      kFakeTlsHostPortPair, /*negotiate_tls=*/true,
+      base::BindOnce(
+          [](int* probe_result, ProbeExitEnum* probe_exit_enum,
+             base::OnceClosure quit_closure, int result,
+             ProbeExitEnum exit_enum) {
+            *probe_result = result;
+            *probe_exit_enum = exit_enum;
+            std::move(quit_closure).Run();
+          },
+          &probe_result, &probe_exit_enum, run_loop.QuitClosure()));
+  run_loop.Run();
+  EXPECT_EQ(net::ERR_FAILED, probe_result);
+  EXPECT_EQ(ProbeExitEnum::kMojoDisconnectFailure, probe_exit_enum);
 }
 
 TEST_F(TlsProberWithFakeNetworkContextTest,
        MojoDisconnectedDuringTlsUpgradeAttempt) {
-  auto fake_dns_result = std::make_unique<FakeNetworkContext::DnsResult>(
+  auto fake_dns_result = std::make_unique<FakeHostResolver::DnsResult>(
       net::OK, net::ResolveErrorInfo(net::OK), net::AddressList(kFakeIPAddress),
-      /*endpoint_results_with_metadata=*/std::nullopt);
+      /*endpoint_results_with_metadata=*/absl::nullopt);
   net::Error tcp_connect_code = net::OK;
   // TLS upgrade attempt will fail due to disconnection. |tls_upgrade_code|
   // is only populated to correctly initialize the FakeNetworkContext instance.
@@ -182,20 +266,49 @@ TEST_F(TlsProberWithFakeNetworkContextTest,
   InitializeProberNetworkContext(std::move(fake_dns_result), tcp_connect_code,
                                  tls_upgrade_code);
   fake_network_context()->set_disconnect_during_tls_upgrade_attempt(true);
-  CreateAndExecuteTlsProber(kFakeTlsHostPortPair, /*negotiate_tls=*/true,
-                            net::ERR_FAILED,
-                            ProbeExitEnum::kMojoDisconnectFailure);
+  int probe_result = -1;
+  ProbeExitEnum probe_exit_enum = ProbeExitEnum::kSuccess;
+  base::RunLoop run_loop;
+  CreateAndExecuteTlsProber(
+      kFakeTlsHostPortPair, /*negotiate_tls=*/true,
+      base::BindOnce(
+          [](int* probe_result, ProbeExitEnum* probe_exit_enum,
+             base::OnceClosure quit_closure, int result,
+             ProbeExitEnum exit_enum) {
+            *probe_result = result;
+            *probe_exit_enum = exit_enum;
+            std::move(quit_closure).Run();
+          },
+          &probe_result, &probe_exit_enum, run_loop.QuitClosure()));
+  run_loop.Run();
+  EXPECT_EQ(net::ERR_FAILED, probe_result);
+  EXPECT_EQ(ProbeExitEnum::kMojoDisconnectFailure, probe_exit_enum);
 }
 
 TEST_F(TlsProberWithFakeNetworkContextTest, SuccessfulTcpConnectOnly) {
-  auto fake_dns_result = std::make_unique<FakeNetworkContext::DnsResult>(
+  auto fake_dns_result = std::make_unique<FakeHostResolver::DnsResult>(
       net::OK, net::ResolveErrorInfo(net::OK), net::AddressList(kFakeIPAddress),
-      /*endpoint_results_with_metadata=*/std::nullopt);
+      /*endpoint_results_with_metadata=*/absl::nullopt);
   net::Error tcp_connect_code = net::OK;
   InitializeProberNetworkContext(std::move(fake_dns_result), tcp_connect_code,
-                                 /*tls_upgrade_code=*/std::nullopt);
-  CreateAndExecuteTlsProber(kFakeTlsHostPortPair, /*negotiate_tls=*/false,
-                            net::OK, ProbeExitEnum::kSuccess);
+                                 /*tls_upgrade_code=*/absl::nullopt);
+  int probe_result = -1;
+  ProbeExitEnum probe_exit_enum = ProbeExitEnum::kTcpConnectionFailure;
+  base::RunLoop run_loop;
+  CreateAndExecuteTlsProber(
+      kFakeTcpHostPortPair, /*negotiate_tls=*/false,
+      base::BindOnce(
+          [](int* probe_result, ProbeExitEnum* probe_exit_enum,
+             base::OnceClosure quit_closure, int result,
+             ProbeExitEnum exit_enum) {
+            *probe_result = result;
+            *probe_exit_enum = exit_enum;
+            std::move(quit_closure).Run();
+          },
+          &probe_result, &probe_exit_enum, run_loop.QuitClosure()));
+  run_loop.Run();
+  EXPECT_EQ(net::OK, probe_result);
+  EXPECT_EQ(ProbeExitEnum::kSuccess, probe_exit_enum);
 }
 
 class TlsProberWithRealNetworkContextTest : public ::testing::Test {
@@ -230,17 +343,14 @@ class TlsProberWithRealNetworkContextTest : public ::testing::Test {
 
   void CreateAndExecuteTlsProber(net::HostPortPair host_port_pair,
                                  bool negotiate_tls,
-                                 int expected_result,
-                                 ProbeExitEnum expected_exit_enum) {
-    base::test::TestFuture<int, ProbeExitEnum> future;
+                                 TlsProber::TlsProbeCompleteCallback callback) {
     tls_prober_ = std::make_unique<TlsProber>(
-        base::BindLambdaForTesting([&]() -> network::mojom::NetworkContext* {
-          return network_context_.get();
-        }),
-        host_port_pair, negotiate_tls, future.GetCallback());
-    auto [probe_result, probe_exit_enum] = future.Take();
-    ASSERT_EQ(probe_result, expected_result);
-    ASSERT_EQ(probe_exit_enum, expected_exit_enum);
+        base::BindRepeating(
+            [](network::mojom::NetworkContext* network_context) {
+              return network_context;
+            },
+            network_context_.get()),
+        host_port_pair, negotiate_tls, std::move(callback));
   }
 
   static std::unique_ptr<net::test_server::HttpResponse> ReturnResponse(
@@ -270,8 +380,24 @@ class TlsProberWithRealNetworkContextTest : public ::testing::Test {
 
 TEST_F(TlsProberWithRealNetworkContextTest,
        TestSuccessfulProbeUsingRealNetworkContext) {
-  CreateAndExecuteTlsProber(host_port_pair(), /*negotiate_tls=*/true, net::OK,
-                            ProbeExitEnum::kSuccess);
+  int probe_result = -1;
+  ProbeExitEnum probe_exit_enum = ProbeExitEnum::kTcpConnectionFailure;
+  base::RunLoop run_loop;
+  CreateAndExecuteTlsProber(
+      host_port_pair(), /*negotiate_tls=*/true,
+      base::BindOnce(
+          [](int* probe_result, ProbeExitEnum* probe_exit_enum,
+             base::OnceClosure quit_closure, int result,
+             ProbeExitEnum exit_enum) {
+            *probe_result = result;
+            *probe_exit_enum = exit_enum;
+            std::move(quit_closure).Run();
+          },
+          &probe_result, &probe_exit_enum, run_loop.QuitClosure()));
+  run_loop.Run();
+  EXPECT_EQ(net::OK, probe_result);
+  EXPECT_EQ(ProbeExitEnum::kSuccess, probe_exit_enum);
 }
 
-}  // namespace ash::network_diagnostics
+}  // namespace network_diagnostics
+}  // namespace ash

@@ -114,7 +114,7 @@ void CaptureAccessHandlerBase::AddCaptureSession(int render_process_id,
       // Assume that the target is the same tab that is
       // requesting capture, not the display or any particular
       // window. This can be changed by calling UpdateTarget().
-      content::DesktopMediaID::TYPE_WEB_CONTENTS, gfx::NativeWindow()};
+      content::DesktopMediaID::TYPE_WEB_CONTENTS, gfx::kNullNativeWindow};
 
   sessions_.push_back(std::move(session));
 }
@@ -300,7 +300,8 @@ bool CaptureAccessHandlerBase::MatchesSession(const Session& session,
       return target_web_contents == web_contents->GetOutermostWebContents();
   }
 
-  NOTREACHED_NORETURN();
+  NOTREACHED();
+  return false;
 }
 
 void CaptureAccessHandlerBase::UpdateVideoScreenCaptureStatus(
@@ -326,7 +327,7 @@ bool CaptureAccessHandlerBase::IsExtensionAllowedForScreenCapture(
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   std::string hash = base::SHA1HashString(extension->id());
-  std::string hex_hash = base::HexEncode(hash);
+  std::string hex_hash = base::HexEncode(hash.c_str(), hash.length());
 
   // crbug.com/446688
   return hex_hash == "4F25792AF1AA7483936DE29C07806F203C7170A0" ||

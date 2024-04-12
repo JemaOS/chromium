@@ -53,11 +53,6 @@ class EuiccStatusUploader : public ash::NetworkPolicyObserver,
                       PrefService* local_state,
                       IsDeviceActiveCallback is_device_managed_callback);
 
-  // TODO(b/281904820): Remove once the SM-DS Support feature is fully launched.
-  //
-  // WARNING: This format is deprecated as part of the SM-DS Support feature and
-  // is being replaced with |kLastUploadedEuiccStatusPref|.
-  //
   // A local state preference that stores the last uploaded Euicc status in such
   // format:
   // {
@@ -68,23 +63,7 @@ class EuiccStatusUploader : public ash::NetworkPolicyObserver,
   //    ]
   // }
   //
-  static const char kLastUploadedEuiccStatusPrefLegacy[];
-
-  // A local state preference that stores the last uploaded Euicc status in the
-  // following format:
-  // {
-  //    euicc_count: integer
-  //    esim_profiles: [
-  //      iccid : string,
-  //      network_name : string,
-  //      smdp_activation_code : string,
-  //      smds_activation_code : string,
-  //    ]
-  // }
-  // Please note that the |smdp_activation_code| and |smds_activation_code|
-  // fields are mutually exclusive.
   static const char kLastUploadedEuiccStatusPref[];
-
   // A local state boolean preference which determines whether we should set
   // UploadEuiccInfoRequest.clear_profile_list to true. This is set to true when
   // clear EUICC remote command was run on the client.
@@ -125,8 +104,8 @@ class EuiccStatusUploader : public ash::NetworkPolicyObserver,
   // Used in tests. Fires |retry_timer_| to avoid flakiness.
   void FireRetryTimerIfExistsForTesting();
 
-  raw_ptr<CloudPolicyClient> client_;
-  raw_ptr<PrefService> local_state_;
+  raw_ptr<CloudPolicyClient, ExperimentalAsh> client_;
+  raw_ptr<PrefService, ExperimentalAsh> local_state_;
 
   bool currently_uploading_ = false;
   // The status that is being uploaded right now.
@@ -147,7 +126,7 @@ class EuiccStatusUploader : public ash::NetworkPolicyObserver,
   base::ScopedObservation<CloudPolicyClient, CloudPolicyClient::Observer>
       cloud_policy_client_observation_{this};
 
-  raw_ptr<ash::ManagedNetworkConfigurationHandler>
+  raw_ptr<ash::ManagedNetworkConfigurationHandler, ExperimentalAsh>
       managed_network_configuration_handler_ = nullptr;
 
   base::WeakPtrFactory<EuiccStatusUploader> weak_ptr_factory_{this};

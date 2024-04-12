@@ -11,7 +11,7 @@
 
 namespace ash {
 namespace {
-const HatsConfig& kHatsConfig = kPrivacyHubPostLaunchSurvey;
+const HatsConfig& kHatsConfig = kPrivacyHubBaselineSurvey;
 constexpr base::TimeDelta kShowSurveyDelay = base::Seconds(40);
 }
 

@@ -112,15 +112,10 @@ void FocusController::FocusWindow(aura::Window* window) {
 
 void FocusController::ResetFocusWithinActiveWindow(aura::Window* window) {
   DCHECK(window);
-  if (!active_window_) {
+  if (!active_window_)
     return;
-  }
-  if (!active_window_->Contains(window)) {
+  if (!active_window_->Contains(window))
     return;
-  }
-  if (!rules_->CanFocusWindow(window, nullptr)) {
-    return;
-  }
   SetFocusedWindow(window);
 }
 
@@ -341,8 +336,8 @@ bool FocusController::SetActiveWindow(
   if (window)
     DCHECK_EQ(window, rules_->GetActivatableWindow(window));
 
-  base::AutoReset<std::optional<aura::Window*>> updating_activation(
-      &pending_activation_, std::make_optional(window));
+  base::AutoReset<absl::optional<aura::Window*>> updating_activation(
+      &pending_activation_, absl::make_optional(window));
   aura::Window* lost_activation = active_window_;
   // Allow for the window losing activation to be deleted during dispatch. If
   // it is deleted pass NULL to observers instead of a deleted window.

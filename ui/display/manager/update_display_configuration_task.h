@@ -8,11 +8,12 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/display/manager/configure_displays_task.h"
 #include "ui/display/manager/display_configurator.h"
 #include "ui/display/types/native_display_observer.h"
@@ -28,12 +29,11 @@ class DISPLAY_MANAGER_EXPORT UpdateDisplayConfigurationTask
  public:
   using ResponseCallback = base::OnceCallback<void(
       /*success=*/bool,
-      /*displays=*/
-      const std::vector<raw_ptr<DisplaySnapshot, VectorExperimental>>&,
-      /*unassociated_displays=*/
-      const std::vector<raw_ptr<DisplaySnapshot, VectorExperimental>>&,
+      /*displays=*/const std::vector<DisplaySnapshot*>&,
+      /*unassociated_displays=*/const std::vector<DisplaySnapshot*>&,
       /*new_display_state=*/MultipleDisplayState,
-      /*new_power_state=*/chromeos::DisplayPowerState)>;
+      /*new_power_state=*/chromeos::DisplayPowerState,
+      /*new_vrr_state=*/bool)>;
 
   UpdateDisplayConfigurationTask(
       NativeDisplayDelegate* delegate,
@@ -42,7 +42,7 @@ class DISPLAY_MANAGER_EXPORT UpdateDisplayConfigurationTask
       chromeos::DisplayPowerState new_power_state,
       int power_flags,
       RefreshRateThrottleState refresh_rate_throttle_state,
-      const base::flat_set<int64_t>& new_vrr_state,
+      bool new_vrr_state,
       bool force_configure,
       ConfigurationType configuration_type,
       ResponseCallback callback);
@@ -62,9 +62,7 @@ class DISPLAY_MANAGER_EXPORT UpdateDisplayConfigurationTask
 
  private:
   // Callback to NativeDisplayDelegate::GetDisplays().
-  void OnDisplaysUpdated(
-      const std::vector<raw_ptr<DisplaySnapshot, VectorExperimental>>&
-          displays);
+  void OnDisplaysUpdated(const std::vector<DisplaySnapshot*>& displays);
 
   // Callback to ConfigureDisplaysTask used to process the result of a display
   // configuration run.
@@ -96,8 +94,8 @@ class DISPLAY_MANAGER_EXPORT UpdateDisplayConfigurationTask
   // variable refresh rate setting.
   bool ShouldConfigureVrr() const;
 
-  raw_ptr<NativeDisplayDelegate> delegate_;       // Not owned.
-  raw_ptr<DisplayLayoutManager> layout_manager_;  // Not owned.
+  raw_ptr<NativeDisplayDelegate, ExperimentalAsh> delegate_;       // Not owned.
+  raw_ptr<DisplayLayoutManager, ExperimentalAsh> layout_manager_;  // Not owned.
 
   // Requested display state.
   MultipleDisplayState new_display_state_;
@@ -113,9 +111,9 @@ class DISPLAY_MANAGER_EXPORT UpdateDisplayConfigurationTask
   // for the internal display.
   RefreshRateThrottleState refresh_rate_throttle_state_;
 
-  // The requested VRR state which lists the set of display ids that should have
-  // VRR enabled, while all omitted displays should have VRR disabled.
-  const base::flat_set<int64_t> new_vrr_state_;
+  // The requested VRR enabled state which the configuration task should apply
+  // to all capable displays.
+  bool new_vrr_state_;
 
   bool force_configure_;
 
@@ -129,15 +127,17 @@ class DISPLAY_MANAGER_EXPORT UpdateDisplayConfigurationTask
   bool requesting_displays_;
 
   // List of updated displays.
-  std::vector<raw_ptr<DisplaySnapshot, VectorExperimental>> cached_displays_;
+  std::vector<DisplaySnapshot*> cached_displays_;
 
   // List of updated displays which have no associated crtc. It can happen
   // when the device is connected with so many displays that has no available
   // crtc to assign.
-  std::vector<raw_ptr<DisplaySnapshot, VectorExperimental>>
-      cached_unassociated_displays_;
+  std::vector<DisplaySnapshot*> cached_unassociated_displays_;
 
   std::unique_ptr<ConfigureDisplaysTask> configure_task_;
+
+  // The timestamp when Run() was called. Null if the task is not running.
+  absl::optional<base::TimeTicks> start_timestamp_;
 
   base::WeakPtrFactory<UpdateDisplayConfigurationTask> weak_ptr_factory_{this};
 };

@@ -261,7 +261,7 @@ TEST_F(CapturePolicyUtilsTest, FilterMediaListRestrictedSameOrigin) {
   EXPECT_EQ(expected_media_types, actual_media_types);
 }
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
 
 class MultiCaptureTest
     : public testing::Test,
@@ -281,7 +281,8 @@ class MultiCaptureTest
         HostContentSettingsMapFactory::GetForProfile(profile());
     for (const std::string& url : AllowedOrigins()) {
       content_settings->SetContentSettingDefaultScope(
-          GURL(url), GURL(url), ContentSettingsType::ALL_SCREEN_CAPTURE,
+          GURL(url), GURL(url),
+          ContentSettingsType::GET_DISPLAY_MEDIA_SET_SELECT_ALL_SCREENS,
           ContentSetting::CONTENT_SETTING_ALLOW);
     }
   }
@@ -320,13 +321,15 @@ class MultiCaptureTest
 
 TEST_P(MultiCaptureTest, IsMultiCaptureAllowedBasedOnPolicy) {
   EXPECT_EQ(ExpectedIsMultiCaptureAllowed(),
-            capture_policy::IsGetAllScreensMediaAllowed(profile(),
-                                                        GURL(CurrentOrigin())));
+            capture_policy::IsGetDisplayMediaSetSelectAllScreensAllowed(
+                profile(), GURL(CurrentOrigin())));
 }
 
 TEST_P(MultiCaptureTest, IsMultiCaptureAllowedForAnyUrl) {
-  EXPECT_EQ(ExpectedIsMultiCaptureAllowedForAnyUrl(),
-            capture_policy::IsGetAllScreensMediaAllowedForAnySite(profile()));
+  EXPECT_EQ(
+      ExpectedIsMultiCaptureAllowedForAnyUrl(),
+      capture_policy::IsGetDisplayMediaSetSelectAllScreensAllowedForAnySite(
+          profile()));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -343,4 +346,4 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::ValuesIn({std::string("https://www.google.com"),
                              std::string("https://www.notallowed.com")})));
 
-#endif  // BUILDFLAG(IS_CHROMEOS)
+#endif  // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)

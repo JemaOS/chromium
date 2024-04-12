@@ -10,7 +10,8 @@
 namespace ui {
 
 WindowOpenDisposition WindowOpenDispositionFromNSEvent(NSEvent* event) {
-  return WindowOpenDispositionFromNSEventWithFlags(event, event.modifierFlags);
+  NSUInteger modifiers = [event modifierFlags];
+  return WindowOpenDispositionFromNSEventWithFlags(event, modifiers);
 }
 
 WindowOpenDisposition WindowOpenDispositionFromNSEventWithFlags(

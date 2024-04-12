@@ -6,7 +6,6 @@
 
 if (is_android) {
   import("//build/config/android/rules.gni")
-  import("//third_party/jni_zero/jni_zero.gni")
 
   generate_jni("jni_headers") {
     sources = [ "../../android/javatests/src/org/chromium/chrome/browser/subresource_filter/TestRulesetPublisher.java" ]
@@ -14,10 +13,9 @@ if (is_android) {
 
   android_library("subresource_filter_java_test_support") {
     testonly = true
-
-    srcjar_deps = [ ":jni_headers" ]
+    annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
     sources = [ "../../android/javatests/src/org/chromium/chrome/browser/subresource_filter/TestRulesetPublisher.java" ]
-    deps = [ "//third_party/jni_zero:jni_zero_java" ]
+    deps = [ "//base:jni_java" ]
   }
 
   android_library("subresource_filter_javatests") {

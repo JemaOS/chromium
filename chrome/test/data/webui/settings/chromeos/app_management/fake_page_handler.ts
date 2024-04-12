@@ -2,19 +2,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {AppManagementStore} from 'chrome://os-settings/os_settings.js';
-import {App, AppType, ExtensionAppPermissionMessage, PageHandlerInterface, PageHandlerReceiver, PageHandlerRemote, PageRemote, Permission, PermissionType, RunOnOsLoginMode, TriState, WindowMode} from 'chrome://resources/cr_components/app_management/app_management.mojom-webui.js';
+import {AppManagementStore} from 'chrome://os-settings/chromeos/os_settings.js';
+import {App, AppType, ExtensionAppPermissionMessage, OptionalBool, PageHandlerInterface, PageHandlerReceiver, PageHandlerRemote, PageRemote, Permission, PermissionType, PermissionValue, RunOnOsLoginMode, TriState, WindowMode} from 'chrome://resources/cr_components/app_management/app_management.mojom-webui.js';
 import {InstallReason, InstallSource} from 'chrome://resources/cr_components/app_management/constants.js';
 import {createBoolPermission, createTriStatePermission, getTriStatePermissionValue} from 'chrome://resources/cr_components/app_management/permission_util.js';
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
 
 type AppConfig = Partial<App>;
 type PermissionMap = Partial<Record<PermissionType, Permission>>;
 
+export interface PermissionOption {
+  permissionValue: TriState;
+  isManaged: boolean;
+  value?: PermissionValue;
+}
+
 export class FakePageHandler implements PageHandlerInterface {
   static createWebPermissions(
-      options?: Partial<Record<PermissionType, Permission>>): PermissionMap {
+      options?: Partial<Record<PermissionType, PermissionOption>>):
+      PermissionMap {
     const permissionTypes = [
       PermissionType.kLocation,
       PermissionType.kNotifications,
@@ -80,8 +87,8 @@ export class FakePageHandler implements PageHandlerInterface {
       description: '',
       version: '5.1',
       size: '9.0MB',
-      isPinned: false,
-      isPolicyPinned: false,
+      isPinned: OptionalBool.kFalse,
+      isPolicyPinned: OptionalBool.kFalse,
       installReason: InstallReason.kUser,
       permissions: {},
       hideMoreSettings: false,
@@ -92,18 +99,12 @@ export class FakePageHandler implements PageHandlerInterface {
       resizeLocked: false,
       hideResizeLocked: true,
       supportedLinks: [],
-      runOnOsLogin: null,
-      fileHandlingState: null,
+      runOnOsLogin: undefined,
+      fileHandlingState: undefined,
       installSource: InstallSource.kUnknown,
       appSize: '',
       dataSize: '',
       publisherId: '',
-      formattedOrigin: '',
-      scopeExtensions: [],
-      supportedLocales: [],
-      selectedLocale: null,
-      showSystemNotificationsSettingsLink: false,
-      allowUninstall: true,
     };
 
     if (optConfig) {
@@ -124,7 +125,6 @@ export class FakePageHandler implements PageHandlerInterface {
   private apps_: App[];
   private receiver_: PageHandlerReceiver;
   private resolverMap_: Map<string, PromiseResolver<void>>;
-  private callCountMap_: Map<string, number>;
 
   constructor(page: PageRemote) {
     this.receiver_ = new PageHandlerReceiver(this);
@@ -135,41 +135,24 @@ export class FakePageHandler implements PageHandlerInterface {
 
     this.apps_ = [];
     this.resolverMap_ = new Map();
-    this.callCountMap_ = new Map();
     this.resolverMap_.set('setPreferredApp', new PromiseResolver());
-    this.resolverMap_.set('setPermission', new PromiseResolver());
     this.resolverMap_.set('getOverlappingPreferredApps', new PromiseResolver());
-    this.resolverMap_.set('setAppLocale', new PromiseResolver());
-    this.resolverMap_.set('uninstall', new PromiseResolver());
   }
 
-  private getResolver_(methodName: string): PromiseResolver<any> {
+  private getResolver_(methodName: string): PromiseResolver<void> {
     const method = this.resolverMap_.get(methodName);
     assert(method, `Method '${methodName}' not found.`);
     return method;
   }
 
-  getCallCount(methodName: string): number {
-    const count = this.callCountMap_.get(methodName);
-    return count ? count : 0;
+  methodCalled(methodName: string): void {
+    this.getResolver_(methodName).resolve();
   }
 
-  methodCalled(methodName: string, returnValue?: any): void {
-    const count = this.callCountMap_.get(methodName);
-    if (count) {
-      this.callCountMap_.set(methodName, count + 1);
-    } else {
-      this.callCountMap_.set(methodName, 1);
-    }
-
-    this.getResolver_(methodName).resolve(returnValue);
-  }
-
-  async whenCalled(methodName: string): Promise<any> {
-    const promise = await this.getResolver_(methodName).promise;
+  async whenCalled(methodName: string): Promise<void> {
+    await this.getResolver_(methodName).promise;
     // Support sequential calls to whenCalled by replacing the promise.
     this.resolverMap_.set(methodName, new PromiseResolver());
-    return promise;
   }
 
   getRemote(): PageHandlerRemote {
@@ -188,11 +171,6 @@ export class FakePageHandler implements PageHandlerInterface {
     assertNotReached();
   }
 
-  async getSubAppToParentMap():
-      Promise<{subAppToParentMap: {[key: string]: string}}> {
-    return {subAppToParentMap: {}};
-  }
-
   async getExtensionAppPermissionMessages(_appId: string):
       Promise<{messages: ExtensionAppPermissionMessage[]}> {
     return {messages: []};
@@ -202,7 +180,7 @@ export class FakePageHandler implements PageHandlerInterface {
     this.apps_ = appList;
   }
 
-  setPinned(appId: string, isPinned: boolean): void {
+  setPinned(appId: string, isPinned: OptionalBool): void {
     const app = AppManagementStore.getInstance().data.apps[appId];
     assert(app);
     const newApp = {...app, isPinned};
@@ -220,7 +198,6 @@ export class FakePageHandler implements PageHandlerInterface {
     newPermissions[permission.permissionType] = permission;
     const newApp = {...app, permissions: newPermissions};
     this.page.onAppChanged(newApp);
-    this.methodCalled('setPermission', [appId, permission]);
   }
 
   setResizeLocked(appId: string, resizeLocked: boolean): void {
@@ -240,7 +217,6 @@ export class FakePageHandler implements PageHandlerInterface {
   }
 
   uninstall(appId: string): void {
-    this.methodCalled('uninstall', appId);
     this.page.onAppRemoved(appId);
   }
 
@@ -255,22 +231,8 @@ export class FakePageHandler implements PageHandlerInterface {
 
   openNativeSettings(_appId: string): void {}
 
-  updateAppSize(_appId: string): void {}
-
   setWindowMode(_appId: string, _windowMode: WindowMode): void {
     assertNotReached();
-  }
-
-  setAppLocale(appId: string, localeTag: string): void {
-    const app = AppManagementStore.getInstance().data.apps[appId];
-    assert(app);
-
-    const newApp = {
-      ...app,
-      selectedLocale: {localeTag, displayName: '', nativeDisplayName: ''},
-    };
-    this.page.onAppChanged(newApp);
-    this.methodCalled('setAppLocale');
   }
 
   setRunOnOsLoginMode(_appId: string, _runOnOsLoginMode: RunOnOsLoginMode):
@@ -296,8 +258,6 @@ export class FakePageHandler implements PageHandlerInterface {
   }
 
   openStorePage(_appId: string): void {}
-
-  openSystemNotificationSettings(_appId: string): void {}
 
   async addApp(optId?: string, optConfig?: AppConfig): Promise<App> {
     optId = optId || String(this.guid++);

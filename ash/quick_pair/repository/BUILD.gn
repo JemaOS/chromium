@@ -52,7 +52,6 @@ source_set("repository") {
     "//chromeos/ash/components/network",
     "//chromeos/ash/services/bluetooth_config/public/cpp",
     "//chromeos/ash/services/quick_pair/public/cpp",
-    "//components/cross_device/logging:logging",
     "//components/image_fetcher/core",
     "//components/prefs",
     "//components/signin/public/identity_manager",

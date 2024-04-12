@@ -1,6 +1,6 @@
 # Primary:
-file://chrome/browser/chromeos/policy/dlp/OWNERS
+ayaelattar@chromium.org
 
 # Secondary:
+asully@chromium.org
 ayui@chromium.org
-estade@chromium.org

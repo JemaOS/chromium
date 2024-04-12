@@ -37,14 +37,14 @@ class InternetDetailDialog : public SystemWebDialogDelegate {
   // Shows an internet details dialog for |network_id|. If no NetworkState
   // exists for |network_id|, does nothing.
   static void ShowDialog(const std::string& network_id,
-                         gfx::NativeWindow parent = gfx::NativeWindow());
+                         gfx::NativeWindow parent = nullptr);
 
  protected:
   explicit InternetDetailDialog(const NetworkState& network);
   ~InternetDetailDialog() override;
 
   // SystemWebDialogDelegate
-  std::string Id() override;
+  const std::string& Id() override;
 
   // ui::WebDialogDelegate
   void GetDialogSize(gfx::Size* size) const override;

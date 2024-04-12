@@ -6,8 +6,8 @@
 
 #include <memory>
 #include <utility>
-#include <vector>
 
+#include "base/containers/cxx20_erase.h"
 #include "build/build_config.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/accessibility/ax_node_data.h"
@@ -117,7 +117,7 @@ void NonClientFrameView::OnThemeChanged() {
   SchedulePaint();
 }
 
-void NonClientFrameView::Layout(PassKey) {
+void NonClientFrameView::Layout() {
   if (GetLayoutManager())
     GetLayoutManager()->Layout(this);
 
@@ -135,9 +135,8 @@ View::Views NonClientFrameView::GetChildrenInZOrder() {
 
   // Move the client view to the beginning of the Z-order to ensure that the
   // other children of the frame view draw on top of it.
-  if (client_view && std::erase(paint_order, client_view)) {
+  if (client_view && base::Erase(paint_order, client_view))
     paint_order.insert(paint_order.begin(), client_view);
-  }
 
   return paint_order;
 }
@@ -156,7 +155,7 @@ int NonClientFrameView::GetSystemMenuY() const {
 }
 #endif
 
-BEGIN_METADATA(NonClientFrameView)
+BEGIN_METADATA(NonClientFrameView, View)
 END_METADATA
 
 NonClientView::NonClientView(views::ClientView* client_view)
@@ -260,7 +259,7 @@ gfx::Size NonClientView::GetMaximumSize() const {
   return frame_view_->GetMaximumSize();
 }
 
-void NonClientView::Layout(PassKey) {
+void NonClientView::Layout() {
   // TODO(pkasting): The frame view should have the client view as a child and
   // lay it out directly + set its clip path.  Done correctly, this should let
   // us use a FillLayout on this class that holds |frame_view_| and
@@ -340,7 +339,7 @@ View* NonClientView::TargetForRect(View* root, const gfx::Rect& rect) {
   return ViewTargeterDelegate::TargetForRect(root, rect);
 }
 
-BEGIN_METADATA(NonClientView)
+BEGIN_METADATA(NonClientView, View)
 END_METADATA
 
 }  // namespace views

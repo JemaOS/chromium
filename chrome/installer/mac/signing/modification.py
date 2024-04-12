@@ -10,7 +10,7 @@ be modified or renamed to support side-by-side channel installs.
 
 import os.path
 
-from signing import commands, parts
+from . import commands, parts
 
 _CF_BUNDLE_DISPLAY_NAME = 'CFBundleDisplayName'
 _CF_BUNDLE_EXE = 'CFBundleExecutable'

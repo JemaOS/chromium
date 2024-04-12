@@ -10,6 +10,7 @@
 #include <string>
 
 #include "base/files/scoped_file.h"
+#include "base/functional/callback.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "ui/ozone/platform/wayland/common/wayland_object.h"
@@ -31,6 +32,8 @@ class WaylandWindow;
 // such as copy-and-paste and drag-and-drop mechanisms.
 class WaylandDataDevice : public WaylandDataDeviceBase {
  public:
+  using RequestDataCallback = base::OnceCallback<void(PlatformClipboard::Data)>;
+
   // DragDelegate is responsible for handling drag and drop sessions.
   class DragDelegate {
    public:
@@ -39,12 +42,10 @@ class WaylandDataDevice : public WaylandDataDeviceBase {
     virtual void OnDragOffer(std::unique_ptr<WaylandDataOffer> offer) = 0;
     virtual void OnDragEnter(WaylandWindow* window,
                              const gfx::PointF& location,
-                             base::TimeTicks timestamp,
                              uint32_t serial) = 0;
-    virtual void OnDragMotion(const gfx::PointF& location,
-                              base::TimeTicks timestamp) = 0;
-    virtual void OnDragLeave(base::TimeTicks timestamp) = 0;
-    virtual void OnDragDrop(base::TimeTicks timestamp) = 0;
+    virtual void OnDragMotion(const gfx::PointF& location) = 0;
+    virtual void OnDragLeave() = 0;
+    virtual void OnDragDrop() = 0;
 
     virtual const WaylandWindow* GetDragTarget() const = 0;
 
@@ -72,6 +73,12 @@ class WaylandDataDevice : public WaylandDataDeviceBase {
   // TODO(crbug.com/1401598): Drop once drag delegate improvements are done.
   void ResetDragDelegateIfNotDragSource();
 
+  // Requests data for an |offer| in a format specified by |mime_type|. The
+  // transfer happens asynchronously and |callback| is called when it is done.
+  void RequestData(WaylandDataOffer* offer,
+                   const std::string& mime_type,
+                   RequestDataCallback callback);
+
   // Returns the underlying wl_data_device singleton object.
   wl_data_device* data_device() const { return data_device_.get(); }
 
@@ -84,15 +91,14 @@ class WaylandDataDevice : public WaylandDataDeviceBase {
  private:
   FRIEND_TEST_ALL_PREFIXES(WaylandDataDragControllerTest, StartDrag);
   FRIEND_TEST_ALL_PREFIXES(WaylandDataDragControllerTest, ReceiveDrag);
-  FRIEND_TEST_ALL_PREFIXES(WaylandDataDragControllerTest,
-                           DestroyWindowWhileFetchingForeignData);
-  FRIEND_TEST_ALL_PREFIXES(WaylandDataDragControllerTest,
-                           LeaveWindowWhileFetchingData);
 
-  // wl_data_device_listener callbacks:
-  static void OnDataOffer(void* data,
-                          wl_data_device* data_device,
-                          wl_data_offer* offer);
+  void ReadDragDataFromFD(base::ScopedFD fd, RequestDataCallback callback);
+
+  // wl_data_device_listener callbacks
+  static void OnOffer(void* data,
+                      wl_data_device* data_device,
+                      wl_data_offer* id);
+
   static void OnEnter(void* data,
                       wl_data_device* data_device,
                       uint32_t serial,
@@ -100,22 +106,29 @@ class WaylandDataDevice : public WaylandDataDeviceBase {
                       wl_fixed_t x,
                       wl_fixed_t y,
                       wl_data_offer* offer);
+
   static void OnMotion(void* data,
                        struct wl_data_device* data_device,
                        uint32_t time,
                        wl_fixed_t x,
                        wl_fixed_t y);
+
   static void OnDrop(void* data, struct wl_data_device* data_device);
+
   static void OnLeave(void* data, struct wl_data_device* data_device);
-  // Called when either keyboard/pointer focus or clipboard content changes.
+
+  // Called by the compositor when the window gets pointer or keyboard focus,
+  // or clipboard content changes behind the scenes.
+  //
+  // https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_data_device
   static void OnSelection(void* data,
                           wl_data_device* data_device,
-                          wl_data_offer* offer);
+                          wl_data_offer* id);
 
   // The wl_data_device wrapped by this WaylandDataDevice.
   wl::Object<wl_data_device> data_device_;
 
-  raw_ptr<DragDelegate, DanglingUntriaged> drag_delegate_ = nullptr;
+  raw_ptr<DragDelegate> drag_delegate_ = nullptr;
 
   // There are two separate data offers at a time, the drag offer and the
   // selection offer, each with independent lifetimes. When we receive a new

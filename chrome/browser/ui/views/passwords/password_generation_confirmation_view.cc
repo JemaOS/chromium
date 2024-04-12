@@ -75,7 +75,7 @@ ui::ImageModel PasswordGenerationConfirmationView::GetWindowIcon() {
 }
 
 void PasswordGenerationConfirmationView::StyledLabelLinkClicked() {
-  controller_.OnGooglePasswordManagerLinkClicked(
+  controller_.OnNavigateToPasswordManagerAccountDashboardLinkClicked(
       password_manager::ManagePasswordsReferrer::
           kPasswordGenerationConfirmation);
   CloseBubble();

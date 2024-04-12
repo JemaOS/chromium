@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_ENTERPRISE_CONNECTORS_SERVICE_PROVIDER_CONFIG_H_
 #define CHROME_BROWSER_ENTERPRISE_CONNECTORS_SERVICE_PROVIDER_CONFIG_H_
 
-#include <string_view>
-
 #include "base/containers/fixed_flat_map.h"
 #include "base/containers/span.h"
 #include "base/files/file_path.h"
@@ -45,7 +43,7 @@ struct ServiceProvider {
 };
 
 using ServiceProviderConfig =
-    base::fixed_flat_map<std::string_view, ServiceProvider, 5>;
+    base::fixed_flat_map<base::StringPiece, ServiceProvider, 4>;
 
 // Returns the global service provider configuration, containing every service
 // provider and each of their supported Connector configs.

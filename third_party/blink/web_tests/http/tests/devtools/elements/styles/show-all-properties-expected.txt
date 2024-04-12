@@ -61,7 +61,6 @@ Show All Properties (150 more)
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 After showing all properties:
 [expanded] 
@@ -273,6 +272,5 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 

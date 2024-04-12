@@ -20,7 +20,8 @@ void SimpleThreadImpl::Run() {
   std::unique_ptr<ThreadManager> thread_manager =
       std::make_unique<ThreadManager>(initial_time_,
                                       thread_pool_manager_->processor());
-  std::move(callback_).Run(thread_manager.get());
+  thread_manager_ = thread_manager.get();
+  std::move(callback_).Run(thread_manager_);
   thread_can_shutdown_.Wait();
 }
 

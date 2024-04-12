@@ -29,7 +29,7 @@ class GuestOsServiceFactory : public ProfileKeyedServiceFactory {
   ~GuestOsServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

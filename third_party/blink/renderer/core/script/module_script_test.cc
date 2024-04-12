@@ -23,7 +23,6 @@
 #include "third_party/blink/renderer/platform/loader/fetch/resource.h"
 #include "third_party/blink/renderer/platform/loader/fetch/script_cached_metadata_handler.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/cached_metadata_handler.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 using ::testing::_;
@@ -44,7 +43,7 @@ class ModuleScriptTestModulator final : public DummyModulator {
   }
 
  private:
-  ScriptState* GetScriptState() override { return script_state_.Get(); }
+  ScriptState* GetScriptState() override { return script_state_; }
 
   Member<ScriptState> script_state_;
 };
@@ -91,8 +90,7 @@ class ModuleScriptTest : public ::testing::Test, public ModuleTestBase {
     ModuleScriptCreationParams params(
         KURL("https://fox.url/script.js"), KURL("https://fox.url/"),
         ScriptSourceLocationType::kInline, ModuleType::kJavaScript,
-        ParkableString(source_text.Impl()->IsolatedCopy()), cache_handler,
-        network::mojom::ReferrerPolicy::kDefault);
+        ParkableString(source_text.Impl()->IsolatedCopy()), cache_handler);
     return JSModuleScript::Create(params, modulator, ScriptFetchOptions());
   }
 
@@ -140,7 +138,6 @@ class ModuleScriptTest : public ::testing::Test, public ModuleTestBase {
     ModuleTestBase::TearDown();
   }
 
-  test::TaskEnvironment task_environment_;
   base::test::ScopedFeatureList feature_list_;
 };
 

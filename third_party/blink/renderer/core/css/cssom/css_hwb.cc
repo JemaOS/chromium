@@ -19,7 +19,7 @@ CSSHWB::CSSHWB(const Color& input_color) {
   w_ = CSSUnitValue::Create(w * 100, CSSPrimitiveValue::UnitType::kPercentage);
   b_ = CSSUnitValue::Create(b * 100, CSSPrimitiveValue::UnitType::kPercentage);
 
-  double a = input_color.Alpha();
+  double a = double(input_color.Alpha()) / 255;
   alpha_ =
       CSSUnitValue::Create(a * 100, CSSPrimitiveValue::UnitType::kPercentage);
 }
@@ -105,9 +105,11 @@ void CSSHWB::setAlpha(const V8CSSNumberish* alpha,
 }
 
 Color CSSHWB::ToColor() const {
-  return Color::FromHWBA(h_->to(CSSPrimitiveValue::UnitType::kDegrees)->value(),
-                         ComponentToColorInput(w_), ComponentToColorInput(b_),
-                         ComponentToColorInput(alpha_));
+  // FromHSLA expects hue in the range [0, 6)
+  return Color::FromHWBA(
+      h_->to(CSSPrimitiveValue::UnitType::kDegrees)->value() / 60.f,
+      ComponentToColorInput(w_), ComponentToColorInput(b_),
+      ComponentToColorInput(alpha_));
 }
 
 }  // namespace blink

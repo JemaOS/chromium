@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_LANGUAGE_LANGUAGE_MODEL_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_LANGUAGE_LANGUAGE_MODEL_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -29,7 +29,7 @@ class LanguageModelManagerFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<LanguageModelManagerFactory>;
+  friend struct base::DefaultSingletonTraits<LanguageModelManagerFactory>;
 
   LanguageModelManagerFactory();
   ~LanguageModelManagerFactory() override;

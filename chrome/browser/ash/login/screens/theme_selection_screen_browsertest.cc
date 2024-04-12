@@ -11,7 +11,6 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/test_future.h"
 #include "chrome/browser/ash/login/screens/guest_tos_screen.h"
-#include "chrome/browser/ash/login/screens/theme_selection_screen.h"
 #include "chrome/browser/ash/login/screens/welcome_screen.h"
 #include "chrome/browser/ash/login/test/device_state_mixin.h"
 #include "chrome/browser/ash/login/test/fake_eula_mixin.h"
@@ -19,7 +18,6 @@
 #include "chrome/browser/ash/login/test/oobe_base_test.h"
 #include "chrome/browser/ash/login/test/oobe_screen_exit_waiter.h"
 #include "chrome/browser/ash/login/test/oobe_screen_waiter.h"
-#include "chrome/browser/ash/login/test/oobe_screens_utils.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/webui/ash/login/guest_tos_screen_handler.h"
@@ -63,7 +61,7 @@ constexpr char kSelectedThemeHistogram[] =
 
 class ThemeSelectionScreenTest
     : public OobeBaseTest,
-      public ::testing::WithParamInterface<std::tuple<test::UIPath, bool>> {
+      public ::testing::WithParamInterface<test::UIPath> {
  public:
   void SetUpOnMainThread() override {
     ThemeSelectionScreen* theme_selection_screen =
@@ -72,26 +70,25 @@ class ThemeSelectionScreenTest
 
     original_callback_ =
         theme_selection_screen->get_exit_callback_for_testing();
-    theme_selection_screen->set_exit_callback_for_testing(
-        screen_result_waiter_.GetRepeatingCallback());
+    theme_selection_screen->set_exit_callback_for_testing(base::BindRepeating(
+        &ThemeSelectionScreenTest::HandleScreenExit, base::Unretained(this)));
     OobeBaseTest::SetUpOnMainThread();
   }
 
   void ShowThemeSelectionScreen() {
-    LoginDisplayHost::default_host()
-        ->GetWizardContextForTesting()
-        ->skip_choobe_for_tests = true;
-
     login_manager_mixin_.LoginAsNewRegularUser();
     OobeScreenExitWaiter(GetFirstSigninScreen()).Wait();
     WizardController::default_controller()->AdvanceToScreen(
         ThemeSelectionScreenView::kScreenId);
   }
 
-  ThemeSelectionScreen::Result WaitForScreenExitResult() {
-    auto result = screen_result_waiter_.Take();
-    original_callback_.Run(result);
-    return result;
+  void WaitForScreenExit() {
+    if (result_.has_value()) {
+      return;
+    }
+    base::test::TestFuture<void> waiter;
+    quit_closure_ = waiter.GetCallback();
+    EXPECT_TRUE(waiter.Wait());
   }
 
   void setTabletMode(bool enabled) {
@@ -100,65 +97,46 @@ class ThemeSelectionScreenTest
     waiter.Wait();
   }
 
+  ThemeSelectionScreen::ScreenExitCallback original_callback_;
+  absl::optional<ThemeSelectionScreen::Result> result_;
   base::HistogramTester histogram_tester_;
 
  private:
+  void HandleScreenExit(ThemeSelectionScreen::Result result) {
+    result_ = result;
+    original_callback_.Run(result);
+    if (quit_closure_)
+      std::move(quit_closure_).Run();
+  }
+
   LoginManagerMixin login_manager_mixin_{&mixin_host_};
-  ThemeSelectionScreen::ScreenExitCallback original_callback_;
-  base::test::TestFuture<ThemeSelectionScreen::Result> screen_result_waiter_;
+  base::OnceClosure quit_closure_;
 };
 
-IN_PROC_BROWSER_TEST_F(ThemeSelectionScreenTest,
-                       ProceedWithDefaultThemeBrandedBuild) {
-  LoginDisplayHost::default_host()->GetWizardContext()->is_branded_build = true;
+IN_PROC_BROWSER_TEST_F(ThemeSelectionScreenTest, ProceedWithDefaultTheme) {
   ShowThemeSelectionScreen();
   test::OobeJS().ClickOnPath(kNextButtonPath);
-
-  EXPECT_EQ(WaitForScreenExitResult(), ThemeSelectionScreen::Result::kProceed);
+  WaitForScreenExit();
 
   EXPECT_THAT(
       histogram_tester_.GetAllSamples(kStepShownStatusHistogram),
       ElementsAre(base::Bucket(
-          static_cast<int>(OobeMetricsHelper::ScreenShownStatus::kShown), 1)));
-  histogram_tester_.ExpectTotalCount(kStepCompletionTimeHistogram, 1);
-  histogram_tester_.ExpectTotalCount(kProceedExitReasonHistogram, 1);
-}
-
-IN_PROC_BROWSER_TEST_F(ThemeSelectionScreenTest,
-                       ProceedWithDefaultThemeNotBrandedBuild) {
-  LoginDisplayHost::default_host()->GetWizardContext()->is_branded_build =
-      false;
-  ShowThemeSelectionScreen();
-
-  test::OobeJS().ClickOnPath(kNextButtonPath);
-  EXPECT_EQ(WaitForScreenExitResult(), ThemeSelectionScreen::Result::kProceed);
-
-  EXPECT_THAT(
-      histogram_tester_.GetAllSamples(kStepShownStatusHistogram),
-      ElementsAre(base::Bucket(
-          static_cast<int>(OobeMetricsHelper::ScreenShownStatus::kShown), 1)));
+          static_cast<int>(WizardController::ScreenShownStatus::kShown), 1)));
   histogram_tester_.ExpectTotalCount(kStepCompletionTimeHistogram, 1);
   histogram_tester_.ExpectTotalCount(kProceedExitReasonHistogram, 1);
 }
 
 IN_PROC_BROWSER_TEST_P(ThemeSelectionScreenTest, SelectTheme) {
-  auto selected_option_path = std::get<0>(GetParam());
-  bool branded_build = std::get<1>(GetParam());
-
-  LoginDisplayHost::default_host()->GetWizardContext()->is_branded_build =
-      branded_build;
-
   ShowThemeSelectionScreen();
   Profile* profile = ProfileManager::GetActiveUserProfile();
 
   // Expect the default dark mode schedule type to be sunset-to-sunrise.
   EXPECT_EQ(profile->GetPrefs()->GetInteger(prefs::kDarkModeScheduleType), 1);
 
-  test::OobeJS().ExpectVisiblePath(selected_option_path);
-  test::OobeJS().ClickOnPath(selected_option_path);
+  test::OobeJS().ExpectVisiblePath(GetParam());
+  test::OobeJS().ClickOnPath(GetParam());
 
-  auto selectedOption =
-      selected_option_path.begin()[selected_option_path.size() - 1];
+  auto selectedOption = GetParam().begin()[GetParam().size() - 1];
   ThemeSelectionScreen::SelectedTheme theme =
       ThemeSelectionScreen::SelectedTheme::kDark;
   if (selectedOption == kDarkThemeButton) {
@@ -176,10 +154,9 @@ IN_PROC_BROWSER_TEST_P(ThemeSelectionScreenTest, SelectTheme) {
   }
 
   test::OobeJS().ClickOnPath(kNextButtonPath);
-
   EXPECT_THAT(histogram_tester_.GetAllSamples(kSelectedThemeHistogram),
               ElementsAre(base::Bucket(static_cast<int>(theme), 1)));
-  EXPECT_EQ(WaitForScreenExitResult(), ThemeSelectionScreen::Result::kProceed);
+  WaitForScreenExit();
 }
 
 IN_PROC_BROWSER_TEST_F(ThemeSelectionScreenTest, ToggleTabletMode) {
@@ -196,13 +173,11 @@ IN_PROC_BROWSER_TEST_F(ThemeSelectionScreenTest, ToggleTabletMode) {
   test::OobeJS().ExpectVisiblePath(kScreenSubtitleClamshellPath);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    All,
-    ThemeSelectionScreenTest,
-    testing::Combine(testing::ValuesIn({kDarkThemeButtonPath,
-                                        kLightThemeButtonPath,
-                                        kAutoThemeButtonPath}),
-                     testing::Bool()));
+INSTANTIATE_TEST_SUITE_P(All,
+                         ThemeSelectionScreenTest,
+                         ::testing::Values(kDarkThemeButtonPath,
+                                           kLightThemeButtonPath,
+                                           kAutoThemeButtonPath));
 
 class ThemeSelectionScreenResumeTest
     : public OobeBaseTest,
@@ -219,10 +194,6 @@ class ThemeSelectionScreenResumeTest
 };
 
 IN_PROC_BROWSER_TEST_P(ThemeSelectionScreenResumeTest, PRE_ResumedScreen) {
-  LoginDisplayHost::default_host()
-      ->GetWizardContextForTesting()
-      ->skip_choobe_for_tests = true;
-
   OobeScreenWaiter(UserCreationView::kScreenId).Wait();
   LoginManagerMixin::TestUserInfo test_user(user_);
   login_mixin_.LoginWithDefaultContext(test_user);

@@ -6,14 +6,12 @@
 
 #include "ash/constants/ash_switches.h"
 #include "base/memory/raw_ptr.h"
-#include "base/test/test_future.h"
 #include "chrome/browser/ash/crosapi/browser_data_back_migrator.h"
 #include "chrome/browser/ash/login/test/device_state_mixin.h"
 #include "chrome/browser/ash/login/test/js_checker.h"
 #include "chrome/browser/ash/login/test/login_manager_mixin.h"
 #include "chrome/browser/ash/login/test/oobe_base_test.h"
 #include "chrome/browser/ash/login/test/oobe_screen_waiter.h"
-#include "chrome/browser/ash/login/test/test_predicate_waiter.h"
 #include "chrome/browser/ui/webui/ash/login/lacros_data_backward_migration_screen_handler.h"
 #include "content/public/test/browser_test.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -28,8 +26,6 @@ const test::UIPath kProgressDialog = {kLacrosDataBackwardMigrationId,
                                       "progressDialog"};
 const test::UIPath kErrorDialog = {kLacrosDataBackwardMigrationId,
                                    "errorDialog"};
-const test::UIPath kCancelButton = {kLacrosDataBackwardMigrationId,
-                                    "cancelButton"};
 
 class FakeBackMigrator : public BrowserDataBackMigratorBase {
  public:
@@ -39,9 +35,7 @@ class FakeBackMigrator : public BrowserDataBackMigratorBase {
   }
 
   void CancelMigration(
-      BackMigrationCanceledCallback canceled_callback) override {
-    std::move(canceled_callback_).Run();
-  }
+      BackMigrationCanceledCallback canceled_callback) override {}
 
   void MaybeRunFinishedCallback(const BrowserDataBackMigrator::Result& result) {
     if (!finished_callback_.is_null()) {
@@ -49,13 +43,8 @@ class FakeBackMigrator : public BrowserDataBackMigratorBase {
     }
   }
 
-  void set_canceled_callback(BackMigrationCanceledCallback canceled_callback) {
-    canceled_callback_ = std::move(canceled_callback);
-  }
-
  private:
   BackMigrationFinishedCallback finished_callback_;
-  BackMigrationCanceledCallback canceled_callback_;
 };
 
 class LacrosDataBackwardMigrationScreenTest : public OobeBaseTest {
@@ -90,7 +79,7 @@ class LacrosDataBackwardMigrationScreenTest : public OobeBaseTest {
   FakeBackMigrator* fake_back_migrator() { return fake_back_migrator_; }
 
  private:
-  raw_ptr<FakeBackMigrator, DanglingUntriaged> fake_back_migrator_;
+  raw_ptr<FakeBackMigrator, ExperimentalAsh> fake_back_migrator_;
 
   DeviceStateMixin device_state_{
       &mixin_host_, DeviceStateMixin::State::OOBE_COMPLETED_CLOUD_ENROLLED};
@@ -109,24 +98,6 @@ IN_PROC_BROWSER_TEST_F(LacrosDataBackwardMigrationScreenTest, FailureScreen) {
 
   test::OobeJS().CreateVisibilityWaiter(false, kProgressDialog)->Wait();
   test::OobeJS().CreateVisibilityWaiter(true, kErrorDialog)->Wait();
-  test::OobeJS().ExpectVisiblePath(kCancelButton);
-}
-
-IN_PROC_BROWSER_TEST_F(LacrosDataBackwardMigrationScreenTest, OnCancel) {
-  OobeScreenWaiter waiter(LacrosDataBackwardMigrationScreenView::kScreenId);
-  waiter.Wait();
-
-  fake_back_migrator()->MaybeRunFinishedCallback(
-      {BrowserDataBackMigrator::Result::kFailed});
-  test::OobeJS().CreateVisibilityWaiter(true, kErrorDialog)->Wait();
-
-  base::test::TestFuture<void> cancellation_future;
-  fake_back_migrator()->set_canceled_callback(
-      cancellation_future.GetCallback());
-
-  test::OobeJS().TapOnPath(kCancelButton);
-
-  EXPECT_TRUE(cancellation_future.Wait());
 }
 
 }  // namespace

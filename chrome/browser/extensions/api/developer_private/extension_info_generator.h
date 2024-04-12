@@ -12,12 +12,14 @@
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "chrome/browser/extensions/cws_info_service.h"
 #include "chrome/common/extensions/api/developer_private.h"
 #include "components/supervised_user/core/common/buildflags.h"
-#include "extensions/browser/blocklist_state.h"
 #include "extensions/common/url_pattern.h"
 #include "extensions/common/url_pattern_set.h"
+
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+class SupervisedUserService;
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
 namespace content {
 class BrowserContext;
@@ -69,10 +71,6 @@ class ExtensionInfoGenerator {
   static std::vector<URLPattern> GetDistinctHosts(
       const URLPatternSet& patterns);
 
-  // Sets the |cws_info_service| for testing.
-  void SetCWSInfoServiceForTesting(
-      extensions::CWSInfoService* cws_info_service);
-
  private:
   // Creates an ExtensionInfo for the given |extension| and |state|, and
   // asynchronously adds it to the |list|.
@@ -90,23 +88,18 @@ class ExtensionInfoGenerator {
   // Returns an icon url from the given image.
   std::string GetIconUrlFromImage(const gfx::Image& image);
 
-  // Construct the needed strings for the safety check on the
-  // extensions page.
-  api::developer_private::SafetyCheckStrings CreateSafetyCheckDisplayString(
-      const Extension& extension,
-      api::developer_private::ExtensionState state,
-      BitMapBlocklistState blocklist_state);
-
   // Various systems, cached for convenience.
   raw_ptr<content::BrowserContext> browser_context_;
   raw_ptr<CommandService> command_service_;
-  raw_ptr<CWSInfoService> cws_info_service_;
   raw_ptr<ExtensionSystem> extension_system_;
   raw_ptr<ExtensionPrefs> extension_prefs_;
   raw_ptr<ExtensionActionAPI> extension_action_api_;
   raw_ptr<WarningService> warning_service_;
   raw_ptr<ErrorConsole> error_console_;
   raw_ptr<ImageLoader> image_loader_;
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+  raw_ptr<SupervisedUserService> supervised_user_service_;
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
   // The number of pending image loads.
   size_t pending_image_loads_;
@@ -118,8 +111,6 @@ class ExtensionInfoGenerator {
   ExtensionInfosCallback callback_;
 
   base::WeakPtrFactory<ExtensionInfoGenerator> weak_factory_{this};
-
-  friend class ExtensionInfoGeneratorUnitTest;
 };
 
 }  // namespace extensions

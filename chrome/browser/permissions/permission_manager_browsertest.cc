@@ -15,9 +15,9 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/permissions/permission_manager.h"
 #include "content/public/browser/browser_context.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/common/url_constants.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/no_renderer_crashes_assertion.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "third_party/blink/public/common/chrome_debug_urls.h"
 #include "third_party/blink/public/common/permissions/permission_utils.h"
@@ -53,7 +53,7 @@ class SubscriptionInterceptingPermissionManager
     callback_ = std::move(callback);
   }
 
-  SubscriptionId SubscribeToPermissionStatusChange(
+  SubscriptionId SubscribePermissionStatusChange(
       blink::PermissionType permission,
       content::RenderProcessHost* render_process_host,
       content::RenderFrameHost* render_frame_host,
@@ -61,7 +61,7 @@ class SubscriptionInterceptingPermissionManager
       base::RepeatingCallback<void(blink::mojom::PermissionStatus)> callback)
       override {
     SubscriptionId result =
-        permissions::PermissionManager::SubscribeToPermissionStatusChange(
+        permissions::PermissionManager::SubscribePermissionStatusChange(
             permission, render_process_host, render_frame_host,
             requesting_origin, callback);
     std::move(callback_).Run();
@@ -104,12 +104,11 @@ class PermissionManagerBrowserTest : public InProcessBrowserTest {
   Browser* incognito_browser() { return incognito_browser_; }
 
  private:
-  raw_ptr<Browser, AcrossTasksDanglingUntriaged> incognito_browser_ = nullptr;
+  raw_ptr<Browser, DanglingUntriaged> incognito_browser_ = nullptr;
 };
 
-// TODO(crbug.com/41485058): Disabled for flakiness.
 IN_PROC_BROWSER_TEST_F(PermissionManagerBrowserTest,
-                       DISABLED_ServiceWorkerPermissionQueryIncognitoClose) {
+                       ServiceWorkerPermissionQueryIncognitoClose) {
   base::RunLoop run_loop;
   permissions::PermissionManager* pm =
       PermissionManagerFactory::GetForProfile(incognito_browser()->profile());
@@ -127,16 +126,8 @@ IN_PROC_BROWSER_TEST_F(PermissionManagerBrowserTest,
   // browser explicitly.
 }
 
-// TODO(crbug.com/329645039): Re-enable this test once fixed
-#if BUILDFLAG(IS_MAC) || (BUILDFLAG(IS_CHROMEOS_ASH) && !defined(NDEBUG))
-#define MAYBE_ServiceWorkerPermissionAfterRendererCrash \
-  DISABLED_ServiceWorkerPermissionAfterRendererCrash
-#else
-#define MAYBE_ServiceWorkerPermissionAfterRendererCrash \
-  ServiceWorkerPermissionAfterRendererCrash
-#endif
 IN_PROC_BROWSER_TEST_F(PermissionManagerBrowserTest,
-                       MAYBE_ServiceWorkerPermissionAfterRendererCrash) {
+                       ServiceWorkerPermissionAfterRendererCrash) {
   content::ScopedAllowRendererCrashes scoped_allow_renderer_crashes_;
 
   content::RenderProcessHostWatcher crash_observer(

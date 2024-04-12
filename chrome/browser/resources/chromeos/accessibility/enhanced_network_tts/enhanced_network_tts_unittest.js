@@ -12,7 +12,7 @@ EnhancedNetworkTtsUnitTest = class extends EnhancedNetworkTE2ETestBase {
   testGenPreamble() {
     super.testGenPreamble();
     super.testGenPreambleCommon(
-        'kEnhancedNetworkTtsExtensionId', true /* failOnConsoleError */);
+        'kSelectToSpeakExtensionId', true /* failOnConsoleError */);
   }
 };
 

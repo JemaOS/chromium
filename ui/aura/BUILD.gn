@@ -35,7 +35,6 @@ component("aura") {
     "host_frame_rate_throttler.h",
     "input_state_lookup.h",
     "layout_manager.h",
-    "native_window_occlusion_tracker.h",
     "null_window_targeter.h",
     "scoped_enable_unadjusted_mouse_events.h",
     "scoped_keyboard_hook.h",
@@ -81,6 +80,7 @@ component("aura") {
     "input_state_lookup.cc",
     "layout_manager.cc",
     "native_window_occlusion_tracker.cc",
+    "native_window_occlusion_tracker.h",
     "null_window_targeter.cc",
     "scoped_keyboard_hook.cc",
     "scoped_simple_keyboard_hook.cc",
@@ -192,7 +192,6 @@ static_library("test_support") {
     "test/env_test_helper.h",
     "test/event_generator_delegate_aura.cc",
     "test/event_generator_delegate_aura.h",
-    "test/find_window.h",
     "test/test_cursor_client.cc",
     "test/test_cursor_client.h",
     "test/test_focus_client.cc",
@@ -207,7 +206,6 @@ static_library("test_support") {
     "test/test_window_targeter.h",
     "test/test_windows.cc",
     "test/test_windows.h",
-    "test/ui_controls_aurawin.h",
     "test/ui_controls_factory_aura.h",
     "test/window_event_dispatcher_test_api.cc",
     "test/window_event_dispatcher_test_api.h",
@@ -247,7 +245,7 @@ static_library("test_support") {
   ]
 
   if (is_win) {
-    sources += [ "test/ui_controls_aurawin.cc" ]
+    sources += [ "test/ui_controls_factory_aurawin.cc" ]
   }
 
   if (use_ozone && (is_chromeos_ash || is_castos)) {

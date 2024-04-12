@@ -33,18 +33,13 @@ using views::Textfield;
 using views::View;
 using views::Widget;
 
-using AuraAXTreeSerializer =
-    ui::AXTreeSerializer<views::AXAuraObjWrapper*,
-                         std::vector<views::AXAuraObjWrapper*>,
-                         ui::AXTreeUpdate*,
-                         ui::AXTreeData*,
-                         ui::AXNodeData>;
+using AuraAXTreeSerializer = ui::AXTreeSerializer<views::AXAuraObjWrapper*>;
 
 // Helper to count the number of nodes in a tree.
 size_t GetSize(AXAuraObjWrapper* tree) {
   size_t count = 1;
 
-  std::vector<raw_ptr<AXAuraObjWrapper, VectorExperimental>> out_children;
+  std::vector<AXAuraObjWrapper*> out_children;
   tree->GetChildren(&out_children);
 
   for (size_t i = 0; i < out_children.size(); ++i)
@@ -68,11 +63,6 @@ class AXTreeSourceAuraTest : public ChromeViewsTestBase {
   void SetUp() override {
     ChromeViewsTestBase::SetUp();
 
-    // A simulated desktop root with no delegate owned by the cache.
-    auto root_wrapper = std::make_unique<AXRootObjWrapper>(nullptr, &cache_);
-    root_wrapper_ = root_wrapper.get();
-    cache_.CreateOrReplace(std::move(root_wrapper));
-
     widget_ = new Widget();
     Widget::InitParams init_params(Widget::InitParams::TYPE_WINDOW_FRAMELESS);
     init_params.context = GetContext();
@@ -88,26 +78,25 @@ class AXTreeSourceAuraTest : public ChromeViewsTestBase {
 
   void TearDown() override {
     // ViewsTestBase requires all Widgets to be closed before shutdown.
-    textfield_ = nullptr;
-    content_ = nullptr;
-    widget_.ExtractAsDangling()->CloseNow();
+    widget_->CloseNow();
     ChromeViewsTestBase::TearDown();
   }
 
  protected:
-  raw_ptr<Widget> widget_ = nullptr;
-  raw_ptr<View> content_ = nullptr;
-  raw_ptr<Textfield> textfield_ = nullptr;
+  raw_ptr<Widget, ExperimentalAsh> widget_;
+  raw_ptr<View, ExperimentalAsh> content_;
+  raw_ptr<Textfield, ExperimentalAsh> textfield_;
   AXAuraObjCache cache_;
-  raw_ptr<AXRootObjWrapper> root_wrapper_ = nullptr;
+  // A simulated desktop root with no delegate.
+  AXRootObjWrapper root_wrapper_{nullptr, &cache_};
 };
 
 TEST_F(AXTreeSourceAuraTest, Accessors) {
   // Focus the textfield so the cursor does not disappear.
   textfield_->RequestFocus();
 
-  AXTreeSourceViews ax_tree(root_wrapper_->GetUniqueId(),
-                            ui::AXTreeID::CreateNewAXTreeID(), &cache_);
+  AXTreeSourceViews ax_tree(&root_wrapper_, ui::AXTreeID::CreateNewAXTreeID(),
+                            &cache_);
   ASSERT_TRUE(ax_tree.GetRoot());
 
   // ID's should be > 0.
@@ -141,8 +130,8 @@ TEST_F(AXTreeSourceAuraTest, Accessors) {
 }
 
 TEST_F(AXTreeSourceAuraTest, DoDefault) {
-  AXTreeSourceViews ax_tree(root_wrapper_->GetUniqueId(),
-                            ui::AXTreeID::CreateNewAXTreeID(), &cache_);
+  AXTreeSourceViews ax_tree(&root_wrapper_, ui::AXTreeID::CreateNewAXTreeID(),
+                            &cache_);
 
   // Grab a wrapper to |DoDefault| (click).
   AXAuraObjWrapper* textfield_wrapper = cache_.GetOrCreate(textfield_);
@@ -157,8 +146,8 @@ TEST_F(AXTreeSourceAuraTest, DoDefault) {
 }
 
 TEST_F(AXTreeSourceAuraTest, Focus) {
-  AXTreeSourceViews ax_tree(root_wrapper_->GetUniqueId(),
-                            ui::AXTreeID::CreateNewAXTreeID(), &cache_);
+  AXTreeSourceViews ax_tree(&root_wrapper_, ui::AXTreeID::CreateNewAXTreeID(),
+                            &cache_);
 
   // Grab a wrapper to focus.
   AXAuraObjWrapper* textfield_wrapper = cache_.GetOrCreate(textfield_);
@@ -173,8 +162,8 @@ TEST_F(AXTreeSourceAuraTest, Focus) {
 }
 
 TEST_F(AXTreeSourceAuraTest, Serialize) {
-  AXTreeSourceViews ax_tree(root_wrapper_->GetUniqueId(),
-                            ui::AXTreeID::CreateNewAXTreeID(), &cache_);
+  AXTreeSourceViews ax_tree(&root_wrapper_, ui::AXTreeID::CreateNewAXTreeID(),
+                            &cache_);
   AuraAXTreeSerializer ax_serializer(&ax_tree);
   ui::AXTreeUpdate out_update;
 
@@ -213,8 +202,8 @@ TEST_F(AXTreeSourceAuraTest, Serialize) {
 }
 
 TEST_F(AXTreeSourceAuraTest, SerializeWindowSetsClipsChildren) {
-  AXTreeSourceViews ax_tree(root_wrapper_->GetUniqueId(),
-                            ui::AXTreeID::CreateNewAXTreeID(), &cache_);
+  AXTreeSourceViews ax_tree(&root_wrapper_, ui::AXTreeID::CreateNewAXTreeID(),
+                            &cache_);
   AuraAXTreeSerializer ax_serializer(&ax_tree);
   AXAuraObjWrapper* widget_wrapper = cache_.GetOrCreate(widget_);
   ui::AXNodeData node_data;

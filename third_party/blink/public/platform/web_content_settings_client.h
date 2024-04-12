@@ -11,7 +11,6 @@
 #include "base/functional/callback.h"
 #include "base/time/time.h"
 #include "third_party/blink/public/common/client_hints/enabled_client_hints.h"
-#include "third_party/blink/public/mojom/navigation/renderer_content_settings.mojom.h"
 
 namespace blink {
 
@@ -46,17 +45,43 @@ class WebContentSettingsClient {
   // Blocks until done.
   virtual bool AllowStorageAccessSync(StorageType storage_type) { return true; }
 
+  // Controls whether images are allowed for this frame.
+  virtual bool AllowImage(bool enabled_per_settings, const WebURL& image_url) {
+    return enabled_per_settings;
+  }
+
+  // Controls whether scripts are allowed to execute for this frame.
+  virtual bool AllowScript(bool enabled_per_settings) {
+    return enabled_per_settings;
+  }
+
+  // Controls whether scripts loaded from the given URL are allowed to execute
+  // for this frame.
+  virtual bool AllowScriptFromSource(bool enabled_per_settings,
+                                     const WebURL& script_url) {
+    return enabled_per_settings;
+  }
+
   // Controls whether insecure scripts are allowed to execute for this frame.
   virtual bool AllowRunningInsecureContent(bool enabled_per_settings,
                                            const WebURL&) {
     return enabled_per_settings;
   }
 
+  // Controls whether auto dark web content is allowed for this frame.
+  virtual bool AllowAutoDarkWebContent(bool enabled_per_settings) {
+    return enabled_per_settings;
+  }
+
   // Controls whether access to read the clipboard is allowed for this frame.
-  virtual bool AllowReadFromClipboard() { return false; }
+  virtual bool AllowReadFromClipboard(bool default_value) {
+    return default_value;
+  }
 
   // Controls whether access to write the clipboard is allowed for this frame.
-  virtual bool AllowWriteToClipboard() { return false; }
+  virtual bool AllowWriteToClipboard(bool default_value) {
+    return default_value;
+  }
 
   // Controls whether enabling Web Components API for this frame.
   virtual bool AllowWebComponents(bool default_value) { return default_value; }
@@ -67,16 +92,16 @@ class WebContentSettingsClient {
   // interface.
   virtual bool AllowMutationEvents(bool default_value) { return default_value; }
 
+  virtual bool AllowPopupsAndRedirects(bool default_value) {
+    return default_value;
+  }
+
   // Reports that passive mixed content was found at the provided URL.
   virtual void PassiveInsecureContentFound(const WebURL&) {}
 
   // Notifies the client that the frame would have executed script if script
   // were enabled.
   virtual void DidNotAllowScript() {}
-
-  // Notifies the client that the frame would have loaded an image if image were
-  // enabled.
-  virtual void DidNotAllowImage() {}
 
   // Called to persist the received client hint preferences when |url| was
   // fetched. The preferences should be persisted for |duration|.

@@ -43,7 +43,8 @@ namespace ash::smb_client {
 // class is alive. Upon destruction, the socket and corresponding firewall hole
 // are closed.
 class NetBiosClient : public network::mojom::UDPSocketListener,
-                      public NetBiosClientInterface {
+                      public NetBiosClientInterface,
+                      public base::SupportsWeakPtr<NetBiosClient> {
  public:
   using NetBiosResponseCallback = base::RepeatingCallback<
       void(const std::vector<uint8_t>&, uint16_t, const net::IPEndPoint&)>;
@@ -75,7 +76,7 @@ class NetBiosClient : public network::mojom::UDPSocketListener,
 
   // Callback handler for bind. Calls OpenPort.
   void OnBindComplete(int32_t result,
-                      const std::optional<net::IPEndPoint>& local_ip);
+                      const absl::optional<net::IPEndPoint>& local_ip);
 
   // Callback handler for OpenPort. Calls SetBroadcast.
   void OnOpenPortComplete(
@@ -89,8 +90,8 @@ class NetBiosClient : public network::mojom::UDPSocketListener,
 
   // network::mojom::UDPSocketListener implementation.
   void OnReceived(int32_t result,
-                  const std::optional<net::IPEndPoint>& src_ip,
-                  std::optional<base::span<const uint8_t>> data) override;
+                  const absl::optional<net::IPEndPoint>& src_ip,
+                  absl::optional<base::span<const uint8_t>> data) override;
 
   // Creates a NetBios Name Query Request packet.
   // https://tools.ietf.org/html/rfc1002
@@ -105,7 +106,6 @@ class NetBiosClient : public network::mojom::UDPSocketListener,
   std::unique_ptr<chromeos::FirewallHole> firewall_hole_;
   mojo::Remote<network::mojom::UDPSocket> server_socket_;
   mojo::Receiver<network::mojom::UDPSocketListener> listener_receiver_{this};
-  base::WeakPtrFactory<NetBiosClient> weak_ptr_factory_{this};
 };
 
 }  // namespace ash::smb_client

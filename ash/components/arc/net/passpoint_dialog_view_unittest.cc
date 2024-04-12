@@ -105,7 +105,7 @@ class PasspointDialogViewTest : public views::ViewsTestBase {
   // Handles URL open.
   std::unique_ptr<TestBrowserUrlOpener> browser_delegate_;
 
-  raw_ptr<PasspointDialogView, DanglingUntriaged> dialog_view_;
+  raw_ptr<PasspointDialogView, ExperimentalAsh> dialog_view_;
   std::unique_ptr<views::Widget> widget_;
 };
 

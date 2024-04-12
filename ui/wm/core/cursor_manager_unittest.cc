@@ -48,8 +48,10 @@ class TestingCursorManager : public wm::NativeCursorManager {
 class CursorManagerTest : public aura::test::AuraTestBase {
  protected:
   CursorManagerTest()
-      : cursor_manager_(std::make_unique<TestingCursorManager>()) {}
+      : delegate_(new TestingCursorManager),
+        cursor_manager_(base::WrapUnique(delegate_.get())) {}
 
+  raw_ptr<TestingCursorManager> delegate_;
   wm::CursorManager cursor_manager_;
 };
 

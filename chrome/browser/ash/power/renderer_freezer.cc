@@ -10,11 +10,17 @@
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/process/process_handle.h"
+#include "chrome/browser/chrome_notification_types.h"
+#include "content/public/browser/notification_details.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_source.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "extensions/browser/extension_registry.h"
+#include "extensions/browser/notification_types.h"
 #include "extensions/browser/process_map.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/permissions/api_permission.h"
@@ -82,8 +88,8 @@ void RendererFreezer::OnRenderProcessHostCreated(
       extensions::ExtensionRegistry::Get(context);
   for (const std::string& extension_id :
        extensions::ProcessMap::Get(context)->GetExtensionsInProcess(rph_id)) {
-    const extensions::Extension* extension =
-        registry->enabled_extensions().GetByID(extension_id);
+    const extensions::Extension* extension = registry->GetExtensionById(
+        extension_id, extensions::ExtensionRegistry::ENABLED);
     if (!extension || !extension->permissions_data()->HasAPIPermission(
                           extensions::mojom::APIPermissionID::kGcm)) {
       continue;

@@ -5,7 +5,6 @@
 #include "ash/app_list/views/app_list_page.h"
 
 #include "ash/app_list/views/contents_view.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/focus/focus_manager.h"
 
 namespace ash {
@@ -52,7 +51,8 @@ gfx::Rect AppListPage::GetDefaultContentsBounds() const {
   return contents_view_->GetContentsBounds();
 }
 
-BEGIN_METADATA(AppListPage)
-END_METADATA
+const char* AppListPage::GetClassName() const {
+  return "AppListPage";
+}
 
 }  // namespace ash

@@ -123,9 +123,10 @@ class AppServiceInstanceRegistryHelper {
   // `browser_window_to_tab_windows_` and `tab_window_to_browser_window_`.
   void UpdateTabWindow(const std::string& app_id, aura::Window* window);
 
-  raw_ptr<AppServiceAppWindowShelfController> controller_ = nullptr;
+  raw_ptr<AppServiceAppWindowShelfController, ExperimentalAsh> controller_ =
+      nullptr;
 
-  raw_ptr<apps::AppServiceProxy> proxy_ = nullptr;
+  raw_ptr<apps::AppServiceProxy, ExperimentalAsh> proxy_ = nullptr;
 
   // Used to get app info for tabs.
   std::unique_ptr<ShelfControllerHelper> shelf_controller_helper_;
@@ -136,7 +137,7 @@ class AppServiceInstanceRegistryHelper {
   //
   // Note: The Lacros browser should go though BrowserAppShelfController, not
   // via this AppServiceInstanceRegistryHelper.
-  std::map<aura::Window*, std::set<raw_ptr<aura::Window, SetExperimental>>>
+  std::map<aura::Window*, std::set<aura::Window*>>
       browser_window_to_tab_windows_;
 
   // Maps the tab window to the ash Chrome browser window in the browser.

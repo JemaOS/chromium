@@ -92,6 +92,33 @@ PermissionsOnboardingSetUpMode GetPermissionSetupMode(
   return PermissionsOnboardingSetUpMode::kNone;
 }
 
+int GetDescriptionStringId(phonehub::MultideviceFeatureAccessManager*
+                               multidevice_feature_access_manager) {
+  PermissionsOnboardingSetUpMode permission_setup_mode =
+      GetPermissionSetupMode(multidevice_feature_access_manager);
+  switch (permission_setup_mode) {
+    case PermissionsOnboardingSetUpMode::kCameraRoll:
+      return IDS_ASH_PHONE_HUB_CAMERA_ROLL_OPT_IN_DESCRIPTION;
+    case PermissionsOnboardingSetUpMode::kMessagingApps:
+      return IDS_ASH_PHONE_HUB_APPS_OPT_IN_DESCRIPTION;
+    case PermissionsOnboardingSetUpMode::kNotificationAndCameraRoll:
+      return IDS_ASH_PHONE_HUB_NOTIFICATION_AND_CAMERA_ROLL_OPT_IN_DESCRIPTION;
+    case PermissionsOnboardingSetUpMode::kNotification:
+      return IDS_ASH_PHONE_HUB_NOTIFICATION_OPT_IN_DESCRIPTION;
+    case PermissionsOnboardingSetUpMode::kNotificationAndMessagingApps:
+      return IDS_ASH_PHONE_HUB_NOTIFICATION_AND_APPS_OPT_IN_DESCRIPTION;
+    case PermissionsOnboardingSetUpMode::kMessagingAppsAndCameraRoll:
+      return IDS_ASH_PHONE_HUB_CAMERA_ROLL_AND_APPS_OPT_IN_DESCRIPTION;
+    case PermissionsOnboardingSetUpMode::kAllPermissions:
+      return IDS_ASH_PHONE_HUB_ALL_FEATURES_OPT_IN_DESCRIPTION;
+    case PermissionsOnboardingSetUpMode::kNone:
+    default:
+      // Just return the default strings since the MultideviceFeatureOptInView
+      // will be invisible.
+      return IDS_ASH_PHONE_HUB_NOTIFICATION_OPT_IN_DESCRIPTION;
+  }
+}
+
 std::string GetMultiDeviceSettingUrl(
     PermissionsOnboardingSetUpMode permission_setup_mode) {
   return base::StringPrintf(kMultideviceSettingsUrl,
@@ -105,7 +132,8 @@ MultideviceFeatureOptInView::MultideviceFeatureOptInView(
         multidevice_feature_access_manager)
     : SubFeatureOptInView(
           PhoneHubViewID::kMultideviceFeatureOptInView,
-          GetPermissionSetupMode(multidevice_feature_access_manager)),
+          GetDescriptionStringId(multidevice_feature_access_manager),
+          IDS_ASH_PHONE_HUB_NOTIFICATION_OPT_IN_SET_UP_BUTTON),
       multidevice_feature_access_manager_(multidevice_feature_access_manager) {
   DCHECK(multidevice_feature_access_manager_);
   setup_mode_ = GetPermissionSetupMode(multidevice_feature_access_manager_);
@@ -154,7 +182,8 @@ void MultideviceFeatureOptInView::UpdateVisibility(bool was_visible) {
       GetPermissionSetupMode(multidevice_feature_access_manager_);
   if (current_mode != setup_mode_) {
     setup_mode_ = current_mode;
-    SetSetUpMode(setup_mode_);
+    RefreshDescription(
+        GetDescriptionStringId(multidevice_feature_access_manager_));
   }
   SetVisible(setup_mode_ != PermissionsOnboardingSetUpMode::kNone &&
              !multidevice_feature_access_manager_
@@ -183,7 +212,7 @@ void MultideviceFeatureOptInView::ClosePhoneHubBubble() {
       ->CloseBubble();
 }
 
-BEGIN_METADATA(MultideviceFeatureOptInView)
+BEGIN_METADATA(MultideviceFeatureOptInView, views::View)
 END_METADATA
 
 }  // namespace ash

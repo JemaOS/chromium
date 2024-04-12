@@ -4,21 +4,23 @@
 
 package org.chromium.chrome.browser.ui.favicon;
 
-import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
-import androidx.appcompat.content.res.AppCompatResources;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.ApiCompatibilityUtils;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.url.GURL;
@@ -36,7 +38,9 @@ import java.util.List;
 public class FaviconHelper {
     private long mNativeFaviconHelper;
 
-    /** Callback interface for getting the result from getLocalFaviconImageForURL method. */
+    /**
+     * Callback interface for getting the result from getLocalFaviconImageForURL method.
+     */
     public interface FaviconImageCallback {
         /**
          * This method will be called when the result favicon is ready.
@@ -57,7 +61,9 @@ public class FaviconHelper {
         public void onComposedFaviconAvailable(Bitmap image, GURL[] iconUrls);
     }
 
-    /** Helper for generating default favicons and sharing the same icon between multiple views. */
+    /**
+     * Helper for generating default favicons and sharing the same icon between multiple views.
+     */
     public static class DefaultFaviconHelper {
         private Bitmap mChromeDarkBitmap;
         private Bitmap mChromeLightBitmap;
@@ -65,44 +71,38 @@ public class FaviconHelper {
         private Bitmap mDefaultLightBitmap;
 
         private int getResourceId(GURL url) {
-            return UrlUtilities.isInternalScheme(url)
-                    ? R.drawable.chromelogo16
-                    : R.drawable.ic_globe_24dp;
+            return UrlUtilities.isInternalScheme(url) ? R.drawable.chromelogo16
+                                                      : R.drawable.default_favicon;
         }
 
-        private Bitmap createBitmap(Context context, int resourceId, boolean useDarkIcon) {
-            Resources resources = context.getResources();
-            Drawable drawable = AppCompatResources.getDrawable(context, resourceId);
-            int faviconSize = resources.getDimensionPixelSize(R.dimen.default_favicon_size);
-            Bitmap tintedBitmap =
-                    Bitmap.createBitmap(faviconSize, faviconSize, Bitmap.Config.ARGB_8888);
+        private Bitmap createBitmap(Resources resources, int resourceId, boolean useDarkIcon) {
+            Bitmap origBitmap = BitmapFactory.decodeResource(resources, resourceId);
+            Bitmap tintedBitmap = Bitmap.createBitmap(
+                    origBitmap.getWidth(), origBitmap.getHeight(), Bitmap.Config.ARGB_8888);
             Canvas c = new Canvas(tintedBitmap);
-            drawable.setBounds(0, 0, faviconSize, faviconSize);
-            final @ColorInt int tintColor =
-                    context.getColor(
-                            useDarkIcon
-                                    ? R.color.default_icon_color_baseline
-                                    : R.color.default_icon_color_light);
-            drawable.setTint(tintColor);
-            drawable.draw(c);
+            @ColorInt
+            int tintColor = ApiCompatibilityUtils.getColor(resources,
+                    useDarkIcon ? R.color.default_icon_color_baseline
+                                : R.color.default_icon_color_light);
+            Paint p = new Paint();
+            p.setColorFilter(new PorterDuffColorFilter(tintColor, PorterDuff.Mode.SRC_IN));
+            c.drawBitmap(origBitmap, 0f, 0f, p);
             return tintedBitmap;
         }
 
         /**
          * Generate a default favicon bitmap for the given URL.
-         * @param context The {@link Context} to fetch the icons and tint.
+         * @param resources The {@link Resources} to fetch the icons.
          * @param url The URL of the page whose icon is being generated.
          * @param useDarkIcon Whether a dark icon should be used.
          * @return The favicon.
          */
-        public Bitmap getDefaultFaviconBitmap(Context context, GURL url, boolean useDarkIcon) {
+        public Bitmap getDefaultFaviconBitmap(Resources resources, GURL url, boolean useDarkIcon) {
             boolean isInternal = UrlUtilities.isInternalScheme(url);
-            Bitmap bitmap =
-                    isInternal
-                            ? (useDarkIcon ? mChromeDarkBitmap : mChromeLightBitmap)
-                            : (useDarkIcon ? mDefaultDarkBitmap : mDefaultLightBitmap);
+            Bitmap bitmap = isInternal ? (useDarkIcon ? mChromeDarkBitmap : mChromeLightBitmap)
+                                       : (useDarkIcon ? mDefaultDarkBitmap : mDefaultLightBitmap);
             if (bitmap != null) return bitmap;
-            bitmap = createBitmap(context, getResourceId(url), useDarkIcon);
+            bitmap = createBitmap(resources, getResourceId(url), useDarkIcon);
             if (isInternal && useDarkIcon) {
                 mChromeDarkBitmap = bitmap;
             } else if (isInternal) {
@@ -117,25 +117,26 @@ public class FaviconHelper {
 
         /**
          * Generate a default favicon drawable for the given URL.
-         * @param context The {@link Context} used to fetch the default icons and tint.
+         * @param resources The {@link Resources} used to fetch the default icons.
          * @param url The URL of the page whose icon is being generated.
          * @param useDarkIcon Whether a dark icon should be used.
          * @return The favicon.
          */
-        public Drawable getDefaultFaviconDrawable(Context context, GURL url, boolean useDarkIcon) {
+        public Drawable getDefaultFaviconDrawable(
+                Resources resources, GURL url, boolean useDarkIcon) {
             return new BitmapDrawable(
-                    context.getResources(), getDefaultFaviconBitmap(context, url, useDarkIcon));
+                    resources, getDefaultFaviconBitmap(resources, url, useDarkIcon));
         }
 
         /**
          * Gives the favicon for given resource id with current theme.
-         * @param context The {@link Context} used to fetch the default icons and tint.
+         * @param resources The {@link Resources} used to fetch the default icons.
          * @param resourceId The integer that represents the id of the icon.
          * @param useDarkIcon Whether a dark icon should be used.
          * @return The favicon
          */
-        public Bitmap getThemifiedBitmap(Context context, int resourceId, boolean useDarkIcon) {
-            return createBitmap(context, resourceId, useDarkIcon);
+        public Bitmap getThemifiedBitmap(Resources resources, int resourceId, boolean useDarkIcon) {
+            return createBitmap(resources, resourceId, useDarkIcon);
         }
 
         /** Clears any of the cached default drawables. */
@@ -147,7 +148,9 @@ public class FaviconHelper {
         }
     }
 
-    /** Allocate and initialize the C++ side of this class. */
+    /**
+     * Allocate and initialize the C++ side of this class.
+     */
     public FaviconHelper() {
         mNativeFaviconHelper = FaviconHelperJni.get().init();
     }
@@ -171,19 +174,11 @@ public class FaviconHelper {
      *         that this callback is not called if this method returns false.
      * @return True if GetLocalFaviconImageForURL is successfully called.
      */
-    public boolean getLocalFaviconImageForURL(
-            Profile profile,
-            GURL pageUrl,
-            int desiredSizeInPixel,
+    public boolean getLocalFaviconImageForURL(Profile profile, GURL pageUrl, int desiredSizeInPixel,
             FaviconImageCallback faviconImageCallback) {
         assert mNativeFaviconHelper != 0;
-        return FaviconHelperJni.get()
-                .getLocalFaviconImageForURL(
-                        mNativeFaviconHelper,
-                        profile,
-                        pageUrl,
-                        desiredSizeInPixel,
-                        faviconImageCallback);
+        return FaviconHelperJni.get().getLocalFaviconImageForURL(
+                mNativeFaviconHelper, profile, pageUrl, desiredSizeInPixel, faviconImageCallback);
     }
 
     /**
@@ -195,19 +190,11 @@ public class FaviconHelper {
      *         that this callback is not called if this method returns false.
      * @return favicon Bitmap corresponding to the pageUrl.
      */
-    public boolean getForeignFaviconImageForURL(
-            Profile profile,
-            GURL pageUrl,
-            int desiredSizeInPixel,
-            FaviconImageCallback faviconImageCallback) {
+    public boolean getForeignFaviconImageForURL(Profile profile, GURL pageUrl,
+            int desiredSizeInPixel, FaviconImageCallback faviconImageCallback) {
         assert mNativeFaviconHelper != 0;
-        return FaviconHelperJni.get()
-                .getForeignFaviconImageForURL(
-                        mNativeFaviconHelper,
-                        profile,
-                        pageUrl,
-                        desiredSizeInPixel,
-                        faviconImageCallback);
+        return FaviconHelperJni.get().getForeignFaviconImageForURL(
+                mNativeFaviconHelper, profile, pageUrl, desiredSizeInPixel, faviconImageCallback);
     }
 
     /**
@@ -219,11 +206,8 @@ public class FaviconHelper {
      *        Note that this callback is not called if this method returns false.
      * @return True if GetLocalFaviconImageForURL is successfully called.
      */
-    public boolean getComposedFaviconImage(
-            Profile profile,
-            @NonNull List<GURL> urls,
-            int desiredSizeInPixel,
-            ComposedFaviconImageCallback composedFaviconImageCallback) {
+    public boolean getComposedFaviconImage(Profile profile, @NonNull List<GURL> urls,
+            int desiredSizeInPixel, ComposedFaviconImageCallback composedFaviconImageCallback) {
         assert mNativeFaviconHelper != 0;
 
         if (urls.size() <= 1 || urls.size() > 4) {
@@ -231,41 +215,20 @@ public class FaviconHelper {
                     "Only able to compose 2 to 4 favicon, but requested " + urls.size());
         }
 
-        return FaviconHelperJni.get()
-                .getComposedFaviconImage(
-                        mNativeFaviconHelper,
-                        profile,
-                        urls.toArray(new GURL[0]),
-                        desiredSizeInPixel,
-                        composedFaviconImageCallback);
+        return FaviconHelperJni.get().getComposedFaviconImage(mNativeFaviconHelper, profile,
+                urls.toArray(new GURL[0]), desiredSizeInPixel, composedFaviconImageCallback);
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     @NativeMethods
     public interface Natives {
         long init();
-
         void destroy(long nativeFaviconHelper);
-
-        boolean getComposedFaviconImage(
-                long nativeFaviconHelper,
-                Profile profile,
-                GURL[] urls,
-                int desiredSizeInDip,
-                ComposedFaviconImageCallback composedFaviconImageCallback);
-
-        boolean getLocalFaviconImageForURL(
-                long nativeFaviconHelper,
-                Profile profile,
-                GURL pageUrl,
-                int desiredSizeInDip,
-                FaviconImageCallback faviconImageCallback);
-
-        boolean getForeignFaviconImageForURL(
-                long nativeFaviconHelper,
-                Profile profile,
-                GURL pageUrl,
-                int desiredSizeInDip,
-                FaviconImageCallback faviconImageCallback);
+        boolean getComposedFaviconImage(long nativeFaviconHelper, Profile profile, GURL[] urls,
+                int desiredSizeInDip, ComposedFaviconImageCallback composedFaviconImageCallback);
+        boolean getLocalFaviconImageForURL(long nativeFaviconHelper, Profile profile, GURL pageUrl,
+                int desiredSizeInDip, FaviconImageCallback faviconImageCallback);
+        boolean getForeignFaviconImageForURL(long nativeFaviconHelper, Profile profile,
+                GURL pageUrl, int desiredSizeInDip, FaviconImageCallback faviconImageCallback);
     }
 }

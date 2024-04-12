@@ -37,10 +37,9 @@ import java.util.List;
  * SecureDnsProviderPreference is the user interface that is shown when Secure DNS is enabled.
  * When Secure DNS is disabled, the SecureDnsProviderPreference is hidden.
  */
-class SecureDnsProviderPreference extends Preference
-        implements RadioGroup.OnCheckedChangeListener,
-                AdapterView.OnItemSelectedListener,
-                TextWatcher {
+class SecureDnsProviderPreference extends Preference implements RadioGroup.OnCheckedChangeListener,
+                                                                AdapterView.OnItemSelectedListener,
+                                                                TextWatcher {
     // UI strings, loaded from the context.
     private final String mPrivacyTemplate;
     private final String mInvalidWarning;
@@ -89,8 +88,7 @@ class SecureDnsProviderPreference extends Preference
         public boolean equals(Object obj) {
             if (obj instanceof State) {
                 State other = (State) obj;
-                return other.secure == secure
-                        && other.config.equals(config)
+                return other.secure == secure && other.config.equals(config)
                         && other.valid == valid;
             }
             return false;
@@ -198,7 +196,9 @@ class SecureDnsProviderPreference extends Preference
         return 0;
     }
 
-    /** Updates the view to match mState. */
+    /**
+     * Updates the view to match mState.
+     */
     private void updateView() {
         if (mGroup == null) {
             // Not yet bound to view holder.
@@ -267,20 +267,17 @@ class SecureDnsProviderPreference extends Preference
         // probeConfig() is a blocking network call that uses WaitableEvent, so it cannot run
         // on the UI thread, nor via the Java PostTask bindings, which do not expose
         // base::WithBaseSyncPrimitives.  Instead, it runs on a fresh Java thread.
-        new Thread(
-                        () -> {
-                            if (SecureDnsBridge.probeConfig(group)) {
-                                return;
-                            }
-                            mCustomServer.post(
-                                    () -> { // Send the state change back to the UI thread.
-                                        // Check that the setting hasn't been changed.
-                                        if (mState.config.contentEquals(group)) {
-                                            mCustomServerLayout.setError(mProbeWarning);
-                                        }
-                                    });
-                        })
-                .start();
+        new Thread(() -> {
+            if (SecureDnsBridge.probeConfig(group)) {
+                return;
+            }
+            mCustomServer.post(() -> { // Send the state change back to the UI thread.
+                // Check that the setting hasn't been changed.
+                if (mState.config.contentEquals(group)) {
+                    mCustomServerLayout.setError(mProbeWarning);
+                }
+            });
+        }).start();
     }
 
     @Override
@@ -300,8 +297,11 @@ class SecureDnsProviderPreference extends Preference
             // attaching an adapter triggers a spurious onItemSelected event.
             return;
         }
+        Entry oldEntry = (Entry) parent.getItemAtPosition(oldPos);
         Entry entry = (Entry) parent.getItemAtPosition(pos);
         tryUpdate(mState.withConfig(entry.config));
+
+        SecureDnsBridge.updateDropdownHistograms(oldEntry, entry);
     }
 
     @Override

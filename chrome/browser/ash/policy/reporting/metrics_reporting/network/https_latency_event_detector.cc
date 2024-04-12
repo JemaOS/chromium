@@ -12,8 +12,8 @@
 
 namespace reporting {
 
-std::optional<MetricEventType> HttpsLatencyEventDetector::DetectEvent(
-    std::optional<MetricData> previous_metric_data,
+absl::optional<MetricEventType> HttpsLatencyEventDetector::DetectEvent(
+    absl::optional<MetricData> previous_metric_data,
     const MetricData& current_metric_data) {
   const auto& current_https_latency_data = current_metric_data.telemetry_data()
                                                .networks_telemetry()
@@ -28,14 +28,14 @@ std::optional<MetricEventType> HttpsLatencyEventDetector::DetectEvent(
        current_https_latency_data.problem() ==
            HttpsLatencyProblem::FAILED_DNS_RESOLUTIONS) &&
       (!network_state || !network_state->IsOnline())) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   if (!previous_metric_data.has_value()) {
     if (current_https_latency_data.verdict() == RoutineVerdict::PROBLEM) {
       return MetricEventType::NETWORK_HTTPS_LATENCY_CHANGE;
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   const auto& previous_https_latency_data =
@@ -52,6 +52,6 @@ std::optional<MetricEventType> HttpsLatencyEventDetector::DetectEvent(
     return MetricEventType::NETWORK_HTTPS_LATENCY_CHANGE;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 }  // namespace reporting

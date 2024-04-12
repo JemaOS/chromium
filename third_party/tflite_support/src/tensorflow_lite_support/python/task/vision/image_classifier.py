@@ -38,11 +38,8 @@ class ImageClassifierOptions:
     classification_options: Classification options for the image classifier
       task.
   """
-
   base_options: _BaseOptions
-  classification_options: _ClassificationOptions = dataclasses.field(
-      default_factory=_ClassificationOptions
-  )
+  classification_options: _ClassificationOptions = _ClassificationOptions()
 
 
 class ImageClassifier(object):

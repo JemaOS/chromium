@@ -8,7 +8,6 @@
 #include "third_party/blink/renderer/core/css/css_length_resolver.h"
 #include "third_party/blink/renderer/core/css/css_value_pool.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
-#include "third_party/blink/renderer/platform/wtf/math_extras.h"
 #include "third_party/blink/renderer/platform/wtf/size_assertions.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
@@ -127,21 +126,6 @@ double CSSNumericLiteralValue::ComputeLengthPx(
   return length_resolver.ZoomedComputedPixels(num_, GetType());
 }
 
-int CSSNumericLiteralValue::ComputeInteger() const {
-  DCHECK(IsNumber());
-  return ClampTo<int>(num_);
-}
-
-double CSSNumericLiteralValue::ComputeNumber() const {
-  DCHECK(IsNumber());
-  return ClampTo<double>(num_);
-}
-
-double CSSNumericLiteralValue::ComputePercentage() const {
-  DCHECK(IsPercentage());
-  return ClampTo<double>(num_);
-}
-
 bool CSSNumericLiteralValue::AccumulateLengthArray(CSSLengthArray& length_array,
                                                    double multiplier) const {
   LengthUnitType length_type;
@@ -228,8 +212,6 @@ String CSSNumericLiteralValue::CustomCSSText() const {
     case UnitType::kRics:
     case UnitType::kChs:
     case UnitType::kIcs:
-    case UnitType::kCaps:
-    case UnitType::kRcaps:
     case UnitType::kLhs:
     case UnitType::kRlhs:
     case UnitType::kPixels:
@@ -252,7 +234,7 @@ String CSSNumericLiteralValue::CustomCSSText() const {
     case UnitType::kHertz:
     case UnitType::kKilohertz:
     case UnitType::kTurns:
-    case UnitType::kFlex:
+    case UnitType::kFraction:
     case UnitType::kViewportWidth:
     case UnitType::kViewportHeight:
     case UnitType::kViewportInlineSize:
@@ -353,7 +335,7 @@ bool CSSNumericLiteralValue::Equals(const CSSNumericLiteralValue& other) const {
     case UnitType::kViewportHeight:
     case UnitType::kViewportMin:
     case UnitType::kViewportMax:
-    case UnitType::kFlex:
+    case UnitType::kFraction:
       return num_ == other.num_;
     case UnitType::kQuirkyEms:
       return false;

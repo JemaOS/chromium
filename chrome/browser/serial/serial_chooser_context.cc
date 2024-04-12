@@ -4,7 +4,6 @@
 
 #include "chrome/browser/serial/serial_chooser_context.h"
 
-#include <string_view>
 #include <utility>
 
 #include "base/base64.h"
@@ -39,7 +38,6 @@ namespace {
 
 constexpr char kPortNameKey[] = "name";
 constexpr char kTokenKey[] = "token";
-constexpr char kBluetoothDevicePathKey[] = "bluetooth_device_path";
 #if BUILDFLAG(IS_WIN)
 constexpr char kDeviceInstanceIdKey[] = "device_instance_id";
 #else
@@ -54,10 +52,14 @@ constexpr char kUsbDriverKey[] = "usb_driver";
 std::string EncodeToken(const base::UnguessableToken& token) {
   const uint64_t data[2] = {token.GetHighForSerialization(),
                             token.GetLowForSerialization()};
-  return base::Base64Encode(base::as_byte_span(data));
+  std::string buffer;
+  base::Base64Encode(
+      base::StringPiece(reinterpret_cast<const char*>(&data[0]), sizeof(data)),
+      &buffer);
+  return buffer;
 }
 
-base::UnguessableToken DecodeToken(std::string_view input) {
+base::UnguessableToken DecodeToken(base::StringPiece input) {
   std::string buffer;
   if (!base::Base64Decode(input, &buffer) ||
       buffer.length() != sizeof(uint64_t) * 2) {
@@ -65,7 +67,7 @@ base::UnguessableToken DecodeToken(std::string_view input) {
   }
 
   const uint64_t* data = reinterpret_cast<const uint64_t*>(buffer.data());
-  std::optional<base::UnguessableToken> token =
+  absl::optional<base::UnguessableToken> token =
       base::UnguessableToken::Deserialize(data[0], data[1]);
   if (!token.has_value()) {
     return base::UnguessableToken();
@@ -73,8 +75,9 @@ base::UnguessableToken DecodeToken(std::string_view input) {
   return token.value();
 }
 
-bool IsPolicyGrantedObject(const base::Value::Dict& object) {
-  return object.size() == 1 && object.contains(kPortNameKey);
+bool IsPolicyGrantedObject(const base::Value& object) {
+  return object.is_dict() && object.GetDict().size() == 1 &&
+         object.GetDict().contains(kPortNameKey);
 }
 
 base::Value VendorAndProductIdsToValue(uint16_t vendor_id,
@@ -141,7 +144,7 @@ SerialChooserContext::SerialChooserContext(Profile* profile)
 SerialChooserContext::~SerialChooserContext() = default;
 
 // static
-base::Value::Dict SerialChooserContext::PortInfoToValue(
+base::Value SerialChooserContext::PortInfoToValue(
     const device::mojom::SerialPortInfo& port) {
   base::Value::Dict value;
   if (port.display_name && !port.display_name->empty()) {
@@ -152,96 +155,81 @@ base::Value::Dict SerialChooserContext::PortInfoToValue(
 
   if (!SerialChooserContext::CanStorePersistentEntry(port)) {
     value.Set(kTokenKey, EncodeToken(port.token));
-    return value;
+    return base::Value(std::move(value));
   }
 
-  if (port.bluetooth_service_class_id &&
-      port.bluetooth_service_class_id->IsValid()) {
-    value.Set(kBluetoothDevicePathKey, port.path.LossyDisplayName());
-  } else {
 #if BUILDFLAG(IS_WIN)
-    // Windows provides a handy device identifier which we can rely on to be
-    // sufficiently stable for identifying devices across restarts.
-    value.Set(kDeviceInstanceIdKey, port.device_instance_id);
+  // Windows provides a handy device identifier which we can rely on to be
+  // sufficiently stable for identifying devices across restarts.
+  value.Set(kDeviceInstanceIdKey, port.device_instance_id);
 #else
-    CHECK(port.has_vendor_id);
-    value.Set(kVendorIdKey, port.vendor_id);
-    CHECK(port.has_product_id);
-    value.Set(kProductIdKey, port.product_id);
-    CHECK(port.serial_number);
-    value.Set(kSerialNumberKey, *port.serial_number);
+  DCHECK(port.has_vendor_id);
+  value.Set(kVendorIdKey, port.vendor_id);
+  DCHECK(port.has_product_id);
+  value.Set(kProductIdKey, port.product_id);
+  DCHECK(port.serial_number);
+  value.Set(kSerialNumberKey, *port.serial_number);
+
 #if BUILDFLAG(IS_MAC)
-    CHECK(port.usb_driver_name && !port.usb_driver_name->empty());
-    value.Set(kUsbDriverKey, *port.usb_driver_name);
+  DCHECK(port.usb_driver_name && !port.usb_driver_name->empty());
+  value.Set(kUsbDriverKey, *port.usb_driver_name);
 #endif  // BUILDFLAG(IS_MAC)
 #endif  // BUILDFLAG(IS_WIN)
-  }
-  return value;
+  return base::Value(std::move(value));
 }
 
-std::string SerialChooserContext::GetKeyForObject(
-    const base::Value::Dict& object) {
+std::string SerialChooserContext::GetKeyForObject(const base::Value& object) {
   if (!IsValidObject(object))
     return std::string();
 
   if (IsPolicyGrantedObject(object)) {
-    return *object.FindString(kPortNameKey);
-  }
-
-  const std::string* bluetooth_device_path =
-      object.FindString(kBluetoothDevicePathKey);
-  if (bluetooth_device_path) {
-    return *bluetooth_device_path;
+    return *object.FindStringKey(kPortNameKey);
   }
 
 #if BUILDFLAG(IS_WIN)
-  return *(object.FindString(kDeviceInstanceIdKey));
+  return *(object.FindStringKey(kDeviceInstanceIdKey));
 #else
   std::vector<std::string> key_pieces{
-      base::NumberToString(*(object.FindInt(kVendorIdKey))),
-      base::NumberToString(*(object.FindInt(kProductIdKey))),
-      *(object.FindString(kSerialNumberKey))};
+      base::NumberToString(*(object.FindIntKey(kVendorIdKey))),
+      base::NumberToString(*(object.FindIntKey(kProductIdKey))),
+      *(object.FindStringKey(kSerialNumberKey))};
 #if BUILDFLAG(IS_MAC)
-  key_pieces.push_back(*(object.FindString(kUsbDriverKey)));
+  key_pieces.push_back(*(object.FindStringKey(kUsbDriverKey)));
 #endif  // BUILDFLAG(IS_MAC)
   return base::JoinString(key_pieces, "|");
 #endif  // BUILDFLAG(IS_WIN)
 }
 
-bool SerialChooserContext::IsValidObject(const base::Value::Dict& object) {
+bool SerialChooserContext::IsValidObject(const base::Value& object) {
   if (IsPolicyGrantedObject(object)) {
     return true;
   }
 
-  if (!object.FindString(kPortNameKey)) {
+  if (!object.is_dict() || !object.FindStringKey(kPortNameKey))
     return false;
-  }
 
-  const std::string* token = object.FindString(kTokenKey);
+  const std::string* token = object.FindStringKey(kTokenKey);
   if (token)
-    return object.size() == 2 && DecodeToken(*token);
-  if (object.FindString(kBluetoothDevicePathKey)) {
-    return object.size() == 2;
-  }
+    return object.DictSize() == 2 && DecodeToken(*token);
 
 #if BUILDFLAG(IS_WIN)
-  return object.size() == 2 && object.FindString(kDeviceInstanceIdKey);
+  return object.DictSize() == 2 && object.FindStringKey(kDeviceInstanceIdKey);
 #else
-  if (!object.FindInt(kVendorIdKey) || !object.FindInt(kProductIdKey) ||
-      !object.FindString(kSerialNumberKey)) {
+  if (!object.FindIntKey(kVendorIdKey) || !object.FindIntKey(kProductIdKey) ||
+      !object.FindStringKey(kSerialNumberKey)) {
     return false;
   }
 #if BUILDFLAG(IS_MAC)
-  return object.size() == 5 && object.FindString(kUsbDriverKey);
+  return object.DictSize() == 5 && object.FindStringKey(kUsbDriverKey);
 #else
-  return object.size() == 4;
+  return object.DictSize() == 4;
 #endif  // BUILDFLAG(IS_MAC)
 #endif  // BUILDFLAG(IS_WIN)
 }
 
 std::u16string SerialChooserContext::GetObjectDisplayName(
-    const base::Value::Dict& object) {
-  const std::string* name = object.FindString(kPortNameKey);
+    const base::Value& object) {
+  const std::string* name = object.FindStringKey(kPortNameKey);
   DCHECK(name);
   return base::UTF8ToUTF16(*name);
 }
@@ -265,9 +253,9 @@ SerialChooserContext::GetGrantedObjects(const url::Origin& origin) {
         if (port_it == port_info_.end())
           continue;
 
-        base::Value::Dict port = PortInfoToValue(*port_it->second);
+        const base::Value& port = PortInfoToValue(*port_it->second);
         objects.push_back(std::make_unique<Object>(
-            origin, std::move(port),
+            origin, port.Clone(),
             content_settings::SettingSource::SETTING_SOURCE_USER,
             IsOffTheRecord()));
       }
@@ -370,9 +358,8 @@ SerialChooserContext::GetAllGrantedObjects() {
   return objects;
 }
 
-void SerialChooserContext::RevokeObjectPermission(
-    const url::Origin& origin,
-    const base::Value::Dict& object) {
+void SerialChooserContext::RevokeObjectPermission(const url::Origin& origin,
+                                                  const base::Value& object) {
   RevokeObjectPermissionInternal(origin, object, /*revoked_by_website=*/false);
 }
 
@@ -389,9 +376,9 @@ void SerialChooserContext::RevokePortPermissionWebInitiated(
 
 void SerialChooserContext::RevokeObjectPermissionInternal(
     const url::Origin& origin,
-    const base::Value::Dict& object,
+    const base::Value& object,
     bool revoked_by_website = false) {
-  const std::string* token = object.FindString(kTokenKey);
+  const std::string* token = object.FindStringKey(kTokenKey);
   if (!token) {
     ObjectPermissionContextBase::RevokeObjectPermission(origin, object);
     RecordPermissionRevocation(
@@ -423,7 +410,7 @@ void SerialChooserContext::GrantPortPermission(
   port_info_.insert({port.token, port.Clone()});
 
   if (CanStorePersistentEntry(port)) {
-    base::Value::Dict value = PortInfoToValue(port);
+    base::Value value = PortInfoToValue(port);
     GrantObjectPermission(origin, std::move(value));
     return;
   }
@@ -463,64 +450,39 @@ bool SerialChooserContext::HasPortPermission(
   std::vector<std::unique_ptr<Object>> object_list =
       ObjectPermissionContextBase::GetGrantedObjects(origin);
   for (const auto& object : object_list) {
-    const base::Value::Dict& device = object->value;
+    const base::Value& device = object->value;
 
     // Objects provided by the parent class can be assumed valid.
     DCHECK(IsValidObject(device));
 
-    if (port.bluetooth_service_class_id &&
-        port.bluetooth_service_class_id->IsValid()) {
-      const std::string* bluetooth_device_path =
-          device.FindString(kBluetoothDevicePathKey);
-      if (!bluetooth_device_path) {
-        continue;
-      }
-      // LossyDisplayName for Bluetooth devices is always expected to be a MAC
-      // address which fits into UTF8 so converting to UTF16 for this comparison
-      // is safe.
-      if (base::UTF8ToUTF16(*bluetooth_device_path) !=
-          port.path.LossyDisplayName()) {
-        continue;
-      }
-      return true;
-    } else {
 #if BUILDFLAG(IS_WIN)
-      const std::string* device_instance_id =
-          device.FindString(kDeviceInstanceIdKey);
-      if (device_instance_id &&
-          port.device_instance_id == *device_instance_id) {
-        return true;
-      }
+    const std::string& device_instance_id =
+        *device.FindStringKey(kDeviceInstanceIdKey);
+    if (port.device_instance_id == device_instance_id)
+      return true;
 #else
-      const std::optional<int> vendor_id = device.FindInt(kVendorIdKey);
-      const std::optional<int> product_id = device.FindInt(kProductIdKey);
-      const std::string* serial_number = device.FindString(kSerialNumberKey);
-      if (!vendor_id || !product_id || !serial_number) {
-        continue;
-      }
+    const int vendor_id = *device.FindIntKey(kVendorIdKey);
+    const int product_id = *device.FindIntKey(kProductIdKey);
+    const std::string& serial_number = *device.FindStringKey(kSerialNumberKey);
 
-      // Guaranteed by the CanStorePersistentEntry() check above.
-      CHECK(port.has_vendor_id);
-      CHECK(port.has_product_id);
-      CHECK(port.serial_number && !port.serial_number->empty());
-      if (port.vendor_id != *vendor_id || port.product_id != *product_id ||
-          port.serial_number != *serial_number) {
-        continue;
-      }
+    // Guaranteed by the CanStorePersistentEntry() check above.
+    DCHECK(port.has_vendor_id);
+    DCHECK(port.has_product_id);
+    DCHECK(port.serial_number && !port.serial_number->empty());
+    if (port.vendor_id != vendor_id || port.product_id != product_id ||
+        port.serial_number != serial_number) {
+      continue;
+    }
 
 #if BUILDFLAG(IS_MAC)
-      const std::string* usb_driver_name = device.FindString(kUsbDriverKey);
-      if (!usb_driver_name) {
-        continue;
-      }
-      if (port.usb_driver_name != *usb_driver_name) {
-        continue;
-      }
+    const std::string& usb_driver_name = *device.FindStringKey(kUsbDriverKey);
+    if (port.usb_driver_name != usb_driver_name) {
+      continue;
+    }
 #endif  // BUILDFLAG(IS_MAC)
 
-      return true;
+    return true;
 #endif  // BUILDFLAG(IS_WIN)
-    }
   }
   return false;
 }
@@ -535,19 +497,11 @@ bool SerialChooserContext::CanStorePersistentEntry(
   if (!port.display_name || port.display_name->empty())
     return false;
 
-  const bool has_bluetooth = port.bluetooth_service_class_id &&
-                             port.bluetooth_service_class_id->IsValid() &&
-                             !port.path.LossyDisplayName().empty();
-  if (has_bluetooth) {
-    return true;
-  }
-
 #if BUILDFLAG(IS_WIN)
   return !port.device_instance_id.empty();
 #else
-  const bool has_usb = port.has_vendor_id && port.has_product_id &&
-                       port.serial_number && !port.serial_number->empty();
-  if (!has_usb) {
+  if (!port.has_vendor_id || !port.has_product_id || !port.serial_number ||
+      port.serial_number->empty()) {
     return false;
   }
 
@@ -633,13 +587,6 @@ void SerialChooserContext::OnPortRemoved(
     }
     for (const auto& origin : revoked_origins)
       observer.OnPermissionRevoked(origin);
-  }
-}
-
-void SerialChooserContext::OnPortConnectedStateChanged(
-    device::mojom::SerialPortInfoPtr port) {
-  for (auto& observer : port_observer_list_) {
-    observer.OnPortConnectedStateChanged(*port);
   }
 }
 

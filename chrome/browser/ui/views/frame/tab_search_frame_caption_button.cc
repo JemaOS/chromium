@@ -45,5 +45,5 @@ gfx::Rect TabSearchFrameCaptionButton::GetAnchorBoundsInScreen() const {
   return bounds;
 }
 
-BEGIN_METADATA(TabSearchFrameCaptionButton)
+BEGIN_METADATA(TabSearchFrameCaptionButton, views::FrameCaptionButton)
 END_METADATA

@@ -1,10 +1,9 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const base = 'https://a.test:8443/inspector-protocol/resources/'
   const bp = testRunner.browserP();
   const {page, session, dp} = await testRunner.startBlank(
       'Tracing of FLEDGE worklets.', {url: base + 'fledge_join.html?40'});
 
-  await dp.Target.setAutoAttach({autoAttach: true, flatten: true, waitForDebuggerOnStart: false});
   const TracingHelper =
       await testRunner.loadScript('../resources/tracing-test.js');
   const tracingHelper = new TracingHelper(testRunner, session);
@@ -33,7 +32,7 @@
 
   const auctionJs = `
     navigator.runAdAuction({
-      decisionLogicURL: "${base}fledge_decision_logic.js.php",
+      decisionLogicUrl: "${base}fledge_decision_logic.js.php",
       seller: "https://a.test:8443",
       interestGroupBuyers: ["https://a.test:8443"]})`;
 

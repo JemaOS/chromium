@@ -268,6 +268,8 @@ const overlayUpdater = (() => {
 window.addEventListener('message', ({data}) => {
   if (data.type === 'updateAppearance') {
     oneGoogleBarApi.setForegroundLight(data.applyLightTheme);
+    document.body.toggleAttribute(
+        'apply-background-protection_', data.applyBackgroundProtection);
   }
 });
 

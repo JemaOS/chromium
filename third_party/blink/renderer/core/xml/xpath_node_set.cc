@@ -51,7 +51,7 @@ NodeSet* NodeSet::Create(const NodeSet& other) {
 static inline Node* ParentWithDepth(unsigned depth,
                                     const NodeSetVector& parents) {
   DCHECK_GE(parents.size(), depth + 1);
-  return parents[parents.size() - 1 - depth].Get();
+  return parents[parents.size() - 1 - depth];
 }
 
 static void SortBlock(unsigned from,

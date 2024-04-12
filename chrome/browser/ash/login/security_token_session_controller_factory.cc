@@ -21,12 +21,7 @@ namespace login {
 SecurityTokenSessionControllerFactory::SecurityTokenSessionControllerFactory()
     : ProfileKeyedServiceFactory(
           "SecurityTokenSessionController",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(chromeos::CertificateProviderServiceFactory::GetInstance());
 }
 
@@ -45,12 +40,10 @@ SecurityTokenSessionControllerFactory::GetForBrowserContext(
 // static
 SecurityTokenSessionControllerFactory*
 SecurityTokenSessionControllerFactory::GetInstance() {
-  static base::NoDestructor<SecurityTokenSessionControllerFactory> instance;
-  return instance.get();
+  return base::Singleton<SecurityTokenSessionControllerFactory>::get();
 }
 
-std::unique_ptr<KeyedService>
-SecurityTokenSessionControllerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SecurityTokenSessionControllerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   // The service should only exist for the primary and the sign-in profiles.
   Profile* profile = Profile::FromBrowserContext(context);
@@ -76,9 +69,9 @@ SecurityTokenSessionControllerFactory::BuildServiceInstanceForBrowserContext(
   chromeos::CertificateProviderService* certificate_provider_service =
       chromeos::CertificateProviderServiceFactory::GetForBrowserContext(
           context);
-  return std::make_unique<SecurityTokenSessionController>(
-      is_primary_profile, local_state, primary_user,
-      certificate_provider_service);
+  return new SecurityTokenSessionController(is_primary_profile, local_state,
+                                            primary_user,
+                                            certificate_provider_service);
 }
 
 bool SecurityTokenSessionControllerFactory::ServiceIsCreatedWithBrowserContext()

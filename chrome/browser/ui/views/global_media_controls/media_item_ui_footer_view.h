@@ -9,7 +9,6 @@
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/views/global_media_controls/media_item_ui_device_selector_observer.h"
 #include "components/global_media_controls/public/views/media_item_ui_footer.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/views/controls/button/button.h"
 
@@ -21,8 +20,6 @@ class DeviceEntryButton;
 // available cast devices and volume controls.
 class MediaItemUIFooterView : public global_media_controls::MediaItemUIFooter,
                               public MediaItemUIDeviceSelectorObserver {
-  METADATA_HEADER(MediaItemUIFooterView,
-                  global_media_controls::MediaItemUIFooter)
  public:
   class Delegate {
    public:
@@ -45,7 +42,7 @@ class MediaItemUIFooterView : public global_media_controls::MediaItemUIFooter,
   void OnMediaItemUIDeviceSelectorUpdated(
       const std::map<int, DeviceEntryUI*>& device_entries_map) override;
 
-  void Layout(PassKey) override;
+  void Layout() override;
 
  private:
   void UpdateButtonsColor();
@@ -54,7 +51,7 @@ class MediaItemUIFooterView : public global_media_controls::MediaItemUIFooter,
 
   SkColor foreground_color_ = gfx::kPlaceholderColor;
 
-  raw_ptr<DeviceEntryButton, DanglingUntriaged> overflow_button_ = nullptr;
+  raw_ptr<DeviceEntryButton> overflow_button_ = nullptr;
 
   raw_ptr<Delegate> delegate_ = nullptr;
 };

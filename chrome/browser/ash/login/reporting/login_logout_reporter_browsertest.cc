@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -42,7 +41,6 @@
 #include "chromeos/ash/components/login/auth/public/key.h"
 #include "chromeos/ash/components/login/auth/public/user_context.h"
 #include "chromeos/ash/components/login/auth/stub_authenticator_builder.h"
-#include "chromeos/ash/components/login/login_state/login_state.h"
 #include "chromeos/ash/components/settings/cros_settings_names.h"
 #include "chromeos/dbus/missive/missive_client.h"
 #include "chromeos/dbus/missive/missive_client_test_observer.h"
@@ -61,6 +59,7 @@
 #include "net/dns/mock_host_resolver.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using chromeos::MissiveClient;
 using chromeos::MissiveClientTestObserver;
@@ -88,7 +87,7 @@ Record GetNextLoginLogoutRecord(MissiveClientTestObserver* observer) {
   return record;
 }
 
-std::optional<Record> MaybeGetEnqueuedLoginLogoutRecord() {
+absl::optional<Record> MaybeGetEnqueudLoginLogoutRecord() {
   const std::vector<Record>& records =
       MissiveClient::Get()->GetTestInterface()->GetEnqueuedRecords(
           Priority::SECURITY);
@@ -97,7 +96,7 @@ std::optional<Record> MaybeGetEnqueuedLoginLogoutRecord() {
       return record;
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 class PublicSessionUserCreationWaiter
@@ -222,9 +221,6 @@ IN_PROC_BROWSER_TEST_F(LoginLogoutReporterBrowserTest,
   base::RunLoop().RunUntilIdle();
 
   Record login_record = GetNextLoginLogoutRecord(&observer);
-  ASSERT_TRUE(login_record.has_source_info());
-  EXPECT_THAT(login_record.source_info().source(),
-              Eq(::reporting::SourceInfo::ASH));
 
   LoginLogoutRecord login_record_data;
   ASSERT_TRUE(login_record_data.ParseFromString(login_record.data()));
@@ -236,9 +232,6 @@ IN_PROC_BROWSER_TEST_F(LoginLogoutReporterBrowserTest,
 
   Shell::Get()->session_controller()->RequestSignOut();
   Record logout_record = GetNextLoginLogoutRecord(&observer);
-  ASSERT_TRUE(logout_record.has_source_info());
-  EXPECT_THAT(logout_record.source_info().source(),
-              Eq(::reporting::SourceInfo::ASH));
 
   LoginLogoutRecord logout_record_data;
   ASSERT_TRUE(logout_record_data.ParseFromString(logout_record.data()));
@@ -255,9 +248,6 @@ IN_PROC_BROWSER_TEST_F(LoginLogoutReporterBrowserTest, LoginFailed) {
   base::RunLoop().RunUntilIdle();
 
   Record login_record = GetNextLoginLogoutRecord(&observer);
-  ASSERT_TRUE(login_record.has_source_info());
-  EXPECT_THAT(login_record.source_info().source(),
-              Eq(::reporting::SourceInfo::ASH));
 
   LoginLogoutRecord failed_login_record_data;
   ASSERT_TRUE(failed_login_record_data.ParseFromString(login_record.data()));
@@ -295,15 +285,12 @@ IN_PROC_BROWSER_TEST_F(LoginLogoutReporterBrowserTest, GuestLogin) {
 
   // Check if the record is already enqueued in case it was enqueued before the
   // |observer| initialization.
-  std::optional<Record> login_record = MaybeGetEnqueuedLoginLogoutRecord();
+  absl::optional<Record> login_record = MaybeGetEnqueudLoginLogoutRecord();
 
   if (!login_record.has_value()) {
     // Record is not enqueued yet, so wait for it.
     login_record = GetNextLoginLogoutRecord(&observer);
   }
-  ASSERT_TRUE(login_record.value().has_source_info());
-  EXPECT_THAT(login_record.value().source_info().source(),
-              Eq(::reporting::SourceInfo::ASH));
 
   LoginLogoutRecord login_record_data;
   ASSERT_TRUE(login_record_data.ParseFromString(login_record->data()));
@@ -402,12 +389,9 @@ IN_PROC_BROWSER_TEST_F(LoginLogoutReporterPublicSessionBrowserTest,
   base::RunLoop().RunUntilIdle();
 
   user_manager::UserManager* user_manager = user_manager::UserManager::Get();
-  ASSERT_TRUE(user_manager->IsLoggedInAsManagedGuestSession());
+  ASSERT_TRUE(user_manager->IsLoggedInAsPublicAccount());
 
   Record login_record = GetNextLoginLogoutRecord(&observer);
-  ASSERT_TRUE(login_record.has_source_info());
-  EXPECT_THAT(login_record.source_info().source(),
-              Eq(::reporting::SourceInfo::ASH));
 
   LoginLogoutRecord login_record_data;
   ASSERT_TRUE(login_record_data.ParseFromString(login_record.data()));
@@ -420,8 +404,20 @@ IN_PROC_BROWSER_TEST_F(LoginLogoutReporterPublicSessionBrowserTest,
 
 class LoginLogoutReporterKioskBrowserTest
     : public MixinBasedInProcessBrowserTest {
+ public:
+  LoginLogoutReporterKioskBrowserTest(
+      const LoginLogoutReporterKioskBrowserTest&) = delete;
+  LoginLogoutReporterKioskBrowserTest& operator=(
+      const LoginLogoutReporterKioskBrowserTest&) = delete;
+
  protected:
+  LoginLogoutReporterKioskBrowserTest() = default;
+
+  ~LoginLogoutReporterKioskBrowserTest() override = default;
+
   void SetUp() override {
+    skip_splash_wait_override_ =
+        KioskLaunchController::SkipSplashScreenWaitForTesting();
     login_manager_.set_session_restore_enabled();
 
     MixinBasedInProcessBrowserTest::SetUp();
@@ -438,6 +434,7 @@ class LoginLogoutReporterKioskBrowserTest
     MixinBasedInProcessBrowserTest::SetUpInProcessBrowserTestFixture();
 
     host_resolver()->AddRule("*", "127.0.0.1");
+    SessionManagerClient::InitializeFakeInMemory();
 
     ChromeDeviceSettingsProto& proto(policy_helper_.device_policy()->payload());
     KioskAppsMixin::AppendAutoLaunchKioskAccount(&proto);
@@ -455,8 +452,7 @@ class LoginLogoutReporterKioskBrowserTest
  private:
   FakeCWS fake_cws_;
   policy::DevicePolicyCrosTestHelper policy_helper_;
-  base::AutoReset<bool> skip_splash_wait_override_ =
-      KioskLaunchController::SkipSplashScreenWaitForTesting();
+  std::unique_ptr<base::AutoReset<bool>> skip_splash_wait_override_;
   EmbeddedTestServerSetupMixin embedded_test_server_{&mixin_host_,
                                                      embedded_test_server()};
 
@@ -467,19 +463,20 @@ class LoginLogoutReporterKioskBrowserTest
 
 IN_PROC_BROWSER_TEST_F(LoginLogoutReporterKioskBrowserTest,
                        LoginSuccessfulThenLogout) {
-  ASSERT_TRUE(::ash::LoginState::Get()->IsKioskSession());
   MissiveClientTestObserver observer(Destination::LOGIN_LOGOUT_EVENTS);
+  test::WaitForPrimaryUserSessionStart();
+
+  user_manager::UserManager* user_manager = user_manager::UserManager::Get();
+  ASSERT_TRUE(user_manager->IsLoggedInAsKioskApp());
 
   // Check if the record is already enqueued in case it was enqueued before the
   // |observer| initialization.
-  std::optional<Record> login_record = MaybeGetEnqueuedLoginLogoutRecord();
+  absl::optional<Record> login_record = MaybeGetEnqueudLoginLogoutRecord();
+
   if (!login_record.has_value()) {
     // Record is not enqueued yet, so wait for it.
     login_record = GetNextLoginLogoutRecord(&observer);
   }
-  ASSERT_TRUE(login_record.value().has_source_info());
-  EXPECT_THAT(login_record.value().source_info().source(),
-              Eq(::reporting::SourceInfo::ASH));
 
   LoginLogoutRecord login_record_data;
   ASSERT_TRUE(login_record_data.ParseFromString(login_record->data()));
@@ -528,8 +525,7 @@ class LoginLogoutReporterKioskFailedBrowserTest
     UserDataAuthClient::InitializeFake();
     FakeUserDataAuthClient::Get()->SetNextOperationError(
         FakeUserDataAuthClient::Operation::kStartAuthSession,
-        cryptohome::ErrorWrapper::CreateFromErrorCodeOnly(
-            user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL));
+        user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
 };
 
@@ -547,15 +543,12 @@ IN_PROC_BROWSER_TEST_F(LoginLogoutReporterKioskFailedBrowserTest,
 
   // Check if the record is already enqueued in case it was enqueued before the
   // |observer| initialization.
-  std::optional<Record> login_record = MaybeGetEnqueuedLoginLogoutRecord();
+  absl::optional<Record> login_record = MaybeGetEnqueudLoginLogoutRecord();
 
   if (!login_record.has_value()) {
     // Record is not enqueued yet, so wait for it.
     login_record = GetNextLoginLogoutRecord(&observer);
   }
-  ASSERT_TRUE(login_record.value().has_source_info());
-  EXPECT_THAT(login_record.value().source_info().source(),
-              Eq(::reporting::SourceInfo::ASH));
 
   LoginLogoutRecord login_record_data;
   ASSERT_TRUE(login_record_data.ParseFromString(login_record->data()));

@@ -70,7 +70,6 @@ class BuildResolverTest(LoggingTestCase):
                                    'builds.*.builder.builder,'
                                    'builds.*.builder.bucket,'
                                    'builds.*.status,'
-                                   'builds.*.output.properties,'
                                    'builds.*.steps.*.name,'
                                    'builds.*.steps.*.logs.*.name,'
                                    'builds.*.steps.*.logs.*.view_url'),
@@ -130,7 +129,6 @@ class BuildResolverTest(LoggingTestCase):
                                    'builder.builder,'
                                    'builder.bucket,'
                                    'status,'
-                                   'output.properties,'
                                    'steps.*.name,'
                                    'steps.*.logs.*.name,'
                                    'steps.*.logs.*.view_url'),
@@ -149,7 +147,6 @@ class BuildResolverTest(LoggingTestCase):
                                    'builder.builder,'
                                    'builder.bucket,'
                                    'status,'
-                                   'output.properties,'
                                    'steps.*.name,'
                                    'steps.*.logs.*.name,'
                                    'steps.*.logs.*.view_url'),
@@ -222,30 +219,4 @@ class BuildResolverTest(LoggingTestCase):
                 TryJobStatus('COMPLETED', 'INFRA_FAILURE'),
                 Build('linux-rel', 3, '3'):
                 TryJobStatus('COMPLETED', 'FAILURE'),
-            })
-
-    def test_detect_unrelated_failure(self):
-        self.host.web.append_prpc_response({
-            'responses': [{
-                'getBuild': {
-                    'id': '1',
-                    'builder': {
-                        'builder': 'linux-rel',
-                        'bucket': 'try',
-                    },
-                    'number': 1,
-                    'status': 'FAILURE',
-                    'output': {
-                        'properties': {
-                            'failure_type': 'COMPILE_FAILURE',
-                        },
-                    },
-                },
-            }],
-        })
-        build_statuses = self.resolver.resolve_builds([Build('linux-rel', 1)])
-        self.assertEqual(
-            build_statuses, {
-                Build('linux-rel', 1, '1'):
-                TryJobStatus('COMPLETED', 'INFRA_FAILURE'),
             })

@@ -8,7 +8,6 @@
 
 #include "ash/capture_mode/capture_mode_controller.h"
 #include "ash/capture_mode/capture_mode_metrics.h"
-#include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
 #include "ash/projector/projector_metadata_controller.h"
 #include "ash/projector/projector_metrics.h"
@@ -16,6 +15,7 @@
 #include "ash/public/cpp/projector/annotator_tool.h"
 #include "ash/public/cpp/projector/projector_client.h"
 #include "ash/public/cpp/projector/projector_new_screencast_precondition.h"
+#include "ash/public/cpp/projector/projector_session.h"
 #include "ash/public/cpp/projector/speech_recognition_availability.h"
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
@@ -23,15 +23,15 @@
 #include "base/check.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-#include "base/files/safe_base_name.h"
 #include "base/functional/bind.h"
 #include "base/memory/ref_counted_memory.h"
-#include "base/memory/weak_ptr.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/task/current_thread.h"
 #include "base/task/thread_pool.h"
 #include "base/time/time.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_registry_simple.h"
+#include "media/mojo/mojom/speech_recognition_service.mojom.h"
 #include "ui/gfx/image/image.h"
 
 namespace ash {
@@ -147,12 +147,6 @@ NewScreencastPrecondition ServerBasedRecognitionAvailabilityToPrecondition(
   }
 }
 
-const base::FilePath::StringPieceType getMetadataFileExtension() {
-  return ash::features::IsProjectorV2Enabled()
-             ? ash::kProjectorV2MetadataFileExtension
-             : ash::kProjectorMetadataFileExtension;
-}
-
 }  // namespace
 
 ProjectorControllerImpl::ProjectorControllerImpl()
@@ -163,13 +157,11 @@ ProjectorControllerImpl::ProjectorControllerImpl()
 
   projector_session_->AddObserver(this);
   CrasAudioHandler::Get()->AddAudioObserver(this);
-  CaptureModeController::Get()->AddObserver(this);
 }
 
 ProjectorControllerImpl::~ProjectorControllerImpl() {
-  CaptureModeController::Get()->RemoveObserver(this);
-  CrasAudioHandler::Get()->RemoveAudioObserver(this);
   projector_session_->RemoveObserver(this);
+  CrasAudioHandler::Get()->RemoveAudioObserver(this);
 }
 
 // static
@@ -186,21 +178,21 @@ void ProjectorControllerImpl::RegisterProfilePrefs(
 }
 
 void ProjectorControllerImpl::StartProjectorSession(
-    const base::SafeBaseName& storage_dir) {
-  CHECK_EQ(GetNewScreencastPrecondition().state,
-           NewScreencastPreconditionState::kEnabled);
+    const std::string& storage_dir) {
+  DCHECK_EQ(GetNewScreencastPrecondition().state,
+            NewScreencastPreconditionState::kEnabled);
 
   auto* controller = CaptureModeController::Get();
-  if (controller->can_start_new_recording()) {
+  if (!controller->is_recording_in_progress()) {
     // A capture mode session can be blocked by many factors, such as policy,
     // DLP, ... etc. We don't start a Projector session until we're sure a
     // capture session started.
-    controller->Start(
-        CaptureModeEntryType::kProjector,
-        base::BindOnce(&ProjectorControllerImpl::OnSessionStartAttempted,
-                       weak_factory_.GetWeakPtr(), storage_dir));
-
+    controller->Start(CaptureModeEntryType::kProjector);
     dlp_restriction_checked_completed_ = false;
+    if (controller->IsActive()) {
+      projector_session_->Start(storage_dir);
+      client_->MinimizeProjectorApp();
+    }
   }
 }
 
@@ -309,7 +301,7 @@ ProjectorControllerImpl::GetNewScreencastPrecondition() const {
   }
 
   auto* capture_mode_controller = CaptureModeController::Get();
-  if (!capture_mode_controller->can_start_new_recording()) {
+  if (capture_mode_controller->is_recording_in_progress()) {
     result.state = NewScreencastPreconditionState::kDisabled;
     result.reasons = {
         NewScreencastPreconditionReason::kScreenRecordingInProgress};
@@ -373,6 +365,91 @@ void ProjectorControllerImpl::CreateScreencastContainerFolder(
                      weak_factory_.GetWeakPtr(), path, std::move(callback)));
 }
 
+void ProjectorControllerImpl::OnRecordingStarted(aura::Window* current_root,
+                                                 bool is_in_projector_mode) {
+  if (!is_in_projector_mode) {
+    OnNewScreencastPreconditionChanged();
+    return;
+  }
+  if (ui_controller_)
+    ui_controller_->ShowAnnotationTray(current_root);
+
+  StartSpeechRecognition();
+  metadata_controller_->OnRecordingStarted();
+
+  RecordCreationFlowMetrics(ProjectorCreationFlow::kRecordingStarted);
+}
+
+void ProjectorControllerImpl::OnRecordingEnded(bool is_in_projector_mode) {
+  if (!is_in_projector_mode)
+    return;
+
+  DCHECK(projector_session_->is_active());
+
+  if (ui_controller_)
+    ui_controller_->HideAnnotationTray();
+
+  MaybeStopSpeechRecognition();
+
+  RecordCreationFlowMetrics(ProjectorCreationFlow::kRecordingEnded);
+}
+
+void ProjectorControllerImpl::OnRecordedWindowChangingRoot(
+    aura::Window* new_root) {
+  DCHECK(projector_session_->is_active());
+
+  ui_controller_->OnRecordedWindowChangingRoot(new_root);
+}
+
+void ProjectorControllerImpl::OnDlpRestrictionCheckedAtVideoEnd(
+    bool is_in_projector_mode,
+    bool user_deleted_video_file,
+    const gfx::ImageSkia& thumbnail) {
+  if (!is_in_projector_mode) {
+    OnNewScreencastPreconditionChanged();
+    return;
+  }
+
+  dlp_restriction_checked_completed_ = true;
+  user_deleted_video_file_ = user_deleted_video_file;
+
+  if (user_deleted_video_file) {
+    CleanupContainerFolder();
+  } else {
+    SaveThumbnailFile(thumbnail);
+  }
+
+  // Try to wrap up recording.
+  MaybeWrapUpRecording();
+
+  // At this point, the screencast might not synced to Drive yet. Open
+  // Projector App which shows the Gallery view by default.
+  if (client_)
+    client_->OpenProjectorApp();
+}
+
+void ProjectorControllerImpl::OnRecordingStartAborted() {
+  DCHECK(projector_session_->is_active());
+
+  // Delete the DriveFS path that might have been created for this aborted
+  // session if any.
+  CleanupContainerFolder();
+
+  projector_session_->Stop();
+
+  auto* capture_mode_controller = CaptureModeController::Get();
+  if (capture_mode_controller->IsAudioCaptureDisabledByPolicy()) {
+    ui_controller_->ShowFailureNotification(
+        IDS_ASH_PROJECTOR_ABORT_BY_AUDIO_POLICY_TEXT,
+        IDS_ASH_PROJECTOR_ABORT_BY_AUDIO_POLICY_TITLE);
+  }
+
+  if (client_)
+    client_->OpenProjectorApp();
+
+  RecordCreationFlowMetrics(ProjectorCreationFlow::kRecordingAborted);
+}
+
 void ProjectorControllerImpl::EnableAnnotatorTool() {
   DCHECK(ui_controller_);
   ui_controller_->EnableAnnotatorTool();
@@ -384,9 +461,8 @@ void ProjectorControllerImpl::SetAnnotatorTool(const AnnotatorTool& tool) {
 }
 
 void ProjectorControllerImpl::ResetTools() {
-  if (ui_controller_) {
+  if (ui_controller_)
     ui_controller_->ResetTools();
-  }
 }
 
 bool ProjectorControllerImpl::IsAnnotatorEnabled() {
@@ -395,9 +471,8 @@ bool ProjectorControllerImpl::IsAnnotatorEnabled() {
 
 void ProjectorControllerImpl::OnNewScreencastPreconditionChanged() {
   // `client_` could be not available in unit tests.
-  if (client_) {
+  if (client_)
     client_->OnNewScreencastPreconditionChanged(GetNewScreencastPrecondition());
-  }
 }
 
 void ProjectorControllerImpl::SetProjectorUiControllerForTest(
@@ -422,95 +497,6 @@ void ProjectorControllerImpl::SetOnFileSavedCallbackForTest(
 
 void ProjectorControllerImpl::OnAudioNodesChanged() {
   OnNewScreencastPreconditionChanged();
-}
-
-void ProjectorControllerImpl::OnRecordingStarted(aura::Window* current_root) {
-  if (!projector_session_->is_active()) {
-    OnNewScreencastPreconditionChanged();
-    return;
-  }
-
-  if (ui_controller_) {
-    ui_controller_->ShowAnnotationTray(current_root);
-  }
-
-  StartSpeechRecognition();
-  metadata_controller_->OnRecordingStarted();
-
-  RecordCreationFlowMetrics(ProjectorCreationFlow::kRecordingStarted);
-}
-
-void ProjectorControllerImpl::OnRecordingEnded() {
-  if (!projector_session_->is_active()) {
-    return;
-  }
-
-  if (ui_controller_) {
-    ui_controller_->HideAnnotationTray();
-  }
-
-  MaybeStopSpeechRecognition();
-
-  RecordCreationFlowMetrics(ProjectorCreationFlow::kRecordingEnded);
-}
-
-void ProjectorControllerImpl::OnVideoFileFinalized(
-    bool user_deleted_video_file,
-    const gfx::ImageSkia& thumbnail) {
-  if (!projector_session_->is_active()) {
-    OnNewScreencastPreconditionChanged();
-    return;
-  }
-
-  dlp_restriction_checked_completed_ = true;
-  user_deleted_video_file_ = user_deleted_video_file;
-
-  if (user_deleted_video_file) {
-    CleanupContainerFolder();
-  } else {
-    SaveThumbnailFile(thumbnail);
-  }
-
-  // Try to wrap up recording.
-  MaybeWrapUpRecording();
-
-  // At this point, the screencast might not synced to Drive yet. Open
-  // Projector App which shows the Gallery view by default.
-  if (client_) {
-    client_->OpenProjectorApp();
-  }
-}
-
-void ProjectorControllerImpl::OnRecordedWindowChangingRoot(
-    aura::Window* new_root) {
-  if (projector_session_->is_active()) {
-    ui_controller_->OnRecordedWindowChangingRoot(new_root);
-  }
-}
-
-void ProjectorControllerImpl::OnRecordingStartAborted() {
-  if (!projector_session_->is_active()) {
-    OnNewScreencastPreconditionChanged();
-    return;
-  }
-
-  // Delete the DriveFS path that might have been created for this aborted
-  // session if any.
-  CleanupContainerFolder();
-
-  projector_session_->Stop();
-
-  if (CaptureModeController::Get()->IsAudioCaptureDisabledByPolicy()) {
-    ui_controller_->ShowFailureNotification(
-        IDS_ASH_PROJECTOR_ABORT_BY_AUDIO_POLICY_TEXT,
-        IDS_ASH_PROJECTOR_ABORT_BY_AUDIO_POLICY_TITLE);
-  }
-
-  if (client_) {
-    client_->OpenProjectorApp();
-  }
-
-  RecordCreationFlowMetrics(ProjectorCreationFlow::kRecordingAborted);
 }
 
 void ProjectorControllerImpl::OnProjectorSessionActiveStateChanged(
@@ -574,15 +560,6 @@ void ProjectorControllerImpl::ForceEndSpeechRecognition() {
             SpeechRecognitionState::kRecognitionStopping);
 
   client_->ForceEndSpeechRecognition();
-}
-
-void ProjectorControllerImpl::OnSessionStartAttempted(
-    const base::SafeBaseName& storage_dir,
-    bool success) {
-  if (success) {
-    projector_session_->Start(storage_dir);
-    client_->MinimizeProjectorApp();
-  }
 }
 
 void ProjectorControllerImpl::OnContainerFolderCreated(
@@ -693,9 +670,7 @@ std::vector<base::FilePath> ProjectorControllerImpl::GetScreencastFilePaths()
   DCHECK(container_folder);
   const base::FilePath path_with_no_extension =
       projector_session_->GetScreencastFilePathNoExtension();
-  const base::FilePath::StringPieceType metadata_file_extension =
-      getMetadataFileExtension();
-  return {path_with_no_extension.AddExtension(metadata_file_extension),
+  return {path_with_no_extension.AddExtension(kProjectorMetadataFileExtension),
           path_with_no_extension.AddExtension(kProjectorMediaFileExtension),
           container_folder->Append(kScreencastDefaultThumbnailFileName)};
 }

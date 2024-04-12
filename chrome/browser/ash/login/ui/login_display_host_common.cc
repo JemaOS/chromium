@@ -8,7 +8,6 @@
 
 #include "ash/constants/ash_features.h"
 #include "ash/public/cpp/login_accelerators.h"
-#include "ash/public/cpp/wallpaper/wallpaper_controller.h"
 #include "base/check_deref.h"
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
@@ -17,22 +16,16 @@
 #include "base/notreached.h"
 #include "base/task/single_thread_task_runner.h"
 #include "chrome/browser/ash/app_mode/kiosk_app_types.h"
-#include "chrome/browser/ash/app_mode/kiosk_chrome_app_manager.h"
-#include "chrome/browser/ash/attestation/attestation_ca_client.h"
 #include "chrome/browser/ash/language_preferences.h"
 #include "chrome/browser/ash/login/app_mode/kiosk_launch_controller.h"
 #include "chrome/browser/ash/login/choobe_flow_controller.h"
 #include "chrome/browser/ash/login/existing_user_controller.h"
 #include "chrome/browser/ash/login/lock_screen_utils.h"
-#include "chrome/browser/ash/login/login_pref_names.h"
-#include "chrome/browser/ash/login/oobe_cros_events_metrics.h"
-#include "chrome/browser/ash/login/oobe_metrics_helper.h"
-#include "chrome/browser/ash/login/oobe_quick_start/second_device_auth_broker.h"
 #include "chrome/browser/ash/login/oobe_quick_start/target_device_bootstrap_controller.h"
 #include "chrome/browser/ash/login/screens/encryption_migration_screen.h"
 #include "chrome/browser/ash/login/screens/gaia_screen.h"
-#include "chrome/browser/ash/login/screens/osauth/recovery_eligibility_screen.h"
 #include "chrome/browser/ash/login/screens/pin_setup_screen.h"
+#include "chrome/browser/ash/login/screens/recovery_eligibility_screen.h"
 #include "chrome/browser/ash/login/screens/reset_screen.h"
 #include "chrome/browser/ash/login/screens/saml_confirm_password_screen.h"
 #include "chrome/browser/ash/login/screens/signin_fatal_error_screen.h"
@@ -48,10 +41,8 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
 #include "chrome/browser/lifetime/termination_notification.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
-#include "chrome/browser/signin/chrome_device_id_helper.h"
-#include "chrome/browser/ui/ash/auth/cryptohome_pin_engine.h"
+#include "chrome/browser/ui/ash/wallpaper_controller_client_impl.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/webui/ash/diagnostics_dialog.h"
 #include "chrome/browser/ui/webui/ash/login/family_link_notice_screen_handler.h"
@@ -63,20 +54,21 @@
 #include "chrome/browser/ui/webui/ash/login/saml_confirm_password_handler.h"
 #include "chrome/browser/ui/webui/ash/login/signin_fatal_error_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/terms_of_service_screen_handler.h"
-#include "chrome/browser/ui/webui/ash/login/user_allowlist_check_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/user_creation_screen_handler.h"
+#include "chrome/browser/ui/webui/ash/login/jema_local_signin_screen_handler.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/grit/generated_resources.h"
-#include "chromeos/ash/components/attestation/attestation_flow_adaptive.h"
 #include "chromeos/ash/components/dbus/userdataauth/userdataauth_client.h"
+#include "chromeos/ash/components/login/auth/auth_metrics_recorder.h"
 #include "chromeos/ash/components/login/auth/auth_performer.h"
-#include "chromeos/ash/components/osauth/public/auth_session_storage.h"
 #include "components/keep_alive_registry/keep_alive_types.h"
 #include "components/strings/grit/components_strings.h"
 #include "extensions/common/features/feature_session_type.h"
 #include "ui/base/ime/ash/input_method_manager.h"
 #include "ui/base/ime/ash/input_method_util.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "jemaos/switches/account/account_switches.h"
+#include "jemaos/switches/account/toggle/account_type_toggle.h"
 
 namespace ash {
 
@@ -87,15 +79,23 @@ namespace {
 // network requests are made while the system is idle waiting for user input.
 constexpr int64_t kPolicyServiceInitializationDelayMilliseconds = 100;
 
+void ScheduleCompletionCallbacks(std::vector<base::OnceClosure>&& callbacks) {
+  for (auto& callback : callbacks) {
+    if (callback.is_null())
+      continue;
+
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, std::move(callback));
+  }
+}
+
 void PushFrontImIfNotExists(const std::string& input_method_id,
                             std::vector<std::string>* input_method_ids) {
-  if (input_method_id.empty()) {
+  if (input_method_id.empty())
     return;
-  }
 
-  if (!base::Contains(*input_method_ids, input_method_id)) {
+  if (!base::Contains(*input_method_ids, input_method_id))
     input_method_ids->insert(input_method_ids->begin(), input_method_id);
-  }
 }
 
 void SetGaiaInputMethods(const AccountId& account_id) {
@@ -172,6 +172,12 @@ int ErrorToMessageId(SigninError error) {
       return IDS_LOGIN_FATAL_ERROR_NO_AUTH_TOKEN;
     case SigninError::kFailedToFetchSamlRedirect:
       return IDS_FAILED_TO_FETCH_SAML_REDIRECT;
+    case SigninError::kActiveDirectoryNetworkProblem:
+      return IDS_AD_AUTH_NETWORK_ERROR;
+    case SigninError::kActiveDirectoryNotSupportedEncryption:
+      return IDS_AD_AUTH_NOT_SUPPORTED_ENCRYPTION;
+    case SigninError::kActiveDirectoryUnknownError:
+      return IDS_AD_AUTH_UNKNOWN_ERROR;
   }
 }
 
@@ -183,58 +189,27 @@ bool IsAuthError(SigninError error) {
          error == SigninError::kKnownUserFailedNetworkConnected;
 }
 
-class AccessibilityManagerWrapper
-    : public quick_start::TargetDeviceBootstrapController::
-          AccessibilityManagerWrapper {
- public:
-  AccessibilityManagerWrapper() = default;
-  AccessibilityManagerWrapper(AccessibilityManagerWrapper&) = delete;
-  AccessibilityManagerWrapper& operator=(AccessibilityManagerWrapper&) = delete;
-  ~AccessibilityManagerWrapper() override = default;
-
-  bool AllowQRCodeUX() const override {
-    return ash::AccessibilityManager::Get()->AllowQRCodeUX();
-  }
-};
-
-std::unique_ptr<quick_start::SecondDeviceAuthBroker>
-CreateSecondDeviceAuthBroker() {
-  std::unique_ptr<attestation::ServerProxy> server_proxy(
-      new attestation::AttestationCAClient());
-  std::unique_ptr<attestation::AttestationFlow> attestation_flow =
-      std::make_unique<attestation::AttestationFlowAdaptive>(
-          std::move(server_proxy));
-
-  // TODO(b:286850431) - Fix device id generation.
-  const std::string device_id =
-      GenerateSigninScopedDeviceId(/*for_ephemeral=*/false);
-  auto* signin_profile = ProfileHelper::GetSigninProfile();
-  return std::make_unique<quick_start::SecondDeviceAuthBroker>(
-      device_id, signin_profile->GetURLLoaderFactory(),
-      std::move(attestation_flow));
-}
-
 }  // namespace
 
 LoginDisplayHostCommon::LoginDisplayHostCommon()
     : keep_alive_(KeepAliveOrigin::LOGIN_DISPLAY_HOST_WEBUI,
                   KeepAliveRestartOption::DISABLED),
       login_ui_pref_controller_(std::make_unique<LoginUIPrefController>()),
-      wizard_context_(std::make_unique<WizardContext>()),
-      oobe_metrics_helper_(std::make_unique<OobeMetricsHelper>()) {
-  if (features::IsOobeCrosEventsEnabled()) {
-    oobe_cros_events_metrics_ =
-        std::make_unique<OobeCrosEventsMetrics>(oobe_metrics_helper_.get());
-  }
+      wizard_context_(std::make_unique<WizardContext>()) {
   // Close the login screen on app termination (for the case where shutdown
   // occurs before login completes).
   app_terminating_subscription_ =
       browser_shutdown::AddAppTerminatingCallback(base::BindOnce(
           &LoginDisplayHostCommon::OnAppTerminating, base::Unretained(this)));
   BrowserList::AddObserver(this);
+  AuthMetricsRecorder::Get()->ResetLoginData();
+  AuthMetricsRecorder::Get()->OnAuthenticationSurfaceChange(
+      AuthMetricsRecorder::AuthenticationSurface::kLogin);
 }
 
-LoginDisplayHostCommon::~LoginDisplayHostCommon() = default;
+LoginDisplayHostCommon::~LoginDisplayHostCommon() {
+  ScheduleCompletionCallbacks(std::move(completion_callbacks_));
+}
 
 void LoginDisplayHostCommon::BeforeSessionStart() {
   session_starting_ = true;
@@ -246,13 +221,12 @@ bool LoginDisplayHostCommon::LoginDisplayHostCommon::IsFinalizing() {
 
 void LoginDisplayHostCommon::Finalize(base::OnceClosure completion_callback) {
   LOG(WARNING) << "Finalize";
-  LoginDisplayHost::Finalize(std::move(completion_callback));
-
   // If finalize is called twice the LoginDisplayHost instance will be deleted
   // multiple times.
   CHECK(!is_finalizing_);
   is_finalizing_ = true;
 
+  completion_callbacks_.push_back(std::move(completion_callback));
   OnFinalize();
 }
 
@@ -272,7 +246,7 @@ KioskLaunchController* LoginDisplayHostCommon::GetKioskLaunchController() {
 
 void LoginDisplayHostCommon::StartUserAdding(
     base::OnceClosure completion_callback) {
-  LoginDisplayHost::StartUserAdding(std::move(completion_callback));
+  completion_callbacks_.push_back(std::move(completion_callback));
   OnStartUserAdding();
 }
 
@@ -318,9 +292,8 @@ void LoginDisplayHostCommon::StartKiosk(const KioskAppId& kiosk_app_id,
       CrosSettings::Get()->PrepareTrustedValues(base::BindOnce(
           &LoginDisplayHostCommon::StartKiosk, weak_factory_.GetWeakPtr(),
           kiosk_app_id, is_auto_launch));
-  if (status == CrosSettingsProvider::TEMPORARILY_UNTRUSTED) {
+  if (status == CrosSettingsProvider::TEMPORARILY_UNTRUSTED)
     return;
-  }
 
   if (status == CrosSettingsProvider::PERMANENTLY_UNTRUSTED) {
     // If the `CrosSettings` are permanently untrusted, refuse to launch a
@@ -336,27 +309,11 @@ void LoginDisplayHostCommon::StartKiosk(const KioskAppId& kiosk_app_id,
     return;
   }
 
-  // Prevent a race condition when user launches a kiosk app from the apps
-  // menu while another login is in progress. E.g. UI shelf is not disabled on
-  // slower devices.
-  // A race can happen between manual launch kiosk and one of guest session,
-  // MGS (manual or autolaunched) or autolaunched kiosk.
-  // Currently needs to use both ExistingUserController and UserManager because
-  // these sessions aren't consistent with setting various login states in time.
-  // TODO(b/291293540): Check why ExistingUserController is not updated by
-  // autolaunch kiosk.
   const auto& existing_user_controller =
       CHECK_DEREF(GetExistingUserController());
-  const bool is_login_detected_existing_user_controller =
-      existing_user_controller.IsSigninInProgress() ||
-      existing_user_controller.IsUserSigninCompleted();
-  const bool is_login_detected_user_manager =
-      user_manager::UserManager::IsInitialized() &&
-      user_manager::UserManager::Get()->IsUserLoggedIn();
-  if (is_login_detected_existing_user_controller ||
-      is_login_detected_user_manager) {
-    LOG(ERROR) << "Cancel kiosk launch. Another user login is completed or in "
-                  "progress.";
+  if (existing_user_controller.IsSigninInProgress() ||
+      existing_user_controller.IsUserSigninCompleted()) {
+    LOG(ERROR) << "Cancel kiosk launch. Another user signin detected.";
     return;
   }
 
@@ -389,7 +346,7 @@ void LoginDisplayHostCommon::AttemptShowEnableConsumerKioskScreen() {
   policy::BrowserPolicyConnectorAsh* connector =
       g_browser_process->platform_part()->browser_policy_connector_ash();
   if (!connector->IsDeviceEnterpriseManaged() &&
-      KioskChromeAppManager::IsConsumerKioskEnabled()) {
+      KioskAppManager::IsConsumerKioskEnabled()) {
     ShowEnableConsumerKioskScreen();
   }
 }
@@ -413,52 +370,56 @@ void LoginDisplayHostCommon::OnGaiaScreenReady() {
 }
 
 void LoginDisplayHostCommon::SetDisplayEmail(const std::string& email) {
-  if (GetExistingUserController()) {
+  if (GetExistingUserController())
     GetExistingUserController()->SetDisplayEmail(email);
-  }
+}
+
+void LoginDisplayHostCommon::SetDisplayAndGivenName(
+    const std::string& display_name,
+    const std::string& given_name) {
+  if (GetExistingUserController())
+    GetExistingUserController()->SetDisplayAndGivenName(display_name,
+                                                        given_name);
 }
 
 void LoginDisplayHostCommon::ShowAllowlistCheckFailedError() {
-  StartWizard(UserAllowlistCheckScreenView::kScreenId);
+  StartWizard(GaiaView::kScreenId);
+
+  GaiaScreen* gaia_screen = GetWizardController()->GetScreen<GaiaScreen>();
+  gaia_screen->ShowAllowlistCheckFailedError();
 }
 
-void LoginDisplayHostCommon::UpdateWallpaper(
-    const AccountId& prefilled_account) {
-  auto* wallpaper_controller = ash::WallpaperController::Get();
-  if (prefilled_account.is_valid()) {
-    wallpaper_controller->ShowUserWallpaper(prefilled_account);
-    return;
-  }
-  wallpaper_controller->ShowSigninWallpaper();
+void LoginDisplayHostCommon::LoadWallpaper(const AccountId& account_id) {
+  WallpaperControllerClientImpl::Get()->ShowUserWallpaper(account_id);
+}
+
+void LoginDisplayHostCommon::LoadSigninWallpaper() {
+  WallpaperControllerClientImpl::Get()->ShowSigninWallpaper();
 }
 
 bool LoginDisplayHostCommon::IsUserAllowlisted(
     const AccountId& account_id,
-    const std::optional<user_manager::UserType>& user_type) {
-  if (!GetExistingUserController()) {
+    const absl::optional<user_manager::UserType>& user_type) {
+  if (!GetExistingUserController())
     return true;
-  }
   return GetExistingUserController()->IsUserAllowlisted(account_id, user_type);
 }
 
 void LoginDisplayHostCommon::CancelPasswordChangedFlow() {
-  if (GetExistingUserController()) {
+  if (GetExistingUserController())
     GetExistingUserController()->CancelPasswordChangedFlow();
-  }
 
   OnCancelPasswordChangedFlow();
 }
 
 void LoginDisplayHostCommon::MigrateUserData(const std::string& old_password) {
-  if (GetExistingUserController()) {
+  if (GetExistingUserController())
     GetExistingUserController()->MigrateUserData(old_password);
-  }
 }
 
 void LoginDisplayHostCommon::ResyncUserData() {
-  if (GetExistingUserController()) {
+  if (GetExistingUserController())
     GetExistingUserController()->ResyncUserData();
-  }
 }
 
 bool LoginDisplayHostCommon::HandleAccelerator(LoginAcceleratorAction action) {
@@ -503,55 +464,51 @@ bool LoginDisplayHostCommon::HandleAccelerator(LoginAcceleratorAction action) {
   }
 
   if (action == LoginAcceleratorAction::kCancelScreenAction) {
-    if (!GetOobeUI() || !GetLoginWindowWidget() ||
-        !GetLoginWindowWidget()->IsVisible()) {
+    if (!GetOobeUI())
       return false;
-    }
-    GetOobeUI()->GetCoreOobe()->ForwardCancel();
+    GetOobeUI()->GetCoreOobeView()->ForwardCancel();
     return true;
   }
 
   return false;
 }
 
+void LoginDisplayHostCommon::HandlePlayStartupSound() {
+  // Do nothing by default
+}
+
 void LoginDisplayHostCommon::SetScreenAfterManagedTos(OobeScreenId screen_id) {
   // If user stopped onboarding flow on TermsOfServiceScreen make sure that
   // next screen will be FamilyLinkNoticeView::kScreenId.
-  if (screen_id == TermsOfServiceScreenView::kScreenId) {
+  if (screen_id == TermsOfServiceScreenView::kScreenId)
     screen_id = FamilyLinkNoticeView::kScreenId;
-  }
   wizard_context_->screen_after_managed_tos = screen_id;
 }
 
 void LoginDisplayHostCommon::OnPowerwashAllowedCallback(
     bool is_reset_allowed,
-    std::optional<tpm_firmware_update::Mode> tpm_firmware_update_mode) {
-  if (!is_reset_allowed) {
+    absl::optional<tpm_firmware_update::Mode> tpm_firmware_update_mode) {
+  if (!is_reset_allowed)
     return;
-  }
   if (tpm_firmware_update_mode.has_value()) {
     // Force the TPM firmware update option to be enabled.
     g_browser_process->local_state()->SetInteger(
-        ::prefs::kFactoryResetTPMFirmwareUpdateMode,
+        prefs::kFactoryResetTPMFirmwareUpdateMode,
         static_cast<int>(tpm_firmware_update_mode.value()));
   }
   StartWizard(ResetView::kScreenId);
 }
 
 void LoginDisplayHostCommon::StartUserOnboarding() {
-  oobe_metrics_helper_->RecordOnboardingStart(
-      g_browser_process->local_state()->GetTime(prefs::kOobeStartTime));
   StartWizard(LocaleSwitchView::kScreenId);
 }
 
 void LoginDisplayHostCommon::ResumeUserOnboarding(const PrefService& prefs,
                                                   OobeScreenId screen_id) {
-  oobe_metrics_helper_->RecordOnboardingResume(screen_id);
   SetScreenAfterManagedTos(screen_id);
 
   if (features::IsOobeChoobeEnabled()) {
     if (ChoobeFlowController::ShouldResumeChoobe(prefs)) {
-      oobe_metrics_helper_->RecordChoobeResume();
       GetWizardController()->CreateChoobeFlowController();
       GetWizardController()->choobe_flow_controller()->ResumeChoobe(prefs);
     }
@@ -579,16 +536,21 @@ void LoginDisplayHostCommon::ShowNewTermsForFlexUsers() {
 
 void LoginDisplayHostCommon::SetAuthSessionForOnboarding(
     const UserContext& user_context) {
-  wizard_context_->extra_factors_token = AuthSessionStorage::Get()->Store(
-      std::make_unique<UserContext>(user_context));
+  AuthPerformer auth_performer(UserDataAuthClient::Get());
+  CryptohomePinEngine cryptohome_pin_engine(&auth_performer);
+  if (cryptohome_pin_engine.ShouldSkipSetupBecauseOfPolicy(
+          user_context.GetAccountId()) &&
+      !features::IsCryptohomeRecoveryEnabled() &&
+      RecoveryEligibilityScreen::ShouldSkipRecoverySetupBecauseOfPolicy()) {
+    return;
+  }
+
+  wizard_context_->extra_factors_auth_session =
+      std::make_unique<UserContext>(user_context);
 }
 
 void LoginDisplayHostCommon::ClearOnboardingAuthSession() {
-  if (wizard_context_->extra_factors_token.has_value()) {
-    AuthSessionStorage::Get()->Invalidate(
-        wizard_context_->extra_factors_token.value(), base::DoNothing());
-    wizard_context_->extra_factors_token = std::nullopt;
-  }
+  wizard_context_->extra_factors_auth_session.reset();
 }
 
 void LoginDisplayHostCommon::StartEncryptionMigration(
@@ -613,10 +575,9 @@ void LoginDisplayHostCommon::ShowSigninError(SigninError error,
 
   if (error == SigninError::kKnownUserFailedNetworkNotConnected ||
       error == SigninError::kKnownUserFailedNetworkConnected) {
-    if (!IsOobeUIDialogVisible()) {
+    if (!IsOobeUIDialogVisible())
       // Handled by Views UI.
       return;
-    }
     OfflineLoginScreen* offline_login_screen =
         GetWizardController()->GetScreen<OfflineLoginScreen>();
     if (GetWizardController()->current_screen() == offline_login_screen) {
@@ -691,19 +652,14 @@ WizardContext* LoginDisplayHostCommon::GetWizardContext() {
   return wizard_context_.get();
 }
 
-OobeMetricsHelper* LoginDisplayHostCommon::GetOobeMetricsHelper() {
-  return oobe_metrics_helper_.get();
-}
-
 void LoginDisplayHostCommon::OnCancelPasswordChangedFlow() {
   LoginDisplayHost::default_host()->StartSignInScreen();
 }
 
 void LoginDisplayHostCommon::ShutdownDisplayHost() {
   LOG(WARNING) << "ShutdownDisplayHost";
-  if (shutting_down_) {
+  if (shutting_down_)
     return;
-  }
   shutting_down_ = true;
 
   Cleanup();
@@ -718,15 +674,27 @@ void LoginDisplayHostCommon::OnStartSignInScreenCommon() {
 
 void LoginDisplayHostCommon::ShowGaiaDialogCommon(
     const AccountId& prefilled_account) {
-  if (GetExistingUserController()->IsSigninInProgress()) {
-    return;
+  // ---***JEMAOS BEGIN***---
+  if (prefilled_account.is_valid()) {
+    jemaos::switches::ToggleJemaAccountFlagByAccountId(prefilled_account);
   }
+  // ---***JEMAOS END***---
+  if (prefilled_account.is_valid()) {
+    LoadWallpaper(prefilled_account);
+    if (GetExistingUserController()->IsSigninInProgress()) {
+      return;
+    }
+  } else {
+    LoadSigninWallpaper();
+  }
+
   SetGaiaInputMethods(prefilled_account);
 
-  if (!prefilled_account.is_valid()) {
+  if (!prefilled_account.is_valid() && !jemaos::switches::IsJemaAccountEnabled()) {
     StartWizard(UserCreationView::kScreenId);
   } else {
-    wizard_context_->gaia_config.prefilled_account = prefilled_account;
+    GaiaScreen* gaia_screen = GetWizardController()->GetScreen<GaiaScreen>();
+    gaia_screen->LoadOnline(prefilled_account);
     StartWizard(GaiaView::kScreenId);
   }
 }
@@ -739,35 +707,47 @@ void LoginDisplayHostCommon::AddWizardCreatedObserverForTests(
 
 base::WeakPtr<quick_start::TargetDeviceBootstrapController>
 LoginDisplayHostCommon::GetQuickStartBootstrapController() {
-  CHECK(wizard_context_->quick_start_enabled);
+  DCHECK(features::IsOobeQuickStartEnabled());
   if (!bootstrap_controller_) {
     Profile* profile = ProfileManager::GetActiveUserProfile();
-    CHECK(profile);
+    DCHECK(profile);
 
     quick_start::QuickStartConnectivityService* service =
         quick_start::QuickStartConnectivityServiceFactory::GetForProfile(
             profile);
-    CHECK(service);
+    DCHECK(service);
 
     bootstrap_controller_ =
         std::make_unique<ash::quick_start::TargetDeviceBootstrapController>(
-            CreateSecondDeviceAuthBroker(),
-            std::make_unique<AccessibilityManagerWrapper>(), service);
+            service->GetNearbyConnectionsManager());
   }
   return bootstrap_controller_->GetAsWeakPtrForClient();
 }
 
 void LoginDisplayHostCommon::NotifyWizardCreated() {
-  if (on_wizard_controller_created_for_tests_) {
+  if (on_wizard_controller_created_for_tests_)
     on_wizard_controller_created_for_tests_.Run();
+}
+
+void LoginDisplayHostCommon::ShowLocalDialogCommon() {
+  BaseScreen* current_screen = GetWizardController()->current_screen();
+  if (!current_screen) {
+    return;
   }
+  // In user_creation screen, if `child` type is chosen, user_creation.js called updateOobeDialogState
+  // and set the state to gaia_screen, there's no proper way to hide `use local account` in this situation
+  // so here's the solution:
+  // if it's not gaia screen currently, then just go to local signin screen
+  // otherwise, let gaia_screen handle the request
+  if (current_screen->screen_id() != GaiaView::kScreenId) {
+    StartWizard(JemaLocalSigninView::kScreenId);
+    return;
+  }
+  GaiaScreen* gaia_screen = GetWizardController()->GetScreen<GaiaScreen>();
+  gaia_screen->RequestUseLocalAccount();
 }
 
 void LoginDisplayHostCommon::Cleanup() {
-  if (wizard_context_->quick_start_enabled) {
-    bootstrap_controller_.reset();
-  }
-
   SigninProfileHandler::Get()->ClearSigninProfile(base::DoNothing());
   app_terminating_subscription_ = {};
   BrowserList::RemoveObserver(this);

@@ -57,7 +57,6 @@
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_text.h"
 #include "third_party/blink/renderer/core/layout/layout_text_fragment.h"
-#include "third_party/blink/renderer/core/page/scrolling/sync_scroll_attempt_heuristic.h"
 #include "third_party/blink/renderer/core/svg/svg_svg_element.h"
 #include "third_party/blink/renderer/core/trustedtypes/trusted_types_util.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
@@ -719,25 +718,14 @@ Node* Range::ProcessAncestorsAndTheirSiblings(
       break;
     ancestors.push_back(runner);
   }
-  // Both https://dom.spec.whatwg.org/#concept-range-clone and
-  // https://dom.spec.whatwg.org/#concept-range-extract specify (in various
-  // ways) that nodes are to be processed in tree order. But the algorithm below
-  // processes in depth first order instead. So clone the nodes first here,
-  // in reverse order, so upgrades happen in the proper order.
-  HeapVector<Member<Node>> cloned_ancestors(ancestors.size(), nullptr);
-  auto clone_ptr = cloned_ancestors.rbegin();
-  for (auto it = ancestors.rbegin(); it != ancestors.rend(); ++it) {
-    *(clone_ptr++) = (*it)->cloneNode(false);
-  }
 
   Node* first_child_in_ancestor_to_process =
       direction == kProcessContentsForward ? container->nextSibling()
                                            : container->previousSibling();
-  for (wtf_size_t i = 0; i < ancestors.size(); ++i) {
-    const auto& ancestor = ancestors[i];
+  for (const auto& ancestor : ancestors) {
     if (action == kExtractContents || action == kCloneContents) {
       // Might have been removed already during mutation event.
-      if (auto cloned_ancestor = cloned_ancestors[i]) {
+      if (Node* cloned_ancestor = ancestor->cloneNode(false)) {
         cloned_ancestor->appendChild(cloned_container, exception_state);
         cloned_container = cloned_ancestor;
       }
@@ -1273,15 +1261,13 @@ void Range::surroundContents(Node* new_parent,
 
   // 1. If a non-Text node is partially contained in the context object, then
   // throw an InvalidStateError.
-  Node* start_node = &start_.Container();
-  Node* end_node = &end_.Container();
-  if (start_node->IsTextNode()) {
-    start_node = start_node->parentNode();
-  }
-  if (end_node->IsTextNode()) {
-    end_node = end_node->parentNode();
-  }
-  if (start_node != end_node) {
+  Node* start_non_text_container = &start_.Container();
+  if (start_non_text_container->getNodeType() == Node::kTextNode)
+    start_non_text_container = start_non_text_container->parentNode();
+  Node* end_non_text_container = &end_.Container();
+  if (end_non_text_container->getNodeType() == Node::kTextNode)
+    end_non_text_container = end_non_text_container->parentNode();
+  if (start_non_text_container != end_non_text_container) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "The Range has partially selected a non-Text node.");
@@ -1614,9 +1600,6 @@ void Range::expand(const String& unit, ExceptionState& exception_state) {
 }
 
 DOMRectList* Range::getClientRects() const {
-  // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
-  // impact is understood.
-  SyncScrollAttemptHeuristic::DidAccessScrollOffset();
   DisplayLockUtilities::ScopedForcedUpdate force_locks(
       this, DisplayLockContext::ForcedPhase::kLayout);
   owner_document_->UpdateStyleAndLayout(DocumentUpdateReason::kJavaScript);
@@ -1628,9 +1611,6 @@ DOMRectList* Range::getClientRects() const {
 }
 
 DOMRect* Range::getBoundingClientRect() const {
-  // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
-  // impact is understood.
-  SyncScrollAttemptHeuristic::DidAccessScrollOffset();
   return DOMRect::FromRectF(BoundingRect());
 }
 
@@ -1743,7 +1723,7 @@ void Range::GetBorderAndTextQuads(Vector<gfx::QuadF>& quads) const {
 }
 
 gfx::RectF Range::BoundingRect() const {
-  std::optional<DisplayLockUtilities::ScopedForcedUpdate> force_locks;
+  absl::optional<DisplayLockUtilities::ScopedForcedUpdate> force_locks;
   if (!collapsed()) {
     force_locks = DisplayLockUtilities::ScopedForcedUpdate(
         this, DisplayLockContext::ForcedPhase::kLayout);

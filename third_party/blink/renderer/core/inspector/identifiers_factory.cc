@@ -116,7 +116,7 @@ String IdentifiersFactory::IdFromToken(const base::UnguessableToken& token) {
 
 // static
 int IdentifiersFactory::IntIdForNode(Node* node) {
-  return node->GetDomNodeId();
+  return static_cast<int>(DOMNodeIds::IdForNode(node));
 }
 
 // static

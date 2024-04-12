@@ -5,7 +5,6 @@
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
-#include "chrome/browser/profiles/profile.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_utils.h"
 #include "extensions/browser/extension_action.h"
@@ -14,7 +13,6 @@
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/state_store.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/test/extension_test_message_listener.h"
 #include "third_party/skia/include/core/SkColor.h"
 
@@ -29,14 +27,14 @@ const char kBrowserActionStorageKey[] = "browser_action";
 const char kExtensionName[] = "Default Persistence Test Extension";
 
 void QuitMessageLoop(content::MessageLoopRunner* runner,
-                     std::optional<base::Value> value) {
+                     absl::optional<base::Value> value) {
   runner->Quit();
 }
 
 // We need to wait for the state store to initialize and respond to requests
 // so we can see if the preferences persist. Do this by posting our own request
 // to the state store, which should be handled after all others.
-void WaitForStateStore(Profile* profile, const ExtensionId& extension_id) {
+void WaitForStateStore(Profile* profile, const std::string& extension_id) {
   scoped_refptr<content::MessageLoopRunner> runner =
       new content::MessageLoopRunner;
   ExtensionSystem::Get(profile)->state_store()->GetExtensionValue(

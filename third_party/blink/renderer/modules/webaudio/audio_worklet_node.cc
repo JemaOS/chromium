@@ -175,7 +175,8 @@ AudioWorkletNode* AudioWorkletNode::Create(
   scoped_refptr<SerializedScriptValue> serialized_node_options =
       SerializedScriptValue::Serialize(
           isolate,
-          ToV8Traits<AudioWorkletNodeOptions>::ToV8(script_state, options),
+          ToV8Traits<AudioWorkletNodeOptions>::ToV8(script_state, options)
+              .ToLocalChecked(),
           serialize_options, exception_state);
 
   // `serialized_node_options` can be nullptr if the option dictionary is not
@@ -194,7 +195,7 @@ AudioWorkletNode* AudioWorkletNode::Create(
   {
     // The node should be manually added to the automatic pull node list,
     // even without a `connect()` call.
-    DeferredTaskHandler::GraphAutoLocker locker(context);
+    BaseAudioContext::GraphAutoLocker locker(context);
     node->Handler().UpdatePullStatusIfNeeded();
   }
 
@@ -206,11 +207,11 @@ bool AudioWorkletNode::HasPendingActivity() const {
 }
 
 AudioParamMap* AudioWorkletNode::parameters() const {
-  return parameter_map_.Get();
+  return parameter_map_;
 }
 
 MessagePort* AudioWorkletNode::port() const {
-  return node_port_.Get();
+  return node_port_;
 }
 
 void AudioWorkletNode::FireProcessorError(

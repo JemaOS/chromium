@@ -4,7 +4,7 @@
 
 #include "ui/ozone/demo/renderer_base.h"
 
-#include <numbers>
+#include "base/numerics/math_constants.h"
 
 namespace ui {
 
@@ -21,8 +21,7 @@ RendererBase::~RendererBase() {
 
 float RendererBase::CurrentFraction() const {
   float fraction =
-      (sinf(iteration_ * 2 * std::numbers::pi_v<float> / kAnimationSteps) + 1) /
-      2;
+      (sinf(iteration_ * 2 * base::kPiFloat / kAnimationSteps) + 1) / 2;
   return fraction;
 }
 

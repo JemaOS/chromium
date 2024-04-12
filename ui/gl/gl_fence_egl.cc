@@ -8,8 +8,6 @@
 #include "ui/gl/egl_util.h"
 #include "ui/gl/gl_bindings.h"
 #include "ui/gl/gl_bindings_autogen_gl.h"
-#include "ui/gl/gl_context.h"
-#include "ui/gl/gl_display.h"
 #include "ui/gl/gl_surface_egl.h"
 
 namespace gl {
@@ -23,16 +21,7 @@ GLFenceEGL::GLFenceEGL() = default;
 
 // static
 std::unique_ptr<GLFenceEGL> GLFenceEGL::Create() {
-  // Prefer EGL_ANGLE_global_fence_sync as it guarantees synchronization with
-  // past submissions from all contexts, rather than the current context.
-  gl::GLContext* context = gl::GLContext::GetCurrent();
-  gl::GLDisplayEGL* display = context ? context->GetGLDisplayEGL() : nullptr;
-  const EGLenum syncType =
-      display && display->ext->b_EGL_ANGLE_global_fence_sync
-          ? EGL_SYNC_GLOBAL_FENCE_ANGLE
-          : EGL_SYNC_FENCE_KHR;
-
-  auto fence = Create(syncType, nullptr);
+  auto fence = Create(EGL_SYNC_FENCE_KHR, nullptr);
   // Default creation isn't supposed to fail.
   DCHECK(fence);
   return fence;

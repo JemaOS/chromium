@@ -38,10 +38,6 @@
         padding-inline-start: var(--cr-section-padding);
         width: 60%;
       }
-
-      #clearAllButton cr-button {
-        white-space: nowrap;
-      }
     </style>
     <div id="sort">
       <label id="sortLabel">$i18n{siteSettingsAllSitesSort}</label>
@@ -62,8 +58,7 @@
       <div id="clearLabel">
           [[getClearStorageDescription_(totalUsage_, filter)]]
       </div>
-      <div id="clearAllButton"
-          hidden$="[[!shouldShowClearAllButton_(filteredList_.length)]]">
+      <div id="clearAllButton">
         <cr-button type="button" on-click="onConfirmClearAllData_">
           [[getClearDataButtonString_(filter)]]
         </cr-button>
@@ -111,7 +106,7 @@
             $i18n{firstPartySetsShowRelatedSitesButton}
           </button>
           <button class="dropdown-item" role="menuitem" on-click="onRemove_">
-            $i18n{firstPartySetsSiteDeleteStorageButton}
+            $i18n{firstPartySetsSiteClearStorageButton}
           </button>
         </cr-action-menu>
       </template>

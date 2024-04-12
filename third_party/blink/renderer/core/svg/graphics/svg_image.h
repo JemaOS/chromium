@@ -27,12 +27,11 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_SVG_GRAPHICS_SVG_IMAGE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_SVG_GRAPHICS_SVG_IMAGE_H_
 
-#include <optional>
-
 #include "base/gtest_prod_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/layout/geometry/physical_size.h"
+#include "third_party/blink/renderer/platform/geometry/layout_size.h"
 #include "third_party/blink/renderer/platform/graphics/image.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_record.h"
 #include "third_party/blink/renderer/platform/scheduler/public/agent_group_scheduler.h"
@@ -45,7 +44,6 @@
 namespace blink {
 
 class Document;
-class Element;
 class LayoutSVGRoot;
 class LocalFrame;
 class Node;
@@ -118,9 +116,6 @@ class CORE_EXPORT SVGImage final : public Image {
 
   void SetPreferredColorScheme(
       mojom::blink::PreferredColorScheme preferred_color_scheme);
-
-  // Introspective service hatch for mask-image. Don't abuse for anything else.
-  Element* GetResourceElement(const AtomicString& id) const;
 
  protected:
   // Whether or not size is available yet.
@@ -195,7 +190,7 @@ class CORE_EXPORT SVGImage final : public Image {
 
   // Paints the current frame. Returns new PaintRecord. |cull_rect| is an
   // optional additional cull rect.
-  std::optional<PaintRecord> PaintRecordForCurrentFrame(
+  absl::optional<PaintRecord> PaintRecordForCurrentFrame(
       const DrawInfo&,
       const gfx::Rect* cull_rect);
 
@@ -240,7 +235,7 @@ class CORE_EXPORT SVGImage final : public Image {
   // belong to multiple containers so the final image size can't be known in
   // SVGImage. SVGImageForContainer carries the final image size, also called
   // the "concrete object size". For more, see: SVGImageForContainer.h
-  PhysicalSize intrinsic_size_;
+  LayoutSize intrinsic_size_;
   bool has_pending_timeline_rewind_;
 
   enum LoadState {

@@ -6,9 +6,9 @@ package org.chromium.chrome.browser.autofill.settings;
 
 import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 
 import org.chromium.chrome.browser.autofill.PersonalDataManager;
-import org.chromium.ui.text.EmptyTextWatcher;
 
 /**
  * Watch a TextView and if a credit card number is entered, it will format the number.
@@ -19,7 +19,7 @@ import org.chromium.ui.text.EmptyTextWatcher;
  *
  * Formatting will be re-enabled once text is cleared.
  */
-public class CreditCardNumberFormattingTextWatcher implements EmptyTextWatcher {
+public class CreditCardNumberFormattingTextWatcher implements TextWatcher {
     /** Character for card number section separator. */
     private static final String SEPARATOR = " ";
 
@@ -50,6 +50,9 @@ public class CreditCardNumberFormattingTextWatcher implements EmptyTextWatcher {
             mFormattingEnabled = false;
         }
     }
+
+    @Override
+    public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
     @Override
     public void afterTextChanged(Editable s) {
@@ -88,7 +91,9 @@ public class CreditCardNumberFormattingTextWatcher implements EmptyTextWatcher {
 
     public static void insertSeparators(Editable s) {
         int[] positions;
-        if (PersonalDataManager.getBasicCardIssuerNetwork(s.toString(), false).equals("amex")) {
+        if (PersonalDataManager.getInstance()
+                        .getBasicCardIssuerNetwork(s.toString(), false)
+                        .equals("amex")) {
             positions = new int[2];
             positions[0] = 4;
             positions[1] = 11;

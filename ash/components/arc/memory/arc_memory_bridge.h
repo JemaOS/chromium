@@ -47,7 +47,7 @@ class ArcMemoryBridge : public KeyedService {
  private:
   THREAD_CHECKER(thread_checker_);
 
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
 };
 

@@ -11,30 +11,40 @@
 #include "base/memory/weak_ptr.h"
 #include "base/values.h"
 #include "chrome/browser/web_applications/commands/web_app_command.h"
-#include "chrome/browser/web_applications/locks/app_lock.h"
 #include "chrome/browser/web_applications/os_integration/os_integration_manager.h"
-#include "components/webapps/common/web_app_id.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 
 namespace web_app {
 
-class InstallAppLocallyCommand : public WebAppCommand<AppLock> {
+class LockDescription;
+class AppLock;
+class AppLockDescription;
+
+class InstallAppLocallyCommand : public WebAppCommandTemplate<AppLock> {
  public:
-  InstallAppLocallyCommand(const webapps::AppId& app_id,
+  InstallAppLocallyCommand(const AppId& app_id,
                            base::OnceClosure install_callback);
   ~InstallAppLocallyCommand() override;
 
- protected:
-  // WebAppCommand:
+  // WebAppCommandTemplate<AppLock>:
+  const LockDescription& lock_description() const override;
   void StartWithLock(std::unique_ptr<AppLock> app_lock) override;
+  void OnSyncSourceRemoved() override;
+  void OnShutdown() override;
+  base::Value ToDebugValue() const override;
 
  private:
   // Records locally installed app success metric to UMA after OS Hooks are
   // installed.
   void OnOsHooksInstalled(const OsHooksErrors os_hooks_errors);
+  void ReportResultAndShutdown(CommandResult result);
 
+  std::unique_ptr<AppLockDescription> app_lock_description_;
   std::unique_ptr<AppLock> app_lock_;
 
-  webapps::AppId app_id_;
+  AppId app_id_;
+  base::OnceClosure install_callback_;
+  base::Value::Dict debug_log_;
 
   base::WeakPtrFactory<InstallAppLocallyCommand> weak_factory_{this};
 };

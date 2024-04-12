@@ -71,9 +71,9 @@ namespace {
 // "[preview] and N more" where preview might be elided to allow "and N more" to
 // be always visible.
 class PreviewEliderLabel : public views::Label {
-  METADATA_HEADER(PreviewEliderLabel, views::Label)
-
  public:
+  METADATA_HEADER(PreviewEliderLabel);
+
   // Creates a PreviewEliderLabel where |preview_text| might be elided,
   // |format_string| is the string with format argument numbers in ICU syntax
   // and |n| is the "N more" item count.
@@ -121,7 +121,7 @@ class PreviewEliderLabel : public views::Label {
   int n_;
 };
 
-BEGIN_METADATA(PreviewEliderLabel)
+BEGIN_METADATA(PreviewEliderLabel, views::Label)
 END_METADATA
 
 std::unique_ptr<PaymentRequestRowView> CreatePaymentSheetRow(
@@ -318,7 +318,7 @@ class PaymentSheetRowBuilder {
       bool button_enabled) {
     auto button = std::make_unique<views::MdTextButton>(GetPressedCallback(),
                                                         button_string);
-    button->SetStyle(ui::ButtonStyle::kProminent);
+    button->SetProminent(true);
     button->SetID(id_);
     button->SetFocusBehavior(views::View::FocusBehavior::ALWAYS);
     button->SetEnabled(button_enabled);
@@ -759,12 +759,12 @@ PaymentSheetViewController::CreateContactInfoRow() {
                                     l10n_util::GetStringUTF16(IDS_ADD),
                                     /*button_enabled=*/true);
   }
-  static constexpr autofill::FieldType kLabelFields[] = {
+  static constexpr autofill::ServerFieldType kLabelFields[] = {
       autofill::NAME_FULL, autofill::PHONE_HOME_WHOLE_NUMBER,
       autofill::EMAIL_ADDRESS};
   const std::u16string preview =
       state()->contact_profiles()[0]->ConstructInferredLabel(
-          kLabelFields, std::size(kLabelFields),
+          kLabelFields, std::size(kLabelFields), std::size(kLabelFields),
           state()->GetApplicationLocale());
   if (state()->contact_profiles().size() == 1) {
     return builder.CreateWithButton(preview,

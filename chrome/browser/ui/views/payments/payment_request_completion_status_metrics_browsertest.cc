@@ -90,9 +90,14 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCompletionStatusMetricsTest,
 
   // The merchant reloads the page.
   ResetEventWaiter(DialogEvent::DIALOG_CLOSED);
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(),
-                              "(function() { location.reload(); })();"));
+  ASSERT_TRUE(content::ExecuteScript(GetActiveWebContents(),
+                                     "(function() { location.reload(); })();"));
   ASSERT_TRUE(WaitForObservedEvent());
+
+  // Make sure the metrics are logged correctly.
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.CheckoutFunnel.Aborted",
+      JourneyLogger::ABORT_REASON_MERCHANT_NAVIGATION, 1);
 
   // Make sure the correct events were logged.
   std::vector<base::Bucket> buckets =
@@ -147,11 +152,16 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCompletionStatusMetricsTest,
 
   // The merchant navigates away.
   ResetEventWaiter(DialogEvent::DIALOG_CLOSED);
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(),
-                              "(function() { window.location.href = "
-                              "'/payment_request_email_test.html'; "
-                              "})();"));
+  ASSERT_TRUE(content::ExecuteScript(GetActiveWebContents(),
+                                     "(function() { window.location.href = "
+                                     "'/payment_request_email_test.html'; "
+                                     "})();"));
   ASSERT_TRUE(WaitForObservedEvent());
+
+  // Make sure the metrics are logged correctly.
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.CheckoutFunnel.Aborted",
+      JourneyLogger::ABORT_REASON_MERCHANT_NAVIGATION, 1);
 
   // Make sure the correct events were logged.
   std::vector<base::Bucket> buckets =
@@ -209,8 +219,14 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCompletionStatusMetricsTest,
       {DialogEvent::ABORT_CALLED, DialogEvent::DIALOG_CLOSED});
   const std::string click_buy_button_js =
       "(function() { document.getElementById('abort').click(); })();";
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(), click_buy_button_js));
+  ASSERT_TRUE(
+      content::ExecuteScript(GetActiveWebContents(), click_buy_button_js));
   ASSERT_TRUE(WaitForObservedEvent());
+
+  // Make sure the metrics are logged correctly.
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.CheckoutFunnel.Aborted",
+      JourneyLogger::ABORT_REASON_ABORTED_BY_MERCHANT, 1);
 
   // Make sure the correct events were logged.
   std::vector<base::Bucket> buckets =
@@ -266,6 +282,11 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCompletionStatusMetricsTest,
   // Navigate away.
   NavigateTo("/payment_request_email_test.html");
 
+  // Make sure the metrics are logged correctly.
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.CheckoutFunnel.Aborted",
+      JourneyLogger::ABORT_REASON_USER_NAVIGATION, 1);
+
   // Make sure the correct events were logged.
   std::vector<base::Bucket> buckets =
       histogram_tester.GetAllSamples("PaymentRequest.Events");
@@ -320,6 +341,11 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCompletionStatusMetricsTest,
 
   // Click on the cancel button.
   ClickOnCancel();
+
+  // Make sure the metrics are logged correctly.
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.CheckoutFunnel.Aborted",
+      JourneyLogger::ABORT_REASON_ABORTED_BY_USER, 1);
 
   // Make sure the correct events were logged.
   std::vector<base::Bucket> buckets =
@@ -378,6 +404,11 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCompletionStatusMetricsTest,
   chrome::CloseTab(browser());
   ASSERT_TRUE(WaitForObservedEvent());
 
+  // Make sure the metrics are logged correctly.
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.CheckoutFunnel.Aborted",
+      JourneyLogger::ABORT_REASON_ABORTED_BY_USER, 1);
+
   // Make sure the correct events were logged.
   std::vector<base::Bucket> buckets =
       histogram_tester.GetAllSamples("PaymentRequest.Events");
@@ -434,6 +465,11 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestCompletionStatusMetricsTest,
   chrome::Reload(browser(), WindowOpenDisposition::CURRENT_TAB);
   ASSERT_TRUE(WaitForObservedEvent());
 
+  // Make sure the metrics are logged correctly.
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.CheckoutFunnel.Aborted",
+      JourneyLogger::ABORT_REASON_USER_NAVIGATION, 1);
+
   // Make sure the correct events were logged.
   std::vector<base::Bucket> buckets =
       histogram_tester.GetAllSamples("PaymentRequest.Events");
@@ -479,6 +515,11 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestInitiatedCompletionStatusMetricsTest,
 
   // Navigate away.
   NavigateTo("/payment_request_email_test.html");
+
+  // Make sure the metrics are logged correctly.
+  histogram_tester.ExpectUniqueSample(
+      "PaymentRequest.CheckoutFunnel.Aborted",
+      JourneyLogger::ABORT_REASON_USER_NAVIGATION, 1);
 
   // There is one sample, because the request was initiated.
   std::vector<base::Bucket> buckets =

@@ -15,7 +15,6 @@ struct AdSize {
     [Default] kInvalid,
     kPixels,
     kScreenWidth,
-    kScreenHeight,
   };
   // Must be valid dimensions (ex. 100px, 50sw)
   double width;

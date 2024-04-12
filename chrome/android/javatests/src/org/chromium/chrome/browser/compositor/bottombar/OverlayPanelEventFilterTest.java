@@ -10,7 +10,7 @@ import android.view.MotionEvent;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 
-import androidx.test.annotation.UiThreadTest;
+import androidx.test.InstrumentationRegistry;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.filters.MediumTest;
 
@@ -27,12 +27,12 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.test.BaseActivityTestRule;
+import org.chromium.base.test.UiThreadTest;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerImpl;
 import org.chromium.chrome.browser.compositor.layouts.eventfilter.OverlayPanelEventFilter;
-import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
@@ -40,8 +40,9 @@ import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.IntentRequestTracker;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.test.util.BlankUiTestActivity;
-
-/** Class responsible for testing the OverlayPanelEventFilter. */
+/**
+ * Class responsible for testing the OverlayPanelEventFilter.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @Batch(Batch.PER_CLASS)
 public class OverlayPanelEventFilterTest {
@@ -60,15 +61,21 @@ public class OverlayPanelEventFilterTest {
     public static BaseActivityTestRule<BlankUiTestActivity> activityTestRule =
             new BaseActivityTestRule<>(BlankUiTestActivity.class);
 
-    @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    @Mock private LayoutManagerImpl mLayoutManager;
-    @Mock private BrowserControlsStateProvider mBrowserControlsStateProvider;
-    @Mock private ViewGroup mCompositorViewHolder;
-    @Mock private Profile mProfile;
-    @Mock private Tab mTab;
-    @Mock private OverlayContentDelegate mOverlayContentDelegate;
-    @Mock private OverlayContentProgressObserver mOverlayContentProgressObserver;
+    @Mock
+    private LayoutManagerImpl mLayoutManager;
+    @Mock
+    private BrowserControlsStateProvider mBrowserControlsStateProvider;
+    @Mock
+    private ViewGroup mCompositorViewHolder;
+    @Mock
+    private Tab mTab;
+    @Mock
+    private OverlayContentDelegate mOverlayContentDelegate;
+    @Mock
+    private OverlayContentProgressObserver mOverlayContentProgressObserver;
 
     private float mTouchSlopDp;
     private float mDpToPx;
@@ -96,7 +103,9 @@ public class OverlayPanelEventFilterTest {
     // OverlayPanelEventFilterWrapper
     // --------------------------------------------------------------------------------------------
 
-    /** Wrapper around OverlayPanelEventFilter used by tests. */
+    /**
+     * Wrapper around OverlayPanelEventFilter used by tests.
+     */
     public final class OverlayPanelEventFilterWrapper extends OverlayPanelEventFilter {
         public OverlayPanelEventFilterWrapper(Context context, OverlayPanel panel) {
             super(context, panel);
@@ -133,30 +142,19 @@ public class OverlayPanelEventFilterTest {
     // MockOverlayPanel
     // --------------------------------------------------------------------------------------------
 
-    /** Mocks an OverlayPanel, so it doesn't create WebContents or animations. */
+    /**
+     * Mocks an OverlayPanel, so it doesn't create WebContents or animations.
+     */
     private final class MockOverlayPanel extends OverlayPanel {
         private boolean mWasTapDetectedOnPanel;
         private boolean mWasScrollDetectedOnPanel;
 
-        public MockOverlayPanel(
-                Context context,
-                LayoutManagerImpl layoutManager,
+        public MockOverlayPanel(Context context, LayoutManagerImpl layoutManager,
                 OverlayPanelManager manager,
                 BrowserControlsStateProvider browserControlsStateProvider,
-                WindowAndroid windowAndroid,
-                Profile profile,
-                ViewGroup compositorViewHolder,
-                Tab tab) {
-            super(
-                    context,
-                    layoutManager,
-                    manager,
-                    browserControlsStateProvider,
-                    windowAndroid,
-                    profile,
-                    compositorViewHolder,
-                    MOCK_TOOLBAR_HEIGHT,
-                    () -> tab);
+                WindowAndroid windowAndroid, ViewGroup compositorViewHolder, Tab tab) {
+            super(context, layoutManager, manager, browserControlsStateProvider, windowAndroid,
+                    compositorViewHolder, MOCK_TOOLBAR_HEIGHT, () -> tab);
         }
 
         @Override
@@ -164,18 +162,14 @@ public class OverlayPanelEventFilterTest {
             return new MockOverlayPanelContent();
         }
 
-        /** Override creation and destruction of the WebContents as they rely on native methods. */
+        /**
+         * Override creation and destruction of the WebContents as they rely on native methods.
+         */
         private class MockOverlayPanelContent extends OverlayPanelContent {
             public MockOverlayPanelContent() {
-                super(
-                        mOverlayContentDelegate,
-                        mOverlayContentProgressObserver,
-                        mActivity,
-                        mProfile,
-                        MOCK_TOOLBAR_HEIGHT,
-                        mCompositorViewHolder,
-                        mWindowAndroid,
-                        () -> mTab);
+                super(mOverlayContentDelegate, mOverlayContentProgressObserver, mActivity,
+                        /* isIncognito= */ false, MOCK_TOOLBAR_HEIGHT, mCompositorViewHolder,
+                        mWindowAndroid, () -> mTab);
             }
 
             @Override
@@ -264,44 +258,33 @@ public class OverlayPanelEventFilterTest {
 
     @Before
     public void setupTest() {
-        Context context = ApplicationProvider.getApplicationContext();
+        Context context = InstrumentationRegistry.getTargetContext();
 
         mDpToPx = context.getResources().getDisplayMetrics().density;
         mTouchSlopDp = ViewConfiguration.get(context).getScaledTouchSlop() / mDpToPx;
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mActivity = activityTestRule.getActivity();
-                    mWindowAndroid =
-                            new ActivityWindowAndroid(
-                                    mActivity,
-                                    /* listenToActivityState= */ true,
-                                    IntentRequestTracker.createFromActivity(mActivity));
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mActivity = activityTestRule.getActivity();
+            mWindowAndroid = new ActivityWindowAndroid(mActivity, /* listenToActivityState= */ true,
+                    IntentRequestTracker.createFromActivity(mActivity));
 
-                    mPanel =
-                            new MockOverlayPanel(
-                                    mActivity,
-                                    mLayoutManager,
-                                    new OverlayPanelManager(),
-                                    mBrowserControlsStateProvider,
-                                    mWindowAndroid,
-                                    mProfile,
-                                    mCompositorViewHolder,
-                                    mTab);
-                    mEventFilter = new OverlayPanelEventFilterWrapper(mActivity, mPanel);
+            mPanel = new MockOverlayPanel(mActivity, mLayoutManager, new OverlayPanelManager(),
+                    mBrowserControlsStateProvider, mWindowAndroid, mCompositorViewHolder, mTab);
+            mEventFilter = new OverlayPanelEventFilterWrapper(mActivity, mPanel);
 
-                    mPanel.setSearchBarHeightForTesting(BAR_HEIGHT_DP);
-                    mPanel.setHeightForTesting(LAYOUT_HEIGHT_DP);
-                    mPanel.setIsFullWidthSizePanelForTesting(true);
+            mPanel.setSearchBarHeightForTesting(BAR_HEIGHT_DP);
+            mPanel.setHeightForTesting(LAYOUT_HEIGHT_DP);
+            mPanel.setIsFullWidthSizePanelForTesting(true);
 
-                    // NOTE(pedrosimonetti): This should be called after calling the method
-                    // setIsFullWidthSizePanelForTesting(), otherwise it will crash the test.
-                    mPanel.onSizeChanged(LAYOUT_WIDTH_DP, LAYOUT_HEIGHT_DP, 0, 0);
-                });
+            // NOTE(pedrosimonetti): This should be called after calling the method
+            // setIsFullWidthSizePanelForTesting(), otherwise it will crash the test.
+            mPanel.onSizeChanged(LAYOUT_WIDTH_DP, LAYOUT_HEIGHT_DP, 0, 0);
+        });
 
         setContentViewVerticalScroll(0);
 
-        mAlmostMaximizedContentOffsetYDp = PANEL_ALMOST_MAXIMIZED_OFFSET_Y_DP + BAR_HEIGHT_DP;
+        mAlmostMaximizedContentOffsetYDp =
+                PANEL_ALMOST_MAXIMIZED_OFFSET_Y_DP + BAR_HEIGHT_DP;
         mMaximizedContentOffsetYDp = BAR_HEIGHT_DP;
 
         mWasTapDetectedOnContent = false;
@@ -312,10 +295,7 @@ public class OverlayPanelEventFilterTest {
 
     @After
     public void tearDown() {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mWindowAndroid.destroy();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> { mWindowAndroid.destroy(); });
     }
 
     @Test
@@ -446,7 +426,8 @@ public class OverlayPanelEventFilterTest {
         // But 1 dp is not enough to trigger a scroll in the ContentView, and in this
         // particular case, it should also not trigger a tap because the total displacement
         // of the touch gesture is greater than the touch slop.
-        float contentViewOffsetDelta = contentViewOffsetYStart - contentViewOffsetYEnd;
+        float contentViewOffsetDelta =
+                contentViewOffsetYStart - contentViewOffsetYEnd;
         Assert.assertTrue(Math.abs(contentViewOffsetDelta) > mTouchSlopDp);
 
         Assert.assertFalse(mPanel.getWasTapDetected());
@@ -526,14 +507,18 @@ public class OverlayPanelEventFilterTest {
     // Helpers
     // --------------------------------------------------------------------------------------------
 
-    /** Positions the Panel in the almost maximized state. */
+    /**
+     * Positions the Panel in the almost maximized state.
+     */
     private void positionPanelInAlmostMaximizedState() {
         mPanel.setSearchBarHeightForTesting(BAR_HEIGHT_DP);
         mPanel.setMaximizedForTesting(false);
         mPanel.setOffsetYForTesting(PANEL_ALMOST_MAXIMIZED_OFFSET_Y_DP);
     }
 
-    /** Positions the Panel in the maximized state. */
+    /**
+     * Positions the Panel in the maximized state.
+     */
     private void positionPanelInMaximizedState() {
         mPanel.setSearchBarHeightForTesting(BAR_HEIGHT_DP);
         mPanel.setMaximizedForTesting(true);
@@ -542,7 +527,6 @@ public class OverlayPanelEventFilterTest {
 
     /**
      * Sets the vertical scroll position of the ContentView.
-     *
      * @param contentViewVerticalScroll The vertical scroll position.
      */
     private void setContentViewVerticalScroll(float contentViewVerticalScroll) {
@@ -551,7 +535,6 @@ public class OverlayPanelEventFilterTest {
 
     /**
      * Simulates a MotionEvent in the OverlayPanelEventFilter.
-     *
      * @param action The event's action.
      * @param x The event's x coordinate in dps.
      * @param y The event's y coordinate in dps.
@@ -563,7 +546,6 @@ public class OverlayPanelEventFilterTest {
 
     /**
      * Simulates a MotionEvent.ACTION_DOWN in the OverlayPanelEventFilter.
-     *
      * @param x The event's x coordinate in dps.
      * @param y The event's y coordinate in dps.
      */
@@ -573,7 +555,6 @@ public class OverlayPanelEventFilterTest {
 
     /**
      * Simulates a MotionEvent.ACTION_MOVE in the OverlayPanelEventFilter.
-     *
      * @param x The event's x coordinate in dps.
      * @param y The event's y coordinate in dps.
      */
@@ -583,7 +564,6 @@ public class OverlayPanelEventFilterTest {
 
     /**
      * Simulates a MotionEvent.ACTION_UP in the OverlayPanelEventFilter.
-     *
      * @param x The event's x coordinate in dps.
      * @param y The event's y coordinate in dps.
      */

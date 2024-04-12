@@ -42,22 +42,17 @@ scoped_refptr<GLContext> CreateGLContext(GLShareGroup* share_group,
                                          attribs);
   }
 
-  scoped_refptr<GLContextStub> context;
   switch (GetGLImplementation()) {
     case kGLImplementationMockGL:
+      return scoped_refptr<GLContext>(new GLContextStub(share_group));
     case kGLImplementationStubGL: {
       scoped_refptr<GLContextStub> stub_context =
-          base::MakeRefCounted<GLContextStub>(share_group);
-      if (GetGLImplementation() == kGLImplementationStubGL) {
-        stub_context->SetUseStubApi(true);
-      }
-      // The stub ctx needs to be initialized so that the gl::GLContext can
-      // store the |compatible_surface|.
-      stub_context->Initialize(compatible_surface, attribs);
+          new GLContextStub(share_group);
+      stub_context->SetUseStubApi(true);
       return stub_context;
     }
     case kGLImplementationDisabled:
-      break;
+      return nullptr;
     default:
       NOTREACHED() << "Expected Mock or Stub, actual:" << GetGLImplementation();
   }
@@ -91,9 +86,16 @@ scoped_refptr<Presenter> CreateSurfacelessViewGLSurface(
              : nullptr;
 }
 
-scoped_refptr<GLSurface> CreateOffscreenGLSurface(GLDisplay* display,
-                                                  const gfx::Size& size) {
+scoped_refptr<GLSurface> CreateOffscreenGLSurfaceWithFormat(
+    GLDisplay* display,
+    const gfx::Size& size,
+    GLSurfaceFormat format) {
   TRACE_EVENT0("gpu", "gl::init::CreateOffscreenGLSurface");
+
+  if (!format.IsCompatible(GLSurfaceFormat())) {
+    NOTREACHED() << "FATAL: Ozone only supports default-format surfaces.";
+    return nullptr;
+  }
 
   if (HasGLOzone())
     return GetGLOzone()->CreateOffscreenGLSurface(display, size);

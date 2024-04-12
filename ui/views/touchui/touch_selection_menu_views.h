@@ -19,9 +19,9 @@ class LabelButton;
 // A bubble that contains actions available for the selected text. An object of
 // this type, as a BubbleDialogDelegateView, manages its own lifetime.
 class VIEWS_EXPORT TouchSelectionMenuViews : public BubbleDialogDelegateView {
-  METADATA_HEADER(TouchSelectionMenuViews, BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(TouchSelectionMenuViews);
+
   enum ButtonViewId : int { kEllipsisButton = 1 };
 
   TouchSelectionMenuViews(TouchSelectionMenuRunnerViews* owner,
@@ -51,8 +51,6 @@ class VIEWS_EXPORT TouchSelectionMenuViews : public BubbleDialogDelegateView {
   LabelButton* CreateButton(const std::u16string& title,
                             Button::PressedCallback callback);
 
-  void CreateSeparator();
-
  private:
   friend class TouchSelectionMenuRunnerViews::TestApi;
 
@@ -64,6 +62,7 @@ class VIEWS_EXPORT TouchSelectionMenuViews : public BubbleDialogDelegateView {
   void DisconnectOwner();
 
   // BubbleDialogDelegateView:
+  void OnPaint(gfx::Canvas* canvas) override;
   void WindowClosing() override;
 
   raw_ptr<TouchSelectionMenuRunnerViews> owner_;

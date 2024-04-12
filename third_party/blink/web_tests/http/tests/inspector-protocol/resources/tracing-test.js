@@ -144,7 +144,7 @@
     return JSON.stringify(formattedEvents, null, 2);
   }
 
-  logEventShape(evt, excludedProperties = [], exposeProperties = []) {
+  logEventShape(evt, excludedProperties = []) {
     // The tts, scope, and tdur fields in trace events are optional, and as
     // such we omit them to prevent flakiness as it may or not be included
     // on each occasion an event is dispatched.
@@ -183,8 +183,7 @@
           logObject(`${prefix}\t`, key, value)
           continue;
         }
-        const valueOut = exposeProperties.includes(key) ? value : typeof value;
-        this._testRunner.log(`${prefix}\t${key}: ${valueOut}`);
+        this._testRunner.log(`${prefix}\t${key}: ${typeof value}`);
       }
       this._testRunner.log(`${prefix}}`);
     };

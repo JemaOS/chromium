@@ -7,11 +7,10 @@
 
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
 #include "base/scoped_multi_source_observation.h"
 #include "chrome/browser/sync/test/integration/status_change_checker.h"
-#include "components/sync/service/sync_service_impl.h"
-#include "components/sync/service/sync_service_observer.h"
+#include "components/sync/driver/sync_service_impl.h"
+#include "components/sync/driver/sync_service_observer.h"
 
 // This class provides some common functionality for StatusChangeCheckers that
 // observe many SyncServiceImpls.  This class is abstract.  Its descendants
@@ -20,8 +19,7 @@ class MultiClientStatusChangeChecker : public StatusChangeChecker,
                                        public syncer::SyncServiceObserver {
  public:
   explicit MultiClientStatusChangeChecker(
-      std::vector<raw_ptr<syncer::SyncServiceImpl, VectorExperimental>>
-          services);
+      std::vector<syncer::SyncServiceImpl*> services);
 
   MultiClientStatusChangeChecker(const MultiClientStatusChangeChecker&) =
       delete;
@@ -38,13 +36,10 @@ class MultiClientStatusChangeChecker : public StatusChangeChecker,
   // StatusChangeChecker implementations and stubs.
   bool IsExitConditionSatisfied(std::ostream* os) override = 0;
 
-  const std::vector<raw_ptr<syncer::SyncServiceImpl, VectorExperimental>>&
-  services() {
-    return services_;
-  }
+  const std::vector<syncer::SyncServiceImpl*>& services() { return services_; }
 
  private:
-  std::vector<raw_ptr<syncer::SyncServiceImpl, VectorExperimental>> services_;
+  std::vector<syncer::SyncServiceImpl*> services_;
   base::ScopedMultiSourceObservation<syncer::SyncService,
                                      syncer::SyncServiceObserver>
       scoped_observations_{this};

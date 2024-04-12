@@ -6,26 +6,24 @@
 #define UI_VIEWS_WIDGET_WIDGET_H_
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
 #include "base/callback_list.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/safety_checks.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "base/scoped_observation.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/dragdrop/mojom/drag_drop_types.mojom-forward.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_types.h"
 #include "ui/base/ui_base_types.h"
-#include "ui/color/color_provider_key.h"
+#include "ui/color/color_provider_manager.h"
 #include "ui/color/color_provider_source.h"
-#include "ui/color/color_provider_utils.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/events/event_source.h"
 #include "ui/gfx/geometry/rect.h"
@@ -111,15 +109,9 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
                             public ui::NativeThemeObserver,
                             public ui::ColorProviderSource,
                             public ui::metadata::MetaDataProvider {
-  // Do not remove this macro!
-  // The macro is maintained by the memory safety team.
-  // `Widget` is used extensively and has a complicated lifetime. This macro
-  // enables additional lifetime checks.
-  ADVANCED_MEMORY_SAFETY_CHECKS();
-
  public:
   METADATA_HEADER_BASE(Widget);
-  using Widgets = std::set<raw_ptr<Widget, SetExperimental>>;
+  using Widgets = std::set<Widget*>;
   using ShapeRects = std::vector<gfx::Rect>;
   using PaintAsActiveCallbackList = base::RepeatingClosureList;
 
@@ -261,11 +253,6 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
     // taking into account special levels due to |type|.
     ui::ZOrderLevel EffectiveZOrderLevel() const;
 
-    // Returns whether the widget should be initialized as headless by checking
-    // if |headless_mode| or the associated top level widget's |is_headless_|
-    // are set.
-    bool ShouldInitAsHeadless() const;
-
     Type type = TYPE_WINDOW;
 
     // If null, a default implementation will be constructed. The default
@@ -286,7 +273,8 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
     // If kOpaque, we can perform optimizations based on the widget being fully
     // opaque. Default is based on ViewsDelegate::GetOpacityForInitParams().
     // Defaults to kOpaque for non-window widgets. Translucent windows may not
-    // always be supported.
+    // always be supported. Use IsTranslucentWindowOpacitySupported() to
+    // determine whether they are.
     WindowOpacity opacity = WindowOpacity::kInferred;
 
     bool accept_events = true;
@@ -296,7 +284,7 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
     // The class of window and its overall z-order level. This level is visible
     // to other applications in the system. A value other than `kNormal` will
     // create an "always on top" widget.
-    std::optional<ui::ZOrderLevel> z_order;
+    absl::optional<ui::ZOrderLevel> z_order;
 
     // The z-order sublevel that is invisible to other applications in the
     // system. Widgets of the same `z_order` are stacked in the order specified
@@ -314,10 +302,15 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
 
     // A hint about the size of the shadow if the type is ShadowType::kDrop. May
     // be ignored on some platforms. No value indicates no preference.
-    std::optional<int> shadow_elevation;
+    absl::optional<int> shadow_elevation;
+
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+    ui::ColorProviderManager::ElevationMode background_elevation =
+        ui::ColorProviderManager::ElevationMode::kLow;
+#endif
 
     // The window corner radius. May be ignored on some platforms.
-    std::optional<int> corner_radius;
+    absl::optional<int> corner_radius;
 
     // Specifies that the system default caption and icon should not be
     // rendered, and that the client area should be equivalent to the window
@@ -356,20 +349,13 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
     // that way throughout. This should simply be a NativeWindow - windows are
     // parented to other windows, not to views, and it being a view confuses
     // the concept with bubble anchoring a la BubbleDialogDelegateView.
-    gfx::NativeView parent = gfx::NativeView();
+    gfx::NativeView parent = nullptr;
 
     // Specifies the initial bounds of the Widget. Default is empty, which means
     // the NativeWidget may specify a default size. If the parent is specified,
     // |bounds| is in the parent's coordinate system. If the parent is not
     // specified, it's in screen's global coordinate system.
     gfx::Rect bounds;
-
-#if BUILDFLAG(IS_CHROMEOS)
-    // If specified and the `bounds` is inside the specified display, the widget
-    // will be created on this display. Otherwise, the display matching the
-    // `bounds` will be used.
-    std::optional<int64_t> display_id;
-#endif
 
     // The initial workspace of the Widget. Default is "", which means the
     // current workspace.
@@ -383,7 +369,9 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
     // of the default one.
     // TODO(beng): Figure out if there's a better way to expose this, e.g. get
     // rid of NW subclasses and do this all via message handling.
-    raw_ptr<DesktopWindowTreeHost> desktop_window_tree_host = nullptr;
+    // DanglingUntriaged because it is assigned a DanglingUntriaged pointer.
+    raw_ptr<DesktopWindowTreeHost, DanglingUntriaged> desktop_window_tree_host =
+        nullptr;
 
     // Only used by NativeWidgetAura. Specifies the type of layer for the
     // aura::Window.
@@ -397,7 +385,7 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
     // where it wants your window placed.) Nullptr is not allowed on Windows and
     // Linux. Nullptr is allowed on Chrome OS, which will place the window on
     // the default desktop for new windows.
-    gfx::NativeWindow context = gfx::NativeWindow();
+    gfx::NativeWindow context = nullptr;
 
     // If true, forces the window to be shown in the taskbar, even for window
     // types that do not appear in the taskbar by default (popup and bubble).
@@ -438,8 +426,8 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
     // `restore_window_id_source` is used for widgets without inherent restore
     // window ids, e.g. Chrome apps.
     int32_t restore_session_id = 0;
-    std::optional<int32_t> restore_window_id;
-    std::optional<std::string> restore_window_id_source;
+    absl::optional<int32_t> restore_window_id;
+    absl::optional<std::string> restore_window_id_source;
 #endif
 
     // Contains any properties with which the native widget should be
@@ -453,17 +441,7 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
     // window should request the wayland compositor to send key events,
     // even if it matches with the compositor's keyboard shortcuts.
     bool inhibit_keyboard_shortcuts = false;
-
-    // Specifies the insets of the Widget. Default is empty, which means no
-    // insets are to be set.
-    gfx::Insets frame_insets;
 #endif
-
-    // Directly sets the NativeTheme used by the Widget. Providing the
-    // NativeTheme here vs setting afterwards potentially avoids lots of
-    // notifications of theme changes.
-    // A value of null results in the default theme being used.
-    raw_ptr<ui::NativeTheme> native_theme = nullptr;
   };
 
   // Represents a lock held on the widget's ShouldPaintAsActive() state. As
@@ -532,15 +510,11 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
 
   // Returns all Widgets in |native_view|'s hierarchy, including itself if
   // it is one.
-  // TODO(tluk): This API should be updated to return Widgets rather than take
-  // an out param.
   static void GetAllChildWidgets(gfx::NativeView native_view,
                                  Widgets* children);
 
   // Returns all Widgets owned by |native_view| (including child widgets, but
   // not including itself).
-  // TODO(tluk): This API should be updated to return Widgets rather than take
-  // an out param.
   static void GetAllOwnedWidgets(gfx::NativeView native_view, Widgets* owned);
 
   // Re-parent a NativeView and notify all Widgets in |native_view|'s hierarchy
@@ -560,8 +534,6 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
 
   // Returns true if the specified type requires a NonClientView.
   static bool RequiresNonClientView(InitParams::Type type);
-
-  static bool IsWindowCompositingSupported();
 
   // Initializes the widget, and in turn, the native widget. |params| should be
   // moved to Init() by the caller.
@@ -661,12 +633,8 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   std::string GetWorkspace() const;
 
   // Sizes and/or places the widget to the specified bounds, size or position.
-  // `bounds` is in screen coordinates.
   void SetBounds(const gfx::Rect& bounds);
   void SetSize(const gfx::Size& size);
-
-  // Retrieves the restored size for the window.
-  gfx::Size GetSize() const;
 
   // Sizes the window to the specified size and centers it.
   void CenterWindow(const gfx::Size& size);
@@ -766,10 +734,6 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   // Returns whether the Widget is the currently active window.
   virtual bool IsActive() const;
 
-  // Returns true if views style follows the widget activation state. The
-  // default implementation simply calls CanActivate().
-  virtual bool ShouldViewsStyleFollowWidgetActivation() const;
-
   // Sets the z-order of the widget. This only applies to top-level widgets.
   void SetZOrderLevel(ui::ZOrderLevel order);
 
@@ -855,8 +819,8 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   virtual const ui::ThemeProvider* GetThemeProvider() const;
 
   // Returns a custom theme object suitable for use in a
-  // ColorProviderKey. If this is null, the window has no custom theme.
-  virtual ui::ColorProviderKey::ThemeInitializerSupplier* GetCustomTheme()
+  // ColorProviderManager::Key. If this is null, the window has no custom theme.
+  virtual ui::ColorProviderManager::ThemeInitializerSupplier* GetCustomTheme()
       const;
 
   ui::NativeTheme* GetNativeTheme() {
@@ -958,6 +922,10 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   // (for example, so that they can overhang onto the window title bar).
   bool ShouldWindowContentsBeTransparent() const;
 
+  // Forces the frame into the alternate frame type (custom or native) depending
+  // on its current state.
+  void DebugToggleFrameType();
+
   // Tell the window that something caused the frame type to change.
   void FrameTypeChanged();
 
@@ -1055,9 +1023,6 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   // with it. TYPE_CONTROL and TYPE_TOOLTIP is not considered top level.
   bool is_top_level() const { return is_top_level_; }
 
-  // True if widget was created in headless mode.
-  bool is_headless() const { return is_headless_; }
-
   // True when window movement via mouse interaction with the frame is disabled.
   bool movement_disabled() const { return movement_disabled_; }
   void set_movement_disabled(bool disabled) { movement_disabled_ = disabled; }
@@ -1068,6 +1033,9 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   // Creates and dispatches synthesized mouse move event using the current
   // mouse location to refresh hovering status in the widget.
   void SynthesizeMouseMoveEvent();
+
+  // Whether the widget supports translucency.
+  bool IsTranslucentWindowOpacitySupported() const;
 
   // Returns the gesture recognizer which can handle touch/gesture events on
   // this.
@@ -1173,30 +1141,15 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   // Sets an override for `color_mode` when `GetColorProvider()` is requested.
   // e.g. if set to kDark, colors will always be for the dark theme.
   void SetColorModeOverride(
-      std::optional<ui::ColorProviderKey::ColorMode> color_mode);
+      absl::optional<ui::ColorProviderManager::ColorMode> color_mode);
 
   // ui::ColorProviderSource:
   const ui::ColorProvider* GetColorProvider() const override;
-  ui::RendererColorMap GetRendererColorMap(
-      ui::ColorProviderKey::ColorMode color_mode,
-      ui::ColorProviderKey::ForcedColors forced_colors) const override;
 
-  // Set the native theme from which this widget gets color from for testing.
+  // Set the native theme from which this widget gets color from.
   void SetNativeThemeForTest(ui::NativeTheme* native_theme) {
     SetNativeTheme(native_theme);
-    native_theme_set_for_testing_ = true;
   }
-
-  ui::ColorProviderKey GetColorProviderKeyForTesting() const;
-
-  // Causes IsFullscreen() to also check parent state, since this widget is
-  // logically part of the same window as the parent.
-  void SetCheckParentForFullscreen();
-
-  // Returns the current ownership model of the widget.
-  InitParams::Ownership ownership() const { return ownership_; }
-
-  bool native_widget_active() const { return native_widget_active_; }
 
  protected:
   // Creates the RootView to be used within this Widget. Subclasses may override
@@ -1234,7 +1187,8 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   void SetVisible(bool visible);
 
   // ui::ColorProviderSource:
-  ui::ColorProviderKey GetColorProviderKey() const override;
+  ui::ColorProviderManager::Key GetColorProviderKey() const override;
+  absl::optional<SkColor> GetUserColor() const override;
 
  private:
   // Type of ways to ignore activation changes.
@@ -1252,6 +1206,9 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   friend class TextfieldTest;
   friend class ViewAuraTest;
   friend class ui_devtools::PageAgentViews;
+  // TODO (kylixrd): Remove this after Widget no longer can "own" the
+  // WidgetDelegate.
+  friend class WidgetDelegate;
   friend void DisableActivationChangeHandlingForTests();
 
   // Sets/gets the type of disabling widget activation change handling.
@@ -1317,6 +1274,15 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   // to Init() a default WidgetDelegate is created.
   base::WeakPtr<WidgetDelegate> widget_delegate_;
 
+  // TODO(kylixrd): Rename this once the transition requiring the client to own
+  // the delegate is finished.
+  // [Owned Widget delegate if the DefaultWidgetDelegate is used. This
+  // ties the lifetime of the default delegate to the Widget.]
+  //
+  // This will "own" the delegate when WidgetDelegate::owned_by_widget() is
+  // true.
+  std::unique_ptr<WidgetDelegate> owned_widget_delegate_;
+
   // The parent of this widget. This is the widget that associates with
   // the |params.parent| supplied to Init(). If no parent is given or the native
   // view parent has no associating Widget, this value will be nullptr.
@@ -1355,9 +1321,14 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   // See set_is_secondary_widget().
   bool is_secondary_widget_ = true;
 
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  ui::ColorProviderManager::ElevationMode background_elevation_ =
+      ui::ColorProviderManager::ElevationMode::kLow;
+#endif
+
   // If set, overrides this value is used instead of the one from NativeTheme
   // when constructing a ColorProvider.
-  std::optional<ui::ColorProviderKey::ColorMode> color_mode_override_;
+  absl::optional<ui::ColorProviderManager::ColorMode> color_mode_override_;
 
   // The current frame type in use by this window. Defaults to
   // FrameType::kDefault.
@@ -1411,9 +1382,6 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   // If true, the mouse is currently down.
   bool is_mouse_button_pressed_ = false;
 
-  // If set, the widget was created in headless mode.
-  bool is_headless_ = false;
-
   // True if capture losses should be ignored.
   bool ignore_capture_loss_ = false;
 
@@ -1444,17 +1412,6 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   // The native theme this widget is using.
   // If nullptr, defaults to use the regular native theme.
   raw_ptr<ui::NativeTheme> native_theme_ = nullptr;
-
-  // A flag that prevents the widget from updating its instance of
-  // `native_theme_`. This is necessary during testing as theme updates may
-  // trigger a reset of the explicitly set test theme.
-  bool native_theme_set_for_testing_ = false;
-
-  // By default, widgets are assumed to correspond to windows. If a parent
-  // widget is fullscreen, then the child widget is a popup which is not
-  // fullscreen. However, on macOS some child widgets logically correspond to
-  // the same window. Their fullscreen state should inherit from their parents.
-  bool check_parent_for_fullscreen_ = false;
 
   base::ScopedObservation<ui::NativeTheme, ui::NativeThemeObserver>
       native_theme_observation_{this};

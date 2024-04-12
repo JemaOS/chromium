@@ -10,7 +10,9 @@ import com.google.protobuf.ByteString;
 import org.chromium.chrome.browser.xsurface.LoggingParameters;
 import org.chromium.components.feed.proto.FeedUiProto;
 
-/** Implements LoggingParameters. Contains parameters needed for logging. */
+/**
+ * Implements LoggingParameters. Contains parameters needed for logging.
+ */
 class FeedLoggingParameters implements LoggingParameters {
     private final String mClientInstanceId;
     private final String mAccountName;
@@ -18,13 +20,11 @@ class FeedLoggingParameters implements LoggingParameters {
     private final boolean mViewActionsEnabled;
     private final byte[] mRootEventId;
 
-    /** Creates logging parameters. Creation of this implies that logging is enabled. */
-    public FeedLoggingParameters(
-            String clientInstanceId,
-            String accountName,
-            boolean loggingEnabled,
-            boolean viewActionsEnabled,
-            byte[] rootEventId) {
+    /**
+     * Creates logging parameters. Creation of this implies that logging is enabled.
+     */
+    public FeedLoggingParameters(String clientInstanceId, String accountName,
+            boolean loggingEnabled, boolean viewActionsEnabled, byte[] rootEventId) {
         mClientInstanceId = clientInstanceId;
         mAccountName = accountName;
         mLoggingEnabled = loggingEnabled;
@@ -33,12 +33,8 @@ class FeedLoggingParameters implements LoggingParameters {
     }
 
     public FeedLoggingParameters(FeedUiProto.LoggingParameters proto) {
-        this(
-                proto.getClientInstanceId(),
-                proto.getEmail(),
-                proto.getLoggingEnabled(),
-                proto.getViewActionsEnabled(),
-                proto.getRootEventId().toByteArray());
+        this(proto.getClientInstanceId(), proto.getEmail(), proto.getLoggingEnabled(),
+                proto.getViewActionsEnabled(), proto.getRootEventId().toByteArray());
     }
 
     public static FeedUiProto.LoggingParameters convertToProto(
@@ -60,28 +56,23 @@ class FeedLoggingParameters implements LoggingParameters {
     public String accountName() {
         return mAccountName;
     }
-
     @Override
     public String clientInstanceId() {
         return mClientInstanceId;
     }
-
     @Deprecated
     @Override
     public boolean loggingParametersEquals(LoggingParameters otherObject) {
         return false;
     }
-
     @Override
     public boolean loggingEnabled() {
         return mLoggingEnabled;
     }
-
     @Override
     public boolean viewActionsEnabled() {
         return mViewActionsEnabled;
     }
-
     @Override
     @Nullable
     public byte[] rootEventId() {

@@ -12,7 +12,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
 
-/** Junit tests for class {@link NavbarVisibilityDelegate} */
+/**
+ * Junit tests for class {@link NavbarVisibilityDelegate}
+ */
 @RunWith(BlockJUnit4ClassRunner.class)
 public class NavbarVisibilityDelegateTest {
     // For totalSteps = 3 the currentStepIdx represents the following:
@@ -40,7 +42,7 @@ public class NavbarVisibilityDelegateTest {
 
         NavbarVisibilityDelegate delegate = new NavbarVisibilityDelegate(totalSteps);
         assertEquals(View.GONE, delegate.getStartButtonVisibility(currentStepIdx));
-        assertEquals(View.VISIBLE, delegate.getBackButtonVisibility(currentStepIdx));
+        assertEquals(View.INVISIBLE, delegate.getBackButtonVisibility(currentStepIdx));
         assertEquals(View.GONE, delegate.getNextButtonVisibility(currentStepIdx));
         assertEquals(View.VISIBLE, delegate.getFinishButtonVisibility(currentStepIdx));
         assertEquals(View.GONE, delegate.getDoneButtonVisibility(currentStepIdx));
@@ -88,7 +90,7 @@ public class NavbarVisibilityDelegateTest {
 
         NavbarVisibilityDelegate delegate = new NavbarVisibilityDelegate(totalSteps);
         assertEquals(View.GONE, delegate.getStartButtonVisibility(currentStepIdx));
-        assertEquals(View.VISIBLE, delegate.getBackButtonVisibility(currentStepIdx));
+        assertEquals(View.INVISIBLE, delegate.getBackButtonVisibility(currentStepIdx));
         assertEquals(View.VISIBLE, delegate.getNextButtonVisibility(currentStepIdx));
         assertEquals(View.GONE, delegate.getFinishButtonVisibility(currentStepIdx));
         assertEquals(View.GONE, delegate.getDoneButtonVisibility(currentStepIdx));

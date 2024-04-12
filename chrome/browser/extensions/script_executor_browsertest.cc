@@ -16,7 +16,6 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "extensions/browser/extension_api_frame_id_map.h"
 #include "extensions/browser/extension_registry.h"
@@ -122,8 +121,9 @@ IN_PROC_BROWSER_TEST_F(ScriptExecutorBrowserTest, MainWorldExecution) {
   content::RenderFrameHost* main_frame = web_contents->GetPrimaryMainFrame();
 
   constexpr char kSetFlagScript[] = "window.mainWorldFlag = 'executionFlag';";
-  // NOTE: We *need* this to happen in the main world for the test.
-  EXPECT_TRUE(content::ExecJs(main_frame, kSetFlagScript));
+  // NOTE: We use ExecuteScript() (and not EvalJs or ExecJs) because we
+  // explicitly *need* this to happen in the main world for the test.
+  EXPECT_TRUE(content::ExecuteScript(main_frame, kSetFlagScript));
 
   ScriptExecutor script_executor(web_contents);
 

@@ -10,7 +10,6 @@
 #include "chrome/browser/apps/app_service/app_icon/app_icon_factory.h"
 #include "chrome/browser/apps/app_service/app_launch_params.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
-#include "components/services/app_service/public/cpp/icon_types.h"
 #include "ui/gfx/image/image_skia.h"
 
 namespace apps {
@@ -29,8 +28,8 @@ void RemoteApps::AddApp(const ash::RemoteAppsModel::AppInfo& info) {
 
 void RemoteApps::UpdateAppIcon(const std::string& app_id) {
   auto app = std::make_unique<App>(AppType::kRemote, app_id);
-  app->icon_key =
-      IconKey(/*raw_icon_updated=*/true, IconEffects::kCrOsStandardIcon);
+  app->icon_key = std::move(
+      *icon_key_factory_.CreateIconKey(IconEffects::kCrOsStandardIcon));
   AppPublisher::Publish(std::move(app));
 }
 
@@ -44,14 +43,14 @@ AppPtr RemoteApps::CreateApp(const ash::RemoteAppsModel::AppInfo& info) {
   auto app = AppPublisher::MakeApp(AppType::kRemote, info.id, Readiness::kReady,
                                    info.name, InstallReason::kUser,
                                    apps::InstallSource::kUnknown);
-  app->icon_key = IconKey(IconEffects::kCrOsStandardIcon);
+  app->icon_key = std::move(
+      *icon_key_factory_.CreateIconKey(IconEffects::kCrOsStandardIcon));
   app->show_in_launcher = true;
   app->show_in_management = false;
   app->show_in_search = true;
   app->show_in_shelf = false;
   app->handles_intents = true;
   app->allow_uninstall = false;
-  app->allow_close = true;
   return app;
 }
 
@@ -89,8 +88,8 @@ void RemoteApps::LoadIcon(const std::string& app_id,
   IconEffects icon_effects = (icon_type == IconType::kStandard)
                                  ? IconEffects::kCrOsStandardIcon
                                  : IconEffects::kMdIconStyle;
-  ApplyIconEffects(profile_, app_id, icon_effects, size_hint_in_dip,
-                   std::move(icon), std::move(callback));
+  ApplyIconEffects(icon_effects, size_hint_in_dip, std::move(icon),
+                   std::move(callback));
 }
 
 void RemoteApps::Launch(const std::string& app_id,

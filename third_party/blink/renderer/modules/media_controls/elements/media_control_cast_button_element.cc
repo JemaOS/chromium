@@ -4,7 +4,6 @@
 
 #include "third_party/blink/renderer/modules/media_controls/elements/media_control_cast_button_element.h"
 
-#include "base/metrics/histogram_functions.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/user_metrics_action.h"
 #include "third_party/blink/public/strings/grit/blink_strings.h"
@@ -24,7 +23,7 @@ namespace blink {
 namespace {
 
 Element* ElementFromCenter(Element& element) {
-  DOMRect* client_rect = element.GetBoundingClientRect();
+  DOMRect* client_rect = element.getBoundingClientRect();
   int center_x =
       static_cast<int>((client_rect->left() + client_rect->right()) / 2);
   int center_y =
@@ -40,9 +39,9 @@ MediaControlCastButtonElement::MediaControlCastButtonElement(
     bool is_overlay_button)
     : MediaControlInputElement(media_controls),
       is_overlay_button_(is_overlay_button) {
-  SetShadowPseudoId(AtomicString(
-      is_overlay_button ? "-internal-media-controls-overlay-cast-button"
-                        : "-internal-media-controls-cast-button"));
+  SetShadowPseudoId(is_overlay_button
+                        ? "-internal-media-controls-overlay-cast-button"
+                        : "-internal-media-controls-cast-button");
   setType(input_type_names::kButton);
   UpdateDisplayType();
 }
@@ -53,10 +52,8 @@ void MediaControlCastButtonElement::TryShowOverlay() {
   SetIsWanted(true);
   if (ElementFromCenter(*this) != &MediaElement()) {
     SetIsWanted(false);
+    return;
   }
-
-  base::UmaHistogramBoolean("Media.Controls.OverlayCastButtonIsCovered",
-                            !IsWanted());
 }
 
 void MediaControlCastButtonElement::UpdateDisplayType() {

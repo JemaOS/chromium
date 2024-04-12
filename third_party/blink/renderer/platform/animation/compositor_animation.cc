@@ -11,16 +11,9 @@
 
 namespace blink {
 
-std::unique_ptr<CompositorAnimation> CompositorAnimation::Create(
-    std::optional<int> replaced_cc_animation_id) {
-  auto compositor_animation = std::make_unique<CompositorAnimation>(
-      cc::Animation::Create(replaced_cc_animation_id
-                                ? *replaced_cc_animation_id
-                                : cc::AnimationIdProvider::NextAnimationId()));
-  if (replaced_cc_animation_id) {
-    compositor_animation->CcAnimation()->set_is_replacement();
-  }
-  return compositor_animation;
+std::unique_ptr<CompositorAnimation> CompositorAnimation::Create() {
+  return std::make_unique<CompositorAnimation>(
+      cc::Animation::Create(cc::AnimationIdProvider::NextAnimationId()));
 }
 
 std::unique_ptr<CompositorAnimation>
@@ -48,11 +41,6 @@ CompositorAnimation::~CompositorAnimation() {
 
 cc::Animation* CompositorAnimation::CcAnimation() const {
   return animation_.get();
-}
-
-int CompositorAnimation::CcAnimationId() const {
-  CHECK(CcAnimation());
-  return CcAnimation()->id();
 }
 
 void CompositorAnimation::SetAnimationDelegate(
@@ -142,7 +130,7 @@ void CompositorAnimation::NotifyAnimationTakeover(
 }
 
 void CompositorAnimation::NotifyLocalTimeUpdated(
-    std::optional<base::TimeDelta> local_time) {
+    absl::optional<base::TimeDelta> local_time) {
   if (delegate_) {
     delegate_->NotifyLocalTimeUpdated(local_time);
   }

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_BACKGROUND_FETCH_BACKGROUND_FETCH_DELEGATE_FACTORY_H_
 #define CHROME_BROWSER_BACKGROUND_FETCH_BACKGROUND_FETCH_DELEGATE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class BackgroundFetchDelegateImpl;
@@ -22,12 +22,12 @@ class BackgroundFetchDelegateFactory : public ProfileKeyedServiceFactory {
       const BackgroundFetchDelegateFactory&) = delete;
 
  private:
-  friend base::NoDestructor<BackgroundFetchDelegateFactory>;
+  friend struct base::DefaultSingletonTraits<BackgroundFetchDelegateFactory>;
 
   BackgroundFetchDelegateFactory();
   ~BackgroundFetchDelegateFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

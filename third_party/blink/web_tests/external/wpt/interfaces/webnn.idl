@@ -29,19 +29,11 @@ dictionary MLContextOptions {
 interface ML {
   Promise<MLContext> createContext(optional MLContextOptions options = {});
   Promise<MLContext> createContext(GPUDevice gpuDevice);
-};
 
-typedef record<DOMString, ArrayBufferView> MLNamedArrayBufferViews;
-
-dictionary MLComputeResult {
-  MLNamedArrayBufferViews inputs;
-  MLNamedArrayBufferViews outputs;
-};
-
-[SecureContext, Exposed=(Window, DedicatedWorker)]
-interface MLContext {
-  Promise<MLComputeResult> compute(
-      MLGraph graph, MLNamedArrayBufferViews inputs, MLNamedArrayBufferViews outputs);
+  [Exposed=(DedicatedWorker)]
+  MLContext createContextSync(optional MLContextOptions options = {});
+  [Exposed=(DedicatedWorker)]
+  MLContext createContextSync(GPUDevice gpuDevice);
 };
 
 [SecureContext, Exposed=(Window, DedicatedWorker)]
@@ -52,36 +44,82 @@ enum MLInputOperandLayout {
   "nhwc"
 };
 
-enum MLOperandDataType {
+enum MLOperandType {
   "float32",
   "float16",
   "int32",
   "uint32",
-  "int64",
-  "uint64",
   "int8",
   "uint8"
 };
 
 dictionary MLOperandDescriptor {
   // The operand type.
-  required MLOperandDataType dataType;
+  required MLOperandType type;
 
-  // The dimensions field is empty for scalar operands,
-  // and non-empty for tensor operands.
-  sequence<[EnforceRange] unsigned long> dimensions = [];
+  // The dimensions field is only required for tensor operands.
+  sequence<unsigned long> dimensions;
 };
 
 [SecureContext, Exposed=(Window, DedicatedWorker)]
-interface MLOperand {
-  MLOperandDataType dataType();
-  sequence<unsigned long> shape();
-};
+interface MLOperand {};
 
 [SecureContext, Exposed=(Window, DedicatedWorker)]
 interface MLActivation {};
 
+typedef record<DOMString, ArrayBufferView> MLNamedArrayBufferViews;
+
+[SecureContext, Exposed=(Window, DedicatedWorker)]
+interface MLContext {};
+
+partial interface MLContext {
+  [Exposed=(DedicatedWorker)]
+  undefined computeSync(
+      MLGraph graph, MLNamedArrayBufferViews inputs, MLNamedArrayBufferViews outputs);
+};
+
+dictionary MLComputeResult {
+  MLNamedArrayBufferViews inputs;
+  MLNamedArrayBufferViews outputs;
+};
+
+partial interface MLContext {
+  Promise<MLComputeResult> compute(
+      MLGraph graph, MLNamedArrayBufferViews inputs, MLNamedArrayBufferViews outputs);
+};
+
+partial interface MLContext {
+  MLCommandEncoder createCommandEncoder();
+};
+
+typedef (GPUBuffer or GPUTexture) MLGPUResource;
+
+typedef record<DOMString, MLGPUResource> MLNamedGPUResources;
+
+[SecureContext, Exposed=(Window, DedicatedWorker)]
+interface MLCommandEncoder {};
+
+partial interface MLCommandEncoder {
+  undefined initializeGraph(MLGraph graph);
+};
+
+partial interface MLCommandEncoder {
+  undefined dispatch(MLGraph graph, MLNamedGPUResources inputs, MLNamedGPUResources outputs);
+};
+
+partial interface MLCommandEncoder {
+  GPUCommandBuffer finish(optional GPUCommandBufferDescriptor descriptor = {});
+};
+
 typedef record<DOMString, MLOperand> MLNamedOperands;
+
+dictionary MLBufferResourceView {
+  required GPUBuffer resource;
+  unsigned long long offset = 0;
+  unsigned long long size;
+};
+
+typedef (ArrayBufferView or MLBufferResourceView) MLBufferView;
 
 [SecureContext, Exposed=(Window, DedicatedWorker)]
 interface MLGraphBuilder {
@@ -89,33 +127,26 @@ interface MLGraphBuilder {
   constructor(MLContext context);
 
   // Create an operand for a graph input.
-  MLOperand input(DOMString name, MLOperandDescriptor descriptor);
+  MLOperand input(DOMString name, MLOperandDescriptor desc);
 
   // Create an operand for a graph constant.
-  MLOperand constant(MLOperandDescriptor descriptor, ArrayBufferView bufferView);
+  MLOperand constant(MLOperandDescriptor desc, MLBufferView bufferView);
 
   // Create a single-value operand from the specified number of the specified type.
-  MLOperand constant(double value, optional MLOperandDataType type = "float32");
+  MLOperand constant(double value, optional MLOperandType type = "float32");
 
   // Compile the graph up to the specified output operands asynchronously.
   Promise<MLGraph> build(MLNamedOperands outputs);
-};
 
-dictionary MLArgMinMaxOptions {
-  sequence<[EnforceRange] unsigned long> axes;
-  boolean keepDimensions = false;
-  boolean selectLastIndex = false;
-};
-
-partial interface MLGraphBuilder {
-  MLOperand argMin(MLOperand input, optional MLArgMinMaxOptions options = {});
-  MLOperand argMax(MLOperand input, optional MLArgMinMaxOptions options = {});
+  // Compile the graph up to the specified output operands synchronously.
+  [Exposed=(DedicatedWorker)]
+  MLGraph buildSync(MLNamedOperands outputs);
 };
 
 dictionary MLBatchNormalizationOptions {
   MLOperand scale;
   MLOperand bias;
-  [EnforceRange] unsigned long axis = 1;
+  unsigned long axis = 1;
   float epsilon = 1e-5;
   MLActivation activation;
 };
@@ -125,22 +156,18 @@ partial interface MLGraphBuilder {
                              optional MLBatchNormalizationOptions options = {});
 };
 
-partial interface MLGraphBuilder {
-  MLOperand cast(MLOperand input, MLOperandDataType type);
-};
-
 dictionary MLClampOptions {
   float minValue;
   float maxValue;
 };
 
 partial interface MLGraphBuilder {
-  MLOperand clamp(MLOperand input, optional MLClampOptions options = {});
+  MLOperand clamp(MLOperand x, optional MLClampOptions options = {});
   MLActivation clamp(optional MLClampOptions options = {});
 };
 
 partial interface MLGraphBuilder {
-  MLOperand concat(sequence<MLOperand> inputs, [EnforceRange] unsigned long axis);
+  MLOperand concat(sequence<MLOperand> inputs, unsigned long axis);
 };
 
 enum MLConv2dFilterOperandLayout {
@@ -150,11 +177,18 @@ enum MLConv2dFilterOperandLayout {
   "ihwo"
 };
 
+enum MLAutoPad {
+  "explicit",
+  "same-upper",
+  "same-lower"
+};
+
 dictionary MLConv2dOptions {
-  sequence<[EnforceRange] unsigned long> padding;
-  sequence<[EnforceRange] unsigned long> strides;
-  sequence<[EnforceRange] unsigned long> dilations;
-  [EnforceRange] unsigned long groups = 1;
+  sequence<unsigned long> padding;
+  sequence<unsigned long> strides;
+  sequence<unsigned long> dilations;
+  MLAutoPad autoPad = "explicit";
+  unsigned long groups = 1;
   MLInputOperandLayout inputLayout = "nchw";
   MLConv2dFilterOperandLayout filterLayout = "oihw";
   MLOperand bias;
@@ -172,12 +206,13 @@ enum MLConvTranspose2dFilterOperandLayout {
 };
 
 dictionary MLConvTranspose2dOptions {
-  sequence<[EnforceRange] unsigned long> padding;
-  sequence<[EnforceRange] unsigned long> strides;
-  sequence<[EnforceRange] unsigned long> dilations;
-  sequence<[EnforceRange] unsigned long> outputPadding;
-  sequence<[EnforceRange] unsigned long> outputSizes;
-  [EnforceRange] unsigned long groups = 1;
+  sequence<unsigned long> padding;
+  sequence<unsigned long> strides;
+  sequence<unsigned long> dilations;
+  sequence<unsigned long> outputPadding;
+  sequence<unsigned long> outputSizes;
+  MLAutoPad autoPad = "explicit";
+  unsigned long groups = 1;
   MLInputOperandLayout inputLayout = "nchw";
   MLConvTranspose2dFilterOperandLayout filterLayout = "iohw";
   MLOperand bias;
@@ -200,28 +235,15 @@ partial interface MLGraphBuilder {
 };
 
 partial interface MLGraphBuilder {
-  MLOperand equal(MLOperand a, MLOperand b);
-  MLOperand greater(MLOperand a, MLOperand b);
-  MLOperand greaterOrEqual(MLOperand a, MLOperand b);
-  MLOperand lesser(MLOperand a, MLOperand b);
-  MLOperand lesserOrEqual(MLOperand a, MLOperand b);
-  MLOperand not(MLOperand a);
-};
-
-partial interface MLGraphBuilder {
-  MLOperand abs(MLOperand input);
-  MLOperand ceil(MLOperand input);
-  MLOperand cos(MLOperand input);
-  MLOperand erf(MLOperand input);
-  MLOperand exp(MLOperand input);
-  MLOperand floor(MLOperand input);
-  MLOperand identity(MLOperand input);
-  MLOperand log(MLOperand input);
-  MLOperand neg(MLOperand input);
-  MLOperand reciprocal(MLOperand input);
-  MLOperand sin(MLOperand input);
-  MLOperand sqrt(MLOperand input);
-  MLOperand tan(MLOperand input);
+  MLOperand abs(MLOperand x);
+  MLOperand ceil(MLOperand x);
+  MLOperand cos(MLOperand x);
+  MLOperand exp(MLOperand x);
+  MLOperand floor(MLOperand x);
+  MLOperand log(MLOperand x);
+  MLOperand neg(MLOperand x);
+  MLOperand sin(MLOperand x);
+  MLOperand tan(MLOperand x);
 };
 
 dictionary MLEluOptions {
@@ -229,20 +251,8 @@ dictionary MLEluOptions {
 };
 
 partial interface MLGraphBuilder {
-  MLOperand elu(MLOperand input, optional MLEluOptions options = {});
+  MLOperand elu(MLOperand x, optional MLEluOptions options = {});
   MLActivation elu(optional MLEluOptions options = {});
-};
-
-partial interface MLGraphBuilder {
-  MLOperand expand(MLOperand input, sequence<[EnforceRange] unsigned long> newShape);
-};
-
-dictionary MLGatherOptions {
-  [EnforceRange] unsigned long axis = 0;
-};
-
-partial interface MLGraphBuilder {
-  MLOperand gather(MLOperand input, MLOperand indices, optional MLGatherOptions options = {});
 };
 
 dictionary MLGemmOptions {
@@ -280,11 +290,8 @@ dictionary MLGruOptions {
 };
 
 partial interface MLGraphBuilder {
-  sequence<MLOperand> gru(MLOperand input,
-                          MLOperand weight,
-                          MLOperand recurrentWeight,
-                          [EnforceRange] unsigned long steps,
-                          [EnforceRange] unsigned long hiddenSize,
+  sequence<MLOperand> gru(MLOperand input, MLOperand weight, MLOperand recurrentWeight,
+                          unsigned long steps, unsigned long hiddenSize,
                           optional MLGruOptions options = {});
 };
 
@@ -297,11 +304,8 @@ dictionary MLGruCellOptions {
 };
 
 partial interface MLGraphBuilder {
-  MLOperand gruCell(MLOperand input,
-                    MLOperand weight,
-                    MLOperand recurrentWeight,
-                    MLOperand hiddenState,
-                    [EnforceRange] unsigned long hiddenSize,
+  MLOperand gruCell(MLOperand input, MLOperand weight, MLOperand recurrentWeight,
+                    MLOperand hiddenState, unsigned long hiddenSize,
                     optional MLGruCellOptions options = {});
 };
 
@@ -311,12 +315,12 @@ dictionary MLHardSigmoidOptions {
 };
 
 partial interface MLGraphBuilder {
-  MLOperand hardSigmoid(MLOperand input, optional MLHardSigmoidOptions options = {});
+  MLOperand hardSigmoid(MLOperand x, optional MLHardSigmoidOptions options = {});
   MLActivation hardSigmoid(optional MLHardSigmoidOptions options = {});
 };
 
 partial interface MLGraphBuilder {
-  MLOperand hardSwish(MLOperand input);
+  MLOperand hardSwish(MLOperand x);
   MLActivation hardSwish();
 };
 
@@ -332,23 +336,12 @@ partial interface MLGraphBuilder {
                                 optional MLInstanceNormalizationOptions options = {});
 };
 
-dictionary MLLayerNormalizationOptions {
-  MLOperand scale;
-  MLOperand bias;
-  sequence<[EnforceRange] unsigned long> axes;
-  float epsilon = 1e-5;
-};
-
-partial interface MLGraphBuilder {
-  MLOperand layerNormalization(MLOperand input, optional MLLayerNormalizationOptions options = {});
-};
-
 dictionary MLLeakyReluOptions {
   float alpha = 0.01;
 };
 
 partial interface MLGraphBuilder {
-  MLOperand leakyRelu(MLOperand input, optional MLLeakyReluOptions options = {});
+  MLOperand leakyRelu(MLOperand x, optional MLLeakyReluOptions options = {});
   MLActivation leakyRelu(optional MLLeakyReluOptions options = {});
 };
 
@@ -358,7 +351,7 @@ dictionary MLLinearOptions {
 };
 
 partial interface MLGraphBuilder {
-  MLOperand linear(MLOperand input, optional MLLinearOptions options = {});
+  MLOperand linear(MLOperand x, optional MLLinearOptions options = {});
   MLActivation linear(optional MLLinearOptions options = {});
 };
 
@@ -380,11 +373,8 @@ dictionary MLLstmOptions {
 };
 
 partial interface MLGraphBuilder {
-  sequence<MLOperand> lstm(MLOperand input,
-                           MLOperand weight,
-                           MLOperand recurrentWeight,
-                           [EnforceRange] unsigned long steps,
-                           [EnforceRange] unsigned long hiddenSize,
+  sequence<MLOperand> lstm(MLOperand input, MLOperand weight, MLOperand recurrentWeight,
+                           unsigned long steps, unsigned long hiddenSize,
                            optional MLLstmOptions options = {});
 };
 
@@ -397,12 +387,8 @@ dictionary MLLstmCellOptions {
 };
 
 partial interface MLGraphBuilder {
-  sequence<MLOperand> lstmCell(MLOperand input,
-                               MLOperand weight,
-                               MLOperand recurrentWeight,
-                               MLOperand hiddenState,
-                               MLOperand cellState,
-                               [EnforceRange] unsigned long hiddenSize,
+  sequence<MLOperand> lstmCell(MLOperand input, MLOperand weight, MLOperand recurrentWeight,
+                               MLOperand hiddenState, MLOperand cellState, unsigned long hiddenSize,
                                optional MLLstmCellOptions options = {});
 };
 
@@ -424,8 +410,8 @@ dictionary MLPadOptions {
 
 partial interface MLGraphBuilder {
   MLOperand pad(MLOperand input,
-                sequence<[EnforceRange] unsigned long> beginningPadding,
-                sequence<[EnforceRange] unsigned long> endingPadding,
+                sequence<unsigned long> beginningPadding,
+                sequence<unsigned long> endingPadding,
                 optional MLPadOptions options = {});
 };
 
@@ -435,13 +421,14 @@ enum MLRoundingType {
 };
 
 dictionary MLPool2dOptions {
-  sequence<[EnforceRange] unsigned long> windowDimensions;
-  sequence<[EnforceRange] unsigned long> padding;
-  sequence<[EnforceRange] unsigned long> strides;
-  sequence<[EnforceRange] unsigned long> dilations;
+  sequence<unsigned long> windowDimensions;
+  sequence<unsigned long> padding;
+  sequence<unsigned long> strides;
+  sequence<unsigned long> dilations;
+  MLAutoPad autoPad = "explicit";
   MLInputOperandLayout layout = "nchw";
   MLRoundingType roundingType = "floor";
-  sequence<[EnforceRange] unsigned long> outputSizes;
+  sequence<unsigned long> outputSizes;
 };
 
 partial interface MLGraphBuilder {
@@ -451,11 +438,11 @@ partial interface MLGraphBuilder {
 };
 
 partial interface MLGraphBuilder {
-  MLOperand prelu(MLOperand input, MLOperand slope);
+  MLOperand prelu(MLOperand x, MLOperand slope);
 };
 
 dictionary MLReduceOptions {
-  sequence<[EnforceRange] unsigned long> axes;
+  sequence<unsigned long> axes = null;
   boolean keepDimensions = false;
 };
 
@@ -473,7 +460,7 @@ partial interface MLGraphBuilder {
 };
 
 partial interface MLGraphBuilder {
-  MLOperand relu(MLOperand input);
+  MLOperand relu(MLOperand x);
   MLActivation relu();
 };
 
@@ -485,8 +472,8 @@ enum MLInterpolationMode {
 dictionary MLResample2dOptions {
   MLInterpolationMode mode = "nearest-neighbor";
   sequence<float> scales;
-  sequence<[EnforceRange] unsigned long> sizes;
-  sequence<[EnforceRange] unsigned long> axes;
+  sequence<unsigned long> sizes;
+  sequence<unsigned long> axes;
 };
 
 partial interface MLGraphBuilder {
@@ -494,22 +481,25 @@ partial interface MLGraphBuilder {
 };
 
 partial interface MLGraphBuilder {
-  MLOperand reshape(MLOperand input, sequence<[EnforceRange] unsigned long> newShape);
+  MLOperand reshape(MLOperand input, sequence<unsigned long?> newShape);
 };
 
 partial interface MLGraphBuilder {
-  MLOperand sigmoid(MLOperand input);
+  MLOperand sigmoid(MLOperand x);
   MLActivation sigmoid();
 };
 
-partial interface MLGraphBuilder {
-  MLOperand slice(MLOperand input,
-                  sequence<[EnforceRange] unsigned long> starts,
-                  sequence<[EnforceRange] unsigned long> sizes);
+dictionary MLSliceOptions {
+  sequence<unsigned long> axes;
 };
 
 partial interface MLGraphBuilder {
-  MLOperand softmax(MLOperand input);
+  MLOperand slice(MLOperand input, sequence<long> starts, sequence<long> sizes,
+                optional MLSliceOptions options = {});
+};
+
+partial interface MLGraphBuilder {
+  MLOperand softmax(MLOperand x);
   MLActivation softmax();
 };
 
@@ -518,47 +508,42 @@ dictionary MLSoftplusOptions {
 };
 
 partial interface MLGraphBuilder {
-  MLOperand softplus(MLOperand input, optional MLSoftplusOptions options = {});
+  MLOperand softplus(MLOperand x, optional MLSoftplusOptions options = {});
   MLActivation softplus(optional MLSoftplusOptions options = {});
 };
 
 partial interface MLGraphBuilder {
-  MLOperand softsign(MLOperand input);
+  MLOperand softsign(MLOperand x);
   MLActivation softsign();
 };
 
 dictionary MLSplitOptions {
-  [EnforceRange] unsigned long axis = 0;
+  unsigned long axis = 0;
 };
 
 partial interface MLGraphBuilder {
   sequence<MLOperand> split(MLOperand input,
-                          ([EnforceRange] unsigned long or sequence<[EnforceRange] unsigned long>) splits,
+                          (unsigned long or sequence<unsigned long>) splits,
                           optional MLSplitOptions options = {});
 };
 
+dictionary MLSqueezeOptions {
+  sequence<unsigned long> axes;
+};
+
 partial interface MLGraphBuilder {
-  MLOperand tanh(MLOperand input);
+  MLOperand squeeze(MLOperand input, optional MLSqueezeOptions options = {});
+};
+
+partial interface MLGraphBuilder {
+  MLOperand tanh(MLOperand x);
   MLActivation tanh();
 };
 
 dictionary MLTransposeOptions {
-  sequence<[EnforceRange] unsigned long> permutation;
+  sequence<unsigned long> permutation;
 };
 
 partial interface MLGraphBuilder {
   MLOperand transpose(MLOperand input, optional MLTransposeOptions options = {});
-};
-
-dictionary MLTriangularOptions {
-  boolean upper = true;
-  [EnforceRange] long diagonal = 0;
-};
-
-partial interface MLGraphBuilder {
-  MLOperand triangular(MLOperand input, optional MLTriangularOptions options = {});
-};
-
-partial interface MLGraphBuilder {
-  MLOperand where(MLOperand condition, MLOperand input, MLOperand other);
 };

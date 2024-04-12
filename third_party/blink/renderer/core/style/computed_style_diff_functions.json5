@@ -48,7 +48,6 @@
         fields_to_diff: [
             "font",
             "white-space-collapse",
-            "text-autospace",
         ],
         methods_to_diff: [
           {
@@ -77,7 +76,7 @@
         name: "DiffNeedsFullLayoutAndPaintInvalidation",
         fields_to_diff: ["padding-top", "padding-left", "padding-right",
                 "padding-bottom", "appearance", "-webkit-line-clamp",
-                "text-overflow", "shape-margin", "order",
+                "text-overflow", "shape-margin", "order", "-webkit-highlight",
                 "text-indent", "text-align-last", "EffectiveZoom",
                 "word-break", "overflow-wrap", "-webkit-line-break",
                 "-webkit-text-security",
@@ -90,9 +89,11 @@
                 "-webkit-text-stroke-width", "line-height",
                 "-webkit-border-horizontal-spacing",
                 "-webkit-border-vertical-spacing", "TextAutosizingMultiplier",
-                "grid-template-areas", "initial-letter",
+                "ImplicitNamedGridColumnLines","ImplicitNamedGridRowLines", "NamedGridArea",
+                "initial-letter",
                 "grid-auto-rows", "grid-template-rows", "grid-template-columns",
-                "grid-auto-columns", "row-gap", "grid-auto-flow",
+                "grid-auto-columns", "row-gap", "NamedGridAreaRowCount",
+                "NamedGridAreaColumnCount", "grid-auto-flow",
                 "-webkit-box-flex", "-webkit-box-ordinal-group", "flex-basis",
                 "flex-shrink", "flex-grow", "flex-direction", "flex-wrap", "-webkit-box-align",
                 "-webkit-box-decoration-break", "-webkit-box-pack", "-webkit-box-orient",
@@ -106,8 +107,7 @@
                 "CssDominantBaseline", "text-anchor",
                 "stroke-width", "stroke-miterlimit", "stroke-linecap", "stroke-linejoin",
                 "marker-end", "marker-mid", "marker-start", "scrollbar-width", "object-view-box",
-                "position-fallback-bounds", "position-try-options", "position-try-order",
-                "position-visibility"],
+                "position-fallback"],
         methods_to_diff: [
           {
             method: "BorderLeftWidth()",
@@ -127,10 +127,6 @@
           },
           {
             method: "HasPseudoElementStyle(kPseudoIdScrollbar)",
-            field_dependencies: ["StyleType"]
-          },
-          {
-            method: "UsesStandardScrollbarStyle()",
             field_dependencies: ["StyleType"]
           },
           {
@@ -154,10 +150,6 @@
             field_dependencies: ["overflow-y"]
           },
           {
-            method: "ScrollbarWidth()",
-            field_dependencies: ["scrollbar-width"]
-          },
-          {
             method: "Clear()",
             field_dependencies: ["clear"]
           },
@@ -166,16 +158,12 @@
             field_dependencies: ["float"]
           },
           {
-            method: "Display()",
-            field_dependencies: ["Display"]
-          },
-          {
             method: "DisplayLayoutCustomName()",
             field_dependencies: ["DisplayLayoutCustomName"]
           },
           {
-            method: "IsOriginalDisplayInlineType()",
-            field_dependencies: ["IsOriginalDisplayInlineType"]
+            method: "OriginalDisplay()",
+            field_dependencies: ["OriginalDisplay"]
           },
           {
             method: "HasStroke()",
@@ -201,8 +189,8 @@
                                  "opacity"]
           },
           {
-            predicate: "a.PositionAnchorDataEquivalent(b)",
-            field_dependencies: ["position-anchor"]
+            predicate: "a.AnchorDefaultDataEquivalent(b)",
+            field_dependencies: ["anchor-default"]
           },
         ]
     },
@@ -248,11 +236,12 @@
                 "max-height", "VerticalAlignLength", "box-sizing", "align-content",
                 "align-items", "align-self", "justify-content", "justify-items",
                 "justify-self", "contain", "contain-intrinsic-width",
-                "contain-intrinsic-height", "container-type", "field-sizing",
+                "contain-intrinsic-height", "container-type",
                 "content-visibility", "aspect-ratio", "overflow-clip-margin",
-                "-internal-align-content-block", "orphans", "widows",
+                "-internal-align-content-block",
+                "-internal-align-self-block", "orphans", "widows",
                 "scrollbar-gutter", "break-after", "break-before",
-                "break-inside", "baseline-source", "text-wrap", "app-region", "reading-order-items"],
+                "break-inside", "baseline-source", "text-wrap"],
         methods_to_diff: [
           {
             method: "VerticalAlign()",
@@ -266,14 +255,6 @@
             method: "SkipsContents()",
             field_dependencies: ["content-visibility"]
           },
-          {
-            method: "ScrollStartTargetX()",
-            field_dependencies: ["scroll-start-target-x"]
-          },
-          {
-            method: "ScrollStartTargetY()",
-            field_dependencies: ["scroll-start-target-y"]
-          }
         ],
 	predicates_to_test: [
 	  {
@@ -285,8 +266,8 @@
     {
         name: "DiffNeedsPaintInvalidation",
         fields_to_diff: ["-webkit-user-modify", "user-select", "image-rendering",
-                "dynamic-range-limit", "column-rule-style", "column-rule-width",
-                "column-rule-color", "-internal-visited-column-rule-color",
+                "column-rule-style", "column-rule-width", "column-rule-color",
+                "-internal-visited-column-rule-color",
                 "-webkit-user-drag", "object-fit", "object-position",
                 "mix-blend-mode", "isolation", "Mask", "MaskBoxImage", "mask", "mask-type",
                 "stop-color", "stop-opacity", "flood-color", "flood-opacity",
@@ -357,6 +338,10 @@
             predicate: "a.StrokeDashArrayDataEquivalent(b)",
             field_dependencies: ["stroke-dasharray"]
           },
+	  {
+	    predicate: "a.AnchorScrollDataEquivalent(b)",
+	    field_dependencies: ["anchor-scroll"],
+	  },
         ]
     },
     {
@@ -368,11 +353,6 @@
             field_dependencies: ["IsStackingContextWithoutContainment"]
           },
         ]
-    },
-    {
-        name: "DiffBorderRadius",
-        fields_to_diff: ["border-top-left-radius", "border-top-right-radius",
-                         "border-bottom-left-radius", "border-bottom-right-radius"],
     },
     {
         name: "DiffTransformData",
@@ -415,11 +395,14 @@
     },
     {
         name: "UpdatePropertySpecificDifferencesFilter",
-        fields_to_diff: ["filter"],
         predicates_to_test: [
           {
             predicate: "a.ReflectionDataEquivalent(b)",
             field_dependencies: ["-webkit-box-reflect"]
+          },
+          {
+            predicate: "a.FilterDataEquivalent(b)",
+            field_dependencies: ["filter"]
           },
         ]
     },

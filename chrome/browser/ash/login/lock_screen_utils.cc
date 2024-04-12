@@ -7,7 +7,6 @@
 #include "ash/constants/ash_constants.h"
 #include "ash/constants/ash_pref_names.h"
 #include "base/containers/contains.h"
-#include "base/time/time.h"
 #include "chrome/browser/ash/login/login_pref_names.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ash/settings/cros_settings.h"
@@ -139,7 +138,7 @@ void StopEnforcingPolicyInputMethods() {
 
 void SetKeyboardSettings(const AccountId& account_id) {
   user_manager::KnownUser known_user(g_browser_process->local_state());
-  if (std::optional<bool> auto_repeat_enabled =
+  if (absl::optional<bool> auto_repeat_enabled =
           known_user.FindBoolPath(account_id, prefs::kXkbAutoRepeatEnabled);
       auto_repeat_enabled.has_value()) {
     if (!auto_repeat_enabled.value()) {
@@ -150,22 +149,15 @@ void SetKeyboardSettings(const AccountId& account_id) {
     }
   }
 
-  input_method::AutoRepeatRate rate{
-      .initial_delay = kDefaultKeyAutoRepeatDelay,
-      .repeat_interval = kDefaultKeyAutoRepeatInterval,
-  };
+  input_method::AutoRepeatRate rate;
 
-  if (auto delay =
-          known_user.FindIntPath(account_id, prefs::kXkbAutoRepeatDelay);
-      delay) {
-    rate.initial_delay = base::Milliseconds(delay.value());
-  }
+  rate.initial_delay_in_ms =
+      known_user.FindIntPath(account_id, prefs::kXkbAutoRepeatDelay)
+          .value_or(kDefaultKeyAutoRepeatDelay.InMilliseconds());
 
-  if (auto interval =
-          known_user.FindIntPath(account_id, prefs::kXkbAutoRepeatInterval);
-      interval) {
-    rate.repeat_interval = base::Milliseconds(interval.value());
-  }
+  rate.repeat_interval_in_ms =
+      known_user.FindIntPath(account_id, prefs::kXkbAutoRepeatInterval)
+          .value_or(kDefaultKeyAutoRepeatInterval.InMilliseconds());
 
   input_method::InputMethodManager::Get()
       ->GetImeKeyboard()

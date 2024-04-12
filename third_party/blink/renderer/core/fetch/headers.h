@@ -74,7 +74,7 @@ class CORE_EXPORT Headers final : public ScriptWrappable,
   // https://fetch.spec.whatwg.org/#concept-headers-remove-privileged-no-cors-request-headers
   void RemovePrivilegedNoCorsRequestHeaders();
 
-  FetchHeaderList* HeaderList() const { return header_list_.Get(); }
+  FetchHeaderList* HeaderList() const { return header_list_; }
   void Trace(Visitor*) const override;
 
  private:

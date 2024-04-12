@@ -4,14 +4,14 @@
 
 #include "chrome/browser/nearby_sharing/contacts/nearby_share_contact_downloader_impl.h"
 
+#include <algorithm>
 #include <utility>
-#include <vector>
 
 #include "base/memory/ptr_util.h"
 #include "base/metrics/histogram_functions.h"
 #include "chrome/browser/nearby_sharing/client/nearby_share_client.h"
 #include "chrome/browser/nearby_sharing/common/nearby_share_features.h"
-#include "components/cross_device/logging/logging.h"
+#include "chrome/browser/nearby_sharing/logging/logging.h"
 
 namespace {
 
@@ -38,8 +38,7 @@ void RecordContactDownloadResultMetrics(bool success,
 }
 
 void RecordContactDistributionMetrics(
-    const std::vector<nearby::sharing::proto::ContactRecord>&
-        unfiltered_contacts) {
+    const std::vector<nearbyshare::proto::ContactRecord>& unfiltered_contacts) {
   size_t num_reachable = 0;
   size_t num_unknown_type = 0;
   size_t num_google_type = 0;
@@ -49,18 +48,18 @@ void RecordContactDistributionMetrics(
       ++num_reachable;
 
     switch (contact.type()) {
-      case nearby::sharing::proto::ContactRecord::UNKNOWN:
+      case nearbyshare::proto::ContactRecord::UNKNOWN:
         ++num_unknown_type;
         break;
-      case nearby::sharing::proto::ContactRecord::GOOGLE_CONTACT:
+      case nearbyshare::proto::ContactRecord::GOOGLE_CONTACT:
         ++num_google_type;
         break;
-      case nearby::sharing::proto::ContactRecord::DEVICE_CONTACT:
+      case nearbyshare::proto::ContactRecord::DEVICE_CONTACT:
         ++num_device_type;
         break;
-      case nearby::sharing::proto::
+      case nearbyshare::proto::
           ContactRecord_Type_ContactRecord_Type_INT_MIN_SENTINEL_DO_NOT_USE_:
-      case nearby::sharing::proto::
+      case nearbyshare::proto::
           ContactRecord_Type_ContactRecord_Type_INT_MAX_SENTINEL_DO_NOT_USE_:
         NOTREACHED();
     }
@@ -135,25 +134,25 @@ NearbyShareContactDownloaderImpl::NearbyShareContactDownloaderImpl(
 NearbyShareContactDownloaderImpl::~NearbyShareContactDownloaderImpl() = default;
 
 void NearbyShareContactDownloaderImpl::OnRun() {
-  CD_LOG(VERBOSE, Feature::NS) << __func__ << ": Starting contacts download.";
+  NS_LOG(VERBOSE) << __func__ << ": Starting contacts download.";
   start_timestamp_ = base::TimeTicks::Now();
-  CallListContactPeople(/*next_page_token=*/std::nullopt);
+  CallListContactPeople(/*next_page_token=*/absl::nullopt);
 }
 
 void NearbyShareContactDownloaderImpl::CallListContactPeople(
-    const std::optional<std::string>& next_page_token) {
+    const absl::optional<std::string>& next_page_token) {
   ++current_page_number_;
-  CD_LOG(VERBOSE, Feature::NS)
-      << __func__ << ": Making ListContactPeople RPC call to fetch page number "
-      << current_page_number_
-      << " with page token: " << next_page_token.value_or("[null]");
+  NS_LOG(VERBOSE) << __func__
+                  << ": Making ListContactPeople RPC call to fetch page number "
+                  << current_page_number_
+                  << " with page token: " << next_page_token.value_or("[null]");
   timer_.Start(
       FROM_HERE, timeout_,
       base::BindOnce(
           &NearbyShareContactDownloaderImpl::OnListContactPeopleTimeout,
           base::Unretained(this)));
 
-  nearby::sharing::proto::ListContactPeopleRequest request;
+  nearbyshare::proto::ListContactPeopleRequest request;
   if (next_page_token)
     request.set_page_token(*next_page_token);
 
@@ -169,14 +168,14 @@ void NearbyShareContactDownloaderImpl::CallListContactPeople(
 }
 
 void NearbyShareContactDownloaderImpl::OnListContactPeopleSuccess(
-    const nearby::sharing::proto::ListContactPeopleResponse& response) {
+    const nearbyshare::proto::ListContactPeopleResponse& response) {
   timer_.Stop();
   contacts_.insert(contacts_.end(), response.contact_records().begin(),
                    response.contact_records().end());
-  std::optional<std::string> next_page_token =
+  absl::optional<std::string> next_page_token =
       response.next_page_token().empty()
-          ? std::nullopt
-          : std::make_optional<std::string>(response.next_page_token());
+          ? absl::nullopt
+          : absl::make_optional<std::string>(response.next_page_token());
   client_.reset();
   RecordListContactPeopleResultMetrics(ash::nearby::NearbyHttpResult::kSuccess);
 
@@ -185,8 +184,8 @@ void NearbyShareContactDownloaderImpl::OnListContactPeopleSuccess(
     return;
   }
 
-  CD_LOG(VERBOSE, Feature::NS) << __func__ << ": Download of "
-                               << contacts_.size() << " contacts succeeded.";
+  NS_LOG(VERBOSE) << __func__ << ": Download of " << contacts_.size()
+                  << " contacts succeeded.";
   RecordContactDownloadResultMetrics(/*success=*/true, current_page_number_,
                                      start_timestamp_);
   RecordContactDistributionMetrics(contacts_);
@@ -194,27 +193,32 @@ void NearbyShareContactDownloaderImpl::OnListContactPeopleSuccess(
   // Remove device contacts if the feature flag is disabled.
   if (!base::FeatureList::IsEnabled(features::kNearbySharingDeviceContacts)) {
     size_t initial_num_contacts = contacts_.size();
-    std::erase_if(
-        contacts_, [](const nearby::sharing::proto::ContactRecord& contact) {
-          return contact.type() ==
-                 nearby::sharing::proto::ContactRecord::DEVICE_CONTACT;
-        });
-    CD_LOG(VERBOSE, Feature::NS)
-        << __func__ << ": Removed " << initial_num_contacts - contacts_.size()
-        << " device contacts.";
+    contacts_.erase(
+        std::remove_if(
+            contacts_.begin(), contacts_.end(),
+            [](const nearbyshare::proto::ContactRecord& contact) {
+              return contact.type() ==
+                     nearbyshare::proto::ContactRecord::DEVICE_CONTACT;
+            }),
+        contacts_.end());
+    NS_LOG(VERBOSE) << __func__ << ": Removed "
+                    << initial_num_contacts - contacts_.size()
+                    << " device contacts.";
   }
 
   // Remove unreachable contacts.
   size_t initial_num_contacts = contacts_.size();
-  std::erase_if(contacts_,
-                [](const nearby::sharing::proto::ContactRecord& contact) {
-                  return !contact.is_reachable();
-                });
+  contacts_.erase(
+      std::remove_if(contacts_.begin(), contacts_.end(),
+                     [](const nearbyshare::proto::ContactRecord& contact) {
+                       return !contact.is_reachable();
+                     }),
+      contacts_.end());
   uint32_t num_unreachable_contacts_filtered_out =
       initial_num_contacts - contacts_.size();
-  CD_LOG(VERBOSE, Feature::NS)
-      << __func__ << ": Removed " << num_unreachable_contacts_filtered_out
-      << " unreachable contacts.";
+  NS_LOG(VERBOSE) << __func__ << ": Removed "
+                  << num_unreachable_contacts_filtered_out
+                  << " unreachable contacts.";
 
   Succeed(std::move(contacts_), num_unreachable_contacts_filtered_out);
 }
@@ -228,9 +232,8 @@ void NearbyShareContactDownloaderImpl::OnListContactPeopleFailure(
   RecordContactDownloadResultMetrics(/*success=*/false, current_page_number_,
                                      start_timestamp_);
 
-  CD_LOG(ERROR, Feature::NS)
-      << __func__ << ": Contact download RPC call failed with error " << error
-      << " fetching page number " << current_page_number_;
+  NS_LOG(ERROR) << __func__ << ": Contact download RPC call failed with error "
+                << error << " fetching page number " << current_page_number_;
   Fail();
 }
 
@@ -240,7 +243,6 @@ void NearbyShareContactDownloaderImpl::OnListContactPeopleTimeout() {
   RecordContactDownloadResultMetrics(/*success=*/false, current_page_number_,
                                      start_timestamp_);
 
-  CD_LOG(ERROR, Feature::NS)
-      << __func__ << ": Contact download RPC call timed out.";
+  NS_LOG(ERROR) << __func__ << ": Contact download RPC call timed out.";
   Fail();
 }

@@ -22,12 +22,11 @@ namespace blink {
 class ExceptionState;
 class ScriptState;
 class ProfilerInitOptions;
-class ProfilerTrace;
 
 // A web-exposed JS sampling profiler created via blink::ProfilerGroup,
 // wrapping a handle to v8::CpuProfiler. Records samples periodically from the
 // isolate until stopped.
-class CORE_EXPORT Profiler final : public EventTarget {
+class CORE_EXPORT Profiler final : public EventTargetWithInlineData {
   DEFINE_WRAPPERTYPEINFO();
   USING_PRE_FINALIZER(Profiler, DisposeAsync);
 
@@ -60,13 +59,13 @@ class CORE_EXPORT Profiler final : public EventTarget {
   const SecurityOrigin* SourceOrigin() const { return source_origin_.get(); }
   base::TimeTicks TimeOrigin() const { return time_origin_; }
 
-  // Overrides from extending EventTarget
+  // Overrides from extending EventTargetWithInlineData
   const AtomicString& InterfaceName() const override;
   ExecutionContext* GetExecutionContext() const override;
 
   DOMHighResTimeStamp sampleInterval() { return target_sample_rate_; }
   bool stopped() const { return !profiler_group_; }
-  ScriptPromiseTyped<ProfilerTrace> stop(ScriptState*);
+  ScriptPromise stop(ScriptState*);
 
   void RemovedFromProfilerGroup() { profiler_group_ = nullptr; }
 

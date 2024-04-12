@@ -12,7 +12,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace query_tiles {
@@ -29,7 +29,7 @@ class TileServiceFactory : public SimpleKeyedServiceFactory {
   TileServiceFactory& operator=(const TileServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<TileServiceFactory>;
+  friend struct base::DefaultSingletonTraits<TileServiceFactory>;
 
   TileServiceFactory();
   ~TileServiceFactory() override;

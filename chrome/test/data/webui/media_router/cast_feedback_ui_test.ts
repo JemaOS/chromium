@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {FeedbackUiBrowserProxy, FeedbackUiElement} from 'chrome://cast-feedback/cast_feedback_ui.js';
-import {FeedbackEvent, FeedbackUiBrowserProxyImpl} from 'chrome://cast-feedback/cast_feedback_ui.js';
+import {FeedbackEvent, FeedbackUiBrowserProxy, FeedbackUiBrowserProxyImpl, FeedbackUiElement} from 'chrome://cast-feedback/cast_feedback_ui.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';

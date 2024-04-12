@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {CurrentAttribution, CurrentWallpaper, DefaultImageSymbol, GooglePhotosAlbum, GooglePhotosEnablementState, GooglePhotosPhoto, kDefaultImageSymbol, OnlineImageType, WallpaperCollection, WallpaperImage, WallpaperLayout, WallpaperObserverInterface, WallpaperObserverRemote, WallpaperProviderInterface, WallpaperType} from 'chrome://personalization/js/personalization_app.js';
+import {CurrentWallpaper, DefaultImageSymbol, GooglePhotosAlbum, GooglePhotosEnablementState, GooglePhotosPhoto, kDefaultImageSymbol, OnlineImageType, WallpaperCollection, WallpaperImage, WallpaperLayout, WallpaperObserverInterface, WallpaperObserverRemote, WallpaperProviderInterface, WallpaperType} from 'chrome://personalization/js/personalization_app.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {FilePath} from 'chrome://resources/mojo/mojo/public/mojom/base/file_path.mojom-webui.js';
 import {Url} from 'chrome://resources/mojo/url/mojom/url.mojom-webui.js';
@@ -38,7 +38,6 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
       'isInTabletMode',
       'confirmPreviewWallpaper',
       'cancelPreviewWallpaper',
-      'shouldShowTimeOfDayWallpaperDialog',
     ]);
 
     /**
@@ -68,7 +67,7 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
       },
       {
         descriptionContent: '',
-        id: loadTimeData.getString('timeOfDayWallpaperCollectionId'),
+        id: 'id_3',
         name: 'time-of-day',
         previews: [
           {url: 'https://collections.googleusercontent.com/tod'},
@@ -139,12 +138,8 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
       'LocalImage1.png': {url: 'data:image/png;base64,localimage1data'},
     };
 
-    this.attribution = {
-      attribution: ['Image 0 light'],
-      key: '1',
-    };
-
     this.currentWallpaper = {
+      attribution: ['Image 0 light'],
       descriptionContent: 'test content',
       descriptionTitle: 'test title',
       key: '1',
@@ -160,23 +155,22 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
 
   private collections_: WallpaperCollection[]|null;
   private images_: WallpaperImage[]|null;
-  private googlePhotosAlbums_: GooglePhotosAlbum[]|null = [];
-  private googlePhotosAlbumsResumeToken_: string|null = null;
-  private googlePhotosSharedAlbums_: GooglePhotosAlbum[]|null = [];
-  private googlePhotosSharedAlbumsResumeToken_: string|null = null;
+  private googlePhotosAlbums_: GooglePhotosAlbum[]|undefined = [];
+  private googlePhotosAlbumsResumeToken_: string|undefined;
+  private googlePhotosSharedAlbums_: GooglePhotosAlbum[]|undefined = [];
+  private googlePhotosSharedAlbumsResumeToken_: string|undefined;
   private googlePhotosEnabled_: GooglePhotosEnablementState =
       GooglePhotosEnablementState.kEnabled;
-  private googlePhotosPhotos_: GooglePhotosPhoto[]|null = [];
-  private googlePhotosPhotosResumeToken_: string|null = null;
+  private googlePhotosPhotos_: GooglePhotosPhoto[]|undefined = [];
+  private googlePhotosPhotosResumeToken_: string|undefined;
   private googlePhotosPhotosByAlbumId_:
-      Record<string, GooglePhotosPhoto[]|null> = {};
+      Record<string, GooglePhotosPhoto[]|undefined> = {};
   private googlePhotosPhotosByAlbumIdResumeTokens_:
-      Record<string, string|null> = {};
+      Record<string, string|undefined> = {};
   localImages: FilePath[]|null;
   localImageData: Record<string|DefaultImageSymbol, Url>;
   defaultImageThumbnail:
       Url = {url: 'data:image/png;base64,default_image_thumbnail'};
-  attribution: CurrentAttribution;
   currentWallpaper: CurrentWallpaper;
   albumId: string;
   collectionId: string;
@@ -189,7 +183,6 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
   selectLocalImageResponse = true;
   updateDailyRefreshWallpaperResponse = true;
   isInTabletModeResponse = true;
-  shouldShowTimeOfDayWallpaperDialogResponse = true;
   wallpaperObserverUpdateTimeout = 0;
   wallpaperObserverRemote: WallpaperObserverInterface|null = null;
 
@@ -228,7 +221,7 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
     this.methodCalled('fetchGooglePhotosAlbums', resumeToken);
     const albums = loadTimeData.getBoolean('isGooglePhotosIntegrationEnabled') ?
         this.googlePhotosAlbums_ :
-        null;
+        undefined;
     const token = this.googlePhotosAlbumsResumeToken_;
     return Promise.resolve({response: {albums, resumeToken: token}});
   }
@@ -252,11 +245,11 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
       itemId: string, albumId: string, resumeToken: string) {
     this.methodCalled('fetchGooglePhotosPhotos', itemId, albumId, resumeToken);
     const photos = loadTimeData.getBoolean('isGooglePhotosIntegrationEnabled') ?
-        albumId ? this.googlePhotosPhotosByAlbumId_[albumId]! :
+        albumId ? this.googlePhotosPhotosByAlbumId_[albumId] :
                   this.googlePhotosPhotos_ :
-        null;
+        undefined;
     const token = albumId ?
-        this.googlePhotosPhotosByAlbumIdResumeTokens_[albumId]! :
+        this.googlePhotosPhotosByAlbumIdResumeTokens_[albumId] :
         this.googlePhotosPhotosResumeToken_;
     return Promise.resolve({response: {photos, resumeToken: token}});
   }
@@ -281,7 +274,6 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
     this.wallpaperObserverRemote = remote;
     window.setTimeout(() => {
       this.wallpaperObserverRemote!.onWallpaperChanged(this.currentWallpaper);
-      this.wallpaperObserverRemote!.onAttributionChanged(this.attribution);
     }, this.wallpaperObserverUpdateTimeout);
   }
 
@@ -348,12 +340,6 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
     this.methodCalled('cancelPreviewWallpaper');
   }
 
-  shouldShowTimeOfDayWallpaperDialog() {
-    this.methodCalled('shouldShowTimeOfDayWallpaperDialog');
-    return Promise.resolve(
-        {shouldShowDialog: this.shouldShowTimeOfDayWallpaperDialogResponse});
-  }
-
   setCollections(collections: WallpaperCollection[]) {
     this.collections_ = collections;
   }
@@ -362,21 +348,22 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
     this.collections_ = null;
   }
 
-  setGooglePhotosAlbums(googlePhotosAlbums: GooglePhotosAlbum[]|null) {
+  setGooglePhotosAlbums(googlePhotosAlbums: GooglePhotosAlbum[]|undefined) {
     this.googlePhotosAlbums_ = googlePhotosAlbums;
   }
 
-  setGooglePhotosAlbumsResumeToken(googlePhotosAlbumsResumeToken: string|null) {
+  setGooglePhotosAlbumsResumeToken(googlePhotosAlbumsResumeToken: string|
+                                   undefined) {
     this.googlePhotosAlbumsResumeToken_ = googlePhotosAlbumsResumeToken;
   }
 
   setGooglePhotosSharedAlbums(googlePhotosSharedAlbums: GooglePhotosAlbum[]|
-                              null) {
+                              undefined) {
     this.googlePhotosSharedAlbums_ = googlePhotosSharedAlbums;
   }
 
   setGooglePhotosSharedAlbumsResumeToken(googlePhotosSharedAlbumsResumeToken:
-                                             string|null) {
+                                             string|undefined) {
     this.googlePhotosSharedAlbumsResumeToken_ =
         googlePhotosSharedAlbumsResumeToken;
   }
@@ -385,21 +372,22 @@ export class TestWallpaperProvider extends TestBrowserProxy implements
     this.googlePhotosEnabled_ = googlePhotosEnabled;
   }
 
-  setGooglePhotosPhotos(googlePhotosPhotos: GooglePhotosPhoto[]|null) {
+  setGooglePhotosPhotos(googlePhotosPhotos: GooglePhotosPhoto[]|undefined) {
     this.googlePhotosPhotos_ = googlePhotosPhotos;
   }
 
-  setGooglePhotosPhotosResumeToken(googlePhotosPhotosResumeToken: string|null) {
+  setGooglePhotosPhotosResumeToken(googlePhotosPhotosResumeToken: string|
+                                   undefined) {
     this.googlePhotosPhotosResumeToken_ = googlePhotosPhotosResumeToken;
   }
 
   setGooglePhotosPhotosByAlbumId(
-      albumId: string, googlePhotosPhotos: GooglePhotosPhoto[]|null) {
+      albumId: string, googlePhotosPhotos: GooglePhotosPhoto[]|undefined) {
     this.googlePhotosPhotosByAlbumId_[albumId] = googlePhotosPhotos;
   }
 
   setGooglePhotosPhotosByAlbumIdResumeToken(
-      albumId: string, googlePhotosPhotosResumeToken: string|null) {
+      albumId: string, googlePhotosPhotosResumeToken: string|undefined) {
     this.googlePhotosPhotosByAlbumIdResumeTokens_[albumId] =
         googlePhotosPhotosResumeToken;
   }

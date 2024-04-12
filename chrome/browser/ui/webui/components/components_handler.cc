@@ -163,7 +163,8 @@ std::u16string ComponentsHandler::ServiceStatusToString(
       return l10n_util::GetStringUTF16(IDS_COMPONENTS_SVC_STATUS_UPTODATE);
     case update_client::ComponentState::kUpdateError:
       return l10n_util::GetStringUTF16(IDS_COMPONENTS_SVC_STATUS_UPDATE_ERROR);
-    case update_client::ComponentState::kPingOnly:  // Fall through.
+    case update_client::ComponentState::kUninstalled:  // Fall through.
+    case update_client::ComponentState::kRegistration:
     case update_client::ComponentState::kRun:
     case update_client::ComponentState::kLastStatus:
       return l10n_util::GetStringUTF16(IDS_COMPONENTS_UNKNOWN);
@@ -175,7 +176,7 @@ std::u16string ComponentsHandler::ServiceStatusToString(
 void ComponentsHandler::HandleCrosUrlComponentsRedirect(
     const base::Value::List& args) {
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
-  lacros_url_handling::NavigateInAsh(GURL(chrome::kChromeUIComponentsUrl));
+  lacros_url_handling::NavigateInAsh(GURL(chrome::kOsUIComponentsURL));
 #else
   // Note: This will only be called by the UI when Lacros is available.
   DCHECK(crosapi::BrowserManager::Get());

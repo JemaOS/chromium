@@ -10,9 +10,7 @@ flush();
 
 for ($i = 0; $i < 100; $i++) {
   put_chunk("$i");
-  if (ob_get_level() > 0){
-    ob_flush();
-  }
+  ob_flush();
   flush();
   usleep(1000);
 }

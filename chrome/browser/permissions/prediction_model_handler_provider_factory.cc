@@ -4,7 +4,7 @@
 
 #include "chrome/browser/permissions/prediction_model_handler_provider_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
@@ -16,8 +16,7 @@
 // static
 PredictionModelHandlerProviderFactory*
 PredictionModelHandlerProviderFactory::GetInstance() {
-  static base::NoDestructor<PredictionModelHandlerProviderFactory> instance;
-  return instance.get();
+  return base::Singleton<PredictionModelHandlerProviderFactory>::get();
 }
 
 // static
@@ -31,20 +30,14 @@ PredictionModelHandlerProviderFactory::GetForBrowserContext(
 PredictionModelHandlerProviderFactory::PredictionModelHandlerProviderFactory()
     : ProfileKeyedServiceFactory(
           "PredictionModelHandlerProvider",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(OptimizationGuideKeyedServiceFactory::GetInstance());
 }
 
 PredictionModelHandlerProviderFactory::
     ~PredictionModelHandlerProviderFactory() = default;
 
-std::unique_ptr<KeyedService>
-PredictionModelHandlerProviderFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PredictionModelHandlerProviderFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   OptimizationGuideKeyedService* optimization_guide =
@@ -52,11 +45,5 @@ PredictionModelHandlerProviderFactory::BuildServiceInstanceForBrowserContext(
 
   if (!optimization_guide)
     return nullptr;
-  return std::make_unique<permissions::PredictionModelHandlerProvider>(
-      optimization_guide);
-}
-
-bool PredictionModelHandlerProviderFactory::ServiceIsCreatedWithBrowserContext()
-    const {
-  return true;
+  return new permissions::PredictionModelHandlerProvider(optimization_guide);
 }

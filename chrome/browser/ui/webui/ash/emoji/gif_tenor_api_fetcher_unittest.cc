@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "gif_tenor_api_fetcher.h"
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -18,99 +17,32 @@
 #include "services/data_decoder/public/cpp/test_support/in_process_data_decoder.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/gfx/geometry/size.h"
 #include "url/gurl.h"
 
 namespace ash {
 
 namespace {
 
-constexpr char kFakeCategoriesResponse[] = R"json(
-  {
-    "tags": [
-      {
-        "image": "url1",
-        "name": "#awesome",
-        "path": "/v2/path1",
-        "searchterm": "awesome"
-      },
-      {
-        "image": "url2",
-        "name": "#jk",
-        "path": "/v2/path2",
-        "searchterm": "jk"
-      }
-    ]
-  }
-)json";
+constexpr char kFakeCategoriesResponse[] =
+    "{\"tags\":[{\"image\":\"url1\",\"name\":\"#awesome\",\"path\":\"/v2/"
+    "path1\","
+    "\"searchterm\":\"awesome\"}, "
+    "{\"image\":\"url2\",\"name\":\"#jk\",\"path\":\"/v2/"
+    "path2\","
+    "\"searchterm\":\"jk\"}]}";
 
-constexpr char kFakeGifsResponse[] = R"json(
-  {
-    "next": "1",
-    "results": [
-      {
-        "id": "0",
-        "content_description": "GIF0",
-        "media_formats": {
-          "gif": {
-            "dims": [
-              498,
-              339
-            ],
-            "url": "https://tenor.com/view/media.tenor.com/full_url0",
-            "preview": ""
-          },
-          "tinygif": {
-            "dims": [
-              220,
-              150
-            ],
-            "url": "https://tenor.com/view/media.tenor.com/preview_url0",
-            "preview": ""
-          },
-          "tinygifpreview": {
-            "dims": [
-              220,
-              150
-            ],
-            "url": "https://tenor.com/view/media.tenor.com/preview_image_url0",
-            "preview": ""
-          }
-        }
-      },
-      {
-        "id": "1",
-        "content_description": "GIF1",
-        "media_formats": {
-          "gif": {
-            "dims": [
-              498,
-              498
-            ],
-            "url": "https://tenor.com/view/media.tenor.com/full_url1",
-            "preview": ""
-          },
-          "tinygif": {
-            "dims": [
-              220,
-              220
-            ],
-            "url": "https://tenor.com/view/media.tenor.com/preview_url1",
-            "preview": ""
-          },
-          "tinygifpreview": {
-            "dims": [
-              220,
-              220
-            ],
-            "url": "https://tenor.com/view/media.tenor.com/preview_image_url1",
-            "preview": ""
-          }
-        }
-      }
-    ]
-  }
-)json";
+constexpr char kFakeGifsResponse[] =
+    "{\"next\":\"1\",\"results\":[{\"id\":\"0\","
+    "\"content_description\":\"GIF0\",\"media_formats\":{\"gif\":{\"dims\":"
+    "["
+    "498,339],\"url\":\"https://tenor.com/view/media.tenor.com/"
+    "full_url0\"},\"tinygif\":{\"dims\":[220,150]"
+    ",\"url\":\"https://tenor.com/view/media.tenor.com/"
+    "preview_url0\"}}},{\"id\":\"1\",\"content_description\":\"GIF1\","
+    "\"media_formats\":{\"gif\":{\"dims\":[498,498],\"url\":\"https://"
+    "tenor.com/view/media.tenor.com/"
+    "full_url1\"},\"tinygif\":{\"dims\":[220,220],\"url\":\"https://"
+    "tenor.com/view/media.tenor.com/preview_url1\"}}}]}";
 
 std::vector<emoji_picker::mojom::GifResponsePtr> GetFakeGifs() {
   std::vector<emoji_picker::mojom::GifResponsePtr> gifs;
@@ -118,16 +50,14 @@ std::vector<emoji_picker::mojom::GifResponsePtr> GetFakeGifs() {
       "0", "GIF0",
       emoji_picker::mojom::GifUrls::New(
           GURL("https://tenor.com/view/media.tenor.com/full_url0"),
-          GURL("https://tenor.com/view/media.tenor.com/preview_url0"),
-          GURL("https://tenor.com/view/media.tenor.com/preview_image_url0")),
-      gfx::Size(220, 150), gfx::Size(498, 339)));
+          GURL("https://tenor.com/view/media.tenor.com/preview_url0")),
+      gfx::Size(220, 150)));
   gifs.push_back(emoji_picker::mojom::GifResponse::New(
       "1", "GIF1",
       emoji_picker::mojom::GifUrls::New(
           GURL("https://tenor.com/view/media.tenor.com/full_url1"),
-          GURL("https://tenor.com/view/media.tenor.com/preview_url1"),
-          GURL("https://tenor.com/view/media.tenor.com/preview_image_url1")),
-      gfx::Size(220, 220), gfx::Size(498, 498)));
+          GURL("https://tenor.com/view/media.tenor.com/preview_url1")),
+      gfx::Size(220, 220)));
   return gifs;
 }
 }  // namespace
@@ -184,7 +114,7 @@ TEST_F(GifTenorApiFetcherTest, FetchCategories) {
             emoji_picker::mojom::Status::kHttpError);
   ASSERT_EQ(create_future_http_error.Get<1>(), std::vector<std::string>{});
 
-  response_.error_type = std::make_optional(FetchErrorType::kNetError);
+  response_.error_type = absl::make_optional(FetchErrorType::kNetError);
   base::test::TestFuture<emoji_picker::mojom::Status,
                          const std::vector<std::string>&>
       create_future_net_error;
@@ -220,7 +150,7 @@ TEST_F(GifTenorApiFetcherTest, FetchFeaturedGifs) {
             emoji_picker::mojom::TenorGifResponse::New(
                 "", std::vector<emoji_picker::mojom::GifResponsePtr>{}));
 
-  response_.error_type = std::make_optional(FetchErrorType::kNetError);
+  response_.error_type = absl::make_optional(FetchErrorType::kNetError);
   base::test::TestFuture<emoji_picker::mojom::Status,
                          emoji_picker::mojom::TenorGifResponsePtr>
       create_future_net_error;
@@ -258,7 +188,7 @@ TEST_F(GifTenorApiFetcherTest, FetchGifSearch) {
             emoji_picker::mojom::TenorGifResponse::New(
                 "", std::vector<emoji_picker::mojom::GifResponsePtr>{}));
 
-  response_.error_type = std::make_optional(FetchErrorType::kNetError);
+  response_.error_type = absl::make_optional(FetchErrorType::kNetError);
   base::test::TestFuture<emoji_picker::mojom::Status,
                          emoji_picker::mojom::TenorGifResponsePtr>
       create_future_net_error;
@@ -296,7 +226,7 @@ TEST_F(GifTenorApiFetcherTest, FetchGifsByIds) {
   ASSERT_EQ(create_future_http_error.Get<1>(),
             std::vector<emoji_picker::mojom::GifResponsePtr>{});
 
-  response_.error_type = std::make_optional(FetchErrorType::kNetError);
+  response_.error_type = absl::make_optional(FetchErrorType::kNetError);
   base::test::TestFuture<emoji_picker::mojom::Status,
                          std::vector<emoji_picker::mojom::GifResponsePtr>>
       create_future_net_error;

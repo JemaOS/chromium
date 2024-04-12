@@ -32,7 +32,7 @@ namespace extensions {
 ExtensionFunction::ResponseAction ContextMenusCreateFunction::Run() {
   MenuItem::Id id(browser_context()->IsOffTheRecord(),
                   MenuItem::ExtensionKey(extension_id()));
-  std::optional<api::context_menus::Create::Params> params =
+  absl::optional<api::context_menus::Create::Params> params =
       api::context_menus::Create::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
@@ -47,7 +47,7 @@ ExtensionFunction::ResponseAction ContextMenusCreateFunction::Run() {
     EXTENSION_FUNCTION_VALIDATE(args()[0].is_dict());
 
     const base::Value& properties = args()[0];
-    std::optional<int> result = properties.GetDict().FindInt(
+    absl::optional<int> result = properties.GetDict().FindInt(
         extensions::context_menus_api_helpers::kGeneratedIdKey);
     EXTENSION_FUNCTION_VALIDATE(result);
     id.uid = *result;
@@ -65,7 +65,7 @@ ExtensionFunction::ResponseAction ContextMenusCreateFunction::Run() {
 ExtensionFunction::ResponseAction ContextMenusUpdateFunction::Run() {
   MenuItem::Id item_id(browser_context()->IsOffTheRecord(),
                        MenuItem::ExtensionKey(extension_id()));
-  std::optional<api::context_menus::Update::Params> params =
+  absl::optional<api::context_menus::Update::Params> params =
       api::context_menus::Update::Params::Create(args());
 
   EXTENSION_FUNCTION_VALIDATE(params);
@@ -86,7 +86,7 @@ ExtensionFunction::ResponseAction ContextMenusUpdateFunction::Run() {
 }
 
 ExtensionFunction::ResponseAction ContextMenusRemoveFunction::Run() {
-  std::optional<api::context_menus::Remove::Params> params =
+  absl::optional<api::context_menus::Remove::Params> params =
       api::context_menus::Remove::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 

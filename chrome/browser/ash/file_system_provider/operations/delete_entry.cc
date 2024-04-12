@@ -9,7 +9,9 @@
 #include "chrome/common/extensions/api/file_system_provider.h"
 #include "chrome/common/extensions/api/file_system_provider_internal.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 DeleteEntry::DeleteEntry(RequestDispatcher* dispatcher,
                          const ProvidedFileSystemInfo& file_system_info,
@@ -21,7 +23,8 @@ DeleteEntry::DeleteEntry(RequestDispatcher* dispatcher,
       recursive_(recursive),
       callback_(std::move(callback)) {}
 
-DeleteEntry::~DeleteEntry() = default;
+DeleteEntry::~DeleteEntry() {
+}
 
 bool DeleteEntry::Execute(int request_id) {
   using extensions::api::file_system_provider::DeleteEntryRequestedOptions;
@@ -57,4 +60,6 @@ void DeleteEntry::OnError(int /* request_id */,
   std::move(callback_).Run(error);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

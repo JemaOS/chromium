@@ -19,8 +19,7 @@ TestWindowParentingClient::~TestWindowParentingClient() {
 }
 
 Window* TestWindowParentingClient::GetDefaultParent(Window* window,
-                                                    const gfx::Rect& bounds,
-                                                    const int64_t display_id) {
+                                                    const gfx::Rect& bounds) {
   return default_parent_ ? default_parent_.get() : root_window_.get();
 }
 

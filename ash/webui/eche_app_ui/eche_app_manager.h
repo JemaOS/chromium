@@ -9,7 +9,6 @@
 
 #include <memory>
 
-#include "ash/public/cpp/ash_web_view.h"
 #include "ash/webui/eche_app_ui/accessibility_provider.h"
 #include "ash/webui/eche_app_ui/apps_launch_info_provider.h"
 #include "ash/webui/eche_app_ui/eche_feature_status_provider.h"
@@ -61,7 +60,6 @@ class EcheTrayStreamStatusObserver;
 class EcheConnectionScheduler;
 class EcheStreamOrientationObserver;
 class EcheConnectionStatusHandler;
-class EcheKeyboardLayoutHandler;
 
 // Implements the core logic of the EcheApp and exposes interfaces via its
 // public API. Implemented as a KeyedService since it depends on other
@@ -76,7 +74,6 @@ class EcheAppManager : public KeyedService {
                  secure_channel::SecureChannelClient*,
                  std::unique_ptr<secure_channel::PresenceMonitorClient>
                      presence_monitor_client,
-                 std::unique_ptr<AccessibilityProviderProxy>,
                  LaunchAppHelper::LaunchEcheAppFunction,
                  LaunchAppHelper::LaunchNotificationFunction,
                  LaunchAppHelper::CloseNotificationFunction);
@@ -109,9 +106,6 @@ class EcheAppManager : public KeyedService {
   void BindConnectionStatusObserverInterface(
       mojo::PendingReceiver<mojom::ConnectionStatusObserver> receiver);
 
-  void BindKeyboardLayoutHandlerInterface(
-      mojo::PendingReceiver<mojom::KeyboardLayoutHandler> receiver);
-
   AppsAccessManager* GetAppsAccessManager();
 
   EcheConnectionStatusHandler* GetEcheConnectionStatusHandler();
@@ -122,14 +116,11 @@ class EcheAppManager : public KeyedService {
   // This trigger Eche Web to go back the previous page.
   void StreamGoBack();
 
-  // This is triggered when the app bubble appears in the UI.
-  void BubbleShown(AshWebView* view);
-
   // KeyedService:
   void Shutdown() override;
 
  private:
-  raw_ptr<phonehub::PhoneHubManager> phone_hub_manager_;
+  raw_ptr<phonehub::PhoneHubManager, ExperimentalAsh> phone_hub_manager_;
   std::unique_ptr<secure_channel::ConnectionManager> connection_manager_;
   std::unique_ptr<EcheConnectionStatusHandler> eche_connection_status_handler_;
   std::unique_ptr<EcheFeatureStatusProvider> feature_status_provider_;
@@ -155,7 +146,6 @@ class EcheAppManager : public KeyedService {
       eche_tray_stream_status_observer_;
   std::unique_ptr<EcheStreamOrientationObserver>
       eche_stream_orientation_observer_;
-  std::unique_ptr<EcheKeyboardLayoutHandler> eche_keyboard_layout_handler_;
 };
 
 }  // namespace eche_app

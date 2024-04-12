@@ -29,14 +29,17 @@ import org.chromium.content_public.browser.test.util.TestThreadUtils;
 
 import java.util.UUID;
 
-/** Tests of {@link SystemDownloadNotifier}. */
+/**
+ * Tests of {@link SystemDownloadNotifier}.
+ */
 @RunWith(BaseJUnit4ClassRunner.class)
 @Batch(Batch.PER_CLASS)
 public class SystemDownloadNotifierTest {
     private final SystemDownloadNotifier mSystemDownloadNotifier = new SystemDownloadNotifier();
     private MockDownloadNotificationService mMockDownloadNotificationService;
 
-    @Mock DownloadManagerService mDownloadManagerService;
+    @Mock
+    DownloadManagerService mDownloadManagerService;
 
     @BeforeClass
     public static void beforeClass() {
@@ -46,23 +49,19 @@ public class SystemDownloadNotifierTest {
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
-
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    DownloadManagerService.setDownloadManagerService(mDownloadManagerService);
-                    mMockDownloadNotificationService = new MockDownloadNotificationService();
-                    mSystemDownloadNotifier.setDownloadNotificationService(
-                            mMockDownloadNotificationService);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            DownloadManagerService.setDownloadManagerService(mDownloadManagerService);
+            mMockDownloadNotificationService = new MockDownloadNotificationService();
+            mSystemDownloadNotifier.setDownloadNotificationService(
+                    mMockDownloadNotificationService);
+        });
     }
 
     @After
     public void tearDown() {
         ThrottlingNotificationScheduler.getInstance().clear();
         TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    DownloadManagerService.setDownloadManagerService(null);
-                });
+                () -> { DownloadManagerService.setDownloadManagerService(null); });
     }
 
     private DownloadInfo getDownloadInfo(ContentId id) {
@@ -78,23 +77,22 @@ public class SystemDownloadNotifierTest {
     }
 
     private void waitForNotifications(int numberOfNotifications) {
-        CriteriaHelper.pollUiThread(
-                () -> {
-                    Criteria.checkThat(
-                            mMockDownloadNotificationService.getNumberOfNotifications(),
-                            Matchers.is(numberOfNotifications));
-                });
+        CriteriaHelper.pollUiThread(() -> {
+            Criteria.checkThat(mMockDownloadNotificationService.getNumberOfNotifications(),
+                    Matchers.is(numberOfNotifications));
+        });
     }
 
-    /** Tests that a single notification update will be immediately processed */
+    /**
+     * Tests that a single notification update will be immediately processed
+     */
     @Test
     @SmallTest
     @Feature({"Download"})
     public void testSingleNotification() {
         mSystemDownloadNotifier.notifyDownloadProgress(
-                getDownloadInfo(new ContentId("download", "1")),
-                100,
-                /* canDownloadWhileMetered= */ true);
+                getDownloadInfo(new ContentId("download", "1")), 100,
+                true /* canDownloadWhileMetered */);
         Assert.assertEquals(1, mMockDownloadNotificationService.getNumberOfNotifications());
     }
 
@@ -108,17 +106,16 @@ public class SystemDownloadNotifierTest {
     public void testConsecutiveProgressNotifications() {
         DownloadInfo info = getDownloadInfo(new ContentId("download", "1"));
         mSystemDownloadNotifier.notifyDownloadProgress(
-                info, 100, /* canDownloadWhileMetered= */ true);
+                info, 100, true /* canDownloadWhileMetered */);
         // Create 2 more progress updates on the same download and one of them will be skipped.
         mSystemDownloadNotifier.notifyDownloadProgress(
-                info, 100, /* canDownloadWhileMetered= */ true);
+                info, 100, true /* canDownloadWhileMetered */);
         mSystemDownloadNotifier.notifyDownloadProgress(
-                info, 100, /* canDownloadWhileMetered= */ true);
+                info, 100, true /* canDownloadWhileMetered */);
         // Create a progress update from a new download, this should create a new notification.
         mSystemDownloadNotifier.notifyDownloadProgress(
-                getDownloadInfo(new ContentId("download", "2")),
-                100,
-                /* canDownloadWhileMetered= */ true);
+                getDownloadInfo(new ContentId("download", "2")), 100,
+                true /* canDownloadWhileMetered */);
         Assert.assertEquals(1, mMockDownloadNotificationService.getNumberOfNotifications());
         int notificationId = mMockDownloadNotificationService.getLastNotificationId();
         waitForNotifications(2);
@@ -129,21 +126,21 @@ public class SystemDownloadNotifierTest {
                 notificationId, mMockDownloadNotificationService.getLastNotificationId());
     }
 
-    /** Tests that higher priority notification will be handled before progress notification. */
+    /**
+     * Tests that higher priority notification will be handled before progress notification.
+     */
     @Test
     @SmallTest
     @Feature({"Download"})
     public void testNotificationWithDifferentPriorities() {
         DownloadInfo info = getDownloadInfo(new ContentId("download", "1"));
         mSystemDownloadNotifier.notifyDownloadProgress(
-                info, 100, /* canDownloadWhileMetered= */ true);
+                info, 100, true /* canDownloadWhileMetered */);
         mSystemDownloadNotifier.notifyDownloadProgress(
-                info, 100, /* canDownloadWhileMetered= */ true);
+                info, 100, true /* canDownloadWhileMetered */);
         mSystemDownloadNotifier.notifyDownloadSuccessful(
-                getDownloadInfo(new ContentId("download", "2")),
-                1,
-                /* canResolve= */ true,
-                /* isSupportedMimeType= */ true);
+                getDownloadInfo(new ContentId("download", "2")), 1, true /* canResolve */,
+                true /* isSupportedMimeType */);
         Assert.assertEquals(1, mMockDownloadNotificationService.getNumberOfNotifications());
         int notificationId = mMockDownloadNotificationService.getLastNotificationId();
 

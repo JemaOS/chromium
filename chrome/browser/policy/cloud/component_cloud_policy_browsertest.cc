@@ -209,7 +209,7 @@ class ComponentCloudPolicyTest : public extensions::ExtensionBrowserTest {
         PolicyBuilder::GetFakeAccountIdForTesting());
     policy_manager->Connect(
         g_browser_process->local_state(),
-        std::make_unique<CloudPolicyClient>(
+        UserPolicySigninServiceBase::CreateCloudPolicyClient(
             connector->device_management_service(),
             g_browser_process->shared_url_loader_factory()));
 
@@ -237,7 +237,8 @@ class ComponentCloudPolicyTest : public extensions::ExtensionBrowserTest {
         IdentityManagerFactory::GetForProfile(browser()->profile())
             ->GetPrimaryAccountMutator();
     primary_account_mutator->ClearPrimaryAccount(
-        signin_metrics::ProfileSignout::kTest);
+        signin_metrics::ProfileSignout::kTest,
+        signin_metrics::SignoutDelete::kIgnoreMetric);
   }
 #endif
 
@@ -246,8 +247,7 @@ class ComponentCloudPolicyTest : public extensions::ExtensionBrowserTest {
         browser()->profile()->GetProfilePolicyConnector();
     PolicyService* policy_service = profile_connector->policy_service();
     base::RunLoop run_loop;
-    policy_service->RefreshPolicies(run_loop.QuitClosure(),
-                                    PolicyFetchReason::kTest);
+    policy_service->RefreshPolicies(run_loop.QuitClosure());
     run_loop.Run();
   }
 

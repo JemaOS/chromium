@@ -13,8 +13,6 @@
 #include "chrome/browser/extensions/blocklist.h"
 #include "chrome/browser/extensions/chrome_app_sorting.h"
 #include "chrome/browser/extensions/crx_installer.h"
-#include "chrome/browser/extensions/cws_info_service.h"
-#include "chrome/browser/extensions/cws_info_service_factory.h"
 #include "chrome/browser/extensions/extension_management.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/shared_module_service.h"
@@ -45,49 +43,6 @@ using content::BrowserThread;
 
 namespace extensions {
 
-namespace {
-
-// A fake CWSInfoService for tests that utilize the test extension system and
-// service infrastructure but do not depend on the actual functionality of the
-// service.
-class FakeCWSInfoService : public CWSInfoService {
- public:
-  explicit FakeCWSInfoService(Profile* profile) {}
-
-  explicit FakeCWSInfoService(const CWSInfoService&) = delete;
-  FakeCWSInfoService& operator=(const CWSInfoService&) = delete;
-  ~FakeCWSInfoService() override = default;
-
-  // CWSInfoServiceInterface:
-  std::optional<bool> IsLiveInCWS(const Extension& extension) const override;
-  std::optional<CWSInfo> GetCWSInfo(const Extension& extension) const override;
-  void CheckAndMaybeFetchInfo() override {}
-  void AddObserver(Observer* observer) override {}
-  void RemoveObserver(Observer* observer) override {}
-
-  // KeyedService:
-  // Ensure that the keyed service shutdown is a no-op.
-  void Shutdown() override {}
-};
-
-std::optional<bool> FakeCWSInfoService::IsLiveInCWS(
-    const Extension& extension) const {
-  return true;
-}
-
-std::optional<CWSInfoServiceInterface::CWSInfo> FakeCWSInfoService::GetCWSInfo(
-    const Extension& extension) const {
-  return CWSInfoServiceInterface::CWSInfo();
-}
-
-std::unique_ptr<KeyedService> BuildFakeCWSService(
-    content::BrowserContext* context) {
-  return std::make_unique<FakeCWSInfoService>(
-      Profile::FromBrowserContext(context));
-}
-
-}  // namespace
-
 TestExtensionSystem::TestExtensionSystem(Profile* profile)
     : profile_(profile),
       store_factory_(new value_store::TestValueStoreFactory()),
@@ -96,7 +51,14 @@ TestExtensionSystem::TestExtensionSystem(Profile* profile)
                                   StateStore::BackendType::RULES,
                                   false)),
       quota_service_(new QuotaService()),
-      app_sorting_(new ChromeAppSorting(profile_)) {}
+      app_sorting_(new ChromeAppSorting(profile_)) {
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  if (!user_manager::UserManager::IsInitialized()) {
+    scoped_user_manager_ = std::make_unique<user_manager::ScopedUserManager>(
+        std::make_unique<user_manager::FakeUserManager>());
+  }
+#endif
+}
 
 TestExtensionSystem::~TestExtensionSystem() = default;
 
@@ -122,19 +84,6 @@ ExtensionService* TestExtensionSystem::CreateExtensionService(
     const base::FilePath& unpacked_install_directory,
     bool autoupdate_enabled,
     bool extensions_enabled) {
-  if (CWSInfoService::Get(profile_) == nullptr) {
-    Profile* profile = profile_;
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-    // TODO(crbug.com/1414225): Refactor this convenience upstream to test
-    // callers. Possibly just BuiltInAppTest.BuildGuestMode.
-    if (profile_->IsGuestSession()) {
-      profile = profile_->GetOriginalProfile();
-    }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-    // Associate a dummy CWSInfoService with this profile if necessary.
-    CWSInfoServiceFactory::GetInstance()->SetTestingFactory(
-        profile, base::BindRepeating(&BuildFakeCWSService));
-  }
   management_policy_ = std::make_unique<ManagementPolicy>();
   management_policy_->RegisterProviders(
       ExtensionManagementFactory::GetForBrowserContext(profile_)
@@ -231,7 +180,7 @@ void TestExtensionSystem::InstallUpdate(
 
 void TestExtensionSystem::PerformActionBasedOnOmahaAttributes(
     const std::string& extension_id,
-    const base::Value::Dict& attributes) {}
+    const base::Value& attributes) {}
 
 bool TestExtensionSystem::FinishDelayedInstallationIfReady(
     const std::string& extension_id,

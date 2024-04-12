@@ -16,14 +16,13 @@ import android.hardware.biometrics.BiometricManager;
 import android.hardware.biometrics.BiometricPrompt;
 import android.os.Build;
 import android.os.CancellationSignal;
+import android.support.annotation.NonNull;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.ContextUtils;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
 
@@ -40,12 +39,9 @@ class DeviceAuthenticatorBridge {
         mContext = ContextUtils.getApplicationContext();
         mNativeDeviceAuthenticator = nativeDeviceAuthenticator;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            BiometricPrompt.Builder promptBuilder =
-                    new BiometricPrompt.Builder(mContext)
-                            .setTitle(
-                                    mContext.getResources()
-                                            .getString(
-                                                    R.string.password_filling_reauth_prompt_title));
+            BiometricPrompt.Builder promptBuilder = new BiometricPrompt.Builder(mContext).setTitle(
+                    mContext.getResources().getString(
+                            R.string.password_filling_reauth_prompt_title));
             promptBuilder.setDeviceCredentialAllowed(true);
             promptBuilder.setConfirmationRequired(false);
             mBiometricPrompt = promptBuilder.build();
@@ -66,9 +62,8 @@ class DeviceAuthenticatorBridge {
         BiometricManager biometricManager = mContext.getSystemService(BiometricManager.class);
         switch (biometricManager.canAuthenticate()) {
             case BIOMETRIC_SUCCESS:
-                return hasScreenLockSetUp()
-                        ? BiometricsAvailability.AVAILABLE
-                        : BiometricsAvailability.AVAILABLE_NO_FALLBACK;
+                return hasScreenLockSetUp() ? BiometricsAvailability.AVAILABLE
+                                            : BiometricsAvailability.AVAILABLE_NO_FALLBACK;
             case BIOMETRIC_ERROR_NONE_ENROLLED:
                 return BiometricsAvailability.NOT_ENROLLED;
             case BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED:
@@ -93,7 +88,8 @@ class DeviceAuthenticatorBridge {
             return false;
         }
 
-        @BiometricsAvailability int availability = canAuthenticateWithBiometric();
+        @BiometricsAvailability
+        int availability = canAuthenticateWithBiometric();
         return (availability == BiometricsAvailability.AVAILABLE) || hasScreenLockSetUp();
     }
 
@@ -106,9 +102,7 @@ class DeviceAuthenticatorBridge {
         mCancellationSignal = new CancellationSignal();
         Executor callbackExecutor = (r) -> PostTask.postTask(TaskTraits.UI_DEFAULT, r);
 
-        mBiometricPrompt.authenticate(
-                mCancellationSignal,
-                callbackExecutor,
+        mBiometricPrompt.authenticate(mCancellationSignal, callbackExecutor,
                 new BiometricPrompt.AuthenticationCallback() {
                     @Override
                     public void onAuthenticationError(
@@ -144,8 +138,8 @@ class DeviceAuthenticatorBridge {
     void onAuthenticationCompleted(@DeviceAuthUIResult int result) {
         mCancellationSignal = null;
         if (mNativeDeviceAuthenticator != 0) {
-            DeviceAuthenticatorBridgeJni.get()
-                    .onAuthenticationCompleted(mNativeDeviceAuthenticator, result);
+            DeviceAuthenticatorBridgeJni.get().onAuthenticationCompleted(
+                    mNativeDeviceAuthenticator, result);
         }
     }
 

@@ -56,29 +56,28 @@ UserPrivateTokenKeyPermissionsManagerServiceFactory::GetForBrowserContext(
 // static
 UserPrivateTokenKeyPermissionsManagerServiceFactory*
 UserPrivateTokenKeyPermissionsManagerServiceFactory::GetInstance() {
-  static base::NoDestructor<UserPrivateTokenKeyPermissionsManagerServiceFactory>
-      instance;
-  return instance.get();
+  return base::Singleton<
+      UserPrivateTokenKeyPermissionsManagerServiceFactory>::get();
 }
 
 UserPrivateTokenKeyPermissionsManagerServiceFactory::
     UserPrivateTokenKeyPermissionsManagerServiceFactory()
-    : ProfileKeyedServiceFactory("UserPrivateTokenKeyPermissionsManagerService",
-                                 ProfileSelections::Builder()
-                                     .WithGuest(ProfileSelection::kOriginalOnly)
-                                     .WithAshInternals(ProfileSelection::kNone)
-                                     .Build()) {
+    : ProfileKeyedServiceFactory(
+          "UserPrivateTokenKeyPermissionsManagerService",
+          ProfileSelections::Builder()
+              .WithGuest(ProfileSelections::kRegularProfileDefault)
+              .WithAshInternals(ProfileSelection::kNone)
+              .Build()) {
   DependsOn(PlatformKeysServiceFactory::GetInstance());
 }
 
 UserPrivateTokenKeyPermissionsManagerServiceFactory::
     ~UserPrivateTokenKeyPermissionsManagerServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-UserPrivateTokenKeyPermissionsManagerServiceFactory::
-    BuildServiceInstanceForBrowserContext(
-        content::BrowserContext* context) const {
-  return std::make_unique<UserPrivateTokenKeyPermissionsManagerService>(
+KeyedService*
+UserPrivateTokenKeyPermissionsManagerServiceFactory::BuildServiceInstanceFor(
+    content::BrowserContext* context) const {
+  return new UserPrivateTokenKeyPermissionsManagerService(
       Profile::FromBrowserContext(context));
 }
 

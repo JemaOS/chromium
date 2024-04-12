@@ -8,7 +8,6 @@
 
 #include "third_party/blink/public/mojom/payments/payment_request.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
-#include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_address_errors.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_payment_currency_amount.h"
@@ -117,7 +116,7 @@ const HeapVector<Member<PaymentMethodData>>& PaymentRequestEvent::methodData()
 }
 
 const ScriptValue PaymentRequestEvent::total(ScriptState* script_state) const {
-  return ScriptValue::From(script_state, total_.Get());
+  return ScriptValue::From(script_state, total_);
 }
 
 const HeapVector<Member<PaymentDetailsModifier>>&
@@ -133,22 +132,20 @@ const ScriptValue PaymentRequestEvent::paymentOptions(
     ScriptState* script_state) const {
   if (!payment_options_)
     return ScriptValue::CreateNull(script_state->GetIsolate());
-  return ScriptValue::From(script_state, payment_options_.Get());
+  return ScriptValue::From(script_state, payment_options_);
 }
 
-std::optional<HeapVector<Member<PaymentShippingOption>>>
+absl::optional<HeapVector<Member<PaymentShippingOption>>>
 PaymentRequestEvent::shippingOptions() const {
   if (shipping_options_.empty())
-    return std::nullopt;
+    return absl::nullopt;
   return shipping_options_;
 }
 
-ScriptPromiseTyped<IDLNullable<ServiceWorkerWindowClient>>
-PaymentRequestEvent::openWindow(ScriptState* script_state, const String& url) {
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLNullable<ServiceWorkerWindowClient>>>(
-      script_state);
-  auto promise = resolver->Promise();
+ScriptPromise PaymentRequestEvent::openWindow(ScriptState* script_state,
+                                              const String& url) {
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
   ExecutionContext* context = ExecutionContext::From(script_state);
 
   if (!isTrusted()) {
@@ -167,7 +164,7 @@ PaymentRequestEvent::openWindow(ScriptState* script_state, const String& url) {
 
   if (!context->GetSecurityOrigin()->IsSameOriginWith(
           SecurityOrigin::Create(parsed_url_to_open).get())) {
-    resolver->Resolve(nullptr);
+    resolver->Resolve(v8::Null(script_state->GetIsolate()));
     return promise;
   }
 
@@ -188,23 +185,23 @@ PaymentRequestEvent::openWindow(ScriptState* script_state, const String& url) {
   return promise;
 }
 
-ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>
-PaymentRequestEvent::changePaymentMethod(ScriptState* script_state,
-                                         const String& method_name,
-                                         const ScriptValue& method_details,
-                                         ExceptionState& exception_state) {
+ScriptPromise PaymentRequestEvent::changePaymentMethod(
+    ScriptState* script_state,
+    const String& method_name,
+    const ScriptValue& method_details,
+    ExceptionState& exception_state) {
   if (change_payment_request_details_resolver_) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Waiting for response to the previous "
                                       "payment request details change");
-    return ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>();
+    return ScriptPromise();
   }
 
   if (!payment_handler_host_.is_bound()) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "No corresponding PaymentRequest object found");
-    return ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>();
+    return ScriptPromise();
   }
 
   auto method_data = payments::mojom::blink::PaymentHandlerMethodData::New();
@@ -214,7 +211,7 @@ PaymentRequestEvent::changePaymentMethod(ScriptState* script_state,
         script_state->GetIsolate(), method_details,
         method_data->stringified_data, exception_state);
     if (exception_state.HadException())
-      return ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>();
+      return ScriptPromise();
   }
 
   method_data->method_name = method_name;
@@ -222,72 +219,69 @@ PaymentRequestEvent::changePaymentMethod(ScriptState* script_state,
       std::move(method_data),
       WTF::BindOnce(&PaymentRequestEvent::OnChangePaymentRequestDetailsResponse,
                     WrapWeakPersistent(this)));
-  change_payment_request_details_resolver_ = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLNullable<PaymentRequestDetailsUpdate>>>(
-      script_state);
+  change_payment_request_details_resolver_ =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
   return change_payment_request_details_resolver_->Promise();
 }
 
-ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>
-PaymentRequestEvent::changeShippingAddress(ScriptState* script_state,
-                                           AddressInit* shipping_address,
-                                           ExceptionState& exception_state) {
+ScriptPromise PaymentRequestEvent::changeShippingAddress(
+    ScriptState* script_state,
+    AddressInit* shipping_address,
+    ExceptionState& exception_state) {
   if (change_payment_request_details_resolver_) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Waiting for response to the previous "
                                       "payment request details change");
-    return ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>();
+    return ScriptPromise();
   }
 
   if (!payment_handler_host_.is_bound()) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "No corresponding PaymentRequest object found");
-    return ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>();
+    return ScriptPromise();
   }
   if (!shipping_address) {
     exception_state.ThrowDOMException(DOMExceptionCode::kSyntaxError,
                                       "Shipping address cannot be null");
-    return ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>();
+    return ScriptPromise();
   }
 
   auto shipping_address_ptr =
       payments::mojom::blink::PaymentAddress::From(shipping_address);
   String shipping_address_error;
-  if (!PaymentsValidators::IsValidShippingAddress(script_state->GetIsolate(),
-                                                  shipping_address_ptr,
+  if (!PaymentsValidators::IsValidShippingAddress(shipping_address_ptr,
                                                   &shipping_address_error)) {
     exception_state.ThrowDOMException(DOMExceptionCode::kSyntaxError,
                                       shipping_address_error);
-    return ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>();
+    return ScriptPromise();
   }
 
   payment_handler_host_->ChangeShippingAddress(
       std::move(shipping_address_ptr),
       WTF::BindOnce(&PaymentRequestEvent::OnChangePaymentRequestDetailsResponse,
                     WrapWeakPersistent(this)));
-  change_payment_request_details_resolver_ = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLNullable<PaymentRequestDetailsUpdate>>>(
-      script_state);
+  change_payment_request_details_resolver_ =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
   return change_payment_request_details_resolver_->Promise();
 }
 
-ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>
-PaymentRequestEvent::changeShippingOption(ScriptState* script_state,
-                                          const String& shipping_option_id,
-                                          ExceptionState& exception_state) {
+ScriptPromise PaymentRequestEvent::changeShippingOption(
+    ScriptState* script_state,
+    const String& shipping_option_id,
+    ExceptionState& exception_state) {
   if (change_payment_request_details_resolver_) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "Waiting for response to the previous payment request details change");
-    return ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>();
+    return ScriptPromise();
   }
 
   if (!payment_handler_host_.is_bound()) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "No corresponding PaymentRequest object found");
-    return ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>();
+    return ScriptPromise();
   }
 
   bool shipping_option_id_is_valid = false;
@@ -300,16 +294,15 @@ PaymentRequestEvent::changeShippingOption(ScriptState* script_state,
   if (!shipping_option_id_is_valid) {
     exception_state.ThrowDOMException(DOMExceptionCode::kSyntaxError,
                                       "Shipping option identifier is invalid");
-    return ScriptPromiseTyped<IDLNullable<PaymentRequestDetailsUpdate>>();
+    return ScriptPromise();
   }
 
   payment_handler_host_->ChangeShippingOption(
       shipping_option_id,
       WTF::BindOnce(&PaymentRequestEvent::OnChangePaymentRequestDetailsResponse,
                     WrapWeakPersistent(this)));
-  change_payment_request_details_resolver_ = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLNullable<PaymentRequestDetailsUpdate>>>(
-      script_state);
+  change_payment_request_details_resolver_ =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
   return change_payment_request_details_resolver_->Promise();
 }
 
@@ -361,10 +354,9 @@ void PaymentRequestEvent::OnChangePaymentRequestDetailsResponse(
   ScriptState* script_state =
       change_payment_request_details_resolver_->GetScriptState();
   ScriptState::Scope scope(script_state);
-  ExceptionState exception_state(
-      script_state->GetIsolate(),
-      ExceptionContextType::kConstructorOperationInvoke,
-      "PaymentDetailsModifier");
+  ExceptionState exception_state(script_state->GetIsolate(),
+                                 ExceptionState::kConstructionContext,
+                                 "PaymentDetailsModifier");
 
   if (response->modifiers) {
     HeapVector<Member<PaymentDetailsModifier>> modifiers;

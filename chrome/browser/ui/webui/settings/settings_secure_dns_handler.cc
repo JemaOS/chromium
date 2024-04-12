@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/webui/settings/settings_secure_dns_handler.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/check.h"
@@ -27,6 +26,7 @@
 #include "net/dns/public/doh_provider_entry.h"
 #include "net/dns/public/secure_dns_mode.h"
 #include "net/dns/public/util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace secure_dns = chrome_browser_net::secure_dns;
@@ -49,7 +49,7 @@ base::Value::Dict CreateSecureDnsSettingDict() {
   dict.Set("mode", SecureDnsConfig::ModeToString(config.mode()));
   dict.Set("config", config.doh_servers().ToString());
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  std::optional<std::string> doh_with_identifiers_servers_for_display =
+  absl::optional<std::string> doh_with_identifiers_servers_for_display =
       SystemNetworkContextManager::GetStubResolverConfigReader()
           ->GetDohWithIdentifiersDisplayServers();
   dict.Set("dohWithIdentifiersActive",
@@ -85,6 +85,12 @@ void SecureDnsHandler::RegisterMessages() {
   web_ui()->RegisterMessageCallback(
       "probeConfig", base::BindRepeating(&SecureDnsHandler::HandleProbeConfig,
                                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
+      "recordUserDropdownInteraction",
+      base::BindRepeating(
+          &SecureDnsHandler::HandleRecordUserDropdownInteraction,
+          base::Unretained(this)));
 }
 
 void SecureDnsHandler::OnJavascriptAllowed() {
@@ -104,7 +110,12 @@ void SecureDnsHandler::OnJavascriptAllowed() {
           base::Unretained(this)));
 #if BUILDFLAG(IS_CHROMEOS)
   pref_registrar_.Add(
-      prefs::kDnsOverHttpsEffectiveTemplatesChromeOS,
+      prefs::kDnsOverHttpsTemplatesWithIdentifiers,
+      base::BindRepeating(
+          &SecureDnsHandler::SendSecureDnsSettingUpdatesToJavascript,
+          base::Unretained(this)));
+  pref_registrar_.Add(
+      prefs::kDnsOverHttpsSalt,
       base::BindRepeating(
           &SecureDnsHandler::SendSecureDnsSettingUpdatesToJavascript,
           base::Unretained(this)));
@@ -117,7 +128,15 @@ void SecureDnsHandler::OnJavascriptDisallowed() {
 
 base::Value::List SecureDnsHandler::GetSecureDnsResolverList() {
   base::Value::List resolvers;
-  for (const net::DohProviderEntry* entry : providers_) {
+
+  // Add a custom option to the front of the list
+  base::Value::Dict custom;
+  custom.Set("name", l10n_util::GetStringUTF8(IDS_SETTINGS_CUSTOM));
+  custom.Set("value", std::string());  // Empty value means custom.
+  custom.Set("policy", std::string());
+  resolvers.Append(std::move(custom));
+
+  for (const auto* entry : providers_) {
     net::DnsOverHttpsConfig doh_config({entry->doh_server_config});
     base::Value::Dict dict;
     dict.Set("name", entry->ui_name);
@@ -126,7 +145,9 @@ base::Value::List SecureDnsHandler::GetSecureDnsResolverList() {
     resolvers.Append(std::move(dict));
   }
 
-  base::RandomShuffle(resolvers.begin(), resolvers.end());
+  // Randomize the order of the resolvers, but keep custom in first place.
+  base::RandomShuffle(std::next(resolvers.begin()), resolvers.end());
+
   return resolvers;
 }
 
@@ -194,13 +215,22 @@ void SecureDnsHandler::HandleProbeConfig(const base::Value::List& args) {
   probe_callback_id_ = args[0].GetString();
   const std::string& doh_config = args[1].GetString();
   DCHECK(!runner_);
-  std::optional<net::DnsOverHttpsConfig> parsed =
+  absl::optional<net::DnsOverHttpsConfig> parsed =
       net::DnsOverHttpsConfig::FromString(doh_config);
   DCHECK(parsed.has_value());  // `doh_config` must be valid.
   runner_ =
       secure_dns::MakeProbeRunner(std::move(*parsed), network_context_getter_);
   runner_->RunProbe(base::BindOnce(&SecureDnsHandler::OnProbeComplete,
                                    base::Unretained(this)));
+}
+
+void SecureDnsHandler::HandleRecordUserDropdownInteraction(
+    const base::Value::List& args) {
+  CHECK_EQ(2U, args.size());
+  const std::string& old_provider = args[0].GetString();
+  const std::string& new_provider = args[1].GetString();
+
+  secure_dns::UpdateDropdownHistograms(providers_, old_provider, new_provider);
 }
 
 void SecureDnsHandler::OnProbeComplete() {

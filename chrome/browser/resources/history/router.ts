@@ -7,17 +7,15 @@ import 'chrome://resources/polymer/v3_0/iron-location/iron-query-params.js';
 
 import {Debouncer, microTask, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {QueryState} from './externs.js';
+import {QueryState} from './externs.js';
 import {getTemplate} from './router.html.js';
 
 // All valid pages.
-// TODO(crbug.com/1473855): Change this to an enum and use that type for holding
-//  these values for better type check when `loadTimeData` is no longer needed.
-export const Page = {
-  HISTORY: 'history',
-  HISTORY_CLUSTERS: 'grouped',
-  SYNCED_TABS: 'syncedTabs',
-};
+export enum Page {
+  HISTORY = 'history',
+  HISTORY_CLUSTERS = 'journeys',
+  SYNCED_TABS = 'syncedTabs',
+}
 
 // The ids of pages with corresponding tabs in the order of their tab indices.
 export const TABBED_PAGES = [Page.HISTORY, Page.HISTORY_CLUSTERS];
@@ -33,9 +31,6 @@ export class HistoryRouterElement extends PolymerElement {
 
   static get properties() {
     return {
-      lastSelectedTab: {
-        type: Number,
-      },
       selectedPage: {
         type: String,
         notify: true,
@@ -64,7 +59,6 @@ export class HistoryRouterElement extends PolymerElement {
     return ['onUrlChanged_(path_, queryParams_)'];
   }
 
-  lastSelectedTab: number;
   selectedPage: string;
   queryState: QueryState;
   private parsing_: boolean = false;
@@ -126,9 +120,7 @@ export class HistoryRouterElement extends PolymerElement {
     this.parsing_ = true;
     const changes: {search: string} = {search: ''};
     const sections = this.path_.substr(1).split('/');
-    const page = sections[0] ||
-        (window.location.search ? 'history' :
-                                  TABBED_PAGES[this.lastSelectedTab]);
+    const page = sections[0] || Page.HISTORY;
 
     changes.search = this.queryParams_.q || '';
 

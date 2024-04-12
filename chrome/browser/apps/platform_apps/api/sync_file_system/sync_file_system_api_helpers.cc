@@ -107,12 +107,12 @@ ConflictResolutionPolicyToExtensionEnum(
   return sync_file_system::ConflictResolutionPolicy::kNone;
 }
 
-std::optional<base::Value::Dict> CreateDictionaryValueForFileSystemEntry(
+absl::optional<base::Value::Dict> CreateDictionaryValueForFileSystemEntry(
     const storage::FileSystemURL& url,
     ::sync_file_system::SyncFileType file_type) {
   if (!url.is_valid() ||
       file_type == ::sync_file_system::SYNC_FILE_TYPE_UNKNOWN)
-    return std::nullopt;
+    return absl::nullopt;
 
   std::string file_path =
       base::FilePath(storage::VirtualPath::GetNormalizedFilePath(url.path()))

@@ -6,8 +6,6 @@
 
 #include <array>
 #include <memory>
-#include <optional>
-#include <string_view>
 
 #include "base/files/file_path.h"
 #include "base/json/json_reader.h"
@@ -31,17 +29,14 @@
 #include "components/autofill/core/browser/autofill_test_utils.h"
 #include "components/autofill/core/browser/data_model/autofill_profile.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
-#include "components/browsing_data/core/browsing_data_policies_utils.h"
+#include "components/browsing_data/core/features.h"
 #include "components/browsing_data/core/pref_names.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
-#include "components/content_settings/core/common/content_settings_types.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/keyed_service/core/service_access_type.h"
 #include "components/prefs/testing_pref_service.h"
-#include "components/signin/public/base/signin_pref_names.h"
 #include "components/sync/base/pref_names.h"
-#include "components/sync/service/sync_prefs.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browsing_data_filter_builder.h"
 #include "content/public/browser/browsing_data_remover.h"
@@ -52,7 +47,6 @@
 #include "content/public/common/content_paths.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/browsing_data_remover_test_util.h"
 #include "content/public/test/download_test_observer.h"
 #include "net/dns/mock_host_resolver.h"
@@ -60,7 +54,7 @@
 #include "storage/browser/quota/special_storage_policy.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/public/common/features.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -77,17 +71,6 @@ namespace {
 
 enum class BrowserType { Default, Incognito };
 
-// The precondition required to delete browsing data.
-enum class BrowsingDataDeletionCondition {
-  SyncDisabled,
-  BrowserSigninDisabled
-};
-
-struct FeatureConditions {
-  BrowsingDataDeletionCondition data_deletion_condition;
-  BrowserType browser_type;
-};
-
 constexpr std::array<const char*, 7> kSiteDataTypes{
     "Cookie", "LocalStorage",  "SessionStorage", "IndexedDb",
     "WebSql", "ServiceWorker", "CacheStorage"};
@@ -95,38 +78,22 @@ constexpr std::array<const char*, 7> kSiteDataTypes{
 }  // namespace
 
 class ChromeBrowsingDataLifetimeManagerTest
-    : public BrowsingDataRemoverBrowserTestBase,
-      public testing::WithParamInterface<FeatureConditions> {
+    : public BrowsingDataRemoverBrowserTestBase {
  protected:
   ChromeBrowsingDataLifetimeManagerTest() {
-    std::vector<base::test::FeatureRef> features{
-        // WebSQL is disabled by default as of M119 (crbug/695592).
-        // Enable feature in tests during deprecation trial and enterprise
-        // policy support.
-        blink::features::kWebSQLAccess};
-    InitFeatureLists(std::move(features), {});
+    InitFeatureList(
+        {browsing_data::features::kEnableBrowsingDataLifetimeManager});
   }
 
   ~ChromeBrowsingDataLifetimeManagerTest() override = default;
 
   void SetUpOnMainThread() override {
     BrowsingDataRemoverBrowserTestBase::SetUpOnMainThread();
-    if (GetParam().data_deletion_condition ==
-        BrowsingDataDeletionCondition::SyncDisabled) {
-      GetProfile()->GetPrefs()->Set(syncer::prefs::internal::kSyncManaged,
-                                    base::Value(true));
-    } else if (GetParam().data_deletion_condition ==
-               BrowsingDataDeletionCondition::BrowserSigninDisabled) {
-#if BUILDFLAG(IS_ANDROID)
-      GetProfile()->GetPrefs()->Set(prefs::kSigninAllowed, base::Value(false));
-#else
-      GetProfile()->GetPrefs()->Set(prefs::kSigninAllowedOnNextStartup,
-                                    base::Value(false));
-#endif  // BUILDFLAG(IS_ANDROID)
-    }
+    GetProfile()->GetPrefs()->Set(syncer::prefs::kSyncManaged,
+                                  base::Value(true));
   }
 
-  void ApplyBrowsingDataLifetimeDeletion(std::string_view pref) {
+  void ApplyBrowsingDataLifetimeDeletion(base::StringPiece pref) {
     auto* browsing_data_lifetime_manager =
         ChromeBrowsingDataLifetimeManagerFactory::GetForProfile(GetProfile());
     browsing_data_lifetime_manager->SetEndTimeForTesting(base::Time::Max());
@@ -160,7 +127,8 @@ class ChromeBrowsingDataLifetimeManagerTest
 };
 
 class ChromeBrowsingDataLifetimeManagerScheduledRemovalTest
-    : public ChromeBrowsingDataLifetimeManagerTest {
+    : public ChromeBrowsingDataLifetimeManagerTest,
+      public testing::WithParamInterface<BrowserType> {
  protected:
   ChromeBrowsingDataLifetimeManagerScheduledRemovalTest() = default;
   ~ChromeBrowsingDataLifetimeManagerScheduledRemovalTest() override = default;
@@ -168,10 +136,11 @@ class ChromeBrowsingDataLifetimeManagerScheduledRemovalTest
   void SetUpOnMainThread() override {
     ChromeBrowsingDataLifetimeManagerTest::SetUpOnMainThread();
 #if !BUILDFLAG(IS_ANDROID)
-    if (GetParam().browser_type == BrowserType::Incognito) {
+    if (GetParam() == BrowserType::Incognito)
       UseIncognitoBrowser();
-    }
 #endif
+    GetProfile()->GetPrefs()->Set(syncer::prefs::kSyncManaged,
+                                  base::Value(true));
   }
 };
 
@@ -246,9 +215,8 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerScheduledRemovalTest,
 }
 #endif
 
-// Failing crbug.com/1456542.
 IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerScheduledRemovalTest,
-                       DISABLED_History) {
+                       History) {
   // No history saved in incognito mode.
   if (IsIncognito())
     return;
@@ -277,8 +245,9 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerScheduledRemovalTest,
 
   ApplyBrowsingDataLifetimeDeletion(kPref);
 
-  for (const auto& host_setting :
-       map->GetSettingsForOneType(ContentSettingsType::COOKIES)) {
+  ContentSettingsForOneType host_settings;
+  map->GetSettingsForOneType(ContentSettingsType::COOKIES, &host_settings);
+  for (const auto& host_setting : host_settings) {
     if (host_setting.source == "webui_allowlist")
       continue;
     EXPECT_EQ(ContentSettingsPattern::Wildcard(), host_setting.primary_pattern);
@@ -457,7 +426,7 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerScheduledRemovalTest,
 
   EXPECT_EQ(BrowserList::GetInstance()->size(), 2u);
   content::WebContents* new_tab = nullptr;
-  for (Browser* b : *BrowserList::GetInstance()) {
+  for (auto* b : *BrowserList::GetInstance()) {
     if (b != browser())
       new_tab = b->tab_strip_model()->GetActiveWebContents();
   }
@@ -486,24 +455,16 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerScheduledRemovalTest,
 }
 
 // Disabled because "autofill::AddTestProfile" times out when sync is disabled.
-// TODO(crbug.com/1441381): Re-enable this test
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_Autofill DISABLED_Autofill
-#else
-#define MAYBE_Autofill Autofill
-#endif
 IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerScheduledRemovalTest,
-                       MAYBE_Autofill) {
+                       Autofill) {
   // No autofill data saved in incognito mode.
   if (IsIncognito())
     return;
   static constexpr char kPref[] =
       R"([{"time_to_live_in_hours": 1, "data_types":["autofill"]}])";
 
-  autofill::AutofillProfile profile(
-      "01234567-89ab-cdef-fedc-ba9876543210",
-      autofill::AutofillProfile::Source::kLocalOrSyncable,
-      AddressCountryCode("US"));
+  autofill::AutofillProfile profile("01234567-89ab-cdef-fedc-ba9876543210",
+                                    autofill::test::kEmptyOrigin);
   autofill::test::SetProfileInfo(
       &profile, "Marion", "Mitchell", "Morrison", "johnwayne@me.xyz", "Fox",
       "123 Zoo St.", "unit 5", "Hollywood", "CA", "91601", "US", "12345678910");
@@ -520,7 +481,11 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerScheduledRemovalTest,
 }
 #endif
 
-#if !BUILDFLAG(IS_ANDROID)
+INSTANTIATE_TEST_SUITE_P(All,
+                         ChromeBrowsingDataLifetimeManagerScheduledRemovalTest,
+                         ::testing::Values(BrowserType::Default,
+                                           BrowserType::Incognito));
+
 class ChromeBrowsingDataLifetimeManagerShutdownTest
     : public ChromeBrowsingDataLifetimeManagerTest {
  protected:
@@ -548,11 +513,11 @@ class ChromeBrowsingDataLifetimeManagerShutdownTest
   }
 };
 
-IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerShutdownTest,
+IN_PROC_BROWSER_TEST_F(ChromeBrowsingDataLifetimeManagerShutdownTest,
                        PRE_PRE_BrowserShutdown) {
   // browsing_history
   history_service()->AddPage(GURL("https://www.website.com"),
-                             base::Time::FromSecondsSinceUnixEpoch(1000),
+                             base::Time::FromDoubleT(1000),
                              history::VisitSource::SOURCE_BROWSED);
   VerifyHistorySize(1u);
 
@@ -566,9 +531,10 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerShutdownTest,
                                      ContentSettingsType::COOKIES,
                                      CONTENT_SETTING_BLOCK);
 
+  ContentSettingsForOneType host_settings;
   bool has_pref_setting = false;
-  for (const auto& host_setting :
-       map->GetSettingsForOneType(ContentSettingsType::COOKIES)) {
+  map->GetSettingsForOneType(ContentSettingsType::COOKIES, &host_settings);
+  for (const auto& host_setting : host_settings) {
     if (host_setting.source == "webui_allowlist")
       continue;
     if (host_setting.source == "preference") {
@@ -588,7 +554,7 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerShutdownTest,
   base::RunLoop().RunUntilIdle();
 }
 
-IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerShutdownTest,
+IN_PROC_BROWSER_TEST_F(ChromeBrowsingDataLifetimeManagerShutdownTest,
                        PRE_BrowserShutdown) {
   // browsing_history
   VerifyHistorySize(1u);
@@ -598,9 +564,10 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerShutdownTest,
 
   // site_settings
   auto* map = HostContentSettingsMapFactory::GetForProfile(GetProfile());
+  ContentSettingsForOneType host_settings;
   bool has_pref_setting = false;
-  for (const auto& host_setting :
-       map->GetSettingsForOneType(ContentSettingsType::COOKIES)) {
+  map->GetSettingsForOneType(ContentSettingsType::COOKIES, &host_settings);
+  for (const auto& host_setting : host_settings) {
     if (host_setting.source == "webui_allowlist")
       continue;
     if (host_setting.source == "preference") {
@@ -623,7 +590,7 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerShutdownTest,
   base::RunLoop().RunUntilIdle();
 }
 
-IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerShutdownTest,
+IN_PROC_BROWSER_TEST_F(ChromeBrowsingDataLifetimeManagerShutdownTest,
                        BrowserShutdown) {
   // browsing_history
   VerifyHistorySize(0u);
@@ -634,45 +601,12 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowsingDataLifetimeManagerShutdownTest,
   // site_settings
   auto* map = HostContentSettingsMapFactory::GetForProfile(GetProfile());
 
-  for (const auto& host_setting :
-       map->GetSettingsForOneType(ContentSettingsType::COOKIES)) {
+  ContentSettingsForOneType host_settings;
+  map->GetSettingsForOneType(ContentSettingsType::COOKIES, &host_settings);
+  for (const auto& host_setting : host_settings) {
     if (host_setting.source == "webui_allowlist")
       continue;
     EXPECT_EQ(ContentSettingsPattern::Wildcard(), host_setting.primary_pattern);
     EXPECT_EQ(CONTENT_SETTING_ALLOW, host_setting.GetContentSetting());
   }
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    All,
-    ChromeBrowsingDataLifetimeManagerShutdownTest,
-    ::testing::ValuesIn(std::vector<FeatureConditions> {
-      {BrowsingDataDeletionCondition::SyncDisabled, BrowserType::Incognito},
-          {BrowsingDataDeletionCondition::SyncDisabled, BrowserType::Default},
-#if !BUILDFLAG(IS_CHROMEOS)
-          {BrowsingDataDeletionCondition::BrowserSigninDisabled,
-           BrowserType::Incognito},
-      {
-        BrowsingDataDeletionCondition::BrowserSigninDisabled,
-            BrowserType::Default
-      }
-#endif  // !BUILDFLAG(IS_CHROMEOS)
-    }));
-#endif  // !BUILDFLAG(IS_ANDROID)
-
-// Browser signin can only be tested on desktop after restart.
-INSTANTIATE_TEST_SUITE_P(
-    All,
-    ChromeBrowsingDataLifetimeManagerScheduledRemovalTest,
-    ::testing::ValuesIn(std::vector<FeatureConditions> {
-      {BrowsingDataDeletionCondition::SyncDisabled, BrowserType::Incognito},
-          {BrowsingDataDeletionCondition::SyncDisabled, BrowserType::Default},
-#if BUILDFLAG(IS_ANDROID)
-          {BrowsingDataDeletionCondition::BrowserSigninDisabled,
-           BrowserType::Incognito},
-      {
-        BrowsingDataDeletionCondition::BrowserSigninDisabled,
-            BrowserType::Default
-      }
-#endif  // BUILDFLAG(IS_ANDROID)
-    }));

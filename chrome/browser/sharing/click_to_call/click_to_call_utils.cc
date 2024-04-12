@@ -4,7 +4,7 @@
 
 #include "chrome/browser/sharing/click_to_call/click_to_call_utils.h"
 
-#include <optional>
+#include <cctype>
 
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
@@ -18,7 +18,7 @@
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_context.h"
-#include "third_party/abseil-cpp/absl/strings/ascii.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/re2/src/re2/re2.h"
 #include "url/url_constants.h"
 #include "url/url_util.h"
@@ -56,14 +56,14 @@ bool IsClickToCallEnabled(content::BrowserContext* browser_context) {
 }
 
 // Returns the first possible phone number in |selection_text| given the
-// |regex_variant| to be used or std::nullopt if the regex did not match.
-std::optional<std::string> ExtractPhoneNumber(
+// |regex_variant| to be used or absl::nullopt if the regex did not match.
+absl::optional<std::string> ExtractPhoneNumber(
     const std::string& selection_text) {
   std::string parsed_number;
 
   const re2::RE2& regex = GetPhoneNumberRegex();
   if (!re2::RE2::PartialMatch(selection_text, regex, &parsed_number))
-    return std::nullopt;
+    return absl::nullopt;
 
   return base::UTF16ToUTF8(
       base::TrimWhitespace(base::UTF8ToUTF16(parsed_number), base::TRIM_ALL));
@@ -73,10 +73,11 @@ std::optional<std::string> ExtractPhoneNumber(
 std::string GetUnescapedURLContent(const GURL& url) {
   std::string content_string(url.GetContent());
   url::RawCanonOutputT<char16_t> unescaped_content;
-  url::DecodeURLEscapeSequences(content_string,
+  url::DecodeURLEscapeSequences(content_string.data(), content_string.size(),
                                 url::DecodeURLMode::kUTF8OrIsomorphic,
                                 &unescaped_content);
-  return base::UTF16ToUTF8(unescaped_content.view());
+  return base::UTF16ToUTF8(
+      std::u16string(unescaped_content.data(), unescaped_content.length()));
 }
 
 }  // namespace
@@ -87,23 +88,23 @@ bool ShouldOfferClickToCallForURL(content::BrowserContext* browser_context,
          IsUrlSafeForClickToCall(url) && IsClickToCallEnabled(browser_context);
 }
 
-std::optional<std::string> ExtractPhoneNumberForClickToCall(
+absl::optional<std::string> ExtractPhoneNumberForClickToCall(
     content::BrowserContext* browser_context,
     const std::string& selection_text) {
   DCHECK(!selection_text.empty());
 
   if (selection_text.size() > kSelectionTextMaxLength)
-    return std::nullopt;
+    return absl::nullopt;
 
   // See https://en.cppreference.com/w/cpp/string/byte/isdigit for why this uses
   // unsigned char.
   int digits = base::ranges::count_if(
-      selection_text, [](unsigned char c) { return absl::ascii_isdigit(c); });
+      selection_text, [](unsigned char c) { return std::isdigit(c); });
   if (digits > kSelectionTextMaxDigits)
-    return std::nullopt;
+    return absl::nullopt;
 
   if (!IsClickToCallEnabled(browser_context))
-    return std::nullopt;
+    return absl::nullopt;
 
   return ExtractPhoneNumber(selection_text);
 }

@@ -5,7 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_MEDIASTREAM_APPLY_CONSTRAINTS_REQUEST_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_MEDIASTREAM_APPLY_CONSTRAINTS_REQUEST_H_
 
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/modules/mediastream/media_constraints.h"
 #include "third_party/blink/renderer/modules/mediastream/media_stream_track.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
@@ -14,12 +13,14 @@
 
 namespace blink {
 
+class ScriptPromiseResolver;
+
 class MODULES_EXPORT ApplyConstraintsRequest final
     : public GarbageCollected<ApplyConstraintsRequest> {
  public:
   ApplyConstraintsRequest(MediaStreamTrack*,
                           const MediaConstraints&,
-                          ScriptPromiseResolverTyped<IDLUndefined>*);
+                          ScriptPromiseResolver*);
 
   MediaStreamComponent* Track() const;
   MediaConstraints Constraints() const;
@@ -32,7 +33,7 @@ class MODULES_EXPORT ApplyConstraintsRequest final
  private:
   Member<MediaStreamTrack> track_;
   MediaConstraints constraints_;
-  Member<ScriptPromiseResolverTyped<IDLUndefined>> resolver_;
+  Member<ScriptPromiseResolver> resolver_;
 };
 
 }  // namespace blink

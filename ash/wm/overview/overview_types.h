@@ -85,13 +85,7 @@ enum class OverviewEnterExitType {
   // windows are minimized). This will minimize windows on exit if needed, so
   // that we do not need to add a delayed observer to handle minimizing the
   // windows after overview exit animations are finished.
-  kFadeOutExit,
-  // Allows for a smooth transition to and from overview mode. When this type
-  // is used, overview mode will be entered immediately. However, the windows
-  // will stay in their current position/state. As the user scrolls up and down
-  // on the trackpad, each window will be put in an "in-between" state, between
-  // their current and final state, according to the scroll offset.
-  kContinuousAnimationEnterOnScrollUpdate,
+  kFadeOutExit
 };
 
 // Overview items have certain properties if their aspect ratio exceeds a

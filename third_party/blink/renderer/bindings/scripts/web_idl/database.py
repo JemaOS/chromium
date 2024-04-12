@@ -26,7 +26,6 @@ class DatabaseBody(object):
     """
 
     class Kind(object):
-        ASYNC_ITERATOR = 'async iterator'
         CALLBACK_FUNCTION = 'callback function'
         CALLBACK_INTERFACE = 'callback interface'
         DICTIONARY = 'dictionary'
@@ -35,12 +34,10 @@ class DatabaseBody(object):
         INTERFACE_MIXIN = 'interface mixin'
         NAMESPACE = 'namespace'
         OBSERVABLE_ARRAY = 'observable array'
-        SYNC_ITERATOR = 'sync iterator'
         TYPEDEF = 'typedef'
         UNION = 'union'
 
         _ALL_ENTRIES = (
-            ASYNC_ITERATOR,
             CALLBACK_FUNCTION,
             CALLBACK_INTERFACE,
             DICTIONARY,
@@ -49,7 +46,6 @@ class DatabaseBody(object):
             INTERFACE_MIXIN,
             NAMESPACE,
             OBSERVABLE_ARRAY,
-            SYNC_ITERATOR,
             TYPEDEF,
             UNION,
         )
@@ -115,11 +111,6 @@ class Database(object):
         return self._impl.find_by_identifier(identifier)
 
     @property
-    def async_iterators(self):
-        """Returns all async iterators."""
-        return self._view_by_kind(Database._Kind.ASYNC_ITERATOR)
-
-    @property
     def callback_functions(self):
         """Returns all callback functions."""
         return self._view_by_kind(Database._Kind.CALLBACK_FUNCTION)
@@ -162,11 +153,6 @@ class Database(object):
     def observable_arrays(self):
         """Returns all observable arrays."""
         return self._view_by_kind(Database._Kind.OBSERVABLE_ARRAY)
-
-    @property
-    def sync_iterators(self):
-        """Returns all sync iterators."""
-        return self._view_by_kind(Database._Kind.SYNC_ITERATOR)
 
     @property
     def typedefs(self):

@@ -19,13 +19,14 @@ std::unique_ptr<CanvasResourceProvider> CreateProvider(
   const cc::PaintFlags::FilterQuality filter_quality =
       cc::PaintFlags::FilterQuality::kLow;
   if (context_provider) {
-    const uint32_t usage_flags =
+    uint32_t usage_flags =
         context_provider->ContextProvider()
             ->SharedImageInterface()
             ->UsageForMailbox(source_image->GetMailboxHolder().mailbox);
     auto resource_provider = CanvasResourceProvider::CreateSharedImageProvider(
         info, filter_quality, CanvasResourceProvider::ShouldInitialize::kNo,
-        context_provider, RasterMode::kGPU, usage_flags);
+        context_provider, RasterMode::kGPU, source_image->IsOriginTopLeft(),
+        usage_flags);
     if (resource_provider)
       return resource_provider;
 
@@ -40,7 +41,7 @@ std::unique_ptr<CanvasResourceProvider> CreateProvider(
 }  // anonymous namespace
 
 scoped_refptr<StaticBitmapImage> GetImageWithAlphaDisposition(
-    FlushReason reason,
+    CanvasResourceProvider::FlushReason reason,
     scoped_refptr<StaticBitmapImage>&& image,
     const AlphaDisposition alpha_disposition) {
   if (!image)
@@ -76,8 +77,8 @@ scoped_refptr<StaticBitmapImage> GetImageWithAlphaDisposition(
 
     cc::PaintFlags paint;
     paint.setBlendMode(SkBlendMode::kSrc);
-    resource_provider->Canvas().drawImage(paint_image, 0, 0,
-                                          SkSamplingOptions(), &paint);
+    resource_provider->Canvas()->drawImage(paint_image, 0, 0,
+                                           SkSamplingOptions(), &paint);
     return resource_provider->Snapshot(reason,
                                        image->CurrentFrameOrientation());
   }

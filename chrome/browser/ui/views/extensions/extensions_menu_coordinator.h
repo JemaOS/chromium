@@ -14,7 +14,6 @@ class ExtensionsContainer;
 
 namespace views {
 class BubbleDialogDelegate;
-class Widget;
 }
 
 // Handles the lifetime and showing/hidden state of the extensions menu bubble.

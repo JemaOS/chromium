@@ -11,8 +11,6 @@ namespace content {
 class WebContents;
 }
 
-class Profile;
-
 namespace password_manager_launcher {
 
 // Opens the password settings page.
@@ -25,7 +23,7 @@ void ShowPasswordSettings(content::WebContents* web_contents,
 // This returns false if UPM isn't available for the current user, but the
 // Play Services password manager will be shown anyway when passkeys are
 // present.
-bool CanManagePasswordsWhenPasskeysPresent(Profile* profile);
+bool CanManagePasswordsWhenPasskeysPresent();
 
 // Test override to prevent CanManagePasswordsWhenPasskeysPresent from invoking
 // JNI.

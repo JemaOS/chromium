@@ -5,7 +5,6 @@
 #include "ash/assistant/util/deep_link_util.h"
 
 #include <map>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -15,6 +14,7 @@
 #include "base/test/gtest_util.h"
 #include "base/timer/timer.h"
 #include "chromeos/ash/services/assistant/public/cpp/assistant_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace ash {
@@ -72,17 +72,17 @@ TEST_F(DeepLinkUtilTest, CreateAlarmTimerDeeplink) {
       CreateAlarmTimerDeepLink(AlarmTimerAction::kAddTimeToTimer, "1",
                                base::Minutes(1))
           .value());
-  ASSERT_EQ(
-      "googleassistant://alarm-timer?action=pauseTimer&id=1",
-      CreateAlarmTimerDeepLink(AlarmTimerAction::kPauseTimer, "1", std::nullopt)
-          .value());
+  ASSERT_EQ("googleassistant://alarm-timer?action=pauseTimer&id=1",
+            CreateAlarmTimerDeepLink(AlarmTimerAction::kPauseTimer, "1",
+                                     absl::nullopt)
+                .value());
   ASSERT_EQ("googleassistant://alarm-timer?action=removeAlarmOrTimer&id=1",
             CreateAlarmTimerDeepLink(AlarmTimerAction::kRemoveAlarmOrTimer, "1",
-                                     std::nullopt)
+                                     absl::nullopt)
                 .value());
   ASSERT_EQ("googleassistant://alarm-timer?action=resumeTimer&id=1",
             CreateAlarmTimerDeepLink(AlarmTimerAction::kResumeTimer, "1",
-                                     std::nullopt)
+                                     absl::nullopt)
                 .value());
 
   // For invalid deeplink params, we will hit DCHECK since this API isn't meant
@@ -90,34 +90,34 @@ TEST_F(DeepLinkUtilTest, CreateAlarmTimerDeeplink) {
 #if DCHECK_IS_ON()
 #define INVALID_DEEP_LINK(call) ASSERT_DCHECK_DEATH(call)
 #else
-#define INVALID_DEEP_LINK(call) ASSERT_EQ(std::nullopt, call)
+#define INVALID_DEEP_LINK(call) ASSERT_EQ(absl::nullopt, call)
 #endif
 
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(AlarmTimerAction::kAddTimeToTimer,
-                                             "1", std::nullopt));
+                                             "1", absl::nullopt));
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(AlarmTimerAction::kAddTimeToTimer,
-                                             std::nullopt, base::Minutes(1)));
+                                             absl::nullopt, base::Minutes(1)));
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(AlarmTimerAction::kAddTimeToTimer,
-                                             std::nullopt, std::nullopt));
+                                             absl::nullopt, absl::nullopt));
 
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(AlarmTimerAction::kPauseTimer,
-                                             std::nullopt, std::nullopt));
+                                             absl::nullopt, absl::nullopt));
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(AlarmTimerAction::kPauseTimer,
-                                             std::nullopt, base::Minutes(1)));
+                                             absl::nullopt, base::Minutes(1)));
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(AlarmTimerAction::kPauseTimer, "1",
                                              base::Minutes(1)));
 
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(
-      AlarmTimerAction::kRemoveAlarmOrTimer, std::nullopt, std::nullopt));
+      AlarmTimerAction::kRemoveAlarmOrTimer, absl::nullopt, absl::nullopt));
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(
-      AlarmTimerAction::kRemoveAlarmOrTimer, std::nullopt, base::Minutes(1)));
+      AlarmTimerAction::kRemoveAlarmOrTimer, absl::nullopt, base::Minutes(1)));
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(
       AlarmTimerAction::kRemoveAlarmOrTimer, "1", base::Minutes(1)));
 
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(AlarmTimerAction::kResumeTimer,
-                                             std::nullopt, std::nullopt));
+                                             absl::nullopt, absl::nullopt));
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(AlarmTimerAction::kResumeTimer,
-                                             std::nullopt, base::Minutes(1)));
+                                             absl::nullopt, base::Minutes(1)));
   INVALID_DEEP_LINK(CreateAlarmTimerDeepLink(AlarmTimerAction::kResumeTimer,
                                              "1", base::Minutes(1)));
 #undef INVALID_DEEP_LINK
@@ -185,7 +185,7 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParam) {
   };
 
   auto AssertDeepLinkParamEq = [&params](
-                                   const std::optional<std::string>& expected,
+                                   const absl::optional<std::string>& expected,
                                    DeepLinkParam param) {
     ASSERT_EQ(expected, GetDeepLinkParam(params, param));
   };
@@ -212,30 +212,30 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParam) {
 
   // Case: Deep link parameters absent.
   params.clear();
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kAction);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kCategory);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kDurationMs);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kEid);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kEntryPoint);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kHref);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kId);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kIndex);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kPage);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kQuery);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kQuerySource);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kRelaunch);
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kVeId);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kAction);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kCategory);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kDurationMs);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kEid);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kEntryPoint);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kHref);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kId);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kIndex);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kPage);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kQuery);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kQuerySource);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kRelaunch);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kVeId);
 }
 
 TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsAlarmTimerAction) {
   std::map<std::string, std::string> params;
 
   auto AssertDeepLinkParamEq =
-      [&params](const std::optional<AlarmTimerAction>& expected) {
+      [&params](const absl::optional<AlarmTimerAction>& expected) {
         ASSERT_EQ(expected, GetDeepLinkParamAsAlarmTimerAction(params));
       };
 
-  AssertDeepLinkParamEq(std::nullopt);
+  AssertDeepLinkParamEq(absl::nullopt);
 
   // Case: Deep link parameter present, well formed.
   params["action"] = "addTimeToTimer";
@@ -249,17 +249,17 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsAlarmTimerAction) {
 
   // Case: Deep link parameter present, non AlarmTimerAction value.
   params["action"] = "true";
-  AssertDeepLinkParamEq(std::nullopt);
+  AssertDeepLinkParamEq(absl::nullopt);
 
   // Case: Deep link parameter present, non AlarmTimerAction value.
   params["action"] = "100";
-  AssertDeepLinkParamEq(std::nullopt);
+  AssertDeepLinkParamEq(absl::nullopt);
 }
 
 TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsBool) {
   std::map<std::string, std::string> params;
 
-  auto AssertDeepLinkParamEq = [&params](const std::optional<bool>& expected,
+  auto AssertDeepLinkParamEq = [&params](const absl::optional<bool>& expected,
                                          DeepLinkParam param) {
     ASSERT_EQ(expected, GetDeepLinkParamAsBool(params, param));
   };
@@ -274,26 +274,26 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsBool) {
 
   // Case: Deep link parameter present, incorrect case "true".
   params["relaunch"] = "TRUE";
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kRelaunch);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kRelaunch);
 
   // Case: Deep link parameter present, incorrect case "false".
   params["relaunch"] = "FALSE";
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kRelaunch);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kRelaunch);
 
   // Case: Deep link parameter present, non-bool value.
   params["relaunch"] = "non-bool";
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kRelaunch);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kRelaunch);
 
   // Case: Deep link parameter absent.
   params.clear();
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kRelaunch);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kRelaunch);
 }
 
 TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsEntryPoint) {
   std::map<std::string, std::string> params;
 
   auto AssertDeepLinkParamEq =
-      [&params](const std::optional<AssistantEntryPoint>& expected,
+      [&params](const absl::optional<AssistantEntryPoint>& expected,
                 DeepLinkParam param) {
         ASSERT_EQ(expected, GetDeepLinkParamAsEntryPoint(params, param));
       };
@@ -307,17 +307,17 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsEntryPoint) {
 
   // Case: Deep link parameter present, non-entry point value.
   params["entryPoint"] = "non-entry point";
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kEntryPoint);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kEntryPoint);
 
   // Case: Deep link parameter absent.
   params.clear();
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kEntryPoint);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kEntryPoint);
 }
 
 TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsGURL) {
   std::map<std::string, std::string> params;
 
-  auto AssertDeepLinkParamEq = [&params](const std::optional<GURL>& expected,
+  auto AssertDeepLinkParamEq = [&params](const absl::optional<GURL>& expected,
                                          DeepLinkParam param) {
     ASSERT_EQ(expected, GetDeepLinkParamAsGURL(params, param));
   };
@@ -337,18 +337,18 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsGURL) {
 
   // Case: Deep link parameter absent.
   params.clear();
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kHref);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kHref);
 }
 
 TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsInt) {
   std::map<std::string, std::string> params;
 
-  auto AssertDeepLinkParamEq = [&params](const std::optional<int>& expected,
+  auto AssertDeepLinkParamEq = [&params](const absl::optional<int>& expected,
                                          DeepLinkParam param) {
     ASSERT_EQ(expected, GetDeepLinkParamAsInt(params, param));
   };
 
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kDurationMs);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kDurationMs);
 
   // Case: Deep link parameter present, well formed "1".
   params["index"] = "1";
@@ -358,18 +358,18 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsInt) {
 
   // Case: Deep link parameter present, non-int value.
   params["index"] = "true";
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kIndex);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kIndex);
 }
 
 TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsInt64) {
   std::map<std::string, std::string> params;
 
-  auto AssertDeepLinkParamEq = [&params](const std::optional<int64_t>& expected,
-                                         DeepLinkParam param) {
-    ASSERT_EQ(expected, GetDeepLinkParamAsInt64(params, param));
-  };
+  auto AssertDeepLinkParamEq =
+      [&params](const absl::optional<int64_t>& expected, DeepLinkParam param) {
+        ASSERT_EQ(expected, GetDeepLinkParamAsInt64(params, param));
+      };
 
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kDurationMs);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kDurationMs);
 
   // Case: Deep link parameter present, well formed "60000".
   params["durationMs"] = "60000";
@@ -379,14 +379,14 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsInt64) {
 
   // Case: Deep link parameter present, non-int value.
   params["durationMs"] = "true";
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kDurationMs);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kDurationMs);
 }
 
 TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsQuerySource) {
   std::map<std::string, std::string> params;
 
   auto AssertDeepLinkParamEq =
-      [&params](const std::optional<AssistantQuerySource>& expected,
+      [&params](const absl::optional<AssistantQuerySource>& expected,
                 DeepLinkParam param) {
         ASSERT_EQ(expected, GetDeepLinkParamAsQuerySource(params, param));
       };
@@ -400,23 +400,23 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsQuerySource) {
 
   // Case: Deep link parameter present, non-query source value.
   params["querySource"] = "non-query source";
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kQuerySource);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kQuerySource);
 
   // Case: Deep link parameter absent.
   params.clear();
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kQuerySource);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kQuerySource);
 }
 
 TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsTimeDelta) {
   std::map<std::string, std::string> params;
 
   auto AssertDeepLinkParamEq =
-      [&params](const std::optional<base::TimeDelta>& expected,
+      [&params](const absl::optional<base::TimeDelta>& expected,
                 DeepLinkParam param) {
         ASSERT_EQ(expected, GetDeepLinkParamAsTimeDelta(params, param));
       };
 
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kDurationMs);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kDurationMs);
 
   // Case: Deep link parameter present, well formed "60000".
   params["durationMs"] = "60000";
@@ -426,17 +426,17 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsTimeDelta) {
 
   // Case: Deep link parameter present, non-int value.
   params["durationMs"] = "true";
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kDurationMs);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kDurationMs);
 
   // Case: Not accepted deep link param.
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kAction);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kAction);
 }
 
 TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsRemindersAction) {
   std::map<std::string, std::string> params;
 
   auto AssertDeepLinkParamEq =
-      [&params](const std::optional<ReminderAction>& expected,
+      [&params](const absl::optional<ReminderAction>& expected,
                 DeepLinkParam param) {
         ASSERT_EQ(expected, GetDeepLinkParamAsRemindersAction(params, param));
       };
@@ -451,11 +451,11 @@ TEST_F(DeepLinkUtilTest, GetDeepLinkParamAsRemindersAction) {
 
   // Case: Deep link parameter present, incorrect parameter.
   params["action"] = "invalid";
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kAction);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kAction);
 
   // Case: Deep link parameter absent.
   params.clear();
-  AssertDeepLinkParamEq(std::nullopt, DeepLinkParam::kAction);
+  AssertDeepLinkParamEq(absl::nullopt, DeepLinkParam::kAction);
 }
 
 TEST_F(DeepLinkUtilTest, GetDeepLinkType) {
@@ -631,10 +631,10 @@ TEST_F(DeepLinkUtilTest, GetAssistantUrl) {
 
   auto CreateIgnoreCase = [](DeepLinkType type,
                              std::map<std::string, std::string> params) {
-    return std::make_pair(std::make_pair(type, params), std::nullopt);
+    return std::make_pair(std::make_pair(type, params), absl::nullopt);
   };
 
-  const std::map<TestCase, std::optional<GURL>> test_cases = {
+  const std::map<TestCase, absl::optional<GURL>> test_cases = {
       // OK: Top-level lists.
 
       {CreateTestCase(DeepLinkType::kLists,
@@ -742,7 +742,7 @@ TEST_F(DeepLinkUtilTest, GetAssistantUrl) {
   };
 
   for (const auto& test_case : test_cases) {
-    const std::optional<GURL>& expected = test_case.second;
+    const absl::optional<GURL>& expected = test_case.second;
     // For deep links that are not one of type {kLists, kNotes, kReminders},
     // we will hit NOTREACHED since this API isn't meant to be used in such
     // cases.
@@ -751,7 +751,7 @@ TEST_F(DeepLinkUtilTest, GetAssistantUrl) {
           /*type=*/test_case.first.first, /*params=*/test_case.first.second));
       continue;
     }
-    const std::optional<GURL> actual = GetAssistantUrl(
+    const absl::optional<GURL> actual = GetAssistantUrl(
         /*type=*/test_case.first.first, /*params=*/test_case.first.second);
 
     // Assert |has_value| equivalence.
@@ -764,30 +764,30 @@ TEST_F(DeepLinkUtilTest, GetAssistantUrl) {
 }  // namespace util
 
 TEST_F(DeepLinkUtilTest, GetChromeSettingsUrl) {
-  const std::map<std::optional<std::string>, std::string> test_cases = {
+  const std::map<absl::optional<std::string>, std::string> test_cases = {
       // OK: Absent/empty page.
-      {std::nullopt, "chrome://os-settings/"},
-      {std::optional<std::string>(std::string()), "chrome://os-settings/"},
+      {absl::nullopt, "chrome://os-settings/"},
+      {absl::optional<std::string>(std::string()), "chrome://os-settings/"},
 
       // OK: Allowed pages.
-      {std::optional<std::string>("googleAssistant"),
+      {absl::optional<std::string>("googleAssistant"),
        "chrome://os-settings/googleAssistant"},
-      {std::optional<std::string>("languages"),
+      {absl::optional<std::string>("languages"),
        "chrome://os-settings/osLanguages/languages"},
 
       // FALLBACK: Allowed pages are case sensitive.
-      {std::optional<std::string>("GOOGLEASSISTANT"), "chrome://os-settings/"},
-      {std::optional<std::string>("LANGUAGES"), "chrome://os-settings/"},
+      {absl::optional<std::string>("GOOGLEASSISTANT"), "chrome://os-settings/"},
+      {absl::optional<std::string>("LANGUAGES"), "chrome://os-settings/"},
 
       // FALLBACK: Any page not explicitly allowed.
-      {std::optional<std::string>("search"), "chrome://os-settings/"}};
+      {absl::optional<std::string>("search"), "chrome://os-settings/"}};
 
   for (const auto& test_case : test_cases)
     ASSERT_EQ(test_case.second, GetChromeSettingsUrl(test_case.first));
 }
 
 TEST_F(DeepLinkUtilTest, GetWebUrl) {
-  const std::map<std::string, std::optional<GURL>> test_cases = {
+  const std::map<std::string, absl::optional<GURL>> test_cases = {
       // OK: Supported web deep links.
       {"googleassistant://lists?eid=123456",
        GURL("https://assistant.google.com/lists/"
@@ -818,27 +818,27 @@ TEST_F(DeepLinkUtilTest, GetWebUrl) {
        GURL("https://assistant.google.com/settings/mainpage?hl=en-US")},
 
       // FAIL: Deep links are case sensitive.
-      {"GOOGLEASSISTANT://LISTS", std::nullopt},
-      {"GOOGLEASSISTANT://NOTES", std::nullopt},
-      {"GOOGLEASSISTANT://REMINDERS", std::nullopt},
-      {"GOOGLEASSISTANT://SETTINGS", std::nullopt},
+      {"GOOGLEASSISTANT://LISTS", absl::nullopt},
+      {"GOOGLEASSISTANT://NOTES", absl::nullopt},
+      {"GOOGLEASSISTANT://REMINDERS", absl::nullopt},
+      {"GOOGLEASSISTANT://SETTINGS", absl::nullopt},
 
       // FAIL: Non-web deep links.
-      {"googleassistant://alarm-timer", std::nullopt},
-      {"googleassistant://chrome-settings", std::nullopt},
-      {"googleassistant://onboarding", std::nullopt},
-      {"googleassistant://send-feedback", std::nullopt},
-      {"googleassistant://send-query", std::nullopt},
-      {"googleassistant://take-screenshot", std::nullopt},
-      {"googleassistant://task-manager", std::nullopt},
+      {"googleassistant://alarm-timer", absl::nullopt},
+      {"googleassistant://chrome-settings", absl::nullopt},
+      {"googleassistant://onboarding", absl::nullopt},
+      {"googleassistant://send-feedback", absl::nullopt},
+      {"googleassistant://send-query", absl::nullopt},
+      {"googleassistant://take-screenshot", absl::nullopt},
+      {"googleassistant://task-manager", absl::nullopt},
 
       // FAIL: Non-deep link URLs.
-      {std::string(), std::nullopt},
-      {"https://www.google.com/", std::nullopt}};
+      {std::string(), absl::nullopt},
+      {"https://www.google.com/", absl::nullopt}};
 
   for (const auto& test_case : test_cases) {
-    const std::optional<GURL>& expected = test_case.second;
-    const std::optional<GURL> actual = GetWebUrl(GURL(test_case.first));
+    const absl::optional<GURL>& expected = test_case.second;
+    const absl::optional<GURL> actual = GetWebUrl(GURL(test_case.first));
 
     // Assert |has_value| equivalence.
     ASSERT_EQ(expected, actual);
@@ -856,8 +856,8 @@ TEST_F(DeepLinkUtilTest, GetWebUrlByType) {
   // Creates a test case with a single parameter.
   auto CreateTestCaseWithParam =
       [](DeepLinkType type,
-         std::optional<std::pair<std::string, std::string>> param =
-             std::nullopt) {
+         absl::optional<std::pair<std::string, std::string>> param =
+             absl::nullopt) {
         DeepLinkParams params;
         if (param)
           params.insert(param.value());
@@ -874,7 +874,7 @@ TEST_F(DeepLinkUtilTest, GetWebUrlByType) {
     return CreateTestCaseWithParam(type);
   };
 
-  const std::map<TestCase, std::optional<GURL>> test_cases = {
+  const std::map<TestCase, absl::optional<GURL>> test_cases = {
       // OK: Supported web deep link types.
       {CreateTestCaseWithParam(DeepLinkType::kLists,
                                std::make_pair("eid", "123456")),
@@ -907,19 +907,19 @@ TEST_F(DeepLinkUtilTest, GetWebUrlByType) {
        GURL("https://assistant.google.com/settings/mainpage?hl=en-US")},
 
       // FAIL: Non-web deep link types.
-      {CreateTestCase(DeepLinkType::kChromeSettings), std::nullopt},
-      {CreateTestCase(DeepLinkType::kFeedback), std::nullopt},
-      {CreateTestCase(DeepLinkType::kOnboarding), std::nullopt},
-      {CreateTestCase(DeepLinkType::kQuery), std::nullopt},
-      {CreateTestCase(DeepLinkType::kScreenshot), std::nullopt},
-      {CreateTestCase(DeepLinkType::kTaskManager), std::nullopt},
+      {CreateTestCase(DeepLinkType::kChromeSettings), absl::nullopt},
+      {CreateTestCase(DeepLinkType::kFeedback), absl::nullopt},
+      {CreateTestCase(DeepLinkType::kOnboarding), absl::nullopt},
+      {CreateTestCase(DeepLinkType::kQuery), absl::nullopt},
+      {CreateTestCase(DeepLinkType::kScreenshot), absl::nullopt},
+      {CreateTestCase(DeepLinkType::kTaskManager), absl::nullopt},
 
       // FAIL: Unsupported deep link types.
-      {CreateTestCase(DeepLinkType::kUnsupported), std::nullopt}};
+      {CreateTestCase(DeepLinkType::kUnsupported), absl::nullopt}};
 
   for (const auto& test_case : test_cases) {
-    const std::optional<GURL>& expected = test_case.second;
-    const std::optional<GURL> actual = GetWebUrl(
+    const absl::optional<GURL>& expected = test_case.second;
+    const absl::optional<GURL> actual = GetWebUrl(
         /*type=*/test_case.first.first, /*params=*/test_case.first.second);
 
     // Assert |has_value| equivalence.

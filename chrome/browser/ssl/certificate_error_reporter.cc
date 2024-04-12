@@ -6,16 +6,18 @@
 
 #include <stddef.h>
 
-#include <memory>
 #include <set>
-#include <string_view>
 #include <utility>
 
+#include <memory>
+
 #include "base/logging.h"
+#include "base/strings/string_piece.h"
 #include "chrome/browser/net/chrome_report_sender.h"
 #include "components/encrypted_messages/encrypted_message.pb.h"
 #include "components/encrypted_messages/message_encrypter.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
+#include "net/url_request/report_sender.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 
 namespace {
@@ -102,14 +104,14 @@ void CertificateErrorReporter::SendExtendedReportingReport(
   if (!upload_url_.SchemeIsCryptographic()) {
     encrypted_messages::EncryptedMessage encrypted_report;
     // By mistake, the HKDF label here ends up with an extra null byte on
-    // the end, due to using sizeof(kHkdfLabel) in the std::string_view
+    // the end, due to using sizeof(kHkdfLabel) in the StringPiece
     // constructor instead of strlen(kHkdfLabel). This has since been changed
     // to strlen() + 1, but will need to be fixed in future to just be strlen.
     // TODO(estark): fix this...
     //  https://crbug.com/517746
     if (!encrypted_messages::EncryptSerializedMessage(
             server_public_key_, server_public_key_version_,
-            std::string_view(kHkdfLabel, strlen(kHkdfLabel) + 1),
+            base::StringPiece(kHkdfLabel, strlen(kHkdfLabel) + 1),
             serialized_report, &encrypted_report)) {
       LOG(ERROR) << "Failed to encrypt serialized report.";
       return;

@@ -5,7 +5,6 @@
 package org.chromium.webapk.shell_apk;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
@@ -15,7 +14,6 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
-import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -24,7 +22,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
 import android.view.Surface;
@@ -40,9 +37,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Contains utility methods for interacting with WebAPKs. */
+/**
+ * Contains utility methods for interacting with WebAPKs.
+ */
 public class WebApkUtils {
     private static final String TAG = "cr_WebApkUtils";
+
     private static final float CONTRAST_LIGHT_ITEM_THRESHOLD = 3f;
 
     /** Returns whether the application is installed and enabled. */
@@ -70,10 +70,8 @@ public class WebApkUtils {
     public static Bundle readMetaData(Context context) {
         ApplicationInfo ai = null;
         try {
-            ai =
-                    context.getPackageManager()
-                            .getApplicationInfo(
-                                    context.getPackageName(), PackageManager.GET_META_DATA);
+            ai = context.getPackageManager().getApplicationInfo(
+                    context.getPackageName(), PackageManager.GET_META_DATA);
         } catch (NameNotFoundException e) {
             return null;
         }
@@ -94,7 +92,7 @@ public class WebApkUtils {
 
         if (intentStartUrl.startsWith(startUrl)
                 && !TextUtils.isEmpty(
-                        Uri.parse(intentStartUrl).getQueryParameter(loggedIntentUrlParam))) {
+                           Uri.parse(intentStartUrl).getQueryParameter(loggedIntentUrlParam))) {
             return intentStartUrl;
         }
 
@@ -111,9 +109,8 @@ public class WebApkUtils {
         // disabled browsers.
         List<ResolveInfo> resolveInfos =
                 packageManager.queryIntentActivities(browserIntent, PackageManager.MATCH_ALL);
-        resolveInfos.addAll(
-                packageManager.queryIntentActivities(
-                        browserIntent, PackageManager.MATCH_DEFAULT_ONLY));
+        resolveInfos.addAll(packageManager.queryIntentActivities(
+                browserIntent, PackageManager.MATCH_DEFAULT_ONLY));
 
         Map<String, ResolveInfo> result = new HashMap<>();
         for (ResolveInfo resolveInfo : resolveInfos) {
@@ -146,9 +143,8 @@ public class WebApkUtils {
         }
         try {
             PackageManager packageManager = context.getPackageManager();
-            ApplicationInfo appInfo =
-                    packageManager.getApplicationInfo(
-                            remotePackageName, PackageManager.GET_META_DATA);
+            ApplicationInfo appInfo = packageManager.getApplicationInfo(
+                    remotePackageName, PackageManager.GET_META_DATA);
             return appInfo.uid;
         } catch (NameNotFoundException e) {
             e.printStackTrace();
@@ -169,18 +165,12 @@ public class WebApkUtils {
                 TypedValue.COMPLEX_UNIT_PX, res.getDimension(R.dimen.headline_size_medium));
         int dialogContentPadding = res.getDimensionPixelSize(R.dimen.dialog_content_padding);
         int titleBottomPadding = res.getDimensionPixelSize(R.dimen.title_bottom_padding);
-        titleView.setPaddingRelative(
-                dialogContentPadding,
-                dialogContentPadding,
-                dialogContentPadding,
-                titleBottomPadding);
+        titleView.setPaddingRelative(dialogContentPadding, dialogContentPadding,
+                dialogContentPadding, titleBottomPadding);
 
         int dialogContentTopPadding = res.getDimensionPixelSize(R.dimen.dialog_content_top_padding);
-        contentView.setPaddingRelative(
-                dialogContentPadding,
-                dialogContentTopPadding,
-                dialogContentPadding,
-                dialogContentPadding);
+        contentView.setPaddingRelative(dialogContentPadding, dialogContentTopPadding,
+                dialogContentPadding, dialogContentPadding);
     }
 
     /**
@@ -206,9 +196,8 @@ public class WebApkUtils {
     }
 
     /**
-     * Check whether lighter or darker foreground elements (i.e. text, drawables etc.) should be
-     * used depending on the given background color.
-     *
+     * Check whether lighter or darker foreground elements (i.e. text, drawables etc.)
+     * should be used depending on the given background color.
      * @param backgroundColor The background color value which is being queried.
      * @return Whether light colored elements should be used.
      */
@@ -235,16 +224,12 @@ public class WebApkUtils {
     /**
      * Sets the status bar icons to dark or light.
      *
-     * <p>TODO: migrate to WindowInsetsController API for Android R+ (API 30+)
-     *
      * @param rootView The root view used to request updates to the system UI theming.
      * @param useDarkIcons Whether the status bar icons should be dark.
      */
-    public static void setStatusBarIconColor(View rootView, boolean useDarkIcons, Context context) {
+    public static void setStatusBarIconColor(View rootView, boolean useDarkIcons) {
         int systemUiVisibility = rootView.getSystemUiVisibility();
-        // The status bar should always be black in automotive devices to match the black back
-        // button toolbar, so we should not use dark icons.
-        if (useDarkIcons && !isAutomotive(context)) {
+        if (useDarkIcons) {
             systemUiVisibility |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         } else {
             systemUiVisibility &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
@@ -255,19 +240,14 @@ public class WebApkUtils {
     /**
      * @see android.view.Window#setStatusBarColor(int color).
      */
-    public static void setStatusBarColor(Activity activity, int statusBarColor) {
-        Window window = activity.getWindow();
+    public static void setStatusBarColor(Window window, int statusBarColor) {
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        // The status bar should always be black in automotive devices to match the black back
-        // button toolbar.
-        if (isAutomotive(activity)) {
-            window.setStatusBarColor(Color.BLACK);
-        } else {
-            window.setStatusBarColor(statusBarColor);
-        }
+        window.setStatusBarColor(statusBarColor);
     }
 
-    /** Returns the Intent to query a list of installed browser apps. */
+    /**
+     * Returns the Intent to query a list of installed browser apps.
+     */
     public static Intent getQueryInstalledBrowsersIntent() {
         return new Intent()
                 .setAction(Intent.ACTION_VIEW)
@@ -283,7 +263,7 @@ public class WebApkUtils {
         return R.drawable.notification_badge;
     }
 
-    /** Computes the screen lock orientation from the passed-in metadata and the display size. */
+    /** Computes the screen lock orientation from the passed-in metadata and the display size.  */
     public static int computeNaturalScreenLockOrientationFromMetaData(
             Context context, Bundle metadata) {
         String orientation = metadata.getString(WebApkMetaDataKeys.ORIENTATION);
@@ -350,29 +330,5 @@ public class WebApkUtils {
         } catch (Resources.NotFoundException e) {
         }
         return false;
-    }
-
-    /** Returns whether the system is in dark mode */
-    public static boolean inDarkMode(Context context) {
-        return (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
-                == Configuration.UI_MODE_NIGHT_YES;
-    }
-
-    private static boolean isAutomotive(Context context) {
-        boolean isAutomotive;
-        try {
-            isAutomotive =
-                    context.getApplicationContext()
-                            .getPackageManager()
-                            .hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Unable to query for Automotive system feature", e);
-
-            // `hasSystemFeature` can possibly throw an exception on modified instances of
-            // Android. In this case, assume the device is not a car since automotive vehicles
-            // should not have such a modification.
-            isAutomotive = false;
-        }
-        return isAutomotive;
     }
 }

@@ -25,8 +25,8 @@ bool HasExpired(const AssistantNotificationExpiryMonitor::AssistantNotification*
 }
 
 // Returns the minimum of the base::Time instances that actually have a value.
-std::optional<base::Time> Min(std::optional<base::Time> left,
-                              std::optional<base::Time> right) {
+absl::optional<base::Time> Min(absl::optional<base::Time> left,
+                               absl::optional<base::Time> right) {
   if (!left.has_value())
     return right;
 
@@ -68,7 +68,7 @@ class AssistantNotificationExpiryMonitor::Observer
   }
 
  private:
-  const raw_ptr<AssistantNotificationExpiryMonitor> monitor_;
+  const raw_ptr<AssistantNotificationExpiryMonitor, ExperimentalAsh> monitor_;
 };
 
 AssistantNotificationExpiryMonitor::AssistantNotificationExpiryMonitor(
@@ -82,7 +82,7 @@ AssistantNotificationExpiryMonitor::~AssistantNotificationExpiryMonitor() =
     default;
 
 void AssistantNotificationExpiryMonitor::UpdateTimer() {
-  std::optional<base::TimeDelta> timeout = GetTimerTimeout();
+  absl::optional<base::TimeDelta> timeout = GetTimerTimeout();
   if (timeout) {
     timer_.Start(
         FROM_HERE, timeout.value(),
@@ -94,17 +94,17 @@ void AssistantNotificationExpiryMonitor::UpdateTimer() {
   }
 }
 
-std::optional<base::TimeDelta>
+absl::optional<base::TimeDelta>
 AssistantNotificationExpiryMonitor::GetTimerTimeout() const {
-  std::optional<base::Time> endtime = GetTimerEndTime();
+  absl::optional<base::Time> endtime = GetTimerEndTime();
   if (endtime)
     return endtime.value() - base::Time::Now();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<base::Time> AssistantNotificationExpiryMonitor::GetTimerEndTime()
+absl::optional<base::Time> AssistantNotificationExpiryMonitor::GetTimerEndTime()
     const {
-  std::optional<base::Time> result = std::nullopt;
+  absl::optional<base::Time> result = absl::nullopt;
   for (const AssistantNotification* notification : GetNotifications())
     result = Min(result, notification->expiry_time);
   return result;

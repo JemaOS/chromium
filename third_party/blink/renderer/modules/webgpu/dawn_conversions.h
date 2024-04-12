@@ -36,10 +36,7 @@ WGPUPipelineLayout AsDawnType(
 // types that recursively use them. A return value of false means that the
 // conversion failed and a TypeError was recorded in the ExceptionState.
 bool ConvertToDawn(const V8GPUColor* in, WGPUColor* out, ExceptionState&);
-bool ConvertToDawn(const V8GPUExtent3D* in,
-                   WGPUExtent3D* out,
-                   GPUDevice* device,
-                   ExceptionState&);
+bool ConvertToDawn(const V8GPUExtent3D* in, WGPUExtent3D* out, ExceptionState&);
 bool ConvertToDawn(const V8GPUOrigin3D* in, WGPUOrigin3D* out, ExceptionState&);
 bool ConvertToDawn(const V8GPUOrigin2D* in, WGPUOrigin2D* out, ExceptionState&);
 bool ConvertToDawn(const GPUImageCopyTexture* in,
@@ -118,7 +115,7 @@ std::unique_ptr<DawnEnum[]> AsDawnEnum(const Vector<WebGPUEnum>& webgpu_enums) {
 // dawn_enums should be a pre-allocated array with a size of count
 template <typename DawnEnum, typename WebGPUEnum>
 std::unique_ptr<DawnEnum[]> AsDawnEnum(
-    const Vector<std::optional<WebGPUEnum>>& webgpu_enums) {
+    const Vector<absl::optional<WebGPUEnum>>& webgpu_enums) {
   wtf_size_t count = webgpu_enums.size();
   // TODO(enga): Pass in temporary memory or an allocator so we don't make a
   // separate memory allocation here.

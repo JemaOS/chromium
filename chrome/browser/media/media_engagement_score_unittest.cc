@@ -29,13 +29,19 @@ namespace {
 using ::testing::Optional;
 
 base::Time GetReferenceTime() {
-  static constexpr base::Time::Exploded kReferenceTime = {.year = 2015,
-                                                          .month = 1,
-                                                          .day_of_week = 5,
-                                                          .day_of_month = 30,
-                                                          .hour = 11};
+  base::Time::Exploded exploded_reference_time;
+  exploded_reference_time.year = 2015;
+  exploded_reference_time.month = 1;
+  exploded_reference_time.day_of_month = 30;
+  exploded_reference_time.day_of_week = 5;
+  exploded_reference_time.hour = 11;
+  exploded_reference_time.minute = 0;
+  exploded_reference_time.second = 0;
+  exploded_reference_time.millisecond = 0;
+
   base::Time out_time;
-  EXPECT_TRUE(base::Time::FromLocalExploded(kReferenceTime, &out_time));
+  EXPECT_TRUE(
+      base::Time::FromLocalExploded(exploded_reference_time, &out_time));
   return out_time;
 }
 
@@ -117,7 +123,7 @@ class MediaEngagementScoreTest : public ChromeRenderViewHostTestHarness {
     EXPECT_EQ(details->visits, score.visits());
     EXPECT_EQ(details->media_playbacks, score.media_playbacks());
     EXPECT_EQ(details->last_media_playback_time,
-              score.last_media_playback_time().InMillisecondsFSinceUnixEpoch());
+              score.last_media_playback_time().ToJsTime());
   }
 };
 
@@ -271,11 +277,11 @@ TEST_F(MediaEngagementScoreTest, ContentSettings) {
           ->GetWebsiteSetting(origin.GetURL(), GURL(),
                               ContentSettingsType::MEDIA_ENGAGEMENT, nullptr)
           .TakeDict();
-  std::optional<int> stored_visits =
+  absl::optional<int> stored_visits =
       values.FindInt(MediaEngagementScore::kVisitsKey);
-  std::optional<int> stored_media_playbacks =
+  absl::optional<int> stored_media_playbacks =
       values.FindInt(MediaEngagementScore::kMediaPlaybacksKey);
-  std::optional<double> stored_last_media_playback_time =
+  absl::optional<double> stored_last_media_playback_time =
       values.FindDouble(MediaEngagementScore::kLastMediaPlaybackTimeKey);
   EXPECT_TRUE(stored_visits);
   EXPECT_TRUE(stored_media_playbacks);

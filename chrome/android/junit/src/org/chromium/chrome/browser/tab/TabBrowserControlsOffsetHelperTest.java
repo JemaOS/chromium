@@ -24,8 +24,10 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 public class TabBrowserControlsOffsetHelperTest {
     private final UserDataHost mUserDataHost = new UserDataHost();
 
-    @Mock public TabImpl mTab;
-    @Mock public TabObserver mDispatchedTabObserver;
+    @Mock
+    public TabImpl mTab;
+    @Mock
+    public TabObserver mDispatchedTabObserver;
 
     private TabBrowserControlsOffsetHelper mHelper;
     private TabObserver mRegisteredTabObserver;
@@ -52,7 +54,7 @@ public class TabBrowserControlsOffsetHelperTest {
     public void testSetTopOffset() {
         int bottomValue = mHelper.bottomControlsOffset();
 
-        mHelper.setOffsets(20, 50, 0, 0, 0);
+        mHelper.setTopOffset(20, 50, 0);
         Mockito.verify(mDispatchedTabObserver)
                 .onBrowserControlsOffsetChanged(mTab, 20, bottomValue, 50, 0, 0);
         Assert.assertTrue(mHelper.offsetInitialized());
@@ -61,7 +63,7 @@ public class TabBrowserControlsOffsetHelperTest {
         Assert.assertEquals(bottomValue, mHelper.bottomControlsOffset());
 
         // Different top offset, different content offset.
-        mHelper.setOffsets(25, 55, 0, 0, 0);
+        mHelper.setTopOffset(25, 55, 0);
         Mockito.verify(mDispatchedTabObserver)
                 .onBrowserControlsOffsetChanged(mTab, 25, bottomValue, 55, 0, 0);
         Assert.assertTrue(mHelper.offsetInitialized());
@@ -70,7 +72,7 @@ public class TabBrowserControlsOffsetHelperTest {
         Assert.assertEquals(bottomValue, mHelper.bottomControlsOffset());
 
         // Different top offset, same content offset.
-        mHelper.setOffsets(40, 55, 0, 0, 0);
+        mHelper.setTopOffset(40, 55, 0);
         Mockito.verify(mDispatchedTabObserver)
                 .onBrowserControlsOffsetChanged(mTab, 40, bottomValue, 55, 0, 0);
         Assert.assertTrue(mHelper.offsetInitialized());
@@ -79,7 +81,7 @@ public class TabBrowserControlsOffsetHelperTest {
         Assert.assertEquals(bottomValue, mHelper.bottomControlsOffset());
 
         // Same top offset, different content offset.
-        mHelper.setOffsets(40, 60, 0, 0, 0);
+        mHelper.setTopOffset(40, 60, 0);
         Mockito.verify(mDispatchedTabObserver)
                 .onBrowserControlsOffsetChanged(mTab, 40, bottomValue, 60, 0, 0);
         Assert.assertTrue(mHelper.offsetInitialized());
@@ -89,7 +91,7 @@ public class TabBrowserControlsOffsetHelperTest {
 
         // Same top offset, same content offset.  Duplicate values should not dispatch additional
         // change notifications.
-        mHelper.setOffsets(40, 60, 0, 0, 0);
+        mHelper.setTopOffset(40, 60, 0);
         Mockito.verifyNoMoreInteractions(mDispatchedTabObserver);
         Assert.assertTrue(mHelper.offsetInitialized());
         Assert.assertEquals(40, mHelper.topControlsOffset());
@@ -102,7 +104,7 @@ public class TabBrowserControlsOffsetHelperTest {
         int topValue = mHelper.topControlsOffset();
         int contentValue = mHelper.contentOffset();
 
-        mHelper.setOffsets(topValue, contentValue, 0, 37, 0);
+        mHelper.setBottomOffset(37, 0);
         Mockito.verify(mDispatchedTabObserver)
                 .onBrowserControlsOffsetChanged(mTab, topValue, 37, contentValue, 0, 0);
         Assert.assertTrue(mHelper.offsetInitialized());
@@ -111,7 +113,7 @@ public class TabBrowserControlsOffsetHelperTest {
         Assert.assertEquals(37, mHelper.bottomControlsOffset());
 
         // Different bottom offset.
-        mHelper.setOffsets(topValue, contentValue, 0, 42, 0);
+        mHelper.setBottomOffset(42, 0);
         Mockito.verify(mDispatchedTabObserver)
                 .onBrowserControlsOffsetChanged(mTab, topValue, 42, contentValue, 0, 0);
         Assert.assertTrue(mHelper.offsetInitialized());
@@ -121,7 +123,7 @@ public class TabBrowserControlsOffsetHelperTest {
 
         // Same bottom offset.  Duplicate values should not dispatch additional change
         // notifications.
-        mHelper.setOffsets(topValue, contentValue, 0, 42, 0);
+        mHelper.setBottomOffset(42, 0);
         Mockito.verifyNoMoreInteractions(mDispatchedTabObserver);
         Assert.assertTrue(mHelper.offsetInitialized());
         Assert.assertEquals(topValue, mHelper.topControlsOffset());
@@ -131,7 +133,11 @@ public class TabBrowserControlsOffsetHelperTest {
 
     @Test
     public void testTabCrashed() {
-        mHelper.setOffsets(11, 12, 0, 13, 0);
+        int initialBottomValue = mHelper.bottomControlsOffset();
+        mHelper.setTopOffset(11, 12, 0);
+        Mockito.verify(mDispatchedTabObserver)
+                .onBrowserControlsOffsetChanged(mTab, 11, initialBottomValue, 12, 0, 0);
+        mHelper.setBottomOffset(13, 0);
         Mockito.verify(mDispatchedTabObserver)
                 .onBrowserControlsOffsetChanged(mTab, 11, 13, 12, 0, 0);
         Assert.assertTrue(mHelper.offsetInitialized());

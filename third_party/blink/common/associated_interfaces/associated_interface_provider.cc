@@ -6,7 +6,6 @@
 
 #include <map>
 
-#include "base/containers/contains.h"
 #include "base/no_destructor.h"
 #include "base/task/single_thread_task_runner.h"
 #include "mojo/public/cpp/bindings/associated_receiver.h"
@@ -37,7 +36,7 @@ class AssociatedInterfaceProvider::LocalProvider
   void ResetBinderForName(const std::string& name) { binders_.erase(name); }
 
   bool HasInterface(const std::string& name) const {
-    return base::Contains(binders_, name);
+    return binders_.find(name) != binders_.end();
   }
 
   void GetInterface(const std::string& name,
@@ -54,9 +53,8 @@ class AssociatedInterfaceProvider::LocalProvider
       mojo::PendingAssociatedReceiver<mojom::AssociatedInterface> receiver)
       override {
     auto it = binders_.find(name);
-    if (it != binders_.end()) {
+    if (it != binders_.end())
       it->second.Run(receiver.PassHandle());
-    }
   }
 
   std::map<std::string, Binder> binders_;

@@ -8,7 +8,6 @@
 #include <string>
 
 #include "build/build_config.h"
-#include "chrome/browser/ui/views/tabs/filename_elider.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest-param-test.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -56,6 +55,8 @@ bool ShouldOmitOnPlatform(int omit_on) {
 
 class TabHoverCardBubbleViewFilenameEliderTest {
  protected:
+  using FilenameElider = TabHoverCardBubbleView::FilenameElider;
+
   static constexpr float kGlyphWidth = 10.0;
   static constexpr float kGlyphHeight = 10.0;
 

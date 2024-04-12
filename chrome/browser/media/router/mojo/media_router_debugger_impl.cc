@@ -6,8 +6,6 @@
 
 #include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
-#include "chrome/browser/media/router/discovery/access_code/access_code_cast_feature.h"
-#include "chrome/browser/profiles/profile.h"
 #include "components/media_router/browser/media_router.h"
 #include "components/media_router/browser/media_router_factory.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -18,17 +16,8 @@
 
 namespace media_router {
 
-MediaRouterDebuggerImpl::MediaRouterDebuggerImpl(
-    content::BrowserContext* context) {
+MediaRouterDebuggerImpl::MediaRouterDebuggerImpl() {
   DETACH_FROM_SEQUENCE(sequence_checker_);
-
-  auto* profile = Profile::FromBrowserContext(context);
-  is_rtcp_reports_enabled_ =
-      profile ? GetAccessCodeCastEnabledPref(profile) : false;
-
-  receivers_.set_disconnect_handler(
-      base::BindRepeating(&MediaRouterDebuggerImpl::LogMirroringStats,
-                          weak_ptr_factory_.GetWeakPtr()));
 }
 MediaRouterDebuggerImpl::~MediaRouterDebuggerImpl() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -48,14 +37,6 @@ MediaRouterDebugger* MediaRouterDebuggerImpl::GetForFrameTreeNode(
       web_contents->GetBrowserContext());
 
   return media_router ? &media_router->GetDebugger() : nullptr;
-}
-
-base::Value::Dict MediaRouterDebuggerImpl::GetMirroringStats() {
-  if (!ShouldFetchMirroringStats()) {
-    return base::Value::Dict();
-  }
-
-  return most_recent_mirroring_stats_.Clone();
 }
 
 void MediaRouterDebuggerImpl::EnableRtcpReports() {
@@ -111,16 +92,6 @@ void MediaRouterDebuggerImpl::NotifyGetMirroringStats(
   for (MirroringStatsObserver& observer : observers_) {
     observer.OnMirroringStatsUpdated(json_logs);
   }
-  most_recent_mirroring_stats_ = json_logs.Clone();
-}
-
-void MediaRouterDebuggerImpl::LogMirroringStats() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!ShouldFetchMirroringStats()) {
-    return;
-  }
-  VLOG(1) << "Mirroring stats for the most recent session: "
-          << most_recent_mirroring_stats_.DebugString();
 }
 
 }  // namespace media_router

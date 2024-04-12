@@ -27,19 +27,13 @@ TabGroupsEventRouterFactory* TabGroupsEventRouterFactory::GetInstance() {
 TabGroupsEventRouterFactory::TabGroupsEventRouterFactory()
     : ProfileKeyedServiceFactory(
           "TabGroupsEventRouter",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(EventRouterFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService>
-TabGroupsEventRouterFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* TabGroupsEventRouterFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<TabGroupsEventRouter>(context);
+  return new TabGroupsEventRouter(context);
 }
 
 bool TabGroupsEventRouterFactory::ServiceIsCreatedWithBrowserContext() const {

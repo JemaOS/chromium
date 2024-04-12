@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/login/challenge_response_auth_keys_loader.h"
 
 #include <cstdint>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,7 +23,6 @@
 #include "chrome/browser/certificate_provider/certificate_provider_service.h"
 #include "chrome/browser/certificate_provider/certificate_provider_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
 #include "chromeos/ash/components/login/auth/challenge_response/cert_utils.h"
 #include "chromeos/ash/components/login/auth/challenge_response/known_user_pref_utils.h"
 #include "components/account_id/account_id.h"
@@ -40,6 +38,7 @@
 #include "extensions/browser/process_manager.h"
 #include "extensions/browser/process_manager_observer.h"
 #include "extensions/common/manifest_handlers/background_info.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace {
@@ -48,7 +47,7 @@ constexpr base::TimeDelta kDefaultMaximumExtensionLoadWaitingTime =
     base::Seconds(5);
 
 base::flat_set<std::string> GetLoginScreenPolicyExtensionIds() {
-  DCHECK(BrowserContextHelper::Get()->GetSigninBrowserContext());
+  DCHECK(ProfileHelper::IsSigninProfileInitialized());
 
   const PrefService* const prefs =
       ProfileHelper::GetSigninProfile()->GetPrefs();
@@ -122,7 +121,7 @@ std::vector<ChallengeResponseKey::SignatureAlgorithm> MakeAlgorithmListFromSsl(
   std::vector<ChallengeResponseKey::SignatureAlgorithm>
       challenge_response_algorithms;
   for (auto ssl_algorithm : ssl_algorithms) {
-    std::optional<ChallengeResponseKey::SignatureAlgorithm> algorithm =
+    absl::optional<ChallengeResponseKey::SignatureAlgorithm> algorithm =
         GetChallengeResponseKeyAlgorithmFromSsl(ssl_algorithm);
     if (algorithm)
       challenge_response_algorithms.push_back(*algorithm);
@@ -196,8 +195,8 @@ class ExtensionLoadObserver final
     }
 
     // Ensure that the extension's background host is active.
-    const auto context_id =
-        extensions::LazyContextId::ForExtension(browser_context, extension);
+    const extensions::LazyContextId context_id(browser_context,
+                                               extension->id());
     extensions::LazyContextTaskQueue* queue = context_id.GetTaskQueue();
     if (!queue->ShouldEnqueueTask(browser_context, extension)) {
       // The background host already exists.

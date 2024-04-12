@@ -19,10 +19,7 @@ bool StructTraits<ax::mojom::AXTreeUpdateDataView, ui::AXTreeUpdate>::Read(
     return false;
   out->event_from = data.event_from();
   out->event_from_action = data.event_from_action();
-  if (!data.ReadEventIntents(&out->event_intents)) {
-    return false;
-  }
-  return data.ReadTreeChecks(&out->tree_checks);
+  return data.ReadEventIntents(&out->event_intents);
 }
 
 }  // namespace mojo

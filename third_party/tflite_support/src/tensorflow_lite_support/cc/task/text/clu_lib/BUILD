@@ -4,6 +4,7 @@ load(
 )
 
 package(
+    default_applicable_licenses = ["//tensorflow_lite_support:license"],
     default_visibility = ["//visibility:public"],
     licenses = ["notice"],  # Apache 2.0
 )
@@ -28,7 +29,7 @@ cc_library_with_tflite(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@org_tensorflow//tensorflow/lite:framework_stable",
+        "@org_tensorflow//tensorflow/lite:framework",
         "@org_tensorflow//tensorflow/lite:string_util",
         "@org_tensorflow//tensorflow/lite/kernels:kernel_util",
     ],

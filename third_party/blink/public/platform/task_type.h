@@ -20,7 +20,7 @@ namespace blink {
 //   "RendererSchedulerTaskType" enum
 // * update TaskTypes.md
 //
-// Next value: 86
+// Next value: 83
 enum class TaskType : unsigned char {
   ///////////////////////////////////////
   // Speced tasks should use one of the following task types
@@ -53,11 +53,6 @@ enum class TaskType : unsigned char {
   // This is a part of Networking task that should not be frozen when a page is
   // frozen.
   kNetworkingUnfreezable = 75,
-  // Tasks associated with loading that should also block rendering. Split off
-  // from kNetworkingUnfreezable so tasks such as image loading can be
-  // prioritized above rendering. Note that not all render-blocking resources
-  // use this queue (e.g., script load tasks are not put here).
-  kNetworkingUnfreezableRenderBlockingLoading = 83,
   // This task source is used for control messages between kNetworking tasks.
   kNetworkingControl = 4,
   // Tasks used to run low priority scripts.
@@ -186,9 +181,6 @@ enum class TaskType : unsigned char {
   // https://storage.spec.whatwg.org/#storage-task-source
   kStorage = 82,
 
-  // https://www.w3.org/TR/clipboard-apis/#clipboard-task-source
-  kClipboard = 85,
-
   ///////////////////////////////////////
   // Not-speced tasks should use one of the following task types
   ///////////////////////////////////////
@@ -291,7 +283,6 @@ enum class TaskType : unsigned char {
   // get a task queue/runner.
 
   kMainThreadTaskQueueV8 = 37,
-  kMainThreadTaskQueueV8LowPriority = 84,
   kMainThreadTaskQueueCompositor = 38,
   kMainThreadTaskQueueDefault = 39,
   kMainThreadTaskQueueInput = 40,
@@ -310,7 +301,7 @@ enum class TaskType : unsigned char {
   kWorkerThreadTaskQueueV8 = 47,
   kWorkerThreadTaskQueueCompositor = 48,
 
-  kMaxValue = kClipboard,
+  kMaxValue = kStorage,
 };
 
 }  // namespace blink

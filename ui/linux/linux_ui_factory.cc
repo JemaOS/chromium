@@ -9,13 +9,10 @@
 
 #include "base/command_line.h"
 #include "base/environment.h"
-#include "base/memory/raw_ptr.h"
 #include "base/nix/xdg_util.h"
-#include "base/no_destructor.h"
 #include "base/strings/string_util.h"
 #include "build/chromecast_buildflags.h"
 #include "ui/base/buildflags.h"
-#include "ui/base/ui_base_switches.h"
 #include "ui/color/system_theme.h"
 #include "ui/linux/fallback_linux_ui.h"
 #include "ui/linux/linux_ui.h"
@@ -36,18 +33,12 @@ namespace ui {
 
 namespace {
 
-std::vector<raw_ptr<LinuxUiTheme, VectorExperimental>>& GetLinuxUiThemesImpl() {
-  static base::NoDestructor<
-      std::vector<raw_ptr<LinuxUiTheme, VectorExperimental>>>
-      themes;
-  return *themes;
-}
+const char kUiToolkitFlag[] = "ui-toolkit";
 
 std::unique_ptr<LinuxUiAndTheme> CreateGtkUi() {
 #if BUILDFLAG(USE_GTK)
   auto gtk_ui = BuildGtkUi();
   if (gtk_ui->Initialize()) {
-    GetLinuxUiThemesImpl().push_back(gtk_ui.get());
     return gtk_ui;
   }
 #endif
@@ -64,10 +55,12 @@ LinuxUiAndTheme* GetGtkUi() {
 }
 
 std::unique_ptr<LinuxUiAndTheme> CreateQtUi() {
+  if (!base::FeatureList::IsEnabled(kAllowQt)) {
+    return nullptr;
+  }
 #if BUILDFLAG(USE_QT)
   auto qt_ui = qt::CreateQtUi(GetGtkUi());
   if (qt_ui->Initialize()) {
-    GetLinuxUiThemesImpl().push_back(qt_ui.get());
     return qt_ui;
   }
 #endif
@@ -94,8 +87,8 @@ LinuxUiAndTheme* GetFallbackUi() {
 
 LinuxUiAndTheme* GetDefaultLinuxUiAndTheme() {
   auto* cmd_line = base::CommandLine::ForCurrentProcess();
-  std::string ui_toolkit = base::ToLowerASCII(
-      cmd_line->GetSwitchValueASCII(switches::kUiToolkitFlag));
+  std::string ui_toolkit =
+      base::ToLowerASCII(cmd_line->GetSwitchValueASCII(kUiToolkitFlag));
   if (ui_toolkit == "gtk") {
     if (auto* gtk_ui = GetGtkUi()) {
       return gtk_ui;
@@ -134,6 +127,8 @@ LinuxUiAndTheme* GetDefaultLinuxUiAndTheme() {
 
 }  // namespace
 
+BASE_FEATURE(kAllowQt, "AllowQt", base::FEATURE_DISABLED_BY_DEFAULT);
+
 LinuxUi* GetDefaultLinuxUi() {
   auto* linux_ui = GetDefaultLinuxUiAndTheme();
 #if !BUILDFLAG(IS_CASTOS)
@@ -159,11 +154,6 @@ LinuxUiTheme* GetLinuxUiTheme(SystemTheme system_theme) {
     case SystemTheme::kDefault:
       return nullptr;
   }
-}
-
-const std::vector<raw_ptr<LinuxUiTheme, VectorExperimental>>&
-GetLinuxUiThemes() {
-  return GetLinuxUiThemesImpl();
 }
 
 SystemTheme GetDefaultSystemTheme() {

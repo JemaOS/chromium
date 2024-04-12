@@ -5,10 +5,9 @@
 #ifndef ASH_PUBLIC_CPP_ASSISTANT_CONTROLLER_ASSISTANT_UI_CONTROLLER_H_
 #define ASH_PUBLIC_CPP_ASSISTANT_CONTROLLER_ASSISTANT_UI_CONTROLLER_H_
 
-#include <optional>
-
 #include "ash/public/cpp/ash_public_export.h"
 #include "base/functional/callback_helpers.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
@@ -40,13 +39,13 @@ class ASH_PUBLIC_EXPORT AssistantUiController {
 
   // Invoke to show/toggle Assistant UI.
   virtual void ShowUi(assistant::AssistantEntryPoint) = 0;
-  virtual void ToggleUi(std::optional<assistant::AssistantEntryPoint>,
-                        std::optional<assistant::AssistantExitPoint>) = 0;
+  virtual void ToggleUi(absl::optional<assistant::AssistantEntryPoint>,
+                        absl::optional<assistant::AssistantExitPoint>) = 0;
 
   // Returns a closure to close Assistant UI. If the return value is ignored,
   // the Assistant UI is closed instantly; otherwise, the UI is in closing
   // state until the closure is run.
-  virtual std::optional<base::ScopedClosureRunner> CloseUi(
+  virtual absl::optional<base::ScopedClosureRunner> CloseUi(
       assistant::AssistantExitPoint) = 0;
 
   // Sets current AppListBubbleWidth. AssistantCardElement needs to know the

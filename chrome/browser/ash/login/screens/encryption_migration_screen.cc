@@ -483,14 +483,14 @@ void EncryptionMigrationScreen::StartMigration() {
 
 void EncryptionMigrationScreen::OnMountExistingVault(
     std::unique_ptr<UserContext> context,
-    std::optional<AuthenticationError> error) {
+    absl::optional<AuthenticationError> error) {
   if (error.has_value()) {
     user_context_ = std::move(context);
     RecordMigrationResultMountFailure(IsResumingIncompleteMigration(),
                                       IsArcKiosk());
     UpdateUIState(EncryptionMigrationScreenView::MIGRATION_FAILED);
     LOG(ERROR) << "Mount existing vault failed. Error: "
-               << error->get_cryptohome_error();
+               << error->get_cryptohome_code();
     return;
   }
 
@@ -538,7 +538,7 @@ void EncryptionMigrationScreen::RemoveCryptohome() {
 
 void EncryptionMigrationScreen::OnRemoveCryptohome(
     std::unique_ptr<UserContext> context,
-    std::optional<AuthenticationError> error) {
+    absl::optional<AuthenticationError> error) {
   user_context_ = std::move(context);
 
   if (!error.has_value()) {
@@ -546,7 +546,7 @@ void EncryptionMigrationScreen::OnRemoveCryptohome(
                                         IsArcKiosk());
   } else {
     LOG(ERROR) << "Removing cryptohome failed. return code: "
-               << error->get_cryptohome_error();
+               << error->get_cryptohome_code();
     RecordRemoveCryptohomeResultFailure(IsResumingIncompleteMigration(),
                                         IsArcKiosk());
   }
@@ -555,7 +555,7 @@ void EncryptionMigrationScreen::OnRemoveCryptohome(
 }
 
 bool EncryptionMigrationScreen::IsArcKiosk() const {
-  return user_context_->GetUserType() == user_manager::UserType::kArcKioskApp;
+  return user_context_->GetUserType() == user_manager::USER_TYPE_ARC_KIOSK_APP;
 }
 
 void EncryptionMigrationScreen::DircryptoMigrationProgress(
@@ -608,7 +608,7 @@ void EncryptionMigrationScreen::DircryptoMigrationProgress(
 
 void EncryptionMigrationScreen::OnMigrationRequested(
     std::unique_ptr<UserContext> context,
-    std::optional<AuthenticationError> error) {
+    absl::optional<AuthenticationError> error) {
   user_context_ = std::move(context);
   if (error.has_value()) {
     LOG(ERROR) << "Requesting MigrateToDircrypto failed.";

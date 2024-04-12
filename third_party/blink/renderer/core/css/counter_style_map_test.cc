@@ -14,13 +14,13 @@ class CounterStyleMapTest : public PageTestBase {
  public:
   ShadowRoot& AttachShadowTo(const char* host_id) {
     Element* host = GetElementById(host_id);
-    return host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+    return host->AttachShadowRootInternal(ShadowRootType::kOpen);
   }
 
   const CounterStyle& GetCounterStyle(const TreeScope& scope,
-                                      const char* name) {
+                                      const AtomicString& name) {
     return *CounterStyleMap::GetAuthorCounterStyleMap(scope)
-                ->counter_styles_.at(AtomicString(name));
+                ->counter_styles_.at(name);
   }
 };
 
@@ -183,7 +183,7 @@ TEST_F(CounterStyleMapTest, UpdateReferencesInChildScope) {
   const CounterStyle& bar = GetCounterStyle(shadow, "bar");
   EXPECT_EQ(&foo, &bar.GetExtendedStyle());
 
-  GetDocument().QuerySelector(AtomicString("style"))->remove();
+  GetDocument().QuerySelector("style")->remove();
   UpdateAllLifecyclePhasesForTest();
 
   // After counter style rule changes in the parent scope, the original

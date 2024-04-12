@@ -71,14 +71,11 @@ enum class CrashType : uint32_t {
   kBuiltinTrap,
   kInfiniteRecursion,
   kSegvWithTagBits,
-  // kFakeSegv is meant to simulate a MTE segv error.
-  kFakeSegv,
 };
 
 struct StartHandlerForSelfTestOptions {
   bool start_handler_at_crash;
   bool set_first_chance_handler;
-  bool set_last_chance_handler;
   bool crash_non_main_thread;
   bool client_uses_signals;
   bool gather_indirectly_referenced_memory;
@@ -87,7 +84,7 @@ struct StartHandlerForSelfTestOptions {
 
 class StartHandlerForSelfTest
     : public testing::TestWithParam<
-          std::tuple<bool, bool, bool, bool, bool, bool, CrashType>> {
+          std::tuple<bool, bool, bool, bool, bool, CrashType>> {
  public:
   StartHandlerForSelfTest() = default;
 
@@ -102,7 +99,6 @@ class StartHandlerForSelfTest
     memset(&options_, 0, sizeof(options_));
     std::tie(options_.start_handler_at_crash,
              options_.set_first_chance_handler,
-             options_.set_last_chance_handler,
              options_.crash_non_main_thread,
              options_.client_uses_signals,
              options_.gather_indirectly_referenced_memory,
@@ -248,10 +244,6 @@ bool HandleCrashSuccessfully(int, siginfo_t*, ucontext_t*) {
 #pragma clang diagnostic pop
 }
 
-bool HandleCrashSuccessfullyAfterReporting(int, siginfo_t*, ucontext_t*) {
-  return true;
-}
-
 void DoCrash(const StartHandlerForSelfTestOptions& options,
              CrashpadClient* client) {
   if (sigsetjmp(do_crash_sigjmp_env, 1) != 0) {
@@ -279,15 +271,6 @@ void DoCrash(const StartHandlerForSelfTestOptions& options,
       x += 0xefull << 56;
 #endif  // __aarch64__
       *x;
-      break;
-    }
-
-    case CrashType::kFakeSegv: {
-      // With a regular SIGSEGV like null dereference, the signal gets reraised
-      // automatically, causing HandleOrReraiseSignal() to be called a second
-      // time, terminating the process with the signal regardless of the last
-      // chance handler.
-      raise(SIGSEGV);
       break;
     }
   }
@@ -420,10 +403,6 @@ CRASHPAD_CHILD_TEST_MAIN(StartHandlerForSelfTestChild) {
     client.SetFirstChanceExceptionHandler(HandleCrashSuccessfully);
   }
 
-  if (options.set_last_chance_handler) {
-    client.SetLastChanceExceptionHandler(HandleCrashSuccessfullyAfterReporting);
-  }
-
 #if BUILDFLAG(IS_ANDROID)
   if (android_set_abort_message) {
     android_set_abort_message(kTestAbortMessage);
@@ -461,16 +440,6 @@ class StartHandlerForSelfInChildTest : public MultiprocessExec {
         case CrashType::kSegvWithTagBits:
           SetExpectedChildTermination(TerminationReason::kTerminationSignal,
                                       SIGSEGV);
-          break;
-        case CrashType::kFakeSegv:
-          if (!options.set_last_chance_handler) {
-            SetExpectedChildTermination(TerminationReason::kTerminationSignal,
-                                        SIGSEGV);
-          } else {
-            SetExpectedChildTermination(TerminationReason::kTerminationNormal,
-                                        EXIT_SUCCESS);
-          }
-          break;
       }
     }
   }
@@ -502,11 +471,7 @@ class StartHandlerForSelfInChildTest : public MultiprocessExec {
     writer.Close();
 
     if (options_.client_uses_signals && !options_.set_first_chance_handler &&
-        options_.crash_type != CrashType::kSimulated &&
-        // The last chance handler will prevent the client handler from being
-        // called if crash type is kFakeSegv.
-        (!options_.set_last_chance_handler ||
-         options_.crash_type != CrashType::kFakeSegv)) {
+        options_.crash_type != CrashType::kSimulated) {
       // Wait for child's client signal handler.
       char c;
       EXPECT_TRUE(LoggingReadFileExactly(ReadPipeHandle(), &c, sizeof(c)));
@@ -552,15 +517,6 @@ TEST_P(StartHandlerForSelfTest, StartHandlerInChild) {
   }
 #endif  // defined(ADDRESS_SANITIZER)
 
-  // kFakeSegv does raise(SIGSEGV) to simulate a MTE error which is a SEGSEGV
-  // that doesn't get reraised automatically, but this causes the child process
-  // to flakily terminate normally on some bots (e.g. android-nougat-x86-rel)
-  // for some reason so this is skipped.
-  if (!Options().set_last_chance_handler &&
-      Options().crash_type == CrashType::kFakeSegv) {
-    GTEST_SKIP();
-  }
-
   if (Options().crash_type == CrashType::kSegvWithTagBits) {
 #if !defined(ARCH_CPU_ARM64)
     GTEST_SKIP() << "Testing for tag bits only exists on aarch64.";
@@ -593,12 +549,10 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Bool(),
                      testing::Bool(),
                      testing::Bool(),
-                     testing::Bool(),
                      testing::Values(CrashType::kSimulated,
                                      CrashType::kBuiltinTrap,
                                      CrashType::kInfiniteRecursion,
-                                     CrashType::kSegvWithTagBits,
-                                     CrashType::kFakeSegv)));
+                                     CrashType::kSegvWithTagBits)));
 
 // Test state for starting the handler for another process.
 class StartHandlerForClientTest {

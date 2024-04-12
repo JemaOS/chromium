@@ -69,7 +69,7 @@ PresentationAvailabilityState* PresentationController::GetAvailabilityState() {
         GetPresentationService().get());
   }
 
-  return availability_state_.Get();
+  return availability_state_;
 }
 
 void PresentationController::AddAvailabilityObserver(

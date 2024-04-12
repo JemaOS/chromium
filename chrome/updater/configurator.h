@@ -6,15 +6,15 @@
 #define CHROME_UPDATER_CONFIGURATOR_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/containers/flat_map.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/sequence_checker.h"
 #include "base/time/time.h"
+#include "components/update_client/buildflags.h"
 #include "components/update_client/configurator.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class GURL;
 class PrefService;
@@ -29,6 +29,7 @@ enum class VerifierFormat;
 }
 
 namespace update_client {
+class ActivityDataService;
 class NetworkFetcherFactory;
 class CrxDownloaderFactory;
 class ProtocolHandlerFactory;
@@ -36,11 +37,17 @@ class ProtocolHandlerFactory;
 
 namespace updater {
 
+class ActivityDataService;
 class ExternalConstants;
-class PersistedData;
 class PolicyService;
 class UpdaterPrefs;
 
+#if BUILDFLAG(ENABLE_PUFFIN_PATCHES)
+inline constexpr const char* kCrxCachePath = "crx_cache";
+#endif
+
+// This class is free-threaded. Its instance is shared by multiple sequences and
+// it can't be mutated.
 class Configurator : public update_client::Configurator {
  public:
   Configurator(scoped_refptr<UpdaterPrefs> prefs,
@@ -72,16 +79,16 @@ class Configurator : public update_client::Configurator {
   bool EnabledBackgroundDownloader() const override;
   bool EnabledCupSigning() const override;
   PrefService* GetPrefService() const override;
-  update_client::PersistedData* GetPersistedData() const override;
+  update_client::ActivityDataService* GetActivityDataService() const override;
   bool IsPerUserInstall() const override;
   std::unique_ptr<update_client::ProtocolHandlerFactory>
   GetProtocolHandlerFactory() const override;
-  std::optional<bool> IsMachineExternallyManaged() const override;
+  absl::optional<bool> IsMachineExternallyManaged() const override;
   update_client::UpdaterStateProvider GetUpdaterStateProvider() const override;
-  std::optional<base::FilePath> GetCrxCachePath() const override;
-  bool IsConnectionMetered() const override;
+#if BUILDFLAG(ENABLE_PUFFIN_PATCHES)
+  absl::optional<base::FilePath> GetCrxCachePath() const override;
+#endif
 
-  scoped_refptr<PersistedData> GetUpdaterPersistedData() const;
   virtual GURL CrashUploadURL() const;
   virtual GURL DeviceManagementURL() const;
 
@@ -93,16 +100,15 @@ class Configurator : public update_client::Configurator {
   friend class base::RefCountedThreadSafe<Configurator>;
   ~Configurator() override;
 
-  SEQUENCE_CHECKER(sequence_checker_);
   scoped_refptr<UpdaterPrefs> prefs_;
   scoped_refptr<PolicyService> policy_service_;
   scoped_refptr<ExternalConstants> external_constants_;
-  scoped_refptr<PersistedData> persisted_data_;
+  std::unique_ptr<ActivityDataService> activity_data_service_;
   scoped_refptr<update_client::NetworkFetcherFactory> network_fetcher_factory_;
   scoped_refptr<update_client::CrxDownloaderFactory> crx_downloader_factory_;
   scoped_refptr<update_client::UnzipperFactory> unzip_factory_;
   scoped_refptr<update_client::PatcherFactory> patch_factory_;
-  const std::optional<bool> is_managed_device_;
+  const absl::optional<bool> is_managed_device_;
 };
 
 }  // namespace updater

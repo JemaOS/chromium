@@ -25,10 +25,10 @@ void PaintGeneratedImage::Draw(cc::PaintCanvas* canvas,
   canvas->drawPicture(record_);
 }
 
-void PaintGeneratedImage::DrawTile(cc::PaintCanvas* canvas,
+void PaintGeneratedImage::DrawTile(GraphicsContext& context,
                                    const gfx::RectF& src_rect,
                                    const ImageDrawOptions&) {
-  canvas->drawPicture(record_);
+  context.DrawRecord(record_);
 }
 
 }  // namespace blink

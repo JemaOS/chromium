@@ -30,6 +30,7 @@
 
 #include "third_party/blink/renderer/platform/wtf/wtf.h"
 
+#include "base/third_party/double_conversion/double-conversion/double-conversion.h"
 #include "build/build_config.h"
 #include "third_party/abseil-cpp/absl/base/attributes.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/partitions.h"
@@ -82,7 +83,10 @@ void Initialize() {
 
   Threading::Initialize();
 
-  internal::InitializeDoubleConverter();
+  // Force initialization of static DoubleToStringConverter converter variable
+  // inside EcmaScriptConverter function while we are in single thread mode.
+  double_conversion::DoubleToStringConverter::EcmaScriptConverter();
+  internal::GetDoubleConverter();
 
   internal::InitializeMainThreadStackEstimate();
   AtomicString::Init();

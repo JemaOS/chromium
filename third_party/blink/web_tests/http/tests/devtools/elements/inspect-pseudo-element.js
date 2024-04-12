@@ -2,14 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
-import * as UIModule from 'devtools/ui/legacy/legacy.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Test\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <style>
@@ -40,7 +35,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
   TestRunner.overlayModel.setInspectMode(Protocol.Overlay.InspectMode.SearchForNode).then(inspectModeEnabled);
 
   function inspectModeEnabled() {
-    UIModule.Context.Context.instance().addFlavorChangeListener(SDK.DOMModel.DOMNode, selectedNodeChanged);
+    UI.context.addFlavorChangeListener(SDK.DOMNode, selectedNodeChanged);
     TestRunner.evaluateInPage('clickPseudo()');
   }
 
@@ -50,7 +45,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
       TestRunner.addResult('<no selected node>');
     else
       TestRunner.addResult('Selected node pseudo type: ' + selectedNode.pseudoType());
-    UIModule.Context.Context.instance().removeFlavorChangeListener(SDK.DOMModel.DOMNode, selectedNodeChanged);
+    UI.context.removeFlavorChangeListener(SDK.DOMNode, selectedNodeChanged);
     TestRunner.completeTest();
   }
 })();

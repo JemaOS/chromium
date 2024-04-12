@@ -22,7 +22,7 @@
   <div id="container" slot="right-pane">
     <div class="scroll-container">
       <network-list id="networkList" show-technology-badge
-          networks="[[networks]]" on-selected="onNetworkSelected"
+          networks="[[networks_]]" on-selected="onNetworkSelected_"
           disabled="[[allButtonsDisabled]]">
       </network-list>
     </div>
@@ -32,29 +32,29 @@
 
 <cr-dialog id="dialog" close-text="close">
   <div slot="title">
-    [[getDialogTitle(networkName, networkType, networkShowConnect)]]
+    [[getDialogTitle_(networkName_, networkType_, networkShowConnect_)]]
   </div>
   <div slot="body">
-    <network-config id="networkConfig" enable-connect="{{enableConnect}}"
-      error="{{error}}" on-close="onConfigClose" name="{{networkName}}"
-      on-properties-set="onPropertiesSet" type="{{networkType}}"
-      connect-on-enter="[[networkShowConnect]]" guid="[[guid]]">
+    <network-config id="networkConfig" enable-connect="{{enableConnect_}}"
+      error="{{error_}}" on-close="onConfigClose_" name="{{networkName_}}"
+      on-properties-set="onPropertiesSet_" type="{{networkType_}}"
+      connect-on-enter="[[networkShowConnect_]]" guid="[[guid_]]">
     </network-config>
   </div>
   <div class="dialog-footer" slot="button-container">
-    <template is="dom-if" if="[[error]]" restamp>
-      <div class="flex error">[[getError(error)]]</div>
+    <template is="dom-if" if="[[error_]]" restamp>
+      <div class="flex error">[[getError_(error_)]]</div>
     </template>
-    <cr-button id="cancelButton" on-click="closeConfig">
+    <cr-button id="cancelButton" on-click="closeConfig_">
         [[i18n('connectNetworkDialogCancelButtonText')]]
     </cr-button>
     <cr-button id="connectButton" class="action-button"
-        on-click="connectNetwork" disabled="[[!enableConnect]]"
-        hidden$="[[!networkShowConnect]]">
+        on-click="connectNetwork_" disabled="[[!enableConnect_]]"
+        hidden$="[[!networkShowConnect_]]">
       [[i18n('connectNetworkDialogConnectButtonText')]]
     </cr-button>
     <cr-button id="disconnectButton" class="action-button"
-      on-click="disconnectNetwork"  hidden$="[[networkShowConnect]]">
+      on-click="disconnectNetwork_"  hidden$="[[networkShowConnect_]]">
       [[i18n('connectNetworkDialogDisconnectButtonText')]]
     </cr-button>
   </div>

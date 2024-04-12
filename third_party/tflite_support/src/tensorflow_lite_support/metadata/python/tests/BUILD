@@ -1,6 +1,5 @@
-# Placeholder: load py_test
-
 package(
+    default_applicable_licenses = ["//tensorflow_lite_support:license"],
     default_visibility = [
         "//visibility:public",
     ],

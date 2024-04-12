@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startBlank(
     `Verifies that certain types of requests have or don't have Network.*ExtraInfo events, and makes sure that responseReceived.hasExtraInfo matches the presence of the ExtraInfo events.\n`);
 
@@ -32,14 +32,13 @@
     testRunner.log('');
   }
 
-  async function assertNoRequest(url) {
-    const navigatedPromise = dp.Page.onceFrameNavigated();
-    dp.Network.onResponseReceived(() => {
-      testRunner.log(`Unexpected network response received`);
-    });
+  async function assertNoExtraInfoNavigation(url) {
+    const responseReceivedPromise = dp.Network.onceResponseReceived();
     await session.navigate(url);
-    await navigatedPromise;
+    const responseReceived = await responseReceivedPromise;
     testRunner.log(`navigated to: ${url}`);
+    testRunner.log(`responseReceived.url: ${responseReceived.params.response.url}`);
+    testRunner.log(`responseReceived.hasExtraInfo: ${responseReceived.params.hasExtraInfo}`);
     testRunner.log('');
   }
 
@@ -62,7 +61,7 @@
 
   await assertHasExtraInfoNavigation('/');
   await assertHasExtraInfoNavigation('data:text/html,<div>helloWorld</div>');
-  await assertNoRequest('about:blank');
+  await assertHasExtraInfoNavigation('about:blank');
 
   // TODO can I also test file urls in web_tests...?
 

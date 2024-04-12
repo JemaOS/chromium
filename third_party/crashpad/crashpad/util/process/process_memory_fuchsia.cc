@@ -16,9 +16,8 @@
 
 #include <limits>
 
-#include "base/check_op.h"
-#include "base/fuchsia/fuchsia_logging.h"
 #include "base/logging.h"
+#include "base/fuchsia/fuchsia_logging.h"
 
 namespace crashpad {
 

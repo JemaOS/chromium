@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_CART_CART_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_CART_CART_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -25,12 +25,12 @@ class CartServiceFactory : public ProfileKeyedServiceFactory {
   static TestingFactory GetDefaultFactory();
 
  private:
-  friend base::NoDestructor<CartServiceFactory>;
+  friend struct base::DefaultSingletonTraits<CartServiceFactory>;
 
   CartServiceFactory();
   ~CartServiceFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import logging
 from datetime import datetime
 from chrome_ent_test.infra.core import before_all
 from chrome_ent_test.infra.core import category
@@ -30,8 +29,7 @@ class ReportingConnectorwithChronicleTest(ChromeReportingConnectorTestCase):
     testStartTime = datetime.utcnow()
 
     # trigger malware event & get device id from browser
-    deviceId, histogram = self.TriggerUnsafeBrowsingEvent()
-    logging.info('Histogram: %s', histogram)
+    deviceId = self.TriggerUnsafeBrowsingEvent()
 
     # wait until events are logged in the connector
     crendentials = self.GetFileFromGCSBucket(

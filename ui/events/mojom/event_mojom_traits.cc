@@ -52,25 +52,8 @@ bool ReadGestureData(ui::mojom::EventDataView* event,
 
   ui::GestureEventDetails details(ConvertTo<ui::EventType>(event->action()));
   details.set_device_type(gesture_data->device_type);
-  switch (details.type()) {
-    case ui::ET_GESTURE_PINCH_UPDATE:
-      if (!gesture_data->details->is_pinch()) {
-        return false;
-      }
-      details.set_scale(gesture_data->details->get_pinch()->scale);
-      break;
-    case ui::ET_GESTURE_SWIPE:
-      if (!gesture_data->details->is_swipe()) {
-        return false;
-      }
-      details.set_swipe_left(gesture_data->details->get_swipe()->left);
-      details.set_swipe_right(gesture_data->details->get_swipe()->right);
-      details.set_swipe_up(gesture_data->details->get_swipe()->up);
-      details.set_swipe_down(gesture_data->details->get_swipe()->down);
-      break;
-    default:
-      break;
-  }
+  if (details.type() == ui::ET_GESTURE_PINCH_UPDATE)
+    details.set_scale(gesture_data->scale);
 
   *out = std::make_unique<ui::GestureEvent>(
       gesture_data->location->relative_location.x(),
@@ -319,22 +302,9 @@ StructTraits<ui::mojom::EventDataView, EventUniquePtr>::gesture_data(
   ui::mojom::GestureDataPtr gesture_data(ui::mojom::GestureData::New());
   gesture_data->location = CreateLocationData(gesture_event);
   gesture_data->device_type = gesture_event->details().device_type();
-  switch (event->type()) {
-    case ui::ET_GESTURE_PINCH_UPDATE:
-      gesture_data->details = ui::mojom::GestureDataDetails::NewPinch(
-          ui::mojom::GesturePinchData::New(gesture_event->details().scale()));
-      break;
-    case ui::ET_GESTURE_SWIPE:
-      gesture_data->details = ui::mojom::GestureDataDetails::NewSwipe(
-          ui::mojom::GestureSwipeData::New(
-              gesture_event->details().swipe_left(),
-              gesture_event->details().swipe_right(),
-              gesture_event->details().swipe_up(),
-              gesture_event->details().swipe_down()));
-      break;
-    default:
-      break;
-  }
+  gesture_data->scale = (event->type() == ui::ET_GESTURE_PINCH_UPDATE)
+                            ? gesture_event->details().scale()
+                            : 1.f;
   return gesture_data;
 }
 
@@ -397,7 +367,7 @@ bool StructTraits<ui::mojom::EventDataView, EventUniquePtr>::Read(
       if (!event.ReadKeyData<ui::mojom::KeyDataPtr>(&key_data))
         return false;
 
-      std::optional<ui::DomKey> dom_key =
+      absl::optional<ui::DomKey> dom_key =
           ui::DomKey::FromBase(key_data->dom_key);
       if (!dom_key)
         return false;
@@ -508,7 +478,7 @@ bool StructTraits<ui::mojom::EventDataView, EventUniquePtr>::Read(
   if (!event.ReadLatency((*out)->latency()))
     return false;
 
-  std::optional<ui::Event::Properties> properties;
+  absl::optional<ui::Event::Properties> properties;
   if (!event.ReadProperties(&properties))
     return false;
   if (properties && !properties->empty())

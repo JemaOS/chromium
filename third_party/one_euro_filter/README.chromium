@@ -5,7 +5,6 @@ Version: 0
 License: BSD
 License File: LICENSE
 Security Critical: no
-Shipped: yes
 
 Description:
 1€ Filter is a simple speed-based low-pass filter for noisy input in

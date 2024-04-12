@@ -9,7 +9,9 @@ import android.graphics.RectF;
 
 import org.chromium.ui.resources.statics.NinePatchData;
 
-/** A resource that provides sizing information for layouts. */
+/**
+ * A resource that provides sizing information for layouts.
+ */
 public class LayoutResource {
     private final RectF mPadding;
     private final RectF mBitmapSize;
@@ -25,26 +27,14 @@ public class LayoutResource {
         }
         Rect bitmapSize = resource.getBitmapSize();
 
-        mPadding =
-                new RectF(
-                        padding.left * pxToDp,
-                        padding.top * pxToDp,
-                        padding.right * pxToDp,
-                        padding.bottom * pxToDp);
+        mPadding = new RectF(padding.left * pxToDp, padding.top * pxToDp, padding.right * pxToDp,
+                padding.bottom * pxToDp);
 
-        mBitmapSize =
-                new RectF(
-                        bitmapSize.left * pxToDp,
-                        bitmapSize.top * pxToDp,
-                        bitmapSize.right * pxToDp,
-                        bitmapSize.bottom * pxToDp);
+        mBitmapSize = new RectF(bitmapSize.left * pxToDp, bitmapSize.top * pxToDp,
+                bitmapSize.right * pxToDp, bitmapSize.bottom * pxToDp);
 
-        mAperture =
-                new RectF(
-                        aperture.left * pxToDp,
-                        aperture.top * pxToDp,
-                        aperture.right * pxToDp,
-                        aperture.bottom * pxToDp);
+        mAperture = new RectF(aperture.left * pxToDp, aperture.top * pxToDp,
+                aperture.right * pxToDp, aperture.bottom * pxToDp);
     }
 
     /**

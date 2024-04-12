@@ -11,8 +11,13 @@
 
 #include "ash/accelerators/keyboard_code_util.h"
 #include "ash/capture_mode/key_item_view.h"
+#include "ash/public/cpp/assistant/assistant_state.h"
+#include "ash/public/cpp/assistant/assistant_state_base.h"
 #include "ash/resources/vector_icons/vector_icons.h"
+#include "ash/shell.h"
+#include "key_item_view.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/events/ash/keyboard_capability.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/keycodes/keyboard_codes_posix.h"
 #include "ui/gfx/geometry/insets.h"
@@ -26,11 +31,29 @@ namespace {
 
 constexpr auto kBetweenKeyItemSpace = 8;
 
+bool IsAssistantAvailable() {
+  AssistantStateBase* state = AssistantState::Get();
+  return state->allowed_state() == assistant::AssistantAllowedState::ALLOWED &&
+         state->settings_enabled().value_or(false);
+}
+
+// Returns the corresponding vector icon for search or launcher key depending on
+// the keyboard layout and whether the assistant is enabled or not.
+const gfx::VectorIcon* GetVectorIconForSearchOrLauncherIcon() {
+  if (Shell::Get()->keyboard_capability()->HasLauncherButton()) {
+    return IsAssistantAvailable()
+               ? &kCaptureModeDemoToolsLauncherAssistantOnIcon
+               : &kCaptureModeDemoToolsLauncherAssistantOffIcon;
+  }
+
+  return &kCaptureModeDemoToolsSearchIcon;
+}
+
 // Returns the vector icons for keys that have icons on the keyboard.
 const gfx::VectorIcon* GetVectorIconForDemoTools(ui::KeyboardCode key_code) {
   switch (key_code) {
     case ui::VKEY_COMMAND:
-      return GetSearchOrLauncherVectorIcon();
+      return GetVectorIconForSearchOrLauncherIcon();
     case ui::VKEY_ASSISTANT:
       return &kCaptureModeDemoToolsAssistantIcon;
     case ui::VKEY_SETTINGS:
@@ -94,9 +117,9 @@ bool operator>(const ui::KeyboardCode lhs, const ui::KeyboardCode rhs) {
 
 // The container view that hosts the modifiers key item views.
 class ModifiersContainerView : public views::View {
-  METADATA_HEADER(ModifiersContainerView, views::View)
-
  public:
+  METADATA_HEADER(ModifiersContainerView);
+
   explicit ModifiersContainerView() {
     views::BoxLayout* layout_manager =
         SetLayoutManager(std::make_unique<views::BoxLayout>(
@@ -139,7 +162,7 @@ class ModifiersContainerView : public views::View {
 
  private:
   void RemoveModifier(ui::KeyboardCode key_code) {
-    for (views::View* child : children()) {
+    for (auto* child : children()) {
       if (static_cast<KeyItemView*>(child)->key_code() == key_code) {
         RemoveChildViewT(child);
         return;
@@ -164,7 +187,7 @@ class ModifiersContainerView : public views::View {
   int current_modifiers_ = 0;
 };
 
-BEGIN_METADATA(ModifiersContainerView)
+BEGIN_METADATA(ModifiersContainerView, views::View)
 END_METADATA
 
 // -----------------------------------------------------------------------------
@@ -217,7 +240,7 @@ std::vector<ui::KeyboardCode> KeyComboView::GetModifierKeycodeVector() const {
   return key_codes;
 }
 
-BEGIN_METADATA(KeyComboView)
+BEGIN_METADATA(KeyComboView, views::View)
 END_METADATA
 
 }  // namespace ash

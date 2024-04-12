@@ -8,7 +8,6 @@
 
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/autofill/payments/autofill_snackbar_controller.h"
-#include "chrome/browser/ui/autofill/payments/autofill_snackbar_type.h"
 #include "chrome/browser/ui/autofill/payments/autofill_snackbar_view.h"
 #include "content/public/browser/web_contents.h"
 
@@ -26,7 +25,7 @@ class AutofillSnackbarControllerImpl : public AutofillSnackbarController {
       const AutofillSnackbarControllerImpl&) = delete;
 
   // Show the snackbar.
-  void Show(AutofillSnackbarType autofill_snackbar_type);
+  void Show();
 
   // AutofillSnackbarController:
   void OnActionClicked() override;
@@ -40,16 +39,9 @@ class AutofillSnackbarControllerImpl : public AutofillSnackbarController {
   // Show is no-op.
   void Dismiss();
 
-  // Map the snackbar type to the corresponding UMA variant name for histogram.
-  std::string GetSnackbarTypeForLogging();
-
   raw_ptr<content::WebContents> web_contents_;
 
   raw_ptr<AutofillSnackbarView> autofill_snackbar_view_ = nullptr;
-
-  // The type of the progress dialog that is being displayed.
-  AutofillSnackbarType autofill_snackbar_type_ =
-      AutofillSnackbarType::kUnspecified;
 };
 
 }  // namespace autofill

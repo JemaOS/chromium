@@ -133,7 +133,7 @@ class SecurityStatePageLoadMetricsBrowserTest : public InProcessBrowserTest {
                           int64_t expected_value) {
     // Find last entry matching |url|.
     const ukm::mojom::UkmEntry* last = nullptr;
-    for (const ukm::mojom::UkmEntry* entry :
+    for (auto* entry :
          test_ukm_recorder_->GetEntriesByName(UkmEntry::kEntryName)) {
       auto* source = test_ukm_recorder_->GetSourceForSourceId(entry->source_id);
       if (source && source->url() == url)
@@ -294,10 +294,8 @@ IN_PROC_BROWSER_TEST_F(SecurityStatePageLoadMetricsBrowserTest,
     run_loop.Run();
 
     // The UKM isn't recorded until the page is destroyed.
-    int previous_tab_count = browser()->tab_strip_model()->count();
-    browser()->tab_strip_model()->CloseWebContentsAt(1,
-                                                     TabCloseTypes::CLOSE_NONE);
-    ASSERT_EQ(previous_tab_count - 1, browser()->tab_strip_model()->count());
+    ASSERT_TRUE(browser()->tab_strip_model()->CloseWebContentsAt(
+        1, TabCloseTypes::CLOSE_NONE));
 
     histogram_tester.ExpectTotalCount(
         kSiteEngagementHistogramPrefix + (test_case.expect_safety_tip
@@ -406,11 +404,11 @@ IN_PROC_BROWSER_TEST_F(
   content::WebContents* tab =
       browser()->tab_strip_model()->GetActiveWebContents();
   SecurityStyleTestObserver observer(tab);
-  ASSERT_TRUE(
-      content::ExecJs(browser()->tab_strip_model()->GetActiveWebContents(),
-                      "var img = document.createElement('img'); "
-                      "img.src = 'http://example.com/image.png'; "
-                      "document.body.appendChild(img);"));
+  ASSERT_TRUE(content::ExecuteScript(
+      browser()->tab_strip_model()->GetActiveWebContents(),
+      "var img = document.createElement('img'); "
+      "img.src = 'http://example.com/image.png'; "
+      "document.body.appendChild(img);"));
   observer.WaitForDidChangeVisibleSecurityState();
   CloseAllTabs();
 
@@ -582,7 +580,7 @@ class SecurityStatePageLoadMetricsPrerenderBrowserTest
   ~SecurityStatePageLoadMetricsPrerenderBrowserTest() override = default;
 
   void SetUp() override {
-    prerender_helper_.RegisterServerRequestMonitor(embedded_test_server());
+    prerender_helper_.SetUp(embedded_test_server());
     SecurityStatePageLoadMetricsBrowserTest::SetUp();
   }
 

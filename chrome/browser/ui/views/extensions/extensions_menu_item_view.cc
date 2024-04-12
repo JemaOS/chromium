@@ -26,16 +26,13 @@
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/common/extension_features.h"
-#include "ui/accessibility/ax_enums.mojom-shared.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
 #include "ui/gfx/paint_vector_icon.h"
 #include "ui/gfx/vector_icon_types.h"
-#include "ui/gfx/vector_icon_utils.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/animation/ink_drop.h"
@@ -44,11 +41,9 @@
 #include "ui/views/controls/button/menu_button_controller.h"
 #include "ui/views/controls/button/toggle_button.h"
 #include "ui/views/controls/combobox/combobox.h"
-#include "ui/views/controls/styled_label.h"
 #include "ui/views/layout/flex_layout_types.h"
 #include "ui/views/layout/flex_layout_view.h"
 #include "ui/views/layout/layout_types.h"
-#include "ui/views/style/typography.h"
 #include "ui/views/vector_icons.h"
 #include "ui/views/view_class_properties.h"
 
@@ -81,27 +76,6 @@ std::u16string GetPinButtonTooltip(bool is_force_pinned, bool is_pinned) {
   return l10n_util::GetStringUTF16(tooltip_id);
 }
 
-std::u16string GetPinButtonAccessibleName(
-    bool is_force_pinned,
-    bool is_pinned,
-    const std::u16string& extension_name) {
-  int tooltip_id = IDS_EXTENSIONS_PIN_TO_TOOLBAR_ACCESSIBLE_NAME;
-  if (is_force_pinned) {
-    tooltip_id = IDS_EXTENSIONS_PINNED_BY_ADMIN_ACCESSIBLE_NAME;
-  } else if (is_pinned) {
-    tooltip_id = IDS_EXTENSIONS_UNPIN_FROM_TOOLBAR_ACCESSIBLE_NAME;
-  }
-  return l10n_util::GetStringFUTF16(tooltip_id, extension_name);
-}
-
-std::u16string GetContextMenuAccessibleName(bool is_pinned) {
-  int tooltip_id =
-      is_pinned
-          ? IDS_EXTENSIONS_MENU_EXTENSION_CONTEXT_MENU_BUTTON_PINNED_ACCESSIBLE_NAME
-          : IDS_EXTENSIONS_MENU_EXTENSION_CONTEXT_MENU_BUTTON_ACCESSIBLE_NAME;
-  return l10n_util::GetStringUTF16(tooltip_id);
-}
-
 std::u16string GetPinButtonPressedAccText(bool is_pinned) {
   return l10n_util::GetStringUTF16(is_pinned ? IDS_EXTENSION_PINNED
                                              : IDS_EXTENSION_UNPINNED);
@@ -113,38 +87,7 @@ std::u16string GetSiteAccessToggleTooltip(bool is_on) {
             : IDS_EXTENSIONS_MENU_EXTENSION_SITE_ACCESS_TOGGLE_OFF_TOOLTIP);
 }
 
-std::u16string GetSitePermissionsButtonText(
-    ExtensionMenuItemView::SitePermissionsButtonAccess button_access) {
-  int label_id;
-  switch (button_access) {
-    case ExtensionMenuItemView::SitePermissionsButtonAccess::kNone:
-      label_id = IDS_EXTENSIONS_MENU_MAIN_PAGE_EXTENSION_SITE_ACCESS_NONE;
-      break;
-    case ExtensionMenuItemView::SitePermissionsButtonAccess::kOnClick:
-      label_id = IDS_EXTENSIONS_MENU_MAIN_PAGE_EXTENSION_SITE_ACCESS_ON_CLICK;
-      break;
-    case ExtensionMenuItemView::SitePermissionsButtonAccess::kOnSite:
-      label_id = IDS_EXTENSIONS_MENU_MAIN_PAGE_EXTENSION_SITE_ACCESS_ON_SITE;
-      break;
-    case ExtensionMenuItemView::SitePermissionsButtonAccess::kOnAllSites:
-      label_id =
-          IDS_EXTENSIONS_MENU_MAIN_PAGE_EXTENSION_SITE_ACCESS_ON_ALL_SITES;
-      break;
-  }
-  return l10n_util::GetStringUTF16(label_id);
-}
-
-const gfx::VectorIcon& GetPinIcon(bool is_pinned) {
-  if (is_pinned) {
-    return features::IsChromeRefresh2023() ? kKeepPinFilledChromeRefreshIcon
-                                           : views::kUnpinIcon;
-  }
-  return features::IsChromeRefresh2023() ? kKeepPinChromeRefreshIcon
-                                         : views::kPinIcon;
-}
-
 }  // namespace
-
 ExtensionMenuItemView::ExtensionMenuItemView(
     Browser* browser,
     std::unique_ptr<ToolbarActionViewController> controller,
@@ -155,6 +98,9 @@ ExtensionMenuItemView::ExtensionMenuItemView(
   CHECK(!base::FeatureList::IsEnabled(
       extensions_features::kExtensionsMenuAccessControl));
 
+  views::FlexSpecification stretch_specification =
+      views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
+                               views::MaximumFlexSizeRule::kUnbounded);
   auto builder =
       views::Builder<ExtensionMenuItemView>(this)
           // Set so the extension button receives enter/exit on children to
@@ -167,10 +113,7 @@ ExtensionMenuItemView::ExtensionMenuItemView(
                   std::make_unique<ExtensionsMenuButton>(browser_,
                                                          controller_.get()))
                   .CopyAddressTo(&primary_action_button_)
-                  .SetProperty(views::kFlexBehaviorKey,
-                               views::FlexSpecification(
-                                   views::MinimumFlexSizeRule::kScaleToZero,
-                                   views::MaximumFlexSizeRule::kUnbounded)),
+                  .SetProperty(views::kFlexBehaviorKey, stretch_specification),
               views::Builder<HoverButton>(
                   std::make_unique<HoverButton>(
                       views::Button::PressedCallback(), std::u16string()))
@@ -180,10 +123,7 @@ ExtensionMenuItemView::ExtensionMenuItemView(
                       ChromeLayoutProvider::Get()->GetDistanceMetric(
                           DISTANCE_EXTENSIONS_MENU_BUTTON_MARGIN)))
                   .SetTooltipText(l10n_util::GetStringUTF16(
-                      IDS_EXTENSIONS_MENU_CONTEXT_MENU_TOOLTIP))
-                  .SetAccessibleName(l10n_util::GetStringFUTF16(
-                      IDS_EXTENSIONS_MENU_CONTEXT_MENU_TOOLTIP_ACCESSIBLE_NAME,
-                      controller_->GetActionName())));
+                      IDS_EXTENSIONS_MENU_CONTEXT_MENU_TOOLTIP)));
 
   if (allow_pinning) {
     // Pin button should be in between `primary_action_button_` and
@@ -201,13 +141,6 @@ ExtensionMenuItemView::ExtensionMenuItemView(
                 ChromeLayoutProvider::Get()->GetDistanceMetric(
                     DISTANCE_EXTENSIONS_MENU_BUTTON_MARGIN))),
         index);
-    // By default, the button's accessible description is set to the button's
-    // tooltip text. For the pin button, we only want the accessible name to be
-    // read on accessibility mode since it includes the tooltip text. Thus we
-    // set the accessible description.
-    pin_button_->GetViewAccessibility().SetDescription(
-        std::u16string(),
-        ax::mojom::DescriptionFrom::kAttributeExplicitlyEmpty);
   }
 
   std::move(builder).BuildChildren();
@@ -215,59 +148,10 @@ ExtensionMenuItemView::ExtensionMenuItemView(
   SetupContextMenuButton();
 }
 
-views::Builder<HoverButton> GetSitePermissionsButtonBuilder(
-    views::Button::PressedCallback callback,
-    bool is_enterprise,
-    int small_icon_size,
-    int icon_size,
-    int icon_label_spacing) {
-  auto button_builder =
-      views::Builder<HoverButton>(
-          std::make_unique<HoverButton>(std::move(callback), std::u16string()))
-          // Align the main and secondary row text by adding the primary
-          // action button's icon size as margin.
-          .SetProperty(views::kMarginsKey, gfx::Insets::VH(0, icon_size))
-          // Border should be the same as the space between icon and
-          // label in the primary action button.
-          .SetBorder(
-              views::CreateEmptyBorder(gfx::Insets::VH(0, icon_label_spacing)));
-
-  if (is_enterprise) {
-    // Add left-aligned business icon for enterprise extensions.
-    button_builder.SetHorizontalAlignment(gfx::ALIGN_LEFT)
-        .SetImageModel(views::Button::ButtonState::STATE_NORMAL,
-                       ui::ImageModel::FromVectorIcon(
-                           features::IsChromeRefresh2023()
-                               ? vector_icons::kBusinessChromeRefreshIcon
-                               : vector_icons::kBusinessIcon,
-                           ui::kColorIcon, small_icon_size));
-
-  } else {
-    // Add right-aligned arrow icon for non-enterprise extensions when the
-    // button is not disabled.
-    auto arrow_icon = ui::ImageModel::FromVectorIcon(
-        features::IsChromeRefresh2023()
-            ? vector_icons::kSubmenuArrowChromeRefreshIcon
-            : vector_icons::kSubmenuArrowIcon,
-        ui::kColorIcon,
-        features::IsChromeRefresh2023()
-            ? small_icon_size
-            : gfx::GetDefaultSizeOfVectorIcon(vector_icons::kSubmenuArrowIcon));
-
-    button_builder.SetHorizontalAlignment(gfx::ALIGN_RIGHT)
-        .SetImageModel(views::Button::ButtonState::STATE_NORMAL, arrow_icon)
-        .SetImageModel(views::Button::ButtonState::STATE_DISABLED,
-                       ui::ImageModel());
-  }
-
-  return button_builder;
-}
-
 ExtensionMenuItemView::ExtensionMenuItemView(
     Browser* browser,
-    bool is_enterprise,
     std::unique_ptr<ToolbarActionViewController> controller,
-    base::RepeatingCallback<void(bool)> site_access_toggle_callback,
+    views::Button::PressedCallback site_access_toggle_callback,
     views::Button::PressedCallback site_permissions_button_callback)
     : browser_(browser),
       controller_(std::move(controller)),
@@ -275,17 +159,16 @@ ExtensionMenuItemView::ExtensionMenuItemView(
   CHECK(base::FeatureList::IsEnabled(
       extensions_features::kExtensionsMenuAccessControl));
 
+  views::FlexSpecification stretch_specification =
+      views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
+                               views::MaximumFlexSizeRule::kUnbounded);
   ChromeLayoutProvider* const provider = ChromeLayoutProvider::Get();
   const int icon_size =
       provider->GetDistanceMetric(DISTANCE_EXTENSIONS_MENU_EXTENSION_ICON_SIZE);
-  const int small_icon_size = provider->GetDistanceMetric(
-      DISTANCE_EXTENSIONS_MENU_BUTTON_ICON_SMALL_SIZE);
+  const int horizontal_inset =
+      provider->GetDistanceMetric(DISTANCE_EXTENSIONS_MENU_BUTTON_MARGIN);
   const int icon_label_spacing =
       provider->GetDistanceMetric(views::DISTANCE_RELATED_LABEL_HORIZONTAL);
-  const int menu_item_vertical_spacing =
-      provider->GetDistanceMetric(DISTANCE_RELATED_CONTROL_VERTICAL_SMALL);
-  const int horizontal_spacing =
-      provider->GetDistanceMetric(DISTANCE_RELATED_LABEL_HORIZONTAL_LIST);
 
   views::Builder<ExtensionMenuItemView>(this)
       // Set so the extension button receives enter/exit on children to
@@ -293,17 +176,12 @@ ExtensionMenuItemView::ExtensionMenuItemView(
       .SetNotifyEnterExitOnChild(true)
       .SetOrientation(views::LayoutOrientation::kVertical)
       .SetCrossAxisAlignment(views::LayoutAlignment::kStretch)
-      .SetProperty(views::kBoxLayoutFlexKey,
-                   views::BoxLayoutFlexSpecification())
+      .SetProperty(views::kFlexBehaviorKey, stretch_specification)
       .AddChildren(
           // Main row.
           views::Builder<views::FlexLayoutView>()
               .SetOrientation(views::LayoutOrientation::kHorizontal)
               .SetIgnoreDefaultMainAxisMargins(true)
-              // Spacing between menu items is done by setting the top margin.
-              // Horizontal margins are added by the parent view.
-              .SetInteriorMargin(
-                  gfx::Insets::TLBR(menu_item_vertical_spacing, 0, 0, 0))
               .AddChildren(
                   // Primary action button.
                   views::Builder<ExtensionsMenuButton>(
@@ -311,65 +189,49 @@ ExtensionMenuItemView::ExtensionMenuItemView(
                                                              controller_.get()))
                       .CopyAddressTo(&primary_action_button_)
                       .SetProperty(views::kFlexBehaviorKey,
-                                   views::FlexSpecification(
-                                       views::MinimumFlexSizeRule::kScaleToZero,
-                                       views::MaximumFlexSizeRule::kUnbounded)),
+                                   stretch_specification),
                   // Site access toggle.
                   views::Builder<views::ToggleButton>()
                       .CopyAddressTo(&site_access_toggle_)
-                      .SetProperty(
-                          views::kMarginsKey,
-                          gfx::Insets::TLBR(0, horizontal_spacing, 0, 0))
-                      .SetAccessibleName(l10n_util::GetStringFUTF16(
-                          IDS_EXTENSIONS_MENU_EXTENSION_SITE_ACCESS_TOGGLE_ACCESSIBLE_NAME,
-                          controller_->GetActionName()))
-                      .SetCallback(base::BindRepeating(
-                          [](views::ToggleButton* toggle_button,
-                             base::RepeatingCallback<void(bool)>
-                                 site_access_toggle_callback) {
-                            site_access_toggle_callback.Run(
-                                toggle_button->GetIsOn());
-                          },
-                          site_access_toggle_, site_access_toggle_callback)),
+                      .SetCallback(site_access_toggle_callback),
                   // Context menu button.
                   views::Builder<HoverButton>(
                       std::make_unique<HoverButton>(
                           views::Button::PressedCallback(), std::u16string()))
                       .CopyAddressTo(&context_menu_button_)
                       .SetID(EXTENSION_CONTEXT_MENU)
-                      .SetProperty(
-                          views::kMarginsKey,
-                          gfx::Insets::TLBR(0, horizontal_spacing, 0, 0))
-                      // Override the hover button border since we are adding
-                      // vertical spacing in between menu items.
-                      .SetBorder(views::CreateEmptyBorder(gfx::Insets(0)))
+                      .SetBorder(views::CreateEmptyBorder(
+                          ChromeLayoutProvider::Get()->GetDistanceMetric(
+                              DISTANCE_EXTENSIONS_MENU_BUTTON_MARGIN)))
                       .SetTooltipText(l10n_util::GetStringUTF16(
-                          IDS_EXTENSIONS_MENU_EXTENSION_CONTEXT_MENU_BUTTON_TOOLTIP))),
+                          IDS_EXTENSIONS_MENU_CONTEXT_MENU_TOOLTIP))),
           // Secondary row.
           views::Builder<views::FlexLayoutView>().AddChildren(
-              GetSitePermissionsButtonBuilder(
-                  std::move(site_permissions_button_callback), is_enterprise,
-                  small_icon_size, icon_size, icon_label_spacing)
-                  .CopyAddressTo(&site_permissions_button_)))
+              // Site permissions button.
+              // TODO(crbug.com/998298): Compute title based on the
+              // extension site access.
+              // TODO(crbug.com/998298): Add tooltip after UX provides it.
+              views::Builder<HoverButton>(
+                  std::make_unique<HoverButton>(
+                      site_permissions_button_callback,
+                      /*icon_view=*/nullptr, u"site access", std::u16string(),
+                      std::make_unique<views::ImageView>(
+                          ui::ImageModel::FromVectorIcon(
+                              vector_icons::kSubmenuArrowIcon,
+                              ui::kColorIcon))))
+                  .CopyAddressTo(&site_permissions_button_)
+                  // Margin to align the main and secondary row text. Icon
+                  // size and horizontal insets should be the values used by
+                  // the extensions menu button.
+                  .SetProperty(views::kMarginsKey,
+                               gfx::Insets::VH(0, icon_size + horizontal_inset))
+                  // Border should be the same as the icon label
+                  // spacing used by the extensions menu button.
+                  .SetBorder(views::CreateEmptyBorder(
+                      gfx::Insets::VH(0, icon_label_spacing)))))
       .BuildChildren();
 
-  if (features::IsChromeRefresh2023()) {
-    primary_action_button_->SetTitleTextStyle(
-        views::style::STYLE_BODY_3_EMPHASIS, ui::kColorDialogBackground,
-        kColorExtensionsMenuText);
-    site_permissions_button_->SetTitleTextStyle(
-        views::style::STYLE_BODY_5, ui::kColorDialogBackground,
-        kColorExtensionsMenuSecondaryText);
-  }
-
   SetupContextMenuButton();
-
-  // By default, the button's accessible description is set to the button's
-  // tooltip text. This is the accepted workaround to ensure only accessible
-  // name is announced by a screenreader rather than tooltip text and
-  // accessible name.
-  site_access_toggle_->GetViewAccessibility().SetDescription(
-      std::u16string(), ax::mojom::DescriptionFrom::kAttributeExplicitlyEmpty);
 }
 
 ExtensionMenuItemView::~ExtensionMenuItemView() = default;
@@ -385,10 +247,8 @@ void ExtensionMenuItemView::OnThemeChanged() {
     UpdateContextMenuButton(is_pinned);
   } else {
     SetButtonIconWithColor(
-        context_menu_button_,
-        features::IsChromeRefresh2023() ? kBrowserToolsChromeRefreshIcon
-                                        : kBrowserToolsIcon,
-        icon_color, color_provider->GetColor(kColorExtensionMenuIconDisabled));
+        context_menu_button_, kBrowserToolsIcon, icon_color,
+        color_provider->GetColor(kColorExtensionMenuIconDisabled));
     if (pin_button_) {
       views::InkDrop::Get(pin_button_)->SetBaseColor(icon_color);
       bool is_pinned = model_ && model_->IsActionPinned(controller_->GetId());
@@ -401,32 +261,23 @@ void ExtensionMenuItemView::OnThemeChanged() {
 
 void ExtensionMenuItemView::Update(
     SiteAccessToggleState site_access_toggle_state,
-    SitePermissionsButtonState site_permissions_button_state,
-    SitePermissionsButtonAccess site_permissions_button_access) {
+    SitePermissionsButtonState site_permissions_button_state) {
   if (base::FeatureList::IsEnabled(
           extensions_features::kExtensionsMenuAccessControl)) {
     bool is_toggle_on = site_access_toggle_state == SiteAccessToggleState::kOn;
+    std::u16string toggle_tooltip = GetSiteAccessToggleTooltip(is_toggle_on);
     site_access_toggle_->SetVisible(site_access_toggle_state !=
                                     SiteAccessToggleState::kHidden);
     site_access_toggle_->SetIsOn(is_toggle_on);
-    site_access_toggle_->SetTooltipText(
-        GetSiteAccessToggleTooltip(is_toggle_on));
+    site_access_toggle_->SetTooltipText(toggle_tooltip);
+    site_access_toggle_->SetAccessibleName(toggle_tooltip);
 
     site_permissions_button_->SetVisible(site_permissions_button_state !=
                                          SitePermissionsButtonState::kHidden);
     site_permissions_button_->SetEnabled(site_permissions_button_state ==
                                          SitePermissionsButtonState::kEnabled);
-    std::u16string site_permissions_text =
-        GetSitePermissionsButtonText(site_permissions_button_access);
-    site_permissions_button_->SetText(site_permissions_text);
-    // TODO(crbug.com/326111337): Add tooltip based on button state.
-    site_permissions_button_->SetAccessibleName(l10n_util::GetStringFUTF16(
-        IDS_EXTENSIONS_MENU_MAIN_PAGE_EXTENSION_SITE_ACCESS_ACCESSIBLE_NAME,
-        site_permissions_text));
-
-    // Update button size after changing its contents so it fits in the menu
-    // item row.
-    site_permissions_button_->PreferredSizeChanged();
+    // TODO(crbug.com/1390952): Display the arrow icon only when site
+    // permissions button is enabled.
   }
 
   view_controller()->UpdateState();
@@ -439,8 +290,6 @@ void ExtensionMenuItemView::UpdatePinButton(bool is_force_pinned,
   }
 
   pin_button_->SetTooltipText(GetPinButtonTooltip(is_force_pinned, is_pinned));
-  pin_button_->SetAccessibleName(GetPinButtonAccessibleName(
-      is_force_pinned, is_pinned, controller_->GetActionName()));
   // Extension pinning is not available in Incognito as it leaves a trace of
   // user activity.
   pin_button_->SetEnabled(!is_force_pinned &&
@@ -452,8 +301,9 @@ void ExtensionMenuItemView::UpdatePinButton(bool is_force_pinned,
   const SkColor disabled_icon_color = color_provider->GetColor(
       is_pinned ? kColorExtensionMenuPinButtonIconDisabled
                 : kColorExtensionMenuIconDisabled);
-  SetButtonIconWithColor(pin_button_, GetPinIcon(is_pinned), icon_color,
-                         disabled_icon_color);
+  SetButtonIconWithColor(pin_button_,
+                         is_pinned ? views::kUnpinIcon : views::kPinIcon,
+                         icon_color, disabled_icon_color);
 }
 
 void ExtensionMenuItemView::UpdateContextMenuButton(bool is_action_pinned) {
@@ -464,9 +314,8 @@ void ExtensionMenuItemView::UpdateContextMenuButton(bool is_action_pinned) {
       DISTANCE_EXTENSIONS_MENU_BUTTON_ICON_SIZE);
   const auto* const color_provider = GetColorProvider();
   auto three_dot_icon = ui::ImageModel::FromVectorIcon(
-      features::IsChromeRefresh2023() ? kBrowserToolsChromeRefreshIcon
-                                      : kBrowserToolsIcon,
-      color_provider->GetColor(kColorExtensionMenuIcon), icon_size);
+      kBrowserToolsIcon, color_provider->GetColor(kColorExtensionMenuIcon),
+      icon_size);
 
   // Show a pin button for the context menu normal state icon when the action is
   // pinned in the toolbar. All other states should look, and behave, the same.
@@ -474,8 +323,7 @@ void ExtensionMenuItemView::UpdateContextMenuButton(bool is_action_pinned) {
       views::Button::STATE_NORMAL,
       is_action_pinned
           ? ui::ImageModel::FromVectorIcon(
-                features::IsChromeRefresh2023() ? kKeepPinChromeRefreshIcon
-                                                : views::kUnpinIcon,
+                views::kPinIcon,
                 color_provider->GetColor(kColorExtensionMenuPinButtonIcon),
                 icon_size)
           : three_dot_icon);
@@ -483,8 +331,6 @@ void ExtensionMenuItemView::UpdateContextMenuButton(bool is_action_pinned) {
                                       three_dot_icon);
   context_menu_button_->SetImageModel(views::Button::STATE_PRESSED,
                                       three_dot_icon);
-  context_menu_button_->SetAccessibleName(
-      GetContextMenuAccessibleName(is_action_pinned));
 }
 
 void ExtensionMenuItemView::SetupContextMenuButton() {
@@ -500,13 +346,6 @@ void ExtensionMenuItemView::SetupContextMenuButton() {
                               base::Unretained(this)),
           std::make_unique<views::Button::DefaultButtonControllerDelegate>(
               context_menu_button_.get())));
-
-  // By default, the button's accessible description is set to the button's
-  // tooltip text. This is the accepted workaround to ensure only accessible
-  // name is announced by a screenreader rather than tooltip text and
-  // accessible name.
-  context_menu_button_->GetViewAccessibility().SetDescription(
-      std::u16string(), ax::mojom::DescriptionFrom::kAttributeExplicitlyEmpty);
 }
 
 void ExtensionMenuItemView::OnContextMenuPressed() {
@@ -522,16 +361,16 @@ void ExtensionMenuItemView::OnPinButtonPressed() {
   CHECK(model_);
   base::RecordAction(
       base::UserMetricsAction("Extensions.Toolbar.PinButtonPressed"));
-  // Toggle action visibility.
-  bool new_action_visibility = !model_->IsActionPinned(controller_->GetId());
-  model_->SetActionVisibility(controller_->GetId(), new_action_visibility);
+  // Toggle pin visibility.
+  bool is_action_pinned = model_->IsActionPinned(controller_->GetId());
+  model_->SetActionVisibility(controller_->GetId(), !is_action_pinned);
   GetViewAccessibility().AnnounceText(
-      GetPinButtonPressedAccText(new_action_visibility));
+      GetPinButtonPressedAccText(is_action_pinned));
 }
 
 bool ExtensionMenuItemView::IsContextMenuRunningForTesting() const {
   return context_menu_controller_->IsMenuRunning();
 }
 
-BEGIN_METADATA(ExtensionMenuItemView)
+BEGIN_METADATA(ExtensionMenuItemView, views::View)
 END_METADATA

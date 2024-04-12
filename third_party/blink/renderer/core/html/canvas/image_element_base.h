@@ -28,13 +28,13 @@ class CORE_EXPORT ImageElementBase : public CanvasImageSource,
   static Image::ImageDecodingMode ParseImageDecodingMode(const AtomicString&);
 
   gfx::Size BitmapSourceSize() const override;
-  ScriptPromiseTyped<ImageBitmap> CreateImageBitmap(ScriptState*,
-                                                    std::optional<gfx::Rect>,
-                                                    const ImageBitmapOptions*,
-                                                    ExceptionState&) override;
+  ScriptPromise CreateImageBitmap(ScriptState*,
+                                  absl::optional<gfx::Rect>,
+                                  const ImageBitmapOptions*,
+                                  ExceptionState&) override;
 
   scoped_refptr<Image> GetSourceImageForCanvas(
-      FlushReason,
+      CanvasResourceProvider::FlushReason,
       SourceImageStatus*,
       const gfx::SizeF&,
       const AlphaDisposition alpha_disposition = kPremultiplyAlpha) override;

@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -21,8 +20,7 @@
 #include "base/timer/timer.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/compositor/compositor.h"
 #include "ui/compositor/layer.h"
@@ -42,7 +40,6 @@
 #include "ui/views/test/widget_test.h"
 #include "ui/views/view_observer.h"
 #include "ui/views/view_test_api.h"
-#include "ui/views/view_tracker.h"
 
 #if BUILDFLAG(IS_MAC)
 #include "ui/base/test/scoped_preferred_scroller_style_mac.h"
@@ -104,6 +101,22 @@ class ScrollViewTestApi {
   raw_ptr<ScrollView> scroll_view_;
 };
 
+class ObserveViewDeletion : public ViewObserver {
+ public:
+  explicit ObserveViewDeletion(View* view) { observer_.Observe(view); }
+
+  void OnViewIsDeleting(View* observed_view) override {
+    deleted_view_ = observed_view;
+    observer_.Reset();
+  }
+
+  View* deleted_view() { return deleted_view_; }
+
+ private:
+  base::ScopedObservation<View, ViewObserver> observer_{this};
+  raw_ptr<View> deleted_view_ = nullptr;
+};
+
 }  // namespace test
 
 namespace {
@@ -113,8 +126,6 @@ const int kMinHeight = 50;
 const int kMaxHeight = 100;
 
 class FixedView : public View {
-  METADATA_HEADER(FixedView, View)
-
  public:
   FixedView() = default;
 
@@ -123,7 +134,7 @@ class FixedView : public View {
 
   ~FixedView() override = default;
 
-  void Layout(PassKey) override {
+  void Layout() override {
     gfx::Size pref = GetPreferredSize();
     SetBounds(x(), y(), pref.width(), pref.height());
   }
@@ -131,12 +142,7 @@ class FixedView : public View {
   void SetFocus() { Focus(); }
 };
 
-BEGIN_METADATA(FixedView)
-END_METADATA
-
 class CustomView : public View {
-  METADATA_HEADER(CustomView, View)
-
  public:
   CustomView() = default;
 
@@ -147,7 +153,7 @@ class CustomView : public View {
 
   const gfx::Point last_location() const { return last_location_; }
 
-  void Layout(PassKey) override {
+  void Layout() override {
     gfx::Size pref = GetPreferredSize();
     int width = pref.width();
     int height = pref.height();
@@ -166,9 +172,6 @@ class CustomView : public View {
  private:
   gfx::Point last_location_;
 };
-
-BEGIN_METADATA(CustomView)
-END_METADATA
 
 void CheckScrollbarVisibility(const ScrollView* scroll_view,
                               ScrollBarOrientation orientation,
@@ -193,8 +196,6 @@ ui::MouseEvent TestLeftMouseAt(const gfx::Point& location, ui::EventType type) {
 // height. This is similar to a TableView that has many columns showing, but
 // very few rows.
 class VerticalResizingView : public View {
-  METADATA_HEADER(VerticalResizingView, View)
-
  public:
   VerticalResizingView() = default;
 
@@ -202,20 +203,15 @@ class VerticalResizingView : public View {
   VerticalResizingView& operator=(const VerticalResizingView&) = delete;
 
   ~VerticalResizingView() override = default;
-  void Layout(PassKey) override {
+  void Layout() override {
     int width = 10000;
     int height = parent()->height();
     SetBounds(x(), y(), width, height);
   }
 };
 
-BEGIN_METADATA(VerticalResizingView)
-END_METADATA
-
 // Same as VerticalResizingView, but horizontal instead.
 class HorizontalResizingView : public View {
-  METADATA_HEADER(HorizontalResizingView, View)
-
  public:
   HorizontalResizingView() = default;
 
@@ -223,19 +219,14 @@ class HorizontalResizingView : public View {
   HorizontalResizingView& operator=(const HorizontalResizingView&) = delete;
 
   ~HorizontalResizingView() override = default;
-  void Layout(PassKey) override {
+  void Layout() override {
     int height = 10000;
     int width = parent()->width();
     SetBounds(x(), y(), width, height);
   }
 };
 
-BEGIN_METADATA(HorizontalResizingView)
-END_METADATA
-
 class TestScrollBarThumb : public BaseScrollBarThumb {
-  METADATA_HEADER(TestScrollBarThumb, BaseScrollBarThumb)
-
  public:
   using BaseScrollBarThumb::BaseScrollBarThumb;
 
@@ -244,15 +235,10 @@ class TestScrollBarThumb : public BaseScrollBarThumb {
   void OnPaint(gfx::Canvas* canvas) override {}
 };
 
-BEGIN_METADATA(TestScrollBarThumb)
-END_METADATA
-
 class TestScrollBar : public ScrollBar {
-  METADATA_HEADER(TestScrollBar, ScrollBar)
-
  public:
-  TestScrollBar(Orientation orientation, bool overlaps_content, int thickness)
-      : ScrollBar(orientation),
+  TestScrollBar(bool horizontal, bool overlaps_content, int thickness)
+      : ScrollBar(horizontal),
         overlaps_content_(overlaps_content),
         thickness_(thickness) {
     SetThumb(new TestScrollBarThumb(this));
@@ -271,9 +257,6 @@ class TestScrollBar : public ScrollBar {
   const bool overlaps_content_ = false;
   const int thickness_ = 0;
 };
-
-BEGIN_METADATA(TestScrollBar)
-END_METADATA
 
 }  // namespace
 
@@ -417,9 +400,8 @@ class WidgetScrollViewTest : public test::WidgetTest,
   // testing::Test:
   void TearDown() override {
     widget_->GetCompositor()->RemoveObserver(this);
-    if (widget_) {
-      widget_.ExtractAsDangling()->CloseNow();
-    }
+    if (widget_)
+      widget_->CloseNow();
     WidgetTest::TearDown();
   }
 
@@ -992,8 +974,8 @@ TEST_F(ScrollViewTest, ScrollRectToVisibleWithHiddenHorizontalScrollbar) {
   EXPECT_EQ(315 - viewport_width, test_api.CurrentOffset().x());
 }
 
-// Verifies ScrollRectToVisible() scrolls the view vertically even if the
-// vertical scrollbar is hidden (but not disabled).
+// Verifies ScrollRectToVisible() scrolls the view horizontally even if the
+// horizontal scrollbar is hidden (but not disabled).
 TEST_F(ScrollViewTest, ScrollRectToVisibleWithHiddenVerticalScrollbar) {
   scroll_view_->SetVerticalScrollBarMode(
       ScrollView::ScrollBarMode::kHiddenButEnabled);
@@ -1017,31 +999,9 @@ TEST_F(ScrollViewTest, ScrollRectToVisibleWithHiddenVerticalScrollbar) {
   gfx::PointF offset = test_api.CurrentOffset();
   EXPECT_EQ(315 - viewport_height, offset.y());
 
-  // Scroll to the current y-location and 10x10; should do nothing.
+  // Scroll to the current x-location and 10x10; should do nothing.
   contents_ptr->ScrollRectToVisible(gfx::Rect(0, offset.y(), 10, 10));
   EXPECT_EQ(315 - viewport_height, test_api.CurrentOffset().y());
-}
-
-// Verifies ScrollRectToVisible() does not scroll the view horizontally or
-// vertically if the scrollbars are disabled.
-TEST_F(ScrollViewTest, ScrollRectToVisibleWithDisabledScrollbars) {
-  scroll_view_->SetHorizontalScrollBarMode(
-      ScrollView::ScrollBarMode::kDisabled);
-  scroll_view_->SetVerticalScrollBarMode(ScrollView::ScrollBarMode::kDisabled);
-  ScrollViewTestApi test_api(scroll_view_.get());
-  auto contents = std::make_unique<CustomView>();
-  contents->SetPreferredSize(gfx::Size(500, 1000));
-  auto* contents_ptr = scroll_view_->SetContents(std::move(contents));
-
-  scroll_view_->SetBoundsRect(gfx::Rect(0, 0, 100, 100));
-  views::test::RunScheduledLayout(scroll_view_.get());
-  EXPECT_EQ(gfx::Vector2d(0, 0), test_api.IntegralViewOffset());
-
-  contents_ptr->ScrollRectToVisible(gfx::Rect(305, 0, 10, 10));
-  EXPECT_EQ(0, test_api.CurrentOffset().x());
-
-  contents_ptr->ScrollRectToVisible(gfx::Rect(0, 305, 10, 10));
-  EXPECT_EQ(0, test_api.CurrentOffset().y());
 }
 
 // Verifies that child scrolls into view when it's focused.
@@ -1292,8 +1252,8 @@ TEST_F(WidgetScrollViewTest, ChildWithLayerTest) {
   // should be true.
   EXPECT_TRUE(test_api.contents_viewport()->layer()->fills_bounds_opaquely());
 
-  // Setting a std::nullopt color should make fills opaquely false.
-  scroll_view->SetBackgroundColor(std::nullopt);
+  // Setting a absl::nullopt color should make fills opaquely false.
+  scroll_view->SetBackgroundColor(absl::nullopt);
   EXPECT_FALSE(test_api.contents_viewport()->layer()->fills_bounds_opaquely());
 
   child->DestroyLayer();
@@ -2137,13 +2097,11 @@ TEST_F(ScrollViewTest, IgnoreOverlapWithDisabledHorizontalScroll) {
 
   constexpr int kThickness = 1;
   // Assume horizontal scroll bar is the default and is overlapping.
-  scroll_view_->SetHorizontalScrollBar(
-      std::make_unique<TestScrollBar>(ScrollBar::Orientation::kHorizontal,
-                                      /*overlaps_content=*/true, kThickness));
+  scroll_view_->SetHorizontalScrollBar(std::make_unique<TestScrollBar>(
+      /* horizontal */ true, /* overlaps_content */ true, kThickness));
   // Assume vertical scroll bar is custom and it we want it to not overlap.
-  scroll_view_->SetVerticalScrollBar(
-      std::make_unique<TestScrollBar>(ScrollBar::Orientation::kVertical,
-                                      /*overlaps_content=*/false, kThickness));
+  scroll_view_->SetVerticalScrollBar(std::make_unique<TestScrollBar>(
+      /* horizontal */ false, /* overlaps_content */ false, kThickness));
 
   // Also, let's turn off horizontal scroll bar.
   scroll_view_->SetHorizontalScrollBarMode(
@@ -2165,13 +2123,11 @@ TEST_F(ScrollViewTest, IgnoreOverlapWithHiddenHorizontalScroll) {
 
   constexpr int kThickness = 1;
   // Assume horizontal scroll bar is the default and is overlapping.
-  scroll_view_->SetHorizontalScrollBar(
-      std::make_unique<TestScrollBar>(ScrollBar::Orientation::kHorizontal,
-                                      /*overlaps_content=*/true, kThickness));
+  scroll_view_->SetHorizontalScrollBar(std::make_unique<TestScrollBar>(
+      /* horizontal */ true, /* overlaps_content */ true, kThickness));
   // Assume vertical scroll bar is custom and it we want it to not overlap.
-  scroll_view_->SetVerticalScrollBar(
-      std::make_unique<TestScrollBar>(ScrollBar::Orientation::kVertical,
-                                      /*overlaps_content=*/false, kThickness));
+  scroll_view_->SetVerticalScrollBar(std::make_unique<TestScrollBar>(
+      /* horizontal */ false, /* overlaps_content */ false, kThickness));
 
   // Also, let's turn off horizontal scroll bar.
   scroll_view_->SetHorizontalScrollBarMode(
@@ -2193,13 +2149,11 @@ TEST_F(ScrollViewTest, IgnoreOverlapWithDisabledVerticalScroll) {
 
   constexpr int kThickness = 1;
   // Assume horizontal scroll bar is custom and it we want it to not overlap.
-  scroll_view_->SetHorizontalScrollBar(
-      std::make_unique<TestScrollBar>(ScrollBar::Orientation::kHorizontal,
-                                      /*overlaps_content=*/false, kThickness));
+  scroll_view_->SetHorizontalScrollBar(std::make_unique<TestScrollBar>(
+      /* horizontal */ true, /* overlaps_content */ false, kThickness));
   // Assume vertical scroll bar is the default and is overlapping.
-  scroll_view_->SetVerticalScrollBar(
-      std::make_unique<TestScrollBar>(ScrollBar::Orientation::kVertical,
-                                      /*overlaps_content=*/true, kThickness));
+  scroll_view_->SetVerticalScrollBar(std::make_unique<TestScrollBar>(
+      /* horizontal */ false, /* overlaps_content */ true, kThickness));
 
   // Also, let's turn off horizontal scroll bar.
   scroll_view_->SetVerticalScrollBarMode(ScrollView::ScrollBarMode::kDisabled);
@@ -2220,13 +2174,11 @@ TEST_F(ScrollViewTest, IgnoreOverlapWithHiddenVerticalScroll) {
 
   constexpr int kThickness = 1;
   // Assume horizontal scroll bar is custom and it we want it to not overlap.
-  scroll_view_->SetHorizontalScrollBar(
-      std::make_unique<TestScrollBar>(ScrollBar::Orientation::kHorizontal,
-                                      /*overlaps_content=*/false, kThickness));
+  scroll_view_->SetHorizontalScrollBar(std::make_unique<TestScrollBar>(
+      /* horizontal */ true, /* overlaps_content */ false, kThickness));
   // Assume vertical scroll bar is the default and is overlapping.
-  scroll_view_->SetVerticalScrollBar(
-      std::make_unique<TestScrollBar>(ScrollBar::Orientation::kVertical,
-                                      /*overlaps_content=*/true, kThickness));
+  scroll_view_->SetVerticalScrollBar(std::make_unique<TestScrollBar>(
+      /* horizontal */ false, /* overlaps_content */ true, kThickness));
 
   // Also, let's turn off horizontal scroll bar.
   scroll_view_->SetVerticalScrollBarMode(
@@ -2243,8 +2195,7 @@ TEST_F(ScrollViewTest, IgnoreOverlapWithHiddenVerticalScroll) {
 
 TEST_F(ScrollViewTest, TestSettingContentsToNull) {
   View* contents = InstallContents();
-  ViewTracker tracker(contents);
-  ASSERT_TRUE(tracker.view());
+  test::ObserveViewDeletion view_deletion{contents};
 
   // Make sure the content is installed and working.
   EXPECT_EQ("0,0 100x100", contents->parent()->bounds().ToString());
@@ -2255,9 +2206,8 @@ TEST_F(ScrollViewTest, TestSettingContentsToNull) {
   // The content should now be gone.
   EXPECT_FALSE(scroll_view_->contents());
 
-  // The contents view should have also been deleted (and therefore the tracker
-  // is no longer tracking a view).
-  EXPECT_FALSE(tracker.view());
+  // The contents view should have also been deleted.
+  EXPECT_EQ(contents, view_deletion.deleted_view());
 }
 
 // Test scrolling behavior when clicking on the scroll track.

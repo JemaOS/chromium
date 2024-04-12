@@ -39,7 +39,7 @@ class ArcAppfuseBridgeFactory
 };
 
 void RunWithScopedHandle(base::OnceCallback<void(mojo::ScopedHandle)> callback,
-                         std::optional<base::ScopedFD> fd) {
+                         absl::optional<base::ScopedFD> fd) {
   if (!fd || !fd.value().is_valid()) {
     LOG(ERROR) << "Invalid FD: fd.has_value() = " << fd.has_value();
     std::move(callback).Run(mojo::ScopedHandle());

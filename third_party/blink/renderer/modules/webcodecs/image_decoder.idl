@@ -7,6 +7,7 @@
 // An ImageDecoder decodes images.
 [
     Exposed=(Window,DedicatedWorker),
+    RuntimeEnabled=WebCodecs,
     SecureContext,
     ImplementedAs=ImageDecoderExternal,
     ActiveScriptWrappable
@@ -42,7 +43,7 @@
   readonly attribute boolean complete;
 
   // Property-based promise for signaling that all data has been received.
-  [CallWith=ScriptState] readonly attribute Promise<undefined> completed;
+  [CallWith=ScriptState] readonly attribute Promise<void> completed;
 
   // List of tracks available in this image.
   //

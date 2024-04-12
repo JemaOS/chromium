@@ -467,7 +467,8 @@ IN_PROC_BROWSER_TEST_F(BrowserSwitcherServiceTest,
                        ExternalGreylistFetchAndParseAfterStartup) {
   policy::PolicyMap policies;
   EnableBrowserSwitcher(&policies);
-  auto url_list = base::Value::List().Append("*");
+  base::Value::List url_list;
+  url_list.Append("*");
   SetPolicy(&policies, policy::key::kBrowserSwitcherUrlList,
             base::Value(std::move(url_list)));
   SetPolicy(&policies, policy::key::kBrowserSwitcherExternalGreylistUrl,
@@ -539,9 +540,8 @@ IN_PROC_BROWSER_TEST_F(BrowserSwitcherServiceTest, IeemSitelistInvalidUrl) {
   EXPECT_FALSE(fetch_happened);
 }
 
-// TODO(crbug.com/323787135): Times out flakily on CI.
 IN_PROC_BROWSER_TEST_F(BrowserSwitcherServiceTest,
-                       DISABLED_IeemFetchAndParseAfterStartup) {
+                       IeemFetchAndParseAfterStartup) {
   SetUseIeSitelist(true);
   BrowserSwitcherServiceWin::SetIeemSitelistUrlForTesting(kAValidUrl);
 
@@ -645,7 +645,7 @@ IN_PROC_BROWSER_TEST_F(BrowserSwitcherServiceTest, WritesPrefsToCacheFile) {
       "IExplore.exe\n"
       "--bogus-flag\n"
       "chrome.exe\n"
-      "--force-dark-mode --from-browser-switcher\n"
+      "--force-dark-mode\n"
       "1\n"
       "*://example.com/\n"
       "1\n"
@@ -712,7 +712,7 @@ IN_PROC_BROWSER_TEST_F(BrowserSwitcherServiceTest,
       "\n"
       "\n"
       "%s\n"
-      "--from-browser-switcher\n"
+      "\n"
       "2\n"
       "docs.google.com\n"
       "yahoo.com\n"
@@ -776,7 +776,7 @@ IN_PROC_BROWSER_TEST_F(BrowserSwitcherServiceTest, CacheFileCorrectOnStartup) {
       "\n"
       "\n"
       "%s\n"
-      "--from-browser-switcher\n"
+      "\n"
       "1\n"
       "docs.google.com\n"
       "0\n"
@@ -842,10 +842,11 @@ IN_PROC_BROWSER_TEST_F(BrowserSwitcherServiceTest,
       extensions::ExtensionBuilder()
           .SetLocation(extensions::mojom::ManifestLocation::kInternal)
           .SetID(kLBSExtensionId)
-          .SetManifest(base::Value::Dict()
+          .SetManifest(extensions::DictionaryBuilder()
                            .Set("name", "Legacy Browser Support")
                            .Set("manifest_version", 2)
-                           .Set("version", "5.9"))
+                           .Set("version", "5.9")
+                           .Build())
           .Build();
   extensions::ExtensionSystem::Get(browser()->profile())
       ->extension_service()

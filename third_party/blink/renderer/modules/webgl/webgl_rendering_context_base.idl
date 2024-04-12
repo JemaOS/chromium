@@ -623,22 +623,22 @@ interface mixin WebGLRenderingContextBase {
     void texImage2D(
         GLenum target, GLint level, GLint internalformat,
         GLenum format, GLenum type, ImageData pixels);
-    [CallWith=ScriptState, RaisesException] void texImage2D(
+    [CallWith=ExecutionContext, RaisesException] void texImage2D(
         GLenum target, GLint level, GLint internalformat,
         GLenum format, GLenum type, HTMLImageElement image);
-    [CallWith=ScriptState, RaisesException] void texImage2D(
+    [CallWith=ExecutionContext, RaisesException] void texImage2D(
         GLenum target, GLint level, GLint internalformat,
         GLenum format, GLenum type, HTMLCanvasElement canvas);
-    [CallWith=ScriptState, RaisesException] void texImage2D(
+    [CallWith=ExecutionContext, RaisesException] void texImage2D(
         GLenum target, GLint level, GLint internalformat,
         GLenum format, GLenum type, OffscreenCanvas offscreenCanvas);
-    [CallWith=ScriptState, RaisesException] void texImage2D(
+    [CallWith=ExecutionContext, RaisesException] void texImage2D(
         GLenum target, GLint level, GLint internalformat,
         GLenum format, GLenum type, HTMLVideoElement video);
     [RaisesException] void texImage2D(
         GLenum target, GLint level, GLint internalformat,
         GLenum format, GLenum type, ImageBitmap bitmap);
-    [CallWith=ScriptState, RaisesException] void texImage2D(
+    [CallWith=ExecutionContext, RaisesException, RuntimeEnabled=WebCodecs] void texImage2D(
         GLenum target, GLint level, GLint internalformat,
         GLenum format, GLenum type, VideoFrame frame);
 
@@ -649,22 +649,22 @@ interface mixin WebGLRenderingContextBase {
     void texSubImage2D(
         GLenum target, GLint level, GLint xoffset, GLint yoffset,
         GLenum format, GLenum type, ImageData pixels);
-    [CallWith=ScriptState, RaisesException] void texSubImage2D(
+    [CallWith=ExecutionContext, RaisesException] void texSubImage2D(
         GLenum target, GLint level, GLint xoffset, GLint yoffset,
         GLenum format, GLenum type, HTMLImageElement image);
-    [CallWith=ScriptState, RaisesException] void texSubImage2D(
+    [CallWith=ExecutionContext, RaisesException] void texSubImage2D(
         GLenum target, GLint level, GLint xoffset, GLint yoffset,
         GLenum format, GLenum type, HTMLCanvasElement canvas);
-    [CallWith=ScriptState, RaisesException] void texSubImage2D(
+    [CallWith=ExecutionContext, RaisesException] void texSubImage2D(
         GLenum target, GLint level, GLint xoffset, GLint yoffset,
         GLenum format, GLenum type, OffscreenCanvas offscreenCanvas);
-    [CallWith=ScriptState, RaisesException] void texSubImage2D(
+    [CallWith=ExecutionContext, RaisesException] void texSubImage2D(
         GLenum target, GLint level, GLint xoffset, GLint yoffset,
         GLenum format, GLenum type, HTMLVideoElement video);
     [RaisesException] void texSubImage2D(
         GLenum target, GLint level, GLint xoffset, GLint yoffset,
         GLenum format, GLenum type, ImageBitmap bitmap);
-    [CallWith=ScriptState, RaisesException] void texSubImage2D(
+    [CallWith=ExecutionContext, RaisesException, RuntimeEnabled=WebCodecs] void texSubImage2D(
         GLenum target, GLint level, GLint xoffset, GLint yoffset,
         GLenum format, GLenum type, VideoFrame frame);
 
@@ -736,5 +736,5 @@ interface mixin WebGLRenderingContextBase {
     [RuntimeEnabled=OffscreenCanvasCommit] void commit();
 
     // WebXR Device API support
-    [RuntimeEnabled=WebXR, SecureContext, CallWith=ScriptState, RaisesException, HighEntropy, MeasureAs=WebGLRenderingContextMakeXRCompatible] Promise<undefined> makeXRCompatible();
+    [RuntimeEnabled=WebXR, SecureContext, CallWith=ScriptState, RaisesException, HighEntropy, MeasureAs=WebGLRenderingContextMakeXRCompatible] Promise<void> makeXRCompatible();
 };

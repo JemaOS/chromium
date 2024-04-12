@@ -52,12 +52,12 @@ class PrefetchPageLoadMetricsObserverTest
   }
 
   void VerifyUKMEntry(const std::string& metric_name,
-                      std::optional<int64_t> expected_value) {
+                      absl::optional<int64_t> expected_value) {
     auto entries = tester()->test_ukm_recorder().GetEntriesByName(
         ukm::builders::PrefetchProxy::kEntryName);
     ASSERT_EQ(1U, entries.size());
 
-    const auto* entry = entries.front().get();
+    const auto* entry = entries.front();
     tester()->test_ukm_recorder().ExpectEntrySourceHasUrl(entry,
                                                           navigation_url_);
 
@@ -83,7 +83,7 @@ class PrefetchPageLoadMetricsObserverTest
  private:
   void ResetTest() {
     page_load_metrics::InitPageLoadTimingForTest(&timing_);
-    timing_.navigation_start = base::Time::FromSecondsSinceUnixEpoch(2);
+    timing_.navigation_start = base::Time::FromDoubleT(2);
     timing_.response_start = base::Seconds(3);
     timing_.parse_timing->parse_start = base::Seconds(4);
     timing_.paint_timing->first_contentful_paint = base::Seconds(5);
@@ -92,8 +92,7 @@ class PrefetchPageLoadMetricsObserverTest
     PopulateRequiredTimingFields(&timing_);
   }
 
-  raw_ptr<TestPrefetchPageLoadMetricsObserver, DanglingUntriaged>
-      plm_observer_ = nullptr;
+  raw_ptr<TestPrefetchPageLoadMetricsObserver> plm_observer_ = nullptr;
   page_load_metrics::mojom::PageLoadTiming timing_;
 
   GURL navigation_url_{"https://chromium.org"};
@@ -122,7 +121,7 @@ TEST_F(PrefetchPageLoadMetricsObserverTest, LastVisitToHost_None) {
       "PageLoad.Clients.SubresourceLoading.DaysSinceLastVisitToOrigin", 0);
 
   using UkmEntry = ukm::builders::PrefetchProxy;
-  VerifyUKMEntry(UkmEntry::kdays_since_last_visit_to_originName, std::nullopt);
+  VerifyUKMEntry(UkmEntry::kdays_since_last_visit_to_originName, absl::nullopt);
 }
 
 TEST_F(PrefetchPageLoadMetricsObserverTest, LastVisitToHost_Fail) {
@@ -137,7 +136,7 @@ TEST_F(PrefetchPageLoadMetricsObserverTest, LastVisitToHost_Fail) {
       "PageLoad.Clients.SubresourceLoading.DaysSinceLastVisitToOrigin", 0);
 
   using UkmEntry = ukm::builders::PrefetchProxy;
-  VerifyUKMEntry(UkmEntry::kdays_since_last_visit_to_originName, std::nullopt);
+  VerifyUKMEntry(UkmEntry::kdays_since_last_visit_to_originName, absl::nullopt);
 }
 
 TEST_F(PrefetchPageLoadMetricsObserverTest, LastVisitToHost_NullTime) {

@@ -11,8 +11,8 @@
 
 namespace wm {
 
-// Client that always offsets by the toplevel root window of the passed in
-// aura::Window.
+// Client that always offsets by the toplevel RootWindow of the passed
+// in child NativeWidgetAura.
 class COMPONENT_EXPORT(UI_WM) DefaultScreenPositionClient
     : public aura::client::ScreenPositionClient {
  public:
@@ -41,7 +41,7 @@ class COMPONENT_EXPORT(UI_WM) DefaultScreenPositionClient
       const aura::Window* root_window) override;
 
  private:
-  const raw_ptr<aura::Window> root_window_;
+  raw_ptr<aura::Window> root_window_;
 };
 
 }  // namespace wm

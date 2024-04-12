@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_AUTOCOMPLETE_REMOTE_SUGGESTIONS_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_AUTOCOMPLETE_REMOTE_SUGGESTIONS_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class RemoteSuggestionsService;
@@ -23,13 +23,13 @@ class RemoteSuggestionsServiceFactory : public ProfileKeyedServiceFactory {
       const RemoteSuggestionsServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<RemoteSuggestionsServiceFactory>;
+  friend struct base::DefaultSingletonTraits<RemoteSuggestionsServiceFactory>;
 
   RemoteSuggestionsServiceFactory();
   ~RemoteSuggestionsServiceFactory() override;
 
   // Overrides from BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

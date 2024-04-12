@@ -171,7 +171,6 @@ TEST(AXNodeDataTest, IsClickable) {
       ax::mojom::Role::kDate,
       ax::mojom::Role::kDateTime,
       ax::mojom::Role::kDisclosureTriangle,
-      ax::mojom::Role::kDisclosureTriangleGrouped,
       ax::mojom::Role::kDocBackLink,
       ax::mojom::Role::kDocBiblioRef,
       ax::mojom::Role::kDocGlossRef,
@@ -347,7 +346,6 @@ TEST(AXNodeDataTest, SupportsExpandCollapse) {
        ax::mojom::Role::kComboBoxMenuButton,
        ax::mojom::Role::kComboBoxSelect,
        ax::mojom::Role::kDisclosureTriangle,
-       ax::mojom::Role::kDisclosureTriangleGrouped,
        ax::mojom::Role::kTextFieldWithComboBox,
        ax::mojom::Role::kTreeItem};
 

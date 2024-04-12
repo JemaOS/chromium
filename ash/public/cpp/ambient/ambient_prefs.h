@@ -7,6 +7,8 @@
 
 #include "ash/public/cpp/ash_public_export.h"
 
+class PrefService;
+
 namespace ash {
 namespace ambient {
 namespace prefs {
@@ -92,6 +94,10 @@ ASH_PUBLIC_EXPORT extern const char kAmbientModeManagedScreensaverImages[];
 // sleep after Ambient mode has started. Logged in users can set this value in
 // the Personalization Hub screensaver subpage.
 ASH_PUBLIC_EXPORT extern const char kAmbientModeRunningDurationMinutes[];
+
+// Migrates from the legacy |ambient::prefs::kAmbientTheme| to the new
+// |ambient::prefs::kAmbientUiSettings|.
+ASH_PUBLIC_EXPORT void MigrateDeprecatedPrefs(PrefService& pref_service);
 
 }  // namespace prefs
 }  // namespace ambient

@@ -26,9 +26,7 @@
 #include "third_party/blink/renderer/modules/webaudio/realtime_analyser.h"
 
 #include <limits.h>
-
 #include <algorithm>
-#include <bit>
 #include <complex>
 
 #include "third_party/blink/renderer/platform/audio/audio_bus.h"
@@ -80,7 +78,8 @@ bool RealtimeAnalyser::SetFftSize(uint32_t size) {
   DCHECK(IsMainThread());
 
   // Only allow powers of two within the allowed range.
-  if (size > kMaxFFTSize || size < kMinFFTSize || !std::has_single_bit(size)) {
+  if (size > kMaxFFTSize || size < kMinFFTSize ||
+      !audio_utilities::IsPowerOfTwo(size)) {
     return false;
   }
 

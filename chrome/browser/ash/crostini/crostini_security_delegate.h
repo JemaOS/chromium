@@ -17,7 +17,6 @@ class CrostiniSecurityDelegate : public guest_os::GuestOsSecurityDelegate {
   // Builds an instance of the security_delegate for the given |profile|.
   static void Build(
       Profile* profile,
-      std::string vm_name,
       base::OnceCallback<
           void(std::unique_ptr<guest_os::GuestOsSecurityDelegate>)> callback);
 
@@ -28,8 +27,7 @@ class CrostiniSecurityDelegate : public guest_os::GuestOsSecurityDelegate {
 
  private:
   // Private constructor to force use of Build().
-  explicit CrostiniSecurityDelegate(std::string vm_name)
-      : guest_os::GuestOsSecurityDelegate(std::move(vm_name)) {}
+  CrostiniSecurityDelegate() = default;
 };
 
 }  // namespace crostini

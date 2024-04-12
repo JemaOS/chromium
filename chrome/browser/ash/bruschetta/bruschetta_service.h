@@ -98,13 +98,9 @@ class BruschettaService : public KeyedService,
   void OnRemoveVm(base::OnceCallback<void(bool)> callback,
                   guest_os::GuestId guest_id,
                   guest_os::GuestOsRemover::Result result);
-  void OnUninstallToolsDlc(base::OnceCallback<void(bool)> callback,
-                           guest_os::GuestId guest_id,
-                           const std::string& result);
-  void OnUninstallAllDlcs(base::OnceCallback<void(bool)> callback,
-                          guest_os::GuestId guest_id,
-                          const std::string& tools_result,
-                          const std::string& firmware_result);
+  void OnUninstallDlc(base::OnceCallback<void(bool)> callback,
+                      guest_os::GuestId guest_id,
+                      const std::string& result);
 
   base::flat_map<std::string, VmRegistration> runnable_vms_;
   base::flat_map<std::string, RunningVmPolicy> running_vms_;
@@ -117,8 +113,11 @@ class BruschettaService : public KeyedService,
 
   PrefChangeRegistrar pref_observer_;
   base::CallbackListSubscription cros_settings_observer_;
+  base::ScopedObservation<ash::ConciergeClient,
+                          ash::ConciergeClient::VmObserver>
+      vm_observer_{this};
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
 
   // Must be last
   base::WeakPtrFactory<BruschettaService> weak_ptr_factory_{this};

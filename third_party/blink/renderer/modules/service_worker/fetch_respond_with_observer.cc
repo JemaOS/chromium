@@ -203,8 +203,7 @@ class UploadingCompletionObserver
     : public GarbageCollected<UploadingCompletionObserver>,
       public BytesUploader::Client {
  public:
-  explicit UploadingCompletionObserver(
-      ScriptPromiseResolverTyped<IDLUndefined>* resolver)
+  explicit UploadingCompletionObserver(ScriptPromiseResolver* resolver)
       : resolver_(resolver) {}
   ~UploadingCompletionObserver() override = default;
 
@@ -218,7 +217,7 @@ class UploadingCompletionObserver
   }
 
  private:
-  const Member<ScriptPromiseResolverTyped<IDLUndefined>> resolver_;
+  const Member<ScriptPromiseResolver> resolver_;
 };
 
 }  // namespace
@@ -252,12 +251,12 @@ void FetchRespondWithObserver::OnResponseFulfilled(
     const ScriptValue& value,
     const ExceptionContext& exception_context) {
   DCHECK(GetExecutionContext());
-  Response* response =
-      V8Response::ToWrappable(script_state->GetIsolate(), value.V8Value());
-  if (!response) {
+  if (!V8Response::HasInstance(value.V8Value(), script_state->GetIsolate())) {
     OnResponseRejected(ServiceWorkerResponseError::kNoV8Instance);
     return;
   }
+  Response* response = V8Response::ToImplWithTypeCheck(
+      script_state->GetIsolate(), value.V8Value());
   // "If one of the following conditions is true, return a network error:
   //   - |response|'s type is |error|.
   //   - |request|'s mode is |same-origin| and |response|'s type is |cors|.
@@ -353,8 +352,7 @@ void FetchRespondWithObserver::OnResponseFulfilled(
 
     scoped_refptr<BlobDataHandle> blob_data_handle =
         buffer->DrainAsBlobDataHandle(
-            BytesConsumer::BlobSizePolicy::kAllowBlobWithInvalidSize,
-            exception_state);
+            BytesConsumer::BlobSizePolicy::kAllowBlobWithInvalidSize);
 
     if (blob_data_handle) {
       // Handle the blob response body.
@@ -410,7 +408,7 @@ void FetchRespondWithObserver::OnNoResponse(ScriptState* script_state) {
   }
 
   auto* body_buffer = event_->request()->BodyBuffer();
-  std::optional<network::DataElementChunkedDataPipe> request_body_to_pass;
+  absl::optional<network::DataElementChunkedDataPipe> request_body_to_pass;
   if (body_buffer && !request_body_has_source_) {
     auto* body_stream = body_buffer->Stream();
     if (body_stream->IsLocked() || body_stream->IsDisturbed()) {
@@ -421,9 +419,7 @@ void FetchRespondWithObserver::OnNoResponse(ScriptState* script_state) {
 
     // Keep the service worker alive as long as we are reading from the request
     // body.
-    auto* resolver =
-        MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-            script_state);
+    auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
     WaitUntil(script_state, resolver->Promise(), ASSERT_NO_EXCEPTION);
     auto* observer =
         MakeGarbageCollected<UploadingCompletionObserver>(resolver);

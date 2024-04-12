@@ -4,14 +4,12 @@
 
 import './strings.m.js';
 
-import {assert} from '//resources/js/assert.js';
+import {assert} from '//resources/js/assert_ts.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
-import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
+import {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
-import type {ImageQuery, LinkOpenMetadata, VisualSearchResult} from './companion.mojom-webui.js';
-import {MethodType, PromoAction, PromoType} from './companion.mojom-webui.js';
-import type {CompanionProxy} from './companion_proxy.js';
-import {CompanionProxyImpl} from './companion_proxy.js';
+import {ImageQuery, MethodType, PromoAction, PromoType} from './companion.mojom-webui.js';
+import {CompanionProxy, CompanionProxyImpl} from './companion_proxy.js';
 
 /**
  * Method arguments to be passed as part of the JSON message object to be sent
@@ -35,55 +33,23 @@ enum ParamType {
   PROMO_ACTION = 'promoAction',
   PROMO_TYPE = 'promoType',
 
-  // Arguments for MethodType.kOnPhFeedback.
-  PH_FEEDBACK = 'phFeedback',
+  // Arguments for MethodType.kOnPhAction.
+  PH_ACTION = 'phAction',
 
   // Arguments for MethodType.kOnOpenInNewTabButtonURLChanged.
   URL_FOR_OPEN_IN_NEW_TAB = 'urlForOpenInNewTab',
 
   // Arguments for MethodType.kRecordUiSurfaceShown.
-  UI_SURFACE = 'uiSurface',
+  UI_SURFACE = 'ui_surface',
 
   // Arguments for MethodType.kRecordUiSurfaceShown.
-  UI_SURFACE_POSITION = 'uiSurfacePosition',
-  CHILD_ELEMENT_AVAILABLE_COUNT = 'childElementAvailableCount',
-  CHILD_ELEMENT_SHOWN_COUNT = 'childElementShownCount',
-
-  // Arguments for MethodType.kRecordUiSurfaceClicked.
-  CLICK_POSITION = 'clickPosition',
-
-  // Arguments for MethodType.kOnCqJamptagClicked.
-  CQ_JUMPTAG_TEXT = 'cqJumptagText',
-
-  // Arguments for MethodType.kOpenUrlInBrowser
-  URL_TO_OPEN = 'urlToOpen',
-  USE_NEW_TAB = 'useNewTab',
-
-  // Arguments for MethodType.kNotifyLinkOpen for browser -> iframe
-  // communication.
-  LINK_OPEN_OPENED_URL = 'openedUrl',
-  LINK_OPEN_METADATA = 'openMetadata',
+  CHILD_ELEMENT_COUNT = 'child_element_count',
 
   // Arguments for browser -> iframe communication.
-  COMPANION_UPDATE_PARAMS = 'companionUpdateParams',
+  COMPANION_UPDATE_PARAMS = 'companion_update_params',
 
   // Arguments for sending text find results from browser to iframe.
   CQ_TEXT_FIND_RESULTS = 'cqTextFindResults',
-
-  // Arguments for sending Visual Search results from browser to iframe.
-  VISUAL_SEARCH_PARAMS = 'visualSearchParams',
-
-  // Arguments for sending Visual Search alt text from browser to iframe.
-  VISUAL_SEARCH_IMAGE_ALT_TEXTS = 'visualSearchImageAltTexts',
-
-  // Arguments for sending companion loading state from iframe to browser.
-  COMPANION_LOADING_STATE = 'companionLoadingState',
-
-  // Arguments for sending page title from browser to iframe.
-  PAGE_TITLE = 'pageTitle',
-
-  // Arguments for sending innerHtml from browser to iframe.
-  INNER_HTML = 'innerHtml',
 }
 
 const companionProxy: CompanionProxy = CompanionProxyImpl.getInstance();
@@ -109,27 +75,8 @@ function initialize() {
       (companionUpdateProto: string) => {
         const companionOrigin =
             new URL(loadTimeData.getString('companion_origin')).origin;
-        const message = {
-          [ParamType.METHOD_TYPE]: MethodType.kUpdateCompanionPage,
-          [ParamType.COMPANION_UPDATE_PARAMS]: companionUpdateProto,
-        };
-
-        const frame = document.body.querySelector('iframe');
-        assert(frame);
-        if (frame.contentWindow) {
-          frame.contentWindow.postMessage(message, companionOrigin);
-        }
-      });
-
-  companionProxy.callbackRouter.updatePageContent.addListener(
-      (pageTitle: string, innerHtml: string) => {
-        const companionOrigin =
-            new URL(loadTimeData.getString('companion_origin')).origin;
-        const message = {
-          [ParamType.METHOD_TYPE]: MethodType.kUpdatePageContent,
-          [ParamType.PAGE_TITLE]: pageTitle,
-          [ParamType.INNER_HTML]: innerHtml,
-        };
+        const message =
+            {[ParamType.COMPANION_UPDATE_PARAMS]: companionUpdateProto};
 
         const frame = document.body.querySelector('iframe');
         assert(frame);
@@ -192,58 +139,8 @@ function initialize() {
         const companionOrigin =
             new URL(loadTimeData.getString('companion_origin')).origin;
         const message = {
-          [ParamType.METHOD_TYPE]: MethodType.kOnCqFindTextResultsAvailable,
           [ParamType.CQ_TEXT_DIRECTIVES]: textDirectives,
           [ParamType.CQ_TEXT_FIND_RESULTS]: results,
-        };
-
-        const frame = document.body.querySelector('iframe');
-        assert(frame);
-        if (frame.contentWindow) {
-          frame.contentWindow.postMessage(message, companionOrigin);
-        }
-      });
-
-  // POST dataUris from the Visual Search classification results to the iframe
-  companionProxy.callbackRouter.onDeviceVisualClassificationResult.addListener(
-      (results: VisualSearchResult[]) => {
-        const dataUris = results.map(result => result.dataUri);
-        const altTexts = results.map(result => result.altText);
-        const message = {
-          [ParamType.METHOD_TYPE]:
-              MethodType.kOnDeviceVisualClassificationResult,
-          [ParamType.VISUAL_SEARCH_PARAMS]: dataUris,
-          [ParamType.VISUAL_SEARCH_IMAGE_ALT_TEXTS]: altTexts,
-        };
-
-        const companionOrigin =
-            new URL(loadTimeData.getString('companion_origin')).origin;
-        const frame = document.body.querySelector('iframe');
-        assert(frame);
-        if (frame.contentWindow) {
-          frame.contentWindow.postMessage(message, companionOrigin);
-        }
-      });
-
-  companionProxy.callbackRouter.onNavigationError.addListener(() => {
-    const networkErrorOverlay = document.getElementById('network-error-page');
-    const frame = document.body.querySelector('iframe');
-    assert(frame);
-    assert(networkErrorOverlay);
-
-    // Hide the frame and show the network error overlay.
-    networkErrorOverlay.style.display = 'block';
-    frame.style.display = 'none';
-  });
-
-  companionProxy.callbackRouter.notifyLinkOpen.addListener(
-      (openedUrl: Url, metadata: LinkOpenMetadata) => {
-        const companionOrigin =
-            new URL(loadTimeData.getString('companion_origin')).origin;
-        const message = {
-          [ParamType.METHOD_TYPE]: MethodType.kNotifyLinkOpen,
-          [ParamType.LINK_OPEN_OPENED_URL]: openedUrl.url,
-          [ParamType.LINK_OPEN_METADATA]: metadata,
         };
 
         const frame = document.body.querySelector('iframe');
@@ -282,39 +179,17 @@ function onCompanionMessageEvent(event: MessageEvent) {
     companionProxy.handler.onExpsOptInStatusAvailable(
         data[ParamType.IS_EXPS_OPTED_IN]);
   } else if (methodType === MethodType.kOnOpenInNewTabButtonURLChanged) {
-    const openInNewTabUrl: Url = {url: data[ParamType.URL_FOR_OPEN_IN_NEW_TAB]};
+    const openInNewTabUrl = new Url();
+    openInNewTabUrl.url = data[ParamType.URL_FOR_OPEN_IN_NEW_TAB];
     companionProxy.handler.onOpenInNewTabButtonURLChanged(openInNewTabUrl);
   } else if (methodType === MethodType.kRecordUiSurfaceShown) {
-    const uiSurfacePosition = data[ParamType.UI_SURFACE_POSITION] || -1;
-    const childElementAvailableCount =
-        data[ParamType.CHILD_ELEMENT_AVAILABLE_COUNT] || -1;
-    const childElementShownCount =
-        data[ParamType.CHILD_ELEMENT_SHOWN_COUNT] || -1;
     companionProxy.handler.recordUiSurfaceShown(
-        data[ParamType.UI_SURFACE], uiSurfacePosition,
-        childElementAvailableCount, childElementShownCount);
+        data[ParamType.UI_SURFACE], data[ParamType.CHILD_ELEMENT_COUNT]);
   } else if (methodType === MethodType.kRecordUiSurfaceClicked) {
-    const clickPosition = data[ParamType.CLICK_POSITION] || -1;
-    companionProxy.handler.recordUiSurfaceClicked(
-        data[ParamType.UI_SURFACE], clickPosition);
+    companionProxy.handler.recordUiSurfaceClicked(data[ParamType.UI_SURFACE]);
   } else if (methodType === MethodType.kOnCqCandidatesAvailable) {
     companionProxy.handler.onCqCandidatesAvailable(
         data[ParamType.CQ_TEXT_DIRECTIVES]);
-  } else if (methodType === MethodType.kOnPhFeedback) {
-    companionProxy.handler.onPhFeedback(data[ParamType.PH_FEEDBACK]);
-  } else if (methodType === MethodType.kOnCqJumptagClicked) {
-    companionProxy.handler.onCqJumptagClicked(data[ParamType.CQ_JUMPTAG_TEXT]);
-  } else if (methodType === MethodType.kOpenUrlInBrowser) {
-    const urlToOpen: Url = {url: data[ParamType.URL_TO_OPEN] || ''};
-    companionProxy.handler.openUrlInBrowser(
-        urlToOpen, data[ParamType.USE_NEW_TAB]);
-  } else if (methodType === MethodType.kCompanionLoadingState) {
-    companionProxy.handler.onLoadingState(
-        data[ParamType.COMPANION_LOADING_STATE]);
-  } else if (methodType === MethodType.kRefreshCompanionPage) {
-    companionProxy.handler.refreshCompanionPage();
-  } else if (methodType === MethodType.kServerSideUrlFilterEvent) {
-    companionProxy.handler.onServerSideUrlFilterEvent();
   }
 }
 

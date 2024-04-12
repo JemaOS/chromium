@@ -47,7 +47,8 @@ SkBitmap GetWidgetBitmap(const gfx::Size& size,
   CairoSurface surface(bitmap);
   cairo_t* cr = surface.cairo();
 
-  double opacity = GetOpacityFromContext(context);
+  double opacity = 1;
+  GtkStyleContextGet(context, "opacity", &opacity, nullptr);
   if (opacity < 1)
     cairo_push_group(cr);
 
@@ -139,16 +140,12 @@ void NativeThemeGtk::NotifyOnNativeThemeUpdated() {
 
   // Update the preferred contrast settings for the NativeThemeAura instance and
   // notify its observers about the change.
-  for (ui::NativeTheme* native_theme :
-       {ui::NativeTheme::GetInstanceForNativeUi(),
-        ui::NativeTheme::GetInstanceForWeb()}) {
-    native_theme->SetPreferredContrast(
-        UserHasContrastPreference()
-            ? ui::NativeThemeBase::PreferredContrast::kMore
-            : ui::NativeThemeBase::PreferredContrast::kNoPreference);
-    native_theme->set_prefers_reduced_transparency(UserHasContrastPreference());
-    native_theme->NotifyOnNativeThemeUpdated();
-  }
+  ui::NativeTheme* native_theme = ui::NativeTheme::GetInstanceForNativeUi();
+  native_theme->SetPreferredContrast(
+      UserHasContrastPreference()
+          ? ui::NativeThemeBase::PreferredContrast::kMore
+          : ui::NativeThemeBase::PreferredContrast::kNoPreference);
+  native_theme->NotifyOnNativeThemeUpdated();
 }
 
 void NativeThemeGtk::OnThemeChanged(GtkSettings* settings,

@@ -9,7 +9,6 @@
 
 #include "ash/ash_export.h"
 #include "ash/constants/notifier_catalogs.h"
-#include "ash/system/toast/system_nudge_pause_manager_impl.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
 #include "ui/compositor/layer_animation_observer.h"
@@ -23,27 +22,20 @@ class SystemNudge;
 // abstract class, Subclasses must implement CreateSystemNudge() in order to
 // create a custom label and icon for their nudge's UI.
 // TODO(crbug.com/1232525): Duration and positioning should be configurable.
-class ASH_EXPORT SystemNudgeController
-    : public SystemNudgePauseManagerImpl::Observer {
+class ASH_EXPORT SystemNudgeController {
  public:
   SystemNudgeController();
   SystemNudgeController(const SystemNudgeController&) = delete;
   SystemNudgeController& operator=(const SystemNudgeController&) = delete;
-  ~SystemNudgeController() override;
+  virtual ~SystemNudgeController();
 
   // Records Nudge "TimeToAction" metric, which tracks the time from when a
   // nudge was shown to when the nudge's suggested action was performed.
-  // No op if the nudge specified by `catalog_name` hasn't been shown before.
-  static void MaybeRecordNudgeAction(NudgeCatalogName catalog_name);
-
-  // SystemNudgePauseManagerImpl::Observer:
-  void OnSystemNudgePaused() override;
+  // The metric is not recorded if the nudge hasn't been shown before.
+  static void RecordNudgeAction(NudgeCatalogName catalog_name);
 
   // Shows the nudge widget.
   void ShowNudge();
-
-  // Closes the nudge and destroys the widget without animation.
-  void CloseNudge();
 
   // Ensure the destruction of a nudge that is animating.
   void ForceCloseAnimatingNudge();

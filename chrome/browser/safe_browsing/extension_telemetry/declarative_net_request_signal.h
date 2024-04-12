@@ -30,7 +30,8 @@ class DeclarativeNetRequestSignal : public ExtensionSignal {
  protected:
   // Rules to be added from the declarativeNetRequest API invocations.
   const raw_ref<
-      const std::vector<extensions::api::declarative_net_request::Rule>>
+      const std::vector<extensions::api::declarative_net_request::Rule>,
+      ExperimentalAsh>
       rules_;
 };
 

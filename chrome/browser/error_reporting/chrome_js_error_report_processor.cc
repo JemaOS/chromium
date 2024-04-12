@@ -4,9 +4,6 @@
 
 #include "chrome/browser/error_reporting/chrome_js_error_report_processor.h"
 
-#include <stddef.h>
-
-#include <string_view>
 #include <tuple>
 #include <utility>
 
@@ -28,7 +25,7 @@
 #include "components/crash/core/app/client_upload_info.h"
 #include "components/crash/core/app/crashpad.h"
 #include "components/feedback/redaction_tool/redaction_tool.h"
-#include "components/startup_metric_utils/common/startup_metric_utils.h"
+#include "components/startup_metric_utils/browser/startup_metric_utils.h"
 #include "components/variations/variations_crash_keys.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -79,36 +76,6 @@ std::string RedactErrorMessage(const std::string& message) {
       .Redact(message);
 }
 
-// Truncate the error message to no more than 1000 characters. Long messages
-// are not useful and can cause problems in internal systems (such as
-// excessively long URLs used to point to error reports). Note that the
-// truncation is calculated pre-character-escaping ("  " is 3 characters, not
-// the 9 of "%20%20%20") so that we don't break an escape sequence.
-//
-// Return the original message if it's already less than 1000 characters, or
-// a truncated version if it's over 1000 characters
-std::string TruncateErrorMessage(const std::string& message) {
-  constexpr int kMaxCharacters = 1000;
-
-  if (message.length() <= kMaxCharacters) {
-    return message;
-  }
-
-  constexpr std::string_view kTruncationMessage = "--[TRUNCATED]--";
-  constexpr int kTruncationMessageLength = kTruncationMessage.size();
-
-  // Truncate the middle of the message. The useful information is likely to be
-  // at the beginning ('Invalid regex: "....."') or the end ('"...." is not
-  // a valid email address').
-  constexpr int kStartLength =
-      (kMaxCharacters - kTruncationMessageLength + 1) / 2;
-  constexpr int kEndLength = (kMaxCharacters - kTruncationMessageLength) / 2;
-  std::string::size_type begin_end_fragment = message.length() - kEndLength;
-
-  return base::StrCat({message.substr(0, kStartLength), kTruncationMessage,
-                       message.substr(begin_end_fragment)});
-}
-
 std::string MapWindowTypeToString(WindowType window_type) {
   switch (window_type) {
     case WindowType::kRegularTabbed:
@@ -134,16 +101,16 @@ ChromeJsErrorReportProcessor::ChromeJsErrorReportProcessor()
 ChromeJsErrorReportProcessor::~ChromeJsErrorReportProcessor() = default;
 
 // Returns the redacted, fixed-up error report if the user consented to have it
-// sent. Returns std::nullopt if the user did not consent or we otherwise
+// sent. Returns absl::nullopt if the user did not consent or we otherwise
 // should not send the report. All the MayBlock work should be done in here.
-std::optional<JavaScriptErrorReport>
+absl::optional<JavaScriptErrorReport>
 ChromeJsErrorReportProcessor::CheckConsentAndRedact(
     JavaScriptErrorReport error_report) {
   // Consent is handled at the OS level by crash_reporter so we don't need to
   // check it here for Chrome OS.
 #if !BUILDFLAG(IS_CHROMEOS)
   if (!crash_reporter::GetClientCollectStatsConsent()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 #endif
 
@@ -198,7 +165,7 @@ void ChromeJsErrorReportProcessor::OnConsentCheckCompleted(
     scoped_refptr<network::SharedURLLoaderFactory> loader_factory,
     base::TimeDelta browser_process_uptime,
     base::Time report_time,
-    std::optional<JavaScriptErrorReport> error_report) {
+    absl::optional<JavaScriptErrorReport> error_report) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!error_report) {
     // User didn't consent. This isn't an error so don't log an error.
@@ -216,7 +183,7 @@ void ChromeJsErrorReportProcessor::OnConsentCheckCompleted(
   params["prod"] = base::EscapeQueryParamValue(product, /*use_plus=*/false);
   params["ver"] = base::EscapeQueryParamValue(version, /*use_plus=*/false);
   params["type"] = "JavascriptError";
-  params["error_message"] = TruncateErrorMessage(error_report->message);
+  params["error_message"] = error_report->message;
   params["browser"] = "Chrome";
   params["browser_version"] = platform.version;
   params["channel"] = platform.channel;
@@ -242,9 +209,6 @@ void ChromeJsErrorReportProcessor::OnConsentCheckCompleted(
       break;
     case JavaScriptErrorReport::SourceSystem::kWebUIObserver:
       params[kSourceSystemParamName] = "webui_observer";
-      break;
-    case JavaScriptErrorReport::SourceSystem::kDevToolsObserver:
-      params[kSourceSystemParamName] = "devtools_observer";
       break;
   }
   params["full_url"] = source.spec();
@@ -389,8 +353,7 @@ void ChromeJsErrorReportProcessor::SendErrorReport(
 
   // Get browser uptime before swapping threads to reduce lag time between the
   // error report occurring and sending it off.
-  base::TimeTicks startup_time =
-      startup_metric_utils::GetCommon().MainEntryPointTicks();
+  base::TimeTicks startup_time = startup_metric_utils::MainEntryPointTicks();
   base::TimeDelta browser_process_uptime =
       (base::TimeTicks::Now() - startup_time);
 

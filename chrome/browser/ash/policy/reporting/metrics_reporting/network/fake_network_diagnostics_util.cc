@@ -31,10 +31,7 @@ FakeNetworkDiagnostics::FakeNetworkDiagnostics()
 
 FakeNetworkDiagnostics::~FakeNetworkDiagnostics() = default;
 
-void FakeNetworkDiagnostics::RunHttpsLatency(
-    std::optional<chromeos::network_diagnostics::mojom::RoutineCallSource>
-        source,
-    RunHttpsLatencyCallback callback) {
+void FakeNetworkDiagnostics::RunHttpsLatency(RunHttpsLatencyCallback callback) {
   callback_ = std::move(callback);
 }
 

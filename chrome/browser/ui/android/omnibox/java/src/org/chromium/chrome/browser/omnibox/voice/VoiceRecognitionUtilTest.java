@@ -4,75 +4,127 @@
 
 package org.chromium.chrome.browser.omnibox.voice;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.speech.RecognizerIntent;
+import android.test.mock.MockPackageManager;
 
-import org.junit.After;
-import org.junit.Before;
+import androidx.test.InstrumentationRegistry;
+import androidx.test.filters.SmallTest;
+
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.robolectric.RuntimeEnvironment;
-import org.robolectric.Shadows;
-import org.robolectric.shadows.ShadowPackageManager;
 
-import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.ContextUtils;
+import org.chromium.base.test.util.AdvancedMockContext;
+import org.chromium.base.test.util.Feature;
+import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
+import org.chromium.content_public.browser.test.util.TestThreadUtils;
 
-/** Unit Test for {@link VoiceRecognitionUtil}. */
-@RunWith(BaseRobolectricTestRunner.class)
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Unit Test for {@link VoiceRecognitionUtil}.
+ */
+@RunWith(ChromeJUnit4ClassRunner.class)
 public class VoiceRecognitionUtilTest {
-    private static final String RECOGNITION_PACKAGE_NAME = "com.some.package";
-    private ShadowPackageManager mShadowPackageManager;
+    private IntentTestMockContext mContextWithSpeech;
+    private IntentTestMockContext mContextWithoutSpeech;
 
-    @Before
-    public void setUp() {
-        mShadowPackageManager =
-                Shadows.shadowOf(RuntimeEnvironment.application.getPackageManager());
+    public VoiceRecognitionUtilTest() {
+        mContextWithSpeech = new IntentTestMockContext(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+
+        mContextWithoutSpeech = new IntentTestMockContext(RecognizerIntent.ACTION_WEB_SEARCH);
     }
 
-    @After
-    public void tearDown() {
-        setSpeechRecognitionIntentHandlerAvailable(false);
-    }
+    private static class IntentTestPackageManager extends MockPackageManager {
+        private final String mAction;
 
-    private void setSpeechRecognitionIntentHandlerAvailable(boolean isAvailable) {
-        var intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        if (isAvailable) {
-            var info = new ResolveInfo();
-            info.resolvePackageName = RECOGNITION_PACKAGE_NAME;
-            mShadowPackageManager.addResolveInfoForIntent(intent, info);
-        } else {
-            mShadowPackageManager.removeResolveInfosForIntent(intent, RECOGNITION_PACKAGE_NAME);
+        public IntentTestPackageManager(String recognizesAction) {
+            super();
+            mAction = recognizesAction;
+        }
+
+        @Override
+        public List<ResolveInfo> queryIntentActivities(Intent intent, int flags) {
+            List<ResolveInfo> resolveInfoList = new ArrayList<ResolveInfo>();
+
+            if (intent.getAction().equals(mAction)) {
+                // Add an entry to the returned list as the action
+                // being queried exists.
+                ResolveInfo resolveInfo = new ResolveInfo();
+                resolveInfoList.add(resolveInfo);
+            }
+
+            return resolveInfoList;
         }
     }
 
+    private static class IntentTestMockContext extends AdvancedMockContext {
+        private final String mAction;
+
+        public IntentTestMockContext(String recognizesAction) {
+            super(InstrumentationRegistry.getTargetContext());
+            mAction = recognizesAction;
+        }
+
+        @Override
+        public IntentTestPackageManager getPackageManager() {
+            return new IntentTestPackageManager(mAction);
+        }
+    }
+
+    private static boolean isRecognitionIntentPresent(final boolean useCachedResult) {
+        // Context can only be queried on a UI Thread.
+        return TestThreadUtils.runOnUiThreadBlockingNoException(
+                () -> VoiceRecognitionUtil.isRecognitionIntentPresent(useCachedResult));
+    }
+
     @Test
+    @SmallTest
+    @Feature({"Flags", "Speech"})
     public void testSpeechFeatureAvailable() {
-        setSpeechRecognitionIntentHandlerAvailable(true);
-        assertTrue(VoiceRecognitionUtil.isRecognitionIntentPresent(/* useCachedValue= */ false));
+        ContextUtils.initApplicationContextForTests(mContextWithSpeech);
+        final boolean doNotUseCachedResult = false;
+        final boolean recognizesSpeech = isRecognitionIntentPresent(doNotUseCachedResult);
+
+        Assert.assertTrue(recognizesSpeech);
     }
 
     @Test
+    @SmallTest
+    @Feature({"Flags", "Speech"})
     public void testSpeechFeatureUnavailable() {
-        setSpeechRecognitionIntentHandlerAvailable(false);
-        assertFalse(VoiceRecognitionUtil.isRecognitionIntentPresent(/* useCachedValue= */ false));
+        ContextUtils.initApplicationContextForTests(mContextWithoutSpeech);
+        final boolean doNotUseCachedResult = false;
+        final boolean recognizesSpeech = isRecognitionIntentPresent(doNotUseCachedResult);
+
+        Assert.assertFalse(recognizesSpeech);
     }
 
     @Test
+    @SmallTest
+    @Feature({"Flags", "Speech"})
     public void testCachedSpeechFeatureAvailability() {
+        ContextUtils.initApplicationContextForTests(mContextWithSpeech);
         // Initial call will cache the fact that speech is recognized.
-        setSpeechRecognitionIntentHandlerAvailable(true);
-        assertTrue(VoiceRecognitionUtil.isRecognitionIntentPresent(/* useCachedValue= */ false));
+        final boolean doNotUseCachedResult = false;
+        isRecognitionIntentPresent(doNotUseCachedResult);
 
+        ContextUtils.initApplicationContextForTests(mContextWithoutSpeech);
         // Pass a context that does not recognize speech, but use cached result
         // which does recognize speech.
-        setSpeechRecognitionIntentHandlerAvailable(false);
-        assertTrue(VoiceRecognitionUtil.isRecognitionIntentPresent(/* useCachedValue= */ true));
+        final boolean useCachedResult = true;
+        final boolean recognizesSpeech = isRecognitionIntentPresent(useCachedResult);
+
+        // Check that we still recognize speech as we're using cached result.
+        Assert.assertTrue(recognizesSpeech);
 
         // Check if we can turn cached result off again.
-        assertFalse(VoiceRecognitionUtil.isRecognitionIntentPresent(/* useCachedValue= */ false));
+        final boolean RecognizesSpeechUncached = isRecognitionIntentPresent(doNotUseCachedResult);
+
+        Assert.assertFalse(RecognizesSpeechUncached);
     }
 }

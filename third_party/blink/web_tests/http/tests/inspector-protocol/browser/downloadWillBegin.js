@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startBlank('Tests we properly emit Browser.downloadWillBegin.');
   await session.evaluateAsync(`
     const frame = document.createElement('iframe');

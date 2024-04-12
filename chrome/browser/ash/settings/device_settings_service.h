@@ -52,15 +52,13 @@ class SessionManagerOperation;
 class DeviceSettingsService : public SessionManagerClient::Observer {
  public:
   // Indicates ownership status of the device (listed in upgrade order).
-  enum class OwnershipStatus {
-    // These values are persisted to logs. Entries should not be renumbered and
-    // numeric values should never be reused.
-    kOwnershipUnknown = 0,
+  enum OwnershipStatus {
+    OWNERSHIP_UNKNOWN = 0,
     // Not yet owned.
-    kOwnershipNone = 1,
-    // Either consumer ownership or cloud management.
-    kOwnershipTaken = 2,
-    kMaxValue = kOwnershipTaken
+    OWNERSHIP_NONE,
+    // Either consumer ownership, cloud management or Active Directory
+    // management.
+    OWNERSHIP_TAKEN
   };
 
   using OwnershipStatusCallback = base::OnceCallback<void(OwnershipStatus)>;
@@ -227,12 +225,6 @@ class DeviceSettingsService : public SessionManagerClient::Observer {
     return will_establish_consumer_ownership_;
   }
 
-  // Returns if the device is managed according to the device settings.
-  bool IsDeviceManaged() const;
-
-  // Returns if the device policy is loaded and contains the DM token.
-  bool HasDmToken() const;
-
   // Adds an observer.
   void AddObserver(Observer* observer);
   // Removes an observer.
@@ -241,7 +233,6 @@ class DeviceSettingsService : public SessionManagerClient::Observer {
   // SessionManagerClient::Observer:
   void OwnerKeySet(bool success) override;
   void PropertyChangeComplete(bool success) override;
-  void SessionStopping() override;
 
  private:
   friend class OwnerSettingsServiceAsh;
@@ -284,7 +275,8 @@ class DeviceSettingsService : public SessionManagerClient::Observer {
   // Processes pending callbacks from GetOwnershipStatusAsync().
   void RunPendingOwnershipStatusCallbacks();
 
-  raw_ptr<SessionManagerClient> session_manager_client_ = nullptr;
+  raw_ptr<SessionManagerClient, ExperimentalAsh> session_manager_client_ =
+      nullptr;
   scoped_refptr<ownership::OwnerKeyUtil> owner_key_util_;
 
   Status store_status_ = STORE_SUCCESS;
@@ -295,8 +287,7 @@ class DeviceSettingsService : public SessionManagerClient::Observer {
   scoped_refptr<ownership::PublicKey> public_key_;
   base::WeakPtr<ownership::OwnerSettingsService> owner_settings_service_;
   // Ownership status before the current session manager operation.
-  OwnershipStatus previous_ownership_status_ =
-      OwnershipStatus::kOwnershipUnknown;
+  OwnershipStatus previous_ownership_status_ = OWNERSHIP_UNKNOWN;
 
   std::unique_ptr<enterprise_management::PolicyFetchResponse>
       policy_fetch_response_;
@@ -316,16 +307,11 @@ class DeviceSettingsService : public SessionManagerClient::Observer {
   // Whether the device will be establishing consumer ownership.
   bool will_establish_consumer_ownership_ = false;
 
-  // Whether we received the signal that the session is stopping.
-  bool session_stopping_ = false;
-
   std::unique_ptr<policy::off_hours::DeviceOffHoursController>
       device_off_hours_controller_;
 
   base::WeakPtrFactory<DeviceSettingsService> weak_factory_{this};
 };
-
-std::ostream& operator<<(std::ostream&, DeviceSettingsService::OwnershipStatus);
 
 // Helper class for tests. Initializes the DeviceSettingsService singleton on
 // construction and tears it down again on destruction.

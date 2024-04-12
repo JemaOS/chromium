@@ -8,6 +8,7 @@
 
 #include "base/files/file_util.h"
 #include "base/memory/raw_ptr.h"
+#include "base/test/bind.h"
 #include "base/test/test_future.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
@@ -27,9 +28,10 @@
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/test/base/in_process_browser_test.h"
+#include "chrome/test/base/ui_test_utils.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "ui/base/hit_test.h"
+#include "ui/compositor/scoped_animation_duration_scale_mode.h"
 #include "ui/gfx/color_utils.h"
 #include "ui/views/test/test_views.h"
 #include "ui/views/view_utils.h"
@@ -80,13 +82,13 @@ class WebAppOpaqueBrowserFrameViewTest : public InProcessBrowserTest {
   }
 
   bool InstallAndLaunchWebApp(
-      std::optional<SkColor> theme_color = std::nullopt) {
-    auto web_app_info = std::make_unique<web_app::WebAppInstallInfo>();
+      absl::optional<SkColor> theme_color = absl::nullopt) {
+    auto web_app_info = std::make_unique<WebAppInstallInfo>();
     web_app_info->start_url = GetAppURL();
     web_app_info->scope = GetAppURL().GetWithoutFilename();
     web_app_info->theme_color = theme_color;
 
-    webapps::AppId app_id = web_app::test::InstallWebApp(
+    web_app::AppId app_id = web_app::test::InstallWebApp(
         browser()->profile(), std::move(web_app_info));
     Browser* app_browser =
         web_app::LaunchWebAppBrowser(browser()->profile(), app_id);
@@ -139,14 +141,18 @@ class WebAppOpaqueBrowserFrameViewTest : public InProcessBrowserTest {
               theme_mode == ThemeMode::kDefault);
   }
 
-  raw_ptr<BrowserView, AcrossTasksDanglingUntriaged> browser_view_ = nullptr;
-  raw_ptr<OpaqueBrowserFrameView, AcrossTasksDanglingUntriaged>
+  raw_ptr<BrowserView, DanglingUntriaged> browser_view_ = nullptr;
+  raw_ptr<OpaqueBrowserFrameView, DanglingUntriaged>
       opaque_browser_frame_view_ = nullptr;
-  raw_ptr<WebAppFrameToolbarView, AcrossTasksDanglingUntriaged>
-      web_app_frame_toolbar_ = nullptr;
+  raw_ptr<WebAppFrameToolbarView, DanglingUntriaged> web_app_frame_toolbar_ =
+      nullptr;
 #if BUILDFLAG(IS_LINUX)
   std::unique_ptr<ui::LinuxUiGetter> linux_ui_getter_;
 #endif
+
+  // Disable animations.
+  ui::ScopedAnimationDurationScaleMode scoped_animation_duration_scale_mode_{
+      ui::ScopedAnimationDurationScaleMode::ZERO_DURATION};
 };
 
 IN_PROC_BROWSER_TEST_F(WebAppOpaqueBrowserFrameViewTest, NoThemeColor) {
@@ -241,6 +247,72 @@ IN_PROC_BROWSER_TEST_F(WebAppOpaqueBrowserFrameViewTest, StaticTitleBarHeight) {
   EXPECT_EQ(title_bar_height, GetRestoredTitleBarHeight());
 }
 
+// Tests for the appearance of the origin text in the titlebar. The origin text
+// shows and then hides both when the window is first opened and any time the
+// titlebar's appearance changes.
+// TODO(crbug.com/1337118): Revise this test.
+IN_PROC_BROWSER_TEST_F(WebAppOpaqueBrowserFrameViewTest, OriginTextVisibility) {
+  ui_test_utils::UrlLoadObserver url_observer(
+      GetAppURL(), content::NotificationService::AllSources());
+
+  if (!InstallAndLaunchWebApp())
+    return;
+
+  views::View* web_app_origin_text =
+      web_app_frame_toolbar_->GetViewByID(VIEW_ID_WEB_APP_ORIGIN_TEXT);
+  // Keep track of the number of times the view is made visible or hidden.
+  int visible_count = 0, hidden_count = 0;
+  auto visibility_change_counter = [](views::View* view, int* visible_count,
+                                      int* hidden_count) {
+    if (view->GetVisible())
+      (*visible_count)++;
+    else
+      (*hidden_count)++;
+  };
+  auto subscription = web_app_origin_text->AddVisibleChangedCallback(
+      base::BindRepeating(visibility_change_counter, web_app_origin_text,
+                          &visible_count, &hidden_count));
+
+  // Starts off visible, then animates out.
+  {
+    EXPECT_TRUE(web_app_origin_text->GetVisible());
+    base::RunLoop view_hidden_runloop;
+    auto callback_subscription = web_app_origin_text->AddVisibleChangedCallback(
+        view_hidden_runloop.QuitClosure());
+    view_hidden_runloop.Run();
+    EXPECT_EQ(0, visible_count);
+    EXPECT_EQ(1, hidden_count);
+    EXPECT_FALSE(web_app_origin_text->GetVisible());
+  }
+
+  // The app changes the theme. The origin text should show again and then hide.
+  {
+    base::RunLoop view_hidden_runloop;
+    base::RunLoop view_shown_runloop;
+    auto quit_runloop = base::BindLambdaForTesting(
+        [&web_app_origin_text, &view_hidden_runloop, &view_shown_runloop]() {
+          if (web_app_origin_text->GetVisible())
+            view_shown_runloop.Quit();
+          else
+            view_hidden_runloop.Quit();
+        });
+    auto callback_subscription =
+        web_app_origin_text->AddVisibleChangedCallback(quit_runloop);
+    // Make sure the navigation has finished before proceeding.
+    url_observer.Wait();
+    ASSERT_TRUE(ExecJs(
+        browser_view_->GetActiveWebContents()->GetPrimaryMainFrame(),
+        "var meta = document.head.appendChild(document.createElement('meta'));"
+        "meta.name = 'theme-color';"
+        "meta.content = '#123456';"));
+    view_shown_runloop.Run();
+    EXPECT_EQ(1, visible_count);
+    view_hidden_runloop.Run();
+    EXPECT_EQ(2, hidden_count);
+    EXPECT_FALSE(web_app_origin_text->GetVisible());
+  }
+}
+
 IN_PROC_BROWSER_TEST_F(WebAppOpaqueBrowserFrameViewTest, Fullscreen) {
   if (!InstallAndLaunchWebApp())
     return;
@@ -282,7 +354,7 @@ class WebAppOpaqueBrowserFrameViewWindowControlsOverlayTest
                          .LoadWindowControlsOverlayTestPageWithDataAndGetURL(
                              embedded_test_server(), &temp_dir_);
 
-    auto web_app_info = std::make_unique<web_app::WebAppInstallInfo>();
+    auto web_app_info = std::make_unique<WebAppInstallInfo>();
     web_app_info->start_url = start_url;
     web_app_info->scope = start_url.GetWithoutFilename();
     web_app_info->display_mode = blink::mojom::DisplayMode::kStandalone;
@@ -292,13 +364,13 @@ class WebAppOpaqueBrowserFrameViewWindowControlsOverlayTest
     web_app_info->display_override = {
         blink::mojom::DisplayMode::kWindowControlsOverlay};
 
-    webapps::AppId app_id = web_app::test::InstallWebApp(
+    web_app::AppId app_id = web_app::test::InstallWebApp(
         browser()->profile(), std::move(web_app_info));
 
     Browser* app_browser =
         web_app::LaunchWebAppBrowser(browser()->profile(), app_id);
 
-    web_app::NavigateViaLinkClickToURLAndWait(app_browser, start_url);
+    web_app::NavigateToURLAndWait(app_browser, start_url);
 
     browser_view_ = BrowserView::GetBrowserViewForBrowser(app_browser);
     views::NonClientFrameView* frame_view =
@@ -332,8 +404,8 @@ class WebAppOpaqueBrowserFrameViewWindowControlsOverlayTest
     std::ignore = title_watcher.WaitAndGetTitle();
   }
 
-  raw_ptr<BrowserView, AcrossTasksDanglingUntriaged> browser_view_ = nullptr;
-  raw_ptr<OpaqueBrowserFrameView, AcrossTasksDanglingUntriaged>
+  raw_ptr<BrowserView, DanglingUntriaged> browser_view_ = nullptr;
+  raw_ptr<OpaqueBrowserFrameView, DanglingUntriaged>
       opaque_browser_frame_view_ = nullptr;
   WebAppFrameToolbarTestHelper web_app_frame_toolbar_helper_;
 

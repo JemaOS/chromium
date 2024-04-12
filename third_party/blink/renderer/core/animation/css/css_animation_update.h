@@ -5,11 +5,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_ANIMATION_CSS_CSS_ANIMATION_UPDATE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_ANIMATION_CSS_CSS_ANIMATION_UPDATE_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/animation/animation_timeline.h"
 #include "third_party/blink/renderer/core/animation/css/css_timeline_map.h"
-#include "third_party/blink/renderer/core/animation/deferred_timeline.h"
 #include "third_party/blink/renderer/core/animation/effect_stack.h"
 #include "third_party/blink/renderer/core/animation/inert_effect.h"
 #include "third_party/blink/renderer/core/animation/interpolation.h"
@@ -20,7 +18,6 @@
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_keyframes_rule.h"
 #include "third_party/blink/renderer/core/css/css_property_equality.h"
-#include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/style/scoped_css_name.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
@@ -45,8 +42,8 @@ class NewCSSAnimation {
                   StyleRuleKeyframes* style_rule,
                   AnimationTimeline* timeline,
                   const Vector<EAnimPlayState>& play_state_list,
-                  const std::optional<TimelineOffset>& range_start,
-                  const std::optional<TimelineOffset>& range_end)
+                  const absl::optional<TimelineOffset>& range_start,
+                  const absl::optional<TimelineOffset>& range_end)
       : name(name),
         name_index(name_index),
         position_index(position_index),
@@ -74,8 +71,8 @@ class NewCSSAnimation {
   unsigned style_rule_version;
   Member<AnimationTimeline> timeline;
   Vector<EAnimPlayState> play_state_list;
-  std::optional<TimelineOffset> range_start;
-  std::optional<TimelineOffset> range_end;
+  absl::optional<TimelineOffset> range_start;
+  absl::optional<TimelineOffset> range_end;
 };
 
 class UpdatedCSSAnimation {
@@ -89,8 +86,8 @@ class UpdatedCSSAnimation {
                       StyleRuleKeyframes* style_rule,
                       AnimationTimeline* timeline,
                       const Vector<EAnimPlayState>& play_state_list,
-                      const std::optional<TimelineOffset>& range_start,
-                      const std::optional<TimelineOffset>& range_end)
+                      const absl::optional<TimelineOffset>& range_start,
+                      const absl::optional<TimelineOffset>& range_end)
       : specified_timing(specified_timing),
         index(index),
         animation(animation),
@@ -117,8 +114,8 @@ class UpdatedCSSAnimation {
   unsigned style_rule_version;
   Member<AnimationTimeline> timeline;
   Vector<EAnimPlayState> play_state_list;
-  std::optional<TimelineOffset> range_start;
-  std::optional<TimelineOffset> range_end;
+  absl::optional<TimelineOffset> range_start;
+  absl::optional<TimelineOffset> range_end;
 };
 
 }  // namespace blink
@@ -151,8 +148,8 @@ class CORE_EXPORT CSSAnimationUpdate final {
                       StyleRuleKeyframes* style_rule,
                       AnimationTimeline* timeline,
                       const Vector<EAnimPlayState>& play_state_list,
-                      const std::optional<TimelineOffset>& range_start,
-                      const std::optional<TimelineOffset>& range_end) {
+                      const absl::optional<TimelineOffset>& range_start,
+                      const absl::optional<TimelineOffset>& range_end) {
     new_animations_.push_back(NewCSSAnimation(
         animation_name, name_index, position_index, effect, timing, style_rule,
         timeline, play_state_list, range_start, range_end));
@@ -171,8 +168,8 @@ class CORE_EXPORT CSSAnimationUpdate final {
                        StyleRuleKeyframes* style_rule,
                        AnimationTimeline* timeline,
                        const Vector<EAnimPlayState>& play_state_list,
-                       const std::optional<TimelineOffset>& range_start,
-                       const std::optional<TimelineOffset>& range_end) {
+                       const absl::optional<TimelineOffset>& range_start,
+                       const absl::optional<TimelineOffset>& range_end) {
     animations_with_updates_.push_back(UpdatedCSSAnimation(
         index, animation, effect, specified_timing, style_rule, timeline,
         play_state_list, range_start, range_end));
@@ -182,12 +179,13 @@ class CORE_EXPORT CSSAnimationUpdate final {
     updated_compositor_keyframes_.push_back(animation);
   }
 
-  void StartTransition(const PropertyHandle&,
-                       const ComputedStyle* from,
-                       const ComputedStyle* to,
-                       const ComputedStyle* reversing_adjusted_start_value,
-                       double reversing_shortening_factor,
-                       const InertEffect&);
+  void StartTransition(
+      const PropertyHandle&,
+      scoped_refptr<const ComputedStyle> from,
+      scoped_refptr<const ComputedStyle> to,
+      scoped_refptr<const ComputedStyle> reversing_adjusted_start_value,
+      double reversing_shortening_factor,
+      const InertEffect&);
   void UnstartTransition(const PropertyHandle&);
   void CancelTransition(const PropertyHandle& property) {
     cancelled_transitions_.insert(property);
@@ -204,12 +202,8 @@ class CORE_EXPORT CSSAnimationUpdate final {
     changed_view_timelines_ = std::move(timelines);
   }
 
-  void SetChangedDeferredTimelines(CSSDeferredTimelineMap timelines) {
-    changed_deferred_timelines_ = std::move(timelines);
-  }
-
-  void SetChangedTimelineAttachments(TimelineAttachmentMap attachments) {
-    changed_timeline_attachments_ = std::move(attachments);
+  void SetChangedAttachingTimelines(AttachingTimelineMap timelines) {
+    changed_attaching_timelines_ = std::move(timelines);
   }
 
   const HeapVector<NewCSSAnimation>& NewAnimations() const {
@@ -233,29 +227,14 @@ class CORE_EXPORT CSSAnimationUpdate final {
 
   struct NewTransition : public GarbageCollected<NewTransition> {
    public:
-    NewTransition(const PropertyHandle& property,
-                  const ComputedStyle* from,
-                  const ComputedStyle* to,
-                  const ComputedStyle* reversing_adjusted_start_value,
-                  double reversing_shortening_factor,
-                  const InertEffect* effect)
-        : property(property),
-          from(from),
-          to(to),
-          reversing_adjusted_start_value(reversing_adjusted_start_value),
-          reversing_shortening_factor(reversing_shortening_factor),
-          effect(effect) {}
-    void Trace(Visitor* visitor) const {
-      visitor->Trace(from);
-      visitor->Trace(to);
-      visitor->Trace(reversing_adjusted_start_value);
-      visitor->Trace(effect);
-    }
+    NewTransition();
+    virtual ~NewTransition();
+    void Trace(Visitor* visitor) const { visitor->Trace(effect); }
 
     PropertyHandle property = HashTraits<blink::PropertyHandle>::EmptyValue();
-    Member<const ComputedStyle> from;
-    Member<const ComputedStyle> to;
-    Member<const ComputedStyle> reversing_adjusted_start_value;
+    scoped_refptr<const ComputedStyle> from;
+    scoped_refptr<const ComputedStyle> to;
+    scoped_refptr<const ComputedStyle> reversing_adjusted_start_value;
     double reversing_shortening_factor;
     Member<const InertEffect> effect;
   };
@@ -279,11 +258,8 @@ class CORE_EXPORT CSSAnimationUpdate final {
   const CSSViewTimelineMap& ChangedViewTimelines() const {
     return changed_view_timelines_;
   }
-  const CSSDeferredTimelineMap& ChangedDeferredTimelines() const {
-    return changed_deferred_timelines_;
-  }
-  const TimelineAttachmentMap& ChangedTimelineAttachments() const {
-    return changed_timeline_attachments_;
+  const AttachingTimelineMap& ChangedAttachingTimelines() const {
+    return changed_attaching_timelines_;
   }
 
   void AdoptActiveInterpolationsForAnimations(
@@ -315,8 +291,7 @@ class CORE_EXPORT CSSAnimationUpdate final {
            !updated_compositor_keyframes_.empty() ||
            !changed_scroll_timelines_.empty() ||
            !changed_view_timelines_.empty() ||
-           !changed_deferred_timelines_.empty() ||
-           !changed_timeline_attachments_.empty();
+           !changed_attaching_timelines_.empty();
   }
 
   void Trace(Visitor* visitor) const {
@@ -329,8 +304,7 @@ class CORE_EXPORT CSSAnimationUpdate final {
     visitor->Trace(active_interpolations_for_transitions_);
     visitor->Trace(changed_scroll_timelines_);
     visitor->Trace(changed_view_timelines_);
-    visitor->Trace(changed_deferred_timelines_);
-    visitor->Trace(changed_timeline_attachments_);
+    visitor->Trace(changed_attaching_timelines_);
   }
 
  private:
@@ -356,8 +330,7 @@ class CORE_EXPORT CSSAnimationUpdate final {
 
   CSSScrollTimelineMap changed_scroll_timelines_;
   CSSViewTimelineMap changed_view_timelines_;
-  CSSDeferredTimelineMap changed_deferred_timelines_;
-  TimelineAttachmentMap changed_timeline_attachments_;
+  AttachingTimelineMap changed_attaching_timelines_;
 
   ActiveInterpolationsMap active_interpolations_for_animations_;
   ActiveInterpolationsMap active_interpolations_for_transitions_;

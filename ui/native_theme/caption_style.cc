@@ -14,16 +14,16 @@ CaptionStyle::CaptionStyle(const CaptionStyle& other) = default;
 CaptionStyle::~CaptionStyle() = default;
 
 // static
-std::optional<CaptionStyle> CaptionStyle::FromSpec(const std::string& spec) {
+absl::optional<CaptionStyle> CaptionStyle::FromSpec(const std::string& spec) {
   CaptionStyle style;
-  std::optional<base::Value> dict = base::JSONReader::Read(spec);
+  absl::optional<base::Value> dict = base::JSONReader::Read(spec);
   if (!dict.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   base::Value::Dict* value_dict = dict->GetIfDict();
   if (!value_dict) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   if (const std::string* value = value_dict->FindString("text-color")) {
@@ -37,8 +37,8 @@ std::optional<CaptionStyle> CaptionStyle::FromSpec(const std::string& spec) {
 }
 
 #if !BUILDFLAG(IS_WIN) && !BUILDFLAG(IS_MAC)
-std::optional<CaptionStyle> CaptionStyle::FromSystemSettings() {
-  return std::nullopt;
+absl::optional<CaptionStyle> CaptionStyle::FromSystemSettings() {
+  return absl::nullopt;
 }
 #endif
 

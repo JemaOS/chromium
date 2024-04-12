@@ -8,8 +8,6 @@ interface mixin ARIAMixin {
   [CEReactions] attribute Element? ariaActiveDescendantElement;
   [CEReactions] attribute DOMString? ariaAtomic;
   [CEReactions] attribute DOMString? ariaAutoComplete;
-  [CEReactions] attribute DOMString? ariaBrailleLabel;
-  [CEReactions] attribute DOMString? ariaBrailleRoleDescription;
   [CEReactions] attribute DOMString? ariaBusy;
   [CEReactions] attribute DOMString? ariaChecked;
   [CEReactions] attribute DOMString? ariaColCount;
@@ -57,4 +55,5 @@ interface mixin ARIAMixin {
   [CEReactions] attribute DOMString? ariaValueNow;
   [CEReactions] attribute DOMString? ariaValueText;
 };
+
 Element includes ARIAMixin;

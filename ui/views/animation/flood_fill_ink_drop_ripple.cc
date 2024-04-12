@@ -180,6 +180,12 @@ FloodFillInkDropRipple::~FloodFillInkDropRipple() {
   AbortAllAnimations();
 }
 
+void FloodFillInkDropRipple::SnapToActivated() {
+  InkDropRipple::SnapToActivated();
+  SetOpacity(visible_opacity_);
+  painted_layer_.SetTransform(GetMaxSizeTargetTransform());
+}
+
 ui::Layer* FloodFillInkDropRipple::GetRootLayer() {
   return &root_layer_;
 }
@@ -291,12 +297,6 @@ void FloodFillInkDropRipple::AnimateStateChange(
           .SetOpacity(&root_layer_, kHiddenOpacity, gfx::Tween::EASE_IN_OUT);
       break;
   }
-}
-
-void FloodFillInkDropRipple::SetStateToActivated() {
-  root_layer_.SetVisible(true);
-  SetOpacity(visible_opacity_);
-  painted_layer_.SetTransform(GetMaxSizeTargetTransform());
 }
 
 void FloodFillInkDropRipple::SetStateToHidden() {

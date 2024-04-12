@@ -129,8 +129,7 @@ IN_PROC_BROWSER_TEST_F(SampledOutClientIdSavedBrowserTest, ClientIdSaved) {
 #endif  // BUILDFLAG(IS_ANDROID)
 
   // Verify that we are considered sampled out.
-  EXPECT_FALSE(
-      ChromeMetricsServicesManagerClient::IsClientInSampleForMetrics());
+  EXPECT_FALSE(ChromeMetricsServicesManagerClient::IsClientInSample());
 
   // Enable metrics reporting, and verify that it was successful.
   ASSERT_TRUE(ChangeMetricsReporting(true));
@@ -138,8 +137,7 @@ IN_PROC_BROWSER_TEST_F(SampledOutClientIdSavedBrowserTest, ClientIdSaved) {
       local_state()->GetBoolean(metrics::prefs::kMetricsReportingEnabled));
 
   // Verify that we are still considered sampled out.
-  EXPECT_FALSE(
-      ChromeMetricsServicesManagerClient::IsClientInSampleForMetrics());
+  EXPECT_FALSE(ChromeMetricsServicesManagerClient::IsClientInSample());
 
   // Verify that we are neither recording nor uploading metrics. This also
   // verifies that we are sampled out according to the metrics code, since

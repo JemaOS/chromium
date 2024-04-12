@@ -51,22 +51,22 @@ DeviceOrientationEvent::DeviceOrientationEvent(
     : Event(event_type, Bubbles::kNo, Cancelable::kNo),
       orientation_(orientation) {}
 
-std::optional<double> DeviceOrientationEvent::alpha() const {
+absl::optional<double> DeviceOrientationEvent::alpha() const {
   if (orientation_->CanProvideAlpha())
     return orientation_->Alpha();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<double> DeviceOrientationEvent::beta() const {
+absl::optional<double> DeviceOrientationEvent::beta() const {
   if (orientation_->CanProvideBeta())
     return orientation_->Beta();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<double> DeviceOrientationEvent::gamma() const {
+absl::optional<double> DeviceOrientationEvent::gamma() const {
   if (orientation_->CanProvideGamma())
     return orientation_->Gamma();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool DeviceOrientationEvent::absolute() const {
@@ -74,13 +74,17 @@ bool DeviceOrientationEvent::absolute() const {
 }
 
 // static
-ScriptPromiseTyped<V8DeviceOrientationPermissionState>
-DeviceOrientationEvent::requestPermission(ScriptState* script_state) {
+ScriptPromise DeviceOrientationEvent::requestPermission(
+    ScriptState* script_state) {
   if (!script_state->ContextIsValid())
-    return ScriptPromiseTyped<V8DeviceOrientationPermissionState>();
+    return ScriptPromise();
 
   auto* window = To<LocalDOMWindow>(ExecutionContext::From(script_state));
-  CHECK(window);
+  if (!window) {
+    NOTREACHED();
+    return ScriptPromise();
+  }
+
   return DeviceOrientationController::From(*window).RequestPermission(
       script_state);
 }

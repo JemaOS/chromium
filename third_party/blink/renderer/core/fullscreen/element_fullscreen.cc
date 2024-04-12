@@ -11,7 +11,7 @@
 
 namespace blink {
 
-ScriptPromiseTyped<IDLUndefined> ElementFullscreen::requestFullscreen(
+ScriptPromise ElementFullscreen::requestFullscreen(
     ScriptState* script_state,
     Element& element,
     const FullscreenOptions* options,

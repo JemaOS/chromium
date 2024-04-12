@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/sync/sync_explicit_passphrase_client_ash.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -14,8 +13,9 @@
 #include "components/account_manager_core/account_manager_util.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/sync/chromeos/explicit_passphrase_mojo_utils.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "components/sync/engine/nigori/nigori.h"
-#include "components/sync/service/sync_user_settings.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
@@ -71,8 +71,7 @@ void SyncExplicitPassphraseClientAsh::GetDecryptionNigoriKey(
   }
 
   std::unique_ptr<syncer::Nigori> decryption_key =
-      sync_service_->GetUserSettings()
-          ->GetExplicitPassphraseDecryptionNigoriKey();
+      sync_service_->GetUserSettings()->GetDecryptionNigoriKey();
   if (!decryption_key) {
     std::move(callback).Run(nullptr);
     return;
@@ -95,7 +94,7 @@ void SyncExplicitPassphraseClientAsh::SetDecryptionNigoriKey(
     // Nigori key.
     return;
   }
-  sync_service_->GetUserSettings()->SetExplicitPassphraseDecryptionNigoriKey(
+  sync_service_->GetUserSettings()->SetDecryptionNigoriKey(
       std::move(nigori_key));
 }
 
@@ -125,7 +124,7 @@ void SyncExplicitPassphraseClientAsh::FlushMojoForTesting() {
 
 bool SyncExplicitPassphraseClientAsh::ValidateAccountKey(
     const crosapi::mojom::AccountKeyPtr& mojo_account_key) const {
-  const std::optional<account_manager::AccountKey> account_key =
+  const absl::optional<account_manager::AccountKey> account_key =
       account_manager::FromMojoAccountKey(mojo_account_key);
   if (!account_key.has_value()) {
     return false;

@@ -6,10 +6,10 @@
 #define UI_VIEWS_CONTROLS_SCROLLBAR_SCROLL_BAR_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/models/simple_menu_model.h"
 #include "ui/views/animation/scroll_animator.h"
 #include "ui/views/context_menu_controller.h"
@@ -78,9 +78,9 @@ class VIEWS_EXPORT ScrollBar : public View,
                                public ScrollDelegate,
                                public ContextMenuController,
                                public ui::SimpleMenuModel::Delegate {
-  METADATA_HEADER(ScrollBar, View)
-
  public:
+  METADATA_HEADER(ScrollBar);
+
   // An enumeration of different amounts of incremental scroll, representing
   // events sent from different parts of the UI/keyboard.
   enum class ScrollAmount {
@@ -93,18 +93,13 @@ class VIEWS_EXPORT ScrollBar : public View,
     kNextPage,
   };
 
-  // Whether the scrollbar is horizontal or vertical.
-  enum class Orientation : bool {
-    kHorizontal,
-    kVertical,
-  };
-
   ScrollBar(const ScrollBar&) = delete;
   ScrollBar& operator=(const ScrollBar&) = delete;
 
   ~ScrollBar() override;
 
-  Orientation GetOrientation() const;
+  // Returns whether this scrollbar is horizontal.
+  bool IsHorizontal() const;
 
   void set_controller(ScrollBarController* controller) {
     controller_ = controller;
@@ -192,7 +187,7 @@ class VIEWS_EXPORT ScrollBar : public View,
   // Create new scrollbar, either horizontal or vertical. These are protected
   // since you need to be creating either a NativeScrollBar or a
   // ImageScrollBar.
-  explicit ScrollBar(Orientation orientation);
+  explicit ScrollBar(bool is_horiz);
 
   BaseScrollBarThumb* GetThumb() const;
 
@@ -249,7 +244,7 @@ class VIEWS_EXPORT ScrollBar : public View,
   ScrollAmount DetermineScrollAmountByKeyCode(
       const ui::KeyboardCode& keycode) const;
 
-  std::optional<int> GetDesiredScrollOffset(ScrollAmount amount);
+  absl::optional<int> GetDesiredScrollOffset(ScrollAmount amount);
 
   // The size of the scrolled contents, in pixels.
   int contents_size_ = 0;
@@ -269,7 +264,7 @@ class VIEWS_EXPORT ScrollBar : public View,
   // was invoked.
   int context_menu_mouse_position_ = 0;
 
-  const Orientation orientation_;
+  const bool is_horiz_;
 
   raw_ptr<BaseScrollBarThumb> thumb_ = nullptr;
 

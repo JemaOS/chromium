@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_UI_VIEWS_PROFILES_PROFILE_PICKER_WEB_CONTENTS_HOST_H_
 
 #include "base/functional/callback.h"
-#include "base/types/strong_alias.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/web_modal/web_contents_modal_dialog_host.h"
 
@@ -39,8 +38,7 @@ class ProfilePickerWebContentsHost {
   // `contents` with its currently loaded url. If both
   // `navigation_finished_closure` and `url` is non-empty, the closure is called
   // when the navigation commits (if it never commits such as when the
-  // navigation is replaced by another navigation or if an internal page fails
-  // to load, the closure is never called).
+  // navigation is replaced by another navigation, the closure is never called).
   virtual void ShowScreen(
       content::WebContents* contents,
       const GURL& url,

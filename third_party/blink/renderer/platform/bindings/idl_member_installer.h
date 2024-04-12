@@ -6,7 +6,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_BINDINGS_IDL_MEMBER_INSTALLER_H_
 
 #include "base/containers/span.h"
-#include "base/memory/raw_ptr.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "v8/include/v8-fast-api-calls.h"
@@ -139,7 +138,7 @@ class PLATFORM_EXPORT IDLMemberInstaller final {
 
   struct NoAllocDirectCallOperationConfig {
     OperationConfig operation_config;
-    raw_ptr<const v8::CFunction> v8_cfunction_table_data;
+    const v8::CFunction* v8_cfunction_table_data;
     uint32_t v8_cfunction_table_size;
   };
   static void InstallOperations(

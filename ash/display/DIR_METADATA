@@ -1,6 +1,3 @@
-monorail: {
-  component: "OS>Systems>Displays"
-}
-buganizer_public: {
-  component_id: 1456274
+monorail {
+  component: "OS>Systems>Display"
 }

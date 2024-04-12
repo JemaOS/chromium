@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "base/feature_list.h"
-#include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/ui_thread_search_terms_data.h"
@@ -18,15 +17,15 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/singleton_tabs.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
-#include "components/password_manager/core/browser/features/password_manager_features_util.h"
+#include "components/password_manager/core/browser/password_manager_features_util.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/sync/base/features.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_user_settings.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "google_apis/gaia/gaia_urls.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "net/base/url_util.h"
@@ -34,10 +33,6 @@
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "ash/constants/ash_features.h"
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/ui/webui/trusted_vault/trusted_vault_dialog_delegate.h"
 #endif
 
 namespace {
@@ -108,15 +103,14 @@ SyncStatusLabels GetSyncStatusLabelsImpl(
 
   // Check to see if sync has been disabled via the dashboard and needs to be
   // set up once again.
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  if (service->GetUserSettings()->IsSyncFeatureDisabledViaDashboard()) {
+  if (service->GetDisableReasons().Has(
+          syncer::SyncService::DISABLE_REASON_USER_CHOICE)) {
     return {SyncStatusMessageType::kSyncError,
             IDS_SIGNED_IN_WITH_SYNC_STOPPED_VIA_DASHBOARD,
             IDS_SETTINGS_EMPTY_STRING, SyncStatusActionType::kNoAction};
   }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
-  if (service->GetUserSettings()->IsInitialSyncFeatureSetupComplete()) {
+  if (service->GetUserSettings()->IsFirstSetupComplete()) {
     // Check for a passphrase error.
     if (service->GetUserSettings()
             ->IsPassphraseRequiredForPreferredDataTypes()) {
@@ -184,16 +178,17 @@ void OpenTabForSyncTrustedVaultUserAction(Browser* browser, const GURL& url) {
   Navigate(&params);
 }
 
-std::optional<AvatarSyncErrorType> GetTrustedVaultError(
-    const syncer::SyncService* sync_service) {
-  if (sync_service->GetUserSettings()
-          ->IsTrustedVaultKeyRequiredForPreferredDataTypes()) {
+absl::optional<AvatarSyncErrorType> GetTrustedVaultError(
+    const syncer::SyncService* sync_service,
+    const PrefService* pref_service) {
+  if (ShouldShowSyncKeysMissingError(sync_service, pref_service)) {
     return sync_service->GetUserSettings()->IsEncryptEverythingEnabled()
                ? AvatarSyncErrorType::kTrustedVaultKeyMissingForEverythingError
                : AvatarSyncErrorType::kTrustedVaultKeyMissingForPasswordsError;
   }
 
-  if (sync_service->GetUserSettings()->IsTrustedVaultRecoverabilityDegraded()) {
+  if (ShouldShowTrustedVaultDegradedRecoverabilityError(sync_service,
+                                                        pref_service)) {
     return sync_service->GetUserSettings()->IsEncryptEverythingEnabled()
                ? AvatarSyncErrorType::
                      kTrustedVaultRecoverabilityDegradedForEverythingError
@@ -201,7 +196,7 @@ std::optional<AvatarSyncErrorType> GetTrustedVaultError(
                      kTrustedVaultRecoverabilityDegradedForPasswordsError;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace
@@ -240,20 +235,20 @@ SyncStatusMessageType GetSyncStatusMessageType(Profile* profile) {
   return GetSyncStatusLabels(profile).message_type;
 }
 
-std::optional<AvatarSyncErrorType> GetAvatarSyncErrorType(Profile* profile) {
+absl::optional<AvatarSyncErrorType> GetAvatarSyncErrorType(Profile* profile) {
   const syncer::SyncService* service =
       SyncServiceFactory::GetForProfile(profile);
   if (!service) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   if (!service->HasSyncConsent()) {
     // Only trusted vault errors can be shown if the account isn't a consented
     // primary account.
-    // Note the condition checked is not IsInitialSyncFeatureSetupComplete(),
-    // because the setup incomplete case is treated separately below. See the
-    // comment in ShouldRequestSyncConfirmation() about dashboard resets.
-    return GetTrustedVaultError(service);
+    // Note the condition checked is not IsFirstSetupComplete(), because the
+    // setup incomplete case is treated separately below. See the comment in
+    // ShouldRequestSyncConfirmation() about dashboard resets.
+    return GetTrustedVaultError(service, profile->GetPrefs());
   }
 
   // RequiresClientUpgrade() is unrecoverable, but is treated separately below.
@@ -281,8 +276,8 @@ std::optional<AvatarSyncErrorType> GetAvatarSyncErrorType(Profile* profile) {
     return AvatarSyncErrorType::kPassphraseError;
   }
 
-  const std::optional<AvatarSyncErrorType> trusted_vault_error =
-      GetTrustedVaultError(service);
+  const absl::optional<AvatarSyncErrorType> trusted_vault_error =
+      GetTrustedVaultError(service, profile->GetPrefs());
   if (trusted_vault_error) {
     return trusted_vault_error;
   }
@@ -291,7 +286,7 @@ std::optional<AvatarSyncErrorType> GetAvatarSyncErrorType(Profile* profile) {
     return AvatarSyncErrorType::kSettingsUnconfirmedError;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 std::u16string GetAvatarSyncErrorDescription(AvatarSyncErrorType error,
@@ -323,19 +318,82 @@ std::u16string GetAvatarSyncErrorDescription(AvatarSyncErrorType error,
 }
 
 bool ShouldRequestSyncConfirmation(const syncer::SyncService* service) {
-  // This method mainly handles the situation where the initial Sync setup was
-  // aborted without actually disabling Sync again. That generally shouldn't
-  // happen, but it might if Chrome crashed while the setup was ongoing, or due
-  // to past bugs in the setup flow.
+  // This method mostly handles two situations:
+  // 1. The initial Sync setup was aborted without actually disabling Sync
+  //    again. That generally shouldn't happen, but it might if Chrome crashed
+  //    while the setup was ongoing, or due to past bugs in the setup flow.
+  // 2. Sync was reset from the dashboard. That usually signs out the user too,
+  //    but it doesn't on ChromeOS, or for managed (enterprise) accounts where
+  //    sign-out is prohibited.
+  // Note that we do not check IsSyncRequested() here: In situation 1 it'd
+  // usually be true, but in situation 2 it's false. Note that while there is a
+  // primary account, IsSyncRequested() can only be false if Sync was reset from
+  // the dashboard.
   return !service->IsLocalSyncEnabled() && service->HasSyncConsent() &&
          !service->IsSetupInProgress() &&
-         !service->GetUserSettings()->IsInitialSyncFeatureSetupComplete();
+         !service->GetUserSettings()->IsFirstSetupComplete();
 }
 
 bool ShouldShowSyncPassphraseError(const syncer::SyncService* service) {
   const syncer::SyncUserSettings* settings = service->GetUserSettings();
-  return settings->IsInitialSyncFeatureSetupComplete() &&
+  return settings->IsFirstSetupComplete() &&
          settings->IsPassphraseRequiredForPreferredDataTypes();
+}
+
+bool ShouldShowSyncKeysMissingError(const syncer::SyncService* sync_service,
+                                    const PrefService* pref_service) {
+  const syncer::SyncUserSettings* settings = sync_service->GetUserSettings();
+  if (!settings->IsTrustedVaultKeyRequiredForPreferredDataTypes()) {
+    return false;
+  }
+
+  if (settings->IsFirstSetupComplete()) {
+    return true;
+  }
+
+  // If sync is running in transport-only mode, every type is "preferred", so
+  // IsTrustedVaultKeyRequiredForPreferredDataTypes() could return true even if
+  // the user isn't trying to sync any of the encrypted types. The check below
+  // tries to avoid showing an unexpected "You couldn't sync X" error in that
+  // case. It works fine if IsEncryptEverythingEnabled() is false, since
+  // PASSWORDS is the only one of AlwaysEncryptedUserTypes() currently
+  // supporting transport mode. Otherwise, it should really be OR-ed with other
+  // checks.
+  // TODO(crbug.com/1134090): Fix the definition of preferred types for
+  // transport mode so calling IsTrustedVaultKeyRequiredForPreferredDataTypes()
+  // is enough.
+  //
+  // WARNING: Must match PasswordModelTypeController::GetPreconditionState().
+  return password_manager::features_util::IsOptedInForAccountStorage(
+      pref_service, sync_service);
+}
+
+bool ShouldShowTrustedVaultDegradedRecoverabilityError(
+    const syncer::SyncService* sync_service,
+    const PrefService* pref_service) {
+  const syncer::SyncUserSettings* settings = sync_service->GetUserSettings();
+  if (!settings->IsTrustedVaultRecoverabilityDegraded()) {
+    return false;
+  }
+
+  if (settings->IsFirstSetupComplete()) {
+    return true;
+  }
+
+  // In transport-only mode, IsTrustedVaultRecoverabilityDegraded() returns true
+  // even if the user isn't trying to sync any of the encrypted types. The check
+  // below tries to avoid unnecessarily showing the error in that case. It works
+  // fine if IsEncryptEverythingEnabled() is false, since PASSWORDS is the only
+  // one of AlwaysEncryptedUserTypes() currently supporting transport mode.
+  // Otherwise, it should really be OR-ed with other checks.
+  // TODO(crbug.com/1134090): Fix the definition of preferred types for
+  // transport mode so calling IsTrustedVaultRecoverabilityDegraded() is enough
+  // (SyncUserSettingsImpl::IsEncryptedDatatypeEnabled() relies on the preferred
+  // types).
+  //
+  // WARNING: Must match PasswordModelTypeController::GetPreconditionState().
+  return password_manager::features_util::IsOptedInForAccountStorage(
+      pref_service, sync_service);
 }
 
 void OpenTabForSyncKeyRetrieval(
@@ -366,23 +424,3 @@ void OpenTabForSyncKeyRecoverabilityDegraded(
   }
   OpenTabForSyncTrustedVaultUserAction(browser, url);
 }
-
-#if BUILDFLAG(IS_CHROMEOS)
-void OpenDialogForSyncKeyRetrieval(
-    Profile* profile,
-    syncer::TrustedVaultUserActionTriggerForUMA trigger) {
-  RecordKeyRetrievalTrigger(trigger);
-  TrustedVaultDialogDelegate::ShowDialogForProfile(
-      profile,
-      GaiaUrls::GetInstance()->signin_chrome_sync_keys_retrieval_url());
-}
-
-void OpenDialogForSyncKeyRecoverabilityDegraded(
-    Profile* profile,
-    syncer::TrustedVaultUserActionTriggerForUMA trigger) {
-  RecordRecoverabilityDegradedFixTrigger(trigger);
-  TrustedVaultDialogDelegate::ShowDialogForProfile(
-      profile, GaiaUrls::GetInstance()
-                   ->signin_chrome_sync_keys_recoverability_degraded_url());
-}
-#endif

@@ -26,7 +26,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_DOM_SCRIPTED_ANIMATION_CONTROLLER_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_DOM_SCRIPTED_ANIMATION_CONTROLLER_H_
 
-#include "base/functional/callback.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/frame_request_callback_collection.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_state_observer.h"
@@ -68,6 +67,14 @@ class CORE_EXPORT ScriptedAnimationController
   // when running the callbacks.
   using ExecuteVfcCallback = base::OnceCallback<void(double)>;
 
+  // Check all VideoFrames held by GPUExternalTextures are still latest.
+  // Callback returns true means VideoFrame held by the GPUExternalTexture is
+  // still the latest and keep this callback for next check.
+  // Callback returns false means VideoFrame held by GPUExternalTexture is
+  // outdated and GPUExternalTexture is expired and no need to keep this
+  // callback.
+  using WebGPUVideoFrameStateCallback = base::RepeatingCallback<bool()>;
+
   // Animation frame callbacks are used for requestAnimationFrame().
   typedef int CallbackId;
   CallbackId RegisterFrameCallback(FrameCallback*);
@@ -95,12 +102,19 @@ class CORE_EXPORT ScriptedAnimationController
 
   void DispatchEventsAndCallbacksForPrinting();
 
+  // GPUExternalTexture generated with HTMLVideoElement source needs to check
+  // new presented video frame before "update rendering" step. Listen to the
+  // scheduler to check the states.
+  void WebGPURegisterVideoFrameStateCallback(
+      WebGPUVideoFrameStateCallback webgpu_video_frame_state_callback);
+
   LocalDOMWindow* GetWindow() const;
   void ScheduleAnimationIfNeeded();
 
   void RunTasks();
-  using DispatchFilter = base::RepeatingCallback<bool(Event*)>;
-  bool DispatchEvents(DispatchFilter filter = DispatchFilter{});
+  typedef absl::optional<bool (*)(const Event*)> DispatchFilter;
+  void DispatchEvents(
+      const DispatchFilter& filter = DispatchFilter(absl::nullopt));
   void ExecuteFrameCallbacks();
   void ExecuteVideoFrameCallbacks();
   void CallMediaQueryListListeners();
@@ -113,6 +127,9 @@ class CORE_EXPORT ScriptedAnimationController
   // A helper function that is called by more than one callsite.
   PageAnimator* GetPageAnimator();
   bool HasScheduledFrameTasks() const;
+  // The step to check whether related GPUExternalTexture should be expired.
+  // WebGPU Spec requires this step to happen before any update rendering steps.
+  void WebGPUCheckStateToExpireVideoFrame();
 
  private:
   ALWAYS_INLINE bool InsertToPerFrameEventsMap(const Event* event);
@@ -121,6 +138,7 @@ class CORE_EXPORT ScriptedAnimationController
   FrameRequestCallbackCollection callback_collection_;
   Vector<base::OnceClosure> task_queue_;
   Vector<ExecuteVfcCallback> vfc_execution_queue_;
+  Vector<WebGPUVideoFrameStateCallback> webgpu_video_frame_state_callbacks_;
   HeapVector<Member<Event>> event_queue_;
   using PerFrameEventsMap =
       HeapHashMap<Member<const EventTarget>, HashSet<const StringImpl*>>;

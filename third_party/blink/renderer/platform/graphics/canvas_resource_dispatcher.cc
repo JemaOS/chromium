@@ -9,10 +9,14 @@
 #include "base/debug/stack_trace.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/trace_event/trace_event.h"
+#include "components/power_scheduler/power_mode.h"
+#include "components/power_scheduler/power_mode_arbiter.h"
+#include "components/power_scheduler/power_mode_voter.h"
 #include "components/viz/common/features.h"
 #include "components/viz/common/quads/compositor_frame.h"
 #include "components/viz/common/quads/texture_draw_quad.h"
 #include "components/viz/common/resources/release_callback.h"
+#include "components/viz/common/resources/resource_format.h"
 #include "services/viz/public/mojom/compositing/frame_timing_details.mojom-blink.h"
 #include "services/viz/public/mojom/hit_test/hit_test_region_list.mojom-blink.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
@@ -29,12 +33,6 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier_base.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "ui/gfx/mojom/presentation_feedback.mojom-blink.h"
-
-namespace {
-// Frame delay for synthetic frame timing.
-// TODO(b/325532633): match this to the requested capture rate.
-constexpr auto kSyntheticFrameDelay = base::Milliseconds(16);
-}  // namespace
 
 namespace blink {
 
@@ -80,12 +78,12 @@ CanvasResourceDispatcher::CanvasResourceDispatcher(
       placeholder_canvas_id_(canvas_id),
       num_unreclaimed_frames_posted_(0),
       client_(client),
+      animation_power_mode_voter_(
+          power_scheduler::PowerModeArbiter::GetInstance()->NewVoter(
+              "PowerModeVoter.Animation.Canvas")),
       task_runner_(std::move(task_runner)),
       agent_group_scheduler_compositor_task_runner_(
-          std::move(agent_group_scheduler_compositor_task_runner)),
-      fake_frame_timer_(task_runner_,
-                        this,
-                        &CanvasResourceDispatcher::OnFakeFrameTimer) {
+          std::move(agent_group_scheduler_compositor_task_runner)) {
   // Frameless canvas pass an invalid |frame_sink_id_|; don't create mojo
   // channel for this special case.
   if (!frame_sink_id_.is_valid())
@@ -196,7 +194,7 @@ void CanvasResourceDispatcher::DispatchFrameSync(
   WTF::Vector<viz::ReturnedResource> resources;
   sink_->SubmitCompositorFrameSync(
       parent_local_surface_id_allocator_.GetCurrentLocalSurfaceId(),
-      std::move(frame), std::nullopt, 0, &resources);
+      std::move(frame), absl::nullopt, 0, &resources);
   DidReceiveCompositorFrameAck(std::move(resources));
 }
 
@@ -216,7 +214,7 @@ void CanvasResourceDispatcher::DispatchFrame(
   pending_compositor_frames_++;
   sink_->SubmitCompositorFrame(
       parent_local_surface_id_allocator_.GetCurrentLocalSurfaceId(),
-      std::move(frame), std::nullopt, 0);
+      std::move(frame), absl::nullopt, 0);
 }
 
 bool CanvasResourceDispatcher::PrepareFrame(
@@ -259,7 +257,7 @@ bool CanvasResourceDispatcher::PrepareFrame(
   // indirectly, to picture-in-picture content even if those frames are not
   // consumed by a viz frame sink directly.  In those cases, it might choose to
   // throttle us, incorrectly.
-  frame->metadata.may_throttle_if_undrawn_frames = !IsAnimationSuspended();
+  frame->metadata.may_throttle_if_undrawn_frames = suspend_animation_;
 
   const gfx::Rect bounds(size_.width(), size_.height());
   constexpr viz::CompositorRenderPassId kRenderPassId{1};
@@ -273,9 +271,7 @@ bool CanvasResourceDispatcher::PrepareFrame(
 
   viz::SharedQuadState* sqs = pass->CreateAndAppendSharedQuadState();
   sqs->SetAll(gfx::Transform(), bounds, bounds, gfx::MaskFilterInfo(),
-              /*clip=*/std::nullopt, is_opaque, /*opacity_f=*/1.f,
-              SkBlendMode::kSrcOver, /*sorting_context=*/0, /*layer_id=*/0u,
-              /*fast_rounded_corner=*/false);
+              absl::nullopt, is_opaque, 1.f, SkBlendMode::kSrcOver, 0);
 
   viz::TransferableResource resource;
   auto frame_resource = std::make_unique<FrameResource>();
@@ -306,6 +302,8 @@ bool CanvasResourceDispatcher::PrepareFrame(
   constexpr bool kPremultipliedAlpha = true;
   constexpr gfx::PointF uv_top_left(0.f, 0.f);
   constexpr gfx::PointF uv_bottom_right(1.f, 1.f);
+  constexpr float vertex_opacity[4] = {1.f, 1.f, 1.f, 1.f};
+
   // Accelerated resources have the origin of coordinates in the upper left
   // corner while canvases have it in the lower left corner. The DrawQuad is
   // marked as vertically flipped unless someone else has done the flip for us.
@@ -313,9 +311,10 @@ bool CanvasResourceDispatcher::PrepareFrame(
       SharedGpuContext::IsGpuCompositingEnabled() && needs_vertical_flip;
   quad->SetAll(sqs, bounds, bounds, needs_blending, resource_id,
                canvas_resource_size, kPremultipliedAlpha, uv_top_left,
-               uv_bottom_right, SkColors::kTransparent, yflipped,
-               nearest_neighbor, /*secure_output=*/false,
+               uv_bottom_right, SkColors::kTransparent, vertex_opacity,
+               yflipped, nearest_neighbor, /*secure_output=*/false,
                gfx::ProtectedVideoType::kClear);
+
   frame->render_pass_list.push_back(std::move(pass));
 
   if (change_size_for_next_commit_ ||
@@ -356,35 +355,31 @@ void CanvasResourceDispatcher::SetNeedsBeginFrame(bool needs_begin_frame) {
     return;
   }
   needs_begin_frame_ = needs_begin_frame;
-  if (!IsAnimationSuspended()) {
+  if (!suspend_animation_)
     SetNeedsBeginFrameInternal();
-  }
 }
 
-void CanvasResourceDispatcher::SetAnimationState(
-    AnimationState animation_state) {
-  if (animation_state_ == animation_state) {
+void CanvasResourceDispatcher::SetSuspendAnimation(bool suspend_animation) {
+  if (suspend_animation_ == suspend_animation)
     return;
-  }
-  animation_state_ = animation_state;
-  if (needs_begin_frame_) {
+  suspend_animation_ = suspend_animation;
+  if (needs_begin_frame_)
     SetNeedsBeginFrameInternal();
-  }
 }
 
 void CanvasResourceDispatcher::SetNeedsBeginFrameInternal() {
   if (!sink_)
     return;
 
-  bool needs_begin_frame = needs_begin_frame_ && !IsAnimationSuspended();
-  if (needs_begin_frame &&
-      animation_state_ == AnimationState::kActiveWithSyntheticTiming) {
-    // Generate a synthetic OBF instead of asking viz.
-    sink_->SetNeedsBeginFrame(false);
-    fake_frame_timer_.StartRepeating(kSyntheticFrameDelay, FROM_HERE);
+  bool needs_begin_frame = needs_begin_frame_ && !suspend_animation_;
+  sink_->SetNeedsBeginFrame(needs_begin_frame);
+
+  if (needs_begin_frame) {
+    animation_power_mode_voter_->VoteFor(
+        power_scheduler::PowerMode::kAnimation);
   } else {
-    sink_->SetNeedsBeginFrame(needs_begin_frame);
-    fake_frame_timer_.Stop();
+    animation_power_mode_voter_->ResetVoteAfterTimeout(
+        power_scheduler::PowerModeVoter::kAnimationTimeout);
   }
 }
 
@@ -416,28 +411,12 @@ void CanvasResourceDispatcher::OnBeginFrame(
   // We usually never get to BeginFrame if we are on RAF mode. But it could
   // still happen that begin frame gets requested and we don't have a frame
   // anymore, so we shouldn't let the compositor wait.
-  const bool submitted_frame = Client() && Client()->BeginFrame();
-
+  bool submitted_frame = Client() && Client()->BeginFrame();
   if (!submitted_frame) {
     sink_->DidNotProduceFrame(current_begin_frame_ack_);
   }
 
   // TODO(fserb): Update this with the correct value if we are on RAF submit.
-  current_begin_frame_ack_.frame_id.sequence_number =
-      viz::BeginFrameArgs::kInvalidFrameNumber;
-}
-
-void CanvasResourceDispatcher::OnFakeFrameTimer(TimerBase* timer) {
-  viz::BeginFrameArgs begin_frame_args;
-  if (HasTooManyPendingFrames() || !Client()) {
-    return;
-  }
-
-  // Since this is a synthetic OBF, create a manual ack to go with it.
-  current_begin_frame_ack_ = viz::BeginFrameAck::CreateManualAckWithDamage();
-  // It doesn't matter if this succeeds or fails, because viz didn't ask for a
-  // frame from us.
-  /*void*/ Client()->BeginFrame();
   current_begin_frame_ack_.frame_id.sequence_number =
       viz::BeginFrameArgs::kInvalidFrameNumber;
 }

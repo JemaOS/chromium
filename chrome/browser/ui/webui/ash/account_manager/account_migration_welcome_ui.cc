@@ -67,7 +67,7 @@ class MigrationMessageHandler : public content::WebUIMessageHandler {
         ->ShowReauthAccountDialog(
             account_manager::AccountManagerFacade::AccountAdditionSource::
                 kAccountManagerMigrationWelcomeScreen,
-            account_email, base::DoNothing());
+            account_email, base::OnceClosure());
     HandleCloseDialog(args);
   }
 
@@ -89,7 +89,7 @@ AccountMigrationWelcomeUI::AccountMigrationWelcomeUI(content::WebUI* web_ui)
           Profile::FromWebUI(web_ui),
           chrome::kChromeUIAccountMigrationWelcomeHost);
   webui::SetJSModuleDefaults(html_source);
-  webui::EnableTrustedTypesCSP(html_source);
+  html_source->DisableTrustedTypesCSP();
 
   // Add localized strings.
   html_source->AddLocalizedString("welcomePageTitle",

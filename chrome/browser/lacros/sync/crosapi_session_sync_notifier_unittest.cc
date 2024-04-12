@@ -4,12 +4,11 @@
 
 #include "chrome/browser/lacros/sync/crosapi_session_sync_notifier.h"
 
-#include <string_view>
 #include <utility>
 
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
+#include "base/strings/string_piece.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/task_environment.h"
 #include "chromeos/crosapi/mojom/sync.mojom.h"
@@ -62,6 +61,9 @@ class MockSessionSyncService : public sync_sessions::SessionSyncService {
   MOCK_METHOD(base::WeakPtr<syncer::ModelTypeControllerDelegate>,
               GetControllerDelegate,
               ());
+  MOCK_METHOD(void,
+              ProxyTabsStateChanged,
+              (syncer::DataTypeController::State state));
 };
 
 }  // namespace
@@ -117,8 +119,7 @@ class CrosapiSessionSyncNotifierTest : public testing::Test {
   }
 
   bool GetAllForeignSessions(
-      std::vector<raw_ptr<const sync_sessions::SyncedSession,
-                          VectorExperimental>>* sessions) {
+      std::vector<const sync_sessions::SyncedSession*>* sessions) {
     foreign_sessions_ = synced_session_tracker_.LookupAllForeignSessions(
         sync_sessions::SyncedSessionTracker::SessionLookup::PRESENTABLE);
     *sessions = foreign_sessions_;
@@ -139,7 +140,7 @@ class CrosapiSessionSyncNotifierTest : public testing::Test {
   // All SyncedSessions will have device form factor `kPhone`. All SessionTabs
   // will have valid urls with https schemes.
   bool CreateForeignPhonePresentableTabInSession(
-      const std::string_view& session_tag,
+      const base::StringPiece& session_tag,
       const SessionID window_id,
       const SessionID tab_id) {
     sync_sessions::SyncedSession* session =
@@ -163,8 +164,7 @@ class CrosapiSessionSyncNotifierTest : public testing::Test {
   // `CrosapiSessionSyncNotifier` to the `FakeSyncedSessionClient` was received
   // exactly as sent, even if the sent message was empty.
   void ValidateSentSessions() {
-    const std::vector<raw_ptr<const sync_sessions::SyncedSession,
-                              VectorExperimental>>& sent_sessions =
+    const std::vector<const sync_sessions::SyncedSession*>& sent_sessions =
         synced_session_tracker_.LookupAllForeignSessions(
             sync_sessions::SyncedSessionTracker::SessionLookup::PRESENTABLE);
     const std::vector<crosapi::mojom::SyncedSessionPtr>& received_sessions =
@@ -208,18 +208,21 @@ class CrosapiSessionSyncNotifierTest : public testing::Test {
   // made by that function. Finds the SessionWindow with id `window_id` to
   // create a SessionTab in. If none exists, it is created.
   void CreateForeignPhonePresentableTabInWindow(
-      const std::string_view& session_tag,
+      const base::StringPiece& session_tag,
       const SessionID window_id,
       const SessionID tab_id) {
-    std::vector<const sessions::SessionWindow*> windows =
-        synced_session_tracker_.LookupSessionWindows(session_tag.data());
-    for (const sessions::SessionWindow* window : windows) {
-      if (window_id == window->window_id) {
-        // This can be done without checking for tab existence in the window
-        // because the tab's existence is checked in the session in
-        // `CreateForeignPhonePresentableTabInSession()`.
-        CreateForeignPhonePresentableTab(session_tag.data(), window_id, tab_id);
-        return;
+    std::vector<const sessions::SessionWindow*> windows;
+    if (synced_session_tracker_.LookupSessionWindows(session_tag.data(),
+                                                     &windows)) {
+      for (const sessions::SessionWindow* window : windows) {
+        if (window_id == window->window_id) {
+          // This can be done without checking for tab existence in the window
+          // because the tab's existence is checked in the session in
+          // `CreateForeignPhonePresentableTabInSession()`.
+          CreateForeignPhonePresentableTab(session_tag.data(), window_id,
+                                           tab_id);
+          return;
+        }
       }
     }
 
@@ -231,7 +234,7 @@ class CrosapiSessionSyncNotifierTest : public testing::Test {
 
   // Helper to `CreateForeignPhonePresentableTabInSession()`, keeps all promises
   // made by that function. Creates a new SessionTab with id `tab_id`.
-  void CreateForeignPhonePresentableTab(const std::string_view& session_tag,
+  void CreateForeignPhonePresentableTab(const base::StringPiece& session_tag,
                                         const SessionID window_id,
                                         const SessionID tab_id) {
     // This can be done without checking for tab existence in the window because
@@ -253,10 +256,12 @@ class CrosapiSessionSyncNotifierTest : public testing::Test {
       const std::string& sent_session_tag,
       const std::vector<crosapi::mojom::SyncedSessionWindowPtr>&
           received_windows) {
-    std::vector<const sessions::SessionWindow*> sent_windows =
-        synced_session_tracker_.LookupSessionWindows(sent_session_tag);
-    EXPECT_EQ(sent_windows.empty(), received_windows.empty());
-    if (sent_windows.empty()) {
+    std::vector<const sessions::SessionWindow*> sent_windows;
+    bool session_windows_list_empty =
+        !synced_session_tracker_.LookupSessionWindows(sent_session_tag,
+                                                      &sent_windows);
+    EXPECT_EQ(session_windows_list_empty, received_windows.empty());
+    if (session_windows_list_empty) {
       return;
     }
 
@@ -308,8 +313,7 @@ class CrosapiSessionSyncNotifierTest : public testing::Test {
   base::RepeatingClosure delete_foreign_session_callback_;
   sync_sessions::OpenTabsUIDelegateImpl open_tabs_ui_delegate_;
   testing::NiceMock<MockSessionSyncService> mock_session_sync_service_;
-  std::vector<raw_ptr<const sync_sessions::SyncedSession, VectorExperimental>>
-      foreign_sessions_;
+  std::vector<const sync_sessions::SyncedSession*> foreign_sessions_;
   base::RepeatingClosure foreign_sessions_changed_callback_;
 };
 

@@ -21,6 +21,7 @@
 
       <!-- Hangout Services extension, included in Google Chrome builds only. -->
       <if expr="_google_chrome or enable_hangout_services_extension">
+        <include name="IDR_HANGOUT_SERVICES_BACKGROUND_HTML" file="hangout_services/background.html" type="BINDATA" />
         <include name="IDR_HANGOUT_SERVICES_THUNK_JS" file="hangout_services/thunk.js" type="BINDATA" />
       </if>
 
@@ -39,6 +40,11 @@
         <include name="IDR_DESK_API_DESK_API_BUNDLE_JS" file="${root_gen_dir}/chrome/browser/resources/chromeos/desk_api/desk_api_bundle.js" use_base_dir="false" resource_path="chromeos/desk_api/desk_api_bundle.js" type="BINDATA" />
       </if>
 
+      <include name="IDR_IDENTITY_API_SCOPE_APPROVAL_BACKGROUND_JS" file="identity_scope_approval_dialog/background.js" type="BINDATA" />
+      <include name="IDR_IDENTITY_API_SCOPE_APPROVAL_DIALOG_CSS" file="identity_scope_approval_dialog/scope_approval_dialog.css" type="BINDATA" />
+      <include name="IDR_IDENTITY_API_SCOPE_APPROVAL_DIALOG" file="identity_scope_approval_dialog/scope_approval_dialog.html" type="BINDATA" />
+      <include name="IDR_IDENTITY_API_SCOPE_APPROVAL_DIALOG_JS" file="identity_scope_approval_dialog/scope_approval_dialog.js" type="BINDATA" />
+      <include name="IDR_IDENTITY_API_SCOPE_APPROVAL_INJECT_JS" file="identity_scope_approval_dialog/inject.js" type="BINDATA" />
       <if expr="chromeos_ash">
         <include name="IDR_ARC_SUPPORT_BACKGROUND_JS" file="chromeos/arc_support/background.js" type="BINDATA" />
         <include name="IDR_ARC_SUPPORT_BUBBLE_CSS" file="chromeos/arc_support/bubble.css" flattenhtml="true" type="BINDATA" />
@@ -74,15 +80,9 @@
       <include name="IDS_READING_MODE_YELLOW_PNG" file="side_panel/read_anything/images/read_anything_yellow.png" type="BINDATA" />
       <include name="IDS_READING_MODE_BLUE_PNG" file="side_panel/read_anything/images/read_anything_blue.png" type="BINDATA" />
     </includes>
-
-    <!-- Game Controls lottie json files -->
     <structures>
-      <if expr="chromeos_ash">
-        <structure type="lottie" name="IDR_ARC_INPUT_OVERLAY_ONBOARDING_ILLUSTRATION_DARK_JSON" file="chromeos/arc_input_overlay/onboarding_illustration_dark.json" compress="gzip" />
-        <structure type="lottie" name="IDR_ARC_INPUT_OVERLAY_ONBOARDING_ILLUSTRATION_LIGHT_JSON" file="chromeos/arc_input_overlay/onboarding_illustration_light.json" compress="gzip" />
-        <structure type="lottie" name="IDR_ARC_INPUT_OVERLAY_KEY_EDIT_NUDGE_JSON" file="chromeos/arc_input_overlay/key_edit_nudge.json" compress="gzip" />
-        <structure type="lottie" name="IDR_ARC_INPUT_OVERLAY_BUTTON_PLACEMENT_MODE_NUDGE_JSON" file="chromeos/arc_input_overlay/button_placement_mode_nudge.json" compress="gzip" />
-      </if>
+      <structure type="lottie" name="IDS_ARC_INPUT_OVERLAY_ONBOARDING_ILLUSTRATION_DARK_JSON" file="chromeos/arc_input_overlay/onboarding_illustration_dark.json" compress="gzip" />
+      <structure type="lottie" name="IDS_ARC_INPUT_OVERLAY_ONBOARDING_ILLUSTRATION_LIGHT_JSON" file="chromeos/arc_input_overlay/onboarding_illustration_light.json" compress="gzip" />
     </structures>
   </release>
 </grit>

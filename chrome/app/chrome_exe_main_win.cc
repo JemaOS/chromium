@@ -13,24 +13,27 @@
 #include <algorithm>
 #include <array>
 #include <string>
-#include <vector>
 
 #include "base/at_exit.h"
 #include "base/base_switches.h"
 #include "base/command_line.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/debug/alias.h"
 #include "base/debug/handle_hooks_win.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/logging.h"
+#include "base/path_service.h"
 #include "base/process/memory.h"
 #include "base/process/process.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "base/win/current_module.h"
+#include "base/win/registry.h"
 #include "base/win/win_util.h"
 #include "base/win/windows_version.h"
 #include "build/build_config.h"
@@ -112,27 +115,62 @@ bool AttemptFastNotify(const base::CommandLine& command_line) {
   return chrome::AttemptToNotifyRunningChrome(chrome) == chrome::NOTIFY_SUCCESS;
 }
 
-// Returns true if the child process |command_line| contains a /prefetch:#
-// argument where # is in [1, 8] prior to Win11 and [1,16] for it and later.
-// The intent of the function is to ensure that all child processes have a
-// /prefetch:N cmd line arg in the required range.
-// No child process shall have /prefetch:0 or it will interefere with the main
-// browser process prefetch. This includes things like /prefetch:simians where
-// simians will evalate to 0. Absence of a /prefetch:N argument is the same as
-// /prefetch:0 and is also excluded.
-// The function assumes only one /prefetch:N argument for child processes.
+// Returns true if |command_line| contains a /prefetch:# argument where # is in
+// [1, 8].
 bool HasValidWindowsPrefetchArgument(const base::CommandLine& command_line) {
-  static constexpr std::wstring_view kPrefetchArgumentPrefix(L"/prefetch:");
+  const wchar_t kPrefetchArgumentPrefix[] = L"/prefetch:";
 
   for (const auto& arg : command_line.argv()) {
-    if (!base::StartsWith(arg, kPrefetchArgumentPrefix)) {
-      continue;  // Ignore arguments that don't start with "/prefetch:".
+    if (arg.size() == std::size(kPrefetchArgumentPrefix) &&
+        base::StartsWith(arg, kPrefetchArgumentPrefix,
+                         base::CompareCase::SENSITIVE)) {
+      return arg[std::size(kPrefetchArgumentPrefix) - 1] >= L'1' &&
+             arg[std::size(kPrefetchArgumentPrefix) - 1] <= L'8';
     }
-    auto value = std::wstring_view(arg).substr(kPrefetchArgumentPrefix.size());
-    int profile = 0;
-    return base::StringToInt(value, &profile) && profile >= 1 &&
-           profile <=
-               (base::win::GetVersion() < base::win::Version::WIN11 ? 8 : 16);
+  }
+  return false;
+}
+
+// Some users are getting stuck in compatibility mode. Try to help them escape.
+// See http://crbug.com/581499. Returns true if a compatibility mode entry was
+// removed.
+bool RemoveAppCompatFlagsEntry() {
+  base::FilePath current_exe;
+  if (!base::PathService::Get(base::FILE_EXE, &current_exe))
+    return false;
+  if (!current_exe.IsAbsolute())
+    return false;
+  base::win::RegKey key;
+  if (key.Open(HKEY_CURRENT_USER,
+               L"Software\\Microsoft\\Windows "
+               L"NT\\CurrentVersion\\AppCompatFlags\\Layers",
+               KEY_READ | KEY_WRITE) == ERROR_SUCCESS) {
+    std::wstring layers;
+    if (key.ReadValue(current_exe.value().c_str(), &layers) == ERROR_SUCCESS) {
+      std::vector<std::wstring> tokens = base::SplitString(
+          layers, L" ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      size_t initial_size = tokens.size();
+      static const wchar_t* const kCompatModeTokens[] = {
+          L"WIN95",       L"WIN98",       L"WIN4SP5",  L"WIN2000",  L"WINXPSP2",
+          L"WINXPSP3",    L"VISTARTM",    L"VISTASP1", L"VISTASP2", L"WIN7RTM",
+          L"WINSRV03SP1", L"WINSRV08SP1", L"WIN8RTM",
+      };
+      for (const wchar_t* compat_mode_token : kCompatModeTokens) {
+        base::Erase(tokens, compat_mode_token);
+      }
+      LONG result;
+      if (tokens.empty()) {
+        result = key.DeleteValue(current_exe.value().c_str());
+      } else {
+        std::wstring without_compat_mode_tokens =
+            base::JoinString(tokens, L" ");
+        result = key.WriteValue(current_exe.value().c_str(),
+                                without_compat_mode_tokens.c_str());
+      }
+
+      // Return if we changed anything so that we can restart.
+      return tokens.size() != initial_size && result == ERROR_SUCCESS;
+    }
   }
   return false;
 }
@@ -343,6 +381,8 @@ int main() {
 
   if (AttemptFastNotify(*command_line))
     return 0;
+
+  RemoveAppCompatFlagsEntry();
 
   // Load and launch the chrome dll. *Everything* happens inside.
   VLOG(1) << "About to load main DLL.";

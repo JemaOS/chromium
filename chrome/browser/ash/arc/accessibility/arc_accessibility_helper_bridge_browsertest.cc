@@ -9,17 +9,18 @@
 
 #include "ash/accessibility/ui/accessibility_focus_ring_controller_impl.h"
 #include "ash/accessibility/ui/accessibility_focus_ring_layer.h"
+#include "ash/components/arc/mojom/accessibility_helper.mojom-shared.h"
 #include "ash/components/arc/session/arc_bridge_service.h"
 #include "ash/components/arc/session/arc_service_manager.h"
 #include "ash/components/arc/test/arc_util_test_support.h"
 #include "ash/components/arc/test/connection_holder_util.h"
+#include "ash/components/arc/test/fake_accessibility_helper_instance.h"
 #include "ash/constants/app_types.h"
 #include "ash/shell.h"
 #include "base/feature_list.h"
-#include "base/metrics/histogram_base.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "chrome/browser/ash/accessibility/accessibility_manager.h"
 #include "chrome/browser/ash/accessibility/magnification_manager.h"
+#include "chrome/browser/ash/arc/accessibility/ax_tree_source_arc.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/ash/shelf/app_service/exo_app_type_resolver.h"
 #include "chrome/browser/ui/browser.h"
@@ -34,9 +35,6 @@
 #include "components/viz/common/features.h"
 #include "content/public/test/browser_test.h"
 #include "extensions/browser/api/automation_internal/automation_event_router_interface.h"
-#include "services/accessibility/android/ax_tree_source_android.h"
-#include "services/accessibility/android/public/mojom/accessibility_helper.mojom-shared.h"
-#include "services/accessibility/android/test/fake_accessibility_helper_instance.h"
 #include "ui/accessibility/ax_action_data.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/compositor/layer.h"
@@ -62,7 +60,7 @@ class MockAutomationEventRouter
                                    std::vector<ui::AXEvent> events) override {}
 
   void DispatchAccessibilityLocationChange(
-      const content::AXLocationChangeNotificationDetails& details) override {}
+      const ExtensionMsg_AccessibilityLocationChangeParams& params) override {}
 
   void DispatchTreeDestroyedEvent(ui::AXTreeID tree_id) override {}
 
@@ -76,14 +74,14 @@ class MockAutomationEventRouter
 
   void DispatchGetTextLocationDataResult(
       const ui::AXActionData& data,
-      const std::optional<gfx::Rect>& rect) override {
+      const absl::optional<gfx::Rect>& rect) override {
     last_dispatched_action_data_ = data;
     last_dispatched_text_location_ = rect;
   }
 
-  std::optional<ui::AXActionData> last_dispatched_action_data_;
-  std::optional<bool> last_dispatched_action_result_;
-  std::optional<gfx::Rect> last_dispatched_text_location_;
+  absl::optional<ui::AXActionData> last_dispatched_action_data_;
+  absl::optional<bool> last_dispatched_action_result_;
+  absl::optional<gfx::Rect> last_dispatched_text_location_;
 };
 
 }  // namespace
@@ -141,7 +139,7 @@ class ArcAccessibilityHelperBridgeBrowserTest : public InProcessBrowserTest {
 
 IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest,
                        PreferenceChange) {
-  ASSERT_EQ(ax::android::mojom::AccessibilityFilterType::OFF,
+  ASSERT_EQ(mojom::AccessibilityFilterType::OFF,
             fake_accessibility_helper_instance_->filter_type());
   EXPECT_FALSE(fake_accessibility_helper_instance_->explore_by_touch_enabled());
 
@@ -162,7 +160,7 @@ IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest,
   AccessibilityManager::Get()->EnableSpokenFeedback(true);
 
   // Confirm that filter type is updated with preference change.
-  EXPECT_EQ(ax::android::mojom::AccessibilityFilterType::ALL,
+  EXPECT_EQ(mojom::AccessibilityFilterType::ALL,
             fake_accessibility_helper_instance_->filter_type());
 
   // Use ChromeVox by default. Touch exploration pass through is still false.
@@ -265,11 +263,10 @@ IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest,
 
   const gfx::Rect node_rect1 = gfx::Rect(50, 50, 50, 50);
 
-  auto event = ax::android::mojom::AccessibilityEventData::New();
-  event->event_type = ax::android::mojom::AccessibilityEventType::VIEW_FOCUSED;
+  auto event = mojom::AccessibilityEventData::New();
+  event->event_type = mojom::AccessibilityEventType::VIEW_FOCUSED;
   event->task_id = 1;
-  event->node_data.push_back(
-      ax::android::mojom::AccessibilityNodeInfoData::New());
+  event->node_data.push_back(mojom::AccessibilityNodeInfoData::New());
   auto& node = event->node_data.back();
   node->bounds_in_screen = node_rect1;
 
@@ -299,10 +296,8 @@ IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest,
 
   // Create a full event data.
   event->source_id = 10;
-  event->window_data =
-      std::vector<ax::android::mojom::AccessibilityWindowInfoDataPtr>();
-  event->window_data->push_back(
-      ax::android::mojom::AccessibilityWindowInfoData::New());
+  event->window_data = std::vector<mojom::AccessibilityWindowInfoDataPtr>();
+  event->window_data->push_back(mojom::AccessibilityWindowInfoData::New());
   auto& window = event->window_data->back();
   window->window_id = 100;
   window->root_node_id = 10;
@@ -332,8 +327,7 @@ IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest, PerformAction) {
       ArcAccessibilityHelperBridge::GetForBrowserContext(browser()->profile());
   auto& tree_map = bridge->trees_for_test();
   ASSERT_EQ(1u, tree_map.size());
-  ax::android::AXTreeSourceAndroid* tree_source =
-      tree_map.begin()->second.get();
+  AXTreeSourceArc* tree_source = tree_map.begin()->second.get();
   MockAutomationEventRouter router;
   tree_source->set_automation_event_router_for_test(&router);
   tree_source->set_window_id_for_test(5);
@@ -344,10 +338,10 @@ IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest, PerformAction) {
   action_data.action = ax::mojom::Action::kDoDefault;
   bridge->OnAction(action_data);
 
-  ax::android::mojom::AccessibilityActionData* requested_action =
+  mojom::AccessibilityActionData* requested_action =
       fake_accessibility_helper_instance_->last_requested_action();
   EXPECT_EQ(10, requested_action->node_id);
-  EXPECT_EQ(ax::android::mojom::AccessibilityActionType::CLICK,
+  EXPECT_EQ(mojom::AccessibilityActionType::CLICK,
             requested_action->action_type);
   EXPECT_EQ(5, requested_action->window_id);
 
@@ -373,8 +367,7 @@ IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest,
       ArcAccessibilityHelperBridge::GetForBrowserContext(browser()->profile());
   auto& tree_map = bridge->trees_for_test();
   ASSERT_EQ(1u, tree_map.size());
-  ax::android::AXTreeSourceAndroid* tree_source =
-      tree_map.begin()->second.get();
+  AXTreeSourceArc* tree_source = tree_map.begin()->second.get();
   MockAutomationEventRouter router;
   tree_source->set_automation_event_router_for_test(&router);
   tree_source->set_window_id_for_test(5);
@@ -386,16 +379,16 @@ IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest,
   action_data.row_column = {1, 3};
   bridge->OnAction(action_data);
 
-  ax::android::mojom::AccessibilityActionData* requested_action =
+  mojom::AccessibilityActionData* requested_action =
       fake_accessibility_helper_instance_->last_requested_action();
   EXPECT_EQ(10, requested_action->node_id);
-  EXPECT_EQ(ax::android::mojom::AccessibilityActionType::SCROLL_TO_POSITION,
+  EXPECT_EQ(mojom::AccessibilityActionType::SCROLL_TO_POSITION,
             requested_action->action_type);
   EXPECT_EQ(5, requested_action->window_id);
   EXPECT_EQ(1, requested_action->int_parameters->at(
-                   ax::android::mojom::ActionIntArgumentType::ROW_INT));
+                   mojom::ActionIntArgumentType::ROW_INT));
   EXPECT_EQ(3, requested_action->int_parameters->at(
-                   ax::android::mojom::ActionIntArgumentType::COLUMN_INT));
+                   mojom::ActionIntArgumentType::COLUMN_INT));
 
   ui::AXActionData dispatched_action =
       router.last_dispatched_action_data_.value();
@@ -420,8 +413,7 @@ IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest,
       ArcAccessibilityHelperBridge::GetForBrowserContext(browser()->profile());
   auto& tree_map = bridge->trees_for_test();
   ASSERT_EQ(1u, tree_map.size());
-  ax::android::AXTreeSourceAndroid* tree_source =
-      tree_map.begin()->second.get();
+  AXTreeSourceArc* tree_source = tree_map.begin()->second.get();
   MockAutomationEventRouter router;
   tree_source->set_automation_event_router_for_test(&router);
   tree_source->set_window_id_for_test(5);
@@ -434,13 +426,13 @@ IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest,
   action_data.end_index = 6;
   bridge->OnAction(action_data);
 
-  ax::android::mojom::AccessibilityActionData* requested_action =
+  mojom::AccessibilityActionData* requested_action =
       fake_accessibility_helper_instance_->last_requested_action();
   fake_accessibility_helper_instance_->refresh_with_extra_data_callback().Run(
       gfx::Rect(10, 20, 30, 40));
 
   EXPECT_EQ(10, requested_action->node_id);
-  EXPECT_EQ(ax::android::mojom::AccessibilityActionType::GET_TEXT_LOCATION,
+  EXPECT_EQ(mojom::AccessibilityActionType::GET_TEXT_LOCATION,
             requested_action->action_type);
   EXPECT_EQ(5, requested_action->window_id);
   EXPECT_EQ(3, requested_action->start_index);
@@ -474,7 +466,7 @@ IN_PROC_BROWSER_TEST_F(ArcAccessibilityHelperBridgeBrowserTest, Histogram) {
   histogram_tester.ExpectBucketCount("Arc.Accessibility.WindowCount", 1, 0);
   ash::MagnificationManager::Get()->SetMagnifierEnabled(true);
   histogram_tester.ExpectBucketCount("Arc.Accessibility.WindowCount", 1, 1);
-  EXPECT_EQ(ax::android::mojom::AccessibilityFilterType::ALL,
+  EXPECT_EQ(mojom::AccessibilityFilterType::ALL,
             fake_accessibility_helper_instance_->filter_type());
   histogram_tester.ExpectTotalCount(
       "Arc.Accessibility.ActiveTime.FullscreenMagnifier", 0);

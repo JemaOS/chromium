@@ -17,7 +17,9 @@ import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.ObserverList;
 
-/** Observes and keeps a record of whether the system power saving mode is on. */
+/**
+ * Observes and keeps a record of whether the system power saving mode is on.
+ */
 public class PowerSavingModeMonitor {
     private static PowerSavingModeMonitor sInstance;
 
@@ -30,8 +32,10 @@ public class PowerSavingModeMonitor {
     }
 
     private final ObserverList<Runnable> mObservers = new ObserverList<>();
-    @Nullable private final PowerManager mPowerManager;
-    @Nullable private BroadcastReceiver mPowerModeReceiver;
+    @Nullable
+    private final PowerManager mPowerManager;
+    @Nullable
+    private BroadcastReceiver mPowerModeReceiver;
 
     private boolean mPowerSavingIsOn;
 
@@ -51,10 +55,8 @@ public class PowerSavingModeMonitor {
     }
 
     private PowerSavingModeMonitor() {
-        mPowerManager =
-                (PowerManager)
-                        ContextUtils.getApplicationContext()
-                                .getSystemService(Context.POWER_SERVICE);
+        mPowerManager = (PowerManager) ContextUtils.getApplicationContext().getSystemService(
+                Context.POWER_SERVICE);
 
         updatePowerSaveMode();
         updateAccordingToAppState();
@@ -73,15 +75,13 @@ public class PowerSavingModeMonitor {
 
     private void start() {
         if (mPowerModeReceiver == null) {
-            mPowerModeReceiver =
-                    new BroadcastReceiver() {
-                        @Override
-                        public void onReceive(Context context, Intent intent) {
-                            updatePowerSaveMode();
-                        }
-                    };
-            ContextUtils.registerProtectedBroadcastReceiver(
-                    ContextUtils.getApplicationContext(),
+            mPowerModeReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    updatePowerSaveMode();
+                }
+            };
+            ContextUtils.registerProtectedBroadcastReceiver(ContextUtils.getApplicationContext(),
                     mPowerModeReceiver,
                     new IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED));
         }

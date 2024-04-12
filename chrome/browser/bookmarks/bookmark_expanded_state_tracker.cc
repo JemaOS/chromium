@@ -70,7 +70,9 @@ BookmarkExpandedStateTracker::GetExpandedNodes() {
 }
 
 void BookmarkExpandedStateTracker::BookmarkModelLoaded(
+    bookmarks::BookmarkModel* model,
     bool ids_reassigned) {
+  DCHECK_EQ(model, bookmark_model_);
   if (ids_reassigned) {
     // If the ids change we can't trust the value in preferences and need to
     // reset it.
@@ -80,16 +82,20 @@ void BookmarkExpandedStateTracker::BookmarkModelLoaded(
 
 void BookmarkExpandedStateTracker::BookmarkModelChanged() {}
 
-void BookmarkExpandedStateTracker::BookmarkModelBeingDeleted() {
+void BookmarkExpandedStateTracker::BookmarkModelBeingDeleted(
+    bookmarks::BookmarkModel* model) {
+  DCHECK_EQ(model, bookmark_model_);
   bookmark_model_->RemoveObserver(this);
   bookmark_model_ = nullptr;
 }
 
 void BookmarkExpandedStateTracker::BookmarkNodeRemoved(
+    bookmarks::BookmarkModel* model,
     const bookmarks::BookmarkNode* parent,
     size_t old_index,
     const bookmarks::BookmarkNode* node,
     const std::set<GURL>& removed_urls) {
+  DCHECK_EQ(model, bookmark_model_);
   if (!node->is_folder()) {
     return;  // Only care about folders.
   }
@@ -99,7 +105,9 @@ void BookmarkExpandedStateTracker::BookmarkNodeRemoved(
 }
 
 void BookmarkExpandedStateTracker::BookmarkAllUserNodesRemoved(
+    bookmarks::BookmarkModel* model,
     const std::set<GURL>& removed_urls) {
+  DCHECK_EQ(model, bookmark_model_);
   // Ask for the nodes again, which removes any nodes that were deleted.
   GetExpandedNodes();
 }

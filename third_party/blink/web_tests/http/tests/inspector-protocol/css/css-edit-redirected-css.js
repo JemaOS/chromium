@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {dp} = await testRunner.startHTML(`
     <link rel="stylesheet" href="${testRunner.url('../resources/css-redirect.php')}">
     <div id="target">

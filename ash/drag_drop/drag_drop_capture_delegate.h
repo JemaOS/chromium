@@ -42,7 +42,7 @@ class ASH_EXPORT DragDropCaptureDelegate {
   // once that can be processed by the drag and drop controller.
   //
   // This should only be called on events if TakeCapture returned true at the
-  // start of a drag and drop session. Returns nullptr after `ReleaseCapture`.
+  // start of a drag and drop session.
   aura::Window* GetTarget(const ui::LocatedEvent& event);
 
   // Converts an event that was dispatched against a capture window to once
@@ -50,16 +50,12 @@ class ASH_EXPORT DragDropCaptureDelegate {
   // returned via GetTarget.
   //
   // This should only be called on events if TakeCapture returned true at the
-  // start of a drag and drop session. Returns nullptr after `ReleaseCapture`.
+  // start of a drag and drop session.
   std::unique_ptr<ui::LocatedEvent> ConvertEvent(aura::Window* target,
                                                  const ui::LocatedEvent& event);
 
-  // Return the capture window used if TakeCapture returns true. Returns nullptr
-  // after `ReleaseCapture`.
+  // Return the capture window used if TakeCapture returns true.
   aura::Window* capture_window();
-
-  // Stop capturing input events.
-  void ReleaseCapture();
 
  private:
   std::unique_ptr<DragDropTracker> drag_drop_tracker_;

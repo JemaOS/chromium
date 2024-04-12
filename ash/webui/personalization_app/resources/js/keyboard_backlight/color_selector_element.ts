@@ -8,16 +8,16 @@
  * keyboard backlight and zone customization section.
  */
 
-import 'chrome://resources/ash/common/personalization/common.css.js';
-import 'chrome://resources/ash/common/personalization/cros_button_style.css.js';
-import 'chrome://resources/ash/common/cr_elements/cr_lazy_render/cr_lazy_render.js';
 import 'chrome://resources/polymer/v3_0/iron-a11y-keys/iron-a11y-keys.js';
 import 'chrome://resources/polymer/v3_0/iron-selector/iron-selector.js';
 import 'chrome://resources/polymer/v3_0/paper-ripple/paper-ripple.js';
+import 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render.js';
 import './color_icon_element.js';
+import '../../css/common.css.js';
+import '../../css/cros_button_style.css.js';
 
-import {assert} from 'chrome://resources/js/assert.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {loadTimeData} from 'chrome://resources/ash/common/load_time_data.m.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {SkColor} from 'chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
 import {IronA11yKeysElement} from 'chrome://resources/polymer/v3_0/iron-a11y-keys/iron-a11y-keys.js';
 import {IronSelectorElement} from 'chrome://resources/polymer/v3_0/iron-selector/iron-selector.js';
@@ -47,14 +47,14 @@ declare global {
   }
 }
 
-export interface ColorSelectorElement {
+export interface ColorSelector {
   $: {
     keys: IronA11yKeysElement,
     selector: IronSelectorElement,
   };
 }
 
-export class ColorSelectorElement extends WithPersonalizationStore {
+export class ColorSelector extends WithPersonalizationStore {
   static get is() {
     return 'color-selector';
   }
@@ -134,12 +134,12 @@ export class ColorSelectorElement extends WithPersonalizationStore {
 
   override connectedCallback() {
     super.connectedCallback();
-    this.watch<ColorSelectorElement['currentBacklightState_']>(
+    this.watch<ColorSelector['currentBacklightState_']>(
         'currentBacklightState_',
         state => state.keyboardBacklight.currentBacklightState);
-    this.watch<ColorSelectorElement['shouldShowNudge_']>(
+    this.watch<ColorSelector['shouldShowNudge_']>(
         'shouldShowNudge_', state => state.keyboardBacklight.shouldShowNudge);
-    this.watch<ColorSelectorElement['wallpaperColor_']>(
+    this.watch<ColorSelector['wallpaperColor_']>(
         'wallpaperColor_', state => state.keyboardBacklight.wallpaperColor);
     this.updateFromStore();
 
@@ -215,13 +215,9 @@ export class ColorSelectorElement extends WithPersonalizationStore {
     if (!isSelectionEvent(e)) {
       return;
     }
-    const eventTarget = e.target as HTMLElement;
-    if (eventTarget.id === 'wallpaperColorIcon') {
-      // Only dispatch the event if the icon is clicked.
-      this.dispatchEvent(new CustomEvent(
-          wallpaperColorSelectedEventName,
-          {bubbles: true, composed: true, detail: null}));
-    }
+    this.dispatchEvent(new CustomEvent(
+        wallpaperColorSelectedEventName,
+        {bubbles: true, composed: true, detail: null}));
   }
 
   /** Invoked when a preset color is selected. */
@@ -257,7 +253,7 @@ export class ColorSelectorElement extends WithPersonalizationStore {
 
   private getColorIconElement_(button: HTMLElement): HTMLElement {
     return this.shadowRoot!.getElementById(button.id)!.querySelector(
-        'color-icon')!;
+               'color-icon') as HTMLElement;
   }
 
   private getColorSelectorAriaLabel_(): string {
@@ -320,4 +316,4 @@ export class ColorSelectorElement extends WithPersonalizationStore {
   }
 }
 
-customElements.define(ColorSelectorElement.is, ColorSelectorElement);
+customElements.define(ColorSelector.is, ColorSelector);

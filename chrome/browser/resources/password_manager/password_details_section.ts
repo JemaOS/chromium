@@ -6,20 +6,15 @@ import 'chrome://resources/cr_elements/cr_icons.css.js';
 import 'chrome://resources/cr_elements/cr_shared_style.css.js';
 import './shared_style.css.js';
 import './site_favicon.js';
-import './credential_details/password_details_card.js';
-import './credential_details/passkey_details_card.js';
-import './user_utils_mixin.js';
+import './password_details_card.js';
 
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
-import type {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
-import {assert} from 'chrome://resources/js/assert.js';
-import {afterNextRender, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
+import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './password_details_section.html.js';
 import {PasswordManagerImpl, PasswordViewPageInteractions} from './password_manager_proxy.js';
-import type {Route} from './router.js';
-import {Page, RouteObserverMixin, Router} from './router.js';
-import {UserUtilMixin} from './user_utils_mixin.js';
+import {Page, Route, RouteObserverMixin, Router} from './router.js';
 
 export interface PasswordDetailsSectionElement {
   $: {
@@ -28,8 +23,7 @@ export interface PasswordDetailsSectionElement {
   };
 }
 
-const PasswordDetailsSectionElementBase =
-    PrefsMixin(UserUtilMixin(RouteObserverMixin(PolymerElement)));
+const PasswordDetailsSectionElementBase = RouteObserverMixin(PolymerElement);
 
 export class PasswordDetailsSectionElement extends
     PasswordDetailsSectionElementBase {
@@ -42,12 +36,7 @@ export class PasswordDetailsSectionElement extends
   }
 
   static get properties() {
-    return {
-      selectedGroup_: {
-        type: Object,
-        observer: 'maybeRegisterPasswordSharingHelpBubble_',
-      },
-    };
+    return {selectedGroup_: Object};
   }
 
   private selectedGroup_: chrome.passwordsPrivate.CredentialGroup|undefined;
@@ -107,10 +96,11 @@ export class PasswordDetailsSectionElement extends
   }
 
   private navigateBack_() {
-    // Keep search query when navigating back.
-    Router.getInstance().navigateTo(
-        Page.PASSWORDS, null,
-        Router.getInstance().currentRoute.queryParameters);
+    Router.getInstance().navigateTo(Page.PASSWORDS);
+  }
+
+  private getGroupName_(): string {
+    return this.selectedGroup_ ? this.selectedGroup_!.name : '';
   }
 
   private async assignMatchingGroup(groupName: string) {
@@ -131,9 +121,8 @@ export class PasswordDetailsSectionElement extends
       return;
     }
     assert(selectedGroup);
-    this.updateShownCredentials(selectedGroup)
-        .then(this.startListeningForUpdates_.bind(this))
-        .catch(this.navigateBack_);
+    this.updateShownCredentials(selectedGroup).catch(this.navigateBack_);
+    this.startListeningForUpdates_();
     PasswordManagerImpl.getInstance().recordPasswordViewInteraction(
         PasswordViewPageInteractions.CREDENTIAL_FOUND);
   }
@@ -209,34 +198,17 @@ export class PasswordDetailsSectionElement extends
     }
     assert(matchingGroup);
     const newIds = matchingGroup.entries.map(entry => entry.id);
-    const currentStores =
-        this.selectedGroup_.entries.map(entry => entry.storedIn);
-    const newStores = matchingGroup.entries.map(entry => entry.storedIn);
-    // If ids match and stores used for entries haven't changed, don't do
-    // anything.
-    if (currentIds.sort().toString() === newIds.sort().toString() &&
-        currentStores.sort().toString() === newStores.sort().toString()) {
+    // If ids match, don't do anything.
+    if (currentIds.sort().toString() === newIds.sort().toString()) {
       return;
     }
     this.updateShownCredentials(matchingGroup)
         .then(() => {
           // Use navigation to update page title if needed.
           Router.getInstance().navigateTo(
-              Page.PASSWORD_DETAILS, this.selectedGroup_,
-              Router.getInstance().currentRoute.queryParameters);
+              Page.PASSWORD_DETAILS, this.selectedGroup_);
         })
         .catch(this.navigateBack_);
-  }
-
-  private maybeRegisterPasswordSharingHelpBubble_() {
-    afterNextRender(this, () => {
-      if (this.selectedGroup_?.entries[0]?.isPasskey) {
-        return;
-      }
-
-      this.shadowRoot!.querySelector('password-details-card')
-          ?.maybeRegisterSharingHelpBubble();
-    });
   }
 }
 

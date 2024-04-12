@@ -3,8 +3,7 @@
 // found in the LICENSE file.
 
 // clang-format off
-import type {MetricsReporting, PrivacyPageBrowserProxy, ResolverOption, SecureDnsSetting} from 'chrome://settings/settings.js';
-import {SecureDnsMode, SecureDnsUiManagementMode} from 'chrome://settings/settings.js';
+import {MetricsReporting, PrivacyPageBrowserProxy, ResolverOption, SecureDnsMode, SecureDnsSetting, SecureDnsUiManagementMode} from 'chrome://settings/settings.js';
 import {assertFalse} from 'chrome://webui-test/chai_assert.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
@@ -28,6 +27,7 @@ export class TestPrivacyPageBrowserProxy extends TestBrowserProxy implements
       'getSecureDnsSetting',
       'isValidConfig',
       'probeConfig',
+      'recordUserDropdownInteraction',
     ]);
 
     this.metricsReporting = {
@@ -111,5 +111,10 @@ export class TestPrivacyPageBrowserProxy extends TestBrowserProxy implements
     const result = this.probeConfigResults_[entry];
     assertFalse(result === undefined);
     return Promise.resolve(result || false);
+  }
+
+  recordUserDropdownInteraction(oldSelection: string, newSelection: string) {
+    this.methodCalled(
+        'recordUserDropdownInteraction', [oldSelection, newSelection]);
   }
 }

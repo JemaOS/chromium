@@ -41,17 +41,16 @@ void AXEventCounter::OnViewEvent(views::View* view,
   }
 }
 
-int AXEventCounter::GetCount(ax::mojom::Event event_type) const {
+int AXEventCounter::GetCount(ax::mojom::Event event_type) {
   return event_counts_[event_type];
 }
 
 int AXEventCounter::GetCount(ax::mojom::Event event_type,
-                             ax::mojom::Role role) const {
+                             ax::mojom::Role role) {
   return event_counts_for_role_[std::make_pair(event_type, role)];
 }
 
-int AXEventCounter::GetCount(ax::mojom::Event event_type,
-                             views::View* view) const {
+int AXEventCounter::GetCount(ax::mojom::Event event_type, views::View* view) {
   return event_counts_for_view_[std::make_pair(event_type, view)];
 }
 

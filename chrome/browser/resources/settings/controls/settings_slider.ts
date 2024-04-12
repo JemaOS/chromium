@@ -8,11 +8,16 @@
  * linear UI range to a range of real values.  When |value| does not map exactly
  * to a tick mark, it interpolates to the nearest tick.
  */
+import '../strings.m.js';
 import '//resources/cr_elements/cr_shared_vars.css.js';
 import '//resources/cr_elements/cr_slider/cr_slider.js';
+// <if expr='chromeos_ash'>
+import '//resources/cr_elements/chromeos/cros_color_overrides.css.js';
 
-import type {CrSliderElement, SliderTick} from '//resources/cr_elements/cr_slider/cr_slider.js';
-import {assert} from '//resources/js/assert.js';
+// </if>
+
+import {CrSliderElement, SliderTick} from '//resources/cr_elements/cr_slider/cr_slider.js';
+import {assert} from '//resources/js/assert_ts.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {CrPolicyPrefMixin} from '/shared/settings/controls/cr_policy_pref_mixin.js';
@@ -70,9 +75,6 @@ export class SettingsSliderElement extends SettingsSliderElementBase {
 
       disabled: Boolean,
 
-      // The value of ariaDisabled should only be "true" or "false".
-      ariaDisabled: String,
-
       showMarkers: Boolean,
 
       disableSlider_: {
@@ -109,8 +111,6 @@ export class SettingsSliderElement extends SettingsSliderElementBase {
   private disableSlider_: boolean;
   updateValueInstantly: boolean;
   private loaded_: boolean;
-
-  override ariaDisabled: string;
 
   override connectedCallback() {
     super.connectedCallback();

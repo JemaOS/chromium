@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/guest_os/guest_os_session_tracker.h"
 
-#include <optional>
-
 #include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "chrome/browser/ash/guest_os/dbus_test_helper.h"
@@ -19,6 +17,7 @@
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace guest_os {
 
@@ -54,15 +53,15 @@ class GuestOsSessionTrackerTest : public testing::Test,
 
   void CheckContainerNotExists() {
     auto info = tracker_.GetInfo(guest_id_);
-    EXPECT_EQ(info, std::nullopt);
+    EXPECT_EQ(info, absl::nullopt);
 
     auto id = tracker_.GetGuestIdForToken(token_);
-    EXPECT_EQ(id, std::nullopt);
+    EXPECT_EQ(id, absl::nullopt);
   }
 
   void CheckContainerExists() {
     auto info = tracker_.GetInfo(guest_id_);
-    EXPECT_NE(info, std::nullopt);
+    EXPECT_NE(info, absl::nullopt);
 
     auto id = tracker_.GetGuestIdForToken(token_);
     EXPECT_EQ(id, guest_id_);
@@ -177,7 +176,7 @@ TEST_F(GuestOsSessionTrackerTest, AlreadyRunningVMsTracked) {
   FakeCiceroneClient()->NotifyContainerStarted(container_started_signal_);
 
   auto info = tracker.GetInfo(guest_id_);
-  ASSERT_NE(info, std::nullopt);
+  ASSERT_NE(info, absl::nullopt);
   auto id = tracker.GetGuestIdForToken(token_);
   ASSERT_EQ(id, guest_id_);
 }
@@ -210,7 +209,7 @@ TEST_F(GuestOsSessionTrackerTest, AlreadyRunningContainersTracked) {
   run_loop_.RunUntilIdle();
 
   auto info = tracker.GetInfo(guest_id_);
-  ASSERT_NE(std::nullopt, info);
+  ASSERT_NE(absl::nullopt, info);
   auto id = tracker.GetGuestIdForToken(token_);
   ASSERT_EQ(id, guest_id_);
   ASSERT_EQ(base::FilePath(garcon_response.container_homedir()), info->homedir);
@@ -294,34 +293,34 @@ TEST_F(GuestOsSessionTrackerTest, RunOnVmShutdown) {
 }
 
 TEST_F(GuestOsSessionTrackerTest, GetVmInfo) {
-  ASSERT_EQ(std::nullopt, tracker_.GetVmInfo(vm_started_signal_.name()));
+  ASSERT_EQ(absl::nullopt, tracker_.GetVmInfo(vm_started_signal_.name()));
 
   FakeConciergeClient()->NotifyVmStarted(vm_started_signal_);
-  ASSERT_NE(std::nullopt, tracker_.GetVmInfo(vm_started_signal_.name()));
+  ASSERT_NE(absl::nullopt, tracker_.GetVmInfo(vm_started_signal_.name()));
 
   FakeCiceroneClient()->NotifyContainerStarted(container_started_signal_);
-  ASSERT_NE(std::nullopt, tracker_.GetVmInfo(vm_started_signal_.name()));
+  ASSERT_NE(absl::nullopt, tracker_.GetVmInfo(vm_started_signal_.name()));
 
   FakeCiceroneClient()->NotifyContainerShutdownSignal(
       container_shutdown_signal_);
-  ASSERT_NE(std::nullopt, tracker_.GetVmInfo(vm_started_signal_.name()));
+  ASSERT_NE(absl::nullopt, tracker_.GetVmInfo(vm_started_signal_.name()));
 
   FakeConciergeClient()->NotifyVmStopped(vm_shutdown_signal_);
-  ASSERT_EQ(std::nullopt, tracker_.GetVmInfo(vm_started_signal_.name()));
+  ASSERT_EQ(absl::nullopt, tracker_.GetVmInfo(vm_started_signal_.name()));
 }
 
 TEST_F(GuestOsSessionTrackerTest, GetGuestIdForToken) {
-  ASSERT_EQ(std::nullopt, tracker_.GetGuestIdForToken(token_));
+  ASSERT_EQ(absl::nullopt, tracker_.GetGuestIdForToken(token_));
 
   FakeConciergeClient()->NotifyVmStarted(vm_started_signal_);
-  ASSERT_EQ(std::nullopt, tracker_.GetGuestIdForToken(token_));
+  ASSERT_EQ(absl::nullopt, tracker_.GetGuestIdForToken(token_));
 
   FakeCiceroneClient()->NotifyContainerStarted(container_started_signal_);
   ASSERT_EQ(guest_id_, tracker_.GetGuestIdForToken(token_));
 
   FakeCiceroneClient()->NotifyContainerShutdownSignal(
       container_shutdown_signal_);
-  ASSERT_EQ(std::nullopt, tracker_.GetGuestIdForToken(token_));
+  ASSERT_EQ(absl::nullopt, tracker_.GetGuestIdForToken(token_));
 }
 
 TEST_F(GuestOsSessionTrackerTest, IsVmStopping) {

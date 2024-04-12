@@ -18,7 +18,6 @@
 #include "base/strings/stringprintf.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/metrics/histogram_tester.h"
-#include "base/test/test_future.h"
 #include "base/test/values_test_util.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/attestation/mock_tpm_challenge_key_subtle.h"
@@ -86,7 +85,7 @@ sDkn58N5eWm+hZADOAKROHR47j85VcsmYGK7z2x479YzsyWyOm0dbACXv7/HvFkz
 mMhGDBfgEskdbM+0agsZrJupoQMBUbD5gflcJlW3kwlboi3dTtiGixfYWw==
 -----END CERTIFICATE-----)";
 
-// Extracted from kFakeCertificate using the command:
+// Extracted from the certificate using the command:
 // openssl x509 -pubkey -noout -in cert.pem
 // and reformatted as a single line.
 constexpr char kPublicKeyBase64[] =
@@ -97,28 +96,6 @@ constexpr char kPublicKeyBase64[] =
     "oXgkA0mhyPygJwF3HMJfJHRrkxJ73c23R6kKvKTxqRKswvzTo5O5AzZFLdCe+"
     "GVTJuPo4VToGd+ZhS7QvsY38nAYG57fMnzzs5jjMF042AzzWiMt9gGbeuqCE6LXqFuSJYPo+"
     "TLaN7pwQx68PK5pd/lv58B7jjxCIAai0BX1rV6bl/Am3EukhTSuIcQiTr5c1G4E6bKwIDAQAB";
-
-// A certificate that doesn't match the public key kPublicKeyBase64.
-// Taken from net/data/ssl/certificates/client_1.pem
-constexpr char kFakeCertificatePubKeyMismatch[] = R"(-----BEGIN CERTIFICATE-----
-MIIDEjCCAfqgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwDzENMAsGA1UEAwwEQiBD
-QTAeFw0yMjEwMTkxNjU4NTVaFw0zMjEwMTYxNjU4NTVaMBgxFjAUBgNVBAMMDUNs
-aWVudCBDZXJ0IEEwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDa+Dq7
-TTFSw1AxRkaftrCM8tuPbYH7NTxLdHil0F2y4G+PvrlqN0qB43tRaKJPQEYhG+Rn
-ppXeOk6/AbgOFXBQCPoVJWOjxwMX3ea3rSLM5C9xUP9Rsnf/fkngD6G6pOo2nYin
-fgpINQDhGB/r8BJs69RNhvgdbN4aV7Bz8WGYqKF3DVhV+Di5zIOPNC9zoZQPey4d
-uMS06OERG7Op8fFws3QoCzEywVdAbe/R+m5oeg875vLVvmONwDi52mqv4rgbfl+a
-PhyyPzoR3hdIPEi13AQB5hmyLAcTDtvcib3beNLw586NXcYgQZdcbLmDkjVRDK4u
-niE4QaRUGeRJD2+xAgMBAAGjbzBtMAwGA1UdEwEB/wQCMAAwHQYDVR0lBBYwFAYI
-KwYBBQUHAwEGCCsGAQUFBwMCMB0GA1UdDgQWBBSQ42eTfRBubU1JKWU45fWcZmLd
-aTAfBgNVHSMEGDAWgBRvxexARA9ceASOZhFOoe4eODj9cjANBgkqhkiG9w0BAQsF
-AAOCAQEAPvOKn7eKh09kVgjmoAfkufGKiFCgzJW9q34Clw/OG/5W/EQ8+rKY+c+0
-pgeetMVkmkmQS4Fc7e7MOk/KNujdPOfBK2u5Yin4bcphU0AgMhuF+VUOhVXPv+m4
-XewWqo0dhdgYGmqq4pHPuotGLejUqSSYILX34Ln+Lu/plBfDVFePf/gEkWrTDDof
-UBwYwQj+yYNPIy/EuI3b0/JFVCcpK/NQfXkfOBcJijiQY4spjBJ/G9oOAbXHfZtl
-mVs+3guwg9eBsA20CbRjbSqwJfUfz9+x/IrEKSk70yy6rYMhVtwee4G4d0rLCeIV
-Mjt4aTOX/y/glIOdbSfQj/SunXs1GA==
------END CERTIFICATE-----)";
 
 constexpr char kCertProfileId[] = "cert_profile_1";
 constexpr char kCertProfileName[] = "Certificate Profile 1";
@@ -139,7 +116,7 @@ const std::string& GetPublicKey() {
 }
 
 const std::vector<uint8_t>& GetPublicKeyBin() {
-  static std::optional<std::vector<uint8_t>> public_key;
+  static absl::optional<std::vector<uint8_t>> public_key;
   if (!public_key.has_value()) {
     public_key = base::Base64Decode(kPublicKeyBase64);
     CHECK(public_key.has_value());
@@ -210,26 +187,26 @@ void VerifyDeleteKeyCalledOnce(CertScope cert_scope) {
         .WillOnce(RunOnceCallback<0>(register_key_result));               \
   }
 
-#define EXPECT_START_CSR_OK(START_CSR_FUNC, HASHING_ALGO)            \
-  {                                                                  \
-    EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC)           \
-        .Times(1)                                                    \
-        .WillOnce(RunOnceCallback<1>(                                \
-            policy::DeviceManagementStatus::DM_STATUS_SUCCESS,       \
-            /*response_error=*/std::nullopt,                         \
-            /*try_again_later_ms=*/std::nullopt, kInvalidationTopic, \
-            kChallenge, HASHING_ALGO, GetDataToSign()));             \
+#define EXPECT_START_CSR_OK(START_CSR_FUNC, HASHING_ALGO)             \
+  {                                                                   \
+    EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC)            \
+        .Times(1)                                                     \
+        .WillOnce(RunOnceCallback<1>(                                 \
+            policy::DeviceManagementStatus::DM_STATUS_SUCCESS,        \
+            /*response_error=*/absl::nullopt,                         \
+            /*try_again_later_ms=*/absl::nullopt, kInvalidationTopic, \
+            kChallenge, HASHING_ALGO, GetDataToSign()));              \
   }
 
-#define EXPECT_START_CSR_OK_WITHOUT_VA(START_CSR_FUNC, HASHING_ALGO) \
-  {                                                                  \
-    EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC)           \
-        .Times(1)                                                    \
-        .WillOnce(RunOnceCallback<1>(                                \
-            policy::DeviceManagementStatus::DM_STATUS_SUCCESS,       \
-            /*response_error=*/std::nullopt,                         \
-            /*try_again_later_ms=*/std::nullopt, kInvalidationTopic, \
-            /*va_challenge=*/"", HASHING_ALGO, GetDataToSign()));    \
+#define EXPECT_START_CSR_OK_WITHOUT_VA(START_CSR_FUNC, HASHING_ALGO)  \
+  {                                                                   \
+    EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC)            \
+        .Times(1)                                                     \
+        .WillOnce(RunOnceCallback<1>(                                 \
+            policy::DeviceManagementStatus::DM_STATUS_SUCCESS,        \
+            /*response_error=*/absl::nullopt,                         \
+            /*try_again_later_ms=*/absl::nullopt, kInvalidationTopic, \
+            /*va_challenge=*/"", HASHING_ALGO, GetDataToSign()));     \
   }
 
 #define EXPECT_START_CSR_TRY_LATER(START_CSR_FUNC, DELAY_MS)       \
@@ -238,7 +215,7 @@ void VerifyDeleteKeyCalledOnce(CertScope cert_scope) {
         .Times(1)                                                  \
         .WillOnce(RunOnceCallback<1>(                              \
             policy::DeviceManagementStatus::DM_STATUS_SUCCESS,     \
-            /*response_error=*/std::nullopt,                       \
+            /*response_error=*/absl::nullopt,                      \
             /*try_again_later_ms=*/(DELAY_MS), kInvalidationTopic, \
             /*va_challenge=*/"",                                   \
             enterprise_management::HashingAlgorithm::              \
@@ -246,32 +223,32 @@ void VerifyDeleteKeyCalledOnce(CertScope cert_scope) {
             /*data_to_sign=*/std::vector<uint8_t>()));             \
   }
 
-#define EXPECT_START_CSR_INVALID_REQUEST(START_CSR_FUNC)                    \
-  {                                                                         \
-    EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC)                  \
-        .Times(1)                                                           \
-        .WillOnce(RunOnceCallback<1>(                                       \
-            policy::DeviceManagementStatus::DM_STATUS_REQUEST_INVALID,      \
-            /*response_error=*/std::nullopt,                                \
-            /*try_again_later_ms=*/std::nullopt, /*invalidation_topic=*/"", \
-            /*va_challenge=*/"",                                            \
-            enterprise_management::HashingAlgorithm::                       \
-                HASHING_ALGORITHM_UNSPECIFIED,                              \
-            /*data_to_sign=*/std::vector<uint8_t>()));                      \
+#define EXPECT_START_CSR_INVALID_REQUEST(START_CSR_FUNC)                     \
+  {                                                                          \
+    EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC)                   \
+        .Times(1)                                                            \
+        .WillOnce(RunOnceCallback<1>(                                        \
+            policy::DeviceManagementStatus::DM_STATUS_REQUEST_INVALID,       \
+            /*response_error=*/absl::nullopt,                                \
+            /*try_again_later_ms=*/absl::nullopt, /*invalidation_topic=*/"", \
+            /*va_challenge=*/"",                                             \
+            enterprise_management::HashingAlgorithm::                        \
+                HASHING_ALGORITHM_UNSPECIFIED,                               \
+            /*data_to_sign=*/std::vector<uint8_t>()));                       \
   }
 
-#define EXPECT_START_CSR_CA_ERROR(START_CSR_FUNC)                           \
-  {                                                                         \
-    EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC)                  \
-        .Times(1)                                                           \
-        .WillOnce(RunOnceCallback<1>(                                       \
-            policy::DeviceManagementStatus::DM_STATUS_SUCCESS,              \
-            /*response_error=*/CertProvisioningResponseError::CA_ERROR,     \
-            /*try_again_later_ms=*/std::nullopt, /*invalidation_topic=*/"", \
-            /*va_challenge=*/"",                                            \
-            enterprise_management::HashingAlgorithm::                       \
-                HASHING_ALGORITHM_UNSPECIFIED,                              \
-            /*data_to_sign=*/std::vector<uint8_t>()));                      \
+#define EXPECT_START_CSR_CA_ERROR(START_CSR_FUNC)                            \
+  {                                                                          \
+    EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC)                   \
+        .Times(1)                                                            \
+        .WillOnce(RunOnceCallback<1>(                                        \
+            policy::DeviceManagementStatus::DM_STATUS_SUCCESS,               \
+            /*response_error=*/CertProvisioningResponseError::CA_ERROR,      \
+            /*try_again_later_ms=*/absl::nullopt, /*invalidation_topic=*/"", \
+            /*va_challenge=*/"",                                             \
+            enterprise_management::HashingAlgorithm::                        \
+                HASHING_ALGORITHM_UNSPECIFIED,                               \
+            /*data_to_sign=*/std::vector<uint8_t>()));                       \
   }
 
 #define EXPECT_START_CSR_TEMPORARY_UNAVAILABLE(START_CSR_FUNC)               \
@@ -280,8 +257,8 @@ void VerifyDeleteKeyCalledOnce(CertScope cert_scope) {
         .Times(1)                                                            \
         .WillOnce(RunOnceCallback<1>(                                        \
             policy::DeviceManagementStatus::DM_STATUS_TEMPORARY_UNAVAILABLE, \
-            /*response_error=*/std::nullopt,                                 \
-            /*try_again_later_ms=*/std::nullopt, /*invalidation_topic=*/"",  \
+            /*response_error=*/absl::nullopt,                                \
+            /*try_again_later_ms=*/absl::nullopt, /*invalidation_topic=*/"", \
             /*va_challenge=*/"",                                             \
             enterprise_management::HashingAlgorithm::                        \
                 HASHING_ALGORITHM_UNSPECIFIED,                               \
@@ -295,48 +272,48 @@ void VerifyDeleteKeyCalledOnce(CertScope cert_scope) {
         .WillOnce(                                                             \
             RunOnceCallback<1>(policy::DeviceManagementStatus::                \
                                    DM_STATUS_SERVICE_ACTIVATION_PENDING,       \
-                               /*response_error=*/std::nullopt,                \
-                               /*try_again_later_ms=*/std::nullopt,            \
+                               /*response_error=*/absl::nullopt,               \
+                               /*try_again_later_ms=*/absl::nullopt,           \
                                /*invalidation_topic=*/"", /*va_challenge=*/"", \
                                enterprise_management::HashingAlgorithm::       \
                                    HASHING_ALGORITHM_UNSPECIFIED,              \
                                /*data_to_sign=*/std::vector<uint8_t>()));      \
   }
 
-#define EXPECT_START_CSR_INCONSISTENT_DATA(START_CSR_FUNC)                  \
-  {                                                                         \
-    EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC)                  \
-        .Times(1)                                                           \
-        .WillOnce(RunOnceCallback<1>(                                       \
-            policy::DeviceManagementStatus::                                \
-                DM_STATUS_SUCCESS, /*response_error=*/                      \
-            CertProvisioningResponseError::INCONSISTENT_DATA,               \
-            /*try_again_later_ms=*/std::nullopt, /*invalidation_topic=*/"", \
-            /*va_challenge=*/"",                                            \
-            enterprise_management::HashingAlgorithm::                       \
-                HASHING_ALGORITHM_UNSPECIFIED,                              \
-            /*data_to_sign=*/std::vector<uint8_t>()));                      \
+#define EXPECT_START_CSR_INCONSISTENT_DATA(START_CSR_FUNC)                   \
+  {                                                                          \
+    EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC)                   \
+        .Times(1)                                                            \
+        .WillOnce(RunOnceCallback<1>(                                        \
+            policy::DeviceManagementStatus::                                 \
+                DM_STATUS_SUCCESS, /*response_error=*/                       \
+            CertProvisioningResponseError::INCONSISTENT_DATA,                \
+            /*try_again_later_ms=*/absl::nullopt, /*invalidation_topic=*/"", \
+            /*va_challenge=*/"",                                             \
+            enterprise_management::HashingAlgorithm::                        \
+                HASHING_ALGORITHM_UNSPECIFIED,                               \
+            /*data_to_sign=*/std::vector<uint8_t>()));                       \
   }
 
 #define EXPECT_START_CSR_NO_OP(START_CSR_FUNC) \
   { EXPECT_CALL(cert_provisioning_client_, START_CSR_FUNC).Times(1); }
 
-#define EXPECT_FINISH_CSR_OK(FINISH_CSR_FUNC)                                \
-  {                                                                          \
-    EXPECT_CALL(cert_provisioning_client_, FINISH_CSR_FUNC)                  \
-        .Times(1)                                                            \
-        .WillOnce(RunOnceCallback<3>(                                        \
-            policy::DeviceManagementStatus::DM_STATUS_SUCCESS, std::nullopt, \
-            std::nullopt));                                                  \
+#define EXPECT_FINISH_CSR_OK(FINISH_CSR_FUNC)                                 \
+  {                                                                           \
+    EXPECT_CALL(cert_provisioning_client_, FINISH_CSR_FUNC)                   \
+        .Times(1)                                                             \
+        .WillOnce(RunOnceCallback<3>(                                         \
+            policy::DeviceManagementStatus::DM_STATUS_SUCCESS, absl::nullopt, \
+            absl::nullopt));                                                  \
   }
 
-#define EXPECT_FINISH_CSR_TRY_LATER(FINISH_CSR_FUNC, DELAY_MS)               \
-  {                                                                          \
-    EXPECT_CALL(cert_provisioning_client_, FINISH_CSR_FUNC)                  \
-        .Times(1)                                                            \
-        .WillOnce(RunOnceCallback<3>(                                        \
-            policy::DeviceManagementStatus::DM_STATUS_SUCCESS, std::nullopt, \
-            /*try_again_later_ms=*/(DELAY_MS)));                             \
+#define EXPECT_FINISH_CSR_TRY_LATER(FINISH_CSR_FUNC, DELAY_MS)                \
+  {                                                                           \
+    EXPECT_CALL(cert_provisioning_client_, FINISH_CSR_FUNC)                   \
+        .Times(1)                                                             \
+        .WillOnce(RunOnceCallback<3>(                                         \
+            policy::DeviceManagementStatus::DM_STATUS_SUCCESS, absl::nullopt, \
+            /*try_again_later_ms=*/(DELAY_MS)));                              \
   }
 
 #define EXPECT_FINISH_CSR_SERVICE_ACTIVATION_PENDING(FINISH_CSR_FUNC)          \
@@ -345,16 +322,16 @@ void VerifyDeleteKeyCalledOnce(CertScope cert_scope) {
         .Times(1)                                                              \
         .WillOnce(RunOnceCallback<3>(policy::DeviceManagementStatus::          \
                                          DM_STATUS_SERVICE_ACTIVATION_PENDING, \
-                                     std::nullopt, std::nullopt));             \
+                                     absl::nullopt, absl::nullopt));           \
   }
 
-#define EXPECT_DOWNLOAD_CERT_OK(DOWNLOAD_CERT_FUNC, CERTIFICATE_PEM)         \
-  {                                                                          \
-    EXPECT_CALL(cert_provisioning_client_, DOWNLOAD_CERT_FUNC)               \
-        .Times(1)                                                            \
-        .WillOnce(RunOnceCallback<1>(                                        \
-            policy::DeviceManagementStatus::DM_STATUS_SUCCESS, std::nullopt, \
-            std::nullopt, CERTIFICATE_PEM));                                 \
+#define EXPECT_DOWNLOAD_CERT_OK(DOWNLOAD_CERT_FUNC)                           \
+  {                                                                           \
+    EXPECT_CALL(cert_provisioning_client_, DOWNLOAD_CERT_FUNC)                \
+        .Times(1)                                                             \
+        .WillOnce(RunOnceCallback<1>(                                         \
+            policy::DeviceManagementStatus::DM_STATUS_SUCCESS, absl::nullopt, \
+            absl::nullopt, kFakeCertificate));                                \
   }
 
 #define EXPECT_DOWNLOAD_CERT_SERVICE_ACTIVATION_PENDING(DOWNLOAD_CERT_FUNC)    \
@@ -363,17 +340,17 @@ void VerifyDeleteKeyCalledOnce(CertScope cert_scope) {
         .Times(1)                                                              \
         .WillOnce(RunOnceCallback<1>(policy::DeviceManagementStatus::          \
                                          DM_STATUS_SERVICE_ACTIVATION_PENDING, \
-                                     std::nullopt, std::nullopt,               \
+                                     absl::nullopt, absl::nullopt,             \
                                      kFakeCertificate));                       \
   }
 
-#define EXPECT_DOWNLOAD_CERT_TRY_LATER(DOWNLOAD_CERT_FUNC, DELAY_MS)         \
-  {                                                                          \
-    EXPECT_CALL(cert_provisioning_client_, DOWNLOAD_CERT_FUNC)               \
-        .Times(1)                                                            \
-        .WillOnce(RunOnceCallback<1>(                                        \
-            policy::DeviceManagementStatus::DM_STATUS_SUCCESS, std::nullopt, \
-            /*try_again_later_ms=*/(DELAY_MS), /*certificate=*/""));         \
+#define EXPECT_DOWNLOAD_CERT_TRY_LATER(DOWNLOAD_CERT_FUNC, DELAY_MS)          \
+  {                                                                           \
+    EXPECT_CALL(cert_provisioning_client_, DOWNLOAD_CERT_FUNC)                \
+        .Times(1)                                                             \
+        .WillOnce(RunOnceCallback<1>(                                         \
+            policy::DeviceManagementStatus::DM_STATUS_SUCCESS, absl::nullopt, \
+            /*try_again_later_ms=*/(DELAY_MS), /*certificate=*/""));          \
   }
 
 #define EXPECT_DOWNLOAD_CERT_NO_OP(DOWNLOAD_CERT_FUNC) \
@@ -422,6 +399,14 @@ void VerifyDeleteKeyCalledOnce(CertScope cert_scope) {
         .WillOnce(RunOnceCallback<2>(Status::kSuccess)); \
   }
 
+// A mock for observing the result callback of the worker.
+class CallbackObserver {
+ public:
+  MOCK_METHOD(void,
+              Callback,
+              (const CertProfile& profile, CertProvisioningWorkerState state));
+};
+
 // A mock for observing the state change callback of the worker.
 class StateChangeCallbackObserver {
  public:
@@ -439,6 +424,9 @@ class CertProvisioningWorkerStaticTest : public ::testing::Test {
 
   void SetUp() override {
     AttestationClient::InitializeFake();
+    // There should not be any calls to callback before this expect is
+    // overridden.
+    EXPECT_CALL(callback_observer_, Callback).Times(0);
 
     RegisterProfilePrefs(testing_pref_service_.registry());
     RegisterLocalStatePrefs(testing_pref_service_.registry());
@@ -512,7 +500,8 @@ class CertProvisioningWorkerStaticTest : public ::testing::Test {
   }
 
   CertProvisioningWorkerCallback GetResultCallback() {
-    return callback_observer_.GetCallback();
+    return base::BindOnce(&CallbackObserver::Callback,
+                          base::Unretained(&callback_observer_));
   }
 
   Profile* GetProfile() { return profile_helper_for_testing_.GetProfile(); }
@@ -532,14 +521,13 @@ class CertProvisioningWorkerStaticTest : public ::testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   StrictMock<StateChangeCallbackObserver> state_change_callback_observer_;
-  base::test::TestFuture<CertProfile, CertProvisioningWorkerState>
-      callback_observer_;
+  StrictMock<CallbackObserver> callback_observer_;
   ProfileHelperForTesting profile_helper_for_testing_;
   TestingPrefServiceSimple testing_pref_service_;
 
   MockCertProvisioningClient cert_provisioning_client_;
-  raw_ptr<platform_keys::MockPlatformKeysService> platform_keys_service_ =
-      nullptr;
+  raw_ptr<platform_keys::MockPlatformKeysService, ExperimentalAsh>
+      platform_keys_service_ = nullptr;
   std::unique_ptr<platform_keys::MockKeyPermissionsManager>
       key_permissions_manager_;
 };
@@ -564,18 +552,19 @@ TEST_F(CertProvisioningWorkerStaticTest, Success) {
       GetStateChangeCallback(), GetResultCallback());
 
   auto VerifyNoBackendErrorsSeen = [&worker]() {
-    EXPECT_EQ(worker.GetLastBackendServerError(), std::nullopt);
+    EXPECT_EQ(worker.GetLastBackendServerError(), absl::nullopt);
   };
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     EXPECT_CALL(state_change_callback_observer_, StateChangeCallback())
         .WillOnce(VerifyNoBackendErrorsSeen);
@@ -603,16 +592,16 @@ TEST_F(CertProvisioningWorkerStaticTest, Success) {
                                  GetPublicKeyBin()));
 
     EXPECT_SET_ATTRIBUTE_FOR_KEY_OK(
-        SetAttributeForKey(TokenId::kUser, GetPublicKeyBin(),
+        SetAttributeForKey(TokenId::kUser, GetPublicKey(),
                            KeyAttributeType::kCertificateProvisioningId,
                            GetCertProfileIdBin(), _));
     EXPECT_CALL(state_change_callback_observer_, StateChangeCallback())
         .WillOnce(VerifyNoBackendErrorsSeen);
 
-    EXPECT_SIGN_RSAPKC1_DIGEST_OK(
-        SignRsaPkcs1(::testing::Optional(TokenId::kUser), GetDataToSign(),
-                     GetPublicKeyBin(), HashAlgorithm::HASH_ALGORITHM_SHA256,
-                     /*callback=*/_));
+    EXPECT_SIGN_RSAPKC1_DIGEST_OK(SignRSAPKCS1Digest(
+        ::testing::Optional(TokenId::kUser), GetDataToSign(), GetPublicKeyBin(),
+        HashAlgorithm::HASH_ALGORITHM_SHA256,
+        /*callback=*/_));
     EXPECT_CALL(state_change_callback_observer_, StateChangeCallback())
         .WillOnce(VerifyNoBackendErrorsSeen);
 
@@ -623,8 +612,7 @@ TEST_F(CertProvisioningWorkerStaticTest, Success) {
         .WillOnce(VerifyNoBackendErrorsSeen);
 
     EXPECT_DOWNLOAD_CERT_OK(
-        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_),
-        kFakeCertificate);
+        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_));
 
     EXPECT_IMPORT_CERTIFICATE_OK(ImportCertificate(TokenId::kUser,
                                                    /*certificate=*/_,
@@ -633,13 +621,13 @@ TEST_F(CertProvisioningWorkerStaticTest, Success) {
         .WillOnce(VerifyNoBackendErrorsSeen);
 
     EXPECT_CALL(*mock_invalidator, Unregister()).Times(1);
+
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kSucceeded))
+        .Times(1);
   }
 
   worker.DoStep();
-
-  EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-  EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-            CertProvisioningWorkerState::kSucceeded);
 
   histogram_tester.ExpectUniqueSample("ChromeOS.CertProvisioning.Result.User",
                                       CertProvisioningWorkerState::kSucceeded,
@@ -690,14 +678,14 @@ TEST_F(CertProvisioningWorkerStaticTest, NoVaSuccess) {
                                  GetPublicKeyBin()));
 
     EXPECT_SET_ATTRIBUTE_FOR_KEY_OK(
-        SetAttributeForKey(TokenId::kUser, GetPublicKeyBin(),
+        SetAttributeForKey(TokenId::kUser, GetPublicKey(),
                            KeyAttributeType::kCertificateProvisioningId,
                            GetCertProfileIdBin(), _));
 
-    EXPECT_SIGN_RSAPKC1_DIGEST_OK(
-        SignRsaPkcs1(::testing::Optional(TokenId::kUser), GetDataToSign(),
-                     GetPublicKeyBin(), HashAlgorithm::HASH_ALGORITHM_SHA256,
-                     /*callback=*/_));
+    EXPECT_SIGN_RSAPKC1_DIGEST_OK(SignRSAPKCS1Digest(
+        ::testing::Optional(TokenId::kUser), GetDataToSign(), GetPublicKeyBin(),
+        HashAlgorithm::HASH_ALGORITHM_SHA256,
+        /*callback=*/_));
 
     EXPECT_FINISH_CSR_OK(FinishCsr(Eq(std::ref(provisioning_process)),
                                    /*va_challenge_response=*/"",
@@ -705,18 +693,17 @@ TEST_F(CertProvisioningWorkerStaticTest, NoVaSuccess) {
                                    /*callback=*/_));
 
     EXPECT_DOWNLOAD_CERT_OK(
-        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_),
-        kFakeCertificate);
+        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_));
 
     EXPECT_IMPORT_CERTIFICATE_OK(
         ImportCertificate(TokenId::kUser, /*certificate=*/_, /*callback=*/_));
+
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kSucceeded))
+        .Times(1);
   }
 
   worker.DoStep();
-
-  EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-  EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-            CertProvisioningWorkerState::kSucceeded);
 }
 
 // Checks that the worker correctly forwards a request with
@@ -739,13 +726,14 @@ TEST_F(CertProvisioningWorkerStaticTest, NoHashInStartCsr) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
     EXPECT_CALL(state_change_callback_observer_, StateChangeCallback());
 
     EXPECT_START_CSR_OK(
@@ -768,7 +756,7 @@ TEST_F(CertProvisioningWorkerStaticTest, NoHashInStartCsr) {
                                  GetPublicKeyBin()));
 
     EXPECT_SET_ATTRIBUTE_FOR_KEY_OK(
-        SetAttributeForKey(TokenId::kUser, GetPublicKeyBin(),
+        SetAttributeForKey(TokenId::kUser, GetPublicKey(),
                            KeyAttributeType::kCertificateProvisioningId,
                            GetCertProfileIdBin(), _));
     EXPECT_CALL(state_change_callback_observer_, StateChangeCallback());
@@ -784,94 +772,20 @@ TEST_F(CertProvisioningWorkerStaticTest, NoHashInStartCsr) {
     EXPECT_CALL(state_change_callback_observer_, StateChangeCallback());
 
     EXPECT_DOWNLOAD_CERT_OK(
-        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_),
-        kFakeCertificate);
+        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_));
 
     EXPECT_IMPORT_CERTIFICATE_OK(
         ImportCertificate(TokenId::kUser, /*certificate=*/_, /*callback=*/_));
     EXPECT_CALL(state_change_callback_observer_, StateChangeCallback());
 
     EXPECT_CALL(*mock_invalidator, Unregister()).Times(1);
+
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kSucceeded))
+        .Times(1);
   }
 
   worker.DoStep();
-
-  EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-  EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-            CertProvisioningWorkerState::kSucceeded);
-}
-
-TEST_F(CertProvisioningWorkerStaticTest, PublicKeyMismatch) {
-  CertProfile cert_profile(kCertProfileId, kCertProfileName,
-                           kCertProfileVersion,
-                           /*is_va_enabled=*/true, kCertProfileRenewalPeriod,
-                           ProtocolVersion::kStatic);
-  const CertProvisioningClient::ProvisioningProcess provisioning_process(
-      CertScope::kUser, kCertProfileId, kCertProfileVersion, GetPublicKeyBin());
-
-  MockTpmChallengeKeySubtle* mock_tpm_challenge_key = PrepareTpmChallengeKey();
-  CertProvisioningWorkerStatic worker(
-      CertScope::kUser, GetProfile(), &testing_pref_service_, cert_profile,
-      &cert_provisioning_client_, MakeInvalidator(),
-      GetStateChangeCallback(), GetResultCallback());
-
-  EXPECT_CALL(state_change_callback_observer_, StateChangeCallback)
-      .Times(AtLeast(1));
-  {
-    testing::InSequence seq;
-
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
-
-    EXPECT_START_CSR_OK(
-        StartCsr(Eq(std::ref(provisioning_process)), /*callback=*/_),
-        em::HashingAlgorithm::NO_HASH);
-
-    EXPECT_SIGN_CHALLENGE_OK(*mock_tpm_challenge_key,
-                             StartSignChallengeStep(kChallenge,
-                                                    /*callback=*/_));
-
-    EXPECT_REGISTER_KEY_OK(*mock_tpm_challenge_key, StartRegisterKeyStep);
-
-    EXPECT_CALL(*key_permissions_manager_,
-                AllowKeyForUsage(/*callback=*/_, KeyUsage::kCorporate,
-                                 GetPublicKeyBin()));
-
-    EXPECT_SET_ATTRIBUTE_FOR_KEY_OK(
-        SetAttributeForKey(TokenId::kUser, GetPublicKeyBin(),
-                           KeyAttributeType::kCertificateProvisioningId,
-                           GetCertProfileIdBin(), _));
-
-    EXPECT_SIGN_RSAPKC1_RAW_OK(
-        SignRSAPKCS1Raw(::testing::Optional(TokenId::kUser), GetDataToSign(),
-                        GetPublicKeyBin(), /*callback=*/_));
-
-    EXPECT_FINISH_CSR_OK(FinishCsr(Eq(std::ref(provisioning_process)),
-                                   kChallengeResponse, GetSignatureStr(),
-                                   /*callback=*/_));
-
-    EXPECT_DOWNLOAD_CERT_OK(
-        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_),
-        kFakeCertificatePubKeyMismatch);
-
-    EXPECT_CALL(
-        *platform_keys_service_,
-        RemoveKey(TokenId::kUser,
-                  /*public_key_spki_der=*/GetPublicKeyBin(), /*callback=*/_))
-        .Times(1)
-        .WillOnce(RunOnceCallback<2>(Status::kSuccess));
-  }
-
-  worker.DoStep();
-
-  EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-  EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-            CertProvisioningWorkerState::kFailed);
 }
 
 // Checks that when the server returns try_again_later field, the worker will
@@ -899,7 +813,7 @@ TEST_F(CertProvisioningWorkerStaticTest, TryLaterManualRetry) {
 
     EXPECT_PREPARE_KEY_OK(
         *mock_tpm_challenge_key,
-        StartPrepareKeyStep(::attestation::ENTERPRISE_MACHINE,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_DEVICE,
                             /*will_register_key=*/true,
                             ::attestation::KEY_TYPE_RSA,
                             /*key_name=*/GetKeyName(kCertProfileId),
@@ -933,11 +847,11 @@ TEST_F(CertProvisioningWorkerStaticTest, TryLaterManualRetry) {
                                  GetPublicKeyBin()));
 
     EXPECT_SET_ATTRIBUTE_FOR_KEY_OK(
-        SetAttributeForKey(TokenId::kSystem, GetPublicKeyBin(),
+        SetAttributeForKey(TokenId::kSystem, GetPublicKey(),
                            KeyAttributeType::kCertificateProvisioningId,
                            GetCertProfileIdBin(), _));
 
-    EXPECT_SIGN_RSAPKC1_DIGEST_OK(SignRsaPkcs1);
+    EXPECT_SIGN_RSAPKC1_DIGEST_OK(SignRSAPKCS1Digest);
 
     EXPECT_FINISH_CSR_TRY_LATER(FinishCsr(Eq(std::ref(provisioning_process)),
                                           kChallengeResponse, GetSignatureStr(),
@@ -968,18 +882,17 @@ TEST_F(CertProvisioningWorkerStaticTest, TryLaterManualRetry) {
     testing::InSequence seq;
 
     EXPECT_DOWNLOAD_CERT_OK(
-        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_),
-        kFakeCertificate);
+        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_));
 
     EXPECT_IMPORT_CERTIFICATE_OK(
         ImportCertificate(TokenId::kSystem, /*certificate=*/_, /*callback=*/_));
 
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kSucceeded))
+        .Times(1);
+
     worker.DoStep();
     EXPECT_EQ(worker.GetState(), CertProvisioningWorkerState::kSucceeded);
-
-    EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-    EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-              CertProvisioningWorkerState::kSucceeded);
   }
 }
 
@@ -1010,13 +923,14 @@ TEST_F(CertProvisioningWorkerStaticTest, TryLaterWait) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     EXPECT_START_CSR_TRY_LATER(
         StartCsr(Eq(std::ref(provisioning_process)), /*callback=*/_),
@@ -1045,14 +959,14 @@ TEST_F(CertProvisioningWorkerStaticTest, TryLaterWait) {
                                  GetPublicKeyBin()));
 
     EXPECT_SET_ATTRIBUTE_FOR_KEY_OK(
-        SetAttributeForKey(TokenId::kUser, GetPublicKeyBin(),
+        SetAttributeForKey(TokenId::kUser, GetPublicKey(),
                            KeyAttributeType::kCertificateProvisioningId,
                            GetCertProfileIdBin(), _));
 
-    EXPECT_SIGN_RSAPKC1_DIGEST_OK(
-        SignRsaPkcs1(::testing::Optional(TokenId::kUser), GetDataToSign(),
-                     GetPublicKeyBin(), HashAlgorithm::HASH_ALGORITHM_SHA256,
-                     /*callback=*/_));
+    EXPECT_SIGN_RSAPKC1_DIGEST_OK(SignRSAPKCS1Digest(
+        ::testing::Optional(TokenId::kUser), GetDataToSign(), GetPublicKeyBin(),
+        HashAlgorithm::HASH_ALGORITHM_SHA256,
+        /*callback=*/_));
 
     EXPECT_FINISH_CSR_TRY_LATER(FinishCsr(Eq(std::ref(provisioning_process)),
                                           kChallengeResponse, GetSignatureStr(),
@@ -1082,7 +996,7 @@ TEST_F(CertProvisioningWorkerStaticTest, TryLaterWait) {
   {
     testing::InSequence seq;
 
-    EXPECT_DOWNLOAD_CERT_OK(DownloadCert, kFakeCertificate);
+    EXPECT_DOWNLOAD_CERT_OK(DownloadCert);
 
     EXPECT_IMPORT_CERTIFICATE_OK(
         ImportCertificate(TokenId::kUser, /*certificate=*/_, /*callback=*/_));
@@ -1093,12 +1007,11 @@ TEST_F(CertProvisioningWorkerStaticTest, TryLaterWait) {
     EXPECT_EQ(worker.GetState(),
               CertProvisioningWorkerState::kFinishCsrResponseReceived);
 
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kSucceeded))
+        .Times(1);
     FastForwardBy(download_cert_real_delay + small_delay);
     EXPECT_EQ(worker.GetState(), CertProvisioningWorkerState::kSucceeded);
-
-    EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-    EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-              CertProvisioningWorkerState::kSucceeded);
   }
 }
 
@@ -1130,13 +1043,14 @@ TEST_F(CertProvisioningWorkerStaticTest, ServiceActivationPendingResponse) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     EXPECT_START_CSR_SERVICE_ACTIVATION_PENDING(
         StartCsr(Eq(std::ref(provisioning_process)), /*callback=*/_));
@@ -1168,14 +1082,14 @@ TEST_F(CertProvisioningWorkerStaticTest, ServiceActivationPendingResponse) {
                                  GetPublicKeyBin()));
 
     EXPECT_SET_ATTRIBUTE_FOR_KEY_OK(
-        SetAttributeForKey(TokenId::kUser, GetPublicKeyBin(),
+        SetAttributeForKey(TokenId::kUser, GetPublicKey(),
                            KeyAttributeType::kCertificateProvisioningId,
                            GetCertProfileIdBin(), _));
 
-    EXPECT_SIGN_RSAPKC1_DIGEST_OK(
-        SignRsaPkcs1(::testing::Optional(TokenId::kUser), GetDataToSign(),
-                     GetPublicKeyBin(), HashAlgorithm::HASH_ALGORITHM_SHA256,
-                     /*callback=*/_));
+    EXPECT_SIGN_RSAPKC1_DIGEST_OK(SignRSAPKCS1Digest(
+        ::testing::Optional(TokenId::kUser), GetDataToSign(), GetPublicKeyBin(),
+        HashAlgorithm::HASH_ALGORITHM_SHA256,
+        /*callback=*/_));
 
     EXPECT_FINISH_CSR_SERVICE_ACTIVATION_PENDING(
         FinishCsr(Eq(std::ref(provisioning_process)), kChallengeResponse,
@@ -1212,7 +1126,7 @@ TEST_F(CertProvisioningWorkerStaticTest, ServiceActivationPendingResponse) {
     FastForwardBy(kExpectedDownloadCsrDelay / 2);
     Mock::VerifyAndClearExpectations(&cert_provisioning_client_);
 
-    EXPECT_DOWNLOAD_CERT_OK(DownloadCert, kFakeCertificate);
+    EXPECT_DOWNLOAD_CERT_OK(DownloadCert);
 
     EXPECT_IMPORT_CERTIFICATE_OK(
         ImportCertificate(TokenId::kUser, /*certificate=*/_, /*callback=*/_));
@@ -1220,18 +1134,16 @@ TEST_F(CertProvisioningWorkerStaticTest, ServiceActivationPendingResponse) {
     EXPECT_EQ(worker.GetState(),
               CertProvisioningWorkerState::kFinishCsrResponseReceived);
 
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kSucceeded))
+        .Times(1);
     FastForwardBy(kExpectedDownloadCsrDelay / 2 + kSmallDelay);
     EXPECT_EQ(worker.GetState(), CertProvisioningWorkerState::kSucceeded);
-
-    EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-    EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-              CertProvisioningWorkerState::kSucceeded);
   }
 }
 
 // Checks that when the server returns try_again_later field, the worker will
-// retry when successfully subscribed for the invalidation or when the
-// invalidation is triggered.
+// retry when the invalidation is triggered.
 TEST_F(CertProvisioningWorkerStaticTest, InvalidationRespected) {
   CertProfile cert_profile(kCertProfileId, kCertProfileName,
                            kCertProfileVersion,
@@ -1257,13 +1169,14 @@ TEST_F(CertProvisioningWorkerStaticTest, InvalidationRespected) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     EXPECT_START_CSR_TRY_LATER(
         StartCsr(Eq(std::ref(provisioning_process)), /*callback=*/_),
@@ -1274,7 +1187,7 @@ TEST_F(CertProvisioningWorkerStaticTest, InvalidationRespected) {
               CertProvisioningWorkerState::kKeypairGenerated);
   }
 
-  OnInvalidationEventCallback on_invalidation_event_callback;
+  base::RepeatingClosure on_invalidation_callback;
   {
     testing::InSequence seq;
 
@@ -1282,7 +1195,7 @@ TEST_F(CertProvisioningWorkerStaticTest, InvalidationRespected) {
         StartCsr(Eq(std::ref(provisioning_process)), /*callback=*/_),
         em::HashingAlgorithm::SHA256);
     EXPECT_CALL(*mock_invalidator, Register(kInvalidationTopic, _))
-        .WillOnce(SaveArg<1>(&on_invalidation_event_callback));
+        .WillOnce(SaveArg<1>(&on_invalidation_callback));
 
     EXPECT_SIGN_CHALLENGE_OK(*mock_tpm_challenge_key,
                              StartSignChallengeStep(kChallenge,
@@ -1295,14 +1208,14 @@ TEST_F(CertProvisioningWorkerStaticTest, InvalidationRespected) {
                                  GetPublicKeyBin()));
 
     EXPECT_SET_ATTRIBUTE_FOR_KEY_OK(
-        SetAttributeForKey(TokenId::kUser, GetPublicKeyBin(),
+        SetAttributeForKey(TokenId::kUser, GetPublicKey(),
                            KeyAttributeType::kCertificateProvisioningId,
                            GetCertProfileIdBin(), _));
 
-    EXPECT_SIGN_RSAPKC1_DIGEST_OK(
-        SignRsaPkcs1(::testing::Optional(TokenId::kUser), GetDataToSign(),
-                     GetPublicKeyBin(), HashAlgorithm::HASH_ALGORITHM_SHA256,
-                     /*callback=*/_));
+    EXPECT_SIGN_RSAPKC1_DIGEST_OK(SignRSAPKCS1Digest(
+        ::testing::Optional(TokenId::kUser), GetDataToSign(), GetPublicKeyBin(),
+        HashAlgorithm::HASH_ALGORITHM_SHA256,
+        /*callback=*/_));
 
     EXPECT_FINISH_CSR_TRY_LATER(FinishCsr(Eq(std::ref(provisioning_process)),
                                           kChallengeResponse, GetSignatureStr(),
@@ -1334,36 +1247,19 @@ TEST_F(CertProvisioningWorkerStaticTest, InvalidationRespected) {
 
     testing::InSequence seq;
 
-    EXPECT_DOWNLOAD_CERT_TRY_LATER(
-        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_),
-        download_cert_server_delay.InMilliseconds());
-
-    on_invalidation_event_callback.Run(
-        InvalidationEvent::kSuccessfullySubscribed);
-  }
-
-  {
-    EXPECT_EQ(worker.GetState(),
-              CertProvisioningWorkerState::kFinishCsrResponseReceived);
-
-    testing::InSequence seq;
-
-    EXPECT_DOWNLOAD_CERT_OK(DownloadCert, kFakeCertificate);
+    EXPECT_DOWNLOAD_CERT_OK(DownloadCert);
 
     EXPECT_IMPORT_CERTIFICATE_OK(
         ImportCertificate(TokenId::kUser, /*certificate=*/_, /*callback=*/_));
 
     EXPECT_CALL(*mock_invalidator, Unregister()).Times(1);
 
-    on_invalidation_event_callback.Run(
-        InvalidationEvent::kInvalidationReceived);
-    FastForwardBy(small_delay);
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kSucceeded))
+        .Times(1);
 
+    on_invalidation_callback.Run();
     EXPECT_EQ(worker.GetState(), CertProvisioningWorkerState::kSucceeded);
-
-    EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-    EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-              CertProvisioningWorkerState::kSucceeded);
   }
 }
 
@@ -1389,26 +1285,27 @@ TEST_F(CertProvisioningWorkerStaticTest, StatusErrorHandling) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     EXPECT_START_CSR_INVALID_REQUEST(
         StartCsr(Eq(std::ref(provisioning_process)), /*callback=*/_));
+
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kFailed))
+        .Times(1);
   }
 
   worker.DoStep();
   FastForwardBy(base::Seconds(1));
 
   VerifyDeleteKeyCalledOnce(kCertScope);
-
-  EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-  EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-            CertProvisioningWorkerState::kFailed);
 }
 
 // Checks that when the server returns response error, the worker will enter an
@@ -1435,25 +1332,26 @@ TEST_F(CertProvisioningWorkerStaticTest, ResponseErrorHandling) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     EXPECT_START_CSR_CA_ERROR(StartCsr);
+
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kFailed))
+        .Times(1);
   }
 
   worker->DoStep();
   FastForwardBy(base::Seconds(1));
 
   VerifyDeleteKeyCalledOnce(kCertScope);
-
-  EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-  EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-            CertProvisioningWorkerState::kFailed);
 
   histogram_tester.ExpectBucketCount("ChromeOS.CertProvisioning.Result.User",
                                      CertProvisioningWorkerState::kFailed, 1);
@@ -1480,25 +1378,27 @@ TEST_F(CertProvisioningWorkerStaticTest, InconsistentDataErrorHandling) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     EXPECT_START_CSR_INCONSISTENT_DATA(StartCsr);
+
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile,
+                         CertProvisioningWorkerState::kInconsistentDataError))
+        .Times(1);
   }
 
   worker->DoStep();
   FastForwardBy(base::Seconds(1));
 
   VerifyDeleteKeyCalledOnce(kCertScope);
-
-  EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-  EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-            CertProvisioningWorkerState::kInconsistentDataError);
 }
 
 // Checks that when the server returns TEMPORARY_UNAVAILABLE status code, the
@@ -1526,13 +1426,14 @@ TEST_F(CertProvisioningWorkerStaticTest, BackoffStrategy) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     EXPECT_START_CSR_TEMPORARY_UNAVAILABLE(
         StartCsr(Eq(std::ref(provisioning_process)), /*callback=*/_));
@@ -1586,13 +1487,14 @@ TEST_F(CertProvisioningWorkerStaticTest, ProcessBackendServerErrorResponse) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
     EXPECT_CALL(state_change_callback_observer_, StateChangeCallback());
 
     EXPECT_START_CSR_TEMPORARY_UNAVAILABLE(
@@ -1600,7 +1502,7 @@ TEST_F(CertProvisioningWorkerStaticTest, ProcessBackendServerErrorResponse) {
     EXPECT_CALL(state_change_callback_observer_, StateChangeCallback())
         .WillOnce([&worker]() {
           EXPECT_THAT(worker.GetLastBackendServerError(),
-                      testing::Ne(std::nullopt));
+                      testing::Ne(absl::nullopt));
         });
     worker.DoStep();
   }
@@ -1615,7 +1517,7 @@ TEST_F(CertProvisioningWorkerStaticTest, ProcessBackendServerErrorResponse) {
     EXPECT_CALL(state_change_callback_observer_, StateChangeCallback())
         .WillOnce([&worker]() {
           EXPECT_THAT(worker.GetLastBackendServerError(),
-                      testing::Eq(std::nullopt));
+                      testing::Eq(absl::nullopt));
         });
     worker.DoStep();
   }
@@ -1642,13 +1544,14 @@ TEST_F(CertProvisioningWorkerStaticTest, ClearBackendServerError) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     EXPECT_START_CSR_OK(
         StartCsr(Eq(std::ref(provisioning_process)), /*callback=*/_),
@@ -1657,7 +1560,7 @@ TEST_F(CertProvisioningWorkerStaticTest, ClearBackendServerError) {
   }
 
   Mock::VerifyAndClearExpectations(&cert_provisioning_client_);
-  EXPECT_THAT(worker.GetLastBackendServerError(), testing::Eq(std::nullopt));
+  EXPECT_THAT(worker.GetLastBackendServerError(), testing::Eq(absl::nullopt));
 }
 // Checks that the worker removes a key when an error occurs after the key was
 // registered.
@@ -1683,13 +1586,14 @@ TEST_F(CertProvisioningWorkerStaticTest, RemoveRegisteredKey) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     EXPECT_START_CSR_OK(
         StartCsr(Eq(std::ref(provisioning_process)), /*callback=*/_),
@@ -1708,7 +1612,7 @@ TEST_F(CertProvisioningWorkerStaticTest, RemoveRegisteredKey) {
                                  GetPublicKeyBin()));
 
     EXPECT_SET_ATTRIBUTE_FOR_KEY_FAIL(
-        SetAttributeForKey(TokenId::kUser, GetPublicKeyBin(),
+        SetAttributeForKey(TokenId::kUser, GetPublicKey(),
                            KeyAttributeType::kCertificateProvisioningId,
                            GetCertProfileIdBin(), _));
 
@@ -1720,14 +1624,14 @@ TEST_F(CertProvisioningWorkerStaticTest, RemoveRegisteredKey) {
                   /*public_key_spki_der=*/GetPublicKeyBin(), /*callback=*/_))
         .Times(1)
         .WillOnce(RunOnceCallback<2>(Status::kSuccess));
+
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kFailed))
+        .Times(1);
   }
 
   worker.DoStep();
   FastForwardBy(base::Seconds(1));
-
-  EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-  EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-            CertProvisioningWorkerState::kFailed);
 
   histogram_tester.ExpectBucketCount("ChromeOS.CertProvisioning.Result.User",
                                      CertProvisioningWorkerState::kFailed, 1);
@@ -1735,22 +1639,6 @@ TEST_F(CertProvisioningWorkerStaticTest, RemoveRegisteredKey) {
       "ChromeOS.CertProvisioning.Result.User",
       CertProvisioningWorkerState::kKeyRegistered, 1);
   histogram_tester.ExpectTotalCount("ChromeOS.CertProvisioning.Result.User", 2);
-}
-// Checks that the worker reset flag is raised once it is marked for reset.
-TEST_F(CertProvisioningWorkerStaticTest, ResetWorker) {
-  const CertScope kCertScope = CertScope::kDevice;
-  CertProfile cert_profile(kCertProfileId, kCertProfileName,
-                           kCertProfileVersion,
-                           /*is_va_enabled=*/true, kCertProfileRenewalPeriod,
-                           ProtocolVersion::kStatic);
-
-  auto worker = CertProvisioningWorkerFactory::Get()->Create(
-      kCertScope, GetProfile(), &testing_pref_service_, cert_profile,
-      &cert_provisioning_client_, MakeInvalidator(), GetStateChangeCallback(),
-      GetResultCallback());
-
-  worker->MarkWorkerForReset();
-  ASSERT_EQ(worker->IsWorkerMarkedForReset(), true);
 }
 
 class PrefServiceObserver {
@@ -1772,7 +1660,7 @@ class PrefServiceObserver {
   MOCK_METHOD(void, OnPrefValueUpdated, (const base::Value& value));
 
  private:
-  raw_ptr<PrefService> service_ = nullptr;
+  raw_ptr<PrefService, ExperimentalAsh> service_ = nullptr;
   const char* pref_name_ = nullptr;
   PrefChangeRegistrar pref_change_registrar_;
   base::WeakPtrFactory<PrefServiceObserver> weak_factory_{this};
@@ -1809,13 +1697,14 @@ TEST_F(CertProvisioningWorkerStaticTest, SerializationSuccess) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     pref_val = ParseJsonDict(base::StringPrintf(
         R"({
@@ -1850,7 +1739,7 @@ TEST_F(CertProvisioningWorkerStaticTest, SerializationSuccess) {
 
     EXPECT_CALL(*mock_tpm_challenge_key,
                 RestorePreparedKeyState(
-                    ::attestation::ENTERPRISE_USER,
+                    attestation::AttestationKeyType::KEY_USER,
                     /*will_register_key=*/true, ::attestation::KEY_TYPE_RSA,
                     GetKeyName(kCertProfileId), GetPublicKey(), /*profile=*/_))
         .Times(1);
@@ -1886,14 +1775,14 @@ TEST_F(CertProvisioningWorkerStaticTest, SerializationSuccess) {
                                  GetPublicKeyBin()));
 
     EXPECT_SET_ATTRIBUTE_FOR_KEY_OK(
-        SetAttributeForKey(TokenId::kUser, GetPublicKeyBin(),
+        SetAttributeForKey(TokenId::kUser, GetPublicKey(),
                            KeyAttributeType::kCertificateProvisioningId,
                            GetCertProfileIdBin(), _));
 
-    EXPECT_SIGN_RSAPKC1_DIGEST_OK(
-        SignRsaPkcs1(::testing::Optional(TokenId::kUser), GetDataToSign(),
-                     GetPublicKeyBin(), HashAlgorithm::HASH_ALGORITHM_SHA256,
-                     /*callback=*/_));
+    EXPECT_SIGN_RSAPKC1_DIGEST_OK(SignRSAPKCS1Digest(
+        ::testing::Optional(TokenId::kUser), GetDataToSign(), GetPublicKeyBin(),
+        HashAlgorithm::HASH_ALGORITHM_SHA256,
+        /*callback=*/_));
 
     EXPECT_FINISH_CSR_OK(FinishCsr(Eq(std::ref(provisioning_process)),
                                    kChallengeResponse, GetSignatureStr(),
@@ -1934,7 +1823,7 @@ TEST_F(CertProvisioningWorkerStaticTest, SerializationSuccess) {
     mock_tpm_challenge_key = PrepareTpmChallengeKey();
     EXPECT_CALL(*mock_tpm_challenge_key,
                 RestorePreparedKeyState(
-                    ::attestation::ENTERPRISE_USER,
+                    attestation::AttestationKeyType::KEY_USER,
                     /*will_register_key=*/true, ::attestation::KEY_TYPE_RSA,
                     GetKeyName(kCertProfileId), GetPublicKey(), /*profile=*/_))
         .Times(1);
@@ -1951,8 +1840,7 @@ TEST_F(CertProvisioningWorkerStaticTest, SerializationSuccess) {
     testing::InSequence seq;
 
     EXPECT_DOWNLOAD_CERT_OK(
-        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_),
-        kFakeCertificate);
+        DownloadCert(Eq(std::ref(provisioning_process)), /*callback=*/_));
 
     EXPECT_IMPORT_CERTIFICATE_OK(
         ImportCertificate(TokenId::kUser, /*certificate=*/_, /*callback=*/_));
@@ -1962,11 +1850,10 @@ TEST_F(CertProvisioningWorkerStaticTest, SerializationSuccess) {
 
     EXPECT_CALL(*mock_invalidator, Unregister()).Times(1);
 
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kSucceeded))
+        .Times(1);
     worker->DoStep();
-
-    EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-    EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-              CertProvisioningWorkerState::kSucceeded);
   }
 }
 
@@ -1992,13 +1879,14 @@ TEST_F(CertProvisioningWorkerStaticTest, SerializationOnFailure) {
   {
     testing::InSequence seq;
 
-    EXPECT_PREPARE_KEY_OK(*mock_tpm_challenge_key,
-                          StartPrepareKeyStep(::attestation::ENTERPRISE_USER,
-                                              /*will_register_key=*/true,
-                                              ::attestation::KEY_TYPE_RSA,
-                                              GetKeyName(kCertProfileId),
-                                              /*profile=*/_,
-                                              /*callback=*/_, /*signals=*/_));
+    EXPECT_PREPARE_KEY_OK(
+        *mock_tpm_challenge_key,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_USER,
+                            /*will_register_key=*/true,
+                            ::attestation::KEY_TYPE_RSA,
+                            GetKeyName(kCertProfileId),
+                            /*profile=*/_,
+                            /*callback=*/_, /*signals=*/_));
 
     pref_val = ParseJsonDict(base::StringPrintf(
         R"({
@@ -2022,16 +1910,16 @@ TEST_F(CertProvisioningWorkerStaticTest, SerializationOnFailure) {
 
     pref_val = ParseJsonDict("{}");
     EXPECT_CALL(pref_observer, OnPrefValueUpdated(IsJson(pref_val))).Times(1);
+
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kFailed))
+        .Times(1);
   }
 
   worker->DoStep();
   FastForwardBy(base::Seconds(1));
 
   VerifyDeleteKeyCalledOnce(kCertScope);
-
-  EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-  EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-            CertProvisioningWorkerState::kFailed);
 }
 
 TEST_F(CertProvisioningWorkerStaticTest, InformationalGetters) {
@@ -2070,6 +1958,10 @@ TEST_F(CertProvisioningWorkerStaticTest, InformationalGetters) {
 
     EXPECT_START_CSR_CA_ERROR(StartCsr);
 
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kFailed))
+        .Times(1);
+
     worker.DoStep();
     FastForwardBy(base::Seconds(1));
 
@@ -2080,10 +1972,6 @@ TEST_F(CertProvisioningWorkerStaticTest, InformationalGetters) {
               CertProvisioningWorkerState::kKeypairGenerated);
     EXPECT_EQ(worker.GetCertProfile(), cert_profile);
     EXPECT_EQ(worker.GetPublicKey(), GetPublicKeyBin());
-
-    EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-    EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-              CertProvisioningWorkerState::kFailed);
   }
 }
 
@@ -2104,6 +1992,8 @@ TEST_F(CertProvisioningWorkerStaticTest, CancelDeviceWorker) {
       &cert_provisioning_client_, MakeInvalidator(), GetStateChangeCallback(),
       GetResultCallback());
 
+  EXPECT_CALL(callback_observer_, Callback).Times(0);
+
   PrefServiceObserver pref_observer(&testing_pref_service_,
                                     GetPrefNameForSerialization(kCertScope));
   base::Value::Dict pref_val;
@@ -2113,7 +2003,7 @@ TEST_F(CertProvisioningWorkerStaticTest, CancelDeviceWorker) {
 
     EXPECT_PREPARE_KEY_OK(
         *mock_tpm_challenge_key,
-        StartPrepareKeyStep(::attestation::ENTERPRISE_MACHINE,
+        StartPrepareKeyStep(attestation::AttestationKeyType::KEY_DEVICE,
                             /*will_register_key=*/true,
                             ::attestation::KEY_TYPE_RSA,
                             /*key_name=*/GetKeyName(kCertProfileId),
@@ -2149,14 +2039,13 @@ TEST_F(CertProvisioningWorkerStaticTest, CancelDeviceWorker) {
 
     worker->Stop(CertProvisioningWorkerState::kCanceled);
 
+    EXPECT_CALL(callback_observer_,
+                Callback(cert_profile, CertProvisioningWorkerState::kCanceled))
+        .Times(1);
     FastForwardBy(base::Seconds(1));
 
     VerifyDeleteKeyCalledOnce(kCertScope);
   }
-
-  EXPECT_EQ(callback_observer_.Get<CertProfile>(), cert_profile);
-  EXPECT_EQ(callback_observer_.Get<CertProvisioningWorkerState>(),
-            CertProvisioningWorkerState::kCanceled);
 
   histogram_tester.ExpectUniqueSample("ChromeOS.CertProvisioning.Result.Device",
                                       CertProvisioningWorkerState::kCanceled,

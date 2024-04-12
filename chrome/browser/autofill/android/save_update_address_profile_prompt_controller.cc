@@ -60,7 +60,7 @@ SaveUpdateAddressProfilePromptController::
   }
   if (!had_user_interaction_) {
     RunSaveAddressProfileCallback(
-        AutofillClient::AddressPromptUserDecision::kIgnored);
+        AutofillClient::SaveAddressProfileOfferUserDecision::kIgnored);
   }
 }
 
@@ -89,24 +89,20 @@ std::u16string SaveUpdateAddressProfilePromptController::GetSourceNotice(
       profile_.source() != AutofillProfile::Source::kAccount) {
     return std::u16string();
   }
-  std::optional<AccountInfo> account =
-      identity_manager->FindExtendedAccountInfo(
-          identity_manager->GetPrimaryAccountInfo(
-              signin::ConsentLevel::kSignin));
-  if (!account) {
+  CoreAccountInfo account_info =
+      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin);
+  if (account_info.IsEmpty()) {
     return std::u16string();
   }
 
   // Notify user that their address is saved only in Chrome and can be migrated
   // to their Google account.
   if (is_migration_to_account_) {
-    // TODO(crbug.com/40066949): Simplify once ConsentLevel::kSync is not used
-    // anymore, and thus IsSyncFeatureEnabledForAutofill() will always be false.
     return l10n_util::GetStringFUTF16(
-        personal_data_->IsSyncFeatureEnabledForAutofill()
+        personal_data_->IsSyncEnabledFor(syncer::UserSelectableType::kAutofill)
             ? IDS_AUTOFILL_SYNCABLE_PROFILE_MIGRATION_PROMPT_NOTICE
             : IDS_AUTOFILL_LOCAL_PROFILE_MIGRATION_PROMPT_NOTICE,
-        base::UTF8ToUTF16(account->email));
+        base::UTF8ToUTF16(account_info.email));
   }
 
   // Notify user that their address has already been saved in their Google
@@ -114,14 +110,14 @@ std::u16string SaveUpdateAddressProfilePromptController::GetSourceNotice(
   if (original_profile_) {
     return l10n_util::GetStringFUTF16(
         IDS_AUTOFILL_ADDRESS_ALREADY_SAVED_IN_ACCOUNT_SOURCE_NOTICE,
-        base::UTF8ToUTF16(account->email));
+        base::UTF8ToUTF16(account_info.email));
   }
 
   // Notify the user that their address is going to be saved in their Google
   // account if they accept the prompt.
   return l10n_util::GetStringFUTF16(
       IDS_AUTOFILL_ADDRESS_WILL_BE_SAVED_IN_ACCOUNT_SOURCE_NOTICE,
-      base::UTF8ToUTF16(account->email));
+      base::UTF8ToUTF16(account_info.email));
 }
 
 std::u16string
@@ -151,7 +147,8 @@ SaveUpdateAddressProfilePromptController::GetNegativeButtonText() {
 std::u16string SaveUpdateAddressProfilePromptController::GetAddress() {
   if (is_migration_to_account_) {
     const std::u16string name =
-        profile_.GetInfo(NAME_FULL, g_browser_process->GetApplicationLocale());
+        profile_.GetInfo(NAME_FULL_WITH_HONORIFIC_PREFIX,
+                         g_browser_process->GetApplicationLocale());
     const std::u16string address = profile_.GetInfo(
         ADDRESS_HOME_LINE1, g_browser_process->GetApplicationLocale());
     const std::u16string separator =
@@ -230,7 +227,7 @@ void SaveUpdateAddressProfilePromptController::OnUserAccepted(
     const base::android::JavaParamRef<jobject>& obj) {
   had_user_interaction_ = true;
   RunSaveAddressProfileCallback(
-      AutofillClient::AddressPromptUserDecision::kAccepted);
+      AutofillClient::SaveAddressProfileOfferUserDecision::kAccepted);
 }
 
 void SaveUpdateAddressProfilePromptController::OnUserDeclined(
@@ -239,8 +236,8 @@ void SaveUpdateAddressProfilePromptController::OnUserDeclined(
   had_user_interaction_ = true;
   RunSaveAddressProfileCallback(
       is_migration_to_account_
-          ? AutofillClient::AddressPromptUserDecision::kNever
-          : AutofillClient::AddressPromptUserDecision::kDeclined);
+          ? AutofillClient::SaveAddressProfileOfferUserDecision::kNever
+          : AutofillClient::SaveAddressProfileOfferUserDecision::kDeclined);
 }
 
 void SaveUpdateAddressProfilePromptController::OnUserEdited(
@@ -248,13 +245,11 @@ void SaveUpdateAddressProfilePromptController::OnUserEdited(
     const base::android::JavaParamRef<jobject>& obj,
     const base::android::JavaParamRef<jobject>& jprofile) {
   had_user_interaction_ = true;
-  AutofillProfile* existing_profile =
-      original_profile_.has_value() ? &original_profile_.value() : nullptr;
-  AutofillProfile edited_profile = AutofillProfile::CreateFromJavaObject(
-      jprofile, existing_profile, g_browser_process->GetApplicationLocale());
+  AutofillProfile edited_profile =
+      PersonalDataManagerAndroid::CreateNativeProfileFromJava(jprofile, env);
   profile_ = edited_profile;
   RunSaveAddressProfileCallback(
-      AutofillClient::AddressPromptUserDecision::kEditAccepted);
+      AutofillClient::SaveAddressProfileOfferUserDecision::kEditAccepted);
 }
 
 void SaveUpdateAddressProfilePromptController::OnPromptDismissed(
@@ -264,12 +259,8 @@ void SaveUpdateAddressProfilePromptController::OnPromptDismissed(
 }
 
 void SaveUpdateAddressProfilePromptController::RunSaveAddressProfileCallback(
-    AutofillClient::AddressPromptUserDecision decision) {
-  std::move(decision_callback_)
-      .Run(decision,
-           decision == AutofillClient::AddressPromptUserDecision::kEditAccepted
-               ? base::optional_ref(profile_)
-               : std::nullopt);
+    AutofillClient::SaveAddressProfileOfferUserDecision decision) {
+  std::move(decision_callback_).Run(decision, profile_);
 }
 
 }  // namespace autofill

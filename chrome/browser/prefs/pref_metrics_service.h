@@ -41,7 +41,7 @@ class PrefMetricsService : public KeyedService {
     ~Factory() override;
 
     // BrowserContextKeyedServiceFactory implementation
-    std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+    KeyedService* BuildServiceInstanceFor(
         content::BrowserContext* context) const override;
     bool ServiceIsCreatedWithBrowserContext() const override;
   };

@@ -26,8 +26,8 @@ class CORE_EXPORT OffscreenFontSelector : public CSSFontSelectorBase {
 
   unsigned Version() const override { return 1; }
 
-  const FontData* GetFontData(const FontDescription&,
-                              const FontFamily&) override;
+  scoped_refptr<FontData> GetFontData(const FontDescription&,
+                                      const FontFamily&) override;
 
   void RegisterForInvalidationCallbacks(FontSelectorClient*) override;
   void UnregisterForInvalidationCallbacks(FontSelectorClient*) override;
@@ -41,7 +41,7 @@ class CORE_EXPORT OffscreenFontSelector : public CSSFontSelectorBase {
 
   void UpdateGenericFontFamilySettings(const GenericFontFamilySettings&);
 
-  FontFaceCache* GetFontFaceCache() override { return font_face_cache_.Get(); }
+  FontFaceCache* GetFontFaceCache() override { return font_face_cache_; }
 
   ExecutionContext* GetExecutionContext() const override {
     return worker_ ? worker_->GetExecutionContext() : nullptr;

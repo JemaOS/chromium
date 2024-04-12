@@ -36,7 +36,6 @@
 #include "third_party/blink/renderer/core/html/html_frame_element_base.h"
 #include "third_party/blink/renderer/core/html/html_plugin_element.h"
 #include "third_party/blink/renderer/core/layout/geometry/physical_offset.h"
-#include "third_party/blink/renderer/core/layout/hit_test_location.h"
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/layout_replaced.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
@@ -56,6 +55,9 @@ LayoutEmbeddedContent::LayoutEmbeddedContent(HTMLFrameOwnerElement* element)
 
 void LayoutEmbeddedContent::WillBeDestroyed() {
   NOT_DESTROYED();
+  if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache())
+    cache->Remove(this);
+
   if (auto* frame_owner = GetFrameOwnerElement())
     frame_owner->SetEmbeddedContentView(nullptr);
 
@@ -93,13 +95,13 @@ EmbeddedContentView* LayoutEmbeddedContent::GetEmbeddedContentView() const {
   return nullptr;
 }
 
-const std::optional<PhysicalSize> LayoutEmbeddedContent::FrozenFrameSize()
+const absl::optional<PhysicalSize> LayoutEmbeddedContent::FrozenFrameSize()
     const {
   // The `<fencedframe>` element can freeze the child frame size when navigated.
   if (const auto* fenced_frame = DynamicTo<HTMLFencedFrameElement>(GetNode()))
     return fenced_frame->FrozenFrameSize();
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 AffineTransform LayoutEmbeddedContent::EmbeddedContentTransform() const {
@@ -338,9 +340,10 @@ CursorDirective LayoutEmbeddedContent::GetCursor(const PhysicalOffset& point,
 }
 
 PhysicalRect LayoutEmbeddedContent::ReplacedContentRectFrom(
-    const PhysicalRect& base_content_rect) const {
+    const LayoutSize size,
+    const NGPhysicalBoxStrut& border_padding) const {
   NOT_DESTROYED();
-  PhysicalRect content_rect = base_content_rect;
+  PhysicalRect content_rect = PhysicalContentBoxRectFrom(size, border_padding);
 
   // IFrames set as the root scroller should get their size from their parent.
   // When scrolling starts so as to hide the URL bar, IFRAME wouldn't resize to
@@ -352,15 +355,15 @@ PhysicalRect LayoutEmbeddedContent::ReplacedContentRectFrom(
     content_rect.size = View()->ViewRect().size;
   }
 
-  if (const std::optional<PhysicalSize> frozen_size = FrozenFrameSize()) {
+  if (const absl::optional<PhysicalSize> frozen_size = FrozenFrameSize()) {
     // TODO(kojii): Setting the `offset` to non-zero values breaks
     // hit-testing/inputs. Even different size is suspicious, as the input
     // system forwards mouse events to the child frame even when the mouse is
     // outside of the child frame. Revisit this when the input system supports
     // different |ReplacedContentRect| from |PhysicalContentBoxRect|.
-    PhysicalSize frozen_layout_size = *frozen_size;
+    LayoutSize frozen_layout_size = frozen_size->ToLayoutSize();
     content_rect =
-        ComputeReplacedContentRect(base_content_rect, &frozen_layout_size);
+        ComputeReplacedContentRect(size, border_padding, &frozen_layout_size);
   }
 
   // We don't propagate sub-pixel into sub-frame layout, in other words, the

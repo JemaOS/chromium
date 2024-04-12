@@ -9,19 +9,17 @@
 #include "base/run_loop.h"
 #include "base/test/task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/display/fake/fake_display_snapshot.h"
 #include "ui/display/manager/test/action_logger_util.h"
-#include "ui/display/manager/test/fake_display_snapshot.h"
 #include "ui/display/manager/test/test_display_layout_manager.h"
 #include "ui/display/manager/test/test_native_display_delegate.h"
-#include "ui/display/manager/util/display_manager_test_util.h"
 
 namespace display::test {
 
 namespace {
 
 constexpr int64_t kDisplayIds[] = {123, 234, 345, 456};
-const DisplayMode kDisplayMode =
-    CreateDisplayModeForTest({1366, 768}, false, 60.0f);
+const DisplayMode kDisplayMode{gfx::Size(1366, 768), false, 60.0f};
 
 }  // namespace
 
@@ -47,7 +45,7 @@ class TestObserver : public ContentProtectionManager::Observer {
     security_changes_.emplace(display_id, secure);
   }
 
-  const raw_ptr<ContentProtectionManager> manager_;
+  const raw_ptr<ContentProtectionManager, ExperimentalAsh> manager_;
   SecurityChanges security_changes_;
 };
 
@@ -101,8 +99,8 @@ class ContentProtectionManagerTest : public testing::Test {
     for (size_t i = 0; i < count; ++i)
       displays.push_back(displays_[i]->Clone());
 
-    native_display_delegate_.SetOutputs(std::move(displays));
-    layout_manager_.set_displays(native_display_delegate_.GetOutputs());
+    layout_manager_.set_displays(std::move(displays));
+    native_display_delegate_.set_outputs(layout_manager_.GetDisplayStates());
   }
 
   void TriggerDisplayConfiguration() {

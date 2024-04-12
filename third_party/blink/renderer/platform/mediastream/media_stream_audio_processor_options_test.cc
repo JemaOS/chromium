@@ -32,10 +32,6 @@ TEST(AudioProcessingPropertiesToAudioProcessingSettingsTest,
   EXPECT_FALSE(settings.high_pass_filter);
   EXPECT_FALSE(settings.stereo_mirroring);
   EXPECT_FALSE(settings.force_apm_creation);
-
-  EXPECT_EQ(
-      properties.voice_isolation,
-      AudioProcessingProperties::VoiceIsolationType::kVoiceIsolationDefault);
 }
 
 TEST(AudioProcessingPropertiesToAudioProcessingSettingsTest,
@@ -108,29 +104,6 @@ TEST(AudioProcessingPropertiesToAudioProcessingSettingsTest,
       kPropertiesWithSystemAgc.ToAudioProcessingSettings(
           /*multi_channel_capture_processing=*/true);
   EXPECT_FALSE(settings_with_system_agc.automatic_gain_control);
-}
-
-TEST(AudioProcessingPropertiesTest,
-     GainControlEnabledReturnsTrueIfBrowserAgcEnabled) {
-  constexpr AudioProcessingProperties kPropertiesWithBrowserAgc{
-      .goog_auto_gain_control = true};
-  EXPECT_TRUE(kPropertiesWithBrowserAgc.GainControlEnabled());
-}
-
-TEST(AudioProcessingPropertiesTest,
-     GainControlEnabledReturnsTrueIfSystemAgcEnabled) {
-  constexpr AudioProcessingProperties kPropertiesWithBrowserAgc{
-      .system_gain_control_activated = true,
-      .goog_auto_gain_control = true,
-  };
-  EXPECT_TRUE(kPropertiesWithBrowserAgc.GainControlEnabled());
-}
-
-TEST(AudioProcessingPropertiesTest,
-     GainControlEnabledReturnsFalseIfAgcDisabled) {
-  constexpr AudioProcessingProperties kPropertiesWithBrowserAgc{
-      .goog_auto_gain_control = false};
-  EXPECT_FALSE(kPropertiesWithBrowserAgc.GainControlEnabled());
 }
 
 }  // namespace blink

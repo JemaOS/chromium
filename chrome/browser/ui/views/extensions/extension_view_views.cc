@@ -7,7 +7,6 @@
 #include <memory>
 #include <utility>
 
-#include "base/functional/bind.h"
 #include "build/build_config.h"
 #include "chrome/browser/extensions/extension_view_host.h"
 #include "chrome/browser/profiles/profile.h"
@@ -27,9 +26,6 @@ ExtensionViewViews::ExtensionViewViews(extensions::ExtensionViewHost* host)
     : views::WebView(host->GetBrowser() ? host->GetBrowser()->profile()
                                         : nullptr),
       host_(host) {
-  web_contents_attached_subscription_ =
-      AddWebContentsAttachedCallback(base::BindRepeating(
-          &ExtensionViewViews::OnWebContentsAttached, base::Unretained(this)));
   host_->set_view(this);
   SetWebContents(host_->web_contents());
 }
@@ -158,12 +154,12 @@ void ExtensionViewViews::PreferredSizeChanged() {
     container_->OnExtensionSizeChanged(this);
 }
 
-void ExtensionViewViews::OnWebContentsAttached(views::WebView*) {
+void ExtensionViewViews::OnWebContentsAttached() {
   host_->CreateRendererSoon();
   SetVisible(false);
 }
 
-BEGIN_METADATA(ExtensionViewViews)
+BEGIN_METADATA(ExtensionViewViews, views::WebView)
 ADD_PROPERTY_METADATA(gfx::Size, MinimumSize)
 ADD_PROPERTY_METADATA(ExtensionViewViews::Container*, Container)
 END_METADATA

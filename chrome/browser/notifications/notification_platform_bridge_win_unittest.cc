@@ -37,13 +37,10 @@ using message_center::Notification;
 namespace {
 
 constexpr char kLaunchId[] =
-    "0|0|Default|aumi|0|https://example.com/|notification_id";
+    "0|0|Default|0|https://example.com/|notification_id";
 constexpr char kOrigin[] = "https://www.google.com/";
 constexpr char kNotificationId[] = "id";
 constexpr char kProfileId[] = "Default";
-constexpr wchar_t kAppUserModelId[] = L"aumi";
-constexpr wchar_t kAppUserModelId2[] = L"aumi2";
-constexpr char kAppUserModelIdUTF8[] = "aumi";
 
 }  // namespace
 
@@ -64,7 +61,6 @@ class NotificationPlatformBridgeWinTest : public testing::Test {
       const NotificationLaunchId& launch_id,
       bool renotify,
       const std::string& profile_id,
-      const std::wstring& app_user_model_id,
       bool incognito) {
     DCHECK(bridge);
 
@@ -81,8 +77,7 @@ class NotificationPlatformBridgeWinTest : public testing::Test {
 
     mswr::ComPtr<winui::Notifications::IToastNotification> toast =
         bridge->GetToastNotificationForTesting(*notification, xml_template,
-                                               profile_id, app_user_model_id,
-                                               incognito);
+                                               profile_id, incognito);
     if (!toast) {
       LOG(ERROR) << "GetToastNotificationForTesting failed";
       return nullptr;
@@ -111,7 +106,7 @@ TEST_F(NotificationPlatformBridgeWinTest, GroupAndTag) {
 
   mswr::ComPtr<winui::Notifications::IToastNotification2> toast2 =
       GetToast(&bridge, launch_id, /*renotify=*/false, kProfileId,
-               kAppUserModelId, /*incognito=*/false);
+               /*incognito=*/false);
   ASSERT_TRUE(toast2);
 
   HSTRING hstring_group;
@@ -125,8 +120,7 @@ TEST_F(NotificationPlatformBridgeWinTest, GroupAndTag) {
   HSTRING hstring_tag;
   ASSERT_HRESULT_SUCCEEDED(toast2->get_Tag(&hstring_tag));
   base::win::ScopedHString tag(hstring_tag);
-  std::string tag_data = std::string(kNotificationId) + "|" + kProfileId + "|" +
-                         kAppUserModelIdUTF8 + "|0";
+  std::string tag_data = std::string(kNotificationId) + "|" + kProfileId + "|0";
   ASSERT_EQ(base::NumberToWString(base::Hash(tag_data)), tag.Get());
 
   // Let tasks on |notification_task_runner_| of |bridge| run before its dtor.
@@ -149,9 +143,9 @@ TEST_F(NotificationPlatformBridgeWinTest, GroupAndTagUniqueness) {
   // Different profiles, same incognito status -> Unique tags.
   {
     toastA = GetToast(&bridge, launch_id, /*renotify=*/false, "Profile1",
-                      kAppUserModelId, /*incognito=*/true);
+                      /*incognito=*/true);
     toastB = GetToast(&bridge, launch_id, /*renotify=*/false, "Profile2",
-                      kAppUserModelId, /*incognito=*/true);
+                      /*incognito=*/true);
 
     ASSERT_TRUE(toastA);
     ASSERT_TRUE(toastB);
@@ -168,9 +162,9 @@ TEST_F(NotificationPlatformBridgeWinTest, GroupAndTagUniqueness) {
   // Same profile, different incognito status -> Unique tags.
   {
     toastA = GetToast(&bridge, launch_id, /*renotify=*/false, "Profile1",
-                      kAppUserModelId, /*incognito=*/true);
+                      /*incognito=*/true);
     toastB = GetToast(&bridge, launch_id, /*renotify=*/false, "Profile1",
-                      kAppUserModelId, /*incognito=*/false);
+                      /*incognito=*/false);
 
     ASSERT_TRUE(toastA);
     ASSERT_TRUE(toastB);
@@ -187,9 +181,9 @@ TEST_F(NotificationPlatformBridgeWinTest, GroupAndTagUniqueness) {
   // Same profile, same incognito status -> Identical tags.
   {
     toastA = GetToast(&bridge, launch_id, /*renotify=*/false, "Profile1",
-                      kAppUserModelId, /*incognito=*/true);
+                      /*incognito=*/true);
     toastB = GetToast(&bridge, launch_id, /*renotify=*/false, "Profile1",
-                      kAppUserModelId, /*incognito=*/true);
+                      /*incognito=*/true);
 
     ASSERT_TRUE(toastA);
     ASSERT_TRUE(toastB);
@@ -201,26 +195,6 @@ TEST_F(NotificationPlatformBridgeWinTest, GroupAndTagUniqueness) {
     base::win::ScopedHString tagB(hstring_tagB);
 
     ASSERT_EQ(tagA.Get(), tagB.Get());
-  }
-
-  // Same profile, same incognito status, different app user model id
-  // -> Unique tags.
-  {
-    toastA = GetToast(&bridge, launch_id, /*renotify=*/false, "Profile1",
-                      kAppUserModelId, /*incognito=*/true);
-    toastB = GetToast(&bridge, launch_id, /*renotify=*/false, "Profile1",
-                      kAppUserModelId2, /*incognito=*/false);
-
-    ASSERT_TRUE(toastA);
-    ASSERT_TRUE(toastB);
-
-    ASSERT_HRESULT_SUCCEEDED(toastA->get_Tag(&hstring_tagA));
-    base::win::ScopedHString tagA(hstring_tagA);
-
-    ASSERT_HRESULT_SUCCEEDED(toastB->get_Tag(&hstring_tagB));
-    base::win::ScopedHString tagB(hstring_tagB);
-
-    ASSERT_NE(tagA.Get(), tagB.Get());
   }
 
   // Let tasks on |notification_task_runner_| of |bridge| run before its dtor.
@@ -245,25 +219,23 @@ TEST_F(NotificationPlatformBridgeWinTest, Suppress) {
   // Make sure this works a toast is not suppressed when no notifications are
   // registered.
   toast2 = GetToast(&bridge, launch_id, /*renotify=*/false, kProfileId,
-                    kAppUserModelId, /*incognito=*/false);
+                    /*incognito=*/false);
   ASSERT_TRUE(toast2);
   ASSERT_HRESULT_SUCCEEDED(toast2->get_SuppressPopup(&suppress));
   ASSERT_FALSE(suppress);
   toast2.Reset();
 
   // Register a single notification with a specific tag.
-  std::string tag_data = std::string(kNotificationId) + "|" + kProfileId + "|" +
-                         kAppUserModelIdUTF8 + "|0";
+  std::string tag_data = std::string(kNotificationId) + "|" + kProfileId + "|0";
   std::wstring tag = base::NumberToWString(base::Hash(tag_data));
   // Microsoft::WRL::Make() requires FakeIToastNotification to derive from
   // RuntimeClass.
   notifications.push_back(Microsoft::WRL::Make<FakeIToastNotification>(
-      L"<toast launch=\"0|0|Default|aumi|0|https://foo.com/|id\"></toast>",
-      tag));
+      L"<toast launch=\"0|0|Default|0|https://foo.com/|id\"></toast>", tag));
 
   // Request this notification with renotify true (should not be suppressed).
   toast2 = GetToast(&bridge, launch_id, /*renotify=*/true, kProfileId,
-                    kAppUserModelId, /*incognito=*/false);
+                    /*incognito=*/false);
   ASSERT_TRUE(toast2);
   ASSERT_HRESULT_SUCCEEDED(toast2->get_SuppressPopup(&suppress));
   ASSERT_FALSE(suppress);
@@ -271,7 +243,7 @@ TEST_F(NotificationPlatformBridgeWinTest, Suppress) {
 
   // Request this notification with renotify false (should be suppressed).
   toast2 = GetToast(&bridge, launch_id, /*renotify=*/false, kProfileId,
-                    kAppUserModelId, /*incognito=*/false);
+                    /*incognito=*/false);
   ASSERT_TRUE(toast2);
   ASSERT_HRESULT_SUCCEEDED(toast2->get_SuppressPopup(&suppress));
   ASSERT_TRUE(suppress);

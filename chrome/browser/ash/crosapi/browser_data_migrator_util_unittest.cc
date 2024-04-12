@@ -7,8 +7,6 @@
 #include <sys/stat.h>
 
 #include <map>
-#include <optional>
-#include <string_view>
 
 #include "base/containers/contains.h"
 #include "base/files/file_path.h"
@@ -21,7 +19,6 @@
 #include "base/system/sys_info.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "chrome/browser/ash/crosapi/fake_migration_progress_tracker.h"
-#include "chrome/browser/extensions/extension_keeplist_chromeos.h"
 #include "chrome/common/chrome_constants.h"
 #include "components/sync/base/model_type.h"
 #include "components/sync/base/storage_type.h"
@@ -41,17 +38,8 @@ constexpr char kCookiesPath[] = "Cookies";
 constexpr char kCachePath[] = "Cache";
 constexpr char kCodeCachePath[] = "Code Cache";
 constexpr char kCodeCacheUMAName[] = "CodeCache";
-constexpr std::string_view kTextFileContent = "Hello, World!";
+constexpr base::StringPiece kTextFileContent = "Hello, World!";
 constexpr char kMoveExtensionId[] = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-
-// ID of an extension that runs in both Lacros and Ash chrome.
-std::string_view GetBothChromesExtensionId() {
-  // Any id from the Ash allowlist works for tests. Pick the first
-  // element of the allowlist for convenience.
-  DCHECK(
-      !extensions::GetExtensionsAndAppsRunInOSAndStandaloneBrowser().empty());
-  return extensions::GetExtensionsAndAppsRunInOSAndStandaloneBrowser()[0];
-}
 
 constexpr syncer::ModelType kAshSyncDataType =
     browser_data_migrator_util::kAshOnlySyncDataTypes[0];
@@ -64,6 +52,24 @@ struct TargetItemComparator {
     return t1.path < t2.path;
   }
 };
+
+// Checks if the file paths point to the same inode.
+bool IsSameFile(const base::FilePath& file1, const base::FilePath& file2) {
+  struct stat st_1;
+  if (stat(file1.value().c_str(), &st_1) == -1) {
+    PLOG(ERROR) << "stat failed";
+    return false;
+  }
+
+  struct stat st_2;
+  if (stat(file2.value().c_str(), &st_2) == -1) {
+    PLOG(ERROR) << "stat failed";
+    return false;
+  }
+
+  // Make sure that they are indeed the same file.
+  return (st_1.st_ino == st_2.st_ino);
+}
 
 std::set<std::string> CollectDictKeys(const base::Value::Dict* dict) {
   std::set<std::string> result;
@@ -93,7 +99,8 @@ void SetUpLocalStorage(const base::FilePath& path,
   batch.Put("META:chrome-extension://" + keep_extension_id, "meta");
   batch.Put("_chrome-extension://" + keep_extension_id + "\x00key1"s, "value1");
 
-  std::string both_extension_id = std::string(GetBothChromesExtensionId());
+  std::string both_extension_id =
+      browser_data_migrator_util::kExtensionsBothChromes[0];
   batch.Put("META:chrome-extension://" + both_extension_id, "meta");
   batch.Put("_chrome-extension://" + both_extension_id + "\x00key1"s, "value1");
 
@@ -118,7 +125,8 @@ void SetUpStateStore(const base::FilePath& path,
   leveldb::WriteBatch batch;
   std::string keep_extension_id =
       browser_data_migrator_util::kExtensionsAshOnly[0];
-  std::string both_extension_id = std::string(GetBothChromesExtensionId());
+  std::string both_extension_id =
+      browser_data_migrator_util::kExtensionsBothChromes[0];
   batch.Put(keep_extension_id + ".key1", "value1");
   batch.Put(keep_extension_id + ".key2", "value2");
   batch.Put(both_extension_id + ".key1", "value1");
@@ -210,7 +218,7 @@ TEST(BrowserDataMigratorUtilTest, NoPathOverlaps) {
                             base::span<const char* const> paths_group_b) {
     for (const char* path_a : paths_group_a) {
       for (const char* path_b : paths_group_b) {
-        if (std::string_view(path_a) == std::string_view(path_b)) {
+        if (base::StringPiece(path_a) == base::StringPiece(path_b)) {
           LOG(ERROR) << "The following path appears in multiple sets: "
                      << path_a;
           return false;
@@ -293,7 +301,8 @@ TEST(BrowserDataMigratorUtilTest, GetExtensionKeys) {
 
   std::string keep_extension_id =
       browser_data_migrator_util::kExtensionsAshOnly[0];
-  std::string both_extension_id = std::string(GetBothChromesExtensionId());
+  std::string both_extension_id =
+      browser_data_migrator_util::kExtensionsBothChromes[0];
   ExtensionKeys expected_keys = {
       {keep_extension_id,
        {
@@ -372,7 +381,8 @@ TEST(BrowserDataMigratorUtilTest, MigrateLevelDB) {
 
   std::string keep_extension_id =
       browser_data_migrator_util::kExtensionsAshOnly[0];
-  std::string both_extension_id = std::string(GetBothChromesExtensionId());
+  std::string both_extension_id =
+      browser_data_migrator_util::kExtensionsBothChromes[0];
   ExtensionKeys expected_keys = {
       {keep_extension_id,
        {
@@ -486,6 +496,24 @@ TEST(BrowserDataMigratorUtilTest, RecordUserDataSize) {
   histogram_tester.ExpectBucketCount(uma_name, size / 1024 / 1024, 1);
 }
 
+TEST(BrowserDataMigratorUtilTest, CreateHardLink) {
+  base::ScopedTempDir scoped_temp_dir;
+  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
+
+  const base::FilePath from_file =
+      scoped_temp_dir.GetPath().Append(FILE_PATH_LITERAL("from_file"));
+  const base::FilePath to_file =
+      scoped_temp_dir.GetPath().Append(FILE_PATH_LITERAL("to_file"));
+  ASSERT_TRUE(base::WriteFile(from_file, "Hello, World"));
+
+  ASSERT_TRUE(CreateHardLink(from_file, to_file));
+
+  EXPECT_TRUE(base::PathExists(to_file));
+
+  // Make sure that they are indeed the same file.
+  EXPECT_TRUE(IsSameFile(from_file, to_file));
+}
+
 TEST(BrowserDataMigratorUtilTest, CopyDirectory) {
   base::ScopedTempDir scoped_temp_dir;
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
@@ -547,6 +575,39 @@ TEST(BrowserDataMigratorUtilTest, CopyDirectory) {
   // Make sure that symlink is not copied.
   EXPECT_FALSE(base::PathExists(copy_to.Append(symlink)));
   EXPECT_FALSE(base::PathExists(copy_to.Append(original)));
+
+  // Test `CopyDirectoryByHardLinks()`.
+  const base::FilePath copy_to_hard =
+      scoped_temp_dir.GetPath().Append("copy_to_hard");
+  ASSERT_TRUE(CopyDirectoryByHardLinks(copy_from, copy_to_hard));
+
+  // Expected `copy_to_hard` structure after `CopyDirectoryByHardLinks()`.
+  // |- copy_to_hard/
+  //     |- data
+  //     |- Subdirectory/
+  //         |- data
+  //         |- Subdirectory/data
+  EXPECT_TRUE(base::PathExists(copy_to_hard));
+  EXPECT_TRUE(base::PathExists(copy_to_hard.Append(data_file)));
+  EXPECT_TRUE(
+      base::PathExists(copy_to_hard.Append(subdirectory).Append(data_file)));
+  EXPECT_TRUE(base::PathExists(copy_to_hard.Append(subdirectory)
+                                   .Append(subdirectory)
+                                   .Append(data_file)));
+  // Make sure that symlink is not copied.
+  EXPECT_FALSE(base::PathExists(copy_to_hard.Append(symlink)));
+  EXPECT_FALSE(base::PathExists(copy_to_hard.Append(original)));
+
+  // Make sure that they are indeed the same file.
+  EXPECT_TRUE(
+      IsSameFile(copy_from.Append(data_file), copy_to_hard.Append(data_file)));
+  EXPECT_TRUE(IsSameFile(copy_from.Append(subdirectory).Append(data_file),
+                         copy_to_hard.Append(subdirectory).Append(data_file)));
+  EXPECT_TRUE(IsSameFile(
+      copy_from.Append(subdirectory).Append(subdirectory).Append(data_file),
+      copy_to_hard.Append(subdirectory)
+          .Append(subdirectory)
+          .Append(data_file)));
 }
 
 TEST(BrowserDataMigratorUtilTest, EstimatedExtraBytesCreated) {
@@ -785,23 +846,25 @@ TEST_F(BrowserDataMigratorUtilWithTargetsTest, DryRunToCollectUMA) {
   histogram_tester.ExpectBucketCount(
       kDryRunNoCopyDataSize, kTextFileContent.size() * 2 / 1024 / 1024, 1);
 
-  histogram_tester.ExpectTotalCount(kDryRunExtraDiskSpaceOccupiedByMove, 1);
-  histogram_tester.ExpectTotalCount(kDryRunFreeDiskSpaceAfterDelete, 1);
-  histogram_tester.ExpectTotalCount(kDryRunFreeDiskSpaceAfterMigration, 1);
+  histogram_tester.ExpectTotalCount(kDryRunCopyMigrationHasEnoughDiskSpace, 1);
+  histogram_tester.ExpectTotalCount(
+      kDryRunDeleteAndCopyMigrationHasEnoughDiskSpace, 1);
+  histogram_tester.ExpectTotalCount(kDryRunMoveMigrationHasEnoughDiskSpace, 1);
+  histogram_tester.ExpectTotalCount(
+      kDryRunDeleteAndCopyMigrationHasEnoughDiskSpace, 1);
 }
 
 TEST(BrowserDataMigratorUtilTest, UpdatePreferencesKeyByType) {
   const std::string keep_extension_dict_key =
       std::string("extensions.settings.") + kExtensionsAshOnly[0];
   const std::string both_extension_dict_key =
-      std::string("extensions.settings.") +
-      std::string(GetBothChromesExtensionId());
+      std::string("extensions.settings.") + kExtensionsBothChromes[0];
   const std::string move_extension_dict_key =
       std::string("extensions.settings.") + kMoveExtensionId;
 
   base::Value::List extension_list;
   extension_list.Append(kExtensionsAshOnly[0]);
-  extension_list.Append(GetBothChromesExtensionId());
+  extension_list.Append(kExtensionsBothChromes[0]);
   extension_list.Append(kMoveExtensionId);
   const std::string extension_list_key = "extensions.pinned_extensions";
 
@@ -814,7 +877,7 @@ TEST(BrowserDataMigratorUtilTest, UpdatePreferencesKeyByType) {
   base::Value::Dict wrong_type_value1;
   wrong_type_value1.Set(kExtensionsAshOnly[0], "test1");
   base::Value::Dict wrong_type_value2;
-  wrong_type_value2.Set(GetBothChromesExtensionId(), "test2");
+  wrong_type_value2.Set(kExtensionsBothChromes[0], "test2");
   base::Value::Dict wrong_type_value3;
   wrong_type_value3.Set(kMoveExtensionId, "test3");
   base::Value::List wrong_type_list;
@@ -838,8 +901,8 @@ TEST(BrowserDataMigratorUtilTest, UpdatePreferencesKeyByType) {
 
   // Test Ash against expected results.
   base::Value::Dict* d = ash_dict.FindDictByDottedPath("extensions.settings");
-  std::set<std::string> expected_keys = {
-      kExtensionsAshOnly[0], std::string(GetBothChromesExtensionId())};
+  std::set<std::string> expected_keys = {kExtensionsAshOnly[0],
+                                         kExtensionsBothChromes[0]};
   EXPECT_EQ(expected_keys, CollectDictKeys(d));
   // If a type other than string is found in a list, it will be left unchanged.
   base::Value::List* l = ash_dict.FindListByDottedPath(wrong_type_key);
@@ -848,7 +911,7 @@ TEST(BrowserDataMigratorUtilTest, UpdatePreferencesKeyByType) {
 
   // Test Lacros against expected results.
   d = lacros_dict.FindDictByDottedPath("extensions.settings");
-  expected_keys = {std::string(GetBothChromesExtensionId()), kMoveExtensionId};
+  expected_keys = {kExtensionsBothChromes[0], kMoveExtensionId};
   EXPECT_EQ(expected_keys, CollectDictKeys(d));
   l = lacros_dict.FindListByDottedPath(wrong_type_key);
   EXPECT_NE(nullptr, l);
@@ -859,14 +922,13 @@ TEST(BrowserDataMigratorUtilTest, MigratePreferencesContents) {
   const std::string keep_extension_dict_key =
       std::string("extensions.settings.") + kExtensionsAshOnly[0];
   const std::string both_extension_dict_key =
-      std::string("extensions.settings.") +
-      std::string(GetBothChromesExtensionId());
+      std::string("extensions.settings.") + kExtensionsBothChromes[0];
   const std::string move_extension_dict_key =
       std::string("extensions.settings.") + kMoveExtensionId;
 
   base::Value::List extension_list;
   extension_list.Append(kExtensionsAshOnly[0]);
-  extension_list.Append(GetBothChromesExtensionId());
+  extension_list.Append(kExtensionsBothChromes[0]);
   extension_list.Append(kMoveExtensionId);
   const std::string extension_list_key = "extensions.pinned_extensions";
 
@@ -883,7 +945,7 @@ TEST(BrowserDataMigratorUtilTest, MigratePreferencesContents) {
   auto contents = MigratePreferencesContents(original_contents);
   EXPECT_TRUE(contents.has_value());
 
-  std::optional<base::Value> ash_root = base::JSONReader::Read(contents->ash);
+  absl::optional<base::Value> ash_root = base::JSONReader::Read(contents->ash);
   EXPECT_TRUE(ash_root.has_value());
   base::Value::Dict* ash_root_dict = ash_root->GetIfDict();
   EXPECT_NE(nullptr, ash_root_dict);
@@ -901,9 +963,9 @@ TEST(BrowserDataMigratorUtilTest, MigratePreferencesContents) {
   EXPECT_NE(nullptr, ash_extension_list);
   EXPECT_EQ(2u, ash_extension_list->size());
   EXPECT_EQ(kExtensionsAshOnly[0], (*ash_extension_list)[0].GetString());
-  EXPECT_EQ(GetBothChromesExtensionId(), (*ash_extension_list)[1].GetString());
+  EXPECT_EQ(kExtensionsBothChromes[0], (*ash_extension_list)[1].GetString());
 
-  std::optional<base::Value> lacros_root =
+  absl::optional<base::Value> lacros_root =
       base::JSONReader::Read(contents->lacros);
   EXPECT_TRUE(lacros_root.has_value());
   base::Value::Dict* lacros_root_dict = lacros_root->GetIfDict();
@@ -922,8 +984,7 @@ TEST(BrowserDataMigratorUtilTest, MigratePreferencesContents) {
       lacros_root_dict->FindListByDottedPath(extension_list_key);
   EXPECT_NE(nullptr, lacros_extension_list);
   EXPECT_EQ(2u, lacros_extension_list->size());
-  EXPECT_EQ(GetBothChromesExtensionId(),
-            (*lacros_extension_list)[0].GetString());
+  EXPECT_EQ(kExtensionsBothChromes[0], (*lacros_extension_list)[0].GetString());
   EXPECT_EQ(kMoveExtensionId, (*lacros_extension_list)[1].GetString());
 }
 
@@ -956,7 +1017,7 @@ TEST(BrowserDataMigratorUtilTest, MigratePreferences) {
   EXPECT_TRUE(
       base::ReadFileToString(lacros_preferences_path, &lacros_contents));
 
-  std::optional<base::Value> ash_root = base::JSONReader::Read(ash_contents);
+  absl::optional<base::Value> ash_root = base::JSONReader::Read(ash_contents);
   EXPECT_TRUE(ash_root.has_value());
   base::Value::Dict* ash_root_dict = ash_root->GetIfDict();
   EXPECT_NE(nullptr, ash_root_dict);
@@ -966,7 +1027,7 @@ TEST(BrowserDataMigratorUtilTest, MigratePreferences) {
             *ash_root_dict->FindStringByDottedPath(kAshOnlyPreferencesKeys[0]));
   EXPECT_EQ("test3", *ash_root_dict->FindStringByDottedPath("unrelated.key"));
 
-  std::optional<base::Value> lacros_root =
+  absl::optional<base::Value> lacros_root =
       base::JSONReader::Read(lacros_contents);
   EXPECT_TRUE(lacros_root.has_value());
   base::Value::Dict* lacros_root_dict = lacros_root->GetIfDict();
@@ -977,12 +1038,6 @@ TEST(BrowserDataMigratorUtilTest, MigratePreferences) {
                          kLacrosOnlyPreferencesKeys[0]));
   EXPECT_EQ("test3",
             *lacros_root_dict->FindStringByDottedPath("unrelated.key"));
-
-  std::optional<bool> sync_feature_setup_completed =
-      lacros_root_dict->FindBoolByDottedPath(
-          kSyncInitialSyncFeatureSetupCompletePrefName);
-  ASSERT_NE(std::nullopt, sync_feature_setup_completed);
-  EXPECT_TRUE(*sync_feature_setup_completed);
 }
 
 }  // namespace ash::browser_data_migrator_util

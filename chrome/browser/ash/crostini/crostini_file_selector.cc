@@ -11,7 +11,6 @@
 #include "chrome/common/chrome_paths.h"
 #include "chrome/grit/generated_resources.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/shell_dialogs/selected_file_info.h"
 
 namespace {
 ui::SelectFileDialog::FileTypeInfo GetFileTypeInfo() {
@@ -32,9 +31,8 @@ CrostiniFileSelector::CrostiniFileSelector(content::WebUI* web_ui)
     : web_ui_(web_ui) {}
 
 CrostiniFileSelector::~CrostiniFileSelector() {
-  if (select_file_dialog_.get()) {
+  if (select_file_dialog_.get())
     select_file_dialog_->ListenerDestroyed();
-  }
 }
 
 void CrostiniFileSelector::SelectFile(
@@ -66,20 +64,21 @@ void CrostiniFileSelector::SelectFile(
 }
 
 gfx::NativeWindow CrostiniFileSelector::GetBrowserWindow() {
-  Browser* browser = chrome::FindBrowserWithTab(web_ui_->GetWebContents());
-  return browser ? browser->window()->GetNativeWindow() : gfx::NativeWindow();
+  Browser* browser =
+      chrome::FindBrowserWithWebContents(web_ui_->GetWebContents());
+  return browser ? browser->window()->GetNativeWindow()
+                 : gfx::kNullNativeWindow;
 }
 
-void CrostiniFileSelector::FileSelected(const ui::SelectedFileInfo& file,
+void CrostiniFileSelector::FileSelected(const base::FilePath& path,
                                         int index,
                                         void* params) {
-  std::move(selected_callback_).Run(file.path());
+  std::move(selected_callback_).Run(path);
 }
 
 void CrostiniFileSelector::FileSelectionCanceled(void* params) {
-  if (cancelled_callback_) {
+  if (cancelled_callback_)
     std::move(cancelled_callback_).Run();
-  }
 }
 
 }  // namespace crostini

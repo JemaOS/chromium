@@ -12,7 +12,6 @@
 #ifndef __XML_XPATH_INTERNALS_H__
 #define __XML_XPATH_INTERNALS_H__
 
-#include <stdio.h>
 #include <libxml/xmlversion.h>
 #include <libxml/xpath.h>
 
@@ -298,7 +297,7 @@ XMLPUBFUN void *
     if (ctxt == NULL) return;						\
     if (nargs != (x))							\
         XP_ERROR(XPATH_INVALID_ARITY);					\
-    if (ctxt->valueNr < (x))						\
+    if (ctxt->valueNr < ctxt->valueFrame + (x))				\
         XP_ERROR(XPATH_STACK_ERROR);
 
 /**

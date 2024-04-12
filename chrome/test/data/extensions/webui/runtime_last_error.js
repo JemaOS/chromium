@@ -24,4 +24,4 @@ chrome.test.sendMessage('ping', function(reply) {
   chrome.test.sendMessage(success ? 'true' : 'false');
 });
 
-return true;
+domAutomationController.send(true);

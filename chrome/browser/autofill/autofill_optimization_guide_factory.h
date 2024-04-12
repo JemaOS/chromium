@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 class KeyedService;
@@ -32,7 +32,7 @@ class AutofillOptimizationGuideFactory : public ProfileKeyedServiceFactory {
   static AutofillOptimizationGuideFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<AutofillOptimizationGuideFactory>;
+  friend struct base::DefaultSingletonTraits<AutofillOptimizationGuideFactory>;
 
   AutofillOptimizationGuideFactory();
   ~AutofillOptimizationGuideFactory() override;

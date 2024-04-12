@@ -11,10 +11,6 @@
 #include "base/functional/bind.h"
 #include "base/memory/ref_counted.h"
 #include "build/build_config.h"
-#include "chrome/browser/apps/app_service/app_service_proxy.h"
-#include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
-#include "chrome/browser/apps/app_service/browser_app_instance.h"
-#include "chrome/browser/apps/app_service/browser_app_instance_tracker.h"
 #include "chrome/browser/autofill/address_normalizer_factory.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/autofill/validation_rules_storage_factory.h"
@@ -138,8 +134,11 @@ void ChromePaymentRequestDelegate::ShowProcessingSpinner() {
 
 autofill::PersonalDataManager*
 ChromePaymentRequestDelegate::GetPersonalDataManager() {
+  // Autofill uses the original profile's PersonalDataManager to make data
+  // available in incognito, so PaymentRequest should do the same.
   return autofill::PersonalDataManagerFactory::GetForProfile(
-      Profile::FromBrowserContext(GetBrowserContextOrNull()));
+      Profile::FromBrowserContext(GetBrowserContextOrNull())
+          ->GetOriginalProfile());
 }
 
 const std::string& ChromePaymentRequestDelegate::GetApplicationLocale() const {
@@ -205,7 +204,7 @@ bool ChromePaymentRequestDelegate::IsBrowserWindowActive() const {
   if (!FrameSupportsPayments(rfh))
     return false;
 
-  Browser* browser = chrome::FindBrowserWithTab(
+  Browser* browser = chrome::FindBrowserWithWebContents(
       content::WebContents::FromRenderFrameHost(rfh));
   return browser && browser->window() && browser->window()->IsActive();
 }
@@ -303,39 +302,6 @@ PaymentRequestDialog* ChromePaymentRequestDelegate::GetDialogForTesting() {
 SecurePaymentConfirmationNoCreds*
 ChromePaymentRequestDelegate::GetNoMatchingCredentialsDialogForTesting() {
   return spc_no_creds_dialog_.get();
-}
-
-std::optional<base::UnguessableToken>
-ChromePaymentRequestDelegate::GetChromeOSTWAInstanceId() const {
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  auto* rfh = content::RenderFrameHost::FromID(frame_routing_id_);
-  if (!FrameSupportsPayments(rfh)) {
-    return std::nullopt;
-  }
-
-  auto* web_contents = content::WebContents::FromRenderFrameHost(rfh);
-  if (!web_contents) {
-    return std::nullopt;
-  }
-  Profile* profile = Profile::FromBrowserContext(rfh->GetBrowserContext());
-  if (!profile) {
-    return std::nullopt;
-  }
-  auto* app_instance_tracker =
-      apps::AppServiceProxyFactory::GetForProfile(profile)
-          ->BrowserAppInstanceTracker();
-  if (!app_instance_tracker) {
-    return std::nullopt;
-  }
-  const apps::BrowserAppInstance* app_instance =
-      app_instance_tracker->GetAppInstance(web_contents);
-  if (!app_instance) {
-    return std::nullopt;
-  }
-  return app_instance->id;
-#else
-  return std::nullopt;
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 }
 
 const base::WeakPtr<PaymentUIObserver>

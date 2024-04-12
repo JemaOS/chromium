@@ -23,7 +23,7 @@ class TrustedTypePolicy;
 class TrustedTypePolicyOptions;
 
 class CORE_EXPORT TrustedTypePolicyFactory final
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ExecutionContextClient {
   DEFINE_WRAPPERTYPEINFO();
 

@@ -32,7 +32,9 @@ public class ChromeUiAutomatorTestRule extends TestWatcher {
         utils.printWindowHierarchy("UI hierarchy when " + description.toString() + " failed");
     }
 
-    /** Creates a Bitmap from the UiAutomatorUtils (use this for RenderTest). */
+    /**
+     * Creates a Bitmap from the UiAutomatorUtils (use this for RenderTest).
+     */
     public Bitmap takeScreenshot(Context context) throws IOException {
         UiAutomatorUtils utils = UiAutomatorUtils.getInstance();
 

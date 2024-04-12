@@ -33,25 +33,19 @@ public class WebappDisclosureController extends DisclosureController {
     private final BrowserServicesIntentDataProvider mIntentDataProvider;
 
     @Inject
-    public WebappDisclosureController(
-            BrowserServicesIntentDataProvider intentDataProvider,
+    public WebappDisclosureController(BrowserServicesIntentDataProvider intentDataProvider,
             WebappDeferredStartupWithStorageHandler deferredStartupWithStorageHandler,
-            TrustedWebActivityModel model,
-            ActivityLifecycleDispatcher lifecycleDispatcher,
+            TrustedWebActivityModel model, ActivityLifecycleDispatcher lifecycleDispatcher,
             CurrentPageVerifier currentPageVerifier) {
-        super(
-                model,
-                lifecycleDispatcher,
-                currentPageVerifier,
+        super(model, lifecycleDispatcher, currentPageVerifier,
                 intentDataProvider.getClientPackageName());
         mIntentDataProvider = intentDataProvider;
 
-        deferredStartupWithStorageHandler.addTask(
-                (storage, didCreateStorage) -> {
-                    if (lifecycleDispatcher.isActivityFinishingOrDestroyed()) return;
+        deferredStartupWithStorageHandler.addTask((storage, didCreateStorage) -> {
+            if (lifecycleDispatcher.isActivityFinishingOrDestroyed()) return;
 
-                    onDeferredStartupWithStorage(storage, didCreateStorage);
-                });
+            onDeferredStartupWithStorage(storage, didCreateStorage);
+        });
     }
 
     void onDeferredStartupWithStorage(
@@ -70,9 +64,8 @@ public class WebappDisclosureController extends DisclosureController {
 
     @Override
     public void onDisclosureAccepted() {
-        WebappDataStorage storage =
-                WebappRegistry.getInstance()
-                        .getWebappDataStorage(mIntentDataProvider.getWebappExtras().id);
+        WebappDataStorage storage = WebappRegistry.getInstance().getWebappDataStorage(
+                mIntentDataProvider.getWebappExtras().id);
         assert storage != null;
 
         storage.clearShowDisclosure();
@@ -87,15 +80,13 @@ public class WebappDisclosureController extends DisclosureController {
     protected boolean shouldShowDisclosure() {
         // Only show disclosure for unbound WebAPKs.
         if (mIntentDataProvider.getClientPackageName() == null
-                || mIntentDataProvider
-                        .getClientPackageName()
-                        .startsWith(WebApkConstants.WEBAPK_PACKAGE_PREFIX)) {
+                || mIntentDataProvider.getClientPackageName().startsWith(
+                        WebApkConstants.WEBAPK_PACKAGE_PREFIX)) {
             return false;
         }
 
-        WebappDataStorage storage =
-                WebappRegistry.getInstance()
-                        .getWebappDataStorage(mIntentDataProvider.getWebappExtras().id);
+        WebappDataStorage storage = WebappRegistry.getInstance().getWebappDataStorage(
+                mIntentDataProvider.getWebappExtras().id);
         if (storage == null) return false;
 
         // Show only if the correct flag is set.

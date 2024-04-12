@@ -20,8 +20,6 @@
 #include "chrome/browser/ash/file_system_provider/registry_interface.h"
 #include "chrome/browser/ash/file_system_provider/service_factory.h"
 #include "chrome/browser/ash/file_system_provider/throttled_file_system.h"
-#include "chrome/common/extensions/extension_constants.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "extensions/browser/extension_registry.h"
@@ -33,7 +31,8 @@
 #include "storage/browser/file_system/external_mount_points.h"
 #include "storage/common/file_system/file_system_mount_option.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 namespace {
 
 // Maximum number of file systems to be mounted in the same time, per profile.
@@ -47,14 +46,9 @@ Service::Service(Profile* profile,
       extension_registry_(extension_registry),
       registry_(new Registry(profile)) {
   extension_registry_->AddObserver(this);
-  if (chromeos::features::IsFileSystemProviderContentCacheEnabled()) {
-    DCHECK(profile);
-    cache_manager_ = std::make_unique<CacheManager>(profile->GetPath(),
-                                                    /*in_memory_only=*/true);
-  }
 }
 
-Service::~Service() = default;
+Service::~Service() {}
 
 // static
 Service* Service::Get(content::BrowserContext* context) {
@@ -81,10 +75,6 @@ void Service::Shutdown() {
   }
 
   DCHECK_EQ(0u, file_system_map_.size());
-
-  for (auto& observer : observers_) {
-    observer.OnShutDown();
-  }
 }
 
 void Service::AddObserver(Observer* observer) {
@@ -130,14 +120,6 @@ base::File::Error Service::MountFileSystemInternal(
       util::GetMountPath(profile_, provider_id, options.file_system_id);
   const std::string mount_point_name = mount_path.BaseName().AsUTF8Unsafe();
 
-  // The content cache is an experimentation on ODFS behind two feature flags,
-  // only pass it through if those conditions are met.
-  // TODO(b/317137739): This logic should be moved to a capability in the
-  // manifest.json.
-  const bool is_content_cache_enabled_and_odfs =
-      chromeos::features::IsFileSystemProviderContentCacheEnabled() &&
-      provider_id.GetExtensionId() == extension_misc::kODFSExtensionId;
-
   Capabilities capabilities = provider->GetCapabilities();
   // Store the file system descriptor. Use the mount point name as the file
   // system provider file system id.
@@ -152,8 +134,7 @@ base::File::Error Service::MountFileSystemInternal(
   //   source = SOURCE_FILE
   ProvidedFileSystemInfo file_system_info(
       provider_id, options, mount_path, capabilities.configurable,
-      capabilities.watchable, capabilities.source, provider->GetIconSet(),
-      is_content_cache_enabled_and_odfs ? CacheType::LRU : CacheType::NONE);
+      capabilities.watchable, capabilities.source, provider->GetIconSet());
 
   // If already exists a file system provided by the same extension with this
   // id, then abort.
@@ -193,8 +174,7 @@ base::File::Error Service::MountFileSystemInternal(
   }
 
   std::unique_ptr<ProvidedFileSystemInterface> file_system =
-      provider->CreateProvidedFileSystem(profile_, file_system_info,
-                                         cache_manager_.get());
+      provider->CreateProvidedFileSystem(profile_, file_system_info);
   DCHECK(file_system);
   ProvidedFileSystemInterface* file_system_ptr = file_system.get();
   file_system_map_[FileSystemKey(
@@ -296,8 +276,8 @@ std::vector<ProvidedFileSystemInfo> Service::GetProvidedFileSystemInfoList() {
   DCHECK(thread_checker_.CalledOnValidThread());
 
   std::vector<ProvidedFileSystemInfo> result;
-  for (auto& it : file_system_map_) {
-    result.push_back(it.second->GetFileSystemInfo());
+  for (auto it = file_system_map_.begin(); it != file_system_map_.end(); ++it) {
+    result.push_back(it->second->GetFileSystemInfo());
   }
   return result;
 }
@@ -490,4 +470,5 @@ ProviderInterface* Service::GetProvider(const ProviderId& provider_id) {
   return it->second.get();
 }
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

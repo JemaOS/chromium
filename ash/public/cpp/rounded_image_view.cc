@@ -6,7 +6,6 @@
 
 #include "skia/ext/image_operations.h"
 #include "third_party/skia/include/core/SkPath.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/image/image_skia_operations.h"
@@ -112,11 +111,12 @@ void RoundedImageView::OnPaint(gfx::Canvas* canvas) {
                           drawn_image_bounds.y(), path, flags);
 }
 
+const char* RoundedImageView::GetClassName() const {
+  return "RoundedImageView";
+}
+
 gfx::Size RoundedImageView::GetImageSize() const {
   return resized_image_.size();
 }
-
-BEGIN_METADATA(RoundedImageView)
-END_METADATA
 
 }  // namespace ash

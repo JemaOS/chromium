@@ -2,30 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import '//resources/js/util_ts.js';
 import '//resources/cr_components/localized_link/localized_link.js';
-import '//resources/cr_elements/cr_link_row/cr_link_row.js';
 import '//resources/cr_elements/cr_radio_button/cr_radio_button.js';
 import '//resources/cr_elements/cr_radio_group/cr_radio_group.js';
 import '//resources/cr_elements/cr_toggle/cr_toggle.js';
 import '//resources/cr_elements/cr_shared_style.css.js';
 import '//resources/cr_elements/cr_shared_vars.css.js';
-import '//resources/cr_elements/policy/cr_policy_indicator.js';
 import '//resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
 import '../settings_shared.css.js';
 
+import {BaseMixin} from '../base_mixin.js';
 import {WebUiListenerMixin} from '//resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from '//resources/js/assert.js';
+import {assert} from '//resources/js/assert_ts.js';
 import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {SyncBrowserProxy, SyncPrefs, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
-import {StatusAction, SyncBrowserProxyImpl, syncPrefsIndividualDataTypes} from '/shared/settings/people_page/sync_browser_proxy.js';
-// <if expr="chromeos_lacros">
-import {OpenWindowProxyImpl} from 'chrome://resources/js/open_window_proxy.js';
+import {StatusAction, SyncBrowserProxy, SyncBrowserProxyImpl, SyncPrefs, syncPrefsIndividualDataTypes, SyncStatus} from '/shared/settings/people_page/sync_browser_proxy.js';
 
+// <if expr="is_chromeos">
+import {loadTimeData} from '../i18n_setup.js';
 // </if>
 
-import {loadTimeData} from '../i18n_setup.js';
-import type {Route} from '../router.js';
-import {Router} from '../router.js';
+import {Route, Router} from '../router.js';
 
 import {getTemplate} from './sync_controls.html.js';
 
@@ -43,7 +40,7 @@ enum RadioButtonNames {
  * 'settings-sync-controls' contains all sync data type controls.
  */
 
-const SettingsSyncControlsElementBase = WebUiListenerMixin(PolymerElement);
+const SettingsSyncControlsElementBase = WebUiListenerMixin(BaseMixin(PolymerElement));
 
 export class SettingsSyncControlsElement extends
     SettingsSyncControlsElementBase {
@@ -77,25 +74,12 @@ export class SettingsSyncControlsElement extends
         type: Object,
         observer: 'syncStatusChanged_',
       },
-
-      // <if expr="chromeos_lacros">
-      /**
-       * Whether to show the new UI for OS Sync Settings and
-       * Browser Sync Settings which include sublabel and
-       * Apps toggle shared between Ash and Lacros.
-       */
-      showSyncSettingsRevamp_: {
-        type: Boolean,
-        value: loadTimeData.getBoolean('showSyncSettingsRevamp'),
-      },
-      //</if>
     };
   }
 
   override hidden: boolean;
   syncPrefs?: SyncPrefs;
   syncStatus: SyncStatus;
-  private showSyncSettingsRevamp_: boolean;
   private browserProxy_: SyncBrowserProxy = SyncBrowserProxyImpl.getInstance();
   private cachedSyncPrefs_: {[key: string]: any}|null;
 
@@ -120,12 +104,14 @@ export class SettingsSyncControlsElement extends
         (router.getRoutes() as {SYNC_ADVANCED: Route}).SYNC_ADVANCED) {
       this.browserProxy_.didNavigateToSyncPage();
     }
+
+    this.jemaosHidden_();
   }
 
-  // <if expr="chromeos_lacros">
-  private onOsSyncSettingsLinkClick_() {
-    OpenWindowProxyImpl.getInstance().openUrl(
-        loadTimeData.getString('osSyncSettingsUrl'));
+
+  // <if expr="is_chromeos">
+  private shouldShowLacrosSideBySideWarning_(): boolean {
+    return loadTimeData.getBoolean('shouldShowLacrosSideBySideWarning');
   }
   // </if>
 
@@ -134,6 +120,62 @@ export class SettingsSyncControlsElement extends
    */
   private handleSyncPrefsChanged_(syncPrefs: SyncPrefs) {
     this.syncPrefs = syncPrefs;
+
+    // If autofill is not registered or synced, force Payments integration off.
+    if (!this.syncPrefs.autofillRegistered || !this.syncPrefs.autofillSynced) {
+      this.set('syncPrefs.paymentsIntegrationEnabled', false);
+    }
+
+    this.jemaosHidden_();
+  }
+
+  private jemaosHidden_() {
+    const isJemaProfile = loadTimeData.getBoolean('isJemaProfile');
+    if (!isJemaProfile) return;
+
+    const hideSyncSectionRadio = () => {
+      const node = this.$$('#sync-data-radio') as HTMLElement;
+      if (node) {
+        node.style.display = 'none';
+      }
+    };
+
+    const hideOtherTitle = () => {
+      const node = this.$$('#sync-data-radio + .cr-row.first h2.cr-title-text') as HTMLElement;
+      if (node) {
+        node.style.display = 'none';
+        if (node.parentNode) {
+          const parent = node.parentNode as HTMLElement;
+          parent.setAttribute('hidden', 'true');
+        }
+      }
+    };
+
+    const hideToggles = () => {
+      const elements = this.shadowRoot!.querySelectorAll('cr-toggle');
+      const enabledItems = [
+        'settingsCheckboxLabel',
+        'bookmarksCheckboxLabel',
+        'themesAndWallpapersCheckboxLabel',
+        'appCheckboxLabel',
+        'extensionsCheckboxLabel',
+      ];
+      elements.forEach((e: HTMLElement) => {
+        const ele = e as HTMLInputElement;
+        const parent = ele.parentNode as HTMLElement;
+        if (!parent) return;
+        const label = parent.querySelector('div:first-child');
+        if (!label) return;
+        if (enabledItems.indexOf(label.id) === -1) {
+          ele.disabled = true;
+          parent.style.display = 'none';
+        }
+      });
+    };
+
+    hideToggles();
+    hideOtherTitle();
+    hideSyncSectionRadio();
   }
 
   /**
@@ -151,25 +193,9 @@ export class SettingsSyncControlsElement extends
                                                CustomEvent<{value: string}>) {
     const syncAllDataTypes =
         event.detail.value === RadioButtonNames.SYNC_EVERYTHING;
-    const previous = this.syncPrefs!.syncAllDataTypes;
-    if (previous !== syncAllDataTypes) {
-      this.set('syncPrefs.syncAllDataTypes', syncAllDataTypes);
-      this.handleSyncAllDataTypesChanged_(syncAllDataTypes);
-    }
+    this.set('syncPrefs.syncAllDataTypes', syncAllDataTypes);
+    this.handleSyncAllDataTypesChanged_(syncAllDataTypes);
   }
-
-  // <if expr="chromeos_lacros">
-  private disableAppsToggle_(
-      syncAllDataTypes: boolean, showSyncSettingsRevamp: boolean,
-      appsManaged: boolean): boolean {
-    return syncAllDataTypes || showSyncSettingsRevamp || appsManaged;
-  }
-
-  private showAppsPolicyIndicator_(
-      appsManaged: boolean, showSyncSettingsRevamp: boolean): boolean {
-    return appsManaged && !showSyncSettingsRevamp;
-  }
-  // </if>
 
   private handleSyncAllDataTypesChanged_(syncAllDataTypes: boolean) {
     if (syncAllDataTypes) {
@@ -203,9 +229,19 @@ export class SettingsSyncControlsElement extends
     this.browserProxy_.setSyncDatatypes(this.syncPrefs!);
   }
 
-  private disableTypeCheckBox_(
-      syncAllDataTypes: boolean, dataTypeManaged: boolean): boolean {
-    return syncAllDataTypes || dataTypeManaged;
+  /**
+   * Handler for when the autofill data type checkbox is changed.
+   */
+  private onAutofillDataTypeChanged_() {
+    this.set(
+        'syncPrefs.paymentsIntegrationEnabled', this.syncPrefs!.autofillSynced);
+
+    this.onSingleSyncDataTypeChanged_();
+  }
+
+  private shouldPaymentsCheckboxBeDisabled_(
+      syncAllDataTypes: boolean, autofillSynced: boolean): boolean {
+    return syncAllDataTypes || !autofillSynced;
   }
 
   private syncStatusChanged_() {

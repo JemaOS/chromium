@@ -26,6 +26,7 @@
 #include "base/values.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/extensions/api/gcm/gcm_api.h"
 #include "chrome/browser/extensions/crx_installer.h"
 #include "chrome/browser/extensions/extension_service.h"
@@ -67,10 +68,9 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/login/users/chrome_user_manager_impl.h"
+#include "chrome/browser/ash/login/users/scoped_test_user_manager.h"
 #include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
 #include "chromeos/ash/components/dbus/concierge/concierge_client.h"
-#include "components/user_manager/scoped_user_manager.h"
 #endif
 
 namespace extensions {
@@ -271,8 +271,7 @@ class ExtensionGCMAppHandlerTest : public testing::Test {
 
     // This is needed to create extension service under CrOS.
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-    test_user_manager_.Reset(
-        ash::ChromeUserManagerImpl::CreateChromeUserManager());
+    test_user_manager_ = std::make_unique<ash::ScopedTestUserManager>();
     ash::ConciergeClient::InitializeFake(/*fake_cicerone_client=*/nullptr);
 #endif
 
@@ -301,7 +300,7 @@ class ExtensionGCMAppHandlerTest : public testing::Test {
 
   void TearDown() override {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-    test_user_manager_.Reset();
+    test_user_manager_.reset();
 #endif
 
     waiter_.PumpUILoop();
@@ -335,7 +334,7 @@ class ExtensionGCMAppHandlerTest : public testing::Test {
     extension_service_->AddExtension(extension);
   }
 
-  void InstallerDone(const std::optional<CrxInstallError>& error) {
+  void InstallerDone(const absl::optional<CrxInstallError>& error) {
     ASSERT_FALSE(error);
     waiter_.SignalCompleted();
   }
@@ -418,14 +417,13 @@ class ExtensionGCMAppHandlerTest : public testing::Test {
   std::unique_ptr<content::InProcessUtilityThreadHelper>
       in_process_utility_thread_helper_;
   std::unique_ptr<TestingProfile> profile_;
-  raw_ptr<ExtensionService, DanglingUntriaged>
-      extension_service_;  // Not owned.
+  raw_ptr<ExtensionService> extension_service_;  // Not owned.
   base::ScopedTempDir temp_dir_;
 
   // This is needed to create extension service under CrOS.
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   ash::ScopedCrosSettingsTestHelper cros_settings_test_helper_;
-  user_manager::ScopedUserManager test_user_manager_;
+  std::unique_ptr<ash::ScopedTestUserManager> test_user_manager_;
 #endif
 
   Waiter waiter_;

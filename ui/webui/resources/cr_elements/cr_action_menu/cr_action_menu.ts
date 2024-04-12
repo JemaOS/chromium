@@ -4,24 +4,23 @@
 
 import '../cr_shared_vars.css.js';
 
-import {assert} from '//resources/js/assert.js';
+import {assert} from '//resources/js/assert_ts.js';
 import {FocusOutlineManager} from '//resources/js/focus_outline_manager.js';
 import {FocusRow} from '//resources/js/focus_row.js';
 import {focusWithoutInk} from '//resources/js/focus_without_ink.js';
 import {isMac, isWindows} from '//resources/js/platform.js';
-import {getDeepActiveElement} from '//resources/js/util.js';
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {getDeepActiveElement} from '//resources/js/util_ts.js';
+import {FlattenedNodesObserver, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {getCss} from './cr_action_menu.css.js';
-import {getHtml} from './cr_action_menu.html.js';
+import {getTemplate} from './cr_action_menu.html.js';
 
 interface ShowAtConfig {
   top?: number;
   left?: number;
   width?: number;
   height?: number;
-  anchorAlignmentX?: AnchorAlignment;
-  anchorAlignmentY?: AnchorAlignment;
+  anchorAlignmentX?: number;
+  anchorAlignmentY?: number;
   minX?: number;
   minY?: number;
   maxX?: number;
@@ -34,8 +33,8 @@ export interface ShowAtPositionConfig {
   left: number;
   width?: number;
   height?: number;
-  anchorAlignmentX?: AnchorAlignment;
-  anchorAlignmentY?: AnchorAlignment;
+  anchorAlignmentX?: number;
+  anchorAlignmentY?: number;
   minX?: number;
   minY?: number;
   maxX?: number;
@@ -69,7 +68,7 @@ function getStartPointWithAnchor(
   let startPoint = 0;
   switch (anchorAlignment) {
     case AnchorAlignment.BEFORE_START:
-      startPoint = start - menuLength;
+      startPoint = -menuLength;
       break;
     case AnchorAlignment.AFTER_START:
       startPoint = start;
@@ -120,51 +119,54 @@ export interface CrActionMenuElement {
   };
 }
 
-export class CrActionMenuElement extends CrLitElement {
+export class CrActionMenuElement extends PolymerElement {
   static get is() {
     return 'cr-action-menu';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
       // Accessibility text of the menu. Should be something along the lines of
       // "actions", or "more actions".
-      accessibilityLabel: {type: String},
+      accessibilityLabel: String,
 
       // Setting this flag will make the menu listen for content size changes
       // and reposition to its anchor accordingly.
-      autoReposition: {type: Boolean},
+      autoReposition: {
+        type: Boolean,
+        value: false,
+      },
 
       open: {
         type: Boolean,
         notify: true,
+        value: false,
       },
 
       // Descriptor of the menu. Should be something along the lines of "menu"
-      roleDescription: {type: String},
+      roleDescription: String,
     };
   }
 
-  accessibilityLabel?: string;
-  autoReposition: boolean = false;
-  open: boolean = false;
-  roleDescription?: string;
+  accessibilityLabel: string;
+  autoReposition: boolean;
+  open: boolean;
+  roleDescription: string;
 
   private boundClose_: (() => void)|null = null;
+  private contentObserver_: FlattenedNodesObserver|null = null;
   private resizeObserver_: ResizeObserver|null = null;
   private hasMousemoveListener_: boolean = false;
   private anchorElement_: HTMLElement|null = null;
   private lastConfig_: ShowAtPositionConfig|null = null;
 
-  override firstUpdated() {
+  override ready() {
+    super.ready();
+
     this.addEventListener('keydown', this.onKeyDown_.bind(this));
     this.addEventListener('mouseover', this.onMouseover_);
     this.addEventListener('click', this.onClick_);
@@ -174,6 +176,11 @@ export class CrActionMenuElement extends CrLitElement {
     super.disconnectedCallback();
 
     this.removeListeners_();
+  }
+
+  private fire_(eventName: string, detail?: any) {
+    this.dispatchEvent(
+        new CustomEvent(eventName, {bubbles: true, composed: true, detail}));
   }
 
   /**
@@ -186,6 +193,10 @@ export class CrActionMenuElement extends CrLitElement {
   private removeListeners_() {
     window.removeEventListener('resize', this.boundClose_!);
     window.removeEventListener('popstate', this.boundClose_!);
+    if (this.contentObserver_) {
+      this.contentObserver_.disconnect();
+      this.contentObserver_ = null;
+    }
 
     if (this.resizeObserver_) {
       this.resizeObserver_.disconnect();
@@ -193,7 +204,7 @@ export class CrActionMenuElement extends CrLitElement {
     }
   }
 
-  protected onNativeDialogClose_(e: Event) {
+  private onNativeDialogClose_(e: Event) {
     // Ignore any 'close' events not fired directly by the <dialog> element.
     if (e.target !== this.$.dialog) {
       return;
@@ -201,7 +212,7 @@ export class CrActionMenuElement extends CrLitElement {
 
     // Catch and re-fire the 'close' event such that it bubbles across Shadow
     // DOM v1.
-    this.fire('close');
+    this.fire_('close');
   }
 
   private onClick_(e: Event) {
@@ -217,7 +228,7 @@ export class CrActionMenuElement extends CrLitElement {
     if (e.key === 'Tab' || e.key === 'Escape') {
       this.close();
       if (e.key === 'Tab') {
-        this.fire('tabkeyclose', {shiftKey: e.shiftKey});
+        this.fire_('tabkeyclose', {shiftKey: e.shiftKey});
       }
       e.preventDefault();
       return;
@@ -285,10 +296,6 @@ export class CrActionMenuElement extends CrLitElement {
   }
 
   close() {
-    if (!this.open) {
-      return;
-    }
-
     // Removing 'resize' and 'popstate' listeners when dialog is closed.
     this.removeListeners_();
     this.$.dialog.close();
@@ -449,15 +456,6 @@ export class CrActionMenuElement extends CrLitElement {
     this.$.dialog.style.top = menuTop + 'px';
   }
 
-  protected onSlotchange_() {
-    for (const node of this.$.contentNode.assignedElements({flatten: true})) {
-      if (node.classList.contains(DROPDOWN_ITEM_CLASS) &&
-          !node.getAttribute('role')) {
-        node.setAttribute('role', 'menuitem');
-      }
-    }
-  }
-
   private addListeners_() {
     this.boundClose_ = this.boundClose_ || (() => {
                          if (this.$.dialog.open) {
@@ -467,11 +465,22 @@ export class CrActionMenuElement extends CrLitElement {
     window.addEventListener('resize', this.boundClose_);
     window.addEventListener('popstate', this.boundClose_);
 
+    this.contentObserver_ = new FlattenedNodesObserver(
+        this.$.contentNode, (info: {addedNodes: Element[]}) => {
+          info.addedNodes.forEach(node => {
+            if (node.classList &&
+                node.classList.contains(DROPDOWN_ITEM_CLASS) &&
+                !node.getAttribute('role')) {
+              node.setAttribute('role', 'menuitem');
+            }
+          });
+        });
+
     if (this.autoReposition) {
       this.resizeObserver_ = new ResizeObserver(() => {
         if (this.lastConfig_) {
           this.positionDialog_(this.lastConfig_);
-          this.fire('cr-action-menu-repositioned');  // For easier testing.
+          this.fire_('cr-action-menu-repositioned');  // For easier testing.
         }
       });
 

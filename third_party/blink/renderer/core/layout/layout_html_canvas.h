@@ -37,9 +37,9 @@ class CORE_EXPORT LayoutHTMLCanvas final : public LayoutReplaced {
  public:
   explicit LayoutHTMLCanvas(HTMLCanvasElement*);
 
-  bool IsCanvas() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectCanvas || LayoutReplaced::IsOfType(type);
   }
 
   void InvalidatePaint(const PaintInvalidatorContext&) const final;

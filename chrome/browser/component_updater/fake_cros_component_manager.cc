@@ -11,7 +11,6 @@
 #include "base/functional/callback.h"
 #include "base/logging.h"
 #include "base/task/sequenced_task_runner.h"
-#include "base/version.h"
 
 namespace component_updater {
 
@@ -26,34 +25,8 @@ FakeCrOSComponentManager::ComponentInfo::ComponentInfo(
   DCHECK(load_response == Error::NONE ||
          (install_path.empty() && mount_path.empty()));
   // Component should have install path set if it's expected to be loaded.
-  DCHECK(load_response != Error::NONE || (!install_path.empty()));
+  DCHECK(load_response != Error::NONE || !install_path.empty());
 }
-
-FakeCrOSComponentManager::ComponentInfo::ComponentInfo(
-    Error load_response,
-    const base::FilePath& install_path,
-    const base::FilePath& mount_path,
-    const base::Version& version)
-    : load_response(load_response),
-      install_path(install_path),
-      mount_path(mount_path),
-      version(version) {
-  // If component load fails, neither install nor mount path should be set and
-  // version should be invalid.
-  DCHECK(load_response == Error::NONE ||
-         (install_path.empty() && mount_path.empty() && !version.IsValid()));
-  // Component should have install path and version set if it's expected to be
-  // loaded.
-  DCHECK(load_response != Error::NONE ||
-         (!install_path.empty() && version.IsValid()));
-}
-
-FakeCrOSComponentManager::ComponentInfo::ComponentInfo(
-    const FakeCrOSComponentManager::ComponentInfo& other) = default;
-
-FakeCrOSComponentManager::ComponentInfo&
-FakeCrOSComponentManager::ComponentInfo::operator=(
-    const FakeCrOSComponentManager::ComponentInfo& other) = default;
 
 FakeCrOSComponentManager::ComponentInfo::~ComponentInfo() = default;
 
@@ -84,15 +57,16 @@ bool FakeCrOSComponentManager::FinishLoadRequest(
 
 bool FakeCrOSComponentManager::ResetComponentState(const std::string& name,
                                                    const ComponentInfo& state) {
-  if (!supported_components_.count(name)) {
+  if (!supported_components_.count(name))
     return false;
-  }
 
   installed_components_.erase(name);
   mounted_components_.erase(name);
 
   component_infos_.erase(name);
-  component_infos_.emplace(name, ComponentInfo(state));
+  component_infos_.emplace(
+      name,
+      ComponentInfo(state.load_response, state.install_path, state.mount_path));
   return true;
 }
 
@@ -168,8 +142,8 @@ bool FakeCrOSComponentManager::Unload(const std::string& name) {
 
 void FakeCrOSComponentManager::RegisterCompatiblePath(
     const std::string& name,
-    CompatibleComponentInfo info) {
-  installed_components_[name] = std::move(info);
+    const base::FilePath& path) {
+  installed_components_[name] = path;
 }
 
 void FakeCrOSComponentManager::UnregisterCompatiblePath(
@@ -180,10 +154,9 @@ void FakeCrOSComponentManager::UnregisterCompatiblePath(
 base::FilePath FakeCrOSComponentManager::GetCompatiblePath(
     const std::string& name) const {
   const auto& it = installed_components_.find(name);
-  if (it == installed_components_.end()) {
+  if (it == installed_components_.end())
     return base::FilePath();
-  }
-  return it->second.path;
+  return it->second;
 }
 
 void FakeCrOSComponentManager::SetRegisteredComponents(
@@ -199,19 +172,6 @@ bool FakeCrOSComponentManager::IsRegisteredMayBlock(const std::string& name) {
 
 void FakeCrOSComponentManager::RegisterInstalled() {
   NOTIMPLEMENTED();
-}
-
-void FakeCrOSComponentManager::GetVersion(
-    const std::string& name,
-    base::OnceCallback<void(const base::Version&)> version_callback) const {
-  const auto& component_info = component_infos_.find(name);
-  if (component_info == component_infos_.end() ||
-      !component_info->second.version.has_value()) {
-    std::move(version_callback).Run(base::Version());
-    return;
-  }
-
-  std::move(version_callback).Run(component_info->second.version.value());
 }
 
 FakeCrOSComponentManager::LoadRequest::LoadRequest(bool mount_requested,
@@ -258,16 +218,13 @@ void FakeCrOSComponentManager::FinishComponentLoad(
     registered_components_.insert(name);
   }
 
-  if (component_info.load_response != Error::NONE) {
+  if (component_info.load_response != Error::NONE)
     return;
-  }
 
   DCHECK_EQ(mount_requested, !component_info.mount_path.empty());
-  installed_components_[name] = CompatibleComponentInfo(
-      component_info.install_path, component_info.version);
-  if (mount_requested) {
+  installed_components_[name] = component_info.install_path;
+  if (mount_requested)
     mounted_components_[name] = component_info.mount_path;
-  }
 }
 
 }  // namespace component_updater

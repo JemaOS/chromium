@@ -14,10 +14,7 @@
 #include "chromeos/components/quick_answers/quick_answers_model.h"
 #include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
 #include "services/network/test/test_url_loader_factory.h"
-#include "ui/events/test/test_event.h"
-#include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/menu/menu_controller.h"
-#include "ui/views/test/button_test_api.h"
 
 namespace {
 
@@ -63,13 +60,13 @@ class QuickAnswersControllerTest : public ChromeQuickAnswersTestBase {
     // To show the quick answers view, its visibility must be set to 'pending'
     // first.
     if (set_visibility)
-      controller()->OnContextMenuShown(GetProfile());
+      controller()->SetPendingShowQuickAnswers();
 
     // Set up a companion menu before creating the QuickAnswersView.
     CreateAndShowBasicMenu();
 
-    controller()->OnTextAvailable(kDefaultAnchorBoundsInScreen, kDefaultTitle,
-                                  /*surrounding_text=*/"");
+    controller()->MaybeShowQuickAnswers(kDefaultAnchorBoundsInScreen,
+                                        kDefaultTitle, {});
   }
 
   void ShowConsentView() {
@@ -135,7 +132,7 @@ TEST_F(QuickAnswersControllerTest, ShouldNotShowWithoutSetPending) {
   // The visibility has not been set to pending, nothing should be shown.
   EXPECT_FALSE(ui_controller()->IsShowingUserConsentView());
   EXPECT_FALSE(ui_controller()->IsShowingQuickAnswersView());
-  EXPECT_EQ(controller()->GetQuickAnswersVisibility(),
+  EXPECT_EQ(controller()->GetVisibilityForTesting(),
             QuickAnswersVisibility::kClosed);
 }
 
@@ -146,10 +143,7 @@ TEST_F(QuickAnswersControllerTest,
   EXPECT_TRUE(ui_controller()->IsShowingUserConsentView());
   EXPECT_FALSE(ui_controller()->IsShowingQuickAnswersView());
 
-  // Click on the "Allow" button.
-  views::test::ButtonTestApi(
-      ui_controller()->user_consent_view()->allow_button_for_test())
-      .NotifyClick(ui::test::TestEvent());
+  controller()->OnUserConsentResult(true);
 
   // With user consent granted, the consent view should dismiss and the cached
   // quick answer query should show.
@@ -212,7 +206,7 @@ TEST_F(QuickAnswersControllerTest,
   AcceptConsent();
   ShowView();
 
-  controller()->OnAnchorBoundsChanged(BoundsWithXPosition(123));
+  controller()->UpdateQuickAnswersAnchorBounds(BoundsWithXPosition(123));
 
   // We only check the 'x' position as that is guaranteed to be identical
   // between the view and the menu.
@@ -224,8 +218,7 @@ TEST_F(QuickAnswersControllerTest,
        ShouldUpdateConsentViewBoundsWhenMenuBoundsChange) {
   ShowConsentView();
 
-  controller()->read_write_cards_ui_controller().SetContextMenuBounds(
-      BoundsWithXPosition(123));
+  controller()->UpdateQuickAnswersAnchorBounds(BoundsWithXPosition(123));
 
   // We only check the 'x' position as that is guaranteed to be identical
   // between the view and the menu.

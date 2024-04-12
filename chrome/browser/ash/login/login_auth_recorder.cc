@@ -4,15 +4,9 @@
 
 #include "chrome/browser/ash/login/login_auth_recorder.h"
 
-#include <optional>
-#include <string>
-
-#include "base/check_op.h"
+#include "ash/public/cpp/tablet_mode.h"
 #include "base/metrics/histogram_functions.h"
-#include "base/notreached.h"
-#include "base/strings/strcat.h"
 #include "components/session_manager/core/session_manager.h"
-#include "ui/display/screen.h"
 
 namespace ash {
 namespace {
@@ -20,7 +14,7 @@ namespace {
 using AuthMethod = LoginAuthRecorder::AuthMethod;
 using AuthMethodSwitchType = LoginAuthRecorder::AuthMethodSwitchType;
 
-std::optional<AuthMethodSwitchType> SwitchFromPasswordTo(AuthMethod current) {
+absl::optional<AuthMethodSwitchType> SwitchFromPasswordTo(AuthMethod current) {
   DCHECK_NE(AuthMethod::kPassword, current);
   switch (current) {
     case AuthMethod::kPin:
@@ -34,11 +28,11 @@ std::optional<AuthMethodSwitchType> SwitchFromPasswordTo(AuthMethod current) {
     case AuthMethod::kPassword:
     case AuthMethod::kNothing:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
-std::optional<AuthMethodSwitchType> SwitchFromPinTo(AuthMethod current) {
+absl::optional<AuthMethodSwitchType> SwitchFromPinTo(AuthMethod current) {
   DCHECK_NE(AuthMethod::kPin, current);
   switch (current) {
     case AuthMethod::kPassword:
@@ -51,11 +45,11 @@ std::optional<AuthMethodSwitchType> SwitchFromPinTo(AuthMethod current) {
     case AuthMethod::kChallengeResponse:
     case AuthMethod::kNothing:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
-std::optional<AuthMethodSwitchType> SwitchFromSmartlockTo(AuthMethod current) {
+absl::optional<AuthMethodSwitchType> SwitchFromSmartlockTo(AuthMethod current) {
   DCHECK_NE(AuthMethod::kSmartlock, current);
   switch (current) {
     case AuthMethod::kPassword:
@@ -68,11 +62,11 @@ std::optional<AuthMethodSwitchType> SwitchFromSmartlockTo(AuthMethod current) {
     case AuthMethod::kChallengeResponse:
     case AuthMethod::kNothing:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
-std::optional<AuthMethodSwitchType> SwitchFromFingerprintTo(
+absl::optional<AuthMethodSwitchType> SwitchFromFingerprintTo(
     AuthMethod current) {
   DCHECK_NE(AuthMethod::kFingerprint, current);
   switch (current) {
@@ -86,11 +80,11 @@ std::optional<AuthMethodSwitchType> SwitchFromFingerprintTo(
     case AuthMethod::kChallengeResponse:
     case AuthMethod::kNothing:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
-std::optional<AuthMethodSwitchType> SwitchFromNothingTo(AuthMethod current) {
+absl::optional<AuthMethodSwitchType> SwitchFromNothingTo(AuthMethod current) {
   DCHECK_NE(AuthMethod::kNothing, current);
   switch (current) {
     case AuthMethod::kPassword:
@@ -105,12 +99,12 @@ std::optional<AuthMethodSwitchType> SwitchFromNothingTo(AuthMethod current) {
       return AuthMethodSwitchType::kNothingToChallengeResponse;
     case AuthMethod::kNothing:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
-std::optional<AuthMethodSwitchType> FindSwitchType(AuthMethod previous,
-                                                   AuthMethod current) {
+absl::optional<AuthMethodSwitchType> FindSwitchType(AuthMethod previous,
+                                                    AuthMethod current) {
   DCHECK_NE(previous, current);
   switch (previous) {
     case AuthMethod::kPassword:
@@ -125,7 +119,7 @@ std::optional<AuthMethodSwitchType> FindSwitchType(AuthMethod previous,
       return SwitchFromNothingTo(current);
     case AuthMethod::kChallengeResponse:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
@@ -158,20 +152,20 @@ void LoginAuthRecorder::RecordAuthMethod(AuthMethod method) {
       is_locked ? "Ash.Login.Lock.AuthMethod." : "Ash.Login.Login.AuthMethod.";
 
   // Record usage of the authentication method in login/lock screen.
-  base::UmaHistogramEnumeration(
-      base::StrCat(
-          {prefix, "Used.",
-           (display::Screen::GetScreen()->InTabletMode() ? "TabletMode"
-                                                         : "ClamShellMode")}),
-      method);
+  const bool is_tablet_mode = TabletMode::Get()->InTabletMode();
+  std::string used_metric_name;
+  if (is_tablet_mode) {
+    base::UmaHistogramEnumeration(prefix + "Used.TabletMode", method);
+  } else {
+    base::UmaHistogramEnumeration(prefix + "Used.ClamShellMode", method);
+  }
 
   if (last_auth_method_ != method) {
     // Record switching between unlock methods.
-    const std::optional<AuthMethodSwitchType> switch_type =
+    const absl::optional<AuthMethodSwitchType> switch_type =
         FindSwitchType(last_auth_method_, method);
     if (switch_type) {
-      base::UmaHistogramEnumeration(base::StrCat({prefix, "Switched"}),
-                                    *switch_type);
+      base::UmaHistogramEnumeration(prefix + "Switched", *switch_type);
     }
 
     last_auth_method_ = method;

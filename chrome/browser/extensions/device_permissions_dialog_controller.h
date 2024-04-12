@@ -5,7 +5,8 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_DEVICE_PERMISSIONS_DIALOG_CONTROLLER_H_
 #define CHROME_BROWSER_EXTENSIONS_DEVICE_PERMISSIONS_DIALOG_CONTROLLER_H_
 
-#include "base/containers/flat_map.h"
+#include <unordered_map>
+
 #include "base/memory/ref_counted.h"
 #include "components/permissions/chooser_controller.h"
 #include "extensions/browser/api/device_permissions_prompt.h"
@@ -52,7 +53,7 @@ class DevicePermissionsDialogController
  private:
   scoped_refptr<extensions::DevicePermissionsPrompt::Prompt> prompt_;
   // Maps from device name to number of devices.
-  base::flat_map<std::u16string, int> device_name_map_;
+  std::unordered_map<std::u16string, int> device_name_map_;
 };
 
 #endif  // CHROME_BROWSER_EXTENSIONS_DEVICE_PERMISSIONS_DIALOG_CONTROLLER_H_

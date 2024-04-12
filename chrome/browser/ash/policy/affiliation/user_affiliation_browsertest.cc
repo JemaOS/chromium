@@ -20,9 +20,8 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/test/base/mixin_based_in_process_browser_test.h"
 #include "chromeos/ash/components/cryptohome/cryptohome_parameters.h"
+#include "chromeos/ash/components/dbus/authpolicy/fake_authpolicy_client.h"
 #include "chromeos/ash/components/dbus/dbus_thread_manager.h"
-#include "chromeos/ash/components/dbus/session_manager/fake_session_manager_client.h"
-#include "chromeos/ash/components/dbus/session_manager/session_manager_client.h"
 #include "chromeos/ash/components/dbus/upstart/upstart_client.h"
 #include "chromeos/ash/components/dbus/userdataauth/userdataauth_client.h"
 #include "chromeos/ash/components/install_attributes/install_attributes.h"
@@ -39,22 +38,31 @@
 #include "net/cert/nss_cert_database.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
+namespace content {
+class ResourceContext;
+}
+
 namespace policy {
 
 namespace {
 
 struct Params {
-  explicit Params(bool affiliated) : affiliated(affiliated) {}
+  Params(bool affiliated, bool active_directory)
+      : affiliated(affiliated), active_directory(active_directory) {}
 
   // Whether the user is expected to be affiliated.
   bool affiliated;
+
+  // Whether the user account is an Active Directory account.
+  bool active_directory;
 };
 
 // Must be a valid test name (no spaces etc.). Makes the test show up as e.g.
-// AffiliationCheck/U.A.B.T.Affiliated/NotAffiliated
+// AffiliationCheck/U.A.B.T.Affiliated/NotAffiliated_NotActiveDirectory
 std::string PrintParam(testing::TestParamInfo<Params> param_info) {
-  return base::StringPrintf("%sAffiliated",
-                            param_info.param.affiliated ? "" : "Not");
+  return base::StringPrintf("%sAffiliated_%sActiveDirectory",
+                            param_info.param.affiliated ? "" : "Not",
+                            param_info.param.active_directory ? "" : "Not");
 }
 
 void CheckIsSystemSlotAvailableOnIOThreadWithCertDb(
@@ -108,6 +116,7 @@ class UserAffiliationBrowserTest
  public:
   UserAffiliationBrowserTest() {
     set_exit_when_last_browser_closes(false);
+    affiliation_mixin_.SetIsForActiveDirectory(GetParam().active_directory);
     affiliation_mixin_.set_affiliated(GetParam().affiliated);
   }
 
@@ -141,6 +150,11 @@ class UserAffiliationBrowserTest
     // shutdown in ChromeBrowserMain.
     ash::SessionManagerClient::InitializeFakeInMemory();
     ash::UpstartClient::InitializeFake();
+    if (GetParam().active_directory) {
+      ash::AuthPolicyClient::InitializeFake();
+      ash::FakeAuthPolicyClient::Get()->DisableOperationDelayForTesting();
+    }
+
     // Set retry delay to prevent timeouts.
     DeviceManagementService::SetRetryDelayForTesting(0);
   }
@@ -231,7 +245,10 @@ class UserAffiliationBrowserTest
 
   ash::DeviceStateMixin device_state_{
       &mixin_host_,
-      ash::DeviceStateMixin::State::OOBE_COMPLETED_CLOUD_ENROLLED};
+      GetParam().active_directory
+          ? ash::DeviceStateMixin::State::
+                OOBE_COMPLETED_ACTIVE_DIRECTORY_ENROLLED
+          : ash::DeviceStateMixin::State::OOBE_COMPLETED_CLOUD_ENROLLED};
 };
 
 IN_PROC_BROWSER_TEST_P(UserAffiliationBrowserTest, PRE_PRE_TestAffiliation) {
@@ -257,7 +274,14 @@ IN_PROC_BROWSER_TEST_P(UserAffiliationBrowserTest, TestAffiliation) {
 // TODO(https://crbug.com/946024): PRE_ test is flakily timing out.
 INSTANTIATE_TEST_SUITE_P(DISABLED_AffiliationCheck,
                          UserAffiliationBrowserTest,
-                         ::testing::Values(Params(true), Params(false)),
-                         PrintParam);
+                         //         affiliated            active_directory
+                         //              |                         |
+                         //              +----------+      ______  +---------+
+                         //                         |     /      \______     |
+                         ::testing::Values(Params(true, true),     //   \   /
+                                           Params(false, true),    //    \ /
+                                           Params(true, false),    //     X
+                                           Params(false, false)),  //    / \<--!
+                         PrintParam);                              //    \_/
 
 }  // namespace policy

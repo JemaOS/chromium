@@ -10,6 +10,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
+#include "chrome/browser/sharing/fake_device_info.h"
 #include "chrome/browser/sharing/features.h"
 #include "chrome/browser/sharing/mock_sharing_service.h"
 #include "chrome/browser/sharing/sharing_constants.h"
@@ -51,7 +52,7 @@ class ClickToCallUiControllerTest : public testing::Test {
         }));
     ClickToCallUiController::ShowDialog(
         web_contents_.get(),
-        /*initiating_origin=*/std::nullopt,
+        /*initiating_origin=*/absl::nullopt,
         /*initiator_document=*/content::WeakDocumentPtr(),
         GURL(base::StrCat({"tel:", kPhoneNumber})), false, u"TestApp");
     controller_ = ClickToCallUiController::GetOrCreateFromWebContents(
@@ -81,21 +82,18 @@ MATCHER_P(ProtoEquals, message, "") {
 
 // Check the call to sharing service when a device is chosen.
 TEST_F(ClickToCallUiControllerTest, OnDeviceChosen) {
-  auto device_info = SharingTargetDeviceInfo(
-      kReceiverGuid, kReceiverName, SharingDevicePlatform::kUnknown,
-      /*pulse_interval=*/base::TimeDelta(),
-      syncer::DeviceInfo::FormFactor::kUnknown,
-      /*last_updated_timestamp=*/base::Time());
+  std::unique_ptr<syncer::DeviceInfo> device_info =
+      CreateFakeDeviceInfo(kReceiverGuid, kReceiverName);
 
   chrome_browser_sharing::SharingMessage sharing_message;
   sharing_message.mutable_click_to_call_message()->set_phone_number(
       kPhoneNumber);
   EXPECT_CALL(
       *service(),
-      SendMessageToDevice(
-          Property(&SharingTargetDeviceInfo::guid, kReceiverGuid),
-          Eq(kSharingMessageTTL), ProtoEquals(sharing_message), testing::_));
-  controller_->OnDeviceChosen(device_info);
+      SendMessageToDevice(Property(&syncer::DeviceInfo::guid, kReceiverGuid),
+                          Eq(kSharingMessageTTL), ProtoEquals(sharing_message),
+                          testing::_));
+  controller_->OnDeviceChosen(*device_info.get());
 }
 
 // Check the call to sharing service to get all synced devices.

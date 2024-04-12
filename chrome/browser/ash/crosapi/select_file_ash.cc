@@ -75,7 +75,7 @@ class SelectFileDialogHolder : public ui::SelectFileDialog::Listener {
     owner.window = owner_window;
     owner.lacros_window_id = options->owning_shell_window_id;
     if (options->caller.has_value()) {
-      owner.dialog_caller.emplace(options->caller.value());
+      owner.dialog_caller.emplace(options->caller.value().spec());
     }
 
     int file_type_index = 0;
@@ -109,20 +109,32 @@ class SelectFileDialogHolder : public ui::SelectFileDialog::Listener {
 
   SelectFileDialogHolder(const SelectFileDialogHolder&) = delete;
   SelectFileDialogHolder& operator=(const SelectFileDialogHolder&) = delete;
-  ~SelectFileDialogHolder() override {
-    select_file_dialog_->ListenerDestroyed();
-  }
+  ~SelectFileDialogHolder() override = default;
 
  private:
   // ui::SelectFileDialog::Listener:
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int file_type_index,
                     void* params) override {
+    FileSelectedWithExtraInfo(ui::SelectedFileInfo(path, path), file_type_index,
+                              params);
+  }
+
+  void FileSelectedWithExtraInfo(const ui::SelectedFileInfo& file,
+                                 int file_type_index,
+                                 void* params) override {
     OnSelected({file}, file_type_index);
   }
 
-  void MultiFilesSelected(const std::vector<ui::SelectedFileInfo>& files,
+  void MultiFilesSelected(const std::vector<base::FilePath>& files,
                           void* params) override {
+    MultiFilesSelectedWithExtraInfo(
+        ui::FilePathListToSelectedFileInfoList(files), params);
+  }
+
+  void MultiFilesSelectedWithExtraInfo(
+      const std::vector<ui::SelectedFileInfo>& files,
+      void* params) override {
     OnSelected(files, /*file_type_index=*/0);
   }
 

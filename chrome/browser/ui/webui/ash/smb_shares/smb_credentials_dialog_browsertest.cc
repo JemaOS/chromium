@@ -35,7 +35,8 @@ IN_PROC_BROWSER_TEST_F(SmbCredentialsDialogTest, CloseDialog) {
   ASSERT_TRUE(content::WaitForLoadStop(dialog_contents));
   EXPECT_EQ(dialog_contents->GetLastCommittedURL().host(),
             chrome::kChromeUISmbCredentialsHost);
-  ASSERT_TRUE(content::ExecJs(dialog_contents, "chrome.send('dialogClose');"));
+  ASSERT_TRUE(
+      content::ExecuteScript(dialog_contents, "chrome.send('dialogClose');"));
 
   run_loop.Run();
 }
@@ -63,7 +64,8 @@ IN_PROC_BROWSER_TEST_F(SmbCredentialsDialogTest, ShowSameMountId) {
   ASSERT_TRUE(content::WaitForLoadStop(dialog_contents));
   EXPECT_EQ(dialog_contents->GetLastCommittedURL().host(),
             chrome::kChromeUISmbCredentialsHost);
-  ASSERT_TRUE(content::ExecJs(dialog_contents, "chrome.send('dialogClose');"));
+  ASSERT_TRUE(
+      content::ExecuteScript(dialog_contents, "chrome.send('dialogClose');"));
 
   run_loop.Run();
 }
@@ -87,8 +89,8 @@ IN_PROC_BROWSER_TEST_F(SmbCredentialsDialogTest, SubmitCredentials) {
   ASSERT_TRUE(content::WaitForLoadStop(dialog_contents));
   EXPECT_EQ(dialog_contents->GetLastCommittedURL().host(),
             chrome::kChromeUISmbCredentialsHost);
-  ASSERT_TRUE(content::ExecJs(dialog_contents,
-                              R"xxx(
+  ASSERT_TRUE(content::ExecuteScript(dialog_contents,
+                                     R"xxx(
 const dialog = document.querySelector('smb-credentials-dialog');
 dialog.username_ = 'my-username';
 dialog.password_ = 'my-password';

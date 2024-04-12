@@ -45,7 +45,7 @@ suite('MultiDeviceSetup', () => {
 
   setup(async () => {
     browserProxy = new TestMultideviceSetupBrowserProxy();
-    BrowserProxyImpl.setInstance(browserProxy);
+    BrowserProxyImpl.instance_ = browserProxy;
 
     setupSucceededPageElement = document.createElement('setup-succeeded-page');
     document.body.appendChild(setupSucceededPageElement);

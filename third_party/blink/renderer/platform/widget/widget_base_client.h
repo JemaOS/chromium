@@ -192,9 +192,9 @@ class WidgetBaseClient {
   virtual gfx::Rect ViewportVisibleRect() = 0;
 
   // The screen orientation override.
-  virtual std::optional<display::mojom::blink::ScreenOrientation>
+  virtual absl::optional<display::mojom::blink::ScreenOrientation>
   ScreenOrientationOverride() {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Return the overridden device scale factor for testing.

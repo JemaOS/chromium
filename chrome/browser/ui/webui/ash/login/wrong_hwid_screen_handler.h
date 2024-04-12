@@ -11,7 +11,7 @@
 namespace ash {
 
 // Interface between wrong HWID screen and its representation.
-class WrongHWIDScreenView {
+class WrongHWIDScreenView : public base::SupportsWeakPtr<WrongHWIDScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{
       "wrong-hwid", "WrongHWIDMessageScreen"};
@@ -19,12 +19,11 @@ class WrongHWIDScreenView {
   virtual ~WrongHWIDScreenView() = default;
 
   virtual void Show() = 0;
-  virtual base::WeakPtr<WrongHWIDScreenView> AsWeakPtr() = 0;
 };
 
 // WebUI implementation of WrongHWIDScreenActor.
-class WrongHWIDScreenHandler final : public WrongHWIDScreenView,
-                                     public BaseScreenHandler {
+class WrongHWIDScreenHandler : public WrongHWIDScreenView,
+                               public BaseScreenHandler {
  public:
   using TView = WrongHWIDScreenView;
 
@@ -38,13 +37,10 @@ class WrongHWIDScreenHandler final : public WrongHWIDScreenView,
  private:
   // WrongHWIDScreenActor implementation:
   void Show() override;
-  base::WeakPtr<WrongHWIDScreenView> AsWeakPtr() override;
 
   // BaseScreenHandler implementation:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
-  base::WeakPtrFactory<WrongHWIDScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

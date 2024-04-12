@@ -24,6 +24,35 @@
 namespace ash {
 namespace android_sms {
 
+namespace {
+
+bool ShouldStartAndroidSmsService(Profile* profile) {
+  if (base::FeatureList::IsEnabled(
+          features::kDisableMessagesCrossDeviceIntegration)) {
+    return false;
+  }
+
+  const bool multidevice_feature_allowed = multidevice_setup::IsFeatureAllowed(
+      multidevice_setup::mojom::Feature::kMessages, profile->GetPrefs());
+
+  const bool has_user_for_profile =
+      !!ProfileHelper::Get()->GetUserByProfile(profile);
+
+  return web_app::AreWebAppsEnabled(profile) && !profile->IsGuestSession() &&
+         multidevice_feature_allowed && has_user_for_profile;
+}
+
+content::BrowserContext* GetBrowserContextForAndroidSms(
+    content::BrowserContext* context) {
+  // Use original profile to create only one KeyedService instance.
+  Profile* original_profile =
+      Profile::FromBrowserContext(context)->GetOriginalProfile();
+  return ShouldStartAndroidSmsService(original_profile) ? original_profile
+                                                        : nullptr;
+}
+
+}  // namespace
+
 // static
 AndroidSmsServiceFactory* AndroidSmsServiceFactory::GetInstance() {
   static base::NoDestructor<AndroidSmsServiceFactory> factory_instance;
@@ -51,12 +80,11 @@ AndroidSmsServiceFactory::AndroidSmsServiceFactory()
 
 AndroidSmsServiceFactory::~AndroidSmsServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-AndroidSmsServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AndroidSmsServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
-  return std::make_unique<AndroidSmsService>(
+  return new AndroidSmsService(
       profile, HostContentSettingsMapFactory::GetForProfile(profile),
       multidevice_setup::MultiDeviceSetupClientFactory::GetForProfile(profile),
       web_app::WebAppProvider::GetDeprecated(profile),
@@ -65,8 +93,7 @@ AndroidSmsServiceFactory::BuildServiceInstanceForBrowserContext(
 
 content::BrowserContext* AndroidSmsServiceFactory::GetBrowserContextToUse(
     content::BrowserContext* context) const {
-  // Android Messages is deprecated and no longer supported.
-  return nullptr;
+  return GetBrowserContextForAndroidSms(context);
 }
 
 bool AndroidSmsServiceFactory::ServiceIsCreatedWithBrowserContext() const {
@@ -75,6 +102,11 @@ bool AndroidSmsServiceFactory::ServiceIsCreatedWithBrowserContext() const {
 
 bool AndroidSmsServiceFactory::ServiceIsNULLWhileTesting() const {
   return true;
+}
+
+void AndroidSmsServiceFactory::RegisterProfilePrefs(
+    user_prefs::PrefRegistrySyncable* registry) {
+  AndroidSmsAppManagerImpl::RegisterProfilePrefs(registry);
 }
 
 }  // namespace android_sms

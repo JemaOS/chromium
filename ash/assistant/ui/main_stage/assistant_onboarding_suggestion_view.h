@@ -27,9 +27,9 @@ class AssistantViewDelegate;
 
 class COMPONENT_EXPORT(ASSISTANT_UI) AssistantOnboardingSuggestionView
     : public views::Button {
-  METADATA_HEADER(AssistantOnboardingSuggestionView, views::Button)
-
  public:
+  METADATA_HEADER(AssistantOnboardingSuggestionView);
+
   AssistantOnboardingSuggestionView(
       AssistantViewDelegate* delegate,
       const assistant::AssistantSuggestion& suggestion,
@@ -60,16 +60,17 @@ class COMPONENT_EXPORT(ASSISTANT_UI) AssistantOnboardingSuggestionView
 
   void OnButtonPressed();
 
-  const raw_ptr<AssistantViewDelegate>
+  const raw_ptr<AssistantViewDelegate, ExperimentalAsh>
       delegate_;  // Owned by AssistantController.
   const base::UnguessableToken suggestion_id_;
   const int index_;
   GURL url_;
 
   // Owned by view hierarchy.
-  raw_ptr<views::ImageView> icon_ = nullptr;
-  raw_ptr<views::Label> label_ = nullptr;
-  raw_ptr<views::InkDropContainerView> ink_drop_container_ = nullptr;
+  raw_ptr<views::ImageView, ExperimentalAsh> icon_ = nullptr;
+  raw_ptr<views::Label, ExperimentalAsh> label_ = nullptr;
+  raw_ptr<views::InkDropContainerView, ExperimentalAsh> ink_drop_container_ =
+      nullptr;
 
   base::WeakPtrFactory<AssistantOnboardingSuggestionView> weak_factory_{this};
 };

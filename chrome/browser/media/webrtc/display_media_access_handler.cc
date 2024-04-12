@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/strings/utf_string_conversions.h"
@@ -27,6 +28,8 @@
 #include "components/url_formatter/elide_url.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/desktop_media_id.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
@@ -47,7 +50,7 @@ namespace {
 
 constexpr UrlIdentity::TypeSet allowed_types = {
     UrlIdentity::Type::kDefault, UrlIdentity::Type::kIsolatedWebApp,
-    UrlIdentity::Type::kFile, UrlIdentity::Type::kChromeExtension};
+    UrlIdentity::Type::kFile};
 
 constexpr UrlIdentity::FormatOptions options = {
     .default_options = {
@@ -97,7 +100,7 @@ bool DisplayMediaAccessHandler::SupportsStreamType(
 
 bool DisplayMediaAccessHandler::CheckMediaAccessPermission(
     content::RenderFrameHost* render_frame_host,
-    const url::Origin& security_origin,
+    const GURL& security_origin,
     blink::mojom::MediaStreamType type,
     const extensions::Extension* extension) {
   return false;
@@ -154,8 +157,7 @@ void DisplayMediaAccessHandler::HandleRequest(
 #endif  // BUILDFLAG(IS_MAC)
 
   if (request.request_type == blink::MEDIA_DEVICE_UPDATE) {
-    CHECK(!request.requested_video_device_ids.empty());
-    CHECK(!request.requested_video_device_ids.front().empty());
+    DCHECK(!request.requested_video_device_id.empty());
     ProcessChangeSourceRequest(web_contents, request, std::move(callback));
     return;
   }
@@ -206,8 +208,7 @@ void DisplayMediaAccessHandler::HandleRequest(
     }
   }
 
-  std::unique_ptr<DesktopMediaPicker> picker =
-      picker_factory_->CreatePicker(&request);
+  std::unique_ptr<DesktopMediaPicker> picker = picker_factory_->CreatePicker();
   if (!picker) {
     std::move(callback).Run(
         blink::mojom::StreamDevicesSet(),
@@ -312,10 +313,8 @@ void DisplayMediaAccessHandler::ProcessQueuedPickerRequest(
   DCHECK(web_contents);
 
   std::vector<DesktopMediaList::Type> media_types{
-      DesktopMediaList::Type::kWebContents, DesktopMediaList::Type::kWindow};
-  if (!pending_request.request.exclude_monitor_type_surfaces) {
-    media_types.push_back(DesktopMediaList::Type::kScreen);
-  }
+      DesktopMediaList::Type::kWebContents, DesktopMediaList::Type::kWindow,
+      DesktopMediaList::Type::kScreen};
   if (pending_request.request.video_type ==
       blink::mojom::MediaStreamType::DISPLAY_VIDEO_CAPTURE_THIS_TAB) {
     media_types.insert(media_types.begin(),
@@ -341,8 +340,7 @@ void DisplayMediaAccessHandler::ProcessQueuedPickerRequest(
   DesktopMediaPicker::DoneCallback done_callback =
       base::BindOnce(&DisplayMediaAccessHandler::OnDisplaySurfaceSelected,
                      base::Unretained(this), web_contents->GetWeakPtr());
-  DesktopMediaPicker::Params picker_params(
-      DesktopMediaPicker::Params::RequestSource::kGetDisplayMedia);
+  DesktopMediaPicker::Params picker_params;
   picker_params.web_contents = web_contents;
   gfx::NativeWindow parent_window = web_contents->GetTopLevelNativeWindow();
   picker_params.context = parent_window;
@@ -360,6 +358,7 @@ void DisplayMediaAccessHandler::ProcessQueuedPickerRequest(
       (capture_level != AllowedScreenCaptureLevel::kUnrestricted);
   picker_params.preferred_display_surface =
       pending_request.request.preferred_display_surface;
+  picker_params.is_get_display_media_call = true;
   pending_request.picker->Show(picker_params, std::move(source_lists),
                                std::move(done_callback));
 }
@@ -368,11 +367,11 @@ void DisplayMediaAccessHandler::ProcessQueuedChangeSourceRequest(
     const content::MediaStreamRequest& request,
     content::WebContents* web_contents) {
   DCHECK(web_contents);
-  DCHECK(!request.requested_video_device_ids.empty());
+  DCHECK(!request.requested_video_device_id.empty());
 
   content::WebContentsMediaCaptureId web_contents_id;
   if (!content::WebContentsMediaCaptureId::Parse(
-          request.requested_video_device_ids.front(), &web_contents_id)) {
+          request.requested_video_device_id, &web_contents_id)) {
     RejectRequest(web_contents,
                   blink::mojom::MediaStreamRequestResult::INVALID_STATE);
     return;

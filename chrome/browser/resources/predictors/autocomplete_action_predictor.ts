@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {sendWithPromise} from 'chrome://resources/js/cr.js';
 
 interface AutocompleteActionPredictorDb {
@@ -80,18 +80,10 @@ function updateAutocompleteActionPredictorDbView(
 
     if (!filter.checked || entry.confidence > 0) {
       const row = document.createElement('tr');
-
-      // These values should be synchronized with the values in
-      // chrome/browser/predictors/autocomplete_action_predictor.cc.
-      // TODO(crbug.com/326277753): Avoid hard-coding the values here.
-      let cssClass = 'action-none';
-      if (entry.confidence >= 0.3) {
-        cssClass = 'action-preconnect';
-      }
-      if (entry.confidence >= 0.5) {
-        cssClass = 'action-prerender';
-      }
-      row.classList.add(cssClass);
+      row.className =
+          (entry.confidence > 0.8 ?
+               'action-prerender' :
+               (entry.confidence > 0.5 ? 'action-preconnect' : 'action-none'));
 
       row.appendChild(document.createElement('td')).textContent =
           entry.user_text;

@@ -6,10 +6,9 @@ package org.chromium.chrome.browser.autofill.settings;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-
-import org.chromium.components.autofill.payments.LegalMessageLine;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
+import org.chromium.chrome.browser.autofill.LegalMessageLine;
 import org.chromium.url.GURL;
 
 import java.util.LinkedList;
@@ -19,8 +18,10 @@ import java.util.LinkedList;
  */
 @JNINamespace("autofill")
 public class VirtualCardEnrollmentFields {
-    @VisibleForTesting final LinkedList<LegalMessageLine> mGoogleLegalMessages = new LinkedList<>();
-    @VisibleForTesting final LinkedList<LegalMessageLine> mIssuerLegalMessages = new LinkedList<>();
+    @VisibleForTesting
+    final LinkedList<LegalMessageLine> mGoogleLegalMessages = new LinkedList<>();
+    @VisibleForTesting
+    final LinkedList<LegalMessageLine> mIssuerLegalMessages = new LinkedList<>();
     private final String mCardName;
     private final String mCardNumber;
     private final int mNetworkIconId;

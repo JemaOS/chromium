@@ -6,17 +6,13 @@
 #define CHROME_BROWSER_ASH_CROSAPI_BROWSER_LOADER_H_
 
 #include <memory>
-#include <optional>
-#include <vector>
 
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/sequence_checker.h"
 #include "base/time/time.h"
-#include "base/version.h"
 #include "chrome/browser/ash/crosapi/browser_util.h"
 
 namespace component_updater {
@@ -26,18 +22,19 @@ class CrOSComponentManager;
 namespace crosapi {
 
 class LacrosSelectionLoader;
-class LacrosSelectionLoaderFactory;
 using browser_util::LacrosSelection;
 
 // Manages download of the lacros-chrome binary.
 // This class is a part of ash-chrome.
 class BrowserLoader {
  public:
+  // Constructor for production.
   explicit BrowserLoader(
       scoped_refptr<component_updater::CrOSComponentManager> manager);
-
   // Constructor for testing.
-  explicit BrowserLoader(std::unique_ptr<LacrosSelectionLoaderFactory> factory);
+  explicit BrowserLoader(
+      std::unique_ptr<LacrosSelectionLoader> rootfs_lacros_loader,
+      std::unique_ptr<LacrosSelectionLoader> stateful_lacros_loader);
 
   BrowserLoader(const BrowserLoader&) = delete;
   BrowserLoader& operator=(const BrowserLoader&) = delete;
@@ -52,64 +49,16 @@ class BrowserLoader {
   // a newer lacros-chrome version and update checking can be skipped.
   static bool WillLoadStatefulComponentBuilds();
 
-  struct LacrosSelectionVersion {
-    LacrosSelectionVersion(LacrosSelection selection, base::Version version);
-
-    // LacrosSelection::kRootfs or kStateful should be set here, not
-    // kDeployedLocally.
-    LacrosSelection selection;
-
-    base::Version version;
-  };
-
-  // Indicates how lacros is selected.
-  enum class LacrosSelectionSource {
-    kUnknown,
-
-    // Selected by comparing the version to choose newer one or either of the
-    // lacros selection is not available.
-    kCompatibilityCheck,
-
-    // Forced by the selection policy or about:flags. See
-    // browser_util::DetermineLacrosSelection for the detailed condition when
-    // the lacros selection is forced.
-    kForced,
-
-    // Forced by registered lacros-chrome path.
-    kDeployedPath,
-  };
-
   // Starts to load lacros-chrome binary or the rootfs lacros-chrome binary.
-  // `callback` is called on completion with the path to the lacros-chrome on
+  // |callback| is called on completion with the path to the lacros-chrome on
   // success, or an empty filepath on failure, and the loaded lacros selection
   // which is either 'rootfs' or 'stateful'.
-  //
-  // If Load is called during Load, the previous load requests are discarded
-  // and immediately begin loading. LoadCompletionCallback for the previous
-  // request will NOT be called in this scenario.
-  // TODO(elkurin): We should run Unload for previous LacroSelectionLoader.
-  //
-  // Load should NOT be called once Unlaod is requested. Note that per-
-  // LacrosSelectionLoader unload that is requested inside BrowserManager class
-  // may run before or while calling Load.
-  // If Load is called during per-loader unload, Load request will be processed
-  // after all ongoing per-loader unload requests complete that are at most 2.
-  // Currently, this happens only when selecting stateful lacros-chrome and
-  // unloading rootfs.
   using LoadCompletionCallback = base::OnceCallback<
       void(const base::FilePath&, LacrosSelection, base::Version)>;
   virtual void Load(LoadCompletionCallback callback);
 
   // Starts to unload lacros-chrome binary.
   // Note that this triggers to remove the user directory for lacros-chrome.
-  // Once Unload is called, BrowserLoader should NOT accept Load requests.
-  //
-  // If Unload is called during Load, stops loading procedure on main thread and
-  // requests LacrosSelectionLoaders to unload. Each loader will start unloading
-  // after the current task completed.
-  //
-  // If Unload is called during Unload, no need to unload again so the
-  // coming unload request will be ignored.
   virtual void Unload();
 
  private:
@@ -125,8 +74,6 @@ class BrowserLoader {
                            OnLoadVersionSelectionRootfsIsNewer);
   FRIEND_TEST_ALL_PREFIXES(BrowserLoaderTest,
                            OnLoadVersionSelectionRootfsIsOlder);
-  FRIEND_TEST_ALL_PREFIXES(BrowserLoaderTest,
-                           OnLoadVersionSelectionSameVersions);
   FRIEND_TEST_ALL_PREFIXES(BrowserLoaderTest, OnLoadSelectionPolicyIsRootfs);
   FRIEND_TEST_ALL_PREFIXES(
       BrowserLoaderTest,
@@ -134,34 +81,25 @@ class BrowserLoader {
   FRIEND_TEST_ALL_PREFIXES(
       BrowserLoaderTest,
       OnLoadSelectionPolicyIsUserChoiceAndCommandLineIsStateful);
-  FRIEND_TEST_ALL_PREFIXES(BrowserLoaderTest,
-                           OnLoadLacrosBinarySpecifiedBySwitch);
-  FRIEND_TEST_ALL_PREFIXES(BrowserLoaderTest,
-                           OnLoadLacrosDirectorySpecifiedBySwitch);
-  FRIEND_TEST_ALL_PREFIXES(BrowserLoaderTest, LoadWhileUnloading);
+  FRIEND_TEST_ALL_PREFIXES(BrowserLoaderTest, OnLoadLacrosSpecifiedBySwitch);
 
-  // Starts loading now/
-  void LoadNow(LoadCompletionCallback callback);
-
-  // `source` indicates why rootfs/stateful is selected. `source` is only used
-  // for logging.
+  // `load_stateful_lacros` specifies whether we should start the installation
+  // of stateful lacros in the background.
   void SelectRootfsLacros(LoadCompletionCallback callback,
-                          LacrosSelectionSource source);
-  void SelectStatefulLacros(LoadCompletionCallback callback,
-                            LacrosSelectionSource source);
+                          bool load_stateful_lacros = false);
+  void SelectStatefulLacros(LoadCompletionCallback callback);
 
-  // Called on GetVersion for each rootfs and stateful lacros loader.
-  void OnGetVersion(
-      LacrosSelection selection,
-      base::OnceCallback<void(LacrosSelectionVersion)> barrier_callback,
-      const base::Version& version);
+  // Called when stateful lacros version is calculated.
+  // TODO(crbug.com/1429138): Make it pararell to load stateful and rootfs
+  // lacros.
+  void OnLoadStatefulLacros(LoadCompletionCallback callback,
+                            base::Version stateful_lacros_version);
 
   // Called to determine which lacros to load based on version (rootfs vs
   // stateful).
-  // `versions` consists of 2 elements, one for rootfs lacros, one for stateful
-  // lacros. The order is not specified.
-  void OnLoadVersions(LoadCompletionCallback callback,
-                      std::vector<LacrosSelectionVersion> versions);
+  void OnLoadVersionSelection(LoadCompletionCallback callback,
+                              base::Version stateful_lacros_version,
+                              base::Version rootfs_lacros_version);
 
   // Called on the completion of loading.
   void OnLoadComplete(LoadCompletionCallback callback,
@@ -172,34 +110,17 @@ class BrowserLoader {
                             const base::FilePath& path,
                             LacrosSelection selection,
                             base::Version version,
-                            const base::FilePath& lacros_binary);
+                            bool lacros_binary_exists);
 
-  // Called on unload completed.
-  void OnUnloadCompleted(LacrosSelection selection);
-
-  // Loader for rootfs lacros and stateful lacros. Loader objects are
-  // constructed on start loading and reset on unload completion or on reload.
+  // Loader for rootfs lacros and stateful lacros.
   std::unique_ptr<LacrosSelectionLoader> rootfs_lacros_loader_;
   std::unique_ptr<LacrosSelectionLoader> stateful_lacros_loader_;
-
-  std::unique_ptr<LacrosSelectionLoaderFactory> factory_;
 
   // Time when the lacros component was loaded.
   base::TimeTicks lacros_start_load_time_;
 
-  // Called when Unload is completed for both rootfs and stateful lacros.
-  base::OnceClosure callback_on_unload_completion_;
-
-  // Set to true if BrowserLoader::Unload is requested.
-  bool is_unload_requested_ = false;
-
-  // Used for DCHECKs to ensure method calls executed in the correct thread.
-  SEQUENCE_CHECKER(sequence_checker_);
-
   base::WeakPtrFactory<BrowserLoader> weak_factory_{this};
 };
-
-std::ostream& operator<<(std::ostream&, BrowserLoader::LacrosSelectionSource);
 
 }  // namespace crosapi
 

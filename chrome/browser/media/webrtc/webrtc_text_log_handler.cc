@@ -7,7 +7,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -15,7 +14,6 @@
 #include "base/cpu.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
-#include "base/i18n/time_formatting.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
 #include "base/strings/strcat.h"
@@ -76,11 +74,14 @@ std::string Format(const std::string& message,
                    base::Time start_time) {
   int32_t interval_ms =
       static_cast<int32_t>((timestamp - start_time).InMilliseconds());
-  // Log start time (current time).
-  const std::string now =
-      base::UnlocalizedTimeFormatWithPattern(base::Time::Now(), "HH:mm:ss.SSS");
-  return base::StringPrintf("[%03d:%03d, %s] %s", interval_ms / 1000,
-                            interval_ms % 1000, now.c_str(), message.c_str());
+  // Log start time (current time). We don't use base/i18n/time_formatting.h
+  // here because we don't want the format of the current locale.
+  base::Time::Exploded now = {0};
+  base::Time::Now().LocalExplode(&now);
+  return base::StringPrintf("[%03d:%03d, %02d:%02d:%02d.%03d] %s",
+                            interval_ms / 1000, interval_ms % 1000, now.hour,
+                            now.minute, now.second, now.millisecond,
+                            message.c_str());
 }
 
 std::string FormatMetaDataAsLogMessage(const WebRtcLogMetaDataMap& meta_data) {
@@ -188,7 +189,8 @@ void WebRtcTextLogHandler::SetMetaData(
   FireGenericDoneCallback(std::move(callback), true, "");
 }
 
-bool WebRtcTextLogHandler::StartLogging(GenericDoneCallback callback) {
+bool WebRtcTextLogHandler::StartLogging(WebRtcLogUploader* log_uploader,
+                                        GenericDoneCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(!callback.is_null());
 
@@ -204,7 +206,6 @@ bool WebRtcTextLogHandler::StartLogging(GenericDoneCallback callback) {
     return false;
   }
 
-  WebRtcLogUploader* log_uploader = WebRtcLogUploader::GetInstance();
   if (!log_uploader->ApplyForStartLogging()) {
     FireGenericDoneCallback(std::move(callback), false,
                             "Cannot start, maybe the maximum number of "
@@ -400,7 +401,8 @@ void WebRtcTextLogHandler::FireGenericDoneCallback(
       case LoggingState::STOPPED:
         return "stopped";
     }
-    NOTREACHED_NORETURN();
+    NOTREACHED();
+    return "";
   };
 
   std::string error_message_with_state =
@@ -419,7 +421,7 @@ void WebRtcTextLogHandler::SetWebAppId(int web_app_id) {
 
 void WebRtcTextLogHandler::OnGetNetworkInterfaceList(
     GenericDoneCallback callback,
-    const std::optional<net::NetworkInterfaceList>& networks) {
+    const absl::optional<net::NetworkInterfaceList>& networks) {
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
   // Hop to a background thread to get the distro string, which can block.
   base::ThreadPool::PostTaskAndReplyWithResult(
@@ -434,7 +436,7 @@ void WebRtcTextLogHandler::OnGetNetworkInterfaceList(
 
 void WebRtcTextLogHandler::OnGetNetworkInterfaceListFinish(
     GenericDoneCallback callback,
-    const std::optional<net::NetworkInterfaceList>& networks,
+    const absl::optional<net::NetworkInterfaceList>& networks,
     const std::string& linux_distro) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
@@ -443,9 +445,13 @@ void WebRtcTextLogHandler::OnGetNetworkInterfaceListFinish(
     return;
   }
 
-  // Log start time (current time).
-  LogToCircularBuffer(base::UnlocalizedTimeFormatWithPattern(
-      base::Time::Now(), "'Start 'y-MM-dd HH:mm:ss"));
+  // Log start time (current time). We don't use base/i18n/time_formatting.h
+  // here because we don't want the format of the current locale.
+  base::Time::Exploded now = {0};
+  base::Time::Now().LocalExplode(&now);
+  LogToCircularBuffer(base::StringPrintf("Start %d-%02d-%02d %02d:%02d:%02d",
+                                         now.year, now.month, now.day_of_month,
+                                         now.hour, now.minute, now.second));
 
   // Write metadata if received before logging started.
   if (meta_data_ && !meta_data_->empty()) {
@@ -454,9 +460,9 @@ void WebRtcTextLogHandler::OnGetNetworkInterfaceListFinish(
   }
 
   // Chrome version
-  LogToCircularBuffer(
-      base::StrCat({"Chrome version: ", version_info::GetVersionNumber(), " ",
-                    chrome::GetChannelName(chrome::WithExtendedStable(true))}));
+  LogToCircularBuffer("Chrome version: " + version_info::GetVersionNumber() +
+                      " " +
+                      chrome::GetChannelName(chrome::WithExtendedStable(true)));
 
   // OS
   LogToCircularBuffer(base::SysInfo::OperatingSystemName() + " " +
@@ -478,9 +484,9 @@ void WebRtcTextLogHandler::OnGetNetworkInterfaceListFinish(
   // Computer model
   std::string computer_model = "Not available";
 #if BUILDFLAG(IS_MAC)
-  computer_model = base::SysInfo::HardwareModelName();
+  computer_model = base::mac::GetModelIdentifier();
 #elif BUILDFLAG(IS_CHROMEOS_ASH)
-  if (const std::optional<std::string_view> computer_model_statistic =
+  if (const absl::optional<base::StringPiece> computer_model_statistic =
           ash::system::StatisticsProvider::GetInstance()->GetMachineStatistic(
               ash::system::kHardwareClassKey)) {
     computer_model = std::string(computer_model_statistic.value());

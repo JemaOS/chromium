@@ -21,12 +21,7 @@ FileSuggestKeyedServiceFactory* FileSuggestKeyedServiceFactory::GetInstance() {
 FileSuggestKeyedServiceFactory::FileSuggestKeyedServiceFactory()
     : ProfileKeyedServiceFactory(
           "FileSuggestKeyedService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(drive::DriveIntegrationServiceFactory::GetInstance());
   DependsOn(file_manager::file_tasks::FileTasksNotifierFactory::GetInstance());
 }
@@ -39,19 +34,18 @@ FileSuggestKeyedService* FileSuggestKeyedServiceFactory::GetService(
       GetServiceForBrowserContext(context, /*create=*/true));
 }
 
-std::unique_ptr<KeyedService>
-FileSuggestKeyedServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* FileSuggestKeyedServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
   // TODO(https://crbug.com/1368833): Right now, the service reuses the proto
   // originally for app list. The service should have its own proto that
   // contains file ids only.
-  PersistentProto<app_list::RemovedResultsProto> proto(
+  app_list::PersistentProto<app_list::RemovedResultsProto> proto(
       app_list::RankerStateDirectory(profile).AppendASCII("removed_results.pb"),
       /*write_delay=*/base::TimeDelta());
 
-  return std::make_unique<FileSuggestKeyedService>(profile, std::move(proto));
+  return new FileSuggestKeyedService(profile, std::move(proto));
 }
 
 }  // namespace ash

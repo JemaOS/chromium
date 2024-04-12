@@ -4,8 +4,6 @@
 
 #include <stddef.h>
 
-#include <utility>
-
 #include "ui/compositor/layer_animation_sequence.h"
 #include "ui/compositor/test/layer_animator_test_controller.h"
 #include "ui/gfx/geometry/rect.h"
@@ -14,7 +12,8 @@ namespace ui {
 
 LayerAnimatorTestController::LayerAnimatorTestController(
     scoped_refptr<LayerAnimator> animator)
-    : animator_(std::move(animator)) {}
+    : animator_(animator) {
+}
 
 LayerAnimatorTestController::~LayerAnimatorTestController() {
 }

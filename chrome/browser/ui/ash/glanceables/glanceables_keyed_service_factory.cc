@@ -10,7 +10,6 @@
 #include "base/no_destructor.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_selections.h"
-#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/ash/glanceables/glanceables_keyed_service.h"
 #include "content/public/browser/browser_context.h"
 
@@ -24,18 +23,13 @@ GlanceablesKeyedServiceFactory* GlanceablesKeyedServiceFactory::GetInstance() {
 
 GlanceablesKeyedServiceFactory::GlanceablesKeyedServiceFactory()
     : ProfileKeyedServiceFactory("GlanceablesKeyedService",
-                                 ProfileSelections::BuildForRegularProfile()) {
-  DependsOn(IdentityManagerFactory::GetInstance());
-}
+                                 ProfileSelections::BuildForRegularProfile()) {}
 
 GlanceablesKeyedService* GlanceablesKeyedServiceFactory::GetService(
     content::BrowserContext* context) {
   return static_cast<GlanceablesKeyedService*>(
       GetInstance()->GetServiceForBrowserContext(
-          context,
-          /*create=*/features::AreGlanceablesV2Enabled() ||
-              features::AreGlanceablesV2EnabledForTrustedTesters() ||
-              features::AreAnyGlanceablesTimeManagementViewsEnabled()));
+          context, /*create=*/features::AreGlanceablesV2Enabled()));
 }
 
 std::unique_ptr<KeyedService>

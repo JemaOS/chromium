@@ -27,7 +27,7 @@ class DOMException;
 class ExceptionState;
 class ExecutionContext;
 
-class Sensor : public EventTarget,
+class Sensor : public EventTargetWithInlineData,
                public ActiveScriptWrappable<Sensor>,
                public ExecutionContextLifecycleObserver,
                public SensorProxy::Observer {
@@ -52,7 +52,7 @@ class Sensor : public EventTarget,
   // Getters
   bool activated() const;
   bool hasReading() const;
-  std::optional<DOMHighResTimeStamp> timestamp(ScriptState*) const;
+  absl::optional<DOMHighResTimeStamp> timestamp(ScriptState*) const;
 
   DEFINE_ATTRIBUTE_EVENT_LISTENER(error, kError)
   DEFINE_ATTRIBUTE_EVENT_LISTENER(reading, kReading)

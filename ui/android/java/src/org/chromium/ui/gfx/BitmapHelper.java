@@ -6,12 +6,13 @@ package org.chromium.ui.gfx;
 
 import android.graphics.Bitmap;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.JNINamespace;
-
 import org.chromium.base.Log;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.JNINamespace;
 
-/** Helper class to decode and sample down bitmap resources. */
+/**
+ * Helper class to decode and sample down bitmap resources.
+ */
 @JNINamespace("gfx")
 public class BitmapHelper {
     private static final String TAG = "BitmapHelper";

@@ -6,15 +6,15 @@
 
 #include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
 #include "third_party/blink/renderer/core/dom/abort_signal.h"
-#include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/platform/bindings/exception_code.h"
 #include "third_party/blink/renderer/platform/heap/visitor.h"
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
 
-AbortController* AbortController::Create(ScriptState* script_state) {
+AbortController* AbortController::Create(ExecutionContext* context) {
   return MakeGarbageCollected<AbortController>(
-      MakeGarbageCollected<AbortSignal>(ExecutionContext::From(script_state),
+      MakeGarbageCollected<AbortSignal>(context,
                                         AbortSignal::SignalType::kController));
 }
 
@@ -23,7 +23,9 @@ AbortController::AbortController(AbortSignal* signal) : signal_(signal) {}
 AbortController::~AbortController() = default;
 
 void AbortController::Dispose() {
-  signal_->DetachFromController();
+  if (RuntimeEnabledFeatures::AbortSignalCompositionEnabled()) {
+    signal_->DetachFromController();
+  }
 }
 
 void AbortController::abort(ScriptState* script_state) {
@@ -36,7 +38,7 @@ void AbortController::abort(ScriptState* script_state) {
 }
 
 void AbortController::abort(ScriptState* script_state, ScriptValue reason) {
-  signal_->SignalAbort(script_state, reason, AbortSignal::SignalAbortPassKey());
+  signal_->SignalAbort(script_state, reason);
 }
 
 void AbortController::Trace(Visitor* visitor) const {

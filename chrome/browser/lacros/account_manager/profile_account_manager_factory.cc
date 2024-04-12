@@ -37,10 +37,9 @@ ProfileAccountManagerFactory::ProfileAccountManagerFactory()
 
 ProfileAccountManagerFactory::~ProfileAccountManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-ProfileAccountManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ProfileAccountManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<ProfileAccountManager>(
+  return new ProfileAccountManager(
       g_browser_process->profile_manager()->GetAccountProfileMapper(),
       /*profile_path=*/context->GetPath());
 }

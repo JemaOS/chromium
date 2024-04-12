@@ -10,9 +10,9 @@ var num_all_frames_messages = 0;
 var num_top_frame_only_messages = 0;
 
 chrome.test.runTests([
-  // Tests receiving a message from a content script and responding.
-  function onMessage() {
-    chrome.runtime.onMessage.addListener(
+  // Tests receiving a request from a content script and responding.
+  function onRequest() {
+    chrome.extension.onRequest.addListener(
       function(request, sender, sendResponse) {
         if (request == "all_frames") {
           num_all_frames_messages++;
@@ -39,3 +39,4 @@ chrome.test.getConfig(function(config) {
 
   chrome.tabs.create({ url: test_url });
 });
+

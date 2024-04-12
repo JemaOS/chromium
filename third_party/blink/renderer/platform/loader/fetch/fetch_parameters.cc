@@ -87,12 +87,12 @@ void FetchParameters::SetCrossOriginAccessControl(
 }
 
 void FetchParameters::SetResourceWidth(
-    const std::optional<float> resource_width) {
+    const absl::optional<float> resource_width) {
   resource_width_ = resource_width;
 }
 
 void FetchParameters::SetResourceHeight(
-    const std::optional<float> resource_height) {
+    const absl::optional<float> resource_height) {
   resource_height_ = resource_height;
 }
 
@@ -118,6 +118,7 @@ void FetchParameters::SetLazyImageDeferred() {
 }
 
 void FetchParameters::SetLazyImageNonBlocking() {
+  // TODO(domfarolino): [Before merging]: can we DCHECK here.
   image_request_behavior_ = ImageRequestBehavior::kNonBlockingImage;
 }
 

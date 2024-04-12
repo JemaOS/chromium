@@ -24,7 +24,7 @@ class SigninManagerAndroidFactory : public ProfileKeyedServiceFactory {
 
   ~SigninManagerAndroidFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

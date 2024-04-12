@@ -50,7 +50,7 @@ void AnimatedImageView::SetAnimatedImage(
 }
 
 void AnimatedImageView::Play(
-    std::optional<lottie::Animation::PlaybackConfig> playback_config) {
+    absl::optional<lottie::Animation::PlaybackConfig> playback_config) {
   DCHECK(animated_image_);
   if (state_ == State::kPlaying)
     return;
@@ -64,13 +64,9 @@ void AnimatedImageView::Play(
   set_check_active_duration(playback_config->style !=
                             lottie::Animation::Style::kLoop);
 
-  if (GetWidget()) {
-    DoPlay(std::move(*playback_config));
-  } else {
-    // Playback will start in `AddedToWidget`.
-    playback_config_ = std::make_unique<lottie::Animation::PlaybackConfig>(
-        std::move(*playback_config));
-  }
+  SetCompositorFromWidget();
+
+  animated_image_->Start(std::move(playback_config));
 }
 
 void AnimatedImageView::Stop() {
@@ -122,13 +118,6 @@ void AnimatedImageView::NativeViewHierarchyChanged() {
   }
 }
 
-void AnimatedImageView::AddedToWidget() {
-  if (state_ == State::kPlaying && playback_config_) {
-    DoPlay(std::move(*playback_config_));
-    playback_config_.reset();
-  }
-}
-
 void AnimatedImageView::RemovedFromWidget() {
   if (compositor_) {
     Stop();
@@ -150,12 +139,6 @@ void AnimatedImageView::OnCompositingShuttingDown(ui::Compositor* compositor) {
   }
 }
 
-void AnimatedImageView::DoPlay(
-    lottie::Animation::PlaybackConfig playback_config) {
-  SetCompositorFromWidget();
-  animated_image_->Start(std::move(playback_config));
-}
-
 void AnimatedImageView::SetCompositorFromWidget() {
   DCHECK(!compositor_);
   auto* widget = GetWidget();
@@ -173,7 +156,7 @@ void AnimatedImageView::ClearCurrentCompositor() {
   }
 }
 
-BEGIN_METADATA(AnimatedImageView)
+BEGIN_METADATA(AnimatedImageView, ImageViewBase)
 END_METADATA
 
 }  // namespace views

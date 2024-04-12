@@ -3,16 +3,10 @@
 // found in the LICENSE file.
 
 #include "ash/app_list/views/search_result_view.h"
-#include <memory>
 
 #include "ash/app_list/model/search/test_search_result.h"
-#include "ash/constants/ash_features.h"
-#include "ash/public/cpp/app_list/app_list_types.h"
 #include "base/memory/raw_ptr.h"
-#include "base/test/scoped_feature_list.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/layout/flex_layout_view.h"
 #include "ui/views/test/widget_test.h"
@@ -38,10 +32,6 @@ class SearchResultViewWidgetTest : public views::test::WidgetTest {
   ~SearchResultViewWidgetTest() override = default;
 
   void SetUp() override {
-    scoped_feature_list_.InitWithFeatures(
-        {chromeos::features::kCrosWebAppShortcutUiUpdate,
-         features::kSeparateWebAppShortcutBadgeIcon},
-        {});
     views::test::WidgetTest::SetUp();
 
     widget_ = CreateTopLevelPlatformWidget();
@@ -86,27 +76,6 @@ class SearchResultViewWidgetTest : public views::test::WidgetTest {
     for (const auto& label_tag_pair : view->details_label_tags_)
       merged_string += label_tag_pair.GetLabel()->GetText();
     return merged_string;
-  }
-
-  std::u16string GetRightDetailsText(SearchResultView* view) {
-    std::u16string merged_string = u"";
-    for (const auto& label_tag_pair : view->right_details_label_tags_) {
-      merged_string += label_tag_pair.GetLabel()->GetText();
-    }
-    return merged_string;
-  }
-
-  bool IsProgressBarChart(SearchResultView* view) {
-    return view->is_progress_bar_answer_card_;
-  }
-
-  bool IsWebAppShortcutStyle(SearchResultView* view) {
-    view->UpdateIconAndBadgeIcon();
-    return view->use_webapp_shortcut_style_;
-  }
-
-  bool IsBadgeIconViewHidden(SearchResultView* view) {
-    return view->badge_icon_view_->GetVisible();
   }
 
   void SetSearchResultViewMultilineDetailsHeight(
@@ -160,16 +129,11 @@ class SearchResultViewWidgetTest : public views::test::WidgetTest {
     result_id++;
   }
 
-  void SetupWebAppShortcutSearchResult(TestSearchResult* result) {
-    result->set_result_type(AppListSearchResultType::kAppShortcutV2);
-  }
-
  private:
   int result_id = 0;
   std::unique_ptr<SearchResultView> answer_card_view_;
   std::unique_ptr<SearchResultView> search_result_view_;
-  raw_ptr<views::Widget, DanglingUntriaged> widget_;
-  base::test::ScopedFeatureList scoped_feature_list_;
+  raw_ptr<views::Widget, ExperimentalAsh> widget_;
 };
 
 TEST_F(SearchResultViewWidgetTest, SearchResultTextVectorUpdate) {
@@ -220,40 +184,40 @@ TEST_F(SearchResultViewWidgetTest, PreferredHeight) {
     int preferred_height;
   } kTestCases[] = {{.multi_line_details_height = 0,
                      .multi_line_title_height = 0,
-                     .preferred_height = 88},
+                     .preferred_height = 80},
                     {.multi_line_details_height = 0,
                      .multi_line_title_height = 20,
-                     .preferred_height = 88},
+                     .preferred_height = 80},
                     {.multi_line_details_height = 0,
                      .multi_line_title_height = 40,
-                     .preferred_height = 108},
+                     .preferred_height = 100},
                     {.multi_line_details_height = 18,
                      .multi_line_title_height = 0,
-                     .preferred_height = 88},
+                     .preferred_height = 80},
                     {.multi_line_details_height = 18,
                      .multi_line_title_height = 20,
-                     .preferred_height = 88},
+                     .preferred_height = 80},
                     {.multi_line_details_height = 18,
                      .multi_line_title_height = 40,
-                     .preferred_height = 108},
+                     .preferred_height = 100},
                     {.multi_line_details_height = 36,
                      .multi_line_title_height = 0,
-                     .preferred_height = 106},
+                     .preferred_height = 98},
                     {.multi_line_details_height = 36,
                      .multi_line_title_height = 20,
-                     .preferred_height = 106},
+                     .preferred_height = 98},
                     {.multi_line_details_height = 36,
                      .multi_line_title_height = 40,
-                     .preferred_height = 126},
+                     .preferred_height = 118},
                     {.multi_line_details_height = 54,
                      .multi_line_title_height = 0,
-                     .preferred_height = 124},
+                     .preferred_height = 116},
                     {.multi_line_details_height = 54,
                      .multi_line_title_height = 20,
-                     .preferred_height = 124},
+                     .preferred_height = 116},
                     {.multi_line_details_height = 54,
                      .multi_line_title_height = 40,
-                     .preferred_height = 144}};
+                     .preferred_height = 136}};
   for (auto& test_case : kTestCases) {
     SCOPED_TRACE(testing::Message()
                  << "Test case: {multi_line_details_height: "
@@ -267,17 +231,6 @@ TEST_F(SearchResultViewWidgetTest, PreferredHeight) {
     EXPECT_EQ(test_case.preferred_height,
               SearchResultViewPreferredHeight(answer_card_view()));
   }
-}
-
-TEST_F(SearchResultViewWidgetTest, WebAppShortcutIconEffectsExists) {
-  auto webapp_shortcut = std::make_unique<TestSearchResult>();
-  webapp_shortcut->SetIconAndBadgeIcon();
-  SetupTestSearchResult(webapp_shortcut.get());
-  SetupWebAppShortcutSearchResult(webapp_shortcut.get());
-  search_result_view()->SetResult(webapp_shortcut.get());
-
-  EXPECT_TRUE(IsBadgeIconViewHidden(search_result_view()));
-  EXPECT_TRUE(IsWebAppShortcutStyle(search_result_view()));
 }
 
 TEST_F(SearchResultViewTest, FlexWeightCalculation) {
@@ -357,20 +310,6 @@ TEST_F(SearchResultViewTest, FlexWeightCalculation) {
                   ->GetProperty(views::kFlexBehaviorKey)
                   ->order());
   }
-}
-
-TEST_F(SearchResultViewWidgetTest, ProgressBarResult) {
-  auto progress_bar_result = std::make_unique<TestSearchResult>();
-  auto system_info_data = std::make_unique<ash::SystemInfoAnswerCardData>(0.5);
-  system_info_data->SetExtraDetails(u"right description");
-  progress_bar_result->SetSystemInfoAnswerCardData(*system_info_data.get());
-  SetupTestSearchResult(progress_bar_result.get());
-  answer_card_view()->SetResult(progress_bar_result.get());
-  answer_card_view()->OnResultChanged();
-  EXPECT_EQ(true, IsProgressBarChart(answer_card_view()));
-  EXPECT_EQ(u"Test Search Result Details 0",
-            GetDetailsText(answer_card_view()));
-  EXPECT_EQ(u"right description", GetRightDetailsText(answer_card_view()));
 }
 
 }  // namespace ash

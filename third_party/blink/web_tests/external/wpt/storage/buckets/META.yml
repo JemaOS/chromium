@@ -1,5 +1,5 @@
-spec: https://wicg.github.io/storage-buckets/
+spec: https://github.com/WICG/storage-buckets
 suggested_reviewers:
-  - ayuishii
-  - evanstade
-  - inexorabletash
+  - ayui
+  - jsbell
+  - pwnall

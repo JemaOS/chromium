@@ -37,7 +37,6 @@
 #include "extensions/browser/api/storage/storage_area_namespace.h"
 #include "extensions/browser/api/storage/storage_frontend.h"
 #include "extensions/browser/extension_system.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/features/feature_channel.h"
 #include "extensions/test/extension_test_message_listener.h"
 #include "extensions/test/result_catcher.h"
@@ -497,7 +496,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionSettingsApiTest,
   const Extension* extension = LoadAndReplyWhenSatisfied(
       StorageAreaNamespace::kSync, "assertNoNotifications",
       "assertNoNotifications", "split_incognito");
-  const ExtensionId& extension_id = extension->id();
+  const std::string& extension_id = extension->id();
 
   syncer::FakeSyncChangeProcessor sync_processor;
   InitSync(&sync_processor);
@@ -542,7 +541,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionSettingsApiTest,
   const Extension* extension = LoadAndReplyWhenSatisfied(
       StorageAreaNamespace::kLocal, "assertNoNotifications",
       "assertNoNotifications", "split_incognito");
-  const ExtensionId& extension_id = extension->id();
+  const std::string& extension_id = extension->id();
 
   syncer::FakeSyncChangeProcessor sync_processor;
   InitSync(&sync_processor);

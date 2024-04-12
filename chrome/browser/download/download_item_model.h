@@ -27,12 +27,6 @@ class WebContents;
 class DownloadItemModel : public DownloadUIModel,
                           public download::DownloadItem::Observer {
  public:
-#if !BUILDFLAG(IS_ANDROID)
-  // How long an ephemeral warning is displayed on the download bubble.
-  static constexpr base::TimeDelta kEphemeralWarningLifetimeOnBubble =
-      base::Minutes(5);
-#endif
-
   static DownloadUIModelPtr Wrap(download::DownloadItem* download);
   static DownloadUIModelPtr Wrap(
       download::DownloadItem* download,
@@ -73,9 +67,9 @@ class DownloadItemModel : public DownloadUIModel,
   bool WasActionedOn() const override;
   void SetActionedOn(bool actioned_on) override;
   bool WasUIWarningShown() const override;
-  void SetWasUIWarningShown(bool was_ui_warning_shown) override;
-  std::optional<base::Time> GetEphemeralWarningUiShownTime() const override;
-  void SetEphemeralWarningUiShownTime(std::optional<base::Time> time) override;
+  void SetWasUIWarningShown(bool should_notify) override;
+  absl::optional<base::Time> GetEphemeralWarningUiShownTime() const override;
+  void SetEphemeralWarningUiShownTime(absl::optional<base::Time> time) override;
   bool ShouldPreferOpeningInBrowser() override;
   void SetShouldPreferOpeningInBrowser(bool preference) override;
   safe_browsing::DownloadFileType::DangerLevel GetDangerLevel() const override;
@@ -84,11 +78,6 @@ class DownloadItemModel : public DownloadUIModel,
   download::DownloadItem::InsecureDownloadStatus GetInsecureDownloadStatus()
       const override;
   void OpenUsingPlatformHandler() override;
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  std::optional<DownloadCommands::Command> MaybeGetMediaAppAction()
-      const override;
-  void OpenUsingMediaApp() override;
-#endif
   bool IsBeingRevived() const override;
   void SetIsBeingRevived(bool is_being_revived) override;
   const download::DownloadItem* GetDownloadItem() const override;
@@ -126,8 +115,8 @@ class DownloadItemModel : public DownloadUIModel,
                         DownloadCommands::Command command) const override;
   void ExecuteCommand(DownloadCommands* download_commands,
                       DownloadCommands::Command command) override;
-  TailoredWarningType GetTailoredWarningType() const override;
-  DangerUiPattern GetDangerUiPattern() const override;
+  BubbleUIInfo GetBubbleUIInfoForTailoredWarning() const override;
+  bool ShouldShowTailoredWarning() const override;
   bool ShouldShowInBubble() const override;
   bool IsEphemeralWarning() const override;
 #endif
@@ -141,8 +130,6 @@ class DownloadItemModel : public DownloadUIModel,
   void DetermineAndSetShouldPreferOpeningInBrowser(
       const base::FilePath& target_path,
       bool is_filetype_handled_safely) override;
-  bool IsEncryptedArchive() const override;
-  bool IsExtensionDownload() const override;
 
   // download::DownloadItem::Observer implementation.
   void OnDownloadUpdated(download::DownloadItem* download) override;
@@ -152,6 +139,7 @@ class DownloadItemModel : public DownloadUIModel,
  private:
   // DownloadUIModel implementation.
   std::string GetMimeType() const override;
+  bool IsExtensionDownload() const override;
 
   // The DownloadItem that this model represents. Note that DownloadItemModel
   // itself shouldn't maintain any state since there can be more than one

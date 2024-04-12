@@ -138,7 +138,7 @@ public class BookmarkOpener {
 
     private void maybeMarkReadingListItemAsRead(@NonNull BookmarkItem item) {
         if (item.getId().getType() == BookmarkType.READING_LIST) {
-            mModel.setReadStatusForReadingList(item.getId(), true);
+            mModel.setReadStatusForReadingList(item.getUrl(), true);
         }
     }
 
@@ -180,9 +180,7 @@ public class BookmarkOpener {
     private void recordTimeSinceAdded(BookmarkItem item, String histogramPrefix) {
         RecordHistogram.recordCustomTimesHistogram(
                 histogramPrefix + bookmarkTypeToHistogramSuffix(item.getId().getType()),
-                System.currentTimeMillis() - item.getDateAdded(),
-                1,
-                DateUtils.DAY_IN_MILLIS * 30,
+                System.currentTimeMillis() - item.getDateAdded(), 1, DateUtils.DAY_IN_MILLIS * 30,
                 50);
     }
 }

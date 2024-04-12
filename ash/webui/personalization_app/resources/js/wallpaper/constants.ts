@@ -16,8 +16,14 @@ export const kDefaultImageSymbol: unique symbol =
 
 export type DefaultImageSymbol = typeof kDefaultImageSymbol;
 
+export interface JemaImage {
+  name: string;
+  light: FilePath;
+  dark: FilePath;
+}
+
 export type DisplayableImage =
-    FilePath|GooglePhotosPhoto|WallpaperImage|DefaultImageSymbol;
+    FilePath|GooglePhotosPhoto|WallpaperImage|DefaultImageSymbol|JemaImage;
 
 export const kMaximumLocalImagePreviews = 4;
 
@@ -33,3 +39,10 @@ export interface ImageTile {
   isTimeOfDayWallpaper?: boolean;
   hasPreviewImage?: boolean;
 }
+
+export const kJemaLightDarkImageSuffixes = [
+  '.light.jpg',
+  '.dark.jpg',
+  '.light.png',
+  '.dark.png',
+]

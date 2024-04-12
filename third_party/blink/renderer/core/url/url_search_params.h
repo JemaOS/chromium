@@ -53,17 +53,14 @@ class CORE_EXPORT URLSearchParams final
   String toString() const;
   uint32_t size() const;
   void append(const String& name, const String& value);
-  void deleteAllWithNameOrTuple(ExecutionContext* execution_context,
-                                const String& name);
-  void deleteAllWithNameOrTuple(ExecutionContext* execution_context,
-                                const String& name,
-                                const String& val);
+  void deleteAllWithName(ExecutionContext*, const String&);
+  void deleteAllWithName(ExecutionContext*,
+                         const String&,
+                         const ScriptValue& ignored);
   String get(const String&) const;
   Vector<String> getAll(const String&) const;
-  bool has(ExecutionContext* execution_context, const String& name) const;
-  bool has(ExecutionContext* execution_context,
-           const String& name,
-           const String& val) const;
+  bool has(ExecutionContext*, const String&) const;
+  bool has(ExecutionContext*, const String&, const ScriptValue& ignored) const;
   void set(const String& name, const String& value);
   void sort();
   void SetInputWithoutUpdate(const String&);

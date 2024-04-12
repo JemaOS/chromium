@@ -8,20 +8,18 @@ import {keyDownOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {SettingsUnusedSitePermissionsElement, UnusedSitePermissions} from 'chrome://settings/lazy_load.js';
-import {ContentSettingsTypes, SafetyHubBrowserProxyImpl, SafetyHubEvent} from 'chrome://settings/lazy_load.js';
-import type {SettingsRoutes} from 'chrome://settings/settings.js';
-import {MetricsBrowserProxyImpl, Router, routes, SafetyCheckUnusedSitePermissionsModuleInteractions} from 'chrome://settings/settings.js';
+import {ContentSettingsTypes, SettingsUnusedSitePermissionsElement, SiteSettingsPermissionsBrowserProxyImpl, UnusedSitePermissions} from 'chrome://settings/lazy_load.js';
+import {MetricsBrowserProxyImpl, Router, routes, SafetyCheckUnusedSitePermissionsModuleInteractions, SettingsRoutes} from 'chrome://settings/settings.js';
 import {isMac} from 'chrome://resources/js/platform.js';
 import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
 
 import {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
-import {TestSafetyHubBrowserProxy} from './test_safety_hub_browser_proxy.js';
+import {TestSiteSettingsPermissionsBrowserProxy} from './test_site_settings_permissions_browser_proxy.js';
 
 // clang-format on
 
 suite('CrSettingsUnusedSitePermissionsTest', function() {
-  let browserProxy: TestSafetyHubBrowserProxy;
+  let browserProxy: TestSiteSettingsPermissionsBrowserProxy;
   let metricsBrowserProxy: TestMetricsBrowserProxy;
 
   let testElement: SettingsUnusedSitePermissionsElement;
@@ -87,9 +85,8 @@ suite('CrSettingsUnusedSitePermissionsTest', function() {
   }
 
   function clickGotIt() {
-    const button = testElement.shadowRoot!.querySelector<HTMLElement>(
-        '.bulk-action-button');
-    assertTrue(!!button);
+    const button = testElement.shadowRoot!.querySelector(
+                       '.bulk-action-button') as HTMLElement;
     button.click();
   }
 
@@ -115,9 +112,9 @@ suite('CrSettingsUnusedSitePermissionsTest', function() {
   }
 
   setup(async function() {
-    browserProxy = new TestSafetyHubBrowserProxy();
+    browserProxy = new TestSiteSettingsPermissionsBrowserProxy();
     browserProxy.setUnusedSitePermissions(mockData);
-    SafetyHubBrowserProxyImpl.setInstance(browserProxy);
+    SiteSettingsPermissionsBrowserProxyImpl.setInstance(browserProxy);
     metricsBrowserProxy = new TestMetricsBrowserProxy();
     MetricsBrowserProxyImpl.setInstance(metricsBrowserProxy);
     testRoutes = {
@@ -193,7 +190,7 @@ suite('CrSettingsUnusedSitePermissionsTest', function() {
 
     // User collapses the list.
     expandButton.click();
-    await expandButton.updateComplete;
+    flush();
 
     // Button and list are collapsed.
     assertFalse(expandButton.expanded);
@@ -206,7 +203,7 @@ suite('CrSettingsUnusedSitePermissionsTest', function() {
 
     // User expands the list.
     expandButton.click();
-    await expandButton.updateComplete;
+    flush();
 
     // Button and list are expanded.
     assertTrue(expandButton.expanded);
@@ -249,7 +246,7 @@ suite('CrSettingsUnusedSitePermissionsTest', function() {
           unusedSitePermissions.permissions, mockData[i]!.permissions);
       // UI should be back to its initial state.
       webUIListenerCallback(
-          SafetyHubEvent.UNUSED_PERMISSIONS_MAYBE_CHANGED, mockData);
+          'unused-permission-review-list-maybe-changed', mockData);
       flush();
       assertInitialUi();
     }
@@ -281,7 +278,7 @@ suite('CrSettingsUnusedSitePermissionsTest', function() {
           unusedSitePermissions.permissions, mockData[i]!.permissions);
       // UI should be back to its initial state.
       webUIListenerCallback(
-          SafetyHubEvent.UNUSED_PERMISSIONS_MAYBE_CHANGED, mockData);
+          'unused-permission-review-list-maybe-changed', mockData);
       flush();
       assertInitialUi();
     }
@@ -310,7 +307,7 @@ suite('CrSettingsUnusedSitePermissionsTest', function() {
     assertEqualsMockData(unusedSitePermissionsList);
     // UI should be back to its initial state.
     webUIListenerCallback(
-        SafetyHubEvent.UNUSED_PERMISSIONS_MAYBE_CHANGED, mockData);
+        'unused-permission-review-list-maybe-changed', mockData);
     assertInitialUi();
   });
 

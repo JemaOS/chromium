@@ -17,5 +17,4 @@ grit("resources") {
     "login_resources_200_percent.pak",
     "login_resources_300_percent.pak",
   ]
-  use_brotli = true
 }

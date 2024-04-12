@@ -15,14 +15,14 @@
     CallWith=ScriptState,
     RaisesException,
     MeasureAs=WebBluetoothWatchAdvertisements
-  ] Promise<undefined> watchAdvertisements(
+  ] Promise<void> watchAdvertisements(
       optional WatchAdvertisementsOptions options = {});
   [
     RuntimeEnabled=WebBluetoothGetDevices,
     CallWith=ScriptState,
     RaisesException,
     MeasureAs=BluetoothDeviceForget
-  ] Promise<undefined> forget();
+  ] Promise<void> forget();
 
   readonly attribute DOMString id;
   [HighEntropy=Direct, MeasureAs=BluetoothDeviceName] readonly attribute DOMString? name;

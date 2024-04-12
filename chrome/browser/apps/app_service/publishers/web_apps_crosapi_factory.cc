@@ -20,8 +20,7 @@ WebAppsCrosapi* WebAppsCrosapiFactory::GetForProfile(Profile* profile) {
 
 // static
 WebAppsCrosapiFactory* WebAppsCrosapiFactory::GetInstance() {
-  static base::NoDestructor<WebAppsCrosapiFactory> instance;
-  return instance.get();
+  return base::Singleton<WebAppsCrosapiFactory>::get();
 }
 
 // static
@@ -41,10 +40,9 @@ WebAppsCrosapiFactory::WebAppsCrosapiFactory()
   DependsOn(AppServiceProxyFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService>
-WebAppsCrosapiFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* WebAppsCrosapiFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<WebAppsCrosapi>(AppServiceProxyFactory::GetForProfile(
+  return new WebAppsCrosapi(AppServiceProxyFactory::GetForProfile(
       Profile::FromBrowserContext(context)));
 }
 

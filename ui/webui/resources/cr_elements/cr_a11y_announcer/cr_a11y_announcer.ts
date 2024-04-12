@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert} from '//resources/js/assert.js';
-import {CustomElement} from '//resources/js/custom_element.js';
+import {assert} from '//resources/js/assert_ts.js';
+import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './cr_a11y_announcer.html.js';
 
@@ -50,19 +50,20 @@ export function getInstance(container: HTMLElement = document.body):
   return instance;
 }
 
-export class CrA11yAnnouncerElement extends CustomElement {
+export class CrA11yAnnouncerElement extends PolymerElement {
   static get is() {
     return 'cr-a11y-announcer';
   }
 
-  static override get template() {
+  static get template() {
     return getTemplate();
   }
 
   private currentTimeout_: number|null = null;
   private messages_: string[] = [];
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
+    super.disconnectedCallback();
     if (this.currentTimeout_ !== null) {
       clearTimeout(this.currentTimeout_);
       this.currentTimeout_ = null;

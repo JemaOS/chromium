@@ -7,9 +7,8 @@
 
 namespace ash {
 
-// Used for histograms. Current values should not be renumbered or removed.
-// Please keep in sync with "OverviewStartAction" in
-// tools/metrics/histograms/metadata/ash/enums.xml.
+// Used for histograms. See OverviewStartAction at
+// tools/metrics/histograms/enums.xml.
 enum class OverviewStartAction {
   kSplitView,
   kAccelerator,
@@ -23,17 +22,12 @@ enum class OverviewStartAction {
   kTests,
   kOverviewDeskSwitch,
   kDeskButton,
-  // Partial overview shows automatically on one window snapped.
-  kFasterSplitScreenSetup,
-  kPine,
-  kWallpaper,
-  kMaxValue = kWallpaper,
+  kMaxValue = kDeskButton,
 };
 void RecordOverviewStartAction(OverviewStartAction type);
 
-// Used for histograms. Current values should not be renumbered or removed.
-// Please keep in sync with "OverviewEndAction" in
-// tools/metrics/histograms/metadata/ash/enums.xml.
+// Used for histograms. See OverviewEndAction at
+// tools/metrics/histograms/enums.xml.
 enum class OverviewEndAction {
   kSplitView,
   kDragWindowFromShelf,
@@ -57,16 +51,9 @@ enum class OverviewEndAction {
   kDevTools,
   kTests,
   kShowGlanceables_DEPRECATED,
-  kWindowDeactivating,
-  kFullRestore,
-  kMaxValue = kFullRestore,
+  kMaxValue = kShowGlanceables_DEPRECATED,
 };
 void RecordOverviewEndAction(OverviewEndAction type);
-
-inline constexpr char kEnterOverviewPresentationHistogram[] =
-    "Ash.Overview.Enter.PresentationTime";
-inline constexpr char kExitOverviewPresentationHistogram[] =
-    "Ash.Overview.Exit.PresentationTime";
 
 }  // namespace ash
 

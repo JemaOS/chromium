@@ -28,22 +28,12 @@ enum class PermissionAction;
 // be supported by PermissionRequestManager.
 //
 // The FileSystemAccessPermissionRequestManager should be used on the UI thread.
-//
-// TODO(crbug.com/1011533): Add test for this class.
 class FileSystemAccessPermissionRequestManager
     : public content::WebContentsObserver,
       public content::WebContentsUserData<
           FileSystemAccessPermissionRequestManager> {
  public:
   ~FileSystemAccessPermissionRequestManager() override;
-
-  enum class RequestType {
-    // Requests to get new permission for single file or directory handle.
-    kNewPermission,
-
-    // Requests to restore permission for multiple file or directory handles.
-    kRestorePermissions,
-  };
 
   enum class Access {
     // Only ask for read access.
@@ -54,36 +44,25 @@ class FileSystemAccessPermissionRequestManager
     kReadWrite
   };
 
-  struct FileRequestData {
-    FileRequestData(
+  struct RequestData {
+    RequestData(
+        const url::Origin& origin,
         const base::FilePath& path,
         content::FileSystemAccessPermissionContext::HandleType handle_type,
         Access access)
-        : path(path), handle_type(handle_type), access(access) {}
-    ~FileRequestData() = default;
-    FileRequestData(FileRequestData&&) = default;
-    FileRequestData(const FileRequestData&) = default;
-    FileRequestData& operator=(FileRequestData&&) = default;
-    FileRequestData& operator=(const FileRequestData&) = default;
-
-    base::FilePath path;
-    content::FileSystemAccessPermissionContext::HandleType handle_type;
-    Access access;
-  };
-
-  struct RequestData {
-    RequestData(RequestType request_type,
-                const url::Origin& origin,
-                const std::vector<FileRequestData>& file_request_data);
-    ~RequestData();
-    RequestData(RequestData&&);
-    RequestData(const RequestData&);
+        : origin(origin),
+          path(path),
+          handle_type(handle_type),
+          access(access) {}
+    RequestData(RequestData&&) = default;
+    RequestData(const RequestData&) = default;
     RequestData& operator=(RequestData&&) = default;
     RequestData& operator=(const RequestData&) = default;
 
-    RequestType request_type;
     url::Origin origin;
-    std::vector<FileRequestData> file_request_data;
+    base::FilePath path;
+    content::FileSystemAccessPermissionContext::HandleType handle_type;
+    Access access;
   };
 
   void AddRequest(
@@ -97,7 +76,7 @@ class FileSystemAccessPermissionRequestManager
   // and then the bubble will proceed as desired as soon as it would have been
   // shown.
   void set_auto_response_for_test(
-      std::optional<permissions::PermissionAction> response) {
+      absl::optional<permissions::PermissionAction> response) {
     auto_response_for_test_ = response;
   }
 
@@ -124,7 +103,7 @@ class FileSystemAccessPermissionRequestManager
   // Queued up requests.
   base::circular_deque<std::unique_ptr<Request>> queued_requests_;
 
-  std::optional<permissions::PermissionAction> auto_response_for_test_;
+  absl::optional<permissions::PermissionAction> auto_response_for_test_;
 
   base::WeakPtrFactory<FileSystemAccessPermissionRequestManager> weak_factory_{
       this};

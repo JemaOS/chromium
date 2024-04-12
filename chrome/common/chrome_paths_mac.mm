@@ -8,9 +8,9 @@
 #include <memory>
 #include <string>
 
-#import "base/apple/foundation_util.h"
 #include "base/base_paths.h"
 #include "base/check_op.h"
+#import "base/mac/foundation_util.h"
 #include "base/memory/free_deleter.h"
 #include "base/path_service.h"
 #include "base/strings/sys_string_conversions.h"
@@ -21,18 +21,19 @@
 
 namespace {
 
-// Return an NSBundle* as the internal implementation of
-// chrome::OuterAppBundle(), which should be the only caller.
+// Return a retained (NOT autoreleased) NSBundle* as the internal
+// implementation of chrome::OuterAppBundle(), which should be the only
+// caller.
 NSBundle* OuterAppBundleInternal() {
   @autoreleasepool {
-    if (!base::apple::AmIBundled()) {
+    if (!base::mac::AmIBundled()) {
       // If unbundled (as in a test), there's no app bundle.
       return nil;
     }
 
-    if (!base::apple::IsBackgroundOnlyProcess()) {
+    if (!base::mac::IsBackgroundOnlyProcess()) {
       // Shortcut: in the browser process, just return the main app bundle.
-      return NSBundle.mainBundle;
+      return [[NSBundle mainBundle] retain];
     }
 
     // From C.app/Contents/Frameworks/C.framework/Versions/1.2.3.4, go up five
@@ -42,22 +43,20 @@ NSBundle* OuterAppBundleInternal() {
         framework_path.DirName().DirName().DirName().DirName().DirName();
     NSString* outer_app_dir_ns = base::SysUTF8ToNSString(outer_app_dir.value());
 
-    return [NSBundle bundleWithPath:outer_app_dir_ns];
+    return [[NSBundle bundleWithPath:outer_app_dir_ns] retain];
   }
 }
 
 char* ProductDirNameForBundle(NSBundle* chrome_bundle) {
   @autoreleasepool {
-    const char* product_dir_name = nullptr;
+    const char* product_dir_name = NULL;
 
     NSString* product_dir_name_ns =
         [chrome_bundle objectForInfoDictionaryKey:@"CrProductDirName"];
     product_dir_name = [product_dir_name_ns fileSystemRepresentation];
 
     if (!product_dir_name) {
-#if BUILDFLAG(GOOGLE_CHROME_FOR_TESTING_BRANDING)
-      product_dir_name = "Google/Chrome for Testing";
-#elif BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
       product_dir_name = "Google/Chrome";
 #else
       product_dir_name = "Chromium";
@@ -82,7 +81,7 @@ std::string ProductDirName() {
   // in the main app's bundle because it will be set differently on the canary
   // channel, and the autoupdate system dictates that there can be no
   // differences between channels within the versioned directory. This would
-  // normally use base::apple::FrameworkBundle(), but that references the
+  // normally use base::mac::FrameworkBundle(), but that references the
   // framework bundle within the versioned directory. Ordinarily, the profile
   // should not be accessed from non-browser processes, but those processes do
   // attempt to get the profile directory, so direct them to look in the outer
@@ -111,7 +110,7 @@ bool GetDefaultUserDataDirectory(base::FilePath* result) {
 }
 
 bool GetUserDocumentsDirectory(base::FilePath* result) {
-  return base::apple::GetUserDirectory(NSDocumentDirectory, result);
+  return base::mac::GetUserDirectory(NSDocumentDirectory, result);
 }
 
 void GetUserCacheDirectory(const base::FilePath& profile_dir,
@@ -138,19 +137,19 @@ void GetUserCacheDirectory(const base::FilePath& profile_dir,
 }
 
 bool GetUserDownloadsDirectory(base::FilePath* result) {
-  return base::apple::GetUserDirectory(NSDownloadsDirectory, result);
+  return base::mac::GetUserDirectory(NSDownloadsDirectory, result);
 }
 
 bool GetUserMusicDirectory(base::FilePath* result) {
-  return base::apple::GetUserDirectory(NSMusicDirectory, result);
+  return base::mac::GetUserDirectory(NSMusicDirectory, result);
 }
 
 bool GetUserPicturesDirectory(base::FilePath* result) {
-  return base::apple::GetUserDirectory(NSPicturesDirectory, result);
+  return base::mac::GetUserDirectory(NSPicturesDirectory, result);
 }
 
 bool GetUserVideosDirectory(base::FilePath* result) {
-  return base::apple::GetUserDirectory(NSMoviesDirectory, result);
+  return base::mac::GetUserDirectory(NSMoviesDirectory, result);
 }
 
 base::FilePath GetFrameworkBundlePath() {
@@ -172,7 +171,7 @@ base::FilePath GetFrameworkBundlePath() {
   path = path.DirName().DirName();
   DCHECK_EQ(path.BaseName().value(), "Contents");
 
-  if (base::apple::IsBackgroundOnlyProcess()) {
+  if (base::mac::IsBackgroundOnlyProcess()) {
     // |path| is Chromium.app/Contents/Frameworks/Chromium Framework.framework/
     // Versions/X/Helpers/Chromium Helper.app/Contents. Go up three times to
     // the versioned framework directory.
@@ -202,20 +201,22 @@ base::FilePath GetFrameworkBundlePath() {
 }
 
 bool GetLocalLibraryDirectory(base::FilePath* result) {
-  return base::apple::GetLocalDirectory(NSLibraryDirectory, result);
+  return base::mac::GetLocalDirectory(NSLibraryDirectory, result);
 }
 
 bool GetGlobalApplicationSupportDirectory(base::FilePath* result) {
-  return base::apple::GetLocalDirectory(NSApplicationSupportDirectory, result);
+  return base::mac::GetLocalDirectory(NSApplicationSupportDirectory, result);
 }
 
 NSBundle* OuterAppBundle() {
+  // Cache this. Foundation leaks it anyway, and this should be the only call
+  // to OuterAppBundleInternal().
   static NSBundle* bundle = OuterAppBundleInternal();
   return bundle;
 }
 
 bool ProcessNeedsProfileDir(const std::string& process_type) {
-  // For now we have no reason to forbid this on other macOS as we don't
+  // For now we have no reason to forbid this on other MacOS as we don't
   // have the roaming profile troubles there.
   return true;
 }

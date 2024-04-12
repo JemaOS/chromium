@@ -8,12 +8,13 @@
 
 #include <memory>
 
-#include "base/apple/foundation_util.h"
-#include "base/apple/scoped_objc_class_swizzler.h"
 #include "base/check.h"
+#include "base/mac/foundation_util.h"
+#include "base/mac/scoped_nsobject.h"
+#include "base/mac/scoped_objc_class_swizzler.h"
 #include "base/strings/sys_string_conversions.h"
 
-static id __strong g_swizzled_main_bundle = nil;
+static id g_swizzled_main_bundle = nil;
 
 // A donor class that provides a +[NSBundle mainBundle] method that can be
 // swapped with NSBundle.
@@ -23,8 +24,8 @@ static id __strong g_swizzled_main_bundle = nil;
 @end
 
 @implementation TestBundle {
-  NSBundle* __strong _mainBundle;
-  NSString* __strong _bundleID;
+  base::scoped_nsobject<NSBundle> _mainBundle;
+  base::scoped_nsobject<NSString> _bundleID;
 }
 
 + (NSBundle*)mainBundle {
@@ -32,17 +33,18 @@ static id __strong g_swizzled_main_bundle = nil;
 }
 
 - (instancetype)initWithRealBundle:(NSBundle*)bundle {
-  _mainBundle = bundle;
-  _bundleID = base::SysUTF8ToNSString(base::apple::BaseBundleID());
+  _mainBundle.reset([bundle retain]);
+  _bundleID.reset(base::SysUTF8ToNSString(base::mac::BaseBundleID()),
+                  base::scoped_policy::RETAIN);
   return self;
 }
 
 - (NSString*)bundleIdentifier {
-  return _bundleID;
+  return _bundleID.get();
 }
 
 - (void)forwardInvocation:(NSInvocation*)invocation {
-  invocation.target = _mainBundle;
+  invocation.target = _mainBundle.get();
   [invocation invoke];
 }
 
@@ -55,14 +57,15 @@ static id __strong g_swizzled_main_bundle = nil;
 ScopedBundleSwizzlerMac::ScopedBundleSwizzlerMac() {
   CHECK(!g_swizzled_main_bundle);
 
-  NSBundle* original_main_bundle = NSBundle.mainBundle;
+  NSBundle* original_main_bundle = [NSBundle mainBundle];
   g_swizzled_main_bundle =
       [[TestBundle alloc] initWithRealBundle:original_main_bundle];
 
-  class_swizzler_ = std::make_unique<base::apple::ScopedObjCClassSwizzler>(
+  class_swizzler_ = std::make_unique<base::mac::ScopedObjCClassSwizzler>(
       [NSBundle class], [TestBundle class], @selector(mainBundle));
 }
 
 ScopedBundleSwizzlerMac::~ScopedBundleSwizzlerMac() {
+  [g_swizzled_main_bundle release];
   g_swizzled_main_bundle = nil;
 }

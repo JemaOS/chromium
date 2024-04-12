@@ -185,8 +185,7 @@ bool PresentationReceiverWindowController::ShouldFocusLocationBarByDefault(
   return true;
 }
 
-bool PresentationReceiverWindowController::ShouldFocusPageAfterCrash(
-    content::WebContents* source) {
+bool PresentationReceiverWindowController::ShouldFocusPageAfterCrash() {
   // Never focus the page after a crash.
   return false;
 }

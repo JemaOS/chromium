@@ -4,16 +4,12 @@
 
 #include "chrome/browser/ash/attestation/soft_bind_attestation_flow_impl.h"
 
-#include <optional>
-
 #include "base/containers/span.h"
-#include "base/debug/dump_without_crashing.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/timer/timer.h"
 #include "chrome/browser/ash/attestation/attestation_ca_client.h"
 #include "chrome/browser/ash/settings/cros_settings.h"
-#include "chromeos/ash/components/attestation/attestation_flow_adaptive.h"
 #include "chromeos/ash/components/cryptohome/cryptohome_parameters.h"
 #include "chromeos/ash/components/dbus/attestation/attestation_client.h"
 #include "chromeos/ash/components/dbus/constants/attestation_constants.h"
@@ -22,14 +18,15 @@
 #include "crypto/random.h"
 #include "crypto/rsa_private_key.h"
 #include "net/cert/asn1_util.h"
+#include "net/cert/pem.h"
 #include "net/cert/x509_certificate.h"
 #include "net/cert/x509_util.h"
+#include "net/der/tag.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/boringssl/src/include/openssl/bn.h"
-#include "third_party/boringssl/src/include/openssl/bytestring.h"
 #include "third_party/boringssl/src/include/openssl/ec.h"
 #include "third_party/boringssl/src/include/openssl/err.h"
 #include "third_party/boringssl/src/include/openssl/mem.h"
-#include "third_party/boringssl/src/pki/pem.h"
 #include "third_party/securemessage/proto/securemessage.pb.h"
 
 namespace ash {
@@ -141,10 +138,8 @@ const std::string& SoftBindAttestationFlowImpl::Session::GetUserKey() const {
 
 void SoftBindAttestationFlowImpl::Session::ReportFailure(
     const std::string& error_message) {
-  LOG(WARNING) << "Attestation session failure: " << error_message;
   if (!callback_) {
-    LOG(WARNING) << "Callback is null";
-    base::debug::DumpWithoutCrashing();
+    LOG(ERROR) << "Attestation session failure callback in null.";
     return;
   }
   std::move(callback_).Run(std::vector<std::string>{"INVALID:" + error_message},
@@ -153,19 +148,14 @@ void SoftBindAttestationFlowImpl::Session::ReportFailure(
 
 void SoftBindAttestationFlowImpl::Session::ReportSuccess(
     const std::vector<std::string>& certificate_chain) {
-  if (!callback_) {
-    LOG(WARNING) << "Attestation session success but callback is null";
-    base::debug::DumpWithoutCrashing();
-    return;
-  }
   std::move(callback_).Run(certificate_chain, /*valid=*/true);
 }
 
 SoftBindAttestationFlowImpl::SoftBindAttestationFlowImpl()
     : attestation_client_(AttestationClient::Get()) {
   std::unique_ptr<ServerProxy> attestation_ca_client(new AttestationCAClient());
-  attestation_flow_ = std::make_unique<AttestationFlowAdaptive>(
-      std::move(attestation_ca_client));
+  attestation_flow_ =
+      std::make_unique<AttestationFlow>(std::move(attestation_ca_client));
 }
 
 SoftBindAttestationFlowImpl::~SoftBindAttestationFlowImpl() = default;
@@ -204,7 +194,7 @@ void SoftBindAttestationFlowImpl::GetCertificateInternal(
       /*request_origin=*/std::string(),
       /*force_new_key=*/force_new_key,
       /*key_crypto_type=*/::attestation::KEY_TYPE_RSA,
-      /*key_name=*/kSoftBindKey, /*profile_specific_data=*/std::nullopt,
+      /*key_name=*/kSoftBindKey, /*profile_specific_data=*/absl::nullopt,
       /*callback=*/std::move(certificate_callback));
 }
 
@@ -343,7 +333,7 @@ void SoftBindAttestationFlowImpl::OnCertificateSigned(
 
   std::vector<std::string> cert_chain_with_leaf = {pem_encoded_cert};
 
-  bssl::PEMTokenizer pem_tokenizer(certificate_chain, {"CERTIFICATE"});
+  net::PEMTokenizer pem_tokenizer(certificate_chain, {"CERTIFICATE"});
   while (pem_tokenizer.GetNext()) {
     std::string pem_encoded_intermediate_cert;
     net::X509Certificate::GetPEMEncodedFromDER(pem_tokenizer.data(),
@@ -365,7 +355,7 @@ void SoftBindAttestationFlowImpl::OnCertificateSigned(
         /*account_id=*/session->GetAccountId(),
         /*request_origin=*/std::string(), /*force_new_key=*/true,
         /*key_crypto_type=*/::attestation::KEY_TYPE_RSA,
-        /*key_name=*/kSoftBindKey, /*profile_specific_data=*/std::nullopt,
+        /*key_name=*/kSoftBindKey, /*profile_specific_data=*/absl::nullopt,
         /*callback=*/std::move(renew_callback));
   }
 }
@@ -389,12 +379,12 @@ bool SoftBindAttestationFlowImpl::IsAttestationAllowedByPolicy() const {
 CertificateExpiryStatus SoftBindAttestationFlowImpl::CheckExpiry(
     const std::string& certificate_chain) {
   int num_certificates = 0;
-  bssl::PEMTokenizer pem_tokenizer(certificate_chain, {"CERTIFICATE"});
+  net::PEMTokenizer pem_tokenizer(certificate_chain, {"CERTIFICATE"});
   while (pem_tokenizer.GetNext()) {
     ++num_certificates;
     scoped_refptr<net::X509Certificate> x509 =
         net::X509Certificate::CreateFromBytes(
-            base::as_byte_span(pem_tokenizer.data()));
+            base::as_bytes(base::make_span(pem_tokenizer.data())));
     if (!x509.get() || x509->valid_expiry().is_null()) {
       // This logic intentionally fails open. In theory this should not happen
       // but in practice parsing X.509 can be brittle and there are a lot of

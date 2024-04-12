@@ -29,9 +29,7 @@ class MiniFile {
   MiniFile& operator=(MiniFile&& other) noexcept;
 
   // Creates a new file at |path| for exclusive writing. Returns true if the
-  // file was created, in which case IsValid() will return true. Consumers are
-  // expected to write sequentially to the file. This expectation is for the
-  // sake of performance rather than correctness.
+  // file was created, in which case IsValid() will return true.
   bool Create(const wchar_t* path);
 
   // Returns true if this object has a path and a handle to an open file.

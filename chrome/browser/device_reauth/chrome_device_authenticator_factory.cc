@@ -4,10 +4,7 @@
 
 #include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
 
-#include "base/memory/ptr_util.h"
 #include "base/notreached.h"
-#include "components/device_reauth/device_authenticator_common.h"
-#include "content/public/browser/network_service_instance.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/device_reauth/android/device_authenticator_android.h"
@@ -17,22 +14,14 @@
 #include "chrome/browser/device_reauth/mac/device_authenticator_mac.h"
 #elif BUILDFLAG(IS_WIN)
 #include "chrome/browser/device_reauth/win/device_authenticator_win.h"
-#elif BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/device_reauth/chromeos/device_authenticator_chromeos.h"
 #endif
 
-using content::BrowserContext;
-using device_reauth::DeviceAuthenticator;
-
-ChromeDeviceAuthenticatorFactory::ChromeDeviceAuthenticatorFactory()
-    : ProfileKeyedServiceFactory(
-          "ChromeDeviceAuthenticator",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
-
-ChromeDeviceAuthenticatorFactory::~ChromeDeviceAuthenticatorFactory() = default;
+// static
+scoped_refptr<device_reauth::DeviceAuthenticator>
+ChromeDeviceAuthenticatorFactory::GetDeviceAuthenticator() {
+  return ChromeDeviceAuthenticatorFactory::GetInstance()
+      ->GetOrCreateDeviceAuthenticator();
+}
 
 // static
 ChromeDeviceAuthenticatorFactory*
@@ -41,44 +30,38 @@ ChromeDeviceAuthenticatorFactory::GetInstance() {
   return instance.get();
 }
 
-// static
-std::unique_ptr<DeviceAuthenticator>
-ChromeDeviceAuthenticatorFactory::GetForProfile(
-    Profile* profile,
-    const device_reauth::DeviceAuthParams& params) {
-  DeviceAuthenticatorProxy* proxy = static_cast<DeviceAuthenticatorProxy*>(
-      GetInstance()->GetServiceForBrowserContext(profile, true));
-
-  CHECK(proxy);
-
+scoped_refptr<device_reauth::DeviceAuthenticator>
+ChromeDeviceAuthenticatorFactory::GetOrCreateDeviceAuthenticator() {
+  if (!biometric_authenticator_) {
 #if BUILDFLAG(IS_ANDROID)
-  auto device_authenticator = std::make_unique<DeviceAuthenticatorAndroid>(
-      std::make_unique<DeviceAuthenticatorBridgeImpl>(), proxy, params);
+    auto biometric_authenticator =
+        base::WrapRefCounted(new DeviceAuthenticatorAndroid(
+            std::make_unique<DeviceAuthenticatorBridgeImpl>()));
 #elif BUILDFLAG(IS_MAC)
-  auto device_authenticator = std::make_unique<DeviceAuthenticatorMac>(
-      std::make_unique<AuthenticatorMac>(), proxy, params);
+    auto biometric_authenticator = base::WrapRefCounted(
+        new DeviceAuthenticatorMac(std::make_unique<AuthenticatorMac>()));
 #elif BUILDFLAG(IS_WIN)
-  auto device_authenticator = std::make_unique<DeviceAuthenticatorWin>(
-      std::make_unique<AuthenticatorWin>(), proxy, params);
-#elif BUILDFLAG(IS_CHROMEOS)
-  auto device_authenticator = std::make_unique<DeviceAuthenticatorChromeOS>(
-      std::make_unique<AuthenticatorChromeOS>(), proxy, params);
+    auto biometric_authenticator = base::WrapRefCounted(
+        new DeviceAuthenticatorWin(std::make_unique<AuthenticatorWin>()));
 #else
-  static_assert(false);
+    static_assert(false);
 #endif
-  return std::move(device_authenticator);
+    biometric_authenticator_ = biometric_authenticator->GetWeakPtr();
+    return biometric_authenticator;
+  }
+
+  return base::WrapRefCounted(biometric_authenticator_.get());
 }
 
-std::unique_ptr<KeyedService>
-ChromeDeviceAuthenticatorFactory::BuildServiceInstanceForBrowserContext(
-    BrowserContext* context) const {
+ChromeDeviceAuthenticatorFactory::ChromeDeviceAuthenticatorFactory() {
 #if BUILDFLAG(IS_WIN)
-  // Here we cache the biometric availability. If cached value is wrong(eg. user
-  // disable biometrics while chrome is running) then standard password prompt
-  // will appear.
-  DeviceAuthenticatorWin::CacheIfBiometricsAvailable(
-      std::make_unique<AuthenticatorWin>().get());
+  // DeviceAuthenticatorWin is created here only to cache the biometric
+  // availability and die. If cached value is wrong(eg. user disable biometrics
+  // while chrome is running) then standard password prompt will appear.
+  base::WrapRefCounted(
+      new DeviceAuthenticatorWin(std::make_unique<AuthenticatorWin>()))
+      ->CacheIfBiometricsAvailable();
 #endif
-
-  return std::make_unique<DeviceAuthenticatorProxy>();
 }
+
+ChromeDeviceAuthenticatorFactory::~ChromeDeviceAuthenticatorFactory() = default;

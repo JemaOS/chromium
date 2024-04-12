@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 #include <string>
-#include <string_view>
 
 #include "base/functional/callback_helpers.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
@@ -46,13 +46,7 @@ constexpr char kBadIconErrorTemplate[] = R"({
       "icons_http_results": [ {
          "http_code_desc": "Not Found",
          "http_status_code": 404,
-         "icon_size": "0x0",
          "icon_url": "$1banners/bad_icon.png"
-      }, {
-         "http_code_desc": "Not Found",
-         "http_status_code": 404,
-         "icon_size": "0x0",
-         "icon_url": "$1favicon.ico"
       } ],
       "is_generated_icon": true
    } ]
@@ -60,7 +54,7 @@ constexpr char kBadIconErrorTemplate[] = R"({
 )";
 
 // Drops all CR and LF characters.
-std::string TrimLineEndings(std::string_view text) {
+std::string TrimLineEndings(base::StringPiece text) {
   return base::CollapseWhitespaceASCII(
       text,
       /*trim_sequences_with_line_breaks=*/true);
@@ -92,22 +86,23 @@ class WebAppInternalsBrowserTest : public WebAppControllerBrowserTest {
     WebAppControllerBrowserTest::SetUpOnMainThread();
   }
 
-  webapps::AppId InstallWebApp(const GURL& app_url) {
+  AppId InstallWebApp(const GURL& app_url) {
     EXPECT_TRUE(ui_test_utils::NavigateToURL(browser(), app_url));
 
-    webapps::AppId app_id;
+    AppId app_id;
     base::RunLoop run_loop;
     GetProvider().scheduler().FetchManifestAndInstall(
         webapps::WebappInstallSource::OMNIBOX_INSTALL_ICON,
         browser()->tab_strip_model()->GetActiveWebContents()->GetWeakPtr(),
+        /*bypass_service_worker_check=*/false,
         base::BindOnce(test::TestAcceptDialogCallback),
-        base::BindLambdaForTesting([&](const webapps::AppId& new_app_id,
-                                       webapps::InstallResultCode code) {
-          EXPECT_EQ(code, webapps::InstallResultCode::kSuccessNewInstall);
-          app_id = new_app_id;
-          run_loop.Quit();
-        }),
-        FallbackBehavior::kAllowFallbackDataAlways);
+        base::BindLambdaForTesting(
+            [&](const AppId& new_app_id, webapps::InstallResultCode code) {
+              EXPECT_EQ(code, webapps::InstallResultCode::kSuccessNewInstall);
+              app_id = new_app_id;
+              run_loop.Quit();
+            }),
+        /*use_fallback=*/true);
 
     run_loop.Run();
     return app_id;
@@ -150,7 +145,7 @@ IN_PROC_BROWSER_TEST_F(WebAppInternalsBrowserTest,
   OverrideHttpRequest(embedded_test_server()->GetURL("/banners/bad_icon.png"),
                       net::HTTP_NOT_FOUND);
 
-  webapps::AppId app_id = InstallWebApp(embedded_test_server()->GetURL(
+  AppId app_id = InstallWebApp(embedded_test_server()->GetURL(
       "/banners/manifest_test_page.html?manifest=manifest_bad_icon.json"));
 
   const WebApp* web_app = GetProvider().registrar_unsafe().GetAppById(app_id);
@@ -166,8 +161,8 @@ IN_PROC_BROWSER_TEST_F(WebAppInternalsBrowserTest,
 
   const base::Value& error_log =
       (*GetProvider().install_manager().error_log())[0];
-  EXPECT_TRUE(error_log.is_dict());
-  EXPECT_EQ(4u, error_log.GetDict().size());
+
+  EXPECT_EQ(4u, error_log.DictSize());
 
   EXPECT_EQ(TrimLineEndings(expected_error),
             TrimLineEndings(error_log.DebugString()));
@@ -182,12 +177,12 @@ IN_PROC_BROWSER_TEST_F(WebAppInternalsBrowserTest,
 
   const base::Value& error_log =
       (*GetProvider().install_manager().error_log())[0];
-  EXPECT_TRUE(error_log.is_dict());
-  EXPECT_EQ(4u, error_log.GetDict().size());
+
+  EXPECT_EQ(4u, error_log.DictSize());
 
   // Parses base url from the log: the port for embedded_test_server() changes
   // on every test run.
-  const std::string* url_value = error_log.GetDict().FindString("!url");
+  const std::string* url_value = error_log.FindStringKey("!url");
   ASSERT_TRUE(url_value);
   GURL url{*url_value};
   ASSERT_TRUE(url.is_valid());

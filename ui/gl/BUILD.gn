@@ -4,11 +4,13 @@
 
 import("//build/buildflag_header.gni")
 import("//build/config/chrome_build.gni")
+import("//build/config/chromecast_build.gni")
 import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/linux/pkg_config.gni")
 import("//build/config/ozone.gni")
 import("//build/config/ui.gni")
 import("//gpu/vulkan/features.gni")
+import("//media/gpu/args.gni")
 import("//testing/test.gni")
 import("//third_party/angle/gni/angle.gni")
 import("//third_party/dawn/scripts/dawn_features.gni")
@@ -23,7 +25,6 @@ declare_args() {
 if (is_android) {
   import("//build/config/android/config.gni")
   import("//build/config/android/rules.gni")
-  import("//third_party/jni_zero/jni_zero.gni")
 }
 
 buildflag_header("buildflags") {
@@ -49,7 +50,8 @@ component("gl") {
   output_name = "gl_wrapper"  # Avoid colliding with OS X"s libGL.dylib.
 
   sources = [
-    "angle_implementation.h",
+    "buffer_format_utils.cc",
+    "buffer_format_utils.h",
     "dual_gpu_state.cc",
     "dual_gpu_state.h",
     "egl_timestamps.h",
@@ -109,6 +111,7 @@ component("gl") {
     "gl_utils.h",
     "gl_version_info.cc",
     "gl_version_info.h",
+    "gl_workarounds.h",
     "gpu_switching_manager.cc",
     "gpu_switching_manager.h",
     "gpu_timing.cc",
@@ -120,8 +123,6 @@ component("gl") {
     "scoped_binders.h",
     "scoped_make_current.cc",
     "scoped_make_current.h",
-    "scoped_make_current_unsafe.cc",
-    "scoped_make_current_unsafe.h",
     "scoped_restore_texture.cc",
     "scoped_restore_texture.h",
     "shader_tracking.cc",
@@ -147,6 +148,13 @@ component("gl") {
     ]
   }
 
+  if (!is_android) {
+    sources += [
+      "gl_image.cc",
+      "gl_image.h",
+    ]
+  }
+
   configs += [ "//build/config:precompiled_headers" ]
   defines = [ "GL_IMPLEMENTATION" ]
   if (enable_gpu_service_logging) {
@@ -167,7 +175,6 @@ component("gl") {
 
     # ANGLE includes are used cross-platform.
     "//third_party/angle:includes",
-    "//ui/base:ozone_buildflags",
     "//ui/gfx/mojom",
   ]
   public_deps = [
@@ -225,7 +232,7 @@ component("gl") {
       ]
     }
 
-    if (is_android || is_chromeos || is_linux) {
+    if (is_posix && !is_fuchsia && !is_mac && !is_ios) {
       # Windows has USE_EGL but doesn't support base::FileDescriptor.
       # libsync isn't supported or needed on MacOSX.
       # Fuchsia is excluded due to a libsync dependency and because it's
@@ -236,11 +243,15 @@ component("gl") {
         "gl_fence_android_native_fence_sync.h",
       ]
 
-      deps += [ "//third_party/libsync" ]
+      deps += [
+        "//components/crash/core/common",
+        "//third_party/libsync",
+      ]
     }
   }
 
   if (use_ozone) {
+    deps += [ "//ui/ozone:buildflags" ]
     if (use_egl && !is_fuchsia) {
       data_deps += [
         "//third_party/angle:libEGL",
@@ -258,6 +269,8 @@ component("gl") {
       "gl_surface_egl_x11.h",
       "gl_surface_egl_x11_gles2.cc",
       "gl_surface_egl_x11_gles2.h",
+      "native_pixmap_egl_x11_binding_helper.cc",
+      "native_pixmap_egl_x11_binding_helper.h",
     ]
 
     deps += [
@@ -294,7 +307,6 @@ component("gl") {
       "dcomp_surface_registry.h",
       "debug_utils.cc",
       "debug_utils.h",
-      "delegated_ink_point_renderer_gpu.cc",
       "delegated_ink_point_renderer_gpu.h",
       "direct_composition_child_surface_win.cc",
       "direct_composition_child_surface_win.h",
@@ -310,6 +322,7 @@ component("gl") {
       "hdr_metadata_helper_win.h",
       "swap_chain_presenter.cc",
       "swap_chain_presenter.h",
+      "vsync_observer.h",
       "vsync_provider_win.cc",
       "vsync_provider_win.h",
       "vsync_thread_win.cc",
@@ -325,11 +338,7 @@ component("gl") {
       "/DELAYLOAD:dwmapi.dll",
       "/DELAYLOAD:dxgi.dll",
     ]
-    deps += [
-      "//ui/base",
-      "//ui/display:display",
-      "//ui/gfx/mojom:dxgi_info",
-    ]
+    deps += [ "//ui/gfx/mojom:dxgi_info" ]
 
     assert(use_egl)
     data_deps += [
@@ -342,35 +351,24 @@ component("gl") {
       data_deps += [ "//third_party/vulkan-deps/vulkan-loader/src:libvulkan" ]
     }
   }
-  if (is_apple) {
+  if (is_mac) {
     sources += [
       "ca_renderer_layer_params.cc",
       "ca_renderer_layer_params.h",
+      "dual_gpu_state_mac.cc",
+      "dual_gpu_state_mac.h",
       "egl_surface_io_surface.cc",
       "egl_surface_io_surface.h",
       "gl_display_egl.mm",
       "gl_fence_apple.cc",
       "gl_fence_apple.h",
+      "scoped_cgl.cc",
+      "scoped_cgl.h",
     ]
-
-    # Do not compile with ARC because //gpu/command_buffer code is not able to
-    # be compiled with ARC due to Dawn, and if this code were to be compiled
-    # with ARC, it would not link with that code due to mismatches of
-    # autoreleasing out parameters.
-    configs -= [ "//build/config/compiler:enable_arc" ]
 
     frameworks = [
       "CoreFoundation.framework",
       "IOSurface.framework",
-    ]
-  }
-  if (is_mac) {
-    sources += [
-      "dual_gpu_state_mac.cc",
-      "dual_gpu_state_mac.h",
-    ]
-
-    frameworks += [
       "OpenGL.framework",
       "Quartz.framework",
     ]
@@ -388,7 +386,26 @@ component("gl") {
       ]
     }
 
+    deps += [ "//components/metal_util:metal_util_types" ]
+
     defines += [ "GL_SILENCE_DEPRECATION" ]
+  }
+  if (is_ios) {
+    sources += [
+      "ca_renderer_layer_params.cc",
+      "ca_renderer_layer_params.h",
+      "egl_surface_io_surface.cc",
+      "egl_surface_io_surface.h",
+      "gl_display_egl.mm",
+      "gl_fence_apple.cc",
+      "gl_fence_apple.h",
+    ]
+    frameworks = [
+      "CoreFoundation.framework",
+      "IOSurface.framework",
+    ]
+
+    deps += [ "//components/metal_util:metal_util_types" ]
   }
   if (is_android) {
     defines += [
@@ -400,7 +417,7 @@ component("gl") {
 
     deps += [ ":gl_jni_headers" ]
   }
-  if (is_linux || is_chromeos) {
+  if (is_linux) {
     deps += [ "//third_party/angle:angle_gpu_info_util" ]
   }
 }
@@ -477,6 +494,13 @@ static_library("test_support") {
     "test/gl_test_support.h",
   ]
 
+  if (!is_android) {
+    sources += [
+      "test/gl_image_test_template.cc",
+      "test/gl_image_test_template.h",
+    ]
+  }
+
   configs += [ "//third_party/khronos:khronos_headers" ]
 
   public_deps = [
@@ -532,6 +556,7 @@ test("gl_unittests") {
 
   sources = [
     "gl_api_unittest.cc",
+    "gl_surface_format_unittest.cc",
     "gl_version_info_unittest.cc",
     "gpu_timing_unittest.cc",
   ]
@@ -558,6 +583,10 @@ test("gl_unittests") {
     ]
   }
 
+  if (use_vaapi) {
+    sources += [ "gl_image_gl_texture_unittest.cc" ]
+  }
+
   include_dirs = [ "//third_party/khronos" ]
 
   deps = [
@@ -577,16 +606,26 @@ test("gl_unittests") {
     "//ui/platform_window:platform_impls",
   ]
 
+  if (use_vaapi) {
+    # gl_image_gl_texture_unittest.cc cannot easily be made to run as part of
+    # media_unittests due to its reliance on particular GL environment setup
+    # necessary for gl_image_test_template.h. Instead just leave it here until
+    # it is eliminated, at which point these deps can also be eliminated.
+    # TODO(crbug.com/1310018): Eliminate these deps once
+    # gl_image_gl_texture_unittest.cc is eliminated.
+    deps += [
+      "//media/gpu",
+      "//media/gpu/vaapi",
+    ]
+  }
+
   data_deps = [
     "//testing/buildbot/filters:gl_unittests_filters",
     "//third_party/mesa_headers",
   ]
 
   if (is_win) {
-    deps += [
-      "//media/base/win:test_support",
-      "//ui/base:pixel_diff_test_support",
-    ]
+    deps += [ "//media/base/win:test_support" ]
     libs = [ "dxguid.lib" ]
   }
 
@@ -604,6 +643,7 @@ group("gl_unittests_ozone") {
 if (is_android) {
   generate_jar_jni("surface_jni_headers") {
     classes = [ "android/view/Surface.class" ]
+    always_mangle = true
   }
 
   generate_jni("gl_jni_headers") {

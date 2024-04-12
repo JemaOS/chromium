@@ -4,18 +4,11 @@
 
 #include "chrome/browser/enterprise/connectors/device_trust/signals/decorators/browser/browser_signals_decorator.h"
 
-#include <memory>
-#include <optional>
-#include <utility>
-
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
 #include "base/values.h"
-#include "chrome/browser/enterprise/connectors/device_trust/signals/dependency_factory.h"
-#include "chrome/browser/enterprise/connectors/device_trust/signals/mock_dependency_factory.h"
 #include "chrome/browser/enterprise/signals/device_info_fetcher.h"
 #include "components/device_signals/core/browser/mock_signals_aggregator.h"
 #include "components/device_signals/core/browser/signals_aggregator.h"
@@ -23,14 +16,13 @@
 #include "components/device_signals/core/common/common_types.h"
 #include "components/device_signals/core/common/signals_constants.h"
 #include "components/enterprise/browser/controller/fake_browser_dm_token_storage.h"
-#include "components/policy/core/common/cloud/mock_cloud_policy_manager.h"
 #include "components/policy/core/common/cloud/mock_cloud_policy_store.h"
 #include "components/policy/proto/device_management_backend.pb.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using testing::_;
 using testing::Invoke;
-using testing::Return;
 using testing::StrictMock;
 
 namespace enterprise_connectors {
@@ -112,11 +104,6 @@ void ValidateStaticSignals(const base::Value::Dict& signals) {
       signals.FindInt(device_signals::names::kSecureBootEnabled);
   ASSERT_TRUE(secure_boot_enabled);
   EXPECT_EQ(secure_boot_enabled.value(), kEnabledSetting);
-
-  auto signals_context = signals.FindInt(device_signals::names::kTrigger);
-  ASSERT_TRUE(signals_context);
-  EXPECT_EQ(signals_context.value(),
-            static_cast<int32_t>(device_signals::Trigger::kBrowserNavigation));
 }
 
 void ValidateCrowdStrikeSignals(const base::Value::Dict& signals) {
@@ -143,22 +130,6 @@ class BrowserSignalsDecoratorTest : public testing::Test {
   void SetUp() override {
     enterprise_signals::DeviceInfoFetcher::SetForceStubForTesting(
         /*should_force=*/true);
-
-    auto mock_browser_cloud_policy_store =
-        std::make_unique<policy::MockCloudPolicyStore>();
-    mock_browser_cloud_policy_store_ = mock_browser_cloud_policy_store.get();
-    mock_browser_cloud_policy_manager_ =
-        std::make_unique<policy::MockCloudPolicyManager>(
-            std::move(mock_browser_cloud_policy_store),
-            task_environment_.GetMainThreadTaskRunner());
-
-    auto mock_user_cloud_policy_store =
-        std::make_unique<policy::MockCloudPolicyStore>();
-    mock_user_cloud_policy_store_ = mock_user_cloud_policy_store.get();
-    mock_user_cloud_policy_manager_ =
-        std::make_unique<policy::MockCloudPolicyManager>(
-            std::move(mock_user_cloud_policy_store),
-            task_environment_.GetMainThreadTaskRunner());
   }
 
   void TearDown() override {
@@ -169,30 +140,20 @@ class BrowserSignalsDecoratorTest : public testing::Test {
   void SetFakeBrowserPolicyData() {
     auto policy_data = std::make_unique<enterprise_management::PolicyData>();
     policy_data->set_managed_by(kFakeBrowserEnrollmentDomain);
-    mock_browser_cloud_policy_store_->set_policy_data_for_testing(
+    mock_browser_cloud_policy_store_.set_policy_data_for_testing(
         std::move(policy_data));
   }
 
   void SetFakeUserPolicyData() {
     auto policy_data = std::make_unique<enterprise_management::PolicyData>();
     policy_data->set_managed_by(kFakeUserEnrollmentDomain);
-    mock_user_cloud_policy_store_->set_policy_data_for_testing(
+    mock_user_cloud_policy_store_.set_policy_data_for_testing(
         std::move(policy_data));
   }
 
-  std::unique_ptr<DependencyFactory> CreateDependencyFactory(
-      bool valid_manager = true) {
-    auto mock_dependency_factory =
-        std::make_unique<test::MockDependencyFactory>();
-    EXPECT_CALL(*mock_dependency_factory, GetUserCloudPolicyManager())
-        .WillOnce(Return(valid_manager ? mock_user_cloud_policy_manager_.get()
-                                       : nullptr));
-    return mock_dependency_factory;
-  }
-
   BrowserSignalsDecorator CreateDecorator() {
-    return BrowserSignalsDecorator(mock_browser_cloud_policy_manager_.get(),
-                                   CreateDependencyFactory(),
+    return BrowserSignalsDecorator(&mock_browser_cloud_policy_store_,
+                                   &mock_user_cloud_policy_store_,
                                    &mock_aggregator_);
   }
 
@@ -208,12 +169,8 @@ class BrowserSignalsDecoratorTest : public testing::Test {
 
   base::test::TaskEnvironment task_environment_;
   base::HistogramTester histogram_tester_;
-  std::unique_ptr<policy::MockCloudPolicyManager>
-      mock_browser_cloud_policy_manager_;
-  std::unique_ptr<policy::MockCloudPolicyManager>
-      mock_user_cloud_policy_manager_;
-  raw_ptr<policy::MockCloudPolicyStore> mock_browser_cloud_policy_store_;
-  raw_ptr<policy::MockCloudPolicyStore> mock_user_cloud_policy_store_;
+  policy::MockCloudPolicyStore mock_browser_cloud_policy_store_;
+  policy::MockCloudPolicyStore mock_user_cloud_policy_store_;
   StrictMock<device_signals::MockSignalsAggregator> mock_aggregator_;
 };
 
@@ -244,8 +201,8 @@ TEST_F(BrowserSignalsDecoratorTest, Decorate_NullAggregator) {
   SetFakeBrowserPolicyData();
   SetFakeUserPolicyData();
 
-  BrowserSignalsDecorator decorator(mock_browser_cloud_policy_manager_.get(),
-                                    CreateDependencyFactory(), nullptr);
+  BrowserSignalsDecorator decorator(&mock_browser_cloud_policy_store_,
+                                    &mock_user_cloud_policy_store_, nullptr);
   base::RunLoop run_loop;
   base::Value::Dict signals;
   decorator.Decorate(signals, run_loop.QuitClosure());
@@ -286,7 +243,7 @@ TEST_F(BrowserSignalsDecoratorTest, Decorate_NullBrowserPolicyStore) {
   SetFakeUserPolicyData();
   SetUpAggregatorExpectations();
 
-  BrowserSignalsDecorator decorator(nullptr, CreateDependencyFactory(),
+  BrowserSignalsDecorator decorator(nullptr, &mock_user_cloud_policy_store_,
                                     &mock_aggregator_);
   base::RunLoop run_loop;
   base::Value::Dict signals;
@@ -324,9 +281,8 @@ TEST_F(BrowserSignalsDecoratorTest, Decorate_NullUserPolicyStore) {
   SetFakeBrowserPolicyData();
   SetUpAggregatorExpectations();
 
-  BrowserSignalsDecorator decorator(
-      mock_browser_cloud_policy_manager_.get(),
-      CreateDependencyFactory(/*valid_manager=*/false), &mock_aggregator_);
+  BrowserSignalsDecorator decorator(&mock_browser_cloud_policy_store_, nullptr,
+                                    &mock_aggregator_);
   base::RunLoop run_loop;
   base::Value::Dict signals;
   decorator.Decorate(signals, run_loop.QuitClosure());

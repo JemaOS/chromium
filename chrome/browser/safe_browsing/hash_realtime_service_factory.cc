@@ -10,10 +10,11 @@
 #include "chrome/browser/safe_browsing/ohttp_key_service_factory.h"
 #include "chrome/browser/safe_browsing/safe_browsing_service.h"
 #include "chrome/browser/safe_browsing/verdict_cache_manager_factory.h"
-#include "components/safe_browsing/content/browser/web_ui/safe_browsing_ui.h"
 #include "components/safe_browsing/core/browser/hashprefix_realtime/hash_realtime_service.h"
 #include "components/safe_browsing/core/browser/verdict_cache_manager.h"
+#include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "content/public/browser/browser_context.h"
+#include "services/network/public/cpp/cross_thread_pending_shared_url_loader_factory.h"
 
 namespace safe_browsing {
 
@@ -26,8 +27,7 @@ HashRealTimeService* HashRealTimeServiceFactory::GetForProfile(
 
 // static
 HashRealTimeServiceFactory* HashRealTimeServiceFactory::GetInstance() {
-  static base::NoDestructor<HashRealTimeServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<HashRealTimeServiceFactory>::get();
 }
 
 HashRealTimeServiceFactory::HashRealTimeServiceFactory()
@@ -35,25 +35,38 @@ HashRealTimeServiceFactory::HashRealTimeServiceFactory()
           "HashRealTimeService",
           ProfileSelections::Builder()
               .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {
   DependsOn(VerdictCacheManagerFactory::GetInstance());
   DependsOn(NetworkContextServiceFactory::GetInstance());
   DependsOn(OhttpKeyServiceFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService>
-HashRealTimeServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* HashRealTimeServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   if (!g_browser_process->safe_browsing_service()) {
     return nullptr;
   }
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<HashRealTimeService>(
+  auto url_loader_factory =
+      std::make_unique<network::CrossThreadPendingSharedURLLoaderFactory>(
+          g_browser_process->safe_browsing_service()->GetURLLoaderFactory(
+              profile));
+  return new HashRealTimeService(
+      network::SharedURLLoaderFactory::Create(std::move(url_loader_factory)),
       base::BindRepeating(&HashRealTimeServiceFactory::GetNetworkContext,
                           profile),
       VerdictCacheManagerFactory::GetForProfile(profile),
       OhttpKeyServiceFactory::GetForProfile(profile),
-      WebUIInfoSingleton::GetInstance());
+      base::BindRepeating(
+          &HashRealTimeServiceFactory::IsEnhancedProtectionEnabled, profile));
+}
+
+// static
+bool HashRealTimeServiceFactory::IsEnhancedProtectionEnabled(Profile* profile) {
+  return safe_browsing::IsEnhancedProtectionEnabled(*(profile->GetPrefs()));
 }
 
 // static

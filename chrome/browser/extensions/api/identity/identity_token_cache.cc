@@ -4,9 +4,7 @@
 
 #include "chrome/browser/extensions/api/identity/identity_token_cache.h"
 
-#include <map>
-#include <set>
-
+#include "base/containers/cxx20_erase.h"
 #include "base/ranges/algorithm.h"
 #include "chrome/browser/extensions/api/identity/identity_constants.h"
 
@@ -184,7 +182,7 @@ void IdentityTokenCache::EraseAccessToken(const std::string& extension_id,
        entry_it != access_tokens_cache_.end(); entry_it++) {
     if (entry_it->first.extension_id == extension_id) {
       AccessTokensValue& cached_tokens = entry_it->second;
-      size_t num_erased = std::erase_if(
+      size_t num_erased = base::EraseIf(
           cached_tokens, [&token](const IdentityTokenCacheValue& cached_token) {
             return cached_token.token() == token;
           });
@@ -200,12 +198,12 @@ void IdentityTokenCache::EraseAccessToken(const std::string& extension_id,
 
 void IdentityTokenCache::EraseAllTokensForExtension(
     const std::string& extension_id) {
-  std::erase_if(access_tokens_cache_,
+  base::EraseIf(access_tokens_cache_,
                 [&extension_id](const auto& key_value_pair) {
                   const AccessTokensKey& key = key_value_pair.first;
                   return key.extension_id == extension_id;
                 });
-  std::erase_if(intermediate_value_cache_,
+  base::EraseIf(intermediate_value_cache_,
                 [&extension_id](const auto& key_value_pair) {
                   const ExtensionTokenKey& key = key_value_pair.first;
                   return key.extension_id == extension_id;
@@ -257,7 +255,7 @@ void IdentityTokenCache::EraseStaleTokens() {
   for (auto it = access_tokens_cache_.begin();
        it != access_tokens_cache_.end();) {
     auto& cached_tokens = it->second;
-    std::erase_if(cached_tokens, [](const IdentityTokenCacheValue& value) {
+    base::EraseIf(cached_tokens, [](const IdentityTokenCacheValue& value) {
       return value.status() == IdentityTokenCacheValue::CACHE_STATUS_NOTFOUND;
     });
 
@@ -267,7 +265,7 @@ void IdentityTokenCache::EraseStaleTokens() {
       ++it;
   }
 
-  std::erase_if(intermediate_value_cache_, [](const auto& key_value_pair) {
+  base::EraseIf(intermediate_value_cache_, [](const auto& key_value_pair) {
     const IdentityTokenCacheValue& value = key_value_pair.second;
     return value.status() == IdentityTokenCacheValue::CACHE_STATUS_NOTFOUND;
   });

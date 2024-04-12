@@ -6,58 +6,52 @@
 #define CHROME_UPDATER_UTIL_WIN_UTIL_H_
 
 #include <windows.h>
-#include <wrl/client.h>
 #include <wrl/implements.h>
 
 #include <cstdint>
-#include <optional>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
-#include "base/check.h"
 #include "base/containers/span.h"
-#include "base/debug/alias.h"
 #include "base/files/file_path.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
-#include "base/functional/function_ref.h"
 #include "base/hash/hash.h"
-#include "base/logging.h"
 #include "base/process/process_iterator.h"
-#include "base/ranges/algorithm.h"
 #include "base/scoped_generic.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
 #include "base/win/atl.h"
 #include "base/win/scoped_handle.h"
-#include "base/win/win_util.h"
 #include "base/win/windows_types.h"
 #include "chrome/updater/updater_scope.h"
-#include "chrome/updater/win/scoped_handle.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class FilePath;
 }
 
-struct IidComparator {
-  constexpr bool operator()(const IID& lhs, const IID& rhs) const {
-    auto lhs_prefix = std::tie(lhs.Data1, lhs.Data2, lhs.Data3);
-    auto rhs_prefix = std::tie(rhs.Data1, rhs.Data2, rhs.Data3);
-    if (lhs_prefix < rhs_prefix) {
-      return true;
-    }
-    if (lhs_prefix == rhs_prefix) {
-      return base::ranges::lexicographical_compare(lhs.Data4, rhs.Data4);
-    }
-    return false;
+// Specialization for std::hash so that IID values can be stored in an
+// associative container.
+template <>
+struct std::hash<IID> {
+  size_t operator()(const IID& iid) const {
+    static_assert(sizeof(iid) == 16, "IID storage must be contiguous.");
+    return base::FastHash(base::span<const uint8_t>(
+        reinterpret_cast<const uint8_t*>(&iid), sizeof(iid)));
   }
 };
 
 namespace updater {
 
+// Helper for methods which perform system operations which may fail. The
+// failure reason is returned as an HRESULT.
+// TODO(crbug.com/1369769): Remove the following warning once resolved in
+// base. NOTE: When ValueT is an integral type, base::expected's implicit ctors
+// are ambiguous. To return an error in this case it must be wrapped in a
+// base::unexpected(error);
 template <typename ValueT>
 using HResultOr = base::expected<ValueT, HRESULT>;
 
@@ -97,14 +91,14 @@ class ProcessFilterName : public base::ProcessFilter {
   std::wstring process_name_;
 };
 
-namespace internal {
+namespace {
 
 template <typename T>
 using WrlRuntimeClass = Microsoft::WRL::RuntimeClass<
     Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
     T>;
 
-}  // namespace internal
+}  // namespace
 
 // Implements `DynamicIIDs` for interface `Interface`, where `Interface` is the
 // implemented interface. `iid_user` and `iid_system` are aliases for interface
@@ -113,38 +107,16 @@ using WrlRuntimeClass = Microsoft::WRL::RuntimeClass<
 // Usage: derive your COM class that implements interface `Interface` from
 // `DynamicIIDsImpl<Interface, iid_user, iid_system>`.
 template <typename Interface, REFIID iid_user, REFIID iid_system>
-class DynamicIIDsImpl : public internal::WrlRuntimeClass<Interface> {
+class DynamicIIDsImpl : public WrlRuntimeClass<Interface> {
  public:
-  DynamicIIDsImpl() {
-    VLOG(3) << __func__ << ": Interface: " << typeid(Interface).name()
-            << ": iid_user: " << base::win::WStringFromGUID(iid_user)
-            << ": iid_system: " << base::win::WStringFromGUID(iid_system)
-            << ": IsSystemInstall(): " << IsSystemInstall();
-  }
-
   IFACEMETHODIMP QueryInterface(REFIID riid, void** object) override {
-    return internal::WrlRuntimeClass<Interface>::QueryInterface(
+    return WrlRuntimeClass<Interface>::QueryInterface(
         riid == (IsSystemInstall() ? iid_system : iid_user)
             ? __uuidof(Interface)
             : riid,
         object);
   }
 };
-
-// Macro that makes it easier to derive from `DynamicIIDsImpl`.
-#define DYNAMICIIDSIMPL(interface)                      \
-  DynamicIIDsImpl<interface, __uuidof(interface##User), \
-                  __uuidof(interface##System)>
-
-// Macros that makes it easier to call the `IDispatchImpl` constructor.
-#define IID_MAP_ENTRY_USER(interface) \
-  { __uuidof(interface##User), __uuidof(interface) }
-#define IID_MAP_ENTRY_SYSTEM(interface) \
-  { __uuidof(interface##System), __uuidof(interface) }
-#define IID_MAPS_USERSYSTEM(interface) \
-  {IID_MAP_ENTRY_USER(interface)}, {   \
-    IID_MAP_ENTRY_SYSTEM(interface)    \
-  }
 
 // Returns the last error as an HRESULT or E_FAIL if last error is NO_ERROR.
 // This is not a drop in replacement for the HRESULT_FROM_WIN32 macro.
@@ -159,6 +131,22 @@ bool IsProcessRunning(const wchar_t* executable);
 // Waits until every running instance of |executable| is stopped.
 // Returns true if every running processes are stopped.
 bool WaitForProcessesStopped(const wchar_t* executable);
+
+// Gets the handle to the module containing the given executing address.
+HMODULE GetModuleHandleFromAddress(void* address);
+
+// Gets the handle to the currently executing module.
+HMODULE GetCurrentModuleHandle();
+
+// Creates a unique event name and stores it in the specified environment var.
+HRESULT CreateUniqueEventInEnvironment(const std::wstring& var_name,
+                                       UpdaterScope scope,
+                                       HANDLE* unique_event);
+
+// Obtains a unique event name from specified environment var and opens it.
+HRESULT OpenUniqueEventFromEnvironment(const std::wstring& var_name,
+                                       UpdaterScope scope,
+                                       HANDLE* unique_event);
 
 struct NamedObjectAttributes {
   NamedObjectAttributes(const std::wstring& name, const CSecurityDesc& sd);
@@ -182,10 +170,13 @@ struct NamedObjectAttributes {
 NamedObjectAttributes GetNamedObjectAttributes(const wchar_t* base_name,
                                                UpdaterScope scope);
 
+// Creates an event based on the provided attributes.
+HRESULT CreateEvent(NamedObjectAttributes* event_attr, HANDLE* event_handle);
+
 // Gets the security descriptor with the default DACL for the current process
 // user. The owner is the current user, the group is the current primary group.
 // Returns security attributes on success, nullopt on failure.
-std::optional<CSecurityDesc> GetCurrentUserDefaultSecurityDescriptor();
+absl::optional<CSecurityDesc> GetCurrentUserDefaultSecurityDescriptor();
 
 // Get security descriptor containing a DACL that grants the ACCESS_MASK access
 // to admins and system.
@@ -201,18 +192,9 @@ std::wstring GetAppClientStateKey(const std::string& app_id);
 std::wstring GetAppClientStateKey(const std::wstring& app_id);
 
 // Returns the registry path
-// `Software\{CompanyName}\Update\ClientState\{app_id}\cohort`.
-std::wstring GetAppCohortKey(const std::string& app_id);
-std::wstring GetAppCohortKey(const std::wstring& app_id);
-
-// Returns the registry path
 // `Software\{CompanyName}\Update\Clients\{app_id}\Commands\{command_id}`.
 std::wstring GetAppCommandKey(const std::wstring& app_id,
                               const std::wstring& command_id);
-
-// Returns the registry value
-// `{HKRoot}\Software\{CompanyName}\Update\ClientState\{app_id}\ap`.
-std::string GetAppAPValue(UpdaterScope scope, const std::string& app_id);
 
 // Returns the registry path for the Updater app id under the |Clients| subkey.
 // The path does not include the registry root hive prefix.
@@ -231,6 +213,9 @@ bool SetRegistryKey(HKEY root,
 // Returns a value in the [0, 100] range or -1 if the progress could not
 // be computed.
 int GetDownloadProgress(int64_t downloaded_bytes, int64_t total_bytes);
+
+// Returns a logged on user token handle from the current session.
+base::win::ScopedHandle GetUserTokenFromCurrentSessionId();
 
 // Returns `true` if the token is an elevated administrator. If
 // `token` is `NULL`, the current thread token is used.
@@ -295,11 +280,7 @@ HResultOr<DWORD> RunElevated(const base::FilePath& file_path,
 // spawned process.
 HRESULT RunDeElevated(const std::wstring& path, const std::wstring& parameters);
 
-// Runs `cmd_line` de-elevated.The function does not wait for the spawned
-// process.
-HRESULT RunDeElevatedCmdLine(const std::wstring& cmd_line);
-
-std::optional<base::FilePath> GetGoogleUpdateExePath(UpdaterScope scope);
+absl::optional<base::FilePath> GetGoogleUpdateExePath(UpdaterScope scope);
 
 // Causes the COM runtime not to handle exceptions. Failing to set this
 // up is a critical error, since ignoring exceptions may lead to corrupted
@@ -311,14 +292,14 @@ std::optional<base::FilePath> GetGoogleUpdateExePath(UpdaterScope scope);
 // a log file in the same directory as the MSI installer.
 std::wstring BuildMsiCommandLine(
     const std::wstring& arguments,
-    const std::optional<base::FilePath>& installer_data_file,
+    const absl::optional<base::FilePath>& installer_data_file,
     const base::FilePath& msi_installer);
 
 // Builds a command line running the provided `exe_installer`, `arguments`, and
 // `installer_data_file`.
 std::wstring BuildExeCommandLine(
     const std::wstring& arguments,
-    const std::optional<base::FilePath>& installer_data_file,
+    const absl::optional<base::FilePath>& installer_data_file,
     const base::FilePath& exe_installer);
 
 // Returns `true` if the service specified is currently running or starting.
@@ -330,7 +311,7 @@ bool IsServiceRunning(const std::wstring& service_name);
 HKEY UpdaterScopeToHKeyRoot(UpdaterScope scope);
 
 // Returns an OSVERSIONINFOEX for the current OS version.
-std::optional<OSVERSIONINFOEX> GetOSVersion();
+absl::optional<OSVERSIONINFOEX> GetOSVersion();
 
 // Compares the current OS to the supplied version.  The value of `oper` should
 // be one of the predicate values from `::VerSetConditionMask()`, for example,
@@ -350,9 +331,9 @@ bool CompareOSVersions(const OSVERSIONINFOEX& os, BYTE oper);
 // and cannot be reversed.
 bool EnableProcessHeapMetadataProtection();
 
-// Creates a unique temporary directory. The directory is created under a secure
-// location if the caller is admin.
-std::optional<base::ScopedTempDir> CreateSecureTempDir();
+// Creates a unique temporary directory. The directory is created under
+// %ProgramFiles% if the caller is admin, so it is secure.
+absl::optional<base::ScopedTempDir> CreateSecureTempDir();
 
 // Signals the shutdown event that causes legacy GoogleUpdate processes to exit.
 // Returns a closure that resets the shutdown event when it goes out of scope.
@@ -373,7 +354,7 @@ bool IsGuid(const std::wstring& s);
 // Runs `callback` for each run value in the registry that matches `prefix`.
 void ForEachRegistryRunValueWithPrefix(
     const std::wstring& prefix,
-    base::FunctionRef<void(const std::wstring&)> callback);
+    base::RepeatingCallback<void(const std::wstring&)> callback);
 
 // Deletes the registry value at `root\\path`, and returns `true` on success or
 // if the path does not exist.
@@ -387,7 +368,7 @@ void ForEachRegistryRunValueWithPrefix(
 void ForEachServiceWithPrefix(
     const std::wstring& service_name_prefix,
     const std::wstring& display_name_prefix,
-    base::FunctionRef<void(const std::wstring&)> callback);
+    base::RepeatingCallback<void(const std::wstring&)> callback);
 
 // Deletes `service_name` system service and returns `true` on success.
 [[nodiscard]] bool DeleteService(const std::wstring& service_name);
@@ -396,43 +377,10 @@ void ForEachServiceWithPrefix(
 // for the given CLSID.
 void LogClsidEntries(REFCLSID clsid);
 
-template <typename T, typename... TArgs>
-Microsoft::WRL::ComPtr<T> MakeComObjectOrCrash(TArgs&&... args) {
-  auto obj = Microsoft::WRL::Make<T>(std::forward<TArgs>(args)...);
-  CHECK(obj);
-  return obj;
-}
-
-template <typename T, typename I, typename... TArgs>
-[[nodiscard]] HRESULT MakeAndInitializeComObject(I** obj, TArgs&&... args) {
-  return Microsoft::WRL::MakeAndInitialize<T>(obj,
-                                              std::forward<TArgs>(args)...);
-}
-
-template <typename T, typename I, typename... TArgs>
-[[nodiscard]] HRESULT MakeAndInitializeComObject(Microsoft::WRL::ComPtr<I>& obj,
-                                                 TArgs&&... args) {
-  return MakeAndInitializeComObject<T>(static_cast<I**>(&obj),
-                                       std::forward<TArgs>(args)...);
-}
-
 // Returns the base install directory for the x86 versions of the updater.
 // Does not create the directory if it does not exist.
-[[nodiscard]] std::optional<base::FilePath> GetInstallDirectoryX86(
+[[nodiscard]] absl::optional<base::FilePath> GetInstallDirectoryX86(
     UpdaterScope scope);
-
-// Gets the contents under a given registry key.
-std::optional<std::wstring> GetRegKeyContents(const std::wstring& reg_key);
-
-// Returns the textual description of a system `error` as provided by the
-// operating system. The function assumes that the locale value for the calling
-// thread is set, otherwise, the function uses the user/system default LANGID,
-// or it defaults to US English.
-std::wstring GetTextForSystemError(int error);
-
-// Retrieves the logged on user token for the active explorer process if one
-// exists.
-HResultOr<ScopedKernelHANDLE> GetLoggedOnUserToken();
 
 }  // namespace updater
 

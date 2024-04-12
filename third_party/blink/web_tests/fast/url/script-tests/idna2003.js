@@ -18,16 +18,13 @@ cases = [
   ["www.loo\u0138out.net","www.xn--looout-5bb.net"],
   ["\u15EF\u15EF\u15EF.lookout.net","xn--1qeaa.lookout.net"],
   ["www.lookout.\u0441\u043E\u043C","www.lookout.xn--l1adi"],
-  // Invalid URL.
-  ["www.lookout.net\uFF1A80"],
-  // Invalid URL.
-  ["www\u2025lookout.net"],
+  ["www.lookout.net\uFF1A80","www.lookout.net:80"],
+  ["www\u2025lookout.net","www..lookout.net"],
   ["www.lookout\u2027net","www.xn--lookoutnet-406e"],
   // using Latin letter kra ‘ĸ’ in domain
   ["www.loo\u0138out.net","www.xn--looout-5bb.net"],
-  // "http://www.lookout.net\u2A7480/" is invalid URL.
   // \u2A74 decomposes into ::=
-  ["www.lookout.net\u2A7480"],
+  ["www.lookout.net\u2A7480","www.lookout.net::%3D80"],
   // U+0341; COMBINING ACUTE TONE MARK is normalized to U+0301
   ["lookout\u0341.net","xn--lookout-zge.net"],
   // 3) Characters mapped away : See RFC 3454 B.1
@@ -41,41 +38,36 @@ cases = [
   //   Using prohibited high-ASCII \u00A0
   ["www\u00A0.lookout.net","www%20.lookout.net"],
   //   using prohibited non-ASCII space chars 1680 (Ogham space mark)
-  ["\u1680lookout.net"],
+  ["\u1680lookout.net","%E1%9A%80lookout.net"],
   //   Using prohibited lower ASCII control character \u001F
-  ["\u001Flookout.net"],
+  ["\u001Flookout.net","%1Flookout.net"],
   //   Using prohibited U+06DD ARABIC END OF AYAH
-  ["look\u06DDout.net"],
+  ["look\u06DDout.net","look%DB%9Dout.net"],
   //   Using prohibited U+180E MONGOLIAN VOWEL SEPARATOR
-  ["look\u180Eout.net"],
+  ["look\u180Eout.net","look%E1%A0%8Eout.net"],
   //   Using prohibited Non-character code points 1FFFE [NONCHARACTER CODE POINTS]
-  ["look\uD83F\uDFFEout.net"],
+  ["look\uD83F\uDFFEout.net","look%F0%9F%BF%BEout.net"],
   //   Using prohibited U+DEAD half surrogate code point
   // FIXME: ["look\uDEADout.net","look%ED%BA%ADout.net"],
   //   Using prohibited Inappropriate for plain text U+FFFA; INTERLINEAR ANNOTATION SEPARATOR
-  ["look\uFFFAout.net"],
+  ["look\uFFFAout.net","look%EF%BF%BAout.net"],
   //   Using prohibited Inappropriate for canonical representation 2FF0-2FFB; [IDEOGRAPHIC DESCRIPTION CHARACTERS]
-  ["look\u2FF0out.net"],
+  ["look\u2FF0out.net","look%E2%BF%B0out.net"],
   //   Using prohibited Change display properties or are deprecated 202E; RIGHT-TO-LEFT OVERRIDE
-  ["look\u202Eout.net"],
+  ["look\u202Eout.net","look%E2%80%AEout.net"],
   //   Using prohibited Change display properties or are deprecated 206B; ACTIVATE SYMMETRIC SWAPPING
-  ["look\u206Bout.net"],
+  ["look\u206Bout.net","look%E2%81%ABout.net"],
   //   Using prohibited Tagging characters E0001; LANGUAGE TAG
-  ["look\uDB40\uDC01out.net"],
+  ["look\uDB40\uDC01out.net","look%F3%A0%80%81out.net"],
   //   Using prohibited Tagging characters E0020-E007F; [TAGGING CHARACTERS]
-  ["look\uDB40\uDC20out.net"],
+  ["look\uDB40\uDC20out.net","look%F3%A0%80%A0out.net"],
   //   Using prohibited Characters with bidirectional property 05BE
-  ["look\u05BEout.net"]
+  ["look\u05BEout.net","look%D6%BEout.net"]
 ];
 
 for (var i = 0; i < cases.length; ++i) {
   test_vector = cases[i][0];
   expected_result = cases[i][1];
-  if (!expected_result) {
-    // The result of `canonicalize` should be same as the input if input is an
-    // invalid URL.
-    expected_result = test_vector;
-  }
   shouldBe("canonicalize('http://" + test_vector + "/')",
            "'http://" + expected_result + "/'");
 }

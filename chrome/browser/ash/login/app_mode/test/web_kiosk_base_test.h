@@ -5,9 +5,8 @@
 #ifndef CHROME_BROWSER_ASH_LOGIN_APP_MODE_TEST_WEB_KIOSK_BASE_TEST_H_
 #define CHROME_BROWSER_ASH_LOGIN_APP_MODE_TEST_WEB_KIOSK_BASE_TEST_H_
 
-#include <optional>
-
-#include "chrome/browser/ash/login/app_mode/kiosk_launch_controller.h"
+#include "base/time/time.h"
+#include "chrome/browser/ash/login/app_mode/test/kiosk_test_helpers.h"
 #include "chrome/browser/ash/login/test/device_state_mixin.h"
 #include "chrome/browser/ash/login/test/network_portal_detector_mixin.h"
 #include "chrome/browser/ash/login/test/oobe_base_test.h"
@@ -15,8 +14,6 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace ash {
-
-class ScopedDeviceSettings;
 
 extern const char kAppInstallUrl[];
 
@@ -48,23 +45,17 @@ class WebKioskBaseTest : public OobeBaseTest {
   // in web kiosk.
   void InitializeRegularOnlineKiosk();
 
-  void SetAppInstallUrl(const std::string& app_install_url);
-
  private:
   NetworkPortalDetectorMixin network_portal_detector_{&mixin_host_};
   DeviceStateMixin device_state_mixin_{
       &mixin_host_, DeviceStateMixin::State::OOBE_COMPLETED_CLOUD_ENROLLED};
-
-  std::string app_install_url_;
-  AccountId account_id_;
-
+  const AccountId account_id_;
   std::unique_ptr<ScopedDeviceSettings> settings_;
 
-  base::AutoReset<bool> skip_splash_wait_override_ =
-      KioskLaunchController::SkipSplashScreenWaitForTesting();
-
-  base::AutoReset<std::optional<bool>> can_configure_network_override_ =
-      NetworkUiController::SetCanConfigureNetworkForTesting(true);
+  std::unique_ptr<base::AutoReset<bool>> skip_splash_wait_override_;
+  std::unique_ptr<base::AutoReset<base::TimeDelta>> network_wait_override_;
+  // Network can always be configured.
+  ScopedCanConfigureNetwork can_configure_network_override_{true};
 };
 
 }  // namespace ash

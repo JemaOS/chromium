@@ -33,21 +33,21 @@ static void CheckIsClippingStackingContextAndContainer(
 
 TEST_F(PaintContainmentTest, BlockPaintContainment) {
   SetBodyInnerHTML("<div id='div' style='contain: paint'></div>");
-  Element* div = GetElementById("div");
+  Element* div = GetDocument().getElementById(AtomicString("div"));
   DCHECK(div);
   LayoutObject* obj = div->GetLayoutObject();
   DCHECK(obj);
   DCHECK(obj->IsLayoutBlock());
   auto& block = To<LayoutBlock>(*obj);
   EXPECT_TRUE(block.CreatesNewFormattingContext());
-  EXPECT_FALSE(block.IsUserScrollable());
+  EXPECT_FALSE(block.CanBeScrolledAndHasScrollableArea());
   CheckIsClippingStackingContextAndContainer(block);
 }
 
 TEST_F(PaintContainmentTest, InlinePaintContainment) {
   SetBodyInnerHTML(
       "<div><span id='test' style='contain: paint'>Foo</span></div>");
-  Element* span = GetElementById("test");
+  Element* span = GetDocument().getElementById(AtomicString("test"));
   DCHECK(span);
   // Paint containment shouldn't apply to non-atomic inlines.
   LayoutObject* obj = span->GetLayoutObject();

@@ -10,6 +10,7 @@
 #include "ash/shelf/shelf_bubble.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
+#include "base/time/time.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/image_view.h"
@@ -22,8 +23,6 @@ class View;
 }  // namespace views
 
 namespace ash {
-
-class LoginShelfButton;
 
 // The implementation of tooltip bubbles for the shelf.
 class ASH_EXPORT ShelfShutdownConfirmationBubble : public ShelfBubble {
@@ -44,7 +43,7 @@ class ASH_EXPORT ShelfShutdownConfirmationBubble : public ShelfBubble {
     kMaxValue = kDismissed
   };
 
-  ShelfShutdownConfirmationBubble(LoginShelfButton* anchor,
+  ShelfShutdownConfirmationBubble(views::View* anchor,
                                   ShelfAlignment alignment,
                                   base::OnceClosure on_confirm_callback,
                                   base::OnceClosure on_cancel_callback);
@@ -76,16 +75,18 @@ class ASH_EXPORT ShelfShutdownConfirmationBubble : public ShelfBubble {
   // Report bubble action metrics
   void ReportBubbleAction(BubbleAction action);
 
-  raw_ptr<views::ImageView> icon_ = nullptr;
-  raw_ptr<views::Label> title_ = nullptr;
-  raw_ptr<views::LabelButton> cancel_ = nullptr;
-  raw_ptr<views::LabelButton> confirm_ = nullptr;
-  raw_ptr<LoginShelfButton, DanglingUntriaged> anchor_ = nullptr;
+  raw_ptr<views::ImageView, ExperimentalAsh> icon_ = nullptr;
+  raw_ptr<views::Label, ExperimentalAsh> title_ = nullptr;
+  raw_ptr<views::LabelButton, ExperimentalAsh> cancel_ = nullptr;
+  raw_ptr<views::LabelButton, ExperimentalAsh> confirm_ = nullptr;
 
   enum class DialogResult { kNone, kCancelled, kConfirmed };
 
   // A simple state machine to keep track of the dialog result.
   DialogResult dialog_result_{DialogResult::kNone};
+
+  // Track time delta between bubble opened to an action taken
+  base::TimeTicks bubble_opened_timestamp_;
 };
 
 }  // namespace ash

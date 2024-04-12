@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <limits>
-#include <optional>
 #include <utility>
 
 #include "base/run_loop.h"
@@ -15,6 +14,7 @@
 #include "build/build_config.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
 #include "third_party/blink/public/common/context_menu_data/edit_flags.h"
 #include "third_party/blink/public/common/features.h"
@@ -33,7 +33,6 @@
 #include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/geometry/dom_rect.h"
-#include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
 #include "third_party/blink/renderer/core/html/html_document.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
@@ -47,7 +46,6 @@
 #include "third_party/blink/renderer/platform/mediastream/media_stream_descriptor.h"
 #include "third_party/blink/renderer/platform/testing/empty_web_media_player.h"
 #include "third_party/blink/renderer/platform/testing/scoped_mocked_url.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_loader_mock.h"
 #include "third_party/blink/renderer/platform/testing/url_loader_mock_factory_impl.h"
@@ -106,7 +104,7 @@ class TestWebFrameClientImpl : public frame_test_helpers::TestWebFrameClient {
 
   void UpdateContextMenuDataForTesting(
       const ContextMenuData& data,
-      const std::optional<gfx::Point>& host_context_menu_location) override {
+      const absl::optional<gfx::Point>& host_context_menu_location) override {
     context_menu_data_ = data;
     host_context_menu_location_ = host_context_menu_location;
   }
@@ -127,13 +125,13 @@ class TestWebFrameClientImpl : public frame_test_helpers::TestWebFrameClient {
     return context_menu_data_;
   }
 
-  const std::optional<gfx::Point>& host_context_menu_location() const {
+  const absl::optional<gfx::Point>& host_context_menu_location() const {
     return host_context_menu_location_;
   }
 
  private:
   ContextMenuData context_menu_data_;
-  std::optional<gfx::Point> host_context_menu_location_;
+  absl::optional<gfx::Point> host_context_menu_location_;
 };
 
 void RegisterMockedImageURLLoad(const String& url) {
@@ -179,7 +177,7 @@ class ContextMenuControllerTest : public testing::Test {
   }
 
   bool ShowContextMenuForElement(Element* element, WebMenuSourceType source) {
-    const DOMRect* rect = element->GetBoundingClientRect();
+    const DOMRect* rect = element->getBoundingClientRect();
     PhysicalOffset location(LayoutUnit((rect->left() + rect->right()) / 2),
                             LayoutUnit((rect->top() + rect->bottom()) / 2));
     ContextMenuAllowedScope context_menu_allowed_scope;
@@ -210,7 +208,6 @@ class ContextMenuControllerTest : public testing::Test {
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   base::test::ScopedFeatureList feature_list_;
   TestWebFrameClientImpl web_frame_client_;
   frame_test_helpers::WebViewHelper web_view_helper_;
@@ -231,7 +228,7 @@ TEST_F(ContextMenuControllerTest, CopyFromPlugin) {
   Document* document = GetDocument();
   ASSERT_TRUE(IsA<HTMLDocument>(document));
 
-  Element* embed_element = document->getElementById(AtomicString("embed"));
+  Element* embed_element = document->getElementById("embed");
   ASSERT_TRUE(IsA<HTMLEmbedElement>(embed_element));
 
   auto* embedded =
@@ -291,7 +288,7 @@ TEST_F(ContextMenuControllerTest, CopyFromPlugin) {
 TEST_F(ContextMenuControllerTest, VideoNotLoaded) {
   ContextMenuAllowedScope context_menu_allowed_scope;
   HitTestResult hit_test_result;
-  AtomicString video_url("https://example.com/foo.webm");
+  const char video_url[] = "https://example.com/foo.webm";
 
   // Make sure Picture-in-Picture is enabled.
   GetDocument()->GetSettings()->SetPictureInPictureEnabled(true);
@@ -310,7 +307,7 @@ TEST_F(ContextMenuControllerTest, VideoNotLoaded) {
               HasVideo())
       .WillRepeatedly(Return(false));
 
-  DOMRect* rect = video->GetBoundingClientRect();
+  DOMRect* rect = video->getBoundingClientRect();
   PhysicalOffset location(LayoutUnit((rect->left() + rect->right()) / 2),
                           LayoutUnit((rect->top() + rect->bottom()) / 2));
   EXPECT_TRUE(ShowContextMenu(location, kMenuSourceMouse));
@@ -319,7 +316,7 @@ TEST_F(ContextMenuControllerTest, VideoNotLoaded) {
   ContextMenuData context_menu_data = GetWebFrameClient().GetContextMenuData();
   EXPECT_EQ(mojom::blink::ContextMenuDataMediaType::kVideo,
             context_menu_data.media_type);
-  EXPECT_EQ(video_url, context_menu_data.src_url.spec().c_str());
+  EXPECT_EQ(video_url, context_menu_data.src_url.spec());
 
   const Vector<std::pair<ContextMenuData::MediaFlags, bool>>
       expected_media_flags = {
@@ -348,7 +345,7 @@ TEST_F(ContextMenuControllerTest, VideoNotLoaded) {
 TEST_F(ContextMenuControllerTest, VideoWithAudioOnly) {
   ContextMenuAllowedScope context_menu_allowed_scope;
   HitTestResult hit_test_result;
-  AtomicString video_url("https://example.com/foo.webm");
+  const char video_url[] = "https://example.com/foo.webm";
 
   // Make sure Picture-in-Picture is enabled.
   GetDocument()->GetSettings()->SetPictureInPictureEnabled(true);
@@ -371,7 +368,7 @@ TEST_F(ContextMenuControllerTest, VideoWithAudioOnly) {
               HasAudio())
       .WillRepeatedly(Return(true));
 
-  DOMRect* rect = video->GetBoundingClientRect();
+  DOMRect* rect = video->getBoundingClientRect();
   PhysicalOffset location(LayoutUnit((rect->left() + rect->right()) / 2),
                           LayoutUnit((rect->top() + rect->bottom()) / 2));
   EXPECT_TRUE(ShowContextMenu(location, kMenuSourceMouse));
@@ -380,7 +377,7 @@ TEST_F(ContextMenuControllerTest, VideoWithAudioOnly) {
   ContextMenuData context_menu_data = GetWebFrameClient().GetContextMenuData();
   EXPECT_EQ(mojom::blink::ContextMenuDataMediaType::kAudio,
             context_menu_data.media_type);
-  EXPECT_EQ(video_url, context_menu_data.src_url.spec().c_str());
+  EXPECT_EQ(video_url, context_menu_data.src_url.spec());
 
   const Vector<std::pair<ContextMenuData::MediaFlags, bool>>
       expected_media_flags = {
@@ -412,7 +409,7 @@ TEST_F(ContextMenuControllerTest, PictureInPictureEnabledVideoLoaded) {
 
   ContextMenuAllowedScope context_menu_allowed_scope;
   HitTestResult hit_test_result;
-  AtomicString video_url("https://example.com/foo.webm");
+  const char video_url[] = "https://example.com/foo.webm";
 
   // Setup video element.
   Persistent<HTMLVideoElement> video =
@@ -428,7 +425,7 @@ TEST_F(ContextMenuControllerTest, PictureInPictureEnabledVideoLoaded) {
               HasVideo())
       .WillRepeatedly(Return(true));
 
-  DOMRect* rect = video->GetBoundingClientRect();
+  DOMRect* rect = video->getBoundingClientRect();
   PhysicalOffset location(LayoutUnit((rect->left() + rect->right()) / 2),
                           LayoutUnit((rect->top() + rect->bottom()) / 2));
   EXPECT_TRUE(ShowContextMenu(location, kMenuSourceMouse));
@@ -437,7 +434,7 @@ TEST_F(ContextMenuControllerTest, PictureInPictureEnabledVideoLoaded) {
   ContextMenuData context_menu_data = GetWebFrameClient().GetContextMenuData();
   EXPECT_EQ(mojom::blink::ContextMenuDataMediaType::kVideo,
             context_menu_data.media_type);
-  EXPECT_EQ(video_url, context_menu_data.src_url.spec().c_str());
+  EXPECT_EQ(video_url, context_menu_data.src_url.spec());
 
   const Vector<std::pair<ContextMenuData::MediaFlags, bool>>
       expected_media_flags = {
@@ -469,7 +466,7 @@ TEST_F(ContextMenuControllerTest, PictureInPictureDisabledVideoLoaded) {
 
   ContextMenuAllowedScope context_menu_allowed_scope;
   HitTestResult hit_test_result;
-  AtomicString video_url("https://example.com/foo.webm");
+  const char video_url[] = "https://example.com/foo.webm";
 
   // Setup video element.
   Persistent<HTMLVideoElement> video =
@@ -485,7 +482,7 @@ TEST_F(ContextMenuControllerTest, PictureInPictureDisabledVideoLoaded) {
               HasVideo())
       .WillRepeatedly(Return(true));
 
-  DOMRect* rect = video->GetBoundingClientRect();
+  DOMRect* rect = video->getBoundingClientRect();
   PhysicalOffset location(LayoutUnit((rect->left() + rect->right()) / 2),
                           LayoutUnit((rect->top() + rect->bottom()) / 2));
   EXPECT_TRUE(ShowContextMenu(location, kMenuSourceMouse));
@@ -494,7 +491,7 @@ TEST_F(ContextMenuControllerTest, PictureInPictureDisabledVideoLoaded) {
   ContextMenuData context_menu_data = GetWebFrameClient().GetContextMenuData();
   EXPECT_EQ(mojom::blink::ContextMenuDataMediaType::kVideo,
             context_menu_data.media_type);
-  EXPECT_EQ(video_url, context_menu_data.src_url.spec().c_str());
+  EXPECT_EQ(video_url, context_menu_data.src_url.spec());
 
   const Vector<std::pair<ContextMenuData::MediaFlags, bool>>
       expected_media_flags = {
@@ -544,7 +541,7 @@ TEST_F(ContextMenuControllerTest, MediaStreamVideoLoaded) {
               HasVideo())
       .WillRepeatedly(Return(true));
 
-  DOMRect* rect = video->GetBoundingClientRect();
+  DOMRect* rect = video->getBoundingClientRect();
   PhysicalOffset location(LayoutUnit((rect->left() + rect->right()) / 2),
                           LayoutUnit((rect->top() + rect->bottom()) / 2));
   EXPECT_TRUE(ShowContextMenu(location, kMenuSourceMouse));
@@ -584,7 +581,7 @@ TEST_F(ContextMenuControllerTest, InfiniteDurationVideoLoaded) {
 
   ContextMenuAllowedScope context_menu_allowed_scope;
   HitTestResult hit_test_result;
-  AtomicString video_url("https://example.com/foo.webm");
+  const char video_url[] = "https://example.com/foo.webm";
 
   // Setup video element.
   Persistent<HTMLVideoElement> video =
@@ -606,7 +603,7 @@ TEST_F(ContextMenuControllerTest, InfiniteDurationVideoLoaded) {
       .WillRepeatedly(Return(std::numeric_limits<double>::infinity()));
   DurationChanged(video.Get());
 
-  DOMRect* rect = video->GetBoundingClientRect();
+  DOMRect* rect = video->getBoundingClientRect();
   PhysicalOffset location(LayoutUnit((rect->left() + rect->right()) / 2),
                           LayoutUnit((rect->top() + rect->bottom()) / 2));
   EXPECT_TRUE(ShowContextMenu(location, kMenuSourceMouse));
@@ -615,7 +612,7 @@ TEST_F(ContextMenuControllerTest, InfiniteDurationVideoLoaded) {
   ContextMenuData context_menu_data = GetWebFrameClient().GetContextMenuData();
   EXPECT_EQ(mojom::blink::ContextMenuDataMediaType::kVideo,
             context_menu_data.media_type);
-  EXPECT_EQ(video_url, context_menu_data.src_url.spec().c_str());
+  EXPECT_EQ(video_url, context_menu_data.src_url.spec());
 
   const Vector<std::pair<ContextMenuData::MediaFlags, bool>>
       expected_media_flags = {
@@ -647,7 +644,7 @@ TEST_F(ContextMenuControllerTest, HitTestVideoChildElements) {
 
   ContextMenuAllowedScope context_menu_allowed_scope;
   HitTestResult hit_test_result;
-  AtomicString video_url("https://example.com/foo.webm");
+  const char video_url[] = "https://example.com/foo.webm";
 
   // Setup video element.
   Persistent<HTMLVideoElement> video =
@@ -655,8 +652,7 @@ TEST_F(ContextMenuControllerTest, HitTestVideoChildElements) {
   video->SetSrc(video_url);
   video->setAttribute(
       html_names::kStyleAttr,
-      AtomicString(
-          "position: absolute; left: 0; top: 0; width: 200px; height: 200px"));
+      "position: absolute; left: 0; top: 0; width: 200px; height: 200px");
   GetDocument()->body()->AppendChild(video);
   test::RunPendingTasks();
   SetReadyState(video.Get(), HTMLMediaElement::kHaveMetadata);
@@ -669,7 +665,7 @@ TEST_F(ContextMenuControllerTest, HitTestVideoChildElements) {
         GetWebFrameClient().GetContextMenuData();
     EXPECT_EQ(mojom::blink::ContextMenuDataMediaType::kVideo,
               context_menu_data.media_type);
-    EXPECT_EQ(video_url, context_menu_data.src_url.spec().c_str());
+    EXPECT_EQ(video_url, context_menu_data.src_url.spec());
   };
 
   // Center of video.
@@ -701,7 +697,7 @@ TEST_F(ContextMenuControllerTest, EditingActionsEnabledInSVGDocument) {
   Document* document = GetDocument();
   ASSERT_TRUE(document->IsSVGDocument());
 
-  Element* text_element = document->getElementById(AtomicString("t"));
+  Element* text_element = document->getElementById("t");
   document->UpdateStyleAndLayout(DocumentUpdateReason::kTest);
   FrameSelection& selection = document->GetFrame()->Selection();
 
@@ -716,7 +712,7 @@ TEST_F(ContextMenuControllerTest, EditingActionsEnabledInSVGDocument) {
   EXPECT_EQ(context_menu_data.selected_text, "able tex");
 
   // <div contenteditable=true>
-  Element* editable_element = document->getElementById(AtomicString("e"));
+  Element* editable_element = document->getElementById("e");
   selection.SelectSubString(*editable_element, 0, 42);
   EXPECT_TRUE(ShowContextMenuForElement(editable_element, kMenuSourceMouse));
 
@@ -745,7 +741,7 @@ TEST_F(ContextMenuControllerTest, EditingActionsEnabledInXMLDocument) {
   ASSERT_TRUE(IsA<XMLDocument>(document));
   ASSERT_FALSE(IsA<HTMLDocument>(document));
 
-  Element* text_element = document->getElementById(AtomicString("t"));
+  Element* text_element = document->getElementById("t");
   document->UpdateStyleAndLayout(DocumentUpdateReason::kTest);
   FrameSelection& selection = document->GetFrame()->Selection();
 
@@ -764,11 +760,11 @@ TEST_F(ContextMenuControllerTest, ShowNonLocatedContextMenuEvent) {
       "<input id='sample' type='text' size='5' value='Sample Input Text'>");
 
   Document* document = GetDocument();
-  Element* input_element = document->getElementById(AtomicString("sample"));
+  Element* input_element = document->getElementById("sample");
   document->UpdateStyleAndLayout(DocumentUpdateReason::kTest);
 
   // Select the 'Sample' of |input|.
-  DOMRect* rect = input_element->GetBoundingClientRect();
+  DOMRect* rect = input_element->getBoundingClientRect();
   WebGestureEvent gesture_event(
       WebInputEvent::Type::kGestureLongPress, WebInputEvent::kNoModifiers,
       base::TimeTicks::Now(), WebGestureDevice::kTouchscreen);
@@ -813,8 +809,7 @@ TEST_F(ContextMenuControllerTest,
       "width=\"200\" height=\"10000\" tabindex=\"-1\" />");
 
   Document* document = GetDocument();
-  Element* image_element =
-      document->getElementById(AtomicString("sample_image"));
+  Element* image_element = document->getElementById("sample_image");
   // Set focus on the image element.
   image_element->Focus();
   document->UpdateStyleAndLayout(DocumentUpdateReason::kTest);
@@ -837,44 +832,17 @@ TEST_F(ContextMenuControllerTest,
 }
 #endif
 
-TEST_F(ContextMenuControllerTest, ContextMenuImageHitTestSVGImageElement) {
-  RegisterMockedImageURLLoad("http://test.png");
-  Document* document = GetDocument();
-
-  ContextMenuAllowedScope context_menu_allowed_scope;
-  document->documentElement()->setInnerHTML(R"HTML(
-    <svg>
-      <image id="target" href="http://test.png" width="100" height="100"/>
-    </svg>
-  )HTML");
-
-  // Flush the image-loading microtask.
-  base::RunLoop().RunUntilIdle();
-
-  url_test_helpers::ServeAsynchronousRequests();
-
-  Element* image = document->getElementById(AtomicString("target"));
-  EXPECT_TRUE(ShowContextMenuForElement(image, kMenuSourceLongPress));
-
-  ContextMenuData context_menu_data = GetWebFrameClient().GetContextMenuData();
-  EXPECT_EQ("http://test.png/", context_menu_data.src_url.spec());
-  EXPECT_EQ(mojom::blink::ContextMenuDataMediaType::kImage,
-            context_menu_data.media_type);
-  EXPECT_TRUE(context_menu_data.has_image_contents);
-}
-
 TEST_F(ContextMenuControllerTest, SelectionRectClipped) {
   GetDocument()->documentElement()->setInnerHTML(
       "<textarea id='text-area' cols=6 rows=2>Sample editable text</textarea>");
 
   Document* document = GetDocument();
-  Element* editable_element =
-      document->getElementById(AtomicString("text-area"));
+  Element* editable_element = document->getElementById("text-area");
   document->UpdateStyleAndLayout(DocumentUpdateReason::kTest);
   FrameSelection& selection = document->GetFrame()->Selection();
 
   // Select the 'Sample' of |textarea|.
-  DOMRect* rect = editable_element->GetBoundingClientRect();
+  DOMRect* rect = editable_element->getBoundingClientRect();
   WebGestureEvent gesture_event(
       WebInputEvent::Type::kGestureLongPress, WebInputEvent::kNoModifiers,
       base::TimeTicks::Now(), WebGestureDevice::kTouchscreen);
@@ -1211,7 +1179,7 @@ TEST_F(ContextMenuControllerTest,
       MakeGarbageCollected<MockEventListener>();
   base::HistogramTester histograms;
 
-  Element* target_image = GetDocument()->getElementById(AtomicString("target"));
+  Element* target_image = GetDocument()->getElementById("target");
   target_image->addEventListener(event_type_names::kContextmenu,
                                  event_listener);
 
@@ -1279,7 +1247,7 @@ TEST_F(ContextMenuControllerTest,
       MakeGarbageCollected<MockEventListener>();
   base::HistogramTester histograms;
 
-  Element* target_image = GetDocument()->getElementById(AtomicString("target"));
+  Element* target_image = GetDocument()->getElementById("target");
   target_image->addEventListener(event_type_names::kContextmenu,
                                  event_listener);
 
@@ -1346,7 +1314,7 @@ TEST_F(ContextMenuControllerTest,
       MakeGarbageCollected<MockEventListener>();
   base::HistogramTester histograms;
 
-  Element* target_image = GetDocument()->getElementById(AtomicString("target"));
+  Element* target_image = GetDocument()->getElementById("target");
   target_image->addEventListener(event_type_names::kClick, event_listener);
 
   PhysicalOffset location(LayoutUnit(5), LayoutUnit(5));
@@ -1413,8 +1381,7 @@ TEST_F(ContextMenuControllerTest,
       MakeGarbageCollected<MockEventListener>();
   base::HistogramTester histograms;
 
-  Element* hidden_ancestor =
-      GetDocument()->getElementById(AtomicString("hiddenancestor"));
+  Element* hidden_ancestor = GetDocument()->getElementById("hiddenancestor");
   hidden_ancestor->addEventListener(event_type_names::kContextmenu,
                                     event_listener);
 
@@ -1493,8 +1460,7 @@ TEST_F(ContextMenuControllerTest,
       MakeGarbageCollected<MockEventListener>();
   base::HistogramTester histograms;
 
-  Element* hidden_ancestor =
-      GetDocument()->getElementById(AtomicString("hiddenancestor"));
+  Element* hidden_ancestor = GetDocument()->getElementById("hiddenancestor");
   hidden_ancestor->addEventListener(event_type_names::kContextmenu,
                                     event_listener);
 
@@ -1767,10 +1733,10 @@ TEST_F(ContextMenuControllerTest, OpenedFromHighlight) {
   Document* document = GetDocument();
   ASSERT_TRUE(IsA<HTMLDocument>(document));
 
-  Element* first_element = document->getElementById(AtomicString("one"));
-  Element* middle_element = document->getElementById(AtomicString("one"));
-  Element* third_element = document->getElementById(AtomicString("three"));
-  Element* last_element = document->getElementById(AtomicString("four"));
+  Element* first_element = document->getElementById("one");
+  Element* middle_element = document->getElementById("one");
+  Element* third_element = document->getElementById("three");
+  Element* last_element = document->getElementById("four");
 
   // Install a text fragment marker from the beginning of <p> one to near the
   // end of <p> three.
@@ -1810,8 +1776,7 @@ TEST_F(ContextMenuControllerTest,
     </body>
   )HTML");
 
-  Node* first_paragraph =
-      GetDocument()->getElementById(AtomicString("first"))->firstChild();
+  Node* first_paragraph = GetDocument()->getElementById("first")->firstChild();
   const auto& selected_start = Position(first_paragraph, 5);
   const auto& selected_end = Position(first_paragraph, 9);
 
@@ -1852,34 +1817,37 @@ TEST_F(ContextMenuControllerTest, CheckRendererIdFromContextMenuOnTextField) {
   ASSERT_TRUE(IsA<HTMLDocument>(document));
 
   // field_id, is_form_renderer_id_present, is_field_renderer_id_present,
-  // form_control_type
+  // input_field_type
   std::vector<std::tuple<AtomicString, bool, bool,
-                         std::optional<mojom::FormControlType>>>
-      expectations = {// Input Text Field
-                      {AtomicString("name"), true, true,
-                       mojom::FormControlType::kInputText},
-                      // Text Area Field
-                      {AtomicString("address"), true, true,
-                       mojom::FormControlType::kTextArea},
-                      // Non form element
-                      {AtomicString("one"), false, false, std::nullopt},
-                      // Formless Input field
-                      {AtomicString("two"), false, true,
-                       mojom::FormControlType::kInputText},
-                      // Formless text area field
-                      {AtomicString("three"), false, true,
-                       mojom::FormControlType::kTextArea}};
+                         mojom::ContextMenuDataInputFieldType>>
+      expectations = {
+          // Input Text Field
+          {"name", true, true,
+           mojom::ContextMenuDataInputFieldType::kPlainText},
+          // Text Area Field
+          {"address", true, true,
+           mojom::ContextMenuDataInputFieldType::kPlainText},
+          // Non form element
+          {"one", false, false, mojom::ContextMenuDataInputFieldType::kNone},
+          // Formless Input field
+          {"two", false, true,
+           mojom::ContextMenuDataInputFieldType::kPlainText},
+          // Formless text area field
+          {"three", false, true,
+           mojom::ContextMenuDataInputFieldType::kPlainText}};
 
   for (const auto& expectation : expectations) {
     auto [field_id, is_form_renderer_id_present, is_field_renderer_id_present,
-          form_control_type] = expectation;
+          input_field_type] = expectation;
     Element* form_element = document->getElementById(field_id);
     EXPECT_TRUE(ShowContextMenuForElement(form_element, kMenuSourceMouse));
     ContextMenuData context_menu_data =
         GetWebFrameClient().GetContextMenuData();
-    EXPECT_EQ(context_menu_data.form_renderer_id != 0,
+    EXPECT_EQ(context_menu_data.form_renderer_id.has_value(),
               is_form_renderer_id_present);
-    EXPECT_EQ(context_menu_data.form_control_type, form_control_type);
+    EXPECT_EQ(context_menu_data.field_renderer_id.has_value(),
+              is_field_renderer_id_present);
+    EXPECT_EQ(context_menu_data.input_field_type, input_field_type);
   }
 }
 
@@ -1965,11 +1933,11 @@ TEST_F(ContextMenuControllerTest, AttributionSrc) {
     anchor->setInnerText("abc");
 
     if (test_case.href)
-      anchor->SetHref(AtomicString(test_case.href));
+      anchor->SetHref(test_case.href);
 
     if (test_case.attributionsrc) {
       anchor->setAttribute(html_names::kAttributionsrcAttr,
-                           AtomicString(test_case.attributionsrc));
+                           test_case.attributionsrc);
     }
 
     GetDocument()->body()->AppendChild(anchor);
@@ -1982,6 +1950,10 @@ TEST_F(ContextMenuControllerTest, AttributionSrc) {
 
     EXPECT_EQ(context_menu_data.impression.has_value(),
               test_case.impression_expected);
+    if (context_menu_data.impression.has_value()) {
+      EXPECT_EQ(context_menu_data.impression->nav_type,
+                mojom::blink::AttributionNavigationType::kContextMenu);
+    }
   }
 }
 
@@ -1996,7 +1968,7 @@ TEST_F(ContextMenuControllerTest, SelectUnselectableContent) {
   )HTML");
 
   Document* document = GetDocument();
-  Element* element = document->getElementById(AtomicString("test"));
+  Element* element = document->getElementById("test");
 
   // Select text, which has nested unselectable and selectable content.
   const auto& start = Position(element->firstChild(), 0);
@@ -2045,7 +2017,6 @@ class ContextMenuControllerRemoteParentFrameTest : public testing::Test {
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   base::test::ScopedFeatureList feature_list_;
   TestWebFrameClientImpl child_web_frame_client_;
   frame_test_helpers::WebViewHelper web_view_helper_;
@@ -2056,97 +2027,10 @@ TEST_F(ContextMenuControllerRemoteParentFrameTest, ShowContextMenuInChild) {
   const gfx::Point kPoint(123, 234);
   ShowContextMenu(kPoint);
 
-  const std::optional<gfx::Point>& host_context_menu_location =
+  const absl::optional<gfx::Point>& host_context_menu_location =
       child_web_frame_client().host_context_menu_location();
   ASSERT_TRUE(host_context_menu_location.has_value());
   EXPECT_EQ(kPoint, host_context_menu_location.value());
-}
-
-// Test the field of `context_menu_data` `is_password_type_by_heuristics` which
-// should be set if a field's type is plain text but heuristics (e.g. the name
-// attribute contains 'password' as a substring) recognize it as a password
-// field.
-TEST_F(ContextMenuControllerTest, IsPasswordTypeByHeuristic) {
-  WebURL url = url_test_helpers::ToKURL("http://www.test.com/");
-  frame_test_helpers::LoadHTMLString(LocalMainFrame(),
-                                     R"(<html>
-        <form>
-          <input type="password" id="not_heuristic"></textarea>
-          <input id="not_related"></textarea>
-          <input id="heuristic_password"></textarea>
-          <input id="MyPwd"></textarea>
-          <input id="moja_lOzinKa123"></textarea>
-        </form>
-      </html>
-      )",
-                                     url);
-  Document* document = GetDocument();
-  ASSERT_TRUE(IsA<HTMLDocument>(document));
-
-  // Heuristics-based recognition is not needed, it is a clear password by
-  // form_control_type.
-  Element* not_heuristic_password =
-      document->getElementById(AtomicString("not_heuristic"));
-  EXPECT_TRUE(
-      ShowContextMenuForElement(not_heuristic_password, kMenuSourceMouse));
-  ContextMenuData context_menu_data = GetWebFrameClient().GetContextMenuData();
-  EXPECT_FALSE(context_menu_data.is_password_type_by_heuristics);
-
-  // Unrelated text field should not be recognized as password field.
-  Element* not_related = document->getElementById(AtomicString("not_related"));
-  EXPECT_TRUE(ShowContextMenuForElement(not_related, kMenuSourceMouse));
-  context_menu_data = GetWebFrameClient().GetContextMenuData();
-  EXPECT_FALSE(context_menu_data.is_password_type_by_heuristics);
-
-  // Field is of type 'text' and has 'password' in its id. Therefore, is
-  // password type by heuristics.
-  Element* heuristic_password =
-      document->getElementById(AtomicString("heuristic_password"));
-  EXPECT_TRUE(ShowContextMenuForElement(heuristic_password, kMenuSourceMouse));
-  context_menu_data = GetWebFrameClient().GetContextMenuData();
-  EXPECT_TRUE(context_menu_data.is_password_type_by_heuristics);
-
-  // Field is of type 'text' and has 'pwd' in its id. Therefore, is
-  // password type by heuristics.
-  Element* short_password = document->getElementById(AtomicString("MyPwd"));
-  EXPECT_TRUE(ShowContextMenuForElement(short_password, kMenuSourceMouse));
-  context_menu_data = GetWebFrameClient().GetContextMenuData();
-  EXPECT_TRUE(context_menu_data.is_password_type_by_heuristics);
-
-  // Field is of type 'text' and has 'lozinka' (a foreign translation of
-  // password) in its id. Therefore, is password type by heuristics.
-  Element* foreign_password =
-      document->getElementById(AtomicString("moja_lOzinKa123"));
-  EXPECT_TRUE(ShowContextMenuForElement(foreign_password, kMenuSourceMouse));
-  context_menu_data = GetWebFrameClient().GetContextMenuData();
-  EXPECT_TRUE(context_menu_data.is_password_type_by_heuristics);
-}
-
-// Test the field of `context_menu_data` `is_password_type_by_heuristics` which
-// should be set if a field's type is plain text and `HasBeenPassword` returns
-// true (due to either server predictions or user's masking of input values).
-TEST_F(ContextMenuControllerTest, HasBeenPasswordHeuristic) {
-  WebURL url = url_test_helpers::ToKURL("http://www.test.com/");
-  frame_test_helpers::LoadHTMLString(LocalMainFrame(),
-                                     R"(<html>
-        <form>
-          <input type="text" id="has_been_password">
-        </form>
-      </html>
-      )",
-                                     url);
-  Document* document = GetDocument();
-  ASSERT_TRUE(IsA<HTMLDocument>(document));
-
-  Element* input_element =
-      document->getElementById(AtomicString("has_been_password"));
-  ASSERT_TRUE(input_element);
-
-  DynamicTo<HTMLInputElement>(input_element)->SetHasBeenPasswordField();
-
-  ASSERT_TRUE(ShowContextMenuForElement(input_element, kMenuSourceMouse));
-  ContextMenuData context_menu_data = GetWebFrameClient().GetContextMenuData();
-  EXPECT_TRUE(context_menu_data.is_password_type_by_heuristics);
 }
 
 }  // namespace blink

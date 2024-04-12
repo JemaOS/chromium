@@ -9,6 +9,22 @@
 
 namespace blink {
 
+scoped_refptr<StyleHighlightData> StyleHighlightData::Create() {
+  return base::AdoptRef(new StyleHighlightData);
+}
+scoped_refptr<StyleHighlightData> StyleHighlightData::Copy() const {
+  return base::AdoptRef(new StyleHighlightData(*this));
+}
+
+StyleHighlightData::StyleHighlightData() = default;
+
+StyleHighlightData::StyleHighlightData(const StyleHighlightData& other)
+    : selection_(other.selection_),
+      target_text_(other.target_text_),
+      spelling_error_(other.spelling_error_),
+      grammar_error_(other.grammar_error_),
+      custom_highlights_(other.custom_highlights_) {}
+
 // Compares two CustomHighlightsStyleMaps with base::ValuesEquivalent as
 // comparison function on the values.
 bool HighlightStyleMapEquals(const CustomHighlightsStyleMap& a,
@@ -60,19 +76,19 @@ const ComputedStyle* StyleHighlightData::Style(
 }
 
 const ComputedStyle* StyleHighlightData::Selection() const {
-  return selection_.Get();
+  return selection_.get();
 }
 
 const ComputedStyle* StyleHighlightData::TargetText() const {
-  return target_text_.Get();
+  return target_text_.get();
 }
 
 const ComputedStyle* StyleHighlightData::SpellingError() const {
-  return spelling_error_.Get();
+  return spelling_error_.get();
 }
 
 const ComputedStyle* StyleHighlightData::GrammarError() const {
-  return grammar_error_.Get();
+  return grammar_error_.get();
 }
 
 const ComputedStyle* StyleHighlightData::CustomHighlight(
@@ -80,65 +96,37 @@ const ComputedStyle* StyleHighlightData::CustomHighlight(
   if (highlight_name) {
     auto iter = custom_highlights_.find(highlight_name);
     if (iter != custom_highlights_.end()) {
-      CHECK(iter->value);
-      return iter->value.Get();
+      return iter->value.get();
     }
   }
   return nullptr;
 }
 
-void StyleHighlightData::SetSelection(const ComputedStyle* style) {
-  selection_ = style;
+void StyleHighlightData::SetSelection(
+    scoped_refptr<const ComputedStyle>&& style) {
+  selection_ = std::move(style);
 }
 
-void StyleHighlightData::SetTargetText(const ComputedStyle* style) {
-  target_text_ = style;
+void StyleHighlightData::SetTargetText(
+    scoped_refptr<const ComputedStyle>&& style) {
+  target_text_ = std::move(style);
 }
 
-void StyleHighlightData::SetSpellingError(const ComputedStyle* style) {
-  spelling_error_ = style;
+void StyleHighlightData::SetSpellingError(
+    scoped_refptr<const ComputedStyle>&& style) {
+  spelling_error_ = std::move(style);
 }
 
-void StyleHighlightData::SetGrammarError(const ComputedStyle* style) {
-  grammar_error_ = style;
+void StyleHighlightData::SetGrammarError(
+    scoped_refptr<const ComputedStyle>&& style) {
+  grammar_error_ = std::move(style);
 }
 
-void StyleHighlightData::SetCustomHighlight(const AtomicString& highlight_name,
-                                            const ComputedStyle* style) {
+void StyleHighlightData::SetCustomHighlight(
+    const AtomicString& highlight_name,
+    scoped_refptr<const ComputedStyle>&& style) {
   DCHECK(highlight_name);
-  if (style) {
-    custom_highlights_.Set(highlight_name, style);
-  } else {
-    custom_highlights_.erase(highlight_name);
-  }
-}
-
-bool StyleHighlightData::DependsOnSizeContainerQueries() const {
-  if ((selection_ && (selection_->DependsOnSizeContainerQueries() ||
-                      selection_->HasContainerRelativeUnits())) ||
-      (target_text_ && (target_text_->DependsOnSizeContainerQueries() ||
-                        target_text_->HasContainerRelativeUnits())) ||
-      (spelling_error_ && (spelling_error_->DependsOnSizeContainerQueries() ||
-                           spelling_error_->HasContainerRelativeUnits())) ||
-      (grammar_error_ && (grammar_error_->DependsOnSizeContainerQueries() ||
-                          grammar_error_->HasContainerRelativeUnits()))) {
-    return true;
-  }
-  for (auto style : custom_highlights_) {
-    if (style.value->DependsOnSizeContainerQueries() ||
-        style.value->HasContainerRelativeUnits()) {
-      return true;
-    }
-  }
-  return false;
-}
-
-void StyleHighlightData::Trace(Visitor* visitor) const {
-  visitor->Trace(selection_);
-  visitor->Trace(target_text_);
-  visitor->Trace(spelling_error_);
-  visitor->Trace(grammar_error_);
-  visitor->Trace(custom_highlights_);
+  custom_highlights_.Set(highlight_name, std::move(style));
 }
 
 }  // namespace blink

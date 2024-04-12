@@ -35,7 +35,8 @@ class SendTabToSelfBubbleView;
 struct TargetDeviceInfo;
 
 class SendTabToSelfBubbleController
-    : public content::WebContentsUserData<SendTabToSelfBubbleController> {
+    : public content::WebContentsUserData<SendTabToSelfBubbleController>,
+      public base::SupportsWeakPtr<SendTabToSelfBubbleController> {
  public:
   SendTabToSelfBubbleController(const SendTabToSelfBubbleController&) = delete;
   SendTabToSelfBubbleController& operator=(
@@ -82,10 +83,6 @@ class SendTabToSelfBubbleController
   bool show_message() const { return show_message_; }
   void set_show_message(bool show_message) { show_message_ = show_message; }
 
-  base::WeakPtr<SendTabToSelfBubbleController> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
   // Register SendTabToSelfBubbleController related prefs in the Profile prefs.
   static void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* user_prefs);
@@ -113,8 +110,6 @@ class SendTabToSelfBubbleController
   bool show_message_ = false;
   // True if the bubble is currently shown.
   bool bubble_shown_ = false;
-
-  base::WeakPtrFactory<SendTabToSelfBubbleController> weak_ptr_factory_{this};
 
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };

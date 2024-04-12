@@ -14,8 +14,6 @@ DriveUploaderWrapper::DriveUploaderWrapper(
     drive::DriveUploaderInterface* drive_uploader)
     : drive_uploader_(drive_uploader) {}
 
-DriveUploaderWrapper::~DriveUploaderWrapper() = default;
-
 void DriveUploaderWrapper::UploadExistingFile(
     const std::string& resource_id,
     const base::FilePath& local_file_path,

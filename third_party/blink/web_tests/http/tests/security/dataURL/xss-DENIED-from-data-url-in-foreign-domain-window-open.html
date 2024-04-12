@@ -13,9 +13,8 @@
 
             openedWindow = window.open("http://localhost:8000/security/dataURL/resources/foreign-domain-data-url-accessor-opened-frame.html");
 
-            window.addEventListener('message', function (ev)
+            window.addEventListener('message', function ()
             {
-                document.getElementById("result").textContent = ev.data;
                 closeWindowAndNotifyDone(openedWindow);
             });
         }
@@ -24,6 +23,5 @@
 <body>
     <p>Opener Frame</p>
     <p id='accessMe'>Pass: Cross frame access from a data: URL on a different domain was denied.</p>
-    <p id='result'>n/a</p>
 </body>
 </html>

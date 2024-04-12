@@ -16,7 +16,8 @@ ONCUserPolicyValueValidator::ONCUserPolicyValueValidator()
           key::kOpenNetworkConfiguration,
           ::onc::ONCSource::ONC_SOURCE_USER_POLICY) {}
 
-std::optional<std::string> ONCUserPolicyValueValidator::GetONCStringFromPayload(
+absl::optional<std::string>
+ONCUserPolicyValueValidator::GetONCStringFromPayload(
     const em::CloudPolicySettings& policy_payload) const {
   if (policy_payload.has_opennetworkconfiguration()) {
     const em::StringPolicyProto& policy_proto =
@@ -24,7 +25,7 @@ std::optional<std::string> ONCUserPolicyValueValidator::GetONCStringFromPayload(
     if (policy_proto.has_value())
       return policy_proto.value();
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace policy

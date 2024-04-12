@@ -107,14 +107,14 @@ class COMPONENT_EXPORT(AX_PLATFORM) AXCallStatementInvoker final {
   gfx::NativeViewAccessible LineIndexToNode(
       const std::u16string line_index) const;
 
-  id __strong node;
+  const id node;
 
   // Map between AXUIElement objects and their DOMIds/accessible tree
   // line numbers. Owned by the caller and outlives this object.
-  const raw_ptr<const AXTreeIndexerMac> indexer_;
+  const base::raw_ptr<const AXTreeIndexerMac> indexer_;
 
   // Variables storage. Owned by the caller and outlives this object.
-  const raw_ptr<std::map<std::string, id>> storage_;
+  const base::raw_ptr<std::map<std::string, id>> storage_;
 };
 
 }  // namespace ui

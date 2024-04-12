@@ -160,12 +160,12 @@ void FingerprintAuthFactorModel::UpdateIcon(AuthIconView* icon) {
       [[fallthrough]];
     case FingerprintState::DISABLED_FROM_TIMEOUT:
       icon->SetIcon(kLockScreenFingerprintDisabledIcon,
-                    AuthIconView::Status::kDisabled);
+                    AuthIconView::Color::kDisabled);
       break;
     case FingerprintState::DISABLED_FROM_ATTEMPTS:
       if (has_permanent_error_display_timed_out_) {
         icon->SetIcon(kLockScreenFingerprintDisabledIcon,
-                      AuthIconView::Status::kDisabled);
+                      AuthIconView::Color::kDisabled);
       } else {
         icon->SetAnimation(IDR_LOGIN_FINGERPRINT_UNLOCK_SPINNER,
                            kFingerprintFailedAnimationDuration,

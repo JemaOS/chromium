@@ -54,11 +54,11 @@ Removing margin
 removes "margin"
 and adds "".
 Removing -webkit-mask
-removes "mask"
+removes "-webkit-mask"
 and adds "".
 Removing -webkit-mask-position
-removes "mask"
-and adds "mask-image, mask-size, mask-repeat, mask-origin, mask-clip, mask-composite, mask-mode".
+removes "-webkit-mask"
+and adds "-webkit-mask-image, -webkit-mask-size, -webkit-mask-repeat, -webkit-mask-origin, -webkit-mask-clip".
 Removing overflow
 removes "overflow"
 and adds "".

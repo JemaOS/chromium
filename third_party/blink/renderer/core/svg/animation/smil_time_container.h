@@ -80,8 +80,6 @@ class CORE_EXPORT SMILTimeContainer final
 
   void Trace(Visitor*) const;
 
-  void DidAttachLayoutObject();
-
  private:
   enum FrameSchedulingState {
     // No frame scheduled.
@@ -96,8 +94,7 @@ class CORE_EXPORT SMILTimeContainer final
 
   bool IsTimelineRunning() const;
   void SynchronizeToDocumentTimeline();
-  void ScheduleAnimationFrame(base::TimeDelta delay_time,
-                              bool disable_throttling);
+  void ScheduleAnimationFrame(base::TimeDelta delay_time);
   void CancelAnimationFrame();
   void WakeupTimerFired(TimerBase*);
   mojom::blink::ImageAnimationPolicy AnimationPolicy() const;
@@ -108,9 +105,8 @@ class CORE_EXPORT SMILTimeContainer final
   void ResetIntervals();
   void UpdateIntervals(TimingUpdate&);
   void UpdateTimedElements(TimingUpdate&);
-  bool ApplyTimedEffects(SMILTime elapsed);
-  SMILTime NextProgressTime(SMILTime presentation_time,
-                            bool disable_throttling) const;
+  void ApplyTimedEffects(SMILTime elapsed);
+  SMILTime NextProgressTime(SMILTime presentation_time) const;
   void ServiceOnNextFrame();
   void ScheduleWakeUp(base::TimeDelta delay_time, FrameSchedulingState);
   bool HasPendingSynchronization() const;

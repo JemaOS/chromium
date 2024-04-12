@@ -22,8 +22,7 @@ ArcApps* ArcAppsFactory::GetForProfile(Profile* profile) {
 
 // static
 ArcAppsFactory* ArcAppsFactory::GetInstance() {
-  static base::NoDestructor<ArcAppsFactory> instance;
-  return instance.get();
+  return base::Singleton<ArcAppsFactory>::get();
 }
 
 // static

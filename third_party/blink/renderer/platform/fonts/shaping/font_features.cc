@@ -25,12 +25,12 @@ constexpr hb_feature_t CreateFeature(char c1,
 
 }  // namespace
 
-std::optional<unsigned> FontFeatures::FindValueForTesting(hb_tag_t tag) const {
+absl::optional<unsigned> FontFeatures::FindValueForTesting(hb_tag_t tag) const {
   for (const hb_feature_t& feature : features_) {
     if (feature.tag == tag)
       return feature.value;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void FontFeatures::Initialize(const FontDescription& description) {
@@ -197,8 +197,7 @@ void FontFeatures::Initialize(const FontDescription& description) {
 
   const hb_tag_t chws_or_vchw =
       is_horizontal ? HB_TAG('c', 'h', 'w', 's') : HB_TAG('v', 'c', 'h', 'w');
-  bool default_enable_chws =
-      ShouldTrimAdjacent(description.GetTextSpacingTrim());
+  bool default_enable_chws = true;
 
   const FontFeatureSettings* settings = description.FeatureSettings();
   if (UNLIKELY(settings)) {
@@ -225,15 +224,17 @@ void FontFeatures::Initialize(const FontDescription& description) {
   if (default_enable_chws)
     Append(CreateFeature(chws_or_vchw, 1));
 
-  const FontDescription::FontVariantPosition variant_position =
-      description.VariantPosition();
-  if (variant_position == FontDescription::kSubVariantPosition) {
-    const hb_feature_t feature = CreateFeature('s', 'u', 'b', 's', 1);
-    Append(feature);
-  }
-  if (variant_position == FontDescription::kSuperVariantPosition) {
-    const hb_feature_t feature = CreateFeature('s', 'u', 'p', 's', 1);
-    Append(feature);
+  if (RuntimeEnabledFeatures::FontVariantPositionEnabled()) {
+    const FontDescription::FontVariantPosition variant_position =
+        description.VariantPosition();
+    if (variant_position == FontDescription::kSubVariantPosition) {
+      const hb_feature_t feature = CreateFeature('s', 'u', 'b', 's', 1);
+      Append(feature);
+    }
+    if (variant_position == FontDescription::kSuperVariantPosition) {
+      const hb_feature_t feature = CreateFeature('s', 'u', 'p', 's', 1);
+      Append(feature);
+    }
   }
 }
 

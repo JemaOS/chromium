@@ -45,7 +45,8 @@ class ArcMemoryPressureBridge
                         uint64_t reclaim_target_kb) override;
 
   // ConnectionObserver<mojom::ProcessInstance> overrides.
-  void OnConnectionReady() override;
+  // We use the OnConnectionClosed method to know when we should reset
+  // memory_pressure_in_flight_.
   void OnConnectionClosed() override;
 
   static void EnsureFactoryBuilt();
@@ -56,9 +57,9 @@ class ArcMemoryPressureBridge
   // reclaimed - An estimate of the number of bytes freed.
   void OnHostMemoryPressureComplete(uint32_t killed, uint64_t reclaimed);
 
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
-  const raw_ptr<ArcMetricsService> arc_metrics_service_;
+  const raw_ptr<ArcMetricsService, ExperimentalAsh> arc_metrics_service_;
 
   // Set between OnMemoryPressure and OnHostMemoryPressureComplete, so we can
   // throttle calls into ARCVM if it is unresponsive.

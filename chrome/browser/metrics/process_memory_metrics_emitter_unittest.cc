@@ -85,7 +85,7 @@ class ProcessMemoryMetricsEmitterFake : public ProcessMemoryMetricsEmitter {
     }
   }
 
-  std::optional<base::TimeDelta> GetProcessUptime(
+  absl::optional<base::TimeDelta> GetProcessUptime(
       base::TimeTicks now,
       base::ProcessId pid) override {
     switch (pid) {
@@ -208,9 +208,6 @@ void PopulateRendererMetrics(GlobalMemoryDumpPtr& global_dump,
                          metrics_mb_or_count["PartitionAlloc"] * 1024 * 1024);
   SetAllocatorDumpMetric(pmd, "blink_gc", "effective_size",
                          metrics_mb_or_count["BlinkGC"] * 1024 * 1024);
-  SetAllocatorDumpMetric(
-      pmd, "blink_gc", "allocated_objects_size",
-      metrics_mb_or_count["BlinkGC.AllocatedObjects"] * 1024 * 1024);
   SetAllocatorDumpMetric(pmd, "v8", "effective_size",
                          metrics_mb_or_count["V8"] * 1024 * 1024);
   SetAllocatorDumpMetric(
@@ -336,8 +333,6 @@ void PopulateRendererMetrics(GlobalMemoryDumpPtr& global_dump,
 
 constexpr int kTestRendererPrivateMemoryFootprint = 130;
 constexpr int kTestRendererMalloc = 120;
-constexpr int kTestRendererBlinkGC = 150;
-constexpr int kTestRendererBlinkGCFragmentation = 10;
 constexpr int kTestRendererSharedMemoryFootprint = 135;
 constexpr int kNativeLibraryResidentMemoryFootprint = 27560;
 constexpr int kNativeLibraryResidentNotOrderedCodeFootprint = 12345;
@@ -353,8 +348,7 @@ MetricMap GetExpectedRendererMetrics() {
         {"Resident", kTestRendererResidentSet}, {"Malloc", kTestRendererMalloc},
         {"PrivateMemoryFootprint", kTestRendererPrivateMemoryFootprint},
         {"SharedMemoryFootprint", kTestRendererSharedMemoryFootprint},
-        {"PartitionAlloc", 140}, {"BlinkGC", 150},
-        {"BlinkGC.AllocatedObjects", 140}, {"V8", 160},
+        {"PartitionAlloc", 140}, {"BlinkGC", 150}, {"V8", 160},
         {"V8.AllocatedObjects", 70}, {"V8.Main", 100},
         {"V8.Main.AllocatedObjects", 30}, {"V8.Main.Heap", 98},
         {"V8.Main.GlobalHandles", 3},
@@ -432,7 +426,7 @@ MetricMap GetExpectedGpuMetrics() {
 
 void PopulateUtilityMetrics(GlobalMemoryDumpPtr& global_dump,
                             MetricMap& metrics_mb,
-                            const std::optional<std::string>& service_name) {
+                            const absl::optional<std::string>& service_name) {
   auto pmd(memory_instrumentation::mojom::ProcessMemoryDump::New());
   pmd->process_type = ProcessType::UTILITY;
   if (service_name.has_value()) {
@@ -494,7 +488,7 @@ void PopulateMetrics(GlobalMemoryDumpPtr& global_dump,
   switch (ptype) {
     case HistogramProcessType::kAudioService:
       PopulateUtilityMetrics(global_dump, metrics_mb,
-                             /*service_name=*/std::nullopt);
+                             /*service_name=*/absl::nullopt);
       return;
     case HistogramProcessType::kBrowser:
       PopulateBrowserMetrics(global_dump, metrics_mb);
@@ -639,7 +633,7 @@ class ProcessMemoryMetricsEmitterTest
         test_ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName);
     size_t i = 0;
     size_t total_memory_entries = 0;
-    for (const ukm::mojom::UkmEntry* entry : entries) {
+    for (const auto* entry : entries) {
       if (test_ukm_recorder_.EntryHasMetric(
               entry, UkmEntry::kTotal2_PrivateMemoryFootprintName)) {
         total_memory_entries++;
@@ -794,7 +788,7 @@ TEST_F(ProcessMemoryMetricsEmitterTest, ReceiveProcessInfoFirst) {
   auto entries = test_ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName);
   ASSERT_EQ(entries.size(), 2u);
   int total_memory_entries = 0;
-  for (const ukm::mojom::UkmEntry* const entry : entries) {
+  for (const auto* const entry : entries) {
     if (test_ukm_recorder_.EntryHasMetric(
             entry, UkmEntry::kTotal2_PrivateMemoryFootprintName)) {
       total_memory_entries++;
@@ -826,7 +820,7 @@ TEST_F(ProcessMemoryMetricsEmitterTest, ReceiveProcessInfoSecond) {
   auto entries = test_ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName);
   ASSERT_EQ(entries.size(), 2u);
   int total_memory_entries = 0;
-  for (const ukm::mojom::UkmEntry* const entry : entries) {
+  for (const auto* const entry : entries) {
     if (test_ukm_recorder_.EntryHasMetric(
             entry, UkmEntry::kTotal2_PrivateMemoryFootprintName)) {
       total_memory_entries++;
@@ -879,7 +873,7 @@ TEST_F(ProcessMemoryMetricsEmitterTest, ProcessInfoHasTwoURLs) {
   auto entries = test_ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName);
   int total_memory_entries = 0;
   int entries_with_urls = 0;
-  for (const ukm::mojom::UkmEntry* const entry : entries) {
+  for (const auto* const entry : entries) {
     if (test_ukm_recorder_.EntryHasMetric(
             entry, UkmEntry::kTotal2_PrivateMemoryFootprintName)) {
       total_memory_entries++;
@@ -936,8 +930,6 @@ TEST_F(ProcessMemoryMetricsEmitterTest, RendererAndTotalHistogramsAreRecorded) {
   histograms.ExpectTotalCount("Memory.Total.PrivateMemoryFootprint", 0);
   histograms.ExpectTotalCount("Memory.Total.RendererPrivateMemoryFootprint", 0);
   histograms.ExpectTotalCount("Memory.Total.RendererMalloc", 0);
-  histograms.ExpectTotalCount("Memory.Total.RendererBlinkGC", 0);
-  histograms.ExpectTotalCount("Memory.Total.RendererBlinkGC.Fragmentation", 0);
   histograms.ExpectTotalCount("Memory.Total.SharedMemoryFootprint", 0);
   histograms.ExpectTotalCount("Memory.Total.ResidentSet", 0);
   histograms.ExpectTotalCount(
@@ -986,10 +978,6 @@ TEST_F(ProcessMemoryMetricsEmitterTest, RendererAndTotalHistogramsAreRecorded) {
                                 2 * kTestRendererPrivateMemoryFootprint, 1);
   histograms.ExpectUniqueSample("Memory.Total.RendererMalloc",
                                 2 * kTestRendererMalloc, 1);
-  histograms.ExpectUniqueSample("Memory.Total.RendererBlinkGC",
-                                2 * kTestRendererBlinkGC, 1);
-  histograms.ExpectUniqueSample("Memory.Total.RendererBlinkGC.Fragmentation",
-                                2 * kTestRendererBlinkGCFragmentation, 1);
   histograms.ExpectUniqueSample("Memory.Total.SharedMemoryFootprint",
                                 2 * kTestRendererSharedMemoryFootprint, 1);
   histograms.ExpectUniqueSample("Memory.Total.ResidentSet",
@@ -1068,7 +1056,7 @@ TEST_F(ProcessMemoryMetricsEmitterTest, MainFramePMFEmitted) {
   entries = test_ukm_recorder_.GetEntriesByName(
       ukm::builders::Memory_TabFootprint::kEntryName);
   ASSERT_EQ(entries.size(), 1u);
-  const auto* entry = entries.front().get();
+  const auto* entry = entries.front();
   ASSERT_TRUE(test_ukm_recorder_.EntryHasMetric(
       entry, ukm::builders::Memory_TabFootprint::kMainFrameProcessPMFName));
 }

@@ -1,4 +1,4 @@
-Tests TextUtils.TextUtils.Utils.splitStringByRegexes.
+Tests TextUtils.TextUtils.splitStringByRegexes.
 
 
 Running: testSimple

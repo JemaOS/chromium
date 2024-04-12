@@ -3,9 +3,7 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/apps/platform_apps/app_browsertest_util.h"
-#include "chrome/browser/profiles/profile.h"
 #include "content/public/test/browser_test.h"
-#include "extensions/browser/extension_host.h"
 #include "extensions/browser/extension_host_test_helper.h"
 #include "extensions/test/extension_test_message_listener.h"
 

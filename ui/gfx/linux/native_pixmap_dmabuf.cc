@@ -82,7 +82,7 @@ bool NativePixmapDmaBuf::ScheduleOverlayPlane(
   return false;
 }
 
-gfx::NativePixmapHandle NativePixmapDmaBuf::ExportHandle() const {
+gfx::NativePixmapHandle NativePixmapDmaBuf::ExportHandle() {
   return gfx::CloneHandleForIPC(handle_);
 }
 

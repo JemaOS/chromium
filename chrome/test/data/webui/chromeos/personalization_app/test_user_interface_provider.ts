@@ -9,23 +9,23 @@ import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
 export class TestUserProvider extends TestBrowserProxy implements
     UserProviderInterface {
-  defaultUserImages: DefaultUserImage[] = [
+  public defaultUserImages: DefaultUserImage[] = [
     {
       index: 8,
       title: {data: 'Test title'.split('').map(ch => ch.charCodeAt(0))},
       url: {url: 'data://test_url'},
-      sourceInfo: null,
+      sourceInfo: undefined,
     },
   ];
 
-  image: UserImage = {defaultImage: this.defaultUserImages[0]} as any;
+  public image: UserImage = {defaultImage: this.defaultUserImages[0]} as any;
 
-  info: UserInfo = {
+  public info: UserInfo = {
     name: 'test name',
     email: 'test@email',
   };
 
-  profileImage: Url = {
+  public profileImage: Url = {
     url: 'data://test_profile_url',
   };
 

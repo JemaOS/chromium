@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cstdio>
-#include <optional>
 
 #include "ash/components/arc/arc_features.h"
 #include "ash/components/arc/arc_prefs.h"
@@ -23,16 +22,14 @@
 #include "base/process/process_metrics.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
-#include "base/system/sys_info.h"
 #include "base/time/time.h"
-#include "chromeos/ash/components/dbus/concierge/concierge_client.h"
 #include "chromeos/ash/components/dbus/debug_daemon/debug_daemon_client.h"
 #include "chromeos/ash/components/dbus/upstart/upstart_client.h"
 #include "chromeos/version/version_loader.h"
 #include "components/exo/shell_surface_util.h"
 #include "components/prefs/pref_service.h"
-#include "components/prefs/scoped_user_pref_update.h"
 #include "components/user_manager/user_manager.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/window.h"
 #include "ui/display/types/display_constants.h"
@@ -56,7 +53,7 @@ constexpr char kManualStart[] = "manual";
 
 constexpr const char kCrosSystemPath[] = "/usr/bin/crossystem";
 
-// ArcUreadaheadMode param value strings.
+// ArcVmUreadaheadMode param value strings.
 constexpr char kReadahead[] = "readahead";
 constexpr char kGenerate[] = "generate";
 constexpr char kDisabled[] = "disabled";
@@ -99,55 +96,6 @@ int64_t GetRequiredDiskImageSizeForArcVmDataMigrationInBytes(
   return android_data_size_in_bytes * 11ULL / 10ULL + kReservedDiskSpaceInBytes;
 }
 
-void OnStaleArcVmStopped(
-    EnsureStaleArcVmAndArcVmUpstartJobsStoppedCallback callback,
-    std::optional<vm_tools::concierge::StopVmResponse> response) {
-  // Successful response is returned even when the VM is not running. See
-  // Service::StopVm() in platform2/vm_tools/concierge/service.cc.
-  if (!response.has_value() || !response->success()) {
-    LOG(ERROR) << "StopVm failed: "
-               << (response.has_value() ? response->failure_reason()
-                                        : "No D-Bus response.");
-    std::move(callback).Run(false);
-    return;
-  }
-  std::move(callback).Run(true);
-}
-
-void OnConciergeServiceAvailable(
-    const std::string& user_id_hash,
-    EnsureStaleArcVmAndArcVmUpstartJobsStoppedCallback callback,
-    bool available) {
-  if (!available) {
-    LOG(ERROR) << "ConciergeService is not available";
-    std::move(callback).Run(false);
-    return;
-  }
-  vm_tools::concierge::StopVmRequest request;
-  request.set_name(kArcVmName);
-  request.set_owner_id(user_id_hash);
-  ash::ConciergeClient::Get()->StopVm(
-      request, base::BindOnce(&OnStaleArcVmStopped, std::move(callback)));
-}
-
-void OnStaleArcVmUpstartJobsStopped(
-    const std::string& user_id_hash,
-    EnsureStaleArcVmAndArcVmUpstartJobsStoppedCallback callback,
-    bool stopped) {
-  if (!stopped) {
-    LOG(ERROR) << "Failed to stop stale ARCVM Upstart jobs";
-    std::move(callback).Run(false);
-    return;
-  }
-  if (!ash::ConciergeClient::Get()) {
-    LOG(ERROR) << "ConciergeClient is not available";
-    std::move(callback).Run(false);
-    return;
-  }
-  ash::ConciergeClient::Get()->WaitForServiceToBeAvailable(base::BindOnce(
-      &OnConciergeServiceAvailable, user_id_hash, std::move(callback)));
-}
-
 }  // namespace
 
 bool IsArcAvailable() {
@@ -181,9 +129,7 @@ int GetArcAndroidSdkVersionAsInt() {
   const auto arc_version_str =
       chromeos::version_loader::GetArcAndroidSdkVersion();
   if (!arc_version_str) {
-    // Expected in tests and linux-chromeos that don't have /etc/lsb-release.
-    LOG_IF(ERROR, base::SysInfo::IsRunningOnChromeOS())
-        << "ARC SDK version is unknown";
+    LOG(ERROR) << "ARC SDK version is unknown";
     return kMaxArcVersion;
   }
   int arc_version;
@@ -200,12 +146,10 @@ bool IsArcVmRtVcpuEnabled(uint32_t cpus) {
           ash::switches::kEnableArcVmRtVcpu)) {
     return true;
   }
-  if (cpus == 2 && base::FeatureList::IsEnabled(kRtVcpuDualCore)) {
+  if (cpus == 2 && base::FeatureList::IsEnabled(kRtVcpuDualCore))
     return true;
-  }
-  if (cpus > 2 && base::FeatureList::IsEnabled(kRtVcpuQuadCore)) {
+  if (cpus > 2 && base::FeatureList::IsEnabled(kRtVcpuQuadCore))
     return true;
-  }
   return false;
 }
 
@@ -219,30 +163,35 @@ bool IsArcVmDevConfIgnored() {
       ash::switches::kIgnoreArcVmDevConf);
 }
 
-bool IsArcUseDevCaches() {
+bool IsUreadaheadDisabled() {
   return base::CommandLine::ForCurrentProcess()->HasSwitch(
-      ash::switches::kArcUseDevCaches);
+      ash::switches::kArcDisableUreadahead);
 }
 
-ArcUreadaheadMode GetArcUreadaheadMode(
-    std::string_view ureadahead_mode_switch) {
-  if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
-          ureadahead_mode_switch)) {
-    return ArcUreadaheadMode::READAHEAD;
-  }
-  ArcUreadaheadMode mode = ArcUreadaheadMode::READAHEAD;
-  const std::string value =
-      base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
-          ureadahead_mode_switch);
-  if (value == kReadahead) {
-    mode = ArcUreadaheadMode::READAHEAD;
-  } else if (value == kGenerate) {
-    mode = ArcUreadaheadMode::GENERATE;
-  } else if (value == kDisabled) {
-    mode = ArcUreadaheadMode::DISABLED;
-  } else {
-    LOG(FATAL) << "Invalid parameter " << value << " for "
-               << ureadahead_mode_switch;
+bool IsHostUreadaheadGeneration() {
+  return base::CommandLine::ForCurrentProcess()->HasSwitch(
+      ash::switches::kArcHostUreadaheadGeneration);
+}
+
+ArcVmUreadaheadMode GetArcVmUreadaheadMode() {
+  ArcVmUreadaheadMode mode = IsUreadaheadDisabled()
+                                 ? ArcVmUreadaheadMode::DISABLED
+                                 : ArcVmUreadaheadMode::READAHEAD;
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          ash::switches::kArcVmUreadaheadMode)) {
+    const std::string value =
+        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+            ash::switches::kArcVmUreadaheadMode);
+    if (value == kReadahead) {
+      mode = ArcVmUreadaheadMode::READAHEAD;
+    } else if (value == kGenerate) {
+      mode = ArcVmUreadaheadMode::GENERATE;
+    } else if (value == kDisabled) {
+      mode = ArcVmUreadaheadMode::DISABLED;
+    } else {
+      LOG(ERROR) << "Invalid parameter " << value << " for "
+                 << ash::switches::kArcVmUreadaheadMode;
+    }
   }
   return mode;
 }
@@ -273,16 +222,14 @@ bool IsArcKioskAvailable() {
   if (command_line->HasSwitch(ash::switches::kArcAvailability)) {
     std::string value =
         command_line->GetSwitchValueASCII(ash::switches::kArcAvailability);
-    if (value == kAvailabilityInstalled) {
+    if (value == kAvailabilityInstalled)
       return true;
-    }
     return IsArcAvailable();
   }
 
   // TODO(hidehiko): Remove this when session_manager supports the new flag.
-  if (command_line->HasSwitch(ash::switches::kArcAvailable)) {
+  if (command_line->HasSwitch(ash::switches::kArcAvailable))
     return true;
-  }
 
   // If not special kiosk device case, use general ARC check.
   return IsArcAvailable();
@@ -296,7 +243,7 @@ bool IsArcKioskMode() {
 bool IsRobotOrOfflineDemoAccountMode() {
   return user_manager::UserManager::IsInitialized() &&
          (user_manager::UserManager::Get()->IsLoggedInAsArcKioskApp() ||
-          user_manager::UserManager::Get()->IsLoggedInAsManagedGuestSession());
+          user_manager::UserManager::Get()->IsLoggedInAsPublicAccount());
 }
 
 bool IsArcAllowedForUser(const user_manager::User* user) {
@@ -310,12 +257,15 @@ bool IsArcAllowedForUser(const user_manager::User* user) {
   // - Active directory users;
   // - ARC kiosk session;
   // - Public Session users;
-  //   kUserTypeArcKioskApp check is compatible with IsArcKioskMode()
+  //   USER_TYPE_ARC_KIOSK_APP check is compatible with IsArcKioskMode()
   //   above because ARC kiosk user is always the primary/active user of a
-  //   user session. The same for kPublicAccount.
+  //   user session. The same for USER_TYPE_PUBLIC_ACCOUNT.
   if (!user->HasGaiaAccount() && !user->IsActiveDirectoryUser() &&
-      user->GetType() != user_manager::UserType::kArcKioskApp &&
-      user->GetType() != user_manager::UserType::kPublicAccount) {
+      user->GetType() != user_manager::USER_TYPE_ARC_KIOSK_APP &&
+      //---***JEMAOS BEGIN***---
+      !user->IsJemaExtendAccountUser() &&
+      //---***JEMAOS END***---
+      user->GetType() != user_manager::USER_TYPE_PUBLIC_ACCOUNT) {
     VLOG(1) << "Users without GAIA or AD accounts, or not ARC kiosk apps are "
                "not supported in ARC.";
     return false;
@@ -329,52 +279,45 @@ bool IsArcOptInVerificationDisabled() {
       ash::switches::kDisableArcOptInVerification);
 }
 
-std::optional<int> GetWindowTaskId(const aura::Window* window) {
-  if (!window) {
-    return std::nullopt;
-  }
+absl::optional<int> GetWindowTaskId(const aura::Window* window) {
+  if (!window)
+    return absl::nullopt;
   const std::string* window_app_id = exo::GetShellApplicationId(window);
-  if (!window_app_id) {
-    return std::nullopt;
-  }
+  if (!window_app_id)
+    return absl::nullopt;
   return GetTaskIdFromWindowAppId(*window_app_id);
 }
 
-std::optional<int> GetTaskIdFromWindowAppId(const std::string& window_app_id) {
+absl::optional<int> GetTaskIdFromWindowAppId(const std::string& window_app_id) {
   int task_id;
-  if (std::sscanf(window_app_id.c_str(), "org.chromium.arc.%d", &task_id) !=
-      1) {
-    return std::nullopt;
-  }
+  if (std::sscanf(window_app_id.c_str(), "org.chromium.arc.%d", &task_id) != 1)
+    return absl::nullopt;
   return task_id;
 }
 
-std::optional<int> GetWindowSessionId(const aura::Window* window) {
-  if (!window) {
-    return std::nullopt;
-  }
+absl::optional<int> GetWindowSessionId(const aura::Window* window) {
+  if (!window)
+    return absl::nullopt;
   const std::string* window_app_id = exo::GetShellApplicationId(window);
-  if (!window_app_id) {
-    return std::nullopt;
-  }
+  if (!window_app_id)
+    return absl::nullopt;
   return GetSessionIdFromWindowAppId(*window_app_id);
 }
 
-std::optional<int> GetSessionIdFromWindowAppId(
+absl::optional<int> GetSessionIdFromWindowAppId(
     const std::string& window_app_id) {
   int session_id;
   if (std::sscanf(window_app_id.c_str(), "org.chromium.arc.session.%d",
                   &session_id) != 1) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return session_id;
 }
 
-std::optional<int> GetWindowTaskOrSessionId(const aura::Window* window) {
+absl::optional<int> GetWindowTaskOrSessionId(const aura::Window* window) {
   auto result = GetWindowTaskId(window);
-  if (result) {
+  if (result)
     return result;
-  }
   return GetWindowSessionId(window);
 }
 
@@ -409,32 +352,25 @@ int32_t GetLcdDensityForDeviceScaleFactor(float device_scale_factor) {
     const std::string dpi_str =
         command_line->GetSwitchValueASCII(ash::switches::kArcScale);
     int dpi;
-    if (base::StringToInt(dpi_str, &dpi)) {
+    if (base::StringToInt(dpi_str, &dpi))
       return dpi;
-    }
     VLOG(1) << "Invalid Arc scale set. Using default.";
   }
   // TODO(b/131884992): Remove the logic to update default lcd density once
   // per-display-density is supported.
   constexpr float kEpsilon = 0.001;
-  if (std::abs(device_scale_factor - display::kDsf_2_252) < kEpsilon) {
+  if (std::abs(device_scale_factor - display::kDsf_2_252) < kEpsilon)
     return 280;
-  }
-  if (std::abs(device_scale_factor - 2.4f) < kEpsilon) {
+  if (std::abs(device_scale_factor - 2.4f) < kEpsilon)
     return 280;
-  }
-  if (std::abs(device_scale_factor - 1.6f) < kEpsilon) {
+  if (std::abs(device_scale_factor - 1.6f) < kEpsilon)
     return 213;  // TVDPI
-  }
-  if (std::abs(device_scale_factor - display::kDsf_1_777) < kEpsilon) {
+  if (std::abs(device_scale_factor - display::kDsf_1_777) < kEpsilon)
     return 240;  // HDPI
-  }
-  if (std::abs(device_scale_factor - display::kDsf_1_8) < kEpsilon) {
+  if (std::abs(device_scale_factor - display::kDsf_1_8) < kEpsilon)
     return 240;  // HDPI
-  }
-  if (std::abs(device_scale_factor - display::kDsf_2_666) < kEpsilon) {
+  if (std::abs(device_scale_factor - display::kDsf_2_666) < kEpsilon)
     return 320;  // XHDPI
-  }
 
   constexpr float kChromeScaleToAndroidScaleRatio = 0.75f;
   constexpr int32_t kDefaultDensityDpi = 160;
@@ -445,9 +381,8 @@ int32_t GetLcdDensityForDeviceScaleFactor(float device_scale_factor) {
 
 int GetSystemPropertyInt(const std::string& property) {
   std::string output;
-  if (!base::GetAppOutput({kCrosSystemPath, property}, &output)) {
+  if (!base::GetAppOutput({kCrosSystemPath, property}, &output))
     return -1;
-  }
   int output_int;
   return base::StringToInt(output, &output_int) ? output_int : -1;
 }
@@ -524,14 +459,12 @@ void SetArcVmDataMigrationStatus(PrefService* prefs,
 bool ShouldUseVirtioBlkData(PrefService* prefs) {
   // If kEnableVirtioBlkForData is set, force using virtio-blk /data regardless
   // of the migration status.
-  if (base::FeatureList::IsEnabled(kEnableVirtioBlkForData)) {
+  if (base::FeatureList::IsEnabled(kEnableVirtioBlkForData))
     return true;
-  }
 
   // Just use virtio-fs when ARCVM /data migration is not enabled.
-  if (!base::FeatureList::IsEnabled(kEnableArcVmDataMigration)) {
+  if (!base::FeatureList::IsEnabled(kEnableArcVmDataMigration))
     return false;
-  }
 
   ArcVmDataMigrationStatus status = GetArcVmDataMigrationStatus(prefs);
   if (status == ArcVmDataMigrationStatus::kFinished) {
@@ -540,17 +473,6 @@ bool ShouldUseVirtioBlkData(PrefService* prefs) {
   }
   VLOG(1) << "ARCVM /data migration hasn't finished yet. Status=" << status;
   return false;
-}
-
-bool ShouldUseArcKeyMint() {
-  auto version = GetArcAndroidSdkVersionAsInt();
-  // TODO(b/308630124): Change to ">= kArcVersionT", when ready to enable
-  // KeyMint on ARC V+.
-  return version == kArcVersionT && version < kMaxArcVersion &&
-         base::FeatureList::IsEnabled(kSwitchToKeyMintOnT) &&
-         (!base::CommandLine::ForCurrentProcess()->HasSwitch(
-              ash::switches::kArcBlockKeyMint) ||
-          base::FeatureList::IsEnabled(kSwitchToKeyMintOnTOverride));
 }
 
 int GetDaysUntilArcVmDataMigrationDeadline(PrefService* prefs) {
@@ -628,8 +550,7 @@ uint64_t GetDesiredDiskImageSizeForArcVmDataMigrationInBytes(
 }
 
 uint64_t GetRequiredFreeDiskSpaceForArcVmDataMigrationInBytes(
-    uint64_t android_data_size_src_in_bytes,
-    uint64_t android_data_size_dest_in_bytes,
+    uint64_t android_data_size_in_bytes,
     uint64_t free_disk_space_in_bytes) {
   // Mask to make the required free disk space a multiple of 512 MB.
   constexpr uint64_t kRequiredFreeDiskSpaceMaskInBytes = ~((512ULL << 20) - 1);
@@ -639,100 +560,19 @@ uint64_t GetRequiredFreeDiskSpaceForArcVmDataMigrationInBytes(
 
   const uint64_t required_disk_image_size_in_bytes =
       GetRequiredDiskImageSizeForArcVmDataMigrationInBytes(
-          android_data_size_dest_in_bytes);
+          android_data_size_in_bytes);
 
   const uint64_t maximum_disk_space_overhead_in_bytes =
-      required_disk_image_size_in_bytes - android_data_size_dest_in_bytes;
-
-  // Amount of additional disk space required after the migration due to
-  // expanded sparse files in Android /data.
-  uint64_t android_data_expansion_size_in_bytes = 0;
-  if (android_data_size_dest_in_bytes > android_data_size_src_in_bytes) {
-    android_data_expansion_size_in_bytes =
-        android_data_size_dest_in_bytes - android_data_size_src_in_bytes;
-  }
+      required_disk_image_size_in_bytes - android_data_size_in_bytes;
 
   return (kMinimumRequiredFreeDiskSpaceInBytes +
-          maximum_disk_space_overhead_in_bytes +
-          android_data_expansion_size_in_bytes) &
+          maximum_disk_space_overhead_in_bytes) &
          kRequiredFreeDiskSpaceMaskInBytes;
 }
 
 bool IsReadOnlyPermissionsEnabled() {
   return base::FeatureList::IsEnabled(arc::kEnableReadOnlyPermissions) &&
          GetArcAndroidSdkVersionAsInt() >= kArcVersionT;
-}
-
-void EnsureStaleArcVmAndArcVmUpstartJobsStopped(
-    const std::string& user_id_hash,
-    EnsureStaleArcVmAndArcVmUpstartJobsStoppedCallback callback) {
-  // Stop stale Upstart jobs first. StopVm() is called after
-  // ConfigureUpstartJobs() is successfully finished.
-  std::deque<JobDesc> jobs;
-  for (const char* job : kArcVmUpstartJobsToBeStoppedOnRestart) {
-    jobs.emplace_back(job, UpstartOperation::JOB_STOP,
-                      std::vector<std::string>());
-  }
-  ConfigureUpstartJobs(std::move(jobs),
-                       base::BindOnce(&OnStaleArcVmUpstartJobsStopped,
-                                      user_id_hash, std::move(callback)));
-}
-
-bool ShouldAlwaysMountAndroidVolumesInFilesForTesting() {
-  return base::CommandLine::ForCurrentProcess()->HasSwitch(
-      ash::switches::kArcForceMountAndroidVolumesInFiles);
-}
-
-bool ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-    const PrefService* prefs) {
-  if (!base::FeatureList::IsEnabled(
-          kDeferArcActivationUntilUserSessionStartUpTaskCompletion)) {
-    return false;
-  }
-
-  const int max_window_size = kDeferArcActivationHistoryWindow.Get();
-  const int threshold = kDeferArcActivationHistoryThreshold.Get();
-  if (max_window_size < 0 || threshold < 0) {
-    LOG(ERROR) << "Unexpected negative value(s): " << max_window_size << ", "
-               << threshold;
-    return false;
-  }
-
-  // Look at recent (at most) `histogram_window` sessions, and if ARC is
-  // activated during user session start up tasks more than or equals to
-  // `history_threshold` times, we'll immediately activate ARC.
-  // I.e., if ARC is activated during user session start up tasks less than
-  // `history_threshold` times, we'll defer the ARC activation until
-  // the user session start up task completion.
-  const auto& history =
-      prefs->GetList(prefs::kArcFirstActivationDuringUserSessionStartUpHistory);
-  const size_t window_size = std::min<size_t>(history.size(), max_window_size);
-  base::span<const base::Value> history_window(history.end() - window_size,
-                                               history.end());
-  return base::ranges::count(history_window, base::Value(true)) < threshold;
-}
-
-void RecordFirstActivationDuringUserSessionStartUp(PrefService* prefs,
-                                                   bool value) {
-  if (!base::FeatureList::IsEnabled(
-          kDeferArcActivationUntilUserSessionStartUpTaskCompletion)) {
-    return;
-  }
-
-  const int window_size = kDeferArcActivationHistoryWindow.Get();
-  if (window_size < 0) {
-    LOG(ERROR) << "Unexpected negative window_size: " << window_size;
-    return;
-  }
-
-  ScopedListPrefUpdate update(
-      prefs, prefs::kArcFirstActivationDuringUserSessionStartUpHistory);
-  auto& history = update.Get();
-  // Limit the size up to the history_window.
-  history.Append(value);
-  if (history.size() >= static_cast<size_t>(window_size)) {
-    history.erase(history.begin(), history.end() - window_size);
-  }
 }
 
 }  // namespace arc

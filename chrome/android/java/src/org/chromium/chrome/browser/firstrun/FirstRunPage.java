@@ -45,7 +45,9 @@ public class FirstRunPage<T extends Fragment & FirstRunFragment> {
         return mShouldShow.getAsBoolean();
     }
 
-    /** Creates fragment that implements this FRE page. */
+    /**
+     * Creates fragment that implements this FRE page.
+     */
     public T instantiateFragment() {
         try {
             return mClazz.newInstance();

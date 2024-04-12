@@ -6,30 +6,31 @@
 
 #include "third_party/blink/renderer/core/geometry/dom_rect_read_only.h"
 #include "third_party/blink/renderer/core/layout/adjust_for_absolute_zoom.h"
-#include "third_party/blink/renderer/core/layout/geometry/logical_offset.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/resize_observer/resize_observer_box_options.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/geometry/layout_rect.h"
+#include "third_party/blink/renderer/platform/geometry/layout_size.h"
 #include "third_party/blink/renderer/platform/geometry/layout_unit.h"
 #include "ui/gfx/geometry/size_f.h"
 
 namespace blink {
 
 namespace {
-
 // Compute the logical paint offset for a layout object.
-LogicalOffset ComputePaintOffset(const LayoutObject& layout_object,
-                                 const ComputedStyle& style) {
-  PhysicalOffset paint_offset = layout_object.FirstFragment().PaintOffset();
-  LayoutUnit paint_offset_inline =
-      style.IsHorizontalWritingMode() ? paint_offset.left : paint_offset.top;
-  LayoutUnit paint_offset_block =
-      style.IsHorizontalWritingMode() ? paint_offset.top : paint_offset.left;
-  return LogicalOffset(paint_offset_inline, paint_offset_block);
+LayoutSize ComputePaintOffset(const LayoutObject& layout_object,
+                              const ComputedStyle& style) {
+  LayoutSize paint_offset =
+      layout_object.FirstFragment().PaintOffset().ToLayoutSize();
+  LayoutUnit paint_offset_inline = style.IsHorizontalWritingMode()
+                                       ? paint_offset.Width()
+                                       : paint_offset.Height();
+  LayoutUnit paint_offset_block = style.IsHorizontalWritingMode()
+                                      ? paint_offset.Height()
+                                      : paint_offset.Width();
+  return LayoutSize(paint_offset_inline, paint_offset_block);
 }
-
 }  // namespace
 
 gfx::SizeF ResizeObserverUtilities::ComputeZoomAdjustedBox(
@@ -49,8 +50,8 @@ gfx::SizeF ResizeObserverUtilities::ComputeZoomAdjustedBox(
                         AdjustForAbsoluteZoom::AdjustLayoutUnit(
                             layout_box.LogicalHeight(), style));
     case ResizeObserverBoxOptions::kDevicePixelContentBox: {
-      LogicalSize box_size = {layout_box.ContentLogicalWidth(),
-                              layout_box.ContentLogicalHeight()};
+      LayoutSize box_size = LayoutSize(layout_box.ContentLogicalWidth(),
+                                       layout_box.ContentLogicalHeight());
       return ComputeSnappedDevicePixelContentBox(box_size, layout_box, style);
     }
     default:
@@ -59,27 +60,16 @@ gfx::SizeF ResizeObserverUtilities::ComputeZoomAdjustedBox(
 }
 
 gfx::SizeF ResizeObserverUtilities::ComputeSnappedDevicePixelContentBox(
-    LogicalSize box_size,
+    LayoutSize box_size,
     const LayoutObject& layout_object,
     const ComputedStyle& style) {
-  LogicalOffset paint_offset = ComputePaintOffset(layout_object, style);
-  return gfx::SizeF(
-      SnapSizeToPixel(box_size.inline_size, paint_offset.inline_offset),
-      SnapSizeToPixel(box_size.block_size, paint_offset.block_offset));
-}
-
-// static
-gfx::SizeF ResizeObserverUtilities::ComputeSnappedDevicePixelContentBox(
-    const gfx::SizeF& box_size,
-    const LayoutObject& layout_object,
-    const ComputedStyle& style) {
-  return ComputeSnappedDevicePixelContentBox(
-      LogicalSize(LayoutUnit(box_size.width()), LayoutUnit(box_size.height())),
-      layout_object, style);
+  LayoutSize paint_offset = ComputePaintOffset(layout_object, style);
+  return gfx::SizeF(SnapSizeToPixel(box_size.Width(), paint_offset.Width()),
+                    SnapSizeToPixel(box_size.Height(), paint_offset.Height()));
 }
 
 DOMRectReadOnly* ResizeObserverUtilities::ZoomAdjustedLayoutRect(
-    PhysicalRect content_rect,
+    LayoutRect content_rect,
     const ComputedStyle& style) {
   content_rect.SetX(
       AdjustForAbsoluteZoom::AdjustLayoutUnit(content_rect.X(), style));

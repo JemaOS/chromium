@@ -78,9 +78,8 @@ void LocalCardMigrationErrorDialogView::CloseDialog() {
 }
 
 void LocalCardMigrationErrorDialogView::Init() {
-  if (!children().empty()) {
+  if (!children().empty())
     return;
-  }
 
   ChromeLayoutProvider* provider = ChromeLayoutProvider::Get();
   SetLayoutManager(std::make_unique<views::BoxLayout>(
@@ -128,7 +127,8 @@ LocalCardMigrationDialog* CreateLocalCardMigrationErrorDialogView(
   return new LocalCardMigrationErrorDialogView(controller);
 }
 
-BEGIN_METADATA(LocalCardMigrationErrorDialogView)
+BEGIN_METADATA(LocalCardMigrationErrorDialogView,
+               views::BubbleDialogDelegateView)
 END_METADATA
 
 }  // namespace autofill

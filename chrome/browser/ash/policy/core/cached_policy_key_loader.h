@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_POLICY_CORE_CACHED_POLICY_KEY_LOADER_H_
 #define CHROME_BROWSER_ASH_POLICY_CORE_CACHED_POLICY_KEY_LOADER_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -17,6 +16,7 @@
 #include "base/sequence_checker.h"
 #include "chromeos/ash/components/dbus/cryptohome/UserDataAuth.pb.h"
 #include "components/account_id/account_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 class CryptohomeMiscClient;
@@ -69,14 +69,15 @@ class CachedPolicyKeyLoader {
 
   // Callback for getting the sanitized username from |cryptohome_client_|.
   void OnGetSanitizedUsername(
-      std::optional<user_data_auth::GetSanitizedUsernameReply> reply);
+      absl::optional<user_data_auth::GetSanitizedUsernameReply> reply);
 
   void NotifyAndClearCallbacks();
 
   // Task runner for background file operations.
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 
-  const raw_ptr<ash::CryptohomeMiscClient> cryptohome_misc_client_;
+  const raw_ptr<ash::CryptohomeMiscClient, ExperimentalAsh>
+      cryptohome_misc_client_;
   const AccountId account_id_;
   const base::FilePath user_policy_key_dir_;
   base::FilePath cached_policy_key_path_;

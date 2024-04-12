@@ -34,8 +34,7 @@ void OwnerPendingSettingController::Set(Profile* profile,
   DCHECK(profile);
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (GetOwnershipStatus() ==
-      DeviceSettingsService::OwnershipStatus::kOwnershipTaken) {
+  if (GetOwnershipStatus() == DeviceSettingsService::OWNERSHIP_TAKEN) {
     // The device has an owner. If the current profile is that owner, we will
     // write the value on their behalf, otherwise no action is taken.
     VLOG(1) << "Already has owner";
@@ -54,9 +53,9 @@ void OwnerPendingSettingController::Set(Profile* profile,
   }
 }
 
-std::optional<base::Value> OwnerPendingSettingController::GetValue() const {
+absl::optional<base::Value> OwnerPendingSettingController::GetValue() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  std::optional<base::Value> value = GetPendingValue();
+  absl::optional<base::Value> value = GetPendingValue();
   if (ShouldReadFromPendingValue() && value.has_value()) {
     // Return the pending value if it exists.
     return value;
@@ -74,12 +73,11 @@ base::CallbackListSubscription OwnerPendingSettingController::AddObserver(
 
 void OwnerPendingSettingController::OnOwnershipTaken(
     ownership::OwnerSettingsService* service) {
-  DCHECK_EQ(GetOwnershipStatus(),
-            DeviceSettingsService::OwnershipStatus::kOwnershipTaken);
+  DCHECK_EQ(GetOwnershipStatus(), DeviceSettingsService::OWNERSHIP_TAKEN);
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   VLOG(1) << "OnOwnershipTaken";
 
-  std::optional<base::Value> pending_value = GetPendingValue();
+  absl::optional<base::Value> pending_value = GetPendingValue();
   if (pending_value.has_value()) {
     // At the time ownership is taken, there is a value waiting to be written.
     // Use the OwnerSettingsService of the new owner to write the setting.
@@ -95,8 +93,8 @@ OwnerPendingSettingController::~OwnerPendingSettingController() {
 void OwnerPendingSettingController::OnSignedPolicyStored(bool success) {
   if (!success)
     return;
-  std::optional<base::Value> pending_value = GetPendingValue();
-  std::optional<base::Value> signed_value = GetSignedStoredValue();
+  absl::optional<base::Value> pending_value = GetPendingValue();
+  absl::optional<base::Value> signed_value = GetSignedStoredValue();
   if (pending_value.has_value() && signed_value.has_value() &&
       pending_value == signed_value) {
     is_value_being_set_with_service_ = false;
@@ -157,7 +155,7 @@ void OwnerPendingSettingController::SetWithService(
 
 void OwnerPendingSettingController::NotifyObservers() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  std::optional<base::Value> current_value = GetValue();
+  absl::optional<base::Value> current_value = GetValue();
   if (current_value != value_notified_to_observers_) {
     VLOG(1) << "Notifying observers";
     value_notified_to_observers_ = std::move(current_value);
@@ -177,12 +175,12 @@ OwnerPendingSettingController::GetOwnerSettingsService(Profile* profile) {
   return OwnerSettingsServiceAshFactory::GetForBrowserContext(profile);
 }
 
-std::optional<base::Value> OwnerPendingSettingController::GetPendingValue()
+absl::optional<base::Value> OwnerPendingSettingController::GetPendingValue()
     const {
   if (local_state_->HasPrefPath(pending_pref_name_)) {
     return local_state_->GetValue(pending_pref_name_).Clone();
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void OwnerPendingSettingController::ClearPendingValue() {
@@ -190,13 +188,13 @@ void OwnerPendingSettingController::ClearPendingValue() {
   local_state_->ClearPref(pending_pref_name_);
 }
 
-std::optional<base::Value> OwnerPendingSettingController::GetSignedStoredValue()
-    const {
+absl::optional<base::Value>
+OwnerPendingSettingController::GetSignedStoredValue() const {
   const base::Value* value = CrosSettings::Get()->GetPref(pref_name_);
   if (value) {
     return value->Clone();
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool OwnerPendingSettingController::ShouldReadFromPendingValue() const {
@@ -205,10 +203,8 @@ bool OwnerPendingSettingController::ShouldReadFromPendingValue() const {
   // Chrome starts. In that case, we will read from pending value if it exists
   // (which means ownership is not taken), and read from service when pending
   // value pending is cleared (which means ownership is taken).
-  if (GetOwnershipStatus() ==
-          DeviceSettingsService::OwnershipStatus::kOwnershipNone ||
-      GetOwnershipStatus() ==
-          DeviceSettingsService::OwnershipStatus::kOwnershipUnknown) {
+  if (GetOwnershipStatus() == DeviceSettingsService::OWNERSHIP_NONE ||
+      GetOwnershipStatus() == DeviceSettingsService::OWNERSHIP_UNKNOWN) {
     return true;
   }
   // Read from pending value if ownership is taken but pending value has not

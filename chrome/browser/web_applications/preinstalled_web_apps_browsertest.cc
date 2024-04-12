@@ -21,11 +21,6 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "content/public/test/browser_test.h"
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/profiles/profile_manager.h"
-#include "chrome/browser/ui/browser_commands.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
 using web_app::test::CrosapiParam;
 using web_app::test::WithCrosapiParam;
 
@@ -34,9 +29,8 @@ namespace web_app {
 class PreinstalledWebAppsBrowserTest : public WebAppControllerBrowserTest,
                                        public WithCrosapiParam {
  public:
-  PreinstalledWebAppsBrowserTest()
-      : skip_preinstalled_web_app_startup_(
-            PreinstalledWebAppManager::SkipStartupForTesting()) {
+  PreinstalledWebAppsBrowserTest() {
+    PreinstalledWebAppManager::SkipStartupForTesting();
     // Ignore any default app configs on disk.
     SetPreinstalledWebAppConfigDirForTesting(&empty_path_);
     WebAppProvider::SetOsIntegrationManagerFactoryForTesting(
@@ -58,31 +52,10 @@ class PreinstalledWebAppsBrowserTest : public WebAppControllerBrowserTest,
     command_line->RemoveSwitch(switches::kDisableDefaultApps);
   }
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  void SetUpOnMainThread() override {
-    if (browser() == nullptr) {
-      // Create a new Ash browser window so test code using browser() can work
-      // even when Lacros is the only browser.
-      // TODO(crbug.com/1450158): Remove uses of browser() from such tests.
-      chrome::NewEmptyWindow(ProfileManager::GetActiveUserProfile());
-      SelectFirstBrowser();
-    }
-    WebAppControllerBrowserTest::SetUpOnMainThread();
-    VerifyLacrosStatus();
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
   base::FilePath empty_path_;
-  base::AutoReset<bool> skip_preinstalled_web_app_startup_;
 };
 
 IN_PROC_BROWSER_TEST_P(PreinstalledWebAppsBrowserTest, CheckInstalledFields) {
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && BUILDFLAG(IS_CHROMEOS)
-  if (GetParam() == test::CrosapiParam::kDisabled) {
-    // TODO(http://crbug.com/328691719): Test is flaky on CHROMEOS.
-    return;
-  }
-#endif
   base::AutoReset<bool> scope =
       SetPreinstalledAppInstallFeatureAlwaysEnabledForTesting();
 
@@ -94,45 +67,42 @@ IN_PROC_BROWSER_TEST_P(PreinstalledWebAppsBrowserTest, CheckInstalledFields) {
   } kOfflineOnlyExpectations[] = {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 #if BUILDFLAG(IS_CHROMEOS)
-      {
-          kGoogleCalendarAppId,
-          "https://calendar.google.com/calendar/"
-          "installwebapp?usp=chrome_default",
-          "https://calendar.google.com/calendar/r?usp=installed_webapp",
-      },
+    {
+        kGoogleCalendarAppId,
+        "https://calendar.google.com/calendar/installwebapp?usp=chrome_default",
+        "https://calendar.google.com/calendar/r?usp=installed_webapp",
+    },
 #endif  // BUILDFLAG(IS_CHROMEOS)
-      {
-          kGoogleDocsAppId,
-          "https://docs.google.com/document/installwebapp?usp=chrome_default",
-          "https://docs.google.com/document/?usp=installed_webapp",
-      },
-      {
-          kGoogleSlidesAppId,
-          "https://docs.google.com/presentation/"
-          "installwebapp?usp=chrome_default",
-          "https://docs.google.com/presentation/?usp=installed_webapp",
-      },
-      {
-          kGoogleSheetsAppId,
-          "https://docs.google.com/spreadsheets/"
-          "installwebapp?usp=chrome_default",
-          "https://docs.google.com/spreadsheets/?usp=installed_webapp",
-      },
-      {
-          kGoogleDriveAppId,
-          "https://drive.google.com/drive/installwebapp?usp=chrome_default",
-          "https://drive.google.com/?lfhs=2&usp=installed_webapp",
-      },
-      {
-          kGmailAppId,
-          "https://mail.google.com/mail/installwebapp?usp=chrome_default",
-          "https://mail.google.com/mail/?usp=installed_webapp",
-      },
-      {
-          kYoutubeAppId,
-          "https://www.youtube.com/s/notifications/manifest/cr_install.html",
-          "https://www.youtube.com/?feature=ytca",
-      },
+    {
+        kGoogleDocsAppId,
+        "https://docs.google.com/document/installwebapp?usp=chrome_default",
+        "https://docs.google.com/document/?usp=installed_webapp",
+    },
+    {
+        kGoogleSlidesAppId,
+        "https://docs.google.com/presentation/installwebapp?usp=chrome_default",
+        "https://docs.google.com/presentation/?usp=installed_webapp",
+    },
+    {
+        kGoogleSheetsAppId,
+        "https://docs.google.com/spreadsheets/installwebapp?usp=chrome_default",
+        "https://docs.google.com/spreadsheets/?usp=installed_webapp",
+    },
+    {
+        kGoogleDriveAppId,
+        "https://drive.google.com/drive/installwebapp?usp=chrome_default",
+        "https://drive.google.com/?lfhs=2&usp=installed_webapp",
+    },
+    {
+        kGmailAppId,
+        "https://mail.google.com/mail/installwebapp?usp=chrome_default",
+        "https://mail.google.com/mail/?usp=installed_webapp",
+    },
+    {
+        kYoutubeAppId,
+        "https://www.youtube.com/s/notifications/manifest/cr_install.html",
+        "https://www.youtube.com/?feature=ytca",
+    },
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
   };
   size_t kOfflineOnlyExpectedCount =
@@ -143,18 +113,15 @@ IN_PROC_BROWSER_TEST_P(PreinstalledWebAppsBrowserTest, CheckInstalledFields) {
   } kOnlineOnlyExpectations[] = {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 #if BUILDFLAG(IS_CHROMEOS)
-      {
-          "https://mail.google.com/chat/download?usp=chrome_default",
-      },
-      {
-          "https://meet.google.com/download/webapp?usp=chrome_default",
-      },
-      {
-          "https://calculator.apps.chrome/install",
-      },
-      {
-          "https://discover.apps.chrome/install/",
-      },
+    {
+        "https://mail.google.com/chat/download?usp=chrome_default",
+    },
+    {
+        "https://meet.google.com/download/webapp?usp=chrome_default",
+    },
+    {
+        "https://calculator.apps.chrome/install",
+    },
 #endif  // BUILDFLAG(IS_CHROMEOS)
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
   };

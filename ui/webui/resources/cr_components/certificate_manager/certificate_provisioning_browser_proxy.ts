@@ -30,19 +30,16 @@ export interface CertificateProvisioningBrowserProxy {
   /**
    * Refreshes the list of client certificate processes.
    * Triggers the 'certificate-provisioning-processes-changed' event.
+   * This is Chrome OS specific, but always present for simplicity.
    */
   refreshCertificateProvisioningProcesses(): void;
 
   /**
    * Attempts to manually advance/refresh the status of the client certificate
    * provisioning process identified by |certProfileId|.
+   * This is Chrome OS specific, but always present for simplicity.
    */
   triggerCertificateProvisioningProcessUpdate(certProfileId: string): void;
-
-  /**
-   * Resets a particular certificate process.
-   */
-  triggerCertificateProvisioningProcessReset(certProfileId: string): void;
 }
 
 export class CertificateProvisioningBrowserProxyImpl implements
@@ -53,10 +50,6 @@ export class CertificateProvisioningBrowserProxyImpl implements
 
   triggerCertificateProvisioningProcessUpdate(certProfileId: string) {
     chrome.send('triggerCertificateProvisioningProcessUpdate', [certProfileId]);
-  }
-
-  triggerCertificateProvisioningProcessReset(certProfileId: string) {
-    chrome.send('triggerCertificateProvisioningProcessReset', [certProfileId]);
   }
 
   static getInstance(): CertificateProvisioningBrowserProxy {

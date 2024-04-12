@@ -23,8 +23,7 @@ WakeLockManager::WakeLockManager(ExecutionContext* execution_context,
   DCHECK_NE(execution_context, nullptr);
 }
 
-void WakeLockManager::AcquireWakeLock(
-    ScriptPromiseResolverTyped<WakeLockSentinel>* resolver) {
+void WakeLockManager::AcquireWakeLock(ScriptPromiseResolver* resolver) {
   // https://w3c.github.io/screen-wake-lock/#the-request-method
   if (!wake_lock_.is_bound()) {
     // 8.3.2. If document.[[ActiveLocks]]["screen"] is empty, then invoke the

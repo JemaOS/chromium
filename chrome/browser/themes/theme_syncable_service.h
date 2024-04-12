@@ -9,7 +9,6 @@
 
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "base/observer_list_types.h"
 #include "base/threading/thread_checker.h"
@@ -26,8 +25,8 @@ namespace sync_pb {
 class ThemeSpecifics;
 }
 
-class ThemeSyncableService final : public syncer::SyncableService,
-                                   public ThemeServiceObserver {
+class ThemeSyncableService : public syncer::SyncableService,
+                             public ThemeServiceObserver {
  public:
   // State of local theme after applying sync changes.
   enum class ThemeSyncState {
@@ -69,20 +68,19 @@ class ThemeSyncableService final : public syncer::SyncableService,
   void NotifyOnSyncStartedForTesting(ThemeSyncState startup_state);
 
   // Returns the theme sync startup state or nullopt if it has not started yet.
-  std::optional<ThemeSyncState> GetThemeSyncStartState();
+  absl::optional<ThemeSyncState> GetThemeSyncStartState();
 
   // syncer::SyncableService implementation.
   void WaitUntilReadyToSync(base::OnceClosure done) override;
-  std::optional<syncer::ModelError> MergeDataAndStartSyncing(
+  absl::optional<syncer::ModelError> MergeDataAndStartSyncing(
       syncer::ModelType type,
       const syncer::SyncDataList& initial_sync_data,
       std::unique_ptr<syncer::SyncChangeProcessor> sync_processor) override;
   void StopSyncing(syncer::ModelType type) override;
   syncer::SyncDataList GetAllSyncDataForTesting(syncer::ModelType type) const;
-  std::optional<syncer::ModelError> ProcessSyncChanges(
+  absl::optional<syncer::ModelError> ProcessSyncChanges(
       const base::Location& from_here,
       const syncer::SyncChangeList& change_list) override;
-  base::WeakPtr<SyncableService> AsWeakPtr() override;
 
   // Client tag and title of the single theme sync_pb::SyncEntity of an account.
   static const char kSyncEntityClientTag[];
@@ -98,10 +96,14 @@ class ThemeSyncableService final : public syncer::SyncableService,
   static bool HasNonDefaultTheme(
       const sync_pb::ThemeSpecifics& theme_specifics);
 
-  // Set theme from theme specifics in |sync_data| if it's different from
-  // |current_specs|. Returns the state of themes after the operation.
+  // Set theme from theme specifics in |sync_data| using
+  // SetCurrentThemeFromThemeSpecifics() if it's different from |current_specs|.
+  // Returns the state of themes after the operation.
   ThemeSyncState MaybeSetTheme(const sync_pb::ThemeSpecifics& current_specs,
                                const syncer::SyncData& sync_data);
+  // Returns the state of themes after the operation.
+  ThemeSyncState SetCurrentThemeFromThemeSpecifics(
+      const sync_pb::ThemeSpecifics& theme_specifics);
 
   // If the current theme is syncable, fills in the passed |theme_specifics|
   // structure based on the currently applied theme and returns |true|.
@@ -110,7 +112,7 @@ class ThemeSyncableService final : public syncer::SyncableService,
       sync_pb::ThemeSpecifics* theme_specifics) const;
 
   // Updates theme specifics in sync to |theme_specifics|.
-  std::optional<syncer::ModelError> ProcessNewTheme(
+  absl::optional<syncer::ModelError> ProcessNewTheme(
       syncer::SyncChange::SyncChangeType change_type,
       const sync_pb::ThemeSpecifics& theme_specifics);
 
@@ -128,11 +130,9 @@ class ThemeSyncableService final : public syncer::SyncableService,
   bool use_system_theme_by_default_;
 
   // Captures the state of theme sync after initial data merge.
-  std::optional<ThemeSyncState> startup_state_;
+  absl::optional<ThemeSyncState> startup_state_;
 
   base::ThreadChecker thread_checker_;
-
-  base::WeakPtrFactory<ThemeSyncableService> weak_ptr_factory_{this};
 
   FRIEND_TEST_ALL_PREFIXES(ThemeSyncableServiceTest, AreThemeSpecificsEqual);
 };

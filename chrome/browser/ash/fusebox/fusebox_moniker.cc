@@ -29,7 +29,7 @@ MonikerMap::ExtractTokenResult MonikerMap::ExtractToken(
     result.result_type = ExtractTokenResult::ResultType::NOT_A_MONIKER_FS_URL;
     return result;
   }
-  std::optional<base::Token> token =
+  absl::optional<base::Token> token =
       base::Token::FromString(fs_url_as_string.substr(n + 1));
   if (!token) {
     ExtractTokenResult result;

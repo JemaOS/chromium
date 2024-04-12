@@ -13,7 +13,6 @@
 #include "chrome/browser/ash/arc/input_overlay/ui/nudge_view.h"
 #include "chromeos/strings/grit/chromeos_strings.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/chromeos/styles/cros_styles.h"
 #include "ui/compositor/layer.h"
 #include "ui/gfx/canvas.h"
@@ -58,8 +57,6 @@ class NudgeDotBackground : public views::Background {
 };
 
 class DotIndicator : public views::View {
-  METADATA_HEADER(DotIndicator, views::View)
-
  public:
   DotIndicator() {
     SetBackground(std::make_unique<NudgeDotBackground>(
@@ -73,12 +70,7 @@ class DotIndicator : public views::View {
   }
 };
 
-BEGIN_METADATA(DotIndicator)
-END_METADATA
-
 class ContentView : public views::LabelButton {
-  METADATA_HEADER(ContentView, views::LabelButton)
-
  public:
   explicit ContentView(int available_width)
       : available_width_(available_width) {
@@ -95,6 +87,7 @@ class ContentView : public views::LabelButton {
                                       IsDarkModeEnabled()),
             kIconSize));
     SetHorizontalAlignment(gfx::HorizontalAlignment::ALIGN_LEFT);
+    image()->SetHorizontalAlignment(views::ImageView::Alignment::kLeading);
     SetImageLabelSpacing(kSpaceIconLabel);
     SetTextColor(
         views::Button::STATE_NORMAL,
@@ -129,9 +122,6 @@ class ContentView : public views::LabelButton {
  private:
   int available_width_ = 0;
 };
-
-BEGIN_METADATA(ContentView)
-END_METADATA
 
 }  // namespace
 
@@ -182,8 +172,5 @@ void NudgeView::Init() {
                           content_view->height() / 2);
   SetPosition(gfx::Point(x, y));
 }
-
-BEGIN_METADATA(NudgeView)
-END_METADATA
 
 }  // namespace arc::input_overlay

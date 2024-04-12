@@ -57,7 +57,6 @@ instead of "initial value".
 |     <div>
 |       id="picker"
 |       pseudo="-webkit-calendar-picker-indicator"
-|       title="Show month picker"
 |       shadow:pseudoId="-webkit-calendar-picker-indicator"
 | <textarea>
 |   id="textarea"
@@ -82,15 +81,10 @@ instead of "initial value".
 |     <shadow:root>
 |       "inserted value"
 |   <shadow:root>
+|     <div>
+|       aria-hidden="true"
+|       "initial value"
 |     <slot>
-|       id="select-button"
-|       <div>
-|         aria-hidden="true"
-|         "initial value"
-|     <slot>
-|       id="select-datalist"
-|     <slot>
-|       id="select-options"
 | "input.value: initial value"
 | "internals.suggestedValue(input): suggested value"
 | "input.selectionStart: 0"

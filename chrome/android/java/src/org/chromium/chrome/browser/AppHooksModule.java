@@ -4,13 +4,13 @@
 
 package org.chromium.chrome.browser;
 
-import dagger.Module;
-import dagger.Provides;
-
 import org.chromium.chrome.browser.customtabs.CustomTabsConnection;
 import org.chromium.chrome.browser.dependency_injection.ModuleFactoryOverrides;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.components.externalauth.ExternalAuthUtils;
+
+import dagger.Module;
+import dagger.Provides;
 
 /**
  * Makes entities provided by AppHooks available for injection with Dagger.
@@ -19,9 +19,7 @@ import org.chromium.components.externalauth.ExternalAuthUtils;
 @Module
 public class AppHooksModule {
     /** See {@link ModuleFactoryOverrides} */
-    public interface Factory {
-        AppHooksModule create();
-    }
+    public interface Factory { AppHooksModule create(); }
 
     @Provides
     public static CustomTabsConnection provideCustomTabsConnection() {

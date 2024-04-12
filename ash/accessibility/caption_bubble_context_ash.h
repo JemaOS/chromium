@@ -33,8 +33,6 @@ class ASH_EXPORT CaptionBubbleContextAsh
   bool IsActivatable() const override;
   std::unique_ptr<::captions::CaptionBubbleSessionObserver>
   GetCaptionBubbleSessionObserver() override;
-  ::captions::OpenCaptionSettingsCallback GetOpenCaptionSettingsCallback()
-      override;
 };
 
 }  // namespace ash::captions

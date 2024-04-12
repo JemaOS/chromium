@@ -30,14 +30,16 @@ namespace {
 size_t GetInfobarCount(content::WebContents* contents) {
   infobars::ContentInfoBarManager* infobar_manager =
       infobars::ContentInfoBarManager::FromWebContents(contents);
-  return infobar_manager ? infobar_manager->infobars().size() : 0;
+  if (!infobar_manager)
+    return 0;
+  return infobar_manager->infobar_count();
 }
 
 infobars::InfoBar* GetInfobar(content::WebContents* contents) {
   infobars::ContentInfoBarManager* infobar_manager =
       infobars::ContentInfoBarManager::FromWebContents(contents);
   DCHECK(infobar_manager);
-  return infobar_manager->infobars()[0];
+  return infobar_manager->infobar_at(0);
 }
 
 // Follows same logic as clicking the "Continue" button would.
@@ -46,8 +48,9 @@ void CloseInfobar(content::WebContents* contents) {
   if (!infobar)
     return;
 
-  ASSERT_TRUE(
-      static_cast<ConfirmInfoBarDelegate*>(infobar->delegate())->Accept());
+  ConfirmInfoBarDelegate* delegate =
+      static_cast<ConfirmInfoBarDelegate*>(infobar->delegate());
+  delegate->Accept();
   infobar->RemoveSelf();
 }
 

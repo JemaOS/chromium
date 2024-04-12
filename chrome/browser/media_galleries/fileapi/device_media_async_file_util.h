@@ -64,7 +64,7 @@ class DeviceMediaAsyncFileUtil : public storage::AsyncFileUtil {
       StatusCallback callback) override;
   void GetFileInfo(std::unique_ptr<storage::FileSystemOperationContext> context,
                    const storage::FileSystemURL& url,
-                   GetMetadataFieldSet fields,
+                   int /* flags */,
                    GetFileInfoCallback callback) override;
   void ReadDirectory(
       std::unique_ptr<storage::FileSystemOperationContext> context,

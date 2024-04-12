@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -35,12 +35,12 @@ class VolumeManagerFactory : public ProfileKeyedServiceFactory {
   // BrowserContextKeyedServiceFactory overrides:
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 
  private:
   // For Singleton.
-  friend base::NoDestructor<VolumeManagerFactory>;
+  friend struct base::DefaultSingletonTraits<VolumeManagerFactory>;
 
   VolumeManagerFactory();
   ~VolumeManagerFactory() override;

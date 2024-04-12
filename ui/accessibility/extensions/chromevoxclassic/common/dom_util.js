@@ -470,8 +470,7 @@ cvox.DomUtil.getBaseLabel_ = function(node, recursive, includeControls) {
   if (node.hasAttribute) {
     if (node.hasAttribute('aria-labelledby')) {
       var labelNodeIds = node.getAttribute('aria-labelledby').split(' ');
-      for (var i = 0; i < labelNodeIds.length; i++) {
-        var labelNodeId = labelNodeIds[i];
+      for (var labelNodeId, i = 0; labelNodeId = labelNodeIds[i]; i++) {
         var labelNode = document.getElementById(labelNodeId);
         if (labelNode) {
           label += ' ' + cvox.DomUtil.getName(

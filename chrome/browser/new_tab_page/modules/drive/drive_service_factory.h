@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_NEW_TAB_PAGE_MODULES_DRIVE_DRIVE_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_NEW_TAB_PAGE_MODULES_DRIVE_DRIVE_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class DriveService;
@@ -18,12 +18,12 @@ class DriveServiceFactory : ProfileKeyedServiceFactory {
   DriveServiceFactory(const DriveServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<DriveServiceFactory>;
+  friend struct base::DefaultSingletonTraits<DriveServiceFactory>;
   DriveServiceFactory();
   ~DriveServiceFactory() override;
 
   // Uses BrowserContextKeyedServiceFactory to build a DriveService.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

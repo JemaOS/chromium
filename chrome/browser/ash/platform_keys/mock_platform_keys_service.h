@@ -36,14 +36,6 @@ class MockPlatformKeysService : public PlatformKeysService {
               (override));
 
   MOCK_METHOD(void,
-              GenerateSymKey,
-              (chromeos::platform_keys::TokenId token_id,
-               std::vector<uint8_t> key_id,
-               int key_size,
-               GenerateKeyCallback callback),
-              (override));
-
-  MOCK_METHOD(void,
               GenerateRSAKey,
               (chromeos::platform_keys::TokenId token_id,
                unsigned int modulus_length_bits,
@@ -54,33 +46,13 @@ class MockPlatformKeysService : public PlatformKeysService {
   MOCK_METHOD(void,
               GenerateECKey,
               (chromeos::platform_keys::TokenId token_id,
-               std::string named_curve,
+               const std::string& named_curve,
                GenerateKeyCallback callback),
               (override));
 
   MOCK_METHOD(void,
-              DecryptAES,
-              (chromeos::platform_keys::TokenId token_id,
-               std::vector<uint8_t> key_id,
-               std::vector<uint8_t> encrypted_data,
-               std::string decrypt_algorithm,
-               std::vector<uint8_t> init_vector,
-               EncryptDecryptCallback callback),
-              (override));
-
-  MOCK_METHOD(void,
-              EncryptAES,
-              (chromeos::platform_keys::TokenId token_id,
-               std::vector<uint8_t> key_id,
-               std::vector<uint8_t> data,
-               std::string encrypt_algorithm,
-               std::vector<uint8_t> init_vector,
-               EncryptDecryptCallback callback),
-              (override));
-
-  MOCK_METHOD(void,
-              SignRsaPkcs1,
-              (std::optional<chromeos::platform_keys::TokenId> token_id,
+              SignRSAPKCS1Digest,
+              (absl::optional<chromeos::platform_keys::TokenId> token_id,
                std::vector<uint8_t> data,
                std::vector<uint8_t> public_key_spki_der,
                chromeos::platform_keys::HashAlgorithm hash_algorithm,
@@ -89,15 +61,15 @@ class MockPlatformKeysService : public PlatformKeysService {
 
   MOCK_METHOD(void,
               SignRSAPKCS1Raw,
-              (std::optional<chromeos::platform_keys::TokenId> token_id,
+              (absl::optional<chromeos::platform_keys::TokenId> token_id,
                std::vector<uint8_t> data,
                std::vector<uint8_t> public_key_spki_der,
                SignCallback callback),
               (override));
 
   MOCK_METHOD(void,
-              SignEcdsa,
-              (std::optional<chromeos::platform_keys::TokenId> token_id,
+              SignECDSADigest,
+              (absl::optional<chromeos::platform_keys::TokenId> token_id,
                std::vector<uint8_t> data,
                std::vector<uint8_t> public_key_spki_der,
                chromeos::platform_keys::HashAlgorithm hash_algorithm,
@@ -143,13 +115,6 @@ class MockPlatformKeysService : public PlatformKeysService {
                RemoveKeyCallback callback),
               (override));
 
-  MOCK_METHOD(void,
-              RemoveSymKey,
-              (chromeos::platform_keys::TokenId token_id,
-               std::vector<uint8_t> key_id,
-               RemoveKeyCallback callback),
-              (override));
-
   MOCK_METHOD(void, GetTokens, (GetTokensCallback callback), (override));
 
   MOCK_METHOD(void,
@@ -161,7 +126,7 @@ class MockPlatformKeysService : public PlatformKeysService {
   MOCK_METHOD(void,
               SetAttributeForKey,
               (chromeos::platform_keys::TokenId token_id,
-               std::vector<uint8_t> public_key_spki_der,
+               const std::string& public_key_spki_der,
                chromeos::platform_keys::KeyAttributeType attribute_type,
                std::vector<uint8_t> attribute_value,
                SetAttributeForKeyCallback callback),
@@ -170,7 +135,7 @@ class MockPlatformKeysService : public PlatformKeysService {
   MOCK_METHOD(void,
               GetAttributeForKey,
               (chromeos::platform_keys::TokenId token_id,
-               std::vector<uint8_t> public_key_spki_der,
+               const std::string& public_key_spki_der,
                chromeos::platform_keys::KeyAttributeType attribute_type,
                GetAttributeForKeyCallback callback),
               (override));

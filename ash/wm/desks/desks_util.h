@@ -6,14 +6,11 @@
 #define ASH_WM_DESKS_DESKS_UTIL_H_
 
 #include <algorithm>
-#include <cstdint>
-#include <optional>
 #include <vector>
 
 #include "ash/ash_export.h"
 #include "ash/public/cpp/shell_window_ids.h"
 #include "base/check_op.h"
-#include "base/memory/raw_ptr.h"
 #include "ui/compositor/compositor.h"
 
 namespace aura {
@@ -59,10 +56,6 @@ ASH_EXPORT aura::Window* GetActiveDeskContainerForRoot(aura::Window* root);
 
 ASH_EXPORT bool BelongsToActiveDesk(aura::Window* window);
 
-// Returns active desk's associated lacros profile ID when Desk Profiles feature
-// is enabled; returns null otherwise.
-ASH_EXPORT std::optional<uint64_t> GetActiveDeskLacrosProfileId();
-
 // If `context` is a descendent window of a desk container, return that desk
 // container, otherwise return nullptr. Note that this will return nullptr if
 // `context` is a descendent of the float container, even if it is associated
@@ -73,7 +66,7 @@ ASH_EXPORT aura::Window* GetDeskContainerForContext(aura::Window* context);
 // nullptr. Note that floated window is not in the desk container but still
 // considered as "belonging" to the desk, as it's only visible on a particular
 // desk.
-ASH_EXPORT const Desk* GetDeskForContext(aura::Window* context);
+const Desk* GetDeskForContext(aura::Window* context);
 
 // Returns true if the DesksBar widget should be created in overview mode.
 ASH_EXPORT bool ShouldDesksBarBeCreated();
@@ -94,8 +87,8 @@ ASH_EXPORT bool IsZOrderTracked(aura::Window* window);
 // Get the position of `window` in `windows` (as filtered by `IsZOrderTracked`)
 // in reverse order. If `window` is not in the list (or isn't z-order tracked),
 // then nullopt is returned.
-ASH_EXPORT std::optional<size_t> GetWindowZOrder(
-    const std::vector<raw_ptr<aura::Window, VectorExperimental>>& windows,
+ASH_EXPORT absl::optional<size_t> GetWindowZOrder(
+    const std::vector<aura::Window*>& windows,
     aura::Window* window);
 
 // Move an item at |old_index| to |new_index|.

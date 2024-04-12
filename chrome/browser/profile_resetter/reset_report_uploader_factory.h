@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace content {
@@ -32,13 +32,13 @@ class ResetReportUploaderFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<ResetReportUploaderFactory>;
+  friend struct base::DefaultSingletonTraits<ResetReportUploaderFactory>;
 
   ResetReportUploaderFactory();
   ~ResetReportUploaderFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

@@ -28,16 +28,16 @@ class HoldingSpaceMetricsDelegate : public HoldingSpaceKeyedServiceDelegate {
   void OnHoldingSpaceItemsRemoved(
       const std::vector<const HoldingSpaceItem*>& items) override;
 
-  // Schedules recording of the total counts of all holding space items in the
-  // model, invalidating any previously scheduled recording. This is done to
-  // give the model time to settle after being modified to debounce recordings.
-  void RescheduleRecordTotalItemCounts();
+  // Schedules recording of the count of all holding space items in the model,
+  // invalidating any previously scheduled recording. This is done to give the
+  // model time to settle after being modified to debounce recordings.
+  void RescheduleRecordItemCounts();
 
-  // Records the total counts of all holding space items in the model.
-  void RecordTotalItemCounts();
+  // Records the count of all holding space items in the model.
+  void RecordItemCounts();
 
-  // Timer which invokes `RecordTotalItemCounts()` when fired.
-  base::OneShotTimer record_total_item_counts_timer_;
+  // Timer which invokes `RecordItemCounts()` when fired.
+  base::OneShotTimer record_item_counts_timer_;
 };
 
 }  // namespace ash

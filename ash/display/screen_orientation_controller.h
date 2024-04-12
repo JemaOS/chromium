@@ -5,34 +5,28 @@
 #ifndef ASH_DISPLAY_SCREEN_ORIENTATION_CONTROLLER_H_
 #define ASH_DISPLAY_SCREEN_ORIENTATION_CONTROLLER_H_
 
-#include <memory>
-#include <optional>
 #include <unordered_map>
 
 #include "ash/accelerometer/accelerometer_reader.h"
 #include "ash/accelerometer/accelerometer_types.h"
 #include "ash/ash_export.h"
 #include "ash/display/display_configuration_controller.h"
+#include "ash/display/window_tree_host_manager.h"
 #include "ash/public/cpp/tablet_mode_observer.h"
 #include "ash/wm/splitview/split_view_controller.h"
 #include "ash/wm/splitview/split_view_observer.h"
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
-#include "base/scoped_observation.h"
 #include "chromeos/ui/base/display_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/window_observer.h"
 #include "ui/display/display.h"
 #include "ui/display/display_observer.h"
-#include "ui/display/manager/display_manager_observer.h"
 #include "ui/wm/public/activation_change_observer.h"
 
 namespace aura {
 class Window;
 }
-
-namespace display {
-enum class TabletState;
-}  // namespace display
 
 namespace ash {
 
@@ -48,9 +42,10 @@ class ASH_EXPORT ScreenOrientationController
     : public ::wm::ActivationChangeObserver,
       public aura::WindowObserver,
       public AccelerometerReader::Observer,
+      public WindowTreeHostManager::Observer,
       public TabletModeObserver,
-      public display::DisplayObserver,
-      public display::DisplayManagerObserver {
+      public SplitViewObserver,
+      public display::DisplayObserver {
  public:
   // Observer that reports changes to the state of ScreenOrientationProvider's
   // rotation lock.
@@ -153,20 +148,24 @@ class ASH_EXPORT ScreenOrientationController
   void OnECLidAngleDriverStatusChanged(bool is_supported) override {}
   void OnAccelerometerUpdated(const AccelerometerUpdate& update) override;
 
+  // WindowTreeHostManager::Observer:
+  void OnDisplayConfigurationChanged() override;
+
   // TabletModeObserver:
+  void OnTabletModeStarted() override;
+  void OnTabletModeEnded() override;
   void OnTabletPhysicalStateChanged() override;
 
-  // display::DisplayObserver:
-  void OnDisplayTabletStateChanged(display::TabletState state) override;
+  // SplitViewObserver:
+  void OnSplitViewStateChanged(SplitViewController::State previous_state,
+                               SplitViewController::State state) override;
 
-  // display::DisplayManagerObserver:
+  // display::DisplayObserver:
   void OnWillProcessDisplayChanges() override;
-  void OnDidProcessDisplayChanges(
-      const DisplayConfigurationChange& configuration_change) override;
+  void OnDidProcessDisplayChanges() override;
 
  private:
   friend class ScreenOrientationControllerTestApi;
-  class WindowStateChangeNotifier;
 
   struct LockInfo {
     LockInfo(chromeos::OrientationType lock, aura::Window* root)
@@ -175,7 +174,7 @@ class ASH_EXPORT ScreenOrientationController
         chromeos::OrientationType::kAny;
     // Tracks the requesting window's root window and is updated whenever it
     // changes.
-    raw_ptr<aura::Window> root_window = nullptr;
+    raw_ptr<aura::Window, ExperimentalAsh> root_window = nullptr;
     LockCompletionBehavior lock_completion_behavior =
         LockCompletionBehavior::None;
   };
@@ -188,10 +187,6 @@ class ASH_EXPORT ScreenOrientationController
       display::Display::RotationSource source,
       DisplayConfigurationController::RotationAnimation mode =
           DisplayConfigurationController::ANIMATION_ASYNC);
-
-  // Gets the target rotation for the device's internal display from the
-  // `DisplayConfigurationController`.
-  display::Display::Rotation GetInternalDisplayTargetRotation() const;
 
   void SetRotationLockedInternal(bool rotation_locked);
 
@@ -280,8 +275,12 @@ class ASH_EXPORT ScreenOrientationController
       chromeos::OrientationType::kAny;
 
   // The currently applied orientation lock that was requested by an app if any.
-  std::optional<chromeos::OrientationType>
-      current_app_requested_orientation_lock_ = std::nullopt;
+  absl::optional<chromeos::OrientationType>
+      current_app_requested_orientation_lock_ = absl::nullopt;
+
+  // The current rotation set by ScreenOrientationController for the internal
+  // display.
+  display::Display::Rotation current_rotation_;
 
   // Rotation Lock observers.
   base::ObserverList<Observer>::Unchecked observers_;
@@ -290,14 +289,8 @@ class ASH_EXPORT ScreenOrientationController
   // orientation.
   std::unordered_map<aura::Window*, LockInfo> lock_info_map_;
 
-  // Register for display configuration changes.
-  base::ScopedObservation<display::DisplayManager,
-                          display::DisplayManagerObserver>
-      display_manager_observation_{this};
-
+  // Register for DisplayObserver callbacks.
   display::ScopedDisplayObserver display_observer_{this};
-
-  std::unique_ptr<WindowStateChangeNotifier> window_state_change_notifier_;
 };
 
 }  // namespace ash

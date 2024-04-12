@@ -12,7 +12,7 @@
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/style/nine_piece_image.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
-#include "third_party/blink/renderer/platform/graphics/scoped_image_rendering_settings.h"
+#include "third_party/blink/renderer/platform/graphics/scoped_interpolation_quality.h"
 #include "ui/gfx/geometry/outsets.h"
 #include "ui/gfx/geometry/size.h"
 
@@ -20,14 +20,14 @@ namespace blink {
 
 namespace {
 
-std::optional<float> CalculateSpaceNeeded(const float destination,
-                                          const float source) {
+absl::optional<float> CalculateSpaceNeeded(const float destination,
+                                           const float source) {
   DCHECK_GT(source, 0);
   DCHECK_GT(destination, 0);
 
   float repeat_tiles_count = floorf(destination / source);
   if (!repeat_tiles_count)
-    return std::nullopt;
+    return absl::nullopt;
 
   float space = destination;
   space -= source * repeat_tiles_count;
@@ -42,7 +42,7 @@ struct TileParameters {
   STACK_ALLOCATED();
 };
 
-std::optional<TileParameters> ComputeTileParameters(
+absl::optional<TileParameters> ComputeTileParameters(
     ENinePieceImageRule tile_rule,
     float dst_extent,
     float src_extent) {
@@ -59,10 +59,10 @@ std::optional<TileParameters> ComputeTileParameters(
       return TileParameters{1, phase, 0};
     }
     case kSpaceImageRule: {
-      const std::optional<float> spacing =
+      const absl::optional<float> spacing =
           CalculateSpaceNeeded(dst_extent, src_extent);
       if (!spacing)
-        return std::nullopt;
+        return absl::nullopt;
       return TileParameters{1, *spacing, *spacing};
     }
     case kStretchImageRule:
@@ -70,7 +70,7 @@ std::optional<TileParameters> ComputeTileParameters(
     default:
       NOTREACHED();
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool ShouldTile(const NinePieceImageGrid::NinePieceDrawInfo& draw_info) {
@@ -94,7 +94,8 @@ void PaintPieces(GraphicsContext& context,
                  const gfx::SizeF& unzoomed_image_size,
                  PhysicalBoxSides sides_to_include) {
   const RespectImageOrientationEnum respect_orientation =
-      style.ImageOrientation();
+      style.RespectImageOrientation() ? kRespectImageOrientation
+                                      : kDoNotRespectImageOrientation;
   // |image_size| is in the image's native resolution and |slice_scale| defines
   // the effective size of a CSS pixel in the image.
   const gfx::SizeF image_size = image.SizeAsFloat(respect_orientation);
@@ -119,8 +120,8 @@ void PaintPieces(GraphicsContext& context,
   // TODO(penglin):  We need to make a single classification for the entire grid
   auto image_auto_dark_mode = ImageAutoDarkMode::Disabled();
 
-  ScopedImageRenderingSettings image_rendering_settings_scope(
-      context, style.GetInterpolationQuality(), style.GetDynamicRangeLimit());
+  ScopedInterpolationQuality interpolation_quality_scope(
+      context, style.GetInterpolationQuality());
   for (NinePiece piece = kMinPiece; piece < kMaxPiece; ++piece) {
     NinePieceImageGrid::NinePieceDrawInfo draw_info =
         grid.GetNinePieceDrawInfo(piece);
@@ -148,14 +149,20 @@ void PaintPieces(GraphicsContext& context,
     }
 
     // TODO(cavalcantii): see crbug.com/662513.
-    const std::optional<TileParameters> h_tile = ComputeTileParameters(
+    const absl::optional<TileParameters> h_tile = ComputeTileParameters(
         draw_info.tile_rule.horizontal, draw_info.destination.width(),
         draw_info.source.width() * draw_info.tile_scale.x());
-    const std::optional<TileParameters> v_tile = ComputeTileParameters(
+    const absl::optional<TileParameters> v_tile = ComputeTileParameters(
         draw_info.tile_rule.vertical, draw_info.destination.height(),
         draw_info.source.height() * draw_info.tile_scale.y());
     if (!h_tile || !v_tile)
       continue;
+
+    // TODO(cavalcantii): see crbug.com/662507.
+    absl::optional<ScopedInterpolationQuality> interpolation_quality_override;
+    if (draw_info.tile_rule.horizontal == kRoundImageRule ||
+        draw_info.tile_rule.vertical == kRoundImageRule)
+      interpolation_quality_override.emplace(context, kInterpolationMedium);
 
     ImageTilingInfo tiling_info;
     tiling_info.image_rect = draw_info.source;
@@ -212,7 +219,8 @@ bool NinePieceImagePainter::Paint(GraphicsContext& graphics_context,
   // image with either "native" size (raster images) or size scaled by effective
   // zoom.
   const RespectImageOrientationEnum respect_orientation =
-      style.ImageOrientation();
+      style.RespectImageOrientation() ? kRespectImageOrientation
+                                      : kDoNotRespectImageOrientation;
   const gfx::SizeF default_object_size(border_image_rect.size);
   gfx::SizeF image_size = style_image->ImageSize(
       style.EffectiveZoom(), default_object_size, respect_orientation);

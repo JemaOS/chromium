@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "base/files/file_path.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "components/keyed_service/core/simple_keyed_service_factory.h"
 
 class SimpleFactoryKey;
@@ -28,7 +28,7 @@ class ImageFetcherServiceFactory : public SimpleKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<ImageFetcherServiceFactory>;
+  friend struct base::DefaultSingletonTraits<ImageFetcherServiceFactory>;
 
   ImageFetcherServiceFactory();
   ~ImageFetcherServiceFactory() override;

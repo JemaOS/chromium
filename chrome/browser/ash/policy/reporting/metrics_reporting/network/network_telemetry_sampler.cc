@@ -76,6 +76,28 @@ NetworkInterfaceInfoPtr GetWifiNetworkInterfaceInfo(
   return interface_info_it->Clone();
 }
 
+NetworkConnectionState GetNetworkConnectionState(
+    const ash::NetworkState* network) {
+  if (network->IsConnectedState()) {
+    auto portal_state = network->GetPortalState();
+    switch (portal_state) {
+      case ash::NetworkState::PortalState::kUnknown:
+        return NetworkConnectionState::CONNECTED;
+      case ash::NetworkState::PortalState::kOnline:
+        return NetworkConnectionState::ONLINE;
+      case ash::NetworkState::PortalState::kPortalSuspected:
+      case ash::NetworkState::PortalState::kPortal:
+      case ash::NetworkState::PortalState::kProxyAuthRequired:
+      case ash::NetworkState::PortalState::kNoInternet:
+        return NetworkConnectionState::PORTAL;
+    }
+  }
+  if (network->IsConnectingState()) {
+    return NetworkConnectionState::CONNECTING;
+  }
+  return NetworkConnectionState::NOT_CONNECTED;
+}
+
 NetworkType GetNetworkType(const ash::NetworkTypePattern& type) {
   if (type.Equals(ash::NetworkTypePattern::Cellular())) {
     return NetworkType::CELLULAR;
@@ -97,29 +119,6 @@ NetworkType GetNetworkType(const ash::NetworkTypePattern& type) {
 }
 
 }  // namespace
-
-// static
-NetworkConnectionState NetworkTelemetrySampler::GetNetworkConnectionState(
-    const ash::NetworkState* network) {
-  if (network->IsConnectedState()) {
-    auto portal_state = network->GetPortalState();
-    switch (portal_state) {
-      case ash::NetworkState::PortalState::kUnknown:
-        return NetworkConnectionState::CONNECTED;
-      case ash::NetworkState::PortalState::kOnline:
-        return NetworkConnectionState::ONLINE;
-      case ash::NetworkState::PortalState::kPortalSuspected:
-      case ash::NetworkState::PortalState::kPortal:
-      case ash::NetworkState::PortalState::kProxyAuthRequired:
-      case ash::NetworkState::PortalState::kNoInternet:
-        return NetworkConnectionState::PORTAL;
-    }
-  }
-  if (network->IsConnectingState()) {
-    return NetworkConnectionState::CONNECTING;
-  }
-  return NetworkConnectionState::NOT_CONNECTED;
-}
 
 NetworkTelemetrySampler::NetworkTelemetrySampler() = default;
 
@@ -187,7 +186,7 @@ void NetworkTelemetrySampler::CollectNetworksStates(
   ::ash::NetworkStateHandler::NetworkStateList network_state_list =
       GetNetworkStateList();
   if (network_state_list.empty()) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
@@ -274,7 +273,7 @@ void NetworkTelemetrySampler::CollectNetworksStates(
     return;
   }
 
-  std::move(callback).Run(std::nullopt);
+  std::move(callback).Run(absl::nullopt);
 }
 
 }  // namespace reporting

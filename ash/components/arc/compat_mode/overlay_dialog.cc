@@ -7,12 +7,10 @@
 #include "ash/components/arc/compat_mode/style/arc_color_provider.h"
 #include "ash/style/ash_color_id.h"
 #include "base/functional/bind.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "components/exo/shell_surface_base.h"
 #include "components/exo/shell_surface_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
-#include "ui/gfx/geometry/rounded_corners_f.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/background.h"
 #include "ui/views/view.h"
@@ -36,18 +34,6 @@ void OverlayDialog::Show(aura::Window* base_window,
   exo::ShellSurfaceBase::OverlayParams params(std::move(dialog));
   params.translucent = true;
   params.overlaps_frame = false;
-
-  if (chromeos::features::IsRoundedWindowsEnabled()) {
-    auto window_radii = shell_surface_base->window_corners_radii();
-    if (window_radii) {
-      // The OverlayDialog covers the content area of the arc window. To match
-      // the rounded corners of the window, we need to round the bottom two
-      // corners of the overlay as well.
-      params.corners_radii = gfx::RoundedCornersF(
-          0, 0, window_radii->lower_right(), window_radii->lower_left());
-    }
-  }
-
   shell_surface_base->AddOverlay(std::move(params));
 }
 
@@ -62,7 +48,7 @@ void OverlayDialog::AddedToWidget() {
     return;
 
   auto& view_ax = GetWidget()->GetRootView()->GetViewAccessibility();
-  view_ax.SetIsIgnored(true);
+  view_ax.OverrideIsIgnored(true);
 }
 
 void OverlayDialog::OnThemeChanged() {
@@ -88,7 +74,7 @@ OverlayDialog::OverlayDialog(base::OnceClosure on_destroying,
   }
 }
 
-BEGIN_METADATA(OverlayDialog)
+BEGIN_METADATA(OverlayDialog, views::FlexLayoutView)
 END_METADATA
 
 }  // namespace arc

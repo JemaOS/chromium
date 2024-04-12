@@ -22,8 +22,7 @@ namespace first_party_sets {
 class FirstPartySetsOverridesPolicyHandler
     : public policy::SchemaValidatingPolicyHandler {
  public:
-  explicit FirstPartySetsOverridesPolicyHandler(const char* policy_name,
-                                                const policy::Schema& schema);
+  explicit FirstPartySetsOverridesPolicyHandler(const policy::Schema& schema);
   FirstPartySetsOverridesPolicyHandler(
       const FirstPartySetsOverridesPolicyHandler&) = delete;
   FirstPartySetsOverridesPolicyHandler& operator=(

@@ -36,12 +36,10 @@ void ModulePendingScriptTreeClient::Trace(Visitor* visitor) const {
   ModuleTreeClient::Trace(visitor);
 }
 
-ModulePendingScript::ModulePendingScript(
-    ScriptElementBase* element,
-    ModulePendingScriptTreeClient* client,
-    bool is_external,
-    scheduler::TaskAttributionInfo* parent_task)
-    : PendingScript(element, TextPosition::MinimumPosition(), parent_task),
+ModulePendingScript::ModulePendingScript(ScriptElementBase* element,
+                                         ModulePendingScriptTreeClient* client,
+                                         bool is_external)
+    : PendingScript(element, TextPosition::MinimumPosition()),
       module_tree_client_(client),
       is_external_(is_external) {
   CHECK(GetElement());

@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// https://github.com/w3c/webcodecs
+// https://github.com/WICG/web-codecs
 
 dictionary VideoEncoderEncodeOptions {
-  boolean keyFrame = false;
+  boolean? keyFrame;
   VideoEncoderEncodeOptionsForVp9 vp9;
   VideoEncoderEncodeOptionsForAv1 av1;
-  VideoEncoderEncodeOptionsForAvc avc;
 };

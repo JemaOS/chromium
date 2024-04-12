@@ -20,10 +20,8 @@ public class FullscreenBackPressHandler implements BackPressHandler {
 
     @Override
     public @BackPressResult int handleBackPress() {
-        int res =
-                mFullscreenManager.getPersistentFullscreenMode()
-                        ? BackPressResult.SUCCESS
-                        : BackPressResult.FAILURE;
+        int res = mFullscreenManager.getPersistentFullscreenMode() ? BackPressResult.SUCCESS
+                                                                   : BackPressResult.FAILURE;
         mFullscreenManager.exitPersistentFullscreenMode();
         return res;
     }

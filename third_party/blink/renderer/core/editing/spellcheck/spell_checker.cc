@@ -59,7 +59,6 @@
 #include "third_party/blink/renderer/core/loader/empty_clients.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/text/text_break_iterator.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
@@ -392,10 +391,8 @@ void SpellChecker::RemoveSpellingAndGrammarMarkers(const HTMLElement& element,
                                                    ElementsType elements_type) {
   // TODO(editing-dev): The use of updateStyleAndLayoutIgnorePendingStylesheets
   // needs to be audited.  See http://crbug.com/590369 for more details.
-  if (elements_type == ElementsType::kOnlyNonEditable) {
-    GetFrame().GetDocument()->UpdateStyleAndLayoutTreeForElement(
-        &element, DocumentUpdateReason::kSpellCheck);
-  }
+  if (elements_type == ElementsType::kOnlyNonEditable)
+    GetFrame().GetDocument()->UpdateStyleAndLayoutTreeForNode(&element);
 
   for (Node& node : NodeTraversal::InclusiveDescendantsOf(element)) {
     auto* text_node = DynamicTo<Text>(node);
@@ -495,14 +492,8 @@ void SpellChecker::ReplaceMisspelledRange(const String& text) {
 
   if (cancel)
     return;
-
-  if (RuntimeEnabledFeatures::SpellCheckerReplaceRangeUseInsertTextEnabled()) {
-    GetFrame().GetEditor().InsertTextWithoutSendingTextEvent(
-        text, false, nullptr, InputEvent::InputType::kInsertReplacementText);
-  } else {
-    GetFrame().GetEditor().ReplaceSelectionWithText(
-        text, false, false, InputEvent::InputType::kInsertReplacementText);
-  }
+  GetFrame().GetEditor().ReplaceSelectionWithText(
+      text, false, false, InputEvent::InputType::kInsertReplacementText);
 }
 
 void SpellChecker::RespondToChangedSelection() {

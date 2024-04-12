@@ -6,16 +6,16 @@
 #define CHROME_BROWSER_EXTENSIONS_API_TAB_CAPTURE_TAB_CAPTURE_PERFORMANCE_TEST_BASE_H_
 
 #include <memory>
-#include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
+#include "base/strings/string_piece.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/trace_event_analyzer.h"
 #include "chrome/test/base/in_process_browser_test.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class CommandLine;
@@ -88,7 +88,7 @@ class TabCapturePerformanceTestBase : public InProcessBrowserTest {
   using TraceAnalyzerUniquePtr = std::unique_ptr<trace_analyzer::TraceAnalyzer>;
   TraceAnalyzerUniquePtr TraceAndObserve(
       const std::string& category_patterns,
-      const std::vector<std::string_view>& event_names,
+      const std::vector<base::StringPiece>& event_names,
       int required_event_count);
 
   // Returns the path ".../test/data/extensions/api_test/".
@@ -104,7 +104,7 @@ class TabCapturePerformanceTestBase : public InProcessBrowserTest {
   // Queries the |analyzer| for events having the given |event_name| whose phase
   // is classified as BEGIN, INSTANT, or COMPLETE (i.e., omit END events).
   static void QueryTraceEvents(trace_analyzer::TraceAnalyzer* analyzer,
-                               std::string_view event_name,
+                               base::StringPiece event_name,
                                trace_analyzer::TraceEventVector* events);
 
  protected:
@@ -137,7 +137,7 @@ class TabCapturePerformanceTestBase : public InProcessBrowserTest {
   // that would also preempt BEST_EFFORT tasks in utility processes, and
   // TabCapturePerformanceTest.Performance relies on BEST_EFFORT tasks in
   // utility process for tracing.
-  std::optional<base::ThreadPoolInstance::ScopedBestEffortExecutionFence>
+  absl::optional<base::ThreadPoolInstance::ScopedBestEffortExecutionFence>
       best_effort_fence_;
 
   bool is_full_performance_run_ = false;

@@ -8,7 +8,7 @@
  */
 import 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import 'chrome://resources/cr_elements/icons.html.js';
-import '/shared/settings/controls/cr_policy_pref_indicator.js';
+import 'chrome://resources/cr_elements/policy/cr_policy_pref_indicator.js';
 import 'chrome://resources/cr_elements/policy/cr_tooltip_icon.js';
 import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 import '../icons.html.js';
@@ -16,7 +16,7 @@ import '../settings_shared.css.js';
 import '../site_favicon.js';
 
 import {FocusRowMixin} from 'chrome://resources/cr_elements/focus_row_mixin.js';
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {BaseMixin} from '../base_mixin.js';
@@ -27,7 +27,7 @@ import {Router} from '../router.js';
 import {ChooserType, ContentSettingsTypes, CookiesExceptionType, SITE_EXCEPTION_WILDCARD} from './constants.js';
 import {getTemplate} from './site_list_entry.html.js';
 import {SiteSettingsMixin} from './site_settings_mixin.js';
-import type {SiteException} from './site_settings_prefs_browser_proxy.js';
+import {SiteException} from './site_settings_prefs_browser_proxy.js';
 
 export interface SiteListEntryElement {
   $: {
@@ -213,12 +213,7 @@ export class SiteListEntryElement extends SiteListEntryElementBase {
   private computeSiteDescription_(): string {
     let description = '';
 
-    // If a description has been set by the handler, have it override others.
-    // TODO(crbug.com/1467504): Move all possible descriptions in to this
-    // field C++ side so this function can be greatly simplified.
-    if (this.model.description) {
-      description = this.model.description;
-    } else if (this.model.isEmbargoed) {
+    if (this.model.isEmbargoed) {
       assert(
           !this.model.embeddingOrigin,
           'Embedding origin should be empty for embargoed origin.');
@@ -239,6 +234,13 @@ export class SiteListEntryElement extends SiteListEntryElementBase {
     } else if (this.model.category === ContentSettingsTypes.GEOLOCATION) {
       description = loadTimeData.getString('embeddedOnAnyHost');
     }
+
+    // <if expr="chromeos_ash">
+    if (this.model.category === ContentSettingsTypes.NOTIFICATIONS &&
+        this.model.showAndroidSmsNote) {
+      description = loadTimeData.getString('androidSmsNote');
+    }
+    // </if>
 
     try {
       const url = new URL(this.model.origin);

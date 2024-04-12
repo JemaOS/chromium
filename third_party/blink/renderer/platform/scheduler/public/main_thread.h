@@ -33,9 +33,8 @@ class MainThreadTaskRunnerRestricted {
   friend class WebGLWebCodecsVideoFrame;
   friend class WebRtcVideoFrameAdapter;
   friend class WorkerGlobalScope;
-  friend class CanvasHibernationHandler;
+  friend class HibernationHandler;
   friend class HibernatedCanvasMemoryDumpProvider;
-  friend class MainThreadTaskRunnerRestrictedForTesting;
   friend MainThreadTaskRunnerRestricted AccessMainThreadForGpuFactories();
   friend MainThreadTaskRunnerRestricted
   AccessMainThreadForWebGraphicsContext3DProvider();
@@ -44,9 +43,6 @@ class MainThreadTaskRunnerRestricted {
 
   MainThreadTaskRunnerRestricted() = default;
 };
-
-class MainThreadTaskRunnerRestrictedForTesting
-    : public MainThreadTaskRunnerRestricted {};
 
 // The interface of a main thread in Blink.
 //

@@ -38,10 +38,10 @@
 #include "chrome/browser/web_applications/os_integration/os_integration_test_override.h"
 #include "chrome/browser/web_applications/os_integration/web_app_shortcut.h"
 #include "chrome/browser/web_applications/web_app_constants.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/common/auto_start_linux.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/common/chrome_constants.h"
-#include "components/webapps/common/web_app_id.h"
 
 namespace web_app {
 
@@ -321,7 +321,7 @@ bool CreateShortcutInApplicationsMenu(base::Environment* env,
   // See this bug on xdg desktop-file-utils
   // https://gitlab.freedesktop.org/xdg/desktop-file-utils/issues/54
   base::FilePath user_applications_dir =
-      base::nix::GetXDGDataWriteLocation(env).Append("applications");
+      shell_integration_linux::GetDataWriteLocation(env).Append("applications");
   argv.clear();
   argv.push_back("update-desktop-database");
   argv.push_back(user_applications_dir.value());
@@ -502,7 +502,7 @@ bool CreateDesktopShortcut(base::Environment* env,
         CreateShortcutInAutoStart(env, shortcut_filename, contents) && success;
   }
 
-  if (test_override && !shortcut_info.protocol_handlers.empty()) {
+  if (test_override) {
     CHECK_IS_TEST();
     std::vector<std::string> protocol_handler(
         shortcut_info.protocol_handlers.begin(),
@@ -626,12 +626,6 @@ bool DeleteDesktopShortcuts(base::Environment* env,
     deleted_from_autostart = DeleteShortcutInAutoStart(env, shortcut_filename);
   }
 
-  if (test_override) {
-    CHECK_IS_TEST();
-    test_override->RegisterProtocolSchemes(extension_id,
-                                           std::vector<std::string>());
-  }
-
   bool deleted_from_application_menu = true;
   if (!test_override) {
     deleted_from_application_menu = DeleteShortcutInApplicationsMenu(
@@ -678,7 +672,8 @@ bool DeleteAllDesktopShortcuts(base::Environment* env,
   }
 
   // Delete shortcuts from |kDirectoryFilename|.
-  base::FilePath applications_menu = base::nix::GetXDGDataWriteLocation(env);
+  base::FilePath applications_menu =
+      shell_integration_linux::GetDataWriteLocation(env);
   applications_menu = applications_menu.AppendASCII("applications");
   std::vector<base::FilePath> shortcut_filenames_app_menu =
       shell_integration_linux::GetExistingProfileShortcutFilenames(
@@ -695,25 +690,14 @@ bool DeleteAllDesktopShortcuts(base::Environment* env,
   return result;
 }
 
-bool UpdateDesktopShortcuts(
-    base::Environment* env,
-    const ShortcutInfo& shortcut_info,
-    std::optional<ShortcutLocations> user_specified_locations) {
+bool UpdateDesktopShortcuts(base::Environment* env,
+                            const ShortcutInfo& shortcut_info) {
   base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
                                                 base::BlockingType::MAY_BLOCK);
 
   // Find out whether shortcuts are already installed.
-  ShortcutLocations existing_locations = GetExistingShortcutLocations(
+  ShortcutLocations creation_locations = GetExistingShortcutLocations(
       env, shortcut_info.profile_path, shortcut_info.app_id);
-  ShortcutLocations creation_locations = existing_locations;
-
-  // If an update is triggered due to 2 installs being scheduled on top of one
-  // another, ensure that old user specified locations are still taken into
-  // account during shortcut recreation.
-  if (user_specified_locations.has_value()) {
-    creation_locations =
-        MergeLocations(user_specified_locations.value(), existing_locations);
-  }
 
   // Always create a hidden shortcut in applications if a visible one is not
   // being created. This allows the operating system to identify the app, but
@@ -800,16 +784,12 @@ void DeletePlatformShortcuts(const base::FilePath& web_app_path,
                                     shortcut_info.app_id)));
 }
 
-Result UpdatePlatformShortcuts(
-    const base::FilePath& /*web_app_path*/,
-    const std::u16string& /*old_app_title*/,
-    std::optional<ShortcutLocations> user_specified_locations,
-    const ShortcutInfo& shortcut_info) {
+Result UpdatePlatformShortcuts(const base::FilePath& /*web_app_path*/,
+                               const std::u16string& /*old_app_title*/,
+                               const ShortcutInfo& shortcut_info) {
   std::unique_ptr<base::Environment> env(base::Environment::Create());
-  return (
-      UpdateDesktopShortcuts(env.get(), shortcut_info, user_specified_locations)
-          ? Result::kOk
-          : Result::kError);
+  return (UpdateDesktopShortcuts(env.get(), shortcut_info) ? Result::kOk
+                                                           : Result::kError);
 }
 
 void DeleteAllShortcutsForProfile(const base::FilePath& profile_path) {

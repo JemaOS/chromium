@@ -6,7 +6,6 @@
 #define UI_VIEWS_CONTROLS_MENU_MENU_RUNNER_IMPL_INTERFACE_H_
 
 #include <stdint.h>
-#include <string>
 
 #include "base/functional/callback_forward.h"
 #include "ui/views/controls/menu/menu_runner.h"
@@ -47,9 +46,7 @@ class MenuRunnerImplInterface {
       MenuAnchorPosition anchor,
       int32_t run_types,
       gfx::NativeView native_view_for_gestures,
-      std::optional<gfx::RoundedCornersF> corners = std::nullopt,
-      std::optional<std::string> show_menu_host_duration_histogram =
-          std::nullopt) = 0;
+      absl::optional<gfx::RoundedCornersF> corners = absl::nullopt) = 0;
 
   // Hides and cancels the menu.
   virtual void Cancel() = 0;

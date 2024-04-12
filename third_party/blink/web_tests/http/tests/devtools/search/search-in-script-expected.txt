@@ -4,7 +4,6 @@ http://127.0.0.1:8000/devtools/search/resources/search.js
 Search matches: 
 lineNumber: 0, line: 'function searchTestUniqueString()'
 lineNumber: 3, line: '    // searchTestUniqueString two occurences on the same line searchTestUniqueString'
-lineNumber: 3, line: '    // searchTestUniqueString two occurences on the same line searchTestUniqueString'
 lineNumber: 4, line: '    // searchTestUniqueString on the next line.'
 lineNumber: 10, line: '    searchTestUniqueString();'
 lineNumber: 11, line: '    // SEARCHTestUniqueString();'
@@ -12,13 +11,11 @@ lineNumber: 11, line: '    // SEARCHTestUniqueString();'
 Search matches: 
 lineNumber: 0, line: 'function searchTestUniqueString()'
 lineNumber: 3, line: '    // searchTestUniqueString two occurences on the same line searchTestUniqueString'
-lineNumber: 3, line: '    // searchTestUniqueString two occurences on the same line searchTestUniqueString'
 lineNumber: 4, line: '    // searchTestUniqueString on the next line.'
 lineNumber: 10, line: '    searchTestUniqueString();'
 
 Search matches: 
 lineNumber: 0, line: 'function searchTestUniqueString()'
-lineNumber: 3, line: '    // searchTestUniqueString two occurences on the same line searchTestUniqueString'
 lineNumber: 3, line: '    // searchTestUniqueString two occurences on the same line searchTestUniqueString'
 lineNumber: 4, line: '    // searchTestUniqueString on the next line.'
 lineNumber: 10, line: '    searchTestUniqueString();'
@@ -26,7 +23,6 @@ lineNumber: 11, line: '    // SEARCHTestUniqueString();'
 
 Search matches: 
 lineNumber: 0, line: 'function searchTestUniqueString()'
-lineNumber: 3, line: '    // searchTestUniqueString two occurences on the same line searchTestUniqueString'
 lineNumber: 3, line: '    // searchTestUniqueString two occurences on the same line searchTestUniqueString'
 lineNumber: 4, line: '    // searchTestUniqueString on the next line.'
 lineNumber: 10, line: '    searchTestUniqueString();'

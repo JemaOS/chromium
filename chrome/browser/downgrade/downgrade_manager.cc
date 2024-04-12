@@ -5,7 +5,6 @@
 #include "chrome/browser/downgrade/downgrade_manager.h"
 
 #include <iterator>
-#include <optional>
 #include <utility>
 
 #include "base/command_line.h"
@@ -36,6 +35,7 @@
 #include "components/version_info/version_info.h"
 #include "components/version_info/version_info_values.h"
 #include "content/public/browser/browser_thread.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_WIN)
 #include "chrome/installer/util/install_util.h"
@@ -181,7 +181,7 @@ bool DowngradeManager::PrepareUserDataDirectoryForCurrentVersion(
     return false;
   }
 
-  std::optional<base::Version> last_version = GetLastVersion(user_data_dir);
+  absl::optional<base::Version> last_version = GetLastVersion(user_data_dir);
   if (!last_version)
     return false;
 
@@ -195,6 +195,7 @@ bool DowngradeManager::PrepareUserDataDirectoryForCurrentVersion(
 
     type_ = GetDowngradeType(user_data_dir, current_version, *last_version);
     DCHECK(type_ == Type::kAdministrativeWipe || type_ == Type::kUnsupported);
+    base::UmaHistogramEnumeration("Downgrade.Type", type_);
     return type_ == Type::kAdministrativeWipe;
   }
 
@@ -204,6 +205,8 @@ bool DowngradeManager::PrepareUserDataDirectoryForCurrentVersion(
   if (current_version < *last_version) {
     type_ = GetDowngradeTypeWithSnapshot(user_data_dir, current_version,
                                          *last_version);
+    if (type_ != Type::kNone)
+      base::UmaHistogramEnumeration("Downgrade.Type", type_);
 
     return type_ == Type::kAdministrativeWipe ||
            type_ == Type::kSnapshotRestore;
@@ -212,7 +215,7 @@ bool DowngradeManager::PrepareUserDataDirectoryForCurrentVersion(
   auto current_milestone = current_version.components()[0];
   int max_number_of_snapshots = g_browser_process->local_state()->GetInteger(
       prefs::kUserDataSnapshotRetentionLimit);
-  std::optional<uint32_t> purge_milestone;
+  absl::optional<uint32_t> purge_milestone;
   if (current_milestone == last_version->components()[0]) {
     // Mid-milestone snapshots are only taken on canary installs.
     if (chrome::GetChannel() != version_info::Channel::CANARY)

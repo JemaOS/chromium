@@ -22,7 +22,7 @@ class SourceBufferTrackBaseSupplement
   static SourceBuffer* sourceBuffer(TrackBase&);
   static void SetSourceBuffer(TrackBase&, SourceBuffer*);
 
-  SourceBufferTrackBaseSupplement(TrackBase& track);
+  SourceBufferTrackBaseSupplement();
   void Trace(Visitor*) const override;
 
  private:

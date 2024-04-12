@@ -6,6 +6,7 @@
 
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/global_error/global_error_bubble_view_base.h"
+#include "ui/base/ui_base_types.h"
 
 // GlobalError ---------------------------------------------------------------
 
@@ -60,6 +61,10 @@ void GlobalErrorWithStandardBubble::BubbleViewDetailsButtonPressed(
 
 bool GlobalErrorWithStandardBubble::ShouldAddElevationIconToAcceptButton() {
   return false;
+}
+
+int GlobalErrorWithStandardBubble::GetDefaultDialogButton() const {
+  return ui::DIALOG_BUTTON_OK;
 }
 
 void GlobalErrorWithStandardBubble::BubbleViewDidClose(Browser* browser) {

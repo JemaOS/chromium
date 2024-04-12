@@ -76,7 +76,6 @@ class AppIconLoader : public base::RefCounted<AppIconLoader>,
       extension_misc::EXTENSION_ICON_BITTY;
 
   AppIconLoader(Profile* profile,
-                std::optional<std::string> app_id,
                 IconType icon_type,
                 int size_hint_in_dip,
                 bool is_placeholder_icon,
@@ -85,17 +84,12 @@ class AppIconLoader : public base::RefCounted<AppIconLoader>,
                 LoadIconCallback callback);
 
   AppIconLoader(Profile* profile,
-                std::optional<std::string> app_id,
                 IconType icon_type,
                 int size_hint_in_dip,
                 bool is_placeholder_icon,
                 apps::IconEffects icon_effects,
                 int fallback_icon_resource,
                 base::OnceCallback<void(LoadIconCallback)> fallback,
-                LoadIconCallback callback);
-
-  AppIconLoader(Profile* profile,
-                int size_hint_in_dip,
                 LoadIconCallback callback);
 
   AppIconLoader(int size_hint_in_dip,
@@ -107,13 +101,9 @@ class AppIconLoader : public base::RefCounted<AppIconLoader>,
 
   AppIconLoader(int size_hint_in_dip, LoadIconCallback callback);
 
-  void ApplyIconEffects(IconEffects icon_effects,
-                        const std::optional<std::string>& app_id,
-                        IconValuePtr iv);
+  void ApplyIconEffects(IconEffects icon_effects, IconValuePtr iv);
 
-  void ApplyBadges(IconEffects icon_effects,
-                   const std::optional<std::string>& app_id,
-                   IconValuePtr iv);
+  void ApplyBadges(IconEffects icon_effects, IconValuePtr iv);
 
   void LoadWebAppIcon(const std::string& web_app_id,
                       const GURL& launch_url,
@@ -216,7 +206,7 @@ class AppIconLoader : public base::RefCounted<AppIconLoader>,
 
   void MaybeLoadFallbackOrCompleteEmpty();
 
-  // ProfileObserver overrides.
+  // ProfileManagerObserver overrides.
   void OnProfileWillBeDestroyed(Profile* profile) override;
 
   // If non-null, points to the profile necessary to support the icon loading.
@@ -225,8 +215,6 @@ class AppIconLoader : public base::RefCounted<AppIconLoader>,
   // loading is in-flight.
   raw_ptr<Profile> profile_ = nullptr;
   base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
-
-  std::optional<std::string> app_id_ = std::nullopt;
 
   const IconType icon_type_ = IconType::kUnknown;
 
@@ -245,6 +233,7 @@ class AppIconLoader : public base::RefCounted<AppIconLoader>,
 
   // If |fallback_favicon_url_| is populated, then the favicon service is the
   // first fallback method attempted in MaybeLoadFallbackOrCompleteEmpty().
+  // These members are only populated from LoadWebAppIcon or LoadExtensionIcon.
   GURL fallback_favicon_url_;
 
   // If |fallback_icon_resource_| is not |kInvalidIconResource|, then it is the

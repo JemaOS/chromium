@@ -4,7 +4,7 @@
 
 #include "third_party/blink/renderer/modules/webaudio/audio_graph_tracer.h"
 
-#include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/modules/webaudio/audio_listener.h"
 #include "third_party/blink/renderer/modules/webaudio/audio_node.h"
@@ -17,10 +17,11 @@ namespace blink {
 const char AudioGraphTracer::kSupplementName[] = "AudioGraphTracer";
 
 void AudioGraphTracer::ProvideAudioGraphTracerTo(Page& page) {
-  page.ProvideSupplement(MakeGarbageCollected<AudioGraphTracer>(page));
+  page.ProvideSupplement(MakeGarbageCollected<AudioGraphTracer>());
 }
 
-AudioGraphTracer::AudioGraphTracer(Page& page) : Supplement(page) {}
+AudioGraphTracer::AudioGraphTracer()
+    : Supplement(nullptr), inspector_agent_(nullptr) {}
 
 void AudioGraphTracer::Trace(Visitor* visitor) const {
   visitor->Trace(inspector_agent_);
@@ -67,7 +68,7 @@ void AudioGraphTracer::DidChangeBaseAudioContext(BaseAudioContext* context) {
 BaseAudioContext* AudioGraphTracer::GetContextById(String contextId) {
   for (const auto& context : contexts_) {
     if (context->Uuid() == contextId) {
-      return context.Get();
+      return context;
     }
   }
 
@@ -155,8 +156,9 @@ AudioGraphTracer* AudioGraphTracer::FromPage(Page* page) {
   return Supplement<Page>::From<AudioGraphTracer>(page);
 }
 
-AudioGraphTracer* AudioGraphTracer::FromWindow(const LocalDOMWindow& window) {
-  return AudioGraphTracer::FromPage(window.GetFrame()->GetPage());
+AudioGraphTracer* AudioGraphTracer::FromDocument(
+    const Document& document) {
+  return AudioGraphTracer::FromPage(document.GetPage());
 }
 
 }  // namespace blink

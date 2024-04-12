@@ -11,9 +11,7 @@ if (isset($_SERVER["HTTP_IF_MODIFIED_SINCE"])) {
     header("Content-Length: " . filesize($font));
     header("Access-Control-Allow-Origin: *");
     header("Timing-Allow-Origin: *");
-    if (ob_get_length() > 0) {
-        ob_clean();
-    }
+    ob_clean();
     flush();
     readfile($font);
 }

@@ -13,6 +13,7 @@ import org.chromium.chrome.browser.download.DownloadManagerService;
 import org.chromium.chrome.browser.download.interstitial.DownloadInterstitialCoordinator;
 import org.chromium.chrome.browser.download.interstitial.DownloadInterstitialCoordinatorFactory;
 import org.chromium.chrome.browser.download.interstitial.NewDownloadTab;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
@@ -45,32 +46,24 @@ public class CustomTabDownloadObserver extends EmptyTabObserver {
         // method. This creates a mask which keeps this observer alive during the first chain of
         // navigations only. After that, this observer is unregistered.
         if ((navigation.pageTransition()
-                        & (PageTransition.FROM_API
-                                | PageTransition.SERVER_REDIRECT
-                                | PageTransition.CLIENT_REDIRECT))
+                    & (PageTransition.FROM_API | PageTransition.SERVER_REDIRECT
+                            | PageTransition.CLIENT_REDIRECT))
                 == 0) {
             unregister();
             return;
         }
-        if (navigation.isDownload()) {
-            Runnable urlRegistration =
-                    () -> {
-                        if (mActivity.isFinishing()
-                                || mActivity.isDestroyed()
-                                || tab.isDestroyed()) {
-                            return;
-                        }
-                        DownloadManagerService.getDownloadManagerService()
-                                .getMessageUiController(/* otrProfileID= */ null)
-                                .addDownloadInterstitialSource(tab.getOriginalUrl());
-                    };
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.CCT_NEW_DOWNLOAD_TAB)
+                && navigation.isDownload()) {
+            Runnable urlRegistration = () -> {
+                if (mActivity.isFinishing() || mActivity.isDestroyed() || tab.isDestroyed()) return;
+                DownloadManagerService.getDownloadManagerService()
+                        .getMessageUiController(/* otrProfileId */ null)
+                        .addDownloadInterstitialSource(tab.getOriginalUrl());
+            };
 
             DownloadInterstitialCoordinator coordinator =
-                    DownloadInterstitialCoordinatorFactory.create(
-                            tab::getContext,
-                            tab.getOriginalUrl().getSpec(),
-                            tab.getWindowAndroid(),
-                            () -> {
+                    DownloadInterstitialCoordinatorFactory.create(tab::getContext,
+                            tab.getOriginalUrl().getSpec(), tab.getWindowAndroid(), () -> {
                                 tab.reload();
                                 urlRegistration.run();
                             });

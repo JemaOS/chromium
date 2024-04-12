@@ -7,16 +7,10 @@
 
 #include <stdint.h>
 
+#include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gl/gl_bindings.h"
-#include "ui/gl/gl_context.h"
-#include "ui/gl/gl_surface.h"
-
-#if BUILDFLAG(IS_WIN)
-#include "third_party/skia/include/core/SkBitmap.h"
-#include "third_party/skia/include/core/SkColor.h"
-#endif
 
 namespace gl {
 
@@ -46,18 +40,26 @@ class GLTestHelper {
                                    int error,
                                    const uint8_t expected_color[4]);
 
-  static std::pair<scoped_refptr<GLSurface>, scoped_refptr<GLContext>>
-  CreateOffscreenGLSurfaceAndContext();
-
 #if BUILDFLAG(IS_WIN)
-  // Check that |location| is inside the bounds of |bitmap| and return the color
-  // at that pixel.
-  static SkColor GetColorAtPoint(const SkBitmap& bitmap,
-                                 const gfx::Point& location);
+  // Allows simple lookup into vector of pixels that represents a rectangular
+  // region.
+  class WindowPixels {
+   public:
+    // The number of elements in |pixels| must be exactly the area of |size|.
+    WindowPixels(std::vector<SkColor> pixels, const gfx::Size& size);
+    ~WindowPixels();
+
+    // |location| must be inside the rectangle formed by the origin and |size_|.
+    SkColor GetPixel(gfx::Point location) const;
+
+   private:
+    std::vector<SkColor> pixels_;
+    gfx::Size size_;
+  };
 
   // Read back the content of |window| inside a rectangle at the origin with
   // size |size|.
-  static SkBitmap ReadBackWindow(HWND window, const gfx::Size& size);
+  static WindowPixels ReadBackWindow(HWND window, const gfx::Size& size);
 
   // Read back the content of |window| of the pixel at point |point|.
   static SkColor ReadBackWindowPixel(HWND window, const gfx::Point& point);

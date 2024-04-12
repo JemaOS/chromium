@@ -14,14 +14,14 @@ import '../controls/controlled_button.js';
 import '../controls/settings_toggle_button.js';
 import '../settings_shared.css.js';
 
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
+import {PrefsMixin} from 'chrome://resources/cr_components/settings_prefs/prefs_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
+import {listenOnce} from 'chrome://resources/js/util_ts.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {loadTimeData} from '../i18n_setup.js';
 
-import type {DownloadsBrowserProxy} from './downloads_browser_proxy.js';
-import {DownloadsBrowserProxyImpl} from './downloads_browser_proxy.js';
+import {DownloadsBrowserProxy, DownloadsBrowserProxyImpl} from './downloads_browser_proxy.js';
 import {getTemplate} from './downloads_page.html.js';
 
 const SettingsDownloadsPageElementBase =
@@ -59,15 +59,10 @@ export class SettingsDownloadsPageElement extends
       downloadLocation_: String,
       // </if>
 
-      /**
-       * Whether the user can toggle the option to display downloads when
-       * they're done.
-       */
-      downloadBubblePartialViewControlledByPref_: {
+      downloadBubbleEnabled_: {
         type: Boolean,
         value() {
-          return loadTimeData.getBoolean(
-              'downloadBubblePartialViewControlledByPref');
+          return loadTimeData.getBoolean('downloadBubbleEnabled');
         },
       },
     };
@@ -88,7 +83,7 @@ export class SettingsDownloadsPageElement extends
   private downloadLocation_: string;
   // </if>
 
-  private downloadBubblePartialViewControlledByPref_: boolean;
+  private downloadBubbleEnabled_: boolean;
 
   private browserProxy_: DownloadsBrowserProxy =
       DownloadsBrowserProxyImpl.getInstance();
@@ -105,7 +100,9 @@ export class SettingsDownloadsPageElement extends
   }
 
   private selectDownloadLocation_() {
-    this.browserProxy_.selectDownloadLocation();
+    listenOnce(this, 'transitionend', () => {
+      this.browserProxy_.selectDownloadLocation();
+    });
   }
 
   // <if expr="chromeos_ash">

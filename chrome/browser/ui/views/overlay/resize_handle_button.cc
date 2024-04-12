@@ -127,9 +127,8 @@ void ResizeHandleButton::UpdateImageForQuadrant() {
       break;
   }
 
-  SetImageModel(views::Button::STATE_NORMAL,
-                ui::ImageModel::FromImageSkia(icon));
+  SetImage(views::Button::STATE_NORMAL, icon);
 }
 
-BEGIN_METADATA(ResizeHandleButton)
+BEGIN_METADATA(ResizeHandleButton, views::ImageButton)
 END_METADATA

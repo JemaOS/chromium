@@ -35,8 +35,7 @@ class VIEWS_EXPORT InkDrop {
 
   // TODO(pbos): Make sure what's installed here implements InkDrop so that can
   // be used as type instead of InkDropHost.
-  static InkDropHost* Install(View* host,
-                              std::unique_ptr<InkDropHost> ink_drop);
+  static void Install(View* host, std::unique_ptr<InkDropHost> ink_drop);
 
   // Removes the InkDrop from `host`.
   static void Remove(View* host);
@@ -91,9 +90,6 @@ class VIEWS_EXPORT InkDrop {
 
   // Called by ink drop hosts when their size is changed.
   virtual void HostSizeChanged(const gfx::Size& new_size) = 0;
-
-  // Called by ink drop hosts when their theme is changed.
-  virtual void HostViewThemeChanged() = 0;
 
   // Called by ink drop hosts when their transform is changed.
   virtual void HostTransformChanged(const gfx::Transform& new_transform) = 0;
@@ -159,9 +155,8 @@ class VIEWS_EXPORT InkDrop {
 // TODO(pbos): Replace with a function that returns unique_ptr<View>, this only
 // calls SetProcessEventsWithinSubtree(false) right now.
 class VIEWS_EXPORT InkDropContainerView : public View {
-  METADATA_HEADER(InkDropContainerView, View)
-
  public:
+  METADATA_HEADER(InkDropContainerView);
   InkDropContainerView();
   InkDropContainerView(const InkDropContainerView&) = delete;
   InkDropContainerView& operator=(const InkDropContainerView&) = delete;

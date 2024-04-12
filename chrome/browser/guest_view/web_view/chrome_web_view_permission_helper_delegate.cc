@@ -188,32 +188,9 @@ void ChromeWebViewPermissionHelperDelegate::OnGeolocationPermissionResponse(
       ->browser_context()
       ->GetPermissionController()
       ->RequestPermissionFromCurrentDocument(
-          web_view_guest()->embedder_rfh(),
-          content::PermissionRequestDescription(
-              blink::PermissionType::GEOLOCATION, user_gesture),
-          std::move(callback));
-}
-
-void ChromeWebViewPermissionHelperDelegate::RequestHidPermission(
-    const GURL& requesting_frame_url,
-    base::OnceCallback<void(bool)> callback) {
-  auto request_info =
-      base::Value::Dict().Set(guest_view::kUrl, requesting_frame_url.spec());
-
-  WebViewPermissionHelper::PermissionResponseCallback permission_callback =
-      base::BindOnce(
-          &ChromeWebViewPermissionHelperDelegate::OnHidPermissionResponse,
-          weak_factory_.GetWeakPtr(), std::move(callback));
-  web_view_permission_helper()->RequestPermission(
-      WEB_VIEW_PERMISSION_TYPE_HID, std::move(request_info),
-      std::move(permission_callback), false /* allowed_by_default */);
-}
-
-void ChromeWebViewPermissionHelperDelegate::OnHidPermissionResponse(
-    base::OnceCallback<void(bool)> callback,
-    bool allow,
-    const std::string& user_input) {
-  std::move(callback).Run(allow && web_view_guest()->attached());
+          blink::PermissionType::GEOLOCATION,
+          web_view_guest()->embedder_web_contents()->GetPrimaryMainFrame(),
+          user_gesture, std::move(callback));
 }
 
 void ChromeWebViewPermissionHelperDelegate::RequestFileSystemPermission(

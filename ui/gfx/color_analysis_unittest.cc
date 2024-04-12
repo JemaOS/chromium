@@ -152,8 +152,14 @@ TEST_F(ColorAnalysisTest, CalculatePNGKMeanAllWhite) {
   MockKMeanImageSampler test_sampler;
   test_sampler.AddSample(0);
 
-  SkColor color = CalculateKMeanColorOfPNG(k1x1White, kDefaultLowerBound,
-                                           kDefaultUpperBound, &test_sampler);
+  scoped_refptr<base::RefCountedBytes> png(
+      new base::RefCountedBytes(
+          std::vector<unsigned char>(
+              k1x1White,
+              k1x1White + sizeof(k1x1White) / sizeof(unsigned char))));
+
+  SkColor color = CalculateKMeanColorOfPNG(
+      png, kDefaultLowerBound, kDefaultUpperBound, &test_sampler);
 
   EXPECT_EQ(color, SK_ColorWHITE);
 }
@@ -164,8 +170,14 @@ TEST_F(ColorAnalysisTest, CalculatePNGKMeanIgnoreWhiteLightness) {
   test_sampler.AddSample(1);
   test_sampler.AddSample(2);
 
-  SkColor color = CalculateKMeanColorOfPNG(k1x3BlueWhite, kDefaultLowerBound,
-                                           kDefaultUpperBound, &test_sampler);
+  scoped_refptr<base::RefCountedBytes> png(
+     new base::RefCountedBytes(
+         std::vector<unsigned char>(
+             k1x3BlueWhite,
+             k1x3BlueWhite + sizeof(k1x3BlueWhite) / sizeof(unsigned char))));
+
+  SkColor color = CalculateKMeanColorOfPNG(
+      png, kDefaultLowerBound, kDefaultUpperBound, &test_sampler);
 
   EXPECT_EQ(SkColorSetARGB(0xFF, 0x00, 0x00, 0xFF), color);
 }
@@ -176,8 +188,14 @@ TEST_F(ColorAnalysisTest, CalculatePNGKMeanPickMostCommon) {
   test_sampler.AddSample(1);
   test_sampler.AddSample(2);
 
-  SkColor color = CalculateKMeanColorOfPNG(k1x3BlueRed, kDefaultLowerBound,
-                                           kDefaultUpperBound, &test_sampler);
+  scoped_refptr<base::RefCountedBytes> png(
+     new base::RefCountedBytes(
+         std::vector<unsigned char>(
+             k1x3BlueRed,
+             k1x3BlueRed + sizeof(k1x3BlueRed) / sizeof(unsigned char))));
+
+  SkColor color = CalculateKMeanColorOfPNG(
+      png, kDefaultLowerBound, kDefaultUpperBound, &test_sampler);
 
   EXPECT_EQ(SkColorSetARGB(0xFF, 0xFF, 0x00, 0x00), color);
 }
@@ -195,7 +213,8 @@ TEST_F(ColorAnalysisTest, CalculatePNGKMeanIgnoreRedHue) {
 
   HSL lower = {0.2, -1, 0.15};
   HSL upper = {0.8, -1, 0.85};
-  SkColor color = CalculateKMeanColorOfPNG(*png, lower, upper, &test_sampler);
+  SkColor color = CalculateKMeanColorOfPNG(
+      png, lower, upper, &test_sampler);
 
   EXPECT_EQ(SK_ColorBLUE, color);
 }
@@ -212,7 +231,8 @@ TEST_F(ColorAnalysisTest, CalculatePNGKMeanIgnoreGreySaturation) {
   scoped_refptr<base::RefCountedMemory> png = CreateTestPNG(colors);
   HSL lower = {-1, 0.3, -1};
   HSL upper = {-1, 1, -1};
-  SkColor color = CalculateKMeanColorOfPNG(*png, lower, upper, &test_sampler);
+  SkColor color = CalculateKMeanColorOfPNG(
+      png, lower, upper, &test_sampler);
 
   EXPECT_EQ(SK_ColorBLUE, color);
 }
@@ -386,7 +406,7 @@ TEST_F(ColorAnalysisTest, ComputeColorSwatches) {
 
   {
     std::vector<Swatch> colors =
-        CalculateColorSwatches(bitmap, 10, gfx::Rect(100, 100), std::nullopt);
+        CalculateColorSwatches(bitmap, 10, gfx::Rect(100, 100), absl::nullopt);
     EXPECT_EQ(3u, colors.size());
     EXPECT_EQ(kGreenSwatch, colors[0]);
     EXPECT_EQ(kMagentaSwatch, colors[1]);
@@ -395,7 +415,7 @@ TEST_F(ColorAnalysisTest, ComputeColorSwatches) {
 
   {
     std::vector<Swatch> colors = CalculateColorSwatches(
-        bitmap, 10, gfx::Rect(10, 10, 80, 80), std::nullopt);
+        bitmap, 10, gfx::Rect(10, 10, 80, 80), absl::nullopt);
     EXPECT_EQ(2u, colors.size());
     EXPECT_EQ(kGreenSwatch, colors[0]);
     EXPECT_EQ(kYellowSwatch, colors[1]);
@@ -429,7 +449,7 @@ TEST_F(ColorAnalysisTest, ComputeColorSwatches_Filter) {
 
   {
     std::vector<Swatch> colors =
-        CalculateColorSwatches(bitmap, 10, gfx::Rect(100, 100), std::nullopt);
+        CalculateColorSwatches(bitmap, 10, gfx::Rect(100, 100), absl::nullopt);
     EXPECT_EQ(3u, colors.size());
     EXPECT_EQ(kBlackSwatch, colors[0]);
     EXPECT_EQ(kMagentaSwatch, colors[1]);

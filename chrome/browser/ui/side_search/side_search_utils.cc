@@ -40,7 +40,7 @@ std::string SerializeSideSearchTabDataAsString(
   return side_search_tab_data.SerializeAsString();
 }
 
-std::optional<std::pair<std::string, std::string>>
+absl::optional<std::pair<std::string, std::string>>
 MaybeGetSideSearchTabRestoreData(content::WebContents* web_contents) {
   SideSearchTabContentsHelper* helper =
       SideSearchTabContentsHelper::FromWebContents(web_contents);
@@ -49,11 +49,11 @@ MaybeGetSideSearchTabRestoreData(content::WebContents* web_contents) {
                            SerializeSideSearchTabDataAsString(helper))};
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void MaybeSaveSideSearchTabSessionData(content::WebContents* web_contents) {
-  Browser* browser = chrome::FindBrowserWithTab(web_contents);
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents);
   if (!browser)
     return;
 

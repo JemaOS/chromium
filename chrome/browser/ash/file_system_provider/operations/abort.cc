@@ -9,7 +9,9 @@
 #include "chrome/common/extensions/api/file_system_provider.h"
 #include "chrome/common/extensions/api/file_system_provider_internal.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 Abort::Abort(RequestDispatcher* dispatcher,
              const ProvidedFileSystemInfo& file_system_info,
@@ -19,7 +21,8 @@ Abort::Abort(RequestDispatcher* dispatcher,
       operation_request_id_(operation_request_id),
       callback_(std::move(callback)) {}
 
-Abort::~Abort() = default;
+Abort::~Abort() {
+}
 
 bool Abort::Execute(int request_id) {
   using extensions::api::file_system_provider::AbortRequestedOptions;
@@ -49,4 +52,6 @@ void Abort::OnError(int /* request_id */,
   std::move(callback_).Run(error);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

@@ -5,7 +5,6 @@
 #include "ui/lottie/animation.h"
 
 #include <map>
-#include <optional>
 #include <string>
 
 #include "base/check.h"
@@ -29,6 +28,7 @@
 #include "cc/test/skia_common.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkRect.h"
 #include "third_party/skia/include/core/SkStream.h"
@@ -114,10 +114,6 @@ class TestAnimationObserver : public AnimationObserver {
     last_frame_painted_ = t;
   }
 
-  void AnimationStopped(const Animation* animation) override {
-    animation_stopped_ = true;
-  }
-
   void AnimationIsDeleting(const Animation* animation) override {
     animation_is_deleted_ = true;
     observation_.Reset();
@@ -134,9 +130,8 @@ class TestAnimationObserver : public AnimationObserver {
     return animation_will_start_playing_;
   }
   bool animation_resuming() const { return animation_resuming_; }
-  bool animation_stopped() const { return animation_stopped_; }
   bool animation_is_deleted() const { return animation_is_deleted_; }
-  const std::optional<float>& last_frame_painted() const {
+  const absl::optional<float>& last_frame_painted() const {
     return last_frame_painted_;
   }
 
@@ -146,8 +141,7 @@ class TestAnimationObserver : public AnimationObserver {
   bool animation_will_start_playing_ = false;
   bool animation_resuming_ = false;
   bool animation_is_deleted_ = false;
-  bool animation_stopped_ = false;
-  std::optional<float> last_frame_painted_;
+  absl::optional<float> last_frame_painted_;
 };
 
 class TestSkottieFrameDataProvider : public cc::SkottieFrameDataProvider {
@@ -168,8 +162,8 @@ class TestSkottieFrameDataProvider : public cc::SkottieFrameDataProvider {
       current_frame_data_ = std::move(current_frame_data);
     }
 
-    const std::optional<float>& last_frame_t() const { return last_frame_t_; }
-    const std::optional<float>& last_frame_scale_factor() const {
+    const absl::optional<float>& last_frame_t() const { return last_frame_t_; }
+    const absl::optional<float>& last_frame_scale_factor() const {
       return last_frame_scale_factor_;
     }
 
@@ -179,8 +173,8 @@ class TestSkottieFrameDataProvider : public cc::SkottieFrameDataProvider {
     ~ImageAssetImpl() override = default;
 
     cc::SkottieFrameData current_frame_data_;
-    std::optional<float> last_frame_t_;
-    std::optional<float> last_frame_scale_factor_;
+    absl::optional<float> last_frame_t_;
+    absl::optional<float> last_frame_scale_factor_;
   };
 
   TestSkottieFrameDataProvider() = default;
@@ -192,7 +186,7 @@ class TestSkottieFrameDataProvider : public cc::SkottieFrameDataProvider {
   scoped_refptr<ImageAsset> LoadImageAsset(
       base::StringPiece resource_id,
       const base::FilePath& resource_path,
-      const std::optional<gfx::Size>& size) override {
+      const absl::optional<gfx::Size>& size) override {
     auto new_asset = base::MakeRefCounted<ImageAssetImpl>();
     CHECK(current_assets_.emplace(std::string(resource_id), new_asset).second);
     return new_asset;
@@ -423,9 +417,7 @@ TEST_F(AnimationTest, StopLinearAnimation) {
   EXPECT_FLOAT_EQ(*animation_->GetCurrentProgress(),
                   kAdvance / kAnimationDuration);
 
-  EXPECT_FALSE(observer.animation_stopped());
   animation_->Stop();
-  EXPECT_TRUE(observer.animation_stopped());
   EXPECT_FALSE(animation_->GetCurrentProgress());
   EXPECT_TRUE(IsStopped());
 }
@@ -1484,7 +1476,7 @@ class AnimationRestarter : public AnimationObserver {
   }
 
  private:
-  const raw_ptr<Animation> animation_;
+  const base::raw_ptr<Animation> animation_;
   base::ScopedObservation<Animation, AnimationObserver> observation_{this};
 };
 

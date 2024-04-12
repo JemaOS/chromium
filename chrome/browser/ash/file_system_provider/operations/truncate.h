@@ -18,7 +18,9 @@ namespace base {
 class FilePath;
 }  // namespace base
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 // Creates a file. If the file already exists, then the operation will fail with
 // the FILE_ERROR_EXISTS error. Created per request.
@@ -50,6 +52,8 @@ class Truncate : public Operation {
   storage::AsyncFileUtil::StatusCallback callback_;
 };
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_OPERATIONS_TRUNCATE_H_

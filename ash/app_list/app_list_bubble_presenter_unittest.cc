@@ -26,7 +26,6 @@
 #include "ash/system/unified/unified_system_tray.h"
 #include "ash/test/ash_test_base.h"
 #include "ash/test/test_widget_builder.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/test/icu_test_util.h"
@@ -70,7 +69,7 @@ size_t NumberOfWidgetsInAppListContainer(int64_t display_id) {
   aura::Window* root = Shell::GetRootWindowForDisplayId(display_id);
   aura::Window* container =
       Shell::GetContainer(root, kShellWindowId_AppListContainer);
-  std::set<raw_ptr<views::Widget, SetExperimental>> widgets;
+  std::set<views::Widget*> widgets;
   views::Widget::GetAllChildWidgets(container, &widgets);
   return widgets.size();
 }
@@ -610,23 +609,6 @@ TEST_F(AppListBubblePresenterTest, CreatingActiveWidgetClosesBubble) {
 
   // Bubble is closed.
   EXPECT_FALSE(presenter->IsShowing());
-}
-
-// Verifies that a child window of the help bubble container can gain focus
-// from the app list bubble without closing the bubble.
-TEST_F(AppListBubblePresenterTest, FocusHelpBubbleContainerChild) {
-  AppListBubblePresenter* const presenter = GetBubblePresenter();
-  presenter->Show(GetPrimaryDisplay().id());
-  ASSERT_TRUE(presenter->IsShowing());
-
-  std::unique_ptr<views::Widget> widget = CreateTestWidget(
-      /*delegate=*/nullptr, kShellWindowId_HelpBubbleContainer);
-  EXPECT_TRUE(widget->GetNativeView()->HasFocus());
-
-  // Bubble is shown without focus.
-  EXPECT_TRUE(presenter->IsShowing());
-  EXPECT_FALSE(
-      presenter->bubble_widget_for_test()->GetNativeView()->HasFocus());
 }
 
 // Regression test for https://crbug.com/1268220.

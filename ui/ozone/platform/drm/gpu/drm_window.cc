@@ -65,12 +65,10 @@ void DrmWindow::SetBounds(const gfx::Rect& bounds) {
 }
 
 void DrmWindow::SetCursor(const std::vector<SkBitmap>& bitmaps,
-                          const std::optional<gfx::Point>& location,
+                          const gfx::Point& location,
                           base::TimeDelta frame_delay) {
   cursor_bitmaps_ = bitmaps;
-  if (location.has_value()) {
-    cursor_location_ = location.value();
-  }
+  cursor_location_ = location;
   cursor_frame_ = 0;
   cursor_timer_.Stop();
 
@@ -79,11 +77,7 @@ void DrmWindow::SetCursor(const std::vector<SkBitmap>& bitmaps,
                         &DrmWindow::OnCursorAnimationTimeout);
   }
 
-  if (location.has_value()) {
-    ResetCursor();
-  } else {
-    UpdateCursorImage();
-  }
+  ResetCursor();
 }
 
 void DrmWindow::MoveCursor(const gfx::Point& location) {

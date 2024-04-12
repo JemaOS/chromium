@@ -45,10 +45,6 @@ class SVGFEMergeNodeElement final : public SVGElement {
     return false;
   }
 
-  SVGAnimatedPropertyBase* PropertyFromAttribute(
-      const QualifiedName& attribute_name) const override;
-  void SynchronizeAllSVGAttributes() const override;
-
   Member<SVGAnimatedString> in1_;
 };
 

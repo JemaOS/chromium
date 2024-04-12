@@ -25,9 +25,8 @@ class LocalCardMigrationOfferView;
 
 class LocalCardMigrationDialogView : public LocalCardMigrationDialog,
                                      public views::BubbleDialogDelegateView {
-  METADATA_HEADER(LocalCardMigrationDialogView, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(LocalCardMigrationDialogView);
   explicit LocalCardMigrationDialogView(
       LocalCardMigrationDialogController* controller);
   LocalCardMigrationDialogView(const LocalCardMigrationDialogView&) = delete;

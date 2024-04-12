@@ -16,6 +16,10 @@ ChromeBrowserMainExtraPartsOzone::ChromeBrowserMainExtraPartsOzone() = default;
 
 ChromeBrowserMainExtraPartsOzone::~ChromeBrowserMainExtraPartsOzone() = default;
 
+void ChromeBrowserMainExtraPartsOzone::PreEarlyInitialization() {
+    ui::OzonePlatform::PreEarlyInitialization();
+}
+
 void ChromeBrowserMainExtraPartsOzone::PostCreateMainMessageLoop() {
   auto shutdown_cb = base::BindOnce([] {
     chrome::SessionEnding();
@@ -27,10 +31,5 @@ void ChromeBrowserMainExtraPartsOzone::PostCreateMainMessageLoop() {
 }
 
 void ChromeBrowserMainExtraPartsOzone::PostMainMessageLoopRun() {
-#if !BUILDFLAG(IS_CHROMEOS_LACROS) && !BUILDFLAG(IS_LINUX)
-  // Lacros's `PostMainMessageLoopRun` must be called at the very end of
-  // `PostMainMessageLoopRun` in
-  // `ChromeBrowserMainPartsLacros::PostMainMessageLoopRun`.
-  ui::OzonePlatform::GetInstance()->PostMainMessageLoopRun();
-#endif
+    ui::OzonePlatform::GetInstance()->PostMainMessageLoopRun();
 }

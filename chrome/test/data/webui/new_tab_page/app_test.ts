@@ -2,22 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {Module} from 'chrome://new-tab-page/lazy_load.js';
-import {counterfactualLoad, ModuleDescriptor, ModuleRegistry} from 'chrome://new-tab-page/lazy_load.js';
-import type {AppElement} from 'chrome://new-tab-page/new_tab_page.js';
-import {$$, BackgroundManager, BrowserCommandProxy, CUSTOMIZE_CHROME_BUTTON_ELEMENT_ID, CustomizeDialogPage, NewTabPageProxy, NtpCustomizeChromeEntryPoint, NtpElement, VoiceAction, WindowProxy} from 'chrome://new-tab-page/new_tab_page.js';
-import type {PageRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
-import {CustomizeChromeSection, NtpBackgroundImageSource, PageCallbackRouter, PageHandlerRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
-import type {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
+
+import {counterfactualLoad, LensUploadDialogElement, Module, ModuleDescriptor, ModuleRegistry} from 'chrome://new-tab-page/lazy_load.js';
+import {$$, AppElement, BackgroundManager, BrowserCommandProxy, CUSTOMIZE_CHROME_BUTTON_ELEMENT_ID, CustomizeDialogPage, NewTabPageProxy, NtpCustomizeChromeEntryPoint, NtpElement, VoiceAction, WindowProxy} from 'chrome://new-tab-page/new_tab_page.js';
+import {CustomizeChromeSection, NtpBackgroundImageSource, PageCallbackRouter, PageHandlerRemote, PageRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
 import {Command, CommandHandlerRemote} from 'chrome://resources/js/browser_command.mojom-webui.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {isMac} from 'chrome://resources/js/platform.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
-import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
-import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
+import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {fakeMetricsPrivate, MetricsTracker} from 'chrome://webui-test/metrics_test_support.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
-import type {TestMock} from 'chrome://webui-test/test_mock.js';
+import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
 
 import {assertNotStyle, assertStyle, createBackgroundImage, createTheme, installMock} from './test_support.js';
@@ -33,7 +30,6 @@ suite('NewTabPageAppTest', () => {
   let moduleResolver: PromiseResolver<Module[]>;
 
   const url: URL = new URL(location.href);
-  const backgroundImageLoadTime: number = 123;
 
   setup(async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -55,9 +51,7 @@ suite('NewTabPageAppTest', () => {
     handler.setResultFor('getModulesIdNames', Promise.resolve({data: []}));
     windowProxy.setResultMapperFor('matchMedia', () => ({
                                                    addListener() {},
-                                                   addEventListener() {},
                                                    removeListener() {},
-                                                   removeEventListener() {},
                                                  }));
     windowProxy.setResultFor('waitForLazyRender', Promise.resolve());
     windowProxy.setResultFor('createIframeSrc', '');
@@ -66,7 +60,7 @@ suite('NewTabPageAppTest', () => {
                                .callbackRouter.$.bindNewPipeAndPassRemote();
     backgroundManager = installMock(BackgroundManager);
     backgroundManager.setResultFor(
-        'getBackgroundImageLoadTime', Promise.resolve(backgroundImageLoadTime));
+        'getBackgroundImageLoadTime', Promise.resolve(0));
     moduleRegistry = installMock(ModuleRegistry);
     moduleResolver = new PromiseResolver();
     moduleRegistry.setResultFor('initializeModules', moduleResolver.promise);
@@ -77,7 +71,7 @@ suite('NewTabPageAppTest', () => {
     await flushTasks();
   });
 
-  suite('Misc', () => {
+  suite('misc', () => {
     test('customize dialog closed on start', () => {
       // Assert.
       assertFalse(!!app.shadowRoot!.querySelector('ntp-customize-dialog'));
@@ -166,109 +160,48 @@ suite('NewTabPageAppTest', () => {
           ],
       );
     });
+  });
 
-    test('Webstore toast works correctly', async () => {
-      const webstoreToast = $$<CrToastElement>(app, '#webstoreToast')!;
-      assertTrue(webstoreToast.hidden);
+  [true, false].forEach((removeScrim) => {
+    suite(`ogb theming removeScrim is ${removeScrim}`, () => {
+      suiteSetup(() => {
+        loadTimeData.overrideValues({removeScrim});
+      });
 
-      // Try to show webstore toast without opening side panel.
-      callbackRouterRemote.showWebstoreToast();
-      await callbackRouterRemote.$.flushForTesting();
+      test('Ogb updates on ntp load', async () => {
+        // Act.
 
-      // The webstore toast should still be hidden.
-      assertTrue(webstoreToast.hidden);
-      assertFalse(webstoreToast.open);
+        // Create a dark mode theme with a custom background.
+        const theme = createTheme(true);
+        theme.backgroundImage = createBackgroundImage('https://foo.com');
+        callbackRouterRemote.setTheme(theme);
+        await callbackRouterRemote.$.flushForTesting();
 
-      // Open the side panel.
-      callbackRouterRemote.setCustomizeChromeSidePanelVisibility(true);
-      await callbackRouterRemote.$.flushForTesting();
+        // Notify the NTP that the ogb has loaded.
+        window.dispatchEvent(new MessageEvent('message', {
+          data: {
+            frameType: 'one-google-bar',
+            messageType: 'loaded',
+          },
+          source: window,
+          origin: window.origin,
+        }));
 
-      // Try to show webstore toast again.
-      callbackRouterRemote.showWebstoreToast();
-      await callbackRouterRemote.$.flushForTesting();
+        // Assert.
 
-      // The webstore toast should be open.
-      assertFalse(webstoreToast.hidden);
-      assertTrue(webstoreToast.open);
-      assertTrue(!!webstoreToast.firstChild!.textContent);
+        // Dark mode themes with background images and removeScrim set should
+        // apply background protection to the ogb.
+        assertEquals(1, windowProxy.getCallCount('postMessage'));
+        const [_, {type, applyLightTheme, applyBackgroundProtection}] =
+            windowProxy.getArgs('postMessage')[0];
+        assertEquals('updateAppearance', type);
+        assertEquals(true, applyLightTheme);
+        assertEquals(removeScrim, applyBackgroundProtection);
+      });
     });
   });
 
-  suite(`OgbThemingRemoveScrim`, () => {
-    test('Ogb updates on ntp load', async () => {
-      // Act.
-
-      // Create a dark mode theme with a custom background.
-      const theme = createTheme(true);
-      theme.backgroundImage = createBackgroundImage('https://foo.com');
-      callbackRouterRemote.setTheme(theme);
-      await callbackRouterRemote.$.flushForTesting();
-
-      // Notify the NTP that the ogb has loaded.
-      window.dispatchEvent(new MessageEvent('message', {
-        data: {
-          frameType: 'one-google-bar',
-          messageType: 'loaded',
-        },
-        source: window,
-        origin: window.origin,
-      }));
-
-      // Assert.
-
-      // Dark mode themes with background images and removeScrim set should
-      // apply background protection to the ogb.
-      assertEquals(1, windowProxy.getCallCount('postMessage'));
-      const [_, {type, applyLightTheme}] =
-          windowProxy.getArgs('postMessage')[0];
-      assertEquals('updateAppearance', type);
-      assertEquals(true, applyLightTheme);
-      assertNotStyle($$(app, '#oneGoogleBarScrim')!, 'display', 'none');
-    });
-  });
-
-  suite('OgbScrim', () => {
-    test('scroll bounce', async () => {
-      // Arrange.
-
-      // Set theme that triggers the scrim.
-      const theme = createTheme(true);
-      theme.backgroundImage = createBackgroundImage('https://foo.com');
-      callbackRouterRemote.setTheme(theme);
-      await callbackRouterRemote.$.flushForTesting();
-
-      // Make sure page is scrollable.
-      const spacer = document.createElement('div');
-      spacer.style.width = '100%';
-      spacer.style.height = '10000px';
-      spacer.style.flexShrink = '0';
-      $$(app, '#content')!.append(spacer);
-
-      // Simulates a vertical scroll.
-      const scrollY = async (y: number) => {
-        window.scroll(0, y);
-        // `window.scroll` doesn't automatically trigger scroll event.
-        window.dispatchEvent(new Event('scroll'));
-        // Wait for position update to propagate.
-        await new Promise<void>(
-            resolve => requestAnimationFrame(() => resolve()));
-      };
-
-      // Act (no bounce).
-      await scrollY(0);
-
-      // Assert (no bounce).
-      assertStyle($$(app, '#oneGoogleBarScrim')!, 'position', 'fixed');
-
-      // Act (scroll).
-      await scrollY(10);
-
-      // Assert (scroll).
-      assertStyle($$(app, '#oneGoogleBarScrim')!, 'position', 'absolute');
-    });
-  });
-
-  suite('Theming', () => {
+  suite('theming', () => {
     test('setting theme updates ntp', async () => {
       // Act.
       callbackRouterRemote.setTheme(createTheme());
@@ -323,11 +256,19 @@ suite('NewTabPageAppTest', () => {
 
       // Scrim removal will remove text shadows as background protection is
       // applied to the background element instead.
-      assertNotStyle(
-          $$(app, '#backgroundImageAttribution')!, 'background-color',
-          'rgba(0, 0, 0, 0)');
-      assertStyle(
-          $$(app, '#backgroundImageAttribution')!, 'text-shadow', 'none');
+      if (loadTimeData.getBoolean('removeScrim')) {
+        assertNotStyle(
+            $$(app, '#backgroundImageAttribution')!, 'background-color',
+            'rgba(0, 0, 0, 0)');
+        assertStyle(
+            $$(app, '#backgroundImageAttribution')!, 'text-shadow', 'none');
+      } else {
+        assertStyle(
+            $$(app, '#backgroundImageAttribution')!, 'background-color',
+            'rgba(0, 0, 0, 0)');
+        assertNotStyle(
+            $$(app, '#backgroundImageAttribution')!, 'text-shadow', 'none');
+      }
 
       assertEquals(1, backgroundManager.getCallCount('setBackgroundImage'));
       assertEquals(
@@ -386,6 +327,17 @@ suite('NewTabPageAppTest', () => {
       assertTrue(mostVisited.hasAttribute('use-white-tile-icon_'));
     });
 
+    test('theme updates use title pill', async () => {
+      const theme = createTheme();
+      theme.mostVisited.useTitlePill = true;
+      callbackRouterRemote.setTheme(theme);
+      const mostVisited = $$(app, '#mostVisited');
+      assertTrue(!!mostVisited);
+      assertFalse(mostVisited.hasAttribute('use-title-pill_'));
+      await callbackRouterRemote.$.flushForTesting();
+      assertTrue(mostVisited.hasAttribute('use-title-pill_'));
+    });
+
     test('theme updates is dark', async () => {
       const theme = createTheme();
       theme.mostVisited.isDark = true;
@@ -430,7 +382,7 @@ suite('NewTabPageAppTest', () => {
     });
 
     suite('theming metrics', () => {
-      test('having no theme produces correct metrics', async () => {
+      test('having no theme produces correct metric', async () => {
         // Arrange.
         const theme = createTheme();
         theme.isCustomBackground = false;
@@ -440,9 +392,7 @@ suite('NewTabPageAppTest', () => {
         await callbackRouterRemote.$.flushForTesting();
 
         // Assert.
-        assertEquals(1, metrics.count('NewTabPage.Collections.IdOnLoad'));
         assertEquals(1, metrics.count('NewTabPage.Collections.IdOnLoad', ''));
-        assertEquals(1, metrics.count('NewTabPage.BackgroundImageSource'));
         assertEquals(
             1,
             metrics.count(
@@ -450,7 +400,7 @@ suite('NewTabPageAppTest', () => {
                 NtpBackgroundImageSource.kNoImage));
       });
 
-      test('having first party theme produces correct metrics', async () => {
+      test('having first party theme produces correct metric', async () => {
         // Arrange.
         const theme = createTheme();
         theme.backgroundImage = createBackgroundImage('https://foo.com');
@@ -463,11 +413,9 @@ suite('NewTabPageAppTest', () => {
         await callbackRouterRemote.$.flushForTesting();
 
         // Assert.
-        assertEquals(1, metrics.count('NewTabPage.Collections.IdOnLoad'));
         assertEquals(
             1,
             metrics.count('NewTabPage.Collections.IdOnLoad', 'foo_collection'));
-        assertEquals(1, metrics.count('NewTabPage.BackgroundImageSource'));
         assertEquals(
             1,
             metrics.count(
@@ -475,7 +423,7 @@ suite('NewTabPageAppTest', () => {
                 NtpBackgroundImageSource.kFirstPartyThemeWithoutDailyRefresh));
       });
 
-      test('having third party theme produces correct metrics', async () => {
+      test('having third party theme produces correct metric', async () => {
         // Arrange.
         const theme = createTheme();
         theme.backgroundImage = createBackgroundImage('https://foo.com');
@@ -487,9 +435,7 @@ suite('NewTabPageAppTest', () => {
         await callbackRouterRemote.$.flushForTesting();
 
         // Assert.
-        assertEquals(1, metrics.count('NewTabPage.Collections.IdOnLoad'));
         assertEquals(1, metrics.count('NewTabPage.Collections.IdOnLoad', ''));
-        assertEquals(1, metrics.count('NewTabPage.BackgroundImageSource'));
         assertEquals(
             1,
             metrics.count(
@@ -497,32 +443,28 @@ suite('NewTabPageAppTest', () => {
                 NtpBackgroundImageSource.kThirdPartyTheme));
       });
 
-      test(
-          'having refresh daily enabled produces correct metrics', async () => {
-            // Arrange.
-            const theme = createTheme();
-            theme.backgroundImage = createBackgroundImage('https://foo.com');
-            theme.backgroundImage.imageSource =
-                NtpBackgroundImageSource.kFirstPartyThemeWithDailyRefresh;
-            theme.backgroundImageCollectionId = 'foo_collection';
+      test('having refresh daily enabled produces correct metric', async () => {
+        // Arrange.
+        const theme = createTheme();
+        theme.backgroundImage = createBackgroundImage('https://foo.com');
+        theme.backgroundImage.imageSource =
+            NtpBackgroundImageSource.kFirstPartyThemeWithDailyRefresh;
+        theme.backgroundImageCollectionId = 'foo_collection';
 
-            // Act.
-            callbackRouterRemote.setTheme(theme);
-            await callbackRouterRemote.$.flushForTesting();
+        // Act.
+        callbackRouterRemote.setTheme(theme);
+        await callbackRouterRemote.$.flushForTesting();
 
-            // Assert.
-            assertEquals(1, metrics.count('NewTabPage.Collections.IdOnLoad'));
-            assertEquals(
-                1,
-                metrics.count(
-                    'NewTabPage.Collections.IdOnLoad', 'foo_collection'));
-            assertEquals(1, metrics.count('NewTabPage.BackgroundImageSource'));
-            assertEquals(
-                1,
-                metrics.count(
-                    'NewTabPage.BackgroundImageSource',
-                    NtpBackgroundImageSource.kFirstPartyThemeWithDailyRefresh));
-          });
+        // Assert.
+        assertEquals(
+            1,
+            metrics.count('NewTabPage.Collections.IdOnLoad', 'foo_collection'));
+        assertEquals(
+            1,
+            metrics.count(
+                'NewTabPage.BackgroundImageSource',
+                NtpBackgroundImageSource.kFirstPartyThemeWithDailyRefresh));
+      });
 
       test('setting uploaded background produces correct metrics', async () => {
         // Arrange.
@@ -536,63 +478,17 @@ suite('NewTabPageAppTest', () => {
         await callbackRouterRemote.$.flushForTesting();
 
         // Assert.
-        assertEquals(1, metrics.count('NewTabPage.Collections.IdOnLoad'));
         assertEquals(1, metrics.count('NewTabPage.Collections.IdOnLoad', ''));
-        assertEquals(1, metrics.count('NewTabPage.BackgroundImageSource'));
         assertEquals(
             1,
             metrics.count(
                 'NewTabPage.BackgroundImageSource',
                 NtpBackgroundImageSource.kUploadedImage));
       });
-
-      test(
-          'setting wallpaper search background produces correct metrics',
-          async () => {
-            // Arrange.
-            const theme = createTheme();
-            theme.backgroundImage = createBackgroundImage('https://foo.com');
-            theme.backgroundImage.imageSource =
-                NtpBackgroundImageSource.kWallpaperSearch;
-
-            // Act.
-            callbackRouterRemote.setTheme(theme);
-            await callbackRouterRemote.$.flushForTesting();
-
-            // Assert.
-            assertEquals(1, metrics.count('NewTabPage.Collections.IdOnLoad'));
-            assertEquals(
-                1, metrics.count('NewTabPage.Collections.IdOnLoad', ''));
-            assertEquals(1, metrics.count('NewTabPage.BackgroundImageSource'));
-            assertEquals(
-                1,
-                metrics.count(
-                    'NewTabPage.BackgroundImageSource',
-                    NtpBackgroundImageSource.kWallpaperSearch));
-          });
-
-      suite('background image load', () => {
-        suiteSetup(() => {
-          loadTimeData.overrideValues({backgroundImageUrl: 'https://foo.com'});
-        });
-
-        test('background image load time is logged', async () => {
-          // Assert.
-          assertEquals(
-              1, metrics.count('NewTabPage.Images.ShownTime.BackgroundImage'));
-          assertEquals(
-              1,
-              metrics.count(
-                  'NewTabPage.Images.ShownTime.BackgroundImage',
-                  Math.floor(
-                      backgroundImageLoadTime -
-                      window.performance.timeOrigin)));
-        });
-      });
     });
   });
 
-  suite('Promo', () => {
+  suite('promo', () => {
     test('can show promo with browser command', async () => {
       const promoBrowserCommandHandler = installMock(
           CommandHandlerRemote,
@@ -661,7 +557,7 @@ suite('NewTabPageAppTest', () => {
     });
   });
 
-  suite('Clicks', () => {
+  suite('clicks', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         modulesEnabled: true,
@@ -671,10 +567,10 @@ suite('NewTabPageAppTest', () => {
     ([
       ['#content', NtpElement.BACKGROUND],
       ['ntp-logo', NtpElement.LOGO],
-      ['cr-realbox', NtpElement.REALBOX],
+      ['ntp-realbox', NtpElement.REALBOX],
       ['cr-most-visited', NtpElement.MOST_VISITED],
       ['ntp-middle-slot-promo', NtpElement.MIDDLE_SLOT_PROMO],
-      ['#modules', NtpElement.MODULE],
+      ['ntp-modules', NtpElement.MODULE],
       ['#customizeButton', NtpElement.CUSTOMIZE_BUTTON],
     ] as Array<[string, NtpElement]>)
         .forEach(([selector, element]) => {
@@ -704,43 +600,10 @@ suite('NewTabPageAppTest', () => {
     });
   });
 
-  function modulesCommonTests(modulesElementTag: string) {
-    test('promo and modules coordinate', async () => {
-      // Arrange.
-      loadTimeData.overrideValues({navigationStartTime: 0.0});
-      windowProxy.setResultFor('now', 123.0);
-      const middleSlotPromo = $$(app, 'ntp-middle-slot-promo');
-      assertTrue(!!middleSlotPromo);
-      const modules = $$(app, modulesElementTag)!;
-      assertTrue(!!modules);
-
-      // Assert.
-      assertStyle(middleSlotPromo, 'display', 'none');
-      assertStyle(modules, 'display', 'none');
-
-      // Act.
-      middleSlotPromo.dispatchEvent(new Event('ntp-middle-slot-promo-loaded'));
-
-      // Assert.
-      assertStyle(middleSlotPromo, 'display', 'none');
-      assertStyle(modules, 'display', 'none');
-
-      // Act.
-      modules.dispatchEvent(new Event('modules-loaded'));
-
-      // Assert.
-      assertNotStyle(middleSlotPromo, 'display', 'none');
-      assertNotStyle(modules, 'display', 'none');
-      assertEquals(1, metrics.count('NewTabPage.Modules.ShownTime'));
-      assertEquals(1, metrics.count('NewTabPage.Modules.ShownTime', 123));
-    });
-  }
-
-  suite('Modules', () => {
+  suite('modules', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         modulesEnabled: true,
-        modulesRedesignedEnabled: false,
         wideModulesEnabled: false,
       });
     });
@@ -782,64 +645,38 @@ suite('NewTabPageAppTest', () => {
       assertStyle(modules, 'width', `${sampleMaxWidthPx}px`);
     });
 
-    modulesCommonTests('ntp-modules');
-  });
-
-  suite('V2Modules', () => {
-    suiteSetup(() => {
-      loadTimeData.overrideValues({
-        modulesEnabled: true,
-        modulesRedesignedEnabled: true,
-      });
-    });
-
-    test('container is hidden', async () => {
-      const modules = $$(app, 'ntp-modules-v2')!;
+    test('promo and modules coordinate', async () => {
+      // Arrange.
+      loadTimeData.overrideValues({navigationStartTime: 0.0});
+      windowProxy.setResultFor('now', 123.0);
+      const middleSlotPromo = $$(app, 'ntp-middle-slot-promo');
+      assertTrue(!!middleSlotPromo);
+      const modules = $$(app, 'ntp-modules');
       assertTrue(!!modules);
-      assertStyle(modules, 'display', 'none');
-    });
-
-    test('modules redesigned attribute applied', async () => {
-      assertTrue(app.hasAttribute('modules-redesigned-enabled_'));
-    });
-
-    test(`clicking records click`, () => {
-      // Act.
-      $$<HTMLElement>(app, 'ntp-modules-v2')!.click();
 
       // Assert.
-      assertEquals(1, metrics.count('NewTabPage.Click'));
-      assertEquals(1, metrics.count('NewTabPage.Click', NtpElement.MODULE));
-    });
-
-    modulesCommonTests('ntp-modules-v2');
-  });
-
-  suite('v2 modules', () => {
-    suiteSetup(() => {
-      loadTimeData.overrideValues({
-        modulesEnabled: true,
-        modulesRedesignedEnabled: true,
-      });
-    });
-
-    test('container is hidden', async () => {
-      const modules = $$(app, 'ntp-modules-v2')!;
-      assertTrue(!!modules);
+      assertStyle(middleSlotPromo, 'display', 'none');
       assertStyle(modules, 'display', 'none');
-    });
 
-    test(`clicking records click`, () => {
       // Act.
-      $$<HTMLElement>(app, 'ntp-modules-v2')!.click();
+      middleSlotPromo.dispatchEvent(new Event('ntp-middle-slot-promo-loaded'));
 
       // Assert.
-      assertEquals(1, metrics.count('NewTabPage.Click'));
-      assertEquals(1, metrics.count('NewTabPage.Click', NtpElement.MODULE));
+      assertStyle(middleSlotPromo, 'display', 'none');
+      assertStyle(modules, 'display', 'none');
+
+      // Act.
+      modules.dispatchEvent(new Event('modules-loaded'));
+
+      // Assert.
+      assertNotStyle(middleSlotPromo, 'display', 'none');
+      assertNotStyle(modules, 'display', 'none');
+      assertEquals(1, metrics.count('NewTabPage.Modules.ShownTime'));
+      assertEquals(1, metrics.count('NewTabPage.Modules.ShownTime', 123));
     });
   });
 
-  suite('CounterfactualModules', () => {
+  suite('counterfactual modules', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         modulesEnabled: false,
@@ -855,12 +692,12 @@ suite('NewTabPageAppTest', () => {
         {
           descriptor:
               new ModuleDescriptor('foo', () => Promise.resolve(fooElement)),
-          elements: [fooElement],
+          element: fooElement,
         },
         {
           descriptor:
               new ModuleDescriptor('bar', () => Promise.resolve(barElement)),
-          elements: [barElement],
+          element: barElement,
         },
       ]);
       await counterfactualLoad();
@@ -874,7 +711,7 @@ suite('NewTabPageAppTest', () => {
     });
   });
 
-  suite('CustomizeDialog', () => {
+  suite('customize dialog', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         customizeChromeEnabled: false,
@@ -948,7 +785,7 @@ suite('NewTabPageAppTest', () => {
       });
       test('modules can open customize dialog', async () => {
         // Act.
-        $$(app, '#modules')!.dispatchEvent(new Event('customize-module'));
+        $$(app, 'ntp-modules')!.dispatchEvent(new Event('customize-module'));
         app.$.customizeDialogIf.render();
 
         // Assert.
@@ -979,7 +816,7 @@ suite('NewTabPageAppTest', () => {
     });
   });
 
-  suite('CustomizeChromeSidePanel', () => {
+  suite('customize chrome side panel', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         customizeChromeEnabled: true,
@@ -987,7 +824,8 @@ suite('NewTabPageAppTest', () => {
     });
 
     test('customize chrome in product help might show on startup'), () => {
-      assertEquals(1, handler.getCallCount('maybeShowFeaturePromo'));
+      assertEquals(
+          1, handler.getCallCount('maybeShowCustomizeChromeFeaturePromo'));
     };
 
     test('clicking customize button opens side panel', () => {
@@ -1055,7 +893,7 @@ suite('NewTabPageAppTest', () => {
 
       test('modules can open side panel', async () => {
         // Act.
-        $$(app, '#modules')!.dispatchEvent(new Event('customize-module'));
+        $$(app, 'ntp-modules')!.dispatchEvent(new Event('customize-module'));
 
         // Assert.
         assertDeepEquals(
@@ -1090,7 +928,7 @@ suite('NewTabPageAppTest', () => {
     });
   });
 
-  suite('LensUploadDialog', () => {
+  suite('Lens upload dialog', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         realboxLensSearch: true,
@@ -1112,311 +950,17 @@ suite('NewTabPageAppTest', () => {
       await flushTasks();
 
       // Assert.
-      const dialog = app.shadowRoot!.querySelector('ntp-lens-upload-dialog');
-      assertTrue(!!dialog);
+      assertTrue(!!app.shadowRoot!.querySelector('ntp-lens-upload-dialog'));
       assertStyle($$(app, '#realbox')!, 'visibility', 'hidden');
 
       // Act.
-      dialog.closeDialog();
+      (app.shadowRoot!.querySelector(LensUploadDialogElement.is) as
+       LensUploadDialogElement)
+          .closeDialog();
       await flushTasks();
 
       // Assert.
       assertStyle($$(app, '#realbox')!, 'visibility', 'visible');
-    });
-  });
-
-  suite('WallpaperSearch', () => {
-    suite('ButtonDisabled', () => {
-      suiteSetup(() => {
-        loadTimeData.overrideValues({
-          wallpaperSearchButtonEnabled: false,
-        });
-      });
-
-      test('wallpaper search button is not shown if it is disabled', () => {
-        assertTrue(!!app.shadowRoot!.querySelector('#customizeButton'));
-        assertFalse(!!app.shadowRoot!.querySelector('#wallpaperSearchButton'));
-      });
-
-      test(
-          'setting background image styles customize chrome button',
-          async () => {
-            // Customize chrome button is expanded and its icon has a
-            // non-white color.
-            assertNotEquals(
-                32,
-                $$<HTMLElement>(app, '#customizeButtonContainer')!.offsetWidth);
-            assertNotStyle(
-                $$(app, '#customizeButton .customize-text')!, 'display',
-                'none');
-            assertNotStyle(
-                $$(app, '#customizeButton .customize-icon')!,
-                'background-color', 'rgb(255, 255, 255)');
-
-            const theme = createTheme(true);
-            theme.backgroundImage = createBackgroundImage('https://foo.com');
-            callbackRouterRemote.setTheme(theme);
-            await callbackRouterRemote.$.flushForTesting();
-
-            // Customize chrome button is collapsed and its icon is white.
-            assertEquals(
-                32,
-                $$<HTMLElement>(app, '#customizeButtonContainer')!.offsetWidth);
-            assertStyle(
-                $$(app, '#customizeButton .customize-icon')!,
-                'background-color', 'rgb(255, 255, 255)');
-            assertStyle(
-                $$(app, '#customizeButton .customize-text')!, 'display',
-                'none');
-          });
-    });
-
-    suite('ButtonEnabled', () => {
-      suiteSetup(() => {
-        loadTimeData.overrideValues({
-          wallpaperSearchButtonEnabled: true,
-          wallpaperSearchButtonAnimationEnabled: true,
-        });
-      });
-
-      test('wallpaper search button shows if it is enabled', () => {
-        assertTrue(!!app.shadowRoot!.querySelector('#customizeButton'));
-        assertTrue(!!app.shadowRoot!.querySelector('#wallpaperSearchButton'));
-      });
-
-      test('button has animation if the flag is enabled', () => {
-        assertNotStyle(
-            $$(app, '#wallpaperSearchButtonContainer')!, 'animation-name',
-            'none');
-        assertNotStyle(
-            $$(app, '#wallpaperSearchButton .customize-icon')!,
-            'animation-name', 'none');
-        assertNotStyle(
-            $$(app, '#wallpaperSearchButton .customize-text')!,
-            'animation-name', 'none');
-      });
-
-      ([
-        ['#customizeButton', NtpElement.CUSTOMIZE_BUTTON],
-        ['#wallpaperSearchButton', NtpElement.WALLPAPER_SEARCH_BUTTON],
-      ] as Array<[string, NtpElement]>)
-          .forEach(([selector, element]) => {
-            test(`clicking #wallpaperSearchButton records click`, () => {
-              $$<HTMLElement>(app, selector)!.click();
-
-              assertEquals(1, metrics.count('NewTabPage.Click'));
-              assertEquals(1, metrics.count('NewTabPage.Click', element));
-            });
-          });
-
-      test('clicking wallpaper search button opens side panel', () => {
-        $$<HTMLElement>(app, '#wallpaperSearchButton')!.click();
-
-        assertDeepEquals(
-            [true, CustomizeChromeSection.kWallpaperSearch],
-            handler.getArgs('setCustomizeChromeSidePanelVisible')[0]);
-        assertEquals(
-            1,
-            metrics.count(
-                'NewTabPage.CustomizeChromeOpened',
-                NtpCustomizeChromeEntryPoint.WALLPAPER_SEARCH_BUTTON));
-        assertEquals(
-            1, handler.getCallCount('incrementCustomizeChromeButtonOpenCount'));
-      });
-
-      test(
-          'wallpaper search button can open wallpaper search ' +
-              'and hide side panel',
-          async () => {
-            // Open side panel to non-wallpaper search page.
-            callbackRouterRemote.setCustomizeChromeSidePanelVisibility(true);
-            assertEquals(
-                0,
-                metrics.count(
-                    'NewTabPage.CustomizeChromeOpened',
-                    NtpCustomizeChromeEntryPoint.WALLPAPER_SEARCH_BUTTON));
-            await callbackRouterRemote.$.flushForTesting();
-
-            // Clicking the wallpaper search button should navigate the side
-            // panel to the wallpaper search page.
-            $$<HTMLElement>(app, '#wallpaperSearchButton')!.click();
-
-            assertDeepEquals(
-                [true, CustomizeChromeSection.kWallpaperSearch],
-                handler.getArgs('setCustomizeChromeSidePanelVisible')[0]);
-
-            // Clicking the wallpaper search button, when the wallpaper search
-            // page is opened, should close the side panel.
-            $$<HTMLElement>(app, '#wallpaperSearchButton')!.click();
-
-            assertDeepEquals(
-                [false, CustomizeChromeSection.kUnspecified],
-                handler.getArgs('setCustomizeChromeSidePanelVisible')[1]);
-          });
-
-      test('wallpaper search button is accessible', async () => {
-        // Open side panel to non-wallpaper search page.
-        callbackRouterRemote.setCustomizeChromeSidePanelVisibility(true);
-        await callbackRouterRemote.$.flushForTesting();
-
-        // Only customize chrome button should be labeled as pressed.
-        assertEquals(
-            'false',
-            $$<HTMLElement>(
-                app, '#wallpaperSearchButton')!.getAttribute('aria-pressed'));
-        assertEquals(
-            'true',
-            $$<HTMLElement>(
-                app, '#customizeButton')!.getAttribute('aria-pressed'));
-
-        // Open wallpaper search page.
-        $$<HTMLElement>(app, '#wallpaperSearchButton')!.click();
-
-        // Both buttons should be labeled as pressed.
-        assertEquals(
-            'true',
-            $$<HTMLElement>(
-                app, '#wallpaperSearchButton')!.getAttribute('aria-pressed'));
-        assertEquals(
-            'true',
-            $$<HTMLElement>(
-                app, '#customizeButton')!.getAttribute('aria-pressed'));
-
-        // Close the side panel.
-        callbackRouterRemote.setCustomizeChromeSidePanelVisibility(false);
-        await callbackRouterRemote.$.flushForTesting();
-
-        // Both buttons should not be labeled as pressed.
-        assertEquals(
-            'false',
-            $$<HTMLElement>(
-                app, '#wallpaperSearchButton')!.getAttribute('aria-pressed'));
-        assertEquals(
-            'false',
-            $$<HTMLElement>(
-                app, '#customizeButton')!.getAttribute('aria-pressed'));
-      });
-
-      test('clicking wallpaper search button collapses/expands it', () => {
-        assertNotEquals(
-            32,
-            $$<HTMLElement>(
-                app, '#wallpaperSearchButtonContainer')!.offsetWidth);
-        assertNotStyle(
-            $$(app, '#wallpaperSearchButton .customize-text')!, 'display',
-            'none');
-
-        $$<HTMLElement>(app, '#wallpaperSearchButton')!.click();
-
-        assertEquals(
-            32,
-            $$<HTMLElement>(
-                app, '#wallpaperSearchButtonContainer')!.offsetWidth);
-        assertStyle(
-            $$(app, '#wallpaperSearchButton .customize-text')!, 'display',
-            'none');
-      });
-
-      test(
-          'setting background styles both customize chrome buttons',
-          async () => {
-            // Both buttons' icons should have a non-white color.
-            assertNotStyle(
-                $$<HTMLElement>(app, '#wallpaperSearchButton .customize-icon')!,
-                'background-color', 'rgb(255, 255, 255)');
-            assertNotStyle(
-                $$<HTMLElement>(app, '#customizeButton .customize-icon')!,
-                'background-color', 'rgb(255, 255, 255)');
-            // Only customize chrome button should be collapsed.
-            assertNotStyle(
-                $$(app, '#wallpaperSearchButton .customize-text')!, 'display',
-                'none');
-            assertStyle(
-                $$(app, '#customizeButton .customize-text')!, 'display',
-                'none');
-            assertNotEquals(
-                32,
-                $$<HTMLElement>(
-                    app, '#wallpaperSearchButtonContainer')!.offsetWidth);
-            assertEquals(
-                32,
-                $$<HTMLElement>(app, '#customizeButtonContainer')!.offsetWidth);
-
-            // Create and set theme.
-            const theme = createTheme(true);
-            theme.backgroundImage = createBackgroundImage('https://foo.com');
-            callbackRouterRemote.setTheme(theme);
-            await callbackRouterRemote.$.flushForTesting();
-
-            // Both buttons' icons should be white.
-            assertStyle(
-                $$(app, '#wallpaperSearchButton .customize-icon')!,
-                'background-color', 'rgb(255, 255, 255)');
-            assertStyle(
-                $$(app, '#customizeButton .customize-icon')!,
-                'background-color', 'rgb(255, 255, 255)');
-            // Only customize chrome button should be collapsed.
-            assertNotStyle(
-                $$(app, '#wallpaperSearchButton .customize-text')!, 'display',
-                'none');
-            assertStyle(
-                $$(app, '#customizeButton .customize-text')!, 'display',
-                'none');
-            assertNotEquals(
-                32,
-                $$<HTMLElement>(
-                    app, '#wallpaperSearchButtonContainer')!.offsetWidth);
-            assertEquals(
-                32,
-                $$<HTMLElement>(app, '#customizeButtonContainer')!.offsetWidth);
-          });
-
-      test(
-          'button hides in accordance with callback router', async () => {
-            // Both buttons shown.
-            assertNotStyle(
-                $$(app, '#customizeButtonContainer')!, 'display', 'none');
-            assertNotStyle(
-                $$(app, '#wallpaperSearchButtonContainer')!, 'display', 'none');
-
-            callbackRouterRemote.setWallpaperSearchButtonVisibility(false);
-            await callbackRouterRemote.$.flushForTesting();
-
-            // Wallpaper search button hides.
-            assertNotStyle(
-                $$(app, '#customizeButtonContainer')!, 'display', 'none');
-            assertStyle(
-                $$(app, '#wallpaperSearchButtonContainer')!, 'display', 'none');
-
-            callbackRouterRemote.setWallpaperSearchButtonVisibility(true);
-            await callbackRouterRemote.$.flushForTesting();
-
-            // Wallpaper search button remains hidden.
-            assertNotStyle(
-                $$(app, '#customizeButtonContainer')!, 'display', 'none');
-            assertStyle(
-                $$(app, '#wallpaperSearchButtonContainer')!, 'display', 'none');
-          });
-    });
-
-    suite('AnimationDisabled', () => {
-      suiteSetup(() => {
-        loadTimeData.overrideValues({
-          wallpaperSearchButtonAnimationEnabled: false,
-        });
-      });
-
-      test('button has no animation if the flag is disabled', () => {
-        assertStyle(
-            $$(app, '#wallpaperSearchButtonContainer')!, 'animation-name',
-            'none');
-        assertStyle(
-            $$(app, '#wallpaperSearchButton .customize-icon')!,
-            'animation-name', 'none');
-        assertStyle(
-            $$(app, '#wallpaperSearchButton .customize-text')!,
-            'animation-name', 'none');
-      });
     });
   });
 });

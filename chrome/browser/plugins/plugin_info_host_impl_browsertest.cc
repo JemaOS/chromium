@@ -18,7 +18,6 @@
 #include "base/test/gmock_move_support.h"
 #include "base/test/mock_callback.h"
 #include "build/branding_buildflags.h"
-#include "chrome/browser/chrome_browser_main_extra_parts_nacl_deprecation.h"
 #include "chrome/browser/plugins/plugin_prefs.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -45,7 +44,8 @@
 #endif  // BUILDFLAG(ENABLE_NACL)
 
 #if BUILDFLAG(ENABLE_PDF)
-#include "components/pdf/common/constants.h"
+#include "chrome/common/pdf_util.h"
+#include "components/pdf/common/internal_plugin_helpers.h"
 #endif  // BUILDFLAG(ENABLE_PDF)
 
 namespace {
@@ -66,8 +66,6 @@ using ::testing::SizeIs;
 
 class PluginInfoHostImplTest : public InProcessBrowserTest {
  public:
-  PluginInfoHostImplTest() { feature_list_.InitAndEnableFeature(kNaclAllow); }
-
   void SetUpOnMainThread() override {
     int active_render_process_id = browser()
                                        ->tab_strip_model()
@@ -106,7 +104,6 @@ class PluginInfoHostImplTest : public InProcessBrowserTest {
   }
 
   std::unique_ptr<PluginInfoHostImpl> plugin_info_host_impl_;
-  base::test::ScopedFeatureList feature_list_;
 };
 
 #if BUILDFLAG(ENABLE_PDF)
@@ -296,11 +293,11 @@ IN_PROC_BROWSER_TEST_P(PluginInfoHostImplBidiTest,
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
   PluginInfoPtr plugin_info =
-      GetPluginInfo(GURL("fake.pdf"), url::Origin(), pdf::kPDFMimeType);
+      GetPluginInfo(GURL("fake.pdf"), url::Origin(), kPDFMimeType);
   ASSERT_TRUE(plugin_info);
 
   EXPECT_EQ(PluginStatus::kAllowed, plugin_info->status);
-  EXPECT_EQ(pdf::kPDFMimeType, plugin_info->actual_mime_type);
+  EXPECT_EQ(kPDFMimeType, plugin_info->actual_mime_type);
 
   // Group ID and name defined by `PluginInfoHostImpl`.
   EXPECT_EQ(kGroupId, plugin_info->group_identifier);
@@ -330,7 +327,7 @@ IN_PROC_BROWSER_TEST_P(PluginInfoHostImplBidiTest,
   ASSERT_THAT(plugin_info->plugin.mime_types, SizeIs(1));
 
   WebPluginMimeType mime_type = plugin_info->plugin.mime_types[0];
-  EXPECT_EQ(pdf::kPDFMimeType, mime_type.mime_type);
+  EXPECT_EQ(kPDFMimeType, mime_type.mime_type);
   EXPECT_THAT(mime_type.file_extensions, ElementsAre("pdf"));
   EXPECT_EQ(u"", mime_type.description);
   EXPECT_THAT(mime_type.additional_params, IsEmpty());
@@ -341,12 +338,12 @@ IN_PROC_BROWSER_TEST_P(PluginInfoHostImplBidiTest,
   SetAlwaysOpenPdfExternally();
 
   PluginInfoPtr plugin_info =
-      GetPluginInfo(GURL("fake.pdf"), url::Origin(), pdf::kPDFMimeType);
+      GetPluginInfo(GURL("fake.pdf"), url::Origin(), kPDFMimeType);
   ASSERT_TRUE(plugin_info);
 
   // PDF viewer extension is disabled by PDF content setting.
   EXPECT_EQ(PluginStatus::kDisabled, plugin_info->status);
-  EXPECT_EQ(pdf::kPDFMimeType, plugin_info->actual_mime_type);
+  EXPECT_EQ(kPDFMimeType, plugin_info->actual_mime_type);
 }
 
 IN_PROC_BROWSER_TEST_F(PluginInfoHostImplTest,

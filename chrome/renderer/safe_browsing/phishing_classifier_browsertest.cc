@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -20,8 +19,9 @@
 #include "chrome/test/base/chrome_render_view_test.h"
 #include "components/safe_browsing/buildflags.h"
 #include "components/safe_browsing/content/renderer/phishing_classifier/features.h"
+#include "components/safe_browsing/content/renderer/phishing_classifier/flatbuffer_scorer.h"
 #include "components/safe_browsing/content/renderer/phishing_classifier/murmurhash3_util.h"
-#include "components/safe_browsing/content/renderer/phishing_classifier/scorer.h"
+#include "components/safe_browsing/content/renderer/phishing_classifier/protobuf_scorer.h"
 #include "components/safe_browsing/core/common/fbs/client_model_generated.h"
 #include "components/safe_browsing/core/common/proto/client_model.pb.h"
 #include "components/safe_browsing/core/common/proto/csd.pb.h"
@@ -45,7 +45,7 @@ class TestChromeContentRendererClient : public ChromeContentRendererClient {
   ~TestChromeContentRendererClient() override {}
   // Since visited_link_reader_ in ChromeContentRenderClient never get
   // initiated, overrides VisitedLinkedHash() function to prevent crashing.
-  uint64_t VisitedLinkHash(std::string_view canonical_url) override {
+  uint64_t VisitedLinkHash(const char* canonical_url, size_t length) override {
     return 0;
   }
 };
@@ -63,13 +63,19 @@ class PhishingClassifierTest
 
   void SetUp() override {
     ChromeRenderViewTest::SetUp();
-    PrepareFlatModel();
+    bool is_protobuf, use_tflite;
+    std::tie(is_protobuf, use_tflite) = GetParam();
+    if (is_protobuf) {
+      PrepareModel(use_tflite);
+    } else {
+      PrepareFlatModel(use_tflite);
+    }
     SetUpClassifier();
 
     base::DiscardableMemoryAllocator::SetInstance(&test_allocator_);
   }
 
-  void PrepareFlatModel() {
+  void PrepareFlatModel(bool use_tflite) {
     flatbuffers::FlatBufferBuilder builder(1024);
     std::vector<flatbuffers::Offset<flat::Hash>> hashes;
     // Make sure this is sorted.
@@ -129,36 +135,39 @@ class PhishingClassifierTest
 
     std::vector<flatbuffers::Offset<flat::TfLiteModelMetadata_::Threshold>>
         thresholds_vector;
-    thresholds_vector = {flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "502fd246eb6fad3eae0387c54e4ebe74", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "7c4065b088444b37d273872b771e6940", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "712036bd72bf185a2a4f88de9141d02d", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "9e9c15bfa7cb3f8699e2271116a4175c", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "6c2cb3f559e7a03f37dd873fc007dc65", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "1cbeb74661a5e7e05c993f2524781611", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "989790016b6adca9d46b9c8ec6b8fe3a", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "501067590331ca2d243c669e6084c47e", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "40aed7e33c100058e54c73af3ed49524", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "62f53ea23c7ad2590db711235a45fd38", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "ee6fb9baa44f192bc3c53d8d3c6f7a3d", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "ea54b0830d871286e2b4023bbb431710", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "25645a55b844f970337218ea8f1f26b7", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "c9a8640be09f97f170f1a2708058c48f", 2.0),
-                         flat::TfLiteModelMetadata_::CreateThresholdDirect(
-                             builder, "953255ea26aa8578d06593ff33e99298", 2.0)};
+    if (use_tflite) {
+      thresholds_vector = {
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "502fd246eb6fad3eae0387c54e4ebe74", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "7c4065b088444b37d273872b771e6940", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "712036bd72bf185a2a4f88de9141d02d", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "9e9c15bfa7cb3f8699e2271116a4175c", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "6c2cb3f559e7a03f37dd873fc007dc65", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "1cbeb74661a5e7e05c993f2524781611", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "989790016b6adca9d46b9c8ec6b8fe3a", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "501067590331ca2d243c669e6084c47e", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "40aed7e33c100058e54c73af3ed49524", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "62f53ea23c7ad2590db711235a45fd38", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "ee6fb9baa44f192bc3c53d8d3c6f7a3d", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "ea54b0830d871286e2b4023bbb431710", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "25645a55b844f970337218ea8f1f26b7", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "c9a8640be09f97f170f1a2708058c48f", 2.0),
+          flat::TfLiteModelMetadata_::CreateThresholdDirect(
+              builder, "953255ea26aa8578d06593ff33e99298", 2.0)};
+    }
     flatbuffers::Offset<flat::TfLiteModelMetadata> tflite_metadata_flat =
         flat::CreateTfLiteModelMetadataDirect(builder, 0, &thresholds_vector,
                                               48, 48);
@@ -185,12 +194,89 @@ class PhishingClassifierTest
     memcpy(mapped_region_.mapping.memory(), model_str.data(),
            model_str.length());
     base::File tflite_model;
-    base::FilePath tflite_path;
-    GetTfliteModelPath(&tflite_path),
-        tflite_model = base::File(
-            tflite_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
-    ScorerStorage::GetInstance()->SetScorer(Scorer::Create(
+    if (use_tflite) {
+      base::FilePath tflite_path;
+      GetTfliteModelPath(&tflite_path),
+          tflite_model = base::File(
+              tflite_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+    }
+    ScorerStorage::GetInstance()->SetScorer(FlatBufferModelScorer::Create(
         mapped_region_.region.Duplicate(), std::move(tflite_model)));
+  }
+
+  void PrepareModel(bool use_tflite) {
+    // Construct a model to test with.  We include one feature from each of
+    // the feature extractors, which allows us to verify that they all ran.
+    ClientSideModel model;
+
+    model.add_hashes(crypto::SHA256HashString(url_tld_token_net_));
+    model.add_hashes(crypto::SHA256HashString(page_link_domain_phishing_));
+    model.add_hashes(crypto::SHA256HashString(page_term_login_));
+    model.add_hashes(crypto::SHA256HashString("login"));
+    model.add_hashes(crypto::SHA256HashString(features::kUrlTldToken +
+                                              std::string("net")));
+    model.add_hashes(crypto::SHA256HashString(features::kPageLinkDomain +
+                                              std::string("phishing.com")));
+    model.add_hashes(crypto::SHA256HashString(features::kPageTerm +
+                                              std::string("login")));
+    model.add_hashes(crypto::SHA256HashString("login"));
+
+    // Add a default rule with a non-phishy weight.
+    ClientSideModel::Rule* rule = model.add_rule();
+    rule->set_weight(-1.0);
+
+    // To give a phishy score, the total weight needs to be >= 0
+    // (0.5 when converted to a probability).  This will only happen
+    // if all of the listed features are present.
+    rule = model.add_rule();
+    rule->add_feature(0);
+    rule->add_feature(1);
+    rule->add_feature(2);
+    rule->set_weight(1.0);
+
+    model.add_page_term(3);
+    model.set_murmur_hash_seed(2777808611U);
+    model.add_page_word(MurmurHash3String("login", model.murmur_hash_seed()));
+    model.set_max_words_per_term(1);
+    model.set_max_shingles_per_page(100);
+    model.set_shingle_size(3);
+    model.set_dom_model_version(123);
+
+    base::File tflite_model;
+    if (use_tflite) {
+      base::FilePath tflite_path;
+      GetTfliteModelPath(&tflite_path),
+          tflite_model = base::File(
+              tflite_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+
+      model.mutable_tflite_metadata()->set_input_width(48);
+      model.mutable_tflite_metadata()->set_input_height(48);
+
+      std::vector<std::pair<std::string, double>> thresholds{
+          {"502fd246eb6fad3eae0387c54e4ebe74", 2.0},
+          {"7c4065b088444b37d273872b771e6940", 2.0},
+          {"712036bd72bf185a2a4f88de9141d02d", 2.0},
+          {"9e9c15bfa7cb3f8699e2271116a4175c", 2.0},
+          {"6c2cb3f559e7a03f37dd873fc007dc65", 2.0},
+          {"1cbeb74661a5e7e05c993f2524781611", 2.0},
+          {"989790016b6adca9d46b9c8ec6b8fe3a", 2.0},
+          {"501067590331ca2d243c669e6084c47e", 2.0},
+          {"40aed7e33c100058e54c73af3ed49524", 2.0},
+          {"62f53ea23c7ad2590db711235a45fd38", 2.0},
+          {"ee6fb9baa44f192bc3c53d8d3c6f7a3d", 2.0},
+          {"ea54b0830d871286e2b4023bbb431710", 2.0},
+          {"25645a55b844f970337218ea8f1f26b7", 2.0},
+          {"c9a8640be09f97f170f1a2708058c48f", 2.0},
+          {"953255ea26aa8578d06593ff33e99298", 2.0}};
+      for (const auto& label_and_threshold : thresholds) {
+        TfLiteModelMetadata::Threshold* threshold =
+            model.mutable_tflite_metadata()->add_thresholds();
+        threshold->set_label(label_and_threshold.first);
+        threshold->set_threshold(label_and_threshold.second);
+      }
+    }
+    ScorerStorage::GetInstance()->SetScorer(ProtobufModelScorer::Create(
+        model.SerializeAsString(), std::move(tflite_model)));
   }
 
   void GetTfliteModelPath(base::FilePath* path) {
@@ -220,9 +306,7 @@ class PhishingClassifierTest
   }
 
   // Completion callback for classification.
-  void ClassificationFinished(
-      const ClientPhishingRequest& verdict,
-      PhishingClassifier::Result phishing_classifier_result) {
+  void ClassificationFinished(const ClientPhishingRequest& verdict) {
     verdict_ = verdict;
     for (int i = 0; i < verdict.feature_map_size(); ++i) {
       feature_map_.AddRealFeature(verdict.feature_map(i).name(),
@@ -260,7 +344,7 @@ class PhishingClassifierTest
   base::TestDiscardableMemoryAllocator test_allocator_;
 };
 
-TEST_F(PhishingClassifierTest, TestClassificationOfPhishingDotComHttp) {
+TEST_P(PhishingClassifierTest, TestClassificationOfPhishingDotComHttp) {
   LoadHtml(
       GURL("http://host.net"),
       "<html><body><a href=\"http://phishing.com/\">login</a></body></html>");
@@ -276,7 +360,7 @@ TEST_F(PhishingClassifierTest, TestClassificationOfPhishingDotComHttp) {
   EXPECT_TRUE(verdict_.is_phishing());
 }
 
-TEST_F(PhishingClassifierTest, TestClassificationOfPhishingDotComHttps) {
+TEST_P(PhishingClassifierTest, TestClassificationOfPhishingDotComHttps) {
   // Host the target page on HTTPS.
   LoadHtml(
       GURL("https://host.net"),
@@ -293,7 +377,7 @@ TEST_F(PhishingClassifierTest, TestClassificationOfPhishingDotComHttps) {
   EXPECT_TRUE(verdict_.is_phishing());
 }
 
-TEST_F(PhishingClassifierTest, TestClassificationOfSafeDotComHttp) {
+TEST_P(PhishingClassifierTest, TestClassificationOfSafeDotComHttp) {
   // Change the link domain to something non-phishy.
   LoadHtml(GURL("http://host.net"),
            "<html><body><a href=\"http://safe.com/\">login</a></body></html>");
@@ -309,7 +393,7 @@ TEST_F(PhishingClassifierTest, TestClassificationOfSafeDotComHttp) {
   EXPECT_FALSE(verdict_.is_phishing());
 }
 
-TEST_F(PhishingClassifierTest, TestClassificationOfSafeDotComHttps) {
+TEST_P(PhishingClassifierTest, TestClassificationOfSafeDotComHttps) {
   // Host target page in HTTPS and change the link domain to something
   // non-phishy.
   LoadHtml(GURL("https://host.net"),
@@ -326,58 +410,56 @@ TEST_F(PhishingClassifierTest, TestClassificationOfSafeDotComHttps) {
   EXPECT_FALSE(verdict_.is_phishing());
 }
 
-TEST_F(PhishingClassifierTest, TestClassificationWhenNoTld) {
+TEST_P(PhishingClassifierTest, TestClassificationWhenNoTld) {
   // Extraction should fail for this case since there is no TLD.
   LoadHtml(GURL("http://localhost"), "<html><body>content</body></html>");
   RunPhishingClassifier(&page_text_);
 
   EXPECT_EQ(0U, feature_map_.features().size());
-  EXPECT_EQ(PhishingClassifier::kClassifierFailed,
-            static_cast<int>(verdict_.client_score()));
+  EXPECT_EQ(PhishingClassifier::kInvalidScore, verdict_.client_score());
   EXPECT_FALSE(verdict_.is_phishing());
 }
 
-TEST_F(PhishingClassifierTest, TestClassificationWhenSchemeNotSupported) {
+TEST_P(PhishingClassifierTest, TestClassificationWhenSchemeNotSupported) {
   // Extraction should also fail for this case because the URL is not http or
   // https.
   LoadHtml(GURL("file://host.net"), "<html><body>content</body></html>");
   RunPhishingClassifier(&page_text_);
 
   EXPECT_EQ(0U, feature_map_.features().size());
-  EXPECT_EQ(PhishingClassifier::kClassifierFailed,
-            static_cast<int>(verdict_.client_score()));
+  EXPECT_EQ(PhishingClassifier::kInvalidScore, verdict_.client_score());
   EXPECT_FALSE(verdict_.is_phishing());
 }
 
-TEST_F(PhishingClassifierTest, DisableDetection) {
+TEST_P(PhishingClassifierTest, DisableDetection) {
   EXPECT_TRUE(classifier_->is_ready());
   // Set a NULL scorer, which turns detection back off.
   ScorerStorage::GetInstance()->SetScorer(nullptr);
   EXPECT_FALSE(classifier_->is_ready());
 }
 
-TEST_F(PhishingClassifierTest, TestPhishingPagesAreDomMatches) {
+TEST_P(PhishingClassifierTest, TestPhishingPagesAreDomMatches) {
   LoadHtml(
       GURL("http://host.net"),
       "<html><body><a href=\"http://phishing.com/\">login</a></body></html>");
   RunPhishingClassifier(&page_text_);
 
-  EXPECT_NE(PhishingClassifier::kClassifierFailed, verdict_.client_score());
+  EXPECT_NE(PhishingClassifier::kInvalidScore, verdict_.client_score());
   EXPECT_TRUE(verdict_.is_phishing());
   EXPECT_TRUE(verdict_.is_dom_match());
 }
 
-TEST_F(PhishingClassifierTest, TestSafePagesAreNotDomMatches) {
+TEST_P(PhishingClassifierTest, TestSafePagesAreNotDomMatches) {
   LoadHtml(GURL("http://host.net"),
            "<html><body><a href=\"http://safe.com/\">login</a></body></html>");
   RunPhishingClassifier(&page_text_);
 
-  EXPECT_NE(PhishingClassifier::kClassifierFailed, verdict_.client_score());
+  EXPECT_NE(PhishingClassifier::kInvalidScore, verdict_.client_score());
   EXPECT_FALSE(verdict_.is_phishing());
   EXPECT_FALSE(verdict_.is_dom_match());
 }
 
-TEST_F(PhishingClassifierTest, TestDomModelVersionPopulated) {
+TEST_P(PhishingClassifierTest, TestDomModelVersionPopulated) {
   LoadHtml(
       GURL("http://host.net"),
       "<html><body><a href=\"http://phishing.com/\">login</a></body></html>");
@@ -385,6 +467,11 @@ TEST_F(PhishingClassifierTest, TestDomModelVersionPopulated) {
 
   EXPECT_EQ(verdict_.dom_model_version(), 123);
 }
+
+INSTANTIATE_TEST_SUITE_P(CSDModelTypes,
+                         PhishingClassifierTest,
+                         ::testing::Combine(::testing::Bool(),
+                                            ::testing::Bool()));
 
 // TODO(jialiul): Add test to verify that classification only starts on GET
 // method. It seems there is no easy way to simulate a HTTP POST in

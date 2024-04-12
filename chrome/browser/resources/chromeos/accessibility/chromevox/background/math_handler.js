@@ -5,17 +5,15 @@
 /**
  * @fileoverview Handles math output and exploration.
  */
-import {AutomationPredicate} from '/common/automation_predicate.js';
-import {CursorRange} from '/common/cursors/range.js';
-
+import {AutomationPredicate} from '../../common/automation_predicate.js';
+import {CursorRange} from '../../common/cursors/range.js';
 import {Msgs} from '../common/msgs.js';
 import {QueueMode} from '../common/tts_types.js';
 
 import {ChromeVox} from './chromevox.js';
 
 /**
- * Handles specialized code to navigate, announce, and interact with math
- * content (encoded in MathML).
+ * Initializes math for output and exploration.
  */
 export class MathHandler {
   /**

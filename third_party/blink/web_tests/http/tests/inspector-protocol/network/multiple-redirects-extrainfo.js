@@ -1,10 +1,7 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   let {page, session, dp} = await testRunner.startBlank(
     'Verifies that ExtraInfo events are emitted for each redirect in a chain in subsequent requests.\n');
 
-  // Clear the cache to prevent interactions with other tests that were running
-  // on the same content shell.
-  await dp.Network.clearBrowserCache();
   await dp.Network.enable();
 
   const requests = new Map();

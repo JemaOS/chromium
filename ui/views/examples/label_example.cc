@@ -10,8 +10,6 @@
 #include "base/memory/ptr_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/vector2d.h"
 #include "ui/views/background.h"
@@ -39,8 +37,6 @@ const char* kAlignments[] = {"Left", "Center", "Right", "Head"};
 
 // A Label with a clamped preferred width to demonstrate eliding or wrapping.
 class ExamplePreferredSizeLabel : public Label {
-  METADATA_HEADER(ExamplePreferredSizeLabel, Label)
-
  public:
   ExamplePreferredSizeLabel() {
     SetBorder(
@@ -54,17 +50,12 @@ class ExamplePreferredSizeLabel : public Label {
   ~ExamplePreferredSizeLabel() override = default;
 
   // Label:
-  gfx::Size CalculatePreferredSize(
-      const SizeBounds& available_size) const override {
-    return gfx::Size(50,
-                     Label::CalculatePreferredSize(available_size).height());
+  gfx::Size CalculatePreferredSize() const override {
+    return gfx::Size(50, Label::CalculatePreferredSize().height());
   }
 
   static const char* kElideBehaviors[];
 };
-
-BEGIN_METADATA(ExamplePreferredSizeLabel)
-END_METADATA
 
 // static
 const char* ExamplePreferredSizeLabel::kElideBehaviors[] = {

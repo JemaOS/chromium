@@ -14,10 +14,9 @@
 #include "base/notreached.h"
 #include "base/syslog_logging.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/types/cxx23_to_underlying.h"
 #include "chrome/browser/ash/app_mode/kiosk_app_launch_error.h"
 #include "chrome/browser/ash/app_mode/kiosk_app_launcher.h"
-#include "chrome/browser/ash/app_mode/kiosk_chrome_app_manager.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
 #include "chrome/browser/ash/crosapi/browser_manager.h"
 #include "chrome/browser/ash/crosapi/browser_manager_observer.h"
 #include "chrome/browser/ash/crosapi/browser_util.h"
@@ -29,9 +28,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chromeos/crosapi/mojom/chrome_app_kiosk_service.mojom.h"
 #include "components/crx_file/id_util.h"
-
-using chromeos::ChromeKioskAppInstaller;
-using chromeos::ChromeKioskAppLauncher;
 
 namespace ash {
 
@@ -50,6 +46,10 @@ const net::BackoffEntry::Policy kKioskLaunchExtensionBackoffPolicy = {
     .always_use_initial_delay = false,
 };
 
+crosapi::BrowserManager* browser_manager() {
+  return crosapi::BrowserManager::Get();
+}
+
 crosapi::ChromeAppKioskServiceAsh* crosapi_chrome_app_kiosk_service() {
   return crosapi::CrosapiManager::Get()
       ->crosapi_ash()
@@ -57,6 +57,47 @@ crosapi::ChromeAppKioskServiceAsh* crosapi_chrome_app_kiosk_service() {
 }
 
 }  // namespace
+
+class LacrosLauncher : public crosapi::BrowserManagerObserver {
+ public:
+  LacrosLauncher() = default;
+  LacrosLauncher(const LacrosLauncher&) = delete;
+  LacrosLauncher& operator=(const LacrosLauncher&) = delete;
+  ~LacrosLauncher() override = default;
+
+  void Start(base::OnceClosure callback) {
+    if (browser_manager()->IsRunning()) {
+      // Nothing to do if lacros is already running
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, std::move(callback));
+      return;
+    }
+
+    callback_ = std::move(callback);
+    browser_manager_observation_.Observe(browser_manager());
+    if (!browser_manager()->IsInitialized()) {
+      browser_manager()->InitializeAndStartIfNeeded();
+    }
+  }
+
+ private:
+  // crosapi::BrowserManagerObserver
+  void OnStateChanged() override {
+    if (crosapi::BrowserManager::Get()->IsRunning()) {
+      browser_manager_observation_.Reset();
+      std::move(callback_).Run();
+    }
+  }
+
+  base::OnceClosure callback_;
+
+  // Observe the launch state of `BrowserManager`, and launch the
+  // lacros-chrome when it is ready. This object is only used when Lacros is
+  // enabled.
+  base::ScopedObservation<crosapi::BrowserManager,
+                          crosapi::BrowserManagerObserver>
+      browser_manager_observation_{this};
+};
 
 StartupAppLauncher::StartupAppLauncher(
     Profile* profile,
@@ -67,19 +108,18 @@ StartupAppLauncher::StartupAppLauncher(
       profile_(profile),
       app_id_(app_id),
       should_skip_install_(should_skip_install) {
-  CHECK(profile_);
+  DCHECK(profile_);
   DCHECK(crx_file::id_util::IdIsValid(app_id_));
 
   // Reduce extension downloader retry backoff to avoid waiting on splash screen
   // for a long time.
-  KioskChromeAppManager::Get()->SetExtensionDownloaderBackoffPolicy(
+  KioskAppManager::Get()->SetExtensionDownloaderBackoffPolicy(
       kKioskLaunchExtensionBackoffPolicy);
 }
 
 StartupAppLauncher::~StartupAppLauncher() {
   // Restore to default extension downloader backoff policy.
-  KioskChromeAppManager::Get()->SetExtensionDownloaderBackoffPolicy(
-      std::nullopt);
+  KioskAppManager::Get()->SetExtensionDownloaderBackoffPolicy(absl::nullopt);
 }
 
 void StartupAppLauncher::AddObserver(KioskAppLauncher::Observer* observer) {
@@ -91,12 +131,24 @@ void StartupAppLauncher::RemoveObserver(KioskAppLauncher::Observer* observer) {
 }
 
 void StartupAppLauncher::Initialize() {
-  CHECK(state_ != LaunchState::kReadyToLaunch &&
-        state_ != LaunchState::kWaitingForWindow &&
-        state_ != LaunchState::kLaunchSucceeded);
+  DCHECK(state_ != LaunchState::kReadyToLaunch &&
+         state_ != LaunchState::kWaitingForWindow &&
+         state_ != LaunchState::kLaunchSucceeded);
 
   if (should_skip_install_) {
-    OnInstallSuccess();
+    if (crosapi::browser_util::IsLacrosEnabledInChromeKioskSession()) {
+      LaunchLacros(base::BindOnce(&StartupAppLauncher::OnInstallSuccess,
+                                  weak_ptr_factory_.GetWeakPtr()));
+    } else {
+      OnInstallSuccess();
+    }
+    return;
+  }
+
+  // Wait until user has configured the network. We will come back into this
+  // class through ContinueWithNetworkReady.
+  if (delegate_->IsShowingNetworkConfigScreen()) {
+    state_ = LaunchState::kInitializingNetwork;
     return;
   }
 
@@ -111,7 +163,9 @@ void StartupAppLauncher::Initialize() {
 
 void StartupAppLauncher::ContinueWithNetworkReady() {
   SYSLOG(INFO) << "ContinueWithNetworkReady"
-               << ", state_=" << base::to_underlying(state_);
+               << ", state_="
+               << static_cast<typename std::underlying_type<LaunchState>::type>(
+                      state_);
 
   if (state_ != LaunchState::kInitializingNetwork &&
       state_ != LaunchState::kNotStarted) {
@@ -123,12 +177,12 @@ void StartupAppLauncher::ContinueWithNetworkReady() {
     return;
   }
 
-  // The network might not be ready when KioskChromeAppManager tries to update
+  // The network might not be ready when KioskAppManager tries to update
   // external cache initially. Update the external cache now that the network
   // is ready for sure.
   state_ = LaunchState::kWaitingForCache;
-  kiosk_app_manager_observation_.Observe(KioskChromeAppManager::Get());
-  KioskChromeAppManager::Get()->UpdateExternalCache();
+  kiosk_app_manager_observation_.Observe(KioskAppManager::Get());
+  KioskAppManager::Get()->UpdateExternalCache();
 }
 
 bool StartupAppLauncher::RetryWhenNetworkIsAvailable() {
@@ -153,7 +207,7 @@ void StartupAppLauncher::OnKioskExtensionDownloadFailed(
 
 void StartupAppLauncher::OnKioskAppDataLoadStatusChanged(
     const std::string& app_id) {
-  CHECK_EQ(state_, LaunchState::kWaitingForCache);
+  DCHECK(state_ == LaunchState::kWaitingForCache);
 
   if (app_id != app_id_) {
     return;
@@ -161,7 +215,7 @@ void StartupAppLauncher::OnKioskAppDataLoadStatusChanged(
 
   kiosk_app_manager_observation_.Reset();
 
-  if (KioskChromeAppManager::Get()->HasCachedCrx(app_id_)) {
+  if (KioskAppManager::Get()->HasCachedCrx(app_id_)) {
     BeginInstall();
   } else {
     OnLaunchFailure(KioskAppLaunchError::Error::kUnableToDownload);
@@ -169,33 +223,44 @@ void StartupAppLauncher::OnKioskAppDataLoadStatusChanged(
 }
 
 void StartupAppLauncher::BeginInstall() {
-  state_ = LaunchState::kInstallingApp;
-  observers_.NotifyAppInstalling();
   if (crosapi::browser_util::IsLacrosEnabledInChromeKioskSession()) {
-    InstallAppInLacros();
+    // We need to make sure that the Lacros browser is running before we can
+    // install the kiosk app.
+    LaunchLacros(base::BindOnce(&StartupAppLauncher::InstallAppInLacros,
+                                weak_ptr_factory_.GetWeakPtr()));
   } else {
     InstallAppInAsh();
   }
 }
 
+void StartupAppLauncher::LaunchLacros(base::OnceClosure next_step) {
+  state_ = LaunchState::kWaitingForLacros;
+  lacros_launcher_ = std::make_unique<LacrosLauncher>();
+  lacros_launcher_->Start(std::move(next_step));
+}
+
 void StartupAppLauncher::InstallAppInAsh() {
+  state_ = LaunchState::kInstallingApp;
+  observers_.NotifyAppInstalling();
   installer_ = std::make_unique<ChromeKioskAppInstaller>(
-      profile_,
-      KioskChromeAppManager::Get()->CreatePrimaryAppInstallData(app_id_));
+      profile_, KioskAppManager::Get()->CreatePrimaryAppInstallData(app_id_));
   installer_->BeginInstall(base::BindOnce(
       &StartupAppLauncher::OnInstallComplete, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void StartupAppLauncher::InstallAppInLacros() {
+  DCHECK(state_ == LaunchState::kWaitingForLacros);
+  state_ = LaunchState::kInstallingApp;
+  observers_.NotifyAppInstalling();
   crosapi_chrome_app_kiosk_service()->InstallKioskApp(
-      KioskChromeAppManager::Get()->CreatePrimaryAppInstallData(app_id_),
+      KioskAppManager::Get()->CreatePrimaryAppInstallData(app_id_),
       base::BindOnce(&StartupAppLauncher::OnInstallComplete,
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
 void StartupAppLauncher::OnInstallComplete(
     ChromeKioskAppInstaller::InstallResult result) {
-  CHECK_EQ(state_, LaunchState::kInstallingApp);
+  DCHECK(state_ == LaunchState::kInstallingApp);
 
   installer_.reset();
 
@@ -250,7 +315,7 @@ void StartupAppLauncher::LaunchApp() {
 
 void StartupAppLauncher::OnLaunchComplete(
     ChromeKioskAppLauncher::LaunchResult result) {
-  CHECK_EQ(state_, LaunchState::kReadyToLaunch);
+  DCHECK(state_ == LaunchState::kReadyToLaunch);
 
   launcher_.reset();
 
@@ -281,7 +346,7 @@ void StartupAppLauncher::OnLaunchSuccess() {
 
 void StartupAppLauncher::OnLaunchFailure(KioskAppLaunchError::Error error) {
   SYSLOG(ERROR) << "App launch failed, error: " << static_cast<int>(error);
-  CHECK_NE(KioskAppLaunchError::Error::kNone, error);
+  DCHECK_NE(KioskAppLaunchError::Error::kNone, error);
 
   observers_.NotifyLaunchFailed(error);
 }

@@ -1,12 +1,12 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/ash/accessibility/service/automation_client_impl.h"
+#include "chrome/browser/accessibility/service/accessibility_service_router.h"
 #include "chrome/browser/ui/aura/accessibility/automation_manager_aura.h"
 #include "extensions/browser/api/automation_internal/automation_event_router.h"
 #include "extensions/browser/api/automation_internal/automation_internal_api.h"
-#include "mojo/public/cpp/bindings/pending_associated_remote.h"
 
 namespace ash {
 
@@ -20,8 +20,9 @@ AutomationClientImpl::~AutomationClientImpl() {
       nullptr);
 }
 
-void AutomationClientImpl::BindAutomation(
-    mojo::PendingAssociatedRemote<ax::mojom::Automation> automation) {
+void AutomationClientImpl::Bind(
+    mojo::PendingRemote<ax::mojom::Automation> automation,
+    mojo::PendingReceiver<ax::mojom::AutomationClient> automation_client) {
   // Launches the service if it wasn't running yet.
   // Development note (crbug.com/1355633): Using the remote router means
   // extensions don't get a11y events when AutomationClientImpl is bound, so
@@ -33,10 +34,6 @@ void AutomationClientImpl::BindAutomation(
         this);
   }
   automation_remotes_.Add(std::move(automation));
-}
-
-void AutomationClientImpl::BindAutomationClient(
-    mojo::PendingReceiver<ax::mojom::AutomationClient> automation_client) {
   automation_client_receivers_.Add(this, std::move(automation_client));
 }
 
@@ -55,13 +52,13 @@ void AutomationClientImpl::DispatchAccessibilityEvents(
 }
 
 void AutomationClientImpl::DispatchAccessibilityLocationChange(
-    const content::AXLocationChangeNotificationDetails& details) {
-  ui::AXTreeID tree_id = details.ax_tree_id;
+    const ExtensionMsg_AccessibilityLocationChangeParams& params) {
+  ui::AXTreeID tree_id = params.tree_id;
   if (tree_id == ui::AXTreeIDUnknown())
     return;
   for (auto& remote : automation_remotes_) {
-    remote->DispatchAccessibilityLocationChange(tree_id, details.id,
-                                                details.new_location);
+    remote->DispatchAccessibilityLocationChange(tree_id, params.id,
+                                                params.new_location);
   }
 }
 void AutomationClientImpl::DispatchTreeDestroyedEvent(ui::AXTreeID tree_id) {
@@ -85,7 +82,7 @@ void AutomationClientImpl::DispatchActionResult(
 
 void AutomationClientImpl::DispatchGetTextLocationDataResult(
     const ui::AXActionData& data,
-    const std::optional<gfx::Rect>& rect) {
+    const absl::optional<gfx::Rect>& rect) {
   // TODO(crbug.com/1355633): Send to AccessibilityService.
   // for (auto& remote : automation_remotes_) {
   //   remote->DispatchGetTextLocationDataResult(data, rect);

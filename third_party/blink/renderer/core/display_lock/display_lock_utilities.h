@@ -53,15 +53,15 @@ class CORE_EXPORT DisplayLockUtilities {
     friend void Document::UpdateStyleAndLayoutForRange(
         const Range* range,
         DocumentUpdateReason reason);
-    friend void Document::UpdateStyleAndLayoutTreeForElement(
-        const Element* node,
-        DocumentUpdateReason reason);
-    friend void Document::UpdateStyleAndLayoutTreeForSubtree(
-        const Element* node,
-        DocumentUpdateReason reason);
+    friend void Document::UpdateStyleAndLayoutTreeForNode(const Node*);
+    friend void Document::UpdateStyleAndLayoutTreeForSubtree(const Node* node);
     friend void Document::EnsurePaintLocationDataValidForNode(
         const Node* node,
         DocumentUpdateReason reason);
+    friend void Document::EnsurePaintLocationDataValidForNode(
+        const Node* node,
+        DocumentUpdateReason reason,
+        CSSPropertyID property_id);
     friend VisibleSelection
     FrameSelection::ComputeVisibleSelectionInDOMTreeDeprecated() const;
     friend gfx::RectF Range::BoundingRect() const;
@@ -156,20 +156,20 @@ class CORE_EXPORT DisplayLockUtilities {
         DisplayLockUtilities::memoizer_ = this;
     }
 
-    std::optional<bool> IsNodeLocked(const Node* node) {
+    absl::optional<bool> IsNodeLocked(const Node* node) {
       if (nodes_preventing_paint.Contains(node))
         return true;
       if (unlocked_nodes.Contains(node))
         return false;
-      return std::nullopt;
+      return absl::nullopt;
     }
 
-    std::optional<bool> IsNodeLockedForAccessibility(const Node* node) {
+    absl::optional<bool> IsNodeLockedForAccessibility(const Node* node) {
       if (nodes_preventing_accessibility.Contains(node))
         return true;
       if (unlocked_nodes.Contains(node))
         return false;
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     void NotifyLocked(const Node* node) {
@@ -210,8 +210,6 @@ class CORE_EXPORT DisplayLockUtilities {
   // Returns true if at least one node gets activated.
   // See: http://bit.ly/2RXULVi, "beforeactivate Event" part.
   static bool ActivateFindInPageMatchRangeIfNeeded(
-      const EphemeralRangeInFlatTree& range);
-  static bool NeedsActivationForFindInPage(
       const EphemeralRangeInFlatTree& range);
 
   // Returns activatable-locked inclusive ancestors of |node|.

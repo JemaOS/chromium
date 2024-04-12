@@ -12,7 +12,7 @@ namespace blink {
 struct WebPictureInPictureWindowOptions {
   uint64_t width = 0;
   uint64_t height = 0;
-  bool disallow_return_to_opener = false;
+  double initial_aspect_ratio = 0.0;
 };
 
 }  // namespace blink

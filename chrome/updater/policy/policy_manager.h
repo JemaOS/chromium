@@ -5,7 +5,6 @@
 #ifndef CHROME_UPDATER_POLICY_POLICY_MANAGER_H_
 #define CHROME_UPDATER_POLICY_POLICY_MANAGER_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -25,41 +24,39 @@ class PolicyManager : public PolicyManagerInterface {
   PolicyManager(const PolicyManager&) = delete;
   PolicyManager& operator=(const PolicyManager&) = delete;
 
-  std::optional<int> GetIntegerPolicy(const std::string& key) const;
-  std::optional<std::string> GetStringPolicy(const std::string& key) const;
-
   // Overrides for PolicyManagerInterface.
   std::string source() const override;
 
   bool HasActiveDevicePolicies() const override;
 
-  std::optional<bool> CloudPolicyOverridesPlatformPolicy() const override;
-  std::optional<base::TimeDelta> GetLastCheckPeriod() const override;
-  std::optional<UpdatesSuppressedTimes> GetUpdatesSuppressedTimes()
+  absl::optional<base::TimeDelta> GetLastCheckPeriod() const override;
+  absl::optional<UpdatesSuppressedTimes> GetUpdatesSuppressedTimes()
       const override;
-  std::optional<std::string> GetDownloadPreference() const override;
-  std::optional<int> GetPackageCacheSizeLimitMBytes() const override;
-  std::optional<int> GetPackageCacheExpirationTimeDays() const override;
-  std::optional<int> GetEffectivePolicyForAppInstalls(
+  absl::optional<std::string> GetDownloadPreferenceGroupPolicy() const override;
+  absl::optional<int> GetPackageCacheSizeLimitMBytes() const override;
+  absl::optional<int> GetPackageCacheExpirationTimeDays() const override;
+  absl::optional<int> GetEffectivePolicyForAppInstalls(
       const std::string& app_id) const override;
-  std::optional<int> GetEffectivePolicyForAppUpdates(
+  absl::optional<int> GetEffectivePolicyForAppUpdates(
       const std::string& app_id) const override;
-  std::optional<std::string> GetTargetVersionPrefix(
+  absl::optional<std::string> GetTargetVersionPrefix(
       const std::string& app_id) const override;
-  std::optional<bool> IsRollbackToTargetVersionAllowed(
+  absl::optional<bool> IsRollbackToTargetVersionAllowed(
       const std::string& app_id) const override;
-  std::optional<std::string> GetProxyMode() const override;
-  std::optional<std::string> GetProxyPacUrl() const override;
-  std::optional<std::string> GetProxyServer() const override;
-  std::optional<std::string> GetTargetChannel(
+  absl::optional<std::string> GetProxyMode() const override;
+  absl::optional<std::string> GetProxyPacUrl() const override;
+  absl::optional<std::string> GetProxyServer() const override;
+  absl::optional<std::string> GetTargetChannel(
       const std::string& app_id) const override;
-  std::optional<std::vector<std::string>> GetForceInstallApps() const override;
-  std::optional<std::vector<std::string>> GetAppsWithPolicy() const override;
+  absl::optional<std::vector<std::string>> GetForceInstallApps() const override;
+  absl::optional<std::vector<std::string>> GetAppsWithPolicy() const override;
 
  protected:
   ~PolicyManager() override;
 
  private:
+  absl::optional<std::string> GetStringPolicy(const std::string& key) const;
+
   const base::Value::Dict policies_;
   std::vector<std::string> force_install_apps_;
 };

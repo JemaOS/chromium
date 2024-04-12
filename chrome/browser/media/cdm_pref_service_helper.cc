@@ -4,13 +4,10 @@
 
 #include "chrome/browser/media/cdm_pref_service_helper.h"
 
-#include <optional>
+#include "base/logging.h"
 
 #include "base/base64.h"
-#include "base/containers/to_value_list.h"
 #include "base/json/values_util.h"
-#include "base/logging.h"
-#include "base/time/time.h"
 #include "base/values.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/common/pref_names.h"
@@ -19,6 +16,7 @@
 #include "components/prefs/scoped_user_pref_update.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_thread.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -36,54 +34,35 @@ bool TimeIsBetween(const base::Time& time,
   return time >= start && (end.is_null() || time <= end);
 }
 
-// Converts a base::Value::List of Time to std::vector<base::Time>
-std::vector<base::Time> ListToTimes(const base::Value::List& time_list) {
-  std::vector<base::Time> times;
-  for (const base::Value& time_value : time_list) {
-    auto time = base::ValueToTime(time_value);
-    if (time) {
-      times.push_back(time.value());
-    } else {
-      DVLOG(ERROR) << "Could not convert time_value=" << time_value
-                   << " to time.";
-    }
-  }
-  return times;
-}
-
 // Data stored in the kMediaCdmOriginData Pref dictionary.
 // {
 //     $origin_string: {
 //         # A unique random string for the real "origin_string".
 //         "origin_id": $origin_id
 //         "origin_id_creation_time": $origin_id_creation_time
-//         "hardware_secure_decryption_disable_times":
-//         $hw_secure_decryption_disable_times
 //         "client_token": $client_token (optional)
 //         "client_token_creation_time": $client_token_creation_time (optional)
 //     },
 //     more origin_string map...
 // }
-base::Value::Dict ToDictValue(const CdmPrefData& pref_data) {
+base::Value ToDictValue(const CdmPrefData& pref_data) {
+  base::Value dict(base::Value::Type::DICT);
+
   // Origin ID
-  auto dict =
-      base::Value::Dict()
-          .Set(kOriginId, base::UnguessableTokenToValue(pref_data.origin_id()))
-          .Set(kOriginIdCreationTime,
-               base::TimeToValue(pref_data.origin_id_creation_time()));
+  dict.SetKey(kOriginId, base::UnguessableTokenToValue(pref_data.origin_id()));
+  dict.SetKey(kOriginIdCreationTime,
+              base::TimeToValue(pref_data.origin_id_creation_time()));
 
   // Optional Client Token
-  const std::optional<std::vector<uint8_t>> client_token =
+  const absl::optional<std::vector<uint8_t>> client_token =
       pref_data.client_token();
   if (client_token.has_value() && !client_token->empty()) {
     std::string encoded_client_token = base::Base64Encode(client_token.value());
-    dict.Set(kClientToken, encoded_client_token);
-    dict.Set(kClientTokenCreationTime,
-             base::TimeToValue(pref_data.client_token_creation_time()));
+    dict.SetStringKey(kClientToken, encoded_client_token);
+    dict.SetKey(kClientTokenCreationTime,
+                base::TimeToValue(pref_data.client_token_creation_time()));
   }
-  dict.Set(prefs::kHardwareSecureDecryptionDisabledTimes,
-           base::ToValueList(pref_data.hw_secure_decryption_disable_times(),
-                             &base::TimeToValue));
+
   return dict;
 }
 
@@ -95,50 +74,32 @@ std::unique_ptr<CdmPrefData> FromDictValue(
     const base::Value::Dict& cdm_data_dict) {
   // Origin ID
   const base::Value* origin_id_value = cdm_data_dict.Find(kOriginId);
-  if (!origin_id_value) {
+  if (!origin_id_value)
     return nullptr;
-  }
 
-  std::optional<base::UnguessableToken> origin_id =
+  absl::optional<base::UnguessableToken> origin_id =
       base::ValueToUnguessableToken(*origin_id_value);
-  if (!origin_id) {
+  if (!origin_id)
     return nullptr;
-  }
 
   const base::Value* time_value = cdm_data_dict.Find(kOriginIdCreationTime);
-  if (!time_value) {
+  if (!time_value)
     return nullptr;
-  }
 
-  std::optional<base::Time> origin_id_time = base::ValueToTime(time_value);
-  if (!origin_id_time || origin_id_time.value().is_null()) {
+  absl::optional<base::Time> origin_id_time = base::ValueToTime(time_value);
+  if (!origin_id_time || origin_id_time.value().is_null())
     return nullptr;
-  }
 
-#if BUILDFLAG(IS_WIN)
-  std::vector<base::Time> hw_secure_disabled_times;
-  const base::Value::List* hw_secure_disabled_time_values =
-      cdm_data_dict.FindList(prefs::kHardwareSecureDecryptionDisabledTimes);
-  if (!hw_secure_disabled_time_values) {
-    return nullptr;
-  }
-  hw_secure_disabled_times = ListToTimes(*hw_secure_disabled_time_values);
-
-  auto cdm_pref_data = std::make_unique<CdmPrefData>(
-      origin_id.value(), origin_id_time.value(), hw_secure_disabled_times);
-#else
   auto cdm_pref_data =
       std::make_unique<CdmPrefData>(origin_id.value(), origin_id_time.value());
-#endif  // BUILDFLAG(IS_WIN)
 
   // Client Token
   const std::string* encoded_client_token =
       cdm_data_dict.FindString(kClientToken);
   if (encoded_client_token) {
     std::string decoded_client_token;
-    if (!base::Base64Decode(*encoded_client_token, &decoded_client_token)) {
+    if (!base::Base64Decode(*encoded_client_token, &decoded_client_token))
       return nullptr;
-    }
 
     std::vector<uint8_t> client_token(decoded_client_token.begin(),
                                       decoded_client_token.end());
@@ -146,14 +107,13 @@ std::unique_ptr<CdmPrefData> FromDictValue(
     time_value = cdm_data_dict.Find(kClientTokenCreationTime);
 
     // If we have a client token but no creation time, this is an error.
-    if (!time_value) {
+    if (!time_value)
       return nullptr;
-    }
 
-    std::optional<base::Time> client_token_time = base::ValueToTime(time_value);
-    if (!client_token_time) {
+    absl::optional<base::Time> client_token_time =
+        base::ValueToTime(time_value);
+    if (!client_token_time)
       return nullptr;
-    }
 
     cdm_pref_data->SetClientToken(client_token, client_token_time.value());
   }
@@ -168,16 +128,6 @@ CdmPrefData::CdmPrefData(const base::UnguessableToken& origin_id,
   DCHECK(origin_id_);
 }
 
-CdmPrefData::CdmPrefData(
-    const base::UnguessableToken& origin_id,
-    base::Time origin_id_time,
-    std::vector<base::Time> hw_secure_decryption_disable_times)
-    : origin_id_(origin_id),
-      origin_id_creation_time_(origin_id_time),
-      hw_secure_decryption_disable_times_(hw_secure_decryption_disable_times) {
-  CHECK(origin_id_);
-}
-
 CdmPrefData::~CdmPrefData() = default;
 
 const base::UnguessableToken& CdmPrefData::origin_id() const {
@@ -188,17 +138,12 @@ base::Time CdmPrefData::origin_id_creation_time() const {
   return origin_id_creation_time_;
 }
 
-const std::optional<std::vector<uint8_t>> CdmPrefData::client_token() const {
+const absl::optional<std::vector<uint8_t>> CdmPrefData::client_token() const {
   return client_token_;
 }
 
 base::Time CdmPrefData::client_token_creation_time() const {
   return client_token_creation_time_;
-}
-
-std::vector<base::Time> CdmPrefData::hw_secure_decryption_disable_times()
-    const {
-  return hw_secure_decryption_disable_times_;
 }
 
 void CdmPrefData::SetClientToken(const std::vector<uint8_t>& client_token,
@@ -232,20 +177,22 @@ void CdmPrefServiceHelper::ClearCdmPreferenceData(
   ScopedDictPrefUpdate update(user_prefs, prefs::kMediaCdmOriginData);
 
   std::vector<std::string> origins_to_delete;
-  for (auto [origin, origin_value] : *update) {
-    // Null filter indicates that we should delete everything.
-    if (filter && !filter.Run(GURL(origin))) {
-      continue;
-    }
+  for (auto key_value : *update) {
+    const std::string& origin = key_value.first;
 
-    auto* origin_dict = origin_value.GetIfDict();
-    if (!origin_dict) {
+    // Null filter indicates that we should delete everything.
+    if (filter && !filter.Run(GURL(origin)))
+      continue;
+
+    const base::Value& origin_dict = key_value.second;
+    if (!origin_dict.is_dict()) {
       DVLOG(ERROR) << "Could not parse the preference data. Removing entry.";
       origins_to_delete.push_back(origin);
       continue;
     }
 
-    std::unique_ptr<CdmPrefData> cdm_pref_data = FromDictValue(*origin_dict);
+    std::unique_ptr<CdmPrefData> cdm_pref_data =
+        FromDictValue(origin_dict.GetDict());
 
     if (!cdm_pref_data) {
       origins_to_delete.push_back(origin);
@@ -257,15 +204,14 @@ void CdmPrefServiceHelper::ClearCdmPreferenceData(
       origins_to_delete.push_back(origin);
     } else if (TimeIsBetween(cdm_pref_data->client_token_creation_time(), start,
                              end)) {
-      origin_dict->Remove(kClientToken);
-      origin_dict->Remove(kClientTokenCreationTime);
+      key_value.second.RemoveKey(kClientToken);
+      key_value.second.RemoveKey(kClientTokenCreationTime);
     }
   }
 
   // Remove CDM preference data.
-  for (const auto& origin_str : origins_to_delete) {
+  for (const auto& origin_str : origins_to_delete)
     update->Remove(origin_str);
-  }
 
   DVLOG(1) << __func__ << "Done removing CDM preference data";
 }
@@ -292,29 +238,16 @@ std::unique_ptr<CdmPrefData> CdmPrefServiceHelper::GetCdmPrefData(
   const base::Value::Dict* cdm_data_dict = dict.FindDict(serialized_cdm_origin);
 
   std::unique_ptr<CdmPrefData> cdm_pref_data;
-  if (cdm_data_dict) {
+  if (cdm_data_dict)
     cdm_pref_data = FromDictValue(*cdm_data_dict);
-  }
 
   // Create an new entry or overwrite the existing one in case we weren't able
   // to get a valid origin ID from `FromDictValue()`.
   if (!cdm_pref_data) {
     ScopedDictPrefUpdate update(user_prefs, prefs::kMediaCdmOriginData);
 
-#if BUILDFLAG(IS_WIN)
-    // Initialize hardware secure decryption disabled times to match local
-    // state's hardware secure decryption disabled times. This prevents sites
-    // with no prior hardware secure playback from re-experiecing errors/crashes
-    // if there were previous errors that are recorded globally. See
-    // go/hardware-secure-per-site-fallback for details.
-    cdm_pref_data = std::make_unique<CdmPrefData>(
-        base::UnguessableToken::Create(), base::Time::Now(),
-        ListToTimes(g_browser_process->local_state()->GetList(
-            prefs::kGlobalHardwareSecureDecryptionDisabledTimes)));
-#else
     cdm_pref_data = std::make_unique<CdmPrefData>(
         base::UnguessableToken::Create(), base::Time::Now());
-#endif  // BUILDFLAG(IS_WIN)
     update->Set(serialized_cdm_origin, ToDictValue(*cdm_pref_data));
   }
 
@@ -367,15 +300,13 @@ std::map<std::string, url::Origin> CdmPrefServiceHelper::GetOriginIdMapping(
   for (auto key_value : dict) {
     const base::Value* origin_id_value =
         key_value.second.GetDict().Find(kOriginId);
-    if (!origin_id_value) {
+    if (!origin_id_value)
       continue;
-    }
 
-    std::optional<base::UnguessableToken> origin_id =
+    absl::optional<base::UnguessableToken> origin_id =
         base::ValueToUnguessableToken(*origin_id_value);
-    if (!origin_id) {
+    if (!origin_id)
       continue;
-    }
 
     const url::Origin origin = url::Origin::Create(GURL(key_value.first));
 

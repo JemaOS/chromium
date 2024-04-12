@@ -4,8 +4,6 @@
 
 #include "ash/quick_pair/message_stream/fake_bluetooth_socket.h"
 
-#include <utility>
-
 #include "base/strings/string_number_conversions.h"
 
 namespace ash {
@@ -45,16 +43,15 @@ void FakeBluetoothSocket::TriggerReceiveCallback() {
   }
 
   std::string buffer_bytes(bytes_.begin(), bytes_.end());
-  const size_t buffer_bytes_size = buffer_bytes.size();
   scoped_refptr<net::IOBuffer> io_buffer =
-      base::MakeRefCounted<net::StringIOBuffer>(std::move(buffer_bytes));
+      base::MakeRefCounted<net::StringIOBuffer>(buffer_bytes);
 
   if (empty_buffer_) {
     io_buffer->data()[0] = '\0';
     empty_buffer_ = false;
   }
   std::move(success_callback_)
-      .Run(/*buffer_size*/ buffer_bytes_size,
+      .Run(/*buffer_size*/ buffer_bytes.size(),
            /*buffer=*/std::move(io_buffer));
 }
 

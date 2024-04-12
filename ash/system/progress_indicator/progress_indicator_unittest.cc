@@ -17,19 +17,18 @@ namespace {
 class TestProgressIndicator : public ProgressIndicator {
  public:
   TestProgressIndicator()
-      : ProgressIndicator(
-            /*animation_registry=*/nullptr,
-            ProgressIndicatorAnimationRegistry::AsAnimationKey(this)) {}
+      : ProgressIndicator(/*animation_registry=*/nullptr,
+                          /*animation_key=*/this) {}
 
-  void SetProgress(const std::optional<float>& progress) {
+  void SetProgress(const absl::optional<float>& progress) {
     progress_ = progress;
     static_cast<ui::LayerDelegate*>(this)->UpdateVisualState();
   }
 
  private:
   // ProgressIndicator:
-  std::optional<float> CalculateProgress() const override { return progress_; }
-  std::optional<float> progress_;
+  absl::optional<float> CalculateProgress() const override { return progress_; }
+  absl::optional<float> progress_;
 };
 
 }  // namespace
@@ -42,7 +41,7 @@ using ProgressIndicatorTest = AshTestBase;
 // It should delegate progress calculation to a constructor provided callback
 // and manage progress animations as needed.
 TEST_F(ProgressIndicatorTest, CreateDefaultInstance) {
-  std::optional<float> progress = ProgressIndicator::kProgressComplete;
+  absl::optional<float> progress;
 
   // Create a default instance of `ProgressIndicator` that paints `progress`
   // whenever visual state is updated.
@@ -55,7 +54,7 @@ TEST_F(ProgressIndicatorTest, CreateDefaultInstance) {
       static_cast<ui::LayerDelegate*>(progress_indicator.get());
 
   // Cache animation `key` and `registry` associated with `progress_indicator`.
-  auto key = progress_indicator->animation_key();
+  auto* key = progress_indicator.get();
   auto* registry = progress_indicator->animation_registry();
 
   // Verify initial progress and animation states.
@@ -80,7 +79,7 @@ TEST_F(ProgressIndicatorTest, CreateDefaultInstance) {
   EXPECT_FALSE(registry->GetProgressRingAnimationForKey(key));
 
   // Update `progress` to indeterminate. Verify progress and animation states.
-  progress = std::nullopt;
+  progress = absl::nullopt;
   layer_delegate->UpdateVisualState();
   EXPECT_EQ(progress_indicator->progress(), progress);
   ASSERT_TRUE(registry->GetProgressIconAnimationForKey(key));

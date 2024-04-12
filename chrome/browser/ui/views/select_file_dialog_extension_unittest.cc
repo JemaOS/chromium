@@ -52,13 +52,12 @@ class TestListener : public ui::SelectFileDialog::Listener {
   int file_index() const { return file_index_; }
 
   // ui::SelectFileDialog::Listener implementation
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override {
     selected_ = true;
     file_index_ = index;
   }
-  void FileSelectionCanceled(void* params) override {}
 
  private:
   bool selected_;
@@ -81,12 +80,11 @@ class SelfDeletingClient : public ui::SelectFileDialog::Listener {
   SelectFileDialogExtension* dialog() const { return dialog_.get(); }
 
   // ui::SelectFileDialog::Listener implementation
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override {
     delete this;
   }
-  void FileSelectionCanceled(void* params) override {}
 
  private:
   scoped_refptr<SelectFileDialogExtension> dialog_;

@@ -19,15 +19,13 @@ found in the LICENSE file.
   input.focus();
 
   var verifyInput = function(expected) {
-    return input.value == expected;
+    window.domAutomationController.send(input.value == expected);
   };
 
   var waitForInput = function(char) {
-    return new Promise(resolve => {
-      input.oninput = function() {
-        resolve(verifyInput(char));
-      };
-    });
+    input.oninput = function() {
+      verifyInput(char);
+    };
   };
 </script>
 </html>

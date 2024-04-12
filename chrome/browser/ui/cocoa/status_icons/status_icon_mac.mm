@@ -9,6 +9,7 @@
 #include "base/check.h"
 #include "base/mac/mac_util.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/scoped_policy.h"
 #include "base/strings/sys_string_conversions.h"
 #include "skia/ext/skia_utils_mac.h"
 #include "third_party/skia/include/core/SkBitmap.h"
@@ -43,7 +44,7 @@
 @end
 
 StatusIconMac::StatusIconMac() {
-  controller_ = [[StatusItemController alloc] initWithIcon:this];
+  controller_.reset([[StatusItemController alloc] initWithIcon:this]);
 }
 
 StatusIconMac::~StatusIconMac() {
@@ -54,11 +55,12 @@ StatusIconMac::~StatusIconMac() {
 }
 
 NSStatusItem* StatusIconMac::item() {
-  if (!item_) {
+  if (!item_.get()) {
     // Create a new status item.
-    item_ = [NSStatusBar.systemStatusBar
-        statusItemWithLength:NSSquareStatusItemLength];
-    NSButton* item_button = item_.button;
+    item_.reset([NSStatusBar.systemStatusBar
+                    statusItemWithLength:NSSquareStatusItemLength],
+                base::scoped_policy::RETAIN);
+    NSButton* item_button = item_.get().button;
     item_button.enabled = YES;
     item_button.target = controller_;
     item_button.action = @selector(handleClick:);
@@ -66,12 +68,13 @@ NSStatusItem* StatusIconMac::item() {
     item_button_cell.highlightsBy =
         NSContentsCellMask | NSChangeBackgroundCellMask;
   }
-  return item_;
+  return item_.get();
 }
 
 void StatusIconMac::SetImage(const gfx::ImageSkia& image) {
   if (!image.isNull()) {
-    NSImage* ns_image = skia::SkBitmapToNSImage(*image.bitmap());
+    NSImage* ns_image = skia::SkBitmapToNSImageWithColorSpace(
+        *image.bitmap(), base::mac::GetSRGBColorSpace());
     if (ns_image) {
       item().button.image = ns_image;
     }
@@ -81,12 +84,13 @@ void StatusIconMac::SetImage(const gfx::ImageSkia& image) {
 void StatusIconMac::SetToolTip(const std::u16string& tool_tip) {
   // If we have a status icon menu, make the tool tip part of the menu instead
   // of a pop-up tool tip when hovering the mouse over the image.
-  tool_tip_ = base::SysUTF16ToNSString(tool_tip);
-  if (menu_) {
+  toolTip_.reset(base::SysUTF16ToNSString(tool_tip),
+                 base::scoped_policy::RETAIN);
+  if (menu_.get()) {
     SetToolTip(nil);
-    CreateMenu([menu_ model], tool_tip_);
+    CreateMenu([menu_ model], toolTip_.get());
   } else {
-    SetToolTip(tool_tip_);
+    SetToolTip(toolTip_.get());
   }
 }
 
@@ -100,15 +104,15 @@ void StatusIconMac::DisplayBalloon(
 }
 
 bool StatusIconMac::HasStatusIconMenu() {
-  return menu_ != nil;
+  return menu_.get() != nil;
 }
 
 void StatusIconMac::UpdatePlatformContextMenu(StatusIconMenuModel* model) {
   if (!model) {
-    menu_ = nil;
+    menu_.reset();
   } else {
     SetToolTip(nil);
-    CreateMenu(model, tool_tip_);
+    CreateMenu(model, toolTip_.get());
   }
 }
 
@@ -116,15 +120,15 @@ void StatusIconMac::CreateMenu(ui::MenuModel* model, NSString* tool_tip) {
   DCHECK(model);
 
   if (!tool_tip) {
-    menu_ = [[MenuControllerCocoa alloc] initWithModel:model
-                                              delegate:nil
-                                useWithPopUpButtonCell:NO];
+    menu_.reset([[MenuControllerCocoa alloc] initWithModel:model
+                                                  delegate:nil
+                                    useWithPopUpButtonCell:NO]);
   } else {
     // When using a popup button cell menu controller, an extra blank item is
     // added at index 0. Use this item for the tooltip.
-    menu_ = [[MenuControllerCocoa alloc] initWithModel:model
-                                              delegate:nil
-                                useWithPopUpButtonCell:YES];
+    menu_.reset([[MenuControllerCocoa alloc] initWithModel:model
+                                                  delegate:nil
+                                    useWithPopUpButtonCell:YES]);
     NSMenuItem* tool_tip_item = [[menu_ menu] itemAtIndex:0];
     [tool_tip_item setTitle:tool_tip];
   }

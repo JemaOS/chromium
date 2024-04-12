@@ -7,8 +7,6 @@
 
 #include <ApplicationServices/ApplicationServices.h>
 
-#include "base/apple/scoped_cftyperef.h"
-#include "base/memory/raw_ptr.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 
@@ -41,9 +39,9 @@ class PLATFORM_EXPORT GraphicsContextCanvas {
  private:
   void ReleaseIfNeeded();
 
-  raw_ptr<cc::PaintCanvas> canvas_;
+  cc::PaintCanvas* canvas_;
 
-  base::apple::ScopedCFTypeRef<CGContextRef> cg_context_;
+  CGContextRef cg_context_;
   SkBitmap offscreen_;
   SkScalar bitmap_scale_factor_;
 

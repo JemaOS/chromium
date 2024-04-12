@@ -15,7 +15,6 @@
 #include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/traced_value.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_proto.h"
-#include "v8/include/v8-inspector-protocol.h"
 
 namespace blink {
 
@@ -51,7 +50,7 @@ std::unique_ptr<SourceLocation> SourceLocation::CaptureWithFullStackTrace() {
 // static
 std::unique_ptr<v8_inspector::V8StackTrace>
 SourceLocation::CaptureStackTraceInternal(bool full) {
-  v8::Isolate* isolate = v8::Isolate::TryGetCurrent();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   ThreadDebugger* debugger = ThreadDebugger::From(isolate);
   if (!debugger || !isolate->InContext())
     return nullptr;
@@ -217,13 +216,12 @@ std::unique_ptr<SourceLocation> CaptureSourceLocation() {
 }
 
 std::unique_ptr<SourceLocation> CaptureSourceLocation(
-    v8::Isolate* isolate,
     v8::Local<v8::Function> function) {
   if (!function.IsEmpty())
     return std::make_unique<SourceLocation>(
         ToCoreStringWithUndefinedOrNullCheck(
-            isolate, function->GetScriptOrigin().ResourceName()),
-        ToCoreStringWithUndefinedOrNullCheck(isolate, function->GetName()),
+            function->GetScriptOrigin().ResourceName()),
+        ToCoreStringWithUndefinedOrNullCheck(function->GetName()),
         function->GetScriptLineNumber() + 1,
         function->GetScriptColumnNumber() + 1, nullptr, function->ScriptId());
   return std::make_unique<SourceLocation>(String(), String(), 0, 0, nullptr, 0);

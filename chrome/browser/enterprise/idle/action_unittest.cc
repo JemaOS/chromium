@@ -18,35 +18,29 @@ TEST(IdleActionTest, Build) {
   auto queue = factory->Build(
       nullptr, {ActionType::kCloseBrowsers, ActionType::kShowProfilePicker});
   EXPECT_EQ(2u, queue.size());
-  EXPECT_EQ(static_cast<int>(ActionType::kCloseBrowsers),
-            queue.top()->priority());
+  EXPECT_EQ(0, queue.top()->priority());  // CloseBrowsersAction
   queue.pop();
-  EXPECT_EQ(static_cast<int>(ActionType::kShowProfilePicker),
-            queue.top()->priority());
+  EXPECT_EQ(1, queue.top()->priority());  // ShowProfilePickerAction
 
   queue = factory->Build(nullptr, {ActionType::kCloseBrowsers});
   EXPECT_EQ(1u, queue.size());
-  EXPECT_EQ(static_cast<int>(ActionType::kCloseBrowsers),
-            queue.top()->priority());
+  EXPECT_EQ(0, queue.top()->priority());  // CloseBrowsersAction
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 TEST(IdleActionTest, ClearBrowsingDataIsSingleAction) {
   auto* factory = ActionFactory::GetInstance();
 
-  auto queue = factory->Build(nullptr, {
-#if !BUILDFLAG(IS_ANDROID)
-    ActionType::kClearDownloadHistory, ActionType::kClearHostedAppData,
-#endif  // !BUILDFLAG(IS_ANDROID)
-        ActionType::kClearBrowsingHistory,
-        ActionType::kClearCookiesAndOtherSiteData,
-        ActionType::kClearCachedImagesAndFiles,
-        ActionType::kClearPasswordSignin, ActionType::kClearAutofill,
-        ActionType::kClearSiteSettings
-  });
+  auto queue = factory->Build(
+      nullptr,
+      {ActionType::kClearBrowsingHistory, ActionType::kClearDownloadHistory,
+       ActionType::kClearCookiesAndOtherSiteData,
+       ActionType::kClearCachedImagesAndFiles,
+       ActionType::kClearCachedImagesAndFiles, ActionType::kClearPasswordSignin,
+       ActionType::kClearAutofill, ActionType::kClearSiteSettings,
+       ActionType::kClearHostedAppData});
   EXPECT_EQ(1u, queue.size());
-  EXPECT_EQ(static_cast<int>(ActionType::kClearBrowsingHistory),
-            queue.top()->priority());
+  EXPECT_EQ(2, queue.top()->priority());  // ClearBrowsingDataAction
 }
 
 }  // namespace enterprise_idle

@@ -2,17 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
-import * as Console from 'devtools/panels/console/console.js';
-import * as ObjectUI from 'devtools/ui/legacy/components/object_ui/object_ui.js';
-import * as Sources from 'devtools/panels/sources/sources.js';
-import * as UI from 'devtools/ui/legacy/legacy.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Tests that "Show Function Definition" jumps to the correct location.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.evaluateInPagePromise(`
       function jumpToMe()
@@ -22,12 +14,12 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
       }
   `);
 
-  var panel = Sources.SourcesPanel.SourcesPanel.instance();
+  var panel = UI.panels.sources;
 
   TestRunner.runTestSuite([
     function testRevealFunctionDefinition(next) {
       TestRunner.addSniffer(panel, 'showUISourceCode', showUISourceCodeHook);
-      UI.Context.Context.instance().flavor(SDK.RuntimeModel.ExecutionContext).evaluate({expression: 'jumpToMe', silent: true}).then(didGetFunction);
+      UI.context.flavor(SDK.ExecutionContext).evaluate({expression: 'jumpToMe', silent: true}).then(didGetFunction);
 
       function didGetFunction(result) {
         var error = !result.object || !!result.exceptionDetails;
@@ -35,7 +27,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
         panel.showFunctionDefinition(result.object);
       }
 
-      function showUISourceCodeHook(uiSourceCode, {lineNumber, columnNumber}, forceShowInPanel) {
+      function showUISourceCodeHook(uiSourceCode, lineNumber, columnNumber, forceShowInPanel) {
         // lineNumber and columnNumber are 0-based
         ++lineNumber;
         ++columnNumber;
@@ -45,15 +37,15 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
     },
 
     function testDumpFunctionDefinition(next) {
-      TestRunner.addSniffer(ObjectUI.ObjectPropertiesSection.ObjectPropertiesSection, 'formatObjectAsFunction', onConsoleMessagesReceived);
-      var consoleView = Console.ConsoleView.ConsoleView.instance();
+      TestRunner.addSniffer(ObjectUI.ObjectPropertiesSection, 'formatObjectAsFunction', onConsoleMessagesReceived);
+      var consoleView = Console.ConsoleView.instance();
       consoleView.prompt.appendCommand('jumpToMe', true);
 
       function onConsoleMessagesReceived() {
         TestRunner.deprecatedRunAfterPendingDispatches(function() {
           var messages = [];
           ConsoleTestRunner.disableConsoleViewport();
-          var viewMessages = Console.ConsoleView.ConsoleView.instance().visibleViewMessages;
+          var viewMessages = Console.ConsoleView.instance().visibleViewMessages;
           for (var i = 0; i < viewMessages.length; ++i) {
             var uiMessage = viewMessages[i];
             var element = uiMessage.contentElement();

@@ -5,7 +5,6 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/feature_list.h"
@@ -26,6 +25,7 @@
 #include "chrome/browser/notifications/notification_display_service_tester.h"
 #include "chrome/browser/notifications/platform_notification_service_factory.h"
 #include "chrome/browser/notifications/platform_notification_service_impl.h"
+#include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/history/core/browser/history_service.h"
@@ -36,6 +36,7 @@
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/notifications/notification_resources.h"
 #include "third_party/blink/public/common/notifications/platform_notification_data.h"
 #include "third_party/blink/public/mojom/notifications/notification.mojom.h"
@@ -45,18 +46,17 @@
 #include "url/gurl.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-#include "base/values.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/test_extension_system.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
+#include "extensions/common/value_builder.h"
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/web_applications/test/fake_web_app_provider.h"
 #include "chrome/browser/web_applications/test/web_app_icon_test_utils.h"
-#include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/browser/web_applications/test/web_app_test_utils.h"
 #include "chrome/browser/web_applications/web_app.h"
 #include "chrome/browser/web_applications/web_app_icon_generator.h"
@@ -310,7 +310,7 @@ TEST_F(PlatformNotificationServiceTest, RecordNotificationUkmEvent) {
                            history::SOURCE_BROWSED);
 
   // Initially there are no UKM entries.
-  std::vector<raw_ptr<const ukm::mojom::UkmEntry, VectorExperimental>> entries =
+  std::vector<const ukm::mojom::UkmEntry*> entries =
       recorder_->GetEntriesByName(ukm::builders::Notification::kEntryName);
   EXPECT_EQ(0u, entries.size());
 
@@ -324,7 +324,7 @@ TEST_F(PlatformNotificationServiceTest, RecordNotificationUkmEvent) {
   entries =
       recorder_->GetEntriesByName(ukm::builders::Notification::kEntryName);
   ASSERT_EQ(1u, entries.size());
-  auto* entry = entries[0].get();
+  auto* entry = entries[0];
   recorder_->ExpectEntryMetric(
       entry, kClosedReason,
       static_cast<int>(NotificationDatabaseData::ClosedReason::USER));
@@ -371,7 +371,7 @@ TEST_F(PlatformNotificationServiceTest, IncomingCallWebApp) {
   // installed web app for the provided URL.
   std::unique_ptr<web_app::WebApp> web_app = web_app::test::CreateWebApp();
   const GURL installed_web_app_url = web_app->start_url();
-  const webapps::AppId app_id = web_app->app_id();
+  const web_app::AppId app_id = web_app->app_id();
   web_app->SetName("Web App Title");
 
   provider->GetRegistrarMutable().registry().emplace(app_id,
@@ -388,109 +388,6 @@ TEST_F(PlatformNotificationServiceTest, IncomingCallWebApp) {
       service()->IsActivelyInstalledWebAppScope(installed_web_app_url));
 }
 
-class PlatformNotificationServiceTest_WebApps
-    : public PlatformNotificationServiceTest {
- public:
-  void SetUp() override {
-    PlatformNotificationServiceTest::SetUp();
-
-    web_app::FakeWebAppProvider* provider =
-        web_app::FakeWebAppProvider::Get(profile_.get());
-
-    std::unique_ptr<web_app::WebApp> web_app =
-        web_app::test::CreateWebApp(kWebAppStartUrl);
-    installed_app_id = web_app->app_id();
-    provider->GetRegistrarMutable().registry().emplace(installed_app_id,
-                                                       std::move(web_app));
-
-    web_app = web_app::test::CreateWebApp(kInstalledNestedWebAppStartUrl);
-    nested_installed_app_id = web_app->app_id();
-    provider->GetRegistrarMutable().registry().emplace(nested_installed_app_id,
-                                                       std::move(web_app));
-
-    web_app = web_app::test::CreateWebApp(kNotInstalledNestedWebAppStartUrl);
-    web_app->SetIsLocallyInstalled(false);
-    not_installed_app_id = web_app->app_id();
-    provider->GetRegistrarMutable().registry().emplace(not_installed_app_id,
-                                                       std::move(web_app));
-    provider->Start();
-  }
-
- protected:
-  const GURL kWebAppOrigin = GURL("https://example.com");
-  const GURL kWebAppStartUrl = GURL("https://example.com/scope/start.html");
-  const GURL kInstalledNestedWebAppStartUrl =
-      GURL("https://example.com/scope/other/foo.html");
-  const GURL kNotInstalledNestedWebAppStartUrl =
-      GURL("https://example.com/scope/nestedscope/foo.html");
-  const GURL kOutOfScopeUrl = GURL("https://example.com/outofscope");
-  const GURL kServiceWorkerScope = GURL("https://example.com/scope/");
-
-  static PlatformNotificationData CreateDummyNotificationData() {
-    PlatformNotificationData data;
-    data.title = u"My Notification";
-    data.body = u"Hello, world!";
-    return data;
-  }
-  const PlatformNotificationData kNotificationData =
-      CreateDummyNotificationData();
-
-  webapps::AppId installed_app_id;
-  webapps::AppId nested_installed_app_id;
-  webapps::AppId not_installed_app_id;
-};
-
-TEST_F(PlatformNotificationServiceTest_WebApps, PopulateWebAppId_MatchesScope) {
-  service()->DisplayNotification(kNotificationId, kWebAppOrigin,
-                                 kNotInstalledNestedWebAppStartUrl,
-                                 kNotificationData, NotificationResources());
-  ASSERT_EQ(1u, GetNotificationCountForType(
-                    NotificationHandler::Type::WEB_NON_PERSISTENT));
-  Notification notification = GetDisplayedNotificationForType(
-      NotificationHandler::Type::WEB_NON_PERSISTENT);
-  EXPECT_EQ(installed_app_id, notification.notifier_id().web_app_id);
-
-  service()->DisplayPersistentNotification(kNotificationId, kServiceWorkerScope,
-                                           kWebAppOrigin, kNotificationData,
-                                           NotificationResources());
-  ASSERT_EQ(1u, GetNotificationCountForType(
-                    NotificationHandler::Type::WEB_PERSISTENT));
-  notification = GetDisplayedNotificationForType(
-      NotificationHandler::Type::WEB_PERSISTENT);
-  EXPECT_EQ(installed_app_id, notification.notifier_id().web_app_id);
-}
-
-TEST_F(PlatformNotificationServiceTest_WebApps,
-       PopulateWebAppId_InNestedScope) {
-  service()->DisplayNotification(kNotificationId, kWebAppOrigin,
-                                 kInstalledNestedWebAppStartUrl,
-                                 kNotificationData, NotificationResources());
-  ASSERT_EQ(1u, GetNotificationCountForType(
-                    NotificationHandler::Type::WEB_NON_PERSISTENT));
-  Notification notification = GetDisplayedNotificationForType(
-      NotificationHandler::Type::WEB_NON_PERSISTENT);
-  EXPECT_EQ(nested_installed_app_id, notification.notifier_id().web_app_id);
-}
-
-TEST_F(PlatformNotificationServiceTest_WebApps, PopulateWebAppId_NotInScope) {
-  service()->DisplayNotification(kNotificationId, kWebAppOrigin, kOutOfScopeUrl,
-                                 kNotificationData, NotificationResources());
-  ASSERT_EQ(1u, GetNotificationCountForType(
-                    NotificationHandler::Type::WEB_NON_PERSISTENT));
-  Notification notification = GetDisplayedNotificationForType(
-      NotificationHandler::Type::WEB_NON_PERSISTENT);
-  EXPECT_EQ(std::nullopt, notification.notifier_id().web_app_id);
-
-  service()->DisplayPersistentNotification(kNotificationId, kOutOfScopeUrl,
-                                           kWebAppOrigin, kNotificationData,
-                                           NotificationResources());
-  ASSERT_EQ(1u, GetNotificationCountForType(
-                    NotificationHandler::Type::WEB_PERSISTENT));
-  notification = GetDisplayedNotificationForType(
-      NotificationHandler::Type::WEB_PERSISTENT);
-  EXPECT_EQ(std::nullopt, notification.notifier_id().web_app_id);
-}
-
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -505,11 +402,12 @@ TEST_F(PlatformNotificationServiceTest, DisplayNameForContextMessage) {
   scoped_refptr<const extensions::Extension> extension =
       extensions::ExtensionBuilder()
           .SetID("honijodknafkokifofgiaalefdiedpko")
-          .SetManifest(base::Value::Dict()
+          .SetManifest(extensions::DictionaryBuilder()
                            .Set("name", "NotificationTest")
                            .Set("version", "1.0")
                            .Set("manifest_version", 2)
-                           .Set("description", "Test Extension"))
+                           .Set("description", "Test Extension")
+                           .Build())
           .Build();
 
   extensions::ExtensionRegistry* registry =
@@ -536,11 +434,12 @@ TEST_F(PlatformNotificationServiceTest, CreateNotificationFromData) {
   scoped_refptr<const extensions::Extension> extension =
       extensions::ExtensionBuilder()
           .SetID("honijodknafkokifofgiaalefdiedpko")
-          .SetManifest(base::Value::Dict()
+          .SetManifest(extensions::DictionaryBuilder()
                            .Set("name", "NotificationTest")
                            .Set("version", "1.0")
                            .Set("manifest_version", 2)
-                           .Set("description", "Test Extension"))
+                           .Set("description", "Test Extension")
+                           .Build())
           .Build();
 
   extensions::ExtensionRegistry* registry =
@@ -579,14 +478,14 @@ TEST_F(PlatformNotificationServiceTest_WebAppNotificationIconAndTitle,
 
   std::unique_ptr<web_app::WebApp> web_app = web_app::test::CreateWebApp();
   const GURL web_app_url = web_app->start_url();
-  const webapps::AppId app_id = web_app->app_id();
+  const web_app::AppId app_id = web_app->app_id();
   web_app->SetName("Web App Title");
 
   IconManagerWriteGeneratedIcons(icon_manager, app_id,
-                                 {{web_app::IconPurpose::MONOCHROME,
+                                 {{IconPurpose::MONOCHROME,
                                    {web_app::icon_size::k16},
                                    {SK_ColorTRANSPARENT}}});
-  web_app->SetDownloadedIconSizes(web_app::IconPurpose::MONOCHROME,
+  web_app->SetDownloadedIconSizes(IconPurpose::MONOCHROME,
                                   {web_app::icon_size::k16});
 
   provider->GetRegistrarMutable().registry().emplace(app_id,
@@ -595,13 +494,13 @@ TEST_F(PlatformNotificationServiceTest_WebAppNotificationIconAndTitle,
   base::RunLoop run_loop;
   icon_manager.SetFaviconMonochromeReadCallbackForTesting(
       base::BindLambdaForTesting(
-          [&](const webapps::AppId& cached_app_id) { run_loop.Quit(); }));
+          [&](const web_app::AppId& cached_app_id) { run_loop.Quit(); }));
   icon_manager.Start();
   run_loop.Run();
 
   provider->Start();
 
-  std::optional<PlatformNotificationServiceImpl::WebAppIconAndTitle>
+  absl::optional<PlatformNotificationServiceImpl::WebAppIconAndTitle>
       icon_and_title = service()->FindWebAppIconAndTitle(web_app_url);
 
   ASSERT_TRUE(icon_and_title.has_value());

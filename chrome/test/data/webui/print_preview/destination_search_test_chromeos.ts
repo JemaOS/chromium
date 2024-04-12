@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {DestinationStore, PrintPreviewDestinationDialogCrosElement} from 'chrome://print/print_preview.js';
-import {Destination, DestinationOrigin, DestinationStoreEventType, NativeLayerCrosImpl, NativeLayerImpl} from 'chrome://print/print_preview.js';
+import {Destination, DestinationOrigin, DestinationStore, DestinationStoreEventType, NativeLayerCrosImpl, NativeLayerImpl, PrintPreviewDestinationDialogCrosElement} from 'chrome://print/print_preview.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertNotEquals} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
@@ -12,7 +11,21 @@ import {NativeLayerCrosStub} from './native_layer_cros_stub.js';
 import {NativeLayerStub} from './native_layer_stub.js';
 import {createDestinationStore, getCddTemplate, setupTestListenerElement} from './print_preview_test_utils.js';
 
-suite('DestinationSearchTest', function() {
+const destination_search_test_chromeos = {
+  suiteName: 'DestinationSearchTest',
+  TestNames: {
+    ReceiveSuccessfulSetup: 'receive successful setup',
+    ResolutionFails: 'resolution fails',
+    ReceiveSuccessfulSetupWithPolicies:
+        'receive successful setup with policies',
+  },
+};
+
+Object.assign(
+    window,
+    {destination_search_test_chromeos: destination_search_test_chromeos});
+
+suite(destination_search_test_chromeos.suiteName, function() {
   let dialog: PrintPreviewDestinationDialogCrosElement;
 
   let destinationStore: DestinationStore;
@@ -35,7 +48,7 @@ suite('DestinationSearchTest', function() {
     nativeLayer.setLocalDestinationCapabilities(
         getCddTemplate('FooDevice', 'FooName'));
     destinationStore.init(
-        false /* pdfPrinterDisabled */, false /* saveToDriveDisabled */,
+        false /* pdfPrinterDisabled */, true /* isDriveMounted */,
         'FooDevice' /* printerName */,
         '' /* serializedDefaultDestinationSelectionRulesStr */,
         [] /* recentDestinations */);
@@ -78,9 +91,10 @@ suite('DestinationSearchTest', function() {
   }
 
   // Tests that a destination is selected if the user clicks on it and setup
-  // succeeds.
+  // (for CrOS) or capabilities fetch (for non-Cros) succeeds.
   test(
-      'ReceiveSuccessfulSetup', async function() {
+      destination_search_test_chromeos.TestNames.ReceiveSuccessfulSetup,
+      async function() {
         const destId = '00112233DEADBEEF';
         const response = {
           printerId: destId,
@@ -102,16 +116,19 @@ suite('DestinationSearchTest', function() {
       });
 
   // Test what happens when the setupPrinter request is rejected.
-  test('ResolutionFails', async function() {
-    const destId = '001122DEADBEEF';
-    const originalDestination = destinationStore.selectedDestination;
-    nativeLayerCros.setSetupPrinterResponse(
-        {printerId: destId, capabilities: {printer: {}, version: '1'}}, true);
-    requestSetup(destId);
-    const actualId = await nativeLayerCros.whenCalled('setupPrinter');
-    assertEquals(destId, actualId);
-    // The selected printer should not have changed, since a printer
-    // cannot be selected until setup succeeds.
-    assertEquals(originalDestination, destinationStore.selectedDestination);
-  });
+  test(
+      destination_search_test_chromeos.TestNames.ResolutionFails,
+      async function() {
+        const destId = '001122DEADBEEF';
+        const originalDestination = destinationStore.selectedDestination;
+        nativeLayerCros.setSetupPrinterResponse(
+            {printerId: destId, capabilities: {printer: {}, version: '1'}},
+            true);
+        requestSetup(destId);
+        const actualId = await nativeLayerCros.whenCalled('setupPrinter');
+        assertEquals(destId, actualId);
+        // The selected printer should not have changed, since a printer
+        // cannot be selected until setup succeeds.
+        assertEquals(originalDestination, destinationStore.selectedDestination);
+      });
 });

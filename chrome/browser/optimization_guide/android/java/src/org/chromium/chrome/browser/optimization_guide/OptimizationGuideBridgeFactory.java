@@ -6,19 +6,22 @@ package org.chromium.chrome.browser.optimization_guide;
 
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileKeyedMap;
-import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.components.optimization_guide.proto.HintsProto;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** OptimizationGuideBridge cached by profile. */
+/**
+ * OptimizationGuideBridge cached by profile.
+ */
 public class OptimizationGuideBridgeFactory {
     private final ProfileKeyedMap<OptimizationGuideBridge> mProfileToOptimizationGuideBridgeMap =
             ProfileKeyedMap.createMapOfDestroyables();
     private final List<HintsProto.OptimizationType> mOptimizationTypes;
 
-    /** Creates an instance of this class with no optimization types to be called per navigation. */
+    /**
+     * Creates an instance of this class with no observed optimization types.
+     */
     public OptimizationGuideBridgeFactory() {
         this(new ArrayList<HintsProto.OptimizationType>());
     }
@@ -35,15 +38,13 @@ public class OptimizationGuideBridgeFactory {
      * @return {@link OptimizationGuideBridge} for the current last used regular profile
      */
     public OptimizationGuideBridge create() {
-        Profile profile = ProfileManager.getLastUsedRegularProfile();
-        return mProfileToOptimizationGuideBridgeMap.getForProfile(
-                profile,
-                () -> {
-                    OptimizationGuideBridge optimizationGuideBridge = new OptimizationGuideBridge();
-                    if (mOptimizationTypes.size() > 0) {
-                        optimizationGuideBridge.registerOptimizationTypes(mOptimizationTypes);
-                    }
-                    return optimizationGuideBridge;
-                });
+        Profile profile = Profile.getLastUsedRegularProfile();
+        return mProfileToOptimizationGuideBridgeMap.getForProfile(profile, () -> {
+            OptimizationGuideBridge optimizationGuideBridge = new OptimizationGuideBridge();
+            if (mOptimizationTypes.size() > 0) {
+                optimizationGuideBridge.registerOptimizationTypes(mOptimizationTypes);
+            }
+            return optimizationGuideBridge;
+        });
     }
 }

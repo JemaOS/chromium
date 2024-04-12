@@ -7,14 +7,16 @@
 #include <cstddef>
 #include <string>
 
+#include "base/auto_reset.h"
 #include "base/containers/flat_set.h"
+#include "base/containers/queue.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/sparse_histogram.h"
 #include "base/numerics/safe_conversions.h"
-#include "ui/display/manager/util/display_manager_util.h"
+#include "ui/display/manager/display_manager_util.h"
 #include "ui/display/types/display_configuration_params.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/display/types/display_mode.h"
@@ -179,8 +181,7 @@ void UpdateAttemptSucceededUma(
 }
 
 void UpdateFinalStatusUma(
-    const std::vector<RequestAndStatusList>& requests_and_statuses,
-    ConfigureDisplaysTask::Status status) {
+    const std::vector<RequestAndStatusList>& requests_and_statuses) {
   int mst_external_displays = 0;
   size_t total_external_displays = requests_and_statuses.size();
   for (auto& request_and_status : requests_and_statuses) {
@@ -203,9 +204,6 @@ void UpdateFinalStatusUma(
     base::UmaHistogramBoolean(uma_name_prefix + "FinalStatus",
                               request_and_status.second);
   }
-
-  base::UmaHistogramEnumeration("ConfigureDisplays.Modeset.FinalTaskStatus",
-                                status);
 
   base::UmaHistogramExactLinear(
       "ConfigureDisplays.Modeset.TotalExternalDisplaysCount",
@@ -281,9 +279,9 @@ void ConfigureDisplaysTask::Run() {
       is_first_attempt ? &ConfigureDisplaysTask::OnFirstAttemptConfigured
                        : &ConfigureDisplaysTask::OnRetryConfigured;
 
-  display::ModesetFlags modeset_flags{display::ModesetFlag::kTestModeset};
+  uint32_t modeset_flags = display::kTestModeset;
   if (configuration_type_ == kConfigurationTypeSeamless)
-    modeset_flags.Put(display::ModesetFlag::kSeamlessModeset);
+    modeset_flags |= display::kSeamlessModeset;
   delegate_->Configure(
       config_requests,
       base::BindOnce(on_configured, weak_ptr_factory_.GetWeakPtr()),
@@ -327,9 +325,9 @@ void ConfigureDisplaysTask::OnFirstAttemptConfigured(bool config_success) {
                                  request.mode, request.enable_vrr);
   }
 
-  display::ModesetFlags modeset_flags{display::ModesetFlag::kCommitModeset};
+  uint32_t modeset_flags = display::kCommitModeset;
   if (configuration_type_ == kConfigurationTypeSeamless)
-    modeset_flags.Put(display::ModesetFlag::kSeamlessModeset);
+    modeset_flags |= display::kSeamlessModeset;
   delegate_->Configure(config_requests,
                        base::BindOnce(&ConfigureDisplaysTask::OnConfigured,
                                       weak_ptr_factory_.GetWeakPtr()),
@@ -390,7 +388,7 @@ void ConfigureDisplaysTask::OnRetryConfigured(bool config_success) {
     if (last_successful_config_parameters_.empty()) {
       LOG(ERROR) << "Display configuration failed. No modeset was attempted.";
 
-      UpdateFinalStatusUma(final_requests_status_, task_status_);
+      UpdateFinalStatusUma(final_requests_status_);
       std::move(callback_).Run(task_status_);
       return;
     }
@@ -398,9 +396,9 @@ void ConfigureDisplaysTask::OnRetryConfigured(bool config_success) {
 
   // Configure the displays using the last successful configuration parameter
   // list.
-  display::ModesetFlags modeset_flags{display::ModesetFlag::kCommitModeset};
+  uint32_t modeset_flags = display::kCommitModeset;
   if (configuration_type_ == kConfigurationTypeSeamless)
-    modeset_flags.Put(display::ModesetFlag::kSeamlessModeset);
+    modeset_flags |= display::kSeamlessModeset;
   delegate_->Configure(last_successful_config_parameters_,
                        base::BindOnce(&ConfigureDisplaysTask::OnConfigured,
                                       weak_ptr_factory_.GetWeakPtr()),
@@ -419,7 +417,7 @@ void ConfigureDisplaysTask::OnConfigured(bool config_success) {
     }
   }
 
-  UpdateFinalStatusUma(final_requests_status_, task_status_);
+  UpdateFinalStatusUma(final_requests_status_);
   std::move(callback_).Run(task_status_);
 }
 

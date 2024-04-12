@@ -36,15 +36,14 @@
 namespace blink {
 
 class PLATFORM_EXPORT GraphicsContextStateSaver final {
-  STACK_ALLOCATED();
+  USING_FAST_MALLOC(GraphicsContextStateSaver);
 
  public:
   GraphicsContextStateSaver(GraphicsContext& context,
                             bool save_and_restore = true)
       : context_(context), save_and_restore_(save_and_restore) {
-    if (save_and_restore_) {
+    if (save_and_restore_)
       context_.Save();
-    }
   }
 
   GraphicsContextStateSaver(const GraphicsContextStateSaver&) = delete;
@@ -52,9 +51,8 @@ class PLATFORM_EXPORT GraphicsContextStateSaver final {
       delete;
 
   ~GraphicsContextStateSaver() {
-    if (save_and_restore_) {
+    if (save_and_restore_)
       context_.Restore();
-    }
   }
 
   void Save() {

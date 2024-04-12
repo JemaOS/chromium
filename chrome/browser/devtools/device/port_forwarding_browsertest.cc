@@ -50,9 +50,10 @@ class PortForwardingTest: public InProcessBrowserTest {
   class Listener : public DevToolsAndroidBridge::PortForwardingListener {
    public:
     explicit Listener(Profile* profile)
-        : profile_(profile), skip_empty_devices_(true) {
-      DevToolsAndroidBridge::Factory::GetForProfile(profile_)
-          ->AddPortForwardingListener(this);
+        : profile_(profile),
+          skip_empty_devices_(true) {
+      DevToolsAndroidBridge::Factory::GetForProfile(profile_)->
+          AddPortForwardingListener(this);
     }
 
     ~Listener() override {
@@ -64,24 +65,24 @@ class PortForwardingTest: public InProcessBrowserTest {
       if (status.empty() && skip_empty_devices_)
         return;
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE, loop_->QuitWhenIdleClosure());
+          FROM_HERE, base::RunLoop::QuitCurrentWhenIdleClosureDeprecated());
     }
 
     void set_skip_empty_devices(bool skip_empty_devices) {
       skip_empty_devices_ = skip_empty_devices;
     }
 
-    void set_run_loop(base::RunLoop* loop) { loop_ = loop; }
-
    private:
     Profile* profile_;
     bool skip_empty_devices_;
-    raw_ptr<base::RunLoop> loop_;
   };
 };
 
-IN_PROC_BROWSER_TEST_F(PortForwardingTest, LoadPageWithStyleAnsScript) {
+// Flaky on all platforms. https://crbug.com/477696
+IN_PROC_BROWSER_TEST_F(PortForwardingTest,
+                       DISABLED_LoadPageWithStyleAnsScript) {
   Profile* profile = browser()->profile();
+
   AndroidDeviceManager::DeviceProviders device_providers;
 
   device_providers.push_back(
@@ -102,16 +103,15 @@ IN_PROC_BROWSER_TEST_F(PortForwardingTest, LoadPageWithStyleAnsScript) {
   base::Value::Dict config;
   config.Set(forwarding_port, original_url.host() + ":" + original_url.port());
   prefs->SetDict(prefs::kDevToolsPortForwardingConfig, std::move(config));
-  base::RunLoop loop1;
+
   Listener wait_for_port_forwarding(profile);
-  wait_for_port_forwarding.set_run_loop(&loop1);
-  loop1.Run();
+  content::RunMessageLoop();
 
   RemoteDebuggingServer::EnableTetheringForDebug();
+
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), forwarding_url));
 
   content::WebContents* wc = browser()->tab_strip_model()->GetWebContentsAt(0);
-  ASSERT_TRUE(content::WaitForLoadStop(wc));
 
   ASSERT_EQ("Port forwarding test", content::EvalJs(wc, "document.title"))
       << "Document has not loaded.";
@@ -123,12 +123,9 @@ IN_PROC_BROWSER_TEST_F(PortForwardingTest, LoadPageWithStyleAnsScript) {
       << "CSS has not loaded.";
 
   // Test that disabling port forwarding is handled normally.
-  base::RunLoop loop2;
   wait_for_port_forwarding.set_skip_empty_devices(false);
-  wait_for_port_forwarding.set_run_loop(&loop2);
   prefs->SetBoolean(prefs::kDevToolsPortForwardingEnabled, false);
-
-  loop2.Run();
+  content::RunMessageLoop();
 }
 
 class PortForwardingDisconnectTest : public PortForwardingTest {
@@ -163,10 +160,10 @@ IN_PROC_BROWSER_TEST_F(PortForwardingDisconnectTest, DisconnectOnRelease) {
   config.Set(forwarding_port, original_url.host() + ":" + original_url.port());
   prefs->SetDict(prefs::kDevToolsPortForwardingConfig, std::move(config));
 
-  base::RunLoop run_loop;
+  std::unique_ptr<Listener> wait_for_port_forwarding(new Listener(profile));
+  content::RunMessageLoop();
 
-  auto wait_for_port_forwarding = std::make_unique<Listener>(profile);
-  wait_for_port_forwarding->set_run_loop(&run_loop);
+  base::RunLoop run_loop;
 
   self_provider->set_release_callback_for_test(base::BindOnce(
       base::IgnoreResult(&base::SingleThreadTaskRunner::PostTask),

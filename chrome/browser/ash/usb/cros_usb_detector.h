@@ -50,7 +50,7 @@ enum class CrosUsbNotificationClosed {
 struct CrosUsbDeviceInfo {
   CrosUsbDeviceInfo(std::string guid,
                     std::u16string label,
-                    std::optional<guest_os::GuestId> shared_guest_id,
+                    absl::optional<guest_os::GuestId> shared_guest_id,
                     uint16_t vendor_id,
                     uint16_t product_id,
                     bool prompt_before_sharing);
@@ -61,7 +61,7 @@ struct CrosUsbDeviceInfo {
   std::u16string label;
   // Name of VM shared with. Unset if not shared. The device may be shared but
   // not yet attached.
-  std::optional<guest_os::GuestId> shared_guest_id;
+  absl::optional<guest_os::GuestId> shared_guest_id;
   uint16_t vendor_id;
   uint16_t product_id;
   // Devices shared with other devices or otherwise in use by the system
@@ -136,7 +136,7 @@ class CrosUsbDetector : public device::mojom::UsbDeviceManagerClient,
  private:
   friend class CrosUsbDetectorTest;
 
-  // Internal representation of a shareable USB device.
+  // Internal representation of a USB device.
   struct UsbDevice {
     UsbDevice();
     UsbDevice(const UsbDevice&) = delete;
@@ -148,11 +148,15 @@ class CrosUsbDetector : public device::mojom::UsbDeviceManagerClient,
 
     std::u16string label;
 
+    // Whether the device can be shared with guest OSes.
+    bool shareable = false;
     // Name of the guest the device is shared with. Unset if not shared. The
     // device may be shared but not yet attached.
-    std::optional<guest_os::GuestId> shared_guest_id;
+    absl::optional<guest_os::GuestId> shared_guest_id;
     // Non-empty only when device is attached to a VM.
-    std::optional<uint8_t> guest_port;
+    absl::optional<uint8_t> guest_port;
+    // Interfaces shareable with guest OSes
+    uint32_t allowed_interfaces_mask = 0;
     // For a mass storage device, the mount points for active mounts.
     std::set<std::string> mount_points;
     // An internal flag to suppress observer events as mount_points empties.
@@ -221,6 +225,7 @@ class CrosUsbDetector : public device::mojom::UsbDeviceManagerClient,
   // Devices will be auto-detached if they are attached to another VM.
   void AttachAfterDetach(const guest_os::GuestId& guest_id,
                          const std::string& guid,
+                         uint32_t allowed_interfaces_mask,
                          base::OnceCallback<void(bool success)> callback,
                          bool detach_success);
 
@@ -240,7 +245,7 @@ class CrosUsbDetector : public device::mojom::UsbDeviceManagerClient,
       const guest_os::GuestId& guest_id,
       const std::string& guid,
       base::OnceCallback<void(bool success)> callback,
-      std::optional<vm_tools::concierge::AttachUsbDeviceResponse> response);
+      absl::optional<vm_tools::concierge::AttachUsbDeviceResponse> response);
 
   void AttachUsbDeviceToContainer(
       const guest_os::GuestId& guest_id,
@@ -252,7 +257,8 @@ class CrosUsbDetector : public device::mojom::UsbDeviceManagerClient,
       const guest_os::GuestId& guest_id,
       const std::string& guid,
       base::OnceCallback<void(bool success)> callback,
-      std::optional<vm_tools::cicerone::AttachUsbToContainerResponse> response);
+      absl::optional<vm_tools::cicerone::AttachUsbToContainerResponse>
+          response);
 
   void DetachUsbDeviceFromContainer(
       const std::string& vm_name,
@@ -264,7 +270,7 @@ class CrosUsbDetector : public device::mojom::UsbDeviceManagerClient,
       const std::string& vm_name,
       const std::string& guid,
       base::OnceCallback<void(bool success)> callback,
-      std::optional<vm_tools::cicerone::DetachUsbFromContainerResponse>
+      absl::optional<vm_tools::cicerone::DetachUsbFromContainerResponse>
           response);
 
   void ContainerAttachAfterDetach(
@@ -278,7 +284,7 @@ class CrosUsbDetector : public device::mojom::UsbDeviceManagerClient,
       const std::string& vm_name,
       const std::string& guid,
       base::OnceCallback<void(bool success)> callback,
-      std::optional<vm_tools::concierge::DetachUsbDeviceResponse> response);
+      absl::optional<vm_tools::concierge::DetachUsbDeviceResponse> response);
 
   // Returns true when a device should show a notification when attached.
   bool ShouldShowNotification(const UsbDevice& device);
@@ -289,8 +295,11 @@ class CrosUsbDetector : public device::mojom::UsbDeviceManagerClient,
   mojo::AssociatedReceiver<device::mojom::UsbDeviceManagerClient>
       client_receiver_{this};
 
+  std::vector<device::mojom::UsbDeviceFilterPtr> guest_os_classes_blocked_;
   std::vector<device::mojom::UsbDeviceFilterPtr>
       guest_os_classes_without_notif_;
+  device::mojom::UsbDeviceFilterPtr adb_device_filter_;
+  device::mojom::UsbDeviceFilterPtr fastboot_device_filter_;
 
   // GUID -> UsbDevice map for all connected USB devices.
   std::map<std::string, UsbDevice> usb_devices_;

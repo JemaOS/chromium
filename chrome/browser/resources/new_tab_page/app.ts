@@ -3,36 +3,30 @@
 // found in the LICENSE file.
 
 import './iframe.js';
+import './realbox/realbox.js';
 import './logo.js';
-import './strings.m.js';
-import 'chrome://resources/cr_components/searchbox/realbox.js';
 import 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import 'chrome://resources/cr_elements/cr_shared_style.css.js';
 
-import {ColorChangeUpdater} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
-import type {HelpBubbleMixinInterface} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
-import {HelpBubbleMixin} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
-import type {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
-import type {ClickInfo} from 'chrome://resources/js/browser_command.mojom-webui.js';
-import {Command} from 'chrome://resources/js/browser_command.mojom-webui.js';
+import {startColorChangeUpdater} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
+import {HelpBubbleMixin, HelpBubbleMixinInterface} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
+import {ClickInfo, Command} from 'chrome://resources/js/browser_command.mojom-webui.js';
 import {BrowserCommandProxy} from 'chrome://resources/js/browser_command/browser_command_proxy.js';
 import {hexColorToSkColor, skColorToRgba} from 'chrome://resources/js/color_utils.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
 import {FocusOutlineManager} from 'chrome://resources/js/focus_outline_manager.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {getTrustedScriptURL} from 'chrome://resources/js/static_types.js';
-import type {SkColor} from 'chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
-import type {DomIf} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {SkColor} from 'chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
+import {DomIf, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './app.html.js';
 import {BackgroundManager} from './background_manager.js';
 import {CustomizeDialogPage} from './customize_dialog_types.js';
-import type {IframeElement} from './iframe.js';
-import type {LogoElement} from './logo.js';
-import {recordDuration, recordLoadDuration} from './metrics_utils.js';
-import type {PageCallbackRouter, PageHandlerRemote, Theme} from './new_tab_page.mojom-webui.js';
-import {CustomizeChromeSection, IphFeature, NtpBackgroundImageSource} from './new_tab_page.mojom-webui.js';
+import {loadTimeData} from './i18n_setup.js';
+import {IframeElement} from './iframe.js';
+import {LogoElement} from './logo.js';
+import {recordLoadDuration} from './metrics_utils.js';
+import {CustomizeChromeSection, NtpBackgroundImageSource, PageCallbackRouter, PageHandlerRemote, Theme} from './new_tab_page.mojom-webui.js';
 import {NewTabPageProxy} from './new_tab_page_proxy.js';
 import {$$} from './utils.js';
 import {Action as VoiceAction, recordVoiceAction} from './voice_search_overlay.js';
@@ -66,8 +60,6 @@ export enum NtpElement {
   CUSTOMIZE = 8,  // Obsolete
   CUSTOMIZE_BUTTON = 9,
   CUSTOMIZE_DIALOG = 10,
-  WALLPAPER_SEARCH_BUTTON = 11,
-  MAX_VALUE = WALLPAPER_SEARCH_BUTTON,
 }
 
 /**
@@ -79,8 +71,6 @@ export enum NtpCustomizeChromeEntryPoint {
   CUSTOMIZE_BUTTON = 0,
   MODULE = 1,
   URL = 2,
-  WALLPAPER_SEARCH_BUTTON = 3,
-  MAX_VALUE = WALLPAPER_SEARCH_BUTTON,
 }
 
 const CUSTOMIZE_URL_PARAM: string = 'customize';
@@ -91,13 +81,13 @@ export const CUSTOMIZE_CHROME_BUTTON_ELEMENT_ID =
 
 function recordClick(element: NtpElement) {
   chrome.metricsPrivate.recordEnumerationValue(
-      'NewTabPage.Click', element, NtpElement.MAX_VALUE + 1);
+      'NewTabPage.Click', element, Object.keys(NtpElement).length);
 }
 
 function recordCustomizeChromeOpen(element: NtpCustomizeChromeEntryPoint) {
   chrome.metricsPrivate.recordEnumerationValue(
       'NewTabPage.CustomizeChromeOpened', element,
-      NtpCustomizeChromeEntryPoint.MAX_VALUE + 1);
+      Object.keys(NtpCustomizeChromeEntryPoint).length);
 }
 
 // Adds a <script> tag that holds the lazy loaded code.
@@ -107,6 +97,7 @@ function ensureLazyLoaded() {
   script.src = getTrustedScriptURL`./lazy_load.js`;
   document.body.appendChild(script);
 }
+
 
 const AppElementBase = HelpBubbleMixin(PolymerElement) as
     {new (): PolymerElement & HelpBubbleMixinInterface};
@@ -157,19 +148,6 @@ export class AppElement extends AppElementBase {
             WindowProxy.getInstance().url.searchParams.has(CUSTOMIZE_URL_PARAM),
       },
 
-      showCustomizeChromeText_: {
-        type: Boolean,
-        computed:
-            `computeShowCustomizeChromeText_(wallpaperSearchButtonEnabled_,
-            showBackgroundImage_)`,
-      },
-
-      showWallpaperSearch_: {
-        type: Boolean,
-        value: false,
-        reflectToAttribute: true,
-      },
-
       showCustomizeDialog_: {
         type: Boolean,
         computed:
@@ -209,12 +187,6 @@ export class AppElement extends AppElementBase {
       backgroundColor_: {
         computed: 'computeBackgroundColor_(showBackgroundImage_, theme_)',
         type: Object,
-      },
-
-      // Used in cr-realbox component via host-context.
-      colorSourceIsBaseline: {
-        type: Boolean,
-        computed: 'computeColorSourceIsBaseline(theme_)',
       },
 
       customizeChromeEnabled_: {
@@ -267,6 +239,12 @@ export class AppElement extends AppElementBase {
         reflectToAttribute: true,
       },
 
+      modulesRedesignedLayoutEnabled_: {
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('modulesRedesignedLayoutEnabled'),
+        reflectToAttribute: true,
+      },
+
       middleSlotPromoEnabled_: {
         type: Boolean,
         value: () => loadTimeData.getBoolean('middleSlotPromoEnabled'),
@@ -280,13 +258,6 @@ export class AppElement extends AppElementBase {
       modulesRedesignedEnabled_: {
         type: Boolean,
         value: () => loadTimeData.getBoolean('modulesRedesignedEnabled'),
-        reflectToAttribute: true,
-      },
-
-      mostVisitedReflowOnOverflowEnabled_: {
-        type: Boolean,
-        value: () =>
-            loadTimeData.getBoolean('mostVisitedReflowOnOverflowEnabled'),
         reflectToAttribute: true,
       },
 
@@ -323,6 +294,12 @@ export class AppElement extends AppElementBase {
         observer: 'onPromoAndModulesLoadedChange_',
       },
 
+      removeScrim_: {
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('removeScrim'),
+        reflectToAttribute: true,
+      },
+
       showLensUploadDialog_: Boolean,
 
       /**
@@ -330,30 +307,12 @@ export class AppElement extends AppElementBase {
        * to show up immediately on load.
        */
       lazyRender_: Boolean,
-
-      scrolledToTop_: {
-        type: Boolean,
-        value: document.documentElement.scrollTop <= 0,
-      },
-
-      wallpaperSearchButtonAnimationEnabled_: {
-        type: Boolean,
-        value: () =>
-            loadTimeData.getBoolean('wallpaperSearchButtonAnimationEnabled'),
-        reflectToAttribute: true,
-      },
-
-      wallpaperSearchButtonEnabled_: {
-        type: Boolean,
-        value: () => loadTimeData.getBoolean('wallpaperSearchButtonEnabled'),
-        reflectToAttribute: true,
-      },
     };
   }
 
   static get observers() {
     return [
-      'updateOneGoogleBarAppearance_(oneGoogleBarLoaded_, theme_)',
+      'udpateOneGoogleBarAppearance_(oneGoogleBarLoaded_, removeScrim_, showBackgroundImage_, theme_)',
     ];
   }
 
@@ -361,8 +320,6 @@ export class AppElement extends AppElementBase {
   private oneGoogleBarLoaded_: boolean;
   private theme_: Theme;
   private showCustomize_: boolean;
-  private showCustomizeChromeText_: boolean;
-  private showWallpaperSearch_: boolean;
   private showCustomizeDialog_: boolean;
   private selectedCustomizeDialogPage_: string|null;
   private showVoiceSearchOverlay_: boolean;
@@ -381,6 +338,7 @@ export class AppElement extends AppElementBase {
   private oneGoogleBarEnabled_: boolean;
   private shortcutsEnabled_: boolean;
   private modulesFreShown: boolean;
+  private modulesRedesignedLayoutEnabled_: boolean;
   private middleSlotPromoEnabled_: boolean;
   private modulesEnabled_: boolean;
   private modulesRedesignedEnabled_: boolean;
@@ -388,22 +346,18 @@ export class AppElement extends AppElementBase {
   private modulesLoaded_: boolean;
   private modulesShownToUser: boolean;
   private promoAndModulesLoaded_: boolean;
+  private removeScrim_: boolean;
   private lazyRender_: boolean;
-  private scrolledToTop_: boolean;
-  private wallpaperSearchButtonAnimationEnabled_: boolean;
-  private wallpaperSearchButtonEnabled_: boolean;
 
   private callbackRouter_: PageCallbackRouter;
   private pageHandler_: PageHandlerRemote;
   private backgroundManager_: BackgroundManager;
   private setThemeListenerId_: number|null = null;
   private setCustomizeChromeSidePanelVisibilityListener_: number|null = null;
-  private setWallpaperSearchButtonVisibilityListener_: number|null = null;
   private eventTracker_: EventTracker = new EventTracker();
   private shouldPrintPerformance_: boolean;
   private backgroundImageLoadStartEpoch_: number;
   private backgroundImageLoadStart_: number = 0;
-  private showWebstoreToastListenerId_: number|null = null;
 
   constructor() {
     performance.mark('app-creation-start');
@@ -439,7 +393,7 @@ export class AppElement extends AppElementBase {
         },
         Math.floor(window.innerWidth));
 
-    ColorChangeUpdater.forDocument().start();
+    startColorChangeUpdater();
   }
 
   override connectedCallback() {
@@ -456,31 +410,7 @@ export class AppElement extends AppElementBase {
         this.callbackRouter_.setCustomizeChromeSidePanelVisibility.addListener(
             (visible: boolean) => {
               this.showCustomize_ = visible;
-              if (!visible) {
-                this.showWallpaperSearch_ = false;
-              }
             });
-    this.showWebstoreToastListenerId_ =
-        this.callbackRouter_.showWebstoreToast.addListener(() => {
-          if (this.showCustomize_) {
-            const toast = $$<CrToastElement>(this, '#webstoreToast');
-            if (toast) {
-              toast!.hidden = false;
-              toast!.show();
-            }
-          }
-        });
-    this.setWallpaperSearchButtonVisibilityListener_ =
-        this.callbackRouter_.setWallpaperSearchButtonVisibility.addListener(
-            (visible: boolean) => {
-              // We only show the button if wallpaper search is enabled when the
-              // NTP loads. This prevents the button from showing if Customize
-              // Chrome doesn't have the wallpaper search element yet.
-              if (!visible) {
-                this.wallpaperSearchButtonEnabled_ = visible;
-              }
-            });
-
     // Open Customize Chrome if there are Customize Chrome URL params.
     if (this.showCustomize_) {
       this.setCustomizeChromeSidePanelVisible_(this.showCustomize_);
@@ -500,26 +430,22 @@ export class AppElement extends AppElementBase {
     this.eventTracker_.add(window, 'keydown', this.onWindowKeydown_.bind(this));
     this.eventTracker_.add(
         window, 'click', this.onWindowClick_.bind(this), /*capture=*/ true);
-    this.eventTracker_.add(document, 'scroll', () => {
-      this.scrolledToTop_ = document.documentElement.scrollTop <= 0;
-    });
-    if (loadTimeData.getString('backgroundImageUrl')) {
+    if (this.shouldPrintPerformance_) {
+      // It is possible that the background image has already loaded by now.
+      // If it has, we request it to re-send the load time so that we can
+      // actually catch the load time.
       this.backgroundManager_.getBackgroundImageLoadTime().then(
           time => {
             const duration = time - this.backgroundImageLoadStartEpoch_;
-            recordDuration(
-                'NewTabPage.Images.ShownTime.BackgroundImage', duration);
-            if (this.shouldPrintPerformance_) {
-              this.printPerformanceDatum_(
-                  'background-image-load', this.backgroundImageLoadStart_,
-                  duration);
-              this.printPerformanceDatum_(
-                  'background-image-loaded',
-                  this.backgroundImageLoadStart_ + duration);
-            }
+            this.printPerformanceDatum_(
+                'background-image-load', this.backgroundImageLoadStart_,
+                duration);
+            this.printPerformanceDatum_(
+                'background-image-loaded',
+                this.backgroundImageLoadStart_ + duration);
           },
           () => {
-              // Ignore. Failed to capture background image load time.
+            console.error('Failed to capture background image load time');
           });
     }
     FocusOutlineManager.forDocument(document);
@@ -530,16 +456,13 @@ export class AppElement extends AppElementBase {
     this.callbackRouter_.removeListener(this.setThemeListenerId_!);
     this.callbackRouter_.removeListener(
         this.setCustomizeChromeSidePanelVisibilityListener_!);
-    this.callbackRouter_.removeListener(this.showWebstoreToastListenerId_!);
-    this.callbackRouter_.removeListener(
-        this.setWallpaperSearchButtonVisibilityListener_!);
     this.eventTracker_.removeAll();
   }
 
   override ready() {
     super.ready();
     this.pageHandler_.onAppRendered(WindowProxy.getInstance().now());
-    // Let the browser breathe and then render remaining elements.
+    // Let the browser breath and then render remaining elements.
     WindowProxy.getInstance().waitForLazyRender().then(() => {
       ensureLazyLoaded();
       this.lazyRender_ = true;
@@ -549,7 +472,7 @@ export class AppElement extends AppElementBase {
   }
 
   // Called to update the OGB of relevant NTP state changes.
-  private updateOneGoogleBarAppearance_() {
+  private udpateOneGoogleBarAppearance_() {
     if (this.oneGoogleBarLoaded_) {
       const isNtpDarkTheme =
           this.theme_ && (!!this.theme_.backgroundImage || this.theme_.isDark);
@@ -557,19 +480,16 @@ export class AppElement extends AppElementBase {
         type: 'updateAppearance',
         // We should be using a light OGB for dark themes and vice versa.
         applyLightTheme: isNtpDarkTheme,
+        // Only apply background protection if using a custom background in
+        // combination with a light OGB theme.
+        applyBackgroundProtection:
+            this.removeScrim_ && this.showBackgroundImage_ && isNtpDarkTheme,
       });
     }
   }
 
   private computeShowCustomizeDialog_(): boolean {
     return !this.customizeChromeEnabled_ && this.showCustomize_;
-  }
-
-  private computeShowCustomizeChromeText_(): boolean {
-    if (this.wallpaperSearchButtonEnabled_) {
-      return false;
-    }
-    return !this.showBackgroundImage_;
   }
 
   private computeBackgroundImageAttribution1_(): string {
@@ -604,7 +524,7 @@ export class AppElement extends AppElementBase {
     document.documentElement.setAttribute('lazy-loaded', String(true));
     this.registerHelpBubble(
         CUSTOMIZE_CHROME_BUTTON_ELEMENT_ID, '#customizeButton', {fixed: true});
-    this.pageHandler_.maybeShowFeaturePromo(IphFeature.kCustomizeChrome);
+    this.pageHandler_.maybeShowCustomizeChromeFeaturePromo();
   }
 
   private onOpenVoiceSearch_() {
@@ -633,26 +553,6 @@ export class AppElement extends AppElementBase {
     } else {
       this.showCustomize_ = true;
       recordCustomizeChromeOpen(NtpCustomizeChromeEntryPoint.CUSTOMIZE_BUTTON);
-    }
-  }
-
-  private onWallpaperSearchClick_() {
-    // Close the side panel if Wallpaper Search is open.
-    if (this.showCustomize_ && this.showWallpaperSearch_) {
-      this.selectedCustomizeDialogPage_ = null;
-      this.setCustomizeChromeSidePanelVisible_(!this.showCustomize_);
-      return;
-    }
-
-    // Open Wallpaper Search if the side panel is closed. Otherwise, navigate
-    // the side panel to Wallpaper Search.
-    this.selectedCustomizeDialogPage_ = CustomizeDialogPage.WALLPAPER_SEARCH;
-    this.showWallpaperSearch_ = true;
-    this.setCustomizeChromeSidePanelVisible_(this.showWallpaperSearch_);
-    if (!this.showCustomize_) {
-      this.pageHandler_.incrementCustomizeChromeButtonOpenCount();
-      recordCustomizeChromeOpen(
-          NtpCustomizeChromeEntryPoint.WALLPAPER_SEARCH_BUTTON);
     }
   }
 
@@ -706,12 +606,13 @@ export class AppElement extends AppElementBase {
         'NewTabPage.BackgroundImageSource',
         (theme.backgroundImage ? theme.backgroundImage.imageSource :
                                  NtpBackgroundImageSource.kNoImage),
-        NtpBackgroundImageSource.MAX_VALUE + 1);
+        NtpBackgroundImageSource.MAX_VALUE);
 
     chrome.metricsPrivate.recordSparseValueWithPersistentHash(
         'NewTabPage.Collections.IdOnLoad',
         theme.backgroundImageCollectionId ?? '');
   }
+
 
   private onPromoAndModulesLoadedChange_() {
     if (this.promoAndModulesLoaded_ &&
@@ -742,10 +643,6 @@ export class AppElement extends AppElementBase {
       return null;
     }
     return this.theme_ && this.theme_.backgroundColor;
-  }
-
-  private computeColorSourceIsBaseline(): boolean {
-    return this.theme_.isBaseline;
   }
 
   private computeLogoColor_(): SkColor|null {
@@ -884,9 +781,6 @@ export class AppElement extends AppElementBase {
       case CustomizeDialogPage.MODULES:
         section = CustomizeChromeSection.kModules;
         break;
-      case CustomizeDialogPage.WALLPAPER_SEARCH:
-        section = CustomizeChromeSection.kWallpaperSearch;
-        break;
     }
     this.pageHandler_.setCustomizeChromeSidePanelVisible(visible, section);
   }
@@ -929,12 +823,6 @@ export class AppElement extends AppElementBase {
     });
   }
 
-  private onWebstoreToastButtonClick_() {
-    window.location.assign(
-        `https://chrome.google.com/webstore/category/collection/chrome_color_themes?hl=${
-            window.navigator.language}`);
-  }
-
   private onWindowClick_(e: Event) {
     if (e.composedPath() && e.composedPath()[0] === $$(this, '#content')) {
       recordClick(NtpElement.BACKGROUND);
@@ -945,7 +833,7 @@ export class AppElement extends AppElementBase {
         case $$(this, 'ntp-logo'):
           recordClick(NtpElement.LOGO);
           return;
-        case $$(this, 'cr-realbox'):
+        case $$(this, 'ntp-realbox'):
           recordClick(NtpElement.REALBOX);
           return;
         case $$(this, 'cr-most-visited'):
@@ -954,7 +842,7 @@ export class AppElement extends AppElementBase {
         case $$(this, 'ntp-middle-slot-promo'):
           recordClick(NtpElement.MIDDLE_SLOT_PROMO);
           return;
-        case $$(this, '#modules'):
+        case $$(this, 'ntp-modules'):
           recordClick(NtpElement.MODULE);
           return;
         case $$(this, '#customizeButton'):
@@ -962,9 +850,6 @@ export class AppElement extends AppElementBase {
           return;
         case $$(this, 'ntp-customize-dialog'):
           recordClick(NtpElement.CUSTOMIZE_DIALOG);
-          return;
-        case $$(this, '#wallpaperSearchButton'):
-          recordClick(NtpElement.WALLPAPER_SEARCH_BUTTON);
           return;
       }
     }

@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {BindingsTestRunner} from 'bindings_test_runner';
-
 const GC = async () => {
   await TestRunner.evaluateInPageAsync(`new Promise(resolve =>
     GCController.asyncCollectAll(resolve))`);
@@ -12,6 +9,7 @@ const GC = async () => {
 
 (async function () {
   TestRunner.addResult(`Verify that JavaScript SourceMap handle different sourcemap with overlapping sources.`);
+  await TestRunner.loadTestModule('bindings_test_runner');
 
   TestRunner.markStep('initialWorkspace');
   var snapshot = BindingsTestRunner.dumpWorkspace();

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
 #include "ash/public/cpp/ash_view_ids.h"
@@ -17,6 +18,7 @@
 #include "chrome/browser/ash/login/helper.h"
 #include "chrome/browser/ash/login/startup_utils.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/ash/session_controller_client_impl.h"
@@ -194,7 +196,10 @@ class TrayAccessibilityTest : public InProcessBrowserTest,
 
   bool IsMenuButtonVisible() {
     bool visible = tray_test_api_->IsBubbleViewVisible(
-        ash::VIEW_ID_FEATURE_TILE_ACCESSIBILITY, true /* open_tray */);
+        base::FeatureList::IsEnabled(ash::features::kQsRevamp)
+            ? ash::VIEW_ID_ACCESSIBILITY_FEATURE_TILE
+            : ash::VIEW_ID_ACCESSIBILITY_TRAY_ITEM,
+        true /* open_tray */);
     tray_test_api_->CloseBubble();
     return visible;
   }
@@ -214,8 +219,13 @@ class TrayAccessibilityTest : public InProcessBrowserTest,
   }
 
   bool IsVirtualKeyboardEnabledOnDetailMenu() const {
-    return tray_test_api_->IsToggleOn(
-        ash::VIEW_ID_ACCESSIBILITY_VIRTUAL_KEYBOARD_ENABLED);
+    if (features::IsQsRevampEnabled()) {
+      return tray_test_api_->IsToggleOn(
+          ash::VIEW_ID_ACCESSIBILITY_VIRTUAL_KEYBOARD_ENABLED);
+    }
+    return tray_test_api_->IsBubbleViewVisible(
+        ash::VIEW_ID_ACCESSIBILITY_VIRTUAL_KEYBOARD_ENABLED,
+        false /* open_tray */);
   }
 
   // Disable animations so that tray icons hide immediately.

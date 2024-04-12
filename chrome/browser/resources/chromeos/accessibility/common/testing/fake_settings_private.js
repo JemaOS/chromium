@@ -16,6 +16,15 @@
 let FakeSettingsPrivatePref;
 
 /**
+ * Creates a deep copy of the object.
+ * @param {*} obj
+ * @return {*}
+ */
+function deepCopy(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+/**
  * Fake of chrome.settingsPrivate API. Use by setting
  * CrSettingsPrefs.deferInitialization to true, then passing a
  * FakeSettingsPrivate to settings-prefs#initialize().
@@ -45,7 +54,7 @@ class FakeSettingsPrivate {
     // Send a copy of prefs to keep our internal state private.
     const prefs = [];
     for (const key in this.prefs) {
-      prefs.push(structuredClone(this.prefs[key]));
+      prefs.push(deepCopy(this.prefs[key]));
     }
 
     // Run the callback asynchronously to test that the prefs aren't actually
@@ -69,7 +78,7 @@ class FakeSettingsPrivate {
     assertNotEquals(true, this.disallowSetPref_);
 
     const changed = JSON.stringify(pref.value) !== JSON.stringify(value);
-    pref.value = structuredClone(value);
+    pref.value = deepCopy(value);
     if (callback) {
       callback(true);
     }
@@ -83,8 +92,7 @@ class FakeSettingsPrivate {
     const pref = this.prefs[key];
     assertNotEquals(undefined, pref);
     callback(
-        /** @type {!chrome.settingsPrivate.PrefObject} */ (
-            structuredClone(pref)));
+        /** @type {!chrome.settingsPrivate.PrefObject} */ (deepCopy(pref)));
   }
 
   // Functions used by tests.
@@ -113,7 +121,7 @@ class FakeSettingsPrivate {
       const pref = this.prefs[change.key];
       assertNotEquals(undefined, pref);
       pref.value = change.value;
-      prefs.push(structuredClone(pref));
+      prefs.push(deepCopy(pref));
     }
     /** @type {FakeChromeEvent} */ (this.onPrefsChanged).callListeners(prefs);
   }

@@ -20,38 +20,36 @@ import com.google.auto.value.AutoValue;
 /** Options to configure how to accelerate the model inference using dedicated delegates. */
 @AutoValue
 public abstract class ComputeSettings {
+    /** TFLite accelerator delegate options. */
+    public enum Delegate {
+        NONE(0),
+        NNAPI(1),
+        GPU(2);
 
-  /** TFLite accelerator delegate options. */
-  public enum Delegate {
-    NONE(0),
-    NNAPI(1),
-    GPU(2);
+        private final int value;
 
-    private final int value;
+        Delegate(int value) {
+            this.value = value;
+        }
 
-    Delegate(int value) {
-      this.value = value;
+        public int getValue() {
+            return value;
+        }
     }
 
-    public int getValue() {
-      return value;
+    /** Builder for {@link ComputeSettings}. */
+    @AutoValue.Builder
+    public abstract static class Builder {
+        public abstract Builder setDelegate(Delegate delegate);
+
+        public abstract ComputeSettings build();
     }
-  }
 
-  /** Builder for {@link ComputeSettings}. */
-  @AutoValue.Builder
-  public abstract static class Builder {
+    public static Builder builder() {
+        return new AutoValue_ComputeSettings.Builder().setDelegate(DEFAULT_DELEGATE);
+    }
 
-    public abstract Builder setDelegate(Delegate delegate);
+    public abstract Delegate getDelegate();
 
-    public abstract ComputeSettings build();
-  }
-
-  public static Builder builder() {
-    return new AutoValue_ComputeSettings.Builder().setDelegate(DEFAULT_DELEGATE);
-  }
-
-  public abstract Delegate getDelegate();
-
-  private static final Delegate DEFAULT_DELEGATE = Delegate.NONE;
+    private static final Delegate DEFAULT_DELEGATE = Delegate.NONE;
 }

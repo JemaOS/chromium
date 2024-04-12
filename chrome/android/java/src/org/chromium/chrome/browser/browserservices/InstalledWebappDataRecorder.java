@@ -70,18 +70,13 @@ public class InstalledWebappDataRecorder {
             String appLabel = mPackageManager.getApplicationLabel(ai).toString();
 
             if (TextUtils.isEmpty(appLabel) || ai.uid == -1) {
-                Log.e(
-                        TAG,
-                        "Invalid details for client package %s: %d, %s",
-                        packageName,
-                        ai.uid,
+                Log.e(TAG, "Invalid details for client package %s: %d, %s", packageName, ai.uid,
                         appLabel);
                 return;
             }
 
-            String domain =
-                    UrlUtilities.getDomainAndRegistry(
-                            origin.toString(), /* includePrivateRegistries= */ true);
+            String domain = UrlUtilities.getDomainAndRegistry(
+                    origin.toString(), true /*includePrivateRegistries*/);
 
             Log.d(TAG, "Registering %d (%s) for %s", ai.uid, appLabel, origin);
             mDataRegister.registerPackageForOrigin(ai.uid, appLabel, packageName, domain, origin);

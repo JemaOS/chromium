@@ -35,6 +35,9 @@ class SVGLengthListInterpolationType : public SVGInterpolationType {
                  double interpolation_fraction) const final;
   SVGPropertyBase* AppliedSVGValue(const InterpolableValue&,
                                    const NonInterpolableValue*) const final;
+  void Apply(const InterpolableValue&,
+             const NonInterpolableValue*,
+             InterpolationEnvironment&) const final;
 
   const SVGLengthMode unit_mode_;
   const bool negative_values_forbidden_;

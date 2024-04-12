@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_SETTINGS_DEVICE_SETTINGS_PROVIDER_H_
 
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/functional/callback.h"
@@ -56,12 +55,12 @@ class DeviceSettingsProvider
   ~DeviceSettingsProvider() override;
 
   // Returns true if |path| is handled by this provider.
-  static bool IsDeviceSetting(std::string_view name);
+  static bool IsDeviceSetting(const std::string& name);
 
   // CrosSettingsProvider implementation.
-  const base::Value* Get(std::string_view path) const override;
+  const base::Value* Get(const std::string& path) const override;
   TrustedStatus PrepareTrustedValues(base::OnceClosure* callback) override;
-  bool HandlesSetting(std::string_view path) const override;
+  bool HandlesSetting(const std::string& path) const override;
 
   // Helper function that decodes policies from provided proto into the pref
   // map.
@@ -122,8 +121,8 @@ class DeviceSettingsProvider
   // Pending callbacks that need to be invoked after settings verification.
   std::vector<base::OnceClosure> callbacks_;
 
-  raw_ptr<DeviceSettingsService> device_settings_service_;
-  raw_ptr<PrefService, DanglingUntriaged> local_state_;
+  raw_ptr<DeviceSettingsService, ExperimentalAsh> device_settings_service_;
+  raw_ptr<PrefService, DanglingUntriaged | ExperimentalAsh> local_state_;
 
   mutable PrefValueMap migration_values_;
 

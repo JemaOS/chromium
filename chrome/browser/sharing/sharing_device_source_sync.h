@@ -13,7 +13,6 @@
 
 namespace syncer {
 class SyncService;
-class DeviceInfo;
 class DeviceInfoTracker;
 }  // namespace syncer
 
@@ -32,9 +31,9 @@ class SharingDeviceSourceSync : public SharingDeviceSource,
 
   // SharingDeviceSource:
   bool IsReady() override;
-  std::optional<SharingTargetDeviceInfo> GetDeviceByGuid(
+  std::unique_ptr<syncer::DeviceInfo> GetDeviceByGuid(
       const std::string& guid) override;
-  std::vector<SharingTargetDeviceInfo> GetDeviceCandidates(
+  std::vector<std::unique_ptr<syncer::DeviceInfo>> GetDeviceCandidates(
       sync_pb::SharingSpecificFields::EnabledFeatures required_feature)
       override;
 
@@ -56,11 +55,11 @@ class SharingDeviceSourceSync : public SharingDeviceSource,
   // are renamed to either their short name if that one is unique, or their full
   // name otherwise. The returned list is sorted in (not strictly) descending
   // order by last_updated_timestamp.
-  std::vector<SharingTargetDeviceInfo> ConvertAndDeduplicateDevices(
-      std::vector<const syncer::DeviceInfo*> devices) const;
+  std::vector<std::unique_ptr<syncer::DeviceInfo>> RenameAndDeduplicateDevices(
+      std::vector<std::unique_ptr<syncer::DeviceInfo>> devices) const;
 
-  std::vector<const syncer::DeviceInfo*> FilterDeviceCandidates(
-      std::vector<const syncer::DeviceInfo*> devices,
+  std::vector<std::unique_ptr<syncer::DeviceInfo>> FilterDeviceCandidates(
+      std::vector<std::unique_ptr<syncer::DeviceInfo>> devices,
       sync_pb::SharingSpecificFields::EnabledFeatures required_feature) const;
 
   raw_ptr<syncer::SyncService> sync_service_;
@@ -70,7 +69,7 @@ class SharingDeviceSourceSync : public SharingDeviceSource,
 
   // The personalized name is stored for deduplicating devices running older
   // clients.
-  std::optional<std::string> personalizable_local_device_name_;
+  absl::optional<std::string> personalizable_local_device_name_;
 
   base::WeakPtrFactory<SharingDeviceSourceSync> weak_ptr_factory_{this};
 };

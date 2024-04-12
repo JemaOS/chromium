@@ -27,7 +27,6 @@
 
 #include <memory>
 #include "base/location.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
@@ -41,7 +40,6 @@
 #include "third_party/blink/renderer/platform/graphics/test/mock_image_decoder.h"
 #include "third_party/blink/renderer/platform/scheduler/public/non_main_thread.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier_skia.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/shared_buffer.h"
@@ -119,16 +117,16 @@ class DeferredImageDecoderTest : public testing::Test,
   gfx::Size DecodedSize() const override { return decoded_size_; }
 
   PaintImage CreatePaintImage(
-      PaintImage::CompletionState state = PaintImage::CompletionState::kDone) {
+      PaintImage::CompletionState state = PaintImage::CompletionState::DONE) {
     return CreatePaintImage(lazy_decoder_.get(), state);
   }
 
   PaintImage CreatePaintImage(
       DeferredImageDecoder* decoder,
-      PaintImage::CompletionState state = PaintImage::CompletionState::kDone) {
+      PaintImage::CompletionState state = PaintImage::CompletionState::DONE) {
     PaintImage::AnimationType type = FrameCount() > 1
-                                         ? PaintImage::AnimationType::kAnimated
-                                         : PaintImage::AnimationType::kStatic;
+                                         ? PaintImage::AnimationType::ANIMATED
+                                         : PaintImage::AnimationType::STATIC;
 
     return PaintImageBuilder::WithDefault()
         .set_id(paint_image_id_)
@@ -144,10 +142,9 @@ class DeferredImageDecoderTest : public testing::Test,
         MockImageDecoderFactory::Create(this, decoded_size_));
   }
 
-  test::TaskEnvironment task_environment_;
   // Don't own this but saves the pointer to query states.
   PaintImage::Id paint_image_id_;
-  raw_ptr<MockImageDecoder> actual_decoder_;
+  MockImageDecoder* actual_decoder_;
   std::unique_ptr<DeferredImageDecoder> lazy_decoder_;
   SkBitmap bitmap_;
   std::unique_ptr<cc::PaintCanvas> canvas_;
@@ -187,7 +184,7 @@ TEST_F(DeferredImageDecoderTest, drawIntoPaintRecordProgressive) {
   PaintRecorder recorder;
   cc::PaintCanvas* temp_canvas = recorder.beginRecording();
   PaintImage image =
-      CreatePaintImage(PaintImage::CompletionState::kPartiallyDone);
+      CreatePaintImage(PaintImage::CompletionState::PARTIALLY_DONE);
   ASSERT_TRUE(image);
   temp_canvas->drawImage(image, 0, 0);
   canvas_->drawPicture(recorder.finishRecordingAsPicture());
@@ -234,7 +231,7 @@ TEST_F(DeferredImageDecoderTest, notAllDataReceivedPriorToDecode) {
       SharedBuffer::Create(data_->Data(), data_->size() - 10);
   lazy_decoder_->SetData(partial_data, false /* all_data_received */);
   PaintImage image =
-      CreatePaintImage(PaintImage::CompletionState::kPartiallyDone);
+      CreatePaintImage(PaintImage::CompletionState::PARTIALLY_DONE);
   ASSERT_TRUE(image);
   ASSERT_TRUE(image.GetImageHeaderMetadata());
   EXPECT_FALSE(
@@ -384,7 +381,7 @@ TEST_F(DeferredImageDecoderTest, frameOpacity) {
     std::unique_ptr<DeferredImageDecoder> decoder =
         DeferredImageDecoder::Create(data_, true,
                                      ImageDecoder::kAlphaPremultiplied,
-                                     ColorBehavior::kTransformToSRGB);
+                                     ColorBehavior::TransformToSRGB());
 
     SkImageInfo pix_info = SkImageInfo::MakeN32Premul(1, 1);
 

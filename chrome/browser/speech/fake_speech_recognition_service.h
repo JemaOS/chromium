@@ -70,7 +70,6 @@ class FakeSpeechRecognitionService
   void SendAudioToSpeechRecognitionService(
       media::mojom::AudioDataS16Ptr buffer) override;
   void OnLanguageChanged(const std::string& language) override {}
-  void OnMaskOffensiveWordsChanged(bool mask_offensive_words) override {}
   void MarkDone() override;
 
   // Methods for testing plumbing to SpeechRecognitionRecognizerClient.
@@ -88,7 +87,7 @@ class FakeSpeechRecognitionService
 
   std::string device_id() { return device_id_; }
 
-  const std::optional<::media::AudioParameters>& audio_parameters() {
+  const absl::optional<::media::AudioParameters>& audio_parameters() {
     return audio_parameters_;
   }
 
@@ -110,7 +109,7 @@ class FakeSpeechRecognitionService
   // The device ID used to capture audio.
   std::string device_id_;
   // The audio parameters used to capture audio.
-  std::optional<::media::AudioParameters> audio_parameters_;
+  absl::optional<::media::AudioParameters> audio_parameters_;
 
   base::OnceClosure recognition_started_closure_;
 

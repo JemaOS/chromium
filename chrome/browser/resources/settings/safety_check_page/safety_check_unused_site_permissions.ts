@@ -16,15 +16,12 @@ import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener
 import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {MetricsBrowserProxy} from '../metrics_browser_proxy.js';
-import { MetricsBrowserProxyImpl, SafetyCheckInteractions} from '../metrics_browser_proxy.js';
+import {MetricsBrowserProxy, MetricsBrowserProxyImpl, SafetyCheckInteractions} from '../metrics_browser_proxy.js';
 import {routes} from '../route.js';
 import {Router} from '../router.js';
-import type {UnusedSitePermissions, SafetyHubBrowserProxy} from '../safety_hub/safety_hub_browser_proxy.js';
-import { SafetyHubBrowserProxyImpl, SafetyHubEvent} from '../safety_hub/safety_hub_browser_proxy.js';
+import {UnusedSitePermissions, SiteSettingsPermissionsBrowserProxy, SiteSettingsPermissionsBrowserProxyImpl} from '../site_settings/site_settings_permissions_browser_proxy.js';
 
-import type { SettingsSafetyCheckChildElement} from './safety_check_child.js';
-import {SafetyCheckIconStatus} from './safety_check_child.js';
+import {SafetyCheckIconStatus, SettingsSafetyCheckChildElement} from './safety_check_child.js';
 import {getTemplate} from './safety_check_unused_site_permissions.html.js';
 // clang-format on
 
@@ -63,8 +60,8 @@ export class SettingsSafetyCheckUnusedSitePermissionsElement extends
   private headerString_: string;
   private iconStatus_: SafetyCheckIconStatus;
 
-  private browserProxy_: SafetyHubBrowserProxy =
-      SafetyHubBrowserProxyImpl.getInstance();
+  private browserProxy_: SiteSettingsPermissionsBrowserProxy =
+      SiteSettingsPermissionsBrowserProxyImpl.getInstance();
   private metricsBrowserProxy_: MetricsBrowserProxy =
       MetricsBrowserProxyImpl.getInstance();
 
@@ -73,7 +70,7 @@ export class SettingsSafetyCheckUnusedSitePermissionsElement extends
 
     // Register for review notification permission list updates.
     this.addWebUiListener(
-        SafetyHubEvent.UNUSED_PERMISSIONS_MAYBE_CHANGED,
+        'unused-permission-review-list-maybe-changed',
         (sites: UnusedSitePermissions[]) => {
           this.onSitesChanged_(sites);
         });

@@ -79,6 +79,7 @@ class DeviceDisablingManagerTestBase : public testing::Test,
   // Configure install attributes.
   void SetUnowned();
   void SetEnterpriseCloudOwned();
+  void SetEnterpriseActiveDirectoryOwned();
   void SetConsumerOwned();
 
  private:
@@ -117,6 +118,11 @@ void DeviceDisablingManagerTestBase::SetUnowned() {
 
 void DeviceDisablingManagerTestBase::SetEnterpriseCloudOwned() {
   cros_settings_test_helper_.InstallAttributes()->SetCloudManaged(
+      kEnrollmentDomain, kDeviceId);
+}
+
+void DeviceDisablingManagerTestBase::SetEnterpriseActiveDirectoryOwned() {
+  cros_settings_test_helper_.InstallAttributes()->SetActiveDirectoryManaged(
       kEnrollmentDomain, kDeviceId);
 }
 
@@ -226,6 +232,17 @@ TEST_F(DeviceDisablingManagerOOBETest, NotDisabledWhenEnterpriseOwned) {
   SetEnterpriseCloudOwned();
   SetDeviceDisabled(true);
   CheckWhetherDeviceDisabledDuringOOBE();
+  EXPECT_FALSE(device_disabled());
+}
+
+// Verifies that the device is not considered disabled during OOBE when it is
+// enrolled in AD mode, even if the device is marked as disabled.
+TEST_F(DeviceDisablingManagerOOBETest, NotDisabledWhenAdOwned) {
+  SetEnterpriseActiveDirectoryOwned();
+  SetDeviceDisabled(true);
+
+  CheckWhetherDeviceDisabledDuringOOBE();
+
   EXPECT_FALSE(device_disabled());
 }
 
@@ -376,6 +393,21 @@ TEST_F(DeviceDisablingManagerTest,
   CreateDeviceDisablingManager();
 }
 
+// Verifies that the device is not considered disabled when device disabling is
+// turned off by switch, even if the device is AD managed.
+TEST_F(DeviceDisablingManagerTest, NotDisabledWhenTurnedOffBySwitchAdManaged) {
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kDisableDeviceDisabling);
+  SetEnterpriseActiveDirectoryOwned();
+  MakeCrosSettingsTrusted();
+  SetDeviceDisabled(true);
+
+  EXPECT_CALL(*this, RestartToLoginScreen()).Times(0);
+  EXPECT_CALL(*this, ShowDeviceDisabledScreen()).Times(0);
+  EXPECT_CALL(*this, OnDisabledMessageChanged(_)).Times(0);
+  CreateDeviceDisablingManager();
+}
+
 // Verifies that the device is not considered disabled when it is owned by a
 // consumer, even if the device is marked as disabled.
 TEST_F(DeviceDisablingManagerTest, NotDisabledWhenConsumerOwned) {
@@ -387,6 +419,21 @@ TEST_F(DeviceDisablingManagerTest, NotDisabledWhenConsumerOwned) {
   EXPECT_CALL(*this, ShowDeviceDisabledScreen()).Times(0);
   EXPECT_CALL(*this, OnDisabledMessageChanged(_)).Times(0);
   CreateDeviceDisablingManager();
+}
+
+// Verifies that AD device is considered disabled, even when it is explicitly
+// marked as not disabled (as per b/259180126).
+TEST_F(DeviceDisablingManagerTest, DisabledWhenAdManagedAndChromadDisabled) {
+  SetEnterpriseActiveDirectoryOwned();
+  MakeCrosSettingsTrusted();
+  SetDisabledMessage("");
+  SetDeviceDisabled(false);
+
+  EXPECT_CALL(*this, RestartToLoginScreen()).Times(0);
+  EXPECT_CALL(*this, ShowDeviceDisabledScreen()).Times(1);
+  EXPECT_CALL(*this, OnDisabledMessageChanged(_)).Times(0);
+  CreateDeviceDisablingManager();
+  EXPECT_TRUE(GetDeviceDisablingManager()->disabled_message().empty());
 }
 
 // Verifies that the device disabled screen is shown immediately when the device
@@ -515,6 +562,10 @@ TEST_F(DeviceDisablingManagerTest, IsDeviceDisabledWhenTurnedOffBySwitch) {
   // Enterprise cloud owned.
   SetEnterpriseCloudOwned();
   EXPECT_FALSE(DeviceDisablingManager::IsDeviceDisabledDuringNormalOperation());
+
+  // Enterprise AD owned.
+  SetEnterpriseActiveDirectoryOwned();
+  EXPECT_FALSE(DeviceDisablingManager::IsDeviceDisabledDuringNormalOperation());
 }
 
 // Tests the IsDeviceDisabledDuringNormalOperation() method, when device
@@ -537,6 +588,17 @@ TEST_F(DeviceDisablingManagerTest, IsDeviceDisabledEnterpriseOwned) {
   EXPECT_FALSE(DeviceDisablingManager::IsDeviceDisabledDuringNormalOperation());
 
   SetDeviceDisabled(true);
+
+  EXPECT_TRUE(DeviceDisablingManager::IsDeviceDisabledDuringNormalOperation());
+}
+
+// Tests that IsDeviceDisabledDuringNormalOperation() is always true, when
+// device is enterprise AD owned (as per b/259180126).
+TEST_F(DeviceDisablingManagerTest, IsDeviceDisabledAdOwner) {
+  // Enterprise AD owned.
+  SetEnterpriseActiveDirectoryOwned();
+  MakeCrosSettingsTrusted();
+  SetDeviceDisabled(false);
 
   EXPECT_TRUE(DeviceDisablingManager::IsDeviceDisabledDuringNormalOperation());
 }

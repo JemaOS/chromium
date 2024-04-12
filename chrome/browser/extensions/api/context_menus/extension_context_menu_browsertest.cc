@@ -36,7 +36,6 @@
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/process_manager.h"
 #include "extensions/browser/state_store.h"
-#include "extensions/browser/state_store_test_observer.h"
 #include "extensions/browser/test_management_policy.h"
 #include "extensions/common/extension_set.h"
 #include "extensions/common/features/feature_channel.h"
@@ -54,6 +53,50 @@ using extensions::ResultCatcher;
 using ui::MenuModel;
 
 namespace {
+
+using extensions::MenuManager;
+using extensions::StateStore;
+
+// Observe when an extension's context menu data is written to the state store.
+class StateStoreObserver final : public StateStore::TestObserver {
+ public:
+  explicit StateStoreObserver(content::BrowserContext* context)
+      : state_store_(extensions::ExtensionSystem::Get(context)->state_store()) {
+    observed_.Observe(state_store_.get());
+  }
+
+  ~StateStoreObserver() override = default;
+
+  void WaitForExtension(const std::string& extension_id) {
+    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+    if (ids_with_writes_.count(extension_id) == 0) {
+      waiting_for_id_ = extension_id;
+    } else {
+      state_store_->FlushForTesting(run_loop_.QuitWhenIdleClosure());
+    }
+    run_loop_.Run();
+  }
+
+  void WillSetExtensionValue(const std::string& extension_id,
+                             const std::string& key) override {
+    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+    if (key != "context_menus")
+      return;
+
+    if (extension_id == waiting_for_id_) {
+      state_store_->FlushForTesting(run_loop_.QuitWhenIdleClosure());
+    } else {
+      ids_with_writes_.insert(extension_id);
+    }
+  }
+
+ private:
+  const raw_ptr<StateStore> state_store_;
+  std::set<std::string> ids_with_writes_;
+  std::string waiting_for_id_;
+  base::RunLoop run_loop_;
+  base::ScopedObservation<StateStore, StateStore::TestObserver> observed_{this};
+};
 
 constexpr char kPersistentExtensionId[] = "knldjmfmopnpolahpmmgbagdohdnhkik";
 
@@ -111,13 +154,13 @@ class ExtensionContextMenuBrowserTest
   // This creates a test menu for a page with |page_url| and |link_url|, looks
   // for an extension item with the given |label|, and returns true if the item
   // was found.
-  bool MenuHasItemWithLabel(const GURL& frame_url,
+  bool MenuHasItemWithLabel(const GURL& page_url,
                             const GURL& link_url,
-                            bool is_subframe,
+                            const GURL& frame_url,
                             const std::string& label) {
     std::unique_ptr<TestRenderViewContextMenu> menu(
-        TestRenderViewContextMenu::Create(GetWebContents(), frame_url, link_url,
-                                          is_subframe));
+        TestRenderViewContextMenu::Create(GetWebContents(), page_url, link_url,
+                                          frame_url));
     return MenuHasExtensionItemWithLabel(menu.get(), label);
   }
 
@@ -286,7 +329,8 @@ class ExtensionContextMenuLazyTest
 
     // Create and build our test context menu.
     std::unique_ptr<TestRenderViewContextMenu> menu(
-        TestRenderViewContextMenu::Create(GetWebContents(), page_url));
+        TestRenderViewContextMenu::Create(GetWebContents(), page_url, GURL(),
+                                          GURL()));
 
     // Look for the extension item in the menu, and make sure it's |enabled|.
     int command_id = ContextMenuMatcher::ConvertToExtensionsCustomCommandId(0);
@@ -324,7 +368,8 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, Simple) {
 
   // Create and build our test context menu.
   std::unique_ptr<TestRenderViewContextMenu> menu(
-      TestRenderViewContextMenu::Create(GetWebContents(), page_url));
+      TestRenderViewContextMenu::Create(GetWebContents(), page_url, GURL(),
+                                        GURL()));
 
   // Look for the extension item in the menu, and execute it.
   int command_id = ContextMenuMatcher::ConvertToExtensionsCustomCommandId(0);
@@ -338,7 +383,7 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, Simple) {
 // Tests that context menus for event page and Service Worker-based
 // extensions are stored properly.
 IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, PRE_Persistent) {
-  extensions::StateStoreTestObserver observer(profile());
+  StateStoreObserver observer(profile());
   ResultCatcher catcher;
   const extensions::Extension* extension =
       LoadContextMenuExtension("persistent");
@@ -349,7 +394,7 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, PRE_Persistent) {
   ASSERT_TRUE(catcher.GetNextResult()) << catcher.message();
 
   // Wait for the context menu to be stored.
-  observer.WaitForExtensionAndKey(extension->id(), "context_menus");
+  observer.WaitForExtension(extension->id());
 }
 
 IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, Persistent) {
@@ -386,7 +431,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionContextMenuPersistentTest, UpdateOnclick) {
 
   // Create and build our test context menu.
   std::unique_ptr<TestRenderViewContextMenu> menu(
-      TestRenderViewContextMenu::Create(GetWebContents(), page_url));
+      TestRenderViewContextMenu::Create(GetWebContents(), page_url, GURL(),
+                                        GURL()));
 
   // Look for the extension item in the menu, and execute it.
   MenuItem::Id id(false, MenuItem::ExtensionKey(extension->id()));
@@ -402,7 +448,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionContextMenuPersistentTest, UpdateOnclick) {
   ASSERT_TRUE(listener_update2.WaitUntilSatisfied());
 
   // Rebuild the context menu and click on the second extension item.
-  menu = TestRenderViewContextMenu::Create(GetWebContents(), page_url);
+  menu = TestRenderViewContextMenu::Create(GetWebContents(), page_url, GURL(),
+                                           GURL());
   id.string_uid = "id2";
   ASSERT_TRUE(FindCommandId(menu.get(), id, &command_id));
   menu->ExecuteCommand(command_id, 0);
@@ -442,7 +489,8 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest,
 
   // Create and build our test context menu.
   std::unique_ptr<TestRenderViewContextMenu> menu(
-      TestRenderViewContextMenu::Create(GetWebContents(), page_url));
+      TestRenderViewContextMenu::Create(GetWebContents(), page_url, GURL(),
+                                        GURL()));
 
   VerifyRadioItemSelectionState(menu.get(), extension->id(), "radio1", true);
   VerifyRadioItemSelectionState(menu.get(), extension->id(), "radio2", false);
@@ -490,7 +538,8 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest,
 
   // Create and build our test context menu.
   std::unique_ptr<TestRenderViewContextMenu> menu(
-      TestRenderViewContextMenu::Create(GetWebContents(), page_url));
+      TestRenderViewContextMenu::Create(GetWebContents(), page_url, GURL(),
+                                        GURL()));
 
   VerifyRadioItemSelectionState(menu.get(), extension->id(), "radio1", true);
   VerifyRadioItemSelectionState(menu.get(), extension->id(), "radio2", false);
@@ -526,17 +575,17 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, Patterns) {
 
   // Check that a document url that should match the items' patterns appears.
   GURL google_url("http://www.google.com");
-  ASSERT_TRUE(MenuHasItemWithLabel(google_url, GURL(), false,
+  ASSERT_TRUE(MenuHasItemWithLabel(google_url, GURL(), GURL(),
                                    std::string("test_item1")));
-  ASSERT_TRUE(MenuHasItemWithLabel(google_url, GURL(), false,
+  ASSERT_TRUE(MenuHasItemWithLabel(google_url, GURL(), GURL(),
                                    std::string("test_item2")));
 
   // Now check with a non-matching url.
   GURL test_url("http://www.test.com");
-  ASSERT_FALSE(
-      MenuHasItemWithLabel(test_url, GURL(), false, std::string("test_item1")));
-  ASSERT_FALSE(
-      MenuHasItemWithLabel(test_url, GURL(), false, std::string("test_item2")));
+  ASSERT_FALSE(MenuHasItemWithLabel(test_url, GURL(), GURL(),
+                                    std::string("test_item1")));
+  ASSERT_FALSE(MenuHasItemWithLabel(test_url, GURL(), GURL(),
+                                    std::string("test_item2")));
 }
 
 // Tests registering an item with a very long title that should get truncated in
@@ -559,7 +608,7 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, LongTitle) {
   // truncated.
   GURL url("http://foo.com/");
   std::unique_ptr<TestRenderViewContextMenu> menu(
-      TestRenderViewContextMenu::Create(GetWebContents(), url));
+      TestRenderViewContextMenu::Create(GetWebContents(), url, GURL(), GURL()));
 
   std::u16string label;
   ASSERT_TRUE(GetItemLabel(menu.get(), item->id(), &label));
@@ -605,7 +654,7 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, TopLevel) {
 
   GURL url("http://foo.com/");
   std::unique_ptr<TestRenderViewContextMenu> menu(
-      TestRenderViewContextMenu::Create(GetWebContents(), url));
+      TestRenderViewContextMenu::Create(GetWebContents(), url, GURL(), GURL()));
 
   size_t index = 0;
   MenuModel* model = nullptr;
@@ -693,7 +742,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionContextMenuPersistentTest, Separators) {
 
   GURL url("http://www.google.com/");
   std::unique_ptr<TestRenderViewContextMenu> menu(
-      TestRenderViewContextMenu::Create(GetWebContents(), url));
+      TestRenderViewContextMenu::Create(GetWebContents(), url, GURL(), GURL()));
 
   // The top-level item should be an "automagic parent" with the extension's
   // name.
@@ -718,7 +767,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionContextMenuPersistentTest, Separators) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(
       browser(), GURL(extension->GetResourceURL("test2.html"))));
   EXPECT_TRUE(listener2.WaitUntilSatisfied());
-  menu = TestRenderViewContextMenu::Create(GetWebContents(), url);
+  menu =
+      TestRenderViewContextMenu::Create(GetWebContents(), url, GURL(), GURL());
   ASSERT_TRUE(menu->GetMenuModelAndItemIndex(
       ContextMenuMatcher::ConvertToExtensionsCustomCommandId(0),
       &model,
@@ -741,14 +791,14 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, TargetURLs) {
 
   // No target url - the item should not appear.
   ASSERT_FALSE(
-      MenuHasItemWithLabel(google_url, GURL(), false, std::string("item1")));
+      MenuHasItemWithLabel(google_url, GURL(), GURL(), std::string("item1")));
 
   // A matching target url - the item should appear.
-  ASSERT_TRUE(MenuHasItemWithLabel(google_url, google_url, false,
+  ASSERT_TRUE(MenuHasItemWithLabel(google_url, google_url, GURL(),
                                    std::string("item1")));
 
   // A non-matching target url - the item should not appear.
-  ASSERT_FALSE(MenuHasItemWithLabel(google_url, non_google_url, false,
+  ASSERT_FALSE(MenuHasItemWithLabel(google_url, non_google_url, GURL(),
                                     std::string("item1")));
 }
 
@@ -782,11 +832,13 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuSWTest, IncognitoSplit) {
 
   // Create and build our test context menu.
   std::unique_ptr<TestRenderViewContextMenu> menu(
-      TestRenderViewContextMenu::Create(GetWebContents(), page_url));
+      TestRenderViewContextMenu::Create(GetWebContents(), page_url, GURL(),
+                                        GURL()));
   WebContents* incognito_web_contents =
       browser_incognito->tab_strip_model()->GetActiveWebContents();
   std::unique_ptr<TestRenderViewContextMenu> menu_incognito(
-      TestRenderViewContextMenu::Create(incognito_web_contents, page_url));
+      TestRenderViewContextMenu::Create(incognito_web_contents, page_url,
+                                        GURL(), GURL()));
 
   // Look for the extension item in the menu, and execute it.
   int command_id = ContextMenuMatcher::ConvertToExtensionsCustomCommandId(0);
@@ -812,16 +864,18 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, Frames) {
   ASSERT_TRUE(listener.WaitUntilSatisfied());
 
   GURL page_url("http://www.google.com");
+  GURL no_frame_url;
+  GURL frame_url("http://www.google.com");
 
-  ASSERT_TRUE(
-      MenuHasItemWithLabel(page_url, GURL(), false, std::string("Page item")));
-  ASSERT_FALSE(
-      MenuHasItemWithLabel(page_url, GURL(), false, std::string("Frame item")));
+  ASSERT_TRUE(MenuHasItemWithLabel(page_url, GURL(), no_frame_url,
+                                   std::string("Page item")));
+  ASSERT_FALSE(MenuHasItemWithLabel(page_url, GURL(), no_frame_url,
+                                    std::string("Frame item")));
 
-  ASSERT_TRUE(
-      MenuHasItemWithLabel(page_url, GURL(), true, std::string("Page item")));
-  ASSERT_TRUE(
-      MenuHasItemWithLabel(page_url, GURL(), true, std::string("Frame item")));
+  ASSERT_TRUE(MenuHasItemWithLabel(page_url, GURL(), frame_url,
+                                   std::string("Page item")));
+  ASSERT_TRUE(MenuHasItemWithLabel(page_url, GURL(), frame_url,
+                                   std::string("Frame item")));
 }
 
 // Tests that info.frameId is correctly set when the context menu is invoked.
@@ -878,17 +932,18 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, EventPage) {
   host_helper.WaitForHostDestroyed();
 
   // Test that menu items appear while the page is unloaded.
-  ASSERT_TRUE(
-      MenuHasItemWithLabel(about_blank, GURL(), false, std::string("Item 1")));
-  ASSERT_TRUE(MenuHasItemWithLabel(about_blank, GURL(), false,
-                                   std::string("Checkbox 1")));
+  ASSERT_TRUE(MenuHasItemWithLabel(
+      about_blank, GURL(), GURL(), std::string("Item 1")));
+  ASSERT_TRUE(MenuHasItemWithLabel(
+      about_blank, GURL(), GURL(), std::string("Checkbox 1")));
 
   // Test that checked menu items retain their checkedness.
   extensions::ExtensionHostTestHelper checkbox_checked(profile());
   host_helper.RestrictToType(
       extensions::mojom::ViewType::kExtensionBackgroundPage);
   std::unique_ptr<TestRenderViewContextMenu> menu(
-      TestRenderViewContextMenu::Create(GetWebContents(), about_blank));
+      TestRenderViewContextMenu::Create(GetWebContents(), about_blank, GURL(),
+                                        GURL()));
 
   MenuItem::Id id(false, MenuItem::ExtensionKey(extension->id()));
   id.string_uid = "checkbox1";
@@ -948,7 +1003,8 @@ IN_PROC_BROWSER_TEST_P(ExtensionContextMenuLazyTest, UpdateCheckboxes) {
 
   // Create and build our test context menu.
   std::unique_ptr<TestRenderViewContextMenu> menu(
-      TestRenderViewContextMenu::Create(GetWebContents(), page_url));
+      TestRenderViewContextMenu::Create(GetWebContents(), page_url, GURL(),
+                                        GURL()));
 
   VerifyRadioItemSelectionState(menu.get(), extension->id(), "checkbox1",
                                 false);

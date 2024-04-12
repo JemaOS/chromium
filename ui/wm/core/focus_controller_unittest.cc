@@ -281,7 +281,7 @@ class DeleteOnActivationChangeObserver : public ActivationChangeObserver,
 
  private:
   raw_ptr<aura::Window> root_;
-  raw_ptr<aura::Window, DanglingUntriaged> window_;
+  raw_ptr<aura::Window> window_;
   const bool delete_on_activating_;
   const bool delete_window_losing_active_;
   bool did_delete_;
@@ -322,7 +322,7 @@ class DeleteOnLoseFocusChangeObserver
 
  private:
   raw_ptr<aura::Window> root_;
-  raw_ptr<aura::Window, DanglingUntriaged> window_;
+  raw_ptr<aura::Window> window_;
   bool did_delete_;
 };
 
@@ -370,7 +370,7 @@ class ScopedTargetFocusNotificationObserver : public FocusNotificationObserver {
   }
 
  private:
-  raw_ptr<aura::Window, DanglingUntriaged> target_;
+  raw_ptr<aura::Window> target_;
   aura::WindowTracker tracker_;
 };
 

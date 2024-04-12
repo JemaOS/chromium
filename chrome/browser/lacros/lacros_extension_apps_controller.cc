@@ -15,23 +15,19 @@
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/apps/app_service/browser_app_instance_tracker.h"
 #include "chrome/browser/apps/app_service/intent_util.h"
-#include "chrome/browser/apps/app_service/launch_result_type.h"
 #include "chrome/browser/apps/app_service/launch_utils.h"
 #include "chrome/browser/apps/app_service/publishers/extension_apps_enable_flow.h"
 #include "chrome/browser/apps/app_service/publishers/extension_apps_util.h"
-#include "chrome/browser/chromeos/extensions/web_file_handlers/intent_util.h"
 #include "chrome/browser/extensions/api/file_browser_handler/file_browser_handler_flow_lacros.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/launch_util.h"
 #include "chrome/browser/lacros/lacros_extension_apps_publisher.h"
 #include "chrome/browser/lacros/lacros_extensions_util.h"
-#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/extensions/application_launch.h"
-#include "chrome/browser/ui/extensions/web_file_handlers/multiclient_util.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "components/services/app_service/public/cpp/app_types.h"
 #include "extensions/browser/app_window/app_window.h"
@@ -44,9 +40,7 @@
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_urls.h"
-#include "extensions/common/manifest_handlers/web_file_handlers_info.h"
 #include "ui/base/window_open_disposition.h"
-#include "ui/display/types/display_constants.h"
 #include "ui/events/event_constants.h"
 
 namespace {
@@ -75,11 +69,7 @@ LacrosExtensionAppsController::MakeForExtensions() {
 
 LacrosExtensionAppsController::LacrosExtensionAppsController(
     const ForWhichExtensionType& which_type)
-    : which_type_(which_type),
-      controller_{this},
-      web_file_handlers_permission_handler_(
-          std::make_unique<extensions::WebFileHandlersPermissionHandler>(
-              ProfileManager::GetPrimaryUserProfile())) {}
+    : which_type_(which_type), controller_{this} {}
 
 LacrosExtensionAppsController::~LacrosExtensionAppsController() = default;
 
@@ -103,8 +93,7 @@ void LacrosExtensionAppsController::Uninstall(
     bool report_abuse) {
   Profile* profile = nullptr;
   const extensions::Extension* extension = nullptr;
-  bool success = lacros_extensions_util::GetProfileAndExtension(
-      app_id, &profile, &extension);
+  bool success = lacros_extensions_util::DemuxId(app_id, &profile, &extension);
   if (!success)
     return;
   DCHECK(which_type_.Matches(extension));
@@ -158,13 +147,25 @@ void LacrosExtensionAppsController::GetMenuModel(
   NOTREACHED();
 }
 
-void LacrosExtensionAppsController::DEPRECATED_LoadIcon(
-    const std::string& app_id,
-    apps::IconKeyPtr icon_key,
-    apps::IconType icon_type,
-    int32_t size_hint_in_dip,
-    apps::LoadIconCallback callback) {
-  NOTREACHED();
+void LacrosExtensionAppsController::LoadIcon(const std::string& app_id,
+                                             apps::IconKeyPtr icon_key,
+                                             apps::IconType icon_type,
+                                             int32_t size_hint_in_dip,
+                                             LoadIconCallback callback) {
+  Profile* profile = nullptr;
+  const extensions::Extension* extension = nullptr;
+  bool success = lacros_extensions_util::DemuxId(app_id, &profile, &extension);
+  if (success && icon_key) {
+    DCHECK(which_type_.Matches(extension));
+    LoadIconFromExtension(
+        icon_type, size_hint_in_dip, profile, extension->id(),
+        static_cast<apps::IconEffects>(icon_key->icon_effects),
+        std::move(callback));
+    return;
+  }
+
+  // On failure, we still run the callback, with the zero IconValue.
+  std::move(callback).Run(std::make_unique<apps::IconValue>());
 }
 
 void LacrosExtensionAppsController::GetCompressedIcon(
@@ -174,8 +175,7 @@ void LacrosExtensionAppsController::GetCompressedIcon(
     apps::LoadIconCallback callback) {
   Profile* profile = nullptr;
   const extensions::Extension* extension = nullptr;
-  bool success = lacros_extensions_util::GetProfileAndExtension(
-      app_id, &profile, &extension);
+  bool success = lacros_extensions_util::DemuxId(app_id, &profile, &extension);
   if (success) {
     GetChromeAppCompressedIconData(profile, app_id, size_in_dip, scale_factor,
                                    std::move(callback));
@@ -190,8 +190,7 @@ void LacrosExtensionAppsController::OpenNativeSettings(
     const std::string& app_id) {
   Profile* profile = nullptr;
   const extensions::Extension* extension = nullptr;
-  bool success = lacros_extensions_util::GetProfileAndExtension(
-      app_id, &profile, &extension);
+  bool success = lacros_extensions_util::DemuxId(app_id, &profile, &extension);
   if (!success)
     return;
   DCHECK(which_type_.Matches(extension));
@@ -204,11 +203,6 @@ void LacrosExtensionAppsController::OpenNativeSettings(
   }
 
   chrome::ShowExtensions(browser, extension->id());
-}
-
-void LacrosExtensionAppsController::UpdateAppSize(const std::string& app_id) {
-  DCHECK(publisher_);
-  return publisher_->UpdateAppSize(app_id);
 }
 
 void LacrosExtensionAppsController::SetWindowMode(
@@ -224,8 +218,8 @@ void LacrosExtensionAppsController::Launch(
   crosapi::mojom::LaunchResultPtr result = crosapi::mojom::LaunchResult::New();
   Profile* profile = nullptr;
   const extensions::Extension* extension = nullptr;
-  bool success = lacros_extensions_util::GetProfileAndExtension(
-      launch_params->app_id, &profile, &extension);
+  bool success = lacros_extensions_util::DemuxId(launch_params->app_id,
+                                                 &profile, &extension);
   if (!success) {
     std::move(callback).Run(std::move(result));
     return;
@@ -262,8 +256,7 @@ void LacrosExtensionAppsController::StopApp(const std::string& app_id) {
   // Find the extension.
   Profile* profile = nullptr;
   const extensions::Extension* extension = nullptr;
-  bool success = lacros_extensions_util::GetProfileAndExtension(
-      app_id, &profile, &extension);
+  bool success = lacros_extensions_util::DemuxId(app_id, &profile, &extension);
   if (!success)
     return;
   DCHECK(which_type_.Matches(extension));
@@ -313,13 +306,10 @@ void LacrosExtensionAppsController::FinallyLaunch(
     crosapi::mojom::LaunchParamsPtr launch_params,
     LaunchCallback callback,
     crosapi::mojom::LaunchResultPtr result) {
-  // instance_id is required as defined in mojom for app service.
-  result->instance_id = base::UnguessableToken::Create();
-
   Profile* profile = nullptr;
   const extensions::Extension* extension = nullptr;
-  bool success = lacros_extensions_util::GetProfileAndExtension(
-      launch_params->app_id, &profile, &extension);
+  bool success = lacros_extensions_util::DemuxId(launch_params->app_id,
+                                                 &profile, &extension);
   if (!success) {
     std::move(callback).Run(std::move(result));
     return;
@@ -329,41 +319,16 @@ void LacrosExtensionAppsController::FinallyLaunch(
   params.app_id = extension->id();
 
   if (which_type_.IsChromeApps() ||
-      extensions::IsLegacyQuickOfficeExtension(*extension)) {
+      extension_misc::IsQuickOfficeExtension(extension->id())) {
     OpenApplication(profile, std::move(params));
 
     // TODO(https://crbug.com/1225848): Store the resulting instance token,
     // which will be used to close the instance at a later point in time.
+    result->instance_id = base::UnguessableToken::Create();
     result->state = crosapi::mojom::LaunchResultState::kSuccess;
     std::move(callback).Run(std::move(result));
-    return;
-  }
 
-  if (which_type_.IsExtensions()) {
-    // Web File Handlers use the `file_handlers` manifest key for registration.
-    if (extensions::WebFileHandlers::SupportsWebFileHandlers(*extension)) {
-      std::vector<base::SafeBaseName> base_names =
-          extensions::GetBaseNamesForIntent(*params.intent);
-
-      // This vector cannot be empty because this is reached after explicitly
-      // opening one or more files.
-      if (base_names.empty()) {
-        result->state = crosapi::mojom::LaunchResultState::kFailed;
-        std::move(callback).Run(std::move(result));
-        return;
-      }
-
-      // Confirm that the extension can open the file and then call the
-      // callback.
-      web_file_handlers_permission_handler_->Confirm(
-          *extension, base_names,
-          base::BindOnce(
-              &LacrosExtensionAppsController::LaunchAppWithArgumentsCallback,
-              weak_factory_.GetWeakPtr(), std::move(profile), std::move(params),
-              std::move(callback), std::move(result)));
-      return;
-    }
-
+  } else if (which_type_.IsExtensions()) {
     // This code path is used only by fileBrowserHandler to open Lacros
     // extension, and is triggered by user using a Lacros extension to handle
     // file open. Therefore we check |launch_params| first, and if that passes,
@@ -395,36 +360,10 @@ void LacrosExtensionAppsController::FinallyLaunch(
             weak_factory_.GetWeakPtr(), std::move(result),
             std::move(callback)));
 
-    return;
-  }
-
-  NOTREACHED();
-  std::move(callback).Run(std::move(result));
-}
-
-void LacrosExtensionAppsController::LaunchAppWithArgumentsCallback(
-    Profile* profile,
-    apps::AppLaunchParams params,
-    LaunchCallback callback,
-    crosapi::mojom::LaunchResultPtr result,
-    bool should_open) {
-  // Exit early, while notifying, in case `Don't open` was chosen.
-  if (!should_open) {
-    result->state = crosapi::mojom::LaunchResultState::kFailed;
+  } else {
+    NOTREACHED();
     std::move(callback).Run(std::move(result));
-    return;
   }
-
-  // Reuse a recent foreground window for new tab creation.
-  params.container = apps::LaunchContainer::kLaunchContainerTab;
-  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
-  params.display_id = display::kInvalidDisplayId;
-
-  // Launch Web File Handlers.
-  OpenApplication(profile, std::move(params));
-  result->instance_id = base::UnguessableToken::Create();
-  result->state = crosapi::mojom::LaunchResultState::kSuccess;
-  std::move(callback).Run(std::move(result));
 }
 
 void LacrosExtensionAppsController::OnExecuteFileBrowserHandlerComplete(

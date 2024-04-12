@@ -187,7 +187,7 @@ IpczResult IPCZ_API Serialize(IpczDriverHandle handle,
                               IpczDriverHandle transport,
                               uint32_t flags,
                               const void* options,
-                              volatile void* data,
+                              void* data,
                               size_t* num_bytes,
                               IpczDriverHandle* handles,
                               size_t* num_handles) {
@@ -223,7 +223,7 @@ IpczResult IPCZ_API Serialize(IpczDriverHandle handle,
     return IPCZ_RESULT_RESOURCE_EXHAUSTED;
   }
 
-  auto& header = *reinterpret_cast<volatile SerializedObjectHeader*>(data);
+  auto& header = *reinterpret_cast<SerializedObjectHeader*>(data);
   header.type = object->type();
   header.memory_size = 0;
 
@@ -247,7 +247,7 @@ IpczResult IPCZ_API Serialize(IpczDriverHandle handle,
   return IPCZ_RESULT_OK;
 }
 
-IpczResult IPCZ_API Deserialize(const volatile void* data,
+IpczResult IPCZ_API Deserialize(const void* data,
                                 size_t num_bytes,
                                 const IpczDriverHandle* handles,
                                 size_t num_handles,
@@ -255,8 +255,7 @@ IpczResult IPCZ_API Deserialize(const volatile void* data,
                                 uint32_t flags,
                                 const void* options,
                                 IpczDriverHandle* driver_handle) {
-  const auto& header =
-      *static_cast<const volatile SerializedObjectHeader*>(data);
+  const auto& header = *static_cast<const SerializedObjectHeader*>(data);
   if (num_bytes < sizeof(header)) {
     return IPCZ_RESULT_INVALID_ARGUMENT;
   }
@@ -306,33 +305,33 @@ IpczResult IPCZ_API CreateTransports(IpczDriverHandle transport0,
 }
 
 IpczResult IPCZ_API
-ActivateTransport(IpczDriverHandle transport,
-                  IpczHandle listener,
+ActivateTransport(IpczDriverHandle driver_transport,
+                  IpczHandle transport,
                   IpczTransportActivityHandler activity_handler,
                   uint32_t flags,
                   const void* options) {
-  MultiprocessTransport::FromHandle(transport)->Activate(listener,
-                                                         activity_handler);
+  MultiprocessTransport::FromHandle(driver_transport)
+      ->Activate(transport, activity_handler);
   return IPCZ_RESULT_OK;
 }
 
-IpczResult IPCZ_API DeactivateTransport(IpczDriverHandle transport,
+IpczResult IPCZ_API DeactivateTransport(IpczDriverHandle driver_transport,
                                         uint32_t flags,
                                         const void* options) {
-  MultiprocessTransport::FromHandle(transport)->Deactivate();
+  MultiprocessTransport::FromHandle(driver_transport)->Deactivate();
   return IPCZ_RESULT_OK;
 }
 
-IpczResult IPCZ_API Transmit(IpczDriverHandle transport,
+IpczResult IPCZ_API Transmit(IpczDriverHandle driver_transport,
                              const void* data,
                              size_t num_bytes,
                              const IpczDriverHandle* handles,
                              size_t num_handles,
                              uint32_t flags,
                              const void* options) {
-  return MultiprocessTransport::FromHandle(transport)->Transmit(
-      absl::MakeSpan(static_cast<const uint8_t*>(data), num_bytes),
-      absl::MakeSpan(handles, num_handles));
+  return MultiprocessTransport::FromHandle(driver_transport)
+      ->Transmit(absl::MakeSpan(static_cast<const uint8_t*>(data), num_bytes),
+                 absl::MakeSpan(handles, num_handles));
 }
 
 IpczResult IPCZ_API ReportBadTransportActivity(IpczDriverHandle transport,
@@ -378,7 +377,7 @@ IpczResult GetSharedMemoryInfo(IpczDriverHandle driver_memory,
 IpczResult IPCZ_API MapSharedMemory(IpczDriverHandle driver_memory,
                                     uint32_t flags,
                                     const void* options,
-                                    volatile void** address,
+                                    void** address,
                                     IpczDriverHandle* driver_mapping) {
   auto mapping = MultiprocessMemory::FromHandle(driver_memory)->Map();
   *address = mapping->address();

@@ -247,12 +247,15 @@ void WebSourceBufferImpl::RemovedFromMediaSource() {
 
 WebMediaPlayer::TrackType mediaTrackTypeToBlink(media::MediaTrack::Type type) {
   switch (type) {
-    case media::MediaTrack::Type::kAudio:
+    case media::MediaTrack::Audio:
       return WebMediaPlayer::kAudioTrack;
-    case media::MediaTrack::Type::kVideo:
+    case media::MediaTrack::Text:
+      return WebMediaPlayer::kTextTrack;
+    case media::MediaTrack::Video:
       return WebMediaPlayer::kVideoTrack;
   }
-  NOTREACHED_NORETURN();
+  NOTREACHED();
+  return WebMediaPlayer::kAudioTrack;
 }
 
 void WebSourceBufferImpl::InitSegmentReceived(

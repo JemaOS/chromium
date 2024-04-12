@@ -7,7 +7,6 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/scoped_observation.h"
 #include "base/time/time.h"
 #include "components/app_restore/restore_data.h"
 #include "components/services/app_service/public/cpp/app_registry_cache.h"
@@ -32,7 +31,7 @@ class AppLaunchHandler : public apps::AppRegistryCache::Observer {
   ~AppLaunchHandler() override;
 
   // Returns true if there are some restore data. Otherwise, returns false.
-  bool HasRestoreData() const;
+  bool HasRestoreData();
 
   // Called when an app has launched. Overriders can use this to record
   // histograms based on `app_type_name`.
@@ -54,13 +53,10 @@ class AppLaunchHandler : public apps::AppRegistryCache::Observer {
   // separately.
   void LaunchApps();
 
-  // Protected for descendants.
-  void ObserveCache(apps::AppRegistryCache* source);
-
-  // Called before a system web app or chrome app is launched. Lets
-  // subclasses decide if they want to move an existing window associated
-  // with `app_id`, or continue with trying to launch the app. Optional
-  // launch parameters may be present in `launch_list`.
+  // Called before a system web app or chrome app is launched. Lets subclasses
+  // decide if they want to move an existing window associated with `app_id`, or
+  // continue with trying to launch the app. Optional launch parameters may be
+  // present in `launch_list`.
   virtual bool ShouldLaunchSystemWebAppOrChromeApp(
       const std::string& app_id,
       const ::app_restore::RestoreData::LaunchList& launch_list);
@@ -84,12 +80,8 @@ class AppLaunchHandler : public apps::AppRegistryCache::Observer {
       const std::string& app_id,
       const ::app_restore::RestoreData::LaunchList& launch_list);
 
-  const raw_ptr<Profile, DanglingUntriaged> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
   std::unique_ptr<::app_restore::RestoreData> restore_data_;
-
-  base::ScopedObservation<apps::AppRegistryCache,
-                          apps::AppRegistryCache::Observer>
-      app_registry_cache_observer_{this};
 };
 
 }  // namespace ash

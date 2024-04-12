@@ -31,11 +31,7 @@
 #include "third_party/blink/renderer/core/css/container_query.h"
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
 #include "third_party/blink/renderer/core/css/css_selector_list.h"
-#include "third_party/blink/renderer/core/css/css_syntax_definition.h"
-#include "third_party/blink/renderer/core/css/css_variable_data.h"
 #include "third_party/blink/renderer/core/css/media_list.h"
-#include "third_party/blink/renderer/core/css/parser/css_at_rule_id.h"
-#include "third_party/blink/renderer/core/css/parser/css_nesting_type.h"
 #include "third_party/blink/renderer/core/css/style_scope.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
@@ -46,7 +42,6 @@ class CascadeLayer;
 class CSSRule;
 class CSSStyleSheet;
 class ExecutionContext;
-class StyleSheetContents;
 
 class CORE_EXPORT StyleRuleBase : public GarbageCollected<StyleRuleBase> {
  public:
@@ -60,7 +55,6 @@ class CORE_EXPORT StyleRuleBase : public GarbageCollected<StyleRuleBase> {
     kFontFeatureValues,
     kFontFeature,
     kPage,
-    kPageMargin,
     kProperty,
     kKeyframes,
     kKeyframe,
@@ -71,10 +65,9 @@ class CORE_EXPORT StyleRuleBase : public GarbageCollected<StyleRuleBase> {
     kCounterStyle,
     kScope,
     kSupports,
-    kStartingStyle,
-    kViewTransition,
-    kFunction,
-    kPositionTry,
+    kPositionFallback,
+    kTry,
+    kInitial,
   };
 
   // Name of a cascade layer as given by an @layer rule, split at '.' into a
@@ -103,31 +96,27 @@ class CORE_EXPORT StyleRuleBase : public GarbageCollected<StyleRuleBase> {
   bool IsNamespaceRule() const { return GetType() == kNamespace; }
   bool IsMediaRule() const { return GetType() == kMedia; }
   bool IsPageRule() const { return GetType() == kPage; }
-  bool IsPageRuleMargin() const { return GetType() == kPageMargin; }
   bool IsPropertyRule() const { return GetType() == kProperty; }
   bool IsStyleRule() const { return GetType() == kStyle; }
   bool IsScopeRule() const { return GetType() == kScope; }
   bool IsSupportsRule() const { return GetType() == kSupports; }
   bool IsImportRule() const { return GetType() == kImport; }
-  bool IsStartingStyleRule() const { return GetType() == kStartingStyle; }
-  bool IsViewTransitionRule() const { return GetType() == kViewTransition; }
+  bool IsPositionFallbackRule() const { return GetType() == kPositionFallback; }
+  bool IsTryRule() const { return GetType() == kTry; }
+  bool IsInitialRule() const { return GetType() == kInitial; }
   bool IsConditionRule() const {
     return GetType() == kContainer || GetType() == kMedia ||
-           GetType() == kSupports || GetType() == kStartingStyle;
+           GetType() == kSupports || GetType() == kInitial;
   }
-  bool IsFunctionRule() const { return GetType() == kFunction; }
-  bool IsPositionTryRule() const { return GetType() == kPositionTry; }
 
   StyleRuleBase* Copy() const;
 
   // FIXME: There shouldn't be any need for the null parent version.
   CSSRule* CreateCSSOMWrapper(
       wtf_size_t position_hint = std::numeric_limits<wtf_size_t>::max(),
-      CSSStyleSheet* parent_sheet = nullptr,
-      bool trigger_use_counters = false) const;
+      CSSStyleSheet* parent_sheet = nullptr) const;
   CSSRule* CreateCSSOMWrapper(wtf_size_t position_hint,
-                              CSSRule* parent_rule,
-                              bool trigger_use_counters = false) const;
+                              CSSRule* parent_rule) const;
 
   // Move this rule from being a child of old_parent (which is only given for
   // sake of DCHECK) to being a child of new_parent, updating parent pointers
@@ -139,101 +128,16 @@ class CORE_EXPORT StyleRuleBase : public GarbageCollected<StyleRuleBase> {
   void TraceAfterDispatch(blink::Visitor* visitor) const {}
   void FinalizeGarbageCollectedObject();
 
-  // See CSSSelector::IsInvisible.
-  bool IsInvisible() const;
-  // See CSSSelector::Signal.
-  bool IsSignaling() const;
-
-  bool HasSignalingChildRule() const { return has_signaling_child_rule_; }
-
-  // This class mimics the API of HeapVector<Member<StyleRuleBase>>,
-  // except that any invisible rule added to the vector isn't visible
-  // through any member function except `RawChildRules`.
-  //
-  // TODO(crbug.com/1517290): Remove this when we're done use-counting.
-  class CORE_EXPORT ChildRuleVector : public GarbageCollected<ChildRuleVector> {
-   public:
-    ChildRuleVector() = default;
-
-    // An iterator which skips invisible rules.
-    class CORE_EXPORT Iterator {
-      STACK_ALLOCATED();
-
-     public:
-      Iterator(const Member<StyleRuleBase>* position,
-               const Member<StyleRuleBase>* end)
-          : position_(position), end_(end) {
-        CHECK_LE(position, end);
-      }
-
-      void operator++();
-      Member<StyleRuleBase> operator*() const { return *position_; }
-      bool operator==(const Iterator& o) const {
-        return position_ == o.position_ && end_ == o.end_;
-      }
-      bool operator!=(const Iterator& o) const { return !(*this == o); }
-
-     private:
-      const Member<StyleRuleBase>* position_;
-      const Member<StyleRuleBase>* end_;
-    };
-
-    ChildRuleVector* Copy() const;
-
-    Iterator begin() const {
-      // The AdjustedIndex call ensures that we skip leading invisible rules.
-      return Iterator(rules_.begin() + AdjustedIndex(0), rules_.end());
-    }
-    Iterator end() const { return Iterator(rules_.end(), rules_.end()); }
-
-    const Member<StyleRuleBase>& operator[](wtf_size_t i) const {
-      return rules_.at(AdjustedIndex(i));
-    }
-    Member<StyleRuleBase>& operator[](wtf_size_t i) {
-      return rules_.at(AdjustedIndex(i));
-    }
-
-    wtf_size_t size() const { return rules_.size() - num_invisible_rules_; }
-
-    void AddChildRule(StyleRuleBase* rule);
-    void WrapperInsertRule(unsigned index, StyleRuleBase*);
-    void WrapperRemoveRule(unsigned index);
-
-    const HeapVector<Member<StyleRuleBase>>& RawChildRules() const {
-      return rules_;
-    }
-
-    void Trace(blink::Visitor* visitor) const { visitor->Trace(rules_); }
-
-   private:
-    // Finds the real index of the Nth non-invisible child rule.
-    // The provided `index` must be in the range [0, size()].
-    wtf_size_t AdjustedIndex(wtf_size_t index) const;
-
-    HeapVector<Member<StyleRuleBase>> rules_;
-    wtf_size_t num_invisible_rules_ = 0;
-  };
-
  protected:
-  explicit StyleRuleBase(RuleType type)
-      : type_(type), has_signaling_child_rule_(false) {}
-  StyleRuleBase(const StyleRuleBase& rule)
-      : type_(rule.type_),
-        has_signaling_child_rule_(rule.has_signaling_child_rule_) {}
-
-  void SetHasSignalingChildRule(bool has_signaling_child_rule) {
-    has_signaling_child_rule_ = has_signaling_child_rule;
-  }
+  explicit StyleRuleBase(RuleType type) : type_(type) {}
+  StyleRuleBase(const StyleRuleBase& rule) : type_(rule.type_) {}
 
  private:
   CSSRule* CreateCSSOMWrapper(wtf_size_t position_hint,
                               CSSStyleSheet* parent_sheet,
-                              CSSRule* parent_rule,
-                              bool trigger_use_counters) const;
+                              CSSRule* parent_rule) const;
 
   const uint8_t type_;
-  // See CSSSelector::Signal.
-  bool has_signaling_child_rule_;
 };
 
 // A single rule from a stylesheet. Contains a selector list (one or more
@@ -312,7 +216,7 @@ class CORE_EXPORT StyleRule : public StyleRuleBase {
   ~StyleRule();
 
   void SetProperties(CSSPropertyValueSet* properties) {
-    DCHECK_EQ(properties_.Get(), nullptr);
+    DCHECK_EQ(properties_, nullptr);
     properties_ = properties;
   }
 
@@ -359,32 +263,31 @@ class CORE_EXPORT StyleRule : public StyleRuleBase {
 
   void TraceAfterDispatch(blink::Visitor*) const;
 
-  const ChildRuleVector* ChildRules() const { return child_rule_vector_.Get(); }
-
+  const HeapVector<Member<StyleRuleBase>>* ChildRules() const {
+    return child_rules_.Get();
+  }
   void EnsureChildRules() {
     // Allocate the child rule vector only when we need it,
     // since most rules won't have children (almost by definition).
-    if (child_rule_vector_ == nullptr) {
-      child_rule_vector_ = MakeGarbageCollected<ChildRuleVector>();
+    if (child_rules_ == nullptr) {
+      child_rules_ = MakeGarbageCollected<HeapVector<Member<StyleRuleBase>>>();
     }
   }
-
-  // Note that if `child` is invisible (see CSSSelector::IsInvisible),
-  // then the added child rule won't be visible through `ChildRules`.
-  void AddChildRule(StyleRuleBase*);
-
+  void AddChildRule(StyleRuleBase* child) {
+    EnsureChildRules();
+    child_rules_->push_back(child);
+  }
   void WrapperInsertRule(unsigned index, StyleRuleBase* rule) {
     EnsureChildRules();
-    child_rule_vector_->WrapperInsertRule(index, rule);
+    child_rules_->insert(index, rule);
   }
   void WrapperRemoveRule(unsigned index) {
-    child_rule_vector_->WrapperRemoveRule(index);
+    child_rules_->erase(child_rules_->begin() + index);
   }
 
  private:
   friend class StyleRuleBase;
   friend class CSSLazyParsingTest;
-
   bool HasParsedProperties() const;
 
   CSSSelector* SelectorArray() {
@@ -397,7 +300,7 @@ class CORE_EXPORT StyleRule : public StyleRuleBase {
 
   mutable Member<CSSPropertyValueSet> properties_;
   mutable Member<CSSLazyPropertyParser> lazy_property_parser_;
-  Member<ChildRuleVector> child_rule_vector_;
+  Member<HeapVector<Member<StyleRuleBase>>> child_rules_;
 };
 
 class CORE_EXPORT StyleRuleFontFace : public StyleRuleBase {
@@ -413,13 +316,41 @@ class CORE_EXPORT StyleRuleFontFace : public StyleRuleBase {
   }
 
   void SetCascadeLayer(const CascadeLayer* layer) { layer_ = layer; }
-  const CascadeLayer* GetCascadeLayer() const { return layer_.Get(); }
+  const CascadeLayer* GetCascadeLayer() const { return layer_; }
 
   void TraceAfterDispatch(blink::Visitor*) const;
 
  private:
   Member<CSSPropertyValueSet> properties_;  // Cannot be null.
   Member<const CascadeLayer> layer_;
+};
+
+class StyleRulePage : public StyleRuleBase {
+ public:
+  StyleRulePage(CSSSelectorList*, CSSPropertyValueSet*);
+  StyleRulePage(const StyleRulePage&);
+
+  const CSSSelector* Selector() const { return selector_list_->First(); }
+  const CSSPropertyValueSet& Properties() const { return *properties_; }
+  MutableCSSPropertyValueSet& MutableProperties();
+
+  void WrapperAdoptSelectorList(CSSSelectorList* selectors) {
+    selector_list_ = selectors;
+  }
+
+  StyleRulePage* Copy() const {
+    return MakeGarbageCollected<StyleRulePage>(*this);
+  }
+
+  void SetCascadeLayer(const CascadeLayer* layer) { layer_ = layer; }
+  const CascadeLayer* GetCascadeLayer() const { return layer_; }
+
+  void TraceAfterDispatch(blink::Visitor*) const;
+
+ private:
+  Member<CSSPropertyValueSet> properties_;  // Cannot be null.
+  Member<const CascadeLayer> layer_;
+  Member<CSSSelectorList> selector_list_;
 };
 
 class CORE_EXPORT StyleRuleProperty : public StyleRuleBase {
@@ -434,11 +365,8 @@ class CORE_EXPORT StyleRuleProperty : public StyleRuleBase {
   const CSSValue* Inherits() const;
   const CSSValue* GetInitialValue() const;
 
-  bool SetNameText(const ExecutionContext* execution_context,
-                   const String& name_text);
-
   void SetCascadeLayer(const CascadeLayer* layer) { layer_ = layer; }
-  const CascadeLayer* GetCascadeLayer() const { return layer_.Get(); }
+  const CascadeLayer* GetCascadeLayer() const { return layer_; }
 
   StyleRuleProperty* Copy() const {
     return MakeGarbageCollected<StyleRuleProperty>(*this);
@@ -454,11 +382,13 @@ class CORE_EXPORT StyleRuleProperty : public StyleRuleBase {
 
 class CORE_EXPORT StyleRuleGroup : public StyleRuleBase {
  public:
-  const ChildRuleVector& ChildRules() const { return *child_rule_vector_; }
-  ChildRuleVector& ChildRules() { return *child_rule_vector_; }
+  const HeapVector<Member<StyleRuleBase>>& ChildRules() const {
+    return child_rules_;
+  }
+  HeapVector<Member<StyleRuleBase>>& ChildRules() { return child_rules_; }
 
-  void WrapperInsertRule(CSSStyleSheet*, unsigned, StyleRuleBase*);
-  void WrapperRemoveRule(CSSStyleSheet*, unsigned);
+  void WrapperInsertRule(unsigned, StyleRuleBase*);
+  void WrapperRemoveRule(unsigned);
 
   void TraceAfterDispatch(blink::Visitor*) const;
 
@@ -467,7 +397,7 @@ class CORE_EXPORT StyleRuleGroup : public StyleRuleBase {
   StyleRuleGroup(const StyleRuleGroup&);
 
  private:
-  Member<ChildRuleVector> child_rule_vector_;
+  HeapVector<Member<StyleRuleBase>> child_rules_;
 };
 
 class CORE_EXPORT StyleRuleScope : public StyleRuleGroup {
@@ -483,12 +413,7 @@ class CORE_EXPORT StyleRuleScope : public StyleRuleGroup {
 
   const StyleScope& GetStyleScope() const { return *style_scope_; }
 
-  void SetPreludeText(const ExecutionContext*,
-                      String,
-                      CSSNestingType,
-                      StyleRule* parent_rule_for_nesting,
-                      bool is_within_scope,
-                      StyleSheetContents* style_sheet);
+  void SetPreludeText(const ExecutionContext*, String);
 
  private:
   Member<const StyleScope> style_scope_;
@@ -533,67 +458,6 @@ class CORE_EXPORT StyleRuleLayerStatement : public StyleRuleBase {
   Vector<LayerName> names_;
 };
 
-// TODO(sesse): When we get CSSOM support for page margin rules, consider
-// whether this should be a StyleRuleGroup or not. (The page margin rules
-// are not strictly selectors, though.)
-class StyleRulePage : public StyleRuleBase {
- public:
-  StyleRulePage(CSSSelectorList* selector_list,
-                CSSPropertyValueSet* properties,
-                HeapVector<Member<StyleRuleBase>> child_rules);
-  StyleRulePage(const StyleRulePage&);
-
-  const CSSSelector* Selector() const { return selector_list_->First(); }
-  const CSSPropertyValueSet& Properties() const { return *properties_; }
-  MutableCSSPropertyValueSet& MutableProperties();
-
-  void WrapperAdoptSelectorList(CSSSelectorList* selectors) {
-    selector_list_ = selectors;
-  }
-
-  StyleRulePage* Copy() const {
-    return MakeGarbageCollected<StyleRulePage>(*this);
-  }
-
-  void SetCascadeLayer(const CascadeLayer* layer) { layer_ = layer; }
-  const CascadeLayer* GetCascadeLayer() const { return layer_.Get(); }
-
-  const HeapVector<Member<StyleRuleBase>, 4>& ChildRules() const {
-    return child_rules_;
-  }
-  HeapVector<Member<StyleRuleBase>, 4>& ChildRules() { return child_rules_; }
-
-  void TraceAfterDispatch(blink::Visitor*) const;
-
- private:
-  Member<CSSPropertyValueSet> properties_;  // Cannot be null.
-  Member<const CascadeLayer> layer_;
-  Member<CSSSelectorList> selector_list_;
-
-  // Page margin rules (e.g. @top-left).
-  HeapVector<Member<StyleRuleBase>, 4> child_rules_;
-};
-
-class StyleRulePageMargin : public StyleRuleBase {
- public:
-  StyleRulePageMargin(CSSAtRuleID id, CSSPropertyValueSet* properties);
-  StyleRulePageMargin(const StyleRulePageMargin&);
-
-  const CSSPropertyValueSet& Properties() const { return *properties_; }
-  MutableCSSPropertyValueSet& MutableProperties();
-  CSSAtRuleID ID() const { return id_; }
-
-  StyleRulePageMargin* Copy() const {
-    return MakeGarbageCollected<StyleRulePageMargin>(*this);
-  }
-
-  void TraceAfterDispatch(blink::Visitor*) const;
-
- private:
-  CSSAtRuleID id_;                          // What margin, e.g. @top-right.
-  Member<CSSPropertyValueSet> properties_;  // Cannot be null.
-};
-
 // If you add new children of this class, remember to update IsConditionRule()
 // above.
 class CORE_EXPORT StyleRuleCondition : public StyleRuleGroup {
@@ -634,7 +498,7 @@ class CORE_EXPORT StyleRuleMedia : public StyleRuleCondition {
   Member<const MediaQuerySet> media_queries_;
 };
 
-class CORE_EXPORT StyleRuleSupports : public StyleRuleCondition {
+class StyleRuleSupports : public StyleRuleCondition {
  public:
   StyleRuleSupports(const String& condition_text,
                     bool condition_is_supported,
@@ -675,17 +539,20 @@ class CORE_EXPORT StyleRuleContainer : public StyleRuleCondition {
   Member<ContainerQuery> container_query_;
 };
 
-class StyleRuleStartingStyle : public StyleRuleGroup {
+class StyleRuleInitial : public StyleRuleCondition {
  public:
-  explicit StyleRuleStartingStyle(HeapVector<Member<StyleRuleBase>> rules);
-  StyleRuleStartingStyle(const StyleRuleStartingStyle&) = default;
+  explicit StyleRuleInitial(HeapVector<Member<StyleRuleBase>> rules);
+  StyleRuleInitial(const StyleRuleInitial&) = default;
 
-  StyleRuleStartingStyle* Copy() const {
-    return MakeGarbageCollected<StyleRuleStartingStyle>(*this);
+  bool ConditionIsSupported() const { return true; }
+  StyleRuleInitial* Copy() const {
+    return MakeGarbageCollected<StyleRuleInitial>(*this);
   }
 
+  void SetConditionText(const ExecutionContext*, String);
+
   void TraceAfterDispatch(blink::Visitor* visitor) const {
-    StyleRuleGroup::TraceAfterDispatch(visitor);
+    StyleRuleCondition::TraceAfterDispatch(visitor);
   }
 };
 
@@ -698,46 +565,6 @@ class StyleRuleCharset : public StyleRuleBase {
   }
 
  private:
-};
-
-// An @function rule, representing a CSS function.
-class CORE_EXPORT StyleRuleFunction : public StyleRuleBase {
- public:
-  struct Type {
-    CSSSyntaxDefinition syntax;
-
-    // Whether this is a numeric type, that would be accepted by calc()
-    // (see https://drafts.csswg.org/css-values/#calc-func). This is used
-    // to allow the user to not have to write calc() around every single
-    // expression, so that one could do e.g. --foo(2 + 2) instead of
-    // --foo(calc(2 + 2)). Since writing calc() around an expression of
-    // such a type will never change its meaning, and nested calc is allowed,
-    // this is always safe even when not needed.
-    bool should_add_implicit_calc;
-  };
-  struct Parameter {
-    String name;
-    Type type;
-  };
-
-  StyleRuleFunction(AtomicString name,
-                    Vector<Parameter> parameters,
-                    scoped_refptr<CSSVariableData> function_body,
-                    Type return_type);
-  StyleRuleFunction(const StyleRuleFunction&) = delete;
-
-  const AtomicString& GetName() const { return name_; }
-  const Vector<Parameter>& GetParameters() const { return parameters_; }
-  CSSVariableData& GetFunctionBody() const { return *function_body_; }
-  const Type& GetReturnType() const { return return_type_; }
-
-  void TraceAfterDispatch(blink::Visitor*) const;
-
- private:
-  AtomicString name_;
-  Vector<Parameter> parameters_;
-  scoped_refptr<CSSVariableData> function_body_;
-  Type return_type_;
 };
 
 template <>
@@ -760,13 +587,6 @@ struct DowncastTraits<StyleRulePage> {
 };
 
 template <>
-struct DowncastTraits<StyleRulePageMargin> {
-  static bool AllowFrom(const StyleRuleBase& rule) {
-    return rule.IsPageRuleMargin();
-  }
-};
-
-template <>
 struct DowncastTraits<StyleRuleProperty> {
   static bool AllowFrom(const StyleRuleBase& rule) {
     return rule.IsPropertyRule();
@@ -785,7 +605,7 @@ struct DowncastTraits<StyleRuleGroup> {
   static bool AllowFrom(const StyleRuleBase& rule) {
     return rule.IsMediaRule() || rule.IsSupportsRule() ||
            rule.IsContainerRule() || rule.IsLayerBlockRule() ||
-           rule.IsScopeRule() || rule.IsStartingStyleRule();
+           rule.IsScopeRule();
   }
 };
 
@@ -832,16 +652,9 @@ struct DowncastTraits<StyleRuleCharset> {
 };
 
 template <>
-struct DowncastTraits<StyleRuleStartingStyle> {
+struct DowncastTraits<StyleRuleInitial> {
   static bool AllowFrom(const StyleRuleBase& rule) {
-    return rule.IsStartingStyleRule();
-  }
-};
-
-template <>
-struct DowncastTraits<StyleRuleFunction> {
-  static bool AllowFrom(const StyleRuleBase& rule) {
-    return rule.IsFunctionRule();
+    return rule.IsInitialRule();
   }
 };
 

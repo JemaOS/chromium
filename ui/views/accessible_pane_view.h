@@ -24,9 +24,9 @@ class ViewTracker;
 class VIEWS_EXPORT AccessiblePaneView : public View,
                                         public FocusChangeListener,
                                         public FocusTraversable {
-  METADATA_HEADER(AccessiblePaneView, View)
-
  public:
+  METADATA_HEADER(AccessiblePaneView);
+
   AccessiblePaneView();
 
   AccessiblePaneView(const AccessiblePaneView&) = delete;

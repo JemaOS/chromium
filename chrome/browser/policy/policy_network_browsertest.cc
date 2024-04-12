@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string_view>
-
 #include "base/functional/bind.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/values.h"
@@ -28,18 +27,12 @@
 #include "net/dns/dns_test_util.h"
 #include "net/dns/mock_host_resolver.h"
 #include "net/dns/public/util.h"
-#include "net/ssl/ssl_config.h"
 #include "net/ssl/ssl_server_config.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "net/test/ssl_test_util.h"
 #include "net/test/test_doh_server.h"
 #include "third_party/boringssl/src/include/openssl/nid.h"
-#include "third_party/boringssl/src/include/openssl/ssl.h"
 #include "url/gurl.h"
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/net/secure_dns_manager.h"
-#endif
 
 namespace policy {
 
@@ -53,16 +46,8 @@ class SSLPolicyTest : public PolicyTest {
     std::u16string title;
   };
 
-  bool StartTestServer(const net::SSLServerConfig& ssl_config) {
+  bool StartTestServer(const net::SSLServerConfig ssl_config) {
     https_server_.SetSSLConfig(net::EmbeddedTestServer::CERT_OK, ssl_config);
-    https_server_.ServeFilesFromSourceDirectory("chrome/test/data");
-    return https_server_.Start();
-  }
-
-  bool StartTestServer(
-      const net::EmbeddedTestServer::ServerCertificateConfig& cert_config,
-      const net::SSLServerConfig& ssl_config) {
-    https_server_.SetSSLConfig(cert_config, ssl_config);
     https_server_.ServeFilesFromSourceDirectory("chrome/test/data");
     return https_server_.Start();
   }
@@ -71,7 +56,7 @@ class SSLPolicyTest : public PolicyTest {
     return g_browser_process->local_state()->GetBoolean(pref_name);
   }
 
-  LoadResult LoadPage(std::string_view path) {
+  LoadResult LoadPage(base::StringPiece path) {
     return LoadPage(https_server_.GetURL(path));
   }
 
@@ -102,65 +87,63 @@ class SSLPolicyTest : public PolicyTest {
 class PostQuantumPolicyTest : public SSLPolicyTest {
  public:
   PostQuantumPolicyTest() {
-    scoped_feature_list_.InitAndEnableFeature(net::features::kPostQuantumKyber);
+    scoped_feature_list_.InitAndEnableFeature(
+        net::features::kPostQuantumKyber);
   }
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_F(PostQuantumPolicyTest, PostQuantumEnabledPolicy) {
+#if !BUILDFLAG(IS_CHROMEOS_LACROS)
+IN_PROC_BROWSER_TEST_F(PostQuantumPolicyTest, ChromeVariations) {
   net::SSLServerConfig ssl_config;
-  ssl_config.curves_for_testing = {NID_X25519Kyber768Draft00};
+  ssl_config.curves_for_testing = {NID_X25519Kyber768};
   ASSERT_TRUE(StartTestServer(ssl_config));
 
-  // Should be able to load a page from the test server because policy is in
-  // the default state and feature is enabled.
-  EXPECT_FALSE(GetBooleanPref(prefs::kPostQuantumKeyAgreementEnabled));
+  // Should be able to load a page from the test server because Kyber is
+  // enabled.
+  EXPECT_TRUE(GetBooleanPref(prefs::kPostQuantumEnabled));
   LoadResult result = LoadPage("/title2.html");
   EXPECT_TRUE(result.success);
   EXPECT_EQ(u"Title Of Awesomeness", result.title);
 
-  // Disable the policy.
+  // Setting ChromeVariations to a non-zero value should also disable
+  // Kyber.
+  const auto* const variations_key =
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+      // On Chrome OS the ChromeVariations policy doesn't exist and is
+      // replaced by DeviceChromeVariations.
+      key::kDeviceChromeVariations;
+#else
+      key::kChromeVariations;
+#endif
   PolicyMap policies;
-  SetPolicy(&policies, key::kPostQuantumKeyAgreementEnabled,
-            base::Value(false));
+  SetPolicy(&policies, variations_key, base::Value(1));
   UpdateProviderPolicy(policies);
   content::FlushNetworkServiceInstanceForTesting();
 
   // Page loads should now fail.
-  EXPECT_FALSE(GetBooleanPref(prefs::kPostQuantumKeyAgreementEnabled));
   result = LoadPage("/title3.html");
   EXPECT_FALSE(result.success);
-
-  // Enable the policy.
-  PolicyMap policies2;
-  SetPolicy(&policies2, key::kPostQuantumKeyAgreementEnabled,
-            base::Value(true));
-  UpdateProviderPolicy(policies2);
-  content::FlushNetworkServiceInstanceForTesting();
-
-  // Page load should now succeed.
-  EXPECT_TRUE(GetBooleanPref(prefs::kPostQuantumKeyAgreementEnabled));
-  result = LoadPage("/title2.html");
-  EXPECT_TRUE(result.success);
-  EXPECT_EQ(u"Title Of Awesomeness", result.title);
 }
+#endif  // !BUILDFLAG(IS_CHROMEOS_LACROS)
 
 class ECHPolicyTest : public SSLPolicyTest {
  public:
   // a.test is covered by `CERT_TEST_NAMES`.
-  static constexpr std::string_view kHostname = "a.test";
-  static constexpr std::string_view kPublicName = "public-name.test";
-  static constexpr std::string_view kDohServerHostname = "doh.test";
+  static constexpr base::StringPiece kHostname = "a.test";
+  static constexpr base::StringPiece kPublicName = "public-name.test";
+  static constexpr base::StringPiece kDohServerHostname = "doh.test";
 
-  static constexpr std::string_view kECHSuccessTitle = "Negotiated ECH";
-  static constexpr std::string_view kECHFailureTitle = "Did not negotiate ECH";
+  static constexpr base::StringPiece kECHSuccessTitle = "Negotiated ECH";
+  static constexpr base::StringPiece kECHFailureTitle = "Did not negotiate ECH";
 
   ECHPolicyTest() : ech_server_{net::EmbeddedTestServer::TYPE_HTTPS} {
     scoped_feature_list_.InitWithFeaturesAndParameters(
         /*enabled_features=*/
-        {{net::features::kUseDnsHttpsSvcb,
+        {{net::features::kEncryptedClientHello, {}},
+         {net::features::kUseDnsHttpsSvcb,
           {{"UseDnsHttpsSvcbEnforceSecureResponse", "true"}}}},
         /*disabled_features=*/{});
   }
@@ -208,18 +191,10 @@ class ECHPolicyTest : public SSLPolicyTest {
     SetPolicy(&policies, key::kDnsOverHttpsMode, base::Value("secure"));
     SetPolicy(&policies, key::kDnsOverHttpsTemplates,
               base::Value(doh_server_.GetTemplate()));
-
-// On Lacros, the DnsOverHttpsTemplates policy gets mapped to the
-// kDnsOverHttpsEffectiveTemplatesChromeOS pref which is set in Ash.
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-    g_browser_process->local_state()->SetString(
-        prefs::kDnsOverHttpsEffectiveTemplatesChromeOS,
-        doh_server_.GetTemplate());
-#endif
     return policies;
   }
 
-  GURL GetURL(std::string_view path) {
+  GURL GetURL(base::StringPiece path) {
     return ech_server_.GetURL(kHostname, path);
   }
 
@@ -244,13 +219,6 @@ class ECHPolicyTest : public SSLPolicyTest {
 };
 
 IN_PROC_BROWSER_TEST_F(ECHPolicyTest, ECHEnabledPolicy) {
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  // SecureDnsManager does the identifier placeholder replacement for the
-  // template URI and maps the final value to the
-  // prefs::kDnsOverHttpsEffectiveTemplatesChromeOS local state pref.
-  std::unique_ptr<ash::SecureDnsManager> secure_dns_manager =
-      std::make_unique<ash::SecureDnsManager>(g_browser_process->local_state());
-#endif
   // By default, the policy does not inhibit ECH.
   EXPECT_TRUE(GetBooleanPref(prefs::kEncryptedClientHelloEnabled));
   LoadResult result = LoadPage(GetURL("/a"));
@@ -268,6 +236,109 @@ IN_PROC_BROWSER_TEST_F(ECHPolicyTest, ECHEnabledPolicy) {
   result = LoadPage(GetURL("/b"));
   EXPECT_TRUE(result.success);
   EXPECT_EQ(base::ASCIIToUTF16(kECHFailureTitle), result.title);
+}
+
+class SHA1DisabledPolicyTest : public SSLPolicyTest {
+ public:
+  SHA1DisabledPolicyTest() {
+    scoped_feature_list_.InitAndDisableFeature(
+        net::features::kSHA1ServerSignature);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(SHA1DisabledPolicyTest, InsecureHashPolicy) {
+  net::SSLServerConfig ssl_config;
+  // Apply 0x303 to force TLS 1.2 and make the server limited to sha1.
+  ssl_config.version_min = 0x0303;
+  ssl_config.version_max = 0x0303;
+  ssl_config.signature_algorithm_for_testing = 0x0201;
+  ASSERT_TRUE(StartTestServer(ssl_config));
+
+  // Should be unable to load a page from the test server because the
+  // policy is unset, and the feature flag has disabled SHA1
+  EXPECT_FALSE(GetBooleanPref(prefs::kInsecureHashesInTLSHandshakesEnabled));
+  LoadResult result = LoadPage("/title2.html");
+  EXPECT_FALSE(result.success);
+
+  PolicyMap policies;
+  // Enable Insecure Handshake Hashes.
+  SetPolicy(&policies, key::kInsecureHashesInTLSHandshakesEnabled,
+            base::Value(true));
+  UpdateProviderPolicy(policies);
+  content::FlushNetworkServiceInstanceForTesting();
+
+  // Should be able to load a page from the test server because policy has
+  // overridden the disabled feature flag.
+  EXPECT_TRUE(GetBooleanPref(prefs::kInsecureHashesInTLSHandshakesEnabled));
+  result = LoadPage("/title2.html");
+  EXPECT_TRUE(result.success);
+  EXPECT_EQ(u"Title Of Awesomeness", result.title);
+
+  // Disable the policy.
+  SetPolicy(&policies, key::kInsecureHashesInTLSHandshakesEnabled,
+            base::Value(false));
+  UpdateProviderPolicy(policies);
+  content::FlushNetworkServiceInstanceForTesting();
+
+  // Page loads should now fail as the policy has disabled SHA1.
+  EXPECT_FALSE(GetBooleanPref(prefs::kInsecureHashesInTLSHandshakesEnabled));
+  result = LoadPage("/title3.html");
+  EXPECT_FALSE(result.success);
+}
+
+class SHA1EnabledPolicyTest : public SSLPolicyTest {
+ public:
+  SHA1EnabledPolicyTest() {
+    scoped_feature_list_.InitAndEnableFeature(
+        net::features::kSHA1ServerSignature);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(SHA1EnabledPolicyTest, InsecureHashPolicy) {
+  net::SSLServerConfig ssl_config;
+  // Apply 0x303 to force TLS 1.2 and make the server limited to sha1.
+  ssl_config.version_min = 0x0303;
+  ssl_config.version_max = 0x0303;
+  ssl_config.signature_algorithm_for_testing = 0x0201;
+  ASSERT_TRUE(StartTestServer(ssl_config));
+
+  // With the policy unset, we should be able to load a page from the test
+  // server because SHA1 is allowed by feature flag.
+  EXPECT_FALSE(GetBooleanPref(prefs::kInsecureHashesInTLSHandshakesEnabled));
+  LoadResult result = LoadPage("/title2.html");
+  EXPECT_TRUE(result.success);
+  EXPECT_EQ(u"Title Of Awesomeness", result.title);
+
+  PolicyMap policies;
+  // Disable Insecure Handshake Hashes.
+  SetPolicy(&policies, key::kInsecureHashesInTLSHandshakesEnabled,
+            base::Value(false));
+  UpdateProviderPolicy(policies);
+  content::FlushNetworkServiceInstanceForTesting();
+
+  // We should no longer be able to load a page, as the policy has
+  // disabled insecure hashes..
+  EXPECT_FALSE(GetBooleanPref(prefs::kInsecureHashesInTLSHandshakesEnabled));
+  result = LoadPage("/title3.html");
+  EXPECT_FALSE(result.success);
+
+  // Enable Insecure Handshake Hashes.
+  SetPolicy(&policies, key::kInsecureHashesInTLSHandshakesEnabled,
+            base::Value(true));
+  UpdateProviderPolicy(policies);
+  content::FlushNetworkServiceInstanceForTesting();
+
+  // With the policy set, we should be able to load a page from the test server
+  EXPECT_TRUE(GetBooleanPref(prefs::kInsecureHashesInTLSHandshakesEnabled));
+  result = LoadPage("/title3.html");
+  EXPECT_TRUE(result.success);
+  EXPECT_EQ(u"Title Of More Awesomeness", result.title);
 }
 
 }  // namespace policy

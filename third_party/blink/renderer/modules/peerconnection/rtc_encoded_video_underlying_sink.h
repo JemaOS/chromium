@@ -21,27 +21,28 @@ class MODULES_EXPORT RTCEncodedVideoUnderlyingSink final
  public:
   RTCEncodedVideoUnderlyingSink(
       ScriptState*,
-      scoped_refptr<blink::RTCEncodedVideoStreamTransformer::Broker>);
+      scoped_refptr<blink::RTCEncodedVideoStreamTransformer::Broker>,
+      webrtc::TransformableFrameInterface::Direction);
 
   // UnderlyingSinkBase
-  ScriptPromiseTyped<IDLUndefined> start(ScriptState*,
-                                         WritableStreamDefaultController*,
-                                         ExceptionState&) override;
-  ScriptPromiseTyped<IDLUndefined> write(ScriptState*,
-                                         ScriptValue chunk,
-                                         WritableStreamDefaultController*,
-                                         ExceptionState&) override;
-  ScriptPromiseTyped<IDLUndefined> close(ScriptState*,
-                                         ExceptionState&) override;
-  ScriptPromiseTyped<IDLUndefined> abort(ScriptState*,
-                                         ScriptValue reason,
-                                         ExceptionState&) override;
+  ScriptPromise start(ScriptState*,
+                      WritableStreamDefaultController*,
+                      ExceptionState&) override;
+  ScriptPromise write(ScriptState*,
+                      ScriptValue chunk,
+                      WritableStreamDefaultController*,
+                      ExceptionState&) override;
+  ScriptPromise close(ScriptState*, ExceptionState&) override;
+  ScriptPromise abort(ScriptState*,
+                      ScriptValue reason,
+                      ExceptionState&) override;
 
   void Trace(Visitor*) const override;
 
  private:
   scoped_refptr<blink::RTCEncodedVideoStreamTransformer::Broker>
       transformer_broker_;
+  webrtc::TransformableFrameInterface::Direction expected_direction_;
   THREAD_CHECKER(thread_checker_);
 };
 

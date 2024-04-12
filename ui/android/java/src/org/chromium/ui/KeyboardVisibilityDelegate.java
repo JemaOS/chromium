@@ -6,12 +6,12 @@ package org.chromium.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Rect;
 import android.os.Handler;
 import android.os.StrictMode;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.inputmethod.InputMethodManager;
-
-import androidx.core.view.WindowInsetsCompat;
 
 import org.chromium.base.Log;
 import org.chromium.base.ObserverList;
@@ -35,7 +35,9 @@ public class KeyboardVisibilityDelegate {
     /** The delegate to determine keyboard visibility. */
     private static KeyboardVisibilityDelegate sInstance = new KeyboardVisibilityDelegate();
 
-    /** An interface to notify listeners of changes in the soft keyboard's visibility. */
+    /**
+     * An interface to notify listeners of changes in the soft keyboard's visibility.
+     */
     public interface KeyboardVisibilityListener {
         /**
          * Called whenever the keyboard might have changed.
@@ -43,12 +45,10 @@ public class KeyboardVisibilityDelegate {
          */
         void keyboardVisibilityChanged(boolean isShowing);
     }
-
     private final ObserverList<KeyboardVisibilityListener> mKeyboardVisibilityListeners =
             new ObserverList<>();
 
     protected void registerKeyboardVisibilityCallbacks() {}
-
     protected void unregisterKeyboardVisibilityCallbacks() {}
 
     /**
@@ -85,32 +85,29 @@ public class KeyboardVisibilityDelegate {
     public void showKeyboard(View view) {
         final Handler handler = new Handler();
         final AtomicInteger attempt = new AtomicInteger();
-        Runnable openRunnable =
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        // Not passing InputMethodManager.SHOW_IMPLICIT as it does not trigger the
-                        // keyboard in landscape mode.
-                        InputMethodManager imm =
-                                (InputMethodManager)
-                                        view.getContext()
-                                                .getSystemService(Context.INPUT_METHOD_SERVICE);
-                        // Third-party touches disk on showSoftInput call.
-                        // http://crbug.com/619824, http://crbug.com/635118
-                        StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskWrites();
-                        try {
-                            imm.showSoftInput(view, 0);
-                        } catch (IllegalArgumentException e) {
-                            if (attempt.incrementAndGet() <= KEYBOARD_RETRY_ATTEMPTS) {
-                                handler.postDelayed(this, KEYBOARD_RETRY_DELAY_MS);
-                            } else {
-                                Log.e(TAG, "Unable to open keyboard.  Giving up.", e);
-                            }
-                        } finally {
-                            StrictMode.setThreadPolicy(oldPolicy);
-                        }
+        Runnable openRunnable = new Runnable() {
+            @Override
+            public void run() {
+                // Not passing InputMethodManager.SHOW_IMPLICIT as it does not trigger the
+                // keyboard in landscape mode.
+                InputMethodManager imm = (InputMethodManager) view.getContext().getSystemService(
+                        Context.INPUT_METHOD_SERVICE);
+                // Third-party touches disk on showSoftInput call.
+                // http://crbug.com/619824, http://crbug.com/635118
+                StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskWrites();
+                try {
+                    imm.showSoftInput(view, 0);
+                } catch (IllegalArgumentException e) {
+                    if (attempt.incrementAndGet() <= KEYBOARD_RETRY_ATTEMPTS) {
+                        handler.postDelayed(this, KEYBOARD_RETRY_DELAY_MS);
+                    } else {
+                        Log.e(TAG, "Unable to open keyboard.  Giving up.", e);
                     }
-                };
+                } finally {
+                    StrictMode.setThreadPolicy(oldPolicy);
+                }
+            }
+        };
         openRunnable.run();
     }
 
@@ -130,10 +127,8 @@ public class KeyboardVisibilityDelegate {
      * @return Whether the keyboard was visible before.
      */
     protected boolean hideAndroidSoftKeyboard(View view) {
-        if (!view.isAttachedToWindow()) return false;
-        InputMethodManager imm =
-                (InputMethodManager)
-                        view.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        InputMethodManager imm = (InputMethodManager) view.getContext().getSystemService(
+                Context.INPUT_METHOD_SERVICE);
         return imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
@@ -145,17 +140,23 @@ public class KeyboardVisibilityDelegate {
      */
     public int calculateKeyboardHeight(View rootView) {
         try (TraceEvent te =
-                TraceEvent.scoped("KeyboardVisibilityDelegate.calculateKeyboardHeight")) {
-            if (rootView == null || rootView.getRootWindowInsets() == null) return 0;
-            WindowInsetsCompat windowInsetsCompat =
-                    WindowInsetsCompat.toWindowInsetsCompat(
-                            rootView.getRootWindowInsets(), rootView);
-            int imeHeightIncludingSystemBars =
-                    windowInsetsCompat.getInsets(WindowInsetsCompat.Type.ime()).bottom;
-            if (imeHeightIncludingSystemBars == 0) return 0;
-            int bottomSystemBarsHeight =
-                    windowInsetsCompat.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
-            return imeHeightIncludingSystemBars - bottomSystemBarsHeight;
+                        TraceEvent.scoped("KeyboardVisibilityDelegate.calculateKeyboardHeight")) {
+            Rect appRect = new Rect();
+            rootView.getWindowVisibleDisplayFrame(appRect);
+
+            // Assume status bar is always at the top of the screen.
+            final int statusBarHeight = appRect.top;
+
+            int bottomMargin = rootView.getHeight() - (appRect.height() + statusBarHeight);
+
+            // If there is no bottom margin, the keyboard is not showing.
+            if (bottomMargin <= 0) return 0;
+            WindowInsets insets = rootView.getRootWindowInsets();
+            if (insets != null) { // Either not supported or the rootView isn't attached.
+                bottomMargin -= insets.getStableInsetBottom();
+            }
+
+            return bottomMargin; // This might include a bottom navigation.
         }
     }
 

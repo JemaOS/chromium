@@ -4,6 +4,7 @@
 
 #import "chrome/browser/ui/cocoa/applescript/bookmark_folder_applescript.h"
 
+#import "base/mac/scoped_nsobject.h"
 #include "base/strings/sys_string_conversions.h"
 #import "chrome/browser/ui/cocoa/applescript/bookmark_item_applescript.h"
 #import "chrome/browser/ui/cocoa/applescript/constants_applescript.h"
@@ -85,8 +86,8 @@ using bookmarks::BookmarkNode;
       continue;
     }
 
-    BookmarkFolderAppleScript* bookmarkFolder =
-        [[BookmarkFolderAppleScript alloc] initWithBookmarkNode:node.get()];
+    base::scoped_nsobject<BookmarkFolderAppleScript> bookmarkFolder(
+        [[BookmarkFolderAppleScript alloc] initWithBookmarkNode:node.get()]);
     [bookmarkFolder setContainer:self
                         property:AppleScript::kBookmarkFoldersProperty];
     [bookmarkFolders addObject:bookmarkFolder];
@@ -104,8 +105,8 @@ using bookmarks::BookmarkNode;
       continue;
     }
 
-    BookmarkItemAppleScript* bookmarkItem =
-        [[BookmarkItemAppleScript alloc] initWithBookmarkNode:node.get()];
+    base::scoped_nsobject<BookmarkItemAppleScript> bookmarkItem(
+        [[BookmarkItemAppleScript alloc] initWithBookmarkNode:node.get()]);
     [bookmarkItem setContainer:self
                       property:AppleScript::kBookmarkItemsProperty];
     [bookmarkItems addObject:bookmarkItem];
@@ -138,7 +139,7 @@ using bookmarks::BookmarkNode;
   const BookmarkNode* node = model->AddFolder(
       self.bookmarkNode, position,
       /*title=*/std::u16string(), /*meta_info=*/nullptr,
-      /*creation_time=*/std::nullopt, bookmarkFolder.bookmarkGUID);
+      /*creation_time=*/absl::nullopt, bookmarkFolder.bookmarkGUID);
   if (!node) {
     AppleScript::SetError(AppleScript::Error::kCreateBookmarkFolder);
     return;
@@ -187,7 +188,7 @@ using bookmarks::BookmarkNode;
 
   const BookmarkNode* node = model->AddURL(
       self.bookmarkNode, position, /*title=*/std::u16string(), url,
-      /*meta_info=*/nullptr, /*creation_time=*/std::nullopt,
+      /*meta_info=*/nullptr, /*creation_time=*/absl::nullopt,
       bookmarkItem.bookmarkGUID, /*added_by_user=*/true);
   if (!node) {
     AppleScript::SetError(AppleScript::Error::kCreateBookmarkItem);

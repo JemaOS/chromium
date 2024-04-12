@@ -4,12 +4,15 @@
 
 #include "chrome/browser/ash/file_system_provider/provided_file_system_observer.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 ProvidedFileSystemObserver::Change::Change()
     : change_type(storage::WatcherManager::CHANGED) {
 }
 
-ProvidedFileSystemObserver::Change::~Change() = default;
+ProvidedFileSystemObserver::Change::~Change() {
+}
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

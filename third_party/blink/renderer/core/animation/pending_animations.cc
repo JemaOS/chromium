@@ -71,48 +71,31 @@ bool PendingAnimations::Update(
   for (auto& animation : animations) {
     bool had_compositor_animation =
         animation->HasActiveAnimationsOnCompositor();
-    // Animations with a start time or non-monotonic timeline do not participate
-    // in compositor start-time grouping.
-    bool has_monotonic_timeline =
-        animation->TimelineInternal() &&
-        animation->TimelineInternal()->IsMonotonicallyIncreasing();
-    // Note, not setting a compositor group means animation events may be
-    // dropped or mis-routed since they'll all target group 1. This doesn't
-    // cause any issues currently, since blink::Animation only implements
-    // NotifyAnimationStarted, but it would be an issue if Blink ever wanted to
-    // handle the other events in CompositorAnimationDelegate.
-    bool use_compositor_group =
-        !animation->StartTimeInternal() && has_monotonic_timeline;
-    if (animation->PreCommit(use_compositor_group ? compositor_group : 1,
-                             paint_artifact_compositor, start_on_compositor)) {
+    // Animations with a start time do not participate in compositor start-time
+    // grouping.
+    if (animation->PreCommit(
+            animation->StartTimeInternal() ? 1 : compositor_group,
+            paint_artifact_compositor, start_on_compositor)) {
       if (animation->HasActiveAnimationsOnCompositor() &&
-          !had_compositor_animation && use_compositor_group) {
+          !had_compositor_animation && !animation->StartTimeInternal()) {
         started_synchronized_on_compositor = true;
       }
 
-      if (!animation->TimelineInternal() ||
-          !animation->TimelineInternal()->IsActive()) {
+      if (!animation->timeline() || !animation->timeline()->IsActive())
         continue;
-      }
 
-      if (animation->Playing() && !animation->StartTimeInternal() &&
-          has_monotonic_timeline) {
-        // Scroll timelines get their start time set during timeline validation
-        // and do not need to be added to the list. Once the start time is set
-        // they must be re-added to the pending animations.
+      if (animation->Playing() && !animation->StartTimeInternal()) {
         waiting_for_start_time.push_back(animation.Get());
       } else if (animation->PendingInternal()) {
-        DCHECK(animation->TimelineInternal()->IsActive() &&
-               animation->TimelineInternal()->CurrentTime() &&
-               animation->CurrentTimeInternal());
+        DCHECK(animation->timeline()->IsActive() &&
+               animation->timeline()->CurrentTime());
         // A pending animation that is not waiting on a start time does not need
         // to be synchronized with animations that are starting up. Nonetheless,
         // it needs to notify the animation to resolve the ready promise and
         // commit the pending state.
-        animation->NotifyReady(
-            animation->TimelineInternal()->CurrentTime().value());
+        animation->NotifyReady(animation->timeline()->CurrentTime().value());
       }
-    } else if (animation->CurrentTimeInternal()) {
+    } else {
       deferred.push_back(animation);
     }
   }
@@ -127,14 +110,9 @@ bool PendingAnimations::Update(
   } else {
     for (auto& animation : waiting_for_start_time) {
       DCHECK(!animation->StartTimeInternal());
-      DCHECK(animation->TimelineInternal()->IsActive() &&
-             animation->TimelineInternal()->CurrentTime());
-      // TODO(bokan): This call is intended only to start main thread
-      // animations but nothing prevents it from starting compositor
-      // animations. See discussion at
-      // https://chromium-review.googlesource.com/c/chromium/src/+/4605129/comment/606f1f36_a5725f99/
-      animation->NotifyReady(
-          animation->TimelineInternal()->CurrentTime().value());
+      DCHECK(animation->timeline()->IsActive() &&
+             animation->timeline()->CurrentTime());
+      animation->NotifyReady(animation->timeline()->CurrentTime().value());
     }
   }
 
@@ -178,13 +156,8 @@ void PendingAnimations::NotifyCompositorAnimationStarted(
 
   for (auto animation : animations) {
     if (animation->StartTimeInternal() || !animation->PendingInternal() ||
-        !animation->TimelineInternal() ||
-        !animation->TimelineInternal()->IsActive()) {
+        !animation->timeline() || !animation->timeline()->IsActive()) {
       // Already started or no longer relevant.
-      continue;
-    }
-    if (!animation->CurrentTimeInternal()) {
-      // Waiting on a deferred start time.
       continue;
     }
     if (compositor_group && animation->CompositorGroup() != compositor_group) {
@@ -192,13 +165,13 @@ void PendingAnimations::NotifyCompositorAnimationStarted(
       waiting_for_compositor_animation_start_.push_back(animation);
       continue;
     }
-    if (!animation->TimelineInternal()->IsMonotonicallyIncreasing()) {
+    if (!animation->timeline()->IsMonotonicallyIncreasing()) {
       animation->NotifyReady(
-          animation->TimelineInternal()->CurrentTime().value());
+          animation->timeline()->CurrentTime().value_or(AnimationTimeDelta()));
     } else {
       animation->NotifyReady(
           ANIMATION_TIME_DELTA_FROM_SECONDS(monotonic_animation_start_time) -
-          animation->TimelineInternal()->ZeroTime());
+          animation->timeline()->ZeroTime());
     }
   }
 }
@@ -227,12 +200,9 @@ void PendingAnimations::FlushWaitingNonCompositedAnimations() {
   for (auto& animation : animations) {
     if (animation->HasActiveAnimationsOnCompositor()) {
       waiting_for_compositor_animation_start_.push_back(animation);
-    } else if (animation->TimelineInternal() &&
-               animation->TimelineInternal()->IsActive() &&
-               animation->TimelineInternal()->CurrentTime().has_value() &&
-               animation->CurrentTimeInternal()) {
-      animation->NotifyReady(
-          animation->TimelineInternal()->CurrentTime().value());
+    } else if (animation->timeline() && animation->timeline()->IsActive() &&
+               animation->timeline()->CurrentTime().has_value()) {
+      animation->NotifyReady(animation->timeline()->CurrentTime().value());
     }
   }
 }

@@ -9,8 +9,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_GENERATED_CODE_HELPER_H_
 #define THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_GENERATED_CODE_HELPER_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/bindings/core/v8/idl_types.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
@@ -88,7 +87,7 @@ CORE_EXPORT void SetupIDLObservableArrayBackingListTemplate(
     v8::Local<v8::ObjectTemplate> instance_template,
     v8::Local<v8::FunctionTemplate> interface_template);
 
-CORE_EXPORT void SetupIDLIteratorTemplate(
+CORE_EXPORT void SetupIDLSyncIteratorTemplate(
     v8::Isolate* isolate,
     const WrapperTypeInfo* wrapper_type_info,
     v8::Local<v8::ObjectTemplate> instance_template,
@@ -131,14 +130,14 @@ typename IDLSequence<T>::ImplType VariadicArgumentsToNativeValues(
   return std::move(result);
 }
 
-CORE_EXPORT std::optional<size_t> FindIndexInEnumStringTable(
+CORE_EXPORT absl::optional<size_t> FindIndexInEnumStringTable(
     v8::Isolate* isolate,
     v8::Local<v8::Value> value,
     base::span<const char* const> enum_value_table,
     const char* enum_type_name,
     ExceptionState& exception_state);
 
-CORE_EXPORT std::optional<size_t> FindIndexInEnumStringTable(
+CORE_EXPORT absl::optional<size_t> FindIndexInEnumStringTable(
     const String& str_value,
     base::span<const char* const> enum_value_table);
 
@@ -166,7 +165,7 @@ CORE_EXPORT ExecutionContext* ExecutionContextFromV8Wrappable(
 CORE_EXPORT ExecutionContext* ExecutionContextFromV8Wrappable(
     const DOMParser* parser);
 
-CORE_EXPORT v8::MaybeLocal<v8::Value> CreateLegacyFactoryFunctionFunction(
+CORE_EXPORT v8::MaybeLocal<v8::Value> CreateNamedConstructorFunction(
     ScriptState* script_state,
     v8::FunctionCallback callback,
     const char* func_name,
@@ -220,6 +219,20 @@ bool GetDictionaryMemberFromV8Object(v8::Isolate* isolate,
   presence = true;
   return true;
 }
+
+// [CSSProperty]
+CORE_EXPORT void InstallCSSPropertyAttributes(
+    v8::Isolate* isolate,
+    const DOMWrapperWorld& world,
+    v8::Local<v8::Template> instance_template,
+    v8::Local<v8::Template> prototype_template,
+    v8::Local<v8::Template> interface_template,
+    v8::Local<v8::Signature> signature,
+    base::span<const char* const> css_property_names);
+CORE_EXPORT void CSSPropertyAttributeGet(
+    const v8::FunctionCallbackInfo<v8::Value>& info);
+CORE_EXPORT void CSSPropertyAttributeSet(
+    const v8::FunctionCallbackInfo<v8::Value>& info);
 
 // Common implementation to reduce the binary size of attribute set callbacks.
 CORE_EXPORT void PerformAttributeSetCEReactionsReflectTypeBoolean(

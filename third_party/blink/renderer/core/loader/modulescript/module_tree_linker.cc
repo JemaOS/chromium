@@ -156,8 +156,7 @@ void ModuleTreeLinker::AdvanceState(State new_state) {
 void ModuleTreeLinker::FetchRoot(const KURL& original_url,
                                  ModuleType module_type,
                                  const ScriptFetchOptions& options,
-                                 base::PassKey<ModuleTreeLinkerRegistry>,
-                                 String referrer) {
+                                 base::PassKey<ModuleTreeLinkerRegistry>) {
 #if DCHECK_IS_ON()
   original_url_ = original_url;
   module_type_ = module_type;
@@ -220,16 +219,9 @@ void ModuleTreeLinker::FetchRoot(const KURL& original_url,
   // module script given url, fetch client settings object, destination,
   // options, module map settings object, "client", and with the top-level
   // module fetch flag set. ...</spec>
-  //
-  // Note that we don't *always* pass in "client" for the referrer string, as
-  // mentioned in the spec prose above. Because our implementation is organized
-  // slightly different from the spec, this path is hit for dynamic imports as
-  // well, so we pass through `referrer` which is usually the client string
-  // (`Referrer::ClientReferrerString()`), but isn't for the dynamic import
-  // case.
-  ModuleScriptFetchRequest request(url, module_type, context_type_,
-                                   destination_, options, referrer,
-                                   TextPosition::MinimumPosition());
+  ModuleScriptFetchRequest request(
+      url, module_type, context_type_, destination_, options,
+      Referrer::ClientReferrerString(), TextPosition::MinimumPosition());
   ++num_incomplete_fetches_;
   modulator_->FetchSingle(request, fetch_client_settings_object_fetcher_.Get(),
                           ModuleGraphLevel::kTopLevelModuleFetch,

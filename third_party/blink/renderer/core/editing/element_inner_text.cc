@@ -10,7 +10,6 @@
 #include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/node_traversal.h"
 #include "third_party/blink/renderer/core/dom/text.h"
-#include "third_party/blink/renderer/core/dom/text_visitor.h"
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #include "third_party/blink/renderer/core/editing/ephemeral_range.h"
 #include "third_party/blink/renderer/core/html/forms/html_opt_group_element.h"
@@ -18,13 +17,13 @@
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/html_br_element.h"
 #include "third_party/blink/renderer/core/html/html_paragraph_element.h"
-#include "third_party/blink/renderer/core/layout/inline/inline_node.h"
-#include "third_party/blink/renderer/core/layout/inline/inline_node_data.h"
-#include "third_party/blink/renderer/core/layout/inline/offset_mapping.h"
 #include "third_party/blink/renderer/core/layout/layout_text_fragment.h"
-#include "third_party/blink/renderer/core/layout/table/layout_table_cell.h"
-#include "third_party/blink/renderer/core/layout/table/layout_table_row.h"
-#include "third_party/blink/renderer/core/layout/table/layout_table_section.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_inline_node.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_inline_node_data.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_offset_mapping.h"
+#include "third_party/blink/renderer/core/layout/ng/table/layout_ng_table_cell.h"
+#include "third_party/blink/renderer/core/layout/ng/table/layout_ng_table_row.h"
+#include "third_party/blink/renderer/core/layout/ng/table/layout_ng_table_section.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/text/character_names.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -41,8 +40,7 @@ class ElementInnerTextCollector final {
   STACK_ALLOCATED();
 
  public:
-  explicit ElementInnerTextCollector(TextVisitor* visitor)
-      : visitor_(visitor) {}
+  ElementInnerTextCollector() = default;
   ElementInnerTextCollector(const ElementInnerTextCollector&) = delete;
   ElementInnerTextCollector& operator=(const ElementInnerTextCollector&) =
       delete;
@@ -63,8 +61,6 @@ class ElementInnerTextCollector final {
     void EmitText(const StringView& text);
     String Finish();
 
-    unsigned length() const { return builder_.length(); }
-
    private:
     void FlushRequiredLineBreak();
 
@@ -76,9 +72,9 @@ class ElementInnerTextCollector final {
   static bool IsBeingRendered(const Node& node);
   // Returns true if used value of "display" is block-level.
   static bool IsDisplayBlockLevel(const Node&);
-  static bool ShouldEmitNewlineForTableRow(const LayoutTableRow& table_row);
+  static bool ShouldEmitNewlineForTableRow(const LayoutNGTableRow& table_row);
 
-  const OffsetMapping* GetOffsetMapping(const LayoutText& layout_text);
+  const NGOffsetMapping* GetOffsetMapping(const LayoutText& layout_text);
   void ProcessChildren(const Node& node);
   void ProcessChildrenWithRequiredLineBreaks(const Node& node,
                                              int required_line_break_count);
@@ -90,15 +86,10 @@ class ElementInnerTextCollector final {
 
   // Result character buffer.
   Result result_;
-  TextVisitor* visitor_;
 };
 
 String ElementInnerTextCollector::RunOn(const Element& element) {
   DCHECK(!element.InActiveDocument() || !NeedsLayoutTreeUpdate(element));
-
-  if (visitor_) {
-    visitor_->WillVisit(element, result_.length());
-  }
 
   // 1. If this element is locked or a part of a locked subtree, then it is
   // hidden from view (and also possibly not laid out) and innerText should be
@@ -115,7 +106,7 @@ String ElementInnerTextCollector::RunOn(const Element& element) {
   // [1] https://github.com/whatwg/html/issues/1837
   if (!IsBeingRendered(element) && !HasDisplayContentsStyle(element)) {
     const bool convert_brs_to_newlines = false;
-    return element.textContent(convert_brs_to_newlines, visitor_);
+    return element.textContent(convert_brs_to_newlines);
   }
 
   // 3. Let results be a new empty list.
@@ -159,7 +150,7 @@ bool ElementInnerTextCollector::IsDisplayBlockLevel(const Node& node) {
   if (!layout_object)
     return false;
   if (layout_object->IsTableSection()) {
-    // Note: |LayoutTableSection::IsInline()| returns false, but it is not
+    // Note: |LayoutNGTableSection::IsInline()| returns false, but it is not
     // block-level.
     return false;
   }
@@ -179,29 +170,29 @@ bool ElementInnerTextCollector::IsDisplayBlockLevel(const Node& node) {
     // e.g. <ruby>abc<rt>def</rt>.innerText == "abcdef"
     return false;
   }
-  // Note: CAPTION is associated to |LayoutTableCaption| in LayoutNG or
+  // Note: CAPTION is associated to |LayoutNGTableCaption| in LayoutNG or
   // |LayoutBlockFlow| in legacy layout.
   return true;
 }
 
 // static
 bool ElementInnerTextCollector::ShouldEmitNewlineForTableRow(
-    const LayoutTableRow& table_row) {
-  const LayoutTable* const table = table_row.Table();
+    const LayoutNGTableRow& table_row) {
+  const LayoutNGTable* const table = table_row.Table();
   if (!table)
     return false;
   if (table_row.NextRow()) {
     return true;
   }
   // For TABLE contains TBODY, TFOOTER, THEAD.
-  const LayoutTableSection* table_section = table_row.Section();
+  const LayoutNGTableSection* table_section = table_row.Section();
   if (!table_section)
     return false;
-  // See |LayoutTable::NextSection()| and
-  // |PreviousSection()| for traversing |LayoutTableSection|.
+  // See |LayoutNGTable::NextSection()| and
+  // |PreviousSection()| for traversing |LayoutNGTableSection|.
   for (const LayoutObject* runner = table_section->NextSibling(); runner;
        runner = runner->NextSibling()) {
-    const auto* section = DynamicTo<LayoutTableSection>(runner);
+    const auto* section = DynamicTo<LayoutNGTableSection>(runner);
     if (section && section->NumRows() > 0) {
       return true;
     }
@@ -210,24 +201,20 @@ bool ElementInnerTextCollector::ShouldEmitNewlineForTableRow(
   return false;
 }
 
-const OffsetMapping* ElementInnerTextCollector::GetOffsetMapping(
+const NGOffsetMapping* ElementInnerTextCollector::GetOffsetMapping(
     const LayoutText& layout_text) {
   // TODO(editing-dev): We should handle "text-transform" in "::first-line".
   // In legacy layout, |InlineTextBox| holds original text and text box
   // paint does text transform.
   LayoutBlockFlow* const block_flow =
-      OffsetMapping::GetInlineFormattingContextOf(layout_text);
+      NGOffsetMapping::GetInlineFormattingContextOf(layout_text);
   DCHECK(block_flow) << layout_text;
-  return InlineNode::GetOffsetMapping(block_flow);
+  return NGInlineNode::GetOffsetMapping(block_flow);
 }
 
 void ElementInnerTextCollector::ProcessChildren(const Node& container) {
-  for (const Node& node : NodeTraversal::ChildrenOf(container)) {
-    if (visitor_) {
-      visitor_->WillVisit(node, result_.length());
-    }
+  for (const Node& node : NodeTraversal::ChildrenOf(container))
     ProcessNode(node);
-  }
 }
 
 void ElementInnerTextCollector::ProcessChildrenWithRequiredLineBreaks(
@@ -242,26 +229,25 @@ void ElementInnerTextCollector::ProcessChildrenWithRequiredLineBreaks(
 
 void ElementInnerTextCollector::ProcessLayoutText(const LayoutText& layout_text,
                                                   const Text& text_node) {
-  if (layout_text.HasEmptyText()) {
+  if (layout_text.TextLength() == 0)
     return;
-  }
   if (layout_text.Style()->Visibility() != EVisibility::kVisible) {
     // TODO(editing-dev): Once we make ::first-letter don't apply "visibility",
     // we should get rid of this if-statement. http://crbug.com/866744
     return;
   }
 
-  const OffsetMapping* const mapping = GetOffsetMapping(layout_text);
+  const NGOffsetMapping* const mapping = GetOffsetMapping(layout_text);
   if (!mapping) {
     // TODO(crbug.com/967995): There are certain cases where we fail to compute
-    // |OffsetMapping| due to failures in layout. As the root cause is hard to
+    // |NGOffsetMapping| due to failures in layout. As the root cause is hard to
     // fix at the moment, we work around it here so that the production build
     // doesn't crash.
-    DUMP_WILL_BE_NOTREACHED_NORETURN() << layout_text;
+    NOTREACHED() << layout_text;
     return;
   }
 
-  for (const OffsetMappingUnit& unit :
+  for (const NGOffsetMappingUnit& unit :
        mapping->GetMappingUnitsForNode(text_node)) {
     result_.EmitText(
         StringView(mapping->GetText(), unit.TextContentStart(),
@@ -343,7 +329,7 @@ void ElementInnerTextCollector::ProcessNode(const Node& node) {
   if (style->Display() == EDisplay::kTableRow) {
     ProcessChildren(node);
     if (layout_object.IsTableRow() &&
-        ShouldEmitNewlineForTableRow(To<LayoutTableRow>(layout_object))) {
+        ShouldEmitNewlineForTableRow(To<LayoutNGTableRow>(layout_object))) {
       result_.EmitNewline();
     }
     return;
@@ -377,26 +363,18 @@ void ElementInnerTextCollector::ProcessOptionElement(
 void ElementInnerTextCollector::ProcessSelectElement(
     const HTMLSelectElement& select_element) {
   for (const Node& child : NodeTraversal::ChildrenOf(select_element)) {
-    if (visitor_) {
-      visitor_->WillVisit(child, result_.length());
-    }
     if (auto* option_element = DynamicTo<HTMLOptionElement>(child)) {
       ProcessOptionElement(*option_element);
       continue;
     }
-    if (!IsA<HTMLOptGroupElement>(child)) {
+    if (!IsA<HTMLOptGroupElement>(child))
       continue;
-    }
     // Note: We should emit newline for OPTGROUP even if it has no OPTION.
     // e.g. <div>a<select><optgroup></select>b</div>.innerText == "a\nb"
     result_.EmitRequiredLineBreak(1);
     for (const Node& maybe_option : NodeTraversal::ChildrenOf(child)) {
-      if (visitor_) {
-        visitor_->WillVisit(maybe_option, result_.length());
-      }
-      if (auto* option_element = DynamicTo<HTMLOptionElement>(maybe_option)) {
+      if (auto* option_element = DynamicTo<HTMLOptionElement>(maybe_option))
         ProcessOptionElement(*option_element);
-      }
     }
     result_.EmitRequiredLineBreak(1);
   }
@@ -407,9 +385,9 @@ void ElementInnerTextCollector::ProcessTextNode(const Text& node) {
     return;
   const LayoutText& layout_text = *node.GetLayoutObject();
   if (LayoutText* first_letter_part = layout_text.GetFirstLetterPart()) {
-    if (layout_text.HasEmptyText() ||
-        OffsetMapping::GetInlineFormattingContextOf(layout_text) !=
-            OffsetMapping::GetInlineFormattingContextOf(*first_letter_part)) {
+    if (layout_text.TextLength() == 0 ||
+        NGOffsetMapping::GetInlineFormattingContextOf(layout_text) !=
+            NGOffsetMapping::GetInlineFormattingContextOf(*first_letter_part)) {
       // "::first-letter" with "float" reach here.
       ProcessLayoutText(*first_letter_part, node);
     }
@@ -467,16 +445,16 @@ void ElementInnerTextCollector::Result::FlushRequiredLineBreak() {
 
 }  // anonymous namespace
 
-String Element::innerText(TextVisitor* visitor) {
+String Element::innerText() {
   // We need to update layout, since |ElementInnerTextCollector()| uses line
   // boxes in the layout tree.
   GetDocument().UpdateStyleAndLayoutForNode(this,
                                             DocumentUpdateReason::kJavaScript);
-  return GetInnerTextWithoutUpdate(visitor);
+  return GetInnerTextWithoutUpdate();
 }
 
 // Used for callers that must ensure no document lifecycle rewind.
-String Element::GetInnerTextWithoutUpdate(TextVisitor* visitor) {
+String Element::GetInnerTextWithoutUpdate() {
   // TODO(https:://crbug.com/1165850 https:://crbug.com/1166296) Layout should
   // always be clean here, but the lifecycle does not report the correctly
   // updated value unless servicing animations. Fix the UpdateStyleAndLayout()
@@ -486,7 +464,7 @@ String Element::GetInnerTextWithoutUpdate(TextVisitor* visitor) {
   //        GetDocument().Lifecycle().GetState() >=
   //            DocumentLifecycle::kLayoutClean)
   //     << "Layout must be clean when GetInnerTextWithoutUpdate() is called.";
-  return ElementInnerTextCollector(visitor).RunOn(*this);
+  return ElementInnerTextCollector().RunOn(*this);
 }
 
 }  // namespace blink

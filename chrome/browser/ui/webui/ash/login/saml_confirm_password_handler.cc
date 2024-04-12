@@ -30,10 +30,6 @@ void SamlConfirmPasswordHandler::ShowPasswordStep(bool retry) {
   CallExternalAPI("showPasswordStep", retry);
 }
 
-base::WeakPtr<SamlConfirmPasswordView> SamlConfirmPasswordHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 void SamlConfirmPasswordHandler::DeclareLocalizedValues(
     ::login::LocalizedValuesBuilder* builder) {
   builder->AddF("confirmPasswordTitle", IDS_LOGIN_CONFIRM_PASSWORD_TITLE,

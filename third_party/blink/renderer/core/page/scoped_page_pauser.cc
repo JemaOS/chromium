@@ -36,12 +36,11 @@ unsigned g_suspension_count = 0;
 
 }  // namespace
 
-ScopedPagePauser::ScopedPagePauser(Page* primary_page) {
-  if (++g_suspension_count > 1) {
+ScopedPagePauser::ScopedPagePauser() {
+  if (++g_suspension_count > 1)
     return;
-  }
 
-  SetPaused(primary_page, true);
+  SetPaused(true);
   pause_handle_ = ThreadScheduler::Current()->ToMainThreadScheduler()
                       ? ThreadScheduler::Current()
                             ->ToMainThreadScheduler()
@@ -49,25 +48,20 @@ ScopedPagePauser::ScopedPagePauser(Page* primary_page) {
                       : nullptr;
 }
 
-ScopedPagePauser::ScopedPagePauser() : ScopedPagePauser(nullptr) {}
-
 ScopedPagePauser::~ScopedPagePauser() {
-  if (--g_suspension_count > 0) {
+  if (--g_suspension_count > 0)
     return;
-  }
 
-  SetPaused(nullptr, false);
+  SetPaused(false);
 }
 
-void ScopedPagePauser::SetPaused(Page* primary_page, bool paused) {
+void ScopedPagePauser::SetPaused(bool paused) {
   // Make a copy of the collection. Undeferring loads can cause script to run,
   // which would mutate ordinaryPages() in the middle of iteration.
   HeapVector<Member<Page>> pages(Page::OrdinaryPages());
 
-  for (const auto& page : pages) {
-    page->SetShowPausedHudOverlay(primary_page && page != primary_page);
+  for (const auto& page : pages)
     page->SetPaused(paused);
-  }
 }
 
 bool ScopedPagePauser::IsActive() {

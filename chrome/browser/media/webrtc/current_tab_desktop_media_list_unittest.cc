@@ -4,8 +4,6 @@
 
 #include "chrome/browser/media/webrtc/current_tab_desktop_media_list.h"
 
-#include <vector>
-
 #include "base/command_line.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
@@ -33,9 +31,8 @@
 #include "testing/gmock/include/gmock/gmock.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/login/users/chrome_user_manager_impl.h"
+#include "chrome/browser/ash/login/users/scoped_test_user_manager.h"
 #include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
-#include "components/user_manager/scoped_user_manager.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 using content::WebContents;
@@ -149,7 +146,9 @@ class CurrentTabDesktopMediaListTest : public testing::Test {
     TabStripModel* tab_strip_model = browser_->tab_strip_model();
     tab_strip_model->DetachAndDeleteWebContentsAt(
         tab_strip_model->GetIndexOfWebContents(web_contents));
-    std::erase(all_web_contents_, web_contents);
+    all_web_contents_.erase(std::remove(all_web_contents_.begin(),
+                                        all_web_contents_.end(), web_contents),
+                            all_web_contents_.end());
   }
 
   void Wait() {
@@ -166,13 +165,13 @@ class CurrentTabDesktopMediaListTest : public testing::Test {
   ScopedTestingLocalState local_state_;
 
   std::unique_ptr<content::RenderViewHostTestEnabler> rvh_test_enabler_;
-  raw_ptr<Profile, DanglingUntriaged> profile_;
+  raw_ptr<Profile> profile_;
   std::unique_ptr<Browser> browser_;
 
   StrictMock<MockObserver> observer_;
   std::unique_ptr<CurrentTabDesktopMediaList> list_;
 
-  std::vector<raw_ptr<WebContents, VectorExperimental>> all_web_contents_;
+  std::vector<WebContents*> all_web_contents_;
 
   content::BrowserTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -181,8 +180,7 @@ class CurrentTabDesktopMediaListTest : public testing::Test {
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   ash::ScopedCrosSettingsTestHelper cros_settings_test_helper_;
-  user_manager::ScopedUserManager test_user_manager_{
-      ash::ChromeUserManagerImpl::CreateChromeUserManager()};
+  ash::ScopedTestUserManager test_user_manager_;
 #endif
 };
 

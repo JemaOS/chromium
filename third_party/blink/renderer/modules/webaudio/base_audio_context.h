@@ -26,11 +26,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_BASE_AUDIO_CONTEXT_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBAUDIO_BASE_AUDIO_CONTEXT_H_
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_decode_error_callback.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_decode_success_callback.h"
 #include "third_party/blink/renderer/core/dom/events/event_listener.h"
@@ -65,9 +63,9 @@ class ChannelSplitterNode;
 class ConstantSourceNode;
 class ConvolverNode;
 class DelayNode;
+class Document;
 class DynamicsCompressorNode;
 class ExceptionState;
-class LocalDOMWindow;
 class GainNode;
 class IIRFilterNode;
 class OscillatorNode;
@@ -75,6 +73,7 @@ class PannerNode;
 class PeriodicWave;
 class PeriodicWaveConstraints;
 class ScriptProcessorNode;
+class ScriptPromiseResolver;
 class ScriptState;
 class SecurityOrigin;
 class StereoPannerNode;
@@ -86,7 +85,7 @@ class WorkerThread;
 // thread, it has a rendering graph locking mechanism.
 
 class MODULES_EXPORT BaseAudioContext
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ActiveScriptWrappable<BaseAudioContext>,
       public ExecutionContextLifecycleStateObserver,
       public InspectorHelperMixin {
@@ -113,7 +112,7 @@ class MODULES_EXPORT BaseAudioContext
 
   void Dispose();
 
-  // ExecutionContextLifecycleStateObserver overrides:
+  // Document notification
   void ContextLifecycleStateChanged(mojom::FrameLifecycleState) override;
   void ContextDestroyed() override;
   bool HasPendingActivity() const override;
@@ -150,30 +149,30 @@ class MODULES_EXPORT BaseAudioContext
                             ExceptionState&);
 
   // Asynchronous audio file data decoding.
-  ScriptPromiseTyped<AudioBuffer> decodeAudioData(ScriptState*,
-                                                  DOMArrayBuffer* audio_data,
-                                                  V8DecodeSuccessCallback*,
-                                                  V8DecodeErrorCallback*,
-                                                  ExceptionState&);
+  ScriptPromise decodeAudioData(ScriptState*,
+                                DOMArrayBuffer* audio_data,
+                                V8DecodeSuccessCallback*,
+                                V8DecodeErrorCallback*,
+                                ExceptionState&);
 
-  ScriptPromiseTyped<AudioBuffer> decodeAudioData(ScriptState*,
-                                                  DOMArrayBuffer* audio_data,
-                                                  ExceptionState&);
+  ScriptPromise decodeAudioData(ScriptState*,
+                                DOMArrayBuffer* audio_data,
+                                ExceptionState&);
 
-  ScriptPromiseTyped<AudioBuffer> decodeAudioData(ScriptState*,
-                                                  DOMArrayBuffer* audio_data,
-                                                  V8DecodeSuccessCallback*,
-                                                  ExceptionState&);
+  ScriptPromise decodeAudioData(ScriptState*,
+                                DOMArrayBuffer* audio_data,
+                                V8DecodeSuccessCallback*,
+                                ExceptionState&);
 
   // Handles the promise and callbacks when `.decodeAudioData()` is finished
   // decoding.
   void HandleDecodeAudioData(AudioBuffer*,
-                             ScriptPromiseResolverTyped<AudioBuffer>*,
+                             ScriptPromiseResolver*,
                              V8DecodeSuccessCallback*,
                              V8DecodeErrorCallback*,
                              ExceptionContext);
 
-  AudioListener* listener() { return listener_.Get(); }
+  AudioListener* listener() { return listener_; }
 
   virtual bool HasRealtimeConstraint() = 0;
 
@@ -277,6 +276,8 @@ class MODULES_EXPORT BaseAudioContext
   // In DCHECK builds, fails if this thread does not own the context's lock.
   void AssertGraphOwner() const { GetDeferredTaskHandler().AssertGraphOwner(); }
 
+  using GraphAutoLocker = DeferredTaskHandler::GraphAutoLocker;
+
   // Returns the maximum numuber of channels we can support.
   static uint32_t MaxNumberOfChannels() { return kMaxNumberOfChannels; }
 
@@ -340,7 +341,7 @@ class MODULES_EXPORT BaseAudioContext
  protected:
   enum ContextType { kRealtimeContext, kOfflineContext };
 
-  explicit BaseAudioContext(LocalDOMWindow*, enum ContextType);
+  explicit BaseAudioContext(Document*, enum ContextType);
 
   void Initialize();
   virtual void Uninitialize();
@@ -359,16 +360,15 @@ class MODULES_EXPORT BaseAudioContext
   // it creates these Promises.
   // Vector of promises created by resume(). It takes time to handle them, so we
   // collect all of the promises here until they can be resolved or rejected.
-  HeapVector<Member<ScriptPromiseResolverTyped<IDLUndefined>>>
-      resume_resolvers_;
+  HeapVector<Member<ScriptPromiseResolver>> resume_resolvers_;
 
   void RejectPendingDecodeAudioDataResolvers();
 
   // When the context goes away, reject any pending script promise resolvers.
   virtual void RejectPendingResolvers();
 
-  // Returns the window with which the instance is associated.
-  LocalDOMWindow* GetWindow() const;
+  // Returns the Document wich wich the instance is associated.
+  Document* GetDocument() const;
 
   // The audio thread relies on the main thread to perform some operations over
   // the objects that it owns and controls; this method posts the task to
@@ -439,7 +439,7 @@ class MODULES_EXPORT BaseAudioContext
   // reference to the WorkerThread associated with the AudioWorkletGlobalScope.
   // This cannot be nullptr once it is assigned from AudioWorkletThread until
   // the BaseAudioContext goes away.
-  raw_ptr<WorkerThread, DanglingUntriaged> audio_worklet_thread_ = nullptr;
+  WorkerThread* audio_worklet_thread_ = nullptr;
 };
 
 }  // namespace blink

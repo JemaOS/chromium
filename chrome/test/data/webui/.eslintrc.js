@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 module.exports = {
-  // clang-format off
   'env': {'browser': true, 'es6': true},
   'rules': {
     'no-restricted-properties': [
@@ -24,5 +23,4 @@ module.exports = {
     ],
     'eqeqeq': ['error', 'always', {'null': 'ignore'}],
   },
-  // clang-format on
 };

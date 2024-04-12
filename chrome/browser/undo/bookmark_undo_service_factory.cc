@@ -25,8 +25,7 @@ BookmarkUndoService* BookmarkUndoServiceFactory::GetForProfileIfExists(
 
 // static
 BookmarkUndoServiceFactory* BookmarkUndoServiceFactory::GetInstance() {
-  static base::NoDestructor<BookmarkUndoServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<BookmarkUndoServiceFactory>::get();
 }
 
 BookmarkUndoServiceFactory::BookmarkUndoServiceFactory()
@@ -45,7 +44,8 @@ BookmarkUndoServiceFactory::BookmarkUndoServiceFactory()
               .WithAshInternals(ProfileSelection::kNone)
               .Build()) {}
 
-BookmarkUndoServiceFactory::~BookmarkUndoServiceFactory() = default;
+BookmarkUndoServiceFactory::~BookmarkUndoServiceFactory() {
+}
 
 KeyedService* BookmarkUndoServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {

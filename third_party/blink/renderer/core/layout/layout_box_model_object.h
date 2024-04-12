@@ -36,7 +36,6 @@ namespace blink {
 
 class PaintLayer;
 class PaintLayerScrollableArea;
-struct LogicalRect;
 
 enum PaintLayerType {
   kNoPaintLayer,
@@ -127,8 +126,10 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
   // This is the only way layers should ever be destroyed.
   void DestroyLayer();
 
-  // Computes the sticky constraints for this object.
-  StickyPositionScrollingConstraints* ComputeStickyPositionConstraints() const;
+  // If needed, populates StickyPositionConstraints, setting the sticky box
+  // rect, containing block rect and updating the constraint offsets according
+  // to the available space, and returns true. Otherwise returns false.
+  bool UpdateStickyPositionConstraints();
 
   PhysicalOffset StickyPositionOffset() const;
   virtual LayoutBlock* StickyContainer() const;
@@ -140,7 +141,6 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
   void SetStickyConstraints(StickyPositionScrollingConstraints* constraints) {
     NOT_DESTROYED();
     GetMutableForPainting().FirstFragment().SetStickyConstraints(constraints);
-    SetNeedsPaintPropertyUpdate();
   }
 
   // IE extensions. Used to calculate offsetWidth/Height. Overridden by inlines
@@ -163,15 +163,17 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
 
   virtual void UpdateFromStyle();
 
-  virtual PhysicalRect VisualOverflowRect() const = 0;
+  // This will work on inlines to return the bounding box of all of the lines'
+  // border boxes.
+  virtual gfx::Rect BorderBoundingBox() const = 0;
+
+  virtual PhysicalRect PhysicalVisualOverflowRect() const = 0;
 
   // Returns the visual overflow rect, expanded to the area affected by any
   // filters that paint outside of the box, in physical coordinates.
-  PhysicalRect VisualOverflowRectIncludingFilters() const;
+  PhysicalRect PhysicalVisualOverflowRectIncludingFilters() const;
 
-  // Returns a physical rect that is a result of apply this object's filters to
-  // it. If there are no filters, it returns its argument.
-  PhysicalRect ApplyFiltersToRect(const PhysicalRect&) const;
+  bool UsesCompositedScrolling() const;
 
   // These return the CSS computed padding values.
   LayoutUnit ComputedCSSPaddingTop() const {
@@ -189,6 +191,22 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
   LayoutUnit ComputedCSSPaddingRight() const {
     NOT_DESTROYED();
     return ComputedCSSPadding(StyleRef().PaddingRight());
+  }
+  LayoutUnit ComputedCSSPaddingBefore() const {
+    NOT_DESTROYED();
+    return ComputedCSSPadding(StyleRef().PaddingBefore());
+  }
+  LayoutUnit ComputedCSSPaddingAfter() const {
+    NOT_DESTROYED();
+    return ComputedCSSPadding(StyleRef().PaddingAfter());
+  }
+  LayoutUnit ComputedCSSPaddingStart() const {
+    NOT_DESTROYED();
+    return ComputedCSSPadding(StyleRef().PaddingStart());
+  }
+  LayoutUnit ComputedCSSPaddingEnd() const {
+    NOT_DESTROYED();
+    return ComputedCSSPadding(StyleRef().PaddingEnd());
   }
 
   // These functions are used during layout.
@@ -210,18 +228,17 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
     return ComputedCSSPaddingRight();
   }
 
-  // Returns a WritingDirectionMode-aware logical padding value.
-  LayoutUnit PaddingBlockStart() const {
+  LayoutUnit PaddingBefore() const {
     NOT_DESTROYED();
-    return PhysicalPaddingToLogical().BlockStart();
+    return PhysicalPaddingToLogical().Before();
   }
-  LayoutUnit PaddingBlockEnd() const {
+  LayoutUnit PaddingAfter() const {
     NOT_DESTROYED();
-    return PhysicalPaddingToLogical().BlockEnd();
+    return PhysicalPaddingToLogical().After();
   }
-  LayoutUnit PaddingInlineEnd() const {
+  LayoutUnit PaddingEnd() const {
     NOT_DESTROYED();
-    return PhysicalPaddingToLogical().InlineEnd();
+    return PhysicalPaddingToLogical().End();
   }
 
   virtual LayoutUnit BorderTop() const {
@@ -241,22 +258,21 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
     return LayoutUnit(StyleRef().BorderRightWidth());
   }
 
-  // Returns a WritingDirectionMode-aware logical border value.
-  LayoutUnit BorderBlockStart() const {
+  LayoutUnit BorderBefore() const {
     NOT_DESTROYED();
-    return PhysicalBorderToLogical().BlockStart();
+    return PhysicalBorderToLogical().Before();
   }
-  LayoutUnit BorderBlockEnd() const {
+  LayoutUnit BorderAfter() const {
     NOT_DESTROYED();
-    return PhysicalBorderToLogical().BlockEnd();
+    return PhysicalBorderToLogical().After();
   }
-  LayoutUnit BorderInlineStart() const {
+  LayoutUnit BorderStart() const {
     NOT_DESTROYED();
-    return PhysicalBorderToLogical().InlineStart();
+    return PhysicalBorderToLogical().Start();
   }
-  LayoutUnit BorderInlineEnd() const {
+  LayoutUnit BorderEnd() const {
     NOT_DESTROYED();
-    return PhysicalBorderToLogical().InlineEnd();
+    return PhysicalBorderToLogical().End();
   }
 
   LayoutUnit BorderWidth() const {
@@ -268,24 +284,29 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
     return BorderTop() + BorderBottom();
   }
 
-  PhysicalBoxStrut BorderOutsets() const {
+  virtual NGPhysicalBoxStrut BorderBoxOutsets() const {
     NOT_DESTROYED();
     return {BorderTop(), BorderRight(), BorderBottom(), BorderLeft()};
   }
 
-  PhysicalBoxStrut PaddingOutsets() const {
+  NGPhysicalBoxStrut PaddingOutsets() const {
     NOT_DESTROYED();
     return {PaddingTop(), PaddingRight(), PaddingBottom(), PaddingLeft()};
   }
 
-  // Returns a WritingDirectionMode-aware logical border+padding value.
-  DISABLE_CFI_PERF LayoutUnit BorderAndPaddingBlockStart() const {
+  // Insets from the border box to the inside of the border.
+  NGPhysicalBoxStrut BorderInsets() const {
     NOT_DESTROYED();
-    return BorderBlockStart() + PaddingBlockStart();
+    return {-BorderTop(), -BorderRight(), -BorderBottom(), -BorderLeft()};
   }
-  DISABLE_CFI_PERF LayoutUnit BorderAndPaddingBlockEnd() const {
+
+  DISABLE_CFI_PERF LayoutUnit BorderAndPaddingBefore() const {
     NOT_DESTROYED();
-    return BorderBlockEnd() + PaddingBlockEnd();
+    return BorderBefore() + PaddingBefore();
+  }
+  DISABLE_CFI_PERF LayoutUnit BorderAndPaddingAfter() const {
+    NOT_DESTROYED();
+    return BorderAfter() + PaddingAfter();
   }
 
   DISABLE_CFI_PERF LayoutUnit BorderAndPaddingHeight() const {
@@ -299,7 +320,7 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
   DISABLE_CFI_PERF LayoutUnit BorderAndPaddingLogicalHeight() const {
     NOT_DESTROYED();
     return (StyleRef().HasBorder() || StyleRef().MayHavePadding())
-               ? BorderAndPaddingBlockStart() + BorderAndPaddingBlockEnd()
+               ? BorderAndPaddingBefore() + BorderAndPaddingAfter()
                : LayoutUnit();
   }
   DISABLE_CFI_PERF LayoutUnit BorderAndPaddingLogicalWidth() const {
@@ -318,11 +339,31 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
                ? BorderRight() + PaddingRight()
                : BorderBottom() + PaddingBottom();
   }
+  LayoutUnit BorderLogicalLeft() const {
+    NOT_DESTROYED();
+    return LayoutUnit(StyleRef().IsHorizontalWritingMode() ? BorderLeft()
+                                                           : BorderTop());
+  }
+  LayoutUnit BorderLogicalRight() const {
+    NOT_DESTROYED();
+    return LayoutUnit(StyleRef().IsHorizontalWritingMode() ? BorderRight()
+                                                           : BorderBottom());
+  }
 
   LayoutUnit PaddingLogicalHeight() const {
     NOT_DESTROYED();
-    const auto logical_padding = PhysicalPaddingToLogical();
-    return logical_padding.BlockStart() + logical_padding.BlockEnd();
+    return PaddingBefore() + PaddingAfter();
+  }
+
+  LayoutUnit CollapsedBorderAndCSSPaddingLogicalWidth() const {
+    NOT_DESTROYED();
+    return ComputedCSSPaddingStart() + ComputedCSSPaddingEnd() + BorderStart() +
+           BorderEnd();
+  }
+  LayoutUnit CollapsedBorderAndCSSPaddingLogicalHeight() const {
+    NOT_DESTROYED();
+    return ComputedCSSPaddingBefore() + ComputedCSSPaddingAfter() +
+           BorderBefore() + BorderAfter();
   }
 
   virtual LayoutUnit MarginTop() const = 0;
@@ -330,24 +371,25 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
   virtual LayoutUnit MarginLeft() const = 0;
   virtual LayoutUnit MarginRight() const = 0;
 
-  // Returns a WritingDirectionMode-aware logical margin value.
-  LayoutUnit MarginBlockStart(
-      const ComputedStyle* other_style = nullptr) const {
+  LayoutUnit MarginBefore(const ComputedStyle* other_style = nullptr) const {
     NOT_DESTROYED();
-    return PhysicalMarginToLogical(other_style).BlockStart();
+    return PhysicalMarginToLogical(other_style).Before();
   }
-  LayoutUnit MarginBlockEnd(const ComputedStyle* other_style = nullptr) const {
+  LayoutUnit MarginAfter(const ComputedStyle* other_style = nullptr) const {
     NOT_DESTROYED();
-    return PhysicalMarginToLogical(other_style).BlockEnd();
+    return PhysicalMarginToLogical(other_style).After();
   }
-  LayoutUnit MarginInlineStart(
-      const ComputedStyle* other_style = nullptr) const {
+  LayoutUnit MarginStart(const ComputedStyle* other_style = nullptr) const {
     NOT_DESTROYED();
-    return PhysicalMarginToLogical(other_style).InlineStart();
+    return PhysicalMarginToLogical(other_style).Start();
   }
-  LayoutUnit MarginInlineEnd(const ComputedStyle* other_style = nullptr) const {
+  LayoutUnit MarginEnd(const ComputedStyle* other_style = nullptr) const {
     NOT_DESTROYED();
-    return PhysicalMarginToLogical(other_style).InlineEnd();
+    return PhysicalMarginToLogical(other_style).End();
+  }
+  LayoutUnit MarginLineLeft(const ComputedStyle* other_style = nullptr) const {
+    NOT_DESTROYED();
+    return PhysicalMarginToLogical(other_style).LineLeft();
   }
 
   DISABLE_CFI_PERF LayoutUnit MarginHeight() const {
@@ -360,18 +402,11 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
   }
   DISABLE_CFI_PERF LayoutUnit MarginLogicalHeight() const {
     NOT_DESTROYED();
-    const auto logical_margin = PhysicalMarginToLogical(nullptr);
-    return logical_margin.BlockStart() + logical_margin.BlockEnd();
+    return MarginBefore() + MarginAfter();
   }
   DISABLE_CFI_PERF LayoutUnit MarginLogicalWidth() const {
     NOT_DESTROYED();
-    const auto logical_margin = PhysicalMarginToLogical(nullptr);
-    return logical_margin.InlineStart() + logical_margin.InlineEnd();
-  }
-
-  PhysicalBoxStrut MarginOutsets() const {
-    NOT_DESTROYED();
-    return {MarginTop(), MarginRight(), MarginBottom(), MarginLeft()};
+    return MarginStart() + MarginEnd();
   }
 
   virtual LayoutUnit ContainingBlockLogicalWidthForContent() const;
@@ -387,6 +422,13 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
   // The query rect is given in local coordinate system.
   virtual bool BackgroundIsKnownToBeOpaqueInRect(const PhysicalRect&) const {
     NOT_DESTROYED();
+    return false;
+  }
+  // Returns true if all text in the paint-order subtree will be painted on
+  // opaque background.
+  virtual bool TextIsKnownToBeOnOpaqueBackground() const {
+    NOT_DESTROYED();
+    DCHECK(!RuntimeEnabledFeatures::CompositeScrollAfterPaintEnabled());
     return false;
   }
 
@@ -405,10 +447,7 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
 
   void AddOutlineRectsForNormalChildren(OutlineRectCollector&,
                                         const PhysicalOffset& additional_offset,
-                                        OutlineType) const;
-
-  void UpdateCanCompositeBackgroundAttachmentFixed(
-      bool enable_composited_background_attachment_fixed);
+                                        NGOutlineType) const;
 
  protected:
   void WillBeDestroyed() override;
@@ -416,16 +455,18 @@ class CORE_EXPORT LayoutBoxModelObject : public LayoutObject {
   PhysicalOffset AdjustedPositionRelativeTo(const PhysicalOffset&,
                                             const Element*) const;
 
-  LogicalRect LocalCaretRectForEmptyElement(
-      LayoutUnit width,
-      LayoutUnit text_indent_offset) const;
+  LayoutRect LocalCaretRectForEmptyElement(LayoutUnit width,
+                                           LayoutUnit text_indent_offset) const;
+
+  bool HasAutoHeightOrContainingBlockWithAutoHeight() const;
+  LayoutBlock* ContainingBlockForAutoHeightDetection(
+      const Length& logical_height) const;
 
   void AddOutlineRectsForDescendant(const LayoutObject& descendant,
                                     OutlineRectCollector&,
                                     const PhysicalOffset& additional_offset,
-                                    OutlineType) const;
+                                    NGOutlineType) const;
 
-  bool ShouldBeHandledAsInline(const ComputedStyle& style) const;
   void StyleWillChange(StyleDifference,
                        const ComputedStyle& new_style) override;
   void StyleDidChange(StyleDifference, const ComputedStyle* old_style) override;

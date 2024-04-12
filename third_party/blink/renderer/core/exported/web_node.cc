@@ -36,7 +36,6 @@
 #include "third_party/blink/public/web/web_dom_event.h"
 #include "third_party/blink/public/web/web_element.h"
 #include "third_party/blink/public/web/web_element_collection.h"
-#include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/core/accessibility/ax_object_cache.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
@@ -55,6 +54,7 @@
 #include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+#include "third_party/blink/renderer/platform/bindings/to_v8.h"
 #include "third_party/blink/renderer/platform/wtf/wtf.h"
 
 namespace blink {
@@ -94,11 +94,6 @@ WebNode WebNode::ParentNode() const {
   return WebNode(const_cast<ContainerNode*>(private_->parentNode()));
 }
 
-WebNode WebNode::ParentOrShadowHostNode() const {
-  return WebNode(
-      const_cast<ContainerNode*>(private_->ParentOrShadowHostNode()));
-}
-
 WebString WebNode::NodeValue() const {
   return private_->nodeValue();
 }
@@ -127,10 +122,6 @@ bool WebNode::IsNull() const {
   return private_.IsNull();
 }
 
-bool WebNode::IsConnected() const {
-  return private_->isConnected();
-}
-
 bool WebNode::IsLink() const {
   return private_->IsLink();
 }
@@ -149,8 +140,7 @@ bool WebNode::IsFocusable() const {
     return false;
   if (!private_->GetDocument().HaveRenderBlockingResourcesLoaded())
     return false;
-  private_->GetDocument().UpdateStyleAndLayoutTreeForElement(
-      element, DocumentUpdateReason::kFocus);
+  private_->GetDocument().UpdateStyleAndLayoutTreeForNode(private_.Get());
   return element->IsFocusable();
 }
 
@@ -164,11 +154,15 @@ bool WebNode::IsInsideFocusableElementOrARIAWidget() const {
       *this->ConstUnwrap<Node>());
 }
 
-v8::Local<v8::Value> WebNode::ToV8Value(v8::Isolate* isolate) {
+v8::Local<v8::Value> WebNode::ToV8Value(v8::Local<v8::Object> creation_context,
+                                        v8::Isolate* isolate) {
+  // We no longer use |creation_context| because it's often misused and points
+  // to a context faked by user script.
+  DCHECK(creation_context->GetCreationContextChecked() ==
+         isolate->GetCurrentContext());
   if (!private_.Get())
     return v8::Local<v8::Value>();
-  return ToV8Traits<Node>::ToV8(ScriptState::From(isolate->GetCurrentContext()),
-                                private_.Get());
+  return ToV8(private_.Get(), isolate->GetCurrentContext()->Global(), isolate);
 }
 
 bool WebNode::IsElementNode() const {
@@ -225,18 +219,6 @@ WebVector<WebElement> WebNode::QuerySelectorAll(
   return WebVector<WebElement>();
 }
 
-WebString WebNode::FindTextInElementWith(
-    const WebString& substring,
-    base::FunctionRef<bool(const WebString&)> validity_checker) const {
-  ContainerNode* container_node =
-      blink::DynamicTo<ContainerNode>(private_.Get());
-  if (!container_node) {
-    return WebString();
-  }
-  return WebString(container_node->FindTextInElementWith(
-      substring, [&](const String& text) { return validity_checker(text); }));
-}
-
 bool WebNode::Focused() const {
   return private_->IsFocused();
 }
@@ -262,13 +244,8 @@ WebNode::operator Node*() const {
   return private_.Get();
 }
 
-int WebNode::GetDomNodeId() const {
-  return private_.Get()->GetDomNodeId();
-}
-
-// static
-WebNode WebNode::FromDomNodeId(int dom_node_id) {
-  return WebNode(Node::FromDomNodeId(dom_node_id));
+int WebNode::GetDevToolsNodeId() const {
+  return DOMNodeIds::IdForNode(private_.Get());
 }
 
 }  // namespace blink

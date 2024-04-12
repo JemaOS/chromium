@@ -8,7 +8,6 @@
 namespace prefs {
 
 extern const char kPdfLocalFileAccessAllowedForDomains[];
-extern const char kPdfUseSkiaRendererEnabled[];
 
 }  // namespace prefs
 

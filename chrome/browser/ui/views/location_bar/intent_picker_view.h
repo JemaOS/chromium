@@ -13,9 +13,8 @@ class Browser;
 
 // The entry point for the intent picker.
 class IntentPickerView : public PageActionIconView {
-  METADATA_HEADER(IntentPickerView, PageActionIconView)
-
  public:
+  METADATA_HEADER(IntentPickerView);
   IntentPickerView(Browser* browser,
                    IconLabelBubbleView::Delegate* icon_label_bubble_delegate,
                    PageActionIconView::Delegate* page_action_icon_delegate);

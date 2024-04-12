@@ -5,8 +5,8 @@
 #include "third_party/blink/renderer/core/css/parser/css_parser_impl.h"
 
 #include "testing/gtest/include/gtest/gtest.h"
+
 #include "third_party/blink/renderer/core/css/css_font_family_value.h"
-#include "third_party/blink/renderer/core/css/css_style_rule.h"
 #include "third_party/blink/renderer/core/css/css_test_helpers.h"
 #include "third_party/blink/renderer/core/css/css_value_list.h"
 #include "third_party/blink/renderer/core/css/parser/css_parser_observer.h"
@@ -20,7 +20,6 @@
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
 #include "third_party/blink/renderer/core/testing/null_execution_context.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -39,17 +38,10 @@ class TestCSSParserObserver : public CSSParserObserver {
   void ObserveProperty(unsigned start_offset,
                        unsigned end_offset,
                        bool is_important,
-                       bool is_parsed) override {
-    property_start_ = start_offset;
-  }
+                       bool is_parsed) override {}
   void ObserveComment(unsigned start_offset, unsigned end_offset) override {}
-  void ObserveErroneousAtRule(
-      unsigned start_offset,
-      CSSAtRuleID id,
-      const Vector<CSSPropertyID, 2>& invalid_properties) override {}
 
   StyleRule::RuleType rule_type_ = StyleRule::RuleType::kStyle;
-  unsigned property_start_ = 0;
   unsigned rule_header_start_ = 0;
   unsigned rule_header_end_ = 0;
   unsigned rule_body_start_ = 0;
@@ -57,7 +49,6 @@ class TestCSSParserObserver : public CSSParserObserver {
 };
 
 TEST(CSSParserImplTest, AtImportOffsets) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "@import 'test.css';";
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
@@ -74,7 +65,6 @@ TEST(CSSParserImplTest, AtImportOffsets) {
 }
 
 TEST(CSSParserImplTest, AtMediaOffsets) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "@media screen { }";
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
@@ -91,7 +81,6 @@ TEST(CSSParserImplTest, AtMediaOffsets) {
 }
 
 TEST(CSSParserImplTest, AtSupportsOffsets) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "@supports (display:none) { }";
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
@@ -109,7 +98,6 @@ TEST(CSSParserImplTest, AtSupportsOffsets) {
 }
 
 TEST(CSSParserImplTest, AtFontFaceOffsets) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "@font-face { }";
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
@@ -127,7 +115,6 @@ TEST(CSSParserImplTest, AtFontFaceOffsets) {
 }
 
 TEST(CSSParserImplTest, AtKeyframesOffsets) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "@keyframes test { }";
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
@@ -145,7 +132,6 @@ TEST(CSSParserImplTest, AtKeyframesOffsets) {
 }
 
 TEST(CSSParserImplTest, AtPageOffsets) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "@page :first { }";
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
@@ -162,8 +148,7 @@ TEST(CSSParserImplTest, AtPageOffsets) {
 }
 
 TEST(CSSParserImplTest, AtPropertyOffsets) {
-  test::TaskEnvironment task_environment;
-  String sheet_text = "@property --test { syntax: '*'; inherits: false }";
+  String sheet_text = "@property --test { }";
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
   auto* style_sheet = MakeGarbageCollected<StyleSheetContents>(context);
@@ -176,11 +161,10 @@ TEST(CSSParserImplTest, AtPropertyOffsets) {
   EXPECT_EQ(test_css_parser_observer.rule_header_start_, 10u);
   EXPECT_EQ(test_css_parser_observer.rule_header_end_, 17u);
   EXPECT_EQ(test_css_parser_observer.rule_body_start_, 18u);
-  EXPECT_EQ(test_css_parser_observer.rule_body_end_, 48u);
+  EXPECT_EQ(test_css_parser_observer.rule_body_end_, 19u);
 }
 
 TEST(CSSParserImplTest, AtCounterStyleOffsets) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "@counter-style test { }";
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
@@ -198,7 +182,6 @@ TEST(CSSParserImplTest, AtCounterStyleOffsets) {
 }
 
 TEST(CSSParserImplTest, AtContainerOffsets) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "@container (max-width: 100px) { }";
 
   auto* context = MakeGarbageCollected<CSSParserContext>(
@@ -217,7 +200,7 @@ TEST(CSSParserImplTest, AtContainerOffsets) {
 }
 
 TEST(CSSParserImplTest, DirectNesting) {
-  test::TaskEnvironment task_environment;
+  ScopedCSSNestingForTest enabled(true);
   String sheet_text =
       ".element { color: green; &.other { color: red; margin-left: 10px; }}";
 
@@ -243,7 +226,7 @@ TEST(CSSParserImplTest, DirectNesting) {
 }
 
 TEST(CSSParserImplTest, RuleNotStartingWithAmpersand) {
-  test::TaskEnvironment task_environment;
+  ScopedCSSNestingForTest enabled(true);
   String sheet_text = ".element { color: green;  .outer & { color: red; }}";
 
   auto* context = MakeGarbageCollected<CSSParserContext>(
@@ -268,10 +251,9 @@ TEST(CSSParserImplTest, RuleNotStartingWithAmpersand) {
   EXPECT_EQ(".outer &", child->SelectorsText());
 }
 
-TEST(CSSParserImplTest, ImplicitDescendantSelectors) {
-  test::TaskEnvironment task_environment;
-  String sheet_text =
-      ".element { color: green; .outer, .outer2 { color: red; }}";
+TEST(CSSParserImplTest, ImplicitDescendantSelector) {
+  ScopedCSSNestingForTest enabled(true);
+  String sheet_text = ".element { color: green; .outer { color: red; }}";
 
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
@@ -292,11 +274,11 @@ TEST(CSSParserImplTest, ImplicitDescendantSelectors) {
       DynamicTo<StyleRule>((*parent->ChildRules())[0].Get());
   ASSERT_NE(nullptr, child);
   EXPECT_EQ("color: red;", child->Properties().AsText());
-  EXPECT_EQ("& .outer, & .outer2", child->SelectorsText());
+  EXPECT_EQ(".outer", child->SelectorsText());
 }
 
 TEST(CSSParserImplTest, NestedRelativeSelector) {
-  test::TaskEnvironment task_environment;
+  ScopedCSSNestingForTest enabled(true);
   String sheet_text = ".element { color: green; > .inner { color: red; }}";
 
   auto* context = MakeGarbageCollected<CSSParserContext>(
@@ -318,11 +300,10 @@ TEST(CSSParserImplTest, NestedRelativeSelector) {
       DynamicTo<StyleRule>((*parent->ChildRules())[0].Get());
   ASSERT_NE(nullptr, child);
   EXPECT_EQ("color: red;", child->Properties().AsText());
-  EXPECT_EQ("& > .inner", child->SelectorsText());
+  EXPECT_EQ("> .inner", child->SelectorsText());
 }
 
 TEST(CSSParserImplTest, NestingAtTopLevelIsLegalThoughIsMatchesNothing) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "&.element { color: orchid; }";
 
   auto* context = MakeGarbageCollected<CSSParserContext>(
@@ -339,7 +320,6 @@ TEST(CSSParserImplTest, NestingAtTopLevelIsLegalThoughIsMatchesNothing) {
 }
 
 TEST(CSSParserImplTest, ErrorRecoveryEatsOnlyFirstDeclaration) {
-  test::TaskEnvironment task_environment;
   // Note the colon after the opening bracket.
   String sheet_text = R"CSS(
     .element {:
@@ -364,7 +344,6 @@ TEST(CSSParserImplTest, ErrorRecoveryEatsOnlyFirstDeclaration) {
 }
 
 TEST(CSSParserImplTest, NestedEmptySelectorCrash) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "y{ :is() {} }";
 
   auto* context = MakeGarbageCollected<CSSParserContext>(
@@ -378,7 +357,7 @@ TEST(CSSParserImplTest, NestedEmptySelectorCrash) {
 }
 
 TEST(CSSParserImplTest, NestedRulesInsideMediaQueries) {
-  test::TaskEnvironment task_environment;
+  ScopedCSSNestingForTest enabled(true);
   String sheet_text = R"CSS(
     .element {
       color: green;
@@ -426,7 +405,7 @@ TEST(CSSParserImplTest, NestedRulesInsideMediaQueries) {
 }
 
 TEST(CSSParserImplTest, ObserveNestedMediaQuery) {
-  test::TaskEnvironment task_environment;
+  ScopedCSSNestingForTest enabled(true);
   String sheet_text = R"CSS(
     .element {
       color: green;
@@ -450,49 +429,7 @@ TEST(CSSParserImplTest, ObserveNestedMediaQuery) {
   EXPECT_EQ(test_css_parser_observer.rule_body_end_, 101u);
 }
 
-TEST(CSSParserImplTest, ObserveNestedLayer) {
-  test::TaskEnvironment task_environment;
-  String sheet_text = R"CSS(
-    .element {
-      color: green;
-      @layer foo {
-        color: navy;
-      }
-    }
-    )CSS";
-
-  auto* context = MakeGarbageCollected<CSSParserContext>(
-      kHTMLStandardMode, SecureContextMode::kInsecureContext);
-  auto* sheet = MakeGarbageCollected<StyleSheetContents>(context);
-  TestCSSParserObserver test_css_parser_observer;
-  CSSParserImpl::ParseStyleSheetForInspector(sheet_text, context, sheet,
-                                             test_css_parser_observer);
-
-  EXPECT_EQ(test_css_parser_observer.rule_type_, StyleRule::RuleType::kStyle);
-  EXPECT_EQ(test_css_parser_observer.rule_header_start_, 54u);
-  EXPECT_EQ(test_css_parser_observer.rule_header_end_, 54u);
-  EXPECT_EQ(test_css_parser_observer.rule_body_start_, 54u);
-  EXPECT_EQ(test_css_parser_observer.rule_body_end_, 88u);
-}
-
-TEST(CSSParserImplTest, NestedIdent) {
-  test::TaskEnvironment task_environment;
-
-  String sheet_text = "div { p:hover { } }";
-  auto* context = MakeGarbageCollected<CSSParserContext>(
-      kHTMLStandardMode, SecureContextMode::kInsecureContext);
-  auto* style_sheet = MakeGarbageCollected<StyleSheetContents>(context);
-  TestCSSParserObserver test_css_parser_observer;
-  CSSParserImpl::ParseStyleSheetForInspector(sheet_text, context, style_sheet,
-                                             test_css_parser_observer);
-  // 'p:hover { }' should be reported both as a failed declaration,
-  // and as a style rule (at the same location).
-  EXPECT_EQ(test_css_parser_observer.property_start_, 6u);
-  EXPECT_EQ(test_css_parser_observer.rule_header_start_, 6u);
-}
-
 TEST(CSSParserImplTest, RemoveImportantAnnotationIfPresent) {
-  test::TaskEnvironment task_environment;
   struct TestCase {
     String input;
     String expected_text;
@@ -515,8 +452,7 @@ TEST(CSSParserImplTest, RemoveImportantAnnotationIfPresent) {
   for (auto current_case : test_cases) {
     CSSTokenizer tokenizer(current_case.input);
     CSSParserTokenStream stream(tokenizer);
-    CSSTokenizedValue tokenized_value =
-        CSSParserImpl::ConsumeRestrictedPropertyValue(stream);
+    CSSTokenizedValue tokenized_value = CSSParserImpl::ConsumeValue(stream);
     SCOPED_TRACE(current_case.input);
     bool is_important =
         CSSParserImpl::RemoveImportantAnnotationIfPresent(tokenized_value);
@@ -526,7 +462,6 @@ TEST(CSSParserImplTest, RemoveImportantAnnotationIfPresent) {
 }
 
 TEST(CSSParserImplTest, InvalidLayerRules) {
-  test::TaskEnvironment task_environment;
   using css_test_helpers::ParseRule;
   ScopedNullExecutionContext execution_context;
   Document* document =
@@ -553,7 +488,6 @@ TEST(CSSParserImplTest, InvalidLayerRules) {
 }
 
 TEST(CSSParserImplTest, ValidLayerBlockRule) {
-  test::TaskEnvironment task_environment;
   using css_test_helpers::ParseRule;
   ScopedNullExecutionContext execution_context;
   Document* document =
@@ -589,7 +523,6 @@ TEST(CSSParserImplTest, ValidLayerBlockRule) {
 }
 
 TEST(CSSParserImplTest, ValidLayerStatementRule) {
-  test::TaskEnvironment task_environment;
   using css_test_helpers::ParseRule;
   ScopedNullExecutionContext execution_context;
   Document* document =
@@ -632,7 +565,6 @@ TEST(CSSParserImplTest, ValidLayerStatementRule) {
 }
 
 TEST(CSSParserImplTest, NestedLayerRules) {
-  test::TaskEnvironment task_environment;
   using css_test_helpers::ParseRule;
   ScopedNullExecutionContext execution_context;
   Document* document =
@@ -696,7 +628,6 @@ TEST(CSSParserImplTest, NestedLayerRules) {
 }
 
 TEST(CSSParserImplTest, LayeredImportRules) {
-  test::TaskEnvironment task_environment;
   using css_test_helpers::ParseRule;
   ScopedNullExecutionContext execution_context;
   Document* document =
@@ -732,7 +663,6 @@ TEST(CSSParserImplTest, LayeredImportRules) {
 }
 
 TEST(CSSParserImplTest, LayeredImportRulesInvalid) {
-  test::TaskEnvironment task_environment;
   using css_test_helpers::ParseRule;
   ScopedNullExecutionContext execution_context;
   Document* document =
@@ -763,64 +693,7 @@ TEST(CSSParserImplTest, LayeredImportRulesInvalid) {
   }
 }
 
-TEST(CSSParserImplTest, ImportRulesWithSupports) {
-  test::TaskEnvironment task_environment;
-  using css_test_helpers::ParseRule;
-  ScopedNullExecutionContext execution_context;
-  Document* document =
-      Document::CreateForTest(execution_context.GetExecutionContext());
-
-  {
-    String rule =
-        "@import url(foo.css) layer(bar.baz) supports(display: block);";
-    auto* parsed = DynamicTo<StyleRuleImport>(ParseRule(*document, rule));
-    ASSERT_TRUE(parsed);
-    ASSERT_TRUE(parsed->IsSupported());
-  }
-
-  {
-    String rule = "@import url(foo.css) supports(display: block);";
-    auto* parsed = DynamicTo<StyleRuleImport>(ParseRule(*document, rule));
-    ASSERT_TRUE(parsed);
-    ASSERT_TRUE(parsed->IsSupported());
-  }
-
-  {
-    String rule =
-        "@import url(foo.css)   supports((display: block) and (color: green));";
-    auto* parsed = DynamicTo<StyleRuleImport>(ParseRule(*document, rule));
-    ASSERT_TRUE(parsed);
-    ASSERT_TRUE(parsed->IsSupported());
-  }
-
-  {
-    String rule =
-        "@import url(foo.css) supports((foo: bar) and (color: green));";
-    auto* parsed = DynamicTo<StyleRuleImport>(ParseRule(*document, rule));
-    ASSERT_TRUE(parsed);
-    ASSERT_FALSE(parsed->IsSupported());
-  }
-
-  {
-    String rule = "@import url(foo.css) supports());";
-    auto* parsed = DynamicTo<StyleRuleImport>(ParseRule(*document, rule));
-    ASSERT_TRUE(parsed);
-    ASSERT_FALSE(parsed->IsSupported());
-  }
-
-  {
-    String rule = "@import url(foo.css) supports(color: green) (width >= 0px);";
-    auto* parsed = DynamicTo<StyleRuleImport>(ParseRule(*document, rule));
-    ASSERT_TRUE(parsed);
-    ASSERT_TRUE(parsed->IsSupported());
-    ASSERT_TRUE(parsed->MediaQueries());
-    ASSERT_EQ(parsed->MediaQueries()->QueryVector().size(), 1u);
-    ASSERT_EQ(parsed->MediaQueries()->MediaText(), String("(width >= 0px)"));
-  }
-}
-
 TEST(CSSParserImplTest, LayeredImportRulesMultipleLayers) {
-  test::TaskEnvironment task_environment;
   using css_test_helpers::ParseRule;
   ScopedNullExecutionContext execution_context;
   Document* document =
@@ -861,7 +734,6 @@ TEST(CSSParserImplTest, LayeredImportRulesMultipleLayers) {
 }
 
 TEST(CSSParserImplTest, CorrectAtRuleOrderingWithLayers) {
-  test::TaskEnvironment task_environment;
   String sheet_text = R"CSS(
     @layer foo;
     @import url(bar.css) layer(bar);
@@ -882,7 +754,6 @@ TEST(CSSParserImplTest, CorrectAtRuleOrderingWithLayers) {
 }
 
 TEST(CSSParserImplTest, EmptyLayerStatementsAtWrongPositions) {
-  test::TaskEnvironment task_environment;
   {
     // @layer interleaving with @import rules
     String sheet_text = R"CSS(
@@ -928,7 +799,6 @@ TEST(CSSParserImplTest, EmptyLayerStatementsAtWrongPositions) {
 }
 
 TEST(CSSParserImplTest, EmptyLayerStatementAfterRegularRule) {
-  test::TaskEnvironment task_environment;
   // Empty @layer statements after regular rules are parsed as regular rules.
 
   String sheet_text = R"CSS(
@@ -947,7 +817,6 @@ TEST(CSSParserImplTest, EmptyLayerStatementAfterRegularRule) {
 }
 
 TEST(CSSParserImplTest, FontPaletteValuesDisabled) {
-  test::TaskEnvironment task_environment;
   // @font-palette-values rules should be ignored when the feature is disabled.
 
   using css_test_helpers::ParseRule;
@@ -961,7 +830,6 @@ TEST(CSSParserImplTest, FontPaletteValuesDisabled) {
 }
 
 TEST(CSSParserImplTest, FontPaletteValuesBasicRuleParsing) {
-  test::TaskEnvironment task_environment;
   using css_test_helpers::ParseRule;
   ScopedNullExecutionContext execution_context;
   Document* document =
@@ -975,56 +843,15 @@ TEST(CSSParserImplTest, FontPaletteValuesBasicRuleParsing) {
       DynamicTo<StyleRuleFontPaletteValues>(ParseRule(*document, rule));
   ASSERT_TRUE(parsed);
   ASSERT_EQ("--myTestPalette", parsed->GetName());
-  ASSERT_EQ("testFamily", parsed->GetFontFamily()->CssText());
+  ASSERT_EQ("testFamily",
+            DynamicTo<CSSFontFamilyValue>(parsed->GetFontFamily())->Value());
   ASSERT_EQ(
       0, DynamicTo<CSSPrimitiveValue>(parsed->GetBasePalette())->GetIntValue());
   ASSERT_TRUE(parsed->GetOverrideColors()->IsValueList());
   ASSERT_EQ(2u, DynamicTo<CSSValueList>(parsed->GetOverrideColors())->length());
 }
 
-TEST(CSSParserImplTest, FontPaletteValuesMultipleFamiliesParsing) {
-  test::TaskEnvironment task_environment;
-  using css_test_helpers::ParseRule;
-  ScopedNullExecutionContext execution_context;
-  Document* document =
-      Document::CreateForTest(execution_context.GetExecutionContext());
-  String rule = R"CSS(@font-palette-values --myTestPalette {
-    font-family: testFamily1, testFamily2;
-    base-palette: 0;
-  })CSS";
-  auto* parsed =
-      DynamicTo<StyleRuleFontPaletteValues>(ParseRule(*document, rule));
-  ASSERT_TRUE(parsed);
-  ASSERT_EQ("--myTestPalette", parsed->GetName());
-  ASSERT_EQ("testFamily1, testFamily2", parsed->GetFontFamily()->CssText());
-  ASSERT_EQ(
-      0, DynamicTo<CSSPrimitiveValue>(parsed->GetBasePalette())->GetIntValue());
-}
-
-// Font-family descriptor inside @font-palette-values should not contain generic
-// families, compare:
-// https://drafts.csswg.org/css-fonts/#descdef-font-palette-values-font-family.
-TEST(CSSParserImplTest, FontPaletteValuesGenericFamiliesNotParsing) {
-  test::TaskEnvironment task_environment;
-  using css_test_helpers::ParseRule;
-  ScopedNullExecutionContext execution_context;
-  Document* document =
-      Document::CreateForTest(execution_context.GetExecutionContext());
-  String rule = R"CSS(@font-palette-values --myTestPalette {
-    font-family: testFamily1, testFamily2, serif;
-    base-palette: 0;
-  })CSS";
-  auto* parsed =
-      DynamicTo<StyleRuleFontPaletteValues>(ParseRule(*document, rule));
-  ASSERT_TRUE(parsed);
-  ASSERT_EQ("--myTestPalette", parsed->GetName());
-  ASSERT_FALSE(parsed->GetFontFamily());
-  ASSERT_EQ(
-      0, DynamicTo<CSSPrimitiveValue>(parsed->GetBasePalette())->GetIntValue());
-}
-
 TEST(CSSParserImplTest, FontFeatureValuesRuleParsing) {
-  test::TaskEnvironment task_environment;
   using css_test_helpers::ParseRule;
   ScopedNullExecutionContext execution_context;
   Document* document =
@@ -1041,13 +868,12 @@ TEST(CSSParserImplTest, FontFeatureValuesRuleParsing) {
   ASSERT_EQ(AtomicString("fontFam1"), families[0]);
   ASSERT_EQ(AtomicString("fontFam2"), families[1]);
   ASSERT_EQ(parsed->GetStyleset()->size(), 4u);
-  ASSERT_TRUE(parsed->GetStyleset()->Contains(AtomicString("cool")));
-  ASSERT_EQ(parsed->GetStyleset()->at(AtomicString("curly")).indices,
+  ASSERT_TRUE(parsed->GetStyleset()->Contains("cool"));
+  ASSERT_EQ(parsed->GetStyleset()->at("curly").indices,
             Vector<uint32_t>({4, 3, 2, 1}));
 }
 
 TEST(CSSParserImplTest, FontFeatureValuesOffsets) {
-  test::TaskEnvironment task_environment;
   String sheet_text = "@font-feature-values myFam { @styleset { curly: 1; } }";
   auto* context = MakeGarbageCollected<CSSParserContext>(
       kHTMLStandardMode, SecureContextMode::kInsecureContext);
@@ -1062,310 +888,6 @@ TEST(CSSParserImplTest, FontFeatureValuesOffsets) {
   EXPECT_EQ(test_css_parser_observer.rule_header_end_, 27u);
   EXPECT_EQ(test_css_parser_observer.rule_body_start_, 28u);
   EXPECT_EQ(test_css_parser_observer.rule_body_end_, 53u);
-}
-
-namespace {
-
-StyleRule& ParseStyleRule(String string) {
-  ScopedNullExecutionContext execution_context;
-  Document* document =
-      Document::CreateForTest(execution_context.GetExecutionContext());
-  auto* style_rule =
-      DynamicTo<StyleRule>(css_test_helpers::ParseRule(*document, string));
-  CHECK(style_rule);
-  return *style_rule;
-}
-
-String SerializeChildRules(
-    const HeapVector<Member<StyleRuleBase>>& child_rules) {
-  StringBuilder builder;
-  for (StyleRuleBase* rule : child_rules) {
-    CSSRule* css_rule = rule->CreateCSSOMWrapper();
-    builder.Append(css_rule->cssText());
-
-    if (rule->IsInvisible()) {
-      builder.Append(" (invisible)");
-    }
-  }
-  return builder.ToString();
-}
-
-String SerializeChildRulesIncludingInvisible(StyleRule& style_rule) {
-  if (!style_rule.ChildRules()) {
-    return "";
-  }
-  return SerializeChildRules(style_rule.ChildRules()->RawChildRules());
-}
-
-String SerializeChildRulesIncludingInvisible(StyleRuleGroup& group_rule) {
-  return SerializeChildRules(group_rule.ChildRules().RawChildRules());
-}
-
-}  // namespace
-
-TEST(CSSParserImplTest, NoChildRules) {
-  test::TaskEnvironment task_environment;
-  EXPECT_EQ(nullptr, ParseStyleRule("div{}").ChildRules());
-  EXPECT_EQ("", SerializeChildRulesIncludingInvisible(ParseStyleRule("div{}")));
-}
-
-TEST(CSSParserImplTest, LeadingBareDeclaration) {
-  test::TaskEnvironment task_environment;
-  EXPECT_EQ("& .a { color: green; }",
-            SerializeChildRulesIncludingInvisible(ParseStyleRule(R"CSS(
-    div {
-      color: red;
-      .a { color: green; }
-    }
-  )CSS")));
-}
-
-TEST(CSSParserImplTest, LeadingBareDeclaratioMultipleChildRule) {
-  test::TaskEnvironment task_environment;
-  EXPECT_EQ(
-      "& .a { color: green; }"
-      "& .b { color: coral; }",
-      SerializeChildRulesIncludingInvisible(ParseStyleRule(R"CSS(
-    div {
-      color: red;
-      .a { color: green; }
-      .b { color: coral; }
-    }
-  )CSS")));
-}
-
-TEST(CSSParserImplTest, IntermediateBareDeclaration) {
-  test::TaskEnvironment task_environment;
-  EXPECT_EQ(
-      "& .a { color: green; }"
-      "div { color: plum; } (invisible)"
-      "& .b { color: coral; }",
-      SerializeChildRulesIncludingInvisible(ParseStyleRule(R"CSS(
-    div {
-      color: red;
-      .a { color: green; }
-      color: plum;
-      .b { color: coral; }
-    }
-  )CSS")));
-}
-
-TEST(CSSParserImplTest, MultipleIntermediateBareDeclarations) {
-  test::TaskEnvironment task_environment;
-  // Multiple adjacent declarations only become one invisible rule.
-  EXPECT_EQ(
-      "& .a { color: green; }"
-      "div { color: plum; width: 10px; } (invisible)"
-      "& .b { color: coral; }",
-      SerializeChildRulesIncludingInvisible(ParseStyleRule(R"CSS(
-    div {
-      color: red;
-      .a { color: green; }
-      color: plum;
-      width: 10px;
-      .b { color: coral; }
-    }
-  )CSS")));
-}
-
-TEST(CSSParserImplTest, IntermediateAndTrailingBareDeclarations) {
-  test::TaskEnvironment task_environment;
-  // Bare declarations interrupted by a nested rule causes multiple
-  // invisible rules.
-  EXPECT_EQ(
-      "& .a { color: green; }"
-      "div { color: plum; width: 10px; } (invisible)"
-      "& .b { color: coral; }"
-      "div { left: 10px; } (invisible)",
-      SerializeChildRulesIncludingInvisible(ParseStyleRule(R"CSS(
-    div {
-      color: red;
-      .a { color: green; }
-      color: plum;
-      width: 10px;
-      .b { color: coral; }
-      left: 10px;
-    }
-  )CSS")));
-}
-
-TEST(CSSParserImplTest, IntermediateAndTrailingBareDeclarationsMultiple) {
-  test::TaskEnvironment task_environment;
-  // Same as IntermediateAndTrailingBareDeclarations,
-  // but with multiple adjacent nested rules.
-  EXPECT_EQ(
-      "& .a { color: green; }"
-      "div { color: plum; width: 10px; } (invisible)"
-      "& .b { color: coral; }"
-      "& .c { color: pink; }"
-      "div { left: 10px; } (invisible)",
-      SerializeChildRulesIncludingInvisible(ParseStyleRule(R"CSS(
-    div {
-      color: red;
-      .a { color: green; }
-      color: plum;
-      width: 10px;
-      .b { color: coral; }
-      .c { color: pink; }
-      left: 10px;
-    }
-  )CSS")));
-}
-
-TEST(CSSParserImplTest, BareDeclarationsWithAdjacentNestedGroupRule) {
-  test::TaskEnvironment task_environment;
-  EXPECT_EQ(
-      "@media (width) { color: orchid; }"
-      "div { color: plum; width: 10px; } (invisible)"
-      "& .b { color: coral; }"
-      "& .c { color: pink; }"
-      "div { left: 10px; } (invisible)",
-      SerializeChildRulesIncludingInvisible(ParseStyleRule(R"CSS(
-    div {
-      color: red;
-      @media (width) {
-        color: orchid;
-      }
-      color: plum;
-      width: 10px;
-      .b { color: coral; }
-      .c { color: pink; }
-      left: 10px;
-    }
-  )CSS")));
-}
-
-TEST(CSSParserImplTest, BareDeclarationsWithinNestedGroupRule) {
-  test::TaskEnvironment task_environment;
-  StyleRule& style_rule = ParseStyleRule(R"CSS(
-      div, .x.y.z {
-        @media (width) {
-          color: orchid;
-        }
-      }
-    )CSS");
-
-  ASSERT_TRUE(style_rule.ChildRules());
-  ASSERT_EQ(1u, style_rule.ChildRules()->size());
-
-  // Inspect children of @media.
-  EXPECT_EQ(
-      "div, .x.y.z { color: orchid; } (invisible)"
-      "& { color: orchid; }",
-      SerializeChildRulesIncludingInvisible(
-          To<StyleRuleGroup>(*(*style_rule.ChildRules())[0])));
-}
-
-TEST(CSSParserImplTest, NestedGroupRuleWithSameSpecificity) {
-  test::TaskEnvironment task_environment;
-  // No need to emit invisible rule when each complex selector has the same
-  // specificity.
-  StyleRule& style_rule = ParseStyleRule(R"CSS(
-      div, span, h1 {
-        @media (width) {
-          color: orchid;
-        }
-      }
-    )CSS");
-
-  ASSERT_TRUE(style_rule.ChildRules());
-  ASSERT_EQ(1u, style_rule.ChildRules()->size());
-
-  // Inspect children of @media.
-  EXPECT_EQ("& { color: orchid; }",
-            SerializeChildRulesIncludingInvisible(
-                To<StyleRuleGroup>(*(*style_rule.ChildRules())[0])));
-}
-
-TEST(CSSParserImplTest, NestedGroupRuleWithSameSpecificitySingle) {
-  test::TaskEnvironment task_environment;
-  // No need to emit invisible rule when each complex selector has the same
-  // specificity (single-selector version of previous test).
-  StyleRule& style_rule = ParseStyleRule(R"CSS(
-      .x {
-        @media (width) {
-          color: orchid;
-        }
-      }
-    )CSS");
-
-  ASSERT_TRUE(style_rule.ChildRules());
-  ASSERT_EQ(1u, style_rule.ChildRules()->size());
-
-  // Inspect children of @media.
-  EXPECT_EQ("& { color: orchid; }",
-            SerializeChildRulesIncludingInvisible(
-                To<StyleRuleGroup>(*(*style_rule.ChildRules())[0])));
-}
-
-TEST(CSSParserImplTest, IntermediateBareDeclarationOuterList) {
-  test::TaskEnvironment task_environment;
-  // Outer rule with more than one selector in the list.
-  EXPECT_EQ(
-      "& .a { color: green; }"
-      "div, span, h1 { color: plum; } (invisible)"
-      "& .b { color: coral; }",
-      SerializeChildRulesIncludingInvisible(ParseStyleRule(R"CSS(
-    div, span, h1 {
-      color: red;
-      .a { color: green; }
-      color: plum;
-      .b { color: coral; }
-    }
-  )CSS")));
-}
-
-TEST(CSSParserImplTest, DeeplyNestedBareDeclarations) {
-  test::TaskEnvironment task_environment;
-  StyleRule& style_rule = ParseStyleRule(R"CSS(
-      div {
-        color: red;
-        .a {
-          color: green;
-          .x { color: pink; }
-          width: 10px;
-        }
-        color: plum;
-        .b { color: coral; }
-      }
-    )CSS");
-
-  EXPECT_EQ(
-      "& .a {\n  color: green; width: 10px;\n  & .x { color: pink; }\n}"
-      "div { color: plum; } (invisible)"
-      "& .b { color: coral; }",
-      SerializeChildRulesIncludingInvisible(style_rule));
-
-  ASSERT_TRUE(style_rule.ChildRules());
-  ASSERT_EQ(2u, style_rule.ChildRules()->size());
-
-  // Inspect child rules of '.a'.
-  EXPECT_EQ(
-      "& .x { color: pink; }"
-      "& .a { width: 10px; } (invisible)",
-      SerializeChildRulesIncludingInvisible(
-          To<StyleRule>(*(*style_rule.ChildRules())[0])));
-}
-
-TEST(CSSParserImplTest, CSSFunction) {
-  test::TaskEnvironment task_environment;
-
-  String sheet_text = R"CSS(
-    @function --foo(): color {
-      @return red;
-    }
-  )CSS";
-  auto* context = MakeGarbageCollected<CSSParserContext>(
-      kHTMLStandardMode, SecureContextMode::kInsecureContext);
-  auto* sheet = MakeGarbageCollected<StyleSheetContents>(context);
-  CSSParserImpl::ParseStyleSheet(sheet_text, context, sheet);
-  ASSERT_EQ(sheet->ChildRules().size(), 1u);
-
-  const StyleRuleFunction* rule =
-      DynamicTo<StyleRuleFunction>(sheet->ChildRules()[0].Get());
-  EXPECT_TRUE(rule);
-
-  EXPECT_EQ("red", rule->GetFunctionBody().OriginalText());
 }
 
 }  // namespace blink

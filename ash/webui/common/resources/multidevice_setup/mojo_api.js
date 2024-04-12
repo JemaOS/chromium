@@ -1,7 +1,8 @@
-// Copyright 2018 The Chromium Authors
+// Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import {addSingletonGetter} from 'chrome://resources/ash/common/cr_deprecated.js';
 import {MultiDeviceSetup, MultiDeviceSetupRemote} from 'chrome://resources/mojo/chromeos/ash/services/multidevice_setup/public/mojom/multidevice_setup.mojom-webui.js';
 
 /** @interface */
@@ -27,17 +28,6 @@ export class MojoInterfaceProviderImpl {
 
     return this.remote_;
   }
-
-  /** @return {!MojoInterfaceProvider} */
-  static getInstance() {
-    return instance || (instance = new MojoInterfaceProviderImpl());
-  }
-
-  /** @param {!MojoInterfaceProvider} obj */
-  static setInstance(obj) {
-    instance = obj;
-  }
 }
 
-/** @type {?MojoInterfaceProvider} */
-let instance = null;
+addSingletonGetter(MojoInterfaceProviderImpl);

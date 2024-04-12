@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
 import 'chrome://user-notes-side-panel.top-chrome/app.js';
 
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import type {UserNotesAppElement} from 'chrome://user-notes-side-panel.top-chrome/app.js';
-import type {UserNoteElement} from 'chrome://user-notes-side-panel.top-chrome/user_note.js';
-import type {Note, NoteOverview} from 'chrome://user-notes-side-panel.top-chrome/user_notes.mojom-webui.js';
+import {UserNotesAppElement} from 'chrome://user-notes-side-panel.top-chrome/app.js';
+import {UserNoteElement} from 'chrome://user-notes-side-panel.top-chrome/user_note.js';
+import {Note, NoteOverview} from 'chrome://user-notes-side-panel.top-chrome/user_notes.mojom-webui.js';
 import {UserNotesApiProxyImpl} from 'chrome://user-notes-side-panel.top-chrome/user_notes_api_proxy.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';

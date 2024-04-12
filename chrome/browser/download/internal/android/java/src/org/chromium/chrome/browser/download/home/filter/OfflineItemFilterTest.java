@@ -56,11 +56,14 @@ public class OfflineItemFilterTest {
         }
     }
 
-    @Mock private OfflineItemFilterSource mSource;
+    @Mock
+    private OfflineItemFilterSource mSource;
 
-    @Mock private OfflineItemFilterObserver mObserver;
+    @Mock
+    private OfflineItemFilterObserver mObserver;
 
-    @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     @Test
     public void testBasicPassthrough() {

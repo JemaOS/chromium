@@ -71,8 +71,6 @@ void TranslateService::Initialize() {
 // static
 void TranslateService::Shutdown() {
   translate::TranslateDownloadManager::GetInstance()->Shutdown();
-  delete g_translate_service;
-  g_translate_service = nullptr;
 }
 
 // static
@@ -92,7 +90,7 @@ void TranslateService::InitializeForTesting(
 
 // static
 void TranslateService::ShutdownForTesting() {
-  TranslateService::Shutdown();
+  translate::TranslateDownloadManager::GetInstance()->Shutdown();
 }
 
 void TranslateService::OnResourceRequestsAllowed() {

@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_WALLPAPER_HANDLERS_MOCK_WALLPAPER_HANDLERS_H_
 #define CHROME_BROWSER_ASH_WALLPAPER_HANDLERS_MOCK_WALLPAPER_HANDLERS_H_
 
-#include <stdint.h>
-
 #include "ash/webui/personalization_app/mojom/personalization_app.mojom.h"
 #include "base/functional/callback_forward.h"
 #include "chrome/browser/ash/wallpaper_handlers/wallpaper_handlers.h"
@@ -14,8 +12,6 @@
 
 namespace wallpaper_handlers {
 
-// Fetcher that returns a list of backdrop image collections. Used to avoid
-// network requests in unit tests.
 class MockBackdropCollectionInfoFetcher : public BackdropCollectionInfoFetcher {
  public:
   MockBackdropCollectionInfoFetcher();
@@ -30,12 +26,8 @@ class MockBackdropCollectionInfoFetcher : public BackdropCollectionInfoFetcher {
   MOCK_METHOD(void, Start, (OnCollectionsInfoFetched callback), (override));
 };
 
-// Fetcher that returns a list of backdrop images. Used to avoid network
-// requests in unit tests.
 class MockBackdropImageInfoFetcher : public BackdropImageInfoFetcher {
  public:
-  static constexpr uint64_t kTimeOfDayUnitId = 77;
-
   explicit MockBackdropImageInfoFetcher(const std::string& collection_id);
 
   MockBackdropImageInfoFetcher(const MockBackdropImageInfoFetcher&) = delete;
@@ -45,30 +37,6 @@ class MockBackdropImageInfoFetcher : public BackdropImageInfoFetcher {
   ~MockBackdropImageInfoFetcher() override;
 
   MOCK_METHOD(void, Start, (OnImagesInfoFetched callback), (override));
-
- private:
-  std::string collection_id_;
-};
-
-// Fetcher that returns a backdrop image and empty resume token. Used to avoid
-// network requests in unit tests.
-class MockBackdropSurpriseMeImageFetcher
-    : public BackdropSurpriseMeImageFetcher {
- public:
-  explicit MockBackdropSurpriseMeImageFetcher(const std::string& collection_id);
-
-  MockBackdropSurpriseMeImageFetcher(
-      const MockBackdropSurpriseMeImageFetcher&) = delete;
-  MockBackdropSurpriseMeImageFetcher& operator=(
-      const MockBackdropSurpriseMeImageFetcher&) = delete;
-
-  ~MockBackdropSurpriseMeImageFetcher() override;
-
-  MOCK_METHOD(void, Start, (OnSurpriseMeImageFetched callback), (override));
-
- private:
-  std::string collection_id_;
-  int id_incrementer_ = 0;
 };
 
 // Fetcher that returns an empty album list and no resume token in response to a
@@ -87,7 +55,7 @@ class MockGooglePhotosAlbumsFetcher : public GooglePhotosAlbumsFetcher {
   // GooglePhotosAlbumsFetcher:
   MOCK_METHOD(void,
               AddRequestAndStartIfNecessary,
-              (const std::optional<std::string>& resume_token,
+              (const absl::optional<std::string>& resume_token,
                base::OnceCallback<void(GooglePhotosAlbumsCbkArgs)> callback),
               (override));
 
@@ -97,7 +65,7 @@ class MockGooglePhotosAlbumsFetcher : public GooglePhotosAlbumsFetcher {
               (override));
 
   // Overridden to increase visibility.
-  std::optional<size_t> GetResultCount(
+  absl::optional<size_t> GetResultCount(
       const GooglePhotosAlbumsCbkArgs& result) override;
 };
 
@@ -119,7 +87,7 @@ class MockGooglePhotosSharedAlbumsFetcher
   // GooglePhotosSharedAlbumsFetcher:
   MOCK_METHOD(void,
               AddRequestAndStartIfNecessary,
-              (const std::optional<std::string>& resume_token,
+              (const absl::optional<std::string>& resume_token,
                base::OnceCallback<void(GooglePhotosAlbumsCbkArgs)> callback),
               (override));
 
@@ -129,7 +97,7 @@ class MockGooglePhotosSharedAlbumsFetcher
               (override));
 
   // Overridden to increase visibility.
-  std::optional<size_t> GetResultCount(
+  absl::optional<size_t> GetResultCount(
       const GooglePhotosAlbumsCbkArgs& result) override;
 };
 
@@ -158,7 +126,7 @@ class MockGooglePhotosEnabledFetcher : public GooglePhotosEnabledFetcher {
               (override));
 
   // Overridden to increase visibility.
-  std::optional<size_t> GetResultCount(
+  absl::optional<size_t> GetResultCount(
       const GooglePhotosEnablementState& result) override;
 };
 
@@ -178,9 +146,9 @@ class MockGooglePhotosPhotosFetcher : public GooglePhotosPhotosFetcher {
   // GooglePhotosPhotosFetcher:
   MOCK_METHOD(void,
               AddRequestAndStartIfNecessary,
-              (const std::optional<std::string>& item_id,
-               const std::optional<std::string>& album_id,
-               const std::optional<std::string>& resume_token,
+              (const absl::optional<std::string>& item_id,
+               const absl::optional<std::string>& album_id,
+               const absl::optional<std::string>& resume_token,
                bool shuffle,
                base::OnceCallback<void(GooglePhotosPhotosCbkArgs)> callback),
               (override));
@@ -191,7 +159,7 @@ class MockGooglePhotosPhotosFetcher : public GooglePhotosPhotosFetcher {
               (override));
 
   // Overridden to increase visibility.
-  std::optional<size_t> GetResultCount(
+  absl::optional<size_t> GetResultCount(
       const GooglePhotosPhotosCbkArgs& result) override;
 };
 

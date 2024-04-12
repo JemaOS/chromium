@@ -52,6 +52,7 @@ class ChromePluginPlaceholder final
  private:
   ChromePluginPlaceholder(content::RenderFrame* render_frame,
                           const blink::WebPluginParams& params,
+                          const std::string& html_data,
                           const std::u16string& title);
   ~ChromePluginPlaceholder() override;
 

@@ -13,10 +13,10 @@
 
 #include <memory>
 
-#include "base/apple/scoped_cftyperef.h"
 #include "base/command_line.h"
 #include "base/files/scoped_file.h"
 #include "base/functional/bind.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "base/mac/scoped_ioobject.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/process/kill.h"
@@ -33,14 +33,13 @@ namespace image_writer {
 static const char kAuthOpenPath[] = "/usr/libexec/authopen";
 
 bool ImageWriter::IsValidDevice() {
-  base::apple::ScopedCFTypeRef<CFStringRef> cf_bsd_name(
+  base::ScopedCFTypeRef<CFStringRef> cf_bsd_name(
       base::SysUTF8ToCFStringRef(device_path_.value()));
-  base::apple::ScopedCFTypeRef<CFMutableDictionaryRef> matching(
+  base::ScopedCFTypeRef<CFMutableDictionaryRef> matching(
       IOServiceMatching(kIOMediaClass));
-  CFDictionaryAddValue(matching.get(), CFSTR(kIOMediaWholeKey), kCFBooleanTrue);
-  CFDictionaryAddValue(matching.get(), CFSTR(kIOMediaWritableKey),
-                       kCFBooleanTrue);
-  CFDictionaryAddValue(matching.get(), CFSTR(kIOBSDNameKey), cf_bsd_name.get());
+  CFDictionaryAddValue(matching, CFSTR(kIOMediaWholeKey), kCFBooleanTrue);
+  CFDictionaryAddValue(matching, CFSTR(kIOMediaWritableKey), kCFBooleanTrue);
+  CFDictionaryAddValue(matching, CFSTR(kIOBSDNameKey), cf_bsd_name);
 
   // IOServiceGetMatchingService consumes a reference to the matching dictionary
   // passed to it.
@@ -49,7 +48,7 @@ bool ImageWriter::IsValidDevice() {
   if (!disk_obj)
     return false;
 
-  return extensions::IsSuitableRemovableStorageDevice(disk_obj.get(), nullptr,
+  return extensions::IsSuitableRemovableStorageDevice(disk_obj, nullptr,
                                                       nullptr, nullptr);
 }
 

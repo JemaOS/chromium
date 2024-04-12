@@ -37,10 +37,9 @@ ScreenTimeControllerFactory::ScreenTimeControllerFactory()
 
 ScreenTimeControllerFactory::~ScreenTimeControllerFactory() = default;
 
-std::unique_ptr<KeyedService>
-ScreenTimeControllerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ScreenTimeControllerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<ScreenTimeController>(context);
+  return new ScreenTimeController(context);
 }
 
 }  // namespace ash

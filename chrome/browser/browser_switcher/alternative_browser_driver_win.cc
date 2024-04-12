@@ -11,12 +11,10 @@
 #include <shlobj.h>
 #include <wininet.h>
 
-#include <string_view>
-
 #include "base/files/file_path.h"
 #include "base/logging.h"
 #include "base/process/launch.h"
-
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/thread_pool.h"
@@ -127,7 +125,7 @@ std::wstring GetBrowserLocation(const wchar_t* regkey_name) {
   return location;
 }
 
-const BrowserVarMapping* FindBrowserMapping(std::wstring_view path,
+const BrowserVarMapping* FindBrowserMapping(base::WStringPiece path,
                                             bool compare_typical_executable) {
   // If |compare_typical_executable| is true: also look at executable filenames,
   // to reduce false-negatives when the path is specified explicitly by the
@@ -193,7 +191,7 @@ void AppendCommandLineArguments(base::CommandLine* cmd_line,
     cmd_line->AppendArgNative(url_spec);
 }
 
-bool IsInternetExplorer(std::string_view path) {
+bool IsInternetExplorer(base::StringPiece path) {
   // We don't treat IExplore.exe as Internet Explorer here. This way, admins can
   // set |AlternativeBrowserPath| to IExplore.exe to disable DDE, if it's
   // causing issues or slowness.

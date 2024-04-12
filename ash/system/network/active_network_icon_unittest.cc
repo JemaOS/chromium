@@ -268,15 +268,13 @@ TEST_P(ActiveNetworkIconTest, GetSingleImage) {
                              ConnectionStateType::kConnecting, 50)));
   EXPECT_TRUE(animating);
 
-  // Cellular + WiFi connected + Ethernet = Ethernet connected icon
+  // Cellular + WiFi connected + Ethernet = No icon
   SetupWiFi(shill::kStateOnline);
   network_state_handler()->SetNetworkConnectRequested(wifi_path(), false);
   image = active_network_icon()->GetImage(GetColorProvider(),
                                           ActiveNetworkIcon::Type::kSingle,
                                           icon_type(), &animating);
-  EXPECT_TRUE(AreImagesEqual(
-      image,
-      ImageForNetwork(NetworkType::kEthernet, ConnectionStateType::kOnline)));
+  EXPECT_TRUE(image.isNull());
   EXPECT_FALSE(animating);
 }
 

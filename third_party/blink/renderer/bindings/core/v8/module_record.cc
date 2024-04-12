@@ -76,13 +76,11 @@ v8::Local<v8::Module> ModuleRecord::Compile(
         ExecutionContext::GetCodeCacheHostFromContext(execution_context),
         params.GetSourceText());
   }
-  // TODO(chromium:1406506): Add a compile hints solution for module records.
-  constexpr bool kMightGenerateCompileHints = false;
   std::tie(compile_options, produce_cache_options, no_cache_reason) =
-      V8CodeCache::GetCompileOptions(
-          v8_cache_options, params.CacheHandler(),
-          params.GetSourceText().length(), params.SourceLocationType(),
-          params.BaseURL(), kMightGenerateCompileHints);
+      V8CodeCache::GetCompileOptions(v8_cache_options, params.CacheHandler(),
+                                     params.GetSourceText().length(),
+                                     params.SourceLocationType(),
+                                     params.BaseURL());
 
   if (!V8ScriptRunner::CompileModule(
            isolate, params, text_position, compile_options, no_cache_reason,
@@ -179,9 +177,8 @@ Vector<ModuleRequest> ModuleRecord::ModuleRequests(
             v8_module_request->GetImportAssertions(),
             /*v8_import_assertions_has_positions=*/true);
 
-    requests.emplace_back(
-        ToCoreString(script_state->GetIsolate(), v8_specifier), position,
-        import_assertions);
+    requests.emplace_back(ToCoreString(v8_specifier), position,
+                          import_assertions);
   }
 
   return requests;
@@ -202,14 +199,12 @@ v8::MaybeLocal<v8::Module> ModuleRecord::ResolveModuleCallback(
   DCHECK(modulator);
 
   ModuleRequest module_request(
-      ToCoreStringWithNullCheck(isolate, specifier),
-      TextPosition::MinimumPosition(),
+      ToCoreStringWithNullCheck(specifier), TextPosition::MinimumPosition(),
       ModuleRecord::ToBlinkImportAssertions(
           context, referrer, import_assertions,
           /*v8_import_assertions_has_positions=*/true));
 
-  ExceptionState exception_state(isolate,
-                                 ExceptionContextType::kOperationInvoke,
+  ExceptionState exception_state(isolate, ExceptionState::kExecutionContext,
                                  "ModuleRecord", "resolveModuleCallback");
   v8::Local<v8::Module> resolved =
       modulator->GetModuleRecordResolver()->Resolve(module_request, referrer,
@@ -232,7 +227,6 @@ Vector<ImportAssertion> ModuleRecord::ToBlinkImportAssertions(
   // in the form [key1, value1, key2, value2, ...].
   const int kV8AssertionEntrySize = v8_import_assertions_has_positions ? 3 : 2;
 
-  v8::Isolate* isolate = context->GetIsolate();
   Vector<ImportAssertion> import_assertions;
   int number_of_import_assertions =
       v8_import_assertions->Length() / kV8AssertionEntrySize;
@@ -257,8 +251,8 @@ Vector<ImportAssertion> ModuleRecord::ToBlinkImportAssertions(
           OrdinalNumber::FromZeroBasedInt(v8_assertion_loc.GetColumnNumber()));
     }
 
-    import_assertions.emplace_back(ToCoreString(isolate, v8_assertion_key),
-                                   ToCoreString(isolate, v8_assertion_value),
+    import_assertions.emplace_back(ToCoreString(v8_assertion_key),
+                                   ToCoreString(v8_assertion_value),
                                    assertion_position);
   }
 

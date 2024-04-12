@@ -10,17 +10,20 @@
 
 import '../cr_icon_button/cr_icon_button.js';
 import '../cr_input/cr_input.js';
+import '../cr_input/cr_input_style.css.js';
+import '../icons.html.js';
+import '../cr_shared_style.css.js';
+import '../cr_shared_vars.css.js';
 import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
 
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {CrInputElement} from '../cr_input/cr_input.js';
+import {CrInputElement} from '../cr_input/cr_input.js';
 
-import {getCss} from './cr_search_field.css.js';
-import {getHtml} from './cr_search_field.html.js';
-import {CrSearchFieldMixinLit} from './cr_search_field_mixin_lit.js';
+import {getTemplate} from './cr_search_field.html.js';
+import {CrSearchFieldMixin} from './cr_search_field_mixin.js';
 
-const CrSearchFieldElementBase = CrSearchFieldMixinLit(CrLitElement);
+const CrSearchFieldElementBase = CrSearchFieldMixin(PolymerElement);
 
 export interface CrSearchFieldElement {
   $: {
@@ -34,29 +37,26 @@ export class CrSearchFieldElement extends CrSearchFieldElementBase {
     return 'cr-search-field';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
       autofocus: {
         type: Boolean,
+        value: false,
       },
     };
   }
 
-  override autofocus: boolean = false;
+  override autofocus: boolean;
 
   override getSearchInput(): CrInputElement {
     return this.$.searchInput;
   }
 
-  protected onClearSearchClick_() {
+  private onTapClear_() {
     this.setValue('');
     setTimeout(() => {
       this.$.searchInput.focus();

@@ -5,11 +5,9 @@
 #include "chrome/browser/safe_browsing/download_protection/download_protection_util.h"
 
 #include "base/hash/sha1.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
-#include "chrome/browser/download/download_item_warning_data.h"
 #include "components/safe_browsing/content/common/file_type_policies.h"
 #include "net/cert/x509_util.h"
 #include "url/gurl.h"
@@ -71,7 +69,7 @@ void SelectDeepestEntry(
   }
 }
 
-void SelectWildcardEntryAtFront(
+void SelectWildcardEntry(
     std::vector<ClientDownloadRequest::ArchivedBinary>* considering,
     google::protobuf::RepeatedPtrField<ClientDownloadRequest::ArchivedBinary>*
         selected) {
@@ -83,12 +81,6 @@ void SelectWildcardEntryAtFront(
       // leads to a uniform distribution over all executables.
       if (remaining_executables * base::RandDouble() < 1) {
         *selected->Add() = *it;
-        // Move the selected entry to the front. There's no easy way to insert
-        // at a specific location in a RepeatedPtrField, so we do the move as a
-        // series of swaps.
-        for (int i = 0; i < selected->size() - 1; ++i) {
-          selected->SwapElements(i, selected->size() - 1);
-        }
         considering->erase(it);
         return;
       }
@@ -147,8 +139,9 @@ void GetCertificateAllowlistStrings(
     paths_to_check.insert(ou_tokens[i]);
   }
 
-  std::string issuer_fp = base::HexEncode(base::SHA1HashSpan(
-      net::x509_util::CryptoBufferAsSpan(issuer.cert_buffer())));
+  std::string hashed = base::SHA1HashString(std::string(
+      net::x509_util::CryptoBufferAsStringPiece(issuer.cert_buffer())));
+  std::string issuer_fp = base::HexEncode(hashed.data(), hashed.size());
   for (auto it = paths_to_check.begin(); it != paths_to_check.end(); ++it) {
     allowlist_strings->push_back("cert/" + issuer_fp + *it);
   }
@@ -189,6 +182,13 @@ SelectArchiveEntries(const google::protobuf::RepeatedPtrField<
     SelectDeepestEntry(&considering, &selected);
   }
 
+  // Only add the wildcard if we otherwise wouldn't be able to fit all the
+  // entries.
+  if (static_cast<size_t>(selected.size()) < limit &&
+      considering.size() + selected.size() > limit) {
+    SelectWildcardEntry(&considering, &selected);
+  }
+
   std::sort(considering.begin(), considering.end(),
             [](const ClientDownloadRequest::ArchivedBinary& lhs,
                const ClientDownloadRequest::ArchivedBinary& rhs) {
@@ -201,48 +201,17 @@ SelectArchiveEntries(const google::protobuf::RepeatedPtrField<
               return ArchiveEntryWeight(lhs) > ArchiveEntryWeight(rhs);
             });
 
-  // Only add the wildcard if we otherwise wouldn't be able to fit all the
-  // entries.
-  bool should_choose_wildcard = static_cast<size_t>(selected.size()) < limit &&
-                                considering.size() + selected.size() > limit;
-  if (should_choose_wildcard) {
-    --limit;
-  }
-
-  auto last_taken_it = considering.begin();
-  for (auto binary_it = considering.begin(); binary_it != considering.end();
-       ++binary_it) {
+  for (const ClientDownloadRequest::ArchivedBinary& binary : considering) {
     if (static_cast<size_t>(selected.size()) >= limit) {
       break;
     }
 
-    if (binary_it->is_executable() || binary_it->is_archive()) {
-      *selected.Add() = std::move(*binary_it);
-      last_taken_it = binary_it;
+    if (binary.is_executable() || binary.is_archive()) {
+      *selected.Add() = binary;
     }
   }
 
-  // By actually choosing the wildcard at the end, we ensure that all the other
-  // entries in the ping are completely deterministic.
-  if (should_choose_wildcard && last_taken_it != considering.end()) {
-    ++last_taken_it;
-    considering.erase(considering.begin(), last_taken_it);
-    SelectWildcardEntryAtFront(&considering, &selected);
-  }
-
   return selected;
-}
-
-void LogDeepScanEvent(download::DownloadItem* item, DeepScanEvent event) {
-  base::UmaHistogramEnumeration("SBClientDownload.DeepScanEvent3", event);
-  if (DownloadItemWarningData::IsEncryptedArchive(item)) {
-    base::UmaHistogramEnumeration(
-        "SBClientDownload.PasswordProtectedDeepScanEvent3", event);
-  }
-}
-
-void LogLocalDecryptionEvent(DeepScanEvent event) {
-  base::UmaHistogramEnumeration("SBClientDownload.LocalDecryptionEvent", event);
 }
 
 }  // namespace safe_browsing

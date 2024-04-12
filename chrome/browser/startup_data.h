@@ -50,9 +50,6 @@ class StartupData {
   void RecordCoreSystemProfile();
 
 #if BUILDFLAG(IS_ANDROID)
-  // Early initialization of the profile key for reduced mode startup.
-  void InitProfileKey();
-
   // Initializes all necessary parameters to create the Profile's PrefService.
   void CreateProfilePrefService();
 

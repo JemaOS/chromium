@@ -4,7 +4,7 @@
 
 #include "chrome/browser/permissions/prediction_service_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/permissions/prediction_service/prediction_service.h"
@@ -19,28 +19,21 @@ permissions::PredictionService* PredictionServiceFactory::GetForProfile(
 
 // static
 PredictionServiceFactory* PredictionServiceFactory::GetInstance() {
-  static base::NoDestructor<PredictionServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<PredictionServiceFactory>::get();
 }
 
 PredictionServiceFactory::PredictionServiceFactory()
     : ProfileKeyedServiceFactory(
           "PredictionService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 PredictionServiceFactory::~PredictionServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-PredictionServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PredictionServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   auto url_loader_factory =
       std::make_unique<network::CrossThreadPendingSharedURLLoaderFactory>(
           g_browser_process->shared_url_loader_factory());
-  return std::make_unique<permissions::PredictionService>(
+  return new permissions::PredictionService(
       network::SharedURLLoaderFactory::Create(std::move(url_loader_factory)));
 }

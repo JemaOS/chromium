@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -38,7 +37,6 @@
 #include "chrome/browser/extensions/api/identity/identity_get_profile_user_info_function.h"
 #include "chrome/browser/extensions/api/identity/identity_launch_web_auth_flow_function.h"
 #include "chrome/browser/extensions/api/identity/identity_remove_cached_auth_token_function.h"
-#include "chrome/browser/extensions/api/identity/launch_web_auth_flow_delegate.h"
 #include "chrome/browser/extensions/component_loader.h"
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
@@ -51,14 +49,12 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/extensions/api/identity.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/in_process_browser_test.h"
-#include "chrome/test/base/ui_test_utils.h"
 #include "components/crx_file/id_util.h"
 #include "components/guest_view/browser/guest_view_base.h"
 #include "components/guest_view/browser/guest_view_manager_delegate.h"
@@ -67,7 +63,6 @@
 #include "components/prefs/pref_service.h"
 #include "components/signin/core/browser/account_reconcilor.h"
 #include "components/signin/public/base/list_accounts_test_utils.h"
-#include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/accounts_mutator.h"
@@ -81,11 +76,9 @@
 #include "content/public/test/test_utils.h"
 #include "extensions/browser/api/extensions_api_client.h"
 #include "extensions/browser/api_test_utils.h"
-#include "extensions/browser/pref_names.h"
 #include "extensions/common/api/oauth2.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/extension_features.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/manifest_handlers/oauth2_manifest_handler.h"
 #include "google_apis/gaia/oauth2_mint_token_flow.h"
 #include "net/cookies/cookie_util.h"
@@ -95,9 +88,9 @@
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/idle/idle.h"
 #include "ui/base/idle/scoped_set_idle_state.h"
-#include "ui/gfx/geometry/rect.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -118,6 +111,10 @@
 #endif
 
 using extensions::ExtensionsAPIClient;
+using guest_view::GuestViewBase;
+using guest_view::GuestViewManager;
+using guest_view::TestGuestViewManager;
+using guest_view::TestGuestViewManagerFactory;
 using testing::_;
 using testing::Return;
 
@@ -343,14 +340,6 @@ void SimulateUrlRedirect(const std::string& url_prefix,
                                      "apply_consent(\"" + url_prefix + "\");"));
 }
 
-// Similar to SimulateUrlRedirect, but uses provided url instead of the pattern
-void SimulateCustomUrlRedirect(const std::string& redirect_url,
-                               content::WebContents* auth_web_contents) {
-  ASSERT_EQ(nullptr,
-            content::EvalJs(auth_web_contents, "window.location.replace(\"" +
-                                                   redirect_url + "\");"));
-}
-
 }  // namespace
 
 class FakeGetAuthTokenFunction : public IdentityGetAuthTokenFunction {
@@ -419,10 +408,10 @@ class FakeGetAuthTokenFunction : public IdentityGetAuthTokenFunction {
 
   void StartTokenKeyAccountAccessTokenRequest() override {
     if (auto_login_access_token_) {
-      std::optional<std::string> access_token("access_token");
+      absl::optional<std::string> access_token("access_token");
       GoogleServiceAuthError error = GoogleServiceAuthError::AuthErrorNone();
       if (!login_access_token_result_) {
-        access_token = std::nullopt;
+        access_token = absl::nullopt;
         error = GoogleServiceAuthError(
             GoogleServiceAuthError::INVALID_GAIA_CREDENTIALS);
       }
@@ -461,7 +450,6 @@ class FakeGetAuthTokenFunction : public IdentityGetAuthTokenFunction {
         identity_manager->GetAccountsMutator()->AddOrUpdateAccount(
             account_info.gaia, account_info.email, "token",
             account_info.is_under_advanced_protection,
-            signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN,
             signin_metrics::SourceForRefreshTokenOperation::kUnknown);
         fixed_auth_error = true;
       }
@@ -662,9 +650,9 @@ class IdentityGetAccountsFunctionTest : public IdentityTestWithSignin {
 
     std::set<std::string> result_ids;
     for (const base::Value& item : results) {
-      std::optional<api::identity::AccountInfo> info =
-          api::identity::AccountInfo::FromValue(item);
-      if (info) {
+      std::unique_ptr<api::identity::AccountInfo> info =
+          api::identity::AccountInfo::FromValueDeprecated(item);
+      if (info.get()) {
         result_ids.insert(info->id);
       } else {
         return GenerateFailureResult(gaia_ids, &results);
@@ -691,13 +679,12 @@ class IdentityGetAccountsFunctionTest : public IdentityTestWithSignin {
       msg << "NULL";
     } else {
       for (const auto& result : *results) {
-        std::optional<api::identity::AccountInfo> info =
-            api::identity::AccountInfo::FromValue(result);
-        if (info) {
+        std::unique_ptr<api::identity::AccountInfo> info =
+            api::identity::AccountInfo::FromValueDeprecated(result);
+        if (info.get())
           msg << info->id << " ";
-        } else {
+        else
           msg << result << "<-" << result.type() << " ";
-        }
       }
     }
 
@@ -744,24 +731,24 @@ IN_PROC_BROWSER_TEST_F(IdentityGetAccountsFunctionTest, TwoAccountsSignedIn) {
 
 class IdentityGetProfileUserInfoFunctionTest : public IdentityTestWithSignin {
  protected:
-  std::optional<api::identity::ProfileUserInfo> RunGetProfileUserInfo() {
+  std::unique_ptr<api::identity::ProfileUserInfo> RunGetProfileUserInfo() {
     scoped_refptr<IdentityGetProfileUserInfoFunction> func(
         new IdentityGetProfileUserInfoFunction);
     func->set_extension(
         ExtensionBuilder("Test").SetID(kExtensionId).Build().get());
-    std::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
+    absl::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
         func.get(), "[]", browser()->profile());
-    return api::identity::ProfileUserInfo::FromValue(*value);
+    return api::identity::ProfileUserInfo::FromValueDeprecated(*value);
   }
 
-  std::optional<api::identity::ProfileUserInfo>
+  std::unique_ptr<api::identity::ProfileUserInfo>
   RunGetProfileUserInfoWithEmail() {
     scoped_refptr<IdentityGetProfileUserInfoFunction> func(
         new IdentityGetProfileUserInfoFunction);
     func->set_extension(CreateExtensionWithEmailPermission());
-    std::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
+    absl::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
         func.get(), "[]", browser()->profile());
-    return api::identity::ProfileUserInfo::FromValue(*value);
+    return api::identity::ProfileUserInfo::FromValueDeprecated(*value);
   }
 
   scoped_refptr<const Extension> CreateExtensionWithEmailPermission() {
@@ -770,7 +757,7 @@ class IdentityGetProfileUserInfoFunctionTest : public IdentityTestWithSignin {
 };
 
 IN_PROC_BROWSER_TEST_F(IdentityGetProfileUserInfoFunctionTest, NotSignedIn) {
-  std::optional<api::identity::ProfileUserInfo> info =
+  std::unique_ptr<api::identity::ProfileUserInfo> info =
       RunGetProfileUserInfoWithEmail();
   EXPECT_TRUE(info->email.empty());
   EXPECT_TRUE(info->id.empty());
@@ -778,7 +765,7 @@ IN_PROC_BROWSER_TEST_F(IdentityGetProfileUserInfoFunctionTest, NotSignedIn) {
 
 IN_PROC_BROWSER_TEST_F(IdentityGetProfileUserInfoFunctionTest, SignedIn) {
   SignIn("president@example.com");
-  std::optional<api::identity::ProfileUserInfo> info =
+  std::unique_ptr<api::identity::ProfileUserInfo> info =
       RunGetProfileUserInfoWithEmail();
   EXPECT_EQ("president@example.com", info->email);
   EXPECT_EQ("gaia_id_for_president_example.com", info->id);
@@ -788,7 +775,7 @@ IN_PROC_BROWSER_TEST_F(IdentityGetProfileUserInfoFunctionTest,
                        SignedInUnconsented) {
   identity_test_env()->MakePrimaryAccountAvailable(
       "test@example.com", signin::ConsentLevel::kSignin);
-  std::optional<api::identity::ProfileUserInfo> info =
+  std::unique_ptr<api::identity::ProfileUserInfo> info =
       RunGetProfileUserInfoWithEmail();
   EXPECT_TRUE(info->email.empty());
   EXPECT_TRUE(info->id.empty());
@@ -796,7 +783,8 @@ IN_PROC_BROWSER_TEST_F(IdentityGetProfileUserInfoFunctionTest,
 
 IN_PROC_BROWSER_TEST_F(IdentityGetProfileUserInfoFunctionTest,
                        NotSignedInNoEmail) {
-  std::optional<api::identity::ProfileUserInfo> info = RunGetProfileUserInfo();
+  std::unique_ptr<api::identity::ProfileUserInfo> info =
+      RunGetProfileUserInfo();
   EXPECT_TRUE(info->email.empty());
   EXPECT_TRUE(info->id.empty());
 }
@@ -804,7 +792,8 @@ IN_PROC_BROWSER_TEST_F(IdentityGetProfileUserInfoFunctionTest,
 IN_PROC_BROWSER_TEST_F(IdentityGetProfileUserInfoFunctionTest,
                        SignedInNoEmail) {
   SignIn("president@example.com");
-  std::optional<api::identity::ProfileUserInfo> info = RunGetProfileUserInfo();
+  std::unique_ptr<api::identity::ProfileUserInfo> info =
+      RunGetProfileUserInfo();
   EXPECT_TRUE(info->email.empty());
   EXPECT_TRUE(info->id.empty());
 }
@@ -813,16 +802,16 @@ class IdentityGetProfileUserInfoFunctionTestWithAccountStatusParam
     : public IdentityGetProfileUserInfoFunctionTest,
       public ::testing::WithParamInterface<std::string> {
  protected:
-  std::optional<api::identity::ProfileUserInfo>
+  std::unique_ptr<api::identity::ProfileUserInfo>
   RunGetProfileUserInfoWithAccountStatus() {
     scoped_refptr<IdentityGetProfileUserInfoFunction> func(
         new IdentityGetProfileUserInfoFunction);
     func->set_extension(CreateExtensionWithEmailPermission());
     std::string args = base::StringPrintf(R"([{"accountStatus": "%s"}])",
                                           account_status().c_str());
-    std::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
+    absl::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
         func.get(), args, browser()->profile());
-    return api::identity::ProfileUserInfo::FromValue(*value);
+    return api::identity::ProfileUserInfo::FromValueDeprecated(*value);
   }
 
   std::string account_status() { return GetParam(); }
@@ -836,7 +825,7 @@ INSTANTIATE_TEST_SUITE_P(
 IN_PROC_BROWSER_TEST_P(
     IdentityGetProfileUserInfoFunctionTestWithAccountStatusParam,
     NotSignedIn) {
-  std::optional<api::identity::ProfileUserInfo> info =
+  std::unique_ptr<api::identity::ProfileUserInfo> info =
       RunGetProfileUserInfoWithAccountStatus();
   EXPECT_TRUE(info->email.empty());
   EXPECT_TRUE(info->id.empty());
@@ -846,7 +835,7 @@ IN_PROC_BROWSER_TEST_P(
     IdentityGetProfileUserInfoFunctionTestWithAccountStatusParam,
     SignedIn) {
   SignIn("test@example.com");
-  std::optional<api::identity::ProfileUserInfo> info =
+  std::unique_ptr<api::identity::ProfileUserInfo> info =
       RunGetProfileUserInfoWithAccountStatus();
   EXPECT_EQ("test@example.com", info->email);
   EXPECT_EQ("gaia_id_for_test_example.com", info->id);
@@ -857,7 +846,7 @@ IN_PROC_BROWSER_TEST_P(
     SignedInUnconsented) {
   identity_test_env()->MakePrimaryAccountAvailable(
       "test@example.com", signin::ConsentLevel::kSignin);
-  std::optional<api::identity::ProfileUserInfo> info =
+  std::unique_ptr<api::identity::ProfileUserInfo> info =
       RunGetProfileUserInfoWithAccountStatus();
   // The unconsented (Sync off) primary account is returned conditionally,
   // depending on the accountStatus parameter.
@@ -980,7 +969,7 @@ class GetAuthTokenFunctionTest
     return GetCachedToken(account_info, oauth_scopes_);
   }
 
-  std::optional<std::string> GetCachedGaiaId() {
+  absl::optional<std::string> GetCachedGaiaId() {
     return id_api()->GetGaiaIdForExtension(extension_id_);
   }
 
@@ -1007,12 +996,12 @@ class GetAuthTokenFunctionTest
                                Browser* browser,
                                std::string* access_token,
                                std::set<std::string>* granted_scopes) {
-    std::optional<base::Value> result_value =
+    absl::optional<base::Value> result_value =
         utils::RunFunctionAndReturnSingleResult(function, args,
                                                 browser->profile());
     ASSERT_TRUE(result_value);
-    std::optional<api::identity::GetAuthTokenResult> result =
-        api::identity::GetAuthTokenResult::FromValue(*result_value);
+    std::unique_ptr<api::identity::GetAuthTokenResult> result =
+        api::identity::GetAuthTokenResult::FromValueDeprecated(*result_value);
     ASSERT_TRUE(result);
 
     EXPECT_TRUE(result->token);
@@ -1034,8 +1023,8 @@ class GetAuthTokenFunctionTest
     } else {
       function_runner->WaitForOneResult(function, &result_value);
     }
-    std::optional<api::identity::GetAuthTokenResult> result =
-        api::identity::GetAuthTokenResult::FromValue(result_value);
+    std::unique_ptr<api::identity::GetAuthTokenResult> result =
+        api::identity::GetAuthTokenResult::FromValueDeprecated(result_value);
     ASSERT_TRUE(result);
 
     ASSERT_TRUE(result->token);
@@ -1069,7 +1058,7 @@ class GetAuthTokenFunctionTest
 
   base::test::ScopedFeatureList feature_list_;
   base::HistogramTester histogram_tester_;
-  ExtensionId extension_id_;
+  std::string extension_id_;
   std::set<std::string> oauth_scopes_;
   std::unique_ptr<ExtensionFunction::ScopedUserGestureForTests> user_gesture_;
 };
@@ -1451,7 +1440,39 @@ class GetAuthTokenFunctionInteractivityTest
       public testing::WithParamInterface<
           IdentityGetAuthTokenFunction::InteractivityStatus> {
  public:
-  GetAuthTokenFunctionInteractivityTest() = default;
+  GetAuthTokenFunctionInteractivityTest() {
+    // Configure the `kGetAuthTokenCheckInteractivity` feature.
+    if (GetParam() == IdentityGetAuthTokenFunction::InteractivityStatus::
+                          kAllowedNoIdleCheck) {
+      feature_list_.InitAndDisableFeature(kGetAuthTokenCheckInteractivity);
+    } else {
+      feature_list_.InitAndEnableFeature(kGetAuthTokenCheckInteractivity);
+    }
+  }
+
+ protected:
+  // Checks that the histograms:
+  // - Signin.Extensions.GetAuthTokenNoGestureIdleTime.* are recorded only when
+  //   there is no user gesture
+  // - Signin.Extensions.GetAuthTokenInteractivityStatus.* are always recorded
+  //   and match the user activity.
+  void CheckUserActivityMetricsHistograms(const std::string& suffix) {
+    int idle_time_sample_count = 0;
+    if (GetParam() == IdentityGetAuthTokenFunction::InteractivityStatus::
+                          kDisallowedIdle ||
+        GetParam() == IdentityGetAuthTokenFunction::InteractivityStatus::
+                          kAllowedWithActivity) {
+      idle_time_sample_count = 1;
+    }
+    histogram_tester()->ExpectTotalCount(
+        std::string(extensions::kGetAuthTokenIdleTimeHistogramBaseName) +
+            suffix,
+        idle_time_sample_count);
+    histogram_tester()->ExpectUniqueSample(
+        std::string(extensions::kGetAuthTokenActivityStatusHistogramBaseName) +
+            suffix,
+        GetParam(), 1);
+  }
 
  private:
   void SetUpOnMainThread() override {
@@ -1466,18 +1487,20 @@ class GetAuthTokenFunctionInteractivityTest
         idle_state_ = std::make_unique<ui::ScopedSetIdleState>(
             ui::IdleState::IDLE_STATE_ACTIVE);
         SetUserGestureEnabled(false);
-        ASSERT_EQ(
-            ui::CalculateIdleState(kGetAuthTokenInactivityTime.InSeconds()),
-            ui::IDLE_STATE_ACTIVE);
+        ASSERT_EQ(ui::CalculateIdleState(
+                      kDefaultGetAuthTokenInactivityThreshold.InSeconds()),
+                  ui::IDLE_STATE_ACTIVE);
         break;
       case IdentityGetAuthTokenFunction::InteractivityStatus::kNotRequested:
       case IdentityGetAuthTokenFunction::InteractivityStatus::kDisallowedIdle:
+      case IdentityGetAuthTokenFunction::InteractivityStatus::
+          kAllowedNoIdleCheck:
         SetUserGestureEnabled(false);
         idle_state_ = std::make_unique<ui::ScopedSetIdleState>(
             ui::IdleState::IDLE_STATE_LOCKED);
-        ASSERT_NE(
-            ui::CalculateIdleState(kGetAuthTokenInactivityTime.InSeconds()),
-            ui::IDLE_STATE_ACTIVE);
+        ASSERT_NE(ui::CalculateIdleState(
+                      kDefaultGetAuthTokenInactivityThreshold.InSeconds()),
+                  ui::IDLE_STATE_ACTIVE);
         break;
       case IdentityGetAuthTokenFunction::InteractivityStatus::
           kDisallowedSigninDisallowed:
@@ -1488,6 +1511,7 @@ class GetAuthTokenFunctionInteractivityTest
     GetAuthTokenFunctionTest::SetUpOnMainThread();
   }
 
+  base::test::ScopedFeatureList feature_list_;
   std::unique_ptr<ui::ScopedSetIdleState> idle_state_;
 };
 
@@ -1549,6 +1573,7 @@ IN_PROC_BROWSER_TEST_P(GetAuthTokenFunctionInteractivityTest,
   }
   histogram_tester()->ExpectUniqueSample(kGetAuthTokenResultHistogramName,
                                          expected_error_state, 1);
+  CheckUserActivityMetricsHistograms(kGetAuthTokenHistogramSigninSuffix);
 }
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 
@@ -1607,6 +1632,8 @@ IN_PROC_BROWSER_TEST_P(GetAuthTokenFunctionInteractivityTest,
   EXPECT_FALSE(func->login_ui_shown());
   histogram_tester()->ExpectUniqueSample(kGetAuthTokenResultHistogramName,
                                          expected_error_state, 1);
+  CheckUserActivityMetricsHistograms(
+      extensions::kGetAuthTokenHistogramConsentSuffix);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1616,8 +1643,9 @@ INSTANTIATE_TEST_SUITE_P(
         IdentityGetAuthTokenFunction::InteractivityStatus::kNotRequested,
         IdentityGetAuthTokenFunction::InteractivityStatus::kDisallowedIdle,
         IdentityGetAuthTokenFunction::InteractivityStatus::kAllowedWithGesture,
+        IdentityGetAuthTokenFunction::InteractivityStatus::kAllowedWithActivity,
         IdentityGetAuthTokenFunction::InteractivityStatus::
-            kAllowedWithActivity));
+            kAllowedNoIdleCheck));
 
 IN_PROC_BROWSER_TEST_F(GetAuthTokenFunctionTest, InteractiveApprovalAborted) {
   SignIn("primary@example.com");
@@ -1650,6 +1678,24 @@ IN_PROC_BROWSER_TEST_F(GetAuthTokenFunctionTest,
   histogram_tester()->ExpectUniqueSample(
       kGetAuthTokenResultHistogramName,
       IdentityGetAuthTokenError::State::kRemoteConsentPageLoadFailure, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(GetAuthTokenFunctionTest,
+                       InteractiveApprovalSetAccountsInCookieFailed) {
+  SignIn("primary@example.com");
+  scoped_refptr<FakeGetAuthTokenFunction> func(new FakeGetAuthTokenFunction());
+  func->set_extension(CreateExtension(CLIENT_ID | SCOPES));
+  func->push_mint_token_result(TestOAuth2MintTokenFlow::REMOTE_CONSENT_SUCCESS);
+  func->set_scope_ui_failure(
+      GaiaRemoteConsentFlow::SET_ACCOUNTS_IN_COOKIE_FAILED);
+  std::string error = utils::RunFunctionAndReturnError(
+      func.get(), "[{\"interactive\": true}]", browser()->profile());
+  EXPECT_EQ(std::string(errors::kSetAccountsInCookieFailure), error);
+  EXPECT_FALSE(func->login_ui_shown());
+  EXPECT_TRUE(func->scope_ui_shown());
+  histogram_tester()->ExpectUniqueSample(
+      kGetAuthTokenResultHistogramName,
+      IdentityGetAuthTokenError::State::kSetAccountsInCookieFailure, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(GetAuthTokenFunctionTest,
@@ -3221,7 +3267,7 @@ class GetAuthTokenFunctionSelectedUserIdTest : public GetAuthTokenFunctionTest {
   void RunNewFunctionAndExpectSelectedUserId(
       const scoped_refptr<const extensions::Extension>& extension,
       const std::string& expected_selected_user_id,
-      const std::optional<std::string> requested_account = std::nullopt) {
+      const absl::optional<std::string> requested_account = absl::nullopt) {
     auto func = base::MakeRefCounted<FakeGetAuthTokenFunction>();
     func->set_extension(extension);
     RunFunctionAndExpectSelectedUserId(func, expected_selected_user_id,
@@ -3231,7 +3277,7 @@ class GetAuthTokenFunctionSelectedUserIdTest : public GetAuthTokenFunctionTest {
   void RunFunctionAndExpectSelectedUserId(
       const scoped_refptr<FakeGetAuthTokenFunction>& func,
       const std::string& expected_selected_user_id,
-      const std::optional<std::string> requested_account = std::nullopt) {
+      const absl::optional<std::string> requested_account = absl::nullopt) {
     // Stops the function right before selected_user_id would be used.
     MockQueuedMintRequest queued_request;
     IdentityMintRequestQueue::MintType type =
@@ -3545,8 +3591,8 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest, NonInteractiveSuccess) {
   scoped_refptr<IdentityLaunchWebAuthFlowFunction> function =
       CreateLaunchWebAuthFlowFunction();
 
-  function->InitFinalRedirectURLDomainsForTest("abcdefghij");
-  std::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
+  function->InitFinalRedirectURLPrefixForTest("abcdefghij");
+  absl::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
       function.get(),
       "[{\"interactive\": false,"
       "\"url\": \"https://abcdefghij.chromiumapp.org/callback#test\"}]",
@@ -3570,7 +3616,7 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest,
   scoped_refptr<IdentityLaunchWebAuthFlowFunction> function =
       CreateLaunchWebAuthFlowFunction();
 
-  function->InitFinalRedirectURLDomainsForTest("abcdefghij");
+  function->InitFinalRedirectURLPrefixForTest("abcdefghij");
   std::string args = base::StringPrintf(
       R"([{
         "interactive": false,
@@ -3579,7 +3625,7 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest,
         "timeoutMsForNonInteractive": 20000
       }])",
       auth_url.spec().c_str());
-  std::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
+  absl::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
       function.get(), args, browser()->profile());
 
   EXPECT_TRUE(value->is_string());
@@ -3592,8 +3638,8 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest,
   scoped_refptr<IdentityLaunchWebAuthFlowFunction> function =
       CreateLaunchWebAuthFlowFunction();
 
-  function->InitFinalRedirectURLDomainsForTest("abcdefghij");
-  std::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
+  function->InitFinalRedirectURLPrefixForTest("abcdefghij");
+  absl::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
       function.get(),
       "[{\"interactive\": true,"
       "\"url\": \"https://abcdefghij.chromiumapp.org/callback#test\"}]",
@@ -3615,10 +3661,10 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest,
   scoped_refptr<IdentityLaunchWebAuthFlowFunction> function =
       CreateLaunchWebAuthFlowFunction();
 
-  function->InitFinalRedirectURLDomainsForTest("abcdefghij");
+  function->InitFinalRedirectURLPrefixForTest("abcdefghij");
   std::string args =
       "[{\"interactive\": true, \"url\": \"" + auth_url.spec() + "\"}]";
-  std::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
+  absl::optional<base::Value> value = utils::RunFunctionAndReturnSingleResult(
       function.get(), args, browser()->profile());
 
   EXPECT_TRUE(value->is_string());
@@ -3629,7 +3675,63 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest,
       IdentityLaunchWebAuthFlowFunction::Error::kNone, 1);
 }
 
-IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest, UserCloseWindow) {
+class LaunchWebAuthFlowFunctionTestWithWebAuthFlowInBrowserTabParam
+    : public LaunchWebAuthFlowFunctionTest,
+      public testing::WithParamInterface<bool> {
+ public:
+  LaunchWebAuthFlowFunctionTestWithWebAuthFlowInBrowserTabParam() {
+    scoped_feature_list_.InitWithFeatureState(
+        features::kWebAuthFlowInBrowserTab, use_tab_feature_enabled());
+  }
+
+  void SetUp() override {
+    GuestViewManager::set_factory_for_testing(&factory_);
+    LaunchWebAuthFlowFunctionTest::SetUp();
+  }
+
+  void TearDown() override {
+    LaunchWebAuthFlowFunctionTest::TearDown();
+    GuestViewManager::set_factory_for_testing(nullptr);
+  }
+
+ protected:
+  bool use_tab_feature_enabled() { return GetParam(); }
+
+  void CloseGuestView() {
+    TestGuestViewManager* guest_view_manager = GetGuestViewManager();
+    auto* guest_view = guest_view_manager->WaitForSingleGuestViewCreated();
+    ASSERT_TRUE(guest_view);
+
+    guest_view_manager->WaitUntilAttached(guest_view);
+
+    auto* embedder_web_contents = guest_view->embedder_web_contents();
+    ASSERT_TRUE(embedder_web_contents);
+    embedder_web_contents->Close();
+  }
+
+ private:
+  TestGuestViewManagerFactory factory_;
+  base::test::ScopedFeatureList scoped_feature_list_;
+
+  TestGuestViewManager* GetGuestViewManager() {
+    TestGuestViewManager* manager = static_cast<TestGuestViewManager*>(
+        TestGuestViewManager::FromBrowserContext(browser()->profile()));
+    // Test code may access the TestGuestViewManager before it would be created
+    // during creation of the first guest.
+    if (!manager) {
+      manager = static_cast<TestGuestViewManager*>(
+          GuestViewManager::CreateWithDelegate(
+              browser()->profile(),
+              ExtensionsAPIClient::Get()->CreateGuestViewManagerDelegate(
+                  browser()->profile())));
+    }
+    return manager;
+  }
+};
+
+IN_PROC_BROWSER_TEST_P(
+    LaunchWebAuthFlowFunctionTestWithWebAuthFlowInBrowserTabParam,
+    UserCloseWindow) {
   std::unique_ptr<net::EmbeddedTestServer> https_server = LaunchHttpsServer();
   GURL auth_url(https_server->GetURL("/interaction_required.html"));
 
@@ -3637,21 +3739,27 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest, UserCloseWindow) {
       CreateLaunchWebAuthFlowFunction();
 
   content::TestNavigationObserver url_obvserver(auth_url);
-  url_obvserver.StartWatchingNewWebContents();
+  if (use_tab_feature_enabled()) {
+    url_obvserver.StartWatchingNewWebContents();
+  }
 
   std::string args =
       "[{\"interactive\": true, \"url\": \"" + auth_url.spec() + "\"}]";
   RunFunctionAsync(function.get(), args);
 
-  url_obvserver.Wait();
-
-  Browser* popup_browser = chrome::FindBrowserWithTab(
-      function->GetWebAuthFlowForTesting()->web_contents());
-  TabStripModel* tabs = popup_browser->tab_strip_model();
-  EXPECT_NE(browser(), popup_browser);
-  ASSERT_EQ(tabs->GetActiveWebContents()->GetURL(), auth_url);
   // Close the opened auth web contents.
-  tabs->CloseWebContentsAt(tabs->active_index(), 0);
+  // Depending on the feature `WebAuthFlowInBrowserTab`, close the opened
+  // GuestView (simulating the AppWindow), or close the new tab through the
+  // created WebContents.
+  if (use_tab_feature_enabled()) {
+    url_obvserver.Wait();
+
+    TabStripModel* tabs = browser()->tab_strip_model();
+    ASSERT_EQ(tabs->GetActiveWebContents()->GetURL(), auth_url);
+    tabs->CloseWebContentsAt(tabs->active_index(), 0);
+  } else {
+    CloseGuestView();
+  }
 
   EXPECT_EQ(std::string(errors::kUserRejected), WaitForError(function.get()));
   histogram_tester()->ExpectUniqueSample(
@@ -3659,27 +3767,25 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest, UserCloseWindow) {
       IdentityLaunchWebAuthFlowFunction::Error::kUserRejected, 1);
 }
 
-// Regression test for http://b/290733700.
-IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTest,
-                       SchemeOtherThanHttpOrHttpsNotAllowed) {
-  // Only http and https schemes are allowed.
-  GURL invalid_auth_url("chrome-untrusted://some_chrome_url");
-  scoped_refptr<IdentityLaunchWebAuthFlowFunction> function =
-      CreateLaunchWebAuthFlowFunction();
+INSTANTIATE_TEST_SUITE_P(
+    ,
+    LaunchWebAuthFlowFunctionTestWithWebAuthFlowInBrowserTabParam,
+    testing::Bool(),
+    [](const testing::TestParamInfo<
+        LaunchWebAuthFlowFunctionTestWithWebAuthFlowInBrowserTabParam::
+            ParamType>& info) {
+      return base::StrCat(
+          {info.param ? "With" : "Without", "WebAuthFlowInBrowserTab"});
+    });
 
-  std::string args =
-      "[{\"interactive\": true, \"url\": \"" + invalid_auth_url.spec() + "\"}]";
-  RunFunctionAsync(function.get(), args);
-
-  EXPECT_EQ(std::string(errors::kInvalidURLScheme),
-            WaitForError(function.get()));
-  histogram_tester()->ExpectUniqueSample(
-      kLaunchWebAuthFlowResultHistogramName,
-      IdentityLaunchWebAuthFlowFunction::Error::kInvalidURLScheme, 1);
-}
-
-class LaunchWebAuthFlowFunctionTestWithBrowserTab
+class LaunchWebAuthFlowFunctionTestWithNewTab
     : public LaunchWebAuthFlowFunctionTest {
+ public:
+  LaunchWebAuthFlowFunctionTestWithNewTab() {
+    scoped_feature_list_.InitAndEnableFeature(
+        features::kWebAuthFlowInBrowserTab);
+  }
+
  protected:
   void RunFunctionAndWaitForNavigation(
       IdentityLaunchWebAuthFlowFunction* function,
@@ -3690,16 +3796,19 @@ class LaunchWebAuthFlowFunctionTestWithBrowserTab
     RunFunctionAsync(function, args);
     url_observer.Wait();
   }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
+IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithNewTab,
                        PageNavigateFromInitURLToFinalURL) {
   std::unique_ptr<net::EmbeddedTestServer> https_server = LaunchHttpsServer();
   scoped_refptr<IdentityLaunchWebAuthFlowFunction> function =
       CreateLaunchWebAuthFlowFunction();
 
   const std::string extension_id("abcdefghij");
-  function->InitFinalRedirectURLDomainsForTest(extension_id);
+  function->InitFinalRedirectURLPrefixForTest(extension_id);
 
   const GURL auth_url(https_server->GetURL("/consent_page.html"));
   const GURL final_url("https://" + extension_id + ".chromiumapp.org/");
@@ -3714,79 +3823,7 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
   base::Value output;
   WaitForOneResult(function.get(), &output);
   EXPECT_FALSE(function->GetWebAuthFlowForTesting());
-  EXPECT_EQ(GURL(output.GetString()).Resolve("/"), final_url);
-  histogram_tester()->ExpectUniqueSample(
-      kLaunchWebAuthFlowResultHistogramName,
-      IdentityLaunchWebAuthFlowFunction::Error::kNone, 1);
-}
-
-class TestDelegate : public LaunchWebAuthFlowDelegate {
- public:
-  // LaunchWebAuthFlowDelegate:
-  void GetOptionalWindowBounds(
-      Profile* profile,
-      const std::string& extension_id,
-      base::OnceCallback<void(std::optional<gfx::Rect>)> callback) override {
-    std::move(callback).Run(kTestBounds);
-  }
-
-  static constexpr gfx::Rect kTestBounds = gfx::Rect(23, 27, 400, 400);
-};
-
-IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
-                       PopupBoundsComeFromDelegate) {
-  std::unique_ptr<net::EmbeddedTestServer> https_server = LaunchHttpsServer();
-  GURL auth_url(https_server->GetURL("/interaction_required.html"));
-
-  scoped_refptr<IdentityLaunchWebAuthFlowFunction> function =
-      CreateLaunchWebAuthFlowFunction();
-  function->SetLaunchWebAuthFlowDelegateForTesting(
-      std::make_unique<TestDelegate>());
-
-  ui_test_utils::BrowserChangeObserver browser_opened(
-      nullptr, ui_test_utils::BrowserChangeObserver::ChangeType::kAdded);
-
-  std::string args =
-      "[{\"interactive\": true, \"url\": \"" + auth_url.spec() + "\"}]";
-  RunFunctionAsync(function.get(), args);
-
-  Browser* popup_browser = browser_opened.Wait();
-
-  gfx::Rect bounds = popup_browser->window()->GetBounds();
-  EXPECT_EQ(bounds.x(), TestDelegate::kTestBounds.x());
-  EXPECT_EQ(bounds.y(), TestDelegate::kTestBounds.y());
-  // The final width and height can contain platform-specific offsets for the
-  // window title bar, which we don't want to assert exactly here.
-  EXPECT_GE(bounds.width(), TestDelegate::kTestBounds.width());
-  EXPECT_GE(bounds.height(), TestDelegate::kTestBounds.height());
-}
-
-IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
-                       PageNavigateFromInitURLToCustomFinalURL) {
-  std::unique_ptr<net::EmbeddedTestServer> https_server = LaunchHttpsServer();
-  scoped_refptr<IdentityLaunchWebAuthFlowFunction> function =
-      CreateLaunchWebAuthFlowFunction();
-
-  const GURL auth_url(https_server->GetURL("/consent_page.html"));
-  const GURL final_url("example://example.com/");
-
-  const std::string args =
-      "[{\"interactive\": true, \"url\": \"" + auth_url.spec() + "\"}]";
-
-  browser()->profile()->GetPrefs()->SetDict(
-      extensions::pref_names::kOAuthRedirectUrls,
-      base::Value::Dict().Set(function->extension()->id(),
-                              base::Value::List().Append(final_url.spec())));
-  RunFunctionAndWaitForNavigation(function.get(), auth_url, args);
-
-  SimulateCustomUrlRedirect(
-      final_url.spec() + "#some_information",
-      function->GetWebAuthFlowForTesting()->web_contents());
-
-  base::Value output;
-  WaitForOneResult(function.get(), &output);
-  EXPECT_FALSE(function->GetWebAuthFlowForTesting());
-  EXPECT_EQ(GURL(output.GetString()).Resolve("/"), final_url);
+  EXPECT_TRUE(output.GetString().find(final_url.spec()) != std::string::npos);
   histogram_tester()->ExpectUniqueSample(
       kLaunchWebAuthFlowResultHistogramName,
       IdentityLaunchWebAuthFlowFunction::Error::kNone, 1);
@@ -3794,7 +3831,7 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
 
 // TODO(crbug/1421278): This test should be adapted after the implementation of
 // the bug. Multiple TODOs in the test to fix.
-IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
+IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithNewTab,
                        SimilarExtensionAndArgsShouldGenerateSameFlow) {
   std::unique_ptr<net::EmbeddedTestServer> https_server = LaunchHttpsServer();
   scoped_refptr<IdentityLaunchWebAuthFlowFunction> function1 =
@@ -3803,8 +3840,8 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
       CreateLaunchWebAuthFlowFunction();
 
   const std::string extension_id("final_url");
-  function1->InitFinalRedirectURLDomainsForTest(extension_id);
-  function2->InitFinalRedirectURLDomainsForTest(extension_id);
+  function1->InitFinalRedirectURLPrefixForTest(extension_id);
+  function2->InitFinalRedirectURLPrefixForTest(extension_id);
 
   const GURL auth_url(https_server->GetURL("/consent_page.html"));
   const GURL final_url("https://" + extension_id + ".chromiumapp.org/");
@@ -3843,7 +3880,7 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
       IdentityLaunchWebAuthFlowFunction::Error::kNone, 1);
 }
 
-IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
+IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithNewTab,
                        DifferentExtensionsShouldGenerateDifferentFlows) {
   std::unique_ptr<net::EmbeddedTestServer> https_server = LaunchHttpsServer();
   scoped_refptr<IdentityLaunchWebAuthFlowFunction> function1 =
@@ -3852,9 +3889,9 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
       CreateLaunchWebAuthFlowFunction();
 
   const std::string extension_id1("extension1");
-  function1->InitFinalRedirectURLDomainsForTest(extension_id1);
+  function1->InitFinalRedirectURLPrefixForTest(extension_id1);
   const std::string extension_id2("extension2");
-  function2->InitFinalRedirectURLDomainsForTest(extension_id2);
+  function2->InitFinalRedirectURLPrefixForTest(extension_id2);
 
   const GURL auth_url(https_server->GetURL("/consent_page.html"));
   // Different final_urls.
@@ -3902,7 +3939,7 @@ IN_PROC_BROWSER_TEST_F(LaunchWebAuthFlowFunctionTestWithBrowserTab,
 // TODO(crbug/1421278): This test should be adapted after the implementation of
 // the bug.
 IN_PROC_BROWSER_TEST_F(
-    LaunchWebAuthFlowFunctionTestWithBrowserTab,
+    LaunchWebAuthFlowFunctionTestWithNewTab,
     ExtensionWithDifferentArgsShouldGenerateDifferentFlowsInAQueue) {
   std::unique_ptr<net::EmbeddedTestServer> https_server = LaunchHttpsServer();
   scoped_refptr<IdentityLaunchWebAuthFlowFunction> function1 =
@@ -3911,7 +3948,7 @@ IN_PROC_BROWSER_TEST_F(
       CreateLaunchWebAuthFlowFunction();
 
   const std::string extension_id("extension");
-  function1->InitFinalRedirectURLDomainsForTest(extension_id);
+  function1->InitFinalRedirectURLPrefixForTest(extension_id);
 
   const GURL auth_url1(https_server->GetURL("/consent_page.html"));
   const GURL auth_url2(https_server->GetURL("/interaction_required.html"));
@@ -3929,8 +3966,8 @@ IN_PROC_BROWSER_TEST_F(
       function1->GetWebAuthFlowForTesting()->web_contents();
   content::WebContents* consent_web_contents2 =
       function2->GetWebAuthFlowForTesting()->web_contents();
-  // TODO(crbug/1421278): `function2->GetWebAuthFlowForTesting()` should be
-  // null after the changes since it would be in a queue.
+  // TODO(crbug/1421278): `function2->GetWebAuthFlowForTesting()` should be null
+  // after the changes since it would be in a queue.
   EXPECT_NE(consent_web_contents1, consent_web_contents2);
 
   const std::string& current_consent_url2 =
@@ -4002,6 +4039,58 @@ IN_PROC_BROWSER_TEST_F(ClearAllCachedAuthTokensFunctionTest,
   EXPECT_EQ(IdentityTokenCacheValue::CACHE_STATUS_NOTFOUND,
             id_api()->token_cache()->GetToken(token_key).status());
 }
+
+class ClearAllCachedAuthTokensFunctionTestWithPartitionParam
+    : public ClearAllCachedAuthTokensFunctionTest,
+      public testing::WithParamInterface<WebAuthFlow::Partition> {
+ public:
+  network::mojom::CookieManager* GetCookieManager() {
+    Profile* profile = browser()->profile();
+    return profile
+        ->GetStoragePartition(
+            WebAuthFlow::GetWebViewPartitionConfig(GetParam(), profile))
+        ->GetCookieManagerForBrowserProcess();
+  }
+
+  // Returns the list of cookies in the cookie manager.
+  net::CookieList GetCookies() {
+    net::CookieList result;
+    base::RunLoop get_all_cookies_loop;
+    GetCookieManager()->GetAllCookies(base::BindLambdaForTesting(
+        [&get_all_cookies_loop, &result](const net::CookieList& cookie_list) {
+          result = cookie_list;
+          get_all_cookies_loop.Quit();
+        }));
+    get_all_cookies_loop.Run();
+    return result;
+  }
+};
+
+IN_PROC_BROWSER_TEST_P(ClearAllCachedAuthTokensFunctionTestWithPartitionParam,
+                       CleanWebAuthFlowCookies) {
+  auto test_cookie = net::CanonicalCookie::CreateUnsafeCookieForTesting(
+      "test_name", "test_value", "test.com", "/", base::Time(), base::Time(),
+      base::Time(), base::Time(), true, false,
+      net::CookieSameSite::NO_RESTRICTION, net::COOKIE_PRIORITY_DEFAULT, false);
+  base::test::TestFuture<bool> future;
+  GetCookieManager()->SetCanonicalCookie(
+      *test_cookie,
+      net::cookie_util::SimulatedCookieSource(*test_cookie, url::kHttpsScheme),
+      net::CookieOptions(),
+      base::BindOnce(net::cookie_util::IsCookieAccessResultInclude)
+          .Then(future.GetCallback()));
+  EXPECT_TRUE(future.Get());
+
+  EXPECT_FALSE(GetCookies().empty());
+  ASSERT_TRUE(RunClearAllCachedAuthTokensFunction());
+  EXPECT_TRUE(GetCookies().empty());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    ClearAllCachedAuthTokensFunctionTestWithPartitionParam,
+    ::testing::Values(WebAuthFlow::Partition::LAUNCH_WEB_AUTH_FLOW,
+                      WebAuthFlow::Partition::GET_AUTH_TOKEN));
 
 class OnSignInChangedEventTest : public IdentityTestWithSignin {
  protected:

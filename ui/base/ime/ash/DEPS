@@ -1,5 +1,4 @@
 include_rules = [
-  "+ash/constants",
   "+chromeos/ash/services/ime/public/mojom",
   "+chromeos/ime",
   "+ui/chromeos/strings",

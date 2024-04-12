@@ -4,7 +4,6 @@
 
 #include "chrome/browser/web_applications/chrome_pwa_launcher/launcher_update.h"
 
-#include <string_view>
 #include <vector>
 
 #include "base/files/file_util.h"
@@ -18,7 +17,7 @@ namespace web_app {
 namespace {
 
 void CreateFileAndWriteData(const base::FilePath& file_path,
-                            std::string_view data) {
+                            const base::StringPiece& data) {
   ASSERT_TRUE(base::WriteFile(file_path, data));
 }
 

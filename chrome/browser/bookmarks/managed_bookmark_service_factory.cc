@@ -7,7 +7,7 @@
 #include <string>
 
 #include "base/functional/bind.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/policy/profile_policy_connector.h"
 #include "chrome/browser/profiles/profile.h"
@@ -40,8 +40,7 @@ bookmarks::ManagedBookmarkService* ManagedBookmarkServiceFactory::GetForProfile(
 
 // static
 ManagedBookmarkServiceFactory* ManagedBookmarkServiceFactory::GetInstance() {
-  static base::NoDestructor<ManagedBookmarkServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<ManagedBookmarkServiceFactory>::get();
 }
 
 // static
@@ -57,7 +56,7 @@ std::string ManagedBookmarkServiceFactory::GetManagedBookmarksManager(
       profile->GetProfilePolicyConnector();
   if (connector->IsManaged() &&
       connector->IsProfilePolicy(policy::key::kManagedBookmarks)) {
-    std::optional<std::string> account_manager =
+    absl::optional<std::string> account_manager =
         chrome::GetAccountManagerIdentity(profile);
     if (account_manager)
       return *account_manager;
@@ -81,12 +80,11 @@ ManagedBookmarkServiceFactory::ManagedBookmarkServiceFactory()
               .WithAshInternals(ProfileSelection::kNone)
               .Build()) {}
 
-ManagedBookmarkServiceFactory::~ManagedBookmarkServiceFactory() = default;
+ManagedBookmarkServiceFactory::~ManagedBookmarkServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-ManagedBookmarkServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ManagedBookmarkServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return BuildManagedBookmarkService(context);
+  return BuildManagedBookmarkService(context).release();
 }
 
 bool ManagedBookmarkServiceFactory::ServiceIsNULLWhileTesting() const {

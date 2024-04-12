@@ -15,7 +15,6 @@
 
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/raw_ptr_exclusion.h"
 #include "base/numerics/safe_math.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/utility/safe_browsing/mac/convert_big_endian.h"
@@ -168,12 +167,8 @@ class HFSBTreeIterator {
     std::u16string path;   // Full path to the item.
     bool unexported;  // Whether this is HFS+ private data.
     union {
-      // This field is not a raw_ptr<> because it was filtered by the rewriter
-      // for: #union
-      RAW_PTR_EXCLUSION HFSPlusCatalogFile* file;
-      // This field is not a raw_ptr<> because it was filtered by the rewriter
-      // for: #union
-      RAW_PTR_EXCLUSION HFSPlusCatalogFolder* folder;
+      HFSPlusCatalogFile* file;
+      HFSPlusCatalogFolder* folder;
     };
   };
 

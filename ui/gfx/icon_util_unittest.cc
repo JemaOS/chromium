@@ -19,7 +19,6 @@
 #include "ui/gfx/icon_util_unittests_resource.h"
 #include "ui/gfx/image/image.h"
 #include "ui/gfx/image/image_family.h"
-#include "ui/gfx/image/image_unittest_util.h"
 
 namespace {
 
@@ -34,8 +33,7 @@ class IconUtilTest : public testing::Test {
   using ScopedHICON = base::win::ScopedHICON;
 
   void SetUp() override {
-    ASSERT_TRUE(
-        base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &test_data_dir_));
+    ASSERT_TRUE(base::PathService::Get(base::DIR_SOURCE_ROOT, &test_data_dir_));
     test_data_dir_ = test_data_dir_.Append(FILE_PATH_LITERAL("ui"))
                          .Append(FILE_PATH_LITERAL("gfx"))
                          .Append(FILE_PATH_LITERAL("test"))
@@ -210,8 +208,10 @@ TEST_F(IconUtilTest, TestCreateIconFileInvalidParameters) {
       temp_directory_.GetPath().AppendASCII("<>?.ico");
 
   // Invalid file name.
+  SkBitmap bitmap;
   image_family.clear();
-  image_family.Add(gfx::test::CreateImage(/*size=*/1));
+  bitmap.allocN32Pixels(1, 1);
+  image_family.Add(gfx::Image::CreateFrom1xBitmap(bitmap));
   EXPECT_FALSE(IconUtil::CreateIconFileFromImageFamily(image_family,
                                                        invalid_icon_filename));
   EXPECT_FALSE(base::PathExists(invalid_icon_filename));

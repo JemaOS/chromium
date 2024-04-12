@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {PinchEventDetail} from './gesture_detector.js';
-import {GestureDetector} from './gesture_detector.js';
-import type {SwipeDirection} from './swipe_detector.js';
-import {SwipeDetector} from './swipe_detector.js';
+import {Point} from './constants.js';
+import {GestureDetector, PinchEventDetail} from './gesture_detector.js';
+import {SwipeDetector, SwipeDirection} from './swipe_detector.js';
+import {ViewportInterface, ViewportScroller} from './viewport_scroller.js';
 
 interface InProcessPdfPluginElement extends HTMLEmbedElement {
   postMessage(message: any): void;
@@ -23,6 +23,22 @@ if (parentOrigin === 'chrome-untrusted://print') {
   parentOrigin = 'chrome://print';
 }
 
+/**
+ * {@link Viewport}-compatible wrapper around the window's scroll position
+ * operations.
+ */
+class SimulatedViewport implements ViewportInterface {
+  get position(): Point {
+    return {x: window.scrollX, y: window.scrollY};
+  }
+
+  setPosition(point: Point): void {
+    window.scrollTo(point.x, point.y);
+  }
+}
+const viewportScroller =
+    new ViewportScroller(new SimulatedViewport(), plugin, window);
+
 // Plugin-to-parent message handlers. All messages are passed through, but some
 // messages may affect this frame, too.
 let isFormFieldFocused = false;
@@ -33,6 +49,11 @@ plugin.addEventListener('message', e => {
       // TODO(crbug.com/1279516): Ideally, the plugin would just consume
       // interesting keyboard events first.
       isFormFieldFocused = (message as {focused: boolean}).focused;
+      break;
+
+    case 'setIsSelecting':
+      viewportScroller.setEnableScrolling(
+          (message as {isSelecting: boolean}).isSelecting);
       break;
   }
 
@@ -198,9 +219,8 @@ document.addEventListener('keydown', e => {
       return;
 
     case 'a':
-      // Take over Ctrl+A (but not other combinations like Ctrl-Shift-A).
-      // Note that on macOS, "Ctrl" is Command.
-      if (hasCtrlModifierOnly(e)) {
+      // Take over Ctrl+A (but not Ctrl-Shift-A or Ctrl-Alt-A).
+      if (hasCtrlModifier(e) && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         break;
       }
@@ -251,16 +271,7 @@ function hasCtrlModifier(e: KeyboardEvent): boolean {
   return hasModifier;
 }
 
-// TODO(crbug.com/1252096): Load from pdf_viewer_utils.js instead.
-function hasCtrlModifierOnly(e: KeyboardEvent): boolean {
-  let metaModifier = e.metaKey;
-  // <if expr="is_macosx">
-  metaModifier = e.ctrlKey;
-  // </if>
-  return hasCtrlModifier(e) && !e.shiftKey && !e.altKey && !metaModifier;
-}
-
-// TODO(crbug.com/1252096): Load from chrome://resources/js/util.js instead.
+// TODO(crbug.com/1252096): Load from chrome://resources/js/util_ts.js instead.
 function hasKeyModifiers(e: KeyboardEvent): boolean {
   return !!(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey);
 }

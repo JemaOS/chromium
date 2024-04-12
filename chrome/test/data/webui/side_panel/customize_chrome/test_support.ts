@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {BackgroundImage, Theme, ThirdPartyThemeInfo} from 'chrome://customize-chrome-side-panel.top-chrome/customize_chrome.mojom-webui.js';
+import {BackgroundImage, Theme, ThirdPartyThemeInfo} from 'chrome://customize-chrome-side-panel.top-chrome/customize_chrome.mojom-webui.js';
 import {assertEquals, assertNotEquals} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 
@@ -43,8 +43,8 @@ export function createBackgroundImage(url: string): BackgroundImage {
     url: {url},
     snapshotUrl: {url},
     isUploadedImage: false,
-    localBackgroundId: null,
     title: '',
+    mainColor: undefined,
     collectionId: '',
     dailyRefreshEnabled: false,
   };
@@ -58,14 +58,17 @@ export function createThirdPartyThemeInfo(
   };
 }
 
-export function createTheme(): Theme {
+export function createTheme(systemDarkMode = false): Theme {
   return {
-    backgroundImage: null,
-    thirdPartyThemeInfo: null,
+    backgroundImage: undefined,
+    thirdPartyThemeInfo: undefined,
+    systemDarkMode,
+    seedColor: {value: 0xff0000ff},
     backgroundColor: {value: 0xffff0000},
-    foregroundColor: null,
+    foregroundColor: undefined,
+    colorPickerIconColor: {value: 0xffff0000},
+    colorsManagedByPolicy: false,
     backgroundManagedByPolicy: false,
-    followDeviceTheme: false,
   };
 }
 

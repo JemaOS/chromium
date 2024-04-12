@@ -13,7 +13,6 @@
 #include "chrome/browser/download/download_core_service.h"
 #include "chrome/browser/download/download_core_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "ui/shell_dialogs/selected_file_info.h"
 
 namespace download {
 class DownloadItem;
@@ -26,7 +25,9 @@ class DownloadTestFileActivityObserver::MockDownloadManagerDelegate
     : public ChromeDownloadManagerDelegate {
  public:
   explicit MockDownloadManagerDelegate(Profile* profile)
-      : ChromeDownloadManagerDelegate(profile) {
+      : ChromeDownloadManagerDelegate(profile),
+        file_chooser_enabled_(false),
+        file_chooser_displayed_(false) {
     if (!profile->IsOffTheRecord())
       GetDownloadIdReceiverCallback().Run(download::DownloadItem::kInvalidId +
                                           1);
@@ -62,14 +63,14 @@ class DownloadTestFileActivityObserver::MockDownloadManagerDelegate
             base::Unretained(this), std::move(callback),
             (file_chooser_enabled_ ? DownloadConfirmationResult::CONFIRMED
                                    : DownloadConfirmationResult::CANCELED),
-            ui::SelectedFileInfo(suggested_path)));
+            suggested_path));
   }
 
   void OpenDownload(download::DownloadItem* item) override {}
 
  private:
-  bool file_chooser_enabled_ = false;
-  bool file_chooser_displayed_ = false;
+  bool file_chooser_enabled_;
+  bool file_chooser_displayed_;
   base::WeakPtrFactory<MockDownloadManagerDelegate> weak_ptr_factory_{this};
 };
 

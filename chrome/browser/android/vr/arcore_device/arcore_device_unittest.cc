@@ -20,7 +20,6 @@
 #include "device/vr/android/arcore/ar_image_transport.h"
 #include "device/vr/android/arcore/arcore_gl.h"
 #include "device/vr/android/compositor_delegate_provider.h"
-#include "device/vr/android/web_xr_presentation_state.h"
 #include "device/vr/android/xr_java_coordinator.h"
 #include "device/vr/public/cpp/xr_frame_sink_client.h"
 #include "device/vr/public/mojom/vr_service.mojom.h"
@@ -38,8 +37,7 @@ class StubArImageTransport : public ArImageTransport {
  public:
   explicit StubArImageTransport(
       std::unique_ptr<MailboxToSurfaceBridge> mailbox_bridge)
-      : ArImageTransport(std::move(mailbox_bridge)),
-        shared_buffer_(std::make_unique<WebXrSharedBuffer>()) {}
+      : ArImageTransport(std::move(mailbox_bridge)) {}
 
   void Initialize(WebXrPresentationState*,
                   XrInitStatusCallback callback) override {
@@ -50,33 +48,22 @@ class StubArImageTransport : public ArImageTransport {
   GLuint GetCameraTextureId() override { return CAMERA_TEXTURE_ID; }
 
   // This transfers whatever the contents of the texture specified
-  // by GetCameraTextureId() is at the time it is called and intends
-  // to return to its caller a sync token as well as
-  // a scoped_refptr<gpu::ClientSharedImage> with that texture copied
-  // to a shared buffer. The two values are currently returned
-  // together via a wrapping WebXrSharedBuffer.
-  // TODO(crbug.com/1494911): Change the return type to
-  // scoped_refptr<gpu::ClientSharedImage> once the sync token is
-  // incorporated into ClientSharedImage.
-  WebXrSharedBuffer* TransferFrame(
+  // by GetCameraTextureId() is at the time it is called and returns
+  // a gpu::MailboxHolder with that texture copied to a shared buffer.
+  gpu::MailboxHolder TransferFrame(
       WebXrPresentationState*,
       const gfx::Size& frame_size,
       const gfx::Transform& uv_transform) override {
-    shared_buffer_->shared_image = gpu::ClientSharedImage::CreateForTesting();
-    shared_buffer_->sync_token = gpu::SyncToken();
-    return shared_buffer_.get();
+    return gpu::MailboxHolder();
   }
-  WebXrSharedBuffer* TransferCameraImageFrame(
+  gpu::MailboxHolder TransferCameraImageFrame(
       WebXrPresentationState*,
       const gfx::Size& frame_size,
       const gfx::Transform& uv_transform) override {
-    shared_buffer_->shared_image = gpu::ClientSharedImage::CreateForTesting();
-    shared_buffer_->sync_token = gpu::SyncToken();
-    return shared_buffer_.get();
+    return gpu::MailboxHolder();
   }
 
   std::unique_ptr<MailboxToSurfaceBridge> mailbox_bridge_;
-  std::unique_ptr<WebXrSharedBuffer> shared_buffer_;
   const GLuint CAMERA_TEXTURE_ID = 10;
 };
 
@@ -132,7 +119,7 @@ class StubXrJavaCoordinator : public XrJavaCoordinator {
       const CompositorDelegateProvider& compositor_delegate_provider,
       SurfaceReadyCallback ready_callback,
       SurfaceTouchCallback touch_callback,
-      JavaShutdownCallback destroyed_callback) override {
+      SurfaceDestroyedCallback destroyed_callback) override {
     // Return arbitrary screen geometry as stand-in for the expected
     // drawing surface. It's not actually a surface, hence the nullptr
     // instead of a WindowAndroid.
@@ -147,16 +134,14 @@ class StubXrJavaCoordinator : public XrJavaCoordinator {
       const CompositorDelegateProvider& compositor_delegate_provider,
       SurfaceReadyCallback ready_callback,
       SurfaceTouchCallback touch_callback,
-      JavaShutdownCallback destroyed_callback,
-      XrSessionButtonTouchedCallback button_touched_callback) override {
+      SurfaceDestroyedCallback destroyed_callback) override {
     NOTREACHED();
   }
   void EndSession() override {}
 
   bool EnsureARCoreLoaded() override { return true; }
 
-  base::android::ScopedJavaLocalRef<jobject> GetCurrentActivityContext()
-      override {
+  base::android::ScopedJavaLocalRef<jobject> GetApplicationContext() override {
     JNIEnv* env = base::android::AttachCurrentThread();
     jclass activityThread = env->FindClass("android/app/ActivityThread");
     jmethodID currentActivityThread =
@@ -168,12 +153,6 @@ class StubXrJavaCoordinator : public XrJavaCoordinator {
         activityThread, "getApplication", "()Landroid/app/Application;");
     jobject context = env->CallObjectMethod(at, getApplication);
     return base::android::ScopedJavaLocalRef<jobject>(env, context);
-  }
-
-  base::android::ScopedJavaLocalRef<jobject> GetActivityFrom(
-      int render_process_id,
-      int render_frame_id) override {
-    return nullptr;
   }
 };
 
@@ -232,17 +211,16 @@ class StubCompositorFrameSink
   void SetStandaloneBeginFrameObserver(
       mojo::PendingRemote<viz::mojom::BeginFrameObserver> observer) override {}
   void SetMaxVrrInterval(
-      std::optional<base::TimeDelta> max_vrr_interval) override {}
+      absl::optional<base::TimeDelta> max_vrr_interval) override {}
 
   // mojom::CompositorFrameSink:
   void SetNeedsBeginFrame(bool needs_begin_frame) override {}
   void SetWantsAnimateOnlyBeginFrames() override {}
   void SetWantsBeginFrameAcks() override {}
-  void SetAutoNeedsBeginFrame() override {}
   void SubmitCompositorFrame(
       const viz::LocalSurfaceId& local_surface_id,
       viz::CompositorFrame frame,
-      std::optional<viz::HitTestRegionList> hit_test_region_list,
+      absl::optional<viz::HitTestRegionList> hit_test_region_list,
       uint64_t submit_time) override {}
   void DidNotProduceFrame(const viz::BeginFrameAck& begin_frame_ack) override {}
   void DidAllocateSharedBitmap(base::ReadOnlySharedMemoryRegion region,
@@ -251,7 +229,7 @@ class StubCompositorFrameSink
   void SubmitCompositorFrameSync(
       const viz::LocalSurfaceId& local_surface_id,
       viz::CompositorFrame frame,
-      std::optional<viz::HitTestRegionList> hit_test_region_list,
+      absl::optional<viz::HitTestRegionList> hit_test_region_list,
       uint64_t submit_time,
       SubmitCompositorFrameSyncCallback callback) override {}
   void InitializeCompositorFrameSinkType(
@@ -305,8 +283,8 @@ class StubXrFrameSinkClient : public XrFrameSinkClient {
     std::move(on_initialized).Run();
   }
   void SurfaceDestroyed() override {}
-  std::optional<viz::SurfaceId> GetDOMSurface() override {
-    return std::nullopt;
+  absl::optional<viz::SurfaceId> GetDOMSurface() override {
+    return absl::nullopt;
   }
   viz::FrameSinkId FrameSinkId() override { return {}; }
 

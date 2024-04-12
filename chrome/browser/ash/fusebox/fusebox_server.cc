@@ -6,14 +6,11 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
-
-#include <string_view>
 #include <utility>
 
 #include "base/files/file_util.h"
 #include "base/functional/callback.h"
 #include "base/logging.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
@@ -23,10 +20,8 @@
 #include "base/types/expected.h"
 #include "chrome/browser/ash/file_manager/fileapi_util.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
-#include "chrome/browser/ash/fileapi/file_system_backend.h"
 #include "chrome/browser/ash/fusebox/fusebox_copy_to_fd.h"
 #include "chrome/browser/ash/fusebox/fusebox_errno.h"
-#include "chrome/browser/ash/fusebox/fusebox_histograms.h"
 #include "chrome/browser/ash/fusebox/fusebox_read_writer.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -35,6 +30,7 @@
 #include "storage/browser/file_system/async_file_util.h"
 #include "storage/browser/file_system/copy_or_move_hook_delegate.h"
 #include "storage/browser/file_system/external_mount_points.h"
+#include "storage/browser/file_system/file_system_backend.h"
 #include "storage/browser/file_system/file_system_url.h"
 #include "storage/common/file_system/file_system_util.h"
 #include "third_party/cros_system_api/dbus/fusebox/dbus-constants.h"
@@ -48,35 +44,7 @@ namespace {
 
 Server* g_server_instance = nullptr;
 
-template <typename CallbackType, typename ResponseProtoType>
-CallbackType HistogramWrap(
-    const HistogramEnumFileSystemType histogram_enum_file_system_type,
-    const char* rpc_method_name,
-    CallbackType callback) {
-  static constexpr auto func =
-      [](const char* file_system_type_name, const char* rpc_method_name,
-         CallbackType wrappee, const ResponseProtoType& response) {
-        const std::string histogram_name =
-            base::StrCat({"FileBrowser.Fusebox.RPC.", file_system_type_name,
-                          ".", rpc_method_name});
-
-        int32_t posix_error_code =
-            response.has_posix_error_code() ? response.posix_error_code() : 0;
-
-        base::UmaHistogramEnumeration(
-            histogram_name, GetHistogramEnumPosixErrorCode(posix_error_code));
-
-        if (wrappee) {
-          std::move(wrappee).Run(response);
-        }
-      };
-
-  return base::BindOnce(
-      func, NameForHistogramEnumFileSystemType(histogram_enum_file_system_type),
-      rpc_method_name, std::move(callback));
-}
-
-bool UseTempFile(const std::string_view fs_url_as_string) {
+bool UseTempFile(const base::StringPiece fs_url_as_string) {
   // MTP (the protocol) does not support incremental writes. When creating an
   // MTP file (via FuseBox), we need to supply its contents as a whole. Up
   // until that transfer, spool incremental writes to a temporary file.
@@ -84,7 +52,7 @@ bool UseTempFile(const std::string_view fs_url_as_string) {
                           file_manager::util::kFuseBoxSubdirPrefixMTP);
 }
 
-bool UseEmptyTruncateWorkaround(const std::string_view fs_url_as_string,
+bool UseEmptyTruncateWorkaround(const base::StringPiece fs_url_as_string,
                                 int64_t length) {
   // Not all storage::AsyncFileUtil back-ends implement the CreateFile or
   // Truncate methods. When they don't, and truncating to a zero length, work
@@ -209,7 +177,7 @@ base::expected<Parsed, ParseError> ParseFileSystemURL(
       return base::unexpected(ParseError(ENOENT));
   }
 
-  if (!ash::FileSystemBackend::Get(*fs_context)->CanHandleType(fs_url.type())) {
+  if (!fs_context->external_backend()->CanHandleType(fs_url.type())) {
     LOG(ERROR) << "Backend cannot handle "
                << storage::GetFileSystemTypeString(fs_url.type());
     return base::unexpected(ParseError(EINVAL));
@@ -226,9 +194,7 @@ void FillInDirEntryProto(DirEntryProto* dir_entry_proto,
                          bool read_only) {
   dir_entry_proto->set_mode_bits(
       Server::MakeModeBits(info.is_directory, read_only));
-  // The base::File::Info comment says that info.size is "undefined when
-  // info.is_directory is true".
-  dir_entry_proto->set_size(info.is_directory ? 0 : info.size);
+  dir_entry_proto->set_size(info.size);
   dir_entry_proto->set_mtime(
       info.last_modified.ToDeltaSinceWindowsEpoch().InMicroseconds());
 }
@@ -277,10 +243,10 @@ void RunCreateCallback(
     return;
   }
 
-  constexpr storage::FileSystemOperation::GetMetadataFieldSet metadata_fields =
-      {storage::FileSystemOperation::GetMetadataField::kIsDirectory,
-       storage::FileSystemOperation::GetMetadataField::kSize,
-       storage::FileSystemOperation::GetMetadataField::kLastModified};
+  constexpr auto metadata_fields =
+      storage::FileSystemOperation::GET_METADATA_FIELD_IS_DIRECTORY |
+      storage::FileSystemOperation::GET_METADATA_FIELD_SIZE |
+      storage::FileSystemOperation::GET_METADATA_FIELD_LAST_MODIFIED;
 
   auto outer_callback = base::BindPostTaskToCurrentDefault(base::BindOnce(
       &RunCreateAndThenStatCallback, std::move(callback), fs_context, read_only,
@@ -332,10 +298,10 @@ void RunMkDirCallback(
     return;
   }
 
-  constexpr storage::FileSystemOperation::GetMetadataFieldSet metadata_fields =
-      {storage::FileSystemOperation::GetMetadataField::kIsDirectory,
-       storage::FileSystemOperation::GetMetadataField::kSize,
-       storage::FileSystemOperation::GetMetadataField::kLastModified};
+  constexpr auto metadata_fields =
+      storage::FileSystemOperation::GET_METADATA_FIELD_IS_DIRECTORY |
+      storage::FileSystemOperation::GET_METADATA_FIELD_SIZE |
+      storage::FileSystemOperation::GET_METADATA_FIELD_LAST_MODIFIED;
 
   auto outer_callback = base::BindPostTaskToCurrentDefault(
       base::BindOnce(&RunMkDirAndThenStatCallback, std::move(callback),
@@ -430,10 +396,10 @@ void RunTruncateCallback(
     return;
   }
 
-  constexpr storage::FileSystemOperation::GetMetadataFieldSet metadata_fields =
-      {storage::FileSystemOperation::GetMetadataField::kIsDirectory,
-       storage::FileSystemOperation::GetMetadataField::kSize,
-       storage::FileSystemOperation::GetMetadataField::kLastModified};
+  constexpr auto metadata_fields =
+      storage::FileSystemOperation::GET_METADATA_FIELD_IS_DIRECTORY |
+      storage::FileSystemOperation::GET_METADATA_FIELD_SIZE |
+      storage::FileSystemOperation::GET_METADATA_FIELD_LAST_MODIFIED;
 
   auto outer_callback = base::BindPostTaskToCurrentDefault(
       base::BindOnce(&RunTruncateAndThenStatCallback, std::move(callback),
@@ -634,8 +600,6 @@ Server::FuseFileMapEntry::FuseFileMapEntry(
     bool use_temp_file_arg,
     bool temp_file_starts_with_copy_arg)
     : fs_context_(fs_context_arg),
-      histogram_enum_file_system_type_(
-          GetHistogramEnumFileSystemType(fs_url_arg)),
       readable_(readable_arg),
       writable_(writable_arg),
       seqbnd_read_writer_(content::GetIOThreadTaskRunner({}),
@@ -647,12 +611,6 @@ Server::FuseFileMapEntry::FuseFileMapEntry(
 Server::FuseFileMapEntry::FuseFileMapEntry(FuseFileMapEntry&&) = default;
 
 Server::FuseFileMapEntry::~FuseFileMapEntry() = default;
-
-void Server::FuseFileMapEntry::DoFlush(const FlushRequestProto& request,
-                                       Server::FlushCallback callback) {
-  seqbnd_read_writer_.AsyncCall(&ReadWriter::Flush)
-      .WithArgs(fs_context_, std::move(callback));
-}
 
 void Server::FuseFileMapEntry::DoRead2(const Read2RequestProto& request,
                                        Server::Read2Callback callback) {
@@ -680,12 +638,7 @@ void Server::FuseFileMapEntry::DoWrite2(const Write2RequestProto& request,
 void Server::FuseFileMapEntry::Do(PendingOp& op,
                                   base::WeakPtr<Server> weak_ptr_server,
                                   uint64_t fuse_handle) {
-  if (absl::holds_alternative<PendingFlush>(op)) {
-    PendingFlush& pending = absl::get<PendingFlush>(op);
-    DoFlush(pending.first,
-            base::BindOnce(&Server::OnFlush, weak_ptr_server, fuse_handle,
-                           std::move(pending.second)));
-  } else if (absl::holds_alternative<PendingRead2>(op)) {
+  if (absl::holds_alternative<PendingRead2>(op)) {
     PendingRead2& pending = absl::get<PendingRead2>(op);
     DoRead2(pending.first,
             base::BindOnce(&Server::OnRead2, weak_ptr_server, fuse_handle,
@@ -839,7 +792,7 @@ base::FilePath Server::InverseResolveFSURL(
   // Find the longest registered (in the "called Server::RegisterFSURLPrefix"
   // sense) FileSystemURL that is a prefix of fs_url.
   size_t best_size = 0;
-  std::string_view best_subdir;
+  base::StringPiece best_subdir;
   for (const auto& i : prefix_map_) {
     if ((best_size < i.second.fs_url_prefix.size()) &&
         base::StartsWith(fs_url_as_string, i.second.fs_url_prefix)) {
@@ -857,9 +810,7 @@ base::FilePath Server::InverseResolveFSURL(
   return base::FilePath();
 }
 
-void Server::GetDebugJSONForKey(
-    std::string_view key,
-    base::OnceCallback<void(JSONKeyValuePair)> callback) {
+base::Value Server::GetDebugJSON() {
   base::Value::Dict subdirs;
   subdirs.Set(kMonikerSubdir, base::Value("[special]"));
   for (const auto& i : prefix_map_) {
@@ -872,7 +823,7 @@ void Server::GetDebugJSONForKey(
   base::Value::Dict dict;
   dict.Set("monikers", moniker_map_.GetDebugJSON());
   dict.Set("subdirs", std::move(subdirs));
-  std::move(callback).Run(std::make_pair(key, base::Value(std::move(dict))));
+  return base::Value(std::move(dict));
 }
 
 void Server::Close2(const Close2RequestProto& request_proto,
@@ -888,9 +839,6 @@ void Server::Close2(const Close2RequestProto& request_proto,
     std::move(callback).Run(response_proto);
     return;
   }
-  callback = HistogramWrap<Close2Callback, Close2ResponseProto>(
-      iter->second.histogram_enum_file_system_type_, "Close2",
-      std::move(callback));
   FuseFileMapEntry& entry = iter->second;
   base::circular_deque<PendingOp> pending_ops = std::move(entry.pending_ops_);
   entry.seqbnd_read_writer_.AsyncCall(&ReadWriter::Close)
@@ -929,11 +877,7 @@ void Server::Create(const CreateRequestProto& request_proto,
     response_proto.set_posix_error_code(parsed.error().posix_error_code);
     std::move(callback).Run(response_proto);
     return;
-  }
-  callback = HistogramWrap<CreateCallback, CreateResponseProto>(
-      GetHistogramEnumFileSystemType(parsed->fs_url), "Create",
-      std::move(callback));
-  if (parsed->read_only) {
+  } else if (parsed->read_only) {
     CreateResponseProto response_proto;
     response_proto.set_posix_error_code(EACCES);
     std::move(callback).Run(response_proto);
@@ -981,39 +925,6 @@ void Server::Create(const CreateRequestProto& request_proto,
           parsed->fs_url, exclusive, std::move(outer_callback)));
 }
 
-void Server::Flush(const FlushRequestProto& request_proto,
-                   FlushCallback callback) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-
-  uint64_t fuse_handle =
-      request_proto.has_fuse_handle() ? request_proto.fuse_handle() : 0;
-  auto iter = fuse_file_map_.find(fuse_handle);
-  if (iter == fuse_file_map_.end()) {
-    FlushResponseProto response_proto;
-    response_proto.set_posix_error_code(ENOENT);
-    std::move(callback).Run(response_proto);
-    return;
-  }
-  callback = HistogramWrap<FlushCallback, FlushResponseProto>(
-      iter->second.histogram_enum_file_system_type_, "Flush",
-      std::move(callback));
-  if (!iter->second.writable_) {
-    FlushResponseProto response_proto;
-    response_proto.set_posix_error_code(EACCES);
-    std::move(callback).Run(response_proto);
-    return;
-  } else if (iter->second.has_in_flight_op_) {
-    iter->second.pending_ops_.emplace_back(
-        PendingFlush(request_proto, std::move(callback)));
-    return;
-  }
-  iter->second.has_in_flight_op_ = true;
-  iter->second.DoFlush(
-      request_proto,
-      base::BindOnce(&Server::OnFlush, weak_ptr_factory_.GetWeakPtr(),
-                     fuse_handle, std::move(callback)));
-}
-
 void Server::MkDir(const MkDirRequestProto& request_proto,
                    MkDirCallback callback) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
@@ -1028,11 +939,7 @@ void Server::MkDir(const MkDirRequestProto& request_proto,
     response_proto.set_posix_error_code(parsed.error().posix_error_code);
     std::move(callback).Run(response_proto);
     return;
-  }
-  callback = HistogramWrap<MkDirCallback, MkDirResponseProto>(
-      GetHistogramEnumFileSystemType(parsed->fs_url), "MkDir",
-      std::move(callback));
-  if (parsed->read_only) {
+  } else if (parsed->read_only) {
     MkDirResponseProto response_proto;
     response_proto.set_posix_error_code(EACCES);
     std::move(callback).Run(response_proto);
@@ -1073,9 +980,6 @@ void Server::Open2(const Open2RequestProto& request_proto,
     std::move(callback).Run(response_proto);
     return;
   }
-  callback = HistogramWrap<Open2Callback, Open2ResponseProto>(
-      GetHistogramEnumFileSystemType(parsed->fs_url), "Open2",
-      std::move(callback));
 
   bool readable = (access_mode == AccessMode::READ_ONLY) ||
                   (access_mode == AccessMode::READ_WRITE);
@@ -1108,11 +1012,7 @@ void Server::Read2(const Read2RequestProto& request_proto,
     response_proto.set_posix_error_code(ENOENT);
     std::move(callback).Run(response_proto);
     return;
-  }
-  callback = HistogramWrap<Read2Callback, Read2ResponseProto>(
-      iter->second.histogram_enum_file_system_type_, "Read2",
-      std::move(callback));
-  if (!iter->second.readable_) {
+  } else if (!iter->second.readable_) {
     Read2ResponseProto response_proto;
     response_proto.set_posix_error_code(EACCES);
     std::move(callback).Run(response_proto);
@@ -1151,11 +1051,7 @@ void Server::ReadDir2(const ReadDir2RequestProto& request_proto,
     }
     std::move(callback).Run(response_proto);
     return;
-  }
-  callback = HistogramWrap<ReadDir2Callback, ReadDir2ResponseProto>(
-      GetHistogramEnumFileSystemType(parsed->fs_url), "ReadDir2",
-      std::move(callback));
-  if (cancel_error_code) {
+  } else if (cancel_error_code) {
     ReadDir2ResponseProto response_proto;
     response_proto.set_posix_error_code(cancel_error_code);
     std::move(callback).Run(response_proto);
@@ -1209,11 +1105,7 @@ void Server::Rename(const RenameRequestProto& request_proto,
     response_proto.set_posix_error_code(src_parsed.error().posix_error_code);
     std::move(callback).Run(response_proto);
     return;
-  }
-  callback = HistogramWrap<RenameCallback, RenameResponseProto>(
-      GetHistogramEnumFileSystemType(src_parsed->fs_url), "Rename",
-      std::move(callback));
-  if (src_parsed->read_only) {
+  } else if (src_parsed->read_only) {
     RenameResponseProto response_proto;
     response_proto.set_posix_error_code(EACCES);
     std::move(callback).Run(response_proto);
@@ -1254,10 +1146,8 @@ void Server::Rename(const RenameRequestProto& request_proto,
   //   - ArcDocumentsProviderAsyncFileUtil::CopyInForeignFile
   //   - ArcDocumentsProviderAsyncFileUtil::CreateSnapshotFile
   //   - MTPFileSystemBackendDelegate::CreateFileStreamWriter
-  //   - ProviderAsyncFileUtil::CopyInForeignFile (*)
+  //   - ProviderAsyncFileUtil::CopyInForeignFile
   //   - ProviderAsyncFileUtil::CreateSnapshotFile
-  //
-  // (*) ProviderAsyncFileUtil::CopyInForeignFile was added in August 2023.
   if (!src_parsed->fs_url.IsInSameFileSystem(dst_parsed->fs_url) &&
       UseTempFile(dst_fs_url_as_string)) {
     auto outer_callback = base::BindPostTaskToCurrentDefault(
@@ -1280,10 +1170,11 @@ void Server::Rename(const RenameRequestProto& request_proto,
       base::BindOnce(&RunRenameCallbackBaseFileError, std::move(callback),
                      src_parsed->fs_context));
 
-  constexpr storage::FileSystemOperation::CopyOrMoveOptionSet options = {
-      storage::FileSystemOperation::CopyOrMoveOption::kPreserveLastModified,
-      storage::FileSystemOperation::CopyOrMoveOption::
-          kRemovePartiallyCopiedFilesOnError};
+  constexpr storage::FileSystemOperation::CopyOrMoveOptionSet options =
+      storage::FileSystemOperation::CopyOrMoveOptionSet(
+          storage::FileSystemOperation::CopyOrMoveOption::kPreserveLastModified,
+          storage::FileSystemOperation::CopyOrMoveOption::
+              kRemovePartiallyCopiedFilesOnError);
 
   content::GetIOThreadTaskRunner({})->PostTask(
       FROM_HERE,
@@ -1311,11 +1202,7 @@ void Server::RmDir(const RmDirRequestProto& request_proto,
     response_proto.set_posix_error_code(parsed.error().posix_error_code);
     std::move(callback).Run(response_proto);
     return;
-  }
-  callback = HistogramWrap<RmDirCallback, RmDirResponseProto>(
-      GetHistogramEnumFileSystemType(parsed->fs_url), "RmDir",
-      std::move(callback));
-  if (parsed->read_only) {
+  } else if (parsed->read_only) {
     RmDirResponseProto response_proto;
     response_proto.set_posix_error_code(EACCES);
     std::move(callback).Run(response_proto);
@@ -1357,14 +1244,11 @@ void Server::Stat2(const Stat2RequestProto& request_proto,
     std::move(callback).Run(response_proto);
     return;
   }
-  callback = HistogramWrap<Stat2Callback, Stat2ResponseProto>(
-      GetHistogramEnumFileSystemType(parsed->fs_url), "Stat2",
-      std::move(callback));
 
-  constexpr storage::FileSystemOperation::GetMetadataFieldSet metadata_fields =
-      {storage::FileSystemOperation::GetMetadataField::kIsDirectory,
-       storage::FileSystemOperation::GetMetadataField::kSize,
-       storage::FileSystemOperation::GetMetadataField::kLastModified};
+  constexpr auto metadata_fields =
+      storage::FileSystemOperation::GET_METADATA_FIELD_IS_DIRECTORY |
+      storage::FileSystemOperation::GET_METADATA_FIELD_SIZE |
+      storage::FileSystemOperation::GET_METADATA_FIELD_LAST_MODIFIED;
 
   auto outer_callback = base::BindPostTaskToCurrentDefault(
       base::BindOnce(&RunStat2Callback, std::move(callback), parsed->fs_context,
@@ -1393,11 +1277,7 @@ void Server::Truncate(const TruncateRequestProto& request_proto,
     response_proto.set_posix_error_code(parsed.error().posix_error_code);
     std::move(callback).Run(response_proto);
     return;
-  }
-  callback = HistogramWrap<TruncateCallback, TruncateResponseProto>(
-      GetHistogramEnumFileSystemType(parsed->fs_url), "Truncate",
-      std::move(callback));
-  if (parsed->read_only) {
+  } else if (parsed->read_only) {
     TruncateResponseProto response_proto;
     response_proto.set_posix_error_code(EACCES);
     std::move(callback).Run(response_proto);
@@ -1438,11 +1318,7 @@ void Server::Unlink(const UnlinkRequestProto& request_proto,
     response_proto.set_posix_error_code(parsed.error().posix_error_code);
     std::move(callback).Run(response_proto);
     return;
-  }
-  callback = HistogramWrap<UnlinkCallback, UnlinkResponseProto>(
-      GetHistogramEnumFileSystemType(parsed->fs_url), "Unlink",
-      std::move(callback));
-  if (parsed->read_only) {
+  } else if (parsed->read_only) {
     UnlinkResponseProto response_proto;
     response_proto.set_posix_error_code(EACCES);
     std::move(callback).Run(response_proto);
@@ -1473,11 +1349,7 @@ void Server::Write2(const Write2RequestProto& request_proto,
     response_proto.set_posix_error_code(ENOENT);
     std::move(callback).Run(response_proto);
     return;
-  }
-  callback = HistogramWrap<Write2Callback, Write2ResponseProto>(
-      iter->second.histogram_enum_file_system_type_, "Write2",
-      std::move(callback));
-  if (!iter->second.writable_) {
+  } else if (!iter->second.writable_) {
     Write2ResponseProto response_proto;
     response_proto.set_posix_error_code(EACCES);
     std::move(callback).Run(response_proto);
@@ -1564,9 +1436,8 @@ void Server::ReplyToMakeTempDir(base::ScopedTempDir scoped_temp_dir,
   const blink::StorageKey storage_key =
       blink::StorageKey::CreateFromStringForTesting(
           "http://fusebox-server.example.com");
-  ash::FileSystemBackend::Get(*fs_context)
-      ->GrantFileAccessToOrigin(storage_key.origin(),
-                                base::FilePath(mount_name));
+  fs_context->external_backend()->GrantFileAccessToOrigin(
+      storage_key.origin(), base::FilePath(mount_name));
 
   storage::FileSystemURL fs_url =
       mount_points->CreateExternalFileSystemURL(storage_key, mount_name, {});
@@ -1601,32 +1472,6 @@ void Server::RemoveTempDir(const std::string& fusebox_file_path) {
             // No-op other than running the base::ScopedTempDir destructor.
           },
           std::move(scoped_temp_dir)));
-}
-
-void Server::OnFlush(uint64_t fuse_handle,
-                     FlushCallback callback,
-                     const FlushResponseProto& response_proto) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-
-  auto iter = fuse_file_map_.find(fuse_handle);
-  if (iter == fuse_file_map_.end()) {
-    FlushResponseProto enoent_response_proto;
-    enoent_response_proto.set_posix_error_code(ENOENT);
-    std::move(callback).Run(enoent_response_proto);
-    return;
-  }
-  FuseFileMapEntry& entry = iter->second;
-  entry.has_in_flight_op_ = false;
-
-  std::move(callback).Run(std::move(response_proto));
-
-  if (entry.pending_ops_.empty()) {
-    return;
-  }
-  PendingOp pending_op = std::move(entry.pending_ops_.front());
-  entry.pending_ops_.pop_front();
-  entry.has_in_flight_op_ = true;
-  entry.Do(pending_op, weak_ptr_factory_.GetWeakPtr(), fuse_handle);
 }
 
 void Server::OnRead2(uint64_t fuse_handle,

@@ -15,7 +15,6 @@
 #include "chrome/browser/ui/views/autofill/payments/save_iban_bubble_view.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
-#include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -44,7 +43,7 @@ SavePaymentIconView::SavePaymentIconView(
   }
   command_id_ = command_id;
   SetUpForInOutAnimation();
-  SetAccessibilityProperties(/*role*/ std::nullopt,
+  SetAccessibilityProperties(/*role*/ absl::nullopt,
                              GetTextForTooltipAndAccessibleName());
 }
 
@@ -52,9 +51,8 @@ SavePaymentIconView::~SavePaymentIconView() = default;
 
 views::BubbleDialogDelegate* SavePaymentIconView::GetBubble() const {
   SavePaymentIconController* controller = GetController();
-  if (!controller) {
+  if (!controller)
     return nullptr;
-  }
 
   switch (controller->GetPaymentBubbleType()) {
     case SavePaymentIconController::PaymentBubbleType::kUnknown:
@@ -72,9 +70,8 @@ views::BubbleDialogDelegate* SavePaymentIconView::GetBubble() const {
 }
 
 void SavePaymentIconView::UpdateImpl() {
-  if (!GetWebContents()) {
+  if (!GetWebContents())
     return;
-  }
 
   // |controller| may be nullptr due to lazy initialization.
   SavePaymentIconController* controller = GetController();
@@ -95,7 +92,11 @@ void SavePaymentIconView::UpdateImpl() {
   }
 
   if (command_enabled && controller->ShouldShowPaymentSavedLabelAnimation()) {
-    AnimateIn(controller->GetSaveSuccessAnimationStringId());
+    if (command_id_ == IDC_SAVE_CREDIT_CARD_FOR_PAGE) {
+      AnimateIn(IDS_AUTOFILL_CARD_SAVED);
+    } else if (command_id_ == IDC_SAVE_IBAN_FOR_PAGE) {
+      AnimateIn(IDS_AUTOFILL_IBAN_SAVED);
+    }
   }
 }
 
@@ -103,18 +104,23 @@ void SavePaymentIconView::OnExecuting(
     PageActionIconView::ExecuteSource execute_source) {}
 
 const gfx::VectorIcon& SavePaymentIconView::GetVectorIcon() const {
-  return OmniboxFieldTrial::IsChromeRefreshIconsEnabled()
-             ? kCreditCardChromeRefreshIcon
-             : kCreditCardIcon;
+  return kCreditCardIcon;
+}
+
+const gfx::VectorIcon& SavePaymentIconView::GetVectorIconBadge() const {
+  SavePaymentIconController* controller = GetController();
+  if (controller && controller->ShouldShowSaveFailureBadge())
+    return vector_icons::kBlockedBadgeIcon;
+
+  return gfx::kNoneIcon;
 }
 
 std::u16string SavePaymentIconView::GetTextForTooltipAndAccessibleName() const {
   std::u16string text;
 
   SavePaymentIconController* const controller = GetController();
-  if (controller) {
+  if (controller)
     text = controller->GetSavePaymentIconTooltipText();
-  }
 
   // Because the payment icon is in an animated container, it is still briefly
   // visible as it's disappearing. Since our test infrastructure does not allow
@@ -133,12 +139,11 @@ void SavePaymentIconView::AnimationEnded(const gfx::Animation* animation) {
 
   // |controller| may be nullptr due to lazy initialization.
   SavePaymentIconController* controller = GetController();
-  if (controller) {
+  if (controller)
     controller->OnAnimationEnded();
-  }
 }
 
-BEGIN_METADATA(SavePaymentIconView)
+BEGIN_METADATA(SavePaymentIconView, PageActionIconView)
 END_METADATA
 
 }  // namespace autofill

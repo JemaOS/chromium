@@ -93,11 +93,11 @@ class ListModel {
     NotifyItemMoved(index, target_index);
   }
 
-  void AddObserver(ListModelObserver* observer) const {
+  void AddObserver(ListModelObserver* observer) {
     observers_.AddObserver(observer);
   }
 
-  void RemoveObserver(ListModelObserver* observer) const {
+  void RemoveObserver(ListModelObserver* observer) {
     observers_.RemoveObserver(observer);
   }
 
@@ -140,10 +140,7 @@ class ListModel {
 
  private:
   ItemList items_;
-
-  // Mutable to allow adding/removing `ListModelObserver`'s through a const
-  // ListModel in order to preserve underlying data const-ness.
-  mutable base::ObserverList<ListModelObserver>::Unchecked observers_;
+  base::ObserverList<ListModelObserver>::Unchecked observers_;
 };
 
 }  // namespace ui

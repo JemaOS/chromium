@@ -21,12 +21,13 @@ import org.chromium.content_public.browser.WebContents;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-/** Metrics util class for merchant trust. */
+/**
+ * Metrics util class for merchant trust.
+ */
 public class MerchantTrustMetrics {
     @VisibleForTesting
     public static String MESSAGE_IMPACT_BROWSING_TIME_HISTOGRAM =
             "MerchantTrust.MessageImpact.BrowsingTime";
-
     @VisibleForTesting
     public static String MESSAGE_IMPACT_NAVIGATION_COUNT_HISTOGRAM =
             "MerchantTrust.MessageImpact.NavigationCount";
@@ -38,13 +39,10 @@ public class MerchantTrustMetrics {
      * persisted to logs. Entries should not be renumbered and numeric values should never be
      * reused.
      */
-    @IntDef({
-        MessageClearReason.UNKNOWN,
-        MessageClearReason.NAVIGATE_TO_SAME_DOMAIN,
-        MessageClearReason.NAVIGATE_TO_DIFFERENT_DOMAIN,
-        MessageClearReason.MESSAGE_CONTEXT_NO_LONGER_VALID,
-        MessageClearReason.SWITCH_TO_DIFFERENT_WEBCONTENTS
-    })
+    @IntDef({MessageClearReason.UNKNOWN, MessageClearReason.NAVIGATE_TO_SAME_DOMAIN,
+            MessageClearReason.NAVIGATE_TO_DIFFERENT_DOMAIN,
+            MessageClearReason.MESSAGE_CONTEXT_NO_LONGER_VALID,
+            MessageClearReason.SWITCH_TO_DIFFERENT_WEBCONTENTS})
     @Retention(RetentionPolicy.SOURCE)
     public @interface MessageClearReason {
         int UNKNOWN = 0;
@@ -63,11 +61,8 @@ public class MerchantTrustMetrics {
      * are persisted to logs. Entries should not be renumbered and numeric values should never be
      * reused.
      */
-    @IntDef({
-        BottomSheetOpenedSource.UNKNOWN,
-        BottomSheetOpenedSource.FROM_MESSAGE,
-        BottomSheetOpenedSource.FROM_PAGE_INFO
-    })
+    @IntDef({BottomSheetOpenedSource.UNKNOWN, BottomSheetOpenedSource.FROM_MESSAGE,
+            BottomSheetOpenedSource.FROM_PAGE_INFO})
     @Retention(RetentionPolicy.SOURCE)
     public @interface BottomSheetOpenedSource {
         int UNKNOWN = 0;
@@ -142,9 +137,8 @@ public class MerchantTrustMetrics {
     private void finishMessagePreparedTimer() {
         if (!mDidRecordMessagePrepared && mMessagePreparedNanoseconds != 0) {
             mDidRecordMessagePrepared = true;
-            long durationPrepared =
-                    (System.nanoTime() - mMessagePreparedNanoseconds)
-                            / TimeUtils.NANOSECONDS_PER_MILLISECOND;
+            long durationPrepared = (System.nanoTime() - mMessagePreparedNanoseconds)
+                    / TimeUtils.NANOSECONDS_PER_MILLISECOND;
             RecordHistogram.recordMediumTimesHistogram(
                     "MerchantTrust.Message.DurationPrepared", durationPrepared);
         }
@@ -159,9 +153,8 @@ public class MerchantTrustMetrics {
     private void finishMessageShownTimer() {
         if (!mDidRecordMessageShown && mMessageVisibleNanoseconds != 0) {
             mDidRecordMessageShown = true;
-            long durationShow =
-                    (System.nanoTime() - mMessageVisibleNanoseconds)
-                            / TimeUtils.NANOSECONDS_PER_MILLISECOND;
+            long durationShow = (System.nanoTime() - mMessageVisibleNanoseconds)
+                    / TimeUtils.NANOSECONDS_PER_MILLISECOND;
             RecordHistogram.recordMediumTimesHistogram(
                     "MerchantTrust.Message.DurationShown", durationShow);
         }
@@ -207,10 +200,8 @@ public class MerchantTrustMetrics {
                 "MerchantTrust.BottomSheet.IsHalfViewed", mIsBottomSheetHalfViewed);
         RecordHistogram.recordBooleanHistogram(
                 "MerchantTrust.BottomSheet.IsFullyViewed", mIsBottomSheetFullyViewed);
-        RecordHistogram.recordEnumeratedHistogram(
-                "MerchantTrust.BottomSheet.CloseReason",
-                stateChangeReason,
-                StateChangeReason.MAX_VALUE + 1);
+        RecordHistogram.recordEnumeratedHistogram("MerchantTrust.BottomSheet.CloseReason",
+                stateChangeReason, StateChangeReason.MAX_VALUE + 1);
         resetBottomSheetMetrics();
     }
 
@@ -242,9 +233,8 @@ public class MerchantTrustMetrics {
     private void finishBottomSheetPeekTimer() {
         if (!mDidRecordBottomSheetFirstPeek && mBottomSheetPeekedNanoseconds != 0) {
             mDidRecordBottomSheetFirstPeek = true;
-            long durationPeeking =
-                    (System.nanoTime() - mBottomSheetPeekedNanoseconds)
-                            / TimeUtils.NANOSECONDS_PER_MILLISECOND;
+            long durationPeeking = (System.nanoTime() - mBottomSheetPeekedNanoseconds)
+                    / TimeUtils.NANOSECONDS_PER_MILLISECOND;
             RecordHistogram.recordMediumTimesHistogram(
                     "MerchantTrust.BottomSheet.DurationPeeked", durationPeeking);
         }
@@ -261,9 +251,8 @@ public class MerchantTrustMetrics {
     private void finishBottomSheetHalfOpenTimer() {
         if (!mDidRecordBottomSheetFirstHalfOpen && mBottomSheetHalfOpenedNanoseconds != 0) {
             mDidRecordBottomSheetFirstHalfOpen = true;
-            long durationOpened =
-                    (System.nanoTime() - mBottomSheetHalfOpenedNanoseconds)
-                            / TimeUtils.NANOSECONDS_PER_MILLISECOND;
+            long durationOpened = (System.nanoTime() - mBottomSheetHalfOpenedNanoseconds)
+                    / TimeUtils.NANOSECONDS_PER_MILLISECOND;
             RecordHistogram.recordMediumTimesHistogram(
                     "MerchantTrust.BottomSheet.DurationHalfOpened", durationOpened);
         }
@@ -282,9 +271,8 @@ public class MerchantTrustMetrics {
     private void finishBottomSheetFullyOpenTimer() {
         if (!mDidRecordBottomSheetFirstFullyOpen && mBottomSheetFullyOpenedNanoseconds != 0) {
             mDidRecordBottomSheetFirstFullyOpen = true;
-            long durationOpened =
-                    (System.nanoTime() - mBottomSheetFullyOpenedNanoseconds)
-                            / TimeUtils.NANOSECONDS_PER_MILLISECOND;
+            long durationOpened = (System.nanoTime() - mBottomSheetFullyOpenedNanoseconds)
+                    / TimeUtils.NANOSECONDS_PER_MILLISECOND;
             RecordHistogram.recordMediumTimesHistogram(
                     "MerchantTrust.BottomSheet.DurationFullyOpened", durationOpened);
         }
@@ -298,9 +286,7 @@ public class MerchantTrustMetrics {
 
     /** Records metrics for the bottom sheet opened source. */
     public void recordMetricsForBottomSheetOpenedSource(@BottomSheetOpenedSource int source) {
-        RecordHistogram.recordEnumeratedHistogram(
-                "MerchantTrust.BottomSheet.OpenSource",
-                source,
+        RecordHistogram.recordEnumeratedHistogram("MerchantTrust.BottomSheet.OpenSource", source,
                 BottomSheetOpenedSource.MAX_VALUE + 1);
     }
 
@@ -326,26 +312,17 @@ public class MerchantTrustMetrics {
     /** Finish recording message impact for this host and reset the data. */
     public void finishRecordingMessageImpact() {
         if (mCurrentHost != null) {
-            long browsingTime =
-                    (System.nanoTime() - mMessageVisibleNsForBrowsingTime)
-                            / TimeUtils.NANOSECONDS_PER_MILLISECOND;
-            RecordHistogram.recordCustomTimesHistogram(
-                    MESSAGE_IMPACT_BROWSING_TIME_HISTOGRAM,
-                    browsingTime,
-                    10,
-                    DateUtils.MINUTE_IN_MILLIS * 10,
-                    50);
+            long browsingTime = (System.nanoTime() - mMessageVisibleNsForBrowsingTime)
+                    / TimeUtils.NANOSECONDS_PER_MILLISECOND;
+            RecordHistogram.recordCustomTimesHistogram(MESSAGE_IMPACT_BROWSING_TIME_HISTOGRAM,
+                    browsingTime, 10, DateUtils.MINUTE_IN_MILLIS * 10, 50);
             RecordHistogram.recordCustomTimesHistogram(
                     MESSAGE_IMPACT_BROWSING_TIME_HISTOGRAM + getStarRatingSuffixForMessageImpact(),
-                    browsingTime,
-                    10,
-                    DateUtils.MINUTE_IN_MILLIS * 10,
-                    50);
+                    browsingTime, 10, DateUtils.MINUTE_IN_MILLIS * 10, 50);
 
             RecordHistogram.recordCount100Histogram(
                     MESSAGE_IMPACT_NAVIGATION_COUNT_HISTOGRAM, mNavigationCountAfterMessageShown);
-            RecordHistogram.recordCount100Histogram(
-                    MESSAGE_IMPACT_NAVIGATION_COUNT_HISTOGRAM
+            RecordHistogram.recordCount100Histogram(MESSAGE_IMPACT_NAVIGATION_COUNT_HISTOGRAM
                             + getStarRatingSuffixForMessageImpact(),
                     mNavigationCountAfterMessageShown);
         }
@@ -405,8 +382,8 @@ public class MerchantTrustMetrics {
     private void recordBooleanUkm(
             @Nullable WebContents webContents, String eventName, String metricsName) {
         if (webContents != null) {
-            new UkmRecorder.Bridge()
-                    .recordEventWithBooleanMetric(webContents, eventName, metricsName);
+            new UkmRecorder.Bridge().recordEventWithBooleanMetric(
+                    webContents, eventName, metricsName);
         }
     }
 }

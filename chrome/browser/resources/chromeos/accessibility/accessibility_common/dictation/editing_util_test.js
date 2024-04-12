@@ -5,7 +5,14 @@
 GEN_INCLUDE(['dictation_test_base.js']);
 
 /** Test fixture for editing_util.js. */
-DictationEditingUtilTest = class extends DictationE2ETestBase {};
+DictationEditingUtilTest = class extends DictationE2ETestBase {
+  /** @override */
+  async setUpDeferred() {
+    await super.setUpDeferred();
+    await importModule(
+        'EditingUtil', '/accessibility_common/dictation/editing_util.js');
+  }
+};
 
 AX_TEST_F('DictationEditingUtilTest', 'GetReplacePhraseData', function() {
   let value;

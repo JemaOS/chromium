@@ -47,7 +47,7 @@ class TestArcResizeLockPrefDelegate : public ArcResizeLockPrefDelegate {
     if (is_needed)
       confirmation_needed_app_ids_.push_back(app_id);
     else
-      std::erase(confirmation_needed_app_ids_, app_id);
+      base::Erase(confirmation_needed_app_ids_, app_id);
   }
 
   int GetShowSplashScreenDialogCount() const override { return show_count_; }
@@ -92,7 +92,7 @@ std::unique_ptr<views::Widget> CompatModeTestBase::CreateWidget(bool show) {
 }
 
 std::unique_ptr<views::Widget> CompatModeTestBase::CreateArcWidget(
-    std::optional<std::string> app_id,
+    absl::optional<std::string> app_id,
     bool show) {
   auto widget = CreateWidget(/*show=*/false);
   if (app_id)

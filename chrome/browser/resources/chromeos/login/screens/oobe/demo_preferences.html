@@ -1,43 +1,28 @@
-<style include="oobe-dialog-host-styles cros-color-overrides">
+<style include="oobe-dialog-host-styles">
   cr-input {
     --cr-input-width: 240px; /*Same width as country selection dropdown.*/
   }
 
   #demoPreferencesDialog .language-selection-entry {
-    border-top: 1px solid var(--cros-sys-separator);
+    border-top: 1px solid var(--cros-color-primary-inverted);
     min-height: 60px;
   }
   #demoPreferencesDialog .language-selection-title {
     color: var(--cros-text-color-primary);
-    font-size: var(--oobe-demo-preferences-selection-title-font-size);
-  }
-  :host-context(.jelly-enabled)
-    #demoPreferencesDialog .language-selection-title {
-      color: var(--oobe-text-color);
+    font-size: 13px;
   }
   #store-number-input-display-text {
     color: var(--cros-text-color-secondary);
     display: var(--cr-input-error-display, block);
-    font-size: var(--oobe-demo-preferences-number-input-font-size);
+    font-size: 10px;
     height: var(--cr-form-field-label-height);
     line-height: var(--cr-form-field-label-line-height);
     margin-inline-start: 55%;
     visibility: visible;
     white-space: var(--cr-input-error-white-space);
   }
-  :host-context(.jelly-enabled) #store-number-input-display-text {
-    color: var(--oobe-subheader-text-color);
-  }
-  :host([store-number-input-invalid]) #store-number-input-display-text {
+  :host([store_number_input_invalid_]) #store-number-input-display-text {
     color: var(--cros-textfield-label-color-error);
-  }
-  :host-context(.jelly-enabled):host([store-number-input-invalid])
-    #store-number-input-display-text {
-      color: var(--cros-sys-error);
-  }
-
-  :host-context(.jelly-enabled) cr-input.language-selection-title {
-    --cr-input-background-color: var(--cros-sys-input_field_on_shaded);
   }
 
 </style>
@@ -72,7 +57,7 @@
       <cr-input class="language-selection-title layout horizontal
           center-justified"
           slot="input" id="retailerNameInput"
-          value="{{retailerNameInput}}"
+          value="{{retailer_name_input_}}"
           on-keydown="onInputKeyDown_"
           placeholder=
               "[[i18nDynamic(locale, 'retailerNameInputPlaceholder')]]"
@@ -89,7 +74,7 @@
       <cr-input class="language-selection-title layout horizontal
           center-justified"
                 slot="input" id="storeNumberInput"
-                value="{{storeNumberInput}}"
+                value="{{store_number_input_}}"
                 on-keydown="onInputKeyDown_"
                 placeholder=
                     "[[i18nDynamic(locale, 'storeNumberInputPlaceholder')]]"
@@ -106,7 +91,7 @@
   </div>
   <div slot="bottom-buttons">
     <oobe-text-button id="nextButton" inverse on-click="onNextClicked_"
-        disabled="[[!userCanContinue]]"
+        disabled="[[!user_can_continue_]]"
         text-key="demoPreferencesNextButtonLabel">
     </oobe-text-button>
   </div>

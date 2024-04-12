@@ -13,6 +13,7 @@
 #include <algorithm>
 
 #include "base/logging.h"
+#include "base/strings/string_util.h"
 #include "base/trace_event/trace_event.h"
 #include "base/win/scoped_variant.h"
 #include "ui/base/ime/text_input_client.h"
@@ -205,8 +206,8 @@ HRESULT TSFTextStore::GetScreenExt(TsViewCookie view_cookie, RECT* rect) {
 
   // {0, 0, 0, 0} means that the document rect is not currently displayed.
   SetRect(rect, 0, 0, 0, 0);
-  std::optional<gfx::Rect> result_rect;
-  std::optional<gfx::Rect> tmp_rect;
+  absl::optional<gfx::Rect> result_rect;
+  absl::optional<gfx::Rect> tmp_rect;
   // If the EditContext is active, then fetch the layout bounds from
   // the active EditContext, else get it from the focused element's
   // bounding client rect.
@@ -265,10 +266,6 @@ HRESULT TSFTextStore::GetStatus(TS_STATUS* status) {
   // TODO(IME): Remove TS_SS_TRANSITORY to support Korean reconversion
   status->dwStaticFlags = TS_SS_TRANSITORY | TS_SS_NOHIDDENTEXT;
 
-  // No text support is needed for empty text store.
-  if (is_empty_text_store_) {
-    status->dwDynamicFlags |= TS_SD_READONLY;
-  }
   return S_OK;
 }
 
@@ -346,7 +343,7 @@ HRESULT TSFTextStore::GetTextExt(TsViewCookie view_cookie,
   // indicates a last character's one.
   // TODO(IME): add tests for scenario that left position is bigger than right
   // position.
-  std::optional<gfx::Rect> result_rect;
+  absl::optional<gfx::Rect> result_rect;
   const uint32_t start_pos = acp_start - composition_start_;
   const uint32_t end_pos = acp_end - composition_start_;
 
@@ -405,6 +402,18 @@ HRESULT TSFTextStore::GetTextExt(TsViewCookie view_cookie,
   *rect = display::win::ScreenWin::DIPToScreenRect(window_handle_,
                                                    result_rect.value())
               .ToRECT();
+
+  // Some IMEs such as Google Japanese Input does not support vertical
+  // writing text. So we shift the rectangle to the right side in order
+  // to avoid an IME candidate window over vertical text.
+  if ((text_input_client_->GetTextInputFlags() &
+       ui::TEXT_INPUT_FLAG_VERTICAL) &&
+      IsInputProcessorWithoutVerticalWriting()) {
+    int width = rect->right - rect->left;
+    rect->left += width;
+    rect->right += width;
+  }
+
   *clipped = FALSE;
   TRACE_EVENT1("ime", "TSFTextStore::GetTextExt", "screen rect",
                gfx::Rect(*rect).ToString());
@@ -565,17 +574,6 @@ HRESULT TSFTextStore::RequestAttrsTransitioningAtPosition(
 HRESULT TSFTextStore::RequestLock(DWORD lock_flags, HRESULT* result) {
   if (!text_input_client_)
     return E_UNEXPECTED;
-  // No lock is necessary for an empty text store. This is to deny lock to an
-  // unsuspecting TSF in the wild that always assumes a text update with a
-  // store.
-  if (is_empty_text_store_) {
-    return E_FAIL;
-  }
-  // If the text input type has already switched to NONE in the text input
-  // client, then do nothing. See crbug.com/1483978.
-  if (text_input_client_->GetTextInputType() == ui::TEXT_INPUT_TYPE_NONE) {
-    return E_FAIL;
-  }
 
   if (!text_store_acp_sink_.Get())
     return E_FAIL;
@@ -1390,9 +1388,8 @@ bool TSFTextStore::ConfirmComposition() {
 void TSFTextStore::SendOnLayoutChange() {
   // A re-entrant call leads to infinite loop in TSF.
   // We bail out if are in the process of notifying TSF about changes.
-  if (is_notification_in_progress_ || is_empty_text_store_) {
+  if (is_notification_in_progress_)
     return;
-  }
   CalculateTextandSelectionDiffAndNotifyIfNeeded();
   if (text_store_acp_sink_ &&
       (text_store_acp_sink_mask_ & TS_AS_LAYOUT_CHANGE)) {
@@ -1636,23 +1633,25 @@ bool TSFTextStore::IsInputIME() const {
   return false;
 }
 
-void TSFTextStore::UseEmptyTextStore(bool is_enabled) {
-  is_empty_text_store_ = is_enabled;
-}
-
-bool TSFTextStore::MaybeSendOnUrlChanged() {
-  // When the user interacts with a traditional editing control, TSF will query
-  // for the current Url as needed. However, when TSF supports empty stores, we
-  // will also notify the OS when a frame with a committed Url is focused, to
-  // enable scenarios where, for example, a page implements its own controls in
-  // JavaScript (crbug.com/1447061).
-  if (!is_empty_text_store_ || (text_store_acp_sink_ == nullptr)) {
+bool TSFTextStore::IsInputProcessorWithoutVerticalWriting() const {
+  TF_INPUTPROCESSORPROFILE profile;
+  if (!SUCCEEDED(input_processor_profile_mgr_->GetActiveProfile(
+          GUID_TFCAT_TIP_KEYBOARD, &profile)))
     return false;
-  }
-  TS_ATTRID attrs[1];
-  attrs[0] = GUID_PROP_URL;
-  text_store_acp_sink_->OnAttrsChange(NULL, NULL, 1, attrs);
-  return true;
+  if (profile.dwProfileType != TF_PROFILETYPE_INPUTPROCESSOR)
+    return false;
+  Microsoft::WRL::ComPtr<ITfInputProcessorProfiles> profiles;
+  if (!SUCCEEDED(::CoCreateInstance(CLSID_TF_InputProcessorProfiles, nullptr,
+                                    CLSCTX_INPROC_SERVER,
+                                    IID_PPV_ARGS(&profiles))))
+    return false;
+  BSTR description = nullptr;
+  if (!SUCCEEDED(profiles->GetLanguageProfileDescription(
+          profile.clsid, profile.langid, profile.guidProfile, &description)))
+    return false;
+  bool result = base::StartsWith(description, L"Google Japanese Input");
+  ::SysFreeString(description);
+  return result;
 }
 
 }  // namespace ui

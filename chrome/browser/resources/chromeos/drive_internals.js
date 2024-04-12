@@ -92,10 +92,6 @@ function updateCacheContents(cacheEntry) {
   $('cache-contents').appendChild(tr);
 }
 
-function updateBulkPinningVisible(enabled) {
-  $('bulk-pinning-visible').checked = enabled;
-}
-
 function updateVerboseLogging(enabled) {
   $('verbose-logging-toggle').checked = enabled;
 }
@@ -109,7 +105,6 @@ function updateBulkPinning(enabled) {
 }
 
 function onBulkPinningProgress(progress) {
-  updateBulkPinning(progress.enabled);
   $('bulk-pinning-stage').innerText = progress.stage;
   $('bulk-pinning-free-space').innerText = progress.free_space;
   $('bulk-pinning-required-space').innerText = progress.required_space;
@@ -135,7 +130,6 @@ function onBulkPinningProgress(progress) {
       progress.time_spent_listing_items;
   $('bulk-pinning-time-spent-pinning-files').innerText =
       progress.time_spent_pinning_files;
-  $('bulk-pinning-remaining-time').innerText = progress.remaining_time;
 }
 
 function updateStartupArguments(args) {
@@ -165,7 +159,7 @@ function updateInFlightOperations(inFlightOperations) {
   const existingNodes = container.childNodes;
   for (let i = existingNodes.length - 1; i >= 0; i--) {
     const node = existingNodes[i];
-    if (node.className === 'in-flight-operation') {
+    if (node.className == 'in-flight-operation') {
       container.removeChild(node);
     }
   }
@@ -260,13 +254,11 @@ function updateOtherServiceLogsUrl(url) {
 /**
  * Adds a new row to the syncing paths table upon successful completion.
  * @param {string} path The path that was synced.
- * @param {string} status The drive::FileError as a string without the
- *     "FILE_ERROR_" prefix.
+ * @param {string} status The drive::FileError as a string.
  */
 function onAddSyncPath(path, status) {
   $('mirroring-path-status').textContent = status;
-  if (status !== 'OK') {
-    console.error(`Cannot add sync path '${path}': ${status}`);
+  if (status !== 'FILE_ERROR_OK') {
     return;
   }
 
@@ -293,12 +285,10 @@ function onAddSyncPath(path, status) {
 /**
  * Remove a path from the syncing table.
  * @param {string} path The path that was synced.
- * @param {string} status The drive::FileError as a string without the
- *     "FILE_ERROR_" prefix.
+ * @param {string} status The drive::FileError as a string.
  */
 function onRemoveSyncPath(path, status) {
-  if (status !== 'OK') {
-    console.error(`Cannot remove sync path '${path}': ${status}`);
+  if (status !== 'FILE_ERROR_OK') {
     return;
   }
 
@@ -332,7 +322,7 @@ function updateKeyValueList(ul, list) {
   for (let i = 0; i < list.length; i++) {
     const item = list[i];
     let text = item.key;
-    if (item.value !== '') {
+    if (item.value != '') {
       text += ': ' + item.value;
     }
 
@@ -395,71 +385,72 @@ function onZipDone(success) {
   $('button-export-logs').removeAttribute('disabled');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
   chrome.send('pageLoaded');
 
   updateToc();
 
-  $('bulk-pinning-visible')
-      .addEventListener(
-          'change',
-          e => chrome.send('setBulkPinningVisible', [e.target.checked]));
+  $('verbose-logging-toggle').addEventListener('change', function(e) {
+    chrome.send('setVerboseLoggingEnabled', [e.target.checked]);
+  });
 
-  $('verbose-logging-toggle')
-      .addEventListener(
-          'change',
-          e => chrome.send('setVerboseLoggingEnabled', [e.target.checked]));
+  $('mirroring-toggle').addEventListener('change', function(e) {
+    chrome.send('setMirroringEnabled', [e.target.checked]);
+  });
 
-  $('mirroring-toggle')
-      .addEventListener(
-          'change',
-          e => chrome.send('setMirroringEnabled', [e.target.checked]));
+  $('bulk-pinning-toggle').addEventListener('change', function(e) {
+    chrome.send('setBulkPinningEnabled', [e.target.checked]);
+  });
 
-  $('bulk-pinning-toggle')
-      .addEventListener(
-          'change',
-          e => chrome.send('setBulkPinningEnabled', [e.target.checked]));
-
-  $('startup-arguments-form').addEventListener('submit', e => {
+  $('startup-arguments-form').addEventListener('submit', function(e) {
     e.preventDefault();
     $('arguments-status-text').textContent = 'applying...';
     chrome.send('setStartupArguments', [$('startup-arguments-input').value]);
   });
 
-  $('mirror-path-form').addEventListener('submit', e => {
+  $('mirror-path-form').addEventListener('submit', function(e) {
     e.preventDefault();
     $('mirroring-path-status').textContent = 'adding...';
     chrome.send('addSyncPath', [$('mirror-path-input').value]);
   });
 
-  $('button-enable-tracing')
-      .addEventListener('click', () => chrome.send('enableTracing'));
+  $('button-enable-tracing').addEventListener('click', function() {
+    chrome.send('enableTracing');
+  });
 
-  $('button-disable-tracing')
-      .addEventListener('click', () => chrome.send('disableTracing'));
+  $('button-disable-tracing').addEventListener('click', function() {
+    chrome.send('disableTracing');
+  });
 
-  $('button-enable-networking')
-      .addEventListener('click', () => chrome.send('enableNetworking'));
+  $('button-enable-networking').addEventListener('click', function() {
+    chrome.send('enableNetworking');
+  });
 
-  $('button-disable-networking')
-      .addEventListener('click', () => chrome.send('disableNetworking'));
+  $('button-disable-networking').addEventListener('click', function() {
+    chrome.send('disableNetworking');
+  });
 
-  $('button-enable-force-pause-syncing')
-      .addEventListener('click', () => chrome.send('enableForcePauseSyncing'));
+  $('button-enable-force-pause-syncing').addEventListener('click', function() {
+    chrome.send('enableForcePauseSyncing');
+  });
 
-  $('button-disable-force-pause-syncing')
-      .addEventListener('click', () => chrome.send('disableForcePauseSyncing'));
+  $('button-disable-force-pause-syncing').addEventListener('click', function() {
+    chrome.send('disableForcePauseSyncing');
+  });
 
-  $('button-dump-account-settings')
-      .addEventListener('click', () => chrome.send('dumpAccountSettings'));
+  $('button-dump-account-settings').addEventListener('click', function() {
+    chrome.send('dumpAccountSettings');
+  });
 
-  $('button-load-account-settings')
-      .addEventListener('click', () => chrome.send('loadAccountSettings'));
+  $('button-load-account-settings').addEventListener('click', function() {
+    chrome.send('loadAccountSettings');
+  });
 
-  $('button-restart-drive')
-      .addEventListener('click', () => chrome.send('restartDrive'));
+  $('button-restart-drive').addEventListener('click', function() {
+    chrome.send('restartDrive');
+  });
 
-  $('button-reset-drive-filesystem').addEventListener('click', () => {
+  $('button-reset-drive-filesystem').addEventListener('click', function() {
     if (window.confirm(
             'Warning: Any local changes not yet uploaded to the Drive server ' +
             'will be lost, continue?')) {
@@ -468,10 +459,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  $('button-export-logs').addEventListener('click', () => {
+  $('button-export-logs').addEventListener('click', function() {
     $('button-export-logs').setAttribute('disabled', 'true');
     chrome.send('zipLogs');
   });
 
-  window.setInterval(() => chrome.send('periodicUpdate'), 1000);
+  window.setInterval(function() {
+    chrome.send('periodicUpdate');
+  }, 1000);
 });

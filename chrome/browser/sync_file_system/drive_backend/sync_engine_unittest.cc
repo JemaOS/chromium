@@ -29,7 +29,8 @@
 namespace sync_file_system {
 namespace drive_backend {
 
-class SyncEngineTest : public testing::Test {
+class SyncEngineTest : public testing::Test,
+                       public base::SupportsWeakPtr<SyncEngineTest> {
  public:
   typedef RemoteFileSyncService::OriginStatusMap RemoteOriginStatusMap;
 

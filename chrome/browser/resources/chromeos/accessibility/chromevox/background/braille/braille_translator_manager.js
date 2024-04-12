@@ -5,8 +5,6 @@
 /**
  * @fileoverview Keeps track of the current braille translators.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
-
 import {BrailleTable} from '../../common/braille/braille_table.js';
 import {SettingsManager} from '../../common/settings_manager.js';
 import {Output} from '../output/output.js';
@@ -25,7 +23,7 @@ export class BrailleTranslatorManager {
         opt_liblouisForTest ||
         new LibLouis(
             chrome.extension.getURL(
-                'chromevox/third_party/liblouis/liblouis_wrapper.js'),
+                'chromevox/background/braille/liblouis_wrapper.js'),
             chrome.extension.getURL('chromevox/background/braille/tables'),
             () => this.loadLiblouis_());
 
@@ -260,5 +258,3 @@ export class BrailleTranslatorManager {
 
 /** @type {BrailleTranslatorManager} */
 BrailleTranslatorManager.instance;
-
-TestImportManager.exportForTesting(BrailleTranslatorManager);

@@ -6,18 +6,16 @@
 
 #include <string>
 
-#include "base/memory/weak_ptr.h"
 #include "base/strings/strcat.h"
 #include "base/task/single_thread_task_runner.h"
+#include "chrome/browser/ui/autofill/payments/card_unmask_otp_input_dialog_controller.h"
 #include "chrome/browser/ui/autofill/payments/payments_ui_constants.h"
-#include "chrome/browser/ui/autofill/payments/view_factory.h"
 #include "chrome/browser/ui/views/autofill/payments/payments_view_util.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/chrome_typography.h"
-#include "components/autofill/core/browser/ui/payments/card_unmask_otp_input_dialog_controller.h"
 #include "components/constrained_window/constrained_window_views.h"
 #include "content/public/browser/web_contents.h"
-#include "ui/color/color_id.h"
+#include "ui/color/color_provider.h"
 #include "ui/views/border.h"
 #include "ui/views/bubble/bubble_frame_view.h"
 #include "ui/views/controls/link.h"
@@ -32,7 +30,7 @@
 namespace autofill {
 
 CardUnmaskOtpInputDialogViews::CardUnmaskOtpInputDialogViews(
-    base::WeakPtr<CardUnmaskOtpInputDialogController> controller)
+    CardUnmaskOtpInputDialogController* controller)
     : controller_(controller) {
   SetShowTitle(true);
   SetButtonLabel(ui::DIALOG_BUTTON_OK, controller_->GetOkButtonLabel());
@@ -42,7 +40,7 @@ CardUnmaskOtpInputDialogViews::CardUnmaskOtpInputDialogViews(
   SetModalType(ui::MODAL_TYPE_CHILD);
   SetShowCloseButton(false);
   set_fixed_width(ChromeLayoutProvider::Get()->GetDistanceMetric(
-      views::DISTANCE_MODAL_DIALOG_PREFERRED_WIDTH));
+      ChromeDistanceMetric::DISTANCE_LARGE_MODAL_DIALOG_PREFERRED_WIDTH));
   set_margins(ChromeLayoutProvider::Get()->GetDialogInsetsForContentType(
       views::DialogContentType::kControl, views::DialogContentType::kText));
   InitViews();
@@ -55,6 +53,16 @@ CardUnmaskOtpInputDialogViews::~CardUnmaskOtpInputDialogViews() {
                                 /*server_request_succeeded=*/false);
     controller_ = nullptr;
   }
+}
+
+// static
+CardUnmaskOtpInputDialogView* CardUnmaskOtpInputDialogView::CreateAndShow(
+    CardUnmaskOtpInputDialogController* controller,
+    content::WebContents* web_contents) {
+  CardUnmaskOtpInputDialogViews* dialog_view =
+      new CardUnmaskOtpInputDialogViews(controller);
+  constrained_window::ShowWebModalDialogViews(dialog_view, web_contents);
+  return dialog_view;
 }
 
 void CardUnmaskOtpInputDialogViews::ShowPendingState() {
@@ -82,7 +90,7 @@ void CardUnmaskOtpInputDialogViews::Dismiss(
     bool user_closed_dialog) {
   // If |show_confirmation_before_closing| is true, show the confirmation and
   // close the widget with a delay.
-  if (controller_ && show_confirmation_before_closing) {
+  if (show_confirmation_before_closing) {
     progress_throbber_->Stop();
     progress_label_->SetText(controller_->GetConfirmationMessage());
     progress_throbber_->SetChecked(true);
@@ -99,26 +107,29 @@ void CardUnmaskOtpInputDialogViews::Dismiss(
   CloseWidget(user_closed_dialog, /*server_request_succeeded=*/false);
 }
 
-base::WeakPtr<CardUnmaskOtpInputDialogView>
-CardUnmaskOtpInputDialogViews::GetWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 std::u16string CardUnmaskOtpInputDialogViews::GetWindowTitle() const {
-  return controller_ ? controller_->GetWindowTitle() : u"";
+  return controller_->GetWindowTitle();
 }
 
 void CardUnmaskOtpInputDialogViews::AddedToWidget() {
-  GetBubbleFrameView()->SetTitleView(CreateTitleView(
-      GetWindowTitle(), TitleWithIconAndSeparatorView::Icon::GOOGLE_PAY));
+  GetBubbleFrameView()->SetTitleView(
+      std::make_unique<TitleWithIconAndSeparatorView>(
+          GetWindowTitle(), TitleWithIconAndSeparatorView::Icon::GOOGLE_PAY));
 }
 
 bool CardUnmaskOtpInputDialogViews::Accept() {
-  if (controller_) {
-    controller_->OnOkButtonClicked(otp_input_textfield_->GetText());
-  }
+  controller_->OnOkButtonClicked(otp_input_textfield_->GetText());
   ShowPendingState();
   return false;
+}
+
+void CardUnmaskOtpInputDialogViews::OnThemeChanged() {
+  views::DialogDelegateView::OnThemeChanged();
+
+  // We need to ensure |progress_label_|'s color matches the color of the
+  // throbber above it.
+  progress_label_->SetEnabledColor(
+      GetColorProvider()->GetColor(ui::kColorThrobber));
 }
 
 views::View* CardUnmaskOtpInputDialogViews::GetInitiallyFocusedView() {
@@ -132,9 +143,8 @@ void CardUnmaskOtpInputDialogViews::ContentsChanged(
   if (otp_input_textfield_->GetInvalid())
     HideInvalidState();
 
-  SetButtonEnabled(
-      ui::DIALOG_BUTTON_OK,
-      /*enabled=*/controller_ && controller_->IsValidOtp(new_contents));
+  SetButtonEnabled(ui::DIALOG_BUTTON_OK,
+                   /*enabled=*/controller_->IsValidOtp(new_contents));
 }
 
 void CardUnmaskOtpInputDialogViews::InitViews() {
@@ -169,7 +179,7 @@ void CardUnmaskOtpInputDialogViews::CreateOtpInputView() {
   otp_input_textfield_ = otp_input_textfield_view->AddChildView(
       std::make_unique<views::Textfield>());
   otp_input_textfield_->SetPlaceholderText(
-      controller_ ? controller_->GetTextfieldPlaceholderText() : u"");
+      controller_->GetTextfieldPlaceholderText());
   otp_input_textfield_->SetTextInputType(
       ui::TextInputType::TEXT_INPUT_TYPE_NUMBER);
   otp_input_textfield_->SetController(this);
@@ -201,9 +211,7 @@ void CardUnmaskOtpInputDialogViews::CreateOtpInputView() {
 }
 
 void CardUnmaskOtpInputDialogViews::OnNewCodeLinkClicked() {
-  if (controller_) {
-    controller_->OnNewCodeLinkClicked();
-  }
+  controller_->OnNewCodeLinkClicked();
   SetDialogFooter(/*enabled=*/false);
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
@@ -239,11 +247,8 @@ void CardUnmaskOtpInputDialogViews::CreateHiddenProgressView() {
 
   // Adds label under progress throbber.
   progress_label_ = progress_view_->AddChildView(
-      views::Builder<views::Label>()
-          .SetText(controller_ ? controller_->GetProgressLabel() : u"")
-          .SetMultiLine(true)
-          .SetEnabledColorId(ui::kColorThrobber)
-          .Build());
+      std::make_unique<views::Label>(controller_->GetProgressLabel()));
+  progress_label_->SetMultiLine(true);
 }
 
 void CardUnmaskOtpInputDialogViews::HideInvalidState() {
@@ -265,10 +270,8 @@ void CardUnmaskOtpInputDialogViews::CloseWidget(bool user_closed_dialog,
 }
 
 void CardUnmaskOtpInputDialogViews::SetDialogFooter(bool enabled) {
-  const std::u16string link_text =
-      controller_ ? controller_->GetNewCodeLinkText() : u"";
-  const FooterText footer_text =
-      controller_ ? controller_->GetFooterText(link_text) : FooterText();
+  const std::u16string link_text = controller_->GetNewCodeLinkText();
+  const FooterText footer_text = controller_->GetFooterText(link_text);
   footer_label_->SetEnabled(enabled);
   footer_label_->SetText(footer_text.text);
   footer_label_->ClearStyleRanges();
@@ -286,15 +289,6 @@ void CardUnmaskOtpInputDialogViews::SetDialogFooter(bool enabled) {
                  footer_text.link_offset_in_text + link_text.length()),
       style_info);
   footer_label_->SetDefaultTextStyle(views::style::STYLE_SECONDARY);
-}
-
-base::WeakPtr<CardUnmaskOtpInputDialogView> CreateAndShowOtpInputDialog(
-    base::WeakPtr<CardUnmaskOtpInputDialogController> controller,
-    content::WebContents* web_contents) {
-  CardUnmaskOtpInputDialogViews* dialog_view =
-      new CardUnmaskOtpInputDialogViews(controller);
-  constrained_window::ShowWebModalDialogViews(dialog_view, web_contents);
-  return dialog_view->GetWeakPtr();
 }
 
 }  // namespace autofill

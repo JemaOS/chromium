@@ -85,7 +85,7 @@ views::View* FolderUploadConfirmationView::GetInitiallyFocusedView() {
   return GetCancelButton();
 }
 
-BEGIN_METADATA(FolderUploadConfirmationView)
+BEGIN_METADATA(FolderUploadConfirmationView, views::DialogDelegateView)
 END_METADATA
 
 void ShowFolderUploadConfirmationDialog(

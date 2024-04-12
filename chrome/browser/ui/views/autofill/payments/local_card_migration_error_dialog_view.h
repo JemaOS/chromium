@@ -24,10 +24,8 @@ namespace autofill {
 class LocalCardMigrationErrorDialogView
     : public LocalCardMigrationDialog,
       public views::BubbleDialogDelegateView {
-  METADATA_HEADER(LocalCardMigrationErrorDialogView,
-                  views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(LocalCardMigrationErrorDialogView);
   explicit LocalCardMigrationErrorDialogView(
       LocalCardMigrationDialogController* controller);
   LocalCardMigrationErrorDialogView(const LocalCardMigrationErrorDialogView&) =

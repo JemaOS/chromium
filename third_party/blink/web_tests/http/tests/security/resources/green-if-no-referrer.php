@@ -1,7 +1,6 @@
 <?php
 header('Content-Type: image/png');
-$HTTP_REFERRER = $_SERVER['HTTP_REFERER'] ?? null;
-if ($HTTP_REFERRER != '') {
+if ($_SERVER['HTTP_REFERER'] != '') {
     $img = 'red200x100.png';
 } else {
     $img = 'green250x50.png';

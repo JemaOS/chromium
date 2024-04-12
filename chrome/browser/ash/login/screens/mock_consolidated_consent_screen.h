@@ -26,8 +26,7 @@ class MockConsolidatedConsentScreen : public ConsolidatedConsentScreen {
   void ExitScreen(Result result);
 };
 
-class MockConsolidatedConsentScreenView final
-    : public ConsolidatedConsentScreenView {
+class MockConsolidatedConsentScreenView : public ConsolidatedConsentScreenView {
  public:
   MockConsolidatedConsentScreenView();
   ~MockConsolidatedConsentScreenView() override;
@@ -39,13 +38,6 @@ class MockConsolidatedConsentScreenView final
   MOCK_METHOD(void, SetLocationMode, (bool enabled, bool managed));
   MOCK_METHOD(void, SetIsDeviceOwner, (bool is_owner));
   MOCK_METHOD(void, SetUsageOptinHidden, (bool hidden));
-
-  base::WeakPtr<ConsolidatedConsentScreenView> AsWeakPtr() override {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
- private:
-  base::WeakPtrFactory<ConsolidatedConsentScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

@@ -49,7 +49,7 @@ class LiteralConstant(object):
         - []: list()
         - {}: dict()
         - true / false: True / False
-        - INTEGER_NUMERICS: an instance of int
+        - INTEGER_NUMERICS: an instance of long
         - FLOATING_POINTS: an instance of float
         - STRING: an instance of str
         """

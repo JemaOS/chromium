@@ -44,7 +44,7 @@ void MediaControlPanelElement::MakeOpaque() {
     return;
 
   opaque_ = true;
-  removeAttribute(html_names::kClassAttr);
+  removeAttribute("class");
 
   if (is_displayed_) {
     // Make sure we are listening for the 'transitionend' event.
@@ -62,7 +62,7 @@ void MediaControlPanelElement::MakeTransparent() {
   // Make sure we are listening for the 'transitionend' event.
   EnsureTransitionEventListener();
 
-  setAttribute(html_names::kClassAttr, AtomicString(kTransparentClassName));
+  setAttribute("class", AtomicString(kTransparentClassName));
 
   opaque_ = false;
 }

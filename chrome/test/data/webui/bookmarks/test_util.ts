@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {BookmarksFolderNodeElement, FolderOpenState, NodeMap} from 'chrome://bookmarks/bookmarks.js';
-import {normalizeNodes} from 'chrome://bookmarks/bookmarks.js';
+import {BookmarksFolderNodeElement, FolderOpenState, NodeMap, normalizeNodes} from 'chrome://bookmarks/bookmarks.js';
 import {isMac} from 'chrome://resources/js/platform.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
 

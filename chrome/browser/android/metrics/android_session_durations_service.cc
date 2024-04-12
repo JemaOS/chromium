@@ -84,20 +84,13 @@ AndroidSessionDurationsService::AndroidSessionDurationsService() = default;
 AndroidSessionDurationsService::~AndroidSessionDurationsService() = default;
 
 void AndroidSessionDurationsService::InitializeForRegularProfile(
-    PrefService* pref_service,
     syncer::SyncService* sync_service,
     signin::IdentityManager* identity_manager) {
   DCHECK(!incognito_session_metrics_recorder_);
   DCHECK(!sync_session_metrics_recorder_);
-  DCHECK(!msbb_session_metrics_recorder_);
-
   sync_session_metrics_recorder_ =
       std::make_unique<syncer::SyncSessionDurationsMetricsRecorder>(
           sync_service, identity_manager);
-
-  msbb_session_metrics_recorder_ =
-      std::make_unique<unified_consent::MsbbSessionDurationsMetricsRecorder>(
-          pref_service);
 
   // The AndroidSessionDurationsService object is created as soon as
   // the profile is initialized. On Android, the profile is initialized as part
@@ -110,8 +103,6 @@ void AndroidSessionDurationsService::InitializeForRegularProfile(
 void AndroidSessionDurationsService::InitializeForIncognitoProfile() {
   DCHECK(!incognito_session_metrics_recorder_);
   DCHECK(!sync_session_metrics_recorder_);
-  DCHECK(!msbb_session_metrics_recorder_);
-
   incognito_session_metrics_recorder_ =
       std::make_unique<IncognitoSessionDurationsMetricsRecorder>();
   OnAppEnterForeground(base::TimeTicks::Now());
@@ -127,36 +118,23 @@ bool AndroidSessionDurationsService::IsSyncing() const {
 
 void AndroidSessionDurationsService::Shutdown() {
   sync_session_metrics_recorder_.reset();
-  msbb_session_metrics_recorder_.reset();
   incognito_session_metrics_recorder_.reset();
 }
 
 void AndroidSessionDurationsService::OnAppEnterForeground(
     base::TimeTicks session_start) {
-  if (sync_session_metrics_recorder_) {
-    // The non-incognito recorders are always created and destroyed together.
-    CHECK(msbb_session_metrics_recorder_);
-
+  if (sync_session_metrics_recorder_)
     sync_session_metrics_recorder_->OnSessionStarted(session_start);
-    msbb_session_metrics_recorder_->OnSessionStarted(session_start);
-  } else {
-    CHECK(!msbb_session_metrics_recorder_);
+  else
     incognito_session_metrics_recorder_->OnAppEnterForeground();
-  }
 }
 
 void AndroidSessionDurationsService::OnAppEnterBackground(
     base::TimeDelta session_length) {
-  if (sync_session_metrics_recorder_) {
-    // The non-incognito recorders are always created and destroyed together.
-    CHECK(msbb_session_metrics_recorder_);
-
+  if (sync_session_metrics_recorder_)
     sync_session_metrics_recorder_->OnSessionEnded(session_length);
-    msbb_session_metrics_recorder_->OnSessionEnded(session_length);
-  } else {
-    CHECK(!msbb_session_metrics_recorder_);
+  else
     incognito_session_metrics_recorder_->OnAppEnterBackground();
-  }
 }
 
 void AndroidSessionDurationsService::SetSessionStartTimeForTesting(
@@ -205,8 +183,7 @@ JNI_AndroidSessionDurationsServiceState_GetAndroidSessionDurationsServiceState(
                                             last_reported_duration);
 
   return Java_AndroidSessionDurationsServiceState_Constructor(
-      env, session_start_time.InMillisecondsSinceUnixEpoch(),
-      last_reported_duration.InMinutes());
+      env, session_start_time.ToJavaTime(), last_reported_duration.InMinutes());
 }
 
 // Restores the service from an archived android object.
@@ -222,7 +199,7 @@ void JNI_AndroidSessionDurationsServiceState_RestoreAndroidSessionDurationsServi
   AndroidSessionDurationsService* duration_service =
       AndroidSessionDurationsServiceFactory::GetForProfile(profile);
 
-  base::Time session_start_time = base::Time::FromMillisecondsSinceUnixEpoch(
+  base::Time session_start_time = base::Time::FromJavaTime(
       Java_AndroidSessionDurationsServiceState_getSessionStartTime(
           env, j_duration_service));
   base::TimeDelta last_reported_duration = base::Minutes(

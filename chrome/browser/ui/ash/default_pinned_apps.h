@@ -7,11 +7,8 @@
 
 #include <vector>
 
-#include "content/public/browser/browser_context.h"
-
 using StaticAppId = const char*;
 
-std::vector<StaticAppId> GetDefaultPinnedAppsForFormFactor(
-    content::BrowserContext* browser_context);
+std::vector<StaticAppId> GetDefaultPinnedAppsForFormFactor();
 
 #endif  // CHROME_BROWSER_UI_ASH_DEFAULT_PINNED_APPS_H_

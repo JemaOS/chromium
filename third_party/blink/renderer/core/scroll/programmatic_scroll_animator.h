@@ -44,12 +44,13 @@ class ProgrammaticScrollAnimator : public ScrollAnimatorCompositorCoordinator {
   void CancelAnimation() override;
   void TakeOverCompositorAnimation() override {}
   ScrollableArea* GetScrollableArea() const override {
-    return scrollable_area_.Get();
+    return scrollable_area_;
   }
   void TickAnimation(base::TimeTicks monotonic_time) override;
   void UpdateCompositorAnimations() override;
   void NotifyCompositorAnimationFinished(int group_id) override;
   void NotifyCompositorAnimationAborted(int group_id) override {}
+  void MainThreadScrollingDidChange() override;
 
   void Trace(Visitor*) const override;
 

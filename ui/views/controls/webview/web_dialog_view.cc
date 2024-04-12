@@ -9,15 +9,17 @@
 
 #include "base/strings/utf_string_conversions.h"
 #include "content/public/browser/browser_context.h"
+#include "content/public/browser/native_web_keyboard_event.h"
+#include "content/public/browser/notification_details.h"
+#include "content/public/browser/notification_source.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
-#include "content/public/common/input/native_web_keyboard_event.h"
 #include "third_party/blink/public/mojom/loader/resource_load_info.mojom.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/events/event.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/geometry/rounded_corners_f.h"
-#include "ui/gfx/native_widget_types.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/widget/native_widget_private.h"
@@ -57,7 +59,7 @@ void ObservableWebView::ResetDelegate() {
   delegate_ = nullptr;
 }
 
-BEGIN_METADATA(ObservableWebView)
+BEGIN_METADATA(ObservableWebView, WebView)
 END_METADATA
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,8 +67,7 @@ END_METADATA
 
 WebDialogView::WebDialogView(content::BrowserContext* context,
                              WebDialogDelegate* delegate,
-                             std::unique_ptr<WebContentsHandler> handler,
-                             content::WebContents* web_contents)
+                             std::unique_ptr<WebContentsHandler> handler)
     : ClientView(nullptr, nullptr),
       WebDialogWebContentsDelegate(context, std::move(handler)),
       delegate_(delegate),
@@ -87,10 +88,6 @@ WebDialogView::WebDialogView(content::BrowserContext* context,
     RegisterWindowWillCloseCallback(base::BindOnce(
         &WebDialogView::NotifyDialogWillClose, base::Unretained(this)));
   }
-
-  if (web_contents) {
-    web_view_->SetWebContents(web_contents);
-  }
 }
 
 WebDialogView::~WebDialogView() = default;
@@ -104,11 +101,11 @@ content::WebContents* WebDialogView::web_contents() {
 
 void WebDialogView::AddedToWidget() {
   gfx::RoundedCornersF corner_radii(
-      GetWebDialogFrameKind() == WebDialogDelegate::FrameKind::kDialog
+      delegate_ && delegate_->GetWebDialogFrameKind() ==
+                       WebDialogDelegate::FrameKind::kDialog
           ? GetCornerRadius()
           : 0);
-
-  SetWebViewCornersRadii(corner_radii);
+  web_view_->holder()->SetCornerRadii(corner_radii);
 }
 
 gfx::Size WebDialogView::CalculatePreferredSize() const {
@@ -273,7 +270,7 @@ GURL WebDialogView::GetDialogContentURL() const {
 }
 
 void WebDialogView::GetWebUIMessageHandlers(
-    std::vector<WebUIMessageHandler*>* handlers) {
+    std::vector<WebUIMessageHandler*>* handlers) const {
   if (delegate_)
     delegate_->GetWebUIMessageHandlers(handlers);
 }
@@ -301,6 +298,10 @@ void WebDialogView::OnDialogShown(content::WebUI* webui) {
 
 void WebDialogView::OnDialogClosed(const std::string& json_retval) {
   Detach();
+  if (delegate_) {
+    // Store the dialog content area size.
+    delegate_->StoreDialogSize(GetContentsBounds().size());
+  }
 
   if (GetWidget())
     GetWidget()->Close();
@@ -354,14 +355,6 @@ bool WebDialogView::HandleContextMenu(
                                                          params);
 }
 
-WebDialogView::FrameKind WebDialogView::GetWebDialogFrameKind() const {
-  if (delegate_) {
-    return delegate_->GetWebDialogFrameKind();
-  }
-
-  return WebDialogDelegate::GetWebDialogFrameKind();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // content::WebContentsDelegate implementation:
 
@@ -377,9 +370,8 @@ void WebDialogView::SetContentsBounds(WebContents* source,
 // they're all browser-specific. (This may change in the future.)
 bool WebDialogView::HandleKeyboardEvent(content::WebContents* source,
                                         const NativeWebKeyboardEvent& event) {
-  if (!event.os_event) {
+  if (!event.os_event)
     return false;
-  }
 
   return unhandled_keyboard_event_handler_.HandleKeyboardEvent(
       event, GetFocusManager());
@@ -453,20 +445,13 @@ void WebDialogView::RequestMediaAccessPermission(
 
 bool WebDialogView::CheckMediaAccessPermission(
     content::RenderFrameHost* render_frame_host,
-    const url::Origin& security_origin,
+    const GURL& security_origin,
     blink::mojom::MediaStreamType type) {
   if (delegate_) {
     return delegate_->CheckMediaAccessPermission(render_frame_host,
                                                  security_origin, type);
   }
   return false;
-}
-
-void WebDialogView::SetWebViewCornersRadii(const gfx::RoundedCornersF& radii) {
-  views::NativeViewHost* host = web_view_->holder();
-  DCHECK(host);
-
-  host->SetCornerRadii(radii);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,7 +477,7 @@ void WebDialogView::NotifyDialogWillClose() {
     delegate_->OnDialogWillClose();
 }
 
-BEGIN_METADATA(WebDialogView)
+BEGIN_METADATA(WebDialogView, ClientView)
 ADD_READONLY_PROPERTY_METADATA(ObservableWebView*, WebView);
 END_METADATA
 

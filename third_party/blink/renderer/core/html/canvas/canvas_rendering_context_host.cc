@@ -8,7 +8,6 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
-#include "gpu/config/gpu_feature_info.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
 #include "third_party/blink/public/platform/platform.h"
@@ -29,11 +28,10 @@
 
 namespace blink {
 
-CanvasRenderingContextHost::CanvasRenderingContextHost(HostType host_type,
-                                                       const gfx::Size& size)
-    : CanvasResourceHost(size), host_type_(host_type) {}
+CanvasRenderingContextHost::CanvasRenderingContextHost(HostType host_type)
+    : host_type_(host_type) {}
 
-void CanvasRenderingContextHost::RecordCanvasSizeToUMA() {
+void CanvasRenderingContextHost::RecordCanvasSizeToUMA(const gfx::Size& size) {
   if (did_record_canvas_size_to_uma_)
     return;
   did_record_canvas_size_to_uma_ = true;
@@ -44,11 +42,11 @@ void CanvasRenderingContextHost::RecordCanvasSizeToUMA() {
       break;
     case HostType::kCanvasHost:
       UMA_HISTOGRAM_CUSTOM_COUNTS("Blink.Canvas.SqrtNumberOfPixels",
-                                  std::sqrt(Size().Area64()), 1, 5000, 100);
+                                  std::sqrt(size.Area64()), 1, 5000, 100);
       break;
     case HostType::kOffscreenCanvasHost:
       UMA_HISTOGRAM_CUSTOM_COUNTS("Blink.OffscreenCanvas.SqrtNumberOfPixels",
-                                  std::sqrt(Size().Area64()), 1, 5000, 100);
+                                  std::sqrt(size.Area64()), 1, 5000, 100);
       break;
   }
 }
@@ -62,7 +60,7 @@ CanvasRenderingContextHost::CreateTransparentImage(
       gfx::SizeToSkISize(size),
       GetRenderingContextSkColorInfo().makeAlphaType(kPremul_SkAlphaType));
   sk_sp<SkSurface> surface =
-      SkSurfaces::Raster(info, info.minRowBytes(), nullptr);
+      SkSurface::MakeRaster(info, info.minRowBytes(), nullptr);
   if (!surface)
     return nullptr;
   return UnacceleratedStaticBitmapImage::Create(surface->makeImageSnapshot());
@@ -82,7 +80,7 @@ bool CanvasRenderingContextHost::PrintedInCurrentTask() const {
   return RenderingContext() && RenderingContext()->did_print_in_current_task();
 }
 
-void CanvasRenderingContextHost::InitializeForRecording(
+void CanvasRenderingContextHost::RestoreCanvasMatrixClipStack(
     cc::PaintCanvas* canvas) const {
   if (RenderingContext())
     RenderingContext()->RestoreCanvasMatrixClipStack(canvas);
@@ -137,7 +135,7 @@ void CanvasRenderingContextHost::CreateCanvasResourceProviderWebGPU() {
   std::unique_ptr<CanvasResourceProvider> provider;
   if (SharedGpuContext::IsGpuCompositingEnabled()) {
     provider = CanvasResourceProvider::CreateWebGPUImageProvider(
-        resource_info, /*shared_image_usage_flags=*/0, this);
+        resource_info, /*is_origin_top_left=*/true);
   }
   ReplaceResourceProvider(std::move(provider));
   if (ResourceProvider() && ResourceProvider()->IsValid()) {
@@ -160,60 +158,49 @@ void CanvasRenderingContextHost::CreateCanvasResourceProviderWebGL() {
   const SkImageInfo resource_info =
       SkImageInfo::Make(SkISize::Make(Size().width(), Size().height()),
                         GetRenderingContextSkColorInfo());
-  // Do not initialize the CRP using Skia. The CRP can have bottom left origin
-  // in which case Skia Graphite won't be able to render into it, and WebGL is
-  // responsible for clearing the CRP when it renders anyway and we have clear
-  // rect tracking in the shared image system to enforce this.
-  constexpr auto kShouldInitialize =
-      CanvasResourceProvider::ShouldInitialize::kNo;
   if (SharedGpuContext::IsGpuCompositingEnabled() && LowLatencyEnabled()) {
     // If LowLatency is enabled, we need a resource that is able to perform well
     // in such mode. It will first try a PassThrough provider and, if that is
     // not possible, it will try a SharedImage with the appropriate flags.
     if ((RenderingContext() && RenderingContext()->UsingSwapChain()) ||
-        (SharedGpuContext::MaySupportImageChromium() &&
-         (RuntimeEnabledFeatures::WebGLImageChromiumEnabled() ||
-          base::FeatureList::IsEnabled(
-              features::kLowLatencyWebGLImageChromium)))) {
+        RuntimeEnabledFeatures::WebGLImageChromiumEnabled()) {
       // If either SwapChain is enabled or WebGLImage mode is enabled, we can
       // try a passthrough provider.
       DCHECK(LowLatencyEnabled());
       provider = CanvasResourceProvider::CreatePassThroughProvider(
           resource_info, FilterQuality(),
           SharedGpuContext::ContextProviderWrapper(), dispatcher,
-          RenderingContext()->IsOriginTopLeft(), this);
+          RenderingContext()->IsOriginTopLeft());
     }
     if (!provider) {
       // If PassThrough failed, try a SharedImage with usage display enabled,
       // and if WebGLImageChromium is enabled, add concurrent read write and
       // usage scanout (overlay).
       uint32_t shared_image_usage_flags = gpu::SHARED_IMAGE_USAGE_DISPLAY_READ;
-      if (SharedGpuContext::MaySupportImageChromium() &&
-          (RuntimeEnabledFeatures::WebGLImageChromiumEnabled() ||
-           base::FeatureList::IsEnabled(
-               features::kLowLatencyWebGLImageChromium))) {
+      if (RuntimeEnabledFeatures::WebGLImageChromiumEnabled()) {
         shared_image_usage_flags |= gpu::SHARED_IMAGE_USAGE_SCANOUT;
         shared_image_usage_flags |=
             gpu::SHARED_IMAGE_USAGE_CONCURRENT_READ_WRITE;
       }
       provider = CanvasResourceProvider::CreateSharedImageProvider(
-          resource_info, FilterQuality(), kShouldInitialize,
+          resource_info, FilterQuality(),
+          CanvasResourceProvider::ShouldInitialize::kCallClear,
           SharedGpuContext::ContextProviderWrapper(), RasterMode::kGPU,
-          shared_image_usage_flags, this);
+          RenderingContext()->IsOriginTopLeft(), shared_image_usage_flags);
     }
   } else if (SharedGpuContext::IsGpuCompositingEnabled()) {
-    // If there is no LowLatency mode, and GPU is enabled, will try a GPU
-    // SharedImage that should support Usage Display and probably Usage Scanout
+    // If there is no LawLatency mode, and GPU is enabled, will try a GPU
+    // SharedImage that should support Usage Display and probably Usage Canbout
     // if WebGLImageChromium is enabled.
     uint32_t shared_image_usage_flags = gpu::SHARED_IMAGE_USAGE_DISPLAY_READ;
-    if (SharedGpuContext::MaySupportImageChromium() &&
-        RuntimeEnabledFeatures::WebGLImageChromiumEnabled()) {
+    if (RuntimeEnabledFeatures::WebGLImageChromiumEnabled()) {
       shared_image_usage_flags |= gpu::SHARED_IMAGE_USAGE_SCANOUT;
     }
     provider = CanvasResourceProvider::CreateSharedImageProvider(
-        resource_info, FilterQuality(), kShouldInitialize,
+        resource_info, FilterQuality(),
+        CanvasResourceProvider::ShouldInitialize::kCallClear,
         SharedGpuContext::ContextProviderWrapper(), RasterMode::kGPU,
-        shared_image_usage_flags, this);
+        RenderingContext()->IsOriginTopLeft(), shared_image_usage_flags);
   }
 
   // If either of the other modes failed and / or it was not possible to do, we
@@ -221,11 +208,13 @@ void CanvasRenderingContextHost::CreateCanvasResourceProviderWebGL() {
   // provider.
   if (!provider) {
     provider = CanvasResourceProvider::CreateSharedBitmapProvider(
-        resource_info, FilterQuality(), kShouldInitialize, dispatcher, this);
+        resource_info, FilterQuality(),
+        CanvasResourceProvider::ShouldInitialize::kCallClear, dispatcher);
   }
   if (!provider) {
     provider = CanvasResourceProvider::CreateBitmapProvider(
-        resource_info, FilterQuality(), kShouldInitialize, this);
+        resource_info, FilterQuality(),
+        CanvasResourceProvider::ShouldInitialize::kCallClear);
   }
 
   ReplaceResourceProvider(std::move(provider));
@@ -251,53 +240,57 @@ void CanvasRenderingContextHost::CreateCanvasResourceProvider2D(
                         GetRenderingContextSkColorInfo());
   const bool use_gpu =
       hint == RasterModeHint::kPreferGPU && ShouldAccelerate2dContext();
-  constexpr auto kShouldInitialize =
-      CanvasResourceProvider::ShouldInitialize::kCallClear;
+  // It is important to not use the context's IsOriginTopLeft() here
+  // because that denotes the current state and could change after the
+  // new resource provider is created e.g. due to switching between
+  // unaccelerated and accelerated modes during tab switching.
+  const bool is_origin_top_left = !use_gpu || LowLatencyEnabled();
   if (use_gpu && LowLatencyEnabled()) {
     // If we can use the gpu and low latency is enabled, we will try to use a
     // SwapChain if possible.
     provider = CanvasResourceProvider::CreateSwapChainProvider(
-        resource_info, FilterQuality(), kShouldInitialize,
-        SharedGpuContext::ContextProviderWrapper(), dispatcher, this);
+        resource_info, FilterQuality(),
+        CanvasResourceProvider::ShouldInitialize::kCallClear,
+        SharedGpuContext::ContextProviderWrapper(), dispatcher,
+        is_origin_top_left);
     // If SwapChain failed or it was not possible, we will try a SharedImage
     // with a set of flags trying to add Usage Display and Usage Scanout and
     // Concurrent Read and Write if possible.
     if (!provider) {
       uint32_t shared_image_usage_flags = gpu::SHARED_IMAGE_USAGE_DISPLAY_READ;
-      if (SharedGpuContext::MaySupportImageChromium() &&
-          (RuntimeEnabledFeatures::Canvas2dImageChromiumEnabled() ||
-           base::FeatureList::IsEnabled(
-               features::kLowLatencyCanvas2dImageChromium))) {
+      if (RuntimeEnabledFeatures::Canvas2dImageChromiumEnabled() ||
+          base::FeatureList::IsEnabled(
+              features::kLowLatencyCanvas2dImageChromium)) {
         shared_image_usage_flags |= gpu::SHARED_IMAGE_USAGE_SCANOUT;
         shared_image_usage_flags |=
             gpu::SHARED_IMAGE_USAGE_CONCURRENT_READ_WRITE;
       }
       provider = CanvasResourceProvider::CreateSharedImageProvider(
-          resource_info, FilterQuality(), kShouldInitialize,
+          resource_info, FilterQuality(),
+          CanvasResourceProvider::ShouldInitialize::kCallClear,
           SharedGpuContext::ContextProviderWrapper(), RasterMode::kGPU,
-          shared_image_usage_flags, this);
+          is_origin_top_left, shared_image_usage_flags);
     }
   } else if (use_gpu) {
     // First try to be optimized for displaying on screen. In the case we are
     // hardware compositing, we also try to enable the usage of the image as
     // scanout buffer (overlay)
     uint32_t shared_image_usage_flags = gpu::SHARED_IMAGE_USAGE_DISPLAY_READ;
-    if (SharedGpuContext::MaySupportImageChromium() &&
-        RuntimeEnabledFeatures::Canvas2dImageChromiumEnabled()) {
+    if (RuntimeEnabledFeatures::Canvas2dImageChromiumEnabled())
       shared_image_usage_flags |= gpu::SHARED_IMAGE_USAGE_SCANOUT;
-    }
     provider = CanvasResourceProvider::CreateSharedImageProvider(
-        resource_info, FilterQuality(), kShouldInitialize,
+        resource_info, FilterQuality(),
+        CanvasResourceProvider::ShouldInitialize::kCallClear,
         SharedGpuContext::ContextProviderWrapper(), RasterMode::kGPU,
-        shared_image_usage_flags, this);
-  } else if (SharedGpuContext::MaySupportImageChromium() &&
-             RuntimeEnabledFeatures::Canvas2dImageChromiumEnabled()) {
+        is_origin_top_left, shared_image_usage_flags);
+  } else if (RuntimeEnabledFeatures::Canvas2dImageChromiumEnabled()) {
     const uint32_t shared_image_usage_flags =
         gpu::SHARED_IMAGE_USAGE_DISPLAY_READ | gpu::SHARED_IMAGE_USAGE_SCANOUT;
     provider = CanvasResourceProvider::CreateSharedImageProvider(
-        resource_info, FilterQuality(), kShouldInitialize,
+        resource_info, FilterQuality(),
+        CanvasResourceProvider::ShouldInitialize::kCallClear,
         SharedGpuContext::ContextProviderWrapper(), RasterMode::kCPU,
-        shared_image_usage_flags, this);
+        is_origin_top_left, shared_image_usage_flags);
   }
 
   // If either of the other modes failed and / or it was not possible to do, we
@@ -305,11 +298,13 @@ void CanvasRenderingContextHost::CreateCanvasResourceProvider2D(
   // provider.
   if (!provider) {
     provider = CanvasResourceProvider::CreateSharedBitmapProvider(
-        resource_info, FilterQuality(), kShouldInitialize, dispatcher, this);
+        resource_info, FilterQuality(),
+        CanvasResourceProvider::ShouldInitialize::kCallClear, dispatcher);
   }
   if (!provider) {
     provider = CanvasResourceProvider::CreateBitmapProvider(
-        resource_info, FilterQuality(), kShouldInitialize, this);
+        resource_info, FilterQuality(),
+        CanvasResourceProvider::ShouldInitialize::kCallClear);
   }
 
   ReplaceResourceProvider(std::move(provider));
@@ -331,6 +326,73 @@ SkColorInfo CanvasRenderingContextHost::GetRenderingContextSkColorInfo() const {
     return RenderingContext()->CanvasRenderingContextSkColorInfo();
   return SkColorInfo(kN32_SkColorType, kPremul_SkAlphaType,
                      SkColorSpace::MakeSRGB());
+}
+
+ScriptPromise CanvasRenderingContextHost::convertToBlob(
+    ScriptState* script_state,
+    const ImageEncodeOptions* options,
+    ExceptionState& exception_state,
+    const CanvasRenderingContext* const context) {
+  DCHECK(IsOffscreenCanvas());
+  WTF::String object_name = "OffscreenCanvas";
+  std::stringstream error_msg;
+
+  if (IsOffscreenCanvas() && IsNeutered()) {
+    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
+                                      "OffscreenCanvas object is detached.");
+    return ScriptPromise();
+  }
+
+  if (!OriginClean()) {
+    error_msg << "Tainted " << object_name << " may not be exported.";
+    exception_state.ThrowSecurityError(error_msg.str().c_str());
+    return ScriptPromise();
+  }
+
+  // It's possible that there are recorded commands that have not been resolved
+  // Finalize frame will be called in GetImage, but if there's no
+  // resourceProvider yet then the IsPaintable check will fail
+  if (RenderingContext()) {
+    RenderingContext()->FinalizeFrame(
+        CanvasResourceProvider::FlushReason::kToBlob);
+  }
+
+  if (!IsPaintable() || Size().IsEmpty()) {
+    error_msg << "The size of " << object_name << " is zero.";
+    exception_state.ThrowDOMException(DOMExceptionCode::kIndexSizeError,
+                                      error_msg.str().c_str());
+    return ScriptPromise();
+  }
+
+  if (!RenderingContext()) {
+    error_msg << object_name << " has no rendering context.";
+    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
+                                      error_msg.str().c_str());
+    return ScriptPromise();
+  }
+
+  base::TimeTicks start_time = base::TimeTicks::Now();
+  scoped_refptr<StaticBitmapImage> image_bitmap = RenderingContext()->GetImage(
+      CanvasResourceProvider::FlushReason::kToBlob);
+  if (image_bitmap) {
+    auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+        script_state, exception_state.GetContext());
+    CanvasAsyncBlobCreator::ToBlobFunctionType function_type =
+        CanvasAsyncBlobCreator::kOffscreenCanvasConvertToBlobPromise;
+    auto* execution_context = ExecutionContext::From(script_state);
+    auto* async_creator = MakeGarbageCollected<CanvasAsyncBlobCreator>(
+        image_bitmap, options, function_type, start_time, execution_context,
+        IdentifiabilityStudySettings::Get()->ShouldSampleType(
+            IdentifiableSurface::Type::kCanvasReadback)
+            ? IdentifiabilityInputDigest(context)
+            : 0,
+        resolver);
+    async_creator->ScheduleAsyncBlobCreation(options->quality());
+    return resolver->Promise();
+  }
+  exception_state.ThrowDOMException(DOMExceptionCode::kNotReadableError,
+                                    "Readback of the source image has failed.");
+  return ScriptPromise();
 }
 
 bool CanvasRenderingContextHost::IsOffscreenCanvas() const {
@@ -361,25 +423,6 @@ IdentifiableToken CanvasRenderingContextHost::IdentifiabilityInputDigest(
   if (encountered_partially_digested_image)
     final_digest |= IdentifiableSurface::CanvasTaintBit::kPartiallyDigested;
   return final_digest;
-}
-
-void CanvasRenderingContextHost::PageVisibilityChanged() {
-  bool page_visible = IsPageVisible();
-  if (RenderingContext()) {
-    RenderingContext()->PageVisibilityChanged();
-    if (page_visible) {
-      RenderingContext()->SendContextLostEventIfNeeded();
-    }
-  }
-  if (!page_visible && (IsWebGL() || IsWebGPU())) {
-    DiscardResourceProvider();
-  }
-}
-
-bool CanvasRenderingContextHost::ContextHasOpenLayers(
-    const CanvasRenderingContext* context) const {
-  return context != nullptr && context->IsRenderingContext2D() &&
-         context->LayerCount() != 0;
 }
 
 }  // namespace blink

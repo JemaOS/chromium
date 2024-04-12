@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import 'chrome://resources/cr_components/customize_themes/customize_themes.js';
-import 'chrome://resources/cr_components/theme_color_picker/theme_color_picker.js';
 import 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import 'chrome://resources/cr_elements/cr_input/cr_input.js';
 import 'chrome://resources/cr_elements/cr_profile_avatar_selector/cr_profile_avatar_selector.js';
@@ -15,28 +14,27 @@ import './strings.m.js';
 import './signin_shared.css.js';
 import './signin_vars.css.js';
 
-import type {CustomizeThemesElement} from 'chrome://resources/cr_components/customize_themes/customize_themes.js';
-import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import type {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
-import type {AvatarIcon} from 'chrome://resources/cr_elements/cr_profile_avatar_selector/cr_profile_avatar_selector.js';
-import type {CrViewManagerElement} from 'chrome://resources/cr_elements/cr_view_manager/cr_view_manager.js';
+import {CustomizeThemesElement} from 'chrome://resources/cr_components/customize_themes/customize_themes.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
+import {AvatarIcon} from 'chrome://resources/cr_elements/cr_profile_avatar_selector/cr_profile_avatar_selector.js';
+import {CrViewManagerElement} from 'chrome://resources/cr_elements/cr_view_manager/cr_view_manager.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
-import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './profile_customization_app.html.js';
-import type {ProfileCustomizationBrowserProxy, ProfileInfo} from './profile_customization_browser_proxy.js';
-import {ProfileCustomizationBrowserProxyImpl} from './profile_customization_browser_proxy.js';
+import {ProfileCustomizationBrowserProxy, ProfileCustomizationBrowserProxyImpl, ProfileInfo} from './profile_customization_browser_proxy.js';
 
 
 export interface ProfileCustomizationAppElement {
   $: {
     doneButton: CrButtonElement,
     nameInput: CrInputElement,
-    pickThemeContainer: HTMLElement,
     title: HTMLElement,
+    themeSelector: CustomizeThemesElement,
     viewManager: CrViewManagerElement,
   };
 }
@@ -85,15 +83,15 @@ export class ProfileCustomizationAppElement extends
       /** The currently selected profile avatar, if any. */
       selectedAvatar_: Object,
 
+      profileCustomizationInDialogDesign_: {
+        type: Boolean,
+        value: () =>
+            loadTimeData.getBoolean('profileCustomizationInDialogDesign'),
+      },
+
       isLocalProfileCreation_: {
         type: Boolean,
         value: () => loadTimeData.getBoolean('isLocalProfileCreation'),
-      },
-
-      isChromeRefresh2023_: {
-        type: Boolean,
-        value: () =>
-            document.documentElement.hasAttribute('chrome-refresh-2023'),
       },
     };
   }
@@ -105,8 +103,8 @@ export class ProfileCustomizationAppElement extends
   private availableIcons_: AvatarIcon[];
   private selectedAvatar_: AvatarIcon;
   private confirmedAvatar_: AvatarIcon;
+  private profileCustomizationInDialogDesign_: boolean;
   private isLocalProfileCreation_: boolean;
-  private isChromeRefresh2023_: boolean;
   private profileCustomizationBrowserProxy_: ProfileCustomizationBrowserProxy =
       ProfileCustomizationBrowserProxyImpl.getInstance();
 
@@ -137,11 +135,7 @@ export class ProfileCustomizationAppElement extends
    * native.
    */
   private onDoneCustomizationClicked_() {
-    if (!this.isChromeRefresh2023_) {
-      const themeSelector = this.$.pickThemeContainer.querySelector(
-                                '#themeSelector')! as CustomizeThemesElement;
-      themeSelector.confirmThemeChanges();
-    }
+    this.$.themeSelector.confirmThemeChanges();
     this.profileCustomizationBrowserProxy_.done(this.profileName_);
   }
 
@@ -154,13 +148,18 @@ export class ProfileCustomizationAppElement extends
         '--header-background-color', profileInfo.backgroundColor);
     this.pictureUrl_ = profileInfo.pictureUrl;
     this.isManaged_ = profileInfo.isManaged;
-    this.welcomeTitle_ = this.isLocalProfileCreation_ ?
-        this.i18n('localProfileCreationTitle') :
-        this.i18n('profileCustomizationTitle');
+    if (this.profileCustomizationInDialogDesign_) {
+      this.welcomeTitle_ = this.isLocalProfileCreation_ ?
+          this.i18n('localProfileCreationTitle') :
+          this.i18n('profileCustomizationTitle');
+    } else {
+      this.welcomeTitle_ = profileInfo.welcomeTitle;
+    }
   }
 
   private shouldShowCancelButton_(): boolean {
-    return !this.isLocalProfileCreation_;
+    return this.profileCustomizationInDialogDesign_ &&
+        !this.isLocalProfileCreation_;
   }
 
   private onSkipCustomizationClicked_() {
@@ -170,12 +169,12 @@ export class ProfileCustomizationAppElement extends
   private onDeleteProfileClicked_() {
     // Unsaved theme color changes cause an error in `ProfileCustomizationUI`
     // destructor when deleting the profile.
-    if (!this.isChromeRefresh2023_) {
-      const themeSelector = this.$.pickThemeContainer.querySelector(
-                                '#themeSelector')! as CustomizeThemesElement;
-      themeSelector.confirmThemeChanges();
-    }
+    this.$.themeSelector.confirmThemeChanges();
     this.profileCustomizationBrowserProxy_.deleteProfile();
+  }
+
+  private getDialogDesignClass_(inDialogDesign: boolean): string {
+    return inDialogDesign ? 'in-dialog-design' : '';
   }
 
   private onCustomizeAvatarClick_() {

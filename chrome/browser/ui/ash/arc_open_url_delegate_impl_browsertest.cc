@@ -7,7 +7,6 @@
 #include <memory>
 #include <string>
 
-#include "ash/webui/settings/public/constants/routes.mojom.h"
 #include "ash/webui/system_apps/public/system_web_app_type.h"
 #include "base/ranges/algorithm.h"
 #include "base/run_loop.h"
@@ -21,6 +20,7 @@
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
 #include "chrome/browser/ui/web_applications/test/web_app_navigation_browsertest.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom.h"
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
@@ -151,7 +151,7 @@ IN_PROC_BROWSER_TEST_F(ArcOpenUrlDelegateImplWebAppBrowserTest,
   const GURL app_url = https_server().GetURL(GetAppUrlHost(), GetAppUrlPath());
 
   // InstallTestWebApp() but with a ShareTarget definition added.
-  auto web_app_info = std::make_unique<web_app::WebAppInstallInfo>();
+  auto web_app_info = std::make_unique<WebAppInstallInfo>();
   web_app_info->start_url = app_url;
   web_app_info->scope =
       https_server().GetURL(GetAppUrlHost(), GetAppScopePath());
@@ -248,11 +248,10 @@ class TestSettingsWindowManager : public chrome::SettingsWindowManager {
  public:
   void ShowChromePageForProfile(Profile* profile,
                                 const GURL& gurl,
-                                int64_t display_id,
-                                apps::LaunchCallback callback) override {
+                                int64_t display_id) override {
     last_navigation_url_ = gurl;
-    chrome::SettingsWindowManager::ShowChromePageForProfile(
-        profile, gurl, display_id, std::move(callback));
+    chrome::SettingsWindowManager::ShowChromePageForProfile(profile, gurl,
+                                                            display_id);
   }
   const GURL& last_navigation_url() { return last_navigation_url_; }
 
@@ -360,9 +359,6 @@ void TestAllOSSettingPages(const GURL& base_url) {
       ChromePage::PERDEVICEKEYBOARD,
       base_url.Resolve(
           chromeos::settings::mojom::kPerDeviceKeyboardSubpagePath));
-  TestOpenOSSettingsChromePage(
-      ChromePage::GRAPHICSTABLET,
-      base_url.Resolve(chromeos::settings::mojom::kGraphicsTabletSubpagePath));
 }
 
 void TestAllBrowserSettingPages(const GURL& base_url) {

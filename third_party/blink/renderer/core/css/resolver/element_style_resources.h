@@ -56,7 +56,7 @@ class PreCachedContainerSizes {
 
  private:
   const CSSToLengthConversionData* conversion_data_{nullptr};
-  mutable std::optional<ContainerSizes> cache_;
+  mutable absl::optional<ContainerSizes> cache_;
 };
 
 // Holds information about resources, requested by stylesheets.
@@ -81,8 +81,6 @@ class ElementStyleResources {
  private:
   bool IsPending(const CSSValue&) const;
   StyleImage* CachedStyleImage(const CSSValue&) const;
-
-  StyleImage* LoadMaskSource(CSSValue&);
 
   void LoadPendingSVGResources(ComputedStyleBuilder&);
   void LoadPendingImages(ComputedStyleBuilder&);

@@ -24,6 +24,10 @@ class HistoryClustersSidePanelCoordinator
     : public BrowserUserData<HistoryClustersSidePanelCoordinator> {
  public:
   explicit HistoryClustersSidePanelCoordinator(Browser* browser);
+  HistoryClustersSidePanelCoordinator(
+      const HistoryClustersSidePanelCoordinator&) = delete;
+  HistoryClustersSidePanelCoordinator& operator=(
+      const HistoryClustersSidePanelCoordinator&) = delete;
   ~HistoryClustersSidePanelCoordinator() override;
 
   // Returns whether HistoryClustersSidePanelCoordinator is supported for

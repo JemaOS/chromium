@@ -46,6 +46,7 @@ export class PrintPreviewScalingSettingsElement extends
 
       currentValue_: {
         type: String,
+        observer: 'onInputChanged_',
       },
 
       customSelected_: {
@@ -79,7 +80,6 @@ export class PrintPreviewScalingSettingsElement extends
       'onScalingTypeSettingChanged_(settingKey_, settings.scalingType.value, ' +
           'settings.scalingTypePdf.value)',
       'onScalingSettingChanged_(settings.scaling.value)',
-      'onInputFieldChanged_(inputValid_, currentValue_)',
     ];
   }
 
@@ -165,11 +165,10 @@ export class PrintPreviewScalingSettingsElement extends
    * Updates scaling settings based on the validity and current value of the
    * scaling input.
    */
-  private onInputFieldChanged_() {
+  private onInputChanged_() {
     this.setSettingValid('scaling', this.inputValid_);
 
-    if (this.currentValue_ !== undefined && this.currentValue_ !== '' &&
-        this.inputValid_ &&
+    if (this.currentValue_ !== '' && this.inputValid_ &&
         this.currentValue_ !== this.getSettingValue('scaling')) {
       this.setSetting('scaling', this.currentValue_);
     }

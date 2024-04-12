@@ -21,9 +21,6 @@
 #include "chromeos/ash/components/cryptohome/cryptohome_parameters.h"
 #include "chromeos/ash/components/dbus/dbus_thread_manager.h"
 #include "chromeos/ash/components/dbus/session_manager/session_manager_client.h"
-#include "components/prefs/pref_registry_simple.h"
-#include "components/prefs/pref_service.h"
-#include "components/user_prefs/user_prefs.h"
 
 // Enable VLOG level 1.
 #undef ENABLED_VLOG_LEVEL
@@ -50,11 +47,6 @@ class DefaultDelegateImpl : public ArcBootPhaseMonitorBridge::Delegate {
     UMA_HISTOGRAM_CUSTOM_TIMES("Arc.FirstAppLaunchDelay.TimeDelta", delta,
                                base::Milliseconds(1), base::Minutes(2), 50);
   }
-
-  void RecordAppRequestedInSessionUMA(int num_requested) override {
-    VLOG(2) << "ARC app launch is requested " << num_requested << " times";
-    UMA_HISTOGRAM_EXACT_LINEAR("Arc.AppRequestedInSession", num_requested, 30);
-  }
 };
 
 }  // namespace
@@ -80,12 +72,6 @@ ArcBootPhaseMonitorBridge::GetForBrowserContextForTesting(
 }
 
 // static
-void ArcBootPhaseMonitorBridge::RegisterProfilePrefs(
-    PrefRegistrySimple* registry) {
-  registry->RegisterIntegerPref(prefs::kArcAppRequestedInSession, -1);
-}
-
-// static
 void ArcBootPhaseMonitorBridge::RecordFirstAppLaunchDelayUMA(
     content::BrowserContext* context) {
   auto* bridge = arc::ArcBootPhaseMonitorBridge::GetForBrowserContext(context);
@@ -96,34 +82,15 @@ void ArcBootPhaseMonitorBridge::RecordFirstAppLaunchDelayUMA(
 ArcBootPhaseMonitorBridge::ArcBootPhaseMonitorBridge(
     content::BrowserContext* context,
     ArcBridgeService* bridge_service)
-    : ArcBootPhaseMonitorBridge(
-          context,
-          bridge_service,
-          // Set the default delegate. Unit tests may use a different one.
-          std::make_unique<DefaultDelegateImpl>()) {}
-
-ArcBootPhaseMonitorBridge::ArcBootPhaseMonitorBridge(
-    content::BrowserContext* context,
-    ArcBridgeService* bridge_service,
-    std::unique_ptr<Delegate> delegate)
     : arc_bridge_service_(bridge_service),
       account_id_(multi_user_util::GetAccountIdFromProfile(
           Profile::FromBrowserContext(context))),
-      delegate_(std::move(delegate)),
-      pref_service_(user_prefs::UserPrefs::Get(context)) {
+      // Set the default delegate. Unit tests may use a different one.
+      delegate_(std::make_unique<DefaultDelegateImpl>()) {
   arc_bridge_service_->boot_phase_monitor()->SetHost(this);
   auto* arc_session_manager = ArcSessionManager::Get();
   DCHECK(arc_session_manager);
   arc_session_manager->AddObserver(this);
-
-  // To deal with unexpected shutdown, whether ARC App launch request
-  // is made or not is stored in prefs, then processed in the next
-  // user session.
-  if (auto value = pref_service_->GetInteger(prefs::kArcAppRequestedInSession);
-      value >= 0) {
-    delegate_->RecordAppRequestedInSessionUMA(value);
-  }
-  pref_service_->SetInteger(prefs::kArcAppRequestedInSession, 0);
 }
 
 ArcBootPhaseMonitorBridge::~ArcBootPhaseMonitorBridge() {
@@ -171,12 +138,13 @@ void ArcBootPhaseMonitorBridge::OnArcSessionRestarting() {
   Reset();
 }
 
+void ArcBootPhaseMonitorBridge::SetDelegateForTesting(
+    std::unique_ptr<Delegate> delegate) {
+  delegate_ = std::move(delegate);
+}
+
 void ArcBootPhaseMonitorBridge::RecordFirstAppLaunchDelayUMAInternal() {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  pref_service_->SetInteger(
-      prefs::kArcAppRequestedInSession,
-      pref_service_->GetInteger(prefs::kArcAppRequestedInSession) + 1);
-
   if (first_app_launch_delay_recorded_)
     return;
   first_app_launch_delay_recorded_ = true;

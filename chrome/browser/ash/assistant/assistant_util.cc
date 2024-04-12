@@ -53,20 +53,32 @@ bool IsAssistantAllowedForUserType(const Profile* profile) {
 AssistantAllowedState GetErrorForUserType(const Profile* profile) {
   DCHECK(!IsAssistantAllowedForUserType(profile));
   switch (GetUser(profile)->GetType()) {
-    case user_manager::UserType::kPublicAccount:
+    case user_manager::USER_TYPE_PUBLIC_ACCOUNT:
       return AssistantAllowedState::DISALLOWED_BY_PUBLIC_SESSION;
 
-    case user_manager::UserType::kKioskApp:
-    case user_manager::UserType::kArcKioskApp:
-    case user_manager::UserType::kWebKioskApp:
+    case user_manager::USER_TYPE_KIOSK_APP:
+    case user_manager::USER_TYPE_ARC_KIOSK_APP:
+    case user_manager::USER_TYPE_WEB_KIOSK_APP:
       return AssistantAllowedState::DISALLOWED_BY_KIOSK_MODE;
 
-    case user_manager::UserType::kGuest:
+    case user_manager::USER_TYPE_ACTIVE_DIRECTORY:
+    //---***JEMAOS BEGIN***---
+    case user_manager::USER_TYPE_FLINT_ACCOUNT:
+    case user_manager::USER_TYPE_JEMA_ACCOUNT:
+    case user_manager::USER_TYPE_JEMA_CHILD:
+    //---***JEMAOS END***---
       return AssistantAllowedState::DISALLOWED_BY_ACCOUNT_TYPE;
 
-    case user_manager::UserType::kRegular:
-    case user_manager::UserType::kChild:
+    case user_manager::USER_TYPE_GUEST:
+      return AssistantAllowedState::DISALLOWED_BY_ACCOUNT_TYPE;
+
+    case user_manager::USER_TYPE_REGULAR:
+    case user_manager::USER_TYPE_CHILD:
       // This method should only be called for disallowed user types.
+      NOTREACHED();
+      return AssistantAllowedState::DISALLOWED_BY_ACCOUNT_TYPE;
+
+    case user_manager::NUM_USER_TYPES:
       NOTREACHED();
       return AssistantAllowedState::DISALLOWED_BY_ACCOUNT_TYPE;
   }
@@ -126,6 +138,10 @@ bool HasDedicatedAssistantKey() {
 namespace assistant {
 
 AssistantAllowedState IsAssistantAllowedForProfile(const Profile* profile) {
+  // ---***JEMAOS BEGIN***---
+  if (profile->IsJemaProfile())
+    return AssistantAllowedState::DISALLOWED_BY_ACCOUNT_TYPE;
+  // ---***JEMAOS END***---
   // Disabled because the libassistant.so is not available.
   if (!ash::assistant::features::IsLibAssistantDLCEnabled()) {
     return AssistantAllowedState::DISALLOWED_BY_NO_BINARY;

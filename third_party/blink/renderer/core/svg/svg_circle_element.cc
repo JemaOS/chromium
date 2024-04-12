@@ -24,7 +24,6 @@
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_ellipse.h"
 #include "third_party/blink/renderer/core/svg/svg_animated_length.h"
 #include "third_party/blink/renderer/core/svg/svg_length.h"
-#include "third_party/blink/renderer/core/svg/svg_length_functions.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
 namespace blink {
@@ -48,7 +47,11 @@ SVGCircleElement::SVGCircleElement(Document& document)
           svg_names::kRAttr,
           SVGLengthMode::kOther,
           SVGLength::Initial::kUnitlessZero,
-          CSSPropertyID::kR)) {}
+          CSSPropertyID::kR)) {
+  AddToPropertyMap(cx_);
+  AddToPropertyMap(cy_);
+  AddToPropertyMap(r_);
+}
 
 void SVGCircleElement::Trace(Visitor* visitor) const {
   visitor->Trace(cx_);
@@ -60,14 +63,14 @@ void SVGCircleElement::Trace(Visitor* visitor) const {
 Path SVGCircleElement::AsPath() const {
   Path path;
 
-  const SVGViewportResolver viewport_resolver(*this);
+  SVGLengthContext length_context(this);
   const ComputedStyle& style = ComputedStyleRef();
 
-  float r = ValueForLength(style.R(), viewport_resolver, style,
-                           SVGLengthMode::kOther);
+  float r =
+      length_context.ValueForLength(style.R(), style, SVGLengthMode::kOther);
   if (r > 0) {
-    gfx::PointF center =
-        PointForLengthPair(style.Cx(), style.Cy(), viewport_resolver, style);
+    gfx::PointF center = gfx::PointAtOffsetFromOrigin(
+        length_context.ResolveLengthPair(style.Cx(), style.Cy(), style));
     path.AddEllipse(center, r, r);
   }
   return path;
@@ -79,13 +82,13 @@ void SVGCircleElement::CollectStyleForPresentationAttribute(
     MutableCSSPropertyValueSet* style) {
   SVGAnimatedPropertyBase* property = PropertyFromAttribute(name);
   if (property == cx_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kCx,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             cx_->CssValue());
   } else if (property == cy_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kCy,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             cy_->CssValue());
   } else if (property == r_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kR,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             r_->CssValue());
   } else {
     SVGGeometryElement::CollectStyleForPresentationAttribute(name, value,
@@ -113,38 +116,6 @@ bool SVGCircleElement::SelfHasRelativeLengths() const {
 
 LayoutObject* SVGCircleElement::CreateLayoutObject(const ComputedStyle&) {
   return MakeGarbageCollected<LayoutSVGEllipse>(this);
-}
-
-SVGAnimatedPropertyBase* SVGCircleElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kCxAttr) {
-    return cx_.Get();
-  } else if (attribute_name == svg_names::kCyAttr) {
-    return cy_.Get();
-  } else if (attribute_name == svg_names::kRAttr) {
-    return r_.Get();
-  } else {
-    return SVGGeometryElement::PropertyFromAttribute(attribute_name);
-  }
-}
-
-void SVGCircleElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{cx_.Get(), cy_.Get(), r_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGGeometryElement::SynchronizeAllSVGAttributes();
-}
-
-void SVGCircleElement::CollectExtraStyleForPresentationAttribute(
-    MutableCSSPropertyValueSet* style) {
-  for (auto* property :
-       (SVGAnimatedPropertyBase*[]){cx_.Get(), cy_.Get(), r_.Get()}) {
-    DCHECK(property->HasPresentationAttributeMapping());
-    if (property->IsAnimating()) {
-      CollectStyleForPresentationAttribute(property->AttributeName(),
-                                           g_empty_atom, style);
-    }
-  }
-  SVGGeometryElement::CollectExtraStyleForPresentationAttribute(style);
 }
 
 }  // namespace blink

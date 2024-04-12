@@ -14,15 +14,14 @@ ShelfAppServiceAppUpdater::ShelfAppServiceAppUpdater(
     Delegate* delegate,
     content::BrowserContext* browser_context)
     : ShelfAppUpdater(delegate, browser_context) {
-  auto* cache = &apps::AppServiceProxyFactory::GetForProfile(
-                     Profile::FromBrowserContext(browser_context))
-                     ->AppRegistryCache();
+  apps::AppServiceProxy* proxy = apps::AppServiceProxyFactory::GetForProfile(
+      Profile::FromBrowserContext(browser_context));
 
-  cache->ForEachApp([this](const apps::AppUpdate& update) {
+  proxy->AppRegistryCache().ForEachApp([this](const apps::AppUpdate& update) {
     if (update.Readiness() == apps::Readiness::kReady)
       this->installed_apps_.insert(update.AppId());
   });
-  app_registry_cache_observer_.Observe(cache);
+  Observe(&proxy->AppRegistryCache());
 }
 
 ShelfAppServiceAppUpdater::~ShelfAppServiceAppUpdater() = default;
@@ -95,7 +94,7 @@ void ShelfAppServiceAppUpdater::OnAppUpdate(const apps::AppUpdate& update) {
 
 void ShelfAppServiceAppUpdater::OnAppRegistryCacheWillBeDestroyed(
     apps::AppRegistryCache* cache) {
-  app_registry_cache_observer_.Reset();
+  Observe(nullptr);
 }
 
 void ShelfAppServiceAppUpdater::OnShowInShelfChangedForAppDisabledByPolicy(

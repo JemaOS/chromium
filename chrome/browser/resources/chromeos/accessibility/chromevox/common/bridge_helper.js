@@ -45,8 +45,10 @@ export class BridgeHelper {
    * @param {BridgeAction|string} action The name of the intended function or,
    *     if not a direct method of the class, a pseudo-function name.
    * @param {Function} handler A function that performs the indicated action. It
-   *     may optionally take parameters, and may have an optional return value
-   *         that will be forwarded to the requestor.
+   *     may optionally take a single parameter, and may have an optional return
+   *         value that will be forwarded to the requestor.
+   *     If the method takes multiple parameters, they are passed as named
+   * members of an object literal.
    */
   static registerHandler(target, action, handler) {
     if (!target || !action) {
@@ -57,8 +59,8 @@ export class BridgeHelper {
     }
 
     if (BridgeHelper.handlers_[target][action]) {
-      throw new Error(
-          `Re-assigning handlers for ${target}.${action} is not permitted`);
+      throw 'Error: Re-assigning handlers for a specific target/action (' +
+          target + '.' + action + ') is not permitted';
     }
 
     BridgeHelper.handlers_[target][action] = handler;

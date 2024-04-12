@@ -23,7 +23,7 @@
 
 #include "base/time/time.h"
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/layout/layout_ng_block_flow.h"
+#include "third_party/blink/renderer/core/layout/ng/layout_ng_block_flow.h"
 
 namespace blink {
 
@@ -57,9 +57,9 @@ class CORE_EXPORT LayoutProgress : public LayoutNGBlockFlow {
 
  protected:
   void WillBeDestroyed() override;
-  bool IsProgress() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectProgress || LayoutBlockFlow::IsOfType(type);
   }
 
   bool IsAnimating() const;

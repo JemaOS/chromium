@@ -4,10 +4,10 @@
 
 #include "chrome/browser/ui/views/desktop_capture/desktop_media_list_view.h"
 
-#include <algorithm>
 #include <string>
 #include <utility>
 
+#include "base/cxx17_backports.h"
 #include "base/ranges/algorithm.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/media/webrtc/desktop_media_list.h"
@@ -66,13 +66,7 @@ DesktopMediaListView::DesktopMediaListView(
     DesktopMediaSourceViewStyle generic_style,
     DesktopMediaSourceViewStyle single_style,
     const std::u16string& accessible_name)
-    : item_spacing_(
-          base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign) ? 4 : 0),
-      horizontal_margins_(
-          base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign) ? 16 : 0),
-      vertical_margins_(
-          base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign) ? 16 : 0),
-      controller_(controller),
+    : controller_(controller),
       single_style_(single_style),
       generic_style_(generic_style),
       active_style_(&single_style_),
@@ -87,18 +81,14 @@ void DesktopMediaListView::OnSelectionChanged() {
 }
 
 gfx::Size DesktopMediaListView::CalculatePreferredSize() const {
-  const int total_rows =
+  int total_rows =
       (static_cast<int>(children().size()) + active_style_->columns - 1) /
       active_style_->columns;
-  return gfx::Size(active_style_->columns * active_style_->item_size.width() +
-                       (active_style_->columns - 1) * item_spacing_ +
-                       2 * horizontal_margins_,
-                   total_rows * active_style_->item_size.height() +
-                       (total_rows - 1) * item_spacing_ +
-                       2 * vertical_margins_);
+  return gfx::Size(active_style_->columns * active_style_->item_size.width(),
+                   total_rows * active_style_->item_size.height());
 }
 
-void DesktopMediaListView::Layout(PassKey) {
+void DesktopMediaListView::Layout() {
   // Children lay out in a grid, all with the same size and without padding.
   const int width = active_style_->item_size.width();
   const int height = active_style_->item_size.height();
@@ -106,13 +96,11 @@ void DesktopMediaListView::Layout(PassKey) {
   // Child order is left-to-right, top-to-bottom, so lay out row-major.  The
   // last row may not be full, so the inner loop will need to be careful about
   // the child count anyway, so don't bother to compute a row count.
-  for (int y = 0;; y += (height + item_spacing_)) {
-    for (int x = 0, col = 0; col < active_style_->columns;
-         ++col, x += (width + item_spacing_)) {
+  for (int y = 0;; y += height) {
+    for (int x = 0, col = 0; col < active_style_->columns; ++col, x += width) {
       if (i == children().end())
         return;
-      (*i++)->SetBounds(x + horizontal_margins_, y + vertical_margins_, width,
-                        height);
+      (*i++)->SetBounds(x, y, width, height);
     }
   }
 }
@@ -163,10 +151,10 @@ bool DesktopMediaListView::OnKeyPressed(const ui::KeyEvent& event) {
   return true;
 }
 
-std::optional<content::DesktopMediaID> DesktopMediaListView::GetSelection() {
+absl::optional<content::DesktopMediaID> DesktopMediaListView::GetSelection() {
   DesktopMediaSourceView* view = GetSelectedView();
-  return view ? std::optional<content::DesktopMediaID>(view->source_id())
-              : std::nullopt;
+  return view ? absl::optional<content::DesktopMediaID>(view->source_id())
+              : absl::nullopt;
 }
 
 DesktopMediaListController::SourceListListener*
@@ -268,9 +256,8 @@ void DesktopMediaListView::SetStyle(DesktopMediaSourceViewStyle* style) {
   active_style_ = style;
   controller_->SetThumbnailSize(style->image_rect.size());
 
-  for (views::View* child : children()) {
+  for (auto* child : children())
     AsDesktopMediaSourceView(child)->SetStyle(*active_style_);
-  }
 }
 
 DesktopMediaSourceView* DesktopMediaListView::GetSelectedView() {

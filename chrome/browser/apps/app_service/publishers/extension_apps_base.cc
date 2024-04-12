@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
+#include "chrome/browser/apps/app_service/publishers/extension_apps.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -17,7 +18,6 @@
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/apps/app_service/launch_utils.h"
-#include "chrome/browser/apps/app_service/publishers/extension_apps.h"
 #include "chrome/browser/apps/app_service/publishers/extension_apps_enable_flow.h"
 #include "chrome/browser/apps/app_service/publishers/extension_apps_util.h"
 #include "chrome/browser/ash/app_list/extension_app_utils.h"
@@ -51,6 +51,7 @@
 #include "extensions/common/extension_urls.h"
 #include "extensions/common/manifest_handlers/options_page_info.h"
 #include "extensions/common/switches.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/window_open_disposition_utils.h"
 #include "url/url_constants.h"
 
@@ -161,7 +162,6 @@ AppPtr ExtensionAppsBase::CreateAppImpl(const extensions::Extension* extension,
   DCHECK(policy);
   app->allow_uninstall = policy->UserMayModifySettings(extension, nullptr) &&
                          !policy->MustRemainInstalled(extension, nullptr);
-  app->allow_close = true;
   return app;
 }
 
@@ -348,9 +348,6 @@ void ExtensionAppsBase::Launch(const std::string& app_id,
     case apps::LaunchSource::kFromReparenting:
     case apps::LaunchSource::kFromProfileMenu:
     case apps::LaunchSource::kFromSysTrayCalendar:
-    case apps::LaunchSource::kFromInstaller:
-    case apps::LaunchSource::kFromFirstRun:
-    case apps::LaunchSource::kFromWelcomeTour:
       break;
   }
 

@@ -86,7 +86,7 @@ RTCDtlsTransport::getRemoteCertificates() const {
 }
 
 RTCIceTransport* RTCDtlsTransport::iceTransport() const {
-  return ice_transport_.Get();
+  return ice_transport_;
 }
 
 webrtc::DtlsTransportInterface* RTCDtlsTransport::native_transport() {
@@ -181,7 +181,7 @@ void RTCDtlsTransport::Trace(Visitor* visitor) const {
   visitor->Trace(remote_certificates_);
   visitor->Trace(ice_transport_);
   DtlsTransportProxy::Delegate::Trace(visitor);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextClient::Trace(visitor);
 }
 

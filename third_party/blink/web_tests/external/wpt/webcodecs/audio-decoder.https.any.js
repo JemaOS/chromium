@@ -1,64 +1,26 @@
 // META: global=window,dedicatedworker
 // META: script=/webcodecs/utils.js
 
-
-const detachedArrayBuffer = new ArrayBuffer(4);
-var b = detachedArrayBuffer.transferToFixedLength();
-
 const invalidConfigs = [
   {
-    comment: 'Missing codec',
-    config: {
-      sampleRate: 48000,
-      numberOfChannels: 2,
-    },
-  },
-  {
     comment: 'Empty codec',
-    config: {
-      codec: '',
-      sampleRate: 48000,
-      numberOfChannels: 2,
-    },
+    config: {codec: ''},
   },
   {
-    comment: 'Missing sampleRate',
-    config: {
-      codec: 'opus',
-      sampleRate: 48000,
-    },
+    comment: 'Unrecognized codec',
+    config: {codec: 'bogus'},
   },
   {
-    comment: 'Missing numberOfChannels',
-    config: {
-      codec: 'opus',
-      sampleRate: 48000,
-    },
+    comment: 'Video codec',
+    config: {codec: 'vp8'},
   },
   {
-    comment: 'Zero sampleRate',
-    config: {
-      codec: 'opus',
-      sampleRate: 0,
-      numberOfChannels: 2,
-    },
+    comment: 'Ambiguous codec',
+    config: {codec: 'vp9'},
   },
   {
-    comment: 'Zero channels',
-    config: {
-      codec: 'opus',
-      sampleRate: 8000,
-      numberOfChannels: 0,
-    },
-  },
-  {
-    comment: 'Valid configuration except detached description',
-    config: {
-      codec: 'opus',
-      sampleRate: 8000,
-      numberOfChannels: 1,
-      description: detachedArrayBuffer
-    },
+    comment: 'Codec with MIME type',
+    config: {codec: 'audio/webm; codecs="opus"'},
   },
 ];
 
@@ -68,7 +30,7 @@ invalidConfigs.forEach(entry => {
         return promise_rejects_js(
             t, TypeError, AudioDecoder.isConfigSupported(entry.config));
       },
-      'Test that AudioDecoder.isConfigSupported() rejects invalid config: ' +
+      'Test that AudioDecoder.isConfigSupported() rejects invalid config:' +
           entry.comment);
 });
 
@@ -81,96 +43,7 @@ invalidConfigs.forEach(entry => {
         });
         t.done();
       },
-      'Test that AudioDecoder.configure() rejects invalid config: ' +
-          entry.comment);
-});
-
-const validButUnsupportedConfigs = [
-  {
-    comment: 'Unrecognized codec',
-    config: {
-      codec: 'bogus',
-      sampleRate: 48000,
-      numberOfChannels: 2,
-    },
-  },
-  {
-    comment: 'Video codec',
-    config: {
-      codec: 'vp8',
-      sampleRate: 48000,
-      numberOfChannels: 2,
-    },
-  },
-  {
-    comment: 'Ambiguous codec',
-    config: {
-      codec: 'vp9',
-      sampleRate: 48000,
-      numberOfChannels: 2,
-    },
-  },
-  {
-    comment: 'Codec with MIME type',
-    config: {
-      codec: 'audio/webm; codecs="opus"',
-      sampleRate: 48000,
-      numberOfChannels: 2,
-    },
-  },
-  {
-    comment: 'Possible future opus codec string',
-    config: {
-      codec: 'opus.123',
-      sampleRate: 48000,
-      numberOfChannels: 2,
-    }
-  },
-  {
-    comment: 'Possible future aac codec string',
-    config: {
-      codec: 'mp4a.FF.9',
-      sampleRate: 48000,
-      numberOfChannels: 2,
-    }
-  },
-];
-
-validButUnsupportedConfigs.forEach(entry => {
-  promise_test(
-      t => {
-        return AudioDecoder.isConfigSupported(entry.config).then(support => {
-          assert_false(support.supported);
-        });
-      },
-      'Test that AudioDecoder.isConfigSupported() doesn\'t support config: ' +
-          entry.comment);
-});
-
-validButUnsupportedConfigs.forEach(entry => {
-  promise_test(
-      t => {
-        let isErrorCallbackCalled = false;
-        let codec = new AudioDecoder({
-          output: t.unreached_func('unexpected output'),
-          error: t.step_func_done(e => {
-            isErrorCallbackCalled = true;
-            assert_true(e instanceof DOMException);
-            assert_equals(e.name, 'NotSupportedError');
-            assert_equals(codec.state, 'closed', 'state');
-          })
-        });
-        codec.configure(entry.config);
-        return codec.flush()
-            .then(t.unreached_func('flush succeeded unexpectedly'))
-            .catch(t.step_func(e => {
-              assert_true(isErrorCallbackCalled, "isErrorCallbackCalled");
-              assert_true(e instanceof DOMException);
-              assert_equals(e.name, 'NotSupportedError');
-              assert_equals(codec.state, 'closed', 'state');
-            }));
-      },
-      'Test that AudioDecoder.configure() doesn\'t support config: ' +
+      'Test that AudioDecoder.configure() rejects invalid config:' +
           entry.comment);
 });
 

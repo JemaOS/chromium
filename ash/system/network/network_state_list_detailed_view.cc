@@ -26,7 +26,6 @@
 #include "third_party/cros_system_api/dbus/service_constants.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/label.h"
@@ -180,7 +179,7 @@ class NetworkStateListDetailedView::InfoBubble
   }
 
   // Not owned.
-  raw_ptr<NetworkStateListDetailedView> detailed_view_;
+  raw_ptr<NetworkStateListDetailedView, ExperimentalAsh> detailed_view_;
 };
 
 //------------------------------------------------------------------------------
@@ -188,7 +187,7 @@ class NetworkStateListDetailedView::InfoBubble
 
 NetworkStateListDetailedView::NetworkStateListDetailedView(
     DetailedViewDelegate* delegate,
-    NetworkDetailedViewListType list_type,
+    ListType list_type,
     LoginStatus login)
     : TrayDetailedView(delegate),
       list_type_(list_type),
@@ -197,6 +196,7 @@ NetworkStateListDetailedView::NetworkStateListDetailedView(
       info_button_(nullptr),
       settings_button_(nullptr),
       info_bubble_(nullptr) {
+  RecordDetailedViewSection(DetailedViewSection::kDetailedSection);
   OverrideProgressBarAccessibleName(l10n_util::GetStringUTF16(
       IDS_ASH_STATUS_TRAY_NETWORK_PROGRESS_ACCESSIBLE_NAME));
 }
@@ -213,9 +213,15 @@ void NetworkStateListDetailedView::ToggleInfoBubbleForTesting() {
   ToggleInfoBubble();
 }
 
+const char* NetworkStateListDetailedView::GetClassName() const {
+  return "NetworkStateListDetailedView";
+}
+
 void NetworkStateListDetailedView::Init() {
   CreateScrollableList();
-  CreateTitleRow(GetStringIdForNetworkDetailedViewTitleRow(list_type_));
+  CreateTitleRow(list_type_ == ListType::LIST_TYPE_NETWORK
+                     ? IDS_ASH_STATUS_TRAY_NETWORK
+                     : IDS_ASH_STATUS_TRAY_VPN);
 
   model_->AddObserver(this);
   Update();
@@ -229,7 +235,7 @@ void NetworkStateListDetailedView::Update() {
   UpdateNetworkList();
   UpdateHeaderButtons();
   UpdateScanningBar();
-  DeprecatedLayoutImmediately();
+  Layout();
 }
 
 void NetworkStateListDetailedView::ActiveNetworkStateChanged() {
@@ -265,6 +271,8 @@ void NetworkStateListDetailedView::HandleViewClickedImpl(
       if (!Shell::Get()->session_controller()->ShouldEnableSettings()) {
         return;
       }
+      RecordNetworkRowClickedAction(
+          NetworkRowClickedAction::kOpenSimUnlockDialog);
       Shell::Get()->system_tray_model()->client()->ShowSettingsSimUnlock();
       return;
     }
@@ -282,6 +290,10 @@ void NetworkStateListDetailedView::HandleViewClickedImpl(
           list_type_ == LIST_TYPE_VPN
               ? UserMetricsAction("StatusArea_VPN_ConnectToNetwork")
               : UserMetricsAction("StatusArea_Network_ConnectConfigured"));
+      if (list_type_ == LIST_TYPE_NETWORK) {
+        RecordNetworkRowClickedAction(
+            NetworkRowClickedAction::kConnectToNetwork);
+      }
       NetworkConnect::Get()->ConnectToNetworkId(network->guid);
       return;
     }
@@ -292,6 +304,10 @@ void NetworkStateListDetailedView::HandleViewClickedImpl(
       list_type_ == LIST_TYPE_VPN
           ? UserMetricsAction("StatusArea_VPN_ConnectionDetails")
           : UserMetricsAction("StatusArea_Network_ConnectionDetails"));
+  if (list_type_ == LIST_TYPE_NETWORK) {
+    RecordNetworkRowClickedAction(
+        NetworkRowClickedAction::kOpenNetworkSettingsPage);
+  }
   Shell::Get()->system_tray_model()->client()->ShowNetworkSettings(
       network ? network->guid : std::string());
 }
@@ -495,8 +511,5 @@ bool NetworkStateListDetailedView::IsWifiEnabled() {
   return model_->GetDeviceState(NetworkType::kWiFi) ==
          DeviceStateType::kEnabled;
 }
-
-BEGIN_METADATA(NetworkStateListDetailedView)
-END_METADATA
 
 }  // namespace ash

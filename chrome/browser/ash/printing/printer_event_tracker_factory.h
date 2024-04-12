@@ -34,7 +34,7 @@ class PrinterEventTrackerFactory : public ProfileKeyedServiceFactory {
   bool logging_enabled_ = true;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

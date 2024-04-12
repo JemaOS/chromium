@@ -18,9 +18,8 @@ class NearbyConnectionsManager;
 
 class NearbyConnectionImpl : public NearbyConnection {
  public:
-  NearbyConnectionImpl(
-      base::WeakPtr<NearbyConnectionsManager> nearby_connections_manager,
-      const std::string& endpoint_id);
+  NearbyConnectionImpl(NearbyConnectionsManager* nearby_connections_manager,
+                       const std::string& endpoint_id);
   ~NearbyConnectionImpl() override;
 
   // NearbyConnection:
@@ -38,7 +37,8 @@ class NearbyConnectionImpl : public NearbyConnection {
 
   SEQUENCE_CHECKER(sequence_checker_);
 
-  base::WeakPtr<NearbyConnectionsManager> nearby_connections_manager_;
+  raw_ptr<NearbyConnectionsManager, ExperimentalAsh>
+      nearby_connections_manager_;
   std::string endpoint_id_;
   ReadCallback read_callback_;
   base::OnceClosure disconnect_listener_;

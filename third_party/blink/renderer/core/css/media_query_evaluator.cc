@@ -29,20 +29,19 @@
 
 #include "third_party/blink/renderer/core/css/media_query_evaluator.h"
 
+#include "services/device/public/mojom/device_posture_provider.mojom-blink.h"
 #include "third_party/blink/public/common/css/forced_colors.h"
 #include "third_party/blink/public/common/css/navigation_controls.h"
-#include "third_party/blink/public/common/css/scripting.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_metric_builder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_surface.h"
-#include "third_party/blink/public/mojom/device_posture/device_posture_provider.mojom-blink.h"
 #include "third_party/blink/public/mojom/manifest/display_mode.mojom-shared.h"
 #include "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
 #include "third_party/blink/renderer/core/css/css_container_values.h"
+#include "third_party/blink/renderer/core/css/css_custom_property_declaration.h"
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
 #include "third_party/blink/renderer/core/css/css_resolution_units.h"
 #include "third_party/blink/renderer/core/css/css_to_length_conversion_data.h"
-#include "third_party/blink/renderer/core/css/css_unparsed_declaration_value.h"
 #include "third_party/blink/renderer/core/css/media_feature_names.h"
 #include "third_party/blink/renderer/core/css/media_features.h"
 #include "third_party/blink/renderer/core/css/media_list.h"
@@ -65,7 +64,6 @@
 #include "third_party/blink/renderer/platform/graphics/color_space_gamut.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
-#include "ui/base/ui_base_types.h"
 #include "ui/gfx/geometry/rect_f.h"
 
 namespace blink {
@@ -119,7 +117,7 @@ KleeneValue KleeneAnd(KleeneValue a, KleeneValue b) {
 
 }  // namespace
 
-using mojom::blink::DevicePostureType;
+using device::mojom::blink::DevicePostureType;
 using mojom::blink::HoverType;
 using mojom::blink::PointerType;
 
@@ -231,7 +229,7 @@ KleeneValue MediaQueryEvaluator::Eval(
   if (auto* n = DynamicTo<MediaQueryOrExpNode>(node)) {
     return EvalOr(n->Left(), n->Right(), result_flags);
   }
-  if (IsA<MediaQueryUnknownExpNode>(node)) {
+  if (auto* n = DynamicTo<MediaQueryUnknownExpNode>(node)) {
     return KleeneValue::kUnknown;
   }
   return EvalFeature(To<MediaQueryFeatureExpNode>(node), result_flags);
@@ -448,68 +446,10 @@ static bool DisplayModeMediaFeatureEval(const MediaQueryExpValue& value,
       return mode == blink::mojom::DisplayMode::kBorderless;
     case CSSValueID::kTabbed:
       return mode == blink::mojom::DisplayMode::kTabbed;
-    case CSSValueID::kPictureInPicture:
-      return mode == blink::mojom::DisplayMode::kPictureInPicture;
     default:
       NOTREACHED();
       return false;
   }
-}
-
-// WindowShowState is mapped into a CSS media query value `display-state`.
-static bool DisplayStateMediaFeatureEval(const MediaQueryExpValue& value,
-                                         MediaQueryOperator,
-                                         const MediaValues& media_values) {
-  // No value = boolean context:
-  // https://w3c.github.io/csswg-drafts/mediaqueries/#mq-boolean-context
-  if (!value.IsValid()) {
-    return true;
-  }
-
-  if (!value.IsId()) {
-    return false;
-  }
-
-  ui::WindowShowState state = media_values.WindowShowState();
-  MaybeRecordMediaFeatureValue(
-      media_values, IdentifiableSurface::MediaFeatureName::kDisplayState,
-      state);
-
-  switch (value.Id()) {
-    case CSSValueID::kFullscreen:
-      return state == ui::SHOW_STATE_FULLSCREEN;
-    case CSSValueID::kMaximized:
-      return state == ui::SHOW_STATE_MAXIMIZED;
-    case CSSValueID::kMinimized:
-      return state == ui::SHOW_STATE_MINIMIZED;
-    case CSSValueID::kNormal:
-      return state == ui::SHOW_STATE_DEFAULT ||
-             state == ui::SHOW_STATE_INACTIVE || state == ui::SHOW_STATE_NORMAL;
-    default:
-      NOTREACHED_NORETURN();
-  }
-}
-
-static bool ResizableMediaFeatureEval(const MediaQueryExpValue& value,
-                                      MediaQueryOperator,
-                                      const MediaValues& media_values) {
-  // No value = boolean context:
-  // https://w3c.github.io/csswg-drafts/mediaqueries/#mq-boolean-context
-  if (!value.IsValid()) {
-    return true;
-  }
-
-  if (!value.IsId()) {
-    return false;
-  }
-
-  bool resizable = media_values.Resizable();
-  MaybeRecordMediaFeatureValue(
-      media_values, IdentifiableSurface::MediaFeatureName::kResizable,
-      resizable);
-
-  return (resizable && value.Id() == CSSValueID::kTrue) ||
-         (!resizable && value.Id() == CSSValueID::kFalse);
 }
 
 static bool OrientationMediaFeatureEval(const MediaQueryExpValue& value,
@@ -1132,27 +1072,6 @@ static bool PrefersReducedDataMediaFeatureEval(
          media_values.PrefersReducedData();
 }
 
-static bool PrefersReducedTransparencyMediaFeatureEval(
-    const MediaQueryExpValue& value,
-    MediaQueryOperator,
-    const MediaValues& media_values) {
-  MaybeRecordMediaFeatureValue(
-      media_values,
-      IdentifiableSurface::MediaFeatureName::kPrefersReducedTransparency,
-      media_values.PrefersReducedTransparency());
-
-  if (!value.IsValid()) {
-    return media_values.PrefersReducedTransparency();
-  }
-
-  if (!value.IsId()) {
-    return false;
-  }
-
-  return (value.Id() == CSSValueID::kNoPreference) ^
-         media_values.PrefersReducedTransparency();
-}
-
 static bool AnyPointerMediaFeatureEval(const MediaQueryExpValue& value,
                                        MediaQueryOperator,
                                        const MediaValues& media_values) {
@@ -1373,8 +1292,6 @@ static bool HorizontalViewportSegmentsMediaFeatureEval(
     const MediaQueryExpValue& value,
     MediaQueryOperator op,
     const MediaValues& media_values) {
-  UseCounter::Count(media_values.GetDocument(),
-                    WebFeature::kViewportSegmentsMediaFeature);
   int horizontal_viewport_segments =
       media_values.GetHorizontalViewportSegments();
 
@@ -1397,8 +1314,6 @@ static bool VerticalViewportSegmentsMediaFeatureEval(
     const MediaQueryExpValue& value,
     MediaQueryOperator op,
     const MediaValues& media_values) {
-  UseCounter::Count(media_values.GetDocument(),
-                    WebFeature::kViewportSegmentsMediaFeature);
   int vertical_viewport_segments = media_values.GetVerticalViewportSegments();
 
   MaybeRecordMediaFeatureValue(
@@ -1464,8 +1379,6 @@ static bool OverflowBlockMediaFeatureEval(const MediaQueryExpValue& value,
 static bool DevicePostureMediaFeatureEval(const MediaQueryExpValue& value,
                                           MediaQueryOperator,
                                           const MediaValues& media_values) {
-  UseCounter::Count(media_values.GetDocument(),
-                    WebFeature::kDevicePostureMediaFeature);
   // isValid() is false if there is no parameter. Without parameter we should
   // return true to indicate that device posture is enabled in the
   // browser.
@@ -1515,104 +1428,6 @@ static bool UpdateMediaFeatureEval(const MediaQueryExpValue& value,
       return can_update &&
              device_update_ability_type ==
                  mojom::blink::OutputDeviceUpdateAbilityType::kFastType;
-    default:
-      NOTREACHED();
-      return false;
-  }
-}
-
-static bool StuckMediaFeatureEval(const MediaQueryExpValue& value,
-                                  MediaQueryOperator op,
-                                  const MediaValues& media_values) {
-  if (!value.IsValid()) {
-    return media_values.Stuck();
-  }
-
-  switch (value.Id()) {
-    case CSSValueID::kNone:
-      return media_values.StuckHorizontal() == ContainerStuckPhysical::kNo &&
-             media_values.StuckVertical() == ContainerStuckPhysical::kNo;
-    case CSSValueID::kTop:
-      return media_values.StuckVertical() == ContainerStuckPhysical::kTop;
-    case CSSValueID::kLeft:
-      return media_values.StuckHorizontal() == ContainerStuckPhysical::kLeft;
-    case CSSValueID::kBottom:
-      return media_values.StuckVertical() == ContainerStuckPhysical::kBottom;
-    case CSSValueID::kRight:
-      return media_values.StuckHorizontal() == ContainerStuckPhysical::kRight;
-    case CSSValueID::kInsetBlockStart:
-      return media_values.StuckBlock() == ContainerStuckLogical::kStart;
-    case CSSValueID::kInsetBlockEnd:
-      return media_values.StuckBlock() == ContainerStuckLogical::kEnd;
-    case CSSValueID::kInsetInlineStart:
-      return media_values.StuckInline() == ContainerStuckLogical::kStart;
-    case CSSValueID::kInsetInlineEnd:
-      return media_values.StuckInline() == ContainerStuckLogical::kEnd;
-    default:
-      NOTREACHED();
-      return false;
-  }
-}
-
-static bool SnappedMediaFeatureEval(const MediaQueryExpValue& value,
-                                    MediaQueryOperator op,
-                                    const MediaValues& media_values) {
-  if (!value.IsValid()) {
-    return media_values.Snapped();
-  }
-  switch (value.Id()) {
-    case CSSValueID::kNone:
-      return media_values.Snapped();
-    case CSSValueID::kBlock:
-      return media_values.SnappedBlock();
-    case CSSValueID::kInline:
-      return media_values.SnappedInline();
-    default:
-      NOTREACHED();
-      return false;
-  }
-}
-
-static bool InvertedColorsMediaFeatureEval(const MediaQueryExpValue& value,
-                                           MediaQueryOperator,
-                                           const MediaValues& media_values) {
-  MaybeRecordMediaFeatureValue(
-      media_values, IdentifiableSurface::MediaFeatureName::kInvertedColors,
-      media_values.InvertedColors());
-
-  if (!value.IsValid()) {
-    return media_values.InvertedColors();
-  }
-
-  if (!value.IsId()) {
-    return false;
-  }
-
-  return (value.Id() == CSSValueID::kNone) != media_values.InvertedColors();
-}
-
-static bool ScriptingMediaFeatureEval(const MediaQueryExpValue& value,
-                                      MediaQueryOperator,
-                                      const MediaValues& media_values) {
-  MaybeRecordMediaFeatureValue(
-      media_values, IdentifiableSurface::MediaFeatureName::kScripting,
-      media_values.GetScripting());
-
-  if (!value.IsValid()) {
-    return media_values.GetScripting() == Scripting::kEnabled;
-  }
-
-  if (!value.IsId()) {
-    return false;
-  }
-
-  switch (value.Id()) {
-    case CSSValueID::kNone:
-      return media_values.GetScripting() == Scripting::kNone;
-    case CSSValueID::kInitialOnly:
-      return media_values.GetScripting() == Scripting::kInitialOnly;
-    case CSSValueID::kEnabled:
-      return media_values.GetScripting() == Scripting::kEnabled;
     default:
       NOTREACHED();
       return false;
@@ -1746,9 +1561,9 @@ KleeneValue MediaQueryEvaluator::EvalStyleFeature(
       container, CSSPropertyName(property_name), query_specified);
 
   if (const auto* decl_value =
-          DynamicTo<CSSUnparsedDeclarationValue>(query_value)) {
+          DynamicTo<CSSCustomPropertyDeclaration>(query_value)) {
     CSSVariableData* query_computed =
-        decl_value ? decl_value->VariableDataValue() : nullptr;
+        decl_value ? &decl_value->Value() : nullptr;
     CSSVariableData* computed =
         container->ComputedStyleRef().GetVariableData(property_name);
 
@@ -1760,9 +1575,9 @@ KleeneValue MediaQueryEvaluator::EvalStyleFeature(
 
   const CSSValue* computed_value =
       CustomProperty(property_name, *media_values_->GetDocument())
-          .CSSValueFromComputedStyle(
-              container->ComputedStyleRef(), nullptr /* layout_object */,
-              false /* allow_visited_style */, CSSValuePhase::kComputedValue);
+          .CSSValueFromComputedStyle(container->ComputedStyleRef(),
+                                     nullptr /* layout_object */,
+                                     false /* allow_visited_style */);
   if (base::ValuesEquivalent(query_value, computed_value) == explicit_value) {
     return KleeneValue::kTrue;
   }

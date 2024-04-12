@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 class ChromeBrowsingDataLifetimeManager;
@@ -30,13 +30,14 @@ class ChromeBrowsingDataLifetimeManagerFactory
   static ChromeBrowsingDataLifetimeManager* GetForProfile(Profile* profile);
 
  private:
-  friend base::NoDestructor<ChromeBrowsingDataLifetimeManagerFactory>;
+  friend struct base::DefaultSingletonTraits<
+      ChromeBrowsingDataLifetimeManagerFactory>;
 
   ChromeBrowsingDataLifetimeManagerFactory();
   ~ChromeBrowsingDataLifetimeManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

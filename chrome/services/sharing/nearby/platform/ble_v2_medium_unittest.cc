@@ -2,14 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/services/sharing/nearby/platform/ble_v2_medium.h"
-
 #include <memory>
 
 #include "base/memory/raw_ptr.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
-#include "chrome/services/sharing/nearby/common/nearby_features.h"
+#include "chrome/services/sharing/nearby/platform/ble_v2_medium.h"
 #include "chrome/services/sharing/nearby/platform/count_down_latch.h"
 #include "chrome/services/sharing/nearby/test_support/fake_adapter.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -81,9 +78,6 @@ class BleV2MediumTest : public testing::Test {
     device_info->address = address;
     device_info->name_for_display = address;
     device_info->service_data_map = service_data_map;
-
-    // TODO(b/285637726): Once the bug is resolved, test whether the
-    // service_uuids are being populated correctly.
     for (auto pair : service_data_map) {
       device_info->service_uuids.push_back(pair.first);
     }
@@ -91,7 +85,7 @@ class BleV2MediumTest : public testing::Test {
     return device_info;
   }
 
-  raw_ptr<bluetooth::FakeAdapter> fake_adapter_;
+  raw_ptr<bluetooth::FakeAdapter, ExperimentalAsh> fake_adapter_;
   mojo::SharedRemote<bluetooth::mojom::Adapter> remote_adapter_;
   std::unique_ptr<BleV2Medium> ble_v2_medium_;
 
@@ -243,27 +237,6 @@ TEST_F(BleV2MediumTest, TestScanning_IgnoreIrrelevantAdvertisement) {
 
   EXPECT_TRUE(scanning_session->stop_scanning().ok());
   run_loop.Run();
-}
-
-TEST_F(BleV2MediumTest, IsExtendedAdvertisementsAvailable_FlagDisabled) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeatures(
-      /*enabled_features=*/{},
-      /*disabled_features=*/{
-          ::features::kEnableNearbyBleV2ExtendedAdvertising});
-
-  EXPECT_FALSE(ble_v2_medium_->IsExtendedAdvertisementsAvailable());
-}
-
-TEST_F(BleV2MediumTest, IsExtendedAdvertisementsAvailable_FlagEnabled) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeatures(
-      /*enabled_features=*/{::features::kEnableNearbyBleV2ExtendedAdvertising},
-      /*disabled_features=*/{});
-
-  // Once we check for hardware support, we should enforce that both the
-  // feature flag AND hardware support need to be true for this to be true.
-  EXPECT_TRUE(ble_v2_medium_->IsExtendedAdvertisementsAvailable());
 }
 
 }  // namespace nearby::chrome

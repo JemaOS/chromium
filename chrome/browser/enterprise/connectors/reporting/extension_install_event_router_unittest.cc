@@ -12,8 +12,8 @@
 #include "chrome/browser/enterprise/connectors/reporting/realtime_reporting_client.h"
 #include "chrome/browser/enterprise/connectors/reporting/realtime_reporting_client_factory.h"
 #include "chrome/browser/enterprise/connectors/reporting/reporting_service_settings.h"
-#include "chrome/browser/enterprise/connectors/test/deep_scanning_test_utils.h"
 #include "chrome/browser/policy/dm_token_utils.h"
+#include "chrome/browser/safe_browsing/cloud_content_scanning/deep_scanning_test_utils.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
@@ -33,16 +33,10 @@ using ::testing::Return;
 namespace enterprise_connectors {
 
 namespace {
-
-constexpr char kFakeExtensionId[] = "fake-extension-id";
-constexpr char kFakeExtensionName[] = "Foo extension";
-constexpr char kFakeExtensionDescription[] = "Does Foo";
-constexpr char kFakeProfileUsername[] = "Tiamat";
-constexpr char kFakeInstallAction[] = "INSTALL";
-constexpr char kFakeUpdateAction[] = "UPDATE";
-constexpr char kFakeUninstallAction[] = "UNINSTALL";
-constexpr char kFakeExtensionVersion[] = "1";
-constexpr char kFakeExtensionSource[] = "EXTERNAL";
+const char* kFakeExtensionId = "fake-extension-id";
+const char* kFakeExtensionName = "Foo extension";
+const char* kFakeExtensionDescription = "Does Foo";
+const char* kFakeProfileUsername = "Tiamat";
 
 }  // namespace
 
@@ -77,7 +71,7 @@ class ExtensionInstallEventRouterTest : public testing::Test {
     EXPECT_TRUE(profile_manager_.SetUp());
     profile_ = profile_manager_.CreateTestingProfile(kFakeProfileUsername);
     policy::SetDMTokenForTesting(
-        policy::DMToken::CreateValidToken("fake-token"));
+        policy::DMToken::CreateValidTokenForTesting("fake-token"));
 
     RealtimeReportingClientFactory::GetInstance()->SetTestingFactory(
         profile_, base::BindRepeating(&CreateMockRealtimeReportingClient));
@@ -87,7 +81,7 @@ class ExtensionInstallEventRouterTest : public testing::Test {
     mockRealtimeReportingClient_ = static_cast<MockRealtimeReportingClient*>(
         RealtimeReportingClientFactory::GetForProfile(profile_));
 
-    test::SetOnSecurityEventReporting(
+    safe_browsing::SetOnSecurityEventReporting(
         profile_->GetPrefs(), /*enabled=*/true,
         /*enabled_event_names=*/std::set<std::string>(),
         /*enabled_opt_in_events=*/
@@ -132,16 +126,16 @@ class ExtensionInstallEventRouterTest : public testing::Test {
   std::unique_ptr<ExtensionInstallEventRouter> extensionInstallEventRouter_;
 };
 
-TEST_F(ExtensionInstallEventRouterTest, CheckInstallEventReported) {
+TEST_F(ExtensionInstallEventRouterTest, CheckEventReported) {
   base::Value::Dict expectedEvent;
 
   expectedEvent.Set("id", kFakeExtensionId);
   expectedEvent.Set("name", kFakeExtensionName);
   expectedEvent.Set("description", kFakeExtensionDescription);
-  expectedEvent.Set("extension_action_type", kFakeInstallAction);
-  expectedEvent.Set("extension_version", kFakeExtensionVersion);
-  expectedEvent.Set("extension_source", kFakeExtensionSource);
+  expectedEvent.Set("profileUserName", kFakeProfileUsername);
 
+  EXPECT_CALL(*mockRealtimeReportingClient_, GetProfileUserName())
+      .WillOnce(Return(kFakeProfileUsername));
   EXPECT_CALL(
       *mockRealtimeReportingClient_,
       ReportRealtimeEvent(ReportingServiceSettings::kExtensionInstallEvent, _,
@@ -149,45 +143,6 @@ TEST_F(ExtensionInstallEventRouterTest, CheckInstallEventReported) {
       .Times(1);
   extensionInstallEventRouter_->OnExtensionInstalled(
       nullptr, extension_chrome_.get(), false);
-}
-
-TEST_F(ExtensionInstallEventRouterTest, CheckUpdateEventReported) {
-  base::Value::Dict expectedEvent;
-
-  expectedEvent.Set("id", kFakeExtensionId);
-  expectedEvent.Set("name", kFakeExtensionName);
-  expectedEvent.Set("description", kFakeExtensionDescription);
-  expectedEvent.Set("extension_action_type", kFakeUpdateAction);
-  expectedEvent.Set("extension_version", kFakeExtensionVersion);
-  expectedEvent.Set("extension_source", kFakeExtensionSource);
-
-  EXPECT_CALL(
-      *mockRealtimeReportingClient_,
-      ReportRealtimeEvent(ReportingServiceSettings::kExtensionInstallEvent, _,
-                          Eq(ByRef(expectedEvent))))
-      .Times(1);
-  extensionInstallEventRouter_->OnExtensionInstalled(
-      nullptr, extension_chrome_.get(), true);
-}
-
-TEST_F(ExtensionInstallEventRouterTest, CheckUninstallEventReported) {
-  base::Value::Dict expectedEvent;
-
-  expectedEvent.Set("id", kFakeExtensionId);
-  expectedEvent.Set("name", kFakeExtensionName);
-  expectedEvent.Set("description", kFakeExtensionDescription);
-  expectedEvent.Set("extension_action_type", kFakeUninstallAction);
-  expectedEvent.Set("extension_version", kFakeExtensionVersion);
-  expectedEvent.Set("extension_source", kFakeExtensionSource);
-
-  EXPECT_CALL(
-      *mockRealtimeReportingClient_,
-      ReportRealtimeEvent(ReportingServiceSettings::kExtensionInstallEvent, _,
-                          Eq(ByRef(expectedEvent))))
-      .Times(1);
-  extensionInstallEventRouter_->OnExtensionUninstalled(
-      nullptr, extension_chrome_.get(),
-      extensions::UNINSTALL_REASON_FOR_TESTING);
 }
 
 }  // namespace enterprise_connectors

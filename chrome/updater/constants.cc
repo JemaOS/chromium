@@ -36,7 +36,6 @@ const char kCrashMeSwitch[] = "crash-me";
 const char kCrashHandlerSwitch[] = "crash-handler";
 const char kUpdateSwitch[] = "update";
 const char kInstallSwitch[] = "install";
-const char kEulaRequiredSwitch[] = "eularequired";
 const char kRuntimeSwitch[] = "runtime";
 const char kUninstallSwitch[] = "uninstall";
 const char kUninstallSelfSwitch[] = "uninstall-self";
@@ -49,7 +48,7 @@ const char kEnableLoggingSwitch[] = "enable-logging";
 const char kLoggingModuleSwitch[] = "vmodule";
 const char kLoggingModuleSwitchValue[] =
 #if BUILDFLAG(IS_WIN)
-    "*/components/winhttp/*=1,"
+    "*/components/winhttp/*=2,"
 #endif
     "*/components/update_client/*=2,*/chrome/updater/*=2";
 const char kAppIdSwitch[] = "app-id";
@@ -74,7 +73,6 @@ const char kHealthCheckSwitch[] = "healthcheck";
 
 const char kEnterpriseSwitch[] = "enterprise";  // backward-compatibility.
 const char kSilentSwitch[] = "silent";          // backward-compatibility.
-const char kAlwaysLaunchCmdSwitch[] = "alwayslaunchcmd";
 const char kHandoffSwitch[] = "handoff";        // backward-compatibility.
 const char kOfflineDirSwitch[] = "offlinedir";  // backward-compatibility.
 const char kAppArgsSwitch[] = "appargs";        // backward-compatibility.
@@ -98,16 +96,12 @@ const char kUninstallScript[] = "uninstall.cmd";
 const char kDevOverrideKeyUrl[] = "url";
 const char kDevOverrideKeyCrashUploadUrl[] = "crash_upload_url";
 const char kDevOverrideKeyDeviceManagementUrl[] = "device_management_url";
-const char kDevOverrideKeyAppLogoUrl[] = "app_logo_url";
 const char kDevOverrideKeyUseCUP[] = "use_cup";
 const char kDevOverrideKeyInitialDelay[] = "initial_delay";
 const char kDevOverrideKeyServerKeepAliveSeconds[] = "server_keep_alive";
 const char kDevOverrideKeyCrxVerifierFormat[] = "crx_verifier_format";
 const char kDevOverrideKeyGroupPolicies[] = "group_policies";
 const char kDevOverrideKeyOverinstallTimeout[] = "overinstall_timeout";
-const char kDevOverrideKeyIdleCheckPeriodSeconds[] = "idle_check_period";
-const char kDevOverrideKeyManagedDevice[] = "managed_device";
-const char kDevOverrideKeyEnableDiffUpdates[] = "enable_diff_updates";
 
 // Policy Management constants.
 const char kProxyModeDirect[] = "direct";
@@ -121,10 +115,10 @@ const char kDownloadPreferenceCacheable[] = "cacheable";
 
 const char kUTF8BOM[] = "\xEF\xBB\xBF";
 
-const char kSourceGroupPolicyManager[] = "Group Policy";
-const char kSourceDMPolicyManager[] = "Device Management";
-const char kSourceManagedPreferencePolicyManager[] = "Managed Preferences";
-const char kSourceDefaultValuesPolicyManager[] = "Default";
+const char kSourceGroupPolicyManager[] = "GroupPolicy";
+const char kSourceDMPolicyManager[] = "DeviceManagement";
+const char kSourceManagedPreferencePolicyManager[] = "ManagedPreference";
+const char kSourceDefaultValuesPolicyManager[] = "default";
 const char kSourceDictValuesPolicyManager[] = "DictValuePolicy";
 
 const char kSetupMutex[] = SETUP_MUTEX;

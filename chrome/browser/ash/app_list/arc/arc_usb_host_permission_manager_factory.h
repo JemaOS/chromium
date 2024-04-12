@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_APP_LIST_ARC_ARC_USB_HOST_PERMISSION_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_ASH_APP_LIST_ARC_ARC_USB_HOST_PERMISSION_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace arc {
@@ -25,12 +25,13 @@ class ArcUsbHostPermissionManagerFactory : public ProfileKeyedServiceFactory {
   static ArcUsbHostPermissionManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<ArcUsbHostPermissionManagerFactory>;
+  friend struct base::DefaultSingletonTraits<
+      ArcUsbHostPermissionManagerFactory>;
 
   ArcUsbHostPermissionManagerFactory();
   ~ArcUsbHostPermissionManagerFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

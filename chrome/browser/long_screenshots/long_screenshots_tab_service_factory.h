@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/keyed_service/core/simple_keyed_service_factory.h"
 
@@ -30,7 +30,7 @@ class LongScreenshotsTabServiceFactory : public SimpleKeyedServiceFactory {
       const LongScreenshotsTabServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<LongScreenshotsTabServiceFactory>;
+  friend struct base::DefaultSingletonTraits<LongScreenshotsTabServiceFactory>;
 
   LongScreenshotsTabServiceFactory();
   ~LongScreenshotsTabServiceFactory() override;

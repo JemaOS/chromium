@@ -6,22 +6,20 @@
  * @fileoverview This component displays the dynamic color options.
  */
 
-import 'chrome://resources/ash/common/personalization/common.css.js';
-import 'chrome://resources/ash/common/personalization/cros_button_style.css.js';
-import 'chrome://resources/ash/common/personalization/personalization_shared_icons.html.js';
-import 'chrome://resources/ash/common/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/ash/common/cr_elements/cr_toggle/cr_toggle.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import '../../css/common.css.js';
+import '../../css/cros_button_style.css.js';
+import 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 import 'chrome://resources/polymer/v3_0/iron-a11y-keys/iron-a11y-keys.js';
 import 'chrome://resources/polymer/v3_0/iron-selector/iron-selector.js';
 
-import {CrButtonElement} from 'chrome://resources/ash/common/cr_elements/cr_button/cr_button.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import {hexColorToSkColor} from 'chrome://resources/js/color_utils.js';
 import {SkColor} from 'chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
 import {IronA11yKeysElement} from 'chrome://resources/polymer/v3_0/iron-a11y-keys/iron-a11y-keys.js';
 import {IronSelectorElement} from 'chrome://resources/polymer/v3_0/iron-selector/iron-selector.js';
 
-import {ColorScheme} from '../../color_scheme.mojom-webui.js';
-import {SampleColorScheme, STATIC_COLOR_DARK_GREEN, STATIC_COLOR_GOOGLE_BLUE, STATIC_COLOR_LIGHT_PINK, STATIC_COLOR_LIGHT_PURPLE, StaticColor} from '../../personalization_app.mojom-webui.js';
+import {ColorScheme, SampleColorScheme, STATIC_COLOR_DARK_GREEN, STATIC_COLOR_GOOGLE_BLUE, STATIC_COLOR_LIGHT_PINK, STATIC_COLOR_LIGHT_PURPLE, StaticColor} from '../../personalization_app.mojom-webui.js';
 import {logDynamicColorColorSchemeButtonClick, logDynamicColorStaticColorButtonClick, logDynamicColorToggleButtonClick} from '../personalization_metrics_logger.js';
 import {WithPersonalizationStore} from '../personalization_store.js';
 import {convertToRgbHexStr} from '../utils.js';
@@ -41,16 +39,9 @@ export interface DynamicColorElement {
   };
 }
 
-/**
- * enumVal: the StaticColor enum value.
- * fillVal: the color displayed on the button.
- * seedVal: the color stored on the backend, used for calculating color
- * palettes.
- */
 export interface StaticColorInfo {
+  hexVal: string;
   enumVal: StaticColor;
-  fillVal: string;
-  seedVal: string;
 }
 
 interface OnStaticColorSelectedEvent {
@@ -128,29 +119,22 @@ export class DynamicColorElement extends WithPersonalizationStore {
   }
 
   private computePresetStaticColors_() {
-    const lightPink = convertToRgbHexStr(STATIC_COLOR_LIGHT_PINK);
-    const darkGreen = convertToRgbHexStr(STATIC_COLOR_DARK_GREEN);
-    const lightPurple = convertToRgbHexStr(STATIC_COLOR_LIGHT_PURPLE);
     return [
       {
+        hexVal: convertToRgbHexStr(STATIC_COLOR_GOOGLE_BLUE),
         enumVal: StaticColor.kGoogleBlue,
-        fillVal: '#4d72b4',
-        seedVal: convertToRgbHexStr(STATIC_COLOR_GOOGLE_BLUE),
       },
       {
+        hexVal: convertToRgbHexStr(STATIC_COLOR_LIGHT_PINK),
         enumVal: StaticColor.kLightPink,
-        fillVal: lightPink,
-        seedVal: lightPink,
       },
       {
+        hexVal: convertToRgbHexStr(STATIC_COLOR_DARK_GREEN),
         enumVal: StaticColor.kDarkGreen,
-        fillVal: darkGreen,
-        seedVal: darkGreen,
       },
       {
+        hexVal: convertToRgbHexStr(STATIC_COLOR_LIGHT_PURPLE),
         enumVal: StaticColor.kLightPurple,
-        fillVal: lightPurple,
-        seedVal: lightPurple,
       },
     ];
   }
@@ -166,7 +150,7 @@ export class DynamicColorElement extends WithPersonalizationStore {
     const staticColorInfo = event.model.staticColor;
     logDynamicColorStaticColorButtonClick(staticColorInfo.enumVal);
     setStaticColorPref(
-        hexColorToSkColor(staticColorInfo.seedVal), getThemeProvider(),
+        hexColorToSkColor(staticColorInfo.hexVal), getThemeProvider(),
         this.getStore());
   }
 
@@ -192,10 +176,10 @@ export class DynamicColorElement extends WithPersonalizationStore {
     return isAutomaticSeedColorEnabled(colorScheme);
   }
 
-  private getColorSchemeAriaChecked_(
+  private getColorSchemeAriaPressed_(
       colorScheme: number, colorSchemeSelected: number|null): 'true'|'false' {
-    const checkedColorScheme = colorSchemeSelected || DEFAULT_COLOR_SCHEME;
-    return checkedColorScheme === colorScheme ? 'true' : 'false';
+    const pressedColorScheme = colorSchemeSelected || DEFAULT_COLOR_SCHEME;
+    return pressedColorScheme === colorScheme ? 'true' : 'false';
   }
 
   private getColorSchemeAriaDescription_(colorScheme: ColorScheme): string {
@@ -214,10 +198,10 @@ export class DynamicColorElement extends WithPersonalizationStore {
     }
   }
 
-  private getStaticColorAriaChecked_(
+  private getStaticColorAriaPressed_(
       staticColor: string, staticColorSelected: SkColor|null): 'true'|'false' {
-    const checkedStaticColor = staticColorSelected || DEFAULT_STATIC_COLOR;
-    return staticColor === convertToRgbHexStr(checkedStaticColor.value) ?
+    const pressedStaticColor = staticColorSelected || DEFAULT_STATIC_COLOR;
+    return staticColor === convertToRgbHexStr(pressedStaticColor.value) ?
         'true' :
         'false';
   }

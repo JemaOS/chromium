@@ -7,12 +7,12 @@ package org.chromium.chrome.browser.multiwindow;
 import android.content.Context;
 import android.content.res.Resources;
 import android.util.AttributeSet;
-import android.widget.ScrollView;
+import android.widget.LinearLayout;
 
 import androidx.annotation.Nullable;
 
 /** Content view class for close confirmation dialog. */
-public class CloseConfirmationDialogView extends ScrollView {
+public class CloseConfirmationDialogView extends LinearLayout {
     public CloseConfirmationDialogView(Context context) {
         super(context);
     }

@@ -15,6 +15,10 @@
 class GURL;
 class Profile;
 
+namespace user_prefs {
+class PrefRegistrySyncable;
+}
+
 // The WebUIController used for the incognito and guest mode New Tab page.
 class NewTabUI : public content::WebUIController {
  public:
@@ -24,6 +28,8 @@ class NewTabUI : public content::WebUIController {
   NewTabUI& operator=(const NewTabUI&) = delete;
 
   ~NewTabUI() override;
+
+  static void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
 
   // Checks whether the given URL points to an NTP WebUI. Note that this only
   // applies to incognito and guest mode NTPs - you probably want to check
@@ -65,7 +71,7 @@ class NewTabUI : public content::WebUIController {
 
    private:
     // Pointer back to the original profile.
-    raw_ptr<Profile, FlakyDanglingUntriaged> profile_;
+    raw_ptr<Profile, DanglingUntriaged> profile_;
   };
 
   void OnShowBookmarkBarChanged();

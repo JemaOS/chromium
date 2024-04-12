@@ -5,14 +5,13 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_AUTOFILL_POPUP_POPUP_PIXEL_TEST_H_
 #define CHROME_BROWSER_UI_VIEWS_AUTOFILL_POPUP_POPUP_PIXEL_TEST_H_
 
-#include <concepts>
 #include <string>
 #include <tuple>
+#include <type_traits>
 
 #include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/strcat.h"
-#include "chrome/browser/ui/autofill/autofill_popup_view_delegate.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -36,38 +35,39 @@ using TestParameterType = std::tuple<bool, bool>;
 // A base class to do pixel tests for classes that derive from `PopupBaseView`.
 // By default, the test class has two parameters: Dark vs light mode and RTL vs
 // LTR for the text direction of the browser language.
-template <std::derived_from<PopupBaseView> View,
-          std::derived_from<AutofillPopupViewDelegate> Controller,
-          typename ParameterType = TestParameterType>
+template <typename View, typename Controller>
 class PopupPixelTest : public UiBrowserTest,
-                       public testing::WithParamInterface<ParameterType> {
+                       public testing::WithParamInterface<TestParameterType> {
  public:
+  static_assert(std::is_base_of_v<PopupBaseView, View>);
+  static_assert(std::is_base_of_v<AutofillPopupViewDelegate, Controller>);
+
   PopupPixelTest() = default;
   ~PopupPixelTest() override = default;
 
-  static bool IsDarkModeOn(const ParameterType& param) {
+  static bool IsDarkModeOn(const TestParameterType& param) {
     return std::get<0>(param);
   }
-  static bool IsBrowserLanguageRTL(const ParameterType& param) {
+  static bool IsBrowserLanguageRTL(const TestParameterType& param) {
     return std::get<1>(param);
   }
 
   static std::string GetTestSuffix(
-      const testing::TestParamInfo<ParameterType>& param_info) {
+      const testing::TestParamInfo<TestParameterType>& param_info) {
     return base::StrCat(
         {IsDarkModeOn(param_info.param) ? "Dark" : "Light",
          IsBrowserLanguageRTL(param_info.param) ? "BrowserRTL" : "BrowserLTR"});
   }
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
-    if (IsDarkModeOn(this->GetParam())) {
+    if (IsDarkModeOn(GetParam())) {
       command_line->AppendSwitch(switches::kForceDarkMode);
     }
   }
 
   void SetUpOnMainThread() override {
     UiBrowserTest::SetUpOnMainThread();
-    base::i18n::SetRTLForTesting(IsBrowserLanguageRTL(this->GetParam()));
+    base::i18n::SetRTLForTesting(IsBrowserLanguageRTL(GetParam()));
 
     content::WebContents* web_contents =
         browser()->tab_strip_model()->GetActiveWebContents();
@@ -77,7 +77,9 @@ class PopupPixelTest : public UiBrowserTest,
   }
 
   void ShowUi(const std::string& name) override {
-    view_ = CreateView(controller());
+    view_ = new View(controller_.GetWeakPtr(),
+                     views::Widget::GetWidgetForNativeWindow(
+                         browser()->window()->GetNativeWindow()));
   }
 
   bool VerifyUi() override {
@@ -90,21 +92,26 @@ class PopupPixelTest : public UiBrowserTest,
       return false;
     }
 
+    // VerifyPixelUi works only for these platforms.
+    // TODO(crbug.com/958242): Revise this if supported platforms change.
+#if BUILDFLAG(IS_WIN) || (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS))
     auto* test_info = testing::UnitTest::GetInstance()->current_test_info();
-    return VerifyPixelUi(widget, test_info->test_suite_name(),
-                         test_info->name()) != ui::test::ActionResult::kFailed;
+    return VerifyPixelUi(widget, test_info->test_case_name(),
+                         test_info->name());
+#else
+    return true;
+#endif
   }
 
   void WaitForUserDismissal() override {}
 
   void TearDownOnMainThread() override {
-    EXPECT_CALL(controller_, ViewDestroyed);
+    EXPECT_CALL(controller_, ViewDestroyed());
     view_ = nullptr;
     UiBrowserTest::TearDownOnMainThread();
   }
 
  protected:
-  virtual View* CreateView(Controller& controlled) = 0;
   Controller& controller() { return controller_; }
   raw_ptr<View>& view() { return view_; }
 

@@ -22,7 +22,6 @@
 #include "third_party/blink/renderer/core/testing/fake_local_frame_host.h"
 #include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
 namespace blink {
@@ -48,9 +47,7 @@ class TestLocalFrameBackForwardCacheClient
 
   ~TestLocalFrameBackForwardCacheClient() override = default;
 
-  void EvictFromBackForwardCache(
-      mojom::blink::RendererEvictionReason,
-      mojom::blink::ScriptSourceLocationPtr) override {
+  void EvictFromBackForwardCache(mojom::RendererEvictionReason) override {
     quit_closure_.Run();
   }
 
@@ -79,9 +76,6 @@ class LocalFrameBackForwardCacheTest : public testing::Test,
                                        private ScopedBackForwardCacheForTest {
  public:
   LocalFrameBackForwardCacheTest() : ScopedBackForwardCacheForTest(true) {}
-
- private:
-  test::TaskEnvironment task_environment_;
 };
 
 // Tests a frame in the back-forward cache (a.k.a. bfcache) is evicted on

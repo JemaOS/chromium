@@ -15,9 +15,9 @@
 #include "chrome/browser/sync/user_event_service_factory.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/testing_profile.h"
+#include "components/sync/driver/sync_internals_util.h"
+#include "components/sync/driver/sync_service.h"
 #include "components/sync/model/type_entities_count.h"
-#include "components/sync/service/sync_internals_util.h"
-#include "components/sync/service/sync_service.h"
 #include "components/sync/test/fake_sync_service.h"
 #include "components/sync_user_events/fake_user_event_service.h"
 #include "content/public/browser/site_instance.h"
@@ -57,9 +57,10 @@ class TestSyncService : public syncer::FakeSyncService {
   }
 
   void GetEntityCountsForDebugging(
-      base::RepeatingCallback<void(const syncer::TypeEntitiesCount&)> callback)
-      const override {
-    return callback.Run(syncer::TypeEntitiesCount(syncer::PASSWORDS));
+      base::OnceCallback<void(const std::vector<syncer::TypeEntitiesCount>&)>
+          callback) const override {
+    return std::move(callback).Run(
+        {syncer::TypeEntitiesCount(syncer::PASSWORDS)});
   }
 
   int add_observer_count() const { return add_observer_count_; }
@@ -129,6 +130,34 @@ class SyncInternalsMessageHandlerTest : public ChromeRenderViewHostTestHarness {
     return about_information_.Clone();
   }
 
+  void ValidateAboutInfoCall() {
+    ASSERT_EQ(2u, web_ui_.call_data().size());
+
+    // Check the syncer::sync_ui_util::kOnAboutInfoUpdated event dispatch.
+    const content::TestWebUI::CallData& about_info_call_data =
+        *web_ui_.call_data()[0];
+    EXPECT_EQ("cr.webUIListenerCallback", about_info_call_data.function_name());
+    ASSERT_NE(nullptr, about_info_call_data.arg1());
+    EXPECT_EQ(base::Value(syncer::sync_ui_util::kOnAboutInfoUpdated),
+              *about_info_call_data.arg1());
+    ASSERT_NE(nullptr, about_info_call_data.arg2());
+    EXPECT_EQ(about_information_, *about_info_call_data.arg2());
+
+    // TestSyncService::GetEntityCountsForDebugging() responds synchronously,
+    // so check the syncer::sync_ui_util::kOnEntityCountsUpdated event dispatch.
+    const content::TestWebUI::CallData& entity_counts_updated_call_data =
+        *web_ui_.call_data()[1];
+    EXPECT_EQ("cr.webUIListenerCallback",
+              entity_counts_updated_call_data.function_name());
+    ASSERT_NE(nullptr, entity_counts_updated_call_data.arg1());
+    EXPECT_EQ(base::Value(syncer::sync_ui_util::kOnEntityCountsUpdated),
+              *entity_counts_updated_call_data.arg1());
+  }
+
+  void ValidateEmptyAboutInfoCall() {
+    EXPECT_TRUE(web_ui_.call_data().empty());
+  }
+
   TestSyncService* test_sync_service() { return test_sync_service_; }
 
   FakeUserEventService* fake_user_event_service() {
@@ -155,23 +184,15 @@ class SyncInternalsMessageHandlerTest : public ChromeRenderViewHostTestHarness {
     return last_delegate_sync_service_;
   }
 
-  const std::vector<std::unique_ptr<content::TestWebUI::CallData>>& call_data()
-      const {
-    return web_ui_.call_data();
-  }
-
-  const base::Value::Dict& about_information() { return about_information_; }
-
   void ResetHandler() { handler_.reset(); }
 
  private:
   content::TestWebUI web_ui_;
-  raw_ptr<TestSyncService, DanglingUntriaged> test_sync_service_ = nullptr;
-  raw_ptr<FakeUserEventService, DanglingUntriaged> fake_user_event_service_ =
-      nullptr;
+  raw_ptr<TestSyncService> test_sync_service_;
+  raw_ptr<FakeUserEventService> fake_user_event_service_;
   std::unique_ptr<TestableSyncInternalsMessageHandler> handler_;
   int about_sync_data_delegate_call_count_ = 0;
-  raw_ptr<SyncService, DanglingUntriaged> last_delegate_sync_service_ = nullptr;
+  raw_ptr<SyncService> last_delegate_sync_service_ = nullptr;
   // Fake return value for sync_ui_util::ConstructAboutInformation().
   base::Value::Dict about_information_;
 };
@@ -244,31 +265,7 @@ TEST_F(SyncInternalsMessageHandlerTest, SendAboutInfo) {
   handler()->OnStateChanged(nullptr);
   EXPECT_EQ(1, about_sync_data_delegate_call_count());
   EXPECT_NE(nullptr, last_delegate_sync_service());
-
-  // There should be one kOnAboutInfoUpdated event, and one
-  // kOnEntityCountsUpdated event (because TestSyncService responds with the
-  // entity count for a single data type).
-  ASSERT_EQ(2u, call_data().size());
-
-  // Check the syncer::sync_ui_util::kOnAboutInfoUpdated event dispatch.
-  const content::TestWebUI::CallData& about_info_call_data = *call_data()[0];
-  EXPECT_EQ("cr.webUIListenerCallback", about_info_call_data.function_name());
-  ASSERT_NE(nullptr, about_info_call_data.arg1());
-  EXPECT_EQ(base::Value(syncer::sync_ui_util::kOnAboutInfoUpdated),
-            *about_info_call_data.arg1());
-  ASSERT_NE(nullptr, about_info_call_data.arg2());
-  EXPECT_EQ(about_information(), *about_info_call_data.arg2());
-
-  // TestSyncService::GetEntityCountsForDebugging() responds synchronously and
-  // for a single data type, so check for a single
-  // syncer::sync_ui_util::kOnEntityCountsUpdated event dispatch.
-  const content::TestWebUI::CallData& entity_counts_updated_call_data =
-      *call_data()[1];
-  EXPECT_EQ("cr.webUIListenerCallback",
-            entity_counts_updated_call_data.function_name());
-  ASSERT_NE(nullptr, entity_counts_updated_call_data.arg1());
-  EXPECT_EQ(base::Value(syncer::sync_ui_util::kOnEntityCountsUpdated),
-            *entity_counts_updated_call_data.arg1());
+  ValidateAboutInfoCall();
 }
 
 TEST_F(SyncInternalsMessageHandlerTest, SendAboutInfoSyncDisabled) {
@@ -280,19 +277,7 @@ TEST_F(SyncInternalsMessageHandlerTest, SendAboutInfoSyncDisabled) {
   handler()->OnStateChanged(nullptr);
   EXPECT_EQ(1, about_sync_data_delegate_call_count());
   EXPECT_EQ(nullptr, last_delegate_sync_service());
-
-  // There should be one kOnAboutInfoUpdated event (sent by the MessageHandler
-  // even if there's no SyncService), but no kOnEntityCountsUpdated events.
-  ASSERT_EQ(1u, call_data().size());
-
-  // Check the syncer::sync_ui_util::kOnAboutInfoUpdated event dispatch.
-  const content::TestWebUI::CallData& about_info_call_data = *call_data()[0];
-  EXPECT_EQ("cr.webUIListenerCallback", about_info_call_data.function_name());
-  ASSERT_NE(nullptr, about_info_call_data.arg1());
-  EXPECT_EQ(base::Value(syncer::sync_ui_util::kOnAboutInfoUpdated),
-            *about_info_call_data.arg1());
-  ASSERT_NE(nullptr, about_info_call_data.arg2());
-  EXPECT_EQ(about_information(), *about_info_call_data.arg2());
+  ValidateAboutInfoCall();
 }
 
 TEST_F(SyncInternalsMessageHandlerTest, WriteUserEvent) {

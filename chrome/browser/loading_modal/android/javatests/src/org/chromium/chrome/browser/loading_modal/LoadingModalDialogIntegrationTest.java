@@ -19,6 +19,7 @@ import android.view.View;
 import androidx.test.filters.MediumTest;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -72,7 +73,6 @@ public class LoadingModalDialogIntegrationTest {
             return mDialogDismissedCallbackHelper;
         }
     }
-
     private TestDialogManagerObserver mObserver = new TestDialogManagerObserver();
 
     @BeforeClass
@@ -80,11 +80,17 @@ public class LoadingModalDialogIntegrationTest {
         sActivityTestRule.launchActivity(null);
         sActivity = runOnUiThreadBlockingNoException(() -> sActivityTestRule.getActivity());
         Looper.prepare();
+
+        ObservableSupplierImpl.setIgnoreThreadChecksForTesting(true);
+    }
+
+    @AfterClass
+    public static void teardownSuite() {
+        ObservableSupplierImpl.setIgnoreThreadChecksForTesting(false);
     }
 
     @Before
     public void setupTest() throws Exception {
-        ObservableSupplierImpl.setIgnoreThreadChecksForTesting(true);
         mObserver = new TestDialogManagerObserver();
         runOnUiThreadBlocking(() -> sActivity.getModalDialogManager().addObserver(mObserver));
     }
@@ -97,13 +103,10 @@ public class LoadingModalDialogIntegrationTest {
     @Test
     @MediumTest
     public void testShownAndDismissed() throws TimeoutException {
-        LoadingModalDialogCoordinator coordinator =
-                runOnUiThreadBlockingNoException(
-                        () ->
-                                LoadingModalDialogCoordinator.create(
-                                        getDialogManager(),
-                                        sActivity,
-                                        new Handler(Looper.getMainLooper())));
+        LoadingModalDialogCoordinator coordinator = runOnUiThreadBlockingNoException(
+                ()
+                        -> LoadingModalDialogCoordinator.create(getDialogManager(), sActivity,
+                                new Handler(Looper.getMainLooper())));
         coordinator.skipDelayForTesting();
         coordinator.disableTimeoutForTesting();
 
@@ -119,13 +122,10 @@ public class LoadingModalDialogIntegrationTest {
     @Test
     @MediumTest
     public void testShownAndCancelled() throws TimeoutException, ExecutionException {
-        LoadingModalDialogCoordinator coordinator =
-                runOnUiThreadBlockingNoException(
-                        () ->
-                                LoadingModalDialogCoordinator.create(
-                                        getDialogManager(),
-                                        sActivity,
-                                        new Handler(Looper.getMainLooper())));
+        LoadingModalDialogCoordinator coordinator = runOnUiThreadBlockingNoException(
+                ()
+                        -> LoadingModalDialogCoordinator.create(getDialogManager(), sActivity,
+                                new Handler(Looper.getMainLooper())));
         coordinator.skipDelayForTesting();
         coordinator.disableTimeoutForTesting();
 
@@ -141,13 +141,10 @@ public class LoadingModalDialogIntegrationTest {
     @Test
     @MediumTest
     public void testShownAndDestroyed() throws TimeoutException {
-        LoadingModalDialogCoordinator coordinator =
-                runOnUiThreadBlockingNoException(
-                        () ->
-                                LoadingModalDialogCoordinator.create(
-                                        getDialogManager(),
-                                        sActivity,
-                                        new Handler(Looper.getMainLooper())));
+        LoadingModalDialogCoordinator coordinator = runOnUiThreadBlockingNoException(
+                ()
+                        -> LoadingModalDialogCoordinator.create(getDialogManager(), sActivity,
+                                new Handler(Looper.getMainLooper())));
         coordinator.skipDelayForTesting();
         coordinator.disableTimeoutForTesting();
 

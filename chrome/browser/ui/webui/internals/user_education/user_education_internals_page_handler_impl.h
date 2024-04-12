@@ -18,6 +18,10 @@ namespace content {
 class WebUI;
 }  // namespace content
 
+namespace user_education {
+class FeaturePromoSpecification;
+}
+
 class UserEducationInternalsPageHandlerImpl
     : public mojom::user_education_internals::
           UserEducationInternalsPageHandler {
@@ -40,18 +44,16 @@ class UserEducationInternalsPageHandlerImpl
   void StartTutorial(const std::string& tutorial_id,
                      StartTutorialCallback callback) override;
 
-  void GetSessionData(GetSessionDataCallback callback) override;
   void GetFeaturePromos(GetFeaturePromosCallback callback) override;
-  void ShowFeaturePromo(const std::string& feature_name,
+  void ShowFeaturePromo(const std::string& title,
                         ShowFeaturePromoCallback callback) override;
-  void ClearFeaturePromoData(const std::string& feature_name,
-                             ClearFeaturePromoDataCallback callback) override;
-  void ClearSessionData(ClearSessionDataCallback callback) override;
-  void GetNewBadges(GetNewBadgesCallback callback) override;
-  void ClearNewBadgeData(const std::string& feature_name,
-                         ClearNewBadgeDataCallback callback) override;
 
  private:
+  const std::string GetTitleFromFeaturePromoData(
+      const base::Feature* feature,
+      const user_education::FeaturePromoSpecification& spec);
+
+  raw_ptr<user_education::TutorialService> tutorial_service_ = nullptr;
   raw_ptr<content::WebUI> web_ui_ = nullptr;
   raw_ptr<Profile> profile_ = nullptr;
 

@@ -4,15 +4,13 @@
 
 #include "chrome/browser/ash/input_method/suggestions_service_client.h"
 
-#include <optional>
-
 #include "ash/constants/ash_features.h"
 #include "base/functional/bind.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
-#include "base/metrics/histogram_macros.h"
 #include "chrome/browser/ash/input_method/suggestion_enums.h"
 #include "chromeos/services/machine_learning/public/cpp/service_connection.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace input_method {
@@ -45,7 +43,7 @@ MultiWordExperimentGroup GetExperimentGroup(const std::string& finch_trial) {
     return MultiWordExperimentGroup::kGboardE;
   if (finch_trial == "gboard_f")
     return MultiWordExperimentGroup::kGboardF;
-  return MultiWordExperimentGroup::kGboardE;
+  return MultiWordExperimentGroup::kDefault;
 }
 
 chromeos::machine_learning::mojom::TextSuggestionMode ToTextSuggestionModeMojom(
@@ -58,12 +56,12 @@ chromeos::machine_learning::mojom::TextSuggestionMode ToTextSuggestionModeMojom(
   }
 }
 
-std::optional<AssistiveSuggestion> ToAssistiveSuggestion(
+absl::optional<AssistiveSuggestion> ToAssistiveSuggestion(
     const TextSuggestionCandidatePtr& candidate,
     const AssistiveSuggestionMode& suggestion_mode) {
   if (!candidate->is_multi_word()) {
     // TODO(crbug/1146266): Handle emoji suggestions
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return AssistiveSuggestion{.mode = suggestion_mode,
@@ -105,11 +103,6 @@ void RecordRequestCandidates(
   base::UmaHistogramEnumeration(
       "InputMethod.Assistive.MultiWord.RequestCandidates",
       ToSuggestionType(suggestion_mode));
-}
-
-void RecordEmptyCandidate(const ime::AssistiveSuggestionMode& suggestion_mode) {
-  UMA_HISTOGRAM_ENUMERATION("InputMethod.Assistive.MultiWord.EmptyCandidate",
-                            ToSuggestionType(suggestion_mode));
 }
 
 void RecordCandidatesGenerated(AssistiveSuggestionMode suggestion_mode) {
@@ -162,9 +155,6 @@ void SuggestionsServiceClient::RequestSuggestions(
     auto next_word_candidate = NextWordCompletionCandidate::New();
     next_word_candidate->text = candidate.text;
     next_word_candidate->normalized_score = candidate.score;
-    if (next_word_candidate->text.empty()) {
-      RecordEmptyCandidate(suggestion_mode);
-    }
     query->next_word_candidates.push_back(std::move(next_word_candidate));
   }
 

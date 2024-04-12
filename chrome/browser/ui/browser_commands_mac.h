@@ -9,12 +9,8 @@ class Browser;
 
 namespace chrome {
 
-// Toggles the "Always Show Toolbar in Full Screen".
-void ToggleAlwaysShowToolbarInFullscreen(Browser* browser);
-
-// Sets the "Always Show Toolbar in Full Screen" in tests.
-void SetAlwaysShowToolbarInFullscreenForTesting(Browser* browser,
-                                                bool always_show);
+// Toggles the visibility of the toolbar in fullscreen mode.
+void ToggleFullscreenToolbar(Browser* browser);
 
 // Toggles the "Allow JavaScript from AppleEvents" setting.
 void ToggleJavaScriptFromAppleEventsAllowed(Browser* browser);

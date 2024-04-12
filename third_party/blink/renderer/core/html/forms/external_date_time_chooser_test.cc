@@ -13,7 +13,6 @@
 #include "third_party/blink/renderer/core/testing/null_execution_context.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -25,7 +24,6 @@ class ExternalDateTimeChooserTest : public testing::Test {
   Document& GetDocument() { return dummy_page_holder_->GetDocument(); }
 
  private:
-  test::TaskEnvironment task_environment_;
   std::unique_ptr<DummyPageHolder> dummy_page_holder_;
 };
 
@@ -94,8 +92,7 @@ TEST_F(ExternalDateTimeChooserTest,
       )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
 
-  auto* input =
-      To<HTMLInputElement>(GetDocument().getElementById(AtomicString("test")));
+  auto* input = To<HTMLInputElement>(GetDocument().getElementById("test"));
   ASSERT_TRUE(input);
 
   DateTimeChooserParameters params;

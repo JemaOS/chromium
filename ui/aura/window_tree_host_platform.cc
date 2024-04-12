@@ -7,7 +7,6 @@
 #include <memory>
 #include <utility>
 
-#include "base/check_is_test.h"
 #include "base/functional/bind.h"
 #include "base/observer_list.h"
 #include "base/run_loop.h"
@@ -16,13 +15,11 @@
 #include "ui/aura/client/cursor_client.h"
 #include "ui/aura/env.h"
 #include "ui/aura/host_frame_rate_throttler.h"
-#include "ui/aura/native_window_occlusion_tracker.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_event_dispatcher.h"
 #include "ui/aura/window_tree_host_observer.h"
 #include "ui/base/cursor/mojom/cursor_type.mojom-shared.h"
 #include "ui/base/layout.h"
-#include "ui/base/view_prop.h"
 #include "ui/compositor/compositor.h"
 #include "ui/compositor/layer.h"
 #include "ui/display/display.h"
@@ -35,7 +32,6 @@
 
 #if BUILDFLAG(IS_OZONE)
 #include "ui/events/keycodes/dom/dom_keyboard_layout_map.h"
-#include "ui/events/ozone/events_ozone.h"
 #include "ui/ozone/public/ozone_platform.h"
 #endif
 
@@ -44,14 +40,6 @@
 #endif
 
 namespace aura {
-
-namespace {
-WindowTreeHostPlatform::PlatformWindowFactoryDelegateForTesting*
-    g_platform_window_factory_delegate_for_testing = nullptr;
-
-const char kWindowTreeHostPlatformForAcceleratedWidget[] =
-    "__AURA_WINDOW_TREE_HOST_PLATFORM_ACCELERATED_WIDGET__";
-}
 
 // static
 std::unique_ptr<WindowTreeHost> WindowTreeHost::Create(
@@ -76,21 +64,20 @@ WindowTreeHostPlatform::WindowTreeHostPlatform(std::unique_ptr<Window> window)
       widget_(gfx::kNullAcceleratedWidget),
       current_cursor_(ui::mojom::CursorType::kNull) {}
 
-// static
-WindowTreeHostPlatform* WindowTreeHostPlatform::GetHostForWindow(
-    aura::Window* window) {
-  return reinterpret_cast<WindowTreeHostPlatform*>(
-      ui::ViewProp::GetValue(window->GetHost()->GetAcceleratedWidget(),
-                             kWindowTreeHostPlatformForAcceleratedWidget));
-}
-
 void WindowTreeHostPlatform::CreateAndSetPlatformWindow(
     ui::PlatformWindowInitProperties properties) {
   // Cache initial size used to create |platform_window_| so that it does not
   // end up propagating unneeded bounds change event when it is first notified
   // through OnBoundsChanged, which may lead to unneeded re-layouts, etc.
   size_in_pixels_ = properties.bounds.size();
-  platform_window_ = CreatePlatformWindow(std::move(properties));
+#if BUILDFLAG(IS_OZONE)
+  platform_window_ = ui::OzonePlatform::GetInstance()->CreatePlatformWindow(
+      this, std::move(properties));
+#elif BUILDFLAG(IS_WIN)
+  platform_window_ = std::make_unique<ui::WinWindow>(this, properties.bounds);
+#else
+  NOTIMPLEMENTED();
+#endif
 }
 
 void WindowTreeHostPlatform::SetPlatformWindow(
@@ -132,11 +119,6 @@ void WindowTreeHostPlatform::SetBoundsInPixels(const gfx::Rect& bounds) {
 }
 
 void WindowTreeHostPlatform::SetCapture() {
-#if BUILDFLAG(IS_OZONE)
-  if (ui::IsNativeUiEventDispatchDisabled()) {
-    return;
-  }
-#endif
   platform_window_->SetCapture();
 }
 
@@ -149,7 +131,7 @@ gfx::Point WindowTreeHostPlatform::GetLocationOnScreenInPixels() const {
 }
 
 bool WindowTreeHostPlatform::CaptureSystemKeyEventsImpl(
-    std::optional<base::flat_set<ui::DomCode>> dom_codes) {
+    absl::optional<base::flat_set<ui::DomCode>> dom_codes) {
   // Only one KeyboardHook should be active at a time, otherwise there will be
   // problems with event routing (i.e. which Hook takes precedence) and
   // destruction ordering.
@@ -193,13 +175,6 @@ void WindowTreeHostPlatform::SetCursorNative(gfx::NativeCursor cursor) {
 
 void WindowTreeHostPlatform::MoveCursorToScreenLocationInPixels(
     const gfx::Point& location_in_pixels) {
-#if BUILDFLAG(IS_OZONE)
-  if (ui::IsNativeUiEventDispatchDisabled()) {
-    // Unit tests should not test or rely on the native cursor position because
-    // it is shared between multiple tests.
-    return;
-  }
-#endif
   platform_window_->MoveCursorTo(location_in_pixels);
 }
 
@@ -210,30 +185,6 @@ void WindowTreeHostPlatform::OnCursorVisibilityChangedNative(bool show) {
 void WindowTreeHostPlatform::LockMouse(Window* window) {
   window->SetCapture();
   WindowTreeHost::LockMouse(window);
-}
-
-std::unique_ptr<ui::PlatformWindow>
-WindowTreeHostPlatform::CreatePlatformWindow(
-    ui::PlatformWindowInitProperties properties) {
-  if (g_platform_window_factory_delegate_for_testing) {
-    return g_platform_window_factory_delegate_for_testing->Create(this);
-  }
-#if BUILDFLAG(IS_OZONE)
-  return ui::OzonePlatform::GetInstance()->CreatePlatformWindow(
-      this, std::move(properties));
-#elif BUILDFLAG(IS_WIN)
-  return std::make_unique<ui::WinWindow>(this, properties.bounds);
-#else
-  NOTIMPLEMENTED();
-  return nullptr;
-#endif
-}
-
-// static
-void WindowTreeHostPlatform::SetPlatformWindowFactoryDelegateForTesting(
-    PlatformWindowFactoryDelegateForTesting* delegate) {
-  CHECK_IS_TEST();
-  g_platform_window_factory_delegate_for_testing = delegate;
 }
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -303,8 +254,6 @@ void WindowTreeHostPlatform::OnLostCapture() {
 
 void WindowTreeHostPlatform::OnAcceleratedWidgetAvailable(
     gfx::AcceleratedWidget widget) {
-  prop_ = std::make_unique<ui::ViewProp>(
-      widget, kWindowTreeHostPlatformForAcceleratedWidget, this);
   widget_ = widget;
   // This may be called before the Compositor has been created.
   if (compositor())
@@ -364,22 +313,9 @@ int64_t WindowTreeHostPlatform::OnStateUpdate(
     compositor()->SetExternalPageScaleFactor(latest.raster_scale);
   }
 
-  bool needs_frame = latest.ProducesFrameOnUpdateFrom(old);
-  if (old.occlusion_state != latest.occlusion_state &&
-      NativeWindowOcclusionTracker::
-          IsNativeWindowOcclusionTrackingAlwaysEnabled(this)) {
-    const bool visible_before = compositor()->IsVisible();
-    OnOcclusionStateChanged(latest.occlusion_state);
-    if (!visible_before && compositor()->IsVisible()) {
-      // If the compositor has become visible, make sure to wait for a frame.
-      needs_frame = true;
-    }
-  }
-
   // Only set the sequence ID if this change will produce a frame.
   // If it won't, we may wait indefinitely for a frame that will never come.
-  // If the compositor is not visible, we will not get a frame, so don't wait.
-  if (!needs_frame || !compositor()->IsVisible()) {
+  if (!latest.ProducesFrameOnUpdateFrom(old)) {
     return -1;
   }
 
@@ -400,10 +336,6 @@ void WindowTreeHostPlatform::SetFrameRateThrottleEnabled(bool enabled) {
     HostFrameRateThrottler::GetInstance().AddHost(this);
   else
     HostFrameRateThrottler::GetInstance().RemoveHost(this);
-}
-
-void WindowTreeHostPlatform::DisableNativeWindowOcclusion() {
-  SetNativeWindowOcclusionEnabled(false);
 }
 
 }  // namespace aura

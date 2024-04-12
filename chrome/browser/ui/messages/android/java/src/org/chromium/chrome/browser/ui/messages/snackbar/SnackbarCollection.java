@@ -12,7 +12,9 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-/** A data structure that holds all the {@link Snackbar}s managed by {@link SnackbarManager}. */
+/**
+ * A data structure that holds all the {@link Snackbar}s managed by {@link SnackbarManager}.
+ */
 class SnackbarCollection {
     private Deque<Snackbar> mSnackbars = new LinkedList<>();
     private Deque<Snackbar> mPersistentSnackbars = new LinkedList<>();
@@ -36,7 +38,7 @@ class SnackbarCollection {
             // the developer overrides it. This is a safeguard to ensure all persistent snackbars
             // have a method of dismissal.
             assert !TextUtils.isEmpty(snackbar.getActionText())
-                    : "Persistent snackbars require action text.";
+                : "Persistent snackbars require action text.";
             mPersistentSnackbars.addFirst(snackbar);
         } else {
             mSnackbars.addLast(snackbar);

@@ -58,7 +58,7 @@ bool SystemWebAppDelegate::ShouldShowInLauncher() const {
   return true;
 }
 
-bool SystemWebAppDelegate::ShouldShowInSearchAndShelf() const {
+bool SystemWebAppDelegate::ShouldShowInSearch() const {
   return true;
 }
 
@@ -71,10 +71,6 @@ bool SystemWebAppDelegate::ShouldAllowResize() const {
 }
 
 bool SystemWebAppDelegate::ShouldAllowMaximize() const {
-  return true;
-}
-
-bool SystemWebAppDelegate::ShouldAllowFullscreen() const {
   return true;
 }
 
@@ -94,9 +90,9 @@ bool SystemWebAppDelegate::ShouldHandleFileOpenIntents() const {
   return ShouldShowInLauncher();
 }
 
-std::optional<SystemWebAppBackgroundTaskInfo>
+absl::optional<SystemWebAppBackgroundTaskInfo>
 SystemWebAppDelegate::GetTimerInfo() const {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool SystemWebAppDelegate::IsAppEnabled() const {

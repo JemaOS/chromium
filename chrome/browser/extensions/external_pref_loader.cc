@@ -39,9 +39,9 @@
 #include "chrome/browser/prefs/pref_service_syncable_util.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "components/prefs/pref_change_registrar.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_service_observer.h"
-#include "components/sync/service/sync_user_settings.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_service_observer.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "components/sync_preferences/pref_service_syncable.h"
 #include "components/sync_preferences/pref_service_syncable_observer.h"
 #endif
@@ -146,7 +146,8 @@ class ExternalPrefLoader::PrioritySyncReadyWaiter
  private:
   void MaybeObserveSyncStart() {
     syncer::SyncService* service = SyncServiceFactory::GetForProfile(profile_);
-    if (!service || !service->IsSyncFeatureEnabled()) {
+    DCHECK(service);
+    if (!service->CanSyncFeatureStart()) {
       Finish();
       // Note: |this| is deleted.
       return;
@@ -166,9 +167,8 @@ class ExternalPrefLoader::PrioritySyncReadyWaiter
 
   // syncer::SyncServiceObserver
   void OnStateChanged(syncer::SyncService* sync) override {
-    if (!sync->IsSyncFeatureEnabled()) {
+    if (!sync->CanSyncFeatureStart())
       Finish();
-    }
   }
 
   void OnSyncShutdown(syncer::SyncService* sync) override {
@@ -194,7 +194,7 @@ class ExternalPrefLoader::PrioritySyncReadyWaiter
 
   void Finish() { std::move(done_closure_).Run(); }
 
-  raw_ptr<Profile, LeakedDanglingUntriaged> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
 
   base::OnceClosure done_closure_;
 
@@ -294,10 +294,13 @@ void ExternalPrefLoader::LoadOnFileThread() {
       LOG(WARNING) << "You are using an old-style extension deployment method "
                       "(external_extensions.json), which will soon be "
                       "deprecated. (see http://developer.chrome.com/"
-                      "docs/extensions/how-to/distribute/install-extensions)";
+                      "extensions/external_extensions.html)";
 
     ReadStandaloneExtensionPrefFiles(prefs);
   }
+
+  if (base_path_id_ == chrome::DIR_EXTERNAL_EXTENSIONS)
+    UMA_HISTOGRAM_COUNTS_100("Extensions.ExternalJsonCount", prefs.size());
 
   // If we have any records to process, then we must have
   // read at least one .json file.  If so, then we should have

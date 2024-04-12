@@ -40,8 +40,8 @@ void OnTargetHttpAuthCacheProxyEntriesSaved(
 // is *google.<TLD> or *youtube.<TLD>, the cookie is considered to have been set
 // by GAIA as well.
 bool IsGAIACookie(const net::CanonicalCookie& cookie) {
-  GURL cookie_url = net::cookie_util::CookieOriginToURL(
-      cookie.Domain(), cookie.SecureAttribute());
+  GURL cookie_url =
+      net::cookie_util::CookieOriginToURL(cookie.Domain(), cookie.IsSecure());
 
   return google_util::IsGoogleDomainUrl(
              cookie_url, google_util::ALLOW_SUBDOMAIN,

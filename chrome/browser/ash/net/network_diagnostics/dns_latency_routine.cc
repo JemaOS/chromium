@@ -6,7 +6,6 @@
 
 #include <iterator>
 #include <map>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,13 +21,15 @@
 #include "net/base/host_port_pair.h"
 #include "net/base/net_errors.h"
 #include "net/base/network_anonymization_key.h"
-#include "services/network/public/cpp/simple_host_resolver.h"
+#include "net/dns/public/host_resolver_results.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class TimeTicks;
 }
 
-namespace ash::network_diagnostics {
+namespace ash {
+namespace network_diagnostics {
 
 namespace {
 
@@ -85,9 +86,8 @@ double AverageLatency(const std::vector<base::TimeDelta>& latencies) {
 
 }  // namespace
 
-DnsLatencyRoutine::DnsLatencyRoutine(mojom::RoutineCallSource source)
-    : NetworkDiagnosticsRoutine(source),
-      tick_clock_(base::DefaultTickClock::GetInstance()) {
+DnsLatencyRoutine::DnsLatencyRoutine()
+    : tick_clock_(base::DefaultTickClock::GetInstance()) {
   profile_ = GetUserProfile();
   network_context_ =
       profile_->GetDefaultStoragePartition()->GetNetworkContext();
@@ -129,12 +129,21 @@ void DnsLatencyRoutine::AnalyzeResultsAndExecuteCallback() {
 }
 
 void DnsLatencyRoutine::CreateHostResolver() {
-  CHECK(!host_resolver_);
-  host_resolver_ = network::SimpleHostResolver::Create(network_context());
+  host_resolver_.reset();
+  network_context()->CreateHostResolver(
+      net::DnsConfigOverrides(), host_resolver_.BindNewPipeAndPassReceiver());
+}
+
+void DnsLatencyRoutine::OnMojoConnectionError() {
+  host_resolver_.reset();
+  OnComplete(net::ERR_NAME_NOT_RESOLVED, net::ResolveErrorInfo(net::ERR_FAILED),
+             /*resolved_addresses=*/absl::nullopt,
+             /*endpoint_results_with_metadata=*/absl::nullopt);
 }
 
 void DnsLatencyRoutine::AttemptNextResolution() {
-  CHECK(host_resolver_);
+  DCHECK(host_resolver_);
+  DCHECK(!receiver_.is_bound());
 
   std::string hostname = hostnames_to_query_.back();
   hostnames_to_query_.pop_back();
@@ -151,27 +160,28 @@ void DnsLatencyRoutine::AttemptNextResolution() {
   // Intentionally using a HostPortPair not to trigger ERR_DNS_NAME_HTTPS_ONLY
   // error while resolving http:// scheme host when a HTTPS resource record
   // exists.
-  // Unretained(this) is safe here because the callback is invoked directly by
-  // |host_resolver_| which is owned by |this|.
-  host_resolver_->ResolveHost(
-      network::mojom::HostResolverHost::NewHostPortPair(
-          net::HostPortPair(hostname, kHttpPort)),
-      net::NetworkAnonymizationKey::CreateTransient(), std::move(parameters),
-      base::BindOnce(&DnsLatencyRoutine::OnComplete, base::Unretained(this)));
+  host_resolver_->ResolveHost(network::mojom::HostResolverHost::NewHostPortPair(
+                                  net::HostPortPair(hostname, kHttpPort)),
+                              net::NetworkAnonymizationKey::CreateTransient(),
+                              std::move(parameters),
+                              receiver_.BindNewPipeAndPassRemote());
+  receiver_.set_disconnect_handler(base::BindOnce(
+      &DnsLatencyRoutine::OnMojoConnectionError, base::Unretained(this)));
 }
 
 void DnsLatencyRoutine::OnComplete(
     int result,
     const net::ResolveErrorInfo& resolve_error_info,
-    const std::optional<net::AddressList>& resolved_addresses,
-    const std::optional<net::HostResolverEndpointResults>&
+    const absl::optional<net::AddressList>& resolved_addresses,
+    const absl::optional<net::HostResolverEndpointResults>&
         endpoint_results_with_metadata) {
+  receiver_.reset();
   resolution_complete_time_ = tick_clock_->NowTicks();
   const base::TimeDelta latency =
       resolution_complete_time_ - start_resolution_time_;
 
-  if (result != net::OK) {
-    CHECK(!resolved_addresses);
+  if (!resolved_addresses.has_value() || resolved_addresses->empty() ||
+      result != net::OK) {
     // Failed to get resolved address of host
     AnalyzeResultsAndExecuteCallback();
   } else if (hostnames_to_query_.size() > 0) {
@@ -184,4 +194,5 @@ void DnsLatencyRoutine::OnComplete(
   }
 }
 
-}  // namespace ash::network_diagnostics
+}  // namespace network_diagnostics
+}  // namespace ash

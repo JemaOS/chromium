@@ -14,7 +14,6 @@
 #include "base/functional/callback.h"
 #include "base/memory/scoped_refptr.h"
 #include "media/base/cdm_config.h"
-#include "media/base/key_systems.h"
 #include "third_party/blink/public/platform/web_content_decryption_module.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 
@@ -36,7 +35,6 @@ class PLATFORM_EXPORT WebContentDecryptionModuleImpl
     : public WebContentDecryptionModule {
  public:
   static void Create(media::CdmFactory* cdm_factory,
-                     media::KeySystems* key_systems,
                      const WebSecurityOrigin& security_origin,
                      const media::CdmConfig& cdm_config,
                      WebCdmCreatedCB web_cdm_created_cb);
@@ -63,12 +61,9 @@ class PLATFORM_EXPORT WebContentDecryptionModuleImpl
   friend CdmSessionAdapter;
 
   // Takes reference to |adapter|.
-  WebContentDecryptionModuleImpl(scoped_refptr<CdmSessionAdapter> adapter,
-                                 media::KeySystems* key_systems);
+  WebContentDecryptionModuleImpl(scoped_refptr<CdmSessionAdapter> adapter);
 
   scoped_refptr<CdmSessionAdapter> adapter_;
-  // Non-owned.
-  raw_ptr<media::KeySystems> key_systems_;
 };
 
 // Allow typecasting from blink type as this is the only implementation.

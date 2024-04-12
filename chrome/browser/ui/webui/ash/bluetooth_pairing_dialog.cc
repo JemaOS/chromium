@@ -5,10 +5,8 @@
 #include "chrome/browser/ui/webui/ash/bluetooth_pairing_dialog.h"
 
 #include <memory>
-#include <string_view>
 
 #include "ash/public/cpp/bluetooth_config_service.h"
-#include "ash/webui/common/trusted_types_util.h"
 #include "base/check.h"
 #include "base/json/json_writer.h"
 #include "base/memory/ptr_util.h"
@@ -37,7 +35,7 @@ namespace ash {
 
 namespace {
 
-constexpr int kBluetoothPairingDialogHeight = 430;
+constexpr int kBluetoothPairingDialogHeight = 424;
 
 void AddBluetoothStrings(content::WebUIDataSource* html_source) {
   struct {
@@ -57,9 +55,9 @@ void AddBluetoothStrings(content::WebUIDataSource* html_source) {
 
 // static
 SystemWebDialogDelegate* BluetoothPairingDialog::ShowDialog(
-    std::optional<std::string_view> device_address) {
+    absl::optional<base::StringPiece> device_address) {
   std::string dialog_id = chrome::kChromeUIBluetoothPairingURL;
-  std::optional<std::string> canonical_device_address;
+  absl::optional<std::string> canonical_device_address;
 
   if (device_address.has_value()) {
     canonical_device_address =
@@ -91,29 +89,21 @@ SystemWebDialogDelegate* BluetoothPairingDialog::ShowDialog(
 
 BluetoothPairingDialog::BluetoothPairingDialog(
     const std::string& dialog_id,
-    std::optional<std::string_view> canonical_device_address)
+    absl::optional<base::StringPiece> canonical_device_address)
     : SystemWebDialogDelegate(GURL(chrome::kChromeUIBluetoothPairingURL),
                               /*title=*/std::u16string()),
       dialog_id_(dialog_id) {
-  set_dialog_size(gfx::Size(SystemWebDialogDelegate::kDialogWidth,
-                            kBluetoothPairingDialogHeight));
+  if (canonical_device_address.has_value())
+    device_data_.Set("address", canonical_device_address.value());
 
-  base::Value::Dict device_data;
-  if (canonical_device_address.has_value()) {
-    device_data.Set("address", canonical_device_address.value());
-  }
-  device_data.Set("shouldOmitLinks",
-                  session_manager::SessionManager::Get()->session_state() !=
-                      session_manager::SessionState::ACTIVE);
-
-  std::optional<std::string> args = base::WriteJson(device_data);
-  CHECK(args.has_value());
-  set_dialog_args(*args);
+  device_data_.Set("shouldOmitLinks",
+                   session_manager::SessionManager::Get()->session_state() !=
+                       session_manager::SessionState::ACTIVE);
 }
 
 BluetoothPairingDialog::~BluetoothPairingDialog() = default;
 
-std::string BluetoothPairingDialog::Id() {
+const std::string& BluetoothPairingDialog::Id() {
   return dialog_id_;
 }
 
@@ -122,6 +112,17 @@ void BluetoothPairingDialog::AdjustWidgetInitParams(
   params->type = views::Widget::InitParams::Type::TYPE_WINDOW_FRAMELESS;
   params->shadow_type = views::Widget::InitParams::ShadowType::kDrop;
   params->shadow_elevation = wm::kShadowElevationActiveWindow;
+}
+
+void BluetoothPairingDialog::GetDialogSize(gfx::Size* size) const {
+  size->SetSize(SystemWebDialogDelegate::kDialogWidth,
+                kBluetoothPairingDialogHeight);
+}
+
+std::string BluetoothPairingDialog::GetDialogArgs() const {
+  std::string data;
+  base::JSONWriter::Write(device_data_, &data);
+  return data;
 }
 
 // BluetoothPairingUI
@@ -140,10 +141,7 @@ BluetoothPairingDialogUI::BluetoothPairingDialogUI(content::WebUI* web_ui)
       base::make_span(kBluetoothPairingDialogResources,
                       kBluetoothPairingDialogResourcesSize),
       IDR_BLUETOOTH_PAIRING_DIALOG_BLUETOOTH_PAIRING_DIALOG_CONTAINER_HTML);
-  // Enabling trusted types via trusted_types_util must be done after
-  // webui::SetupWebUIDataSource to override the trusted type CSP with correct
-  // policies for JS WebUIs.
-  ash::EnableTrustedTypesCSP(source);
+  source->DisableTrustedTypesCSP();
 
   device::RecordUiSurfaceDisplayed(
       device::BluetoothUiSurface::kStandalonePairingDialog);

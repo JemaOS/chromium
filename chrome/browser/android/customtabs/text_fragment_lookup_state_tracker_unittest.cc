@@ -19,11 +19,11 @@ class TextFragmentLookupStateTrackerTest : public testing::Test {
 TEST_F(TextFragmentLookupStateTrackerTest, ExtractAllowedTextDirectives) {
   TextFragmentLookupStateTracker state_tracker(nullptr);
   std::vector<std::string> allowed_texts;
-  state_tracker.lookup_count_ = 43;
+  state_tracker.lookup_count_ = 13;
   allowed_texts = state_tracker.ExtractAllowedTextDirectives({"ab", "cd"});
   EXPECT_THAT(allowed_texts.size(), 2);
 
-  state_tracker.lookup_count_ = 45;
+  state_tracker.lookup_count_ = 15;
   allowed_texts = state_tracker.ExtractAllowedTextDirectives({"ab", "cd"});
   EXPECT_THAT(allowed_texts.size(), 0);
 }

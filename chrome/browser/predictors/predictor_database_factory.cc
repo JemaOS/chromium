@@ -22,8 +22,7 @@ PredictorDatabase* PredictorDatabaseFactory::GetForProfile(Profile* profile) {
 
 // static
 PredictorDatabaseFactory* PredictorDatabaseFactory::GetInstance() {
-  static base::NoDestructor<PredictorDatabaseFactory> instance;
-  return instance.get();
+  return base::Singleton<PredictorDatabaseFactory>::get();
 }
 
 PredictorDatabaseFactory::PredictorDatabaseFactory()
@@ -36,17 +35,17 @@ PredictorDatabaseFactory::PredictorDatabaseFactory()
               .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
-PredictorDatabaseFactory::~PredictorDatabaseFactory() = default;
+PredictorDatabaseFactory::~PredictorDatabaseFactory() {
+}
 
-std::unique_ptr<KeyedService>
-PredictorDatabaseFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PredictorDatabaseFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
   scoped_refptr<base::SequencedTaskRunner> db_task_runner =
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
            base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN});
-  return std::make_unique<PredictorDatabase>(static_cast<Profile*>(profile),
-                                             std::move(db_task_runner));
+  return new PredictorDatabase(static_cast<Profile*>(profile),
+                               std::move(db_task_runner));
 }
 
 }  // namespace predictors

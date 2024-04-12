@@ -4,8 +4,7 @@
 
 #include "chrome/browser/media/router/discovery/dial/dial_app_discovery_service.h"
 
-#include <vector>
-
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/string_util.h"
@@ -40,7 +39,7 @@ DialAppInfoResult::DialAppInfoResult(
     std::unique_ptr<ParsedDialAppInfo> app_info,
     DialAppInfoResultCode result_code,
     const std::string& error_message,
-    std::optional<int> http_error_code)
+    absl::optional<int> http_error_code)
     : app_info(std::move(app_info)),
       result_code(result_code),
       error_message(error_message),
@@ -77,7 +76,7 @@ void DialAppDiscoveryService::SetParserForTest(
 
 void DialAppDiscoveryService::RemovePendingRequest(
     DialAppDiscoveryService::PendingRequest* request) {
-  std::erase_if(pending_requests_, [&request](const auto& entry) {
+  base::EraseIf(pending_requests_, [&request](const auto& entry) {
     return entry.get() == request;
   });
 }
@@ -122,7 +121,7 @@ void DialAppDiscoveryService::PendingRequest::OnDialAppInfoFetchComplete(
 
 void DialAppDiscoveryService::PendingRequest::OnDialAppInfoFetchError(
     const std::string& error_message,
-    std::optional<int> http_response_code) {
+    absl::optional<int> http_response_code) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto result_code = DialAppInfoResultCode::kNetworkError;
   if (http_response_code) {

@@ -6,19 +6,19 @@
  * @fileoverview The element for displaying information for art albums.
  */
 
-import 'chrome://resources/ash/common/personalization/cros_button_style.css.js';
+import '../../css/cros_button_style.css.js';
 
-import {CrDialogElement} from 'chrome://resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
 
 import {WithPersonalizationStore} from '../personalization_store.js';
 
 import {getTemplate} from './art_album_dialog_element.html.js';
 
-export interface ArtAlbumDialogElement {
+export interface ArtAlbumDialog {
   $: {dialog: CrDialogElement};
 }
 
-export class ArtAlbumDialogElement extends WithPersonalizationStore {
+export class ArtAlbumDialog extends WithPersonalizationStore {
   static get is() {
     return 'art-album-dialog';
   }
@@ -40,8 +40,8 @@ export class ArtAlbumDialogElement extends WithPersonalizationStore {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'art-album-dialog': ArtAlbumDialogElement;
+    'art-album-dialog': ArtAlbumDialog;
   }
 }
 
-customElements.define(ArtAlbumDialogElement.is, ArtAlbumDialogElement);
+customElements.define(ArtAlbumDialog.is, ArtAlbumDialog);

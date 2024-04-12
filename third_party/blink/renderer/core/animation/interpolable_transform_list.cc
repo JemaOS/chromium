@@ -10,19 +10,17 @@
 namespace blink {
 
 // static
-InterpolableTransformList* InterpolableTransformList::ConvertCSSValue(
-    const CSSValue& css_value,
-    const CSSToLengthConversionData& conversion_data,
-    TransformOperations::BoxSizeDependentMatrixBlending box_size_dependent) {
-  TransformOperations transform =
-      TransformBuilder::CreateTransformOperations(css_value, conversion_data);
-  return MakeGarbageCollected<InterpolableTransformList>(std::move(transform),
-                                                         box_size_dependent);
+std::unique_ptr<InterpolableTransformList>
+InterpolableTransformList::ConvertCSSValue(const CSSValue& css_value,
+                                           const StyleResolverState* state) {
+  TransformOperations transform = TransformBuilder::CreateTransformOperations(
+      css_value, state->CssToLengthConversionData());
+  return std::make_unique<InterpolableTransformList>(std::move(transform));
 }
 
 void InterpolableTransformList::PreConcat(
     const InterpolableTransformList& underlying) {
-  HeapVector<Member<TransformOperation>> result;
+  Vector<scoped_refptr<TransformOperation>> result;
   result.reserve(underlying.operations_.size() + operations_.size());
   result.AppendVector(underlying.operations_.Operations());
   result.AppendVector(operations_.Operations());
@@ -38,8 +36,8 @@ void InterpolableTransformList::Interpolate(const InterpolableValue& to,
                                             const double progress,
                                             InterpolableValue& result) const {
   To<InterpolableTransformList>(result).operations_ =
-      To<InterpolableTransformList>(to).operations_.Blend(operations_, progress,
-                                                          box_size_dependent_);
+      To<InterpolableTransformList>(to).operations_.Blend(operations_,
+                                                          progress);
 }
 
 void InterpolableTransformList::AssertCanInterpolateWith(

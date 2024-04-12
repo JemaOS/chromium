@@ -12,7 +12,7 @@
     margin-top: 24px;
   }
 
-  cros-lottie-renderer {
+  cr-lottie {
     margin: auto;
   }
 </style>
@@ -21,10 +21,12 @@
   <div slot="page-body" id="pageBody" class="layout vertical center-center">
     <span>[[i18n('verifyingActivationCode')]]</span>
     <div id="animationContainer">
-      <cros-lottie-renderer id="spinner"
-          asset-url="chrome://resources/ash/common/cellular_setup/spinner.json"
-          autoplay dynamic aria-hidden>
-      </cros-lottie-renderer>
+      <iron-media-query query="(prefers-color-scheme: dark)"
+          query-matches="{{isDarkModeActive_}}">
+      </iron-media-query>
+      <cr-lottie id="spinner"
+          animation-url="[[getAnimationUrl_(isDarkModeActive_)]]" autoplay>
+      </cr-lottie>
     </div>
   </div>
 </base-page>

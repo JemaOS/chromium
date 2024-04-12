@@ -9,7 +9,8 @@ import org.chromium.chrome.browser.base.SplitCompatService;
 
 /** See {@link MediaCaptureNotificationServiceImpl}. */
 public class MediaCaptureNotificationService extends SplitCompatService {
-    private static @IdentifierNameString String sImplClassName =
+    @IdentifierNameString
+    private static String sImplClassName =
             "org.chromium.chrome.browser.media.MediaCaptureNotificationServiceImpl";
 
     public MediaCaptureNotificationService() {

@@ -11,6 +11,8 @@ assert(toolkit_views)
 component("views") {
   output_name = "browser_ui_views"
   sources = [
+    "accelerator_table.cc",
+    "accelerator_table.h",
     "chrome_views_export.h",
     "chrome_widget_sublevel.h",
     "event_utils.cc",
@@ -34,16 +36,15 @@ component("views") {
     "//components/keep_alive_registry",
     "//components/lens",
     "//components/lens:buildflags",
+    "//components/services/screen_ai/buildflags",
     "//components/vector_icons",
     "//content/public/browser",
     "//printing/buildflags",
-    "//services/screen_ai/buildflags",
     "//skia",
     "//ui/base",
     "//ui/events",
     "//ui/gfx",
     "//ui/gfx/geometry",
-    "//ui/views",
     "//url",
   ]
 

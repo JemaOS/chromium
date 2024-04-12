@@ -14,7 +14,6 @@
 #include "base/json/json_writer.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/values.h"
 #include "chrome/credential_provider/gaiacp/event_logging_api_manager.h"
 #include "chrome/credential_provider/gaiacp/gcp_utils.h"
 #include "chrome/credential_provider/gaiacp/gcpw_strings.h"
@@ -429,7 +428,8 @@ HRESULT EventLogsUploadManager::UploadEventViewerLogs(
 
     chunk_id = std::max(chunk_id, log_entry.event_id);
 
-    base::Value::Dict log_entry_value = log_entry.ToValue();
+    base::Value log_entry_value(base::Value::Type::DICT);
+    log_entry.ToValue(log_entry_value);
 
     // Get the JSON for the log to keep track of payload size.
     std::string log_entry_json;
@@ -496,7 +496,7 @@ HRESULT EventLogsUploadManager::MakeUploadLogChunkRequest(
   request_dict.Set(kRequestChunkIdParameterName, static_cast<int>(chunk_id));
   base::Value log_entries = base::Value(std::move(*log_entries_value_list));
   request_dict.Set(kRequestLogEntriesParameterName, std::move(log_entries));
-  std::optional<base::Value> request_result;
+  absl::optional<base::Value> request_result;
 
   // Make the upload HTTP request.
   hr = WinHttpUrlFetcher::BuildRequestAndFetchResultFromHttpService(
@@ -517,18 +517,16 @@ HRESULT EventLogsUploadManager::MakeUploadLogChunkRequest(
   return S_OK;
 }
 
-base::Value::Dict EventLogsUploadManager::EventLogEntry::ToValue() const {
-  return base::Value::Dict()
-      .Set(kEventLogDataParameterName, base::WideToUTF8(data))
-      .Set(kEventLogEventIdParameterName, static_cast<int>(event_id))
-      .Set(kEventLogSeverityLevelParameterName,
-           static_cast<int>(severity_level))
-      .Set(kEventLogTimeStampParameterName,
-           base::Value::Dict()
-               .Set(kEventLogTimeStampSecondsParameterName,
-                    static_cast<int>(created_ts.seconds))
-               .Set(kEventLogTimeStampNanosParameterName,
-                    static_cast<int>(created_ts.nanos)));
+void EventLogsUploadManager::EventLogEntry::ToValue(base::Value& dict) const {
+  base::Value timestamp(base::Value::Type::DICT);
+  timestamp.SetIntKey(kEventLogTimeStampSecondsParameterName,
+                      created_ts.seconds);
+  timestamp.SetIntKey(kEventLogTimeStampNanosParameterName, created_ts.nanos);
+
+  dict.SetStringKey(kEventLogDataParameterName, base::WideToUTF8(data));
+  dict.SetIntKey(kEventLogEventIdParameterName, event_id);
+  dict.SetIntKey(kEventLogSeverityLevelParameterName, severity_level);
+  dict.SetKey(kEventLogTimeStampParameterName, std::move(timestamp));
 }
 
 }  // namespace credential_provider

@@ -6,7 +6,6 @@
 #define CHROME_UPDATER_DEVICE_MANAGEMENT_DM_CACHED_POLICY_INFO_H_
 
 #include <stdint.h>
-
 #include <string>
 
 namespace updater {

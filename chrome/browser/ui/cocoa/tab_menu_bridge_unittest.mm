@@ -6,6 +6,7 @@
 
 #import <Cocoa/Cocoa.h>
 
+#include "base/mac/scoped_nsobject.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/task_environment.h"
@@ -39,17 +40,17 @@ class TabMenuBridgeTest : public ::testing::Test {
     rvh_test_enabler_ = std::make_unique<content::RenderViewHostTestEnabler>();
     delegate_ = std::make_unique<TabStripModelUiHelperDelegate>();
     model_ = std::make_unique<TabStripModel>(delegate_.get(), nullptr);
-    menu_root_ = ItemWithTitle(@"Tab");
-    menu_ = [[NSMenu alloc] initWithTitle:@"Tab"];
-    menu_root_.submenu = menu_;
+    menu_root_.reset(ItemWithTitle(@"Tab"));
+    menu_.reset([[NSMenu alloc] initWithTitle:@"Tab"]);
+    menu_root_.get().submenu = menu_.get();
 
-    AddStaticItems(menu_);
+    AddStaticItems(menu_.get());
   }
 
   void TearDown() override { model_->CloseAllTabs(); }
 
-  NSMenuItem* menu_root() { return menu_root_; }
-  NSMenu* menu() { return menu_; }
+  NSMenuItem* menu_root() { return menu_root_.get(); }
+  NSMenu* menu() { return menu_.get(); }
   TabStripModel* model() { return model_.get(); }
   TabStripModelDelegate* delegate() { return delegate_.get(); }
 
@@ -171,8 +172,8 @@ class TabMenuBridgeTest : public ::testing::Test {
   std::unique_ptr<content::RenderViewHostTestEnabler> rvh_test_enabler_;
   std::unique_ptr<TabStripModelUiHelperDelegate> delegate_;
   std::unique_ptr<TabStripModel> model_;
-  NSMenuItem* __strong menu_root_;
-  NSMenu* __strong menu_;
+  base::scoped_nsobject<NSMenuItem> menu_root_;
+  base::scoped_nsobject<NSMenu> menu_;
 };
 
 TEST_F(TabMenuBridgeTest, CreatesBlankMenu) {

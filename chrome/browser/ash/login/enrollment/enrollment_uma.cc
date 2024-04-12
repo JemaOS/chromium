@@ -17,6 +17,8 @@ const char* const kMetricEnrollmentForcedInitial =
     "Enterprise.EnrollmentForcedInitial";
 const char* const kMetricEnrollmentAttestationBased =
     "Enterprise.EnrollmentAttestationBased";
+const char* const kMetricEnrollmentJemaBased =
+    "Enterprise.EnrollmentJemaBased";
 const char* const kMetricEnrollmentForcedAttestationBased =
     "Enterprise.EnrollmentForcedAttestationBased";
 const char* const kMetricEnrollmentForcedInitialAttestationBased =
@@ -49,6 +51,9 @@ void EnrollmentUMA(policy::MetricEnrollment sample,
     case policy::EnrollmentConfig::MODE_SERVER_FORCED:
       base::UmaHistogramSparse(kMetricEnrollmentForced, sample);
       break;
+    case policy::EnrollmentConfig::MODE_JEMA_LOCAL_FORCED:
+      base::UmaHistogramSparse(kMetricEnrollmentJemaBased, sample);
+      break;
     case policy::EnrollmentConfig::MODE_INITIAL_SERVER_FORCED:
       base::UmaHistogramEnumeration(kMetricEnrollmentForcedInitial, sample);
       break;
@@ -76,8 +81,8 @@ void EnrollmentUMA(policy::MetricEnrollment sample,
     case policy::EnrollmentConfig::MODE_ATTESTATION_ROLLBACK_MANUAL_FALLBACK:
       base::UmaHistogramSparse(kMetricEnrollmentRollbackManualFallback, sample);
       break;
-    case policy::EnrollmentConfig::DEPRECATED_MODE_ENROLLED_ROLLBACK:
-    case policy::EnrollmentConfig::DEPRECATED_MODE_OFFLINE_DEMO:
+    case policy::EnrollmentConfig::OBSOLETE_MODE_ENROLLED_ROLLBACK:
+    case policy::EnrollmentConfig::MODE_OFFLINE_DEMO_DEPRECATED:
     case policy::EnrollmentConfig::MODE_NONE:
       NOTREACHED();
       break;

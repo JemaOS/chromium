@@ -14,11 +14,11 @@ namespace blink {
 XRGripSpace::XRGripSpace(XRSession* session, XRInputSource* source)
     : XRSpace(session), input_source_(source) {}
 
-std::optional<gfx::Transform> XRGripSpace::MojoFromNative() const {
+absl::optional<gfx::Transform> XRGripSpace::MojoFromNative() const {
   // Grip is only available when using tracked pointer for input.
   if (input_source_->TargetRayMode() !=
       device::mojom::XRTargetRayMode::POINTING) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return input_source_->MojoFromInput();

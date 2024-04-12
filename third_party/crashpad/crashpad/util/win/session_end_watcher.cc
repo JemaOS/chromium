@@ -14,7 +14,6 @@
 
 #include "util/win/session_end_watcher.h"
 
-#include "base/check.h"
 #include "base/logging.h"
 #include "base/scoped_generic.h"
 #include "util/win/scoped_set_event.h"

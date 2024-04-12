@@ -18,9 +18,8 @@
 #include "components/services/app_service/public/cpp/app_types.h"
 #include "components/services/app_service/public/cpp/app_update.h"
 #include "components/services/app_service/public/cpp/instance.h"
-#include "url/gurl.h"
 
-namespace chromeos {
+namespace ash {
 
 KioskAppServiceLauncher::KioskAppServiceLauncher(Profile* profile) {
   app_service_ = apps::AppServiceProxyFactory::GetForProfile(profile);
@@ -73,7 +72,7 @@ void KioskAppServiceLauncher::CheckAndMaybeLaunchApp(
 void KioskAppServiceLauncher::EnsureAppTypeInitialized(
     apps::AppType app_type,
     base::OnceClosure app_type_initialized_callback) {
-  if (app_service_->AppRegistryCache().IsAppTypePublished(app_type)) {
+  if (app_service_->AppRegistryCache().IsAppTypeInitialized(app_type)) {
     std::move(app_type_initialized_callback).Run();
     return;
   }
@@ -103,20 +102,10 @@ void KioskAppServiceLauncher::OnAppUpdate(const apps::AppUpdate& update) {
   LaunchAppInternal();
 }
 
-void KioskAppServiceLauncher::OnAppTypePublishing(
-    const std::vector<apps::AppPtr>& deltas,
-    apps::AppType app_type) {
+void KioskAppServiceLauncher::OnAppTypeInitialized(apps::AppType app_type) {
   if (app_type == app_type_ && app_type_initialized_callback_.has_value()) {
     app_registry_observation_.Reset();
-
-    // Move the callback to the local variable, then reset
-    // `app_type_initialized_callback_`, to prevent
-    // `app_type_initialized_callback_` is called again when OnAppTypePublishing
-    // is called recursively.
-    base::OnceClosure app_type_initialized_callback =
-        std::move(app_type_initialized_callback_.value());
-    app_type_initialized_callback_ = std::nullopt;
-    std::move(app_type_initialized_callback).Run();
+    std::move(app_type_initialized_callback_.value()).Run();
   }
 }
 
@@ -148,15 +137,12 @@ void KioskAppServiceLauncher::OnInstanceRegistryWillBeDestroyed(
 
 void KioskAppServiceLauncher::LaunchAppInternal() {
   SYSLOG(INFO) << "Kiosk app is ready to launch with App Service";
-
-  auto params = apps::AppLaunchParams(
-      app_id_, apps::LaunchContainer::kLaunchContainerWindow,
-      WindowOpenDisposition::NEW_POPUP, apps::LaunchSource::kFromKiosk);
-  params.override_url = launch_url_.value_or(GURL());
-
   app_service_->LaunchAppWithParams(
-      std::move(params), base::BindOnce(&KioskAppServiceLauncher::OnAppLaunched,
-                                        weak_ptr_factory_.GetWeakPtr()));
+      apps::AppLaunchParams(
+          app_id_, apps::LaunchContainer::kLaunchContainerWindow,
+          WindowOpenDisposition::NEW_POPUP, apps::LaunchSource::kFromKiosk),
+      base::BindOnce(&KioskAppServiceLauncher::OnAppLaunched,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void KioskAppServiceLauncher::OnAppLaunched(apps::LaunchResult&& result) {
@@ -167,8 +153,4 @@ void KioskAppServiceLauncher::OnAppLaunched(apps::LaunchResult&& result) {
   }
 }
 
-void KioskAppServiceLauncher::SetLaunchUrl(const GURL& launch_url) {
-  launch_url_ = launch_url;
-}
-
-}  // namespace chromeos
+}  // namespace ash

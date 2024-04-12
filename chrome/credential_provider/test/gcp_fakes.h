@@ -122,11 +122,9 @@ class FakeOSUserManager : public OSUserManager {
                            const wchar_t* password,
                            bool interactive,
                            base::win::ScopedHandle* token) override;
-
   HRESULT GetUserSID(const wchar_t* domain,
                      const wchar_t* username,
                      PSID* sid) override;
-
   HRESULT FindUserBySID(const wchar_t* sid,
                         wchar_t* username,
                         DWORD username_size,
@@ -298,7 +296,7 @@ class FakeScopedUserProfileFactory {
 
 class FakeScopedUserProfile : public ScopedUserProfile {
  public:
-  HRESULT SaveAccountInfo(const base::Value::Dict& properties) override;
+  HRESULT SaveAccountInfo(const base::Value& properties) override;
 
  private:
   friend class FakeScopedUserProfileFactory;

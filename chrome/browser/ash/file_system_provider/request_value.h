@@ -10,7 +10,8 @@
 #include "chrome/common/extensions/api/file_system_provider_internal.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 // Holds a parsed value returned by a file system provider. Each accessor can
 // return nullptr in case the requested value type is not available. It is used
@@ -42,10 +43,6 @@ class RequestValue {
 
   static RequestValue CreateForReadFileSuccess(
       extensions::api::file_system_provider_internal::ReadFileRequestedSuccess::
-          Params params);
-
-  static RequestValue CreateForOpenFileSuccess(
-      extensions::api::file_system_provider_internal::OpenFileRequestedSuccess::
           Params params);
 
   static RequestValue CreateForOperationSuccess(
@@ -94,13 +91,6 @@ class RequestValue {
   }
 
   const extensions::api::file_system_provider_internal::
-      OpenFileRequestedSuccess::Params*
-      open_file_success_params() const {
-    return absl::get_if<extensions::api::file_system_provider_internal::
-                            OpenFileRequestedSuccess::Params>(&data_);
-  }
-
-  const extensions::api::file_system_provider_internal::
       OperationRequestedSuccess::Params*
       operation_success_params() const {
     return absl::get_if<extensions::api::file_system_provider_internal::
@@ -136,8 +126,6 @@ class RequestValue {
                 extensions::api::file_system_provider_internal::
                     ReadFileRequestedSuccess::Params,
                 extensions::api::file_system_provider_internal::
-                    OpenFileRequestedSuccess::Params,
-                extensions::api::file_system_provider_internal::
                     OperationRequestedSuccess::Params,
                 extensions::api::file_system_provider_internal::
                     OperationRequestedError::Params,
@@ -145,6 +133,7 @@ class RequestValue {
       data_;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_REQUEST_VALUE_H_

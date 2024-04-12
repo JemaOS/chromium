@@ -38,8 +38,8 @@ class FontPrewarmerTabHelper
   explicit FontPrewarmerTabHelper(content::WebContents* web_contents);
 
   // Testing helpers:
-  static std::string GetSearchResultsPageFontsPref();
-  static std::vector<std::string> GetFontNames(Profile* profile);
+  static std::string GetSearchResultsPagePrimaryFontsPref();
+  static std::vector<std::string> GetPrimaryFontNames(Profile* profile);
 
   Profile* GetProfile();
 
@@ -54,7 +54,7 @@ class FontPrewarmerTabHelper
   void ReadyToCommitNavigation(
       content::NavigationHandle* navigation_handle) override;
 
-  std::optional<int> expected_render_process_host_id_;
+  absl::optional<int> expected_render_process_host_id_;
 
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };

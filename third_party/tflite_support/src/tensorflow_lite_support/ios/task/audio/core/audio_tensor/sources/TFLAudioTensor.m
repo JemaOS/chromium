@@ -18,10 +18,11 @@
 #import "tensorflow_lite_support/ios/task/audio/core/sources/TFLRingBuffer.h"
 
 @implementation TFLAudioTensor {
-  TFLRingBuffer *_ringBuffer;
+  TFLRingBuffer* _ringBuffer;
 }
 
-- (instancetype)initWithAudioFormat:(TFLAudioFormat *)format sampleCount:(NSUInteger)sampleCount {
+- (instancetype)initWithAudioFormat:(TFLAudioFormat*)format
+                        sampleCount:(NSUInteger)sampleCount {
   self = [super init];
   if (self) {
     _audioFormat = format;
@@ -32,10 +33,10 @@
   return self;
 }
 
-- (BOOL)loadBuffer:(TFLFloatBuffer *)buffer
+- (BOOL)loadBuffer:(TFLFloatBuffer*)buffer
             offset:(NSUInteger)offset
               size:(NSUInteger)size
-             error:(NSError **)error {
+             error:(NSError**)error {
   return [_ringBuffer loadFloatData:buffer.data
                            dataSize:buffer.size
                              offset:offset
@@ -43,19 +44,24 @@
                               error:error];
 }
 
-- (BOOL)loadAudioRecord:(TFLAudioRecord *)audioRecord withError:(NSError **)error {
+- (BOOL)loadAudioRecord:(TFLAudioRecord*)audioRecord
+              withError:(NSError**)error {
   if (![self.audioFormat isEqual:audioRecord.audioFormat]) {
     [TFLCommonUtils
         createCustomError:error
                  withCode:TFLSupportErrorCodeInvalidArgumentError
-              description:@"Audio format of TFLAudioRecord does not match the audio format "
-                          @"of Tensor Audio. Please ensure that the channelCount and "
-                          @"sampleRate of both audio formats are equal."];
+              description:
+                  @"Audio format of TFLAudioRecord does not match the audio "
+                  @"format "
+                  @"of Tensor Audio. Please ensure that the channelCount and "
+                  @"sampleRate of both audio formats are equal."];
     return NO;
   }
 
   NSUInteger sizeToLoad = audioRecord.bufferSize;
-  TFLFloatBuffer *buffer = [audioRecord readAtOffset:0 withSize:sizeToLoad error:error];
+  TFLFloatBuffer* buffer = [audioRecord readAtOffset:0
+                                            withSize:sizeToLoad
+                                               error:error];
 
   if (!buffer) {
     return NO;
@@ -64,7 +70,7 @@
   return [self loadBuffer:buffer offset:0 size:sizeToLoad error:error];
 }
 
-- (TFLFloatBuffer *)buffer {
+- (TFLFloatBuffer*)buffer {
   return _ringBuffer.floatBuffer;
 }
 

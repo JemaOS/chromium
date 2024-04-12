@@ -123,9 +123,9 @@ class WebContentCaptureClientTestHelper : public WebContentCaptureClient {
 
   void ResetResults() {
     first_data_ = false;
-    data_.clear();
-    updated_data_.clear();
-    removed_data_.clear();
+    data_.Clear();
+    updated_data_.Clear();
+    removed_data_.Clear();
     captured_text_.clear();
   }
 
@@ -156,8 +156,7 @@ class ContentCaptureTest : public PageTestBase,
                            public ::testing::WithParamInterface<
                                std::vector<base::test::FeatureRef>> {
  public:
-  ContentCaptureTest()
-      : PageTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {
+  ContentCaptureTest() {
     EnablePlatform();
     feature_list_.InitWithFeatures(
         GetParam(),
@@ -183,6 +182,7 @@ class ContentCaptureTest : public PageTestBase,
         "<p id='p8'>8</p>"
         "<div id='d1'></div>"
         "<p id='invisible'>invisible</p>");
+    platform()->SetAutoAdvanceNowToPendingTasks(false);
     InitNodeHolders();
     // Setup captured content to ContentCaptureTask, it isn't necessary once
     // ContentCaptureManager is created by LocalFrame.
@@ -233,12 +233,13 @@ class ContentCaptureTest : public PageTestBase,
 
   void RunContentCaptureTask() {
     ResetResult();
-    FastForwardBy(GetWebContentCaptureClient()->GetTaskInitialDelay());
+    platform()->RunForPeriod(
+        GetWebContentCaptureClient()->GetTaskInitialDelay());
   }
 
   void RunNextContentCaptureTask() {
     ResetResult();
-    FastForwardBy(
+    platform()->RunForPeriod(
         GetContentCaptureTask()->GetTaskDelayForTesting().GetNextTaskDelay());
   }
 
@@ -302,7 +303,7 @@ class ContentCaptureTest : public PageTestBase,
       nodes.push_back(node);
       GetOrResetContentCaptureManager()->ScheduleTaskIfNeeded(*node);
       node_ids.push_back(
-          cc::NodeInfo(node->GetDomNodeId(), GetRect(layout_object)));
+          cc::NodeInfo(DOMNodeIds::IdForNode(node), GetRect(layout_object)));
     }
   }
 
@@ -850,8 +851,8 @@ class ContentCaptureSimTest : public SimTest {
 
     static_cast<WebLocalFrame*>(MainFrame().FindFrameByName("frame"))
         ->SetContentCaptureClient(&child_client_);
-    auto* child_frame_element = To<HTMLIFrameElement>(
-        GetDocument().getElementById(AtomicString("frame")));
+    auto* child_frame_element =
+        To<HTMLIFrameElement>(GetDocument().getElementById("frame"));
     child_document_ = child_frame_element->contentDocument();
     child_document_->UpdateStyleAndLayout(DocumentUpdateReason::kTest);
     Compositor().BeginFrame();
@@ -895,7 +896,7 @@ class ContentCaptureSimTest : public SimTest {
     Node* node = doc.createTextNode("New Text");
     auto* element = MakeGarbageCollected<Element>(html_names::kPTag, &doc);
     element->appendChild(node);
-    Element* div_element = doc.getElementById(AtomicString("d1"));
+    Element* div_element = doc.getElementById("d1");
     div_element->appendChild(element);
     Compositor().BeginFrame();
     auto* layout_text = To<LayoutText>(node->GetLayoutObject());

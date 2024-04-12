@@ -12,8 +12,7 @@ import {BrailleCommandData} from '../common/braille/braille_command_data.js';
 import {BrailleKeyCommand, BrailleKeyEvent} from '../common/braille/braille_key_types.js';
 import {BridgeConstants} from '../common/bridge_constants.js';
 import {BridgeHelper} from '../common/bridge_helper.js';
-import {Command} from '../common/command.js';
-import {CommandStore} from '../common/command_store.js';
+import {Command, CommandStore} from '../common/command_store.js';
 import {GestureCommandData} from '../common/gesture_command_data.js';
 import {KeyMap} from '../common/key_map.js';
 import {KeyUtil} from '../common/key_util.js';
@@ -31,7 +30,7 @@ export class LearnMode {
   /**
    * Initialize keyboard explorer.
    */
-  static init() {
+  static async init() {
     // Export global objects from the background page context into this one.
     window.backgroundWindow = chrome.extension.getBackgroundPage();
 
@@ -45,8 +44,8 @@ export class LearnMode {
     chrome.accessibilityPrivate.onAccessibilityGesture.addListener(
         LearnMode.onAccessibilityGesture);
     chrome.accessibilityPrivate.setKeyboardListener(true, true);
-    BackgroundBridge.Braille.setBypass(true);
-    BackgroundBridge.GestureCommandHandler.setBypass(true);
+    BackgroundBridge.BrailleCommandHandler.setEnabled(false);
+    BackgroundBridge.GestureCommandHandler.setEnabled(false);
 
     ChromeVoxKbHandler.commandHandler = LearnMode.onCommand;
 
@@ -70,9 +69,6 @@ export class LearnMode {
         TARGET, Action.ON_KEY_DOWN, event => LearnMode.onKeyDown(event));
     BridgeHelper.registerHandler(
         TARGET, Action.ON_KEY_UP, event => LearnMode.onKeyUp(event));
-    BridgeHelper.registerHandler(TARGET, Action.READY, () => readyPromise);
-
-    readyCallback();
   }
 
   /**
@@ -93,7 +89,7 @@ export class LearnMode {
         return true;
       }
 
-      BackgroundBridge.ForcedActionPath.onKeyDown(evt).then(
+      BackgroundBridge.UserActionMonitor.onKeyDown(evt).then(
           (shouldPropagate) => {
             if (shouldPropagate) {
               ChromeVoxKbHandler.basicKeyDownActionsListener(evt);
@@ -316,8 +312,8 @@ export class LearnMode {
     chrome.accessibilityPrivate.onAccessibilityGesture.removeListener(
         LearnMode.onAccessibilityGesture);
     chrome.accessibilityPrivate.setKeyboardListener(true, false);
-    BackgroundBridge.Braille.setBypass(false);
-    BackgroundBridge.GestureCommandHandler.setBypass(false);
+    BackgroundBridge.BrailleCommandHandler.setEnabled(true);
+    BackgroundBridge.GestureCommandHandler.setEnabled(true);
   }
 
   /** @private */
@@ -374,9 +370,3 @@ document.addEventListener('DOMContentLoaded', function() {
 function $(id) {
   return document.getElementById(id);
 }
-
-/** @private {function()} */
-let readyCallback;
-
-/** @private {!Promise} */
-const readyPromise = new Promise(resolve => readyCallback = resolve);

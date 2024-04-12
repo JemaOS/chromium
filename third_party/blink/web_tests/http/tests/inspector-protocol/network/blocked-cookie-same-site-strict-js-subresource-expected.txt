@@ -21,7 +21,6 @@ Javascript initiated subresource blocked cookies:}[
             sourceScheme : Secure
             value : value
         }
-        exemptionReason : None
     }
 ]
 

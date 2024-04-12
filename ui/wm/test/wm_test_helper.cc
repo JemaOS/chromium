@@ -52,8 +52,7 @@ WMTestHelper::~WMTestHelper() {
 }
 
 aura::Window* WMTestHelper::GetDefaultParent(aura::Window* window,
-                                             const gfx::Rect& bounds,
-                                             const int64_t display_id) {
+                                             const gfx::Rect& bounds) {
   return host_->window();
 }
 

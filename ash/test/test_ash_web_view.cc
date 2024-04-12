@@ -6,7 +6,6 @@
 
 #include "base/functional/bind.h"
 #include "base/task/sequenced_task_runner.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/view.h"
 
 namespace ash {
@@ -61,20 +60,5 @@ void TestAshWebView::RequestFocus() {
 bool TestAshWebView::HasFocus() const {
   return focused_;
 }
-
-const GURL& TestAshWebView::GetVisibleURL() {
-  return current_url_;
-}
-
-bool TestAshWebView::IsErrorDocument() {
-  return is_error_document_;
-}
-
-void TestAshWebView::SetCornerRadii(const gfx::RoundedCornersF& corner_radii) {
-  // Not yet implemented for unittests.
-}
-
-BEGIN_METADATA(TestAshWebView)
-END_METADATA
 
 }  // namespace ash

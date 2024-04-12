@@ -6,12 +6,14 @@
 #define CHROME_BROWSER_UI_WEBUI_ASH_LOGIN_KIOSK_ENABLE_SCREEN_HANDLER_H_
 
 #include "base/memory/weak_ptr.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
 #include "chrome/browser/ui/webui/ash/login/base_screen_handler.h"
 
 namespace ash {
 
 // Interface between enable kiosk screen and its representation.
-class KioskEnableScreenView {
+class KioskEnableScreenView
+    : public base::SupportsWeakPtr<KioskEnableScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"kiosk-enable",
                                                        "KioskEnableScreen"};
@@ -20,12 +22,11 @@ class KioskEnableScreenView {
 
   virtual void Show() = 0;
   virtual void ShowKioskEnabled(bool success) = 0;
-  virtual base::WeakPtr<KioskEnableScreenView> AsWeakPtr() = 0;
 };
 
 // WebUI implementation of KioskEnableScreenActor.
-class KioskEnableScreenHandler final : public KioskEnableScreenView,
-                                       public BaseScreenHandler {
+class KioskEnableScreenHandler : public KioskEnableScreenView,
+                                 public BaseScreenHandler {
  public:
   using TView = KioskEnableScreenView;
 
@@ -39,14 +40,10 @@ class KioskEnableScreenHandler final : public KioskEnableScreenView,
   // KioskEnableScreenView:
   void Show() override;
   void ShowKioskEnabled(bool success) override;
-  base::WeakPtr<KioskEnableScreenView> AsWeakPtr() override;
 
   // BaseScreenHandler implementation:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
- private:
-  base::WeakPtrFactory<KioskEnableScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

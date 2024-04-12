@@ -8,7 +8,6 @@
 #include "third_party/blink/public/mojom/background_fetch/background_fetch.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_typedefs.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
@@ -23,13 +22,14 @@ namespace blink {
 class BackgroundFetchRecord;
 class CacheQueryOptions;
 class ExceptionState;
+class ScriptPromiseResolver;
 class ScriptState;
 class ServiceWorkerRegistration;
 
 // Represents an individual Background Fetch registration. Gives developers
 // access to its properties, options, and enables them to abort the fetch.
 class BackgroundFetchRegistration final
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ActiveScriptWrappable<BackgroundFetchRegistration>,
       public blink::mojom::blink::BackgroundFetchRegistrationObserver {
   DEFINE_WRAPPERTYPEINFO();
@@ -58,19 +58,16 @@ class BackgroundFetchRegistration final
   // Web Exposed attribute defined in the IDL file. Corresponds to the
   // |developer_id| used elsewhere in the codebase.
   String id() const;
-  ScriptPromiseTyped<BackgroundFetchRecord> match(
-      ScriptState* script_state,
-      const V8RequestInfo* request,
-      const CacheQueryOptions* options,
-      ExceptionState& exception_state);
-  ScriptPromiseTyped<IDLSequence<BackgroundFetchRecord>> matchAll(
-      ScriptState* scrip_state,
-      ExceptionState& exception_state);
-  ScriptPromiseTyped<IDLSequence<BackgroundFetchRecord>> matchAll(
-      ScriptState* script_state,
-      const V8RequestInfo* request,
-      const CacheQueryOptions* options,
-      ExceptionState& exception_state);
+  ScriptPromise match(ScriptState* script_state,
+                      const V8RequestInfo* request,
+                      const CacheQueryOptions* options,
+                      ExceptionState& exception_state);
+  ScriptPromise matchAll(ScriptState* scrip_state,
+                         ExceptionState& exception_state);
+  ScriptPromise matchAll(ScriptState* script_state,
+                         const V8RequestInfo* request,
+                         const CacheQueryOptions* options,
+                         ExceptionState& exception_state);
 
   uint64_t uploadTotal() const;
   uint64_t uploaded() const;
@@ -82,9 +79,10 @@ class BackgroundFetchRegistration final
 
   DEFINE_ATTRIBUTE_EVENT_LISTENER(progress, kProgress)
 
-  ScriptPromiseTyped<IDLBoolean> abort(ScriptState*, ExceptionState&);
+  ScriptPromise abort(ScriptState* script_state,
+                      ExceptionState& exception_state);
 
-  // EventTarget implementation.
+  // EventTargetWithInlineData implementation.
   const AtomicString& InterfaceName() const override;
   ExecutionContext* GetExecutionContext() const override;
 
@@ -100,15 +98,14 @@ class BackgroundFetchRegistration final
           callback);
 
  private:
-  void DidAbort(ScriptPromiseResolverTyped<IDLBoolean>* resolver,
+  void DidAbort(ScriptPromiseResolver* resolver,
                 mojom::blink::BackgroundFetchError error);
-  void MatchImpl(ScriptState* script_state,
-                 ScriptPromiseResolver*,
-                 const V8RequestInfo* request,
-                 mojom::blink::CacheQueryOptionsPtr cache_query_options,
-                 ExceptionState& exception_state,
-                 bool match_all);
-
+  ScriptPromise MatchImpl(
+      ScriptState* script_state,
+      const V8RequestInfo* request,
+      mojom::blink::CacheQueryOptionsPtr cache_query_options,
+      ExceptionState& exception_state,
+      bool match_all);
   void DidGetMatchingRequests(
       ScriptPromiseResolver* resolver,
       bool return_all,

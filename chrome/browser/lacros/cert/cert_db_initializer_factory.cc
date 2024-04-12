@@ -4,7 +4,6 @@
 
 #include "chrome/browser/lacros/cert/cert_db_initializer_factory.h"
 
-#include "base/check_is_test.h"
 #include "base/no_destructor.h"
 #include "base/system/sys_info.h"
 #include "chrome/browser/lacros/cert/cert_db_initializer_impl.h"
@@ -23,17 +22,13 @@ CertDbInitializerFactory* CertDbInitializerFactory::GetInstance() {
 CertDbInitializer* CertDbInitializerFactory::GetForBrowserContext(
     content::BrowserContext* context) {
   return static_cast<CertDbInitializerImpl*>(
-      GetInstance()->GetServiceForBrowserContext(
-          context, GetInstance()->should_create_on_demand_));
+      GetInstance()->GetServiceForBrowserContext(context, /*create=*/false));
 }
 
 CertDbInitializerFactory::CertDbInitializerFactory()
     : ProfileKeyedServiceFactory(
           "CertDbInitializerFactory",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
 bool CertDbInitializerFactory::ServiceIsCreatedWithBrowserContext() const {
   return should_create_with_browser_context_;
@@ -41,22 +36,18 @@ bool CertDbInitializerFactory::ServiceIsCreatedWithBrowserContext() const {
 
 void CertDbInitializerFactory::SetCreateWithBrowserContextForTesting(
     bool should_create) {
-  CHECK_IS_TEST();
   should_create_with_browser_context_ = should_create;
 }
 
-void CertDbInitializerFactory::SetCreateOnDemandForTesting(bool should_create) {
-  CHECK_IS_TEST();
-  should_create_on_demand_ = should_create;
-}
-
-std::unique_ptr<KeyedService>
-CertDbInitializerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* CertDbInitializerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
-  std::unique_ptr<CertDbInitializerImpl> result =
-      std::make_unique<CertDbInitializerImpl>(profile);
+  CertDbInitializerImpl* result = new CertDbInitializerImpl(profile);
   result->Start();
   return result;
+}
+
+bool CertDbInitializerFactory::ServiceIsNULLWhileTesting() const {
+  return true;
 }

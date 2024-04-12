@@ -14,6 +14,14 @@ ChromeVoxBrailleTranslatorManagerTest = class extends ChromeVoxE2ETest {
   /** @override */
   async setUpDeferred() {
     await super.setUpDeferred();
+    await importModule(
+        'BrailleTable', '/chromevox/common/braille/braille_table.js');
+    await importModule(
+        'BrailleTranslatorManager',
+        '/chromevox/background/braille/braille_translator_manager.js');
+    await importModule('LocalStorage', '/common/local_storage.js');
+    await importModule(
+        'SettingsManager', '/chromevox/common/settings_manager.js');
 
     this.liblouis = new FakeLibLouis();
     this.manager = new BrailleTranslatorManager(this.liblouis);

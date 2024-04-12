@@ -15,9 +15,9 @@ namespace views {
 // SidePanelResizeArea.
 class SidePanelResizeHandle : public ImageView,
                               public views::FocusChangeListener {
-  METADATA_HEADER(SidePanelResizeHandle, ImageView)
-
  public:
+  METADATA_HEADER(SidePanelResizeHandle);
+
   explicit SidePanelResizeHandle(SidePanel* side_panel);
 
   void GetAccessibleNodeData(ui::AXNodeData* node_data) override;
@@ -38,14 +38,14 @@ class SidePanelResizeHandle : public ImageView,
 // border, and responsiveness to key events via a focusable
 // SidePanelResizeHandle.
 class SidePanelResizeArea : public ResizeArea {
-  METADATA_HEADER(SidePanelResizeArea, ResizeArea)
-
  public:
+  METADATA_HEADER(SidePanelResizeArea);
+
   explicit SidePanelResizeArea(SidePanel* side_panel);
 
   void OnMouseReleased(const ui::MouseEvent& event) override;
   bool OnKeyPressed(const ui::KeyEvent& event) override;
-  void Layout(PassKey) override;
+  void Layout() override;
 
  private:
   raw_ptr<SidePanel> side_panel_;

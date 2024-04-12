@@ -208,7 +208,8 @@ void MockClipboardHost::ReadUnsanitizedCustomFormat(
   if (it == unsanitized_custom_data_map_.end())
     return;
 
-  mojo_base::BigBuffer buffer = mojo_base::BigBuffer(it->value);
+  mojo_base::BigBuffer buffer =
+      mojo_base::BigBuffer(base::make_span(it->value.data(), it->value.size()));
   std::move(callback).Run(std::move(buffer));
 }
 

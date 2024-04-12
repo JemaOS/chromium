@@ -20,8 +20,7 @@ public class IMEFeedbackSource implements FeedbackSource {
     @Override
     public Map<String, String> getFeedback() {
         String imePackage =
-                Settings.Secure.getString(
-                        ContextUtils.getApplicationContext().getContentResolver(),
+                Settings.Secure.getString(ContextUtils.getApplicationContext().getContentResolver(),
                         Settings.Secure.DEFAULT_INPUT_METHOD);
         if (TextUtils.isEmpty(imePackage)) return null;
         return CollectionUtil.newHashMap(Pair.create("Default IME", imePackage));

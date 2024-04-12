@@ -84,8 +84,8 @@ TEST_F(CSSPropertyValueSetTest, ConflictingLonghandAndShorthand) {
   StyleRule* rule = RuleAt(style_sheet, 0);
 
   EXPECT_EQ(
-      "offset-position: normal; offset-distance: 0px; "
-      "offset-rotate: reverse 2turn; offset-anchor: auto; "
+      "offset-position: initial; offset-distance: initial; "
+      "offset-rotate: reverse 2turn; offset-anchor: initial; "
       "offset-path: initial;",
       rule->Properties().AsText());
 }
@@ -123,7 +123,7 @@ TEST_F(CSSPropertyValueSetTest, SetCustomPropertyReturnValue) {
   MutableCSSPropertyValueSet properties(kHTMLStandardMode);
   EXPECT_EQ(MutableCSSPropertyValueSet::kChangedPropertySet,
             properties.ParseAndSetCustomProperty(
-                AtomicString("--my-property"), "red", /*important=*/false,
+                "--my-property", "red", /*important=*/false,
                 SecureContextMode::kInsecureContext,
                 /*context_style_sheet=*/nullptr,
                 /*is_animation_tainted=*/false));
@@ -133,26 +133,26 @@ TEST_F(CSSPropertyValueSetTest, SetCustomPropertyReturnValue) {
   // return value here.
   EXPECT_EQ(MutableCSSPropertyValueSet::kModifiedExisting,
             properties.ParseAndSetCustomProperty(
-                AtomicString("--my-property"), "red", /*important=*/false,
+                "--my-property", "red", /*important=*/false,
                 SecureContextMode::kInsecureContext,
                 /*context_style_sheet=*/nullptr,
                 /*is_animation_tainted=*/false));
 
   EXPECT_EQ(MutableCSSPropertyValueSet::kChangedPropertySet,
             properties.ParseAndSetCustomProperty(
-                AtomicString("--your-property"), "white",
+                "--your-property", "white",
                 /*important=*/false, SecureContextMode::kInsecureContext,
                 /*context_style_sheet=*/nullptr,
                 /*is_animation_tainted=*/false));
   EXPECT_EQ(MutableCSSPropertyValueSet::kModifiedExisting,
             properties.ParseAndSetCustomProperty(
-                AtomicString("--my-property"), "green",
+                "--my-property", "green",
                 /*important=*/false, SecureContextMode::kInsecureContext,
                 /*context_style_sheet=*/nullptr,
                 /*is_animation_tainted=*/false));
   EXPECT_EQ(MutableCSSPropertyValueSet::kChangedPropertySet,
             properties.ParseAndSetCustomProperty(
-                AtomicString("--my-property"), "", /*important=*/false,
+                "--my-property", "", /*important=*/false,
                 SecureContextMode::kInsecureContext,
                 /*context_style_sheet=*/nullptr,
                 /*is_animation_tainted=*/false));

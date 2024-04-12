@@ -6,7 +6,6 @@
 
 #include "base/containers/contains.h"
 #include "ui/base/x/x11_util.h"
-#include "ui/gfx/x/visual_manager.h"
 #include "ui/gl/gl_surface_egl.h"
 
 #ifndef EGL_ANGLE_x11_visual
@@ -47,7 +46,7 @@ void GetPlatformExtraDisplayAttribs(EGLenum platform_type,
       !base::Contains(*attributes,
                       EGL_PLATFORM_ANGLE_DEVICE_TYPE_SWIFTSHADER_ANGLE)) {
     x11::VisualId visual_id;
-    x11::Connection::Get()->GetOrCreateVisualManager().ChooseVisualForWindow(
+    XVisualManager::GetInstance()->ChooseVisualForWindow(
         true, &visual_id, nullptr, nullptr, nullptr);
     attributes->push_back(EGL_X11_VISUAL_ID_ANGLE);
     attributes->push_back(static_cast<EGLAttrib>(visual_id));
@@ -63,11 +62,15 @@ void ChoosePlatformCustomAlphaAndBufferSize(EGLint* alpha_size,
   if (gl::GLSurfaceEGL::GetGLDisplayEGL()->GetNativeDisplay().GetDisplay() !=
       EGL_DEFAULT_DISPLAY) {
     uint8_t depth;
-    x11::Connection::Get()->GetOrCreateVisualManager().ChooseVisualForWindow(
-        true, nullptr, &depth, nullptr, nullptr);
+    XVisualManager::GetInstance()->ChooseVisualForWindow(true, nullptr, &depth,
+                                                         nullptr, nullptr);
     *buffer_size = depth;
     *alpha_size = *buffer_size == 32 ? 8 : 0;
   }
+}
+
+bool IsTransparentBackgroundSupported() {
+  return ui::XVisualManager::GetInstance()->ArgbVisualAvailable();
 }
 
 }  // namespace ui

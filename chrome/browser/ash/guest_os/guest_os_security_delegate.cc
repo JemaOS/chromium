@@ -12,8 +12,7 @@
 
 namespace guest_os {
 
-GuestOsSecurityDelegate::GuestOsSecurityDelegate(std::string vm_name)
-    : vm_name_(std::move(vm_name)), weak_factory_(this) {}
+GuestOsSecurityDelegate::GuestOsSecurityDelegate() : weak_factory_(this) {}
 
 GuestOsSecurityDelegate::~GuestOsSecurityDelegate() = default;
 
@@ -34,8 +33,8 @@ void GuestOsSecurityDelegate::MakeServerWithFd(
       base::BindOnce(std::move(callback), cap_ptr));
 }
 
-std::string GuestOsSecurityDelegate::GetVmName(ui::EndpointType target) const {
-  return vm_name_;
+std::string GuestOsSecurityDelegate::GetSecurityContext() const {
+  return vm_tools::kConciergeSecurityContext;
 }
 
 }  // namespace guest_os

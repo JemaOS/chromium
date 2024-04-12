@@ -26,9 +26,7 @@ constexpr char kHostname3[] = "android.googleapis.com";
 
 }  // namespace
 
-ArcDnsResolutionRoutine::ArcDnsResolutionRoutine(
-    mojom::RoutineCallSource source)
-    : NetworkDiagnosticsRoutine(source) {
+ArcDnsResolutionRoutine::ArcDnsResolutionRoutine() {
   hostnames_to_resolve_dns_ = {kHostname1, kHostname2, kHostname3};
 }
 

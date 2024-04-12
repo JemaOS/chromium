@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -45,9 +45,9 @@ void FastCheckoutTabHelper::DidStartNavigation(
   FetchCapabilities(url);
   if (autofill::ContentAutofillClient* client =
           autofill::ContentAutofillClient::FromWebContents(web_contents())) {
-    if (auto* fast_checkout_client = client->GetFastCheckoutClient()) {
-      fast_checkout_client->OnNavigation(url, IsCartOrCheckoutUrl(url));
-    }
+    DCHECK(client->GetFastCheckoutClient());
+    client->GetFastCheckoutClient()->OnNavigation(url,
+                                                  IsCartOrCheckoutUrl(url));
   }
 }
 
@@ -62,7 +62,7 @@ void FastCheckoutTabHelper::FetchCapabilities(const GURL& url) {
       return;
     }
     if (!autofill::prefs::IsAutofillProfileEnabled(pref_service) ||
-        !autofill::prefs::IsAutofillPaymentMethodsEnabled(pref_service)) {
+        !autofill::prefs::IsAutofillCreditCardEnabled(pref_service)) {
       return;
     }
 

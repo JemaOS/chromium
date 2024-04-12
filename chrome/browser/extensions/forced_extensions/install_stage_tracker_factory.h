@@ -29,7 +29,7 @@ class InstallStageTrackerFactory : public ProfileKeyedServiceFactory {
   InstallStageTrackerFactory();
   ~InstallStageTrackerFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

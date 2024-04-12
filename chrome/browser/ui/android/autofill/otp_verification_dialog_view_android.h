@@ -5,13 +5,12 @@
 #ifndef CHROME_BROWSER_UI_ANDROID_AUTOFILL_OTP_VERIFICATION_DIALOG_VIEW_ANDROID_H_
 #define CHROME_BROWSER_UI_ANDROID_AUTOFILL_OTP_VERIFICATION_DIALOG_VIEW_ANDROID_H_
 
-#include "components/autofill/core/browser/ui/payments/card_unmask_otp_input_dialog_view.h"
-
 #include <jni.h>
 #include <stddef.h>
 
 #include "base/android/scoped_java_ref.h"
-#include "base/memory/weak_ptr.h"
+#include "base/memory/raw_ptr.h"
+#include "chrome/browser/ui/autofill/payments/card_unmask_otp_input_dialog_view.h"
 #include "ui/android/window_android.h"
 
 using base::android::JavaParamRef;
@@ -26,7 +25,7 @@ class CardUnmaskOtpInputDialogController;
 class OtpVerificationDialogViewAndroid : public CardUnmaskOtpInputDialogView {
  public:
   explicit OtpVerificationDialogViewAndroid(
-      base::WeakPtr<CardUnmaskOtpInputDialogController> controller);
+      CardUnmaskOtpInputDialogController* controller);
   OtpVerificationDialogViewAndroid(const OtpVerificationDialogViewAndroid&) =
       delete;
   OtpVerificationDialogViewAndroid& operator=(
@@ -38,7 +37,6 @@ class OtpVerificationDialogViewAndroid : public CardUnmaskOtpInputDialogView {
   void ShowInvalidState(const std::u16string& invalid_label_text) override;
   void Dismiss(bool show_confirmation_before_closing,
                bool user_closed_dialog) override;
-  base::WeakPtr<CardUnmaskOtpInputDialogView> GetWeakPtr() override;
 
   // Called by the Java code when the error dialog is dismissed.
   void OnDialogDismissed(JNIEnv* env);
@@ -51,11 +49,9 @@ class OtpVerificationDialogViewAndroid : public CardUnmaskOtpInputDialogView {
 
  private:
   void ShowConfirmationAndDismissDialog(std::u16string confirmation_message);
-  base::WeakPtr<CardUnmaskOtpInputDialogController> controller_;
+  raw_ptr<CardUnmaskOtpInputDialogController> controller_;
   // The corresponding java object.
   base::android::ScopedJavaGlobalRef<jobject> java_object_;
-  base::WeakPtrFactory<OtpVerificationDialogViewAndroid> weak_ptr_factory_{
-      this};
 };
 
 }  // namespace autofill

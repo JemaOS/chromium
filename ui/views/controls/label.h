@@ -6,18 +6,17 @@
 #define UI_VIEWS_CONTROLS_LABEL_H_
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr_exclusion.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/models/simple_menu_model.h"
 #include "ui/color/color_id.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/render_text.h"
 #include "ui/gfx/text_constants.h"
-#include "ui/views/buildflags.h"
 #include "ui/views/cascading_property.h"
 #include "ui/views/context_menu_controller.h"
 #include "ui/views/metadata/view_factory.h"
@@ -41,9 +40,9 @@ class VIEWS_EXPORT Label : public View,
                            public WordLookupClient,
                            public SelectionControllerDelegate,
                            public ui::SimpleMenuModel::Delegate {
-  METADATA_HEADER(Label, View)
-
  public:
+  METADATA_HEADER(Label);
+
   enum MenuCommands {
     kCopy = 1,
     kSelectAll,
@@ -136,14 +135,14 @@ class VIEWS_EXPORT Label : public View,
   // enabled.
   SkColor GetEnabledColor() const;
   virtual void SetEnabledColor(SkColor color);
-  std::optional<ui::ColorId> GetEnabledColorId() const;
-  void SetEnabledColorId(std::optional<ui::ColorId> enabled_color_id);
+  absl::optional<ui::ColorId> GetEnabledColorId() const;
+  void SetEnabledColorId(absl::optional<ui::ColorId> enabled_color_id);
 
   // Gets/Sets the background color. This won't be explicitly drawn, but the
   // label will force the text color to be readable over it.
   SkColor GetBackgroundColor() const;
   void SetBackgroundColor(SkColor color);
-  void SetBackgroundColorId(std::optional<ui::ColorId> background_color_id);
+  void SetBackgroundColorId(absl::optional<ui::ColorId> background_color_id);
 
   // Gets/Sets the selection text color. This will automatically force the color
   // to be readable over the selection background color, if auto color
@@ -261,7 +260,6 @@ class VIEWS_EXPORT Label : public View,
   // text contains several lines separated with \n.
   // |fixed_width| is the fixed width that will be used (longer lines will be
   // wrapped).  If 0, no fixed width is enforced.
-  int GetFixedWidth() const;
   void SizeToFit(int fixed_width);
 
   // Like SizeToFit, but uses a smaller width if possible.
@@ -274,7 +272,7 @@ class VIEWS_EXPORT Label : public View,
   void SetCollapseWhenHidden(bool value);
 
   // Get the text as displayed to the user, respecting the obscured flag.
-  const std::u16string GetDisplayTextForTesting() const;
+  std::u16string GetDisplayTextForTesting();
 
   // Get the text direction, as displayed to the user.
   base::i18n::TextDirection GetTextDirectionForTesting();
@@ -297,9 +295,6 @@ class VIEWS_EXPORT Label : public View,
   // Returns true if the label has a selection.
   bool HasSelection() const;
 
-  // Returns true if the label has the whole text selected.
-  bool HasFullSelection() const;
-
   // Selects the entire text. NO-OP if the label is not selectable.
   void SelectAll();
 
@@ -319,7 +314,7 @@ class VIEWS_EXPORT Label : public View,
 
   // View:
   int GetBaseline() const override;
-  gfx::Size CalculatePreferredSize() const final;
+  gfx::Size CalculatePreferredSize() const override;
   gfx::Size CalculatePreferredSize(
       const SizeBounds& available_size) const override;
   gfx::Size GetMinimumSize() const override;
@@ -328,10 +323,6 @@ class VIEWS_EXPORT Label : public View,
   bool GetCanProcessEventsWithinSubtree() const override;
   WordLookupClient* GetWordLookupClient() override;
   std::u16string GetTooltipText(const gfx::Point& p) const override;
-  void GetAccessibleNodeData(ui::AXNodeData* node_data) override;
-
-  // ui::SimpleMenuModel::Delegate:
-  void ExecuteCommand(int command_id, int event_flags) override;
 
  protected:
   // Create a single RenderText instance to actually be painted.
@@ -375,10 +366,6 @@ class VIEWS_EXPORT Label : public View,
   FRIEND_TEST_ALL_PREFIXES(LabelTest, MultiLineSizingWithElide);
   FRIEND_TEST_ALL_PREFIXES(LabelTest, IsDisplayTextTruncated);
   FRIEND_TEST_ALL_PREFIXES(LabelTest, ChecksSubpixelRenderingOntoOpaqueSurface);
-  FRIEND_TEST_ALL_PREFIXES(ViewAXPlatformNodeDelegateWinInnerTextRangeTest,
-                           Label_LTR);
-  FRIEND_TEST_ALL_PREFIXES(ViewAXPlatformNodeDelegateWinInnerTextRangeTest,
-                           Label_RTL);
   friend class LabelSelectionTest;
 
   // ContextMenuController overrides:
@@ -389,10 +376,10 @@ class VIEWS_EXPORT Label : public View,
   // WordLookupClient overrides:
   bool GetWordLookupDataAtPoint(const gfx::Point& point,
                                 gfx::DecoratedText* decorated_word,
-                                gfx::Rect* rect) override;
+                                gfx::Point* baseline_point) override;
 
   bool GetWordLookupDataFromSelection(gfx::DecoratedText* decorated_text,
-                                      gfx::Rect* rect) override;
+                                      gfx::Point* baseline_point) override;
 
   // SelectionControllerDelegate overrides:
   gfx::RenderText* GetRenderTextForSelectionController() override;
@@ -411,6 +398,7 @@ class VIEWS_EXPORT Label : public View,
   // ui::SimpleMenuModel::Delegate overrides:
   bool IsCommandIdChecked(int command_id) const override;
   bool IsCommandIdEnabled(int command_id) const override;
+  void ExecuteCommand(int command_id, int event_flags) override;
   bool GetAcceleratorForCommandId(int command_id,
                                   ui::Accelerator* accelerator) const override;
 
@@ -463,19 +451,9 @@ class VIEWS_EXPORT Label : public View,
   // Updates the elide behavior used by |full_text_|.
   void UpdateFullTextElideBehavior();
 
-#if BUILDFLAG(SUPPORTS_AX_TEXT_OFFSETS)
-  // Calculate widths for each grapheme and word starts and ends. Used for
-  // accessibility. Currently only on Windows when UIA is enabled.
-  bool RefreshAccessibleTextOffsets();
-
-  // The string used to compute the text offsets for accessibility. This is used
-  // to determine if the offsets need to be recomputed.
-  std::u16string ax_name_used_to_compute_offsets_;
-#endif  // BUILDFLAG(SUPPORTS_AX_TEXT_OFFSETS)
-
   int text_context_;
   int text_style_;
-  std::optional<int> line_height_;
+  absl::optional<int> line_height_;
 
   // An un-elided and single-line RenderText object used for preferred sizing.
   std::unique_ptr<gfx::RenderText> full_text_;
@@ -495,8 +473,8 @@ class VIEWS_EXPORT Label : public View,
   SkColor actual_selection_text_color_ = gfx::kPlaceholderColor;
   SkColor selection_background_color_ = gfx::kPlaceholderColor;
 
-  std::optional<ui::ColorId> enabled_color_id_;
-  std::optional<ui::ColorId> background_color_id_;
+  absl::optional<ui::ColorId> enabled_color_id_;
+  absl::optional<ui::ColorId> background_color_id_;
 
   // Set to true once the corresponding setter is invoked.
   bool enabled_color_set_ = false;
@@ -556,7 +534,6 @@ VIEW_BUILDER_PROPERTY(gfx::ElideBehavior, ElideBehavior)
 VIEW_BUILDER_PROPERTY(const std::u16string&, TooltipText)
 VIEW_BUILDER_PROPERTY(bool, HandlesTooltips)
 VIEW_BUILDER_PROPERTY(int, MaximumWidth)
-VIEW_BUILDER_PROPERTY(int, MaximumWidthSingleLine)
 VIEW_BUILDER_PROPERTY(bool, CollapseWhenHidden)
 VIEW_BUILDER_PROPERTY(bool, Selectable)
 VIEW_BUILDER_METHOD(SizeToFit, int)

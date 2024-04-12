@@ -36,15 +36,8 @@ class FileSystemBackendDelegate;
 class FileAccessPermissions;
 
 constexpr char kSystemMountNameArchive[] = "archive";
+constexpr char kSystemMountNameOem[] = "oem";
 constexpr char kSystemMountNameRemovable[] = "removable";
-
-// Backend Function called.  Used to control access.
-enum class BackendFunction {
-  kCreateFileSystemOperation,
-  kCreateFileStreamReader,
-  kCreateFileStreamWriter,
-  kGetRedirectURLForContents,
-};
 
 // FileSystemBackend is a Chrome OS specific implementation of
 // ExternalFileSystemBackend. This class is responsible for a
@@ -55,7 +48,10 @@ enum class BackendFunction {
 // - Create FileSystemOperation per file system type
 // - Create FileStreamReader/Writer per file system type
 //
-// Chrome OS specific static mount points:
+// Chrome OS specific mount points:
+//
+// "Downloads" is a mount point for user's Downloads directory on the local
+// disk, where downloaded files are stored by default.
 //
 // "archive" is a mount point for an archive file, such as a zip file. This
 // mount point exposes contents of an archive file via cros_disks and AVFS
@@ -64,14 +60,18 @@ enum class BackendFunction {
 // "removable" is a mount point for removable media such as an SD card.
 // Insertion and removal of removable media are handled by cros_disks.
 //
+// "oem" is a read-only mount point for a directory containing OEM data.
+//
+// "drive" is a mount point for Google Drive. Drive is integrated with the
+// FileSystem API layer via drive::FileSystemProxy. This mount point is added
+// by drive::DriveIntegrationService.
+//
 // These mount points are placed under the "external" namespace, and file
 // system URLs for these mount points look like:
 //
 //   filesystem:<origin>/external/<mount_name>/...
 //
-// Other mounts are also registered by VolumeManager for MyFiles, Drive, VMs
-// (crostini, arc, etc), Android Document Providers, fileSystemProviders, etc.
-class FileSystemBackend : public storage::FileSystemBackend {
+class FileSystemBackend : public storage::ExternalFileSystemBackend {
  public:
   using storage::FileSystemBackend::ResolveURLCallback;
 
@@ -93,9 +93,6 @@ class FileSystemBackend : public storage::FileSystemBackend {
 
   ~FileSystemBackend() override;
 
-  // Gets the ChromeOS FileSystemBackend.
-  static FileSystemBackend* Get(const storage::FileSystemContext& context);
-
   // Adds system mount points, such as "archive", and "removable". This
   // function is no-op if these mount points are already present.
   void AddSystemMountPoints();
@@ -104,42 +101,6 @@ class FileSystemBackend : public storage::FileSystemBackend {
   // file system type matches with what this provider supports.
   // This could be called on any threads.
   static bool CanHandleURL(const storage::FileSystemURL& url);
-
-  // Returns true if |url| is allowed to be accessed.
-  // This is supposed to perform ExternalFileSystem-specific security
-  // checks.
-  bool IsAccessAllowed(BackendFunction backend_function,
-                       storage::OperationType operation_type,
-                       const storage::FileSystemURL& url) const;
-
-  // Returns the list of top level directories that are exposed by this
-  // provider. This list is used to set appropriate child process file access
-  // permissions.
-  std::vector<base::FilePath> GetRootDirectories() const;
-
-  // Grants access to |virtual_path| from |origin| URL.
-  void GrantFileAccessToOrigin(const url::Origin& origin,
-                               const base::FilePath& virtual_path);
-
-  // Revokes file access from origin identified with |origin|.
-  void RevokeAccessForOrigin(const url::Origin& origin);
-
-  // Gets virtual path by known filesystem path. Returns false when filesystem
-  // path is not exposed by this provider.
-  bool GetVirtualPath(const base::FilePath& file_system_path,
-                      base::FilePath* virtual_path) const;
-
-  // Gets a redirect URL for contents. e.g. Google Drive URL for hosted
-  // documents. Returns empty URL if the entry does not have the redirect URL.
-  void GetRedirectURLForContents(const storage::FileSystemURL& url,
-                                 storage::URLCallback callback) const;
-
-  // Creates an internal File System URL for performing internal operations such
-  // as confirming if a file or a directory exist before granting the final
-  // permission to the entry. The path must be an absolute path.
-  storage::FileSystemURL CreateInternalURL(
-      storage::FileSystemContext* context,
-      const base::FilePath& entry_path) const;
 
   // storage::FileSystemBackend overrides.
   bool CanHandleType(storage::FileSystemType type) const override;
@@ -155,7 +116,6 @@ class FileSystemBackend : public storage::FileSystemBackend {
       storage::FileSystemType type,
       base::File::Error* error_code) override;
   std::unique_ptr<storage::FileSystemOperation> CreateFileSystemOperation(
-      storage::OperationType type,
       const storage::FileSystemURL& url,
       storage::FileSystemContext* context,
       base::File::Error* error_code) const override;
@@ -181,6 +141,20 @@ class FileSystemBackend : public storage::FileSystemBackend {
       storage::FileSystemType type) const override;
   const storage::AccessObserverList* GetAccessObservers(
       storage::FileSystemType type) const override;
+
+  // storage::ExternalFileSystemBackend overrides.
+  bool IsAccessAllowed(const storage::FileSystemURL& url) const override;
+  std::vector<base::FilePath> GetRootDirectories() const override;
+  void GrantFileAccessToOrigin(const url::Origin& origin,
+                               const base::FilePath& virtual_path) override;
+  void RevokeAccessForOrigin(const url::Origin& origin) override;
+  bool GetVirtualPath(const base::FilePath& filesystem_path,
+                      base::FilePath* virtual_path) const override;
+  void GetRedirectURLForContents(const storage::FileSystemURL& url,
+                                 storage::URLCallback callback) const override;
+  storage::FileSystemURL CreateInternalURL(
+      storage::FileSystemContext* context,
+      const base::FilePath& entry_path) const override;
 
  private:
   const AccountId account_id_;
@@ -221,7 +195,7 @@ class FileSystemBackend : public storage::FileSystemBackend {
 
   // Globally visible mount points. System MountPonts instance should outlive
   // all FileSystemBackend instances, so raw pointer is safe.
-  raw_ptr<storage::ExternalMountPoints> system_mount_points_;
+  raw_ptr<storage::ExternalMountPoints, ExperimentalAsh> system_mount_points_;
 };
 
 }  // namespace ash

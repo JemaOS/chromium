@@ -46,7 +46,7 @@ const char kContentCodingAes128Gcm[] = "aes128gcm";
 // Other constants.
 const char kContentEncodingOctetStream[] = "application/octet-stream";
 
-std::optional<std::string> GetAuthHeader(crypto::ECPrivateKey* vapid_key) {
+absl::optional<std::string> GetAuthHeader(crypto::ECPrivateKey* vapid_key) {
   base::Value::Dict claims;
   claims.Set(kClaimsKeyAudience, base::Value(kFCMServerAudience));
 
@@ -55,17 +55,17 @@ std::optional<std::string> GetAuthHeader(crypto::ECPrivateKey* vapid_key) {
           .InSeconds();
   // TODO: Year 2038 problem, base::Value does not support int64_t.
   if (exp > INT_MAX)
-    return std::nullopt;
+    return absl::nullopt;
 
   claims.Set(kClaimsKeyExpirationTime, base::Value(static_cast<int32_t>(exp)));
 
-  std::optional<std::string> jwt = CreateJSONWebToken(claims, vapid_key);
+  absl::optional<std::string> jwt = CreateJSONWebToken(claims, vapid_key);
   if (!jwt)
-    return std::nullopt;
+    return absl::nullopt;
 
   std::string public_key;
   if (!gcm::GetRawPublicKey(*vapid_key, &public_key))
-    return std::nullopt;
+    return absl::nullopt;
 
   std::string base64_public_key;
   base::Base64UrlEncode(public_key, base::Base64UrlEncodePolicy::OMIT_PADDING,
@@ -152,7 +152,7 @@ void WebPushSender::SendMessage(const std::string& fcm_token,
   DCHECK(vapid_key);
   DCHECK_LE(message.time_to_live, message.kMaximumTTL);
 
-  std::optional<std::string> auth_header = GetAuthHeader(vapid_key);
+  absl::optional<std::string> auth_header = GetAuthHeader(vapid_key);
   if (!auth_header) {
     DLOG(ERROR) << "Failed to create JWT";
     InvokeWebPushCallback(std::move(callback),
@@ -160,6 +160,7 @@ void WebPushSender::SendMessage(const std::string& fcm_token,
     return;
   }
 
+  LogSendWebPushMessagePayloadSize(message.payload.size());
   std::unique_ptr<network::SimpleURLLoader> url_loader = BuildURLLoader(
       fcm_token, message.time_to_live, GetUrgencyHeader(message.urgency),
       *auth_header, message.payload);
@@ -178,6 +179,7 @@ void WebPushSender::OnMessageSent(
     std::unique_ptr<std::string> response_body) {
   int net_error = url_loader->NetError();
   if (net_error != net::OK) {
+    LogSendWebPushMessageStatusCode(net_error);
     if (net_error == net::ERR_INSUFFICIENT_RESOURCES) {
       DLOG(ERROR) << "VAPID key invalid";
       InvokeWebPushCallback(std::move(callback),
@@ -191,6 +193,7 @@ void WebPushSender::OnMessageSent(
   }
 
   if (!url_loader->ResponseInfo() || !url_loader->ResponseInfo()->headers) {
+    LogSendWebPushMessageStatusCode(net::OK);
     DLOG(ERROR) << "Response info not found";
     InvokeWebPushCallback(std::move(callback),
                           SendWebPushMessageResult::kServerError);
@@ -200,6 +203,7 @@ void WebPushSender::OnMessageSent(
   scoped_refptr<net::HttpResponseHeaders> response_headers =
       url_loader->ResponseInfo()->headers;
   int response_code = response_headers->response_code();
+  LogSendWebPushMessageStatusCode(response_code);
   if (response_code == net::HTTP_NOT_FOUND || response_code == net::HTTP_GONE) {
     DLOG(ERROR) << "Device no longer registered";
     InvokeWebPushCallback(std::move(callback),

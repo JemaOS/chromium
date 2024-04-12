@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-
 (async function() {
   TestRunner.addResult(`Tests how execution context and target are selected.\n`);
   await TestRunner.showPanel('sources');

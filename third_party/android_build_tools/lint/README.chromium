@@ -2,9 +2,8 @@ Name: Android SDK lint
 Short Name: lint
 Version: unknown
 License: Apache Version 2.0
-License File: LICENSE
+License File: NOT_SHIPPED
 Security Critical: No
-Shipped: no
 URL: http://tools.android.com/tips/lint
 
 Description:

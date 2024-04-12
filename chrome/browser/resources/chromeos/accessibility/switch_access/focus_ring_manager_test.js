@@ -9,6 +9,14 @@ SwitchAccessFocusRingManagerTest = class extends SwitchAccessE2ETest {
   /** @override */
   async setUpDeferred() {
     await super.setUpDeferred();
+    await importModule(
+        ['FocusRingManager', 'RingId'], '/switch_access/focus_ring_manager.js');
+    await importModule(
+        'BackButtonNode', '/switch_access/nodes/back_button_node.js');
+    await importModule('Navigator', '/switch_access/navigator.js');
+    await importModule('ActionManager', '/switch_access/action_manager.js');
+    await importModule('RectUtil', '/common/rect_util.js');
+
     await TestUtility.setup();
   }
 };

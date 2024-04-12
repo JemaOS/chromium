@@ -6,7 +6,6 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
-#include "base/values.h"
 #include "chrome/browser/extensions/extension_error_ui.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_service_test_base.h"
@@ -19,6 +18,7 @@
 #include "extensions/browser/pref_names.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
+#include "extensions/common/value_builder.h"
 
 namespace extensions {
 
@@ -96,10 +96,11 @@ ExtensionErrorUI* CreateMockUI(ExtensionErrorUI::Delegate* delegate) {
 // Builds and returns a simple extension.
 scoped_refptr<const Extension> BuildExtension() {
   return ExtensionBuilder()
-      .SetManifest(base::Value::Dict()
+      .SetManifest(DictionaryBuilder()
                        .Set("name", "My Wonderful Extension")
                        .Set("version", "0.1.1.0")
-                       .Set("manifest_version", 2))
+                       .Set("manifest_version", 2)
+                       .Build())
       .Build();
 }
 

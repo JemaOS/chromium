@@ -8,6 +8,7 @@
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
 #include "third_party/blink/renderer/platform/fonts/font_unique_name_lookup.h"
 #include "third_party/blink/renderer/platform/fonts/shaping/harfbuzz_face.h"
+#include "third_party/blink/renderer/platform/fonts/shaping/harfbuzz_font_cache.h"
 #include "third_party/blink/renderer/platform/privacy_budget/identifiability_digest_helpers.h"
 #include "third_party/blink/renderer/platform/wtf/thread_specific.h"
 
@@ -18,25 +19,26 @@ static constexpr size_t kCachesMaxSize = 250;
 
 namespace blink {
 
-ThreadSpecific<Persistent<FontGlobalContext>>&
+ThreadSpecific<std::unique_ptr<FontGlobalContext>>&
 GetThreadSpecificFontGlobalContextPool() {
-  DEFINE_THREAD_SAFE_STATIC_LOCAL(ThreadSpecific<Persistent<FontGlobalContext>>,
-                                  thread_specific_pool, ());
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(
+      ThreadSpecific<std::unique_ptr<FontGlobalContext>>, thread_specific_pool,
+      ());
   return thread_specific_pool;
 }
 
 FontGlobalContext& FontGlobalContext::Get() {
   auto& thread_specific_pool = GetThreadSpecificFontGlobalContextPool();
   if (!*thread_specific_pool)
-    *thread_specific_pool = MakeGarbageCollected<FontGlobalContext>(PassKey());
+    *thread_specific_pool = base::WrapUnique(new FontGlobalContext());
   return **thread_specific_pool;
 }
 
 FontGlobalContext* FontGlobalContext::TryGet() {
-  return GetThreadSpecificFontGlobalContextPool()->Get();
+  return GetThreadSpecificFontGlobalContextPool()->get();
 }
 
-FontGlobalContext::FontGlobalContext(PassKey)
+FontGlobalContext::FontGlobalContext()
     : typeface_digest_cache_(kCachesMaxSize),
       postscript_name_digest_cache_(kCachesMaxSize) {}
 
@@ -50,13 +52,22 @@ FontUniqueNameLookup* FontGlobalContext::GetFontUniqueNameLookup() {
   return Get().font_unique_name_lookup_.get();
 }
 
+HarfBuzzFontCache& FontGlobalContext::GetHarfBuzzFontCache() {
+  std::unique_ptr<HarfBuzzFontCache>& global_context_harfbuzz_font_cache =
+      Get().harfbuzz_font_cache_;
+  if (!global_context_harfbuzz_font_cache) {
+    global_context_harfbuzz_font_cache = std::make_unique<HarfBuzzFontCache>();
+  }
+  return *global_context_harfbuzz_font_cache;
+}
+
 IdentifiableToken FontGlobalContext::GetOrComputeTypefaceDigest(
     const FontPlatformData& source) {
   SkTypeface* typeface = source.Typeface();
   if (!typeface)
     return 0;
 
-  SkTypefaceID font_id = typeface->uniqueID();
+  SkFontID font_id = typeface->uniqueID();
 
   auto iter = typeface_digest_cache_.Get(font_id);
   if (iter == typeface_digest_cache_.end())
@@ -71,7 +82,7 @@ IdentifiableToken FontGlobalContext::GetOrComputePostScriptNameDigest(
   if (!typeface)
     return IdentifiableToken();
 
-  SkTypefaceID font_id = typeface->uniqueID();
+  SkFontID font_id = typeface->uniqueID();
 
   auto iter = postscript_name_digest_cache_.Get(font_id);
   if (iter == postscript_name_digest_cache_.end())

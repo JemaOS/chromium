@@ -10,7 +10,6 @@
 #include "chrome/browser/ui/webui/signin/dice_web_signin_intercept_handler.h"
 #include "chrome/browser/ui/webui/webui_util.h"
 #include "chrome/common/webui_url_constants.h"
-#include "chrome/grit/branded_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/signin_resources.h"
 #include "content/public/browser/web_contents.h"
@@ -28,7 +27,7 @@ namespace {
 
 // Helper to create parameters used for testing, when loading the intercept
 // bubble directly with the `debug` query param set.
-WebSigninInterceptor::Delegate::BubbleParameters
+DiceWebSigninInterceptor::Delegate::BubbleParameters
 CreateSampleBubbleParameters() {
   // Looks like the transparent checkerboard.
   std::string small_png =
@@ -52,8 +51,8 @@ CreateSampleBubbleParameters() {
   primary_account.picture_url = small_png;
   primary_account.hosted_domain = kNoHostedDomainFound;
 
-  return WebSigninInterceptor::Delegate::BubbleParameters(
-      WebSigninInterceptor::SigninInterceptionType::kMultiUser,
+  return DiceWebSigninInterceptor::Delegate::BubbleParameters(
+      DiceWebSigninInterceptor::SigninInterceptionType::kMultiUser,
       intercepted_account, primary_account, SK_ColorMAGENTA);
 }
 
@@ -81,36 +80,17 @@ DiceWebSigninInterceptUI::DiceWebSigninInterceptUI(content::WebUI* web_ui)
       {"test_loader.js", IDR_WEBUI_JS_TEST_LOADER_JS},
       {"test_loader_util.js", IDR_WEBUI_JS_TEST_LOADER_UTIL_JS},
       {"test_loader.html", IDR_WEBUI_TEST_LOADER_HTML},
-      // Resources for the Chrome signin sub page: /chrome_signin.
-      {chrome::kChromeUIDiceWebSigninInterceptChromeSigninSubPage,
-       IDR_SIGNIN_DICE_WEB_SIGNIN_INTERCEPT_CHROME_SIGNIN_CHROME_SIGNIN_HTML},
-      {"chrome_signin/chrome_signin_app.js",
-       IDR_SIGNIN_DICE_WEB_SIGNIN_INTERCEPT_CHROME_SIGNIN_CHROME_SIGNIN_APP_JS},
-      {"chrome_signin/chrome_signin_app.html.js",
-       IDR_SIGNIN_DICE_WEB_SIGNIN_INTERCEPT_CHROME_SIGNIN_CHROME_SIGNIN_APP_HTML_JS},
   };
   source->AddResourcePaths(kResources);
 
-  // Adding localized strings for the Chrome Signin sub page: /chrome_signin.
-  source->AddLocalizedString(
-      "chromeSigninTitle",
-      IDS_SIGNIN_DICE_WEB_INTERCEPT_BUBBLE_CHROME_SIGNIN_TITLE);
-  source->AddLocalizedString(
-      "chromeSigninSubtitle",
-      IDS_SIGNIN_DICE_WEB_INTERCEPT_BUBBLE_CHROME_SIGNIN_SUBTITLE);
-  source->AddLocalizedString(
-      "chromeSigninAcceptText",
-      IDS_SIGNIN_DICE_WEB_INTERCEPT_BUBBLE_CHROME_SIGNIN_ACCEPT_TEXT);
-  source->AddLocalizedString(
-      "chromeSigninDeclineText",
-      IDS_SIGNIN_DICE_WEB_INTERCEPT_BUBBLE_CHROME_SIGNIN_DECLINE_TEXT);
-
+  source->AddLocalizedString("guestLink",
+                             IDS_SIGNIN_DICE_WEB_INTERCEPT_BUBBLE_GUEST_LINK);
   source->UseStringsJs();
-  source->EnableReplaceI18nInJS();
 
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ScriptSrc,
-      "script-src chrome://resources chrome://webui-test 'self';");
+      "script-src chrome://resources chrome://test chrome://webui-test "
+      "'self';");
   webui::EnableTrustedTypesCSP(source);
   webui::SetupChromeRefresh2023(source);
 
@@ -125,7 +105,8 @@ DiceWebSigninInterceptUI::DiceWebSigninInterceptUI(content::WebUI* web_ui)
 DiceWebSigninInterceptUI::~DiceWebSigninInterceptUI() = default;
 
 void DiceWebSigninInterceptUI::Initialize(
-    const WebSigninInterceptor::Delegate::BubbleParameters& bubble_parameters,
+    const DiceWebSigninInterceptor::Delegate::BubbleParameters&
+        bubble_parameters,
     base::OnceCallback<void(int)> show_widget_with_height_callback,
     base::OnceCallback<void(SigninInterceptionUserChoice)>
         completion_callback) {

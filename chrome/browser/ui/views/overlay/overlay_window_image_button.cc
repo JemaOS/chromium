@@ -34,5 +34,5 @@ void OverlayWindowImageButton::OnThemeChanged() {
       GetColorProvider()->GetColor(kColorPipWindowForeground));
 }
 
-BEGIN_METADATA(OverlayWindowImageButton)
+BEGIN_METADATA(OverlayWindowImageButton, views::ImageButton)
 END_METADATA

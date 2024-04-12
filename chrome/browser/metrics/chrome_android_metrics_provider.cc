@@ -4,19 +4,19 @@
 
 #include "chrome/browser/metrics/chrome_android_metrics_provider.h"
 
-#include <optional>
-
+#include "base/feature_list.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "chrome/browser/android/customtabs/custom_tab_session_state_tracker.h"
-#include "chrome/browser/android/metrics/jni_headers/AppUpdateInfoUtils_jni.h"
+#include "chrome/browser/android/locale/locale_manager.h"
 #include "chrome/browser/android/metrics/uma_session_stats.h"
+#include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/flags/android/chrome_session_state.h"
 #include "chrome/browser/notifications/jni_headers/NotificationSystemStatusUtil_jni.h"
-#include "components/metrics/android_metrics_helper.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "system_profile.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/metrics_proto/chrome_user_metrics_extension.pb.h"
 
 namespace {
@@ -27,7 +27,7 @@ const int kAppNotificationStatusBoundary = 3;
 
 void EmitAppNotificationStatusHistogram() {
   auto status = Java_NotificationSystemStatusUtil_getAppNotificationStatus(
-      jni_zero::AttachCurrentThread());
+      base::android::AttachCurrentThread());
   UMA_HISTOGRAM_ENUMERATION("Android.AppNotificationStatus", status,
                             kAppNotificationStatusBoundary);
 }
@@ -67,7 +67,6 @@ ChromeAndroidMetricsProvider::~ChromeAndroidMetricsProvider() {}
 // static
 void ChromeAndroidMetricsProvider::RegisterPrefs(PrefRegistrySimple* registry) {
   chrome::android::RegisterActivityTypePrefs(registry);
-  metrics::AndroidMetricsHelper::RegisterPrefs(registry);
 }
 
 void ChromeAndroidMetricsProvider::OnDidCreateMetricsLog() {
@@ -84,12 +83,6 @@ void ChromeAndroidMetricsProvider::OnDidCreateMetricsLog() {
   // before the new metrics log record can be uploaded, Chrome may be able to
   // recover it for upload on restart.
   chrome::android::SaveActivityTypeToLocalState(local_state_, type);
-
-  EmitMultipleUserProfilesHistogram();
-
-  metrics::AndroidMetricsHelper::GetInstance()->EmitHistograms(
-      local_state_,
-      /*on_did_create_metrics_log=*/true);
 }
 
 void ChromeAndroidMetricsProvider::ProvidePreviousSessionData(
@@ -102,18 +95,12 @@ void ChromeAndroidMetricsProvider::ProvidePreviousSessionData(
   // Save whether multiple user profiles are present in Android. This is
   // unlikely to change across sessions.
   EmitMultipleUserProfilesHistogram();
-
-  metrics::AndroidMetricsHelper::GetInstance()->EmitHistograms(
-      local_state_,
-      /*on_did_create_metrics_log=*/false);
 }
 
 void ChromeAndroidMetricsProvider::ProvideCurrentSessionData(
     metrics::ChromeUserMetricsExtension* uma_proto) {
   UMA_HISTOGRAM_BOOLEAN("Android.MultiWindowMode.Active",
                         chrome::android::GetIsInMultiWindowModeValue());
-  // Determine and emit to histogram if AppUpdate is available.
-  Java_AppUpdateInfoUtils_emitToHistogram(jni_zero::AttachCurrentThread());
 
   metrics::SystemProfileProto::OS* os_proto =
       uma_proto->mutable_system_profile()->mutable_os();
@@ -131,9 +118,6 @@ void ChromeAndroidMetricsProvider::ProvideCurrentSessionData(
 
   UmaSessionStats::GetInstance()->ProvideCurrentSessionData();
   EmitAppNotificationStatusHistogram();
-}
-
-// static
-void ChromeAndroidMetricsProvider::ResetGlobalStateForTesting() {
-  metrics::AndroidMetricsHelper::ResetGlobalStateForTesting();
+  EmitMultipleUserProfilesHistogram();
+  LocaleManager::RecordUserTypeMetrics();
 }

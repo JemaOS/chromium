@@ -82,10 +82,6 @@ class SVGTextPathElement final : public SVGTextContentElement,
 
   bool SelfHasRelativeLengths() const override;
 
-  SVGAnimatedPropertyBase* PropertyFromAttribute(
-      const QualifiedName& attribute_name) const override;
-  void SynchronizeAllSVGAttributes() const override;
-
   Member<SVGAnimatedLength> start_offset_;
   Member<SVGAnimatedEnumeration<SVGTextPathMethodType>> method_;
   Member<SVGAnimatedEnumeration<SVGTextPathSpacingType>> spacing_;

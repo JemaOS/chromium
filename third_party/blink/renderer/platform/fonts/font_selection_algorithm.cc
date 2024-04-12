@@ -34,7 +34,7 @@ auto FontSelectionAlgorithm::StretchDistance(
   if (width.Includes(request_.width))
     return {FontSelectionValue(), request_.width};
 
-  if (request_.width > kNormalWidthValue) {
+  if (request_.width > NormalWidthValue()) {
     if (width.minimum > request_.width)
       return {width.minimum - request_.width, width.minimum};
     DCHECK(width.maximum < request_.width);
@@ -57,7 +57,7 @@ auto FontSelectionAlgorithm::StyleDistance(
   if (slope.Includes(request_.slope))
     return {FontSelectionValue(), request_.slope};
 
-  if (request_.slope >= kItalicThreshold) {
+  if (request_.slope >= ItalicThreshold()) {
     if (slope.minimum > request_.slope)
       return {slope.minimum - request_.slope, slope.minimum};
     DCHECK(request_.slope > slope.maximum);
@@ -77,7 +77,7 @@ auto FontSelectionAlgorithm::StyleDistance(
     return {threshold - slope.maximum, slope.maximum};
   }
 
-  if (request_.slope > -kItalicThreshold) {
+  if (request_.slope > -ItalicThreshold()) {
     if (slope.minimum > request_.slope && slope.minimum <= FontSelectionValue())
       return {slope.minimum - request_.slope, slope.minimum};
     if (slope.maximum < request_.slope)
@@ -102,21 +102,20 @@ auto FontSelectionAlgorithm::WeightDistance(
   if (weight.Includes(request_.weight))
     return {FontSelectionValue(), request_.weight};
 
-  if (request_.weight >= kLowerWeightSearchThreshold &&
-      request_.weight <= kUpperWeightSearchThreshold) {
+  if (request_.weight >= LowerWeightSearchThreshold() &&
+      request_.weight <= UpperWeightSearchThreshold()) {
     if (weight.minimum > request_.weight &&
-        weight.minimum <= kUpperWeightSearchThreshold) {
+        weight.minimum <= UpperWeightSearchThreshold())
       return {weight.minimum - request_.weight, weight.minimum};
-    }
     if (weight.maximum < request_.weight)
-      return {kUpperWeightSearchThreshold - weight.maximum, weight.maximum};
-    DCHECK(weight.minimum > kUpperWeightSearchThreshold);
+      return {UpperWeightSearchThreshold() - weight.maximum, weight.maximum};
+    DCHECK(weight.minimum > UpperWeightSearchThreshold());
     auto threshold =
         std::min(request_.weight, capabilities_bounds_.weight.minimum);
     return {weight.minimum - threshold, weight.minimum};
   }
 
-  if (request_.weight < kLowerWeightSearchThreshold) {
+  if (request_.weight < LowerWeightSearchThreshold()) {
     if (weight.maximum < request_.weight)
       return {request_.weight - weight.maximum, weight.maximum};
     DCHECK(weight.minimum > request_.weight);
@@ -125,7 +124,7 @@ auto FontSelectionAlgorithm::WeightDistance(
     return {weight.minimum - threshold, weight.minimum};
   }
 
-  DCHECK(request_.weight >= kUpperWeightSearchThreshold);
+  DCHECK(request_.weight >= UpperWeightSearchThreshold());
   if (weight.minimum > request_.weight)
     return {weight.minimum - request_.weight, weight.minimum};
   DCHECK(weight.maximum < request_.weight);

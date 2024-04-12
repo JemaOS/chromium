@@ -174,7 +174,9 @@ class ThumbnailFetch {
     scoped_refptr<base::RefCountedMemory> data = image.As1xPNGBytes();
     if (!data || data->size() == 0)
       return GURL();
-    std::string png_base64 = base::Base64Encode(*data);
+    std::string png_base64;
+    base::Base64Encode(base::StringPiece(data->front_as<char>(), data->size()),
+                       &png_base64);
     return GURL(base::StrCat({"data:image/png;base64,", png_base64}));
   }
 

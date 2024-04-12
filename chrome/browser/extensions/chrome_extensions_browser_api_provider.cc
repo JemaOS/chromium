@@ -7,6 +7,9 @@
 #include "chrome/browser/extensions/api/generated_api_registration.h"
 #include "chrome/browser/extensions/api/preference/preference_api.h"
 #include "extensions/browser/extension_function_registry.h"
+//---***JEMAOS BEGIN***---
+#include "jemaos/extensions/browser/api/generated_api_registration.h"
+//---***JEMAOS END***---
 
 namespace extensions {
 
@@ -24,6 +27,10 @@ void ChromeExtensionsBrowserAPIProvider::RegisterExtensionFunctions(
 
   // Generated APIs from Chrome.
   api::ChromeGeneratedFunctionRegistry::RegisterAll(registry);
+
+//---***JEMAOS BEGIN***---
+  api::JemaOSGeneratedFunctionRegistry::RegisterAll(registry);
+//---***JEMAOS END***---
 }
 
 }  // namespace extensions

@@ -195,7 +195,7 @@ class CloudPolicyManagerTest : public PlatformBrowserTest {
     ASSERT_TRUE(policy_manager());
     policy_manager()->Connect(
         g_browser_process->local_state(),
-        std::make_unique<CloudPolicyClient>(
+        UserPolicySigninServiceBase::CreateCloudPolicyClient(
             connector->device_management_service(),
             test_url_loader_factory_->GetSafeWeakWrapper()));
 #endif

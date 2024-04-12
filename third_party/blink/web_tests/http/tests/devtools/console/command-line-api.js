@@ -2,15 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
-import * as Common from 'devtools/core/common/common.js';
-
 (async function() {
   TestRunner.addResult('Tests that command line api works.\n');
 
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('console');
   await TestRunner.loadHTML(`
     <p id='foo'>
@@ -47,7 +43,7 @@ import * as Common from 'devtools/core/common/common.js';
       step2();
       return;
     }
-    Common.Console.Console.instance().log('');
+    Common.console.log('');
     ConsoleTestRunner.evaluateInConsole(expression, step1);
   }
 

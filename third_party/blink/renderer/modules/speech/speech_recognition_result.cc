@@ -37,7 +37,7 @@ SpeechRecognitionAlternative* SpeechRecognitionResult::item(unsigned index) {
   if (index >= alternatives_.size())
     return nullptr;
 
-  return alternatives_[index].Get();
+  return alternatives_[index];
 }
 
 SpeechRecognitionResult::SpeechRecognitionResult(

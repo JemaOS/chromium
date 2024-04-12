@@ -10,7 +10,7 @@
 
 #include "chrome/browser/safe_browsing/cloud_content_scanning/binary_fcm_service.h"
 #include "chrome/browser/safe_browsing/cloud_content_scanning/binary_upload_service.h"
-#include "chrome/browser/safe_browsing/cloud_content_scanning/connector_upload_request.h"
+#include "chrome/browser/safe_browsing/cloud_content_scanning/multipart_uploader.h"
 #include "components/safe_browsing/core/browser/sync/safe_browsing_primary_account_token_fetcher.h"
 
 class Profile;
@@ -39,7 +39,6 @@ class CloudBinaryUploadService : public BinaryUploadService {
   void MaybeUploadForDeepScanning(std::unique_ptr<Request> request) override;
   void MaybeAcknowledge(std::unique_ptr<Ack> ack) override;
   void MaybeCancelRequests(std::unique_ptr<CancelRequests> cancel) override;
-  base::WeakPtr<BinaryUploadService> AsWeakPtr() override;
 
   // Indicates whether the DM token/Connector combination is allowed to upload
   // data.
@@ -64,29 +63,15 @@ class CloudBinaryUploadService : public BinaryUploadService {
   // Sets `can_upload_data_` for tests.
   void SetAuthForTesting(const std::string& dm_token, bool authorized);
 
-  // Sets `token_fetcher_` for tests.
-  void SetTokenFetcherForTesting(
-      std::unique_ptr<SafeBrowsingTokenFetcher> token_fetcher);
-
   // Returns the URL that requests are uploaded to. Scans for enterprise go to a
   // different URL than scans for Advanced Protection users and Enhanced
   // Protection users.
   static GURL GetUploadUrl(bool is_consumer_scan_eligible);
 
-  static void RemoveFCMRetryDelaysForTesting();
-
  protected:
   void FinishRequest(Request* request,
                      Result result,
                      enterprise_connectors::ContentAnalysisResponse response);
-
-  // This may destroy `request`.
-  // Virtual for testing.
-  virtual void OnGetRequestData(Request::Id request_id,
-                                Result result,
-                                Request::Data data);
-
-  Request* GetRequest(Request::Id request_id);
 
  private:
   using TokenAndConnector =
@@ -103,27 +88,26 @@ class CloudBinaryUploadService : public BinaryUploadService {
   virtual void UploadForDeepScanning(std::unique_ptr<Request> request);
 
   // This may destroy `request`.
-  void OnGetInstanceID(Request::Id request_id, const std::string& token);
+  void OnGetInstanceID(Request* request, const std::string& token);
 
-  // Get the access token only if the user matches the management and
-  // affiliation requirements.
-  void MaybeGetAccessToken(Request::Id request_id);
-  void OnGetAccessToken(Request::Id request_id,
-                        const std::string& access_token);
+  void OnGetAccessToken(Request* request, const std::string& access_token);
 
-  void OnUploadComplete(Request::Id request_id,
+  // This may destroy `request`.
+  void OnGetRequestData(Request* request, Result result, Request::Data data);
+
+  void OnUploadComplete(Request* request,
                         bool success,
                         int http_status,
                         const std::string& response_data);
 
-  void OnGetResponse(Request::Id request_id,
+  void OnGetResponse(Request* request,
                      enterprise_connectors::ContentAnalysisResponse response);
 
-  void MaybeFinishRequest(Request::Id request_id);
+  void MaybeFinishRequest(Request* request);
 
-  void FinishIfActive(Request::Id request_id,
-                      Result result,
-                      enterprise_connectors::ContentAnalysisResponse response);
+  void OnTimeout(Request* request);
+
+  bool IsActive(Request* request);
 
   void MaybeUploadForDeepScanningCallback(std::unique_ptr<Request> request,
                                           bool authorized);
@@ -141,9 +125,9 @@ class CloudBinaryUploadService : public BinaryUploadService {
       enterprise_connectors::AnalysisConnector connector,
       bool);
 
-  void RecordRequestMetrics(Request::Id request_id, Result result);
+  void RecordRequestMetrics(Request* request, Result result);
   void RecordRequestMetrics(
-      Request::Id request_id,
+      Request* request,
       Result result,
       const enterprise_connectors::ContentAnalysisResponse& response);
 
@@ -156,38 +140,25 @@ class CloudBinaryUploadService : public BinaryUploadService {
   // possible.
   void PopRequestQueue();
 
-  // Called if the FCM connection isn't established to retry it. If it is
-  // established, `UploadForDeepScanning` is called.
-  void RetryFCMConnection(Request::Id request_id,
-                          int retry_count,
-                          base::TimeDelta next_backoff);
-
-  // This continues the upload of the scanning request after the
-  // `binary_fcm_service_` instance is known to be connected.
-  void OnFCMConnected(Request::Id request_id);
-
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
   std::unique_ptr<BinaryFCMService> binary_fcm_service_;
 
   const raw_ptr<Profile> profile_;
 
-  Request::Id::Generator request_id_generator_;
-
   // Request queued for upload.
   std::queue<std::unique_ptr<Request>> request_queue_;
 
   // Resources associated with an in-progress request.
-  base::flat_map<Request::Id, std::unique_ptr<Request>> active_requests_;
-  base::flat_map<Request::Id, base::TimeTicks> start_times_;
-  base::flat_map<Request::Id, std::unique_ptr<base::OneShotTimer>>
-      active_timers_;
-  base::flat_map<Request::Id, std::unique_ptr<ConnectorUploadRequest>>
+  base::flat_map<Request*, std::unique_ptr<Request>> active_requests_;
+  base::flat_map<Request*, base::TimeTicks> start_times_;
+  base::flat_map<Request*, std::unique_ptr<base::OneShotTimer>> active_timers_;
+  base::flat_map<Request*, std::unique_ptr<MultipartUploadRequest>>
       active_uploads_;
-  base::flat_map<Request::Id, std::string> active_tokens_;
+  base::flat_map<Request*, std::string> active_tokens_;
 
   // Maps requests to each corresponding tag-result pairs.
   base::flat_map<
-      Request::Id,
+      Request*,
       base::flat_map<std::string,
                      enterprise_connectors::ContentAnalysisResponse::Result>>
       received_connector_results_;

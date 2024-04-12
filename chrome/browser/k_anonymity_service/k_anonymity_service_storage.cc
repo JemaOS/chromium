@@ -70,7 +70,7 @@ class KAnonymityServiceSqlStorage : public KAnonymityServiceStorage {
                 proto::TrustTokenKeyCommitmentWithExpiration>>(
                 table_manager_,
                 trust_token_key_commitment_table_.get(),
-                /*max_num_entries=*/std::nullopt,
+                /*max_num_entries=*/absl::nullopt,
                 kFlushDelay)),
         weak_factory_(this) {}
 
@@ -162,13 +162,13 @@ class KAnonymityServiceSqlStorage : public KAnonymityServiceStorage {
     return InitStatus::kInitOk;
   }
 
-  std::optional<OHTTPKeyAndExpiration> GetOHTTPKeyFor(
+  absl::optional<OHTTPKeyAndExpiration> GetOHTTPKeyFor(
       const url::Origin& origin) const override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     DCHECK(status_ != kInitNotReady);
     proto::OHTTPKeyAndExpiration result;
     if (!ohttp_key_data_->TryGetData(origin.Serialize(), &result)) {
-      return std::nullopt;
+      return absl::nullopt;
     }
     return OHTTPKeyAndExpiration{
         result.hpke_key(), base::Time::FromDeltaSinceWindowsEpoch(
@@ -186,14 +186,14 @@ class KAnonymityServiceSqlStorage : public KAnonymityServiceStorage {
     ohttp_key_data_->UpdateData(origin.Serialize(), std::move(proto_value));
   }
 
-  std::optional<KeyAndNonUniqueUserIdWithExpiration> GetKeyAndNonUniqueUserId()
+  absl::optional<KeyAndNonUniqueUserIdWithExpiration> GetKeyAndNonUniqueUserId()
       const override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     DCHECK(status_ != kInitNotReady);
     proto::TrustTokenKeyCommitmentWithExpiration result;
     if (!trust_token_key_commitment_data_->TryGetData(
             kTrustTokenKeyCommitmentKey, &result)) {
-      return std::nullopt;
+      return absl::nullopt;
     }
     return KeyAndNonUniqueUserIdWithExpiration{
         {result.key_commitment(), result.non_unique_id()},
@@ -252,12 +252,12 @@ void KAnonymityServiceMemoryStorage::WaitUntilReady(
   std::move(on_ready).Run(InitStatus::kInitOk);
 }
 
-std::optional<OHTTPKeyAndExpiration>
+absl::optional<OHTTPKeyAndExpiration>
 KAnonymityServiceMemoryStorage::GetOHTTPKeyFor(
     const url::Origin& origin) const {
   auto it = ohttp_key_map_.find(origin);
   if (it == ohttp_key_map_.end()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return it->second;
 }
@@ -268,7 +268,7 @@ void KAnonymityServiceMemoryStorage::UpdateOHTTPKeyFor(
   ohttp_key_map_[origin] = key;
 }
 
-std::optional<KeyAndNonUniqueUserIdWithExpiration>
+absl::optional<KeyAndNonUniqueUserIdWithExpiration>
 KAnonymityServiceMemoryStorage::GetKeyAndNonUniqueUserId() const {
   return key_and_non_unique_user_id_with_expiration_;
 }

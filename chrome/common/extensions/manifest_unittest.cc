@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -21,7 +20,9 @@
 #include "extensions/common/features/simple_feature.h"
 #include "extensions/common/install_warning.h"
 #include "extensions/common/manifest_constants.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using extensions::mojom::ManifestLocation;
 
@@ -95,18 +96,20 @@ class ManifestUnitTest : public testing::Test {
 
 // Verifies that extensions can access the correct keys.
 TEST_F(ManifestUnitTest, Extension) {
-  auto manifest_value = base::Value::Dict()
-                            .Set(keys::kName, "extension")
-                            .Set(keys::kVersion, "1")
-                            .Set(keys::kManifestVersion, 2)
-                            .Set("unknown_key", "foo");
+  base::Value::Dict manifest_value;
+  manifest_value.Set(keys::kName, "extension");
+  manifest_value.Set(keys::kVersion, "1");
+  manifest_value.Set(keys::kManifestVersion, 2);
   manifest_value.SetByDottedPath(keys::kBackgroundPage, "bg.html");
+  manifest_value.Set("unknown_key", "foo");
 
   std::unique_ptr<Manifest> manifest(
       new Manifest(ManifestLocation::kInternal, std::move(manifest_value),
                    crx_file::id_util::GenerateId("extid")));
+  std::string error;
   std::vector<InstallWarning> warnings;
-  manifest->ValidateManifest(&warnings);
+  EXPECT_TRUE(manifest->ValidateManifest(&error, &warnings));
+  EXPECT_TRUE(error.empty());
   ASSERT_EQ(1u, warnings.size());
   AssertType(manifest.get(), Manifest::TYPE_EXTENSION);
 
@@ -134,15 +137,19 @@ TEST_F(ManifestUnitTest, Extension) {
 
 // Verifies that key restriction based on type works.
 TEST_F(ManifestUnitTest, ExtensionTypes) {
-  auto value = base::Value::Dict()
-                   .Set(keys::kName, "extension")
-                   .Set(keys::kVersion, "1");
+  base::Value::Dict value;
+  value.Set(keys::kName, "extension");
+  value.Set(keys::kVersion, "1");
+
+  const base::Value empty_dict(base::Value::Type::DICT);
 
   std::unique_ptr<Manifest> manifest(
       new Manifest(ManifestLocation::kInternal, std::move(value),
                    crx_file::id_util::GenerateId("extid")));
+  std::string error;
   std::vector<InstallWarning> warnings;
-  manifest->ValidateManifest(&warnings);
+  EXPECT_TRUE(manifest->ValidateManifest(&error, &warnings));
+  EXPECT_TRUE(error.empty());
   EXPECT_TRUE(warnings.empty());
 
   // By default, the type is Extension.
@@ -191,16 +198,19 @@ TEST_F(ManifestUnitTest, ExtensionTypes) {
 // Verifies that the getters filter restricted keys taking into account the
 // manifest version.
 TEST_F(ManifestUnitTest, RestrictedKeys_ManifestVersion) {
-  base::Value::Dict value = base::Value::Dict()
+  base::Value::Dict value = DictionaryBuilder()
                                 .Set(keys::kName, "extension")
                                 .Set(keys::kVersion, "1")
-                                .Set(keys::kManifestVersion, 2);
+                                .Set(keys::kManifestVersion, 2)
+                                .Build();
 
   auto manifest =
       std::make_unique<Manifest>(ManifestLocation::kInternal, std::move(value),
                                  crx_file::id_util::GenerateId("extid"));
+  std::string error;
   std::vector<InstallWarning> warnings;
-  manifest->ValidateManifest(&warnings);
+  EXPECT_TRUE(manifest->ValidateManifest(&error, &warnings));
+  EXPECT_TRUE(error.empty());
   EXPECT_TRUE(warnings.empty());
 
   // "host_permissions" requires manifest version 3.
@@ -217,17 +227,20 @@ TEST_F(ManifestUnitTest, RestrictedKeys_ManifestVersion) {
 // Verifies that the getters filter restricted keys taking into account the
 // item type.
 TEST_F(ManifestUnitTest, RestrictedKeys_ItemType) {
-  base::Value::Dict value = base::Value::Dict()
+  base::Value::Dict value = DictionaryBuilder()
                                 .Set(keys::kName, "item")
                                 .Set(keys::kVersion, "1")
                                 .Set(keys::kManifestVersion, 2)
-                                .Set(keys::kPageAction, base::Value::Dict());
+                                .Set(keys::kPageAction, base::Value::Dict())
+                                .Build();
 
   auto manifest =
       std::make_unique<Manifest>(ManifestLocation::kInternal, std::move(value),
                                  crx_file::id_util::GenerateId("extid"));
+  std::string error;
   std::vector<InstallWarning> warnings;
-  manifest->ValidateManifest(&warnings);
+  EXPECT_TRUE(manifest->ValidateManifest(&error, &warnings));
+  EXPECT_TRUE(error.empty());
   EXPECT_TRUE(warnings.empty());
   AssertType(manifest.get(), Manifest::TYPE_EXTENSION);
 

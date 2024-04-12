@@ -75,7 +75,7 @@ bool IsPageInTabGroup(content::WebContents* contents) {
   DCHECK(contents);
 
 #if !BUILDFLAG(IS_ANDROID)
-  if (Browser* browser = chrome::FindBrowserWithTab(contents)) {
+  if (Browser* browser = chrome::FindBrowserWithWebContents(contents)) {
     int tab_index = browser->tab_strip_model()->GetIndexOfWebContents(contents);
     if (tab_index != TabStripModel::kNoTab &&
         browser->tab_strip_model()->GetTabGroupForTab(tab_index).has_value()) {
@@ -87,7 +87,7 @@ bool IsPageInTabGroup(content::WebContents* contents) {
   TabAndroid* const tab = TabAndroid::FromWebContents(contents);
   if (!tab)
     return false;
-  return TabModelJniBridge::IsTabInTabGroup(tab);
+  return TabModelJniBridge::HasOtherRelatedTabs(tab);
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 
@@ -299,7 +299,7 @@ void HistoryClustersTabHelper::DidStartNavigation(
   // The remaining logic only pertains to if the previously committed navigation
   // was the HistoryClusters UI.
   if (!IsHistoryPage(navigation_handle->GetWebContents()->GetLastCommittedURL(),
-                     GURL(history_clusters::GetChromeUIHistoryClustersURL()))) {
+                     GURL(history_clusters::kChromeUIHistoryClustersURL))) {
     return;
   }
 
@@ -332,7 +332,7 @@ void HistoryClustersTabHelper::DidFinishNavigation(
   }
 
   if (!IsHistoryPage(navigation_handle->GetURL(),
-                     GURL(history_clusters::GetChromeUIHistoryClustersURL()))) {
+                     GURL(history_clusters::kChromeUIHistoryClustersURL))) {
     return;
   }
 

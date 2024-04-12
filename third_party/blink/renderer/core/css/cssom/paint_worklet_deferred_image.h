@@ -36,7 +36,7 @@ class CORE_EXPORT PaintWorkletDeferredImage : public GeneratedImage {
             const gfx::RectF& dest_rect,
             const gfx::RectF& src_rect,
             const ImageDrawOptions&) override;
-  void DrawTile(cc::PaintCanvas*,
+  void DrawTile(GraphicsContext&,
                 const gfx::RectF&,
                 const ImageDrawOptions&) override;
   sk_sp<cc::PaintShader> CreateShader(const gfx::RectF& tile_rect,

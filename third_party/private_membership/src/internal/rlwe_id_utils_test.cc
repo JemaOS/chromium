@@ -15,7 +15,6 @@
 #include "third_party/private_membership/src/internal/rlwe_id_utils.h"
 
 #include <string>
-#include <vector>
 
 #include "third_party/private_membership/src/internal/constants.h"
 #include "third_party/private_membership/src/internal/testing/constants.h"
@@ -42,11 +41,11 @@ TEST(RlweIdUtils, ComputeBucketStoredEncryptedIdSuccess) {
   plaintext_id.set_non_sensitive_id("nsid");
   plaintext_id.set_sensitive_id("sid");
 
-  ::private_join_and_compute::Context ctx;
+  private_join_and_compute::Context ctx;
   ASSERT_OK_AND_ASSIGN(
       auto ec_cipher,
-      ::private_join_and_compute::ECCommutativeCipher::CreateWithNewKey(
-          kTestCurveId, ::private_join_and_compute::ECCommutativeCipher::HashType::SHA256));
+      private_join_and_compute::ECCommutativeCipher::CreateWithNewKey(
+          kTestCurveId, private_join_and_compute::ECCommutativeCipher::HashType::SHA256));
 
   std::string full_id = HashRlwePlaintextId(plaintext_id);
   ASSERT_OK_AND_ASSIGN(std::string encrypted_id, ec_cipher->Encrypt(full_id));
@@ -71,11 +70,11 @@ TEST(RlweIdUtils, ComputeBucketStoredEncryptedIdEmpty) {
   plaintext_id.set_non_sensitive_id("empty-nsid");
   plaintext_id.set_sensitive_id("empty-sid");
 
-  ::private_join_and_compute::Context ctx;
+  private_join_and_compute::Context ctx;
   ASSERT_OK_AND_ASSIGN(
       auto ec_cipher,
-      ::private_join_and_compute::ECCommutativeCipher::CreateWithNewKey(
-          kTestCurveId, ::private_join_and_compute::ECCommutativeCipher::HashType::SHA256));
+      private_join_and_compute::ECCommutativeCipher::CreateWithNewKey(
+          kTestCurveId, private_join_and_compute::ECCommutativeCipher::HashType::SHA256));
 
   ASSERT_OK_AND_ASSIGN(std::string id, ComputeBucketStoredEncryptedId(
                                            plaintext_id, empty_id_params,
@@ -92,11 +91,11 @@ TEST(RlweIdUtils, ComputeBucketStoredEncryptedIdError) {
   plaintext_id.set_non_sensitive_id("nsid-test");
   plaintext_id.set_sensitive_id("sid-test");
 
-  ::private_join_and_compute::Context ctx;
+  private_join_and_compute::Context ctx;
   ASSERT_OK_AND_ASSIGN(
       auto ec_cipher,
-      ::private_join_and_compute::ECCommutativeCipher::CreateWithNewKey(
-          kTestCurveId, ::private_join_and_compute::ECCommutativeCipher::HashType::SHA256));
+      private_join_and_compute::ECCommutativeCipher::CreateWithNewKey(
+          kTestCurveId, private_join_and_compute::ECCommutativeCipher::HashType::SHA256));
 
   EXPECT_THAT(
       ComputeBucketStoredEncryptedId(plaintext_id, params, nullptr, &ctx),
@@ -147,7 +146,7 @@ TEST(RlweIdUtils, EnsureInjectiveInternalProto) {
 }
 
 TEST(RlweIdUtils, HashNonsensitiveIdWithSalt) {
-  ::private_join_and_compute::Context ctx;
+  private_join_and_compute::Context ctx;
   std::string nsid1("nsid1");
   std::string nsid2("nsid2");
   ASSERT_OK_AND_ASSIGN(
@@ -168,7 +167,7 @@ TEST(RlweIdUtils, HashNonsensitiveIdWithSalt) {
 }
 
 TEST(RlweIdUtils, HashNonsensitiveIdWithSaltRegression) {
-  ::private_join_and_compute::Context ctx;
+  private_join_and_compute::Context ctx;
   std::string nsid("nsid");
 
   ASSERT_OK_AND_ASSIGN(std::string hash, HashNonsensitiveIdWithSalt(
@@ -187,11 +186,11 @@ TEST(RlweIdUtils, AllSensitiveIdHashTypesCovered) {
   plaintext_id.set_non_sensitive_id("nsid");
   plaintext_id.set_sensitive_id("sid");
 
-  ::private_join_and_compute::Context ctx;
+  private_join_and_compute::Context ctx;
   ASSERT_OK_AND_ASSIGN(
       auto ec_cipher,
-      ::private_join_and_compute::ECCommutativeCipher::CreateWithNewKey(
-          kTestCurveId, ::private_join_and_compute::ECCommutativeCipher::HashType::SHA256));
+      private_join_and_compute::ECCommutativeCipher::CreateWithNewKey(
+          kTestCurveId, private_join_and_compute::ECCommutativeCipher::HashType::SHA256));
 
   // The EnumerateEnumValues method is unavailable in Chromium.
   // Test uses a hardcoded vector of the enums in order to allow clean

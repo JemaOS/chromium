@@ -43,8 +43,8 @@ constexpr char kTestShareTextParam[] = "share_text";
 constexpr char kTestWebApkPackageName[] = "org.chromium.webapk.some_package";
 const std::u16string kTestAppTitle = u"Test App";
 
-std::unique_ptr<web_app::WebAppInstallInfo> BuildDefaultWebAppInfo() {
-  auto app_info = std::make_unique<web_app::WebAppInstallInfo>();
+std::unique_ptr<WebAppInstallInfo> BuildDefaultWebAppInfo() {
+  auto app_info = std::make_unique<WebAppInstallInfo>();
   app_info->start_url = GURL(kTestAppUrl);
   app_info->scope = GURL(kTestAppUrl);
   app_info->title = kTestAppTitle;
@@ -100,8 +100,7 @@ class WebApkManagerTest : public apps::AppRegistryCache::Observer,
   }
 
   void WaitForAppUninstall(const std::string& app_id) {
-    app_registry_cache_observer_.Observe(
-        &(app_service_proxy()->AppRegistryCache()));
+    Observe(&(app_service_proxy()->AppRegistryCache()));
     app_id_ = app_id;
     base::RunLoop run_loop;
     quit_callback_ = run_loop.QuitClosure();
@@ -118,13 +117,13 @@ class WebApkManagerTest : public apps::AppRegistryCache::Observer,
         update.Readiness() == apps::Readiness::kUninstalledByUser &&
         !quit_callback_.is_null()) {
       std::move(quit_callback_).Run();
-      app_registry_cache_observer_.Reset();
+      Observe(nullptr);
     }
   }
 
   void OnAppRegistryCacheWillBeDestroyed(
       apps::AppRegistryCache* cache) override {
-    app_registry_cache_observer_.Reset();
+    Observe(nullptr);
   }
 
   TestingProfile* profile() { return &profile_; }
@@ -144,10 +143,6 @@ class WebApkManagerTest : public apps::AppRegistryCache::Observer,
   apps::AppServiceTest app_service_test_;
   std::string app_id_;
   base::OnceClosure quit_callback_;
-
-  base::ScopedObservation<apps::AppRegistryCache,
-                          apps::AppRegistryCache::Observer>
-      app_registry_cache_observer_{this};
 };
 
 TEST_F(WebApkManagerTest, InstallsWebApkOnStartup) {
@@ -179,7 +174,7 @@ TEST_F(WebApkManagerTest, InstallWebApkAfterStartup) {
 
 // Does not install web apps without a Share Target definition.
 TEST_F(WebApkManagerTest, NoShareTarget) {
-  auto app_info = std::make_unique<web_app::WebAppInstallInfo>();
+  auto app_info = std::make_unique<WebAppInstallInfo>();
   app_info->start_url = GURL(kTestAppUrl);
   app_info->title = kTestAppTitle;
   auto app_id = web_app::test::InstallWebApp(profile(), std::move(app_info));
@@ -214,7 +209,7 @@ TEST_F(WebApkManagerTest, IgnoresAlreadyInstalledWebApkOnStartup) {
 }
 
 TEST_F(WebApkManagerTest, RemovesIneligibleWebApkOnStartup) {
-  auto app_info = std::make_unique<web_app::WebAppInstallInfo>();
+  auto app_info = std::make_unique<WebAppInstallInfo>();
   app_info->start_url = GURL(kTestAppUrl);
   app_info->title = kTestAppTitle;
   auto app_id = web_app::test::InstallWebApp(profile(), std::move(app_info));
@@ -267,8 +262,7 @@ TEST_F(WebApkManagerTest, QueuesUpdatedApp) {
   auto updated_app_info = BuildDefaultWebAppInfo();
   updated_app_info->title = u"Some new title";
   auto updated_app_id =
-      web_app::test::InstallWebApp(profile(), std::move(updated_app_info),
-                                   /*overwrite_existing_manifest_fields=*/true);
+      web_app::test::InstallWebApp(profile(), BuildDefaultWebAppInfo());
   EXPECT_EQ(app_id, updated_app_id);
 
   auto install_task =

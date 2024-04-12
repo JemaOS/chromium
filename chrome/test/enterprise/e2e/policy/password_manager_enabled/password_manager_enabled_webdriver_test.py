@@ -10,12 +10,15 @@ from test_util import getElementFromShadowRoot
 
 def main(argv):
   driver = create_chrome_webdriver()
-  driver.get("chrome://password-manager/passwords")
+  driver.get("chrome://settings/passwords")
 
   # The settings is nested within multiple shadow doms - extract it.
-  selectors = ["settings-section", "#passwordToggle", "cr-toggle"]
+  selectors = [
+      "settings-main", "settings-basic-page", "settings-autofill-page",
+      "passwords-section", "#passwordToggle", "cr-toggle"
+  ]
 
-  el = driver.find_element_by_tag_name("password-manager-app")
+  el = driver.find_element_by_css_selector("settings-ui")
   for selector in selectors:
     el = getElementFromShadowRoot(driver, el, selector)
 

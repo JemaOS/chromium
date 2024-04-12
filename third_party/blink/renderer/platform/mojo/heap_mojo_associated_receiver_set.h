@@ -99,7 +99,7 @@ class HeapMojoAssociatedReceiverSet {
     mojo::AssociatedReceiverSet<Interface>& associated_receiver_set() {
       return associated_receiver_set_;
     }
-    Owner* owner() { return owner_.Get(); }
+    Owner* owner() { return owner_; }
 
     // ContextLifecycleObserver methods
     void ContextDestroyed() override {

@@ -24,14 +24,10 @@ struct DlpConfidentialFile {
   // Files with the same file_path are considered equal.
   bool operator==(const DlpConfidentialFile& other) const;
   bool operator!=(const DlpConfidentialFile& other) const;
-  bool operator<(const DlpConfidentialFile& other) const;
-  bool operator<=(const DlpConfidentialFile& other) const;
-  bool operator>(const DlpConfidentialFile& other) const;
-  bool operator>=(const DlpConfidentialFile& other) const;
 
-  // File icon used to display in the warning/error dialog.
+  // File icon used to display in the warning dialog.
   gfx::ImageSkia icon;
-  // File name used to display in the warning/error dialog.
+  // File name used to display in the warning dialog.
   std::u16string title;
   // File path used to retrieve |icon| and |title|.
   base::FilePath file_path;

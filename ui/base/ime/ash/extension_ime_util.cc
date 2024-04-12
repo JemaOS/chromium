@@ -53,6 +53,12 @@ const char kBrailleImeExtensionPath[] = "chromeos/accessibility/braille_ime";
 const char kBrailleImeEngineId[] =
     "_comp_ime_jddehjeebkoimngcbdkaahpobgicbffpbraille";
 
+const char kJemaOSRimeExtensionId[] = "nfglebjgiflmmcdddkbcbgmdkomlfcpa";
+
+const char* const kJemaOSImeExtensionIds[] = {
+  kJemaOSRimeExtensionId,
+};
+
 const char kArcImeLanguage[] = "_arc_ime_language_";
 
 std::string GetInputMethodID(const std::string& extension_id,
@@ -140,6 +146,20 @@ std::string GetInputMethodIDByEngineID(const std::string& engine_id) {
   return engine_id;
 }
 
+bool IsJemaOSProvidedIMEByExtensionId(const std::string& extension_id) {
+  for (const auto& id : kJemaOSImeExtensionIds) {
+    if (extension_id == id) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsJemaOSProvidedIME(const std::string& input_method_id) {
+  const std::string extension_id = GetExtensionIDFromInputMethodID(input_method_id);
+  return IsJemaOSProvidedIMEByExtensionId(extension_id);
+}
+
 bool IsExtensionIME(const std::string& input_method_id) {
   return base::StartsWith(input_method_id, kExtensionIMEPrefix,
                           base::CompareCase::SENSITIVE) &&
@@ -167,15 +187,12 @@ bool IsKeyboardLayoutExtension(const std::string& input_method_id) {
   return false;
 }
 
-bool IsCros1pKorean(const std::string& input_method_id) {
-  // TODO(crbug.com/1162211): Input method IDs are tuples of extension type,
-  // extension ID, and extension-local input method ID. However, currently
-  // they're just concats of the three constituent pieces of info, hence StrCat
-  // here. Replace StrCat once they're no longer unstructured string concats.
-
+bool IsExperimentalMultilingual(const std::string& input_method_id) {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  return input_method_id == base::StrCat({kComponentExtensionIMEPrefix,
-                                          kXkbExtensionId, "ko-t-i0-und"});
+  const std::string prefix = base::StrCat(
+      {kComponentExtensionIMEPrefix, kXkbExtensionId, "experimental_"});
+  return base::StartsWith(input_method_id, prefix,
+                          base::CompareCase::SENSITIVE);
 #else
   return false;
 #endif

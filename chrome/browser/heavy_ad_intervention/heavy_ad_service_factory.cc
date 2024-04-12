@@ -30,17 +30,11 @@ HeavyAdServiceFactory* HeavyAdServiceFactory::GetInstance() {
 HeavyAdServiceFactory::HeavyAdServiceFactory()
     : ProfileKeyedServiceFactory(
           "HeavyAdService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 HeavyAdServiceFactory::~HeavyAdServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-HeavyAdServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* HeavyAdServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<heavy_ad_intervention::HeavyAdService>();
+  return new heavy_ad_intervention::HeavyAdService();
 }

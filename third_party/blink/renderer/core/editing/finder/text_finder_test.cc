@@ -32,7 +32,6 @@
 #include "third_party/blink/renderer/core/testing/sim/sim_request.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_test.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/testing_platform_support.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -62,8 +61,6 @@ class TextFinderTest : public testing::Test {
                                    int end_offset);
 
  private:
-  test::TaskEnvironment task_environment_;
-
   frame_test_helpers::WebViewHelper web_view_helper_;
   Persistent<Document> document_;
   Persistent<TextFinder> text_finder_;
@@ -236,7 +233,7 @@ TEST_F(TextFinderTest, FindTextNotFound) {
 TEST_F(TextFinderTest, FindTextInShadowDOM) {
   GetDocument().body()->setInnerHTML("<b>FOO</b><i slot='bar'>foo</i>");
   ShadowRoot& shadow_root =
-      GetDocument().body()->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+      GetDocument().body()->AttachShadowRootInternal(ShadowRootType::kOpen);
   shadow_root.setInnerHTML("<slot name='bar'></slot><u>Foo</u><slot></slot>");
   Node* text_in_b_element = GetDocument().body()->firstChild()->firstChild();
   Node* text_in_i_element = GetDocument().body()->lastChild()->firstChild();
@@ -359,8 +356,7 @@ TEST_F(TextFinderTest, ScopeTextMatchesSimple) {
 
   // Modify the document size and ensure the cached match rects are recomputed
   // to reflect the updated layout.
-  GetDocument().body()->setAttribute(html_names::kStyleAttr,
-                                     AtomicString("margin: 2000px"));
+  GetDocument().body()->setAttribute(html_names::kStyleAttr, "margin: 2000px");
   GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kTest);
 
   match_rects = GetTextFinder().FindMatchRects();
@@ -399,7 +395,7 @@ TEST_F(TextFinderTest, ScopeTextMatchesRepeated) {
 TEST_F(TextFinderTest, ScopeTextMatchesWithShadowDOM) {
   GetDocument().body()->setInnerHTML("<b>FOO</b><i slot='bar'>foo</i>");
   ShadowRoot& shadow_root =
-      GetDocument().body()->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+      GetDocument().body()->AttachShadowRootInternal(ShadowRootType::kOpen);
   shadow_root.setInnerHTML("<slot name='bar'></slot><u>Foo</u><slot></slot>");
   Node* text_in_b_element = GetDocument().body()->firstChild()->firstChild();
   Node* text_in_i_element = GetDocument().body()->lastChild()->firstChild();

@@ -8,15 +8,14 @@
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace base {
-template <typename T>
-class NoDestructor;
+template <typename T> struct DefaultSingletonTraits;
 }
 
 namespace bookmarks {
 class BookmarkModel;
 }
 
-// Singleton that builds BookmarkModel instances and associates them with
+// Singleton that owns all BookmarkModels and associates them with
 // BrowserContexts.
 class BookmarkModelFactory : public ProfileKeyedServiceFactory {
  public:
@@ -35,13 +34,13 @@ class BookmarkModelFactory : public ProfileKeyedServiceFactory {
   static TestingFactory GetDefaultFactory();
 
  private:
-  friend base::NoDestructor<BookmarkModelFactory>;
+  friend struct base::DefaultSingletonTraits<BookmarkModelFactory>;
 
   BookmarkModelFactory();
   ~BookmarkModelFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;

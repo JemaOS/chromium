@@ -10,7 +10,6 @@
 #include "base/callback_list.h"
 #include "base/memory/raw_ptr.h"
 #include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_types.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/views/controls/button/button.h"
@@ -31,10 +30,9 @@ namespace views {
 
 // Base class for the window caption buttons (minimize, maximize, restore,
 // close).
-class VIEWS_EXPORT FrameCaptionButton : public Button {
-  METADATA_HEADER(FrameCaptionButton, Button)
-
+class VIEWS_EXPORT FrameCaptionButton : public views::Button {
  public:
+  METADATA_HEADER(FrameCaptionButton);
   enum class Animate { kYes, kNo };
 
   FrameCaptionButton(PressedCallback callback,
@@ -69,11 +67,8 @@ class VIEWS_EXPORT FrameCaptionButton : public Button {
   void OnGestureEvent(ui::GestureEvent* event) override;
   views::PaintInfo::ScaleType GetPaintScaleType() const override;
 
-  // TODO(b/292154873): Replace them to set and get the foreground color.
   void SetBackgroundColor(SkColor background_color);
   SkColor GetBackgroundColor() const;
-
-  void SetIconColorId(ui::ColorId icon_color_id);
 
   void SetPaintAsActive(bool paint_as_active);
   bool GetPaintAsActive() const;
@@ -95,7 +90,6 @@ class VIEWS_EXPORT FrameCaptionButton : public Button {
  protected:
   // views::Button override:
   void PaintButtonContents(gfx::Canvas* canvas) override;
-  void OnThemeChanged() override;
 
   virtual void DrawHighlight(gfx::Canvas* canvas, cc::PaintFlags flags);
   virtual void DrawIconContents(gfx::Canvas* canvas,
@@ -111,10 +105,6 @@ class VIEWS_EXPORT FrameCaptionButton : public Button {
   // GetInkDropSize().
   gfx::Insets GetInkdropInsets(const gfx::Size& button_size) const;
 
-  // Called when the `background_color_` or `icon_color_id_` is updated to
-  // reflect the color change on icon and inkdrop.
-  void MaybeRefreshIconAndInkdropBaseColor();
-
  private:
   class HighlightPathGenerator;
 
@@ -127,13 +117,8 @@ class VIEWS_EXPORT FrameCaptionButton : public Button {
   // The button's current icon.
   CaptionButtonIcon icon_;
 
-  // The color used to compute the icon's color. If it's SkColor type, it's the
-  // background color of the container view, call `GetButtonColor` to get
-  // contrast color. If it's ColorId type, directly resolve the color from color
-  // id.
-  // TODO(b/292154873): Store the foreground color instead of the background
-  // color for the SkColor type.
-  absl::variant<ui::ColorId, SkColor> color_ = gfx::kPlaceholderColor;
+  // The current background color.
+  SkColor background_color_ = gfx::kPlaceholderColor;
 
   // Whether the button should be painted as active.
   bool paint_as_active_ = false;

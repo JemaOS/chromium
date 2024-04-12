@@ -8,22 +8,21 @@
  *    imported.
  *  - edit the trust level of an already existing certificate authority.
  */
-import '//resources/cr_elements/cr_button/cr_button.js';
-import '//resources/cr_elements/cr_checkbox/cr_checkbox.js';
-import '//resources/cr_elements/cr_dialog/cr_dialog.js';
-import '//resources/polymer/v3_0/paper-spinner/paper-spinner-lite.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
+import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import 'chrome://resources/polymer/v3_0/paper-spinner/paper-spinner-lite.js';
 import './certificate_shared.css.js';
 
-import type {CrCheckboxElement} from '//resources/cr_elements/cr_checkbox/cr_checkbox.js';
-import type {CrDialogElement} from '//resources/cr_elements/cr_dialog/cr_dialog.js';
-import {I18nMixin} from '//resources/cr_elements/i18n_mixin.js';
-import {loadTimeData} from '//resources/js/load_time_data.js';
-import type {PaperSpinnerLiteElement} from '//resources/polymer/v3_0/paper-spinner/paper-spinner-lite.js';
-import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {CrCheckboxElement} from 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {PaperSpinnerLiteElement} from 'chrome://resources/polymer/v3_0/paper-spinner/paper-spinner-lite.js';
+import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './ca_trust_edit_dialog.html.js';
-import type {CaTrustInfo, CertificatesBrowserProxy, CertificateSubnode, NewCertificateSubNode} from './certificates_browser_proxy.js';
-import {CertificatesBrowserProxyImpl} from './certificates_browser_proxy.js';
+import {CaTrustInfo, CertificatesBrowserProxy, CertificatesBrowserProxyImpl, CertificateSubnode, NewCertificateSubNode} from './certificates_browser_proxy.js';
 
 export interface CaTrustEditDialogElement {
   $: {
@@ -85,11 +84,11 @@ export class CaTrustEditDialogElement extends CaTrustEditDialogElementBase {
     }
   }
 
-  private onCancelClick_() {
+  private onCancelTap_() {
     this.$.dialog.close();
   }
 
-  private onOkClick_() {
+  private onOkTap_() {
     this.$.spinner.active = true;
 
     const whenDone = (this.model as CertificateSubnode).id ?

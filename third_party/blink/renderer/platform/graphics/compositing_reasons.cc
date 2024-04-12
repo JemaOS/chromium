@@ -47,9 +47,8 @@ constexpr ReasonAndDescription kReasonDescriptionMap[] = {
     {CompositingReason::kUndoOverscroll,
      "Is fixed position that should undo overscroll of the viewport."},
     {CompositingReason::kStickyPosition, "Is sticky position."},
-    {CompositingReason::kAnchorPosition,
-     "Is an anchor-positioned element translated by its anchor's scroll "
-     "offset."},
+    {CompositingReason::kAnchorScroll,
+     "Is an element with anchor-scroll css property."},
     {CompositingReason::kBackdropFilter, "Has a backdrop filter."},
     {CompositingReason::kBackdropFilterMask, "Is a mask for backdrop filter."},
     {CompositingReason::kRootScroller, "Is the document.rootScroller."},
@@ -86,13 +85,8 @@ constexpr ReasonAndDescription kReasonDescriptionMap[] = {
     {CompositingReason::kViewTransitionPseudoElement,
      "This element is a part of a pseudo element tree representing the view "
      "transition."},
-    {CompositingReason::kViewTransitionElementDescendantWithClipPath,
-     "This element's ancestor is shared during view transition and it has a "
-     "clip-path"},
     {CompositingReason::kOverflowScrolling,
      "Is a scrollable overflow element using accelerated scrolling."},
-    {CompositingReason::kElementCapture,
-     "This element is undergoing element-level capture."},
     {CompositingReason::kOverlap, "Overlaps other composited content."},
     {CompositingReason::kBackfaceVisibilityHidden,
      "Has backface-visibility: hidden."},

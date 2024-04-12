@@ -30,6 +30,7 @@ class ExtensionsContainer;
 
 namespace extensions {
 class ExtensionActionManager;
+class ExtensionMessageBubbleController;
 }  // namespace extensions
 
 // Model for the browser actions toolbar. This is a per-profile instance, and
@@ -61,15 +62,15 @@ class ToolbarActionsModel : public extensions::ExtensionActionAPI::Observer,
   // delegate.
   class Observer {
    public:
-    // Signals that `id` has been added to the toolbar. This will
+    // Signals that |id| has been added to the toolbar. This will
     // *only* be called after the toolbar model has been initialized.
     virtual void OnToolbarActionAdded(const ActionId& id) = 0;
 
-    // Signals that the given action with `id` has been removed from the
+    // Signals that the given action with |id| has been removed from the
     // toolbar.
     virtual void OnToolbarActionRemoved(const ActionId& id) = 0;
 
-    // Signals that the browser action with `id` has been updated.
+    // Signals that the browser action with |id| has been updated.
     // This method covers lots of different extension updates and could be split
     // in different methods if needed, such as
     // `OnToolbarActionHostPermissionsUpdated`.
@@ -90,9 +91,6 @@ class ToolbarActionsModel : public extensions::ExtensionActionAPI::Observer,
   // Convenience function to get the ToolbarActionsModel for a Profile.
   static ToolbarActionsModel* Get(Profile* profile);
 
-  // Returns whether actions can be shown in the toolbar for `browser`.
-  static bool CanShowActionsInToolbar(const Browser& browser);
-
   // Adds or removes an observer.
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
@@ -101,21 +99,24 @@ class ToolbarActionsModel : public extensions::ExtensionActionAPI::Observer,
 
   const base::flat_set<ActionId>& action_ids() const { return action_ids_; }
 
+  bool has_active_bubble() const { return has_active_bubble_; }
+  void set_has_active_bubble(bool has_active_bubble) {
+    has_active_bubble_ = has_active_bubble;
+  }
+
   void SetActionVisibility(const ActionId& action_id, bool visible);
+
+  // Gets the ExtensionMessageBubbleController that should be shown for this
+  // profile, if any.
+  std::unique_ptr<extensions::ExtensionMessageBubbleController>
+  GetExtensionMessageBubbleController(Browser* browser);
 
   // Returns the extension name corresponding to the `action_id`.
   const std::u16string GetExtensionName(const ActionId& action_id) const;
 
-  // Returns true if `action_id` is in the toolbar model.
-  bool HasAction(const ActionId& action_id) const;
-
-  // Returns if `url` is restricted for all extensions with actions in the
-  // toolbar.
+  // Returns true if `url` is restricted for all extensions with actions in the
+  // toolbar.ß
   bool IsRestrictedUrl(const GURL& url) const;
-
-  // Returns if `url` is a policy-blocked url for all non-enterprise extensions
-  // with actions in the toolbar.
-  bool IsPolicyBlockedHost(const GURL& url) const;
 
   // Returns true if the action is pinned to the toolbar.
   bool IsActionPinned(const ActionId& action_id) const;
@@ -177,6 +178,9 @@ class ToolbarActionsModel : public extensions::ExtensionActionAPI::Observer,
   // Returns true if the given |extension| should be added to the toolbar.
   bool ShouldAddExtension(const extensions::Extension* extension);
 
+  // Returns true if |action_id| is in the toolbar model.
+  bool HasAction(const ActionId& action_id) const;
+
   // Adds |action_id| to the toolbar.  If the action has an existing preference
   // for toolbar position, that will be used to determine its location.
   // Otherwise it will be placed at the end of the visible actions.
@@ -224,6 +228,10 @@ class ToolbarActionsModel : public extensions::ExtensionActionAPI::Observer,
   // Ordered list of pinned action IDs, indicating the order actions should
   // appear on the toolbar.
   std::vector<ActionId> pinned_action_ids_;
+
+  // Whether or not there is an active ExtensionMessageBubbleController
+  // associated with the profile. There should only be one at a time.
+  bool has_active_bubble_;
 
   base::ScopedObservation<extensions::ExtensionActionAPI,
                           extensions::ExtensionActionAPI::Observer>

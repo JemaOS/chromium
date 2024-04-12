@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {ServiceInterface} from 'chrome://extensions/extensions.js';
+import {ServiceInterface} from 'chrome://extensions/extensions.js';
 import {FakeChromeEvent} from 'chrome://webui-test/fake_chrome_event.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
@@ -32,9 +32,6 @@ export class TestService extends TestBrowserProxy implements ServiceInterface {
       'deleteActivitiesFromExtension',
       'deleteErrors',
       'deleteItem',
-      'deleteItems',
-      'dismissSafetyHubExtensionsMenuNotification',
-      'uninstallItem',
       'downloadActivities',
       'getExtensionActivityLog',
       'getExtensionsInfo',
@@ -64,8 +61,6 @@ export class TestService extends TestBrowserProxy implements ServiceInterface {
       'setItemCollectsErrors',
       'setItemEnabled',
       'setItemHostAccess',
-      'setItemPinnedToToolbar',
-      'setItemSafetyCheckWarningAcknowledged',
       'setProfileInDevMode',
       'setShortcutHandlingSuspended',
       'setShowAccessRequestsInToolbar',
@@ -157,11 +152,6 @@ export class TestService extends TestBrowserProxy implements ServiceInterface {
     this.methodCalled('setItemAllowedOnFileUrls', [id, isAllowedOnFileUrls]);
   }
 
-
-  setItemSafetyCheckWarningAcknowledged(id: string) {
-    this.methodCalled('setItemSafetyCheckWarningAcknowledged', id);
-  }
-
   setItemEnabled(id: string, isEnabled: boolean) {
     this.methodCalled('setItemEnabled', [id, isEnabled]);
   }
@@ -172,10 +162,6 @@ export class TestService extends TestBrowserProxy implements ServiceInterface {
 
   setItemHostAccess(id: string, access: chrome.developerPrivate.HostAccess) {
     this.methodCalled('setItemHostAccess', [id, access]);
-  }
-
-  setItemPinnedToToolbar(id: string, pinnedToToolbar: boolean) {
-    this.methodCalled('setItemPinnedToToolbar', [id, pinnedToToolbar]);
   }
 
   setShortcutHandlingSuspended(enable: boolean) {
@@ -319,16 +305,6 @@ export class TestService extends TestBrowserProxy implements ServiceInterface {
     this.methodCalled('deleteItem', id);
   }
 
-  deleteItems(ids: string[]) {
-    this.methodCalled('deleteItems', ids);
-    return Promise.resolve();
-  }
-
-  uninstallItem(id: string) {
-    this.methodCalled('uninstallItem', id);
-    return Promise.resolve();
-  }
-
   getOnExtensionActivity() {
     return this.extensionActivityTarget;
   }
@@ -390,9 +366,5 @@ export class TestService extends TestBrowserProxy implements ServiceInterface {
       updates: chrome.developerPrivate.ExtensionSiteAccessUpdate[]) {
     this.methodCalled('updateSiteAccess', site, updates);
     return Promise.resolve();
-  }
-
-  dismissSafetyHubExtensionsMenuNotification() {
-    this.methodCalled('dismissSafetyHubExtensionsMenuNotification');
   }
 }

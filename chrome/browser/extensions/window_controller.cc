@@ -8,7 +8,6 @@
 
 #include <memory>
 
-#include "base/types/cxx23_to_underlying.h"
 #include "base/values.h"
 #include "chrome/browser/extensions/window_controller_list.h"
 #include "chrome/browser/profiles/profile.h"
@@ -23,13 +22,13 @@ namespace extensions {
 WindowController::TypeFilter WindowController::GetAllWindowFilter() {
   // This needs to be updated if there is a change to
   // extensions::api::windows:WindowType.
-  static_assert(base::to_underlying(api::windows::WindowType::kMaxValue) == 5,
+  static_assert(api::windows::WINDOW_TYPE_LAST == 5,
                 "Update extensions WindowController to match WindowType");
-  return ((1 << base::to_underlying(api::windows::WindowType::kNormal)) |
-          (1 << base::to_underlying(api::windows::WindowType::kPanel)) |
-          (1 << base::to_underlying(api::windows::WindowType::kPopup)) |
-          (1 << base::to_underlying(api::windows::WindowType::kApp)) |
-          (1 << base::to_underlying(api::windows::WindowType::kDevtools)));
+  return ((1 << api::windows::WINDOW_TYPE_NORMAL) |
+          (1 << api::windows::WINDOW_TYPE_PANEL) |
+          (1 << api::windows::WINDOW_TYPE_POPUP) |
+          (1 << api::windows::WINDOW_TYPE_APP) |
+          (1 << api::windows::WINDOW_TYPE_DEVTOOLS));
 }
 
 // static
@@ -37,7 +36,7 @@ WindowController::TypeFilter WindowController::GetFilterFromWindowTypes(
     const std::vector<api::windows::WindowType>& types) {
   WindowController::TypeFilter filter = kNoWindowFilter;
   for (auto& window_type : types)
-    filter |= 1 << base::to_underlying(window_type);
+    filter |= 1 << window_type;
   return filter;
 }
 
@@ -50,8 +49,7 @@ WindowController::TypeFilter WindowController::GetFilterFromWindowTypesValues(
   for (const base::Value& type : *types) {
     if (!type.is_string())
       continue;
-    filter |= 1 << base::to_underlying(
-                  api::windows::ParseWindowType(type.GetString()));
+    filter |= 1 << api::windows::ParseWindowType(type.GetString());
   }
   return filter;
 }
@@ -68,8 +66,7 @@ Browser* WindowController::GetBrowser() const {
 }
 
 bool WindowController::MatchesFilter(TypeFilter filter) const {
-  TypeFilter type = 1 << base::to_underlying(
-                        api::windows::ParseWindowType(GetWindowTypeText()));
+  TypeFilter type = 1 << api::windows::ParseWindowType(GetWindowTypeText());
   return (type & filter) != 0;
 }
 

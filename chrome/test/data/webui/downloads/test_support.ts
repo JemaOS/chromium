@@ -2,9 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {IconLoader, MojomData, PageHandlerInterface, PageRemote} from 'chrome://downloads/downloads.js';
-import {DangerType, PageCallbackRouter, SafeBrowsingState, State} from 'chrome://downloads/downloads.js';
-import {stringToMojoString16, stringToMojoUrl} from 'chrome://resources/js/mojo_type_util.js';
+import {DangerType, IconLoader, MojomData, PageCallbackRouter, PageHandlerInterface, PageRemote, States} from 'chrome://downloads/downloads.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
 export class TestDownloadsProxy {
@@ -24,29 +22,15 @@ export class TestDownloadsProxy {
 
 class FakePageHandler implements PageHandlerInterface {
   private callbackRouterRemote_: PageRemote;
-  private callTracker_: TestBrowserProxy = new TestBrowserProxy([
-    'recordCancelBypassWarningPrompt',
-    'recordOpenBypassWarningPrompt',
-    'remove',
-    'saveDangerousFromPromptRequiringGesture',
-    'saveDangerousRequiringGesture',
-    'saveSuspiciousRequiringGesture',
-  ]);
+  private callTracker_: TestBrowserProxy = new TestBrowserProxy(['remove']);
 
   constructor(callbackRouterRemote: PageRemote) {
     this.callbackRouterRemote_ = callbackRouterRemote;
+    this.callTracker_ = new TestBrowserProxy(['remove']);
   }
 
   whenCalled(methodName: string): Promise<void> {
     return this.callTracker_.whenCalled(methodName);
-  }
-
-  recordCancelBypassWarningPrompt(id: string) {
-    this.callTracker_.methodCalled('recordCancelBypassWarningPrompt', id);
-  }
-
-  recordOpenBypassWarningPrompt(id: string) {
-    this.callTracker_.methodCalled('recordOpenBypassWarningPrompt', id);
   }
 
   async remove(id: string) {
@@ -55,22 +39,10 @@ class FakePageHandler implements PageHandlerInterface {
     this.callTracker_.methodCalled('remove', id);
   }
 
-  saveDangerousFromPromptRequiringGesture(id: string) {
-    this.callTracker_.methodCalled(
-        'saveDangerousFromPromptRequiringGesture', id);
-  }
-
-  saveDangerousRequiringGesture(id: string) {
-    this.callTracker_.methodCalled('saveDangerousRequiringGesture', id);
-  }
-
-  saveSuspiciousRequiringGesture(id: string) {
-    this.callTracker_.methodCalled('saveSuspiciousRequiringGesture', id);
-  }
-
   getDownloads(_searchTerms: string[]) {}
   openFileRequiringGesture(_id: string) {}
   drag(_id: string) {}
+  saveDangerousRequiringGesture(_id: string) {}
   acceptIncognitoWarning(_id: string) {}
   discardDangerous(_id: string) {}
   retryDownload(_id: string) {}
@@ -85,10 +57,6 @@ class FakePageHandler implements PageHandlerInterface {
   reviewDangerousRequiringGesture(_id: string) {}
   deepScan(_id: string) {}
   bypassDeepScanRequiringGesture(_id: string) {}
-  openEsbSettings() {}
-  async isEligibleForEsbPromo(): Promise<{result: boolean}> {
-    return {result: false};
-  }
 }
 
 export class TestIconLoader extends TestBrowserProxy implements IconLoader {
@@ -113,7 +81,7 @@ export function createDownload(config?: Partial<MojomData>): MojomData {
       {
         byExtId: '',
         byExtName: '',
-        dangerType: DangerType.kNoApplicableDangerType,
+        dangerType: DangerType.NOT_DANGEROUS,
         dateString: '',
         fileExternallyRemoved: false,
         fileName: 'download 1',
@@ -135,12 +103,9 @@ export function createDownload(config?: Partial<MojomData>): MojomData {
         showInFolderText: '',
         sinceString: 'Today',
         started: Date.now() - 10000,
-        state: State.kComplete,
+        state: States.COMPLETE,
         total: -1,
-        url: stringToMojoUrl('http://permission.site'),
-        displayUrl: stringToMojoString16('http://permission.site'),
-        safeBrowsingState: SafeBrowsingState.kStandardProtection,
-        hasSafeBrowsingVerdict: true,
+        url: 'http://permission.site',
       },
       config || {});
 }

@@ -53,7 +53,7 @@ bool SupportsTabAudioMirroring(media_router::CastModeSet cast_mode,
           icon_type == media_router::SinkIconType::CAST_AUDIO_GROUP);
 }
 
-std::optional<media_router::MediaCastMode> GetPreferredCastMode(
+absl::optional<media_router::MediaCastMode> GetPreferredCastMode(
     media_router::CastModeSet cast_mode,
     media_router::SinkIconType icon_type) {
   if (base::Contains(cast_mode, media_router::MediaCastMode::PRESENTATION)) {
@@ -64,7 +64,7 @@ std::optional<media_router::MediaCastMode> GetPreferredCastMode(
   } else if (SupportsTabAudioMirroring(cast_mode, icon_type)) {
     return media_router::MediaCastMode::TAB_MIRROR;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 global_media_controls::mojom::DevicePtr CreateDevice(
@@ -83,14 +83,12 @@ global_media_controls::mojom::DevicePtr CreateDevice(
 CastDeviceListHost::CastDeviceListHost(
     std::unique_ptr<media_router::CastDialogController> dialog_controller,
     mojo::PendingRemote<global_media_controls::mojom::DeviceListClient> client,
-    base::RepeatingClosure media_remoting_callback,
-    base::RepeatingClosure hide_dialog_callback,
-    base::RepeatingClosure on_sinks_discovered_callback)
+    MediaRemotingCallback media_remoting_callback,
+    base::RepeatingClosure hide_dialog_callback)
     : cast_controller_(std::move(dialog_controller)),
       client_(std::move(client)),
       media_remoting_callback_(std::move(media_remoting_callback)),
       hide_dialog_callback_(std::move(hide_dialog_callback)),
-      on_sinks_discovered_callback_(std::move(on_sinks_discovered_callback)),
       id_(next_id_++) {
   cast_controller_->AddObserver(this);
   cast_controller_->RegisterDestructor(
@@ -137,9 +135,10 @@ void CastDeviceListHost::SelectDevice(const std::string& device_id) {
   } else if (sink.state == media_router::UIMediaSinkState::CONNECTED) {
     // We record stopping casting here even if we are starting casting, because
     // the existing session is being stopped and replaced by a new session.
+    // TODO(crbug.com/1411139): Call RecordStopCastingMetrics() here instead.
     if (sink.provider == media_router::mojom::MediaRouteProviderId::DIAL) {
       DCHECK(sink.route);
-      MediaItemUIMetrics::RecordStopCastingMetrics(
+      MediaItemUIMetrics::RecordStopCastMode(
           media_router::MediaCastMode::PRESENTATION);
       cast_controller_->StopCasting(sink.route->media_route_id());
     } else {
@@ -156,10 +155,6 @@ void CastDeviceListHost::OnModelUpdated(
     if (GetPreferredCastMode(sink.cast_modes, sink.icon_type)) {
       devices.push_back(CreateDevice(sink));
     }
-  }
-
-  if (!devices.empty()) {
-    on_sinks_discovered_callback_.Run();
   }
   client_->OnDevicesUpdated(std::move(devices));
 }
@@ -180,8 +175,8 @@ void CastDeviceListHost::StartCasting(const media_router::UIMediaSink& sink) {
   if (cast_mode.value() == media_router::MediaCastMode::REMOTE_PLAYBACK) {
     media_remoting_callback_.Run();
   }
-  MediaItemUIMetrics::RecordStartCastingMetrics(sink.icon_type,
-                                                cast_mode.value());
+  // TODO(crbug.com/1411139): Call RecordStartCastingMetrics() here instead.
+  MediaItemUIMetrics::RecordStartCastMode(cast_mode.value());
 }
 
 void CastDeviceListHost::DestroyCastController() {

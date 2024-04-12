@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/webui/downloads/downloads_list_tracker.h"
 
 #include <iterator>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,17 +14,12 @@
 #include "base/functional/callback_helpers.h"
 #include "base/i18n/rtl.h"
 #include "base/i18n/unicodestring.h"
-#include "base/metrics/histogram_functions.h"
-#include "base/strings/escape.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "chrome/browser/download/download_crx_util.h"
 #include "chrome/browser/download/download_item_model.h"
-#include "chrome/browser/download/download_item_warning_data.h"
 #include "chrome/browser/download/download_query.h"
-#include "chrome/browser/download/download_stats.h"
-#include "chrome/browser/download/download_ui_safe_browsing_util.h"
 #include "chrome/browser/enterprise/connectors/common.h"
 #include "chrome/browser/extensions/api/downloads/downloads_api.h"
 #include "chrome/browser/profiles/profile.h"
@@ -33,7 +27,6 @@
 #include "components/download/public/common/download_danger_type.h"
 #include "components/download/public/common/download_item.h"
 #include "components/safe_browsing/core/common/features.h"
-#include "components/url_formatter/elide_url.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/download_item_utils.h"
 #include "content/public/browser/download_manager.h"
@@ -43,11 +36,6 @@
 #include "net/base/filename_util.h"
 #include "third_party/icu/source/i18n/unicode/datefmt.h"
 #include "ui/base/l10n/time_format.h"
-#include "url/url_constants.h"
-
-#if BUILDFLAG(FULL_SAFE_BROWSING)
-#include "components/safe_browsing/core/common/safe_browsing_prefs.h"
-#endif
 
 using content::BrowserContext;
 using content::DownloadManager;
@@ -57,74 +45,55 @@ using DownloadVector = DownloadManager::DownloadVector;
 
 namespace {
 
-// Returns an enum value to be used as the |danger_type| value in
-// CreateDownloadData().
-downloads::mojom::DangerType GetDangerType(
-    download::DownloadDangerType danger_type) {
+// Max URL length to be sent to the download page.
+const int kMaxURLLength = 2 * 1024 * 1024;
+
+// Returns a string constant to be used as the |danger_type| value in
+// CreateDownloadData(). This can be the empty string, if the danger type is not
+// relevant for the UI.
+const char* GetDangerTypeString(download::DownloadDangerType danger_type) {
   switch (danger_type) {
     case download::DOWNLOAD_DANGER_TYPE_DANGEROUS_FILE:
-      return downloads::mojom::DangerType::kDangerousFile;
+      return "DANGEROUS_FILE";
     case download::DOWNLOAD_DANGER_TYPE_DANGEROUS_URL:
-      return downloads::mojom::DangerType::kDangerousUrl;
-    // Account compromise is represented in the UI the same as dangerous
-    // content.
+      return "DANGEROUS_URL";
     case download::DOWNLOAD_DANGER_TYPE_DANGEROUS_ACCOUNT_COMPROMISE:
     case download::DOWNLOAD_DANGER_TYPE_DANGEROUS_CONTENT:
-      return downloads::mojom::DangerType::kDangerousContent;
+      return "DANGEROUS_CONTENT";
     case download::DOWNLOAD_DANGER_TYPE_UNCOMMON_CONTENT:
-      return downloads::mojom::DangerType::kUncommonContent;
+      return "UNCOMMON_CONTENT";
     case download::DOWNLOAD_DANGER_TYPE_DANGEROUS_HOST:
-      return downloads::mojom::DangerType::kDangerousHost;
+      return "DANGEROUS_HOST";
     case download::DOWNLOAD_DANGER_TYPE_POTENTIALLY_UNWANTED:
-      return downloads::mojom::DangerType::kPotentiallyUnwanted;
+      return "POTENTIALLY_UNWANTED";
     case download::DOWNLOAD_DANGER_TYPE_ASYNC_SCANNING:
-      return downloads::mojom::DangerType::kAsyncScanning;
-    case download::DOWNLOAD_DANGER_TYPE_ASYNC_LOCAL_PASSWORD_SCANNING:
-      return downloads::mojom::DangerType::kAsyncLocalPasswordScanning;
+      return "ASYNC_SCANNING";
     case download::DOWNLOAD_DANGER_TYPE_BLOCKED_PASSWORD_PROTECTED:
-      return downloads::mojom::DangerType::kBlockedPasswordProtected;
+      return "BLOCKED_PASSWORD_PROTECTED";
     case download::DOWNLOAD_DANGER_TYPE_BLOCKED_TOO_LARGE:
-      return downloads::mojom::DangerType::kBlockedTooLarge;
+      return "BLOCKED_TOO_LARGE";
     case download::DOWNLOAD_DANGER_TYPE_SENSITIVE_CONTENT_WARNING:
-      return downloads::mojom::DangerType::kSensitiveContentWarning;
+      return "SENSITIVE_CONTENT_WARNING";
     case download::DOWNLOAD_DANGER_TYPE_SENSITIVE_CONTENT_BLOCK:
-      return downloads::mojom::DangerType::kSensitiveContentBlock;
-    case download::DOWNLOAD_DANGER_TYPE_DEEP_SCANNED_FAILED:
-      return downloads::mojom::DangerType::kDeepScannedFailed;
+      return "SENSITIVE_CONTENT_BLOCK";
     case download::DOWNLOAD_DANGER_TYPE_DEEP_SCANNED_SAFE:
-      return downloads::mojom::DangerType::kDeepScannedSafe;
+      return "DEEP_SCANNED_SAFE";
     case download::DOWNLOAD_DANGER_TYPE_DEEP_SCANNED_OPENED_DANGEROUS:
-      return downloads::mojom::DangerType::kDeepScannedOpenedDangerous;
+      return "DEEP_SCANNED_OPENED_DANGEROUS";
     case download::DOWNLOAD_DANGER_TYPE_BLOCKED_UNSUPPORTED_FILETYPE:
-      return downloads::mojom::DangerType::kBlockedUnsupportedFileType;
-    case download::DOWNLOAD_DANGER_TYPE_BLOCKED_SCAN_FAILED:
-      return downloads::mojom::DangerType::kBlockedScanFailed;
+      return "BLOCKED_UNSUPPORTED_FILE_TYPE";
     case download::DOWNLOAD_DANGER_TYPE_PROMPT_FOR_SCANNING:
-    case download::DOWNLOAD_DANGER_TYPE_PROMPT_FOR_LOCAL_PASSWORD_SCANNING:
     case download::DOWNLOAD_DANGER_TYPE_NOT_DANGEROUS:
     case download::DOWNLOAD_DANGER_TYPE_MAYBE_DANGEROUS_CONTENT:
     case download::DOWNLOAD_DANGER_TYPE_USER_VALIDATED:
     case download::DOWNLOAD_DANGER_TYPE_ALLOWLISTED_BY_POLICY:
     case download::DOWNLOAD_DANGER_TYPE_MAX:
-      return downloads::mojom::DangerType::kNoApplicableDangerType;
+      break;
   }
-}
 
-downloads::mojom::SafeBrowsingState GetSafeBrowsingState(Profile* profile) {
-#if BUILDFLAG(FULL_SAFE_BROWSING)
-  safe_browsing::SafeBrowsingState state =
-      safe_browsing::GetSafeBrowsingState(*profile->GetPrefs());
-  switch (state) {
-    case safe_browsing::SafeBrowsingState::NO_SAFE_BROWSING:
-      return downloads::mojom::SafeBrowsingState::kNoSafeBrowsing;
-    case safe_browsing::SafeBrowsingState::STANDARD_PROTECTION:
-      return downloads::mojom::SafeBrowsingState::kStandardProtection;
-    case safe_browsing::SafeBrowsingState::ENHANCED_PROTECTION:
-      return downloads::mojom::SafeBrowsingState::kStandardProtection;
-  }
-#else
-  return downloads::mojom::SafeBrowsingState::kNoSafeBrowsing;
-#endif
+  // Don't return a danger type string if it is NOT_DANGEROUS,
+  // MAYBE_DANGEROUS_CONTENT, or USER_VALIDATED, or ALLOWLISTED_BY_POLICY.
+  return "";
 }
 
 // TODO(dbeam): if useful elsewhere, move to base/i18n/time_formatting.h?
@@ -132,26 +101,8 @@ std::string TimeFormatLongDate(const base::Time& time) {
   std::unique_ptr<icu::DateFormat> formatter(
       icu::DateFormat::createDateInstance(icu::DateFormat::kLong));
   icu::UnicodeString date_string;
-  formatter->format(time.InMillisecondsFSinceUnixEpoch(), date_string);
+  formatter->format(static_cast<UDate>(time.ToDoubleT() * 1000), date_string);
   return base::UTF16ToUTF8(base::i18n::UnicodeStringToString16(date_string));
-}
-
-std::u16string GetFormattedDisplayUrl(const GURL& url) {
-  std::u16string result = url_formatter::FormatUrlForSecurityDisplay(url);
-  // Truncate long URL to avoid surpassing mojo data limit (c.f.
-  // crbug.com/1070451). If it's really this long, the user won't be able to see
-  // the whole thing anyway. We truncate the beginning so that the end of it is
-  // shown, which contains the eTLD+1.
-  // Note:
-  // - This may truncate the scheme part of the URL.
-  // - Use a much smaller limit than url::kMaxURLChars (2M) since this is for
-  //   display only, and long URLs will affect page load speed and may cause
-  //   JavaScript errors (https://crbug.com/1522764).
-  const size_t kMaxDisplayURLChars = 16 * 1024;
-  if (result.size() > kMaxDisplayURLChars) {
-    result = result.substr(result.size() - kMaxDisplayURLChars);
-  }
-  return result;
 }
 
 }  // namespace
@@ -280,10 +231,7 @@ downloads::mojom::DataPtr DownloadsListTracker::CreateDownloadData(
 
   base::FilePath download_path(download_item->GetTargetFilePath());
   file_value->file_path = download_path.AsUTF8Unsafe();
-  GURL file_url = net::FilePathToFileURL(download_path);
-  if (file_url.is_valid()) {
-    file_value->file_url = file_url.spec();
-  }
+  file_value->file_url = net::FilePathToFileURL(download_path).spec();
 
   extensions::DownloadedByExtension* by_ext =
       extensions::DownloadedByExtension::Get(download_item);
@@ -314,48 +262,40 @@ downloads::mojom::DataPtr DownloadsListTracker::CreateDownloadData(
   file_name = base::i18n::GetDisplayStringInLTRDirectionality(file_name);
 
   file_value->file_name = base::UTF16ToUTF8(file_name);
-  // If URL is too long, don't make it clickable.
-  if (download_item->GetURL().is_valid() &&
-      download_item->GetURL().spec().length() <= url::kMaxURLChars) {
-    file_value->url = std::make_optional<GURL>(download_item->GetURL());
-  }
-  file_value->display_url = GetFormattedDisplayUrl(download_item->GetURL());
-  file_value->total = download_item->GetTotalBytes();
+  file_value->url = download_item->GetURL().spec();
+  // If URL is too long, truncate it.
+  if (file_value->url.size() > kMaxURLLength)
+    file_value->url.resize(kMaxURLLength);
+  file_value->total = static_cast<int>(download_item->GetTotalBytes());
   file_value->file_externally_removed =
       download_item->GetFileExternallyRemoved();
   file_value->resume = download_item->CanResume();
   file_value->otr = IsIncognito(*download_item);
 
-  downloads::mojom::DangerType danger_type =
-      GetDangerType(download_item->GetDangerType());
+  const char* danger_type = GetDangerTypeString(download_item->GetDangerType());
   std::u16string last_reason_text;
   // -2 is invalid, -1 means indeterminate, and 0-100 are in-progress.
   int percent = -2;
   std::u16string progress_status_text;
   bool retry = false;
-  // This will always be populated, but we set a null value to start with.
-  std::optional<downloads::mojom::State> state = std::nullopt;
+  const char* state = nullptr;
 
   switch (download_item->GetState()) {
     case download::DownloadItem::IN_PROGRESS: {
       if (download_item->GetDangerType() ==
           download::DOWNLOAD_DANGER_TYPE_PROMPT_FOR_SCANNING) {
-        state = downloads::mojom::State::kPromptForScanning;
-      } else if (download_item->GetDangerType() ==
-                 download::
-                     DOWNLOAD_DANGER_TYPE_PROMPT_FOR_LOCAL_PASSWORD_SCANNING) {
-        state = downloads::mojom::State::kPromptForLocalPasswordScanning;
+        state = "PROMPT_FOR_SCANNING";
       } else if (download_item->GetDangerType() ==
                  download::DOWNLOAD_DANGER_TYPE_ASYNC_SCANNING) {
-        state = downloads::mojom::State::kAsyncScanning;
+        state = "ASYNC_SCANNING";
       } else if (download_item->IsDangerous()) {
-        state = downloads::mojom::State::kDangerous;
+        state = "DANGEROUS";
       } else if (download_item->IsInsecure()) {
-        state = downloads::mojom::State::kInsecure;
+        state = "INSECURE";
       } else if (download_item->IsPaused()) {
-        state = downloads::mojom::State::kPaused;
+        state = "PAUSED";
       } else {
-        state = downloads::mojom::State::kInProgress;
+        state = "IN_PROGRESS";
       }
       progress_status_text = download_model.GetTabProgressStatusText();
       percent = download_item->PercentComplete();
@@ -363,7 +303,7 @@ downloads::mojom::DataPtr DownloadsListTracker::CreateDownloadData(
     }
 
     case download::DownloadItem::INTERRUPTED:
-      state = downloads::mojom::State::kInterrupted;
+      state = "INTERRUPTED";
       progress_status_text = download_model.GetTabProgressStatusText();
 
       if (download_item->CanResume())
@@ -382,20 +322,20 @@ downloads::mojom::DataPtr DownloadsListTracker::CreateDownloadData(
       break;
 
     case download::DownloadItem::CANCELLED:
-      state = downloads::mojom::State::kCancelled;
+      state = "CANCELLED";
       retry = true;
       break;
 
     case download::DownloadItem::COMPLETE:
       DCHECK(!download_item->IsDangerous());
-      state = downloads::mojom::State::kComplete;
+      state = "COMPLETE";
       break;
 
     case download::DownloadItem::MAX_DOWNLOAD_STATE:
       NOTREACHED();
   }
 
-  CHECK(state);
+  DCHECK(state);
 
   file_value->danger_type = danger_type;
   file_value->is_dangerous = download_item->IsDangerous();
@@ -404,7 +344,7 @@ downloads::mojom::DataPtr DownloadsListTracker::CreateDownloadData(
       enterprise_connectors::ShouldPromptReviewForDownload(
           Profile::FromBrowserContext(
               content::DownloadItemUtils::GetBrowserContext(download_item)),
-          download_item);
+          download_item->GetDangerType());
 
   file_value->last_reason_text = base::UTF16ToUTF8(last_reason_text);
   file_value->percent = percent;
@@ -412,34 +352,7 @@ downloads::mojom::DataPtr DownloadsListTracker::CreateDownloadData(
   file_value->show_in_folder_text =
       base::UTF16ToUTF8(download_model.GetShowInFolderText());
   file_value->retry = retry;
-  file_value->state = *state;
-
-  // Note that the safe_browsing_state is the state of the download's profile
-  // *now* whereas the presence of a verdict was determined when the download
-  // happened, so they are not necessarily related.
-  file_value->safe_browsing_state =
-      GetSafeBrowsingState(download_model.profile());
-  file_value->has_safe_browsing_verdict =
-      WasSafeBrowsingVerdictObtained(download_item);
-
-  if (download_model.IsDangerous()) {
-    base::UmaHistogramBoolean(
-        "Download.DownloadsPageDangerousWarningWasShownBefore",
-        download_model.WasUIWarningShown());
-  }
-  MaybeRecordDangerousDownloadWarningShown(download_model);
-
-  if (download_item->IsDangerous()) {
-    // It's likely that SHOWN has already been logged from the download bubble,
-    // but in a small number of cases the warning may not have been shown in
-    // the bubble but is shown for the first time on the downloads page instead.
-    // That case is captured here. The majority of the time, the logic in
-    // DownloadItemWarningData that prevents double-logging will make this a
-    // no-op (aside from logging a histogram).
-    DownloadItemWarningData::AddWarningActionEvent(
-        download_item, DownloadItemWarningData::WarningSurface::DOWNLOADS_PAGE,
-        DownloadItemWarningData::WarningAction::SHOWN);
-  }
+  file_value->state = state;
 
   return file_value;
 }

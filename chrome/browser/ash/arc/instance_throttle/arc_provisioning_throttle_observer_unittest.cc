@@ -19,7 +19,6 @@
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chromeos/ash/components/dbus/concierge/concierge_client.h"
-#include "components/session_manager/core/session_manager.h"
 #include "components/user_manager/scoped_user_manager.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -29,7 +28,7 @@ namespace arc {
 class ArcProvisioningThrottleObserverTest : public testing::Test {
  public:
   ArcProvisioningThrottleObserverTest()
-      : fake_user_manager_(std::make_unique<ash::FakeChromeUserManager>()) {
+      : scoped_user_manager_(std::make_unique<ash::FakeChromeUserManager>()) {
     ash::ConciergeClient::InitializeFake(/*fake_cicerone_client=*/nullptr);
     SetArcAvailableCommandLineForTesting(
         base::CommandLine::ForCurrentProcess());
@@ -39,7 +38,7 @@ class ArcProvisioningThrottleObserverTest : public testing::Test {
         false);
     ArcSessionManager::EnableCheckAndroidManagementForTesting(false);
 
-    arc_session_manager_ =
+    session_manager_ =
         CreateTestArcSessionManager(std::make_unique<ArcSessionRunner>(
             base::BindRepeating(FakeArcSession::Create)));
     testing_profile_ = std::make_unique<TestingProfile>();
@@ -51,8 +50,8 @@ class ArcProvisioningThrottleObserverTest : public testing::Test {
     user_manager->AddUser(account_id);
     user_manager->LoginUser(account_id);
 
-    arc_session_manager_->SetProfile(profile());
-    arc_session_manager_->Initialize();
+    session_manager()->SetProfile(profile());
+    session_manager()->Initialize();
   }
 
   ArcProvisioningThrottleObserverTest(
@@ -62,12 +61,14 @@ class ArcProvisioningThrottleObserverTest : public testing::Test {
 
   void TearDown() override {
     observer()->StopObserving();
-    arc_session_manager_.reset();
+    session_manager_.reset();
     testing_profile_.reset();
   }
 
  protected:
   ArcProvisioningThrottleObserver* observer() { return &observer_; }
+
+  ArcSessionManager* session_manager() { return session_manager_.get(); }
 
   TestingProfile* profile() { return testing_profile_.get(); }
 
@@ -78,34 +79,31 @@ class ArcProvisioningThrottleObserverTest : public testing::Test {
   }
 
   void StartArc(bool accept_tos) {
-    arc_session_manager_->AllowActivation(
-        ArcSessionManager::AllowActivationReason::kImmediateActivation);
-    arc_session_manager_->RequestEnable();
+    session_manager()->AllowActivation();
+    session_manager()->RequestEnable();
     if (accept_tos) {
-      arc_session_manager_->EmulateRequirementCheckCompletionForTesting();
+      session_manager()->EmulateRequirementCheckCompletionForTesting();
     }
-    DCHECK(arc_session_manager_->state() == ArcSessionManager::State::ACTIVE);
+    DCHECK(session_manager()->state() == ArcSessionManager::State::ACTIVE);
   }
 
   void StopArc() {
-    arc_session_manager_->RequestDisable();
-    DCHECK(arc_session_manager_->state() == ArcSessionManager::State::STOPPED);
+    session_manager()->RequestDisable();
+    DCHECK(session_manager()->state() == ArcSessionManager::State::STOPPED);
   }
 
   void FinishProvisioning() {
     mojom::ArcSignInResultPtr result =
         mojom::ArcSignInResult::NewSuccess(mojom::ArcSignInSuccess::SUCCESS);
-    arc_session_manager_->OnProvisioningFinished(
+    session_manager()->OnProvisioningFinished(
         ArcProvisioningResult(std::move(result)));
   }
 
  private:
   content::BrowserTaskEnvironment task_environment_;
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_;
-  session_manager::SessionManager session_manager_;
+  user_manager::ScopedUserManager scoped_user_manager_;
   ArcServiceManager service_manager_;
-  std::unique_ptr<ArcSessionManager> arc_session_manager_;
+  std::unique_ptr<ArcSessionManager> session_manager_;
   ArcProvisioningThrottleObserver observer_;
   std::unique_ptr<TestingProfile> testing_profile_;
 };

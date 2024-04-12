@@ -11,7 +11,6 @@
 #include "chrome/browser/ash/login/login_pref_names.h"
 #include "chrome/browser/ash/policy/enrollment/enrollment_config.h"
 #include "chrome/browser/ash/policy/server_backed_state/server_backed_device_state.h"
-#include "chrome/browser/ash/settings/device_settings_service.h"
 #include "chrome/browser/prefs/browser_prefs.h"
 #include "chrome/common/pref_names.h"
 #include "chromeos/ash/components/install_attributes/stub_install_attributes.h"
@@ -50,7 +49,6 @@ class EnrollmentConfigTest : public testing::TestWithParam<ZeroTouchParam> {
   ash::system::ScopedFakeStatisticsProvider statistics_provider_;
   TestingPrefServiceSimple local_state_;
   ash::StubInstallAttributes install_attributes_;
-  ash::ScopedTestDeviceSettingsService scoped_device_settings_service_;
 };
 
 void EnrollmentConfigTest::SetupZeroTouchCommandLineSwitch() {
@@ -67,7 +65,7 @@ TEST_P(EnrollmentConfigTest, GetPrescribedEnrollmentConfigDuringOOBE) {
 
   // Default configuration is empty.
   EnrollmentConfig config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_NONE, config.mode);
   EXPECT_TRUE(config.management_domain.empty());
   EXPECT_EQ(GetParam().auth_mechanism, config.auth_mechanism);
@@ -78,7 +76,7 @@ TEST_P(EnrollmentConfigTest, GetPrescribedEnrollmentConfigDuringOOBE) {
   statistics_provider_.SetMachineFlag(ash::system::kOemIsEnterpriseManagedKey,
                                       true);
   config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_LOCAL_ADVERTISED, config.mode);
   EXPECT_TRUE(config.management_domain.empty());
   EXPECT_EQ(GetParam().auth_mechanism, config.auth_mechanism);
@@ -90,19 +88,19 @@ TEST_P(EnrollmentConfigTest, GetPrescribedEnrollmentConfigDuringOOBE) {
       ash::system::kOemIsEnterpriseManagedKey);
   local_state_.SetBoolean(prefs::kDeviceEnrollmentAutoStart, true);
   config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_LOCAL_ADVERTISED, config.mode);
   EXPECT_TRUE(config.management_domain.empty());
   EXPECT_EQ(GetParam().auth_mechanism, config.auth_mechanism);
 
   // Server-backed state: advertised enrollment.
-  auto state_dict =
-      base::Value::Dict()
-          .Set(kDeviceStateMode, kDeviceStateRestoreModeReEnrollmentRequested)
-          .Set(kDeviceStateManagementDomain, "example.com");
+  base::Value::Dict state_dict;
+  state_dict.Set(kDeviceStateMode,
+                 kDeviceStateRestoreModeReEnrollmentRequested);
+  state_dict.Set(kDeviceStateManagementDomain, "example.com");
   local_state_.SetDict(prefs::kServerBackedDeviceState, state_dict.Clone());
   config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_SERVER_ADVERTISED, config.mode);
   EXPECT_EQ("example.com", config.management_domain);
   EXPECT_EQ(GetParam().auth_mechanism, config.auth_mechanism);
@@ -113,7 +111,7 @@ TEST_P(EnrollmentConfigTest, GetPrescribedEnrollmentConfigDuringOOBE) {
   statistics_provider_.SetMachineFlag(
       ash::system::kOemCanExitEnterpriseEnrollmentKey, false);
   config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_LOCAL_FORCED, config.mode);
   EXPECT_TRUE(config.management_domain.empty());
   EXPECT_EQ(GetParam().auth_mechanism, config.auth_mechanism);
@@ -125,7 +123,7 @@ TEST_P(EnrollmentConfigTest, GetPrescribedEnrollmentConfigDuringOOBE) {
       ash::system::kOemIsEnterpriseManagedKey);
   local_state_.SetBoolean(prefs::kDeviceEnrollmentCanExit, false);
   config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_LOCAL_FORCED, config.mode);
   EXPECT_TRUE(config.management_domain.empty());
   EXPECT_EQ(GetParam().auth_mechanism, config.auth_mechanism);
@@ -134,7 +132,7 @@ TEST_P(EnrollmentConfigTest, GetPrescribedEnrollmentConfigDuringOOBE) {
   state_dict.Set(kDeviceStateMode, kDeviceStateRestoreModeReEnrollmentEnforced);
   local_state_.SetDict(prefs::kServerBackedDeviceState, state_dict.Clone());
   config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_SERVER_FORCED, config.mode);
   EXPECT_EQ("example.com", config.management_domain);
   EXPECT_EQ(GetParam().auth_mechanism, config.auth_mechanism);
@@ -147,7 +145,7 @@ TEST_P(EnrollmentConfigTest, GetPrescribedEnrollmentConfigAfterOOBE) {
   // attributes. This is only enforced after detecting enrollment loss.
   local_state_.SetBoolean(ash::prefs::kOobeComplete, true);
   EnrollmentConfig config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_NONE, config.mode);
   EXPECT_TRUE(config.management_domain.empty());
   EXPECT_EQ(GetParam().auth_mechanism_after_oobe, config.auth_mechanism);
@@ -157,7 +155,7 @@ TEST_P(EnrollmentConfigTest, GetPrescribedEnrollmentConfigAfterOOBE) {
   statistics_provider_.SetMachineFlag(ash::system::kOemIsEnterpriseManagedKey,
                                       true);
   config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_NONE, config.mode);
   EXPECT_TRUE(config.management_domain.empty());
   EXPECT_EQ(GetParam().auth_mechanism_after_oobe, config.auth_mechanism);
@@ -166,7 +164,7 @@ TEST_P(EnrollmentConfigTest, GetPrescribedEnrollmentConfigAfterOOBE) {
   // install attributes.
   install_attributes_.SetCloudManaged("example.com", "fake-id");
   config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_NONE, config.mode);
   EXPECT_EQ("example.com", config.management_domain);
   EXPECT_EQ(GetParam().auth_mechanism_after_oobe, config.auth_mechanism);
@@ -174,7 +172,7 @@ TEST_P(EnrollmentConfigTest, GetPrescribedEnrollmentConfigAfterOOBE) {
   // If enrollment recovery is on, this is signaled in |config.mode|.
   local_state_.SetBoolean(prefs::kEnrollmentRecoveryRequired, true);
   config = EnrollmentConfig::GetPrescribedEnrollmentConfig(
-      &local_state_, install_attributes_, &statistics_provider_);
+      local_state_, install_attributes_, &statistics_provider_);
   EXPECT_EQ(EnrollmentConfig::MODE_RECOVERY, config.mode);
   EXPECT_EQ("example.com", config.management_domain);
   EXPECT_EQ(GetParam().auth_mechanism_after_oobe, config.auth_mechanism);

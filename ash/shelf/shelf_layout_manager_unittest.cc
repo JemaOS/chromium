@@ -5,12 +5,11 @@
 #include "ash/shelf/shelf_layout_manager.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "ash/accelerators/accelerator_controller_impl.h"
 #include "ash/accelerators/accelerator_table.h"
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/accessibility/test_accessibility_controller_client.h"
 #include "ash/app_list/app_list_controller_impl.h"
 #include "ash/app_list/test/app_list_test_helper.h"
@@ -67,7 +66,6 @@
 #include "ash/wallpaper/wallpaper_controller_impl.h"
 #include "ash/wm/lock_state_controller.h"
 #include "ash/wm/overview/overview_controller.h"
-#include "ash/wm/splitview/split_view_types.h"
 #include "ash/wm/tablet_mode/tablet_mode_controller_test_api.h"
 #include "ash/wm/window_state.h"
 #include "ash/wm/window_util.h"
@@ -84,9 +82,9 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/scoped_feature_list.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "chromeos/ui/base/window_properties.h"
 #include "components/prefs/pref_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/client/drag_drop_client.h"
 #include "ui/aura/client/window_parenting_client.h"
@@ -254,11 +252,7 @@ class AutoHideStateDetector : public ShelfLayoutManagerObserver {
 
 class ShelfLayoutManagerTest : public ShelfLayoutManagerTestBase {
  public:
-  ShelfLayoutManagerTest() {
-    // TODO(b/293400777): Test currently crashes when Jelly is enabled because
-    // of a crash in ShellTestApi. Remove when that is fixed.
-    scoped_features_.InitAndDisableFeature(chromeos::features::kJelly);
-  }
+  ShelfLayoutManagerTest() = default;
 
   void SetUpKioskSession() {
     SessionInfo info;
@@ -266,9 +260,6 @@ class ShelfLayoutManagerTest : public ShelfLayoutManagerTestBase {
     info.state = session_manager::SessionState::ACTIVE;
     Shell::Get()->session_controller()->SetSessionInfo(info);
   }
-
- private:
-  base::test::ScopedFeatureList scoped_features_;
 };
 
 // Makes sure SetVisible updates work area and widget appropriately.
@@ -468,9 +459,9 @@ TEST_F(ShelfLayoutManagerTest, AutoHide) {
 
   // Switch to tablet mode should hide the AUTO_HIDE_SHOWN shelf even the mouse
   // cursor is inside the shelf area.
-  EXPECT_FALSE(display::Screen::GetScreen()->InTabletMode());
+  EXPECT_FALSE(TabletModeControllerTestApi().IsTabletModeStarted());
   TabletModeControllerTestApi().EnterTabletMode();
-  EXPECT_TRUE(display::Screen::GetScreen()->InTabletMode());
+  EXPECT_TRUE(TabletModeControllerTestApi().IsTabletModeStarted());
   EXPECT_EQ(SHELF_AUTO_HIDE_HIDDEN, shelf->GetAutoHideState());
 }
 
@@ -576,8 +567,7 @@ TEST_F(ShelfLayoutManagerTest, VisibleWhenLoginScreenShowing) {
 
   // No wallpaper.
   ASSERT_FALSE(wallpaper_controller->HasShownAnyWallpaper());
-  EXPECT_EQ(ShelfBackgroundType::kLogin,
-            GetShelfLayoutManager()->shelf_background_type());
+  EXPECT_EQ(ShelfBackgroundType::kLogin, GetShelfWidget()->GetBackgroundType());
 
   // Showing wallpaper is asynchronous.
   wallpaper_controller->ShowDefaultWallpaperForTesting();
@@ -587,12 +577,11 @@ TEST_F(ShelfLayoutManagerTest, VisibleWhenLoginScreenShowing) {
   // Non-blurred wallpaper.
   wallpaper_controller->UpdateWallpaperBlurForLockState(/*blur=*/false);
   EXPECT_EQ(ShelfBackgroundType::kLoginNonBlurredWallpaper,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   // Blurred wallpaper.
   wallpaper_controller->UpdateWallpaperBlurForLockState(/*blur=*/true);
-  EXPECT_EQ(ShelfBackgroundType::kLogin,
-            GetShelfLayoutManager()->shelf_background_type());
+  EXPECT_EQ(ShelfBackgroundType::kLogin, GetShelfWidget()->GetBackgroundType());
 }
 
 // Assertions around the lock screen showing.
@@ -621,17 +610,16 @@ TEST_F(ShelfLayoutManagerTest, VisibleWhenLockScreenShowing) {
   LockScreen();
   // Showing a widget in the lock screen should force the shelf to be visible.
   EXPECT_EQ(SHELF_VISIBLE, shelf->GetVisibilityState());
-  EXPECT_EQ(ShelfBackgroundType::kLogin,
-            GetShelfLayoutManager()->shelf_background_type());
+  EXPECT_EQ(ShelfBackgroundType::kLogin, GetShelfWidget()->GetBackgroundType());
 
   UnlockScreen();
   EXPECT_EQ(SHELF_AUTO_HIDE, shelf->GetVisibilityState());
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 }
 
-// Verifies that the hidden shelf shows after triggering the
-// AcceleratorAction::kFocusShelf accelerator (https://crbug.com/1111426).
+// Verifies that the hidden shelf shows after triggering the FOCUS_SHELF
+// accelerator (https://crbug.com/1111426).
 TEST_F(ShelfLayoutManagerTest, ShowHiddenShelfByFocusShelfAccelerator) {
   // Open a window so that the shelf will auto-hide.
   std::unique_ptr<aura::Window> window(CreateTestWindow());
@@ -642,8 +630,8 @@ TEST_F(ShelfLayoutManagerTest, ShowHiddenShelfByFocusShelfAccelerator) {
   EXPECT_EQ(SHELF_AUTO_HIDE_HIDDEN, shelf->GetAutoHideState());
 
   // Focus on the shelf by accelerator.
-  Shell::Get()->accelerator_controller()->PerformActionIfEnabled(
-      AcceleratorAction::kFocusShelf, {});
+  Shell::Get()->accelerator_controller()->PerformActionIfEnabled(FOCUS_SHELF,
+                                                                 {});
 
   // Shelf should be visible.
   EXPECT_EQ(SHELF_AUTO_HIDE, shelf->GetVisibilityState());
@@ -677,7 +665,6 @@ TEST_F(ShelfLayoutManagerTest, VisibleInOverview) {
       ui::ScopedAnimationDurationScaleMode::NON_ZERO_DURATION);
 
   std::unique_ptr<aura::Window> window(CreateTestWindow());
-  window->SetBounds({0, 0, 120, 320});
   window->Show();
   Shelf* shelf = GetPrimaryShelf();
   shelf->SetAutoHideBehavior(ShelfAutoHideBehavior::kAlways);
@@ -700,7 +687,7 @@ TEST_F(ShelfLayoutManagerTest, VisibleInOverview) {
   EXPECT_EQ(SHELF_AUTO_HIDE, shelf->GetVisibilityState());
   EXPECT_EQ(SHELF_AUTO_HIDE_SHOWN, shelf->GetAutoHideState());
   EXPECT_EQ(ShelfBackgroundType::kOverview,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   // Test that on exiting overview mode, the shelf returns to auto hide state.
   ExitOverview();
@@ -1992,7 +1979,7 @@ TEST_F(ShelfLayoutManagerTest, ShelfFlickerOnTrayActivation) {
 
   // Show the status menu. That should make the shelf visible again.
   Shell::Get()->accelerator_controller()->PerformActionIfEnabled(
-      AcceleratorAction::kToggleSystemTrayBubble, {});
+      TOGGLE_SYSTEM_TRAY_BUBBLE, {});
   GetAppListTestHelper()->WaitUntilIdle();
   EXPECT_EQ(SHELF_AUTO_HIDE, shelf->GetVisibilityState());
   EXPECT_EQ(SHELF_AUTO_HIDE_SHOWN, shelf->GetAutoHideState());
@@ -2045,14 +2032,14 @@ TEST_F(ShelfLayoutManagerTest, BackgroundTypeWhenLockingScreen) {
   window->Show();
   wm::ActivateWindow(window.get());
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
   window->SetProperty(aura::client::kShowStateKey, ui::SHOW_STATE_MAXIMIZED);
   EXPECT_EQ(ShelfBackgroundType::kMaximized,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   Shell::Get()->lock_state_controller()->LockWithoutAnimation();
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 }
 
 TEST_F(ShelfLayoutManagerTest, WorkspaceMask) {
@@ -2090,16 +2077,16 @@ TEST_F(ShelfLayoutManagerTest, WorkspaceMask) {
 
 TEST_F(ShelfLayoutManagerTest, ShelfBackgroundColor) {
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   std::unique_ptr<aura::Window> w1(CreateTestWindow());
   w1->Show();
   wm::ActivateWindow(w1.get());
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
   w1->SetProperty(aura::client::kShowStateKey, ui::SHOW_STATE_MAXIMIZED);
   EXPECT_EQ(ShelfBackgroundType::kMaximized,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   std::unique_ptr<aura::Window> w2(CreateTestWindow());
   w2->Show();
@@ -2109,18 +2096,18 @@ TEST_F(ShelfLayoutManagerTest, ShelfBackgroundColor) {
 
   // Still background is 'maximized'.
   EXPECT_EQ(ShelfBackgroundType::kMaximized,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   w1->SetProperty(aura::client::kShowStateKey, ui::SHOW_STATE_MINIMIZED);
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
   w2->SetProperty(aura::client::kShowStateKey, ui::SHOW_STATE_MINIMIZED);
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   w1->SetProperty(aura::client::kShowStateKey, ui::SHOW_STATE_MAXIMIZED);
   EXPECT_EQ(ShelfBackgroundType::kMaximized,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   std::unique_ptr<aura::Window> w3(CreateTestWindow());
   w3->SetProperty(aura::client::kModalKey, ui::MODAL_TYPE_WINDOW);
@@ -2134,7 +2121,7 @@ TEST_F(ShelfLayoutManagerTest, ShelfBackgroundColor) {
   w3.reset();
   w1.reset();
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 }
 
 // Tests that the shelf background gets updated when the AppList stays open
@@ -2161,48 +2148,42 @@ TEST_F(ShelfLayoutManagerTest, TabletModeTransitionWithAppListVisible) {
   // |window| should be maximized, and the shelf background should match the
   // maximized state.
   EXPECT_EQ(WorkspaceWindowState::kMaximized, GetWorkspaceWindowState());
-  EXPECT_EQ(ShelfBackgroundType::kInApp,
-            GetShelfLayoutManager()->shelf_background_type());
-
-  // Hiding the window should exit app mode.
-  window->Hide();
-  EXPECT_EQ(ShelfBackgroundType::kHomeLauncher,
-            GetShelfLayoutManager()->shelf_background_type());
+  EXPECT_EQ(ShelfBackgroundType::kInApp, GetShelfWidget()->GetBackgroundType());
 }
 
 // Verify that the auto-hide shelf has default background by default and still
 // has the default background when a window is maximized in clamshell mode.
 TEST_F(ShelfLayoutManagerTest, ShelfBackgroundColorAutoHide) {
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   GetPrimaryShelf()->SetAutoHideBehavior(ShelfAutoHideBehavior::kAlways);
   std::unique_ptr<aura::Window> w1(CreateTestWindow());
   w1->Show();
   wm::ActivateWindow(w1.get());
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   w1->SetProperty(aura::client::kShowStateKey, ui::SHOW_STATE_MAXIMIZED);
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 }
 
 // Verify that the shelf has a maximized background when a window is in the
 // fullscreen state.
 TEST_F(ShelfLayoutManagerTest, ShelfBackgroundColorFullscreen) {
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   std::unique_ptr<aura::Window> w1(CreateTestWindow());
   w1->Show();
   wm::ActivateWindow(w1.get());
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 
   w1->SetProperty(aura::client::kShowStateKey, ui::SHOW_STATE_FULLSCREEN);
   EXPECT_EQ(ShelfBackgroundType::kMaximized,
-            GetShelfLayoutManager()->shelf_background_type());
+            GetShelfWidget()->GetBackgroundType());
 }
 
 // Verify the hit bounds of the status area extend to the edge of the shelf.
@@ -2959,7 +2940,7 @@ class ShelfLayoutManagerDragDropTest
   }
 
  private:
-  raw_ptr<ui::test::EventGenerator, DanglingUntriaged> generator_;
+  raw_ptr<ui::test::EventGenerator, ExperimentalAsh> generator_;
 };
 
 INSTANTIATE_TEST_SUITE_P(All,
@@ -3043,21 +3024,18 @@ TEST_P(ShelfLayoutManagerDragDropTest, AutoHideShelfOnDragDropEvents) {
 // Tests that the shelf background does not change when the bubble launcher is
 // shown.
 TEST_F(ShelfLayoutManagerTest, NoBackgroundChange) {
-  const auto shelf_background_type =
-      GetShelfLayoutManager()->shelf_background_type();
+  const auto shelf_background_type = GetShelfWidget()->GetBackgroundType();
   AppListControllerImpl* app_list_controller =
       Shell::Get()->app_list_controller();
   // Show the AppListBubble, test that the shelf background has not changed.
   PressHomeButton();
   ASSERT_TRUE(app_list_controller->IsVisible());
-  EXPECT_EQ(shelf_background_type,
-            GetShelfLayoutManager()->shelf_background_type());
+  EXPECT_EQ(shelf_background_type, GetShelfWidget()->GetBackgroundType());
 
   // Hide the bubble, test that the shelf background has still not changed.
   PressHomeButton();
   ASSERT_FALSE(app_list_controller->IsVisible());
-  EXPECT_EQ(shelf_background_type,
-            GetShelfLayoutManager()->shelf_background_type());
+  EXPECT_EQ(shelf_background_type, GetShelfWidget()->GetBackgroundType());
 }
 
 // Tests that tapping the home button is successful on the autohidden shelf.
@@ -3139,7 +3117,7 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, DraggedMRUWindow) {
   const struct TestCase {
     // The shelf widget whose bounds are used as the base for gesture start and
     // end locations.
-    raw_ptr<const views::Widget> widget;
+    raw_ptr<const views::Widget, ExperimentalAsh> widget;
     // Whether the widget bounds are completely in the left part of the split
     // view.
     const bool left_in_split_view;
@@ -3206,8 +3184,10 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, DraggedMRUWindow) {
     auto window2 = AshTestBase::CreateTestWindow(gfx::Rect(0, 0, 400, 400));
     SplitViewController* split_view_controller =
         SplitViewController::Get(Shell::GetPrimaryRootWindow());
-    split_view_controller->SnapWindow(window.get(), SnapPosition::kPrimary);
-    split_view_controller->SnapWindow(window2.get(), SnapPosition::kSecondary);
+    split_view_controller->SnapWindow(
+        window.get(), SplitViewController::SnapPosition::kPrimary);
+    split_view_controller->SnapWindow(
+        window2.get(), SplitViewController::SnapPosition::kSecondary);
     StartScroll(gfx::Point(widget_bounds.x(), shelf_widget_bottom));
     UpdateScroll(
         gfx::Vector2d(0, -shelf_size - hotseat_size - hotseat_padding_size));
@@ -3322,11 +3302,13 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, NoOpInOverview) {
   // screen also does nothing.
   SplitViewController* split_view_controller =
       SplitViewController::Get(Shell::GetPrimaryRootWindow());
-  split_view_controller->SnapWindow(window1.get(), SnapPosition::kPrimary);
-  split_view_controller->SnapWindow(window2.get(), SnapPosition::kSecondary);
+  split_view_controller->SnapWindow(
+      window1.get(), SplitViewController::SnapPosition::kPrimary);
+  split_view_controller->SnapWindow(
+      window2.get(), SplitViewController::SnapPosition::kSecondary);
   EnterOverview();
   EXPECT_TRUE(split_view_controller->InSplitViewMode());
-  EXPECT_TRUE(OverviewController::Get()->InOverviewSession());
+  EXPECT_TRUE(Shell::Get()->overview_controller()->InOverviewSession());
   StartScroll(shelf_widget_bounds.bottom_right());
   UpdateScroll(
       gfx::Vector2d(0, -shelf_size - hotseat_size - hotseat_padding_size));
@@ -3363,7 +3345,7 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, SwipeToExitOverview) {
       -(DragWindowFromShelfController::kVelocityToHomeScreenThreshold + 10));
 
   // We should exit overview mode after completing the fling gesture.
-  EXPECT_FALSE(OverviewController::Get()->InOverviewSession());
+  EXPECT_FALSE(Shell::Get()->overview_controller()->InOverviewSession());
 }
 
 // Test that upward fling in overview transitions from overview to home.
@@ -3390,7 +3372,7 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, FlingInOverview) {
       true /* is_fling */,
       -(DragWindowFromShelfController::kVelocityToHomeScreenThreshold + 10));
 
-  EXPECT_FALSE(OverviewController::Get()->InOverviewSession());
+  EXPECT_FALSE(Shell::Get()->overview_controller()->InOverviewSession());
 
   watcher.WaitUntilStateChanged();
   watcher.CheckEqual({HotseatState::kShownHomeLauncher});
@@ -3415,7 +3397,7 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, FlingInOverviewHomeShelf) {
   // This will ensure we enter overview in home shelf mode.
   WindowState::Get(window1.get())->Minimize();
 
-  OverviewController* overview_controller = OverviewController::Get();
+  OverviewController* overview_controller = Shell::Get()->overview_controller();
   EnterOverview();
   EXPECT_TRUE(overview_controller->InOverviewSession());
   base::HistogramTester histogram_tester;
@@ -3454,9 +3436,11 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest,
 
   SplitViewController* split_view_controller =
       SplitViewController::Get(Shell::GetPrimaryRootWindow());
-  split_view_controller->SnapWindow(window1.get(), SnapPosition::kPrimary);
-  split_view_controller->SnapWindow(window2.get(), SnapPosition::kSecondary);
-  OverviewController* overview_controller = OverviewController::Get();
+  split_view_controller->SnapWindow(
+      window1.get(), SplitViewController::SnapPosition::kPrimary);
+  split_view_controller->SnapWindow(
+      window2.get(), SplitViewController::SnapPosition::kSecondary);
+  OverviewController* overview_controller = Shell::Get()->overview_controller();
 
   base::HistogramTester histogram_tester;
   HotseatStateWatcher watcher(GetShelfLayoutManager());
@@ -3529,9 +3513,11 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, FlingHomeInSplitModeWithOverview) {
 
   SplitViewController* split_view_controller =
       SplitViewController::Get(Shell::GetPrimaryRootWindow());
-  split_view_controller->SnapWindow(window1.get(), SnapPosition::kPrimary);
-  split_view_controller->SnapWindow(window2.get(), SnapPosition::kSecondary);
-  OverviewController* overview_controller = OverviewController::Get();
+  split_view_controller->SnapWindow(
+      window1.get(), SplitViewController::SnapPosition::kPrimary);
+  split_view_controller->SnapWindow(
+      window2.get(), SplitViewController::SnapPosition::kSecondary);
+  OverviewController* overview_controller = Shell::Get()->overview_controller();
   EnterOverview();
   EXPECT_TRUE(overview_controller->InOverviewSession());
   EXPECT_EQ(HotseatState::kExtended, GetShelfLayoutManager()->hotseat_state());
@@ -3578,8 +3564,10 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, FlingInSplitView) {
 
   SplitViewController* split_view_controller =
       SplitViewController::Get(Shell::GetPrimaryRootWindow());
-  split_view_controller->SnapWindow(window1.get(), SnapPosition::kPrimary);
-  split_view_controller->SnapWindow(window2.get(), SnapPosition::kSecondary);
+  split_view_controller->SnapWindow(
+      window1.get(), SplitViewController::SnapPosition::kPrimary);
+  split_view_controller->SnapWindow(
+      window2.get(), SplitViewController::SnapPosition::kSecondary);
 
   base::HistogramTester histogram_tester;
   HotseatStateWatcher watcher(GetShelfLayoutManager());
@@ -3596,7 +3584,7 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, FlingInSplitView) {
       true /* is_fling */,
       -(DragWindowFromShelfController::kVelocityToHomeScreenThreshold + 10));
 
-  EXPECT_TRUE(OverviewController::Get()->InOverviewSession());
+  EXPECT_TRUE(Shell::Get()->overview_controller()->InOverviewSession());
   EXPECT_TRUE(split_view_controller->InSplitViewMode());
 
   watcher.CheckEqual({HotseatState::kExtended});
@@ -3625,8 +3613,10 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, ShortFlingInSplitView) {
 
   SplitViewController* split_view_controller =
       SplitViewController::Get(Shell::GetPrimaryRootWindow());
-  split_view_controller->SnapWindow(window1.get(), SnapPosition::kPrimary);
-  split_view_controller->SnapWindow(window2.get(), SnapPosition::kSecondary);
+  split_view_controller->SnapWindow(
+      window1.get(), SplitViewController::SnapPosition::kPrimary);
+  split_view_controller->SnapWindow(
+      window2.get(), SplitViewController::SnapPosition::kSecondary);
 
   base::HistogramTester histogram_tester;
   HotseatStateWatcher watcher(GetShelfLayoutManager());
@@ -3638,7 +3628,7 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, ShortFlingInSplitView) {
       true /* is_fling */,
       -(DragWindowFromShelfController::kVelocityToHomeScreenThreshold + 10));
 
-  EXPECT_FALSE(OverviewController::Get()->InOverviewSession());
+  EXPECT_FALSE(Shell::Get()->overview_controller()->InOverviewSession());
   EXPECT_TRUE(split_view_controller->InSplitViewMode());
 
   watcher.CheckEqual({HotseatState::kExtended});
@@ -3956,19 +3946,6 @@ TEST_F(ShelfLayoutManagerWindowDraggingTest, NoDragForDownwardEvent) {
   EndScroll(/*is_fling=*/false, 0.f);
 }
 
-// Verifies that there is no crash on shutdown while swipe from home to overview
-// is in progress.
-TEST_F(ShelfLayoutManagerWindowDraggingTest,
-       ShutdownWhileSwipingHomeToOverview) {
-  const gfx::Rect shelf_widget_bounds =
-      GetShelfWidget()->GetWindowBoundsInScreen();
-  StartScroll(shelf_widget_bounds.bottom_center());
-  UpdateScroll(gfx::Vector2d(0, -20));
-  UpdateScroll(gfx::Vector2d(0, -20));
-  ASSERT_TRUE(
-      GetShelfLayoutManager()->swipe_home_to_overview_controller_for_testing());
-}
-
 class ShelfLayoutManagerKeyboardTest : public AshTestBase {
  public:
   ShelfLayoutManagerKeyboardTest() = default;
@@ -4105,11 +4082,11 @@ TEST_F(ShelfLayoutManagerTest, NoShelfUpdateDuringOverviewAnimation) {
   TestDisplayObserver observer;
   EnterOverview();
   WaitForOverviewAnimation(/*enter=*/true);
-  ASSERT_TRUE(display::Screen::GetScreen()->InTabletMode());
+  ASSERT_TRUE(TabletModeControllerTestApi().IsTabletModeStarted());
   EXPECT_EQ(0, observer.metrics_change_count());
   ExitOverview();
   WaitForOverviewAnimation(/*enter=*/false);
-  ASSERT_TRUE(display::Screen::GetScreen()->InTabletMode());
+  ASSERT_TRUE(TabletModeControllerTestApi().IsTabletModeStarted());
   EXPECT_EQ(0, observer.metrics_change_count());
 }
 
@@ -4211,7 +4188,7 @@ TEST_F(ShelfLayoutManagerTest, VerifyAutoHideBehaviorOnMultipleDisplays) {
 
   // Show the system tray on the secondary display.
   Shell::Get()->accelerator_controller()->PerformActionIfEnabled(
-      AcceleratorAction::kToggleSystemTrayBubble, {});
+      TOGGLE_SYSTEM_TRAY_BUBBLE, {});
   Shelf* secondary_shelf =
       RootWindowController::ForWindow(secondary_root_window)->shelf();
   ASSERT_TRUE(secondary_shelf->status_area_widget()->IsMessageBubbleShown());
@@ -4295,8 +4272,15 @@ class QuickActionShowBubbleTest : public ShelfLayoutManagerTestBase,
  public:
   QuickActionShowBubbleTest() : scoped_locale_(GetParam() ? "ar" : "") {}
   ~QuickActionShowBubbleTest() override = default;
+  // ShelfLayoutManagerTestBase:
+  void SetUp() override {
+    ShelfLayoutManagerTestBase::SetUp();
+    scoped_features_.InitAndEnableFeature(
+        app_list_features::kQuickActionShowBubbleLauncher);
+  }
 
  private:
+  base::test::ScopedFeatureList scoped_features_;
   base::test::ScopedRestoreICUDefaultLocale scoped_locale_;
 };
 
@@ -4563,7 +4547,7 @@ TEST_P(QuickActionShowBubbleTest,
 
 // Tests that the shelf background is opaque in both screens after app list is
 // dismissed in a secondary display. (See https://crbug.com/1060686)
-TEST_F(ShelfLayoutManagerTest, ShelfBackgroundOpaqueAfterAppListUpdate) {
+TEST_F(ShelfLayoutManagerTest, ShelfBackgroundOpaqueAfetrAppListUpdate) {
   UpdateDisplay("800x600,800x600");
   AppListControllerImpl* app_list_controller =
       Shell::Get()->app_list_controller();
@@ -4580,19 +4564,18 @@ TEST_F(ShelfLayoutManagerTest, ShelfBackgroundOpaqueAfterAppListUpdate) {
   EXPECT_FALSE(app_list_controller->IsVisible(primary_display_id));
   EXPECT_FALSE(app_list_controller->IsVisible(secondary_display_id));
 
-  auto* primary_root_window_controller =
-      Shell::GetRootWindowControllerWithDisplayId(primary_display_id);
-  auto* secondary_root_window_controller =
-      Shell::GetRootWindowControllerWithDisplayId(secondary_display_id);
-
+  ShelfWidget* primary_shelf_widget =
+      Shell::GetRootWindowControllerWithDisplayId(primary_display_id)
+          ->shelf()
+          ->shelf_widget();
+  ShelfWidget* secondary_shelf_widget =
+      Shell::GetRootWindowControllerWithDisplayId(secondary_display_id)
+          ->shelf()
+          ->shelf_widget();
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            primary_root_window_controller->shelf()
-                ->shelf_layout_manager()
-                ->shelf_background_type());
+            primary_shelf_widget->GetBackgroundType());
   EXPECT_EQ(ShelfBackgroundType::kDefaultBg,
-            secondary_root_window_controller->shelf()
-                ->shelf_layout_manager()
-                ->shelf_background_type());
+            secondary_shelf_widget->GetBackgroundType());
 }
 
 using NoSessionShelfLayoutManagerTest = NoSessionAshTestBase;
@@ -4606,8 +4589,7 @@ TEST_F(NoSessionShelfLayoutManagerTest, UpdateShelfVisibilityAfterLogin) {
 
   // Setup autohide shelf pref.
   auto pref_service = std::make_unique<TestingPrefServiceSimple>();
-  RegisterUserProfilePrefs(pref_service->registry(), /*country=*/"",
-                           /*for_test=*/true);
+  RegisterUserProfilePrefs(pref_service->registry(), /*for_test=*/true);
   SetShelfAutoHideBehaviorPref(pref_service.get(),
                                WindowTreeHostManager::GetPrimaryDisplayId(),
                                ShelfAutoHideBehavior::kAlways);
@@ -4981,6 +4963,8 @@ TEST_P(NavigationWidgetRTLTest, VerifyHomeButtonBounds) {
   const gfx::Rect display_bounds = GetPrimaryDisplay().bounds();
   Shelf* shelf = GetPrimaryShelf();
   ShelfNavigationWidget* navigation_widget = shelf->navigation_widget();
+  const gfx::Size widget_size_in_home_launcher =
+      navigation_widget->GetWindowBoundsInScreen().size();
 
   auto fetch_home_button_screen_bounds =
       [](const ShelfNavigationWidget* navigation_widget,
@@ -5037,6 +5021,10 @@ TEST_P(NavigationWidgetRTLTest, VerifyHomeButtonBounds) {
 
   ASSERT_EQ(HotseatState::kHidden, GetShelfLayoutManager()->hotseat_state());
 
+  const gfx::Size widget_size_in_hidden_state =
+      navigation_widget->GetWindowBoundsInScreen().size();
+  EXPECT_EQ(widget_size_in_home_launcher, widget_size_in_hidden_state);
+
   // Verify home button bounds in the hidden state.
   {
     const gfx::Rect home_button_bounds_in_screen =
@@ -5086,7 +5074,7 @@ TEST_F(ShelfLayoutManagerWithEcheTest, AutoHideShelfWithEcheHidden) {
       GURL("http://google.com"), gfx::Image(image_skia), u"app 1",
       u"your phone",
       eche_app::mojom::ConnectionStatus::kConnectionStatusDisconnected,
-      eche_app::mojom::AppStreamLaunchEntryPoint::RECENT_APPS);
+      eche_app::mojom::AppStreamLaunchEntryPoint::UNKNOWN);
   status_area->eche_tray()->ShowBubble();
   UpdateAutoHideStateNow();
 

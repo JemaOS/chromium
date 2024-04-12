@@ -19,7 +19,6 @@
 #include "media/base/media_switches.h"
 #include "media/base/media_util.h"
 #include "media/base/mock_filters.h"
-#include "media/base/mock_media_log.h"
 #include "media/base/test_helpers.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
 #include "third_party/blink/public/platform/web_url.h"
@@ -200,12 +199,11 @@ class MockMultiBufferDataSource : public MultiBufferDataSource {
   MockMultiBufferDataSource(
       const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
       scoped_refptr<UrlData> url_data,
-      media::MediaLog* media_log,
       BufferedDataSourceHost* host)
       : MultiBufferDataSource(
             task_runner,
             std::move(url_data),
-            media_log,
+            &media_log_,
             host,
             base::BindRepeating(&MockMultiBufferDataSource::set_downloading,
                                 base::Unretained(this))),
@@ -223,6 +221,7 @@ class MockMultiBufferDataSource : public MultiBufferDataSource {
  private:
   // Whether the resource is downloading or deferred.
   bool downloading_;
+  media::NullMediaLog media_log_;
 };
 
 static const int64_t kFileSize = 5000000;
@@ -254,10 +253,9 @@ class MultiBufferDataSourceTest : public testing::Test {
                           UrlData::CorsMode cors_mode,
                           size_t file_size = kFileSize) {
     GURL gurl(url);
-    media_log_ = std::make_unique<NiceMock<media::MockMediaLog>>();
     data_source_ = std::make_unique<MockMultiBufferDataSource>(
         task_runner_, url_index_.GetByUrl(gurl, cors_mode, UrlIndex::kNormal),
-        media_log_.get(), &host_);
+        &host_);
     data_source_->SetPreload(preload_);
 
     response_generator_ =
@@ -492,7 +490,6 @@ class MultiBufferDataSourceTest : public testing::Test {
       task_environment_.GetMainThreadTaskRunner();
   TestUrlIndex url_index_{&fetch_context_, task_runner_};
 
-  std::unique_ptr<media::MediaLog> media_log_;
   std::unique_ptr<MockMultiBufferDataSource> data_source_;
 
   std::unique_ptr<TestResponseGenerator> response_generator_;
@@ -1027,12 +1024,11 @@ TEST_F(MultiBufferDataSourceTest, Http_ShareData) {
   EXPECT_TRUE(data_source_->downloading());
 
   StrictMock<MockBufferedDataSourceHost> host2;
-  media_log_ = std::make_unique<NiceMock<media::MockMediaLog>>();
   MockMultiBufferDataSource source2(
       task_runner_,
       url_index_.GetByUrl(GURL(kHttpUrl), UrlData::CORS_UNSPECIFIED,
                           UrlIndex::kNormal),
-      media_log_.get(), &host2);
+      &host2);
   source2.SetPreload(preload_);
 
   EXPECT_CALL(*this, OnInitialize(true));
@@ -1437,11 +1433,10 @@ TEST_F(MultiBufferDataSourceTest,
 
 TEST_F(MultiBufferDataSourceTest, SeekPastEOF) {
   GURL gurl(kHttpUrl);
-  media_log_ = std::make_unique<NiceMock<media::MockMediaLog>>();
   data_source_ = std::make_unique<MockMultiBufferDataSource>(
       task_runner_,
       url_index_.GetByUrl(gurl, UrlData::CORS_UNSPECIFIED, UrlIndex::kNormal),
-      media_log_.get(), &host_);
+      &host_);
   data_source_->SetPreload(preload_);
 
   response_generator_ =
@@ -1817,11 +1812,10 @@ TEST_F(MultiBufferDataSourceTest, CheckBufferSizeAfterReadingALot) {
 // back to "idle" when we're done loading.
 TEST_F(MultiBufferDataSourceTest, Http_CheckLoadingTransition) {
   GURL gurl(kHttpUrl);
-  media_log_ = std::make_unique<NiceMock<media::MockMediaLog>>();
   data_source_ = std::make_unique<MockMultiBufferDataSource>(
       task_runner_,
       url_index_.GetByUrl(gurl, UrlData::CORS_UNSPECIFIED, UrlIndex::kNormal),
-      media_log_.get(), &host_);
+      &host_);
   data_source_->SetPreload(preload_);
 
   response_generator_ =

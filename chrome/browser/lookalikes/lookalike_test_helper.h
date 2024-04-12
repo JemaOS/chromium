@@ -31,4 +31,4 @@ class LookalikeTestHelper {
   raw_ptr<ukm::TestUkmRecorder> ukm_recorder_;
 };
 
-#endif  // CHROME_BROWSER_LOOKALIKES_LOOKALIKE_TEST_HELPER_H_
+#endif

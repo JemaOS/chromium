@@ -30,7 +30,7 @@ AboutSigninInternalsFactory::AboutSigninInternalsFactory()
   DependsOn(AccountConsistencyModeManagerFactory::GetInstance());
 }
 
-AboutSigninInternalsFactory::~AboutSigninInternalsFactory() = default;
+AboutSigninInternalsFactory::~AboutSigninInternalsFactory() {}
 
 // static
 AboutSigninInternals* AboutSigninInternalsFactory::GetForProfile(
@@ -41,8 +41,7 @@ AboutSigninInternals* AboutSigninInternalsFactory::GetForProfile(
 
 // static
 AboutSigninInternalsFactory* AboutSigninInternalsFactory::GetInstance() {
-  static base::NoDestructor<AboutSigninInternalsFactory> instance;
-  return instance.get();
+  return base::Singleton<AboutSigninInternalsFactory>::get();
 }
 
 void AboutSigninInternalsFactory::RegisterProfilePrefs(

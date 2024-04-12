@@ -10,6 +10,7 @@
 #include "base/test/bind.h"
 #include "chrome/browser/ash/bruschetta/bruschetta_launcher.h"
 #include "chrome/browser/ash/bruschetta/bruschetta_service.h"
+#include "chrome/browser/ash/bruschetta/bruschetta_service_factory.h"
 #include "chrome/browser/ash/guest_os/guest_id.h"
 #include "chrome/browser/ash/guest_os/public/types.h"
 #include "chrome/browser/extensions/api/terminal/startup_status.h"
@@ -23,6 +24,7 @@ namespace bruschetta {
 class BruschettaTerminalProviderTest : public testing::Test {
  public:
   BruschettaTerminalProviderTest() {
+    BruschettaServiceFactory::EnableForTesting(&profile_);
     std::unique_ptr<FakeBruschettaLauncher> launcher =
         std::make_unique<FakeBruschettaLauncher>();
     launcher_ = launcher.get();
@@ -31,7 +33,7 @@ class BruschettaTerminalProviderTest : public testing::Test {
   }
   content::BrowserTaskEnvironment task_environment_;
   TestingProfile profile_;
-  raw_ptr<FakeBruschettaLauncher> launcher_;
+  raw_ptr<FakeBruschettaLauncher, ExperimentalAsh> launcher_;
   base::RunLoop run_loop_;
 };
 

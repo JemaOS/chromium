@@ -9,7 +9,6 @@
 #include <set>
 #include <string>
 
-#include "base/gtest_prod_util.h"
 #include "base/memory/singleton.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
@@ -45,7 +44,6 @@ struct RequestKey {
 // are requests in progress.
 class ServiceWorkerLifetimeManager : public KeyedService {
  public:
-  explicit ServiceWorkerLifetimeManager(content::BrowserContext*);
   ServiceWorkerLifetimeManager(const ServiceWorkerLifetimeManager&) = delete;
   ServiceWorkerLifetimeManager& operator=(const ServiceWorkerLifetimeManager&) =
       delete;
@@ -83,6 +81,8 @@ class ServiceWorkerLifetimeManager : public KeyedService {
     bool operator<(const KeepaliveKey& other) const;
   };
 
+  explicit ServiceWorkerLifetimeManager(content::BrowserContext*);
+
   // Virtual for tests.
   virtual std::string IncrementKeepalive(const WorkerId&);
   virtual void DecrementKeepalive(const KeepaliveKey&);
@@ -118,7 +118,7 @@ class ServiceWorkerLifetimeManagerFactory : public ProfileKeyedServiceFactory {
   ~ServiceWorkerLifetimeManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

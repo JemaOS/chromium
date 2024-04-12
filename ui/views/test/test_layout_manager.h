@@ -6,13 +6,13 @@
 #define UI_VIEWS_TEST_TEST_LAYOUT_MANAGER_H_
 
 #include "ui/gfx/geometry/size.h"
-#include "ui/views/layout/layout_manager_base.h"
+#include "ui/views/layout/layout_manager.h"
 
 namespace views::test {
 
 // A stub layout manager that returns a specific preferred size and height for
 // width.
-class TestLayoutManager : public LayoutManagerBase {
+class TestLayoutManager : public LayoutManager {
  public:
   TestLayoutManager();
 
@@ -29,11 +29,11 @@ class TestLayoutManager : public LayoutManagerBase {
 
   int invalidate_count() const { return invalidate_count_; }
 
- protected:
-  // LayoutManagerBase:
-  views::ProposedLayout CalculateProposedLayout(
-      const views::SizeBounds& size_bounds) const override;
-  void OnLayoutChanged() override;
+  // LayoutManager:
+  void Layout(View* host) override;
+  gfx::Size GetPreferredSize(const View* host) const override;
+  int GetPreferredHeightForWidth(const View* host, int width) const override;
+  void InvalidateLayout() override;
 
  private:
   // The return value of GetPreferredSize();

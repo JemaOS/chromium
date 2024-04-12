@@ -4,8 +4,7 @@
 
 #include <stddef.h>
 
-#include <algorithm>
-
+#include "base/cxx17_backports.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/gfx/geometry/point_f.h"

@@ -32,7 +32,7 @@ const AvatarMenu::Item& ProfileListDesktop::GetItemAt(size_t index) const {
 
 void ProfileListDesktop::RebuildMenu() {
   std::vector<ProfileAttributesEntry*> entries =
-      profile_storage_->GetAllProfilesAttributesSortedByNameWithCheck();
+      profile_storage_->GetAllProfilesAttributesSortedByName();
 
   items_.clear();
   for (ProfileAttributesEntry* entry : entries) {
@@ -55,7 +55,7 @@ void ProfileListDesktop::RebuildMenu() {
   }
 }
 
-std::optional<size_t> ProfileListDesktop::MenuIndexFromProfilePath(
+absl::optional<size_t> ProfileListDesktop::MenuIndexFromProfilePath(
     const base::FilePath& path) const {
   const size_t menu_count = GetNumberOfItems();
 
@@ -65,7 +65,7 @@ std::optional<size_t> ProfileListDesktop::MenuIndexFromProfilePath(
       return i;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void ProfileListDesktop::ActiveProfilePathChanged(

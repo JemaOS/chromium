@@ -106,8 +106,7 @@ class CORE_EXPORT ScriptRunner final : public GarbageCollected<ScriptRunner>,
   // PendingScriptClient
   void PendingScriptFinished(PendingScript*) override;
 
-  void ExecuteAsyncPendingScript(PendingScript* pending_script,
-                                 base::TimeTicks ready_to_evaluate_time);
+  void ExecuteAsyncPendingScript(PendingScript*);
   void ExecuteForceInOrderPendingScript(PendingScript*);
   void ExecuteParserBlockingScriptsBlockedByForceInOrder();
 

@@ -17,8 +17,6 @@ You need to add the following lines to your .gclient checkout.
 
 *  "checkout_src_internal": True,
 *  "checkout_mobile_internal": True,
-*  "checkout_wpr_archives": True,
-
 
 Here is an example.
 
@@ -32,7 +30,6 @@ solutions = [
     "custom_vars": {
       "checkout_src_internal": True,
       "checkout_mobile_internal": True,
-      "checkout_wpr_archives": True,
     },
   },
 ]
@@ -55,7 +52,7 @@ Here is an example.
     @WPRArchiveConfigFilePath("chrome/android/feed/core/javatests/src/org/chromium/chrome/"
             + "browser/feed/network_fetch/test_data.json")
     public void
-    launchNtp_withMultipleFeedCardsRendered() throws IOException, InterruptedException {
+    launchNTP_withMultipleFeedCardsRendered() throws IOException, InterruptedException {
     ...
     }
 ```

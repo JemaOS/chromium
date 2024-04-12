@@ -27,7 +27,6 @@
 #include "third_party/blink/renderer/platform/graphics/paint/geometry_mapper.h"
 #include "third_party/blink/renderer/platform/graphics/paint/property_tree_state.h"
 #include "ui/gfx/geometry/rect.h"
-#include "ui/gfx/geometry/rect_conversions.h"
 
 namespace blink {
 
@@ -50,16 +49,16 @@ const float kMovementThreshold = 3.0;  // CSS pixels.
 // See https://wicg.github.io/layout-instability/#starting-point.
 gfx::PointF StartingPoint(const PhysicalOffset& paint_offset,
                           const LayoutBox& box,
-                          const PhysicalSize& size) {
+                          const LayoutSize& size) {
   PhysicalOffset starting_point = paint_offset;
   auto writing_direction = box.StyleRef().GetWritingDirection();
   if (UNLIKELY(writing_direction.IsFlippedBlocks()))
-    starting_point.left += size.width;
+    starting_point.left += size.Width();
   if (UNLIKELY(writing_direction.IsRtl())) {
     if (writing_direction.IsHorizontal())
-      starting_point.left += size.width;
+      starting_point.left += size.Width();
     else
-      starting_point.top += size.height;
+      starting_point.top += size.Height();
   }
   return gfx::PointF(starting_point);
 }
@@ -96,7 +95,7 @@ bool EqualWithinMovementThreshold(const gfx::PointF& a,
          fabs(a.y() - b.y()) < threshold_physical_px;
 }
 
-bool SmallerThanRegionGranularity(const PhysicalRect& rect) {
+bool SmallerThanRegionGranularity(const LayoutRect& rect) {
   // Normally we paint by snapping to whole pixels, so rects smaller than half
   // a pixel may be invisible.
   return rect.Width() < 0.5 || rect.Height() < 0.5;
@@ -169,62 +168,58 @@ bool LayoutShiftTracker::NeedsToTrack(const LayoutObject& object) const {
   if (object.StyleRef().Visibility() != EVisibility::kVisible)
     return false;
 
-  if (const auto* layout_text = DynamicTo<LayoutText>(object)) {
+  if (object.IsText()) {
     if (!ContainingBlockScope::top_)
       return false;
     if (object.IsBR())
+      return false;
+    if (To<LayoutText>(object).ContainsOnlyWhitespaceOrNbsp() ==
+        OnlyWhitespaceOrNbsp::kYes)
       return false;
     if (object.StyleRef().GetFont().ShouldSkipDrawing())
       return false;
     return true;
   }
 
-  const auto* box = DynamicTo<LayoutBox>(object);
-  if (!box) {
+  if (!object.IsBox())
     return false;
-  }
 
-  if (SmallerThanRegionGranularity(box->VisualOverflowRectAllowingUnset())) {
+  const auto& box = To<LayoutBox>(object);
+  if (SmallerThanRegionGranularity(box.VisualOverflowRectAllowingUnset()))
     return false;
-  }
 
-  if (auto* display_lock_context = box->GetDisplayLockContext()) {
+  if (auto* display_lock_context = box.GetDisplayLockContext()) {
     if (display_lock_context->IsAuto() && display_lock_context->IsLocked())
       return false;
   }
 
   // Don't report shift of anonymous objects. Will report the children because
   // we want report real DOM nodes.
-  if (box->IsAnonymous()) {
+  if (box.IsAnonymous())
     return false;
-  }
 
   // Ignore sticky-positioned objects that move on scroll.
   // TODO(skobes): Find a way to detect when these objects shift.
-  if (box->IsStickyPositioned()) {
+  if (box.IsStickyPositioned())
     return false;
-  }
 
   // A LayoutView can't move by itself.
-  if (box->IsLayoutView()) {
+  if (box.IsLayoutView())
     return false;
-  }
 
   if (Element* element = DynamicTo<Element>(object.GetNode())) {
     if (element->IsSliderThumbElement())
       return false;
   }
 
-  if (const auto* block = DynamicTo<LayoutBlock>(box)) {
+  if (box.IsLayoutBlock()) {
     // Just check the simplest case. For more complex cases, we should suggest
     // the developer to use visibility:hidden.
-    if (block->FirstChild()) {
+    if (To<LayoutBlock>(box).FirstChild())
       return true;
-    }
-    if (box->HasBoxDecorationBackground() || box->GetScrollableArea() ||
-        box->StyleRef().HasVisualOverflowingEffect()) {
+    if (box.HasBoxDecorationBackground() || box.GetScrollableArea() ||
+        box.StyleRef().HasVisualOverflowingEffect())
       return true;
-    }
     return false;
   }
 
@@ -266,12 +261,12 @@ void LayoutShiftTracker::ObjectShifted(
                                    new_starting_point, threshold_physical_px))
     return;
 
-  if (!scroll_anchor_adjustment.IsZero() &&
+  if (RuntimeEnabledFeatures::CLSScrollAnchoringEnabled() &&
+      !scroll_anchor_adjustment.IsZero() &&
       EqualWithinMovementThreshold(
           old_starting_point + scroll_delta + scroll_anchor_adjustment,
-          new_starting_point, threshold_physical_px)) {
+          new_starting_point, threshold_physical_px))
     return;
-  }
 
   // Check shift of 2d-translation-and-scroll-indifferent starting point.
   gfx::Vector2dF translation_and_scroll_delta =
@@ -357,7 +352,7 @@ void LayoutShiftTracker::ObjectShifted(
 
   LocalFrame& frame = frame_view_->GetFrame();
   if (ShouldLog(frame)) {
-    VLOG(2) << "in " << (frame.IsOutermostMainFrame() ? "" : "subframe ")
+    VLOG(1) << "in " << (frame.IsOutermostMainFrame() ? "" : "subframe ")
             << frame.GetDocument()->Url() << ", " << object << " moved from "
             << old_rect_in_root.ToString() << " to "
             << new_rect_in_root.ToString() << " (visible from "
@@ -366,7 +361,7 @@ void LayoutShiftTracker::ObjectShifted(
     if (old_starting_point_in_root != old_rect_in_root.origin() ||
         new_starting_point_in_root != new_rect_in_root.origin() ||
         !translation_delta.IsZero() || !scroll_delta.IsZero()) {
-      VLOG(2) << " (starting point from "
+      VLOG(1) << " (starting point from "
               << old_starting_point_in_root.ToString() << " to "
               << new_starting_point_in_root.ToString() << ")";
     }
@@ -377,7 +372,7 @@ void LayoutShiftTracker::ObjectShifted(
 
   if (Node* node = object.GetNode()) {
     MaybeRecordAttribution(
-        {node->GetDomNodeId(), visible_old_rect, visible_new_rect});
+        {DOMNodeIds::IdForNode(node), visible_old_rect, visible_new_rect});
   }
 }
 
@@ -549,7 +544,7 @@ void LayoutShiftTracker::NotifyPrePaintFinishedInternal() {
 
   LocalFrame& frame = frame_view_->GetFrame();
   if (ShouldLog(frame)) {
-    VLOG(2) << "in " << (frame.IsOutermostMainFrame() ? "" : "subframe ")
+    VLOG(1) << "in " << (frame.IsOutermostMainFrame() ? "" : "subframe ")
             << frame.GetDocument()->Url() << ", viewport was "
             << (impact_fraction * 100) << "% impacted with distance fraction "
             << move_distance_factor << " and subframe weighting factor "
@@ -630,7 +625,7 @@ void LayoutShiftTracker::ReportShift(double score_delta,
       "frame", GetFrameIdForTracing(&frame));
 
   if (ShouldLog(frame)) {
-    VLOG(2) << "in " << (frame.IsOutermostMainFrame() ? "" : "subframe ")
+    VLOG(1) << "in " << (frame.IsOutermostMainFrame() ? "" : "subframe ")
             << frame.GetDocument()->Url().GetString() << ", layout shift of "
             << score_delta
             << (had_recent_input ? " excluded by recent input" : " reported")
@@ -770,7 +765,7 @@ std::unique_ptr<TracedValue> LayoutShiftTracker::PerFrameTraceData(
 }
 
 void LayoutShiftTracker::AttributionsToTracedValue(TracedValue& value) const {
-  auto it = attributions_.begin();
+  const Attribution* it = attributions_.begin();
   if (!*it)
     return;
 
@@ -846,7 +841,7 @@ void ReattachHookScope::NotifyDetach(const Node& node) {
 
   // Save the visual rect for restoration on future reattachment.
   const auto& box = To<LayoutBox>(*layout_object);
-  PhysicalRect visual_overflow_rect = box.PreviousVisualOverflowRect();
+  PhysicalRect visual_overflow_rect = box.PreviousPhysicalVisualOverflowRect();
   if (visual_overflow_rect.IsEmpty() && box.PreviousSize().IsEmpty())
     return;
   bool has_paint_offset_transform = false;

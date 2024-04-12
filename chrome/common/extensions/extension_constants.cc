@@ -29,6 +29,7 @@ const char kGooglePlayBooksAppId[] = "mmimngoggfoobjdlefbcabngfnmieonb";
 const char kGooglePlayMoviesAppId[] = "gdijeikdkaembjbdobgfkoidjkpbmlkd";
 const char kGooglePlayMusicAppId[] = "icppfcnhkcmnfdhfhphakoifcfokfdhg";
 const char kGooglePlusAppId[] = "dlppkpafhbajpcmmoheippocdidnckmm";
+const char kIdentityApiUiAppId[] = "ahjaciijnoiaklcomgnblndopackapon";
 const char kTextEditorAppId[] = "mmfbcljfglbokpmkimbfghdkjmjhdgbg";
 const char kInAppPaymentsSupportAppId[] = "nmmhkkegccagdldgiimedpiccmgmieda";
 const char kKeyboardExtensionId[] = "mppnpdlheglhdfmldimlhpnegondlapf";
@@ -49,6 +50,7 @@ const char* const kBuiltInFirstPartyExtensionIds[] = {
     kGooglePlusAppId,
     kGoogleSheetsAppId,
     kGoogleSlidesAppId,
+    kIdentityApiUiAppId,
     kTextEditorAppId,
     kInAppPaymentsSupportAppId,
 #if BUILDFLAG(IS_CHROMEOS)
@@ -62,10 +64,7 @@ const char* const kBuiltInFirstPartyExtensionIds[] = {
     kFirstRunDialogId,
     kEspeakSpeechSynthesisExtensionId,
     kGoogleSpeechSynthesisExtensionId,
-#elif BUILDFLAG(IS_CHROMEOS_LACROS)
-    kEmbeddedA11yHelperExtensionId,
-    kChromeVoxHelperExtensionId,
-#endif        // BUILDFLAG(IS_CHROMEOS_LACROS)
+#endif        // BUILDFLAG(IS_CHROMEOS_ASH)
     nullptr,  // Null-terminated array.
 };
 
@@ -82,7 +81,6 @@ const char kDeskApiExtensionId[] = "kflgdebkpepnpjobkdfeeipcjdahoomc";
 const char kBruSecurityKeyForwarderExtensionId[] =
     "lcooaekmckohjjnpaaokodoepajbnill";
 const char kODFSExtensionId[] = "gnnndjlaomemikopnjhhnoombakkkkdg";
-const char kPerfettoUIExtensionId[] = "lfmkphfpdbjijhpomgecfikhfohaoine";
 #endif
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 const char kAccessibilityCommonExtensionId[] =
@@ -90,47 +88,29 @@ const char kAccessibilityCommonExtensionId[] =
 const char kAccessibilityCommonExtensionPath[] = "chromeos/accessibility";
 const char kAccessibilityCommonManifestFilename[] =
     "accessibility_common_manifest.json";
-const char kAccessibilityCommonManifestV3Filename[] =
-    "accessibility_common_manifest_v3.json";
 const char kAccessibilityCommonGuestManifestFilename[] =
     "accessibility_common_manifest_guest.json";
-const char kAccessibilityCommonGuestManifestV3Filename[] =
-    "accessibility_common_manifest_guest_v3.json";
 const char kChromeVoxExtensionPath[] = "chromeos/accessibility";
 const char kChromeVoxManifestFilename[] = "chromevox_manifest.json";
-const char kChromeVoxManifestV3Filename[] = "chromevox_manifest_v3.json";
 const char kChromeVoxGuestManifestFilename[] = "chromevox_manifest_guest.json";
-const char kChromeVoxGuestManifestV3Filename[] =
-    "chromevox_manifest_guest_v3.json";
 const char kChromeVoxOptionsPath[] = "/chromevox/options/options.html";
 const char kEnhancedNetworkTtsExtensionId[] =
     "jacnkoglebceckolkoapelihnglgaicd";
 const char kEnhancedNetworkTtsExtensionPath[] = "chromeos/accessibility";
 const char kEnhancedNetworkTtsManifestFilename[] =
     "enhanced_network_tts_manifest.json";
-const char kEnhancedNetworkTtsManifestV3Filename[] =
-    "enhanced_network_tts_manifest_v3.json";
 const char kEnhancedNetworkTtsGuestManifestFilename[] =
     "enhanced_network_tts_manifest_guest.json";
-const char kEnhancedNetworkTtsGuestManifestV3Filename[] =
-    "enhanced_network_tts_manifest_guest_v3.json";
 const char kSelectToSpeakExtensionId[] = "klbcgckkldhdhonijdbnhhaiedfkllef";
 const char kSelectToSpeakExtensionPath[] = "chromeos/accessibility";
 const char kSelectToSpeakManifestFilename[] = "select_to_speak_manifest.json";
-const char kSelectToSpeakManifestV3Filename[] =
-    "select_to_speak_manifest_v3.json";
 const char kSelectToSpeakGuestManifestFilename[] =
     "select_to_speak_manifest_guest.json";
-const char kSelectToSpeakGuestManifestV3Filename[] =
-    "select_to_speak_manifest_v3_guest.json";
 const char kSwitchAccessExtensionId[] = "pmehocpgjmkenlokgjfkaichfjdhpeol";
 const char kSwitchAccessExtensionPath[] = "chromeos/accessibility";
 const char kSwitchAccessManifestFilename[] = "switch_access_manifest.json";
-const char kSwitchAccessManifestV3Filename[] = "switch_access_manifest_v3.json";
 const char kSwitchAccessGuestManifestFilename[] =
     "switch_access_manifest_guest.json";
-const char kSwitchAccessGuestManifestV3Filename[] =
-    "switch_access_manifest_guest_v3.json";
 const char kGuestManifestFilename[] = "manifest_guest.json";
 const char kFirstRunDialogId[] = "jdgcneonijmofocbhmijhacgchbihela";
 const char kEspeakSpeechSynthesisExtensionPath[] =
@@ -144,17 +124,7 @@ const char kGoogleSpeechSynthesisExtensionId[] =
     "gjjabgpgjpampikjhjpfhneeoapjbjaf";
 const char kGoogleSpeechSynthesisOptionsPath[] = "/options.html";
 const char kHelpAppExtensionId[] = "honijodknafkokifofgiaalefdiedpko";
-#elif BUILDFLAG(IS_CHROMEOS_LACROS)
-const char kEmbeddedA11yHelperExtensionId[] =
-    "kgonammgkackdilhodbgbmodpepjocdp";
-const char kEmbeddedA11yHelperExtensionPath[] = "accessibility";
-const char kEmbeddedA11yHelperManifestFilename[] =
-    "embedded_a11y_helper_manifest.json";
-const char kChromeVoxHelperExtensionId[] = "mlkejohendkgipaomdopolhpbihbhfnf";
-const char kChromeVoxHelperExtensionPath[] = "accessibility";
-const char kChromeVoxHelperManifestFilename[] =
-    "chromevox_helper_manifest.json";
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 const char kAppStateNotInstalled[] = "not_installed";
 const char kAppStateInstalled[] = "installed";

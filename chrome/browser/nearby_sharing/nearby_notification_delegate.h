@@ -5,8 +5,9 @@
 #ifndef CHROME_BROWSER_NEARBY_SHARING_NEARBY_NOTIFICATION_DELEGATE_H_
 #define CHROME_BROWSER_NEARBY_SHARING_NEARBY_NOTIFICATION_DELEGATE_H_
 
-#include <optional>
 #include <string>
+
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 // Notification delegate that handles specific click and close events.
 class NearbyNotificationDelegate {
@@ -18,7 +19,7 @@ class NearbyNotificationDelegate {
   // When the click is on the notification itself |action_index| is nullopt.
   // Otherwise |action_index| contains the index of the pressed button.
   virtual void OnClick(const std::string& notification_id,
-                       const std::optional<int>& action_index) = 0;
+                       const absl::optional<int>& action_index) = 0;
 
   // Called when the notification with |notification_id| got closed by either
   // the user, the system or Chrome itself.

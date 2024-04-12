@@ -5,7 +5,9 @@
 #include "chrome/browser/notifications/notification_test_util.h"
 
 #include "chrome/browser/ui/browser.h"
-#include "url/origin.h"
+#include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
+#include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
+#include "content/public/test/test_utils.h"
 
 StubNotificationUIManager::StubNotificationUIManager() {}
 
@@ -99,22 +101,8 @@ std::set<std::string> StubNotificationUIManager::GetAllIdsByProfile(
     ProfileNotification::ProfileID profile_id) {
   std::set<std::string> delegate_ids;
   for (const auto& pair : notifications_) {
-    if (pair.second == profile_id) {
+    if (pair.second == profile_id)
       delegate_ids.insert(pair.first.id());
-    }
-  }
-  return delegate_ids;
-}
-
-std::set<std::string> StubNotificationUIManager::GetAllIdsByProfileAndOrigin(
-    ProfileNotification::ProfileID profile_id,
-    const GURL& origin) {
-  std::set<std::string> delegate_ids;
-  for (const auto& pair : notifications_) {
-    if (pair.second == profile_id &&
-        url::IsSameOriginWith(pair.first.origin_url(), origin)) {
-      delegate_ids.insert(pair.first.id());
-    }
   }
   return delegate_ids;
 }
@@ -134,4 +122,16 @@ void StubNotificationUIManager::CancelAll() {
 void StubNotificationUIManager::StartShutdown() {
   is_shutdown_started_ = true;
   CancelAll();
+}
+
+FullscreenStateWaiter::FullscreenStateWaiter(
+    Browser* browser, bool desired_state)
+    : browser_(browser),
+      desired_state_(desired_state) {}
+
+void FullscreenStateWaiter::Wait() {
+  while (desired_state_ !=
+      browser_->exclusive_access_manager()->context()->IsFullscreen()) {
+    content::RunAllPendingInMessageLoop();
+  }
 }

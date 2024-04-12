@@ -5,10 +5,9 @@
 // clang-format off
 import 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
 
-import type {CrToastManagerElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
-import {getToastManager} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
+import {CrToastManagerElement, getToastManager} from 'chrome://resources/cr_elements/cr_toast/cr_toast_manager.js';
+
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 // clang-format on
 
@@ -17,7 +16,8 @@ suite('cr-toast-manager', () => {
 
   suiteSetup(() => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    toastManager = document.createElement('cr-toast-manager');
+    toastManager = /** @type {!CrToastManagerElement} */ (
+        document.createElement('cr-toast-manager'));
     document.body.appendChild(toastManager);
   });
 
@@ -48,9 +48,8 @@ suite('cr-toast-manager', () => {
     assertFalse(elements[2]!.classList.contains('collapsible'));
   });
 
-  test('duration passed through to toast', async () => {
+  test('duration passed through to toast', () => {
     toastManager.duration = 3;
-    await microtasksFinished();
     assertEquals(3, toastManager.$.toast.duration);
   });
 

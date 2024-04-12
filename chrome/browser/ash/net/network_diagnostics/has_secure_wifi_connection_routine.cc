@@ -40,9 +40,7 @@ constexpr SecurityType kInsecureWiFiEncryptions[] = {
 
 }  // namespace
 
-HasSecureWiFiConnectionRoutine::HasSecureWiFiConnectionRoutine(
-    mojom::RoutineCallSource source)
-    : NetworkDiagnosticsRoutine(source) {
+HasSecureWiFiConnectionRoutine::HasSecureWiFiConnectionRoutine() {
   set_verdict(mojom::RoutineVerdict::kNotRun);
   GetNetworkConfigService(
       remote_cros_network_config_.BindNewPipeAndPassReceiver());

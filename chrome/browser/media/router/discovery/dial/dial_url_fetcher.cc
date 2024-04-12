@@ -4,8 +4,6 @@
 
 #include "chrome/browser/media/router/discovery/dial/dial_url_fetcher.h"
 
-#include <optional>
-
 #include "base/functional/bind.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
@@ -13,6 +11,7 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/net/system_network_context_manager.h"  // nogncheck
 #include "components/version_info/version_info.h"
+#include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -25,6 +24,7 @@
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 // The maximum number of retries allowed for GET requests.
 constexpr int kMaxRetries = 2;
@@ -102,23 +102,23 @@ const network::mojom::URLResponseHead* DialURLFetcher::GetResponseHead() const {
 
 void DialURLFetcher::Get(const GURL& url, bool set_origin_header) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  Start(url, "GET", std::nullopt, kMaxRetries, set_origin_header);
+  Start(url, "GET", absl::nullopt, kMaxRetries, set_origin_header);
 }
 
 void DialURLFetcher::Delete(const GURL& url) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  Start(url, "DELETE", std::nullopt, 0, true);
+  Start(url, "DELETE", absl::nullopt, 0, true);
 }
 
 void DialURLFetcher::Post(const GURL& url,
-                          const std::optional<std::string>& post_data) {
+                          const absl::optional<std::string>& post_data) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   Start(url, "POST", post_data, 0, true);
 }
 
 void DialURLFetcher::Start(const GURL& url,
                            const std::string& method,
-                           const std::optional<std::string>& post_data,
+                           const absl::optional<std::string>& post_data,
                            int max_retries,
                            bool set_origin_header) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -177,12 +177,12 @@ void DialURLFetcher::ReportError(const std::string& message) {
   std::move(error_cb_).Run(message, GetHttpResponseCode());
 }
 
-std::optional<int> DialURLFetcher::GetHttpResponseCode() const {
+absl::optional<int> DialURLFetcher::GetHttpResponseCode() const {
   if (GetResponseHead() && GetResponseHead()->headers) {
     int code = GetResponseHead()->headers->response_code();
-    return code == -1 ? std::nullopt : std::optional<int>(code);
+    return code == -1 ? absl::nullopt : absl::optional<int>(code);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void DialURLFetcher::ReportRedirectError(
@@ -202,10 +202,16 @@ void DialURLFetcher::StartDownload() {
   // Currently this is the only way to guarantee a live URLLoaderFactory.
   // TOOD(mmenke): Figure out a way to do this transparently on IO thread.
   mojo::Remote<network::mojom::URLLoaderFactory> loader_factory;
+
+  // TODO(https://crbug.com/823869): Fix DeviceDescriptionServiceTest and remove
+  // this conditional.
   auto mojo_receiver = loader_factory.BindNewPipeAndPassReceiver();
-  content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE, base::BindOnce(&BindURLLoaderFactoryReceiverOnUIThread,
-                                std::move(mojo_receiver)));
+  if (content::BrowserThread::IsThreadInitialized(content::BrowserThread::UI)) {
+    content::GetUIThreadTaskRunner({})->PostTask(
+        FROM_HERE, base::BindOnce(&BindURLLoaderFactoryReceiverOnUIThread,
+                                  std::move(mojo_receiver)));
+  }
+
   loader_->DownloadToString(
       loader_factory.get(),
       base::BindOnce(&DialURLFetcher::ProcessResponse, base::Unretained(this)),

@@ -14,9 +14,9 @@ class PasswordGenerationPopupController;
 
 class PasswordGenerationPopupViewViews : public autofill::PopupBaseView,
                                          public PasswordGenerationPopupView {
-  METADATA_HEADER(PasswordGenerationPopupViewViews, autofill::PopupBaseView)
-
  public:
+  METADATA_HEADER(PasswordGenerationPopupViewViews);
+
   PasswordGenerationPopupViewViews(
       base::WeakPtr<PasswordGenerationPopupController> controller,
       views::Widget* parent_widget);
@@ -33,8 +33,12 @@ class PasswordGenerationPopupViewViews : public autofill::PopupBaseView,
   void UpdateGeneratedPasswordValue() override;
   [[nodiscard]] bool UpdateBoundsAndRedrawPopup() override;
   void PasswordSelectionUpdated() override;
-  void EditPasswordSelectionUpdated() override;
-  void NudgePasswordSelectionUpdated() override;
+
+#if defined(UNIT_TEST)
+  // Returns true if a minimized version with just a warning icon is created
+  // instead of the whole `password_view_`.
+  bool IsPopupMinimized() const { return !password_view_; }
+#endif
 
  private:
   class GeneratedPasswordBox;
@@ -43,18 +47,18 @@ class PasswordGenerationPopupViewViews : public autofill::PopupBaseView,
   // Creates all the children views and adds them into layout.
   void CreateLayoutAndChildren();
 
+  // Returns true if full generation popup with `password_view_` was created.
+  // The absence of this view means that only the minimized version of the popup
+  // was created (with just a warning icon signaling that the currently typed
+  // password is weak and expanding to password strength indicator on hover).
+  bool FullPopupVisible() const;
+
   // views:Views implementation.
   void GetAccessibleNodeData(ui::AXNodeData* node_data) override;
   gfx::Size CalculatePreferredSize() const override;
 
   // Sub view that displays the actual generated password.
   raw_ptr<GeneratedPasswordBox> password_view_ = nullptr;
-
-  // Sub view that displays the edit password row.
-  raw_ptr<views::View> edit_password_view_ = nullptr;
-
-  // Sub view that displays the nudge password buttons row.
-  raw_ptr<views::View> nudge_password_buttons_view_ = nullptr;
 
   // Controller for this view. Weak reference.
   base::WeakPtr<PasswordGenerationPopupController> controller_;

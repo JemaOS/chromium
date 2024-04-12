@@ -129,7 +129,7 @@ int GetRotationFromMojomDisplayRotationInfo(
   }
 }
 
-std::optional<std::string> ValidateDisplayPropertiesInput(
+absl::optional<std::string> ValidateDisplayPropertiesInput(
     const std::string& display_id_str,
     const system_display::DisplayProperties& info) {
   int64_t id = GetDisplayId(display_id_str);
@@ -155,7 +155,7 @@ std::optional<std::string> ValidateDisplayPropertiesInput(
       LOG(WARNING)
           << "Unified mode set with other properties which will be ignored.";
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // If mirroring source parameter is specified, no other properties should be
@@ -172,7 +172,7 @@ std::optional<std::string> ValidateDisplayPropertiesInput(
     return "Invalid rotation.";
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 system_display::DisplayMode GetDisplayModeFromMojo(
@@ -202,9 +202,6 @@ system_display::DisplayUnitInfo GetDisplayUnitInfoFromMojo(
   }
   info.is_primary = mojo_info.is_primary;
   info.is_internal = mojo_info.is_internal;
-  info.active_state = mojo_info.is_detected
-                          ? system_display::ActiveState::kActive
-                          : system_display::ActiveState::kInactive;
   info.is_enabled = mojo_info.is_enabled;
   info.is_auto_rotation_allowed = mojo_info.is_auto_rotation_allowed;
   info.dpi_x = mojo_info.dpi_x;

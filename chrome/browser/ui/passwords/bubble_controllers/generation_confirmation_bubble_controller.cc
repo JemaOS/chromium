@@ -26,11 +26,12 @@ GenerationConfirmationBubbleController::
   OnBubbleClosing();
 }
 
-void GenerationConfirmationBubbleController::OnGooglePasswordManagerLinkClicked(
-    password_manager::ManagePasswordsReferrer referrer) {
+void GenerationConfirmationBubbleController::
+    OnNavigateToPasswordManagerAccountDashboardLinkClicked(
+        password_manager::ManagePasswordsReferrer referrer) {
   dismissal_reason_ = metrics_util::CLICKED_PASSWORDS_DASHBOARD;
   if (delegate_)
-    delegate_->NavigateToPasswordManagerSettingsPage(referrer);
+    delegate_->NavigateToPasswordManagerAccountDashboard(referrer);
 }
 
 std::u16string GenerationConfirmationBubbleController::GetTitle() const {

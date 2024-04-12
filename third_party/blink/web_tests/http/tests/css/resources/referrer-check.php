@@ -12,9 +12,7 @@ function putImage() {
     header("Content-Type: image/png");
     header("Content-Length: " . filesize($image));
     header("Access-Control-Allow-Origin: *");
-    if (ob_get_length() > 0) {
-        ob_clean();
-    }
+    ob_clean();
     flush();
     readfile($image);
 }
@@ -24,9 +22,7 @@ function putFont() {
     header("Content-Type: font/truetype");
     header("Content-Length: " . filesize($font));
     header("Access-Control-Allow-Origin: *");
-    if (ob_get_length() > 0) {
-        ob_clean();
-    }
+    ob_clean();
     flush();
     readfile($font);
 }

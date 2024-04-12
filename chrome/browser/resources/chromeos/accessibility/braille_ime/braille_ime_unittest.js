@@ -5,6 +5,7 @@
 /**
  * @fileoverview Unit test for the Braille IME.
  */
+GEN_INCLUDE(['../common/testing/accessibility_test_base.js']);
 
 /**
  * Mock Chrome event supporting one listener.
@@ -70,7 +71,7 @@ var localStorage;
 /**
  * Test fixture for the braille IME unit test.
  */
-BrailleImeUnitTest = class extends testing.Test {
+BrailleImeUnitTest = class extends AccessibilityTestBase {
   /** @override */
   setUp() {
     super.setUp();
@@ -148,11 +149,11 @@ BrailleImeUnitTest.prototype.extraLibraries = ['braille_ime.js'];
 
 TEST_F('BrailleImeUnitTest', 'KeysWhenStandardKeyboardDisabled', function() {
   this.activateIme();
-  assertFalse(this.sendKeyDown('KeyF'));
-  assertFalse(this.sendKeyDown('KeyD'));
-  assertFalse(this.sendKeyUp('KeyD'));
-  assertFalse(this.sendKeyUp('KeyF'));
-  assertEquals(0, this.port.messages.length);
+  expectFalse(this.sendKeyDown('KeyF'));
+  expectFalse(this.sendKeyDown('KeyD'));
+  expectFalse(this.sendKeyUp('KeyD'));
+  expectFalse(this.sendKeyUp('KeyF'));
+  expectEquals(0, this.port.messages.length);
 });
 
 TEST_F('BrailleImeUnitTest', 'KeysWhenStandardKeysEnabled', function() {
@@ -161,46 +162,46 @@ TEST_F('BrailleImeUnitTest', 'KeysWhenStandardKeysEnabled', function() {
   this.onMenuItemActivated.dispatch(ENGINE_ID, this.menuItems[0].id);
   assertTrue(this.menuItems[0].checked);
   // Type the letters 'b' and 'c' and verify the right dots get sent.
-  assertTrue(this.sendKeyDown('KeyF'));
-  assertTrue(this.sendKeyDown('KeyD'));
-  assertTrue(this.sendKeyUp('KeyD'));
-  assertTrue(this.sendKeyUp('KeyF'));
-  assertTrue(this.sendKeyDown('KeyJ'));
-  assertTrue(this.sendKeyDown('KeyF'));
-  assertTrue(this.sendKeyUp('KeyJ'));
-  assertTrue(this.sendKeyUp('KeyF'));
+  expectTrue(this.sendKeyDown('KeyF'));
+  expectTrue(this.sendKeyDown('KeyD'));
+  expectTrue(this.sendKeyUp('KeyD'));
+  expectTrue(this.sendKeyUp('KeyF'));
+  expectTrue(this.sendKeyDown('KeyJ'));
+  expectTrue(this.sendKeyDown('KeyF'));
+  expectTrue(this.sendKeyUp('KeyJ'));
+  expectTrue(this.sendKeyUp('KeyF'));
 
   // Make sure that other keys are not handled, either by themselves or while
   // one of the 'braille keys' is pressed.
-  assertFalse(this.sendKeyDown('KeyX'));
-  assertFalse(this.sendKeyUp('KeyX'));
+  expectFalse(this.sendKeyDown('KeyX'));
+  expectFalse(this.sendKeyUp('KeyX'));
 
-  assertTrue(this.sendKeyDown('KeyS'));   // Dot 3
-  assertFalse(this.sendKeyDown('KeyG'));  // To the right of dot 1.
-  assertTrue(this.sendKeyUp('KeyS'));
-  assertFalse(this.sendKeyUp('KeyG'));
+  expectTrue(this.sendKeyDown('KeyS'));   // Dot 3
+  expectFalse(this.sendKeyDown('KeyG'));  // To the right of dot 1.
+  expectTrue(this.sendKeyUp('KeyS'));
+  expectFalse(this.sendKeyUp('KeyG'));
 
   // Keys like Ctrl L should not be handled, despite L being a dot key.
   var ctrlFlag = {ctrlKey: true};
-  assertFalse(this.sendKeyDown('ControlLeft', ctrlFlag));
-  assertFalse(this.sendKeyDown('KeyL', ctrlFlag));
-  assertFalse(this.sendKeyUp('KeyL', ctrlFlag));
-  assertFalse(this.sendKeyUp('ControlLeft', ctrlFlag));
+  expectFalse(this.sendKeyDown('ControlLeft', ctrlFlag));
+  expectFalse(this.sendKeyDown('KeyL', ctrlFlag));
+  expectFalse(this.sendKeyUp('KeyL', ctrlFlag));
+  expectFalse(this.sendKeyUp('ControlLeft', ctrlFlag));
 
   // Space key by itself should send a blank cell.
-  assertTrue(this.sendKeyDown('Space'));
-  assertTrue(this.sendKeyUp('Space'));
+  expectTrue(this.sendKeyDown('Space'));
+  expectTrue(this.sendKeyUp('Space'));
 
   // Space and braille dots results in no event.
-  assertTrue(this.sendKeyDown('Space'));
-  assertTrue(this.sendKeyDown('KeyF'));
-  assertTrue(this.sendKeyUp('Space'));
-  assertTrue(this.sendKeyUp('KeyF'));
+  expectTrue(this.sendKeyDown('Space'));
+  expectTrue(this.sendKeyDown('KeyF'));
+  expectTrue(this.sendKeyUp('Space'));
+  expectTrue(this.sendKeyUp('KeyF'));
   // Send the braille key first, still no event should be produced.
-  assertTrue(this.sendKeyDown('KeyF'));
-  assertTrue(this.sendKeyDown('Space'));
-  assertTrue(this.sendKeyUp('Space'));
-  assertTrue(this.sendKeyUp('KeyF'));
+  expectTrue(this.sendKeyDown('KeyF'));
+  expectTrue(this.sendKeyDown('Space'));
+  expectTrue(this.sendKeyUp('Space'));
+  expectTrue(this.sendKeyUp('KeyF'));
 
   assertDeepEquals(this.port.messages, [
     {type: 'brailleDots', dots: 0x03},
@@ -216,7 +217,7 @@ TEST_F('BrailleImeUnitTest', 'TestBackspaceKey', function() {
   this.onMenuItemActivated.dispatch(ENGINE_ID, this.menuItems[0].id);
   assertTrue(this.menuItems[0].checked);
 
-  assertEquals(undefined, this.sendKeyDown('Backspace'));
+  expectEquals(undefined, this.sendKeyDown('Backspace'));
   assertDeepEquals(
       this.port.messages,
       [{type: 'backspace', requestId: this.lastSentKeyRequestId_ + ''}]);
@@ -225,8 +226,8 @@ TEST_F('BrailleImeUnitTest', 'TestBackspaceKey', function() {
     requestId: this.lastSentKeyRequestId_ + '',
     result: true,
   });
-  assertEquals(this.lastSentKeyRequestId_, this.lastHandledKeyRequestId_);
-  assertTrue(this.lastHandledKeyResult_);
+  expectEquals(this.lastSentKeyRequestId_, this.lastHandledKeyRequestId_);
+  expectTrue(this.lastHandledKeyResult_);
 });
 
 TEST_F('BrailleImeUnitTest', 'UseStandardKeyboardSettingPreserved', function() {

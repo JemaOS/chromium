@@ -5,12 +5,10 @@
 #include "ui/linux/fake_linux_ui.h"
 
 #include "base/time/time.h"
-#include "ui/base/ime/linux/linux_input_method_context.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/font_render_params.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/image/image.h"
-#include "ui/linux/nav_button_provider.h"
 #include "ui/shell_dialogs/select_file_policy.h"
 
 namespace ui {
@@ -25,9 +23,16 @@ FakeLinuxUi::CreateInputMethodContext(
   return nullptr;
 }
 
-gfx::FontRenderParams FakeLinuxUi::GetDefaultFontRenderParams() {
+gfx::FontRenderParams FakeLinuxUi::GetDefaultFontRenderParams() const {
   return gfx::FontRenderParams();
 }
+
+void FakeLinuxUi::GetDefaultFontDescription(
+    std::string* family_out,
+    int* size_pixels_out,
+    int* style_out,
+    int* weight_out,
+    gfx::FontRenderParams* params_out) const {}
 
 ui::SelectFileDialog* FakeLinuxUi::CreateSelectFileDialog(
     void* listener,
@@ -37,10 +42,6 @@ ui::SelectFileDialog* FakeLinuxUi::CreateSelectFileDialog(
 
 bool FakeLinuxUi::Initialize() {
   return false;
-}
-
-void FakeLinuxUi::InitializeFontSettings() {
-  set_default_font_settings(FontSettings());
 }
 
 bool FakeLinuxUi::GetColor(int id,
@@ -88,11 +89,13 @@ LinuxUi::WindowFrameAction FakeLinuxUi::GetWindowFrameAction(
   return WindowFrameAction::kNone;
 }
 
+float FakeLinuxUi::GetDeviceScaleFactor() const {
+  return 1.0f;
+}
+
 bool FakeLinuxUi::PreferDarkTheme() const {
   return false;
 }
-
-void FakeLinuxUi::SetDarkTheme(bool dark) {}
 
 bool FakeLinuxUi::AnimationsEnabled() const {
   return true;
@@ -108,8 +111,7 @@ std::unique_ptr<ui::NavButtonProvider> FakeLinuxUi::CreateNavButtonProvider() {
   return nullptr;
 }
 
-ui::WindowFrameProvider* FakeLinuxUi::GetWindowFrameProvider(bool solid_frame,
-                                                             bool tiled) {
+ui::WindowFrameProvider* FakeLinuxUi::GetWindowFrameProvider(bool solid_frame) {
   return nullptr;
 }
 
@@ -131,7 +133,6 @@ ui::NativeTheme* FakeLinuxUi::GetNativeTheme() const {
 
 bool FakeLinuxUi::GetTextEditCommandsForEvent(
     const ui::Event& event,
-    int text_falgs,
     std::vector<ui::TextEditCommandAuraLinux>* commands) {
   return false;
 }

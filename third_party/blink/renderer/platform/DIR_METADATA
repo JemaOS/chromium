@@ -1,6 +1,3 @@
-monorail: {
+monorail {
   component: "Platform"
-}
-buganizer_public: {
-  component_id: 1456391
 }

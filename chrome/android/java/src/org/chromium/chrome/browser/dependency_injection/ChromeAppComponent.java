@@ -4,9 +4,6 @@
 
 package org.chromium.chrome.browser.dependency_injection;
 
-import dagger.Component;
-
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.AppHooksModule;
 import org.chromium.chrome.browser.browserservices.ClearDataDialogResultRecorder;
 import org.chromium.chrome.browser.browserservices.SessionDataHolder;
@@ -17,11 +14,16 @@ import org.chromium.chrome.browser.customtabs.CustomTabsClientFileProcessor;
 import org.chromium.chrome.browser.customtabs.CustomTabsConnection;
 import org.chromium.chrome.browser.customtabs.dependency_injection.BaseCustomTabActivityComponent;
 import org.chromium.chrome.browser.customtabs.dependency_injection.BaseCustomTabActivityModule;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.components.externalauth.ExternalAuthUtils;
 
 import javax.inject.Singleton;
 
-/** Component representing the Singletons in the main process of the application. */
+import dagger.Component;
+
+/**
+ * Component representing the Singletons in the main process of the application.
+ */
 @Component(modules = {ChromeAppModule.class, AppHooksModule.class})
 @Singleton
 public interface ChromeAppComponent {
@@ -32,20 +34,13 @@ public interface ChromeAppComponent {
             BaseCustomTabActivityModule baseCustomTabActivityModule);
 
     CustomTabsConnection resolveCustomTabsConnection();
-
-    SharedPreferencesManager resolveChromeSharedPreferences();
-
+    SharedPreferencesManager resolveSharedPreferencesManager();
     ClearDataDialogResultRecorder resolveClearDataDialogResultRecorder();
-
     InstalledWebappPermissionManager resolvePermissionManager();
-
     PermissionUpdater resolvePermissionUpdater();
-
     TrustedWebActivityClient resolveTrustedWebActivityClient();
-
     ExternalAuthUtils resolveExternalAuthUtils();
 
     CustomTabsClientFileProcessor resolveCustomTabsFileProcessor();
-
     SessionDataHolder resolveSessionDataHolder();
 }

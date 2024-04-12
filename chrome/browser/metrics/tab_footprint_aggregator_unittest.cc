@@ -4,7 +4,6 @@
 
 #include "chrome/browser/metrics/tab_footprint_aggregator.h"
 
-#include <string_view>
 #include <utility>
 
 #include "components/ukm/test_ukm_recorder.h"
@@ -38,7 +37,7 @@ class TabFootprintAggregatorTest : public testing::Test {
  protected:
   // Walk through |mock_recorder_|'s UKM entries to collect |metric_name|
   // values.
-  ResultMap CollectResults(std::string_view metric_name) const {
+  ResultMap CollectResults(const base::StringPiece& metric_name) const {
     ResultMap result;
     for (const ukm::mojom::UkmEntry* entry :
          mock_recorder_.GetEntriesByName(Memory_TabFootprint::kEntryName)) {

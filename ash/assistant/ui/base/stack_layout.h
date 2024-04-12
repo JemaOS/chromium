@@ -9,8 +9,7 @@
 
 #include "base/component_export.h"
 #include "base/memory/raw_ptr.h"
-#include "ui/views/layout/layout_manager_base.h"
-#include "ui/views/layout/proposed_layout.h"
+#include "ui/views/layout/layout_manager.h"
 
 namespace ash {
 
@@ -18,8 +17,7 @@ namespace ash {
 // FillLayout in that we respect the preferred size of views during layout. It's
 // possible to explicitly specify which dimension to respect. In contrast,
 // FillLayout will cause its views to match the bounds of the host.
-class COMPONENT_EXPORT(ASSISTANT_UI) StackLayout
-    : public views::LayoutManagerBase {
+class COMPONENT_EXPORT(ASSISTANT_UI) StackLayout : public views::LayoutManager {
  public:
   enum class RespectDimension : uint32_t {
     // Respect width. If enabled, child's preferred width will be used and will
@@ -44,23 +42,24 @@ class COMPONENT_EXPORT(ASSISTANT_UI) StackLayout
 
   ~StackLayout() override;
 
+  // views::LayoutManager:
+  void Installed(views::View* host) override;
+  void ViewRemoved(views::View* host, views::View* view) override;
+
   // views::View:
   gfx::Size GetPreferredSize(const views::View* host) const override;
   int GetPreferredHeightForWidth(const views::View* host,
                                  int width) const override;
+  void Layout(views::View* host) override;
+
   void SetRespectDimensionForView(views::View* view,
                                   RespectDimension dimension);
 
   void SetVerticalAlignmentForView(views::View* view,
                                    VerticalAlignment alignment);
 
- protected:
-  // views::LayoutManagerBase:
-  bool OnViewRemoved(views::View* host, views::View* view) override;
-  views::ProposedLayout CalculateProposedLayout(
-      const views::SizeBounds& size_bounds) const override;
-
  private:
+  raw_ptr<views::View, ExperimentalAsh> host_ = nullptr;
   std::map<views::View*, RespectDimension> respect_dimension_map_;
   std::map<views::View*, VerticalAlignment> vertical_alignment_map_;
 };

@@ -21,8 +21,6 @@ namespace ui {
 //
 // These ids must not be conflated with the int id, that comes with web node
 // data, which are only unique within their source frame.
-// TODO(accessibility) We should be able to get rid of this, because node IDs
-// are actually unique within their own OS-level window.
 class COMPONENT_EXPORT(AX_PLATFORM) AXUniqueId {
  public:
   AXUniqueId();
@@ -49,8 +47,6 @@ class COMPONENT_EXPORT(AX_PLATFORM) AXUniqueId {
 
   int32_t id_;
 };
-
-static constexpr int32_t kInvalidAXUniqueId = 0;
 
 }  // namespace ui
 

@@ -30,13 +30,11 @@
 #include "third_party/blink/renderer/core/html/track/vtt/vtt_scanner.h"
 
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
 
 TEST(VTTScannerTest, Constructor) {
-  test::TaskEnvironment task_environment;
   String data8("foo");
   EXPECT_TRUE(data8.Is8Bit());
   VTTScanner scanner8(data8);
@@ -86,7 +84,6 @@ void ScanSequenceHelper1(const String& input) {
 
 // Exercises match(c) and scan(c).
 TEST(VTTScannerTest, BasicOperations1) {
-  test::TaskEnvironment task_environment;
   TEST_WITH(ScanSequenceHelper1, "foe");
 }
 
@@ -106,7 +103,6 @@ void ScanSequenceHelper2(const String& input) {
 
 // Exercises scan(<literal>[, length]).
 TEST(VTTScannerTest, BasicOperations2) {
-  test::TaskEnvironment task_environment;
   TEST_WITH(ScanSequenceHelper2, "foe");
 }
 
@@ -141,7 +137,6 @@ void ScanWithPredicate(const String& input) {
 
 // Tests skipWhile() and collectWhile().
 TEST(VTTScannerTest, PredicateScanning) {
-  test::TaskEnvironment task_environment;
   TEST_WITH(ScanWithPredicate, "badAbing");
 }
 
@@ -172,7 +167,6 @@ void ScanWithInvPredicate(const String& input) {
 
 // Tests skipUntil() and collectUntil().
 TEST(VTTScannerTest, InversePredicateScanning) {
-  test::TaskEnvironment task_environment;
   TEST_WITH(ScanWithInvPredicate, "BADaBING");
 }
 
@@ -202,7 +196,6 @@ void ScanRuns(const String& input) {
 
 // Tests scanRun/skipRun.
 TEST(VTTScannerTest, RunScanning) {
-  test::TaskEnvironment task_environment;
   TEST_WITH(ScanRuns, "foo:baz:bar");
 }
 
@@ -226,7 +219,6 @@ void ScanRunsToStrings(const String& input) {
 
 // Tests extractString.
 TEST(VTTScannerTest, ExtractString) {
-  test::TaskEnvironment task_environment;
   TEST_WITH(ScanRunsToStrings, "foo:bar");
 }
 
@@ -242,7 +234,6 @@ void TailStringExtract(const String& input) {
 
 // Tests restOfInputAsString().
 TEST(VTTScannerTest, ExtractRestAsString) {
-  test::TaskEnvironment task_environment;
   TEST_WITH(TailStringExtract, "foo:bar");
 }
 
@@ -288,7 +279,6 @@ void ScanDigits2(const String& input) {
 
 // Tests scanDigits().
 TEST(VTTScannerTest, ScanDigits) {
-  test::TaskEnvironment task_environment;
   TEST_WITH(ScanDigits1, "foo 123 bar 45678");
   TEST_WITH(ScanDigits2, "-654 1000000000000000000");
 }
@@ -331,7 +321,6 @@ void ScanDoubleValue(const String& input) {
 
 // Tests ScanDouble().
 TEST(VTTScannerTest, ScanDouble) {
-  test::TaskEnvironment task_environment;
   TEST_WITH(ScanDoubleValue, "1. 1.0 .0 . 1.0000 01.000");
 }
 

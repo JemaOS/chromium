@@ -44,14 +44,12 @@ class SmartPrivacyProtectionScreenTest : public OobeBaseTest,
   }
 
   void SetUpOnMainThread() override {
-    LoginDisplayHost::default_host()->GetWizardContext()->is_branded_build =
-        true;
     SmartPrivacyProtectionScreen* smart_privacy_screen =
         WizardController::default_controller()
             ->GetScreen<SmartPrivacyProtectionScreen>();
-    original_callback_ = smart_privacy_screen->get_exit_callback_for_testing();
     smart_privacy_screen->set_exit_callback_for_testing(
-        screen_result_waiter_.GetRepeatingCallback());
+        base::BindRepeating(&SmartPrivacyProtectionScreenTest::HandleScreenExit,
+                            base::Unretained(this)));
     OobeBaseTest::SetUpOnMainThread();
   }
 
@@ -62,16 +60,31 @@ class SmartPrivacyProtectionScreenTest : public OobeBaseTest,
         SmartPrivacyProtectionView::kScreenId);
   }
 
-  SmartPrivacyProtectionScreen::Result WaitForScreenExitResult() {
-    SmartPrivacyProtectionScreen::Result result = screen_result_waiter_.Take();
-    original_callback_.Run(result);
-    return result;
+  void WaitForScreenExit() {
+    if (result_.has_value()) {
+      return;
+    }
+    base::test::TestFuture<void> waiter;
+    quit_closure_ = waiter.GetCallback();
+    EXPECT_TRUE(waiter.Wait());
   }
 
+  void ExitScreenAndExpectResult(SmartPrivacyProtectionScreen::Result result) {
+    WaitForScreenExit();
+    EXPECT_TRUE(result_.has_value());
+    EXPECT_EQ(result_.value(), result);
+  }
+
+  absl::optional<SmartPrivacyProtectionScreen::Result> result_;
+
  private:
-  base::test::TestFuture<SmartPrivacyProtectionScreen::Result>
-      screen_result_waiter_;
-  SmartPrivacyProtectionScreen::ScreenExitCallback original_callback_;
+  void HandleScreenExit(SmartPrivacyProtectionScreen::Result result) {
+    result_ = result;
+    if (quit_closure_)
+      std::move(quit_closure_).Run();
+  }
+
+  base::OnceClosure quit_closure_;
   base::test::ScopedCommandLine scoped_command_line_;
   LoginManagerMixin login_manager_mixin_{&mixin_host_};
 };
@@ -79,19 +92,15 @@ class SmartPrivacyProtectionScreenTest : public OobeBaseTest,
 IN_PROC_BROWSER_TEST_P(SmartPrivacyProtectionScreenTest, TurnOnFeature) {
   ShowSmartPrivacyProtectionScreen();
   if (!IsFeatureEnabledInThisTestCase(features::kQuickDim)) {
-    SmartPrivacyProtectionScreen::Result screen_result =
-        WaitForScreenExitResult();
-    EXPECT_EQ(screen_result,
-              SmartPrivacyProtectionScreen::Result::kNotApplicable);
+    ExitScreenAndExpectResult(
+        SmartPrivacyProtectionScreen::Result::NOT_APPLICABLE);
     return;
   }
   OobeScreenWaiter(SmartPrivacyProtectionView::kScreenId).Wait();
   test::OobeJS().ExpectVisiblePath(kQuickDimSection);
   test::OobeJS().ClickOnPath(kTurnOnButton);
-  SmartPrivacyProtectionScreen::Result screen_result =
-      WaitForScreenExitResult();
-  EXPECT_EQ(screen_result,
-            SmartPrivacyProtectionScreen::Result::kProceedWithFeatureOn);
+  ExitScreenAndExpectResult(
+      SmartPrivacyProtectionScreen::Result::PROCEED_WITH_FEATURE_ON);
   EXPECT_TRUE(ProfileManager::GetActiveUserProfile()->GetPrefs()->GetBoolean(
       prefs::kPowerQuickDimEnabled));
 }
@@ -99,18 +108,14 @@ IN_PROC_BROWSER_TEST_P(SmartPrivacyProtectionScreenTest, TurnOnFeature) {
 IN_PROC_BROWSER_TEST_P(SmartPrivacyProtectionScreenTest, TurnOffFeature) {
   ShowSmartPrivacyProtectionScreen();
   if (!IsFeatureEnabledInThisTestCase(features::kQuickDim)) {
-    SmartPrivacyProtectionScreen::Result screen_result =
-        WaitForScreenExitResult();
-    EXPECT_EQ(screen_result,
-              SmartPrivacyProtectionScreen::Result::kNotApplicable);
+    ExitScreenAndExpectResult(
+        SmartPrivacyProtectionScreen::Result::NOT_APPLICABLE);
     return;
   }
   OobeScreenWaiter(SmartPrivacyProtectionView::kScreenId).Wait();
   test::OobeJS().ClickOnPath(kNoThanksButton);
-  SmartPrivacyProtectionScreen::Result screen_result =
-      WaitForScreenExitResult();
-  EXPECT_EQ(screen_result,
-            SmartPrivacyProtectionScreen::Result::kProceedWithFeatureOff);
+  ExitScreenAndExpectResult(
+      SmartPrivacyProtectionScreen::Result::PROCEED_WITH_FEATURE_OFF);
   EXPECT_FALSE(ProfileManager::GetActiveUserProfile()->GetPrefs()->GetBoolean(
       prefs::kPowerQuickDimEnabled));
 }

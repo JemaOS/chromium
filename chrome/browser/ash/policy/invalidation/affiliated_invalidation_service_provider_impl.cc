@@ -61,18 +61,15 @@ class AffiliatedInvalidationServiceProviderImpl::InvalidationServiceObserver
   // public invalidation::InvalidationHandler:
   void OnInvalidatorStateChange(invalidation::InvalidatorState state) override;
   void OnIncomingInvalidation(
-      const invalidation::Invalidation& invalidation) override;
+      const invalidation::TopicInvalidationMap& invalidation_map) override;
   std::string GetOwnerName() const override;
 
  private:
-  raw_ptr<AffiliatedInvalidationServiceProviderImpl> parent_;
-  const raw_ptr<invalidation::InvalidationService> invalidation_service_;
+  raw_ptr<AffiliatedInvalidationServiceProviderImpl, ExperimentalAsh> parent_;
+  const raw_ptr<invalidation::InvalidationService, ExperimentalAsh>
+      invalidation_service_;
   bool is_service_connected_;
   bool is_observer_ready_;
-
-  base::ScopedObservation<invalidation::InvalidationService,
-                          invalidation::InvalidationHandler>
-      invalidation_service_observation_{this};
 };
 
 AffiliatedInvalidationServiceProviderImpl::InvalidationServiceObserver::
@@ -84,7 +81,7 @@ AffiliatedInvalidationServiceProviderImpl::InvalidationServiceObserver::
       is_service_connected_(false),
       is_observer_ready_(false) {
   DCHECK(invalidation_service_);
-  invalidation_service_observation_.Observe(invalidation_service_);
+  invalidation_service_->RegisterInvalidationHandler(this);
   is_service_connected_ = invalidation_service->GetInvalidatorState() ==
                           invalidation::INVALIDATIONS_ENABLED;
   is_observer_ready_ = true;
@@ -93,6 +90,7 @@ AffiliatedInvalidationServiceProviderImpl::InvalidationServiceObserver::
 AffiliatedInvalidationServiceProviderImpl::InvalidationServiceObserver::
     ~InvalidationServiceObserver() {
   is_observer_ready_ = false;
+  invalidation_service_->UnregisterInvalidationHandler(this);
 }
 
 invalidation::InvalidationService* AffiliatedInvalidationServiceProviderImpl::
@@ -125,7 +123,8 @@ void AffiliatedInvalidationServiceProviderImpl::InvalidationServiceObserver::
 }
 
 void AffiliatedInvalidationServiceProviderImpl::InvalidationServiceObserver::
-    OnIncomingInvalidation(const invalidation::Invalidation& invalidation) {}
+    OnIncomingInvalidation(
+        const invalidation::TopicInvalidationMap& invalidation_map) {}
 
 std::string AffiliatedInvalidationServiceProviderImpl::
     InvalidationServiceObserver::GetOwnerName() const {
@@ -175,7 +174,7 @@ void AffiliatedInvalidationServiceProviderImpl::OnUserProfileLoaded(
   invalidation::InvalidationService* invalidation_service;
   invalidation_service =
       invalidation_provider->GetInvalidationServiceForCustomSender(
-          kPolicyFCMInvalidationSenderID);
+          GetPolicyFCMInvalidationSenderID());
   profile_invalidation_service_observers_.push_back(
       std::make_unique<InvalidationServiceObserver>(this,
                                                     invalidation_service));
@@ -365,13 +364,12 @@ AffiliatedInvalidationServiceProviderImpl::
           base::BindRepeating(&invalidation::FCMNetworkHandler::Create,
                               g_browser_process->gcm_driver(),
                               device_instance_id_driver_.get()),
-          base::BindRepeating(&invalidation::FCMInvalidationListener::Create),
           base::BindRepeating(
               &invalidation::PerUserTopicSubscriptionManager::Create,
               device_identity_provider_.get(), g_browser_process->local_state(),
               base::RetainedRef(url_loader_factory)),
           device_instance_id_driver_.get(), g_browser_process->local_state(),
-          kPolicyFCMInvalidationSenderID);
+          GetPolicyFCMInvalidationSenderID());
   device_invalidation_service->Init();
   return device_invalidation_service;
 }

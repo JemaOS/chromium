@@ -8,6 +8,7 @@
  */
 
 import {sendWithPromise} from '//resources/ash/common/cr.m.js';
+import {addSingletonGetter} from '//resources/ash/common/cr_deprecated.js';
 
 /**
  *  @enum {number}
@@ -38,9 +39,6 @@ export const SmbAuthMethod = {
   CREDENTIALS: 'credentials',
 };
 
-/** @type {SmbBrowserProxy|null} */
-let instance = null;
-
 /** @interface */
 export class SmbBrowserProxy {
   /**
@@ -70,25 +68,15 @@ export class SmbBrowserProxy {
    * @param {string} password
    */
   updateCredentials(mountId, username, password) {}
-
-  /**
-   * Returns true if any SMB has been configured or saved before. Called when
-   * the settings page initially loads.
-   * @returns {Promise<boolean>}
-   */
-  hasAnySmbMountedBefore() {}
 }
 
 /** @implements {SmbBrowserProxy} */
 export class SmbBrowserProxyImpl {
-  /** @return {!SmbBrowserProxy} */
-  static getInstance() {
-    return instance || (instance = new SmbBrowserProxyImpl());
-  }
-
-  /** @param {!SmbBrowserProxy} obj */
-  static setInstance(obj) {
-    instance = obj;
+  /**
+   * @param {SmbBrowserProxy} instance
+   */
+  static setInstanceForTesting(instance) {
+    SmbBrowserProxyImpl.instance_ = instance;
   }
 
   /** @override */
@@ -101,15 +89,15 @@ export class SmbBrowserProxyImpl {
         saveCredentials);
   }
 
+  /** @override */
   startDiscovery() {
     chrome.send('startDiscovery');
   }
 
+  /** @override */
   updateCredentials(mountId, username, password) {
     chrome.send('updateCredentials', [mountId, username, password]);
   }
-
-  hasAnySmbMountedBefore() {
-    return sendWithPromise('hasAnySmbMountedBefore');
-  }
 }
+
+addSingletonGetter(SmbBrowserProxyImpl);

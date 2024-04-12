@@ -24,18 +24,8 @@ class CustomTabCaptureStateToken {
     private final @DrawableRes int mSecurityIconRes;
     private @Nullable final Object mAnimationToken;
     private final int mViewWidth;
-    private final boolean mMinimizeButtonVisible;
-    private final boolean mMinimizeButtonHighlighted;
-
-    public CustomTabCaptureStateToken(
-            String url,
-            String title,
-            @ColorInt int backgroundColor,
-            @DrawableRes int securityIconRes,
-            boolean isInAnimation,
-            int viewWidth,
-            boolean minimizeButtonVisible,
-            boolean minimizeButtonHighlighted) {
+    public CustomTabCaptureStateToken(String url, String title, @ColorInt int backgroundColor,
+            @DrawableRes int securityIconRes, boolean isInAnimation, int viewWidth) {
         mUrl = url;
         mTitle = title;
         mBackgroundColor = backgroundColor;
@@ -45,8 +35,6 @@ class CustomTabCaptureStateToken {
         // are actually the same object.
         mAnimationToken = isInAnimation ? new Object() : null;
         mViewWidth = viewWidth;
-        mMinimizeButtonVisible = minimizeButtonVisible;
-        mMinimizeButtonHighlighted = minimizeButtonHighlighted;
     }
 
     /**
@@ -68,9 +56,6 @@ class CustomTabCaptureStateToken {
             return ToolbarSnapshotDifference.CCT_ANIMATION;
         } else if (mViewWidth != that.mViewWidth) {
             return ToolbarSnapshotDifference.LOCATION_BAR_WIDTH;
-        } else if (mMinimizeButtonVisible != that.mMinimizeButtonVisible
-                || mMinimizeButtonHighlighted != that.mMinimizeButtonHighlighted) {
-            return ToolbarSnapshotDifference.MINIMIZE_BUTTON;
         } else {
             return ToolbarSnapshotDifference.NONE;
         }

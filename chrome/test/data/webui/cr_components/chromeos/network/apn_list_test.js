@@ -8,8 +8,7 @@ import 'chrome://resources/ash/common/network/apn_list.js';
 import {ApnDetailDialogMode} from '//resources/ash/common/network/cellular_utils.js';
 import {ApnList} from 'chrome://resources/ash/common/network/apn_list.js';
 import {OncMojo} from 'chrome://resources/ash/common/network/onc_mojo.js';
-import {ApnProperties, ApnSource, ApnState, ApnType} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
-import {PortalState} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/network_types.mojom-webui.js';
+import {ApnProperties, ApnState, ApnType} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 
@@ -100,24 +99,6 @@ suite('ApnListTest', function() {
     id: '8',
   };
 
-  /** @type {ApnProperties} */
-  const customApnDefaultAttachEnabled = {
-    accessPointName: 'Custom Access Point Default and Attach Enabled',
-    name: 'AP-name-custom-9',
-    apnTypes: [ApnType.kDefault, ApnType.kAttach],
-    state: ApnState.kEnabled,
-    id: '9',
-  };
-
-  /** @type {ApnProperties} */
-  const customApnDefaultAttachDisabled = {
-    accessPointName: 'Custom Access Point Default and Attach Disabled',
-    name: 'AP-name-custom-10',
-    apnTypes: [ApnType.kDefault, ApnType.kAttach],
-    state: ApnState.kDisabled,
-    id: '10',
-  };
-
   function getZeroStateText() {
     return apnList.shadowRoot.querySelector('#zeroStateText');
   }
@@ -141,9 +122,6 @@ suite('ApnListTest', function() {
     await flushTasks();
     assertFalse(!!getDescriptionWithLink());
     assertTrue(!!getDescriptionWithoutLink());
-    assertEquals(
-        'assertive',
-        apnList.shadowRoot.querySelector('#apnDescription').ariaLive);
   });
 
   test('No managedCellularProperties', async function() {
@@ -164,7 +142,7 @@ suite('ApnListTest', function() {
         apnList.i18n('apnSettingsZeroStateDescription'),
         getZeroStateText().querySelector('div').innerText);
     const getErrorMessage = () =>
-        apnList.shadowRoot.querySelector('#errorMessageContainer');
+        apnList.shadowRoot.querySelector('#errorMessage');
     assertFalse(!!getErrorMessage());
 
     // Set as non-APN-related error.
@@ -179,10 +157,8 @@ suite('ApnListTest', function() {
     assertFalse(!!getZeroStateText());
     assertTrue(!!getErrorMessage());
     const getErrorMessageText = () =>
-        getErrorMessage().querySelector('#errorMessage').innerHTML.trim();
-    assertEquals(
-        apnList.i18n('apnSettingsDatabaseApnsErrorMessage'),
-        getErrorMessageText());
+        getErrorMessage().querySelector('localized-link').localizedString;
+    assertEquals('Can\'t connect to network.', getErrorMessageText());
 
     // Add an enabled custom APN.
     apnList.managedCellularProperties = {
@@ -202,24 +178,7 @@ suite('ApnListTest', function() {
     await flushTasks();
     assertFalse(!!getZeroStateText());
     assertTrue(!!getErrorMessage());
-    assertEquals(
-        apnList.i18n('apnSettingsDatabaseApnsErrorMessage'),
-        getErrorMessageText());
-
-    // Add a connected APN. The error should not show.
-    apnList.managedCellularProperties = {
-      connectedApn: connectedApn,
-      apnList: {
-        activeValue: [connectedApn],
-      },
-    };
-    await flushTasks();
-    assertFalse(!!getZeroStateText());
-    assertFalse(!!getErrorMessage());
-    const apns = apnList.shadowRoot.querySelectorAll('apn-list-item');
-    assertEquals(apns.length, 1);
-    assertTrue(OncMojo.apnMatch(apns[0].apn, connectedApn));
-    assertTrue(apns[0].isConnected);
+    assertEquals('Can\'t connect to network.', getErrorMessageText());
   });
 
   test('There is no Connected APN and no custom APNs', async function() {
@@ -388,71 +347,8 @@ suite('ApnListTest', function() {
     getApnDetailDialog()
         .shadowRoot.querySelector('#apnDetailCancelBtn')
         .click();
-
-    // Case: Custom APN is connected.
-    apnList.managedCellularProperties = {
-      connectedApn: customApn1,
-      customApnList: [customApn1],
-    };
-    assertTrue(!!getApnDetailDialog().apnList);
-    assertEquals(1, getApnDetailDialog().apnList.length);
-    assertTrue(OncMojo.apnMatch(getApnDetailDialog().apnList[0], customApn1));
-
-    assertTrue(
-        !!getApnDetailDialog().shadowRoot.querySelector('#apnDetailCancelBtn'));
-    getApnDetailDialog()
-        .shadowRoot.querySelector('#apnDetailCancelBtn')
-        .click();
   });
 
-  test(
-      'Calling openApnSelectionDialog() opens APN selection dialog',
-      async function() {
-        const getApnSelectionDialog = () =>
-            apnList.shadowRoot.querySelector('apn-selection-dialog');
-        apnList.guid = 'fake-guid';
-        assertFalse(!!getApnSelectionDialog());
-        apnList.openApnSelectionDialog();
-        await flushTasks();
-        assertTrue(!!getApnSelectionDialog());
-        assertEquals(apnList.guid, getApnSelectionDialog().guid);
-        assertEquals(0, getApnSelectionDialog().apnList.length);
-
-        apnList.managedCellularProperties = {};
-        assertEquals(0, getApnSelectionDialog().apnList.length);
-
-        const modbApn = {
-          accessPointName: 'Access Point 1',
-          source: ApnSource.kModb,
-          apnTypes: [ApnType.kDefault],
-        };
-        const modemApn = {
-          accessPointName: 'Access Point 2',
-          source: ApnSource.kModem,
-          apnTypes: [ApnType.kDefault],
-        };
-        apnList.managedCellularProperties = {
-          apnList: {
-            activeValue: [
-              modbApn,
-              modemApn,
-            ],
-          },
-        };
-
-        // Only APNs with source kModb should be present.
-        assertEquals(1, getApnSelectionDialog().apnList.length);
-        assertTrue(
-            OncMojo.apnMatch(modbApn, getApnSelectionDialog().apnList[0]));
-
-        const cancelButton =
-            getApnSelectionDialog().shadowRoot.querySelector('.cancel-button');
-        assertTrue(!!cancelButton);
-        cancelButton.click();
-        await flushTasks();
-
-        assertFalse(!!getApnSelectionDialog());
-      });
   test('Show disable/remove/enable warning', async function() {
     apnList.managedCellularProperties = {
       connectedApn: Object.assign({}, connectedApn),
@@ -501,18 +397,6 @@ suite('ApnListTest', function() {
     assertFalse(apns[2].shouldDisallowDisablingRemoving);
     assertFalse(apns[3].shouldDisallowDisablingRemoving);
     assertFalse(apns[4].shouldDisallowDisablingRemoving);
-
-    apnList.managedCellularProperties = {
-      connectedApn: Object.assign({}, customApnDefaultEnabled),
-      customApnList: [
-        Object.assign({}, customApnDefaultEnabled),
-        Object.assign({}, customApnAttachEnabled),
-      ],
-    };
-    await flushTasks();
-    apns = apnList.shadowRoot.querySelectorAll('apn-list-item');
-    assertTrue(apns[0].shouldDisallowDisablingRemoving);
-    assertFalse(apns[1].shouldDisallowDisablingRemoving);
   });
 
   test('Show enable warning', async function() {
@@ -545,121 +429,5 @@ suite('ApnListTest', function() {
     assertTrue(apns[0].shouldDisallowEnabling);
     assertFalse(apns[1].shouldDisallowEnabling);
     assertTrue(apns[2].shouldDisallowEnabling);
-
-    apnList.managedCellularProperties = {
-      connectedApn: customApnDefaultEnabled,
-      customApnList: [
-        customApnDefaultEnabled,
-        customApnAttachDisabled,
-      ],
-    };
-    await flushTasks();
-    apns = apnList.shadowRoot.querySelectorAll('apn-list-item');
-    assertFalse(apns[0].shouldDisallowEnabling);
-    assertFalse(apns[1].shouldDisallowEnabling);
-  });
-
-  test('Portal state is set', async function() {
-    apnList.managedCellularProperties = {
-      customApnList: [customApn1],
-    };
-    await flushTasks();
-    const apns = apnList.shadowRoot.querySelectorAll('apn-list-item');
-    assertEquals(apns.length, 1);
-    assertTrue(OncMojo.apnMatch(apns[0].apn, customApn1));
-    assertFalse(!!apns[0].portalState);
-
-    apnList.portalState = PortalState.kNoInternet;
-    assertEquals(PortalState.kNoInternet, apns[0].portalState);
-  });
-
-  [{
-    shouldShowApn: true,
-    apnTypesOfDatabaseApn: [
-      [ApnType.kDefault],
-      [ApnType.kAttach],
-      [ApnType.kDefault, ApnType.kAttach],
-      [ApnType.kDefault, ApnType.kTether],
-    ],
-    customApnLists: [
-      [customApnDefaultEnabled],
-      [customApnDefaultAttachEnabled],
-    ],
-  },
-   {
-     shouldShowApn: true,
-     apnTypesOfDatabaseApn: [
-       [ApnType.kDefault],
-       [ApnType.kDefault, ApnType.kAttach],
-       [ApnType.kDefault, ApnType.kTether],
-       [ApnType.kDefault, ApnType.kAttach, ApnType.kTether],
-     ],
-     customApnLists: [
-       [],
-       [customApnDefaultDisabled],
-       [customApnDefaultAttachDisabled],
-     ],
-   },
-   {
-     shouldShowApn: false,
-     apnTypesOfDatabaseApn: [
-       [ApnType.kAttach],
-       [ApnType.kAttach, ApnType.kTether],
-     ],
-     customApnLists: [
-       [],
-       [customApnDefaultDisabled],
-       [customApnDefaultAttachDisabled],
-     ],
-   }].forEach(scenario => {
-    scenario.apnTypesOfDatabaseApn.forEach(
-        (discoveredApnTypes) =>
-            scenario.customApnLists.forEach((customApnList) => {
-              test(
-                  'When existing custom APNs are ' +
-                      JSON.stringify(customApnList) +
-                      ' and the single database APN has the APN types of ' +
-                      JSON.stringify(discoveredApnTypes) + ', the APN should ' +
-                      (scenario.shouldShowApn ? 'be shown' : 'not be shown'),
-                  async () => {
-                    /** @type {ApnProperties} */
-                    const testDbApn = {
-                      accessPointName: 'apn',
-                      name: 'name',
-                      apnTypes: discoveredApnTypes,
-                      id: 'id',
-                      source: ApnSource.kModb,
-                    };
-                    const getApnSelectionDialog = () =>
-                        apnList.shadowRoot.querySelector(
-                            'apn-selection-dialog');
-                    apnList.guid = 'fake-guid';
-                    assertFalse(!!getApnSelectionDialog());
-                    apnList.openApnSelectionDialog();
-                    await flushTasks();
-                    assertTrue(!!getApnSelectionDialog());
-                    assertEquals(apnList.guid, getApnSelectionDialog().guid);
-                    assertEquals(0, getApnSelectionDialog().apnList.length);
-
-                    apnList.managedCellularProperties = {};
-                    assertEquals(0, getApnSelectionDialog().apnList.length);
-
-                    apnList.managedCellularProperties = {
-                      customApnList: customApnList,
-                      apnList: {
-                        activeValue: [testDbApn],
-                      },
-                    };
-
-                    assertEquals(
-                        scenario.shouldShowApn,
-                        getApnSelectionDialog().apnList.length === 1,
-                        `APN should be displayed`);
-                    if (scenario.shouldShowApn) {
-                      assertTrue(OncMojo.apnMatch(
-                          testDbApn, getApnSelectionDialog().apnList[0]));
-                    }
-                  });
-            }));
   });
 });

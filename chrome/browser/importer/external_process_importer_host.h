@@ -12,7 +12,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
-#include "base/scoped_observation.h"
 #include "chrome/browser/importer/importer_progress_observer.h"
 #include "chrome/browser/importer/profile_writer.h"
 #include "chrome/common/importer/importer_data_types.h"
@@ -24,13 +23,9 @@ class ExternalProcessImporterClient;
 class FirefoxProfileLock;
 class Profile;
 
-namespace bookmarks {
-class BookmarkModel;
-}  // namespace bookmarks
-
 namespace importer {
 struct SourceProfile;
-}  // namespace importer
+}
 
 // This class manages the import process. It creates the in-process half of the
 // importer bridge and the external process importer client.
@@ -91,8 +86,9 @@ class ExternalProcessImporterHost
   virtual void LaunchImportIfReady();
 
   // bookmarks::BaseBookmarkModelObserver:
-  void BookmarkModelLoaded(bool ids_reassigned) override;
-  void BookmarkModelBeingDeleted() override;
+  void BookmarkModelLoaded(bookmarks::BookmarkModel* model,
+                           bool ids_reassigned) override;
+  void BookmarkModelBeingDeleted(bookmarks::BookmarkModel* model) override;
   void BookmarkModelChanged() override;
 
   // Called when TemplateURLService has been loaded.
@@ -136,14 +132,14 @@ class ExternalProcessImporterHost
   // Profile we're importing from.
   raw_ptr<Profile> profile_;
 
-  // Set if we're waiting for the model to finish loading, and represents
-  // the BookmarkModel instance we are waiting for.
-  base::ScopedObservation<bookmarks::BookmarkModel,
-                          bookmarks::BaseBookmarkModelObserver>
-      bookmark_model_observation_for_loading_{this};
+  // True if we're waiting for the model to finish loading.
+  bool waiting_for_bookmarkbar_model_;
 
   // Non-empty when waiting for the TemplateURLService to finish loading.
   base::CallbackListSubscription template_service_subscription_;
+
+  // Have we installed a listener on the bookmark model?
+  bool installed_bookmark_observer_;
 
   // True if source profile is readable.
   bool is_source_readable_;

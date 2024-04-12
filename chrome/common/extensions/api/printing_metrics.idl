@@ -9,57 +9,53 @@
 namespace printingMetrics {
   // The source of the print job.
   enum PrintJobSource {
-    // Specifies that the job was created from the Print Preview page
-    // initiated by the user.
+    // The job was created from the Print Preview page initiated by the user.
     PRINT_PREVIEW,
 
-    // Specifies that the job was created from an Android App.
+    // The job was created from an Android App.
     ANDROID_APP,
 
-    // Specifies that the job was created by extension via Chrome API.
-    EXTENSION,
-
-    // Specifies that the job was created by an Isolated Web App via API.
-    ISOLATED_WEB_APP
+    // The job was created by extension via Chrome API.
+    EXTENSION
   };
 
-  // Specifies the final status of the print job.
+  // The final status of the print job.
   enum PrintJobStatus {
-    // Specifies that the print job was interrupted due to some error.
+    // Print job was interrupted due to some error.
    FAILED,
 
-   // Specifies that the print job was canceled by the user or via API.
+   // Print job was canceled by the user or via API.
    CANCELED,
 
-   // Specifies that the print job was printed without any errors.
+   // Print job was printed without any errors.
    PRINTED
   };
 
   // The source of the printer.
   enum PrinterSource {
-    // Specifies that the printer was added by user.
+    // Printer was added by user.
     USER,
 
-    // Specifies that the printer was added via policy.
+    // Printer was added via policy.
     POLICY
   };
 
   enum ColorMode {
-    // Specifies that black and white mode was used.
+    // Black and white mode was used.
     BLACK_AND_WHITE,
 
-    // Specifies that color mode was used.
+    // Color mode was used.
     COLOR
   };
 
   enum DuplexMode {
-    // Specifies that one-sided printing was used.
+    // One-sided printing was used.
     ONE_SIDED,
 
-    // Specifies that two-sided printing was used, flipping on long edge.
+    // Two-sided printing was used, flipping on long edge.
     TWO_SIDED_LONG_EDGE,
 
-    // Specifies that two-sided printing was used, flipping on short edge.
+    // Two-sided printing was used, flipping on short edge.
     TWO_SIDED_SHORT_EDGE
   };
 
@@ -146,7 +142,7 @@ namespace printingMetrics {
 
   interface Functions {
     // Returns the list of the finished print jobs.
-    static void getPrintJobs(GetPrintJobsCallback callback);
+    [supportsPromises] static void getPrintJobs(GetPrintJobsCallback callback);
   };
 
   interface Events {

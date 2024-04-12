@@ -114,9 +114,9 @@ promise_test(async (t) => {
   });
   verify({
     performance: performance,
-    resource: 'resources/missing.asis',  // ORB-compatible 404 response.
+    resource: 'resources/missing.jpg',
     mode: 'cross-origin',
-    description: 'Network fallback cross-origin load failure (404 response)',
+    description: 'Network fallback cross-origin load failure',
   });
   // Tests for respondWith(fetch()).
   verify({

@@ -4,18 +4,11 @@
 
 #include "chrome/browser/ash/crosapi/test_controller_ash.h"
 
-#include <optional>
 #include <utility>
-#include <vector>
 
-#include "ash/accessibility/accessibility_controller.h"
 #include "ash/app_list/app_list_controller_impl.h"
-#include "ash/constants/ash_pref_names.h"
 #include "ash/public/cpp/shelf_item_delegate.h"
 #include "ash/public/cpp/shelf_model.h"
-#include "ash/public/cpp/shelf_test_api.h"
-#include "ash/public/cpp/split_view_test_api.h"
-#include "ash/public/cpp/system/toast_manager.h"
 #include "ash/public/cpp/tablet_mode.h"
 #include "ash/public/cpp/window_properties.h"
 #include "ash/root_window_controller.h"
@@ -25,8 +18,7 @@
 #include "ash/shell.h"
 #include "ash/wm/overview/overview_controller.h"
 #include "ash/wm/overview/overview_observer.h"
-#include "ash/wm/tablet_mode/tablet_mode_controller_test_api.h"
-#include "base/check_is_test.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "base/containers/flat_set.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
@@ -36,13 +28,8 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/version.h"
 #include "build/chromeos_buildflags.h"
-#include "chrome/browser/apps/almanac_api_client/almanac_api_util.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
-#include "chrome/browser/ash/accessibility/accessibility_manager.h"
-#include "chrome/browser/ash/app_list/app_list_model_updater.h"
-#include "chrome/browser/ash/app_list/app_list_syncable_service.h"
-#include "chrome/browser/ash/app_list/app_list_syncable_service_factory.h"
 #include "chrome/browser/ash/crosapi/browser_manager.h"
 #include "chrome/browser/ash/crosapi/input_method_test_interface_ash.h"
 #include "chrome/browser/ash/crosapi/vpn_service_ash.h"
@@ -52,26 +39,22 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/sharesheet/sharesheet_service.h"
 #include "chrome/browser/speech/tts_crosapi_util.h"
-#include "chrome/browser/ui/ash/desks/desks_client.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/views/tabs/tab_scrubber_chromeos.h"
-#include "chrome/browser/ui/webui/ash/app_install/app_install_page_handler.h"
 #include "chromeos/ash/components/dbus/shill/shill_profile_client.h"
 #include "chromeos/ash/components/dbus/shill/shill_third_party_vpn_driver_client.h"
 #include "chromeos/ash/components/dbus/userdataauth/cryptohome_misc_client.h"
 #include "chromeos/ash/components/network/network_handler_test_helper.h"
-#include "chromeos/constants/chromeos_features.h"
-#include "components/sync/model/string_ordinal.h"
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
 #include "components/version_info/version_info.h"
 #include "content/public/browser/tts_utterance.h"
 #include "crypto/sha2.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
-#include "mojo/public/cpp/bindings/type_converter.h"
 #include "printing/buildflags/buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_event_dispatcher.h"
 #include "ui/aura/window_tree_host.h"
@@ -85,7 +68,6 @@
 #include "ui/views/controls/button/button.h"
 #include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/interaction/interaction_test_util_views.h"
-#include "url/gurl.h"
 
 #if BUILDFLAG(USE_CUPS)
 #include "chrome/browser/ash/printing/cups_print_job.h"
@@ -96,20 +78,6 @@
 #include "chrome/browser/ash/printing/history/test_print_job_database.h"
 #include "chrome/browser/ash/printing/test_cups_print_job_manager.h"
 #endif  // BUILDFLAG(USE_CUPS)
-
-namespace mojo {
-// static
-ash::SnapPosition
-TypeConverter<ash::SnapPosition, crosapi::mojom::SnapPosition>::Convert(
-    crosapi::mojom::SnapPosition position) {
-  switch (position) {
-    case crosapi::mojom::SnapPosition::kPrimary:
-      return ash::SnapPosition::kPrimary;
-    case crosapi::mojom::SnapPosition::kSecondary:
-      return ash::SnapPosition::kSecondary;
-  }
-}
-}  // namespace mojo
 
 namespace crosapi {
 
@@ -134,152 +102,22 @@ bool DispatchMouseEvent(aura::Window* window,
 
 // Enables or disables tablet mode and waits for the transition to finish.
 void SetTabletModeEnabled(bool enabled) {
+  // This does not use ShellTestApi or TabletModeControllerTestApi because those
+  // are implemented in test-only files.
   ash::TabletMode::Waiter waiter(enabled);
-  if (enabled) {
-    ash::TabletModeControllerTestApi().EnterTabletMode();
-  } else {
-    ash::TabletModeControllerTestApi().LeaveTabletMode();
-  }
+  ash::Shell::Get()->tablet_mode_controller()->SetEnabledForTest(enabled);
   waiter.Wait();
 }
 
-const base::TimeDelta kWindowWaitTimeout = base::Seconds(10);
-
-TestControllerAsh* g_instance = nullptr;
-
 }  // namespace
 
-// This class closes all the Ash browser windows and runs the callback to
-// notify the callback client whether it has successfully closed all browser
-// windows, or failed to do so within the timeout duration. It will destroy
-// itself after running the callback.
-class TestControllerAsh::SelfOwnedAshBrowserWindowCloser
-    : public BrowserListObserver {
- public:
-  explicit SelfOwnedAshBrowserWindowCloser(
-      CloseAllAshBrowserWindowsAndConfirmCallback callback)
-      : callback_(std::move(callback)) {
-    BrowserList::AddObserver(this);
-  }
-
-  SelfOwnedAshBrowserWindowCloser(const SelfOwnedAshBrowserWindowCloser&) =
-      delete;
-  SelfOwnedAshBrowserWindowCloser& operator=(
-      const SelfOwnedAshBrowserWindowCloser&) = delete;
-  ~SelfOwnedAshBrowserWindowCloser() override {
-    BrowserList::RemoveObserver(this);
-  }
-
-  void CloseAllBrowserWindows() {
-    if (BrowserList::GetInstance()->empty()) {
-      OnAllBrowserWindowsClosed(/*success=*/true);
-      // Note: |this| is deleted at this point.
-      return;
-    }
-
-    timer_.Start(
-        FROM_HERE, kWindowWaitTimeout,
-        base::BindOnce(
-            &SelfOwnedAshBrowserWindowCloser::OnAllBrowserWindowsClosed,
-            base::Unretained(this), /*success=*/false));
-
-    for (Browser* browser : *BrowserList::GetInstance()) {
-      // Close the browser asynchronously.
-      browser->window()->Close();
-    }
-  }
-
- private:
-  // BrowserListObserver:
-  void OnBrowserRemoved(Browser* browser) override {
-    if (BrowserList::GetInstance()->empty()) {
-      OnAllBrowserWindowsClosed(/*success=*/true);
-      // Note: |this| is deleted at this point.
-    }
-  }
-
-  void OnAllBrowserWindowsClosed(bool success) {
-    std::move(callback_).Run(success);
-    delete this;
-  }
-
-  CloseAllAshBrowserWindowsAndConfirmCallback callback_;
-  base::OneShotTimer timer_;
-};
-
-// This class runs the callback to notify the callback client whether it has
-// observed at least 1 ash browser window open, or failed to do so within the
-// timeout duration. It will destroy itself after running the callback.
-class TestControllerAsh::SelfOwnedAshBrowserWindowOpenWaiter
-    : public BrowserListObserver {
- public:
-  explicit SelfOwnedAshBrowserWindowOpenWaiter(
-      CheckAtLeastOneAshBrowserWindowOpenCallback callback)
-      : callback_(std::move(callback)) {
-    BrowserList::AddObserver(this);
-  }
-
-  SelfOwnedAshBrowserWindowOpenWaiter(
-      const SelfOwnedAshBrowserWindowOpenWaiter&) = delete;
-  SelfOwnedAshBrowserWindowOpenWaiter& operator=(
-      const SelfOwnedAshBrowserWindowOpenWaiter&) = delete;
-  ~SelfOwnedAshBrowserWindowOpenWaiter() override {
-    BrowserList::RemoveObserver(this);
-  }
-
-  void CheckIfAtLeastOneWindowOpen() {
-    if (BrowserList::GetInstance()->size() >= 1u) {
-      NotifyBrowserWindowOpen(/*has_open_window=*/true);
-      // Note: |this| is deleted at this point.
-      return;
-    }
-
-    timer_.Start(
-        FROM_HERE, kWindowWaitTimeout,
-        base::BindOnce(
-            &SelfOwnedAshBrowserWindowOpenWaiter::NotifyBrowserWindowOpen,
-            base::Unretained(this), /*browser_window_open=*/false));
-  }
-
- private:
-  // BrowserListObserver:
-  void OnBrowserAdded(Browser* browser) override {
-    if (BrowserList::GetInstance()->size() >= 1u) {
-      NotifyBrowserWindowOpen(/*has_open_window=*/true);
-      // Note: |this| is deleted at this point.
-    }
-  }
-
-  // Notifies the |callback_| client whether it has observed at least 1 browser
-  // window open.
-  void NotifyBrowserWindowOpen(bool has_open_window) {
-    std::move(callback_).Run(has_open_window);
-    delete this;
-  }
-
-  CheckAtLeastOneAshBrowserWindowOpenCallback callback_;
-  base::OneShotTimer timer_;
-};
-
-TestControllerAsh* TestControllerAsh::Get() {
-  return g_instance;
-}
-
-TestControllerAsh::TestControllerAsh() {
-  CHECK_IS_TEST();
-  CHECK(!g_instance);
-  g_instance = this;
-}
-
-TestControllerAsh::~TestControllerAsh() {
-  CHECK_EQ(g_instance, this);
-  g_instance = nullptr;
-}
+TestControllerAsh::TestControllerAsh() = default;
+TestControllerAsh::~TestControllerAsh() = default;
 
 void TestControllerAsh::BindReceiver(
     mojo::PendingReceiver<mojom::TestController> receiver) {
-  // This interface is not available on production devices. It's only
-  // needed for tests that run on Linux-chrome so no reason to expose it.
+// This interface is not available on production devices. It's only needed for
+// tests that run on Linux-chrome so no reason to expose it.
 #if BUILDFLAG(IS_CHROMEOS_DEVICE)
   LOG(ERROR) << "Ash does not support TestController on devices";
 #else
@@ -461,7 +299,7 @@ void TestControllerAsh::GetWindowPositionInScreen(
     GetWindowPositionInScreenCallback cb) {
   aura::Window* window = GetShellSurfaceWindow(window_id);
   if (!window) {
-    std::move(cb).Run(std::nullopt);
+    std::move(cb).Run(absl::nullopt);
     return;
   }
   std::move(cb).Run(window->GetBoundsInScreen().origin());
@@ -650,7 +488,7 @@ void TestControllerAsh::GetOpenAshBrowserWindows(
 
 void TestControllerAsh::CloseAllBrowserWindows(
     CloseAllBrowserWindowsCallback callback) {
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     browser->window()->Close();
   }
 
@@ -813,14 +651,15 @@ void TestControllerAsh::GetSanitizedActiveUsername(
       cryptohome::CreateAccountIdentifierFromAccountId(user->GetAccountId())
           .account_id());
   ash::CryptohomeMiscClient::Get()->GetSanitizedUsername(
-      request, base::BindOnce(
-                   [](GetSanitizedActiveUsernameCallback callback,
-                      std::optional<::user_data_auth::GetSanitizedUsernameReply>
-                          result) {
-                     CHECK(result.has_value());
-                     std::move(callback).Run(result->sanitized_username());
-                   },
-                   std::move(callback)));
+      request,
+      base::BindOnce(
+          [](GetSanitizedActiveUsernameCallback callback,
+             absl::optional<::user_data_auth::GetSanitizedUsernameReply>
+                 result) {
+            CHECK(result.has_value());
+            std::move(callback).Run(result->sanitized_username());
+          },
+          std::move(callback)));
 }
 
 void TestControllerAsh::BindInputMethodTestInterface(
@@ -864,153 +703,9 @@ void TestControllerAsh::TtsSpeak(
   tts_crosapi_util::SpeakForTesting(std::move(ash_utterance));
 }
 
-void TestControllerAsh::IsSavedDeskStorageReady(
-    IsSavedDeskStorageReadyCallback callback) {
-  std::move(callback).Run(DesksClient::Get()->GetDeskModel()->IsReady());
-}
-
-void TestControllerAsh::SetAssistiveTechnologyEnabled(
-    crosapi::mojom::AssistiveTechnologyType at_type,
-    bool enabled) {
-  ash::AccessibilityManager* manager = ash::AccessibilityManager::Get();
-  switch (at_type) {
-    case crosapi::mojom::AssistiveTechnologyType::kChromeVox:
-      manager->EnableSpokenFeedback(enabled);
-      break;
-    case mojom::AssistiveTechnologyType::kSelectToSpeak:
-      manager->SetSelectToSpeakEnabled(enabled);
-      break;
-    case mojom::AssistiveTechnologyType::kSwitchAccess: {
-      // Don't show "are you sure you want to turn off switch access?" dialog
-      // during these tests, as it causes a side-effect for future tests run
-      // in series.
-      auto* controller = ash::AccessibilityController::Get();
-      controller->DisableSwitchAccessDisableConfirmationDialogTesting();
-      // Don't show the dialog saying Switch Access was enabled.
-      controller->DisableSwitchAccessEnableNotificationTesting();
-      // Set some Switch Access prefs so that the os://settings page is not
-      // opened (this is done if settings are not configured on first use):
-      manager->SetSwitchAccessKeysForTest(
-          {'1', 'A'}, ash::prefs::kAccessibilitySwitchAccessNextDeviceKeyCodes);
-      manager->SetSwitchAccessKeysForTest(
-          {'2', 'B'},
-          ash::prefs::kAccessibilitySwitchAccessSelectDeviceKeyCodes);
-      manager->SetSwitchAccessEnabled(enabled);
-      break;
-    }
-    case crosapi::mojom::AssistiveTechnologyType::kFocusHighlight: {
-      manager->SetFocusHighlightEnabled(enabled);
-      break;
-    }
-    case mojom::AssistiveTechnologyType::kUnknown:
-      LOG(ERROR) << "Cannot enable unknown AssistiveTechnologyType";
-      break;
-  }
-}
-
-void TestControllerAsh::GetAppListItemAttributes(
-    const std::string& item_id,
-    GetAppListItemAttributesCallback callback) {
-  auto* profile = ProfileManager::GetPrimaryUserProfile();
-  app_list::AppListSyncableService* app_list_syncable_service =
-      app_list::AppListSyncableServiceFactory::GetForProfile(profile);
-
-  auto attributes = mojom::AppListItemAttributes::New();
-  if (const app_list::AppListSyncableService::SyncItem* sync_item =
-          app_list_syncable_service->GetSyncItem(item_id)) {
-    attributes->item_position = sync_item->item_ordinal.ToDebugString();
-    attributes->pin_position = sync_item->item_pin_ordinal.ToDebugString();
-  }
-  std::move(callback).Run(std::move(attributes));
-}
-
-void TestControllerAsh::SetAppListItemAttributes(
-    const std::string& item_id,
-    mojom::AppListItemAttributesPtr attributes,
-    SetAppListItemAttributesCallback callback) {
-  auto* profile = ProfileManager::GetPrimaryUserProfile();
-  app_list::AppListSyncableService* app_list_syncable_service =
-      app_list::AppListSyncableServiceFactory::GetForProfile(profile);
-  AppListModelUpdater* app_list_model_updater =
-      app_list_syncable_service->GetModelUpdater();
-  app_list_model_updater->SetActive(true);
-
-  app_list_model_updater->SetItemPosition(
-      item_id, syncer::StringOrdinal(attributes->item_position));
-
-  if (auto ordinal = syncer::StringOrdinal(attributes->pin_position);
-      ordinal.IsValid()) {
-    app_list_syncable_service->SetPinPosition(item_id, ordinal,
-                                              /*pinned_by_policy=*/false);
-  } else {
-    app_list_syncable_service->RemovePinPosition(item_id);
-  }
-
-  std::move(callback).Run();
-}
-
-void TestControllerAsh::CloseAllAshBrowserWindowsAndConfirm(
-    CloseAllAshBrowserWindowsAndConfirmCallback callback) {
-  SelfOwnedAshBrowserWindowCloser* closer =
-      new SelfOwnedAshBrowserWindowCloser(std::move(callback));
-  closer->CloseAllBrowserWindows();
-}
-
-void TestControllerAsh::CheckAtLeastOneAshBrowserWindowOpen(
-    CheckAtLeastOneAshBrowserWindowOpenCallback callback) {
-  SelfOwnedAshBrowserWindowOpenWaiter* window_waiter =
-      new SelfOwnedAshBrowserWindowOpenWaiter(std::move(callback));
-  window_waiter->CheckIfAtLeastOneWindowOpen();
-}
-
-void TestControllerAsh::GetAllOpenTabURLs(GetAllOpenTabURLsCallback callback) {
-  std::vector<GURL> result;
-  for (Browser* browser : *BrowserList::GetInstance()) {
-    for (int i = 0; i < browser->tab_strip_model()->GetTabCount(); i++) {
-      result.emplace_back(browser->tab_strip_model()
-                              ->GetWebContentsAt(i)
-                              ->GetLastCommittedURL());
-    }
-  }
-  std::move(callback).Run(std::move(result));
-}
-
-void TestControllerAsh::SetAlmanacEndpointUrlForTesting(
-    const std::optional<std::string>& url_override,
-    SetAlmanacEndpointUrlForTestingCallback callback) {
-  apps::SetAlmanacEndpointUrlForTesting(url_override);
-  std::move(callback).Run();
-}
-
-void TestControllerAsh::IsToastShown(const std::string& toast_id,
-                                     IsToastShownCallback callback) {
-  std::move(callback).Run(ash::ToastManager::Get()->IsToastShown(toast_id));
-}
-
 void TestControllerAsh::OnAshUtteranceFinished(int utterance_id) {
-  // Delete the utterance event delegate object when the utterance is finished.
+  // Delete the utterace event delegate object when the utterance is finished.
   ash_utterance_event_delegates_.erase(utterance_id);
-}
-
-void TestControllerAsh::SnapWindow(const std::string& window_id,
-                                   mojom::SnapPosition position,
-                                   SnapWindowCallback callback) {
-  aura::Window* window = GetShellSurfaceWindow(window_id);
-  CHECK(window);
-  ash::SplitViewTestApi().SnapWindow(
-      window, mojo::ConvertTo<ash::SnapPosition>(position));
-  std::move(callback).Run();
-}
-
-void TestControllerAsh::IsShelfVisible(IsShelfVisibleCallback callback) {
-  std::move(callback).Run(ash::ShelfTestApi().IsVisible());
-}
-
-void TestControllerAsh::SetAppInstallDialogAutoAccept(
-    bool auto_accept,
-    SetAppInstallDialogAutoAcceptCallback callback) {
-  ash::app_install::AppInstallPageHandler::SetAutoAcceptForTesting(auto_accept);
-  std::move(callback).Run();
 }
 
 // This class waits for overview mode to either enter or exit and fires a
@@ -1062,7 +757,7 @@ class TestControllerAsh::OverviewWaiter : public ash::OverviewObserver {
   base::OnceClosure closure_;
 
   // The test controller owns this object so is never invalid.
-  raw_ptr<TestControllerAsh> test_controller_;
+  raw_ptr<TestControllerAsh, ExperimentalAsh> test_controller_;
 };
 
 TestShillControllerAsh::TestShillControllerAsh() {

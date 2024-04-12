@@ -10,10 +10,6 @@
 #include "components/signin/core/browser/signin_header_helper.h"
 #include "components/signin/public/base/signin_metrics.h"
 
-namespace content {
-class WebContents;
-}
-
 namespace ui {
 class WindowAndroid;
 }
@@ -30,7 +26,7 @@ class SigninBridge {
                                           signin::GAIAServiceType service_type);
 
   // Opens the account picker bottomsheet
-  static void OpenAccountPickerBottomSheet(content::WebContents* web_contents,
+  static void OpenAccountPickerBottomSheet(ui::WindowAndroid* window,
                                            const std::string& continue_url);
 
   SigninBridge() = delete;

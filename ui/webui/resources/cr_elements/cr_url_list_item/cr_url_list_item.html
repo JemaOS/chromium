@@ -9,9 +9,8 @@
     box-sizing: border-box;
     cursor: default;
     display: flex;
-    height: 48px;
-    padding: 4px 16px;
-    position: relative;
+    height: 52px;
+    padding: 6px 16px;
     width: 100%;
   }
 
@@ -21,19 +20,37 @@
     }
   }
 
-  :host([size=medium]),
-  :host([size=large]) {
+  :host-context([chrome-refresh-2023]):host {
+    height: 48px;
+    padding: 4px 16px;
+  }
+
+  :host-context([chrome-refresh-2023]):host([size=medium]),
+  :host-context([chrome-refresh-2023]):host([size=large]) {
     --cr-url-list-item-image-container-border-radius_: 9px;
   }
 
   :host([size=compact]) {
-    height: 36px;
-    padding: 6px 16px;
+    height: 32px;
+    padding: 8px 20px;
   }
 
   :host([size=large]) {
     height: 68px;
     padding: 6px 16px;
+  }
+
+  :host-context([chrome-refresh-2023]):host([size=compact]),
+  :host-context([chrome-refresh-2023]):host([size=large]) {
+    padding: 6px 16px;
+  }
+
+  :host-context([chrome-refresh-2023]):host([size=compact]) {
+    height: 36px;
+  }
+
+  :host-context([chrome-refresh-2023]):host([size=large]) {
+    height: 68px;
   }
 
   :host(.hovered),
@@ -46,28 +63,13 @@
     background: var(--cr-active-background-color);
   }
 
-  #anchor,
-  #button {
-    appearance: none;
-    background: transparent;
-    border: 0;
-    position: absolute;
-    inset: 0;
-  }
-
-  #anchor:focus,
-  #button:focus {
-    outline: 0;
-  }
-
   ::slotted([slot=prefix]) {
     margin-inline-end: 16px;
   }
 
   #iconContainer {
     align-items: center;
-    background: var(--color-list-item-url-favicon-background,
-        var(--cr-fallback-color-neutral-container));
+    background: var(--google-grey-50);
     border-radius: 4px;
     display: flex;
     flex-shrink: 0;
@@ -78,17 +80,36 @@
     width: 40px;
   }
 
-  :host([size=compact]) #iconContainer {
-    height: 24px;
-    margin-inline-end: 8px;
-    width: 24px;
+  @media (prefers-color-scheme: dark) {
+    #iconContainer {
+      --cr-icon-color: var(--google-grey-100);
+      background: rgba(var(--google-grey-200-rgb), .11);
+    }
   }
 
-  :host([is-folder_]) #iconContainer {
+  :host([size=compact]) #iconContainer {
+    background: transparent;
+    height: 16px;
+    margin-inline-end: 12px;
+    width: 16px;
+  }
+
+  :host-context([chrome-refresh-2023]) #iconContainer {
+    background: var(--color-list-item-url-favicon-background,
+        var(--cr-fallback-color-neutral-container));
+  }
+
+  :host-context([chrome-refresh-2023]):host([is-folder_]) #iconContainer {
     background: var(--color-list-item-folder-icon-background,
         var(--cr-fallback-color-primary-container));
     color: var(--color-list-item-folder-icon-foreground,
         var(--cr-fallback-color-on-primary-container));
+  }
+
+  :host-context([chrome-refresh-2023]):host([size=compact]) #iconContainer {
+    height: 24px;
+    margin-inline-end: 8px;
+    width: 24px;
   }
 
   :host([size=large]) #iconContainer {
@@ -97,13 +118,9 @@
     width: 56px;
   }
 
-  :host([size=medium]) #iconContainer,
-  :host([size=large]) #iconContainer {
+  :host-context([chrome-refresh-2023]):host([size=medium]) #iconContainer,
+  :host-context([chrome-refresh-2023]):host([size=large]) #iconContainer {
     border-radius: 8px;
-  }
-
-  #folder-icon {
-    display: flex;
   }
 
   .favicon {
@@ -129,6 +146,7 @@
         0 0;
     box-sizing: border-box;
     height: 100%;
+    overflow: hidden;
     width: 100%;
   }
 
@@ -163,21 +181,15 @@
   /* If there is only 1 img, span the entire grid. */
   .folder-and-count:not(:has(div:nth-child(2))) .image-container:first-of-type {
     border: none;
-    border-radius: var(--cr-url-list-item-image-container-border-radius_);
     grid-column: 1 / span 2;
     grid-row: 1 / span 2;
   }
 
   .folder {
     --cr-icon-color: currentColor;
-    --cr-icon-size: 20px;
-    height: var(--cr-icon-size);
+    height: 16px;
     margin: 0;
-    width: var(--cr-icon-size);
-  }
-
-  :host([size=compact]) .folder {
-    --cr-icon-size: 16px;
+    width: 16px;
   }
 
   .count {
@@ -187,13 +199,9 @@
 
   :host([size=large]) .count {
     align-items: center;
-    background: var(--color-list-item-folder-icon-background,
-        var(--cr-fallback-color-primary-container));
+    background: var(--google-grey-50);
     border-radius: var(--cr-url-list-item-count-border-radius) 0 0 0;
-    color: var(--color-list-item-folder-icon-foreground,
-        var(--cr-fallback-color-on-primary-container));
     display: flex;
-    font-weight: 500;
     grid-column: 2;
     grid-row: 2;
     height: 100%;
@@ -210,11 +218,15 @@
     border-radius: 0;
   }
 
-  :host([size=large])
-      .folder-and-count:not(:has(div:nth-child(2))):has(.image-container)
-      .count {
-    border-inline-start: var(--cr-url-list-item-image-container-border_);
-    border-top: var(--cr-url-list-item-image-container-border_);
+  @media (prefers-color-scheme: dark) {
+    :host([size=large]) .count {
+      background: rgba(var(--google-grey-200-rgb), .11);
+    }
+  }
+
+  :host-context([chrome-refresh-2023]):host([size=large]) .count {
+    background: var(--color-list-item-folder-icon-background,
+        var(--cr-fallback-color-primary-container));
   }
 
   .image-container {
@@ -242,31 +254,37 @@
     width: 100%;
   }
 
-  :host([has-slotted-content_]) .metadata {
-    display: none;
-  }
-
   :host([size=compact]) .metadata {
     align-items: center;
     flex-direction: row;
   }
 
-  :host([size=medium]) .metadata {
-    gap: 3px;
-  }
-
-  :host([size=compact]) .metadata,
-  :host([size=medium]) .metadata {
+  :host-context([chrome-refresh-2023]):host([size=compact]) .metadata,
+  :host-context([chrome-refresh-2023]):host([size=medium]) .metadata {
     gap: 4px;
   }
 
   :host([size=large]) .metadata {
+    gap: 4px;
+  }
+
+  :host-context([chrome-refresh-2023]):host([size=large]) .metadata {
     gap: 2px;
   }
 
   .title {
+    appearance: none;
+    background: transparent;
+    border: 0;
     color: var(--cr-primary-text-color);
-    font-family: inherit;
+    display: inline;
+    font-size: 13px;
+    font-weight: 400;
+    padding: 0;
+    text-align: start;
+  }
+
+  :host-context([chrome-refresh-2023]) .title {
     font-size: 12px;
     font-weight: 500;
   }
@@ -299,38 +317,22 @@
 
   .description {
     color: var(--cr-secondary-text-color);
-    display: flex;
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  :host-context([chrome-refresh-2023]) .description {
     font-size: 11px;
     font-weight: 400;
-    max-width: 100%;
-  }
-
-  .description-text:has(+ .description-meta:not([hidden])) {
-    /* Prioritize description meta and let description shrink. */
-    flex-shrink: 1;
-  }
-
-  :host([reverse-elide-description]) .description-text {
-    /* Flip so the ellipsis appears at the front, typically for URLs. */
-    direction: rtl;
-  }
-
-  :host([size=compact]) .description {
-    font-size: 12px;
   }
 
   .title,
-  .description-text,
-  .description-meta {
+  .description {
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .description-meta {
-    flex-shrink: 0;
-    padding-inline-start: 4px;
   }
 
   .badges {
@@ -344,41 +346,26 @@
     display: none;
   }
 
-  :host([has-badges_]) .badges {
-    margin-inline-start: 4px;
-  }
-
-  .suffix {
+  .suffix-icons {
     align-items: center;
-    color: var(--cr-secondary-text-color);
     display: flex;
     flex-shrink: 0;
-    font-size: 11px;
-    font-weight: 400;
-    line-height: 20px;
-    margin-inline-end: -4px;
     margin-inline-start: auto;
   }
 
-  ::slotted([slot=suffix]) {
-    display: none;
-  }
-
-  ::slotted(cr-icon-button[slot=suffix]) {
+  ::slotted(cr-icon-button[slot=suffix-icon]) {
     --cr-icon-button-icon-size: 16px;
     --cr-icon-button-size: 24px;
     --cr-icon-button-margin-end: 0;
     --cr-icon-button-margin-start: 0;
+    display: none;
   }
 
-  ::slotted([slot=suffix]:not(cr-icon-button)) {
-    margin-inline-end: 16px;
-  }
-
-  :host(.hovered) ::slotted([slot=suffix]),
+  :host(.hovered) ::slotted(cr-icon-button[slot=suffix-icon]),
   :host-context(.focus-outline-visible):host(:focus-within)
-      ::slotted([slot=suffix]),
-  :host([always-show-suffix]) ::slotted([slot=suffix]) {
+      ::slotted(cr-icon-button[slot=suffix-icon]),
+  :host([always-show-suffix-icons])
+      ::slotted(cr-icon-button[slot=suffix-icon]) {
     display: block;
   }
 
@@ -391,17 +378,6 @@
   }
 </style>
 
-<a id="anchor" href="[[url]]" hidden$="[[!asAnchor]]"
-    aria-label="[[getItemAriaLabel_(title, itemAriaLabel)]]"
-    aria-description="[[
-        getItemAriaDescription_(description, itemAriaDescription)]]">
-</a>
-<button id="button" hidden$="[[asAnchor]]"
-  aria-label="[[getItemAriaLabel_(title, itemAriaLabel)]]"
-  aria-description="[[
-      getItemAriaDescription_(description, itemAriaDescription)]]">
-</button>
-
 <slot name="prefix"></slot>
 <div id="iconContainer">
   <div class="favicon" hidden$="[[!shouldShowFavicon_(url, size, imageUrls)]]"
@@ -410,8 +386,7 @@
   <div class="image-container"
       hidden$="[[!shouldShowUrlImage_(
           url, size, imageUrls, firstImageLoaded_)]]">
-    <img class="url-image" is="cr-auto-img" auto-src="[[imageUrls.0]]"
-        draggable="false">
+    <img class="url-image" is="cr-auto-img" auto-src="[[imageUrls.0]]">
   </div>
   <div class="folder-and-count"
       hidden$="[[!shouldShowFolderCount_(url, count)]]">
@@ -419,8 +394,7 @@
       <template is="dom-repeat" items="[[imageUrls]]"
           filter="shouldShowImageUrl_">
         <div class="image-container" hidden$="[[!firstImageLoaded_]]">
-          <img class="folder-image" is="cr-auto-img" auto-src="[[item]]"
-              draggable="false">
+          <img class="folder-image" is="cr-auto-img" auto-src="[[item]]">
         </div>
       </template>
     </template>
@@ -431,22 +405,23 @@
     <div class="count">[[getDisplayedCount_(count)]]</div>
   </div>
 </div>
-<slot id="content" name="content" on-slotchange="onContentSlotChange_"></slot>
-<div id="metadata" class="metadata">
-  <span class="title">[[title]]</span>
-  <div class="descriptions">
-    <div class="description" hidden$="[[!description]]">
-      <span class="description-text">[[description]]</span>
-      <span class="description-meta" hidden$="[[!descriptionMeta]]">
-        &middot; [[descriptionMeta]]
-      </span>
-    </div>
-    <div class="badges">
-      <slot id="badges" name="badges" on-slotchange="onBadgesSlotChange_">
-      </slot>
+<slot name="content">
+  <div id="metadata" class="metadata">
+    <button class="title"
+        aria-label="[[getButtonAriaLabel_(title, buttonAriaLabel)]]"
+        aria-description="[[
+            getButtonAriaDescription_(description, buttonAriaDescription)]]">
+      [[title]]
+    </button>
+    <div class="descriptions">
+      <div class="description" hidden$="[[!description]]">[[description]]</div>
+      <div class="badges">
+        <slot id="badges" name="badges" on-slotchange="onBadgesSlotChange_">
+        </slot>
+      </div>
     </div>
   </div>
-</div>
-<div class="suffix">
-  <slot name="suffix"></slot>
+</slot>
+<div class="suffix-icons">
+  <slot name="suffix-icon"></slot>
 </div>

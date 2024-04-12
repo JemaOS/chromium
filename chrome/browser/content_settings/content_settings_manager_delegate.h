@@ -20,7 +20,8 @@ class ContentSettingsManagerDelegate
   scoped_refptr<content_settings::CookieSettings> GetCookieSettings(
       content::BrowserContext* browser_context) override;
   bool AllowStorageAccess(
-      const content::GlobalRenderFrameHostToken& frame_token,
+      int render_process_id,
+      int render_frame_id,
       content_settings::mojom::ContentSettingsManager::StorageType storage_type,
       const GURL& url,
       bool allowed,

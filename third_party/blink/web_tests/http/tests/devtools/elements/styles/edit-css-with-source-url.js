@@ -2,15 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-import {BindingsTestRunner} from 'bindings_test_runner';
-
-import * as Workspace from 'devtools/models/workspace/workspace.js';
-
 (async function() {
   TestRunner.addResult(`Tests file system project mappings.\n`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
+  await TestRunner.loadTestModule('bindings_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <style>#inspected {
@@ -36,7 +32,7 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
     await ElementsTestRunner.dumpSelectedElementStyles(true);
     TestRunner.addResult('Editing styles from elements panel:');
     var treeElement = ElementsTestRunner.getMatchedStylePropertyTreeItem('color');
-    treeElement.startEditingName();
+    treeElement.startEditing();
     treeElement.nameElement.textContent = 'color';
     treeElement.nameElement.dispatchEvent(TestRunner.createKeyEvent('Enter'));
 

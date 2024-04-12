@@ -27,8 +27,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_macros.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animator.h"
 #include "ui/display/display.h"
@@ -55,7 +53,6 @@ bool skip_page_reset_timer_for_testing = false;
 // This view forwards the focus to the search box widget by providing it as a
 // FocusTraversable when a focus search is provided.
 class SearchBoxFocusHost : public views::View {
-  METADATA_HEADER(SearchBoxFocusHost, views::View)
  public:
   explicit SearchBoxFocusHost(views::Widget* search_box_widget)
       : search_box_widget_(search_box_widget) {}
@@ -71,12 +68,12 @@ class SearchBoxFocusHost : public views::View {
     return nullptr;
   }
 
- private:
-  raw_ptr<views::Widget> search_box_widget_;
-};
+  // views::View:
+  const char* GetClassName() const override { return "SearchBoxFocusHost"; }
 
-BEGIN_METADATA(SearchBoxFocusHost)
-END_METADATA
+ private:
+  raw_ptr<views::Widget, ExperimentalAsh> search_box_widget_;
+};
 
 float ComputeSubpixelOffset(const display::Display& display, float value) {
   float pixel_position = std::round(display.device_scale_factor() * value);
@@ -128,10 +125,10 @@ class AppListView::StateAnimationMetricsReporter {
 
  private:
   static void RecordMetrics(
-      std::optional<TabletModeAnimationTransition> transition,
+      absl::optional<TabletModeAnimationTransition> transition,
       int value);
 
-  std::optional<TabletModeAnimationTransition> tablet_transition_;
+  absl::optional<TabletModeAnimationTransition> tablet_transition_;
 };
 
 void AppListView::StateAnimationMetricsReporter::Reset() {
@@ -140,7 +137,7 @@ void AppListView::StateAnimationMetricsReporter::Reset() {
 
 // static
 void AppListView::StateAnimationMetricsReporter::RecordMetrics(
-    std::optional<TabletModeAnimationTransition> tablet_transition,
+    absl::optional<TabletModeAnimationTransition> tablet_transition,
     int value) {
   UMA_HISTOGRAM_PERCENTAGE("Apps.StateTransition.AnimationSmoothness", value);
 
@@ -210,7 +207,7 @@ AppListView::AppListView(AppListViewDelegate* delegate)
   // Default role of WidgetDelegate is ax::mojom::Role::kWindow which traps
   // ChromeVox focus within the root view. Assign ax::mojom::Role::kGroup here
   // to allow the focus to move from elements in app list view to search box.
-  // TODO(pbos): Should this be necessary with the SetNextFocus() used
+  // TODO(pbos): Should this be necessary with the OverrideNextFocus() used
   // below?
   SetAccessibleWindowRole(ax::mojom::Role::kGroup);
 }
@@ -300,7 +297,7 @@ void AppListView::Show(AppListViewState preferred_state) {
 
   UMA_HISTOGRAM_TIMES("Apps.AppListCreationTime",
                       base::Time::Now() - time_shown_.value());
-  time_shown_ = std::nullopt;
+  time_shown_ = absl::nullopt;
 }
 
 void AppListView::SetDragAndDropHostOfCurrentAppList(
@@ -342,6 +339,10 @@ void AppListView::OnPaint(gfx::Canvas* canvas) {
   views::WidgetDelegateView::OnPaint(canvas);
 }
 
+const char* AppListView::GetClassName() const {
+  return "AppListView";
+}
+
 bool AppListView::AcceleratorPressed(const ui::Accelerator& accelerator) {
   switch (accelerator.key_code()) {
     case ui::VKEY_ESCAPE:
@@ -357,7 +358,7 @@ bool AppListView::AcceleratorPressed(const ui::Accelerator& accelerator) {
   return true;
 }
 
-void AppListView::Layout(PassKey) {
+void AppListView::Layout() {
   // Avoid layout while building the view.
   if (is_building_)
     return;
@@ -882,8 +883,5 @@ void AppListView::ResetSubpixelPositionOffset(ui::Layer* layer) {
       gfx::Vector2dF(ComputeSubpixelOffset(display, bounds.x()),
                      ComputeSubpixelOffset(display, bounds.y())));
 }
-
-BEGIN_METADATA(AppListView)
-END_METADATA
 
 }  // namespace ash

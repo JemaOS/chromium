@@ -39,25 +39,22 @@ const CSSValue* CSSTimeInterpolationType::CreateCSSValue(
 
 InterpolationValue CSSTimeInterpolationType::CreateTimeValue(
     double seconds) const {
-  return InterpolationValue(MakeGarbageCollected<InterpolableNumber>(seconds));
+  return InterpolationValue(std::make_unique<InterpolableNumber>(seconds));
 }
 
 // static
-std::optional<double> CSSTimeInterpolationType::GetSeconds(
+absl::optional<double> CSSTimeInterpolationType::GetSeconds(
     const CSSPropertyID& property,
     const ComputedStyle& style) {
   switch (property) {
-    case CSSPropertyID::kPopoverShowDelay:
-      return style.PopoverShowDelay();
-    case CSSPropertyID::kPopoverHideDelay:
-      return style.PopoverHideDelay();
+    // No properties currently use CSSTimeInterpolationType.
     default:
       NOTREACHED();
-      return std::optional<double>();
+      return absl::optional<double>();
   }
 }
 
-std::optional<double> CSSTimeInterpolationType::GetSeconds(
+absl::optional<double> CSSTimeInterpolationType::GetSeconds(
     const ComputedStyle& style) const {
   return GetSeconds(CssProperty().PropertyID(), style);
 }
@@ -69,9 +66,7 @@ std::optional<double> CSSTimeInterpolationType::GetSeconds(
 double CSSTimeInterpolationType::ClampTime(const CSSPropertyID& property,
                                            double value) const {
   switch (property) {
-    case CSSPropertyID::kPopoverShowDelay:
-    case CSSPropertyID::kPopoverHideDelay:
-      return ClampTo<float>(value, 0);
+    // No properties currently use CSSTimeInterpolationType.
     default:
       NOTREACHED();
       return 0;
@@ -90,17 +85,9 @@ void CSSTimeInterpolationType::ApplyStandardPropertyValue(
     const InterpolableValue& interpolable_value,
     const NonInterpolableValue*,
     StyleResolverState& state) const {
-  ComputedStyleBuilder& builder = state.StyleBuilder();
   auto property = CssProperty().PropertyID();
-  double clamped_seconds =
-      ClampTime(property, To<InterpolableNumber>(interpolable_value).Value());
   switch (property) {
-    case CSSPropertyID::kPopoverShowDelay:
-      builder.SetPopoverShowDelay(clamped_seconds);
-      break;
-    case CSSPropertyID::kPopoverHideDelay:
-      builder.SetPopoverHideDelay(clamped_seconds);
-      break;
+    // No properties currently use CSSTimeInterpolationType.
     default:
       NOTREACHED();
       break;
@@ -120,18 +107,19 @@ InterpolationValue CSSTimeInterpolationType::MaybeConvertInitial(
 class InheritedTimeChecker : public CSSInterpolationType::CSSConversionChecker {
  public:
   InheritedTimeChecker(const CSSProperty& property,
-                       std::optional<double> seconds)
+                       absl::optional<double> seconds)
       : property_(property), seconds_(seconds) {}
 
  private:
   bool IsValid(const StyleResolverState& state,
                const InterpolationValue& underlying) const final {
-    std::optional<double> parent_seconds = CSSTimeInterpolationType::GetSeconds(
-        property_.PropertyID(), *state.ParentStyle());
+    absl::optional<double> parent_seconds =
+        CSSTimeInterpolationType::GetSeconds(property_.PropertyID(),
+                                             *state.ParentStyle());
     return seconds_ == parent_seconds;
   }
   const CSSProperty& property_;
-  const std::optional<double> seconds_;
+  const absl::optional<double> seconds_;
 };
 
 InterpolationValue CSSTimeInterpolationType::MaybeConvertInherit(
@@ -139,9 +127,9 @@ InterpolationValue CSSTimeInterpolationType::MaybeConvertInherit(
     ConversionCheckers& conversion_checkers) const {
   if (!state.ParentStyle())
     return nullptr;
-  std::optional<double> inherited_seconds = GetSeconds(*state.ParentStyle());
-  conversion_checkers.push_back(MakeGarbageCollected<InheritedTimeChecker>(
-      CssProperty(), inherited_seconds));
+  absl::optional<double> inherited_seconds = GetSeconds(*state.ParentStyle());
+  conversion_checkers.push_back(
+      std::make_unique<InheritedTimeChecker>(CssProperty(), inherited_seconds));
   if (!inherited_seconds)
     return nullptr;
   return CreateTimeValue(*inherited_seconds);

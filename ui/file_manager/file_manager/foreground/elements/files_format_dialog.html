@@ -4,8 +4,11 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 <style include="cr-shared-style md-select">
+  .md-select {
+    width: 100%;
+  }
+
   [slot='body'] > div {
-    font: var(--cros-body-1-font);
     margin-bottom: var(--cr-form-field-bottom-spacing);
   }
 
@@ -14,62 +17,83 @@ found in the LICENSE file.
     padding: 0 2px 2px; /* Cater the box shadow in focus state. */
   }
 
-  [slot='button-container'] {
+  :host-context([theme='legacy']) [slot='button-container']  {
+    padding-top: 32px;
+  }
+
+  :host-context([theme='refresh23']) [slot='button-container'] {
     --cr-dialog-button-container-padding-bottom: 0;
     --cr-dialog-button-container-padding-horizontal: 0;
     padding-top: 32px;
   }
 
-  #warning-icon {
+  :host-context([theme='legacy']) #warning-icon {
+    --iron-icon-fill-color: var(--cros-icon-color-alert);
+  }
+
+  :host-context([theme='refresh23']) #warning-icon {
     --iron-icon-fill-color: var(--cros-sys-error);
   }
 
-  #warning-message {
+  :host-context([theme='legacy']) #warning-message {
+    color: var(--cros-text-color-alert);
+    display: inline-block;
+    margin-inline-start: 8px;
+  }
+
+  :host-context([theme='refresh23']) #warning-message {
     color: var(--cros-sys-error);
     display: inline-block;
     margin-inline-start: 8px;
   }
 
-  cr-dialog::part(dialog) {
+  :host-context([theme='legacy']) cr-dialog::part(dialog) {
+    border-radius: 12px;
+  }
+
+  :host-context([theme='refresh23']) cr-dialog::part(dialog) {
     --cr-dialog-background-color: var(--cros-sys-dialog_container);
     border-radius: 20px;
   }
 
-  cr-dialog::part(dialog)::backdrop {
+  :host-context([theme='refresh23']) cr-dialog::part(dialog)::backdrop {
     background-color: var(--cros-sys-scrim);
   }
 
-  cr-dialog::part(wrapper) {
+  :host-context([theme='legacy']) cr-dialog::part(wrapper) {
+    /* subtract the internal padding in <cr-dialog> */
+    padding: calc(24px - 20px);
+  }
+
+  :host-context([theme='refresh23']) cr-dialog::part(wrapper) {
       padding: 32px;
       padding-bottom: 28px;
   }
 
-  [slot='title'] {
+  :host-context([theme='refresh23']) [slot='title'] {
     --cr-dialog-title-slot-padding-bottom: 16px;
     --cr-dialog-title-slot-padding-end: 0;
     --cr-dialog-title-slot-padding-start: 0;
     --cr-dialog-title-slot-padding-top: 0;
     --cr-primary-text-color: var(--cros-sys-on_surface);
-    font: var(--cros-display-7-font);
+    font-weight: 500;
   }
 
-  [slot='body'] {
+  :host-context([theme='refresh23']) [slot='body'] {
     --cr-dialog-body-padding-horizontal: 0;
     --cr-secondary-text-color: var(--cros-sys-on_surface_variant);
-    font: var(--cros-body-1-font);
   }
 
-  .md-select {
+  :host-context([theme='refresh23']) .md-select {
     --md-select-bg-color: var(--cros-sys-input_field_on_base);
     --md-select-focus-shadow-color: var(--cros-sys-focus_ring);
     --md-select-text-color: var(--cros-sys-on_surface);
     --md-select-side-padding: 16px;
     border-radius: 8px;
     height: 36px;
-    width: 100%;
   }
 
-  cr-input {
+  :host-context([theme='refresh23']) cr-input {
     --cr-form-field-label-color: var(--cros-sys-on_surface);
     --cr-input-background-color: var(--cros-sys-input_field_on_base);
     --cr-input-border-radius: 8px;
@@ -80,10 +104,9 @@ found in the LICENSE file.
     --cr-input-padding-end: 16px;
     --cr-input-padding-start: 16px;
     --cr-input-placeholder-color: var(--cros-sys-secondary);
-    font: var(--cros-body-2-font);
   }
 
-  cr-button {
+  :host-context([theme='refresh23']) cr-button {
     --active-bg: transparent;
     --active-shadow: none;
     --active-shadow-action: none;
@@ -105,49 +128,51 @@ found in the LICENSE file.
     border: none;
     border-radius: 18px;
     box-shadow: none;
-    font: var(--cros-button-2-font);
     position: relative;
   }
 
-  cr-button.cancel-button {
+  :host-context([theme='refresh23']) cr-button.cancel-button {
     background-color: var(--cros-sys-primary_container);
   }
 
-  cr-button.cancel-button:hover::part(hoverBackground) {
+  :host-context([theme='refresh23'])
+      cr-button.cancel-button:hover::part(hoverBackground) {
     background-color: var(--cros-sys-hover_on_subtle);
     display: block;
   }
 
-  cr-button.action-button:hover::part(hoverBackground) {
+  :host-context([theme='refresh23'])
+      cr-button.action-button:hover::part(hoverBackground) {
     background-color: var(--cros-sys-hover_on_prominent);
     display: block;
   }
 
-  :host-context(.focus-outline-visible) cr-button:focus {
+  :host-context([theme='refresh23']):host-context(.focus-outline-visible)
+      cr-button:focus {
     outline: 2px solid var(--cros-sys-focus_ring);
     outline-offset: 2px;
   }
 </style>
 
-<cr-dialog id="dialog" close-text="$i18n{CLOSE_LABEL}"
+<cr-dialog id="dialog" close-text="[[i18n('CLOSE_LABEL')]]"
            single-partition-format$="[[getSinglePartitionFormat()]]">
   <div slot="title">
-    [[getStrf('FORMAT_DIALOG_TITLE', title)]]
+    [[i18n('FORMAT_DIALOG_TITLE', title)]]
   </div>
   <div slot="body">
-    <div>[[getDialogMessage(isErase_)]]</div>
-    <div id="warning-container" hidden="[[!spaceUsed_]]" role="alert">
+    <div>[[getDialogMessage_(isErase_)]]</div>
+    <div id="warning-container" hidden="[[!space_used_]]" role="alert">
       <iron-icon id="warning-icon" icon="cr:warning"></iron-icon>
       <div id="warning-message">
-        [[getStrf('FORMAT_DIALOG_DELETE_WARNING', spaceUsed_)]]
+        [[i18n('FORMAT_DIALOG_DELETE_WARNING', space_used_)]]
       </div>
     </div>
-    <cr-input label="$i18n{FORMAT_DIALOG_DRIVE_NAME_LABEL}"
+    <cr-input label="[[i18n('FORMAT_DIALOG_DRIVE_NAME_LABEL')]]"
         id="label" value="{{label_}}" auto-validate="true">
     </cr-input>
     <div id="disk-format">
       <label id="format-type-label" class="cr-form-field-label">
-        $i18n{FORMAT_DIALOG_FORMAT_LABEL}
+        [[i18n('FORMAT_DIALOG_FORMAT_LABEL')]]
       </label>
       <select class="md-select" aria-labelledby="format-type-label"
           value="{{formatType_::change}}">
@@ -158,12 +183,12 @@ found in the LICENSE file.
     </div>
   </div>
   <div slot="button-container">
-    <cr-button class="cancel-button" on-click="cancel" id="cancel">
-      $i18n{CANCEL_LABEL}
+    <cr-button class="cancel-button" on-click="cancel_" id="cancel">
+      [[i18n('CANCEL_LABEL')]]
     </cr-button>
-    <cr-button class="action-button" on-click="format"
+    <cr-button class="action-button" on-click="format_"
         id="format-button">
-      [[getConfirmLabel(isErase_)]]
+      [[getConfirmLabel_(isErase_)]]
     </cr-button>
   </div>
 </cr-dialog>

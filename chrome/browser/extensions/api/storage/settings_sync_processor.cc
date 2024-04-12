@@ -13,12 +13,11 @@
 #include "components/sync/protocol/extension_setting_specifics.pb.h"
 #include "extensions/browser/api/storage/backend_task_runner.h"
 #include "extensions/browser/api/storage/settings_namespace.h"
-#include "extensions/common/extension_id.h"
 
 namespace extensions {
 
 SettingsSyncProcessor::SettingsSyncProcessor(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     syncer::ModelType type,
     syncer::SyncChangeProcessor* sync_processor)
     : extension_id_(extension_id),
@@ -45,7 +44,7 @@ void SettingsSyncProcessor::Init(const base::Value::Dict& initial_state) {
   initialized_ = true;
 }
 
-std::optional<syncer::ModelError> SettingsSyncProcessor::SendChanges(
+absl::optional<syncer::ModelError> SettingsSyncProcessor::SendChanges(
     const value_store::ValueStoreChangeList& changes) {
   DCHECK(IsOnBackendSequence());
   CHECK(initialized_) << "Init not called";
@@ -79,9 +78,9 @@ std::optional<syncer::ModelError> SettingsSyncProcessor::SendChanges(
   }
 
   if (sync_changes.empty())
-    return std::nullopt;
+    return absl::nullopt;
 
-  std::optional<syncer::ModelError> error =
+  absl::optional<syncer::ModelError> error =
       sync_processor_->ProcessSyncChanges(FROM_HERE, sync_changes);
   if (error.has_value())
     return error;
@@ -91,7 +90,7 @@ std::optional<syncer::ModelError> SettingsSyncProcessor::SendChanges(
     synced_keys_.erase(deleted_key);
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void SettingsSyncProcessor::NotifyChanges(

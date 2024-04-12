@@ -3,10 +3,9 @@
 // found in the LICENSE file.
 
 import {addWebUiListener} from 'chrome://resources/js/cr.js';
-import {getRequiredElement} from 'chrome://resources/js/util.js';
+import {getRequiredElement} from 'chrome://resources/js/util_ts.js';
 
-import type {QueryTilesInternalsBrowserProxy, ServiceStatus, TileData} from './query_tiles_internals_browser_proxy.js';
-import {QueryTilesInternalsBrowserProxyImpl} from './query_tiles_internals_browser_proxy.js';
+import {QueryTilesInternalsBrowserProxy, QueryTilesInternalsBrowserProxyImpl, ServiceStatus, TileData} from './query_tiles_internals_browser_proxy.js';
 
 /**
  * @param serviceStatus The current status of the tile service.

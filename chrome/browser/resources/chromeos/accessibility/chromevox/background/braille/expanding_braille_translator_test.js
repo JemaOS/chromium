@@ -2,12 +2,32 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-GEN_INCLUDE(['../../testing/chromevox_e2e_test_base.js']);
+GEN_INCLUDE(['../../../common/testing/accessibility_test_base.js']);
 
 /**
  * Test fixture.
  */
-ChromeVoxExpandingBrailleTranslatorUnitTest = class extends ChromeVoxE2ETest {};
+ChromeVoxExpandingBrailleTranslatorUnitTest =
+    class extends AccessibilityTestBase {
+  /** @override */
+  async setUpDeferred() {
+    await super.setUpDeferred();
+    await importModule(
+        'ExpandingBrailleTranslator',
+        '/chromevox/background/braille/expanding_braille_translator.js');
+    await importModule(
+        ['ExtraCellsSpan', 'ValueSelectionSpan', 'ValueSpan'],
+        '/chromevox/background/braille/spans.js');
+    await importModule('LibLouis', '/chromevox/background/braille/liblouis.js');
+    await importModule('Spannable', '/chromevox/common/spannable.js');
+  }
+};
+
+/** @override */
+ChromeVoxExpandingBrailleTranslatorUnitTest.prototype.extraLibraries = [
+  '../../../common/testing/assert_additions.js',
+  '../../testing/fake_dom.js',
+];
 
 /**
  * An implementation of {@link LibLouis.Translator} whose translation
@@ -62,7 +82,7 @@ function assertArrayBufferMatches(expected, actual) {
   }
 }
 
-AX_TEST_F(
+TEST_F(
     'ChromeVoxExpandingBrailleTranslatorUnitTest', 'TranslationError',
     function() {
       const text = new Spannable('error ok', new ValueSpan());
@@ -226,14 +246,13 @@ function createText(text, opt_selectionStart, opt_selectionEnd, opt_style) {
   const result = new Spannable(text);
 
   result.setSpan(new ValueSpan(), 0, text.length);
-  if (opt_selectionStart !== undefined) {
+  if (goog.isDef(opt_selectionStart)) {
     result.setSpan(
         new ValueSelectionSpan(), opt_selectionStart,
-        (opt_selectionEnd !== undefined) ? opt_selectionEnd :
-                                           opt_selectionStart);
+        goog.isDef(opt_selectionEnd) ? opt_selectionEnd : opt_selectionStart);
   }
 
-  if (opt_style !== undefined) {
+  if (goog.isDef(opt_style)) {
     result.setSpan(
         new BrailleTextStyleSpan(opt_style.formType), opt_style.start,
         opt_style.end);
@@ -244,7 +263,7 @@ function createText(text, opt_selectionStart, opt_selectionEnd, opt_style) {
 
 const TEXT = 'Hello, world!';
 
-AX_TEST_F(
+TEST_F(
     'ChromeVoxExpandingBrailleTranslatorUnitTest', 'successfulTranslations',
     function() {
       /**
@@ -315,7 +334,7 @@ AX_TEST_F(
       assertEquals(totalExpectedTranslationTests, totalRunTranslationTests);
     });
 
-AX_TEST_F(
+TEST_F(
     'ChromeVoxExpandingBrailleTranslatorUnitTest', 'StyleTranslations',
     function() {
       const formTypeMap = {};

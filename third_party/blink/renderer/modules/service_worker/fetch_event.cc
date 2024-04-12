@@ -39,7 +39,7 @@ FetchEvent* FetchEvent::Create(ScriptState* script_state,
 }
 
 Request* FetchEvent::request() const {
-  return request_.Get();
+  return request_;
 }
 
 String FetchEvent::clientId() const {
@@ -63,13 +63,11 @@ void FetchEvent::respondWith(ScriptState* script_state,
     observer_->RespondWith(script_state, script_promise, exception_state);
 }
 
-ScriptPromiseTyped<IDLAny> FetchEvent::preloadResponse(
-    ScriptState* script_state) {
+ScriptPromise FetchEvent::preloadResponse(ScriptState* script_state) {
   return preload_response_property_->Promise(script_state->World());
 }
 
-ScriptPromiseTyped<IDLUndefined> FetchEvent::handled(
-    ScriptState* script_state) {
+ScriptPromise FetchEvent::handled(ScriptState* script_state) {
   return handled_property_->Promise(script_state->World());
 }
 
@@ -109,13 +107,12 @@ FetchEvent::FetchEvent(ScriptState* script_state,
       observer_(respond_with_observer),
       preload_response_property_(MakeGarbageCollected<PreloadResponseProperty>(
           ExecutionContext::From(script_state))),
-      handled_property_(MakeGarbageCollected<
-                        ScriptPromiseProperty<IDLUndefined, DOMException>>(
-          ExecutionContext::From(script_state))) {
-  if (!navigation_preload_sent) {
-    preload_response_property_->Resolve(ScriptValue(
-        script_state->GetIsolate(), v8::Undefined(script_state->GetIsolate())));
-  }
+      handled_property_(
+          MakeGarbageCollected<ScriptPromiseProperty<ToV8UndefinedGenerator,
+                                                     Member<DOMException>>>(
+              ExecutionContext::From(script_state))) {
+  if (!navigation_preload_sent)
+    preload_response_property_->ResolveWithUndefined();
 
   client_id_ = initializer->clientId();
   resulting_client_id_ = initializer->resultingClientId();
@@ -170,9 +167,8 @@ void FetchEvent::OnNavigationPreloadResponse(
       response_type == network::mojom::FetchResponseType::kOpaqueRedirect
           ? response_data->CreateOpaqueRedirectFilteredResponse()
           : response_data->CreateBasicFilteredResponse();
-  preload_response_property_->Resolve(ScriptValue::From(
-      script_state, Response::Create(ExecutionContext::From(script_state),
-                                     tainted_response)));
+  preload_response_property_->Resolve(
+      Response::Create(ExecutionContext::From(script_state), tainted_response));
 }
 
 void FetchEvent::OnNavigationPreloadError(
@@ -226,7 +222,7 @@ void FetchEvent::OnNavigationPreloadComplete(
   info->response_end = completion_time;
   info->allow_negative_values = true;
   WorkerGlobalScopePerformance::performance(*worker_global_scope)
-      ->AddResourceTiming(std::move(info), AtomicString("navigation"));
+      ->AddResourceTiming(std::move(info), "navigation");
 }
 
 void FetchEvent::Trace(Visitor* visitor) const {

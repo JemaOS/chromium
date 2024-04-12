@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_LOGIN_SCREENS_ENCRYPTION_MIGRATION_SCREEN_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/functional/callback_forward.h"
@@ -24,6 +23,7 @@
 #include "chromeos/dbus/power/power_manager_client.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/device/public/mojom/wake_lock.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/cros_system_api/dbus/cryptohome/dbus-constants.h"
 
 namespace ash {
@@ -115,11 +115,11 @@ class EncryptionMigrationScreen : public BaseScreen,
 
   // Handlers for cryptohome API callbacks.
   void OnMigrationRequested(std::unique_ptr<UserContext> context,
-                            std::optional<AuthenticationError> error);
+                            absl::optional<AuthenticationError> error);
   void OnRemoveCryptohome(std::unique_ptr<UserContext> context,
-                          std::optional<AuthenticationError> error);
+                          absl::optional<AuthenticationError> error);
   void OnMountExistingVault(std::unique_ptr<UserContext> context,
-                            std::optional<AuthenticationError> error);
+                            absl::optional<AuthenticationError> error);
 
   // Records UMA about visible screen after delay.
   void OnDelayedRecordVisibleScreen(
@@ -154,7 +154,7 @@ class EncryptionMigrationScreen : public BaseScreen,
   EncryptionMigrationMode mode_ = EncryptionMigrationMode::ASK_USER;
 
   // The current battery level.
-  std::optional<double> current_battery_percent_;
+  absl::optional<double> current_battery_percent_;
 
   // True if the migration should start immediately once the battery level gets
   // sufficient.

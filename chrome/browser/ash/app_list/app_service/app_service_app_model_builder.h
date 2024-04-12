@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_APP_LIST_APP_SERVICE_APP_SERVICE_APP_MODEL_BUILDER_H_
 #define CHROME_BROWSER_ASH_APP_LIST_APP_SERVICE_APP_SERVICE_APP_MODEL_BUILDER_H_
 
-#include "base/scoped_observation.h"
 #include "chrome/browser/ash/app_list/app_list_model_builder.h"
 #include "components/services/app_service/public/cpp/app_registry_cache.h"
 
@@ -23,6 +22,8 @@ class AppServiceAppModelBuilder : public AppListModelBuilder,
   ~AppServiceAppModelBuilder() override;
 
  private:
+  class CrostiniFolderObserver;
+
   // AppListModelBuilder overrides:
   void BuildModel() override;
 
@@ -30,10 +31,6 @@ class AppServiceAppModelBuilder : public AppListModelBuilder,
   void OnAppUpdate(const apps::AppUpdate& update) override;
   void OnAppRegistryCacheWillBeDestroyed(
       apps::AppRegistryCache* cache) override;
-
-  base::ScopedObservation<apps::AppRegistryCache,
-                          apps::AppRegistryCache::Observer>
-      app_registry_cache_observer_{this};
 
   std::unique_ptr<AppListModelUpdaterObserver> crostini_folder_observer_;
 };

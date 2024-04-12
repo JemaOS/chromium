@@ -185,9 +185,6 @@
         <message name="IDS_FACTORY_RESET_HELP_URL" translateable="false">
           https://support.google.com/chromebook/answer/183084?hl=[GRITLANGCODE]
         </message>
-        <message name="IDS_SANITIZE_HELP_URL" translateable="false">
-          https://support.google.com/chromebook/answer/183084?hl=[GRITLANGCODE]
-        </message>
       </if>
 
       <!-- Links from the Clear Browsing Data dialog. -->
@@ -199,6 +196,8 @@
       <message name="IDS_SETTINGS_CLEAR_DATA_MYACTIVITY_URL_IN_HISTORY" translateable="false">
         https://myactivity.google.com/myactivity/?utm_source=chrome_h
       </message>
+
+      <part file="../../../jemaos/i18n/chrome/app/resources/locale_settings.override.grdp" />
 
     </messages>
   </release>

@@ -6,7 +6,6 @@
 #define ASH_PUBLIC_CPP_NETWORK_ICON_IMAGE_SOURCE_H_
 
 #include "ash/public/cpp/ash_public_export.h"
-#include "base/memory/raw_ptr.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/color_palette.h"
@@ -34,17 +33,12 @@ struct Badge {
   }
   bool operator!=(const Badge& other) const { return !(other == *this); }
 
-  raw_ptr<const gfx::VectorIcon> icon = nullptr;
+  const gfx::VectorIcon* icon = nullptr;
   SkColor color = gfx::kPlaceholderColor;
 };
 
 // Struct to pass a collection of badges to NetworkIconImageSource.
-struct ASH_PUBLIC_EXPORT Badges {
-  Badges();
-  ~Badges();
-  Badges(const Badges&);
-  Badges& operator=(const Badges&);
-
+struct Badges {
   Badge top_left;
   Badge center;
   Badge bottom_left;

@@ -79,8 +79,7 @@ class FakeSuggesterSwitch : public AssistiveSuggesterSwitch {
 
   // AssistiveSuggesterSwitch overrides
   void FetchEnabledSuggestionsThen(
-      FetchEnabledSuggestionsCallback callback,
-      const TextInputMethod::InputContext& context) override {
+      FetchEnabledSuggestionsCallback callback) override {
     std::move(callback).Run(enabled_suggestions_);
   }
 
@@ -212,7 +211,7 @@ class FakeConnectionFactory : public ime::mojom::ConnectionFactory {
   }
 
  private:
-  raw_ptr<MockInputMethod> mock_input_method_;
+  raw_ptr<MockInputMethod, ExperimentalAsh> mock_input_method_;
   mojo::Receiver<ime::mojom::ConnectionFactory> connection_factory_{this};
 };
 
@@ -352,6 +351,65 @@ TEST_F(NativeInputMethodEngineTest, LaunchesImeServiceIfAutocorrectIsOn) {
   engine.Enable(kEngineIdUs);
   engine.FlushForTesting();  // ensure input_method is connected.
   EXPECT_TRUE(engine.IsConnectedForTesting());
+
+  InputMethodManager::Shutdown();
+}
+
+TEST_F(NativeInputMethodEngineTest, CheckThatJapaneseStartupRecordedWhen) {
+  base::HistogramTester histogram_tester;
+  histogram_tester.ExpectUniqueSample(
+      "InputMethod.PhysicalKeyboard.Japanese.StartupAction",
+      JapaneseStartupAction::kPerformMigration, 0);
+  TestingProfile testing_profile;
+  EnableDefaultFeatureListWithJapaneseSystemPk();
+  SetInputMethodOptionsJapaneseMigrationCompleted(testing_profile, false);
+
+  testing::StrictMock<MockInputMethod> mock_input_method;
+  InputMethodManager::Initialize(
+      new TestInputMethodManager(&mock_input_method));
+  NativeInputMethodEngine engine;
+  engine.Initialize(std::make_unique<StubInputMethodEngineObserver>(),
+                    /*extension_id=*/"", &testing_profile);
+
+  engine.Enable(kEngineIdUs);
+  EXPECT_FALSE(engine.IsConnectedForTesting());
+  engine.Enable("nacl_mozc_jp");
+  engine.FlushForTesting();  // ensure input_method is connected.
+  EXPECT_TRUE(engine.IsConnectedForTesting());
+
+  histogram_tester.ExpectUniqueSample(
+      "InputMethod.PhysicalKeyboard.Japanese.StartupAction",
+      JapaneseStartupAction::kPerformMigration, 1);
+
+  InputMethodManager::Shutdown();
+}
+
+TEST_F(NativeInputMethodEngineTest,
+       CheckThatJapaneseStartupEnumMarkedAsAlreadyMigrated) {
+  base::HistogramTester histogram_tester;
+  histogram_tester.ExpectUniqueSample(
+      "InputMethod.PhysicalKeyboard.Japanese.StartupAction",
+      JapaneseStartupAction::kAlreadyMigrated, 0);
+  TestingProfile testing_profile;
+  EnableDefaultFeatureListWithJapaneseSystemPk();
+  SetInputMethodOptionsJapaneseMigrationCompleted(testing_profile, true);
+
+  testing::StrictMock<MockInputMethod> mock_input_method;
+  InputMethodManager::Initialize(
+      new TestInputMethodManager(&mock_input_method));
+  NativeInputMethodEngine engine;
+  engine.Initialize(std::make_unique<StubInputMethodEngineObserver>(),
+                    /*extension_id=*/"", &testing_profile);
+
+  engine.Enable(kEngineIdUs);
+  EXPECT_FALSE(engine.IsConnectedForTesting());
+  engine.Enable("nacl_mozc_jp");
+  engine.FlushForTesting();  // ensure input_method is connected.
+  EXPECT_TRUE(engine.IsConnectedForTesting());
+
+  histogram_tester.ExpectUniqueSample(
+      "InputMethod.PhysicalKeyboard.Japanese.StartupAction",
+      JapaneseStartupAction::kAlreadyMigrated, 1);
 
   InputMethodManager::Shutdown();
 }
@@ -761,10 +819,6 @@ INSTANTIATE_TEST_SUITE_P(
             "DownloadedUs840",
             /*provider=*/AutocorrectSuggestionProvider::kUsEnglish840,
             /*autocorrect_enabled=*/true},
-        InputMethodMetadataCase{
-            "DownloadedUs840V2",
-            /*provider=*/AutocorrectSuggestionProvider::kUsEnglish840V2,
-            /*autocorrect_enabled=*/true},
     }),
     [](const testing::TestParamInfo<InputMethodMetadataCase> info) {
       return info.param.test_name;
@@ -1160,7 +1214,8 @@ TEST_F(NativeInputMethodEngineWithRenderViewHostTest,
   IMEBridge::Get()->SetInputContextHandler(&ime);
 
   ukm::TestAutoSetUkmRecorder test_recorder;
-  test_recorder.UpdateRecording({ukm::UkmConsentType::MSBB});
+  test_recorder.UpdateRecording(
+      ukm::UkmConsentState(ukm::UkmConsentType::MSBB));
   ASSERT_EQ(0u, test_recorder.entries_count());
 
   auto metric = ime::mojom::NonCompliantApiMetric::New();
@@ -1205,7 +1260,8 @@ TEST_F(NativeInputMethodEngineWithRenderViewHostTest,
   IMEBridge::Get()->SetInputContextHandler(&ime);
 
   ukm::TestAutoSetUkmRecorder test_recorder;
-  test_recorder.UpdateRecording({ukm::UkmConsentType::MSBB});
+  test_recorder.UpdateRecording(
+      ukm::UkmConsentState(ukm::UkmConsentType::MSBB));
   ASSERT_EQ(0u, test_recorder.entries_count());
 
   // Should not record when random text is entered.

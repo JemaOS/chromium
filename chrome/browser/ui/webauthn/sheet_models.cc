@@ -9,8 +9,8 @@
 #include <utility>
 
 #include "base/check_op.h"
-#include "base/containers/contains.h"
-#include "base/feature_list.h"
+#include "base/i18n/number_formatting.h"
+#include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/notreached.h"
 #include "base/ranges/algorithm.h"
@@ -18,14 +18,17 @@
 #include "build/build_config.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/webauthn/webauthn_ui_helpers.h"
-#include "chrome/browser/webauthn/authenticator_request_dialog_model.h"
-#include "chrome/grit/browser_resources.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/strings/grit/components_strings.h"
+#include "components/url_formatter/elide_url.h"
+#include "device/fido/authenticator_get_assertion_response.h"
 #include "device/fido/discoverable_credential_metadata.h"
-#include "device/fido/features.h"
 #include "device/fido/fido_types.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/gfx/font_list.h"
+#include "ui/gfx/paint_vector_icon.h"
+#include "ui/gfx/text_utils.h"
+#include "url/gurl.h"
 
 #if BUILDFLAG(IS_MAC)
 #include "base/mac/mac_util.h"
@@ -89,6 +92,10 @@ bool AuthenticatorSheetModelBase::IsActivityIndicatorVisible() const {
   return false;
 }
 
+bool AuthenticatorSheetModelBase::IsBackButtonVisible() const {
+  return true;
+}
+
 bool AuthenticatorSheetModelBase::IsCancelButtonVisible() const {
   return true;
 }
@@ -101,7 +108,7 @@ bool AuthenticatorSheetModelBase::IsOtherMechanismButtonVisible() const {
 
 std::u16string AuthenticatorSheetModelBase::GetOtherMechanismButtonLabel()
     const {
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_USE_A_DIFFERENT_PASSKEY);
+  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_USE_A_DIFFERENT_DEVICE);
 }
 
 std::u16string AuthenticatorSheetModelBase::GetCancelButtonLabel() const {
@@ -144,11 +151,15 @@ void AuthenticatorSheetModelBase::OnModelDestroyed(
 
 // AuthenticatorMechanismSelectorSheetModel -----------------------------------
 
-AuthenticatorMechanismSelectorSheetModel::
-    AuthenticatorMechanismSelectorSheetModel(
-        AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyHeaderIcon, kPasskeyHeaderDarkIcon);
+bool AuthenticatorMechanismSelectorSheetModel::IsBackButtonVisible() const {
+  return false;
+}
+
+const gfx::VectorIcon&
+AuthenticatorMechanismSelectorSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyHeaderDarkIcon
+                                                 : kPasskeyHeaderIcon;
 }
 
 std::u16string AuthenticatorMechanismSelectorSheetModel::GetStepTitle() const {
@@ -200,13 +211,18 @@ AuthenticatorInsertAndActivateUsbSheetModel::
     AuthenticatorInsertAndActivateUsbSheetModel(
         AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kVisible) {
-  vector_illustrations_.emplace(kPasskeyUsbIcon, kPasskeyUsbDarkIcon);
-}
+                                  OtherMechanismButtonVisibility::kVisible) {}
 
 bool AuthenticatorInsertAndActivateUsbSheetModel::IsActivityIndicatorVisible()
     const {
   return true;
+}
+
+const gfx::VectorIcon&
+AuthenticatorInsertAndActivateUsbSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyUsbDarkIcon
+                                                 : kPasskeyUsbIcon;
 }
 
 std::u16string AuthenticatorInsertAndActivateUsbSheetModel::GetStepTitle()
@@ -227,14 +243,18 @@ AuthenticatorInsertAndActivateUsbSheetModel::GetAdditionalDescription() const {
 
 // AuthenticatorTimeoutErrorModel ---------------------------------------------
 
-AuthenticatorTimeoutErrorModel::AuthenticatorTimeoutErrorModel(
-    AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyErrorIcon, kPasskeyErrorDarkIcon);
+bool AuthenticatorTimeoutErrorModel::IsBackButtonVisible() const {
+  return false;
 }
 
 std::u16string AuthenticatorTimeoutErrorModel::GetCancelButtonLabel() const {
   return l10n_util::GetStringUTF16(IDS_CLOSE);
+}
+
+const gfx::VectorIcon& AuthenticatorTimeoutErrorModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyErrorDarkIcon
+                                                 : kPasskeyErrorIcon;
 }
 
 std::u16string AuthenticatorTimeoutErrorModel::GetStepTitle() const {
@@ -247,11 +267,8 @@ std::u16string AuthenticatorTimeoutErrorModel::GetStepDescription() const {
 
 // AuthenticatorNoAvailableTransportsErrorModel -------------------------------
 
-AuthenticatorNoAvailableTransportsErrorModel::
-    AuthenticatorNoAvailableTransportsErrorModel(
-        AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyErrorIcon, kPasskeyErrorDarkIcon);
+bool AuthenticatorNoAvailableTransportsErrorModel::IsBackButtonVisible() const {
+  return false;
 }
 
 std::u16string
@@ -259,28 +276,40 @@ AuthenticatorNoAvailableTransportsErrorModel::GetCancelButtonLabel() const {
   return l10n_util::GetStringUTF16(IDS_CLOSE);
 }
 
+const gfx::VectorIcon&
+AuthenticatorNoAvailableTransportsErrorModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyErrorDarkIcon
+                                                 : kPasskeyErrorIcon;
+}
+
 std::u16string AuthenticatorNoAvailableTransportsErrorModel::GetStepTitle()
     const {
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_ERROR_MISSING_CAPABILITY_TITLE);
+  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_ERROR_NO_TRANSPORTS_TITLE);
 }
 
 std::u16string
 AuthenticatorNoAvailableTransportsErrorModel::GetStepDescription() const {
-  return l10n_util::GetStringFUTF16(IDS_WEBAUTHN_ERROR_MISSING_CAPABILITY_DESC,
-                                    GetRelyingPartyIdString(dialog_model()));
+  return l10n_util::GetStringUTF16(
+      IDS_WEBAUTHN_ERROR_NO_TRANSPORTS_DESCRIPTION);
 }
 
 // AuthenticatorNoPasskeysErrorModel ------------------------------------------
 
-AuthenticatorNoPasskeysErrorModel::AuthenticatorNoPasskeysErrorModel(
-    AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyErrorIcon, kPasskeyErrorDarkIcon);
+bool AuthenticatorNoPasskeysErrorModel::IsBackButtonVisible() const {
+  return false;
 }
 
 std::u16string AuthenticatorNoPasskeysErrorModel::GetCancelButtonLabel() const {
   return l10n_util::GetStringUTF16(IDS_CLOSE);
 }
+
+const gfx::VectorIcon& AuthenticatorNoPasskeysErrorModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyErrorDarkIcon
+                                                 : kPasskeyErrorIcon;
+}
+
 std::u16string AuthenticatorNoPasskeysErrorModel::GetStepTitle() const {
   return l10n_util::GetStringUTF16(IDS_WEBAUTHN_ERROR_NO_PASSKEYS_TITLE);
 }
@@ -292,10 +321,8 @@ std::u16string AuthenticatorNoPasskeysErrorModel::GetStepDescription() const {
 
 // AuthenticatorNotRegisteredErrorModel ---------------------------------------
 
-AuthenticatorNotRegisteredErrorModel::AuthenticatorNotRegisteredErrorModel(
-    AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyErrorIcon, kPasskeyErrorDarkIcon);
+bool AuthenticatorNotRegisteredErrorModel::IsBackButtonVisible() const {
+  return false;
 }
 
 std::u16string AuthenticatorNotRegisteredErrorModel::GetCancelButtonLabel()
@@ -316,6 +343,13 @@ std::u16string AuthenticatorNotRegisteredErrorModel::GetAcceptButtonLabel()
   return l10n_util::GetStringUTF16(IDS_WEBAUTHN_RETRY);
 }
 
+const gfx::VectorIcon&
+AuthenticatorNotRegisteredErrorModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyErrorDarkIcon
+                                                 : kPasskeyErrorIcon;
+}
+
 std::u16string AuthenticatorNotRegisteredErrorModel::GetStepTitle() const {
   return l10n_util::GetStringUTF16(IDS_WEBAUTHN_ERROR_WRONG_KEY_TITLE);
 }
@@ -332,11 +366,8 @@ void AuthenticatorNotRegisteredErrorModel::OnAccept() {
 
 // AuthenticatorAlreadyRegisteredErrorModel -----------------------------------
 
-AuthenticatorAlreadyRegisteredErrorModel::
-    AuthenticatorAlreadyRegisteredErrorModel(
-        AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyErrorIcon, kPasskeyErrorDarkIcon);
+bool AuthenticatorAlreadyRegisteredErrorModel::IsBackButtonVisible() const {
+  return false;
 }
 
 std::u16string AuthenticatorAlreadyRegisteredErrorModel::GetCancelButtonLabel()
@@ -357,6 +388,13 @@ std::u16string AuthenticatorAlreadyRegisteredErrorModel::GetAcceptButtonLabel()
   return l10n_util::GetStringUTF16(IDS_WEBAUTHN_RETRY);
 }
 
+const gfx::VectorIcon&
+AuthenticatorAlreadyRegisteredErrorModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyErrorDarkIcon
+                                                 : kPasskeyErrorIcon;
+}
+
 std::u16string AuthenticatorAlreadyRegisteredErrorModel::GetStepTitle() const {
   return l10n_util::GetStringUTF16(IDS_WEBAUTHN_ERROR_WRONG_DEVICE_TITLE);
 }
@@ -373,11 +411,9 @@ void AuthenticatorAlreadyRegisteredErrorModel::OnAccept() {
 
 // AuthenticatorInternalUnrecognizedErrorSheetModel ---------------------------
 
-AuthenticatorInternalUnrecognizedErrorSheetModel::
-    AuthenticatorInternalUnrecognizedErrorSheetModel(
-        AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyErrorIcon, kPasskeyErrorDarkIcon);
+bool AuthenticatorInternalUnrecognizedErrorSheetModel::IsBackButtonVisible()
+    const {
+  return dialog_model()->offer_try_again_in_ui();
 }
 
 bool AuthenticatorInternalUnrecognizedErrorSheetModel::IsAcceptButtonVisible()
@@ -393,6 +429,13 @@ bool AuthenticatorInternalUnrecognizedErrorSheetModel::IsAcceptButtonEnabled()
 std::u16string
 AuthenticatorInternalUnrecognizedErrorSheetModel::GetAcceptButtonLabel() const {
   return l10n_util::GetStringUTF16(IDS_WEBAUTHN_RETRY);
+}
+
+const gfx::VectorIcon&
+AuthenticatorInternalUnrecognizedErrorSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyErrorDarkIcon
+                                                 : kPasskeyErrorIcon;
 }
 
 std::u16string AuthenticatorInternalUnrecognizedErrorSheetModel::GetStepTitle()
@@ -417,9 +460,14 @@ AuthenticatorBlePowerOnManualSheetModel::
     AuthenticatorBlePowerOnManualSheetModel(
         AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kVisible) {
-  vector_illustrations_.emplace(kPasskeyErrorBluetoothIcon,
-                                kPasskeyErrorBluetoothDarkIcon);
+                                  OtherMechanismButtonVisibility::kVisible) {}
+
+const gfx::VectorIcon&
+AuthenticatorBlePowerOnManualSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark
+             ? kPasskeyErrorBluetoothDarkIcon
+             : kPasskeyErrorBluetoothIcon;
 }
 
 std::u16string AuthenticatorBlePowerOnManualSheetModel::GetStepTitle() const {
@@ -461,14 +509,19 @@ AuthenticatorBlePowerOnAutomaticSheetModel::
     AuthenticatorBlePowerOnAutomaticSheetModel(
         AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kVisible) {
-  vector_illustrations_.emplace(kPasskeyErrorBluetoothIcon,
-                                kPasskeyErrorBluetoothDarkIcon);
-}
+                                  OtherMechanismButtonVisibility::kVisible) {}
 
 bool AuthenticatorBlePowerOnAutomaticSheetModel::IsActivityIndicatorVisible()
     const {
   return busy_powering_on_ble_;
+}
+
+const gfx::VectorIcon&
+AuthenticatorBlePowerOnAutomaticSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark
+             ? kPasskeyErrorBluetoothDarkIcon
+             : kPasskeyErrorBluetoothIcon;
 }
 
 std::u16string AuthenticatorBlePowerOnAutomaticSheetModel::GetStepTitle()
@@ -510,9 +563,18 @@ AuthenticatorBlePermissionMacSheetModel::
     AuthenticatorBlePermissionMacSheetModel(
         AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kVisible) {
-  vector_illustrations_.emplace(kPasskeyErrorBluetoothIcon,
-                                kPasskeyErrorBluetoothDarkIcon);
+                                  OtherMechanismButtonVisibility::kVisible) {}
+
+bool AuthenticatorBlePermissionMacSheetModel::ShouldFocusBackArrow() const {
+  return true;
+}
+
+const gfx::VectorIcon&
+AuthenticatorBlePermissionMacSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark
+             ? kPasskeyErrorBluetoothDarkIcon
+             : kPasskeyErrorBluetoothIcon;
 }
 
 std::u16string AuthenticatorBlePermissionMacSheetModel::GetStepTitle() const {
@@ -534,7 +596,7 @@ bool AuthenticatorBlePermissionMacSheetModel::IsAcceptButtonEnabled() const {
 }
 
 bool AuthenticatorBlePermissionMacSheetModel::IsCancelButtonVisible() const {
-  return true;
+  return false;
 }
 
 std::u16string AuthenticatorBlePermissionMacSheetModel::GetAcceptButtonLabel()
@@ -551,14 +613,13 @@ void AuthenticatorBlePermissionMacSheetModel::OnAccept() {
 // AuthenticatorOffTheRecordInterstitialSheetModel
 // -----------------------------------------
 
-AuthenticatorOffTheRecordInterstitialSheetModel::
-    AuthenticatorOffTheRecordInterstitialSheetModel(
-        AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  // TODO(1358719): Add more specific illustration once available. The
-  // "error" graphic is a large question mark, so it looks visually very
-  // similar.
-  vector_illustrations_.emplace(kPasskeyErrorIcon, kPasskeyErrorDarkIcon);
+const gfx::VectorIcon&
+AuthenticatorOffTheRecordInterstitialSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  // TODO(1358719): Add more specific illustration once available. The "error"
+  // graphic is a large question mark, so it looks visually very similar.
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyErrorDarkIcon
+                                                 : kPasskeyErrorIcon;
 }
 
 std::u16string AuthenticatorOffTheRecordInterstitialSheetModel::GetStepTitle()
@@ -604,14 +665,18 @@ AuthenticatorOffTheRecordInterstitialSheetModel::GetCancelButtonLabel() const {
 AuthenticatorPaaskSheetModel::AuthenticatorPaaskSheetModel(
     AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kVisible) {
-  vector_illustrations_.emplace(kPasskeyPhoneIcon, kPasskeyPhoneDarkIcon);
-}
+                                  OtherMechanismButtonVisibility::kVisible) {}
 
 AuthenticatorPaaskSheetModel::~AuthenticatorPaaskSheetModel() = default;
 
 bool AuthenticatorPaaskSheetModel::IsActivityIndicatorVisible() const {
   return true;
+}
+
+const gfx::VectorIcon& AuthenticatorPaaskSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyPhoneDarkIcon
+                                                 : kPasskeyPhoneIcon;
 }
 
 std::u16string AuthenticatorPaaskSheetModel::GetStepTitle() const {
@@ -648,16 +713,25 @@ AuthenticatorAndroidAccessorySheetModel::
     AuthenticatorAndroidAccessorySheetModel(
         AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kVisible) {
-  vector_illustrations_.emplace(kPasskeyAoaIcon, kPasskeyAoaDarkIcon);
-}
+                                  OtherMechanismButtonVisibility::kVisible) {}
 
 AuthenticatorAndroidAccessorySheetModel::
     ~AuthenticatorAndroidAccessorySheetModel() = default;
 
+bool AuthenticatorAndroidAccessorySheetModel::IsBackButtonVisible() const {
+  return true;
+}
+
 bool AuthenticatorAndroidAccessorySheetModel::IsActivityIndicatorVisible()
     const {
   return true;
+}
+
+const gfx::VectorIcon&
+AuthenticatorAndroidAccessorySheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyAoaDarkIcon
+                                                 : kPasskeyAoaIcon;
 }
 
 std::u16string AuthenticatorAndroidAccessorySheetModel::GetStepTitle() const {
@@ -679,7 +753,6 @@ AuthenticatorClientPinEntrySheetModel::AuthenticatorClientPinEntrySheetModel(
     : AuthenticatorSheetModelBase(dialog_model,
                                   OtherMechanismButtonVisibility::kVisible),
       mode_(mode) {
-  vector_illustrations_.emplace(kPasskeyUsbIcon, kPasskeyUsbDarkIcon);
   switch (error) {
     case device::pin::PINEntryError::kNoError:
       break;
@@ -700,7 +773,7 @@ AuthenticatorClientPinEntrySheetModel::AuthenticatorClientPinEntrySheetModel(
           dialog_model->min_pin_length());
       break;
     case device::pin::PINEntryError::kWrongPIN:
-      std::optional<int> attempts = dialog_model->pin_attempts();
+      absl::optional<int> attempts = dialog_model->pin_attempts();
       error_ =
           attempts && *attempts <= 3
               ? l10n_util::GetPluralStringFUTF16(
@@ -722,6 +795,13 @@ void AuthenticatorClientPinEntrySheetModel::SetPinConfirmation(
     std::u16string pin_confirmation) {
   DCHECK(mode_ == Mode::kPinSetup || mode_ == Mode::kPinChange);
   pin_confirmation_ = std::move(pin_confirmation);
+}
+
+const gfx::VectorIcon&
+AuthenticatorClientPinEntrySheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyUsbDarkIcon
+                                                 : kPasskeyUsbIcon;
 }
 
 std::u16string AuthenticatorClientPinEntrySheetModel::GetStepTitle() const {
@@ -775,9 +855,7 @@ void AuthenticatorClientPinEntrySheetModel::OnAccept() {
 AuthenticatorClientPinTapAgainSheetModel::
     AuthenticatorClientPinTapAgainSheetModel(
         AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyUsbIcon, kPasskeyUsbDarkIcon);
-}
+    : AuthenticatorSheetModelBase(dialog_model) {}
 
 AuthenticatorClientPinTapAgainSheetModel::
     ~AuthenticatorClientPinTapAgainSheetModel() = default;
@@ -785,6 +863,13 @@ AuthenticatorClientPinTapAgainSheetModel::
 bool AuthenticatorClientPinTapAgainSheetModel::IsActivityIndicatorVisible()
     const {
   return true;
+}
+
+const gfx::VectorIcon&
+AuthenticatorClientPinTapAgainSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyUsbDarkIcon
+                                                 : kPasskeyUsbIcon;
 }
 
 std::u16string AuthenticatorClientPinTapAgainSheetModel::GetStepTitle() const {
@@ -804,8 +889,6 @@ AuthenticatorClientPinTapAgainSheetModel::GetAdditionalDescription() const {
 
 // AuthenticatorBioEnrollmentSheetModel ----------------------------------
 
-// No illustration since the content already has a large animated
-// fingerprint icon.
 AuthenticatorBioEnrollmentSheetModel::AuthenticatorBioEnrollmentSheetModel(
     AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model) {}
@@ -815,6 +898,14 @@ AuthenticatorBioEnrollmentSheetModel::~AuthenticatorBioEnrollmentSheetModel() =
 
 bool AuthenticatorBioEnrollmentSheetModel::IsActivityIndicatorVisible() const {
   return !IsAcceptButtonVisible();
+}
+
+const gfx::VectorIcon&
+AuthenticatorBioEnrollmentSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  // No illustration since the content already has a large animated
+  // fingerprint icon.
+  return gfx::kNoneIcon;
 }
 
 std::u16string AuthenticatorBioEnrollmentSheetModel::GetStepTitle() const {
@@ -867,15 +958,18 @@ void AuthenticatorBioEnrollmentSheetModel::OnCancel() {
 AuthenticatorRetryUvSheetModel::AuthenticatorRetryUvSheetModel(
     AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kVisible) {
-  vector_illustrations_.emplace(kPasskeyFingerprintIcon,
-                                kPasskeyFingerprintDarkIcon);
-}
+                                  OtherMechanismButtonVisibility::kVisible) {}
 
 AuthenticatorRetryUvSheetModel::~AuthenticatorRetryUvSheetModel() = default;
 
 bool AuthenticatorRetryUvSheetModel::IsActivityIndicatorVisible() const {
   return true;
+}
+
+const gfx::VectorIcon& AuthenticatorRetryUvSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyFingerprintDarkIcon
+                                                 : kPasskeyFingerprintIcon;
 }
 
 std::u16string AuthenticatorRetryUvSheetModel::GetStepTitle() const {
@@ -964,8 +1058,10 @@ AuthenticatorGenericErrorSheetModel::AuthenticatorGenericErrorSheetModel(
     std::u16string description)
     : AuthenticatorSheetModelBase(dialog_model),
       title_(std::move(title)),
-      description_(std::move(description)) {
-  vector_illustrations_.emplace(kPasskeyErrorIcon, kPasskeyErrorDarkIcon);
+      description_(std::move(description)) {}
+
+bool AuthenticatorGenericErrorSheetModel::IsBackButtonVisible() const {
+  return false;
 }
 
 std::u16string AuthenticatorGenericErrorSheetModel::GetCancelButtonLabel()
@@ -986,6 +1082,12 @@ std::u16string AuthenticatorGenericErrorSheetModel::GetAcceptButtonLabel()
   return l10n_util::GetStringUTF16(IDS_WEBAUTHN_RETRY);
 }
 
+const gfx::VectorIcon& AuthenticatorGenericErrorSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyErrorDarkIcon
+                                                 : kPasskeyErrorIcon;
+}
+
 std::u16string AuthenticatorGenericErrorSheetModel::GetStepTitle() const {
   return title_;
 }
@@ -1000,17 +1102,27 @@ void AuthenticatorGenericErrorSheetModel::OnAccept() {
 
 // AuthenticatorResidentCredentialConfirmationSheetView -----------------------
 
-// TODO(1358719): Add more specific illustration once available. The "error"
-// graphic is a large question mark, so it looks visually very similar.
 AuthenticatorResidentCredentialConfirmationSheetView::
     AuthenticatorResidentCredentialConfirmationSheetView(
         AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyErrorIcon, kPasskeyErrorDarkIcon);
-}
+    : AuthenticatorSheetModelBase(dialog_model) {}
 
 AuthenticatorResidentCredentialConfirmationSheetView::
     ~AuthenticatorResidentCredentialConfirmationSheetView() = default;
+
+const gfx::VectorIcon&
+AuthenticatorResidentCredentialConfirmationSheetView::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  // TODO(1358719): Add more specific illustration once available. The "error"
+  // graphic is a large question mark, so it looks visually very similar.
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyErrorDarkIcon
+                                                 : kPasskeyErrorIcon;
+}
+
+bool AuthenticatorResidentCredentialConfirmationSheetView::IsBackButtonVisible()
+    const {
+  return false;
+}
 
 bool AuthenticatorResidentCredentialConfirmationSheetView::
     IsAcceptButtonVisible() const {
@@ -1056,9 +1168,7 @@ AuthenticatorSelectAccountSheetModel::AuthenticatorSelectAccountSheetModel(
               ? OtherMechanismButtonVisibility::kVisible
               : OtherMechanismButtonVisibility::kHidden),
       user_verification_mode_(mode),
-      selection_type_(type) {
-  vector_illustrations_.emplace(kPasskeyHeaderIcon, kPasskeyHeaderDarkIcon);
-}
+      selection_type_(type) {}
 
 AuthenticatorSelectAccountSheetModel::~AuthenticatorSelectAccountSheetModel() =
     default;
@@ -1092,6 +1202,13 @@ void AuthenticatorSelectAccountSheetModel::OnAccept() {
       dialog_model()->OnAccountSelected(index);
       break;
   }
+}
+
+const gfx::VectorIcon&
+AuthenticatorSelectAccountSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyHeaderDarkIcon
+                                                 : kPasskeyHeaderIcon;
 }
 
 std::u16string AuthenticatorSelectAccountSheetModel::GetStepTitle() const {
@@ -1132,12 +1249,9 @@ std::u16string AuthenticatorSelectAccountSheetModel::GetAcceptButtonLabel()
 
 // AttestationPermissionRequestSheetModel -------------------------------------
 
-// TODO(1358719): Add more specific illustration once available.
 AttestationPermissionRequestSheetModel::AttestationPermissionRequestSheetModel(
     AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyUsbIcon, kPasskeyUsbDarkIcon);
-}
+    : AuthenticatorSheetModelBase(dialog_model) {}
 
 AttestationPermissionRequestSheetModel::
     ~AttestationPermissionRequestSheetModel() = default;
@@ -1150,6 +1264,14 @@ void AttestationPermissionRequestSheetModel::OnCancel() {
   dialog_model()->OnAttestationPermissionResponse(false);
 }
 
+const gfx::VectorIcon&
+AttestationPermissionRequestSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  // TODO(1358719): Add more specific illustration once available.
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyUsbDarkIcon
+                                                 : kPasskeyUsbIcon;
+}
+
 std::u16string AttestationPermissionRequestSheetModel::GetStepTitle() const {
   return l10n_util::GetStringUTF16(
       IDS_WEBAUTHN_REQUEST_ATTESTATION_PERMISSION_TITLE);
@@ -1160,6 +1282,10 @@ std::u16string AttestationPermissionRequestSheetModel::GetStepDescription()
   return l10n_util::GetStringFUTF16(
       IDS_WEBAUTHN_REQUEST_ATTESTATION_PERMISSION_DESC,
       GetRelyingPartyIdString(dialog_model()));
+}
+
+bool AttestationPermissionRequestSheetModel::IsBackButtonVisible() const {
+  return false;
 }
 
 bool AttestationPermissionRequestSheetModel::IsAcceptButtonVisible() const {
@@ -1206,13 +1332,18 @@ EnterpriseAttestationPermissionRequestSheetModel::GetStepDescription() const {
 
 // AuthenticatorQRSheetModel --------------------------------------------------
 
-// No illustration since there already is the QR code.
 AuthenticatorQRSheetModel::AuthenticatorQRSheetModel(
     AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model,
                                   OtherMechanismButtonVisibility::kVisible) {}
 
 AuthenticatorQRSheetModel::~AuthenticatorQRSheetModel() = default;
+
+const gfx::VectorIcon& AuthenticatorQRSheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  // No illustration since there already is the QR code.
+  return gfx::kNoneIcon;
+}
 
 std::u16string AuthenticatorQRSheetModel::GetStepTitle() const {
   switch (dialog_model()->transport_availability()->request_type) {
@@ -1236,125 +1367,23 @@ std::u16string AuthenticatorQRSheetModel::GetStepDescription() const {
   }
 }
 
-bool AuthenticatorQRSheetModel::ShowSecurityKeyLabel() const {
-  return base::Contains(
-      dialog_model()->transport_availability()->available_transports,
-      device::FidoTransportProtocol::kUsbHumanInterfaceDevice);
-}
-
-std::u16string AuthenticatorQRSheetModel::GetSecurityKeyLabel() const {
-  switch (dialog_model()->transport_availability()->request_type) {
-    case device::FidoRequestType::kMakeCredential:
-      return l10n_util::GetStringFUTF16(
-          IDS_WEBAUTHN_QR_CREATE_PASSKEY_ON_SECURITY_KEY_LABEL,
-          GetRelyingPartyIdString(dialog_model()));
-    case device::FidoRequestType::kGetAssertion:
-      return l10n_util::GetStringFUTF16(
-          IDS_WEBAUTHN_QR_USE_PASSKEY_ON_SECURITY_KEY_LABEL,
-          GetRelyingPartyIdString(dialog_model()));
-  }
-}
-
-std::u16string AuthenticatorQRSheetModel::GetOtherMechanismButtonLabel() const {
-  // If the QR code sheet was the priority mechanism, the button taking the user
-  // to the selection sheet should read "Use a different passkey".
-  if (dialog_model()->priority_mechanism_index() &&
-      absl::holds_alternative<
-          AuthenticatorRequestDialogModel::Mechanism::AddPhone>(
-          dialog_model()
-              ->mechanisms()[*dialog_model()->priority_mechanism_index()]
-              .type)) {
-    return AuthenticatorSheetModelBase::GetOtherMechanismButtonLabel();
-  }
-  // Otherwise, the user must have tapped a button on the selection sheet to get
-  // here. The button taking the user to the selection sheet should read "Back".
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_BACK);
-}
-
-// AuthenticatorConnectingSheetModel ------------------------------------------
-
-AuthenticatorConnectingSheetModel::AuthenticatorConnectingSheetModel(
-    AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kHidden) {
-  lottie_illustrations_.emplace(IDR_WEBAUTHN_HYBRID_CONNECTING_LIGHT,
-                                IDR_WEBAUTHN_HYBRID_CONNECTING_DARK);
-}
-
-AuthenticatorConnectingSheetModel::~AuthenticatorConnectingSheetModel() =
-    default;
-
-std::u16string AuthenticatorConnectingSheetModel::GetStepTitle() const {
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_CABLEV2_CONNECTING_TITLE);
-}
-
-std::u16string AuthenticatorConnectingSheetModel::GetStepDescription() const {
-  return u"";
-}
-
-// AuthenticatorConnectedSheetModel ------------------------------------------
-
-AuthenticatorConnectedSheetModel::AuthenticatorConnectedSheetModel(
-    AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kHidden) {
-  vector_illustrations_.emplace(kPasskeyPhoneIcon, kPasskeyPhoneDarkIcon);
-}
-
-AuthenticatorConnectedSheetModel::~AuthenticatorConnectedSheetModel() = default;
-
-bool AuthenticatorConnectedSheetModel::IsActivityIndicatorVisible() const {
-  return false;
-}
-
-std::u16string AuthenticatorConnectedSheetModel::GetStepTitle() const {
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_CABLEV2_CONNECTED_DESCRIPTION);
-}
-
-std::u16string AuthenticatorConnectedSheetModel::GetStepDescription() const {
-  return u"";
-}
-
-// AuthenticatorCableErrorSheetModel ------------------------------------------
-
-AuthenticatorCableErrorSheetModel::AuthenticatorCableErrorSheetModel(
-    AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kHidden) {
-  vector_illustrations_.emplace(kPasskeyErrorIcon, kPasskeyErrorDarkIcon);
-}
-
-AuthenticatorCableErrorSheetModel::~AuthenticatorCableErrorSheetModel() =
-    default;
-
-bool AuthenticatorCableErrorSheetModel::IsOtherMechanismButtonVisible() const {
-  return false;
-}
-
-std::u16string AuthenticatorCableErrorSheetModel::GetStepTitle() const {
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_ERROR_GENERIC_TITLE);
-}
-
-std::u16string AuthenticatorCableErrorSheetModel::GetStepDescription() const {
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_CABLEV2_ERROR_DESCRIPTION);
-}
-
-std::u16string AuthenticatorCableErrorSheetModel::GetCancelButtonLabel() const {
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_CABLEV2_ERROR_CLOSE);
-}
-
 // AuthenticatorCreatePasskeySheetModel
 // --------------------------------------------------
 
 AuthenticatorCreatePasskeySheetModel::AuthenticatorCreatePasskeySheetModel(
     AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kVisible) {
-  vector_illustrations_.emplace(kPasskeyHeaderIcon, kPasskeyHeaderDarkIcon);
-}
+                                  OtherMechanismButtonVisibility::kVisible) {}
 
 AuthenticatorCreatePasskeySheetModel::~AuthenticatorCreatePasskeySheetModel() =
     default;
+
+const gfx::VectorIcon&
+AuthenticatorCreatePasskeySheetModel::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyHeaderDarkIcon
+                                                 : kPasskeyHeaderIcon;
+}
 
 std::u16string AuthenticatorCreatePasskeySheetModel::GetStepTitle() const {
   return l10n_util::GetStringFUTF16(IDS_WEBAUTHN_CREATE_PASSKEY_TITLE,
@@ -1403,12 +1432,16 @@ void AuthenticatorCreatePasskeySheetModel::OnAccept() {
 AuthenticatorPhoneConfirmationSheet::AuthenticatorPhoneConfirmationSheet(
     AuthenticatorRequestDialogModel* dialog_model)
     : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kVisible) {
-  vector_illustrations_.emplace(kPasskeyPhoneIcon, kPasskeyPhoneDarkIcon);
-}
+                                  OtherMechanismButtonVisibility::kVisible) {}
 
 AuthenticatorPhoneConfirmationSheet::~AuthenticatorPhoneConfirmationSheet() =
     default;
+
+const gfx::VectorIcon& AuthenticatorPhoneConfirmationSheet::GetStepIllustration(
+    ImageColorScheme color_scheme) const {
+  return color_scheme == ImageColorScheme::kDark ? kPasskeyPhoneDarkIcon
+                                                 : kPasskeyPhoneIcon;
+}
 
 std::u16string AuthenticatorPhoneConfirmationSheet::GetStepTitle() const {
   return l10n_util::GetStringFUTF16(
@@ -1436,398 +1469,4 @@ std::u16string AuthenticatorPhoneConfirmationSheet::GetAcceptButtonLabel()
 
 void AuthenticatorPhoneConfirmationSheet::OnAccept() {
   dialog_model()->ContactPriorityPhone();
-}
-
-// AuthenticatorMultiSourcePickerSheetModel --------------------------------
-
-AuthenticatorMultiSourcePickerSheetModel::
-    AuthenticatorMultiSourcePickerSheetModel(
-        AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model) {
-  vector_illustrations_.emplace(kPasskeyHeaderIcon, kPasskeyHeaderDarkIcon);
-
-  using CredentialMech = AuthenticatorRequestDialogModel::Mechanism::Credential;
-  using ICloudKeychainMech =
-      AuthenticatorRequestDialogModel::Mechanism::ICloudKeychain;
-  bool has_local_passkeys =
-      base::ranges::any_of(dialog_model->mechanisms(), [](const auto& mech) {
-        return absl::holds_alternative<CredentialMech>(mech.type) &&
-               absl::get<CredentialMech>(mech.type).value().source !=
-                   device::AuthenticatorType::kPhone;
-      });
-  if (has_local_passkeys) {
-    primary_passkeys_label_ =
-        l10n_util::GetStringUTF16(IDS_WEBAUTHN_THIS_DEVICE_LABEL);
-    for (size_t i = 0; i < dialog_model->mechanisms().size(); ++i) {
-      const AuthenticatorRequestDialogModel::Mechanism& mech =
-          dialog_model->mechanisms()[i];
-      if ((absl::holds_alternative<CredentialMech>(mech.type) &&
-           absl::get<CredentialMech>(mech.type).value().source !=
-               device::AuthenticatorType::kPhone) ||
-          // iCloud Keychain appears in the primary list if present. This
-          // happens when Chrome does not have permission to enumerate
-          // credentials from iCloud Keychain. Thus this generic option is the
-          // only way for the user to trigger it.
-          absl::holds_alternative<ICloudKeychainMech>(mech.type)) {
-        primary_passkey_indices_.push_back(i);
-      } else {
-        secondary_passkey_indices_.push_back(i);
-      }
-    }
-    return;
-  }
-
-  const std::optional<std::u16string>& phone_name =
-      dialog_model->GetPriorityPhoneName();
-  if (phone_name) {
-    primary_passkeys_label_ =
-        l10n_util::GetStringFUTF16(IDS_WEBAUTHN_FROM_PHONE_LABEL, *phone_name);
-  }
-  for (size_t i = 0; i < dialog_model->mechanisms().size(); ++i) {
-    const AuthenticatorRequestDialogModel::Mechanism& mech =
-        dialog_model->mechanisms()[i];
-    if (absl::holds_alternative<CredentialMech>(mech.type) &&
-        absl::get<CredentialMech>(mech.type).value().source ==
-            device::AuthenticatorType::kPhone) {
-      // There should not be any phone passkeys if the phone name is empty.
-      CHECK(phone_name);
-      primary_passkey_indices_.push_back(i);
-    } else {
-      secondary_passkey_indices_.push_back(i);
-    }
-  }
-}
-
-AuthenticatorMultiSourcePickerSheetModel::
-    ~AuthenticatorMultiSourcePickerSheetModel() = default;
-
-bool AuthenticatorMultiSourcePickerSheetModel::IsManageDevicesButtonVisible()
-    const {
-  using Mechanism = AuthenticatorRequestDialogModel::Mechanism;
-  // If any phones or passkeys from a phone are shown then also show a button
-  // that goes to the settings page to manage them.
-  return base::ranges::any_of(
-      dialog_model()->mechanisms(), [](const Mechanism& mech) {
-        return absl::holds_alternative<Mechanism::Phone>(mech.type) ||
-               (absl::holds_alternative<Mechanism::Credential>(mech.type) &&
-                absl::get<Mechanism::Credential>(mech.type).value().source ==
-                    device::AuthenticatorType::kPhone);
-      });
-}
-
-void AuthenticatorMultiSourcePickerSheetModel::OnManageDevices() {
-  if (dialog_model()) {
-    dialog_model()->ManageDevices();
-  }
-}
-
-std::u16string AuthenticatorMultiSourcePickerSheetModel::GetStepTitle() const {
-  return l10n_util::GetStringFUTF16(IDS_WEBAUTHN_CHOOSE_PASSKEY_FOR_RP_TITLE,
-                                    GetRelyingPartyIdString(dialog_model()));
-}
-
-std::u16string AuthenticatorMultiSourcePickerSheetModel::GetStepDescription()
-    const {
-  return u"";
-}
-
-// AuthenticatorPriorityMechanismSheetModel --------------------------------
-
-AuthenticatorPriorityMechanismSheetModel::
-    AuthenticatorPriorityMechanismSheetModel(
-        AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kVisible) {
-  vector_illustrations_.emplace(kPasskeyHeaderIcon, kPasskeyHeaderDarkIcon);
-}
-AuthenticatorPriorityMechanismSheetModel::
-    ~AuthenticatorPriorityMechanismSheetModel() = default;
-
-std::u16string AuthenticatorPriorityMechanismSheetModel::GetStepTitle() const {
-  return l10n_util::GetStringFUTF16(IDS_WEBAUTHN_USE_PASSKEY_TITLE,
-                                    GetRelyingPartyIdString(dialog_model()));
-}
-
-std::u16string AuthenticatorPriorityMechanismSheetModel::GetStepDescription()
-    const {
-  return u"";
-}
-
-bool AuthenticatorPriorityMechanismSheetModel::IsAcceptButtonVisible() const {
-  return true;
-}
-
-bool AuthenticatorPriorityMechanismSheetModel::IsAcceptButtonEnabled() const {
-  return true;
-}
-
-std::u16string AuthenticatorPriorityMechanismSheetModel::GetAcceptButtonLabel()
-    const {
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_CONTINUE);
-}
-
-void AuthenticatorPriorityMechanismSheetModel::OnAccept() {
-  dialog_model()
-      ->mechanisms()[*dialog_model()->priority_mechanism_index()]
-      .callback.Run();
-}
-
-// AuthenticatorGPMPinSheetModel -------------------------------------
-
-AuthenticatorGPMPinSheetModel::AuthenticatorGPMPinSheetModel(
-    AuthenticatorRequestDialogModel* dialog_model,
-    int pin_digits_count,
-    Mode mode,
-    AuthenticatorRequestDialogModel::GpmPinError error)
-    : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kHidden),
-      pin_digits_count_(pin_digits_count),
-      mode_(mode),
-      error_(error) {
-  // TODO(rgod): Add correct illustration.
-  vector_illustrations_.emplace(kPasskeyHeaderIcon, kPasskeyHeaderDarkIcon);
-}
-
-AuthenticatorGPMPinSheetModel::~AuthenticatorGPMPinSheetModel() = default;
-
-int AuthenticatorGPMPinSheetModel::pin_digits_count() const {
-  return pin_digits_count_;
-}
-
-void AuthenticatorGPMPinSheetModel::SetPin(std::u16string pin) {
-  bool full_pin_typed_before = FullPinTyped();
-  pin_ = std::move(pin);
-  bool full_pin_typed = FullPinTyped();
-
-  // When entering an existing PIN, the dialog completes as soon as all the
-  // digits have been typed. When creating a new PIN, the user has to hit enter
-  // to confirm.
-  if (mode_ == Mode::kPinEntry && full_pin_typed) {
-    dialog_model()->OnGPMPinEntered(pin_);
-  } else if (mode_ == Mode::kPinCreate &&
-             full_pin_typed_before != full_pin_typed) {
-    dialog_model()->OnButtonsStateChange();
-  }
-}
-
-bool AuthenticatorGPMPinSheetModel::FullPinTyped() const {
-  return static_cast<int>(pin_.length()) == pin_digits_count_;
-}
-
-std::u16string AuthenticatorGPMPinSheetModel::GetStepTitle() const {
-  switch (mode_) {
-    case Mode::kPinCreate:
-      return u"Create a PIN for your Google Password Manager (UNTRANSLATED)";
-    case Mode::kPinEntry:
-      return u"Enter your PIN for your Google Password Manager (UNTRANSLATED)";
-  }
-}
-
-std::u16string AuthenticatorGPMPinSheetModel::GetStepDescription() const {
-  switch (mode_) {
-    case Mode::kPinCreate:
-      return u"Your PIN protects your data. You'll need it when you want to "
-             u"start using your passkeys on new devices. (UNTRANSLATED)";
-    case Mode::kPinEntry:
-      return u"Sign in with your passkey to example.com as example@gmail.com "
-             u"(UNTRANSLATED)";
-  }
-}
-
-std::u16string AuthenticatorGPMPinSheetModel::GetError() const {
-  switch (error_) {
-    case AuthenticatorRequestDialogModel::GpmPinError::kNone:
-      return std::u16string();
-    case AuthenticatorRequestDialogModel::GpmPinError::kWrongPin:
-      return u"Wrong PIN (UNTRANSLATED)";
-  }
-}
-
-bool AuthenticatorGPMPinSheetModel::IsAcceptButtonVisible() const {
-  return mode_ == Mode::kPinCreate;
-}
-
-bool AuthenticatorGPMPinSheetModel::IsAcceptButtonEnabled() const {
-  return mode_ == Mode::kPinCreate && FullPinTyped();
-}
-
-bool AuthenticatorGPMPinSheetModel::IsForgotGPMPinButtonVisible() const {
-  return mode_ == Mode::kPinEntry;
-}
-
-bool AuthenticatorGPMPinSheetModel::IsGPMPinOptionsButtonVisible() const {
-  return mode_ == Mode::kPinCreate;
-}
-
-std::u16string AuthenticatorGPMPinSheetModel::GetAcceptButtonLabel() const {
-  return l10n_util::GetStringUTF16(IDS_CONFIRM);
-}
-
-void AuthenticatorGPMPinSheetModel::OnAccept() {
-  dialog_model()->OnGPMPinEntered(pin_);
-}
-
-void AuthenticatorGPMPinSheetModel::OnGPMPinOptionChosen(
-    bool is_arbitrary) const {
-  if (!is_arbitrary) {
-    // The sheet already facilitates entering six digit pin.
-    return;
-  }
-
-  dialog_model()->OnGPMPinOptionChosen(is_arbitrary);
-}
-
-// AuthenticatorGPMArbitraryPinSheetModel ------------------------------------
-
-AuthenticatorGPMArbitraryPinSheetModel::AuthenticatorGPMArbitraryPinSheetModel(
-    AuthenticatorRequestDialogModel* dialog_model,
-    Mode mode,
-    AuthenticatorRequestDialogModel::GpmPinError error)
-    : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kHidden),
-      mode_(mode),
-      error_(error) {
-  // TODO(rgod): Add correct illustration.
-  vector_illustrations_.emplace(kPasskeyHeaderIcon, kPasskeyHeaderDarkIcon);
-}
-
-AuthenticatorGPMArbitraryPinSheetModel::
-    ~AuthenticatorGPMArbitraryPinSheetModel() = default;
-
-void AuthenticatorGPMArbitraryPinSheetModel::SetPin(std::u16string pin) {
-  bool accept_button_enabled = IsAcceptButtonEnabled();
-  pin_ = std::move(pin);
-  if (accept_button_enabled != IsAcceptButtonEnabled()) {
-    dialog_model()->OnButtonsStateChange();
-  }
-}
-
-std::u16string AuthenticatorGPMArbitraryPinSheetModel::GetStepTitle() const {
-  switch (mode_) {
-    case Mode::kPinCreate:
-      return u"Create a PIN for your Google Password Manager (UNTRANSLATED)";
-    case Mode::kPinEntry:
-      return u"Enter your PIN for your Google Password Manager (UNTRANSLATED)";
-  }
-}
-
-std::u16string AuthenticatorGPMArbitraryPinSheetModel::GetStepDescription()
-    const {
-  switch (mode_) {
-    case Mode::kPinCreate:
-      return u"Your PIN protects your data. You'll need it when you want to "
-             u"start using your passkeys on new devices. (UNTRANSLATED)";
-    case Mode::kPinEntry:
-      return u"Sign in with your passkey to example.com as example@gmail.com "
-             u"(UNTRANSLATED)";
-  }
-}
-
-std::u16string AuthenticatorGPMArbitraryPinSheetModel::GetError() const {
-  switch (error_) {
-    case AuthenticatorRequestDialogModel::GpmPinError::kNone:
-      return std::u16string();
-    case AuthenticatorRequestDialogModel::GpmPinError::kWrongPin:
-      return u"Wrong PIN (UNTRANSLATED)";
-  }
-}
-
-bool AuthenticatorGPMArbitraryPinSheetModel::IsAcceptButtonVisible() const {
-  return true;
-}
-
-bool AuthenticatorGPMArbitraryPinSheetModel::IsAcceptButtonEnabled() const {
-  return pin_.length() > 0;
-}
-
-bool AuthenticatorGPMArbitraryPinSheetModel::IsForgotGPMPinButtonVisible()
-    const {
-  return mode_ == Mode::kPinEntry;
-}
-
-bool AuthenticatorGPMArbitraryPinSheetModel::IsGPMPinOptionsButtonVisible()
-    const {
-  return mode_ == Mode::kPinCreate;
-}
-
-std::u16string AuthenticatorGPMArbitraryPinSheetModel::GetAcceptButtonLabel()
-    const {
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_CONTINUE);
-}
-
-void AuthenticatorGPMArbitraryPinSheetModel::OnAccept() {
-  dialog_model()->OnGPMPinEntered(pin_);
-}
-
-void AuthenticatorGPMArbitraryPinSheetModel::OnGPMPinOptionChosen(
-    bool is_arbitrary) const {
-  if (is_arbitrary) {
-    // The sheet already facilitates entering arbitrary pin.
-    return;
-  }
-
-  dialog_model()->OnGPMPinOptionChosen(is_arbitrary);
-}
-
-AuthenticatorTrustThisComputerSheetModel::
-    AuthenticatorTrustThisComputerSheetModel(
-        AuthenticatorRequestDialogModel* dialog_model)
-    : AuthenticatorSheetModelBase(dialog_model,
-                                  OtherMechanismButtonVisibility::kHidden) {
-  // TODO(derinel): Add correct illustration.
-  vector_illustrations_.emplace(kPasskeyHeaderIcon, kPasskeyHeaderDarkIcon);
-}
-
-AuthenticatorTrustThisComputerSheetModel::
-    ~AuthenticatorTrustThisComputerSheetModel() = default;
-
-std::u16string AuthenticatorTrustThisComputerSheetModel::GetStepTitle() const {
-  return u"Use passkeys saved in Google Password Manager on this device? "
-         u"(UNTRANSLATED)";
-}
-
-std::u16string AuthenticatorTrustThisComputerSheetModel::GetStepDescription()
-    const {
-  return u"If you continue, this device will use your saved passwords and "
-         u"passkeys to help you sign in. Unless you trust this device, select "
-         u"\"not now.\" (UNTRANSLATED)";
-}
-
-bool AuthenticatorTrustThisComputerSheetModel::IsCancelButtonVisible() const {
-  return true;
-}
-
-std::u16string AuthenticatorTrustThisComputerSheetModel::GetCancelButtonLabel()
-    const {
-  return u"Not now (UNTRANSLATED)";
-}
-
-void AuthenticatorTrustThisComputerSheetModel::OnCancel() {
-  switch (dialog_model()->transport_availability()->request_type) {
-    case device::FidoRequestType::kMakeCredential:
-      dialog_model()->StartOver();
-      break;
-    case device::FidoRequestType::kGetAssertion:
-      dialog_model()->ContactPriorityPhone();
-      break;
-    default:
-      NOTREACHED();
-  }
-}
-
-bool AuthenticatorTrustThisComputerSheetModel::IsAcceptButtonEnabled() const {
-  return true;
-}
-
-bool AuthenticatorTrustThisComputerSheetModel::IsAcceptButtonVisible() const {
-  return true;
-}
-
-std::u16string AuthenticatorTrustThisComputerSheetModel::GetAcceptButtonLabel()
-    const {
-  return l10n_util::GetStringUTF16(IDS_WEBAUTHN_CONTINUE);
-}
-
-void AuthenticatorTrustThisComputerSheetModel::OnAccept() {
-  dialog_model()->OnTrustThisComputer();
 }

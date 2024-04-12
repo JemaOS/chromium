@@ -21,8 +21,6 @@ namespace ml {
 // UserActivityManager).
 class UserActivityController {
  public:
-  static UserActivityController* Get();
-
   UserActivityController();
 
   UserActivityController(const UserActivityController&) = delete;

@@ -26,8 +26,10 @@ import org.robolectric.annotation.Config;
 import org.chromium.base.Callback;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Batch;
-import org.chromium.base.test.util.Features;
 import org.chromium.base.test.util.JniMocker;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.test.util.browser.Features;
+import org.chromium.chrome.test.util.browser.Features.EnableFeatures;
 
 /**
  * Tests that bridge calls as invoked by the password sync controller delegate reach the delegate
@@ -36,10 +38,12 @@ import org.chromium.base.test.util.JniMocker;
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 @Batch(Batch.PER_CLASS)
+@EnableFeatures(ChromeFeatureList.UNIFIED_PASSWORD_MANAGER_ANDROID)
 public class PasswordSyncControllerDelegateBridgeTest {
-    @Rule public TestRule mProcessor = new Features.JUnitProcessor();
+    @Rule
+    public TestRule mProcessor = new Features.JUnitProcessor();
 
-    private static final long sFakeNativePointer = 4;
+    private static final long sDummyNativePointer = 4;
 
     private static final String TEST_EMAIL_ADDRESS = "test@email.com";
     private static final Exception EXPECTED_EXCEPTION = new Exception("Sample failure");
@@ -47,10 +51,13 @@ public class PasswordSyncControllerDelegateBridgeTest {
     private static final Exception EXPECTED_API_EXCEPTION =
             new ApiException(new Status(EXPECTED_API_ERROR_CODE, ""));
 
-    @Rule public JniMocker mJniMocker = new JniMocker();
+    @Rule
+    public JniMocker mJniMocker = new JniMocker();
 
-    @Mock private PasswordSyncControllerDelegateBridgeImpl.Natives mBridgeJniMock;
-    @Mock private PasswordSyncControllerDelegate mDelegateMock;
+    @Mock
+    private PasswordSyncControllerDelegateBridgeImpl.Natives mBridgeJniMock;
+    @Mock
+    private PasswordSyncControllerDelegate mDelegateMock;
 
     private PasswordSyncControllerDelegateBridgeImpl mDelegateBridge;
 
@@ -59,7 +66,7 @@ public class PasswordSyncControllerDelegateBridgeTest {
         MockitoAnnotations.initMocks(this);
         mJniMocker.mock(PasswordSyncControllerDelegateBridgeImplJni.TEST_HOOKS, mBridgeJniMock);
         mDelegateBridge =
-                new PasswordSyncControllerDelegateBridgeImpl(sFakeNativePointer, mDelegateMock);
+                new PasswordSyncControllerDelegateBridgeImpl(sDummyNativePointer, mDelegateMock);
     }
 
     @Test
@@ -72,7 +79,7 @@ public class PasswordSyncControllerDelegateBridgeTest {
 
         assertNotNull(successCallback.getValue());
         successCallback.getValue().run();
-        verify(mBridgeJniMock).onCredentialManagerNotified(sFakeNativePointer);
+        verify(mBridgeJniMock).onCredentialManagerNotified(sDummyNativePointer);
     }
 
     @Test
@@ -88,7 +95,7 @@ public class PasswordSyncControllerDelegateBridgeTest {
         failureCallback.getValue().onResult(EXPECTED_EXCEPTION);
         verify(mBridgeJniMock)
                 .onCredentialManagerError(
-                        sFakeNativePointer, AndroidBackendErrorType.UNCATEGORIZED, 0);
+                        sDummyNativePointer, AndroidBackendErrorType.UNCATEGORIZED, 0);
     }
 
     @Test
@@ -103,10 +110,8 @@ public class PasswordSyncControllerDelegateBridgeTest {
         assertNotNull(failureCallback.getValue());
         failureCallback.getValue().onResult(EXPECTED_API_EXCEPTION);
         verify(mBridgeJniMock)
-                .onCredentialManagerError(
-                        sFakeNativePointer,
-                        AndroidBackendErrorType.EXTERNAL_ERROR,
-                        EXPECTED_API_ERROR_CODE);
+                .onCredentialManagerError(sDummyNativePointer,
+                        AndroidBackendErrorType.EXTERNAL_ERROR, EXPECTED_API_ERROR_CODE);
     }
 
     @Test
@@ -120,7 +125,7 @@ public class PasswordSyncControllerDelegateBridgeTest {
         assertNotNull(successCallback.getValue());
 
         successCallback.getValue().run();
-        verify(mBridgeJniMock).onCredentialManagerNotified(sFakeNativePointer);
+        verify(mBridgeJniMock).onCredentialManagerNotified(sDummyNativePointer);
     }
 
     @Test
@@ -137,6 +142,6 @@ public class PasswordSyncControllerDelegateBridgeTest {
         failureCallback.getValue().onResult(EXPECTED_EXCEPTION);
         verify(mBridgeJniMock)
                 .onCredentialManagerError(
-                        sFakeNativePointer, AndroidBackendErrorType.UNCATEGORIZED, 0);
+                        sDummyNativePointer, AndroidBackendErrorType.UNCATEGORIZED, 0);
     }
 }

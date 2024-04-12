@@ -38,7 +38,6 @@
 #include "third_party/blink/renderer/platform/wtf/text/ascii_ctype.h"
 #include "third_party/blink/renderer/platform/wtf/text/case_map.h"
 #include "third_party/blink/renderer/platform/wtf/text/character_names.h"
-#include "third_party/blink/renderer/platform/wtf/text/code_point_iterator.h"
 #include "third_party/blink/renderer/platform/wtf/text/copy_lchars_from_uchar_source.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_utf8_adaptor.h"
@@ -98,14 +97,6 @@ UChar32 String::CharacterStartingAt(unsigned i) const {
   if (!impl_ || i >= impl_->length())
     return 0;
   return impl_->CharacterStartingAt(i);
-}
-
-CodePointIterator String::begin() const {
-  return CodePointIterator(*this);
-}
-
-CodePointIterator String::end() const {
-  return CodePointIterator::End(*this);
 }
 
 void String::Ensure16Bit() {
@@ -245,7 +236,42 @@ String String::Format(const char* format, ...) {
 }
 
 String String::EncodeForDebugging() const {
-  return StringView(*this).EncodeForDebugging();
+  if (IsNull())
+    return "<null>";
+
+  StringBuilder builder;
+  builder.Append('"');
+  for (unsigned index = 0; index < length(); ++index) {
+    // Print shorthands for select cases.
+    UChar character = (*impl_)[index];
+    switch (character) {
+      case '\t':
+        builder.Append("\\t");
+        break;
+      case '\n':
+        builder.Append("\\n");
+        break;
+      case '\r':
+        builder.Append("\\r");
+        break;
+      case '"':
+        builder.Append("\\\"");
+        break;
+      case '\\':
+        builder.Append("\\\\");
+        break;
+      default:
+        if (IsASCIIPrintable(character)) {
+          builder.Append(static_cast<char>(character));
+        } else {
+          // Print "\uXXXX" for control or non-ASCII characters.
+          builder.AppendFormat("\\u%04X", character);
+        }
+        break;
+    }
+  }
+  builder.Append('"');
+  return builder.ToString();
 }
 
 String String::Number(float number) {

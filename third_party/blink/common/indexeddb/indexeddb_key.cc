@@ -8,8 +8,6 @@
 #include <string>
 #include <utility>
 
-#include "base/ranges/algorithm.h"
-
 namespace blink {
 
 namespace {
@@ -22,7 +20,7 @@ std::string string_to_hex(const std::string& input) {
   for (size_t i = 0; i < len; ++i) {
     const unsigned char c = input[i];
     output.push_back(lut[c >> 4]);
-    output.push_back(lut[c & 0xF]);
+    output.push_back(lut[c & 0xFF]);
   }
   return output;
 }
@@ -62,16 +60,17 @@ IndexedDBKey::IndexedDBKey(double number, mojom::IDBKeyType type)
     : type_(type),
       number_(number),
       size_estimate_(kOverheadSize + sizeof(number)) {
-  DCHECK(type == mojom::IDBKeyType::Number || type == mojom::IDBKeyType::Date);
+  DCHECK(type == blink::mojom::IDBKeyType::Number ||
+         type == blink::mojom::IDBKeyType::Date);
 }
 
 IndexedDBKey::IndexedDBKey(KeyArray array)
-    : type_(mojom::IDBKeyType::Array),
+    : type_(blink::mojom::IDBKeyType::Array),
       array_(std::move(array)),
       size_estimate_(kOverheadSize + CalculateArraySize(array_)) {}
 
 IndexedDBKey::IndexedDBKey(std::string binary)
-    : type_(mojom::IDBKeyType::Binary),
+    : type_(blink::mojom::IDBKeyType::Binary),
       binary_(std::move(binary)),
       size_estimate_(kOverheadSize +
                      (binary_.length() * sizeof(std::string::value_type))) {}
@@ -83,24 +82,21 @@ IndexedDBKey::IndexedDBKey(std::u16string string)
                      (string_.length() * sizeof(std::u16string::value_type))) {}
 
 IndexedDBKey::IndexedDBKey(const IndexedDBKey& other) = default;
-IndexedDBKey::IndexedDBKey(IndexedDBKey&& other) = default;
 IndexedDBKey::~IndexedDBKey() = default;
 IndexedDBKey& IndexedDBKey::operator=(const IndexedDBKey& other) = default;
 
 bool IndexedDBKey::IsValid() const {
-  switch (type_) {
-    case mojom::IDBKeyType::Array:
-      return base::ranges::all_of(array_, &IndexedDBKey::IsValid);
-    case mojom::IDBKeyType::Binary:
-    case mojom::IDBKeyType::String:
-    case mojom::IDBKeyType::Date:
-    case mojom::IDBKeyType::Number:
-      return true;
-    case mojom::IDBKeyType::Invalid:
-    case mojom::IDBKeyType::None:
-    case mojom::IDBKeyType::Min:
-      return false;
+  if (type_ == mojom::IDBKeyType::Invalid || type_ == mojom::IDBKeyType::None)
+    return false;
+
+  if (type_ == blink::mojom::IDBKeyType::Array) {
+    for (size_t i = 0; i < array_.size(); i++) {
+      if (!array_[i].IsValid())
+        return false;
+    }
   }
+
+  return true;
 }
 
 bool IndexedDBKey::IsLessThan(const IndexedDBKey& other) const {

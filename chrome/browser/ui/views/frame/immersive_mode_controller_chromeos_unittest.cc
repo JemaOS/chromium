@@ -8,22 +8,20 @@
 #include "base/memory/raw_ptr.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/app/chrome_command_ids.h"
+#include "chrome/browser/ui/ash/window_pin_util.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/chromeos/test_util.h"
-#include "chrome/browser/ui/chromeos/window_pin_util.h"
+#include "chrome/browser/ui/exclusive_access/exclusive_access_test.h"
 #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_non_client_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_non_client_frame_view_chromeos.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
-#include "chrome/browser/ui/views/frame/immersive_mode_tester.h"
 #include "chrome/browser/ui/views/frame/test_with_browser_view.h"
 #include "chrome/browser/ui/views/frame/top_container_view.h"
 #include "chrome/browser/ui/views/frame/webui_tab_strip_container_view.h"
 #include "chrome/browser/ui/views/fullscreen_control/fullscreen_control_host.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
-#include "chrome/test/base/ui_test_utils.h"
 #include "chromeos/ui/frame/immersive/immersive_fullscreen_controller_test_api.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
 #include "third_party/blink/public/mojom/frame/fullscreen.mojom.h"
@@ -32,10 +30,6 @@
 #include "ui/events/event.h"
 #include "ui/views/controls/native/native_view_host.h"
 #include "ui/views/controls/webview/webview.h"
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-#include "chrome/browser/ui/lacros/immersive_context_lacros.h"
-#endif
 
 class ImmersiveModeControllerChromeosTest : public TestWithBrowserView {
  public:
@@ -67,6 +61,31 @@ class ImmersiveModeControllerChromeosTest : public TestWithBrowserView {
     return view->ConvertRectToWidget(view->GetLocalBounds());
   }
 
+  // Toggle the browser's fullscreen state.
+  void ToggleFullscreen() {
+    // The fullscreen change notification is sent asynchronously. The
+    // notification is used to trigger changes in whether the shelf is auto
+    // hidden and whether a "light bar" version of the tab strip is used when
+    // the top-of-window views are hidden.
+    FullscreenNotificationObserver waiter(browser());
+    chrome::ToggleFullscreenMode(browser());
+    waiter.Wait();
+  }
+
+  // Set whether the browser is in tab fullscreen.
+  void SetTabFullscreen(bool tab_fullscreen) {
+    content::WebContents* web_contents =
+        browser_view()->contents_web_view()->GetWebContents();
+    FullscreenNotificationObserver waiter(browser());
+    auto* delegate = static_cast<content::WebContentsDelegate*>(browser());
+    if (tab_fullscreen)
+      delegate->EnterFullscreenModeForTab(web_contents->GetPrimaryMainFrame(),
+                                          {});
+    else
+      delegate->ExitFullscreenModeForTab(web_contents);
+    waiter.Wait();
+  }
+
   // Attempt revealing the top-of-window views.
   void AttemptReveal() {
     if (!revealed_lock_.get()) {
@@ -82,13 +101,9 @@ class ImmersiveModeControllerChromeosTest : public TestWithBrowserView {
 
  private:
   // Not owned.
-  raw_ptr<ImmersiveModeController, DanglingUntriaged> controller_;
+  raw_ptr<ImmersiveModeController, ExperimentalAsh> controller_;
 
   std::unique_ptr<ImmersiveRevealedLock> revealed_lock_;
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  ImmersiveContextLacros immersive_context_;
-#endif
 };
 
 // Test the layout and visibility of the tabstrip, toolbar and TopContainerView
@@ -110,7 +125,7 @@ TEST_F(ImmersiveModeControllerChromeosTest, Layout) {
   EXPECT_EQ(
       0, browser_view()->contents_web_view()->holder()->GetHitTestTopInset());
 
-  ChromeOSBrowserUITest::EnterImmersiveFullscreenMode(browser());
+  ToggleFullscreen();
   EXPECT_TRUE(browser_view()->GetWidget()->IsFullscreen());
   EXPECT_TRUE(controller()->IsEnabled());
   EXPECT_FALSE(controller()->IsRevealed());
@@ -146,8 +161,7 @@ TEST_F(ImmersiveModeControllerChromeosTest, Layout) {
   EXPECT_EQ(0, GetBoundsInWidget(contents_web_view).y());
 
   // Repeat the test for when in both immersive fullscreen and tab fullscreen.
-  ChromeOSBrowserUITest::EnterTabFullscreenMode(
-      browser(), browser_view()->contents_web_view()->GetWebContents());
+  SetTabFullscreen(true);
   // Hide and reveal the top-of-window views so that they get relain out.
   AttemptUnreveal();
   AttemptReveal();
@@ -174,7 +188,7 @@ TEST_F(ImmersiveModeControllerChromeosTest, Layout) {
 
   // Exiting both immersive and tab fullscreen should show the tab strip and
   // toolbar.
-  ChromeOSBrowserUITest::ExitImmersiveFullscreenMode(browser());
+  ToggleFullscreen();
   EXPECT_EQ(
       0, browser_view()->contents_web_view()->holder()->GetHitTestTopInset());
   EXPECT_FALSE(browser_view()->GetWidget()->IsFullscreen());
@@ -189,13 +203,12 @@ TEST_F(ImmersiveModeControllerChromeosTest, Layout) {
 TEST_F(ImmersiveModeControllerChromeosTest, FullscreenToLockedTransition) {
   AddTab(browser(), GURL("about:blank"));
   // Start in fullscreen.
-  ChromeOSBrowserUITest::EnterImmersiveFullscreenMode(browser());
+  ToggleFullscreen();
   // ImmersiveController is enabled in fullscreen.
   EXPECT_TRUE(controller()->IsEnabled());
 
   // Transition to locked fullscreen.
-  ChromeOSBrowserUITest::PinWindow(
-      browser_view()->GetWidget()->GetNativeWindow(), /*trusted=*/true);
+  PinWindow(browser_view()->GetWidget()->GetNativeWindow(), /*trusted=*/true);
   // ImmersiveController is disabled in TrustedPinned so that it cannot be
   // exited.
   EXPECT_FALSE(controller()->IsEnabled());
@@ -209,7 +222,7 @@ TEST_F(ImmersiveModeControllerChromeosTest, EnabledCommands) {
   EXPECT_TRUE(chrome::IsCommandEnabled(browser(), IDC_ABOUT));
   EXPECT_TRUE(chrome::IsCommandEnabled(browser(), IDC_FOCUS_LOCATION));
 
-  ChromeOSBrowserUITest::EnterImmersiveFullscreenMode(browser());
+  ToggleFullscreen();
   EXPECT_TRUE(controller()->IsEnabled());
   EXPECT_TRUE(chrome::IsCommandEnabled(browser(), IDC_OPEN_CURRENT_URL));
   EXPECT_TRUE(chrome::IsCommandEnabled(browser(), IDC_ABOUT));
@@ -219,14 +232,14 @@ TEST_F(ImmersiveModeControllerChromeosTest, EnabledCommands) {
 // Test that restoring a window properly exits immersive fullscreen.
 TEST_F(ImmersiveModeControllerChromeosTest, ExitUponRestore) {
   ASSERT_FALSE(controller()->IsEnabled());
-  ChromeOSBrowserUITest::EnterImmersiveFullscreenMode(browser());
+  ToggleFullscreen();
   AttemptReveal();
   ASSERT_TRUE(controller()->IsEnabled());
   ASSERT_TRUE(controller()->IsRevealed());
   ASSERT_TRUE(browser_view()->GetWidget()->IsFullscreen());
 
   browser_view()->GetWidget()->Restore();
-  ImmersiveModeTester(browser()).WaitForFullscreenToExit();
+  EXPECT_FALSE(controller()->IsEnabled());
 }
 
 // Ensure the circular tab-loading throbbers are not painted as layers in
@@ -242,32 +255,13 @@ TEST_F(ImmersiveModeControllerChromeosTest, LayeredSpinners) {
   EXPECT_FALSE(controller()->IsEnabled());
   EXPECT_TRUE(tabstrip->CanPaintThrobberToLayer());
 
-  ChromeOSBrowserUITest::EnterImmersiveFullscreenMode(browser());
+  ToggleFullscreen();
   EXPECT_TRUE(browser_view()->GetWidget()->IsFullscreen());
   EXPECT_TRUE(controller()->IsEnabled());
   EXPECT_FALSE(tabstrip->CanPaintThrobberToLayer());
 
-  ChromeOSBrowserUITest::ExitImmersiveFullscreenMode(browser());
+  ToggleFullscreen();
   EXPECT_TRUE(tabstrip->CanPaintThrobberToLayer());
-}
-
-// Ensure SetEnable is called when needed even when the previous request is
-// passed from different client.
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-// TODO(b/40942067): Port and enable when bug is fixed.
-#define MAYBE_CallEnableForWidgetWhenNeeded \
-  DISABLED_CallEnableForWidgetWhenNeeded
-#else
-#define MAYBE_CallEnableForWidgetWhenNeeded CallEnableForWidgetWhenNeeded
-#endif
-TEST_F(ImmersiveModeControllerChromeosTest,
-       MAYBE_CallEnableForWidgetWhenNeeded) {
-  ASSERT_FALSE(controller()->IsEnabled());
-  chromeos::ImmersiveFullscreenController::EnableForWidget(
-      browser_view()->frame(), /*enabled=*/true);
-  ASSERT_TRUE(controller()->IsEnabled());
-  controller()->SetEnabled(/*enabled=*/false);
-  ASSERT_FALSE(controller()->IsEnabled());
 }
 
 class ImmersiveModeControllerChromeosWebUITabStripTest
@@ -294,7 +288,7 @@ TEST_F(ImmersiveModeControllerChromeosWebUITabStripTest, CanOpen) {
   ASSERT_TRUE(webui_tab_strip);
   EXPECT_FALSE(webui_tab_strip->GetVisible());
 
-  ChromeOSBrowserUITest::EnterImmersiveFullscreenMode(browser());
+  ToggleFullscreen();
   EXPECT_FALSE(webui_tab_strip->GetVisible());
 
   AttemptReveal();

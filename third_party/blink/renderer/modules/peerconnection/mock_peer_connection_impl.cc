@@ -11,13 +11,13 @@
 
 #include "base/check_op.h"
 #include "base/containers/contains.h"
-#include "base/memory/raw_ptr.h"
 #include "base/notreached.h"
 #include "base/ranges/algorithm.h"
 #include "third_party/blink/renderer/modules/peerconnection/mock_data_channel_impl.h"
 #include "third_party/blink/renderer/modules/peerconnection/mock_peer_connection_dependency_factory.h"
 #include "third_party/blink/renderer/modules/peerconnection/mock_rtc_peer_connection_handler_platform.h"
 #include "third_party/blink/renderer/platform/allow_discouraged_type.h"
+#include "third_party/blink/renderer/platform/peerconnection/webrtc_util.h"
 #include "third_party/webrtc/api/rtp_receiver_interface.h"
 #include "third_party/webrtc/rtc_base/ref_counted_object.h"
 
@@ -111,7 +111,7 @@ class MockDtmfSender : public DtmfSenderInterface {
   int inter_tone_gap() const override { return inter_tone_gap_; }
 
  private:
-  raw_ptr<DtmfSenderObserverInterface> observer_ = nullptr;
+  DtmfSenderObserverInterface* observer_ = nullptr;
   std::string tones_;
   int duration_ = 0;
   int inter_tone_gap_ = 0;
@@ -239,7 +239,7 @@ void FakeRtpReceiver::SetObserver(
 }
 
 void FakeRtpReceiver::SetJitterBufferMinimumDelay(
-    std::optional<double> delay_seconds) {
+    absl::optional<double> delay_seconds) {
   NOTIMPLEMENTED();
 }
 
@@ -252,17 +252,17 @@ FakeRtpTransceiver::FakeRtpTransceiver(
     cricket::MediaType media_type,
     rtc::scoped_refptr<FakeRtpSender> sender,
     rtc::scoped_refptr<FakeRtpReceiver> receiver,
-    std::optional<std::string> mid,
+    absl::optional<std::string> mid,
     bool stopped,
     webrtc::RtpTransceiverDirection direction,
-    std::optional<webrtc::RtpTransceiverDirection> current_direction)
+    absl::optional<webrtc::RtpTransceiverDirection> current_direction)
     : media_type_(media_type),
       sender_(std::move(sender)),
       receiver_(std::move(receiver)),
-      mid_(std::move(mid)),
+      mid_(blink::ToAbslOptional(std::move(mid))),
       stopped_(stopped),
       direction_(direction),
-      current_direction_(current_direction) {}
+      current_direction_(blink::ToAbslOptional(current_direction)) {}
 
 FakeRtpTransceiver::~FakeRtpTransceiver() = default;
 
@@ -280,7 +280,7 @@ cricket::MediaType FakeRtpTransceiver::media_type() const {
   return media_type_;
 }
 
-std::optional<std::string> FakeRtpTransceiver::mid() const {
+absl::optional<std::string> FakeRtpTransceiver::mid() const {
   return mid_;
 }
 
@@ -307,7 +307,7 @@ webrtc::RtpTransceiverDirection FakeRtpTransceiver::direction() const {
   return direction_;
 }
 
-std::optional<webrtc::RtpTransceiverDirection>
+absl::optional<webrtc::RtpTransceiverDirection>
 FakeRtpTransceiver::current_direction() const {
   return current_direction_;
 }
@@ -397,8 +397,8 @@ MockPeerConnectionImpl::AddTrack(
   rtc::scoped_refptr<FakeRtpTransceiver> transceiver(
       new rtc::RefCountedObject<FakeRtpTransceiver>(
           cricket::MediaType::MEDIA_TYPE_AUDIO, sender, dummy_receiver,
-          std::nullopt, false, webrtc::RtpTransceiverDirection::kSendRecv,
-          std::nullopt));
+          absl::nullopt, false, webrtc::RtpTransceiverDirection::kSendRecv,
+          absl::nullopt));
   transceivers_.push_back(transceiver);
   return rtc::scoped_refptr<webrtc::RtpSenderInterface>(sender);
 }

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_CONTENT_INDEX_CONTENT_INDEX_PROVIDER_FACTORY_H_
 #define CHROME_BROWSER_CONTENT_INDEX_CONTENT_INDEX_PROVIDER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class ContentIndexProviderImpl;
@@ -21,13 +21,13 @@ class ContentIndexProviderFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<ContentIndexProviderFactory>;
+  friend struct base::DefaultSingletonTraits<ContentIndexProviderFactory>;
 
   ContentIndexProviderFactory();
   ~ContentIndexProviderFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

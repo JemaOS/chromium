@@ -83,33 +83,8 @@ uint32_t PerformanceEventTiming::interactionId() const {
   return interaction_id_;
 }
 
-uint32_t PerformanceEventTiming::interactionOffset() const {
-  return interaction_offset_;
-}
-
-void PerformanceEventTiming::SetInteractionIdAndOffset(
-    uint32_t interaction_id,
-    uint32_t interaction_offset) {
+void PerformanceEventTiming::SetInteractionId(uint32_t interaction_id) {
   interaction_id_ = interaction_id;
-  interaction_offset_ = interaction_offset;
-}
-
-base::TimeTicks PerformanceEventTiming::unsafeQueuedTimestamp() const {
-  return unsafe_queued_timestamp_;
-}
-
-void PerformanceEventTiming::SetUnsafeQueuedTimestamp(
-    base::TimeTicks timestamp) {
-  unsafe_queued_timestamp_ = timestamp;
-}
-
-base::TimeTicks PerformanceEventTiming::unsafeCommitFinishTimestamp() const {
-  return unsafe_commit_finish_timestamp_;
-}
-
-void PerformanceEventTiming::SetUnsafeCommitFinishTimestamp(
-    base::TimeTicks timestamp) {
-  unsafe_commit_finish_timestamp_ = timestamp;
 }
 
 base::TimeTicks PerformanceEventTiming::unsafePresentationTimestamp() const {
@@ -150,10 +125,7 @@ std::unique_ptr<TracedValue> PerformanceEventTiming::ToTracedValue(
   traced_value->SetBoolean("cancelable", cancelable());
   // If int overflows occurs, the static_cast may not work correctly.
   traced_value->SetInteger("interactionId", static_cast<int>(interactionId()));
-  traced_value->SetInteger("interactionOffset",
-                           static_cast<int>(interactionOffset()));
-  traced_value->SetInteger(
-      "nodeId", target_ ? target_->GetDomNodeId() : kInvalidDOMNodeId);
+  traced_value->SetInteger("nodeId", DOMNodeIds::IdForNode(target_));
   traced_value->SetString("frame",
                           String::FromUTF8(GetFrameIdForTracing(frame)));
   return traced_value;

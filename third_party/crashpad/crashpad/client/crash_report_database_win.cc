@@ -25,7 +25,6 @@
 #include <tuple>
 #include <utility>
 
-#include "base/check_op.h"
 #include "base/logging.h"
 #include "base/numerics/safe_math.h"
 #include "base/strings/utf_string_conversions.h"
@@ -546,7 +545,8 @@ void Metadata::Write() {
   for (const auto& report : reports_) {
     const base::FilePath& path = report.file_path;
     if (path.DirName() != report_dir_) {
-      LOG(ERROR) << path << " expected to start with " << report_dir_;
+      LOG(ERROR) << path.value().c_str() << " expected to start with "
+                 << base::WideToUTF8(report_dir_.value());
       return;
     }
     records.push_back(MetadataFileReportRecord(report, &string_table));
@@ -590,11 +590,12 @@ OperationStatus Metadata::VerifyReport(const ReportDisk& report_disk,
 bool EnsureDirectory(const base::FilePath& path) {
   DWORD fileattr = GetFileAttributes(path.value().c_str());
   if (fileattr == INVALID_FILE_ATTRIBUTES) {
-    PLOG(ERROR) << "GetFileAttributes " << path;
+    PLOG(ERROR) << "GetFileAttributes " << base::WideToUTF8(path.value());
     return false;
   }
   if ((fileattr & FILE_ATTRIBUTE_DIRECTORY) == 0) {
-    LOG(ERROR) << "GetFileAttributes " << path << ": not a directory";
+    LOG(ERROR) << "GetFileAttributes " << base::WideToUTF8(path.value())
+               << ": not a directory";
     return false;
   }
   return true;
@@ -876,7 +877,7 @@ OperationStatus CrashReportDatabaseWin::DeleteReport(const UUID& uuid) {
     return os;
 
   if (!DeleteFile(report_path.value().c_str())) {
-    PLOG(ERROR) << "DeleteFile " << report_path;
+    PLOG(ERROR) << "DeleteFile " << base::WideToUTF8(report_path.value());
     return kFileSystemError;
   }
 
@@ -1020,7 +1021,8 @@ void CrashReportDatabaseWin::CleanOrphanedAttachments() {
     if (IsDirectory(path, false)) {
       UUID uuid;
       if (!uuid.InitializeFromString(filename.value())) {
-        LOG(ERROR) << "unexpected attachment dir name " << filename;
+        LOG(ERROR) << "unexpected attachment dir name "
+                   << filename.value().c_str();
         continue;
       }
 

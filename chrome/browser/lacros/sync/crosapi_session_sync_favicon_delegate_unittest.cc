@@ -4,7 +4,6 @@
 
 #include "chrome/browser/lacros/sync/crosapi_session_sync_favicon_delegate.h"
 
-#include "base/memory/raw_ptr.h"
 #include "base/test/bind.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
@@ -47,7 +46,7 @@ class FakeHistoryUiFaviconRequestHandler
   void SetResultImage(gfx::Image* image) { result_image_ = image; }
 
  private:
-  raw_ptr<gfx::Image> result_image_ = nullptr;
+  gfx::Image* result_image_ = nullptr;
 };
 
 gfx::Image GetTestImage() {

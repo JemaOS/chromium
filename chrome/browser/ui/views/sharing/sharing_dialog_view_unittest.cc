@@ -14,11 +14,10 @@
 #include "chrome/browser/sharing/fake_device_info.h"
 #include "chrome/browser/sharing/sharing_app.h"
 #include "chrome/browser/sharing/sharing_metrics.h"
-#include "chrome/browser/sharing/sharing_target_device_info.h"
 #include "chrome/browser/ui/views/controls/hover_button.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/test_with_browser_view.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "components/sync_device_info/device_info.h"
 #include "components/url_formatter/elide_url.h"
@@ -60,15 +59,12 @@ class SharingDialogViewTest : public TestWithBrowserView {
     TestWithBrowserView::TearDown();
   }
 
-  std::vector<SharingTargetDeviceInfo> CreateDevices(int count) {
-    std::vector<SharingTargetDeviceInfo> devices;
+  std::vector<std::unique_ptr<syncer::DeviceInfo>> CreateDevices(int count) {
+    std::vector<std::unique_ptr<syncer::DeviceInfo>> devices;
     for (int i = 0; i < count; ++i) {
-      devices.push_back(SharingTargetDeviceInfo(
-          "guid_" + base::NumberToString(i), "name_" + base::NumberToString(i),
-          SharingDevicePlatform::kUnknown,
-          /*pulse_interval=*/base::TimeDelta(),
-          syncer::DeviceInfo::FormFactor::kUnknown,
-          /*last_updated_timestamp=*/base::Time()));
+      devices.push_back(
+          CreateFakeDeviceInfo("guid_" + base::NumberToString(i),
+                               "name_" + base::NumberToString(i)));
     }
     return devices;
   }
@@ -111,7 +107,7 @@ class SharingDialogViewTest : public TestWithBrowserView {
         IDS_BROWSER_SHARING_CLICK_TO_CALL_DIALOG_INITIATING_ORIGIN;
 
     data.device_callback =
-        base::BindLambdaForTesting([&](const SharingTargetDeviceInfo& device) {
+        base::BindLambdaForTesting([&](const syncer::DeviceInfo& device) {
           device_callback_.Call(device);
         });
     data.app_callback = base::BindLambdaForTesting(
@@ -122,12 +118,12 @@ class SharingDialogViewTest : public TestWithBrowserView {
 
   SharingDialogView* dialog() { return dialog_; }
 
-  testing::MockFunction<void(const SharingTargetDeviceInfo&)> device_callback_;
+  testing::MockFunction<void(const syncer::DeviceInfo&)> device_callback_;
   testing::MockFunction<void(const SharingApp&)> app_callback_;
 
  private:
-  raw_ptr<content::WebContents, DanglingUntriaged> web_contents_ = nullptr;
-  raw_ptr<SharingDialogView, DanglingUntriaged> dialog_ = nullptr;
+  raw_ptr<content::WebContents> web_contents_ = nullptr;
+  raw_ptr<SharingDialogView> dialog_ = nullptr;
 };
 
 TEST_F(SharingDialogViewTest, PopulateDialogView) {
@@ -139,7 +135,7 @@ TEST_F(SharingDialogViewTest, PopulateDialogView) {
 
 TEST_F(SharingDialogViewTest, DevicePressed) {
   EXPECT_CALL(device_callback_,
-              Call(Property(&SharingTargetDeviceInfo::guid, "guid_1")));
+              Call(Property(&syncer::DeviceInfo::guid, "guid_1")));
 
   auto dialog_data = CreateDialogData(/*devices=*/3, /*apps=*/2);
   CreateDialogView(std::move(dialog_data));

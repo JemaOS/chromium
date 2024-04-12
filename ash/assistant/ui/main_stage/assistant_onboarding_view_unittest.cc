@@ -73,9 +73,8 @@ void FindDescendentByClassName(views::View* parent, T** result) {
       return;
     }
 
-    for (views::View* child : candidate->children()) {
+    for (auto* child : candidate->children())
       children.push(child);
-    }
   }
 }
 
@@ -132,16 +131,15 @@ class ScopedShowUi {
   const AssistantVisibility original_visibility_;
 };
 
-// DISABLED_AssistantOnboardingViewTest
-// -------------------------------------------------
+// AssistantOnboardingViewTest -------------------------------------------------
 
-class DISABLED_AssistantOnboardingViewTest : public AssistantAshTestBase {
+class AssistantOnboardingViewTest : public AssistantAshTestBase {
  public:
-  DISABLED_AssistantOnboardingViewTest()
+  AssistantOnboardingViewTest()
       : AssistantAshTestBase(
             base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
 
-  ~DISABLED_AssistantOnboardingViewTest() override = default;
+  ~AssistantOnboardingViewTest() override = default;
 
   void AdvanceClock(base::TimeDelta time_delta) {
     task_environment()->AdvanceClock(time_delta);
@@ -168,7 +166,7 @@ class DISABLED_AssistantOnboardingViewTest : public AssistantAshTestBase {
 
 // Tests -----------------------------------------------------------------------
 
-TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHaveExpectedGreeting) {
+TEST_F(AssistantOnboardingViewTest, ShouldHaveExpectedGreeting) {
   struct ExpectedGreeting {
     std::u16string for_morning;
     std::u16string for_afternoon;
@@ -273,19 +271,19 @@ TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHaveExpectedGreeting) {
   }
 }
 
-TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHaveExpectedIntro) {
+TEST_F(AssistantOnboardingViewTest, ShouldHaveExpectedIntro) {
   ShowAssistantUi();
   EXPECT_EQ(intro_label()->GetText(),
             u"I'm your Google Assistant, here to help you throughout your day!"
             u"\nHere are some things you can try to get started.");
 }
 
-TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHaveExpectedSuggestions) {
+TEST_F(AssistantOnboardingViewTest, ShouldHaveExpectedSuggestions) {
   struct VectorIconWithColor {
     VectorIconWithColor(const gfx::VectorIcon& icon, SkColor color)
         : icon(icon), color(color) {}
 
-    const raw_ref<const gfx::VectorIcon> icon;
+    const raw_ref<const gfx::VectorIcon, ExperimentalAsh> icon;
     SkColor color;
   };
 
@@ -395,7 +393,7 @@ TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHaveExpectedSuggestions) {
   }
 }
 
-TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHandleSuggestionPresses) {
+TEST_F(AssistantOnboardingViewTest, ShouldHandleSuggestionPresses) {
   ShowAssistantUi();
 
   // Verify onboarding suggestions exist.
@@ -415,7 +413,7 @@ TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHandleSuggestionPresses) {
   TapOnAndWait(suggestion_views.at(0));
 }
 
-TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHandleSuggestionUpdates) {
+TEST_F(AssistantOnboardingViewTest, ShouldHandleSuggestionUpdates) {
   // Show Assistant UI and verify suggestions exist.
   ShowAssistantUi();
   ASSERT_FALSE(GetOnboardingSuggestionViews().empty());
@@ -437,7 +435,7 @@ TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHandleSuggestionUpdates) {
   EXPECT_EQ(suggestion_views.at(0)->GetText(), u"Forced suggestion");
 }
 
-TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHandleLocalIcons) {
+TEST_F(AssistantOnboardingViewTest, ShouldHandleLocalIcons) {
   SetOnboardingSuggestions({CreateSuggestionWithIconUrl(
       "googleassistant://resource?type=icon&name=assistant")});
 
@@ -452,7 +450,7 @@ TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHandleLocalIcons) {
   ASSERT_PIXELS_EQ(actual, expected);
 }
 
-TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHandleRemoteIcons) {
+TEST_F(AssistantOnboardingViewTest, ShouldHandleRemoteIcons) {
   const gfx::ImageSkia expected =
       gfx::test::CreateImageSkia(/*width=*/10, /*height=*/10);
 
@@ -480,7 +478,7 @@ TEST_F(DISABLED_AssistantOnboardingViewTest, ShouldHandleRemoteIcons) {
   EXPECT_TRUE(actual.BackedBySameObjectAs(expected));
 }
 
-TEST_F(DISABLED_AssistantOnboardingViewTest, DarkAndLightTheme) {
+TEST_F(AssistantOnboardingViewTest, DarkAndLightTheme) {
   AshColorProvider* color_provider = AshColorProvider::Get();
   auto* dark_light_mode_controller = DarkLightModeControllerImpl::Get();
   dark_light_mode_controller->OnActiveUserPrefServiceChanged(

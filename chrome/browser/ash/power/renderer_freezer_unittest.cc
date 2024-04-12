@@ -12,7 +12,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/run_loop.h"
-#include "base/values.h"
+#include "chrome/browser/ash/login/users/scoped_test_user_manager.h"
 #include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/test_extension_system.h"
@@ -21,13 +21,18 @@
 #include "chrome/test/base/testing_profile_manager.h"
 #include "chromeos/dbus/power/fake_power_manager_client.h"
 #include "chromeos/dbus/power_manager/suspend.pb.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_source.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/site_instance.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/mock_render_process_host.h"
+#include "extensions/browser/notification_types.h"
 #include "extensions/browser/process_manager.h"
 #include "extensions/browser/process_map.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/manifest_handlers/background_info.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest-death-test.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -154,7 +159,7 @@ class RendererFreezerTest : public testing::Test {
   }
 
   // Owned by |renderer_freezer_|.
-  raw_ptr<TestDelegate, DanglingUntriaged> test_delegate_;
+  raw_ptr<TestDelegate, ExperimentalAsh> test_delegate_;
   std::unique_ptr<RendererFreezer> renderer_freezer_;
 
  private:
@@ -198,7 +203,7 @@ TEST_F(RendererFreezerTest, ErrorThawingRenderers) {
   // The "threadsafe" style of death test re-executes the unit test binary,
   // which in turn re-initializes some global state leading to failed CHECKs.
   // Instead, we use the "fast" style here to prevent re-initialization.
-  GTEST_FLAG_SET(death_test_style, "fast");
+  ::testing::FLAGS_gtest_death_test_style = "fast";
   Init();
   test_delegate_->set_thaw_renderers_result(false);
 
@@ -267,14 +272,14 @@ class RendererFreezerTestWithExtensions : public RendererFreezerTest {
         rph_factory->CreateRenderProcessHost(profile_, site_instance.get());
 
     // Fake that the RenderProcessHost is hosting the gcm app.
-    extensions::ProcessMap::Get(profile_)->Insert(extension->id(),
-                                                  rph->GetID());
+    extensions::ProcessMap::Get(profile_)
+        ->Insert(extension->id(), rph->GetID(), site_instance->GetId());
 
     SimulateRenderProcessHostCreated(rph);
   }
 
   // Owned by |profile_manager_|.
-  raw_ptr<TestingProfile> profile_;
+  raw_ptr<TestingProfile, ExperimentalAsh> profile_;
   std::unique_ptr<TestingProfileManager> profile_manager_;
 
  private:
@@ -309,16 +314,22 @@ TEST_F(RendererFreezerTestWithExtensions, DoesNotFreezeGcmExtensionRenderers) {
   scoped_refptr<const extensions::Extension> gcm_app =
       extensions::ExtensionBuilder()
           .SetManifest(
-              base::Value::Dict()
+              extensions::DictionaryBuilder()
                   .Set("name", "GCM App")
                   .Set("version", "1.0.0")
                   .Set("manifest_version", 2)
-                  .Set("app", base::Value::Dict().Set(
-                                  "background",
-                                  base::Value::Dict().Set(
-                                      "scripts", base::Value::List().Append(
-                                                     "background.js"))))
-                  .Set("permissions", base::Value::List().Append("gcm")))
+                  .Set("app",
+                       extensions::DictionaryBuilder()
+                           .Set("background",
+                                extensions::DictionaryBuilder()
+                                    .Set("scripts", extensions::ListBuilder()
+                                                        .Append("background.js")
+                                                        .Build())
+                                    .Build())
+                           .Build())
+                  .Set("permissions",
+                       extensions::ListBuilder().Append("gcm").Build())
+                  .Build())
           .Build();
 
   // Now install it and give it a renderer.
@@ -339,15 +350,20 @@ TEST_F(RendererFreezerTestWithExtensions, FreezesNonGcmExtensionRenderers) {
   scoped_refptr<const extensions::Extension> background_app =
       extensions::ExtensionBuilder()
           .SetManifest(
-              base::Value::Dict()
+              extensions::DictionaryBuilder()
                   .Set("name", "Background App")
                   .Set("version", "1.0.0")
                   .Set("manifest_version", 2)
-                  .Set("app", base::Value::Dict().Set(
-                                  "background",
-                                  base::Value::Dict().Set(
-                                      "scripts", base::Value::List().Append(
-                                                     "background.js")))))
+                  .Set("app",
+                       extensions::DictionaryBuilder()
+                           .Set("background",
+                                extensions::DictionaryBuilder()
+                                    .Set("scripts", extensions::ListBuilder()
+                                                        .Append("background.js")
+                                                        .Build())
+                                    .Build())
+                           .Build())
+                  .Build())
           .Build();
 
   // Now install it and give it a renderer.

@@ -13,7 +13,6 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_address_errors.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_payer_errors.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_payment_validation_errors.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/weborigin/security_policy.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
@@ -30,12 +29,7 @@ struct CurrencyCodeTestCase {
 };
 
 class PaymentsCurrencyValidatorTest
-    : public testing::TestWithParam<CurrencyCodeTestCase> {
- public:
-  v8::Isolate* GetIsolate() { return task_environment_.isolate(); }
-
-  test::TaskEnvironment task_environment_;
-};
+    : public testing::TestWithParam<CurrencyCodeTestCase> {};
 
 const char* LongString2049() {
   static char long_string[2050];
@@ -48,14 +42,14 @@ const char* LongString2049() {
 TEST_P(PaymentsCurrencyValidatorTest, IsValidCurrencyCodeFormat) {
   String error_message;
   EXPECT_EQ(GetParam().expected_valid,
-            PaymentsValidators::IsValidCurrencyCodeFormat(
-                GetIsolate(), GetParam().code, &error_message))
+            PaymentsValidators::IsValidCurrencyCodeFormat(GetParam().code,
+                                                          &error_message))
       << error_message;
   EXPECT_EQ(GetParam().expected_valid, error_message.empty()) << error_message;
 
-  EXPECT_EQ(GetParam().expected_valid,
-            PaymentsValidators::IsValidCurrencyCodeFormat(
-                GetIsolate(), GetParam().code, nullptr));
+  EXPECT_EQ(
+      GetParam().expected_valid,
+      PaymentsValidators::IsValidCurrencyCodeFormat(GetParam().code, nullptr));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -94,23 +88,19 @@ std::ostream& operator<<(std::ostream& out, const TestCase& test_case) {
   return out;
 }
 
-class PaymentsAmountValidatorTest : public testing::TestWithParam<TestCase> {
- public:
-  v8::Isolate* GetIsolate() { return task_environment_.isolate(); }
-  test::TaskEnvironment task_environment_;
-};
+class PaymentsAmountValidatorTest : public testing::TestWithParam<TestCase> {};
 
 TEST_P(PaymentsAmountValidatorTest, IsValidAmountFormat) {
   String error_message;
   EXPECT_EQ(GetParam().expected_valid,
             PaymentsValidators::IsValidAmountFormat(
-                GetIsolate(), GetParam().input, "test value", &error_message))
+                GetParam().input, "test value", &error_message))
       << error_message;
   EXPECT_EQ(GetParam().expected_valid, error_message.empty()) << error_message;
 
   EXPECT_EQ(GetParam().expected_valid,
-            PaymentsValidators::IsValidAmountFormat(
-                GetIsolate(), GetParam().input, "test value", nullptr));
+            PaymentsValidators::IsValidAmountFormat(GetParam().input,
+                                                    "test value", nullptr));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -143,23 +133,19 @@ INSTANTIATE_TEST_SUITE_P(
                     TestCase("1.0.0", false),
                     TestCase("1/3", false)));
 
-class PaymentsRegionValidatorTest : public testing::TestWithParam<TestCase> {
- public:
-  v8::Isolate* GetIsolate() { return task_environment_.isolate(); }
-  test::TaskEnvironment task_environment_;
-};
+class PaymentsRegionValidatorTest : public testing::TestWithParam<TestCase> {};
 
 TEST_P(PaymentsRegionValidatorTest, IsValidCountryCodeFormat) {
   String error_message;
   EXPECT_EQ(GetParam().expected_valid,
-            PaymentsValidators::IsValidCountryCodeFormat(
-                GetIsolate(), GetParam().input, &error_message))
+            PaymentsValidators::IsValidCountryCodeFormat(GetParam().input,
+                                                         &error_message))
       << error_message;
   EXPECT_EQ(GetParam().expected_valid, error_message.empty()) << error_message;
 
-  EXPECT_EQ(GetParam().expected_valid,
-            PaymentsValidators::IsValidCountryCodeFormat(
-                GetIsolate(), GetParam().input, nullptr));
+  EXPECT_EQ(
+      GetParam().expected_valid,
+      PaymentsValidators::IsValidCountryCodeFormat(GetParam().input, nullptr));
 }
 
 INSTANTIATE_TEST_SUITE_P(CountryCodes,
@@ -182,12 +168,7 @@ struct ShippingAddressTestCase {
 };
 
 class PaymentsShippingAddressValidatorTest
-    : public testing::TestWithParam<ShippingAddressTestCase> {
- public:
-  v8::Isolate* GetIsolate() { return task_environment_.isolate(); }
-
-  test::TaskEnvironment task_environment_;
-};
+    : public testing::TestWithParam<ShippingAddressTestCase> {};
 
 TEST_P(PaymentsShippingAddressValidatorTest, IsValidShippingAddress) {
   payments::mojom::blink::PaymentAddressPtr address =
@@ -196,14 +177,12 @@ TEST_P(PaymentsShippingAddressValidatorTest, IsValidShippingAddress) {
 
   String error_message;
   EXPECT_EQ(GetParam().expected_valid,
-            PaymentsValidators::IsValidShippingAddress(GetIsolate(), address,
-                                                       &error_message))
+            PaymentsValidators::IsValidShippingAddress(address, &error_message))
       << error_message;
   EXPECT_EQ(GetParam().expected_valid, error_message.empty()) << error_message;
 
   EXPECT_EQ(GetParam().expected_valid,
-            PaymentsValidators::IsValidShippingAddress(GetIsolate(), address,
-                                                       nullptr));
+            PaymentsValidators::IsValidShippingAddress(address, nullptr));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -352,13 +331,7 @@ INSTANTIATE_TEST_SUITE_P(
                                     LongString2049(),
                                     false)));
 
-class PaymentMethodValidatorTest : public testing::Test {
- public:
-  v8::Isolate* GetIsolate() { return task_environment_.isolate(); }
-  test::TaskEnvironment task_environment_;
-};
-
-TEST_F(PaymentMethodValidatorTest, IsValidPaymentMethod) {
+TEST(PaymentMethodValidatorTest, IsValidPaymentMethod) {
   const struct {
     const char* payment_method;
     bool expected_valid;
@@ -379,16 +352,14 @@ TEST_F(PaymentMethodValidatorTest, IsValidPaymentMethod) {
 
   for (const auto& test_case : kTestCases) {
     EXPECT_EQ(test_case.expected_valid,
-              PaymentsValidators::IsValidMethodFormat(GetIsolate(),
-                                                      test_case.payment_method))
+              PaymentsValidators::IsValidMethodFormat(test_case.payment_method))
         << test_case.payment_method << " should be "
         << (test_case.expected_valid ? "valid" : "invalid");
   }
 }
 
-TEST_F(PaymentMethodValidatorTest, IsValidPaymentMethodSafelisted) {
-  EXPECT_FALSE(PaymentsValidators::IsValidMethodFormat(GetIsolate(),
-                                                       "http://alicepay.com"))
+TEST(PaymentMethodValidatorTest, IsValidPaymentMethodSafelisted) {
+  EXPECT_FALSE(PaymentsValidators::IsValidMethodFormat("http://alicepay.com"))
       << "http://alicepay.com is not a valid method format by default";
 
   base::test::ScopedCommandLine scoped_command_line;
@@ -398,8 +369,7 @@ TEST_F(PaymentMethodValidatorTest, IsValidPaymentMethodSafelisted) {
       "http://alicepay.com");
   network::SecureOriginAllowlist::GetInstance().ResetForTesting();
 
-  EXPECT_TRUE(PaymentsValidators::IsValidMethodFormat(GetIsolate(),
-                                                      "http://alicepay.com"))
+  EXPECT_TRUE(PaymentsValidators::IsValidMethodFormat("http://alicepay.com"))
       << "http://alicepay.com should be valid if safelisted";
 }
 

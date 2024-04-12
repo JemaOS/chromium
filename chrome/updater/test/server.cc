@@ -5,6 +5,7 @@
 #include "chrome/updater/test/server.h"
 
 #include <algorithm>
+#include <cctype>
 #include <iterator>
 #include <list>
 #include <memory>
@@ -16,7 +17,6 @@
 #include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
-#include "base/time/time.h"
 #include "chrome/updater/test/http_request.h"
 #include "chrome/updater/test/integration_test_commands.h"
 #include "chrome/updater/test/integration_tests_impl.h"
@@ -59,8 +59,7 @@ ScopedServer::ScopedServer(
   EXPECT_TRUE((test_server_handle_ = test_server_->StartAndReturnHandle()));
 
   integration_test_commands_->EnterTestMode(update_url(), crash_upload_url(),
-                                            device_management_url(),
-                                            base::Minutes(5));
+                                            device_management_url());
 }
 
 ScopedServer::~ScopedServer() {
@@ -75,10 +74,9 @@ ScopedServer::~ScopedServer() {
 }
 
 void ScopedServer::ExpectOnce(request::MatcherGroup request_matcher_group,
-                              const std::string& response_body,
-                              net::HttpStatusCode http_status_code) {
+                              const std::string& response_body) {
   request_matcher_groups_.push_back(std::move(request_matcher_group));
-  responses_.push_back(std::make_pair(http_status_code, response_body));
+  response_bodies_.push_back(response_body);
 }
 
 std::unique_ptr<net::test_server::HttpResponse> ScopedServer::HandleRequest(
@@ -102,21 +100,10 @@ std::unique_ptr<net::test_server::HttpResponse> ScopedServer::HandleRequest(
     response->set_code(net::HTTP_INTERNAL_SERVER_ERROR);
     return response;
   }
-
-  if (base::StartsWith(request.relative_url, download_path()) &&
-      !download_delay_.is_zero()) {
-    VLOG(0) << "Delay download response by: " << download_delay_;
-    response.reset(new net::test_server::DelayedHttpResponse(download_delay_));
-  }
-
-  const auto& [response_code, response_body] = responses_.front();
-  response->set_code(response_code);
-  if (base::StartsWith(request.relative_url, device_management_path())) {
-    response->set_content_type("application/x-protobuf");
-  }
-  response->set_content(response_body);
+  response->set_code(net::HTTP_OK);
+  response->set_content(response_bodies_.front());
   request_matcher_groups_.pop_front();
-  responses_.pop_front();
+  response_bodies_.pop_front();
   return response;
 }
 

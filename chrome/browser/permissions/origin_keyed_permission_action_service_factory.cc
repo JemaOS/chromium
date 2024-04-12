@@ -18,26 +18,20 @@ OriginKeyedPermissionActionServiceFactory::GetForProfile(Profile* profile) {
 // static
 OriginKeyedPermissionActionServiceFactory*
 OriginKeyedPermissionActionServiceFactory::GetInstance() {
-  static base::NoDestructor<OriginKeyedPermissionActionServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<OriginKeyedPermissionActionServiceFactory>::get();
 }
 
 OriginKeyedPermissionActionServiceFactory::
     OriginKeyedPermissionActionServiceFactory()
     : ProfileKeyedServiceFactory(
           "OriginKeyedPermissionActionService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 OriginKeyedPermissionActionServiceFactory::
     ~OriginKeyedPermissionActionServiceFactory() = default;
 
-std::unique_ptr<KeyedService> OriginKeyedPermissionActionServiceFactory::
-    BuildServiceInstanceForBrowserContext(
-        content::BrowserContext* context) const {
-  return std::make_unique<permissions::OriginKeyedPermissionActionService>();
+KeyedService*
+OriginKeyedPermissionActionServiceFactory::BuildServiceInstanceFor(
+    content::BrowserContext* context) const {
+  return new permissions::OriginKeyedPermissionActionService();
 }

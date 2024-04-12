@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {PageHandlerInterface} from './downloads.mojom-webui.js';
-import {PageCallbackRouter, PageHandlerFactory, PageHandlerRemote} from './downloads.mojom-webui.js';
+import {PageCallbackRouter, PageHandlerFactory, PageHandlerInterface, PageHandlerRemote} from './downloads.mojom-webui.js';
 
 export class BrowserProxy {
   callbackRouter: PageCallbackRouter;

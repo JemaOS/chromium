@@ -40,11 +40,9 @@ TEST_F(ApplyBlockElementCommandTest, selectionCrossingOverBody) {
   GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kTest);
   Selection().SetSelection(
       SelectionInDOMTree::Builder()
-          .SetBaseAndExtent(Position(GetDocument().documentElement(), 1),
-                            Position(GetDocument()
-                                         .getElementById(AtomicString("va"))
-                                         ->firstChild(),
-                                     2))
+          .SetBaseAndExtent(
+              Position(GetDocument().documentElement(), 1),
+              Position(GetDocument().getElementById("va")->firstChild(), 2))
           .Build(),
       SetSelectionOptions());
 
@@ -72,8 +70,7 @@ TEST_F(ApplyBlockElementCommandTest, visibilityChangeDuringCommand) {
   UpdateAllLifecyclePhasesForTest();
   Selection().SetSelection(
       SelectionInDOMTree::Builder()
-          .Collapse(
-              Position(GetDocument().QuerySelector(AtomicString("li")), 0))
+          .Collapse(Position(GetDocument().QuerySelector("li"), 0))
           .Build(),
       SetSelectionOptions());
 
@@ -94,8 +91,8 @@ TEST_F(ApplyBlockElementCommandTest, IndentHeadingIntoBlockquote) {
       "<h6><button><table></table></button></h6>"
       "<object></object>"
       "</div>");
-  Element* button = GetDocument().QuerySelector(AtomicString("button"));
-  Element* object = GetDocument().QuerySelector(AtomicString("object"));
+  Element* button = GetDocument().QuerySelector("button");
+  Element* object = GetDocument().QuerySelector("object");
   Selection().SetSelection(SelectionInDOMTree::Builder()
                                .Collapse(Position(button, 0))
                                .Extend(Position(object, 0))
@@ -165,10 +162,11 @@ TEST_F(ApplyBlockElementCommandTest,
       SetSelectionOptions());
   auto* command = MakeGarbageCollected<FormatBlockCommand>(GetDocument(),
                                                            html_names::kPreTag);
-  EXPECT_TRUE(command->Apply());
+  // Shouldn't crash here.
+  EXPECT_FALSE(command->Apply());
   EXPECT_EQ(
-      "<pre><table>|</table></pre>"
-      "<kbd style=\"-webkit-user-modify:read-only\"><button></button></kbd>",
+      "<table>^</table>"
+      "<kbd style=\"-webkit-user-modify:read-only\"><button>|</button></kbd>",
       GetSelectionTextFromBody());
 }
 
@@ -301,9 +299,12 @@ TEST_F(ApplyBlockElementCommandTest, IndentOutdentLinesCrash) {
       GetDocument(), IndentOutdentCommand::kOutdent);
 
   // Shouldn't crash, and the empty line between b and c should be preserved.
+  // TODO(editing-dev): Get rid of the empty blockquote.
   EXPECT_TRUE(outdent->Apply());
   EXPECT_EQ(
       "<div contenteditable>"
+      "<blockquote style=\"margin: 0 0 0 40px; border: none; padding: "
+      "0px;\"></blockquote>"
       "^a<br>"
       "b|<br><br>"
       "c"
@@ -343,9 +344,11 @@ TEST_F(ApplyBlockElementCommandTest, IndentOutdentLinesWithJunkCrash) {
   EXPECT_TRUE(outdent->Apply());
 
   // TODO(editing-dev): The result is wrong. We should preserve the empty line
-  // between b and c.
+  // between b and c, and get rid of the empty blockquote.
   EXPECT_EQ(
       "<div contenteditable>"
+      "<blockquote style=\"margin: 0 0 0 40px; border: none; padding: "
+      "0px;\"></blockquote>"
       "^a<br>"
       "b|"
       "<!----><br>"

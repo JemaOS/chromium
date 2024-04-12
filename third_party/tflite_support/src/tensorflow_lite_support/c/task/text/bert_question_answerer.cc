@@ -48,7 +48,8 @@ TfLiteBertQuestionAnswerer* TfLiteBertQuestionAnswererCreate(
 }
 
 TfLiteQaAnswers* TfLiteBertQuestionAnswererAnswer(
-    const TfLiteBertQuestionAnswerer* question_answerer, const char* context,
+    const TfLiteBertQuestionAnswerer* question_answerer,
+    const char* context,
     const char* question) {
   std::vector<QaAnswerCpp> answers = question_answerer->impl->Answer(
       absl::string_view(context).data(), absl::string_view(question).data());

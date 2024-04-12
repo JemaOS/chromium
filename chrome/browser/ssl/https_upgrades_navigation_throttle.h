@@ -34,7 +34,6 @@ class HttpsUpgradesNavigationThrottle : public content::NavigationThrottle {
 
   HttpsUpgradesNavigationThrottle(
       content::NavigationHandle* handle,
-      Profile* profile,
       std::unique_ptr<SecurityBlockingPageFactory> blocking_page_factory,
       security_interstitials::https_only_mode::HttpInterstitialState
           interstitial_state);
@@ -57,8 +56,6 @@ class HttpsUpgradesNavigationThrottle : public content::NavigationThrottle {
   static void set_timeout_for_testing(int timeout_in_seconds);
 
  private:
-  raw_ptr<Profile> profile_;
-
   std::unique_ptr<SecurityBlockingPageFactory> blocking_page_factory_;
 
   // Parameters about whether the throttle should trigger the interstitial

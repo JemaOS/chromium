@@ -1,9 +1,9 @@
 <?php
 
-    $fileName = $_GET["name"] ?? null;
-    $type = $_GET["type"] ?? null;
-    $norange = $_GET["norange"] ?? null;
-    $cors_allow_origin = $_GET["cors_allow_origin"] ?? null;
+    $fileName = $_GET["name"];
+    $type = $_GET["type"];
+    $norange = $_GET["norange"];
+    $cors_allow_origin = $_GET["cors_allow_origin"];
 
     $_GET = array();
     $_GET['name'] = $fileName;

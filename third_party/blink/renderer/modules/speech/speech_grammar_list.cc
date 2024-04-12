@@ -38,7 +38,7 @@ SpeechGrammar* SpeechGrammarList::item(unsigned index) const {
   if (index >= grammars_.size())
     return nullptr;
 
-  return grammars_[index].Get();
+  return grammars_[index];
 }
 
 void SpeechGrammarList::addFromUri(ScriptState* script_state,

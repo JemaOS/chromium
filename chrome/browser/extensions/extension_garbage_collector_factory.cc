@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/extensions/extension_garbage_collector.h"
@@ -31,8 +31,7 @@ ExtensionGarbageCollectorFactory::GetForBrowserContext(
 // static
 ExtensionGarbageCollectorFactory*
 ExtensionGarbageCollectorFactory::GetInstance() {
-  static base::NoDestructor<ExtensionGarbageCollectorFactory> instance;
-  return instance.get();
+  return base::Singleton<ExtensionGarbageCollectorFactory>::get();
 }
 
 ExtensionGarbageCollectorFactory::ExtensionGarbageCollectorFactory()
@@ -48,7 +47,7 @@ ExtensionGarbageCollectorFactory::ExtensionGarbageCollectorFactory()
   DependsOn(InstallTrackerFactory::GetInstance());
 }
 
-ExtensionGarbageCollectorFactory::~ExtensionGarbageCollectorFactory() = default;
+ExtensionGarbageCollectorFactory::~ExtensionGarbageCollectorFactory() {}
 
 // static
 std::unique_ptr<KeyedService>
@@ -61,10 +60,9 @@ ExtensionGarbageCollectorFactory::BuildInstanceFor(
 #endif
 }
 
-std::unique_ptr<KeyedService>
-ExtensionGarbageCollectorFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ExtensionGarbageCollectorFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return BuildInstanceFor(context);
+  return BuildInstanceFor(context).release();
 }
 
 bool ExtensionGarbageCollectorFactory::ServiceIsCreatedWithBrowserContext()

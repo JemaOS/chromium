@@ -25,7 +25,8 @@ class WebIdentityRequester;
 // FedCM prompt.
 class WebIdentityWindowOnloadEventListener : public NativeEventListener {
  public:
-  WebIdentityWindowOnloadEventListener(Document*, WebIdentityRequester*);
+  explicit WebIdentityWindowOnloadEventListener(Document*,
+                                                WebIdentityRequester*);
 
   void Trace(Visitor* visitor) const override;
 

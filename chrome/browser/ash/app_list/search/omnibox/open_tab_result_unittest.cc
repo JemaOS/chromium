@@ -111,7 +111,7 @@ TEST_F(OpenTabResultTest, Basic) {
                                                      u", ")}));
   result->Open(0);
   EXPECT_EQ("http://www.website.com/", GetLastOpenedUrl().spec());
-  EXPECT_EQ(result->DriveId(), std::nullopt);
+  EXPECT_EQ(result->DriveId(), absl::nullopt);
 }
 
 TEST_F(OpenTabResultTest, ManuallyCalculateRelevance) {
@@ -149,7 +149,6 @@ TEST_F(OpenTabResultTest, Favicon) {
   std::move(return_icon_callback).Run(mock_icon_result);
   base::RunLoop().RunUntilIdle();
 
-  EXPECT_TRUE(
-      ImageSkiasEqual(TestIcon(), result->icon().icon.Rasterize(nullptr)));
+  EXPECT_TRUE(ImageSkiasEqual(TestIcon(), result->icon().icon));
 }
 }  // namespace app_list::test

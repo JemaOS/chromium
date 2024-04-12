@@ -31,15 +31,9 @@
 #include "third_party/blink/renderer/platform/fonts/generic_font_family_settings.h"
 
 #include <memory>
-
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
 
 namespace blink {
-
-// A holdback feature to measure the performance impact.
-BASE_FEATURE(kGenericFontSettingCache,
-             "GenericFontSettingCache",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 GenericFontFamilySettings::GenericFontFamilySettings(
     const GenericFontFamilySettings& other)
@@ -87,60 +81,14 @@ const AtomicString& GenericFontFamilySettings::GenericFontFamilyForScript(
   ScriptFontFamilyMap::iterator it =
       const_cast<ScriptFontFamilyMap&>(font_map).find(static_cast<int>(script));
   if (it != font_map.end()) {
-    // If it is not a list, just return it.
-    if (it->value.empty() || it->value[0] != ',') {
-      return it->value;
-    }
-    if (!base::FeatureList().IsEnabled(kGenericFontSettingCache)) {
-      // Replace with the first available font if it starts with ",".
+    // Replace with the first available font if it starts with ",".
+    if (!it->value.empty() && it->value[0] == ',')
       it->value = AtomicString(FontCache::FirstAvailableOrFirst(it->value));
-      return it->value;
-    }
-
-    if (auto font_cache_it = first_available_font_for_families_.find(it->value);
-        font_cache_it != first_available_font_for_families_.end()) {
-      // If another script has already used the font and cached the result,
-      // just use the cached data.
-      it->value = font_cache_it->value;
-    } else {
-      // Add the result to cache.
-      AtomicString first_available_font =
-          AtomicString(FontCache::FirstAvailableOrFirst(it->value));
-      first_available_font_for_families_.Set(it->value, first_available_font);
-      it->value = first_available_font;
-    }
     return it->value;
   }
   if (script != USCRIPT_COMMON)
     return GenericFontFamilyForScript(font_map, USCRIPT_COMMON);
   return g_empty_atom;
-}
-
-bool GenericFontFamilySettings::ShouldUpdateFontFamily(
-    const AtomicString& old_first_available_family,
-    const AtomicString& new_family) const {
-  // If the two font families are already the same.
-  if (new_family == old_first_available_family) {
-    return false;
-  }
-  // If the feature is disabled, it does not use the cache and just say the two
-  // settings are different.
-  if (!base::FeatureList().IsEnabled(kGenericFontSettingCache)) {
-    return true;
-  }
-  // Then if the new family is not a list, this should update the setting.
-  if (new_family.empty() || new_family[0] != ',') {
-    return true;
-  }
-
-  // If the list of new specified families' first available font has already
-  // been cached and it is the same as 'old_first_available_family`, we do not
-  // need ot update font setting.
-  if (auto it = first_available_font_for_families_.find(new_family);
-      it != first_available_font_for_families_.end()) {
-    return it->value != old_first_available_family;
-  }
-  return true;
 }
 
 const AtomicString& GenericFontFamilySettings::Standard(
@@ -150,12 +98,8 @@ const AtomicString& GenericFontFamilySettings::Standard(
 
 bool GenericFontFamilySettings::UpdateStandard(const AtomicString& family,
                                                UScriptCode script) {
-  auto& old_family = base::FeatureList().IsEnabled(kGenericFontSettingCache)
-                         ? Standard(script)
-                         : Standard();
-  if (!ShouldUpdateFontFamily(old_family, family)) {
+  if (family == Standard())
     return false;
-  }
   SetGenericFontFamilyMap(standard_font_family_map_, family, script);
   return true;
 }
@@ -166,12 +110,8 @@ const AtomicString& GenericFontFamilySettings::Fixed(UScriptCode script) const {
 
 bool GenericFontFamilySettings::UpdateFixed(const AtomicString& family,
                                             UScriptCode script) {
-  const AtomicString& old_family =
-      base::FeatureList().IsEnabled(kGenericFontSettingCache) ? Fixed(script)
-                                                              : Fixed();
-  if (!ShouldUpdateFontFamily(old_family, family)) {
+  if (family == Fixed())
     return false;
-  }
   SetGenericFontFamilyMap(fixed_font_family_map_, family, script);
   return true;
 }
@@ -182,12 +122,8 @@ const AtomicString& GenericFontFamilySettings::Serif(UScriptCode script) const {
 
 bool GenericFontFamilySettings::UpdateSerif(const AtomicString& family,
                                             UScriptCode script) {
-  const AtomicString& old_family =
-      base::FeatureList().IsEnabled(kGenericFontSettingCache) ? Serif(script)
-                                                              : Serif();
-  if (!ShouldUpdateFontFamily(old_family, family)) {
+  if (family == Serif())
     return false;
-  }
   SetGenericFontFamilyMap(serif_font_family_map_, family, script);
   return true;
 }
@@ -199,13 +135,8 @@ const AtomicString& GenericFontFamilySettings::SansSerif(
 
 bool GenericFontFamilySettings::UpdateSansSerif(const AtomicString& family,
                                                 UScriptCode script) {
-  const AtomicString& old_family =
-      base::FeatureList().IsEnabled(kGenericFontSettingCache)
-          ? SansSerif(script)
-          : SansSerif();
-  if (!ShouldUpdateFontFamily(old_family, family)) {
+  if (family == SansSerif())
     return false;
-  }
   SetGenericFontFamilyMap(sans_serif_font_family_map_, family, script);
   return true;
 }
@@ -217,12 +148,8 @@ const AtomicString& GenericFontFamilySettings::Cursive(
 
 bool GenericFontFamilySettings::UpdateCursive(const AtomicString& family,
                                               UScriptCode script) {
-  const AtomicString& old_family =
-      base::FeatureList().IsEnabled(kGenericFontSettingCache) ? Cursive(script)
-                                                              : Cursive();
-  if (!ShouldUpdateFontFamily(old_family, family)) {
+  if (family == Cursive())
     return false;
-  }
   SetGenericFontFamilyMap(cursive_font_family_map_, family, script);
   return true;
 }
@@ -234,12 +161,8 @@ const AtomicString& GenericFontFamilySettings::Fantasy(
 
 bool GenericFontFamilySettings::UpdateFantasy(const AtomicString& family,
                                               UScriptCode script) {
-  const AtomicString& old_family =
-      base::FeatureList().IsEnabled(kGenericFontSettingCache) ? Fantasy(script)
-                                                              : Fantasy();
-  if (!ShouldUpdateFontFamily(old_family, family)) {
+  if (family == Fantasy())
     return false;
-  }
   SetGenericFontFamilyMap(fantasy_font_family_map_, family, script);
   return true;
 }
@@ -250,12 +173,8 @@ const AtomicString& GenericFontFamilySettings::Math(UScriptCode script) const {
 
 bool GenericFontFamilySettings::UpdateMath(const AtomicString& family,
                                            UScriptCode script) {
-  const AtomicString& old_family =
-      base::FeatureList().IsEnabled(kGenericFontSettingCache) ? Math(script)
-                                                              : Math();
-  if (!ShouldUpdateFontFamily(old_family, family)) {
+  if (family == Math())
     return false;
-  }
   SetGenericFontFamilyMap(math_font_family_map_, family, script);
   return true;
 }
@@ -268,7 +187,6 @@ void GenericFontFamilySettings::Reset() {
   cursive_font_family_map_.clear();
   fantasy_font_family_map_.clear();
   math_font_family_map_.clear();
-  first_available_font_for_families_.clear();
 }
 
 }  // namespace blink

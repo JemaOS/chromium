@@ -28,7 +28,7 @@ class ModulePendingScriptTreeClient final : public ModuleTreeClient {
 
   void SetPendingScript(ModulePendingScript* client);
 
-  ModuleScript* GetModuleScript() const { return module_script_.Get(); }
+  ModuleScript* GetModuleScript() const { return module_script_; }
 
   void Trace(Visitor*) const override;
 
@@ -47,8 +47,7 @@ class CORE_EXPORT ModulePendingScript : public PendingScript {
  public:
   ModulePendingScript(ScriptElementBase*,
                       ModulePendingScriptTreeClient*,
-                      bool is_external,
-                      scheduler::TaskAttributionInfo* parent_task);
+                      bool is_external);
   ~ModulePendingScript() override;
 
   void NotifyModuleTreeLoadFinished();

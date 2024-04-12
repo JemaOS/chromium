@@ -10,15 +10,22 @@
 #include "chrome/browser/policy/chrome_browser_policy_connector.h"
 
 namespace enterprise_connectors {
+
+BASE_FEATURE(kExtensionEventsEnabled,
+             "ExtensionEventsEnabled",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kBrowserCrashEventsEnabled,
+             "BrowserCrashEventsEnabled",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 namespace {
 
 constexpr char kReportingConnectorUrlFlag[] = "reporting-connector-url";
 
-std::optional<GURL> GetUrlOverride() {
+absl::optional<GURL> GetUrlOverride() {
   // Ignore this flag on Stable and Beta to avoid abuse.
   if (!g_browser_process || !g_browser_process->browser_policy_connector()
                                  ->IsCommandLineSwitchSupported()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   base::CommandLine* cmd = base::CommandLine::ForCurrentProcess();
@@ -30,7 +37,7 @@ std::optional<GURL> GetUrlOverride() {
       VLOG(1) << "--reporting-connector-url is set to an invalid URL";
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace
@@ -99,10 +106,10 @@ ReportingServiceSettings::ReportingServiceSettings(
   }
 }
 
-std::optional<ReportingSettings>
+absl::optional<ReportingSettings>
 ReportingServiceSettings::GetReportingSettings() const {
   if (!IsValid())
-    return std::nullopt;
+    return absl::nullopt;
 
   ReportingSettings settings;
 

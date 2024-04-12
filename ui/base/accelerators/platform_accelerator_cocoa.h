@@ -10,23 +10,20 @@
 #include "base/component_export.h"
 #include "ui/base/accelerators/accelerator.h"
 
-COMPONENT_EXPORT(UI_BASE)
-@interface KeyEquivalentAndModifierMask : NSObject
-
-@property(readonly) NSString* keyEquivalent;
-@property(readonly) NSUInteger modifierMask;
-
-@end
-
 namespace ui {
 
+// Returns |true| if there is an associated NSMenuItem, and populates output
+// variables |key_equivalent| and |modifier_mask|.
+//
 // On macOS, accelerators are primarily handled by the main menu. Most
 // accelerators have an associated NSMenuItem. Each NSMenuItem is specified with
-// a `key_equivalent` and `modifier_mask`. This function takes a ui::Accelerator
-// and returns the associated `key_equivalent` and `modifier_mask`.
+// a |key_equivalent| and |modifier_mask|. This function takes a ui::Accelerator
+// and returns the associated |key_equivalent| and |modifier_mask|.
 COMPONENT_EXPORT(UI_BASE)
-KeyEquivalentAndModifierMask* GetKeyEquivalentAndModifierMaskFromAccelerator(
-    const ui::Accelerator& accelerator);
+void GetKeyEquivalentAndModifierMaskFromAccelerator(
+    const ui::Accelerator& accelerator,
+    NSString** key_equivalent,
+    NSUInteger* modifier_mask);
 
 }  // namespace ui
 

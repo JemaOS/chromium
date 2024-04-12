@@ -6,7 +6,6 @@
 
 #include "third_party/blink/public/mojom/webid/federated_auth_request.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_identity_resolve_options.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_identity_user_info.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
@@ -27,12 +26,18 @@ namespace {
 
 using mojom::blink::RequestUserInfoStatus;
 
-void OnRequestUserInfo(
-    ScriptPromiseResolverTyped<IDLSequence<IdentityUserInfo>>* resolver,
-    RequestUserInfoStatus status,
-    std::optional<Vector<mojom::blink::IdentityUserInfoPtr>>
-        all_user_info_ptr) {
+void OnRequestUserInfo(ScriptPromiseResolver* resolver,
+                       RequestUserInfoStatus status,
+                       absl::optional<Vector<mojom::blink::IdentityUserInfoPtr>>
+                           all_user_info_ptr) {
   switch (status) {
+    case RequestUserInfoStatus::kErrorTooManyRequests: {
+      resolver->Reject(MakeGarbageCollected<DOMException>(
+          DOMExceptionCode::kAbortError,
+          "Only one IdentityCredential.getUserInfo request may be outstanding "
+          "at one time."));
+      return;
+    }
     case RequestUserInfoStatus::kError: {
       resolver->Reject(MakeGarbageCollected<DOMException>(
           DOMExceptionCode::kNetworkError, "Error retrieving user info."));
@@ -61,14 +66,13 @@ void OnRequestUserInfo(
 
 }  // namespace
 
-ScriptPromiseTyped<IDLSequence<IdentityUserInfo>> IdentityProvider::getUserInfo(
+ScriptPromise IdentityProvider::getUserInfo(
     ScriptState* script_state,
     const blink::IdentityProviderConfig* provider,
     ExceptionState& exception_state) {
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLSequence<IdentityUserInfo>>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
   if (!resolver->GetExecutionContext()->IsFeatureEnabled(
           mojom::blink::PermissionsPolicyFeature::kIdentityCredentialsGet)) {
     resolver->Reject(MakeGarbageCollected<DOMException>(
@@ -123,29 +127,41 @@ ScriptPromiseTyped<IDLSequence<IdentityUserInfo>> IdentityProvider::getUserInfo(
   return promise;
 }
 
-void IdentityProvider::close(ScriptState* script_state) {
+void IdentityProvider::login(ScriptState* script_state) {
+  // TODO(https://crbug.com/1382193): Determine if we should add an origin
+  // parameter.
+  auto* context = ExecutionContext::From(script_state);
   auto* request =
       CredentialManagerProxy::From(script_state)->FederatedAuthRequest();
-  request->CloseModalDialogView();
+  request->SetIdpSigninStatus(context->GetSecurityOrigin(),
+                              mojom::blink::IdpSigninStatus::kSignedIn);
 }
 
-void OnRegisterIdP(ScriptPromiseResolverTyped<IDLBoolean>* resolver,
-                   bool accepted) {
+void IdentityProvider::logout(ScriptState* script_state) {
+  // TODO(https://crbug.com/1382193): Determine if we should add an origin
+  // parameter.
+  auto* context = ExecutionContext::From(script_state);
+  auto* request =
+      CredentialManagerProxy::From(script_state)->FederatedAuthRequest();
+  request->SetIdpSigninStatus(context->GetSecurityOrigin(),
+                              mojom::blink::IdpSigninStatus::kSignedOut);
+}
+
+void OnRegisterIdP(ScriptPromiseResolver* resolver, bool accepted) {
   if (!accepted) {
     resolver->Reject(MakeGarbageCollected<DOMException>(
         DOMExceptionCode::kNotAllowedError,
         "User declined the permission to register the Identity Provider."));
     return;
   }
-  resolver->Resolve(true);
+  resolver->Resolve();
 }
 
-ScriptPromiseTyped<IDLBoolean> IdentityProvider::registerIdentityProvider(
+ScriptPromise IdentityProvider::registerIdentityProvider(
     ScriptState* script_state,
     const String& configURL) {
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<IDLBoolean>>(
-      script_state);
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   auto* request =
       CredentialManagerProxy::From(script_state)->FederatedAuthRequest();
@@ -155,64 +171,27 @@ ScriptPromiseTyped<IDLBoolean> IdentityProvider::registerIdentityProvider(
   return promise;
 }
 
-void OnUnregisterIdP(ScriptPromiseResolverTyped<IDLUndefined>* resolver,
-                     bool accepted) {
+void OnUnregisterIdP(ScriptPromiseResolver* resolver, bool accepted) {
   if (!accepted) {
-    resolver->RejectWithDOMException(
+    resolver->Reject(MakeGarbageCollected<DOMException>(
         DOMExceptionCode::kNotAllowedError,
-        "Not allowed to unregister the Identity Provider.");
+        "Not allowed to unregister the Identity Provider."));
     return;
   }
   resolver->Resolve();
 }
 
-ScriptPromiseTyped<IDLUndefined> IdentityProvider::unregisterIdentityProvider(
+ScriptPromise IdentityProvider::unregisterIdentityProvider(
     ScriptState* script_state,
     const String& configURL) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state);
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   auto* request =
       CredentialManagerProxy::From(script_state)->FederatedAuthRequest();
   request->UnregisterIdP(
       KURL(configURL),
       WTF::BindOnce(&OnUnregisterIdP, WrapPersistent(resolver)));
-
-  return promise;
-}
-
-void OnResolveTokenRequest(ScriptPromiseResolverTyped<IDLUndefined>* resolver,
-                           bool accepted) {
-  if (!accepted) {
-    resolver->RejectWithDOMException(DOMExceptionCode::kNotAllowedError,
-                                     "Not allowed to provide a token.");
-    return;
-  }
-  resolver->Resolve();
-}
-
-ScriptPromiseTyped<IDLUndefined> IdentityProvider::resolve(
-    ScriptState* script_state,
-    const String& token,
-    const IdentityResolveOptions* options) {
-  DCHECK(options);
-  String account_id;
-  if (options->hasAccountId() && !options->accountId().empty()) {
-    account_id = options->accountId();
-  }
-
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state);
-  auto promise = resolver->Promise();
-
-  auto* request =
-      CredentialManagerProxy::From(script_state)->FederatedAuthRequest();
-  request->ResolveTokenRequest(
-      account_id, token,
-      WTF::BindOnce(&OnResolveTokenRequest, WrapPersistent(resolver)));
 
   return promise;
 }

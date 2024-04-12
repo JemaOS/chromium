@@ -22,7 +22,7 @@ SharingMessageSender::SharingMessageSender(
 SharingMessageSender::~SharingMessageSender() = default;
 
 base::OnceClosure SharingMessageSender::SendMessageToDevice(
-    const SharingTargetDeviceInfo& device,
+    const syncer::DeviceInfo& device,
     base::TimeDelta response_timeout,
     chrome_browser_sharing::SharingMessage message,
     DelegateType delegate_type,
@@ -40,11 +40,12 @@ base::OnceClosure SharingMessageSender::SendMessageToDevice(
   std::string message_guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
   chrome_browser_sharing::MessageType message_type =
       SharingPayloadCaseToMessageType(message.payload_case());
+  SharingDevicePlatform receiver_device_platform = GetDevicePlatform(device);
 
   auto [it, inserted] = message_metadata_.insert_or_assign(
       message_guid, SentMessageMetadata(
                         std::move(callback), base::TimeTicks::Now(),
-                        message_type, device.platform(), trace_id,
+                        message_type, receiver_device_platform, trace_id,
                         SharingChannelType::kUnknown, device.pulse_interval()));
   DCHECK(inserted);
 
@@ -97,7 +98,7 @@ base::OnceClosure SharingMessageSender::SendMessageToDevice(
 
 void SharingMessageSender::OnMessageSent(const std::string& message_guid,
                                          SharingSendMessageResult result,
-                                         std::optional<std::string> message_id,
+                                         absl::optional<std::string> message_id,
                                          SharingChannelType channel_type) {
   auto metadata_iter = message_metadata_.find(message_guid);
   DCHECK(metadata_iter != message_metadata_.end());
@@ -139,6 +140,11 @@ void SharingMessageSender::OnAckReceived(
 
   auto metadata_iter = message_metadata_.find(message_guid);
   DCHECK(metadata_iter != message_metadata_.end());
+  const SentMessageMetadata& metadata = metadata_iter->second;
+
+  LogSharingMessageAckTime(metadata.type, metadata.receiver_device_platform,
+                           metadata.channel_type,
+                           base::TimeTicks::Now() - metadata.timestamp);
 
   InvokeSendMessageCallback(message_guid, SharingSendMessageResult::kSuccessful,
                             std::move(response));

@@ -37,8 +37,9 @@ class TestRankerManager : public RankerManager {
                            ProviderType provider) override;
 
   // Ranker:
-  void Start(const std::u16string& query, CategoriesList& categories) override {
-  }
+  void Start(const std::u16string& query,
+             ResultsMap& results,
+             CategoriesList& categories) override {}
   void Train(const LaunchData& launch) override;
   void Remove(ChromeSearchResult* result) override {}
 

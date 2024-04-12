@@ -25,21 +25,21 @@ AuthToken::AuthToken(const UserContext& user_context)
 
 AuthToken::~AuthToken() = default;
 
-std::optional<std::string> AuthToken::Identifier() const {
+absl::optional<std::string> AuthToken::Identifier() const {
   if (!user_context_)
-    return std::nullopt;
+    return absl::nullopt;
   return identifier_.ToString();
 }
 
-std::optional<base::UnguessableToken> AuthToken::GetUnguessableToken() const {
+absl::optional<base::UnguessableToken> AuthToken::GetUnguessableToken() const {
   if (!user_context_)
-    return std::nullopt;
+    return absl::nullopt;
   return identifier_;
 }
 
-std::optional<base::TimeDelta> AuthToken::GetAge() const {
+absl::optional<base::TimeDelta> AuthToken::GetAge() const {
   if (!user_context_)
-    return std::nullopt;
+    return absl::nullopt;
   return base::TimeTicks::Now() - creation_time_;
 }
 

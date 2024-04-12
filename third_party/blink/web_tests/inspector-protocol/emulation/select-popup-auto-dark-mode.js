@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startHTML(`
   <script src="../../resources/testdriver.js"></script>
   <script src="../../resources/testdriver-vendor.js"></script>

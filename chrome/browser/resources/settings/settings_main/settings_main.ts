@@ -7,7 +7,7 @@
  * 'settings-main' displays the selected settings page.
  */
 import 'chrome://resources/cr_components/managed_footnote/managed_footnote.js';
-import '/shared/settings/prefs/prefs.js';
+import 'chrome://resources/cr_components/settings_prefs/prefs.js';
 import 'chrome://resources/cr_elements/cr_shared_style.css.js';
 import 'chrome://resources/cr_elements/cr_hidden_style.css.js';
 import 'chrome://resources/cr_elements/icons.html.js';
@@ -23,7 +23,7 @@ import {getInstance as getAnnouncerInstance} from 'chrome://resources/cr_element
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {loadTimeData} from '../i18n_setup.js';
-import type {PageVisibility} from '../page_visibility.js';
+import {PageVisibility} from '../page_visibility.js';
 import {routes} from '../route.js';
 import {RouteObserverMixin, Router} from '../router.js';
 
@@ -58,6 +58,11 @@ export class SettingsMainElement extends SettingsMainElementBase {
        */
       prefs: {
         type: Object,
+        notify: true,
+      },
+
+      advancedToggleExpanded: {
+        type: Boolean,
         notify: true,
       },
 
@@ -102,6 +107,7 @@ export class SettingsMainElement extends SettingsMainElementBase {
   }
 
   prefs: {[key: string]: any};
+  advancedToggleExpanded: boolean;
   private showPages_: MainPageVisibility;
   private inSearchMode_: boolean;
   private showNoResultsFound_: boolean;

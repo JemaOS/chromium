@@ -142,10 +142,6 @@ inline ContainerNode* ParentCrossingShadowBoundaries<EditingInFlatTreeStrategy>(
   return FlatTreeTraversal::Parent(node);
 }
 
-void WriteImageToClipboard(SystemClipboard& system_clipboard,
-                           const scoped_refptr<Image>& image,
-                           const KURL& url_string,
-                           const String& title);
 void WriteImageNodeToClipboard(SystemClipboard&, const Node&, const String&);
 
 // boolean functions on Node
@@ -177,7 +173,7 @@ bool IsListItem(const Node*);
 bool IsListItemTag(const Node*);
 bool IsListElementTag(const Node*);
 bool IsPresentationalHTMLElement(const Node*);
-CORE_EXPORT bool IsRenderedAsNonInlineTableImageOrHR(const Node*);
+bool IsRenderedAsNonInlineTableImageOrHR(const Node*);
 bool IsNonTableCellHTMLBlockElement(const Node*);
 bool IsBlockFlowElement(const Node&);
 bool IsInPasswordField(const Position&);
@@ -386,6 +382,8 @@ gfx::QuadF LocalToAbsoluteQuadOf(const LocalCaretRect&);
 // -------------------------------------------------------------------------
 
 // Functions dispatch InputEvent
+InputEvent::EventCancelable InputTypeIsCancelable(
+    InputEvent::InputType input_type);
 const StaticRangeVector* TargetRangesForInputEvent(const Node&);
 DispatchEventResult DispatchBeforeInputInsertText(
     Node*,

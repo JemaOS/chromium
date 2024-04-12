@@ -9,7 +9,6 @@
 #include "ash/login/ui/views_utils.h"
 #include "ash/style/ash_color_provider.h"
 #include "base/functional/bind.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/animation/flood_fill_ink_drop_ripple.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/animation/ink_drop_highlight.h"
@@ -58,7 +57,7 @@ LoginButton::LoginButton(PressedCallback callback)
   SetInstallFocusRingOnFocus(true);
   views::FocusRing::Get(this)->SetColorId(ui::kColorAshFocusRing);
   login_views_utils::ConfigureRectFocusRingCircleInkDrop(
-      this, views::FocusRing::Get(this), std::nullopt);
+      this, views::FocusRing::Get(this), absl::nullopt);
 }
 
 LoginButton::~LoginButton() = default;
@@ -66,8 +65,5 @@ LoginButton::~LoginButton() = default;
 int LoginButton::GetInkDropRadius() const {
   return std::min(GetLocalBounds().width(), GetLocalBounds().height()) / 2;
 }
-
-BEGIN_METADATA(LoginButton)
-END_METADATA
 
 }  // namespace ash

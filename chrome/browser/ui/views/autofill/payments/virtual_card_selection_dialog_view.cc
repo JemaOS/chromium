@@ -110,7 +110,7 @@ std::u16string VirtualCardSelectionDialogView::GetWindowTitle() const {
   return controller_->GetContentTitle();
 }
 
-BEGIN_METADATA(VirtualCardSelectionDialogView)
+BEGIN_METADATA(VirtualCardSelectionDialogView, views::DialogDelegateView)
 END_METADATA
 
 }  // namespace autofill

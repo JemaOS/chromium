@@ -28,9 +28,9 @@ class ScrollBar;
 //
 ///////////////////////////////////////////////////////////////////////////////
 class VIEWS_EXPORT BaseScrollBarThumb : public View {
-  METADATA_HEADER(BaseScrollBarThumb, View)
-
  public:
+  METADATA_HEADER(BaseScrollBarThumb);
+
   explicit BaseScrollBarThumb(ScrollBar* scroll_bar);
 
   BaseScrollBarThumb(const BaseScrollBarThumb&) = delete;

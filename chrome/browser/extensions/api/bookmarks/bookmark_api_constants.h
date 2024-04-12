@@ -21,7 +21,6 @@ extern const char kNoParentError[];
 extern const char kFolderNotEmptyError[];
 extern const char kInvalidIdError[];
 extern const char kInvalidIndexError[];
-extern const char kInvalidParentError[];
 extern const char kInvalidUrlError[];
 extern const char kModifySpecialError[];
 extern const char kEditBookmarksDisabled[];

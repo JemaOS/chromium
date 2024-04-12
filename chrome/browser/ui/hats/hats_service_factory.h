@@ -5,10 +5,10 @@
 #ifndef CHROME_BROWSER_UI_HATS_HATS_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_UI_HATS_HATS_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
-#include "chrome/browser/ui/hats/hats_service.h"
 
+class HatsService;
 class Profile;
 
 class HatsServiceFactory : public ProfileKeyedServiceFactory {
@@ -17,17 +17,16 @@ class HatsServiceFactory : public ProfileKeyedServiceFactory {
   HatsServiceFactory& operator=(const HatsServiceFactory&) = delete;
 
   static HatsService* GetForProfile(Profile* profile, bool create_if_necessary);
-
   static HatsServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<HatsServiceFactory>;
+  friend struct base::DefaultSingletonTraits<HatsServiceFactory>;
 
   HatsServiceFactory();
   ~HatsServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

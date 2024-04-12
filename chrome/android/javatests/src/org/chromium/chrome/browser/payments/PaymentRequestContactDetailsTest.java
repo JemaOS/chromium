@@ -17,18 +17,20 @@ import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.browser.autofill.AutofillTestHelper;
+import org.chromium.chrome.browser.autofill.PersonalDataManager.AutofillProfile;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.payments.PaymentRequestTestRule.AppPresence;
 import org.chromium.chrome.browser.payments.PaymentRequestTestRule.FactorySpeed;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.R;
-import org.chromium.components.autofill.AutofillProfile;
 import org.chromium.components.payments.Event;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
 
 import java.util.concurrent.TimeoutException;
 
-/** A payment integration test for a merchant that requests contact details. */
+/**
+ * A payment integration test for a merchant that requests contact details.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 public class PaymentRequestContactDetailsTest {
@@ -40,79 +42,29 @@ public class PaymentRequestContactDetailsTest {
     public void setUp() throws TimeoutException {
         AutofillTestHelper helper = new AutofillTestHelper();
         // The user has valid payer name, phone number and email address on disk.
-        helper.setProfile(
-                AutofillProfile.builder()
-                        .setFullName("Jon Doe")
-                        .setCompanyName("Google")
-                        .setStreetAddress("340 Main St")
-                        .setRegion("CA")
-                        .setLocality("Los Angeles")
-                        .setPostalCode("90291")
-                        .setCountryCode("US")
-                        .setPhoneNumber("555-555-5555")
-                        .setEmailAddress("jon.doe@google.com")
-                        .setLanguageCode("en-US")
-                        .build());
+        helper.setProfile(new AutofillProfile("", "https://example.test", true,
+                "" /* honorific prefix */, "Jon Doe", "Google", "340 Main St", "CA", "Los Angeles",
+                "", "90291", "", "US", "555-555-5555", "jon.doe@google.com", "en-US"));
 
         // Add the same profile but with a different address.
-        helper.setProfile(
-                AutofillProfile.builder()
-                        .setFullName("")
-                        .setCompanyName("Google")
-                        .setStreetAddress("999 Main St")
-                        .setRegion("CA")
-                        .setLocality("Los Angeles")
-                        .setPostalCode("90291")
-                        .setCountryCode("US")
-                        .setPhoneNumber("555-555-5555")
-                        .setEmailAddress("jon.doe@google.com")
-                        .setLanguageCode("en-US")
-                        .build());
+        helper.setProfile(new AutofillProfile("", "https://example.test", true,
+                "" /* honorific prefix */, "", "Google", "999 Main St", "CA", "Los Angeles", "",
+                "90291", "", "US", "555-555-5555", "jon.doe@google.com", "en-US"));
 
         // Add the same profile but without a phone number.
-        helper.setProfile(
-                AutofillProfile.builder()
-                        .setFullName("Jon Doe")
-                        .setCompanyName("Google")
-                        .setStreetAddress("340 Main St")
-                        .setRegion("CA")
-                        .setLocality("Los Angeles")
-                        .setPostalCode("90291")
-                        .setCountryCode("US")
-                        .setPhoneNumber("") /* empty phone_number */
-                        .setEmailAddress("jon.doe@google.com")
-                        .setLanguageCode("en-US")
-                        .build());
+        helper.setProfile(new AutofillProfile("", "https://example.test", true,
+                "" /* honorific prefix */, "Jon Doe", "Google", "340 Main St", "CA", "Los Angeles",
+                "", "90291", "", "US", "" /* phone_number */, "jon.doe@google.com", "en-US"));
 
         // Add the same profile but without an email.
-        helper.setProfile(
-                AutofillProfile.builder()
-                        .setFullName("Jon Doe")
-                        .setCompanyName("Google")
-                        .setStreetAddress("340 Main St")
-                        .setRegion("CA")
-                        .setLocality("Los Angeles")
-                        .setPostalCode("90291")
-                        .setCountryCode("US")
-                        .setPhoneNumber("555-555-5555")
-                        .setEmailAddress("") /* emailAddress */
-                        .setLanguageCode("en-US")
-                        .build());
+        helper.setProfile(new AutofillProfile("", "https://example.test", true,
+                "" /* honorific prefix */, "Jon Doe", "Google", "340 Main St", "CA", "Los Angeles",
+                "", "90291", "", "US", "555-555-5555", "" /* emailAddress */, "en-US"));
 
         // Add the same profile but without a name.
-        helper.setProfile(
-                AutofillProfile.builder()
-                        .setFullName("")
-                        .setCompanyName("Google")
-                        .setStreetAddress("340 Main St")
-                        .setRegion("CA")
-                        .setLocality("Los Angeles")
-                        .setPostalCode("90291")
-                        .setCountryCode("US")
-                        .setPhoneNumber("555-555-5555")
-                        .setEmailAddress("jon.doe@google.com")
-                        .setLanguageCode("en-US")
-                        .build());
+        helper.setProfile(new AutofillProfile("" /* name */, "https://example.test", true,
+                "" /* honorific prefix */, "", "Google", "340 Main St", "CA", "Los Angeles", "",
+                "90291", "", "US", "555-555-5555", "jon.doe@google.com", "en-US"));
 
         mPaymentRequestTestRule.addPaymentAppFactory(
                 AppPresence.HAVE_APPS, FactorySpeed.FAST_FACTORY);
@@ -140,8 +92,7 @@ public class PaymentRequestContactDetailsTest {
                 R.id.payments_section, mPaymentRequestTestRule.getReadyForInput());
         mPaymentRequestTestRule.clickInContactInfoAndWait(
                 R.id.payments_add_option_button, mPaymentRequestTestRule.getReadyToEdit());
-        mPaymentRequestTestRule.setTextInEditorAndWait(
-                new String[] {"", "+++", "jane.jones"},
+        mPaymentRequestTestRule.setTextInEditorAndWait(new String[] {"", "+++", "jane.jones"},
                 mPaymentRequestTestRule.getEditorTextUpdate());
         mPaymentRequestTestRule.clickInEditorAndWait(
                 R.id.editor_dialog_done_button, mPaymentRequestTestRule.getEditorValidationError());
@@ -186,19 +137,16 @@ public class PaymentRequestContactDetailsTest {
 
         // Quickly press on "add contact info" and then [X].
         int callCount = mPaymentRequestTestRule.getReadyToEdit().getCallCount();
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mPaymentRequestTestRule
-                            .getPaymentRequestUI()
-                            .getContactDetailsSectionForTest()
-                            .findViewById(R.id.payments_add_option_button)
-                            .performClick();
-                    mPaymentRequestTestRule
-                            .getPaymentRequestUI()
-                            .getDialogForTest()
-                            .findViewById(R.id.close_button)
-                            .performClick();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mPaymentRequestTestRule.getPaymentRequestUI()
+                    .getContactDetailsSectionForTest()
+                    .findViewById(R.id.payments_add_option_button)
+                    .performClick();
+            mPaymentRequestTestRule.getPaymentRequestUI()
+                    .getDialogForTest()
+                    .findViewById(R.id.close_button)
+                    .performClick();
+        });
         mPaymentRequestTestRule.getReadyToEdit().waitForCallback(callCount);
 
         mPaymentRequestTestRule.clickInEditorAndWait(
@@ -220,19 +168,16 @@ public class PaymentRequestContactDetailsTest {
 
         // Quickly press on [X] and then "add contact info."
         int callCount = mPaymentRequestTestRule.getDismissed().getCallCount();
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mPaymentRequestTestRule
-                            .getPaymentRequestUI()
-                            .getDialogForTest()
-                            .findViewById(R.id.close_button)
-                            .performClick();
-                    mPaymentRequestTestRule
-                            .getPaymentRequestUI()
-                            .getContactDetailsSectionForTest()
-                            .findViewById(R.id.payments_add_option_button)
-                            .performClick();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mPaymentRequestTestRule.getPaymentRequestUI()
+                    .getDialogForTest()
+                    .findViewById(R.id.close_button)
+                    .performClick();
+            mPaymentRequestTestRule.getPaymentRequestUI()
+                    .getContactDetailsSectionForTest()
+                    .findViewById(R.id.payments_add_option_button)
+                    .performClick();
+        });
         mPaymentRequestTestRule.getDismissed().waitForCallback(callCount);
 
         mPaymentRequestTestRule.expectResultContains(
@@ -290,19 +235,16 @@ public class PaymentRequestContactDetailsTest {
 
         // Quickly press on "add contact info" and then "cancel."
         int callCount = mPaymentRequestTestRule.getReadyToEdit().getCallCount();
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mPaymentRequestTestRule
-                            .getPaymentRequestUI()
-                            .getContactDetailsSectionForTest()
-                            .findViewById(R.id.payments_add_option_button)
-                            .performClick();
-                    mPaymentRequestTestRule
-                            .getPaymentRequestUI()
-                            .getDialogForTest()
-                            .findViewById(R.id.button_secondary)
-                            .performClick();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mPaymentRequestTestRule.getPaymentRequestUI()
+                    .getContactDetailsSectionForTest()
+                    .findViewById(R.id.payments_add_option_button)
+                    .performClick();
+            mPaymentRequestTestRule.getPaymentRequestUI()
+                    .getDialogForTest()
+                    .findViewById(R.id.button_secondary)
+                    .performClick();
+        });
         mPaymentRequestTestRule.getReadyToEdit().waitForCallback(callCount);
 
         mPaymentRequestTestRule.clickInEditorAndWait(
@@ -325,19 +267,16 @@ public class PaymentRequestContactDetailsTest {
 
         // Quickly press on "cancel" and then "add contact info."
         int callCount = mPaymentRequestTestRule.getDismissed().getCallCount();
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mPaymentRequestTestRule
-                            .getPaymentRequestUI()
-                            .getDialogForTest()
-                            .findViewById(R.id.button_secondary)
-                            .performClick();
-                    mPaymentRequestTestRule
-                            .getPaymentRequestUI()
-                            .getContactDetailsSectionForTest()
-                            .findViewById(R.id.payments_add_option_button)
-                            .performClick();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mPaymentRequestTestRule.getPaymentRequestUI()
+                    .getDialogForTest()
+                    .findViewById(R.id.button_secondary)
+                    .performClick();
+            mPaymentRequestTestRule.getPaymentRequestUI()
+                    .getContactDetailsSectionForTest()
+                    .findViewById(R.id.payments_add_option_button)
+                    .performClick();
+        });
         mPaymentRequestTestRule.getDismissed().waitForCallback(callCount);
 
         mPaymentRequestTestRule.expectResultContains(
@@ -374,22 +313,13 @@ public class PaymentRequestContactDetailsTest {
         mPaymentRequestTestRule.expectResultContains(
                 new String[] {"Jon Doe", "+15555555555", "jon.doe@google.com"});
 
-        int expectedSample =
-                Event.SHOWN
-                        | Event.COMPLETED
-                        | Event.PAY_CLICKED
-                        | Event.HAD_INITIAL_FORM_OF_PAYMENT
-                        | Event.HAD_NECESSARY_COMPLETE_SUGGESTIONS
-                        | Event.RECEIVED_INSTRUMENT_DETAILS
-                        | Event.REQUEST_PAYER_EMAIL
-                        | Event.REQUEST_PAYER_PHONE
-                        | Event.REQUEST_PAYER_NAME
-                        | Event.REQUEST_METHOD_BASIC_CARD
-                        | Event.REQUEST_METHOD_OTHER
-                        | Event.SELECTED_OTHER
-                        | Event.AVAILABLE_METHOD_OTHER;
-        Assert.assertEquals(
-                1,
+        int expectedSample = Event.SHOWN | Event.COMPLETED | Event.PAY_CLICKED
+                | Event.HAD_INITIAL_FORM_OF_PAYMENT | Event.HAD_NECESSARY_COMPLETE_SUGGESTIONS
+                | Event.RECEIVED_INSTRUMENT_DETAILS | Event.REQUEST_PAYER_EMAIL
+                | Event.REQUEST_PAYER_PHONE | Event.REQUEST_PAYER_NAME
+                | Event.REQUEST_METHOD_BASIC_CARD | Event.REQUEST_METHOD_OTHER
+                | Event.SELECTED_OTHER | Event.AVAILABLE_METHOD_OTHER;
+        Assert.assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         "PaymentRequest.Events", expectedSample));
     }
@@ -399,7 +329,7 @@ public class PaymentRequestContactDetailsTest {
      * helper text ("Cards and addresses are from...") would try to fetch the signed-in user in
      * incognito and hit a null-deference in doing so.
      *
-     * <p>See https://crbug.com/1311352
+     * See https://crbug.com/1311352
      */
     @Test
     @MediumTest
@@ -407,11 +337,8 @@ public class PaymentRequestContactDetailsTest {
     public void testPaymentRequestIncognitoMode() throws TimeoutException {
         // Open the test page in an incognito window.
         mPaymentRequestTestRule.newIncognitoTabFromMenu();
-        mPaymentRequestTestRule.loadUrl(
-                mPaymentRequestTestRule
-                        .getTestServer()
-                        .getURL(
-                                "/components/test/data/payments/payment_request_contact_details_test.html"));
+        mPaymentRequestTestRule.loadUrl(mPaymentRequestTestRule.getTestServer().getURL(
+                "/components/test/data/payments/payment_request_contact_details_test.html"));
         mPaymentRequestTestRule.setObserversAndWaitForInitialPageLoad();
 
         // Trigger the PaymentRequest, and expand the contact info section to show the text. This is

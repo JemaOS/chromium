@@ -23,7 +23,6 @@
 #include "net/test/embedded_test_server/default_handlers.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "net/traffic_annotation/network_traffic_annotation_test_helper.h"
-#include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 
 using browsing_data::ConditionalCacheCountingHelper;
@@ -107,7 +106,7 @@ class ConditionalCacheCountingHelperBrowserTest : public InProcessBrowserTest {
               ->GetDefaultStoragePartition()
               ->GetURLLoaderFactoryForBrowserProcess()
               .get(),
-          simple_loader_helper.GetCallbackDeprecated());
+          simple_loader_helper.GetCallback());
       simple_loader_helper.WaitForCallback();
     }
   }

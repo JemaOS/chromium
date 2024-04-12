@@ -8,7 +8,6 @@
 #include "base/functional/callback_forward.h"
 
 class GURL;
-class Profile;
 
 namespace content {
 class WebContents;
@@ -37,8 +36,7 @@ class WebsiteParentApproval {
   static void RequestLocalApproval(
       content::WebContents* web_contents,
       const GURL& url,
-      base::OnceCallback<void(AndroidLocalWebApprovalFlowOutcome)> callback,
-      Profile& profile);
+      base::OnceCallback<void(AndroidLocalWebApprovalFlowOutcome)> callback);
 
   WebsiteParentApproval() = delete;
 };

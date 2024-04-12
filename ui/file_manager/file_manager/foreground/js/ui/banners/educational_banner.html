@@ -15,7 +15,6 @@
   #educational-text-group {
     align-items: flex-start;
     display: flex;
-    flex: 1 0 0;
     flex-direction: column;
     flex-wrap: nowrap;
   }
@@ -25,11 +24,21 @@
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
-    margin-bottom: 8px;
-    margin-top: 8px;
   }
 
-  .feature-icon {
+  :host-context([theme='legacy']) .feature-icon {
+    -webkit-mask-image: var(--feature-icon-src, none);
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    background-color: var(--feature-icon-bg, var(--cros-color-prominent));
+    flex: none;
+    height: 32px;
+    margin-inline-end: 20px;
+    margin-inline-start: 16px;
+    width: 32px;
+  }
+
+  :host-context([theme='refresh23']) .feature-icon {
     -webkit-mask-image: var(--feature-icon-src, none);
     -webkit-mask-position: center;
     -webkit-mask-repeat: no-repeat;
@@ -46,7 +55,20 @@
     width: 32px;
   }
 
-  .title {
+  :host-context([theme='legacy']) .title {
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--cros-text-color-primary);
+    display: -webkit-box;
+    font-family: Roboto;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 22px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  :host-context([theme='refresh23']) .title {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     color: var(--cros-sys-on_surface);
@@ -56,25 +78,54 @@
     text-overflow: ellipsis;
   }
 
-  .subtitle {
+  :host-context([theme='legacy']) .subtitle {
+    color: var(--cros-text-color-secondary);
+    font-family: Roboto;
+    font-size: 13px;
+    line-height: 20px;
+  }
+
+  :host-context([theme='refresh23']) .subtitle {
     color: var(--cros-sys-on_surface);
     font: var(--cros-body-2-font);
   }
 
-  .button-group {
+  :host-context([theme='legacy']) .button-group {
     align-items: center;
     display: flex;
     flex: 0 0 auto;
-    flex-direction: var(--buttons-direction, row);
     height: 32px;
-    margin-bottom: 8px;
     margin-inline-start: auto;
-    margin-top: 8px;
+    padding-inline-start: 40px;
+  }
+
+  :host-context([theme='refresh23']) .button-group {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    height: 32px;
+    margin-inline-start: auto;
+    padding-inline-start: 40px;
     padding-inline-start: 32px;
   }
 
-  ::slotted(cr-button),
-  #dismiss-button-old {
+  :host-context([theme='legacy']) ::slotted(cr-button),
+  :host-context([theme='legacy']) #dismiss-button {
+    --active-bg: var(--cros-button-background-color-secondary-hover);
+    --hover-bg-color: var(--cros-button-background-color-secondary-hover);
+    --ink-color: rgba(var(--cros-button-ripple-color-secondary-rgb), var(--cros-button-secondary-ripple-opacity));
+    --paper-ripple-opacity: 100%;
+    --text-color: var(--cros-button-label-color-secondary);
+    border: none;
+    box-shadow: none;
+    height: 32px;
+    margin-inline: 4px;
+    padding-inline: 16px;
+    position: relative;
+  }
+
+  :host-context([theme='refresh23']) ::slotted(cr-button),
+  :host-context([theme='refresh23']) #dismiss-button {
     --active-bg: none;
     --bg-action: var(--cros-sys-primary);
     /* Use the default bg color as hover color because we
@@ -96,12 +147,18 @@
     position: relative;
   }
 
-  #dismiss-button {
-    margin-inline: 4px;
+  :host-context([theme='legacy']):host-context(.focus-outline-visible)
+      ::slotted(cr-button:focus),
+  :host-context([theme='legacy']):host-context(.focus-outline-visible)
+      #dismiss-button:focus {
+    outline: 2px solid var(--cros-focus-ring-color);
+    outline-offset: 2px;
   }
 
-  :host-context(.focus-outline-visible) ::slotted(cr-button:focus),
-  :host-context(.focus-outline-visible) #dismiss-button-old:focus {
+  :host-context([theme='refresh23']):host-context(.focus-outline-visible)
+      ::slotted(cr-button:focus),
+  :host-context([theme='refresh23']):host-context(.focus-outline-visible)
+      #dismiss-button:focus {
     outline: 2px solid var(--cros-sys-focus_ring);
     outline-offset: 2px;
   }
@@ -115,10 +172,10 @@
       <slot name="illustration"></slot>
     </div>
     <div id="educational-text-group">
-      <div class="title">
+      <div class="title headline2">
         <slot name="title"></slot>
       </div>
-      <div class="subtitle">
+      <div class="subtitle body2-primary">
         <slot name="subtitle"></slot>
       </div>
     </div>
@@ -126,17 +183,9 @@
   <div class="button-group">
     <slot name="extra-button"></slot>
     <slot name="dismiss-button">
-      <xf-jellybean>
-        <cr-button id="dismiss-button-old" slot="old">
-          $i18n{DRIVE_WELCOME_DISMISS}
-        </cr-button>
-        <cros-button
-            label="$i18n{DRIVE_WELCOME_DISMISS}"
-            id="dismiss-button"
-            button-style="floating"
-            slot="jelly">
-        </cros-button>
-      </xf-jellybean>
+      <cr-button id="dismiss-button">
+        $i18n{DRIVE_WELCOME_DISMISS}
+      </cr-button>
     </slot>
   </div>
 </div>

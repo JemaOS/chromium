@@ -4,7 +4,6 @@
 
 #include "third_party/blink/renderer/core/loader/prefetched_signed_exchange_manager.h"
 
-#include <optional>
 #include <queue>
 #include <utility>
 
@@ -17,6 +16,7 @@
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/wrapper_shared_url_loader_factory.h"
 #include "services/network/public/mojom/url_loader_factory.mojom-blink.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/devtools/console_message.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/resource_load_info_notifier_wrapper.h"
@@ -31,7 +31,6 @@
 #include "third_party/blink/renderer/core/loader/alternate_signed_exchange_resource_info.h"
 #include "third_party/blink/renderer/core/loader/loader_factory_for_frame.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/loader/fetch/code_cache_host.h"
 #include "third_party/blink/renderer/platform/loader/fetch/loader_freeze_mode.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_client.h"
@@ -53,15 +52,13 @@ class PrefetchedSignedExchangeManager::PrefetchedSignedExchangeLoader
     : public URLLoader {
  public:
   PrefetchedSignedExchangeLoader(
-      const network::ResourceRequest& request,
-      scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-      Vector<std::unique_ptr<URLLoaderThrottle>> throttles)
-      : request_(request),
-        task_runner_(std::move(task_runner)),
-        throttles_(std::move(throttles)) {
+      const WebURLRequest& request,
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+      : task_runner_(std::move(task_runner)) {
     TRACE_EVENT_NESTABLE_ASYNC_BEGIN1("loading",
                                       "PrefetchedSignedExchangeLoader", this,
-                                      "url", request_.url.spec());
+                                      "url", request.Url().GetString().Utf8());
+    request_.CopyFrom(request);
   }
 
   PrefetchedSignedExchangeLoader(const PrefetchedSignedExchangeLoader&) =
@@ -84,41 +81,37 @@ class PrefetchedSignedExchangeManager::PrefetchedSignedExchangeLoader
     ExecutePendingMethodCalls();
   }
 
-  const network::ResourceRequest& request() const { return request_; }
-
-  Vector<std::unique_ptr<URLLoaderThrottle>> TakeThrottles() {
-    return std::move(throttles_);
-  }
+  const WebURLRequest& request() const { return request_; }
 
   // URLLoader methods:
-  void LoadSynchronously(std::unique_ptr<network::ResourceRequest> request,
-                         scoped_refptr<const SecurityOrigin> top_frame_origin,
-                         bool download_to_blob,
-                         bool no_mime_sniffing,
-                         base::TimeDelta timeout_interval,
-                         URLLoaderClient* client,
-                         WebURLResponse& response,
-                         std::optional<WebURLError>& error,
-                         scoped_refptr<SharedBuffer>& data,
-                         int64_t& encoded_data_length,
-                         uint64_t& encoded_body_length,
-                         scoped_refptr<BlobDataHandle>& downloaded_blob,
-                         std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper>
-                             resource_load_info_notifier_wrapper) override {
+  void LoadSynchronously(
+      std::unique_ptr<network::ResourceRequest> request,
+      scoped_refptr<WebURLRequestExtraData> url_request_extra_data,
+      bool pass_response_pipe_to_client,
+      bool no_mime_sniffing,
+      base::TimeDelta timeout_interval,
+      URLLoaderClient* client,
+      WebURLResponse& response,
+      absl::optional<WebURLError>& error,
+      scoped_refptr<SharedBuffer>& data,
+      int64_t& encoded_data_length,
+      uint64_t& encoded_body_length,
+      scoped_refptr<BlobDataHandle>& downloaded_blob,
+      std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper>
+          resource_load_info_notifier_wrapper) override {
     NOTREACHED();
   }
   void LoadAsynchronously(
       std::unique_ptr<network::ResourceRequest> request,
-      scoped_refptr<const SecurityOrigin> top_frame_origin,
+      scoped_refptr<WebURLRequestExtraData> url_request_extra_data,
       bool no_mime_sniffing,
       std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper>
           resource_load_info_notifier_wrapper,
-      CodeCacheHost* code_cache_host,
       URLLoaderClient* client) override {
     if (url_loader_) {
       url_loader_->LoadAsynchronously(
-          std::move(request), std::move(top_frame_origin), no_mime_sniffing,
-          std::move(resource_load_info_notifier_wrapper), code_cache_host,
+          std::move(request), std::move(url_request_extra_data),
+          no_mime_sniffing, std::move(resource_load_info_notifier_wrapper),
           client);
       return;
     }
@@ -126,24 +119,9 @@ class PrefetchedSignedExchangeManager::PrefetchedSignedExchangeLoader
     // ResourceLoader which owns |this|, and we are binding with weak ptr of
     // |this| here.
     pending_method_calls_.push(WTF::BindOnce(
-        [](base::WeakPtr<PrefetchedSignedExchangeLoader> self,
-           std::unique_ptr<network::ResourceRequest> request,
-           scoped_refptr<const SecurityOrigin> top_frame_origin,
-           bool no_mime_sniffing,
-           std::unique_ptr<blink::ResourceLoadInfoNotifierWrapper>
-               resource_load_info_notifier_wrapper,
-           base::WeakPtr<CodeCacheHost> code_cache_host,
-           URLLoaderClient* client) {
-          if (self) {
-            self->LoadAsynchronously(
-                std::move(request), top_frame_origin, no_mime_sniffing,
-                std::move(resource_load_info_notifier_wrapper),
-                code_cache_host.get(), client);
-          }
-        },
-        GetWeakPtr(), std::move(request), std::move(top_frame_origin),
-        no_mime_sniffing, std::move(resource_load_info_notifier_wrapper),
-        code_cache_host ? code_cache_host->GetWeakPtr() : nullptr,
+        &PrefetchedSignedExchangeLoader::LoadAsynchronously, GetWeakPtr(),
+        std::move(request), std::move(url_request_extra_data), no_mime_sniffing,
+        std::move(resource_load_info_notifier_wrapper),
         WTF::Unretained(client)));
   }
   void Freeze(LoaderFreezeMode value) override {
@@ -179,9 +157,8 @@ class PrefetchedSignedExchangeManager::PrefetchedSignedExchangeLoader
     }
   }
 
-  const network::ResourceRequest request_;
+  WebURLRequest request_;
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
-  Vector<std::unique_ptr<URLLoaderThrottle>> throttles_;
   std::unique_ptr<URLLoader> url_loader_;
   std::queue<base::OnceClosure> pending_method_calls_;
 
@@ -249,31 +226,26 @@ void PrefetchedSignedExchangeManager::StartPrefetchedLinkHeaderPreloads() {
 
 std::unique_ptr<URLLoader>
 PrefetchedSignedExchangeManager::MaybeCreateURLLoader(
-    const network::ResourceRequest& network_request,
-    base::OnceCallback<Vector<std::unique_ptr<URLLoaderThrottle>>(void)>
-        create_throttles_callback) {
+    const WebURLRequest& request) {
   if (started_)
     return nullptr;
   const auto* matching_resource = alternative_resources_->FindMatchingEntry(
-      KURL(network_request.url), network_request.destination,
+      request.Url(), request.GetRequestContext(),
       frame_->DomWindow()->navigator()->languages());
   if (!matching_resource)
     return nullptr;
 
   std::unique_ptr<PrefetchedSignedExchangeLoader> loader =
       std::make_unique<PrefetchedSignedExchangeLoader>(
-          network_request,
-          frame_->GetFrameScheduler()->GetTaskRunner(
-              TaskType::kInternalLoading),
-          std::move(create_throttles_callback).Run());
+          request, frame_->GetFrameScheduler()->GetTaskRunner(
+                       TaskType::kInternalLoading));
   loaders_.emplace_back(loader->GetWeakPtr());
   return loader;
 }
 
 std::unique_ptr<URLLoader>
 PrefetchedSignedExchangeManager::CreateDefaultURLLoader(
-    const network::ResourceRequest& request,
-    Vector<std::unique_ptr<URLLoaderThrottle>> throttles) {
+    const WebURLRequest& request) {
   return std::make_unique<blink::URLLoaderFactory>(
              frame_->GetURLLoaderFactory(),
              LoaderFactoryForFrame::GetCorsExemptHeaderList(),
@@ -281,14 +253,12 @@ PrefetchedSignedExchangeManager::CreateDefaultURLLoader(
       ->CreateURLLoader(request, frame_->GetTaskRunner(TaskType::kNetworking),
                         frame_->GetTaskRunner(TaskType::kNetworkingUnfreezable),
                         /*keep_alive_handle=*/mojo::NullRemote(),
-                        /*back_forward_cache_loader_helper=*/nullptr,
-                        std::move(throttles));
+                        /*back_forward_cache_loader_helper=*/nullptr);
 }
 
 std::unique_ptr<URLLoader>
 PrefetchedSignedExchangeManager::CreatePrefetchedSignedExchangeURLLoader(
-    const network::ResourceRequest& request,
-    Vector<std::unique_ptr<URLLoaderThrottle>> throttles,
+    const WebURLRequest& request,
     mojo::PendingRemote<network::mojom::blink::URLLoaderFactory>
         loader_factory) {
   return std::make_unique<URLLoaderFactory>(
@@ -301,8 +271,7 @@ PrefetchedSignedExchangeManager::CreatePrefetchedSignedExchangeURLLoader(
       ->CreateURLLoader(request, frame_->GetTaskRunner(TaskType::kNetworking),
                         frame_->GetTaskRunner(TaskType::kNetworkingUnfreezable),
                         /*keep_alive_handle=*/mojo::NullRemote(),
-                        /*back_forward_cache_loader_helper=*/nullptr,
-                        std::move(throttles));
+                        /*back_forward_cache_loader_helper=*/nullptr);
 }
 
 void PrefetchedSignedExchangeManager::TriggerLoad() {
@@ -318,7 +287,7 @@ void PrefetchedSignedExchangeManager::TriggerLoad() {
       continue;
     }
     const auto* matching_resource = alternative_resources_->FindMatchingEntry(
-        KURL(loader->request().url), loader->request().destination,
+        loader->request().Url(), loader->request().GetRequestContext(),
         frame_->DomWindow()->navigator()->languages());
     const auto alternative_url = matching_resource->alternative_url();
     if (!alternative_url.IsValid()) {
@@ -357,8 +326,7 @@ void PrefetchedSignedExchangeManager::TriggerLoad() {
     for (auto loader : loaders_) {
       if (!loader)
         continue;
-      loader->SetURLLoader(
-          CreateDefaultURLLoader(loader->request(), loader->TakeThrottles()));
+      loader->SetURLLoader(CreateDefaultURLLoader(loader->request()));
     }
     TRACE_EVENT_NESTABLE_ASYNC_END2(
         "loading", "PrefetchedSignedExchangeManager", this, "match_result",
@@ -379,7 +347,7 @@ void PrefetchedSignedExchangeManager::TriggerLoad() {
     // Reset loader_factory_handle to support loading the same resource again.
     prefetched_exchange->loader_factory = std::move(loader_factory_clone);
     loader->SetURLLoader(CreatePrefetchedSignedExchangeURLLoader(
-        loader->request(), loader->TakeThrottles(), loader_factory.Unbind()));
+        loader->request(), loader_factory.Unbind()));
   }
   TRACE_EVENT_NESTABLE_ASYNC_END1("loading", "PrefetchedSignedExchangeManager",
                                   this, "match_result", "success");

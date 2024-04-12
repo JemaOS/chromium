@@ -54,12 +54,14 @@ class TabDialogs : public base::SupportsUserData::Data {
   virtual void ShowDeprecatedAppsDialog(
       const extensions::ExtensionId& optional_launched_extension_id,
       const std::set<extensions::ExtensionId>& deprecated_app_ids,
-      content::WebContents* web_contents) = 0;
+      content::WebContents* web_contents,
+      base::OnceClosure launch_anyways) = 0;
 
   // Shows the force installed and deprecated app dialog.
   virtual void ShowForceInstalledDeprecatedAppsDialog(
       const extensions::ExtensionId& app_id,
-      content::WebContents* web_contents) = 0;
+      content::WebContents* web_contents,
+      base::OnceClosure launch_anyways) = 0;
 
   // Shows the force installed and deprecated app dialog.
   virtual void ShowForceInstalledPreinstalledDeprecatedAppDialog(

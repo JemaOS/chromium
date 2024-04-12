@@ -285,9 +285,11 @@ void CompositorView::SetSceneLayer(JNIEnv* env,
     scene_layer_ = scene_layer;
 
     if (!scene_layer) {
+      scene_layer_layer_ = nullptr;
       return;
     }
 
+    scene_layer_layer_ = scene_layer->layer();
     root_layer_->InsertChild(scene_layer->layer(), 0);
   }
 
@@ -382,7 +384,7 @@ void CompositorView::OnTabChanged(
           content::PeakGpuMemoryTracker::Usage::CHANGE_TAB);
   compositor_->RequestSuccessfulPresentationTimeForNextFrame(base::BindOnce(
       [](std::unique_ptr<content::PeakGpuMemoryTracker> tracker,
-         const viz::FrameTimingDetails& frame_timing_details) {
+         base::TimeTicks presentation_timestamp) {
         // This callback will be ran once the content::Compositor presents the
         // next frame. The destruction of |tracker| will get the peak GPU memory
         // and record a histogram.

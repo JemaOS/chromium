@@ -7,7 +7,8 @@
 if (!chrome || !chrome.test || !chrome.test.sendMessage) {
   console.error('chrome.test.sendMessage is unavailable on ' +
                 document.location.href);
-  return false;
+  domAutomationController.send(false);
+  return;
 }
 
 chrome.test.sendMessage('ping', function(reply) {
@@ -19,4 +20,4 @@ chrome.test.sendMessage('ping', function(reply) {
   }
 });
 
-return true;
+domAutomationController.send(true);

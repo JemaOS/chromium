@@ -28,19 +28,17 @@
 #include "third_party/blink/renderer/platform/graphics/gradient.h"
 
 #include <algorithm>
-#include <optional>
-
-#include "third_party/blink/renderer/platform/geometry/blend.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/platform/graphics/color.h"
 #include "third_party/blink/renderer/platform/graphics/dark_mode_settings_builder.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
 #include "third_party/blink/renderer/platform/graphics/paint/paint_shader.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
-#include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkMatrix.h"
 #include "third_party/skia/include/core/SkShader.h"
 #include "third_party/skia/include/effects/SkGradientShader.h"
+#include "ui/gfx/geometry/rect_f.h"
 
 namespace blink {
 
@@ -73,9 +71,8 @@ void Gradient::AddColorStop(const Gradient::ColorStop& stop) {
 }
 
 void Gradient::AddColorStops(const Vector<Gradient::ColorStop>& stops) {
-  for (const auto& stop : stops) {
+  for (const auto& stop : stops)
     AddColorStop(stop);
-  }
 }
 
 void Gradient::SortStopsIfNecessary() const {
@@ -90,26 +87,12 @@ void Gradient::SortStopsIfNecessary() const {
   std::stable_sort(stops_.begin(), stops_.end(), CompareStops);
 }
 
-static SkColor4f ResolveStopColorWithMissingParams(
-    const Color& color,
-    const Color& neighbor,
-    Color::ColorSpace color_space,
-    const cc::ColorFilter* color_filter) {
-  std::optional<float> param0 =
-      color.Param0IsNone() ? neighbor.Param0() : color.Param0();
-  std::optional<float> param1 =
-      color.Param1IsNone() ? neighbor.Param1() : color.Param1();
-  std::optional<float> param2 =
-      color.Param2IsNone() ? neighbor.Param2() : color.Param2();
-  std::optional<float> alpha =
-      color.AlphaIsNone() ? neighbor.Alpha() : color.Alpha();
-  Color resolved_color =
-      Color::FromColorSpace(color_space, param0, param1, param2, alpha);
-  if (color_filter) {
-    return color_filter->FilterColor(
-        resolved_color.ToGradientStopSkColor4f(color_space));
+bool Gradient::HasNonLegacyColor() const {
+  for (const auto& stop : stops_) {
+    if (!stop.color.IsLegacyColor())
+      return true;
   }
-  return resolved_color.ToGradientStopSkColor4f(color_space);
+  return false;
 }
 
 // Collect sorted stop position and color information into the pos and colors
@@ -129,45 +112,20 @@ void Gradient::FillSkiaStops(ColorBuffer& colors, OffsetBuffer& pos) const {
     // with a stop at (0 + epsilon).
     pos.push_back(WebCoreDoubleToSkScalar(0));
     if (color_filter_) {
-      colors.push_back(color_filter_->FilterColor(
-          stops_.front().color.ToGradientStopSkColor4f(
-              color_space_interpolation_space_)));
+      colors.push_back(color_filter_->filterColor4f(
+          stops_.front().color.toSkColor4f(), nullptr, nullptr));
     } else {
-      colors.push_back(stops_.front().color.ToGradientStopSkColor4f(
-          color_space_interpolation_space_));
+      colors.push_back(stops_.front().color.toSkColor4f());
     }
   }
 
-  // Deal with none parameters.
-  for (wtf_size_t i = 0; i < stops_.size(); i++) {
-    Color color = stops_[i].color;
-    color.ConvertToColorSpace(color_space_interpolation_space_);
-    if (color.HasNoneParams()) {
-      if (i != 0) {
-        // Fill left
-        pos.push_back(WebCoreDoubleToSkScalar(stops_[i].stop));
-        colors.push_back(ResolveStopColorWithMissingParams(
-            color, stops_[i - 1].color, color_space_interpolation_space_,
-            color_filter_.get()));
-      }
-
-      if (i != stops_.size() - 1) {
-        // Fill right
-        pos.push_back(WebCoreDoubleToSkScalar(stops_[i].stop));
-        colors.push_back(ResolveStopColorWithMissingParams(
-            color, stops_[i + 1].color, color_space_interpolation_space_,
-            color_filter_.get()));
-      }
+  for (const auto& stop : stops_) {
+    pos.push_back(WebCoreDoubleToSkScalar(stop.stop));
+    if (color_filter_) {
+      colors.push_back(color_filter_->filterColor4f(stop.color.toSkColor4f(),
+                                                    nullptr, nullptr));
     } else {
-      pos.push_back(WebCoreDoubleToSkScalar(stops_[i].stop));
-      if (color_filter_) {
-        colors.push_back(
-            color_filter_->FilterColor(stops_[i].color.ToGradientStopSkColor4f(
-                color_space_interpolation_space_)));
-      } else {
-        colors.push_back(stops_[i].color.ToGradientStopSkColor4f(
-            color_space_interpolation_space_));
-      }
+      colors.push_back(stop.color.toSkColor4f());
     }
   }
 
@@ -185,7 +143,6 @@ SkGradientShader::Interpolation Gradient::ResolveSkInterpolation() const {
   using sk_hue_method = SkGradientShader::Interpolation::HueMethod;
   SkGradientShader::Interpolation sk_interpolation;
 
-  bool has_non_legacy_color = false;
   switch (color_space_interpolation_space_) {
     case Color::ColorSpace::kXYZD65:
     case Color::ColorSpace::kXYZD50:
@@ -196,17 +153,13 @@ SkGradientShader::Interpolation Gradient::ResolveSkInterpolation() const {
       sk_interpolation.fColorSpace = sk_colorspace::kLab;
       break;
     case Color::ColorSpace::kOklab:
-      sk_interpolation.fColorSpace = Color::IsBakedGamutMappingEnabled()
-                                         ? sk_colorspace::kOKLabGamutMap
-                                         : sk_colorspace::kOKLab;
+      sk_interpolation.fColorSpace = sk_colorspace::kOKLab;
       break;
     case Color::ColorSpace::kLch:
       sk_interpolation.fColorSpace = sk_colorspace::kLCH;
       break;
     case Color::ColorSpace::kOklch:
-      sk_interpolation.fColorSpace = Color::IsBakedGamutMappingEnabled()
-                                         ? sk_colorspace::kOKLCHGamutMap
-                                         : sk_colorspace::kOKLCH;
+      sk_interpolation.fColorSpace = sk_colorspace::kOKLCH;
       break;
     case Color::ColorSpace::kSRGB:
     case Color::ColorSpace::kSRGBLegacy:
@@ -219,17 +172,10 @@ SkGradientShader::Interpolation Gradient::ResolveSkInterpolation() const {
       sk_interpolation.fColorSpace = sk_colorspace::kHWB;
       break;
     case Color::ColorSpace::kNone:
-      for (const auto& stop : stops_) {
-        if (!Color::IsLegacyColorSpace(stop.color.GetColorSpace())) {
-          has_non_legacy_color = true;
-        }
-      }
-      if (has_non_legacy_color) {
+      if (HasNonLegacyColor()) {
         // If no colorspace is provided and the gradient is not entirely
         // composed of legacy colors, Oklab is the default interpolation space.
-        sk_interpolation.fColorSpace = Color::IsBakedGamutMappingEnabled()
-                                           ? sk_colorspace::kOKLabGamutMap
-                                           : sk_colorspace::kOKLab;
+        sk_interpolation.fColorSpace = sk_colorspace::kOKLab;
       } else {
         // TODO(crbug.com/1379462): This should be kSRGB.
         sk_interpolation.fColorSpace = sk_colorspace::kDestination;
@@ -401,7 +347,7 @@ class RadialGradient final : public Gradient {
                                   const SkMatrix& local_matrix,
                                   SkColor4f fallback_color) const override {
     const SkMatrix* matrix = &local_matrix;
-    std::optional<SkMatrix> adjusted_local_matrix;
+    absl::optional<SkMatrix> adjusted_local_matrix;
     if (aspect_ratio_ != 1) {
       // CSS3 elliptical gradients: apply the elliptical scaling at the
       // gradient center point.
@@ -468,7 +414,7 @@ class ConicGradient final : public Gradient {
     // Skia's sweep gradient angles are relative to the x-axis, not the y-axis.
     const float skia_rotation = rotation_ - 90;
     const SkMatrix* matrix = &local_matrix;
-    std::optional<SkMatrix> adjusted_local_matrix;
+    absl::optional<SkMatrix> adjusted_local_matrix;
     if (skia_rotation) {
       adjusted_local_matrix.emplace(local_matrix);
       adjusted_local_matrix->preRotate(skia_rotation, position_.x(),

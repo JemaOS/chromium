@@ -25,8 +25,7 @@ public class MockPersistedTabData extends PersistedTabData {
      * @param field field stored in {@link MockPersistedTabData}
      */
     public MockPersistedTabData(Tab tab, int field) {
-        super(
-                tab,
+        super(tab,
                 PersistedTabDataConfiguration.get(MockPersistedTabData.class, tab.isIncognito())
                         .getStorage(),
                 PersistedTabDataConfiguration.get(MockPersistedTabData.class, tab.isIncognito())
@@ -47,14 +46,9 @@ public class MockPersistedTabData extends PersistedTabData {
      * @param callback callback {@link MockPersistedTabData} will be passed back in
      */
     public static void from(Tab tab, Callback<MockPersistedTabData> callback) {
-        PersistedTabData.from(
-                tab,
-                (data, storage, id, factoryCallback) -> {
-                    factoryCallback.onResult(new MockPersistedTabData(tab, data, storage, id));
-                },
-                null,
-                MockPersistedTabData.class,
-                callback);
+        PersistedTabData.from(tab, (data, storage, id, factoryCallback) -> {
+            factoryCallback.onResult(new MockPersistedTabData(tab, data, storage, id));
+        }, null, MockPersistedTabData.class, callback);
     }
 
     /**

@@ -20,7 +20,7 @@ VideoDecodeStatsReporter::VideoDecodeStatsReporter(
     GetPipelineStatsCB get_pipeline_stats_cb,
     media::VideoCodecProfile codec_profile,
     const gfx::Size& natural_size,
-    std::optional<media::CdmConfig> cdm_config,
+    absl::optional<media::CdmConfig> cdm_config,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     const base::TickClock* tick_clock)
     : kRecordingInterval(base::Milliseconds(kRecordingIntervalMs)),

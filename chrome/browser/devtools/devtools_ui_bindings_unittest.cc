@@ -135,7 +135,7 @@ class DevToolsUIBindingsSyncInfoTest : public testing::Test {
 
 TEST_F(DevToolsUIBindingsSyncInfoTest, SyncDisabled) {
   sync_service_->SetDisableReasons(
-      {syncer::SyncService::DISABLE_REASON_NOT_SIGNED_IN});
+      syncer::SyncService::DISABLE_REASON_NOT_SIGNED_IN);
 
   base::Value::Dict info =
       DevToolsUIBindings::GetSyncInformationForProfile(&profile_);
@@ -146,7 +146,8 @@ TEST_F(DevToolsUIBindingsSyncInfoTest, SyncDisabled) {
 TEST_F(DevToolsUIBindingsSyncInfoTest, PreferencesNotSynced) {
   sync_service_->GetUserSettings()->SetSelectedTypes(
       /*sync_everything=*/false,
-      /*types=*/{syncer::UserSelectableType::kBookmarks});
+      /*types=*/syncer::UserSelectableTypeSet(
+          syncer::UserSelectableType::kBookmarks));
 
   base::Value::Dict info =
       DevToolsUIBindings::GetSyncInformationForProfile(&profile_);

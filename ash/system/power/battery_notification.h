@@ -20,7 +20,7 @@ class ASH_EXPORT BatteryNotification {
  public:
   BatteryNotification(
       message_center::MessageCenter* message_center,
-      PowerNotificationController* power_notification_controller);
+      PowerNotificationController::NotificationState notification_state);
 
   BatteryNotification(const BatteryNotification&) = delete;
   BatteryNotification& operator=(const BatteryNotification&) = delete;
@@ -30,11 +30,11 @@ class ASH_EXPORT BatteryNotification {
   static const char kNotificationId[];
 
   // Updates the notification if it still exists.
-  void Update();
+  void Update(
+      PowerNotificationController::NotificationState notification_state);
 
  private:
-  raw_ptr<message_center::MessageCenter> message_center_;
-  raw_ptr<PowerNotificationController> power_notification_controller_;
+  raw_ptr<message_center::MessageCenter, ExperimentalAsh> message_center_;
 };
 
 }  // namespace ash

@@ -7,7 +7,6 @@
 
 #include "chrome/common/draggable_regions.mojom.h"
 #include "content/public/browser/document_service.h"
-#include "third_party/blink/public/mojom/page/draggable_region.mojom-forward.h"
 
 namespace content {
 class RenderFrameHost;
@@ -28,7 +27,7 @@ class DraggableRegionsHostImpl
 
   // chrome::mojom::DraggableRegions
   void UpdateDraggableRegions(
-      std::vector<blink::mojom::DraggableRegionPtr> draggable_region) override;
+      std::vector<chrome::mojom::DraggableRegionPtr> draggable_region) override;
 
  private:
   DraggableRegionsHostImpl(

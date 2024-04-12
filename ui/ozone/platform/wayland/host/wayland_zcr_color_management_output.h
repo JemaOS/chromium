@@ -5,8 +5,6 @@
 #ifndef UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_ZCR_COLOR_MANAGEMENT_OUTPUT_H_
 #define UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_ZCR_COLOR_MANAGEMENT_OUTPUT_H_
 
-#include <cstdint>
-
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
@@ -22,7 +20,7 @@ class WaylandZcrColorManagementOutput {
  public:
   explicit WaylandZcrColorManagementOutput(
       WaylandOutput* wayland_output,
-      zcr_color_management_output_v1* management_output);
+      struct zcr_color_management_output_v1* management_output);
   WaylandZcrColorManagementOutput(const WaylandZcrColorManagementOutput&) =
       delete;
   WaylandZcrColorManagementOutput& operator=(
@@ -33,11 +31,11 @@ class WaylandZcrColorManagementOutput {
   WaylandZcrColorSpace* color_space() const { return color_space_.get(); }
 
  private:
-  // zcr_color_management_output_v1_listener callbacks:
+  // zcr_color_management_output_v1_listener
   static void OnColorSpaceChanged(void* data,
-                                  zcr_color_management_output_v1* cmo);
+                                  struct zcr_color_management_output_v1* cmo);
   static void OnExtendedDynamicRange(void* data,
-                                     zcr_color_management_output_v1* cmo,
+                                     struct zcr_color_management_output_v1* cmo,
                                      uint32_t value);
 
   void OnColorSpaceDone(const gfx::ColorSpace& color_space);

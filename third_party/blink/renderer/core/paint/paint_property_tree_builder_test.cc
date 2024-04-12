@@ -16,9 +16,8 @@
 #include "third_party/blink/renderer/core/layout/layout_image.h"
 #include "third_party/blink/renderer/core/layout/layout_multi_column_flow_thread.h"
 #include "third_party/blink/renderer/core/layout/layout_tree_as_text.h"
-#include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_physical_box_fragment.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_root.h"
-#include "third_party/blink/renderer/core/paint/fragment_data_iterator.h"
 #include "third_party/blink/renderer/core/paint/object_paint_properties.h"
 #include "third_party/blink/renderer/core/paint/paint_property_tree_printer.h"
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
@@ -81,7 +80,7 @@ const ScrollPaintPropertyNode* PaintPropertyTreeBuilderTest::DocScroll(
 const ObjectPaintProperties*
 PaintPropertyTreeBuilderTest::PaintPropertiesForElement(const char* name) {
   return GetDocument()
-      .getElementById(AtomicString(name))
+      .getElementById(name)
       ->GetLayoutObject()
       ->FirstFragment()
       .PaintProperties();
@@ -135,18 +134,15 @@ void PaintPropertyTreeBuilderTest::SetUp() {
 
 INSTANTIATE_TEST_SUITE_P(All,
                          PaintPropertyTreeBuilderTest,
-                         ::testing::Values(0,
-                                           kUnderInvalidationChecking,
-                                           kElementCapture));
+                         ::testing::Values(0, kUnderInvalidationChecking));
 
 TEST_P(PaintPropertyTreeBuilderTest, FixedPosition) {
   LoadTestData("fixed-position.html");
 
-  Element* positioned_scroll =
-      GetDocument().getElementById(AtomicString("positionedScroll"));
+  Element* positioned_scroll = GetDocument().getElementById("positionedScroll");
   positioned_scroll->setScrollTop(3);
   Element* transformed_scroll =
-      GetDocument().getElementById(AtomicString("transformedScroll"));
+      GetDocument().getElementById("transformedScroll");
   transformed_scroll->setScrollTop(5);
 
   LocalFrameView* frame_view = GetDocument().View();
@@ -155,7 +151,7 @@ TEST_P(PaintPropertyTreeBuilderTest, FixedPosition) {
   // target1 is a fixed-position element inside an absolute-position scrolling
   // element.  It should be attached under the viewport to skip scrolling and
   // offset of the parent.
-  Element* target1 = GetDocument().getElementById(AtomicString("target1"));
+  Element* target1 = GetDocument().getElementById("target1");
   const ObjectPaintProperties* target1_properties =
       target1->GetLayoutObject()->FirstFragment().PaintProperties();
   EXPECT_CLIP_RECT(FloatRoundedRect(0, 0, 100, 100),
@@ -180,11 +176,10 @@ TEST_P(PaintPropertyTreeBuilderTest, FixedPosition) {
 
   // target2 is a fixed-position element inside a transformed scrolling element.
   // It should be attached under the scrolled box of the transformed element.
-  Element* target2 = GetDocument().getElementById(AtomicString("target2"));
+  Element* target2 = GetDocument().getElementById("target2");
   const ObjectPaintProperties* target2_properties =
       target2->GetLayoutObject()->FirstFragment().PaintProperties();
-  Element* scroller =
-      GetDocument().getElementById(AtomicString("transformedScroll"));
+  Element* scroller = GetDocument().getElementById("transformedScroll");
   const ObjectPaintProperties* scroller_properties =
       scroller->GetLayoutObject()->FirstFragment().PaintProperties();
   EXPECT_CLIP_RECT(FloatRoundedRect(200, 150, 100, 100),
@@ -212,7 +207,7 @@ TEST_P(PaintPropertyTreeBuilderTest, PositionAndScroll) {
   GetDocument().SetCompatibilityMode(Document::kQuirksMode);
   LoadTestData("position-and-scroll.html");
 
-  Element* scroller = GetDocument().getElementById(AtomicString("scroller"));
+  Element* scroller = GetDocument().getElementById("scroller");
   scroller->scrollTo(0, 100);
   LocalFrameView* frame_view = GetDocument().View();
   frame_view->UpdateAllLifecyclePhasesForTest();
@@ -243,7 +238,7 @@ TEST_P(PaintPropertyTreeBuilderTest, PositionAndScroll) {
 
   // The relative-positioned element should have accumulated box offset (exclude
   // scrolling), and should be affected by ancestor scroll transforms.
-  Element* rel_pos = GetDocument().getElementById(AtomicString("rel-pos"));
+  Element* rel_pos = GetDocument().getElementById("rel-pos");
   const ObjectPaintProperties* rel_pos_properties =
       rel_pos->GetLayoutObject()->FirstFragment().PaintProperties();
   EXPECT_EQ(gfx::Vector2dF(560, 780),
@@ -261,7 +256,7 @@ TEST_P(PaintPropertyTreeBuilderTest, PositionAndScroll) {
 
   // The absolute-positioned element should not be affected by non-positioned
   // scroller at all.
-  Element* abs_pos = GetDocument().getElementById(AtomicString("abs-pos"));
+  Element* abs_pos = GetDocument().getElementById("abs-pos");
   const ObjectPaintProperties* abs_pos_properties =
       abs_pos->GetLayoutObject()->FirstFragment().PaintProperties();
   EXPECT_EQ(gfx::Vector2dF(123, 456),
@@ -380,7 +375,11 @@ TEST_P(PaintPropertyTreeBuilderTest, OverflowScrollExcludeCssOverlayScrollbar) {
   )HTML");
   // The document content should not be clipped by the overlay scrollbar because
   // the scrollbar can be transparent and the content needs to paint below.
-  EXPECT_CLIP_RECT(FloatRoundedRect(0, 0, 600, 600), DocContentClip());
+  if (RuntimeEnabledFeatures::OverflowOverlayAliasesAutoEnabled()) {
+    EXPECT_CLIP_RECT(FloatRoundedRect(0, 0, 600, 600), DocContentClip());
+  } else {
+    EXPECT_CLIP_RECT(FloatRoundedRect(0, 0, 800, 600), DocContentClip());
+  }
 }
 
 TEST_P(PaintPropertyTreeBuilderTest, OverflowScrollVerticalRL) {
@@ -562,8 +561,7 @@ TEST_P(PaintPropertyTreeBuilderTest, Perspective) {
       <div id='inner'></div>
     </div>
   )HTML");
-  Element* perspective =
-      GetDocument().getElementById(AtomicString("perspective"));
+  Element* perspective = GetDocument().getElementById("perspective");
   const ObjectPaintProperties* perspective_properties =
       perspective->GetLayoutObject()->FirstFragment().PaintProperties();
   gfx::Transform matrix;
@@ -578,7 +576,7 @@ TEST_P(PaintPropertyTreeBuilderTest, Perspective) {
 
   // Adding perspective doesn't clear paint offset. The paint offset will be
   // passed down to children.
-  Element* inner = GetDocument().getElementById(AtomicString("inner"));
+  Element* inner = GetDocument().getElementById("inner");
   const ObjectPaintProperties* inner_properties =
       inner->GetLayoutObject()->FirstFragment().PaintProperties();
   EXPECT_EQ(gfx::Vector2dF(50, 100),
@@ -589,8 +587,7 @@ TEST_P(PaintPropertyTreeBuilderTest, Perspective) {
                           inner->GetLayoutObject(),
                           GetDocument().View()->GetLayoutView());
 
-  perspective->setAttribute(html_names::kStyleAttr,
-                            AtomicString("perspective: 200px"));
+  perspective->setAttribute(html_names::kStyleAttr, "perspective: 200px");
   UpdateAllLifecyclePhasesForTest();
   gfx::Transform matrix1;
   matrix1.ApplyPerspectiveDepth(200);
@@ -601,7 +598,7 @@ TEST_P(PaintPropertyTreeBuilderTest, Perspective) {
             perspective_properties->Perspective()->Parent());
 
   perspective->setAttribute(html_names::kStyleAttr,
-                            AtomicString("perspective-origin: 5% 20%"));
+                            "perspective-origin: 5% 20%");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_EQ(matrix, perspective_properties->Perspective()->Matrix());
   EXPECT_EQ(gfx::Point3F(70, 160, 0),
@@ -619,7 +616,7 @@ TEST_P(PaintPropertyTreeBuilderTest, Transform) {
     </div>
   )HTML");
 
-  Element* transform = GetDocument().getElementById(AtomicString("transform"));
+  Element* transform = GetDocument().getElementById("transform");
   const ObjectPaintProperties* transform_properties =
       transform->GetLayoutObject()->FirstFragment().PaintProperties();
 
@@ -639,18 +636,17 @@ TEST_P(PaintPropertyTreeBuilderTest, Transform) {
                           transform->GetLayoutObject(),
                           GetDocument().View()->GetLayoutView());
 
-  transform->setAttribute(html_names::kStyleAttr,
-                          AtomicString("margin-left: 50px; margin-top: 100px; "
-                                       "width: 400px; height: 300px;"));
+  transform->setAttribute(
+      html_names::kStyleAttr,
+      "margin-left: 50px; margin-top: 100px; width: 400px; height: 300px;");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_EQ(nullptr,
             transform->GetLayoutObject()->FirstFragment().PaintProperties());
 
   transform->setAttribute(
       html_names::kStyleAttr,
-      AtomicString(
-          "margin-left: 50px; margin-top: 100px; width: 400px; height: 300px; "
-          "transform: translate3d(123px, 456px, 789px)"));
+      "margin-left: 50px; margin-top: 100px; width: 400px; height: 300px; "
+      "transform: translate3d(123px, 456px, 789px)");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_EQ(MakeTranslationMatrix(123, 456, 789), transform->GetLayoutObject()
                                                       ->FirstFragment()
@@ -670,7 +666,7 @@ TEST_P(PaintPropertyTreeBuilderTest, Preserve3D3DTransformedDescendant) {
     </div>
   )HTML");
 
-  Element* preserve = GetDocument().getElementById(AtomicString("preserve"));
+  Element* preserve = GetDocument().getElementById("preserve");
   const ObjectPaintProperties* preserve_properties =
       preserve->GetLayoutObject()->FirstFragment().PaintProperties();
 
@@ -689,8 +685,7 @@ TEST_P(PaintPropertyTreeBuilderTest, Perspective3DTransformedDescendant) {
     </div>
   )HTML");
 
-  Element* perspective =
-      GetDocument().getElementById(AtomicString("perspective"));
+  Element* perspective = GetDocument().getElementById("perspective");
   const ObjectPaintProperties* perspective_properties =
       perspective->GetLayoutObject()->FirstFragment().PaintProperties();
 
@@ -711,8 +706,7 @@ TEST_P(PaintPropertyTreeBuilderTest,
     </div>
   )HTML");
 
-  Element* perspective =
-      GetDocument().getElementById(AtomicString("perspective"));
+  Element* perspective = GetDocument().getElementById("perspective");
   const ObjectPaintProperties* perspective_properties =
       perspective->GetLayoutObject()->FirstFragment().PaintProperties();
 
@@ -762,7 +756,7 @@ TEST_P(PaintPropertyTreeBuilderTest, WillChangeTransform) {
     </div>
   )HTML");
 
-  Element* transform = GetDocument().getElementById(AtomicString("transform"));
+  Element* transform = GetDocument().getElementById("transform");
   const ObjectPaintProperties* transform_properties =
       transform->GetLayoutObject()->FirstFragment().PaintProperties();
 
@@ -778,18 +772,17 @@ TEST_P(PaintPropertyTreeBuilderTest, WillChangeTransform) {
                           transform->GetLayoutObject(),
                           GetDocument().View()->GetLayoutView());
 
-  transform->setAttribute(html_names::kStyleAttr,
-                          AtomicString("margin-left: 50px; margin-top: 100px; "
-                                       "width: 400px; height: 300px;"));
+  transform->setAttribute(
+      html_names::kStyleAttr,
+      "margin-left: 50px; margin-top: 100px; width: 400px; height: 300px;");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_EQ(nullptr,
             transform->GetLayoutObject()->FirstFragment().PaintProperties());
 
   transform->setAttribute(
       html_names::kStyleAttr,
-      AtomicString(
-          "margin-left: 50px; margin-top: 100px; width: 400px; height: 300px; "
-          "will-change: transform"));
+      "margin-left: 50px; margin-top: 100px; width: 400px; height: 300px; "
+      "will-change: transform");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_TRUE(transform->GetLayoutObject()
                   ->FirstFragment()
@@ -807,7 +800,7 @@ TEST_P(PaintPropertyTreeBuilderTest, WillChangeContents) {
     </div>
   )HTML");
 
-  Element* transform = GetDocument().getElementById(AtomicString("transform"));
+  Element* transform = GetDocument().getElementById("transform");
   EXPECT_EQ(nullptr,
             transform->GetLayoutObject()->FirstFragment().PaintProperties());
   CHECK_EXACT_VISUAL_RECT(PhysicalRect(50, 100, 400, 300),
@@ -846,8 +839,7 @@ TEST_P(PaintPropertyTreeBuilderTest, NoEffectAndFilterForNonStackingContext) {
 TEST_P(PaintPropertyTreeBuilderTest, RelativePositionInline) {
   LoadTestData("relative-position-inline.html");
 
-  Element* inline_block =
-      GetDocument().getElementById(AtomicString("inline-block"));
+  Element* inline_block = GetDocument().getElementById("inline-block");
   const ObjectPaintProperties* inline_block_properties =
       inline_block->GetLayoutObject()->FirstFragment().PaintProperties();
   EXPECT_EQ(
@@ -894,7 +886,7 @@ TEST_P(PaintPropertyTreeBuilderTest, NestedOpacityEffect) {
 
   LayoutObject* grand_child_without_opacity =
       GetDocument()
-          .getElementById(AtomicString("grandChildWithoutOpacity"))
+          .getElementById("grandChildWithoutOpacity")
           ->GetLayoutObject();
   EXPECT_EQ(nullptr,
             grand_child_without_opacity->FirstFragment().PaintProperties());
@@ -904,7 +896,7 @@ TEST_P(PaintPropertyTreeBuilderTest, NestedOpacityEffect) {
 
   LayoutObject* great_grand_child_with_opacity =
       GetDocument()
-          .getElementById(AtomicString("greatGrandChildWithOpacity"))
+          .getElementById("greatGrandChildWithOpacity")
           ->GetLayoutObject();
   const ObjectPaintProperties* great_grand_child_with_opacity_properties =
       great_grand_child_with_opacity->FirstFragment().PaintProperties();
@@ -1006,7 +998,7 @@ TEST_P(PaintPropertyTreeBuilderTest, EffectNodesAcrossStackingContext) {
 
   LayoutObject* child_with_stacking_context =
       GetDocument()
-          .getElementById(AtomicString("childWithStackingContext"))
+          .getElementById("childWithStackingContext")
           ->GetLayoutObject();
   const ObjectPaintProperties* child_with_stacking_context_properties =
       child_with_stacking_context->FirstFragment().PaintProperties();
@@ -1172,7 +1164,7 @@ TEST_P(PaintPropertyTreeBuilderTest, TransformNodesInSVG) {
 
   LayoutObject& svg_root_with3d_transform =
       *GetDocument()
-           .getElementById(AtomicString("svgRootWith3dTransform"))
+           .getElementById("svgRootWith3dTransform")
            ->GetLayoutObject();
   const ObjectPaintProperties* svg_root_with3d_transform_properties =
       svg_root_with3d_transform.FirstFragment().PaintProperties();
@@ -1628,7 +1620,7 @@ TEST_P(PaintPropertyTreeBuilderTest,
   EXPECT_EQ(svg_properties->Transform(),
             container_properties->Transform()->Parent());
 
-  Element* fixed = GetDocument().getElementById(AtomicString("fixed"));
+  Element* fixed = GetDocument().getElementById("fixed");
   // Ensure the fixed position element is rooted at the nearest transform
   // container.
   EXPECT_EQ(container_properties->Transform(), &fixed->GetLayoutObject()
@@ -1826,7 +1818,7 @@ TEST_P(PaintPropertyTreeBuilderTest, TransformNodesAcrossSubframes) {
 
   LayoutObject* inner_div_with_transform =
       ChildDocument()
-          .getElementById(AtomicString("innerDivWithTransform"))
+          .getElementById("innerDivWithTransform")
           ->GetLayoutObject();
   const ObjectPaintProperties* inner_div_with_transform_properties =
       inner_div_with_transform->FirstFragment().PaintProperties();
@@ -1894,7 +1886,7 @@ TEST_P(PaintPropertyTreeBuilderTest, FramesEstablishIsolation) {
       frame->FirstFragment().ContentsProperties();
 
   LayoutObject* child =
-      ChildDocument().getElementById(AtomicString("child"))->GetLayoutObject();
+      ChildDocument().getElementById("child")->GetLayoutObject();
   const auto& child_local_border_box_properties =
       child->FirstFragment().LocalBorderBoxProperties();
   auto* child_properties =
@@ -1945,9 +1937,8 @@ TEST_P(PaintPropertyTreeBuilderTest, FramesEstablishIsolation) {
 
   // This causes a tree topology change which forces the subtree to be updated.
   // However, isolation stops this recursion.
-  GetDocument()
-      .getElementById(AtomicString("parent"))
-      ->setAttribute(html_names::kClassAttr, AtomicString("transformed"));
+  GetDocument().getElementById("parent")->setAttribute(html_names::kClassAttr,
+                                                       "transformed");
   frame_view->UpdateAllLifecyclePhasesForTest();
 
   // Verify that our clobbered state is still clobbered.
@@ -1999,9 +1990,7 @@ TEST_P(PaintPropertyTreeBuilderTest, TransformNodesInTransformedSubframes) {
   //               Transform transform=translation=7.000000,8.000000,9.000000
 
   LayoutObject* inner_div_with_transform =
-      ChildDocument()
-          .getElementById(AtomicString("transform"))
-          ->GetLayoutObject();
+      ChildDocument().getElementById("transform")->GetLayoutObject();
   auto* inner_div_transform =
       inner_div_with_transform->FirstFragment().PaintProperties()->Transform();
   EXPECT_EQ(MakeTranslationMatrix(7, 8, 9), inner_div_transform->Matrix());
@@ -3391,21 +3380,21 @@ TEST_P(PaintPropertyTreeBuilderTest, CachedProperties) {
   )HTML");
   LocalFrameView* frame_view = GetDocument().View();
 
-  Element* a = GetDocument().getElementById(AtomicString("a"));
+  Element* a = GetDocument().getElementById("a");
   const ObjectPaintProperties* a_properties =
       a->GetLayoutObject()->FirstFragment().PaintProperties();
   const TransformPaintPropertyNode* a_transform_node =
       a_properties->Transform();
   EXPECT_EQ(gfx::Vector2dF(33, 44), a_transform_node->Get2dTranslation());
 
-  Element* b = GetDocument().getElementById(AtomicString("b"));
+  Element* b = GetDocument().getElementById("b");
   const ObjectPaintProperties* b_properties =
       b->GetLayoutObject()->FirstFragment().PaintProperties();
   const TransformPaintPropertyNode* b_transform_node =
       b_properties->Transform();
   EXPECT_EQ(gfx::Vector2dF(55, 66), b_transform_node->Get2dTranslation());
 
-  Element* c = GetDocument().getElementById(AtomicString("c"));
+  Element* c = GetDocument().getElementById("c");
   const ObjectPaintProperties* c_properties =
       c->GetLayoutObject()->FirstFragment().PaintProperties();
   const TransformPaintPropertyNode* c_transform_node =
@@ -3422,8 +3411,7 @@ TEST_P(PaintPropertyTreeBuilderTest, CachedProperties) {
   // Change transform of b. B's transform node should be a new node with the new
   // value, and a and c's transform nodes should be unchanged (with c's parent
   // adjusted).
-  b->setAttribute(html_names::kStyleAttr,
-                  AtomicString("transform: translate(111px, 222px)"));
+  b->setAttribute(html_names::kStyleAttr, "transform: translate(111px, 222px)");
   UpdateAllLifecyclePhasesForTest();
 
   EXPECT_EQ(a_properties,
@@ -3451,7 +3439,7 @@ TEST_P(PaintPropertyTreeBuilderTest, CachedProperties) {
   // Remove transform from b. B's transform node should be removed from the
   // tree, and a and c's transform nodes should be unchanged (with c's parent
   // adjusted).
-  b->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  b->setAttribute(html_names::kStyleAttr, "");
   UpdateAllLifecyclePhasesForTest();
 
   EXPECT_EQ(a_properties,
@@ -3475,8 +3463,7 @@ TEST_P(PaintPropertyTreeBuilderTest, CachedProperties) {
   // Re-add transform to b. B's transform node should be inserted into the tree,
   // and a and c's transform nodes should be unchanged (with c's parent
   // adjusted).
-  b->setAttribute(html_names::kStyleAttr,
-                  AtomicString("transform: translate(4px, 5px)"));
+  b->setAttribute(html_names::kStyleAttr, "transform: translate(4px, 5px)");
   UpdateAllLifecyclePhasesForTest();
 
   EXPECT_EQ(a_properties,
@@ -3701,8 +3688,7 @@ TEST_P(PaintPropertyTreeBuilderTest, OverflowScrollContentsTreeState) {
     <div id='forceScroll' style='height: 4000px;'></div>
   )HTML");
 
-  Element* clipper_element =
-      GetDocument().getElementById(AtomicString("clipper"));
+  Element* clipper_element = GetDocument().getElementById("clipper");
   clipper_element->scrollTo(1, 2);
 
   auto* clipper = To<LayoutBoxModelObject>(clipper_element->GetLayoutObject());
@@ -3907,8 +3893,7 @@ TEST_P(PaintPropertyTreeBuilderTest, OverflowHiddenScrollProperties) {
     </div>
   )HTML");
 
-  Element* overflow_hidden =
-      GetDocument().getElementById(AtomicString("overflowHidden"));
+  Element* overflow_hidden = GetDocument().getElementById("overflowHidden");
   overflow_hidden->setScrollTop(37);
 
   UpdateAllLifecyclePhasesForTest();
@@ -3978,9 +3963,9 @@ TEST_P(PaintPropertyTreeBuilderTest, NestedScrollProperties) {
     </div>
   )HTML");
 
-  Element* overflow_a = GetDocument().getElementById(AtomicString("overflowA"));
+  Element* overflow_a = GetDocument().getElementById("overflowA");
   overflow_a->setScrollTop(37);
-  Element* overflow_b = GetDocument().getElementById(AtomicString("overflowB"));
+  Element* overflow_b = GetDocument().getElementById("overflowB");
   overflow_b->setScrollTop(41);
 
   UpdateAllLifecyclePhasesForTest();
@@ -4059,13 +4044,11 @@ TEST_P(PaintPropertyTreeBuilderTest, PositionedScrollerIsNotNested) {
     <div class='forceScroll'></div>
   )HTML");
 
-  Element* overflow = GetDocument().getElementById(AtomicString("overflow"));
+  Element* overflow = GetDocument().getElementById("overflow");
   overflow->setScrollTop(37);
-  Element* abspos_overflow =
-      GetDocument().getElementById(AtomicString("absposOverflow"));
+  Element* abspos_overflow = GetDocument().getElementById("absposOverflow");
   abspos_overflow->setScrollTop(41);
-  Element* fixed_overflow =
-      GetDocument().getElementById(AtomicString("fixedOverflow"));
+  Element* fixed_overflow = GetDocument().getElementById("fixedOverflow");
   fixed_overflow->setScrollTop(43);
 
   UpdateAllLifecyclePhasesForTest();
@@ -4152,9 +4135,9 @@ TEST_P(PaintPropertyTreeBuilderTest, NestedPositionedScrollProperties) {
     </div>
   )HTML");
 
-  Element* overflow_a = GetDocument().getElementById(AtomicString("overflowA"));
+  Element* overflow_a = GetDocument().getElementById("overflowA");
   overflow_a->setScrollTop(37);
-  Element* overflow_b = GetDocument().getElementById(AtomicString("overflowB"));
+  Element* overflow_b = GetDocument().getElementById("overflowB");
   overflow_b->setScrollTop(41);
 
   UpdateAllLifecyclePhasesForTest();
@@ -4249,7 +4232,7 @@ TEST_P(PaintPropertyTreeBuilderTest, MainThreadScrollReasonsWithoutScrolling) {
     </div>
     <div class='forceScroll'></div>
   )HTML");
-  Element* overflow = GetDocument().getElementById(AtomicString("overflow"));
+  Element* overflow = GetDocument().getElementById("overflow");
   EXPECT_TRUE(DocScroll()->HasBackgroundAttachmentFixedDescendants());
   // No scroll node is needed.
   EXPECT_EQ(overflow->GetLayoutObject()
@@ -4298,16 +4281,16 @@ TEST_P(PaintPropertyTreeBuilderTest,
   // top-left of the border box.
   EXPECT_EQ(PhysicalOffset(8, 8), target1->FirstFragment().PaintOffset());
   // |target1| is only in the first column.
-  EXPECT_FALSE(target1->IsFragmented());
+  EXPECT_FALSE(target1->FirstFragment().NextFragment());
 
   LayoutObject* target2 = GetLayoutObjectByElementId("target2");
   EXPECT_EQ(PhysicalOffset(158, 8), target2->FirstFragment().PaintOffset());
   // |target2| is only in the second column.
-  EXPECT_FALSE(target2->IsFragmented());
+  EXPECT_FALSE(target2->FirstFragment().NextFragment());
 }
 
 TEST_P(PaintPropertyTreeBuilderTest,
-       PaintOffsetsUnderMultiColumnWithScrollableOverflow) {
+       PaintOffsetsUnderMultiColumnWithLayoutOverflow) {
   SetBodyInnerHTML(R"HTML(
     <div style='columns: 2; width: 300px; column-gap: 0; height: 100px'>
       <div id='parent' style='outline: 2px solid black;
@@ -4319,21 +4302,21 @@ TEST_P(PaintPropertyTreeBuilderTest,
 
   const LayoutBox* parent = GetLayoutBoxByElementId("parent");
 
-  // The parent will need to generate 2 fragments, to hold child fragments
-  // that contribute to scrollable overflow.
-  ASSERT_EQ(2u, NumFragments(parent));
-  EXPECT_EQ(PhysicalOffset(158, 8), FragmentAt(parent, 1).PaintOffset());
-  // But since the #parent doesn't take up any space on its own in the second
-  // fragment, the block-size should be 0.
-  ASSERT_EQ(2u, parent->PhysicalFragmentCount());
-  EXPECT_EQ(LayoutUnit(100), parent->GetPhysicalFragment(0)->Size().height);
-  EXPECT_EQ(LayoutUnit(), parent->GetPhysicalFragment(1)->Size().height);
-  EXPECT_EQ(PhysicalOffset(8, 8), FragmentAt(parent, 0).PaintOffset());
+    // The parent will need to generate 2 fragments, to hold child fragments
+    // that contribute to layout overflow.
+    ASSERT_EQ(2u, NumFragments(parent));
+    EXPECT_EQ(PhysicalOffset(158, 8), FragmentAt(parent, 1).PaintOffset());
+    // But since the #parent doesn't take up any space on its own in the second
+    // fragment, the block-size should be 0.
+    ASSERT_EQ(2u, parent->PhysicalFragmentCount());
+    EXPECT_EQ(LayoutUnit(100), parent->GetPhysicalFragment(0)->Size().height);
+    EXPECT_EQ(LayoutUnit(), parent->GetPhysicalFragment(1)->Size().height);
+    EXPECT_EQ(PhysicalOffset(8, 8), FragmentAt(parent, 0).PaintOffset());
 
-  LayoutObject* child = GetLayoutObjectByElementId("child");
-  ASSERT_EQ(2u, NumFragments(child));
-  EXPECT_EQ(PhysicalOffset(8, 8), FragmentAt(child, 0).PaintOffset());
-  EXPECT_EQ(PhysicalOffset(158, 8), FragmentAt(child, 1).PaintOffset());
+    LayoutObject* child = GetLayoutObjectByElementId("child");
+    ASSERT_EQ(2u, NumFragments(child));
+    EXPECT_EQ(PhysicalOffset(8, 8), FragmentAt(child, 0).PaintOffset());
+    EXPECT_EQ(PhysicalOffset(158, 8), FragmentAt(child, 1).PaintOffset());
 }
 
 TEST_P(PaintPropertyTreeBuilderTest, SpanFragmentsLimitedToSize) {
@@ -4363,9 +4346,9 @@ TEST_P(PaintPropertyTreeBuilderTest,
     LayoutObject* first = GetLayoutObjectByElementId("first");
     LayoutObject* second = GetLayoutObjectByElementId("second");
     EXPECT_EQ(PhysicalOffset(), first->FirstFragment().PaintOffset());
-    EXPECT_FALSE(first->IsFragmented());
+    EXPECT_FALSE(first->FirstFragment().NextFragment());
     EXPECT_EQ(PhysicalOffset(70, 0), second->FirstFragment().PaintOffset());
-    EXPECT_FALSE(second->IsFragmented());
+    EXPECT_FALSE(second->FirstFragment().NextFragment());
   };
 
   test();
@@ -4691,11 +4674,9 @@ TEST_P(PaintPropertyTreeBuilderTest, BecomingUnfragmented) {
   EXPECT_EQ(1u, target->FirstFragment().FragmentID());
   EXPECT_EQ(PhysicalOffset(LayoutUnit(208), LayoutUnit(8)),
             target->FirstFragment().PaintOffset());
-  Element* target_element =
-      GetDocument().getElementById(AtomicString("target"));
+  Element* target_element = GetDocument().getElementById("target");
 
-  target_element->setAttribute(html_names::kStyleAttr,
-                               AtomicString("position: absolute"));
+  target_element->setAttribute(html_names::kStyleAttr, "position: absolute");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_EQ(0u, target->FirstFragment().FragmentID());
   EXPECT_EQ(PhysicalOffset(LayoutUnit(8), LayoutUnit(28)),
@@ -4753,7 +4734,8 @@ TEST_P(PaintPropertyTreeBuilderTest, PixelMovingFilter) {
   EXPECT_EQ(&clip->LocalTransformSpace(), &filter->LocalTransformSpace());
   EXPECT_EQ(filter, clip->PixelMovingFilter());
   EXPECT_TRUE(clip->LayoutClipRect().IsInfinite());
-  EXPECT_EQ(gfx::RectF(InfiniteIntRect()), clip->PaintClipRect().Rect());
+  EXPECT_EQ(gfx::RectF(LayoutRect::InfiniteIntRect()),
+            clip->PaintClipRect().Rect());
 }
 
 TEST_P(PaintPropertyTreeBuilderTest, SimpleFilterWithWillChangeTransform) {
@@ -4909,7 +4891,7 @@ TEST_P(PaintPropertyTreeBuilderTest, ChangePositionUpdateDescendantProperties) {
             &descendant->FirstFragment().LocalBorderBoxProperties().Clip());
 
   To<Element>(ancestor->GetNode())
-      ->setAttribute(html_names::kStyleAttr, AtomicString("position: static"));
+      ->setAttribute(html_names::kStyleAttr, "position: static");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_NE(ancestor->FirstFragment().PaintProperties()->OverflowClip(),
             &descendant->FirstFragment().LocalBorderBoxProperties().Clip());
@@ -5316,7 +5298,7 @@ TEST_P(PaintPropertyTreeBuilderTest, ScrollBoundsOffset) {
     </div>
   )HTML");
 
-  Element* scroller = GetDocument().getElementById(AtomicString("scroller"));
+  Element* scroller = GetDocument().getElementById("scroller");
   scroller->setScrollTop(42);
 
   UpdateAllLifecyclePhasesForTest();
@@ -5336,8 +5318,7 @@ TEST_P(PaintPropertyTreeBuilderTest, ScrollBoundsOffset) {
   // And the scroll node should not.
   EXPECT_EQ(gfx::Rect(0, 0, 100, 100), scroll_node->ContainerRect());
 
-  scroller->setAttribute(html_names::kStyleAttr,
-                         AtomicString("border: 20px solid black;"));
+  scroller->setAttribute(html_names::kStyleAttr, "border: 20px solid black;");
   UpdateAllLifecyclePhasesForTest();
   // The paint offset node should be offset by the margin.
   EXPECT_EQ(gfx::Vector2dF(7, 11),
@@ -5346,8 +5327,8 @@ TEST_P(PaintPropertyTreeBuilderTest, ScrollBoundsOffset) {
   EXPECT_EQ(gfx::Rect(20, 20, 100, 100), scroll_node->ContainerRect());
 
   scroller->setAttribute(html_names::kStyleAttr,
-                         AtomicString("border: 20px solid black;"
-                                      "transform: translate(20px, 30px);"));
+                         "border: 20px solid black;"
+                         "transform: translate(20px, 30px);");
   UpdateAllLifecyclePhasesForTest();
   // The scroll node's offset should not include margin if it has already been
   // included in a paint offset node.
@@ -5379,8 +5360,7 @@ TEST_P(PaintPropertyTreeBuilderTest, BackfaceHidden) {
   EXPECT_EQ(TransformPaintPropertyNode::BackfaceVisibility::kHidden,
             transform->GetBackfaceVisibilityForTesting());
 
-  To<Element>(target->GetNode())
-      ->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  To<Element>(target->GetNode())->setAttribute(html_names::kStyleAttr, "");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_EQ(PhysicalOffset(60, 50), target->FirstFragment().PaintOffset());
   EXPECT_EQ(nullptr, target->FirstFragment().PaintProperties());
@@ -5460,7 +5440,7 @@ TEST_P(PaintPropertyTreeBuilderTest, FrameClipWhenPrinting) {
 
   // When the main frame is printing, it should not have content clip.
   gfx::SizeF page_size(100, 100);
-  GetFrame().StartPrinting(page_size, 1);
+  GetFrame().StartPrinting(page_size, page_size, 1);
   GetDocument().View()->UpdateLifecyclePhasesForPrinting();
   EXPECT_EQ(nullptr, DocContentClip(main_frame_doc));
   EXPECT_CLIP_RECT(gfx::RectF(0, 0, 300, 150), DocContentClip(child_frame_doc));
@@ -5470,7 +5450,7 @@ TEST_P(PaintPropertyTreeBuilderTest, FrameClipWhenPrinting) {
 
   // When only the child frame is printing, it should not have content clip but
   // the main frame still have (which doesn't matter though).
-  ChildFrame().StartPrinting(page_size, 1);
+  ChildFrame().StartPrinting(page_size, page_size, 1);
   GetDocument().View()->UpdateLifecyclePhasesForPrinting();
   ASSERT_NE(nullptr, DocContentClip(main_frame_doc));
   EXPECT_CLIP_RECT(gfx::RectF(0, 0, 800, 600), DocContentClip(main_frame_doc));
@@ -5532,13 +5512,11 @@ TEST_P(PaintPropertyTreeBuilderTest, FragmentPaintOffsetUnderOverflowScroll) {
             PaintPropertiesForElement("container")->PaintOffsetTranslation());
 
   const auto* content = GetLayoutObjectByElementId("content");
-  FragmentDataIterator iterator(*content);
-  const auto* first_fragment = iterator.GetFragmentData();
-  ASSERT_TRUE(iterator.Advance());
-  const auto* second_fragment = iterator.GetFragmentData();
+  const auto& first_fragment = content->FirstFragment();
+  const auto* second_fragment = first_fragment.NextFragment();
   ASSERT_NE(nullptr, second_fragment);
 
-  EXPECT_EQ(PhysicalOffset(), first_fragment->PaintOffset());
+  EXPECT_EQ(PhysicalOffset(), first_fragment.PaintOffset());
   EXPECT_EQ(PhysicalOffset(390, 0), second_fragment->PaintOffset());
 }
 
@@ -5570,51 +5548,6 @@ TEST_P(PaintPropertyTreeBuilderTest, SVGRootWithCSSMask) {
   EXPECT_TRUE(root.FirstFragment().PaintProperties()->Mask());
 }
 
-TEST_P(PaintPropertyTreeBuilderTest, ElementCaptureEffectNode) {
-  ScopedElementCaptureForTest scoped_element_capture(true);
-
-  // This test makes sure that an ElementCaptureEffect node is properly added
-  // when an element has a restriction ID.
-  SetBodyInnerHTML(R"HTML(
-     <style>
-      .stacking {
-        opacity: 0.9;
-      }
-    </style>
-    <body id="body1">
-      <div id="div1" width="640" height="480"/>
-    </body>
-  )HTML");
-
-  Element* element = GetDocument().getElementById(AtomicString("div1"));
-  ASSERT_TRUE(element);
-
-  // As a plain div, the element shouldn't have a separate stacking context.
-  EXPECT_FALSE(element->GetLayoutObject()->HasLayer());
-  EXPECT_FALSE(element->GetLayoutObject()->IsStackingContext());
-  element->SetRestrictionTargetId(
-      std::make_unique<RestrictionTargetId>(base::Token::CreateRandom()));
-  UpdateAllLifecyclePhasesForTest();
-
-  // The element should still not have a proper stacking context.
-  EXPECT_FALSE(element->GetLayoutObject()->HasLayer());
-  EXPECT_FALSE(element->GetLayoutObject()->IsStackingContext());
-
-  // Now that the div has a restriction ID and a stacking context, it should
-  // have an element capture effect node.
-  element->setAttribute(html_names::kClassAttr, AtomicString("stacking"));
-  UpdateAllLifecyclePhasesForTest();
-  const ObjectPaintProperties* paint_properties =
-      element->GetLayoutObject()->FirstFragment().PaintProperties();
-  EXPECT_TRUE(paint_properties && paint_properties->ElementCaptureEffect());
-  EXPECT_TRUE(element->GetLayoutObject()->HasLayer());
-  EXPECT_TRUE(element->GetLayoutObject()->IsStackingContext());
-
-  // NOTE: we don't currently have a teardown path for element capture. Once an
-  // element is marked for capture it is marked for the rest of its lifetime.
-  // TODO(https://crbug.com/1472139): add a teardown path for element capture.
-}
-
 TEST_P(PaintPropertyTreeBuilderTest, ClearClipPathEffectNode) {
   // This test makes sure ClipPath effect node is cleared properly upon
   // removal of a clip-path.
@@ -5632,7 +5565,7 @@ TEST_P(PaintPropertyTreeBuilderTest, ClearClipPathEffectNode) {
     EXPECT_TRUE(rect->FirstFragment().PaintProperties()->ClipPathMask());
   }
 
-  Element* clip = GetDocument().getElementById(AtomicString("clip"));
+  Element* clip = GetDocument().getElementById("clip");
   ASSERT_TRUE(clip);
   clip->remove();
   UpdateAllLifecyclePhasesExceptPaint();
@@ -5690,9 +5623,8 @@ TEST_P(PaintPropertyTreeBuilderTest, RootHasCompositedScrolling) {
   EXPECT_TRUE(DocScrollTranslation()->HasDirectCompositingReasons());
 
   // Remove scrolling from the root.
-  Element* force_scroll_element =
-      GetDocument().getElementById(AtomicString("forceScroll"));
-  force_scroll_element->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  Element* force_scroll_element = GetDocument().getElementById("forceScroll");
+  force_scroll_element->setAttribute(html_names::kStyleAttr, "");
   UpdateAllLifecyclePhasesExceptPaint();
   // Always create scroll translation for layout view even the document does
   // not scroll (not enough content).
@@ -5736,8 +5668,7 @@ TEST_P(PaintPropertyTreeBuilderTest, ClipHitTestChangeDoesNotCauseFullRepaint) {
   auto* child_layer = GetPaintLayerByElementId("child");
   EXPECT_FALSE(child_layer->SelfNeedsRepaint());
 
-  GetDocument().body()->setAttribute(html_names::kClassAttr,
-                                     AtomicString("noscrollbars"));
+  GetDocument().body()->setAttribute(html_names::kClassAttr, "noscrollbars");
   UpdateAllLifecyclePhasesExceptPaint();
   EXPECT_FALSE(child_layer->SelfNeedsRepaint());
 }
@@ -5828,22 +5759,26 @@ TEST_P(PaintPropertyTreeBuilderTest, RepeatingFixedPositionInPagedMedia) {
   UpdateAllLifecyclePhasesForTest();
 
   const auto* fixed = GetLayoutObjectByElementId("fixed");
+  EXPECT_FALSE(fixed->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(1u, NumFragments(fixed));
 
   const auto* fixed_child = GetLayoutObjectByElementId("fixed-child");
+  EXPECT_FALSE(fixed_child->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(1u, NumFragments(fixed_child));
 
   const auto* normal = GetLayoutObjectByElementId("normal");
+  EXPECT_FALSE(normal->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(1u, NumFragments(normal));
 
   gfx::SizeF page_size(300, 400);
-  GetFrame().StartPrinting(page_size, 1);
+  GetFrame().StartPrinting(page_size, page_size, 1);
   GetDocument().View()->UpdateLifecyclePhasesForPrinting();
   fixed = GetLayoutObjectByElementId("fixed");
   fixed_child = GetLayoutObjectByElementId("fixed-child");
   normal = GetLayoutObjectByElementId("normal");
 
   // "fixed" should create fragments to repeat in each printed page.
+  EXPECT_TRUE(fixed->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(3u, NumFragments(fixed));
   for (int i = 0; i < 3; i++) {
     const auto& fragment = FragmentAt(fixed, i);
@@ -5855,6 +5790,7 @@ TEST_P(PaintPropertyTreeBuilderTest, RepeatingFixedPositionInPagedMedia) {
     EXPECT_EQ(PhysicalOffset(), fragment.PaintOffset());
   }
 
+  EXPECT_FALSE(fixed_child->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(3u, NumFragments(fixed_child));
   for (int i = 0; i < 3; i++) {
     const auto& fragment = FragmentAt(fixed_child, i);
@@ -5862,6 +5798,7 @@ TEST_P(PaintPropertyTreeBuilderTest, RepeatingFixedPositionInPagedMedia) {
               fragment.PaintOffset());
   }
 
+  EXPECT_FALSE(normal->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(3u, NumFragments(normal));
 
   GetFrame().EndPrinting();
@@ -5870,7 +5807,9 @@ TEST_P(PaintPropertyTreeBuilderTest, RepeatingFixedPositionInPagedMedia) {
   fixed_child = GetLayoutObjectByElementId("fixed-child");
   normal = GetLayoutObjectByElementId("normal");
   EXPECT_EQ(1u, NumFragments(fixed));
+  EXPECT_FALSE(fixed_child->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(1u, NumFragments(fixed_child));
+  EXPECT_FALSE(normal->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(1u, NumFragments(normal));
 }
 
@@ -5887,18 +5826,21 @@ TEST_P(PaintPropertyTreeBuilderTest,
   UpdateAllLifecyclePhasesForTest();
 
   const auto* fixed = GetLayoutObjectByElementId("fixed");
+  EXPECT_FALSE(fixed->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(1u, NumFragments(fixed));
 
   const auto* fixed_child = GetLayoutObjectByElementId("fixed-child");
+  EXPECT_FALSE(fixed_child->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(1u, NumFragments(fixed_child));
 
   gfx::SizeF page_size(300, 400);
-  GetFrame().StartPrinting(page_size, 1);
+  GetFrame().StartPrinting(page_size, page_size, 1);
   GetDocument().View()->UpdateLifecyclePhasesForPrinting();
   fixed = GetLayoutObjectByElementId("fixed");
   fixed_child = GetLayoutObjectByElementId("fixed-child");
 
   // "fixed" should create fragments to repeat in each printed page.
+  EXPECT_TRUE(fixed->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(3u, NumFragments(fixed));
   for (int i = 0; i < 3; i++) {
     const auto& fragment = FragmentAt(fixed, i);
@@ -5912,6 +5854,7 @@ TEST_P(PaintPropertyTreeBuilderTest,
               properties->Transform()->Parent());
   }
 
+  EXPECT_FALSE(fixed_child->IsFixedPositionObjectInPagedMedia());
   for (int i = 0; i < 3; i++) {
     const auto& fragment = FragmentAt(fixed_child, i);
     EXPECT_EQ(PhysicalOffset(0, 10), fragment.PaintOffset());
@@ -5924,6 +5867,7 @@ TEST_P(PaintPropertyTreeBuilderTest,
   fixed = GetLayoutObjectByElementId("fixed");
   fixed_child = GetLayoutObjectByElementId("fixed-child");
   EXPECT_EQ(1u, NumFragments(fixed));
+  EXPECT_FALSE(fixed_child->IsFixedPositionObjectInPagedMedia());
   EXPECT_EQ(1u, NumFragments(fixed_child));
 }
 
@@ -6046,7 +5990,7 @@ TEST_P(PaintPropertyTreeBuilderTest,
   )HTML");
 
   const auto& fragment = GetDocument()
-                             .getElementById(AtomicString("selection"))
+                             .getElementById("selection")
                              ->GetLayoutObject()
                              ->FirstFragment();
 
@@ -6072,12 +6016,12 @@ TEST_P(PaintPropertyTreeBuilderTest, EmptyClipFragments) {
   )HTML");
 
   const auto* wrapper =
-      GetDocument().getElementById(AtomicString("wrapper"))->GetLayoutObject();
+      GetDocument().getElementById("wrapper")->GetLayoutObject();
 
-  ASSERT_EQ(3u, NumFragments(wrapper));
-  ASSERT_EQ(0u, FragmentAt(wrapper, 0).FragmentID());
-  ASSERT_EQ(1u, FragmentAt(wrapper, 1).FragmentID());
-  ASSERT_EQ(2u, FragmentAt(wrapper, 2).FragmentID());
+    ASSERT_EQ(3u, NumFragments(wrapper));
+    ASSERT_EQ(0u, FragmentAt(wrapper, 0).FragmentID());
+    ASSERT_EQ(1u, FragmentAt(wrapper, 1).FragmentID());
+    ASSERT_EQ(2u, FragmentAt(wrapper, 2).FragmentID());
 }
 
 TEST_P(PaintPropertyTreeBuilderTest, StickyConstraintChain) {
@@ -6095,7 +6039,7 @@ TEST_P(PaintPropertyTreeBuilderTest, StickyConstraintChain) {
       <div style="height:1000px;"></div>
     </div>
   )HTML");
-  GetDocument().getElementById(AtomicString("scroller"))->setScrollTop(50);
+  GetDocument().getElementById("scroller")->setScrollTop(50);
   UpdateAllLifecyclePhasesForTest();
 
   const auto* outer_properties = PaintPropertiesForElement("outer");
@@ -6164,7 +6108,7 @@ TEST_P(PaintPropertyTreeBuilderTest, StickyUnderOverflowHidden) {
       <div style="height:1000px;"></div>
     </div>
   )HTML");
-  GetDocument().getElementById(AtomicString("scroller"))->setScrollTop(50);
+  GetDocument().getElementById("scroller")->setScrollTop(50);
   UpdateAllLifecyclePhasesForTest();
 
   const auto* outer_properties = PaintPropertiesForElement("outer");
@@ -6252,8 +6196,8 @@ TEST_P(PaintPropertyTreeBuilderTest, WillChangeOpacityInducesAnEffectNode) {
   ASSERT_TRUE(properties->Effect());
   EXPECT_FLOAT_EQ(properties->Effect()->Opacity(), 1.f);
 
-  auto* div = GetDocument().getElementById(AtomicString("div"));
-  div->setAttribute(html_names::kClassAttr, AtomicString("transluscent"));
+  auto* div = GetDocument().getElementById("div");
+  div->setAttribute(html_names::kClassAttr, "transluscent");
   UpdateAllLifecyclePhasesExceptPaint();
   EXPECT_FALSE(
       To<LayoutBox>(div->GetLayoutObject())->Layer()->SelfNeedsRepaint());
@@ -6428,8 +6372,8 @@ TEST_P(PaintPropertyTreeBuilderTest, SimpleOpacityChangeDoesNotCausePacUpdate) {
                    ->effect_tree()
                    .needs_update());
 
-  Element* element = GetDocument().getElementById(AtomicString("element"));
-  element->setAttribute(html_names::kStyleAttr, AtomicString("opacity: 0.9"));
+  Element* element = GetDocument().getElementById("element");
+  element->setAttribute(html_names::kStyleAttr, "opacity: 0.9");
 
   UpdateAllLifecyclePhasesExceptPaint();
   EXPECT_FLOAT_EQ(properties->Effect()->Opacity(), 0.9f);
@@ -6494,7 +6438,7 @@ TEST_P(PaintPropertyTreeBuilderTest, SimpleScrollChangeDoesNotCausePacUpdate) {
   EXPECT_FLOAT_EQ(current_scroll_offset.x(), 0);
   EXPECT_FLOAT_EQ(current_scroll_offset.y(), 0);
 
-  GetDocument().getElementById(AtomicString("element"))->setScrollTop(10.);
+  GetDocument().getElementById("element")->setScrollTop(10.);
   UpdateAllLifecyclePhasesExceptPaint();
 
   EXPECT_EQ(gfx::Vector2dF(0, -10),
@@ -6545,7 +6489,7 @@ TEST_P(PaintPropertyTreeBuilderTest,
   // We don't push the sticky offset to cc.
   EXPECT_EQ(gfx::Vector2dF(), cc_transform_node->local.To2dTranslation());
 
-  GetDocument().getElementById(AtomicString("scroller"))->setScrollTop(200);
+  GetDocument().getElementById("scroller")->setScrollTop(200);
   UpdateAllLifecyclePhasesExceptPaint();
 
   EXPECT_EQ(gfx::Vector2dF(), sticky_translation->Get2dTranslation());
@@ -6580,9 +6524,8 @@ TEST_P(PaintPropertyTreeBuilderTest,
   EXPECT_FALSE(
       GetDocument().View()->GetPaintArtifactCompositor()->NeedsUpdate());
 
-  Element* outer = GetDocument().getElementById(AtomicString("outer"));
-  outer->setAttribute(html_names::kStyleAttr,
-                      AtomicString("transform: translateY(10px)"));
+  Element* outer = GetDocument().getElementById("outer");
+  outer->setAttribute(html_names::kStyleAttr, "transform: translateY(10px)");
   UpdateAllLifecyclePhasesExceptPaint();
 
   EXPECT_TRUE(
@@ -6596,7 +6539,7 @@ TEST_P(PaintPropertyTreeBuilderTest, VideoClipRect) {
     </video>
   )HTML");
 
-  Element* video_element = GetDocument().getElementById(AtomicString("video"));
+  Element* video_element = GetDocument().getElementById("video");
   ASSERT_NE(nullptr, video_element);
   video_element->SetInlineStyleProperty(CSSPropertyID::kWidth, "320.2px");
   video_element->SetInlineStyleProperty(CSSPropertyID::kTop, "0.1px");
@@ -6634,7 +6577,7 @@ TEST_P(PaintPropertyTreeBuilderTest, NoPaintPropertyForBlockText) {
                    "'>T</div>");
   EXPECT_TRUE(PaintPropertiesForElement("container"));
   auto* text = GetDocument()
-                   .getElementById(AtomicString("container"))
+                   .getElementById("container")
                    ->firstChild()
                    ->GetLayoutObject();
   ASSERT_TRUE(text->IsText());
@@ -6646,7 +6589,7 @@ TEST_P(PaintPropertyTreeBuilderTest, NoPaintPropertyForInlineText) {
                    "'>T</span>");
   EXPECT_TRUE(PaintPropertiesForElement("container"));
   auto* text = GetDocument()
-                   .getElementById(AtomicString("container"))
+                   .getElementById("container")
                    ->firstChild()
                    ->GetLayoutObject();
   ASSERT_TRUE(text->IsText());
@@ -6658,7 +6601,7 @@ TEST_P(PaintPropertyTreeBuilderTest, NoPaintPropertyForSVGText) {
                    "'>T</text>");
   EXPECT_TRUE(PaintPropertiesForElement("container"));
   auto* text = GetDocument()
-                   .getElementById(AtomicString("container"))
+                   .getElementById("container")
                    ->firstChild()
                    ->GetLayoutObject();
   ASSERT_TRUE(text->IsText());
@@ -6699,7 +6642,7 @@ TEST_P(PaintPropertyTreeBuilderTest, IsAffectedByOuterViewportBoundsDelta) {
 
   // Fixed elements in subframes are not affected by viewport.
   check_result(ChildDocument()
-                   .getElementById(AtomicString("fixed"))
+                   .getElementById("fixed")
                    ->GetLayoutObject()
                    ->FirstFragment()
                    .PaintProperties(),
@@ -7030,7 +6973,7 @@ TEST_P(PaintPropertyTreeBuilderTest, TransformChangesInvalidateGeometryMapper) {
   EXPECT_TRUE(transform_cache.IsValid());
 
   // Change the transform and ensure the geometry mapper cache is invalidated.
-  auto* div = GetDocument().getElementById(AtomicString("div"));
+  auto* div = GetDocument().getElementById("div");
   div->removeAttribute(html_names::kStyleAttr);
   UpdateAllLifecyclePhasesExceptPaint();
   EXPECT_FALSE(transform_cache.IsValid());
@@ -7040,7 +6983,7 @@ TEST_P(PaintPropertyTreeBuilderTest, TransformChangesInvalidateGeometryMapper) {
 
   // Make a color change and ensure the geometry mapper cache is not
   // invalidated.
-  div->setAttribute(html_names::kStyleAttr, AtomicString("background: green;"));
+  div->setAttribute(html_names::kStyleAttr, "background: green;");
   UpdateAllLifecyclePhasesExceptPaint();
   EXPECT_TRUE(transform_cache.IsValid());
 }
@@ -7071,9 +7014,8 @@ TEST_P(PaintPropertyTreeBuilderTest,
             container_properties->Transform());
 
   // Remove the direct compositing reason from #container.
-  auto* container_element =
-      GetDocument().getElementById(AtomicString("container"));
-  container_element->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  auto* container_element = GetDocument().getElementById("container");
+  container_element->setAttribute(html_names::kStyleAttr, "");
   frame_view->UpdateAllLifecyclePhasesForTest();
 
   auto* composited = GetLayoutObjectByElementId("composited");
@@ -7099,8 +7041,8 @@ TEST_P(PaintPropertyTreeBuilderTest, PromoteTrivial3DWithHighEndDevice) {
 
   const auto* scroll_properties = PaintPropertiesForElement("scroll");
   EXPECT_TRUE(scroll_properties->Transform()->HasDirectCompositingReasons());
-  EXPECT_EQ(CompositedScrollingPreference::kPreferred,
-            scroll_properties->Scroll()->GetCompositedScrollingPreference());
+  EXPECT_TRUE(
+      scroll_properties->ScrollTranslation()->HasDirectCompositingReasons());
   EXPECT_FALSE(scroll_properties->Effect());
 
   // Trivial 3d transform also triggers composited effect if effect exist.
@@ -7131,9 +7073,9 @@ TEST_P(PaintPropertyTreeBuilderTest, DontPromoteTrivial3DWithLowEndDevice) {
 
   const auto* scroll_properties = PaintPropertiesForElement("scroll");
   EXPECT_FALSE(scroll_properties->Transform()->HasDirectCompositingReasons());
-  // We still prefer composited scrolling with Trivial 3d transform.
-  EXPECT_EQ(CompositedScrollingPreference::kPreferred,
-            scroll_properties->Scroll()->GetCompositedScrollingPreference());
+  // Trivial 3d transform still triggers composited scrolling.
+  EXPECT_TRUE(
+      scroll_properties->ScrollTranslation()->HasDirectCompositingReasons());
   EXPECT_FALSE(scroll_properties->Effect());
 
   const auto* effect_properties = PaintPropertiesForElement("effect");
@@ -7150,6 +7092,7 @@ TEST_P(PaintPropertyTreeBuilderTest, DontPromoteTrivial3DWithLowEndDevice) {
   } while (false)
 
 TEST_P(PaintPropertyTreeBuilderTest, BackgroundClip) {
+  ScopedCompositeBackgroundAttachmentFixedForTest enabled(true);
   SetPreferCompositingToLCDText(true);
 
   SetBodyInnerHTML(R"HTML(
@@ -7168,68 +7111,62 @@ TEST_P(PaintPropertyTreeBuilderTest, BackgroundClip) {
     <div id="target"></div>
   )HTML");
 
-  auto* target = GetDocument().getElementById(AtomicString("target"));
+  auto* target = GetDocument().getElementById("target");
   EXPECT_BACKGROUND_CLIP(PaintPropertiesForElement("target"),
                          gfx::RectF(0, 0, 300, 200));
 
-  target->setAttribute(html_names::kStyleAttr,
-                       AtomicString("background-clip: padding-box"));
+  target->setAttribute(html_names::kStyleAttr, "background-clip: padding-box");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_BACKGROUND_CLIP(PaintPropertiesForElement("target"),
                          gfx::RectF(20, 20, 260, 160));
 
-  target->setAttribute(
-      html_names::kStyleAttr,
-      AtomicString("background-clip: padding-box; border-top-width: 15px"));
+  target->setAttribute(html_names::kStyleAttr,
+                       "background-clip: padding-box; border-top-width: 15px");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_BACKGROUND_CLIP(PaintPropertiesForElement("target"),
                          gfx::RectF(20, 15, 260, 165));
 
-  target->setAttribute(html_names::kStyleAttr,
-                       AtomicString("background-clip: content-box"));
+  target->setAttribute(html_names::kStyleAttr, "background-clip: content-box");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_BACKGROUND_CLIP(PaintPropertiesForElement("target"),
                          gfx::RectF(30, 30, 240, 140));
 
-  target->setAttribute(
-      html_names::kStyleAttr,
-      AtomicString("background-clip: content-box; padding-left: 25px"));
+  target->setAttribute(html_names::kStyleAttr,
+                       "background-clip: content-box; padding-left: 25px");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_BACKGROUND_CLIP(PaintPropertiesForElement("target"),
                          gfx::RectF(45, 30, 225, 140));
 
-  target->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  target->setAttribute(html_names::kStyleAttr, "");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_BACKGROUND_CLIP(PaintPropertiesForElement("target"),
                          gfx::RectF(0, 0, 300, 200));
 
-  target->setAttribute(html_names::kStyleAttr,
-                       AtomicString("border-radius: 20px"));
+  target->setAttribute(html_names::kStyleAttr, "border-radius: 20px");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_FALSE(PaintPropertiesForElement("target"));
 
-  target->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  target->setAttribute(html_names::kStyleAttr, "");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_BACKGROUND_CLIP(PaintPropertiesForElement("target"),
                          gfx::RectF(0, 0, 300, 200));
 
-  target->setAttribute(html_names::kStyleAttr,
-                       AtomicString("box-shadow: 10px 20px blue"));
+  target->setAttribute(html_names::kStyleAttr, "box-shadow: 10px 20px blue");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_FALSE(PaintPropertiesForElement("target"));
 
-  target->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  target->setAttribute(html_names::kStyleAttr, "");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_BACKGROUND_CLIP(PaintPropertiesForElement("target"),
                          gfx::RectF(0, 0, 300, 200));
 
-  target->setAttribute(html_names::kStyleAttr,
-                       AtomicString("background-attachment: local"));
+  target->setAttribute(html_names::kStyleAttr, "background-attachment: local");
   UpdateAllLifecyclePhasesForTest();
   EXPECT_FALSE(PaintPropertiesForElement("target"));
 }
 
 TEST_P(PaintPropertyTreeBuilderTest, BackgroundClipFragmented) {
+  ScopedCompositeBackgroundAttachmentFixedForTest enabled(true);
   SetPreferCompositingToLCDText(true);
 
   SetBodyInnerHTML(R"HTML(
@@ -7259,10 +7196,8 @@ TEST_P(PaintPropertyTreeBuilderTest, BackgroundClipFragmented) {
   EXPECT_BACKGROUND_CLIP(FragmentAt(target, 2).PaintProperties(),
                          gfx::RectF(230, 0, 40, 170));
 
-  GetDocument()
-      .getElementById(AtomicString("target"))
-      ->setAttribute(html_names::kStyleAttr,
-                     AtomicString("background-clip: padding-box"));
+  GetDocument().getElementById("target")->setAttribute(
+      html_names::kStyleAttr, "background-clip: padding-box");
   UpdateAllLifecyclePhasesForTest();
   ASSERT_EQ(3u, NumFragments(target));
   EXPECT_BACKGROUND_CLIP(FragmentAt(target, 0).PaintProperties(),
@@ -7272,10 +7207,8 @@ TEST_P(PaintPropertyTreeBuilderTest, BackgroundClipFragmented) {
   EXPECT_BACKGROUND_CLIP(FragmentAt(target, 2).PaintProperties(),
                          gfx::RectF(220, 0, 60, 180));
 
-  GetDocument()
-      .getElementById(AtomicString("target"))
-      ->setAttribute(html_names::kStyleAttr,
-                     AtomicString("background-clip: border-box"));
+  GetDocument().getElementById("target")->setAttribute(
+      html_names::kStyleAttr, "background-clip: border-box");
   UpdateAllLifecyclePhasesForTest();
   ASSERT_EQ(3u, NumFragments(target));
   EXPECT_BACKGROUND_CLIP(FragmentAt(target, 0).PaintProperties(),
@@ -7284,42 +7217,6 @@ TEST_P(PaintPropertyTreeBuilderTest, BackgroundClipFragmented) {
                          gfx::RectF(100, 0, 100, 200));
   EXPECT_BACKGROUND_CLIP(FragmentAt(target, 2).PaintProperties(),
                          gfx::RectF(200, 0, 100, 200));
-}
-
-TEST_P(PaintPropertyTreeBuilderTest, OverlayScrollbarEffects) {
-  SetBodyInnerHTML(R"HTML(
-    <div id="target" style="width: 100px; height: 100px; overflow: scroll">
-      <div style="height: 300px"></div>
-    </div>
-  )HTML");
-  CHECK(GetDocument().GetPage()->GetScrollbarTheme().UsesOverlayScrollbars());
-
-  auto* properties = PaintPropertiesForElement("target");
-  ASSERT_TRUE(properties);
-  ASSERT_TRUE(properties->OverflowClip());
-  EXPECT_FALSE(properties->HorizontalScrollbarEffect());
-  ASSERT_TRUE(properties->VerticalScrollbarEffect());
-  EXPECT_EQ(properties->OverflowClip()->Parent(),
-            properties->VerticalScrollbarEffect()->OutputClip());
-}
-
-TEST_P(PaintPropertyTreeBuilderTest, OverlayScrollbarEffectsWithRadius) {
-  SetBodyInnerHTML(R"HTML(
-    <div id="target" style="width: 100px; height: 100px; border-radius: 10px;
-                            overflow: scroll">
-      <div style="height: 300px"></div>
-    </div>
-  )HTML");
-  CHECK(GetDocument().GetPage()->GetScrollbarTheme().UsesOverlayScrollbars());
-
-  auto* properties = PaintPropertiesForElement("target");
-  ASSERT_TRUE(properties);
-  ASSERT_TRUE(properties->OverflowClip());
-  ASSERT_TRUE(properties->InnerBorderRadiusClip());
-  EXPECT_FALSE(properties->HorizontalScrollbarEffect());
-  ASSERT_TRUE(properties->VerticalScrollbarEffect());
-  EXPECT_EQ(properties->InnerBorderRadiusClip()->Parent(),
-            properties->VerticalScrollbarEffect()->OutputClip());
 }
 
 }  // namespace blink

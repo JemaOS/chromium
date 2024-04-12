@@ -3,13 +3,14 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/cocoa/test/run_loop_testing.h"
+#include "base/memory/raw_ptr.h"
 
 #import <Foundation/Foundation.h>
 
 #include <memory>
 
-#include "base/memory/raw_ptr.h"
-#include "base/message_loop/message_pump_apple.h"
+#include "base/mac/scoped_nsobject.h"
+#include "base/message_loop/message_pump_mac.h"
 
 // This class is scheduled with a delayed selector to quit the message pump.
 @interface CocoaQuitTask : NSObject {
@@ -35,22 +36,25 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace chrome::testing {
+namespace chrome {
+namespace testing {
 
 void NSRunLoopRunAllPending() {
-  auto message_pump = std::make_unique<base::MessagePumpNSRunLoop>();
+  std::unique_ptr<base::MessagePumpNSRunLoop> message_pump(
+      new base::MessagePumpNSRunLoop);
 
   // Put a delayed selector on the queue. All other pending delayed selectors
   // will run before this, after which the internal loop can end.
-  CocoaQuitTask* quit_task =
-      [[CocoaQuitTask alloc] initWithMessagePump:message_pump.get()];
+  base::scoped_nsobject<CocoaQuitTask> quit_task(
+      [[CocoaQuitTask alloc] initWithMessagePump:message_pump.get()]);
 
   [quit_task performSelector:@selector(doQuit) withObject:nil afterDelay:0];
 
-  // Spin the internal loop, running it until the quit task is pumped. Pass
-  // nullptr because there is no delegate MessageLoop; only the Cocoa work
-  // queues will be pumped.
-  message_pump->Run(nullptr);
+  // Spin the internal loop, running it until the quit task is pumped. Pass NULL
+  // because there is no delegate MessageLoop; only the Cocoa work queues will
+  // be pumped.
+  message_pump->Run(NULL);
 }
 
-}  // namespace chrome::testing
+}  // namespace testing
+}  // namespace chrome

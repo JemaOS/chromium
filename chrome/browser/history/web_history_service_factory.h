@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_HISTORY_WEB_HISTORY_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_HISTORY_WEB_HISTORY_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
@@ -28,11 +28,11 @@ class WebHistoryServiceFactory : public ProfileKeyedServiceFactory {
 
  protected:
   // Overridden from BrowserContextKeyedServiceFactory.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 
  private:
-  friend base::NoDestructor<WebHistoryServiceFactory>;
+  friend struct base::DefaultSingletonTraits<WebHistoryServiceFactory>;
 
   WebHistoryServiceFactory();
   ~WebHistoryServiceFactory() override;

@@ -17,8 +17,7 @@ TemplateURLFetcher* TemplateURLFetcherFactory::GetForProfile(
 
 // static
 TemplateURLFetcherFactory* TemplateURLFetcherFactory::GetInstance() {
-  static base::NoDestructor<TemplateURLFetcherFactory> instance;
-  return instance.get();
+  return base::Singleton<TemplateURLFetcherFactory>::get();
 }
 
 // static
@@ -31,20 +30,15 @@ void TemplateURLFetcherFactory::ShutdownForProfile(Profile* profile) {
 TemplateURLFetcherFactory::TemplateURLFetcherFactory()
     : ProfileKeyedServiceFactory(
           "TemplateURLFetcher",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(TemplateURLServiceFactory::GetInstance());
 }
 
-TemplateURLFetcherFactory::~TemplateURLFetcherFactory() = default;
+TemplateURLFetcherFactory::~TemplateURLFetcherFactory() {
+}
 
-std::unique_ptr<KeyedService>
-TemplateURLFetcherFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* TemplateURLFetcherFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<TemplateURLFetcher>(
+  return new TemplateURLFetcher(
       TemplateURLServiceFactory::GetForProfile(static_cast<Profile*>(profile)));
 }

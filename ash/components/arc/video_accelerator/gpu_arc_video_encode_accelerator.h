@@ -40,6 +40,7 @@ class GpuArcVideoEncodeAccelerator
  private:
   using VideoPixelFormat = media::VideoPixelFormat;
   using VideoCodecProfile = media::VideoCodecProfile;
+  using Error = media::VideoEncodeAccelerator::Error;
 
   // VideoEncodeAccelerator::Client implementation.
   void RequireBitstreamBuffers(unsigned int input_count,

@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_SESSIONS_SESSION_SERVICE_H_
 
 #include <map>
-#include <optional>
 #include <string>
 
 #include "base/callback_list.h"
@@ -17,6 +16,7 @@
 #include "components/sessions/core/command_storage_manager_delegate.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -95,7 +95,7 @@ class SessionService : public SessionServiceBase {
   // multiple windows.
   void SetTabGroup(SessionID window_id,
                    SessionID tab_id,
-                   std::optional<tab_groups::TabGroupId> group);
+                   absl::optional<tab_groups::TabGroupId> group);
 
   // Updates the metadata associated with a tab group. |window_id| should be
   // the window where the group currently resides. Note that a group can't be
@@ -104,7 +104,7 @@ class SessionService : public SessionServiceBase {
       SessionID window_id,
       const tab_groups::TabGroupId& group_id,
       const tab_groups::TabGroupVisualData* visual_data,
-      const std::optional<std::string> saved_guid = std::nullopt);
+      const absl::optional<std::string> saved_guid = absl::nullopt);
 
   void AddTabExtraData(SessionID window_id,
                        SessionID tab_id,
@@ -140,10 +140,6 @@ class SessionService : public SessionServiceBase {
                                SessionID tab_id,
                                const sessions::SerializedUserAgentOverride&
                                    user_agent_override) override;
-
-  int count_delete_last_session_for_testing() const {
-    return count_delete_last_session_for_testing_;
-  }
 
  protected:
   Browser::Type GetDesiredBrowserTypeForWebContents() override;
@@ -183,7 +179,7 @@ class SessionService : public SessionServiceBase {
   void BuildCommandsForTab(SessionID window_id,
                            content::WebContents* tab,
                            int index_in_window,
-                           std::optional<tab_groups::TabGroupId> group,
+                           absl::optional<tab_groups::TabGroupId> group,
                            bool is_pinned,
                            IdToRange* tab_to_available_range) override;
 
@@ -243,10 +239,6 @@ class SessionService : public SessionServiceBase {
 
   // Use to override IsOnlyOneTableft()
   bool is_only_one_tab_left_for_test_ = false;
-
-  // The number of times `DeleteLastSession()` has been invoked for the current
-  // session service instance.
-  int count_delete_last_session_for_testing_ = 0;
 
   // If true and a new tabbed browser is created and there are no opened
   // tabbed browser (has_open_trackable_browsers_ is false), then the current

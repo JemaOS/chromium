@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 
 import {FakeMethodResolver} from '../fake_method_resolver.js';
 
@@ -64,9 +64,9 @@ export class FakeHotspotConfig implements CrosHotspotConfigInterface {
   }
 
   // Update the hotspot config and notify observers.
-  setFakeHotspotConfig(config: HotspotConfig|undefined): void {
+  setFakeHotspotConfig(config: HotspotConfig): void {
     assert(this.hotspotInfo_);
-    this.hotspotInfo_.config = config !== undefined ? config : null;
+    this.hotspotInfo_.config = config;
     this.hotspotInfo_ = {...this.hotspotInfo_};
     this.notifyHotspotInfoUpdated_();
   }

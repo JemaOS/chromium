@@ -6,21 +6,16 @@
 
 #include <string>
 
-#include "chrome/browser/ash/arc/arc_optin_uma.h"
 #include "chrome/browser/ash/arc/optin/arc_optin_preference_handler.h"
 
 namespace arc {
 
 ArcTermsOfServiceDefaultNegotiator::ArcTermsOfServiceDefaultNegotiator(
     PrefService* pref_service,
-    ArcSupportHost* support_host,
-    metrics::MetricsService* metrics_service)
-    : pref_service_(pref_service),
-      support_host_(support_host),
-      metrics_service_(metrics_service) {
+    ArcSupportHost* support_host)
+    : pref_service_(pref_service), support_host_(support_host) {
   DCHECK(pref_service_);
   DCHECK(support_host_);
-  DCHECK(metrics_service_);
 }
 
 ArcTermsOfServiceDefaultNegotiator::~ArcTermsOfServiceDefaultNegotiator() {
@@ -29,8 +24,8 @@ ArcTermsOfServiceDefaultNegotiator::~ArcTermsOfServiceDefaultNegotiator() {
 
 void ArcTermsOfServiceDefaultNegotiator::StartNegotiationImpl() {
   DCHECK(!preference_handler_);
-  preference_handler_ = std::make_unique<ArcOptInPreferenceHandler>(
-      this, pref_service_, metrics_service_);
+  preference_handler_ =
+      std::make_unique<ArcOptInPreferenceHandler>(this, pref_service_);
   // This automatically updates all preferences.
   preference_handler_->Start();
 
@@ -56,19 +51,12 @@ void ArcTermsOfServiceDefaultNegotiator::OnTermsAgreed(
   support_host_->SetTermsOfServiceDelegate(nullptr);
 
   // Update the preferences with the value passed from UI.
+  preference_handler_->EnableMetrics(is_metrics_enabled);
   preference_handler_->EnableBackupRestore(is_backup_and_restore_enabled);
   preference_handler_->EnableLocationService(is_location_service_enabled);
+  preference_handler_.reset();
 
-  // This should be called last since the callback resets |preference_handler_|
-  // and makes the callback that terms of service has successfully negotiated.
-  preference_handler_->EnableMetrics(
-      is_metrics_enabled,
-      base::BindOnce(&ArcTermsOfServiceDefaultNegotiator::OnMetricsPrefsUpdated,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
-
-void ArcTermsOfServiceDefaultNegotiator::OnTermsLoadResult(bool success) {
-  UpdateOptinTosLoadResultUMA(success);
+  ReportResult(true);
 }
 
 void ArcTermsOfServiceDefaultNegotiator::OnTermsRetryClicked() {
@@ -90,11 +78,6 @@ void ArcTermsOfServiceDefaultNegotiator::OnLocationServicesModeChanged(
     bool enabled,
     bool managed) {
   support_host_->SetLocationServicesPreferenceCheckbox(enabled, managed);
-}
-
-void ArcTermsOfServiceDefaultNegotiator::OnMetricsPrefsUpdated() {
-  preference_handler_.reset();
-  ReportResult(true);
 }
 
 }  // namespace arc

@@ -22,8 +22,6 @@
 #include <string>
 #include <vector>
 
-#include "base/containers/span.h"
-#include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/raw_ptr.h"
@@ -39,14 +37,13 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "testing/platform_test.h"
-#include "third_party/abseil-cpp/absl/types/variant.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkScalar.h"
 #include "third_party/skia/include/core/SkUnPreMultiply.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/clipboard_constants.h"
-#include "ui/base/clipboard/custom_data_helper.h"
+#include "ui/base/clipboard/clipboard_content_type.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
 #include "ui/base/clipboard/test/clipboard_test_util.h"
 #include "ui/base/clipboard/test/test_clipboard.h"
@@ -112,19 +109,18 @@ class MockPolicyController : public DataTransferPolicyController {
   ~MockPolicyController() override;
 
   MOCK_METHOD3(IsClipboardReadAllowed,
-               bool(base::optional_ref<const DataTransferEndpoint> data_src,
-                    base::optional_ref<const DataTransferEndpoint> data_dst,
-                    const std::optional<size_t> size));
-  MOCK_METHOD5(
-      PasteIfAllowed,
-      void(base::optional_ref<const DataTransferEndpoint> data_src,
-           base::optional_ref<const DataTransferEndpoint> data_dst,
-           absl::variant<size_t, std::vector<base::FilePath>> pasted_content,
-           content::RenderFrameHost* rfh,
-           base::OnceCallback<void(bool)> callback));
+               bool(const DataTransferEndpoint* const data_src,
+                    const DataTransferEndpoint* const data_dst,
+                    const absl::optional<size_t> size));
+  MOCK_METHOD5(PasteIfAllowed,
+               void(const DataTransferEndpoint* const data_src,
+                    const DataTransferEndpoint* const data_dst,
+                    const absl::optional<size_t> size,
+                    content::RenderFrameHost* rfh,
+                    base::OnceCallback<void(bool)> callback));
   MOCK_METHOD3(DropIfAllowed,
                void(const ui::OSExchangeData* drag_data,
-                    base::optional_ref<const ui::DataTransferEndpoint> data_dst,
+                    const ui::DataTransferEndpoint* data_dst,
                     base::OnceClosure drop_cb));
 };
 
@@ -197,7 +193,7 @@ TYPED_TEST(ClipboardTest, HTMLTest) {
   {
     ScopedClipboardWriter clipboard_writer(ClipboardBuffer::kCopyPaste);
     clipboard_writer.WriteText(plain);
-    clipboard_writer.WriteHTML(markup, url);
+    clipboard_writer.WriteHTML(markup, url, ClipboardContentType::kSanitized);
   }
 
   EXPECT_THAT(this->GetAvailableTypes(ClipboardBuffer::kCopyPaste),
@@ -287,7 +283,7 @@ TYPED_TEST(ClipboardTest, MultipleBufferTest) {
 
   {
     ScopedClipboardWriter clipboard_writer(ClipboardBuffer::kSelection);
-    clipboard_writer.WriteHTML(markup, url);
+    clipboard_writer.WriteHTML(markup, url, ClipboardContentType::kSanitized);
   }
 
   EXPECT_THAT(this->GetAvailableTypes(ClipboardBuffer::kCopyPaste),
@@ -333,7 +329,7 @@ TYPED_TEST(ClipboardTest, TrickyHTMLTest) {
   {
     ScopedClipboardWriter clipboard_writer(ClipboardBuffer::kCopyPaste);
     clipboard_writer.WriteText(plain);
-    clipboard_writer.WriteHTML(markup, url);
+    clipboard_writer.WriteHTML(markup, url, ClipboardContentType::kSanitized);
   }
 
   EXPECT_THAT(this->GetAvailableTypes(ClipboardBuffer::kCopyPaste),
@@ -364,7 +360,7 @@ TYPED_TEST(ClipboardTest, UnicodeHTMLTest) {
 
   {
     ScopedClipboardWriter clipboard_writer(ClipboardBuffer::kCopyPaste);
-    clipboard_writer.WriteHTML(markup, url);
+    clipboard_writer.WriteHTML(markup, url, ClipboardContentType::kSanitized);
 #if BUILDFLAG(IS_ANDROID)
     // Android requires HTML and plain text representations to be written.
     clipboard_writer.WriteText(markup);
@@ -456,7 +452,7 @@ TYPED_TEST(ClipboardTest, MultiFormatTest) {
 
   {
     ScopedClipboardWriter clipboard_writer(ClipboardBuffer::kCopyPaste);
-    clipboard_writer.WriteHTML(markup, url);
+    clipboard_writer.WriteHTML(markup, url, ClipboardContentType::kSanitized);
     clipboard_writer.WriteText(text);
   }
 
@@ -536,37 +532,6 @@ TYPED_TEST(ClipboardTest, URLTest) {
 #endif
 }
 
-#if BUILDFLAG(IS_WIN)
-// See crbug.com/1477344 for more details on the issue.
-TYPED_TEST(ClipboardTest, ChromiumCustomFormatTest) {
-  std::u16string markup(u"<strong>Hi!</string>"), markup_result;
-  std::string url("http://www.example.com/"), url_result;
-
-  {
-    ScopedClipboardWriter clipboard_writer(ClipboardBuffer::kCopyPaste);
-    clipboard_writer.WriteHTML(markup, url);
-  }
-
-  EXPECT_THAT(this->GetAvailableTypes(ClipboardBuffer::kCopyPaste),
-              Contains(ASCIIToUTF16(kMimeTypeHTML)));
-  EXPECT_THAT(this->GetAvailableTypes(ClipboardBuffer::kCopyPaste),
-              testing::Not(Contains(ASCIIToUTF16(kMimeTypeWebCustomData))));
-  {
-    ScopedClipboardWriter clipboard_writer(ClipboardBuffer::kCopyPaste);
-    base::flat_map<std::u16string, std::u16string> custom_data;
-    custom_data[ASCIIToUTF16(kMimeTypeWebCustomData)] = u"data";
-    base::Pickle pickle;
-    WriteCustomDataToPickle(custom_data, &pickle);
-    clipboard_writer.WritePickledData(pickle,
-                                      ClipboardFormatType::WebCustomDataType());
-  }
-  EXPECT_THAT(this->GetAvailableTypes(ClipboardBuffer::kCopyPaste),
-              testing::Not(Contains(ASCIIToUTF16(kMimeTypeHTML))));
-  EXPECT_THAT(this->GetAvailableTypes(ClipboardBuffer::kCopyPaste),
-              Contains(ASCIIToUTF16(kMimeTypeWebCustomData)));
-}
-#endif  // BUILDFLAG(IS_WIN)
-
 namespace {
 
 using U8x4 = std::array<uint8_t, 4>;
@@ -577,8 +542,8 @@ void WriteBitmap(Clipboard* clipboard,
                  const void* bitmap_data) {
   {
     ScopedClipboardWriter clipboard_writer(
-        ClipboardBuffer::kCopyPaste, std::make_unique<DataTransferEndpoint>(
-                                         GURL(), /*off_the_record=*/false));
+        ClipboardBuffer::kCopyPaste,
+        std::make_unique<DataTransferEndpoint>(GURL()));
     SkBitmap bitmap;
     ASSERT_TRUE(bitmap.setInfo(info));
     bitmap.setPixels(const_cast<void*>(bitmap_data));
@@ -631,7 +596,7 @@ static void TestBitmapWriteAndPngRead(Clipboard* clipboard,
 TYPED_TEST(ClipboardTest, BitmapWriteAndPngRead_F16_Premul) {
   constexpr F16x4 kRGBAF16Premul = {0x30c5, 0x2d86, 0x2606, 0x3464};
   constexpr U8x4 kRGBAPremul = {0x26, 0x16, 0x06, 0x46};
-  EXPECT_DEATH_IF_SUPPORTED(
+  EXPECT_DEATH(
       TestBitmapWriteAndPngRead(
           &this->clipboard(),
           SkImageInfo::Make(1, 1, kRGBA_F16_SkColorType, kPremul_SkAlphaType),
@@ -687,7 +652,7 @@ TYPED_TEST(ClipboardTest, PickleTest) {
   this->clipboard().ReadData(kFormat, /* data_dst = */ nullptr, &output);
   ASSERT_FALSE(output.empty());
 
-  base::Pickle read_pickle = base::Pickle::WithData(base::as_byte_span(output));
+  base::Pickle read_pickle(output.data(), output.size());
   base::PickleIterator iter(read_pickle);
   std::string unpickled_string;
   ASSERT_TRUE(iter.ReadString(&unpickled_string));
@@ -724,8 +689,7 @@ TYPED_TEST(ClipboardTest, MultiplePickleTest) {
   this->clipboard().ReadData(kFormat2, /* data_dst = */ nullptr, &output2);
   ASSERT_FALSE(output2.empty());
 
-  base::Pickle read_pickle2 =
-      base::Pickle::WithData(base::as_byte_span(output2));
+  base::Pickle read_pickle2(output2.data(), output2.size());
   base::PickleIterator iter2(read_pickle2);
   std::string unpickled_string2;
   ASSERT_TRUE(iter2.ReadString(&unpickled_string2));
@@ -748,15 +712,15 @@ TYPED_TEST(ClipboardTest, MultiplePickleTest) {
   this->clipboard().ReadData(kFormat1, /* data_dst = */ nullptr, &output1);
   ASSERT_FALSE(output1.empty());
 
-  base::Pickle read_pickle1 =
-      base::Pickle::WithData(base::as_byte_span(output1));
+  base::Pickle read_pickle1(output1.data(), output1.size());
   base::PickleIterator iter1(read_pickle1);
   std::string unpickled_string1;
   ASSERT_TRUE(iter1.ReadString(&unpickled_string1));
   EXPECT_EQ(payload1, unpickled_string1);
 }
 
-#if !(BUILDFLAG(IS_IOS) && BUILDFLAG(USE_BLINK))
+// TODO(crbug.com/106449): Implement multiple custom format write on Chrome OS.
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
 TYPED_TEST(ClipboardTest, DataTest) {
   const std::string kFormatString = "web chromium/x-test-format";
   const std::u16string kFormatString16 = u"chromium/x-test-format";
@@ -1024,67 +988,14 @@ TYPED_TEST(ClipboardTest, HtmlTest) {
       "</html>\r\n\r\n",
       "<p>Foo</p>");
 }
-
-TYPED_TEST(ClipboardTest, PrivacyMetadataTest) {
-  // We're testing platform-specific behavior, so use PlatformClipboardTest.
-  std::string test_suite_name = ::testing::UnitTest::GetInstance()
-                                    ->current_test_info()
-                                    ->test_suite_name();
-  if (test_suite_name != std::string("ClipboardTest/PlatformClipboardTest")) {
-    return;
-  }
-
-  {
-    ScopedClipboardWriter clipboard_writer(ClipboardBuffer::kCopyPaste);
-    clipboard_writer.WriteText(u"foo");
-    clipboard_writer.MarkAsOffTheRecord();
-  }
-
-  EXPECT_TRUE(this->clipboard().IsFormatAvailable(
-      ClipboardFormatType::ClipboardHistoryType(), ClipboardBuffer::kCopyPaste,
-      /* data_dst = */ nullptr));
-  EXPECT_TRUE(this->clipboard().IsFormatAvailable(
-      ClipboardFormatType::UploadCloudClipboardType(),
-      ClipboardBuffer::kCopyPaste,
-      /* data_dst = */ nullptr));
-  std::string result;
-  this->clipboard().ReadData(ClipboardFormatType::ClipboardHistoryType(),
-                             /* data_dst = */ nullptr, &result);
-  DWORD history_data = std::strtoul(result.c_str(), nullptr, 16);
-  EXPECT_EQ(0ul, history_data);
-  this->clipboard().ReadData(ClipboardFormatType::UploadCloudClipboardType(),
-                             /* data_dst = */ nullptr, &result);
-  DWORD cloud_data = std::strtoul(result.c_str(), nullptr, 16);
-  EXPECT_EQ(0ul, cloud_data);
-}
 #endif  // BUILDFLAG(IS_WIN)
-
-#if BUILDFLAG(IS_MAC)
-TYPED_TEST(ClipboardTest, PasswordTest) {
-  // We're testing platform-specific behavior, so use PlatformClipboardTest.
-  std::string test_suite_name = ::testing::UnitTest::GetInstance()
-                                    ->current_test_info()
-                                    ->test_suite_name();
-  if (test_suite_name != std::string("ClipboardTest/PlatformClipboardTest")) {
-    return;
-  }
-
-  {
-    ScopedClipboardWriter clipboard_writer(ClipboardBuffer::kCopyPaste);
-    clipboard_writer.WriteText(u"password");
-    clipboard_writer.MarkAsConfidential();
-  }
-
-  EXPECT_TRUE(this->clipboard().IsMarkedByOriginatorAsConfidential());
-}
-#endif  // BUILDFLAG(IS_MAC)
 
 // Test writing all formats we have simultaneously.
 TYPED_TEST(ClipboardTest, WriteEverything) {
   {
     ScopedClipboardWriter writer(ClipboardBuffer::kCopyPaste);
     writer.WriteText(u"foo");
-    writer.WriteHTML(u"foo", "bar");
+    writer.WriteHTML(u"foo", "bar", ClipboardContentType::kSanitized);
     writer.WriteBookmark(u"foo", "bar");
     writer.WriteHyperlink(u"foo", "bar");
     writer.WriteWebSmartPaste();
@@ -1131,7 +1042,8 @@ TYPED_TEST(ClipboardTest, WriteTextEmptyParams) {
 
 TYPED_TEST(ClipboardTest, WriteHTMLEmptyParams) {
   ScopedClipboardWriter scw(ClipboardBuffer::kCopyPaste);
-  scw.WriteHTML(std::u16string(), std::string());
+  scw.WriteHTML(std::u16string(), std::string(),
+                ClipboardContentType::kSanitized);
 }
 
 TYPED_TEST(ClipboardTest, EmptySvgTest) {
@@ -1175,8 +1087,7 @@ TYPED_TEST(ClipboardTest, PolicyAllowDataRead) {
   {
     ScopedClipboardWriter writer(
         ClipboardBuffer::kCopyPaste,
-        std::make_unique<DataTransferEndpoint>(GURL("https://www.google.com"),
-                                               /*off_the_record=*/false));
+        std::make_unique<DataTransferEndpoint>(GURL("https://www.google.com")));
     writer.WriteText(kTestText);
   }
   EXPECT_CALL(*policy_controller, IsClipboardReadAllowed)
@@ -1194,11 +1105,8 @@ TYPED_TEST(ClipboardTest, PolicyAllowDataRead) {
       ui::ClipboardFormatType::DataTransferEndpointDataType(),
       /* data_dst = */ nullptr, &actual_json);
 
-  EXPECT_EQ(
-      "{\"endpoint_type\":\"url\","
-      "\"off_the_record\":false,"
-      "\"url\":\"https://www.google.com/\"}",
-      actual_json);
+  EXPECT_EQ(R"({"endpoint_type":"url","url":"https://www.google.com/"})",
+            actual_json);
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
   ::testing::Mock::VerifyAndClearExpectations(policy_controller.get());
@@ -1210,9 +1118,9 @@ TYPED_TEST(ClipboardTest, PolicyDisallow_ReadText) {
   auto policy_controller = std::make_unique<MockPolicyController>();
   const std::u16string kTestText(u"World");
   {
-    ScopedClipboardWriter writer(ClipboardBuffer::kCopyPaste,
-                                 std::make_unique<DataTransferEndpoint>(
-                                     GURL(), /*off_the_record=*/false));
+    ScopedClipboardWriter writer(
+        ClipboardBuffer::kCopyPaste,
+        std::make_unique<DataTransferEndpoint>(GURL()));
     writer.WriteText(kTestText);
   }
   EXPECT_CALL(*policy_controller, IsClipboardReadAllowed)
@@ -1258,16 +1166,14 @@ TYPED_TEST(ClipboardTest, ClipboardSourceDteCanBeRetrievedByLacros) {
     writer.WriteEncodedDataTransferEndpointForTesting(kDteJson);
   }
 
-  EXPECT_CALL(
-      *policy_controller,
-      IsClipboardReadAllowed(
-          Property(
-              &base::optional_ref<const DataTransferEndpoint>::value,
-              AllOf(Property(&DataTransferEndpoint::IsUrlType, true),
-                    Property(&DataTransferEndpoint::GetURL,
-                             Pointee(Property(&GURL::spec,
-                                              "https://www.google.com/"))))),
-          _, _))
+  EXPECT_CALL(*policy_controller,
+              IsClipboardReadAllowed(
+                  Pointee(AllOf(
+                      Property(&DataTransferEndpoint::IsUrlType, true),
+                      Property(&DataTransferEndpoint::GetURL,
+                               Pointee(Property(&GURL::spec,
+                                                "https://www.google.com/"))))),
+                  _, _))
       .WillRepeatedly(testing::Return(true));
 
   std::u16string read_result;

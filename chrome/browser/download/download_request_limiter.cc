@@ -174,11 +174,7 @@ void DownloadRequestLimiter::TabDownloadState::DidFinishNavigation(
     // renderer-initiated and we are in a prompt state.
     NotifyCallbacks(false);
     host_->Remove(this, web_contents());
-    return;
     // WARNING: We've been deleted.
-  } else if (status_ == ALLOW_ALL_DOWNLOADS) {
-    OnUserInteraction();
-    return;
   }
 }
 
@@ -299,11 +295,10 @@ void DownloadRequestLimiter::TabDownloadState::OnUserInteraction() {
        it != download_status_map_.end();) {
     ContentSetting setting =
         GetAutoDownloadContentSetting(web_contents(), it->first.GetURL());
-    // If an origin has non-block content setting and does not have
-    // |DOWNLOADS_NOT_ALLOWED| or |ALLOW_ALL_DOWNLOADS| status, remove
-    // it from the map so that it is able to initiate one download
-    // without asking the user.
-    if (setting != CONTENT_SETTING_BLOCK && it->second != ALLOW_ALL_DOWNLOADS &&
+    // If an origin has non block content setting and does not have
+    // |DOWNLOADS_NOT_ALLOWED| status, remove it from the map so that it is able
+    // to initiate one download without asking user.
+    if (setting != CONTENT_SETTING_BLOCK &&
         ((no_permission_request_manager &&
           it->second == DOWNLOADS_NOT_ALLOWED) ||
          it->second != DOWNLOADS_NOT_ALLOWED)) {
@@ -502,7 +497,7 @@ void DownloadRequestLimiter::CanDownload(
     const content::WebContents::Getter& web_contents_getter,
     const GURL& url,
     const std::string& request_method,
-    std::optional<url::Origin> request_initiator,
+    absl::optional<url::Origin> request_initiator,
     bool from_download_cross_origin_redirect,
     Callback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
@@ -534,7 +529,7 @@ void DownloadRequestLimiter::CanDownload(
 void DownloadRequestLimiter::OnCanDownloadDecided(
     const content::WebContents::Getter& web_contents_getter,
     const std::string& request_method,
-    std::optional<url::Origin> request_initiator,
+    absl::optional<url::Origin> request_initiator,
     bool from_download_cross_origin_redirect,
     Callback orig_callback,
     bool allow) {
@@ -572,7 +567,7 @@ ContentSetting DownloadRequestLimiter::GetAutoDownloadContentSetting(
 void DownloadRequestLimiter::CanDownloadImpl(
     content::WebContents* originating_contents,
     const std::string& request_method,
-    std::optional<url::Origin> request_initiator,
+    absl::optional<url::Origin> request_initiator,
     bool from_download_cross_origin_redirect,
     Callback callback) {
   DCHECK(originating_contents);

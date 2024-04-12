@@ -38,14 +38,10 @@ class ASH_EXPORT ShelfContextMenuModel : public ui::SimpleMenuModel,
     MENU_PERSONALIZATION_HUB = 506,
     MENU_HIDE_CONTINUE_SECTION = 507,
     MENU_SHOW_CONTINUE_SECTION = 508,
-    MENU_HIDE_DESK_NAME = 509,
-    MENU_SHOW_DESK_NAME = 510,
     MENU_ASH_END
   };
 
-  ShelfContextMenuModel(ShelfItemDelegate* delegate,
-                        int64_t display_id,
-                        bool menu_in_shelf);
+  ShelfContextMenuModel(ShelfItemDelegate* delegate, int64_t display_id);
 
   ShelfContextMenuModel(const ShelfContextMenuModel&) = delete;
   ShelfContextMenuModel& operator=(const ShelfContextMenuModel&) = delete;
@@ -60,9 +56,8 @@ class ASH_EXPORT ShelfContextMenuModel : public ui::SimpleMenuModel,
   // Add shelf auto-hide, shelf alignment, and wallpaper context menu items.
   void AddShelfAndWallpaperItems();
 
-  raw_ptr<ShelfItemDelegate> delegate_;
+  raw_ptr<ShelfItemDelegate, ExperimentalAsh> delegate_;
   const int64_t display_id_;
-  const bool menu_in_shelf_;
   std::unique_ptr<ui::SimpleMenuModel> alignment_submenu_;
 };
 

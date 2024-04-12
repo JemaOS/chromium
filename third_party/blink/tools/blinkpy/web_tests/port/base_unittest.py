@@ -26,14 +26,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import hashlib
-import json
+import mock
 import operator
 import optparse
-import time
-import textwrap
 import unittest
-from unittest import mock
 
 from blinkpy.common.host_mock import MockHost
 from blinkpy.common.system.executive_mock import MockExecutive
@@ -141,64 +137,6 @@ class PortTest(LoggingTestCase):
         self.assertEqual(
             port.output_filename(test_file, '-actual', '.png'),
             'fast/test_include=HTML._-actual.png')
-
-    def test_test_from_output_filename_html(self):
-        port = self.make_port()
-        virtual_suite = {
-            'prefix': 'fake-vts',
-            'platforms': [],
-            'bases': ['fast'],
-            'args': ['--fake-flag'],
-        }
-        fs = port.host.filesystem
-        fs.write_text_file(MOCK_WEB_TESTS + 'fast/test.html', '')
-        fs.write_text_file(MOCK_WEB_TESTS + 'VirtualTestSuites',
-                           json.dumps([virtual_suite]))
-
-        self.assertEqual(
-            port.test_from_output_filename('fast/test-expected.txt'),
-            'fast/test.html')
-        self.assertEqual(
-            port.test_from_output_filename('fast/test-expected.png'),
-            'fast/test.html')
-        self.assertEqual(
-            port.test_from_output_filename(
-                'virtual/fake-vts/fast/test-expected.png'),
-            'virtual/fake-vts/fast/test.html')
-        self.assertIsNone(
-            port.test_from_output_filename('fast/does-not-exist-expected.txt'))
-
-    def test_test_from_output_filename_wpt_variants(self):
-        port = self.make_port()
-        port.set_option_default('manifest_update', False)
-        manifest = {
-            'items': {
-                'testharness': {
-                    'has-variants.html': [
-                        '0123abcd',
-                        ['has-variants.html?a', {}],
-                        ['has-variants.html?b', {}],
-                    ],
-                },
-            },
-        }
-        fs = port.host.filesystem
-        fs.write_text_file(MOCK_WEB_TESTS + 'external/wpt/MANIFEST.json',
-                           json.dumps(manifest))
-        fs.write_text_file(MOCK_WEB_TESTS + 'VirtualTestSuites',
-                           json.dumps([]))
-
-        self.assertEqual(
-            port.test_from_output_filename(
-                'external/wpt/has-variants_a-expected.txt'),
-            'external/wpt/has-variants.html?a')
-        self.assertEqual(
-            port.test_from_output_filename(
-                'external/wpt/has-variants_b-expected.txt'),
-            'external/wpt/has-variants.html?b')
-        self.assertIsNone(
-            port.test_from_output_filename(
-                'external/wpt/has-variants-expected.txt'))
 
     def test_expected_baselines_basic(self):
         port = self.make_port(port_name='foo')
@@ -598,18 +536,6 @@ class PortTest(LoggingTestCase):
         self.assertEqual(list(port.expectations_dict().values()),
                          ['content1\n', 'content2\n'])
 
-    def test_additional_driver_flags_for_chrome(self):
-        port = self.make_port()
-        port.set_option_default('driver_name', 'chrome')
-        flags = port.additional_driver_flags()
-        self.assertNotIn('--run-web-tests', flags)
-        self.assertIn('--enable-blink-test-features', flags)
-        ignore_certs_flags = [
-            flag for flag in flags
-            if flag.startswith('--ignore-certificate-errors-spki-list=')
-        ]
-        self.assertEqual(len(ignore_certs_flags), 1)
-
     def test_flag_specific_expectations(self):
         port = self.make_port(port_name='foo')
         port.host.filesystem.remove(MOCK_WEB_TESTS + 'TestExpectations')
@@ -825,116 +751,6 @@ class PortTest(LoggingTestCase):
         port.wpt_manifest('external/wpt')
         self.assertEqual(len(port.host.filesystem.written_files), 1)
         self.assertEqual(len(port.host.executive.calls), 1)
-
-    def test_should_update_manifest_no_cached_digest(self):
-        port = self.make_port(with_tests=True)
-        fs = port.host.filesystem
-        fs.write_text_file(f'{MOCK_WEB_TESTS}external/wpt/MANIFEST.json', '{}')
-
-        mock_git = mock.Mock()
-        mock_git.run.side_effect = lambda command: {
-            'rev-parse': '012345\n',
-            'ls-files': '',
-        }[command[0]]
-        mock_git.changed_files.return_value = [
-            'third_party/blink/web_tests/external/wpt/deleted.html'
-        ]
-
-        with mock.patch.object(port.host, 'git', return_value=mock_git):
-            self.assertTrue(port.should_update_manifest('external/wpt'))
-        digest_path = ('/mock-checkout/third_party/wpt_tools/wpt/'
-                       '.wptcache/external/wpt/digest')
-        digest = self._wpt_digest(f"""\
-            012345
-            {MOCK_WEB_TESTS}external/wpt/deleted.html:
-            """)
-        self.assertEqual(fs.read_text_file(digest_path), digest,
-                         'cached digest should be updated')
-
-    def test_should_update_manifest_cached_digest_same(self):
-        port = self.make_port(with_tests=True)
-        fs = port.host.filesystem
-        digest_path = ('/mock-checkout/third_party/wpt_tools/wpt/'
-                       '.wptcache/external/wpt/digest')
-        digest = self._wpt_digest(f"""\
-            012345
-            {MOCK_WEB_TESTS}external/wpt/uncommitted.html:3f786850e387550fdab836ed7e6dc881de23001b
-            {MOCK_WEB_TESTS}external/wpt/untracked.html:89e6c98d92887913cadf06b2adb97f26cde4849b
-            """)
-        fs.write_text_file(digest_path, digest)
-        fs.write_text_file(f'{MOCK_WEB_TESTS}external/wpt/MANIFEST.json', '{}')
-        fs.write_text_file(f'{MOCK_WEB_TESTS}external/wpt/uncommitted.html',
-                           'a\n')
-        fs.write_text_file(f'{MOCK_WEB_TESTS}external/wpt/untracked.html',
-                           'b\n')
-
-        mock_git = mock.Mock()
-        mock_git.run.side_effect = lambda command: {
-            'rev-parse':
-            '012345\n',
-            'ls-files':
-            'third_party/blink/web_tests/external/wpt/untracked.html\x00',
-        }[command[0]]
-        mock_git.changed_files.return_value = [
-            'third_party/blink/web_tests/external/wpt/uncommitted.html'
-        ]
-
-        with mock.patch.object(port.host, 'git', return_value=mock_git):
-            self.assertFalse(port.should_update_manifest('external/wpt'))
-        self.assertEqual(fs.read_text_file(digest_path), digest,
-                         'cached digest should be the same')
-        mock_git.run.assert_has_calls([
-            mock.call([
-                'rev-parse',
-                'HEAD:third_party/blink/web_tests/external/wpt',
-            ]),
-            mock.call([
-                'ls-files',
-                '--other',
-                '--exclude-standard',
-                '-z',
-                'HEAD',
-                f'{MOCK_WEB_TESTS}external/wpt',
-            ]),
-        ])
-        mock_git.changed_files.assert_called_once_with(
-            path=f'{MOCK_WEB_TESTS}external/wpt')
-
-    def test_should_update_manifest_cached_digest_different(self):
-        port = self.make_port(with_tests=True)
-        fs = port.host.filesystem
-        digest_path = ('/mock-checkout/third_party/wpt_tools/wpt/'
-                       '.wptcache/wpt_internal/digest')
-        digest = self._wpt_digest(f"""\
-            012345
-            {MOCK_WEB_TESTS}wpt_internal/changed.html:3f786850e387550fdab836ed7e6dc881de23001b
-            """)
-        fs.write_text_file(digest_path, digest)
-        fs.write_text_file(f'{MOCK_WEB_TESTS}wpt_internal/MANIFEST.json', '{}')
-        # `changed.html` had contents 'a\n'.
-        fs.write_text_file(f'{MOCK_WEB_TESTS}wpt_internal/changed.html', 'b\n')
-
-        mock_git = mock.Mock()
-        mock_git.run.side_effect = lambda command: {
-            'rev-parse': '012345\n',
-            'ls-files': '',
-        }[command[0]]
-        mock_git.changed_files.return_value = [
-            'third_party/blink/web_tests/wpt_internal/changed.html'
-        ]
-
-        with mock.patch.object(port.host, 'git', return_value=mock_git):
-            self.assertTrue(port.should_update_manifest('wpt_internal'))
-        digest = self._wpt_digest(f"""\
-            012345
-            {MOCK_WEB_TESTS}wpt_internal/changed.html:89e6c98d92887913cadf06b2adb97f26cde4849b
-            """)
-        self.assertEqual(fs.read_text_file(digest_path), digest,
-                         'cached digest should be updated')
-
-    def _wpt_digest(self, raw_preimage: str) -> str:
-        return hashlib.sha256(
-            textwrap.dedent(raw_preimage).encode()).hexdigest()
 
     def test_find_none_if_not_in_manifest(self):
         port = self.make_port(with_tests=True)
@@ -1249,7 +1065,7 @@ class PortTest(LoggingTestCase):
     def test_is_slow_wpt_test_idlharness_with_dcheck(self):
         port = self.make_port(with_tests=True)
         add_manifest_to_mock_filesystem(port)
-        port.host.filesystem.write_text_file(port.build_path('args.gn'),
+        port.host.filesystem.write_text_file(port._build_path('args.gn'),
                                              'dcheck_always_on=true\n')
         # We always consider idlharness tests slow, even if they aren't marked
         # such in the manifest. See https://crbug.com/1047818
@@ -1425,19 +1241,6 @@ class PortTest(LoggingTestCase):
 
     def test_reference_files(self):
         port = self.make_port(with_tests=True)
-        port.set_option_default('manifest_update', False)
-        port.host.filesystem.write_text_file(
-            MOCK_WEB_TESTS + 'external/wpt/MANIFEST.json',
-            json.dumps({
-                'items': {
-                    'reftest': {
-                        'blank.html': [
-                            'abcdef123',
-                            [None, [['about:blank', '==']], {}],
-                        ],
-                    },
-                },
-            }))
         self.assertEqual(
             port.reference_files('passes/svgreftest.svg'),
             [('==', port.web_tests_dir() + 'passes/svgreftest-expected.svg')])
@@ -1447,8 +1250,6 @@ class PortTest(LoggingTestCase):
         self.assertEqual(port.reference_files('passes/phpreftest.php'),
                          [('!=', port.web_tests_dir() +
                            'passes/phpreftest-expected-mismatch.svg')])
-        self.assertEqual(port.reference_files('external/wpt/blank.html'),
-                         [('==', 'about:blank')])
 
     def test_reference_files_from_manifest(self):
         port = self.make_port(with_tests=True)
@@ -1670,7 +1471,7 @@ class PortTest(LoggingTestCase):
             'build_directory': 'xcodebuild'
         })
         self.assertEqual(
-            self.make_port(options=options).build_path(),
+            self.make_port(options=options)._build_path(),
             '/mock-checkout/xcodebuild/Release')
 
         # Test that "out" is used as the default.
@@ -1679,7 +1480,7 @@ class PortTest(LoggingTestCase):
             'build_directory': None
         })
         self.assertEqual(
-            self.make_port(options=options).build_path(),
+            self.make_port(options=options)._build_path(),
             '/mock-checkout/out/Release')
 
     def test_dont_require_http_server(self):
@@ -1793,40 +1594,25 @@ class PortTest(LoggingTestCase):
 
     def test_args_for_test(self):
         port = self.make_port(with_tests=True)
-        self.assertEqual(
-            ['--disable-threaded-compositing', '--disable-threaded-animation'],
-            port.args_for_test('non/virtual'))
-        self.assertEqual(
-            ['--disable-threaded-compositing', '--disable-threaded-animation'],
-            port.args_for_test('passes/text.html'))
-        self.assertEqual(
-            ['--disable-threaded-compositing', '--disable-threaded-animation'],
-            port.args_for_test('virtual/non-existing/test.html'))
+        self.assertEqual([], port.args_for_test('non/virtual'))
+        self.assertEqual([], port.args_for_test('passes/text.html'))
+        self.assertEqual([],
+                         port.args_for_test('virtual/non-existing/test.html'))
 
-        self.assertEqual([
-            '--virtual-arg', '--disable-threaded-compositing',
-            '--disable-threaded-animation'
-        ], port.args_for_test('virtual/virtual_passes/passes/text.html'))
-        self.assertEqual([
-            '--virtual-arg', '--disable-threaded-compositing',
-            '--disable-threaded-animation'
-        ], port.args_for_test('virtual/virtual_passes/passes/any.html'))
-        self.assertEqual([
-            '--virtual-arg', '--disable-threaded-compositing',
-            '--disable-threaded-animation'
-        ], port.args_for_test('virtual/virtual_passes/passes/'))
-        self.assertEqual([
-            '--virtual-arg', '--disable-threaded-compositing',
-            '--disable-threaded-animation'
-        ], port.args_for_test('virtual/virtual_passes/passes'))
-        self.assertEqual([
-            '--virtual-arg', '--disable-threaded-compositing',
-            '--disable-threaded-animation'
-        ], port.args_for_test('virtual/virtual_passes/'))
-        self.assertEqual([
-            '--virtual-arg', '--disable-threaded-compositing',
-            '--disable-threaded-animation'
-        ], port.args_for_test('virtual/virtual_passes'))
+        self.assertEqual(
+            ['--virtual-arg'],
+            port.args_for_test('virtual/virtual_passes/passes/text.html'))
+        self.assertEqual(
+            ['--virtual-arg'],
+            port.args_for_test('virtual/virtual_passes/passes/any.html'))
+        self.assertEqual(['--virtual-arg'],
+                         port.args_for_test('virtual/virtual_passes/passes/'))
+        self.assertEqual(['--virtual-arg'],
+                         port.args_for_test('virtual/virtual_passes/passes'))
+        self.assertEqual(['--virtual-arg'],
+                         port.args_for_test('virtual/virtual_passes/'))
+        self.assertEqual(['--virtual-arg'],
+                         port.args_for_test('virtual/virtual_passes'))
 
     def test_missing_virtual_test_suite_file(self):
         port = self.make_port()
@@ -1905,56 +1691,6 @@ class PortTest(LoggingTestCase):
             port.skipped_due_to_exclusive_virtual_tests(
                 'virtual/v2/b2/test2.html'))
 
-    def test_virtual_skip_base_tests(self):
-        port = self.make_port()
-        fs = port.host.filesystem
-        web_tests_dir = port.web_tests_dir()
-        fs.write_text_file(
-            fs.join(web_tests_dir, 'VirtualTestSuites'), '['
-            '{"prefix": "v1", "platforms": ["Linux"], "bases": ["b1", "b2"],'
-            '"args": ["-a"], "expires": "never"},'
-            '{"prefix": "v2", "platforms": ["Linux"], "bases": ["b1"],'
-            '"skip_base_tests": "ALL",'
-            '"args": ["-a"], "expires": "never"}'
-            ']')
-        fs.write_text_file(fs.join(web_tests_dir, 'b1', 'test1.html'), '')
-        fs.write_text_file(fs.join(web_tests_dir, 'b2', 'test2.html'), '')
-
-        self.assertTrue(port.skipped_due_to_skip_base_tests('b1/test.html'))
-        self.assertFalse(
-            port.skipped_due_to_skip_base_tests('virtual/v1/b1/test1.html'))
-        self.assertFalse(port.skipped_due_to_skip_base_tests('b2/test2.html'))
-        self.assertFalse(
-            port.skipped_due_to_skip_base_tests('virtual/v1/b2/test2.html'))
-
-    # test.any.js shows up on the filesystem as one file but it effectively becomes two test files:
-    # test.any.html and test.any.worker.html. We should support skipping test.any.js.
-    def test_virtual_skip_base_tests_with_generated_tests(self):
-        port = self.make_port()
-        fs = port.host.filesystem
-        web_tests_dir = port.web_tests_dir()
-        fs.write_text_file(
-            fs.join(web_tests_dir, 'VirtualTestSuites'), '['
-            '{"prefix": "v", "platforms": ["Linux"], "bases": ["external/wpt/console/test.any.js"],'
-            '"skip_base_tests": "ALL",'
-            '"args": ["-a"], "expires": "never"}'
-            ']')
-        fs.write_text_file(
-            fs.join(web_tests_dir, 'external/wpt/console', 'test.any.js'), '')
-
-        self.assertTrue(
-            port.skipped_due_to_skip_base_tests(
-                'external/wpt/console/test.any.html'))
-        self.assertTrue(
-            port.skipped_due_to_skip_base_tests(
-                'external/wpt/console/test.any.worker.html'))
-        self.assertFalse(
-            port.skipped_due_to_skip_base_tests(
-                'virtual/v/external/wpt/console/test.any.html'))
-        self.assertFalse(
-            port.skipped_due_to_skip_base_tests(
-                'virtual/v/external/wpt/console/test.any.worker.html'))
-
     def test_default_results_directory(self):
         port = self.make_port(
             options=optparse.Values({
@@ -1974,56 +1710,6 @@ class PortTest(LoggingTestCase):
         # A results directory can be given as an option, and it is relative to current working directory.
         self.assertEqual(port.host.filesystem.cwd, '/')
         self.assertEqual(port.results_directory(), '/some-directory/results')
-
-    def _make_fake_test_result(self, host, results_directory):
-        host.filesystem.maybe_make_directory(results_directory)
-        host.filesystem.write_binary_file(results_directory + '/results.html',
-                                          'This is a test results file')
-
-    def test_rename_results_folder(self):
-        host = MockHost()
-        port = host.port_factory.get('test-mac-mac10.10')
-
-        self._make_fake_test_result(port.host, '/tmp/layout-test-results')
-        self.assertTrue(
-            port.host.filesystem.exists('/tmp/layout-test-results'))
-        timestamp = time.strftime(
-            '%Y-%m-%d-%H-%M-%S',
-            time.localtime(
-                port.host.filesystem.mtime(
-                    '/tmp/layout-test-results/results.html')))
-        archived_file_name = '/tmp/layout-test-results' + '_' + timestamp
-        port.rename_results_folder()
-        self.assertFalse(
-            port.host.filesystem.exists('/tmp/layout-test-results'))
-        self.assertTrue(port.host.filesystem.exists(archived_file_name))
-
-    def test_clobber_old_results(self):
-        host = MockHost()
-        port = host.port_factory.get('test-mac-mac10.10')
-
-        self._make_fake_test_result(port.host, '/tmp/layout-test-results')
-        self.assertTrue(
-            port.host.filesystem.exists('/tmp/layout-test-results'))
-        port.clobber_old_results()
-        self.assertFalse(
-            port.host.filesystem.exists('/tmp/layout-test-results'))
-
-    def test_limit_archived_results_count(self):
-        host = MockHost()
-        port = host.port_factory.get('test-mac-mac10.10')
-
-        for x in range(1, 31):
-            dir_name = '/tmp/layout-test-results' + '_' + str(x)
-            self._make_fake_test_result(port.host, dir_name)
-        port.limit_archived_results_count()
-        deleted_dir_count = 0
-        for x in range(1, 6):
-            dir_name = '/tmp/layout-test-results' + '_' + str(x)
-            self.assertFalse(port.host.filesystem.exists(dir_name))
-        for x in range(6, 31):
-            dir_name = '/tmp/layout-test-results' + '_' + str(x)
-            self.assertTrue(port.host.filesystem.exists(dir_name))
 
     def _assert_config_file_for_platform(self, port, platform, config_file):
         port.host.platform = MockPlatformInfo(os_name=platform)
@@ -2087,6 +1773,39 @@ class PortTest(LoggingTestCase):
             '# results: [ Skip ]\nfailures/expected/image.html [ Skip ]\n')
         self.assertTrue(port.skips_test('failures/expected/image.html'))
 
+    def test_split_webdriver_test_name(self):
+        self.assertEqual(
+            Port.split_webdriver_test_name(
+                "tests/accept_alert/accept.py>>foo"),
+            ("tests/accept_alert/accept.py", "foo"))
+        self.assertEqual(
+            Port.split_webdriver_test_name("tests/accept_alert/accept.py"),
+            ("tests/accept_alert/accept.py", None))
+
+    def test_split_webdriver_subtest_pytest_name(self):
+        self.assertEqual(
+            Port.split_webdriver_subtest_pytest_name(
+                "tests/accept_alert/accept.py::foo"),
+            ("tests/accept_alert/accept.py", "foo"))
+        self.assertEqual(
+            Port.split_webdriver_subtest_pytest_name(
+                "tests/accept_alert/accept.py"),
+            ("tests/accept_alert/accept.py", None))
+
+    def test_add_webdriver_subtest_suffix(self):
+        self.assertEqual(
+            Port.add_webdriver_subtest_suffix("abd", "bar"), "abd>>bar")
+        self.assertEqual(Port.add_webdriver_subtest_suffix("abd", None), "abd")
+
+    def test_add_webdriver_subtest_pytest_suffix(self):
+        wb_test_name = "abd"
+        sub_test_name = "bar"
+
+        full_webdriver_name = Port.add_webdriver_subtest_pytest_suffix(
+            wb_test_name, sub_test_name)
+
+        self.assertEqual(full_webdriver_name, "abd::bar")
+
     def test_disable_system_font_check_and_nocheck_sys_deps(self):
         port = self.make_port()
         self.assertNotIn('--disable-system-font-check',
@@ -2102,11 +1821,9 @@ class PortTest(LoggingTestCase):
         port = self.make_port(with_tests=True, options=options)
         with mock.patch('time.strftime', return_value='TIME'):
             self.assertEqual([
-                '--disable-threaded-compositing',
-                '--disable-threaded-animation',
                 '--trace-startup=*,-blink',
                 '--trace-startup-duration=0',
-                '--trace-startup-file=trace_layout_test_non_virtual_TIME.pftrace',
+                '--trace-startup-file=trace_layout_test_non_virtual_TIME.json',
             ], port.args_for_test('non/virtual'))
 
     def test_all_systems(self):
@@ -2146,6 +1863,24 @@ class PortTest(LoggingTestCase):
                 port.used_expectations_files())
         finally:
             port.host.filesystem.chdir(original_dir)
+
+    def test_skia_gold_properties_initialization(self):
+        # The Gold code usually assumes that argparse is used, not optparse, so
+        # ensure that it still works with optparse here.
+        port = self.make_port()
+        expected_revision = 'a' * 40
+        expected_issue = '1234'
+        expected_patchset = '1'
+        expected_id = 'bbid'
+        port._options.git_revision = expected_revision
+        port._options.gerrit_issue = expected_issue
+        port._options.gerrit_patchset = expected_patchset
+        port._options.buildbucket_id = expected_id
+        properties = port.skia_gold_properties()
+        self.assertEqual(properties.git_revision, expected_revision)
+        self.assertEqual(properties.issue, expected_issue)
+        self.assertEqual(properties.patchset, expected_patchset)
+        self.assertEqual(properties.job_id, expected_id)
 
 
 class NaturalCompareTest(unittest.TestCase):

@@ -20,8 +20,6 @@
 #include "components/strings/grit/components_strings.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/web_ui_data_source.h"
-#include "ui/base/webui/web_ui_util.h"
-#include "ui/webui/color_change_listener/color_change_handler.h"
 
 namespace media_router {
 
@@ -43,7 +41,6 @@ AccessCodeCastUI::AccessCodeCastUI(content::WebUI* web_ui)
       {"dialogTitle", IDS_ACCESS_CODE_CAST_DIALOG_TITLE},
       {"enterCharacter", IDS_ACCESS_CODE_CAST_ENTER_CHARACTER},
       {"errorAccessCode", IDS_ACCESS_CODE_CAST_ERROR_ACCESS_CODE},
-      {"errorDifferentNetwork", IDS_ACCESS_CODE_CAST_ERROR_DIFFERENT_NETWORK},
       {"errorNetwork", IDS_ACCESS_CODE_CAST_ERROR_NETWORK},
       {"errorPermission", IDS_ACCESS_CODE_CAST_ERROR_PERMISSION},
       {"errorProfileSync", IDS_ACCESS_CODE_CAST_ERROR_PROFILE_SYNC},
@@ -61,8 +58,6 @@ AccessCodeCastUI::AccessCodeCastUI(content::WebUI* web_ui)
   source->AddLocalizedStrings(kStrings);
   source->AddBoolean("qrScannerEnabled", false);
   source->AddString("learnMoreUrl", chrome::kAccessCodeCastLearnMoreURL);
-
-  webui::SetupChromeRefresh2023(source);
 
   Profile* const profile = Profile::FromWebUI(web_ui);
   source->AddInteger("rememberedDeviceDuration",
@@ -102,12 +97,6 @@ void AccessCodeCastUI::BindInterface(
         receiver) {
   factory_receiver_.reset();
   factory_receiver_.Bind(std::move(receiver));
-}
-
-void AccessCodeCastUI::BindInterface(
-    mojo::PendingReceiver<color_change_listener::mojom::PageHandler> receiver) {
-  color_provider_handler_ = std::make_unique<ui::ColorChangeHandler>(
-      web_ui()->GetWebContents(), std::move(receiver));
 }
 
 void AccessCodeCastUI::CreatePageHandler(

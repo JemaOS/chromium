@@ -11,20 +11,20 @@ import 'chrome://resources/cr_elements/cr_shared_style.css.js';
 import './add_password_dialog.js';
 import '../shared_style.css.js';
 
-import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import type {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
-import type {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
-import type {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
-import type {CrTextareaElement} from 'chrome://resources/cr_elements/cr_textarea/cr_textarea.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
+import {CrTextareaElement} from 'chrome://resources/cr_elements/cr_textarea/cr_textarea.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {PasswordManagerImpl} from '../password_manager_proxy.js';
 import {Page, Router} from '../router.js';
 import {ShowPasswordMixin} from '../show_password_mixin.js';
 
-import {PASSWORD_NOTE_MAX_CHARACTER_COUNT, PASSWORD_NOTE_WARNING_CHARACTER_COUNT, PasswordNoteAction, recordPasswordNoteAction} from './add_password_dialog.js';
+import {PASSWORD_NOTE_MAX_CHARACTER_COUNT, PASSWORD_NOTE_WARNING_CHARACTER_COUNT} from './add_password_dialog.js';
 import {getTemplate} from './edit_password_dialog.html.js';
 
 export interface EditPasswordDialogElement {
@@ -41,7 +41,7 @@ export interface EditPasswordDialogElement {
 }
 
 /**
- * Computes possible conflicting username by finding all passwords with
+ * Computes possible conflicting username by finding all credentials with
  * matching signonRealms. Returns map where key is the username and value is
  * human readable representation of signonRealm. Username is considered
  * conflicting if shares any domain with |currentPassword|.
@@ -91,11 +91,7 @@ export class EditPasswordDialogElement extends EditPasswordDialogElementBase {
 
       username_: String,
       password_: String,
-
-      note_: {
-        type: String,
-        value: '',
-      },
+      note_: String,
 
       conflictingUsernames_: {
         type: Object,
@@ -138,12 +134,7 @@ export class EditPasswordDialogElement extends EditPasswordDialogElementBase {
   override connectedCallback() {
     super.connectedCallback();
 
-    this.setSavedPasswordsListener_ = credentialList => {
-      // Passkeys and federated credential may have the same username as a
-      // password, since they can be different ways to authenticate the same
-      // user. Thus, ignore these when finding conflicting usernames.
-      const passwordList = credentialList.filter(
-          credential => !credential.isPasskey && !credential.federationText);
+    this.setSavedPasswordsListener_ = passwordList => {
       this.conflictingUsernames_ =
           getConflictingUsernames(this.credential, passwordList);
     };
@@ -242,29 +233,21 @@ export class EditPasswordDialogElement extends EditPasswordDialogElementBase {
 
   private onEditClick_() {
     assert(this.computeCanEditPassword_());
-    this.recordPasswordNoteMetrics();
-    this.credential.password = this.password_;
-    this.credential.username = this.username_;
-    this.credential.note = this.note_;
+    const params: chrome.passwordsPrivate.ChangeSavedPasswordParams = {
+      username: this.username_,
+      password: this.password_,
+      note: this.note_,
+    };
     PasswordManagerImpl.getInstance()
-        .changeCredential(this.credential)
+        .changeSavedPassword(this.credential.id, params)
+        .then(() => {
+          this.credential.password = this.password_;
+          this.credential.username = this.username_;
+          this.credential.note = this.note_;
+        })
         .finally(() => {
           this.$.dialog.close();
         });
-  }
-
-  private recordPasswordNoteMetrics() {
-    const newNote = this.note_.trim();
-    const oldNote = this.credential?.note || '';
-    if (oldNote === newNote) {
-      recordPasswordNoteAction(PasswordNoteAction.NOTE_NOT_CHANGED);
-    } else if (oldNote !== '' && newNote !== '') {
-      recordPasswordNoteAction(PasswordNoteAction.NOTE_EDITED_IN_EDIT_DIALOG);
-    } else if (oldNote !== '') {
-      recordPasswordNoteAction(PasswordNoteAction.NOTE_REMOVED_IN_EDIT_DIALOG);
-    } else {
-      recordPasswordNoteAction(PasswordNoteAction.NOTE_ADDED_IN_EDIT_DIALOG);
-    }
   }
 }
 

@@ -17,7 +17,8 @@
 
 TEST(JavaScriptDialogManager, NoDialog) {
   StubDevToolsClient client;
-  JavaScriptDialogManager manager(&client);
+  BrowserInfo browser_info;
+  JavaScriptDialogManager manager(&client, &browser_info);
   std::string message("HI");
   ASSERT_EQ(kNoSuchAlert, manager.GetDialogMessage(&message).code());
   ASSERT_FALSE(manager.IsDialogOpen());
@@ -27,7 +28,8 @@ TEST(JavaScriptDialogManager, NoDialog) {
 
 TEST(JavaScriptDialogManager, HandleDialogPassesParams) {
   RecorderDevToolsClient client;
-  JavaScriptDialogManager manager(&client);
+  BrowserInfo browser_info;
+  JavaScriptDialogManager manager(&client, &browser_info);
   base::Value::Dict params;
   params.Set("message", "hi");
   params.Set("type", "prompt");
@@ -45,7 +47,8 @@ TEST(JavaScriptDialogManager, HandleDialogPassesParams) {
 
 TEST(JavaScriptDialogManager, HandleDialogNullPrompt) {
   RecorderDevToolsClient client;
-  JavaScriptDialogManager manager(&client);
+  BrowserInfo browser_info;
+  JavaScriptDialogManager manager(&client, &browser_info);
   base::Value::Dict params;
   params.Set("message", "hi");
   params.Set("type", "prompt");
@@ -60,7 +63,8 @@ TEST(JavaScriptDialogManager, HandleDialogNullPrompt) {
 
 TEST(JavaScriptDialogManager, ReconnectClearsStateAndSendsEnable) {
   RecorderDevToolsClient client;
-  JavaScriptDialogManager manager(&client);
+  BrowserInfo browser_info;
+  JavaScriptDialogManager manager(&client, &browser_info);
   base::Value::Dict params;
   params.Set("message", "hi");
   params.Set("type", "alert");
@@ -73,6 +77,7 @@ TEST(JavaScriptDialogManager, ReconnectClearsStateAndSendsEnable) {
   ASSERT_EQ(kOk, manager.GetDialogMessage(&message).code());
 
   ASSERT_TRUE(manager.OnConnected(&client).IsOk());
+  ASSERT_EQ("Page.enable", client.commands_[0].method);
   ASSERT_FALSE(manager.IsDialogOpen());
   ASSERT_EQ(kNoSuchAlert, manager.GetDialogMessage(&message).code());
   ASSERT_EQ(kNoSuchAlert, manager.HandleDialog(false, nullptr).code());
@@ -122,7 +127,8 @@ class FakeDevToolsClient : public StubDevToolsClient {
 
 TEST(JavaScriptDialogManager, OneDialog) {
   FakeDevToolsClient client;
-  JavaScriptDialogManager manager(&client);
+  BrowserInfo browser_info;
+  JavaScriptDialogManager manager(&client, &browser_info);
   base::Value::Dict params;
   params.Set("message", "hi");
   params.Set("type", "alert");
@@ -150,7 +156,8 @@ TEST(JavaScriptDialogManager, OneDialog) {
 
 TEST(JavaScriptDialogManager, TwoDialogs) {
   FakeDevToolsClient client;
-  JavaScriptDialogManager manager(&client);
+  BrowserInfo browser_info;
+  JavaScriptDialogManager manager(&client, &browser_info);
   base::Value::Dict params;
   params.Set("message", "1");
   params.Set("type", "confirm");
@@ -189,7 +196,7 @@ TEST(JavaScriptDialogManager, TwoDialogs) {
 TEST(JavaScriptDialogManager, OneDialogManualClose) {
   StubDevToolsClient client;
   BrowserInfo browser_info;
-  JavaScriptDialogManager manager(&client);
+  JavaScriptDialogManager manager(&client, &browser_info);
   base::Value::Dict params;
   params.Set("message", "hi");
   params.Set("type", "alert");

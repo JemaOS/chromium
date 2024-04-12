@@ -65,6 +65,9 @@ void DialMediaRouteProvider::Init(
   if (!activity_manager_)
     activity_manager_ = std::make_unique<DialActivityManager>(
         media_sink_service_->app_discovery_service());
+
+  message_sender_ =
+      std::make_unique<BufferedMessageSender>(media_router_.get());
 }
 
 DialMediaRouteProvider::~DialMediaRouteProvider() {
@@ -78,7 +81,9 @@ void DialMediaRouteProvider::CreateRoute(const std::string& media_source,
                                          const std::string& presentation_id,
                                          const url::Origin& origin,
                                          int32_t frame_tree_node_id,
+
                                          base::TimeDelta timeout,
+                                         bool incognito,
                                          CreateRouteCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   const MediaSinkInternal* sink = media_sink_service_->GetSinkById(sink_id);
@@ -87,21 +92,21 @@ void DialMediaRouteProvider::CreateRoute(const std::string& media_source,
         mojom::LogCategory::kRoute, kLoggerComponent,
         "Failed to create route. Cannot find sink with the sink id", sink_id,
         media_source, presentation_id);
-    std::move(callback).Run(std::nullopt, nullptr, "Unknown sink " + sink_id,
+    std::move(callback).Run(absl::nullopt, nullptr, "Unknown sink " + sink_id,
                             mojom::RouteRequestResultCode::SINK_NOT_FOUND);
     DialMediaRouteProviderMetrics::RecordCreateRouteResult(
         DialCreateRouteResult::kSinkNotFound);
     return;
   }
 
-  auto activity =
-      DialActivity::From(presentation_id, *sink, media_source, origin);
+  auto activity = DialActivity::From(presentation_id, *sink, media_source,
+                                     origin, incognito);
   if (!activity) {
     logger_->LogError(mojom::LogCategory::kRoute, kLoggerComponent,
                       "Failed to create route. Unsupported source.", sink_id,
                       media_source, presentation_id);
     std::move(callback).Run(
-        std::nullopt, nullptr, "Unsupported source " + media_source,
+        absl::nullopt, nullptr, "Unsupported source " + media_source,
         mojom::RouteRequestResultCode::NO_SUPPORTED_PROVIDER);
     DialMediaRouteProviderMetrics::RecordCreateRouteResult(
         DialCreateRouteResult::kUnsupportedSource);
@@ -109,27 +114,17 @@ void DialMediaRouteProvider::CreateRoute(const std::string& media_source,
   }
 
   const MediaRoute::Id& route_id = activity->route.media_route_id();
-  if (activity_manager_->GetActivity(route_id) != nullptr) {
+  if (activity_manager_->GetActivity(route_id) ||
+      activity_manager_->GetActivityBySinkId(sink_id)) {
     logger_->LogError(mojom::LogCategory::kRoute, kLoggerComponent,
                       "Failed to create route. Route already exists.", sink_id,
                       media_source, presentation_id);
     std::move(callback).Run(
-        std::nullopt, nullptr, "Route already exists",
+        absl::nullopt, nullptr, "Activity already exists",
         mojom::RouteRequestResultCode::ROUTE_ALREADY_EXISTS);
     DialMediaRouteProviderMetrics::RecordCreateRouteResult(
         DialCreateRouteResult::kRouteAlreadyExists);
     return;
-  }
-  // Check if there's already a route to sink.
-  if (activity_manager_->GetActivityBySinkId(sink_id) != nullptr) {
-    // Terminate the existing session before creating new one.
-    TerminateRoute(
-        activity_manager_->GetActivityBySinkId(sink_id)->route.media_route_id(),
-        base::DoNothing());
-    logger_->LogInfo(mojom::LogCategory::kRoute, kLoggerComponent,
-                     "Existing route terminated successfully.", sink_id,
-                      MediaRoute::GetMediaSourceIdFromMediaRouteId(route_id),
-                      MediaRoute::GetPresentationIdFromMediaRouteId(route_id));
   }
 
   activity_manager_->AddActivity(*activity);
@@ -137,7 +132,7 @@ void DialMediaRouteProvider::CreateRoute(const std::string& media_source,
                    "Successfully created a new route.", sink_id, media_source,
                    presentation_id);
   std::move(callback).Run(activity->route, /*presentation_connection*/ nullptr,
-                          /*error_text*/ std::nullopt,
+                          /*error_text*/ absl::nullopt,
                           mojom::RouteRequestResultCode::OK);
 
   // When a custom DIAL launch request is received, DialMediaRouteProvider will
@@ -145,11 +140,11 @@ void DialMediaRouteProvider::CreateRoute(const std::string& media_source,
   // the Cast SDK to complete the launch sequence. The first messages that the
   // MRP needs to send are the RECEIVER_ACTION and NEW_SESSION.
   std::vector<mojom::RouteMessagePtr> messages;
-  messages.emplace_back(internal_message_util_.CreateReceiverActionCastMessage(
+  messages.push_back(internal_message_util_.CreateReceiverActionCastMessage(
       activity->launch_info.client_id, *sink));
-  messages.emplace_back(internal_message_util_.CreateNewSessionMessage(
+  messages.push_back(internal_message_util_.CreateNewSessionMessage(
       activity->launch_info.app_name, activity->launch_info.client_id, *sink));
-  media_router_->OnRouteMessagesReceived(route_id, std::move(messages));
+  message_sender_->SendMessages(route_id, std::move(messages));
 }
 
 void DialMediaRouteProvider::JoinRoute(const std::string& media_source,
@@ -157,15 +152,16 @@ void DialMediaRouteProvider::JoinRoute(const std::string& media_source,
                                        const url::Origin& origin,
                                        int32_t frame_tree_node_id,
                                        base::TimeDelta timeout,
+                                       bool incognito,
                                        JoinRouteCallback callback) {
   const DialActivity* activity = activity_manager_->GetActivityToJoin(
-      presentation_id, MediaSource(media_source), origin);
+      presentation_id, MediaSource(media_source), origin, incognito);
   if (activity) {
     std::move(callback).Run(
         activity->route, /*presentation_connection*/ nullptr,
-        /*error_text*/ std::nullopt, mojom::RouteRequestResultCode::OK);
+        /*error_text*/ absl::nullopt, mojom::RouteRequestResultCode::OK);
   } else {
-    std::move(callback).Run(std::nullopt, /*presentation_connection*/ nullptr,
+    std::move(callback).Run(absl::nullopt, /*presentation_connection*/ nullptr,
                             "DIAL activity not found",
                             mojom::RouteRequestResultCode::ROUTE_NOT_FOUND);
   }
@@ -345,8 +341,8 @@ void DialMediaRouteProvider::SendCustomDialLaunchMessage(
   }
 
   std::vector<mojom::RouteMessagePtr> messages;
-  messages.emplace_back(std::move(message_and_seq_number.first));
-  media_router_->OnRouteMessagesReceived(route_id, std::move(messages));
+  messages.push_back(std::move(message_and_seq_number.first));
+  message_sender_->SendMessages(route_id, std::move(messages));
 }
 
 void DialMediaRouteProvider::SendDialAppInfoResponse(
@@ -375,8 +371,8 @@ void DialMediaRouteProvider::SendDialAppInfoResponse(
         result.error_message, result.http_error_code);
   }
   std::vector<mojom::RouteMessagePtr> messages;
-  messages.emplace_back(std::move(message));
-  media_router_->OnRouteMessagesReceived(route_id, std::move(messages));
+  messages.push_back(std::move(message));
+  message_sender_->SendMessages(route_id, std::move(messages));
 }
 
 void DialMediaRouteProvider::HandleCustomDialLaunchResponse(
@@ -431,14 +427,13 @@ void DialMediaRouteProvider::DoTerminateRoute(const DialActivity& activity,
                                               const MediaSinkInternal& sink,
                                               TerminateRouteCallback callback) {
   const MediaRoute::Id& route_id = activity.route.media_route_id();
-  std::pair<std::optional<std::string>, mojom::RouteRequestResultCode>
+  std::pair<absl::optional<std::string>, mojom::RouteRequestResultCode>
       can_stop_app = activity_manager_->CanStopApp(route_id);
   if (can_stop_app.second == mojom::RouteRequestResultCode::OK) {
     std::vector<mojom::RouteMessagePtr> messages;
-    messages.emplace_back(
-        internal_message_util_.CreateReceiverActionStopMessage(
-            activity.launch_info.client_id, sink));
-    media_router_->OnRouteMessagesReceived(route_id, std::move(messages));
+    messages.push_back(internal_message_util_.CreateReceiverActionStopMessage(
+        activity.launch_info.client_id, sink));
+    message_sender_->SendMessages(route_id, std::move(messages));
     activity_manager_->StopApp(
         route_id,
         base::BindOnce(&DialMediaRouteProvider::HandleStopAppResult,
@@ -459,7 +454,7 @@ void DialMediaRouteProvider::DoTerminateRoute(const DialActivity& activity,
 void DialMediaRouteProvider::HandleStopAppResult(
     const MediaRoute::Id& route_id,
     TerminateRouteCallback callback,
-    const std::optional<std::string>& message,
+    const absl::optional<std::string>& message,
     mojom::RouteRequestResultCode result_code) {
   switch (result_code) {
     case mojom::RouteRequestResultCode::OK:
@@ -577,6 +572,16 @@ void DialMediaRouteProvider::StartObservingMediaRoutes() {
     NotifyOnRoutesUpdated(routes);
 }
 
+void DialMediaRouteProvider::StartListeningForRouteMessages(
+    const std::string& route_id) {
+  message_sender_->StartListening(route_id);
+}
+
+void DialMediaRouteProvider::StopListeningForRouteMessages(
+    const std::string& route_id) {
+  message_sender_->StopListening(route_id);
+}
+
 void DialMediaRouteProvider::DetachRoute(const std::string& route_id) {
   NOTIMPLEMENTED();
 }
@@ -589,11 +594,11 @@ void DialMediaRouteProvider::DiscoverSinksNow() {
   media_sink_service_->DiscoverSinksNow();
 }
 
-void DialMediaRouteProvider::BindMediaController(
+void DialMediaRouteProvider::CreateMediaRouteController(
     const std::string& route_id,
     mojo::PendingReceiver<mojom::MediaController> media_controller,
     mojo::PendingRemote<mojom::MediaStatusObserver> observer,
-    BindMediaControllerCallback callback) {
+    CreateMediaRouteControllerCallback callback) {
   NOTIMPLEMENTED();
   std::move(callback).Run(false);
 }

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_BLUETOOTH_DEBUG_LOGS_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_ASH_BLUETOOTH_DEBUG_LOGS_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -26,13 +26,13 @@ class DebugLogsManagerFactory : public ProfileKeyedServiceFactory {
   DebugLogsManagerFactory& operator=(const DebugLogsManagerFactory&) = delete;
 
  private:
-  friend base::NoDestructor<DebugLogsManagerFactory>;
+  friend struct base::DefaultSingletonTraits<DebugLogsManagerFactory>;
 
   DebugLogsManagerFactory();
   ~DebugLogsManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;

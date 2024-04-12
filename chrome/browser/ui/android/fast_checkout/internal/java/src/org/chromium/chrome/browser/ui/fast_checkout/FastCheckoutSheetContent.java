@@ -15,12 +15,14 @@ import android.view.ViewGroup;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.chromium.base.ContextUtils;
 import org.chromium.chrome.browser.util.ChromeAccessibilityUtil;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent;
-import org.chromium.ui.UiUtils;
 import org.chromium.ui.base.LocalizationUtils;
 
-/** The {@link BottomSheetContent} for Fast Checkout. */
+/**
+ * The {@link BottomSheetContent} for Fast Checkout.
+ */
 public class FastCheckoutSheetContent implements BottomSheetContent {
     private static final float MAX_VISIBLE_WHOLE_ADDRESSES = 2.5f;
     private static final float MAX_VISIBLE_WHOLE_CREDIT_CARDS = 3.5f;
@@ -36,10 +38,8 @@ public class FastCheckoutSheetContent implements BottomSheetContent {
         mContentView = contentView;
 
         // Apply RTL layout changes for tests.
-        int layoutDirection =
-                LocalizationUtils.isLayoutRtl()
-                        ? View.LAYOUT_DIRECTION_RTL
-                        : View.LAYOUT_DIRECTION_LTR;
+        int layoutDirection = LocalizationUtils.isLayoutRtl() ? View.LAYOUT_DIRECTION_RTL
+                                                              : View.LAYOUT_DIRECTION_LTR;
         mContentView.setLayoutDirection(layoutDirection);
     }
 
@@ -143,10 +143,9 @@ public class FastCheckoutSheetContent implements BottomSheetContent {
 
     private float getBottomSheetHeight() {
         ViewGroup parent = (ViewGroup) getContentView().getParent();
-        getContentView()
-                .measure(
-                        MeasureSpec.makeMeasureSpec(parent.getWidth(), MeasureSpec.EXACTLY),
-                        MeasureSpec.makeMeasureSpec(parent.getHeight(), MeasureSpec.AT_MOST));
+        getContentView().measure(
+                MeasureSpec.makeMeasureSpec(parent.getWidth(), MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(parent.getHeight(), MeasureSpec.AT_MOST));
         return getContentView().getMeasuredHeight();
     }
 
@@ -154,19 +153,18 @@ public class FastCheckoutSheetContent implements BottomSheetContent {
         // Always got to FULL state in accessibility mode or when an external keyboard is connected
         // to allow scrolling the RecyclerView with e.g. side swipes or the Tab key.
         if (ChromeAccessibilityUtil.get().isAccessibilityEnabled()
-                || UiUtils.isHardwareKeyboardAttached()) {
+                || ChromeAccessibilityUtil.isHardwareKeyboardAttached(
+                        ContextUtils.getApplicationContext().getResources().getConfiguration())) {
             return true;
         }
         // If there are 1 or 2 Autofill profiles, it shows all items fully. For 3+ suggestions, it
         // shows the first 2.5 suggestions to encourage scrolling.
-        boolean shouldWrapAutofillProfiles =
-                isAutofillProfileScreen()
-                        && mState.getNumOfAutofillProfiles() < MAX_VISIBLE_WHOLE_ADDRESSES;
+        boolean shouldWrapAutofillProfiles = isAutofillProfileScreen()
+                && mState.getNumOfAutofillProfiles() < MAX_VISIBLE_WHOLE_ADDRESSES;
         // If there are less than 4 credit cards, it shows all items fully. For 4+ suggestions, it
         // shows the first 3.5 suggestions to encourage scrolling.
-        boolean shouldWrapCreditCards =
-                isCreditCardScreen()
-                        && mState.getNumOfCreditCards() < MAX_VISIBLE_WHOLE_CREDIT_CARDS;
+        boolean shouldWrapCreditCards = isCreditCardScreen()
+                && mState.getNumOfCreditCards() < MAX_VISIBLE_WHOLE_CREDIT_CARDS;
         return isHomeScreen() || shouldWrapAutofillProfiles || shouldWrapCreditCards;
     }
 
@@ -175,19 +173,13 @@ public class FastCheckoutSheetContent implements BottomSheetContent {
         // hard-coded values.
         int height = getDimensionPixelSize(R.dimen.fast_checkout_detail_sheet_header_height);
         if (isAutofillProfileScreen()) {
-            height +=
-                    Math.round(
-                            MAX_VISIBLE_WHOLE_ADDRESSES
-                                    * getDimensionPixelSize(
-                                            R.dimen
-                                                    .fast_checkout_detail_sheet_height_single_address));
+            height += Math.round(MAX_VISIBLE_WHOLE_ADDRESSES
+                    * getDimensionPixelSize(
+                            R.dimen.fast_checkout_detail_sheet_height_single_address));
         } else {
-            height +=
-                    Math.round(
-                            MAX_VISIBLE_WHOLE_CREDIT_CARDS
-                                    * getDimensionPixelSize(
-                                            R.dimen
-                                                    .fast_checkout_detail_sheet_height_single_credit_card));
+            height += Math.round(MAX_VISIBLE_WHOLE_CREDIT_CARDS
+                    * getDimensionPixelSize(
+                            R.dimen.fast_checkout_detail_sheet_height_single_credit_card));
         }
         return height;
     }

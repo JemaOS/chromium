@@ -13,7 +13,6 @@ invocations: [
       sample_rate: 48000,
       number_of_channels: 2,
       bitrate: 96000,
-      bitrate_mode: VARIABLE,
       aac {
         format: AAC
       }
@@ -53,7 +52,6 @@ invocations: [
       sample_rate: 44100,
       number_of_channels: 1,
       bitrate: 128000,
-      bitrate_mode: CONSTANT,
       aac {
         format: ADTS
       }

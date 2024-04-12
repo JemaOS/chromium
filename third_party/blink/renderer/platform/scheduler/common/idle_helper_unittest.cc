@@ -161,12 +161,12 @@ class IdleHelperForTest : public IdleHelper, public IdleHelper::Delegate {
   explicit IdleHelperForTest(
       SchedulerHelper* scheduler_helper,
       base::TimeDelta required_quiescence_duration_before_long_idle_period,
-      TaskQueue* idle_task_queue)
+      scoped_refptr<TaskQueue> idle_task_runner)
       : IdleHelper(scheduler_helper,
                    this,
                    "TestSchedulerIdlePeriod",
                    required_quiescence_duration_before_long_idle_period,
-                   idle_task_queue) {}
+                   idle_task_runner) {}
 
   ~IdleHelperForTest() override = default;
 
@@ -225,7 +225,6 @@ class BaseIdleHelperTest : public testing::Test {
   void TearDown() override {
     EXPECT_CALL(*idle_helper_, OnIdlePeriodEnded()).Times(AnyNumber());
     idle_helper_->Shutdown();
-    idle_helper_queue_->ShutdownTaskQueue();
     test_task_runner_->FastForwardUntilNoTasksRemain();
   }
 
@@ -276,7 +275,9 @@ class BaseIdleHelperTest : public testing::Test {
                                idle_helper_->SchedulerIdlePeriodState()));
   }
 
-  const TaskQueue* idle_queue() const { return idle_helper_->idle_queue_; }
+  const scoped_refptr<TaskQueue>& idle_queue() const {
+    return idle_helper_->idle_queue_;
+  }
 
   scoped_refptr<base::TestMockTimeTaskRunner> test_task_runner_;
   std::unique_ptr<SequenceManager> sequence_manager_;

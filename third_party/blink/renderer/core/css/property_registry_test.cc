@@ -17,8 +17,8 @@ class PropertyRegistryTest : public PageTestBase {
     return GetDocument().EnsurePropertyRegistry();
   }
 
-  const PropertyRegistration* Registration(const char* name) {
-    return Registry().Registration(AtomicString(name));
+  const PropertyRegistration* Registration(AtomicString name) {
+    return Registry().Registration(name);
   }
 
   const CSSValue* MaybeParseInitialValue(String syntax, String value) {
@@ -30,22 +30,22 @@ class PropertyRegistryTest : public PageTestBase {
   }
 
   const PropertyRegistration* RegisterProperty(
-      const char* name,
+      AtomicString name,
       String syntax = "*",
       String initial_value = g_null_atom) {
     auto* registration = css_test_helpers::CreatePropertyRegistration(
         name, syntax, MaybeParseInitialValue(syntax, initial_value));
-    Registry().RegisterProperty(AtomicString(name), *registration);
+    Registry().RegisterProperty(name, *registration);
     return registration;
   }
 
   const PropertyRegistration* DeclareProperty(
-      const char* name,
+      AtomicString name,
       String syntax = "*",
       String initial_value = g_null_atom) {
     auto* registration = css_test_helpers::CreatePropertyRegistration(
         name, syntax, MaybeParseInitialValue(syntax, initial_value));
-    Registry().DeclareProperty(AtomicString(name), *registration);
+    Registry().DeclareProperty(name, *registration);
     return registration;
   }
 
@@ -112,20 +112,19 @@ TEST_F(PropertyRegistryTest, DeclareTwice) {
 }
 
 TEST_F(PropertyRegistryTest, IsInRegisteredPropertySet) {
-  AtomicString x_string("--x");
-  AtomicString y_string("--y");
-  EXPECT_FALSE(Registry().IsInRegisteredPropertySet(x_string));
+  EXPECT_FALSE(Registry().IsInRegisteredPropertySet("--x"));
 
   RegisterProperty("--x");
-  EXPECT_TRUE(Registry().IsInRegisteredPropertySet(x_string));
-  EXPECT_FALSE(Registry().IsInRegisteredPropertySet(y_string));
+  EXPECT_TRUE(Registry().IsInRegisteredPropertySet("--x"));
+  EXPECT_FALSE(Registry().IsInRegisteredPropertySet("--y"));
 
   DeclareProperty("--y");
-  EXPECT_TRUE(Registry().IsInRegisteredPropertySet(x_string));
-  EXPECT_FALSE(Registry().IsInRegisteredPropertySet(y_string));
+  EXPECT_TRUE(Registry().IsInRegisteredPropertySet("--x"));
+  EXPECT_FALSE(Registry().IsInRegisteredPropertySet("--y"));
 
   RegisterProperty("--y");
-  EXPECT_TRUE(Registry().IsInRegisteredPropertySet(y_string));
+  EXPECT_TRUE(Registry().IsInRegisteredPropertySet("--y"));
+  EXPECT_TRUE(Registry().IsInRegisteredPropertySet("--y"));
 }
 
 TEST_F(PropertyRegistryTest, EmptyIterator) {
@@ -275,7 +274,7 @@ TEST_F(PropertyRegistryTest, MarkReferencedRegisterProperty) {
                                      false);
 
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_FALSE(Registry().WasReferenced(AtomicString("--x")));
+  EXPECT_FALSE(Registry().WasReferenced("--x"));
 
   GetDocument().documentElement()->setInnerHTML(R"HTML(
     <style>
@@ -290,12 +289,12 @@ TEST_F(PropertyRegistryTest, MarkReferencedRegisterProperty) {
   )HTML");
 
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_TRUE(Registry().WasReferenced(AtomicString("--x")));
+  EXPECT_TRUE(Registry().WasReferenced("--x"));
 }
 
 TEST_F(PropertyRegistryTest, MarkReferencedAtProperty) {
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_FALSE(Registry().WasReferenced(AtomicString("--x")));
+  EXPECT_FALSE(Registry().WasReferenced("--x"));
 
   GetDocument().documentElement()->setInnerHTML(R"HTML(
     <style>
@@ -315,7 +314,7 @@ TEST_F(PropertyRegistryTest, MarkReferencedAtProperty) {
   )HTML");
 
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_TRUE(Registry().WasReferenced(AtomicString("--x")));
+  EXPECT_TRUE(Registry().WasReferenced("--x"));
 
   css_test_helpers::RegisterProperty(GetDocument(), "--x", "<length>", "1px",
                                      false);
@@ -329,10 +328,12 @@ TEST_F(PropertyRegistryTest, MarkReferencedAtProperty) {
   // --x should still be marked as referenced, even though RegisterProperty
   // now takes precedence over @property.
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_TRUE(Registry().WasReferenced(AtomicString("--x")));
+  EXPECT_TRUE(Registry().WasReferenced("--x"));
 }
 
 TEST_F(PropertyRegistryTest, GetViewportUnitFlagsRegistered) {
+  ScopedCSSViewportUnits4ForTest scoped_feature(true);
+
   EXPECT_EQ(
       0u, RegisterProperty("--px", "<length>", "1px")->GetViewportUnitFlags());
   EXPECT_EQ(
@@ -354,6 +355,8 @@ TEST_F(PropertyRegistryTest, GetViewportUnitFlagsRegistered) {
 }
 
 TEST_F(PropertyRegistryTest, GetViewportUnitFlagsDeclared) {
+  ScopedCSSViewportUnits4ForTest scoped_feature(true);
+
   EXPECT_EQ(0u,
             DeclareProperty("--px", "<length>", "1px")->GetViewportUnitFlags());
   EXPECT_EQ(static_cast<unsigned>(ViewportUnitFlag::kStatic),
@@ -374,6 +377,8 @@ TEST_F(PropertyRegistryTest, GetViewportUnitFlagsDeclared) {
 }
 
 TEST_F(PropertyRegistryTest, GetViewportUnitFlagsRegistry) {
+  ScopedCSSViewportUnits4ForTest scoped_feature(true);
+
   EXPECT_EQ(0u, Registry().GetViewportUnitFlags());
 
   RegisterProperty("--vh", "<length>", "1vh");

@@ -39,8 +39,7 @@ scoped_refptr<ShortcutsBackend> ShortcutsBackendFactory::GetForProfileIfExists(
 
 // static
 ShortcutsBackendFactory* ShortcutsBackendFactory::GetInstance() {
-  static base::NoDestructor<ShortcutsBackendFactory> instance;
-  return instance.get();
+  return base::Singleton<ShortcutsBackendFactory>::get();
 }
 
 // static
@@ -70,7 +69,7 @@ ShortcutsBackendFactory::ShortcutsBackendFactory()
   DependsOn(TemplateURLServiceFactory::GetInstance());
 }
 
-ShortcutsBackendFactory::~ShortcutsBackendFactory() = default;
+ShortcutsBackendFactory::~ShortcutsBackendFactory() {}
 
 scoped_refptr<RefcountedKeyedService>
 ShortcutsBackendFactory::BuildServiceInstanceFor(

@@ -35,8 +35,8 @@ base::StringPiece SpanToStringPiece(const base::span<const uint8_t>& s) {
 
 std::string EncodeURIComponent(const std::string& component) {
   url::RawCanonOutputT<char> encoded;
-  url::EncodeURIComponent(component, &encoded);
-  return std::string(encoded.view());
+  url::EncodeURIComponent(component.c_str(), component.size(), &encoded);
+  return {encoded.data(), static_cast<size_t>(encoded.length())};
 }
 
 }  // namespace
@@ -135,10 +135,7 @@ void DevToolsListener::StopAndStoreJSCoverage(content::DevToolsAgentHost* host,
   std::string get_precise_coverage =
       "{\"id\":40,\"method\":\"Profiler.takePreciseCoverage\"}";
   SendCommandMessage(host, get_precise_coverage);
-  if (!AwaitCommandResponse(40)) {
-    LOG(ERROR) << "Host has been destroyed whilst getting precise coverage";
-    return;
-  }
+  AwaitCommandResponse(40);
 
   script_coverage_ = std::move(value_);
   base::Value::Dict* result = script_coverage_.FindDict("result");
@@ -196,9 +193,7 @@ void DevToolsListener::StopAndStoreJSCoverage(content::DevToolsAgentHost* host,
   script_id_map_.clear();
   scripts_.clear();
 
-  LOG_IF(ERROR, !AwaitCommandResponse(42))
-      << "Host has been destroyed whilst waiting, coverage coverage already "
-         "extracted though";
+  AwaitCommandResponse(42);
   value_.clear();
   all_scripts_parsed_ = false;
 }
@@ -226,7 +221,7 @@ void DevToolsListener::VerifyAllScriptsAreParsedRepeatedly(
   // pause in between verification attempts.
   bool missing_script = false;
   for (const auto& entry : *coverage_entries) {
-    const std::string* id = entry.GetDict().FindString("scriptId");
+    const std::string* id = entry.FindStringPath("scriptId");
     CHECK(id) << "Can't extract scriptId: " << entry;
     if (!script_ids.contains(*id)) {
       missing_script = true;
@@ -276,11 +271,7 @@ void DevToolsListener::StoreScripts(content::DevToolsAgentHost* host,
         ",\"params\":{\"scriptId\":\"%s\"}}",
         id.c_str());
     SendCommandMessage(host, get_script_source);
-    if (!AwaitCommandResponse(50)) {
-      LOG(ERROR) << "Host has been destroyed whilst getting script source, "
-                    "skipping remaining script sources";
-      return;
-    }
+    AwaitCommandResponse(50);
 
     std::string text;
     {
@@ -343,17 +334,13 @@ void DevToolsListener::SendCommandMessage(content::DevToolsAgentHost* host,
   host->DispatchProtocolMessage(this, message);
 }
 
-bool DevToolsListener::AwaitCommandResponse(int id) {
-  if (!attached_ && !navigated_) {
-    return false;
-  }
+void DevToolsListener::AwaitCommandResponse(int id) {
   value_.clear();
   value_id_ = id;
 
   base::RunLoop run_loop;
   value_closure_ = run_loop.QuitClosure();
   run_loop.Run();
-  return attached_ && navigated_;
 }
 
 void DevToolsListener::DispatchProtocolMessage(
@@ -365,7 +352,7 @@ void DevToolsListener::DispatchProtocolMessage(
   if (VLOG_IS_ON(2))
     VLOG(2) << SpanToStringPiece(message);
 
-  std::optional<base::Value> value =
+  absl::optional<base::Value> value =
       base::JSONReader::Read(SpanToStringPiece(message));
   CHECK(value.has_value()) << "Cannot parse as JSON: "
                            << SpanToStringPiece(message);
@@ -381,7 +368,7 @@ void DevToolsListener::DispatchProtocolMessage(
     return;
   }
 
-  std::optional<int> id = dict_value.FindInt("id");
+  absl::optional<int> id = dict_value.FindInt("id");
   if (id.has_value() && id.value() == value_id_) {
     value_ = std::move(dict_value);
     CHECK(value_closure_);
@@ -394,11 +381,9 @@ bool DevToolsListener::MayAttachToURL(const GURL& url, bool is_webui) {
 }
 
 void DevToolsListener::AgentHostClosed(content::DevToolsAgentHost* host) {
+  CHECK(!value_closure_);
   navigated_ = false;
   attached_ = false;
-  if (value_closure_) {
-    std::move(value_closure_).Run();
-  }
 }
 
 }  // namespace coverage

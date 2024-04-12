@@ -30,23 +30,24 @@ class ExecutionContext;
 // Usage:
 //   v8::Local<v8::Object> es_object = ...;
 //   auto script_iterator = ScriptIterator::FromIterable(
-//       isolate, es_object, exception_state);
+//       isolate, es_object, exception_state,
+//       ScriptIterator::ConversionFailureMode::kDoNotThrowTypeError);
 //   if (exception_state.HadException())
 //     return;
 //   if (!script_iterator.IsNull()) {
 //     while (script_iterator.Next(execution_context, exception_state)) {
-//       // When `Next()` puts an exception on the stack, it always returns
-//       // false, thus breaking out of this loop.
-//       DCHECK(!exception_state.HadException());
+//       // V8 may have thrown an exception.
+//       if (exception_state.HadException())
+//         return;
 //       v8::Local<v8::Value> value =
 //           script_iterator.GetValue().ToLocalChecked();
-//       // Do something with `value`.
+//       // Do something with |value|.
 //     }
 //   }
-//   // See documentation above.
-//   if (exception_state.HadException()) {
+//   // If the very first call to Next() throws, the loop above will not be
+//   // entered, so we need to catch any exceptions here.
+//   if (exception_state.HadException())
 //     return;
-//   }
 class CORE_EXPORT ScriptIterator {
   STACK_ALLOCATED();
 

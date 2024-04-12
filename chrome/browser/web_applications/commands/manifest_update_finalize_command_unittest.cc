@@ -16,7 +16,6 @@
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/browser/web_applications/test/web_app_test.h"
 #include "chrome/browser/web_applications/web_app_command_manager.h"
-#include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "components/keep_alive_registry/keep_alive_types.h"
@@ -43,7 +42,7 @@ class ManifestUpdateFinalizeCommandTest : public WebAppTest {
  protected:
   std::unique_ptr<ManifestUpdateFinalizeCommand> CreateCommand(
       const GURL& url,
-      const webapps::AppId& app_id,
+      const AppId& app_id,
       WebAppInstallInfo install_info,
       ManifestUpdateFinalizeCommand::ManifestWriteCallback callback) {
     auto keep_alive = std::make_unique<ScopedKeepAlive>(
@@ -56,14 +55,14 @@ class ManifestUpdateFinalizeCommandTest : public WebAppTest {
   }
 
   ManifestUpdateResult RunCommandAndGetResult(const GURL& url,
-                                              const webapps::AppId& app_id,
+                                              const AppId& app_id,
                                               WebAppInstallInfo install_info) {
     ManifestUpdateResult output_result;
     base::RunLoop loop;
     provider().command_manager().ScheduleCommand(CreateCommand(
         url, app_id, std::move(install_info),
         base::BindLambdaForTesting([&](const GURL& url,
-                                       const webapps::AppId& output_app_id,
+                                       const AppId& output_app_id,
                                        ManifestUpdateResult result) {
           EXPECT_EQ(output_app_id, app_id);
           output_result = result;
@@ -73,10 +72,9 @@ class ManifestUpdateFinalizeCommandTest : public WebAppTest {
     return output_result;
   }
 
-  webapps::AppId InstallWebApp() {
+  AppId InstallWebApp() {
     auto web_app_info = std::make_unique<WebAppInstallInfo>();
     web_app_info->start_url = app_url();
-    web_app_info->manifest_id = GenerateManifestIdFromStartUrlOnly(app_url());
     web_app_info->scope = app_url().GetWithoutFilename();
     web_app_info->user_display_mode = mojom::UserDisplayMode::kStandalone;
     web_app_info->title = u"Foo Bar";
@@ -86,11 +84,9 @@ class ManifestUpdateFinalizeCommandTest : public WebAppTest {
   WebAppInstallInfo GetNewInstallInfoWithTitle(std::u16string new_title) {
     WebAppInstallInfo info;
     info.start_url = app_url();
-    info.manifest_id = GenerateManifestIdFromStartUrlOnly(app_url());
     info.scope = app_url().GetWithoutFilename();
     info.user_display_mode = mojom::UserDisplayMode::kStandalone;
     info.title = new_title;
-    info.validated_scope_extensions.emplace();
     return info;
   }
 
@@ -103,7 +99,7 @@ class ManifestUpdateFinalizeCommandTest : public WebAppTest {
 };
 
 TEST_F(ManifestUpdateFinalizeCommandTest, NameUpdate) {
-  webapps::AppId app_id = InstallWebApp();
+  AppId app_id = InstallWebApp();
   ManifestUpdateResult expected_result = RunCommandAndGetResult(
       app_url(), app_id, GetNewInstallInfoWithTitle(u"New Name"));
   EXPECT_EQ(expected_result, ManifestUpdateResult::kAppUpdated);
@@ -111,9 +107,8 @@ TEST_F(ManifestUpdateFinalizeCommandTest, NameUpdate) {
 }
 
 TEST_F(ManifestUpdateFinalizeCommandTest, UpdateFailsOnUnsuccessfulCode) {
-  // This should fail because RandomAppId does not exist.
-  ManifestUpdateResult expected_result = RunCommandAndGetResult(
-      app_url(), "RandomAppId", GetNewInstallInfoWithTitle(u"Name"));
+  ManifestUpdateResult expected_result =
+      RunCommandAndGetResult(app_url(), "RandomAppId", WebAppInstallInfo());
   EXPECT_EQ(expected_result, ManifestUpdateResult::kAppUpdateFailed);
 }
 

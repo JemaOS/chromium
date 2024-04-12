@@ -47,6 +47,8 @@ void InputMethodBase::OnFocus() {
 void InputMethodBase::OnBlur() {
 }
 
+void InputMethodBase::OnTouch(ui::EventPointerType pointerType) {}
+
 void InputMethodBase::SetFocusedTextInputClient(TextInputClient* client) {
   SetFocusedTextInputClientInternal(client);
 }

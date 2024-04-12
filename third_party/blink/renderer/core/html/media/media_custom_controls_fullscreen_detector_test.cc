@@ -9,7 +9,6 @@
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "ui/gfx/geometry/rect.h"
 
 namespace blink {
@@ -22,13 +21,12 @@ class MediaCustomControlsFullscreenDetectorTest : public testing::Test {
   }
 
   HTMLVideoElement* VideoElement() const {
-    return To<HTMLVideoElement>(
-        GetDocument().QuerySelector(AtomicString("video")));
+    return To<HTMLVideoElement>(GetDocument().QuerySelector("video"));
   }
 
   static MediaCustomControlsFullscreenDetector* FullscreenDetectorFor(
       HTMLVideoElement* video_element) {
-    return video_element->custom_controls_fullscreen_detector_.Get();
+    return video_element->custom_controls_fullscreen_detector_;
   }
 
   MediaCustomControlsFullscreenDetector* FullscreenDetector() const {
@@ -46,9 +44,8 @@ class MediaCustomControlsFullscreenDetectorTest : public testing::Test {
       return false;
 
     for (const auto& registered_listener : *listeners) {
-      if (registered_listener->Callback() == listener) {
+      if (registered_listener.Callback() == listener)
         return true;
-      }
     }
     return false;
   }
@@ -61,7 +58,6 @@ class MediaCustomControlsFullscreenDetectorTest : public testing::Test {
   }
 
  private:
-  test::TaskEnvironment task_environment_;
   std::unique_ptr<DummyPageHolder> page_holder_;
   std::unique_ptr<DummyPageHolder> new_page_holder_;
   Persistent<HTMLVideoElement> video_;

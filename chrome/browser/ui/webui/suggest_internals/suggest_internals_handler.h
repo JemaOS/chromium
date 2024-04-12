@@ -46,15 +46,12 @@ class SuggestInternalsHandler : public suggest_internals::mojom::PageHandler,
                         HardcodeResponseCallback callback) override;
 
   // RemoteSuggestionsService::Observer:
-  void OnSuggestRequestCreated(
+  void OnSuggestRequestStarting(
       const base::UnguessableToken& request_id,
       const network::ResourceRequest* request) override;
-  void OnSuggestRequestStarted(const base::UnguessableToken& request_id,
-                               network::SimpleURLLoader* loader,
-                               const std::string& request_body) override;
   void OnSuggestRequestCompleted(
       const base::UnguessableToken& request_id,
-      const int response_code,
+      const bool response_received,
       const std::unique_ptr<std::string>& response_body) override;
 
  private:

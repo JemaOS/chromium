@@ -7,11 +7,14 @@
 
 #include <memory>
 
-namespace base::apple {
+namespace base {
+namespace mac {
 class ScopedObjCClassSwizzler;
 }
+}
 
-namespace ui::test {
+namespace ui {
+namespace test {
 
 // Overrides system setting for scrollbar style with NSScrollerOverlay if we
 // want the scrollbar to overlay. Otherwise, override with
@@ -27,12 +30,13 @@ class ScopedPreferredScrollerStyle {
   ~ScopedPreferredScrollerStyle();
 
  private:
-  std::unique_ptr<base::apple::ScopedObjCClassSwizzler> swizzler_;
+  std::unique_ptr<base::mac::ScopedObjCClassSwizzler> swizzler_;
 
   // True if the scrollbar style should overlay.
   bool overlay_;
 };
 
-}  // namespace ui::test
+}  // namespace test
+}  // namespace ui
 
 #endif  // UI_BASE_TEST_SCOPED_PREFERRED_SCROLLER_STYLE_MAC_H_

@@ -19,8 +19,7 @@ RecipesService* RecipesServiceFactory::GetForProfile(Profile* profile) {
 
 // static
 RecipesServiceFactory* RecipesServiceFactory::GetInstance() {
-  static base::NoDestructor<RecipesServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<RecipesServiceFactory>::get();
 }
 
 RecipesServiceFactory::RecipesServiceFactory()
@@ -37,12 +36,11 @@ RecipesServiceFactory::RecipesServiceFactory()
 
 RecipesServiceFactory::~RecipesServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-RecipesServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* RecipesServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   auto url_loader_factory = context->GetDefaultStoragePartition()
                                 ->GetURLLoaderFactoryForBrowserProcess();
-  return std::make_unique<RecipesService>(
-      url_loader_factory, Profile::FromBrowserContext(context),
-      g_browser_process->GetApplicationLocale());
+  return new RecipesService(url_loader_factory,
+                            Profile::FromBrowserContext(context),
+                            g_browser_process->GetApplicationLocale());
 }

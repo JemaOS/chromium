@@ -67,8 +67,9 @@ function getResult() {
   if (!newWindow2Success)
     console.log("newWindow2Success is false!");
 
-  return frame1Success && frame2Success && frame3Success &&
-      frame4Success && newWindow1Success && newWindow2Success;
+  window.domAutomationController.send(
+      frame1Success && frame2Success && frame3Success &&
+      frame4Success && newWindow1Success && newWindow2Success);
 }
 
 </script>

@@ -7,6 +7,9 @@
 
 #include <cstdint>
 
+#include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
+
 namespace ui {
 
 // This enum must be version-skew tolerant. It is persisted to disk by ChromeOS
@@ -29,6 +32,7 @@ enum WindowShowState {
   SHOW_STATE_END = 6  // The end of show state enum.
 };
 
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
 // Specifies which edges of the window are tiled.
 //
 // Wayland can notify the application if certain edge of the window is
@@ -50,6 +54,7 @@ struct WindowTiledEdges {
            bottom != other.bottom;
   }
 };
+#endif  // IS_LINUX || IS_CHROMEOS_LACROS
 
 // Dialog button identifiers used to specify which buttons to show the user.
 enum DialogButton {
@@ -57,22 +62,6 @@ enum DialogButton {
   DIALOG_BUTTON_OK = 1,
   DIALOG_BUTTON_CANCEL = 2,
   DIALOG_BUTTON_LAST = DIALOG_BUTTON_CANCEL,
-};
-
-// MdTextButtons have various button styles that can change the button's
-// relative prominence/priority. The relative priority (least to greatest) is
-// as follows:
-// kText -> kDefault -> kTonal -> kProminent
-// The default styles are described as below.
-// kDefault: White background with blue text and a solid outline.
-// kProminent: Blue background with white text.
-// kTonal: Cyan background with black text.
-// kText: White background with blue text but no outline.
-enum class ButtonStyle {
-  kText,
-  kDefault,
-  kTonal,
-  kProminent,
 };
 
 // Specifies the type of modality applied to a window. Different modal
@@ -138,6 +127,19 @@ enum MenuSourceType {
   MENU_SOURCE_ADJUST_SELECTION = 9,
   MENU_SOURCE_ADJUST_SELECTION_RESET = 10,
   MENU_SOURCE_TYPE_LAST = MENU_SOURCE_ADJUST_SELECTION_RESET
+};
+
+// Menu types that are used to position menu windows correctly.
+enum class MenuType {
+  // A context menu opened either via a right click or a long tap.
+  kRootContextMenu = 0,
+
+  // A root non-context menu. Example: The three dot menu.
+  kRootMenu,
+
+  // A child menu opened by clicking on a nested menu entry of either
+  // |kRootContextMenu| or |kRootParentMenu|.
+  kChildMenu,
 };
 
 // Where an owned anchored window should be anchored to. Used by such backends

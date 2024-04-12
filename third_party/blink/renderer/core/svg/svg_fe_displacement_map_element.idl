@@ -26,6 +26,7 @@
 // https://drafts.fxtf.org/filter-effects/#InterfaceSVGFEDisplacementMapElement
 
 [
+    DoNotCheckConstants,
     Exposed=Window
 ] interface SVGFEDisplacementMapElement : SVGElement {
     // Channel Selectors

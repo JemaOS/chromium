@@ -89,6 +89,9 @@ class DownloadControllerBase : public download::DownloadItem::Observer,
       const content::WebContents::Getter& wc_getter,
       const DownloadInfo& info) = 0;
 
+  // Called before resuming a download.
+  virtual void AboutToResumeDownload(download::DownloadItem* download_item) = 0;
+
  protected:
   ~DownloadControllerBase() override {}
   static DownloadControllerBase* download_controller_;

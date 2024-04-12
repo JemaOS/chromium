@@ -22,6 +22,8 @@
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/navigation_handle_user_data.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
@@ -312,10 +314,8 @@ void ChromeOmniboxNavigationObserver::On404() {
   // If there's any hint that we should keep this search engine around, don't
   // mess with it.
   if (template_url_service->ShowInDefaultList(template_url) ||
-      !template_url->safe_for_autoreplace() ||
-      template_url->starter_pack_id() != 0) {
+      !template_url->safe_for_autoreplace())
     return;
-  }
   // This custom search engine is safe to delete.
   template_url_service->Remove(template_url);
 }

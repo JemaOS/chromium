@@ -34,31 +34,11 @@ constexpr const char* kProxyModeValidValues[] = {
     kProxyModeFixedServers, kProxyModeSystem,
 };
 
-crypto::SignatureVerifier::SignatureAlgorithm GetResponseSignatureType(
-    const enterprise_management::PolicyFetchResponse& fetch_response) {
-  if (!fetch_response.has_policy_data_signature_type()) {
-    VLOG(1) << "No signature type in response, assume SHA256.";
-    return crypto::SignatureVerifier::RSA_PKCS1_SHA256;
-  }
-
-  switch (fetch_response.policy_data_signature_type()) {
-    case enterprise_management::PolicyFetchRequest::SHA1_RSA:
-      VLOG(1) << "Response is signed with deprecated SHA1 algorithm.";
-      return crypto::SignatureVerifier::RSA_PKCS1_SHA1;
-    case enterprise_management::PolicyFetchRequest::SHA256_RSA:
-      return crypto::SignatureVerifier::RSA_PKCS1_SHA256;
-    default:
-      VLOG(1) << "Unrecognized signature type in response, assume SHA256.";
-      return crypto::SignatureVerifier::RSA_PKCS1_SHA256;
-  }
-}
-
-bool VerifySignature(const std::string& data,
-                     const std::string& key,
-                     const std::string& signature,
-                     crypto::SignatureVerifier::SignatureAlgorithm algorithm) {
+bool VerifySHA256Signature(const std::string& data,
+                           const std::string& key,
+                           const std::string& signature) {
   crypto::SignatureVerifier verifier;
-  if (!verifier.VerifyInit(algorithm,
+  if (!verifier.VerifyInit(crypto::SignatureVerifier::RSA_PKCS1_SHA256,
                            base::as_bytes(base::make_span(signature)),
                            base::as_bytes(base::make_span(key)))) {
     VLOG(1) << "Invalid verification signature/key format.";
@@ -189,7 +169,7 @@ void OmahaPolicyValidator::ValidateProxyPolicies(
         base::ToLowerASCII(omaha_settings_.proxy_mode());
     if (!base::Contains(kProxyModeValidValues, proxy_mode)) {
       validation_result.issues.emplace_back(
-          "proxy_mode", PolicyValueValidationIssue::Severity::kWarning,
+          "proxy_mode", PolicyValueValidationIssue::Severity::kError,
           "Unrecognized proxy mode: " + omaha_settings_.proxy_mode());
     }
   }
@@ -301,13 +281,11 @@ bool DMResponseValidator::ValidateNewPublicKey(
   }
 
   // Verifies that the new public key verification data is properly signed
-  // by the pinned key. The DM server always signs the new key using SHA256
-  // algorithm.
-  if (!VerifySignature(
+  // by the pinned key.
+  if (!VerifySHA256Signature(
           fetch_response.new_public_key_verification_data(),
           policy::GetPolicyVerificationKey(),
-          fetch_response.new_public_key_verification_data_signature(),
-          crypto::SignatureVerifier::RSA_PKCS1_SHA256)) {
+          fetch_response.new_public_key_verification_data_signature())) {
     VLOG(1) << "Public key verification data is not signed correctly.";
     validation_result.status =
         PolicyValidationResult::Status::kValidationBadKeyVerificationSignature;
@@ -328,9 +306,8 @@ bool DMResponseValidator::ValidateNewPublicKey(
   const std::string existing_key = policy_info_.public_key();
   if (!existing_key.empty()) {
     if (!fetch_response.has_new_public_key_signature() ||
-        !VerifySignature(public_key_data.new_public_key(), existing_key,
-                         fetch_response.new_public_key_signature(),
-                         GetResponseSignatureType(fetch_response))) {
+        !VerifySHA256Signature(public_key_data.new_public_key(), existing_key,
+                               fetch_response.new_public_key_signature())) {
       VLOG(1) << "Key verification against cached public key failed.";
       validation_result.status = PolicyValidationResult::Status::
           kValidationBadKeyVerificationSignature;
@@ -357,10 +334,8 @@ bool DMResponseValidator::ValidateSignature(
   }
 
   const std::string& policy_data = policy_response.policy_data();
-  if (!VerifySignature(policy_data, signature_key,
-                       policy_response.policy_data_signature(),
-                       GetResponseSignatureType(policy_response))) {
-    VLOG(1) << "Policy signature validation failed.";
+  if (!VerifySHA256Signature(policy_data, signature_key,
+                             policy_response.policy_data_signature())) {
     validation_result.status =
         PolicyValidationResult::Status::kValidationBadSignature;
     return false;
@@ -438,9 +413,7 @@ bool DMResponseValidator::ValidateTimestamp(
   }
 
   if (policy_data.timestamp() < policy_info_.timestamp()) {
-    VLOG(1) << "Unexpected DM response timestamp [" << policy_data.timestamp()
-            << "] is older than cached timestamp [" << policy_info_.timestamp()
-            << "].";
+    VLOG(1) << "Unexpected DM response timestamp older than cached timestamp.";
     validation_result.status =
         PolicyValidationResult::Status::kValidationBadTimestamp;
     return false;
@@ -482,14 +455,6 @@ bool DMResponseValidator::ValidatePolicyResponse(
     return false;
   }
 
-  if (!fetch_policy_data.has_policy_type()) {
-    VLOG(1) << "Missing policy type in the policy response.";
-    validation_result.status =
-        PolicyValidationResult::Status::kValidationWrongPolicyType;
-    return false;
-  }
-  validation_result.policy_type = fetch_policy_data.policy_type();
-
   if (fetch_policy_data.has_policy_token()) {
     validation_result.policy_token = fetch_policy_data.policy_token();
   }
@@ -502,6 +467,16 @@ bool DMResponseValidator::ValidatePolicyResponse(
 
   std::string signature_key;
   if (!ValidateNewPublicKey(fetch_response, signature_key, validation_result)) {
+    return false;
+  }
+
+  if (fetch_policy_data.has_policy_type()) {
+    validation_result.policy_type = fetch_policy_data.policy_type();
+  }
+  if (validation_result.policy_type.empty()) {
+    VLOG(1) << "Missing policy type in the policy response.";
+    validation_result.status =
+        PolicyValidationResult::Status::kValidationWrongPolicyType;
     return false;
   }
 

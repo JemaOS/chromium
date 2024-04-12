@@ -7,7 +7,7 @@ import 'chrome://resources/cr_elements/cr_hidden_style.css.js';
 import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 import '../strings.m.js';
 
-import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 // <if expr="is_chromeos">
 import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
@@ -15,8 +15,7 @@ import {IronA11yAnnouncer} from 'chrome://resources/polymer/v3_0/iron-a11y-annou
 // </if>
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {Destination} from '../data/destination.js';
-import {PrinterType} from '../data/destination.js';
+import {Destination, PrinterType} from '../data/destination.js';
 import {State} from '../data/state.js';
 
 import {getTemplate} from './button_strip.html.js';
@@ -60,8 +59,6 @@ export class PrintPreviewButtonStripElement extends PolymerElement {
         type: String,
         observer: 'errorMessageChanged_',
       },
-
-      isPinValid: Boolean,
       // </if>
     };
   }
@@ -71,7 +68,6 @@ export class PrintPreviewButtonStripElement extends PolymerElement {
       'updatePrintButtonLabel_(destination.id)',
       'updatePrintButtonEnabled_(state, destination.id, maxSheets, sheetCount)',
       // <if expr="is_chromeos">
-      'updatePrintButtonEnabled_(isPinValid)',
       'updateErrorMessage_(state, destination.id, maxSheets, sheetCount)',
       // </if>
 
@@ -83,9 +79,6 @@ export class PrintPreviewButtonStripElement extends PolymerElement {
   maxSheets: number;
   sheetCount: number;
   state: State;
-  // <if expr="is_chromeos">
-  isPinValid: boolean;
-  // </if>
   private printButtonEnabled_: boolean;
   private printButtonLabel_: string;
   // <if expr="is_chromeos">
@@ -144,22 +137,14 @@ export class PrintPreviewButtonStripElement extends PolymerElement {
   }
 
   // <if expr="is_chromeos">
-
   /**
-   * This disables the print button if the sheets limit policy is violated or
-   * pin printing is enabled and the pin is invalid.
+   * @return Whether to disable "Print" button because of sheets limit policy.
    */
   private printButtonDisabled_(): boolean {
-    return this.isSheetsLimitPolicyViolated_() || !this.isPinValid;
-  }
-
-  /**
-   * The sheets policy is violated if 3 conditions are met:
-   * * This is "real" printing, i.e. not saving to PDF/Drive.
-   * * Sheets policy is present.
-   * * Either number of sheets is not calculated or exceeds policy limit.
-   */
-  private isSheetsLimitPolicyViolated_(): boolean {
+    // The "Print" button is disabled if 3 conditions are met:
+    // * This is "real" printing, i.e. not saving to PDF/Drive.
+    // * Sheets policy is present.
+    // * Either number of sheets is not calculated or exceeds policy limit.
     return !this.isPdf_() && this.maxSheets > 0 &&
         (this.sheetCount === 0 || this.sheetCount > this.maxSheets);
   }
@@ -170,7 +155,7 @@ export class PrintPreviewButtonStripElement extends PolymerElement {
   private showSheetsError_(): boolean {
     // The error is shown if the number of sheets is already calculated and the
     // print button is disabled.
-    return this.sheetCount > 0 && this.isSheetsLimitPolicyViolated_();
+    return this.sheetCount > 0 && this.printButtonDisabled_();
   }
 
   private updateErrorMessage_() {

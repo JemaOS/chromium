@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/check.h"
@@ -16,6 +15,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/notreached.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/clipboard/clipboard_buffer.h"
 #include "ui/base/clipboard/clipboard_constants.h"
 #include "ui/ozone/platform/wayland/common/wayland_object.h"
@@ -175,15 +175,12 @@ class ClipboardImpl final : public Clipboard, public DataSource::Delegate {
   }
 
   // WaylandDataSource::Delegate:
-  void OnDataSourceFinish(DataSource* source,
-                          base::TimeTicks timestamp,
-                          bool completed) override {
+  void OnDataSourceFinish(bool completed) override {
     if (!completed)
       Write(nullptr);
   }
 
-  void OnDataSourceSend(DataSource* source,
-                        const std::string& mime_type,
+  void OnDataSourceSend(const std::string& mime_type,
                         std::string* contents) override {
     DCHECK(contents);
     auto it = offered_data_.find(mime_type);

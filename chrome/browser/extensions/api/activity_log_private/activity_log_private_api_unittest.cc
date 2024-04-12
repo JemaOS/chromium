@@ -25,7 +25,7 @@ namespace extensions {
 
 using api::activity_log_private::ExtensionActivity;
 
-using ActivityLogApiUnitTest = testing::Test;
+typedef testing::Test ActivityLogApiUnitTest;
 
 TEST_F(ActivityLogApiUnitTest, ConvertChromeApiAction) {
   base::Value::List args;

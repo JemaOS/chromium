@@ -24,18 +24,16 @@
 #include "ash/test/ash_test_helper.h"
 #include "ash/test/test_window_builder.h"
 #include "ash/wm/desks/legacy_desk_bar_view.h"
+#include "ash/wm/desks/zero_state_button.h"
 #include "ash/wm/overview/overview_controller.h"
 #include "ash/wm/overview/overview_grid.h"
 #include "ash/wm/overview/overview_item.h"
 #include "ash/wm/overview/overview_item_view.h"
 #include "ash/wm/overview/overview_test_util.h"
-#include "ash/wm/overview/overview_utils.h"
 #include "ash/wm/splitview/split_view_controller.h"
-#include "ash/wm/tablet_mode/tablet_mode_controller_test_api.h"
-#include "ash/wm/window_mini_view_header_view.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "ash/wm/window_state.h"
 #include "base/command_line.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/session_manager/session_manager_types.h"
 #include "ui/aura/client/aura_constants.h"
@@ -522,37 +520,42 @@ TEST_F(DockedMagnifierTest, OverviewTabbing) {
   const auto* desk_bar_view = GetOverviewSession()
                                   ->GetGridWithRootWindow(root_window)
                                   ->desks_bar_view();
-
-  auto* default_desk_button = desk_bar_view->default_desk_button();
-  auto* new_desk_button = desk_bar_view->new_desk_button();
+  ASSERT_TRUE(desk_bar_view->IsZeroState());
 
   // Tab once. The viewport should be centered on the beginning of the overview
   // item's title.
   SendKey(ui::VKEY_TAB);
-  auto* item = GetOverviewItemForWindow(window.get());
+  OverviewItem* item = GetOverviewItemForWindow(window.get());
   ASSERT_TRUE(item);
-  TestMagnifierLayerTransform(item->GetMagnifierFocusPointInScreen(),
-                              root_window);
+  const auto label_bounds_in_screen =
+      item->overview_item_view()->title_label()->GetBoundsInScreen();
+  const gfx::Point expected_point_of_interest(
+      label_bounds_in_screen.x(), label_bounds_in_screen.CenterPoint().y());
+  TestMagnifierLayerTransform(expected_point_of_interest, root_window);
 
   // Tab one more time. The viewport should be centered on the center of the
   // default desk button in the zero state desks bar.
   SendKey(ui::VKEY_TAB);
-  TestMagnifierLayerTransform(
-      default_desk_button->GetBoundsInScreen().CenterPoint(), root_window);
+  TestMagnifierLayerTransform(desk_bar_view->zero_state_default_desk_button()
+                                  ->GetBoundsInScreen()
+                                  .CenterPoint(),
+                              root_window);
 
   // Tab one more time. The viewport should be centered on the center of the
   // new desk button in the zero state desks bar.
   SendKey(ui::VKEY_TAB);
-  TestMagnifierLayerTransform(
-      new_desk_button->GetBoundsInScreen().CenterPoint(), root_window);
+  TestMagnifierLayerTransform(desk_bar_view->zero_state_new_desk_button()
+                                  ->GetBoundsInScreen()
+                                  .CenterPoint(),
+                              root_window);
 }
 
 // Test that we exist split view and over view modes when a single window is
 // snapped and the other snap region is hosting overview mode.
 TEST_F(DockedMagnifierTest, DisplaysWorkAreasSingleSplitView) {
   // Verify that we're in tablet mode.
-  ash::TabletModeControllerTestApi().EnterTabletMode();
-  EXPECT_TRUE(display::Screen::GetScreen()->InTabletMode());
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
+  EXPECT_TRUE(Shell::Get()->tablet_mode_controller()->InTabletMode());
 
   std::unique_ptr<aura::Window> window =
       TestWindowBuilder()
@@ -570,7 +573,8 @@ TEST_F(DockedMagnifierTest, DisplaysWorkAreasSingleSplitView) {
   auto* overview_controller = Shell::Get()->overview_controller();
   EnterOverview();
   EXPECT_TRUE(overview_controller->InOverviewSession());
-  split_view_controller()->SnapWindow(window.get(), SnapPosition::kPrimary);
+  split_view_controller()->SnapWindow(
+      window.get(), SplitViewController::SnapPosition::kPrimary);
   EXPECT_EQ(split_view_controller()->state(),
             SplitViewController::State::kPrimarySnapped);
   EXPECT_EQ(split_view_controller()->primary_window(), window.get());
@@ -599,8 +603,8 @@ TEST_F(DockedMagnifierTest, DisplaysWorkAreasSingleSplitView) {
 // when we enable the docked magnifier, but rather their bounds are updated.
 TEST_F(DockedMagnifierTest, DisplaysWorkAreasDoubleSplitView) {
   // Verify that we're in tablet mode.
-  ash::TabletModeControllerTestApi().EnterTabletMode();
-  EXPECT_TRUE(display::Screen::GetScreen()->InTabletMode());
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(true);
+  EXPECT_TRUE(Shell::Get()->tablet_mode_controller()->InTabletMode());
 
   std::unique_ptr<aura::Window> window1 =
       TestWindowBuilder()
@@ -618,8 +622,10 @@ TEST_F(DockedMagnifierTest, DisplaysWorkAreasDoubleSplitView) {
   EXPECT_TRUE(overview_controller->InOverviewSession());
 
   EXPECT_EQ(split_view_controller()->InSplitViewMode(), false);
-  split_view_controller()->SnapWindow(window1.get(), SnapPosition::kPrimary);
-  split_view_controller()->SnapWindow(window2.get(), SnapPosition::kSecondary);
+  split_view_controller()->SnapWindow(
+      window1.get(), SplitViewController::SnapPosition::kPrimary);
+  split_view_controller()->SnapWindow(
+      window2.get(), SplitViewController::SnapPosition::kSecondary);
   EXPECT_EQ(split_view_controller()->InSplitViewMode(), true);
   EXPECT_EQ(split_view_controller()->state(),
             SplitViewController::State::kBothSnapped);
@@ -1009,8 +1015,8 @@ TEST_F(DockedMagnifierTest, CaptureMode) {
 
   // And the magnifier viewport follows the cursor when it's above the capture
   // mode bar.
-  const auto* bar_widget = capture_mode_controller->capture_mode_session()
-                               ->GetCaptureModeBarWidget();
+  auto* bar_widget = capture_mode_controller->capture_mode_session()
+                         ->capture_mode_bar_widget();
   point_of_interest = bar_widget->GetWindowBoundsInScreen().CenterPoint();
   event_generator->MoveMouseTo(point_of_interest);
   TestMagnifierLayerTransform(point_of_interest, root);

@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_MEDIA_ROUTER_CAST_DIALOG_ACCESS_CODE_CAST_BUTTON_H_
 #define CHROME_BROWSER_UI_VIEWS_MEDIA_ROUTER_CAST_DIALOG_ACCESS_CODE_CAST_BUTTON_H_
 
-#include "base/gtest_prod_util.h"
 #include "chrome/browser/ui/views/controls/hover_button.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 
@@ -17,9 +16,8 @@ namespace media_router {
 
 // A button representing to launch the Access code cast dialog.
 class CastDialogAccessCodeCastButton : public HoverButton {
-  METADATA_HEADER(CastDialogAccessCodeCastButton, HoverButton)
-
  public:
+  METADATA_HEADER(CastDialogAccessCodeCastButton);
   explicit CastDialogAccessCodeCastButton(PressedCallback callback);
   CastDialogAccessCodeCastButton(const CastDialogAccessCodeCastButton&) =
       delete;

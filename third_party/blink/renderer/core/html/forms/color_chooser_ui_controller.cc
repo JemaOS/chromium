@@ -57,11 +57,10 @@ void ColorChooserUIController::Trace(Visitor* visitor) const {
 }
 
 void ColorChooserUIController::OpenUI() {
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+#if BUILDFLAG(IS_ANDROID)
   OpenColorChooser();
 #else
-  NOTREACHED()
-      << "ColorChooserUIController should only be used on Android or iOS";
+  NOTREACHED() << "ColorChooserUIController should only be used on Android";
 #endif
 }
 
@@ -76,7 +75,7 @@ void ColorChooserUIController::EndChooser() {
   client_->DidEndChooser();
 }
 
-AXObject* ColorChooserUIController::RootAXObject(Element* popup_owner) {
+AXObject* ColorChooserUIController::RootAXObject() {
   return nullptr;
 }
 
@@ -84,7 +83,7 @@ void ColorChooserUIController::DidChooseColor(uint32_t color) {
   client_->DidChooseColor(Color::FromRGBA32(color));
 }
 
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_APPLE)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC)
 void ColorChooserUIController::OpenColorChooser() {
   DCHECK(!chooser_);
   scoped_refptr<base::SequencedTaskRunner> runner =
@@ -99,6 +98,6 @@ void ColorChooserUIController::OpenColorChooser() {
   receiver_.set_disconnect_handler(WTF::BindOnce(
       &ColorChooserUIController::EndChooser, WrapWeakPersistent(this)));
 }
-#endif
+#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC)
 
 }  // namespace blink

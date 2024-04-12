@@ -6,7 +6,7 @@
 
 #include <ostream>
 
-#include "base/allocator/partition_allocator/src/partition_alloc/oom.h"
+#include "base/allocator/partition_allocator/oom.h"
 
 namespace blink {
 

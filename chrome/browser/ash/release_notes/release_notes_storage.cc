@@ -22,13 +22,24 @@
 #include "components/version_info/version_info.h"
 #include "content/public/common/content_switches.h"
 #include "google_apis/gaia/gaia_auth_util.h"
+#include "chromeos/version/version_loader.h"
 
 namespace {
 
+// This stores the latest milestone with new Release Notes content. If the last
+// milestone the user has seen the notification is before this, a new
+// notification will be shown.
+// constexpr int kLastChromeVersionWithReleaseNotes = 114;
 constexpr int kTimesToShowSuggestionChip = 3;
 
 int GetMilestone() {
   return version_info::GetVersion().components()[0];
+}
+
+std::string GetOSVersion() {
+  auto version = chromeos::version_loader::GetVersion(
+      chromeos::version_loader::VERSION_SHORT);
+  return version.has_value() ? version.value() : std::string();
 }
 
 bool IsEligibleProfile(Profile* profile) {
@@ -56,7 +67,8 @@ bool IsEligibleProfile(Profile* profile) {
     return false;
 
   // Otherwise, show the notification for Consumer profiles.
-  return ash::ProfileHelper::Get()->GetUserByProfile(profile)->HasGaiaAccount();
+  return ash::ProfileHelper::Get()->GetUserByProfile(profile)->HasGaiaAccount() ||
+         ash::ProfileHelper::Get()->GetUserByProfile(profile)->IsJemaExtendAccountUser();
 }
 
 bool ShouldShowForCurrentChannel() {
@@ -69,10 +81,11 @@ bool ShouldShowForCurrentChannel() {
 
 namespace ash {
 
-// Called on every session startup.
 void ReleaseNotesStorage::RegisterProfilePrefs(PrefRegistrySimple* registry) {
   registry->RegisterIntegerPref(
       prefs::kReleaseNotesSuggestionChipTimesLeftToShow, 0);
+  registry->RegisterStringPref(
+      prefs::kJemaOSReleaseNotesLastShownVersion, "0.0.0.0");
 }
 
 ReleaseNotesStorage::ReleaseNotesStorage(Profile* profile)
@@ -82,18 +95,13 @@ ReleaseNotesStorage::~ReleaseNotesStorage() = default;
 
 bool ReleaseNotesStorage::ShouldNotify() {
   // TODO(b/174514401): Make this server controlled.
-  if (base::FeatureList::IsEnabled(
-          ash::features::kReleaseNotesNotificationAlwaysEligible)) {
-    return true;
-  }
-
-  if (!ShouldShowForCurrentChannel()) {
+  if (!ShouldShowForCurrentChannel())
     return false;
-  }
 
   if (!IsEligibleProfile(profile_))
     return false;
 
+  /*
   int last_milestone = profile_->GetPrefs()->GetInteger(
       prefs::kHelpAppNotificationLastShownMilestone);
   if (profile_->GetPrefs()
@@ -107,20 +115,41 @@ bool ReleaseNotesStorage::ShouldNotify() {
     last_milestone = profile_version.components()[0];
   }
   return last_milestone < kLastChromeVersionWithReleaseNotes;
+  */
+
+  base::Version last_version(
+      profile_->GetPrefs()->GetString(prefs::kJemaOSReleaseNotesLastShownVersion));
+  base::Version current_version(GetOSVersion());
+  if (!last_version.IsValid()) {
+    VLOG(2) << "get last os version invalid";
+    last_version = base::Version("0.0.0.0");
+  }
+  if (!current_version.IsValid()) {
+    VLOG(2) << "get current os version invalid";
+    return false;
+  }
+  VLOG(3) << "last osversion: " << last_version << ", current os version: " << current_version;
+  return last_version < current_version;
 }
 
 void ReleaseNotesStorage::MarkNotificationShown() {
   profile_->GetPrefs()->SetInteger(
       prefs::kHelpAppNotificationLastShownMilestone, GetMilestone());
-}
 
-void ReleaseNotesStorage::StartShowingSuggestionChip() {
+  profile_->GetPrefs()->SetString(prefs::kJemaOSReleaseNotesLastShownVersion,
+                                  GetOSVersion());
+  // When the notification is shown we should also show the suggestion chip a
+  // number of times.
   profile_->GetPrefs()->SetInteger(
       prefs::kReleaseNotesSuggestionChipTimesLeftToShow,
       kTimesToShowSuggestionChip);
 }
 
 bool ReleaseNotesStorage::ShouldShowSuggestionChip() {
+  if (!base::FeatureList::IsEnabled(features::kReleaseNotesSuggestionChip)) {
+    return false;
+  }
+
   const int times_left_to_show = profile_->GetPrefs()->GetInteger(
       prefs::kReleaseNotesSuggestionChipTimesLeftToShow);
   return times_left_to_show > 0;

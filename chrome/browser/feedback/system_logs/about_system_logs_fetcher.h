@@ -5,17 +5,13 @@
 #ifndef CHROME_BROWSER_FEEDBACK_SYSTEM_LOGS_ABOUT_SYSTEM_LOGS_FETCHER_H_
 #define CHROME_BROWSER_FEEDBACK_SYSTEM_LOGS_ABOUT_SYSTEM_LOGS_FETCHER_H_
 
-namespace content {
-class WebUI;
-}  // namespace content
-
 namespace system_logs {
 
 class SystemLogsFetcher;
 
 // Creates a SystemLogsFetcher to aggregate logs for chrome://system.
 // The fetcher deletes itself once it finishes fetching data.
-SystemLogsFetcher* BuildAboutSystemLogsFetcher(content::WebUI* web_ui);
+SystemLogsFetcher* BuildAboutSystemLogsFetcher();
 
 }  // namespace system_logs
 

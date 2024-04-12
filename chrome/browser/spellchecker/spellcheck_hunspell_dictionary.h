@@ -28,7 +28,9 @@ class BrowserContext;
 }  // namespace content
 
 // Defines the browser-side hunspell dictionary and provides access to it.
-class SpellcheckHunspellDictionary : public SpellcheckDictionary {
+class SpellcheckHunspellDictionary
+    : public SpellcheckDictionary,
+      public base::SupportsWeakPtr<SpellcheckHunspellDictionary> {
  public:
   // Interface to implement for observers of the Hunspell dictionary.
   class Observer {
@@ -87,11 +89,6 @@ class SpellcheckHunspellDictionary : public SpellcheckDictionary {
 
   // Whether dictionary download failed.
   bool IsDownloadFailure();
-
-  // Get a WeakPtr to the instance.
-  base::WeakPtr<SpellcheckHunspellDictionary> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
 
   // Tests use this method to set a custom URL for downloading dictionaries.
   static void SetDownloadURLForTesting(const GURL url);

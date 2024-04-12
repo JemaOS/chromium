@@ -90,9 +90,7 @@ void DlpContentTabHelper::DidFinishNavigation(
 }
 
 void DlpContentTabHelper::WebContentsDestroyed() {
-  if (DlpContentObserver::HasInstance()) {
-    DlpContentObserver::Get()->OnWebContentsDestroyed(web_contents());
-  }
+  DlpContentObserver::Get()->OnWebContentsDestroyed(web_contents());
 }
 
 void DlpContentTabHelper::OnVisibilityChanged(content::Visibility visibility) {
@@ -100,12 +98,6 @@ void DlpContentTabHelper::OnVisibilityChanged(content::Visibility visibility) {
   if (GetRestrictionSet().IsEmpty())
     return;
   DlpContentObserver::Get()->OnVisibilityChanged(web_contents());
-}
-
-std::vector<DlpContentTabHelper::RfhInfo> DlpContentTabHelper::GetFramesInfo()
-    const {
-  return std::vector<RfhInfo>{confidential_frames_.begin(),
-                              confidential_frames_.end()};
 }
 
 DlpContentTabHelper::DlpContentTabHelper(content::WebContents* web_contents)

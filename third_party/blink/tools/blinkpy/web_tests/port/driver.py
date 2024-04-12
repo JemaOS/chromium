@@ -35,7 +35,6 @@ import time
 
 from blinkpy.common.system import path
 from blinkpy.common.system.profiler import ProfilerFactory
-from blinkpy.web_tests.models.testharness_results import is_all_pass_test_result
 
 _log = logging.getLogger(__name__)
 
@@ -100,14 +99,11 @@ def coalesce_repeated_switches(cmd):
 
 
 class DriverInput(object):
-    def __init__(self, test_name, timeout, image_hash, wpt_print_mode,
-                 trace_file, startup_trace_file, args):
+    def __init__(self, test_name, timeout, image_hash, wpt_print_mode, args):
         self.test_name = test_name
         self.timeout = timeout  # in ms
         self.image_hash = image_hash
         self.wpt_print_mode = wpt_print_mode
-        self.trace_file = trace_file
-        self.startup_trace_file = startup_trace_file
         self.args = args
 
 
@@ -132,8 +128,6 @@ class DriverOutput(object):
                  crash_site=None,
                  leak=False,
                  leak_log=None,
-                 trace_file=None,
-                 startup_trace_file=None,
                  pid=None,
                  command=None):
         # FIXME: Args could be renamed to better clarify what they do.
@@ -150,8 +144,6 @@ class DriverOutput(object):
         self.crash_site = crash_site
         self.leak = leak
         self.leak_log = leak_log
-        self.trace_file = trace_file
-        self.startup_trace_file = startup_trace_file
         self.test_time = test_time
         self.measurements = measurements
         self.timeout = timeout
@@ -216,8 +208,10 @@ class Driver(object):
         if self._port.get_option('profile'):
             profiler_name = self._port.get_option('profiler')
             self._profiler = ProfilerFactory.create_profiler(
-                self._port.host, self._port.path_to_driver(),
-                self._port.artifacts_directory(), profiler_name)
+                self._port.host,
+                self._port._path_to_driver(),  # pylint: disable=protected-access
+                self._port.artifacts_directory(),
+                profiler_name)
         else:
             self._profiler = None
 
@@ -310,23 +304,6 @@ class Driver(object):
                        'ascii', 'replace')
         if actual_image_hash:
             actual_image_hash = actual_image_hash.decode('utf8', 'replace')
-        startup_trace_file = driver_input.startup_trace_file
-        if (startup_trace_file
-                and not self._port.host.filesystem.isabs(startup_trace_file)):
-            startup_trace_file = self._port.host.filesystem.join(
-                self._port.host.filesystem.getcwd(), startup_trace_file)
-        if startup_trace_file:
-            # The startup trace file won't get flushed to disk until the server
-            # process stops. In practice, the existence of startup_trace_file
-            # means that the server process is restarted after every test
-            # anyway, so this just accelerates the inevitable.
-            out, err = self._server_process.stop(
-                self._port.get_option('driver_kill_timeout_secs'))
-            if out:
-                text += out
-            if err:
-                self.error_from_test += err
-            self._server_process = None
         return DriverOutput(text,
                             image,
                             actual_image_hash,
@@ -342,8 +319,6 @@ class Driver(object):
                             crash_site=crash_site,
                             leak=leaked,
                             leak_log=self._leak_log,
-                            trace_file=driver_input.trace_file,
-                            startup_trace_file=startup_trace_file,
                             pid=pid,
                             command=command)
 
@@ -352,6 +327,13 @@ class Driver(object):
         return self._port._get_crash_log(self._crashed_process_name,
                                          self._crashed_pid, stdout, stderr,
                                          newer_than)
+
+    # FIXME: Seems this could just be inlined into callers.
+    @classmethod
+    def _command_wrapper(cls, wrapper_option):
+        # Hook for injecting valgrind or other runtime instrumentation,
+        # used by e.g. tools/valgrind/valgrind_tests.py.
+        return shlex.split(wrapper_option) if wrapper_option else []
 
     # The *_HOST_AND_PORTS tuples are (hostname, insecure_port, secure_port),
     # i.e. the information needed to create HTTP and HTTPS URLs.
@@ -523,10 +505,6 @@ class Driver(object):
         # startup to be slower (if the workaround is triggered via the
         # --initialize-webgpu-adapter-at-startup flag, right above in the
         # code in _start()).
-        #
-        # TODO(crbug.com/329003665): See if `wpt_internal/webgpu/` is runnable
-        # with wptrunner + chromedriver + chrome, which would obviate the need
-        # for `000_run_me_first.https.html`.
         init_timeout = self._port.get_option(
             'initialize_webgpu_adapter_at_startup_timeout_ms')
         startup_input = DriverInput(
@@ -534,12 +512,9 @@ class Driver(object):
             timeout=init_timeout,
             image_hash=None,
             wpt_print_mode=None,
-            trace_file=None,
-            startup_trace_file=None,
             args=per_test_args)
         output = self._run_one_input(startup_input, start_time=time.time())
-        if output.text and is_all_pass_test_result(
-                output.text.decode(errors='replace')):
+        if output.text and b'PASS 000_run_me_first' in output.text:
             return True, None
 
         output.text = (b'Failed to initialize WebGPU adapter at startup via '
@@ -596,10 +571,10 @@ class Driver(object):
         self._current_cmd_line = None
 
     def _base_cmd_line(self):
-        return [self._port.path_to_driver()]
+        return [self._port._path_to_driver()]  # pylint: disable=protected-access
 
     def cmd_line(self, per_test_args):
-        cmd = list(self._port.get_option('wrapper', []))
+        cmd = self._command_wrapper(self._port.get_option('wrapper'))
         cmd += self._base_cmd_line()
         if self._no_timeout:
             cmd.append('--no-timeout')
@@ -666,14 +641,6 @@ class Driver(object):
             if not driver_input.image_hash:
                 command += "'"
             command += "'print"
-        if driver_input.trace_file:
-            if not driver_input.wpt_print_mode:
-                command += "'"
-                if not driver_input.image_hash:
-                    command += "'"
-            command += "'"
-            command += driver_input.trace_file
-
         return command + '\n'
 
     def _read_first_block(self, deadline):

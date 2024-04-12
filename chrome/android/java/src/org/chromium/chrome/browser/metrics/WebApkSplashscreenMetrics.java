@@ -26,8 +26,7 @@ public class WebApkSplashscreenMetrics implements SplashscreenObserver {
 
     @Override
     public void onSplashscreenHidden(long startTimestamp, long endTimestamp) {
-        if (!UmaUtils.hasComeToForegroundWithNative()
-                || UmaUtils.hasComeToBackgroundWithNative()
+        if (!UmaUtils.hasComeToForegroundWithNative() || UmaUtils.hasComeToBackgroundWithNative()
                 || mShellApkLaunchTimestamp == -1) {
             return;
         }

@@ -10,7 +10,9 @@ import androidx.preference.DialogPreference;
 
 import org.chromium.chrome.browser.autofill.AutofillEditorBase;
 
-/** Launches the UI to edit, create or delete an Autofill profile entry. */
+/**
+ * Launches the UI to edit, create or delete an Autofill profile entry.
+ */
 public class AutofillProfileEditorPreference extends DialogPreference {
     public AutofillProfileEditorPreference(Context context) {
         super(context);

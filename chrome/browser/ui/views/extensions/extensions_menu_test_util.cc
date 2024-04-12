@@ -21,7 +21,6 @@
 #include "chrome/browser/ui/views/extensions/extensions_menu_view_controller.h"
 #include "chrome/browser/ui/views/extensions/extensions_toolbar_button.h"
 #include "chrome/browser/ui/views/extensions/extensions_toolbar_container.h"
-#include "chrome/browser/ui/views/extensions/extensions_toolbar_coordinator.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "extensions/common/extension_features.h"
@@ -37,10 +36,6 @@
 #include "ui/views/view.h"
 #include "ui/views/view_observer.h"
 #include "ui/views/view_utils.h"
-
-#if BUILDFLAG(IS_OZONE)
-#include "ui/ozone/public/ozone_platform.h"
-#endif
 
 class ExtensionsMenuTestUtil::MenuViewObserver : public views::ViewObserver {
  public:
@@ -63,11 +58,8 @@ class ExtensionsMenuTestUtil::Wrapper {
  public:
   explicit Wrapper(Browser* browser)
       : extensions_container_(new ExtensionsToolbarContainer(browser)) {
-    extensions_toolbar_coordinator_ =
-        std::make_unique<ExtensionsToolbarCoordinator>(browser,
-                                                       extensions_container_);
     container_parent_.SetSize(gfx::Size(1000, 1000));
-    container_parent_.DeprecatedLayoutImmediately();
+    container_parent_.Layout();
     container_parent_.AddChildView(extensions_container_.get());
   }
   ~Wrapper() = default;
@@ -82,8 +74,6 @@ class ExtensionsMenuTestUtil::Wrapper {
  private:
   views::View container_parent_;
   raw_ptr<ExtensionsToolbarContainer> extensions_container_ = nullptr;
-  std::unique_ptr<ExtensionsToolbarCoordinator>
-      extensions_toolbar_coordinator_ = nullptr;
 };
 
 ExtensionsMenuTestUtil::ExtensionsMenuTestUtil(Browser* browser,
@@ -233,13 +223,6 @@ gfx::Size ExtensionsMenuTestUtil::GetToolbarActionSize() {
 
 gfx::Size ExtensionsMenuTestUtil::GetMaxAvailableSizeToFitBubbleOnScreen(
     const extensions::ExtensionId& id) {
-#if BUILDFLAG(IS_OZONE)
-  if (!ui::OzonePlatform::GetInstance()
-           ->GetPlatformProperties()
-           .supports_global_screen_coordinates) {
-    return ExtensionPopup::kMaxSize;
-  }
-#endif
   auto* view_delegate = static_cast<ToolbarActionViewDelegateViews*>(
       static_cast<ExtensionActionViewController*>(
           extensions_container_->GetActionForId(id))
@@ -253,7 +236,7 @@ gfx::Size ExtensionsMenuTestUtil::GetMaxAvailableSizeToFitBubbleOnScreen(
 
 ExtensionMenuItemView* ExtensionsMenuTestUtil::GetMenuItemViewForId(
     const extensions::ExtensionId& id) {
-  base::flat_set<raw_ptr<ExtensionMenuItemView, CtnExperimental>> menu_items;
+  base::flat_set<ExtensionMenuItemView*> menu_items;
   if (base::FeatureList::IsEnabled(
           extensions_features::kExtensionsMenuAccessControl)) {
     ExtensionsMenuMainPageView* main_page =
@@ -261,8 +244,7 @@ ExtensionMenuItemView* ExtensionsMenuTestUtil::GetMenuItemViewForId(
             ->GetControllerForTesting()
             ->GetMainPageViewForTesting();
     DCHECK(main_page);
-    auto items = main_page->GetMenuItems();
-    menu_items = {items.begin(), items.end()};
+    menu_items = main_page->GetMenuItems();
 
   } else {
     menu_items = menu_view_->extensions_menu_items_for_testing();

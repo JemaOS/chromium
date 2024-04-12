@@ -3,12 +3,10 @@
 // found in the LICENSE file.
 
 #include "ui/accessibility/platform/automation/automation_v8_bindings.h"
-#include <string>
 
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_offset_string_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "gin/arguments.h"
@@ -549,46 +547,6 @@ void AutomationV8Bindings::SendChildTreeIDEvent(
                                        args);
 }
 
-void AutomationV8Bindings::SendTreeDestroyedEvent(const AXTreeID& tree_id) {
-  base::Value::List args;
-  args.Append(tree_id.ToString());
-  automation_v8_router_->DispatchEvent(
-      "automationInternal.onAccessibilityTreeDestroyed", args);
-}
-
-void AutomationV8Bindings::SendGetTextLocationResult(
-    const ui::AXActionData& data,
-    const std::optional<gfx::Rect>& rect) {
-  base::Value::Dict params;
-  params.Set("treeID", data.target_tree_id.ToString());
-  params.Set("childTreeID", data.child_tree_id.ToString());
-  params.Set("nodeID", data.target_node_id);
-  params.Set("result", false);
-  if (rect) {
-    params.Set("left", rect.value().x());
-    params.Set("top", rect.value().y());
-    params.Set("width", rect.value().width());
-    params.Set("height", rect.value().height());
-    params.Set("result", true);
-  }
-  params.Set("requestID", data.request_id);
-
-  base::Value::List args;
-  args.Append(std::move(params));
-  automation_v8_router_->DispatchEvent(
-      "automationInternal.onGetTextLocationResult", args);
-}
-
-void AutomationV8Bindings::SendActionResultEvent(const ui::AXActionData& data,
-                                                 bool result) {
-  base::Value::List args;
-  args.Append(data.target_tree_id.ToString());
-  args.Append(data.request_id);
-  args.Append(result);
-  automation_v8_router_->DispatchEvent("automationInternal.onActionResult",
-                                       args);
-}
-
 void AutomationV8Bindings::SendAutomationEvent(
     const AXTreeID& tree_id,
     const AXEvent& event,
@@ -657,7 +615,6 @@ void AutomationV8Bindings::AddV8Routes() {
   ROUTE_FUNCTION(GetHtmlAttributes);
   ROUTE_FUNCTION(CreateAutomationPosition);
   ROUTE_FUNCTION(GetAccessibilityFocus);
-  ROUTE_FUNCTION(StringAXTreeIDToUnguessableToken);
   ROUTE_FUNCTION(SetDesktopID);
   ROUTE_FUNCTION(DestroyAccessibilityTree);
   ROUTE_FUNCTION(AddTreeChangeObserver);
@@ -1161,6 +1118,49 @@ void AutomationV8Bindings::AddV8Routes() {
                        .ToLocalChecked());
       }));
 
+  RouteNodeIDPlusAttributeFunction(
+      "GetLanguageAnnotationForStringAttribute",
+      [](v8::Isolate* isolate, v8::ReturnValue<v8::Value> result, AXTree* tree,
+         AXNode* node, const std::string& attribute_name) {
+        auto attr =
+            ParseAXEnum<ax::mojom::StringAttribute>(attribute_name.c_str());
+        if (attr == ax::mojom::StringAttribute::kNone) {
+          // Set result as empty array.
+          result.Set(v8::Array::New(isolate, 0));
+          return;
+        }
+        std::vector<AXLanguageSpan> language_annotation =
+            tree->language_detection_manager
+                ->GetLanguageAnnotationForStringAttribute(*node, attr);
+        const std::string& attribute_value = node->GetStringAttribute(attr);
+        // Build array.
+        v8::Local<v8::Context> context = isolate->GetCurrentContext();
+        v8::Local<v8::Array> array_result(
+            v8::Array::New(isolate, language_annotation.size()));
+        std::vector<size_t> offsets_for_adjustment(2, 0);
+        for (size_t i = 0; i < language_annotation.size(); ++i) {
+          offsets_for_adjustment[0] =
+              static_cast<size_t>(language_annotation[i].start_index);
+          offsets_for_adjustment[1] =
+              static_cast<size_t>(language_annotation[i].end_index);
+          // Convert UTF-8 offsets into UTF-16 offsets, since these objects
+          // will be used in Javascript.
+          base::UTF8ToUTF16AndAdjustOffsets(attribute_value,
+                                            &offsets_for_adjustment);
+
+          gin::DataObjectBuilder span(isolate);
+          span.Set("startIndex", static_cast<int>(offsets_for_adjustment[0]));
+          span.Set("endIndex", static_cast<int>(offsets_for_adjustment[1]));
+          span.Set("language", language_annotation[i].language);
+          span.Set("probability", language_annotation[i].probability);
+          array_result
+              ->CreateDataProperty(context, static_cast<uint32_t>(i),
+                                   span.Build())
+              .Check();
+        }
+        result.Set(array_result);
+      });
+
   RouteNodeIDFunction(
       "GetCustomActions",
       base::BindRepeating(
@@ -1583,30 +1583,6 @@ void AutomationV8Bindings::GetAccessibilityFocus(
           .Build());
 }
 
-void AutomationV8Bindings::StringAXTreeIDToUnguessableToken(
-    const v8::FunctionCallbackInfo<v8::Value>& args) const {
-  if (args.Length() != 1 || !args[0]->IsString()) {
-    automation_v8_router_->ThrowInvalidArgumentsException();
-    return;
-  }
-
-  const AXTreeID tree_id =
-      AXTreeID::FromString(*v8::String::Utf8Value(args.GetIsolate(), args[0]));
-  const std::optional<base::UnguessableToken>& token = tree_id.token();
-  if (!token || token->is_empty()) {
-    return;
-  }
-
-  const std::string high_str =
-      base::NumberToString(token->GetHighForSerialization());
-  const std::string low_str =
-      base::NumberToString(token->GetLowForSerialization());
-  gin::DataObjectBuilder response(automation_v8_router_->GetIsolate());
-  response.Set("high", high_str);
-  response.Set("low", low_str);
-  args.GetReturnValue().Set(response.Build());
-}
-
 void AutomationV8Bindings::SetDesktopID(
     const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (args.Length() != 1 || !args[0]->IsString()) {
@@ -1927,7 +1903,7 @@ void AutomationV8Bindings::GetMarkers(v8::Isolate* isolate,
   const std::vector<int32_t>& marker_types =
       node->GetIntListAttribute(ax::mojom::IntListAttribute::kMarkerTypes);
 
-  v8::LocalVector<v8::Object> markers(isolate);
+  std::vector<v8::Local<v8::Object>> markers;
   for (size_t i = 0; i < marker_types.size(); ++i) {
     gin::DataObjectBuilder marker_obj(isolate);
     marker_obj.Set("startOffset", marker_starts[i]);

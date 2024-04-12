@@ -42,7 +42,7 @@ WebContentsDisplayObserverView::~WebContentsDisplayObserverView() {
   if (widget_)
     widget_->RemoveObserver(this);
   BrowserList::RemoveObserver(this);
-  CHECK(!WidgetObserver::IsInObserverList());
+  CHECK(!IsInObserverList());
 }
 
 void WebContentsDisplayObserverView::OnBrowserSetLastActive(Browser* browser) {

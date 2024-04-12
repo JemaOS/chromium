@@ -6,7 +6,6 @@
 
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/strings/grit/ash_strings.h"
-#include "ash/style/ash_color_id.h"
 #include "ash/style/ash_color_provider.h"
 #include "ash/style/style_util.h"
 #include "ash/system/media/unified_media_controls_controller.h"
@@ -16,8 +15,6 @@
 #include "components/media_message_center/media_notification_util.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/paint_vector_icon.h"
@@ -92,13 +89,17 @@ const gfx::VectorIcon& GetVectorIconForMediaAction(MediaSessionAction action) {
     case MediaSessionAction::kSetMute:
     case MediaSessionAction::kPreviousSlide:
     case MediaSessionAction::kNextSlide:
-    case MediaSessionAction::kEnterAutoPictureInPicture:
       NOTREACHED();
       break;
   }
 
   NOTREACHED();
   return gfx::kNoneIcon;
+}
+
+SkColor GetBackgroundColor() {
+  return AshColorProvider::Get()->GetControlsLayerColor(
+      AshColorProvider::ControlsLayerType::kControlBackgroundColorInactive);
 }
 
 }  // namespace
@@ -136,9 +137,6 @@ void UnifiedMediaControlsView::MediaActionButton::SetAction(
   SetVectorIcon(GetVectorIconForMediaAction(action));
 }
 
-BEGIN_METADATA(UnifiedMediaControlsView, MediaActionButton)
-END_METADATA
-
 UnifiedMediaControlsView::UnifiedMediaControlsView(
     UnifiedMediaControlsController* controller)
     : views::Button(base::BindRepeating(
@@ -149,8 +147,8 @@ UnifiedMediaControlsView::UnifiedMediaControlsView(
           this)),
       controller_(controller) {
   SetFocusBehavior(views::View::FocusBehavior::ALWAYS);
-  SetBackground(views::CreateThemedRoundedRectBackground(
-      kColorAshControlBackgroundColorInactive, kMediaControlsCornerRadius));
+  SetBackground(views::CreateRoundedRectBackground(GetBackgroundColor(),
+                                                   kMediaControlsCornerRadius));
   auto* box_layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kHorizontal, kMediaControlsViewInsets,
       kMediaControlsViewPadding));
@@ -245,7 +243,7 @@ void UnifiedMediaControlsView::SetIsPlaying(bool playing) {
 }
 
 void UnifiedMediaControlsView::SetArtwork(
-    std::optional<gfx::ImageSkia> artwork) {
+    absl::optional<gfx::ImageSkia> artwork) {
   if (!artwork.has_value()) {
     artwork_view_->SetImage(nullptr);
     artwork_view_->SetVisible(false);
@@ -258,7 +256,7 @@ void UnifiedMediaControlsView::SetArtwork(
   artwork_view_->SetImageSize(image_size);
   artwork_view_->SetImage(*artwork);
 
-  DeprecatedLayoutImmediately();
+  Layout();
   artwork_view_->SetClipPath(GetArtworkClipPath());
 }
 
@@ -301,6 +299,7 @@ void UnifiedMediaControlsView::UpdateActionButtonAvailability(
 void UnifiedMediaControlsView::OnThemeChanged() {
   views::Button::OnThemeChanged();
   auto* color_provider = AshColorProvider::Get();
+  background()->SetNativeControlColor(GetBackgroundColor());
   title_label_->SetEnabledColor(color_provider->GetContentLayerColor(
       AshColorProvider::ContentLayerType::kTextColorPrimary));
   drop_down_icon_->SetImage(CreateVectorIcon(
@@ -331,8 +330,10 @@ void UnifiedMediaControlsView::ShowEmptyState() {
   if (!artwork_view_->GetVisible())
     return;
 
-  artwork_view_->SetBackground(views::CreateThemedSolidBackground(
-      kColorAshControlBackgroundColorInactive));
+  artwork_view_->SetBackground(views::CreateSolidBackground(
+      AshColorProvider::Get()->GetControlsLayerColor(
+          AshColorProvider::ControlsLayerType::
+              kControlBackgroundColorInactive)));
   artwork_view_->SetImageSize(kEmptyArtworkIconSize);
   artwork_view_->SetImage(CreateVectorIcon(
       kMusicNoteIcon, kEmptyArtworkIconSize.width(),
@@ -367,8 +368,5 @@ SkPath UnifiedMediaControlsView::GetArtworkClipPath() {
                     kArtworkCornerRadius, kArtworkCornerRadius);
   return path;
 }
-
-BEGIN_METADATA(UnifiedMediaControlsView)
-END_METADATA
 
 }  // namespace ash

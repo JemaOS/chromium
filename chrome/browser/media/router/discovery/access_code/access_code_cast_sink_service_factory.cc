@@ -4,7 +4,7 @@
 
 #include "chrome/browser/media/router/discovery/access_code/access_code_cast_sink_service_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/media/router/chrome_media_router_factory.h"
 #include "chrome/browser/media/router/discovery/access_code/access_code_cast_feature.h"
 #include "chrome/browser/media/router/discovery/access_code/access_code_cast_sink_service.h"
@@ -45,8 +45,7 @@ AccessCodeCastSinkService* AccessCodeCastSinkServiceFactory::GetForProfile(
 // static
 AccessCodeCastSinkServiceFactory*
 AccessCodeCastSinkServiceFactory::GetInstance() {
-  static base::NoDestructor<AccessCodeCastSinkServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<AccessCodeCastSinkServiceFactory>::get();
 }
 
 AccessCodeCastSinkServiceFactory::AccessCodeCastSinkServiceFactory()
@@ -65,14 +64,13 @@ AccessCodeCastSinkServiceFactory::AccessCodeCastSinkServiceFactory()
 
 AccessCodeCastSinkServiceFactory::~AccessCodeCastSinkServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-AccessCodeCastSinkServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AccessCodeCastSinkServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   auto* profile = Profile::FromBrowserContext(context);
   if (!profile || !GetAccessCodeCastEnabledPref(profile)) {
     return nullptr;
   }
-  return std::make_unique<AccessCodeCastSinkService>(profile);
+  return new AccessCodeCastSinkService(profile);
 }
 
 bool AccessCodeCastSinkServiceFactory::ServiceIsCreatedWithBrowserContext()

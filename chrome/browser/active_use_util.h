@@ -5,10 +5,13 @@
 #ifndef CHROME_BROWSER_ACTIVE_USE_UTIL_H_
 #define CHROME_BROWSER_ACTIVE_USE_UTIL_H_
 
-#include "build/build_config.h"
-#include "chrome/install_static/buildflags.h"
+namespace base {
+class CommandLine;
+}
 
-constexpr bool kShouldRecordActiveUse =
-    !BUILDFLAG(IS_WIN) || BUILDFLAG(USE_GOOGLE_UPDATE_INTEGRATION);
+// Returns true if a process started with |command_line| should record active
+// use in the registry for consumption by Omaha. Unconditionally returns false
+// for Windows build configurations that do not integrate with Omaha.
+bool ShouldRecordActiveUse(const base::CommandLine& command_line);
 
 #endif  // CHROME_BROWSER_ACTIVE_USE_UTIL_H_

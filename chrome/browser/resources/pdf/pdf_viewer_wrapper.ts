@@ -9,10 +9,8 @@ export {AnnotationTool} from './annotation_tool.js';
 // </if>
 export {Bookmark} from './bookmark_type.js';
 export {BrowserApi, ZoomBehavior} from './browser_api.js';
-export {Attachment, FittingType, Point, Rect, SaveRequestType} from './constants.js';
+export {FittingType, Point, Rect, SaveRequestType} from './constants.js';
 export {PluginController} from './controller.js';
-export {ViewerAttachmentBarElement} from './elements/viewer-attachment-bar.js';
-export {ViewerAttachmentElement} from './elements/viewer-attachment.js';
 export {ChangePageAndXyDetail, ChangePageDetail, ChangePageOrigin, ChangeZoomDetail, NavigateDetail, ViewerBookmarkElement} from './elements/viewer-bookmark.js';
 export {ViewerDocumentOutlineElement} from './elements/viewer-document-outline.js';
 export {ViewerDownloadControlsElement} from './elements/viewer-download-controls.js';
@@ -39,4 +37,5 @@ export {PdfViewerBaseElement} from './pdf_viewer_base.js';
 export {shouldIgnoreKeyEvents} from './pdf_viewer_utils.js';
 export {SwipeDetector, SwipeDirection} from './swipe_detector.js';
 export {DocumentDimensions, LayoutOptions, PAGE_SHADOW, Viewport} from './viewport.js';
+export {ViewportInterface, ViewportScroller} from './viewport_scroller.js';
 export {ZoomManager} from './zoom_manager.js';

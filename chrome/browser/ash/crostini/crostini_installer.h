@@ -108,8 +108,6 @@ class CrostiniInstaller : public KeyedService,
     skip_launching_terminal_for_testing_ = true;
   }
 
-  static void EnsureFactoryBuilt();
-
  private:
   enum class State {
     IDLE,
@@ -129,12 +127,12 @@ class CrostiniInstaller : public KeyedService,
   void RecordSetupResult(SetupResult result);
 
   void OnCrostiniRestartFinished(crostini::CrostiniResult result);
-  void OnAvailableDiskSpace(std::optional<int64_t> bytes);
+  void OnAvailableDiskSpace(absl::optional<int64_t> bytes);
 
   void OnCrostiniRemovedAfterConfigurationFailed(
       crostini::CrostiniResult result);
 
-  raw_ptr<Profile> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
 
   State state_ = State::IDLE;
   crostini::mojom::InstallerState installing_state_;

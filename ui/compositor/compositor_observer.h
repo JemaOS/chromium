@@ -8,8 +8,8 @@
 #include "base/containers/flat_set.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
 #include "components/viz/common/surfaces/frame_sink_id.h"
-#include "ui/base/ozone_buildflags.h"
 #include "ui/compositor/compositor_export.h"
 
 namespace gfx {
@@ -46,11 +46,13 @@ class COMPOSITOR_EXPORT CompositorObserver {
   // Called when a child of the compositor is resizing.
   virtual void OnCompositingChildResizing(Compositor* compositor) {}
 
-#if BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
+// of lacros-chrome is complete.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
   // Called when a swap with new size is completed.
   virtual void OnCompositingCompleteSwapWithNewSize(ui::Compositor* compositor,
                                                     const gfx::Size& size) {}
-#endif  // BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 
   // Called at the top of the compositor's destructor, to give observers a
   // chance to remove themselves.
@@ -79,15 +81,6 @@ class COMPOSITOR_EXPORT CompositorObserver {
 
   // Called at the end of the BeginMainFrame.
   virtual void OnDidBeginMainFrame(Compositor* compositor) {}
-
-  // Called when the compositor visibility is about to change, but before it is
-  // changed.
-  virtual void OnCompositorVisibilityChanging(Compositor* compositor,
-                                              bool visible) {}
-
-  // Called when the compositor visibility has changed.
-  virtual void OnCompositorVisibilityChanged(Compositor* compositor,
-                                             bool visible) {}
 };
 
 }  // namespace ui

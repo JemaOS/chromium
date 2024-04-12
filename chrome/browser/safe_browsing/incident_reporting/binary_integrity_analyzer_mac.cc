@@ -9,9 +9,9 @@
 #include <memory>
 #include <utility>
 
-#include "base/apple/bundle_locations.h"
 #include "base/files/file_util.h"
 #include "base/logging.h"
+#include "base/mac/bundle_locations.h"
 #include "chrome/browser/safe_browsing/incident_reporting/binary_integrity_incident.h"
 #include "chrome/browser/safe_browsing/incident_reporting/incident_receiver.h"
 #include "chrome/browser/safe_browsing/signature_evaluator_mac.h"
@@ -113,9 +113,9 @@ std::vector<PathAndRequirement> GetCriticalPathsAndRequirements() {
   // clang-format on
 
   critical_binaries.push_back(
-      PathAndRequirement(base::apple::OuterBundlePath(), requirement));
+      PathAndRequirement(base::mac::OuterBundlePath(), requirement));
   critical_binaries.push_back(
-      PathAndRequirement(base::apple::FrameworkBundlePath(), requirement));
+      PathAndRequirement(base::mac::FrameworkBundlePath(), requirement));
   return critical_binaries;
 }
 
@@ -127,8 +127,11 @@ void VerifyBinaryIntegrityForTesting(IncidentReceiver* incident_receiver,
 
 void VerifyBinaryIntegrity(
     std::unique_ptr<IncidentReceiver> incident_receiver) {
+  size_t i = 0;
   for (const auto& p : GetCriticalPathsAndRequirements()) {
+    base::TimeTicks time_before = base::TimeTicks::Now();
     VerifyBinaryIntegrityHelper(incident_receiver.get(), p.path, p.requirement);
+    RecordSignatureVerificationTime(i++, base::TimeTicks::Now() - time_before);
   }
 }
 

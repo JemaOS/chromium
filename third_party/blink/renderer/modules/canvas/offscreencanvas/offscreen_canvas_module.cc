@@ -13,7 +13,7 @@
 namespace blink {
 
 V8OffscreenRenderingContext* OffscreenCanvasModule::getContext(
-    ScriptState* script_state,
+    ExecutionContext* execution_context,
     OffscreenCanvas& offscreen_canvas,
     const String& context_id,
     const CanvasContextCreationAttributesModule* attributes,
@@ -32,8 +32,7 @@ V8OffscreenRenderingContext* OffscreenCanvasModule::getContext(
   // OffscreenCanvas cannot be transferred after getContext, so this execution
   // context will always be the right one from here on.
   CanvasRenderingContext* context = offscreen_canvas.GetCanvasRenderingContext(
-      ExecutionContext::From(script_state), context_id,
-      canvas_context_creation_attributes);
+      execution_context, context_id, canvas_context_creation_attributes);
   if (!context)
     return nullptr;
   return context->AsV8OffscreenRenderingContext();

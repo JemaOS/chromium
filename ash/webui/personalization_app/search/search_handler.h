@@ -6,7 +6,6 @@
 #define ASH_WEBUI_PERSONALIZATION_APP_SEARCH_SEARCH_HANDLER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,6 +20,7 @@
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/bindings/remote_set.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PrefService;
 
@@ -71,7 +71,7 @@ class SearchHandler : public mojom::SearchHandler,
       SearchCallback callback,
       uint32_t max_num_results,
       local_search_service::ResponseStatus response_status,
-      const std::optional<std::vector<local_search_service::Result>>&
+      const absl::optional<std::vector<local_search_service::Result>>&
           local_search_service_results);
 
   std::unique_ptr<SearchTagRegistry> search_tag_registry_;

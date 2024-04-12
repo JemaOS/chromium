@@ -5,9 +5,10 @@
 #include "chrome/browser/ash/login/screens/network_screen.h"
 
 #include <memory>
-#include <optional>
 
 #include "ash/constants/ash_features.h"
+#include "ash/constants/ash_switches.h"
+#include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
@@ -17,6 +18,7 @@
 #include "chrome/test/base/testing_browser_process.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
@@ -35,6 +37,10 @@ class NetworkScreenUnitTest : public testing::Test {
 
   // testing::Test:
   void SetUp() override {
+    // Configure the browser to use Hands-Off Enrollment.
+    base::CommandLine::ForCurrentProcess()->AppendSwitchASCII(
+        switches::kEnterpriseEnableZeroTouchEnrollment, "hands-off");
+
     // Create the NetworkScreen we will use for testing.
     network_screen_ = std::make_unique<NetworkScreen>(
         std::move(mock_view_),
@@ -56,9 +62,9 @@ class NetworkScreenUnitTest : public testing::Test {
   // A pointer to the NetworkScreen.
   std::unique_ptr<NetworkScreen> network_screen_;
 
-  raw_ptr<login::MockNetworkStateHelper, DanglingUntriaged>
+  raw_ptr<login::MockNetworkStateHelper, ExperimentalAsh>
       mock_network_state_helper_ = nullptr;
-  std::optional<NetworkScreen::Result> last_screen_result_;
+  absl::optional<NetworkScreen::Result> last_screen_result_;
 
  private:
   void HandleScreenExit(NetworkScreen::Result screen_result) {
@@ -73,15 +79,43 @@ class NetworkScreenUnitTest : public testing::Test {
   base::WeakPtr<NetworkScreenView> mock_view_;
 };
 
-TEST_F(NetworkScreenUnitTest, ContinuesOnUserAction) {
+TEST_F(NetworkScreenUnitTest, ContinuesAutomatically) {
   // Simulate a network connection.
   EXPECT_CALL(*mock_network_state_helper_, IsConnected())
       .Times(AnyNumber())
       .WillRepeatedly((Return(true)));
   network_screen_->UpdateStatus();
-  network_screen_->OnContinueButtonClicked();
 
-  EXPECT_EQ(last_screen_result_, NetworkScreen::Result::CONNECTED);
+  // Check that we continued once
+  EXPECT_EQ(1, network_screen_->continue_attempts_);
+
+  ASSERT_TRUE(last_screen_result_.has_value());
+  EXPECT_EQ(NetworkScreen::Result::CONNECTED, last_screen_result_.value());
+}
+
+TEST_F(NetworkScreenUnitTest, ContinuesOnlyOnce) {
+  // Connect to network "net0".
+  EXPECT_CALL(*mock_network_state_helper_, GetCurrentNetworkName())
+      .Times(AnyNumber())
+      .WillRepeatedly(Return(u"net0"));
+  EXPECT_CALL(*mock_network_state_helper_, IsConnected())
+      .Times(AnyNumber())
+      .WillRepeatedly(Return(true));
+
+  // Stop waiting for net0.
+  network_screen_->StopWaitingForConnection(u"net0");
+
+  // Check that we have continued exactly once.
+  ASSERT_EQ(1, network_screen_->continue_attempts_);
+
+  ASSERT_TRUE(last_screen_result_.has_value());
+  EXPECT_EQ(NetworkScreen::Result::CONNECTED, last_screen_result_.value());
+
+  // Stop waiting for another network, net1.
+  network_screen_->StopWaitingForConnection(u"net1");
+
+  // Check that we have still continued only once.
+  EXPECT_EQ(1, network_screen_->continue_attempts_);
 }
 
 }  // namespace ash

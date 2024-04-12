@@ -12,12 +12,12 @@
 
 namespace ash {
 
-JitterCalculator::JitterCalculator(AmbientJitterConfig config)
+JitterCalculator::JitterCalculator(Config config)
     : JitterCalculator(std::move(config),
                        base::BindRepeating(&base::RandInt, 0, 1)) {}
 
 JitterCalculator::JitterCalculator(
-    AmbientJitterConfig config,
+    Config config,
     RandomBinaryGenerator random_binary_generator)
     : config_(std::move(config)),
       random_binary_generator_(std::move(random_binary_generator)) {
@@ -32,7 +32,7 @@ JitterCalculator::JitterCalculator(
 JitterCalculator::~JitterCalculator() = default;
 
 gfx::Vector2d JitterCalculator::Calculate() {
-  AssertCurrentTranslationWithinBounds();
+  AssetCurrentTranslationWithinBounds();
   // Move the translation point randomly one step on each x/y direction.
   int x_increment = config_.step_size * random_binary_generator_.Run();
   int y_increment = x_increment == 0
@@ -58,15 +58,21 @@ gfx::Vector2d JitterCalculator::Calculate() {
     translate_y_direction = 1;
     current_translation_.set_y(config_.y_min_translation);
   }
-  AssertCurrentTranslationWithinBounds();
+  AssetCurrentTranslationWithinBounds();
   return current_translation_;
 }
 
-void JitterCalculator::AssertCurrentTranslationWithinBounds() const {
+void JitterCalculator::AssetCurrentTranslationWithinBounds() const {
   DCHECK_LE(current_translation_.x(), config_.x_max_translation);
   DCHECK_GE(current_translation_.x(), config_.x_min_translation);
   DCHECK_LE(current_translation_.y(), config_.y_max_translation);
   DCHECK_GE(current_translation_.y(), config_.y_min_translation);
+}
+
+void JitterCalculator::SetConfigForTesting(Config config) {
+  // Reset current translation.
+  current_translation_ = gfx::Vector2d();
+  config_ = config;
 }
 
 }  // namespace ash

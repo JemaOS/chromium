@@ -5,13 +5,11 @@
 #include <stddef.h>
 
 #include <utility>
-#include <vector>
 
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkPaint.h"
-#include "ui/base/resource/resource_scale_factor.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/image/image.h"
 #include "ui/gfx/image/image_png_rep.h"
@@ -20,50 +18,44 @@
 #include "ui/gfx/image/image_unittest_util.h"
 
 #if BUILDFLAG(IS_IOS)
-#include "base/apple/foundation_util.h"
+#include "base/mac/foundation_util.h"
 #include "skia/ext/skia_utils_ios.h"
 #elif BUILDFLAG(IS_MAC)
 #include <CoreGraphics/CoreGraphics.h>
 
-#include "base/apple/foundation_util.h"
-#include "base/apple/scoped_cftyperef.h"
+#include "base/mac/foundation_util.h"
 #include "base/mac/mac_util.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "skia/ext/skia_utils_mac.h"
 #endif
 
 namespace {
 
 #if BUILDFLAG(IS_APPLE)
-constexpr bool kUsesSkiaNatively = false;
+const bool kUsesSkiaNatively = false;
 #else
-constexpr bool kUsesSkiaNatively = true;
+const bool kUsesSkiaNatively = true;
 #endif
 
 #if BUILDFLAG(IS_MAC)
 bool IsSystemColorSpaceSRGB() {
-  base::apple::ScopedCFTypeRef<CGColorSpaceRef> color_space(
-      CGDisplayCopyColorSpace(CGMainDisplayID()));
-  base::apple::ScopedCFTypeRef<CFStringRef> name(
-      CGColorSpaceCopyName(color_space.get()));
+  CGColorSpaceRef color_space = base::mac::GetSystemColorSpace();
+  base::ScopedCFTypeRef<CFStringRef> name(CGColorSpaceCopyName(color_space));
   return name &&
-         CFStringCompare(name.get(), kCGColorSpaceSRGB, 0) == kCFCompareEqualTo;
+         CFStringCompare(name, kCGColorSpaceSRGB, 0) == kCFCompareEqualTo;
 }
 #endif  // BUILDFLAG(IS_MAC)
 
 class ImageTest : public testing::Test {
  public:
-  ImageTest() = default;
-  ImageTest(const ImageTest&) = delete;
-  ImageTest& operator=(const ImageTest&) = delete;
-  ~ImageTest() override = default;
-
- private:
-  ui::test::ScopedSetSupportedResourceScaleFactors
-      scoped_set_supported_scale_factors_{{ui::k100Percent,
+  ImageTest() {
+    std::vector<float> scales;
+    scales.push_back(1.0f);
 #if !BUILDFLAG(IS_IOS)
-                                           ui::k200Percent
+    scales.push_back(2.0f);
 #endif
-      }};
+    gfx::ImageSkia::SetSupportedScales(scales);
+  }
 };
 
 namespace gt = gfx::test;
@@ -176,7 +168,7 @@ TEST_F(ImageTest, EmptyImageToPNG) {
 // representation returns null.
 TEST_F(ImageTest, ImageNo1xToPNG) {
   // Image with 2x only.
-  constexpr int kSize2x = 50;
+  const int kSize2x = 50;
   gfx::ImageSkia image_skia;
   image_skia.AddRepresentation(gfx::ImageSkiaRep(gt::CreateBitmap(
       kSize2x, kSize2x), 2.0f));
@@ -200,8 +192,8 @@ TEST_F(ImageTest, ImageNo1xToPNG) {
 // Check that for an image initialized with multi resolution PNG data,
 // As1xPNGBytes() returns the 1x bytes.
 TEST_F(ImageTest, CreateExtractPNGBytes) {
-  constexpr int kSize1x = 25;
-  constexpr int kSize2x = 50;
+  const int kSize1x = 25;
+  const int kSize2x = 50;
 
   scoped_refptr<base::RefCountedMemory> bytes1x = gt::CreatePNGBytes(kSize1x);
   std::vector<gfx::ImagePNGRep> image_png_reps;
@@ -219,8 +211,8 @@ TEST_F(ImageTest, CreateExtractPNGBytes) {
 }
 
 TEST_F(ImageTest, MultiResolutionImageSkiaToPNG) {
-  constexpr int kSize1x = 25;
-  constexpr int kSize2x = 50;
+  const int kSize1x = 25;
+  const int kSize2x = 50;
 
   SkBitmap bitmap_1x = gt::CreateBitmap(kSize1x, kSize1x);
   gfx::ImageSkia image_skia;
@@ -237,8 +229,8 @@ TEST_F(ImageTest, MultiResolutionImageSkiaToPNG) {
 }
 
 TEST_F(ImageTest, MultiResolutionPNGToImageSkia) {
-  constexpr int kSize1x = 25;
-  constexpr int kSize2x = 50;
+  const int kSize1x = 25;
+  const int kSize2x = 50;
 
   scoped_refptr<base::RefCountedMemory> bytes1x = gt::CreatePNGBytes(kSize1x);
   scoped_refptr<base::RefCountedMemory> bytes2x = gt::CreatePNGBytes(kSize2x);
@@ -274,48 +266,9 @@ TEST_F(ImageTest, MultiResolutionPNGToImageSkia) {
 #endif
 }
 
-#if !BUILDFLAG(IS_IOS)
-// IOS does not support arbitrary scale factors.
-TEST_F(ImageTest, PreferDownscaleToUpscale) {
-  constexpr int kSize1x = 25;
-  constexpr int kSize4x = 100;
-
-  scoped_refptr<base::RefCountedMemory> bytes1x =
-      gt::CreatePNGBytes(kSize1x, SK_ColorGREEN);
-  scoped_refptr<base::RefCountedMemory> bytes4x =
-      gt::CreatePNGBytes(kSize4x, SK_ColorBLUE);
-
-  std::vector<gfx::ImagePNGRep> image_png_reps;
-  image_png_reps.emplace_back(bytes1x, 1.0f);
-  image_png_reps.emplace_back(bytes4x, 4.0f);
-  gfx::Image image(image_png_reps);
-
-  gfx::ImageSkia image_skia = image.AsImageSkia();
-
-  // Make sure that the 1x, 4x representations are stored.
-  image_skia.GetRepresentation(1.0f);
-  image_skia.GetRepresentation(4.0f);
-
-  // Make sure that a 1.6x representation is created by downscaling the 4x
-  // representation, not by upscaling the 1x representation.
-  gfx::ImageSkiaRep rep_1_6x = image_skia.GetRepresentation(1.6f);
-  EXPECT_EQ(SK_ColorBLUE, rep_1_6x.GetBitmap().getColor(0, 0));
-
-  // Make sure that a 0.8x representation is created by downscaling the 1x
-  // representation.
-  gfx::ImageSkiaRep rep_0_8x = image_skia.GetRepresentation(0.8f);
-  EXPECT_EQ(SK_ColorGREEN, rep_0_8x.GetBitmap().getColor(0, 0));
-
-  // Make sure that a 8x representation is created by upscaling the 4x
-  // representation.
-  gfx::ImageSkiaRep rep_8x = image_skia.GetRepresentation(8.0f);
-  EXPECT_EQ(SK_ColorBLUE, rep_8x.GetBitmap().getColor(0, 0));
-}
-#endif
-
 TEST_F(ImageTest, MultiResolutionPNGToPlatform) {
-  constexpr int kSize1x = 25;
-  constexpr int kSize2x = 50;
+  const int kSize1x = 25;
+  const int kSize2x = 50;
 
   scoped_refptr<base::RefCountedMemory> bytes1x = gt::CreatePNGBytes(kSize1x);
   scoped_refptr<base::RefCountedMemory> bytes2x = gt::CreatePNGBytes(kSize2x);
@@ -327,20 +280,18 @@ TEST_F(ImageTest, MultiResolutionPNGToPlatform) {
   gfx::Image from_platform(gt::CopyViaPlatformType(from_png));
 #if BUILDFLAG(IS_IOS)
   // On iOS the platform type (UIImage) only supports one resolution.
-  const std::vector<ui::ResourceScaleFactor>& scales =
-      ui::GetSupportedResourceScaleFactors();
+  std::vector<float> scales = gfx::ImageSkia::GetSupportedScales();
   EXPECT_EQ(scales.size(), 1U);
-  if (scales[0] == ui::k100Percent) {
+  if (scales[0] == 1.0f)
     EXPECT_TRUE(
         gt::ArePNGBytesCloseToBitmap(*bytes1x, from_platform.AsBitmap(),
                                      gt::MaxColorSpaceConversionColorShift()));
-  } else if (scales[0] == ui::k200Percent) {
+  else if (scales[0] == 2.0f)
     EXPECT_TRUE(
         gt::ArePNGBytesCloseToBitmap(*bytes2x, from_platform.AsBitmap(),
                                      gt::MaxColorSpaceConversionColorShift()));
-  } else {
+  else
     ADD_FAILURE() << "Unexpected platform scale factor.";
-  }
 #else
   EXPECT_TRUE(
       gt::ArePNGBytesCloseToBitmap(*bytes1x, from_platform.AsBitmap(),
@@ -426,7 +377,7 @@ TEST_F(ImageTest, SkiaToPlatform) {
   gfx::Image image(gt::CreateImageSkia(25, 25));
   EXPECT_EQ(25, image.Width());
   EXPECT_EQ(25, image.Height());
-  constexpr size_t kRepCount = kUsesSkiaNatively ? 1U : 2U;
+  const size_t kRepCount = kUsesSkiaNatively ? 1U : 2U;
 
   EXPECT_TRUE(image.HasRepresentation(gfx::Image::kImageRepSkia));
   if (!kUsesSkiaNatively)
@@ -449,7 +400,7 @@ TEST_F(ImageTest, PlatformToSkia) {
   gfx::Image image(gt::CreatePlatformImage());
   EXPECT_EQ(25, image.Width());
   EXPECT_EQ(25, image.Height());
-  constexpr size_t kRepCount = kUsesSkiaNatively ? 1U : 2U;
+  const size_t kRepCount = kUsesSkiaNatively ? 1U : 2U;
 
   EXPECT_TRUE(image.HasRepresentation(gt::GetPlatformRepresentationType()));
   if (!kUsesSkiaNatively)
@@ -501,8 +452,8 @@ TEST_F(ImageTest, SkBitmapConversionPreservesOrientation) {
          "too big a margin, and the test can fail.";
 #endif  // BUILDFLAG(IS_MAC)
 
-  constexpr int width = 50;
-  constexpr int height = 50;
+  const int width = 50;
+  const int height = 50;
   SkBitmap bitmap;
   bitmap.allocN32Pixels(width, height);
   bitmap.eraseARGB(255, 0, 255, 0);
@@ -542,8 +493,8 @@ TEST_F(ImageTest, SkBitmapConversionPreservesOrientation) {
 }
 
 TEST_F(ImageTest, SkBitmapConversionPreservesTransparency) {
-  constexpr int width = 50;
-  constexpr int height = 50;
+  const int width = 50;
+  const int height = 50;
   SkBitmap bitmap;
   bitmap.allocN32Pixels(width, height);
   bitmap.eraseARGB(0, 0, 255, 0);
@@ -582,7 +533,7 @@ TEST_F(ImageTest, SkBitmapConversionPreservesTransparency) {
 }
 
 TEST_F(ImageTest, Copy) {
-  constexpr size_t kRepCount = kUsesSkiaNatively ? 1U : 2U;
+  const size_t kRepCount = kUsesSkiaNatively ? 1U : 2U;
 
   gfx::Image image1(gt::CreateImageSkia(25, 25));
   EXPECT_EQ(25, image1.Width());
@@ -617,7 +568,7 @@ TEST_F(ImageTest, Assign) {
 }
 
 TEST_F(ImageTest, Move) {
-  constexpr size_t kRepCount = kUsesSkiaNatively ? 1U : 2U;
+  const size_t kRepCount = kUsesSkiaNatively ? 1U : 2U;
 
   gfx::Image image1(gt::CreateImageSkia(25, 25));
   EXPECT_EQ(25, image1.Width());
@@ -650,8 +601,8 @@ TEST_F(ImageTest, MoveAssign) {
 }
 
 TEST_F(ImageTest, Copy_PreservesRepresentation) {
-  constexpr gfx::Size kSize1x(25, 25);
-  constexpr gfx::Size kSize2x(50, 50);
+  const gfx::Size kSize1x(25, 25);
+  const gfx::Size kSize2x(50, 50);
   std::vector<gfx::ImagePNGRep> image_png_reps;
   image_png_reps.push_back(
       gfx::ImagePNGRep(gt::CreatePNGBytes(kSize1x.width()), 1.0f));
@@ -674,8 +625,8 @@ TEST_F(ImageTest, Copy_PreservesRepresentation) {
 }
 
 TEST_F(ImageTest, Copy_PreventsDuplication) {
-  constexpr gfx::Size kSize1x(25, 25);
-  constexpr gfx::Size kSize2x(50, 50);
+  const gfx::Size kSize1x(25, 25);
+  const gfx::Size kSize2x(50, 50);
   std::vector<gfx::ImagePNGRep> image_png_reps;
   image_png_reps.push_back(
       gfx::ImagePNGRep(gt::CreatePNGBytes(kSize1x.width()), 1.0f));
@@ -699,7 +650,7 @@ TEST_F(ImageTest, Copy_PreventsDuplication) {
 }
 
 TEST_F(ImageTest, Copy_PreservesBackingStore) {
-  constexpr gfx::Size kSize1x(25, 25);
+  const gfx::Size kSize1x(25, 25);
 
   gfx::Image image(gt::CreateImageSkia(kSize1x.width(), kSize1x.height()));
   gfx::Image image2 = gfx::Image::CreateFrom1xBitmap(image.AsBitmap());
@@ -716,10 +667,10 @@ TEST_F(ImageTest, Copy_PreservesBackingStore) {
 }
 
 TEST_F(ImageTest, MultiResolutionImageSkia) {
-  constexpr int kWidth1x = 10;
-  constexpr int kHeight1x = 12;
-  constexpr int kWidth2x = 20;
-  constexpr int kHeight2x = 24;
+  const int kWidth1x = 10;
+  const int kHeight1x = 12;
+  const int kWidth2x = 20;
+  const int kHeight2x = 24;
 
   gfx::ImageSkia image_skia;
   image_skia.AddRepresentation(gfx::ImageSkiaRep(
@@ -743,8 +694,8 @@ TEST_F(ImageTest, MultiResolutionImageSkia) {
 }
 
 TEST_F(ImageTest, RemoveFromMultiResolutionImageSkia) {
-  constexpr int kWidth2x = 20;
-  constexpr int kHeight2x = 24;
+  const int kWidth2x = 20;
+  const int kHeight2x = 24;
 
   gfx::ImageSkia image_skia;
 

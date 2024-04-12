@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.feed;
 
 import org.chromium.base.metrics.RecordHistogram;
 
-/** Records UMA stats for the actions that the user takes on the feed in the NTP. */
+/**
+ * Records UMA stats for the actions that the user takes on the feed in the NTP.
+ */
 public class FeedUma {
     // Possible actions taken by the user to control the feed. These values are also defined in
     // enums.xml as FeedControlsActions.
@@ -16,7 +18,7 @@ public class FeedUma {
     public static final int CONTROLS_ACTION_CLICKED_LEARN_MORE = 2;
     public static final int CONTROLS_ACTION_TOGGLED_FEED = 3;
     public static final int CONTROLS_ACTION_CLICKED_FEED_HEADER_MENU = 4;
-    public static final int DEPRECATED_CONTROLS_ACTION_CLICKED_MANAGE_AUTOPLAY = 5;
+    public static final int CONTROLS_ACTION_CLICKED_MANAGE_AUTOPLAY = 5;
     public static final int CONTROLS_ACTION_CLICKED_MANAGE = 6;
     public static final int NUM_CONTROLS_ACTIONS = 7;
 
@@ -27,18 +29,16 @@ public class FeedUma {
                 "ContentSuggestions.Feed.Controls.Actions", action, NUM_CONTROLS_ACTIONS);
     }
 
-    public static final String[] TOTAL_CARDS_HISTOGRAM_NAMES = {
-        "ContentSuggestions.Feed.LoadMoreTrigger.TotalCards",
-        "ContentSuggestions.Feed.WebFeed.LoadMoreTrigger.TotalCards",
-        "ContentSuggestions.Feed.SingleWebFeed.LoadMoreTrigger.TotalCards",
-        "ContentSuggestions.Feed.SupervisedFeed.LoadMoreTrigger.TotalCards",
+    static final String[] TOTAL_CARDS_HISTOGRAM_NAMES = {
+            "ContentSuggestions.Feed.LoadMoreTrigger.TotalCards",
+            "ContentSuggestions.Feed.WebFeed.LoadMoreTrigger.TotalCards",
+            "ContentSuggestions.Feed.SingleWebFeed.LoadMoreTrigger.TotalCards",
     };
 
-    public static final String[] OFFSET_FROM_END_OF_STREAM_HISTOGRAM_NAMES = {
-        "ContentSuggestions.Feed.LoadMoreTrigger.OffsetFromEndOfStream",
-        "ContentSuggestions.Feed.WebFeed.LoadMoreTrigger.OffsetFromEndOfStream",
-        "ContentSuggestions.Feed.SingleWebFeed.LoadMoreTrigger.OffsetFromEndOfStream",
-        "ContentSuggestions.Feed.SupervisedFeed.LoadMoreTrigger.OffsetFromEndOfStream",
+    static final String[] OFFSET_FROM_END_OF_STREAM_HISTOGRAM_NAMES = {
+            "ContentSuggestions.Feed.LoadMoreTrigger.OffsetFromEndOfStream",
+            "ContentSuggestions.Feed.WebFeed.LoadMoreTrigger.OffsetFromEndOfStream",
+            "ContentSuggestions.Feed.SingleWebFeed.LoadMoreTrigger.OffsetFromEndOfStream",
     };
 
     /**

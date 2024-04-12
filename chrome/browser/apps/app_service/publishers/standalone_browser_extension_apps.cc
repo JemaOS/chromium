@@ -36,9 +36,8 @@ namespace {
 // Returns true if app's launch info should be saved to full restore.
 bool ShouldSaveToFullRestore(AppServiceProxy* proxy,
                              const std::string& app_id) {
-  if (!::full_restore::features::IsFullRestoreForLacrosEnabled()) {
+  if (!::full_restore::features::IsFullRestoreForLacrosEnabled())
     return false;
-  }
 
   bool is_platform_app = true;
   proxy->AppRegistryCache().ForOneApp(
@@ -66,6 +65,8 @@ StandaloneBrowserExtensionApps::~StandaloneBrowserExtensionApps() = default;
 
 void StandaloneBrowserExtensionApps::RegisterCrosapiHost(
     mojo::PendingReceiver<crosapi::mojom::AppPublisher> receiver) {
+  RegisterPublisher(app_type_);
+
   // At the moment the app service publisher will only accept one browser client
   // publishing apps to ash chrome. Any extra clients will be ignored.
   // TODO(crbug.com/1174246): Support SxS lacros.
@@ -76,6 +77,46 @@ void StandaloneBrowserExtensionApps::RegisterCrosapiHost(
   receiver_.set_disconnect_handler(
       base::BindOnce(&StandaloneBrowserExtensionApps::OnReceiverDisconnected,
                      weak_factory_.GetWeakPtr()));
+}
+
+void StandaloneBrowserExtensionApps::LoadIcon(const std::string& app_id,
+                                              const IconKey& icon_key,
+                                              IconType icon_type,
+                                              int32_t size_hint_in_dip,
+                                              bool allow_placeholder_icon,
+                                              apps::LoadIconCallback callback) {
+  // It is possible that Lacros is briefly unavailable, for example if it shuts
+  // down for an update.
+  if (!controller_.is_bound()) {
+    std::move(callback).Run(std::make_unique<IconValue>());
+    return;
+  }
+
+  IconType crosapi_icon_type = icon_type;
+  IconKeyPtr crosapi_icon_key = icon_key.Clone();
+  if (crosapi_icon_type == apps::IconType::kCompressed) {
+    // If the request is for a compressed icon, modify request so that
+    // uncompressed icon is sent over crosapi.
+    crosapi_icon_type = apps::IconType::kUncompressed;
+    crosapi_icon_key->icon_effects = apps::IconEffects::kNone;
+
+    // To compensate for the above, wrap |callback| icon recompression. This is
+    // applied after OnLoadIcon() runs, which is appropriate since OnLoadIcon()
+    // needs an uncompressed icon for ApplyIconEffects().
+    callback = base::BindOnce(
+        [](apps::LoadIconCallback wrapped_callback, IconValuePtr icon_value) {
+          ConvertUncompressedIconToCompressedIcon(std::move(icon_value),
+                                                  std::move(wrapped_callback));
+        },
+        std::move(callback));
+  }
+
+  const uint32_t icon_effects = icon_key.icon_effects;
+  controller_->LoadIcon(
+      app_id, std::move(crosapi_icon_key), crosapi_icon_type, size_hint_in_dip,
+      base::BindOnce(&StandaloneBrowserExtensionApps::OnLoadIcon,
+                     weak_factory_.GetWeakPtr(), icon_effects, size_hint_in_dip,
+                     std::move(callback)));
 }
 
 void StandaloneBrowserExtensionApps::GetCompressedIconData(
@@ -100,9 +141,8 @@ void StandaloneBrowserExtensionApps::Launch(const std::string& app_id,
                                             WindowInfoPtr window_info) {
   // It is possible that Lacros is briefly unavailable, for example if it shuts
   // down for an update.
-  if (!controller_.is_bound()) {
+  if (!controller_.is_bound())
     return;
-  }
 
   // The following code assumes |app_type_| must be
   // AppType::kStandaloneBrowserChromeApp. Therefore, the app must be either
@@ -132,9 +172,8 @@ void StandaloneBrowserExtensionApps::LaunchAppWithFiles(
     std::vector<base::FilePath> file_paths) {
   // It is possible that Lacros is briefly unavailable, for example if it shuts
   // down for an update.
-  if (!controller_.is_bound()) {
+  if (!controller_.is_bound())
     return;
-  }
 
   std::vector<base::FilePath> file_paths_for_restore = file_paths;
   auto launch_params = crosapi::mojom::LaunchParams::New();
@@ -165,7 +204,7 @@ void StandaloneBrowserExtensionApps::LaunchAppWithIntent(
   // It is possible that Lacros is briefly unavailable, for example if it shuts
   // down for an update.
   if (!controller_.is_bound()) {
-    std::move(callback).Run(LaunchResult(State::kFailed));
+    std::move(callback).Run(LaunchResult(State::FAILED));
     return;
   }
 
@@ -176,7 +215,7 @@ void StandaloneBrowserExtensionApps::LaunchAppWithIntent(
       intent, ProfileManager::GetPrimaryUserProfile());
   controller_->Launch(std::move(launch_params),
                       /*callback=*/base::DoNothing());
-  std::move(callback).Run(LaunchResult(State::kSuccess));
+  std::move(callback).Run(LaunchResult(State::SUCCESS));
 
   if (ShouldSaveToFullRestore(proxy(), app_id)) {
     auto launch_info = std::make_unique<app_restore::AppLaunchInfo>(
@@ -216,9 +255,8 @@ void StandaloneBrowserExtensionApps::Uninstall(const std::string& app_id,
                                                bool report_abuse) {
   // It is possible that Lacros is briefly unavailable, for example if it shuts
   // down for an update.
-  if (!controller_.is_bound()) {
+  if (!controller_.is_bound())
     return;
-  }
 
   controller_->Uninstall(app_id, uninstall_source, clear_site_data,
                          report_abuse);
@@ -275,9 +313,8 @@ void StandaloneBrowserExtensionApps::SetWindowMode(const std::string& app_id,
                                                    WindowMode window_mode) {
   // It is possible that Lacros is briefly unavailable, for example if it shuts
   // down for an update.
-  if (!controller_.is_bound()) {
+  if (!controller_.is_bound())
     return;
-  }
 
   controller_->SetWindowMode(app_id, window_mode);
 }
@@ -285,30 +322,18 @@ void StandaloneBrowserExtensionApps::SetWindowMode(const std::string& app_id,
 void StandaloneBrowserExtensionApps::StopApp(const std::string& app_id) {
   // It is possible that Lacros is briefly unavailable, for example if it shuts
   // down for an update.
-  if (!controller_.is_bound()) {
+  if (!controller_.is_bound())
     return;
-  }
 
   controller_->StopApp(app_id);
-}
-
-void StandaloneBrowserExtensionApps::UpdateAppSize(const std::string& app_id) {
-  // It is possible that Lacros is briefly unavailable, for example if it shuts
-  // down for an update.
-  if (!controller_.is_bound()) {
-    return;
-  }
-
-  controller_->UpdateAppSize(app_id);
 }
 
 void StandaloneBrowserExtensionApps::OpenNativeSettings(
     const std::string& app_id) {
   // It is possible that Lacros is briefly unavailable, for example if it shuts
   // down for an update.
-  if (!controller_.is_bound()) {
+  if (!controller_.is_bound())
     return;
-  }
 
   controller_->OpenNativeSettings(app_id);
 }
@@ -342,8 +367,6 @@ void StandaloneBrowserExtensionApps::RegisterAppController(
   controller_.set_disconnect_handler(
       base::BindOnce(&StandaloneBrowserExtensionApps::OnControllerDisconnected,
                      weak_factory_.GetWeakPtr()));
-  RegisterPublisher(app_type_);
-
   if (app_cache_.empty()) {
     // If there is no apps saved in `app_cache_`, still publish an empty app
     // list to initialize `app_type_`.
@@ -390,6 +413,15 @@ void StandaloneBrowserExtensionApps::OnReceiverDisconnected() {
 void StandaloneBrowserExtensionApps::OnControllerDisconnected() {
   receiver_.reset();
   controller_.reset();
+}
+
+void StandaloneBrowserExtensionApps::OnLoadIcon(uint32_t icon_effects,
+                                                int size_hint_in_dip,
+                                                apps::LoadIconCallback callback,
+                                                IconValuePtr icon_value) {
+  // Apply masking effects here since masking is unimplemented in Lacros.
+  ApplyIconEffects(static_cast<IconEffects>(icon_effects), size_hint_in_dip,
+                   std::move(icon_value), std::move(callback));
 }
 
 }  // namespace apps

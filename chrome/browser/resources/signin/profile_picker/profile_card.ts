@@ -11,13 +11,12 @@ import './profile_picker_shared.css.js';
 import 'chrome://resources/cr_elements/cr_input/cr_input.js';
 import 'chrome://resources/polymer/v3_0/paper-tooltip/paper-tooltip.js';
 
-import type {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
+import {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
-import type {PaperTooltipElement} from 'chrome://resources/polymer/v3_0/paper-tooltip/paper-tooltip.js';
+import {PaperTooltipElement} from 'chrome://resources/polymer/v3_0/paper-tooltip/paper-tooltip.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {ManageProfilesBrowserProxy, ProfileState} from './manage_profiles_browser_proxy.js';
-import {ManageProfilesBrowserProxyImpl} from './manage_profiles_browser_proxy.js';
+import {ManageProfilesBrowserProxy, ManageProfilesBrowserProxyImpl, ProfileState} from './manage_profiles_browser_proxy.js';
 import {getTemplate} from './profile_card.html.js';
 
 export interface ProfileCardElement {
@@ -109,16 +108,6 @@ export class ProfileCardElement extends ProfileCardElementBase {
   private onProfileClick_() {
     this.manageProfilesBrowserProxy_.launchSelectedProfile(
         this.profileState.profilePath);
-  }
-
-  private onNameInputPointerEnter_() {
-    this.dispatchEvent(new CustomEvent(
-        'toggle-drag', {composed: true, detail: {toggle: false}}));
-  }
-
-  private onNameInputPointerLeave_() {
-    this.dispatchEvent(new CustomEvent(
-        'toggle-drag', {composed: true, detail: {toggle: true}}));
   }
 
   /**

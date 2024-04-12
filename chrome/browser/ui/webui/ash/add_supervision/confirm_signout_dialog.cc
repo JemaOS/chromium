@@ -88,7 +88,7 @@ bool ConfirmSignoutDialog::IsShowing() {
   return ConfirmSignoutDialog::current_instance_ != nullptr;
 }
 
-BEGIN_METADATA(ConfirmSignoutDialog)
+BEGIN_METADATA(ConfirmSignoutDialog, views::DialogDelegateView)
 END_METADATA
 
 }  // namespace ash

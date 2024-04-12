@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "base/containers/contains.h"
-#include "components/cross_device/logging/logging.h"
+#include "chrome/browser/nearby_sharing/logging/logging.h"
 #include "third_party/nearby/src/internal/platform/exception.h"
 #include "third_party/nearby/src/internal/platform/input_stream.h"
 
@@ -27,8 +27,7 @@ NearbyConnectionsStreamBufferManager::~NearbyConnectionsStreamBufferManager() =
 void NearbyConnectionsStreamBufferManager::StartTrackingPayload(
     Payload payload) {
   int64_t payload_id = payload.GetId();
-  CD_LOG(VERBOSE, Feature::NC)
-      << "Starting to track stream payload with ID " << payload_id;
+  NS_LOG(VERBOSE) << "Starting to track stream payload with ID " << payload_id;
 
   id_to_payload_with_buffer_map_[payload_id] =
       std::make_unique<PayloadWithBuffer>(std::move(payload));
@@ -42,9 +41,8 @@ bool NearbyConnectionsStreamBufferManager::IsTrackingPayload(
 void NearbyConnectionsStreamBufferManager::StopTrackingFailedPayload(
     int64_t payload_id) {
   id_to_payload_with_buffer_map_.erase(payload_id);
-  CD_LOG(VERBOSE, Feature::NC)
-      << "Stopped tracking payload with ID " << payload_id << " "
-      << "and cleared internal memory.";
+  NS_LOG(VERBOSE) << "Stopped tracking payload with ID " << payload_id << " "
+                  << "and cleared internal memory.";
 }
 
 void NearbyConnectionsStreamBufferManager::HandleBytesTransferred(
@@ -52,9 +50,8 @@ void NearbyConnectionsStreamBufferManager::HandleBytesTransferred(
     int64_t cumulative_bytes_transferred_so_far) {
   auto it = id_to_payload_with_buffer_map_.find(payload_id);
   if (it == id_to_payload_with_buffer_map_.end()) {
-    CD_LOG(ERROR, Feature::NC)
-        << "Attempted to handle stream bytes for payload with ID " << payload_id
-        << ", but this payload was not being tracked.";
+    NS_LOG(ERROR) << "Attempted to handle stream bytes for payload with ID "
+                  << payload_id << ", but this payload was not being tracked.";
     return;
   }
 
@@ -67,18 +64,16 @@ void NearbyConnectionsStreamBufferManager::HandleBytesTransferred(
 
   InputStream* stream = payload_with_buffer->payload.AsStream();
   if (!stream) {
-    CD_LOG(ERROR, Feature::NC)
-        << "Payload with ID " << payload_id << " is not a stream "
-        << "payload; transfer has failed.";
+    NS_LOG(ERROR) << "Payload with ID " << payload_id << " is not a stream "
+                  << "payload; transfer has failed.";
     StopTrackingFailedPayload(payload_id);
     return;
   }
 
   ExceptionOr<ByteArray> bytes = stream->Read(bytes_to_read);
   if (!bytes.ok()) {
-    CD_LOG(ERROR, Feature::NC)
-        << "Payload with ID " << payload_id << " encountered "
-        << "exception while reading; transfer has failed.";
+    NS_LOG(ERROR) << "Payload with ID " << payload_id << " encountered "
+                  << "exception while reading; transfer has failed.";
     StopTrackingFailedPayload(payload_id);
     return;
   }
@@ -91,9 +86,8 @@ NearbyConnectionsStreamBufferManager::GetCompletePayloadAndStopTracking(
     int64_t payload_id) {
   auto it = id_to_payload_with_buffer_map_.find(payload_id);
   if (it == id_to_payload_with_buffer_map_.end()) {
-    CD_LOG(ERROR, Feature::NC)
-        << "Attempted to get complete payload with ID " << payload_id
-        << ", but this payload was not being tracked.";
+    NS_LOG(ERROR) << "Attempted to get complete payload with ID " << payload_id
+                  << ", but this payload was not being tracked.";
     return ByteArray();
   }
 

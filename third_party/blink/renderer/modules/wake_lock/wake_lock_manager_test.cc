@@ -11,7 +11,6 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/modules/wake_lock/wake_lock_test_utils.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "v8/include/v8.h"
 
@@ -27,7 +26,6 @@ WakeLockManager* MakeManager(WakeLockTestingContext& context,
 }  // namespace
 
 TEST(WakeLockManagerTest, AcquireWakeLock) {
-  test::TaskEnvironment task_environment;
   MockWakeLockService wake_lock_service;
   WakeLockTestingContext context(&wake_lock_service);
   auto* manager = MakeManager(context, V8WakeLockType::Enum::kScreen);
@@ -38,13 +36,11 @@ TEST(WakeLockManagerTest, AcquireWakeLock) {
   EXPECT_FALSE(manager->wake_lock_.is_bound());
 
   auto* resolver1 =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<WakeLockSentinel>>(
-          context.GetScriptState());
-  auto promise1 = resolver1->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(context.GetScriptState());
+  ScriptPromise promise1 = resolver1->Promise();
   auto* resolver2 =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<WakeLockSentinel>>(
-          context.GetScriptState());
-  auto promise2 = resolver2->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(context.GetScriptState());
+  ScriptPromise promise2 = resolver2->Promise();
 
   manager->AcquireWakeLock(resolver1);
   manager->AcquireWakeLock(resolver2);
@@ -66,7 +62,6 @@ TEST(WakeLockManagerTest, AcquireWakeLock) {
 }
 
 TEST(WakeLockManagerTest, ReleaseAllWakeLocks) {
-  test::TaskEnvironment task_environment;
   MockWakeLockService wake_lock_service;
   WakeLockTestingContext context(&wake_lock_service);
   auto* manager = MakeManager(context, V8WakeLockType::Enum::kScreen);
@@ -75,9 +70,8 @@ TEST(WakeLockManagerTest, ReleaseAllWakeLocks) {
       wake_lock_service.get_wake_lock(V8WakeLockType::Enum::kScreen);
 
   auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<WakeLockSentinel>>(
-          context.GetScriptState());
-  auto promise = resolver->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(context.GetScriptState());
+  ScriptPromise promise = resolver->Promise();
 
   manager->AcquireWakeLock(resolver);
   screen_lock.WaitForRequest();
@@ -98,7 +92,6 @@ TEST(WakeLockManagerTest, ReleaseAllWakeLocks) {
 }
 
 TEST(WakeLockManagerTest, ReleaseOneWakeLock) {
-  test::TaskEnvironment task_environment;
   MockWakeLockService wake_lock_service;
   WakeLockTestingContext context(&wake_lock_service);
   auto* manager = MakeManager(context, V8WakeLockType::Enum::kScreen);
@@ -107,13 +100,11 @@ TEST(WakeLockManagerTest, ReleaseOneWakeLock) {
       wake_lock_service.get_wake_lock(V8WakeLockType::Enum::kScreen);
 
   auto* resolver1 =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<WakeLockSentinel>>(
-          context.GetScriptState());
-  auto promise1 = resolver1->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(context.GetScriptState());
+  ScriptPromise promise1 = resolver1->Promise();
   auto* resolver2 =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<WakeLockSentinel>>(
-          context.GetScriptState());
-  auto promise2 = resolver2->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(context.GetScriptState());
+  ScriptPromise promise2 = resolver2->Promise();
 
   manager->AcquireWakeLock(resolver1);
   manager->AcquireWakeLock(resolver2);
@@ -137,7 +128,6 @@ TEST(WakeLockManagerTest, ReleaseOneWakeLock) {
 }
 
 TEST(WakeLockManagerTest, ClearEmptyWakeLockSentinelList) {
-  test::TaskEnvironment task_environment;
   MockWakeLockService wake_lock_service;
   WakeLockTestingContext context(&wake_lock_service);
   auto* manager = MakeManager(context, V8WakeLockType::Enum::kSystem);
@@ -153,19 +143,16 @@ TEST(WakeLockManagerTest, ClearEmptyWakeLockSentinelList) {
 }
 
 TEST(WakeLockManagerTest, ClearWakeLocks) {
-  test::TaskEnvironment task_environment;
   MockWakeLockService wake_lock_service;
   WakeLockTestingContext context(&wake_lock_service);
   auto* manager = MakeManager(context, V8WakeLockType::Enum::kSystem);
 
   auto* resolver1 =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<WakeLockSentinel>>(
-          context.GetScriptState());
-  auto promise1 = resolver1->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(context.GetScriptState());
+  ScriptPromise promise1 = resolver1->Promise();
   auto* resolver2 =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<WakeLockSentinel>>(
-          context.GetScriptState());
-  auto promise2 = resolver2->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(context.GetScriptState());
+  ScriptPromise promise2 = resolver2->Promise();
 
   MockWakeLock& system_lock =
       wake_lock_service.get_wake_lock(V8WakeLockType::Enum::kSystem);
@@ -186,19 +173,16 @@ TEST(WakeLockManagerTest, ClearWakeLocks) {
 }
 
 TEST(WakeLockManagerTest, WakeLockConnectionError) {
-  test::TaskEnvironment task_environment;
   MockWakeLockService wake_lock_service;
   WakeLockTestingContext context(&wake_lock_service);
   auto* manager = MakeManager(context, V8WakeLockType::Enum::kSystem);
 
   auto* resolver1 =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<WakeLockSentinel>>(
-          context.GetScriptState());
-  auto promise1 = resolver1->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(context.GetScriptState());
+  ScriptPromise promise1 = resolver1->Promise();
   auto* resolver2 =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<WakeLockSentinel>>(
-          context.GetScriptState());
-  auto promise2 = resolver2->Promise();
+      MakeGarbageCollected<ScriptPromiseResolver>(context.GetScriptState());
+  ScriptPromise promise2 = resolver2->Promise();
 
   MockWakeLock& system_lock =
       wake_lock_service.get_wake_lock(V8WakeLockType::Enum::kSystem);

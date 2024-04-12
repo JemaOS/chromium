@@ -6,14 +6,10 @@
 #define CHROME_BROWSER_UI_VIEWS_PROFILES_PROFILE_PICKER_FORCE_SIGNIN_DIALOG_HOST_H_
 
 #include "base/memory/raw_ptr.h"
-#include "chrome/browser/ui/views/profiles/profile_picker_force_signin_dialog_delegate.h"
 #include "ui/gfx/native_widget_types.h"
 
 class GURL;
-
-namespace content {
-class WebContents;
-}  // namespace content
+class ProfilePickerForceSigninDialogDelegate;
 
 namespace views {
 class DialogDelegateView;
@@ -46,9 +42,6 @@ class ProfilePickerForceSigninDialogHost {
   void DisplayErrorMessage();
 
   views::DialogDelegateView* GetDialogDelegateViewForTesting() const;
-  content::WebContents* get_web_contents_for_testing() const {
-    return delegate_->GetWebContentsForTesting();
-  }
 
  private:
   friend class ProfilePickerForceSigninDialogDelegate;

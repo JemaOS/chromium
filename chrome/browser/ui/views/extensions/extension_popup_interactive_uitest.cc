@@ -6,7 +6,6 @@
 
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/extensions/extension_service.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/extensions/extension_action_test_helper.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
@@ -15,13 +14,16 @@
 #include "components/permissions/request_type.h"
 #include "content/public/test/browser_test.h"
 #include "extensions/browser/disable_reason.h"
-#include "extensions/browser/extension_host.h"
 #include "extensions/browser/extension_host_test_helper.h"
 #include "extensions/common/mojom/view_type.mojom.h"
 #include "extensions/test/test_extension_dir.h"
 #include "ui/events/base_event_utils.h"
 #include "ui/views/test/button_test_api.h"
 #include "ui/views/test/widget_test.h"
+
+#if BUILDFLAG(IS_MAC)
+#include "base/mac/mac_util.h"
+#endif
 
 using ExtensionPopupInteractiveUiTest = extensions::ExtensionApiTest;
 
@@ -116,9 +118,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionPopupInteractiveUiTest,
   // If so, click on the chip to open the bubble.
   BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
   LocationBarView* lbv = browser_view->toolbar()->location_bar();
-  if (lbv->GetChipController()->IsPermissionPromptChipVisible() &&
-      !lbv->GetChipController()->IsBubbleShowing()) {
-    views::test::ButtonTestApi(lbv->GetChipController()->chip())
+  if (lbv->chip_controller()->IsPermissionPromptChipVisible() &&
+      !lbv->chip_controller()->IsBubbleShowing()) {
+    views::test::ButtonTestApi(lbv->chip_controller()->chip())
         .NotifyClick(ui::MouseEvent(ui::ET_MOUSE_PRESSED, gfx::Point(),
                                     gfx::Point(), ui::EventTimeForNow(),
                                     ui::EF_LEFT_MOUSE_BUTTON, 0));
@@ -149,5 +151,10 @@ IN_PROC_BROWSER_TEST_F(ExtensionPopupInteractiveUiTest,
   const bool is_stacked_above = views::test::WidgetTest::IsWindowStackedAbove(
       extension_popup->GetWidget(), permissions_api.GetPromptWindow());
 
+#if BUILDFLAG(IS_MAC)
+  // Child window re-ordering is not reliable on macOS <= 10.13.
+  if (base::mac::IsAtMostOS10_13())
+    return;
+#endif
   EXPECT_FALSE(is_stacked_above);
 }

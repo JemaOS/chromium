@@ -50,10 +50,8 @@ public class NotificationPermissionRequestActivity extends Activity {
      */
     public static PendingIntent createPermissionRequestPendingIntent(
             Context context, String channelName, String channelId) {
-        Intent intent =
-                new Intent(
-                        context.getApplicationContext(),
-                        NotificationPermissionRequestActivity.class);
+        Intent intent = new Intent(
+                context.getApplicationContext(), NotificationPermissionRequestActivity.class);
         intent.putExtra(EXTRA_NOTIFICATION_CHANNEL_NAME, channelName);
         intent.putExtra(EXTRA_NOTIFICATION_CHANNEL_ID, channelId);
         // Starting with Build.VERSION_CODES.S it is required to explicitly specify the mutability
@@ -85,9 +83,8 @@ public class NotificationPermissionRequestActivity extends Activity {
         // the first time will trigger the permission dialog.
         if (getApplicationContext().getApplicationInfo().targetSdkVersion
                 < Build.VERSION_CODES.TIRAMISU) {
-            NotificationChannel channel =
-                    new NotificationChannel(
-                            mChannelId, mChannelName, NotificationManager.IMPORTANCE_DEFAULT);
+            NotificationChannel channel = new NotificationChannel(
+                    mChannelId, mChannelName, NotificationManager.IMPORTANCE_DEFAULT);
             getNotificationManager().createNotificationChannel(channel);
         }
 
@@ -118,10 +115,13 @@ public class NotificationPermissionRequestActivity extends Activity {
         finish();
     }
 
-    /** Sends a message to the messenger containing the permission status. */
+    /**
+     * Sends a message to the messenger containing the permission status.
+     */
     private static void sendPermissionMessage(Messenger messenger, boolean enabled) {
         Bundle data = new Bundle();
-        @PermissionStatus int status = enabled ? PermissionStatus.ALLOW : PermissionStatus.BLOCK;
+        @PermissionStatus
+        int status = enabled ? PermissionStatus.ALLOW : PermissionStatus.BLOCK;
         data.putInt(KEY_PERMISSION_STATUS, status);
         Message message = Message.obtain();
         message.setData(data);

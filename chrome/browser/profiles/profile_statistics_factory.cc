@@ -4,7 +4,7 @@
 
 #include "chrome/browser/profiles/profile_statistics_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_statistics.h"
 #include "content/public/browser/browser_thread.h"
@@ -17,8 +17,7 @@ ProfileStatistics* ProfileStatisticsFactory::GetForProfile(Profile* profile) {
 
 // static
 ProfileStatisticsFactory* ProfileStatisticsFactory::GetInstance() {
-  static base::NoDestructor<ProfileStatisticsFactory> instance;
-  return instance.get();
+  return base::Singleton<ProfileStatisticsFactory>::get();
 }
 
 ProfileStatisticsFactory::ProfileStatisticsFactory()

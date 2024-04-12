@@ -21,9 +21,9 @@ namespace ash {
 class ASH_EXPORT MultideviceFeatureOptInView
     : public SubFeatureOptInView,
       public phonehub::MultideviceFeatureAccessManager::Observer {
-  METADATA_HEADER(MultideviceFeatureOptInView, SubFeatureOptInView)
-
  public:
+  METADATA_HEADER(MultideviceFeatureOptInView);
+
   explicit MultideviceFeatureOptInView(
       phonehub::MultideviceFeatureAccessManager*
           multidevice_feature_access_manager);
@@ -46,7 +46,7 @@ class ASH_EXPORT MultideviceFeatureOptInView
   void UpdateVisibility(bool was_visible);
   void ClosePhoneHubBubble();
 
-  raw_ptr<phonehub::MultideviceFeatureAccessManager>
+  raw_ptr<phonehub::MultideviceFeatureAccessManager, ExperimentalAsh>
       multidevice_feature_access_manager_;
 
   base::ScopedObservation<phonehub::MultideviceFeatureAccessManager,

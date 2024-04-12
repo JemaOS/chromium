@@ -15,7 +15,7 @@ namespace {
 
 using RefCountedTest = testing::Test;
 
-class TestObject : public RefCounted<TestObject> {
+class TestObject : public RefCounted {
  public:
   explicit TestObject(bool& destruction_flag)
       : destruction_flag_(destruction_flag) {}
@@ -25,9 +25,7 @@ class TestObject : public RefCounted<TestObject> {
   void Increment() { count_.fetch_add(1, std::memory_order_relaxed); }
 
  private:
-  friend class RefCounted<TestObject>;
-
-  ~TestObject() { destruction_flag_ = true; }
+  ~TestObject() override { destruction_flag_ = true; }
 
   bool& destruction_flag_;
   std::atomic<size_t> count_{0};

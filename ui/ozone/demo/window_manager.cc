@@ -77,12 +77,11 @@ void WindowManager::OnConfigurationChanged() {
 void WindowManager::OnDisplaySnapshotsInvalidated() {}
 
 void WindowManager::OnDisplaysAcquired(
-    const std::vector<raw_ptr<display::DisplaySnapshot, VectorExperimental>>&
-        displays) {
+    const std::vector<display::DisplaySnapshot*>& displays) {
   windows_.clear();
 
   gfx::Point origin;
-  for (display::DisplaySnapshot* display : displays) {
+  for (auto* display : displays) {
     if (!display->native_mode()) {
       LOG(ERROR) << "Display " << display->display_id()
                  << " doesn't have a native mode";
@@ -98,8 +97,7 @@ void WindowManager::OnDisplaysAcquired(
         base::BindOnce(&WindowManager::OnDisplayConfigured,
                        base::Unretained(this), display->display_id(),
                        gfx::Rect(origin, display->native_mode()->size())),
-        {display::ModesetFlag::kTestModeset,
-         display::ModesetFlag::kCommitModeset});
+        display::kTestModeset | display::kCommitModeset);
     origin.Offset(display->native_mode()->size().width(), 0);
   }
   is_configuring_ = false;

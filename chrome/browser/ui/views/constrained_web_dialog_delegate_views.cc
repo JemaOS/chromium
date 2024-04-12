@@ -14,10 +14,10 @@
 #include "chrome/browser/ui/webui/constrained_web_dialog_ui.h"
 #include "components/constrained_window/constrained_window_views.h"
 #include "components/web_modal/web_contents_modal_dialog_manager.h"
+#include "content/public/browser/native_web_keyboard_event.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
-#include "content/public/common/input/native_web_keyboard_event.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
@@ -47,9 +47,8 @@ class ConstrainedWebDialogDelegateViews;
 class ConstrainedDialogWebView : public views::WebView,
                                  public ConstrainedWebDialogDelegate,
                                  public views::WidgetDelegate {
-  METADATA_HEADER(ConstrainedDialogWebView, views::WebView)
-
  public:
+  METADATA_HEADER(ConstrainedDialogWebView);
   ConstrainedDialogWebView(content::BrowserContext* browser_context,
                            std::unique_ptr<ui::WebDialogDelegate> delegate,
                            content::WebContents* web_contents,
@@ -100,7 +99,7 @@ class ConstrainedDialogWebView : public views::WebView,
   std::unique_ptr<ConstrainedWebDialogDelegateViews> impl_;
 };
 
-BEGIN_METADATA(ConstrainedDialogWebView)
+BEGIN_METADATA(ConstrainedDialogWebView, views::WebView)
 END_METADATA
 
 class WebDialogWebContentsDelegateViews

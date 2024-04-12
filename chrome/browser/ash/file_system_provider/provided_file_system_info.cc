@@ -6,7 +6,8 @@
 
 #include "base/check_op.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 ProviderId::ProviderId(const std::string& internal_id,
                        ProviderType provider_type)
@@ -99,8 +100,7 @@ ProvidedFileSystemInfo::ProvidedFileSystemInfo()
       supports_notify_tag_(false),
       configurable_(false),
       watchable_(false),
-      source_(extensions::SOURCE_FILE),
-      cache_type_(CacheType::NONE) {}
+      source_(extensions::SOURCE_FILE) {}
 
 ProvidedFileSystemInfo::ProvidedFileSystemInfo(
     const ProviderId& provider_id,
@@ -109,8 +109,7 @@ ProvidedFileSystemInfo::ProvidedFileSystemInfo(
     bool configurable,
     bool watchable,
     extensions::FileSystemProviderSource source,
-    const IconSet& icon_set,
-    CacheType cache_type)
+    const IconSet& icon_set)
     : provider_id_(provider_id),
       file_system_id_(mount_options.file_system_id),
       display_name_(mount_options.display_name),
@@ -121,8 +120,7 @@ ProvidedFileSystemInfo::ProvidedFileSystemInfo(
       configurable_(configurable),
       watchable_(watchable),
       source_(source),
-      icon_set_(icon_set),
-      cache_type_(cache_type) {
+      icon_set_(icon_set) {
   DCHECK_LE(0, mount_options.opened_files_limit);
 }
 
@@ -133,20 +131,19 @@ ProvidedFileSystemInfo::ProvidedFileSystemInfo(
     bool configurable,
     bool watchable,
     extensions::FileSystemProviderSource source,
-    const IconSet& icon_set,
-    CacheType cache_type)
+    const IconSet& icon_set)
     : ProvidedFileSystemInfo(ProviderId::CreateFromExtensionId(extension_id),
                              mount_options,
                              mount_path,
                              configurable,
                              watchable,
                              source,
-                             icon_set,
-                             cache_type) {}
+                             icon_set) {}
 
 ProvidedFileSystemInfo::ProvidedFileSystemInfo(
     const ProvidedFileSystemInfo& other) = default;
 
-ProvidedFileSystemInfo::~ProvidedFileSystemInfo() = default;
+ProvidedFileSystemInfo::~ProvidedFileSystemInfo() {}
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

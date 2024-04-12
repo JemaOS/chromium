@@ -38,17 +38,16 @@ class XMLDocument final : public Document {
  public:
   static XMLDocument* CreateXHTML(const DocumentInit& initializer) {
     return MakeGarbageCollected<XMLDocument>(
-        initializer, DocumentClassFlags({DocumentClass::kXHTML}));
+        initializer, kXMLDocumentClass | kXHTMLDocumentClass);
   }
 
   static XMLDocument* CreateSVG(const DocumentInit& initializer) {
     return MakeGarbageCollected<XMLDocument>(
-        initializer, DocumentClassFlags({DocumentClass::kSVG}));
+        initializer, kXMLDocumentClass | kSVGDocumentClass);
   }
 
-  explicit XMLDocument(
-      const DocumentInit&,
-      DocumentClassFlags extended_document_classes = DocumentClassFlags());
+  XMLDocument(const DocumentInit&,
+              DocumentClassFlags document_classes = kXMLDocumentClass);
 };
 
 template <>

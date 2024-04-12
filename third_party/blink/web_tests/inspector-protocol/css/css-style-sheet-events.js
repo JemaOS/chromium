@@ -1,5 +1,5 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
-  const {session, dp} = await testRunner.startHTML(`
+(async function(testRunner) {
+  var {page, session, dp} = await testRunner.startHTML(`
       <style>
       #test {
           box-sizing: border-box;
@@ -13,8 +13,9 @@
   await cssHelper.requestDocumentNodeId();
 
   // Add Event
-  dp.CSS.enable();
-  const addEvent = await dp.CSS.onceStyleSheetAdded();
+  const addEventPromise = dp.CSS.onceStyleSheetAdded();
+  await dp.CSS.enable();
+  const addEvent = await addEventPromise;
   testRunner.log(addEvent, '', [ ...TestRunner.stabilizeNames, 'length' ]);
   const styleSheetId = addEvent.params.header.styleSheetId;
 
@@ -38,9 +39,7 @@
   testRunner.log(addEventAfterChange, '', [ ...TestRunner.stabilizeNames, 'length' ]);
 
   // Remove event
-  session.evaluate(`
-      [...document.head.getElementsByTagName('style')].forEach(item => item.remove())
-  `);
+  await dp.Page.navigate({url: 'about:blank'});
   const removeEvent = await dp.CSS.onceStyleSheetRemoved();
   testRunner.log(removeEvent);
   testRunner.completeTest();

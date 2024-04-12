@@ -7,7 +7,7 @@
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
 #include "ash/webui/projector_app/public/cpp/projector_app_constants.h"
-#include "ash/webui/projector_app/untrusted_projector_ui.h"
+#include "ash/webui/projector_app/trusted_projector_ui.h"
 #include "ash/webui/system_apps/public/system_web_app_type.h"
 #include "base/files/file_path.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
@@ -52,9 +52,9 @@ bool IsProjectorAppEnabled(const Profile* profile) {
   if (!IsProjectorAllowedForProfile(profile))
     return false;
 
-  // Projector for regular consumer users.
+  // Projector for regular consumer users is controlled by a feature flag.
   if (!profile->GetProfilePolicyConnector()->IsManaged())
-    return true;
+    return ash::features::IsProjectorAllUserEnabled();
 
   // Projector dogfood for supervised users is controlled by an enterprise
   // policy. When the feature is out of dogfood phase the policy will be
@@ -66,18 +66,9 @@ bool IsProjectorAppEnabled(const Profile* profile) {
 
   // Projector for enterprise users is controlled by a combination of a feature
   // flag and an enterprise policy.
-  return ash::features::IsProjectorManagedUserIgnorePolicyEnabled() ||
-         profile->GetPrefs()->GetBoolean(ash::prefs::kProjectorAllowByPolicy);
-}
-
-bool IsMediaFile(const base::FilePath& path) {
-  return path.MatchesExtension(ash::kProjectorMediaFileExtension);
-}
-
-bool IsMetadataFile(const base::FilePath& path) {
-  return path.MatchesExtension(ash::kProjectorMetadataFileExtension) ||
-         (ash::features::IsProjectorV2Enabled() &&
-          path.MatchesExtension(ash::kProjectorV2MetadataFileExtension));
+  return ash::features::IsProjectorEnabled() &&
+         (ash::features::IsProjectorManagedUserIgnorePolicyEnabled() ||
+          profile->GetPrefs()->GetBoolean(ash::prefs::kProjectorAllowByPolicy));
 }
 
 void SendFilesToProjectorApp(std::vector<base::FilePath> files) {
@@ -94,7 +85,7 @@ void SendFilesToProjectorApp(std::vector<base::FilePath> files) {
   auto* web_ui = web_contents->GetWebUI();
   if (!web_ui)
     return;
-  if (!web_ui->GetController()->GetAs<ash::UntrustedProjectorUI>()) {
+  if (!web_ui->GetController()->GetAs<ash::TrustedProjectorUI>()) {
     // We only want to send files to the Projector SWA. Don't send files to the
     // wrong trusted context if it navigates away.
     // TODO(b/237089852): Consider using a navigation throttle to prevent the
@@ -105,7 +96,7 @@ void SendFilesToProjectorApp(std::vector<base::FilePath> files) {
 
   web_app::WebAppLaunchParams launch_params;
   launch_params.started_new_navigation = false;
-  launch_params.app_id = ash::kChromeUIUntrustedProjectorSwaAppId;
+  launch_params.app_id = ash::kChromeUITrustedProjectorSwaAppId;
   // Sending files should not navigate the app. This argument is used for
   // storage isolation, and won't impact navigation. It should be in scope of
   // the current WebContent's origin.

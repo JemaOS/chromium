@@ -1,4 +1,4 @@
-<style include="cr-page-host-style app-management-shared-style">
+<style include="app-management-shared-style">
   #content {
     background-color: var(--cr-card-background-color);
     border-radius: var(--cr-card-border-radius);
@@ -56,17 +56,10 @@
         app="[[app_]]"
         permission-label="$i18n{appManagementNotificationsLabel}"
         permission-type="kNotifications">
-        <template is="dom-if" if="[[showSystemNotificationsSettingsLink_]]">
-          <localized-link slot="description"
-            localized-string="[[i18nAdvanced('appManagementNotificationsDescription')]]"
-            on-link-clicked="openNotificationsSystemSettings_"></localized-link>
-        </template>
-      </app-management-permission-item>
+    </app-management-permission-item>
     <div id="permissions-card" class="permission-card-row">
       <div class="permission-section-header">
-        <div class="header-text">
-          [[getPermissionsHeader_(app_.formattedOrigin)]]
-        </div>
+        <div class="header-text">$i18n{appManagementPermissionsLabel}</div>
       </div>
       <div class="permission-list indented-permission-block">
         <app-management-permission-item class="subpermission-row"
@@ -90,19 +83,9 @@
         class="permission-card-row separated-row"
         app="[[app_]]">
     </app-management-file-handling-item>
-    <app-management-app-content-item
-      class="permission-card-row separated-row"
-      app="[[app_]]">
-    </app-management-app-content-item>
     <app-management-more-permissions-item
         class="permission-card-row separated-row" app="[[app_]]"
         more-permissions-label="$i18n{appManagementMorePermissionsLabel}">
     </app-management-more-permissions-item>
-    <app-management-supported-links-item
-        id="supportedLinksOption"
-        class="permission-card-row"
-        app="[[app_]]"
-        apps="[[apps_]]">
-    </app-management-supported-links-item>
   </div>
 </div>

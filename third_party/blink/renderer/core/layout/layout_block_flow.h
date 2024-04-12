@@ -43,8 +43,9 @@
 namespace blink {
 
 class LayoutMultiColumnFlowThread;
+class NGPhysicalFragment;
 
-struct InlineNodeData;
+struct NGInlineNodeData;
 
 // LayoutBlockFlow is the class that implements a block container in CSS 2.1.
 // http://www.w3.org/TR/CSS21/visuren.html#block-boxes
@@ -66,18 +67,27 @@ class CORE_EXPORT LayoutBlockFlow : public LayoutBlock {
   ~LayoutBlockFlow() override;
   void Trace(Visitor*) const override;
 
-  static LayoutBlockFlow* CreateAnonymous(Document*, const ComputedStyle*);
+  static LayoutBlockFlow* CreateAnonymous(Document*,
+                                          scoped_refptr<const ComputedStyle>);
 
   bool IsLayoutBlockFlow() const final {
     NOT_DESTROYED();
     return true;
   }
 
+  void ComputeVisualOverflow() override;
+
   bool CanContainFirstFormattedLine() const;
+
+  void MarkAllDescendantsWithFloatsForLayout(
+      LayoutBox* float_to_remove = nullptr,
+      bool in_layout = true);
 
   void AddChild(LayoutObject* new_child,
                 LayoutObject* before_child = nullptr) override;
   void RemoveChild(LayoutObject*) override;
+
+  bool CreatesAnonymousWrapper() const override;
 
   void MoveAllChildrenIncludingFloatsTo(LayoutBlock* to_block,
                                         bool full_remove_insert);
@@ -87,7 +97,7 @@ class CORE_EXPORT LayoutBlockFlow : public LayoutBlock {
 
   LayoutMultiColumnFlowThread* MultiColumnFlowThread() const {
     NOT_DESTROYED();
-    return multi_column_flow_thread_.Get();
+    return multi_column_flow_thread_;
   }
   void ResetMultiColumnFlowThread() {
     NOT_DESTROYED();
@@ -107,6 +117,8 @@ class CORE_EXPORT LayoutBlockFlow : public LayoutBlock {
 
   bool IsInitialLetterBox() const override;
 
+  void AddVisualOverflowFromInlineChildren();
+
   // Return true if this object is allowed to establish a multicol container.
   virtual bool AllowsColumns() const;
 
@@ -119,42 +131,30 @@ class CORE_EXPORT LayoutBlockFlow : public LayoutBlock {
 
   void SetShouldDoFullPaintInvalidationForFirstLine();
 
+  void RecalcInlineChildrenVisualOverflow();
+
   PositionWithAffinity PositionForPoint(const PhysicalOffset&) const override;
 
   bool ShouldMoveCaretToHorizontalBoundaryWhenPastTopOrBottom() const;
 
-  // If this is an inline formatting context root, this flag is set if the
-  // inline formatting context *may* (false positives are okay) be
-  // non-contiguous. Sometimes an inline formatting context may start in some
-  // fragmentainer, then skip one or more fragmentainers, and then resume
-  // again. This may happen for instance if a culled inline is preceded by a
-  // tall float that's pushed after (due to size/breaking restrictions) the
-  // contents of the culled inline.
-  void SetMayBeNonContiguousIfc(bool b) {
-    NOT_DESTROYED();
-    may_be_non_contiguous_ifc_ = b;
-  }
-  bool MayBeNonContiguousIfc() const {
-    NOT_DESTROYED();
-    DCHECK(HasFragmentItems());
-    return may_be_non_contiguous_ifc_;
-  }
+  // These functions are only public so we can call it from NGBlockNode while
+  // we're still working on LayoutNG.
+  void AddVisualOverflowFromFloats(const NGPhysicalFragment& fragment);
 
-  // Returns the associated `InlineNodeData`, or `nullptr` if `this` doesn't
-  // have one (i.e., not an NG inline formatting context.)
-  virtual InlineNodeData* GetInlineNodeData() const {
+  virtual NGInlineNodeData* TakeNGInlineNodeData() {
     NOT_DESTROYED();
     return nullptr;
   }
-  // Same as `GetInlineNodeData` and then `ClearInlineNodeData`.
-  virtual InlineNodeData* TakeInlineNodeData() {
+  virtual NGInlineNodeData* GetNGInlineNodeData() const {
     NOT_DESTROYED();
     return nullptr;
   }
-  // Reset `InlineNodeData` to a new instance.
-  virtual void ResetInlineNodeData() { NOT_DESTROYED(); }
-  // Clear `InlineNodeData` to `nullptr`.
-  virtual void ClearInlineNodeData() { NOT_DESTROYED(); }
+  virtual void ResetNGInlineNodeData() { NOT_DESTROYED(); }
+  virtual void ClearNGInlineNodeData() { NOT_DESTROYED(); }
+  virtual bool HasNGInlineNodeData() const {
+    NOT_DESTROYED();
+    return false;
+  }
   virtual void WillCollectInlines() { NOT_DESTROYED(); }
 
  protected:
@@ -194,12 +194,15 @@ class CORE_EXPORT LayoutBlockFlow : public LayoutBlock {
   bool ShouldTruncateOverflowingText() const;
 
  private:
+  static void RecalcFloatingDescendantsVisualOverflow(
+      const NGPhysicalFragment& fragment);
+
   Member<LayoutMultiColumnFlowThread> multi_column_flow_thread_;
 
  protected:
-  // LayoutRubyBase objects need to be able to split and merge, moving their
+  // LayoutNGRubyBase objects need to be able to split and merge, moving their
   // children around (calling MakeChildrenNonInline).
-  friend class LayoutRubyBase;
+  friend class LayoutNGRubyBase;
 };
 
 template <>

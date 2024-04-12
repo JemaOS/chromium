@@ -8,7 +8,7 @@
 
 namespace download {
 
-DownloadItemMode GetDesiredDownloadItemMode(const DownloadUIModel* download) {
+DownloadItemMode GetDesiredDownloadItemMode(DownloadUIModel* download) {
   if (download->IsInsecure()) {
     const bool warn = download->GetInsecureDownloadStatus() ==
                       download::DownloadItem::InsecureDownloadStatus::WARN;

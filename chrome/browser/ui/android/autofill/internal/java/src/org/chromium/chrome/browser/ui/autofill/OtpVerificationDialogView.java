@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.ui.autofill;
 import static org.chromium.chrome.browser.ui.autofill.OtpVerificationDialogProperties.ANIMATION_DURATION_MS;
 
 import android.content.Context;
+import android.text.Editable;
 import android.text.SpannableString;
 import android.text.TextWatcher;
 import android.text.method.LinkMovementMethod;
@@ -18,7 +19,6 @@ import android.widget.TextView;
 
 import org.chromium.chrome.browser.ui.autofill.OtpVerificationDialogProperties.ViewDelegate;
 import org.chromium.chrome.browser.ui.autofill.internal.R;
-import org.chromium.ui.text.EmptyTextWatcher;
 import org.chromium.ui.text.NoUnderlineClickableSpan;
 import org.chromium.ui.text.SpanApplier;
 import org.chromium.ui.text.SpanApplier.SpanInfo;
@@ -131,28 +131,28 @@ public class OtpVerificationDialogView extends RelativeLayout {
     }
 
     private TextWatcher buildTextWatcher(ViewDelegate viewDelegate) {
-        return new EmptyTextWatcher() {
+        return new TextWatcher() {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 viewDelegate.onTextChanged(s);
             }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {}
         };
     }
 
     /** Builds Otp Resend Message Link **/
     private SpannableString buildOtpResendMessageLink(Context context, ViewDelegate viewDelegate) {
         return SpanApplier.applySpans(
-                context.getResources()
-                        .getString(
-                                org.chromium.chrome.browser.ui.autofill.internal.R.string
-                                        .autofill_payments_otp_verification_dialog_cant_find_code_message),
-                new SpanInfo(
-                        "<link>",
-                        "</link>",
+                context.getResources().getString(
+                        org.chromium.chrome.browser.ui.autofill.internal.R.string
+                                .autofill_payments_otp_verification_dialog_cant_find_code_message),
+                new SpanInfo("<link>", "</link>",
                         new NoUnderlineClickableSpan(
-                                context,
-                                textView -> {
-                                    viewDelegate.onResendLinkClicked();
-                                })));
+                                context, textView -> { viewDelegate.onResendLinkClicked(); })));
     }
 }

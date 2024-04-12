@@ -68,16 +68,12 @@ MediaValuesCached::MediaValuesCachedData::MediaValuesCachedData(
     three_d_enabled = MediaValues::CalculateThreeDEnabled(frame);
     strict_mode = MediaValues::CalculateStrictMode(frame);
     display_mode = MediaValues::CalculateDisplayMode(frame);
-    window_show_state = MediaValues::CalculateWindowShowState(frame);
-    resizable = MediaValues::CalculateResizable(frame);
     media_type = MediaValues::CalculateMediaType(frame);
     color_gamut = MediaValues::CalculateColorGamut(frame);
     preferred_color_scheme = MediaValues::CalculatePreferredColorScheme(frame);
     preferred_contrast = MediaValues::CalculatePreferredContrast(frame);
     prefers_reduced_motion = MediaValues::CalculatePrefersReducedMotion(frame);
     prefers_reduced_data = MediaValues::CalculatePrefersReducedData(frame);
-    prefers_reduced_transparency =
-        MediaValues::CalculatePrefersReducedTransparency(frame);
     forced_colors = MediaValues::CalculateForcedColors(frame);
     navigation_controls = MediaValues::CalculateNavigationControls(frame);
     horizontal_viewport_segments =
@@ -85,8 +81,6 @@ MediaValuesCached::MediaValuesCachedData::MediaValuesCachedData(
     vertical_viewport_segments =
         MediaValues::CalculateVerticalViewportSegments(frame);
     device_posture = MediaValues::CalculateDevicePosture(frame);
-    inverted_colors = MediaValues::CalculateInvertedColors(frame);
-    scripting = MediaValues::CalculateScripting(frame);
   }
 }
 
@@ -156,18 +150,6 @@ float MediaValuesCached::RootLineHeight(float zoom) const {
   return data_.line_height;
 }
 
-float MediaValuesCached::CapFontSize(float zoom) const {
-  DCHECK_EQ(1.0f, zoom);
-  // For media queries cap units are based on the initial font.
-  return data_.cap_size;
-}
-
-float MediaValuesCached::RcapFontSize(float zoom) const {
-  DCHECK_EQ(1.0f, zoom);
-  // For media queries rcap units are based on the initial font.
-  return data_.cap_size;
-}
-
 double MediaValuesCached::ViewportWidth() const {
   return data_.viewport_width;
 }
@@ -208,14 +190,6 @@ double MediaValuesCached::ContainerHeight() const {
   return SmallViewportHeight();
 }
 
-double MediaValuesCached::ContainerWidth(const ScopedCSSName&) const {
-  return SmallViewportWidth();
-}
-
-double MediaValuesCached::ContainerHeight(const ScopedCSSName&) const {
-  return SmallViewportHeight();
-}
-
 int MediaValuesCached::DeviceWidth() const {
   return data_.device_width;
 }
@@ -238,10 +212,6 @@ int MediaValuesCached::ColorBitsPerComponent() const {
 
 int MediaValuesCached::MonochromeBitsPerComponent() const {
   return data_.monochrome_bits_per_component;
-}
-
-bool MediaValuesCached::InvertedColors() const {
-  return data_.inverted_colors;
 }
 
 mojom::blink::PointerType MediaValuesCached::PrimaryPointerType() const {
@@ -281,14 +251,6 @@ blink::mojom::DisplayMode MediaValuesCached::DisplayMode() const {
   return data_.display_mode;
 }
 
-ui::WindowShowState MediaValuesCached::WindowShowState() const {
-  return data_.window_show_state;
-}
-
-bool MediaValuesCached::Resizable() const {
-  return data_.resizable;
-}
-
 Document* MediaValuesCached::GetDocument() const {
   return nullptr;
 }
@@ -325,10 +287,6 @@ bool MediaValuesCached::PrefersReducedData() const {
   return data_.prefers_reduced_data;
 }
 
-bool MediaValuesCached::PrefersReducedTransparency() const {
-  return data_.prefers_reduced_transparency;
-}
-
 ForcedColors MediaValuesCached::GetForcedColors() const {
   return data_.forced_colors;
 }
@@ -345,12 +303,9 @@ int MediaValuesCached::GetVerticalViewportSegments() const {
   return data_.vertical_viewport_segments;
 }
 
-mojom::blink::DevicePostureType MediaValuesCached::GetDevicePosture() const {
+device::mojom::blink::DevicePostureType MediaValuesCached::GetDevicePosture()
+    const {
   return data_.device_posture;
-}
-
-Scripting MediaValuesCached::GetScripting() const {
-  return data_.scripting;
 }
 
 }  // namespace blink

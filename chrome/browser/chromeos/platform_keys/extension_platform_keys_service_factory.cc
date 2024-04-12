@@ -11,8 +11,8 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/memory/ref_counted.h"
+#include "base/memory/singleton.h"
 #include "base/memory/weak_ptr.h"
-#include "base/no_destructor.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/chromeos/platform_keys/extension_platform_keys_service.h"
 #include "chrome/browser/ui/platform_keys_certificate_selector_chromeos.h"
@@ -44,9 +44,8 @@ class DefaultSelectDelegate
               content::BrowserContext* context) override {
     CHECK(web_contents);
     const extensions::Extension* const extension =
-        extensions::ExtensionRegistry::Get(context)
-            ->enabled_extensions()
-            .GetByID(extension_id);
+        extensions::ExtensionRegistry::Get(context)->GetExtensionById(
+            extension_id, extensions::ExtensionRegistry::ENABLED);
     if (!extension) {
       std::move(callback).Run(nullptr /* no certificate selected */);
       return;
@@ -82,26 +81,19 @@ ExtensionPlatformKeysServiceFactory::GetForBrowserContext(
 // static
 ExtensionPlatformKeysServiceFactory*
 ExtensionPlatformKeysServiceFactory::GetInstance() {
-  static base::NoDestructor<ExtensionPlatformKeysServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<ExtensionPlatformKeysServiceFactory>::get();
 }
 
 ExtensionPlatformKeysServiceFactory::ExtensionPlatformKeysServiceFactory()
     : ProfileKeyedServiceFactory(
           "ExtensionPlatformKeysService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   DependsOn(crosapi::KeystoreServiceFactoryAsh::GetInstance());
 #endif
 }
 
-ExtensionPlatformKeysServiceFactory::~ExtensionPlatformKeysServiceFactory() =
-    default;
+ExtensionPlatformKeysServiceFactory::~ExtensionPlatformKeysServiceFactory() {}
 
 KeyedService* ExtensionPlatformKeysServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {

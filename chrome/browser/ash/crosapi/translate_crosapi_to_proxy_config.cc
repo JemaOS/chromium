@@ -21,7 +21,6 @@ constexpr char kInvalidScheme[] = "invalid";
 constexpr char kDirectScheme[] = "direct";
 constexpr char kSocksScheme[] = "socks";
 constexpr char kSocks5Scheme[] = "socks5";
-constexpr char kQuicScheme[] = "quic";
 
 // Format the proxy url. The request scheme is the scheme the request to the
 // actual web server is using. The proxy scheme is the scheme the proxy is using
@@ -58,9 +57,7 @@ std::string FormatProxyUri(const char* request_scheme,
       proxy_scheme_string = url::kHttpsScheme;
       break;
     case crosapi::mojom::ProxyLocation::Scheme::kQuic:
-      // Quic support on Chrome OS is experimental. Can be set by an extension
-      // in the primary profile.
-      proxy_scheme_string = kQuicScheme;
+      NOTREACHED();
       break;
   }
 

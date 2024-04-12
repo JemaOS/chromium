@@ -60,14 +60,12 @@ void ConvertPointFromScreenToNative(aura::WindowTreeHost* host,
 std::unique_ptr<MouseWarpController> CreateMouseWarpController(
     display::DisplayManager* manager,
     aura::Window* drag_source) {
-  if (manager->IsInUnifiedMode() && manager->num_connected_displays() >= 2) {
+  if (manager->IsInUnifiedMode() && manager->num_connected_displays() >= 2)
     return std::make_unique<UnifiedMouseWarpController>();
-  }
   // Extra check for |num_connected_displays()| is for SystemDisplayApiTest
   // that injects MockScreen.
-  if (manager->GetNumDisplays() < 2 || manager->num_connected_displays() < 2) {
+  if (manager->GetNumDisplays() < 2 || manager->num_connected_displays() < 2)
     return std::make_unique<NullMouseWarpController>();
-  }
   return std::make_unique<ExtendedMouseWarpController>(drag_source);
 }
 
@@ -173,10 +171,9 @@ void ShowDisplayErrorNotification(const std::u16string& message,
               kNotifierDisplayError, NotificationCatalogName::kDisplayError),
           data,
           base::MakeRefCounted<message_center::HandleNotificationClickDelegate>(
-              base::BindRepeating([](std::optional<int> button_index) {
-                if (button_index) {
+              base::BindRepeating([](absl::optional<int> button_index) {
+                if (button_index)
                   NewWindowDelegate::GetInstance()->OpenFeedbackPage();
-                }
               })),
           kNotificationMonitorWarningIcon,
           message_center::SystemNotificationWarningLevel::WARNING);
@@ -188,9 +185,8 @@ bool IsRectContainedByAnyDisplay(const gfx::Rect& rect_in_screen) {
   const std::vector<display::Display>& displays =
       display::Screen::GetScreen()->GetAllDisplays();
   for (const auto& display : displays) {
-    if (display.bounds().Contains(rect_in_screen)) {
+    if (display.bounds().Contains(rect_in_screen))
       return true;
-    }
   }
   return false;
 }
@@ -199,9 +195,8 @@ std::u16string ConvertRefreshRateToString16(float refresh_rate) {
   std::string str = base::StringPrintf("%.2f", refresh_rate);
 
   // Remove the mantissa for whole numbers.
-  if (EndsWith(str, ".00", base::CompareCase::INSENSITIVE_ASCII)) {
+  if (EndsWith(str, ".00", base::CompareCase::INSENSITIVE_ASCII))
     str.erase(str.length() - 3);
-  }
 
   return base::UTF8ToUTF16(str);
 }
@@ -209,10 +204,9 @@ std::u16string ConvertRefreshRateToString16(float refresh_rate) {
 std::u16string GetDisplayErrorNotificationMessageForTest() {
   message_center::NotificationList::Notifications notifications =
       message_center::MessageCenter::Get()->GetVisibleNotifications();
-  for (message_center::Notification* const notification : notifications) {
-    if (notification->id() == kDisplayErrorNotificationId) {
+  for (auto* const notification : notifications) {
+    if (notification->id() == kDisplayErrorNotificationId)
       return notification->message();
-    }
   }
   return std::u16string();
 }

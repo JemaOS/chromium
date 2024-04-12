@@ -4,14 +4,30 @@
 
 import 'chrome://print/print_preview.js';
 
-import type {PrintPreviewAdvancedSettingsItemElement, PrintPreviewModelElement} from 'chrome://print/print_preview.js';
+import {PrintPreviewAdvancedSettingsItemElement, PrintPreviewModelElement} from 'chrome://print/print_preview.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {fakeDataBind} from 'chrome://webui-test/polymer_test_util.js';
 
 import {getCddTemplateWithAdvancedSettings} from './print_preview_test_utils.js';
 
-suite('AdvancedItemTest', function() {
+const advanced_item_test = {
+  suiteName: 'AdvancedItemTest',
+  TestNames: {
+    DisplaySelect: 'display select',
+    DisplayInput: 'display input',
+    DisplayCheckbox: 'display checkbox',
+    UpdateSelect: 'update select',
+    UpdateInput: 'update input',
+    UpdateCheckbox: 'update checkbox',
+    QueryName: 'query name',
+    QueryOption: 'query option',
+  },
+};
+
+Object.assign(window, {advanced_item_test: advanced_item_test});
+
+suite(advanced_item_test.suiteName, function() {
   let item: PrintPreviewAdvancedSettingsItemElement;
 
   /** @override */
@@ -35,7 +51,7 @@ suite('AdvancedItemTest', function() {
   });
 
   // Test that a select capability is displayed correctly.
-  test('DisplaySelect', function() {
+  test(advanced_item_test.TestNames.DisplaySelect, function() {
     const label = item.shadowRoot!.querySelector('.label')!;
     assertEquals('Paper Type', label.textContent);
 
@@ -53,7 +69,7 @@ suite('AdvancedItemTest', function() {
         item.shadowRoot!.querySelector('cr-checkbox')!.parentElement!.hidden);
   });
 
-  test('DisplayInput', function() {
+  test(advanced_item_test.TestNames.DisplayInput, function() {
     // Create capability
     item.capability = getCddTemplateWithAdvancedSettings(3, 'FooDevice')
                           .capabilities!.printer.vendor_capability![2]!;
@@ -73,7 +89,7 @@ suite('AdvancedItemTest', function() {
         item.shadowRoot!.querySelector('cr-checkbox')!.parentElement!.hidden);
   });
 
-  test('DisplayCheckbox', function() {
+  test(advanced_item_test.TestNames.DisplayCheckbox, function() {
     // Create capability
     item.capability = getCddTemplateWithAdvancedSettings(4, 'FooDevice')
                           .capabilities!.printer.vendor_capability![3]!;
@@ -95,7 +111,7 @@ suite('AdvancedItemTest', function() {
 
   // Test that a select capability updates correctly when the setting is
   // updated (e.g. when sticky settings are set).
-  test('UpdateSelect', function() {
+  test(advanced_item_test.TestNames.UpdateSelect, function() {
     // Check that the default option is selected.
     const select = item.shadowRoot!.querySelector('select')!;
     assertEquals(0, select.selectedIndex);
@@ -107,7 +123,7 @@ suite('AdvancedItemTest', function() {
 
   // Test that an input capability updates correctly when the setting is
   // updated (e.g. when sticky settings are set).
-  test('UpdateInput', async () => {
+  test(advanced_item_test.TestNames.UpdateInput, function() {
     // Create capability
     item.capability = getCddTemplateWithAdvancedSettings(3, 'FooDevice')
                           .capabilities!.printer.vendor_capability![2]!;
@@ -119,13 +135,12 @@ suite('AdvancedItemTest', function() {
 
     // Update the setting.
     item.set('settings.vendorItems.value', {watermark: 'ABCD'});
-    await input.updateComplete;
     assertEquals('ABCD', input.inputElement.value);
   });
 
   // Test that an checkbox capability updates correctly when the setting is
   // updated (e.g. when sticky settings are set).
-  test('UpdateCheckbox', function() {
+  test(advanced_item_test.TestNames.UpdateCheckbox, function() {
     // Create capability
     item.capability = getCddTemplateWithAdvancedSettings(4, 'FooDevice')
                           .capabilities!.printer.vendor_capability![3]!;
@@ -142,7 +157,7 @@ suite('AdvancedItemTest', function() {
 
   // Test that the setting is displayed correctly when the search query
   // matches its display name.
-  test('QueryName', function() {
+  test(advanced_item_test.TestNames.QueryName, function() {
     const query = /(Type)/ig;
     assertTrue(item.hasMatch(query));
     item.updateHighlighting(query, new Map());
@@ -165,7 +180,7 @@ suite('AdvancedItemTest', function() {
 
   // Test that the setting is displayed correctly when the search query
   // matches one of the select options.
-  test('QueryOption', function() {
+  test(advanced_item_test.TestNames.QueryOption, function() {
     const query = /(cycle)/ig;
     assertTrue(item.hasMatch(query));
     item.updateHighlighting(query, new Map());

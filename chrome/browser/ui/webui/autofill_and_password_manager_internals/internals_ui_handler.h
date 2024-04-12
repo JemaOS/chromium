@@ -5,14 +5,14 @@
 #ifndef CHROME_BROWSER_UI_WEBUI_AUTOFILL_AND_PASSWORD_MANAGER_INTERNALS_INTERNALS_UI_HANDLER_H_
 #define CHROME_BROWSER_UI_WEBUI_AUTOFILL_AND_PASSWORD_MANAGER_INTERNALS_INTERNALS_UI_HANDLER_H_
 
-#include <optional>
 #include <string>
 
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ptr_exclusion.h"
 #include "components/autofill/core/browser/logging/log_receiver.h"
 #include "content/public/browser/browsing_data_remover.h"
 #include "content/public/browser/web_ui_message_handler.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace autofill {
 class LogRouter;
@@ -49,7 +49,10 @@ class AutofillCacheResetter : public content::BrowsingDataRemover::Observer {
  private:
   // Implements content::BrowsingDataRemover::Observer.
   void OnBrowsingDataRemoverDone(uint64_t failed_data_types) override;
-  raw_ptr<content::BrowsingDataRemover> remover_;
+
+  // This field is not a raw_ptr<> because it was filtered by the rewriter for:
+  // #union
+  RAW_PTR_EXCLUSION content::BrowsingDataRemover* remover_;
   Callback callback_;
 };
 
@@ -98,7 +101,7 @@ class InternalsUIHandler : public content::WebUIMessageHandler,
   // Whether |this| is registered as a log receiver with the LogRouter.
   bool registered_with_log_router_ = false;
 
-  std::optional<AutofillCacheResetter> autofill_cache_resetter_;
+  absl::optional<AutofillCacheResetter> autofill_cache_resetter_;
 };
 
 }  // namespace autofill

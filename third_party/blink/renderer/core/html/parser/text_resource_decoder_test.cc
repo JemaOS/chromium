@@ -5,7 +5,6 @@
 #include "third_party/blink/renderer/core/html/parser/text_resource_decoder.h"
 
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -22,7 +21,6 @@ String DecodeByteByByte(TextResourceDecoder& decoder,
 }  // namespace
 
 TEST(TextResourceDecoderTest, UTF8Decode) {
-  test::TaskEnvironment task_environment;
   std::unique_ptr<TextResourceDecoder> decoder =
       std::make_unique<TextResourceDecoder>(
           TextResourceDecoderOptions::CreateUTF8Decode());
@@ -35,7 +33,6 @@ TEST(TextResourceDecoderTest, UTF8Decode) {
 }
 
 TEST(TextResourceDecoderTest, UTF8DecodeWithoutBOM) {
-  test::TaskEnvironment task_environment;
   std::unique_ptr<TextResourceDecoder> decoder =
       std::make_unique<TextResourceDecoder>(
           TextResourceDecoderOptions::CreateUTF8DecodeWithoutBOM());
@@ -51,7 +48,6 @@ TEST(TextResourceDecoderTest, UTF8DecodeWithoutBOM) {
 }
 
 TEST(TextResourceDecoderTest, BasicUTF16) {
-  test::TaskEnvironment task_environment;
   std::unique_ptr<TextResourceDecoder> decoder =
       std::make_unique<TextResourceDecoder>(TextResourceDecoderOptions(
           TextResourceDecoderOptions::kPlainTextContent));
@@ -75,7 +71,6 @@ TEST(TextResourceDecoderTest, BasicUTF16) {
 }
 
 TEST(TextResourceDecoderTest, BrokenBOMs) {
-  test::TaskEnvironment task_environment;
   {
     std::unique_ptr<TextResourceDecoder> decoder =
         std::make_unique<TextResourceDecoder>(TextResourceDecoderOptions(
@@ -113,7 +108,6 @@ TEST(TextResourceDecoderTest, BrokenBOMs) {
 }
 
 TEST(TextResourceDecoderTest, UTF8DecodePieces) {
-  test::TaskEnvironment task_environment;
   std::unique_ptr<TextResourceDecoder> decoder =
       std::make_unique<TextResourceDecoder>(
           TextResourceDecoderOptions::CreateUTF8Decode());
@@ -125,7 +119,6 @@ TEST(TextResourceDecoderTest, UTF8DecodePieces) {
 }
 
 TEST(TextResourceDecoderTest, UTF16Pieces) {
-  test::TaskEnvironment task_environment;
   std::unique_ptr<TextResourceDecoder> decoder =
       std::make_unique<TextResourceDecoder>(TextResourceDecoderOptions(
           TextResourceDecoderOptions::kPlainTextContent));
@@ -146,7 +139,6 @@ TEST(TextResourceDecoderTest, UTF16Pieces) {
 }
 
 TEST(TextResourceDecoderTest, XMLDeclPieces) {
-  test::TaskEnvironment task_environment;
   std::unique_ptr<TextResourceDecoder> decoder =
       std::make_unique<TextResourceDecoder>(
           TextResourceDecoderOptions(TextResourceDecoderOptions::kHTMLContent));
@@ -159,7 +151,6 @@ TEST(TextResourceDecoderTest, XMLDeclPieces) {
 }
 
 TEST(TextResourceDecoderTest, CSSCharsetPieces) {
-  test::TaskEnvironment task_environment;
   std::unique_ptr<TextResourceDecoder> decoder =
       std::make_unique<TextResourceDecoder>(
           TextResourceDecoderOptions(TextResourceDecoderOptions::kCSSContent));
@@ -172,7 +163,6 @@ TEST(TextResourceDecoderTest, CSSCharsetPieces) {
 }
 
 TEST(TextResourceDecoderTest, ContentSniffingStopsAfterSuccess) {
-  test::TaskEnvironment task_environment;
   std::unique_ptr<TextResourceDecoder> decoder =
       std::make_unique<TextResourceDecoder>(
           TextResourceDecoderOptions::CreateWithAutoDetection(

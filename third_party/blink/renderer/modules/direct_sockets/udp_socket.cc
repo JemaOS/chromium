@@ -48,10 +48,10 @@ bool CheckSendReceiveBufferSize(const UDPSocketOptions* options,
   return true;
 }
 
-std::optional<network::mojom::blink::RestrictedUDPSocketMode>
+absl::optional<network::mojom::blink::RestrictedUDPSocketMode>
 InferUDPSocketMode(const UDPSocketOptions* options,
                    ExceptionState& exception_state) {
-  std::optional<network::mojom::blink::RestrictedUDPSocketMode> mode;
+  absl::optional<network::mojom::blink::RestrictedUDPSocketMode> mode;
   if (options->hasRemoteAddress() && options->hasRemotePort()) {
     mode = network::mojom::RestrictedUDPSocketMode::CONNECTED;
   } else if (options->hasRemoteAddress() || options->hasRemotePort()) {
@@ -161,7 +161,9 @@ mojom::blink::DirectBoundUDPSocketOptionsPtr CreateBoundUDPSocketOptions(
           "equivalent.");
       return {};
     }
-    socket_options->ipv6_only = options->ipv6Only();
+    socket_options->ipv6_only = options->ipv6Only()
+                                    ? network::mojom::OptionalBool::kTrue
+                                    : network::mojom::OptionalBool::kFalse;
   }
 
   socket_options->local_addr =
@@ -199,25 +201,15 @@ UDPSocket::UDPSocket(ScriptState* script_state)
     : Socket(script_state),
       ActiveScriptWrappable<UDPSocket>({}),
       udp_socket_(
-          MakeGarbageCollected<UDPSocketMojoRemote>(GetExecutionContext())),
-      opened_(MakeGarbageCollected<
-              ScriptPromiseProperty<UDPSocketOpenInfo, DOMException>>(
-          GetExecutionContext())) {}
+          MakeGarbageCollected<UDPSocketMojoRemote>(GetExecutionContext())) {}
 
 UDPSocket::~UDPSocket() = default;
 
-ScriptPromiseTyped<UDPSocketOpenInfo> UDPSocket::opened(
-    ScriptState* script_state) const {
-  return opened_->Promise(script_state->World());
-}
-
-ScriptPromiseTyped<IDLUndefined> UDPSocket::close(
-    ScriptState*,
-    ExceptionState& exception_state) {
+ScriptPromise UDPSocket::close(ScriptState*, ExceptionState& exception_state) {
   if (GetState() == State::kOpening) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Socket is not properly initialized.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   auto* script_state = GetScriptState();
@@ -229,7 +221,7 @@ ScriptPromiseTyped<IDLUndefined> UDPSocket::close(
       writable_stream_wrapper_->Locked()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Close called on locked streams.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   auto* reason = MakeGarbageCollected<DOMException>(
@@ -294,8 +286,8 @@ void UDPSocket::FinishOpen(
     mojo::PendingReceiver<network::mojom::blink::UDPSocketListener>
         socket_listener,
     int32_t result,
-    const std::optional<net::IPEndPoint>& local_addr,
-    const std::optional<net::IPEndPoint>& peer_addr) {
+    const absl::optional<net::IPEndPoint>& local_addr,
+    const absl::optional<net::IPEndPoint>& peer_addr) {
   if (result == net::OK) {
     auto close_callback = base::BarrierCallback<ScriptValue>(
         /*num_callbacks=*/2, WTF::BindOnce(&UDPSocket::OnBothStreamsClosed,
@@ -321,7 +313,7 @@ void UDPSocket::FinishOpen(
     open_info->setLocalAddress(String{local_addr->ToStringWithoutPort()});
     open_info->setLocalPort(local_addr->port());
 
-    opened_->Resolve(open_info);
+    GetOpenedPromiseResolver()->Resolve(open_info);
 
     SetState(State::kOpen);
   } else {
@@ -336,8 +328,8 @@ void UDPSocket::OnConnectedUDPSocketOpened(
     mojo::PendingReceiver<network::mojom::blink::UDPSocketListener>
         socket_listener,
     int32_t result,
-    const std::optional<net::IPEndPoint>& local_addr,
-    const std::optional<net::IPEndPoint>& peer_addr) {
+    const absl::optional<net::IPEndPoint>& local_addr,
+    const absl::optional<net::IPEndPoint>& peer_addr) {
   FinishOpen(network::mojom::RestrictedUDPSocketMode::CONNECTED,
              std::move(socket_listener), result, local_addr, peer_addr);
 }
@@ -346,10 +338,10 @@ void UDPSocket::OnBoundUDPSocketOpened(
     mojo::PendingReceiver<network::mojom::blink::UDPSocketListener>
         socket_listener,
     int32_t result,
-    const std::optional<net::IPEndPoint>& local_addr) {
+    const absl::optional<net::IPEndPoint>& local_addr) {
   FinishOpen(network::mojom::RestrictedUDPSocketMode::BOUND,
              std::move(socket_listener), result, local_addr,
-             /*peer_addr=*/std::nullopt);
+             /*peer_addr=*/absl::nullopt);
 }
 
 void UDPSocket::FailOpenWith(int32_t error) {
@@ -357,11 +349,9 @@ void UDPSocket::FailOpenWith(int32_t error) {
   base::UmaHistogramSparse(kUDPNetworkFailuresHistogramName, -error);
   ReleaseResources();
 
-  ScriptState::Scope scope(GetScriptState());
   auto* exception = CreateDOMExceptionFromNetErrorCode(error);
-  opened_->Reject(exception);
-  GetClosedProperty().Reject(ScriptValue(GetScriptState()->GetIsolate(),
-                                         exception->ToV8(GetScriptState())));
+  GetOpenedPromiseResolver()->Reject(exception);
+  GetClosedPromiseResolver()->Reject(exception);
 }
 
 mojo::PendingReceiver<network::mojom::blink::RestrictedUDPSocket>
@@ -387,7 +377,7 @@ void UDPSocket::ContextDestroyed() {
 
 void UDPSocket::Trace(Visitor* visitor) const {
   visitor->Trace(udp_socket_);
-  visitor->Trace(opened_);
+
   visitor->Trace(readable_stream_wrapper_);
   visitor->Trace(writable_stream_wrapper_);
 
@@ -422,10 +412,10 @@ void UDPSocket::OnBothStreamsClosed(std::vector<ScriptValue> args) {
   // If neither stream was errored, resolves |closed|.
   if (auto it = base::ranges::find_if_not(args, &ScriptValue::IsEmpty);
       it != args.end()) {
-    GetClosedProperty().Reject(*it);
+    GetClosedPromiseResolver()->Reject(*it);
     SetState(State::kAborted);
   } else {
-    GetClosedProperty().ResolveWithUndefined();
+    GetClosedPromiseResolver()->Resolve();
     SetState(State::kClosed);
   }
   ReleaseResources();

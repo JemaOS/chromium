@@ -2,26 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
 #include <ostream>
 
 #include "ash/constants/ash_features.h"
 #include "base/files/file_path.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/test/test_future.h"
 #include "chrome/browser/ash/crosapi/crosapi_ash.h"
 #include "chrome/browser/ash/crosapi/crosapi_manager.h"
 #include "chrome/browser/sync/test/integration/status_change_checker.h"
 #include "chrome/browser/sync/test/integration/sync_test.h"
 #include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
-#include "chromeos/ash/components/standalone_browser/feature_refs.h"
+#include "chromeos/crosapi/mojom/sync.mojom-test-utils.h"
 #include "chromeos/crosapi/mojom/sync.mojom.h"
 #include "components/sync/base/features.h"
 #include "components/sync/base/user_selectable_type.h"
-#include "components/sync/service/sync_service_impl.h"
-#include "components/sync/service/sync_user_settings.h"
+#include "components/sync/driver/sync_service_impl.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "content/public/test/browser_test.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -62,7 +61,7 @@ class AppsSyncIsEnabledNotifiedToCrosapiObserverChecker
 
  private:
   bool expected_apps_sync_is_enabled_;
-  std::optional<bool> last_notified_apps_sync_is_enabled_;
+  absl::optional<bool> last_notified_apps_sync_is_enabled_;
   mojo::Receiver<crosapi::mojom::SyncUserSettingsClientObserver> receiver_{
       this};
 };
@@ -70,10 +69,11 @@ class AppsSyncIsEnabledNotifiedToCrosapiObserverChecker
 class AshAppsToggleSharingSyncTest : public SyncTest {
  public:
   AshAppsToggleSharingSyncTest() : SyncTest(SINGLE_CLIENT) {
-    std::vector<base::test::FeatureRef> enabled_features =
-        ash::standalone_browser::GetFeatureRefs();
-    enabled_features.push_back(syncer::kSyncChromeOSAppsToggleSharing);
-    feature_list_.InitWithFeatures(enabled_features, /*disabled_features=*/{});
+    feature_list_.InitWithFeatures(
+        /*enabled_features=*/{ash::features::kLacrosSupport,
+                              ash::features::kLacrosPrimary,
+                              syncer::kSyncChromeOSAppsToggleSharing},
+        /*disabled_features=*/{});
   }
 
   ~AshAppsToggleSharingSyncTest() override = default;
@@ -105,13 +105,6 @@ class AshAppsToggleSharingSyncTest : public SyncTest {
     return user_settings_client_remote_;
   }
 
-  bool IsAppsSyncEnabled() {
-    base::test::TestFuture<bool> enabled_future;
-    user_settings_client_remote_->IsAppsSyncEnabled(
-        enabled_future.GetCallback());
-    return enabled_future.Take();
-  }
-
  private:
   base::test::ScopedFeatureList feature_list_;
 
@@ -124,8 +117,11 @@ IN_PROC_BROWSER_TEST_F(AshAppsToggleSharingSyncTest,
                        ShouldExposeAppsSyncIsEnabledAndNotifyObserver) {
   ASSERT_TRUE(SetupSync());
   SetupCrosapi();
+
+  crosapi::mojom::SyncUserSettingsClientAsyncWaiter client_async_waiter(
+      user_settings_client_remote().get());
   // By default apps sync is enabled after SetupSync() call.
-  EXPECT_TRUE(IsAppsSyncEnabled());
+  EXPECT_TRUE(client_async_waiter.IsAppsSyncEnabled());
 
   {
     // Disable apps sync and verify that crosapi notifies the observer and
@@ -138,7 +134,7 @@ IN_PROC_BROWSER_TEST_F(AshAppsToggleSharingSyncTest,
         /*types=*/base::Difference(syncer::UserSelectableOsTypeSet::All(),
                                    {syncer::UserSelectableOsType::kOsApps}));
     EXPECT_TRUE(checker.Wait());
-    EXPECT_FALSE(IsAppsSyncEnabled());
+    EXPECT_FALSE(client_async_waiter.IsAppsSyncEnabled());
   }
 
   {
@@ -151,7 +147,7 @@ IN_PROC_BROWSER_TEST_F(AshAppsToggleSharingSyncTest,
         /*sync_all_os_types=*/true,
         /*types=*/syncer::UserSelectableOsTypeSet::All());
     EXPECT_TRUE(checker.Wait());
-    EXPECT_TRUE(IsAppsSyncEnabled());
+    EXPECT_TRUE(client_async_waiter.IsAppsSyncEnabled());
   }
 }
 

@@ -32,7 +32,9 @@ class FtrlRanker : public Ranker {
   void AddExpert(std::unique_ptr<Ranker> ranker);
 
   // Ranker:
-  void Start(const std::u16string& query, CategoriesList& categories) override;
+  void Start(const std::u16string& query,
+             ResultsMap& results,
+             CategoriesList& categories) override;
   void Train(const LaunchData& launch) override;
   void UpdateResultRanks(ResultsMap& results, ProviderType provider) override;
   void UpdateCategoryRanks(const ResultsMap& results,
@@ -79,7 +81,9 @@ class BestResultCategoryRanker : public Ranker {
   ~BestResultCategoryRanker() override;
 
   // Ranker:
-  void Start(const std::u16string& query, CategoriesList& categories) override;
+  void Start(const std::u16string& query,
+             ResultsMap& results,
+             CategoriesList& categories) override;
   std::vector<double> GetCategoryRanks(const ResultsMap& results,
                                        const CategoriesList& categories,
                                        ProviderType provider) override;

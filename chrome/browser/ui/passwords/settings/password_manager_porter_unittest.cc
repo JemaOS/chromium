@@ -18,29 +18,27 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/mock_callback.h"
 #include "build/build_config.h"
-#include "chrome/browser/password_manager/profile_password_store_factory.h"
+#include "chrome/browser/password_manager/password_store_factory.h"
 #include "chrome/browser/ui/chrome_select_file_policy.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/testing_profile.h"
-#include "components/affiliations/core/browser/fake_affiliation_service.h"
+#include "components/password_manager/core/browser/affiliation/mock_affiliation_service.h"
 #include "components/password_manager/core/browser/export/password_manager_exporter.h"
 #include "components/password_manager/core/browser/import/csv_password_sequence.h"
-#include "components/password_manager/core/browser/import/import_results.h"
 #include "components/password_manager/core/browser/password_manager_test_utils.h"
-#include "components/password_manager/core/browser/password_store/test_password_store.h"
+#include "components/password_manager/core/browser/test_password_store.h"
 #include "components/password_manager/core/browser/ui/credential_provider_interface.h"
+#include "components/password_manager/core/browser/ui/import_results.h"
 #include "components/password_manager/core/common/password_manager_features.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/web_contents_tester.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
-#include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/shell_dialogs/select_file_dialog_factory.h"
-#include "ui/shell_dialogs/selected_file_info.h"
 #include "url/gurl.h"
 
 using ::testing::_;
@@ -74,13 +72,12 @@ class TestSelectFileDialog : public ui::SelectFileDialog {
                       gfx::NativeWindow owning_window,
                       void* params,
                       const GURL* caller) override {
-    listener_->FileSelected(ui::SelectedFileInfo(forced_path_), file_type_index,
-                            params);
+    listener_->FileSelected(forced_path_, file_type_index, params);
   }
   bool IsRunning(gfx::NativeWindow owning_window) const override {
     return false;
   }
-  void ListenerDestroyed() override { listener_ = nullptr; }
+  void ListenerDestroyed() override {}
   bool HasMultipleFileTypeChoicesImpl() override { return false; }
 
  private:
@@ -145,7 +142,7 @@ class FakeCancellingSelectFileDialog : public ui::SelectFileDialog {
   bool IsRunning(gfx::NativeWindow owning_window) const override {
     return false;
   }
-  void ListenerDestroyed() override { listener_ = nullptr; }
+  void ListenerDestroyed() override {}
   bool HasMultipleFileTypeChoicesImpl() override { return false; }
 
  private:
@@ -155,7 +152,7 @@ class FakeCancellingSelectFileDialog : public ui::SelectFileDialog {
 class FakeCancellingSelectFileDialogFactory
     : public ui::SelectFileDialogFactory {
  public:
-  FakeCancellingSelectFileDialogFactory() = default;
+  FakeCancellingSelectFileDialogFactory() {}
 
   TestSelectFileDialogFactory& operator=(const TestSelectFileDialogFactory&) =
       delete;
@@ -184,9 +181,11 @@ class MockPasswordManagerExporter
 
   ~MockPasswordManagerExporter() override = default;
 
-  MOCK_METHOD(void, PreparePasswordsForExport, (), (override));
-  MOCK_METHOD(void, Cancel, (), (override));
-  MOCK_METHOD(void, SetDestination, (const base::FilePath&), (override));
+  MOCK_METHOD0(PreparePasswordsForExport, void());
+  MOCK_METHOD0(Cancel, void());
+  MOCK_METHOD1(SetDestination, void(const base::FilePath&));
+  MOCK_METHOD0(GetExportProgressStatus,
+               password_manager::ExportProgressStatus());
 };
 
 class FakePasswordParserService
@@ -225,11 +224,11 @@ class PasswordManagerPorterTest : public ChromeRenderViewHostTestHarness {
     // SelectFileDialog::SetFactory is responsible for freeing the memory
     // associated with a new factory.
     ui::SelectFileDialog::SetFactory(
-        std::make_unique<TestSelectFileDialogFactory>(temp_file_path()));
+        new TestSelectFileDialogFactory(temp_file_path()));
 
-    profile_ = CreateTestingProfile();
+    std::unique_ptr<TestingProfile> profile = CreateTestingProfile();
     porter_ = std::make_unique<PasswordManagerPorter>(
-        profile_.get(), &presenter(),
+        profile.get(), &presenter(),
         /*on_export_progress_callback=*/base::DoNothing());
 
     auto importer =
@@ -246,8 +245,6 @@ class PasswordManagerPorterTest : public ChromeRenderViewHostTestHarness {
   }
 
   void TearDown() override {
-    porter_.reset();
-    profile_.reset();
     store_->ShutdownOnUIThread();
     task_environment()->RunUntilIdle();
     ChromeRenderViewHostTestHarness::TearDown();
@@ -275,11 +272,10 @@ class PasswordManagerPorterTest : public ChromeRenderViewHostTestHarness {
  private:
   FakePasswordParserService service;
   mojo::Receiver<password_manager::mojom::CSVPasswordParser> receiver{&service};
-  std::unique_ptr<TestingProfile> profile_;
   std::unique_ptr<PasswordManagerPorter> porter_;
   scoped_refptr<password_manager::TestPasswordStore> store_ =
       base::MakeRefCounted<password_manager::TestPasswordStore>();
-  affiliations::FakeAffiliationService affiliation_service_;
+  password_manager::MockAffiliationService affiliation_service_;
   password_manager::SavedPasswordsPresenter presenter_{
       &affiliation_service_, store_,
       /*account_store=*/nullptr};
@@ -300,12 +296,11 @@ TEST_F(PasswordManagerPorterTest, PasswordExport) {
               SetDestination(temp_file_path()));
 
   porter().SetExporterForTesting(std::move(mock_password_manager_exporter_));
-  porter().Export(web_contents()->GetWeakPtr());
+  porter().Export(web_contents());
 }
 
 TEST_F(PasswordManagerPorterTest, CancelExportFileSelection) {
-  ui::SelectFileDialog::SetFactory(
-      std::make_unique<FakeCancellingSelectFileDialogFactory>());
+  ui::SelectFileDialog::SetFactory(new FakeCancellingSelectFileDialogFactory());
 
   std::unique_ptr<MockPasswordManagerExporter> mock_password_manager_exporter_ =
       std::make_unique<StrictMock<MockPasswordManagerExporter>>();
@@ -314,7 +309,7 @@ TEST_F(PasswordManagerPorterTest, CancelExportFileSelection) {
   EXPECT_CALL(*mock_password_manager_exporter_, Cancel());
 
   porter().SetExporterForTesting(std::move(mock_password_manager_exporter_));
-  porter().Export(web_contents()->GetWeakPtr());
+  porter().Export(web_contents());
 }
 
 TEST_F(PasswordManagerPorterTest, CancelExport) {
@@ -326,13 +321,12 @@ TEST_F(PasswordManagerPorterTest, CancelExport) {
   EXPECT_CALL(*mock_password_manager_exporter_, Cancel());
 
   porter().SetExporterForTesting(std::move(mock_password_manager_exporter_));
-  porter().Export(web_contents()->GetWeakPtr());
+  porter().Export(web_contents());
   porter().CancelExport();
 }
 
 TEST_F(PasswordManagerPorterTest, ImportDismissedOnCanceledFileSelection) {
-  ui::SelectFileDialog::SetFactory(
-      std::make_unique<FakeCancellingSelectFileDialogFactory>());
+  ui::SelectFileDialog::SetFactory(new FakeCancellingSelectFileDialogFactory());
 
   base::MockCallback<PasswordManagerPorter::ImportResultsCallback> callback;
   EXPECT_CALL(
@@ -349,6 +343,9 @@ TEST_F(PasswordManagerPorterTest, ImportDismissedOnCanceledFileSelection) {
 }
 
 TEST_F(PasswordManagerPorterTest, ContinueImportWithConflicts) {
+  base::test::ScopedFeatureList feature_list{
+      password_manager::features::kPasswordsImportM2};
+
   password_manager::PasswordForm test_form;
   test_form.url = GURL("https://test.com");
   test_form.signon_realm = test_form.url.spec();
@@ -394,6 +391,9 @@ TEST_F(PasswordManagerPorterTest, ContinueImportWithConflicts) {
 }
 
 TEST_F(PasswordManagerPorterTest, RejectNewImportsWhenConflictsNotResolved) {
+  base::test::ScopedFeatureList feature_list{
+      password_manager::features::kPasswordsImportM2};
+
   password_manager::PasswordForm test_form;
   test_form.url = GURL("https://test.com");
   test_form.signon_realm = test_form.url.spec();
@@ -437,6 +437,9 @@ TEST_F(PasswordManagerPorterTest, RejectNewImportsWhenConflictsNotResolved) {
 }
 
 TEST_F(PasswordManagerPorterTest, ResetImporterTriggersFileDeletion) {
+  base::test::ScopedFeatureList feature_list{
+      password_manager::features::kPasswordsImportM2};
+
   ASSERT_TRUE(base::WriteFile(temp_file_path(),
                               "origin,username,password\n"
                               "https://test.com,username,secret\n"));

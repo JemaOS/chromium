@@ -25,12 +25,11 @@ class ScopedLockImpl {
   ScopedLockImpl& operator=(const ScopedLockImpl&) = delete;
   ~ScopedLockImpl();
 
- private:
-  friend ScopedLock;
   bool Initialize(const std::string& id,
                   UpdaterScope scope,
                   base::TimeDelta timeout);
 
+ private:
   base::win::ScopedHandle mutex_;
 };
 

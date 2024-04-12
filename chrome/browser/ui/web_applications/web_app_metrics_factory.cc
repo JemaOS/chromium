@@ -22,8 +22,7 @@ WebAppMetrics* WebAppMetricsFactory::GetForProfile(Profile* profile) {
 
 // static
 WebAppMetricsFactory* WebAppMetricsFactory::GetInstance() {
-  static base::NoDestructor<WebAppMetricsFactory> instance;
-  return instance.get();
+  return base::Singleton<WebAppMetricsFactory>::get();
 }
 
 WebAppMetricsFactory::WebAppMetricsFactory()
@@ -36,11 +35,10 @@ WebAppMetricsFactory::WebAppMetricsFactory()
 
 WebAppMetricsFactory::~WebAppMetricsFactory() = default;
 
-std::unique_ptr<KeyedService>
-WebAppMetricsFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* WebAppMetricsFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<WebAppMetrics>(profile);
+  return new WebAppMetrics(profile);
 }
 
 content::BrowserContext* WebAppMetricsFactory::GetBrowserContextToUse(

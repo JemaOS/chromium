@@ -11,7 +11,6 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/dns/public/host_resolver_results.h"
-#include "services/network/public/cpp/network_context_getter.h"
 #include "services/network/public/cpp/resolve_host_client_base.h"
 #include "services/network/public/mojom/host_resolver.mojom-forward.h"
 
@@ -31,6 +30,9 @@ class DnsProbeRunner : public network::ResolveHostClientBase {
  public:
   static const char kKnownGoodHostname[];
 
+  using NetworkContextGetter =
+      base::RepeatingCallback<network::mojom::NetworkContext*(void)>;
+
   // Used in histograms; add new entries at the bottom, and don't remove any.
   enum Result {
     UNKNOWN,
@@ -45,7 +47,7 @@ class DnsProbeRunner : public network::ResolveHostClientBase {
   // NetworkContext to create the HostResolver.  The |network_context_getter|
   // may be called multiple times.
   DnsProbeRunner(net::DnsConfigOverrides dns_config_overrides,
-                 const network::NetworkContextGetter& network_context_getter);
+                 const NetworkContextGetter& network_context_getter);
 
   DnsProbeRunner(const DnsProbeRunner&) = delete;
   DnsProbeRunner& operator=(const DnsProbeRunner&) = delete;
@@ -71,8 +73,8 @@ class DnsProbeRunner : public network::ResolveHostClientBase {
   // network::ResolveHostClientBase impl:
   void OnComplete(int32_t result,
                   const net::ResolveErrorInfo& resolve_error_info,
-                  const std::optional<net::AddressList>& resolved_addresses,
-                  const std::optional<net::HostResolverEndpointResults>&
+                  const absl::optional<net::AddressList>& resolved_addresses,
+                  const absl::optional<net::HostResolverEndpointResults>&
                       endpoint_results_with_metadata) override;
 
   net::DnsConfigOverrides GetConfigOverridesForTesting() {
@@ -86,7 +88,7 @@ class DnsProbeRunner : public network::ResolveHostClientBase {
   mojo::Receiver<network::mojom::ResolveHostClient> receiver_{this};
 
   net::DnsConfigOverrides dns_config_overrides_;
-  network::NetworkContextGetter network_context_getter_;
+  NetworkContextGetter network_context_getter_;
 
   mojo::Remote<network::mojom::HostResolver> host_resolver_;
 

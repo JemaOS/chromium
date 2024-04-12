@@ -98,8 +98,8 @@ class WindowPropertyObserver : public aura::WindowObserver {
     properties_changed_.push_back(key);
   }
 
-  raw_ptr<aura::Window> window_;
-  std::vector<raw_ptr<const void, VectorExperimental>> properties_changed_;
+  raw_ptr<aura::Window, ExperimentalAsh> window_;
+  std::vector<const void*> properties_changed_;
 };
 
 TEST_F(WorkspaceEventHandlerTest, DoubleClickSingleAxisResizeEdge) {
@@ -222,7 +222,7 @@ TEST_F(WorkspaceEventHandlerTest, DoubleClickSingleAxisWhenSideSnapped) {
                                       .work_area();
 
   WindowState* window_state = WindowState::Get(window.get());
-  const WindowSnapWMEvent snap_event(WM_EVENT_SNAP_PRIMARY);
+  const WMEvent snap_event(WM_EVENT_SNAP_PRIMARY);
   window_state->OnWMEvent(&snap_event);
 
   gfx::Rect snapped_bounds_in_screen = window->GetBoundsInScreen();
@@ -371,7 +371,7 @@ TEST_F(WorkspaceEventHandlerTest, DoubleClickCaptionTogglesMaximize) {
   EXPECT_EQ(restore_bounds.ToString(), window->bounds().ToString());
 
   // 3) Double clicking a snapped window should maximize.
-  const WindowSnapWMEvent snap_event(WM_EVENT_SNAP_PRIMARY);
+  const WMEvent snap_event(WM_EVENT_SNAP_PRIMARY);
   window_state->OnWMEvent(&snap_event);
   EXPECT_TRUE(window_state->IsSnapped());
   generator.MoveMouseTo(window->GetBoundsInRootWindow().CenterPoint());
@@ -550,12 +550,9 @@ TEST_F(WorkspaceEventHandlerTest, DeleteWhileInRunLoop) {
   ASSERT_TRUE(::wm::GetWindowMoveClient(window->GetRootWindow()));
   base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE,
                                                                 window.get());
-
-  aura::Env::GetInstance()->set_mouse_button_flags(ui::EF_LEFT_MOUSE_BUTTON);
-  EXPECT_EQ(::wm::GetWindowMoveClient(window->GetRootWindow())
-                ->RunMoveLoop(window.release(), gfx::Vector2d(),
-                              ::wm::WINDOW_MOVE_SOURCE_MOUSE),
-            ::wm::MOVE_CANCELED);
+  ::wm::GetWindowMoveClient(window->GetRootWindow())
+      ->RunMoveLoop(window.release(), gfx::Vector2d(),
+                    ::wm::WINDOW_MOVE_SOURCE_MOUSE);
 }
 
 // Verifies that double clicking in the header does not maximize if the target

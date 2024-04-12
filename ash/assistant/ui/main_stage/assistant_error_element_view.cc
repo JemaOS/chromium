@@ -6,7 +6,6 @@
 
 #include "ash/assistant/model/ui/assistant_error_element.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 
 namespace ash {
 
@@ -15,7 +14,8 @@ AssistantErrorElementView::AssistantErrorElementView(
     : AssistantTextElementView(
           l10n_util::GetStringUTF8(error_element->message_id())) {}
 
-BEGIN_METADATA(AssistantErrorElementView)
-END_METADATA
+const char* AssistantErrorElementView::GetClassName() const {
+  return "AssistantErrorElementView";
+}
 
 }  // namespace ash

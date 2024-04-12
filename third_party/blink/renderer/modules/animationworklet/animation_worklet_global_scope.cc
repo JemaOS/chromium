@@ -4,9 +4,8 @@
 
 #include "third_party/blink/renderer/modules/animationworklet/animation_worklet_global_scope.h"
 
-#include <optional>
-
 #include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/bindings/core/v8/generated_code_helper.h"
 #include "third_party/blink/renderer/bindings/core/v8/serialization/serialized_script_value.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_function.h"
@@ -24,7 +23,9 @@
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/v8_binding_macros.h"
 #include "third_party/blink/renderer/platform/bindings/v8_object_constructor.h"
+#include "third_party/blink/renderer/platform/scheduler/common/features.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
+
 #include "v8/include/v8.h"
 
 namespace blink {
@@ -49,7 +50,10 @@ AnimationWorkletGlobalScope::AnimationWorkletGlobalScope(
     WorkerThread* thread)
     : WorkletGlobalScope(std::move(creation_params),
                          thread->GetWorkerReportingProxy(),
-                         thread) {}
+                         thread,
+                         /*create_microtask_queue=*/
+                         base::FeatureList::IsEnabled(
+                             scheduler::kMicrotaskQueuePerAnimationWorklet)) {}
 
 AnimationWorkletGlobalScope::~AnimationWorkletGlobalScope() = default;
 
@@ -72,7 +76,7 @@ Animator* AnimationWorkletGlobalScope::CreateAnimatorFor(
     const String& name,
     WorkletAnimationOptions options,
     scoped_refptr<SerializedScriptValue> serialized_state,
-    const Vector<std::optional<base::TimeDelta>>& local_times,
+    const Vector<absl::optional<base::TimeDelta>>& local_times,
     const Vector<Timing>& timings,
     const Vector<Timing::NormalizedTiming>& normalized_timings) {
   DCHECK(!animators_.Contains(animation_id));
@@ -118,8 +122,8 @@ void AnimationWorkletGlobalScope::UpdateAnimatorsList(
         effect_timings->GetNormalizedTimings()->data;
     DCHECK_GE(normalized_timings.size(), 1u);
 
-    Vector<std::optional<base::TimeDelta>> local_times(
-        static_cast<int>(timings.size()), std::nullopt);
+    Vector<absl::optional<base::TimeDelta>> local_times(
+        static_cast<int>(timings.size()), absl::nullopt);
 
     CreateAnimatorFor(id, name, options, nullptr /* serialized_state */,
                       local_times, timings, normalized_timings);
@@ -242,7 +246,7 @@ Animator* AnimationWorkletGlobalScope::CreateInstance(
     const String& name,
     WorkletAnimationOptions options,
     scoped_refptr<SerializedScriptValue> serialized_state,
-    const Vector<std::optional<base::TimeDelta>>& local_times,
+    const Vector<absl::optional<base::TimeDelta>>& local_times,
     const Vector<Timing>& timings,
     const Vector<Timing::NormalizedTiming>& normalized_timings) {
   DCHECK(IsContextThread());
@@ -303,7 +307,7 @@ void AnimationWorkletGlobalScope::MigrateAnimatorsTo(
     scoped_refptr<SerializedScriptValue> serialized_state;
     if (animator->IsStateful()) {
       ExceptionState exception_state(script_state->GetIsolate(),
-                                     ExceptionContextType::kOperationInvoke,
+                                     ExceptionState::kExecutionContext,
                                      "Animator", "state");
       // If an animator state function throws or the state is not
       // serializable, the animator will be removed from the global scope.
@@ -328,7 +332,7 @@ void AnimationWorkletGlobalScope::MigrateAnimatorsTo(
       }
     }
 
-    Vector<std::optional<base::TimeDelta>> local_times;
+    Vector<absl::optional<base::TimeDelta>> local_times;
     animator->GetLocalTimes(local_times);
     target_global_scope->CreateAnimatorFor(
         animation_id, animator->name(), animator->options(), serialized_state,
@@ -342,7 +346,7 @@ AnimatorDefinition* AnimationWorkletGlobalScope::FindDefinitionForTest(
     const String& name) {
   auto it = animator_definitions_.find(name);
   if (it != animator_definitions_.end())
-    return it->value.Get();
+    return it->value;
   return nullptr;
 }
 

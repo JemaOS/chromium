@@ -55,7 +55,7 @@ export class Camera3DeviceInfo {
    * @param videoResolutionFpses Supported available video
    *     resolutions and maximal capture fps of the video device.
    * @param fpsRanges Supported fps ranges of the video device.
-   * @param builtinPTZSupport Is PTZ controls supported by the camera.
+   * @param supportPTZ Is supported PTZ controls.
    */
   constructor(
       deviceInfo: MediaDeviceInfo,
@@ -63,15 +63,11 @@ export class Camera3DeviceInfo {
       readonly photoResolutions: ResolutionList,
       videoResolutionFpses: VideoConfig[],
       readonly fpsRanges: FpsRangeList,
-      readonly builtinPTZSupport: boolean,
+      readonly supportPTZ: boolean,
   ) {
     this.deviceId = deviceInfo.deviceId;
-    // If all fps supported by the camera is lower than 24, use the maximum
-    // supported fps.
-    const maxSupportedFps =
-        Math.max(...videoResolutionFpses.map(({maxFps}) => maxFps));
     for (const {width, height, maxFps} of videoResolutionFpses) {
-      if (maxFps < 24 && maxFps !== maxSupportedFps) {
+      if (maxFps < 24) {
         continue;
       }
       const r = new Resolution(width, height);
@@ -85,6 +81,7 @@ export class Camera3DeviceInfo {
   }
 
   /**
+   * @param videoResolution Video resolution.
    * @return The constant fps supported by this video resolution.
    */
   getConstFpses(videoResolution: Resolution): number[] {
@@ -97,7 +94,7 @@ export class Camera3DeviceInfo {
 
   private pairedPreviewCaptureResolutions(captureRs: Resolution[]):
       CapturePreviewPairs {
-    // Filters out preview resolution greater than 1920x1080 and 1600x1200 for
+    // Filter out preview resolution greater than 1920x1080 and 1600x1200 for
     // preventing performance issue.
     const previewRs = this.videoResolutions.filter(
         ({width, height}) => width <= 1920 && height <= 1200);
@@ -116,7 +113,7 @@ export class Camera3DeviceInfo {
   }
 
   /**
-   * Creates a Camera3DeviceInfo by the given device info and the mojo device
+   * Creates a Camera3DeviceInfo by given device info and the mojo device
    *     operator.
    *
    * @param deviceInfo Given device info.
@@ -131,17 +128,14 @@ export class Camera3DeviceInfo {
     const deviceId = deviceInfo.deviceId;
 
     const deviceOperator = DeviceOperator.getInstance();
-    if (deviceOperator === null) {
+    if (!deviceOperator) {
       throw new Error('Device operation is not supported');
     }
     const facing = await deviceOperator.getCameraFacing(deviceId);
-    // Check if the camera has PTZ support, not the PTZ support through stream
-    // manipulators, by checking with USB HAL vendor tags.
-    const builtinPTZSupport =
-        !(await deviceOperator.isDigitalZoomSupported(deviceId)) &&
-        ((await deviceOperator.getPanDefault(deviceId)) !== undefined ||
-         (await deviceOperator.getTiltDefault(deviceId)) !== undefined ||
-         (await deviceOperator.getZoomDefault(deviceId)) !== undefined);
+    const supportPTZ =
+        (await deviceOperator.getPanDefault(deviceId)) !== undefined ||
+        (await deviceOperator.getTiltDefault(deviceId)) !== undefined ||
+        (await deviceOperator.getZoomDefault(deviceId)) !== undefined;
     const photoResolution = await deviceOperator.getPhotoResolutions(deviceId);
     const videoConfigs = await deviceOperator.getVideoConfigs(deviceId);
     const filteredVideoConfigs = videoConfigs.filter(videoConfigFilter);
@@ -150,6 +144,6 @@ export class Camera3DeviceInfo {
 
     return new Camera3DeviceInfo(
         deviceInfo, facing, photoResolution, filteredVideoConfigs,
-        supportedFpsRanges, builtinPTZSupport);
+        supportedFpsRanges, supportPTZ);
   }
 }

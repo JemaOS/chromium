@@ -38,6 +38,9 @@ void FilterOperations::Trace(Visitor* visitor) const {
   visitor->Trace(operations_);
 }
 
+FilterOperations& FilterOperations::operator=(const FilterOperations& other) =
+    default;
+
 bool FilterOperations::operator==(const FilterOperations& o) const {
   if (operations_.size() != o.operations_.size()) {
     return false;
@@ -96,12 +99,6 @@ bool FilterOperations::HasFilterThatMovesPixels() const {
 bool FilterOperations::HasReferenceFilter() const {
   return base::Contains(operations_, FilterOperation::OperationType::kReference,
                         &FilterOperation::GetType);
-}
-
-bool FilterOperations::UsesCurrentColor() const {
-  return base::ranges::any_of(operations_, [](const auto& operation) {
-    return operation->UsesCurrentColor();
-  });
 }
 
 void FilterOperations::AddClient(SVGResourceClient& client) const {

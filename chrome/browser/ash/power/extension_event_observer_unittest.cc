@@ -12,12 +12,10 @@
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
-#include "base/values.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
 #include "chrome/common/extensions/api/gcm.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
-#include "chrome/test/base/scoped_testing_local_state.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
@@ -32,6 +30,7 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/manifest_handlers/background_info.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace ash {
@@ -54,10 +53,8 @@ class ExtensionEventObserverTest : public ChromeRenderViewHostTestHarness {
     ChromeRenderViewHostTestHarness::SetUp();
 
     chromeos::PowerManagerClient::InitializeFake();
-    testing_local_state_ = std::make_unique<ScopedTestingLocalState>(
-        TestingBrowserProcess::GetGlobal());
     profile_manager_ = std::make_unique<TestingProfileManager>(
-        TestingBrowserProcess::GetGlobal(), testing_local_state_.get());
+        TestingBrowserProcess::GetGlobal());
 
     // Must be called from ::testing::Test::SetUp.
     ASSERT_TRUE(profile_manager_->SetUp());
@@ -88,17 +85,23 @@ class ExtensionEventObserverTest : public ChromeRenderViewHostTestHarness {
     scoped_refptr<const extensions::Extension> app =
         extensions::ExtensionBuilder()
             .SetManifest(
-                base::Value::Dict()
+                extensions::DictionaryBuilder()
                     .Set("name", name)
                     .Set("version", "1.0.0")
                     .Set("manifest_version", 2)
-                    .Set("app", base::Value::Dict().Set(
-                                    "background",
-                                    base::Value::Dict().Set(
-                                        "scripts", base::Value::List().Append(
-                                                       "background.js"))))
-                    .Set("permissions",
-                         base::Value::List().Append(uses_gcm ? "gcm" : "")))
+                    .Set("app", extensions::DictionaryBuilder()
+                                    .Set("background",
+                                         extensions::DictionaryBuilder()
+                                             .Set("scripts",
+                                                  extensions::ListBuilder()
+                                                      .Append("background.js")
+                                                      .Build())
+                                             .Build())
+                                    .Build())
+                    .Set("permissions", extensions::ListBuilder()
+                                            .Append(uses_gcm ? "gcm" : "")
+                                            .Build())
+                    .Build())
             .Build();
 
     created_apps_.push_back(app);
@@ -121,7 +124,7 @@ class ExtensionEventObserverTest : public ChromeRenderViewHostTestHarness {
   std::unique_ptr<ExtensionEventObserver::TestApi> test_api_;
 
   // Owned by |profile_manager_|.
-  raw_ptr<TestingProfile> profile_;
+  raw_ptr<TestingProfile, ExperimentalAsh> profile_;
   std::unique_ptr<TestingProfileManager> profile_manager_;
 
  private:
@@ -129,12 +132,10 @@ class ExtensionEventObserverTest : public ChromeRenderViewHostTestHarness {
   ScopedCrosSettingsTestHelper cros_settings_test_helper_;
 
   // Owned by |scoped_user_manager_enabler_|.
-  raw_ptr<FakeChromeUserManager, DanglingUntriaged> fake_user_manager_;
+  raw_ptr<FakeChromeUserManager, ExperimentalAsh> fake_user_manager_;
   user_manager::ScopedUserManager scoped_user_manager_enabler_;
 
   std::vector<scoped_refptr<const extensions::Extension>> created_apps_;
-
-  std::unique_ptr<ScopedTestingLocalState> testing_local_state_;
 };
 
 // Tests that the ExtensionEventObserver reports readiness for suspend when

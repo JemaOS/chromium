@@ -4,8 +4,6 @@
 
 #include "ash/public/cpp/test/test_system_tray_client.h"
 
-#include <string_view>
-
 namespace ash {
 
 TestSystemTrayClient::TestSystemTrayClient() = default;
@@ -13,10 +11,6 @@ TestSystemTrayClient::TestSystemTrayClient() = default;
 TestSystemTrayClient::~TestSystemTrayClient() = default;
 
 void TestSystemTrayClient::ShowSettings(int64_t display_id) {}
-
-void TestSystemTrayClient::ShowAccountSettings() {
-  show_account_settings_count_++;
-}
 
 void TestSystemTrayClient::ShowBluetoothSettings() {
   show_bluetooth_settings_count_++;
@@ -28,7 +22,7 @@ void TestSystemTrayClient::ShowBluetoothSettings(const std::string& device_id) {
 }
 
 void TestSystemTrayClient::ShowBluetoothPairingDialog(
-    std::optional<std::string_view> device_address) {
+    absl::optional<base::StringPiece> device_address) {
   show_bluetooth_pairing_dialog_count_++;
 }
 
@@ -66,10 +60,6 @@ void TestSystemTrayClient::ShowAccessibilityHelp() {}
 
 void TestSystemTrayClient::ShowAccessibilitySettings() {}
 
-void TestSystemTrayClient::ShowColorCorrectionSettings() {
-  show_color_correction_settings_count_++;
-}
-
 void TestSystemTrayClient::ShowGestureEducationHelp() {}
 
 void TestSystemTrayClient::ShowPaletteHelp() {}
@@ -82,10 +72,6 @@ void TestSystemTrayClient::ShowPrivacyAndSecuritySettings() {
 
 void TestSystemTrayClient::ShowPrivacyHubSettings() {
   show_os_settings_privacy_hub_count_++;
-}
-
-void TestSystemTrayClient::ShowSpeakOnMuteDetectionSettings() {
-  show_speak_on_mute_detection_count_++;
 }
 
 void TestSystemTrayClient::ShowSmartPrivacySettings() {
@@ -104,17 +90,8 @@ void TestSystemTrayClient::ShowNetworkCreate(const std::string& type) {
 
 void TestSystemTrayClient::ShowSettingsCellularSetup(bool show_psim_flow) {}
 
-void TestSystemTrayClient::ShowMobileDataSubpage() {
-  show_mobile_data_subpage_count_++;
-}
-
 void TestSystemTrayClient::ShowSettingsSimUnlock() {
   ++show_sim_unlock_settings_count_;
-}
-
-void TestSystemTrayClient::ShowApnSubpage(const std::string& network_id) {
-  ++show_apn_subpage_count_;
-  last_apn_subpage_network_id_ = network_id;
 }
 
 void TestSystemTrayClient::ShowThirdPartyVpnCreate(
@@ -131,10 +108,6 @@ void TestSystemTrayClient::ShowArcVpnCreate(const std::string& app_id) {
 void TestSystemTrayClient::ShowNetworkSettings(const std::string& network_id) {
   show_network_settings_count_++;
   last_network_settings_network_id_ = network_id;
-}
-
-void TestSystemTrayClient::ShowHotspotSubpage() {
-  show_hotspot_subpage_count_++;
 }
 
 void TestSystemTrayClient::ShowMultiDeviceSetup() {
@@ -154,7 +127,7 @@ void TestSystemTrayClient::ShowAccessCodeCastingDialog(
 }
 
 void TestSystemTrayClient::ShowCalendarEvent(
-    const std::optional<GURL>& event_url,
+    const absl::optional<GURL>& event_url,
     const base::Time& date,
     bool& opened_pwa,
     GURL& final_event_url) {
@@ -187,21 +160,5 @@ void TestSystemTrayClient::ShowEolInfoPage() {
 }
 
 void TestSystemTrayClient::RecordEolNoticeShown() {}
-
-void TestSystemTrayClient::ShowGraphicsTabletSettings() {
-  ++show_graphics_tablet_settings_count_;
-}
-
-void TestSystemTrayClient::ShowMouseSettings() {
-  ++show_mouse_settings_count_;
-}
-
-void TestSystemTrayClient::ShowTouchpadSettings() {
-  ++show_touchpad_settings_count_;
-}
-
-void TestSystemTrayClient::ShowRemapKeysSubpage(int device_id) {
-  ++show_remap_keys_subpage_count_;
-}
 
 }  // namespace ash

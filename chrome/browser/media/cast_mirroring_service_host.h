@@ -64,7 +64,7 @@ class CastMirroringServiceHost final : public MirroringServiceHost,
              mojo::PendingRemote<mojom::CastMessageChannel> outbound_channel,
              mojo::PendingReceiver<mojom::CastMessageChannel> inbound_channel,
              const std::string& sink_name) override;
-  std::optional<int> GetTabSourceId() const override;
+  absl::optional<int> GetTabSourceId() const override;
 
   void GetMirroringStats(
       base::OnceCallback<void(const base::Value)> json_stats_cb) override;
@@ -88,9 +88,6 @@ class CastMirroringServiceHost final : public MirroringServiceHost,
   void BindGpu(mojo::PendingReceiver<viz::mojom::Gpu> receiver) override;
   void GetVideoCaptureHost(
       mojo::PendingReceiver<media::mojom::VideoCaptureHost> receiver) override;
-  void GetVideoEncoderMetricsProvider(
-      mojo::PendingReceiver<media::mojom::VideoEncoderMetricsProvider> receiver)
-      override;
   void GetNetworkContext(
       mojo::PendingReceiver<network::mojom::NetworkContext> receiver) override;
   void CreateAudioStream(
@@ -179,12 +176,14 @@ class CastMirroringServiceHost final : public MirroringServiceHost,
   // of |media_stream_ui_|.
   std::unique_ptr<content::MediaStreamUI> media_stream_ui_;
 
+  std::unique_ptr<OffscreenTab> offscreen_tab_;
+
   const bool tab_switching_ui_enabled_;
 
   // Represents the number of times a tab was switched during an active
   // mirroring session using tab switcher UI bar. Mainly used for metrics
   // collecting.
-  std::optional<int> tab_switching_count_;
+  absl::optional<int> tab_switching_count_;
 
   std::u16string sink_name_;
 
@@ -195,12 +194,6 @@ class CastMirroringServiceHost final : public MirroringServiceHost,
       video_capture_host_;
   base::UnguessableToken ignored_token_ = base::UnguessableToken::Create();
   const media::VideoCaptureParams ignored_params_;
-
-  // Notes on order: `offscreen_tab_` needs to be defined after
-  // `video_capture_host_`. This guarantees that during class destruction
-  // `video_capture_host_` gets destroyed before the captured WebContents (i.e
-  // `offscreen_tab_`).
-  std::unique_ptr<OffscreenTab> offscreen_tab_;
 
   // Used for calls supplied to `media_stream_ui_`, mainly to handle callbacks
   // for TabSharingUIViews. Invalidated every time a new UI is created.

@@ -16,13 +16,9 @@
 namespace ash {
 namespace quick_pair {
 
-FakeFastPairRepository::FakeFastPairRepository() {
-  SetInstanceForTesting(this);
-}
+FakeFastPairRepository::FakeFastPairRepository() : FastPairRepository() {}
 
-FakeFastPairRepository::~FakeFastPairRepository() {
-  SetInstanceForTesting(nullptr);
-}
+FakeFastPairRepository::~FakeFastPairRepository() = default;
 
 void FakeFastPairRepository::SetFakeMetadata(const std::string& hex_model_id,
                                              nearby::fastpair::Device metadata,
@@ -40,7 +36,7 @@ void FakeFastPairRepository::ClearFakeMetadata(
 }
 
 void FakeFastPairRepository::SetCheckAccountKeysResult(
-    std::optional<PairingMetadata> result) {
+    absl::optional<PairingMetadata> result) {
   check_account_keys_result_ = result;
 }
 
@@ -118,7 +114,9 @@ void FakeFastPairRepository::DeleteAssociatedDeviceByAccountKey(
     DeleteAssociatedDeviceByAccountKeyCallback callback) {
   for (auto it = devices_.begin(); it != devices_.end(); it++) {
     if (it->has_account_key() &&
-        base::HexEncode(it->account_key()) == base::HexEncode(account_key)) {
+        base::HexEncode(std::vector<uint8_t>(it->account_key().begin(),
+                                             it->account_key().end())) ==
+            base::HexEncode(account_key)) {
       devices_.erase(it);
       std::move(callback).Run(/*success=*/true);
       return;
@@ -147,7 +145,7 @@ void FakeFastPairRepository::FetchDeviceImages(scoped_refptr<Device> device) {
 }
 
 // Unimplemented.
-std::optional<std::string>
+absl::optional<std::string>
 FakeFastPairRepository::GetDeviceDisplayNameFromCache(
     std::vector<uint8_t> account_key) {
   return nullptr;
@@ -169,9 +167,9 @@ bool FakeFastPairRepository::EvictDeviceImages(const std::string& mac_address) {
 }
 
 // Unimplemented.
-std::optional<bluetooth_config::DeviceImageInfo>
+absl::optional<bluetooth_config::DeviceImageInfo>
 FakeFastPairRepository::GetImagesForDevice(const std::string& mac_address) {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void FakeFastPairRepository::SetSavedDevices(

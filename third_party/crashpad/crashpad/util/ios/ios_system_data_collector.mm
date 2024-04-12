@@ -21,13 +21,11 @@
 #include <TargetConditionals.h>
 #import <UIKit/UIKit.h>
 
-#include "base/apple/mach_logging.h"
-#include "base/notreached.h"
+#include "base/mac/mach_logging.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/sys_string_conversions.h"
 #include "build/build_config.h"
-#include "util/misc/clock.h"
 
 namespace {
 
@@ -88,8 +86,7 @@ IOSSystemDataCollector::IOSSystemDataCollector()
       standard_offset_seconds_(0),
       daylight_offset_seconds_(0),
       standard_name_(),
-      daylight_name_(),
-      initialization_time_ns_(ClockMonotonicNanoseconds()) {
+      daylight_name_() {
   NSOperatingSystemVersion version =
       [[NSProcessInfo processInfo] operatingSystemVersion];
   major_version_ = base::saturated_cast<int>(version.majorVersion);
@@ -100,14 +97,7 @@ IOSSystemDataCollector::IOSSystemDataCollector()
   build_ = ReadStringSysctlByName("kern.osversion");
   bundle_identifier_ =
       base::SysNSStringToUTF8([[NSBundle mainBundle] bundleIdentifier]);
-// If CRASHPAD_IS_IOS_APP_EXTENSION is defined, then the code is compiled with
-// -fapplication-extension and can only be used in an app extension. Otherwise
-// check at runtime whether the code is executing in an app extension or not.
-#if defined(CRASHPAD_IS_IOS_APP_EXTENSION)
-  is_extension_ = true;
-#else
   is_extension_ = [[NSBundle mainBundle].bundlePath hasSuffix:@"appex"];
-#endif
 
 #if defined(ARCH_CPU_X86_64)
   cpu_vendor_ = ReadStringSysctlByName("machdep.cpu.vendor");
@@ -180,7 +170,6 @@ void IOSSystemDataCollector::InstallHandlers() {
       (__bridge CFStringRef)UIDeviceOrientationDidChangeNotification, this);
   OrientationDidChangeNotification();
 
-#if !defined(CRASHPAD_IS_IOS_APP_EXTENSION)
   // Foreground/Background. Extensions shouldn't use UIApplication*.
   if (!is_extension_) {
     AddObserver<
@@ -194,7 +183,6 @@ void IOSSystemDataCollector::InstallHandlers() {
         this);
     ApplicationDidChangeActiveNotification();
   }
-#endif
 }
 
 void IOSSystemDataCollector::SystemTimeZoneDidChangeNotification() {
@@ -238,9 +226,6 @@ void IOSSystemDataCollector::OrientationDidChangeNotification() {
 }
 
 void IOSSystemDataCollector::ApplicationDidChangeActiveNotification() {
-#if defined(CRASHPAD_IS_IOS_APP_EXTENSION)
-  NOTREACHED_NORETURN();
-#else
   dispatch_assert_queue_debug(dispatch_get_main_queue());
   bool old_active = active_;
   active_ = [UIApplication sharedApplication].applicationState ==
@@ -248,7 +233,6 @@ void IOSSystemDataCollector::ApplicationDidChangeActiveNotification() {
   if (active_ != old_active && active_application_callback_) {
     active_application_callback_(active_);
   }
-#endif
 }
 
 }  // namespace internal

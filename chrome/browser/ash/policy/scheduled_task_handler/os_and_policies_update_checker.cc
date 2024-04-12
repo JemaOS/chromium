@@ -12,7 +12,6 @@
 #include "chromeos/ash/components/network/network_state_handler.h"
 #include "components/device_event_log/device_event_log.h"
 #include "components/policy/core/common/policy_service.h"
-#include "components/policy/core/common/policy_types.h"
 
 namespace policy {
 
@@ -217,8 +216,7 @@ void OsAndPoliciesUpdateChecker::OnUpdateCheckStarted(
 void OsAndPoliciesUpdateChecker::RefreshPolicies(bool update_check_result) {
   g_browser_process->policy_service()->RefreshPolicies(
       base::BindOnce(&OsAndPoliciesUpdateChecker::OnRefreshPoliciesCompletion,
-                     weak_factory_.GetWeakPtr(), update_check_result),
-      PolicyFetchReason::kScheduled);
+                     weak_factory_.GetWeakPtr(), update_check_result));
 }
 
 void OsAndPoliciesUpdateChecker::OnRefreshPoliciesCompletion(

@@ -59,9 +59,8 @@ void DesktopNativeCursorManagerWin::RegisterCursorRegkeyObserver(
 
 void DesktopNativeCursorManagerWin::InitCursorSizeObserver(
     wm::NativeCursorManagerDelegate* delegate) {
-  // Validity of this key is checked at time-of-use.
-  (void)hkcu_cursor_regkey_.Open(HKEY_CURRENT_USER, L"Control Panel\\Cursors",
-                                 KEY_READ | KEY_NOTIFY);
+  hkcu_cursor_regkey_.Open(HKEY_CURRENT_USER, L"Control Panel\\Cursors",
+                           KEY_READ | KEY_NOTIFY);
   system_cursor_size_ = gfx::Size(kDefaultCursorSize, kDefaultCursorSize);
   RegisterCursorRegkeyObserver(delegate);
   SetSystemCursorSize(delegate);

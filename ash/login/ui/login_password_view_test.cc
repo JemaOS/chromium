@@ -4,9 +4,6 @@
 
 #include "ash/login/ui/login_password_view.h"
 
-#include <memory>
-
-#include "ash/login/ui/login_arrow_navigation_delegate.h"
 #include "ash/login/ui/login_test_base.h"
 #include "ash/public/cpp/login_types.h"
 #include "ash/shell.h"
@@ -43,9 +40,6 @@ class LoginPasswordViewTest : public LoginTestBase {
     LoginTestBase::SetUp();
 
     view_ = new LoginPasswordView();
-    arrow_navigation_delegate_ =
-        std::make_unique<LoginScreenArrowNavigationDelegate>();
-    view_->SetLoginArrowNavigationDelegate(arrow_navigation_delegate_.get());
     // Focusable views are expected to have accessible names in order to pass
     // the accessibility paint checks.
     view_->SetAccessibleName(u"Password");
@@ -53,6 +47,8 @@ class LoginPasswordViewTest : public LoginTestBase {
         base::BindRepeating(&LoginPasswordViewTest::OnPasswordSubmit,
                             base::Unretained(this)),
         base::BindRepeating(&LoginPasswordViewTest::OnPasswordTextChanged,
+                            base::Unretained(this)),
+        base::BindRepeating(&LoginPasswordViewTest::OnEasyUnlockIconHovered,
                             base::Unretained(this)));
 
     SetWidget(CreateWidgetWithContent(view_));
@@ -64,12 +60,13 @@ class LoginPasswordViewTest : public LoginTestBase {
   void OnPasswordTextChanged(bool is_empty) {
     is_password_field_empty_ = is_empty;
   }
+  void OnEasyUnlockIconHovered() { easy_unlock_icon_hovered_called_ = true; }
 
-  raw_ptr<LoginPasswordView, DanglingUntriaged> view_ = nullptr;
-  std::optional<std::u16string> password_;
+  raw_ptr<LoginPasswordView, ExperimentalAsh> view_ = nullptr;
+  absl::optional<std::u16string> password_;
   bool is_password_field_empty_ = true;
-  std::unique_ptr<LoginScreenArrowNavigationDelegate>
-      arrow_navigation_delegate_;
+  bool easy_unlock_icon_hovered_called_ = false;
+  bool easy_unlock_icon_tapped_called_ = false;
 };
 
 }  // namespace

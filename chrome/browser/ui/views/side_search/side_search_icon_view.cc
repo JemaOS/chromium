@@ -44,7 +44,7 @@ SideSearchIconView::SideSearchIconView(
               ->RegisterIconChangedSubscription(
                   base::BindRepeating(&SideSearchIconView::UpdateIconImage,
                                       base::Unretained(this)))) {
-  image_container_view()->SetFlipCanvasOnPaintForRTLUI(false);
+  image()->SetFlipCanvasOnPaintForRTLUI(false);
   SetProperty(views::kElementIdentifierKey, kSideSearchButtonElementId);
   SetVisible(false);
   SetLabel(l10n_util::GetStringUTF16(IDS_SIDE_SEARCH_ENTRYPOINT_LABEL));
@@ -52,7 +52,7 @@ SideSearchIconView::SideSearchIconView(
   SetPaintLabelOverSolidBackground(true);
   browser_->tab_strip_model()->AddObserver(this);
   SetAccessibilityProperties(
-      /*role*/ std::nullopt,
+      /*role*/ absl::nullopt,
       l10n_util::GetStringUTF16(
           IDS_TOOLTIP_SIDE_SEARCH_TOOLBAR_BUTTON_NOT_ACTIVATED));
 }
@@ -105,7 +105,7 @@ void SideSearchIconView::UpdateImpl() {
   const bool was_visible = GetVisible();
   const bool should_show =
       tab_contents_helper->CanShowSidePanelForCommittedNavigation() &&
-      !side_search::IsSideSearchToggleOpen(browser_);
+      !side_search::IsSideSearchToggleOpen(browser_view);
   SetVisible(should_show);
 
   if (should_show && !was_visible) {
@@ -118,9 +118,7 @@ void SideSearchIconView::UpdateImpl() {
 
   if (!should_show) {
     HidePageActionLabel();
-    browser_view->CloseFeaturePromo(
-        feature_engagement::kIPHSideSearchFeature,
-        user_education::EndFeaturePromoReason::kAbortPromo);
+    browser_view->CloseFeaturePromo(feature_engagement::kIPHSideSearchFeature);
   }
 }
 
@@ -132,16 +130,15 @@ void SideSearchIconView::OnExecuting(PageActionIconView::ExecuteSource source) {
   // Reset the slide animation if in progress.
   HidePageActionLabel();
 
-  SidePanelUI* side_panel_ui = SidePanelUI::GetSidePanelUIForBrowser(browser_);
+  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser_);
 
   // TODO(crbug.com/1339789): BrowserView should never be null here, investigate
   // why GetBrowserViewForBrowser() is returning null in certain circumstances
   // and remove this check.
-  if (!side_panel_ui) {
+  if (!browser_view)
     return;
-  }
 
-  side_panel_ui->Show(
+  browser_view->side_panel_coordinator()->Show(
       SidePanelEntry::Id::kSideSearch,
       SidePanelUtil::SidePanelOpenTrigger::kSideSearchPageAction);
   auto* tracker = feature_engagement::TrackerFactory::GetForBrowserContext(
@@ -200,7 +197,7 @@ bool SideSearchIconView::MaybeShowPageActionLabel() {
   }
 
   should_extend_label_shown_duration_ = true;
-  AnimateIn(std::nullopt);
+  AnimateIn(absl::nullopt);
 
   // Note that `Dismiss()` in this case does not dismiss the UI. It's telling
   // the FE backend that the promo is done so that other promos can run. The
@@ -216,5 +213,5 @@ void SideSearchIconView::HidePageActionLabel() {
   ResetSlideAnimation(false);
 }
 
-BEGIN_METADATA(SideSearchIconView)
+BEGIN_METADATA(SideSearchIconView, PageActionIconView)
 END_METADATA

@@ -23,6 +23,17 @@ E2ETestBase = class extends AccessibilityTestBase {
   }
 
   /** @override */
+  async setUpDeferred() {
+    await super.setUpDeferred();
+
+    // Alphabetical by file path.
+    await importModule('AsyncUtil', '/common/async_util.js');
+    await importModule('EventGenerator', '/common/event_generator.js');
+    await importModule('KeyCode', '/common/key_code.js');
+    await importModule('constants', '/common/constants.js');
+  }
+
+  /** @override */
   testGenCppIncludes() {
     GEN(`
   #include "ash/accessibility/accessibility_delegate.h"
@@ -32,7 +43,6 @@ E2ETestBase = class extends AccessibilityTestBase {
   #include "base/containers/flat_set.h"
   #include "chrome/browser/ash/accessibility/accessibility_manager.h"
   #include "chrome/browser/ash/crosapi/browser_manager.h"
-  #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
   #include "chrome/browser/speech/extension_api/tts_engine_extension_api.h"
   #include "chrome/browser/ui/browser.h"
   #include "chrome/common/extensions/extension_constants.h"
@@ -51,10 +61,6 @@ E2ETestBase = class extends AccessibilityTestBase {
       crosapi::BrowserManager::Get()->NewTab();
       ASSERT_TRUE(crosapi::BrowserManager::Get()->IsRunning());
     }
-    // For ChromeVoxBackgroundTest.NewWindowWebSpeech:
-    // chrome.runtime.openOptionsPage opens a SWA when Lacros is enabled.
-    ash::SystemWebAppManager::GetForTest(GetProfile())
-      ->InstallSystemAppsForTesting();
       `);
   }
 
@@ -77,7 +83,7 @@ E2ETestBase = class extends AccessibilityTestBase {
     WaitForExtension(extension_misc::${extensionIdName}, std::move(load_cb));
 
     extensions::ExtensionHost* host =
-        extensions::ProcessManager::Get(GetProfile())
+        extensions::ProcessManager::Get(browser()->profile())
             ->GetBackgroundHostForExtension(
                 extension_misc::${extensionIdName});
 
@@ -265,17 +271,9 @@ E2ETestBase = class extends AccessibilityTestBase {
           // getting the default focus (the address bar), setting the value to
           // the url and then performing do default on the auto completion node.
           const focus = await AsyncUtil.getFocus();
-          // It's possible focus is elsewhere; ensure it lands on the
+          // It's possible focus is elsewhere; wait until it lands on the
           // address bar text field.
-          if (!focus || focus.role !== chrome.automation.RoleType.TEXT_FIELD) {
-            // Focus the address bar.
-            const textField = this.desktop_.find({
-              role: 'textField',
-              attributes: {className: 'OmniboxViewViews'},
-            });
-            if (textField) {
-              textField.focus();
-            }
+          if (focus.role !== chrome.automation.RoleType.TEXT_FIELD) {
             return;
           }
 
@@ -313,34 +311,11 @@ E2ETestBase = class extends AccessibilityTestBase {
         const createParams = {active: true, url};
         chrome.tabs.create(createParams);
       } else {
-        chrome.automation.getFocus(f => listener({target: f}));
+        chrome.automation.getFocus(f => {
+          listener({target: f});
+        });
       }
     }));
-  }
-
-  /**
-   * Gets the desktop from the automation API and launches new tabs with
-   * the given url, returns when load complete has fired on each document.
-   * @param {Array<string>} urls HTML snippets to open in the URLs.
-   * @return {!Promise}
-   */
-  async runWithLoadedTabs(urls) {
-    console.assert(urls.length !== 0);
-    const hasLacrosChromePath = await new Promise(
-        r => chrome.commandLinePrivate.hasSwitch('lacros-chrome-path', r));
-    if (!hasLacrosChromePath) {
-      for (const url of urls) {
-        await this.runWithLoadedTree(url);
-      }
-      return;
-    }
-    await this.runWithLoadedTree(urls[0]);
-    for (let i = 1; i < urls.length; i++) {
-      // Open a new tab with ctrl+t.
-      EventGenerator.sendKeyPress(KeyCode.T, {ctrl: true});
-      // Open the URL in the new tab.
-      await this.runWithLoadedTree(urls[i]);
-    }
   }
 
   /**
@@ -392,40 +367,6 @@ E2ETestBase = class extends AccessibilityTestBase {
     assertNullOrUndefined(
         treeWalker.next().node, 'Found more than one ' + nodeDescription + '.');
     return node;
-  }
-
-  /**
-   * Async function to get a preference value from Settings.
-   * @param {string} name
-   * @return {!Promise<*>}
-   */
-  async getPref(name) {
-    return new Promise(resolve => {
-      chrome.settingsPrivate.getPref(name, ret => {
-        resolve(ret);
-      });
-    });
-  }
-
-  /**
-   * Async function to set a preference value in Settings.
-   * @param {string} name
-   * @return {!Promise}
-   */
-  async setPref(name, value) {
-    return new Promise(resolve => {
-      chrome.settingsPrivate.setPref(name, value, undefined, async () => {
-        // Wait for changes to fully propagate.
-        const result = await (this.getPref(name));
-        assertEquals(result.key, name);
-        if (typeof (value) === 'object') {
-          assertObjectEquals(value, result.value);
-        } else {
-          assertEquals(value, result.value);
-        }
-        resolve();
-      });
-    });
   }
 };
 

@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/location.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
 #include "base/task/sequence_manager/sequence_manager.h"
@@ -34,7 +33,7 @@ class TestObject {
   ~TestObject() { ++(*counter_); }
 
  private:
-  raw_ptr<int> counter_;
+  int* counter_;
 };
 
 }  // namespace
@@ -82,14 +81,16 @@ class BlinkSchedulerSingleThreadTaskRunnerTest : public testing::Test {
     if (!test_task_queue_) {
       return;
     }
-    test_task_queue_.reset();
+    test_task_queue_->ShutdownTaskQueue();
+    test_task_queue_ = nullptr;
   }
 
   void ShutDownBackupTaskQueue() {
     if (!backup_task_queue_) {
       return;
     }
-    backup_task_queue_.reset();
+    backup_task_queue_->ShutdownTaskQueue();
+    backup_task_queue_ = nullptr;
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -98,10 +99,10 @@ class BlinkSchedulerSingleThreadTaskRunnerTest : public testing::Test {
   std::unique_ptr<base::sequence_manager::SequenceManagerForTest>
       sequence_manager_;
 
-  base::sequence_manager::TaskQueue::Handle backup_task_queue_;
+  scoped_refptr<base::sequence_manager::TaskQueue> backup_task_queue_;
   scoped_refptr<base::SingleThreadTaskRunner> backup_task_runner_;
 
-  base::sequence_manager::TaskQueue::Handle test_task_queue_;
+  scoped_refptr<base::sequence_manager::TaskQueue> test_task_queue_;
   scoped_refptr<base::SingleThreadTaskRunner> test_task_runner_;
 };
 

@@ -1,16 +1,15 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 import 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import '//resources/polymer/v3_0/paper-spinner/paper-spinner-lite.js';
 
-import type {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {afterNextRender, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {LensFormElement} from './lens_form.js';
-import {LensErrorType, LensSubmitType} from './lens_form.js';
+import {LensErrorType, LensFormElement, LensSubmitType} from './lens_form.js';
 import {getTemplate} from './lens_upload_dialog.html.js';
 import {WindowProxy} from './window_proxy.js';
 
@@ -432,17 +431,10 @@ export class LensUploadDialogElement extends LensUploadDialogElementBase {
   }
 
   private onFocusOut_(event: FocusEvent) {
-    // If the focus event is occurring during a drag into the upload dialog,
-    // do nothing. See b/284201957#6 for scenario in which this is necessary.
-    if (this.dragCount === 1) {
-      return;
-    }
-
     // Focus ensures that the file picker pop-up does not close dialog.
     const outsideDialog = document.hasFocus() &&
         (!event.relatedTarget ||
          !this.$.dialog.contains(event.relatedTarget as Node));
-
     if (outsideDialog) {
       this.closeDialog();
     }

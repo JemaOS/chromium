@@ -9,33 +9,23 @@
  */
 
 import '/strings.m.js';
-import 'chrome://resources/ash/common/personalization/common.css.js';
-import 'chrome://resources/ash/common/personalization/cros_button_style.css.js';
-import 'chrome://resources/ash/common/cr_elements/cr_icon_button/cr_icon_button.js';
-import 'chrome://resources/ash/common/cr_elements/cr_icons.css.js';
-import 'chrome://resources/ash/common/cr_elements/icons.html.js';
-import 'chrome://resources/polymer/v3_0/iron-a11y-keys/iron-a11y-keys.js';
+import 'chrome://resources/cr_elements/cr_icons.css.js';
+import 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import 'chrome://resources/cr_elements/icons.html.js';
 import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
+import 'chrome://resources/polymer/v3_0/iron-a11y-keys/iron-a11y-keys.js';
 import 'chrome://resources/polymer/v3_0/iron-selector/iron-selector.js';
+import '../css/common.css.js';
+import '../css/cros_button_style.css.js';
 
-import {assert} from 'chrome://resources/ash/common/assert.js';
-import {AnchorAlignment, CrActionMenuElement} from 'chrome://resources/ash/common/cr_elements/cr_action_menu/cr_action_menu.js';
-import {getSeaPenTemplates, SeaPenTemplate} from 'chrome://resources/ash/common/sea_pen/constants.js';
-import {isSeaPenEnabled} from 'chrome://resources/ash/common/sea_pen/load_time_booleans.js';
-import {setThumbnailResponseStatusCodeAction} from 'chrome://resources/ash/common/sea_pen/sea_pen_actions.js';
-import {SeaPenTemplateId} from 'chrome://resources/ash/common/sea_pen/sea_pen_generated.mojom-webui.js';
-import {getSeaPenStore} from 'chrome://resources/ash/common/sea_pen/sea_pen_store.js';
-import {isNonEmptyArray} from 'chrome://resources/ash/common/sea_pen/sea_pen_utils.js';
-import {getTransitionEnabled, setTransitionsEnabled} from 'chrome://resources/ash/common/sea_pen/transition.js';
 import {IronA11yKeysElement} from 'chrome://resources/polymer/v3_0/iron-a11y-keys/iron-a11y-keys.js';
 import {IronSelectorElement} from 'chrome://resources/polymer/v3_0/iron-selector/iron-selector.js';
 
-import {GooglePhotosAlbum, TopicSource, WallpaperCollection} from '../personalization_app.mojom-webui.js';
-
+import {GooglePhotosAlbum, TopicSource, WallpaperCollection} from './../personalization_app.mojom-webui.js';
 import {getTemplate} from './personalization_breadcrumb_element.html.js';
-import {isPathValid, Paths, PersonalizationRouterElement} from './personalization_router_element.js';
+import {isPathValid, Paths, PersonalizationRouter} from './personalization_router_element.js';
 import {WithPersonalizationStore} from './personalization_store.js';
-import {inBetween} from './utils.js';
+import {inBetween, isNonEmptyArray} from './utils.js';
 import {findAlbumById} from './wallpaper/utils.js';
 
 /** Event interface for dom-repeat. */
@@ -54,7 +44,7 @@ export function stringToTopicSource(x: string): TopicSource|null {
   return null;
 }
 
-export interface PersonalizationBreadcrumbElement {
+export interface PersonalizationBreadcrumb {
   $: {
     container: HTMLElement,
     keys: IronA11yKeysElement,
@@ -62,7 +52,7 @@ export interface PersonalizationBreadcrumbElement {
   };
 }
 
-export class PersonalizationBreadcrumbElement extends WithPersonalizationStore {
+export class PersonalizationBreadcrumb extends WithPersonalizationStore {
   static get is() {
     return 'personalization-breadcrumb';
   }
@@ -86,9 +76,6 @@ export class PersonalizationBreadcrumbElement extends WithPersonalizationStore {
       /** The topic source of the selected album(s) for screensaver. */
       topicSource: String,
 
-      /** The current SeaPen template id to display. */
-      seaPenTemplateId: String,
-
       /**
        * The current path of the page.
        */
@@ -99,8 +86,7 @@ export class PersonalizationBreadcrumbElement extends WithPersonalizationStore {
       breadcrumbs_: {
         type: Array,
         computed:
-            'computeBreadcrumbs_(path, collections_, collectionId, albums_, albumsShared_, googlePhotosAlbumId, seaPenTemplates_, seaPenTemplateId, topicSource)',
-        observer: 'onBreadcrumbsChanged_',
+            'computeBreadcrumbs_(path, collections_, collectionId, albums_, albumsShared_, googlePhotosAlbumId, topicSource)',
       },
 
       collections_: {
@@ -113,12 +99,6 @@ export class PersonalizationBreadcrumbElement extends WithPersonalizationStore {
       /** The list of shared Google Photos albums. */
       albumsShared_: Array,
 
-      /** The list of SeaPen templates. */
-      seaPenTemplates_: {
-        type: Array,
-        computed: 'computeSeaPenTemplates_()',
-      },
-
       /** The breadcrumb being highlighted by keyboard navigation. */
       selectedBreadcrumb_: {
         type: Object,
@@ -130,13 +110,11 @@ export class PersonalizationBreadcrumbElement extends WithPersonalizationStore {
   collectionId: string;
   googlePhotosAlbumId: string;
   topicSource: string;
-  seaPenTemplateId: string;
   path: string;
   private breadcrumbs_: string[];
   private collections_: WallpaperCollection[]|null;
   private albums_: GooglePhotosAlbum[]|null;
   private albumsShared_: GooglePhotosAlbum[]|null;
-  private seaPenTemplates_: SeaPenTemplate[]|null;
   private selectedBreadcrumb_: HTMLElement;
 
   override ready() {
@@ -151,23 +129,6 @@ export class PersonalizationBreadcrumbElement extends WithPersonalizationStore {
     this.watch(
         'albumsShared_', state => state.wallpaper.googlePhotos.albumsShared);
     this.updateFromStore();
-  }
-
-  private onBreadcrumbsChanged_() {
-    requestAnimationFrame(() => {
-      // Note that only 1 breadcrumb is focusable at any given time. When
-      // breadcrumbs change, the previously selected breadcrumb might not be in
-      // DOM anymore. To allow keyboard users to focus the breadcrumbs again, we
-      // add the first breadcrumb back to tab order.
-      const allBreadcrumbs = this.$.selector.items as HTMLElement[];
-      const hasFocusableBreadcrumb =
-          allBreadcrumbs.some(el => el.getAttribute('tabindex') === '0');
-
-      if (!hasFocusableBreadcrumb && allBreadcrumbs.length > 0) {
-        this.$.selector.selectIndex(0);
-        allBreadcrumbs[0].setAttribute('tabindex', '0');
-      }
-    });
   }
 
   /** Handle keyboard navigation. */
@@ -243,21 +204,6 @@ export class PersonalizationBreadcrumbElement extends WithPersonalizationStore {
         breadcrumbs.push(this.i18n('wallpaperLabel'));
         breadcrumbs.push(this.i18n('myImagesLabel'));
         break;
-      case Paths.SEA_PEN_COLLECTION:
-        breadcrumbs.push(this.i18n('wallpaperLabel'));
-        breadcrumbs.push(this.i18n('seaPenLabel'));
-        break;
-      case Paths.SEA_PEN_RESULTS:
-        breadcrumbs.push(this.i18n('wallpaperLabel'));
-        breadcrumbs.push(this.i18n('seaPenLabel'));
-        if (this.seaPenTemplateId && isNonEmptyArray(this.seaPenTemplates_)) {
-          const template = this.seaPenTemplates_.find(
-              template => template.id.toString() === this.seaPenTemplateId);
-          if (template) {
-            breadcrumbs.push(template.title);
-          }
-        }
-        break;
       case Paths.USER:
         breadcrumbs.push(this.i18n('avatarLabel'));
         break;
@@ -281,10 +227,6 @@ export class PersonalizationBreadcrumbElement extends WithPersonalizationStore {
     return breadcrumbs;
   }
 
-  private computeSeaPenTemplates_(): SeaPenTemplate[] {
-    return getSeaPenTemplates();
-  }
-
   private getBackButtonAriaLabel_(): string {
     return this.i18n('back', this.i18n('wallpaperLabel'));
   }
@@ -305,93 +247,14 @@ export class PersonalizationBreadcrumbElement extends WithPersonalizationStore {
         // with new path.
         const breadcrumb = e.target as HTMLElement;
         breadcrumb.blur();
-        this.goBackToRoute_(newPath as Paths);
+        PersonalizationRouter.instance().goToRoute(newPath as Paths);
       }
     }
-    // If the user clicks the last breadcrumb and the sea pen dropdown is
-    // present, open the dropdown.
-    const targetElement = e.currentTarget as HTMLElement;
-    if (index === this.breadcrumbs_.length - 1 &&
-        !!targetElement.querySelector('#seaPenDropdown')) {
-      this.onClickMenuIcon_(e);
-    }
-  }
-
-  private onClickMenuIcon_(e: Event) {
-    const targetElement = e.currentTarget as HTMLElement;
-    const rect = targetElement.getBoundingClientRect();
-    // Anchors the menu at the top-left corner of the chip while also
-    // accounting for the scrolling of the page.
-    const config = {
-      anchorAlignmentX: AnchorAlignment.AFTER_START,
-      anchorAlignmentY: AnchorAlignment.AFTER_START,
-      minX: 0,
-      minY: 0,
-      maxX: window.innerWidth,
-      maxY: window.innerHeight,
-      top: rect.top - document.scrollingElement!.scrollTop,
-      left: rect.left - document.scrollingElement!.scrollLeft,
-    };
-    const menuElement =
-        this.shadowRoot!.querySelector<CrActionMenuElement>('cr-action-menu');
-    menuElement!.shadowRoot!.getElementById('dialog')!.style.position = 'fixed';
-    menuElement!.showAt(targetElement, config);
-  }
-
-  private onClickMenuItem_(e: Event) {
-    const targetElement = e.currentTarget as HTMLElement;
-    const templateId = targetElement.dataset['id'];
-    assert(!!templateId, 'templateId is required');
-
-    // resets the Sea Pen thumbnail response status code when switching
-    // template; otherwise, error state will remain in sea-pen-images element if
-    // it happens in the last query search.
-    getSeaPenStore().dispatch(setThumbnailResponseStatusCodeAction(null));
-    const transitionsEnabled = getTransitionEnabled();
-    // disables the page transition when switching templates from the drop down.
-    // Then resets it back to the original value after routing is done to not
-    // interfere with other page transitions.
-    setTransitionsEnabled(false);
-    PersonalizationRouterElement.instance()
-        .goToRoute(Paths.SEA_PEN_RESULTS, {seaPenTemplateId: templateId})
-        ?.finally(() => {
-          setTransitionsEnabled(transitionsEnabled);
-        });
-    this.closeOptionMenu_();
-  }
-
-  private closeOptionMenu_() {
-    const menuElement = this.shadowRoot!.querySelector('cr-action-menu');
-    menuElement!.close();
-  }
-
-  private shouldShowSeaPenDropdown_(path: string, breadcrumb: string): boolean {
-    if (!isSeaPenEnabled()) {
-      return false;
-    }
-    const template =
-        this.seaPenTemplates_?.find(template => template.title === breadcrumb);
-
-    return path === Paths.SEA_PEN_RESULTS && !!template;
-  }
-
-  private getAriaSelected_(
-      templateId: SeaPenTemplateId, seaPenTemplateId: string): 'true'|'false' {
-    return templateId.toString() === seaPenTemplateId ? 'true' : 'false';
   }
 
   private onHomeIconClick_() {
-    this.goBackToRoute_(Paths.ROOT);
-  }
-
-  // Helper method to apply back transition style when navigating to path.
-  private goBackToRoute_(path: Paths) {
-    document.documentElement.classList.add('back-transition');
-    PersonalizationRouterElement.instance().goToRoute(path)?.finally(() => {
-      document.documentElement.classList.remove('back-transition');
-    });
+    PersonalizationRouter.instance().goToRoute(Paths.ROOT);
   }
 }
 
-customElements.define(
-    PersonalizationBreadcrumbElement.is, PersonalizationBreadcrumbElement);
+customElements.define(PersonalizationBreadcrumb.is, PersonalizationBreadcrumb);

@@ -7,7 +7,7 @@ import '../cr_icons.css.js';
 import '../cr_shared_vars.css.js';
 import '//resources/cr_elements/cr_auto_img/cr_auto_img.js';
 
-import {assert} from '//resources/js/assert.js';
+import {assert} from '//resources/js/assert_ts.js';
 import {FocusOutlineManager} from '//resources/js/focus_outline_manager.js';
 import {getFaviconForPageURL} from '//resources/js/icon.js';
 import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
@@ -24,10 +24,7 @@ export enum CrUrlListItemSize {
 
 export interface CrUrlListItemElement {
   $: {
-    anchor: HTMLElement,
     badges: HTMLSlotElement,
-    button: HTMLElement,
-    content: HTMLSlotElement,
     description: HTMLSlotElement,
   };
 }
@@ -45,12 +42,8 @@ export class CrUrlListItemElement extends CrUrlListItemElementBase {
 
   static get properties() {
     return {
-      alwaysShowSuffix: {
-        type: Boolean,
-        reflectToAttribute: true,
-      },
-      itemAriaLabel: String,
-      itemAriaDescription: String,
+      buttonAriaLabel: String,
+      buttonAriaDescription: String,
       count: Number,
       description: String,
       url: String,
@@ -69,17 +62,6 @@ export class CrUrlListItemElement extends CrUrlListItemElementBase {
         type: Boolean,
         computed: 'computeHasDescriptions_(hasBadges_, description)',
         reflectToAttribute: true,
-      },
-
-      hasSlottedContent_: {
-        type: Boolean,
-        reflectToAttribute: true,
-      },
-
-      reverseElideDescription: {
-        type: Boolean,
-        reflectToAttribute: true,
-        value: false,
       },
 
       isFolder_: {
@@ -112,43 +94,21 @@ export class CrUrlListItemElement extends CrUrlListItemElementBase {
         type: Boolean,
         value: false,
       },
-
-      descriptionMeta: {
-        type: String,
-        value: '',
-      },
-
-      /**
-       * Flag that determines if the element should use an anchor tag or a
-       * button element as its focusable item. An anchor provides the native
-       * context menu and browser interactions for links, while a button
-       * provides its own unique functionality, such as pressing space to
-       * activate.
-       */
-      asAnchor: {
-        type: Boolean,
-        value: false,
-      },
     };
   }
 
-  alwaysShowSuffix: boolean;
-  asAnchor: boolean;
-  itemAriaLabel?: string;
-  itemAriaDescription?: string;
+  buttonAriaLabel?: string;
+  buttonAriaDescription?: string;
   count?: number;
   description?: string;
-  reverseElideDescription: boolean;
   private hasBadges_: boolean;
   private hasDescription_: boolean;
-  private hasSlottedContent_: boolean;
   private isFolder_: boolean;
   size: CrUrlListItemSize;
   url?: string;
   imageUrls: string[];
   private firstImageLoaded_: boolean;
   forceHover: boolean;
-  descriptionMeta: string;
 
   override ready() {
     super.ready();
@@ -161,16 +121,6 @@ export class CrUrlListItemElement extends CrUrlListItemElementBase {
   override connectedCallback() {
     super.connectedCallback();
     this.resetFirstImageLoaded_();
-  }
-
-  override focus() {
-    // This component itself is not focusable, so override its focus method
-    // to focus its main focusable child, the title button.
-    if (this.asAnchor) {
-      this.$.anchor.focus();
-    } else {
-      this.$.button.focus();
-    }
   }
 
   private resetFirstImageLoaded_() {
@@ -191,19 +141,19 @@ export class CrUrlListItemElement extends CrUrlListItemElementBase {
   }
 
   private computeHasDescriptions_(): boolean {
-    return !!this.description || this.hasBadges_ || !!this.descriptionMeta;
+    return !!this.description || this.hasBadges_;
   }
 
   private computeIsFolder_(): boolean {
     return this.count !== undefined;
   }
 
-  private getItemAriaDescription_(): string|undefined {
-    return this.itemAriaDescription || this.description;
+  private getButtonAriaDescription_(): string|undefined {
+    return this.buttonAriaDescription || this.description;
   }
 
-  private getItemAriaLabel_(): string {
-    return this.itemAriaLabel || this.title;
+  private getButtonAriaLabel_(): string {
+    return this.buttonAriaLabel || this.title;
   }
 
   private getDisplayedCount_() {
@@ -226,11 +176,6 @@ export class CrUrlListItemElement extends CrUrlListItemElementBase {
   private onBadgesSlotChange_() {
     this.hasBadges_ =
         this.$.badges.assignedElements({flatten: true}).length > 0;
-  }
-
-  private onContentSlotChange_() {
-    this.hasSlottedContent_ =
-        this.$.content.assignedElements({flatten: true}).length > 0;
   }
 
   private onSizeChanged_() {

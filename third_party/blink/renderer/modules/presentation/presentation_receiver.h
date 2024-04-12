@@ -31,14 +31,15 @@ class MODULES_EXPORT PresentationReceiver final
       public mojom::blink::PresentationReceiver {
   DEFINE_WRAPPERTYPEINFO();
   using ConnectionListProperty =
-      ScriptPromiseProperty<PresentationConnectionList, DOMException>;
+      ScriptPromiseProperty<Member<PresentationConnectionList>,
+                            Member<DOMException>>;
 
  public:
   explicit PresentationReceiver(LocalDOMWindow*);
   ~PresentationReceiver() override = default;
 
   // PresentationReceiver.idl implementation
-  ScriptPromiseTyped<PresentationConnectionList> connectionList(ScriptState*);
+  ScriptPromise connectionList(ScriptState*);
 
   // mojom::blink::PresentationReceiver
   void OnReceiverConnectionAvailable(
@@ -48,7 +49,7 @@ class MODULES_EXPORT PresentationReceiver final
   void RemoveConnection(ReceiverPresentationConnection*);
   void Terminate();
 
-  LocalDOMWindow* GetWindow() const { return window_.Get(); }
+  LocalDOMWindow* GetWindow() const { return window_; }
 
   void Trace(Visitor*) const override;
 

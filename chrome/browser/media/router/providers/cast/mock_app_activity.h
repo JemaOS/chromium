@@ -24,16 +24,14 @@ class MockAppActivity : public AppActivity {
   MOCK_METHOD1(SendAppMessageToReceiver,
                cast_channel::Result(const CastInternalMessage& cast_message));
   MOCK_METHOD1(SendMediaRequestToReceiver,
-               std::optional<int>(const CastInternalMessage& cast_message));
+               absl::optional<int>(const CastInternalMessage& cast_message));
   MOCK_METHOD2(SendSetVolumeRequestToReceiver,
                void(const CastInternalMessage& cast_message,
                     cast_channel::ResultCallback callback));
   MOCK_METHOD2(StopSessionOnReceiver,
                void(const std::string& client_id,
                     cast_channel::ResultCallback callback));
-  MOCK_METHOD2(CloseConnectionOnReceiver,
-               void(const std::string& client_id,
-                    blink::mojom::PresentationConnectionCloseReason reason));
+  MOCK_METHOD1(CloseConnectionOnReceiver, void(const std::string& client_id));
   MOCK_METHOD1(SendStopSessionMessageToClients,
                void(const std::string& hash_token));
   MOCK_METHOD1(HandleLeaveSession, void(const std::string& client_id));
@@ -51,7 +49,7 @@ class MockAppActivity : public AppActivity {
                     blink::mojom::PresentationConnectionMessagePtr message));
   MOCK_METHOD2(SendMediaStatusToClients,
                void(const base::Value::Dict& media_status,
-                    std::optional<int> request_id));
+                    absl::optional<int> request_id));
   MOCK_METHOD1(
       ClosePresentationConnections,
       void(blink::mojom::PresentationConnectionCloseReason close_reason));

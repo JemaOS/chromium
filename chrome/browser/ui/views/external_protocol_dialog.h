@@ -26,14 +26,13 @@ class MessageBoxView;
 }
 
 class ExternalProtocolDialog : public views::DialogDelegateView {
-  METADATA_HEADER(ExternalProtocolDialog, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(ExternalProtocolDialog);
   // Show by calling ExternalProtocolHandler::RunExternalProtocolDialog().
   ExternalProtocolDialog(content::WebContents* web_contents,
                          const GURL& url,
                          const std::u16string& program_name,
-                         const std::optional<url::Origin>& initiating_origin,
+                         const absl::optional<url::Origin>& initiating_origin,
                          content::WeakDocumentPtr initiator_document);
   ExternalProtocolDialog(const ExternalProtocolDialog&) = delete;
   ExternalProtocolDialog& operator=(const ExternalProtocolDialog&) = delete;
@@ -57,7 +56,7 @@ class ExternalProtocolDialog : public views::DialogDelegateView {
 
   const GURL url_;
   const std::u16string program_name_;
-  const std::optional<url::Origin> initiating_origin_;
+  const absl::optional<url::Origin> initiating_origin_;
   const content::WeakDocumentPtr initiator_document_;
 
   // The message box whose commands we handle.

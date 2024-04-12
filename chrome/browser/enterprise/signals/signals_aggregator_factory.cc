@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "chrome/browser/enterprise/signals/system_signals_service_host_factory.h"
 #include "chrome/browser/enterprise/signals/user_permission_service_factory.h"
@@ -52,8 +52,7 @@ std::unique_ptr<device_signals::SettingsClient> CreateSettingsClient() {
 
 // static
 SignalsAggregatorFactory* SignalsAggregatorFactory::GetInstance() {
-  static base::NoDestructor<SignalsAggregatorFactory> instance;
-  return instance.get();
+  return base::Singleton<SignalsAggregatorFactory>::get();
 }
 
 // static
@@ -66,7 +65,12 @@ device_signals::SignalsAggregator* SignalsAggregatorFactory::GetForProfile(
 SignalsAggregatorFactory::SignalsAggregatorFactory()
     : ProfileKeyedServiceFactory(
           "SignalsAggregator",
-          ProfileSelections::BuildForRegularAndIncognito()) {
+          ProfileSelections::Builder()
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
+              .Build()) {
   DependsOn(SystemSignalsServiceHostFactory::GetInstance());
   DependsOn(UserPermissionServiceFactory::GetInstance());
 }
@@ -79,11 +83,6 @@ KeyedService* SignalsAggregatorFactory::BuildServiceInstanceFor(
 
   auto* user_permission_service =
       UserPermissionServiceFactory::GetForProfile(profile);
-  if (!user_permission_service) {
-    // Unsupported configuration (e.g. CrOS login Profile supported, but not
-    // incognito).
-    return nullptr;
-  }
 
   std::vector<std::unique_ptr<device_signals::SignalsCollector>> collectors;
   auto* service_host = SystemSignalsServiceHostFactory::GetForProfile(profile);

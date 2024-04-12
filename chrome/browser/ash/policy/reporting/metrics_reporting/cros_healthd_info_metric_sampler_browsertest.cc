@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <array>
-#include <optional>
 
 #include "base/functional/bind.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
@@ -17,11 +16,22 @@
 #include "components/reporting/proto/synced/metric_data.pb.h"
 #include "components/reporting/proto/synced/record.pb.h"
 #include "components/reporting/proto/synced/record_constants.pb.h"
-#include "components/reporting/util/mock_clock.h"
 #include "content/public/test/browser_test.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
-namespace reporting {
+namespace ash::reporting {
+
+// Helper for setting up CrosHealthdInfoMetrics tests.
+class CrosHealthdInfoMetricsHelper {
+ public:
+  CrosHealthdInfoMetricsHelper() {
+    // Don't allow delay in initialization. We don't use
+    // |ScopedMockTimeMessageLoopTaskRunner| here because we are not able to
+    // make it work with mojom.
+    ::reporting::metrics::InitDelayParam::SetForTesting(base::Seconds(0));
+  }
+};
+
 namespace {
 
 namespace cros_healthd = ::ash::cros_healthd::mojom;
@@ -36,9 +46,9 @@ using ::testing::StrEq;
 
 // Is the given record about info metric? If yes, return the underlying
 // MetricData object.
-std::optional<MetricData> IsRecordInfo(const Record& record) {
+absl::optional<MetricData> IsRecordInfo(const Record& record) {
   if (record.destination() != Destination::INFO_METRIC) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   MetricData record_data;
@@ -47,11 +57,15 @@ std::optional<MetricData> IsRecordInfo(const Record& record) {
   return record_data;
 }
 
-void AssertRecordData(Priority priority, const Record& record) {
+// Assert info in a record and returns the underlying MetricData object.
+MetricData AssertInfo(Priority priority, const Record& record) {
   EXPECT_THAT(priority, Eq(Priority::SLOW_BATCH));
   EXPECT_THAT(record.destination(), Eq(Destination::INFO_METRIC));
-  ASSERT_TRUE(record.has_source_info());
-  EXPECT_THAT(record.source_info().source(), Eq(SourceInfo::ASH));
+  MetricData record_data;
+  EXPECT_TRUE(record_data.ParseFromString(record.data()));
+  EXPECT_TRUE(record_data.has_timestamp_ms());
+  EXPECT_TRUE(record_data.has_info_data());
+  return record_data;
 }
 
 }  // namespace
@@ -65,13 +79,13 @@ class BusInfoSamplerBrowserTest : public policy::DevicePolicyCrosBrowserTest {
       delete;
 
  protected:
-  BusInfoSamplerBrowserTest() { test::MockClock::Get(); }
+  BusInfoSamplerBrowserTest() = default;
   ~BusInfoSamplerBrowserTest() override = default;
 
   void SetUpOnMainThread() override {
     policy::DevicePolicyCrosBrowserTest::SetUpOnMainThread();
     scoped_testing_cros_settings_.device_settings()->SetBoolean(
-        ::ash::kReportDeviceSecurityStatus, true);
+        kReportDeviceSecurityStatus, true);
   }
 
   // Is the given record about Bus info metric?
@@ -82,7 +96,8 @@ class BusInfoSamplerBrowserTest : public policy::DevicePolicyCrosBrowserTest {
   }
 
  private:
-  ::ash::ScopedTestingCrosSettings scoped_testing_cros_settings_;
+  CrosHealthdInfoMetricsHelper cros_healthd_info_metrics_helper_;
+  ScopedTestingCrosSettings scoped_testing_cros_settings_;
 };
 
 IN_PROC_BROWSER_TEST_F(BusInfoSamplerBrowserTest, Thunderbolt) {
@@ -97,17 +112,11 @@ IN_PROC_BROWSER_TEST_F(BusInfoSamplerBrowserTest, Thunderbolt) {
           cros_healthd::ThunderboltSecurityLevel::kSecureLevel};
   auto thunderbolt_bus_result =
       ::reporting::test::CreateThunderboltBusResult(kHealthdSecurityLevels);
-  ::ash::cros_healthd::FakeCrosHealthd::Get()
+  ash::cros_healthd::FakeCrosHealthd::Get()
       ->SetProbeTelemetryInfoResponseForTesting(thunderbolt_bus_result);
   MissiveClientTestObserver observer(base::BindRepeating(&IsRecordBusInfo));
-  test::MockClock::Get().Advance(metrics::kInitialCollectionDelay);
   auto [priority, record] = observer.GetNextEnqueuedRecord();
-  AssertRecordData(priority, record);
-  MetricData metric_data;
-  ASSERT_TRUE(metric_data.ParseFromString(record.data()));
-  EXPECT_TRUE(metric_data.has_timestamp_ms());
-  ASSERT_TRUE(metric_data.has_info_data());
-  const auto& info_data = metric_data.info_data();
+  auto info_data = AssertInfo(priority, record).info_data();
   ASSERT_THAT(
       static_cast<size_t>(info_data.bus_device_info().thunderbolt_info_size()),
       Eq(kErpSecurityLevels.size()));
@@ -127,13 +136,13 @@ class CpuInfoSamplerBrowserTest : public policy::DevicePolicyCrosBrowserTest {
       delete;
 
  protected:
-  CpuInfoSamplerBrowserTest() { test::MockClock::Get(); }
+  CpuInfoSamplerBrowserTest() = default;
   ~CpuInfoSamplerBrowserTest() override = default;
 
   void SetUpOnMainThread() override {
     policy::DevicePolicyCrosBrowserTest::SetUpOnMainThread();
     scoped_testing_cros_settings_.device_settings()->SetBoolean(
-        ::ash::kReportDeviceCpuInfo, true);
+        kReportDeviceCpuInfo, true);
   }
 
   // Is the given record about CPU info metric?
@@ -144,22 +153,17 @@ class CpuInfoSamplerBrowserTest : public policy::DevicePolicyCrosBrowserTest {
   }
 
  private:
-  ::ash::ScopedTestingCrosSettings scoped_testing_cros_settings_;
+  CrosHealthdInfoMetricsHelper cros_healthd_info_metrics_helper_;
+  ScopedTestingCrosSettings scoped_testing_cros_settings_;
 };
 
 IN_PROC_BROWSER_TEST_F(CpuInfoSamplerBrowserTest, KeylockerUnsupported) {
   auto cpu_result = ::reporting::test::CreateCpuResult(nullptr);
-  ::ash::cros_healthd::FakeCrosHealthd::Get()
+  ash::cros_healthd::FakeCrosHealthd::Get()
       ->SetProbeTelemetryInfoResponseForTesting(cpu_result);
   MissiveClientTestObserver observer(base::BindRepeating(&IsRecordCpuInfo));
-  test::MockClock::Get().Advance(metrics::kInitialCollectionDelay);
   auto [priority, record] = observer.GetNextEnqueuedRecord();
-  AssertRecordData(priority, record);
-  MetricData metric_data;
-  ASSERT_TRUE(metric_data.ParseFromString(record.data()));
-  EXPECT_TRUE(metric_data.has_timestamp_ms());
-  ASSERT_TRUE(metric_data.has_info_data());
-  const auto& info_data = metric_data.info_data();
+  auto info_data = AssertInfo(priority, record).info_data();
   ASSERT_TRUE(info_data.cpu_info().has_keylocker_info());
   EXPECT_FALSE(info_data.cpu_info().keylocker_info().configured());
   EXPECT_FALSE(info_data.cpu_info().keylocker_info().supported());
@@ -168,17 +172,11 @@ IN_PROC_BROWSER_TEST_F(CpuInfoSamplerBrowserTest, KeylockerUnsupported) {
 IN_PROC_BROWSER_TEST_F(CpuInfoSamplerBrowserTest, KeylockerConfigured) {
   auto cpu_result = ::reporting::test::CreateCpuResult(
       ::reporting::test::CreateKeylockerInfo(true));
-  ::ash::cros_healthd::FakeCrosHealthd::Get()
+  ash::cros_healthd::FakeCrosHealthd::Get()
       ->SetProbeTelemetryInfoResponseForTesting(cpu_result);
   MissiveClientTestObserver observer(base::BindRepeating(&IsRecordCpuInfo));
-  test::MockClock::Get().Advance(metrics::kInitialCollectionDelay);
   auto [priority, record] = observer.GetNextEnqueuedRecord();
-  AssertRecordData(priority, record);
-  MetricData metric_data;
-  ASSERT_TRUE(metric_data.ParseFromString(record.data()));
-  EXPECT_TRUE(metric_data.has_timestamp_ms());
-  ASSERT_TRUE(metric_data.has_info_data());
-  const auto& info_data = metric_data.info_data();
+  auto info_data = AssertInfo(priority, record).info_data();
   ASSERT_TRUE(info_data.cpu_info().has_keylocker_info());
   EXPECT_TRUE(info_data.cpu_info().keylocker_info().configured());
   EXPECT_TRUE(info_data.cpu_info().keylocker_info().supported());
@@ -200,13 +198,13 @@ class MemoryInfoSamplerBrowserTest
       delete;
 
  protected:
-  MemoryInfoSamplerBrowserTest() { test::MockClock::Get(); }
+  MemoryInfoSamplerBrowserTest() = default;
   ~MemoryInfoSamplerBrowserTest() override = default;
 
   void SetUpOnMainThread() override {
     policy::DevicePolicyCrosBrowserTest::SetUpOnMainThread();
     scoped_testing_cros_settings_.device_settings()->SetBoolean(
-        ::ash::kReportDeviceMemoryInfo, true);
+        kReportDeviceMemoryInfo, true);
   }
 
   // Is the given record about memory info metric?
@@ -218,16 +216,13 @@ class MemoryInfoSamplerBrowserTest
 
   static void AssertMemoryInfo(MissiveClientTestObserver* observer) {
     auto [priority, record] = observer->GetNextEnqueuedRecord();
-    AssertRecordData(priority, record);
-    MetricData metric_data;
-    ASSERT_TRUE(metric_data.ParseFromString(record.data()));
-    EXPECT_TRUE(metric_data.has_timestamp_ms());
-    ASSERT_TRUE(metric_data.has_info_data());
-    ::reporting::test::AssertMemoryInfo(metric_data, GetParam());
+    MetricData record_data = AssertInfo(priority, record);
+    ::reporting::test::AssertMemoryInfo(record_data, GetParam());
   }
 
  private:
-  ::ash::ScopedTestingCrosSettings scoped_testing_cros_settings_;
+  CrosHealthdInfoMetricsHelper cros_healthd_info_metrics_helper_;
+  ScopedTestingCrosSettings scoped_testing_cros_settings_;
 };
 
 IN_PROC_BROWSER_TEST_P(MemoryInfoSamplerBrowserTest, ReportMemoryInfo) {
@@ -237,10 +232,9 @@ IN_PROC_BROWSER_TEST_P(MemoryInfoSamplerBrowserTest, ReportMemoryInfo) {
           test_case.healthd_encryption_state, test_case.max_keys,
           test_case.key_length, test_case.healthd_encryption_algorithm));
 
-  ::ash::cros_healthd::FakeCrosHealthd::Get()
+  ash::cros_healthd::FakeCrosHealthd::Get()
       ->SetProbeTelemetryInfoResponseForTesting(memory_result);
   MissiveClientTestObserver observer(base::BindRepeating(&IsRecordMemoryInfo));
-  test::MockClock::Get().Advance(metrics::kInitialCollectionDelay);
   AssertMemoryInfo(&observer);
 }
 
@@ -270,13 +264,13 @@ class InputInfoSamplerBrowserTest : public policy::DevicePolicyCrosBrowserTest {
       delete;
 
  protected:
-  InputInfoSamplerBrowserTest() { test::MockClock::Get(); }
+  InputInfoSamplerBrowserTest() = default;
   ~InputInfoSamplerBrowserTest() override = default;
 
   void SetUpOnMainThread() override {
     policy::DevicePolicyCrosBrowserTest::SetUpOnMainThread();
     scoped_testing_cros_settings_.device_settings()->SetBoolean(
-        ::ash::kReportDeviceGraphicsStatus, true);
+        kReportDeviceGraphicsStatus, true);
   }
 
   // Is the given record about touchscreen info metric?
@@ -287,7 +281,8 @@ class InputInfoSamplerBrowserTest : public policy::DevicePolicyCrosBrowserTest {
   }
 
  private:
-  ::ash::ScopedTestingCrosSettings scoped_testing_cros_settings_;
+  CrosHealthdInfoMetricsHelper cros_healthd_info_metrics_helper_;
+  ScopedTestingCrosSettings scoped_testing_cros_settings_;
 };
 
 IN_PROC_BROWSER_TEST_F(InputInfoSamplerBrowserTest,
@@ -316,20 +311,14 @@ IN_PROC_BROWSER_TEST_F(InputInfoSamplerBrowserTest,
   touchscreen_devices.push_back(std::move(input_device_second));
   auto input_result = ::reporting::test::CreateInputResult(
       kSampleLibrary, std::move(touchscreen_devices));
-  ::ash::cros_healthd::FakeCrosHealthd::Get()
+  ash::cros_healthd::FakeCrosHealthd::Get()
       ->SetProbeTelemetryInfoResponseForTesting(input_result);
   MissiveClientTestObserver observer(
       base::BindRepeating(&IsRecordTouchScreenInfo));
-  test::MockClock::Get().Advance(metrics::kInitialCollectionDelay);
 
   // Assertions
   auto [priority, record] = observer.GetNextEnqueuedRecord();
-  AssertRecordData(priority, record);
-  MetricData metric_data;
-  ASSERT_TRUE(metric_data.ParseFromString(record.data()));
-  EXPECT_TRUE(metric_data.has_timestamp_ms());
-  ASSERT_TRUE(metric_data.has_info_data());
-  const auto& info_data = metric_data.info_data();
+  auto info_data = AssertInfo(priority, record).info_data();
   ASSERT_TRUE(info_data.has_touch_screen_info());
   ASSERT_TRUE(info_data.touch_screen_info().has_library_name());
   EXPECT_THAT(info_data.touch_screen_info().library_name(),
@@ -363,13 +352,13 @@ class DisplayInfoSamplerBrowserTest
       const DisplayInfoSamplerBrowserTest&) = delete;
 
  protected:
-  DisplayInfoSamplerBrowserTest() { test::MockClock::Get(); }
+  DisplayInfoSamplerBrowserTest() = default;
   ~DisplayInfoSamplerBrowserTest() override = default;
 
   void SetUpOnMainThread() override {
     policy::DevicePolicyCrosBrowserTest::SetUpOnMainThread();
     scoped_testing_cros_settings_.device_settings()->SetBoolean(
-        ::ash::kReportDeviceGraphicsStatus, true);
+        kReportDeviceGraphicsStatus, true);
   }
 
   // Is the given record about display info metric?
@@ -380,7 +369,8 @@ class DisplayInfoSamplerBrowserTest
   }
 
  private:
-  ::ash::ScopedTestingCrosSettings scoped_testing_cros_settings_;
+  CrosHealthdInfoMetricsHelper cros_healthd_info_metrics_helper_;
+  ScopedTestingCrosSettings scoped_testing_cros_settings_;
 };
 
 IN_PROC_BROWSER_TEST_F(DisplayInfoSamplerBrowserTest, MultipleDisplays) {
@@ -411,19 +401,13 @@ IN_PROC_BROWSER_TEST_F(DisplayInfoSamplerBrowserTest, MultipleDisplays) {
           kDisplayManufacture, kDisplayModelId, kDisplayManufactureYear,
           kInternalDisplayName),
       std::move(external_displays));
-  ::ash::cros_healthd::FakeCrosHealthd::Get()
+  ash::cros_healthd::FakeCrosHealthd::Get()
       ->SetProbeTelemetryInfoResponseForTesting(display_result);
   MissiveClientTestObserver observer(base::BindRepeating(&IsRecordDisplayInfo));
-  test::MockClock::Get().Advance(metrics::kInitialCollectionDelay);
 
   // assertions
   auto [priority, record] = observer.GetNextEnqueuedRecord();
-  AssertRecordData(priority, record);
-  MetricData metric_data;
-  ASSERT_TRUE(metric_data.ParseFromString(record.data()));
-  EXPECT_TRUE(metric_data.has_timestamp_ms());
-  ASSERT_TRUE(metric_data.has_info_data());
-  const auto& info_data = metric_data.info_data();
+  auto info_data = AssertInfo(priority, record).info_data();
   ASSERT_TRUE(info_data.has_display_info());
   ASSERT_EQ(info_data.display_info().display_device_size(), 3);
 
@@ -454,4 +438,4 @@ IN_PROC_BROWSER_TEST_F(DisplayInfoSamplerBrowserTest, MultipleDisplays) {
   EXPECT_EQ(external_display_2.model_id(), kDisplayModelId);
   EXPECT_EQ(external_display_2.manufacture_year(), kDisplayManufactureYear);
 }
-}  // namespace reporting
+}  // namespace ash::reporting

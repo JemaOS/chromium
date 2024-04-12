@@ -53,7 +53,6 @@ class BaseButtonInputType : public InputType,
  private:
   InputTypeView* CreateView() override;
   bool ShouldSaveAndRestoreFormControlState() const override;
-  bool IsAutoDirectionalityFormAssociated() const override;
   void AppendToFormData(FormData&) const override;
   ControlPart AutoAppearance() const override;
   LayoutObject* CreateLayoutObject(const ComputedStyle&) const override;

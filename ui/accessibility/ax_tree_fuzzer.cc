@@ -7,8 +7,8 @@
 
 class EmptyAXTreeObserver : public ui::AXTreeObserver {
  public:
-  EmptyAXTreeObserver() = default;
-  ~EmptyAXTreeObserver() override = default;
+  EmptyAXTreeObserver() {}
+  ~EmptyAXTreeObserver() override {}
 };
 
 // Entry point for LibFuzzer.
@@ -42,6 +42,7 @@ extern "C" int LLVMFuzzerTestOneInput(const unsigned char* data, size_t size) {
 
   EmptyAXTreeObserver observer;
   ui::AXTree tree;
+  tree.DisallowFailFastForFuzzing();
   tree.AddObserver(&observer);
   tree.Unserialize(initial_state);
   tree.RemoveObserver(&observer);

@@ -8,8 +8,6 @@ import android.content.res.Resources;
 
 import androidx.annotation.Nullable;
 
-import dagger.Lazy;
-
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.browserservices.ui.TrustedWebActivityModel;
 import org.chromium.chrome.browser.dependency_injection.ActivityScope;
@@ -18,6 +16,8 @@ import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 
 import javax.inject.Inject;
+
+import dagger.Lazy;
 
 /**
  * Implements the new "Running in Chrome" Snackbar behavior, taking over from
@@ -42,19 +42,16 @@ public class DisclosureSnackbar extends DisclosureInfobar {
     private boolean mShown;
 
     @Inject
-    DisclosureSnackbar(
-            Resources resources,
-            Lazy<SnackbarManager> snackbarManager,
-            TrustedWebActivityModel model,
-            ActivityLifecycleDispatcher lifecycleDispatcher) {
+    DisclosureSnackbar(Resources resources, Lazy<SnackbarManager> snackbarManager,
+            TrustedWebActivityModel model, ActivityLifecycleDispatcher lifecycleDispatcher) {
         super(resources, snackbarManager, model, lifecycleDispatcher);
         mResources = resources;
         mModel = model;
     }
 
     @Override
-    protected @Nullable Snackbar makeRunningInChromeInfobar(
-            SnackbarManager.SnackbarController controller) {
+    @Nullable
+    protected Snackbar makeRunningInChromeInfobar(SnackbarManager.SnackbarController controller) {
         if (mShown) return null;
         mShown = true;
 

@@ -1,7 +1,7 @@
 <?php
 $name = $_GET['name'];
-$stallAt = $_GET['stallAt'] ?? null;
-$stallFor = $_GET['stallFor'] ?? null;
+$stallAt = $_GET['stallAt'];
+$stallFor = $_GET['stallFor'];
 $mimeType = $_GET['mimeType'];
 
 $file = fopen($name, "rb");
@@ -24,9 +24,7 @@ if (isset($stallAt) && isset($stallFor)) {
         echo(fread($file, $write));
         $written += $write;
         flush();
-        if (ob_get_level() > 0) {
-            ob_flush();
-        }
+        ob_flush();
     }
     usleep($stallFor * 1000000);
     echo(fread($file, filesize($name) - $stallAt));
@@ -34,8 +32,6 @@ if (isset($stallAt) && isset($stallFor)) {
     echo(fread($file, filesize($name)));
 }
 flush();
-if (ob_get_level() > 0) {
-    ob_flush();
-}
+ob_flush();
 fclose($file);
 ?>

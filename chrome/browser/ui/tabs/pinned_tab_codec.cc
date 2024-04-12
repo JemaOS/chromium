@@ -48,11 +48,11 @@ void EncodePinnedTabs(Browser* browser, base::Value::List& serialized_tabs) {
 
 // Decodes the previously written values in |value| to |tab|, returning true
 // on success.
-std::optional<StartupTab> DecodeTab(const base::Value::Dict& value) {
+absl::optional<StartupTab> DecodeTab(const base::Value::Dict& value) {
   const std::string* const url_string = value.FindString(kURL);
-  return url_string ? std::make_optional(StartupTab(GURL(*url_string),
-                                                    StartupTab::Type::kPinned))
-                    : std::nullopt;
+  return url_string ? absl::make_optional(StartupTab(GURL(*url_string),
+                                                     StartupTab::Type::kPinned))
+                    : absl::nullopt;
 }
 
 }  // namespace
@@ -70,7 +70,7 @@ void PinnedTabCodec::WritePinnedTabs(Profile* profile) {
     return;
 
   base::Value::List values;
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     if (browser->is_type_normal() && browser->profile() == profile) {
       EncodePinnedTabs(browser, values);
     }
@@ -103,7 +103,7 @@ StartupTabs PinnedTabCodec::ReadPinnedTabs(Profile* profile) {
   for (const auto& serialized_tab : prefs->GetList(prefs::kPinnedTabs)) {
     if (!serialized_tab.is_dict())
       continue;
-    std::optional<StartupTab> tab = DecodeTab(serialized_tab.GetDict());
+    absl::optional<StartupTab> tab = DecodeTab(serialized_tab.GetDict());
     if (tab.has_value())
       results.push_back(tab.value());
   }

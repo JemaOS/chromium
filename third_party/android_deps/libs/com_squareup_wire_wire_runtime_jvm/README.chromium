@@ -1,12 +1,11 @@
 Name: wire-runtime
 Short Name: wire-runtime-jvm
 URL: https://github.com/square/wire/
-Version: 4.7.0
+Version: 4.5.1
 License: Apache Version 2.0
-License File: LICENSE
+License File: NOT_SHIPPED
 CPEPrefix: unknown
 Security Critical: no
-Shipped: no
 
 Description:
 gRPC and protocol buffers for Android, Kotlin, and Java.

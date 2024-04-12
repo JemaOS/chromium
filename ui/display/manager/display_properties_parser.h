@@ -13,7 +13,7 @@
 namespace display {
 
 DISPLAY_MANAGER_EXPORT
-std::optional<gfx::RoundedCornersF> ParseDisplayPanelRadii(
+absl::optional<gfx::RoundedCornersF> ParseDisplayPanelRadii(
     const base::Value* json_value);
 
 }  // namespace display

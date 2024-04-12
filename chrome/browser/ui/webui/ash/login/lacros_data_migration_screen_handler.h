@@ -5,18 +5,18 @@
 #ifndef CHROME_BROWSER_UI_WEBUI_ASH_LOGIN_LACROS_DATA_MIGRATION_SCREEN_HANDLER_H_
 #define CHROME_BROWSER_UI_WEBUI_ASH_LOGIN_LACROS_DATA_MIGRATION_SCREEN_HANDLER_H_
 
-#include <optional>
-
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/ui/webui/ash/login/base_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/oobe_ui.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
 // Interface for dependency injection between LacrosDataMigrationScreen and its
 // WebUI representation.
-class LacrosDataMigrationScreenView {
+class LacrosDataMigrationScreenView
+    : public base::SupportsWeakPtr<LacrosDataMigrationScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{
       "lacros-data-migration", "LacrosDataMigrationScreen"};
@@ -39,15 +39,12 @@ class LacrosDataMigrationScreenView {
   // message is to navigate users to make some space on their disk to run
   // migration.
   // |show_goto_files| can control
-  virtual void SetFailureStatus(const std::optional<uint64_t>& required_size,
+  virtual void SetFailureStatus(const absl::optional<uint64_t>& required_size,
                                 bool show_goto_files) = 0;
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<LacrosDataMigrationScreenView> AsWeakPtr() = 0;
 };
 
-class LacrosDataMigrationScreenHandler final
-    : public BaseScreenHandler,
-      public LacrosDataMigrationScreenView {
+class LacrosDataMigrationScreenHandler : public BaseScreenHandler,
+                                         public LacrosDataMigrationScreenView {
  public:
   using TView = LacrosDataMigrationScreenView;
 
@@ -67,12 +64,8 @@ class LacrosDataMigrationScreenHandler final
   void SetProgressValue(int progress) override;
   void ShowSkipButton() override;
   void SetLowBatteryStatus(bool low_battery) override;
-  void SetFailureStatus(const std::optional<uint64_t>& required_size,
+  void SetFailureStatus(const absl::optional<uint64_t>& required_size,
                         bool show_goto_files) override;
-  base::WeakPtr<LacrosDataMigrationScreenView> AsWeakPtr() override;
-
- private:
-  base::WeakPtrFactory<LacrosDataMigrationScreenView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

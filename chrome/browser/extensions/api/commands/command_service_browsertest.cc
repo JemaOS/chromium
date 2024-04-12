@@ -12,8 +12,6 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/extensions/api/commands/command_service.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "content/public/test/browser_test.h"
@@ -74,7 +72,7 @@ struct ManifestCommandTestParameters {
 
 namespace extensions {
 
-using CommandServiceTest = ExtensionApiTest;
+typedef ExtensionApiTest CommandServiceTest;
 // Test class for testing keybinding changes across MV2->MV3 reloads/updates.
 class CommandServiceMv3UpgradeTest
     : public ExtensionApiTest,
@@ -133,8 +131,8 @@ std::string CommandServiceMv3UpgradeTest::LoadExtensionMv2(
     ADD_FAILURE() << "Couldn't load extension successfully for test setup.";
   }
   const std::string unpacked_extension_id = extension->id();
-  EXPECT_TRUE(extension_registry()->enabled_extensions().Contains(
-      unpacked_extension_id));
+  EXPECT_TRUE(extension_registry()->GetExtensionById(
+      unpacked_extension_id, ExtensionRegistry::ENABLED));
 
   // Verify it has an MV2 action command of Alt+N.
   EXPECT_TRUE(CommandHasAltPlusKeybinding(unpacked_extension_id.c_str(),
@@ -153,7 +151,8 @@ void CommandServiceMv3UpgradeTest::ReloadExtensionMv3(
       kManifestTemplate, 3, manifest_values::kActionCommandEvent,
       new_suggested_keybinding, manifest_keys::kAction));
   ReloadExtension(id);
-  EXPECT_TRUE(extension_registry()->enabled_extensions().GetByID(id));
+  EXPECT_TRUE(
+      extension_registry()->GetExtensionById(id, ExtensionRegistry::ENABLED));
 }
 
 void CommandServiceMv3UpgradeTest::InstallExtensionMv2(const std::string& id,
@@ -180,7 +179,8 @@ void CommandServiceMv3UpgradeTest::InstallExtensionMv2(const std::string& id,
   } else {
     ASSERT_TRUE(InstallExtensionFromWebstore(path_mv2, 1));
   }
-  EXPECT_TRUE(extension_registry()->enabled_extensions().GetByID(id));
+  EXPECT_TRUE(
+      extension_registry()->GetExtensionById(id, ExtensionRegistry::ENABLED));
 
   // Verify it has an MV2 action command of Alt+N.
   EXPECT_TRUE(CommandHasAltPlusKeybinding(id, test_params.action_command_name,
@@ -209,7 +209,8 @@ void CommandServiceMv3UpgradeTest::UpdateExtensionMv3(
 
   // Update to MV3 with an action command instead of a browser action.
   ASSERT_TRUE(UpdateExtension(id, path_mv3, 0));
-  EXPECT_TRUE(extension_registry()->enabled_extensions().GetByID(id));
+  EXPECT_TRUE(
+      extension_registry()->GetExtensionById(id, ExtensionRegistry::ENABLED));
 }
 
 void CommandServiceMv3UpgradeTest::ChangeMv2CommandKeybinding(
@@ -413,7 +414,8 @@ IN_PROC_BROWSER_TEST_F(CommandServiceTest, RemoveShortcutSurvivesUpdate) {
 
   // Install v1 of the extension.
   ASSERT_TRUE(InstallExtension(path_v1, 1));
-  EXPECT_TRUE(registry->enabled_extensions().GetByID(kExtensionId));
+  EXPECT_TRUE(
+      registry->GetExtensionById(kExtensionId, ExtensionRegistry::ENABLED));
 
   // Verify it has a command of Alt+Shift+F.
   ui::Accelerator accelerator =
@@ -440,7 +442,8 @@ IN_PROC_BROWSER_TEST_F(CommandServiceTest, RemoveShortcutSurvivesUpdate) {
 
   // Update to version 2.
   EXPECT_TRUE(UpdateExtension(kExtensionId, path_v2, 0));
-  EXPECT_TRUE(registry->enabled_extensions().GetByID(kExtensionId));
+  EXPECT_TRUE(
+      registry->GetExtensionById(kExtensionId, ExtensionRegistry::ENABLED));
 
   // Verify it is still set to nothing.
   accelerator =

@@ -4,6 +4,8 @@
 
 import {NativeEventTarget as EventTarget} from 'chrome://resources/ash/common/event_target.js';
 
+import {VolumeManager} from '../../externs/volume_manager.js';
+
 import {NavigationModelItem, NavigationModelVolumeItem} from './navigation_list_model.js';
 
 /**
@@ -11,8 +13,6 @@ import {NavigationModelItem, NavigationModelVolumeItem} from './navigation_list_
  * given volumeInfo.
  */
 class MockNavigationListItem {
-  // @ts-ignore: error TS7006: Parameter 'volumeInfo' implicitly has an 'any'
-  // type.
   constructor(volumeInfo) {
     this.volumeInfo_ = volumeInfo;
     this.item_ = new NavigationModelVolumeItem(volumeInfo.label, volumeInfo);
@@ -33,14 +33,11 @@ class MockNavigationListItem {
  */
 export class MockNavigationListModel extends EventTarget {
   /**
-   * @param {import('../../background/js/volume_manager.js').VolumeManager}
-   *     volumeManager A volume manager.
+   * @param {VolumeManager} volumeManager A volume manager.
    */
   constructor(volumeManager) {
     super();
     this.volumeManager_ = volumeManager;
-    // @ts-ignore: error TS7008: Member 'entries_' implicitly has an 'any[]'
-    // type.
     this.entries_ = [];
   }
 

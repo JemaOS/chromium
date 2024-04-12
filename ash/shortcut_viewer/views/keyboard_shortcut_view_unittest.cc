@@ -13,13 +13,9 @@
 #include "ash/test/ash_test_base.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "chromeos/ui/base/window_properties.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/abseil-cpp/absl/strings/ascii.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/aura/window.h"
 #include "ui/display/display.h"
@@ -55,8 +51,6 @@ class KeyboardShortcutViewTest : public ash::AshTestBase {
 
   // ash::AshTestBase:
   void SetUp() override {
-    // TODO(b/291803593): This is the old UI so it's not compatible with Jelly.
-    scoped_features_.InitAndDisableFeature(chromeos::features::kJelly);
     ash::AshTestBase::SetUp();
     // Simulate the complete listing of input devices, required by the viewer.
     ui::DeviceDataManagerTestApi().OnDeviceListsComplete();
@@ -79,8 +73,7 @@ class KeyboardShortcutViewTest : public ash::AshTestBase {
     return GetView()->GetSearchBoxViewForTesting();
   }
 
-  const std::vector<raw_ptr<KeyboardShortcutItemView, VectorExperimental>>&
-  GetFoundShortcutItems() const {
+  const std::vector<KeyboardShortcutItemView*>& GetFoundShortcutItems() const {
     DCHECK(GetView());
     return GetView()->GetFoundShortcutItemsForTesting();
   }
@@ -92,8 +85,8 @@ class KeyboardShortcutViewTest : public ash::AshTestBase {
       return;
 
     // Emulates the input method.
-    if (absl::ascii_isalnum(key_code)) {
-      char16_t character = absl::ascii_tolower(key_code);
+    if (::isalnum(static_cast<int>(key_code))) {
+      char16_t character = ::tolower(static_cast<int>(key_code));
       GetSearchBoxView()->search_box()->InsertText(
           std::u16string(1, character),
           ui::TextInputClient::InsertTextCursorBehavior::kMoveCursorAfterText);
@@ -103,9 +96,6 @@ class KeyboardShortcutViewTest : public ash::AshTestBase {
   KeyboardShortcutView* GetView() const {
     return KeyboardShortcutView::GetInstanceForTesting();
   }
-
- private:
-  base::test::ScopedFeatureList scoped_features_;
 };
 
 // Shows and closes the widget for KeyboardShortcutViewer.
@@ -279,8 +269,7 @@ TEST_F(KeyboardShortcutViewTest, ShouldAlignSubLabelsInSearchResults) {
   base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(GetFoundShortcutItems().empty());
 
-  for (const keyboard_shortcut_viewer::KeyboardShortcutItemView* item_view :
-       GetFoundShortcutItems()) {
+  for (const auto* item_view : GetFoundShortcutItems()) {
     ASSERT_EQ(2u, item_view->children().size());
 
     const views::View* description = item_view->children()[0];
@@ -292,7 +281,7 @@ TEST_F(KeyboardShortcutViewTest, ShouldAlignSubLabelsInSearchResults) {
     // vertically aligned in each line.
     int height = 0;
     int center_y = 0;
-    for (const views::View* child : description->children()) {
+    for (const auto* child : description->children()) {
       // The first view in each line.
       if (child->bounds().x() == 0) {
         height = child->bounds().height();
@@ -329,10 +318,9 @@ TEST_F(KeyboardShortcutViewTest, FrameAndBackgroundColorUpdates) {
   EXPECT_EQ(kTitleAndFrameColorDark, GetView()->GetBackground()->get_color());
 }
 
-// TODO(https://crbug.com/1439747): Flaky on ASAN and chromeos, probably due to
-// hard-coded timeout.
-#if (BUILDFLAG(IS_LINUX) && defined(ADDRESS_SANITIZER)) || \
-    BUILDFLAG(IS_CHROMEOS)
+// TODO(https://crbug.com/1439747): Flaky on ASAN, probably due to hard-coded
+// timeout.
+#if BUILDFLAG(IS_LINUX) && defined(ADDRESS_SANITIZER)
 #define MAYBE_AccessibilityProperties DISABLED_AccessibilityProperties
 #else
 #define MAYBE_AccessibilityProperties AccessibilityProperties
@@ -348,11 +336,10 @@ TEST_F(KeyboardShortcutViewTest, MAYBE_AccessibilityProperties) {
   task_environment()->FastForwardBy(time_out);
   base::RunLoop().RunUntilIdle();
 
-  const std::vector<raw_ptr<KeyboardShortcutItemView, VectorExperimental>>&
-      items = GetFoundShortcutItems();
+  const std::vector<KeyboardShortcutItemView*>& items = GetFoundShortcutItems();
   EXPECT_FALSE(items.empty());
 
-  auto* first_item = items.front().get();
+  auto* first_item = items.front();
   ui::AXNodeData first_item_data;
   first_item->GetViewAccessibility().GetAccessibleNodeData(&first_item_data);
   EXPECT_EQ(first_item_data.role, ax::mojom::Role::kListItem);
@@ -366,7 +353,7 @@ TEST_F(KeyboardShortcutViewTest, MAYBE_AccessibilityProperties) {
   EXPECT_EQ(first_item_data.GetIntAttribute(ax::mojom::IntAttribute::kSetSize),
             static_cast<int>(items.size()));
 
-  auto* last_item = items.back().get();
+  auto* last_item = items.back();
   ui::AXNodeData last_item_data;
   last_item->GetViewAccessibility().GetAccessibleNodeData(&last_item_data);
   EXPECT_EQ(last_item_data.role, ax::mojom::Role::kListItem);

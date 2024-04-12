@@ -2,48 +2,43 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/**
+ * @fileoverview
+ * This file is checked via TS, so we suppress Closure checks.
+ * @suppress {checkTypes}
+ */
 import {assert} from 'chrome://resources/ash/common/assert.js';
 
-import type {Crostini} from '../../background/js/crostini.js';
-import type {ProgressCenter} from '../../background/js/progress_center.js';
-import type {VolumeInfo} from '../../background/js/volume_info.js';
-import type {VolumeManager} from '../../background/js/volume_manager.js';
 import {executeTask, getDirectory, getFileTasks} from '../../common/js/api.js';
 import {AsyncQueue} from '../../common/js/async_util.js';
-import {entriesToURLs, isFakeEntry} from '../../common/js/entry_utils.js';
-import {type AnnotatedTask, annotateTasks, getDefaultTask, INSTALL_LINUX_PACKAGE_TASK_DESCRIPTOR, isFilesAppId, parseActionId} from '../../common/js/file_tasks.js';
-import {getExtension} from '../../common/js/file_type.js';
-import type {FilesAppEntry} from '../../common/js/files_app_entry_types.js';
-import {recordEnum, recordTime} from '../../common/js/metrics.js';
+import {FileType} from '../../common/js/file_type.js';
+import {metrics} from '../../common/js/metrics.js';
 import {ProgressCenterItem, ProgressItemState, ProgressItemType} from '../../common/js/progress_center_common.js';
-import {bytesToString, str, strf} from '../../common/js/translations.js';
-import {recordViewingNavigationSurfaceUma, recordViewingVolumeTypeUma} from '../../common/js/uma.js';
-import {LEGACY_FILES_EXTENSION_ID} from '../../common/js/url_constants.js';
-import {descriptorEqual, extractFilePath, isTeleported, makeTaskID, splitExtension} from '../../common/js/util.js';
-import {RootType, RootTypesForUMA, VolumeError, VolumeType} from '../../common/js/volume_manager_types.js';
-import {type FileTasks as StoreFileTasks} from '../../state/state.js';
-import {getStore} from '../../state/store.js';
-import type {XfPasswordDialog} from '../../widgets/xf_password_dialog.js';
-import {USER_CANCELLED} from '../../widgets/xf_password_dialog.js';
+import {LEGACY_FILES_EXTENSION_ID, SWA_APP_ID, SWA_FILES_APP_URL, toFilesAppURL} from '../../common/js/url_constants.js';
+import {str, strf, util} from '../../common/js/util.js';
+import {VolumeManagerCommon} from '../../common/js/volume_manager_types.js';
+import {Crostini} from '../../externs/background/crostini.js';
+import {ProgressCenter} from '../../externs/background/progress_center.js';
+import {FileData, FileTasks as StoreFileTasks} from '../../externs/ts/state.js';
+import {VolumeInfo} from '../../externs/volume_info.js';
+import {VolumeManager} from '../../externs/volume_manager.js';
+import {FilesPasswordDialog} from '../elements/files_password_dialog.js';
 
-import {DEFAULT_CROSTINI_VM} from './constants.js';
-import type {DirectoryModel} from './directory_model.js';
-import {type DirectoryChangeTracker} from './directory_model.js';
-import type {FileTransferController} from './file_transfer_controller.js';
-import {PastePlan} from './file_transfer_controller.js';
-import type {MetadataItem} from './metadata/metadata_item.js';
-import type {MetadataModel} from './metadata/metadata_model.js';
-import type {TaskController} from './task_controller.js';
-import {type DropdownItem} from './task_controller.js';
-import type {TaskHistory} from './task_history.js';
-import type {DefaultTaskDialog} from './ui/default_task_dialog.js';
-import type {FileManagerUI} from './ui/file_manager_ui.js';
+import {constants} from './constants.js';
+import {DirectoryChangeTracker, DirectoryModel} from './directory_model.js';
+import {FileTransferController} from './file_transfer_controller.js';
+import {MetadataItem} from './metadata/metadata_item.js';
+import {MetadataModel} from './metadata/metadata_model.js';
+import {TaskController} from './task_controller.js';
+import {TaskHistory} from './task_history.js';
+import {DefaultTaskDialog} from './ui/default_task_dialog.js';
+import {FileManagerUI} from './ui/file_manager_ui.js';
 import {FilesConfirmDialog} from './ui/files_confirm_dialog.js';
-import {UMA_INDEX_KNOWN_EXTENSIONS} from './uma_enums.gen.js';
 
 /**
  * Office file handlers UMA values (must be consistent with OfficeFileHandler in
  * tools/metrics/histograms/enums.xml).
+ * @const @enum {number}
  */
 const OfficeFileHandlersHistogramValues = {
   OTHER: 0,
@@ -64,7 +59,7 @@ export class FileTasks {
       private metadataModel_: MetadataModel,
       private directoryModel_: DirectoryModel, private ui_: FileManagerUI,
       private fileTransferController_: FileTransferController,
-      private entries_: Array<Entry|FilesAppEntry>,
+      private entries_: Entry[],
       private resultingTasks_: chrome.fileManagerPrivate.ResultingTasks,
       private defaultTask_: chrome.fileManagerPrivate.FileTask|null,
       private taskHistory_: TaskHistory,
@@ -80,9 +75,9 @@ export class FileTasks {
   static async create(
       volumeManager: VolumeManager, metadataModel: MetadataModel,
       directoryModel: DirectoryModel, ui: FileManagerUI,
-      fileTransferController: FileTransferController,
-      entries: Array<Entry|FilesAppEntry>, taskHistory: TaskHistory,
-      crostini: Crostini, progressCenter: ProgressCenter,
+      fileTransferController: FileTransferController, entries: Entry[],
+      taskHistory: TaskHistory, crostini: Crostini,
+      progressCenter: ProgressCenter,
       taskController: TaskController): Promise<FileTasks> {
     let resultingTasks: chrome.fileManagerPrivate.ResultingTasks = {
       tasks: [],
@@ -90,7 +85,7 @@ export class FileTasks {
     };
 
     // Cannot use fake entries with getFileTasks.
-    entries = entries.filter(e => !isFakeEntry(e));
+    entries = entries.filter(e => !util.isFakeEntry(e));
     const dlpSourceUrls = metadataModel.getCache(entries, ['sourceUrl'])
                               .map(m => m.sourceUrl || '');
     if (entries.length !== 0) {
@@ -108,9 +103,10 @@ export class FileTasks {
     if (entries.length !== 1 ||
         !(isCrostiniEntry(entries[0]!, volumeManager) ||
           crostini.canSharePath(
-              DEFAULT_CROSTINI_VM, entries[0]!, false /* persist */))) {
+              constants.DEFAULT_CROSTINI_VM, entries[0]!,
+              false /* persist */))) {
       resultingTasks.tasks = resultingTasks.tasks.filter(
-          (task: chrome.fileManagerPrivate.FileTask) => !descriptorEqual(
+          (task: chrome.fileManagerPrivate.FileTask) => !util.descriptorEqual(
               task.descriptor, INSTALL_LINUX_PACKAGE_TASK_DESCRIPTOR));
     }
 
@@ -141,7 +137,7 @@ export class FileTasks {
         taskHistory, progressCenter, taskController);
   }
 
-  get entries(): Array<Entry|FilesAppEntry> {
+  get entries(): Entry[] {
     return this.entries_;
   }
 
@@ -163,9 +159,9 @@ export class FileTasks {
   /** Returns whether the system is currently offline. */
   private static isOffline_(volumeManager: VolumeManager): boolean {
     const connection = volumeManager.getDriveConnectionState();
-    return connection.type ===
+    return connection.type ==
         chrome.fileManagerPrivate.DriveConnectionStateType.OFFLINE &&
-        connection.reason ===
+        connection.reason ==
         chrome.fileManagerPrivate.DriveOfflineReason.NO_NETWORK;
   }
 
@@ -178,11 +174,11 @@ export class FileTasks {
    */
   private static recordEnumWithOnlineAndOffline_(
       volumeManager: VolumeManager, name: string, value: any, values: any[]) {
-    recordEnum(name, value, values);
+    metrics.recordEnum(name, value, values);
     if (FileTasks.isOffline_(volumeManager)) {
-      recordEnum(name + '.Offline', value, values);
+      metrics.recordEnum(name + '.Offline', value, values);
     } else {
-      recordEnum(name + '.Online', value, values);
+      metrics.recordEnum(name + '.Online', value, values);
     }
   }
 
@@ -190,8 +186,8 @@ export class FileTasks {
    * Returns ViewFileType enum or 'other' for the given entry.
    * @return A ViewFileType enum or 'other'.
    */
-  static getViewFileType(entry: Entry|FilesAppEntry): string {
-    let extension = getExtension(entry).toLowerCase();
+  static getViewFileType(entry: Entry): string {
+    let extension = FileType.getExtension(entry).toLowerCase();
     if (UMA_INDEX_KNOWN_EXTENSIONS.indexOf(extension) < 0) {
       extension = 'other';
     }
@@ -200,15 +196,11 @@ export class FileTasks {
 
   /** Records trial of opening file grouped by extensions.  */
   private static recordViewingFileTypeUma_(
-      volumeManager: VolumeManager, entries: Array<Entry|FilesAppEntry>) {
-    const state = getStore().getState();
+      volumeManager: VolumeManager, entries: Entry[]) {
     for (const entry of entries) {
       FileTasks.recordEnumWithOnlineAndOffline_(
           volumeManager, 'ViewingFileType', FileTasks.getViewFileType(entry),
           UMA_INDEX_KNOWN_EXTENSIONS as string[]);
-      recordViewingVolumeTypeUma(state, entry.toURL());
-      // Recorded per file.
-      recordViewingNavigationSurfaceUma(state);
     }
   }
 
@@ -217,10 +209,12 @@ export class FileTasks {
    * @param rootType The type of the root where entries are being opened.
    */
   private static recordViewingRootTypeUma_(
-      volumeManager: VolumeManager, rootType: RootType|null) {
+      volumeManager: VolumeManager,
+      rootType: VolumeManagerCommon.RootType|null) {
     if (rootType !== null) {
       FileTasks.recordEnumWithOnlineAndOffline_(
-          volumeManager, 'ViewingRootType', rootType, RootTypesForUMA);
+          volumeManager, 'ViewingRootType', rootType,
+          VolumeManagerCommon.RootTypesForUMA);
     }
   }
 
@@ -231,20 +225,21 @@ export class FileTasks {
    *     from.
    * @param time Time to be recorded in milliseconds.
    */
-  private static recordZipMountTimeUma_(rootType: RootType|null, time: number) {
+  private static recordZipMountTimeUma_(
+      rootType: VolumeManagerCommon.RootType|null, time: number) {
     let root;
     switch (rootType) {
-      case RootType.MY_FILES:
-      case RootType.DOWNLOADS:
+      case VolumeManagerCommon.RootType.MY_FILES:
+      case VolumeManagerCommon.RootType.DOWNLOADS:
         root = 'MyFiles';
         break;
-      case RootType.DRIVE:
+      case VolumeManagerCommon.RootType.DRIVE:
         root = 'Drive';
         break;
       default:
         root = 'Other';
     }
-    recordTime(`ZipMountTime.${root}`, time);
+    metrics.recordTime(`ZipMountTime.${root}`, time);
   }
 
   /**
@@ -253,8 +248,9 @@ export class FileTasks {
    * @param rootType The type of the root where entries are being opened.
    */
   private static recordOfficeFileHandlerUma_(
-      volumeManager: VolumeManager, entries: Array<Entry|FilesAppEntry>,
-      rootType: RootType|null, task: chrome.fileManagerPrivate.FileTask|null) {
+      volumeManager: VolumeManager, entries: Entry[],
+      rootType: VolumeManagerCommon.RootType|null,
+      task: chrome.fileManagerPrivate.FileTask|null) {
     if (!task) {
       return;
     }
@@ -266,7 +262,7 @@ export class FileTasks {
 
     let histogramName = 'OfficeFiles.FileHandler';
     switch (rootType) {
-      case RootType.DRIVE:
+      case VolumeManagerCommon.RootType.DRIVE:
         histogramName += '.Drive';
         break;
       default:
@@ -291,9 +287,9 @@ export class FileTasks {
         break;
     }
 
-    recordEnum(
+    metrics.recordEnum(
         histogramName, fileHandler,
-        Object.values(OfficeFileHandlersHistogramValues));
+        Object.keys(OfficeFileHandlersHistogramValues).length);
   }
 
   /** Returns true if the descriptor is for an internal task.  */
@@ -305,7 +301,7 @@ export class FileTasks {
     }
 
     // Legacy Files app task type is 'app', Files SWA is 'web'.
-    if (!(taskType === 'app' || taskType === 'web')) {
+    if (!(taskType === 'app' || taskType == 'web')) {
       return false;
     }
     const parsedActionId = parseActionId(actionId);
@@ -332,7 +328,7 @@ export class FileTasks {
    * @param copyMessage Message if files should be copied.
    */
   static showPluginVmNotSharedDialog(
-      entries: Array<Entry|FilesAppEntry>, volumeManager: VolumeManager,
+      entries: Entry[], volumeManager: VolumeManager,
       metadataModel: MetadataModel, ui: FileManagerUI, moveMessage: string,
       copyMessage: string, fileTransferController: FileTransferController|null,
       directoryModel: DirectoryModel) {
@@ -351,7 +347,7 @@ export class FileTasks {
 
       assert(volumeManager.getLocationInfo(pvmDir));
 
-      fileTransferController.executePaste(new PastePlan(
+      fileTransferController.executePaste(new FileTransferController.PastePlan(
           entries.map(e => e.toURL()), [], pvmDir, metadataModel,
           /*isMove=*/ isMyFiles));
       directoryModel.changeDirectoryEntry(pvmDir);
@@ -408,14 +404,9 @@ export class FileTasks {
     }
 
     const filename = this.entries_[0]!.name;
-    const extension = splitExtension(filename)[1] || null;
+    const extension = util.splitExtension(filename)[1] || null;
 
-    try {
-      await this.checkAvailability_();
-    } catch (error) {
-      console.warn('Rejected after checking availability due to', error);
-      return;
-    }
+    await this.checkAvailability_();
 
     try {
       const descriptor = {
@@ -428,7 +419,7 @@ export class FileTasks {
         case 'opened':
           break;
         case 'message_sent':
-          isTeleported().then(teleported => {
+          util.isTeleported(window).then(teleported => {
             if (teleported) {
               this.ui_.showOpenInOtherDesktopAlert(this.entries_);
             }
@@ -460,9 +451,51 @@ export class FileTasks {
 
       const text = strf(textMessageId, str('NO_TASK_FOR_FILE_URL'));
       const title = titleMessageId ? str(titleMessageId) : filename;
+      if (extension === '.apk') {
+        this.mightShowApkAlert(() => {
+          // fallback
+          this.ui_.alertDialog.showHtml(title, text);
+        });
+        return;
+      }
       this.ui_.alertDialog.showHtml(title, text);
     }
   }
+
+  async mightShowApkAlert(fallback: () => void) {
+    const jemaosArcSettingAppId = 'iakadpgajjigiaojnbdmodlngmbkfhag';
+    let appAvailable = false;
+    try {
+      const app: chrome.management.ExtensionInfo = await chrome.management.get(jemaosArcSettingAppId);
+      if (!chrome.runtime.lastError && app.enabled) {
+        appAvailable = true;
+      }
+    } catch (err: any) {
+      console.error(err);
+    }
+    console.log('jemaos arc app available:', appAvailable);
+    if (appAvailable) {
+      this.showArcAlert(jemaosArcSettingAppId);
+      return;
+    }
+    if (fallback) {
+      fallback();
+    }
+  }
+
+  showArcAlert(appId: string) {
+    const text = str('NO_TASK_FOR_APK');
+    const title = '\u00a0'; // this is the &nbsp; (no-break-space) character
+    this.ui_.alertDialog.showHtml(title, text);
+    const a = this.ui_.alertDialog.findLinkElementInText();
+    if (a) {
+      a.addEventListener('click', (e: Event) => {
+        chrome.nativeWindows.create(appId);
+        this.ui_.alertDialog.hide();
+        e.preventDefault();
+      });
+    }
+  };
 
   /** Executes a single task.  */
   execute(task: chrome.fileManagerPrivate.FileTask) {
@@ -479,12 +512,7 @@ export class FileTasks {
   private async executeInternal_(task: chrome.fileManagerPrivate.FileTask):
       Promise<void> {
     const entries = this.entries_;
-    try {
-      await this.checkAvailability_();
-    } catch (error) {
-      console.warn('Rejected after checking availability due to', error);
-      return;
-    }
+    await this.checkAvailability_();
     this.taskHistory_.recordTaskExecuted(task.descriptor);
     const msg = (entries.length === 1) ?
         strf('OPEN_A11Y', entries[0]!.name) :
@@ -500,7 +528,7 @@ export class FileTasks {
       const TaskResult = chrome.fileManagerPrivate.TaskResult;
       switch (result) {
         case TaskResult.MESSAGE_SENT:
-          isTeleported().then((teleported) => {
+          util.isTeleported(window).then((teleported) => {
             if (teleported) {
               this.ui_.showOpenInOtherDesktopAlert(entries);
             }
@@ -520,8 +548,7 @@ export class FileTasks {
           break;
       }
     } catch (error) {
-      console.warn(`Failed to execute task ${
-          JSON.stringify(task.descriptor)}: ${error}`);
+      console.warn(`Failed to execute task ${task.descriptor}: ${error}`);
     }
   }
 
@@ -534,8 +561,7 @@ export class FileTasks {
    */
   private async checkAvailability_(): Promise<void> {
     const areAll =
-        (entries: Array<Entry|FilesAppEntry>, props: MetadataItem[],
-         name: keyof MetadataItem) => {
+        (entries: Entry[], props: MetadataItem[], name: keyof MetadataItem) => {
           let okEntriesNum = 0;
           for (let i = 0; i < entries.length; i++) {
             // If got no properties, we safely assume that item is available.
@@ -548,7 +574,8 @@ export class FileTasks {
 
     const containsDriveEntries = this.entries_.some(entry => {
       const volumeInfo = this.volumeManager_.getVolumeInfo(entry);
-      return volumeInfo && volumeInfo.volumeType === VolumeType.DRIVE;
+      return volumeInfo &&
+          volumeInfo.volumeType === VolumeManagerCommon.VolumeType.DRIVE;
     });
 
     // Availability is not checked for non-Drive files, as availableOffline, nor
@@ -577,19 +604,7 @@ export class FileTasks {
               str('OFFLINE_COLUMN_LABEL'));
 
       this.ui_.alertDialog.showHtml(str('OFFLINE_HEADER'), msg);
-      const isBulkPinningEnabled =
-          !!getStore().getState()?.preferences?.driveFsBulkPinningEnabled;
-      for (const entry of this.entries_) {
-        recordEnum(
-            'DriveOfflineOpen.Unavailable', FileTasks.getViewFileType(entry),
-            UMA_INDEX_KNOWN_EXTENSIONS);
-        if (isBulkPinningEnabled) {
-          recordEnum(
-              'GoogleDrive.BulkPinning.OfflineOpen',
-              FileTasks.getViewFileType(entry), UMA_INDEX_KNOWN_EXTENSIONS);
-        }
-      }
-      return Promise.reject('drive is offline');
+      return;
     }
 
     const isOnMetered = this.volumeManager_.getDriveConnectionState().type ===
@@ -614,7 +629,7 @@ export class FileTasks {
     const msg = strf(
         this.entries_.length === 1 ? 'CONFIRM_MOBILE_DATA_USE' :
                                      'CONFIRM_MOBILE_DATA_USE_PLURAL',
-        bytesToString(sizeToDownload));
+        util.bytesToString(sizeToDownload));
     return new Promise(
         (resolve, reject) => this.ui_.confirmDialog.show(msg, resolve, reject));
   }
@@ -641,14 +656,14 @@ export class FileTasks {
 
     console.error(
         'The specified task is not a valid internal task: ' +
-        makeTaskID(descriptor));
+        util.makeTaskID(descriptor));
   }
 
   /** Install a Linux Package in the Linux container.  */
   private installLinuxPackageInternal_() {
     assert(this.entries_.length === 1);
     this.ui_.installLinuxPackageDialog.showInstallLinuxPackageDialog(
-        this.entries_[0]! as Entry);
+        this.entries_[0]!);
   }
 
   /**
@@ -658,7 +673,7 @@ export class FileTasks {
   private importCrostiniImageInternal_() {
     assert(this.entries_.length === 1);
     this.ui_.importCrostiniImageDialog.showImportCrostiniImageDialog(
-        this.entries_[0]! as Entry);
+        this.entries_[0]!);
   }
 
   /**
@@ -666,7 +681,7 @@ export class FileTasks {
    * @param url URL of the archive file to mount.
    */
   private async mountArchive_(url: string): Promise<VolumeInfo> {
-    const filename = extractFilePath(url)?.split('/').pop() || '';
+    const filename = util.extractFilePath(url)?.split('/').pop() || '';
 
     const item = new ProgressCenterItem();
     item.id = 'Mounting: ' + url;
@@ -696,7 +711,7 @@ export class FileTasks {
       return await this.volumeManager_.mountArchive(url);
     } catch (error) {
       // If error is not about needing a password, propagate it.
-      if (error !== VolumeError.NEED_PASSWORD) {
+      if (error !== VolumeManagerCommon.VolumeError.NEED_PASSWORD) {
         throw error;
       }
     } finally {
@@ -708,11 +723,11 @@ export class FileTasks {
     // We need a password.
     const unlock = await this.mutex_.lock();
     try {
-      let password: string|null = null;
+      /** @type {?string} */ let password = null;
       while (true) {
         // Ask for password.
         do {
-          const dialog = this.ui_.passwordDialog as XfPasswordDialog;
+          const dialog = this.ui_.passwordDialog as FilesPasswordDialog;
           password = await dialog.askForPassword(filename, password);
         } while (!password);
 
@@ -725,7 +740,7 @@ export class FileTasks {
           return await this.volumeManager_.mountArchive(url, password);
         } catch (error) {
           // If error is not about needing a password, propagate it.
-          if (error !== VolumeError.NEED_PASSWORD) {
+          if (error !== VolumeManagerCommon.VolumeError.NEED_PASSWORD) {
             throw error;
           }
         } finally {
@@ -771,15 +786,16 @@ export class FileTasks {
     } catch (error) {
       // No need to display an error message if user canceled mounting or
       // canceled the password prompt.
-      if (error === USER_CANCELLED || error === VolumeError.CANCELLED) {
+      if (error === FilesPasswordDialog.USER_CANCELLED ||
+          error === VolumeManagerCommon.VolumeError.CANCELLED) {
         return;
       }
 
-      const filename = extractFilePath(url)?.split('/').pop() || '';
+      const filename = util.extractFilePath(url)?.split('/').pop() || '';
       const item = new ProgressCenterItem();
       item.id = 'Cannot mount: ' + url;
       item.type = ProgressItemType.MOUNT_ARCHIVE;
-      const msgId = error === VolumeError.INVALID_PATH ?
+      const msgId = error === VolumeManagerCommon.VolumeError.INVALID_PATH ?
           'ARCHIVE_MOUNT_INVALID_PATH' :
           'ARCHIVE_MOUNT_FAILED';
       item.message = strf(msgId, filename);
@@ -798,7 +814,7 @@ export class FileTasks {
     try {
       // TODO(mtomasz): Move conversion from entry to url to custom bindings.
       // crbug.com/345527.
-      const urls = entriesToURLs(this.entries_);
+      const urls = util.entriesToURLs(this.entries_);
       const promises =
           urls.map(url => this.mountArchiveAndChangeDirectory_(tracker, url));
       await Promise.all(promises);
@@ -826,23 +842,23 @@ export class FileTasks {
     let defaultIdx = 0;
     if (this.defaultTask_) {
       for (let j = 0; j < items.length; j++) {
-        if (descriptorEqual(
-                items[j]!.task!.descriptor, this.defaultTask_.descriptor)) {
+        if (util.descriptorEqual(
+                items[j]!.task.descriptor, this.defaultTask_.descriptor)) {
           defaultIdx = j;
         }
       }
     }
 
     taskDialog.showDefaultTaskDialog(
-        title, message, items, defaultIdx, (item: DropdownItem) => {
-          onSuccess(item.task!);
+        title, message, items, defaultIdx, item => {
+          onSuccess(item.task);
         });
   }
 
   private static async getPvmSharedDir_(volumeManager: VolumeManager):
       Promise<DirectoryEntry> {
-    const volumeInfo =
-        volumeManager.getCurrentProfileVolumeInfo(VolumeType.DOWNLOADS);
+    const volumeInfo = volumeManager.getCurrentProfileVolumeInfo(
+        VolumeManagerCommon.VolumeType.DOWNLOADS);
     if (!volumeInfo) {
       throw new Error(`Error getting PvmDefault dir`);
     }
@@ -851,29 +867,224 @@ export class FileTasks {
   }
 }
 
-/** Dialog types to show a task picker. */
+/** The task descriptor of 'Install Linux package'. */
+export const INSTALL_LINUX_PACKAGE_TASK_DESCRIPTOR = {
+  appId: LEGACY_FILES_EXTENSION_ID,
+  taskType: 'app',
+  actionId: 'install-linux-package',
+} as const;
+
+
+/**
+ * Dialog types to show a task picker.
+ * @enum {string}
+ */
 export const TaskPickerType = {
   ChangeDefault: 'ChangeDefault',
   OpenWith: 'OpenWith',
 } as const;
 type TypeTaskPickerType = typeof TaskPickerType[keyof typeof TaskPickerType];
 
+/**
+ * List of file extensions to record in UMA.
+ *
+ * Note: since the data is recorded by list index, new items should be added
+ * to the end of this list.
+ *
+ * The list must also match the FileBrowser ViewFileType entry in enums.xml.
+ */
+export const UMA_INDEX_KNOWN_EXTENSIONS = Object.freeze([
+  'other',     '.3ga',         '.3gp',
+  '.aac',      '.alac',        '.asf',
+  '.avi',      '.bmp',         '.csv',
+  '.doc',      '.docx',        '.flac',
+  '.gif',      '.jpeg',        '.jpg',
+  '.log',      '.m3u',         '.m3u8',
+  '.m4a',      '.m4v',         '.mid',
+  '.mkv',      '.mov',         '.mp3',
+  '.mp4',      '.mpg',         '.odf',
+  '.odp',      '.ods',         '.odt',
+  '.oga',      '.ogg',         '.ogv',
+  '.pdf',      '.png',         '.ppt',
+  '.pptx',     '.ra',          '.ram',
+  '.rar',      '.rm',          '.rtf',
+  '.wav',      '.webm',        '.webp',
+  '.wma',      '.wmv',         '.xls',
+  '.xlsx',     '.crdownload',  '.crx',
+  '.dmg',      '.exe',         '.html',
+  '.htm',      '.jar',         '.ps',
+  '.torrent',  '.txt',         '.zip',
+  'directory', 'no extension', 'unknown extension',
+  '.mhtml',    '.gdoc',        '.gsheet',
+  '.gslides',  '.arw',         '.cr2',
+  '.dng',      '.nef',         '.nrw',
+  '.orf',      '.raf',         '.rw2',
+  '.tini',
+]);
+
 /** Office file extensions. */
 const OFFICE_EXTENSIONS =
-    new Set(['.doc', '.docx', '.xls', 'xlsm', '.xlsx', '.ppt', '.pptx']);
+    new Set(['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']);
 
-function hasOfficeExtension(entry: Entry|FilesAppEntry): boolean {
-  return OFFICE_EXTENSIONS.has(getExtension(entry));
+export interface AnnotatedTask extends chrome.fileManagerPrivate.FileTask {
+  iconType: string;
 }
 
-function isCrostiniEntry(
-    entry: Entry|FilesAppEntry, volumeManager: VolumeManager): boolean {
-  const location = volumeManager.getLocationInfo(entry);
-  return !!location && location.rootType === RootType.CROSTINI;
+function isFilesAppId(appId: string): boolean {
+  return appId === LEGACY_FILES_EXTENSION_ID || appId === SWA_APP_ID;
 }
 
-function isMyFilesEntry(
-    entry: Entry|FilesAppEntry, volumeManager: VolumeManager): boolean {
+function hasOfficeExtension(entry: Entry): boolean {
+  return OFFICE_EXTENSIONS.has(FileType.getExtension(entry));
+}
+
+/**
+ * The SWA actionId is prefixed with chrome://file-manager/?ACTION_ID, just the
+ * sub-string compatible with the extension/legacy e.g.: "view-pdf".
+ */
+export function parseActionId(actionId: string): string {
+  const swaUrl = SWA_FILES_APP_URL.toString() + '?';
+  return actionId.replace(swaUrl, '');
+}
+
+function isCrostiniEntry(entry: Entry, volumeManager: VolumeManager): boolean {
   const location = volumeManager.getLocationInfo(entry);
-  return !!location && location.rootType === RootType.DOWNLOADS;
+  return !!location &&
+      location.rootType === VolumeManagerCommon.RootType.CROSTINI;
+}
+
+function isMyFilesEntry(entry: Entry, volumeManager: VolumeManager): boolean {
+  const location = volumeManager.getLocationInfo(entry);
+  return !!location &&
+      location.rootType === VolumeManagerCommon.RootType.DOWNLOADS;
+}
+
+/**
+ * Annotates tasks returned from the API.
+ * @param tasks Input tasks from the API.
+ * @param entries List of entries for the tasks.
+ */
+export function annotateTasks(
+    tasks: chrome.fileManagerPrivate.FileTask[],
+    entries: Entry[]|FileData[]): AnnotatedTask[] {
+  const result: AnnotatedTask[] = [];
+  for (const task of tasks) {
+    const {appId, taskType, actionId} = task.descriptor;
+    const parsedActionId = parseActionId(actionId);
+
+    // Skip internal Files app's handlers.
+    if (isFilesAppId(appId) &&
+        (parsedActionId === 'select' || parsedActionId === 'open')) {
+      continue;
+    }
+
+    // Tweak images, titles of internal tasks.
+    const annotateTask: AnnotatedTask = {...task, iconType: ''};
+    if (isFilesAppId(appId) && (taskType === 'app' || taskType === 'web')) {
+      if (parsedActionId === 'mount-archive') {
+        annotateTask.iconType = 'archive';
+        annotateTask.title = str('MOUNT_ARCHIVE');
+      } else if (parsedActionId === 'open-hosted-generic') {
+        if (entries.length > 1) {
+          annotateTask.iconType = 'generic';
+        } else {  // Use specific icon.
+          annotateTask.iconType = FileType.getIcon(entries[0]!);
+        }
+        annotateTask.title = str('TASK_OPEN');
+      } else if (parsedActionId === 'open-hosted-gdoc') {
+        annotateTask.iconType = 'gdoc';
+        annotateTask.title = str('TASK_OPEN_GDOC');
+      } else if (parsedActionId === 'open-hosted-gsheet') {
+        annotateTask.iconType = 'gsheet';
+        annotateTask.title = str('TASK_OPEN_GSHEET');
+      } else if (parsedActionId === 'open-hosted-gslides') {
+        annotateTask.iconType = 'gslides';
+        annotateTask.title = str('TASK_OPEN_GSLIDES');
+      } else if (parsedActionId === 'open-web-drive-office-word') {
+        annotateTask.iconType = 'gdoc';
+        annotateTask.title = str('TASK_OPEN_GDOC');
+      } else if (parsedActionId === 'open-web-drive-office-excel') {
+        annotateTask.iconType = 'gsheet';
+        annotateTask.title = str('TASK_OPEN_GSHEET');
+      } else if (parsedActionId === 'upload-office-to-drive') {
+        annotateTask.iconType = 'generic';
+        annotateTask.title = 'Upload to Drive';
+      } else if (parsedActionId === 'open-web-drive-office-powerpoint') {
+        annotateTask.iconType = 'gslides';
+        annotateTask.title = str('TASK_OPEN_GSLIDES');
+      } else if (parsedActionId === 'open-in-office') {
+        annotateTask.iconUrl =
+            toFilesAppURL('foreground/images/files/ui/ms365.svg').toString();
+        annotateTask.title = str('TASK_OPEN_MICROSOFT_365');
+      } else if (parsedActionId === 'install-linux-package') {
+        annotateTask.iconType = 'crostini';
+        annotateTask.title = str('TASK_INSTALL_LINUX_PACKAGE');
+      } else if (parsedActionId === 'import-crostini-image') {
+        annotateTask.iconType = 'tini';
+        annotateTask.title = str('TASK_IMPORT_CROSTINI_IMAGE');
+      } else if (parsedActionId === 'view-pdf') {
+        annotateTask.iconType = 'pdf';
+        annotateTask.title = str('TASK_VIEW');
+      } else if (parsedActionId === 'view-in-browser') {
+        annotateTask.iconType = 'generic';
+        annotateTask.title = str('TASK_VIEW');
+      }
+    }
+    if (!annotateTask.iconType && taskType === 'web-intent') {
+      annotateTask.iconType = 'generic';
+    }
+
+    result.push(annotateTask);
+  }
+
+  return result;
+}
+
+/**
+ * Gets the default task from tasks. In case there is no such task (i.e. all
+ * tasks are generic file handlers), then return null.
+ */
+export function getDefaultTask(
+    tasks: AnnotatedTask[],
+    policyDefaultHandlerStatus:
+        chrome.fileManagerPrivate.PolicyDefaultHandlerStatus|undefined,
+    taskHistory: TaskHistory): AnnotatedTask|null {
+  const INCORRECT_ASSIGNMENT =
+      chrome.fileManagerPrivate.PolicyDefaultHandlerStatus.INCORRECT_ASSIGNMENT;
+  const DEFAULT_HANDLER_ASSIGNED_BY_POLICY =
+      chrome.fileManagerPrivate.PolicyDefaultHandlerStatus
+          .DEFAULT_HANDLER_ASSIGNED_BY_POLICY;
+
+  // If policy assignment is incorrect, then no default should be set.
+  if (policyDefaultHandlerStatus &&
+      policyDefaultHandlerStatus === INCORRECT_ASSIGNMENT) {
+    return null;
+  }
+
+  // 1. Default app set for MIME or file extension by user, or built-in app.
+  for (const task of tasks) {
+    if (task.isDefault) {
+      return task;
+    }
+  }
+
+  // If policy assignment is marked as correct, then by this moment we
+  // should've already found the default.
+  console.assert(
+      !(policyDefaultHandlerStatus &&
+        policyDefaultHandlerStatus === DEFAULT_HANDLER_ASSIGNED_BY_POLICY));
+
+  const nonGenericTasks = tasks.filter(t => !t.isGenericFileHandler);
+  if (nonGenericTasks.length === 0) {
+    return null;
+  }
+
+  // 2. Most recently executed or sole non-generic task.
+  const latest = nonGenericTasks[0]!;
+  if (nonGenericTasks.length == 1 ||
+      taskHistory.getLastExecutedTime(latest.descriptor)) {
+    return latest;
+  }
+
+  return null;
 }

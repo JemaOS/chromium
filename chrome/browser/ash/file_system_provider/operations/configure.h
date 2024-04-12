@@ -9,7 +9,8 @@
 #include "chrome/browser/ash/file_system_provider/operations/operation.h"
 #include "storage/browser/file_system/async_file_util.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 class ProvidedFileSystemInfo;
 
@@ -42,6 +43,7 @@ class Configure : public Operation {
 };
 
 }  // namespace operations
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_OPERATIONS_CONFIGURE_H_

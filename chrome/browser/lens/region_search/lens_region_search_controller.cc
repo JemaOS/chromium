@@ -11,7 +11,6 @@
 #include "base/metrics/histogram_macros.h"
 #include "chrome/browser/image_editor/screenshot_flow.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/lens/lens_side_panel_helper.h"
 #include "chrome/browser/ui/tab_contents/core_tab_helper.h"
 #include "components/lens/lens_entrypoints.h"
@@ -21,6 +20,7 @@
 #include "components/lens/lens_rendering_environment.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
+#include "ui/gfx/image/image_util.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/widget/widget.h"
 
@@ -32,7 +32,8 @@ LensRegionSearchControllerData::~LensRegionSearchControllerData() = default;
 RegionSearchCapturedData::RegionSearchCapturedData() = default;
 RegionSearchCapturedData::~RegionSearchCapturedData() = default;
 
-LensRegionSearchController::LensRegionSearchController() {
+LensRegionSearchController::LensRegionSearchController(Browser* browser)
+    : browser_(browser) {
   weak_this_ = weak_factory_.GetWeakPtr();
 }
 
@@ -40,20 +41,13 @@ LensRegionSearchController::~LensRegionSearchController() {
   CloseWithReason(views::Widget::ClosedReason::kLostFocus);
 }
 
-void LensRegionSearchController::Start(
-    content::WebContents* web_contents,
-    bool use_fullscreen_capture,
-    bool is_google_default_search_provider,
-    lens::AmbientSearchEntryPoint entry_point) {
-  entry_point_ = entry_point;
+void LensRegionSearchController::Start(content::WebContents* web_contents,
+                                       bool use_fullscreen_capture,
+                                       bool is_google_default_search_provider) {
   is_google_default_search_provider_ = is_google_default_search_provider;
   // Return early if web contents/browser don't exist and if capture mode is
   // already active.
-  if (!web_contents || in_capture_mode_) {
-    return;
-  }
-  Browser* browser = chrome::FindBrowserWithTab(web_contents);
-  if (!browser) {
+  if (!web_contents || !browser_ || in_capture_mode_) {
     return;
   }
 
@@ -72,7 +66,7 @@ void LensRegionSearchController::Start(
     // Create user education bubble anchored to the toolbar container.
     // This is only done for non-fulllscreen capture.
     bubble_widget_ = lens::OpenLensRegionSearchInstructions(
-        browser,
+        browser_,
         base::BindOnce(&LensRegionSearchController::Close,
                        base::Unretained(this)),
         base::BindOnce(&LensRegionSearchController::Escape,
@@ -80,6 +74,14 @@ void LensRegionSearchController::Start(
     bubble_widget_->Show();
     screenshot_flow_->Start(std::move(callback));
   }
+}
+
+gfx::Image LensRegionSearchController::ResizeImageIfNecessary(
+    const gfx::Image& image) {
+  return gfx::ResizedImageForMaxDimensions(
+      image, features::GetMaxPixelsForRegionSearch(),
+      features::GetMaxPixelsForRegionSearch(),
+      features::GetMaxAreaForRegionSearch());
 }
 
 void LensRegionSearchController::RecordCaptureResult(
@@ -159,8 +161,24 @@ void LensRegionSearchController::RecordRegionSizeRelatedMetrics(
       GetAspectRatioFromSize(region_height, region_width));
 }
 
+bool LensRegionSearchController::NeedsDownscale(gfx::Image image) {
+  if (image.Height() * image.Width() < features::GetMaxAreaForRegionSearch()) {
+    return false;
+  }
+  if (image.Width() < features::GetMaxPixelsForRegionSearch() &&
+      image.Height() < features::GetMaxPixelsForRegionSearch()) {
+    return false;
+  }
+  return true;
+}
+
 void LensRegionSearchController::OnCaptureCompleted(
     const image_editor::ScreenshotCaptureResult& result) {
+  std::vector<lens::mojom::LatencyLogPtr> log_data;
+  log_data.push_back(lens::mojom::LatencyLog::New(
+      lens::mojom::Phase::OVERALL_START, gfx::Size(), gfx::Size(),
+      lens::mojom::ImageFormat::ORIGINAL, base::Time::Now()));
+
   // Close all open UI overlays and bubbles.
   CloseWithReason(views::Widget::ClosedReason::kLostFocus);
   image_editor::ScreenshotCaptureResultCode code = result.result_code;
@@ -175,35 +193,47 @@ void LensRegionSearchController::OnCaptureCompleted(
     return;
   }
 
-  const gfx::Image& image = result.image;
-
+  const gfx::Image& captured_image = result.image;
   // If image is empty, then record UMA and close.
-  if (image.IsEmpty()) {
+  if (captured_image.IsEmpty()) {
     RecordCaptureResult(
         lens::LensRegionSearchCaptureResult::ERROR_CAPTURING_REGION);
     return;
   }
 
   // Record region size related UMA histograms according to region and screen.
-  RecordRegionSizeRelatedMetrics(result.screen_bounds, image.Size());
+  RecordRegionSizeRelatedMetrics(result.screen_bounds, captured_image.Size());
 
-  auto* core_tab_helper = CoreTabHelper::FromWebContents(web_contents());
+  if (NeedsDownscale(captured_image)) {
+    log_data.push_back(lens::mojom::LatencyLog::New(
+        lens::mojom::Phase::DOWNSCALE_START, captured_image.Size(), gfx::Size(),
+        lens::mojom::ImageFormat::ORIGINAL, base::Time::Now()));
+  }
+  const gfx::Image& image = ResizeImageIfNecessary(captured_image);
+  if (NeedsDownscale(captured_image)) {
+    log_data.push_back(lens::mojom::LatencyLog::New(
+        lens::mojom::Phase::DOWNSCALE_END, captured_image.Size(), image.Size(),
+        lens::mojom::ImageFormat::ORIGINAL, base::Time::Now()));
+  }
+
+  CoreTabHelper* core_tab_helper =
+      CoreTabHelper::FromWebContents(web_contents());
   if (!core_tab_helper) {
     RecordCaptureResult(
         lens::LensRegionSearchCaptureResult::FAILED_TO_OPEN_TAB);
     return;
   }
 
-  lens::RecordAmbientSearchQuery(entry_point_);
-
+  lens::RecordAmbientSearchQuery(
+      is_google_default_search_provider_
+          ? lens::AmbientSearchEntryPoint::
+                CONTEXT_MENU_SEARCH_REGION_WITH_GOOGLE_LENS
+          : lens::AmbientSearchEntryPoint::CONTEXT_MENU_SEARCH_REGION_WITH_WEB);
   if (is_google_default_search_provider_) {
-    lens::EntryPoint lens_entry_point =
-        entry_point_ == lens::AmbientSearchEntryPoint::COMPANION_REGION_SEARCH
-            ? lens::EntryPoint::COMPANION_REGION_SEARCH
-            : lens::EntryPoint::CHROME_REGION_SEARCH_MENU_ITEM;
-    core_tab_helper->SearchWithLens(image, lens_entry_point);
+    core_tab_helper->RegionSearchWithLens(image, captured_image.Size(),
+                                          std::move(log_data));
   } else {
-    core_tab_helper->SearchByImage(image);
+    core_tab_helper->SearchByImage(image, captured_image.Size());
   }
 
   RecordCaptureResult(lens::LensRegionSearchCaptureResult::SUCCESS);
@@ -260,11 +290,6 @@ bool LensRegionSearchController::IsOverlayUIVisibleForTesting() {
   if (!bubble_widget_ || !screenshot_flow_)
     return false;
   return bubble_widget_->IsVisible() && screenshot_flow_->IsCaptureModeActive();
-}
-
-void LensRegionSearchController::SetEntryPointForTesting(
-    lens::AmbientSearchEntryPoint entry_point) {
-  entry_point_ = entry_point;
 }
 
 void LensRegionSearchController::SetWebContentsForTesting(

@@ -8,13 +8,11 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <set>
 #include <vector>
 
 #include "base/hash/legacy_hash.h"
 #include "base/logging.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 #include "chrome/browser/browser_process.h"
@@ -35,6 +33,7 @@
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_constants.h"
 #include "extensions/common/manifest_handlers/background_info.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/metrics_proto/system_profile.pb.h"
 
 using extensions::Extension;
@@ -219,7 +218,7 @@ ExtensionInstallProto::BackgroundScriptType GetBackgroundScriptType(
   return ExtensionInstallProto::NO_BACKGROUND_SCRIPT;
 }
 
-static_assert(extensions::disable_reason::DISABLE_REASON_LAST == (1LL << 23),
+static_assert(extensions::disable_reason::DISABLE_REASON_LAST == (1LL << 22),
               "Adding a new disable reason? Be sure to include the new reason "
               "below, update the test to exercise it, and then adjust this "
               "value for DISABLE_REASON_LAST");
@@ -262,9 +261,6 @@ std::vector<ExtensionInstallProto::DisableReason> GetDisableReasons(
        ExtensionInstallProto::NOT_ALLOWLISTED},
       {extensions::disable_reason::DISABLE_NOT_ASH_KEEPLISTED,
        ExtensionInstallProto::NOT_ASH_KEEPLISTED},
-      {extensions::disable_reason::
-           DISABLE_PUBLISHED_IN_STORE_REQUIRED_BY_POLICY,
-       ExtensionInstallProto::PUBLISHED_IN_STORE_REQUIRED_BY_POLICY},
   };
 
   int disable_reasons = prefs->GetDisableReasons(id);
@@ -280,15 +276,8 @@ std::vector<ExtensionInstallProto::DisableReason> GetDisableReasons(
       disable_reasons &= ~mask;
     }
   }
-  if (disable_reasons !=
-      extensions::disable_reason::DisableReason::DISABLE_NONE) {
-    // Record any unexpected disable reasons - these are likely deprecated
-    // reason(s) that have not been migrated over in a few clients. Use this
-    // histogram to determine how many clients are affected to decide what
-    // action to take (if any).
-    base::UmaHistogramSparse("Extensions.DeprecatedDisableReasonsObserved",
-                             disable_reasons);
-  }
+  DCHECK_EQ(extensions::disable_reason::DisableReason::DISABLE_NONE,
+            disable_reasons);
 
   return reasons;
 }
@@ -392,12 +381,12 @@ int ExtensionsMetricsProvider::HashExtension(const std::string& extension_id,
   return output % kExtensionListBuckets;
 }
 
-std::optional<extensions::ExtensionSet>
+absl::optional<extensions::ExtensionSet>
 ExtensionsMetricsProvider::GetInstalledExtensions(Profile* profile) {
   // Some profiles cannot have extensions, such as the System Profile.
   if (!profile || extensions::ChromeContentBrowserClientExtensionsPart::
                       AreExtensionsDisabledForProfile(profile)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   extensions::ExtensionRegistry* registry =
@@ -453,7 +442,7 @@ void ExtensionsMetricsProvider::ProvideOffStoreMetric(
   // time when this metric is generated.
   std::vector<Profile*> profiles = profile_manager->GetLoadedProfiles();
   for (size_t i = 0u; i < profiles.size() && state < OFF_STORE; ++i) {
-    std::optional<extensions::ExtensionSet> extensions =
+    absl::optional<extensions::ExtensionSet> extensions =
         GetInstalledExtensions(profiles[i]);
     if (!extensions)
       continue;
@@ -479,7 +468,7 @@ void ExtensionsMetricsProvider::ProvideOccupiedBucketMetric(
   // profiles.
   Profile* profile = cached_profile_.GetMetricsProfile();
 
-  std::optional<extensions::ExtensionSet> extensions =
+  absl::optional<extensions::ExtensionSet> extensions =
       GetInstalledExtensions(profile);
   if (!extensions)
     return;

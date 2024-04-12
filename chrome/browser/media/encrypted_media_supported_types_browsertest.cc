@@ -21,6 +21,7 @@
 #include "chrome/browser/media/clear_key_cdm_test_helper.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -36,16 +37,6 @@
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "third_party/widevine/cdm/buildflags.h"
 #include "url/gurl.h"
-
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chromeos/dbus/constants/dbus_switches.h"
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/settings/scoped_cros_settings_test_helper.h"
-#include "chrome/browser/ash/settings/stub_cros_settings_provider.h"
-#include "chromeos/ash/components/settings/cros_settings_names.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 #if BUILDFLAG(IS_ANDROID)
 #error This file needs to be updated to run on Android.
@@ -86,23 +77,11 @@ const char16_t kUnexpectedResult16[] = u"unexpected result";
 // For any usage of EXPECT_ANY, add a TODO explaining the plan to fix it.
 #define EXPECT_ANY(test) std::ignore = test
 
-#if BUILDFLAG(ENABLE_PLATFORM_AC3_EAC3_AUDIO)
-#define EXPECT_AC3 EXPECT_SUCCESS
-#else
-#define EXPECT_AC3 EXPECT_UNSUPPORTED
-#endif  // BUILDFLAG(ENABLE_PLATFORM_AC3_EAC3_AUDIO)
-
 #if BUILDFLAG(ENABLE_AV1_DECODER)
 #define EXPECT_AV1 EXPECT_SUCCESS
 #else
 #define EXPECT_AV1 EXPECT_UNSUPPORTED
 #endif
-
-#if BUILDFLAG(ENABLE_PLATFORM_DTS_AUDIO)
-#define EXPECT_DTS EXPECT_SUCCESS
-#else
-#define EXPECT_DTS EXPECT_UNSUPPORTED
-#endif  // BUILDFLAG(ENABLE_PLATFORM_DTS_AUDIO)
 
 #if BUILDFLAG(USE_PROPRIETARY_CODECS)
 #define EXPECT_PROPRIETARY EXPECT_SUCCESS
@@ -113,30 +92,22 @@ const char16_t kUnexpectedResult16[] = u"unexpected result";
 // Expectations for External Clear Key.
 #if BUILDFLAG(ENABLE_LIBRARY_CDMS)
 #define EXPECT_ECK EXPECT_SUCCESS
-#define EXPECT_ECK_AC3 EXPECT_AC3
 #define EXPECT_ECK_AV1 EXPECT_AV1
-#define EXPECT_ECK_DTS EXPECT_DTS
 #define EXPECT_ECK_PROPRIETARY EXPECT_PROPRIETARY
 #else
 #define EXPECT_ECK EXPECT_UNSUPPORTED
-#define EXPECT_ECK_AC3 EXPECT_UNSUPPORTED
 #define EXPECT_ECK_AV1 EXPECT_UNSUPPORTED
-#define EXPECT_ECK_DTS EXPECT_UNSUPPORTED
 #define EXPECT_ECK_PROPRIETARY EXPECT_UNSUPPORTED
 #endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
 
 // Expectations for Widevine.
 #if BUILDFLAG(BUNDLE_WIDEVINE_CDM)
 #define EXPECT_WV EXPECT_SUCCESS
-#define EXPECT_WV_AC3 EXPECT_AC3
 #define EXPECT_WV_AV1 EXPECT_AV1
-#define EXPECT_WV_DTS EXPECT_DTS
 #define EXPECT_WV_PROPRIETARY EXPECT_PROPRIETARY
 #else
 #define EXPECT_WV EXPECT_UNSUPPORTED
-#define EXPECT_WV_AC3 EXPECT_UNSUPPORTED
 #define EXPECT_WV_AV1 EXPECT_UNSUPPORTED
-#define EXPECT_WV_DTS EXPECT_UNSUPPORTED
 #define EXPECT_WV_PROPRIETARY EXPECT_UNSUPPORTED
 #endif  // BUILDFLAG(BUNDLE_WIDEVINE_CDM)
 
@@ -168,6 +139,9 @@ class EncryptedMediaSupportedTypesTest : public InProcessBrowserTest {
 #if BUILDFLAG(ENABLE_PLATFORM_HEVC)
     EnableFeature(media::kPlatformHEVCDecoderSupport);
 #endif  // BUILDFLAG(ENABLE_PLATFORM_HEVC)
+
+    // TODO(crbug.com/1243903): WhatsNewUI might be causing timeouts.
+    DisableFeature(features::kChromeWhatsNewUI);
 
     audio_webm_codecs_.push_back("vorbis");
 
@@ -209,12 +183,6 @@ class EncryptedMediaSupportedTypesTest : public InProcessBrowserTest {
     // [Dolby_Vision_fourCC].[Dovi_Profile_ID].[Dovi_Level_ID]
     // For example: "dvhe.05.07"
     dolby_vision_codecs_.push_back("dvhe.05.07");
-
-    dts_codecs_.push_back("dtsc");
-    dts_codecs_.push_back("mp4a.a9");
-
-    ac3_codecs_.push_back("ac-3");
-    ac3_codecs_.push_back("mp4a.a5");
 
     // Extended codecs are used, so make sure generic ones fail. These will be
     // tested against all init data types as they should always fail to be
@@ -268,8 +236,6 @@ class EncryptedMediaSupportedTypesTest : public InProcessBrowserTest {
   const CodecVector& dolby_vision_codecs() const {
     return dolby_vision_codecs_;
   }
-  const CodecVector& ac3_codecs() const { return ac3_codecs_; }
-  const CodecVector& dts_codecs() const { return dts_codecs_; }
 
   const CodecVector& invalid_codecs() const { return invalid_codecs_; }
 
@@ -290,9 +256,6 @@ class EncryptedMediaSupportedTypesTest : public InProcessBrowserTest {
     test_launcher_utils::RemoveCommandLineSwitch(
         default_command_line, switches::kDisableComponentUpdate, command_line);
 #endif  // BUILDFLAG(ENABLE_LIBRARY_CDMS)
-
-    // TODO(crbug.com/1243903): WhatsNewUI might be causing timeouts.
-    command_line->AppendSwitch(switches::kNoFirstRun);
 
     feature_list_.InitWithFeaturesAndParameters(enabled_features_,
                                                 disabled_features_);
@@ -366,7 +329,7 @@ class EncryptedMediaSupportedTypesTest : public InProcessBrowserTest {
     content::TitleWatcher title_watcher(contents, kSuccessResult16);
     title_watcher.AlsoWaitForTitle(kUnsupportedResult16);
     title_watcher.AlsoWaitForTitle(kUnexpectedResult16);
-    EXPECT_TRUE(content::ExecJs(contents, command));
+    EXPECT_TRUE(content::ExecuteScript(contents, command));
     std::u16string result = title_watcher.WaitAndGetTitle();
     return base::UTF16ToASCII(result);
   }
@@ -384,7 +347,8 @@ class EncryptedMediaSupportedTypesTest : public InProcessBrowserTest {
         return "persistent-license";
     }
 
-    NOTREACHED_NORETURN();
+    NOTREACHED();
+    return "";
   }
 
   std::string IsSupportedByKeySystem(
@@ -535,8 +499,6 @@ class EncryptedMediaSupportedTypesTest : public InProcessBrowserTest {
   CodecVector vp9_profile2_codecs_;
   CodecVector av1_codecs_;
   CodecVector dolby_vision_codecs_;
-  CodecVector dts_codecs_;
-  CodecVector ac3_codecs_;
   CodecVector invalid_codecs_;
 };
 
@@ -606,61 +568,6 @@ class EncryptedMediaSupportedTypesWidevineTest
         switches::kUnsafelyAllowProtectedMediaIdentifierForDomain, "127.0.0.1");
   }
 };
-
-#if BUILDFLAG(IS_CHROMEOS)
-class EncryptedMediaSupportedTypesDevModeTest
-    : public EncryptedMediaSupportedTypesTest {
- public:
-  EncryptedMediaSupportedTypesDevModeTest(
-      const EncryptedMediaSupportedTypesDevModeTest&) = delete;
-  EncryptedMediaSupportedTypesDevModeTest& operator=(
-      const EncryptedMediaSupportedTypesDevModeTest&) = delete;
-
- protected:
-  EncryptedMediaSupportedTypesDevModeTest() = default;
-
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    EncryptedMediaSupportedTypesTest::SetUpCommandLine(command_line);
-    // Expect Persistent licences to not be supported since switch for dev mode
-    // is turned on.
-    command_line->AppendSwitch(chromeos::switches::kSystemDevMode);
-  }
-};
-
-class EncryptedMediaSupportedTypesRAAllowedTest
-    : public EncryptedMediaSupportedTypesTest {
- public:
-  EncryptedMediaSupportedTypesRAAllowedTest(
-      const EncryptedMediaSupportedTypesRAAllowedTest&) = delete;
-  EncryptedMediaSupportedTypesRAAllowedTest& operator=(
-      const EncryptedMediaSupportedTypesRAAllowedTest&) = delete;
-
- protected:
-  EncryptedMediaSupportedTypesRAAllowedTest() = default;
-
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    EncryptedMediaSupportedTypesTest::SetUpCommandLine(command_line);
-    // Expect Persistent licences to be supported since switch for dev mode
-    // is turned on alongside the AllowRAinDevMode
-    command_line->AppendSwitch(chromeos::switches::kSystemDevMode);
-    command_line->AppendSwitch(switches::kAllowRAInDevMode);
-  }
-};
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-class EncryptedMediaSupportedTypesRAForContentBlockedTest
-    : public EncryptedMediaSupportedTypesTest {
- public:
-  EncryptedMediaSupportedTypesRAForContentBlockedTest(
-      const EncryptedMediaSupportedTypesRAForContentBlockedTest&) = delete;
-  EncryptedMediaSupportedTypesRAForContentBlockedTest& operator=(
-      const EncryptedMediaSupportedTypesRAForContentBlockedTest&) = delete;
-
- protected:
-  EncryptedMediaSupportedTypesRAForContentBlockedTest() = default;
-};
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 class EncryptedMediaSupportedTypesWidevineHwSecureTest
     : public EncryptedMediaSupportedTypesWidevineTest {
@@ -885,14 +792,7 @@ IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesClearKeyTest, Audio_WebM) {
                                             video_mp4_hevc_codecs()));
 }
 
-// TODO(crbug.com/1451037): Flaky on "Mac12 Tests" builder.
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_Video_MP4 DISABLED_Video_MP4
-#else
-#define MAYBE_Video_MP4 Video_MP4
-#endif
-IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesClearKeyTest,
-                       MAYBE_Video_MP4) {
+IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesClearKeyTest, Video_MP4) {
   // Valid video types.
   EXPECT_PROPRIETARY(
       IsSupportedByKeySystem(kClearKey, kVideoMP4MimeType, video_mp4_codecs()));
@@ -939,10 +839,6 @@ IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesClearKeyTest, Audio_MP4) {
       IsSupportedByKeySystem(kClearKey, kAudioMP4MimeType, opus_codecs()));
   EXPECT_SUCCESS(IsSupportedByKeySystem(kClearKey, kAudioMP4MimeType,
                                         audio_mp4_flac_codecs()));
-  EXPECT_AC3(
-      IsSupportedByKeySystem(kClearKey, kAudioMP4MimeType, ac3_codecs()));
-  EXPECT_DTS(
-      IsSupportedByKeySystem(kClearKey, kAudioMP4MimeType, dts_codecs()));
 
   // Non-audio MP4 codecs.
   EXPECT_UNSUPPORTED(
@@ -1125,14 +1021,8 @@ IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesExternalClearKeyTest,
       kExternalClearKey, kAudioWebMMimeType, video_mp4_hevc_codecs()));
 }
 
-// TODO(crbug.com/1451037): Flaky on "Mac12 Tests" builder.
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_Video_MP4 DISABLED_Video_MP4
-#else
-#define MAYBE_Video_MP4 Video_MP4
-#endif
 IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesExternalClearKeyTest,
-                       MAYBE_Video_MP4) {
+                       Video_MP4) {
   // Valid video types.
   EXPECT_ECK_PROPRIETARY(IsSupportedByKeySystem(
       kExternalClearKey, kVideoMP4MimeType, video_mp4_codecs()));
@@ -1174,10 +1064,6 @@ IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesExternalClearKeyTest,
                                     opus_codecs()));
   EXPECT_ECK(IsSupportedByKeySystem(kExternalClearKey, kAudioMP4MimeType,
                                     audio_mp4_flac_codecs()));
-  EXPECT_ECK_AC3(IsSupportedByKeySystem(kExternalClearKey, kAudioMP4MimeType,
-                                        ac3_codecs()));
-  EXPECT_ECK_DTS(IsSupportedByKeySystem(kExternalClearKey, kAudioMP4MimeType,
-                                        dts_codecs()));
 
   // Non-audio MP4 codecs.
   EXPECT_UNSUPPORTED(IsSupportedByKeySystem(
@@ -1420,10 +1306,6 @@ IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesWidevineTest, Audio_MP4) {
       IsSupportedByKeySystem(kWidevine, kAudioMP4MimeType, opus_codecs()));
   EXPECT_WV(IsSupportedByKeySystem(kWidevine, kAudioMP4MimeType,
                                    audio_mp4_flac_codecs()));
-  EXPECT_WV_AC3(
-      IsSupportedByKeySystem(kWidevine, kAudioMP4MimeType, ac3_codecs()));
-  EXPECT_WV_DTS(
-      IsSupportedByKeySystem(kWidevine, kAudioMP4MimeType, dts_codecs()));
 
   // Non-audio MP4 codecs.
   EXPECT_UNSUPPORTED(
@@ -1503,54 +1385,6 @@ IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesWidevineTest,
   EXPECT_UNSUPPORTED(IsAudioEncryptionSchemeSupported(kWidevine, ""));
   EXPECT_UNSUPPORTED(IsVideoEncryptionSchemeSupported(kWidevine, ""));
 }
-
-#if BUILDFLAG(IS_CHROMEOS)
-IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesDevModeTest, SessionType) {
-  // Temporary session always supported.
-  EXPECT_WV(IsSessionTypeSupported(kWidevine, SessionType::kTemporary));
-
-  // Persistent license session should not be supported while system is
-  // on dev mode.
-  EXPECT_UNSUPPORTED(
-      IsSessionTypeSupported(kWidevine, SessionType::kPersistentLicense));
-}
-
-IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesRAAllowedTest, SessionType) {
-  // Temporary session always supported.
-  EXPECT_WV(IsSessionTypeSupported(kWidevine, SessionType::kTemporary));
-
-  // Persistent license session should be supported if the flag
-  // `kAllowRAInDevMode` is attached while the system is on dev mode.
-  EXPECT_WV_SW_SECURE_PERSISTENT_SESSION(
-      IsSessionTypeSupported(kWidevine, SessionType::kPersistentLicense));
-}
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-IN_PROC_BROWSER_TEST_F(EncryptedMediaSupportedTypesRAForContentBlockedTest,
-                       SessionType) {
-  // Temporary session always supported.
-  EXPECT_WV(IsSessionTypeSupported(kWidevine, SessionType::kTemporary));
-
-  auto settings_helper =
-      std::make_unique<ash::ScopedCrosSettingsTestHelper>(false);
-  settings_helper->ReplaceDeviceSettingsProviderWithStub();
-
-  // Persistent license session should be supported as long as the policy
-  // 'kAttestationForContentProtectionEnabled' is set to true.
-  settings_helper->SetBoolean(ash::kAttestationForContentProtectionEnabled,
-                              true);
-  EXPECT_WV_SW_SECURE_PERSISTENT_SESSION(
-      IsSessionTypeSupported(kWidevine, SessionType::kPersistentLicense));
-
-  // Persistent license session should be not supported as long as the policy
-  // 'kAttestationForContentProtectionEnabled' is set to false.
-  settings_helper->SetBoolean(ash::kAttestationForContentProtectionEnabled,
-                              false);
-  EXPECT_UNSUPPORTED(
-      IsSessionTypeSupported(kWidevine, SessionType::kPersistentLicense));
-}
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 // EncryptedMediaSupportedTypesWidevineHwSecureTest tests Widevine with hardware
 // secure decryption support.

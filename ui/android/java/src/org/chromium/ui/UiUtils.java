@@ -6,11 +6,9 @@ package org.chromium.ui;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.content.res.Configuration;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
@@ -21,8 +19,6 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
@@ -34,12 +30,8 @@ import androidx.annotation.DrawableRes;
 import androidx.annotation.Nullable;
 import androidx.annotation.StyleableRes;
 import androidx.appcompat.content.res.AppCompatResources;
-import androidx.core.graphics.Insets;
 import androidx.core.graphics.drawable.DrawableCompat;
-import androidx.core.view.WindowInsetsCompat;
 
-import org.chromium.base.BuildInfo;
-import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 
 import java.io.File;
@@ -72,7 +64,6 @@ public class UiUtils {
      * version Android did.
      */
     private static final Map<String, Integer> sAndroidUiThemeBlocklist = new HashMap<>();
-
     static {
         // HTC doesn't respect theming flags on activity restart until Android O; this affects both
         // the system nav and status bar. More info at https://crbug.com/831737.
@@ -82,8 +73,11 @@ public class UiUtils {
     /** Whether theming the Android system UI has been disabled. */
     private static Boolean sSystemUiThemingDisabled;
 
-    /** Guards this class from being instantiated. */
-    private UiUtils() {}
+    /**
+     * Guards this class from being instantiated.
+     */
+    private UiUtils() {
+    }
 
     /**
      * Gets the set of locales supported by the current enabled Input Methods.
@@ -197,8 +191,8 @@ public class UiUtils {
                 }
                 Bitmap bitmap = Bitmap.createBitmap(newWidth, newHeight, bitmapConfig);
                 Canvas canvas = new Canvas(bitmap);
-                canvas.scale(
-                        (float) (newWidth / originalWidth), (float) (newHeight / originalHeight));
+                canvas.scale((float) (newWidth / originalWidth),
+                        (float) (newHeight / originalHeight));
                 currentView.draw(canvas);
                 screenshot = bitmap;
             }
@@ -243,11 +237,9 @@ public class UiUtils {
             } else {
                 File externalDataDir =
                         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-                path =
-                        new File(
-                                externalDataDir.getAbsolutePath()
-                                        + File.separator
-                                        + EXTERNAL_IMAGE_FILE_PATH);
+                path = new File(externalDataDir.getAbsolutePath()
+                                + File.separator
+                                + EXTERNAL_IMAGE_FILE_PATH);
                 if (!path.exists() && !path.mkdirs()) {
                     path = externalDataDir;
                 }
@@ -282,27 +274,24 @@ public class UiUtils {
     }
 
     /**
-     * Computes the max width of the widest list item & the total height of all of the items. The
-     * height returned in unbounded and may be larger than the available window space.
+     * Iterates through all items in the specified ListAdapter (including header and footer views)
+     * and returns the width of the widest item (when laid out with height and width set to
+     * WRAP_CONTENT).
      *
-     * <p>WARNING: do not call this on a ListAdapter with more than a handful of items, the
-     * performance will be terrible since it measures every single item.
+     * WARNING: do not call this on a ListAdapter with more than a handful of items, the performance
+     * will be terrible since it measures every single item.
      *
-     * @param adapter The adapter for the list.
-     * @param parentView The parent view for the list.
-     * @return int array representing the max width of the menu items stored at index 0 & the total
-     *     height of all items stored at index 1.
+     * @param adapter The ListAdapter whose widest item's width will be returned.
+     * @param parentView The parent view.
+     * @return The measured width (in pixels) of the widest item in the passed-in ListAdapter.
      */
-    public static int[] computeListAdapterContentDimensions(
-            ListAdapter adapter, ViewGroup parentView) {
+    public static int computeMaxWidthOfListAdapterItems(ListAdapter adapter, ViewGroup parentView) {
         final int widthMeasureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
         final int heightMeasureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
-        AbsListView.LayoutParams params =
-                new AbsListView.LayoutParams(
-                        AbsListView.LayoutParams.WRAP_CONTENT,
-                        AbsListView.LayoutParams.WRAP_CONTENT);
+        AbsListView.LayoutParams params = new AbsListView.LayoutParams(
+                AbsListView.LayoutParams.WRAP_CONTENT, AbsListView.LayoutParams.WRAP_CONTENT);
 
-        int[] result = new int[] {0, 0};
+        int maxWidth = 0;
         View[] itemViews = new View[adapter.getViewTypeCount()];
         for (int i = 0; i < adapter.getCount(); ++i) {
             View itemView;
@@ -318,11 +307,25 @@ public class UiUtils {
 
             itemView.setLayoutParams(params);
             itemView.measure(widthMeasureSpec, heightMeasureSpec);
-            result[0] = Math.max(result[0], itemView.getMeasuredWidth());
-            result[1] += itemView.getMeasuredHeight();
+            maxWidth = Math.max(maxWidth, itemView.getMeasuredWidth());
         }
 
-        return result;
+        return maxWidth;
+    }
+
+    /**
+     * Iterates through all items in the specified ListAdapter (including header and footer views)
+     * and returns the width of the widest item (when laid out with height and width set to
+     * WRAP_CONTENT).
+     *
+     * WARNING: do not call this on a ListAdapter with more than a handful of items, the performance
+     * will be terrible since it measures every single item.
+     *
+     * @param adapter The ListAdapter whose widest item's width will be returned.
+     * @return The measured width (in pixels) of the widest item in the passed-in ListAdapter.
+     */
+    public static int computeMaxWidthOfListAdapterItems(ListAdapter adapter) {
+        return computeMaxWidthOfListAdapterItems(adapter, null);
     }
 
     /**
@@ -355,7 +358,8 @@ public class UiUtils {
             Context context, @Nullable TypedArray attrs, @StyleableRes int attrId) {
         if (attrs == null) return null;
 
-        @DrawableRes int resId = attrs.getResourceId(attrId, -1);
+        @DrawableRes
+        int resId = attrs.getResourceId(attrId, -1);
         if (resId == -1) return null;
         return AppCompatResources.getDrawable(context, resId);
     }
@@ -395,10 +399,8 @@ public class UiUtils {
         if (sSystemUiThemingDisabled == null) {
             sSystemUiThemingDisabled = false;
             if (sAndroidUiThemeBlocklist.containsKey(Build.MANUFACTURER.toLowerCase(Locale.US))) {
-                sSystemUiThemingDisabled =
-                        Build.VERSION.SDK_INT
-                                < sAndroidUiThemeBlocklist.get(
-                                        Build.MANUFACTURER.toLowerCase(Locale.US));
+                sSystemUiThemingDisabled = Build.VERSION.SDK_INT
+                        < sAndroidUiThemeBlocklist.get(Build.MANUFACTURER.toLowerCase(Locale.US));
             }
         }
         return sSystemUiThemingDisabled;
@@ -420,68 +422,5 @@ public class UiUtils {
             systemUiVisibility &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         }
         rootView.setSystemUiVisibility(systemUiVisibility);
-    }
-
-    /**
-     * @see android.view.Window#setStatusBarColor(int color).
-     */
-    public static void setStatusBarColor(Window window, int statusBarColor) {
-        if (0
-                == (window.getAttributes().flags
-                        & WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        }
-        // The status bar should always be black in automotive devices to match the black back
-        // button toolbar.
-        if (BuildInfo.getInstance().isAutomotive) {
-            window.setStatusBarColor(Color.BLACK);
-        } else {
-            window.setStatusBarColor(statusBarColor);
-        }
-    }
-
-    /**
-     * Sets the status bar icons to dark or light. Note that this is only valid for
-     * Android M+.
-     *
-     * TODO: migrate to WindowInsetsController API for Android R+ (API 30+)
-     *
-     * @param rootView The root view used to request updates to the system UI theming.
-     * @param useDarkIcons Whether the status bar icons should be dark.
-     */
-    public static void setStatusBarIconColor(View rootView, boolean useDarkIcons) {
-        int systemUiVisibility = rootView.getSystemUiVisibility();
-        // The status bar should always be black in automotive devices to match the black back
-        // button toolbar, so we should not use dark icons.
-        if (useDarkIcons && !BuildInfo.getInstance().isAutomotive) {
-            systemUiVisibility |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-        } else {
-            systemUiVisibility &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-        }
-        rootView.setSystemUiVisibility(systemUiVisibility);
-    }
-
-    /**
-     * @return True if a hardware keyboard is detected.
-     */
-    public static boolean isHardwareKeyboardAttached() {
-        return ContextUtils.getApplicationContext().getResources().getConfiguration().keyboard
-                != Configuration.KEYBOARD_NOKEYS;
-    }
-
-    /**
-     * @param window The application window which includes the decor view.
-     * @return True if gesture navigation mode is on.
-     */
-    public static boolean isGestureNavigationMode(Window window) {
-        // https://stackoverflow.com/a/70514883
-        WindowInsetsCompat windowInsets =
-                WindowInsetsCompat.toWindowInsetsCompat(
-                        window.getDecorView().getRootWindowInsets());
-        // Use systemGestures rather than tappableElements.
-        // In some devices, like Samsung Fold, which has a dock, the bottom inset of
-        // tappableElements is non-zero even when gesture mode is on.
-        Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemGestures());
-        return insets.left > 0;
     }
 }

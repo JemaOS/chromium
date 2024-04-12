@@ -11,7 +11,6 @@
 #include "ash/webui/help_app_ui/search/search.mojom.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/scoped_observation.h"
 #include "base/time/time.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_forward.h"
 #include "chrome/browser/ash/app_list/search/chrome_search_result.h"
@@ -26,9 +25,9 @@ namespace ash::help_app {
 class SearchHandler;
 }  // namespace ash::help_app
 
-namespace ui {
-class ImageModel;
-}  // namespace ui
+namespace gfx {
+class ImageSkia;
+}  // namespace gfx
 
 namespace app_list {
 
@@ -38,7 +37,7 @@ class HelpAppResult : public ChromeSearchResult {
   HelpAppResult(const float& relevance,
                 Profile* profile,
                 const ash::help_app::mojom::SearchResultPtr& result,
-                const ui::ImageModel& icon,
+                const gfx::ImageSkia& icon,
                 const std::u16string& query);
 
   ~HelpAppResult() override;
@@ -50,7 +49,7 @@ class HelpAppResult : public ChromeSearchResult {
   void Open(int event_flags) override;
 
  private:
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
   const std::string url_path_;
   const std::string help_app_content_id_;
 };
@@ -88,19 +87,16 @@ class HelpAppProvider : public SearchProvider,
   void OnLoadIcon(apps::IconValuePtr icon_value);
   void LoadIcon();
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
 
-  raw_ptr<ash::help_app::SearchHandler> search_handler_;
-  ui::ImageModel icon_;
+  raw_ptr<ash::help_app::SearchHandler, ExperimentalAsh> search_handler_;
+  raw_ptr<apps::AppServiceProxy, ExperimentalAsh> app_service_proxy_;
+  gfx::ImageSkia icon_;
 
   // Last search query. It is reset when the view is closed.
   std::u16string last_query_;
   mojo::Receiver<ash::help_app::mojom::SearchResultsObserver>
       search_results_observer_receiver_{this};
-
-  base::ScopedObservation<apps::AppRegistryCache,
-                          apps::AppRegistryCache::Observer>
-      app_registry_cache_observer_{this};
 
   base::WeakPtrFactory<HelpAppProvider> weak_factory_{this};
 };

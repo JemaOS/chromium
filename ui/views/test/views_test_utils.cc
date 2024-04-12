@@ -25,7 +25,7 @@ void RunScheduledLayout(View* view) {
   while (parent_view->parent())
     parent_view = parent_view->parent();
   if (parent_view->needs_layout())
-    parent_view->DeprecatedLayoutImmediately();
+    parent_view->Layout();
 }
 
 }  // namespace views::test

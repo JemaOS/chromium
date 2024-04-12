@@ -122,7 +122,7 @@ void MediaStringView::MediaSessionInfoChanged(
 }
 
 void MediaStringView::MediaSessionMetadataChanged(
-    const std::optional<media_session::MediaMetadata>& metadata) {
+    const absl::optional<media_session::MediaMetadata>& metadata) {
   media_session::MediaMetadata session_metadata =
       metadata.value_or(media_session::MediaMetadata());
 
@@ -310,7 +310,7 @@ void MediaStringView::StartScrolling(bool is_initial) {
   }
 }
 
-BEGIN_METADATA(MediaStringView)
+BEGIN_METADATA(MediaStringView, views::View)
 END_METADATA
 
 }  // namespace ash

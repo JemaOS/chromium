@@ -7,7 +7,7 @@
 #include <string>
 
 #include "base/functional/bind.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/notifications/notification_display_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -32,8 +32,7 @@ SendTabToSelfClientService* SendTabToSelfClientServiceFactory::GetForProfile(
 // static
 SendTabToSelfClientServiceFactory*
 SendTabToSelfClientServiceFactory::GetInstance() {
-  static base::NoDestructor<SendTabToSelfClientServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<SendTabToSelfClientServiceFactory>::get();
 }
 
 SendTabToSelfClientServiceFactory::SendTabToSelfClientServiceFactory()
@@ -49,12 +48,10 @@ SendTabToSelfClientServiceFactory::SendTabToSelfClientServiceFactory()
   DependsOn(SendTabToSelfSyncServiceFactory::GetInstance());
 }
 
-SendTabToSelfClientServiceFactory::~SendTabToSelfClientServiceFactory() =
-    default;
+SendTabToSelfClientServiceFactory::~SendTabToSelfClientServiceFactory() {}
 
 // BrowserStateKeyedServiceFactory implementation.
-std::unique_ptr<KeyedService>
-SendTabToSelfClientServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SendTabToSelfClientServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   SendTabToSelfSyncService* sync_service =
@@ -77,8 +74,8 @@ SendTabToSelfClientServiceFactory::BuildServiceInstanceForBrowserContext(
 #endif
 
   // TODO(crbug.com/976741) refactor profile out of STTSClient constructor.
-  return std::make_unique<SendTabToSelfClientService>(
-      profile, sync_service->GetSendTabToSelfModel());
+  return new SendTabToSelfClientService(profile,
+                                        sync_service->GetSendTabToSelfModel());
 }
 
 bool SendTabToSelfClientServiceFactory::ServiceIsCreatedWithBrowserContext()

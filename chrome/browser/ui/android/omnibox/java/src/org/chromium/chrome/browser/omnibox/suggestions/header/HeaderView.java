@@ -9,12 +9,17 @@ import android.text.TextUtils.TruncateAt;
 import android.view.Gravity;
 import android.widget.TextView;
 
-import org.chromium.chrome.browser.omnibox.R;
-import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.components.browser_ui.styles.ChromeColors;
 
-/** View for Group Headers. */
+/**
+ * View for Group Headers.
+ */
 public class HeaderView extends TextView {
+    /**
+     * Constructs a new header view.
+     *
+     * @param context Current context.
+     */
     public HeaderView(Context context) {
         super(context);
 
@@ -23,8 +28,19 @@ public class HeaderView extends TextView {
         setTextAppearance(ChromeColors.getTextMediumThickSecondaryStyle(false));
         setGravity(Gravity.CENTER_VERTICAL);
         setTextAlignment(TextView.TEXT_ALIGNMENT_VIEW_START);
-        setMinHeight(
-                getResources().getDimensionPixelSize(R.dimen.omnibox_suggestion_header_height));
-        setPaddingRelative(OmniboxResourceProvider.getHeaderStartPadding(context), 0, 0, 0);
+    }
+
+    /**
+     * Specifies the paddings for suggestion header.
+     *
+     * @param minHeight the min height of header view.
+     * @param paddingStart the start padding of header view.
+     * @param paddingTop the top padding of header view.
+     * @param paddingBottom the bottom padding of header view.
+     */
+    void setUpdateHeaderPadding(
+            int minHeight, int paddingStart, int paddingTop, int paddingBottom) {
+        setMinHeight(minHeight);
+        setPaddingRelative(paddingStart, paddingTop, 0, paddingBottom);
     }
 }

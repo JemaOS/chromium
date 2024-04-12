@@ -99,11 +99,7 @@ void Attr::setTextContentForBinding(const V8UnionStringOrTrustedScript* value,
   setNodeValue(string_value, exception_state);
 }
 
-Node* Attr::Clone(Document& factory,
-                  NodeCloningData&,
-                  ContainerNode* append_to,
-                  ExceptionState& append_exception_state) const {
-  DCHECK_EQ(append_to, nullptr) << "Attr::Clone() doesn't support append_to";
+Node* Attr::Clone(Document& factory, CloneChildrenFlag) const {
   return MakeGarbageCollected<Attr>(factory, name_, value());
 }
 

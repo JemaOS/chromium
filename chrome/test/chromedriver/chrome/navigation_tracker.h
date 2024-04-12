@@ -14,24 +14,27 @@
 #include "chrome/test/chromedriver/chrome/devtools_event_listener.h"
 #include "chrome/test/chromedriver/chrome/page_load_strategy.h"
 #include "chrome/test/chromedriver/chrome/status.h"
-#include "chrome/test/chromedriver/chrome/web_view.h"
 
+struct BrowserInfo;
 class DevToolsClient;
 class JavaScriptDialogManager;
 class Status;
 class Timeout;
 
 // Tracks the navigation state of the page.
-class NavigationTracker : public PageLoadStrategy {
+class NavigationTracker : public DevToolsEventListener,
+                          public PageLoadStrategy {
  public:
   NavigationTracker(DevToolsClient* client,
                     WebView* web_view,
+                    const BrowserInfo* browser_info,
                     const JavaScriptDialogManager* dialog_manager,
                     const bool is_eager = false);
 
   NavigationTracker(DevToolsClient* client,
                     LoadingState known_state,
                     WebView* web_view,
+                    const BrowserInfo* browser_info,
                     const JavaScriptDialogManager* dialog_manager,
                     const bool is_eager = false);
 

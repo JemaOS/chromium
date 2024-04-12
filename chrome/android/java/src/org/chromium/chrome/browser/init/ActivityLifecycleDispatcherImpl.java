@@ -9,8 +9,6 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 
-import androidx.annotation.VisibleForTesting;
-
 import org.chromium.base.ObserverList;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.lifecycle.ActivityResultWithNativeObserver;
@@ -19,12 +17,10 @@ import org.chromium.chrome.browser.lifecycle.DestroyObserver;
 import org.chromium.chrome.browser.lifecycle.InflationObserver;
 import org.chromium.chrome.browser.lifecycle.LifecycleObserver;
 import org.chromium.chrome.browser.lifecycle.NativeInitObserver;
-import org.chromium.chrome.browser.lifecycle.OnUserLeaveHintObserver;
 import org.chromium.chrome.browser.lifecycle.PauseResumeWithNativeObserver;
 import org.chromium.chrome.browser.lifecycle.RecreateObserver;
 import org.chromium.chrome.browser.lifecycle.SaveInstanceStateObserver;
 import org.chromium.chrome.browser.lifecycle.StartStopWithNativeObserver;
-import org.chromium.chrome.browser.lifecycle.TopResumedActivityChangedObserver;
 import org.chromium.chrome.browser.lifecycle.WindowFocusChangedObserver;
 
 /**
@@ -50,10 +46,6 @@ public class ActivityLifecycleDispatcherImpl implements ActivityLifecycleDispatc
     private final ObserverList<ConfigurationChangedObserver> mConfigurationChangedListeners =
             new ObserverList<>();
     private final ObserverList<RecreateObserver> mRecreateObservers = new ObserverList<>();
-    private final ObserverList<OnUserLeaveHintObserver> mOnUserLeaveHintObservers =
-            new ObserverList<>();
-    private final ObserverList<TopResumedActivityChangedObserver>
-            mTopResumedActivityChangedObservers = new ObserverList<>();
 
     private final Activity mActivity;
 
@@ -98,13 +90,6 @@ public class ActivityLifecycleDispatcherImpl implements ActivityLifecycleDispatc
         if (observer instanceof RecreateObserver) {
             mRecreateObservers.addObserver((RecreateObserver) observer);
         }
-        if (observer instanceof OnUserLeaveHintObserver) {
-            mOnUserLeaveHintObservers.addObserver((OnUserLeaveHintObserver) observer);
-        }
-        if (observer instanceof TopResumedActivityChangedObserver) {
-            mTopResumedActivityChangedObservers.addObserver(
-                    (TopResumedActivityChangedObserver) observer);
-        }
     }
 
     @Override
@@ -139,13 +124,6 @@ public class ActivityLifecycleDispatcherImpl implements ActivityLifecycleDispatc
         }
         if (observer instanceof RecreateObserver) {
             mRecreateObservers.removeObserver((RecreateObserver) observer);
-        }
-        if (observer instanceof OnUserLeaveHintObserver) {
-            mOnUserLeaveHintObservers.removeObserver((OnUserLeaveHintObserver) observer);
-        }
-        if (observer instanceof TopResumedActivityChangedObserver) {
-            mTopResumedActivityChangedObservers.removeObserver(
-                    (TopResumedActivityChangedObserver) observer);
         }
     }
 
@@ -226,8 +204,7 @@ public class ActivityLifecycleDispatcherImpl implements ActivityLifecycleDispatc
         mDestroyed = true;
     }
 
-    @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
-    protected void dispatchOnDestroy() {
+    void dispatchOnDestroy() {
         mActivityState = ActivityState.DESTROYED;
 
         for (DestroyObserver destroyable : mDestroyables) {
@@ -247,7 +224,6 @@ public class ActivityLifecycleDispatcherImpl implements ActivityLifecycleDispatc
         mConfigurationChangedListeners.clear();
         mDestroyables.clear();
         mRecreateObservers.clear();
-        mTopResumedActivityChangedObservers.clear();
     }
 
     void dispatchOnSaveInstanceState(Bundle outBundle) {
@@ -277,18 +253,6 @@ public class ActivityLifecycleDispatcherImpl implements ActivityLifecycleDispatc
     void dispatchOnRecreate() {
         for (RecreateObserver observer : mRecreateObservers) {
             observer.onRecreate();
-        }
-    }
-
-    void dispatchOnUserLeaveHint() {
-        for (OnUserLeaveHintObserver observer : mOnUserLeaveHintObservers) {
-            observer.onUserLeaveHint();
-        }
-    }
-
-    void dispatchOnTopResumedActivityChanged(boolean isTopResumedActivity) {
-        for (TopResumedActivityChangedObserver observer : mTopResumedActivityChangedObservers) {
-            observer.onTopResumedActivityChanged(isTopResumedActivity);
         }
     }
 }

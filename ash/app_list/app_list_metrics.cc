@@ -5,7 +5,6 @@
 #include "ash/app_list/app_list_metrics.h"
 
 #include <algorithm>
-#include <map>
 #include <string>
 
 #include "ash/app_list/app_list_controller_impl.h"
@@ -15,14 +14,11 @@
 #include "ash/app_list/model/app_list_item_list.h"
 #include "ash/app_list/views/continue_section_view.h"
 #include "ash/constants/ash_features.h"
-#include "ash/public/cpp/app_list/app_list_types.h"
 #include "ash/public/cpp/app_menu_constants.h"
 #include "ash/shell.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
-#include "base/strings/strcat.h"
-#include "base/types/cxx23_to_underlying.h"
 #include "ui/compositor/compositor.h"
 
 namespace ash {
@@ -51,6 +47,12 @@ constexpr char kSearchResultRemovalDialogDecisionHistogram[] =
 // The base UMA histogram that logs app launches within the HomeLauncher (tablet
 // mode AppList) and the Shelf.
 constexpr char kAppListAppLaunched[] = "Apps.AppListAppLaunchedV2";
+
+// UMA histograms that log app launches within the app list, and the shelf.
+// Split depending on whether tablet mode is active or not.
+constexpr char kAppLaunchInTablet[] = "Apps.AppList.AppLaunched.TabletMode";
+constexpr char kAppLaunchInClamshell[] =
+    "Apps.AppList.AppLaunched.ClamshellMode";
 
 // UMA histograms that log launcher workflow actions (launching an app, search
 // result, or a continue section task) in the app list UI. Split depending on
@@ -110,34 +112,6 @@ constexpr char kAppListOpenTimePrefix[] = "Apps.AppListOpenTime.";
 
 constexpr char kContinueSectionFilesRemovedInSessionHistogram[] =
     "Apps.AppList.Search.ContinueSectionFilesRemovedPerSession";
-
-constexpr char kSearchCategoryFilterMenuOpened[] =
-    "Apps.AppList.Search.SearchCategoryFilterMenuOpenedCount";
-constexpr char kSearchCategoriesEnableStateHeader[] =
-    "Apps.AppList.Search.SearchCategoriesEnableState.";
-
-std::string GetCategoryString(AppListSearchControlCategory category) {
-  switch (category) {
-    case AppListSearchControlCategory::kApps:
-      return "Apps";
-    case AppListSearchControlCategory::kAppShortcuts:
-      return "AppShortcuts";
-    case AppListSearchControlCategory::kFiles:
-      return "Files";
-    case AppListSearchControlCategory::kGames:
-      return "Games";
-    case AppListSearchControlCategory::kHelp:
-      return "Helps";
-    case AppListSearchControlCategory::kImages:
-      return "Images";
-    case AppListSearchControlCategory::kPlayStore:
-      return "PlayStore";
-    case AppListSearchControlCategory::kWeb:
-      return "Web";
-    case AppListSearchControlCategory::kCannotToggle:
-      NOTREACHED_NORETURN();
-  }
-}
 
 AppLaunchedMetricParams::AppLaunchedMetricParams() = default;
 
@@ -208,7 +182,6 @@ std::string GetAppListOpenMethod(AppListShowSource source) {
     case AppListShowSource::kTabletMode:
     case AppListShowSource::kAssistantEntryPoint:
     case AppListShowSource::kBrowser:
-    case AppListShowSource::kWelcomeTour:
       return "Others";
   }
   NOTREACHED();
@@ -270,6 +243,13 @@ void RecordAppListAppLaunched(AppListLaunchedFrom launched_from,
                               bool app_list_shown) {
   UMA_HISTOGRAM_ENUMERATION(kAppListAppLaunched, launched_from);
 
+  if (is_tablet_mode) {
+    base::UmaHistogramEnumeration(kAppLaunchInTablet, launched_from);
+
+  } else {
+    base::UmaHistogramEnumeration(kAppLaunchInClamshell, launched_from);
+  }
+
   if (!is_tablet_mode) {
     if (!app_list_shown) {
       UMA_HISTOGRAM_ENUMERATION(kAppListAppLaunchedClosed, launched_from);
@@ -283,11 +263,7 @@ void RecordAppListAppLaunched(AppListLaunchedFrom launched_from,
 
   switch (app_list_state) {
     case AppListViewState::kClosed:
-      // The app list state may be set to closed while the device is animating
-      // to tablet mode. While this transition is running, a user may be able to
-      // launch an app.
-      DCHECK_EQ(launched_from, AppListLaunchedFrom::kLaunchedFromShelf);
-      UMA_HISTOGRAM_ENUMERATION(kAppListAppLaunchedClosed, launched_from);
+      NOTREACHED();
       break;
     case AppListViewState::kFullscreenAllApps:
       if (is_tablet_mode) {
@@ -325,7 +301,7 @@ void RecordAppListAppLaunched(AppListLaunchedFrom launched_from,
 ASH_EXPORT void RecordLauncherWorkflowMetrics(
     AppListUserAction action,
     bool is_tablet_mode,
-    std::optional<base::TimeTicks> launcher_show_time) {
+    absl::optional<base::TimeTicks> launcher_show_time) {
   if (is_tablet_mode) {
     base::UmaHistogramEnumeration(kLauncherUserActionInTablet, action);
 
@@ -503,20 +479,6 @@ void RecordHideContinueSectionMetric() {
     base::UmaHistogramBoolean(
         "Apps.AppList.ContinueSectionHiddenByUser.ClamshellMode",
         hide_continue_section);
-  }
-}
-
-void RecordSearchCategoryFilterMenuOpened() {
-  base::UmaHistogramCounts100(kSearchCategoryFilterMenuOpened, 1);
-}
-
-void RecordSearchCategoryEnableState(
-    const CategoryEnableStateMap& category_to_state) {
-  for (auto category_state_pair : category_to_state) {
-    std::string histogram =
-        base::StrCat({kSearchCategoriesEnableStateHeader,
-                      GetCategoryString(category_state_pair.first)});
-    base::UmaHistogramEnumeration(histogram, category_state_pair.second);
   }
 }
 

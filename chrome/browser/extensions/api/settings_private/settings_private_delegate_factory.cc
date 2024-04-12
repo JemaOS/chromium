@@ -22,27 +22,20 @@ SettingsPrivateDelegate* SettingsPrivateDelegateFactory::GetForBrowserContext(
 
 // static
 SettingsPrivateDelegateFactory* SettingsPrivateDelegateFactory::GetInstance() {
-  static base::NoDestructor<SettingsPrivateDelegateFactory> instance;
-  return instance.get();
+  return base::Singleton<SettingsPrivateDelegateFactory>::get();
 }
 
 SettingsPrivateDelegateFactory::SettingsPrivateDelegateFactory()
     : ProfileKeyedServiceFactory(
           "SettingsPrivateDelegate",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
-SettingsPrivateDelegateFactory::~SettingsPrivateDelegateFactory() = default;
+SettingsPrivateDelegateFactory::~SettingsPrivateDelegateFactory() {
+}
 
-std::unique_ptr<KeyedService>
-SettingsPrivateDelegateFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SettingsPrivateDelegateFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<SettingsPrivateDelegate>(
-      static_cast<Profile*>(profile));
+  return new SettingsPrivateDelegate(static_cast<Profile*>(profile));
 }
 
 }  // namespace extensions

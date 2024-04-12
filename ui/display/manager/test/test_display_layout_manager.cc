@@ -4,15 +4,17 @@
 
 #include "ui/display/manager/test/test_display_layout_manager.h"
 
-#include "base/memory/raw_ptr.h"
+#include <utility>
+
+#include "base/ranges/algorithm.h"
 #include "ui/display/types/display_snapshot.h"
 
 namespace display::test {
 
 TestDisplayLayoutManager::TestDisplayLayoutManager(
-    const std::vector<raw_ptr<DisplaySnapshot, VectorExperimental>>& displays,
+    std::vector<std::unique_ptr<DisplaySnapshot>> displays,
     MultipleDisplayState display_state)
-    : displays_(displays), display_state_(display_state) {}
+    : displays_(std::move(displays)), display_state_(display_state) {}
 
 TestDisplayLayoutManager::~TestDisplayLayoutManager() {}
 
@@ -36,19 +38,22 @@ chromeos::DisplayPowerState TestDisplayLayoutManager::GetPowerState() const {
 }
 
 bool TestDisplayLayoutManager::GetDisplayLayout(
-    const std::vector<raw_ptr<DisplaySnapshot, VectorExperimental>>& displays,
+    const std::vector<DisplaySnapshot*>& displays,
     MultipleDisplayState new_display_state,
     chromeos::DisplayPowerState new_power_state,
     RefreshRateThrottleState new_throttle_state,
-    const base::flat_set<int64_t>& new_vrr_enabled_state,
+    bool new_vrr_state,
     std::vector<DisplayConfigureRequest>* requests) const {
   NOTREACHED();
   return false;
 }
 
-std::vector<raw_ptr<DisplaySnapshot, VectorExperimental>>
-TestDisplayLayoutManager::GetDisplayStates() const {
-  return displays_;
+std::vector<DisplaySnapshot*> TestDisplayLayoutManager::GetDisplayStates()
+    const {
+  std::vector<DisplaySnapshot*> snapshots(displays_.size());
+  base::ranges::transform(displays_, snapshots.begin(),
+                          &std::unique_ptr<DisplaySnapshot>::get);
+  return snapshots;
 }
 
 bool TestDisplayLayoutManager::IsMirroring() const {

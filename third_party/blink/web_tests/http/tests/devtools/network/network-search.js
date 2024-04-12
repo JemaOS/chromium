@@ -2,14 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {NetworkTestRunner} from 'network_test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
-import * as Network from 'devtools/panels/network/network.js';
-
 (async function() {
   TestRunner.addResult(`Tests search in network requests\n`);
+  await TestRunner.loadTestModule('network_test_runner');
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
   await TestRunner.showPanel('network');
 
   function initArgs(method, url, async, payload) {
@@ -33,13 +29,12 @@ import * as Network from 'devtools/panels/network/network.js';
 
   async function search(label, isRegex, ignoreCase, query = 'd.search') {
     TestRunner.addResult(label);
-    const view = await Network.NetworkPanel.SearchNetworkView.openSearch(query);
+    const view = await Network.SearchNetworkView.openSearch(query);
     view.matchCaseButton.setToggled(!ignoreCase);
     view.regexButton.setToggled(isRegex);
     const promise = TestRunner.addSnifferPromise(view, 'searchFinished');
     view.onAction();
     await promise;
-    await view.throttlerForTest.process?.();
     const element = printSubtree(view.visiblePane.treeOutline.rootElement());
     TestRunner.addResult('');
     return element;
@@ -48,8 +43,8 @@ import * as Network from 'devtools/panels/network/network.js';
   function networkItemSelected() {
     return new Promise(resolve => {
       function checkSelected() {
-        if (Network.NetworkPanel.NetworkPanel.instance().networkLogView.dataGrid.selectedNode)
-          resolve(Network.NetworkPanel.NetworkPanel.instance().networkLogView.dataGrid.selectedNode);
+        if (UI.panels.network.networkLogView.dataGrid.selectedNode)
+          resolve(UI.panels.network.networkLogView.dataGrid.selectedNode);
         else
           setTimeout(checkSelected, 0);
       }

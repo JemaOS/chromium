@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_MEDIA_WEBRTC_WEBRTC_EVENT_LOG_MANAGER_KEYED_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_MEDIA_WEBRTC_WEBRTC_EVENT_LOG_MANAGER_KEYED_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class KeyedService;
@@ -31,12 +31,13 @@ class WebRtcEventLogManagerKeyedServiceFactory
   bool ServiceIsCreatedWithBrowserContext() const override;
 
  private:
-  friend base::NoDestructor<WebRtcEventLogManagerKeyedServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      WebRtcEventLogManagerKeyedServiceFactory>;
 
   WebRtcEventLogManagerKeyedServiceFactory();
   ~WebRtcEventLogManagerKeyedServiceFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

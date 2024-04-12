@@ -11,7 +11,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/test/metrics/histogram_tester.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "base/values.h"
@@ -26,8 +25,6 @@
 #include "components/policy/core/common/cloud/cloud_policy_constants.h"
 #include "components/policy/core/common/cloud/cloud_policy_manager.h"
 #include "components/policy/core/common/cloud/mock_cloud_policy_store.h"
-#include "components/policy/core/common/features.h"
-#include "components/policy/core/common/local_test_policy_provider.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/core/common/mock_policy_service.h"
 #include "components/policy/core/common/policy_bundle.h"
@@ -40,7 +37,6 @@
 #include "components/policy/policy_constants.h"
 #include "components/policy/proto/device_management_backend.pb.h"
 #include "components/user_manager/user.h"
-#include "content/public/test/browser_task_environment.h"
 #include "services/network/test/test_network_connection_tracker.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -92,16 +88,12 @@ class PolicyServiceInitializedWaiter : PolicyService::Observer {
   // PolicyService::Observer:
   void OnPolicyUpdated(const PolicyNamespace& ns,
                        const PolicyMap& previous,
-                       const PolicyMap& current) override {
-    run_loop_.Quit();
-  }
+                       const PolicyMap& current) override {}
 
   // PolicyService::Observer:
   void OnPolicyServiceInitialized(PolicyDomain domain) override {
     run_loop_.Quit();
   }
-
-  base::RunLoop* run_loop() { return &run_loop_; }
 
  private:
   raw_ptr<PolicyService> policy_service_;
@@ -133,12 +125,10 @@ class ProfilePolicyConnectorTest : public testing::Test {
   ~ProfilePolicyConnectorTest() override {}
 
   void SetUp() override {
-    auto cloud_policy_store = std::make_unique<MockCloudPolicyStore>();
-    cloud_policy_store_ = cloud_policy_store.get();
     const auto task_runner = task_environment_.GetMainThreadTaskRunner();
     cloud_policy_manager_ = std::make_unique<CloudPolicyManager>(
-        std::string(), std::string(), std::move(cloud_policy_store),
-        task_runner, network::TestNetworkConnectionTracker::CreateGetter());
+        std::string(), std::string(), &cloud_policy_store_, task_runner,
+        network::TestNetworkConnectionTracker::CreateGetter());
     cloud_policy_manager_->Init(&schema_registry_);
   }
 
@@ -156,20 +146,16 @@ class ProfilePolicyConnectorTest : public testing::Test {
   std::unique_ptr<user_manager::User> CreateRegularUser(
       const AccountId& account_id) const {
     return base::WrapUnique<user_manager::User>(
-        user_manager::User::CreateRegularUser(
-            account_id, user_manager::UserType::kRegular));
+        user_manager::User::CreateRegularUser(account_id,
+                                              user_manager::USER_TYPE_REGULAR));
   }
 
-  // Needs to be the first member. Some tests need to be
-  // called on the called on Chrome_UIThread.
-  content::BrowserTaskEnvironment task_environment_{
+  // Needs to be the first member.
+  base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-
   SchemaRegistry schema_registry_;
+  MockCloudPolicyStore cloud_policy_store_;
   std::unique_ptr<CloudPolicyManager> cloud_policy_manager_;
-  // The store is owned by `cloud_policy_manager_` and the declaration order is
-  // required.
-  raw_ptr<MockCloudPolicyStore> cloud_policy_store_;
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   ash::ScopedStubInstallAttributes test_install_attributes_;
@@ -179,14 +165,14 @@ class ProfilePolicyConnectorTest : public testing::Test {
 TEST_F(ProfilePolicyConnectorTest, IsManagedForManagedUsers) {
   ProfilePolicyConnector connector;
   connector.Init(nullptr /* user */, &schema_registry_,
-                 cloud_policy_manager_.get(), cloud_policy_store_.get(),
+                 cloud_policy_manager_.get(), &cloud_policy_store_,
                  g_browser_process->browser_policy_connector(), false);
   EXPECT_FALSE(connector.IsManaged());
 
   auto policy = std::make_unique<enterprise_management::PolicyData>();
   policy->set_username("test@testdomain.com");
   policy->set_state(enterprise_management::PolicyData::ACTIVE);
-  cloud_policy_store_->set_policy_data_for_testing(std::move(policy));
+  cloud_policy_store_.set_policy_data_for_testing(std::move(policy));
   EXPECT_TRUE(connector.IsManaged());
 
   // Cleanup.
@@ -202,11 +188,11 @@ TEST_F(ProfilePolicyConnectorTest, IsManagedForActiveDirectoryUsers) {
       AccountId::AdFromUserEmailObjGuid("user@realm.example", "obj-guid");
   std::unique_ptr<user_manager::User> user = CreateRegularUser(account_id);
   connector.Init(user.get(), &schema_registry_, cloud_policy_manager_.get(),
-                 cloud_policy_store_.get(),
+                 &cloud_policy_store_,
                  g_browser_process->browser_policy_connector(), false);
   auto policy = std::make_unique<enterprise_management::PolicyData>();
   policy->set_state(enterprise_management::PolicyData::ACTIVE);
-  cloud_policy_store_->set_policy_data_for_testing(std::move(policy));
+  cloud_policy_store_.set_policy_data_for_testing(std::move(policy));
   EXPECT_TRUE(connector.IsManaged());
 
   // Policy username does not override management realm for Active Directory
@@ -214,7 +200,7 @@ TEST_F(ProfilePolicyConnectorTest, IsManagedForActiveDirectoryUsers) {
   policy = std::make_unique<enterprise_management::PolicyData>();
   policy->set_state(enterprise_management::PolicyData::ACTIVE);
   policy->set_username("test@testdomain.com");
-  cloud_policy_store_->set_policy_data_for_testing(std::move(policy));
+  cloud_policy_store_.set_policy_data_for_testing(std::move(policy));
   EXPECT_TRUE(connector.IsManaged());
 
   // Cleanup.
@@ -229,11 +215,11 @@ TEST_F(ProfilePolicyConnectorTest, PrimaryUserPoliciesProxied) {
 
   auto policy = std::make_unique<enterprise_management::PolicyData>();
   policy->set_state(enterprise_management::PolicyData::ACTIVE);
-  cloud_policy_store_->set_policy_data_for_testing(std::move(policy));
-  cloud_policy_store_->policy_map_.Set(
+  cloud_policy_store_.set_policy_data_for_testing(std::move(policy));
+  cloud_policy_store_.policy_map_.Set(
       key::kAutofillAddressEnabled, POLICY_LEVEL_MANDATORY, POLICY_SCOPE_USER,
       POLICY_SOURCE_CLOUD, base::Value(false), nullptr);
-  cloud_policy_store_->NotifyStoreLoaded();
+  cloud_policy_store_.NotifyStoreLoaded();
   base::RunLoop().RunUntilIdle();
 
   ProfilePolicyConnector connector;
@@ -243,7 +229,7 @@ TEST_F(ProfilePolicyConnectorTest, PrimaryUserPoliciesProxied) {
   user_manager->LoginUser(account_id);
   EXPECT_EQ(user, user_manager::UserManager::Get()->GetPrimaryUser());
   connector.Init(user, &schema_registry_, cloud_policy_manager_.get(),
-                 cloud_policy_store_.get(),
+                 &cloud_policy_store_,
                  g_browser_process->browser_policy_connector(), false);
   EXPECT_TRUE(connector.IsManaged());
 
@@ -291,7 +277,7 @@ TEST_F(ProfilePolicyConnectorTest, IsProfilePolicy) {
   BrowserPolicyConnectorBase::SetPolicyServiceForTesting(&mock_policy_service_);
   ProfilePolicyConnector connector;
   connector.Init(nullptr /* user */, &schema_registry_,
-                 cloud_policy_manager_.get(), cloud_policy_store_.get(),
+                 cloud_policy_manager_.get(), &cloud_policy_store_,
                  g_browser_process->browser_policy_connector(), false);
 
   // No policy is set initially.
@@ -302,10 +288,10 @@ TEST_F(ProfilePolicyConnectorTest, IsProfilePolicy) {
       key::kAutofillAddressEnabled, base::Value::Type::BOOLEAN));
 
   // Set the policy at the cloud provider.
-  cloud_policy_store_->policy_map_.Set(
+  cloud_policy_store_.policy_map_.Set(
       key::kAutofillAddressEnabled, POLICY_LEVEL_MANDATORY, POLICY_SCOPE_USER,
       POLICY_SOURCE_CLOUD, base::Value(false), nullptr);
-  cloud_policy_store_->NotifyStoreLoaded();
+  cloud_policy_store_.NotifyStoreLoaded();
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(connector.IsProfilePolicy(key::kAutofillAddressEnabled));
   const base::Value* value =
@@ -341,7 +327,7 @@ TEST_F(ProfilePolicyConnectorTest, MachineLevelUserCloudPolicyForProfile) {
 
   ProfilePolicyConnector connector;
   connector.Init(nullptr /* user */, &schema_registry_,
-                 cloud_policy_manager_.get(), cloud_policy_store_.get(),
+                 cloud_policy_manager_.get(), &cloud_policy_store_,
                  g_browser_process->browser_policy_connector(), false);
 
   UpdateChromePolicyToMockProviderAndVerify(
@@ -372,7 +358,7 @@ TEST_F(ProfilePolicyConnectorTest, InitializationDurationUma) {
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
   ProfilePolicyConnector connector;
   connector.Init(user, &schema_registry_, cloud_policy_manager_.get(),
-                 cloud_policy_store_.get(),
+                 &cloud_policy_store_,
                  g_browser_process->browser_policy_connector(),
                  /*force_immediate_load=*/false);
 
@@ -380,8 +366,8 @@ TEST_F(ProfilePolicyConnectorTest, InitializationDurationUma) {
   task_environment_.FastForwardBy(kDelay);
   auto policy = std::make_unique<enterprise_management::PolicyData>();
   policy->set_state(enterprise_management::PolicyData::ACTIVE);
-  cloud_policy_store_->set_policy_data_for_testing(std::move(policy));
-  cloud_policy_store_->NotifyStoreLoaded();
+  cloud_policy_store_.set_policy_data_for_testing(std::move(policy));
+  cloud_policy_store_.NotifyStoreLoaded();
   // Wait until the store status gets propagated to trigger the initialization.
   PolicyServiceInitializedWaiter(connector.policy_service(),
                                  POLICY_DOMAIN_CHROME)
@@ -402,94 +388,6 @@ TEST_F(ProfilePolicyConnectorTest, InitializationDurationUma) {
       kDelay, 1);
 
   // Cleanup.
-  connector.Shutdown();
-}
-
-TEST_F(ProfilePolicyConnectorTest, LocalTestProviderUseAndRevert) {
-  base::test::ScopedFeatureList scoped_feature_list(
-      policy::features::kEnablePolicyTestPage);
-  const PolicyNamespace chrome_namespace(POLICY_DOMAIN_CHROME, std::string());
-
-  // Set up connector
-  std::unique_ptr<LocalTestPolicyProvider> local_test_policy_provider =
-      LocalTestPolicyProvider::CreateIfAllowed(version_info::Channel::DEFAULT);
-  g_browser_process->browser_policy_connector()
-      ->SetLocalTestPolicyProviderForTesting(local_test_policy_provider.get());
-
-  ProfilePolicyConnector connector;
-  connector.Init(/*user=*/nullptr, &schema_registry_,
-                 cloud_policy_manager_.get(), cloud_policy_store_.get(),
-                 g_browser_process->browser_policy_connector(),
-                 /*force_immediate_load=*/false);
-
-  // Set policy to local test policy provider.
-  local_test_policy_provider->LoadJsonPolicies(R"([
-      {"level": 1,"scope": 0,"source": 2,
-      "name": "CloudReportingEnabled","value": false}
-      ])");
-
-  // Set the policy at the cloud provider.
-  cloud_policy_store_->policy_map_.Set(
-      key::kAutofillAddressEnabled, POLICY_LEVEL_MANDATORY, POLICY_SCOPE_USER,
-      POLICY_SOURCE_CLOUD, base::Value(false), nullptr);
-  cloud_policy_store_->NotifyStoreLoaded();
-  base::RunLoop().RunUntilIdle();
-  EXPECT_TRUE(connector.IsProfilePolicy(key::kAutofillAddressEnabled));
-  const base::Value* value =
-      connector.policy_service()
-          ->GetPolicies(chrome_namespace)
-          .GetValue(key::kAutofillAddressEnabled, base::Value::Type::BOOLEAN);
-  ASSERT_TRUE(value);
-  EXPECT_EQ(base::Value(false), *value);
-
-  // Set Local Testing to active.
-  connector.UseLocalTestPolicyProvider();
-  PolicyServiceInitializedWaiter(connector.policy_service(),
-                                 POLICY_DOMAIN_CHROME)
-      .run_loop()
-      ->Run();
-
-  // Verify other providers are inactive.
-  EXPECT_FALSE(
-      connector.IsProfilePolicy(autofill::prefs::kAutofillProfileEnabled));
-  EXPECT_FALSE(
-      connector.policy_service()
-          ->GetPolicies(chrome_namespace)
-          .GetValue(key::kAutofillAddressEnabled, base::Value::Type::BOOLEAN));
-
-  // Verify local testing policies is applied.
-  value =
-      connector.policy_service()
-          ->GetPolicies(chrome_namespace)
-          .GetValue(key::kCloudReportingEnabled, base::Value::Type::BOOLEAN);
-  ASSERT_TRUE(value);
-  EXPECT_EQ(base::Value(false), *value);
-
-  // Revert Local Testing
-  connector.RevertUseLocalTestPolicyProvider();
-  PolicyServiceInitializedWaiter(connector.policy_service(),
-                                 POLICY_DOMAIN_CHROME)
-      .run_loop()
-      ->Run();
-
-  // Verify original policies are applied.
-  EXPECT_TRUE(connector.IsProfilePolicy(key::kAutofillAddressEnabled));
-  value =
-      connector.policy_service()
-          ->GetPolicies(chrome_namespace)
-          .GetValue(key::kAutofillAddressEnabled, base::Value::Type::BOOLEAN);
-  ASSERT_TRUE(value);
-  EXPECT_EQ(base::Value(false), *value);
-
-  // Verify local test provider is inactive
-  ASSERT_FALSE(
-      connector.policy_service()
-          ->GetPolicies(chrome_namespace)
-          .GetValue(key::kCloudReportingEnabled, base::Value::Type::BOOLEAN));
-
-  // Cleanup.
-  g_browser_process->browser_policy_connector()
-      ->SetLocalTestPolicyProviderForTesting(nullptr);
   connector.Shutdown();
 }
 

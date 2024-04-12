@@ -5,7 +5,6 @@
 /**
  * @fileoverview Holds information about a braille table.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
 
 import {Msgs} from '../msgs.js';
 
@@ -29,7 +28,7 @@ BrailleTable.Table;
 /**
  * @const {string}
  */
-BrailleTable.TABLE_PATH = 'chromevox/third_party/liblouis/tables.json';
+BrailleTable.TABLE_PATH = 'chromevox/background/braille/tables.json';
 
 
 /**
@@ -118,8 +117,8 @@ BrailleTable.getUncontracted = function(tables, table) {
       return candidate;
     }
     if (current.locale === candidate.locale &&
-        current.dots === candidate.dots && (current.grade !== undefined) &&
-        (candidate.grade !== undefined) && candidate.grade < current.grade) {
+        current.dots === candidate.dots && goog.isDef(current.grade) &&
+        goog.isDef(candidate.grade) && candidate.grade < current.grade) {
       return candidate;
     }
     return current;
@@ -166,5 +165,3 @@ BrailleTable.getDisplayName = function(table) {
         [baseName, table.variant, table.grade]);
   }
 };
-
-TestImportManager.exportForTesting(['BrailleTable', BrailleTable]);

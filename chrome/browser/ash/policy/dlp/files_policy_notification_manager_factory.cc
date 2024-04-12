@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ash/policy/dlp/files_policy_notification_manager_factory.h"
 
+#include "base/memory/singleton.h"
 #include "base/no_destructor.h"
 #include "chrome/browser/ash/policy/dlp/files_policy_notification_manager.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager_factory.h"
@@ -15,8 +16,7 @@ namespace policy {
 // static
 FilesPolicyNotificationManagerFactory*
 FilesPolicyNotificationManagerFactory::GetInstance() {
-  static base::NoDestructor<FilesPolicyNotificationManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<FilesPolicyNotificationManagerFactory>::get();
 }
 
 // static

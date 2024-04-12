@@ -106,11 +106,10 @@ class TryFlag(object):
             builder_names=BUILDER_CONFIGS.keys())
         results_fetcher = self._host.results_fetcher
         for build in sorted(jobs):
-            step_names = self._host.builders.step_names_for_builder(
-                build.builder_name)
+            step_names = results_fetcher.get_layout_test_step_names(build)
             generic_steps = [
                 step_name for step_name in step_names
-                if not self._host.builders.flag_specific_option(
+                if not results_fetcher.builders.flag_specific_option(
                     build.builder_name, step_name)
             ]
             if len(generic_steps) != 1:
@@ -119,8 +118,13 @@ class TryFlag(object):
                                   (build, len(generic_steps)))
                 continue
             step_name = generic_steps[0]
-            results = results_fetcher.gather_results(build, step_name, False,
-                                                     False)
+            results_url = results_fetcher.results_url(build.builder_name,
+                                                      build.build_number,
+                                                      step_name)
+            self._host.print_(
+                '-- %s: %s/results.html' %
+                (BUILDER_CONFIGS[build.builder_name].version, results_url))
+            results = results_fetcher.fetch_results(build, True, step_name)
             for result in results:
                 self._process_result(build, result)
 

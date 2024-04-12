@@ -27,22 +27,15 @@ HidConnectionTracker* HidConnectionTrackerFactory::GetForProfile(
 HidConnectionTrackerFactory::HidConnectionTrackerFactory()
     : ProfileKeyedServiceFactory(
           "HidConnectionTracker",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HostContentSettingsMapFactory::GetInstance());
 }
 
 HidConnectionTrackerFactory::~HidConnectionTrackerFactory() = default;
 
-std::unique_ptr<KeyedService>
-HidConnectionTrackerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* HidConnectionTrackerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<HidConnectionTracker>(
-      Profile::FromBrowserContext(context));
+  return new HidConnectionTracker(Profile::FromBrowserContext(context));
 }
 
 void HidConnectionTrackerFactory::BrowserContextShutdown(

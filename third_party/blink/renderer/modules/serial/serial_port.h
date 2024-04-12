@@ -10,7 +10,6 @@
 #include "third_party/blink/public/mojom/serial/serial.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
@@ -19,7 +18,6 @@
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_receiver.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_wrapper_mode.h"
-#include "third_party/blink/renderer/platform/scheduler/public/frame_scheduler.h"
 
 namespace base {
 class UnguessableToken;
@@ -28,9 +26,9 @@ class UnguessableToken;
 namespace blink {
 
 class ReadableStream;
+class ScriptPromiseResolver;
 class ScriptState;
 class Serial;
-class SerialInputSignals;
 class SerialOptions;
 class SerialOutputSignals;
 class SerialPortInfo;
@@ -38,7 +36,7 @@ class SerialPortUnderlyingSink;
 class SerialPortUnderlyingSource;
 class WritableStream;
 
-class SerialPort final : public EventTarget,
+class SerialPort final : public EventTargetWithInlineData,
                          public ActiveScriptWrappable<SerialPort>,
                          public device::mojom::blink::SerialPortClient {
   DEFINE_WRAPPERTYPEINFO();
@@ -51,27 +49,24 @@ class SerialPort final : public EventTarget,
   DEFINE_ATTRIBUTE_EVENT_LISTENER(connect, kConnect)
   DEFINE_ATTRIBUTE_EVENT_LISTENER(disconnect, kDisconnect)
   SerialPortInfo* getInfo();
-  ScriptPromiseTyped<IDLUndefined> open(ScriptState*,
-                                        const SerialOptions* options,
-                                        ExceptionState&);
-  bool connected() { return connected_; }
+  ScriptPromise open(ScriptState*,
+                     const SerialOptions* options,
+                     ExceptionState&);
   ReadableStream* readable(ScriptState*, ExceptionState&);
   WritableStream* writable(ScriptState*, ExceptionState&);
-  ScriptPromiseTyped<SerialInputSignals> getSignals(ScriptState*,
-                                                    ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> setSignals(ScriptState*,
-                                              const SerialOutputSignals*,
-                                              ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> close(ScriptState*, ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> forget(ScriptState*, ExceptionState&);
+  ScriptPromise getSignals(ScriptState*, ExceptionState&);
+  ScriptPromise setSignals(ScriptState*,
+                           const SerialOutputSignals*,
+                           ExceptionState&);
+  ScriptPromise close(ScriptState*, ExceptionState&);
+  ScriptPromise forget(ScriptState*, ExceptionState&);
 
   const base::UnguessableToken& token() const { return info_->token; }
 
-  void set_connected(bool connected) { connected_ = connected; }
-  ScriptPromiseTyped<IDLUndefined> ContinueClose(ScriptState*);
+  ScriptPromise ContinueClose(ScriptState*);
   void AbortClose();
   void StreamsClosed();
-  bool IsClosing() const { return close_resolver_ != nullptr; }
+  bool IsClosing() const { return close_resolver_; }
 
   void Flush(device::mojom::blink::SerialPortFlushMode mode,
              device::mojom::blink::SerialPort::FlushCallback callback);
@@ -85,7 +80,7 @@ class SerialPort final : public EventTarget,
   // ActiveScriptWrappable
   bool HasPendingActivity() const override;
 
-  // EventTarget
+  // EventTargetWithInlineData
   ExecutionContext* GetExecutionContext() const override;
   const AtomicString& InterfaceName() const override;
   DispatchEventResult DispatchEventInternal(Event& event) override;
@@ -99,14 +94,15 @@ class SerialPort final : public EventTarget,
                       mojo::ScopedDataPipeConsumerHandle* consumer);
   void OnConnectionError();
   void OnOpen(mojo::PendingReceiver<device::mojom::blink::SerialPortClient>,
+              ScriptPromiseResolver*,
               mojo::PendingRemote<device::mojom::blink::SerialPort>);
-  void OnGetSignals(ScriptPromiseResolverTyped<SerialInputSignals>*,
+  void OnGetSignals(ScriptPromiseResolver*,
                     device::mojom::blink::SerialPortControlSignalsPtr);
-  void OnSetSignals(ScriptPromiseResolverTyped<IDLUndefined>*, bool success);
+  void OnSetSignals(ScriptPromiseResolver*, bool success);
   void OnClose();
+  void OnForget(ScriptPromiseResolver*);
 
   const mojom::blink::SerialPortInfoPtr info_;
-  bool connected_;
   const Member<Serial> parent_;
 
   uint32_t buffer_size_ = 0;
@@ -128,15 +124,12 @@ class SerialPort final : public EventTarget,
   bool hardware_flow_control_ = false;
 
   // Resolver for the Promise returned by open().
-  Member<ScriptPromiseResolverTyped<IDLUndefined>> open_resolver_;
+  Member<ScriptPromiseResolver> open_resolver_;
   // Resolvers for the Promises returned by getSignals() and setSignals() to
   // reject them on Mojo connection failure.
   HeapHashSet<Member<ScriptPromiseResolver>> signal_resolvers_;
   // Resolver for the Promise returned by close().
-  Member<ScriptPromiseResolverTyped<IDLUndefined>> close_resolver_;
-
-  FrameScheduler::SchedulingAffectingFeatureHandle
-      feature_handle_for_scheduler_;
+  Member<ScriptPromiseResolver> close_resolver_;
 };
 
 }  // namespace blink

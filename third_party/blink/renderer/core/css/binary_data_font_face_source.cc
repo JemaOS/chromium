@@ -27,22 +27,19 @@ BinaryDataFontFaceSource::BinaryDataFontFaceSource(CSSFontFace* css_font_face,
     return;
   }
   probe::FontsUpdated(context, font_face, String(),
-                      custom_platform_data_.Get());
+                      custom_platform_data_.get());
 }
 
-void BinaryDataFontFaceSource::Trace(Visitor* visitor) const {
-  visitor->Trace(custom_platform_data_);
-  CSSFontFaceSource::Trace(visitor);
-}
+BinaryDataFontFaceSource::~BinaryDataFontFaceSource() = default;
 
 bool BinaryDataFontFaceSource::IsValid() const {
-  return custom_platform_data_;
+  return custom_platform_data_.get();
 }
 
-SimpleFontData* BinaryDataFontFaceSource::CreateFontData(
+scoped_refptr<SimpleFontData> BinaryDataFontFaceSource::CreateFontData(
     const FontDescription& font_description,
     const FontSelectionCapabilities& font_selection_capabilities) {
-  return MakeGarbageCollected<SimpleFontData>(
+  return SimpleFontData::Create(
       custom_platform_data_->GetFontPlatformData(
           font_description.EffectiveFontSize(),
           font_description.AdjustedSpecifiedSize(),
@@ -59,7 +56,7 @@ SimpleFontData* BinaryDataFontFaceSource::CreateFontData(
               : ResolvedFontFeatures(),
           font_description.Orientation(), font_description.VariationSettings(),
           font_description.GetFontPalette()),
-      MakeGarbageCollected<CustomFontData>());
+      CustomFontData::Create());
 }
 
 }  // namespace blink

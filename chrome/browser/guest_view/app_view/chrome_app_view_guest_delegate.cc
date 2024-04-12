@@ -13,9 +13,11 @@
 
 namespace extensions {
 
-ChromeAppViewGuestDelegate::ChromeAppViewGuestDelegate() = default;
+ChromeAppViewGuestDelegate::ChromeAppViewGuestDelegate() {
+}
 
-ChromeAppViewGuestDelegate::~ChromeAppViewGuestDelegate() = default;
+ChromeAppViewGuestDelegate::~ChromeAppViewGuestDelegate() {
+}
 
 bool ChromeAppViewGuestDelegate::HandleContextMenu(
     content::RenderFrameHost& render_frame_host,
@@ -31,8 +33,9 @@ bool ChromeAppViewGuestDelegate::HandleContextMenu(
 }
 
 AppDelegate* ChromeAppViewGuestDelegate::CreateAppDelegate(
-    content::BrowserContext* browser_context) {
-  Profile* profile = Profile::FromBrowserContext(browser_context);
+    content::WebContents* web_contents) {
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents->GetBrowserContext());
   DCHECK(profile);
   return new ChromeAppDelegate(profile, true);
 }

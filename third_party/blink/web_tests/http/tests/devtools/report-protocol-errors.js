@@ -2,11 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-
-import * as ProtocolClient from 'devtools/core/protocol_client/protocol_client.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Tests that InspectorBackendDispatcher is catching incorrect messages.\n`);
 
@@ -18,7 +13,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
   }
 
 
-  const frameTargetSession = SDK.TargetManager.TargetManager.instance().primaryPageTarget().sessionId;
+  const frameTargetSession = SDK.targetManager.primaryPageTarget().sessionId;
 
   var messages = [
     'some wrong string',
@@ -44,7 +39,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
 
   var numberOfReports = 0;
 
-  ProtocolClient.InspectorBackend.InspectorBackend.reportProtocolError = function(error, message) {
+  ProtocolClient.InspectorBackend.reportProtocolError = function(error, message) {
     if (numberOfReports < messages.length) {
       TestRunner.addObject(trimErrorMessage(message), {'sessionId': 'skip'});
       TestRunner.addResult('-------------------------------------------------------');

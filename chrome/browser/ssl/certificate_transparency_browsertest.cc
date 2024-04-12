@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
-#include <string_view>
-
 #include "base/run_loop.h"
 #include "base/task/current_thread.h"
 #include "chrome/browser/browser_process.h"
@@ -23,6 +20,7 @@
 #include "components/policy/policy_constants.h"
 #include "components/prefs/testing_pref_service.h"
 #include "content/public/browser/network_service_instance.h"
+#include "content/public/browser/storage_partition.h"
 #include "content/public/test/browser_test.h"
 #include "crypto/sha2.h"
 #include "net/base/hash_value.h"
@@ -34,12 +32,13 @@
 #include "net/test/test_data_directory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
 // Returns the Sha256 hash of the SPKI of |cert|.
 net::HashValue GetSPKIHash(const CRYPTO_BUFFER* cert) {
-  std::string_view spki_bytes;
+  base::StringPiece spki_bytes;
   EXPECT_TRUE(net::asn1::ExtractSPKIFromDERCert(
       net::x509_util::CryptoBufferAsStringPiece(cert), &spki_bytes));
   net::HashValue sha256(net::HASH_VALUE_SHA256);
@@ -66,7 +65,7 @@ class CertificateTransparencyBrowserTest : public CertVerifierBrowserTest {
 
   ~CertificateTransparencyBrowserTest() override {
     SystemNetworkContextManager::SetEnableCertificateTransparencyForTesting(
-        std::nullopt);
+        absl::nullopt);
   }
 
   void SetUpOnMainThread() override {
@@ -136,7 +135,9 @@ class CertificateTransparencyBrowserTest : public CertVerifierBrowserTest {
 // Chrome CT Policy should be being enforced.
 IN_PROC_BROWSER_TEST_F(CertificateTransparencyBrowserTest,
                        EnforcedAfterApril2018) {
-  SystemNetworkContextManager::GetInstance()->SetCTLogListTimelyForTesting();
+  content::StoragePartition* partition =
+      browser()->profile()->GetDefaultStoragePartition();
+  partition->GetNetworkContext()->SetCTLogListAlwaysTimelyForTesting();
 
   ASSERT_TRUE(https_server()->Start());
 

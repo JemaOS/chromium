@@ -30,8 +30,8 @@ RemovedResultsRanker::RemovedResultsRanker(Profile* profile)
   DCHECK(profile_);
   DCHECK(proto_);
 
-  on_init_subscription_ = proto_->RegisterOnInit(
-      base::BindOnce(&RemovedResultsRanker::OnRemovedResultsProtoInit,
+  proto_->RegisterOnRead(
+      base::BindOnce(&RemovedResultsRanker::OnRemovedResultsProtoReady,
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
@@ -77,7 +77,8 @@ void RemovedResultsRanker::Remove(ChromeSearchResult* result) {
   }
 }
 
-void RemovedResultsRanker::OnRemovedResultsProtoInit() {
+void RemovedResultsRanker::OnRemovedResultsProtoReady(
+    app_list::ReadStatus read_status) {
   // Record `proto_` size in KB.
   base::UmaHistogramMemoryKB("Apps.AppList.RemovedResultsProto.SizeInKB",
                              (*proto_)->ByteSizeLong() / 1000);

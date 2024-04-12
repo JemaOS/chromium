@@ -5,12 +5,13 @@
 // clang-format off
 import 'chrome://resources/cr_elements/cr_profile_avatar_selector/cr_profile_avatar_selector.js';
 
-import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import type {CrProfileAvatarSelectorElement} from 'chrome://resources/cr_elements/cr_profile_avatar_selector/cr_profile_avatar_selector.js';
-import {getDeepActiveElement} from 'chrome://resources/js/util.js';
+import {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import {CrProfileAvatarSelectorElement} from 'chrome://resources/cr_elements/cr_profile_avatar_selector/cr_profile_avatar_selector.js';
+import {CrProfileAvatarSelectorGridElement} from 'chrome://resources/cr_elements/cr_profile_avatar_selector/cr_profile_avatar_selector_grid.js';
+import {getDeepActiveElement} from 'chrome://resources/js/util_ts.js';
 import {keyDownOn, pressAndReleaseKeyOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-interactions.js';
+import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.js';
 // clang-format on
 
 /** @fileoverview Suite of tests for cr-profile-avatar-selector. */
@@ -61,6 +62,7 @@ suite('cr-profile-avatar-selector', function() {
   setup(function() {
     avatarSelector = createElement();
     document.body.appendChild(avatarSelector);
+    flush();
   });
 
   teardown(function() {
@@ -71,6 +73,12 @@ suite('cr-profile-avatar-selector', function() {
     assertEquals(3, getGridItems().length);
   });
 
+  test('Can update avatars', function() {
+    avatarSelector.pop('avatars');
+    flush();
+    assertEquals(2, getGridItems().length);
+  });
+
   test('No avatar is initially selected', function() {
     assertFalse(!!avatarSelector.selectedAvatar);
     getGridItems().forEach(function(item) {
@@ -78,7 +86,7 @@ suite('cr-profile-avatar-selector', function() {
     });
   });
 
-  test('No avatar initially selected', async function() {
+  test('No avatar initially selected', function() {
     const items = getGridItems();
     assertEquals(items.length, 3);
     // First element of the grid should get the focus on 'tab' key.
@@ -93,12 +101,11 @@ suite('cr-profile-avatar-selector', function() {
     assertEquals(getDeepActiveElement(), items[1]);
 
     items[1]!.click();
-    await microtasksFinished();
     assertTrue(items[1]!.parentElement!.classList.contains('iron-selected'));
     verifyTabIndex(items, [-1, 0, -1]);
   });
 
-  test('Avatar already selected', async function() {
+  test('Avatar already selected', function() {
     let items = getGridItems();
     verifyTabIndex(items, [0, -1, -1]);
     avatarSelector.avatars = [
@@ -117,13 +124,12 @@ suite('cr-profile-avatar-selector', function() {
         isGaiaAvatar: false,
       },
     ];
-    await microtasksFinished();
+    flush();
     items = getGridItems();
     assertTrue(items[1]!.parentElement!.classList.contains('iron-selected'));
     verifyTabIndex(items, [-1, 0]);
 
     items[0]!.click();
-    await microtasksFinished();
     assertTrue(items[0]!.parentElement!.classList.contains('iron-selected'));
     verifyTabIndex(items, [0, -1]);
   });
@@ -132,43 +138,66 @@ suite('cr-profile-avatar-selector', function() {
     const items = getGridItems();
     verifyTabIndex(items, [0, -1, -1]);
     avatarSelector.selectedAvatar = avatarSelector.avatars[1]!;
-    await microtasksFinished();
+    flush();
     verifyTabIndex(getGridItems(), [-1, 0, -1]);
 
     items[0]!.click();
-    await microtasksFinished();
     assertTrue(items[0]!.parentElement!.classList.contains('iron-selected'));
     verifyTabIndex(items, [0, -1, -1]);
   });
 
-  test('Can select avatar', async function() {
+  test('Can select avatar', function() {
     const items = getGridItems();
 
     // Simulate tapping the third avatar.
     items[2]!.click();
-    await microtasksFinished();
     assertEquals('chrome://avatar3.png', avatarSelector.selectedAvatar!.url);
     assertFalse(items[0]!.parentElement!.classList.contains('iron-selected'));
     assertFalse(items[1]!.parentElement!.classList.contains('iron-selected'));
     assertTrue(items[2]!.parentElement!.classList.contains('iron-selected'));
   });
 
-  test('selected-avatar-changed fires', async function() {
+  test('ignores modified key events', function() {
+    const selector =
+        avatarSelector.shadowRoot!
+            .querySelector<CrProfileAvatarSelectorGridElement>('#avatar-grid')!;
     const items = getGridItems();
-    items[2]!.click();
-    const e = await eventToPromise('selected-avatar-changed', avatarSelector);
-    assertEquals(avatarSelector.avatars[2], e.detail.value);
-  });
 
-  test('sets ignoreModifiedKeyEvents', async function() {
-    const grid = avatarSelector.shadowRoot!.querySelector('cr-grid');
-    assertTrue(!!grid);
+    items[0]!.focus();
+    assertEquals(getDeepActiveElement(), items[0]);
 
-    assertFalse(avatarSelector.ignoreModifiedKeyEvents);
-    assertFalse(grid.ignoreModifiedKeyEvents);
+    keyDownOn(items[0]!, 39, [], 'ArrowRight');
+    assertEquals(getDeepActiveElement(), items[1]);
+
+    keyDownOn(items[0]!, 37, [], 'ArrowLeft');
+    assertEquals(getDeepActiveElement(), items[0]);
 
     avatarSelector.ignoreModifiedKeyEvents = true;
-    await microtasksFinished();
-    assertTrue(grid.ignoreModifiedKeyEvents);
+
+    keyDownOn(items[0]!, 39, 'alt', 'ArrowRight');
+    assertEquals(getDeepActiveElement(), items[0]);
+
+    keyDownOn(items[0]!, 39, 'ctrl', 'ArrowRight');
+    assertEquals(getDeepActiveElement(), items[0]);
+
+    keyDownOn(items[0]!, 39, 'meta', 'ArrowRight');
+    assertEquals(getDeepActiveElement(), items[0]);
+
+    keyDownOn(items[0]!, 39, 'shift', 'ArrowRight');
+    assertEquals(getDeepActiveElement(), items[0]);
+
+    // Test RTL case.
+    selector.dir = 'rtl';
+    keyDownOn(items[0]!, 37, [], 'ArrowLeft');
+    assertEquals(getDeepActiveElement(), items[1]);
+
+    keyDownOn(items[0]!, 37, [], 'ArrowLeft');
+    assertEquals(getDeepActiveElement(), items[2]);
+
+    keyDownOn(items[0]!, 37, [], 'ArrowRight');
+    assertEquals(getDeepActiveElement(), items[1]);
+
+    keyDownOn(items[0]!, 37, [], 'ArrowRight');
+    assertEquals(getDeepActiveElement(), items[0]);
   });
 });

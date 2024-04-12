@@ -4,26 +4,23 @@
 
 #include "ui/base/data_transfer_policy/data_transfer_endpoint.h"
 
-#include <optional>
-
 #include "base/check_op.h"
 #include "base/types/optional_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace ui {
 
 DataTransferEndpoint::DataTransferEndpoint(const GURL& url,
-                                           bool off_the_record,
                                            bool notify_if_restricted)
     : type_(EndpointType::kUrl),
       url_(url),
-      off_the_record_(off_the_record),
       notify_if_restricted_(notify_if_restricted) {}
 
 DataTransferEndpoint::DataTransferEndpoint(EndpointType type,
                                            bool notify_if_restricted)
     : type_(type),
-      url_(std::nullopt),
+      url_(absl::nullopt),
       notify_if_restricted_(notify_if_restricted) {
   DCHECK_NE(type, EndpointType::kUrl);
 }

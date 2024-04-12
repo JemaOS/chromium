@@ -4,10 +4,10 @@
 
 import 'chrome://resources/js/action_link.js';
 
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {addWebUiListener} from 'chrome://resources/js/cr.js';
 import {sanitizeInnerHtml} from 'chrome://resources/js/parse_html_subset.js';
-import {$, getRequiredElement} from 'chrome://resources/js/util.js';
+import {$, getRequiredElement} from 'chrome://resources/js/util_ts.js';
 
 // Note: keep these values in sync with the values in
 // ui/accessibility/ax_mode.h
@@ -19,9 +19,8 @@ enum AxMode {
   HTML = 1 << 4,
   HTML_METADATA = 1 << 5,
   LABEL_IMAGES = 1 << 6,
-  PDF_PRINTING = 1 << 7,
+  PDF = 1 << 7,
   PDF_OCR = 1 << 8,
-  ANNOTATE_MAIN_NODE = 1 << 9,
 }
 
 interface Data {
@@ -47,8 +46,7 @@ type PageData = Data&{
   // chrome/browser/accessibility/accessibility_ui.cc.
   metadata: boolean,
   native: boolean,
-  pdfPrinting: boolean,
-  screenreader: boolean,
+  pdf: boolean,
   web: boolean,
 
   tree?: string,
@@ -69,13 +67,10 @@ interface InitData {
   viewsAccessibility: boolean;
   widgets: WidgetData[];
 
-  supportedApiTypes: string[];
-  apiType: string;
-  locked: EnabledStatus;
-
   html: EnabledStatus;
+  internal: EnabledStatus;
   native: EnabledStatus;
-  pdfPrinting: EnabledStatus;
+  pdf: EnabledStatus;
   screenreader: EnabledStatus;
   text: EnabledStatus;
   web: EnabledStatus;
@@ -83,7 +78,7 @@ interface InitData {
 
 type RequestType = 'showOrRefreshTree';
 
-type GlobalStateName = 'native'|'web'|'metadata'|'pdfPrinting'|'screenreader';
+type GlobalStateName = 'native'|'web'|'metadata'|'pdf';
 
 class BrowserProxy {
   toggleAccessibility(
@@ -130,10 +125,6 @@ class BrowserProxy {
 
   setGlobalFlag(flagName: string, enabled: boolean) {
     chrome.send('setGlobalFlag', [{flagName, enabled}]);
-  }
-
-  setGlobalString(stringName: string, value: string) {
-    chrome.send('setGlobalString', [{stringName, value}]);
   }
 }
 
@@ -248,8 +239,7 @@ function initialize() {
   bindCheckbox('text', data.text);
   bindCheckbox('screenreader', data.screenreader);
   bindCheckbox('html', data.html);
-  bindDropdown('apiType', data.supportedApiTypes, data.apiType);
-  bindCheckbox('locked', data.locked);
+  bindCheckbox('internal', data.internal);
 
   getRequiredElement('pages').textContent = '';
 
@@ -308,25 +298,6 @@ function bindCheckbox(name: string, value: EnabledStatus) {
   }
   checkbox.addEventListener('change', function() {
     browserProxy.setGlobalFlag(name, checkbox.checked);
-    document.location.reload();
-  });
-}
-
-function bindDropdown(name: string, options: string[], value: string) {
-  const dropdown = getRequiredElement<HTMLSelectElement>(name);
-  // Remove any existing options.
-  dropdown.textContent = '';
-  // Add options based on the input array.
-  for (const optionName of options) {
-    const option = document.createElement('option');
-    option.textContent = optionName!;
-    dropdown.appendChild(option);
-  }
-  dropdown.value = value;
-  dropdown.addEventListener('change', function() {
-    // Make sure that the dropdown value is included in options.
-    assert(options.includes(dropdown.value));
-    browserProxy.setGlobalString(name, dropdown.value);
     document.location.reload();
   });
 }
@@ -392,14 +363,7 @@ function formatRow(
     row.appendChild(createModeElement(AxMode.HTML, pageData, 'web'));
     row.appendChild(
         createModeElement(AxMode.HTML_METADATA, pageData, 'metadata'));
-    row.appendChild(
-        createModeElement(AxMode.PDF_PRINTING, pageData, 'pdfPrinting'));
-    row.appendChild(createModeElement(
-        AxMode.LABEL_IMAGES, pageData, 'screenreader',
-        /*readonly=*/ true));
-    row.appendChild(createModeElement(
-        AxMode.ANNOTATE_MAIN_NODE, pageData, 'screenreader',
-        /* readOnly= */ true));
+    row.appendChild(createModeElement(AxMode.PDF, pageData, 'pdf'));
   } else {
     const siteInfo = document.createElement('span');
     siteInfo.appendChild(formatValue(data, 'name'));
@@ -499,48 +463,38 @@ function getNameForAccessibilityMode(mode: AxMode): string {
       return 'HTML Metadata';
     case AxMode.LABEL_IMAGES:
       return 'Label images';
-    case AxMode.PDF_PRINTING:
-      return 'PDF printing';
+    case AxMode.PDF:
+      return 'PDF';
     case AxMode.PDF_OCR:
       return 'PDF OCR';
-    case AxMode.ANNOTATE_MAIN_NODE:
-      return 'Annotate main node';
     default:
       assertNotReached();
   }
 }
 
 function createModeElement(
-    mode: AxMode, data: PageData, globalStateName: GlobalStateName,
-    readOnly = false) {
+    mode: AxMode, data: PageData, globalStateName: GlobalStateName) {
   const currentMode = data.a11yMode;
-  const element = readOnly ? document.createElement('span') :
-                             document.createElement('a', {is: 'action-link'});
-  if (readOnly) {
-    element.classList.add('readOnlyMode');
-  } else {
-    element.setAttribute('is', 'action-link');
-    element.setAttribute('role', 'button');
-  }
+  const link = document.createElement('a', {is: 'action-link'});
+  link.setAttribute('is', 'action-link');
+  link.setAttribute('role', 'button');
 
   const stateText = ((currentMode & mode) !== 0) ? 'true' : 'false';
   const isEnabled =
       (data as unknown as {[k: string]: boolean})[globalStateName];
   const accessibilityModeName = getNameForAccessibilityMode(mode);
   if (isEnabled) {
-    element.textContent = accessibilityModeName + ': ' + stateText;
+    link.textContent = accessibilityModeName + ': ' + stateText;
   } else {
-    element.textContent = accessibilityModeName + ': disabled';
-    element.classList.add('disabled');
+    link.textContent = accessibilityModeName + ': disabled';
+    link.classList.add('disabled');
   }
-  element.setAttribute(
+  link.setAttribute(
       'aria-label', `${accessibilityModeName} for ${data.name}: ${stateText}`);
-  if (!readOnly) {
-    element.setAttribute('aria-pressed', stateText);
-    element.addEventListener(
-        'click', toggleAccessibility.bind(null, data, mode, globalStateName));
-  }
-  return element;
+  link.setAttribute('aria-pressed', stateText);
+  link.addEventListener(
+      'click', toggleAccessibility.bind(null, data, mode, globalStateName));
+  return link;
 }
 
 function createShowAccessibilityTreeElement(

@@ -7,7 +7,6 @@
 #include <memory>
 #include <utility>
 
-#include "base/memory/raw_ref.h"
 #include "base/test/bind.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/script/script_type.mojom-blink.h"
@@ -43,8 +42,6 @@ namespace {
 // Promise-related test support.
 
 struct StubScriptFunction {
-  DISALLOW_NEW();
-
  public:
   StubScriptFunction() : call_count_(0) {}
 
@@ -69,12 +66,12 @@ struct StubScriptFunction {
     explicit ScriptFunctionImpl(StubScriptFunction& owner) : owner_(owner) {}
 
     ScriptValue Call(ScriptState*, ScriptValue arg) override {
-      owner_->arg_ = arg;
-      owner_->call_count_++;
+      owner_.arg_ = arg;
+      owner_.call_count_++;
       return ScriptValue();
     }
 
-    const raw_ref<StubScriptFunction> owner_;
+    StubScriptFunction& owner_;
   };
 };
 
@@ -112,7 +109,7 @@ class ExpectDOMException : public ScriptValueTest {
   ~ExpectDOMException() override = default;
 
   void operator()(ScriptState* script_state, ScriptValue value) const override {
-    DOMException* exception = V8DOMException::ToWrappable(
+    DOMException* exception = V8DOMException::ToImplWithTypeCheck(
         script_state->GetIsolate(), value.V8Value());
     EXPECT_TRUE(exception) << "the value should be a DOMException";
     if (!exception)
@@ -146,10 +143,9 @@ class ExpectTypeError : public ScriptValueTest {
             .ToLocalChecked();
 
     EXPECT_EQ("TypeError",
-              ToCoreString(isolate, name->ToString(context).ToLocalChecked()));
-    EXPECT_EQ(
-        expected_message_,
-        ToCoreString(isolate, message->ToString(context).ToLocalChecked()));
+              ToCoreString(name->ToString(context).ToLocalChecked()));
+    EXPECT_EQ(expected_message_,
+              ToCoreString(message->ToString(context).ToLocalChecked()));
   }
 
  private:
@@ -316,11 +312,11 @@ class StubWebServiceWorkerProvider {
         const WebFetchClientSettingsObject& fetch_client_settings_object,
         std::unique_ptr<WebServiceWorkerRegistrationCallbacks> callbacks)
         override {
-      owner_->register_call_count_++;
-      owner_->register_scope_ = scope;
-      owner_->register_script_url_ = script_url;
-      owner_->script_type_ = script_type;
-      owner_->update_via_cache_ = update_via_cache;
+      owner_.register_call_count_++;
+      owner_.register_scope_ = scope;
+      owner_.register_script_url_ = script_url;
+      owner_.script_type_ = script_type;
+      owner_.update_via_cache_ = update_via_cache;
       registration_callbacks_to_delete_.push_back(std::move(callbacks));
     }
 
@@ -328,8 +324,8 @@ class StubWebServiceWorkerProvider {
         const WebURL& document_url,
         std::unique_ptr<WebServiceWorkerGetRegistrationCallbacks> callbacks)
         override {
-      owner_->get_registration_call_count_++;
-      owner_->get_registration_url_ = document_url;
+      owner_.get_registration_call_count_++;
+      owner_.get_registration_url_ = document_url;
       get_registration_callbacks_to_delete_.push_back(std::move(callbacks));
     }
 
@@ -340,7 +336,7 @@ class StubWebServiceWorkerProvider {
     }
 
    private:
-    const raw_ref<StubWebServiceWorkerProvider> owner_;
+    StubWebServiceWorkerProvider& owner_;
     Vector<std::unique_ptr<WebServiceWorkerRegistrationCallbacks>>
         registration_callbacks_to_delete_;
     Vector<std::unique_ptr<WebServiceWorkerGetRegistrationCallbacks>>

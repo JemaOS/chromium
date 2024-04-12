@@ -208,12 +208,10 @@ void TouchDispositionGestureFilter::OnTouchEventAck(
     uint32_t unique_touch_event_id,
     bool event_consumed,
     bool is_source_touch_event_set_blocking,
-    const std::optional<EventLatencyMetadata>& event_latency_metadata) {
+    const absl::optional<EventLatencyMetadata>& event_latency_metadata) {
   // Spurious asynchronous acks should not trigger a crash.
-  if (IsEmpty() || (Head().empty() && sequences_.size() == 1)) {
-    TRACE_EVENT_INSTANT("input", "OnTouchEventAck spurious async ack");
+  if (IsEmpty() || (Head().empty() && sequences_.size() == 1))
     return;
-  }
 
   if (Head().empty())
     PopGestureSequence();
@@ -235,7 +233,7 @@ void TouchDispositionGestureFilter::OnTouchEventAck(
 }
 
 void TouchDispositionGestureFilter::SendAckedEvents(
-    const std::optional<EventLatencyMetadata>& event_latency_metadata) {
+    const absl::optional<EventLatencyMetadata>& event_latency_metadata) {
   // Dispatch all packets corresponding to ack'ed touches, as well as
   // any pending timeout-based packets.
   bool touch_packet_for_current_ack_handled = false;
@@ -255,10 +253,8 @@ void TouchDispositionGestureFilter::SendAckedEvents(
 
     if (source != GestureEventDataPacket::TOUCH_TIMEOUT) {
       // We've sent all packets which aren't pending their ack.
-      if (ack_state == GestureEventDataPacket::AckState::PENDING) {
-        TRACE_EVENT_INSTANT("input", "SendAckedEvents RestPending");
+      if (ack_state == GestureEventDataPacket::AckState::PENDING)
         break;
-      }
       state_.OnTouchEventAck(
           ack_state == GestureEventDataPacket::AckState::CONSUMED,
           IsTouchStartEvent(source));
@@ -297,13 +293,6 @@ void TouchDispositionGestureFilter::ResetGestureHandlingState() {
 
 void TouchDispositionGestureFilter::FilterAndSendPacket(
     const GestureEventDataPacket& packet) {
-  TRACE_EVENT("input", "TouchDispositionGestureFilter::FilterAndSendPacket",
-              [&](perfetto::EventContext ctx) {
-                auto* event =
-                    ctx.event<perfetto::protos::pbzero::ChromeTrackEvent>();
-                auto* filter = event->set_touch_disposition_gesture_filter();
-                filter->set_gesture_count(packet.gesture_count());
-              });
   if (packet.gesture_source() == GestureEventDataPacket::TOUCH_SEQUENCE_START) {
     CancelTapIfNecessary(packet);
     EndScrollIfNecessary(packet);
@@ -361,7 +350,6 @@ void TouchDispositionGestureFilter::FilterAndSendPacket(
 void TouchDispositionGestureFilter::SendGesture(
     const GestureEventData& event,
     const GestureEventDataPacket& packet_being_sent) {
-  TRACE_EVENT("input", "TouchDispositionGestureFilter::SendGesture");
   DCHECK(event.unique_touch_event_id ==
          packet_being_sent.unique_touch_event_id());
 

@@ -30,10 +30,6 @@ class ScreenLockerTester : public session_manager::SessionManagerObserver {
   // Synchronously lock the device.
   void Lock();
 
-  // Not necessary when using Lock() because it does this internally, this is
-  // used when triggering a lock via some other means.
-  void WaitForLock();
-
   void WaitForUnlock();
 
   // Injects authenticators that only authenticate with the given password.
@@ -49,8 +45,7 @@ class ScreenLockerTester : public session_manager::SessionManagerObserver {
   // Returns true if Shutdown button is visible.
   bool IsLockShutdownButtonShown();
 
-  // Enters and submits the given password for the given account. This does not
-  // wait for the unlock to complete, call WaitForUnlock() to synchronize.
+  // Enters and submits the given password for the given account.
   void UnlockWithPassword(const AccountId& account_id,
                           const std::string& password);
 

@@ -29,8 +29,8 @@ namespace blink {
 
 namespace {
 
-std::optional<bool> ToAbslOptionalBool(const std::optional<bool>& value) {
-  return value ? std::optional<bool>(*value) : std::nullopt;
+absl::optional<bool> ToAbslOptionalBool(const absl::optional<bool>& value) {
+  return value ? absl::optional<bool>(*value) : absl::nullopt;
 }
 
 webrtc::VideoTrackInterface::ContentHint ContentHintTypeToWebRtcContentHint(
@@ -97,14 +97,17 @@ class MediaStreamVideoWebRtcSink::WebRtcVideoSourceAdapter
 
   void OnVideoFrameOnIO(
       scoped_refptr<media::VideoFrame> frame,
+      std::vector<scoped_refptr<media::VideoFrame>> scaled_frames,
       base::TimeTicks estimated_capture_time);
 
-  void OnNotifyVideoFrameDroppedOnIO(media::VideoCaptureFrameDropReason);
+  void OnNotifyVideoFrameDroppedOnIO();
 
  private:
   friend class WTF::ThreadSafeRefCounted<WebRtcVideoSourceAdapter>;
 
-  void OnVideoFrameOnNetworkThread(scoped_refptr<media::VideoFrame> frame);
+  void OnVideoFrameOnNetworkThread(
+      scoped_refptr<media::VideoFrame> frame,
+      std::vector<scoped_refptr<media::VideoFrame>> scaled_frames);
 
   void OnNotifyVideoFrameDroppedOnNetworkThread();
 
@@ -166,17 +169,18 @@ void MediaStreamVideoWebRtcSink::WebRtcVideoSourceAdapter::
 
 void MediaStreamVideoWebRtcSink::WebRtcVideoSourceAdapter::OnVideoFrameOnIO(
     scoped_refptr<media::VideoFrame> frame,
+    std::vector<scoped_refptr<media::VideoFrame>> scaled_frames,
     base::TimeTicks estimated_capture_time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(io_sequence_checker_);
   PostCrossThreadTask(
       *libjingle_network_task_runner_.get(), FROM_HERE,
       CrossThreadBindOnce(
           &WebRtcVideoSourceAdapter::OnVideoFrameOnNetworkThread,
-          WrapRefCounted(this), std::move(frame)));
+          WrapRefCounted(this), std::move(frame), std::move(scaled_frames)));
 }
 
 void MediaStreamVideoWebRtcSink::WebRtcVideoSourceAdapter::
-    OnNotifyVideoFrameDroppedOnIO(media::VideoCaptureFrameDropReason) {
+    OnNotifyVideoFrameDroppedOnIO() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(io_sequence_checker_);
   DVLOG(1) << __func__;
   PostCrossThreadTask(
@@ -187,11 +191,13 @@ void MediaStreamVideoWebRtcSink::WebRtcVideoSourceAdapter::
 }
 
 void MediaStreamVideoWebRtcSink::WebRtcVideoSourceAdapter::
-    OnVideoFrameOnNetworkThread(scoped_refptr<media::VideoFrame> frame) {
+    OnVideoFrameOnNetworkThread(
+        scoped_refptr<media::VideoFrame> frame,
+        std::vector<scoped_refptr<media::VideoFrame>> scaled_frames) {
   DCHECK(libjingle_network_task_runner_->BelongsToCurrentThread());
   base::AutoLock auto_lock(video_source_stop_lock_);
   if (video_source_)
-    video_source_->OnFrameCaptured(std::move(frame));
+    video_source_->OnFrameCaptured(std::move(frame), std::move(scaled_frames));
 }
 
 void MediaStreamVideoWebRtcSink::WebRtcVideoSourceAdapter::
@@ -209,7 +215,7 @@ MediaStreamVideoWebRtcSink::MediaStreamVideoWebRtcSink(
   MediaStreamVideoTrack* video_track = MediaStreamVideoTrack::From(component);
   DCHECK(video_track);
 
-  std::optional<bool> needs_denoising =
+  absl::optional<bool> needs_denoising =
       ToAbslOptionalBool(video_track->noise_reduction());
 
   bool is_screencast = video_track->is_screencast();
@@ -283,8 +289,8 @@ void MediaStreamVideoWebRtcSink::OnContentHintChanged(
 }
 
 void MediaStreamVideoWebRtcSink::OnVideoConstraintsChanged(
-    std::optional<double> min_fps,
-    std::optional<double> max_fps) {
+    absl::optional<double> min_fps,
+    absl::optional<double> max_fps) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DVLOG(3) << __func__ << " min " << min_fps.value_or(-1) << " max "
            << max_fps.value_or(-1);
@@ -292,8 +298,8 @@ void MediaStreamVideoWebRtcSink::OnVideoConstraintsChanged(
       webrtc::VideoTrackSourceConstraints{min_fps, max_fps});
 }
 
-std::optional<bool> MediaStreamVideoWebRtcSink::SourceNeedsDenoisingForTesting()
-    const {
+absl::optional<bool>
+MediaStreamVideoWebRtcSink::SourceNeedsDenoisingForTesting() const {
   return video_source_->needs_denoising();
 }
 

@@ -10,14 +10,11 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import org.chromium.base.jank_tracker.JankTracker;
-import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.feed.FeedSwipeRefreshLayout;
 import org.chromium.chrome.browser.feed.ScrollableContainerDelegate;
 import org.chromium.chrome.browser.ntp.NewTabPageLaunchOrigin;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -36,15 +33,16 @@ class ExploreSurfaceCoordinatorFactory {
     private final SnackbarManager mSnackbarManager;
     private final Supplier<ShareDelegate> mShareDelegateSupplier;
     private final WindowAndroid mWindowAndroid;
-    private final JankTracker mJankTracker;
     private final TabModelSelector mTabModelSelector;
     private final BottomSheetController mBottomSheetController;
     private final ScrollableContainerDelegate mScrollableContainerDelegate;
     private final Supplier<Toolbar> mToolbarSupplier;
     private final long mEmbeddingSurfaceConstructedTimeNs;
-    @Nullable private final FeedSwipeRefreshLayout mSwipeRefreshLayout;
-    @NonNull private final ViewGroup mParentView;
-    private final ObservableSupplier<Integer> mTabStripHeightSupplier;
+    @Nullable
+    private final FeedSwipeRefreshLayout mSwipeRefreshLayout;
+    @NonNull
+    private final ViewGroup mParentView;
+    private ExploreSurfaceFeedLifecycleManager mExploreSurfaceFeedLifecycleManager;
 
     /**
      * @param activity The current {@link Activity}.
@@ -56,77 +54,51 @@ class ExploreSurfaceCoordinatorFactory {
      * @param snackbarManager Manages the snackbar.
      * @param shareDelegateSupplier Supplies the {@link ShareDelegate}.
      * @param windowAndroid The current {@link WindowAndroid}.
-     * @param jankTracker tracks jank.
      * @param tabModelSelector The current {@link TabModelSelector}.
      * @param toolbarSupplier Supplies the {@link Toolbar}.
      * @param embeddingSurfaceConstructedTimeNs Timestamp taken when the caller was constructed.
-     * @param swipeRefreshLayout The layout to support pull-to-refresh.
-     * @param tabStripHeightSupplier Supplier for the tab strip height.
+     * @param swipeRefreshLayout The layout to support pull-to-refresg.
      */
-    ExploreSurfaceCoordinatorFactory(
-            @NonNull Activity activity,
-            @NonNull ViewGroup parentView,
+    ExploreSurfaceCoordinatorFactory(@NonNull Activity activity, @NonNull ViewGroup parentView,
             @NonNull PropertyModel containerPropertyModel,
             @NonNull BottomSheetController bottomSheetController,
             @NonNull Supplier<Tab> parentTabSupplier,
             @NonNull ScrollableContainerDelegate scrollableContainerDelegate,
             @NonNull SnackbarManager snackbarManager,
             @NonNull Supplier<ShareDelegate> shareDelegateSupplier,
-            @NonNull WindowAndroid windowAndroid,
-            @NonNull JankTracker jankTracker,
-            @NonNull TabModelSelector tabModelSelector,
-            @NonNull Supplier<Toolbar> toolbarSupplier,
-            long embeddingSurfaceConstructedTimeNs,
-            @Nullable FeedSwipeRefreshLayout swipeRefreshLayout,
-            @NonNull ObservableSupplier<Integer> tabStripHeightSupplier) {
+            @NonNull WindowAndroid windowAndroid, @NonNull TabModelSelector tabModelSelector,
+            @NonNull Supplier<Toolbar> toolbarSupplier, long embeddingSurfaceConstructedTimeNs,
+            @Nullable FeedSwipeRefreshLayout swipeRefreshLayout) {
         mActivity = activity;
         mParentView = parentView;
         mParentTabSupplier = parentTabSupplier;
         mSnackbarManager = snackbarManager;
         mShareDelegateSupplier = shareDelegateSupplier;
         mWindowAndroid = windowAndroid;
-        mJankTracker = jankTracker;
         mTabModelSelector = tabModelSelector;
         mBottomSheetController = bottomSheetController;
         mScrollableContainerDelegate = scrollableContainerDelegate;
         mToolbarSupplier = toolbarSupplier;
         mEmbeddingSurfaceConstructedTimeNs = embeddingSurfaceConstructedTimeNs;
         mSwipeRefreshLayout = swipeRefreshLayout;
-        mPropertyModelChangeProcessor =
-                PropertyModelChangeProcessor.create(
-                        containerPropertyModel, parentView, ExploreSurfaceViewBinder::bind);
-        mTabStripHeightSupplier = tabStripHeightSupplier;
+        mPropertyModelChangeProcessor = PropertyModelChangeProcessor.create(
+                containerPropertyModel, parentView, ExploreSurfaceViewBinder::bind);
     }
 
     /**
      * Creates the {@link ExploreSurfaceCoordinator} for the specified mode.
-     *
      * @param isInNightMode Whether or not the feed surface is going to display in night mode.
      * @param launchOrigin Where the feed was launched from.
      * @return The {@link ExploreSurfaceCoordinator}.
      */
-    ExploreSurfaceCoordinator create(
-            boolean isInNightMode, @NewTabPageLaunchOrigin int launchOrigin) {
-        Profile profile = ProfileManager.getLastUsedRegularProfile();
+    ExploreSurfaceCoordinator create(boolean isInNightMode, boolean isPlaceholderShown,
+            @NewTabPageLaunchOrigin int launchOrigin) {
+        Profile profile = Profile.getLastUsedRegularProfile();
 
-        return new ExploreSurfaceCoordinator(
-                profile,
-                mActivity,
-                isInNightMode,
-                /* isPlaceholderShown= */ false,
-                mBottomSheetController,
-                mScrollableContainerDelegate,
-                launchOrigin,
-                mToolbarSupplier,
-                mEmbeddingSurfaceConstructedTimeNs,
-                mSwipeRefreshLayout,
-                mParentView,
-                mParentTabSupplier,
-                mSnackbarManager,
-                mShareDelegateSupplier,
-                mWindowAndroid,
-                mJankTracker,
-                mTabModelSelector,
-                mTabStripHeightSupplier);
+        return new ExploreSurfaceCoordinator(profile, mActivity, isInNightMode, isPlaceholderShown,
+                mBottomSheetController, mScrollableContainerDelegate, launchOrigin,
+                mToolbarSupplier, mEmbeddingSurfaceConstructedTimeNs, mSwipeRefreshLayout,
+                mParentView, mParentTabSupplier, mSnackbarManager, mShareDelegateSupplier,
+                mWindowAndroid, mTabModelSelector);
     }
 }

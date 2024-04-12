@@ -17,7 +17,7 @@ class SyncWebSocket {
  public:
   enum class StatusCode { kOk = 0, kTimeout, kDisconnected };
 
-  virtual ~SyncWebSocket() = default;
+  virtual ~SyncWebSocket() {}
 
   virtual void SetId(const std::string& socket_id) {}
 

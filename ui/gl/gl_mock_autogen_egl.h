@@ -12,8 +12,6 @@
 // no-include-guard-because-multiply-included
 // NOLINT(build/header_guard)
 
-MOCK_METHOD2(AcquireExternalContextANGLE,
-             void(EGLDisplay dpy, EGLSurface readAndDraw));
 MOCK_METHOD1(BindAPI, EGLBoolean(EGLenum api));
 MOCK_METHOD3(BindTexImage,
              EGLBoolean(EGLDisplay dpy, EGLSurface surface, EGLint buffer));
@@ -268,7 +266,6 @@ MOCK_METHOD4(QuerySurfacePointerANGLE,
                         EGLint attribute,
                         void** value));
 MOCK_METHOD2(ReacquireHighPowerGPUANGLE, void(EGLDisplay dpy, EGLContext ctx));
-MOCK_METHOD1(ReleaseExternalContextANGLE, void(EGLDisplay dpy));
 MOCK_METHOD2(ReleaseHighPowerGPUANGLE, void(EGLDisplay dpy, EGLContext ctx));
 MOCK_METHOD3(ReleaseTexImage,
              EGLBoolean(EGLDisplay dpy, EGLSurface surface, EGLint buffer));

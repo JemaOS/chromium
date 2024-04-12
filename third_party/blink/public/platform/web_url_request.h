@@ -32,13 +32,12 @@
 #define THIRD_PARTY_BLINK_PUBLIC_PLATFORM_WEB_URL_REQUEST_H_
 
 #include <memory>
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/time/time.h"
 #include "base/unguessable_token.h"
 #include "net/base/request_priority.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/platform/web_common.h"
 #include "ui/base/page_transition_types.h"
 
@@ -110,7 +109,7 @@ class BLINK_PLATFORM_EXPORT WebURLRequest {
   const net::SiteForCookies& SiteForCookies() const;
   void SetSiteForCookies(const net::SiteForCookies&);
 
-  std::optional<WebSecurityOrigin> TopFrameOrigin() const;
+  absl::optional<WebSecurityOrigin> TopFrameOrigin() const;
   void SetTopFrameOrigin(const WebSecurityOrigin&);
 
   // https://fetch.spec.whatwg.org/#concept-request-origin
@@ -120,6 +119,11 @@ class BLINK_PLATFORM_EXPORT WebURLRequest {
   // The origin of the isolated world - set if this is a fetch/XHR initiated by
   // an isolated world.
   WebSecurityOrigin IsolatedWorldOrigin() const;
+
+  // Controls whether user name, password, and cookies may be sent with the
+  // request.
+  bool AllowStoredCredentials() const;
+  void SetAllowStoredCredentials(bool);
 
   mojom::FetchCacheMode GetCacheMode() const;
   void SetCacheMode(mojom::FetchCacheMode);
@@ -179,6 +183,13 @@ class BLINK_PLATFORM_EXPORT WebURLRequest {
   int RequestorID() const;
   void SetRequestorID(int);
 
+  // If true, the client expects to receive the raw response pipe. Similar to
+  // UseStreamOnResponse but the stream will be a mojo DataPipe rather than a
+  // WebDataConsumerHandle.
+  // If the request is fetched synchronously the response will instead be piped
+  // to a blob if this flag is set to true.
+  bool PassResponsePipeToClient() const;
+
   // True if the requestor wants to receive the response body as a stream.
   bool UseStreamOnResponse() const;
   void SetUseStreamOnResponse(bool);
@@ -236,7 +247,7 @@ class BLINK_PLATFORM_EXPORT WebURLRequest {
 
   // If this request was created from an anchor with a download attribute, this
   // is the value provided there.
-  std::optional<WebString> GetSuggestedFilename() const;
+  absl::optional<WebString> GetSuggestedFilename() const;
 
   // Returns true if this request is tagged as an ad. This is done using various
   // heuristics so it is not expected to be 100% accurate.
@@ -256,7 +267,7 @@ class BLINK_PLATFORM_EXPORT WebURLRequest {
   bool IsRevalidating() const;
 
   // Returns the DevTools ID to throttle the network request.
-  const std::optional<base::UnguessableToken>& GetDevToolsToken() const;
+  const absl::optional<base::UnguessableToken>& GetDevToolsToken() const;
 
   // Remembers 'X-Requested-With' header value. Blink should not set this header
   // value until CORS checks are done to avoid running checks even against
@@ -274,20 +285,20 @@ class BLINK_PLATFORM_EXPORT WebURLRequest {
   const base::UnguessableToken& GetFetchWindowId() const;
   void SetFetchWindowId(const base::UnguessableToken&);
 
-  std::optional<WebString> GetDevToolsId() const;
+  absl::optional<WebString> GetDevToolsId() const;
 
   int GetLoadFlagsForWebUrlRequest() const;
 
   bool IsFromOriginDirtyStyleSheet() const;
 
-  std::optional<base::UnguessableToken> RecursivePrefetchToken() const;
+  absl::optional<base::UnguessableToken> RecursivePrefetchToken() const;
 
   // Specifies a Trust Tokens protocol operation to execute alongside the
   // request's load (https://github.com/wicg/trust-token-api).
   network::OptionalTrustTokenParams TrustTokenParams() const;
 
-  std::optional<WebURL> WebBundleUrl() const;
-  std::optional<base::UnguessableToken> WebBundleToken() const;
+  absl::optional<WebURL> WebBundleUrl() const;
+  absl::optional<base::UnguessableToken> WebBundleToken() const;
 
 #if INSIDE_BLINK
   ResourceRequest& ToMutableResourceRequest();

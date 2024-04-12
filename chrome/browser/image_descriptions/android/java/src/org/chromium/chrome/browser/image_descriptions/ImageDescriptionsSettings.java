@@ -11,7 +11,6 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.settings.ProfileDependentSetting;
 import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
 import org.chromium.components.browser_ui.settings.CustomDividerFragment;
 import org.chromium.components.browser_ui.settings.SettingsUtils;
@@ -22,9 +21,7 @@ import org.chromium.components.browser_ui.settings.SettingsUtils;
  * run on mobile data or requires a Wi-Fi connection.
  */
 public class ImageDescriptionsSettings extends PreferenceFragmentCompat
-        implements Preference.OnPreferenceChangeListener,
-                CustomDividerFragment,
-                ProfileDependentSetting {
+        implements Preference.OnPreferenceChangeListener, CustomDividerFragment {
     public static final String IMAGE_DESCRIPTIONS = "image_descriptions_switch";
     public static final String IMAGE_DESCRIPTIONS_DATA_POLICY = "image_descriptions_data_policy";
 
@@ -51,6 +48,7 @@ public class ImageDescriptionsSettings extends PreferenceFragmentCompat
     @Override
     public void onCreatePreferences(Bundle bundle, String s) {
         SettingsUtils.addPreferencesFromResource(this, R.xml.image_descriptions_preference);
+        mProfile = Profile.getLastUsedRegularProfile();
 
         Bundle extras = getArguments();
         if (extras != null) {
@@ -63,8 +61,8 @@ public class ImageDescriptionsSettings extends PreferenceFragmentCompat
         mGetImageDescriptionsSwitch.setChecked(mIsEnabled);
 
         mRadioButtonGroupAccessibilityPreference =
-                (RadioButtonGroupAccessibilityPreference)
-                        findPreference(IMAGE_DESCRIPTIONS_DATA_POLICY);
+                (RadioButtonGroupAccessibilityPreference) findPreference(
+                        IMAGE_DESCRIPTIONS_DATA_POLICY);
         mRadioButtonGroupAccessibilityPreference.setOnPreferenceChangeListener(this);
         mRadioButtonGroupAccessibilityPreference.setEnabled(mIsEnabled);
         mRadioButtonGroupAccessibilityPreference.initialize(mOnlyOnWifi);
@@ -96,10 +94,5 @@ public class ImageDescriptionsSettings extends PreferenceFragmentCompat
 
     public void setDelegate(ImageDescriptionsControllerDelegate delegate) {
         mDelegate = delegate;
-    }
-
-    @Override
-    public void setProfile(Profile profile) {
-        mProfile = profile;
     }
 }

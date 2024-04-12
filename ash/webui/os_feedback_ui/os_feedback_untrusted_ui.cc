@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "ash/webui/common/trusted_types_util.h"
+#include "ash/constants/ash_features.h"
 #include "ash/webui/grit/ash_os_feedback_resources.h"
 #include "ash/webui/grit/ash_os_feedback_untrusted_resources.h"
 #include "ash/webui/grit/ash_os_feedback_untrusted_resources_map.h"
@@ -70,19 +70,26 @@ OsFeedbackUntrustedUI::OsFeedbackUntrustedUI(content::WebUI* web_ui)
       kAshOsFeedbackUntrustedResources, kAshOsFeedbackUntrustedResourcesSize));
   untrusted_source->AddResourcePath("help_content.js",
                                     IDR_ASH_OS_FEEDBACK_HELP_CONTENT_JS);
-  untrusted_source->AddResourcePath("help_content.html.js",
-                                    IDR_ASH_OS_FEEDBACK_HELP_CONTENT_HTML_JS);
   untrusted_source->AddResourcePath("feedback_types.js",
                                     IDR_ASH_OS_FEEDBACK_FEEDBACK_TYPES_JS);
   untrusted_source->AddResourcePath(
-      "help_resources_icons.html.js",
-      IDR_ASH_OS_FEEDBACK_HELP_RESOURCES_ICONS_HTML_JS);
+      "file_path.mojom-lite.js",
+      IDR_ASH_OS_FEEDBACK_MOJO_PUBLIC_MOJOM_BASE_FILE_PATH_MOJOM_LITE_JS);
   untrusted_source->AddResourcePath(
-      "os_feedback_ui.mojom-webui.js",
-      IDR_ASH_OS_FEEDBACK_OS_FEEDBACK_UI_MOJOM_WEBUI_JS);
+      "safe_base_name.mojom-lite.js",
+      IDR_ASH_OS_FEEDBACK_MOJO_PUBLIC_MOJOM_BASE_SAFE_BASE_NAME_MOJOM_LITE_JS);
+  untrusted_source->AddResourcePath(
+      "help_resources_icons.js", IDR_ASH_OS_FEEDBACK_HELP_RESOURCES_ICONS_JS);
+  untrusted_source->AddResourcePath(
+      "mojom/os_feedback_ui.mojom-lite.js",
+      IDR_ASH_OS_FEEDBACK_MOJOM_OS_FEEDBACK_UI_MOJOM_LITE_JS);
 
   untrusted_source->SetDefaultResource(
       IDR_ASH_OS_FEEDBACK_UNTRUSTED_UNTRUSTED_INDEX_HTML);
+
+  // Resources for dynamic colors.
+  untrusted_source->AddBoolean("isJellyEnabledForOsFeedback",
+                               ash::features::IsJellyEnabledForOsFeedback());
 
   AddLocalizedStrings(untrusted_source);
 
@@ -90,7 +97,10 @@ OsFeedbackUntrustedUI::OsFeedbackUntrustedUI(content::WebUI* web_ui)
   // chrome-untrusted://os-feedback WebUI.
   untrusted_source->AddFrameAncestor(GURL(kChromeUIOSFeedbackUrl));
 
-  ash::EnableTrustedTypesCSP(untrusted_source);
+  // DisableTrustedTypesCSP to support TrustedTypePolicy named 'goog#html'.
+  // It is the Closure templating system that renders our UI, as it does many
+  // other web apps using it.
+  untrusted_source->DisableTrustedTypesCSP();
   // TODO(b/194964287): Audit and tighten CSP.
   untrusted_source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::DefaultSrc, "");
@@ -104,6 +114,7 @@ OsFeedbackUntrustedUI::~OsFeedbackUntrustedUI() = default;
 
 void OsFeedbackUntrustedUI::BindInterface(
     mojo::PendingReceiver<color_change_listener::mojom::PageHandler> receiver) {
+  CHECK(ash::features::IsJellyEnabledForOsFeedback());
   color_provider_handler_ = std::make_unique<ui::ColorChangeHandler>(
       web_ui()->GetWebContents(), std::move(receiver));
 }

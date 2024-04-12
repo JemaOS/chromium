@@ -7,7 +7,7 @@
 #include "base/memory/ptr_util.h"
 #include "base/metrics/histogram_functions.h"
 #include "chrome/browser/nearby_sharing/client/nearby_share_client.h"
-#include "third_party/nearby/sharing/proto/rpc_resources.pb.h"
+#include "chrome/browser/nearby_sharing/proto/rpc_resources.pb.h"
 
 namespace {
 
@@ -62,7 +62,7 @@ void NearbyShareDeviceDataUpdaterImpl::HandleNextRequest() {
                base::BindOnce(&NearbyShareDeviceDataUpdaterImpl::OnTimeout,
                               base::Unretained(this)));
 
-  nearby::sharing::proto::UpdateDeviceRequest request;
+  nearbyshare::proto::UpdateDeviceRequest request;
   request.mutable_device()->set_name(kDeviceIdPrefix + device_id_);
   if (pending_requests_.front().contacts) {
     *request.mutable_device()->mutable_contacts() = {
@@ -87,9 +87,9 @@ void NearbyShareDeviceDataUpdaterImpl::HandleNextRequest() {
 }
 
 void NearbyShareDeviceDataUpdaterImpl::OnRpcSuccess(
-    const nearby::sharing::proto::UpdateDeviceResponse& response) {
+    const nearbyshare::proto::UpdateDeviceResponse& response) {
   timer_.Stop();
-  nearby::sharing::proto::UpdateDeviceResponse response_copy(response);
+  nearbyshare::proto::UpdateDeviceResponse response_copy(response);
   client_.reset();
   RecordResultMetrics(ash::nearby::NearbyHttpResult::kSuccess);
   FinishAttempt(response_copy);
@@ -100,11 +100,11 @@ void NearbyShareDeviceDataUpdaterImpl::OnRpcFailure(
   timer_.Stop();
   client_.reset();
   RecordResultMetrics(ash::nearby::NearbyHttpErrorToResult(error));
-  FinishAttempt(/*response=*/std::nullopt);
+  FinishAttempt(/*response=*/absl::nullopt);
 }
 
 void NearbyShareDeviceDataUpdaterImpl::OnTimeout() {
   client_.reset();
   RecordResultMetrics(ash::nearby::NearbyHttpResult::kTimeout);
-  FinishAttempt(/*response=*/std::nullopt);
+  FinishAttempt(/*response=*/absl::nullopt);
 }

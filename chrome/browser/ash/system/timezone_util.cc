@@ -15,7 +15,6 @@
 #include "base/i18n/rtl.h"
 #include "base/i18n/unicodestring.h"
 #include "base/lazy_instance.h"
-#include "base/logging.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
@@ -121,8 +120,8 @@ std::u16string GetTimezoneName(const icu::TimeZone& timezone) {
   int min_remainder = minute_offset % 60;
   // Some timezones have a non-integral hour offset. So, we need to use hh:mm
   // form.
-  std::string offset_str = base::StringPrintf(
-      "UTC%c%d:%02d", offset >= 0 ? '+' : '-', hour_offset, min_remainder);
+  std::string  offset_str = base::StringPrintf(offset >= 0 ?
+      "UTC+%d:%02d" : "UTC-%d:%02d", hour_offset, min_remainder);
 
   // TODO(jungshik): When coming up with a better list of timezones, we also
   // have to come up with better 'display' names. One possibility is to list
@@ -170,18 +169,27 @@ bool CanSetSystemTimezone(const user_manager::User* user) {
     return false;
 
   switch (user->GetType()) {
-    case user_manager::UserType::kRegular:
-    case user_manager::UserType::kKioskApp:
-    case user_manager::UserType::kArcKioskApp:
-    case user_manager::UserType::kWebKioskApp:
-    case user_manager::UserType::kChild:
+    case user_manager::USER_TYPE_REGULAR:
+    case user_manager::USER_TYPE_KIOSK_APP:
+    case user_manager::USER_TYPE_ARC_KIOSK_APP:
+    case user_manager::USER_TYPE_ACTIVE_DIRECTORY:
+    case user_manager::USER_TYPE_WEB_KIOSK_APP:
+    case user_manager::USER_TYPE_CHILD:
+    //---***JEMAOS BEGIN***---
+    case user_manager::USER_TYPE_FLINT_ACCOUNT:
+    case user_manager::USER_TYPE_JEMA_ACCOUNT:
+    case user_manager::USER_TYPE_JEMA_CHILD:
+    //---***JEMAOS END***---
       return true;
 
-    case user_manager::UserType::kGuest:
+    case user_manager::USER_TYPE_GUEST:
       return false;
 
-    case user_manager::UserType::kPublicAccount:
+    case user_manager::USER_TYPE_PUBLIC_ACCOUNT:
       return CanSetSystemTimezoneFromManagedGuestSession();
+
+    case user_manager::NUM_USER_TYPES:
+      NOTREACHED();
 
       // No default case means the compiler makes sure we handle new types.
   }
@@ -194,7 +202,7 @@ bool CanSetSystemTimezone(const user_manager::User* user) {
 namespace ash {
 namespace system {
 
-std::optional<std::string> GetCountryCodeFromTimezoneIfAvailable(
+absl::optional<std::string> GetCountryCodeFromTimezoneIfAvailable(
     const std::string& timezone) {
   // Determine region code from timezone id.
   char region[kMaxGeolocationResponseLength];
@@ -204,7 +212,7 @@ std::optional<std::string> GetCountryCodeFromTimezoneIfAvailable(
                            kMaxGeolocationResponseLength, error);
   // Track failures.
   if (U_FAILURE(error))
-    return std::nullopt;
+    return absl::nullopt;
 
   return base::ToLowerASCII(region);
 }

@@ -6,13 +6,9 @@
 
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/metrics/user_action_tester.h"
-#include "base/test/task_environment.h"
-#include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
-#include "chrome/browser/signin/signin_features.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/signin/public/base/signin_metrics.h"
-#include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "content/public/common/content_features.h"
 #include "content/public/test/back_forward_cache_util.h"
 #include "content/public/test/navigation_simulator.h"
@@ -23,37 +19,14 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features.h"
 
-class DiceTabHelperTest : public ChromeRenderViewHostTestHarness,
-                          public ::testing::WithParamInterface<bool> {
+class DiceTabHelperTest : public ChromeRenderViewHostTestHarness {
  public:
   DiceTabHelperTest() {
     signin_url_ = GaiaUrls::GetInstance()->signin_chrome_sync_dice();
 
-    std::vector<base::test::FeatureRefAndParams> enabled_features =
-        content::GetBasicBackForwardCacheFeatureForTesting();
-    std::vector<base::test::FeatureRef> disabled_features =
-        content::GetDefaultDisabledBackForwardCacheFeaturesForTesting();
-
-    if (preconnect_capabilities()) {
-      enabled_features.push_back(
-          {kPreconnectAccountCapabilitiesBeforeSignIn, {}});
-    } else {
-      disabled_features.push_back(kPreconnectAccountCapabilitiesBeforeSignIn);
-    }
-    feature_list_.InitWithFeaturesAndParameters(enabled_features,
-                                                disabled_features);
-  }
-
-  void SetUp() override {
-    ChromeRenderViewHostTestHarness::SetUp();
-    identity_test_env_adaptor_ =
-        std::make_unique<IdentityTestEnvironmentProfileAdaptor>(profile());
-  }
-
-  // ChromeRenderViewHostTestHarness::
-  TestingProfile::TestingFactories GetTestingFactories() const override {
-    return IdentityTestEnvironmentProfileAdaptor::
-        GetIdentityTestEnvironmentFactories();
+    feature_list_.InitWithFeaturesAndParameters(
+        content::GetBasicBackForwardCacheFeatureForTesting(),
+        content::GetDefaultDisabledBackForwardCacheFeaturesForTesting());
   }
 
   // Does a navigation to Gaia and initializes the tab helper.
@@ -67,30 +40,24 @@ class DiceTabHelperTest : public ChromeRenderViewHostTestHarness,
     simulator->Start();
     helper->InitializeSigninFlow(
         signin_url_, access_point, reason,
-        signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO, GURL(),
-        /*record_signin_started_metrics=*/true,
-        DiceTabHelper::EnableSyncCallback(),
-        DiceTabHelper::OnSigninHeaderReceived(),
-        DiceTabHelper::ShowSigninErrorCallback());
+        signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO,
+        GURL::EmptyGURL());
     EXPECT_TRUE(helper->IsChromeSigninPage());
     simulator->Commit();
   }
 
-  bool preconnect_capabilities() { return GetParam(); }
-
   GURL signin_url_;
   base::test::ScopedFeatureList feature_list_;
-  std::unique_ptr<IdentityTestEnvironmentProfileAdaptor>
-      identity_test_env_adaptor_;
 };
 
-TEST_P(DiceTabHelperTest, Initialization) {
+// Tests DiceTabHelper intialization.
+TEST_F(DiceTabHelperTest, Initialization) {
   DiceTabHelper::CreateForWebContents(web_contents());
   DiceTabHelper* dice_tab_helper =
       DiceTabHelper::FromWebContents(web_contents());
 
   // Check default state.
-  EXPECT_EQ(signin_metrics::AccessPoint::ACCESS_POINT_WEB_SIGNIN,
+  EXPECT_EQ(signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN,
             dice_tab_helper->signin_access_point());
   EXPECT_EQ(signin_metrics::Reason::kUnknownReason,
             dice_tab_helper->signin_reason());
@@ -104,13 +71,9 @@ TEST_P(DiceTabHelperTest, Initialization) {
   EXPECT_EQ(access_point, dice_tab_helper->signin_access_point());
   EXPECT_EQ(reason, dice_tab_helper->signin_reason());
   EXPECT_TRUE(dice_tab_helper->IsChromeSigninPage());
-
-  EXPECT_EQ(identity_test_env_adaptor_->identity_test_env()
-                ->GetNumCallsToPrepareForFetchingAccountCapabilities(),
-            preconnect_capabilities() ? 1 : 0);
 }
 
-TEST_P(DiceTabHelperTest, SigninPageStatus) {
+TEST_F(DiceTabHelperTest, SigninPageStatus) {
   // The test assumes the previous page gets deleted after navigation and will
   // be recreated after navigation (which resets the signin page state). Disable
   // back/forward cache to ensure that it doesn't get preserved in the cache.
@@ -167,8 +130,8 @@ TEST_P(DiceTabHelperTest, SigninPageStatus) {
   EXPECT_FALSE(dice_tab_helper->IsChromeSigninPage());
 }
 
-// Tests DiceTabHelper metrics with the `kSigninPrimaryAccount` reason.
-TEST_P(DiceTabHelperTest, SigninPrimaryAccountMetrics) {
+// Tests DiceTabHelper metrics.
+TEST_F(DiceTabHelperTest, Metrics) {
   base::UserActionTester ua_tester;
   base::HistogramTester h_tester;
   DiceTabHelper::CreateForWebContents(web_contents());
@@ -189,10 +152,7 @@ TEST_P(DiceTabHelperTest, SigninPrimaryAccountMetrics) {
       signin_url_, signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS,
       signin_metrics::Reason::kSigninPrimaryAccount,
       signin_metrics::PromoAction::PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT,
-      GURL(), /*record_signin_started_metrics=*/true,
-      DiceTabHelper::EnableSyncCallback(),
-      DiceTabHelper::OnSigninHeaderReceived(),
-      DiceTabHelper::ShowSigninErrorCallback());
+      GURL::EmptyGURL());
   EXPECT_EQ(1, ua_tester.GetActionCount("Signin_Signin_FromSettings"));
   EXPECT_EQ(1, ua_tester.GetActionCount("Signin_SigninPage_Loading"));
   EXPECT_EQ(0, ua_tester.GetActionCount("Signin_SigninPage_Shown"));
@@ -201,9 +161,6 @@ TEST_P(DiceTabHelperTest, SigninPrimaryAccountMetrics) {
       signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS, 1);
   h_tester.ExpectUniqueSample(
       "Signin.SigninStartedAccessPoint.NewAccountNoExistingAccount",
-      signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS, 1);
-  h_tester.ExpectUniqueSample(
-      "Signin.SignIn.Started",
       signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS, 1);
 
   // First call to did finish load does logs any Signin_SigninPage_Shown user
@@ -224,11 +181,8 @@ TEST_P(DiceTabHelperTest, SigninPrimaryAccountMetrics) {
   dice_tab_helper->InitializeSigninFlow(
       signin_url_, signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS,
       signin_metrics::Reason::kSigninPrimaryAccount,
-      signin_metrics::PromoAction::PROMO_ACTION_WITH_DEFAULT, GURL(),
-      /*record_signin_started_metrics=*/true,
-      DiceTabHelper::EnableSyncCallback(),
-      DiceTabHelper::OnSigninHeaderReceived(),
-      DiceTabHelper::ShowSigninErrorCallback());
+      signin_metrics::PromoAction::PROMO_ACTION_WITH_DEFAULT,
+      GURL::EmptyGURL());
   EXPECT_EQ(2, ua_tester.GetActionCount("Signin_Signin_FromSettings"));
   EXPECT_EQ(2, ua_tester.GetActionCount("Signin_SigninPage_Loading"));
   h_tester.ExpectUniqueSample(
@@ -237,75 +191,9 @@ TEST_P(DiceTabHelperTest, SigninPrimaryAccountMetrics) {
   h_tester.ExpectUniqueSample(
       "Signin.SigninStartedAccessPoint.WithDefault",
       signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS, 1);
-  h_tester.ExpectUniqueSample(
-      "Signin.SignIn.Started",
-      signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS, 2);
-
-  // Check metrics are NOT logged again when `record_signin_started_metrics`is
-  // false.
-  simulator = content::NavigationSimulator::CreateRendererInitiated(signin_url_,
-                                                                    main_rfh());
-  simulator->Start();
-  dice_tab_helper->InitializeSigninFlow(
-      signin_url_, signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS,
-      signin_metrics::Reason::kSigninPrimaryAccount,
-      signin_metrics::PromoAction::PROMO_ACTION_WITH_DEFAULT, GURL(),
-      /*record_signin_started_metrics=*/false,
-      DiceTabHelper::EnableSyncCallback(),
-      DiceTabHelper::OnSigninHeaderReceived(),
-      DiceTabHelper::ShowSigninErrorCallback());
-  EXPECT_EQ(2, ua_tester.GetActionCount("Signin_Signin_FromSettings"));
-  EXPECT_EQ(2, ua_tester.GetActionCount("Signin_SigninPage_Loading"));
-  h_tester.ExpectUniqueSample(
-      "Signin.SigninStartedAccessPoint",
-      signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS, 2);
-  h_tester.ExpectUniqueSample(
-      "Signin.SigninStartedAccessPoint.WithDefault",
-      signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS, 1);
-  h_tester.ExpectUniqueSample(
-      "Signin.SignIn.Started",
-      signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS, 2);
 }
 
-// Tests DiceTabHelper metrics with the `kAddSecondaryAccount` reason.
-TEST_P(DiceTabHelperTest, AddSecondaryAccountMetrics) {
-  base::UserActionTester ua_tester;
-  base::HistogramTester h_tester;
-  DiceTabHelper::CreateForWebContents(web_contents());
-  DiceTabHelper* dice_tab_helper =
-      DiceTabHelper::FromWebContents(web_contents());
-
-  // Check metrics logged when the Dice tab helper is initialized.
-  std::unique_ptr<content::NavigationSimulator> simulator =
-      content::NavigationSimulator::CreateRendererInitiated(signin_url_,
-                                                            main_rfh());
-  simulator->Start();
-  dice_tab_helper->InitializeSigninFlow(
-      signin_url_, signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS,
-      signin_metrics::Reason::kAddSecondaryAccount,
-      signin_metrics::PromoAction::PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT,
-      GURL(), /*record_signin_started_metrics=*/true,
-      DiceTabHelper::EnableSyncCallback(),
-      DiceTabHelper::OnSigninHeaderReceived(),
-      DiceTabHelper::ShowSigninErrorCallback());
-  h_tester.ExpectUniqueSample(
-      "Signin.SignIn.Started",
-      signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS, 1);
-
-  // First call to did finish load does logs any Signin_SigninPage_Shown user
-  // action.
-  simulator->Commit();
-
-  // These metrics are only logged with the `kSigninPrimaryAccount` reason.
-  EXPECT_EQ(0, ua_tester.GetActionCount("Signin_Signin_FromSettings"));
-  EXPECT_EQ(0, ua_tester.GetActionCount("Signin_SigninPage_Loading"));
-  EXPECT_EQ(0, ua_tester.GetActionCount("Signin_SigninPage_Shown"));
-  h_tester.ExpectTotalCount("Signin.SigninStartedAccessPoint", 0);
-  h_tester.ExpectTotalCount(
-      "Signin.SigninStartedAccessPoint.NewAccountNoExistingAccount", 0);
-}
-
-TEST_P(DiceTabHelperTest, IsSyncSigninInProgress) {
+TEST_F(DiceTabHelperTest, IsSyncSigninInProgress) {
   DiceTabHelper::CreateForWebContents(web_contents());
   DiceTabHelper* dice_tab_helper =
       DiceTabHelper::FromWebContents(web_contents());
@@ -334,7 +222,7 @@ class DiceTabHelperPrerenderTest : public DiceTabHelperTest {
   content::test::ScopedPrerenderFeatureList prerender_feature_list_;
 };
 
-TEST_P(DiceTabHelperPrerenderTest, SigninStatusAfterPrerendering) {
+TEST_F(DiceTabHelperPrerenderTest, SigninStatusAfterPrerendering) {
   content::test::ScopedPrerenderWebContentsDelegate web_contents_delegate(
       *web_contents());
   base::UserActionTester ua_tester;
@@ -348,6 +236,7 @@ TEST_P(DiceTabHelperPrerenderTest, SigninStatusAfterPrerendering) {
   InitializeDiceTabHelper(dice_tab_helper,
                           signin_metrics::AccessPoint::ACCESS_POINT_SETTINGS,
                           signin_metrics::Reason::kSigninPrimaryAccount);
+  dice_tab_helper->OnSyncSigninFlowComplete();
   EXPECT_TRUE(dice_tab_helper->IsChromeSigninPage());
   EXPECT_EQ(1, ua_tester.GetActionCount("Signin_SigninPage_Shown"));
 
@@ -357,11 +246,3 @@ TEST_P(DiceTabHelperPrerenderTest, SigninStatusAfterPrerendering) {
   EXPECT_TRUE(dice_tab_helper->IsChromeSigninPage());
   EXPECT_EQ(1, ua_tester.GetActionCount("Signin_SigninPage_Shown"));
 }
-
-INSTANTIATE_TEST_SUITE_P(CapabilitiesPreconnectParamTest,
-                         DiceTabHelperTest,
-                         ::testing::Bool());
-
-INSTANTIATE_TEST_SUITE_P(CapabilitiesPreconnectParamTest,
-                         DiceTabHelperPrerenderTest,
-                         ::testing::Bool());

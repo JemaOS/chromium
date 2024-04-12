@@ -30,7 +30,6 @@ class ArcFlossBridge : public ArcBluetoothBridge,
   void SendCachedDevices() const override;
   void StartLEScanImpl() override;
   void ResetLEScanSession() override;
-  bool IsDiscoveringOrScanning() override;
 
   // Bluetooth Mojo host interface - Bluetooth SDP functions
   void GetSdpRecords(mojom::BluetoothAddressPtr remote_addr,
@@ -100,7 +99,7 @@ class ArcFlossBridge : public ArcBluetoothBridge,
           sock_wrapper,
       ArcFlossBridge::BluetoothSocketConnectCallback callback,
       floss::FlossDBusClient::BtifStatus status,
-      std::optional<floss::FlossSocketManager::FlossSocket>&& socket);
+      absl::optional<floss::FlossSocketManager::FlossSocket>&& socket);
 
   void OnBtifError(const std::string& error_message);
 

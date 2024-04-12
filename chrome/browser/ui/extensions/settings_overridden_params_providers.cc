@@ -8,10 +8,10 @@
 #include "base/strings/utf_string_conversions.h"
 #include "build/branding_buildflags.h"
 #include "chrome/browser/extensions/extension_web_ui.h"
+#include "chrome/browser/extensions/settings_api_bubble_delegate.h"
 #include "chrome/browser/extensions/settings_api_helpers.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
-#include "chrome/browser/ui/extensions/controlled_home_bubble_delegate.h"
 #include "chrome/browser/ui/extensions/settings_api_bubble_helpers.h"
 #include "chrome/common/extensions/manifest_handlers/settings_overrides_handler.h"
 #include "chrome/common/url_constants.h"
@@ -139,13 +139,13 @@ SecondarySearchInfo GetSecondarySearchInfo(Profile* profile) {
 
 }  // namespace
 
-std::optional<ExtensionSettingsOverriddenDialog::Params> GetNtpOverriddenParams(
-    Profile* profile) {
+absl::optional<ExtensionSettingsOverriddenDialog::Params>
+GetNtpOverriddenParams(Profile* profile) {
   const GURL ntp_url(chrome::kChromeUINewTabURL);
   const extensions::Extension* extension =
       ExtensionWebUI::GetExtensionControllingURL(ntp_url, profile);
   if (!extension)
-    return std::nullopt;
+    return absl::nullopt;
 
   // This preference tracks whether users have acknowledged the extension's
   // control, so that they are not warned twice about the same extension.
@@ -212,19 +212,18 @@ std::optional<ExtensionSettingsOverriddenDialog::Params> GetNtpOverriddenParams(
       std::move(dialog_message), icon);
 }
 
-std::optional<ExtensionSettingsOverriddenDialog::Params>
+absl::optional<ExtensionSettingsOverriddenDialog::Params>
 GetSearchOverriddenParams(Profile* profile) {
   const extensions::Extension* extension =
       extensions::GetExtensionOverridingSearchEngine(profile);
   if (!extension)
-    return std::nullopt;
+    return absl::nullopt;
 
-  // For historical reasons, the search override preference is the same as the
-  // one we use for the controlled home setting. We continue this so that
-  // users won't see the bubble or dialog UI if they've already acknowledged
-  // an older version.
+  // We deliberately re-use the same preference that the bubble UI uses. This
+  // way, users won't see the bubble or dialog UI if they've already
+  // acknowledged either version.
   const char* preference_name =
-      ControlledHomeBubbleDelegate::kAcknowledgedPreference;
+      extensions::SettingsApiBubbleDelegate::kAcknowledgedPreference;
 
   // Find the active search engine (which is provided by the extension).
   TemplateURLService* template_url_service =
@@ -253,7 +252,7 @@ GetSearchOverriddenParams(Profile* profile) {
   // as crazy as using filesystem: URLs as a search engine.
   if (!secondary_search.origin.is_empty() &&
       secondary_search.origin == search_url.DeprecatedGetOriginAsURL()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Format the URL for display.

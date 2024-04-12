@@ -27,13 +27,12 @@ import java.util.concurrent.TimeUnit;
 
 /** JUnit tests for the {@link ThrottlingNotificationScheduler} class. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(
-        manifest = Config.NONE,
-        shadows = {ShadowSystemClock.class})
+@Config(manifest = Config.NONE, shadows = {ShadowSystemClock.class})
 public class ThrottlingNotificationSchedulerTest {
     private static final long CURRENT_TIME_MS = 90000000L;
 
-    @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     private Map<String, Integer> mTaskInvocationMap = new HashMap<>();
 
@@ -49,14 +48,9 @@ public class ThrottlingNotificationSchedulerTest {
     }
 
     private void addTask(String taskId, @PendingNotificationTask.Priority int priority) {
-        ThrottlingNotificationScheduler.getInstance()
-                .addPendingNotificationTask(
-                        new PendingNotificationTask(
-                                taskId,
-                                priority,
-                                () -> {
-                                    incrementTaskInvokeCount(taskId);
-                                }));
+        ThrottlingNotificationScheduler.getInstance().addPendingNotificationTask(
+                new PendingNotificationTask(
+                        taskId, priority, () -> { incrementTaskInvokeCount(taskId); }));
     }
 
     @Test
@@ -92,7 +86,7 @@ public class ThrottlingNotificationSchedulerTest {
 
         // A bunch of tasks arrives in order.
         addTask("t1", PendingNotificationTask.Priority.LOW);
-        SystemClock.setCurrentTimeMillis(/* milliseconds= */ CURRENT_TIME_MS + 1);
+        SystemClock.setCurrentTimeMillis(CURRENT_TIME_MS + 1 /* milliseconds */);
 
         addTask("t2", PendingNotificationTask.Priority.HIGH);
         addTask("t3", PendingNotificationTask.Priority.LOW);

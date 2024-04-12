@@ -25,7 +25,7 @@ RTCErrorEvent::RTCErrorEvent(const AtomicString& type, webrtc::RTCError error)
       error_(MakeGarbageCollected<RTCError>(error)) {}
 
 RTCError* RTCErrorEvent::error() const {
-  return error_.Get();
+  return error_;
 }
 
 void RTCErrorEvent::Trace(Visitor* visitor) const {

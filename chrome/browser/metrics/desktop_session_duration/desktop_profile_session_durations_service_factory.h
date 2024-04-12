@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_METRICS_DESKTOP_SESSION_DURATION_DESKTOP_PROFILE_SESSION_DURATIONS_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_METRICS_DESKTOP_SESSION_DURATION_DESKTOP_PROFILE_SESSION_DURATIONS_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace metrics {
@@ -32,13 +32,14 @@ class DesktopProfileSessionDurationsServiceFactory
       const DesktopProfileSessionDurationsServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<DesktopProfileSessionDurationsServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      DesktopProfileSessionDurationsServiceFactory>;
 
   DesktopProfileSessionDurationsServiceFactory();
   ~DesktopProfileSessionDurationsServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

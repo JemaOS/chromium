@@ -9,7 +9,6 @@
 #include "chrome/browser/ui/views/frame/browser_frame_view_linux.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view_paint_utils_linux.h"
 #include "chrome/browser/ui/views/frame/opaque_browser_frame_view_layout.h"
-#include "ui/base/ui_base_features.h"
 
 namespace {
 
@@ -37,7 +36,7 @@ gfx::Insets BrowserFrameViewLayoutLinux::MirroredFrameBorderInsets() const {
 gfx::Insets BrowserFrameViewLayoutLinux::GetInputInsets() const {
   bool showing_shadow = delegate_->ShouldDrawRestoredFrameShadow() &&
                         !delegate_->IsFrameCondensed();
-  return gfx::Insets(showing_shadow ? kResizeBorder : 0);
+  return gfx::Insets(showing_shadow ? -kResizeBorder : 0);
 }
 
 int BrowserFrameViewLayoutLinux::CaptionButtonY(views::FrameButton button_id,
@@ -53,17 +52,10 @@ gfx::Insets BrowserFrameViewLayoutLinux::RestoredFrameBorderInsets() const {
         OpaqueBrowserFrameViewLayout::RestoredFrameBorderInsets());
   }
 
-#if BUILDFLAG(IS_LINUX)
-  const bool tiled = delegate_->IsTiled();
-#else
-  const bool tiled = false;
-#endif
-  auto shadow_values =
-      tiled ? gfx::ShadowValues() : view_->GetShadowValues(true);
   return GetRestoredFrameBorderInsetsLinux(
       delegate_->ShouldDrawRestoredFrameShadow(),
-      OpaqueBrowserFrameViewLayout::RestoredFrameBorderInsets(), shadow_values,
-      kResizeBorder);
+      OpaqueBrowserFrameViewLayout::RestoredFrameBorderInsets(),
+      delegate_->GetTiledEdges(), view_->GetShadowValues(), kResizeBorder);
 }
 
 gfx::Insets BrowserFrameViewLayoutLinux::RestoredFrameEdgeInsets() const {
@@ -73,7 +65,5 @@ gfx::Insets BrowserFrameViewLayoutLinux::RestoredFrameEdgeInsets() const {
 }
 
 int BrowserFrameViewLayoutLinux::NonClientExtraTopThickness() const {
-  return (features::IsChromeRefresh2023() && delegate_->IsTabStripVisible())
-             ? 0
-             : kExtraTopBorder;
+  return kExtraTopBorder;
 }

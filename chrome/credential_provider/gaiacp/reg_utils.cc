@@ -5,8 +5,7 @@
 #include "chrome/credential_provider/gaiacp/reg_utils.h"
 
 #include "base/base64.h"
-#include "base/strings/strcat_win.h"
-#include "base/strings/string_number_conversions_win.h"
+#include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/win/atl.h"
 #include "base/win/registry.h"
@@ -111,11 +110,12 @@ HRESULT SetMachineRegBinaryInternal(const std::wstring& key_name,
 }
 
 std::wstring GetImageRegKeyForSpecificSize(int image_size) {
-  return kImageRegKey + base::NumberToWString(image_size);
+  return base::StringPrintf(L"%ls%i", kImageRegKey, image_size);
 }
 
 std::wstring GetAccountPictureRegPathForUSer(const std::wstring& user_sid) {
-  return base::StrCat({kAccountPicturesRootRegKey, L"\\", user_sid});
+  return base::StringPrintf(L"%ls\\%ls", kAccountPicturesRootRegKey,
+                            user_sid.c_str());
 }
 
 }  // namespace
@@ -595,7 +595,7 @@ HRESULT GetDmToken(std::string* dm_token) {
       GetMachineRegBinaryInternal(kEnrollmentRegKey, kDmTokenRegKey,
                                   &binary_dm_token, KEY_READ | KEY_WOW64_32KEY);
   if (SUCCEEDED(hr)) {
-    *dm_token = base::Base64Encode(binary_dm_token);
+    base::Base64Encode(binary_dm_token, dm_token);
   }
   return hr;
 }

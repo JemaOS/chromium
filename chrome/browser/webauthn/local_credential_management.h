@@ -58,10 +58,10 @@ class LocalCredentialManagement {
   // callback will never be invoked before the function returns.
   //
   // If enumeration isn't supported on this version of Windows the callback will
-  // be run with `std::nullopt`.
+  // be run with `absl::nullopt`.
   virtual void Enumerate(
       base::OnceCallback<void(
-          std::optional<std::vector<device::DiscoverableCredentialMetadata>>)>
+          absl::optional<std::vector<device::DiscoverableCredentialMetadata>>)>
           callback) = 0;
 
   // Delete removes a credentail from the platform authenticator. The

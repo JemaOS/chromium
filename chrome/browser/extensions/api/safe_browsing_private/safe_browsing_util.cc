@@ -29,22 +29,24 @@ safe_browsing_private::ReferrerChainEntry ReferrerToReferrerChainEntry(
       safe_browsing::ReferrerChainEntry_URLType_DEPRECATED_SERVER_REDIRECT);
   switch (referrer.type()) {
     case safe_browsing::ReferrerChainEntry_URLType_EVENT_URL:
-      entry.url_type = safe_browsing_private::URLType::kEventUrl;
+      entry.url_type = safe_browsing_private::URLType::URL_TYPE_EVENT_URL;
       break;
     case safe_browsing::ReferrerChainEntry_URLType_LANDING_PAGE:
-      entry.url_type = safe_browsing_private::URLType::kLandingPage;
+      entry.url_type = safe_browsing_private::URLType::URL_TYPE_LANDING_PAGE;
       break;
     case safe_browsing::ReferrerChainEntry_URLType_LANDING_REFERRER:
-      entry.url_type = safe_browsing_private::URLType::kLandingReferrer;
+      entry.url_type =
+          safe_browsing_private::URLType::URL_TYPE_LANDING_REFERRER;
       break;
     case safe_browsing::ReferrerChainEntry_URLType_CLIENT_REDIRECT:
-      entry.url_type = safe_browsing_private::URLType::kClientRedirect;
+      entry.url_type = safe_browsing_private::URLType::URL_TYPE_CLIENT_REDIRECT;
       break;
     case safe_browsing::ReferrerChainEntry_URLType_RECENT_NAVIGATION:
-      entry.url_type = safe_browsing_private::URLType::kRecentNavigation;
+      entry.url_type =
+          safe_browsing_private::URLType::URL_TYPE_RECENT_NAVIGATION;
       break;
     case safe_browsing::ReferrerChainEntry_URLType_REFERRER:
-      entry.url_type = safe_browsing_private::URLType::kReferrer;
+      entry.url_type = safe_browsing_private::URLType::URL_TYPE_REFERRER;
       break;
     case safe_browsing::ReferrerChainEntry_URLType_DEPRECATED_SERVER_REDIRECT:
       NOTREACHED();
@@ -82,27 +84,17 @@ safe_browsing_private::ReferrerChainEntry ReferrerToReferrerChainEntry(
       case safe_browsing::
           ReferrerChainEntry_NavigationInitiation_BROWSER_INITIATED:
         entry.navigation_initiation =
-            safe_browsing_private::NavigationInitiation::kBrowserInitiated;
+            safe_browsing_private::NAVIGATION_INITIATION_BROWSER_INITIATED;
         break;
       case safe_browsing::
           ReferrerChainEntry_NavigationInitiation_RENDERER_INITIATED_WITHOUT_USER_GESTURE:
         entry.navigation_initiation = safe_browsing_private::
-            NavigationInitiation::kRendererInitiatedWithoutUserGesture;
+            NAVIGATION_INITIATION_RENDERER_INITIATED_WITHOUT_USER_GESTURE;
         break;
       case safe_browsing::
           ReferrerChainEntry_NavigationInitiation_RENDERER_INITIATED_WITH_USER_GESTURE:
         entry.navigation_initiation = safe_browsing_private::
-            NavigationInitiation::kRendererInitiatedWithUserGesture;
-        break;
-      case safe_browsing::
-          ReferrerChainEntry_NavigationInitiation_COPY_PASTE_USER_INITIATED:
-        entry.navigation_initiation = safe_browsing_private::
-            NavigationInitiation::kCopyPasteUserInitiated;
-        break;
-      case safe_browsing::
-          ReferrerChainEntry_NavigationInitiation_NOTIFICATION_INITIATED:
-        entry.navigation_initiation =
-            safe_browsing_private::NavigationInitiation::kNotificationInitiated;
+            NAVIGATION_INITIATION_RENDERER_INITIATED_WITH_USER_GESTURE;
         break;
       case safe_browsing::ReferrerChainEntry_NavigationInitiation_UNDEFINED:
         NOTREACHED();

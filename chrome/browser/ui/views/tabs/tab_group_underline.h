@@ -22,9 +22,9 @@ class TabGroupStyle;
 // single underline, but must be separate views so that paint order requirements
 // can be met.
 class TabGroupUnderline : public views::View {
-  METADATA_HEADER(TabGroupUnderline, views::View)
-
  public:
+  METADATA_HEADER(TabGroupUnderline);
+
   static constexpr int kStrokeThickness =
       views::FocusRing::kDefaultHaloThickness;
 

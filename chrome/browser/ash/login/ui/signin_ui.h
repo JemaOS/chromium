@@ -30,6 +30,9 @@ enum class SigninError {
   kChallengeResponseAuthInvalidClientCert,
   kCookieWaitTimeout,
   kFailedToFetchSamlRedirect,
+  kActiveDirectoryNetworkProblem,
+  kActiveDirectoryNotSupportedEncryption,
+  kActiveDirectoryUnknownError,
 };
 
 // This class represents an interface between code that performs sign-in
@@ -69,15 +72,14 @@ class SigninUI {
   // Clears authentication data that were stored for user onboarding.
   virtual void ClearOnboardingAuthSession() = 0;
 
-  // Start authentication flow that would use factors beyond
-  // online authentication factor (Recovery, old online password,
-  // fallback to local password/PIN, etc).
-  virtual void UseAlternativeAuthentication(
-      std::unique_ptr<UserContext> user_context,
-      bool online_password_mismatch) = 0;
+  // Show legacy password changed dialog. If `show_password_error` is true, user
+  // already tried to enter old password but it turned out to be incorrect.
+  // New implementation would start Recovery flow instead.
+  virtual void ShowPasswordChangedDialogLegacy(const AccountId& account_id,
+                                               bool password_incorrect) = 0;
 
-  // Runs an extra step of local authentication.
-  virtual void RunLocalAuthentication(
+  // Start Cryptohome recovery flow and show the screen.
+  virtual void StartCryptohomeRecovery(
       std::unique_ptr<UserContext> user_context) = 0;
 
   virtual void ShowSigninError(SigninError error,

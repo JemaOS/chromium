@@ -7,9 +7,8 @@
 // clang-format off
 import 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar.js';
 
-import type {CrToolbarElement} from 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar.js';
+import {CrToolbarElement} from 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {eventToPromise} from 'chrome://webui-test/test_util.js';
 // clang-format on
 
 suite('cr-toolbar', function() {
@@ -21,23 +20,28 @@ suite('cr-toolbar', function() {
     document.body.appendChild(toolbar);
   });
 
-  test('autofocus propagated to search field', async () => {
+  test('autofocus propagated to search field', () => {
     assertFalse(toolbar.autofocus);
     assertFalse(toolbar.getSearchField().hasAttribute('autofocus'));
 
     toolbar.autofocus = true;
-    await toolbar.updateComplete;
     assertTrue(toolbar.getSearchField().hasAttribute('autofocus'));
   });
 
   test('FocusesMenuButton', async () => {
     toolbar.showMenu = true;
-    await toolbar.updateComplete;
     toolbar.focusMenuButton();
-    const menuButton = toolbar.shadowRoot!.querySelector('#menuButton');
-    assertTrue(!!menuButton);
-    await eventToPromise('focus', menuButton);
-    assertEquals(menuButton, toolbar.shadowRoot!.activeElement);
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    assertEquals(
+        toolbar.shadowRoot!.querySelector('#menuButton'),
+        toolbar.shadowRoot!.activeElement);
+  });
+
+  test('ReturnsIfMenuIsFocused', async () => {
+    assertFalse(toolbar.isMenuFocused());
+    toolbar.showMenu = true;
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    toolbar.shadowRoot!.querySelector<HTMLElement>('#menuButton')!.focus();
     assertTrue(toolbar.isMenuFocused());
   });
 });

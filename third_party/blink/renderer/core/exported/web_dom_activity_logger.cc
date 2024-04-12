@@ -38,7 +38,6 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
-#include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/platform/bindings/v8_dom_activity_logger.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
@@ -50,64 +49,46 @@ class DOMActivityLoggerContainer : public V8DOMActivityLogger {
       std::unique_ptr<WebDOMActivityLogger> logger)
       : dom_activity_logger_(std::move(logger)) {}
 
-  void LogGetter(ScriptState* script_state, const String& api_name) override {
-    auto* dom_window = LocalDOMWindow::From(script_state);
-    dom_activity_logger_->LogGetter(
-        script_state->GetIsolate(), script_state->GetContext(),
-        WebString(api_name), GetURL(dom_window), GetTitle(dom_window));
+  void LogGetter(const String& api_name) override {
+    dom_activity_logger_->LogGetter(WebString(api_name), GetURL(), GetTitle());
   }
 
-  void LogSetter(ScriptState* script_state,
-                 const String& api_name,
+  void LogSetter(const String& api_name,
                  const v8::Local<v8::Value>& new_value) override {
-    auto* dom_window = LocalDOMWindow::From(script_state);
-    dom_activity_logger_->LogSetter(script_state->GetIsolate(),
-                                    script_state->GetContext(),
-                                    WebString(api_name), new_value,
-                                    GetURL(dom_window), GetTitle(dom_window));
+    dom_activity_logger_->LogSetter(WebString(api_name), new_value, GetURL(),
+                                    GetTitle());
   }
 
-  void LogMethod(ScriptState* script_state,
-                 const String& api_name,
+  void LogMethod(const String& api_name,
                  int argc,
                  const v8::Local<v8::Value>* argv) override {
-    auto* dom_window = LocalDOMWindow::From(script_state);
-    dom_activity_logger_->LogMethod(script_state->GetIsolate(),
-                                    script_state->GetContext(),
-                                    WebString(api_name), argc, argv,
-                                    GetURL(dom_window), GetTitle(dom_window));
+    dom_activity_logger_->LogMethod(WebString(api_name), argc, argv, GetURL(),
+                                    GetTitle());
   }
 
-  void LogEvent(ExecutionContext* execution_context,
-                const String& event_name,
+  void LogEvent(const String& event_name,
                 int argc,
                 const String* argv) override {
-    auto* dom_window = To<LocalDOMWindow>(execution_context);
-    auto* frame = WebLocalFrameImpl::FromFrame(dom_window->GetFrame());
-    if (!frame) {
-      return;
-    }
     Vector<WebString> web_string_argv;
-    for (int i = 0; i < argc; i++) {
+    for (int i = 0; i < argc; i++)
       web_string_argv.push_back(argv[i]);
-    }
-    dom_activity_logger_->LogEvent(*frame, WebString(event_name), argc,
-                                   web_string_argv.data(), GetURL(dom_window),
-                                   GetTitle(dom_window));
+    dom_activity_logger_->LogEvent(WebString(event_name), argc,
+                                   web_string_argv.data(), GetURL(),
+                                   GetTitle());
   }
 
  private:
-  WebURL GetURL(LocalDOMWindow* dom_window) {
-    if (Document* document = dom_window->document()) {
+  WebURL GetURL() {
+    if (Document* document =
+            CurrentDOMWindow(v8::Isolate::GetCurrent())->document())
       return WebURL(document->Url());
-    }
     return WebURL();
   }
 
-  WebString GetTitle(LocalDOMWindow* dom_window) {
-    if (Document* document = dom_window->document()) {
+  WebString GetTitle() {
+    if (Document* document =
+            CurrentDOMWindow(v8::Isolate::GetCurrent())->document())
       return WebString(document->title());
-    }
     return WebString();
   }
 

@@ -38,14 +38,12 @@ public class WebappActivityCoordinator
     private final WebappDeferredStartupWithStorageHandler mDeferredStartupWithStorageHandler;
 
     // Whether the current page is within the webapp's scope.
+    private boolean mInScope = true;
 
     @Inject
-    public WebappActivityCoordinator(
-            SharedActivityCoordinator sharedActivityCoordinator,
-            Activity activity,
-            BrowserServicesIntentDataProvider intentDataProvider,
-            ActivityTabProvider activityTabProvider,
-            CurrentPageVerifier currentPageVerifier,
+    public WebappActivityCoordinator(SharedActivityCoordinator sharedActivityCoordinator,
+            Activity activity, BrowserServicesIntentDataProvider intentDataProvider,
+            ActivityTabProvider activityTabProvider, CurrentPageVerifier currentPageVerifier,
             WebappSplashController splashController,
             WebappDeferredStartupWithStorageHandler deferredStartupWithStorageHandler,
             WebappActionsNotificationManager actionsNotificationManager,
@@ -58,14 +56,16 @@ public class WebappActivityCoordinator
         mActivity = activity;
         mDeferredStartupWithStorageHandler = deferredStartupWithStorageHandler;
 
-        mDeferredStartupWithStorageHandler.addTask(
-                (storage, didCreateStorage) -> {
-                    if (lifecycleDispatcher.isActivityFinishingOrDestroyed()) return;
+        // WebappActiveTabUmaTracker sets itself as an observer of |activityTabProvider|.
+        new WebappActiveTabUmaTracker(activityTabProvider, intentDataProvider, currentPageVerifier);
 
-                    if (storage != null) {
-                        updateStorage(storage);
-                    }
-                });
+        mDeferredStartupWithStorageHandler.addTask((storage, didCreateStorage) -> {
+            if (lifecycleDispatcher.isActivityFinishingOrDestroyed()) return;
+
+            if (storage != null) {
+                updateStorage(storage);
+            }
+        });
 
         lifecycleDispatcher.register(this);
 
@@ -78,7 +78,9 @@ public class WebappActivityCoordinator
         }
     }
 
-    /** Invoked to add deferred startup tasks to queue. */
+    /**
+     * Invoked to add deferred startup tasks to queue.
+     */
     public void initDeferredStartupForActivity() {
         mDeferredStartupWithStorageHandler.initDeferredStartupForActivity();
     }

@@ -15,7 +15,6 @@
 #include "base/functional/callback.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
-#include "base/nix/xdg_util.h"
 #include "base/no_destructor.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/process/kill.h"
@@ -30,13 +29,12 @@
 // complain as Chromecast doesn't use (or depend on) //components/dbus.
 // TODO(crbug.com/1215474): Eliminate //chrome being visible in the GN structure
 // on Chromecast and remove the nogncheck below.
-#include <optional>
-
 #include "components/dbus/thread_linux/dbus_thread_linux.h"  // nogncheck
 #include "content/public/browser/browser_thread.h"
 #include "dbus/bus.h"
 #include "dbus/message.h"
 #include "dbus/object_proxy.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 using content::BrowserThread;
@@ -108,7 +106,6 @@ class ShowItemHelper {
     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
     // The browser process is about to exit. Clean up while we still can.
     object_proxy_ = nullptr;
-    dbus_proxy_ = nullptr;
     if (bus_)
       bus_->ShutdownOnDBusThreadAndBlock();
     bus_.reset();
@@ -286,19 +283,20 @@ class ShowItemHelper {
   raw_ptr<dbus::ObjectProxy> dbus_proxy_ = nullptr;
   raw_ptr<dbus::ObjectProxy> object_proxy_ = nullptr;
 
-  std::optional<bool> prefer_filemanager_interface_;
+  absl::optional<bool> prefer_filemanager_interface_;
 
   base::CallbackListSubscription browser_shutdown_subscription_;
   base::WeakPtrFactory<ShowItemHelper> weak_ptr_factory_{this};
 };
 
-void OnLaunchOptionsCreated(const std::string& command,
-                            const base::FilePath& working_directory,
-                            const std::string& arg,
-                            base::LaunchOptions options) {
+void RunCommand(const std::string& command,
+                const base::FilePath& working_directory,
+                const std::string& arg) {
   std::vector<std::string> argv;
   argv.push_back(command);
   argv.push_back(arg);
+
+  base::LaunchOptions options;
   options.current_directory = working_directory;
   options.allow_new_privs = true;
   // xdg-open can fall back on mailcap which eventually might plumb through
@@ -318,13 +316,6 @@ void OnLaunchOptionsCreated(const std::string& command,
   base::Process process = base::LaunchProcess(argv, options);
   if (process.IsValid())
     base::EnsureProcessGetsReaped(std::move(process));
-}
-
-void RunCommand(const std::string& command,
-                const base::FilePath& working_directory,
-                const std::string& arg) {
-  base::nix::CreateLaunchOptionsWithXdgActivation(
-      base::BindOnce(&OnLaunchOptionsCreated, command, working_directory, arg));
 }
 
 void XDGOpen(const base::FilePath& working_directory, const std::string& path) {

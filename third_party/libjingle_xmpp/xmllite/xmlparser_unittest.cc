@@ -165,21 +165,13 @@ TEST(XmlParserTest, TestIncremental) {
 
   fragment = "ph'><test";
   parser.Parse(fragment.c_str(), fragment.length(), false);
-  fragment = "ing/>";
-  parser.Parse(fragment.c_str(), fragment.length(), false);
-  // Note: crbug.com/330014030. We don't validate state between the 2 calls to
-  // Parse() above since expat changed in 2.6.0 how it parses partials:
-  // https://github.com/libexpat/libexpat/commit/9cdf9b8d77d5c2c2a27d15fb68dd3f83cafb45a1
-  // https://github.com/libexpat/libexpat/blob/8548bc03fdb887c8720f01e95440f1406bd15ffa/expat/Changes#L83
-  EXPECT_EQ(
-      "START (hmph:stream, id='abcdefg', xmlns='j:c', "
-      "http://www.w3.org/2000/xmlns/:stream='hmph') "
-      "START (j:c:testing) END ",
-      handler.StrClear());
+  EXPECT_EQ("START (hmph:stream, id='abcdefg', xmlns='j:c', "
+      "http://www.w3.org/2000/xmlns/:stream='hmph') ", handler.StrClear());
 
-  fragment = "<again/>abracad";
+  fragment = "ing/><again/>abracad";
   parser.Parse(fragment.c_str(), fragment.length(), false);
-  EXPECT_EQ("START (j:c:again) END TEXT (abracad) ", handler.StrClear());
+  EXPECT_EQ("START (j:c:testing) END START (j:c:again) END TEXT (abracad) ",
+      handler.StrClear());
 
   fragment = "abra</stream:";
   parser.Parse(fragment.c_str(), fragment.length(), false);

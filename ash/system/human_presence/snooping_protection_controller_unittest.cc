@@ -97,10 +97,8 @@ class SnoopingProtectionControllerTestBase : public NoSessionAshTestBase {
   const bool service_state_;
   const std::map<std::string, std::string> params_;
 
-  raw_ptr<FakeHumanPresenceDBusClient, DanglingUntriaged> dbus_client_ =
-      nullptr;
-  raw_ptr<SnoopingProtectionController, DanglingUntriaged> controller_ =
-      nullptr;
+  raw_ptr<FakeHumanPresenceDBusClient, ExperimentalAsh> dbus_client_ = nullptr;
+  raw_ptr<SnoopingProtectionController, ExperimentalAsh> controller_ = nullptr;
 
   // Simulates a login. This will trigger a DBus call if and only if logging in
   // was the final precondition required for the feature. Hence we wait for any
@@ -294,8 +292,7 @@ TEST_F(SnoopingProtectionControllerTestPresent, Oobe) {
   TestSessionControllerClient* session = GetSessionControllerClient();
 
   // Simulate end of OOBE when user is logged in.
-  session->AddUserSession("testuser@gmail.com",
-                          user_manager::UserType::kRegular,
+  session->AddUserSession("testuser@gmail.com", user_manager::USER_TYPE_REGULAR,
                           /*provide_pref_service=*/true,
                           /*is_new_profile=*/true);
   session->SwitchActiveUser(AccountId::FromUserEmail("testuser@gmail.com"));

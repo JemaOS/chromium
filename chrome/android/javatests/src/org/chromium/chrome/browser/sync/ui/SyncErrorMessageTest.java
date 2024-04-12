@@ -30,9 +30,6 @@ import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Feature;
-import org.chromium.base.test.util.Features.DisableFeatures;
-import org.chromium.base.test.util.Features.EnableFeatures;
-import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.base.test.util.Matchers;
 import org.chromium.chrome.browser.SyncFirstSetupCompleteSource;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -45,6 +42,8 @@ import org.chromium.chrome.browser.sync.ui.SyncErrorMessage.MessageType;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.R;
 import org.chromium.chrome.test.util.ChromeRenderTestRule;
+import org.chromium.chrome.test.util.browser.Features.DisableFeatures;
+import org.chromium.chrome.test.util.browser.Features.EnableFeatures;
 import org.chromium.chrome.test.util.browser.sync.SyncTestUtil;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.messages.MessageBannerProperties;
@@ -55,31 +54,30 @@ import org.chromium.ui.modelutil.PropertyModel;
 
 import java.io.IOException;
 
-/** Test suites for {@link SyncErrorMessage}. */
+/**
+ * Test suites for {@link SyncErrorMessage}.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @DoNotBatch(reason = "TODO(crbug.com/1168590): SyncTestRule doesn't support batching.")
+@EnableFeatures({ChromeFeatureList.MESSAGES_FOR_ANDROID_INFRASTRUCTURE})
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 public class SyncErrorMessageTest {
-    @Mock private MessageDispatcher mMessageDispatcher;
+    @Mock
+    private MessageDispatcher mMessageDispatcher;
     private FakeSyncServiceImpl mFakeSyncServiceImpl;
 
     @Rule
-    public final SyncTestRule mSyncTestRule =
-            new SyncTestRule() {
-                @Override
-                protected FakeSyncServiceImpl createSyncServiceImpl() {
-                    return new FakeSyncServiceImpl();
-                }
-            };
-
-    private static final int RENDER_TEST_REVISION = 3;
-    private static final String RENDER_TEST_DESCRIPTION = "Sync error message for identity errors.";
+    public final SyncTestRule mSyncTestRule = new SyncTestRule() {
+        @Override
+        protected FakeSyncServiceImpl createSyncServiceImpl() {
+            return new FakeSyncServiceImpl();
+        }
+    };
 
     @Rule
     public final ChromeRenderTestRule mRenderTestRule =
             ChromeRenderTestRule.Builder.withPublicCorpus()
-                    .setRevision(RENDER_TEST_REVISION)
-                    .setDescription(RENDER_TEST_DESCRIPTION)
+                    .setRevision(2)
                     .setBugComponent(ChromeRenderTestRule.Component.SERVICES_SYNC)
                     .build();
 
@@ -89,13 +87,12 @@ public class SyncErrorMessageTest {
         SyncErrorMessageImpressionTracker.resetLastShownTime();
         mFakeSyncServiceImpl = (FakeSyncServiceImpl) mSyncTestRule.getSyncService();
         SyncErrorMessage.setMessageDispatcherForTesting(mMessageDispatcher);
-        doAnswer(
-                        (invocation) -> {
-                            PropertyModel model = invocation.getArgument(0);
-                            int dismissReason = invocation.getArgument(1);
-                            model.get(MessageBannerProperties.ON_DISMISSED).onResult(dismissReason);
-                            return null;
-                        })
+        doAnswer((invocation) -> {
+            PropertyModel model = invocation.getArgument(0);
+            int dismissReason = invocation.getArgument(1);
+            model.get(MessageBannerProperties.ON_DISMISSED).onResult(dismissReason);
+            return null;
+        })
                 .when(mMessageDispatcher)
                 .dismissMessage(any(), anyInt());
     }
@@ -121,11 +118,9 @@ public class SyncErrorMessageTest {
         verifyHasShownMessage();
 
         // Resolving the error should dismiss the current message.
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mFakeSyncServiceImpl.setInitialSyncFeatureSetupComplete(
-                            SyncFirstSetupCompleteSource.BASIC_FLOW);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mFakeSyncServiceImpl.setFirstSetupComplete(SyncFirstSetupCompleteSource.BASIC_FLOW);
+        });
         verifyHasDismissedMessage();
     }
 
@@ -194,14 +189,10 @@ public class SyncErrorMessageTest {
         mFakeSyncServiceImpl.setRequiresClientUpgrade(false);
 
         @SyncError
-        int syncError =
-                TestThreadUtils.runOnUiThreadBlockingNoException(
-                        () -> {
-                            mFakeSyncServiceImpl.setInitialSyncFeatureSetupComplete(
-                                    SyncFirstSetupCompleteSource.BASIC_FLOW);
-                            return SyncSettingsUtils.getSyncError(
-                                    mSyncTestRule.getProfile(/* incognito= */ false));
-                        });
+        int syncError = TestThreadUtils.runOnUiThreadBlockingNoException(() -> {
+            mFakeSyncServiceImpl.setFirstSetupComplete(SyncFirstSetupCompleteSource.BASIC_FLOW);
+            return SyncSettingsUtils.getSyncError();
+        });
 
         Assert.assertEquals(MessageType.NOT_SHOWN, SyncErrorMessage.getMessageType(syncError));
 
@@ -211,6 +202,22 @@ public class SyncErrorMessageTest {
     @Test
     @LargeTest
     @Feature("RenderTest")
+    @DisableFeatures({ChromeFeatureList.UNIFIED_PASSWORD_MANAGER_ERROR_MESSAGES})
+    public void testSyncErrorMessageForAuthErrorView() throws IOException {
+        SyncErrorMessage.setMessageDispatcherForTesting(null);
+        mSyncTestRule.setUpAccountAndEnableSyncForTesting();
+        mFakeSyncServiceImpl.setAuthError(GoogleServiceAuthError.State.INVALID_GAIA_CREDENTIALS);
+        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
+        ViewGroup view = mSyncTestRule.getActivity().findViewById(R.id.message_container);
+        // Wait until the message ui is shown.
+        CriteriaHelper.pollUiThread(() -> Criteria.checkThat(view.getChildCount(), Matchers.is(1)));
+        mRenderTestRule.render(view, "sync_error_message_auth_error");
+    }
+
+    @Test
+    @LargeTest
+    @Feature("RenderTest")
+    @EnableFeatures({ChromeFeatureList.UNIFIED_PASSWORD_MANAGER_ERROR_MESSAGES})
     public void testSyncErrorMessageForAuthErrorViewModern() throws IOException {
         SyncErrorMessage.setMessageDispatcherForTesting(null);
         mSyncTestRule.setUpAccountAndEnableSyncForTesting();
@@ -264,233 +271,34 @@ public class SyncErrorMessageTest {
         mRenderTestRule.render(view, "sync_error_message_client_out_of_date");
     }
 
-    @Test
-    @LargeTest
-    @EnableFeatures(ChromeFeatureList.SYNC_SHOW_IDENTITY_ERRORS_FOR_SIGNED_IN_USERS)
-    public void testSyncErrorMessageShownForAuthErrorForSignedInUsers() throws Exception {
-        HistogramWatcher watchIdentityErrorMessageShownHistogram =
-                HistogramWatcher.newSingleRecordWatcher(
-                        "Sync.IdentityErrorMessage.AuthError",
-                        SyncSettingsUtils.ErrorUiAction.SHOWN);
-
-        // Sign in.
-        mSyncTestRule.setUpAccountAndSignInForTesting();
-        mFakeSyncServiceImpl.setAuthError(GoogleServiceAuthError.State.INVALID_GAIA_CREDENTIALS);
-        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
-        verifyHasShownMessage();
-        watchIdentityErrorMessageShownHistogram.assertExpected();
-
-        // Resolving the error should dismiss the current message.
-        mFakeSyncServiceImpl.setAuthError(GoogleServiceAuthError.State.NONE);
-        verifyHasDismissedMessage();
-    }
-
-    @Test
-    @LargeTest
-    @EnableFeatures(ChromeFeatureList.SYNC_SHOW_IDENTITY_ERRORS_FOR_SIGNED_IN_USERS)
-    public void testSyncErrorMessageShownForPassphraseRequiredForSignedInUsers() throws Exception {
-        HistogramWatcher watchIdentityErrorMessageShownHistogram =
-                HistogramWatcher.newSingleRecordWatcher(
-                        "Sync.IdentityErrorMessage.PassphraseRequired",
-                        SyncSettingsUtils.ErrorUiAction.SHOWN);
-
-        // Sign in.
-        mSyncTestRule.setUpAccountAndSignInForTesting();
-        mFakeSyncServiceImpl.setEngineInitialized(true);
-        mFakeSyncServiceImpl.setPassphraseRequiredForPreferredDataTypes(true);
-        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
-        verifyHasShownMessage();
-        watchIdentityErrorMessageShownHistogram.assertExpected();
-
-        // Resolving the error should dismiss the current message.
-        mFakeSyncServiceImpl.setPassphraseRequiredForPreferredDataTypes(false);
-        verifyHasDismissedMessage();
-    }
-
-    @Test
-    @LargeTest
-    @EnableFeatures(ChromeFeatureList.SYNC_SHOW_IDENTITY_ERRORS_FOR_SIGNED_IN_USERS)
-    public void testSyncErrorMessageShownForClientOutOfDateForSignedInUsers() throws Exception {
-        HistogramWatcher watchIdentityErrorMessageShownHistogram =
-                HistogramWatcher.newSingleRecordWatcher(
-                        "Sync.IdentityErrorMessage.ClientOutOfDate",
-                        SyncSettingsUtils.ErrorUiAction.SHOWN);
-
-        // Sign in.
-        mSyncTestRule.setUpAccountAndSignInForTesting();
-        mFakeSyncServiceImpl.setRequiresClientUpgrade(true);
-        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
-        verifyHasShownMessage();
-        watchIdentityErrorMessageShownHistogram.assertExpected();
-
-        // Not possible to resolve this error from within chrome unlike the other
-        // SyncErrorMessage-s.
-    }
-
-    @Test
-    @LargeTest
-    @EnableFeatures(ChromeFeatureList.SYNC_SHOW_IDENTITY_ERRORS_FOR_SIGNED_IN_USERS)
-    public void testSyncErrorMessageShownForTrustedVaultKeyRequiredForSignedInUsers()
-            throws Exception {
-        HistogramWatcher watchIdentityErrorMessageShownHistogram =
-                HistogramWatcher.newSingleRecordWatcher(
-                        "Sync.IdentityErrorMessage.TrustedVaultKeyRequiredForPasswords",
-                        SyncSettingsUtils.ErrorUiAction.SHOWN);
-
-        // Sign in.
-        mSyncTestRule.setUpAccountAndSignInForTesting();
-        mFakeSyncServiceImpl.setEngineInitialized(true);
-        mFakeSyncServiceImpl.setTrustedVaultKeyRequiredForPreferredDataTypes(true);
-        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
-        verifyHasShownMessage();
-        watchIdentityErrorMessageShownHistogram.assertExpected();
-
-        // Resolving the error should dismiss the current message.
-        mFakeSyncServiceImpl.setTrustedVaultKeyRequiredForPreferredDataTypes(false);
-        verifyHasDismissedMessage();
-    }
-
-    @Test
-    @LargeTest
-    @EnableFeatures(ChromeFeatureList.SYNC_SHOW_IDENTITY_ERRORS_FOR_SIGNED_IN_USERS)
-    public void testSyncErrorMessageShownForTrustedVaultRecoverabilityDegradedForSignedInUsers()
-            throws Exception {
-        HistogramWatcher watchIdentityErrorMessageShownHistogram =
-                HistogramWatcher.newSingleRecordWatcher(
-                        "Sync.IdentityErrorMessage.TrustedVaultRecoverabilityDegradedForPasswords",
-                        SyncSettingsUtils.ErrorUiAction.SHOWN);
-
-        // Sign in.
-        mSyncTestRule.setUpAccountAndSignInForTesting();
-        mFakeSyncServiceImpl.setEngineInitialized(true);
-        mFakeSyncServiceImpl.setTrustedVaultRecoverabilityDegraded(true);
-        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
-        verifyHasShownMessage();
-        watchIdentityErrorMessageShownHistogram.assertExpected();
-
-        // Resolving the error should dismiss the current message.
-        mFakeSyncServiceImpl.setTrustedVaultRecoverabilityDegraded(false);
-        verifyHasDismissedMessage();
-    }
-
-    @Test
-    @LargeTest
-    @EnableFeatures(ChromeFeatureList.SYNC_SHOW_IDENTITY_ERRORS_FOR_SIGNED_IN_USERS)
-    public void testSyncErrorMessageNotShownWhenNoErrorForSignedInUsers() throws Exception {
-        // Sign in.
-        mSyncTestRule.setUpAccountAndSignInForTesting();
-        mFakeSyncServiceImpl.setEngineInitialized(true);
-        mFakeSyncServiceImpl.setAuthError(GoogleServiceAuthError.State.NONE);
-        mFakeSyncServiceImpl.setPassphraseRequiredForPreferredDataTypes(false);
-        mFakeSyncServiceImpl.setRequiresClientUpgrade(false);
-
-        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
-        verifyHasNeverShownMessage();
-    }
-
-    @Test
-    @LargeTest
-    @DisableFeatures(ChromeFeatureList.SYNC_SHOW_IDENTITY_ERRORS_FOR_SIGNED_IN_USERS)
-    public void testSyncErrorMessageNotShownForAuthErrorForSignedInUsersIfFeatureDisabled()
-            throws Exception {
-        HistogramWatcher watchIdentityErrorMessageShownHistogram =
-                HistogramWatcher.newBuilder()
-                        .expectNoRecords("Sync.IdentityErrorMessage.AuthError")
-                        .build();
-
-        // Sign in.
-        mSyncTestRule.setUpAccountAndSignInForTesting();
-        mFakeSyncServiceImpl.setAuthError(GoogleServiceAuthError.State.INVALID_GAIA_CREDENTIALS);
-
-        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
-        verifyHasNeverShownMessage();
-        watchIdentityErrorMessageShownHistogram.assertExpected();
-    }
-
-    @Test
-    @LargeTest
-    @Feature("RenderTest")
-    @EnableFeatures(ChromeFeatureList.SYNC_SHOW_IDENTITY_ERRORS_FOR_SIGNED_IN_USERS)
-    public void testSyncErrorMessageForAuthErrorViewForSignedInUsers() throws IOException {
-        SyncErrorMessage.setMessageDispatcherForTesting(null);
-        // Sign in.
-        mSyncTestRule.setUpAccountAndSignInForTesting();
-        mFakeSyncServiceImpl.setAuthError(GoogleServiceAuthError.State.INVALID_GAIA_CREDENTIALS);
-        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
-        ViewGroup view = mSyncTestRule.getActivity().findViewById(R.id.message_container);
-        // Wait until the message ui is shown.
-        CriteriaHelper.pollUiThread(() -> Criteria.checkThat(view.getChildCount(), Matchers.is(1)));
-        mRenderTestRule.render(view, "identity_error_message_auth_error");
-    }
-
-    @Test
-    @LargeTest
-    @Feature("RenderTest")
-    @EnableFeatures(ChromeFeatureList.SYNC_SHOW_IDENTITY_ERRORS_FOR_SIGNED_IN_USERS)
-    public void testSyncErrorMessageForPassphraseRequiredViewForSignedInUsers() throws IOException {
-        SyncErrorMessage.setMessageDispatcherForTesting(null);
-        // Sign in.
-        mSyncTestRule.setUpAccountAndSignInForTesting();
-        mFakeSyncServiceImpl.setEngineInitialized(true);
-        mFakeSyncServiceImpl.setPassphraseRequiredForPreferredDataTypes(true);
-        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
-        ViewGroup view = mSyncTestRule.getActivity().findViewById(R.id.message_container);
-        // Wait until the message ui is shown.
-        CriteriaHelper.pollUiThread(() -> Criteria.checkThat(view.getChildCount(), Matchers.is(1)));
-        mRenderTestRule.render(view, "identity_error_message_passphrase_required");
-    }
-
-    @Test
-    @LargeTest
-    @Feature("RenderTest")
-    @EnableFeatures(ChromeFeatureList.SYNC_SHOW_IDENTITY_ERRORS_FOR_SIGNED_IN_USERS)
-    public void testSyncErrorMessageForClientOutOfDateViewForSignedInUsers() throws IOException {
-        SyncErrorMessage.setMessageDispatcherForTesting(null);
-        // Sign in.
-        mSyncTestRule.setUpAccountAndSignInForTesting();
-        mFakeSyncServiceImpl.setRequiresClientUpgrade(true);
-        mSyncTestRule.loadUrl(UrlConstants.VERSION_URL);
-        ViewGroup view = mSyncTestRule.getActivity().findViewById(R.id.message_container);
-        // Wait until the message ui is shown.
-        CriteriaHelper.pollUiThread(() -> Criteria.checkThat(view.getChildCount(), Matchers.is(1)));
-        mRenderTestRule.render(view, "identity_error_message_client_out_of_date");
-    }
-
     private void verifyHasShownMessage() {
-        verify(
-                        mMessageDispatcher,
-                        description("Message should be displayed when sync error occurs."))
+        verify(mMessageDispatcher,
+                description("Message should be displayed when sync error occurs."))
                 .enqueueWindowScopedMessage(any(), anyBoolean());
         Assert.assertNotNull(getSyncErrorMessage());
     }
 
     private void verifyHasNeverShownMessage() {
-        verify(
-                        mMessageDispatcher,
-                        never().description(
-                                        "Message should be never displayed when sync error does not"
-                                                + " occur."))
+        verify(mMessageDispatcher,
+                never().description(
+                        "Message should be never displayed when sync error does not occur."))
                 .enqueueWindowScopedMessage(any(), anyBoolean());
         Assert.assertNull(getSyncErrorMessage());
     }
 
     private void verifyHasDismissedMessage() {
-        verify(
-                        mMessageDispatcher,
-                        description(
-                                "Message should be dismissed when sync error has been resolved."))
+        verify(mMessageDispatcher,
+                description("Message should be dismissed when sync error has been resolved."))
                 .dismissMessage(any(), anyInt());
         Assert.assertNull(getSyncErrorMessage());
     }
 
     private @Nullable SyncErrorMessage getSyncErrorMessage() {
         return TestThreadUtils.runOnUiThreadBlockingNoException(
-                () ->
-                        SyncErrorMessage.getKeyForTesting()
-                                .retrieveDataFromHost(
-                                        mSyncTestRule
-                                                .getActivity()
-                                                .getWindowAndroid()
-                                                .getUnownedUserDataHost()));
+                ()
+                        -> SyncErrorMessage.getKeyForTesting().retrieveDataFromHost(
+                                mSyncTestRule.getActivity()
+                                        .getWindowAndroid()
+                                        .getUnownedUserDataHost()));
     }
 }

@@ -35,7 +35,6 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_utils.h"
 #include "content/public/test/theme_change_waiter.h"
 #include "extensions/browser/extension_registry.h"
@@ -87,7 +86,7 @@ class LoadFinishedWaiter : public TabStripModelObserver,
   }
 
  private:
-  raw_ptr<Browser> browser_ = nullptr;
+  raw_ptr<Browser> browser_;
   SkColor color_at_navigation_;
   base::RunLoop run_loop_;
 };
@@ -168,8 +167,8 @@ class AppBrowserControllerBrowserTest : public InProcessBrowserTest {
         ->GetVisibleURL();
   }
 
-  raw_ptr<Profile, AcrossTasksDanglingUntriaged> profile_ = nullptr;
-  raw_ptr<Browser, AcrossTasksDanglingUntriaged> app_browser_ = nullptr;
+  raw_ptr<Profile, DanglingUntriaged> profile_ = nullptr;
+  raw_ptr<Browser, DanglingUntriaged> app_browser_ = nullptr;
   GURL tabbed_app_url_;
 
  private:
@@ -270,10 +269,8 @@ IN_PROC_BROWSER_TEST_F(AppBrowserControllerBrowserTest, TabLoadNoThemeChange) {
       app_browser_->tab_strip_model()->GetActiveWebContents();
   content::ThemeChangeWaiter theme_waiter(web_contents);
   EXPECT_TRUE(content::ExecJs(web_contents, R"(
-      const el = document.createElement("meta");
-      el.setAttribute("name", "theme-color");
-      el.setAttribute("content", "yellow");
-      document.documentElement.appendChild(el);
+      document.documentElement.innerHTML =
+          '<meta name="theme-color" content="yellow">';
   )",
                               content::EXECUTE_SCRIPT_DEFAULT_OPTIONS,
                               /*world_id=*/1));

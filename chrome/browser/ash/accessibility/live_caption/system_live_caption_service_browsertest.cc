@@ -123,15 +123,17 @@ class SystemLiveCaptionServiceTest : public InProcessBrowserTest {
         &profiles::testing::CreateProfileSync(profile_manager, profile_path);
     CHECK(secondary_profile_);
 
-    // Replace our CrosSpeechRecognitionService with a fake one.
-    fake_speech_recognition_service_ =
-        CrosSpeechRecognitionServiceFactory::GetInstanceForTest()
-            ->SetTestingSubclassFactoryAndUse(
-                primary_profile_,
-                base::BindRepeating([](content::BrowserContext*) {
-                  return std::make_unique<
-                      speech::FakeSpeechRecognitionService>();
-                }));
+    // Replace our CrosSpeechRecognitionService with a fake one. We can pass a
+    // unique_ptr into this lambda since it is only called once (despite being
+    // "repeating").
+    auto service = std::make_unique<speech::FakeSpeechRecognitionService>();
+    fake_speech_recognition_service_ = service.get();
+    const auto spawn_test_service =
+        base::BindRepeating([](std::unique_ptr<KeyedService> s,
+                               content::BrowserContext*) { return s; },
+                            base::Passed(std::move(service)));
+    CrosSpeechRecognitionServiceFactory::GetInstanceForTest()
+        ->SetTestingFactoryAndUse(primary_profile_, spawn_test_service);
 
     // Pass in an inert audio system backend.
     SystemLiveCaptionServiceFactory::GetInstance()
@@ -174,8 +176,6 @@ class SystemLiveCaptionServiceTest : public InProcessBrowserTest {
     speech::SodaInstaller::GetInstance()->NotifySodaInstalledForTesting(
         speech::LanguageCode::kEnUs);
     speech::SodaInstaller::GetInstance()->NotifySodaInstalledForTesting();
-    // Events must propogate, so we wait after install.
-    base::RunLoop().RunUntilIdle();
     SystemLiveCaptionServiceFactory::GetInstance()
         ->GetForProfile(primary_profile_)
         ->OnNonChromeOutputStarted();
@@ -183,9 +183,9 @@ class SystemLiveCaptionServiceTest : public InProcessBrowserTest {
   }
 
   // Unowned.
-  raw_ptr<Profile, DanglingUntriaged> primary_profile_;
-  raw_ptr<Profile, DanglingUntriaged> secondary_profile_;
-  raw_ptr<speech::FakeSpeechRecognitionService, DanglingUntriaged>
+  raw_ptr<Profile, ExperimentalAsh> primary_profile_;
+  raw_ptr<Profile, ExperimentalAsh> secondary_profile_;
+  raw_ptr<speech::FakeSpeechRecognitionService, ExperimentalAsh>
       fake_speech_recognition_service_;
 
   base::test::ScopedFeatureList scoped_feature_list_;
@@ -255,10 +255,9 @@ IN_PROC_BROWSER_TEST_F(SystemLiveCaptionServiceTest, SodaError) {
 // Tests that our feature listens to the correct SODA language.
 IN_PROC_BROWSER_TEST_F(SystemLiveCaptionServiceTest, SodaIrrelevantError) {
   // Set audio output running
-  auto* live_caption_service =
-      SystemLiveCaptionServiceFactory::GetInstance()->GetForProfile(
-          primary_profile_);
-  live_caption_service->OnNonChromeOutputStarted();
+  SystemLiveCaptionServiceFactory::GetInstance()
+      ->GetForProfile(primary_profile_)
+      ->OnNonChromeOutputStarted();
   // Enable feature so that we start listening for SODA install status.
   SetLiveCaptionsPref(primary_profile_, /*enabled=*/true);
 
@@ -278,10 +277,7 @@ IN_PROC_BROWSER_TEST_F(SystemLiveCaptionServiceTest, SodaIrrelevantError) {
   speech::SodaInstaller::GetInstance()->NotifySodaInstalledForTesting(
       speech::LanguageCode::kEnUs);
   base::RunLoop().RunUntilIdle();
-  // Tell the caption service audio is running again. This is needed since we
-  // don't actually go to a fake cras audio system in this test.
-  live_caption_service->OnNonChromeOutputStarted();
-  base::RunLoop().RunUntilIdle();
+
   // We should have ignored the unrelated error.
   EXPECT_TRUE(fake_speech_recognition_service_->is_capturing_audio());
 }

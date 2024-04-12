@@ -11,7 +11,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace enterprise_connectors {
@@ -29,7 +29,8 @@ class DeviceTrustConnectorServiceFactory : public ProfileKeyedServiceFactory {
   bool ServiceIsNULLWhileTesting() const override;
 
  private:
-  friend base::NoDestructor<DeviceTrustConnectorServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      DeviceTrustConnectorServiceFactory>;
 
   friend class DeviceTrustConnectorServiceFactoryBaseTest;
 
@@ -37,7 +38,7 @@ class DeviceTrustConnectorServiceFactory : public ProfileKeyedServiceFactory {
   ~DeviceTrustConnectorServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

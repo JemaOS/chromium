@@ -7,6 +7,7 @@
 #include <string>
 
 #include "base/metrics/field_trial_params.h"
+#include "base/metrics/histogram_functions.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
 #include "components/prefs/pref_service.h"
@@ -19,11 +20,51 @@
 #include "third_party/blink/public/common/input/web_mouse_event.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+#include "extensions/browser/extension_registry.h"
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+
 using blink::WebInputEvent;
+
+namespace {
+// Id for extension that enables users to report sites to Safe Browsing.
+const char kPreventElisionExtensionId[] = "jknemblkbdhdcpllfgbfekkdciegfboi";
+}  // namespace
 
 namespace safe_browsing {
 
+const char kDelayedWarningsTimeOnPageHistogram[] =
+    "SafeBrowsing.DelayedWarnings.TimeOnPage";
+
+const char kDelayedWarningsTimeOnPageWithElisionDisabledHistogram[] =
+    "SafeBrowsing.DelayedWarnings.TimeOnPage_UrlElisionDisabled";
+
 WEB_CONTENTS_USER_DATA_KEY_IMPL(SafeBrowsingUserInteractionObserver);
+
+namespace {
+
+bool IsUrlElisionDisabled(Profile* profile,
+                          const char* suspicious_site_reporter_extension_id) {
+  if (profile &&
+      profile->GetPrefs()->GetBoolean(omnibox::kPreventUrlElisionsInOmnibox)) {
+    return true;
+  }
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+  DCHECK(suspicious_site_reporter_extension_id);
+  if (profile && extensions::ExtensionRegistry::Get(profile)
+                     ->enabled_extensions()
+                     .Contains(suspicious_site_reporter_extension_id)) {
+    return true;
+  }
+#endif
+  return false;
+}
+
+}  // namespace
+
+// static
+const char* SafeBrowsingUserInteractionObserver::
+    suspicious_site_reporter_extension_id_ = kPreventElisionExtensionId;
 
 SafeBrowsingUserInteractionObserver::SafeBrowsingUserInteractionObserver(
     content::WebContents* web_contents,
@@ -88,6 +129,7 @@ void SafeBrowsingUserInteractionObserver::CreateForWebContents(
   // create an observer if there isn't one.
   // TODO(crbug.com/1057157): The observer should observe all unsafe resources
   // instead of the first one only.
+  DCHECK(!web_contents->IsPortal());
   content::WebContentsUserData<
       SafeBrowsingUserInteractionObserver>::CreateForWebContents(web_contents,
                                                                  resource,
@@ -161,6 +203,16 @@ void SafeBrowsingUserInteractionObserver::DidFinishNavigation(
 }
 
 void SafeBrowsingUserInteractionObserver::Detach() {
+  base::TimeDelta time_on_page = clock_->Now() - creation_time_;
+  if (IsUrlElisionDisabled(
+          Profile::FromBrowserContext(web_contents()->GetBrowserContext()),
+          suspicious_site_reporter_extension_id_)) {
+    base::UmaHistogramLongTimes(
+        kDelayedWarningsTimeOnPageWithElisionDisabledHistogram, time_on_page);
+  } else {
+    base::UmaHistogramLongTimes(kDelayedWarningsTimeOnPageHistogram,
+                                time_on_page);
+  }
   web_contents()->RemoveUserData(UserDataKey());
   // DO NOT add code past this point. |this| is destroyed.
 }
@@ -221,6 +273,18 @@ void SafeBrowsingUserInteractionObserver::OnPasswordSaveOrAutofillDenied() {
 void SafeBrowsingUserInteractionObserver::OnDesktopCaptureRequest() {
   ShowInterstitial(DelayedWarningEvent::kWarningShownOnDesktopCaptureRequest);
   // DO NOT add code past this point. |this| is destroyed.
+}
+
+// static
+void SafeBrowsingUserInteractionObserver::
+    SetSuspiciousSiteReporterExtensionIdForTesting(const char* extension_id) {
+  suspicious_site_reporter_extension_id_ = extension_id;
+}
+
+// static
+void SafeBrowsingUserInteractionObserver::
+    ResetSuspiciousSiteReporterExtensionIdForTesting() {
+  suspicious_site_reporter_extension_id_ = kPreventElisionExtensionId;
 }
 
 void SafeBrowsingUserInteractionObserver::SetClockForTesting(

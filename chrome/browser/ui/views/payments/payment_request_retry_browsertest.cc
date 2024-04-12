@@ -9,7 +9,6 @@
 #include "components/autofill/core/browser/autofill_test_utils.h"
 #include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 
 namespace payments {
 
@@ -52,14 +51,14 @@ IN_PROC_BROWSER_TEST_F(PaymentRequestRetryTest,
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::BACK_TO_PAYMENT_SHEET_NAVIGATION,
                                DialogEvent::CONTACT_INFO_EDITOR_OPENED});
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(),
-                              "retry({"
-                              "  payer: {"
-                              "    email: 'EMAIL ERROR',"
-                              "    name: 'NAME ERROR',"
-                              "    phone: 'PHONE ERROR'"
-                              "  }"
-                              "});"));
+  ASSERT_TRUE(content::ExecuteScript(GetActiveWebContents(),
+                                     "retry({"
+                                     "  payer: {"
+                                     "    email: 'EMAIL ERROR',"
+                                     "    name: 'NAME ERROR',"
+                                     "    phone: 'PHONE ERROR'"
+                                     "  }"
+                                     "});"));
   ASSERT_TRUE(WaitForObservedEvent());
   EXPECT_EQ(1U, request->state()->available_apps().size());
 }

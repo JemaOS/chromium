@@ -16,8 +16,9 @@
 
 namespace blink {
 
-class CSSUnparsedDeclarationValue;
+class CSSCustomPropertyDeclaration;
 class CSSVariableData;
+class CSSVariableReferenceValue;
 
 class CORE_EXPORT CSSUnparsedValue final : public CSSStyleValue {
   DEFINE_WRAPPERTYPEINFO();
@@ -32,7 +33,8 @@ class CORE_EXPORT CSSUnparsedValue final : public CSSStyleValue {
   static CSSUnparsedValue* Create() {
     return Create(HeapVector<Member<V8CSSUnparsedSegment>>());
   }
-  static CSSUnparsedValue* FromCSSValue(const CSSUnparsedDeclarationValue&);
+  static CSSUnparsedValue* FromCSSValue(const CSSVariableReferenceValue&);
+  static CSSUnparsedValue* FromCSSValue(const CSSCustomPropertyDeclaration&);
   static CSSUnparsedValue* FromCSSVariableData(const CSSVariableData&);
   static CSSUnparsedValue* FromString(const String& string) {
     HeapVector<Member<V8CSSUnparsedSegment>> tokens;
@@ -65,18 +67,14 @@ class CORE_EXPORT CSSUnparsedValue final : public CSSStyleValue {
     CSSStyleValue::Trace(visitor);
   }
 
-  // Unlike CSSStyleValue::toString(), this returns tokens without
-  // substituting variables. There are extra /**/ inserted between
-  // every token to ensure there are no ambiguities, which is fine
-  // because this value is never presented directly to the user
-  // (ToCSSValue() will parse to a token range and then re-serialize
-  // using extra /**/ only where needed).
-  String ToUnparsedString() const;
+  String ToString() const { return ToStringInternal(/*separate_tokens=*/true); }
 
  private:
+  String ToStringInternal(bool separate_tokens) const;
+
   HeapVector<Member<V8CSSUnparsedSegment>> tokens_;
 
-  FRIEND_TEST_ALL_PREFIXES(CSSUnparsedDeclarationValueTest, MixedList);
+  FRIEND_TEST_ALL_PREFIXES(CSSVariableReferenceValueTest, MixedList);
 };
 
 template <>

@@ -48,7 +48,7 @@ class GetUpdateStatusApiTest : public ExtensionApiTest {
   }
 
  protected:
-  raw_ptr<ash::FakeUpdateEngineClient, DanglingUntriaged>
+  raw_ptr<ash::FakeUpdateEngineClient, ExperimentalAsh>
       fake_update_engine_client_ = nullptr;
 };
 

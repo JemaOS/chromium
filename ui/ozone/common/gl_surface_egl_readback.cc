@@ -47,6 +47,10 @@ bool GLSurfaceEglReadback::Resize(const gfx::Size& size,
   return true;
 }
 
+bool GLSurfaceEglReadback::IsOffscreen() {
+  return false;
+}
+
 gfx::SwapResult GLSurfaceEglReadback::SwapBuffers(PresentationCallback callback,
                                                   gfx::FrameData data) {
   gfx::SwapResult swap_result = gfx::SwapResult::SWAP_FAILED;

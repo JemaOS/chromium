@@ -8,8 +8,8 @@
 #include "chrome/browser/nearby_sharing/local_device_data/nearby_share_device_data_updater.h"
 
 NearbyShareDeviceDataUpdater::Request::Request(
-    std::optional<std::vector<nearby::sharing::proto::Contact>> contacts,
-    std::optional<std::vector<nearby::sharing::proto::PublicCertificate>>
+    absl::optional<std::vector<nearbyshare::proto::Contact>> contacts,
+    absl::optional<std::vector<nearbyshare::proto::PublicCertificate>>
         certificates,
     ResultCallback callback)
     : contacts(std::move(contacts)),
@@ -32,8 +32,8 @@ NearbyShareDeviceDataUpdater::NearbyShareDeviceDataUpdater(
 NearbyShareDeviceDataUpdater::~NearbyShareDeviceDataUpdater() = default;
 
 void NearbyShareDeviceDataUpdater::UpdateDeviceData(
-    std::optional<std::vector<nearby::sharing::proto::Contact>> contacts,
-    std::optional<std::vector<nearby::sharing::proto::PublicCertificate>>
+    absl::optional<std::vector<nearbyshare::proto::Contact>> contacts,
+    absl::optional<std::vector<nearbyshare::proto::PublicCertificate>>
         certificates,
     ResultCallback callback) {
   pending_requests_.emplace(std::move(contacts), std::move(certificates),
@@ -50,8 +50,7 @@ void NearbyShareDeviceDataUpdater::ProcessRequestQueue() {
 }
 
 void NearbyShareDeviceDataUpdater::FinishAttempt(
-    const std::optional<nearby::sharing::proto::UpdateDeviceResponse>&
-        response) {
+    const absl::optional<nearbyshare::proto::UpdateDeviceResponse>& response) {
   DCHECK(is_request_in_progress_);
   DCHECK(!pending_requests_.empty());
 

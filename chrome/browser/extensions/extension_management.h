@@ -7,10 +7,10 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
-#include "base/containers/flat_map.h"
-#include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/singleton.h"
 #include "base/observer_list.h"
@@ -198,6 +198,10 @@ class ExtensionManagement : public KeyedService {
   // Returns false if an individual scoped setting isn't defined.
   bool UsesDefaultPolicyHostRestrictions(const Extension* extension);
 
+  // Checks if a URL is on the blocked host permissions list for a specific
+  // extension.
+  bool IsPolicyBlockedHost(const Extension* extension, const GURL& url);
+
   // Returns blocked permission set for |extension|.
   std::unique_ptr<const PermissionSet> GetBlockedPermissions(
       const Extension* extension);
@@ -229,16 +233,13 @@ class ExtensionManagement : public KeyedService {
   // aren't deferred).
   ExtensionIdSet GetForcePinnedList() const;
 
-  // Returns if an extension with |id| can navigate to file URLs.
-  bool IsFileUrlNavigationAllowed(const ExtensionId& id);
-
  private:
   using SettingsIdMap =
-      base::flat_map<ExtensionId,
-                     std::unique_ptr<internal::IndividualSettings>>;
+      std::unordered_map<ExtensionId,
+                         std::unique_ptr<internal::IndividualSettings>>;
   using SettingsUpdateUrlMap =
-      base::flat_map<std::string,
-                     std::unique_ptr<internal::IndividualSettings>>;
+      std::unordered_map<std::string,
+                         std::unique_ptr<internal::IndividualSettings>>;
   friend class ExtensionManagementServiceTest;
 
   // Load all extension management preferences from |pref_service|, and
@@ -314,7 +315,7 @@ class ExtensionManagement : public KeyedService {
   // A set of extension IDs whose parsing of settings and insertion into
   // |settings_by_id_| has been deferred until needed. We keep track of this to
   // avoid scanning the prefs repeatedly for entries that don't have a setting.
-  base::flat_set<std::string> deferred_ids_;
+  std::unordered_set<std::string> deferred_ids_;
 
   // Similar to |settings_by_id_|, but contains the settings for a group of
   // extensions with same update URL. The update url itself is used as index
@@ -363,7 +364,7 @@ class ExtensionManagementFactory : public ProfileKeyedServiceFactory {
   ~ExtensionManagementFactory() override;
 
   // BrowserContextKeyedServiceExtensionManagementFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;

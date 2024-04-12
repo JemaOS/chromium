@@ -18,7 +18,8 @@
 #include "chromeos/ash/components/dbus/smbprovider/fake_smb_provider_client.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 namespace {
 
@@ -176,7 +177,7 @@ class SmbShareFinderTest : public testing::Test {
 
   int32_t discovery_callback_counter_ = 0;
 
-  raw_ptr<InMemoryHostLocator, DanglingUntriaged> host_locator_;
+  raw_ptr<InMemoryHostLocator, ExperimentalAsh> host_locator_;
   std::unique_ptr<FakeSmbProviderClient> fake_client_;
   std::unique_ptr<SmbShareFinder> share_finder_;
 };
@@ -332,4 +333,5 @@ TEST_F(SmbShareFinderTest, TestEmptyDiscoveryWithNonEmptyShareCallback) {
   ExpectAllSharesHaveBeenFound();
 }
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

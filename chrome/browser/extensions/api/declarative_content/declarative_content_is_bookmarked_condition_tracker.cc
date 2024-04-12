@@ -217,6 +217,7 @@ bool DeclarativeContentIsBookmarkedConditionTracker::EvaluatePredicate(
 void DeclarativeContentIsBookmarkedConditionTracker::BookmarkModelChanged() {}
 
 void DeclarativeContentIsBookmarkedConditionTracker::BookmarkNodeAdded(
+    bookmarks::BookmarkModel* model,
     const bookmarks::BookmarkNode* parent,
     size_t index,
     bool added_by_user) {
@@ -229,6 +230,7 @@ void DeclarativeContentIsBookmarkedConditionTracker::BookmarkNodeAdded(
 }
 
 void DeclarativeContentIsBookmarkedConditionTracker::BookmarkNodeRemoved(
+    bookmarks::BookmarkModel* model,
     const bookmarks::BookmarkNode* parent,
     size_t old_index,
     const bookmarks::BookmarkNode* node,
@@ -242,23 +244,27 @@ void DeclarativeContentIsBookmarkedConditionTracker::BookmarkNodeRemoved(
 }
 
 void DeclarativeContentIsBookmarkedConditionTracker::
-    ExtensiveBookmarkChangesBeginning() {
+ExtensiveBookmarkChangesBeginning(
+    bookmarks::BookmarkModel* model) {
   ++extensive_bookmark_changes_in_progress_;
 }
 
-void DeclarativeContentIsBookmarkedConditionTracker::
-    ExtensiveBookmarkChangesEnded() {
+void
+DeclarativeContentIsBookmarkedConditionTracker::ExtensiveBookmarkChangesEnded(
+    bookmarks::BookmarkModel* model) {
   if (--extensive_bookmark_changes_in_progress_ == 0)
     UpdateAllPerWebContentsTrackers();
 }
 
-void DeclarativeContentIsBookmarkedConditionTracker::
-    GroupedBookmarkChangesBeginning() {
+void
+DeclarativeContentIsBookmarkedConditionTracker::GroupedBookmarkChangesBeginning(
+    bookmarks::BookmarkModel* model) {
   ++extensive_bookmark_changes_in_progress_;
 }
 
-void DeclarativeContentIsBookmarkedConditionTracker::
-    GroupedBookmarkChangesEnded() {
+void
+DeclarativeContentIsBookmarkedConditionTracker::GroupedBookmarkChangesEnded(
+    bookmarks::BookmarkModel* model) {
   if (--extensive_bookmark_changes_in_progress_ == 0)
     UpdateAllPerWebContentsTrackers();
 }

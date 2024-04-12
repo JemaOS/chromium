@@ -13,9 +13,8 @@ class Browser;
 
 // The find icon to show when the find bar is visible.
 class FindBarIcon : public PageActionIconView {
-  METADATA_HEADER(FindBarIcon, PageActionIconView)
-
  public:
+  METADATA_HEADER(FindBarIcon);
   FindBarIcon(Browser* browser,
               IconLabelBubbleView::Delegate* icon_label_bubble_delegate,
               PageActionIconView::Delegate* page_action_icon_delegate);

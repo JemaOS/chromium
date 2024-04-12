@@ -54,12 +54,16 @@ class TableViewTestHelper;
 // - only text
 // - a small icon (16x16) and some text
 // - a check box and some text
-enum class TableType { kTextOnly, kIconAndText };
+enum TableTypes {
+  TEXT_ONLY = 0,
+  ICON_AND_TEXT,
+};
 
-class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
-  METADATA_HEADER(TableView, View)
-
+class VIEWS_EXPORT TableView : public views::View,
+                               public ui::TableModelObserver {
  public:
+  METADATA_HEADER(TableView);
+
   // Used by AdvanceActiveVisibleColumn(), AdvanceSelection() and
   // ResizeColumnViaKeyboard() to determine the direction to change the
   // selection.
@@ -104,7 +108,7 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
   TableView();
   TableView(ui::TableModel* model,
             const std::vector<ui::TableColumn>& columns,
-            TableType table_type,
+            TableTypes table_type,
             bool single_selection);
 
   TableView(const TableView&) = delete;
@@ -124,7 +128,7 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
   // Initialize the table with the appropriate data.
   void Init(ui::TableModel* model,
             const std::vector<ui::TableColumn>& columns,
-            TableType table_type,
+            TableTypes table_type,
             bool single_selection);
 
   // Assigns a new model to the table view, detaching the old one if present.
@@ -136,8 +140,8 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
 
   void SetColumns(const std::vector<ui::TableColumn>& columns);
 
-  void SetTableType(TableType table_type);
-  TableType GetTableType() const;
+  void SetTableType(TableTypes table_type);
+  TableTypes GetTableType() const;
 
   void SetSingleSelection(bool single_selection);
   bool GetSingleSelection() const;
@@ -150,13 +154,13 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
   size_t GetRowCount() const;
 
   // Selects the specified item, making sure it's visible.
-  void Select(std::optional<size_t> model_row);
+  void Select(absl::optional<size_t> model_row);
 
   // Selects all items.
   void SetSelectionAll(bool select);
 
   // Returns the first selected row in terms of the model.
-  std::optional<size_t> GetFirstSelectedRow() const;
+  absl::optional<size_t> GetFirstSelectedRow() const;
 
   const ui::ListSelectionModel& selection_model() const {
     return selection_model_;
@@ -183,9 +187,9 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
   void SetObserver(TableViewObserver* observer);
   TableViewObserver* GetObserver() const;
 
-  std::optional<size_t> GetActiveVisibleColumnIndex() const;
+  absl::optional<size_t> GetActiveVisibleColumnIndex() const;
 
-  void SetActiveVisibleColumnIndex(std::optional<size_t> index);
+  void SetActiveVisibleColumnIndex(absl::optional<size_t> index);
 
   const std::vector<VisibleColumn>& visible_columns() const {
     return visible_columns_;
@@ -249,7 +253,7 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
   bool header_row_is_active() const { return header_row_is_active_; }
 
   // View overrides:
-  void Layout(PassKey) override;
+  void Layout() override;
   gfx::Size CalculatePreferredSize() const override;
   bool GetNeedsNotificationWhenVisibleBoundsChange() const override;
   void OnVisibleBoundsChanged() override;
@@ -338,15 +342,6 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
   // Updates the |x| and |width| of each of the columns in |visible_columns_|.
   void UpdateVisibleColumnSizes();
 
-  // Returns to the src icon bounds. If it exceeds the drawn boundary.It needs
-  // to be clipped, and this method has done so for the caller.
-  gfx::Rect GetPaintIconSrcBounds(const gfx::Size& image_size,
-                                  int image_dest_width) const;
-
-  // Returns the paint icon bounds in the cell.
-  gfx::Rect GetPaintIconDestBounds(const gfx::Rect& cell_bounds,
-                                   int text_bounds_x) const;
-
   // Returns the cell's that need to be painted for the specified region.
   // |bounds| is in terms of |this|.
   PaintRegion GetPaintRegion(const gfx::Rect& bounds) const;
@@ -366,7 +361,7 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
   void AdvanceActiveVisibleColumn(AdvanceDirection direction);
 
   // Sets the selection to the specified index (in terms of the view).
-  void SelectByViewIndex(std::optional<size_t> view_index);
+  void SelectByViewIndex(absl::optional<size_t> view_index);
 
   // Sets the selection model to |new_selection|.
   void SetSelectionModel(ui::ListSelectionModel new_selection);
@@ -484,9 +479,7 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
   // Updates the focus rings of the TableView and the TableHeader if necessary.
   void UpdateFocusRings();
 
-  // TODO(327473315): Only one of raw_ptr in this class is dangling. Find which
-  // one.
-  raw_ptr<ui::TableModel, LeakedDanglingUntriaged> model_ = nullptr;
+  raw_ptr<ui::TableModel> model_ = nullptr;
 
   std::vector<ui::TableColumn> columns_;
 
@@ -496,20 +489,18 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
 
   // The active visible column. Used for keyboard access to functionality such
   // as sorting and resizing. nullopt if no visible column is active.
-  std::optional<size_t> active_visible_column_index_ = std::nullopt;
+  absl::optional<size_t> active_visible_column_index_ = absl::nullopt;
 
   // The header. This is only created if more than one column is specified or
   // the first column has a non-empty title.
-  // TODO(327473315): Only one of raw_ptr in this class is dangling. Find which
-  // one.
-  raw_ptr<TableHeader, LeakedDanglingUntriaged> header_ = nullptr;
+  raw_ptr<TableHeader> header_ = nullptr;
 
   // TableView allows using the keyboard to activate a cell or row, including
   // optionally the header row. This bool keeps track of whether the active row
   // is the header row, since the selection model doesn't support that.
   bool header_row_is_active_ = false;
 
-  TableType table_type_ = TableType::kTextOnly;
+  TableTypes table_type_ = TableTypes::TEXT_ONLY;
 
   bool single_selection_ = true;
 
@@ -520,9 +511,7 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
   // is selected then.
   bool select_on_remove_ = true;
 
-  // TODO(327473315): Only one of raw_ptr in this class is dangling. Find which
-  // one.
-  raw_ptr<TableViewObserver, LeakedDanglingUntriaged> observer_ = nullptr;
+  raw_ptr<TableViewObserver, DanglingUntriaged> observer_ = nullptr;
   // If |sort_on_paint_| is true, table will sort before painting.
   bool sort_on_paint_ = false;
 
@@ -533,8 +522,8 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
 
   int row_height_;
 
-  // Width of the ScrollView at last layout. Used to determine when we should
-  // invoke UpdateVisibleColumnSizes().
+  // Width of the ScrollView last time Layout() was invoked. Used to determine
+  // when we should invoke UpdateVisibleColumnSizes().
   int last_parent_width_ = 0;
 
   // The width we layout to. This may differ from |last_parent_width_|.
@@ -547,9 +536,7 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
   std::vector<size_t> view_to_model_;
   std::vector<size_t> model_to_view_;
 
-  // TODO(327473315): Only one of raw_ptr in this class is dangling. Find which
-  // one.
-  raw_ptr<TableGrouper, LeakedDanglingUntriaged> grouper_ = nullptr;
+  raw_ptr<TableGrouper> grouper_ = nullptr;
 
   // True if in SetVisibleColumnWidth().
   bool in_set_visible_column_width_ = false;
@@ -563,12 +550,12 @@ class VIEWS_EXPORT TableView : public View, public ui::TableModelObserver {
 };
 
 BEGIN_VIEW_BUILDER(VIEWS_EXPORT, TableView, View)
-VIEW_BUILDER_PROPERTY(std::optional<size_t>, ActiveVisibleColumnIndex)
+VIEW_BUILDER_PROPERTY(absl::optional<size_t>, ActiveVisibleColumnIndex)
 VIEW_BUILDER_PROPERTY(const std::vector<ui::TableColumn>&,
                       Columns,
                       std::vector<ui::TableColumn>)
 VIEW_BUILDER_PROPERTY(ui::TableModel*, Model)
-VIEW_BUILDER_PROPERTY(TableType, TableType)
+VIEW_BUILDER_PROPERTY(TableTypes, TableType)
 VIEW_BUILDER_PROPERTY(bool, SingleSelection)
 VIEW_BUILDER_PROPERTY(TableGrouper*, Grouper)
 VIEW_BUILDER_PROPERTY(TableViewObserver*, Observer)

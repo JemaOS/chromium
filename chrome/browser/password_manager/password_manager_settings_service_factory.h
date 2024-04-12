@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_PASSWORD_MANAGER_PASSWORD_MANAGER_SETTINGS_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_PASSWORD_MANAGER_PASSWORD_MANAGER_SETTINGS_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "components/keyed_service/core/refcounted_keyed_service.h"
 #include "components/keyed_service/core/service_access_type.h"
@@ -27,13 +27,13 @@ class PasswordManagerSettingsServiceFactory
       const PasswordManagerSettingsServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<PasswordManagerSettingsServiceFactory>;
+  friend base::DefaultSingletonTraits<PasswordManagerSettingsServiceFactory>;
 
   PasswordManagerSettingsServiceFactory();
   ~PasswordManagerSettingsServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

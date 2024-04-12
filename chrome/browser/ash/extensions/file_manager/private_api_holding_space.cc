@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-#include "ash/public/cpp/holding_space/holding_space_metrics.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/memory/ref_counted.h"
 #include "chrome/browser/ash/file_manager/fileapi_util.h"
 #include "chrome/browser/profiles/profile.h"
@@ -31,7 +31,7 @@ ExtensionFunction::ResponseAction
 FileManagerPrivateInternalToggleAddedToHoldingSpaceFunction::Run() {
   using extensions::api::file_manager_private_internal::
       ToggleAddedToHoldingSpace::Params;
-  const std::optional<Params> params = Params::Create(args());
+  const absl::optional<Params> params = Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   ash::HoldingSpaceKeyedService* const holding_space =
@@ -56,21 +56,19 @@ FileManagerPrivateInternalToggleAddedToHoldingSpaceFunction::Run() {
   }
 
   if (params->add) {
-    std::erase_if(
+    base::EraseIf(
         file_system_urls,
         [holding_space](const storage::FileSystemURL& file_system_url) {
           return holding_space->ContainsPinnedFile(file_system_url);
         });
-    holding_space->AddPinnedFiles(
-        file_system_urls, ash::holding_space_metrics::EventSource::kFilesApp);
+    holding_space->AddPinnedFiles(file_system_urls);
   } else {
-    std::erase_if(
+    base::EraseIf(
         file_system_urls,
         [holding_space](const storage::FileSystemURL& file_system_url) {
           return !holding_space->ContainsPinnedFile(file_system_url);
         });
-    holding_space->RemovePinnedFiles(
-        file_system_urls, ash::holding_space_metrics::EventSource::kFilesApp);
+    holding_space->RemovePinnedFiles(file_system_urls);
   }
 
   return RespondNow(NoArguments());

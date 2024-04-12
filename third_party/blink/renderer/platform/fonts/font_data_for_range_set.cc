@@ -13,4 +13,10 @@ FontDataForRangeSet::FontDataForRangeSet(const FontDataForRangeSet& other) {
   range_set_ = other.range_set_;
 }
 
+FontDataForRangeSetFromCache::~FontDataForRangeSetFromCache() {
+  if (font_data_ && !font_data_->IsCustomFont()) {
+    FontCache::Get().ReleaseFontData(font_data_.get());
+  }
+}
+
 }  // namespace blink

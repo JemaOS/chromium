@@ -28,6 +28,7 @@ import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.UiThreadTest;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 
@@ -40,7 +41,6 @@ public class StartSurfaceWithParentViewBinderUnitTest {
     private ViewGroup mTasksSurfaceView;
     private ViewGroup mFeedSwipeRefreshLayout;
     private PropertyModel mPropertyModel;
-
     @SuppressWarnings({"FieldCanBeLocal", "unused"})
     private PropertyModelChangeProcessor mPropertyModelChangeProcessor;
 
@@ -56,15 +56,14 @@ public class StartSurfaceWithParentViewBinderUnitTest {
         mActivity.setContentView(mParentView);
 
         mPropertyModel = new PropertyModel(StartSurfaceProperties.ALL_KEYS);
-        mPropertyModelChangeProcessor =
-                PropertyModelChangeProcessor.create(
-                        mPropertyModel,
-                        new StartSurfaceWithParentViewBinder.ViewHolder(
-                                mParentView, mTasksSurfaceView, mFeedSwipeRefreshLayout),
-                        StartSurfaceWithParentViewBinder::bind);
+        mPropertyModelChangeProcessor = PropertyModelChangeProcessor.create(mPropertyModel,
+                new StartSurfaceWithParentViewBinder.ViewHolder(
+                        mParentView, mTasksSurfaceView, mFeedSwipeRefreshLayout),
+                StartSurfaceWithParentViewBinder::bind);
     }
 
     @Test
+    @UiThreadTest
     @SmallTest
     public void testSetShowAndHideOverview() {
         assertFalse(mPropertyModel.get(IS_SHOWING_OVERVIEW));
@@ -88,6 +87,7 @@ public class StartSurfaceWithParentViewBinderUnitTest {
     }
 
     @Test
+    @UiThreadTest
     @SmallTest
     public void testSetBottomBarHeight() {
         mPropertyModel.set(BOTTOM_BAR_HEIGHT, 10);
@@ -101,6 +101,7 @@ public class StartSurfaceWithParentViewBinderUnitTest {
     }
 
     @Test
+    @UiThreadTest
     @SmallTest
     public void testSetTopBarHeight() {
         mPropertyModel.set(TOP_MARGIN, 10);

@@ -71,14 +71,14 @@ const char kSanitizedTestManagementPolicy[] =
     "  },"
     "}";
 
-constexpr char kTestManagementPolicy3[] =
+const char kTestManagementPolicy3[] =
     "{"
     "  \"*\": {"
     "    \"runtime_blocked_hosts\": [\"%s\"]"
     "  }"
     "}";
 
-constexpr char kTestManagementPolicy4[] =
+const char kTestManagementPolicy4[] =
     "{"
     "  \"*\": {"
     "    \"runtime_allowed_hosts\": [\"%s\"]"
@@ -160,18 +160,11 @@ TEST(ExtensionSettingsPolicyHandlerTest, CheckPolicySettingsURL) {
       "*://example.com/*",      "https://example.*",     "*://*.example.*"};
 
   // Crafts and parses a ExtensionSettings policy to test URL parsing.
-  enum class ManagementPolicy {
-    kPolicy3,
-    kPolicy4,
-  };
-  auto url_parses_successfully = [](ManagementPolicy policy,
+  auto url_parses_successfully = [](const char* policy_template,
                                     const std::string& url) {
-    std::string policy_json =
-        (policy == ManagementPolicy::kPolicy3)
-            ? base::StringPrintf(kTestManagementPolicy3, url.c_str())
-            : base::StringPrintf(kTestManagementPolicy4, url.c_str());
-    std::optional<base::Value> policy_value =
-        base::JSONReader::Read(policy_json, kJsonParseOptions);
+    std::string policy = base::StringPrintf(policy_template, url.c_str());
+    absl::optional<base::Value> policy_value =
+        base::JSONReader::Read(policy, kJsonParseOptions);
     if (!policy_value)
       return false;
 
@@ -190,17 +183,13 @@ TEST(ExtensionSettingsPolicyHandlerTest, CheckPolicySettingsURL) {
   };
 
   for (const std::string& url : good_urls) {
-    EXPECT_TRUE(url_parses_successfully(ManagementPolicy::kPolicy3, url))
-        << url;
-    EXPECT_TRUE(url_parses_successfully(ManagementPolicy::kPolicy4, url))
-        << url;
+    EXPECT_TRUE(url_parses_successfully(kTestManagementPolicy3, url)) << url;
+    EXPECT_TRUE(url_parses_successfully(kTestManagementPolicy4, url)) << url;
   }
 
   for (const std::string& url : bad_urls) {
-    EXPECT_FALSE(url_parses_successfully(ManagementPolicy::kPolicy3, url))
-        << url;
-    EXPECT_FALSE(url_parses_successfully(ManagementPolicy::kPolicy4, url))
-        << url;
+    EXPECT_FALSE(url_parses_successfully(kTestManagementPolicy3, url)) << url;
+    EXPECT_FALSE(url_parses_successfully(kTestManagementPolicy4, url)) << url;
   }
 }
 

@@ -34,7 +34,7 @@
         "properties": {
           "windowId": {
             "type": "integer",
-            "description": "The ID of the window to open the action popup in. Defaults to the currently-active window if unspecified.",
+            "description": "The id of the window to open the action popup in. Defaults to the currently-active window if unspecified.",
             "optional": true
           }
         }
@@ -175,8 +175,7 @@
         "properties": {
           "text": {
             "type": "string",
-            "optional": true,
-            "description": "Any number of characters can be passed, but only about four can fit in the space. If an empty string (<code>''</code>) is passed, the badge text is cleared.  If <code>tabId</code> is specified and <code>text</code> is null, the text for the specified tab is cleared and defaults to the global badge text."
+            "description": "Any number of characters can be passed, but only about four can fit in the space."
           },
           "tabId": {
             "type": "integer",
@@ -194,7 +193,7 @@
     }, {
       "name": "getBadgeText",
       "type": "function",
-      "description": "Gets the badge text of the action. If no tab is specified, the non-tab-specific badge text is returned. If <a href='declarativeNetRequest#setExtensionActionOptions'>displayActionCountAsBadgeText</a> is enabled, a placeholder text will be returned unless the <a href='/docs/extensions/develop/concepts/declare-permissions#declarativeNetRequestFeedback'>declarativeNetRequestFeedback</a> permission is present or tab-specific badge text was provided.",
+      "description": "Gets the badge text of the action. If no tab is specified, the non-tab-specific badge text is returned. If <a href='declarativeNetRequest#setExtensionActionOptions'>displayActionCountAsBadgeText</a> is enabled, a placeholder text will be returned unless the <a href='declare_permissions#declarativeNetRequestFeedback'>declarativeNetRequestFeedback</a> permission is present or tab-specific badge text was provided.",
       "parameters": [{
         "name": "details",
         "$ref": "TabDetails"
@@ -311,7 +310,7 @@
         "optional": true,
         "name": "tabId",
         "minimum": 0,
-        "description": "The ID of the tab for which you want to modify the action."
+        "description": "The id of the tab for which you want to modify the action."
       }],
       "returns_async": {
         "name": "callback",
@@ -327,7 +326,7 @@
         "optional": true,
         "name": "tabId",
         "minimum": 0,
-        "description": "The ID of the tab for which you want to modify the action."
+        "description": "The id of the tab for which you want to modify the action."
       }],
       "returns_async": {
         "name": "callback",
@@ -344,7 +343,7 @@
           "optional": true,
           "name": "tabId",
           "minimum": 0,
-          "description": "The ID of the tab for which you want check enabled status."
+          "description": "The id of the tab for which you want check enabled status."
         }
       ],
       "returns_async": {

@@ -17,7 +17,6 @@
 #include "ui/gfx/geometry/vector2d.h"
 #include "ui/views/drag_utils.h"
 
-namespace tab_groups {
 namespace {
 
 // The MIME type for the clipboard format for SavedTabGroupDragData.
@@ -35,13 +34,7 @@ void AddButtonImageToOSExchangeData(SavedTabGroupButton* button,
   const gfx::Rect og_bounds = button->bounds();
   gfx::Rect adjusted_bounds = og_bounds;
   adjusted_bounds.Offset(-og_bounds.OffsetFromOrigin());
-  // `adjusted_bounds` is in mirrored coordinates (i.e. origin in the top right
-  // in RTL). However painting takes place in unmirrored coordinates (i.e.
-  // origin in the top left, even in RTL), so to place the button at the origin,
-  // we must place it at the unmirrored origin.
-  const gfx::Rect unmirrored_bounds =
-      button->parent()->GetMirroredRect(adjusted_bounds);
-  button->SetBoundsRect(unmirrored_bounds);
+  button->SetBoundsRect(adjusted_bounds);
 
   // Take a snapshot of the button.
   SkBitmap bitmap;
@@ -73,27 +66,26 @@ const ui::ClipboardFormatType& SavedTabGroupDragData::GetFormatType() {
 }
 
 // static
-std::optional<SavedTabGroupDragData>
+absl::optional<SavedTabGroupDragData>
 SavedTabGroupDragData::ReadFromOSExchangeData(const ui::OSExchangeData* data) {
   if (!data->HasCustomFormat(GetFormatType())) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
-  std::optional<base::Pickle> drag_data_pickle =
-      data->GetPickledData(GetFormatType());
-  if (!drag_data_pickle.has_value()) {
-    return std::nullopt;
+  base::Pickle drag_data_pickle;
+  if (!data->GetPickledData(GetFormatType(), &drag_data_pickle)) {
+    return absl::nullopt;
   }
 
-  base::PickleIterator data_iterator(drag_data_pickle.value());
+  base::PickleIterator data_iterator(drag_data_pickle);
   std::string guid_str;
   if (!data_iterator.ReadString(&guid_str)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   base::Uuid guid = base::Uuid::ParseCaseInsensitive(guid_str);
   if (!guid.is_valid()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return SavedTabGroupDragData(guid);
@@ -110,6 +102,6 @@ void SavedTabGroupDragData::WriteToOSExchangeData(
   base::Pickle data_pickle;
   data_pickle.WriteString(button->guid().AsLowercaseString());
   data->SetPickledData(GetFormatType(), data_pickle);
-}
 
-}  // namespace tab_groups
+  // TODO(tbergquist): Save profile too so we can prevent cross-profile drops.
+}

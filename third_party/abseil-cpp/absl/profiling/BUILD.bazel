@@ -19,14 +19,7 @@ load(
     "ABSL_TEST_COPTS",
 )
 
-package(
-    default_visibility = ["//visibility:private"],
-    features = [
-        "header_modules",
-        "layering_check",
-        "parse_headers",
-    ],
-)
+package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])
 
@@ -59,7 +52,6 @@ cc_test(
         "//absl/synchronization",
         "//absl/synchronization:thread_pool",
         "//absl/time",
-        "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -88,7 +80,6 @@ cc_test(
     deps = [
         ":exponential_biased",
         "//absl/strings",
-        "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -100,7 +91,6 @@ cc_library(
     copts = ABSL_DEFAULT_COPTS,
     linkopts = ABSL_DEFAULT_LINKOPTS,
     visibility = [
-        # TODO(b/304670045): remove after periodic_sampler moves to //spanner/common.
         "//absl:__subpackages__",
     ],
     deps = [
@@ -119,14 +109,13 @@ cc_test(
     deps = [
         ":periodic_sampler",
         "//absl/base:core_headers",
-        "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
 )
 
 cc_binary(
     name = "periodic_sampler_benchmark",
-    testonly = True,
+    testonly = 1,
     srcs = ["internal/periodic_sampler_benchmark.cc"],
     copts = ABSL_TEST_COPTS,
     linkopts = ABSL_DEFAULT_LINKOPTS,

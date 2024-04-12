@@ -4,48 +4,32 @@
 
 package org.chromium.chrome.browser.tabmodel;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
-
-import org.chromium.base.Callback;
-import org.chromium.base.supplier.ObservableSupplier;
-import org.chromium.base.supplier.ObservableSupplierImpl;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * This class is responsible for creating {@link TabModelFilter}s to be applied on the {@link
- * TabModel}s. It always owns two {@link TabModelFilter}s, one for normal {@link TabModel} and one
- * for incognito {@link TabModel}.
+ * This class is responsible for creating {@link TabModelFilter}s to be applied on the
+ * {@link TabModel}s. It always owns two {@link TabModelFilter}s, one for normal {@link TabModel}
+ * and one for incognito {@link TabModel}.
  */
-public class TabModelFilterProvider {
-    @VisibleForTesting public List<TabModelFilter> mTabModelFilterList = Collections.emptyList();
-
+public class TabModelFilterProvider implements TabModelSelectorObserver {
+    @VisibleForTesting
+    public List<TabModelFilter> mTabModelFilterList = Collections.emptyList();
     private final List<TabModelObserver> mPendingTabModelObserver = new ArrayList<>();
-    private final ObservableSupplierImpl<TabModelFilter> mCurrentTabModelFilterSupplier =
-            new ObservableSupplierImpl<>();
-    private final Callback<TabModel> mCurrentTabModelObserver = this::onCurrentTabModelChanged;
-
-    private TabModelSelector mTabModelSelector;
-    private TabModelSelectorObserver mTabModelSelectorObserver;
 
     @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
     public TabModelFilterProvider() {}
 
-    public void init(
-            @NonNull TabModelFilterFactory tabModelFilterFactory,
-            @NonNull TabModelSelector tabModelSelector,
-            @NonNull List<TabModel> tabModels) {
+    public void init(TabModelFilterFactory tabModelFilterFactory, List<TabModel> tabModels) {
         assert mTabModelFilterList.isEmpty();
         assert tabModels.size() > 0;
 
-        mTabModelSelector = tabModelSelector;
-
         List<TabModelFilter> filters = new ArrayList<>();
-        for (TabModel tabModel : tabModels) {
-            filters.add(tabModelFilterFactory.createTabModelFilter(tabModel));
+        for (int i = 0; i < tabModels.size(); i++) {
+            filters.add(tabModelFilterFactory.createTabModelFilter(tabModels.get(i)));
         }
 
         mTabModelFilterList = Collections.unmodifiableList(filters);
@@ -56,18 +40,6 @@ public class TabModelFilterProvider {
             }
         }
         mPendingTabModelObserver.clear();
-
-        mTabModelSelectorObserver =
-                new TabModelSelectorObserver() {
-                    @Override
-                    public void onTabStateInitialized() {
-                        markTabStateInitialized();
-                        mTabModelSelector.removeObserver(mTabModelSelectorObserver);
-                        mTabModelSelectorObserver = null;
-                    }
-                };
-        mTabModelSelector.addObserver(mTabModelSelectorObserver);
-        mTabModelSelector.getCurrentTabModelSupplier().addObserver(mCurrentTabModelObserver);
     }
 
     /**
@@ -81,8 +53,8 @@ public class TabModelFilterProvider {
             return;
         }
 
-        for (TabModelFilter filter : mTabModelFilterList) {
-            filter.addObserver(observer);
+        for (int i = 0; i < mTabModelFilterList.size(); i++) {
+            mTabModelFilterList.get(i).addObserver(observer);
         }
     }
 
@@ -96,8 +68,8 @@ public class TabModelFilterProvider {
             return;
         }
 
-        for (TabModelFilter filter : mTabModelFilterList) {
-            filter.removeObserver(observer);
+        for (int i = 0; i < mTabModelFilterList.size(); i++) {
+            mTabModelFilterList.get(i).removeObserver(observer);
         }
     }
 
@@ -108,9 +80,9 @@ public class TabModelFilterProvider {
      * initialized.
      */
     public TabModelFilter getTabModelFilter(boolean isIncognito) {
-        for (TabModelFilter filter : mTabModelFilterList) {
-            if (filter.isIncognito() == isIncognito) {
-                return filter;
+        for (int i = 0; i < mTabModelFilterList.size(); i++) {
+            if (mTabModelFilterList.get(i).isIncognito() == isIncognito) {
+                return mTabModelFilterList.get(i);
             }
         }
         return null;
@@ -122,21 +94,22 @@ public class TabModelFilterProvider {
      * library is initialized.
      */
     public TabModelFilter getCurrentTabModelFilter() {
-        return mCurrentTabModelFilterSupplier.get();
+        for (int i = 0; i < mTabModelFilterList.size(); i++) {
+            if (mTabModelFilterList.get(i).isCurrentlySelectedFilter()) {
+                return mTabModelFilterList.get(i);
+            }
+        }
+        return null;
     }
 
-    /** Returns an observable supplier for the current tab model filter. */
-    public ObservableSupplier<TabModelFilter> getCurrentTabModelFilterSupplier() {
-        return mCurrentTabModelFilterSupplier;
-    }
-
-    /** This method destroys all owned {@link TabModelFilter}. */
+    /**
+     * This method destroys all owned {@link TabModelFilter}.
+     */
     public void destroy() {
-        for (TabModelFilter filter : mTabModelFilterList) {
-            filter.destroy();
+        for (int i = 0; i < mTabModelFilterList.size(); i++) {
+            mTabModelFilterList.get(i).destroy();
         }
         mPendingTabModelObserver.clear();
-        cleanupTabModelSelectorObservers();
     }
 
     private void markTabStateInitialized() {
@@ -145,31 +118,16 @@ public class TabModelFilterProvider {
         }
     }
 
-    public void onCurrentTabModelChanged(TabModel model) {
-        for (TabModelFilter filter : mTabModelFilterList) {
-            if (filter.isCurrentlySelectedFilter()) {
-                mCurrentTabModelFilterSupplier.set(filter);
-                return;
-            }
-        }
-        assert model == null : "Non-null current TabModel should set an active TabModelFilter.";
-        mCurrentTabModelFilterSupplier.set(null);
+    // Override TabModelSelectorObserver.
+    @Override
+    public void onTabStateInitialized() {
+        markTabStateInitialized();
     }
 
-    /** Reset the internal filter list to allow initialization again. */
+    /**
+     * Reset the internal filter list to allow initialization again.
+     */
     public void resetTabModelFilterListForTesting() {
         mTabModelFilterList = Collections.emptyList();
-        mCurrentTabModelFilterSupplier.set(null);
-        cleanupTabModelSelectorObservers();
-    }
-
-    private void cleanupTabModelSelectorObservers() {
-        if (mTabModelSelector != null) {
-            if (mTabModelSelectorObserver != null) {
-                mTabModelSelector.removeObserver(mTabModelSelectorObserver);
-                mTabModelSelectorObserver = null;
-            }
-            mTabModelSelector.getCurrentTabModelSupplier().removeObserver(mCurrentTabModelObserver);
-        }
     }
 }

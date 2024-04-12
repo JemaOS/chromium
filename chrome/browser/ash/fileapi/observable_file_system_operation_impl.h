@@ -19,7 +19,6 @@ class ObservableFileSystemOperationImpl
  public:
   ObservableFileSystemOperationImpl(
       const AccountId& account_id,
-      storage::OperationType type,
       const storage::FileSystemURL& url,
       storage::FileSystemContext* file_system_context,
       std::unique_ptr<storage::FileSystemOperationContext> operation_context);

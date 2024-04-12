@@ -6,10 +6,14 @@
 
 namespace ash::curtain {
 
-SecurityCurtainController::InitParams::InitParams() = default;
+SecurityCurtainController::InitParams::InitParams()
+    : event_filter(base::BindRepeating(
+          [](const ui::Event&) { return FilterResult::kSuppressEvent; })) {}
 
-SecurityCurtainController::InitParams::InitParams(ViewFactory curtain_factory)
-    : curtain_factory(std::move(curtain_factory)) {}
+SecurityCurtainController::InitParams::InitParams(EventFilter filter,
+                                                  ViewFactory curtain_factory)
+    : event_filter(std::move(filter)),
+      curtain_factory(std::move(curtain_factory)) {}
 
 SecurityCurtainController::InitParams::InitParams(const InitParams&) = default;
 SecurityCurtainController::InitParams&

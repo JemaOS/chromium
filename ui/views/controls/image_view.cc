@@ -20,6 +20,16 @@
 
 namespace views {
 
+namespace {
+
+// Returns the pixels for the bitmap in |image| at scale |image_scale|.
+void* GetBitmapPixels(const gfx::ImageSkia& image, float image_scale) {
+  DCHECK_NE(0.0f, image_scale);
+  return image.GetRepresentation(image_scale).GetBitmap().getPixels();
+}
+
+}  // namespace
+
 ImageView::ImageView() = default;
 
 ImageView::ImageView(const ui::ImageModel& image_model) {
@@ -29,6 +39,9 @@ ImageView::ImageView(const ui::ImageModel& image_model) {
 ImageView::~ImageView() = default;
 
 void ImageView::SetImage(const ui::ImageModel& image_model) {
+  if (IsImageEqual(image_model))
+    return;
+
   const gfx::Size pref_size = GetPreferredSize();
   image_model_ = image_model;
   scaled_image_ = gfx::ImageSkia();
@@ -43,6 +56,29 @@ gfx::ImageSkia ImageView::GetImage() const {
 
 ui::ImageModel ImageView::GetImageModel() const {
   return image_model_;
+}
+
+bool ImageView::IsImageEqual(const ui::ImageModel& image_model) const {
+  if (image_model != image_model_)
+    return false;
+
+  // It's not feasible to run the old and new generators and compare output
+  // here, so for safety, simply assume the new generator's output differs.
+  if (image_model.IsImageGenerator())
+    return false;
+
+  if (!image_model.IsImage())
+    return true;
+
+  // An ImageModel's Image holds a handle to a backing store, which may have
+  // changed since the last call to SetImage(). The expectation is that
+  // SetImage() with different pixels is treated as though the image changed.
+  // For this reason we compare not only the Image but also the pixels we last
+  // painted.
+  return last_paint_scale_ != 0.0f &&
+         last_painted_bitmap_pixels_ ==
+             GetBitmapPixels(image_model.GetImage().AsImageSkia(),
+                             last_paint_scale_);
 }
 
 gfx::Size ImageView::GetImageSize() const {
@@ -70,7 +106,10 @@ void ImageView::OnThemeChanged() {
 }
 
 void ImageView::OnPaintImage(gfx::Canvas* canvas) {
-  gfx::ImageSkia image = GetPaintImage(canvas->image_scale());
+  last_paint_scale_ = canvas->image_scale();
+  last_painted_bitmap_pixels_ = nullptr;
+
+  gfx::ImageSkia image = GetPaintImage(last_paint_scale_);
   if (image.isNull())
     return;
 
@@ -89,6 +128,7 @@ void ImageView::OnPaintImage(gfx::Canvas* canvas) {
   } else {
     canvas->DrawImageInt(image, image_bounds.x(), image_bounds.y());
   }
+  last_painted_bitmap_pixels_ = GetBitmapPixels(image, last_paint_scale_);
 }
 
 gfx::ImageSkia ImageView::GetPaintImage(float scale) {
@@ -123,7 +163,7 @@ gfx::ImageSkia ImageView::GetPaintImage(float scale) {
   return scaled_image_;
 }
 
-BEGIN_METADATA(ImageView)
+BEGIN_METADATA(ImageView, ImageViewBase)
 END_METADATA
 
 }  // namespace views

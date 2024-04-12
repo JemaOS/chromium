@@ -7,6 +7,10 @@
 // well as feature.h, simple_feature.h, and feature_provider.h.
 
 {
+  "about_page": {
+    "channel": "stable",
+    "extension_types": ["shared_module"]
+  },
   "action": {
     "channel": "stable",
     "extension_types": ["extension"],
@@ -19,6 +23,10 @@
   "app.launch": {
     "channel": "stable",
     "extension_types": ["legacy_packaged_app", "hosted_app"]
+  },
+  "author": {
+    "channel": "stable",
+    "extension_types": "all"
   },
   "browser_action": {
     "channel": "stable",
@@ -44,6 +52,10 @@
     "extension_types": ["extension", "legacy_packaged_app"],
     "platforms": ["chromeos"]
   },
+  "commands": {
+    "channel": "stable",
+    "extension_types": ["extension", "platform_app"]
+  },
   "content_scripts": [
     {
       "channel": "stable",
@@ -61,6 +73,20 @@
     "channel": "stable",
     "extension_types": [
       "extension", "legacy_packaged_app", "hosted_app"
+    ]
+  },
+  "event_rules": {
+    "channel": "stable",
+    // "event_rules" does not grant any capabilities, it's just
+    // an optimisation for any API which uses events, so it's safe
+    // to expose to all extension types.
+    "extension_types": [
+      "extension",
+      "legacy_packaged_app",
+      "platform_app",
+      "hosted_app",
+      "shared_module",
+      "theme"
     ]
   },
   "devtools_page": {
@@ -103,6 +129,10 @@
       ]
     }
   ],
+  "export": {
+    "channel": "stable",
+    "extension_types": ["shared_module"]
+  },
   "file_browser_handlers": {
     "channel": "stable",
     "extension_types": ["extension", "legacy_packaged_app"]
@@ -119,6 +149,18 @@
       "58B0C2968C335964D5433E89CA4D86628A0E3D4B"   // http://crbug.com/673004
     ]
   }],
+  "homepage_url": {
+    "channel": "stable",
+    "extension_types": ["extension", "legacy_packaged_app"]
+  },
+  "import": {
+    "channel": "stable",
+    "extension_types": "all"
+  },
+  "input_components": {
+    "channel": "stable",
+    "extension_types": ["extension", "legacy_packaged_app"]
+  },
   "minimum_chrome_version": {
     "channel": "stable",
     "extension_types": [
@@ -143,7 +185,31 @@
       "chromeos_system_extension"
     ]
   },
+  "options_page": {
+    "channel": "stable",
+    "extension_types": [
+      "extension",
+      "legacy_packaged_app",
+      "hosted_app",
+      "chromeos_system_extension"
+    ]
+  },
+  "page_action": {
+    "channel": "stable",
+    "extension_types": ["extension"],
+    "max_manifest_version": 2
+  },
   "platforms": {
+    "channel": "stable",
+    "extension_types": "all"
+  },
+  "requirements": {
+    "channel": "stable",
+    "extension_types": [
+      "extension", "legacy_packaged_app", "hosted_app", "platform_app"
+    ]
+  },
+  "short_name": {
     "channel": "stable",
     "extension_types": "all"
   },
@@ -182,6 +248,10 @@
   "tts_engine": {
     "channel": "stable",
     "extension_types": ["extension", "legacy_packaged_app"]
+  },
+  "update_url": {
+    "channel": "stable",
+    "extension_types": "all"
   },
   "url_handlers": {
     "channel": "stable",

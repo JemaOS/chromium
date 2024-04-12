@@ -1,15 +1,13 @@
-import asyncio
 import functools
 from typing import (
     Any,
+    Awaitable,
     Callable,
     Optional,
     Mapping,
     MutableMapping,
     TYPE_CHECKING,
 )
-
-from ..undefined import UNDEFINED
 
 if TYPE_CHECKING:
     from ..client import BidiSession
@@ -51,8 +49,7 @@ class command:
         self.params_fn = fn
         self.result_fn: Optional[Callable[..., Any]] = None
 
-    def result(self, fn: Callable[[Any, MutableMapping[str, Any]],
-                                  Any]) -> None:
+    def result(self, fn: Callable[[Any, MutableMapping[str, Any]], Any]) -> None:
         self.result_fn = fn
 
     def __set_name__(self, owner: Any, name: str) -> None:
@@ -64,7 +61,7 @@ class command:
         @functools.wraps(params_fn)
         async def inner(self: Any, **kwargs: Any) -> Any:
             raw_result = kwargs.pop("raw_result", False)
-            params = remove_undefined(params_fn(self, **kwargs))
+            params = params_fn(self, **kwargs)
 
             # Convert the classname and the method name to a bidi command name
             mod_name = owner.__name__[0].lower() + owner.__name__[1:]
@@ -77,18 +74,18 @@ class command:
 
             if result_fn is not None and not raw_result:
                 # Convert the result if we have a conversion function defined
-                if asyncio.iscoroutinefunction(result_fn):
-                    result = await result_fn(self, result)
-                else:
-                    result = result_fn(self, result)
+                result = result_fn(self, result)
             return result
 
         # Overwrite the method on the owner class with the wrapper
         setattr(owner, name, inner)
 
+    def __call__(*args: Any, **kwargs: Any) -> Awaitable[Any]:
+        # This isn't really used, but mypy doesn't understand __set_name__
+        pass
+
 
 class BidiModule:
-
     def __init__(self, session: "BidiSession"):
         self.session = session
 
@@ -100,7 +97,3 @@ def to_camelcase(name: str) -> str:
     for i in range(1, len(parts)):
         parts[i] = parts[i].title()
     return "".join(parts)
-
-
-def remove_undefined(obj: Mapping[str, Any]) -> Mapping[str, Any]:
-    return {key: value for key, value in obj.items() if value != UNDEFINED}

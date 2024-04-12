@@ -18,7 +18,7 @@ class UpdateScreen;
 
 // Interface for dependency injection between WelcomeScreen and its actual
 // representation. Owned by UpdateScreen.
-class UpdateView {
+class UpdateView : public base::SupportsWeakPtr<UpdateView> {
  public:
   // The screen name must never change. It's stored into local state as a
   // pending screen during OOBE update. So the value should be the same between
@@ -47,10 +47,9 @@ class UpdateView {
   virtual void ShowLowBatteryWarningMessage(bool value) = 0;
   virtual void SetAutoTransition(bool value) = 0;
   virtual void SetCancelUpdateShortcutEnabled(bool value) = 0;
-  virtual base::WeakPtr<UpdateView> AsWeakPtr() = 0;
 };
 
-class UpdateScreenHandler final : public UpdateView, public BaseScreenHandler {
+class UpdateScreenHandler : public UpdateView, public BaseScreenHandler {
  public:
   using TView = UpdateView;
 
@@ -72,7 +71,6 @@ class UpdateScreenHandler final : public UpdateView, public BaseScreenHandler {
   void ShowLowBatteryWarningMessage(bool value) override;
   void SetAutoTransition(bool value) override;
   void SetCancelUpdateShortcutEnabled(bool value) override;
-  base::WeakPtr<UpdateView> AsWeakPtr() override;
 
   void OnAccessibilityStatusChanged(
       const AccessibilityStatusEventDetails& details);
@@ -80,8 +78,6 @@ class UpdateScreenHandler final : public UpdateView, public BaseScreenHandler {
   // BaseScreenHandler:
   void DeclareLocalizedValues(
       ::login::LocalizedValuesBuilder* builder) override;
-
-  base::WeakPtrFactory<UpdateView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

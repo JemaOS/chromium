@@ -10,8 +10,7 @@ function feedLink(url) {
 }
 
 function main() {
-  chrome.tabs.query(function(tabs) {
-    const tab = tabs[0];
+  chrome.tabs.getSelected(function(tab) {
     chrome.storage.local.get(tab.id.toString(), function(result) {
       var feeds = result[tab.id];
       if (feeds.length == 1) {

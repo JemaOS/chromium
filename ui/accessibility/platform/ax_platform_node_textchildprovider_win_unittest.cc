@@ -9,7 +9,6 @@
 #include "ui/accessibility/platform/ax_platform_node_textchildprovider_win.h"
 #include "ui/accessibility/platform/ax_platform_node_textprovider_win.h"
 #include "ui/accessibility/platform/ax_platform_node_textrangeprovider_win.h"
-#include "ui/accessibility/test_ax_tree_update.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -31,26 +30,52 @@ class AXPlatformNodeTextChildProviderTest : public AXPlatformNodeWinTest {
   // character to allow the text pattern navigation to work with them too.
   // Because of that, a nontext leaf element is treated as a text element.
   void SetUp() override {
-    TestAXTreeUpdate update(std::string(R"HTML(
-      ++1 kRootWebArea
-      ++++2 kGroup
-      ++++++3 kGroup
-      ++++++4 kStaticText
-      ++++++5 kButton
-      ++++6 kStaticText
-      ++++++7 kInlineTextBox
-    )HTML"));
+    ui::AXNodeData root;
+    root.id = 1;
+    root.role = ax::mojom::Role::kRootWebArea;
 
-    update.nodes[1].SetName("non text child of root.");
-    update.nodes[1].SetNameFrom(ax::mojom::NameFrom::kAttribute);
-    update.nodes[2].SetName("non text child of nontext.");
-    update.nodes[2].SetNameFrom(ax::mojom::NameFrom::kAttribute);
-    update.nodes[3].SetName("text child of nontext.");
-    update.nodes[3].SetNameFrom(ax::mojom::NameFrom::kContents);
-    update.nodes[5].SetName("text child of root.");
-    update.nodes[5].SetNameFrom(ax::mojom::NameFrom::kContents);
-    update.nodes[6].SetName("text child of text.");
-    update.nodes[6].SetNameFrom(ax::mojom::NameFrom::kContents);
+    ui::AXNodeData nontext_child_of_root;
+    nontext_child_of_root.id = 2;
+    nontext_child_of_root.role = ax::mojom::Role::kGroup;
+    nontext_child_of_root.SetName("non text child of root.");
+    root.child_ids.push_back(nontext_child_of_root.id);
+
+    ui::AXNodeData text_child_of_root;
+    text_child_of_root.id = 3;
+    text_child_of_root.role = ax::mojom::Role::kStaticText;
+    text_child_of_root.SetName("text child of root.");
+    root.child_ids.push_back(text_child_of_root.id);
+
+    ui::AXNodeData nontext_child_of_nontext;
+    nontext_child_of_nontext.id = 4;
+    nontext_child_of_nontext.role = ax::mojom::Role::kGroup;
+    nontext_child_of_nontext.SetName("nontext child of nontext.");
+    nontext_child_of_root.child_ids.push_back(nontext_child_of_nontext.id);
+
+    ui::AXNodeData text_child_of_nontext;
+    text_child_of_nontext.id = 5;
+    text_child_of_nontext.role = ax::mojom::Role::kStaticText;
+    text_child_of_nontext.SetName("text child of nontext.");
+    nontext_child_of_root.child_ids.push_back(text_child_of_nontext.id);
+
+    ui::AXNodeData text_child_of_text;
+    text_child_of_text.id = 6;
+    text_child_of_text.role = ax::mojom::Role::kInlineTextBox;
+    text_child_of_text.SetName("text child of text.");
+    text_child_of_root.child_ids.push_back(text_child_of_text.id);
+
+    ui::AXTreeUpdate update;
+    ui::AXTreeData tree_data;
+    tree_data.tree_id = ui::AXTreeID::CreateNewAXTreeID();
+    update.tree_data = tree_data;
+    update.has_tree_data = true;
+    update.root_id = root.id;
+    update.nodes = {root,
+                    nontext_child_of_root,
+                    text_child_of_root,
+                    nontext_child_of_nontext,
+                    text_child_of_nontext,
+                    text_child_of_text};
 
     Init(update);
 
@@ -264,8 +289,7 @@ TEST_F(AXPlatformNodeTextChildProviderTest,
   EXPECT_HRESULT_SUCCEEDED(
       text_range_provider->GetText(-1, text_content.Receive()));
   EXPECT_EQ(base::WideToUTF16(text_content.Get()),
-            u"non text child of nontext.\ntext child of nontext.\n" +
-                kEmbeddedCharacterAsString);
+            kEmbeddedCharacterAsString + u"\ntext child of nontext.");
 
   ComPtr<IRawElementProviderSimple> enclosing_element;
   text_range_provider->GetEnclosingElement(&enclosing_element);
@@ -310,8 +334,7 @@ TEST_F(AXPlatformNodeTextChildProviderTest,
   base::win::ScopedBstr text_content;
   EXPECT_HRESULT_SUCCEEDED(
       text_range_provider->GetText(-1, text_content.Receive()));
-  EXPECT_EQ(base::WideToUTF16(text_content.Get()),
-            u"non text child of nontext.");
+  EXPECT_EQ(base::WideToUTF16(text_content.Get()), kEmbeddedCharacterAsString);
 
   ComPtr<IRawElementProviderSimple> enclosing_element;
   text_range_provider->GetEnclosingElement(&enclosing_element);

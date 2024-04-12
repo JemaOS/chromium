@@ -78,7 +78,7 @@ class BLINK_EXPORT WebHitTestResult {
 #endif
 
  protected:
-  WebPrivatePtrForGC<WebHitTestResultPrivate> private_;
+  WebPrivatePtr<WebHitTestResultPrivate> private_;
 };
 
 }  // namespace blink

@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.feed;
-
 import androidx.annotation.Nullable;
 
 import org.json.JSONException;
@@ -11,7 +10,9 @@ import org.json.JSONObject;
 
 import org.chromium.base.Log;
 
-/** Class for storing scroll state of a feed surface. */
+/**
+ * Class for storing scroll state of a feed surface.
+ */
 public class FeedScrollState {
     private static final String TAG = "FeedScrollState";
 
@@ -46,7 +47,8 @@ public class FeedScrollState {
     }
 
     /** Reads from json to recover a FeedScrollState object. */
-    static @Nullable FeedScrollState fromJson(String json) {
+    @Nullable
+    static FeedScrollState fromJson(String json) {
         if (json == null) return null;
         FeedScrollState result = new FeedScrollState();
         try {

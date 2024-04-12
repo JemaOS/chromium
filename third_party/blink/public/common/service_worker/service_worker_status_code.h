@@ -83,14 +83,11 @@ enum class ServiceWorkerStatusCode {
   // Service has crashed.
   kErrorStorageDisconnected = 21,
 
-  // The storage data is corrupted.
-  kErrorStorageDataCorrupted = 22,
-
   // Add new status codes here and update kMaxValue and enums.xml. The next new
-  // status code should be 23.
+  // status code should be 22.
 
   // Note: kMaxValue is needed only for histograms.
-  kMaxValue = kErrorStorageDataCorrupted,
+  kMaxValue = kErrorStorageDisconnected,
 };
 
 BLINK_COMMON_EXPORT const char* ServiceWorkerStatusToString(

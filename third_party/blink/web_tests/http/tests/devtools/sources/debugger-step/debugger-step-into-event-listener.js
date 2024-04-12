@@ -2,14 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(
       `Tests that stepping into dispatchEvent() method will lead to a pause in the first event listener.\n`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.loadHTML(`
       <div id="myDiv"></div>
@@ -52,7 +48,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
           'FAIL: Unexpected top function: expected ' + expectedName +
           ', found ' + topFunctionName);
     TestRunner.assertEquals(
-        Protocol.Debugger.PausedEventReason.Step, reason,
+        SDK.DebuggerModel.BreakReason.Step, reason,
         'FAIL: wrong pause reason: ' + reason);
   }
 

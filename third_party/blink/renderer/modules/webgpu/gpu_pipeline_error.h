@@ -21,17 +21,7 @@ class MODULES_EXPORT GPUPipelineError : public DOMException {
   static GPUPipelineError* Create(String message,
                                   const GPUPipelineErrorInit* options);
 
-  // For creating a GPUPipelineError from C++. Typically this will be
-  // immediately passed to ScriptPromiseResolver::Reject.
-  static v8::Local<v8::Value> Create(v8::Isolate*,
-                                     const String& message,
-                                     V8GPUPipelineErrorReason::Enum reason);
-
-  // Use one of the Create() methods instead. This constructor has to be public
-  // so that it can be used with MakeGarbageCollected<> inside the Create
-  // methods.
-  GPUPipelineError(const String& message,
-                   V8GPUPipelineErrorReason::Enum reason);
+  GPUPipelineError(String message, V8GPUPipelineErrorReason::Enum reason);
 
   V8GPUPipelineErrorReason reason() const;
 

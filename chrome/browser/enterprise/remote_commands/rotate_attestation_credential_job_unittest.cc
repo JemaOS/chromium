@@ -8,10 +8,8 @@
 #include "base/json/json_writer.h"
 #include "base/run_loop.h"
 #include "base/test/bind.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/values.h"
-#include "chrome/browser/enterprise/connectors/device_trust/device_trust_features.h"
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/browser/mock_device_trust_key_manager.h"
 #include "components/enterprise/browser/device_trust/device_trust_key_manager.h"
 #include "components/policy/proto/device_management_backend.pb.h"
@@ -57,16 +55,8 @@ std::string GetEmptyPayload() {
 
 }  // namespace
 
-class RotateAttestationCredentialJobTest
-    : public testing::Test,
-      public testing::WithParamInterface<bool> {
+class RotateAttestationCredentialJobTest : public testing::Test {
  protected:
-  RotateAttestationCredentialJobTest() {
-    feature_list_.InitWithFeatureState(
-        enterprise_connectors::kDTCKeyRotationEnabled,
-        is_key_rotation_enabled());
-  }
-
   void MockKeyRotationWith(KeyRotationResult result) {
     EXPECT_CALL(mock_key_manager_, RotateKey(kNonceValue, _))
         .WillOnce(Invoke(
@@ -88,19 +78,14 @@ class RotateAttestationCredentialJobTest
     return job;
   }
 
-  bool is_key_rotation_enabled() { return GetParam(); }
-
   base::test::SingleThreadTaskEnvironment task_environment_;
-  base::test::ScopedFeatureList feature_list_;
   testing::StrictMock<enterprise_connectors::test::MockDeviceTrustKeyManager>
       mock_key_manager_;
 };
 
 // Tests that a job conveys a successful key rotation properly.
-TEST_P(RotateAttestationCredentialJobTest, SuccessRun) {
-  if (is_key_rotation_enabled()) {
-    MockKeyRotationWith(KeyRotationResult::SUCCESS);
-  }
+TEST_F(RotateAttestationCredentialJobTest, SuccessRun) {
+  MockKeyRotationWith(KeyRotationResult::SUCCESS);
 
   auto command_proto = CreateCommand();
   auto json_payload = GetPayloadWithNonce();
@@ -113,18 +98,12 @@ TEST_P(RotateAttestationCredentialJobTest, SuccessRun) {
                        run_loop.QuitClosure()));
   run_loop.Run();
 
-  if (is_key_rotation_enabled()) {
-    EXPECT_EQ(job->status(), policy::RemoteCommandJob::SUCCEEDED);
-  } else {
-    EXPECT_EQ(job->status(), policy::RemoteCommandJob::FAILED);
-  }
+  EXPECT_EQ(job->status(), policy::RemoteCommandJob::SUCCEEDED);
 }
 
 // Tests that a job conveys a failed key rotation properly.
-TEST_P(RotateAttestationCredentialJobTest, FailedRun) {
-  if (is_key_rotation_enabled()) {
-    MockKeyRotationWith(KeyRotationResult::FAILURE);
-  }
+TEST_F(RotateAttestationCredentialJobTest, FailedRun) {
+  MockKeyRotationWith(KeyRotationResult::FAILURE);
 
   auto command_proto = CreateCommand();
   auto json_payload = GetPayloadWithNonce();
@@ -141,10 +120,8 @@ TEST_P(RotateAttestationCredentialJobTest, FailedRun) {
 }
 
 // Tests that a job conveys a cancelled key rotation properly.
-TEST_P(RotateAttestationCredentialJobTest, CancelledRun) {
-  if (is_key_rotation_enabled()) {
-    MockKeyRotationWith(KeyRotationResult::CANCELLATION);
-  }
+TEST_F(RotateAttestationCredentialJobTest, CancelledRun) {
+  MockKeyRotationWith(KeyRotationResult::CANCELLATION);
 
   auto command_proto = CreateCommand();
   auto json_payload = GetPayloadWithNonce();
@@ -161,7 +138,7 @@ TEST_P(RotateAttestationCredentialJobTest, CancelledRun) {
 }
 
 // Tests that a job handles a bad payload properly.
-TEST_P(RotateAttestationCredentialJobTest, BadPayload) {
+TEST_F(RotateAttestationCredentialJobTest, BadPayload) {
   auto command_proto = CreateCommand();
   auto json_payload = GetEmptyPayload();
   command_proto.set_payload(json_payload);
@@ -171,7 +148,5 @@ TEST_P(RotateAttestationCredentialJobTest, BadPayload) {
   EXPECT_FALSE(job->Init(base::TimeTicks::Now(), command_proto,
                          enterprise_management::SignedData{}));
 }
-
-INSTANTIATE_TEST_SUITE_P(, RotateAttestationCredentialJobTest, testing::Bool());
 
 }  // namespace enterprise_commands

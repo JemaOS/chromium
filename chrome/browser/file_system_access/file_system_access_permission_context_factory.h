@@ -33,7 +33,7 @@ class FileSystemAccessPermissionContextFactory
   ~FileSystemAccessPermissionContextFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   void BrowserContextShutdown(content::BrowserContext* context) override;
 };

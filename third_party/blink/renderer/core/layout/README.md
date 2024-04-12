@@ -13,7 +13,8 @@ It covers the following document lifecycle states:
 * PerformLayout (`InPerformLayout`)
 * AfterPerformLayout (`AfterPerformLayout` and `LayoutClean`)
 
-See [LayoutNG](layout_ng.md) for the implementation details.
+Note that a new Blink layout system is under development. See the
+[LayoutNG design document](https://docs.google.com/document/d/1uxbDh4uONFQOiGuiumlJBLGgO4KDWB8ZEkp7Rd47fw4/preview).
 
 The layout code is maintained by the
 [layout team](http://dev.chromium.org/teams/layout-team).

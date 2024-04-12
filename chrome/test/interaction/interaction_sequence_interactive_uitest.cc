@@ -48,7 +48,7 @@ IN_PROC_BROWSER_TEST_F(InteractionSequenceUITest, OpenMainMenuAndViewHelpItem) {
   // the BrowserView hierarcny.
   views::View* const button_view =
       views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
-          kToolbarAppMenuButtonElementId, context);
+          kAppMenuButtonElementId, context);
   BrowserAppMenuButton* const app_menu_button =
       static_cast<BrowserAppMenuButton*>(button_view);
   DCHECK_EQ(std::string("BrowserAppMenuButton"),
@@ -65,7 +65,7 @@ IN_PROC_BROWSER_TEST_F(InteractionSequenceUITest, OpenMainMenuAndViewHelpItem) {
           .AddStep(
               views::InteractionSequenceViews::WithInitialView(app_menu_button))
           .AddStep(ui::InteractionSequence::StepBuilder()
-                       .SetElementID(kToolbarAppMenuButtonElementId)
+                       .SetElementID(kAppMenuButtonElementId)
                        .SetType(ui::InteractionSequence::StepType::kActivated)
                        .Build())
           .AddStep(ui::InteractionSequence::StepBuilder()

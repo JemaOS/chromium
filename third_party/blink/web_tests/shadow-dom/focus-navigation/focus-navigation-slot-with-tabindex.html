@@ -55,6 +55,8 @@ test(() => {
         'x-foo/x-bar/k1',
     ];
 
-    assert_focus_navigation_bidirectional(elements);
+    assert_focus_navigation_forward(elements);
+    elements.reverse();
+    assert_focus_navigation_backward(elements);
 }, 'Slots tabindex should be considred in focus navigation.');
 </script>

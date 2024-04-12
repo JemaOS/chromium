@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 class ChromeBrowsingDataRemoverDelegate;
@@ -30,13 +30,14 @@ class ChromeBrowsingDataRemoverDelegateFactory
       const ChromeBrowsingDataRemoverDelegateFactory&) = delete;
 
  private:
-  friend base::NoDestructor<ChromeBrowsingDataRemoverDelegateFactory>;
+  friend struct base::DefaultSingletonTraits<
+      ChromeBrowsingDataRemoverDelegateFactory>;
 
   ChromeBrowsingDataRemoverDelegateFactory();
   ~ChromeBrowsingDataRemoverDelegateFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

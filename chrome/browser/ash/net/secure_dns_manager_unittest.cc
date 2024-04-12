@@ -16,7 +16,6 @@
 #include "chromeos/ash/components/network/network_handler.h"
 #include "chromeos/ash/components/network/network_handler_test_helper.h"
 #include "chromeos/ash/components/network/network_metadata_store.h"
-#include "chromeos/ash/components/network/network_ui_data.h"
 #include "components/account_id/account_id.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/testing_pref_service.h"
@@ -39,24 +38,21 @@ using testing::SizeIs;
 constexpr const char kGoogleDns[] = "https://dns.google/dns-query{?dns}";
 constexpr const char kCloudflareDns[] =
     "https://chrome.cloudflare-dns.com/dns-query";
-constexpr const char kMultipleTemplates[] =
-    "https://dns.google/dns-query{?dns}  "
-    "https://chrome.cloudflare-dns.com/dns-query ";
 
 class MockDoHTemplatesUriResolver
     : public dns_over_https::TemplatesUriResolver {
  public:
   MockDoHTemplatesUriResolver() = default;
-  MOCK_METHOD(void, Update, (PrefService*), (override));
-  MOCK_METHOD(bool, GetDohWithIdentifiersActive, (), (override));
-  MOCK_METHOD(std::string, GetEffectiveTemplates, (), (override));
-  MOCK_METHOD(std::string, GetDisplayTemplates, (), (override));
+  MOCK_METHOD1(UpdateFromPrefs, void(PrefService*));
+  MOCK_METHOD0(GetDohWithIdentifiersActive, bool());
+  MOCK_METHOD0(GetEffectiveTemplates, std::string());
+  MOCK_METHOD0(GetDisplayTemplates, std::string());
 };
 
 void OnGetProperties(bool* success_out,
                      std::map<std::string, std::string>* props_out,
                      base::OnceClosure callback,
-                     std::optional<base::Value::Dict> result) {
+                     absl::optional<base::Value::Dict> result) {
   *success_out = result.has_value();
   if (result) {
     base::Value::Dict* value =
@@ -97,24 +93,13 @@ class SecureDnsManagerTest : public testing::Test {
                                                  "");
     pref_service_.registry()->RegisterStringPref(
         prefs::kDnsOverHttpsTemplatesWithIdentifiers, "");
-    pref_service_.registry()->RegisterStringPref(
-        prefs::kDnsOverHttpsEffectiveTemplatesChromeOS, "");
     pref_service_.registry()->RegisterStringPref(prefs::kDnsOverHttpsSalt, "");
     network_handler_test_helper_.RegisterPrefs(pref_service_.registry(),
                                                local_state_.registry());
     network_handler_test_helper_.InitializePrefs(&pref_service_, &local_state_);
-    network_handler_test_helper_.AddDefaultProfiles();
   }
 
   void TearDown() override { NetworkHandler::Get()->ShutdownPrefServices(); }
-
-  void ChangeNetworkOncSource(const std::string& path,
-                              ::onc::ONCSource onc_source) {
-    std::unique_ptr<ash::NetworkUIData> ui_data =
-        ash::NetworkUIData::CreateFromONC(onc_source);
-    network_handler_test_helper_.SetServiceProperty(
-        path, shill::kUIDataProperty, base::Value(ui_data->GetAsJson()));
-  }
 
   PrefService* pref_service() { return &pref_service_; }
 
@@ -133,9 +118,6 @@ TEST_F(SecureDnsManagerTest, SetModeOff) {
   auto providers = GetDOHProviders();
 
   EXPECT_TRUE(providers.empty());
-  EXPECT_EQ(
-      pref_service()->GetString(prefs::kDnsOverHttpsEffectiveTemplatesChromeOS),
-      "");
 }
 
 TEST_F(SecureDnsManagerTest, SetModeOffIgnoresTemplates) {
@@ -147,9 +129,6 @@ TEST_F(SecureDnsManagerTest, SetModeOffIgnoresTemplates) {
   auto providers = GetDOHProviders();
 
   EXPECT_TRUE(providers.empty());
-  EXPECT_EQ(
-      pref_service()->GetString(prefs::kDnsOverHttpsEffectiveTemplatesChromeOS),
-      "");
 }
 
 TEST_F(SecureDnsManagerTest, SetModeSecure) {
@@ -170,8 +149,10 @@ TEST_F(SecureDnsManagerTest, SetModeSecure) {
 TEST_F(SecureDnsManagerTest, SetModeSecureMultipleTemplates) {
   pref_service()->Set(prefs::kDnsOverHttpsMode,
                       base::Value(SecureDnsConfig::kModeSecure));
-  pref_service()->Set(prefs::kDnsOverHttpsTemplates,
-                      base::Value(kMultipleTemplates));
+  pref_service()->Set(
+      prefs::kDnsOverHttpsTemplates,
+      base::Value("https://dns.google/dns-query{?dns}  "
+                  "https://chrome.cloudflare-dns.com/dns-query "));
 
   auto secure_dns_manager = std::make_unique<SecureDnsManager>(pref_service());
   auto providers = GetDOHProviders();
@@ -179,16 +160,15 @@ TEST_F(SecureDnsManagerTest, SetModeSecureMultipleTemplates) {
   EXPECT_TRUE(providers.find(kGoogleDns) != providers.end());
   EXPECT_TRUE(providers.find(kCloudflareDns) != providers.end());
   EXPECT_EQ(providers.size(), 2u);
-  EXPECT_EQ(
-      pref_service()->GetString(prefs::kDnsOverHttpsEffectiveTemplatesChromeOS),
-      kMultipleTemplates);
 }
 
 TEST_F(SecureDnsManagerTest, SetModeAutomaticWithTemplates) {
   pref_service()->Set(prefs::kDnsOverHttpsMode,
                       base::Value(SecureDnsConfig::kModeAutomatic));
-  pref_service()->Set(prefs::kDnsOverHttpsTemplates,
-                      base::Value(kMultipleTemplates));
+  pref_service()->Set(
+      prefs::kDnsOverHttpsTemplates,
+      base::Value("https://dns.google/dns-query{?dns}  "
+                  "https://chrome.cloudflare-dns.com/dns-query "));
 
   auto secure_dns_manager = std::make_unique<SecureDnsManager>(pref_service());
   auto providers = GetDOHProviders();
@@ -200,9 +180,6 @@ TEST_F(SecureDnsManagerTest, SetModeAutomaticWithTemplates) {
   EXPECT_TRUE(it != providers.end());
   EXPECT_FALSE(it->second.empty());
   EXPECT_EQ(providers.size(), 2u);
-  EXPECT_EQ(
-      pref_service()->GetString(prefs::kDnsOverHttpsEffectiveTemplatesChromeOS),
-      kMultipleTemplates);
 }
 
 // Tests that the `DoHTemplatesUriResolver` resolver is called when secure DNS
@@ -213,43 +190,43 @@ TEST_F(SecureDnsManagerTest, DoHTemplatesUriResolverCalled) {
   // The test will update the four prefs that `SecureDnsManager` is observing.
   constexpr int prefUpdatesCallCount = 4;
 
-  std::unique_ptr<MockDoHTemplatesUriResolver> template_uri_resolver =
-      std::make_unique<MockDoHTemplatesUriResolver>();
-  EXPECT_CALL(*template_uri_resolver, Update(_)).Times(prefUpdatesCallCount);
-  EXPECT_CALL(*template_uri_resolver, GetEffectiveTemplates())
+  MockDoHTemplatesUriResolver* templateUriResolver =
+      new MockDoHTemplatesUriResolver();
+  EXPECT_CALL(*templateUriResolver, UpdateFromPrefs(_))
+      .Times(prefUpdatesCallCount);
+  EXPECT_CALL(*templateUriResolver, GetEffectiveTemplates())
       .Times(prefUpdatesCallCount)
       .WillRepeatedly(Return(effectiveTemplate));
 
   auto secure_dns_manager = std::make_unique<SecureDnsManager>(pref_service());
   secure_dns_manager->SetDoHTemplatesUriResolverForTesting(
-      std::move(template_uri_resolver));
+      base::WrapUnique(templateUriResolver));
 
   pref_service()->Set(prefs::kDnsOverHttpsMode,
                       base::Value(SecureDnsConfig::kModeAutomatic));
-  pref_service()->Set(prefs::kDnsOverHttpsTemplates,
-                      base::Value(kMultipleTemplates));
-  pref_service()->Set(prefs::kDnsOverHttpsTemplatesWithIdentifiers,
-                      base::Value(kMultipleTemplates));
+  pref_service()->Set(
+      prefs::kDnsOverHttpsTemplates,
+      base::Value("https://dns.google/dns-query{?dns}  "
+                  "https://chrome.cloudflare-dns.com/dns-query "));
+  pref_service()->Set(
+      prefs::kDnsOverHttpsTemplatesWithIdentifiers,
+      base::Value("https://dns.google/dns-query{?dns}  "
+                  "https://chrome.cloudflare-dns.com/dns-query "));
   pref_service()->Set(prefs::kDnsOverHttpsSalt, base::Value("testsalt"));
 
   auto providers = GetDOHProviders();
 
   EXPECT_THAT(providers, SizeIs(1));
   EXPECT_THAT(providers, Contains(Key(effectiveTemplate)));
-  EXPECT_EQ(
-      pref_service()->GetString(prefs::kDnsOverHttpsEffectiveTemplatesChromeOS),
-      effectiveTemplate);
 }
 
 TEST_F(SecureDnsManagerTest, NetworkMetadataStoreHasDohWithIdentifiersActive) {
   // Setup an active user.
-  auto fake_user_manager_owned =
-      std::make_unique<user_manager::FakeUserManager>();
   user_manager::FakeUserManager* fake_user_manager =
-      fake_user_manager_owned.get();
+      new user_manager::FakeUserManager();
   std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager =
       std::make_unique<user_manager::ScopedUserManager>(
-          std::move(fake_user_manager_owned));
+          base::WrapUnique(fake_user_manager));
   const AccountId account_id(
       AccountId::FromUserEmailGaiaId("test-user@testdomain.com", "1234567890"));
   fake_user_manager->AddUser(account_id);
@@ -273,113 +250,6 @@ TEST_F(SecureDnsManagerTest, NetworkMetadataStoreHasDohWithIdentifiersActive) {
   EXPECT_FALSE(NetworkHandler::Get()
                    ->network_metadata_store()
                    ->secure_dns_templates_with_identifiers_active());
-}
-
-TEST_F(SecureDnsManagerTest, kDnsOverHttpsEffectiveTemplatesChromeOS) {
-  // Setup an active user.
-  auto fake_user_manager_owned =
-      std::make_unique<user_manager::FakeUserManager>();
-  user_manager::FakeUserManager* fake_user_manager =
-      fake_user_manager_owned.get();
-  std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager =
-      std::make_unique<user_manager::ScopedUserManager>(
-          std::move(fake_user_manager_owned));
-  const AccountId account_id(
-      AccountId::FromUserEmailGaiaId("test-user@testdomain.com", "1234567890"));
-  fake_user_manager->AddUser(account_id);
-
-  constexpr char kUriTemplateWithIdentifiers[] =
-      "https://dns.google.alternativeuri/"
-      "${USER_EMAIL}/{?dns}";
-
-  constexpr char kEffectiveUriTemplateWithIdentifiers[] =
-      "https://dns.google.alternativeuri/"
-      "B07D2C5D119EB1881671C3B8D84CBE4FE3595C0C9ECBBF7670B18DDFDA072F66/{?dns}";
-
-  auto secure_dns_manager = std::make_unique<SecureDnsManager>(pref_service());
-  pref_service()->Set(prefs::kDnsOverHttpsMode,
-                      base::Value(SecureDnsConfig::kModeAutomatic));
-  pref_service()->Set(prefs::kDnsOverHttpsTemplatesWithIdentifiers,
-                      base::Value(kUriTemplateWithIdentifiers));
-  pref_service()->Set(prefs::kDnsOverHttpsTemplates, base::Value(kGoogleDns));
-
-  auto providers = GetDOHProviders();
-
-  // Verify that the value of kDnsOverHttpsEffectiveTemplatesChromeOS pref is
-  // prefs::kDnsOverHttpsTemplatesWithIdentifiers with the hex encoded hashed
-  // value of the user identifier.
-  EXPECT_EQ(
-      pref_service()->GetString(prefs::kDnsOverHttpsEffectiveTemplatesChromeOS),
-      kEffectiveUriTemplateWithIdentifiers);
-
-  pref_service()->ClearPref(prefs::kDnsOverHttpsTemplatesWithIdentifiers);
-
-  providers = GetDOHProviders();
-
-  // Verify that the value of kDnsOverHttpsEffectiveTemplatesChromeOS pref is
-  // prefs::kDnsOverHttpsTemplates since the URI template with identifiers pref
-  // was cleared.
-  EXPECT_EQ(
-      pref_service()->GetString(prefs::kDnsOverHttpsEffectiveTemplatesChromeOS),
-      kGoogleDns);
-}
-
-TEST_F(SecureDnsManagerTest, DefaultNetworkObservedForIpAddressPlaceholder) {
-  constexpr char kUriTemplateWithEmail[] =
-      "https://dns.google.alternativeuri/"
-      "${USER_EMAIL}/{?dns}";
-  constexpr char kUriTemplateWithIp[] =
-      "https://dns.google.alternativeuri/"
-      "${DEVICE_IP_ADDRESSES}/{?dns}";
-
-  int expected_uri_template_update_count = 0;
-  int actual_uri_template_update_count = 0;
-
-  std::unique_ptr<MockDoHTemplatesUriResolver> template_uri_resolver =
-      std::make_unique<MockDoHTemplatesUriResolver>();
-
-  ON_CALL(*template_uri_resolver, Update(_))
-      .WillByDefault(testing::Invoke([&actual_uri_template_update_count]() {
-        actual_uri_template_update_count++;
-      }));
-  EXPECT_CALL(*template_uri_resolver, GetDohWithIdentifiersActive())
-      .WillRepeatedly(testing::Return(true));
-
-  auto secure_dns_manager = std::make_unique<SecureDnsManager>(pref_service());
-  secure_dns_manager->SetDoHTemplatesUriResolverForTesting(
-      std::move(template_uri_resolver));
-
-  EXPECT_EQ(actual_uri_template_update_count,
-            expected_uri_template_update_count);
-
-  pref_service()->Set(prefs::kDnsOverHttpsMode,
-                      base::Value(SecureDnsConfig::kModeAutomatic));
-  pref_service()->Set(prefs::kDnsOverHttpsTemplatesWithIdentifiers,
-                      base::Value(kUriTemplateWithEmail));
-  // Each pref update above will trigger an update request for the URI
-  // templates.
-  expected_uri_template_update_count = 2;
-  EXPECT_EQ(actual_uri_template_update_count,
-            expected_uri_template_update_count);
-
-  const ash::NetworkState* network =
-      ash::NetworkHandler::Get()->network_state_handler()->DefaultNetwork();
-  ChangeNetworkOncSource(network->path(),
-                         ::onc::ONCSource::ONC_SOURCE_USER_POLICY);
-  // Default network changes should not trigger a re-evaluation of the templates
-  // URI if the DoH policy is not configured to use the device IP addresses.
-  EXPECT_EQ(actual_uri_template_update_count,
-            expected_uri_template_update_count);
-
-  pref_service()->Set(prefs::kDnsOverHttpsTemplatesWithIdentifiers,
-                      base::Value(kUriTemplateWithIp));
-  EXPECT_EQ(actual_uri_template_update_count,
-            ++expected_uri_template_update_count);
-
-  ChangeNetworkOncSource(network->path(),
-                         ::onc::ONCSource::ONC_SOURCE_USER_POLICY);
-  EXPECT_EQ(actual_uri_template_update_count,
-            ++expected_uri_template_update_count);
 }
 
 }  // namespace

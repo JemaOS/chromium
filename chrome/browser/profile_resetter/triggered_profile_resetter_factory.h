@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace content {
@@ -34,14 +34,14 @@ class TriggeredProfileResetterFactory : public ProfileKeyedServiceFactory {
       const TriggeredProfileResetterFactory&) = delete;
 
  private:
-  friend base::NoDestructor<TriggeredProfileResetterFactory>;
+  friend struct base::DefaultSingletonTraits<TriggeredProfileResetterFactory>;
   friend class TriggeredProfileResetterTest;
 
   TriggeredProfileResetterFactory();
   ~TriggeredProfileResetterFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;

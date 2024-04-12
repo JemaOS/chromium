@@ -5,8 +5,7 @@
 #include "chrome/browser/sync/session_sync_service_factory.h"
 
 #include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "chrome/browser/favicon/favicon_service_factory.h"
 #include "chrome/browser/history/history_service_factory.h"
@@ -42,7 +41,7 @@ bool ShouldSyncURLImpl(const GURL& url) {
 }
 
 // Chrome implementation of SyncSessionsClient.
-class SyncSessionsClientImpl final : public sync_sessions::SyncSessionsClient {
+class SyncSessionsClientImpl : public sync_sessions::SyncSessionsClient {
  public:
   explicit SyncSessionsClientImpl(Profile* profile)
       : profile_(profile), session_sync_prefs_(profile->GetPrefs()) {
@@ -111,16 +110,11 @@ class SyncSessionsClientImpl final : public sync_sessions::SyncSessionsClient {
     return router;
   }
 
-  base::WeakPtr<SyncSessionsClient> AsWeakPtr() override {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
  private:
   const raw_ptr<Profile> profile_;
   std::unique_ptr<sync_sessions::SyncedWindowDelegatesGetter>
       window_delegates_getter_;
   sync_sessions::SessionSyncPrefs session_sync_prefs_;
-  base::WeakPtrFactory<SyncSessionsClientImpl> weak_ptr_factory_{this};
 };
 
 }  // namespace
@@ -134,13 +128,11 @@ sync_sessions::SessionSyncService* SessionSyncServiceFactory::GetForProfile(
 
 // static
 SessionSyncServiceFactory* SessionSyncServiceFactory::GetInstance() {
-  static base::NoDestructor<SessionSyncServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<SessionSyncServiceFactory>::get();
 }
 
-// static - exposed for testing and metrics.
-bool SessionSyncServiceFactory::ShouldSyncURLForTestingAndMetrics(
-    const GURL& url) {
+// static
+bool SessionSyncServiceFactory::ShouldSyncURLForTesting(const GURL& url) {
   return ShouldSyncURLImpl(url);
 }
 

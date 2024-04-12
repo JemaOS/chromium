@@ -51,8 +51,6 @@ class TabInteractionRecorderAndroidBrowserTest : public AndroidBrowserTest {
     scoped_feature_list_.InitWithFeaturesAndParameters(
         content::GetDefaultEnabledBackForwardCacheFeaturesForTesting(),
         content::GetDefaultDisabledBackForwardCacheFeaturesForTesting());
-    // TODO(crbug.com/1491942): This fails with the field trial testing config.
-    command_line->AppendSwitch("disable-field-trial-config");
   }
 
   // Helper functions to verify Histogram
@@ -82,8 +80,9 @@ class TabInteractionRecorderAndroidBrowserTest : public AndroidBrowserTest {
  protected:
   class TestAutofillManager : public autofill::BrowserAutofillManager {
    public:
-    explicit TestAutofillManager(autofill::ContentAutofillDriver* driver)
-        : autofill::BrowserAutofillManager(driver, "en-US") {}
+    TestAutofillManager(autofill::ContentAutofillDriver* driver,
+                        autofill::AutofillClient* client)
+        : autofill::BrowserAutofillManager(driver, client, "en-US") {}
 
     [[nodiscard]] testing::AssertionResult WaitForFormsSeen(
         int min_num_awaited_calls) {
@@ -104,15 +103,21 @@ class TabInteractionRecorderAndroidBrowserTest : public AndroidBrowserTest {
     return web_contents()->GetPrimaryMainFrame();
   }
 
-  TestAutofillManager& GetAutofillManagerInMainFrame() {
+  TestAutofillManager* GetAutofillManagerInMainFrame() {
     autofill::ContentAutofillDriver* driver =
         autofill::ContentAutofillDriver::GetForRenderFrameHost(
             web_contents()->GetPrimaryMainFrame());
-    return static_cast<TestAutofillManager&>(driver->GetAutofillManager());
+    return static_cast<TestAutofillManager*>(driver->autofill_manager());
   }
-  // Returns a URL with host `host` and path "/title1.html".
+
+  // At the chrome layer, an outstanding request to /favicon.ico is made. It is
+  // made by the renderer on behalf of the browser process. It counts as an
+  // outstanding request, which prevents the page from entering the
+  // BackForwardCache, as long as it hasn't resolved. Here we use it the same
+  // reason as ChromeBackForwardCacheBrowserTest.
   GURL GetURLWithHost(const std::string& host) {
-    return embedded_test_server()->GetURL(host, "/title1.html");
+    return embedded_test_server()->GetURL(
+        host, "/back_forward_cache/no-favicon.html");
   }
 
   GURL GetTestFormUrl() {
@@ -150,7 +155,7 @@ IN_PROC_BROWSER_TEST_F(TabInteractionRecorderAndroidBrowserTest,
 
   // 1) Navigate to page with test form.
   EXPECT_TRUE(content::NavigateToURL(web_contents(), GetTestFormUrl()));
-  EXPECT_TRUE(GetAutofillManagerInMainFrame().WaitForFormsSeen(1));
+  EXPECT_TRUE(GetAutofillManagerInMainFrame()->WaitForFormsSeen(1));
 
   content::RenderFrameHostWrapper rfh_a(current_frame_host());
 
@@ -183,7 +188,7 @@ IN_PROC_BROWSER_TEST_F(TabInteractionRecorderAndroidBrowserTest,
 
   // 1) Navigate to page with test form.
   EXPECT_TRUE(content::NavigateToURL(web_contents(), GetTestFormUrl()));
-  EXPECT_TRUE(GetAutofillManagerInMainFrame().WaitForFormsSeen(1));
+  EXPECT_TRUE(GetAutofillManagerInMainFrame()->WaitForFormsSeen(1));
 
   content::RenderFrameHostWrapper rfh_a(current_frame_host());
 
@@ -261,7 +266,7 @@ IN_PROC_BROWSER_TEST_F(TabInteractionRecorderAndroidBrowserTest,
 
   // 1) Navigate to page with test form.
   EXPECT_TRUE(content::NavigateToURL(web_contents(), GetTestFormUrl()));
-  EXPECT_TRUE(GetAutofillManagerInMainFrame().WaitForFormsSeen(1));
+  EXPECT_TRUE(GetAutofillManagerInMainFrame()->WaitForFormsSeen(1));
 
   content::RenderFrameHostWrapper rfh_a(current_frame_host());
 
@@ -290,7 +295,7 @@ IN_PROC_BROWSER_TEST_F(TabInteractionRecorderAndroidBrowserTest,
 
   // 1) Navigate to page with test form.
   EXPECT_TRUE(content::NavigateToURL(web_contents(), GetTestFormUrl()));
-  EXPECT_TRUE(GetAutofillManagerInMainFrame().WaitForFormsSeen(1));
+  EXPECT_TRUE(GetAutofillManagerInMainFrame()->WaitForFormsSeen(1));
 
   content::RenderFrameHostWrapper rfh_a(current_frame_host());
 

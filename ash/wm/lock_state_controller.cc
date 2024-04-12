@@ -5,37 +5,27 @@
 #include "ash/wm/lock_state_controller.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <utility>
 
-#include "ash/accessibility/accessibility_controller.h"
-#include "ash/app_list/app_list_controller_impl.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/cancel_mode.h"
-#include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
-#include "ash/public/cpp/saved_desk_delegate.h"
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/public/cpp/shutdown_controller.h"
 #include "ash/root_window_controller.h"
 #include "ash/session/session_controller_impl.h"
 #include "ash/shell.h"
 #include "ash/shell_delegate.h"
+#include "ash/shutdown_reason.h"
 #include "ash/utility/occlusion_tracker_pauser.h"
-#include "ash/wallpaper/views/wallpaper_view.h"
-#include "ash/wallpaper/views/wallpaper_widget_controller.h"
 #include "ash/wallpaper/wallpaper_controller_impl.h"
-#include "ash/wm/desks/desks_util.h"
-#include "ash/wm/mru_window_tracker.h"
-#include "ash/wm/overview/overview_controller.h"
-#include "ash/wm/screen_pinning_controller.h"
+#include "ash/wallpaper/wallpaper_widget_controller.h"
+#include "ash/wm/session_state_animator.h"
 #include "ash/wm/session_state_animator_impl.h"
-#include "ash/wm/window_restore/pine_constants.h"
-#include "ash/wm/window_restore/window_restore_util.h"
 #include "base/command_line.h"
-#include "base/debug/crash_logging.h"
 #include "base/debug/dump_without_crashing.h"
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/json/values_util.h"
@@ -46,19 +36,13 @@
 #include "base/metrics/user_metrics.h"
 #include "base/strings/string_util.h"
 #include "base/system/sys_info.h"
-#include "base/task/bind_post_task.h"
-#include "base/task/current_thread.h"
-#include "base/task/task_traits.h"
-#include "base/task/thread_pool.h"
 #include "base/time/default_clock.h"
 #include "base/time/time.h"
+#include "base/timer/timer.h"
+#include "components/prefs/pref_registry_simple.h"
+#include "components/prefs/pref_service.h"
 #include "ui/aura/window_tree_host.h"
-#include "ui/compositor/layer.h"
-#include "ui/gfx/image/image.h"
-#include "ui/gfx/image/image_util.h"
-#include "ui/snapshot/snapshot.h"
 #include "ui/views/controls/menu/menu_controller.h"
-#include "ui/views/widget/widget.h"
 #include "ui/wm/core/compound_event_filter.h"
 #include "ui/wm/core/cursor_manager.h"
 
@@ -99,109 +83,6 @@ constexpr base::TimeDelta kPostLockFailTimeout =
 // Additional time to wait after starting the fast-close shutdown animation
 // before actually requesting shutdown, to give the animation time to finish.
 constexpr base::TimeDelta kShutdownRequestDelay = base::Milliseconds(50);
-
-// Amount of time to wait after starting to take the pine screenshot. The task
-// will be stopped if it takes longer than this time duration.
-constexpr base::TimeDelta kTakeScreenshotFailTimeout = base::Milliseconds(800);
-
-// Records the given `duration` to the given `pref_name` so it can be recorded
-// as an UMA metric on the next startup.
-void SavePineScreenshotDuration(PrefService* local_state,
-                                const std::string& pref_name,
-                                base::TimeDelta duration) {
-  if (!local_state) {
-    return;
-  }
-
-  local_state->SetTimeDelta(pref_name, duration);
-}
-
-// Encodes and saves the given `image` to `file_path`.
-void EncodeAndSavePineImage(const base::FilePath& file_path, gfx::Image image) {
-  CHECK(!base::CurrentUIThread::IsSet());
-  if (image.IsEmpty()) {
-    base::DeleteFile(file_path);
-    return;
-  }
-
-  // The width of the resized pine image will be fixed and then the height of it
-  // will be calculated based on the aspect ratio of the original pine image.
-  // The resized pine image will be saved to disk, decoded and shown with this
-  // size directly inside the pine dialog later as well.
-  const float aspect_ratio = static_cast<float>(image.Height()) / image.Width();
-  const int resized_image_height = aspect_ratio * pine::kPreviewContainerWidth;
-  const auto resized_image = gfx::ResizedImage(
-      image, gfx::Size(pine::kPreviewContainerWidth, resized_image_height));
-  auto png_bytes = resized_image.As1xPNGBytes();
-  auto raw_data = base::make_span(png_bytes->data(), png_bytes->size());
-  if (!base::WriteFile(file_path, raw_data)) {
-    LOG(ERROR) << "Failed to write pine image to " << file_path.MaybeAsASCII();
-  }
-}
-
-// If the given `for_test_callback` is valid, `callback` will be modified
-// to be a new callback that runs the original `callback` and then runs
-// `for_test_callback` after the former finishes.
-// `base::BindPostTask()` is used to guarantee that when `for_test_callback`
-// is invoked, it runs on the same thread of the call site (even if `callback`
-// is posted to run on a different thread).
-// Note that `for_test_callback` will be empty after this function returns.
-template <typename Callback>
-void MaybeAppendTestCallback(Callback& callback,
-                             base::OnceClosure& for_test_callback) {
-  if (for_test_callback) {
-    callback = std::move(callback).Then(
-        base::BindPostTask(base::SingleThreadTaskRunner::GetCurrentDefault(),
-                           std::move(for_test_callback)));
-  }
-}
-
-// Deletes any existing pine image if we should shutdown without taking the
-// screenshot, then no stale screenshot will be shown on next startup.
-void DeletePineImage(base::OnceClosure& for_test_callback,
-                     const base::FilePath& file_path) {
-  auto delete_image_cb =
-      base::BindOnce(base::IgnoreResult(&base::DeleteFile), file_path);
-  MaybeAppendTestCallback(delete_image_cb, for_test_callback);
-  base::ThreadPool::PostTask(FROM_HERE,
-                             {base::MayBlock(), base::TaskPriority::HIGHEST,
-                              base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
-                             std::move(delete_image_cb));
-}
-
-// TODO(minch): Check whether the screenshot should be taken in kiosk mode.
-// Returns true if the pine screenshot should be taken on shutdown.
-bool ShouldTakePineScreeshot() {
-  auto* shell = Shell::Get();
-  // Do not take the pine screenshot if it is in overview mode, lock screen,
-  // home launcher or pinned mode.
-  if (shell->overview_controller()->InOverviewSession() ||
-      shell->session_controller()->IsScreenLocked() ||
-      shell->app_list_controller()->IsHomeScreenVisible() ||
-      shell->screen_pinning_controller()->IsPinned()) {
-    return false;
-  }
-
-  bool has_regular_unminimized_window = false;
-  for (aura::Window* window :
-       shell->mru_window_tracker()->BuildMruWindowList(kActiveDesk)) {
-    const bool is_non_regular_profile_window =
-        !shell->saved_desk_delegate()->IsWindowPersistable(window);
-    const bool is_minimized = WindowState::Get(window)->IsMinimized();
-    // Do not take the screenshot if there is an incognito ash browser window or
-    // a lacros window with the non-regular profile.
-    if (!is_minimized && is_non_regular_profile_window) {
-      return false;
-    }
-    has_regular_unminimized_window |=
-        !is_non_regular_profile_window && !is_minimized;
-  }
-
-  // Take the screenshot if there are unminimized non-incognito windows inside
-  // the active desk. Both the float and the always on top window will be
-  // counted.
-  return has_regular_unminimized_window;
-}
 
 }  // namespace
 
@@ -253,10 +134,6 @@ LockStateController::~LockStateController() {
 void LockStateController::RegisterPrefs(PrefRegistrySimple* registry) {
   registry->RegisterTimePref(prefs::kLoginShutdownTimestampPrefName,
                              base::Time());
-  registry->RegisterTimeDeltaPref(prefs::kPineScreenshotTakenDuration,
-                                  base::TimeDelta());
-  registry->RegisterTimeDeltaPref(prefs::kPineScreenshotEncodeAndSaveDuration,
-                                  base::TimeDelta());
 }
 
 void LockStateController::AddObserver(LockStateObserver* observer) {
@@ -287,7 +164,11 @@ void LockStateController::StartShutdownAnimation(ShutdownReason reason) {
   if (shell->cursor_manager())
     shell->cursor_manager()->HideCursor();
 
-  ShutdownOnPine(/*with_pre_animation=*/true);
+  animator_->StartAnimation(
+      SessionStateAnimator::ROOT_CONTAINER,
+      SessionStateAnimator::ANIMATION_GRAYSCALE_BRIGHTNESS,
+      SessionStateAnimator::ANIMATION_SPEED_SHUTDOWN);
+  StartPreShutdownAnimationTimer();
 }
 
 void LockStateController::LockWithoutAnimation() {
@@ -392,7 +273,11 @@ void LockStateController::RequestShutdown(ShutdownReason reason) {
   cursor_manager->HideCursor();
   cursor_manager->LockCursor();
 
-  ShutdownOnPine(/*with_pre_animation=*/false);
+  animator_->StartAnimation(
+      SessionStateAnimator::ROOT_CONTAINER,
+      SessionStateAnimator::ANIMATION_GRAYSCALE_BRIGHTNESS,
+      SessionStateAnimator::ANIMATION_SPEED_SHUTDOWN);
+  StartRealShutdownTimer(true);
 }
 
 void LockStateController::OnUnlockAnimationBeforeLockUIDestroyedFinished() {
@@ -684,19 +569,8 @@ void LockStateController::PostLockAnimationFinished(bool aborted) {
   OnLockStateEvent(LockStateObserver::EVENT_LOCK_ANIMATION_FINISHED);
   if (!lock_screen_displayed_callback_.is_null())
     std::move(lock_screen_displayed_callback_).Run();
-  views::MenuController* active_menu_controller =
-      views::MenuController::GetActiveInstance();
 
-  if (active_menu_controller) {
-    // TODO(http://b/328064674): Please remove the below crash keys once the
-    // the crash is fixed. It seems after post lock animation finished there
-    // is active menu.
-
-    views::Widget* owner = active_menu_controller->owner();
-    SCOPED_CRASH_KEY_STRING256("LockStateController", "PostLockAnimation",
-                               owner ? owner->GetName() : "ownerless");
-    CHECK(false);
-  }
+  CHECK(!views::MenuController::GetActiveInstance());
 }
 
 void LockStateController::UnlockAnimationAfterLockUIDestroyedFinished(
@@ -766,130 +640,6 @@ void LockStateController::OnLockStateEvent(LockStateObserver::EventType event) {
 
   for (auto& observer : observers_)
     observer.OnLockStateEvent(event);
-}
-
-void LockStateController::ShutdownOnPine(bool with_pre_animation) {
-  if (features::IsForestFeatureEnabled()) {
-    TakePineImageAndShutdown(with_pre_animation);
-  } else {
-    StartShutdownProcess(with_pre_animation);
-  }
-}
-
-void LockStateController::TakePineImageAndShutdown(bool with_pre_animation) {
-  // TODO(b/319921650): Finalize the expected behavior on multi-display.
-  auto* root = Shell::GetRootWindowForNewWindows();
-  const base::FilePath file_path = GetShutdownPineImagePath();
-
-  if (!ShouldTakePineScreeshot()) {
-    DeletePineImage(pine_image_callback_for_test_, file_path);
-    StartShutdownProcess(with_pre_animation);
-    return;
-  }
-
-  // Create a new layer that mirrors the painted wallpaper view layer. Adds it
-  // to be the bottom-most child of the shutdown screenshot container layer,
-  // which is the parent of the active desk container also the container that we
-  // are going to take the pine screenshot. With this,
-  // 1) wallpaper will be included in the screenshot besides the content of the
-  //    active desk.
-  // 2) screenshot will be taken on the whole desktop instead of the specific
-  //    area with windows. This guarantees the windows' relative position inside
-  //    the desktop.
-  auto* wallpaper_layer = RootWindowController::ForWindow(root)
-                              ->wallpaper_widget_controller()
-                              ->wallpaper_view()
-                              ->layer();
-  CHECK(wallpaper_layer && wallpaper_layer->children().empty());
-  mirror_wallpaper_layer_ = wallpaper_layer->Mirror();
-
-  auto* pine_screenshot_container =
-      root->GetChildById(kShellWindowId_ShutdownScreenshotContainer);
-  auto* shutdown_screenshot_layer = pine_screenshot_container->layer();
-  shutdown_screenshot_layer->Add(mirror_wallpaper_layer_.get());
-  shutdown_screenshot_layer->StackAtBottom(mirror_wallpaper_layer_.get());
-
-  if (!disable_screenshot_tiemout_for_test_) {
-    // Trigger the `take_screenshot_fail_timer_` and start taking the screenshot
-    // at the same time. If the timer timeouts before receiving the screenshot,
-    // shutdown process will be triggered without the screenshot.
-    take_screenshot_fail_timer_.Start(
-        FROM_HERE, kTakeScreenshotFailTimeout,
-        base::BindOnce(&LockStateController::OnTakeScreenshotFailTimeout,
-                       base::Unretained(this), with_pre_animation));
-  }
-
-  // Take the screenshot on the shutdown screenshot container, thus the float
-  // and the always on top windows will be included in the screenshot as well.
-  ui::GrabWindowSnapshot(
-      pine_screenshot_container,
-      /*source_rect=*/gfx::Rect(pine_screenshot_container->bounds().size()),
-      base::BindOnce(&LockStateController::OnPineImageTaken,
-                     weak_ptr_factory_.GetWeakPtr(), with_pre_animation,
-                     file_path, base::TimeTicks::Now()));
-}
-
-void LockStateController::StartShutdownProcess(bool with_pre_animation) {
-  animator_->StartAnimation(
-      SessionStateAnimator::ROOT_CONTAINER,
-      SessionStateAnimator::ANIMATION_GRAYSCALE_BRIGHTNESS,
-      SessionStateAnimator::ANIMATION_SPEED_SHUTDOWN);
-
-  if (with_pre_animation) {
-    StartPreShutdownAnimationTimer();
-  } else {
-    StartRealShutdownTimer(true);
-  }
-}
-
-void LockStateController::OnTakeScreenshotFailTimeout(bool with_pre_animation) {
-  SavePineScreenshotDuration(local_state_, prefs::kPineScreenshotTakenDuration,
-                             kTakeScreenshotFailTimeout);
-  mirror_wallpaper_layer_.reset();
-  DeletePineImage(pine_image_callback_for_test_, GetShutdownPineImagePath());
-  StartShutdownProcess(with_pre_animation);
-}
-
-void LockStateController::OnPineImageTaken(bool with_pre_animation,
-                                           const base::FilePath& file_path,
-                                           base::TimeTicks start_time,
-                                           gfx::Image pine_image) {
-  // Do not proceed if the `take_screenshot_fail_timer_` is stopped, which means
-  // taking screenshot process took too long and the shutdown process has been
-  // triggered without the pine image.
-  if (!disable_screenshot_tiemout_for_test_ &&
-      !take_screenshot_fail_timer_.IsRunning()) {
-    return;
-  }
-
-  take_screenshot_fail_timer_.Stop();
-  SavePineScreenshotDuration(local_state_, prefs::kPineScreenshotTakenDuration,
-                             base::TimeTicks::Now() - start_time);
-
-  mirror_wallpaper_layer_.reset();
-
-  base::ThreadPool::PostTaskAndReply(
-      FROM_HERE,
-      {base::MayBlock(), base::TaskPriority::HIGHEST,
-       base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
-      base::BindOnce(&EncodeAndSavePineImage, file_path, std::move(pine_image)),
-      base::BindOnce(&LockStateController::OnPineImageSaved,
-                     weak_ptr_factory_.GetWeakPtr(), base::TimeTicks::Now()));
-
-  StartShutdownProcess(with_pre_animation);
-}
-
-void LockStateController::OnPineImageSaved(base::TimeTicks start_time) {
-  SavePineScreenshotDuration(local_state_,
-                             prefs::kPineScreenshotEncodeAndSaveDuration,
-                             // This duration includes the time waiting for the
-                             // `ThreadPool` to start running the task, also the
-                             // time that the UI thread waits to get the reply
-                             // from the `ThreadPool`.
-                             base::TimeTicks::Now() - start_time);
-  if (pine_image_callback_for_test_) {
-    std::move(pine_image_callback_for_test_).Run();
-  }
 }
 
 }  // namespace ash

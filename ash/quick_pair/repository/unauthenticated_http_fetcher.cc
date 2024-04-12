@@ -5,8 +5,8 @@
 #include "ash/quick_pair/repository/unauthenticated_http_fetcher.h"
 
 #include "ash/quick_pair/common/fast_pair/fast_pair_http_result.h"
+#include "ash/quick_pair/common/logging.h"
 #include "ash/quick_pair/common/quick_pair_browser_delegate.h"
-#include "components/cross_device/logging/logging.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/simple_url_loader.h"
@@ -32,7 +32,7 @@ UnauthenticatedHttpFetcher::~UnauthenticatedHttpFetcher() = default;
 void UnauthenticatedHttpFetcher::ExecuteGetRequest(
     const GURL& url,
     FetchCompleteCallback callback) {
-  CD_LOG(VERBOSE, Feature::FP) << __func__ << ": executing request to: " << url;
+  QP_LOG(VERBOSE) << __func__ << ": executing request to: " << url;
 
   auto resource_request = std::make_unique<network::ResourceRequest>();
   resource_request->url = url;
@@ -51,8 +51,7 @@ void UnauthenticatedHttpFetcher::ExecuteGetRequest(
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory =
       QuickPairBrowserDelegate::Get()->GetURLLoaderFactory();
   if (!url_loader_factory) {
-    CD_LOG(WARNING, Feature::FP)
-        << __func__ << ": No SharedURLLoaderFactory is available.";
+    QP_LOG(WARNING) << __func__ << ": No SharedURLLoaderFactory is available.";
     std::move(callback).Run(nullptr, nullptr);
     return;
   }
@@ -76,16 +75,16 @@ void UnauthenticatedHttpFetcher::OnComplete(
           /*head=*/simple_loader->ResponseInfo());
 
   if (http_result->IsSuccess()) {
-    CD_LOG(VERBOSE, Feature::FP)
-        << "Successfully fetched " << simple_loader->GetContentSize()
-        << " bytes from " << simple_loader->GetFinalURL();
+    QP_LOG(VERBOSE) << "Successfully fetched "
+                    << simple_loader->GetContentSize() << " bytes from "
+                    << simple_loader->GetFinalURL();
     std::move(callback).Run(std::move(response_body), std::move(http_result));
     return;
   }
 
-  CD_LOG(WARNING, Feature::FP)
-      << "Downloading to string from " << simple_loader->GetFinalURL()
-      << " failed: " << http_result->ToString();
+  QP_LOG(WARNING) << "Downloading to string from "
+                  << simple_loader->GetFinalURL()
+                  << " failed: " << http_result->ToString();
 
   // TODO(jonmann): Implement retries with back-off.
   std::move(callback).Run(nullptr, std::move(http_result));

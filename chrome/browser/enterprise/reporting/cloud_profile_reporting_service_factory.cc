@@ -5,7 +5,6 @@
 #include "chrome/browser/enterprise/reporting/cloud_profile_reporting_service_factory.h"
 
 #include "chrome/browser/browser_process.h"
-#include "chrome/browser/enterprise/identifiers/profile_id_service_factory.h"
 #include "chrome/browser/enterprise/reporting/cloud_profile_reporting_service.h"
 #include "chrome/browser/policy/chrome_browser_policy_connector.h"
 #include "chrome/browser/profiles/profile.h"
@@ -17,8 +16,7 @@ namespace enterprise_reporting {
 // static
 CloudProfileReportingServiceFactory*
 CloudProfileReportingServiceFactory::GetInstance() {
-  static base::NoDestructor<CloudProfileReportingServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<CloudProfileReportingServiceFactory>::get();
 }
 
 // static
@@ -28,12 +26,11 @@ CloudProfileReportingServiceFactory::GetForProfile(Profile* profile) {
       GetInstance()->GetServiceForBrowserContext(profile, /*create=*/true));
 }
 
-std::unique_ptr<KeyedService>
-CloudProfileReportingServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* CloudProfileReportingServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
-  return std::make_unique<CloudProfileReportingService>(
+  return new CloudProfileReportingService(
       profile,
       g_browser_process->browser_policy_connector()
           ->device_management_service(),
@@ -46,9 +43,7 @@ bool CloudProfileReportingServiceFactory::ServiceIsCreatedWithBrowserContext()
 
 CloudProfileReportingServiceFactory::CloudProfileReportingServiceFactory()
     : ProfileKeyedServiceFactory("CloudProfileReporting",
-                                 ProfileSelections::BuildForRegularProfile()) {
-  DependsOn(enterprise::ProfileIdServiceFactory::GetInstance());
-}
+                                 ProfileSelections::BuildForRegularProfile()) {}
 
 CloudProfileReportingServiceFactory::~CloudProfileReportingServiceFactory() =
     default;

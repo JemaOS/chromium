@@ -85,7 +85,7 @@ void WindowControlsOverlay::WindowControlsOverlayChanged(
 }
 
 void WindowControlsOverlay::Trace(blink::Visitor* visitor) const {
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   Supplement<Navigator>::Trace(visitor);
 }
 

@@ -34,7 +34,6 @@
 #include <memory>
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-blink.h"
-#include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/web_data.h"
 #include "third_party/blink/renderer/core/svg/graphics/svg_image.h"
 #include "third_party/blink/renderer/core/svg/graphics/svg_image_for_container.h"
@@ -51,8 +50,7 @@ SkBitmap WebImage::FromData(const WebData& data,
   const bool data_complete = true;
   std::unique_ptr<ImageDecoder> decoder(ImageDecoder::Create(
       data, data_complete, ImageDecoder::kAlphaPremultiplied,
-      ImageDecoder::kDefaultBitDepth, ColorBehavior::kIgnore,
-      Platform::GetMaxDecodedImageBytes()));
+      ImageDecoder::kDefaultBitDepth, ColorBehavior::Ignore()));
   if (!decoder || !decoder->IsSizeAvailable())
     return {};
 
@@ -80,13 +78,11 @@ SkBitmap WebImage::FromData(const WebData& data,
   }
 
   ImageFrame* frame = decoder->DecodeFrameBufferAtIndex(index);
-  if (!frame || decoder->Failed() || frame->Bitmap().drawsNothing()) {
+  if (!frame || decoder->Failed())
     return {};
-  }
 
-  if (decoder->Orientation() == ImageOrientationEnum::kDefault) {
+  if (decoder->Orientation().Orientation() == ImageOrientationEnum::kDefault)
     return frame->Bitmap();
-  }
 
   cc::PaintImage paint_image(Image::ResizeAndOrientImage(
       cc::PaintImage::CreateFromBitmap(frame->Bitmap()),
@@ -134,8 +130,7 @@ WebVector<SkBitmap> WebImage::FramesFromData(const WebData& data) {
   const bool data_complete = true;
   std::unique_ptr<ImageDecoder> decoder(ImageDecoder::Create(
       data, data_complete, ImageDecoder::kAlphaPremultiplied,
-      ImageDecoder::kDefaultBitDepth, ColorBehavior::kIgnore,
-      Platform::GetMaxDecodedImageBytes()));
+      ImageDecoder::kDefaultBitDepth, ColorBehavior::Ignore()));
   if (!decoder || !decoder->IsSizeAvailable())
     return {};
 
@@ -168,8 +163,7 @@ WebVector<WebImage::AnimationFrame> WebImage::AnimationFromData(
   const bool data_complete = true;
   std::unique_ptr<ImageDecoder> decoder(ImageDecoder::Create(
       data, data_complete, ImageDecoder::kAlphaPremultiplied,
-      ImageDecoder::kDefaultBitDepth, ColorBehavior::kIgnore,
-      Platform::GetMaxDecodedImageBytes()));
+      ImageDecoder::kDefaultBitDepth, ColorBehavior::Ignore()));
   if (!decoder || !decoder->IsSizeAvailable() || decoder->FrameCount() == 0)
     return {};
 

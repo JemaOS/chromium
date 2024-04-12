@@ -14,7 +14,8 @@
 namespace vr {
 
 class BrowserRenderer;
-class VRBrowserRendererThread;
+class BrowserTestBrowserRendererBrowserInterface;
+class VRBrowserRendererThreadWin;
 
 // Port of the equivalent NativeUiUtils.java for instrumentation tests. Contains
 // utility functions for interacting with the native VR UI, e.g. notifications
@@ -37,21 +38,32 @@ class UiUtils {
 
   ~UiUtils();
 
-  // Waits until the native UI reports that |element_name|'s visibility matches
-  // |visible|. Fails if the visibility is not matched in an allotted amount of
-  // time.
-  void WaitForVisibilityStatus(const UserFriendlyElementName& element_name,
-                               const bool& visible);
+  // Runs |action| and waits until the native UI reports that |element_name|'s
+  // visibility matches |visible|. Fails if the visibility is not matched in
+  // an allotted amount of time.
+  void PerformActionAndWaitForVisibilityStatus(
+      const UserFriendlyElementName& element_name,
+      const bool& visible,
+      base::OnceCallback<void()> action);
 
-  static void DisableOverlayForTesting();
+  // Not meant to be called directly by a test.
+  void ReportUiOperationResult(const UiTestOperationType& action_type,
+                               const UiTestOperationResult& result);
+
+  static void DisableFrameTimeoutForTesting();
 
  private:
   static void PollForBrowserRenderer(base::RunLoop* wait_loop);
-  static VRBrowserRendererThread* GetRendererThread();
+  static VRBrowserRendererThreadWin* GetRendererThread();
   static BrowserRenderer* GetBrowserRenderer();
 
   void WatchElementForVisibilityStatusForTesting(
-      std::optional<UiVisibilityState> visibility_expectation);
+      VisibilityChangeExpectation visibility_expectation);
+  std::string UiTestOperationResultToString(UiTestOperationResult& result);
+
+  std::unique_ptr<BrowserTestBrowserRendererBrowserInterface> interface_;
+  std::vector<UiTestOperationResult> ui_operation_results_;
+  std::vector<base::OnceCallback<void()>> ui_operation_callbacks_;
 
   scoped_refptr<base::SingleThreadTaskRunner> main_thread_task_runner_;
 };

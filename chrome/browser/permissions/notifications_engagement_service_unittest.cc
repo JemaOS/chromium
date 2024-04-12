@@ -56,22 +56,23 @@ TEST_F(NotificationsEngagementServiceTest,
   // Record initial display date to enable comparing dictionaries.
   std::string displayedDate = service()->GetBucketLabel(base::Time::Now());
 
+  ContentSettingsForOneType notifications_engagement_setting;
   HostContentSettingsMap* host_content_settings_map =
       HostContentSettingsMapFactory::GetForProfile(profile());
 
   // Testing the dictionary of URLS
-  ContentSettingsForOneType notifications_engagement_setting =
-      host_content_settings_map->GetSettingsForOneType(
-          ContentSettingsType::NOTIFICATION_INTERACTIONS);
+  host_content_settings_map->GetSettingsForOneType(
+      ContentSettingsType::NOTIFICATION_INTERACTIONS,
+      &notifications_engagement_setting);
   ASSERT_EQ(0U, notifications_engagement_setting.size());
 
   // Test that a new Dict entry is added when no entry existed for the given
   // URL.
   service()->RecordNotificationDisplayed(hosts[0]);
   service()->RecordNotificationDisplayed(hosts[0]);
-  notifications_engagement_setting =
-      host_content_settings_map->GetSettingsForOneType(
-          ContentSettingsType::NOTIFICATION_INTERACTIONS);
+  host_content_settings_map->GetSettingsForOneType(
+      ContentSettingsType::NOTIFICATION_INTERACTIONS,
+      &notifications_engagement_setting);
   ASSERT_EQ(1U, notifications_engagement_setting.size());
 
   // Advance time to set same URL entries in different dates.
@@ -81,16 +82,16 @@ TEST_F(NotificationsEngagementServiceTest,
   // Test that the same URL entry is not duplicated.
   service()->RecordNotificationDisplayed(hosts[0]);
   service()->RecordNotificationInteraction(hosts[0]);
-  notifications_engagement_setting =
-      host_content_settings_map->GetSettingsForOneType(
-          ContentSettingsType::NOTIFICATION_INTERACTIONS);
+  host_content_settings_map->GetSettingsForOneType(
+      ContentSettingsType::NOTIFICATION_INTERACTIONS,
+      &notifications_engagement_setting);
   ASSERT_EQ(1U, notifications_engagement_setting.size());
 
   // Test that different entries are created for different URL.
   service()->RecordNotificationDisplayed(hosts[1]);
-  notifications_engagement_setting =
-      host_content_settings_map->GetSettingsForOneType(
-          ContentSettingsType::NOTIFICATION_INTERACTIONS);
+  host_content_settings_map->GetSettingsForOneType(
+      ContentSettingsType::NOTIFICATION_INTERACTIONS,
+      &notifications_engagement_setting);
   ASSERT_EQ(2U, notifications_engagement_setting.size());
 
   // Verify the contents of the |notifications_engagement_setting| for
@@ -144,7 +145,8 @@ TEST_F(NotificationsEngagementServiceTest,
 
   base::Value website_engagement_value1 =
       host_content_settings_map->GetWebsiteSetting(
-          url1, GURL(), ContentSettingsType::NOTIFICATION_INTERACTIONS);
+          url1, GURL(), ContentSettingsType::NOTIFICATION_INTERACTIONS,
+          nullptr);
   ASSERT_TRUE(website_engagement_value1.is_dict());
   base::Value::Dict& website_engagement_dict1 =
       website_engagement_value1.GetDict();
@@ -162,7 +164,8 @@ TEST_F(NotificationsEngagementServiceTest,
 
   base::Value website_engagement_value2 =
       host_content_settings_map->GetWebsiteSetting(
-          url2, GURL(), ContentSettingsType::NOTIFICATION_INTERACTIONS);
+          url2, GURL(), ContentSettingsType::NOTIFICATION_INTERACTIONS,
+          nullptr);
   ASSERT_TRUE(website_engagement_value2.is_dict());
   base::Value::Dict& website_engagement_dict2 =
       website_engagement_value2.GetDict();
@@ -179,7 +182,8 @@ TEST_F(NotificationsEngagementServiceTest,
 
   base::Value website_engagement_value3 =
       host_content_settings_map->GetWebsiteSetting(
-          url3, GURL(), ContentSettingsType::NOTIFICATION_INTERACTIONS);
+          url3, GURL(), ContentSettingsType::NOTIFICATION_INTERACTIONS,
+          nullptr);
   ASSERT_TRUE(website_engagement_value3.is_dict());
   base::Value::Dict& website_engagement_dict3 =
       website_engagement_value3.GetDict();
@@ -209,7 +213,8 @@ TEST_F(NotificationsEngagementServiceTest, EraseStaleEntries) {
   base::Value::Dict website_engagement =
       host_content_settings_map
           ->GetWebsiteSetting(url, GURL(),
-                              ContentSettingsType::NOTIFICATION_INTERACTIONS)
+                              ContentSettingsType::NOTIFICATION_INTERACTIONS,
+                              nullptr)
           .GetDict()
           .Clone();
 
@@ -230,7 +235,7 @@ TEST_F(NotificationsEngagementServiceTest, DISABLED_GetBucketLabel) {
             base::NumberToString(expected_date1.base::Time::ToTimeT()));
   std::string label1 = NotificationsEngagementService::GetBucketLabel(date1);
   ASSERT_EQ(label1, base::NumberToString(expected_date1.base::Time::ToTimeT()));
-  std::optional<base::Time> begin1 =
+  absl::optional<base::Time> begin1 =
       NotificationsEngagementService::ParsePeriodBeginFromBucketLabel(label1);
   ASSERT_TRUE(begin1.has_value());
   EXPECT_EQ(label1,
@@ -243,7 +248,7 @@ TEST_F(NotificationsEngagementServiceTest, DISABLED_GetBucketLabel) {
             base::NumberToString(expected_date2.base::Time::ToTimeT()));
   std::string label2 = NotificationsEngagementService::GetBucketLabel(date2);
   ASSERT_EQ(label2, base::NumberToString(expected_date2.base::Time::ToTimeT()));
-  std::optional<base::Time> begin2 =
+  absl::optional<base::Time> begin2 =
       NotificationsEngagementService::ParsePeriodBeginFromBucketLabel(label2);
   ASSERT_TRUE(begin2.has_value());
   EXPECT_EQ(label2,
@@ -256,7 +261,7 @@ TEST_F(NotificationsEngagementServiceTest, DISABLED_GetBucketLabel) {
             base::NumberToString(expected_date3.base::Time::ToTimeT()));
   std::string label3 = NotificationsEngagementService::GetBucketLabel(date3);
   ASSERT_EQ(label3, base::NumberToString(expected_date3.base::Time::ToTimeT()));
-  std::optional<base::Time> begin3 =
+  absl::optional<base::Time> begin3 =
       NotificationsEngagementService::ParsePeriodBeginFromBucketLabel(label3);
   ASSERT_TRUE(begin3.has_value());
   EXPECT_EQ(label3,
@@ -267,7 +272,7 @@ TEST_F(NotificationsEngagementServiceTest, DISABLED_GetBucketLabel) {
       base::Time::FromString("2022-03-23 00:00:00.000 GMT", &expected_date4));
   std::string label4 = NotificationsEngagementService::GetBucketLabel(date4);
   ASSERT_EQ(label4, base::NumberToString(expected_date4.base::Time::ToTimeT()));
-  std::optional<base::Time> begin4 =
+  absl::optional<base::Time> begin4 =
       NotificationsEngagementService::ParsePeriodBeginFromBucketLabel(label4);
   ASSERT_TRUE(begin4.has_value());
   EXPECT_EQ(label4,

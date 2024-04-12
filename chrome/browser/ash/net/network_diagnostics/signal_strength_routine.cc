@@ -38,8 +38,7 @@ constexpr int kSignalStrengthThreshold = 30;
 
 }  // namespace
 
-SignalStrengthRoutine::SignalStrengthRoutine(mojom::RoutineCallSource source)
-    : NetworkDiagnosticsRoutine(source) {
+SignalStrengthRoutine::SignalStrengthRoutine() {
   set_verdict(mojom::RoutineVerdict::kNotRun);
   GetNetworkConfigService(
       remote_cros_network_config_.BindNewPipeAndPassReceiver());

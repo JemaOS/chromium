@@ -8,7 +8,6 @@ package org.chromium.webapk.lib.common;
 public class WebApkCommonUtils {
     /**
      * Returns name of "Runtime Dex" asset in Chrome APK based on version.
-     *
      * @param version
      * @return Dex asset name.
      */
@@ -29,8 +28,7 @@ public class WebApkCommonUtils {
      * WebAPK.
      */
     public static String generateSplashContentProviderUri(String webApkPackageName) {
-        return "content://"
-                + generateSplashContentProviderAuthority(webApkPackageName)
+        return "content://" + generateSplashContentProviderAuthority(webApkPackageName)
                 + "/cached_splash_image";
     }
 }

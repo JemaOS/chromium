@@ -5,8 +5,7 @@
 /**
  * @fileoverview Provides output logger.
  */
-import {LocalStorage} from '/common/local_storage.js';
-
+import {LocalStorage} from '../../../common/local_storage.js';
 import {LogType} from '../../common/log_types.js';
 import {LogStore} from '../logging/log_store.js';
 

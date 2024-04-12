@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/crosapi/device_oauth2_token_service_ash.h"
 
 #include "base/test/mock_callback.h"
-#include "base/test/test_future.h"
 #include "chrome/browser/ash/settings/scoped_testing_cros_settings.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/device_identity/device_oauth2_token_service_factory.h"
@@ -50,17 +49,20 @@ class DeviceOAuth2TokenServiceAshTest : public testing::Test {
 };
 
 TEST_F(DeviceOAuth2TokenServiceAshTest, SingleRequest) {
-  base::test::TestFuture<crosapi::mojom::AccessTokenResultPtr> waiter;
+  base::RunLoop run_loop;
   std::unique_ptr<crosapi::DeviceOAuth2TokenServiceAsh> service =
       std::make_unique<crosapi::DeviceOAuth2TokenServiceAsh>();
-
-  service->FetchAccessTokenForDeviceAccount(/*scopes=*/{},
-                                            waiter.GetCallback());
-  EXPECT_TRUE(waiter.Wait());
+  base::MockCallback<FetchAccessTokenForDeviceAccountCallback> callback;
+  EXPECT_CALL(callback, Run(testing::_)).WillOnce(testing::Invoke([&run_loop] {
+    run_loop.Quit();
+  }));
+  service->FetchAccessTokenForDeviceAccount(/*scopes=*/{}, callback.Get());
+  run_loop.Run();
 }
 
 // Tests that passing an empty callback does not crash.
 TEST_F(DeviceOAuth2TokenServiceAshTest, EmptyCallback) {
+  base::RunLoop run_loop;
   std::unique_ptr<crosapi::DeviceOAuth2TokenServiceAsh> service =
       std::make_unique<crosapi::DeviceOAuth2TokenServiceAsh>();
   service->FetchAccessTokenForDeviceAccount(
@@ -70,15 +72,24 @@ TEST_F(DeviceOAuth2TokenServiceAshTest, EmptyCallback) {
 
 TEST_F(DeviceOAuth2TokenServiceAshTest, MultipleRequests) {
   constexpr int kRequestCount = 4;
+  base::RunLoop run_loop;
   std::unique_ptr<crosapi::DeviceOAuth2TokenServiceAsh> service =
       std::make_unique<crosapi::DeviceOAuth2TokenServiceAsh>();
-
-  for (int call_count = 0; call_count < kRequestCount; call_count++) {
-    base::test::TestFuture<crosapi::mojom::AccessTokenResultPtr> waiter;
-    service->FetchAccessTokenForDeviceAccount(/*scopes=*/{},
-                                              waiter.GetCallback());
-    EXPECT_TRUE(waiter.Wait());
+  std::array<base::MockCallback<FetchAccessTokenForDeviceAccountCallback>,
+             kRequestCount>
+      callbacks;
+  int call_count = 0;
+  for (auto& callback : callbacks) {
+    EXPECT_CALL(callback, Run(testing::_))
+        .WillOnce(testing::Invoke([&run_loop, &call_count] {
+          if (++call_count == kRequestCount)
+            run_loop.Quit();
+        }));
   }
+  for (auto& callback : callbacks)
+    service->FetchAccessTokenForDeviceAccount(/*scopes=*/{}, callback.Get());
+  run_loop.Run();
+  EXPECT_EQ(call_count, kRequestCount);
 }
 
 TEST_F(DeviceOAuth2TokenServiceAshTest, Cancel) {

@@ -12,7 +12,6 @@
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
-#include "build/chromeos_buildflags.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/sync_invalidations_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
@@ -20,23 +19,17 @@
 #include "chrome/common/channel_info.h"
 #include "components/sync/base/command_line_switches.h"
 #include "components/sync/base/model_type.h"
+#include "components/sync/driver/sync_internals_util.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "components/sync/engine/events/protocol_event.h"
 #include "components/sync/invalidations/sync_invalidations_service.h"
 #include "components/sync/model/type_entities_count.h"
 #include "components/sync/protocol/sync_invalidations_payload.pb.h"
 #include "components/sync/protocol/user_event_specifics.pb.h"
-#include "components/sync/service/sync_internals_util.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_user_settings.h"
 #include "components/sync_user_events/user_event_service.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/web_ui.h"
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/crosapi/browser_manager.h"
-#include "chrome/browser/ash/crosapi/browser_util.h"
-#include "chrome/common/webui_url_constants.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 using syncer::SyncInvalidationsService;
 using syncer::SyncService;
@@ -149,23 +142,11 @@ void SyncInternalsMessageHandler::RegisterMessages() {
       syncer::sync_ui_util::kGetAllNodes,
       base::BindRepeating(&SyncInternalsMessageHandler::HandleGetAllNodes,
                           base::Unretained(this)));
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  web_ui()->RegisterMessageCallback(
-      syncer::sync_ui_util::kIsLacrosEnabled,
-      base::BindRepeating(&SyncInternalsMessageHandler::IsLacrosEnabled,
-                          base::Unretained(this)));
-
-  web_ui()->RegisterMessageCallback(
-      syncer::sync_ui_util::kOpenLacrosSyncInternals,
-      base::BindRepeating(&SyncInternalsMessageHandler::OpenLacrosSyncInternals,
-                          base::Unretained(this)));
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 }
 
 void SyncInternalsMessageHandler::HandleRequestDataAndRegisterForUpdates(
     const base::Value::List& args) {
-  CHECK(args.empty());
+  DCHECK(args.empty());
   AllowJavascript();
 
   // is_registered_ flag protects us from double-registering.  This could
@@ -186,7 +167,7 @@ void SyncInternalsMessageHandler::HandleRequestDataAndRegisterForUpdates(
 
 void SyncInternalsMessageHandler::HandleRequestListOfTypes(
     const base::Value::List& args) {
-  CHECK(args.empty());
+  DCHECK(args.empty());
   AllowJavascript();
 
   base::Value::Dict event_details;
@@ -202,7 +183,7 @@ void SyncInternalsMessageHandler::HandleRequestListOfTypes(
 
 void SyncInternalsMessageHandler::HandleRequestIncludeSpecificsInitialState(
     const base::Value::List& args) {
-  CHECK(args.empty());
+  DCHECK(args.empty());
   AllowJavascript();
 
   base::Value::Dict value;
@@ -215,7 +196,7 @@ void SyncInternalsMessageHandler::HandleRequestIncludeSpecificsInitialState(
 
 void SyncInternalsMessageHandler::HandleGetAllNodes(
     const base::Value::List& args) {
-  CHECK_EQ(1U, args.size());
+  DCHECK_EQ(1U, args.size());
   AllowJavascript();
 
   const std::string& callback_id = args[0].GetString();
@@ -234,14 +215,14 @@ void SyncInternalsMessageHandler::HandleGetAllNodes(
 
 void SyncInternalsMessageHandler::HandleSetIncludeSpecifics(
     const base::Value::List& args) {
-  CHECK_EQ(1U, args.size());
+  DCHECK_EQ(1U, args.size());
   AllowJavascript();
   include_specifics_ = args[0].GetBool();
 }
 
 void SyncInternalsMessageHandler::HandleWriteUserEvent(
     const base::Value::List& args) {
-  CHECK_EQ(2U, args.size());
+  DCHECK_EQ(2U, args.size());
   AllowJavascript();
 
   Profile* profile = Profile::FromWebUI(web_ui());
@@ -266,7 +247,7 @@ void SyncInternalsMessageHandler::HandleWriteUserEvent(
 
 void SyncInternalsMessageHandler::HandleRequestStart(
     const base::Value::List& args) {
-  CHECK_EQ(0U, args.size());
+  DCHECK_EQ(0U, args.size());
 
   SyncService* service = GetSyncService();
   if (!service) {
@@ -274,19 +255,16 @@ void SyncInternalsMessageHandler::HandleRequestStart(
   }
 
   service->SetSyncFeatureRequested();
-
-#if !BUILDFLAG(IS_CHROMEOS_ASH)
   // If the service was previously stopped via StopAndClear(), then the
   // "first-setup-complete" bit was also cleared, and now the service wouldn't
   // fully start up. So set that too.
-  service->GetUserSettings()->SetInitialSyncFeatureSetupComplete(
+  service->GetUserSettings()->SetFirstSetupComplete(
       syncer::SyncFirstSetupCompleteSource::BASIC_FLOW);
-#endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 }
 
 void SyncInternalsMessageHandler::HandleRequestStopClearData(
     const base::Value::List& args) {
-  CHECK_EQ(0U, args.size());
+  DCHECK_EQ(0U, args.size());
 
   SyncService* service = GetSyncService();
   if (!service) {
@@ -305,30 +283,6 @@ void SyncInternalsMessageHandler::HandleTriggerRefresh(
 
   service->TriggerRefresh(syncer::ModelTypeSet::All());
 }
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-void SyncInternalsMessageHandler::IsLacrosEnabled(
-    const base::Value::List& args) {
-  CHECK_EQ(1U, args.size());
-
-  AllowJavascript();
-  const bool is_lacros_enabled = crosapi::browser_util::IsLacrosEnabled();
-  std::string callback_id = args[0].GetString();
-  ResolveJavascriptCallback(base::Value(callback_id),
-                            base::Value(is_lacros_enabled));
-}
-
-void SyncInternalsMessageHandler::OpenLacrosSyncInternals(
-    const base::Value::List& args) {
-  CHECK_EQ(0U, args.size());
-
-  // Note: This will only be called by the UI when Lacros is available.
-  DCHECK(crosapi::BrowserManager::Get());
-  crosapi::BrowserManager::Get()->SwitchToTab(
-      GURL(chrome::kChromeUISyncInternalsUrl),
-      /*path_behavior=*/NavigateParams::RESPECT);
-}
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 void SyncInternalsMessageHandler::OnReceivedAllNodes(
     const std::string& callback_id,
@@ -376,23 +330,28 @@ void SyncInternalsMessageHandler::SendAboutInfoAndEntityCounts() {
 
   if (SyncService* service = GetSyncService()) {
     service->GetEntityCountsForDebugging(
-        BindRepeating(&SyncInternalsMessageHandler::OnGotEntityCounts,
-                      weak_ptr_factory_.GetWeakPtr()));
+        BindOnce(&SyncInternalsMessageHandler::OnGotEntityCounts,
+                 weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    OnGotEntityCounts({});
   }
 }
 
 void SyncInternalsMessageHandler::OnGotEntityCounts(
-    const syncer::TypeEntitiesCount& entity_counts) {
-  base::Value::Dict count_dictionary;
-  count_dictionary.Set(syncer::sync_ui_util::kModelType,
-                       ModelTypeToDebugString(entity_counts.type));
-  count_dictionary.Set(syncer::sync_ui_util::kEntities, entity_counts.entities);
-  count_dictionary.Set(syncer::sync_ui_util::kNonTombstoneEntities,
-                       entity_counts.non_tombstone_entities);
+    const std::vector<syncer::TypeEntitiesCount>& entity_counts) {
+  base::Value::List count_list;
+  for (const syncer::TypeEntitiesCount& count : entity_counts) {
+    base::Value::Dict count_dictionary;
+    count_dictionary.Set(syncer::sync_ui_util::kModelType,
+                         ModelTypeToDebugString(count.type));
+    count_dictionary.Set(syncer::sync_ui_util::kEntities, count.entities);
+    count_dictionary.Set(syncer::sync_ui_util::kNonTombstoneEntities,
+                         count.non_tombstone_entities);
+    count_list.Append(std::move(count_dictionary));
+  }
 
   base::Value::Dict event_details;
-  event_details.Set(syncer::sync_ui_util::kEntityCounts,
-                    std::move(count_dictionary));
+  event_details.Set(syncer::sync_ui_util::kEntityCounts, std::move(count_list));
   FireWebUIListener(syncer::sync_ui_util::kOnEntityCountsUpdated,
                     event_details);
 }

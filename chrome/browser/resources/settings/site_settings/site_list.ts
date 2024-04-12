@@ -9,7 +9,7 @@
  */
 import 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import '/shared/settings/controls/cr_policy_pref_indicator.js';
+import 'chrome://resources/cr_elements/policy/cr_policy_pref_indicator.js';
 import 'chrome://resources/cr_elements/cr_shared_style.css.js';
 import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 import 'chrome://resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
@@ -22,18 +22,21 @@ import './site_list_entry.js';
 
 import {ListPropertyUpdateMixin} from 'chrome://resources/cr_elements/list_property_update_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {focusWithoutInk} from 'chrome://resources/js/focus_without_ink.js';
-import type {PaperTooltipElement} from 'chrome://resources/polymer/v3_0/paper-tooltip/paper-tooltip.js';
+import {PaperTooltipElement} from 'chrome://resources/polymer/v3_0/paper-tooltip/paper-tooltip.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {TooltipMixin} from '../tooltip_mixin.js';
+// <if expr="chromeos_ash">
+import {loadTimeData} from '../i18n_setup.js';
 
+import {AndroidInfoBrowserProxyImpl, AndroidSmsInfo} from './android_info_browser_proxy.js';
+// </if>
 import {ContentSetting, ContentSettingsTypes, CookiesExceptionType, INVALID_CATEGORY_SUBTYPE, SITE_EXCEPTION_WILDCARD} from './constants.js';
 import {getTemplate} from './site_list.html.js';
 import {SiteSettingsMixin} from './site_settings_mixin.js';
-import type {RawSiteException, SiteException, SiteSettingsPrefsBrowserProxy} from './site_settings_prefs_browser_proxy.js';
-import {SiteSettingsPrefsBrowserProxyImpl} from './site_settings_prefs_browser_proxy.js';
+import {RawSiteException, SiteException, SiteSettingsPrefsBrowserProxy, SiteSettingsPrefsBrowserProxyImpl} from './site_settings_prefs_browser_proxy.js';
 
 export interface SiteListElement {
   $: {
@@ -188,8 +191,20 @@ export class SiteListElement extends SiteListElementBase {
   private browserProxy_: SiteSettingsPrefsBrowserProxy =
       SiteSettingsPrefsBrowserProxyImpl.getInstance();
 
+  // <if expr="chromeos_ash">
+  private androidSmsInfo_: AndroidSmsInfo|null;
+  // </if>
+
   constructor() {
     super();
+
+    // <if expr="chromeos_ash">
+    /**
+     * Android messages info object containing messages feature state and
+     * exception origin.
+     */
+    this.androidSmsInfo_ = null;
+    // </if>
 
     /**
      * The element to return focus to, when the currently active dialog is
@@ -213,6 +228,13 @@ export class SiteListElement extends SiteListElementBase {
         'onIncognitoStatusChanged',
         (hasIncognito: boolean) =>
             this.onIncognitoStatusChanged_(hasIncognito));
+    // <if expr="chromeos_ash">
+    this.addWebUiListener(
+        'settings.onAndroidSmsInfoChange', (info: AndroidSmsInfo) => {
+          this.androidSmsInfo_ = info;
+          this.populateList_();
+        });
+    // </if>
     this.browserProxy.updateIncognitoStatus();
   }
 
@@ -254,7 +276,14 @@ export class SiteListElement extends SiteListElementBase {
     }
 
     this.setUpActionMenu_();
+
+    // <if expr="not chromeos_ash">
     this.populateList_();
+    // </if>
+
+    // <if expr="chromeos_ash">
+    this.updateAndroidSmsInfo_().then(() => this.populateList_());
+    // </if>
 
     // The Session permissions are only for cookies.
     if (this.categorySubtype === ContentSetting.SESSION_ONLY) {
@@ -309,6 +338,47 @@ export class SiteListElement extends SiteListElementBase {
     this.showTooltipAtTarget(this.$.tooltip, e.detail.target);
   }
 
+  // <if expr="chromeos_ash">
+  /**
+   * Load android sms info if required and sets it to the |androidSmsInfo_|
+   * property. Returns a promise that resolves when load is complete.
+   */
+  private updateAndroidSmsInfo_() {
+    // |androidSmsInfo_| is only relevant for NOTIFICATIONS category. Don't
+    // bother fetching it for other categories.
+    if (this.category === ContentSettingsTypes.NOTIFICATIONS &&
+        loadTimeData.valueExists('multideviceAllowedByPolicy') &&
+        loadTimeData.getBoolean('multideviceAllowedByPolicy') &&
+        !this.androidSmsInfo_) {
+      const androidInfoBrowserProxy = AndroidInfoBrowserProxyImpl.getInstance();
+      return androidInfoBrowserProxy.getAndroidSmsInfo().then(
+          (info: AndroidSmsInfo) => {
+            this.androidSmsInfo_ = info;
+          });
+    }
+
+    return Promise.resolve();
+  }
+
+  /**
+   * Processes exceptions and adds showAndroidSmsNote field to
+   * the required exception item.
+   */
+  private processExceptionsForAndroidSmsInfo_(sites: SiteException[]):
+      SiteException[] {
+    if (!this.androidSmsInfo_ || !this.androidSmsInfo_.enabled) {
+      return sites;
+    }
+    return sites.map((site) => {
+      if (site.origin === this.androidSmsInfo_!.origin) {
+        return Object.assign({showAndroidSmsNote: true}, site);
+      } else {
+        return site;
+      }
+    });
+  }
+  // </if>
+
   /**
    * Populate the sites list for display.
    */
@@ -323,32 +393,35 @@ export class SiteListElement extends SiteListElementBase {
    * Process the exception list returned from the native layer.
    */
   private processExceptions_(exceptionList: RawSiteException[]) {
-    const sites = exceptionList
-                      .filter(
-                          site => site.setting !== ContentSetting.DEFAULT &&
-                              site.setting === this.categorySubtype)
-                      .filter(site => {
-                        if (this.category !== ContentSettingsTypes.COOKIES) {
+    let sites = exceptionList
+                    .filter(
+                        site => site.setting !== ContentSetting.DEFAULT &&
+                            site.setting === this.categorySubtype)
+                    .filter(site => {
+                      if (this.category !== ContentSettingsTypes.COOKIES) {
+                        return true;
+                      }
+                      assert(this.cookiesExceptionType !== undefined);
+                      switch (this.cookiesExceptionType) {
+                        case CookiesExceptionType.THIRD_PARTY:
+                          return site.origin === SITE_EXCEPTION_WILDCARD;
+                        case CookiesExceptionType.SITE_DATA:
+                          // Site data exceptions include all exceptions that
+                          // have `origin` set. This includes site data
+                          // exceptions and exceptions with both patterns set
+                          // (currently possible only via exceptions API).
+                          return site.origin !== SITE_EXCEPTION_WILDCARD;
+                        case CookiesExceptionType.COMBINED:
+                          // For cookies exception type COMBINED, don't apply
+                          // any filters and show exceptions with both pattern
+                          // types.
                           return true;
-                        }
-                        assert(this.cookiesExceptionType !== undefined);
-                        switch (this.cookiesExceptionType) {
-                          case CookiesExceptionType.THIRD_PARTY:
-                            return site.origin === SITE_EXCEPTION_WILDCARD;
-                          case CookiesExceptionType.SITE_DATA:
-                            // Site data exceptions include all exceptions that
-                            // have `origin` set. This includes site data
-                            // exceptions and exceptions with both patterns set
-                            // (currently possible only via exceptions API).
-                            return site.origin !== SITE_EXCEPTION_WILDCARD;
-                          case CookiesExceptionType.COMBINED:
-                            // For cookies exception type COMBINED, don't apply
-                            // any filters and show exceptions with both pattern
-                            // types.
-                            return true;
-                        }
-                      })
-                      .map(site => this.expandSiteException(site));
+                      }
+                    })
+                    .map(site => this.expandSiteException(site));
+    // <if expr="chromeos_ash">
+    sites = this.processExceptionsForAndroidSmsInfo_(sites);
+    // </if>
     this.updateList('sites', x => x.origin, sites);
   }
 

@@ -9,23 +9,23 @@
 #include "chrome/test/chromedriver/chrome/status.h"
 
 ChromeReplayImpl::ChromeReplayImpl(
-    BrowserInfo browser_info,
-    std::set<WebViewInfo::Type> window_types,
+    std::unique_ptr<DevToolsHttpClient> http_client,
     std::unique_ptr<DevToolsClient> websocket_client,
     std::vector<std::unique_ptr<DevToolsEventListener>>
         devtools_event_listeners,
-    std::optional<MobileDevice> mobile_device,
+    absl::optional<MobileDevice> mobile_device,
+    SyncWebSocketFactory socket_factory,
     std::string page_load_strategy,
     base::Process process,
     const base::CommandLine& command,
     base::ScopedTempDir* user_data_dir,
     base::ScopedTempDir* extension_dir,
     bool network_emulation_enabled)
-    : ChromeDesktopImpl(std::move(browser_info),
-                        std::move(window_types),
+    : ChromeDesktopImpl(std::move(http_client),
                         std::move(websocket_client),
                         std::move(devtools_event_listeners),
                         std::move(mobile_device),
+                        std::move(socket_factory),
                         page_load_strategy,
                         std::move(process),
                         command,

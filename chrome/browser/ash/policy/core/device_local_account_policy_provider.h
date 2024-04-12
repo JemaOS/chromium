@@ -15,7 +15,6 @@
 #include "chrome/browser/ash/policy/core/device_local_account_policy_service.h"
 #include "chrome/browser/ash/policy/external_data/device_local_account_external_data_manager.h"
 #include "components/policy/core/common/configuration_policy_provider.h"
-#include "components/policy/core/common/policy_types.h"
 
 namespace policy {
 
@@ -53,7 +52,7 @@ class DeviceLocalAccountPolicyProvider
   // ConfigurationPolicyProvider:
   bool IsInitializationComplete(PolicyDomain domain) const override;
   bool IsFirstPolicyLoadComplete(PolicyDomain domain) const override;
-  void RefreshPolicies(PolicyFetchReason reason) override;
+  void RefreshPolicies() override;
 
   // DeviceLocalAccountPolicyService::Observer:
   void OnPolicyUpdated(const std::string& user_id) override;
@@ -74,7 +73,7 @@ class DeviceLocalAccountPolicyProvider
   const std::string user_id_;
   scoped_refptr<DeviceLocalAccountExternalDataManager> external_data_manager_;
 
-  raw_ptr<DeviceLocalAccountPolicyService> service_;
+  raw_ptr<DeviceLocalAccountPolicyService, ExperimentalAsh> service_;
   DeviceLocalAccount::Type type_;
 
   bool store_initialized_;

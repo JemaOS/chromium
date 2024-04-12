@@ -26,7 +26,6 @@ constexpr gfx::Insets kDefaultRadioButtonPadding =
     gfx::Insets::TLBR(8, 12, 8, 12);
 constexpr gfx::Insets kCustomizedRadioButtonDefaultPadding =
     gfx::Insets::TLBR(8, 24, 8, 12);
-constexpr int kCustomizedImageLabelSpacing = 16;
 
 }  // namespace
 
@@ -53,7 +52,7 @@ CreateRadioButtonGroupInstancesGridView() {
       std::make_unique<RadioButtonGroup>(
           kRadioButtonGroupWidth, kInsideBorderInsets, kBetweenChildSpacing,
           RadioButton::IconDirection::kLeading, RadioButton::IconType::kCircle,
-          kDefaultRadioButtonPadding, RadioButton::kImageLabelSpacingDP);
+          kDefaultRadioButtonPadding);
   radio_button_group_with_disabled_button->AddButton(
       RadioButton::PressedCallback(), u"Test Button1");
   radio_button_group_with_disabled_button->AddButton(
@@ -68,7 +67,7 @@ CreateRadioButtonGroupInstancesGridView() {
       std::make_unique<RadioButtonGroup>(
           kRadioButtonGroupWidth, kInsideBorderInsets, kBetweenChildSpacing,
           RadioButton::IconDirection::kFollowing, RadioButton::IconType::kCheck,
-          kCustomizedRadioButtonDefaultPadding, kCustomizedImageLabelSpacing);
+          kCustomizedRadioButtonDefaultPadding);
   customized_button_group->AddButton(RadioButton::PressedCallback(),
                                      u"Test Button1");
   customized_button_group->AddButton(RadioButton::PressedCallback(),

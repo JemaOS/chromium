@@ -4,9 +4,9 @@
 
 #include <Cocoa/Cocoa.h>
 
-#include "base/apple/scoped_cftyperef.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
+#include "base/mac/scoped_nsobject.h"
 #include "base/notreached.h"
 #include "base/run_loop.h"
 #include "base/test/simple_test_tick_clock.h"
@@ -50,22 +50,27 @@ enum Deployment {
 }  // namespace
 
 // A wrapper object for events queued for replay.
-@interface QueuedEvent : NSObject
-
+@interface QueuedEvent : NSObject {
+  BOOL _runMessageLoop;
+  Deployment _deployment;
+  NSEvent* _event;
+}
 // Whether the message loop should be run after this event has been replayed.
 @property(nonatomic, assign) BOOL runMessageLoop;
 // How this event should be replayed.
 @property(nonatomic, assign) Deployment deployment;
 // The event to be replayed.
-@property(nonatomic, strong) NSEvent* event;
+@property(nonatomic, retain) NSEvent* event;
 @end
 
 @implementation QueuedEvent
-
 @synthesize deployment = _deployment;
 @synthesize event = _event;
 @synthesize runMessageLoop = _runMessageLoop;
-
+- (void)dealloc {
+  [_event release];
+  [super dealloc];
+}
 @end
 
 class ChromeRenderWidgetHostViewMacHistorySwiperTest
@@ -88,7 +93,7 @@ class ChromeRenderWidgetHostViewMacHistorySwiperTest
       const ChromeRenderWidgetHostViewMacHistorySwiperTest&) = delete;
 
   void SetUpOnMainThread() override {
-    event_queue_ = [[NSMutableArray alloc] init];
+    event_queue_.reset([[NSMutableArray alloc] init]);
     touch_ = CGPointMake(0.5, 0.5);
 
     // Ensure that the navigation stack is not empty.
@@ -103,7 +108,7 @@ class ChromeRenderWidgetHostViewMacHistorySwiperTest
 
   void TearDownOnMainThread() override {
     ui::SetEventTickClockForTesting(nullptr);
-    event_queue_ = nil;
+    event_queue_.reset();
   }
 
  protected:
@@ -146,16 +151,15 @@ class ChromeRenderWidgetHostViewMacHistorySwiperTest
 
   // Creates a mock scroll wheel event that is backed by a real CGEvent.
   id MockScrollWheelEvent(NSPoint delta, NSEventType type) {
-    base::apple::ScopedCFTypeRef<CGEventRef> cg_event(
-        CGEventCreateScrollWheelEvent(nullptr, kCGScrollEventUnitLine, 2, 0,
-                                      0));
-    CGEventSetIntegerValueField(cg_event.get(), kCGScrollWheelEventIsContinuous,
-                                1);
-    CGEventSetIntegerValueField(cg_event.get(),
-                                kCGScrollWheelEventPointDeltaAxis2, delta.x);
-    CGEventSetIntegerValueField(cg_event.get(),
-                                kCGScrollWheelEventPointDeltaAxis1, delta.y);
-    NSEvent* event = [NSEvent eventWithCGEvent:cg_event.get()];
+    CGEventRef cg_event =
+        CGEventCreateScrollWheelEvent(NULL, kCGScrollEventUnitLine, 2, 0, 0);
+    CGEventSetIntegerValueField(cg_event, kCGScrollWheelEventIsContinuous, 1);
+    CGEventSetIntegerValueField(
+        cg_event, kCGScrollWheelEventPointDeltaAxis2, delta.x);
+    CGEventSetIntegerValueField(
+        cg_event, kCGScrollWheelEventPointDeltaAxis1, delta.y);
+    NSEvent* event = [NSEvent eventWithCGEvent:cg_event];
+    CFRelease(cg_event);
 
     id mock_event = [OCMockObject partialMockForObject:event];
     [[[mock_event stub] andReturnBool:NO] isDirectionInvertedFromDevice];
@@ -209,7 +213,7 @@ class ChromeRenderWidgetHostViewMacHistorySwiperTest
   // Queue events for playback -------------------------------------------------
 
   void QueueEvent(id event, Deployment deployment, BOOL run_message_loop) {
-    QueuedEvent* queued_event = [[QueuedEvent alloc] init];
+    QueuedEvent* queued_event = [[[QueuedEvent alloc] init] autorelease];
     queued_event.event = event;
     queued_event.deployment = deployment;
     queued_event.runMessageLoop = run_message_loop;
@@ -376,7 +380,7 @@ class ChromeRenderWidgetHostViewMacHistorySwiperTest
   GURL url1_;
   GURL url2_;
   GURL url_iframe_;
-  NSMutableArray* __strong event_queue_;
+  base::scoped_nsobject<NSMutableArray> event_queue_;
   // The current location of the user's fingers on the track pad.
   CGPoint touch_;
 };

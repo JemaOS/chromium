@@ -23,9 +23,8 @@ android_library("compiled_in_runtime_library_java") {
 }
 
 mustache_pass("generate_chromeos_manifest_for_upload") {
-  inputs = [ "AndroidManifest.xml" ]
-  output_dir =
-      get_path_info(generate_chromeos_manifest_for_upload_output, "dir")
+  input = "AndroidManifest.xml"
+  output = generate_chromeos_manifest_for_upload_output
   extra_variables = [
     "shell_apk_version=$current_shell_apk_version",
     "use_new_splash=false",
@@ -33,8 +32,8 @@ mustache_pass("generate_chromeos_manifest_for_upload") {
 }
 
 mustache_pass("generate_manifest_for_upload") {
-  inputs = [ "AndroidManifest.xml" ]
-  output_dir = get_path_info(generate_manifest_for_upload_output, "dir")
+  input = "AndroidManifest.xml"
+  output = generate_manifest_for_upload_output
   extra_variables = [
     "shell_apk_version=$current_shell_apk_version",
     "use_new_splash=true",
@@ -116,7 +115,7 @@ template("webapk_tmpl") {
   _generated_res_background_dir =
       "${target_gen_dir}/${_generate_res_background_xml_target_name}/res"
   _resources_target_name = "${target_name}_resources"
-  _generated_icons_target_name = "${target_name}_generated_icons"
+  _app_icon_resources_target_name = "${target_name}_app_icon_resources"
 
   if (defined(invoker.manifest_output)) {
     _manifest_output = invoker.manifest_output
@@ -134,8 +133,9 @@ template("webapk_tmpl") {
                              "delta_config_file",
                            ])
 
-    inputs = get_target_outputs(_manifest_to_upload_dep)
-    output_dir = get_path_info(_manifest_output, "dir")
+    input = get_target_outputs(_manifest_to_upload_dep)
+    input = input[0]
+    output = _manifest_output
     extra_variables = [ "manifest_package=$apk_package_name" ]
     deps = [ _manifest_to_upload_dep ]
   }
@@ -143,19 +143,18 @@ template("webapk_tmpl") {
   # Populate background color in values/background_color.xml
   mustache_pass(_generate_res_background_xml_target_name) {
     forward_variables_from(invoker, [ "config_file" ])
-    inputs = [ "res_template/values/background_color.xml" ]
-    output_dir = "${_generated_res_background_dir}/values"
+    input = "res_template/values/background_color.xml"
+    output = "${_generated_res_background_dir}/values/background_color.xml"
   }
 
-  mustache_pass(_generated_icons_target_name) {
-    forward_variables_from(invoker, [ "config_file" ])
-    icon_density = "hdpi"
-    extra_variables = [ "icon_density=$icon_density" ]
-    inputs = [
-      "res_template/mipmap-nodpi/app_icon.xml",
-      "res_template/mipmap-nodpi/maskable_app_icon.xml",
+  android_resources(_app_icon_resources_target_name) {
+    sources = [
+      "res_app_icon/mipmap-hdpi/app_icon.xml",
+      "res_app_icon/mipmap-mdpi/app_icon.xml",
+      "res_app_icon/mipmap-xhdpi/app_icon.xml",
+      "res_app_icon/mipmap-xxhdpi/app_icon.xml",
+      "res_app_icon/mipmap-xxxhdpi/app_icon.xml",
     ]
-    output_dir = "${target_gen_dir}/${_generated_icons_target_name}/res/mipmap-${icon_density}"
   }
 
   android_resources(_resources_target_name) {
@@ -196,15 +195,16 @@ template("webapk_tmpl") {
       "res/drawable-xxxhdpi/shortcut_3_icon.png",
       "res/drawable-xxxhdpi/shortcut_4_icon.png",
       "res/drawable-xxxhdpi/splash_icon.xml",
-      "res/layout-night-v31/splash_screen_view.xml",
       "res/layout-v31/splash_screen_view.xml",
       "res/layout/choose_host_browser_dialog.xml",
       "res/layout/host_browser_list_item.xml",
       "res/mipmap-anydpi-v26/ic_launcher.xml",
       "res/mipmap-hdpi/ic_launcher.xml",
+      "res/mipmap-hdpi/maskable_app_icon.xml",
       "res/mipmap-mdpi/ic_launcher.xml",
       "res/mipmap-mdpi/ic_launcher_background.png",
       "res/mipmap-mdpi/ic_launcher_foreground.png",
+      "res/mipmap-mdpi/maskable_app_icon.xml",
       "res/mipmap-nodpi/app_icon_hdpi.png",
       "res/mipmap-nodpi/app_icon_mdpi.png",
       "res/mipmap-nodpi/app_icon_xhdpi.png",
@@ -220,13 +220,13 @@ template("webapk_tmpl") {
       "res/mipmap-nodpi/splash_icon_xxhdpi.png",
       "res/mipmap-nodpi/splash_icon_xxxhdpi.png",
       "res/mipmap-xhdpi/ic_launcher.xml",
+      "res/mipmap-xhdpi/maskable_app_icon.xml",
       "res/mipmap-xxhdpi/ic_launcher.xml",
+      "res/mipmap-xxhdpi/maskable_app_icon.xml",
       "res/mipmap-xxxhdpi/ic_launcher.xml",
+      "res/mipmap-xxxhdpi/maskable_app_icon.xml",
       "res/values-hdpi/is_splash_icon_maskable_bool.xml",
       "res/values-mdpi/is_splash_icon_maskable_bool.xml",
-      "res/values-night-v17/styles.xml",
-      "res/values-night-v31/dimens.xml",
-      "res/values-night-v31/styles.xml",
       "res/values-v17/styles.xml",
       "res/values-v24/default_enabled_activity.xml",
       "res/values-v31/dimens.xml",
@@ -240,10 +240,8 @@ template("webapk_tmpl") {
       "res/xml/shortcuts.xml",
     ]
     sources += get_target_outputs(":$_generate_res_background_xml_target_name")
-    sources += get_target_outputs(":$_generated_icons_target_name")
     deps = [
       ":$_generate_res_background_xml_target_name",
-      ":$_generated_icons_target_name",
       ":webapk_strings_grd",
     ]
   }
@@ -269,7 +267,10 @@ template("webapk_tmpl") {
                              "apk_name",
                              "testonly",
                            ])
-    deps = [ ":$_java_with_services_target_name" ]
+    deps = [
+      ":$_app_icon_resources_target_name",
+      ":$_java_with_services_target_name",
+    ]
 
     android_manifest = _manifest_output
     android_manifest_dep = ":$_manifest_target_name"
@@ -281,7 +282,10 @@ template("webapk_tmpl") {
 
     if (!is_java_debug) {
       proguard_enabled = true
-      proguard_configs = [ "//chrome/android/webapk/shell_apk/proguard.flags" ]
+      proguard_configs = [
+        "//chrome/android/webapk/shell_apk/proguard.flags",
+        "//chrome/android/proguard/main.flags",
+      ]
     }
   }
 }
@@ -303,6 +307,22 @@ webapk_tmpl("webapk_chromeos") {
   manifest_to_upload_dep = ":generate_chromeos_manifest_for_upload"
   apk_name = "WebApkChromeos"
   apk_package_name = "org.chromium.webapk.chromeos"
+}
+
+webapk_tmpl("maps_go_webapk") {
+  config_file = "manifest/maps_go_manifest_config.json"
+  manifest_to_upload_dep = ":generate_manifest_for_upload"
+  apk_name = "MapsWebApk"
+  apk_package_name = "org.chromium.maps_go_webapk"
+}
+
+webapk_tmpl("uiautomator_maps_go_webapk") {
+  testonly = true
+  config_file = "manifest/maps_go_manifest_config.json"
+  manifest_to_upload_dep = ":generate_manifest_for_upload"
+  apk_name = "JavatestsMapsWebApk"
+  delta_config_file = "manifest/javatest_maps_go_manifest_config_delta.json"
+  apk_package_name = "org.chromium.test.maps_go_webapk"
 }
 
 webapk_tmpl("unbound_webapk") {
@@ -392,7 +412,6 @@ robolectric_binary("webapk_shell_apk_h2o_junit_tests") {
     "junit/src/org/chromium/webapk/shell_apk/TestBrowserInstaller.java",
     "junit/src/org/chromium/webapk/shell_apk/h2o/LaunchTest.java",
     "junit/src/org/chromium/webapk/shell_apk/h2o/SplashActivityTest.java",
-    "junit/src/org/chromium/webapk/shell_apk/h2o/SplashUtilsUnitTest.java",
   ]
   deps = [
     ":${h2o_junit_manifest_target_name}",

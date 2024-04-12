@@ -100,9 +100,8 @@ void AnimationBuilder::Observer::OnLayerAnimationWillRepeat(
     return;
   // First time through, initialize the repeat_map_ with the sequences.
   if (repeat_map_.empty()) {
-    for (ui::LayerAnimationSequence* seq : attached_sequences()) {
+    for (auto* seq : attached_sequences())
       repeat_map_[seq] = 0;
-    }
   }
   // Only trigger the repeat callback on the last LayerAnimationSequence on
   // which this observer is attached.

@@ -70,7 +70,7 @@ void WalkNode(const base::Value& node, DescriptionAndStyles* result) {
     std::string tag = CheckedGetElementTag(child);
     omnibox::DescriptionStyleType style_type =
         omnibox::ParseDescriptionStyleType(tag);
-    if (style_type == omnibox::DescriptionStyleType::kNone) {
+    if (style_type == omnibox::DESCRIPTION_STYLE_TYPE_NONE) {
       // Unsupported style type. Even so, we walk all children in the node for
       // forward compatibility.
       WalkNode(child, result);
@@ -144,7 +144,7 @@ void ConstructResultFromValue(
     run_callback_with_error(std::move(value_or_error.error()));
     return;
   }
-  const base::Value root_node = std::move(*value_or_error);
+  const base::Value& root_node = *value_or_error;
 
   // From this point on, we hope that everything is valid (e.g., that we don't
   // get non-dictionary values or unexpected top-level types. But, if we did,

@@ -24,15 +24,12 @@ source_set("contacts") {
     "//chrome/browser/nearby_sharing/common",
     "//chrome/browser/nearby_sharing/local_device_data",
     "//chrome/browser/nearby_sharing/logging",
+    "//chrome/browser/nearby_sharing/proto",
     "//chromeos/ash/components/nearby/common/client",
     "//chromeos/ash/components/nearby/common/scheduling",
     "//chromeos/ash/services/nearby/public/mojom",
-    "//components/cross_device/logging:logging",
     "//components/prefs",
     "//crypto",
-    "//third_party/nearby:contact_rpc_proto",
-    "//third_party/nearby:device_rpc_proto",
-    "//third_party/nearby:rpc_resources_proto",
   ]
 }
 
@@ -49,7 +46,7 @@ source_set("test_support") {
   deps = [
     ":contacts",
     "//base",
-    "//third_party/nearby:rpc_resources_proto",
+    "//chrome/browser/nearby_sharing/proto",
   ]
 }
 
@@ -72,6 +69,7 @@ source_set("unit_tests") {
     "//chrome/browser/nearby_sharing/common",
     "//chrome/browser/nearby_sharing/common:test_support",
     "//chrome/browser/nearby_sharing/local_device_data:test_support",
+    "//chrome/browser/nearby_sharing/proto",
     "//chromeos/ash/components/nearby/common/client",
     "//chromeos/ash/components/nearby/common/scheduling",
     "//chromeos/ash/components/nearby/common/scheduling:test_support",
@@ -79,7 +77,5 @@ source_set("unit_tests") {
     "//components/sync_preferences:test_support",
     "//content/test:test_support",
     "//testing/gtest",
-    "//third_party/nearby:contact_rpc_proto",
-    "//third_party/nearby:rpc_resources_proto",
   ]
 }

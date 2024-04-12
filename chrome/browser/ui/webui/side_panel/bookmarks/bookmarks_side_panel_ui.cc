@@ -35,12 +35,11 @@
 #include "components/bookmarks/managed/managed_bookmark_service.h"
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/commerce/core/shopping_service.h"
-#include "components/commerce/core/webui/shopping_service_handler.h"
+#include "components/commerce/core/webui/shopping_list_handler.h"
 #include "components/favicon_base/favicon_url_parser.h"
 #include "components/page_image_service/features.h"
 #include "components/page_image_service/image_service.h"
 #include "components/page_image_service/image_service_handler.h"
-#include "components/policy/core/common/policy_pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/strings/grit/components_strings.h"
 #include "content/public/browser/web_contents.h"
@@ -53,7 +52,7 @@
 #include "ui/webui/color_change_listener/color_change_handler.h"
 
 BookmarksSidePanelUI::BookmarksSidePanelUI(content::WebUI* web_ui)
-    : TopChromeWebUIController(web_ui, true) {
+    : ui::MojoBubbleWebUIController(web_ui, true) {
   Profile* const profile = Profile::FromWebUI(web_ui);
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       profile, chrome::kChromeUIBookmarksSidePanelHost);
@@ -62,7 +61,6 @@ BookmarksSidePanelUI::BookmarksSidePanelUI(content::WebUI* web_ui)
       {"bookmarkCopied", IDS_BOOKMARK_MANAGER_TOAST_ITEM_COPIED},
       {"bookmarkDeleted", IDS_BOOKMARK_MANAGER_TOAST_ITEM_DELETED},
       {"bookmarkCreated", IDS_BOOKMARK_SCREEN_READER_CREATED},
-      {"bookmarkFolderCreated", IDS_BOOKMARK_SCREEN_READER_FOLDER_CREATED},
       {"bookmarkReordered", IDS_BOOKMARK_SCREEN_READER_REORDERED},
       {"bookmarkMoved", IDS_BOOKMARK_SCREEN_READER_MOVED},
       {"tooltipClose", IDS_CLOSE},
@@ -102,8 +100,6 @@ BookmarksSidePanelUI::BookmarksSidePanelUI(content::WebUI* web_ui)
       {"addCurrentTab", IDS_READ_LATER_ADD_CURRENT_TAB},
       {"emptyTitle", IDS_BOOKMARKS_EMPTY_STATE_TITLE},
       {"emptyBody", IDS_BOOKMARKS_EMPTY_STATE_BODY},
-      {"emptyTitleFolder", IDS_BOOKMARKS_EMPTY_STATE_TITLE_FOLDER},
-      {"emptyBodyFolder", IDS_BOOKMARKS_EMPTY_STATE_BODY_FOLDER},
       {"emptyTitleGuest", IDS_BOOKMARKS_EMPTY_STATE_TITLE_GUEST},
       {"emptyBodyGuest", IDS_BOOKMARKS_EMPTY_STATE_BODY_GUEST},
       {"emptyTitleSearch", IDS_BOOKMARKS_EMPTY_STATE_TITLE_SEARCH},
@@ -142,23 +138,15 @@ BookmarksSidePanelUI::BookmarksSidePanelUI(content::WebUI* web_ui)
       {"disabledFeature", IDS_BOOKMARKS_DISABLED_FEATURE},
       {"backButtonLabel", IDS_BOOKMARKS_BACK_BUTTON_LABEL},
       {"forwardButtonLabel", IDS_BOOKMARKS_FORWARD_BUTTON_LABEL},
-      {"bookmarkMenuLabel", IDS_BOOKMARK_OPTIONS_LABEL},
-      {"folderMenuLabel", IDS_FOLDER_OPTIONS_LABEL},
+      {"bookmarkOptionsA11yLabel", IDS_BOOKMARK_OPTIONS_LABEL},
       {"openFolderLabel", IDS_BOOKMARKS_OPEN_FOLDER_LABEL},
       {"openBookmarkLabel", IDS_BOOKMARKS_OPEN_BOOKMARK_LABEL},
-      {"selectFolderLabel", IDS_BOOKMARKS_SELECT_FOLDER_LABEL},
-      {"selectBookmarkLabel", IDS_BOOKMARKS_SELECT_BOOKMARK_LABEL},
-      {"deselectFolderLabel", IDS_BOOKMARKS_DESELECT_FOLDER_LABEL},
-      {"deselectBookmarkLabel", IDS_BOOKMARKS_DESELECT_BOOKMARK_LABEL},
       {"a11yDescriptionPriceTracking",
        IDS_BOOKMARK_ACCESSIBLE_DESCRIPTION_PRICE_TRACKING},
       {"a11yDescriptionPriceChange",
        IDS_BOOKMARK_ACCESSIBLE_DESCRIPTION_PRICE_CHANGE},
       {"checkboxA11yLabel", IDS_BOOKMARKS_CHECKBOX_LABEL},
       {"editInvalidUrl", IDS_BOOKMARK_MANAGER_INVALID_URL},
-      {"bookmarkFolderChildCount", IDS_BOOKMARK_FOLDER_CHILD_COUNT},
-      {"primaryFilterHeading", IDS_BOOKMARKS_PRIMARY_FILTER_HEADING},
-      {"secondaryFilterHeading", IDS_BOOKMARKS_SECONDARY_FILTER_HEADING},
   };
   for (const auto& str : kLocalizedStrings)
     webui::AddLocalizedString(source, str.name, str.id);
@@ -180,7 +168,6 @@ BookmarksSidePanelUI::BookmarksSidePanelUI(content::WebUI* web_ui)
 
   source->AddBoolean("guestMode", profile->IsGuestSession());
   source->AddBoolean("incognitoMode", profile->IsIncognitoProfile());
-  source->AddBoolean("isIncognitoModeAvailable", IsIncognitoModeAvailable());
   source->AddInteger(
       "sortOrder",
       prefs->GetInteger(bookmarks_webui::prefs::kBookmarksSortOrder));
@@ -214,7 +201,10 @@ BookmarksSidePanelUI::BookmarksSidePanelUI(content::WebUI* web_ui)
   content::URLDataSource::Add(
       profile, std::make_unique<FaviconSource>(
                    profile, chrome::FaviconUrlFormat::kFavicon2));
-  const int resource = IDR_SIDE_PANEL_BOOKMARKS_POWER_BOOKMARKS_HTML;
+  const int resource =
+      base::FeatureList::IsEnabled(features::kPowerBookmarksSidePanel)
+          ? IDR_SIDE_PANEL_BOOKMARKS_POWER_BOOKMARKS_HTML
+          : IDR_SIDE_PANEL_BOOKMARKS_BOOKMARKS_HTML;
   webui::SetupWebUIDataSource(source,
                               base::make_span(kSidePanelBookmarksResources,
                                               kSidePanelBookmarksResourcesSize),
@@ -224,6 +214,8 @@ BookmarksSidePanelUI::BookmarksSidePanelUI(content::WebUI* web_ui)
 
   // Add a handler to provide pluralized strings.
   auto plural_string_handler = std::make_unique<PluralStringHandler>();
+  plural_string_handler->AddLocalizedString("bookmarkFolderChildCount",
+                                            IDS_BOOKMARK_FOLDER_CHILD_COUNT);
   plural_string_handler->AddLocalizedString("bookmarkDeletionCount",
                                             IDS_BOOKMARK_DELETION_COUNT);
   web_ui->AddMessageHandler(std::move(plural_string_handler));
@@ -244,10 +236,10 @@ void BookmarksSidePanelUI::BindInterface(
 }
 
 void BookmarksSidePanelUI::BindInterface(
-    mojo::PendingReceiver<
-        shopping_service::mojom::ShoppingServiceHandlerFactory> receiver) {
-  shopping_service_factory_receiver_.reset();
-  shopping_service_factory_receiver_.Bind(std::move(receiver));
+    mojo::PendingReceiver<shopping_list::mojom::ShoppingListHandlerFactory>
+        receiver) {
+  shopping_list_factory_receiver_.reset();
+  shopping_list_factory_receiver_.Bind(std::move(receiver));
 }
 
 void BookmarksSidePanelUI::BindInterface(
@@ -282,10 +274,9 @@ void BookmarksSidePanelUI::CreateBookmarksPageHandler(
       std::make_unique<BookmarksPageHandler>(std::move(receiver), this);
 }
 
-void BookmarksSidePanelUI::CreateShoppingServiceHandler(
-    mojo::PendingRemote<shopping_service::mojom::Page> page,
-    mojo::PendingReceiver<shopping_service::mojom::ShoppingServiceHandler>
-        receiver) {
+void BookmarksSidePanelUI::CreateShoppingListHandler(
+    mojo::PendingRemote<shopping_list::mojom::Page> page,
+    mojo::PendingReceiver<shopping_list::mojom::ShoppingListHandler> receiver) {
   Profile* const profile = Profile::FromWebUI(web_ui());
   bookmarks::BookmarkModel* bookmark_model =
       BookmarkModelFactory::GetForBrowserContext(profile);
@@ -293,18 +284,10 @@ void BookmarksSidePanelUI::CreateShoppingServiceHandler(
       commerce::ShoppingServiceFactory::GetForBrowserContext(profile);
   feature_engagement::Tracker* const tracker =
       feature_engagement::TrackerFactory::GetForBrowserContext(profile);
-  shopping_service_handler_ =
-      std::make_unique<commerce::ShoppingServiceHandler>(
-          std::move(page), std::move(receiver), bookmark_model,
-          shopping_service, profile->GetPrefs(), tracker,
-          g_browser_process->GetApplicationLocale(), nullptr);
+  shopping_list_handler_ = std::make_unique<commerce::ShoppingListHandler>(
+      std::move(page), std::move(receiver), bookmark_model, shopping_service,
+      profile->GetPrefs(), tracker, g_browser_process->GetApplicationLocale());
   shopping_list_context_menu_controller_ =
       std::make_unique<commerce::ShoppingListContextMenuController>(
-          bookmark_model, shopping_service, shopping_service_handler_.get());
-}
-
-bool BookmarksSidePanelUI::IsIncognitoModeAvailable() {
-  PrefService* prefs = Profile::FromWebUI(web_ui())->GetPrefs();
-  return prefs->GetInteger(policy::policy_prefs::kIncognitoModeAvailability) ==
-         static_cast<int>(policy::IncognitoModeAvailability::kEnabled);
+          bookmark_model, shopping_service, shopping_list_handler_.get());
 }

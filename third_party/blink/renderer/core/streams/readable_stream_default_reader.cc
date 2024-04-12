@@ -14,6 +14,7 @@
 #include "third_party/blink/renderer/core/streams/stream_promise_resolver.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
+#include "third_party/blink/renderer/platform/bindings/to_v8.h"
 #include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
 
 namespace blink {
@@ -25,16 +26,14 @@ class ReadableStreamDefaultReader::DefaultReaderReadRequest final
       : resolver_(resolver) {}
 
   void ChunkSteps(ScriptState* script_state,
-                  v8::Local<v8::Value> chunk,
-                  ExceptionState&) const override {
+                  v8::Local<v8::Value> chunk) const override {
     // This is needed so that there is a valid v8::Context when fulfilling the
     // read request.
     ScriptState::Scope scope(script_state);
     auto* read_result = ReadableStreamReadResult::Create();
     read_result->setValue(ScriptValue(script_state->GetIsolate(), chunk));
     read_result->setDone(false);
-    resolver_->Resolve(script_state, ToV8Traits<ReadableStreamReadResult>::ToV8(
-                                         script_state, read_result));
+    resolver_->Resolve(script_state, ToV8(read_result, script_state));
   }
 
   void CloseSteps(ScriptState* script_state) const override {
@@ -42,8 +41,9 @@ class ReadableStreamDefaultReader::DefaultReaderReadRequest final
     read_result->setValue(ScriptValue(
         script_state->GetIsolate(), v8::Undefined(script_state->GetIsolate())));
     read_result->setDone(true);
-    resolver_->Resolve(script_state, ToV8Traits<ReadableStreamReadResult>::ToV8(
-                                         script_state, read_result));
+    resolver_->Resolve(script_state,
+                       ToV8(read_result, script_state->GetContext()->Global(),
+                            script_state->GetIsolate()));
   }
 
   void ErrorSteps(ScriptState* script_state,
@@ -99,8 +99,7 @@ ScriptPromise ReadableStreamDefaultReader::read(
   }
 
   // 2. Let promise be a new promise.
-  auto* promise = MakeGarbageCollected<StreamPromiseResolver>(script_state,
-                                                              exception_state);
+  auto* promise = MakeGarbageCollected<StreamPromiseResolver>(script_state);
 
   // 3. Let readRequest be a new read request with the following items:
   //    chunk steps, given chunk
@@ -112,7 +111,7 @@ ScriptPromise ReadableStreamDefaultReader::read(
   auto* read_request = MakeGarbageCollected<DefaultReaderReadRequest>(promise);
 
   // 4. Perform ! ReadableStreamReaderRead(this).
-  Read(script_state, this, read_request, exception_state);
+  Read(script_state, this, read_request);
 
   // 5. Return promise.
   return promise->GetScriptPromise(script_state);
@@ -120,8 +119,7 @@ ScriptPromise ReadableStreamDefaultReader::read(
 
 void ReadableStreamDefaultReader::Read(ScriptState* script_state,
                                        ReadableStreamDefaultReader* reader,
-                                       ReadRequest* read_request,
-                                       ExceptionState& exception_state) {
+                                       ReadRequest* read_request) {
   auto* isolate = script_state->GetIsolate();
   // https://streams.spec.whatwg.org/#readable-stream-default-reader-read
   // 1. Let stream be reader.[[stream]].
@@ -152,8 +150,7 @@ void ReadableStreamDefaultReader::Read(ScriptState* script_state,
       DCHECK_EQ(stream->state_, ReadableStream::kReadable);
 
       //   2. Perform ! stream.[[controller]].[[PullSteps]](readRequest).
-      stream->GetController()->PullSteps(script_state, read_request,
-                                         exception_state);
+      stream->GetController()->PullSteps(script_state, read_request);
       break;
   }
 }
@@ -165,13 +162,12 @@ void ReadableStreamDefaultReader::ErrorReadRequests(
   // https://streams.spec.whatwg.org/#abstract-opdef-readablestreamdefaultreadererrorreadrequests
   // 1. Let readRequests be reader.[[readRequests]].
   // 2. Set reader.[[readRequests]] to a new empty list.
-  HeapDeque<Member<ReadRequest>> read_requests;
-  read_requests.Swap(reader->read_requests_);
   // 3. For each readRequest of readRequests,
-  for (ReadRequest* read_request : read_requests) {
+  for (ReadRequest* read_request : reader->read_requests_) {
     //   a. Perform readRequest’s error steps, given e.
     read_request->ErrorSteps(script_state, e);
   }
+  reader->read_requests_.clear();
 }
 
 void ReadableStreamDefaultReader::Release(ScriptState* script_state,

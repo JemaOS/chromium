@@ -4,7 +4,6 @@
 
 #include "ash/webui/media_app_ui/media_app_guest_ui.h"
 
-#include "ash/constants/ash_features.h"
 #include "ash/webui/grit/ash_media_app_resources.h"
 #include "ash/webui/media_app_ui/url_constants.h"
 #include "ash/webui/web_applications/webui_test_prod_util.h"
@@ -160,10 +159,10 @@ content::WebUIDataSource* CreateAndAddMediaAppUntrustedDataSource(
   // Required to successfully load PDFs in the `<embed>` element.
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::FrameSrc, "frame-src blob:;");
-  // Allow wasm and mojo.
+  // Allow wasm.
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ScriptSrc,
-      "script-src 'self' 'wasm-eval' chrome-untrusted://resources;");
+      "script-src 'self' 'wasm-eval';");
   // Allow calls to Maps reverse geocoding API for loading metadata.
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ConnectSrc,
@@ -183,18 +182,16 @@ content::WebUIDataSource* CreateAndAddMediaAppUntrustedDataSource(
 
 }  // namespace
 
-MediaAppGuestUI::MediaAppGuestUI(
-    content::WebUI* web_ui,
-    std::unique_ptr<MediaAppGuestUIDelegate> delegate)
+MediaAppGuestUI::MediaAppGuestUI(content::WebUI* web_ui,
+                                 MediaAppGuestUIDelegate* delegate)
     : UntrustedWebUIController(web_ui),
-      WebContentsObserver(web_ui->GetWebContents()),
-      delegate_(std::move(delegate)) {
+      WebContentsObserver(web_ui->GetWebContents()) {
   task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
       {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
        base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN});
 
   content::WebUIDataSource* untrusted_source =
-      CreateAndAddMediaAppUntrustedDataSource(web_ui, delegate_.get());
+      CreateAndAddMediaAppUntrustedDataSource(web_ui, delegate);
 
   MaybeConfigureTestableDataSource(
       untrusted_source, "media_app/untrusted",
@@ -258,38 +255,8 @@ void MediaAppGuestUI::StartFontDataRequestAfterPathExists(
   }
 }
 
-void MediaAppGuestUI::BindInterface(
-    mojo::PendingReceiver<color_change_listener::mojom::PageHandler> receiver) {
-  color_provider_handler_ = std::make_unique<ui::ColorChangeHandler>(
-      web_ui()->GetWebContents(), std::move(receiver));
-}
-
-void MediaAppGuestUI::BindInterface(
-    mojo::PendingReceiver<media_app_ui::mojom::UntrustedPageHandlerFactory>
-        receiver) {
-  if (!base::FeatureList::IsEnabled(ash::features::kMediaAppPdfA11yOcr)) {
-    return;
-  }
-
-  if (untrusted_page_handler_factory_.is_bound()) {
-    untrusted_page_handler_factory_.reset();
-  }
-  untrusted_page_handler_factory_.Bind(std::move(receiver));
-}
-
-void MediaAppGuestUI::CreateOcrUntrustedPageHandler(
-    mojo::PendingReceiver<media_app_ui::mojom::OcrUntrustedPageHandler>
-        receiver,
-    mojo::PendingRemote<media_app_ui::mojom::OcrUntrustedPage> page) {
-  ocr_handler_ = delegate_->CreateAndBindOcrHandler(
-      *web_ui()->GetWebContents()->GetBrowserContext(), std::move(receiver),
-      std::move(page));
-}
-
 MediaAppUserActions GetMediaAppUserActionsForHappinessTracking() {
   return MediaAppMetricsHelper::actions;
 }
-
-WEB_UI_CONTROLLER_TYPE_IMPL(MediaAppGuestUI)
 
 }  // namespace ash

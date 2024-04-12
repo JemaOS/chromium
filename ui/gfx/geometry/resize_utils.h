@@ -5,8 +5,7 @@
 #ifndef UI_GFX_GEOMETRY_RESIZE_UTILS_H_
 #define UI_GFX_GEOMETRY_RESIZE_UTILS_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/geometry_export.h"
 
 namespace gfx {
@@ -33,7 +32,7 @@ enum class ResizeEdge {
 void GEOMETRY_EXPORT SizeRectToAspectRatio(ResizeEdge resize_edge,
                                            float aspect_ratio,
                                            const Size& min_window_size,
-                                           std::optional<Size> max_window_size,
+                                           absl::optional<Size> max_window_size,
                                            Rect* rect);
 
 // As above, but computes a size for `rect` such that it has the right aspect
@@ -47,7 +46,7 @@ void GEOMETRY_EXPORT
 SizeRectToAspectRatioWithExcludedMargin(ResizeEdge resize_edge,
                                         float aspect_ratio,
                                         const Size& min_window_size,
-                                        std::optional<Size> max_window_size,
+                                        absl::optional<Size> max_window_size,
                                         const Size& excluded_margin,
                                         Rect& rect);
 

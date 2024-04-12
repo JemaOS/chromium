@@ -44,7 +44,7 @@ void UkmBackgroundRecorderService::DidGetVisibleVisitCount(
     GetBackgroundSourceIdCallback callback,
     history::VisibleVisitCountToHostResult result) {
   if (!result.success || !result.count) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
@@ -72,22 +72,15 @@ UkmBackgroundRecorderService* UkmBackgroundRecorderFactory::GetForProfile(
 UkmBackgroundRecorderFactory::UkmBackgroundRecorderFactory()
     : ProfileKeyedServiceFactory(
           "UkmBackgroundRecorderService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HistoryServiceFactory::GetInstance());
 }
 
 UkmBackgroundRecorderFactory::~UkmBackgroundRecorderFactory() = default;
 
-std::unique_ptr<KeyedService>
-UkmBackgroundRecorderFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* UkmBackgroundRecorderFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<UkmBackgroundRecorderService>(
-      Profile::FromBrowserContext(context));
+  return new UkmBackgroundRecorderService(Profile::FromBrowserContext(context));
 }
 
 }  // namespace ukm

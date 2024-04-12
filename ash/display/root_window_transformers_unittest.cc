@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 #include "ash/display/root_window_transformers.h"
+#include "base/memory/raw_ptr.h"
 
 #include <memory>
-#include <optional>
 
 #include "ash/accessibility/magnifier/fullscreen_magnifier_controller.h"
 #include "ash/display/display_util.h"
@@ -16,8 +16,8 @@
 #include "ash/shell.h"
 #include "ash/test/ash_test_base.h"
 #include "ash/wm/cursor_manager_test_api.h"
-#include "base/memory/raw_ptr.h"
 #include "base/synchronization/waitable_event.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/env.h"
 #include "ui/aura/window_event_dispatcher.h"
 #include "ui/aura/window_tracker.h"
@@ -110,7 +110,7 @@ class TestEventHandler : public ui::EventHandler {
 
  private:
   gfx::Point mouse_location_;
-  raw_ptr<aura::Window> target_root_;
+  raw_ptr<aura::Window, ExperimentalAsh> target_root_;
 
   float touch_radius_x_;
   float touch_radius_y_;
@@ -202,10 +202,8 @@ TEST_F(RootWindowTransformersTest, RotateAndMagnify) {
   EXPECT_EQ(gfx::Rect(200, 0, 150, 200),
             display_manager_test.GetSecondaryDisplay().bounds());
   generator1.MoveMouseToInHost(39, 120);
-  // The EventHandler truncates floating-point locations to integer locations,
-  // while Magnifier will round them up.
   EXPECT_EQ(gfx::Point(110, 70), event_handler.GetLocationAndReset());
-  EXPECT_EQ(gfx::Point(110, 71),
+  EXPECT_EQ(gfx::Point(110, 70),
             aura::Env::GetInstance()->last_mouse_location());
   EXPECT_EQ(display::Display::ROTATE_90,
             GetActiveDisplayRotation(display1.id()));
@@ -367,7 +365,7 @@ TEST_F(RootWindowTransformersTest, ConvertHostToRootCoords) {
   generator.MoveMouseToInHost(200, 300);
   EXPECT_EQ(gfx::Point(155, 218), event_handler.GetLocationAndReset());
   generator.MoveMouseToInHost(100, 400);
-  EXPECT_EQ(gfx::Point(205, 249), event_handler.GetLocationAndReset());
+  EXPECT_EQ(gfx::Point(204, 249), event_handler.GetLocationAndReset());
   generator.MoveMouseToInHost(0, 0);
   EXPECT_EQ(gfx::Point(125, 298), event_handler.GetLocationAndReset());
 
@@ -431,7 +429,7 @@ TEST_F(RootWindowTransformersTest, LetterBoxPillarBox) {
   MirrorWindowTestApi test_api;
   // Letter boxed
   UpdateDisplay("400x200,500x400");
-  display_manager()->SetMirrorMode(display::MirrorMode::kNormal, std::nullopt);
+  display_manager()->SetMirrorMode(display::MirrorMode::kNormal, absl::nullopt);
   std::unique_ptr<RootWindowTransformer> transformer(
       CreateCurrentRootWindowTransformerForMirroring());
   // Y margin must be margin is (400 - 500/400 * 200) / 2 = 75
@@ -447,7 +445,7 @@ TEST_F(RootWindowTransformersTest, LetterBoxPillarBox) {
 TEST_F(RootWindowTransformersTest, MirrorWithRotation) {
   MirrorWindowTestApi test_api;
   UpdateDisplay("400x200,500x400");
-  display_manager()->SetMirrorMode(display::MirrorMode::kNormal, std::nullopt);
+  display_manager()->SetMirrorMode(display::MirrorMode::kNormal, absl::nullopt);
 
   for (auto rotation :
        {display::Display::ROTATE_0, display::Display::ROTATE_90,

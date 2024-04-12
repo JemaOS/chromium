@@ -11,17 +11,14 @@
 
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
-#include "chrome/browser/ash/shimless_rma/diagnostics_app_profile_helper.h"
-
-namespace content {
-class WebUI;
-}  // namespace content
+#include "chrome/services/qrcode_generator/public/mojom/qrcode_generator.mojom.h"
+#include "mojo/public/cpp/bindings/remote.h"
 
 namespace ash::shimless_rma {
 
 class ChromeShimlessRmaDelegate : public ShimlessRmaDelegate {
  public:
-  explicit ChromeShimlessRmaDelegate(content::WebUI* web_ui);
+  ChromeShimlessRmaDelegate();
 
   ChromeShimlessRmaDelegate(const ChromeShimlessRmaDelegate&) = delete;
   ChromeShimlessRmaDelegate& operator=(const ChromeShimlessRmaDelegate&) =
@@ -36,21 +33,18 @@ class ChromeShimlessRmaDelegate : public ShimlessRmaDelegate {
   void GenerateQrCode(const std::string& url,
                       base::OnceCallback<void(const std::string& qr_code_image)>
                           callback) override;
-  void PrepareDiagnosticsAppBrowserContext(
-      const base::FilePath& crx_path,
-      const base::FilePath& swbn_path,
-      PrepareDiagnosticsAppBrowserContextCallback callback) override;
-  bool IsChromeOSSystemExtensionProvider(
-      const std::string& manufacturer) override;
 
-  void SetDiagnosticsAppProfileHelperDelegateForTesting(
-      DiagnosticsAppProfileHelperDelegate* delegate);
+  void SetQRCodeServiceForTesting(
+      mojo::Remote<qrcode_generator::mojom::QRCodeGeneratorService>&& remote);
 
  private:
-  DiagnosticsAppProfileHelperDelegate diagnostics_app_profile_helper_delegete_;
-  raw_ptr<DiagnosticsAppProfileHelperDelegate>
-      diagnostics_app_profile_helper_delegete_ptr_{
-          &diagnostics_app_profile_helper_delegete_};
+  void OnQrCodeGenerated(
+      base::OnceCallback<void(const std::string& qr_code_image)> callback,
+      const qrcode_generator::mojom::GenerateQRCodeResponsePtr response);
+
+  // The remote for invoking the QRCodeGenerator service.
+  mojo::Remote<qrcode_generator::mojom::QRCodeGeneratorService>
+      qrcode_service_remote_;
 
   base::WeakPtrFactory<ChromeShimlessRmaDelegate> weak_ptr_factory_{this};
 };

@@ -66,13 +66,13 @@ class TestCompatModeButtonController : public CompatModeButtonController {
   }
 
   // CompatModeButtonController:
-  void Update(aura::Window* window) override {
+  void Update(ArcResizeLockPrefDelegate* pref_delegate,
+              aura::Window* window) override {
     update_compat_mode_button_called.insert(window);
   }
 
  private:
-  base::flat_set<raw_ptr<const aura::Window, CtnExperimental>>
-      update_compat_mode_button_called;
+  base::flat_set<const aura::Window*> update_compat_mode_button_called;
 };
 
 class TestArcResizeLockManager : public ArcResizeLockManager {
@@ -151,7 +151,8 @@ class ArcResizeLockManagerTest : public CompatModeTestBase {
   TestArcResizeLockManager arc_resize_lock_manager_;
 
   // Owned by |arc_resize_lock_manager_|.
-  raw_ptr<TestCompatModeButtonController> test_compat_mode_button_controller_;
+  raw_ptr<TestCompatModeButtonController, ExperimentalAsh>
+      test_compat_mode_button_controller_;
 };
 
 TEST_F(ArcResizeLockManagerTest, ConstructDestruct) {}

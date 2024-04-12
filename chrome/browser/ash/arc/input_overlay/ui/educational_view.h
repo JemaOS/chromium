@@ -9,7 +9,6 @@
 
 #include "ash/public/cpp/view_shadow.h"
 #include "base/memory/raw_ptr.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/view.h"
 
 namespace ash {
@@ -26,8 +25,6 @@ class DisplayOverlayController;
 // Educational view that is displayed on the first run per app/game, it contains
 // information on how to use the feature.
 class EducationalView : public views::View {
-  METADATA_HEADER(EducationalView, views::View)
-
  public:
   static EducationalView* Show(
       DisplayOverlayController* display_overlay_controller,

@@ -23,9 +23,9 @@ class Textfield;
 // AuthenticatorClientPinEntrySheetModel.
 class AuthenticatorClientPinEntryView : public views::View,
                                         public views::TextfieldController {
-  METADATA_HEADER(AuthenticatorClientPinEntryView, views::View)
-
  public:
+  METADATA_HEADER(AuthenticatorClientPinEntryView);
+
   class Delegate {
    public:
     virtual void OnPincodeChanged(std::u16string pin_code) = 0;

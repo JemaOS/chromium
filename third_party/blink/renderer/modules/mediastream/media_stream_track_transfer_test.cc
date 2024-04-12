@@ -1,6 +1,8 @@
-// Copyright 2022 The Chromium Authors
+// Copyright (c) 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#include "third_party/blink/renderer/modules/mediastream/media_stream_track.h"
 
 #include "base/task/single_thread_task_runner.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -10,7 +12,6 @@
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/modules/mediastream/browser_capture_media_stream_track.h"
-#include "third_party/blink/renderer/modules/mediastream/media_stream_track.h"
 #include "third_party/blink/renderer/modules/mediastream/mock_media_stream_video_source.h"
 #include "third_party/blink/renderer/modules/mediastream/mock_mojo_media_stream_dispatcher_host.h"
 #include "third_party/blink/renderer/modules/mediastream/user_media_client.h"
@@ -18,7 +19,6 @@
 #include "third_party/blink/renderer/platform/mediastream/media_stream_source.h"
 #include "third_party/blink/renderer/platform/testing/io_task_runner_testing_platform_support.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 namespace {
@@ -145,7 +145,7 @@ MediaStreamTrack::TransferredValues TransferredValuesTabCaptureVideo() {
       .muted = true,
       .content_hint = WebMediaStreamTrack::ContentHintType::kVideoMotion,
       .ready_state = MediaStreamSource::kReadyStateLive,
-      .sub_capture_target_version = 0};
+      .crop_version = 0};
 }
 
 mojom::blink::StreamDevices DevicesTabCaptureVideo(
@@ -156,13 +156,11 @@ mojom::blink::StreamDevices DevicesTabCaptureVideo(
   device.display_media_info = media::mojom::DisplayMediaInformation::New(
       media::mojom::DisplayCaptureSurfaceType::BROWSER,
       /*logical_surface=*/true, media::mojom::CursorCaptureType::NEVER,
-      /*capture_handle=*/nullptr,
-      /*zoom_level=*/100);
-  return {std::nullopt, device};
+      /*capture_handle=*/nullptr);
+  return {absl::nullopt, device};
 }
 
 TEST(MediaStreamTrackTransferTest, TabCaptureVideoFromTransferredStateBasic) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform;
   ScopedMockUserMediaClient scoped_user_media_client(&scope.GetWindow());
@@ -170,7 +168,7 @@ TEST(MediaStreamTrackTransferTest, TabCaptureVideoFromTransferredStateBasic) {
   auto data = TransferredValuesTabCaptureVideo();
 #if BUILDFLAG(IS_ANDROID)
   data.track_impl_subtype = MediaStreamTrack::GetStaticWrapperTypeInfo();
-  data.sub_capture_target_version = std::nullopt;
+  data.crop_version = absl::nullopt;
 #endif
   scoped_user_media_client.display_mock_media_stream_dispatcher_host
       .SetStreamDevices(DevicesTabCaptureVideo(data.session_id));
@@ -204,11 +202,9 @@ TEST(MediaStreamTrackTransferTest, TabCaptureVideoFromTransferredStateBasic) {
   ThreadState::Current()->CollectAllGarbageForTesting();
 }
 
-// TODO(crbug.com/1288839): implement and test transferred sub-capture-target
-// version
+// TODO(crbug.com/1288839): implement and test transferred crop version
 
 TEST(MediaStreamTrackTransferTest, TabCaptureAudioFromTransferredState) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   // The TransferredValues here match the expectations in
@@ -234,10 +230,9 @@ TEST(MediaStreamTrackTransferTest, TabCaptureAudioFromTransferredState) {
   device.display_media_info = media::mojom::DisplayMediaInformation::New(
       media::mojom::DisplayCaptureSurfaceType::BROWSER,
       /*logical_surface=*/true, media::mojom::CursorCaptureType::NEVER,
-      /*capture_handle=*/nullptr,
-      /*zoom_level=*/100);
+      /*capture_handle=*/nullptr);
   scoped_user_media_client.display_mock_media_stream_dispatcher_host
-      .SetStreamDevices({std::nullopt, device});
+      .SetStreamDevices({absl::nullopt, device});
 
   auto* new_track =
       MediaStreamTrack::FromTransferredState(scope.GetScriptState(), data);

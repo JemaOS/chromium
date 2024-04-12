@@ -8,7 +8,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/feature_list.h"
@@ -18,6 +17,7 @@
 #include "chrome/browser/metrics/perf/random_selector.h"
 #include "third_party/metrics_proto/sampled_profile.pb.h"
 #include "third_party/metrics_proto/system_profile.pb.h"
+#include "third_party/re2/src/re2/stringpiece.h"
 
 namespace ash {
 class DebugDaemonClientProvider;
@@ -114,7 +114,7 @@ class PerfCollector : public internal::MetricCollector {
 
   // Extracts the |lacros_channel| and |lacros_version| from |lacros_path|.
   static bool LacrosChannelAndVersion(
-      std::string_view lacros_path,
+      re2::StringPiece lacros_path,
       metrics::SystemProfileProto_Channel& lacros_channel,
       std::string& lacros_version);
 

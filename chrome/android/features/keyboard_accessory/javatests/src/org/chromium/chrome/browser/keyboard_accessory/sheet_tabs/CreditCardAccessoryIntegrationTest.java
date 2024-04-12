@@ -9,7 +9,6 @@ import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.contrib.RecyclerViewActions.actionOnItem;
 import static androidx.test.espresso.contrib.RecyclerViewActions.scrollTo;
-import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
@@ -18,11 +17,13 @@ import static org.hamcrest.Matchers.containsString;
 
 import static org.chromium.chrome.browser.keyboard_accessory.ManualFillingTestHelper.selectTabWithDescription;
 import static org.chromium.chrome.browser.keyboard_accessory.ManualFillingTestHelper.whenDisplayed;
+import static org.chromium.chrome.browser.keyboard_accessory.tab_layout_component.KeyboardAccessoryTabTestHelper.isKeyboardAccessoryTabLayout;
 
 import androidx.test.filters.MediumTest;
 import androidx.test.filters.SmallTest;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,20 +35,26 @@ import org.chromium.base.test.util.DisabledTest;
 import org.chromium.chrome.browser.ChromeWindow;
 import org.chromium.chrome.browser.autofill.AutofillTestHelper;
 import org.chromium.chrome.browser.autofill.PersonalDataManager.CreditCard;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.keyboard_accessory.FakeKeyboard;
 import org.chromium.chrome.browser.keyboard_accessory.ManualFillingTestHelper;
 import org.chromium.chrome.browser.keyboard_accessory.R;
-import org.chromium.chrome.browser.keyboard_accessory.button_group_component.KeyboardAccessoryButtonGroupView;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.ChromeTabbedActivityTestRule;
+import org.chromium.chrome.test.util.browser.Features.DisableFeatures;
+import org.chromium.chrome.test.util.browser.Features.EnableFeatures;
 import org.chromium.content_public.browser.test.util.DOMUtils;
 import org.chromium.ui.test.util.UiDisableIf;
 
 import java.util.concurrent.TimeoutException;
 
-/** Integration tests for credit card accessory views. */
+/**
+ * Integration tests for credit card accessory views.
+ */
+
 @RunWith(ChromeJUnit4ClassRunner.class)
+@EnableFeatures({ChromeFeatureList.AUTOFILL_KEYBOARD_ACCESSORY})
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 public class CreditCardAccessoryIntegrationTest {
     @Rule
@@ -63,11 +70,8 @@ public class CreditCardAccessoryIntegrationTest {
 
     private void loadTestPage(ChromeWindow.KeyboardVisibilityDelegateFactory keyboardDelegate)
             throws TimeoutException {
-        mHelper.loadTestPage(
-                "/chrome/test/data/autofill/autofill_creditcard_form.html",
-                false,
-                false,
-                keyboardDelegate);
+        mHelper.loadTestPage("/chrome/test/data/autofill/autofill_creditcard_form.html", false,
+                false, keyboardDelegate);
         CreditCard card = new CreditCard();
         card.setName("Kirby Puckett");
         card.setNumber("4111111111111111");
@@ -80,18 +84,44 @@ public class CreditCardAccessoryIntegrationTest {
 
     @Test
     @SmallTest
+    @EnableFeatures({ChromeFeatureList.AUTOFILL_MANUAL_FALLBACK_ANDROID})
     public void testCreditCardSheetAvailable_whenManualFallbackEnabled() {
         mHelper.loadTestPage(false);
 
-        CriteriaHelper.pollUiThread(
-                () -> {
-                    return mHelper.getOrCreateCreditCardAccessorySheet() != null;
-                },
-                "Credit Card sheet should be bound to accessory sheet.");
+        CriteriaHelper.pollUiThread(() -> {
+            return mHelper.getOrCreateCreditCardAccessorySheet() != null;
+        }, "Credit Card sheet should be bound to accessory sheet.");
     }
 
     @Test
     @SmallTest
+    @EnableFeatures({ChromeFeatureList.AUTOFILL_ENABLE_MANUAL_FALLBACK_FOR_VIRTUAL_CARDS})
+    @DisableFeatures({ChromeFeatureList.AUTOFILL_KEYBOARD_ACCESSORY,
+            ChromeFeatureList.AUTOFILL_MANUAL_FALLBACK_ANDROID})
+    public void
+    testCreditCardSheetAvailable_whenManualFallbackForVirtualCardsEnabled() {
+        mHelper.loadTestPage(false);
+
+        CriteriaHelper.pollUiThread(() -> {
+            return mHelper.getOrCreateCreditCardAccessorySheet() != null;
+        }, "Credit Card sheet should be bound to accessory sheet.");
+    }
+
+    @Test
+    @SmallTest
+    @DisableFeatures({ChromeFeatureList.AUTOFILL_MANUAL_FALLBACK_ANDROID,
+            ChromeFeatureList.AUTOFILL_ENABLE_MANUAL_FALLBACK_FOR_VIRTUAL_CARDS})
+    public void
+    testCreditCardSheetUnavailableWithoutFeature() {
+        mHelper.loadTestPage(false);
+
+        Assert.assertNull("Credit Card sheet should not have been created.",
+                mHelper.getOrCreateCreditCardAccessorySheet());
+    }
+
+    @Test
+    @SmallTest
+    @EnableFeatures({ChromeFeatureList.AUTOFILL_MANUAL_FALLBACK_ANDROID})
     @DisableIf.Device(type = {UiDisableIf.TABLET}) // https://crbug.com/1182626
     public void testDisplaysEmptyStateMessageWithoutSavedCards() throws TimeoutException {
         mHelper.loadTestPage(false);
@@ -102,10 +132,8 @@ public class CreditCardAccessoryIntegrationTest {
 
         // Click the tab to show the sheet and hide the keyboard.
         whenDisplayed(withId(R.id.bar_items_view))
-                .perform(
-                        scrollTo(isAssignableFrom(KeyboardAccessoryButtonGroupView.class)),
-                        actionOnItem(
-                                isAssignableFrom(KeyboardAccessoryButtonGroupView.class),
+                .perform(scrollTo(isKeyboardAccessoryTabLayout()),
+                        actionOnItem(isKeyboardAccessoryTabLayout(),
                                 selectTabWithDescription(
                                         R.string.credit_card_accessory_sheet_toggle)));
 
@@ -116,6 +144,7 @@ public class CreditCardAccessoryIntegrationTest {
 
     @Test
     @MediumTest
+    @EnableFeatures({ChromeFeatureList.AUTOFILL_MANUAL_FALLBACK_ANDROID})
     @DisabledTest(message = "https://crbug.com/1392789, https://crbug.com/1182626")
     public void testFillsSuggestionOnClick() throws TimeoutException {
         loadTestPage(FakeKeyboard::new);
@@ -125,10 +154,8 @@ public class CreditCardAccessoryIntegrationTest {
 
         // Scroll to last element and click the first icon:
         whenDisplayed(withId(R.id.bar_items_view))
-                .perform(
-                        scrollTo(isAssignableFrom(KeyboardAccessoryButtonGroupView.class)),
-                        actionOnItem(
-                                isAssignableFrom(KeyboardAccessoryButtonGroupView.class),
+                .perform(scrollTo(isKeyboardAccessoryTabLayout()),
+                        actionOnItem(isKeyboardAccessoryTabLayout(),
                                 selectTabWithDescription(
                                         R.string.credit_card_accessory_sheet_toggle)));
 
@@ -138,9 +165,8 @@ public class CreditCardAccessoryIntegrationTest {
         // Click a suggestion.
         whenDisplayed(withId(R.id.cc_number)).perform(click());
 
-        CriteriaHelper.pollInstrumentationThread(
-                () -> {
-                    return mHelper.getFieldText("CREDIT_CARD_NAME_FULL").equals("4111111111111111");
-                });
+        CriteriaHelper.pollInstrumentationThread(() -> {
+            return mHelper.getFieldText("CREDIT_CARD_NAME_FULL").equals("4111111111111111");
+        });
     }
 }

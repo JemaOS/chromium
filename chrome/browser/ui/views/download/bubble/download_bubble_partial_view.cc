@@ -4,9 +4,6 @@
 
 #include "chrome/browser/ui/views/download/bubble/download_bubble_partial_view.h"
 
-#include <string_view>
-
-#include "base/metrics/histogram_functions.h"
 #include "chrome/browser/download/bubble/download_bubble_prefs.h"
 #include "chrome/browser/download/bubble/download_bubble_ui_controller.h"
 #include "chrome/browser/ui/browser.h"
@@ -19,7 +16,6 @@
 #include "chrome/grit/generated_resources.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/compositor/compositor.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/views/border.h"
@@ -31,9 +27,6 @@
 #include "ui/views/layout/table_layout.h"
 
 namespace {
-
-constexpr char kPartialBubbleVisibleHistogramName[] =
-    "Download.Bubble.PartialView.VisibleTime";
 
 // We want the checkbox to accept gestures when users click on the label text,
 // like all other Chrome checkboxes. This ViewTargeterDelegate achieves that.
@@ -51,17 +44,16 @@ class CheckboxTargeter : public views::ViewTargeterDelegate {
 
 class SuppressBubbleSettingRow : public views::View,
                                  public views::ViewTargeterDelegate {
-  METADATA_HEADER(SuppressBubbleSettingRow, views::View)
-
  public:
-  SuppressBubbleSettingRow(
-      base::WeakPtr<Browser> browser,
-      bool should_show_settings_link,
-      base::WeakPtr<DownloadBubbleUIController> bubble_controller,
-      base::WeakPtr<DownloadBubbleNavigationHandler> navigation_handler)
-      : browser_(std::move(browser)),
-        bubble_controller_(std::move(bubble_controller)),
-        navigation_handler_(std::move(navigation_handler)) {
+  METADATA_HEADER(SuppressBubbleSettingRow);
+
+  SuppressBubbleSettingRow(Browser* browser,
+                           bool should_show_settings_link,
+                           DownloadBubbleUIController* bubble_controller,
+                           DownloadBubbleNavigationHandler* navigation_handler)
+      : browser_(browser),
+        bubble_controller_(bubble_controller),
+        navigation_handler_(navigation_handler) {
     // Because this view appears directly below the download rows, we want to
     // use the same insets for consistency.
     SetBorder(views::CreateEmptyBorder(GetLayoutInsets(DOWNLOAD_ROW)));
@@ -93,9 +85,9 @@ class SuppressBubbleSettingRow : public views::View,
         l10n_util::GetStringUTF16(IDS_DOWNLOAD_BUBBLE_SUPPRESS_PARTIAL_VIEW));
     checkbox_->SetChecked(
         !download::IsDownloadBubblePartialViewEnabled(browser_->profile()));
-    auto targeter = std::make_unique<CheckboxTargeter>();
+    targeter_ = std::make_unique<CheckboxTargeter>();
     checkbox_->SetEventTargeter(
-        std::make_unique<views::ViewTargeter>(std::move(targeter)));
+        std::make_unique<views::ViewTargeter>(targeter_.get()));
     gfx::Insets insets = GetLayoutInsets(DOWNLOAD_ICON);
     // The label within the checkbox will line up with `main_text` if we don't
     // provide any insets. This is different than the download row view, which
@@ -143,8 +135,7 @@ class SuppressBubbleSettingRow : public views::View,
         views::ViewTargeterDelegate::TargetForRect(root, rect);
     // Links should operate as expected, but all other gestures on this view
     // should be forwarded to the checkbox.
-    if (std::string_view(target->GetClassName()) ==
-        std::string_view(views::LinkFragment::kViewClassName)) {
+    if (target->GetClassName() == views::LinkFragment::kViewClassName) {
       return target;
     }
 
@@ -153,39 +144,33 @@ class SuppressBubbleSettingRow : public views::View,
 
  private:
   void CheckboxClicked() {
-    if (navigation_handler_) {
-      download::SetDownloadBubblePartialViewEnabled(browser_->profile(),
-                                                    !checkbox_->GetChecked());
-      settings_text_->SetVisible(true);
-      navigation_handler_->ResizeDialog();
-    }
+    download::SetDownloadBubblePartialViewEnabled(browser_->profile(),
+                                                  !checkbox_->GetChecked());
+    settings_text_->SetVisible(true);
+    navigation_handler_->ResizeDialog();
   }
 
   void SettingsLinkClicked() {
-    if (bubble_controller_ && browser_) {
-      chrome::ShowSettingsSubPage(browser_.get(), chrome::kDownloadsSubPage);
-    }
+    bubble_controller_->RecordDownloadBubbleInteraction();
+    chrome::ShowSettingsSubPage(browser_, chrome::kDownloadsSubPage);
   }
 
-  base::WeakPtr<Browser> browser_ = nullptr;
-  base::WeakPtr<DownloadBubbleUIController> bubble_controller_ = nullptr;
-  base::WeakPtr<DownloadBubbleNavigationHandler> navigation_handler_ = nullptr;
+  raw_ptr<Browser> browser_ = nullptr;
+  raw_ptr<DownloadBubbleUIController> bubble_controller_ = nullptr;
+  raw_ptr<DownloadBubbleNavigationHandler> navigation_handler_ = nullptr;
   raw_ptr<views::Checkbox> checkbox_ = nullptr;
+  std::unique_ptr<CheckboxTargeter> targeter_;
   raw_ptr<views::View> labels_wrapper_ = nullptr;
   raw_ptr<views::StyledLabel> settings_text_ = nullptr;
 };
 
-BEGIN_METADATA(SuppressBubbleSettingRow)
+BEGIN_METADATA(SuppressBubbleSettingRow, views::View)
 END_METADATA
 
 bool ShouldShowSuppressSetting(Profile* profile, int impressions) {
-  if (!download::IsDownloadBubblePartialViewControlledByPref()) {
-    return false;
-  }
   // Impressions have been incremented by this point, so the first
   // impression is 1.
-  return download::IsDownloadBubblePartialViewEnabledDefaultPrefValue(
-             profile) &&
+  return download::IsDownloadBubblePartialViewEnabledDefaultValue(profile) &&
          3 <= impressions && impressions <= 5;
 }
 
@@ -205,19 +190,37 @@ void MaybeRecordImpression(Profile* profile, int impressions) {
 
 }  // namespace
 
-DownloadBubblePartialView::DownloadBubblePartialView(
-    base::WeakPtr<Browser> browser,
-    base::WeakPtr<DownloadBubbleUIController> bubble_controller,
-    base::WeakPtr<DownloadBubbleNavigationHandler> navigation_handler,
-    const DownloadBubbleRowListViewInfo& info,
-    base::OnceClosure on_interacted_closure)
-    : on_interacted_closure_(std::move(on_interacted_closure)) {
-  MaybeAddOtrInfoRow(browser.get());
+// static
+std::unique_ptr<DownloadBubblePartialView> DownloadBubblePartialView::Create(
+    Browser* browser,
+    DownloadBubbleUIController* bubble_controller,
+    DownloadBubbleNavigationHandler* navigation_handler,
+    std::vector<DownloadUIModel::DownloadUIModelPtr> rows,
+    base::OnceClosure on_mouse_entered_closure) {
+  if (rows.empty()) {
+    return nullptr;
+  }
 
+  return base::WrapUnique(new DownloadBubblePartialView(
+      browser, bubble_controller, navigation_handler, std::move(rows),
+      std::move(on_mouse_entered_closure)));
+}
+
+DownloadBubblePartialView::DownloadBubblePartialView(
+    Browser* browser,
+    DownloadBubbleUIController* bubble_controller,
+    DownloadBubbleNavigationHandler* navigation_handler,
+    std::vector<DownloadUIModel::DownloadUIModelPtr> rows,
+    base::OnceClosure on_mouse_entered_closure)
+    : on_mouse_entered_closure_(std::move(on_mouse_entered_closure)) {
+  SetNotifyEnterExitOnChild(true);
+  SetLayoutManager(std::make_unique<views::FlexLayout>())
+      ->SetOrientation(views::LayoutOrientation::kVertical);
+  int preferred_width = ChromeLayoutProvider::Get()->GetDistanceMetric(
+      views::DISTANCE_BUBBLE_PREFERRED_WIDTH);
   Profile* profile = browser->profile();
   const int impressions =
       download::DownloadBubblePartialViewImpressions(profile) + 1;
-  int preferred_width = DefaultPreferredWidth();
   std::unique_ptr<SuppressBubbleSettingRow> setting_row;
   if (ShouldShowSuppressSetting(profile, impressions)) {
     setting_row = std::make_unique<SuppressBubbleSettingRow>(
@@ -227,10 +230,9 @@ DownloadBubblePartialView::DownloadBubblePartialView(
         std::max(preferred_width, setting_row->GetPreferredSize().width());
   }
 
-  last_download_completed_time_ = info.last_completed_time();
-
-  BuildAndAddScrollView(std::move(browser), std::move(bubble_controller),
-                        std::move(navigation_handler), info, preferred_width);
+  AddChildView(DownloadBubbleRowListView::CreateWithScroll(
+      /*is_partial_view=*/true, browser, bubble_controller, navigation_handler,
+      std::move(rows), preferred_width));
 
   if (setting_row) {
     const int separator_spacing =
@@ -248,64 +250,13 @@ DownloadBubblePartialView::DownloadBubblePartialView(
   MaybeRecordImpression(profile, impressions);
 }
 
-DownloadBubblePartialView::~DownloadBubblePartialView() {
-  LogVisibleTimeMetrics();
-}
-
-base::StringPiece DownloadBubblePartialView::GetVisibleTimeHistogramName()
-    const {
-  return kPartialBubbleVisibleHistogramName;
-}
-
-bool DownloadBubblePartialView::IsPartialView() const {
-  return true;
-}
-
-void DownloadBubblePartialView::AddedToWidget() {
-  auto* focus_manager = GetFocusManager();
-  if (focus_manager) {
-    focus_manager->AddFocusChangeListener(this);
-  }
-
-  if (last_download_completed_time_.has_value()) {
-    GetWidget()->GetCompositor()->RequestSuccessfulPresentationTimeForNextFrame(
-        base::BindOnce(
-            [](base::Time download_completed_time_,
-               const viz::FrameTimingDetails& frame_timing_details) {
-              base::TimeTicks presentation_time =
-                  frame_timing_details.presentation_feedback.timestamp;
-              UmaHistogramTimes(
-                  "Download.Bubble.DownloadCompletionToPartialViewShownLatency",
-                  (presentation_time - base::TimeTicks::UnixEpoch()) -
-                      (download_completed_time_ - base::Time::UnixEpoch()));
-            },
-            *last_download_completed_time_));
-  }
-}
-
-void DownloadBubblePartialView::RemovedFromWidget() {
-  auto* focus_manager = GetFocusManager();
-  if (focus_manager) {
-    focus_manager->RemoveFocusChangeListener(this);
-  }
-}
-
-void DownloadBubblePartialView::OnInteracted() {
-  if (on_interacted_closure_) {
-    std::move(on_interacted_closure_).Run();
-  }
-}
-
-void DownloadBubblePartialView::OnWillChangeFocus(views::View* before,
-                                                  views::View* now) {
-  if (now && Contains(now)) {
-    OnInteracted();
-  }
-}
+DownloadBubblePartialView::~DownloadBubblePartialView() = default;
 
 void DownloadBubblePartialView::OnMouseEntered(const ui::MouseEvent& event) {
-  OnInteracted();
+  if (on_mouse_entered_closure_) {
+    std::move(on_mouse_entered_closure_).Run();
+  }
 }
 
-BEGIN_METADATA(DownloadBubblePartialView)
+BEGIN_METADATA(DownloadBubblePartialView, views::View)
 END_METADATA

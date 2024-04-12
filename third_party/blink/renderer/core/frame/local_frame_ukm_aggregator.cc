@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/cpu_reduction_experiment.h"
 #include "base/format_macros.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/numerics/safe_conversions.h"
@@ -307,15 +308,13 @@ void LocalFrameUkmAggregator::RecordCountSample(size_t metric_index,
   if (is_pre_fcp)
     record.pre_fcp_aggregate += count;
 
-  // Subsampling these metrics reduced CPU utilization (crbug.com/1295441).
-  if (!metrics_subsampler_.ShouldSample(0.001)) {
+  if (!base::ShouldLogHistogramForCpuReductionExperiment())
     return;
-  }
 
   // Record the UMA
   // ForcedStyleAndLayout happen so frequently on some pages that we overflow
   // the signed 32 counter for number of events in a 30 minute period. So
-  // randomly record with probability 1/1000.
+  // randomly record with probability 1/100.
   if (record.pre_fcp_uma_counter) {
     if (is_pre_fcp)
       record.pre_fcp_uma_counter->Count(ToSample(count));
@@ -386,17 +385,13 @@ void LocalFrameUkmAggregator::RecordForcedLayoutSample(
 
     case DocumentUpdateReason::kAccessibility:
     case DocumentUpdateReason::kBaseColor:
-    case DocumentUpdateReason::kComputedStyle:
     case DocumentUpdateReason::kDisplayLock:
     case DocumentUpdateReason::kViewTransition:
     case DocumentUpdateReason::kIntersectionObservation:
     case DocumentUpdateReason::kOverlay:
     case DocumentUpdateReason::kPagePopup:
-    case DocumentUpdateReason::kPopover:
     case DocumentUpdateReason::kSizeChange:
     case DocumentUpdateReason::kSpellCheck:
-    case DocumentUpdateReason::kSMILAnimation:
-    case DocumentUpdateReason::kWebAnimation:
       sub_metric = kServiceDocumentUpdate;
       break;
 
@@ -605,7 +600,6 @@ void LocalFrameUkmAggregator::ReportPreFCPEvent(int64_t source_id,
   RECORD_METRIC(JavascriptIntersectionObserver);
   RECORD_METRIC(LazyLoadIntersectionObserver);
   RECORD_METRIC(MediaIntersectionObserver);
-  RECORD_METRIC(PermissionElementIntersectionObserver);
   RECORD_METRIC(AnchorElementMetricsIntersectionObserver);
   RECORD_METRIC(UpdateViewportIntersection);
   RECORD_METRIC(VisualUpdateDelay);
@@ -616,7 +610,6 @@ void LocalFrameUkmAggregator::ReportPreFCPEvent(int64_t source_id,
   RECORD_METRIC(JavascriptDocumentUpdate);
   RECORD_METRIC(ParseStyleSheet);
   RECORD_METRIC(Accessibility);
-  RECORD_METRIC(PossibleSynchronizedScrollCount2);
 
   builder.Record(recorder);
 #undef RECORD_METRIC
@@ -664,7 +657,6 @@ void LocalFrameUkmAggregator::ReportUpdateTimeEvent(
   RECORD_METRIC(JavascriptIntersectionObserver);
   RECORD_METRIC(LazyLoadIntersectionObserver);
   RECORD_METRIC(MediaIntersectionObserver);
-  RECORD_METRIC(PermissionElementIntersectionObserver);
   RECORD_METRIC(AnchorElementMetricsIntersectionObserver);
   RECORD_METRIC(UpdateViewportIntersection);
   RECORD_METRIC(VisualUpdateDelay);
@@ -675,7 +667,6 @@ void LocalFrameUkmAggregator::ReportUpdateTimeEvent(
   RECORD_METRIC(JavascriptDocumentUpdate);
   RECORD_METRIC(ParseStyleSheet);
   RECORD_METRIC(Accessibility);
-  RECORD_METRIC(PossibleSynchronizedScrollCount2);
 
   builder.Record(recorder);
 #undef RECORD_METRIC

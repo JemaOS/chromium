@@ -8,14 +8,12 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/browser_process.h"
-#include "chrome/browser/privacy_sandbox/tracking_protection_settings_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/renderer_preferences_util.h"
 #include "chrome/browser/ui/prefs/prefs_tab_helper.h"
 #include "chrome/common/pref_names.h"
 #include "components/language/core/browser/pref_names.h"
 #include "components/live_caption/pref_names.h"
-#include "components/privacy_sandbox/tracking_protection_settings.h"
 #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -49,9 +47,7 @@ const char* const kWebPrefsToObserve[] = {
     prefs::kAccessibilityCaptionsBackgroundOpacity,
 #if BUILDFLAG(IS_ANDROID)
     browser_ui::prefs::kWebKitFontScaleFactor,
-    prefs::kAccessibilityTextSizeContrastFactor,
     browser_ui::prefs::kWebKitForceEnableZoom,
-    prefs::kAccessibilityFontWeightAdjustment,
     prefs::kWebKitPasswordEchoEnabled,
 #endif
     prefs::kWebKitForceDarkModeEnabled,
@@ -77,26 +73,19 @@ const int kWebPrefsToObserveLength = std::size(kWebPrefsToObserve);
 // Watching all these settings per tab is slow when a user has a lot of tabs and
 // and they use session restore. So watch them once per profile.
 // http://crbug.com/452693
-PrefWatcher::PrefWatcher(Profile* profile)
-    : profile_(profile),
-      tracking_protection_settings_(
-          TrackingProtectionSettingsFactory::GetForProfile(profile)) {
-  CHECK(tracking_protection_settings_);
-  tracking_protection_settings_observation_.Observe(
-      tracking_protection_settings_);
-
+PrefWatcher::PrefWatcher(Profile* profile) : profile_(profile) {
   profile_pref_change_registrar_.Init(profile_->GetPrefs());
 
   base::RepeatingClosure renderer_callback = base::BindRepeating(
       &PrefWatcher::UpdateRendererPreferences, base::Unretained(this));
   profile_pref_change_registrar_.Add(language::prefs::kAcceptLanguages,
                                      renderer_callback);
+  profile_pref_change_registrar_.Add(prefs::kEnableDoNotTrack,
+                                     renderer_callback);
   profile_pref_change_registrar_.Add(prefs::kEnableReferrers,
                                      renderer_callback);
   profile_pref_change_registrar_.Add(prefs::kEnableEncryptedMedia,
                                      renderer_callback);
-  profile_pref_change_registrar_.Add(
-      prefs::kPrefixedVideoFullscreenApiAvailability, renderer_callback);
   profile_pref_change_registrar_.Add(prefs::kWebRTCIPHandlingPolicy,
                                      renderer_callback);
   profile_pref_change_registrar_.Add(prefs::kWebRTCUDPPortRange,
@@ -149,14 +138,9 @@ void PrefWatcher::Shutdown() {
   local_state_pref_change_registrar_.RemoveAll();
 }
 
-void PrefWatcher::OnDoNotTrackEnabledChanged() {
-  UpdateRendererPreferences();
-}
-
 void PrefWatcher::UpdateRendererPreferences() {
-  for (PrefsTabHelper* helper : tab_helpers_) {
+  for (auto* helper : tab_helpers_)
     helper->UpdateRendererPreferences();
-  }
 
   blink::RendererPreferences prefs;
   renderer_preferences_util::UpdateFromSystemSettings(&prefs, profile_);
@@ -165,9 +149,8 @@ void PrefWatcher::UpdateRendererPreferences() {
 }
 
 void PrefWatcher::OnWebPrefChanged(const std::string& pref_name) {
-  for (PrefsTabHelper* helper : tab_helpers_) {
+  for (auto* helper : tab_helpers_)
     helper->OnWebPrefChanged(pref_name);
-  }
 }
 
 // static
@@ -184,22 +167,13 @@ PrefWatcherFactory* PrefWatcherFactory::GetInstance() {
 PrefWatcherFactory::PrefWatcherFactory()
     : ProfileKeyedServiceFactory(
           "PrefWatcher",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
-  DependsOn(TrackingProtectionSettingsFactory::GetInstance());
-}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 PrefWatcherFactory::~PrefWatcherFactory() = default;
 
-std::unique_ptr<KeyedService>
-PrefWatcherFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PrefWatcherFactory::BuildServiceInstanceFor(
     content::BrowserContext* browser_context) const {
-  return std::make_unique<PrefWatcher>(
-      Profile::FromBrowserContext(browser_context));
+  return new PrefWatcher(Profile::FromBrowserContext(browser_context));
 }
 
 // static

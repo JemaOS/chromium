@@ -8,7 +8,6 @@
 #include "mojo/public/cpp/system/data_pipe.h"
 #include "mojo/public/cpp/system/simple_watcher.h"
 #include "services/device/public/mojom/serial.mojom-blink-forward.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_value.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/core/streams/underlying_byte_source_base.h"
@@ -16,6 +15,7 @@
 namespace blink {
 
 class ExceptionState;
+class ScriptPromiseResolver;
 class SerialPort;
 
 class SerialPortUnderlyingSource : public UnderlyingByteSourceBase,
@@ -43,12 +43,9 @@ class SerialPortUnderlyingSource : public UnderlyingByteSourceBase,
   void ReadDataOrArmWatcher();
 
   void OnHandleReady(MojoResult, const mojo::HandleSignalsState&);
-  void OnFlush(ScriptPromiseResolverTyped<IDLUndefined>*);
+  void OnFlush(ScriptPromiseResolver*);
   void PipeClosed();
   void Close();
-
-  // TODO(crbug.com/1457493) : Remove when debugging is done.
-  MojoResult invalid_data_pipe_read_result_ = MOJO_RESULT_OK;
 
   mojo::ScopedDataPipeConsumerHandle data_pipe_;
   mojo::SimpleWatcher watcher_;

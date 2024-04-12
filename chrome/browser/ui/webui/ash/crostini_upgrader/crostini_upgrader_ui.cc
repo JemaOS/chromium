@@ -31,6 +31,7 @@
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/web_dialogs/web_dialog_ui.h"
 #include "ui/webui/mojo_web_ui_controller.h"
+#include "jemaos/switches/urls/urls_constants.h"
 
 namespace ash {
 
@@ -74,8 +75,10 @@ void AddStringResources(content::WebUIDataSource* source) {
   source->AddLocalizedStrings(kStrings);
 
   std::u16string learn_more_url =
-      base::ASCIIToUTF16(std::string{chrome::kLinuxAppsLearnMoreURL} +
+  //---***JEMAOS BEGIN***---
+      base::ASCIIToUTF16(std::string{jemaos::constants::kLinuxAppsLearnMoreURL} +
                          "&b=" + base::SysInfo::GetLsbReleaseBoard());
+  //---***JEMAOS END***---
   source->AddString(
       "promptMessage",
       l10n_util::GetStringFUTF8(IDS_CROSTINI_UPGRADER_BODY, learn_more_url));
@@ -90,8 +93,8 @@ CrostiniUpgraderUI::CrostiniUpgraderUI(content::WebUI* web_ui)
     : ui::MojoWebDialogUI{web_ui} {
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       Profile::FromWebUI(web_ui), chrome::kChromeUICrostiniUpgraderHost);
-  webui::EnableTrustedTypesCSP(source);
   webui::SetJSModuleDefaults(source);
+  source->DisableTrustedTypesCSP();
   AddStringResources(source);
 
   source->AddResourcePath("images/linux_illustration.png",

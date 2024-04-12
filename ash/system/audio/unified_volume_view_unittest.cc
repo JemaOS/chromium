@@ -4,6 +4,7 @@
 
 #include "ash/system/audio/unified_volume_view.h"
 
+#include "ash/constants/ash_features.h"
 #include "ash/strings/grit/ash_strings.h"
 #include "ash/system/audio/unified_volume_slider_controller.h"
 #include "ash/system/unified/unified_system_tray.h"
@@ -12,6 +13,7 @@
 #include "ash/test/ash_test_base.h"
 #include "ash/wm/window_state.h"
 #include "ash/wm/window_util.h"
+#include "base/test/scoped_feature_list.h"
 #include "ui/aura/window.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/events/keycodes/keyboard_codes_posix.h"
@@ -22,9 +24,6 @@
 
 namespace ash {
 
-// The step change of volume level if the volume up/down key is pressed.
-constexpr float kVolumeStepChange = 0.04;
-
 class UnifiedVolumeViewTest : public AshTestBase {
  public:
   UnifiedVolumeViewTest() = default;
@@ -33,20 +32,22 @@ class UnifiedVolumeViewTest : public AshTestBase {
   ~UnifiedVolumeViewTest() override = default;
 
   void SetUp() override {
+    feature_list_.InitAndEnableFeature(features::kQsRevamp);
     AshTestBase::SetUp();
     GetPrimaryUnifiedSystemTray()->ShowBubble();
   }
 
   // Checks `level` corresponds to the expected icon.
   void CheckSliderIcon(float level) {
-    const gfx::VectorIcon& icon = GetIcon(level);
+    const gfx::VectorIcon* icon =
+        slider_icon()->GetImageModel().GetVectorIcon().vector_icon();
 
     if (level <= 0.0) {
-      EXPECT_STREQ(icon.name, UnifiedVolumeView::kQsVolumeLevelIcons[0]->name);
+      EXPECT_STREQ(icon->name, UnifiedVolumeView::kQsVolumeLevelIcons[0]->name);
     } else if (level <= 0.5) {
-      EXPECT_STREQ(icon.name, UnifiedVolumeView::kQsVolumeLevelIcons[1]->name);
+      EXPECT_STREQ(icon->name, UnifiedVolumeView::kQsVolumeLevelIcons[1]->name);
     } else {
-      EXPECT_STREQ(icon.name, UnifiedVolumeView::kQsVolumeLevelIcons[2]->name);
+      EXPECT_STREQ(icon->name, UnifiedVolumeView::kQsVolumeLevelIcons[2]->name);
     }
   }
 
@@ -60,10 +61,8 @@ class UnifiedVolumeViewTest : public AshTestBase {
 
   views::Slider* slider() { return unified_volume_view()->slider(); }
 
-  IconButton* slider_button() { return unified_volume_view()->slider_button(); }
-
-  const gfx::VectorIcon& GetIcon(float level) {
-    return unified_volume_view()->GetVolumeIconForLevel(level);
+  views::ImageView* slider_icon() {
+    return unified_volume_view()->slider_icon();
   }
 
   UnifiedSystemTrayController* controller() {
@@ -73,14 +72,18 @@ class UnifiedVolumeViewTest : public AshTestBase {
   }
 
   views::Button* more_button() { return unified_volume_view()->more_button(); }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
 };
 
 // Tests that `UnifiedVolumeView` is made up of a `QuickSettingsSlider`, a
 // `LiveCaption` button, and a drill-in button that leads to
 // `AudioDetailedView`.
 TEST_F(UnifiedVolumeViewTest, SliderButtonComponents) {
-  EXPECT_STREQ(unified_volume_view()->children()[0]->GetClassName(),
-               "QuickSettingsSlider");
+  EXPECT_STREQ(
+      unified_volume_view()->children()[0]->children()[0]->GetClassName(),
+      "QuickSettingsSlider");
 
   // TODO(b/257151067): Updates the a11y name id and tooltip text.
   auto* live_caption_button =
@@ -154,8 +157,7 @@ TEST_F(UnifiedVolumeViewTest, MoreButton) {
 }
 
 // Tests that pressing the keyboard volume mute key will mute the slider, and
-// pressing the volume up key will unmute and increase the volume level by one
-// step.
+// pressing the volume up key will restore the volume level.
 TEST_F(UnifiedVolumeViewTest, VolumeMuteThenVolumeUp) {
   // Sets the volume level by user.
   const float level = 0.8;
@@ -165,26 +167,20 @@ TEST_F(UnifiedVolumeViewTest, VolumeMuteThenVolumeUp) {
 
   EXPECT_EQ(slider()->GetValue(), level);
   CheckSliderIcon(level);
-  const bool is_muted = CrasAudioHandler::Get()->IsOutputMuted();
 
   PressAndReleaseKey(ui::KeyboardCode::VKEY_VOLUME_MUTE);
-  // The slider level should remain as `level` and the mute state toggles.
-  EXPECT_EQ(slider()->GetValue(), level);
-  CheckSliderIcon(level);
-  EXPECT_EQ(CrasAudioHandler::Get()->IsOutputMuted(), !is_muted);
+  // The slider level should be 0 and icon appears as muted.
+  EXPECT_EQ(slider()->GetValue(), 0);
+  CheckSliderIcon(0);
 
   PressAndReleaseKey(ui::KeyboardCode::VKEY_VOLUME_UP);
-  // The slider level should increase by `kVolumeStepChange` and the icon should
-  // change accordingly. The mute state toggles back to the original state.
-  const float new_level = level + kVolumeStepChange;
-  EXPECT_FLOAT_EQ(slider()->GetValue(), new_level);
-  CheckSliderIcon(new_level);
-  EXPECT_EQ(CrasAudioHandler::Get()->IsOutputMuted(), is_muted);
+  // The slider level and icon should be restored.
+  EXPECT_EQ(slider()->GetValue(), level);
+  CheckSliderIcon(level);
 }
 
 // Tests that pressing the keyboard volume mute key will mute the slider, and
-// pressing the volume down key will preserve the mute state and decrease the
-// volume level by one step.
+// pressing the volume down key will preserve the mute state.
 TEST_F(UnifiedVolumeViewTest, VolumeMuteThenVolumeDown) {
   // Sets the volume level by user.
   const float level = 0.8;
@@ -194,75 +190,16 @@ TEST_F(UnifiedVolumeViewTest, VolumeMuteThenVolumeDown) {
 
   EXPECT_EQ(slider()->GetValue(), level);
   CheckSliderIcon(level);
-  const bool is_muted = CrasAudioHandler::Get()->IsOutputMuted();
 
   PressAndReleaseKey(ui::KeyboardCode::VKEY_VOLUME_MUTE);
-  // The slider level should remain as `level` and the mute state toggles.
-  EXPECT_EQ(slider()->GetValue(), level);
-  CheckSliderIcon(level);
-  EXPECT_EQ(CrasAudioHandler::Get()->IsOutputMuted(), !is_muted);
+  // The slider level should be 0 and icon appears as muted.
+  EXPECT_EQ(slider()->GetValue(), 0);
+  CheckSliderIcon(0);
 
   PressAndReleaseKey(ui::KeyboardCode::VKEY_VOLUME_DOWN);
-  // The slider level should decrease by `kVolumeStepChange` and the icon should
-  // change accordingly. The mute state remains the same as before pressing the
-  // volume down.
-  const float new_level = level - kVolumeStepChange;
-  EXPECT_FLOAT_EQ(slider()->GetValue(), new_level);
-  CheckSliderIcon(new_level);
-  EXPECT_EQ(CrasAudioHandler::Get()->IsOutputMuted(), !is_muted);
-}
-
-// Tests when the slider is focused, press enter will toggle the mute state.
-TEST_F(UnifiedVolumeViewTest, SliderFocusToggleMute) {
-  // `slider()` is normally focusable, and `slider_button()` is accessibility
-  // focusable.
-  EXPECT_TRUE(slider()->IsFocusable());
-  EXPECT_FALSE(slider_button()->IsFocusable());
-  EXPECT_TRUE(slider_button()->IsAccessibilityFocusable());
-
-  // Sets the level to make sure the slider's volume is not 0. Otherwise the
-  // slider is still muted even if it's toggled on.
-  const float level = 0.8;
-  volume_slider_controller()->SliderValueChanged(
-      slider(), level, slider()->GetValue(),
-      views::SliderChangeReason::kByUser);
-
-  auto* generator = GetEventGenerator();
-  // Presses the tab key to activate the focus on the bubble.
-  generator->PressAndReleaseKey(ui::KeyboardCode::VKEY_TAB);
-  slider()->RequestFocus();
-  EXPECT_STREQ(unified_volume_view()
-                   ->GetFocusManager()
-                   ->GetFocusedView()
-                   ->GetClassName(),
-               "QuickSettingsSlider");
-
-  const bool is_muted = CrasAudioHandler::Get()->IsOutputMuted();
-  // Presses the enter key when focused on the slider will toggle mute state.
-  generator->PressAndReleaseKey(ui::KeyboardCode::VKEY_RETURN);
-  EXPECT_EQ(CrasAudioHandler::Get()->IsOutputMuted(), !is_muted);
-}
-
-// Regression test for b/310804814.
-TEST_F(UnifiedVolumeViewTest, MultipleDisplay) {
-  // Add a secondary display to the left of the primary one.
-  UpdateDisplay("1280x1024,1980x1080");
-
-  // Sets the volume level by user.
-  const float level = 0.5;
-  volume_slider_controller()->SliderValueChanged(
-      slider(), level, slider()->GetValue(),
-      views::SliderChangeReason::kByUser);
-
-  EXPECT_EQ(slider()->GetValue(), level);
-  CheckSliderIcon(level);
-
-  PressAndReleaseKey(ui::KeyboardCode::VKEY_VOLUME_UP);
-  // The slider level should increase by `kVolumeStepChange` and the icon should
-  // change accordingly. The mute state toggles back to the original state.
-  const float new_level = level + kVolumeStepChange;
-  EXPECT_FLOAT_EQ(slider()->GetValue(), new_level);
-  CheckSliderIcon(new_level);
+  // The slider level and icon should remain muted.
+  EXPECT_EQ(slider()->GetValue(), 0);
+  CheckSliderIcon(0);
 }
 
 }  // namespace ash

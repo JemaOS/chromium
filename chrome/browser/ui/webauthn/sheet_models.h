@@ -14,6 +14,10 @@
 #include "chrome/browser/webauthn/authenticator_request_dialog_model.h"
 #include "device/fido/pin.h"
 
+namespace gfx {
+struct VectorIcon;
+}
+
 // Base class for sheets, implementing the shared behavior used on most sheets,
 // as well as maintaining a weak pointer to the dialog model.
 class AuthenticatorSheetModelBase
@@ -53,6 +57,7 @@ class AuthenticatorSheetModelBase
  protected:
   // AuthenticatorRequestSheetModel:
   bool IsActivityIndicatorVisible() const override;
+  bool IsBackButtonVisible() const override;
   bool IsCancelButtonVisible() const override;
   bool IsOtherMechanismButtonVisible() const override;
   std::u16string GetOtherMechanismButtonLabel() const override;
@@ -78,11 +83,13 @@ class AuthenticatorSheetModelBase
 class AuthenticatorMechanismSelectorSheetModel
     : public AuthenticatorSheetModelBase {
  public:
-  explicit AuthenticatorMechanismSelectorSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model);
+  using AuthenticatorSheetModelBase::AuthenticatorSheetModelBase;
 
   // AuthenticatorSheetModelBase:
+  bool IsBackButtonVisible() const override;
   bool IsManageDevicesButtonVisible() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   void OnManageDevices() override;
@@ -96,6 +103,8 @@ class AuthenticatorInsertAndActivateUsbSheetModel
 
   // AuthenticatorSheetModelBase:
   bool IsActivityIndicatorVisible() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   std::u16string GetAdditionalDescription() const override;
@@ -103,12 +112,14 @@ class AuthenticatorInsertAndActivateUsbSheetModel
 
 class AuthenticatorTimeoutErrorModel : public AuthenticatorSheetModelBase {
  public:
-  explicit AuthenticatorTimeoutErrorModel(
-      AuthenticatorRequestDialogModel* dialog_model);
+  using AuthenticatorSheetModelBase::AuthenticatorSheetModelBase;
 
  private:
   // AuthenticatorSheetModelBase:
+  bool IsBackButtonVisible() const override;
   std::u16string GetCancelButtonLabel() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
 };
@@ -116,24 +127,28 @@ class AuthenticatorTimeoutErrorModel : public AuthenticatorSheetModelBase {
 class AuthenticatorNoAvailableTransportsErrorModel
     : public AuthenticatorSheetModelBase {
  public:
-  explicit AuthenticatorNoAvailableTransportsErrorModel(
-      AuthenticatorRequestDialogModel* dialog_model);
+  using AuthenticatorSheetModelBase::AuthenticatorSheetModelBase;
 
  private:
   // AuthenticatorSheetModelBase:
+  bool IsBackButtonVisible() const override;
   std::u16string GetCancelButtonLabel() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
 };
 
 class AuthenticatorNoPasskeysErrorModel : public AuthenticatorSheetModelBase {
  public:
-  explicit AuthenticatorNoPasskeysErrorModel(
-      AuthenticatorRequestDialogModel* dialog_model);
+  using AuthenticatorSheetModelBase::AuthenticatorSheetModelBase;
 
  private:
   // AuthenticatorSheetModelBase:
+  bool IsBackButtonVisible() const override;
   std::u16string GetCancelButtonLabel() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
 };
@@ -141,15 +156,17 @@ class AuthenticatorNoPasskeysErrorModel : public AuthenticatorSheetModelBase {
 class AuthenticatorNotRegisteredErrorModel
     : public AuthenticatorSheetModelBase {
  public:
-  explicit AuthenticatorNotRegisteredErrorModel(
-      AuthenticatorRequestDialogModel* dialog_model);
+  using AuthenticatorSheetModelBase::AuthenticatorSheetModelBase;
 
  private:
   // AuthenticatorSheetModelBase:
+  bool IsBackButtonVisible() const override;
   std::u16string GetCancelButtonLabel() const override;
   bool IsAcceptButtonVisible() const override;
   bool IsAcceptButtonEnabled() const override;
   std::u16string GetAcceptButtonLabel() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   void OnAccept() override;
@@ -158,15 +175,17 @@ class AuthenticatorNotRegisteredErrorModel
 class AuthenticatorAlreadyRegisteredErrorModel
     : public AuthenticatorSheetModelBase {
  public:
-  explicit AuthenticatorAlreadyRegisteredErrorModel(
-      AuthenticatorRequestDialogModel* dialog_model);
+  using AuthenticatorSheetModelBase::AuthenticatorSheetModelBase;
 
  private:
   // AuthenticatorSheetModelBase:
+  bool IsBackButtonVisible() const override;
   std::u16string GetCancelButtonLabel() const override;
   bool IsAcceptButtonVisible() const override;
   bool IsAcceptButtonEnabled() const override;
   std::u16string GetAcceptButtonLabel() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   void OnAccept() override;
@@ -175,14 +194,16 @@ class AuthenticatorAlreadyRegisteredErrorModel
 class AuthenticatorInternalUnrecognizedErrorSheetModel
     : public AuthenticatorSheetModelBase {
  public:
-  explicit AuthenticatorInternalUnrecognizedErrorSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model);
+  using AuthenticatorSheetModelBase::AuthenticatorSheetModelBase;
 
  private:
   // AuthenticatorSheetModelBase:
+  bool IsBackButtonVisible() const override;
   bool IsAcceptButtonVisible() const override;
   bool IsAcceptButtonEnabled() const override;
   std::u16string GetAcceptButtonLabel() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   void OnAccept() override;
@@ -196,6 +217,8 @@ class AuthenticatorBlePowerOnManualSheetModel
 
  private:
   // AuthenticatorSheetModelBase:
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   bool IsAcceptButtonVisible() const override;
@@ -216,6 +239,8 @@ class AuthenticatorBlePowerOnAutomaticSheetModel
  private:
   // AuthenticatorSheetModelBase:
   bool IsActivityIndicatorVisible() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   bool IsAcceptButtonVisible() const override;
@@ -236,6 +261,9 @@ class AuthenticatorBlePermissionMacSheetModel
 
  private:
   // AuthenticatorSheetModelBase:
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
+  bool ShouldFocusBackArrow() const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   bool IsAcceptButtonVisible() const override;
@@ -250,10 +278,11 @@ class AuthenticatorBlePermissionMacSheetModel
 class AuthenticatorOffTheRecordInterstitialSheetModel
     : public AuthenticatorSheetModelBase {
  public:
-  explicit AuthenticatorOffTheRecordInterstitialSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model);
+  using AuthenticatorSheetModelBase::AuthenticatorSheetModelBase;
 
   // AuthenticatorSheetModelBase:
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   bool IsAcceptButtonVisible() const override;
@@ -272,6 +301,8 @@ class AuthenticatorPaaskSheetModel : public AuthenticatorSheetModelBase {
  private:
   // AuthenticatorSheetModelBase:
   bool IsActivityIndicatorVisible() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
 };
@@ -285,7 +316,10 @@ class AuthenticatorAndroidAccessorySheetModel
 
  private:
   // AuthenticatorSheetModelBase:
+  bool IsBackButtonVisible() const override;
   bool IsActivityIndicatorVisible() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
 };
@@ -302,6 +336,8 @@ class AuthenticatorClientPinEntrySheetModel
       device::pin::PINEntryError error);
   ~AuthenticatorClientPinEntrySheetModel() override;
 
+  using AuthenticatorSheetModelBase::AuthenticatorSheetModelBase;
+
   void SetPinCode(std::u16string pin_code);
   void SetPinConfirmation(std::u16string pin_confirmation);
 
@@ -309,6 +345,8 @@ class AuthenticatorClientPinEntrySheetModel
 
  private:
   // AuthenticatorSheetModelBase:
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   std::u16string GetError() const override;
@@ -333,6 +371,8 @@ class AuthenticatorClientPinTapAgainSheetModel
  private:
   // AuthenticatorSheetModelBase:
   bool IsActivityIndicatorVisible() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   std::u16string GetAdditionalDescription() const override;
@@ -355,6 +395,8 @@ class AuthenticatorBioEnrollmentSheetModel
  private:
   // AuthenticatorSheetModelBase:
   bool IsActivityIndicatorVisible() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   bool IsAcceptButtonEnabled() const override;
@@ -375,6 +417,8 @@ class AuthenticatorRetryUvSheetModel : public AuthenticatorSheetModelBase {
  private:
   // AuthenticatorSheetModelBase:
   bool IsActivityIndicatorVisible() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   std::u16string GetError() const override;
@@ -407,7 +451,10 @@ class AuthenticatorGenericErrorSheetModel : public AuthenticatorSheetModelBase {
   bool IsAcceptButtonVisible() const override;
   bool IsAcceptButtonEnabled() const override;
   std::u16string GetAcceptButtonLabel() const override;
+  bool IsBackButtonVisible() const override;
   std::u16string GetCancelButtonLabel() const override;
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   void OnAccept() override;
@@ -425,6 +472,9 @@ class AuthenticatorResidentCredentialConfirmationSheetView
 
  private:
   // AuthenticatorSheetModelBase:
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
+  bool IsBackButtonVisible() const override;
   bool IsAcceptButtonVisible() const override;
   bool IsAcceptButtonEnabled() const override;
   std::u16string GetAcceptButtonLabel() const override;
@@ -474,6 +524,8 @@ class AuthenticatorSelectAccountSheetModel
 
  private:
   // AuthenticatorSheetModelBase:
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   bool IsAcceptButtonVisible() const override;
@@ -498,8 +550,11 @@ class AttestationPermissionRequestSheetModel
 
  private:
   // AuthenticatorSheetModelBase:
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
+  bool IsBackButtonVisible() const override;
   bool IsAcceptButtonVisible() const override;
   bool IsAcceptButtonEnabled() const override;
   std::u16string GetAcceptButtonLabel() const override;
@@ -525,58 +580,12 @@ class AuthenticatorQRSheetModel : public AuthenticatorSheetModelBase {
       AuthenticatorRequestDialogModel* dialog_model);
   ~AuthenticatorQRSheetModel() override;
 
-  // Returns true if a label indicating the user that a security key may be used
-  // should be shown.
-  bool ShowSecurityKeyLabel() const;
-
-  // Returns the label that indicates the user they can insert and activate a
-  // hardware security key.
-  std::u16string GetSecurityKeyLabel() const;
-
  private:
   // AuthenticatorSheetModelBase:
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
-  std::u16string GetOtherMechanismButtonLabel() const override;
-};
-
-class AuthenticatorConnectingSheetModel : public AuthenticatorSheetModelBase {
- public:
-  explicit AuthenticatorConnectingSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model);
-  ~AuthenticatorConnectingSheetModel() override;
-
- private:
-  // AuthenticatorSheetModelBase:
-  std::u16string GetStepTitle() const override;
-  std::u16string GetStepDescription() const override;
-};
-
-class AuthenticatorConnectedSheetModel : public AuthenticatorSheetModelBase {
- public:
-  explicit AuthenticatorConnectedSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model);
-  ~AuthenticatorConnectedSheetModel() override;
-
- private:
-  // AuthenticatorSheetModelBase:
-  bool IsActivityIndicatorVisible() const override;
-  std::u16string GetStepTitle() const override;
-  std::u16string GetStepDescription() const override;
-};
-
-class AuthenticatorCableErrorSheetModel : public AuthenticatorSheetModelBase {
- public:
-  explicit AuthenticatorCableErrorSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model);
-  ~AuthenticatorCableErrorSheetModel() override;
-
- private:
-  // AuthenticatorSheetModelBase:
-  bool IsOtherMechanismButtonVisible() const override;
-  std::u16string GetStepTitle() const override;
-  std::u16string GetStepDescription() const override;
-  std::u16string GetCancelButtonLabel() const override;
 };
 
 class AuthenticatorCreatePasskeySheetModel
@@ -592,6 +601,8 @@ class AuthenticatorCreatePasskeySheetModel
 
  private:
   // AuthenticatorSheetModelBase:
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   bool IsAcceptButtonVisible() const override;
@@ -610,171 +621,15 @@ class AuthenticatorPhoneConfirmationSheet : public AuthenticatorSheetModelBase {
   ~AuthenticatorPhoneConfirmationSheet() override;
 
  private:
-  // AuthenticatorSheetModelBase:
+  // AuthenticatorSheetModelbase:
+  const gfx::VectorIcon& GetStepIllustration(
+      ImageColorScheme color_scheme) const override;
   std::u16string GetStepTitle() const override;
   std::u16string GetStepDescription() const override;
   bool IsAcceptButtonVisible() const override;
   bool IsAcceptButtonEnabled() const override;
   void OnAccept() override;
   std::u16string GetAcceptButtonLabel() const override;
-};
-
-// An account and mechanism picker that combines passkeys from multiple sources.
-// Passkeys are grouped in two lists:
-// * "Primary" passkeys. These are local passkeys if available, or GPM passkeys
-//   if no local passkeys are available. Can be empty.
-// * "Secondary" passkeys. These are all the other passkeys & mechanisms.
-// AuthenticatorMultiSourcePickerSheetModel will filter these lists and
-// present them as indices of AuthenticatorRequestDialogModel's `mechanisms()`
-// member.
-class AuthenticatorMultiSourcePickerSheetModel
-    : public AuthenticatorSheetModelBase {
- public:
-  explicit AuthenticatorMultiSourcePickerSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model);
-  ~AuthenticatorMultiSourcePickerSheetModel() override;
-
-  // Returns a vector of indices to the "Primary" passkey mechanisms. Indices
-  // correspond to AuthenticatorRequestDialogModel's mechanisms().
-  std::vector<int>& primary_passkey_indices() {
-    return primary_passkey_indices_;
-  }
-
-  // Returns a vector of indices to the "Secondary" passkey mechanisms. Indices
-  // correspond to AuthenticatorRequestDialogModel's mechanisms().
-  std::vector<int>& secondary_passkey_indices() {
-    return secondary_passkey_indices_;
-  }
-
-  // Returns the user-visible label for the "Primary" passkey mechanisms.
-  std::u16string& primary_passkeys_label() { return primary_passkeys_label_; }
-
- private:
-  // AuthenticatorSheetModelBase:
-  bool IsManageDevicesButtonVisible() const override;
-  void OnManageDevices() override;
-  std::u16string GetStepTitle() const override;
-  std::u16string GetStepDescription() const override;
-
-  std::vector<int> primary_passkey_indices_;
-  std::vector<int> secondary_passkey_indices_;
-  std::u16string primary_passkeys_label_;
-};
-
-class AuthenticatorPriorityMechanismSheetModel
-    : public AuthenticatorSheetModelBase {
- public:
-  explicit AuthenticatorPriorityMechanismSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model);
-  ~AuthenticatorPriorityMechanismSheetModel() override;
-
- private:
-  // AuthenticatorSheetModelBase:
-  std::u16string GetStepTitle() const override;
-  std::u16string GetStepDescription() const override;
-  bool IsAcceptButtonEnabled() const override;
-  bool IsAcceptButtonVisible() const override;
-  std::u16string GetAcceptButtonLabel() const override;
-  void OnAccept() override;
-};
-
-// The sheet shown when the user is entering a digit-only GPM pin.
-class AuthenticatorGPMPinSheetModel : public AuthenticatorSheetModelBase {
- public:
-  // Indicates whether the view should accommodate creating a new pin or
-  // entering an existing one.
-  enum class Mode { kPinCreate, kPinEntry };
-
-  explicit AuthenticatorGPMPinSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model,
-      int pin_digits_count,
-      Mode mode,
-      AuthenticatorRequestDialogModel::GpmPinError error);
-  ~AuthenticatorGPMPinSheetModel() override;
-
-  int pin_digits_count() const;
-
-  // Sets currently typed pin in the sheet.
-  void SetPin(std::u16string pin);
-
- private:
-  bool FullPinTyped() const;
-
-  // AuthenticatorSheetModelBase:
-  std::u16string GetStepTitle() const override;
-  std::u16string GetStepDescription() const override;
-  std::u16string GetError() const override;
-  bool IsAcceptButtonEnabled() const override;
-  bool IsAcceptButtonVisible() const override;
-  bool IsForgotGPMPinButtonVisible() const override;
-  bool IsGPMPinOptionsButtonVisible() const override;
-  std::u16string GetAcceptButtonLabel() const override;
-  void OnAccept() override;
-  void OnGPMPinOptionChosen(bool is_arbitrary) const override;
-
-  std::u16string pin_;
-  const int pin_digits_count_;
-  const Mode mode_;
-  const AuthenticatorRequestDialogModel::GpmPinError error_;
-};
-
-// The sheet shown when the user is entering an arbitrary (alphanumeric) pin.
-class AuthenticatorGPMArbitraryPinSheetModel
-    : public AuthenticatorSheetModelBase {
- public:
-  // Indicates whether the view should accommodate creating a new pin or
-  // entering an existing one.
-  enum class Mode { kPinCreate, kPinEntry };
-
-  explicit AuthenticatorGPMArbitraryPinSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model,
-      Mode mode,
-      AuthenticatorRequestDialogModel::GpmPinError error);
-  ~AuthenticatorGPMArbitraryPinSheetModel() override;
-
-  // Sets currently typed pin in the sheet.
-  void SetPin(std::u16string pin);
-
-  Mode mode() { return mode_; }
-
- private:
-  // AuthenticatorSheetModelBase:
-  std::u16string GetStepTitle() const override;
-  std::u16string GetStepDescription() const override;
-  std::u16string GetError() const override;
-  bool IsAcceptButtonEnabled() const override;
-  bool IsAcceptButtonVisible() const override;
-  bool IsForgotGPMPinButtonVisible() const override;
-  bool IsGPMPinOptionsButtonVisible() const override;
-  std::u16string GetAcceptButtonLabel() const override;
-  void OnAccept() override;
-  void OnGPMPinOptionChosen(bool is_arbitrary) const override;
-
-  std::u16string pin_;
-  const Mode mode_;
-  const AuthenticatorRequestDialogModel::GpmPinError error_;
-};
-
-// The sheet shown for bootstrapping Google Password Manager passkeys.
-class AuthenticatorTrustThisComputerSheetModel
-    : public AuthenticatorSheetModelBase {
- public:
-  explicit AuthenticatorTrustThisComputerSheetModel(
-      AuthenticatorRequestDialogModel* dialog_model);
-
-  ~AuthenticatorTrustThisComputerSheetModel() override;
-
- private:
-  // AuthenticatorSheetModelBase:
-  std::u16string GetStepTitle() const override;
-  std::u16string GetStepDescription() const override;
-  bool IsCancelButtonVisible() const override;
-  std::u16string GetCancelButtonLabel() const override;
-  void OnCancel() override;
-  bool IsAcceptButtonEnabled() const override;
-  bool IsAcceptButtonVisible() const override;
-  std::u16string GetAcceptButtonLabel() const override;
-  void OnAccept() override;
 };
 
 #endif  // CHROME_BROWSER_UI_WEBAUTHN_SHEET_MODELS_H_

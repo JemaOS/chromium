@@ -51,7 +51,6 @@
 #include "third_party/blink/renderer/platform/loader/fetch/resource_finish_observer.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_load_timing.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_loader.h"
-#include "third_party/blink/renderer/platform/loader/fetch/url_loader/background_response_processor.h"
 #include "third_party/blink/renderer/platform/network/http_parsers.h"
 #include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
@@ -149,9 +148,9 @@ Resource::Resource(const ResourceRequestHead& request,
       decoded_size_(0),
       cache_identifier_(MemoryCache::DefaultCacheIdentifier()),
       link_preload_(false),
+      is_revalidating_(false),
       is_alive_(false),
       is_add_remove_client_prohibited_(false),
-      revalidation_status_(RevalidationStatus::kNoRevalidatingOrFailed),
       integrity_disposition_(ResourceIntegrityDisposition::kNotChecked),
       options_(options),
       response_timestamp_(Now()),
@@ -180,7 +179,6 @@ void Resource::Trace(Visitor* visitor) const {
   visitor->Trace(clients_awaiting_callback_);
   visitor->Trace(finished_clients_);
   visitor->Trace(finish_observers_);
-  visitor->Trace(options_);
   MemoryPressureListener::Trace(visitor);
 }
 
@@ -252,7 +250,7 @@ void Resource::MarkClientFinished(ResourceClient* client) {
 
 void Resource::AppendData(const char* data, size_t length) {
   TRACE_EVENT1("blink", "Resource::appendData", "length", length);
-  DCHECK(!IsCacheValidator());
+  DCHECK(!is_revalidating_);
   DCHECK(!ErrorOccurred());
   if (options_.data_buffering_policy == kBufferData) {
     if (data_)
@@ -261,17 +259,17 @@ void Resource::AppendData(const char* data, size_t length) {
       data_ = SharedBuffer::Create(data, length);
     SetEncodedSize(data_->size());
   }
-  NotifyDataReceived(base::span(data, length));
+  NotifyDataReceived(data, length);
 }
 
-void Resource::NotifyDataReceived(base::span<const char> data) {
+void Resource::NotifyDataReceived(const char* data, size_t length) {
   ResourceClientWalker<ResourceClient> w(Clients());
   while (ResourceClient* c = w.Next())
-    c->DataReceived(this, data);
+    c->DataReceived(this, data, length);
 }
 
 void Resource::SetResourceBuffer(scoped_refptr<SharedBuffer> resource_buffer) {
-  DCHECK(!IsCacheValidator());
+  DCHECK(!is_revalidating_);
   DCHECK(!ErrorOccurred());
   DCHECK_EQ(options_.data_buffering_policy, kBufferData);
   data_ = std::move(resource_buffer);
@@ -329,7 +327,7 @@ static bool NeedsSynchronousCacheHit(ResourceType type,
 void Resource::FinishAsError(const ResourceError& error,
                              base::SingleThreadTaskRunner* task_runner) {
   error_ = error;
-  revalidation_status_ = RevalidationStatus::kNoRevalidatingOrFailed;
+  is_revalidating_ = false;
 
   if (IsMainThread())
     MemoryCache::Get()->Remove(this);
@@ -367,7 +365,7 @@ void Resource::FinishAsError(const ResourceError& error,
 
 void Resource::Finish(base::TimeTicks load_response_end,
                       base::SingleThreadTaskRunner* task_runner) {
-  DCHECK(!IsCacheValidator());
+  DCHECK(!is_revalidating_);
   load_response_end_ = load_response_end;
   if (!ErrorOccurred())
     status_ = ResourceStatus::kCached;
@@ -400,11 +398,11 @@ static base::TimeDelta CurrentAge(const ResourceResponse& response,
                                   base::Time response_timestamp) {
   // RFC2616 13.2.3
   // No compensation for latency as that is not terribly important in practice
-  std::optional<base::Time> date_value = response.Date();
+  absl::optional<base::Time> date_value = response.Date();
   base::TimeDelta apparent_age;
   if (date_value && response_timestamp >= date_value.value())
     apparent_age = response_timestamp - date_value.value();
-  std::optional<base::TimeDelta> age_value = response.Age();
+  absl::optional<base::TimeDelta> age_value = response.Age();
   base::TimeDelta corrected_received_age =
       age_value ? std::max(apparent_age, age_value.value()) : apparent_age;
   base::TimeDelta resident_time = Now() - response_timestamp;
@@ -425,15 +423,15 @@ static base::TimeDelta FreshnessLifetime(const ResourceResponse& response,
     return base::TimeDelta::Max();
 
   // RFC2616 13.2.4
-  std::optional<base::TimeDelta> max_age_value = response.CacheControlMaxAge();
+  absl::optional<base::TimeDelta> max_age_value = response.CacheControlMaxAge();
   if (max_age_value)
     return max_age_value.value();
-  std::optional<base::Time> expires = response.Expires();
-  std::optional<base::Time> date = response.Date();
+  absl::optional<base::Time> expires = response.Expires();
+  absl::optional<base::Time> date = response.Date();
   base::Time creation_time = date ? date.value() : response_timestamp;
   if (expires)
     return expires.value() - creation_time;
-  std::optional<base::Time> last_modified = response.LastModified();
+  absl::optional<base::Time> last_modified = response.LastModified();
   if (last_modified)
     return (creation_time - last_modified.value()) * 0.1;
   // If no cache headers are present, the specification leaves the decision to
@@ -469,8 +467,8 @@ static bool CanUseResponse(const ResourceResponse& response,
 
   if (response.HttpStatusCode() == 302 || response.HttpStatusCode() == 307) {
     // Default to not cacheable unless explicitly allowed.
-    bool has_max_age = response.CacheControlMaxAge() != std::nullopt;
-    bool has_expires = response.Expires() != std::nullopt;
+    bool has_max_age = response.CacheControlMaxAge() != absl::nullopt;
+    bool has_expires = response.Expires() != absl::nullopt;
     // TODO: consider catching Cache-Control "private" and "public" here.
     if (!has_max_age && !has_expires)
       return false;
@@ -504,16 +502,15 @@ void Resource::SetRevalidatingRequest(const ResourceRequestHead& request) {
   SECURITY_CHECK(!is_unused_preload_);
   DCHECK(!request.IsNull());
   CHECK(!is_revalidation_start_forbidden_);
-  revalidation_status_ = RevalidationStatus::kRevalidating;
+  is_revalidating_ = true;
   resource_request_ = request;
   status_ = ResourceStatus::kNotStarted;
 }
 
 bool Resource::WillFollowRedirect(const ResourceRequest& new_request,
                                   const ResourceResponse& redirect_response) {
-  if (IsCacheValidator()) {
+  if (is_revalidating_)
     RevalidationFailed();
-  }
   redirect_chain_.push_back(RedirectPair(new_request, redirect_response));
   return true;
 }
@@ -524,7 +521,7 @@ void Resource::SetResponse(const ResourceResponse& response) {
 
 void Resource::ResponseReceived(const ResourceResponse& response) {
   response_timestamp_ = Now();
-  if (IsCacheValidator()) {
+  if (is_revalidating_) {
     if (IsSuccessfulRevalidationResponse(response)) {
       RevalidationSucceeded(response);
       return;
@@ -538,7 +535,11 @@ void Resource::ResponseReceived(const ResourceResponse& response) {
 }
 
 void Resource::SetSerializedCachedMetadata(mojo_base::BigBuffer data) {
-  DCHECK(!IsCacheValidator());
+  DCHECK(!is_revalidating_);
+}
+
+bool Resource::CodeCacheHashRequired() const {
+  return false;
 }
 
 String Resource::ReasonNotDeletable() const {
@@ -572,7 +573,7 @@ String Resource::ReasonNotDeletable() const {
 void Resource::DidAddClient(ResourceClient* client) {
   if (scoped_refptr<SharedBuffer> data = Data()) {
     for (const auto& span : *data) {
-      client->DataReceived(this, span);
+      client->DataReceived(this, span.data(), span.size());
       // Stop pushing data if the client removed itself.
       if (!HasClient(client))
         break;
@@ -602,7 +603,7 @@ void Resource::AddClient(ResourceClient* client,
 
   WillAddClientOrObserver();
 
-  if (IsCacheValidator()) {
+  if (is_revalidating_) {
     clients_.insert(client);
     return;
   }
@@ -725,9 +726,8 @@ void Resource::FinishPendingClients() {
     // When revalidation starts after waiting clients are scheduled and
     // before they are added here. In such cases, we just add the clients
     // to |clients_| without DidAddClient(), as in Resource::AddClient().
-    if (!IsCacheValidator()) {
+    if (!is_revalidating_)
       DidAddClient(client);
-    }
   }
 
   // It is still possible for the above loop to finish a new client
@@ -763,14 +763,14 @@ Resource::MatchStatus Resource::CanReuse(const FetchParameters& params) const {
   // Use GetResourceRequest to get the const resource_request_.
   const ResourceRequestHead& current_request = GetResourceRequest();
 
-  // If credentials mode is defferent from the the previous request, re-fetch
-  // the resource.
+  // If credentials were sent with the previous request and won't be with this
+  // one, or vice versa, re-fetch the resource.
   //
   // This helps with the case where the server sends back
   // "Access-Control-Allow-Origin: *" all the time, but some of the client's
   // requests are made without CORS and some with.
-  if (current_request.GetCredentialsMode() !=
-      new_request.GetCredentialsMode()) {
+  if (current_request.AllowStoredCredentials() !=
+      new_request.AllowStoredCredentials()) {
     return MatchStatus::kRequestCredentialsModeDoesNotMatch;
   }
 
@@ -925,7 +925,7 @@ void Resource::SetCachePolicyBypassingCache() {
 }
 
 void Resource::ClearRangeRequestHeader() {
-  resource_request_.ClearHttpHeaderField(http_names::kLowerRange);
+  resource_request_.ClearHttpHeaderField("range");
 }
 
 void Resource::RevalidationSucceeded(
@@ -950,7 +950,7 @@ void Resource::RevalidationSucceeded(
     response_.SetHttpHeaderField(header.key, header.value);
   }
 
-  revalidation_status_ = RevalidationStatus::kRevalidated;
+  is_revalidating_ = false;
 }
 
 void Resource::RevalidationFailed() {
@@ -959,7 +959,7 @@ void Resource::RevalidationFailed() {
   integrity_disposition_ = ResourceIntegrityDisposition::kNotChecked;
   integrity_report_info_.Clear();
   DestroyDecodedDataForFailedRevalidation();
-  revalidation_status_ = RevalidationStatus::kNoRevalidatingOrFailed;
+  is_revalidating_ = false;
 }
 
 void Resource::MarkAsPreload() {
@@ -1165,8 +1165,6 @@ const char* Resource::ResourceTypeToString(
       return "SpeculationRule";
     case ResourceType::kMock:
       return "Mock";
-    case ResourceType::kDictionary:
-      return "Dictionary";
   }
   NOTREACHED();
   return InitiatorTypeNameToString(fetch_initiator_name);
@@ -1191,7 +1189,6 @@ bool Resource::IsLoadEventBlockingResourceType() const {
     case ResourceType::kManifest:
     case ResourceType::kMock:
     case ResourceType::kSpeculationRules:
-    case ResourceType::kDictionary:
       return false;
   }
   NOTREACHED();
@@ -1211,15 +1208,6 @@ bool Resource::AppendTopFrameSiteForMetrics(const SecurityOrigin& origin) {
 
 void Resource::SetIsAdResource() {
   resource_request_.SetIsAdResource();
-}
-
-void Resource::UpdateMemoryCacheLastAccessedTime() {
-  memory_cache_last_accessed_ = base::TimeTicks::Now();
-}
-
-scoped_refptr<BackgroundResponseProcessor>
-Resource::MaybeCreateBackgroundResponseProcessor() {
-  return nullptr;
 }
 
 }  // namespace blink

@@ -145,4 +145,4 @@ var allTests = [
   }
 ];
 
-setUpAndRunTabsTests(allTests, 'position.html');
+setUpAndRunTestsInPage(allTests, 'position.html');

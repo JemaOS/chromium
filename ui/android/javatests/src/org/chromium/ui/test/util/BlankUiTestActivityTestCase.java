@@ -31,7 +31,8 @@ public class BlankUiTestActivityTestCase {
     public static final DisableAnimationsTestRule disableAnimationsRule =
             new DisableAnimationsTestRule();
 
-    @Rule public final TestRule ruleChain;
+    @Rule
+    public final TestRule ruleChain;
 
     /** Default constructor that creates a {@link BlankUiTestActivity} as expected. */
     public BlankUiTestActivityTestCase() {
@@ -48,7 +49,9 @@ public class BlankUiTestActivityTestCase {
         ruleChain = RuleChain.outerRule(mActivityTestRule).around(new TestDriverRule());
     }
 
-    /** TestRule to setup and tear down for each test. */
+    /**
+     * TestRule to setup and tear down for each test.
+     */
     public final class TestDriverRule implements TestRule {
         @Override
         public Statement apply(final Statement base, Description description) {

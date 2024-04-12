@@ -12,7 +12,9 @@
 #include "chrome/browser/ash/file_system_provider/request_value.h"
 #include "storage/browser/file_system/async_file_util.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 // Aborts an operation. Created per request.
 class Abort : public Operation {
@@ -41,6 +43,8 @@ class Abort : public Operation {
   storage::AsyncFileUtil::StatusCallback callback_;
 };
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_OPERATIONS_ABORT_H_

@@ -31,8 +31,8 @@ RootWebArea
 RootWebArea
   none
     none
-      image
-        *image
+      img
+        *img
 {
     childIds : <object>
     chromeRole : {
@@ -69,13 +69,14 @@ RootWebArea
     ]
     role : {
         type : role
-        value : image
+        value : img
     }
 }
 
 RootWebArea
   none
     none
+      *none
       *none
 {
     childIds : <object>
@@ -105,7 +106,9 @@ RootWebArea
 RootWebArea
   none
     none
-      *none
+      none
+        *none
+        *none
 {
     childIds : <object>
     chromeRole : {
@@ -310,6 +313,7 @@ RootWebArea
   none
     none
       *none
+      *none
 {
     childIds : <object>
     chromeRole : {
@@ -338,7 +342,9 @@ RootWebArea
 RootWebArea
   none
     none
-      *none
+      none
+        *none
+        *none
 {
     childIds : <object>
     chromeRole : {
@@ -427,9 +433,9 @@ RootWebArea
     none
       *combobox
         MenuListPopup
-          option "Options should be"
-          option "sent down even though"
-          option "they are grandchildren"
+          menuitem "Options should be"
+          menuitem "sent down even though"
+          menuitem "they are grandchildren"
 {
     childIds : <object>
     chromeRole : {
@@ -507,7 +513,7 @@ RootWebArea
     none
       combobox
         MenuListPopup
-          *option "Options should be"
+          *menuitem "Options should be"
 {
     childIds : <object>
     chromeRole : {
@@ -557,7 +563,7 @@ RootWebArea
     ]
     role : {
         type : role
-        value : option
+        value : menuitem
     }
 }
 
@@ -593,7 +599,8 @@ RootWebArea
 RootWebArea
   none
     none
-      *none
+      none
+        *none
 {
     childIds : <object>
     chromeRole : {
@@ -678,6 +685,7 @@ RootWebArea
   none
     none
       *none
+      *none
 {
     childIds : <object>
     chromeRole : {
@@ -688,7 +696,7 @@ RootWebArea
     ignored : true
     ignoredReasons : [
         [0] : {
-            name : uninteresting
+            name : notRendered
             value : {
                 type : boolean
                 value : true

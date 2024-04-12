@@ -34,7 +34,7 @@
 #include "chrome/browser/ui/webui/signin/signin_utils_desktop.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/test_browser_window.h"
@@ -133,11 +133,16 @@ GURL GetSigninPromoURL() {
 class FooWebUIProvider
     : public TestChromeWebUIControllerFactory::WebUIProvider {
  public:
-  MOCK_METHOD(std::unique_ptr<content::WebUIController>,
-              NewWebUI,
-              (content::WebUI * web_ui, const GURL& url),
-              (override));
+  MOCK_METHOD2(NewWebUI,
+               std::unique_ptr<content::WebUIController>(content::WebUI* web_ui,
+                                                         const GURL& url));
 };
+
+bool AddToSet(std::set<content::WebContents*>* set,
+              content::WebContents* web_contents) {
+  set->insert(web_contents);
+  return false;
+}
 
 std::unique_ptr<net::test_server::HttpResponse> EmptyHtmlResponseHandler(
     const net::test_server::HttpRequest& request) {
@@ -168,15 +173,9 @@ class MockInlineSigninHelper : public InlineSigninHelper {
   MockInlineSigninHelper(const MockInlineSigninHelper&) = delete;
   MockInlineSigninHelper& operator=(const MockInlineSigninHelper&) = delete;
 
-  MOCK_METHOD(void,
-              OnClientOAuthSuccess,
-              (const ClientOAuthResult& result),
-              (override));
-  MOCK_METHOD(void,
-              OnClientOAuthFailure,
-              (const GoogleServiceAuthError& error),
-              (override));
-  MOCK_METHOD(void, CreateSyncStarter, (const std::string&), (override));
+  MOCK_METHOD1(OnClientOAuthSuccess, void(const ClientOAuthResult& result));
+  MOCK_METHOD1(OnClientOAuthFailure, void(const GoogleServiceAuthError& error));
+  MOCK_METHOD1(CreateSyncStarter, void(const std::string&));
 
   GaiaAuthFetcher* GetGaiaAuthFetcher() { return GetGaiaAuthFetcherForTest(); }
 };
@@ -226,7 +225,7 @@ class MockSyncStarterInlineSigninHelper : public InlineSigninHelper {
   MockSyncStarterInlineSigninHelper& operator=(
       const MockSyncStarterInlineSigninHelper&) = delete;
 
-  MOCK_METHOD(void, CreateSyncStarter, (const std::string&), (override));
+  MOCK_METHOD1(CreateSyncStarter, void(const std::string&));
 };
 
 MockSyncStarterInlineSigninHelper::MockSyncStarterInlineSigninHelper(
@@ -311,11 +310,7 @@ IN_PROC_BROWSER_TEST_F(InlineLoginUIBrowserTest, MAYBE_DifferentStorageId) {
   std::set<content::WebContents*> set;
   GuestViewManager* manager =
       GuestViewManager::FromBrowserContext(info.contents->GetBrowserContext());
-  manager->ForEachGuest(info.contents, [&](content::WebContents* web_contents) {
-    set.insert(web_contents);
-    return false;
-  });
-
+  manager->ForEachGuest(info.contents, base::BindRepeating(&AddToSet, &set));
   ASSERT_EQ(1u, set.size());
   content::WebContents* webview_contents = *set.begin();
   content::RenderProcessHost* process =
@@ -531,7 +526,7 @@ class InlineLoginHelperBrowserTest : public DialogBrowserTest {
   std::unique_ptr<IdentityTestEnvironmentProfileAdaptor>
       identity_test_env_profile_adaptor_;
   base::CallbackListSubscription create_services_subscription_;
-  raw_ptr<Profile, AcrossTasksDanglingUntriaged> profile_ = nullptr;
+  raw_ptr<Profile, DanglingUntriaged> profile_ = nullptr;
   signin_util::ScopedForceSigninSetterForTesting forced_signin_setter_;
 };
 

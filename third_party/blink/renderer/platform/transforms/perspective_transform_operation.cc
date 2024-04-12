@@ -32,7 +32,7 @@
 
 namespace blink {
 
-TransformOperation* PerspectiveTransformOperation::Accumulate(
+scoped_refptr<TransformOperation> PerspectiveTransformOperation::Accumulate(
     const TransformOperation& other) {
   DCHECK(other.IsSameType(*this));
   const auto& other_op = To<PerspectiveTransformOperation>(other);
@@ -42,7 +42,7 @@ TransformOperation* PerspectiveTransformOperation::Accumulate(
   //
   // This can be rewritten as:
   //   p'' == (p * p') / (p + p')
-  std::optional<double> result;
+  absl::optional<double> result;
   if (!Perspective()) {
     // In the special case of 'none', p is conceptually infinite, which
     // means p'' equals p' (including if it's also 'none').
@@ -55,10 +55,10 @@ TransformOperation* PerspectiveTransformOperation::Accumulate(
     result = (p * other_p) / (p + other_p);
   }
 
-  return MakeGarbageCollected<PerspectiveTransformOperation>(result);
+  return PerspectiveTransformOperation::Create(result);
 }
 
-TransformOperation* PerspectiveTransformOperation::Blend(
+scoped_refptr<TransformOperation> PerspectiveTransformOperation::Blend(
     const TransformOperation* from,
     double progress,
     bool blend_to_identity) {
@@ -84,18 +84,19 @@ TransformOperation* PerspectiveTransformOperation::Blend(
     to_p_inverse = InverseUsedPerspective();
   }
   double p_inverse = blink::Blend(from_p_inverse, to_p_inverse, progress);
-  std::optional<double> p;
+  absl::optional<double> p;
   if (p_inverse > 0.0 && std::isnormal(p_inverse)) {
     p = 1.0 / p_inverse;
   }
-  return MakeGarbageCollected<PerspectiveTransformOperation>(p);
+  return PerspectiveTransformOperation::Create(p);
 }
 
-TransformOperation* PerspectiveTransformOperation::Zoom(double factor) {
+scoped_refptr<TransformOperation> PerspectiveTransformOperation::Zoom(
+    double factor) {
   if (!p_) {
-    return MakeGarbageCollected<PerspectiveTransformOperation>(p_);
+    return Create(p_);
   }
-  return MakeGarbageCollected<PerspectiveTransformOperation>(*p_ * factor);
+  return Create(*p_ * factor);
 }
 
 }  // namespace blink

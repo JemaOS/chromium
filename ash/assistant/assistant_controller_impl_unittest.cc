@@ -68,8 +68,8 @@ class MockAssistantUiModelObserver : public AssistantUiModelObserver {
               OnUiVisibilityChanged,
               (AssistantVisibility new_visibility,
                AssistantVisibility old_visibility,
-               std::optional<AssistantEntryPoint> entry_point,
-               std::optional<AssistantExitPoint> exit_point),
+               absl::optional<AssistantEntryPoint> entry_point,
+               absl::optional<AssistantExitPoint> exit_point),
               (override));
 };
 
@@ -108,7 +108,7 @@ class AssistantControllerImplTest : public AssistantAshTestBase {
   }
 
  private:
-  raw_ptr<MockNewWindowDelegate, DanglingUntriaged> new_window_delegate_;
+  raw_ptr<MockNewWindowDelegate, ExperimentalAsh> new_window_delegate_;
   std::unique_ptr<TestNewWindowDelegateProvider> delegate_provider_;
 };
 
@@ -233,8 +233,8 @@ TEST_F(AssistantControllerImplTest, ClosesAssistantUiForFeedbackDeeplink) {
   EXPECT_CALL(ui_model_observer_mock, OnUiVisibilityChanged)
       .WillOnce([](AssistantVisibility new_visibility,
                    AssistantVisibility old_visibility,
-                   std::optional<AssistantEntryPoint> entry_point,
-                   std::optional<AssistantExitPoint> exit_point) {
+                   absl::optional<AssistantEntryPoint> entry_point,
+                   absl::optional<AssistantExitPoint> exit_point) {
         EXPECT_EQ(old_visibility, AssistantVisibility::kVisible);
         EXPECT_EQ(new_visibility, AssistantVisibility::kClosing);
         EXPECT_FALSE(entry_point.has_value());
@@ -243,8 +243,8 @@ TEST_F(AssistantControllerImplTest, ClosesAssistantUiForFeedbackDeeplink) {
   EXPECT_CALL(ui_model_observer_mock, OnUiVisibilityChanged)
       .WillOnce([](AssistantVisibility new_visibility,
                    AssistantVisibility old_visibility,
-                   std::optional<AssistantEntryPoint> entry_point,
-                   std::optional<AssistantExitPoint> exit_point) {
+                   absl::optional<AssistantEntryPoint> entry_point,
+                   absl::optional<AssistantExitPoint> exit_point) {
         EXPECT_EQ(old_visibility, AssistantVisibility::kClosing);
         EXPECT_EQ(new_visibility, AssistantVisibility::kClosed);
         EXPECT_FALSE(entry_point.has_value());

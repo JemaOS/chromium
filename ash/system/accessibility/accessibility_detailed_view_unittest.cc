@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/accessibility/accessibility_observer.h"
 #include "ash/accessibility/magnifier/docked_magnifier_controller.h"
 #include "ash/constants/ash_features.h"
@@ -24,11 +24,9 @@
 #include "components/prefs/pref_service.h"
 #include "components/soda/soda_installer_impl_chromeos.h"
 #include "media/base/media_switches.h"
-#include "ui/accessibility/accessibility_features.h"
 #include "ui/accessibility/ax_enums.mojom-shared.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/views/controls/label.h"
-#include "ui/views/view.h"
 #include "ui/views/view_utils.h"
 
 namespace ash {
@@ -64,10 +62,6 @@ void EnableSelectToSpeak(bool enabled) {
 
 void EnableDictation(bool enabled) {
   Shell::Get()->accessibility_controller()->dictation().SetEnabled(enabled);
-}
-
-void EnableFaceGaze(bool enabled) {
-  Shell::Get()->accessibility_controller()->face_gaze().SetEnabled(enabled);
 }
 
 void EnableHighContrast(bool enabled) {
@@ -118,11 +112,6 @@ void EnableSwitchAccess(bool enabled) {
   Shell::Get()->accessibility_controller()->switch_access().SetEnabled(enabled);
 }
 
-void EnableColorCorrection(bool enabled) {
-  Shell::Get()->accessibility_controller()->color_correction().SetEnabled(
-      enabled);
-}
-
 speech::LanguageCode en_us() {
   return speech::LanguageCode::kEnUs;
 }
@@ -155,8 +144,7 @@ class AccessibilityDetailedViewTest : public AshTestBase,
   AccessibilityDetailedViewTest() {
     scoped_feature_list_.InitWithFeatures(
         {media::kLiveCaption, media::kLiveCaptionSystemWideOnChromeOS,
-         ash::features::kOnDeviceSpeechRecognition,
-         ::features::kAccessibilityFaceGaze},
+         ash::features::kOnDeviceSpeechRecognition},
         {});
   }
   AccessibilityDetailedViewTest(const AccessibilityDetailedViewTest&) = delete;
@@ -265,14 +253,6 @@ class AccessibilityDetailedViewTest : public AshTestBase,
     ClickView(detailed_menu_->dictation_view_);
   }
 
-  void ClickFaceGazeOnDetailMenu() {
-    ClickView(detailed_menu_->facegaze_view_);
-  }
-
-  void ClickColorCorrectionOnDetailMenu() {
-    ClickView(detailed_menu_->color_correction_view_);
-  }
-
   bool IsSpokenFeedbackMenuShownOnDetailMenu() const {
     return detailed_menu_->spoken_feedback_view_;
   }
@@ -283,10 +263,6 @@ class AccessibilityDetailedViewTest : public AshTestBase,
 
   bool IsDictationShownOnDetailMenu() const {
     return detailed_menu_->dictation_view_;
-  }
-
-  bool IsFaceGazeShownOnDetailMenu() const {
-    return detailed_menu_->facegaze_view_;
   }
 
   bool IsHighContrastMenuShownOnDetailMenu() const {
@@ -341,10 +317,6 @@ class AccessibilityDetailedViewTest : public AshTestBase,
     return detailed_menu_->switch_access_view_;
   }
 
-  bool IsColorCorrectionShownOnDetailMenu() const {
-    return detailed_menu_->color_correction_view_;
-  }
-
   // In material design we show the help button but theme it as disabled if
   // it is not possible to load the help page.
   bool IsHelpAvailableOnDetailMenu() {
@@ -382,11 +354,6 @@ class AccessibilityDetailedViewTest : public AshTestBase,
   bool IsDictationEnabledOnDetailMenu() const {
     return IsEnabledOnDetailMenu(controller_->dictation().enabled(),
                                  detailed_menu_->dictation_view_);
-  }
-
-  bool IsFaceGazeEnabledOnDetailMenu() const {
-    return IsEnabledOnDetailMenu(controller_->face_gaze().enabled(),
-                                 detailed_menu_->facegaze_view_);
   }
 
   bool IsHighContrastEnabledOnDetailMenu() const {
@@ -453,11 +420,6 @@ class AccessibilityDetailedViewTest : public AshTestBase,
   }
 
   bool IsStickyKeysEnabledOnDetailMenu() const {
-    // The sticky_keys_view_ is not created when Spoken Feedback is enabled.
-    if (IsSpokenFeedbackEnabledOnDetailMenu()) {
-      DCHECK(!detailed_menu_->sticky_keys_view_);
-      return false;
-    }
     return IsEnabledOnDetailMenu(controller_->sticky_keys().enabled(),
                                  detailed_menu_->sticky_keys_view_);
   }
@@ -467,16 +429,11 @@ class AccessibilityDetailedViewTest : public AshTestBase,
                                  detailed_menu_->switch_access_view_);
   }
 
-  bool IsColorCorrectionEnabledOnDetailMenu() const {
-    return IsEnabledOnDetailMenu(controller_->color_correction().enabled(),
-                                 detailed_menu_->color_correction_view_);
-  }
-
   const char* GetDetailedViewClassName() {
     return detailed_menu_->GetClassName();
   }
 
-  AccessibilityController* controller() { return controller_; }
+  AccessibilityControllerImpl* controller() { return controller_; }
   AccessibilityDetailedView* detailed_menu() { return detailed_menu_; }
   views::View* scroll_content() { return detailed_menu_->scroll_content(); }
 
@@ -490,7 +447,6 @@ class AccessibilityDetailedViewTest : public AshTestBase,
   views::View* dictation_view() const {
     return detailed_menu_->dictation_view_;
   }
-  views::View* facegaze_view() const { return detailed_menu_->facegaze_view_; }
   views::View* high_contrast_view() const {
     return detailed_menu_->high_contrast_view_;
   }
@@ -530,9 +486,6 @@ class AccessibilityDetailedViewTest : public AshTestBase,
   views::View* switch_access_view() const {
     return detailed_menu_->switch_access_view_;
   }
-  views::View* color_correction_view() const {
-    return detailed_menu_->color_correction_view_;
-  }
 
   // Accessors for the top views listing enabled items.
   HoverHighlightView* spoken_feedback_top_view() const {
@@ -543,9 +496,6 @@ class AccessibilityDetailedViewTest : public AshTestBase,
   }
   HoverHighlightView* dictation_top_view() const {
     return detailed_menu_->dictation_top_view_;
-  }
-  HoverHighlightView* facegaze_top_view() const {
-    return detailed_menu_->facegaze_top_view_;
   }
   HoverHighlightView* high_contrast_top_view() const {
     return detailed_menu_->high_contrast_top_view_;
@@ -586,9 +536,6 @@ class AccessibilityDetailedViewTest : public AshTestBase,
   HoverHighlightView* switch_access_top_view() const {
     return detailed_menu_->switch_access_top_view_;
   }
-  HoverHighlightView* color_correction_top_view() const {
-    return detailed_menu_->color_correction_top_view_;
-  }
 
  private:
   // AccessibilityObserver:
@@ -601,15 +548,25 @@ class AccessibilityDetailedViewTest : public AshTestBase,
     }
   }
 
-  raw_ptr<AccessibilityController> controller_ = nullptr;
+  raw_ptr<AccessibilityControllerImpl, ExperimentalAsh> controller_ = nullptr;
   std::unique_ptr<views::Widget> widget_;
   std::unique_ptr<DetailedViewDelegate> delegate_;
-  raw_ptr<AccessibilityDetailedView, DanglingUntriaged> detailed_menu_ =
-      nullptr;
+  raw_ptr<AccessibilityDetailedView, ExperimentalAsh> detailed_menu_ = nullptr;
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-TEST_F(AccessibilityDetailedViewTest, ListItemsAreInRoundedContainer) {
+class AccessibilityDetailedViewQsRevampTest
+    : public AccessibilityDetailedViewTest {
+ public:
+  AccessibilityDetailedViewQsRevampTest() {
+    feature_list_.InitAndEnableFeature(features::kQsRevamp);
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+TEST_F(AccessibilityDetailedViewQsRevampTest, ListItemsAreInRoundedContainer) {
   CreateDetailedMenu();
   auto has_rounded_container_parent = [](views::View* view) -> bool {
     return views::IsViewClass<RoundedContainer>(view->parent());
@@ -630,12 +587,10 @@ TEST_F(AccessibilityDetailedViewTest, ListItemsAreInRoundedContainer) {
   EXPECT_TRUE(has_rounded_container_parent(highlight_keyboard_focus_view()));
   EXPECT_TRUE(has_rounded_container_parent(sticky_keys_view()));
   EXPECT_TRUE(has_rounded_container_parent(switch_access_view()));
-  EXPECT_TRUE(has_rounded_container_parent(color_correction_view()));
-  EXPECT_TRUE(has_rounded_container_parent(facegaze_view()));
   CloseDetailMenu();
 }
 
-TEST_F(AccessibilityDetailedViewTest, ContainerCount) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, ContainerCount) {
   CreateDetailedMenu();
   // All features are disabled, so there should only be one container in the
   // scroll list, for the main item list.
@@ -650,7 +605,8 @@ TEST_F(AccessibilityDetailedViewTest, ContainerCount) {
   CloseDetailMenu();
 }
 
-TEST_F(AccessibilityDetailedViewTest, TopsViewsAreEmptyWithNoFeaturesEnabled) {
+TEST_F(AccessibilityDetailedViewQsRevampTest,
+       TopsViewsAreEmptyWithNoFeaturesEnabled) {
   CreateDetailedMenu();
 
   // By default none of the accessibility features are enabled, so none of the
@@ -671,13 +627,11 @@ TEST_F(AccessibilityDetailedViewTest, TopsViewsAreEmptyWithNoFeaturesEnabled) {
   EXPECT_FALSE(highlight_keyboard_focus_top_view());
   EXPECT_FALSE(sticky_keys_top_view());
   EXPECT_FALSE(switch_access_top_view());
-  EXPECT_FALSE(color_correction_top_view());
-  EXPECT_FALSE(facegaze_top_view());
 }
 
 // Verifies that pressing the tab key moves from row to row. In particular,
 // this verifies that the toggle button does not take focus.
-TEST_F(AccessibilityDetailedViewTest, TabMovesFocusBetweenRows) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, TabMovesFocusBetweenRows) {
   CreateDetailedMenu();
   spoken_feedback_view()->RequestFocus();
   EXPECT_TRUE(spoken_feedback_view()->HasFocus());
@@ -685,10 +639,6 @@ TEST_F(AccessibilityDetailedViewTest, TabMovesFocusBetweenRows) {
   EXPECT_TRUE(select_to_speak_view()->HasFocus());
   PressAndReleaseKey(ui::VKEY_TAB);
   EXPECT_TRUE(dictation_view()->HasFocus());
-  PressAndReleaseKey(ui::VKEY_TAB);
-  EXPECT_TRUE(facegaze_view()->HasFocus());
-  PressAndReleaseKey(ui::VKEY_TAB);
-  EXPECT_TRUE(color_correction_view()->HasFocus());
   PressAndReleaseKey(ui::VKEY_TAB);
   EXPECT_TRUE(high_contrast_view()->HasFocus());
   PressAndReleaseKey(ui::VKEY_TAB);
@@ -717,7 +667,7 @@ TEST_F(AccessibilityDetailedViewTest, TabMovesFocusBetweenRows) {
   EXPECT_TRUE(sticky_keys_view()->HasFocus());
 }
 
-TEST_F(AccessibilityDetailedViewTest, SpokenFeedbackTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, SpokenFeedbackTopView) {
   EnableSpokenFeedback(true);
   CreateDetailedMenu();
   ASSERT_TRUE(spoken_feedback_top_view());
@@ -730,7 +680,7 @@ TEST_F(AccessibilityDetailedViewTest, SpokenFeedbackTopView) {
   EXPECT_FALSE(controller()->spoken_feedback().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, SelectToSpeakTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, SelectToSpeakTopView) {
   EnableSelectToSpeak(true);
   CreateDetailedMenu();
   ASSERT_TRUE(select_to_speak_top_view());
@@ -743,7 +693,7 @@ TEST_F(AccessibilityDetailedViewTest, SelectToSpeakTopView) {
   EXPECT_FALSE(controller()->select_to_speak().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, DictationTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, DictationTopView) {
   EnableDictation(true);
   CreateDetailedMenu();
   ASSERT_TRUE(dictation_top_view());
@@ -756,20 +706,7 @@ TEST_F(AccessibilityDetailedViewTest, DictationTopView) {
   EXPECT_FALSE(controller()->dictation().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, FaceGazeTopView) {
-  EnableFaceGaze(true);
-  CreateDetailedMenu();
-  ASSERT_TRUE(facegaze_top_view());
-  EXPECT_TRUE(IsSwitchToggled(facegaze_top_view()));
-  EXPECT_TRUE(IsCheckedForAccessibility(facegaze_top_view()));
-
-  ClickView(facegaze_top_view());
-  EXPECT_FALSE(IsSwitchToggled(facegaze_top_view()));
-  EXPECT_FALSE(IsCheckedForAccessibility(facegaze_top_view()));
-  EXPECT_FALSE(controller()->face_gaze().enabled());
-}
-
-TEST_F(AccessibilityDetailedViewTest, HighContrastTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, HighContrastTopView) {
   EnableHighContrast(true);
   CreateDetailedMenu();
   ASSERT_TRUE(high_contrast_top_view());
@@ -782,7 +719,7 @@ TEST_F(AccessibilityDetailedViewTest, HighContrastTopView) {
   EXPECT_FALSE(controller()->high_contrast().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, ScreenMagnifierTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, ScreenMagnifierTopView) {
   Shell::Get()->accessibility_delegate()->SetMagnifierEnabled(true);
   CreateDetailedMenu();
   ASSERT_TRUE(screen_magnifier_top_view());
@@ -799,7 +736,7 @@ TEST_F(AccessibilityDetailedViewTest, ScreenMagnifierTopView) {
   EXPECT_FALSE(Shell::Get()->accessibility_delegate()->IsMagnifierEnabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, DockedMagnifierTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, DockedMagnifierTopView) {
   SetDockedMagnifierEnabled(true);
   CreateDetailedMenu();
   ASSERT_TRUE(docked_magnifier_top_view());
@@ -812,7 +749,7 @@ TEST_F(AccessibilityDetailedViewTest, DockedMagnifierTopView) {
   EXPECT_FALSE(Shell::Get()->docked_magnifier_controller()->GetEnabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, LargeCursorTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, LargeCursorTopView) {
   EnableLargeCursor(true);
   CreateDetailedMenu();
   ASSERT_TRUE(large_cursor_top_view());
@@ -825,7 +762,7 @@ TEST_F(AccessibilityDetailedViewTest, LargeCursorTopView) {
   EXPECT_FALSE(controller()->large_cursor().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, LiveCaptionTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, LiveCaptionTopView) {
   EnableLiveCaption(true);
   CreateDetailedMenu();
   ASSERT_TRUE(live_caption_top_view());
@@ -838,7 +775,7 @@ TEST_F(AccessibilityDetailedViewTest, LiveCaptionTopView) {
   EXPECT_FALSE(controller()->live_caption().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, AutoClickTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, AutoClickTopView) {
   EnableAutoclick(true);
   CreateDetailedMenu();
   ASSERT_TRUE(autoclick_top_view());
@@ -851,7 +788,7 @@ TEST_F(AccessibilityDetailedViewTest, AutoClickTopView) {
   EXPECT_FALSE(controller()->autoclick().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, VirtualKeyboardTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, VirtualKeyboardTopView) {
   EnableVirtualKeyboard(true);
   CreateDetailedMenu();
   ASSERT_TRUE(virtual_keyboard_top_view());
@@ -864,7 +801,7 @@ TEST_F(AccessibilityDetailedViewTest, VirtualKeyboardTopView) {
   EXPECT_FALSE(controller()->virtual_keyboard().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, MonoAudioTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, MonoAudioTopView) {
   EnableMonoAudio(true);
   CreateDetailedMenu();
   ASSERT_TRUE(mono_audio_top_view());
@@ -877,7 +814,7 @@ TEST_F(AccessibilityDetailedViewTest, MonoAudioTopView) {
   EXPECT_FALSE(controller()->mono_audio().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, CaretHighlightTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, CaretHighlightTopView) {
   SetCaretHighlightEnabled(true);
   CreateDetailedMenu();
   ASSERT_TRUE(caret_highlight_top_view());
@@ -890,7 +827,7 @@ TEST_F(AccessibilityDetailedViewTest, CaretHighlightTopView) {
   EXPECT_FALSE(controller()->caret_highlight().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, HighlightMouseCursorTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, HighlightMouseCursorTopView) {
   SetCursorHighlightEnabled(true);
   CreateDetailedMenu();
   ASSERT_TRUE(highlight_mouse_cursor_top_view());
@@ -903,7 +840,7 @@ TEST_F(AccessibilityDetailedViewTest, HighlightMouseCursorTopView) {
   EXPECT_FALSE(controller()->cursor_highlight().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, HighlightKeyboardFocusTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, HighlightKeyboardFocusTopView) {
   SetFocusHighlightEnabled(true);
   CreateDetailedMenu();
   ASSERT_TRUE(highlight_keyboard_focus_top_view());
@@ -916,7 +853,7 @@ TEST_F(AccessibilityDetailedViewTest, HighlightKeyboardFocusTopView) {
   EXPECT_FALSE(controller()->focus_highlight().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, StickyKeysTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, StickyKeysTopView) {
   EnableStickyKeys(true);
   CreateDetailedMenu();
   ASSERT_TRUE(sticky_keys_top_view());
@@ -929,7 +866,7 @@ TEST_F(AccessibilityDetailedViewTest, StickyKeysTopView) {
   EXPECT_FALSE(controller()->sticky_keys().enabled());
 }
 
-TEST_F(AccessibilityDetailedViewTest, SwitchAccessTopView) {
+TEST_F(AccessibilityDetailedViewQsRevampTest, SwitchAccessTopView) {
   // Don't show the confirmation dialog when disabling switch access, so the
   // feature will be disabled immediately.
   controller()->DisableSwitchAccessDisableConfirmationDialogTesting();
@@ -944,19 +881,6 @@ TEST_F(AccessibilityDetailedViewTest, SwitchAccessTopView) {
   EXPECT_FALSE(IsSwitchToggled(switch_access_top_view()));
   EXPECT_FALSE(IsCheckedForAccessibility(switch_access_top_view()));
   EXPECT_FALSE(controller()->switch_access().enabled());
-}
-
-TEST_F(AccessibilityDetailedViewTest, ColorCorrectionTopView) {
-  EnableColorCorrection(true);
-  CreateDetailedMenu();
-  ASSERT_TRUE(color_correction_top_view());
-  EXPECT_TRUE(IsSwitchToggled(color_correction_top_view()));
-  EXPECT_TRUE(IsCheckedForAccessibility(color_correction_top_view()));
-
-  ClickView(color_correction_top_view());
-  EXPECT_FALSE(IsSwitchToggled(color_correction_top_view()));
-  EXPECT_FALSE(IsCheckedForAccessibility(color_correction_top_view()));
-  EXPECT_FALSE(controller()->color_correction().enabled());
 }
 
 TEST_F(AccessibilityDetailedViewTest, CheckMenuVisibilityOnDetailMenu) {
@@ -981,8 +905,6 @@ TEST_F(AccessibilityDetailedViewTest, CheckMenuVisibilityOnDetailMenu) {
   EXPECT_TRUE(IsHighlightKeyboardFocusMenuShownOnDetailMenu());
   EXPECT_TRUE(IsStickyKeysMenuShownOnDetailMenu());
   EXPECT_TRUE(IsSwitchAccessShownOnDetailMenu());
-  EXPECT_TRUE(IsColorCorrectionShownOnDetailMenu());
-  EXPECT_TRUE(IsFaceGazeShownOnDetailMenu());
   CloseDetailMenu();
 
   // Simulate screen lock.
@@ -1006,8 +928,6 @@ TEST_F(AccessibilityDetailedViewTest, CheckMenuVisibilityOnDetailMenu) {
   EXPECT_TRUE(IsHighlightKeyboardFocusMenuShownOnDetailMenu());
   EXPECT_TRUE(IsStickyKeysMenuShownOnDetailMenu());
   EXPECT_TRUE(IsSwitchAccessShownOnDetailMenu());
-  EXPECT_TRUE(IsColorCorrectionShownOnDetailMenu());
-  EXPECT_TRUE(IsFaceGazeShownOnDetailMenu());
   CloseDetailMenu();
   UnblockUserSession();
 
@@ -1032,14 +952,12 @@ TEST_F(AccessibilityDetailedViewTest, CheckMenuVisibilityOnDetailMenu) {
   EXPECT_TRUE(IsHighlightKeyboardFocusMenuShownOnDetailMenu());
   EXPECT_TRUE(IsStickyKeysMenuShownOnDetailMenu());
   EXPECT_TRUE(IsSwitchAccessShownOnDetailMenu());
-  EXPECT_TRUE(IsColorCorrectionShownOnDetailMenu());
-  EXPECT_TRUE(IsFaceGazeShownOnDetailMenu());
   CloseDetailMenu();
   UnblockUserSession();
 }
 
 TEST_F(AccessibilityDetailedViewTest, ClickDetailMenu) {
-  AccessibilityController* accessibility_controller =
+  AccessibilityControllerImpl* accessibility_controller =
       Shell::Get()->accessibility_controller();
   // Confirms that the check item toggles the spoken feedback.
   EXPECT_FALSE(accessibility_controller->spoken_feedback().enabled());
@@ -1216,28 +1134,12 @@ TEST_F(AccessibilityDetailedViewTest, ClickDetailMenu) {
   CreateDetailedMenu();
   ClickDictationOnDetailMenu();
   EXPECT_FALSE(accessibility_controller->dictation().enabled());
+}
 
-  // Confirms that the check item toggles color correction.
-  EXPECT_FALSE(accessibility_controller->color_correction().enabled());
-
+// Trivial test to increase code coverage.
+TEST_F(AccessibilityDetailedViewTest, GetClassName) {
   CreateDetailedMenu();
-  ClickColorCorrectionOnDetailMenu();
-  EXPECT_TRUE(accessibility_controller->color_correction().enabled());
-
-  CreateDetailedMenu();
-  ClickColorCorrectionOnDetailMenu();
-  EXPECT_FALSE(accessibility_controller->color_correction().enabled());
-
-  // Confirms that the check item toggles color correction.
-  EXPECT_FALSE(accessibility_controller->face_gaze().enabled());
-
-  CreateDetailedMenu();
-  ClickFaceGazeOnDetailMenu();
-  EXPECT_TRUE(accessibility_controller->face_gaze().enabled());
-
-  CreateDetailedMenu();
-  ClickFaceGazeOnDetailMenu();
-  EXPECT_FALSE(accessibility_controller->face_gaze().enabled());
+  EXPECT_EQ(AccessibilityDetailedView::kClassName, GetDetailedViewClassName());
 }
 
 class AccessibilityDetailedViewSodaTest
@@ -1412,7 +1314,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, NothingCheckedByDefault) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1428,8 +1329,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, NothingCheckedByDefault) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -1440,7 +1339,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, SpokenFeedback) {
   EXPECT_TRUE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1456,8 +1354,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, SpokenFeedback) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling spoken feedback.
@@ -1466,7 +1362,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, SpokenFeedback) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1482,32 +1377,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, SpokenFeedback) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
-  CloseDetailMenu();
-}
-
-TEST_F(AccessibilityDetailedViewLoginScreenTest,
-       SpokenFeedbackConflictingFeatures) {
-  EnableStickyKeys(true);
-  SetFocusHighlightEnabled(true);
-  CreateDetailedMenu();
-  EXPECT_TRUE(IsStickyKeysEnabledOnDetailMenu());
-  EXPECT_TRUE(IsHighlightKeyboardFocusEnabledOnDetailMenu());
-  CloseDetailMenu();
-
-  // When ChromeVox is on, even though sticky keys and focus highlight were
-  // enabled, they will not be shown.
-  EnableSpokenFeedback(true);
-  CreateDetailedMenu();
-  EXPECT_FALSE(IsStickyKeysEnabledOnDetailMenu());
-  EXPECT_FALSE(IsHighlightKeyboardFocusEnabledOnDetailMenu());
-  CloseDetailMenu();
-
-  EnableSpokenFeedback(false);
-  CreateDetailedMenu();
-  EXPECT_TRUE(IsStickyKeysEnabledOnDetailMenu());
-  EXPECT_TRUE(IsHighlightKeyboardFocusEnabledOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -1518,7 +1387,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, SelectToSpeak) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_TRUE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1534,8 +1402,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, SelectToSpeak) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling select to speak.
@@ -1544,7 +1410,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, SelectToSpeak) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1560,8 +1425,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, SelectToSpeak) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -1572,7 +1435,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, Dictation) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_TRUE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1588,8 +1450,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, Dictation) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling dictation.
@@ -1598,7 +1458,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, Dictation) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1614,8 +1473,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, Dictation) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -1626,7 +1483,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, HighContrast) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_TRUE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1642,8 +1498,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, HighContrast) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling high contrast.
@@ -1652,7 +1506,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, HighContrast) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1668,8 +1521,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, HighContrast) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -1680,7 +1531,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, FullScreenMagnifier) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_TRUE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1696,8 +1546,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, FullScreenMagnifier) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling screen magnifier.
@@ -1706,7 +1554,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, FullScreenMagnifier) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1722,8 +1569,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, FullScreenMagnifier) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -1734,7 +1579,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, DockedMagnifier) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_TRUE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1750,8 +1594,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, DockedMagnifier) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling docked magnifier.
@@ -1760,7 +1602,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, DockedMagnifier) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1776,8 +1617,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, DockedMagnifier) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -1788,7 +1627,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, LargeCursor) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1804,8 +1642,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, LargeCursor) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling large cursor.
@@ -1813,7 +1649,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, LargeCursor) {
   CreateDetailedMenu();
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
-  EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
@@ -1830,8 +1665,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, LargeCursor) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -1842,7 +1675,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, LiveCaption) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1858,8 +1690,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, LiveCaption) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling Live Caption.
@@ -1868,7 +1698,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, LiveCaption) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1884,8 +1713,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, LiveCaption) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -1896,7 +1723,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, VirtualKeyboard) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1912,8 +1738,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, VirtualKeyboard) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disable on-screen keyboard.
@@ -1922,7 +1746,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, VirtualKeyboard) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1938,8 +1761,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, VirtualKeyboard) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -1950,7 +1771,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, MonoAudio) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1966,8 +1786,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, MonoAudio) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling mono audio.
@@ -1976,7 +1794,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, MonoAudio) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -1992,8 +1809,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, MonoAudio) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -2004,7 +1819,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, CaretHighlight) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2020,8 +1834,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, CaretHighlight) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling caret highlight.
@@ -2030,7 +1842,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, CaretHighlight) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2046,8 +1857,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, CaretHighlight) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -2058,7 +1867,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, CursorHighlight) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2074,8 +1882,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, CursorHighlight) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling highlight mouse cursor.
@@ -2084,7 +1890,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, CursorHighlight) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2100,8 +1905,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, CursorHighlight) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -2112,7 +1915,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, FocusHighlight) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2128,8 +1930,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, FocusHighlight) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling highlight keyboard focus.
@@ -2138,7 +1938,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, FocusHighlight) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2154,8 +1953,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, FocusHighlight) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -2166,7 +1963,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, StickyKeys) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2182,8 +1978,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, StickyKeys) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling sticky keys.
@@ -2192,7 +1986,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, StickyKeys) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2208,8 +2001,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, StickyKeys) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -2266,7 +2057,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, AllFeatures) {
   EnableSpokenFeedback(true);
   EnableSelectToSpeak(true);
   EnableDictation(true);
-  EnableFaceGaze(true);
   EnableHighContrast(true);
   SetScreenMagnifierEnabled(true);
   SetDockedMagnifierEnabled(true);
@@ -2284,7 +2074,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, AllFeatures) {
   EXPECT_TRUE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_TRUE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_TRUE(IsDictationEnabledOnDetailMenu());
-  EXPECT_TRUE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_TRUE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_TRUE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_TRUE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2297,8 +2086,7 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, AllFeatures) {
   EXPECT_TRUE(IsHighlightMouseCursorEnabledOnDetailMenu());
   // Focus highlighting can't be on when spoken feedback is on
   EXPECT_FALSE(IsHighlightKeyboardFocusEnabledOnDetailMenu());
-  // Sticky keys can't be on when spoken feedback is on.
-  EXPECT_FALSE(IsStickyKeysEnabledOnDetailMenu());
+  EXPECT_TRUE(IsStickyKeysEnabledOnDetailMenu());
   EXPECT_TRUE(IsSwitchAccessEnabledOnDetailMenu());
   CloseDetailMenu();
 
@@ -2306,7 +2094,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, AllFeatures) {
   EnableSpokenFeedback(false);
   EnableSelectToSpeak(false);
   EnableDictation(false);
-  EnableFaceGaze(false);
   EnableHighContrast(false);
   SetScreenMagnifierEnabled(false);
   SetDockedMagnifierEnabled(false);
@@ -2324,7 +2111,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, AllFeatures) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2340,8 +2126,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, AllFeatures) {
   // Switch Access is currently cannot be enabled from the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 
@@ -2352,7 +2136,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, Autoclick) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2368,8 +2151,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, Autoclick) {
   // Switch Access is currently not available on the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 
   // Disabling autoclick.
@@ -2378,7 +2159,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, Autoclick) {
   EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
   EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
   EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
   EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
   EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
   EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
@@ -2394,62 +2174,6 @@ TEST_F(AccessibilityDetailedViewLoginScreenTest, Autoclick) {
   // Switch Access is currently not available on the login screen.
   // TODO(crbug.com/1108808): Uncomment once issue is addressed.
   // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
-  CloseDetailMenu();
-}
-
-TEST_F(AccessibilityDetailedViewLoginScreenTest, FaceGaze) {
-  // Enabling facegaze.
-  EnableFaceGaze(true);
-  CreateDetailedMenu();
-  EXPECT_TRUE(IsFaceGazeEnabledOnDetailMenu());
-  EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
-  EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
-  EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
-  EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
-  EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
-  EXPECT_FALSE(IsLargeCursorEnabledOnDetailMenu());
-  EXPECT_FALSE(IsLiveCaptionEnabledOnDetailMenu());
-  EXPECT_FALSE(IsAutoclickEnabledOnDetailMenu());
-  EXPECT_FALSE(IsVirtualKeyboardEnabledOnDetailMenu());
-  EXPECT_FALSE(IsMonoAudioEnabledOnDetailMenu());
-  EXPECT_FALSE(IsCaretHighlightEnabledOnDetailMenu());
-  EXPECT_FALSE(IsHighlightMouseCursorEnabledOnDetailMenu());
-  EXPECT_FALSE(IsHighlightKeyboardFocusEnabledOnDetailMenu());
-  EXPECT_FALSE(IsStickyKeysEnabledOnDetailMenu());
-  // Switch Access is currently not available on the login screen.
-  // TODO(crbug.com/1108808): Uncomment once issue is addressed.
-  // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
-  CloseDetailMenu();
-
-  // Disabling facegaze.
-  EnableFaceGaze(false);
-  CreateDetailedMenu();
-  EXPECT_FALSE(IsSpokenFeedbackEnabledOnDetailMenu());
-  EXPECT_FALSE(IsSelectToSpeakEnabledOnDetailMenu());
-  EXPECT_FALSE(IsDictationEnabledOnDetailMenu());
-  EXPECT_FALSE(IsFaceGazeEnabledOnDetailMenu());
-  EXPECT_FALSE(IsHighContrastEnabledOnDetailMenu());
-  EXPECT_FALSE(IsScreenMagnifierEnabledOnDetailMenu());
-  EXPECT_FALSE(IsDockedMagnifierEnabledOnDetailMenu());
-  EXPECT_FALSE(IsLargeCursorEnabledOnDetailMenu());
-  EXPECT_FALSE(IsLiveCaptionEnabledOnDetailMenu());
-  EXPECT_FALSE(IsAutoclickEnabledOnDetailMenu());
-  EXPECT_FALSE(IsVirtualKeyboardEnabledOnDetailMenu());
-  EXPECT_FALSE(IsMonoAudioEnabledOnDetailMenu());
-  EXPECT_FALSE(IsCaretHighlightEnabledOnDetailMenu());
-  EXPECT_FALSE(IsHighlightMouseCursorEnabledOnDetailMenu());
-  EXPECT_FALSE(IsHighlightKeyboardFocusEnabledOnDetailMenu());
-  EXPECT_FALSE(IsStickyKeysEnabledOnDetailMenu());
-  // Switch Access is currently not available on the login screen.
-  // TODO(crbug.com/1108808): Uncomment once issue is addressed.
-  // EXPECT_FALSE(IsSwitchAccessEnabledOnDetailMenu());
-  // Color correction cannot be enabled from the login screen.
-  EXPECT_FALSE(IsColorCorrectionShownOnDetailMenu());
   CloseDetailMenu();
 }
 

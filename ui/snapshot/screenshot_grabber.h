@@ -62,7 +62,7 @@ class SNAPSHOT_EXPORT ScreenshotGrabber {
   class ScopedCursorHider;
 #endif
 
-  void GrabSnapshotImageCallback(
+  void GrabWindowSnapshotAsyncCallback(
       const std::string& window_identifier,
       bool is_partial,
       ScreenshotCallback callback,

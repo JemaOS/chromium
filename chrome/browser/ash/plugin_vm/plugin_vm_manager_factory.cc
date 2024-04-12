@@ -24,20 +24,19 @@ PluginVmManagerFactory::PluginVmManagerFactory()
     : ProfileKeyedServiceFactory(
           "PluginVmManager",
           ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              .WithGuest(ProfileSelection::kNone)
-              .WithAshInternals(ProfileSelection::kNone)
-              .WithSystem(ProfileSelection::kNone)
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
 PluginVmManagerFactory::~PluginVmManagerFactory() = default;
 
 // BrowserContextKeyedServiceFactory:
-std::unique_ptr<KeyedService>
-PluginVmManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PluginVmManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<PluginVmManagerImpl>(profile);
+  return new PluginVmManagerImpl(profile);
 }
 
 }  // namespace plugin_vm

@@ -6,20 +6,26 @@
 #define CHROME_BROWSER_UI_VIEWS_TABS_TAB_SEARCH_BUTTON_H_
 
 #include "chrome/browser/ui/views/tab_search_bubble_host.h"
-#include "chrome/browser/ui/views/tabs/tab_strip_control_button.h"
+#include "chrome/browser/ui/views/tabs/new_tab_button.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 
-class TabStripController;
+namespace gfx {
+class Canvas;
+}
+
+class TabStrip;
 
 // TabSearchButton should leverage the look and feel of the existing
 // NewTabButton for sizing and appropriate theming. This class updates the
 // NewTabButton with the appropriate icon and will be used to anchor the
 // Tab Search bubble.
-class TabSearchButton : public TabStripControlButton {
-  METADATA_HEADER(TabSearchButton, TabStripControlButton)
-
+//
+// TODO(tluk): Break away common code from the NewTabButton and the
+// TabSearchButton into a TabStripControlButton or similar.
+class TabSearchButton : public NewTabButton {
  public:
-  TabSearchButton(TabStripController* tab_strip_controller, Edge flat_edge);
+  METADATA_HEADER(TabSearchButton);
+  explicit TabSearchButton(TabStrip* tab_strip);
   TabSearchButton(const TabSearchButton&) = delete;
   TabSearchButton& operator=(const TabSearchButton&) = delete;
   ~TabSearchButton() override;
@@ -28,12 +34,17 @@ class TabSearchButton : public TabStripControlButton {
     return tab_search_bubble_host_.get();
   }
 
-  // TabStripControlsButton:
+  // NewTabButton:
   void NotifyClick(const ui::Event& event) final;
+  void FrameColorsChanged() override;
 
  protected:
+  // NewTabButton:
+  void PaintIcon(gfx::Canvas* canvas) override;
   int GetCornerRadius() const override;
-  int GetFlatCornerRadius() const override;
+  SkPath GetBorderPath(const gfx::Point& origin,
+                       float scale,
+                       bool extend_to_top) const override;
 
  private:
   std::unique_ptr<TabSearchBubbleHost> tab_search_bubble_host_;

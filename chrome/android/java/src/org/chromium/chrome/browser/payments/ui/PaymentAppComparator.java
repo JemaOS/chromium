@@ -11,10 +11,9 @@ import org.chromium.components.payments.PaymentRequestParams;
 import org.chromium.payments.mojom.PaymentOptions;
 
 import java.util.Comparator;
-
 /**
- * A comparator that is used to rank the payment apps to be listed on the PaymentRequest
- * UI.
+   A comparator that is used to rank the payment apps to be listed on the PaymentRequest
+   UI.
  */
 /* package */ class PaymentAppComparator implements Comparator<PaymentApp> {
     private final PaymentRequestParams mParams;
@@ -102,9 +101,8 @@ import java.util.Comparator;
                 if (b.handlesPayerPhone()) bSupportedContactDelegationsNum++;
             }
             if (bSupportedContactDelegationsNum != aSupportedContactDelegationsNum) {
-                return bSupportedContactDelegationsNum - aSupportedContactDelegationsNum > 0
-                        ? 1
-                        : -1;
+                return bSupportedContactDelegationsNum - aSupportedContactDelegationsNum > 0 ? 1
+                                                                                             : -1;
             }
         }
 

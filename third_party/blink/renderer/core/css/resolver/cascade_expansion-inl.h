@@ -15,12 +15,11 @@
 
 namespace blink {
 
-template <class CustomPropertyCallback, class RegularPropertyCallback>
+template <class Callback>
 void ExpandCascade(const MatchedProperties& matched_properties,
                    const Document& document,
                    wtf_size_t matched_properties_index,
-                   CustomPropertyCallback&& custom_property_callback,
-                   RegularPropertyCallback&& regular_property_callback) {
+                   Callback&& callback) {
   CascadeFilter filter = CreateExpansionFilter(matched_properties);
 
   // We can't handle a MatchResult with more than 0xFFFF MatchedProperties,
@@ -42,15 +41,15 @@ void ExpandCascade(const MatchedProperties& matched_properties,
         matched_properties.types_.origin, metadata.important_,
         matched_properties.types_.tree_order,
         matched_properties.types_.is_inline_style,
-        matched_properties.types_.is_try_style,
-        matched_properties.types_.is_try_tactics_style,
         matched_properties.types_.layer_order,
         EncodeMatchResultPosition(matched_properties_index, property_idx));
 
     if (id == CSSPropertyID::kVariable) {
       CustomProperty custom(reference.Name().ToAtomicString(), document);
       if (!filter.Rejects(custom)) {
-        custom_property_callback(priority, reference.Name().ToAtomicString());
+        callback(priority, custom,
+                 CSSPropertyName(reference.Name().ToAtomicString()),
+                 reference.Value(), matched_properties.types_.tree_order);
       }
       // Custom properties never have visited counterparts,
       // so no need to check for expand_visited here.
@@ -62,18 +61,22 @@ void ExpandCascade(const MatchedProperties& matched_properties,
         }
         const CSSProperty& property = CSSProperty::Get(expanded_id);
         if (!filter.Rejects(property)) {
-          regular_property_callback(priority, expanded_id);
+          callback(priority, property, CSSPropertyName(expanded_id),
+                   reference.Value(), matched_properties.types_.tree_order);
         }
       }
     } else {
       const CSSProperty& property = CSSProperty::Get(id);
       if (!filter.Rejects(property)) {
-        regular_property_callback(priority, id);
+        callback(priority, property, CSSPropertyName(id), reference.Value(),
+                 matched_properties.types_.tree_order);
       }
-      if (expand_visited) {
+      if (expand_visited && kPropertiesWithVisited.Has(id)) {
         const CSSProperty* visited_property = property.GetVisitedProperty();
         if (visited_property && !filter.Rejects(*visited_property)) {
-          regular_property_callback(priority, visited_property->PropertyID());
+          callback(priority, *visited_property,
+                   visited_property->GetCSSPropertyName(), reference.Value(),
+                   matched_properties.types_.tree_order);
         }
       }
     }

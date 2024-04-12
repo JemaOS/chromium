@@ -91,6 +91,14 @@ void AccountManagerPolicyController::RemoveSecondaryAccounts(
       continue;
     }
 
+    // ---***JEMAOS BEGIN***---
+    if (device_account_id_.GetAccountType() == AccountType::JEMA_ACCOUNT &&
+        account.key.id() == device_account_id_.GetJemaId()) {
+      // Do not remove the Device Account.
+      continue;
+    }
+    // ---***JEMAOS END***---
+
     // This account is a Secondary Gaia account. Remove it.
     account_manager_->RemoveAccount(account.key);
   }

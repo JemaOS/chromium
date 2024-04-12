@@ -17,7 +17,9 @@ import org.chromium.base.Callback;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.gesturenav.NavigationBubble.CloseTarget;
 
-/** FrameLayout that supports side-wise slide gesture for history navigation. */
+/**
+ * FrameLayout that supports side-wise slide gesture for history navigation.
+ */
 class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarchyChangeListener {
     // {@link NavigationGlow} object for rendered pages.
     private final NavigationGlow mCompositorGlowEffect;
@@ -29,7 +31,8 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
     private final Callback<Boolean> mNavigateCallback;
 
     // Frame layout hosting the arrow puck UI.
-    @Nullable private SideSlideLayout mSideSlideLayout;
+    @Nullable
+    private SideSlideLayout mSideSlideLayout;
 
     // {@link NavigationGlow} object for native pages. Lazily created.
     private NavigationGlow mJavaGlowEffect;
@@ -42,11 +45,8 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
     // it does not conflict with pending Android draws.
     private Runnable mDetachLayoutRunnable;
 
-    public HistoryNavigationLayout(
-            Context context,
-            Supplier<Boolean> isNativePage,
-            NavigationGlow compositorGlowEffect,
-            Callback<Boolean> navigateCallback) {
+    public HistoryNavigationLayout(Context context, Supplier<Boolean> isNativePage,
+            NavigationGlow compositorGlowEffect, Callback<Boolean> navigateCallback) {
         super(context);
         mIsNativePage = isNativePage;
         mCompositorGlowEffect = compositorGlowEffect;
@@ -85,17 +85,15 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
     void showBubble(boolean forward, @CloseTarget int closeIndicator) {
         if (mSideSlideLayout == null) {
             SideSlideLayout sideSlideLayout = createLayout();
-            sideSlideLayout.setOnNavigationListener(
-                    (direction) -> {
-                        mNavigateCallback.onResult(direction);
-                        cancelStopNavigatingRunnable();
-                        sideSlideLayout.post(getStopNavigatingRunnable());
-                    });
-            sideSlideLayout.setOnResetListener(
-                    () -> {
-                        if (getDetachLayoutRunnable() != null) return;
-                        sideSlideLayout.post(createDetachLayoutRunnable());
-                    });
+            sideSlideLayout.setOnNavigationListener((direction) -> {
+                mNavigateCallback.onResult(direction);
+                cancelStopNavigatingRunnable();
+                sideSlideLayout.post(getStopNavigatingRunnable());
+            });
+            sideSlideLayout.setOnResetListener(() -> {
+                if (getDetachLayoutRunnable() != null) return;
+                sideSlideLayout.post(createDetachLayoutRunnable());
+            });
         }
         mSideSlideLayout.setEnabled(true);
         mSideSlideLayout.setDirection(forward);
@@ -104,7 +102,9 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
         mSideSlideLayout.start();
     }
 
-    /** Create {@link NavigationGlow} object, lazily when possible. */
+    /**
+     * Create {@link NavigationGlow} object, lazily when possible.
+     */
     private NavigationGlow getGlowEffect() {
         if (mIsNativePage.get()) {
             if (mJavaGlowEffect == null) mJavaGlowEffect = new AndroidUiNavigationGlow(this);
@@ -151,19 +151,25 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
         mSideSlideLayout.release(allowNav);
     }
 
-    /** Release the glow effect. */
+    /**
+     * Release the glow effect.
+     */
     void releaseGlow() {
         getGlowEffect().release();
     }
 
-    /** Reset navigation bubble UI in action. */
+    /**
+     * Reset navigation bubble UI in action.
+     */
     void resetBubble() {
         if (mSideSlideLayout == null) return;
         cancelStopNavigatingRunnable();
         mSideSlideLayout.reset();
     }
 
-    /** Reset the glow effect. */
+    /**
+     * Reset the glow effect.
+     */
     void resetGlow() {
         getGlowEffect().reset();
     }
@@ -175,7 +181,9 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
         return mSideSlideLayout != null && mSideSlideLayout.willNavigate();
     }
 
-    /** Cancel navigation operation by removing the runnable in the queue. */
+    /**
+     * Cancel navigation operation by removing the runnable in the queue.
+     */
     void cancelStopNavigatingRunnable() {
         if (mStopNavigatingRunnable != null) {
             mSideSlideLayout.removeCallbacks(mStopNavigatingRunnable);
@@ -188,15 +196,16 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
     }
 
     Runnable createDetachLayoutRunnable() {
-        mDetachLayoutRunnable =
-                () -> {
-                    mDetachLayoutRunnable = null;
-                    detachLayoutIfNecessary();
-                };
+        mDetachLayoutRunnable = () -> {
+            mDetachLayoutRunnable = null;
+            detachLayoutIfNecessary();
+        };
         return mDetachLayoutRunnable;
     }
 
-    /** Cancel the operation detaching the layout from view hierarchy. */
+    /**
+     * Cancel the operation detaching the layout from view hierarchy.
+     */
     void cancelDetachLayoutRunnable() {
         if (mDetachLayoutRunnable != null) {
             mSideSlideLayout.removeCallbacks(mDetachLayoutRunnable);
@@ -211,7 +220,9 @@ class HistoryNavigationLayout extends FrameLayout implements ViewGroup.OnHierarc
         return mStopNavigatingRunnable;
     }
 
-    /** Attach {@link SideSlideLayout} to view hierarchy when UI is activated. */
+    /**
+     * Attach {@link SideSlideLayout} to view hierarchy when UI is activated.
+     */
     private void attachLayoutIfNecessary() {
         // The animation view is attached/detached on-demand to minimize overlap
         // with composited SurfaceView content.

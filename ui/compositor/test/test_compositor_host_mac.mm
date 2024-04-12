@@ -4,16 +4,20 @@
 
 #include "ui/compositor/test/test_compositor_host.h"
 
-#import <AppKit/AppKit.h>
-#import <Foundation/Foundation.h>
+#include "base/memory/raw_ptr.h"
+#import "base/task/single_thread_task_runner.h"
+#include "base/task/single_thread_task_runner.h"
+
+#import <AppKit/NSApplication.h>
+#import <AppKit/NSOpenGL.h>
+#import <AppKit/NSView.h>
+#import <AppKit/NSWindow.h>
+#import <Foundation/NSAutoreleasePool.h>
 
 #include <memory>
 
-#include "base/apple/scoped_nsautorelease_pool.h"
 #include "base/compiler_specific.h"
-#include "base/memory/raw_ptr.h"
-#include "base/memory/stack_allocated.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/mac/scoped_nsobject.h"
 #include "components/viz/common/surfaces/local_surface_id.h"
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
 #include "ui/accelerated_widget_mac/accelerated_widget_mac.h"
@@ -34,7 +38,7 @@
 - (instancetype)init {
   // The frame will be resized when reparented into the window's view hierarchy.
   if ((self = [super initWithFrame:NSZeroRect])) {
-    self.wantsLayer = YES;
+    [self setWantsLayer:YES];
   }
   return self;
 }
@@ -52,7 +56,7 @@
 namespace ui {
 
 // Tests that use Objective-C memory semantics need to have a top-level
-// autoreleasepool set up and initialized prior to execution and drained upon
+// NSAutoreleasePool set up and initialized prior to execution and drained upon
 // exit.  The tests will leak otherwise.
 class FoundationHost {
  public:
@@ -60,12 +64,11 @@ class FoundationHost {
   FoundationHost& operator=(const FoundationHost&) = delete;
 
  protected:
-  FoundationHost() = default;
-  virtual ~FoundationHost() = default;
+  FoundationHost() { pool_ = [[NSAutoreleasePool alloc] init]; }
+  virtual ~FoundationHost() { [pool_ drain]; }
 
  private:
-  STACK_ALLOCATED_IGNORE("https://crbug.com/1424190")
-  base::apple::ScopedNSAutoreleasePool pool_;
+  NSAutoreleasePool* pool_;
 };
 
 // Tests that use the AppKit framework need to have the NSApplication
@@ -78,25 +81,25 @@ class AppKitHost : public FoundationHost {
 
  protected:
   AppKitHost() { [NSApplication sharedApplication]; }
-  ~AppKitHost() override = default;
+  ~AppKitHost() override {}
 };
 
 class TestAcceleratedWidgetMacNSView : public AcceleratedWidgetMacNSView {
  public:
-  explicit TestAcceleratedWidgetMacNSView(NSView* view) : view_(view) {}
+  TestAcceleratedWidgetMacNSView(NSView* view) : view_([view retain]) {}
 
   TestAcceleratedWidgetMacNSView(const TestAcceleratedWidgetMacNSView&) =
       delete;
   TestAcceleratedWidgetMacNSView& operator=(
       const TestAcceleratedWidgetMacNSView&) = delete;
 
-  virtual ~TestAcceleratedWidgetMacNSView() = default;
+  virtual ~TestAcceleratedWidgetMacNSView() { [view_ release]; }
 
   // AcceleratedWidgetMacNSView
   void AcceleratedWidgetCALayerParamsUpdated() override {}
 
  private:
-  NSView* __strong view_ [[maybe_unused]];
+  NSView* view_ = nullptr;
 };
 
 // TestCompositorHostMac provides a window surface and a coordinated compositor
@@ -123,7 +126,8 @@ class TestCompositorHostMac : public TestCompositorHost, public AppKitHost {
   std::unique_ptr<TestAcceleratedWidgetMacNSView>
       test_accelerated_widget_nsview_;
 
-  NSWindow* __strong window_;
+  // Owned.  Released when window is closed.
+  NSWindow* window_;
   viz::ParentLocalSurfaceIdAllocator allocator_;
 };
 
@@ -134,15 +138,19 @@ TestCompositorHostMac::TestCompositorHostMac(
       compositor_(context_factory->AllocateFrameSinkId(),
                   context_factory,
                   base::SingleThreadTaskRunner::GetCurrentDefault(),
-                  /*enable_pixel_canvas=*/false) {}
+                  false /* enable_pixel_canvas */),
+      window_(nil) {}
 
 TestCompositorHostMac::~TestCompositorHostMac() {
   accelerated_widget_.ResetNSView();
-
   // Release reference to |compositor_|.  Important because the |compositor_|
   // holds |this| as its delegate, so that reference must be removed here.
-  [window_.contentView setCompositor:nullptr];
-  window_.contentView = [[NSView alloc] initWithFrame:NSZeroRect];
+  [[window_ contentView] setCompositor:NULL];
+  {
+    base::scoped_nsobject<NSView> new_view(
+        [[NSView alloc] initWithFrame:NSZeroRect]);
+    [window_ setContentView:new_view.get()];
+  }
 
   [window_ orderOut:nil];
   [window_ close];
@@ -156,8 +164,8 @@ void TestCompositorHostMac::Show() {
                 styleMask:NSWindowStyleMaskBorderless
                   backing:NSBackingStoreBuffered
                     defer:NO];
-  window_.releasedWhenClosed = NO;
-  AcceleratedTestView* view = [[AcceleratedTestView alloc] init];
+  base::scoped_nsobject<AcceleratedTestView> view(
+      [[AcceleratedTestView alloc] init]);
   test_accelerated_widget_nsview_ =
       std::make_unique<TestAcceleratedWidgetMacNSView>(view);
   allocator_.GenerateId();
@@ -166,7 +174,7 @@ void TestCompositorHostMac::Show() {
   compositor_.SetScaleAndSize(1.0f, bounds_.size(),
                               allocator_.GetCurrentLocalSurfaceId());
   [view setCompositor:&compositor_];
-  window_.contentView = view;
+  [window_ setContentView:view];
   [window_ orderFront:nil];
 }
 

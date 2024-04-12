@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startBlank('Tests Emulation.setDocumentCookieDisabled.');
   await dp.Emulation.setDocumentCookieDisabled({ disabled: true });
   const cookie = 'foo';

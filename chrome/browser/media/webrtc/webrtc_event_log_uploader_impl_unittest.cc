@@ -76,7 +76,8 @@ class WebRtcEventLogUploaderImplTest : public ::testing::Test {
  public:
   WebRtcEventLogUploaderImplTest()
       : test_shared_url_loader_factory_(
-            test_url_loader_factory_.GetSafeWeakWrapper()),
+            base::MakeRefCounted<network::WeakWrapperSharedURLLoaderFactory>(
+                &test_url_loader_factory_)),
         observer_run_loop_(),
         observer_(observer_run_loop_.QuitWhenIdleClosure()) {
     TestingBrowserProcess::GetGlobal()->SetSharedURLLoaderFactory(

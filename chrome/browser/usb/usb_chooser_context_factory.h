@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_USB_USB_CHOOSER_CONTEXT_FACTORY_H_
 #define CHROME_BROWSER_USB_USB_CHOOSER_CONTEXT_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class UsbChooserContext;
@@ -21,7 +21,7 @@ class UsbChooserContextFactory : public ProfileKeyedServiceFactory {
   UsbChooserContextFactory& operator=(const UsbChooserContextFactory&) = delete;
 
  private:
-  friend base::NoDestructor<UsbChooserContextFactory>;
+  friend struct base::DefaultSingletonTraits<UsbChooserContextFactory>;
 
   UsbChooserContextFactory();
   ~UsbChooserContextFactory() override;

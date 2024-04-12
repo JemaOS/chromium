@@ -6,7 +6,6 @@ import("//chrome/browser/buildflags.gni")
 if (is_android) {
   import("//build/config/android/config.gni")
   import("//build/config/android/rules.gni")
-  import("//third_party/jni_zero/jni_zero.gni")
 }
 
 source_set("share") {
@@ -26,10 +25,11 @@ source_set("share") {
   deps = [
     "//base",
     "//chrome/browser/favicon",
-    "//chrome/browser/profiles",
+    "//chrome/browser/profiles:profile",
     "//chrome/browser/share/proto:proto",
+    "//chrome/services/qrcode_generator/public/cpp",
+    "//chrome/services/qrcode_generator/public/mojom",
     "//components/leveldb_proto:leveldb_proto",
-    "//components/qr_code_generator:bitmap_generator",
     "//components/shared_highlighting/core/common",
     "//content/public/browser",
     "//skia",
@@ -43,37 +43,36 @@ source_set("share") {
       "default_ranking_android.cc",
       "editor_screenshot_task.cc",
       "link_to_text_bridge.cc",
-      "page_info_sharing_bridge.cc",
-      "page_info_sharing_bridge.h",
-      "qr_code_generator_android.cc",
+      "qr_code_generation_request.cc",
+      "qr_code_generation_request.h",
     ]
     deps += [
       ":jni_headers",
-      "//chrome/android:chrome_jni_headers",
+      "//chrome/browser/share/android:jni_headers",
       "//components/history/core/browser:browser",
-      "//components/translate/content/browser",
       "//components/ukm/content:content",
       "//ui/android",
-      "//url",
+      "//url:gurl_android",
     ]
   }
 }
 
 if (is_android) {
   android_library("java") {
-    srcjar_deps = [ ":jni_headers" ]
     sources = [
       "android/java/src/org/chromium/chrome/browser/share/ChromeShareExtras.java",
       "android/java/src/org/chromium/chrome/browser/share/ShareDelegate.java",
       "android/java/src/org/chromium/chrome/browser/share/ShareHistoryBridge.java",
       "android/java/src/org/chromium/chrome/browser/share/ShareRankingBridge.java",
-      "android/java/src/org/chromium/chrome/browser/share/page_info_sheet/PageInfoSharingBridge.java",
       "android/java/src/org/chromium/chrome/browser/share/share_sheet/ChromeOptionShareCallback.java",
     ]
+
+    annotation_processor_deps = [ "//base/android/jni_generator:jni_processor" ]
 
     deps = [
       ":jni_headers",
       "//base:base_java",
+      "//base:jni_java",
       "//build/android:build_java",
       "//chrome/browser/preferences:java",
       "//chrome/browser/profiles/android:java",
@@ -81,7 +80,6 @@ if (is_android) {
       "//components/browser_ui/share/android:java",
       "//content/public/android:content_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
-      "//third_party/jni_zero:jni_zero_java",
       "//url:gurl_java",
     ]
   }
@@ -90,7 +88,6 @@ if (is_android) {
     sources = [
       "android/java/src/org/chromium/chrome/browser/share/ShareHistoryBridge.java",
       "android/java/src/org/chromium/chrome/browser/share/ShareRankingBridge.java",
-      "android/java/src/org/chromium/chrome/browser/share/page_info_sheet/PageInfoSharingBridge.java",
     ]
   }
 }

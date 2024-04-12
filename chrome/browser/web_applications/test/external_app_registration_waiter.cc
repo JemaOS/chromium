@@ -40,7 +40,7 @@ void ExternalAppRegistrationWaiter::AwaitNextRegistration(
 void ExternalAppRegistrationWaiter::AwaitNextNonFailedRegistration(
     const GURL& install_url) {
   install_url_ = install_url;
-  code_ = std::nullopt;
+  code_ = absl::nullopt;
   run_loop_.Run();
 }
 

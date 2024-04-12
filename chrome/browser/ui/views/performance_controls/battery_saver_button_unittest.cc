@@ -132,8 +132,7 @@ TEST_F(BatterySaverButtonTest, ElementIdentifierTest) {
 
   const views::View* matched_view =
       views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
-          kToolbarBatterySaverButtonElementId,
-          browser_view()->GetElementContext());
+          kBatterySaverButtonElementId, browser_view()->GetElementContext());
 
   EXPECT_EQ(battery_saver_button_view, matched_view);
 }

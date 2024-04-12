@@ -4,7 +4,7 @@
 
 #include "chrome/browser/permissions/notifications_engagement_service_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/permissions/notifications_engagement_service.h"
@@ -12,8 +12,7 @@
 // static
 NotificationsEngagementServiceFactory*
 NotificationsEngagementServiceFactory::GetInstance() {
-  static base::NoDestructor<NotificationsEngagementServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<NotificationsEngagementServiceFactory>::get();
 }
 
 // static

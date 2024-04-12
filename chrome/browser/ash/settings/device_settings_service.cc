@@ -9,21 +9,17 @@
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/logging.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/policy/off_hours/device_off_hours_controller.h"
 #include "chrome/browser/ash/policy/off_hours/off_hours_policy_applier.h"
 #include "chrome/browser/ash/settings/session_manager_operation.h"
-#include "chrome/browser/browser_process.h"
-#include "chrome/common/pref_names.h"
-#include "chromeos/ash/components/install_attributes/install_attributes.h"
 #include "components/ownership/owner_key_util.h"
 #include "components/policy/core/common/cloud/cloud_policy_constants.h"
-#include "components/policy/core/common/cloud/enterprise_metrics.h"
 #include "components/policy/proto/chrome_device_policy.pb.h"
-#include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_source.h"
 
 #include "crypto/rsa_private_key.h"
 
@@ -31,51 +27,8 @@ namespace em = enterprise_management;
 
 using ownership::OwnerKeyUtil;
 using ownership::PublicKey;
-using policy::PolicyDeviceIdValidity;
 
 namespace ash {
-namespace {
-
-constexpr char kDeviceIdValidityOldEnrollmentEnterprise[] =
-    "Enterprise.DevicePolicyDeviceIdValidity2.OldEnrollmentEnterprise";
-constexpr char kDeviceIdValidityOldEnrollmentDemo[] =
-    "Enterprise.DevicePolicyDeviceIdValidity2.OldEnrollmentDemo";
-constexpr char kDeviceIdValidityNewEnrollmentEnterprise[] =
-    "Enterprise.DevicePolicyDeviceIdValidity2.NewEnrollmentEnterprise";
-constexpr char kDeviceIdValidityNewEnrollmentDemo[] =
-    "Enterprise.DevicePolicyDeviceIdValidity2.NewEnrollmentDemo";
-
-void RecordDeviceIdValidityMetric(em::PolicyData* policy_data) {
-  // The enrollment version pref was added in M121. All the devices enrolled
-  // before that don't have the pref on local state.
-  auto* local_state = g_browser_process->local_state();
-  const bool is_old_enrollment =
-      !local_state ||
-      local_state->GetString(prefs::kEnrollmentVersionOS).empty();
-  InstallAttributes* install_attributes = InstallAttributes::Get();
-  const bool is_demo_mode =
-      install_attributes->GetMode() == policy::DEVICE_MODE_DEMO;
-
-  PolicyDeviceIdValidity device_id_validity = PolicyDeviceIdValidity::kValid;
-  if (install_attributes->GetDeviceId().empty()) {
-    device_id_validity = PolicyDeviceIdValidity::kActualIdUnknown;
-  } else if (!policy_data->has_device_id()) {
-    device_id_validity = PolicyDeviceIdValidity::kMissing;
-  } else if (policy_data->device_id() != install_attributes->GetDeviceId()) {
-    device_id_validity = PolicyDeviceIdValidity::kInvalid;
-  }
-
-  const char* histogram_name = kDeviceIdValidityNewEnrollmentEnterprise;
-  if (is_demo_mode) {
-    histogram_name = is_old_enrollment ? kDeviceIdValidityOldEnrollmentDemo
-                                       : kDeviceIdValidityNewEnrollmentDemo;
-  } else if (is_old_enrollment) {
-    histogram_name = kDeviceIdValidityOldEnrollmentEnterprise;
-  }
-  base::UmaHistogramEnumeration(histogram_name, device_id_validity);
-}
-
-}  // namespace
 
 DeviceSettingsService::Observer::~Observer() {}
 
@@ -174,7 +127,7 @@ void DeviceSettingsService::SetDeviceMode(policy::DeviceMode device_mode) {
   DCHECK(policy::DEVICE_MODE_PENDING == device_mode_ ||
          policy::DEVICE_MODE_NOT_SET == device_mode_);
   device_mode_ = device_mode;
-  if (GetOwnershipStatus() != OwnershipStatus::kOwnershipUnknown) {
+  if (GetOwnershipStatus() != OWNERSHIP_UNKNOWN) {
     RunPendingOwnershipStatusCallbacks();
   }
 }
@@ -206,13 +159,14 @@ void DeviceSettingsService::LoadIfNotPresent() {
 }
 
 void DeviceSettingsService::LoadImmediately() {
-  if (session_stopping_) {
-    LOG(WARNING) << "Fail the blocking request when the session is stopping";
-    // No need to HandleCompletedOperation, as there's no callback waiting.
-    return;
+  bool request_key_load = true;
+  bool cloud_validations = true;
+  if (device_mode_ == policy::DEVICE_MODE_ENTERPRISE_AD) {
+    request_key_load = false;
+    cloud_validations = false;
   }
   std::unique_ptr<SessionManagerOperation> operation(new LoadSettingsOperation(
-      /*request_key_load=*/true, /*force_immediate_load=*/true,
+      request_key_load, cloud_validations, true /*force_immediate_load*/,
       base::BindOnce(&DeviceSettingsService::HandleCompletedOperation,
                      weak_factory_.GetWeakPtr(), base::OnceClosure())));
   operation->Start(session_manager_client_, owner_key_util_, public_key_);
@@ -221,6 +175,8 @@ void DeviceSettingsService::LoadImmediately() {
 void DeviceSettingsService::Store(
     std::unique_ptr<em::PolicyFetchResponse> policy,
     base::OnceClosure callback) {
+  // On Active Directory managed devices policy is written only by authpolicyd.
+  CHECK(device_mode_ != policy::DEVICE_MODE_ENTERPRISE_AD);
   Enqueue(std::make_unique<StoreSettingsOperation>(
       base::BindOnce(&DeviceSettingsService::HandleCompletedAsyncOperation,
                      weak_factory_.GetWeakPtr(), std::move(callback)),
@@ -230,14 +186,15 @@ void DeviceSettingsService::Store(
 DeviceSettingsService::OwnershipStatus
 DeviceSettingsService::GetOwnershipStatus() {
   if (public_key_.get())
-    return public_key_->is_empty() ? OwnershipStatus::kOwnershipNone
-                                   : OwnershipStatus::kOwnershipTaken;
-  return OwnershipStatus::kOwnershipUnknown;
+    return public_key_->is_empty() ? OWNERSHIP_NONE : OWNERSHIP_TAKEN;
+  if (device_mode_ == policy::DEVICE_MODE_ENTERPRISE_AD)
+    return OWNERSHIP_TAKEN;
+  return OWNERSHIP_UNKNOWN;
 }
 
 void DeviceSettingsService::GetOwnershipStatusAsync(
     OwnershipStatusCallback callback) {
-  if (GetOwnershipStatus() != OwnershipStatus::kOwnershipUnknown) {
+  if (GetOwnershipStatus() != OWNERSHIP_UNKNOWN) {
     // Report status immediately.
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
@@ -255,9 +212,9 @@ void DeviceSettingsService::GetOwnershipStatusAsync(
 
 void DeviceSettingsService::ValidateOwnershipStatusAndNotify(
     OwnershipStatusCallback callback) {
-  if (GetOwnershipStatus() == OwnershipStatus::kOwnershipUnknown) {
+  if (GetOwnershipStatus() == OWNERSHIP_UNKNOWN) {
     // OwnerKeySet() could be called upon user sign-in while event was in queue,
-    // which resets status to OwnershipStatus::kOwnershipUnknown.
+    // which resets status to OWNERSHIP_UNKNOWN.
     // We need to retry the logic in this case.
     GetOwnershipStatusAsync(std::move(callback));
     return;
@@ -315,7 +272,8 @@ void DeviceSettingsService::OwnerKeySet(bool success) {
 
   public_key_.reset();
 
-  if (!will_establish_consumer_ownership_) {
+  if (GetOwnershipStatus() == OWNERSHIP_TAKEN ||
+      !will_establish_consumer_ownership_) {
     EnsureReload(true);
   }
 }
@@ -326,14 +284,10 @@ void DeviceSettingsService::PropertyChangeComplete(bool success) {
     return;
   }
 
-  if (GetOwnershipStatus() == OwnershipStatus::kOwnershipTaken ||
+  if (GetOwnershipStatus() == OWNERSHIP_TAKEN ||
       !will_establish_consumer_ownership_) {
     EnsureReload(false);
   }
-}
-
-void DeviceSettingsService::SessionStopping() {
-  session_stopping_ = true;
 }
 
 void DeviceSettingsService::Enqueue(
@@ -345,8 +299,13 @@ void DeviceSettingsService::Enqueue(
 }
 
 void DeviceSettingsService::EnqueueLoad(bool request_key_load) {
+  bool cloud_validations = true;
+  if (device_mode_ == policy::DEVICE_MODE_ENTERPRISE_AD) {
+    request_key_load = false;
+    cloud_validations = false;
+  }
   Enqueue(std::make_unique<LoadSettingsOperation>(
-      request_key_load, /*force_immediate_load=*/false,
+      request_key_load, cloud_validations, false /*force_immediate_load*/,
       base::BindOnce(&DeviceSettingsService::HandleCompletedAsyncOperation,
                      weak_factory_.GetWeakPtr(), base::OnceClosure())));
 }
@@ -387,12 +346,6 @@ void DeviceSettingsService::HandleCompletedOperation(
   if (status == STORE_SUCCESS) {
     policy_fetch_response_ = std::move(operation->policy_fetch_response());
     policy_data_ = std::move(operation->policy_data());
-    // Log device_id validity histogram only if the device is managed and the
-    // policy is in good state.
-    if (policy_data_ && policy_data_->has_request_token() &&
-        InstallAttributes::Get()->IsEnterpriseManaged()) {
-      RecordDeviceIdValidityMetric(policy_data_.get());
-    }
     device_settings_ = std::move(operation->device_settings());
     // Update "OffHours" policy state and apply "OffHours" policy to current
     // proto only during "OffHours" mode. When "OffHours" mode begins and ends
@@ -413,13 +366,6 @@ void DeviceSettingsService::HandleCompletedOperation(
 
   public_key_ = scoped_refptr<PublicKey>(operation->public_key());
   if (GetOwnershipStatus() != previous_ownership_status_) {
-    // TODO(b/293598969): Investigate onwerhip status condition to prevent the
-    // bugs in future. Check whether ownership status goes to kOwnershipTaken in
-    // the end. Remove this when it's resolved.
-    LOG(WARNING) << "Ownership status is changed from "
-                 << previous_ownership_status_ << " to "
-                 << GetOwnershipStatus();
-
     previous_ownership_status_ = GetOwnershipStatus();
     NotifyOwnershipStatusChanged();
   }
@@ -447,36 +393,6 @@ void DeviceSettingsService::RunPendingOwnershipStatusCallbacks() {
   callbacks.swap(pending_ownership_status_callbacks_);
   for (auto& callback : callbacks) {
     std::move(callback).Run(GetOwnershipStatus());
-  }
-}
-
-bool DeviceSettingsService::IsDeviceManaged() const {
-  if (!policy_data_ || policy_data_->state() != em::PolicyData::ACTIVE) {
-    return false;
-  }
-  if (policy_data_->has_management_mode()) {
-    return policy_data_->management_mode() ==
-           em::PolicyData::ENTERPRISE_MANAGED;
-  } else {
-    // The old device settings didn't have a management_mode. For those we
-    // have to rely on the presence of request_token.
-    return policy_data_->has_request_token();
-  }
-}
-
-bool DeviceSettingsService::HasDmToken() const {
-  return policy_data_ && policy_data_->has_request_token();
-}
-
-std::ostream& operator<<(std::ostream& ostream,
-                         DeviceSettingsService::OwnershipStatus status) {
-  switch (status) {
-    case DeviceSettingsService::OwnershipStatus::kOwnershipUnknown:
-      return ostream << "kOwnershipUnknown";
-    case DeviceSettingsService::OwnershipStatus::kOwnershipNone:
-      return ostream << "kOwnershipNone";
-    case DeviceSettingsService::OwnershipStatus::kOwnershipTaken:
-      return ostream << "kOwnershipTaken";
   }
 }
 

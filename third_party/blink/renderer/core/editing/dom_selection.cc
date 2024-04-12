@@ -96,50 +96,56 @@ VisibleSelection DOMSelection::GetVisibleSelection() const {
   return Selection().ComputeVisibleSelectionInDOMTreeDeprecated();
 }
 
-bool DOMSelection::IsAnchorFirstInSelection() const {
-  return Selection().GetSelectionInDOMTree().IsAnchorFirst();
+bool DOMSelection::IsBaseFirstInSelection() const {
+  return Selection().GetSelectionInDOMTree().IsBaseFirst();
+}
+
+// TODO(tkent): Following four functions based on VisibleSelection should be
+// removed.
+static Position AnchorPosition(const VisibleSelection& selection) {
+  Position anchor =
+      selection.IsBaseFirst() ? selection.Start() : selection.End();
+  return anchor.ParentAnchoredEquivalent();
+}
+
+static Position FocusPosition(const VisibleSelection& selection) {
+  Position focus =
+      selection.IsBaseFirst() ? selection.End() : selection.Start();
+  return focus.ParentAnchoredEquivalent();
 }
 
 Node* DOMSelection::anchorNode() const {
-  TemporaryRange temp_range(this, PrimaryRangeOrNull());
-  if (temp_range.GetRange()) {
-    if (!DomWindow() || IsAnchorFirstInSelection()) {
-      return temp_range.GetRange()->startContainer();
-    }
-    return temp_range.GetRange()->endContainer();
+  if (Range* range = PrimaryRangeOrNull()) {
+    if (!DomWindow() || IsBaseFirstInSelection())
+      return range->startContainer();
+    return range->endContainer();
   }
   return nullptr;
 }
 
 unsigned DOMSelection::anchorOffset() const {
-  TemporaryRange temp_range(this, PrimaryRangeOrNull());
-  if (temp_range.GetRange()) {
-    if (!DomWindow() || IsAnchorFirstInSelection()) {
-      return temp_range.GetRange()->startOffset();
-    }
-    return temp_range.GetRange()->endOffset();
+  if (Range* range = PrimaryRangeOrNull()) {
+    if (!DomWindow() || IsBaseFirstInSelection())
+      return range->startOffset();
+    return range->endOffset();
   }
   return 0;
 }
 
 Node* DOMSelection::focusNode() const {
-  TemporaryRange temp_range(this, PrimaryRangeOrNull());
-  if (temp_range.GetRange()) {
-    if (!DomWindow() || IsAnchorFirstInSelection()) {
-      return temp_range.GetRange()->endContainer();
-    }
-    return temp_range.GetRange()->startContainer();
+  if (Range* range = PrimaryRangeOrNull()) {
+    if (!DomWindow() || IsBaseFirstInSelection())
+      return range->endContainer();
+    return range->startContainer();
   }
   return nullptr;
 }
 
 unsigned DOMSelection::focusOffset() const {
-  TemporaryRange temp_range(this, PrimaryRangeOrNull());
-  if (temp_range.GetRange()) {
-    if (!DomWindow() || IsAnchorFirstInSelection()) {
-      return temp_range.GetRange()->endOffset();
-    }
-    return temp_range.GetRange()->startOffset();
+  if (Range* range = PrimaryRangeOrNull()) {
+    if (!DomWindow() || IsBaseFirstInSelection())
+      return range->endOffset();
+    return range->startOffset();
   }
   return 0;
 }
@@ -165,17 +171,15 @@ bool DOMSelection::isCollapsed() const {
     return true;
   Node* node = Selection()
                    .ComputeVisibleSelectionInDOMTreeDeprecated()
-                   .Anchor()
+                   .Base()
                    .AnchorNode();
   if (node && node->IsInShadowTree() &&
       DomWindow()->document()->AncestorInThisScope(node)) {
     return true;
   }
 
-  TemporaryRange temp_range(this, PrimaryRangeOrNull());
-  if (temp_range.GetRange()) {
-    return temp_range.GetRange()->collapsed();
-  }
+  if (Range* range = PrimaryRangeOrNull())
+    return range->collapsed();
   return true;
 }
 
@@ -544,7 +548,7 @@ Range* DOMSelection::PrimaryRangeOrNull() const {
 
 EphemeralRange DOMSelection::CreateRangeFromSelectionEditor() const {
   const VisibleSelection& selection = GetVisibleSelection();
-  const Position& anchor = selection.Anchor().ParentAnchoredEquivalent();
+  const Position& anchor = blink::AnchorPosition(selection);
   if (IsSelectionOfDocument() && !anchor.AnchorNode()->IsInShadowTree())
     return FirstEphemeralRangeOf(selection);
 
@@ -552,14 +556,13 @@ EphemeralRange DOMSelection::CreateRangeFromSelectionEditor() const {
   if (!anchor_node)  // crbug.com/595100
     return EphemeralRange();
 
-  const Position& focus = selection.Focus().ParentAnchoredEquivalent();
+  const Position& focus = FocusPosition(selection);
   const Position shadow_adjusted_focus =
       Position(ShadowAdjustedNode(focus), ShadowAdjustedOffset(focus));
   const Position shadow_adjusted_anchor =
       Position(anchor_node, ShadowAdjustedOffset(anchor));
-  if (selection.IsAnchorFirst()) {
+  if (selection.IsBaseFirst())
     return EphemeralRange(shadow_adjusted_anchor, shadow_adjusted_focus);
-  }
   return EphemeralRange(shadow_adjusted_focus, shadow_adjusted_anchor);
 }
 
@@ -586,10 +589,8 @@ void DOMSelection::ClearCachedRangeIfSelectionOfDocument() {
 
 void DOMSelection::removeRange(Range* range) {
   DCHECK(range);
-  TemporaryRange temp_range(this, PrimaryRangeOrNull());
-  if (IsAvailable() && range == temp_range.GetRange()) {
+  if (IsAvailable() && range == PrimaryRangeOrNull())
     Selection().Clear();
-  }
 }
 
 void DOMSelection::removeAllRanges() {
@@ -622,6 +623,14 @@ void DOMSelection::addRange(Range* new_range) {
                              .Extend(new_range->EndPosition())
                              .Build(),
                          new_range, SetSelectionOptions());
+    return;
+  }
+
+  Range* original_range = PrimaryRangeOrNull();
+  DCHECK(original_range);
+
+  if (original_range->startContainer()->GetTreeScope() !=
+      new_range->startContainer()->GetTreeScope()) {
     return;
   }
 }
@@ -804,22 +813,6 @@ void DOMSelection::Trace(Visitor* visitor) const {
   visitor->Trace(tree_scope_);
   ScriptWrappable::Trace(visitor);
   ExecutionContextClient::Trace(visitor);
-}
-
-DOMSelection::TemporaryRange::TemporaryRange(const DOMSelection* selection,
-                                             Range* range) {
-  owner_dom_selection_ = selection;
-  range_ = range;
-}
-
-DOMSelection::TemporaryRange::~TemporaryRange() {
-  if (range_ && range_ != owner_dom_selection_->DocumentCachedRange()) {
-    range_->Dispose();
-  }
-}
-
-Range* DOMSelection::TemporaryRange::GetRange() {
-  return range_;
 }
 
 }  // namespace blink

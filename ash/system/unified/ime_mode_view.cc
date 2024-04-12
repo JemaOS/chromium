@@ -13,11 +13,8 @@
 #include "ash/system/tray/system_tray_notifier.h"
 #include "ash/system/tray/tray_constants.h"
 #include "ash/system/tray/tray_utils.h"
-#include "chromeos/constants/chromeos_features.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/display/screen.h"
-#include "ui/display/tablet_state.h"
 #include "ui/views/border.h"
 #include "ui/views/controls/label.h"
 
@@ -33,9 +30,12 @@ ImeModeView::ImeModeView(Shelf* shelf) : TrayItemView(shelf) {
 
   Shell::Get()->system_tray_notifier()->AddIMEObserver(this);
   Shell::Get()->system_tray_model()->locale()->AddObserver(this);
+  Shell::Get()->tablet_mode_controller()->AddObserver(this);
 }
 
 ImeModeView::~ImeModeView() {
+  if (Shell::Get()->tablet_mode_controller())
+    Shell::Get()->tablet_mode_controller()->RemoveObserver(this);
   Shell::Get()->system_tray_model()->locale()->RemoveObserver(this);
   Shell::Get()->system_tray_notifier()->RemoveIMEObserver(this);
 }
@@ -53,27 +53,20 @@ void ImeModeView::OnLocaleListSet() {
   Update();
 }
 
-void ImeModeView::OnDisplayTabletStateChanged(display::TabletState state) {
-  if (state == display::TabletState::kInClamshellMode ||
-      state == display::TabletState::kInTabletMode) {
-    Update();
-  }
+void ImeModeView::OnTabletModeStarted() {
+  Update();
+}
+
+void ImeModeView::OnTabletModeEnded() {
+  Update();
+}
+
+const char* ImeModeView::GetClassName() const {
+  return "ImeModeView";
 }
 
 void ImeModeView::HandleLocaleChange() {
   Update();
-}
-
-void ImeModeView::UpdateLabelOrImageViewColor(bool active) {
-  if (!chromeos::features::IsJellyEnabled()) {
-    label()->SetEnabledColorId(kColorAshIconColorPrimary);
-    return;
-  }
-  TrayItemView::UpdateLabelOrImageViewColor(active);
-
-  label()->SetEnabledColorId(active
-                                 ? cros_tokens::kCrosSysSystemOnPrimaryContainer
-                                 : cros_tokens::kCrosSysOnSurface);
 }
 
 void ImeModeView::Update() {
@@ -89,7 +82,7 @@ void ImeModeView::Update() {
 
   // Do not show IME mode icon in tablet mode as it's less useful and screen
   // space is limited.
-  if (display::Screen::GetScreen()->InTabletMode()) {
+  if (Shell::Get()->tablet_mode_controller()->InTabletMode()) {
     SetVisible(false);
     return;
   }
@@ -106,7 +99,7 @@ void ImeModeView::Update() {
              (ime_count > 1 || ime_controller->managed_by_policy()));
 
   label()->SetText(ime_controller->current_ime().short_name);
-  UpdateLabelOrImageViewColor(is_active());
+  label()->SetEnabledColorId(kColorAshIconColorPrimary);
   std::u16string description =
       l10n_util::GetStringFUTF16(IDS_ASH_STATUS_TRAY_INDICATOR_IME_TOOLTIP,
                                  ime_controller->current_ime().name);
@@ -114,10 +107,7 @@ void ImeModeView::Update() {
   label()->SetCustomAccessibleName(description);
   label()->SetElideBehavior(gfx::NO_ELIDE);
 
-  DeprecatedLayoutImmediately();
+  Layout();
 }
-
-BEGIN_METADATA(ImeModeView)
-END_METADATA
 
 }  // namespace ash

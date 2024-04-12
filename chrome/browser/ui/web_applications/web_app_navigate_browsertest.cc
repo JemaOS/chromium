@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/memory/raw_ptr.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
 
 #include "chrome/browser/ui/browser.h"
@@ -11,8 +12,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/web_app_controller_browsertest.h"
-#include "chrome/test/base/ui_test_utils.h"
-#include "components/webapps/common/web_app_id.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "content/public/test/browser_test.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
@@ -30,15 +30,6 @@ class WebAppNavigateBrowserTest : public WebAppControllerBrowserTest {
     return params;
   }
 };
-
-namespace {
-
-void NavigateAndWaitUntilSetAsLastActive(NavigateParams* params) {
-  Navigate(params);
-  ui_test_utils::WaitForBrowserSetLastActive(params->browser);
-}
-
-}  // namespace
 
 // This test verifies that navigating with "open_pwa_window_if_possible = true"
 // opens a new app window if there is an installed Web App for the URL.
@@ -98,16 +89,16 @@ IN_PROC_BROWSER_TEST_F(WebAppNavigateBrowserTest, NewPopup) {
     NavigateParams params(MakeNavigateParams());
     params.disposition = WindowOpenDisposition::NEW_WINDOW;
     params.open_pwa_window_if_possible = true;
-    NavigateAndWaitUntilSetAsLastActive(&params);
+    Navigate(&params);
   }
   Browser* const app_browser = browser_list->GetLastActive();
-  const webapps::AppId app_id = app_browser->app_controller()->app_id();
+  const AppId app_id = app_browser->app_controller()->app_id();
 
   {
     NavigateParams params(MakeNavigateParams());
     params.disposition = WindowOpenDisposition::NEW_WINDOW;
     params.app_id = app_id;
-    NavigateAndWaitUntilSetAsLastActive(&params);
+    Navigate(&params);
   }
   content::WebContents* const web_contents =
       browser_list->GetLastActive()->tab_strip_model()->GetActiveWebContents();
@@ -117,7 +108,7 @@ IN_PROC_BROWSER_TEST_F(WebAppNavigateBrowserTest, NewPopup) {
     NavigateParams params(MakeNavigateParams());
     params.disposition = WindowOpenDisposition::NEW_POPUP;
     params.source_contents = web_contents;
-    NavigateAndWaitUntilSetAsLastActive(&params);
+    Navigate(&params);
     EXPECT_FALSE(browser_list->GetLastActive()->app_controller());
   }
 
@@ -126,7 +117,7 @@ IN_PROC_BROWSER_TEST_F(WebAppNavigateBrowserTest, NewPopup) {
     NavigateParams params(MakeNavigateParams());
     params.app_id = app_id;
     params.disposition = WindowOpenDisposition::NEW_POPUP;
-    NavigateAndWaitUntilSetAsLastActive(&params);
+    Navigate(&params);
     EXPECT_EQ(browser_list->GetLastActive()->app_controller()->app_id(),
               app_id);
   }
@@ -136,7 +127,7 @@ IN_PROC_BROWSER_TEST_F(WebAppNavigateBrowserTest, NewPopup) {
     NavigateParams params(MakeNavigateParams());
     params.browser = app_browser;
     params.disposition = WindowOpenDisposition::NEW_POPUP;
-    NavigateAndWaitUntilSetAsLastActive(&params);
+    Navigate(&params);
     EXPECT_EQ(browser_list->GetLastActive()->app_controller()->app_id(),
               app_id);
   }

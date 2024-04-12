@@ -13,7 +13,6 @@
 #include "base/containers/unique_ptr_adapters.h"
 #include "base/memory/weak_ptr.h"
 #include "base/values.h"
-#include "chrome/browser/devtools/aida_client.h"
 #include "chrome/browser/devtools/device/devtools_android_bridge.h"
 #include "chrome/browser/devtools/devtools_embedder_message_dispatcher.h"
 #include "chrome/browser/devtools/devtools_file_helper.h"
@@ -21,18 +20,14 @@
 #include "chrome/browser/devtools/devtools_infobar_delegate.h"
 #include "chrome/browser/devtools/devtools_settings.h"
 #include "chrome/browser/devtools/devtools_targets_ui.h"
-#include "chrome/browser/devtools/visual_logging.h"
-#include "chrome/browser/themes/theme_service.h"
-#include "chrome/browser/themes/theme_service_factory.h"
-#include "chrome/browser/themes/theme_service_observer.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/devtools_frontend_host.h"
 #include "ui/gfx/geometry/size.h"
 
 class DevToolsAndroidBridge;
-class PortForwardingStatusSerializer;
 class Profile;
+class PortForwardingStatusSerializer;
 
 namespace content {
 class NavigationHandle;
@@ -47,8 +42,7 @@ class ContentInfoBarManager;
 class DevToolsUIBindings : public DevToolsEmbedderMessageDispatcher::Delegate,
                            public DevToolsAndroidBridge::DeviceCountListener,
                            public content::DevToolsAgentHostClient,
-                           public DevToolsFileHelper::Delegate,
-                           public ThemeServiceObserver {
+                           public DevToolsFileHelper::Delegate {
  public:
   class Delegate {
    public:
@@ -60,7 +54,6 @@ class DevToolsUIBindings : public DevToolsEmbedderMessageDispatcher::Delegate,
     virtual void InspectElementCompleted() = 0;
     virtual void SetIsDocked(bool is_docked) = 0;
     virtual void OpenInNewTab(const std::string& url) = 0;
-    virtual void OpenSearchResultsInNewTab(const std::string& query) = 0;
     virtual void SetWhitelistedShortcuts(const std::string& message) = 0;
     virtual void SetEyeDropperActive(bool active) = 0;
     virtual void OpenNodeFrontend() = 0;
@@ -73,10 +66,6 @@ class DevToolsUIBindings : public DevToolsEmbedderMessageDispatcher::Delegate,
     virtual infobars::ContentInfoBarManager* GetInfoBarManager() = 0;
     virtual void RenderProcessGone(bool crashed) = 0;
     virtual void ShowCertificateViewer(const std::string& cert_chain) = 0;
-
-    virtual int GetDockStateForLogging() = 0;
-    virtual int GetOpenedByForLogging() = 0;
-    virtual int GetClosedByForLogging() = 0;
   };
 
   static DevToolsUIBindings* ForWebContents(content::WebContents* web_contents);
@@ -114,9 +103,6 @@ class DevToolsUIBindings : public DevToolsEmbedderMessageDispatcher::Delegate,
   void Detach();
   bool IsAttachedTo(content::DevToolsAgentHost* agent_host);
 
-  // ThemeServiceObserver implementation
-  void OnThemeChanged() override;
-
   static base::Value::Dict GetSyncInformationForProfile(Profile* profile);
 
  private:
@@ -128,7 +114,6 @@ class DevToolsUIBindings : public DevToolsEmbedderMessageDispatcher::Delegate,
   void DispatchProtocolMessage(content::DevToolsAgentHost* agent_host,
                                base::span<const uint8_t> message) override;
   void AgentHostClosed(content::DevToolsAgentHost* agent_host) override;
-  bool MayWriteLocalFiles() override;
 
   // DevToolsEmbedderMessageDispatcher::Delegate implementation.
   void ActivateWindow() override;
@@ -143,7 +128,6 @@ class DevToolsUIBindings : public DevToolsEmbedderMessageDispatcher::Delegate,
                            int stream_id) override;
   void SetIsDocked(DispatchCallback callback, bool is_docked) override;
   void OpenInNewTab(const std::string& url) override;
-  void OpenSearchResultsInNewTab(const std::string& query) override;
   void ShowItemInFolder(const std::string& file_system_path) override;
   void SaveToFile(const std::string& url,
                   const std::string& content,
@@ -175,29 +159,19 @@ class DevToolsUIBindings : public DevToolsEmbedderMessageDispatcher::Delegate,
       bool network_discovery_enabled,
       const std::string& network_discovery_config) override;
   void SetDevicesUpdatesEnabled(bool enabled) override;
+  void PerformActionOnRemotePage(const std::string& page_id,
+                                 const std::string& action) override;
   void OpenRemotePage(const std::string& browser_id,
                       const std::string& url) override;
   void OpenNodeFrontend() override;
   void DispatchProtocolMessageFromDevToolsFrontend(
       const std::string& message) override;
-  void RecordCountHistogram(const std::string& name,
-                            int sample,
-                            int min,
-                            int exclusive_max,
-                            int buckets) override;
   void RecordEnumeratedHistogram(const std::string& name,
                                  int sample,
                                  int boundary_value) override;
   void RecordPerformanceHistogram(const std::string& name,
                                   double duration) override;
   void RecordUserMetricsAction(const std::string& name) override;
-  void RecordImpression(const ImpressionEvent& event) override;
-  void RecordResize(const ResizeEvent& event) override;
-  void RecordClick(const ClickEvent& event) override;
-  void RecordHover(const HoverEvent& event) override;
-  void RecordDrag(const DragEvent& event) override;
-  void RecordChange(const ChangeEvent& event) override;
-  void RecordKeyDown(const KeyDownEvent& event) override;
   void SendJsonRequest(DispatchCallback callback,
                        const std::string& browser_id,
                        const std::string& url) override;
@@ -221,10 +195,6 @@ class DevToolsUIBindings : public DevToolsEmbedderMessageDispatcher::Delegate,
                   const std::string& trigger) override;
   void CanShowSurvey(DispatchCallback callback,
                      const std::string& trigger) override;
-  void DoAidaConversation(DispatchCallback callback,
-                          const std::string& request,
-                          int stream_id) override;
-  void RegisterAidaClientEvent(const std::string& request) override;
 
   void EnableRemoteDeviceCounter(bool enable);
 
@@ -275,28 +245,6 @@ class DevToolsUIBindings : public DevToolsEmbedderMessageDispatcher::Delegate,
                        const std::vector<std::string>& file_paths);
   void ShowDevToolsInfoBar(const std::u16string& message,
                            DevToolsInfoBarDelegate::Callback callback);
-  bool MaybeStartLogging();
-  base::TimeDelta GetTimeSinceSessionStart();
-  void OnAidaConversationRequest(
-      DispatchCallback callback,
-      int stream_id,
-      const std::string& request,
-      base::TimeDelta delay,
-      absl::variant<network::ResourceRequest, std::string>
-          resource_request_or_error);
-  void OnAidaConversationResponse(
-      DispatchCallback callback,
-      int stream_id,
-      const std::string& request,
-      base::TimeDelta delay,
-      absl::variant<network::ResourceRequest, std::string>
-          resource_request_or_error,
-      base::TimeTicks start_time,
-      const base::Value* response);
-  void OnRegisterAidaClientEventRequest(
-      const std::string& request,
-      absl::variant<network::ResourceRequest, std::string>
-          resource_request_or_error);
 
   // Extensions support.
   void AddDevToolsExtensionsToClient();
@@ -338,10 +286,7 @@ class DevToolsUIBindings : public DevToolsEmbedderMessageDispatcher::Delegate,
   std::string initial_target_id_;
 
   DevToolsSettings settings_;
-  base::TimeTicks session_start_time_;
 
-  std::unique_ptr<AidaClient> aida_client_;
-  base::UnguessableToken session_id_for_logging_;
   base::WeakPtrFactory<DevToolsUIBindings> weak_factory_{this};
 };
 

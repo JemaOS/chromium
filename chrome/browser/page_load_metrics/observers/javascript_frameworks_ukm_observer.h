@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_PAGE_LOAD_METRICS_OBSERVERS_JAVASCRIPT_FRAMEWORKS_UKM_OBSERVER_H_
 
 #include "components/page_load_metrics/browser/page_load_metrics_observer.h"
-#include "third_party/blink/public/common/loader/javascript_framework_detection.h"
 #include "third_party/blink/public/common/loader/loading_behavior_flag.h"
 
 // If URL-Keyed-Metrics (UKM) is enabled in the system, this is used to
@@ -29,9 +28,8 @@ class JavascriptFrameworksUkmObserver
       const GURL& currently_committed_url) override;
   ObservePolicy OnPrerenderStart(content::NavigationHandle* navigation_handle,
                                  const GURL& currently_committed_url) override;
-  void OnJavaScriptFrameworksObserved(
-      content::RenderFrameHost* rfh,
-      const blink::JavaScriptFrameworkDetectionResult&) override;
+  void OnLoadingBehaviorObserved(content::RenderFrameHost* rfh,
+                                 int behavior_flag) override;
   void OnComplete(const page_load_metrics::mojom::PageLoadTiming&) override;
   JavascriptFrameworksUkmObserver::ObservePolicy
   FlushMetricsOnAppEnterBackground(
@@ -44,7 +42,9 @@ class JavascriptFrameworksUkmObserver
   // frameworks detected.
   void RecordJavascriptFrameworkPageLoad();
 
-  blink::JavaScriptFrameworkDetectionResult framework_detection_result_;
+  // Bitmap containing the blink::LoadingBehaviorFlag values corresponding to
+  // frameworks that are detected.
+  int32_t frameworks_detected_ = 0;
 
   bool is_in_prerendered_page_ = false;
 };

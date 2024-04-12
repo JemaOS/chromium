@@ -239,10 +239,8 @@ class FakeSerialPort {
         this.writable_ = undefined;
         break;
       case SerialPortFlushMode.kTransmit:
-        if (this.reader_) {
-          this.reader_.cancel();
-          this.reader_ = undefined;
-        }
+        this.reader_.cancel();
+        this.reader_ = undefined;
         this.readable_ = undefined;
         break;
     }
@@ -356,10 +354,6 @@ class FakeSerialService {
       portInfo.hasUsbProductId = true;
       portInfo.usbProductId = info.usbProductId;
     }
-    portInfo.connected = true;
-    if (info?.connected !== undefined) {
-      portInfo.connected = info.connected;
-    }
 
     let token = ++this.nextToken_;
     portInfo.token = {high: 0n, low: BigInt(token)};
@@ -370,10 +364,8 @@ class FakeSerialService {
     };
     this.ports_.set(token, record);
 
-    if (portInfo.connected) {
-      for (let client of this.clients_) {
-        client.onPortConnectedStateChanged(portInfo);
-      }
+    for (let client of this.clients_) {
+      client.onPortAdded(portInfo);
     }
 
     return token;
@@ -387,26 +379,8 @@ class FakeSerialService {
 
     this.ports_.delete(token);
 
-    record.portInfo.connected = false;
     for (let client of this.clients_) {
-      client.onPortConnectedStateChanged(record.portInfo);
-    }
-  }
-
-  setPortConnectedState(token, connected) {
-    let record = this.ports_.get(token);
-    if (record === undefined) {
-      return;
-    }
-
-    let was_connected = record.portInfo.connected;
-    if (was_connected === connected) {
-      return;
-    }
-
-    record.portInfo.connected = connected;
-    for (let client of this.clients_) {
-      client.onPortConnectedStateChanged(record.portInfo);
+      client.onPortRemoved(record.portInfo);
     }
   }
 

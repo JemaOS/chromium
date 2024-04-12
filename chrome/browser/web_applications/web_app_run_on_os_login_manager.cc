@@ -8,40 +8,37 @@
 #include <utility>
 #include <vector>
 
-#include "base/containers/flat_map.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
 #include "chrome/browser/apps/app_service/app_launch_params.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/web_applications/locks/all_apps_lock.h"
 #include "chrome/browser/web_applications/web_app_command_scheduler.h"
-#include "chrome/browser/web_applications/web_app_provider.h"
-#include "chrome/browser/web_applications/web_app_ui_manager.h"
-#include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/chrome_features.h"
-#include "components/services/app_service/public/cpp/app_launch_util.h"
-#include "content/public/browser/network_service_instance.h"
 #include "content/public/browser/web_contents.h"
+
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "ash/public/cpp/notification_utils.h"
+#include "base/strings/utf_string_conversions.h"
+#include "chrome/browser/notifications/system_notification_helper.h"
+#include "chrome/browser/web_applications/web_app_utils.h"
+#include "chrome/grit/generated_resources.h"
+#include "ui/base/l10n/l10n_util.h"
+#endif
 
 namespace web_app {
 
-namespace {
-bool g_skip_startup_for_testing_ = false;
-}
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+const char kRunOnOsLoginNotificationId[] = "run_on_os_login";
+const char kWebAppPolicyManagerNotifierId[] = "web_app_policy_notifier";
+#endif
 
-WebAppRunOnOsLoginManager::WebAppRunOnOsLoginManager(Profile* profile)
-    : profile_(profile) {}
-WebAppRunOnOsLoginManager::~WebAppRunOnOsLoginManager() {
-  content::GetNetworkConnectionTracker()->RemoveNetworkConnectionObserver(this);
+WebAppRunOnOsLoginManager::WebAppRunOnOsLoginManager(
+    WebAppCommandScheduler* scheduler)
+    : scheduler_(*scheduler) {
+  DCHECK(scheduler);
 }
-
-void WebAppRunOnOsLoginManager::SetProvider(base::PassKey<WebAppProvider>,
-                                            WebAppProvider& provider) {
-  provider_ = &provider;
-}
+WebAppRunOnOsLoginManager::~WebAppRunOnOsLoginManager() = default;
 
 void WebAppRunOnOsLoginManager::Start() {
-  if (g_skip_startup_for_testing_) {
+  if (skip_startup_for_testing_) {
     return;
   }
 
@@ -49,100 +46,69 @@ void WebAppRunOnOsLoginManager::Start() {
     return;
   }
 
-  network::mojom::ConnectionType connection_type;
-  // `GetConnectionType` will execute either synchronously (and return true and
-  // store the value in the `connection_type`) or asynchronously (and return
-  // false and call `OnInitialConnectionTypeReceived` once it is done).
-  const bool call_was_synchronous =
-      content::GetNetworkConnectionTracker()->GetConnectionType(
-          &connection_type,
-          base::BindOnce(
-              &WebAppRunOnOsLoginManager::OnInitialConnectionTypeReceived,
-              GetWeakPtr()));
-  if (call_was_synchronous) {
-    OnInitialConnectionTypeReceived(connection_type);
-  }
+  scheduler_->ScheduleCallbackWithLock<AllAppsLock>(
+      "WebAppRunOnOsLoginManager::RunAppsOnOsLogin",
+      std::make_unique<AllAppsLockDescription>(),
+      base::BindOnce(&WebAppRunOnOsLoginManager::RunAppsOnOsLogin,
+                     GetWeakPtr()));
 }
 
-void WebAppRunOnOsLoginManager::RunAppsOnOsLogin(
-    AllAppsLock& lock,
-    base::Value::Dict& debug_value) {
-  base::flat_map<webapps::AppId, WebAppUiManager::RoolNotificationBehavior>
-      notification_behaviors;
-
-  for (const webapps::AppId& app_id : lock.registrar().GetAppIds()) {
-    if (!IsRunOnOsLoginModeEnabledForAutostart(
-            lock.registrar().GetAppRunOnOsLoginMode(app_id).value)) {
-      continue;
-    }
-
-    WebAppUiManager::RoolNotificationBehavior behavior{
-        .is_rool_enabled = true,
-        .is_prevent_close_enabled =
-            lock.registrar().IsPreventCloseEnabled(app_id)};
-    notification_behaviors.insert({app_id, std::move(behavior)});
-    debug_value.EnsureList("app_ids")->Append(app_id);
-
-    // In case of already opened/restored apps, we do not launch them again
-    if (lock.ui_manager().GetNumWindowsForApp(app_id) > 0) {
+void WebAppRunOnOsLoginManager::RunAppsOnOsLogin(AllAppsLock& lock) {
+  // With a full system lock acquired, getting all apps is safe and no filtering
+  // of uninstalling apps etc. is required
+  for (const AppId& app_id : lock.registrar().GetAppIds()) {
+    if (lock.registrar().GetAppRunOnOsLoginMode(app_id).value ==
+        RunOnOsLoginMode::kNotRun) {
       continue;
     }
 
     // TODO(crbug.com/1091964): Implement Run on OS Login mode selection and
-    // launch app appropriately.
-    // For ROOL on ChromeOS, we only have managed web apps which need to be run
-    // as standalone windows, never as tabs
+    // launch app appropriately
     apps::AppLaunchParams params(
         app_id, apps::LaunchContainer::kLaunchContainerWindow,
         WindowOpenDisposition::NEW_WINDOW, apps::LaunchSource::kFromOsLogin);
 
-    // Schedule launch here, show notification when the app window pops up.
-    provider_->scheduler().LaunchAppWithCustomParams(std::move(params),
-                                                     base::DoNothing());
-  }
+    if (lock.registrar().GetAppEffectiveDisplayMode(app_id) ==
+        blink::mojom::DisplayMode::kBrowser) {
+      params.container = apps::LaunchContainer::kLaunchContainerTab;
+      params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+    }
 
-  if (!notification_behaviors.empty()) {
-    provider_->ui_manager().DisplayRunOnOsLoginNotification(
-        notification_behaviors, profile_->GetWeakPtr());
-  }
-}
+    const std::string app_name = lock.registrar().GetAppShortName(app_id);
 
-void WebAppRunOnOsLoginManager::OnInitialConnectionTypeReceived(
-    network::mojom::ConnectionType type) {
-  CHECK(!scheduled_run_on_os_login_command_);
-
-  // If there is a connection, schedule ROOL and stop listening to the network
-  // status.
-  if (type != network::mojom::ConnectionType::CONNECTION_NONE) {
-    RunOsLoginAppsAndMaybeUnregisterObserver();
-    return;
-  }
-  // Otherwise, start listening to the network status and wait until the network
-  // connection is restored.
-  content::GetNetworkConnectionTracker()->AddNetworkConnectionObserver(this);
-}
-
-void WebAppRunOnOsLoginManager::OnConnectionChanged(
-    network::mojom::ConnectionType type) {
-  CHECK(!scheduled_run_on_os_login_command_);
-
-  // If there is a connection, schedule ROOL and stop listening to the network
-  // status. Otherwise, keep listening.
-  if (type != network::mojom::ConnectionType::CONNECTION_NONE) {
-    RunOsLoginAppsAndMaybeUnregisterObserver();
+    auto callback =
+        base::BindOnce(&WebAppRunOnOsLoginManager::OnAppLaunchedOnOsLogin,
+                       weak_ptr_factory_.GetWeakPtr(), app_id, app_name);
+    scheduler_->LaunchAppWithCustomParams(std::move(params),
+                                          std::move(callback));
   }
 }
 
-void WebAppRunOnOsLoginManager::RunOsLoginAppsAndMaybeUnregisterObserver() {
-  CHECK(!scheduled_run_on_os_login_command_);
-
-  content::GetNetworkConnectionTracker()->RemoveNetworkConnectionObserver(this);
-  scheduled_run_on_os_login_command_ = true;
-  provider_->scheduler().ScheduleCallback(
-      "WebAppRunOnOsLoginManager::RunAppsOnOsLogin", AllAppsLockDescription(),
-      base::BindOnce(&WebAppRunOnOsLoginManager::RunAppsOnOsLogin,
-                     GetWeakPtr()),
-      /*on_complete=*/std::move(completed_closure_));
+void WebAppRunOnOsLoginManager::OnAppLaunchedOnOsLogin(
+    AppId app_id,
+    std::string app_name,
+    base::WeakPtr<Browser> browser,
+    base::WeakPtr<content::WebContents> web_contents,
+    apps::LaunchContainer container) {
+// TODO(crbug.com/1341247): Implement notification for lacros
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  const std::string notification_id =
+      std::string(kRunOnOsLoginNotificationId) + "_" + app_name;
+  auto notification = ash::CreateSystemNotification(
+      message_center::NOTIFICATION_TYPE_SIMPLE, notification_id,
+      /*title=*/std::u16string(),
+      l10n_util::GetStringFUTF16(IDS_RUN_ON_OS_LOGIN_ENABLED,
+                                 base::UTF8ToUTF16(app_name)),
+      /* display_source= */ std::u16string(), GURL(),
+      message_center::NotifierId(message_center::NotifierType::SYSTEM_COMPONENT,
+                                 kWebAppPolicyManagerNotifierId,
+                                 ash::NotificationCatalogName::kWebAppSettings),
+      message_center::RichNotificationData(),
+      base::MakeRefCounted<message_center::HandleNotificationClickDelegate>(
+          base::RepeatingClosure()),
+      gfx::kNoneIcon, message_center::SystemNotificationWarningLevel::NORMAL);
+  SystemNotificationHelper::GetInstance()->Display(notification);
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 }
 
 base::WeakPtr<WebAppRunOnOsLoginManager>
@@ -150,22 +116,16 @@ WebAppRunOnOsLoginManager::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }
 
-// static
-base::AutoReset<bool> WebAppRunOnOsLoginManager::SkipStartupForTesting() {
-  return {&g_skip_startup_for_testing_, true};
+void WebAppRunOnOsLoginManager::SetSkipStartupForTesting(bool skip_startup) {
+  skip_startup_for_testing_ = skip_startup;  // IN-TEST
 }
 
 void WebAppRunOnOsLoginManager::RunAppsOnOsLoginForTesting() {
-  provider_->scheduler().ScheduleCallback(
-      "WebAppRunOnOsLoginManager::RunAppsOnOsLogin", AllAppsLockDescription(),
+  scheduler_->ScheduleCallbackWithLock<AllAppsLock>(
+      "WebAppRunOnOsLoginManager::RunAppsOnOsLogin",
+      std::make_unique<AllAppsLockDescription>(),
       base::BindOnce(&WebAppRunOnOsLoginManager::RunAppsOnOsLogin,
-                     GetWeakPtr()),
-      /*on_complete=*/std::move(completed_closure_));
-}
-
-void WebAppRunOnOsLoginManager::SetCompletedClosureForTesting(
-    base::OnceClosure completed_closure) {
-  completed_closure_ = std::move(completed_closure);
+                     GetWeakPtr()));
 }
 
 }  // namespace web_app

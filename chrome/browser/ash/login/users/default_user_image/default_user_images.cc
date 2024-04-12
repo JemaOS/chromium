@@ -26,6 +26,7 @@
 #include "ui/chromeos/resources/grit/ui_chromeos_resources.h"
 #include "ui/chromeos/strings/grit/ui_chromeos_strings.h"
 #include "url/gurl.h"
+#include "jemaos/build/config/buildflags.h"
 
 namespace ash {
 namespace default_user_image {
@@ -224,18 +225,15 @@ constexpr int kCurrentImageIndexes[] = {
 constexpr bool ValidateCurrentImageIndexes() {
   int num_eligible_images = 0;
   for (const auto info : kDefaultImageInfo) {
-    if (info.eligibility == Eligibility::kEligible) {
+    if (info.eligibility == Eligibility::kEligible)
       num_eligible_images++;
-    }
   }
-  if (num_eligible_images != std::size(kCurrentImageIndexes)) {
+  if (num_eligible_images != std::size(kCurrentImageIndexes))
     return false;
-  }
 
   for (const int index : kCurrentImageIndexes) {
-    if (kDefaultImageInfo[index].eligibility != Eligibility::kEligible) {
+    if (kDefaultImageInfo[index].eligibility != Eligibility::kEligible)
       return false;
-    }
     if (kDefaultImageInfo[index].description_message_id == 0) {
       // All current and new images must have a description.
       return false;
@@ -295,8 +293,13 @@ const DefaultImageSourceInfoIds kDefaultImageSourceInfoIds[] = {
     {IDS_LOGIN_DEFAULT_USER_AUTHOR_33, IDS_LOGIN_DEFAULT_USER_WEBSITE_33},
 };
 
+#if BUILDFLAG(USE_JEMAOS_COM)
+constexpr char kGstaticImagePrefix[] =
+    "https://www-img.jemaos.com/chromeos/avatars/";
+#else
 constexpr char kGstaticImagePrefix[] =
     "https://www.gstatic.com/chromecast/home/chromeos/avatars/";
+#endif
 constexpr char k100PercentPrefix[] = "default_100_percent/";
 constexpr char k200PercentPrefix[] = "default_200_percent/";
 
@@ -316,11 +319,10 @@ const std::string GetUrlPrefixForScaleFactor(
 }
 
 ui::ResourceScaleFactor GetMaximumScaleFactorForDefaultImage(int index) {
-  if (index <= kLastLegacyImageIndex) {
+  if (index <= kLastLegacyImageIndex)
     return ui::k100Percent;
-  } else {
+  else
     return ui::k200Percent;
-  }
 }
 
 }  // namespace
@@ -351,9 +353,8 @@ ui::ResourceScaleFactor GetAdjustedScaleFactorForDefaultImage(
     ui::ResourceScaleFactor scale_factor) {
   ui::ResourceScaleFactor max_scale_factor =
       GetMaximumScaleFactorForDefaultImage(index);
-  if (max_scale_factor == ui::k100Percent) {
+  if (max_scale_factor == ui::k100Percent)
     return max_scale_factor;
-  }
 
   return scale_factor;
 }
@@ -410,9 +411,8 @@ DefaultUserImage GetDefaultUserImage(
 
 std::vector<DefaultUserImage> GetCurrentImageSet() {
   std::vector<DefaultUserImage> result;
-  for (int index : kCurrentImageIndexes) {
+  for (int index : kCurrentImageIndexes)
     result.push_back(GetDefaultUserImage(index));
-  }
   return result;
 }
 
@@ -428,11 +428,10 @@ base::Value::List GetCurrentImageSetAsListValue() {
   return image_urls;
 }
 
-std::optional<DeprecatedSourceInfo> GetDeprecatedDefaultImageSourceInfo(
+absl::optional<DeprecatedSourceInfo> GetDeprecatedDefaultImageSourceInfo(
     size_t index) {
-  if (index >= std::size(kDefaultImageSourceInfoIds)) {
-    return std::nullopt;
-  }
+  if (index >= std::size(kDefaultImageSourceInfoIds))
+    return absl::nullopt;
 
   const auto& source_info_ids = kDefaultImageSourceInfoIds[index];
   return DeprecatedSourceInfo(

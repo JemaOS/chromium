@@ -12,7 +12,7 @@
 
 namespace ui {
 
-enum class DomCode : uint32_t;
+enum class DomCode;
 
 constexpr int kDefaultSensitivity = 3;
 
@@ -86,7 +86,6 @@ struct COMPONENT_EXPORT(EVDEV) InputDeviceSettingsEvdev {
   bool enable_touch_screens = true;
   bool enable_internal_keyboard_filter = false;
   std::vector<DomCode> internal_keyboard_allowed_keys;
-  std::vector<int> blocked_modifiers_devices;
 
  private:
   mutable base::flat_map<int, TouchpadSettingsEvdev> touchpad_settings_;

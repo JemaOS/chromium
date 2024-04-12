@@ -24,7 +24,6 @@
 #include "ash/test/ash_test_base.h"
 #include "ash/test_shell_delegate.h"
 #include "base/command_line.h"
-#include "base/files/safe_base_name.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
@@ -98,7 +97,7 @@ class PaletteTrayTest : public AshTestBase {
     return Shell::Get()->session_controller()->GetActivePrefService();
   }
 
-  raw_ptr<PaletteTray, DanglingUntriaged> palette_tray_ = nullptr;  // not owned
+  raw_ptr<PaletteTray, ExperimentalAsh> palette_tray_ = nullptr;  // not owned
 
   std::unique_ptr<PaletteTrayTestApi> test_api_;
 };
@@ -585,6 +584,13 @@ class PaletteTrayTestMultiDisplay : public PaletteTrayTest {
   PaletteTrayTestMultiDisplay& operator=(const PaletteTrayTestMultiDisplay&) =
       delete;
 
+  // Performs a tap on the palette tray button.
+  void PerformTap(PaletteTray* tray) {
+    ui::GestureEvent tap(0, 0, 0, base::TimeTicks(),
+                         ui::GestureEventDetails(ui::ET_GESTURE_TAP));
+    tray->PerformAction(tap);
+  }
+
   // Fake a stylus ejection.
   void EjectStylus() {
     test_api_->OnStylusStateChanged(ui::StylusState::REMOVED);
@@ -625,7 +631,7 @@ class PaletteTrayTestMultiDisplay : public PaletteTrayTest {
   }
 
  protected:
-  raw_ptr<PaletteTray, DanglingUntriaged> palette_tray_external_ = nullptr;
+  raw_ptr<PaletteTray, ExperimentalAsh> palette_tray_external_ = nullptr;
 
   std::unique_ptr<PaletteTrayTestApi> test_api_external_;
 };
@@ -752,7 +758,9 @@ TEST_F(PaletteTrayTestMultiDisplay, MirrorModeEnable) {
 
 class PaletteTrayTestWithProjector : public PaletteTrayTest {
  public:
-  PaletteTrayTestWithProjector() = default;
+  PaletteTrayTestWithProjector() {
+    scoped_feature_list_.InitWithFeatures({features::kProjector}, {});
+  }
 
   PaletteTrayTestWithProjector(const PaletteTrayTestWithProjector&) = delete;
   PaletteTrayTestWithProjector& operator=(const PaletteTrayTestWithProjector&) =
@@ -767,7 +775,10 @@ class PaletteTrayTestWithProjector : public PaletteTrayTest {
   }
 
  protected:
-  raw_ptr<ProjectorSessionImpl, DanglingUntriaged> projector_session_;
+  raw_ptr<ProjectorSessionImpl, ExperimentalAsh> projector_session_;
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 // Verify that the palette tray is hidden during a Projector session.
@@ -784,8 +795,7 @@ TEST_F(PaletteTrayTestWithProjector,
 
   // Verify palette tray is hidden and the active tool is deactivated during
   // Projector session.
-  projector_session_->Start(
-      base::SafeBaseName::Create("projector_data").value());
+  projector_session_->Start("projector_data");
   EXPECT_FALSE(palette_tray_->GetVisible());
   EXPECT_EQ(
       test_api_->palette_tool_manager()->GetActiveTool(PaletteGroup::MODE),

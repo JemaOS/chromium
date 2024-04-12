@@ -19,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.ViewCompat;
@@ -30,8 +31,9 @@ import org.chromium.chrome.browser.SynchronousInitializationActivity;
 import org.chromium.chrome.browser.bookmarks.BookmarkFolderRow;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.bookmarks.BookmarkModelObserver;
-import org.chromium.chrome.browser.bookmarks.BookmarkUiPrefs.BookmarkRowDisplayPref;
 import org.chromium.chrome.browser.bookmarks.BookmarkUtils;
+import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.read_later.ReadingListUtils;
 import org.chromium.components.bookmarks.BookmarkId;
 import org.chromium.components.bookmarks.BookmarkItem;
 import org.chromium.components.browser_ui.util.TraceEventVectorDrawableCompat;
@@ -49,8 +51,8 @@ import java.util.List;
  * Note this fragment will not be restarted by OS. It will be dismissed if chrome is killed in
  * background.
  */
-public class BookmarkFolderSelectActivity extends SynchronousInitializationActivity
-        implements AdapterView.OnItemClickListener {
+public class BookmarkFolderSelectActivity
+        extends SynchronousInitializationActivity implements AdapterView.OnItemClickListener {
     static final String INTENT_SELECTED_FOLDER = "BookmarkFolderSelectActivity.selectedFolder";
     static final String INTENT_IS_CREATING_FOLDER = "BookmarkFolderSelectActivity.isCreatingFolder";
     static final String INTENT_BOOKMARKS_TO_MOVE = "BookmarkFolderSelectActivity.bookmarksToMove";
@@ -65,37 +67,34 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
     private FolderListAdapter mBookmarkIdsAdapter;
     private ListView mBookmarkIdsList;
 
-    private BookmarkModelObserver mBookmarkModelObserver =
-            new BookmarkModelObserver() {
-                @Override
-                public void bookmarkModelChanged() {
-                    updateFolderList();
-                }
+    private BookmarkModelObserver mBookmarkModelObserver = new BookmarkModelObserver() {
+        @Override
+        public void bookmarkModelChanged() {
+            updateFolderList();
+        }
 
-                @Override
-                public void bookmarkNodeRemoved(
-                        BookmarkItem parent,
-                        int oldIndex,
-                        BookmarkItem node,
-                        boolean isDoingExtensiveChanges) {
-                    if (mBookmarksToMove.contains(node.getId())) {
-                        mBookmarksToMove.remove(node.getId());
-                        if (mBookmarksToMove.isEmpty()) {
-                            finishActivity(mBookmarksToMove);
-                            return;
-                        }
-                    } else if (node.isFolder()) {
-                        updateFolderList();
-                    }
+        @Override
+        public void bookmarkNodeRemoved(BookmarkItem parent, int oldIndex, BookmarkItem node,
+                boolean isDoingExtensiveChanges) {
+            if (mBookmarksToMove.contains(node.getId())) {
+                mBookmarksToMove.remove(node.getId());
+                if (mBookmarksToMove.isEmpty()) {
+                    finishActivity(mBookmarksToMove);
+                    return;
                 }
-            };
+            } else if (node.isFolder()) {
+                updateFolderList();
+            }
+        }
+    };
 
-    /** Starts a select folder activity. */
+    /**
+     * Starts a select folder activity.
+     */
     public static void startFolderSelectActivity(Context context, BookmarkId... bookmarks) {
         assert bookmarks.length > 0;
-        Intent intent =
-                BookmarkFolderSelectActivity.createIntent(
-                        context, /* createFolder= */ false, bookmarks);
+        Intent intent = BookmarkFolderSelectActivity.createIntent(
+                context, /*createFolder=*/false, bookmarks);
         context.startActivity(intent);
     }
 
@@ -106,8 +105,11 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
             Context context, boolean createFolder, BookmarkId... bookmarks) {
         Intent intent = new Intent(context, BookmarkFolderSelectActivity.class);
         intent.putExtra(INTENT_IS_CREATING_FOLDER, createFolder);
-        intent.putStringArrayListExtra(
-                INTENT_BOOKMARKS_TO_MOVE, BookmarkUtils.bookmarkIdsToStringList(bookmarks));
+        ArrayList<String> bookmarkStrings = new ArrayList<>(bookmarks.length);
+        for (BookmarkId id : bookmarks) {
+            bookmarkStrings.add(id.toString());
+        }
+        intent.putStringArrayListExtra(INTENT_BOOKMARKS_TO_MOVE, bookmarkStrings);
         return intent;
     }
 
@@ -127,9 +129,8 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
             BookmarkAddEditFolderActivity activity, List<BookmarkId> bookmarks) {
         BookmarkId[] bookmarksArray = new BookmarkId[bookmarks.size()];
         bookmarks.toArray(bookmarksArray);
-        Intent intent =
-                BookmarkFolderSelectActivity.createIntent(
-                        activity, /* createFolder= */ true, bookmarksArray);
+        Intent intent = BookmarkFolderSelectActivity.createIntent(
+                activity, /*createFolder=*/true, bookmarksArray);
         activity.startActivityForResult(
                 intent, BookmarkAddEditFolderActivity.PARENT_FOLDER_REQUEST_CODE);
     }
@@ -137,9 +138,10 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mModel = BookmarkModel.getForProfile(getProfileProvider().getOriginalProfile());
+        mModel = BookmarkModel.getForProfile(Profile.getLastUsedRegularProfile());
         List<String> stringList =
                 IntentUtils.safeGetStringArrayListExtra(getIntent(), INTENT_BOOKMARKS_TO_MOVE);
+        mBookmarksToMove = new ArrayList<>(stringList.size());
 
         // If the intent does not contain a list of bookmarks to move, return early. See
         // crbug.com/728244. If the bookmark model is not loaded, return early to avoid crashing
@@ -152,16 +154,22 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
             return;
         }
 
-        mBookmarksToMove = BookmarkUtils.stringListToBookmarkIds(mModel, stringList);
+        mModel.addObserver(mBookmarkModelObserver);
+
+        for (String string : stringList) {
+            BookmarkId bookmarkId = BookmarkId.getBookmarkIdFromString(string);
+            if (mModel.doesBookmarkExist(bookmarkId)) {
+                mBookmarksToMove.add(bookmarkId);
+            }
+        }
         if (mBookmarksToMove.isEmpty()) {
             finish();
             return;
         }
-        mModel.addObserver(mBookmarkModelObserver);
 
         mIsCreatingFolder = getIntent().getBooleanExtra(INTENT_IS_CREATING_FOLDER, false);
         if (mIsCreatingFolder) {
-            mParentId = mModel.getDefaultBookmarkFolder();
+            mParentId = mModel.getMobileFolderId();
         } else {
             mParentId = mModel.getBookmarkById(mBookmarksToMove.get(0)).getParentId();
         }
@@ -169,7 +177,7 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
         setContentView(R.layout.bookmark_folder_select_activity);
         mBookmarkIdsList = (ListView) findViewById(R.id.bookmark_folder_list);
         mBookmarkIdsList.setOnItemClickListener(this);
-        mBookmarkIdsAdapter = new FolderListAdapter(this, mModel);
+        mBookmarkIdsAdapter = new FolderListAdapter(this);
         mBookmarkIdsList.setAdapter(mBookmarkIdsAdapter);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -179,25 +187,22 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
         updateFolderList();
 
         View shadow = findViewById(R.id.shadow);
-        int listPaddingTop = getResources().getDimensionPixelSize(R.dimen.toolbar_height_no_shadow);
-        mBookmarkIdsList
-                .getViewTreeObserver()
-                .addOnScrollChangedListener(
-                        () -> {
-                            if (mBookmarkIdsList.getChildCount() < 1) return;
+        int listPaddingTop =
+                getResources().getDimensionPixelSize(R.dimen.bookmark_list_view_padding_top);
+        mBookmarkIdsList.getViewTreeObserver().addOnScrollChangedListener(() -> {
+            if (mBookmarkIdsList.getChildCount() < 1) return;
 
-                            shadow.setVisibility(
-                                    mBookmarkIdsList.getChildAt(0).getTop() < listPaddingTop
-                                            ? View.VISIBLE
-                                            : View.GONE);
-                        });
+            shadow.setVisibility(mBookmarkIdsList.getChildAt(0).getTop() < listPaddingTop
+                            ? View.VISIBLE
+                            : View.GONE);
+        });
     }
 
     private void updateFolderList() {
         List<BookmarkId> folderList = new ArrayList<>();
         // Reading List doesn't support folders as children.
         if (!mIsCreatingFolder) {
-            folderList.add(mModel.getLocalOrSyncableReadingListFolder());
+            folderList.add(mModel.getReadingListFolder());
         }
         List<Integer> depthList = new ArrayList<>();
         depthList.add(0);
@@ -205,13 +210,8 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
         List<FolderListEntry> entryList = new ArrayList<>(folderList.size() + 3);
 
         if (!mIsCreatingFolder) {
-            entryList.add(
-                    new FolderListEntry(
-                            null,
-                            0,
-                            getString(R.string.bookmark_add_folder),
-                            false,
-                            FolderListEntry.TYPE_NEW_FOLDER));
+            entryList.add(new FolderListEntry(null, 0, getString(R.string.bookmark_add_folder),
+                    false, FolderListEntry.TYPE_NEW_FOLDER));
         }
 
         FolderListEntry scrollToEntry = null;
@@ -221,13 +221,8 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
             if (!mModel.isFolderVisible(folder)) continue;
 
             String title = mModel.getBookmarkById(folder).getTitle();
-            FolderListEntry entry =
-                    new FolderListEntry(
-                            folder,
-                            depthList.get(i),
-                            title,
-                            folder.equals(mParentId),
-                            FolderListEntry.TYPE_NORMAL);
+            FolderListEntry entry = new FolderListEntry(folder, depthList.get(i), title,
+                    folder.equals(mParentId), FolderListEntry.TYPE_NORMAL);
             entryList.add(entry);
             if (!mIsCreatingFolder && mParentId.equals(folder)) {
                 scrollToEntry = entry;
@@ -286,18 +281,20 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
         super.onActivityResult(requestCode, resultCode, data);
         assert !mIsCreatingFolder;
         if (requestCode == CREATE_FOLDER_REQUEST_CODE && resultCode == RESULT_OK) {
-            BookmarkId createdBookmark =
-                    BookmarkId.getBookmarkIdFromString(
-                            data.getStringExtra(
-                                    BookmarkAddEditFolderActivity.INTENT_CREATED_BOOKMARK));
+            BookmarkId createdBookmark = BookmarkId.getBookmarkIdFromString(
+                    data.getStringExtra(BookmarkAddEditFolderActivity.INTENT_CREATED_BOOKMARK));
             moveBookmarksAndFinish(mBookmarksToMove, createdBookmark);
         }
     }
 
-    private void moveBookmarksAndFinish(List<BookmarkId> bookmarkIds, BookmarkId parentId) {
-        mModel.moveBookmarks(bookmarkIds, parentId);
-        BookmarkUtils.setLastUsedParent(parentId);
-        finishActivity(bookmarkIds);
+    private void moveBookmarksAndFinish(List<BookmarkId> bookmarks, BookmarkId parent) {
+        List<BookmarkId> movedBookmarks = new ArrayList<>();
+        ReadingListUtils.typeSwapBookmarksIfNecessary(
+                mModel, mBookmarksToMove, movedBookmarks, parent);
+        mModel.moveBookmarks(mBookmarksToMove, parent);
+        movedBookmarks.addAll(mBookmarksToMove);
+        BookmarkUtils.setLastUsedParent(this, parent);
+        finishActivity(movedBookmarks);
     }
 
     private void finishActivity(List<BookmarkId> bookmarks) {
@@ -314,7 +311,9 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
         finish();
     }
 
-    /** Data object representing a folder entry used in FolderListAdapter. */
+    /**
+     * Data object representing a folder entry used in FolderListAdapter.
+     */
     private static class FolderListEntry {
         public static final int TYPE_NEW_FOLDER = 0;
         public static final int TYPE_NORMAL = 1;
@@ -343,15 +342,13 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
 
         private final int mBasePadding;
         private final int mPaddingIncrement;
-        private final BookmarkModel mModel;
 
         List<FolderListEntry> mEntryList = new ArrayList<>();
 
-        public FolderListAdapter(Context context, BookmarkModel bookmarkModel) {
+        public FolderListAdapter(Context context) {
             mBasePadding =
                     context.getResources().getDimensionPixelSize(R.dimen.bookmark_folder_item_left);
             mPaddingIncrement = mBasePadding * 2;
-            mModel = bookmarkModel;
         }
 
         public int getPositionForEntry(FolderListEntry entry) {
@@ -373,7 +370,9 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
             return position;
         }
 
-        /** There are 2 types of entries: new folder and normal. */
+        /**
+         * There are 2 types of entries: new folder and normal.
+         */
         @Override
         public int getViewTypeCount() {
             return 2;
@@ -392,9 +391,8 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
                 return convertView;
             }
             if (convertView == null) {
-                convertView =
-                        LayoutInflater.from(parent.getContext())
-                                .inflate(R.layout.modern_list_item_view, parent, false);
+                convertView = LayoutInflater.from(parent.getContext())
+                                      .inflate(R.layout.modern_list_item_view, parent, false);
             }
             TextView textView = (TextView) convertView.findViewById(R.id.title);
             textView.setText(entry.mTitle);
@@ -420,41 +418,31 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
 
             Drawable iconDrawable;
             if (entry.mType == FolderListEntry.TYPE_NORMAL) {
-                iconDrawable =
-                        BookmarkUtils.getFolderIcon(
-                                view.getContext(),
-                                entry.mId,
-                                mModel,
-                                BookmarkRowDisplayPref.COMPACT);
+                iconDrawable = BookmarkUtils.getFolderIcon(view.getContext(), entry.mId.getType());
             } else {
                 // For new folder, start_icon is different.
-                VectorDrawableCompat vectorDrawable =
-                        TraceEventVectorDrawableCompat.create(
-                                view.getResources(),
-                                R.drawable.ic_add,
-                                view.getContext().getTheme());
-                vectorDrawable.setTintList(
-                        AppCompatResources.getColorStateList(
-                                view.getContext(), R.color.default_icon_color_tint_list));
+                VectorDrawableCompat vectorDrawable = TraceEventVectorDrawableCompat.create(
+                        view.getResources(), R.drawable.ic_add, view.getContext().getTheme());
+                vectorDrawable.setTintList(AppCompatResources.getColorStateList(
+                        view.getContext(), R.color.default_icon_color_tint_list));
                 iconDrawable = vectorDrawable;
             }
 
             BookmarkFolderRow.applyModernIconStyle(startIcon, iconDrawable, entry.mIsSelected);
         }
 
-        /** Sets up padding for the entry */
+        /**
+         * Sets up padding for the entry
+         */
         private void setUpPadding(FolderListEntry entry, View view) {
             int paddingStart =
                     mBasePadding + Math.min(entry.mDepth, MAX_FOLDER_DEPTH) * mPaddingIncrement;
-            ViewCompat.setPaddingRelative(
-                    view,
-                    paddingStart,
-                    view.getPaddingTop(),
-                    mBasePadding,
+            ViewCompat.setPaddingRelative(view, paddingStart, view.getPaddingTop(), mBasePadding,
                     view.getPaddingBottom());
         }
     }
 
+    @VisibleForTesting
     int getFolderPositionForTesting(BookmarkId bookmarkId) {
         for (int i = 0; i < mBookmarkIdsAdapter.mEntryList.size(); i++) {
             FolderListEntry entry = mBookmarkIdsAdapter.mEntryList.get(i);
@@ -463,6 +451,7 @@ public class BookmarkFolderSelectActivity extends SynchronousInitializationActiv
         return -1;
     }
 
+    @VisibleForTesting
     void performClickForTesting(int adapterPosition) {
         onItemClick(mBookmarkIdsList, null, adapterPosition, adapterPosition);
     }

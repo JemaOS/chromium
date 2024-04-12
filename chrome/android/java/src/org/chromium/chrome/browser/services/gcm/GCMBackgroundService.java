@@ -11,7 +11,8 @@ import org.chromium.chrome.browser.base.SplitCompatIntentService;
 public class GCMBackgroundService extends SplitCompatIntentService {
     private static final String TAG = "GCMBackgroundService";
 
-    private static @IdentifierNameString String sImplClassName =
+    @IdentifierNameString
+    private static String sImplClassName =
             "org.chromium.chrome.browser.services.gcm.GCMBackgroundServiceImpl";
 
     public GCMBackgroundService() {

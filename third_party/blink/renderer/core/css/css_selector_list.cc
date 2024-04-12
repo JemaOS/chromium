@@ -127,13 +127,10 @@ void CSSSelectorList::Trace(Visitor* visitor) const {
   if (!IsValid()) {
     return;
   }
-
-  for (int i = 0;; ++i) {
-    visitor->Trace(first_selector_[i]);
-    if (first_selector_[i].IsLastInSelectorList()) {
-      break;
-    }
-  }
+  const CSSSelector* current = First();
+  do {
+    visitor->Trace(*current);
+  } while (!(current++)->IsLastInSelectorList());
 }
 
 }  // namespace blink

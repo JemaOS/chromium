@@ -38,6 +38,7 @@
     function doTest()
     {
       var textarea = document.getElementById('container');
+      textarea.focus();
       textarea.selectionStart = textarea.selectionEnd = 0;
       runAfterLayoutAndPaint(endTest);
     }

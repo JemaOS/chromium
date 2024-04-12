@@ -3,16 +3,17 @@
 // found in the LICENSE file.
 
 import 'chrome://personalization/strings.m.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
-import {Paths, PersonalizationRouterElement, UserSubpageElement} from 'chrome://personalization/js/personalization_app.js';
+import {Paths, PersonalizationRouter, UserSubpage} from 'chrome://personalization/js/personalization_app.js';
 import {assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
 
 import {baseSetup, initElement, teardownElement} from './personalization_app_test_utils.js';
 import {TestPersonalizationStore} from './test_personalization_store.js';
 
-suite('UserSubpageElementTest', function() {
-  let userSubpageElement: UserSubpageElement|null;
+suite('UserSubpageTest', function() {
+  let userSubpageElement: UserSubpage|null;
 
   let personalizationStore: TestPersonalizationStore;
 
@@ -23,7 +24,7 @@ suite('UserSubpageElementTest', function() {
     personalizationStore = mocks.personalizationStore;
 
     reloadAtRootPromise = new Promise((resolve) => {
-      PersonalizationRouterElement.reloadAtRoot = resolve;
+      PersonalizationRouter.reloadAtRoot = resolve;
     });
   });
 
@@ -34,7 +35,7 @@ suite('UserSubpageElementTest', function() {
 
   test('displays content when not enterprise managed', async () => {
     personalizationStore.data.user.imageIsEnterpriseManaged = false;
-    userSubpageElement = initElement(UserSubpageElement, {path: Paths.USER});
+    userSubpageElement = initElement(UserSubpage, {path: Paths.USER});
     await waitAfterNextRender(userSubpageElement);
     const userPreview =
         userSubpageElement.shadowRoot!.querySelector('user-preview');
@@ -47,7 +48,7 @@ suite('UserSubpageElementTest', function() {
   test('does not display content when enterprise managed', async () => {
     // Enterprise managed state is unknown.
     personalizationStore.data.user.imageIsEnterpriseManaged = null;
-    userSubpageElement = initElement(UserSubpageElement, {path: Paths.USER});
+    userSubpageElement = initElement(UserSubpage, {path: Paths.USER});
     await waitAfterNextRender(userSubpageElement);
 
     // No user preview element.
@@ -63,7 +64,7 @@ suite('UserSubpageElementTest', function() {
 
   test('redirects to root if enterprise managed', async () => {
     personalizationStore.data.user.imageIsEnterpriseManaged = true;
-    userSubpageElement = initElement(UserSubpageElement, {path: Paths.USER});
+    userSubpageElement = initElement(UserSubpage, {path: Paths.USER});
     await reloadAtRootPromise;
   });
 });

@@ -39,13 +39,11 @@ void WhatsNewHandler::HandleInitialize(const base::Value::List& args) {
   const std::string& callback_id = args[0].GetString();
 
   AllowJavascript();
-
-  auto response = base::Value();
-  if (!whats_new::IsRemoteContentDisabled()) {
-    response = base::Value(whats_new::GetServerURL(true).spec());
-  }
-
-  ResolveJavascriptCallback(base::Value(callback_id), response);
+  ResolveJavascriptCallback(
+      base::Value(callback_id),
+      whats_new::IsRemoteContentDisabled()
+          ? base::Value()
+          : base::Value(whats_new::GetServerURL(true).spec()));
   TryShowHatsSurveyWithTimeout();
 }
 
@@ -62,5 +60,5 @@ void WhatsNewHandler::TryShowHatsSurveyWithTimeout() {
           .InMilliseconds(),
       /*product_specific_bits_data=*/{},
       /*product_specific_string_data=*/{},
-      /*navigation_behaviour=*/HatsService::REQUIRE_SAME_ORIGIN);
+      /*require_same_origin=*/true);
 }

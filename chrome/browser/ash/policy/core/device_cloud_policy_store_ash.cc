@@ -15,8 +15,6 @@
 #include "base/path_service.h"
 #include "base/sequence_checker.h"
 #include "base/task/sequenced_task_runner.h"
-#include "base/task/task_traits.h"
-#include "base/task/thread_pool.h"
 #include "chrome/browser/ash/login/startup_utils.h"
 #include "chrome/browser/ash/policy/core/device_policy_decoder.h"
 #include "chrome/browser/ash/policy/dev_mode/dev_mode_policy_util.h"
@@ -38,6 +36,22 @@ namespace {
 
 const char kDMTokenCheckHistogram[] = "Enterprise.EnrolledPolicyHasDMToken";
 const char kPolicyCheckHistogram[] = "Enterprise.EnrolledDevicePolicyPresent";
+
+void RecordDeviceIdValidityMetric(
+    const std::string& histogram_name,
+    const em::PolicyData& policy_data,
+    const ash::InstallAttributes& install_attributes) {
+  PolicyDeviceIdValidity device_id_validity = PolicyDeviceIdValidity::kMaxValue;
+  if (install_attributes.GetDeviceId().empty())
+    device_id_validity = PolicyDeviceIdValidity::kActualIdUnknown;
+  else if (policy_data.device_id().empty())
+    device_id_validity = PolicyDeviceIdValidity::kMissing;
+  else if (policy_data.device_id() != install_attributes.GetDeviceId())
+    device_id_validity = PolicyDeviceIdValidity::kInvalid;
+  else
+    device_id_validity = PolicyDeviceIdValidity::kValid;
+  base::UmaHistogramEnumeration(histogram_name, device_id_validity);
+}
 
 }  // namespace
 
@@ -122,8 +136,6 @@ void DeviceCloudPolicyStoreAsh::InstallInitialPolicy(
   std::unique_ptr<DeviceCloudPolicyValidator> validator(
       CreateValidator(policy));
   validator->ValidateInitialKey(install_attributes_->GetDomain());
-  validator->ValidateDeviceId(install_attributes_->GetDeviceId(),
-                              CloudPolicyValidatorBase::DEVICE_ID_REQUIRED);
   DeviceCloudPolicyValidator::StartValidation(
       std::move(validator),
       base::BindOnce(&DeviceCloudPolicyStoreAsh::OnPolicyToStoreValidated,
@@ -207,6 +219,10 @@ void DeviceCloudPolicyStoreAsh::UpdateFromService() {
       DCHECK(policy_fetch_response);
       new_policy_fetch_response->MergeFrom(*policy_fetch_response);
       new_policy->MergeFrom(*policy_data);
+
+      RecordDeviceIdValidityMetric(
+          "Enterprise.CachedDevicePolicyDeviceIdValidity", *policy_data,
+          *install_attributes_);
     }
     SetPolicy(std::move(new_policy_fetch_response), std::move(new_policy));
 
@@ -268,6 +284,11 @@ void DeviceCloudPolicyStoreAsh::CheckDMToken() {
   }
   dm_token_checked_ = true;
 
+  // PolicyData from Active Directory doesn't contain a DM token.
+  if (install_attributes_->IsActiveDirectoryManaged()) {
+    return;
+  }
+
   const em::PolicyData* policy_data = device_settings_service_->policy_data();
   if (policy_data && policy_data->has_request_token()) {
     base::UmaHistogramBoolean(kDMTokenCheckHistogram, true);
@@ -280,29 +301,16 @@ void DeviceCloudPolicyStoreAsh::CheckDMToken() {
 
   std::stringstream debug_info;
   debug_info << "has_policy: " << (policy_data != nullptr);
-  // Log the value of the data from policy_fetch_response.
-  const em::PolicyFetchResponse* policy_fetch_response =
-      device_settings_service_->policy_fetch_response();
-  debug_info << ", has_fetch_response: " << (policy_fetch_response != nullptr);
-  if (policy_fetch_response) {
-    debug_info << ", has_signature: "
-               << policy_fetch_response->has_policy_data_signature();
-    debug_info << ", size = " << policy_fetch_response->ByteSize();
-    std::unique_ptr<em::PolicyData> poldata =
-        std::make_unique<em::PolicyData>();
-    if (!policy_fetch_response->has_policy_data() ||
-        !poldata->ParseFromString(policy_fetch_response->policy_data()) ||
-        !poldata->IsInitialized()) {
-      debug_info << ", parse policy failed";
-    } else {
-      debug_info << ", has_dm_token: " << poldata->has_request_token();
-      if (poldata->has_request_token()) {
-        debug_info << ", dm_token size: " << poldata->request_token().size();
-      }
-      debug_info << ", has_device_id: " << poldata->has_device_id()
-                 << ", has_device_state: " << poldata->has_device_state();
+  if (policy_data) {
+    debug_info << ", has_managed_by: " << policy_data->has_managed_by();
+    if (policy_data->has_policy_type()) {
+      debug_info << ", policy_type: " << policy_data->policy_type();
     }
   }
+  base::FilePath key_path;
+  bool path_found =
+      base::PathService::Get(chromeos::dbus_paths::FILE_OWNER_KEY, &key_path);
+  debug_info << ", has_key: " << (path_found && base::PathExists(key_path));
   debug_info << ", attrs mode: " << install_attributes_->GetMode()
              << ", is_locked: " << install_attributes_->IsDeviceLocked();
   LOG(ERROR) << "Device policy read on enrolled device yields "

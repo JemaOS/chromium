@@ -10,10 +10,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.annotation.Config;
 
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 
 /** Unit tests for {@link OfflineMeasurementsBackgroundTask}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -22,7 +21,7 @@ public final class OfflineMeasurementsBackgroundTaskUnitTest {
     @Test
     public void cancelTaskAndclearPersistedDataFromPrefs() {
         // Simulates the task writing data to prefs.
-        SharedPreferencesManager sharedPreferencesManager = ChromeSharedPreferences.getInstance();
+        SharedPreferencesManager sharedPreferencesManager = SharedPreferencesManager.getInstance();
         sharedPreferencesManager.writeString(
                 ChromePreferenceKeys.OFFLINE_MEASUREMENTS_LAST_CHECK_MILLIS, "test data");
         sharedPreferencesManager.writeString(
@@ -44,27 +43,20 @@ public final class OfflineMeasurementsBackgroundTaskUnitTest {
         OfflineMeasurementsBackgroundTask.clearPersistedDataFromPrefs();
 
         // Checks that all the prefs have been cleared.
-        assertFalse(
-                sharedPreferencesManager.contains(
-                        ChromePreferenceKeys.OFFLINE_MEASUREMENTS_LAST_CHECK_MILLIS));
-        assertFalse(
-                sharedPreferencesManager.contains(
-                        ChromePreferenceKeys
-                                .OFFLINE_MEASUREMENTS_CURRENT_TASK_MEASUREMENT_INTERVAL_IN_MINUTES));
-        assertFalse(
-                sharedPreferencesManager.contains(
-                        ChromePreferenceKeys.OFFLINE_MEASUREMENTS_USER_AGENT_STRING));
-        assertFalse(
-                sharedPreferencesManager.contains(
-                        ChromePreferenceKeys.OFFLINE_MEASUREMENTS_HTTP_PROBE_URL));
-        assertFalse(
-                sharedPreferencesManager.contains(
-                        ChromePreferenceKeys.OFFLINE_MEASUREMENTS_HTTP_PROBE_TIMEOUT_MS));
-        assertFalse(
-                sharedPreferencesManager.contains(
-                        ChromePreferenceKeys.OFFLINE_MEASUREMENTS_HTTP_PROBE_METHOD));
-        assertFalse(
-                sharedPreferencesManager.contains(
-                        ChromePreferenceKeys.OFFLINE_MEASUREMENTS_SYSTEM_STATE_LIST));
+        assertFalse(sharedPreferencesManager.contains(
+                ChromePreferenceKeys.OFFLINE_MEASUREMENTS_LAST_CHECK_MILLIS));
+        assertFalse(sharedPreferencesManager.contains(
+                ChromePreferenceKeys
+                        .OFFLINE_MEASUREMENTS_CURRENT_TASK_MEASUREMENT_INTERVAL_IN_MINUTES));
+        assertFalse(sharedPreferencesManager.contains(
+                ChromePreferenceKeys.OFFLINE_MEASUREMENTS_USER_AGENT_STRING));
+        assertFalse(sharedPreferencesManager.contains(
+                ChromePreferenceKeys.OFFLINE_MEASUREMENTS_HTTP_PROBE_URL));
+        assertFalse(sharedPreferencesManager.contains(
+                ChromePreferenceKeys.OFFLINE_MEASUREMENTS_HTTP_PROBE_TIMEOUT_MS));
+        assertFalse(sharedPreferencesManager.contains(
+                ChromePreferenceKeys.OFFLINE_MEASUREMENTS_HTTP_PROBE_METHOD));
+        assertFalse(sharedPreferencesManager.contains(
+                ChromePreferenceKeys.OFFLINE_MEASUREMENTS_SYSTEM_STATE_LIST));
     }
 }

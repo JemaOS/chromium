@@ -28,9 +28,9 @@ const int kMinSize = 31;
 const int kShowingDuration = 500;
 
 class ModeIndicatorFrameView : public views::BubbleFrameView {
-  METADATA_HEADER(ModeIndicatorFrameView, views::BubbleFrameView)
-
  public:
+  METADATA_HEADER(ModeIndicatorFrameView);
+
   explicit ModeIndicatorFrameView()
       : views::BubbleFrameView(gfx::Insets(), gfx::Insets()) {}
   ModeIndicatorFrameView(const ModeIndicatorFrameView&) = delete;
@@ -46,7 +46,7 @@ class ModeIndicatorFrameView : public views::BubbleFrameView {
   }
 };
 
-BEGIN_METADATA(ModeIndicatorFrameView)
+BEGIN_METADATA(ModeIndicatorFrameView, views::BubbleFrameView)
 END_METADATA
 
 }  // namespace
@@ -109,7 +109,7 @@ ImeModeIndicatorView::CreateNonClientFrameView(views::Widget* widget) {
   return frame;
 }
 
-BEGIN_METADATA(ImeModeIndicatorView)
+BEGIN_METADATA(ImeModeIndicatorView, views::BubbleDialogDelegateView)
 END_METADATA
 
 }  // namespace ash

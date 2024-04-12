@@ -6,24 +6,17 @@
 
 #include <memory>
 
-#include "ash/constants/ash_pref_names.h"
-#include "ash/strings/grit/ash_strings.h"
 #include "base/check.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
 #include "base/i18n/time_formatting.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/apps/app_service/launch_utils.h"
-#include "chrome/browser/ash/crosapi/crosapi_ash.h"
-#include "chrome/browser/ash/crosapi/crosapi_manager.h"
 #include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
 #include "chrome/browser/ash/policy/dlp/dlp_content_manager_ash.h"
-#include "chrome/browser/ash/policy/local_user_files/file_location_utils.h"
-#include "chrome/browser/ash/video_conference/video_conference_manager_ash.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/platform_util.h"
@@ -32,7 +25,6 @@
 #include "chrome/browser/ui/ash/capture_mode/recording_overlay_view_impl.h"
 #include "chrome/browser/ui/ash/screenshot_area.h"
 #include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
-#include "chrome/browser/ui/webui/ash/cloud_upload/cloud_upload_util.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chrome/common/pref_names.h"
 #include "chromeos/ash/components/login/login_state/login_state.h"
@@ -46,7 +38,6 @@
 #include "content/public/browser/video_capture_service.h"
 #include "services/video_capture/public/mojom/video_capture_service.mojom.h"
 #include "ui/aura/window.h"
-#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/window_open_disposition.h"
 
 namespace {
@@ -124,18 +115,6 @@ void ChromeCaptureModeDelegate::ShowScreenCaptureItemInFolder(
     const base::FilePath& file_path) {
   platform_util::ShowItemInFolder(ProfileManager::GetActiveUserProfile(),
                                   file_path);
-}
-
-void ChromeCaptureModeDelegate::OpenScreenCaptureItem(
-    const base::FilePath& file_path) {
-  Profile* profile = ProfileManager::GetActiveUserProfile();
-  if (!profile) {
-    return;
-  }
-
-  platform_util::OpenItem(profile, file_path,
-                          platform_util::OpenItemType::OPEN_FILE,
-                          platform_util::OpenOperationCallback());
 }
 
 void ChromeCaptureModeDelegate::OpenScreenshotInImageEditor(
@@ -248,30 +227,6 @@ base::FilePath ChromeCaptureModeDelegate::GetLinuxFilesPath() const {
       ProfileManager::GetActiveUserProfile());
 }
 
-base::FilePath ChromeCaptureModeDelegate::GetOneDriveMountPointPath() const {
-  Profile* profile = ProfileManager::GetPrimaryUserProfile();
-  return profile ? ash::cloud_upload::GetODFSFuseboxMount(profile)
-                 : base::FilePath();
-}
-
-ChromeCaptureModeDelegate::PolicyCapturePath
-ChromeCaptureModeDelegate::GetPolicyCapturePath() const {
-  if (auto* profile = ProfileManager::GetActiveUserProfile()) {
-    auto* pref = profile->GetPrefs()->FindPreference(
-        ash::prefs::kCaptureModePolicySavePath);
-    if (pref->IsManaged()) {
-      return {policy::local_user_files::ResolvePath(pref->GetValue()->GetString()),
-              CapturePathEnforcement::kManaged};
-    }
-    if (pref->IsRecommended()) {
-      return {policy::local_user_files::ResolvePath(
-                  pref->GetRecommendedValue()->GetString()),
-              CapturePathEnforcement::kRecommended};
-    }
-  }
-  return {base::FilePath(), CapturePathEnforcement::kNone};
-}
-
 std::unique_ptr<ash::RecordingOverlayView>
 ChromeCaptureModeDelegate::CreateRecordingOverlayView() const {
   return std::make_unique<RecordingOverlayViewImpl>(
@@ -310,42 +265,6 @@ bool ChromeCaptureModeDelegate::IsCameraDisabledByPolicy() const {
 bool ChromeCaptureModeDelegate::IsAudioCaptureDisabledByPolicy() const {
   return !ProfileManager::GetActiveUserProfile()->GetPrefs()->GetBoolean(
       prefs::kAudioCaptureAllowed);
-}
-
-void ChromeCaptureModeDelegate::RegisterVideoConferenceManagerClient(
-    crosapi::mojom::VideoConferenceManagerClient* client,
-    const base::UnguessableToken& client_id) {
-  crosapi::CrosapiManager::Get()
-      ->crosapi_ash()
-      ->video_conference_manager_ash()
-      ->RegisterCppClient(client, client_id);
-}
-
-void ChromeCaptureModeDelegate::UnregisterVideoConferenceManagerClient(
-    const base::UnguessableToken& client_id) {
-  crosapi::CrosapiManager::Get()
-      ->crosapi_ash()
-      ->video_conference_manager_ash()
-      ->UnregisterClient(client_id);
-}
-
-void ChromeCaptureModeDelegate::UpdateVideoConferenceManager(
-    crosapi::mojom::VideoConferenceMediaUsageStatusPtr status) {
-  crosapi::CrosapiManager::Get()
-      ->crosapi_ash()
-      ->video_conference_manager_ash()
-      ->NotifyMediaUsageUpdate(std::move(status), base::DoNothing());
-}
-
-void ChromeCaptureModeDelegate::NotifyDeviceUsedWhileDisabled(
-    crosapi::mojom::VideoConferenceMediaDevice device) {
-  crosapi::CrosapiManager::Get()
-      ->crosapi_ash()
-      ->video_conference_manager_ash()
-      ->NotifyDeviceUsedWhileDisabled(
-          device,
-          l10n_util::GetStringUTF16(IDS_ASH_SCREEN_CAPTURE_DISPLAY_SOURCE),
-          base::DoNothing());
 }
 
 void ChromeCaptureModeDelegate::OnGetDriveQuotaUsage(

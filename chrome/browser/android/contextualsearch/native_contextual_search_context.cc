@@ -19,11 +19,6 @@ NativeContextualSearchContext::NativeContextualSearchContext(JNIEnv* env,
 
 NativeContextualSearchContext::~NativeContextualSearchContext() = default;
 
-base::WeakPtr<ContextualSearchContext>
-NativeContextualSearchContext::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 // static
 base::WeakPtr<NativeContextualSearchContext>
 NativeContextualSearchContext::FromJavaContextualSearchContext(
@@ -37,7 +32,7 @@ NativeContextualSearchContext::FromJavaContextualSearchContext(
           Java_ContextualSearchContext_getNativePointer(
               base::android::AttachCurrentThread(),
               j_contextual_search_context));
-  return contextual_search_context->weak_ptr_factory_.GetWeakPtr();
+  return base::AsWeakPtr(contextual_search_context);
 }
 
 void NativeContextualSearchContext::SetResolveProperties(

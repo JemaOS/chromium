@@ -5,13 +5,12 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_TABS_TAB_GROUP_EDITOR_BUBBLE_VIEW_H_
 #define CHROME_BROWSER_UI_VIEWS_TABS_TAB_GROUP_EDITOR_BUBBLE_VIEW_H_
 
-#include <optional>
 #include <string>
-#include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/views/tabs/tab_group_header.h"
 #include "components/tab_groups/tab_group_color.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/controls/button/label_button.h"
@@ -35,9 +34,9 @@ class TabGroupHeader;
 
 // A dialog for changing a tab group's visual parameters.
 class TabGroupEditorBubbleView : public views::BubbleDialogDelegateView {
-  METADATA_HEADER(TabGroupEditorBubbleView, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(TabGroupEditorBubbleView);
+
   static constexpr int TAB_GROUP_HEADER_CXMENU_SAVE_GROUP = 13;
   static constexpr int TAB_GROUP_HEADER_CXMENU_NEW_TAB_IN_GROUP = 14;
   static constexpr int TAB_GROUP_HEADER_CXMENU_UNGROUP = 15;
@@ -53,7 +52,7 @@ class TabGroupEditorBubbleView : public views::BubbleDialogDelegateView {
       const Browser* browser,
       const tab_groups::TabGroupId& group,
       TabGroupHeader* header_view,
-      std::optional<gfx::Rect> anchor_rect = std::nullopt,
+      absl::optional<gfx::Rect> anchor_rect = absl::nullopt,
       // If not provided, will be set to |header_view|.
       views::View* anchor_view = nullptr,
       bool stop_context_menu_propagation = false);
@@ -69,14 +68,13 @@ class TabGroupEditorBubbleView : public views::BubbleDialogDelegateView {
   TabGroupEditorBubbleView(const Browser* browser,
                            const tab_groups::TabGroupId& group,
                            views::View* anchor_view,
-                           std::optional<gfx::Rect> anchor_rect,
+                           absl::optional<gfx::Rect> anchor_rect,
                            TabGroupHeader* header_view,
                            bool stop_context_menu_propagation);
   ~TabGroupEditorBubbleView() override;
 
   void UpdateGroup();
   const std::u16string GetTextForCloseButton();
-  const std::u16string GetSaveToggleAccessibleName();
 
   void OnSaveTogglePressed();
   void NewTabInGroupPressed();
@@ -108,9 +106,8 @@ class TabGroupEditorBubbleView : public views::BubbleDialogDelegateView {
   TitleFieldController title_field_controller_;
 
   class TitleField : public views::Textfield {
-    METADATA_HEADER(TitleField, views::Textfield)
-
    public:
+    METADATA_HEADER(TitleField);
     explicit TitleField(bool stop_context_menu_propagation)
         : stop_context_menu_propagation_(stop_context_menu_propagation) {}
     ~TitleField() override = default;
@@ -133,9 +130,7 @@ class TabGroupEditorBubbleView : public views::BubbleDialogDelegateView {
   raw_ptr<ColorPickerView> color_selector_;
 
   raw_ptr<views::ToggleButton> save_group_toggle_ = nullptr;
-  raw_ptr<views::ImageView> save_group_icon_ = nullptr;
-  raw_ptr<views::Label> save_group_label_ = nullptr;
-  std::vector<raw_ptr<views::LabelButton>> menu_items_;
+  raw_ptr<views::LabelButton> move_menu_item_ = nullptr;
 
   // If true will use the |anchor_rect_| provided in the constructor, otherwise
   // fall back to using the anchor view bounds.

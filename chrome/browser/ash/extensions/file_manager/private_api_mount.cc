@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/extensions/file_manager/private_api_mount.h"
 
 #include <memory>
-#include <string_view>
 #include <utility>
 
 #include "base/feature_list.h"
@@ -23,8 +22,6 @@
 #include "chrome/browser/ash/file_manager/file_tasks_notifier.h"
 #include "chrome/browser/ash/file_manager/fileapi_util.h"
 #include "chrome/browser/ash/file_manager/volume_manager.h"
-#include "chrome/browser/ash/fileapi/file_system_backend.h"
-#include "chrome/browser/ash/fusebox/fusebox_server.h"
 #include "chrome/browser/ash/smb_client/smb_service.h"
 #include "chrome/browser/ash/smb_client/smb_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -42,7 +39,7 @@
 namespace extensions {
 namespace {
 
-std::string Redact(const std::string_view path) {
+std::string Redact(const base::StringPiece path) {
   return LOG_IS_ON(INFO) ? base::StrCat({"'", path, "'"}) : "(redacted)";
 }
 
@@ -60,32 +57,32 @@ FileManagerPrivateAddMountFunction::~FileManagerPrivateAddMountFunction() =
 
 ExtensionFunction::ResponseAction FileManagerPrivateAddMountFunction::Run() {
   using file_manager_private::AddMount::Params;
-  const std::optional<Params> params = Params::Create(args());
+  const absl::optional<Params> params = Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   Profile* const profile = Profile::FromBrowserContext(browser_context());
   if (drive::EventLogger* logger = file_manager::util::GetLogger(profile)) {
-    logger->Log(logging::LOGGING_INFO, "%s[%s] called. (source: '%s')", name(),
-                request_uuid().AsLowercaseString().c_str(),
+    logger->Log(logging::LOG_INFO, "%s[%d] called. (source: '%s')", name(),
+                request_id(),
                 params->file_url.empty() ? "(none)" : params->file_url.c_str());
   }
   set_log_on_completion(true);
 
-  const scoped_refptr<storage::FileSystemContext> file_system_context =
-      file_manager::util::GetFileSystemContextForRenderFrameHost(
-          profile, render_frame_host());
-  const storage::FileSystemURL fs_url(
-      file_system_context->CrackURLInFirstPartyContext(GURL(params->file_url)));
-  path_ = ash::FileSystemBackend::CanHandleURL(fs_url)
-              ? (fs_url.TypeImpliesPathIsReal()
-                     ? fs_url.path()
-                     : fusebox::Server::SubstituteFuseboxFilePath(fs_url))
-              : base::FilePath();
+  path_ = file_manager::util::GetLocalPathFromURL(render_frame_host(), profile,
+                                                  GURL(params->file_url));
 
   if (auto* notifier =
           file_manager::file_tasks::FileTasksNotifier::GetForProfile(profile)) {
+    const scoped_refptr<storage::FileSystemContext> file_system_context =
+        file_manager::util::GetFileSystemContextForRenderFrameHost(
+            profile, render_frame_host());
+
     std::vector<storage::FileSystemURL> urls;
-    urls.push_back(std::move(fs_url));
+    const storage::FileSystemURL url =
+        file_system_context->CrackURLInFirstPartyContext(
+            GURL(params->file_url));
+    urls.push_back(url);
+
     notifier->NotifyFileTasks(urls);
   }
 
@@ -144,31 +141,22 @@ FileManagerPrivateCancelMountingFunction::
 ExtensionFunction::ResponseAction
 FileManagerPrivateCancelMountingFunction::Run() {
   using file_manager_private::CancelMounting::Params;
-  const std::optional<Params> params = Params::Create(args());
+  const absl::optional<Params> params = Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   Profile* const profile = Profile::FromBrowserContext(browser_context());
 
   if (drive::EventLogger* logger = file_manager::util::GetLogger(profile)) {
-    logger->Log(logging::LOGGING_INFO, "%s[%s] called. (source: '%s')", name(),
-                request_uuid().AsLowercaseString().c_str(),
+    logger->Log(logging::LOG_INFO, "%s[%d] called. (source: '%s')", name(),
+                request_id(),
                 params->file_url.empty() ? "(none)" : params->file_url.c_str());
   }
   set_log_on_completion(true);
 
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
-  const scoped_refptr<storage::FileSystemContext> file_system_context =
-      file_manager::util::GetFileSystemContextForRenderFrameHost(
-          profile, render_frame_host());
-  const storage::FileSystemURL fs_url(
-      file_system_context->CrackURLInFirstPartyContext(GURL(params->file_url)));
-  base::FilePath path =
-      ash::FileSystemBackend::CanHandleURL(fs_url)
-          ? (fs_url.TypeImpliesPathIsReal()
-                 ? fs_url.path()
-                 : fusebox::Server::SubstituteFuseboxFilePath(fs_url))
-          : base::FilePath();
+  base::FilePath path = file_manager::util::GetLocalPathFromURL(
+      render_frame_host(), profile, GURL(params->file_url));
 
   DiskMountManager* const disk_mount_manager = DiskMountManager::GetInstance();
   DCHECK(disk_mount_manager);
@@ -192,14 +180,13 @@ void FileManagerPrivateCancelMountingFunction::OnCancelled(
 
 ExtensionFunction::ResponseAction FileManagerPrivateRemoveMountFunction::Run() {
   using file_manager_private::RemoveMount::Params;
-  const std::optional<Params> params = Params::Create(args());
+  const absl::optional<Params> params = Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   Profile* const profile = Profile::FromBrowserContext(browser_context());
   if (drive::EventLogger* logger = file_manager::util::GetLogger(profile)) {
-    logger->Log(logging::LOGGING_INFO, "%s[%s] called. (volume_id: '%s')",
-                name(), request_uuid().AsLowercaseString().c_str(),
-                params->volume_id.c_str());
+    logger->Log(logging::LOG_INFO, "%s[%d] called. (volume_id: '%s')", name(),
+                request_id(), params->volume_id.c_str());
   }
   set_log_on_completion(true);
 
@@ -216,7 +203,7 @@ ExtensionFunction::ResponseAction FileManagerPrivateRemoveMountFunction::Run() {
   if (!volume) {
     LOG(ERROR) << "Cannot find volume " << Redact(volume_id);
     return RespondNow(Error(file_manager_private::ToString(
-        api::file_manager_private::MountError::kPathNotMounted)));
+        api::file_manager_private::MOUNT_ERROR_PATH_NOT_MOUNTED)));
   }
 
   switch (volume->type()) {
@@ -277,7 +264,7 @@ void FileManagerPrivateRemoveMountFunction::OnSshFsUnmounted(bool ok) {
     Respond(NoArguments());
   } else {
     Respond(Error(file_manager_private::ToString(
-        api::file_manager_private::MountError::kUnknownError)));
+        api::file_manager_private::MOUNT_ERROR_UNKNOWN_ERROR)));
   }
 }
 
@@ -315,10 +302,9 @@ FileManagerPrivateGetVolumeMetadataListFunction::Run() {
   }
 
   if (drive::EventLogger* logger = file_manager::util::GetLogger(profile)) {
-    logger->Log(logging::LOGGING_INFO,
-                "%s[%s] succeeded. (results: '[%s]', %" PRIuS " mount points)",
-                name(), request_uuid().AsLowercaseString().c_str(),
-                log_string.c_str(), result.size());
+    logger->Log(logging::LOG_INFO,
+                "%s[%d] succeeded. (results: '[%s]', %" PRIuS " mount points)",
+                name(), request_id(), log_string.c_str(), result.size());
   }
 
   return RespondNow(ArgumentList(

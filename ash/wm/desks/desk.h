@@ -6,12 +6,10 @@
 #define ASH_WM_DESKS_DESK_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "ash/ash_export.h"
-#include "ash/wm/desks/desks_histogram_enums.h"
 #include "base/containers/flat_map.h"
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
@@ -49,9 +47,6 @@ class ASH_EXPORT Desk {
 
     // Called when the desk's name changes.
     virtual void OnDeskNameChanged(const std::u16string& new_name) = 0;
-
-    // Called when the desk's associated profile has changed.
-    virtual void OnDeskProfileChanged(uint64_t new_lacros_profile_id) {}
   };
 
   // Suspends notification of content updates within its scope. Note that the
@@ -75,7 +70,7 @@ class ASH_EXPORT Desk {
     ~ScopedContentUpdateNotificationDisabler();
 
    private:
-    std::vector<raw_ptr<Desk, VectorExperimental>> desks_;
+    std::vector<Desk*> desks_;
 
     // Notifies all desks in `desks_` via `NotifyContentChanged()` when this is
     // destroyed and there are no other disablers.
@@ -86,7 +81,7 @@ class ASH_EXPORT Desk {
   // used to support per-desk z-orders for all-desk windows. Entries are stored
   // in ascending `order`.
   struct AllDeskWindowStackingData {
-    raw_ptr<aura::Window, DanglingUntriaged> window = nullptr;
+    raw_ptr<aura::Window, ExperimentalAsh> window = nullptr;
     // The z-order of the window.
     // Note: this is reversed from how child windows are ordered in
     // `aura::Window`, so an entry with `order == 0` means topmost.
@@ -108,10 +103,7 @@ class ASH_EXPORT Desk {
 
   const base::Uuid& uuid() const { return uuid_; }
 
-  const std::vector<raw_ptr<aura::Window, VectorExperimental>>& windows()
-      const {
-    return windows_;
-  }
+  const std::vector<aura::Window*>& windows() const { return windows_; }
 
   const std::u16string& name() const { return name_; }
 
@@ -149,10 +141,6 @@ class ASH_EXPORT Desk {
     return all_desk_window_stacking_;
   }
 
-  // Returns the lacros profile ID that this desk is associated with. A value of
-  // 0 means that the desk is associated with the primary user (the default).
-  uint64_t lacros_profile_id() const { return lacros_profile_id_; }
-
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
 
@@ -174,15 +162,6 @@ class ASH_EXPORT Desk {
   // Sets the desks `uuid_` to the `new_guid` if `new_guid` is valid, used when
   // restoring desks on sign-in. If `new_guid` is invalid no change happens.
   void SetGuid(base::Uuid new_guid);
-
-  // Sets the desk's lacros profile id to `lacros_profile_id`. The value 0
-  // (which is the default value) indicates that the desk is associated with the
-  // primary user. `source` should be specified when the action is directly
-  // initiated by a user (metrics will be emitted). When `skip_prefs_update` is
-  // true, prefs are not updated.
-  void SetLacrosProfileId(uint64_t lacros_profile_id,
-                          std::optional<DeskProfilesSelectProfileSource> source,
-                          bool skip_prefs_update = false);
 
   // Prepares for the animation to activate this desk (i.e. this desk is not
   // active yet), by showing its containers on all root windows while setting
@@ -253,15 +232,13 @@ class ASH_EXPORT Desk {
   void RecordAndResetConsecutiveDailyVisits(bool being_removed);
 
   // Gets all app windows on this desk that should be closed.
-  std::vector<raw_ptr<aura::Window, VectorExperimental>> GetAllAppWindows()
-      const;
+  std::vector<aura::Window*> GetAllAppWindows() const;
 
   // Gets desk windows including floated window (if any).
   // Note that floated window isn't tracked in `windows_` but still "belongs" to
   // this desk, it's stored in the float container and managed by
   // `FloatController`.
-  std::vector<raw_ptr<aura::Window, VectorExperimental>>
-  GetAllAssociatedWindows() const;
+  std::vector<aura::Window*> GetAllAssociatedWindows() const;
 
   // Construct stacking data for windows that appear on all desks. This is done
   // just as a desk becomes inactive. The stacking data is then later used by
@@ -272,18 +249,12 @@ class ASH_EXPORT Desk {
   // windows. This is a no-op if there is no data for the current desk.
   void RestackAllDeskWindows();
 
-  // Start tracking the z-order of `window`. Called when `window` has been
-  // turned into an all-desk window, or if it has been moved to a new root.
-  void TrackAllDeskWindow(aura::Window* window);
+  // Called when an all-desk window has been added.
+  void AddAllDeskWindow(aura::Window* window);
 
-  // Remove all-desk window tracking for `window`. Called when an all-desk
-  // window has been removed, or moved to a new root. `recent_root` is the root
-  // that we have all desk window data associated with and when the window has
-  // moved to a new root, it will be different than `window->GetRootWindow()`.
-  void UntrackAllDeskWindow(aura::Window* window, aura::Window* recent_root);
-
-  // Called when an all-desk window has been moved from one root to another.
-  void AllDeskWindowMovedToNewRoot(aura::Window* window);
+  // Called when an all-desk window has been removed (either from being closed
+  // or not longer being all-desk).
+  void RemoveAllDeskWindow(aura::Window* window);
 
   // Returns true if notification of content update is suspended.
   bool ContentUpdateNotificationSuspended() const;
@@ -320,11 +291,6 @@ class ASH_EXPORT Desk {
   // content update notification disablers.
   void ResumeContentUpdateNotification(bool notify_when_fully_resumed);
 
-  // Returns true if this desk has ADW tracking data for `window` on a root
-  // other than its current root. This indicates that `window` has been moved
-  // from one root to another.
-  bool HasAllDeskWindowDataOnOtherRoot(aura::Window* window) const;
-
   // Uniquely identifies the desk.
   base::Uuid uuid_;
 
@@ -334,7 +300,7 @@ class ASH_EXPORT Desk {
   // Windows tracked on this desk. Clients of the DesksController can use this
   // list when they're notified of desk change events.
   // TODO(afakhry): Change this to track MRU windows on this desk.
-  std::vector<raw_ptr<aura::Window, VectorExperimental>> windows_;
+  std::vector<aura::Window*> windows_;
 
   // The name given to this desk.
   std::u16string name_;
@@ -384,10 +350,6 @@ class ASH_EXPORT Desk {
   base::flat_map<aura::Window*, std::vector<AllDeskWindowStackingData>>
       all_desk_window_stacking_;
 
-  // Used to track the last active root when the desk is being deactivated.
-  // Should be null if the current desk is active.
-  raw_ptr<aura::Window> last_active_root_ = nullptr;
-
   // Tracks whether |this| has been interacted with this week. This value is
   // reset by the DesksController.
   bool interacted_with_this_week_ = false;
@@ -395,10 +357,6 @@ class ASH_EXPORT Desk {
   // A timer for marking |this| as interacted with only if the user remains on
   // |this| for a brief period of time.
   base::OneShotTimer active_desk_timer_;
-
-  // The lacros profile ID that this desk has been associated with. Defaults to
-  // 0 which means the desk is associated with the primary user.
-  uint64_t lacros_profile_id_ = 0;
 };
 
 }  // namespace ash

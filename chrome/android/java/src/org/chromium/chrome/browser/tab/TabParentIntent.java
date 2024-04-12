@@ -46,8 +46,7 @@ public final class TabParentIntent extends EmptyTabObserver implements UserData 
         boolean isSelected = mCurrentTab.get() == tab;
 
         // If the parent Tab belongs to another Activity, fire the Intent to bring it back.
-        if (isSelected
-                && mParentIntent != null
+        if (isSelected && mParentIntent != null
                 && TabUtils.getActivity(tab).getIntent() != mParentIntent) {
             TabUtils.getActivity(tab).startActivity(mParentIntent);
         }
@@ -58,7 +57,9 @@ public final class TabParentIntent extends EmptyTabObserver implements UserData 
         return this;
     }
 
-    /** Set the supplier of the current Tab. */
+    /**
+     * Set the supplier of the current Tab.
+     */
     public void setCurrentTab(Supplier<Tab> currentTab) {
         mCurrentTab = currentTab;
     }

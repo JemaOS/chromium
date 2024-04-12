@@ -8,7 +8,7 @@
 
 #include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/badging/badge_manager.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/web_applications/web_app_provider_factory.h"
@@ -24,8 +24,7 @@ BadgeManager* BadgeManagerFactory::GetForProfile(Profile* profile) {
 
 // static
 BadgeManagerFactory* BadgeManagerFactory::GetInstance() {
-  static base::NoDestructor<BadgeManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<BadgeManagerFactory>::get();
 }
 
 BadgeManagerFactory::BadgeManagerFactory()
@@ -40,12 +39,11 @@ BadgeManagerFactory::BadgeManagerFactory()
   DependsOn(web_app::WebAppProviderFactory::GetInstance());
 }
 
-BadgeManagerFactory::~BadgeManagerFactory() = default;
+BadgeManagerFactory::~BadgeManagerFactory() {}
 
-std::unique_ptr<KeyedService>
-BadgeManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* BadgeManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<BadgeManager>(Profile::FromBrowserContext(context));
+  return new BadgeManager(Profile::FromBrowserContext(context));
 }
 
 }  // namespace badging

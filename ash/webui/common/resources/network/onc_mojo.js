@@ -8,8 +8,8 @@
  * strings and for debugging. They are not intended to be drectly user facing.
  */
 
-import {assert, assertNotReached} from 'chrome://resources/ash/common/assert.js';
 import {loadTimeData} from 'chrome://resources/ash/common/load_time_data.m.js';
+import {assert, assertNotReached} from 'chrome://resources/ash/common/assert.js';
 import {ActivationStateType, ApnProperties, AuthenticationType, ConfigProperties, DeviceStateProperties as MojomDeviceStateProperties, HiddenSsidMode, InhibitReason, IPConfigProperties, ManagedApnList, ManagedBoolean, ManagedInt32, ManagedProperties, ManagedString, ManagedStringList, ManagedSubjectAltNameMatchList, MatchType, NetworkStateProperties as MojomNetworkStateProperties, ProxyMode, SecurityType, SIMInfo, SIMLockStatus, SubjectAltName, SubjectAltName_Type, TetherStateProperties, TrafficCounterProperties, VpnType} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
 import {ConnectionStateType, DeviceStateType, IPConfigType, NetworkType, OncSource, PolicySource, PortalState} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/network_types.mojom-webui.js';
 import {IPAddress} from 'chrome://resources/mojo/services/network/public/mojom/ip_address.mojom-webui.js';
@@ -467,42 +467,46 @@ export class OncMojo {
   }
 
   /**
-   * WARNING: The string returned by this method may contain malicious HTML and
-   * should not be used for Polymer bindings in CSS code. For additional
-   * information see b/286254915.
-   *
+   * @param {string} networkName
+   * @param {string|undefined} providerName
+   * @return {string}
+   */
+  static getVpnDisplayName(networkName, providerName) {
+    if (providerName) {
+      return loadTimeData.getStringF(
+          'vpnNameTemplate', providerName, networkName);
+    }
+    return networkName;
+  }
+
+  /**
    * @param {!MojomNetworkStateProperties} network
    * @return {string}
    */
-  static getNetworkStateDisplayNameUnsafe(network) {
+  static getNetworkStateDisplayName(network) {
     if (!network.name) {
       return OncMojo.getNetworkTypeDisplayName(network.type);
     }
     if (network.type === NetworkType.kVPN &&
         network.typeState.vpn.providerName) {
-      return loadTimeData.getStringF(
-          'vpnNameTemplate', network.typeState.vpn.providerName, network.name);
+      return OncMojo.getVpnDisplayName(
+          network.name, network.typeState.vpn.providerName);
     }
     return network.name;
   }
 
   /**
-   * WARNING: The string returned by this method may contain malicious HTML and
-   * should not be used for Polymer bindings in CSS code. For additional
-   * information see b/286254915.
-   *
    * @param {!ManagedProperties} network
    * @return {string}
    */
-  static getNetworkNameUnsafe(network) {
+  static getNetworkName(network) {
     if (!network.name || !network.name.activeValue) {
       return OncMojo.getNetworkTypeDisplayName(network.type);
     }
     if (network.type === NetworkType.kVPN &&
         network.typeProperties.vpn.providerName) {
-      return loadTimeData.getStringF(
-          'vpnNameTemplate', network.typeProperties.vpn.providerName,
-          network.name.activeValue);
+      return OncMojo.getVpnDisplayName(
+          network.name.activeValue, network.typeProperties.vpn.providerName);
     }
     return network.name.activeValue;
   }
@@ -588,6 +592,7 @@ export class OncMojo {
       source: OncSource.kNone,
       type: type,
       typeState: {},
+      dnsQueriesMonitored: false,
     };
     switch (type) {
       case NetworkType.kCellular:
@@ -601,8 +606,6 @@ export class OncMojo {
           simLockEnabled: false,
           simLocked: false,
           simLockType: '',
-          hasNickName: false,
-          networkOperator: '',
         };
         break;
       case NetworkType.kEthernet:
@@ -634,7 +637,6 @@ export class OncMojo {
           security: SecurityType.kNone,
           signalStrength: 0,
           ssid: '',
-          passpointId: '',
         };
         break;
       default:
@@ -669,8 +671,6 @@ export class OncMojo {
         networkState.typeState.cellular.eid = cellularProperties.eid || '';
         networkState.typeState.cellular.activationState =
             cellularProperties.activationState;
-        networkState.typeState.cellular.paymentPortal =
-            cellularProperties.paymentPortal;
         networkState.typeState.cellular.networkTechnology =
             cellularProperties.networkTechnology || '';
         networkState.typeState.cellular.roaming =
@@ -679,8 +679,6 @@ export class OncMojo {
             cellularProperties.signalStrength;
         networkState.typeState.cellular.simLocked =
             cellularProperties.simLocked;
-        networkState.typeState.cellular.simLockType =
-            cellularProperties.simLockType;
         break;
       case NetworkType.kEthernet:
         networkState.typeState.ethernet.authentication =
@@ -745,7 +743,6 @@ export class OncMojo {
             activationState: ActivationStateType.kUnknown,
             signalStrength: 0,
             simLocked: false,
-            simLockType: '',
             supportNetworkScan: false,
           },
         };

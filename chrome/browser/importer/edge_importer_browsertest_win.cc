@@ -44,21 +44,19 @@ class TestObserver : public ProfileWriter,
  public:
   explicit TestObserver(
       const std::vector<BookmarkInfo>& expected_bookmark_entries,
-      const std::vector<FaviconGroup>& expected_favicon_groups,
-      base::OnceClosure quit_closure)
+      const std::vector<FaviconGroup>& expected_favicon_groups)
       : ProfileWriter(nullptr),
         bookmark_count_(0),
         expected_bookmark_entries_(expected_bookmark_entries),
         expected_favicon_groups_(expected_favicon_groups),
-        favicon_count_(0),
-        quit_closure_(std::move(quit_closure)) {}
+        favicon_count_(0) {}
 
   // importer::ImporterProgressObserver:
   void ImportStarted() override {}
   void ImportItemStarted(importer::ImportItem item) override {}
   void ImportItemEnded(importer::ImportItem item) override {}
   void ImportEnded() override {
-    std::move(quit_closure_).Run();
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
     EXPECT_EQ(expected_bookmark_entries_.size(), bookmark_count_);
     EXPECT_EQ(expected_favicon_groups_.size(), favicon_count_);
   }
@@ -116,8 +114,6 @@ class TestObserver : public ProfileWriter,
   std::vector<FaviconGroup> expected_favicon_groups_;
   // This is the count of favicon groups observed during the test.
   size_t favicon_count_;
-  // the closure to quit the RunLoop
-  base::OnceClosure quit_closure_;
 };
 
 bool DecompressDatabase(const base::FilePath& data_path) {
@@ -219,10 +215,9 @@ IN_PROC_BROWSER_TEST_F(EdgeImporterBrowserTest, EdgeImporter) {
 
   // Starts to import the above settings.
   // Deletes itself.
-  base::RunLoop loop;
   ExternalProcessImporterHost* host = new ExternalProcessImporterHost;
-  scoped_refptr<TestObserver> observer(new TestObserver(
-      bookmark_entries, favicon_groups, loop.QuitWhenIdleClosure()));
+  scoped_refptr<TestObserver> observer(
+      new TestObserver(bookmark_entries, favicon_groups));
   host->set_observer(observer.get());
 
   importer::SourceProfile source_profile;
@@ -231,7 +226,7 @@ IN_PROC_BROWSER_TEST_F(EdgeImporterBrowserTest, EdgeImporter) {
 
   host->StartImportSettings(source_profile, browser()->profile(),
                             importer::FAVORITES, observer.get());
-  loop.Run();
+  base::RunLoop().Run();
 }
 
 IN_PROC_BROWSER_TEST_F(EdgeImporterBrowserTest, EdgeImporterLegacyFallback) {
@@ -260,10 +255,9 @@ IN_PROC_BROWSER_TEST_F(EdgeImporterBrowserTest, EdgeImporterLegacyFallback) {
 
   // Starts to import the above settings.
   // Deletes itself.
-  base::RunLoop loop;
   ExternalProcessImporterHost* host = new ExternalProcessImporterHost;
-  scoped_refptr<TestObserver> observer(new TestObserver(
-      bookmark_entries, favicon_groups, loop.QuitWhenIdleClosure()));
+  scoped_refptr<TestObserver> observer(
+      new TestObserver(bookmark_entries, favicon_groups));
   host->set_observer(observer.get());
 
   importer::SourceProfile source_profile;
@@ -279,7 +273,7 @@ IN_PROC_BROWSER_TEST_F(EdgeImporterBrowserTest, EdgeImporterLegacyFallback) {
 
   host->StartImportSettings(source_profile, browser()->profile(),
                             importer::FAVORITES, observer.get());
-  loop.Run();
+  base::RunLoop().Run();
 }
 
 IN_PROC_BROWSER_TEST_F(EdgeImporterBrowserTest, EdgeImporterNoDatabase) {
@@ -295,10 +289,9 @@ IN_PROC_BROWSER_TEST_F(EdgeImporterBrowserTest, EdgeImporterNoDatabase) {
 
   // Starts to import the above settings.
   // Deletes itself.
-  base::RunLoop loop;
   ExternalProcessImporterHost* host = new ExternalProcessImporterHost;
-  scoped_refptr<TestObserver> observer(new TestObserver(
-      bookmark_entries, favicon_groups, loop.QuitWhenIdleClosure()));
+  scoped_refptr<TestObserver> observer(
+      new TestObserver(bookmark_entries, favicon_groups));
   host->set_observer(observer.get());
 
   importer::SourceProfile source_profile;
@@ -307,5 +300,5 @@ IN_PROC_BROWSER_TEST_F(EdgeImporterBrowserTest, EdgeImporterNoDatabase) {
 
   host->StartImportSettings(source_profile, browser()->profile(),
                             importer::FAVORITES, observer.get());
-  loop.Run();
+  base::RunLoop().Run();
 }

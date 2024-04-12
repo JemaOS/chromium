@@ -28,7 +28,7 @@ ZoomView::ZoomView(IconLabelBubbleView::Delegate* icon_label_bubble_delegate,
       icon_(&kZoomMinusIcon) {
   SetVisible(false);
   SetAccessibilityProperties(
-      /*role*/ std::nullopt,
+      /*role*/ absl::nullopt,
       l10n_util::GetStringFUTF16(IDS_TOOLTIP_ZOOM,
                                  base::FormatPercent(current_zoom_percent_)));
 }
@@ -127,5 +127,5 @@ const gfx::VectorIcon& ZoomView::GetVectorIcon() const {
   return *icon_;
 }
 
-BEGIN_METADATA(ZoomView)
+BEGIN_METADATA(ZoomView, PageActionIconView)
 END_METADATA

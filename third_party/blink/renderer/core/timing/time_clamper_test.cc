@@ -4,10 +4,9 @@
 
 #include "third_party/blink/renderer/core/timing/time_clamper.h"
 
-#include <cmath>
-
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
+
+#include <cmath>
 
 namespace blink {
 namespace {
@@ -15,12 +14,7 @@ const int64_t kIntervalInMicroseconds =
     TimeClamper::kFineResolutionMicroseconds;
 }
 
-class TimeClamperTest : public testing::Test {
- protected:
-  test::TaskEnvironment task_environment_;
-};
-
-TEST_F(TimeClamperTest, TimeStampsAreNonNegative) {
+TEST(TimeClamperTest, TimeStampsAreNonNegative) {
   TimeClamper clamper;
   EXPECT_GE(
       clamper.ClampTimeResolution(base::TimeDelta(), true).InMicroseconds(),
@@ -34,7 +28,7 @@ TEST_F(TimeClamperTest, TimeStampsAreNonNegative) {
       0.f);
 }
 
-TEST_F(TimeClamperTest, TimeStampsIncreaseByFixedAmount) {
+TEST(TimeClamperTest, TimeStampsIncreaseByFixedAmount) {
   TimeClamper clamper;
   int64_t prev =
       clamper.ClampTimeResolution(base::TimeDelta(), true).InMicroseconds();
@@ -53,7 +47,7 @@ TEST_F(TimeClamperTest, TimeStampsIncreaseByFixedAmount) {
   }
 }
 
-TEST_F(TimeClamperTest, ClampingIsDeterministic) {
+TEST(TimeClamperTest, ClampingIsDeterministic) {
   TimeClamper clamper;
   for (int64_t time_microseconds = 0;
        time_microseconds < kIntervalInMicroseconds * 100;
@@ -68,7 +62,7 @@ TEST_F(TimeClamperTest, ClampingIsDeterministic) {
   }
 }
 
-TEST_F(TimeClamperTest, ClampingNegativeNumbersIsConsistent) {
+TEST(TimeClamperTest, ClampingNegativeNumbersIsConsistent) {
   TimeClamper clamper;
   for (int64_t time_microseconds = -kIntervalInMicroseconds * 100;
        time_microseconds < kIntervalInMicroseconds * 100;
@@ -83,7 +77,7 @@ TEST_F(TimeClamperTest, ClampingNegativeNumbersIsConsistent) {
   }
 }
 
-TEST_F(TimeClamperTest, ClampingIsPerInstance) {
+TEST(TimeClamperTest, ClampingIsPerInstance) {
   TimeClamper clamper1;
   TimeClamper clamper2;
   int64_t time_microseconds = kIntervalInMicroseconds / 2;
@@ -149,7 +143,7 @@ void UniformityTest(int64_t time_microseconds,
   EXPECT_LT(chi_squared, 24.322);
 }
 
-TEST_F(TimeClamperTest, ClampingIsUniform) {
+TEST(TimeClamperTest, ClampingIsUniform) {
   UniformityTest(299792458238, 5, true);
   UniformityTest(29979245823800, 5, true);
   UniformityTest(1616533323846260, 5, true);

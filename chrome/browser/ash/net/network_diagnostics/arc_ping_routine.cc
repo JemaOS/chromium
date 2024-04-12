@@ -40,8 +40,7 @@ constexpr int kTimeoutGetManagedPropertiesSeconds = 180;
 
 }  // namespace
 
-ArcPingRoutine::ArcPingRoutine(mojom::RoutineCallSource source)
-    : NetworkDiagnosticsRoutine(source) {
+ArcPingRoutine::ArcPingRoutine() {
   set_verdict(mojom::RoutineVerdict::kNotRun);
   GetNetworkConfigService(
       remote_cros_network_config_.BindNewPipeAndPassReceiver());

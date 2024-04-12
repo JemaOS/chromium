@@ -45,16 +45,13 @@ void WindowProxyManager::ClearForV8MemoryPurge() {
 
 void WindowProxyManager::ReleaseGlobalProxies(
     GlobalProxyVector& global_proxies) {
-  DCHECK(global_proxies.worlds.empty());
-  DCHECK(global_proxies.proxies.empty());
-  const auto size = 1 + isolated_worlds_.size();
-  global_proxies.worlds.ReserveInitialCapacity(size);
-  global_proxies.proxies.reserve(size);
-  global_proxies.worlds.push_back(&window_proxy_->World());
-  global_proxies.proxies.push_back(window_proxy_->ReleaseGlobalProxy());
+  DCHECK(global_proxies.empty());
+  global_proxies.ReserveInitialCapacity(1 + isolated_worlds_.size());
+  global_proxies.emplace_back(&window_proxy_->World(),
+                              window_proxy_->ReleaseGlobalProxy());
   for (auto& entry : isolated_worlds_) {
-    global_proxies.worlds.push_back(&entry.value->World());
-    global_proxies.proxies.push_back(
+    global_proxies.emplace_back(
+        &entry.value->World(),
         WindowProxyMaybeUninitialized(entry.value->World())
             ->ReleaseGlobalProxy());
   }
@@ -62,12 +59,8 @@ void WindowProxyManager::ReleaseGlobalProxies(
 
 void WindowProxyManager::SetGlobalProxies(
     const GlobalProxyVector& global_proxies) {
-  DCHECK_EQ(global_proxies.worlds.size(), global_proxies.proxies.size());
-  const wtf_size_t size = global_proxies.worlds.size();
-  for (wtf_size_t i = 0; i < size; ++i) {
-    WindowProxyMaybeUninitialized(*global_proxies.worlds[i])
-        ->SetGlobalProxy(global_proxies.proxies[i]);
-  }
+  for (const auto& entry : global_proxies)
+    WindowProxyMaybeUninitialized(*entry.first)->SetGlobalProxy(entry.second);
 
   // Any transferred global proxies must now be reinitialized to ensure any
   // preexisting JS references to global proxies don't break.
@@ -81,9 +74,8 @@ void WindowProxyManager::SetGlobalProxies(
   if (frame_type_ == FrameType::kLocal)
     return;
 
-  for (wtf_size_t i = 0; i < size; ++i) {
-    WindowProxyMaybeUninitialized(*global_proxies.worlds[i])
-        ->InitializeIfNeeded();
+  for (const auto& entry : global_proxies) {
+    WindowProxyMaybeUninitialized(*entry.first)->InitializeIfNeeded();
   }
 }
 
@@ -94,14 +86,14 @@ void WindowProxyManager::ResetIsolatedWorldsForTesting() {
   isolated_worlds_.clear();
 }
 
-WindowProxyManager::WindowProxyManager(v8::Isolate* isolate,
-                                       Frame& frame,
-                                       FrameType frame_type)
-    : isolate_(isolate),
+WindowProxyManager::WindowProxyManager(Frame& frame, FrameType frame_type)
+    : isolate_(V8PerIsolateData::MainThreadIsolate()),
       frame_(&frame),
       frame_type_(frame_type),
-      window_proxy_(CreateWindowProxy(DOMWrapperWorld::MainWorld(isolate))) {
+      window_proxy_(CreateWindowProxy(DOMWrapperWorld::MainWorld())) {
   // All WindowProxyManagers must be created in the main thread.
+  // Note that |isolate_| is initialized with
+  // V8PerIsolateData::MainThreadIsolate().
   CHECK(IsMainThread());
 }
 

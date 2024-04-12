@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "base/check_op.h"
+#include "base/containers/cxx20_erase_vector.h"
 #include "base/process/process_handle.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/uuid.h"
@@ -62,12 +63,8 @@ class CrosapiTaskProviderAshTest : public testing::Test,
   void TaskRemoved(Task* task) override {
     ++task_removed_count_;
     size_t count = GetTaskCount();
-    std::erase(task_ids_, task->task_id());
+    base::Erase(task_ids_, task->task_id());
     DCHECK_EQ(count - 1, GetTaskCount());
-  }
-
-  void ActiveTaskFetched(TaskId task_id) override {
-    ++active_task_fetched_count_;
   }
 
  protected:
@@ -81,12 +78,10 @@ class CrosapiTaskProviderAshTest : public testing::Test,
 
   int task_added_count() const { return task_added_count_; }
   int task_removed_count() const { return task_removed_count_; }
-  int active_task_fetched_count() const { return active_task_fetched_count_; }
 
   void ResetInternalCount() {
     task_added_count_ = 0;
     task_removed_count_ = 0;
-    active_task_fetched_count_ = 0;
   }
 
   bool DoSortedTaskIdsMatchMojoTasksOrder(
@@ -110,7 +105,6 @@ class CrosapiTaskProviderAshTest : public testing::Test,
   std::vector<TaskId> task_ids_;
   int task_added_count_ = 0;
   int task_removed_count_ = 0;
-  int active_task_fetched_count_ = 0;
 };
 
 // Tests CrosapiTaskProviderAsh for processing the mojo task data returned from
@@ -154,8 +148,8 @@ TEST_F(CrosapiTaskProviderAshTest, OnGetTaskManagerTasks) {
   mojo_task_groups.push_back(CreateMojoTaskGroup(task_2_pid));
   mojo_task_groups.push_back(CreateMojoTaskGroup(task_3_pid));
 
-  task_provider()->OnGetTaskManagerTasks(
-      std::move(mojo_tasks), std::move(mojo_task_groups), task_1_uuid);
+  task_provider()->OnGetTaskManagerTasks(std::move(mojo_tasks),
+                                         std::move(mojo_task_groups));
 
   // Verify all mojo tasks have been added to the task providers,
   // and GetSortedTaskIds returns the correct number of the task count.
@@ -163,7 +157,6 @@ TEST_F(CrosapiTaskProviderAshTest, OnGetTaskManagerTasks) {
   DCHECK_EQ(3u, GetSortedTaskIdsCount());
   DCHECK_EQ(3, task_added_count());
   DCHECK_EQ(0, task_removed_count());
-  DCHECK_EQ(1, active_task_fetched_count());
   // Verify that task ids returned by GetSortedTaskIds() matches
   // their order from mojo tasks sent from the crosapi.
   DCHECK(DoSortedTaskIdsMatchMojoTasksOrder(std::move(mojo_task_uuids_)));
@@ -182,15 +175,14 @@ TEST_F(CrosapiTaskProviderAshTest, OnGetTaskManagerTasks) {
   mojo_task_groups.push_back(CreateMojoTaskGroup(task_1_pid));
 
   ResetInternalCount();
-  task_provider()->OnGetTaskManagerTasks(
-      std::move(mojo_tasks), std::move(mojo_task_groups), task_1_uuid);
+  task_provider()->OnGetTaskManagerTasks(std::move(mojo_tasks),
+                                         std::move(mojo_task_groups));
 
   // Verify that one of the tasks has been removed.
   DCHECK_EQ(2u, GetTaskCount());
   DCHECK_EQ(2u, GetSortedTaskIdsCount());
   DCHECK_EQ(0, task_added_count());
   DCHECK_EQ(1, task_removed_count());
-  DCHECK_EQ(1, active_task_fetched_count());
   // Verify that task ids returned by GetSortedTaskIds() matches
   // the order of the mojo tasks.
   DCHECK(DoSortedTaskIdsMatchMojoTasksOrder(std::move(mojo_task_uuids_)));

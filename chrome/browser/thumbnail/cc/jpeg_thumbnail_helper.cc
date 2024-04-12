@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include "base/cxx17_backports.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/strings/string_number_conversions.h"
@@ -18,26 +19,39 @@
 namespace thumbnail {
 namespace {
 
-SkBitmap ResizeBitmap(const SkBitmap& bitmap) {
+SkBitmap ResizeBitmap(double jpeg_aspect_ratio, const SkBitmap& bitmap) {
+  // We want to show thumbnails in a specific aspect ratio. Therefore, the
+  // thumbnail saved needs to be cropped to the target aspect ratio, otherwise
+  // it would be vertically center-aligned and the top would be hidden in
+  // portrait mode, or it would be shown in the wrong aspect ratio in
+  // landscape mode.
   constexpr int kScale = 2;
-  int width = bitmap.width() / kScale;
-  int height = bitmap.height() / kScale;
+  double aspect_ratio = std::clamp(jpeg_aspect_ratio, 0.5, 2.0);
 
-  SkIRect dest_subset = {0, 0, width, height};
+  int width = std::min(bitmap.width() / kScale,
+                       (int)(bitmap.height() * aspect_ratio / kScale));
+  int height = std::min(bitmap.height() / kScale,
+                        (int)(bitmap.width() / aspect_ratio / kScale));
+  // When cropping the thumbnails, we want to keep the top center portion.
+  int begin_x = (bitmap.width() / kScale - width) / 2;
+  int end_x = begin_x + width;
+  SkIRect dest_subset = {begin_x, 0, end_x, height};
 
   SkBitmap output = skia::ImageOperations::Resize(
-      bitmap, skia::ImageOperations::RESIZE_BETTER, width, height, dest_subset);
+      bitmap, skia::ImageOperations::RESIZE_BETTER, bitmap.width() / kScale,
+      bitmap.height() / kScale, dest_subset);
   output.setImmutable();
   return output;
 }
 
 void CompressTask(
+    double jpeg_aspect_ratio,
     const SkBitmap& bitmap,
     base::OnceCallback<void(std::vector<uint8_t>)> post_processing_task) {
   constexpr int kCompressionQuality = 97;
   std::vector<uint8_t> data;
-  const bool result =
-      gfx::JPEGCodec::Encode(ResizeBitmap(bitmap), kCompressionQuality, &data);
+  const bool result = gfx::JPEGCodec::Encode(
+      ResizeBitmap(jpeg_aspect_ratio, bitmap), kCompressionQuality, &data);
   DCHECK(result);
 
   std::move(post_processing_task).Run(std::move(data));
@@ -45,7 +59,7 @@ void CompressTask(
 
 void WriteTask(base::FilePath file_path,
                std::vector<uint8_t> compressed_data,
-               base::OnceCallback<void(bool)> post_write_task) {
+               base::OnceClosure post_write_task) {
   DCHECK(!compressed_data.empty());
 
   int bytes_written = base::WriteFile(
@@ -54,17 +68,15 @@ void WriteTask(base::FilePath file_path,
 
   if (bytes_written != static_cast<int>(compressed_data.size())) {
     base::DeleteFile(file_path);
-    std::move(post_write_task).Run(false);
-    return;
   }
 
-  std::move(post_write_task).Run(true);
+  std::move(post_write_task).Run();
 }
 
 void ReadTask(base::FilePath file_path,
-              base::OnceCallback<void(std::optional<std::vector<uint8_t>>)>
+              base::OnceCallback<void(absl::optional<std::vector<uint8_t>>)>
                   post_read_task) {
-  std::optional<std::vector<uint8_t>> read_data =
+  absl::optional<std::vector<uint8_t>> read_data =
       base::ReadFileToBytes(file_path);
 
   if (!read_data.has_value()) {
@@ -94,6 +106,7 @@ JpegThumbnailHelper::~JpegThumbnailHelper() {
 }
 
 void JpegThumbnailHelper::Compress(
+    double jpeg_aspect_ratio,
     const SkBitmap& bitmap,
     base::OnceCallback<void(std::vector<uint8_t>)> post_processing_task) {
   DCHECK(default_task_runner_->RunsTasksInCurrentSequence());
@@ -101,15 +114,14 @@ void JpegThumbnailHelper::Compress(
       FROM_HERE,
       {base::TaskPriority::BEST_EFFORT,
        base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
-      base::BindOnce(&CompressTask, bitmap,
+      base::BindOnce(&CompressTask, jpeg_aspect_ratio, bitmap,
                      base::BindPostTask(default_task_runner_,
                                         std::move(post_processing_task))));
 }
 
-void JpegThumbnailHelper::Write(
-    TabId tab_id,
-    std::vector<uint8_t> compressed_data,
-    base::OnceCallback<void(bool)> post_write_task) {
+void JpegThumbnailHelper::Write(TabId tab_id,
+                                std::vector<uint8_t> compressed_data,
+                                base::OnceClosure post_write_task) {
   DCHECK(default_task_runner_->RunsTasksInCurrentSequence());
   base::FilePath file_path = GetJpegFilePath(tab_id);
   file_task_runner_->PostTask(
@@ -121,7 +133,7 @@ void JpegThumbnailHelper::Write(
 
 void JpegThumbnailHelper::Read(
     TabId tab_id,
-    base::OnceCallback<void(std::optional<std::vector<uint8_t>>)>
+    base::OnceCallback<void(absl::optional<std::vector<uint8_t>>)>
         post_read_task) {
   DCHECK(default_task_runner_->RunsTasksInCurrentSequence());
   base::FilePath file_path = GetJpegFilePath(tab_id);

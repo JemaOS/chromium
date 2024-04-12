@@ -4,24 +4,33 @@
 
 #include "chrome/browser/web_applications/preinstalled_app_install_features.h"
 
-#include <string>
-#include <string_view>
-
 #include "base/feature_list.h"
-#include "base/memory/raw_ref.h"
 #include "build/build_config.h"
+#include "chrome/browser/policy/profile_policy_connector.h"
+#include "chrome/browser/profiles/profile.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chromeos/constants/chromeos_features.h"
-#include "components/policy/core/common/management/management_service.h"
-#endif  // BUILDFLAG(IS_CHROMEOS)
+#endif  // IS_CHROMEOS
 
 namespace web_app {
 
 namespace {
 
-constexpr const std::string_view kShippedPreinstalledAppInstallFeatures[] = {
+// A hard coded list of features available for externally installed apps to
+// gate their installation on via their config file settings. See
+// |kFeatureName| in preinstalled_web_app_utils.h.
+// After a feature flag has been shipped and should be cleaned up, move it into
+// kShippedPreinstalledAppInstallFeatures to ensure any external installation
+// configs that reference it continue to see it as enabled.
+constexpr const base::Feature* kPreinstalledAppInstallFeatures[] = {
+#if BUILDFLAG(IS_CHROMEOS)
+    &kCursiveManagedStylusPreinstall,
+    &kMessagesPreinstall,
+#endif
+};
+
+constexpr const base::StringPiece kShippedPreinstalledAppInstallFeatures[] = {
     // Enables installing the PWA version of the chrome os calculator instead of
     // the deprecated chrome app.
     "DefaultCalculatorWebApp",
@@ -33,88 +42,62 @@ constexpr const std::string_view kShippedPreinstalledAppInstallFeatures[] = {
     // Enables migration of default installed non-GSuite apps over to their
     // replacement web apps.
     "MigrateDefaultChromeAppToWebAppsNonGSuite",
-
-    // Enables installing the Messages app on unmanaged devices.
-    "MessagesPreinstall",
-
-    // Enables installing the Cursive device on managed stylus-enabled devices.
-    "CursiveManagedStylusPreinstall",
 };
 
 bool g_always_enabled_for_testing = false;
 
 struct FeatureWithEnabledFunction {
-  raw_ref<const base::Feature> feature;
+  const char* const name;
   bool (*enabled_func)();
 };
 
-// A hard coded list of features available for externally installed apps to
-// gate their installation on via their config file settings. Each feature has a
-// function to run to determine whether it is enabled. See |kFeatureName| in
-// preinstalled_web_app_utils.h.
-//
-// After a feature flag has been shipped and should be cleaned up, move it into
-// kShippedPreinstalledAppInstallFeatures to ensure any external installation
-// configs that reference it continue to see it as enabled.
-constexpr const FeatureWithEnabledFunction
+// Features which have a function to be run to determine whether they are
+// enabled. Prefer using a base::Feature with |kPreinstalledAppInstallFeatures|
+// when possible.
+const FeatureWithEnabledFunction
     kPreinstalledAppInstallFeaturesWithEnabledFunctions[] = {
 #if BUILDFLAG(IS_CHROMEOS)
-        {raw_ref(chromeos::features::kCloudGamingDevice),
-         &chromeos::features::IsCloudGamingDeviceEnabled},
-        {raw_ref(chromeos::features::kContainerAppPreinstall),
-         &chromeos::features::IsContainerAppPreinstallEnabled},
-        {raw_ref(chromeos::features::kCrosMall),
-         &chromeos::features::IsCrosMallEnabled}
+        {chromeos::features::kCloudGamingDevice.name,
+         &chromeos::features::IsCloudGamingDeviceEnabled}
 #endif
 };
 
 }  // namespace
 
 #if BUILDFLAG(IS_CHROMEOS)
-// Use `IsPreinstalledDocsSheetsSlidesDriveStandaloneTabbed` instead of checking
-// this flag directly to correctly exclude managed devices.
-BASE_FEATURE(kDocsSheetsSlidesDrivePreinstallStandaloneTabbed,
-             "DocsSheetsSlidesDrivePreinstallStandaloneTabbed",
+// Enables installing the Cursive app on managed devices with a built-in
+// stylus-capable screen.
+BASE_FEATURE(kCursiveManagedStylusPreinstall,
+             "CursiveManagedStylusPreinstall",
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables installing the Messages app on unmanaged devices.
+BASE_FEATURE(kMessagesPreinstall,
+             "MessagesPreinstall",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-bool IsPreinstalledDocsSheetsSlidesDriveStandaloneTabbed(Profile& profile) {
-#if BUILDFLAG(IS_CHROMEOS)
-  if (!base::FeatureList::IsEnabled(
-          kDocsSheetsSlidesDrivePreinstallStandaloneTabbed)) {
-    return false;
-  }
-  // Exclude managed devices.
-  if (policy::ManagementServiceFactory::GetForPlatform()->IsManaged()) {
-    return false;
-  }
-  // Exclude managed profiles.
-  if (policy::ManagementServiceFactory::GetForProfile(&profile)->IsManaged()) {
-    return false;
-  }
-  return true;
-#else
-  return false;
-#endif  // BUILDFLAG(IS_CHROMEOS)
-}
-
-bool IsPreinstalledAppInstallFeatureEnabled(std::string_view feature_name,
+bool IsPreinstalledAppInstallFeatureEnabled(base::StringPiece feature_name,
                                             const Profile& profile) {
-  if (g_always_enabled_for_testing) {
+  if (g_always_enabled_for_testing)
     return true;
-  }
 
-  for (std::string_view feature : kShippedPreinstalledAppInstallFeatures) {
-    if (feature == feature_name) {
+  for (const base::StringPiece& feature :
+       kShippedPreinstalledAppInstallFeatures) {
+    if (feature == feature_name)
       return true;
-    }
   }
 
-  for (const auto& feature_with_function :
+  for (const base::Feature* feature : kPreinstalledAppInstallFeatures) {
+    if (feature->name == feature_name)
+      return base::FeatureList::IsEnabled(*feature);
+  }
+
+  for (const auto& feature :
        kPreinstalledAppInstallFeaturesWithEnabledFunctions) {
-    if (feature_with_function.feature->name == feature_name) {
-      return feature_with_function.enabled_func();
-    }
+    if (feature.name == feature_name)
+      return feature.enabled_func();
   }
 
   return false;

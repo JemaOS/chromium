@@ -5,13 +5,12 @@
 #ifndef CHROME_BROWSER_ASH_APP_RESTORE_ARC_WINDOW_UTILS_H_
 #define CHROME_BROWSER_ASH_APP_RESTORE_ARC_WINDOW_UTILS_H_
 
-#include <optional>
-
 #include "components/services/app_service/public/cpp/app_launch_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash::full_restore {
 
-std::optional<double> GetDisplayScaleFactor(int64_t display_id);
+absl::optional<double> GetDisplayScaleFactor(int64_t display_id);
 
 // Returns true if the ARC supports ghost window.
 bool IsArcGhostWindowEnabled();

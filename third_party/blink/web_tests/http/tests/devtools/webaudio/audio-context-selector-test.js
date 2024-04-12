@@ -2,12 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-
-import * as WebAudioModule from 'devtools/panels/web_audio/web_audio.js';
-
 (async function() {
   TestRunner.addResult(`Tests the AudioContextSelector.`);
+  await TestRunner.loadLegacyModule('web_audio');
 
   /** @type {!Protocol.WebAudio.BaseAudioContext} */
   const context1 = {
@@ -21,7 +18,7 @@ import * as WebAudioModule from 'devtools/panels/web_audio/web_audio.js';
   };
 
   function dumpSelectorState(
-      /** @type {!WebAudioModule.AudioContextSelector.AudioContextSelector} */ selector) {
+      /** @type {!WebAudio.AudioContextSelector} */ selector) {
     TestRunner.addResult(`
 Number of contexts (items): ${selector.items.length}
 Title: ${selector.toolbarItem().title}}
@@ -31,13 +28,13 @@ Selected Context: ${JSON.stringify(selector.selectedContext(), null, 3)}
 
   TestRunner.runAsyncTestSuite([
     async function testStartsEmpty() {
-      const selector = new WebAudioModule.AudioContextSelector.AudioContextSelector();
+      const selector = new WebAudio.AudioContextSelector();
 
       dumpSelectorState(selector);
     },
 
     async function testSelectsCreatedContext() {
-      const selector = new WebAudioModule.AudioContextSelector.AudioContextSelector();
+      const selector = new WebAudio.AudioContextSelector();
 
       selector.contextCreated({data: context1});
 
@@ -45,7 +42,7 @@ Selected Context: ${JSON.stringify(selector.selectedContext(), null, 3)}
     },
 
     async function testResetClearsList() {
-      const selector = new WebAudioModule.AudioContextSelector.AudioContextSelector();
+      const selector = new WebAudio.AudioContextSelector();
 
       selector.contextCreated({data: context1});
       selector.reset();
@@ -54,7 +51,7 @@ Selected Context: ${JSON.stringify(selector.selectedContext(), null, 3)}
     },
 
     async function testReSelectsCreatedContextAfterChange() {
-      const selector = new WebAudioModule.AudioContextSelector.AudioContextSelector();
+      const selector = new WebAudio.AudioContextSelector();
 
       selector.contextCreated({data: context1});
       selector.contextChanged({data: context1});
@@ -63,7 +60,7 @@ Selected Context: ${JSON.stringify(selector.selectedContext(), null, 3)}
     },
 
     async function testFirstCreatedContextStaysSelected() {
-      const selector = new WebAudioModule.AudioContextSelector.AudioContextSelector();
+      const selector = new WebAudio.AudioContextSelector();
 
       selector.contextCreated({data: context1});
       selector.contextCreated({data: context2});
@@ -72,7 +69,7 @@ Selected Context: ${JSON.stringify(selector.selectedContext(), null, 3)}
     },
 
     async function testChangingContextDoesNotChangeSelection() {
-      const selector = new WebAudioModule.AudioContextSelector.AudioContextSelector();
+      const selector = new WebAudio.AudioContextSelector();
 
       selector.contextCreated({data: context1});
       selector.contextCreated({data: context2});
@@ -82,7 +79,7 @@ Selected Context: ${JSON.stringify(selector.selectedContext(), null, 3)}
     },
 
     async function testSelectedContextBecomesSelected() {
-      const selector = new WebAudioModule.AudioContextSelector.AudioContextSelector();
+      const selector = new WebAudio.AudioContextSelector();
 
       selector.contextCreated({data: context1});
       selector.contextCreated({data: context2});
@@ -99,10 +96,10 @@ Selected Context: ${JSON.stringify(selector.selectedContext(), null, 3)}
       }
 
       TestRunner.addSniffer(
-          WebAudioModule.AudioContextSelector.AudioContextSelector.prototype, 'onListItemReplaced',
+          WebAudio.AudioContextSelector.prototype, 'onListItemReplaced',
           dumpItemCount);
 
-      const selector = new WebAudioModule.AudioContextSelector.AudioContextSelector();
+      const selector = new WebAudio.AudioContextSelector();
       selector.contextCreated({data: context1});
       selector.contextChanged({data: context1});
 

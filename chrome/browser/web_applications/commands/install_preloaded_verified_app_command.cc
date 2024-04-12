@@ -5,13 +5,10 @@
 #include "chrome/browser/web_applications/commands/install_preloaded_verified_app_command.h"
 
 #include <memory>
-#include <string>
-#include <string_view>
 #include <utility>
 
-#include "base/check_is_test.h"
 #include "base/containers/contains.h"
-#include "base/containers/fixed_flat_set.h"
+#include "base/containers/flat_set.h"
 #include "base/containers/flat_tree.h"
 #include "base/functional/bind.h"
 #include "base/strings/to_string.h"
@@ -21,15 +18,12 @@
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom.h"
 #include "chrome/browser/web_applications/web_app_command_manager.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
-#include "chrome/browser/web_applications/web_app_icon_operations.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/browser/web_applications/web_app_install_params.h"
 #include "chrome/browser/web_applications/web_app_install_utils.h"
-#include "chrome/browser/web_applications/web_contents/web_app_url_loader.h"
-#include "chrome/browser/web_applications/web_contents/web_contents_manager.h"
 #include "components/webapps/browser/install_result_code.h"
 #include "components/webapps/browser/installable/installable_metrics.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/web_contents.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/base/url_util.h"
@@ -43,15 +37,8 @@ namespace web_app {
 
 namespace {
 
-// TODO(crbug.com/1457430): Find a better way to do Lacros testing so that we
-// don't have to pass localhost into the allowlist. Allowlisted host must be
-// from a Google server.
-constexpr auto kHostAllowlist = base::MakeFixedFlatSet<std::string_view>(
-    {"googleusercontent.com", "gstatic.com", "youtube.com",
-     "127.0.0.1" /*FOR TESTING*/});
-
 bool HasRequiredManifestFields(const blink::mojom::ManifestPtr& manifest) {
-  if (!manifest->has_valid_specified_start_url) {
+  if (manifest->start_url.is_empty()) {
     return false;
   }
 
@@ -69,48 +56,40 @@ InstallPreloadedVerifiedAppCommand::InstallPreloadedVerifiedAppCommand(
     GURL document_url,
     GURL manifest_url,
     std::string manifest_contents,
-    webapps::AppId expected_id,
+    AppId expected_id,
+    base::flat_set<std::string> host_allowlist,
     OnceInstallCallback callback)
-    : WebAppCommand<SharedWebContentsLock,
-                    const webapps::AppId&,
-                    webapps::InstallResultCode>(
-          "InstallPreloadedVerifiedAppCommand",
-          SharedWebContentsLockDescription(),
-          std::move(callback),
-          /*args_for_shutdown=*/
-          std::make_tuple(webapps::AppId(),
-                          webapps::InstallResultCode::
-                              kCancelledOnWebAppProviderShuttingDown)),
+    : WebAppCommandTemplate<SharedWebContentsLock>(
+          "InstallPreloadedVerifiedAppCommand"),
       install_source_(install_source),
       document_url_(std::move(document_url)),
       manifest_url_(std::move(manifest_url)),
       manifest_contents_(std::move(manifest_contents)),
-      expected_id_(std::move(expected_id)) {
-  GetMutableDebugValue().Set("document_url", document_url_.spec());
-  GetMutableDebugValue().Set("manifest_url", manifest_url_.spec());
-  GetMutableDebugValue().Set("expected_id", expected_id_);
-  GetMutableDebugValue().Set("manifest_contents", manifest_contents_);
-}
+      expected_id_(std::move(expected_id)),
+      host_allowlist_(std::move(host_allowlist)),
+      install_callback_(std::move(callback)),
+      web_contents_lock_description_(
+          std::make_unique<SharedWebContentsLockDescription>()),
+      data_retriever_(std::make_unique<WebAppDataRetriever>()) {}
 
 InstallPreloadedVerifiedAppCommand::~InstallPreloadedVerifiedAppCommand() =
     default;
+
+const LockDescription& InstallPreloadedVerifiedAppCommand::lock_description()
+    const {
+  DCHECK(web_contents_lock_description_ || app_lock_description_);
+
+  if (app_lock_description_) {
+    return *app_lock_description_;
+  }
+
+  return *web_contents_lock_description_;
+}
 
 void InstallPreloadedVerifiedAppCommand::StartWithLock(
     std::unique_ptr<SharedWebContentsLock> lock) {
   web_contents_lock_ = std::move(lock);
 
-  url_loader_ = web_contents_lock_->web_contents_manager().CreateUrlLoader();
-  data_retriever_ =
-      web_contents_lock_->web_contents_manager().CreateDataRetriever();
-  url_loader_->LoadUrl(
-      GURL(url::kAboutBlankURL), &web_contents_lock_->shared_web_contents(),
-      WebAppUrlLoader::UrlComparison::kExact,
-      base::BindOnce(&InstallPreloadedVerifiedAppCommand::OnAboutBlankLoaded,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
-
-void InstallPreloadedVerifiedAppCommand::OnAboutBlankLoaded(
-    WebAppUrlLoaderResult result) {
   // The shared web contents must have been reset to about:blank before command
   // execution.
   DCHECK_EQ(web_contents_lock_->shared_web_contents().GetURL(),
@@ -131,6 +110,22 @@ void InstallPreloadedVerifiedAppCommand::OnAboutBlankLoaded(
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
+base::Value InstallPreloadedVerifiedAppCommand::ToDebugValue() const {
+  base::Value::Dict debug_value = debug_value_.Clone();
+  debug_value.Set("document_url", document_url_.spec());
+  debug_value.Set("manifest_url", manifest_url_.spec());
+  debug_value.Set("expected_id", expected_id_);
+  debug_value.Set("manifest_contents", manifest_contents_);
+  return base::Value(std::move(debug_value));
+}
+
+void InstallPreloadedVerifiedAppCommand::OnShutdown() {
+  Abort(CommandResult::kShutdown,
+        webapps::InstallResultCode::kCancelledOnWebAppProviderShuttingDown);
+}
+
+void InstallPreloadedVerifiedAppCommand::OnSyncSourceRemoved() {}
+
 void InstallPreloadedVerifiedAppCommand::OnManifestParsed(
     blink::mojom::ManifestPtr manifest) {
   // Note that most errors during parsing (e.g. errors to do with parsing a
@@ -143,37 +138,29 @@ void InstallPreloadedVerifiedAppCommand::OnManifestParsed(
     return;
   }
 
-  GetMutableDebugValue().Set("manifest_parsed", true);
-  web_app_info_ = std::make_unique<WebAppInstallInfo>(manifest->id);
+  debug_value_.Set("manifest_parsed", true);
+  web_app_info_ = std::make_unique<WebAppInstallInfo>();
   web_app_info_->user_display_mode = mojom::UserDisplayMode::kStandalone;
 
   UpdateWebAppInfoFromManifest(*manifest, manifest_url_, web_app_info_.get());
 
-  IconUrlSizeSet icon_urls = GetValidIconUrlsToDownload(*web_app_info_);
-  base::EraseIf(icon_urls, [](const IconUrlWithSize& url_with_size) {
-    for (const auto& allowed_host : kHostAllowlist) {
-      const GURL& icon_url = url_with_size.url;
-      if (icon_url.DomainIs(allowed_host)) {
-        // Found a match, don't erase this url!
-        return false;
-      }
-    }
-    // No matches, erase this url!
-    return true;
+  base::flat_set<GURL> icon_urls = GetValidIconUrlsToDownload(*web_app_info_);
+  base::EraseIf(icon_urls, [this](const GURL& url) {
+    return !base::Contains(host_allowlist_, url.host());
   });
 
   if (icon_urls.empty()) {
-    // Abort if there are no icons to download, so we can distinguish this case
-    // from having icons but failing to download them.
+    // Abort as "not a valid manifest" if there are no icons to download, so we
+    // can distinguish this case from having icons but failing to download
+    // them.
     Abort(CommandResult::kFailure,
-          webapps::InstallResultCode::kNoValidIconsInManifest);
+          webapps::InstallResultCode::kNotValidManifestForWebApp);
     return;
   }
 
   data_retriever_->GetIcons(
       &web_contents_lock_->shared_web_contents(), std::move(icon_urls),
       /*skip_page_favicons=*/true,
-      /*fail_all_if_any_fail=*/false,
       base::BindOnce(&InstallPreloadedVerifiedAppCommand::OnIconsRetrieved,
                      weak_ptr_factory_.GetWeakPtr()));
 }
@@ -196,8 +183,8 @@ void InstallPreloadedVerifiedAppCommand::OnIconsRetrieved(
 
   PopulateOtherIcons(web_app_info_.get(), icons_map);
 
-  webapps::AppId app_id =
-      GenerateAppIdFromManifestId(web_app_info_->manifest_id);
+  AppId app_id =
+      GenerateAppId(web_app_info_->manifest_id, web_app_info_->start_url);
 
   if (app_id != expected_id_) {
     Abort(CommandResult::kFailure,
@@ -205,10 +192,11 @@ void InstallPreloadedVerifiedAppCommand::OnIconsRetrieved(
     return;
   }
 
-  command_manager()->lock_manager().UpgradeAndAcquireLock(
-      std::move(web_contents_lock_), {app_id},
-      base::BindOnce(&InstallPreloadedVerifiedAppCommand::OnAppLockAcquired,
-                     weak_ptr_factory_.GetWeakPtr()));
+  app_lock_description_ =
+      command_manager()->lock_manager().UpgradeAndAcquireLock(
+          std::move(web_contents_lock_), {app_id},
+          base::BindOnce(&InstallPreloadedVerifiedAppCommand::OnAppLockAcquired,
+                         weak_ptr_factory_.GetWeakPtr()));
 }
 
 void InstallPreloadedVerifiedAppCommand::OnAppLockAcquired(
@@ -228,19 +216,21 @@ void InstallPreloadedVerifiedAppCommand::OnAppLockAcquired(
 }
 
 void InstallPreloadedVerifiedAppCommand::OnInstallFinalized(
-    const webapps::AppId& app_id,
+    const AppId& app_id,
     webapps::InstallResultCode code,
     OsHooksErrors os_hooks_errors) {
-  CompleteAndSelfDestruct(webapps::IsSuccess(code) ? CommandResult::kSuccess
-                                                   : CommandResult::kFailure,
-                          app_id, code);
+  SignalCompletionAndSelfDestruct(
+      webapps::IsSuccess(code) ? CommandResult::kSuccess
+                               : CommandResult::kFailure,
+      base::BindOnce(std::move(install_callback_), app_id, code));
 }
 
 void InstallPreloadedVerifiedAppCommand::Abort(
     CommandResult result,
     webapps::InstallResultCode code) {
-  GetMutableDebugValue().Set("error_code", base::ToString(code));
-  CompleteAndSelfDestruct(result, webapps::AppId(), code);
+  debug_value_.Set("error_code", base::ToString(code));
+  SignalCompletionAndSelfDestruct(
+      result, base::BindOnce(std::move(install_callback_), AppId(), code));
 }
 
 }  // namespace web_app

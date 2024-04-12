@@ -16,6 +16,12 @@ DictationPumpkinParseTest = class extends DictationE2ETestBase {
     // Re-initialize PumpkinParseStrategy after mock Pumpkin data has been
     // created.
     this.getPumpkinParseStrategy().init_();
+    await importModule(
+        'SpeechParser',
+        '/accessibility_common/dictation/parse/speech_parser.js');
+    await importModule(
+        'SUPPORTED_LOCALES',
+        '/accessibility_common/dictation/parse/pumpkin/pumpkin_constants.js');
 
     await super.setUpDeferred();
 
@@ -84,7 +90,7 @@ AX_TEST_F('DictationPumpkinParseTest', 'Parse', async function() {
     new ParseTestCase('deselect selection', {name: 'UNSELECT_TEXT'}),
     new ParseTestCase('what can I say', {name: 'LIST_COMMANDS'}),
     new ParseTestCase('new line', {}),
-    new ParseTestCase('avada kedavra', {name: 'TOGGLE_DICTATION'}),
+    new ParseTestCase('avada kedavra', {name: 'STOP_LISTENING'}),
     new ParseTestCase('clear one word', {name: 'DELETE_PREV_WORD'}),
     new ParseTestCase('erase sentence', {name: 'DELETE_PREV_SENT'}),
     new ParseTestCase('right one word', {name: 'NAV_NEXT_WORD'}),

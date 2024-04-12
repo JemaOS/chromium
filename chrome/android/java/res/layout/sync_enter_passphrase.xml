@@ -35,7 +35,6 @@ found in the LICENSE file.
             android:id="@+id/reset_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:textAppearance="@style/TextAppearance.TextMedium.Secondary" />
+            android:visibility="gone" />
     </LinearLayout>
 </ScrollView>

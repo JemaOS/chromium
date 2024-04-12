@@ -20,8 +20,6 @@
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/base/interaction/expect_call_in_scope.h"
 #include "ui/base/interaction/interaction_test_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/combobox_model.h"
 #include "ui/base/models/simple_combobox_model.h"
 #include "ui/base/models/simple_menu_model.h"
@@ -66,8 +64,6 @@ constexpr int kMenuID1 = 1;
 constexpr int kMenuID2 = 2;
 
 class DefaultActionTestView : public View {
-  METADATA_HEADER(DefaultActionTestView, View)
-
  public:
   DefaultActionTestView() = default;
   ~DefaultActionTestView() override = default;
@@ -85,12 +81,7 @@ class DefaultActionTestView : public View {
   bool activated_ = false;
 };
 
-BEGIN_METADATA(DefaultActionTestView)
-END_METADATA
-
 class AcceleratorView : public View {
-  METADATA_HEADER(AcceleratorView, View)
-
  public:
   explicit AcceleratorView(ui::Accelerator accelerator)
       : accelerator_(accelerator) {
@@ -113,9 +104,6 @@ class AcceleratorView : public View {
   bool pressed_ = false;
 };
 
-BEGIN_METADATA(AcceleratorView)
-END_METADATA
-
 }  // namespace
 
 class InteractionTestUtilViewsTest
@@ -131,7 +119,7 @@ class InteractionTestUtilViewsTest
     Widget::InitParams params =
         CreateParams(Widget::InitParams::TYPE_WINDOW_FRAMELESS);
     params.ownership = Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
-    params.bounds = gfx::Rect(0, 0, 300, 300);
+    params.bounds = gfx::Rect(0, 0, 650, 650);
     widget->Init(std::move(params));
     auto* contents = widget->SetContentsView(std::make_unique<View>());
     auto* layout = contents->SetLayoutManager(std::make_unique<FlexLayout>());
@@ -177,9 +165,9 @@ class InteractionTestUtilViewsTest
   }
 
   void CloseMenu() {
-    menu_item_ = nullptr;
     menu_runner_.reset();
     menu_model_.reset();
+    menu_item_ = nullptr;
   }
 
   void SetUp() override {
@@ -199,8 +187,8 @@ class InteractionTestUtilViewsTest
     test_util_.reset();
     if (menu_runner_)
       CloseMenu();
-    contents_ = nullptr;
     widget_.reset();
+    contents_ = nullptr;
     ViewsTestBase::TearDown();
   }
 

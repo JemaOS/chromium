@@ -23,17 +23,6 @@
         height: 100%;
       }
 
-      cr-history-embeddings-filter-chips {
-        margin: 0 auto;
-        max-width: var(--cluster-max-width);
-        padding: 16px 8px;
-      }
-
-      cr-history-embeddings-filter-chips ~ #tabs-content {
-        --first-card-padding-top: 8px;
-        --first-cluster-padding-top: 8px;
-      }
-
       #tabs-container {
         --cr-tabs-height: 48px;
         --tabs-margin-top: 16px;
@@ -70,8 +59,7 @@
     </history-query-manager>
     <history-router id="router"
         selected-page="{{selectedPage_}}"
-        query-state="[[queryState_]]"
-        last-selected-tab="[[lastSelectedTab_]]">
+        query-state="[[queryState_]]">
     </history-router>
     <history-toolbar id="toolbar"
         has-drawer="[[hasDrawer_]]"
@@ -82,8 +70,7 @@
         search-term="[[queryState_.searchTerm]]"
         spinner-active="[[shouldShowSpinner_(queryState_.querying,
                                              queryState_.incremental,
-                                             queryState_.searchTerm)]]"
-        selected-page="[[selectedPage_]]">
+                                             queryState_.searchTerm)]]">
     </history-toolbar>
     <div id="drop-shadow" class="cr-container-shadow"></div>
     <div id="main-container">
@@ -100,14 +87,7 @@
           on-selected-item-changed="updateScrollTarget_"
           items="{{items}}">
         <div id="tabs-container" path="history">
-          <template is="dom-if" if="[[enableHistoryEmbeddings_]]">
-            <cr-history-embeddings-filter-chips
-                show-results-by-group="[[
-                    getShowResultsByGroup_(selectedPage_)]]"
-                on-show-results-by-group-changed="onShowResultsByGroupChanged_">
-            </cr-history-embeddings-filter-chips>
-          </template>
-          <template is="dom-if" if="[[showTabs_]]">
+          <template is="dom-if" if="[[showHistoryClusters_]]">
             <div id="tabs">
               <cr-tabs tab-names="[[tabsNames_]]"
                   tab-icons="[[tabsIcons_]]"
@@ -130,7 +110,7 @@
                 if="[[historyClustersSelected_(selectedPage_, showHistoryClusters_)]]">
               <history-clusters id="history-clusters"
                   query="[[queryState_.searchTerm]]"
-                  path="grouped">
+                  path="journeys">
               </history-clusters>
             </template>
           </iron-pages>

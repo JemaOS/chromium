@@ -16,8 +16,7 @@
 #include "base/time/time.h"
 #include "chrome/android/chrome_jni_headers/ContextualSearchManager_jni.h"
 #include "chrome/browser/android/contextualsearch/native_contextual_search_context.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profile_android.h"
+#include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "components/contextual_search/core/browser/contextual_search_delegate_impl.h"
 #include "components/contextual_search/core/browser/resolved_search_term.h"
@@ -37,11 +36,11 @@ using content::WebContents;
 // Most of the work is actually done in an associated delegate to this class:
 // the ContextualSearchDelegate.
 ContextualSearchManager::ContextualSearchManager(JNIEnv* env,
-                                                 const JavaRef<jobject>& obj,
-                                                 Profile* profile) {
+                                                 const JavaRef<jobject>& obj) {
   java_manager_.Reset(obj);
   Java_ContextualSearchManager_setNativeManager(
       env, obj, reinterpret_cast<intptr_t>(this));
+  Profile* profile = ProfileManager::GetActiveUserProfile();
   delegate_ = std::make_unique<ContextualSearchDelegateImpl>(
       profile->GetURLLoaderFactory(),
       TemplateURLServiceFactory::GetForProfile(profile));
@@ -157,10 +156,7 @@ void ContextualSearchManager::OnTextSurroundingSelectionAvailable(
 }
 
 jlong JNI_ContextualSearchManager_Init(JNIEnv* env,
-                                       const JavaParamRef<jobject>& obj,
-                                       const JavaParamRef<jobject>& j_profile) {
-  Profile* profile = ProfileAndroid::FromProfileAndroid(j_profile);
-  ContextualSearchManager* manager =
-      new ContextualSearchManager(env, obj, profile);
+                                       const JavaParamRef<jobject>& obj) {
+  ContextualSearchManager* manager = new ContextualSearchManager(env, obj);
   return reinterpret_cast<intptr_t>(manager);
 }

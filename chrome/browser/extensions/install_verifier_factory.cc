@@ -24,30 +24,23 @@ InstallVerifier* InstallVerifierFactory::GetForBrowserContext(
 
 // static
 InstallVerifierFactory* InstallVerifierFactory::GetInstance() {
-  static base::NoDestructor<InstallVerifierFactory> instance;
-  return instance.get();
+  return base::Singleton<InstallVerifierFactory>::get();
 }
 
 InstallVerifierFactory::InstallVerifierFactory()
     : ProfileKeyedServiceFactory(
           "InstallVerifier",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(ExtensionPrefsFactory::GetInstance());
   DependsOn(ExtensionRegistryFactory::GetInstance());
 }
 
-InstallVerifierFactory::~InstallVerifierFactory() = default;
+InstallVerifierFactory::~InstallVerifierFactory() {
+}
 
-std::unique_ptr<KeyedService>
-InstallVerifierFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* InstallVerifierFactory::BuildServiceInstanceFor(
     BrowserContext* context) const {
-  return std::make_unique<InstallVerifier>(ExtensionPrefs::Get(context),
-                                           context);
+  return new InstallVerifier(ExtensionPrefs::Get(context), context);
 }
 
 }  // namespace extensions

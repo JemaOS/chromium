@@ -6,10 +6,8 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 
 #include "ash/webui/os_feedback_ui/mojom/os_feedback_ui.mojom.h"
-#include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/json/json_writer.h"
 #include "base/logging.h"
@@ -27,6 +25,7 @@
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace ash {
@@ -74,15 +73,6 @@ const net::NetworkTrafficAnnotationTag kTrafficAnnotation =
           data:
             "The free-form text that user has entered."
           destination: GOOGLE_OWNED_SERVICE
-          internal {
-            contacts {
-              email: "cros-feedback-app@google.com"
-            }
-          }
-          user_data {
-            type: ARBITRARY_DATA
-          }
-          last_reviewed: "2023-08-14"
         }
         policy {
           cookies_allowed: NO
@@ -212,7 +202,7 @@ HelpContentType ToHelpContentType(const std::string& result_type) {
     return HelpContentType::kArticle;
   }
 
-  if (base::Contains(result_type, "FORUM")) {
+  if (result_type.find("FORUM") != std::string::npos) {
     return HelpContentType::kForum;
   }
   LOG(WARNING) << "HelpContentProvider unknown content type: " << result_type;

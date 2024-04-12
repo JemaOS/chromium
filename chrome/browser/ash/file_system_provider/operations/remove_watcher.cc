@@ -9,7 +9,9 @@
 #include "chrome/common/extensions/api/file_system_provider.h"
 #include "chrome/common/extensions/api/file_system_provider_internal.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 RemoveWatcher::RemoveWatcher(RequestDispatcher* dispatcher,
                              const ProvidedFileSystemInfo& file_system_info,
@@ -21,7 +23,8 @@ RemoveWatcher::RemoveWatcher(RequestDispatcher* dispatcher,
       recursive_(recursive),
       callback_(std::move(callback)) {}
 
-RemoveWatcher::~RemoveWatcher() = default;
+RemoveWatcher::~RemoveWatcher() {
+}
 
 bool RemoveWatcher::Execute(int request_id) {
   using extensions::api::file_system_provider::RemoveWatcherRequestedOptions;
@@ -55,4 +58,6 @@ void RemoveWatcher::OnError(int /* request_id */,
   std::move(callback_).Run(error);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

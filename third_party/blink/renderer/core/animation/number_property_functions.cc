@@ -8,13 +8,13 @@
 
 namespace blink {
 
-std::optional<double> NumberPropertyFunctions::GetInitialNumber(
+absl::optional<double> NumberPropertyFunctions::GetInitialNumber(
     const CSSProperty& property,
     const ComputedStyle& initial_style) {
   return GetNumber(property, initial_style);
 }
 
-std::optional<double> NumberPropertyFunctions::GetNumber(
+absl::optional<double> NumberPropertyFunctions::GetNumber(
     const CSSProperty& property,
     const ComputedStyle& style) {
   switch (property.PropertyID()) {
@@ -42,19 +42,24 @@ std::optional<double> NumberPropertyFunctions::GetNumber(
       return style.StrokeOpacity();
     case CSSPropertyID::kWidows:
       return style.Widows();
+
+    case CSSPropertyID::kFontSizeAdjust:
+      if (!style.HasFontSizeAdjust())
+        return absl::optional<double>();
+      return style.FontSizeAdjust().Value();
     case CSSPropertyID::kColumnCount:
       if (style.HasAutoColumnCount())
-        return std::optional<double>();
+        return absl::optional<double>();
       return style.ColumnCount();
     case CSSPropertyID::kZIndex:
       if (style.HasAutoZIndex())
-        return std::optional<double>();
+        return absl::optional<double>();
       return style.ZIndex();
 
     case CSSPropertyID::kTextSizeAdjust: {
       const TextSizeAdjust& text_size_adjust = style.GetTextSizeAdjust();
       if (text_size_adjust.IsAuto())
-        return std::optional<double>();
+        return absl::optional<double>();
       return text_size_adjust.Multiplier() * 100;
     }
 
@@ -62,22 +67,22 @@ std::optional<double> NumberPropertyFunctions::GetNumber(
       const Length& length = style.SpecifiedLineHeight();
       // Numbers are represented by percentages.
       if (!length.IsPercent())
-        return std::optional<double>();
+        return absl::optional<double>();
       double value = length.Value();
       // -100% represents the keyword "normal".
       if (value == -100)
-        return std::optional<double>();
+        return absl::optional<double>();
       return value / 100;
     }
 
     case CSSPropertyID::kTabSize: {
       if (!style.GetTabSize().IsSpaces())
-        return std::nullopt;
+        return absl::nullopt;
       return style.GetTabSize().float_value_;
     }
 
     default:
-      return std::optional<double>();
+      return absl::optional<double>();
   }
 }
 
@@ -95,10 +100,11 @@ double NumberPropertyFunctions::ClampNumber(const CSSProperty& property,
 
     case CSSPropertyID::kFillOpacity:
     case CSSPropertyID::kOpacity:
-      return ClampTo<float>(value, 0, 1);
+      return ClampTo<float>(value, 0, nextafterf(1, 0));
 
     case CSSPropertyID::kFlexGrow:
     case CSSPropertyID::kFlexShrink:
+    case CSSPropertyID::kFontSizeAdjust:
     case CSSPropertyID::kLineHeight:
     case CSSPropertyID::kTabSize:
     case CSSPropertyID::kTextSizeAdjust:

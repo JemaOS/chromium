@@ -4,24 +4,22 @@
 
 // https://gpuweb.github.io/gpuweb/
 
-typedef unsigned long long GPUSize64Out;
-
 [
-    Exposed=(Window, Worker),
+    Exposed(Window WebGPU, DedicatedWorker WebGPU),
     SecureContext
 ] interface GPUBuffer {
-    [CallWith=ScriptState, RaisesException] Promise<undefined> mapAsync(
+    [CallWith=ScriptState, RaisesException] Promise<void> mapAsync(
         GPUMapModeFlags mode,
         optional GPUSize64 offset = 0,
         optional GPUSize64 size);
-    [CallWith=ScriptState, RaisesException] ArrayBuffer getMappedRange(
+    [CallWith=Isolate, RaisesException] ArrayBuffer getMappedRange(
         optional GPUSize64 offset = 0,
         optional GPUSize64 size);
     [CallWith=Isolate] void unmap();
     [CallWith=Isolate] void destroy();
 
-    readonly attribute GPUSize64Out size;
-    readonly attribute GPUFlagsConstant usage;
+    readonly attribute GPUSize64 size;
+    readonly attribute GPUBufferUsageFlags usage;
     readonly attribute GPUBufferMapState mapState;
 };
 GPUBuffer includes GPUObjectBase;

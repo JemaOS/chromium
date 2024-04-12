@@ -51,8 +51,9 @@ export class AccordionTopCardElement extends BaseCardElement {
   override addStyles() {
     super.addStyles();
     this.$('#icon')!.style.display = 'none';
-    this.$('#title')!.textContent = 'Other apps';
+    this.$('#title')!.innerHTML = 'Other apps';
     this.$('#right-icon')!.classList.add('chevron');
+    this.$('#container')!.removeChild(this.$('paper-ripple'));
     this.ariaExpanded = 'false';
     this.role = 'button';
   }
@@ -121,8 +122,8 @@ export class CloudProviderCardElement extends FileHandlerCardElement {
 
   setParameters(type: CloudProviderType, name: string, description: string) {
     this.type_ = type;
-    this.$('#title')!.textContent = name;
-    this.$('#description')!.textContent = description;
+    this.$('#title')!.innerHTML = name;
+    this.$('#description')!.innerHTML = description;
   }
 
   setIconClass(className: string) {
@@ -141,7 +142,7 @@ export class LocalHandlerCardElement extends FileHandlerCardElement {
 
   setParameters(taskPosition: number, name: string) {
     this.taskPosition_ = taskPosition;
-    this.$('#title')!.textContent = name;
+    this.$('#title')!.innerHTML = name;
   }
 
   setIconUrl(url: string) {

@@ -51,19 +51,13 @@ class LayoutSVGFilterPrimitive final : public LayoutObject {
     NOT_DESTROYED();
     return "LayoutSVGFilterPrimitive";
   }
-  bool IsSVG() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
-  }
-  bool IsSVGFilterPrimitive() const final {
-    NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectSVG ||
+           type == kLayoutObjectSVGFilterPrimitive ||
+           LayoutObject::IsOfType(type);
   }
   gfx::RectF ObjectBoundingBox() const override {
-    NOT_DESTROYED();
-    return gfx::RectF();
-  }
-  gfx::RectF StrokeBoundingBox() const override {
     NOT_DESTROYED();
     return gfx::RectF();
   }
@@ -72,10 +66,6 @@ class LayoutSVGFilterPrimitive final : public LayoutObject {
     return gfx::RectF();
   }
   gfx::RectF LocalBoundingBoxRectForAccessibility() const override {
-    NOT_DESTROYED();
-    return gfx::RectF();
-  }
-  gfx::RectF DecoratedBoundingBox() const override {
     NOT_DESTROYED();
     return gfx::RectF();
   }

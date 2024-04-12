@@ -9,7 +9,6 @@
 #include "chrome/browser/nearby_sharing/wifi_credentials_attachment.h"
 #include "chromeos/ash/components/network/network_handler.h"
 #include "chromeos/ash/components/network/network_state_test_helper.h"
-#include "chromeos/ash/components/system/fake_statistics_provider.h"
 #include "chromeos/ash/services/network_config/cros_network_config.h"
 #include "chromeos/ash/services/network_config/in_process_instance.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -52,7 +51,7 @@ class FakeCrosNetworkConfig : public ash::network_config::CrosNetworkConfig {
     std::move(callback).Run(guid_, error_message_);
   }
 
-  void SetOutput(const std::optional<std::string>& network_guid,
+  void SetOutput(const absl::optional<std::string>& network_guid,
                  const std::string& error_message) {
     guid_ = network_guid;
     error_message_ = error_message;
@@ -71,7 +70,7 @@ class FakeCrosNetworkConfig : public ash::network_config::CrosNetworkConfig {
   size_t num_configure_network_calls_ = 0;
   chromeos::network_config::mojom::ConfigPropertiesPtr last_properties_;
   bool last_shared_;
-  std::optional<std::string> guid_ = "not set";
+  absl::optional<std::string> guid_ = "not set";
   std::string error_message_ = "not set";
 };
 
@@ -79,10 +78,10 @@ class FakeCrosNetworkConfig : public ash::network_config::CrosNetworkConfig {
 
 TEST(WifiNetworkConfigurationHandlerTest, Success) {
   base::test::TaskEnvironment task_environment;
-  ash::system::ScopedFakeStatisticsProvider statistics_provider_;
   ash::NetworkStateTestHelper network_state_test_helper{
       /*use_default_devices_and_services=*/true};
   FakeCrosNetworkConfig fake_cros_network_config{&network_state_test_helper};
+
   fake_cros_network_config.SetOutput(kTestNetworkGuid, kTestErrorMessage);
   ash::network_config::OverrideInProcessInstanceForTesting(
       &fake_cros_network_config);
@@ -95,7 +94,7 @@ TEST(WifiNetworkConfigurationHandlerTest, Success) {
   handler.ConfigureWifiNetwork(
       attachment,
       base::BindLambdaForTesting(
-          [&run_loop](const std::optional<std::string>& network_guid,
+          [&run_loop](const absl::optional<std::string>& network_guid,
                       const std::string& error_message) {
             EXPECT_EQ(kTestNetworkGuid, network_guid);
             EXPECT_EQ(kTestErrorMessage, error_message);
@@ -120,12 +119,11 @@ TEST(WifiNetworkConfigurationHandlerTest, Success) {
 
 TEST(WifiNetworkConfigurationHandlerTest, Failure) {
   base::test::TaskEnvironment task_environment;
-  ash::system::ScopedFakeStatisticsProvider statistics_provider_;
   ash::NetworkStateTestHelper network_state_test_helper{
       /*use_default_devices_and_services=*/true};
   FakeCrosNetworkConfig fake_cros_network_config{&network_state_test_helper};
 
-  fake_cros_network_config.SetOutput(/*network_guid=*/std::nullopt,
+  fake_cros_network_config.SetOutput(/*network_guid=*/absl::nullopt,
                                      kTestErrorMessage);
   ash::network_config::OverrideInProcessInstanceForTesting(
       &fake_cros_network_config);
@@ -138,7 +136,7 @@ TEST(WifiNetworkConfigurationHandlerTest, Failure) {
   handler.ConfigureWifiNetwork(
       attachment,
       base::BindLambdaForTesting(
-          [&run_loop](const std::optional<std::string>& network_guid,
+          [&run_loop](const absl::optional<std::string>& network_guid,
                       const std::string& error_message) {
             EXPECT_FALSE(network_guid);
             EXPECT_EQ(kTestErrorMessage, error_message);

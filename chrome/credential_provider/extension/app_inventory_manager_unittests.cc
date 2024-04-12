@@ -150,8 +150,9 @@ TEST_P(AppInventoryManagerTest, uploadAppInventory) {
       AppInventoryManager::Get()->GetGemServiceUploadAppInventoryUrl();
   ASSERT_TRUE(app_inventory_url.is_valid());
 
-  auto expected_response_value = base::Value::Dict().Set(
-      "deviceResourceId", base::WideToUTF8(device_resource_id));
+  base::Value expected_response_value(base::Value::Type::DICT);
+  expected_response_value.SetStringKey("deviceResourceId",
+                                       base::WideToUTF8(device_resource_id));
   std::string expected_response;
   base::JSONWriter::Write(expected_response_value, &expected_response);
 
@@ -178,7 +179,7 @@ TEST_P(AppInventoryManagerTest, uploadAppInventory) {
     FakeWinHttpUrlFetcherFactory::RequestData request_data =
         fake_http_url_fetcher_factory()->GetRequestData(0);
 
-    std::optional<base::Value> body_value =
+    absl::optional<base::Value> body_value =
         base::JSONReader::Read(request_data.body);
 
     base::Value::Dict request;

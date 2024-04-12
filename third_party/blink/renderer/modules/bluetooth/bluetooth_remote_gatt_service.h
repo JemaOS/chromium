@@ -6,8 +6,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_BLUETOOTH_BLUETOOTH_REMOTE_GATT_SERVICE_H_
 
 #include "third_party/blink/public/mojom/bluetooth/web_bluetooth.mojom-blink-forward.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_typedefs.h"
 #include "third_party/blink/renderer/modules/bluetooth/bluetooth_device.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
@@ -17,6 +15,7 @@
 namespace blink {
 
 class ExceptionState;
+class ScriptPromise;
 class ScriptState;
 
 // Represents a GATT Service within a Bluetooth Peripheral, a collection of
@@ -42,17 +41,16 @@ class BluetoothRemoteGATTService final : public ScriptWrappable {
   // IDL exposed interface:
   String uuid() { return service_->uuid; }
   bool isPrimary() { return is_primary_; }
-  BluetoothDevice* device() { return device_.Get(); }
-  ScriptPromiseTyped<BluetoothRemoteGATTCharacteristic> getCharacteristic(
+  BluetoothDevice* device() { return device_; }
+  ScriptPromise getCharacteristic(
       ScriptState* script_state,
       const V8BluetoothCharacteristicUUID* characteristic,
       ExceptionState& exception_state);
-  ScriptPromiseTyped<IDLSequence<BluetoothRemoteGATTCharacteristic>>
-  getCharacteristics(ScriptState* script_state,
-                     const V8BluetoothCharacteristicUUID* characteristic,
-                     ExceptionState& exception_state);
-  ScriptPromiseTyped<IDLSequence<BluetoothRemoteGATTCharacteristic>>
-  getCharacteristics(ScriptState*, ExceptionState&);
+  ScriptPromise getCharacteristics(
+      ScriptState* script_state,
+      const V8BluetoothCharacteristicUUID* characteristic,
+      ExceptionState& exception_state);
+  ScriptPromise getCharacteristics(ScriptState*, ExceptionState&);
 
  private:
   void GetCharacteristicsCallback(
@@ -61,14 +59,15 @@ class BluetoothRemoteGATTService final : public ScriptWrappable {
       mojom::blink::WebBluetoothGATTQueryQuantity,
       ScriptPromiseResolver*,
       mojom::blink::WebBluetoothResult,
-      std::optional<
+      absl::optional<
           Vector<mojom::blink::WebBluetoothRemoteGATTCharacteristicPtr>>
           characteristics);
 
-  void GetCharacteristicsImpl(ScriptPromiseResolver*,
-                              ExceptionState&,
-                              mojom::blink::WebBluetoothGATTQueryQuantity,
-                              const String& characteristic_uuid = String());
+  ScriptPromise GetCharacteristicsImpl(
+      ScriptState*,
+      ExceptionState&,
+      mojom::blink::WebBluetoothGATTQueryQuantity,
+      const String& characteristic_uuid = String());
 
   mojom::blink::WebBluetoothRemoteGATTServicePtr service_;
   const bool is_primary_;

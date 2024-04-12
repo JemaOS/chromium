@@ -39,6 +39,10 @@ class SavePaymentIconController {
   // Once the animation ends, it shows a new bubble if needed.
   virtual void OnAnimationEnded() = 0;
 
+  // Returns true iff upload save failed and the failure badge on the icon
+  // should be shown.
+  virtual bool ShouldShowSaveFailureBadge() const = 0;
+
   // Returns true iff the payment saved animation should be shown.
   virtual bool ShouldShowPaymentSavedLabelAnimation() const = 0;
 
@@ -57,10 +61,6 @@ class SavePaymentIconController {
 
   // Returns the tooltip message for the save payment icon.
   virtual std::u16string GetSavePaymentIconTooltipText() const = 0;
-
-  // Returns the id of the string to show in the save animation upon a
-  // successful save.
-  virtual int GetSaveSuccessAnimationStringId() const = 0;
 };
 
 }  // namespace autofill

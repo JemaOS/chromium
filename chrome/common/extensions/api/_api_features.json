@@ -22,23 +22,50 @@
     "dependencies": ["permission:accessibilityPrivate"],
     "contexts": ["blessed_extension"]
   },
-  "accessibilityServicePrivate": {
-    "dependencies": ["permission:accessibilityServicePrivate"],
+  "accessibilityPrivate.onTwoFingerTouchStart": {
     "channel": "stable",
     "contexts": ["blessed_extension"],
-    "platforms": ["chromeos", "lacros"]
+    "dependencies": [],
+    "extension_types": ["platform_app"],
+    "session_types": ["kiosk"],
+    "allowlist": [
+       "E703483CEF33DEC18B4B6DD84B5C776FB9182BDB",  // http://crbug.com/717501
+       "A3BC37E2148AC4E99BE4B16AF9D42DD1E592BBBE",  // http://crbug.com/717501
+       "1C93BD3CF875F4A73C0B2A163BB8FBDA8B8B3D80",  // http://crbug.com/717501
+       "307E96539209F95A1A8740C713E6998A73657D96",  // http://crbug.com/717501
+       "4F25792AF1AA7483936DE29C07806F203C7170A0",  // http://crbug.com/717501
+       "BD8781D757D830FC2E85470A1B6E8A718B7EE0D9",  // http://crbug.com/717501
+       "4AC2B6C63C6480D150DFDA13E4A5956EB1D0DDBB",  // http://crbug.com/717501
+       "81986D4F846CEDDDB962643FA501D1780DD441BB",  // http://crbug.com/717501
+       "A9A9FC0228ADF541F0334F22BEFB8F9C245B21D7"   // http://crbug.com/839189
+    ]
+  },
+  "accessibilityPrivate.onTwoFingerTouchStop": {
+    "channel": "stable",
+    "contexts": ["blessed_extension"],
+    "dependencies": [],
+    "extension_types": ["platform_app"],
+    "session_types": ["kiosk"],
+    "allowlist": [
+       "E703483CEF33DEC18B4B6DD84B5C776FB9182BDB",  // http://crbug.com/717501
+       "A3BC37E2148AC4E99BE4B16AF9D42DD1E592BBBE",  // http://crbug.com/717501
+       "1C93BD3CF875F4A73C0B2A163BB8FBDA8B8B3D80",  // http://crbug.com/717501
+       "307E96539209F95A1A8740C713E6998A73657D96",  // http://crbug.com/717501
+       "4F25792AF1AA7483936DE29C07806F203C7170A0",  // http://crbug.com/717501
+       "BD8781D757D830FC2E85470A1B6E8A718B7EE0D9",  // http://crbug.com/717501
+       "4AC2B6C63C6480D150DFDA13E4A5956EB1D0DDBB",  // http://crbug.com/717501
+       "81986D4F846CEDDDB962643FA501D1780DD441BB",  // http://crbug.com/717501
+       "A9A9FC0228ADF541F0334F22BEFB8F9C245B21D7"   // http://crbug.com/839189
+    ]
   },
   "action": {
     "dependencies": ["manifest:action"],
     "contexts": ["blessed_extension"]
   },
-  "action.openPopup": [{
+  "action.openPopup": {
     // TODO(https://crbug.com/1245093): Upgrade to stable channel.
     "channel": "dev"
-  }, {
-    "channel": "stable",
-    "location": "policy"
-  }],
+  },
   "action.isEnabled": {
     "channel": "stable"
   },
@@ -195,12 +222,9 @@
     "matches": [
       "chrome://version/*"
     ],
-    "platforms": ["chromeos", "lacros"]
+    "platforms": ["chromeos"]
   }],
-  // This feature controls the availability of the <webview> tag itself. This
-  // is separate from the chromeWebViewInternal API, which is needed by other
-  // elements that are built atop <webview> (like Controlled Frame).
-  "chromeWebViewTag": [{
+  "chromeWebViewInternal": [{
     "internal": true,
     "dependencies": ["permission:webview"],
     "contexts": ["blessed_extension"]
@@ -210,34 +234,23 @@
     "contexts": ["webui"],
     "matches": [
       "chrome://assistant-optin/*",
+      "chrome://jemaos-ai/*",
       "chrome://add-supervision/*",
       "chrome://chrome-signin/*",
       "chrome://discards/*",
       "chrome://mobilesetup/*",
       "chrome://oobe/*",
       "chrome://os-settings/*",
+      "chrome://file-manager/*",
       "chrome://parent-access/*",
       "chrome://password-change/*",
       "chrome://lock-reauth/*"
     ]
-  }],
-  "chromeWebViewInternal": [{
-    "internal": true,
-    "dependencies": ["api:chromeWebViewTag"],
-    "contexts": ["blessed_extension"]
-  }, {
-    "internal": true,
-    "dependencies": ["api:chromeWebViewTag"],
-    "contexts": ["webui"],
-    // Note: The dependency above effectively restricts where this can be used
-    // to the specified set of URLs, so this could even be <all_urls>. Just to
-    // be extra-cautious, we restrict to the chrome scheme.
-    "matches": [ "chrome://*/*" ]
   }, {
     // This feature is used by the Controlled Frame API and is specifically
     // enabled by //chrome.
     "internal": true,
-    "channel": "stable",
+    "channel": "dev",
     "contexts": ["web_page"],
     // This feature is only enabled if the embedder's delegated check returns
     // true.
@@ -254,9 +267,6 @@
   "contentSettings": {
     "dependencies": ["permission:contentSettings"],
     "contexts": ["blessed_extension"]
-  },
-  "contentSettings.clipboard": {
-    "feature_flag": "ApiContentSettingsClipboard"
   },
   "contextMenus": {
     "dependencies": ["permission:contextMenus"],
@@ -301,7 +311,8 @@
   },
   "debugger": {
     "dependencies": ["permission:debugger"],
-    "contexts": ["blessed_extension"]
+    "contexts": ["blessed_extension"],
+    "developer_mode_only": true
   },
   "declarativeContent": {
     "dependencies": ["permission:declarativeContent"],
@@ -378,10 +389,6 @@
   },
   "enterprise.deviceAttributes": {
     "dependencies": ["permission:enterprise.deviceAttributes"],
-    "contexts": ["blessed_extension"]
-  },
-  "enterprise.kioskInput": {
-    "dependencies": ["permission:enterprise.kioskInput"],
     "contexts": ["blessed_extension"]
   },
   "enterprise.networkingAttributes": {
@@ -566,12 +573,12 @@
     "dependencies": ["permission:identity"],
     "contexts": ["blessed_extension"]
   },
-  "idltest": {
-    "dependencies": ["permission:idltest"],
+  "identityPrivate": {
+    "dependencies": ["permission:identityPrivate"],
     "contexts": ["blessed_extension"]
   },
-  "imageLoaderPrivate": {
-    "dependencies": ["permission:imageLoaderPrivate"],
+  "idltest": {
+    "dependencies": ["permission:idltest"],
     "contexts": ["blessed_extension"]
   },
   "input.ime": {
@@ -608,32 +615,11 @@
       "chrome://settings/*"
     ]
   }],
-  "login": [{
-    "dependencies": ["behavior:imprivata_extension", "permission:login"],
-    "contexts": ["blessed_extension"],
-    "default_parent": true
-  }, {
+  "login": {
     "dependencies": ["permission:login"],
     "contexts": ["blessed_extension"],
-    "allowlist": [
-      "93B7178E8C275515C38D4F43D9DF4648F0EA9B03", // Identity Card Connector
-      "7FE4A999359A456C4B0FB7B7AD85CEA29CA50519", // Login screen APIs test extension
-      "3F5995FE79A861F019C6F093BEF98D73FA9D3A5F"  // Login screen APIs in-session test extension
-    ]
-  }],
-  "login.exitCurrentSession": [{
-    "dependencies": ["behavior:imprivata_extension", "permission:login"],
-    "contexts": ["blessed_extension"]
-  }, {
-    "dependencies": ["permission:login"],
-    "allowlist": [
-      "93B7178E8C275515C38D4F43D9DF4648F0EA9B03", // Identity Card Connector
-      "7FE4A999359A456C4B0FB7B7AD85CEA29CA50519", // Login screen APIs test extension
-      "3F5995FE79A861F019C6F093BEF98D73FA9D3A5F", // Login screen APIs in-session test extension
-      // Only has access to login.exitCurrentSession
-      "8ECFC754A70BE499325FA4BB705E62EFEEC1BC80"  // b/314208017
-    ]
-  }],
+    "disallow_for_service_workers": true
+  },
   "loginScreenStorage": {
     "dependencies": ["permission:loginScreenStorage"],
     "contexts": ["blessed_extension"]
@@ -727,13 +713,11 @@
   },
   "printing": {
     "dependencies": ["permission:printing"],
-    "contexts": ["blessed_extension"],
-    "required_buildflags": ["use_cups"]
+    "contexts": ["blessed_extension"]
   },
   "printingMetrics": {
     "dependencies": ["permission:printingMetrics"],
-    "contexts": ["blessed_extension"],
-    "required_buildflags": ["use_cups"]
+    "contexts": ["blessed_extension"]
   },
   "privacy": {
     "dependencies": ["permission:privacy"],
@@ -761,11 +745,6 @@
       "chrome://oobe/*"
     ],
     "platforms": ["chromeos", "lacros"]
-  },
-  "readingList": {
-    "dependencies": ["permission:readingList"],
-    "contexts": ["blessed_extension"],
-    "feature_flag": "ApiReadingList"
   },
   "resourcesPrivate": [{
     "dependencies": ["permission:resourcesPrivate"],
@@ -840,9 +819,7 @@
   },
   "tabCapture": {
     "dependencies": ["permission:tabCapture"],
-    "contexts": ["blessed_extension"]
-  },
-  "tabCapture.capture": {
+    "contexts": ["blessed_extension"],
     "disallow_for_service_workers": true
   },
   "tabGroups": {
@@ -954,6 +931,13 @@
     "contexts": ["webui"],
     "matches": [
       "chrome://os-settings/*"
+    ]
+  }, {
+    "channel": "stable",
+    "contexts": ["blessed_extension"],
+    "platforms": ["chromeos"],
+    "allowlist": [
+      "F3C1CDC64C6AAB9E1DF4219AC2242C0505A14A9E"  //JemaOS System Control Extension
     ]
   }],
   "virtualKeyboardPrivate": {

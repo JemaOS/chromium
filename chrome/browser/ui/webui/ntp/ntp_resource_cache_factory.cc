@@ -17,27 +17,20 @@ NTPResourceCache* NTPResourceCacheFactory::GetForProfile(Profile* profile) {
 
 // static
 NTPResourceCacheFactory* NTPResourceCacheFactory::GetInstance() {
-  static base::NoDestructor<NTPResourceCacheFactory> instance;
-  return instance.get();
+  return base::Singleton<NTPResourceCacheFactory>::get();
 }
 
 NTPResourceCacheFactory::NTPResourceCacheFactory()
     : ProfileKeyedServiceFactory(
           "NTPResourceCache",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(IdentityManagerFactory::GetInstance());
   DependsOn(ThemeServiceFactory::GetInstance());
 }
 
-NTPResourceCacheFactory::~NTPResourceCacheFactory() = default;
+NTPResourceCacheFactory::~NTPResourceCacheFactory() {}
 
-std::unique_ptr<KeyedService>
-NTPResourceCacheFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* NTPResourceCacheFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<NTPResourceCache>(static_cast<Profile*>(profile));
+  return new NTPResourceCache(static_cast<Profile*>(profile));
 }

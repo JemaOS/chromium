@@ -9,7 +9,6 @@
 
 #include <memory>
 
-#include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
@@ -27,19 +26,10 @@ class DOMArrayBuffer;
 class RTCEncodedVideoFrameDelegate;
 class RTCEncodedVideoFrameMetadata;
 
-MODULES_EXPORT BASE_DECLARE_FEATURE(
-    kAllowRTCEncodedVideoFrameSetMetadataAllFields);
-
 class MODULES_EXPORT RTCEncodedVideoFrame final : public ScriptWrappable {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  static RTCEncodedVideoFrame* Create(RTCEncodedVideoFrame* original_frame,
-                                      ExceptionState& exception_state);
-  static RTCEncodedVideoFrame* Create(
-      RTCEncodedVideoFrame* original_frame,
-      RTCEncodedVideoFrameMetadata* new_metadata,
-      ExceptionState& exception_state);
   explicit RTCEncodedVideoFrame(
       std::unique_ptr<webrtc::TransformableVideoFrameInterface> webrtc_frame);
   explicit RTCEncodedVideoFrame(
@@ -49,15 +39,13 @@ class MODULES_EXPORT RTCEncodedVideoFrame final : public ScriptWrappable {
   String type() const;
   // Returns the RTP Packet Timestamp for this frame.
   uint32_t timestamp() const;
-  void setTimestamp(uint32_t timestamp, ExceptionState& exception_state);
   DOMArrayBuffer* data() const;
   RTCEncodedVideoFrameMetadata* getMetadata() const;
-  bool SetMetadata(const RTCEncodedVideoFrameMetadata* metadata,
-                   String& error_message);
   void setMetadata(RTCEncodedVideoFrameMetadata* metadata,
                    ExceptionState& exception_state);
   void setData(DOMArrayBuffer*);
   String toString() const;
+  RTCEncodedVideoFrame* clone(ExceptionState& exception_state) const;
 
   scoped_refptr<RTCEncodedVideoFrameDelegate> Delegate() const;
   void SyncDelegate() const;

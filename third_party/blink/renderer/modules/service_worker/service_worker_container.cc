@@ -30,9 +30,9 @@
 #include "third_party/blink/renderer/modules/service_worker/service_worker_container.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/service_worker/service_worker_error_type.mojom-blink.h"
 #include "third_party/blink/public/platform/web_fetch_client_settings_object.h"
 #include "third_party/blink/public/platform/web_string.h"
@@ -105,8 +105,7 @@ mojom::blink::ServiceWorkerUpdateViaCache ParseUpdateViaCache(
 class GetRegistrationCallback : public WebServiceWorkerProvider::
                                     WebServiceWorkerGetRegistrationCallbacks {
  public:
-  explicit GetRegistrationCallback(
-      ScriptPromiseResolverTyped<ServiceWorkerRegistration>* resolver)
+  explicit GetRegistrationCallback(ScriptPromiseResolver* resolver)
       : resolver_(resolver) {}
 
   GetRegistrationCallback(const GetRegistrationCallback&) = delete;
@@ -136,7 +135,7 @@ class GetRegistrationCallback : public WebServiceWorkerProvider::
   }
 
  private:
-  Persistent<ScriptPromiseResolverTyped<ServiceWorkerRegistration>> resolver_;
+  Persistent<ScriptPromiseResolver> resolver_;
 };
 
 }  // namespace
@@ -211,19 +210,17 @@ void ServiceWorkerContainer::Trace(Visitor* visitor) const {
   visitor->Trace(dom_content_loaded_observer_);
   visitor->Trace(service_worker_registration_objects_);
   visitor->Trace(service_worker_objects_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   Supplement<LocalDOMWindow>::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }
 
-ScriptPromiseTyped<ServiceWorkerRegistration>
-ServiceWorkerContainer::registerServiceWorker(
+ScriptPromise ServiceWorkerContainer::registerServiceWorker(
     ScriptState* script_state,
     const String& url,
     const RegistrationOptions* options) {
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<ServiceWorkerRegistration>>(script_state);
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
   auto callbacks = std::make_unique<CallbackPromiseAdapter<
       ServiceWorkerRegistration, ServiceWorkerErrorForUpdate>>(resolver);
 
@@ -336,7 +333,7 @@ ServiceWorkerContainer::registerServiceWorker(
 
   mojom::blink::ServiceWorkerUpdateViaCache update_via_cache =
       ParseUpdateViaCache(options->updateViaCache());
-  std::optional<mojom::blink::ScriptType> script_type =
+  absl::optional<mojom::blink::ScriptType> script_type =
       Script::ParseScriptType(options->type());
   DCHECK(script_type);
 
@@ -368,7 +365,7 @@ ServiceWorkerContainer::registerServiceWorker(
 void ServiceWorkerContainer::RegisterServiceWorkerInternal(
     const KURL& scope_url,
     const KURL& script_url,
-    std::optional<mojom::blink::ScriptType> script_type,
+    absl::optional<mojom::blink::ScriptType> script_type,
     mojom::blink::ServiceWorkerUpdateViaCache update_via_cache,
     WebFetchClientSettingsObject fetch_client_settings_object,
     std::unique_ptr<CallbackPromiseAdapter<ServiceWorkerRegistration,
@@ -381,12 +378,11 @@ void ServiceWorkerContainer::RegisterServiceWorkerInternal(
       std::move(fetch_client_settings_object), std::move(callbacks));
 }
 
-ScriptPromiseTyped<ServiceWorkerRegistration>
-ServiceWorkerContainer::getRegistration(ScriptState* script_state,
-                                        const String& document_url) {
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<ServiceWorkerRegistration>>(script_state);
-  auto promise = resolver->Promise();
+ScriptPromise ServiceWorkerContainer::getRegistration(
+    ScriptState* script_state,
+    const String& document_url) {
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   ExecutionContext* execution_context = ExecutionContext::From(script_state);
 
@@ -436,12 +432,10 @@ ServiceWorkerContainer::getRegistration(ScriptState* script_state,
   return promise;
 }
 
-ScriptPromiseTyped<IDLSequence<ServiceWorkerRegistration>>
-ServiceWorkerContainer::getRegistrations(ScriptState* script_state) {
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLSequence<ServiceWorkerRegistration>>>(
-      script_state);
-  auto promise = resolver->Promise();
+ScriptPromise ServiceWorkerContainer::getRegistrations(
+    ScriptState* script_state) {
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   if (!provider_) {
     resolver->Reject(MakeGarbageCollected<DOMException>(
@@ -484,18 +478,17 @@ void ServiceWorkerContainer::startMessages() {
   EnableClientMessageQueue();
 }
 
-ScriptPromiseTyped<ServiceWorkerRegistration> ServiceWorkerContainer::ready(
-    ScriptState* caller_state,
-    ExceptionState& exception_state) {
+ScriptPromise ServiceWorkerContainer::ready(ScriptState* caller_state,
+                                            ExceptionState& exception_state) {
   if (!GetExecutionContext())
-    return ScriptPromiseTyped<ServiceWorkerRegistration>();
+    return ScriptPromise();
 
   if (!caller_state->World().IsMainWorld()) {
     // FIXME: Support .ready from isolated worlds when
     // ScriptPromiseProperty can vend Promises in isolated worlds.
     exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
                                       "'ready' is only supported in pages.");
-    return ScriptPromiseTyped<ServiceWorkerRegistration>();
+    return ScriptPromise();
   }
 
   if (!ready_) {
@@ -622,7 +615,7 @@ ServiceWorker* ServiceWorkerContainer::GetOrCreateServiceWorker(
 
   auto it = service_worker_objects_.find(info.version_id);
   if (it != service_worker_objects_.end())
-    return it->value.Get();
+    return it->value;
 
   const int64_t version_id = info.version_id;
   ServiceWorker* worker = ServiceWorker::Create(

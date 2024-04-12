@@ -1,4 +1,3 @@
 dictionary SharedStoragePrivateAggregationConfig {
-  USVString aggregationCoordinatorOrigin;
   USVString contextId;
 };

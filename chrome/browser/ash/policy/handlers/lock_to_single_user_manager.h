@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_POLICY_HANDLERS_LOCK_TO_SINGLE_USER_MANAGER_H_
 #define CHROME_BROWSER_ASH_POLICY_HANDLERS_LOCK_TO_SINGLE_USER_MANAGER_H_
 
-#include <optional>
-
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/ash/arc/session/arc_session_manager.h"
@@ -14,6 +12,7 @@
 #include "chromeos/ash/components/dbus/concierge/concierge_client.h"
 #include "chromeos/ash/components/dbus/cryptohome/UserDataAuth.pb.h"
 #include "components/user_manager/user_manager.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace policy {
 
@@ -64,7 +63,7 @@ class LockToSingleUserManager final
 
   // Processes the response from D-Bus call.
   void OnLockToSingleUserMountUntilRebootDone(
-      std::optional<user_data_auth::LockToSingleUserMountUntilRebootReply>
+      absl::optional<user_data_auth::LockToSingleUserMountUntilRebootReply>
           reply);
 
   // true if locking is required when DbusNotifyVmStarting() is called

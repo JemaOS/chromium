@@ -26,7 +26,7 @@ struct BLINK_COMMON_EXPORT ParsedPermissionsPolicyDeclaration {
   ParsedPermissionsPolicyDeclaration(
       mojom::PermissionsPolicyFeature feature,
       const std::vector<OriginWithPossibleWildcards>& allowed_origins,
-      const std::optional<url::Origin>& self_if_matches,
+      const absl::optional<url::Origin>& self_if_matches,
       bool matches_all_origins,
       bool matches_opaque_src);
   ParsedPermissionsPolicyDeclaration(
@@ -47,7 +47,7 @@ struct BLINK_COMMON_EXPORT ParsedPermissionsPolicyDeclaration {
   // An list of all the origins/wildcards allowed (none can be opaque).
   std::vector<OriginWithPossibleWildcards> allowed_origins;
   // An origin that matches self if 'self' is in the allowlist.
-  std::optional<url::Origin> self_if_matches;
+  absl::optional<url::Origin> self_if_matches;
   // Fallback value is used when feature is enabled for all or disabled for all.
   bool matches_all_origins{false};
   // This flag is set true for a declared policy on an <iframe sandbox>
@@ -57,12 +57,10 @@ struct BLINK_COMMON_EXPORT ParsedPermissionsPolicyDeclaration {
   // flag is set instead.
   bool matches_opaque_src{false};
 
-  std::optional<std::string> reporting_endpoint;
-
   // Indicates that the parsed policy is deprecated.
   // The feature specified here will be tracked via
   // Deprecation::CountDeprecation once the document is installed.
-  std::optional<mojom::WebFeature> deprecated_feature;
+  absl::optional<mojom::WebFeature> deprecated_feature;
 };
 
 using ParsedPermissionsPolicy = std::vector<ParsedPermissionsPolicyDeclaration>;

@@ -8,8 +8,7 @@
 #include <wayland-client-protocol.h>
 #include <xdg-output-unstable-v1-server-protocol.h>
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/ozone/platform/wayland/test/server_object.h"
 

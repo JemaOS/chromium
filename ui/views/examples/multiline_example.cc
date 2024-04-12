@@ -13,8 +13,6 @@
 
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/events/event.h"
 #include "ui/gfx/range/range.h"
 #include "ui/gfx/render_text.h"
@@ -43,8 +41,6 @@ gfx::Range ClampRange(gfx::Range range, size_t max) {
 
 // A Label with a clamped preferred width to demonstrate wrapping.
 class PreferredSizeLabel : public Label {
-  METADATA_HEADER(PreferredSizeLabel, Label)
-
  public:
   PreferredSizeLabel() = default;
 
@@ -54,22 +50,15 @@ class PreferredSizeLabel : public Label {
   ~PreferredSizeLabel() override = default;
 
   // Label:
-  gfx::Size CalculatePreferredSize(
-      const SizeBounds& available_size) const override {
-    return gfx::Size(50,
-                     Label::CalculatePreferredSize(available_size).height());
+  gfx::Size CalculatePreferredSize() const override {
+    return gfx::Size(50, Label::CalculatePreferredSize().height());
   }
 };
-
-BEGIN_METADATA(PreferredSizeLabel)
-END_METADATA
 
 }  // namespace
 
 // A simple View that hosts a RenderText object.
 class MultilineExample::RenderTextView : public View {
-  METADATA_HEADER(RenderTextView, View)
-
  public:
   RenderTextView() : render_text_(gfx::RenderText::CreateRenderText()) {
     render_text_->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD);
@@ -123,7 +112,6 @@ class MultilineExample::RenderTextView : public View {
 
     render_text_->SetText(new_contents);
     render_text_->SetStyle(gfx::TEXT_STYLE_UNDERLINE, false);
-    render_text_->SetStyle(gfx::TEXT_STYLE_STRIKE, false);
     render_text_->ApplyStyle(gfx::TEXT_STYLE_ITALIC, true, italic_range);
     render_text_->ApplyWeight(gfx::Font::Weight::BOLD, bold_range);
     UpdateColors();
@@ -160,9 +148,6 @@ class MultilineExample::RenderTextView : public View {
 
   std::unique_ptr<gfx::RenderText> render_text_;
 };
-
-BEGIN_METADATA(MultilineExample, RenderTextView)
-END_METADATA
 
 MultilineExample::MultilineExample()
     : ExampleBase(GetStringUTF8(IDS_MULTILINE_SELECT_LABEL).c_str()) {}

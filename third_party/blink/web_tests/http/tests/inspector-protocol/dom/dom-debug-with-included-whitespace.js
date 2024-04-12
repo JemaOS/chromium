@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   // The test page contains a DIV with one child node
   // The function "addWhitespaceNode" inserts a whitespace node as first child which has a DOMNodeRemoved event listener attached.
   const {dp} = await testRunner.startHTML(`<html><div id=outer><span id=inner>Inner</span></div><script>

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <functional>
-
 #include "chrome/browser/download/download_item_warning_data.h"
 
 #include "base/metrics/histogram_functions.h"
@@ -15,7 +13,6 @@ using WarningAction = DownloadItemWarningData::WarningAction;
 using WarningActionEvent = DownloadItemWarningData::WarningActionEvent;
 using ClientSafeBrowsingReportRequest =
     safe_browsing::ClientSafeBrowsingReportRequest;
-using DeepScanTrigger = DownloadItemWarningData::DeepScanTrigger;
 
 namespace {
 constexpr int kWarningActionEventMaxLength = 20;
@@ -53,46 +50,20 @@ void RecordSurfaceWithoutWarningShown(WarningSurface surface) {
 void RecordWarningActionAdded(WarningAction action) {
   base::UmaHistogramEnumeration("Download.WarningData.ActionAdded", action);
 }
-
 }  // namespace
 
 // static
 const char DownloadItemWarningData::kKey[] = "DownloadItemWarningData key";
 
 // static
-template <typename F, typename V>
-V DownloadItemWarningData::GetWithDefault(const DownloadItem* download,
-                                          F&& f,
-                                          V&& default_value) {
-  if (!download) {
-    return default_value;
-  }
-  DownloadItemWarningData* data =
-      static_cast<DownloadItemWarningData*>(download->GetUserData(kKey));
-  if (!data) {
-    return default_value;
-  }
-  return std::invoke(std::forward<F>(f), *data);
-}
-
-// static
-DownloadItemWarningData* DownloadItemWarningData::GetOrCreate(
-    DownloadItem* download) {
-  DownloadItemWarningData* data =
-      static_cast<DownloadItemWarningData*>(download->GetUserData(kKey));
-  if (!data) {
-    data = new DownloadItemWarningData();
-    download->SetUserData(kKey, base::WrapUnique(data));
-  }
-
-  return data;
-}
-
-// static
 std::vector<WarningActionEvent> DownloadItemWarningData::GetWarningActionEvents(
     const DownloadItem* download) {
-  return GetWithDefault(download, &DownloadItemWarningData::ActionEvents,
-                        std::vector<WarningActionEvent>());
+  DownloadItemWarningData* data =
+      static_cast<DownloadItemWarningData*>(download->GetUserData(kKey));
+  if (!data || data->warning_first_shown_time_.is_null()) {
+    return {};
+  }
+  return data->action_events_;
 }
 
 // static
@@ -104,21 +75,18 @@ void DownloadItemWarningData::AddWarningActionEvent(DownloadItem* download,
         AddWarningActionEventOutcome::NOT_ADDED_MISSING_DOWNLOAD);
     return;
   }
-  DownloadItemWarningData* data = GetOrCreate(download);
+  DownloadItemWarningData* data =
+      static_cast<DownloadItemWarningData*>(download->GetUserData(kKey));
+  if (!data) {
+    data = new DownloadItemWarningData();
+    download->SetUserData(kKey, base::WrapUnique(data));
+  }
   if (action == WarningAction::SHOWN) {
-    if (!data->logged_downloads_page_shown_ &&
-        surface == WarningSurface::DOWNLOADS_PAGE) {
-      base::UmaHistogramEnumeration(
-          "Download.ShowedDownloadWarning.DownloadsPage",
-          download->GetDangerType(), download::DOWNLOAD_DANGER_TYPE_MAX);
-      data->logged_downloads_page_shown_ = true;
-    }
     if (data->warning_first_shown_time_.is_null()) {
       RecordAddWarningActionEventOutcome(
           AddWarningActionEventOutcome::ADDED_WARNING_FIRST_SHOWN);
       RecordWarningActionAdded(action);
       data->warning_first_shown_time_ = base::Time::Now();
-      data->warning_first_shown_surface_ = surface;
     } else {
       RecordAddWarningActionEventOutcome(
           AddWarningActionEventOutcome::NOT_ADDED_WARNING_SHOWN_ALREADY_LOGGED);
@@ -138,51 +106,16 @@ void DownloadItemWarningData::AddWarningActionEvent(DownloadItem* download,
   }
   int64_t action_latency =
       (base::Time::Now() - data->warning_first_shown_time_).InMilliseconds();
-  bool is_terminal_action = action == WarningAction::PROCEED ||
-                            action == WarningAction::DISCARD ||
-                            action == WarningAction::PROCEED_DEEP_SCAN;
+  bool is_terminal_action =
+      (action == WarningAction::PROCEED || action == WarningAction::DISCARD)
+          ? true
+          : false;
   DCHECK_NE(WarningAction::SHOWN, action);
   data->action_events_.emplace_back(surface, action, action_latency,
                                     is_terminal_action);
   RecordAddWarningActionEventOutcome(
       AddWarningActionEventOutcome::ADDED_WARNING_ACTION);
   RecordWarningActionAdded(action);
-}
-
-// static
-bool DownloadItemWarningData::IsEncryptedArchive(
-    const download::DownloadItem* download) {
-  return GetWithDefault(download,
-                        &DownloadItemWarningData::is_encrypted_archive_, false);
-}
-
-// static
-void DownloadItemWarningData::SetIsEncryptedArchive(
-    download::DownloadItem* download,
-    bool is_encrypted_archive) {
-  if (!download) {
-    return;
-  }
-
-  GetOrCreate(download)->is_encrypted_archive_ = is_encrypted_archive;
-}
-
-// static
-bool DownloadItemWarningData::HasIncorrectPassword(
-    const download::DownloadItem* download) {
-  return GetWithDefault(
-      download, &DownloadItemWarningData::has_incorrect_password_, false);
-}
-
-// static
-void DownloadItemWarningData::SetHasIncorrectPassword(
-    download::DownloadItem* download,
-    bool has_incorrect_password) {
-  if (!download) {
-    return;
-  }
-
-  GetOrCreate(download)->has_incorrect_password_ = has_incorrect_password;
 }
 
 // static
@@ -206,10 +139,6 @@ DownloadItemWarningData::ConstructCsbrrDownloadWarningAction(
     case DownloadItemWarningData::WarningSurface::DOWNLOAD_PROMPT:
       action.set_surface(ClientSafeBrowsingReportRequest::
                              DownloadWarningAction::DOWNLOAD_PROMPT);
-      break;
-    case DownloadItemWarningData::WarningSurface::DOWNLOAD_NOTIFICATION:
-      action.set_surface(ClientSafeBrowsingReportRequest::
-                             DownloadWarningAction::DOWNLOAD_NOTIFICATION);
       break;
   }
   switch (event.action) {
@@ -245,14 +174,6 @@ DownloadItemWarningData::ConstructCsbrrDownloadWarningAction(
       action.set_action(
           ClientSafeBrowsingReportRequest::DownloadWarningAction::OPEN_SUBPAGE);
       break;
-    case DownloadItemWarningData::WarningAction::PROCEED_DEEP_SCAN:
-      action.set_action(ClientSafeBrowsingReportRequest::DownloadWarningAction::
-                            PROCEED_DEEP_SCAN);
-      break;
-    case DownloadItemWarningData::WarningAction::OPEN_LEARN_MORE_LINK:
-      action.set_action(ClientSafeBrowsingReportRequest::DownloadWarningAction::
-                            OPEN_LEARN_MORE_LINK);
-      break;
     case DownloadItemWarningData::WarningAction::SHOWN:
       NOTREACHED();
       break;
@@ -262,88 +183,9 @@ DownloadItemWarningData::ConstructCsbrrDownloadWarningAction(
   return action;
 }
 
-// static
-bool DownloadItemWarningData::HasShownLocalDecryptionPrompt(
-    const download::DownloadItem* download) {
-  return GetWithDefault(
-      download, &DownloadItemWarningData::has_shown_local_decryption_prompt_,
-      false);
-}
-
-// static
-void DownloadItemWarningData::SetHasShownLocalDecryptionPrompt(
-    download::DownloadItem* download,
-    bool has_shown) {
-  if (!download) {
-    return;
-  }
-
-  GetOrCreate(download)->has_shown_local_decryption_prompt_ = has_shown;
-}
-
-// static
-bool DownloadItemWarningData::IsFullyExtractedArchive(
-    const download::DownloadItem* download) {
-  return GetWithDefault(
-      download, &DownloadItemWarningData::fully_extracted_archive_, false);
-}
-
-// static
-void DownloadItemWarningData::SetIsFullyExtractedArchive(
-    download::DownloadItem* download,
-    bool extracted) {
-  if (!download) {
-    return;
-  }
-
-  GetOrCreate(download)->fully_extracted_archive_ = extracted;
-}
-
-// static
-DeepScanTrigger DownloadItemWarningData::DownloadDeepScanTrigger(
-    const download::DownloadItem* download) {
-  return GetWithDefault(download, &DownloadItemWarningData::deep_scan_trigger_,
-                        DeepScanTrigger::TRIGGER_UNKNOWN);
-}
-
-// static
-void DownloadItemWarningData::SetDeepScanTrigger(
-    download::DownloadItem* download,
-    DeepScanTrigger trigger) {
-  if (!download) {
-    return;
-  }
-
-  GetOrCreate(download)->deep_scan_trigger_ = trigger;
-}
-
-// static
-base::Time DownloadItemWarningData::WarningFirstShownTime(
-    const download::DownloadItem* download) {
-  return GetWithDefault(download,
-                        &DownloadItemWarningData::warning_first_shown_time_,
-                        base::Time());
-}
-
-// static
-std::optional<DownloadItemWarningData::WarningSurface>
-DownloadItemWarningData::WarningFirstShownSurface(
-    const download::DownloadItem* download) {
-  return GetWithDefault(download,
-                        &DownloadItemWarningData::warning_first_shown_surface_,
-                        std::optional<WarningSurface>());
-}
-
 DownloadItemWarningData::DownloadItemWarningData() = default;
 
 DownloadItemWarningData::~DownloadItemWarningData() = default;
-
-std::vector<WarningActionEvent> DownloadItemWarningData::ActionEvents() const {
-  if (warning_first_shown_time_.is_null()) {
-    return {};
-  }
-  return action_events_;
-}
 
 WarningActionEvent::WarningActionEvent(WarningSurface surface,
                                        WarningAction action,

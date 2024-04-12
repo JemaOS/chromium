@@ -8,11 +8,8 @@
 #include "ash/shelf/shelf.h"
 #include "ash/shelf/shelf_button_delegate.h"
 #include "ash/style/style_util.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/accessibility/ax_node_data.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/controls/highlight_path_generator.h"
 
@@ -26,12 +23,15 @@ ShelfButton::ShelfButton(Shelf* shelf,
   DCHECK(shelf_button_delegate_);
   SetHideInkDropWhenShowingContextMenu(false);
   SetFocusBehavior(FocusBehavior::ALWAYS);
-  views::FocusRing::Get(this)->SetOutsetFocusRingDisabled(true);
+  views::InkDrop::Get(this)->SetMode(
+      views::InkDropHost::InkDropMode::ON_NO_GESTURE_HANDLER);
   // Inset focus ring path to avoid clipping the edges of the ring.
   views::FocusRing::Get(this)->SetPathGenerator(
       std::make_unique<views::CircleHighlightPathGenerator>(
           gfx::Insets(-views::FocusRing::kDefaultHaloInset)));
   SetFocusPainter(nullptr);
+  views::InkDrop::UseInkDropForSquareRipple(views::InkDrop::Get(this),
+                                            /*highlight_on_hover=*/false);
 }
 
 ShelfButton::~ShelfButton() = default;
@@ -41,14 +41,12 @@ ShelfButton::~ShelfButton() = default;
 
 void ShelfButton::OnThemeChanged() {
   views::Button::OnThemeChanged();
-  if (chromeos::features::IsJellyEnabled()) {
-    auto* ink_drop = views::InkDrop::Get(this);
-    ink_drop->SetBaseColorId(cros_tokens::kCrosSysRippleNeutralOnSubtle);
-    ink_drop->SetVisibleOpacity(1.0f);
-  } else {
-    StyleUtil::ConfigureInkDropAttributes(
-        this, StyleUtil::kBaseColor | StyleUtil::kInkDropOpacity);
-  }
+  StyleUtil::ConfigureInkDropAttributes(
+      this, StyleUtil::kBaseColor | StyleUtil::kInkDropOpacity);
+}
+
+const char* ShelfButton::GetClassName() const {
+  return "ash/ShelfButton";
 }
 
 gfx::Rect ShelfButton::GetAnchorBoundsInScreen() const {
@@ -86,8 +84,5 @@ void ShelfButton::NotifyClick(const ui::Event& event) {
     shelf_button_delegate_->ButtonPressed(
         /*sender=*/this, event, views::InkDrop::Get(this)->GetInkDrop());
 }
-
-BEGIN_METADATA(ShelfButton)
-END_METADATA
 
 }  // namespace ash

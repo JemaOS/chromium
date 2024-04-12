@@ -6,9 +6,9 @@
 #define UI_BASE_IME_LINUX_INPUT_METHOD_AURALINUX_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/component_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/ime/composition_text.h"
 #include "ui/base/ime/input_method_base.h"
 #include "ui/base/ime/linux/linux_input_method_context.h"
@@ -52,7 +52,6 @@ class COMPONENT_EXPORT(UI_BASE_IME_LINUX) InputMethodAuraLinux
   void OnSetAutocorrectRange(const gfx::Range& range) override;
   void OnSetVirtualKeyboardOccludedBounds(
       const gfx::Rect& screen_bounds) override;
-  void OnInsertImage(const GURL& src) override;
 
  protected:
   // Overridden from InputMethodBase.
@@ -73,8 +72,7 @@ class COMPONENT_EXPORT(UI_BASE_IME_LINUX) InputMethodAuraLinux
     kTargetDestroyed,  // Target was destroyed during the commit.
   };
   CommitResult MaybeCommitResult(bool filtered, const KeyEvent& event);
-  bool UpdateCompositionIfTextSelected();
-  bool UpdateCompositionIfChanged(bool text_committed);
+  bool MaybeUpdateComposition(bool text_committed);
 
   // Shared implementation of OnPreeditChanged and OnPreeditEnd.
   // |force_update_client| is designed to dispatch key event/update
@@ -83,7 +81,7 @@ class COMPONENT_EXPORT(UI_BASE_IME_LINUX) InputMethodAuraLinux
                        bool force_update_client);
   void ConfirmCompositionText(bool keep_selection);
   bool HasInputMethodResult();
-  bool NeedInsertChar(const std::optional<std::u16string>& result_text) const;
+  bool NeedInsertChar(const absl::optional<std::u16string>& result_text) const;
   [[nodiscard]] ui::EventDispatchDetails SendFakeProcessKeyEvent(
       ui::KeyEvent* event) const;
   void UpdateContextFocusState();
@@ -94,13 +92,13 @@ class COMPONENT_EXPORT(UI_BASE_IME_LINUX) InputMethodAuraLinux
 
   // The last key event that IME is probably in process in
   // async-mode.
-  std::optional<ui::KeyEvent> ime_filtered_key_event_;
+  absl::optional<ui::KeyEvent> ime_filtered_key_event_;
 
   // Tracks last commit result during one key dispatch event.
-  std::optional<CommitResult> last_commit_result_;
+  absl::optional<CommitResult> last_commit_result_;
 
-  std::optional<std::u16string> result_text_;
-  std::optional<std::u16string> surrounding_text_;
+  absl::optional<std::u16string> result_text_;
+  absl::optional<std::u16string> surrounding_text_;
   gfx::Range text_range_;
   gfx::Range selection_range_;
 

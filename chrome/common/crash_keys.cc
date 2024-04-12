@@ -10,6 +10,7 @@
 #include "base/command_line.h"
 #include "base/format_macros.h"
 #include "base/no_destructor.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
@@ -31,20 +32,10 @@ namespace crash_keys {
 namespace {
 
 // A convenient wrapper around a crash key and its name.
-//
-// The CrashKey contract requires that CrashKeyStrings are never
-// moved, copied, or deleted (see
-// third_party/crashpad/crashpad/client/annotation.h); since this class holds
-// a CrashKeyString, it likewise cannot be moved, copied, or deleted.
 class CrashKeyWithName {
  public:
   explicit CrashKeyWithName(std::string name)
       : name_(std::move(name)), crash_key_(name_.c_str()) {}
-  CrashKeyWithName(const CrashKeyWithName&) = delete;
-  CrashKeyWithName& operator=(const CrashKeyWithName&) = delete;
-  CrashKeyWithName(CrashKeyWithName&&) = delete;
-  CrashKeyWithName& operator=(CrashKeyWithName&&) = delete;
-  ~CrashKeyWithName() = delete;
 
   void Clear() { crash_key_.Clear(); }
   void Set(base::StringPiece value) { crash_key_.Set(value); }
@@ -133,7 +124,6 @@ bool IsBoringSwitch(const std::string& flag) {
     "guest-wallpaper-large",
     "guest-wallpaper-small",
     "enterprise-enable-forced-re-enrollment",
-    "enterprise-enable-forced-re-enrollment-on-flex",
     "enterprise-enrollment-initial-modulus",
     "enterprise-enrollment-modulus-limit",
     "login-profile",
@@ -164,6 +154,35 @@ bool IsBoringSwitch(const std::string& flag) {
 void SetCrashKeysFromCommandLine(const base::CommandLine& command_line) {
   HandleEnableDisableFeatures(command_line);
   SetSwitchesFromCommandLine(command_line, &IsBoringSwitch);
+}
+
+void SetActiveExtensions(const std::set<std::string>& extensions) {
+  static crash_reporter::CrashKeyString<4> num_extensions("num-extensions");
+  num_extensions.Set(base::NumberToString(extensions.size()));
+
+  using ExtensionIDKey = crash_reporter::CrashKeyString<64>;
+  static ExtensionIDKey extension_ids[] = {
+      {"extension-1", ExtensionIDKey::Tag::kArray},
+      {"extension-2", ExtensionIDKey::Tag::kArray},
+      {"extension-3", ExtensionIDKey::Tag::kArray},
+      {"extension-4", ExtensionIDKey::Tag::kArray},
+      {"extension-5", ExtensionIDKey::Tag::kArray},
+      {"extension-6", ExtensionIDKey::Tag::kArray},
+      {"extension-7", ExtensionIDKey::Tag::kArray},
+      {"extension-8", ExtensionIDKey::Tag::kArray},
+      {"extension-9", ExtensionIDKey::Tag::kArray},
+      {"extension-10", ExtensionIDKey::Tag::kArray},
+  };
+
+  auto it = extensions.begin();
+  for (size_t i = 0; i < std::size(extension_ids); ++i) {
+    if (it == extensions.end()) {
+      extension_ids[i].Clear();
+    } else {
+      extension_ids[i].Set(*it);
+      ++it;
+    }
+  }
 }
 
 }  // namespace crash_keys

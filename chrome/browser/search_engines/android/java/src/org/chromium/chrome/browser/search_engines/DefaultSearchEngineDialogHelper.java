@@ -46,7 +46,9 @@ public class DefaultSearchEngineDialogHelper implements OnCheckedChangeListener,
     private final Runnable mFinishRunnable;
     private final Button mConfirmButton;
 
-    /** List of search engine keywords in the order shown to the user. */
+    /**
+     * List of search engine keywords in the order shown to the user.
+     */
     private final List<String> mSearchEngineKeywords;
 
     /**
@@ -56,7 +58,9 @@ public class DefaultSearchEngineDialogHelper implements OnCheckedChangeListener,
      */
     private String mCurrentlySelectedKeyword;
 
-    /** Keyword that is both selected and confirmed (with a click to {@link #mConfirmButton}). */
+    /**
+     * Keyword that is both selected and confirmed (with a click to {@link #mConfirmButton}).
+     */
     private String mConfirmedKeyword;
 
     /**
@@ -68,12 +72,8 @@ public class DefaultSearchEngineDialogHelper implements OnCheckedChangeListener,
      * @param confirmButton  Button that the user clicks on to confirm their selection.
      * @param finishRunnable Runs after the user has confirmed their selection.
      */
-    public DefaultSearchEngineDialogHelper(
-            @SearchEnginePromoType int dialogType,
-            Delegate delegate,
-            RadioButtonLayout controls,
-            Button confirmButton,
-            Runnable finishRunnable) {
+    public DefaultSearchEngineDialogHelper(@SearchEnginePromoType int dialogType, Delegate delegate,
+            RadioButtonLayout controls, Button confirmButton, Runnable finishRunnable) {
         mDialogType = dialogType;
         mConfirmButton = confirmButton;
         mConfirmButton.setOnClickListener(this);
@@ -101,13 +101,15 @@ public class DefaultSearchEngineDialogHelper implements OnCheckedChangeListener,
     }
 
     /** @return Keyword that corresponds to the search engine that is currently selected. */
-    public final @Nullable String getCurrentlySelectedKeyword() {
+    @Nullable
+    public final String getCurrentlySelectedKeyword() {
         // TODO(yusufo): All callers should check getConfirmedKeyword below.
         return mCurrentlySelectedKeyword;
     }
 
     /** @return Keyword that corresponds to the search engine that is selected and confirmed. */
-    public final @Nullable String getConfirmedKeyword() {
+    @Nullable
+    public final String getConfirmedKeyword() {
         return mConfirmedKeyword;
     }
 

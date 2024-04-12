@@ -83,13 +83,7 @@ class SendTabToSelfBubbleTest : public DialogBrowserTest {
   }
 };
 
-// TODO(crbug.com/1473988): Flakily fails on some Windows builders.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_InvokeUi_ShowDeviceList DISABLED_InvokeUi_ShowDeviceList
-#else
-#define MAYBE_InvokeUi_ShowDeviceList InvokeUi_ShowDeviceList
-#endif
-IN_PROC_BROWSER_TEST_F(SendTabToSelfBubbleTest, MAYBE_InvokeUi_ShowDeviceList) {
+IN_PROC_BROWSER_TEST_F(SendTabToSelfBubbleTest, InvokeUi_ShowDeviceList) {
   ShowAndVerifyUi();
 }
 

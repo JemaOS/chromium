@@ -4,17 +4,10 @@
 
 #include "chrome/browser/ui/views/bubble/webui_bubble_manager.h"
 
-#include "base/notimplemented.h"
 #include "base/timer/timer.h"
 #include "chrome/browser/ui/browser_list.h"
-#include "chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.h"
-#include "chrome/browser/ui/webui/top_chrome/webui_contents_warmup_level_recorder.h"
-#include "chrome/browser/ui/webui/top_chrome/webui_url_utils.h"
-#include "content/public/browser/render_frame_host.h"
-#include "content/public/browser/render_process_host.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/gfx/geometry/rect.h"
-#include "ui/views/controls/webview/webview.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
 
@@ -41,29 +34,16 @@ WebUIBubbleManager::~WebUIBubbleManager() {
   }
 }
 
-bool WebUIBubbleManager::ShowBubble(const std::optional<gfx::Rect>& anchor,
-                                    views::BubbleBorder::Arrow arrow,
+bool WebUIBubbleManager::ShowBubble(const absl::optional<gfx::Rect>& anchor,
                                     ui::ElementIdentifier identifier) {
   if (bubble_view_)
     return false;
 
   cache_timer_->Stop();
 
-  WebUIContentsWarmupLevelRecorder warmup_level_recorder;
-  warmup_level_recorder.BeforeContentsCreation();
-  bubble_view_ = CreateWebUIBubbleDialog(anchor, arrow);
-  warmup_level_recorder.AfterContentsCreation(
-      bubble_view_->web_view()->GetWebContents());
-  warmup_level_recorder.SetUsedCachedContents(
-      bubble_using_cached_web_contents_);
-  contents_warmup_level_ = warmup_level_recorder.GetWarmupLevel();
+  bubble_view_ = CreateWebUIBubbleDialog(anchor);
 
   bubble_widget_observation_.Observe(bubble_view_->GetWidget());
-
-  for (WebUIBubbleManagerObserver& observer : observers_) {
-    observer.BeforeBubbleWidgetShowed(bubble_view_->GetWidget());
-  }
-
   // Some bubbles can be triggered when there is no active browser (e.g. emoji
   // picker in Chrome OS launcher). In that case, the close bubble helper isn't
   // needed.
@@ -75,10 +55,6 @@ bool WebUIBubbleManager::ShowBubble(const std::optional<gfx::Rect>& anchor,
 
   if (identifier)
     bubble_view_->SetProperty(views::kElementIdentifierKey, identifier);
-
-  if (GetContentsWrapper()->is_ready_to_show()) {
-    GetContentsWrapper()->ShowUI();
-  }
 
   return true;
 }
@@ -93,14 +69,6 @@ void WebUIBubbleManager::CloseBubble() {
 
 views::Widget* WebUIBubbleManager::GetBubbleWidget() const {
   return bubble_view_ ? bubble_view_->GetWidget() : nullptr;
-}
-
-void WebUIBubbleManager::AddObserver(WebUIBubbleManagerObserver* observer) {
-  observers_.AddObserver(observer);
-}
-
-void WebUIBubbleManager::RemoveObserver(WebUIBubbleManagerObserver* observer) {
-  observers_.RemoveObserver(observer);
 }
 
 void WebUIBubbleManager::OnWidgetDestroying(views::Widget* widget) {

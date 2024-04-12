@@ -16,5 +16,5 @@ CaptionButtonPlaceholderContainer::CaptionButtonPlaceholderContainer() {
 CaptionButtonPlaceholderContainer::~CaptionButtonPlaceholderContainer() =
     default;
 
-BEGIN_METADATA(CaptionButtonPlaceholderContainer)
+BEGIN_METADATA(CaptionButtonPlaceholderContainer, views::View)
 END_METADATA

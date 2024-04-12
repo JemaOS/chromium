@@ -13,8 +13,6 @@
 namespace blink {
 
 class StyleRuleProperty;
-class CSSStyleDeclaration;
-class StyleRuleCSSStyleDeclaration;
 
 class CSSPropertyRule final : public CSSRule {
   DEFINE_WRAPPERTYPEINFO();
@@ -25,16 +23,11 @@ class CSSPropertyRule final : public CSSRule {
 
   String cssText() const override;
   void Reattach(StyleRuleBase*) override;
-  StyleRuleProperty* Property() const;
-  bool SetNameText(const ExecutionContext* execution_context,
-                   const String& name_text);
 
   String name() const;
   String syntax() const;
   bool inherits() const;
   String initialValue() const;
-  // Useful for inspector purposes.
-  CSSStyleDeclaration* Style() const;
 
   void Trace(Visitor*) const override;
 
@@ -42,7 +35,6 @@ class CSSPropertyRule final : public CSSRule {
   CSSRule::Type GetType() const override { return kPropertyRule; }
 
   Member<StyleRuleProperty> property_rule_;
-  mutable Member<StyleRuleCSSStyleDeclaration> properties_cssom_wrapper_;
 };
 
 template <>

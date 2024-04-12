@@ -7,15 +7,14 @@
 
 #include <stdint.h>
 
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/component_export.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/ime/autocorrect_info.h"
 #include "ui/base/ime/grammar_fragment.h"
 #include "ui/base/ime/text_input_client.h"
-#include "ui/base/ime/text_input_flags.h"
 #include "ui/base/ime/text_input_mode.h"
 #include "ui/base/ime/text_input_type.h"
 #include "ui/gfx/geometry/rect.h"
@@ -37,14 +36,6 @@ class VirtualKeyboardController;
 // GNU/Linux and likes.
 class COMPONENT_EXPORT(UI_BASE_IME_LINUX) LinuxInputMethodContext {
  public:
-  struct TextInputClientAttributes {
-    TextInputType input_type = TEXT_INPUT_TYPE_NONE;
-    TextInputMode input_mode = TEXT_INPUT_MODE_DEFAULT;
-    uint32_t flags = TEXT_INPUT_FLAG_NONE;
-    bool should_do_learning = false;
-    bool can_compose_inline = true;
-  };
-
   virtual ~LinuxInputMethodContext() = default;
 
   // Dispatches the key event to an underlying IME.  Returns true if the key
@@ -63,8 +54,15 @@ class COMPONENT_EXPORT(UI_BASE_IME_LINUX) LinuxInputMethodContext {
       const std::u16string& text,
       const gfx::Range& text_range,
       const gfx::Range& selection_range,
-      const std::optional<ui::GrammarFragment>& fragment,
-      const std::optional<AutocorrectInfo>& autocorrect) = 0;
+      const absl::optional<ui::GrammarFragment>& fragment,
+      const absl::optional<AutocorrectInfo>& autocorrect) = 0;
+
+  // Tells the system IME the content type of the text input client is changed.
+  virtual void SetContentType(TextInputType type,
+                              TextInputMode mode,
+                              uint32_t flags,
+                              bool should_do_learning,
+                              bool can_compose_inline) = 0;
 
   // Resets the context.  A client needs to call OnTextInputTypeChanged() again
   // before calling DispatchKeyEvent().
@@ -75,11 +73,10 @@ class COMPONENT_EXPORT(UI_BASE_IME_LINUX) LinuxInputMethodContext {
                                TextInputClient* new_client) {}
 
   // Called when text input focus is changed.
-  virtual void UpdateFocus(
-      bool has_client,
-      TextInputType old_type,
-      const TextInputClientAttributes& new_client_attributes,
-      TextInputClient::FocusReason reason) = 0;
+  virtual void UpdateFocus(bool has_client,
+                           TextInputType old_type,
+                           TextInputType new_type,
+                           TextInputClient::FocusReason reason) = 0;
 
   // Returns the corresponding VirtualKeyboardController instance.
   // Or nullptr, if not supported.
@@ -132,9 +129,6 @@ class COMPONENT_EXPORT(UI_BASE_IME_LINUX) LinuxInputMethodContextDelegate {
   // Sets the virtual keyboard's occluded bounds in screen DIP.
   virtual void OnSetVirtualKeyboardOccludedBounds(
       const gfx::Rect& screen_bounds) = 0;
-
-  // Inserts an image.
-  virtual void OnInsertImage(const GURL& src) = 0;
 };
 
 }  // namespace ui

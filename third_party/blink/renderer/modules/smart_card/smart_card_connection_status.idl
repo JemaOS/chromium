@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// https://wicg.github.io/web-smart-card/#smartcardconnectionstatus-dictionary
+// https://github.com/WICG/web-smart-card/blob/main/README.md#web-idl
 
 enum SmartCardConnectionState {
   "absent",
@@ -10,13 +10,16 @@ enum SmartCardConnectionState {
   "swallowed",
   "powered",
   "negotiable",
+  "specific"
+};
+
+enum SmartCardProtocol {
+  "raw",
   "t0",
-  "t1",
-  "raw"
+  "t1"
 };
 
 dictionary SmartCardConnectionStatus {
-  required DOMString readerName;
   required SmartCardConnectionState state;
-  ArrayBuffer answerToReset;
+  SmartCardProtocol activeProtocol;
 };

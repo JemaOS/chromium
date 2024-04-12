@@ -21,9 +21,9 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/webui/webui_util.h"
 #include "chrome/common/webui_url_constants.h"
-#include "chrome/grit/branded_strings.h"
 #include "chrome/grit/browser_switch_resources.h"
 #include "chrome/grit/browser_switch_resources_map.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/grit/components_resources.h"
 #include "content/public/browser/page_navigator.h"
@@ -68,18 +68,18 @@ bool IsLastTab(const Profile* profile) {
 // }
 base::Value::Dict RuleSetToDict(const browser_switcher::RuleSet& ruleset) {
   base::Value::List sitelist;
-  for (const auto& rule : ruleset.sitelist) {
+  for (const auto& rule : ruleset.sitelist)
     sitelist.Append(rule->ToString());
-  }
 
   base::Value::List greylist;
-  for (const auto& rule : ruleset.greylist) {
+  for (const auto& rule : ruleset.greylist)
     greylist.Append(rule->ToString());
-  }
 
-  return base::Value::Dict()
-      .Set("sitelist", std::move(sitelist))
-      .Set("greylist", std::move(greylist));
+  base::Value::Dict dict;
+  dict.Set("sitelist", std::move(sitelist));
+  dict.Set("greylist", std::move(greylist));
+
+  return dict;
 }
 
 browser_switcher::BrowserSwitcherService* GetBrowserSwitcherService(
@@ -427,15 +427,21 @@ void BrowserSwitchHandler::HandleGotoNewTabPage(const base::Value::List& args) {
 
 void BrowserSwitchHandler::HandleGetAllRulesets(const base::Value::List& args) {
   AllowJavascript();
+
   auto* service = GetBrowserSwitcherService(web_ui());
-  auto retval =
-      base::Value::Dict()
-          .Set("gpo", RuleSetToDict(service->prefs().GetRules()))
-          .Set("ieem", RuleSetToDict(*service->sitelist()->GetIeemSitelist()))
-          .Set("external_sitelist",
-               RuleSetToDict(*service->sitelist()->GetExternalSitelist()))
-          .Set("external_greylist",
-               RuleSetToDict(*service->sitelist()->GetExternalGreylist()));
+
+  base::Value::Dict retval;
+  auto gpo_dict = RuleSetToDict(service->prefs().GetRules());
+  retval.Set("gpo", std::move(gpo_dict));
+  auto ieem_dict = RuleSetToDict(*service->sitelist()->GetIeemSitelist());
+  retval.Set("ieem", std::move(ieem_dict));
+  auto external_sitelist_dict =
+      RuleSetToDict(*service->sitelist()->GetExternalSitelist());
+  retval.Set("external_sitelist", std::move(external_sitelist_dict));
+  auto external_greylist_dict =
+      RuleSetToDict(*service->sitelist()->GetExternalGreylist());
+  retval.Set("external_greylist", std::move(external_greylist_dict));
+
   ResolveJavascriptCallback(args[0], retval);
 }
 
@@ -451,8 +457,11 @@ void BrowserSwitchHandler::HandleGetDecision(const base::Value::List& args) {
   auto* service = GetBrowserSwitcherService(web_ui());
   browser_switcher::Decision decision = service->sitelist()->GetDecision(url);
 
+  base::Value::Dict retval;
+
   base::StringPiece action_name =
       (decision.action == browser_switcher::kStay) ? "stay" : "go";
+  retval.Set("action", action_name);
 
   base::StringPiece reason_name;
   switch (decision.reason) {
@@ -472,13 +481,7 @@ void BrowserSwitchHandler::HandleGetDecision(const base::Value::List& args) {
       reason_name = "default";
       break;
   }
-
-  // clang-format off
-  auto retval =
-      base::Value::Dict()
-          .Set("action", action_name)
-          .Set("reason", reason_name);
-  // clang-format on
+  retval.Set("reason", reason_name);
 
   if (decision.matching_rule) {
     retval.Set("matching_rule", decision.matching_rule->ToString());
@@ -498,12 +501,9 @@ void BrowserSwitchHandler::HandleGetTimestamps(const base::Value::List& args) {
     return;
   }
 
-  auto retval =
-      base::Value::Dict()
-          .Set("last_fetch",
-               downloader->last_refresh_time().InMillisecondsFSinceUnixEpoch())
-          .Set("next_fetch",
-               downloader->next_refresh_time().InMillisecondsFSinceUnixEpoch());
+  base::Value::Dict retval;
+  retval.Set("last_fetch", downloader->last_refresh_time().ToJsTime());
+  retval.Set("next_fetch", downloader->next_refresh_time().ToJsTime());
 
   ResolveJavascriptCallback(args[0], retval);
 }

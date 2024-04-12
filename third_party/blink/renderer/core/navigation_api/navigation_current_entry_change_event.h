@@ -24,7 +24,7 @@ class NavigationCurrentEntryChangeEvent final : public Event {
       NavigationCurrentEntryChangeEventInit* init);
 
   String navigationType() { return navigation_type_; }
-  NavigationHistoryEntry* from() { return from_.Get(); }
+  NavigationHistoryEntry* from() { return from_; }
 
   const AtomicString& InterfaceName() const final;
   void Trace(Visitor* visitor) const final;

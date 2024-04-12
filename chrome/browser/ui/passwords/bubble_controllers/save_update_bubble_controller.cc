@@ -8,34 +8,48 @@
 #include "base/functional/bind.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/ranges/algorithm.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/time/default_clock.h"
-#include "chrome/browser/password_manager/profile_password_store_factory.h"
+#include "chrome/browser/password_manager/password_store_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_avatar_icon_util.h"
+#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/passwords/passwords_model_delegate.h"
 #include "chrome/browser/ui/passwords/ui_utils.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/theme_resources.h"
-#include "components/password_manager/core/browser/features/password_manager_features_util.h"
 #include "components/password_manager/core/browser/manage_passwords_referrer.h"
 #include "components/password_manager/core/browser/password_feature_manager.h"
 #include "components/password_manager/core/browser/password_form_metrics_recorder.h"
-#include "components/password_manager/core/browser/password_store/password_store_interface.h"
-#include "components/password_manager/core/browser/password_store/smart_bubble_stats_store.h"
-#include "components/password_manager/core/browser/password_sync_util.h"
+#include "components/password_manager/core/browser/password_manager_features_util.h"
+#include "components/password_manager/core/browser/password_manager_metrics_util.h"
+#include "components/password_manager/core/browser/password_manager_util.h"
+#include "components/password_manager/core/browser/password_store_interface.h"
+#include "components/password_manager/core/browser/reauth_purpose.h"
+#include "components/password_manager/core/browser/smart_bubble_stats_store.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
 #include "components/prefs/pref_service.h"
+#include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/sync/driver/sync_service.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/models/image_model.h"
+#include "ui/base/resource/resource_bundle.h"
+
+#if BUILDFLAG(IS_WIN)
+#include "chrome/browser/password_manager/password_manager_util_win.h"
+#elif BUILDFLAG(IS_MAC)
+#include "chrome/browser/password_manager/password_manager_util_mac.h"
+#endif
 
 namespace {
 
-using Store = password_manager::PasswordForm::Store;
 namespace metrics_util = password_manager::metrics_util;
-namespace features_util = password_manager::features_util;
+using Store = password_manager::PasswordForm::Store;
 
-metrics_util::UIDisplayDisposition ComputeDisplayDisposition(
+password_manager::metrics_util::UIDisplayDisposition ComputeDisplayDisposition(
     PasswordBubbleControllerBase::DisplayReason display_reason,
     password_manager::ui::State state) {
   if (display_reason ==
@@ -46,7 +60,8 @@ metrics_util::UIDisplayDisposition ComputeDisplayDisposition(
       case password_manager::ui::PENDING_PASSWORD_UPDATE_STATE:
         return metrics_util::MANUAL_WITH_PASSWORD_PENDING_UPDATE;
       default:
-        NOTREACHED_NORETURN();
+        NOTREACHED();
+        return metrics_util::MANUAL_WITH_PASSWORD_PENDING_UPDATE;
     }
   } else {
     switch (state) {
@@ -55,16 +70,17 @@ metrics_util::UIDisplayDisposition ComputeDisplayDisposition(
       case password_manager::ui::PENDING_PASSWORD_UPDATE_STATE:
         return metrics_util::AUTOMATIC_WITH_PASSWORD_PENDING_UPDATE;
       default:
-        NOTREACHED_NORETURN();
+        NOTREACHED();
+        return metrics_util::AUTOMATIC_WITH_PASSWORD_PENDING;
     }
   }
 }
 
 void CleanStatisticsForSite(Profile* profile, const url::Origin& origin) {
-  CHECK(profile);
+  DCHECK(profile);
   password_manager::PasswordStoreInterface* password_store =
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile, ServiceAccessType::IMPLICIT_ACCESS)
+      PasswordStoreFactory::GetForProfile(profile,
+                                          ServiceAccessType::IMPLICIT_ACCESS)
           .get();
   password_manager::SmartBubbleStatsStore* stats_store =
       password_store->GetSmartBubbleStatsStore();
@@ -83,11 +99,13 @@ std::vector<password_manager::PasswordForm> DeepCopyForms(
 }
 
 bool IsSyncUser(Profile* profile) {
-  CHECK(profile);
   const syncer::SyncService* sync_service =
       SyncServiceFactory::GetForProfile(profile);
-  return password_manager::sync_util::IsSyncFeatureActiveIncludingPasswords(
-      sync_service);
+  password_manager::SyncState sync_state =
+      password_manager_util::GetPasswordSyncState(sync_service);
+  return sync_state == password_manager::SyncState::kSyncingNormalEncryption ||
+         sync_state ==
+             password_manager::SyncState::kSyncingWithCustomPassphrase;
 }
 
 }  // namespace
@@ -95,13 +113,32 @@ bool IsSyncUser(Profile* profile) {
 SaveUpdateBubbleController::SaveUpdateBubbleController(
     base::WeakPtr<PasswordsModelDelegate> delegate,
     PasswordBubbleControllerBase::DisplayReason display_reason)
-    : CommonSavedAccountManagerBubbleController(
+    : PasswordBubbleControllerBase(
           delegate,
-          display_reason,
           ComputeDisplayDisposition(display_reason, delegate->GetState())),
+      display_disposition_(
+          ComputeDisplayDisposition(display_reason, delegate->GetState())),
+      password_revealing_requires_reauth_(false),
+      enable_editing_(false),
+      dismissal_reason_(metrics_util::NO_DIRECT_INTERACTION),
       clock_(base::DefaultClock::GetInstance()) {
+  state_ = delegate_->GetState();
+  DCHECK(state_ == password_manager::ui::PENDING_PASSWORD_STATE ||
+         state_ == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE);
+  origin_ = delegate_->GetOrigin();
+  pending_password_ = delegate_->GetPendingPassword();
   existing_credentials_ = DeepCopyForms(delegate_->GetCurrentForms());
-  original_username_ = GetPendingPassword().username_value;
+  if (state_ == password_manager::ui::PENDING_PASSWORD_STATE) {
+    interaction_stats_.origin_domain = origin_.GetURL();
+    interaction_stats_.username_value = pending_password_.username_value;
+    const password_manager::InteractionsStats* stats =
+        delegate_->GetCurrentInteractionStats();
+    if (stats) {
+      DCHECK_EQ(interaction_stats_.username_value, stats->username_value);
+      DCHECK_EQ(interaction_stats_.origin_domain, stats->origin_domain);
+      interaction_stats_.dismissal_count = stats->dismissal_count;
+    }
+  }
   // The condition for the password reauth:
   // If the bubble opened after successful submission -> no reauth because it's
   // a temporary state and we should not complicate that UX flow.
@@ -112,19 +149,11 @@ SaveUpdateBubbleController::SaveUpdateBubbleController(
   password_revealing_requires_reauth_ =
       display_reason ==
           PasswordBubbleControllerBase::DisplayReason::kUserAction &&
-      (GetPendingPassword().form_has_autofilled_value ||
+      (pending_password_.form_has_autofilled_value ||
        !delegate_->BubbleIsManualFallbackForSaving());
-  if (GetState() == password_manager::ui::PENDING_PASSWORD_STATE) {
-    interaction_stats_.origin_domain = GetOrigin().GetURL();
-    interaction_stats_.username_value = GetPendingPassword().username_value;
-    const password_manager::InteractionsStats* stats =
-        delegate_->GetCurrentInteractionStats();
-    if (stats) {
-      CHECK_EQ(interaction_stats_.username_value, stats->username_value);
-      CHECK_EQ(interaction_stats_.origin_domain, stats->origin_domain);
-      interaction_stats_.dismissal_count = stats->dismissal_count;
-    }
-  }
+  enable_editing_ = delegate_->GetCredentialSource() !=
+                    password_manager::metrics_util::CredentialSourceType::
+                        kCredentialManagementAPI;
 }
 
 SaveUpdateBubbleController::~SaveUpdateBubbleController() {
@@ -132,81 +161,84 @@ SaveUpdateBubbleController::~SaveUpdateBubbleController() {
 }
 
 void SaveUpdateBubbleController::OnSaveClicked() {
-  CHECK(GetState() == password_manager::ui::PENDING_PASSWORD_STATE ||
-        GetState() == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE);
-  SetDismissalReason(metrics_util::CLICKED_ACCEPT);
+  DCHECK(state_ == password_manager::ui::PENDING_PASSWORD_STATE ||
+         state_ == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE);
+  dismissal_reason_ = metrics_util::CLICKED_ACCEPT;
   if (delegate_) {
-    CleanStatisticsForSite(GetProfile(), GetOrigin());
+    CleanStatisticsForSite(GetProfile(), origin_);
     if (IsAccountStorageOptInRequiredBeforeSave()) {
       delegate_->AuthenticateUserForAccountStoreOptInAndSavePassword(
-          GetPendingPassword().username_value,
-          GetPendingPassword().password_value);
+          pending_password_.username_value, pending_password_.password_value);
     } else {
-      delegate_->SavePassword(GetPendingPassword().username_value,
-                              GetPendingPassword().password_value);
+      delegate_->SavePassword(pending_password_.username_value,
+                              pending_password_.password_value);
       if (!IsCurrentStateUpdate() &&
           delegate_->GetPasswordFeatureManager()
               ->ShouldOfferOptInAndMoveToAccountStoreAfterSavingLocally()) {
         delegate_
             ->AuthenticateUserForAccountStoreOptInAfterSavingLocallyAndMovePassword();
-      } else {
-        delegate_->MaybeShowIOSPasswordPromo();
       }
     }
   }
 }
 
+void SaveUpdateBubbleController::OnNopeUpdateClicked() {
+  DCHECK_EQ(password_manager::ui::PENDING_PASSWORD_UPDATE_STATE, state_);
+  dismissal_reason_ = metrics_util::CLICKED_CANCEL;
+  if (delegate_)
+    delegate_->OnNopeUpdateClicked();
+}
+
 void SaveUpdateBubbleController::OnNeverForThisSiteClicked() {
-  CHECK_EQ(password_manager::ui::PENDING_PASSWORD_STATE, GetState());
-  SetDismissalReason(metrics_util::CLICKED_NEVER);
+  DCHECK_EQ(password_manager::ui::PENDING_PASSWORD_STATE, state_);
+  dismissal_reason_ = metrics_util::CLICKED_NEVER;
   if (delegate_) {
-    CleanStatisticsForSite(GetProfile(), GetOrigin());
+    CleanStatisticsForSite(GetProfile(), origin_);
     delegate_->NeverSavePassword();
   }
 }
 
-bool SaveUpdateBubbleController::IsCurrentStateUpdate() const {
-  CHECK(GetState() == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE ||
-        GetState() == password_manager::ui::PENDING_PASSWORD_STATE);
-  // If the username didn't change use the `delegate_->GetState()` to determine
-  // whether the operation will save a new credential or update existing. This
-  // is because in some cases PSL matches might be updated depending on a
-  // context. For example, if PSL password is filled on change password flow
-  // together with a new password, we should update existing credential. On the
-  // other hand if PSL matched credential is filled on sign-in page and password
-  // is updated by user we want to save a new password instead.
-  if (original_username_ == GetPendingPassword().username_value) {
-    return GetState() == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE;
+void SaveUpdateBubbleController::OnCredentialEdited(
+    std::u16string new_username,
+    std::u16string new_password) {
+  DCHECK(state_ == password_manager::ui::PENDING_PASSWORD_STATE ||
+         state_ == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE);
+  pending_password_.username_value = std::move(new_username);
+  pending_password_.password_value = std::move(new_password);
+}
+
+void SaveUpdateBubbleController::OnGooglePasswordManagerLinkClicked() {
+  if (delegate_) {
+    delegate_->NavigateToPasswordManagerSettingsPage(
+        password_manager::ManagePasswordsReferrer::kSaveUpdateBubble);
   }
-  return base::Contains(existing_credentials_,
-                        GetPendingPassword().username_value,
+}
+
+bool SaveUpdateBubbleController::IsCurrentStateUpdate() const {
+  DCHECK(state_ == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE ||
+         state_ == password_manager::ui::PENDING_PASSWORD_STATE);
+  return base::Contains(existing_credentials_, pending_password_.username_value,
                         &password_manager::PasswordForm::username_value);
 }
 
 bool SaveUpdateBubbleController::ShouldShowFooter() const {
-  return (GetState() == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE ||
-          GetState() == password_manager::ui::PENDING_PASSWORD_STATE) &&
+  return (state_ == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE ||
+          state_ == password_manager::ui::PENDING_PASSWORD_STATE) &&
          IsSyncUser(GetProfile());
 }
 
 bool SaveUpdateBubbleController::
     IsCurrentStateAffectingPasswordsStoredInTheGoogleAccount() {
-  CHECK(GetState() == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE ||
-        GetState() == password_manager::ui::PENDING_PASSWORD_STATE);
+  DCHECK(state_ == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE ||
+         state_ == password_manager::ui::PENDING_PASSWORD_STATE);
 
-  if (!delegate_) {
-    // A race between `PasswordBubbleControllerBase::OnBubbleClosing()` and
-    // `PasswordSaveUpdateView::OnContentChanged()` may result in a null
-    // `delegate_`.
-    return false;
-  }
   if (IsSyncUser(GetProfile()))
     return true;
 
   bool is_update = false;
   bool is_update_in_account_store = false;
   for (const password_manager::PasswordForm& form : existing_credentials_) {
-    if (form.username_value == GetPendingPassword().username_value) {
+    if (form.username_value == pending_password_.username_value) {
       is_update = true;
       if (form.IsUsingAccountStore())
         is_update_in_account_store = true;
@@ -230,10 +262,11 @@ void SaveUpdateBubbleController::ShouldRevealPasswords(
 
   std::u16string message;
 #if BUILDFLAG(IS_MAC)
-  message = l10n_util::GetStringUTF16(
-      IDS_PASSWORDS_PAGE_AUTHENTICATION_PROMPT_BIOMETRIC_SUFFIX);
+  message = password_manager_util_mac::GetMessageForLoginPrompt(
+      password_manager::ReauthPurpose::VIEW_PASSWORD);
 #elif BUILDFLAG(IS_WIN)
-  message = l10n_util::GetStringUTF16(IDS_PASSWORDS_PAGE_AUTHENTICATION_PROMPT);
+  message = password_manager_util_win::GetMessageForLoginPrompt(
+      password_manager::ReauthPurpose::VIEW_PASSWORD);
 #endif
   // Bind OnUserAuthenticationCompleted() using a weak_ptr such that if the
   // bubble is closed (and controller is destructed) while the reauth flow is
@@ -241,8 +274,7 @@ void SaveUpdateBubbleController::ShouldRevealPasswords(
   // authentication flow.
   delegate_->AuthenticateUserWithMessage(
       message,
-      base::BindOnce(&CommonSavedAccountManagerBubbleController::
-                         OnUserAuthenticationCompleted,
+      base::BindOnce(&SaveUpdateBubbleController::OnUserAuthenticationCompleted,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
@@ -251,16 +283,12 @@ bool SaveUpdateBubbleController::ShouldShowPasswordStorePicker() const {
            ->ShouldShowAccountStorageBubbleUi()) {
     return false;
   }
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::kButterOnDesktopFollowup)) {
-    return false;
-  }
   if (delegate_->GetPasswordFeatureManager()
           ->ShouldOfferOptInAndMoveToAccountStoreAfterSavingLocally()) {
     // If the user will be asked to opt-in *after* saving the current password
     // locally, then do not show the destination picker yet.
-    CHECK_EQ(delegate_->GetPasswordFeatureManager()->GetDefaultPasswordStore(),
-             Store::kProfileStore);
+    DCHECK_EQ(delegate_->GetPasswordFeatureManager()->GetDefaultPasswordStore(),
+              Store::kProfileStore);
     return false;
   }
   return true;
@@ -294,74 +322,116 @@ bool SaveUpdateBubbleController::IsAccountStorageOptInRequiredBeforeSave() {
   return true;
 }
 
+std::u16string SaveUpdateBubbleController::GetPrimaryAccountEmail() {
+  Profile* profile = GetProfile();
+  if (!profile)
+    return std::u16string();
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile);
+  if (!identity_manager)
+    return std::u16string();
+  return base::UTF8ToUTF16(
+      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin)
+          .email);
+}
+
+ui::ImageModel SaveUpdateBubbleController::GetPrimaryAccountAvatar(
+    int icon_size_dip) {
+  Profile* profile = GetProfile();
+  if (!profile)
+    return ui::ImageModel();
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(profile);
+  if (!identity_manager)
+    return ui::ImageModel();
+  AccountInfo primary_account_info = identity_manager->FindExtendedAccountInfo(
+      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin));
+  DCHECK(!primary_account_info.IsEmpty());
+  gfx::Image account_icon = primary_account_info.account_image;
+  if (account_icon.IsEmpty()) {
+    account_icon = ui::ResourceBundle::GetSharedInstance().GetImageNamed(
+        profiles::GetPlaceholderAvatarIconResourceID());
+  }
+  return ui::ImageModel::FromImage(profiles::GetSizedAvatarIcon(
+      account_icon, icon_size_dip, icon_size_dip, profiles::SHAPE_CIRCLE));
+}
+
 bool SaveUpdateBubbleController::DidAuthForAccountStoreOptInFail() const {
   return delegate_->DidAuthForAccountStoreOptInFail();
 }
 
 std::u16string SaveUpdateBubbleController::GetTitle() const {
-  PasswordTitleType type =
-      IsCurrentStateUpdate() ? PasswordTitleType::UPDATE_PASSWORD
-                             : (GetPendingPassword().federation_origin.opaque()
-                                    ? PasswordTitleType::SAVE_PASSWORD
-                                    : PasswordTitleType::SAVE_ACCOUNT);
+  PasswordTitleType type = IsCurrentStateUpdate()
+                               ? PasswordTitleType::UPDATE_PASSWORD
+                               : (pending_password_.federation_origin.opaque()
+                                      ? PasswordTitleType::SAVE_PASSWORD
+                                      : PasswordTitleType::SAVE_ACCOUNT);
   return GetSavePasswordDialogTitleText(GetWebContents()->GetVisibleURL(),
-                                        GetOrigin(), type);
+                                        origin_, type);
 }
 
 void SaveUpdateBubbleController::ReportInteractions() {
-  CHECK(GetState() == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE ||
-        GetState() == password_manager::ui::PENDING_PASSWORD_STATE);
-  if (GetState() == password_manager::ui::PENDING_PASSWORD_STATE) {
+  DCHECK(state_ == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE ||
+         state_ == password_manager::ui::PENDING_PASSWORD_STATE);
+  if (state_ == password_manager::ui::PENDING_PASSWORD_STATE) {
     // Update the statistics for the save password bubble.
     Profile* profile = GetProfile();
     if (profile) {
-      if (GetDismissalReason() == metrics_util::NO_DIRECT_INTERACTION &&
-          GetDisplayDisposition() ==
+      if (dismissal_reason_ == metrics_util::NO_DIRECT_INTERACTION &&
+          display_disposition_ ==
               metrics_util::AUTOMATIC_WITH_PASSWORD_PENDING) {
         if (interaction_stats_.dismissal_count <
-            std::numeric_limits<
-                decltype(interaction_stats_.dismissal_count)>::max()) {
+            std::numeric_limits<decltype(
+                interaction_stats_.dismissal_count)>::max())
           interaction_stats_.dismissal_count++;
-        }
         interaction_stats_.update_time = clock_->Now();
         password_manager::PasswordStoreInterface* password_store =
-            ProfilePasswordStoreFactory::GetForProfile(
+            PasswordStoreFactory::GetForProfile(
                 profile, ServiceAccessType::IMPLICIT_ACCESS)
                 .get();
         password_manager::SmartBubbleStatsStore* stats_store =
             password_store->GetSmartBubbleStatsStore();
-        if (stats_store) {
+        if (stats_store)
           stats_store->AddSiteStats(interaction_stats_);
-        }
       }
     }
   }
 
   // Log UMA histograms.
-  if (GetState() == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE) {
-    metrics_util::LogUpdateUIDismissalReason(GetDismissalReason());
-  } else if (GetState() == password_manager::ui::PENDING_PASSWORD_STATE) {
-    std::optional<features_util::PasswordAccountStorageUserState> user_state =
-        std::nullopt;
+  if (state_ == password_manager::ui::PENDING_PASSWORD_UPDATE_STATE) {
+    metrics_util::LogUpdateUIDismissalReason(
+        dismissal_reason_, pending_password_.submission_event);
+  } else if (state_ == password_manager::ui::PENDING_PASSWORD_STATE) {
+    absl::optional<metrics_util::PasswordAccountStorageUserState> user_state =
+        absl::nullopt;
     Profile* profile = GetProfile();
     if (profile) {
       user_state = password_manager::features_util::
           ComputePasswordAccountStorageUserState(
               profile->GetPrefs(), SyncServiceFactory::GetForProfile(profile));
     }
-    metrics_util::LogSaveUIDismissalReason(GetDismissalReason(), user_state);
+    metrics_util::LogSaveUIDismissalReason(
+        dismissal_reason_, pending_password_.submission_event, user_state);
   }
 
   // Update the delegate so that it can send votes to the server.
   // Send a notification if there was no interaction with the bubble.
   bool no_interaction =
-      GetDismissalReason() == metrics_util::NO_DIRECT_INTERACTION;
+      dismissal_reason_ == metrics_util::NO_DIRECT_INTERACTION;
   if (no_interaction && delegate_) {
     delegate_->OnNoInteraction();
   }
 
   // Record UKM statistics on dismissal reason.
-  if (metrics_recorder_) {
-    metrics_recorder_->RecordUIDismissalReason(GetDismissalReason());
+  if (metrics_recorder_)
+    metrics_recorder_->RecordUIDismissalReason(dismissal_reason_);
+}
+
+void SaveUpdateBubbleController::OnUserAuthenticationCompleted(
+    base::OnceCallback<void(bool)> completion,
+    bool authentication_result) {
+  if (authentication_result) {
+    delegate_->OnPasswordsRevealed();
   }
+  std::move(completion).Run(authentication_result);
 }

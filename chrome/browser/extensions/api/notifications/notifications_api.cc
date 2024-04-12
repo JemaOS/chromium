@@ -39,9 +39,8 @@
 #include "extensions/browser/extension_system_provider.h"
 #include "extensions/browser/extensions_browser_client.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "third_party/skia/include/core/SkBitmap.h"
-#include "ui/base/resource/resource_scale_factor.h"
+#include "ui/base/layout.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/image/image.h"
 #include "ui/gfx/image/image_skia.h"
@@ -88,14 +87,14 @@ const char kLowPriorityDeprecatedOnPlatform[] =
 
 // Given an extension id and another id, returns an id that is unique
 // relative to other extensions.
-std::string CreateScopedIdentifier(const ExtensionId& extension_id,
+std::string CreateScopedIdentifier(const std::string& extension_id,
                                    const std::string& id) {
   return extension_id + "-" + id;
 }
 
 // Removes the unique internal identifier to send the ID as the
 // extension expects it.
-std::string StripScopeFromIdentifier(const ExtensionId& extension_id,
+std::string StripScopeFromIdentifier(const std::string& extension_id,
                                      const std::string& scoped_id) {
   size_t index_of_separator = extension_id.length() + 1;
   DCHECK_LT(index_of_separator, scoped_id.length());
@@ -123,7 +122,7 @@ bool NotificationBitmapToGfxImage(
     return false;
 
   // Ensure we have rgba data.
-  const std::optional<std::vector<uint8_t>>& rgba_data =
+  const absl::optional<std::vector<uint8_t>>& rgba_data =
       notification_bitmap.data;
   if (!rgba_data)
     return false;
@@ -169,12 +168,12 @@ bool NotificationBitmapToGfxImage(
 bool ShouldShowOverCurrentFullscreenWindow(Profile* profile,
                                            const GURL& origin) {
   DCHECK(profile);
-  ExtensionId extension_id =
+  std::string extension_id =
       ExtensionNotificationHandler::GetExtensionId(origin);
   DCHECK(!extension_id.empty());
   AppWindowRegistry::AppWindowList windows =
       AppWindowRegistry::Get(profile)->GetAppWindowsForApp(extension_id);
-  for (AppWindow* window : windows) {
+  for (auto* window : windows) {
     if (window->IsFullscreen() && window->GetBaseWindow()->IsActive())
       return true;
   }
@@ -204,7 +203,7 @@ bool NotificationsApiFunction::CreateNotification(
   // These fields are defined as optional in IDL such that they can be used as
   // optional for notification updates. But for notification creations, they
   // should be present.
-  if (options->type == api::notifications::TemplateType::kNone ||
+  if (options->type == api::notifications::TEMPLATE_TYPE_NONE ||
       !options->icon_url || !options->title || !options->message) {
     *error = kMissingRequiredPropertiesForCreateNotification;
     return false;
@@ -220,7 +219,8 @@ bool NotificationsApiFunction::CreateNotification(
 
   NotificationBitmapSizes bitmap_sizes = GetNotificationBitmapSizes();
 
-  const float image_scale = ui::GetScaleForMaxSupportedResourceScaleFactor();
+  float image_scale = ui::GetScaleForResourceScaleFactor(
+      ui::GetMaxSupportedResourceScaleFactor());
 
   // Extract required fields: type, title, message, and icon.
   message_center::NotificationType type =
@@ -255,8 +255,7 @@ bool NotificationsApiFunction::CreateNotification(
     optional_fields.priority = *options->priority;
 
   if (options->event_time)
-    optional_fields.timestamp =
-        base::Time::FromMillisecondsSinceUnixEpoch(*options->event_time);
+    optional_fields.timestamp = base::Time::FromJsTime(*options->event_time);
 
   if (options->silent)
     optional_fields.silent = *options->silent;
@@ -378,12 +377,12 @@ bool NotificationsApiFunction::UpdateNotification(
 #endif
 
   NotificationBitmapSizes bitmap_sizes = GetNotificationBitmapSizes();
-  const float image_scale = ui::GetScaleForMaxSupportedResourceScaleFactor();
+  float image_scale = ui::GetScaleForResourceScaleFactor(
+      ui::GetMaxSupportedResourceScaleFactor());
 
   // Update optional fields if provided.
-  if (options->type != api::notifications::TemplateType::kNone) {
+  if (options->type != api::notifications::TEMPLATE_TYPE_NONE)
     notification->set_type(MapApiTemplateTypeToType(options->type));
-  }
   if (options->title)
     notification->set_title(base::UTF8ToUTF16(*options->title));
   if (options->message)
@@ -416,8 +415,7 @@ bool NotificationsApiFunction::UpdateNotification(
     notification->set_priority(*options->priority);
 
   if (options->event_time)
-    notification->set_timestamp(
-        base::Time::FromMillisecondsSinceUnixEpoch(*options->event_time));
+    notification->set_timestamp(base::Time::FromJsTime(*options->event_time));
 
   if (options->silent)
     notification->set_silent(*options->silent);
@@ -544,14 +542,14 @@ message_center::NotificationType
 NotificationsApiFunction::MapApiTemplateTypeToType(
     api::notifications::TemplateType type) {
   switch (type) {
-    case api::notifications::TemplateType::kNone:
-    case api::notifications::TemplateType::kBasic:
+    case api::notifications::TEMPLATE_TYPE_NONE:
+    case api::notifications::TEMPLATE_TYPE_BASIC:
       return message_center::NOTIFICATION_TYPE_SIMPLE;
-    case api::notifications::TemplateType::kImage:
+    case api::notifications::TEMPLATE_TYPE_IMAGE:
       return message_center::NOTIFICATION_TYPE_IMAGE;
-    case api::notifications::TemplateType::kList:
+    case api::notifications::TEMPLATE_TYPE_LIST:
       return message_center::NOTIFICATION_TYPE_MULTIPLE;
-    case api::notifications::TemplateType::kProgress:
+    case api::notifications::TEMPLATE_TYPE_PROGRESS:
       return message_center::NOTIFICATION_TYPE_PROGRESS;
     default:
       // Gracefully handle newer application code that is running on an older
@@ -571,6 +569,7 @@ NotificationsCreateFunction::RunNotificationsApi() {
   params_ = api::notifications::Create::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params_);
 
+  const std::string extension_id(extension_->id());
   std::string notification_id;
   if (params_->notification_id && !params_->notification_id->empty()) {
     // If the caller provided a notificationId, use that.
@@ -684,8 +683,8 @@ ExtensionFunction::ResponseAction
 NotificationsGetPermissionLevelFunction::RunNotificationsApi() {
   api::notifications::PermissionLevel result =
       AreExtensionNotificationsAllowed()
-          ? api::notifications::PermissionLevel::kGranted
-          : api::notifications::PermissionLevel::kDenied;
+          ? api::notifications::PERMISSION_LEVEL_GRANTED
+          : api::notifications::PERMISSION_LEVEL_DENIED;
 
   return RespondNow(WithArguments(api::notifications::ToString(result)));
 }

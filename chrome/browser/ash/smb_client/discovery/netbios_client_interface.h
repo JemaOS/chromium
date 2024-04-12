@@ -14,7 +14,8 @@ class IPAddress;
 class IPEndPoint;
 }  // namespace net
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 using NetBiosResponseCallback = base::RepeatingCallback<
     void(const std::vector<uint8_t>&, uint16_t, const net::IPEndPoint&)>;
@@ -36,6 +37,7 @@ class NetBiosClientInterface {
   NetBiosClientInterface() = default;
 };
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_SMB_CLIENT_DISCOVERY_NETBIOS_CLIENT_INTERFACE_H_

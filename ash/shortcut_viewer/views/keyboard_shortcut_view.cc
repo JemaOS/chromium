@@ -36,6 +36,7 @@
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "chromeos/ui/base/window_properties.h"
+#include "chromeos/ui/wm/features.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/window.h"
 #include "ui/base/accelerators/accelerator.h"
@@ -68,7 +69,7 @@ namespace {
 
 KeyboardShortcutView* g_ksv_view = nullptr;
 
-constexpr std::nullopt_t kAllCategories = std::nullopt;
+constexpr absl::nullopt_t kAllCategories = absl::nullopt;
 
 // Light mode colors:
 constexpr SkColor kSearchIllustrationIconColorLight =
@@ -79,8 +80,6 @@ constexpr SkColor kSearchIllustrationIconColorDark =
 
 // Custom No Results image view to handle color theme changes.
 class KSVNoResultsImageView : public views::ImageView {
-  METADATA_HEADER(KSVNoResultsImageView, views::ImageView)
-
  public:
   KSVNoResultsImageView()
       : dark_light_mode_controller_(ash::DarkLightModeControllerImpl::Get()) {}
@@ -104,11 +103,9 @@ class KSVNoResultsImageView : public views::ImageView {
   }
 
  private:
-  const raw_ptr<ash::DarkLightModeControllerImpl> dark_light_mode_controller_;
+  const raw_ptr<ash::DarkLightModeControllerImpl, ExperimentalAsh>
+      dark_light_mode_controller_;
 };
-
-BEGIN_METADATA(KSVNoResultsImageView)
-END_METADATA
 
 // Creates the no search result view.
 std::unique_ptr<views::View> CreateNoSearchResultView() {
@@ -181,14 +178,12 @@ std::unique_ptr<ShortcutsListScrollView> CreateScrollView(
 }
 
 void UpdateAXNodeDataPosition(
-    std::vector<raw_ptr<KeyboardShortcutItemView, VectorExperimental>>&
-        shortcut_items) {
+    std::vector<KeyboardShortcutItemView*>& shortcut_items) {
   // Update list item AXNodeData position for assistive tool.
   const int number_shortcut_items = shortcut_items.size();
   for (int i = 0; i < number_shortcut_items; ++i) {
-    shortcut_items.at(i)->GetViewAccessibility().SetPosInSet(i + 1);
-    shortcut_items.at(i)->GetViewAccessibility().SetSetSize(
-        number_shortcut_items);
+    shortcut_items.at(i)->GetViewAccessibility().OverridePosInSet(
+        i + 1, number_shortcut_items);
   }
 }
 
@@ -201,6 +196,9 @@ bool ShouldExcludeItem(const ash::KeyboardShortcutItem& item) {
       return ui::DeviceKeyboardHasAssistantKey();
     case IDS_KSV_DESCRIPTION_PRIVACY_SCREEN_TOGGLE:
       return !ash::Shell::Get()->privacy_screen_controller()->IsSupported();
+    case IDS_KSV_DESCRIPTION_FLOAT:
+    case IDS_KSV_DESCRIPTION_TOGGLE_MULTITASK_MENU:
+      return !chromeos::wm::features::IsWindowLayoutMenuEnabled();
   }
 
   return false;
@@ -292,11 +290,10 @@ bool KeyboardShortcutView::AcceleratorPressed(
   return true;
 }
 
-void KeyboardShortcutView::Layout(PassKey) {
+void KeyboardShortcutView::Layout() {
   gfx::Rect content_bounds(GetContentsBounds());
-  if (content_bounds.IsEmpty()) {
+  if (content_bounds.IsEmpty())
     return;
-  }
 
   constexpr int kSearchBoxTopPadding = 8;
   constexpr int kSearchBoxBottomPadding = 16;
@@ -337,9 +334,8 @@ void KeyboardShortcutView::OnPaint(gfx::Canvas* canvas) {
     return;
   }
 
-  if (!needs_init_all_categories_) {
+  if (!needs_init_all_categories_)
     return;
-  }
 
   needs_init_all_categories_ = false;
   // Cannot post a task right after initializing the first category, it will
@@ -371,9 +367,8 @@ void KeyboardShortcutView::QueryChanged(const std::u16string& query) {
 
   debounce_timer_.Stop();
   // If search box is empty, do not show |search_results_container_|.
-  if (query_empty) {
+  if (query_empty)
     return;
-  }
 
   // TODO(wutao): This timeout value is chosen based on subjective search
   // latency tests on Minnie. Objective method or UMA is desired.
@@ -416,9 +411,8 @@ void KeyboardShortcutView::InitViews() {
   // clear the cache.
   KeyboardShortcutItemView::ClearKeycodeToString16Cache();
   for (const auto& item : GetKeyboardShortcutItemList()) {
-    if (ShouldExcludeItem(item)) {
+    if (ShouldExcludeItem(item))
       continue;
-    }
 
     for (auto category : item.categories) {
       shortcut_views_.push_back(
@@ -447,18 +441,16 @@ void KeyboardShortcutView::InitViews() {
 }
 
 void KeyboardShortcutView::InitCategoriesTabbedPane(
-    std::optional<ash::ShortcutCategory> initial_category) {
+    absl::optional<ash::ShortcutCategory> initial_category) {
   active_tab_index_ = categories_tabbed_pane_->GetSelectedTabIndex();
   // If the tab count is 0, GetSelectedTabIndex() will return kNoSelectedTab,
   // which we do not want to cache.
-  if (active_tab_index_ == views::TabbedPaneTabStrip::kNoSelectedTab) {
+  if (active_tab_index_ == views::TabStrip::kNoSelectedTab)
     active_tab_index_ = 0;
-  }
 
   ash::ShortcutCategory current_category = ash::ShortcutCategory::kUnknown;
   KeyboardShortcutItemListView* item_list_view = nullptr;
-  std::vector<raw_ptr<KeyboardShortcutItemView, VectorExperimental>>
-      shortcut_items;
+  std::vector<KeyboardShortcutItemView*> shortcut_items;
   const bool already_has_tabs = categories_tabbed_pane_->GetTabCount() > 0;
   size_t tab_index = 0;
   views::View* const tab_contents = categories_tabbed_pane_->children()[1];
@@ -501,9 +493,8 @@ void KeyboardShortcutView::InitCategoriesTabbedPane(
     // If |initial_category| has a value, we only initialize the pane with the
     // KeyboardShortcutItemView in the specific category in |initial_category|.
     // Otherwise, we will initialize all the panes.
-    if (initial_category.value_or(category) != category) {
+    if (initial_category.value_or(category) != category)
       continue;
-    }
 
     // Add the item to the category contents container.
     if (!item_list_view->children().empty())
@@ -646,7 +637,7 @@ KSVSearchBoxView* KeyboardShortcutView::GetSearchBoxViewForTesting() {
   return search_box_view_;
 }
 
-const std::vector<raw_ptr<KeyboardShortcutItemView, VectorExperimental>>&
+const std::vector<KeyboardShortcutItemView*>&
 KeyboardShortcutView::GetFoundShortcutItemsForTesting() const {
   return found_shortcut_items_;
 }
@@ -666,7 +657,7 @@ void KeyboardShortcutView::UpdateActiveAndInactiveFrameColor() {
   window->SetProperty(chromeos::kFrameInactiveColorKey, background_color);
 }
 
-BEGIN_METADATA(KeyboardShortcutView)
+BEGIN_METADATA(KeyboardShortcutView, views::WidgetDelegateView)
 END_METADATA
 
 }  // namespace keyboard_shortcut_viewer

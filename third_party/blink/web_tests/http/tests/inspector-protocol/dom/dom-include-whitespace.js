@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   let result;
 
   // The Test page contains a DIV with 5 childNodes: whitespace (linebreak), SPAN, whitespace, SPAN, whitespace

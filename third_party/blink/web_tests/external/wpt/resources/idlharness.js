@@ -2357,13 +2357,12 @@ IdlInterface.prototype.do_member_operation_asserts = function(memberHolderObject
     assert_equals(typeof memberHolderObject[member.name], "function",
                   "property must be a function");
 
-    const operationOverloads = this.members.filter(function(m) {
-        return m.type == "operation" && m.name == member.name &&
-            (m.special === "static") === (member.special === "static");
+    const ctors = this.members.filter(function(m) {
+        return m.type == "operation" && m.name == member.name;
     });
     assert_equals(
         memberHolderObject[member.name].length,
-        minOverloadLength(operationOverloads),
+        minOverloadLength(ctors),
         "property has wrong .length");
     assert_equals(
         memberHolderObject[member.name].name,

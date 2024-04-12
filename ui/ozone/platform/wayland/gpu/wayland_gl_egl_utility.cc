@@ -68,9 +68,17 @@ void WaylandGLEGLUtility::GetAdditionalEGLAttributes(
 void WaylandGLEGLUtility::ChooseEGLAlphaAndBufferSize(EGLint* alpha_size,
                                                       EGLint* buffer_size) {}
 
+bool WaylandGLEGLUtility::IsTransparentBackgroundSupported() const {
+  return true;
+}
+
 void WaylandGLEGLUtility::CollectGpuExtraInfo(
     bool enable_native_gpu_memory_buffers,
     gfx::GpuExtraInfo& gpu_extra_info) const {}
+
+bool WaylandGLEGLUtility::X11DoesVisualHaveAlphaForTest() const {
+  return false;
+}
 
 bool WaylandGLEGLUtility::HasVisualManager() {
   return false;

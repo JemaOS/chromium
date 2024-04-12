@@ -11,10 +11,10 @@ import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 import 'chrome://resources/js/action_link.js';
 import './profile_picker_shared.css.js';
 
-import type {CrActionMenuElement} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
-import type {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import {CrActionMenuElement} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
-import {assertNotReached} from 'chrome://resources/js/assert.js';
+import {assertNotReached} from 'chrome://resources/js/assert_ts.js';
 // clang-format off
 // <if expr="chromeos_lacros">
 import {sanitizeInnerHtml} from 'chrome://resources/js/parse_html_subset.js';
@@ -28,8 +28,7 @@ import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bu
 
 
 
-import type {ManageProfilesBrowserProxy, ProfileState} from './manage_profiles_browser_proxy.js';
-import {ManageProfilesBrowserProxyImpl} from './manage_profiles_browser_proxy.js';
+import {ManageProfilesBrowserProxy, ManageProfilesBrowserProxyImpl, ProfileState} from './manage_profiles_browser_proxy.js';
 import {getTemplate} from './profile_card_menu.html.js';
 
 export interface Statistics {
@@ -264,7 +263,6 @@ export class ProfileCardMenuElement extends ProfileCardMenuElementBase {
 
   private onRemoveCancelClicked_() {
     this.$.removeConfirmationDialog.cancel();
-    this.manageProfilesBrowserProxy_.closeProfileStatistics();
   }
 
   // <if expr="chromeos_lacros">

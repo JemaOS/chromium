@@ -8,34 +8,21 @@
 #include "third_party/blink/renderer/core/dom/scoped_abort_state.h"
 #include "third_party/blink/renderer/modules/credentialmanagement/credential_manager_type_converters.h"
 #include "third_party/blink/renderer/modules/credentialmanagement/identity_credential.h"
-#include "third_party/blink/renderer/modules/credentialmanagement/identity_credential_error.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
 
-WebIdentityRequester::WebIdentityRequester(ExecutionContext* context,
-                                           MediationRequirement requirement)
-    : execution_context_(context), requirement_(requirement) {}
-
-WebIdentityRequester::ResolverAndProviders::ResolverAndProviders(
-    ScriptPromiseResolverTyped<IDLNullable<Credential>>* resolver,
-    Vector<KURL> providers)
-    : resolver_(resolver), providers_(std::move(providers)) {}
-
-void WebIdentityRequester::ResolverAndProviders::Trace(Visitor* v) const {
-  v->Trace(resolver_);
-}
+WebIdentityRequester::WebIdentityRequester(ExecutionContext* context)
+    : execution_context_(context) {}
 
 void WebIdentityRequester::OnRequestToken(
     mojom::blink::RequestTokenStatus status,
-    const std::optional<KURL>& selected_idp_config_url,
-    const WTF::String& token,
-    mojom::blink::TokenErrorPtr error,
-    bool is_auto_selected) {
-  for (const auto& resolver_and_providers : resolvers_and_providers_) {
-    auto& resolver = resolver_and_providers->resolver_;
-    const Vector<KURL>& providers = resolver_and_providers->providers_;
+    const absl::optional<KURL>& selected_idp_config_url,
+    const WTF::String& token) {
+  for (const auto& provider_resolver_pair : provider_to_resolver_) {
+    KURL provider = provider_resolver_pair.key;
+    ScriptPromiseResolver* resolver = provider_resolver_pair.value;
 
     switch (status) {
       case mojom::blink::RequestTokenStatus::kErrorTooManyRequests: {
@@ -51,29 +38,18 @@ void WebIdentityRequester::OnRequestToken(
         continue;
       }
       case mojom::blink::RequestTokenStatus::kError: {
-        if (!RuntimeEnabledFeatures::FedCmErrorEnabled() || !error) {
-          resolver->Reject(MakeGarbageCollected<DOMException>(
-              DOMExceptionCode::kNetworkError, "Error retrieving a token."));
-          continue;
-        }
-        resolver->Reject(MakeGarbageCollected<IdentityCredentialError>(
-            "Error retrieving a token.", error->code, error->url));
+        resolver->Reject(MakeGarbageCollected<DOMException>(
+            DOMExceptionCode::kNetworkError, "Error retrieving a token."));
         continue;
       }
       case mojom::blink::RequestTokenStatus::kSuccess: {
         DCHECK(selected_idp_config_url);
-        if (!providers.Contains(selected_idp_config_url)) {
-          if (!RuntimeEnabledFeatures::FedCmErrorEnabled() || !error) {
-            resolver->Reject(MakeGarbageCollected<DOMException>(
-                DOMExceptionCode::kNetworkError, "Error retrieving a token."));
-            continue;
-          }
-          resolver->Reject(MakeGarbageCollected<IdentityCredentialError>(
-              "Error retrieving a token.", error->code, error->url));
+        if (provider != selected_idp_config_url) {
+          resolver->Reject(MakeGarbageCollected<DOMException>(
+              DOMExceptionCode::kNetworkError, "Error retrieving a token."));
           continue;
         }
-        IdentityCredential* credential =
-            IdentityCredential::Create(token, is_auto_selected);
+        IdentityCredential* credential = IdentityCredential::Create(token);
         resolver->Resolve(credential);
         continue;
       }
@@ -81,8 +57,7 @@ void WebIdentityRequester::OnRequestToken(
         NOTREACHED();
     }
   }
-  resolvers_and_providers_.clear();
-  scoped_abort_states_.clear();
+  provider_to_resolver_.clear();
   is_requesting_token_ = false;
 }
 
@@ -90,7 +65,7 @@ void WebIdentityRequester::RequestToken() {
   auto* auth_request =
       CredentialManagerProxy::From(execution_context_)->FederatedAuthRequest();
   auth_request->RequestToken(
-      std::move(idp_get_params_), requirement_,
+      std::move(idp_get_params_),
       WTF::BindOnce(&WebIdentityRequester::OnRequestToken,
                     WrapPersistent(this)));
   window_onload_event_listener_.Clear();
@@ -99,10 +74,10 @@ void WebIdentityRequester::RequestToken() {
 }
 
 void WebIdentityRequester::AppendGetCall(
-    ScriptPromiseResolverTyped<IDLNullable<Credential>>* resolver,
-    const HeapVector<Member<IdentityProviderRequestOptions>>& providers,
-    mojom::blink::RpContext rp_context,
-    mojom::blink::RpMode rp_mode) {
+    ScriptPromiseResolver* resolver,
+    const HeapVector<Member<IdentityProviderConfig>>& providers,
+    bool auto_reauthn,
+    mojom::blink::RpContext rp_context) {
   if (is_requesting_token_) {
     resolver->Reject(MakeGarbageCollected<DOMException>(
         DOMExceptionCode::kNotAllowedError,
@@ -110,42 +85,36 @@ void WebIdentityRequester::AppendGetCall(
     return;
   }
 
-  Vector<mojom::blink::IdentityProviderRequestOptionsPtr> idp_ptrs;
-  Vector<KURL> idp_urls;
+  Vector<mojom::blink::IdentityProviderPtr> idp_ptrs;
   for (const auto& provider : providers) {
-    mojom::blink::IdentityProviderRequestOptionsPtr options =
-        blink::mojom::blink::IdentityProviderRequestOptions::From(*provider);
-    for (const auto& resolver_and_providers : resolvers_and_providers_) {
-      if (resolver_and_providers->providers_.Contains(
-              options->config->config_url)) {
-        resolver->Reject(MakeGarbageCollected<DOMException>(
-            DOMExceptionCode::kNotAllowedError,
-            "More than one navigator.credentials.get calls to the same "
-            "provider."));
-        return;
-      }
+    mojom::blink::IdentityProviderConfigPtr config =
+        blink::mojom::blink::IdentityProviderConfig::From(*provider);
+    if (provider_to_resolver_.Contains(KURL(config->config_url))) {
+      resolver->Reject(MakeGarbageCollected<DOMException>(
+          DOMExceptionCode::kNotAllowedError,
+          "More than one navigator.credentials.get calls to the same "
+          "provider."));
+      return;
     }
-    idp_urls.push_back(options->config->config_url);
-    idp_ptrs.push_back(std::move(options));
+    mojom::blink::IdentityProviderPtr idp =
+        mojom::blink::IdentityProvider::NewFederated(std::move(config));
+    idp_ptrs.push_back(std::move(idp));
   }
 
-  resolvers_and_providers_.emplace_back(
-      MakeGarbageCollected<ResolverAndProviders>(resolver,
-                                                 std::move(idp_urls)));
+  for (const auto& idp_ptr : idp_ptrs) {
+    provider_to_resolver_.insert(KURL(idp_ptr->get_federated()->config_url),
+                                 WrapPersistent(resolver));
+  }
 
   mojom::blink::IdentityProviderGetParametersPtr get_params =
-      mojom::blink::IdentityProviderGetParameters::New(std::move(idp_ptrs),
-                                                       rp_context, rp_mode);
+      mojom::blink::IdentityProviderGetParameters::New(
+          std::move(idp_ptrs), auto_reauthn, rp_context);
   idp_get_params_.push_back(std::move(get_params));
 
   if (window_onload_event_listener_ || has_posted_task_)
     return;
 
-  ExecutionContext* execution_context = resolver->GetExecutionContext();
-  if (!execution_context) {
-    return;
-  }
-  Document* document = To<LocalDOMWindow>(*execution_context_).document();
+  Document* document = resolver->DomWindow()->document();
   // Checking if document load is not completed is equivalent to checking if
   // this method was called before the window.onload event.
   if (!document->IsLoadCompleted()) {
@@ -172,21 +141,19 @@ void WebIdentityRequester::InsertScopedAbortState(
 }
 
 void WebIdentityRequester::InitWindowOnloadEventListener(
-    ScriptPromiseResolverTyped<IDLNullable<Credential>>* resolver) {
-  auto* window = To<LocalDOMWindow>(execution_context_.Get());
+    ScriptPromiseResolver* resolver) {
   window_onload_event_listener_ =
       MakeGarbageCollected<WebIdentityWindowOnloadEventListener>(
-          window->document(), WrapPersistent(this));
-  window->addEventListener(event_type_names::kLoad,
-                           window_onload_event_listener_);
+          resolver->DomWindow()->document(), WrapPersistent(this));
+  resolver->DomWindow()->addEventListener(event_type_names::kLoad,
+                                          window_onload_event_listener_);
 }
 
-void WebIdentityRequester::StartDelayTimer(
-    ScriptPromiseResolverTyped<IDLNullable<Credential>>* resolver) {
+void WebIdentityRequester::StartDelayTimer(ScriptPromiseResolver* resolver) {
   DCHECK(!RuntimeEnabledFeatures::FedCmMultipleIdentityProvidersEnabled(
       execution_context_));
 
-  Document* document = To<LocalDOMWindow>(*execution_context_).document();
+  Document* document = resolver->DomWindow()->document();
   delay_start_time_ = base::TimeTicks::Now();
   bool timer_started_before_onload = !document->IsLoadCompleted();
 
@@ -222,26 +189,10 @@ void WebIdentityRequester::StopDelayTimer(bool timer_started_before_onload) {
                              delay_duration);
 }
 
-void WebIdentityRequester::AbortRequest(ScriptState* script_state) {
-  if (!script_state->ContextIsValid()) {
-    return;
-  }
-
-  if (!is_requesting_token_) {
-    OnRequestToken(mojom::blink::RequestTokenStatus::kErrorCanceled,
-                   std::nullopt, "", nullptr, /*is_auto_selected=*/false);
-    return;
-  }
-
-  auto* auth_request =
-      CredentialManagerProxy::From(script_state)->FederatedAuthRequest();
-  auth_request->CancelTokenRequest();
-}
-
 void WebIdentityRequester::Trace(Visitor* visitor) const {
   visitor->Trace(execution_context_);
   visitor->Trace(window_onload_event_listener_);
-  visitor->Trace(resolvers_and_providers_);
+  visitor->Trace(provider_to_resolver_);
 }
 
 }  // namespace blink

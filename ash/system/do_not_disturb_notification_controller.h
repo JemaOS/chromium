@@ -5,12 +5,19 @@
 #ifndef ASH_SYSTEM_DO_NOT_DISTURB_NOTIFICATION_CONTROLLER_H_
 #define ASH_SYSTEM_DO_NOT_DISTURB_NOTIFICATION_CONTROLLER_H_
 
+#include <memory>
+
 #include "ash/ash_export.h"
 #include "ui/message_center/message_center_observer.h"
 
+namespace message_center {
+class Notification;
+}  // namespace message_center
+
 namespace ash {
 
-// Controller class to manage the "Do not disturb" notification.
+// Controller class to manage the "Do not disturb" notification. This class only
+// exists when `IsQsRevampEnabled` is true.
 class ASH_EXPORT DoNotDisturbNotificationController
     : public message_center::MessageCenterObserver {
  public:
@@ -25,15 +32,11 @@ class ASH_EXPORT DoNotDisturbNotificationController
 
   static const char kDoNotDisturbNotificationId[];
 
-  // Gets the singleton instance that lives within `Shell` if available.
-  static DoNotDisturbNotificationController* Get();
-
   // message_center::MessageCenterObserver:
   void OnQuietModeChanged(bool in_quiet_mode) override;
 
-  // This is called by `FocusModeController::ExtendActiveSessionDuration` to
-  // update the do not disturb notification with the latest end time.
-  void MaybeUpdateNotification();
+ private:
+  std::unique_ptr<message_center::Notification> CreateNotification();
 };
 
 }  // namespace ash

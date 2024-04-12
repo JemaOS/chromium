@@ -47,7 +47,7 @@
 #define VK_STRUCTURE_TYPE_DMA_BUF_IMAGE_CREATE_INFO_INTEL 1024
 typedef struct VkDmaBufImageCreateInfo_ {
   VkStructureType sType;
-  raw_ptr<const void> pNext;
+  raw_ptr<const void, ExperimentalAsh> pNext;
   int fd;
   VkFormat format;
   VkExtent3D extent;
@@ -194,8 +194,8 @@ class GLOzoneEGLGbm : public GLOzoneEGL {
   }
 
  private:
-  raw_ptr<GbmSurfaceFactory> surface_factory_;
-  raw_ptr<DrmThreadProxy> drm_thread_proxy_;
+  raw_ptr<GbmSurfaceFactory, ExperimentalAsh> surface_factory_;
+  raw_ptr<DrmThreadProxy, ExperimentalAsh> drm_thread_proxy_;
   gl::EGLDisplayPlatform native_display_;
 };
 
@@ -394,7 +394,7 @@ scoped_refptr<gfx::NativePixmap> GbmSurfaceFactory::CreateNativePixmap(
     gfx::Size size,
     gfx::BufferFormat format,
     gfx::BufferUsage usage,
-    std::optional<gfx::Size> framebuffer_size) {
+    absl::optional<gfx::Size> framebuffer_size) {
   if (framebuffer_size &&
       !gfx::Rect(size).Contains(gfx::Rect(*framebuffer_size))) {
     return nullptr;
@@ -473,15 +473,6 @@ GbmSurfaceFactory::CreateNativePixmapForProtectedBufferHandle(
   // existing mappings.
   return CreateNativePixmapFromHandleInternal(widget, size, format,
                                               std::move(handle));
-}
-
-bool GbmSurfaceFactory::SupportsDrmModifiersFilter() const {
-  return true;
-}
-
-void GbmSurfaceFactory::SetDrmModifiersFilter(
-    std::unique_ptr<DrmModifiersFilter> filter) {
-  drm_thread_proxy_->SetDrmModifiersFilter(std::move(filter));
 }
 
 void GbmSurfaceFactory::SetGetProtectedNativePixmapDelegate(

@@ -8,10 +8,10 @@
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
-#include "chrome/browser/ui/views/extensions/extensions_menu_handler.h"
+#include "chrome/browser/ui/views/extensions/extensions_menu_navigation_handler.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/browser/permissions_manager.h"
-#include "ui/views/view_tracker.h"
+#include "ui/views/view_observer.h"
 
 namespace views {
 class BubbleDialogDelegate;
@@ -25,10 +25,11 @@ class ExtensionsMenuSitePermissionsPageView;
 class ToolbarActionsModel;
 
 class ExtensionsMenuViewController
-    : public ExtensionsMenuHandler,
+    : public ExtensionsMenuNavigationHandler,
       public TabStripModelObserver,
       public ToolbarActionsModel::Observer,
-      public extensions::PermissionsManager::Observer {
+      public extensions::PermissionsManager::Observer,
+      public views::ViewObserver {
  public:
   ExtensionsMenuViewController(Browser* browser,
                                ExtensionsContainer* extensions_container,
@@ -39,24 +40,13 @@ class ExtensionsMenuViewController
       const ExtensionsMenuViewController&) = delete;
   ~ExtensionsMenuViewController() override;
 
-  // ExtensionsMenuHandler:
+  // ExtensionsMenuNavigationHandler:
   void OpenMainPage() override;
-  void OpenSitePermissionsPage(
-      const extensions::ExtensionId& extension_id) override;
+  void OpenSitePermissionsPage(extensions::ExtensionId extension_id) override;
   void CloseBubble() override;
-  void OnSiteSettingsToggleButtonPressed(bool is_on) override;
   void OnSiteAccessSelected(
-      const extensions::ExtensionId& extension_id,
+      extensions::ExtensionId extension_id,
       extensions::PermissionsManager::UserSiteAccess site_access) override;
-  void OnExtensionToggleSelected(const extensions::ExtensionId& extension_id,
-                                 bool is_on) override;
-  void OnReloadPageButtonClicked() override;
-  void OnAllowExtensionClicked(
-      const extensions::ExtensionId& extension_id) override;
-  void OnDismissExtensionClicked(
-      const extensions::ExtensionId& extension_id) override;
-  void OnShowRequestsTogglePressed(const extensions::ExtensionId& extension_id,
-                                   bool is_on) override;
 
   // TabStripModelObserver:
   // Sometimes, menu can stay open when tab changes (e.g keyboard shortcuts) or
@@ -87,8 +77,9 @@ class ExtensionsMenuViewController
   void OnShowAccessRequestsInToolbarChanged(
       const extensions::ExtensionId& extension_id,
       bool can_show_requests) override;
-  void OnExtensionDismissedRequests(const extensions::ExtensionId& extension_id,
-                                    const url::Origin& origin) override;
+
+  // views::ViewObserver
+  void OnViewIsDeleting(views::View* observed_view) override;
 
   // Accessors used by tests:
   // Returns the main page iff it's the `current_page_` one.
@@ -115,11 +106,6 @@ class ExtensionsMenuViewController
   // Populates menu items in `main_page`.
   void PopulateMainPage(ExtensionsMenuMainPageView* main_page);
 
-  // Inserts a menu item for `extension_id` in `main_page` at `index`.
-  void InsertMenuItemMainPage(ExtensionsMenuMainPageView* main_page,
-                              const extensions::ExtensionId& extension_id,
-                              int index);
-
   // Returns the currently active web contents.
   content::WebContents* GetActiveWebContents() const;
 
@@ -141,7 +127,7 @@ class ExtensionsMenuViewController
       permissions_manager_observation_{this};
 
   // The current page visible in `bubble_contents_`.
-  views::ViewTracker current_page_;
+  raw_ptr<views::View> current_page_ = nullptr;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_EXTENSIONS_EXTENSIONS_MENU_VIEW_CONTROLLER_H_

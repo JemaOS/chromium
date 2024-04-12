@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_SYNC_TEST_INTEGRATION_SYNC_SERVICE_IMPL_HARNESS_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,8 +14,9 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "components/sync/base/user_selectable_type.h"
+#include "components/sync/driver/sync_service_impl.h"
 #include "components/sync/engine/cycle/sync_cycle_snapshot.h"
-#include "components/sync/service/sync_service_impl.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -56,8 +56,7 @@ class SyncServiceImplHarness {
   SyncServiceImplHarness& operator=(const SyncServiceImplHarness&) = delete;
 
   // Signs in to a primary account without actually enabling sync the feature.
-  [[nodiscard]] bool SignInPrimaryAccount(
-      signin::ConsentLevel consent_level = signin::ConsentLevel::kSignin);
+  bool SignInPrimaryAccount();
 
   // This is similar to click the reset button on chrome.google.com/sync.
   void ResetSyncForPrimaryAccount();
@@ -74,7 +73,7 @@ class SyncServiceImplHarness {
   // Enters/exits the "Sync paused" state, which in real life happens if a
   // syncing user signs out of the content area.
   void EnterSyncPausedStateForPrimaryAccount();
-  bool ExitSyncPausedStateForPrimaryAccount();
+  void ExitSyncPausedStateForPrimaryAccount();
 #endif  // !BUILDFLAG(IS_ANDROID)
 
   // Enables and configures sync for all available datatypes. Returns true only
@@ -83,8 +82,8 @@ class SyncServiceImplHarness {
   // |user_settings_callback| will be called once the engine is initialized, but
   // before actually starting sync, to give the caller a chance to modify sync
   // settings (mostly the selected data types).
-  [[nodiscard]] bool SetupSync(SetUserSettingsCallback user_settings_callback =
-                                   SetUserSettingsCallback());
+  bool SetupSync(SetUserSettingsCallback user_settings_callback =
+                     SetUserSettingsCallback());
 
   // Enables and configures sync.
   // Does not wait for sync to be ready to process changes -- callers need to
@@ -94,7 +93,7 @@ class SyncServiceImplHarness {
   // before actually starting sync, to give the caller a chance to modify sync
   // settings (mostly the selected data types).
   // Returns true on success.
-  [[nodiscard]] bool SetupSyncNoWaitForCompletion(
+  bool SetupSyncNoWaitForCompletion(
       SetUserSettingsCallback user_settings_callback =
           SetUserSettingsCallback());
 
@@ -103,6 +102,19 @@ class SyncServiceImplHarness {
   // then setup may have been left incomplete.
   void FinishSyncSetup();
 
+  // Methods to stop and restart the sync service.
+  //
+  // For example, this can be used to simulate a sign-in/sign-out or can be
+  // useful to recover from a lost birthday.
+  // To start from a clear slate, clear server data first, then call
+  // StopSyncServiceAndClearData() followed by EnableSyncFeature().
+
+  // Stops the sync service and clears all local sync data.
+  void StopSyncServiceAndClearData();
+  // Turns on sync-the-feature and waits until sync-the-feature is active.
+  // Returns true if and only if sync setup completed successfully.
+  bool EnableSyncFeature();
+
   // Calling this acts as a barrier and blocks the caller until |this| and
   // |partner| have both completed a sync cycle.  When calling this method,
   // the |partner| should be the passive responder who responds to the actions
@@ -110,34 +122,33 @@ class SyncServiceImplHarness {
   // from the message queue. Returns true if two sync cycles have completed.
   // Note: Use this method when exactly one client makes local change(s), and
   // exactly one client is waiting to receive those changes.
-  [[nodiscard]] bool AwaitMutualSyncCycleCompletion(
-      SyncServiceImplHarness* partner);
+  bool AwaitMutualSyncCycleCompletion(SyncServiceImplHarness* partner);
 
   // Blocks the caller until every client in |clients| completes its ongoing
   // sync cycle and all the clients' progress markers match.  Note: Use this
   // method when more than one client makes local change(s), and more than one
   // client is waiting to receive those changes.
-  [[nodiscard]] static bool AwaitQuiescence(
+  static bool AwaitQuiescence(
       const std::vector<SyncServiceImplHarness*>& clients);
 
   // Blocks the caller until the sync engine is initialized or some end state
   // (e.g., auth error) is reached. Returns true only if the engine initialized
   // successfully. See SyncService::IsEngineInitialized() for the definition
   // of engine initialization.
-  [[nodiscard]] bool AwaitEngineInitialization();
+  bool AwaitEngineInitialization();
 
   // Blocks the caller until sync setup is complete, and sync-the-feature is
   // active. Returns true if and only if sync setup completed successfully. Make
   // sure to actually start sync setup (usually by calling SetupSync() or one of
   // its variants) before.
-  [[nodiscard]] bool AwaitSyncSetupCompletion();
+  bool AwaitSyncSetupCompletion();
 
   // Blocks the caller until the sync transport layer is active. Returns true if
   // successful.
-  [[nodiscard]] bool AwaitSyncTransportActive();
+  bool AwaitSyncTransportActive();
 
   // Blocks the caller until invalidations are enabled or disabled.
-  [[nodiscard]] bool AwaitInvalidationsStatus(bool expected_status);
+  bool AwaitInvalidationsStatus(bool expected_status);
 
   // Returns the SyncServiceImpl member of the sync client.
   syncer::SyncServiceImpl* service() { return service_; }
@@ -148,17 +159,17 @@ class SyncServiceImplHarness {
 
   // Enables sync for a particular selectable sync type (will enable sync for
   // all corresponding datatypes). Returns true on success.
-  [[nodiscard]] bool EnableSyncForType(syncer::UserSelectableType type);
+  bool EnableSyncForType(syncer::UserSelectableType type);
 
   // Disables sync for a particular selectable sync type (will enable sync for
   // all corresponding datatypes). Returns true on success.
-  [[nodiscard]] bool DisableSyncForType(syncer::UserSelectableType type);
+  bool DisableSyncForType(syncer::UserSelectableType type);
 
   // Enables sync for all registered sync datatypes. Returns true on success.
-  [[nodiscard]] bool EnableSyncForRegisteredDatatypes();
+  bool EnableSyncForRegisteredDatatypes();
 
   // Disables sync for all sync datatypes. Returns true on success.
-  [[nodiscard]] bool DisableSyncForAllDatatypes();
+  bool DisableSyncForAllDatatypes();
 
   // Returns a snapshot of the current sync session.
   syncer::SyncCycleSnapshot GetLastCycleSnapshot() const;
@@ -181,10 +192,10 @@ class SyncServiceImplHarness {
   bool IsSyncEnabledByUser() const;
 
   // Profile associated with this sync client.
-  const raw_ptr<Profile, AcrossTasksDanglingUntriaged> profile_;
+  const raw_ptr<Profile, DanglingUntriaged> profile_;
 
   // SyncServiceImpl object associated with |profile_|.
-  const raw_ptr<syncer::SyncServiceImpl, AcrossTasksDanglingUntriaged> service_;
+  const raw_ptr<syncer::SyncServiceImpl, DanglingUntriaged> service_;
 
   // Prevents Sync from running until configuration is complete.
   std::unique_ptr<syncer::SyncSetupInProgressHandle> sync_blocker_;

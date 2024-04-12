@@ -15,10 +15,6 @@
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/native_widget_types.h"
 
-namespace content {
-class WebContentsAccessibility;
-}
-
 namespace ui {
 
 // Pure abstract class that is used by `AXPlatformTreeManager` to gather
@@ -105,32 +101,13 @@ class COMPONENT_EXPORT(AX_PLATFORM) AXPlatformTreeManagerDelegate {
   // the Views layer, there is no such requirement, and thus a much simpler
   // implementation of "hit testing" could be provided.
   //
-  // TODO(nektar): Use `std::optional` for all optional arguments.
+  // TODO(nektar): Use `absl::optional` for all optional arguments.
   virtual void AccessibilityHitTest(
       const gfx::Point& point_in_view_pixels,
       const ax::mojom::Event& opt_event_to_fire,
       int opt_request_id,
       base::OnceCallback<void(AXPlatformTreeManager* hit_manager,
                               AXNodeID hit_node_id)> opt_callback) = 0;
-
-  virtual gfx::NativeWindow GetTopLevelNativeWindow() = 0;
-
-  virtual bool CanFireAccessibilityEvents() const = 0;
-
-  // These methods are all specific to Web content, and should be removed from
-  // here and into the content layer if and when possible. These were
-  // moved into AXPlatformTreeManagerDelegate as part of the refactor
-  // to move BrowserAccessibility* into the ui/ layer to support their reuse
-  // in views. crbug.com/327499435
-  virtual bool AccessibilityIsRootFrame() const = 0;
-
-  // On Mac, VoiceOver moves focus to the web content when it receives an
-  // AXLoadComplete event. On chrome's new tab page, focus should stay
-  // in the omnibox, so we purposefully do not fire the AXLoadComplete
-  // event in this case.
-  virtual bool ShouldSuppressAXLoadComplete() = 0;
-  virtual content::WebContentsAccessibility*
-  AccessibilityGetWebContentsAccessibility() = 0;
 
  protected:
   AXPlatformTreeManagerDelegate() = default;

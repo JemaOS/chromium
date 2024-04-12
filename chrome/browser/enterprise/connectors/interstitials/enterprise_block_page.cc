@@ -6,12 +6,7 @@
 
 #include <utility>
 
-#include "base/strings/strcat.h"
-#include "base/strings/utf_string_conversions.h"
-#include "chrome/browser/enterprise/connectors/interstitials/enterprise_interstitial_util.h"
 #include "components/grit/components_resources.h"
-#include "components/safe_browsing/core/common/features.h"
-#include "components/safe_browsing/core/common/proto/realtimeapi.pb.h"
 #include "components/security_interstitials/content/security_interstitial_controller_client.h"
 #include "components/security_interstitials/core/common_string_util.h"
 #include "components/security_interstitials/core/metrics_helper.h"
@@ -32,16 +27,13 @@ const security_interstitials::SecurityInterstitialPage::TypeID
 EnterpriseBlockPage::EnterpriseBlockPage(
     content::WebContents* web_contents,
     const GURL& request_url,
-    const safe_browsing::SafeBrowsingBlockingPage::UnsafeResourceList&
-        unsafe_resources,
     std::unique_ptr<
         security_interstitials::SecurityInterstitialControllerClient>
         controller_client)
     : security_interstitials::SecurityInterstitialPage(
           web_contents,
           request_url,
-          std::move(controller_client)),
-      unsafe_resources_(unsafe_resources) {
+          std::move(controller_client)) {
   controller()->metrics_helper()->RecordUserDecision(MetricsHelper::SHOW);
   controller()->metrics_helper()->RecordUserInteraction(
       MetricsHelper::TOTAL_VISITS);
@@ -69,25 +61,14 @@ void EnterpriseBlockPage::PopulateInterstitialStrings(
 
   load_time_data.Set("heading",
                      l10n_util::GetStringUTF16(IDS_ENTERPRISE_BLOCK_HEADING));
-  std::u16string custom_message =
-      enterprise_connectors::GetUrlFilteringCustomMessage(unsafe_resources_);
-  if (!custom_message.empty()) {
-    load_time_data.Set(
-        "primaryParagraph",
-        l10n_util::GetStringFUTF16(
-            IDS_ENTERPRISE_BLOCK_PRIMARY_PARAGRAPH_CUSTOM_MESSAGE,
-            custom_message));
-  } else {
-    load_time_data.Set(
-        "primaryParagraph",
-        l10n_util::GetStringFUTF16(
-            IDS_ENTERPRISE_BLOCK_PRIMARY_PARAGRAPH,
-            security_interstitials::common_string_util::GetFormattedHostName(
-                request_url()),
-            l10n_util::GetStringUTF16(
-                IDS_ENTERPRISE_INTERSTITIALS_LEARN_MORE_ACCCESSIBILITY_TEXT)));
-  }
-
+  load_time_data.Set(
+      "primaryParagraph",
+      l10n_util::GetStringFUTF16(
+          IDS_ENTERPRISE_BLOCK_PRIMARY_PARAGRAPH,
+          security_interstitials::common_string_util::GetFormattedHostName(
+              request_url()),
+          l10n_util::GetStringUTF16(
+              IDS_ENTERPRISE_INTERSTITIALS_LEARN_MORE_ACCCESSIBILITY_TEXT)));
   load_time_data.Set("primaryButtonText",
                      l10n_util::GetStringUTF16(IDS_ENTERPRISE_BLOCK_GO_BACK));
 }
@@ -141,13 +122,6 @@ void EnterpriseBlockPage::CommandReceived(const std::string& command) {
 
 int EnterpriseBlockPage::GetHTMLTemplateId() {
   return IDR_SECURITY_INTERSTITIAL_HTML;
-}
-
-std::string EnterpriseBlockPage::GetCustomMessageForTesting() {
-  base::Value::Dict load_time_data;
-  PopulateInterstitialStrings(load_time_data);
-  std::string custom_message = *load_time_data.FindString("primaryParagraph");
-  return custom_message;
 }
 
 void EnterpriseBlockPage::PopulateStringsForSharedHTML(

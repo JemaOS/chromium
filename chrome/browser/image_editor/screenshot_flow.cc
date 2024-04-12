@@ -171,11 +171,22 @@ void ScreenshotFlow::CaptureAndRunScreenshotCompleteCallback(
   }
 
   gfx::Rect bounds = web_contents_->GetViewBounds();
-  ui::GrabSnapshotImageCallback screenshot_callback =
+#if BUILDFLAG(IS_MAC)
+  const gfx::NativeView& native_view = web_contents_->GetContentNativeView();
+  gfx::Image img;
+  bool rval = ui::GrabViewSnapshot(native_view, region, &img);
+  // If |img| is empty, clients should treat it as a canceled action, but
+  // we have a DCHECK for development as we expected this call to succeed.
+  DCHECK(rval);
+  RunScreenshotCompleteCallback(result_code, bounds, img);
+#else
+  ui::GrabWindowSnapshotAsyncCallback screenshot_callback =
       base::BindOnce(&ScreenshotFlow::RunScreenshotCompleteCallback, weak_this_,
                      result_code, bounds);
-  ui::GrabViewSnapshot(web_contents_->GetNativeView(), region,
-                       std::move(screenshot_callback));
+  const gfx::NativeWindow& native_window = web_contents_->GetNativeView();
+  ui::GrabWindowSnapshotAsync(native_window, region,
+                              std::move(screenshot_callback));
+#endif
 }
 
 void ScreenshotFlow::CancelCapture() {

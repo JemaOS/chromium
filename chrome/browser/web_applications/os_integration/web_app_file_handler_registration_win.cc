@@ -7,7 +7,6 @@
 #include <iterator>
 #include <set>
 #include <string>
-#include <string_view>
 
 #include "base/command_line.h"
 #include "base/files/file_path.h"
@@ -32,14 +31,14 @@ bool FileHandlingIconsSupportedByOs() {
   return false;
 }
 
-void RegisterFileHandlersWithOsTask(const webapps::AppId& app_id,
+void RegisterFileHandlersWithOsTask(const AppId& app_id,
                                     const std::wstring& app_name,
                                     const base::FilePath& profile_path,
                                     const apps::FileHandlers& file_handlers,
                                     const std::wstring& app_name_extension) {
   const base::FilePath web_app_path =
       GetOsIntegrationResourcesDirectoryForApp(profile_path, app_id, GURL());
-  std::optional<base::FilePath> app_specific_launcher_path =
+  absl::optional<base::FilePath> app_specific_launcher_path =
       CreateAppLauncherFile(app_name, app_name_extension, web_app_path);
   if (!app_specific_launcher_path.has_value())
     return;
@@ -81,7 +80,7 @@ void RegisterFileHandlersWithOsTask(const webapps::AppId& app_id,
     result &= ShellUtil::AddFileAssociations(
         file_handler_progids.back(), app_specific_launcher_command,
         user_visible_app_name,
-        base::AsWString(std::u16string_view(file_handler.display_name)),
+        base::AsWString(base::StringPiece16(file_handler.display_name)),
         icon_path, file_extensions_wide);
   }
   if (!result)
@@ -95,7 +94,7 @@ void RegisterFileHandlersWithOsTask(const webapps::AppId& app_id,
       GetProgIdForApp(profile_path, app_id), file_handler_progids);
 }
 
-void RegisterFileHandlersWithOs(const webapps::AppId& app_id,
+void RegisterFileHandlersWithOs(const AppId& app_id,
                                 const std::string& app_name,
                                 const base::FilePath& profile_path,
                                 const apps::FileHandlers& file_handlers,
@@ -121,7 +120,7 @@ void DeleteAppLauncher(const base::FilePath& launcher_path) {
   base::DeleteFile(launcher_path);
 }
 
-void UnregisterFileHandlersWithOs(const webapps::AppId& app_id,
+void UnregisterFileHandlersWithOs(const AppId& app_id,
                                   const base::FilePath& profile_path,
                                   ResultCallback callback) {
   // The app-specific-launcher file name must be calculated before cleaning up

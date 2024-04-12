@@ -5,9 +5,10 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_SIDE_PANEL_READ_ANYTHING_READ_ANYTHING_MENU_MODEL_H_
 #define CHROME_BROWSER_UI_VIEWS_SIDE_PANEL_READ_ANYTHING_READ_ANYTHING_MENU_MODEL_H_
 
-#include <optional>
-
+#include "base/strings/utf_string_conversions.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/models/simple_menu_model.h"
+#include "ui/gfx/font_list.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // ReadAnythingMenuModel
@@ -28,12 +29,13 @@ class ReadAnythingMenuModel : public ui::SimpleMenuModel,
 
   virtual bool IsValidIndex(size_t index);
   void SetSelectedIndex(size_t index);
-  std::optional<size_t> GetSelectedIndex() const { return selected_index_; }
+  absl::optional<size_t> GetSelectedIndex() const { return selected_index_; }
   void SetCallback(base::RepeatingCallback<void()> callback);
 
-  std::optional<ui::ColorId> GetForegroundColorId(size_t index) override;
-  std::optional<ui::ColorId> GetSubmenuBackgroundColorId(size_t index) override;
-  std::optional<ui::ColorId> GetSelectedBackgroundColorId(
+  absl::optional<ui::ColorId> GetForegroundColorId(size_t index) override;
+  absl::optional<ui::ColorId> GetSubmenuBackgroundColorId(
+      size_t index) override;
+  absl::optional<ui::ColorId> GetSelectedBackgroundColorId(
       size_t index) override;
 
   void SetForegroundColorId(ui::ColorId foreground_color) {
@@ -48,12 +50,17 @@ class ReadAnythingMenuModel : public ui::SimpleMenuModel,
     selected_color_id_ = selected_color;
   }
 
+  void SetLabelFontList(const std::string& font_string);
+
+  const gfx::FontList* GetLabelFontListAt(size_t index) const override;
+
  private:
-  std::optional<size_t> selected_index_ = std::nullopt;
+  absl::optional<size_t> selected_index_ = absl::nullopt;
   base::RepeatingClosure callback_;
-  std::optional<ui::ColorId> foreground_color_id_;
-  std::optional<ui::ColorId> submenu_background_color_id_;
-  std::optional<ui::ColorId> selected_color_id_;
+  absl::optional<ui::ColorId> foreground_color_id_;
+  absl::optional<ui::ColorId> submenu_background_color_id_;
+  absl::optional<ui::ColorId> selected_color_id_;
+  absl::optional<gfx::FontList> font_ = absl::nullopt;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_SIDE_PANEL_READ_ANYTHING_READ_ANYTHING_MENU_MODEL_H_

@@ -5,10 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_WEBGPU_GPU_QUEUE_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBGPU_GPU_QUEUE_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_typedefs.h"
 #include "third_party/blink/renderer/core/typed_arrays/array_buffer_view_helpers.h"
 #include "third_party/blink/renderer/modules/webgpu/dawn_object.h"
@@ -24,6 +22,7 @@ class GPUImageCopyExternalImage;
 class GPUImageCopyTexture;
 class GPUImageCopyTextureTagged;
 class GPUImageDataLayout;
+class ScriptPromiseResolver;
 class ScriptState;
 class StaticBitmapImage;
 struct ExternalTextureSource;
@@ -32,16 +31,14 @@ class GPUQueue : public DawnObject<WGPUQueue> {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  explicit GPUQueue(GPUDevice* device, WGPUQueue queue, const String& label);
+  explicit GPUQueue(GPUDevice* device, WGPUQueue queue);
 
   GPUQueue(const GPUQueue&) = delete;
   GPUQueue& operator=(const GPUQueue&) = delete;
 
   // gpu_queue.idl
-  void submit(ScriptState* script_state,
-              const HeapVector<Member<GPUCommandBuffer>>& buffers);
-  ScriptPromiseTyped<IDLUndefined> onSubmittedWorkDone(
-      ScriptState* script_state);
+  void submit(const HeapVector<Member<GPUCommandBuffer>>& buffers);
+  ScriptPromise onSubmittedWorkDone(ScriptState* script_state);
   void writeBuffer(ScriptState* script_state,
                    GPUBuffer* buffer,
                    uint64_t buffer_offset,
@@ -86,6 +83,8 @@ class GPUQueue : public DawnObject<WGPUQueue> {
                                   ExceptionState& exception_state);
 
  private:
+  void OnWorkDoneCallback(ScriptPromiseResolver* resolver,
+                          WGPUQueueWorkDoneStatus status);
   void CopyFromVideoElement(const ExternalTextureSource source,
                             const WGPUExtent2D& video_frame_natural_size,
                             const WGPUOrigin2D& origin,
@@ -108,7 +107,7 @@ class GPUQueue : public DawnObject<WGPUQueue> {
                        const void* data_base_ptr,
                        unsigned data_bytes_per_element,
                        uint64_t data_byte_offset,
-                       std::optional<uint64_t> byte_size,
+                       absl::optional<uint64_t> byte_size,
                        ExceptionState& exception_state);
   void WriteTextureImpl(ScriptState* script_state,
                         GPUImageCopyTexture* destination,

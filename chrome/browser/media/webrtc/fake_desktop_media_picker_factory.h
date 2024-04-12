@@ -48,8 +48,7 @@ class FakeDesktopMediaPickerFactory : public DesktopMediaPickerFactory {
   FakeDesktopMediaPicker* picker() const { return picker_; }
   bool IsWebContentsExcluded() const { return is_web_contents_excluded_; }
   // DesktopMediaPickerFactory implementation
-  std::unique_ptr<DesktopMediaPicker> CreatePicker(
-      const content::MediaStreamRequest* request) override;
+  std::unique_ptr<DesktopMediaPicker> CreatePicker() override;
   std::vector<std::unique_ptr<DesktopMediaList>> CreateMediaList(
       const std::vector<DesktopMediaList::Type>& types,
       content::WebContents* web_contents,
@@ -57,9 +56,8 @@ class FakeDesktopMediaPickerFactory : public DesktopMediaPickerFactory {
       override;
 
  private:
-  raw_ptr<FakeDesktopMediaPicker, AcrossTasksDanglingUntriaged> picker_;
-  raw_ptr<TestFlags, AcrossTasksDanglingUntriaged | AllowPtrArithmetic>
-      test_flags_;
+  raw_ptr<FakeDesktopMediaPicker, DanglingUntriaged> picker_;
+  raw_ptr<TestFlags, DanglingUntriaged | AllowPtrArithmetic> test_flags_;
   int tests_count_;
   int current_test_;
   bool is_web_contents_excluded_ = false;

@@ -12,7 +12,6 @@
 #include <unordered_map>
 
 #include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
 #include "chrome/browser/ash/app_list/arc/arc_app_list_prefs.h"
 #include "chrome/browser/ash/app_list/arc/arc_app_sync_metrics_helper.h"
 #include "chrome/browser/ash/arc/session/arc_session_manager_observer.h"
@@ -48,17 +47,14 @@ class ArcPackageSyncableService : public syncer::SyncableService,
     int64_t last_backup_time;
   };
 
-  // Use ArcPackageSyncableServiceFactory instead.
-  ArcPackageSyncableService(Profile* profile, ArcAppListPrefs* prefs);
   ArcPackageSyncableService(const ArcPackageSyncableService&) = delete;
   ArcPackageSyncableService& operator=(const ArcPackageSyncableService&) =
       delete;
 
   ~ArcPackageSyncableService() override;
 
-  static std::unique_ptr<ArcPackageSyncableService> Create(
-      Profile* profile,
-      ArcAppListPrefs* prefs);
+  static ArcPackageSyncableService* Create(Profile* profile,
+                                           ArcAppListPrefs* prefs);
   static ArcPackageSyncableService* Get(content::BrowserContext* context);
 
   // Returns true if requested package has pending sync request.
@@ -66,26 +62,22 @@ class ArcPackageSyncableService : public syncer::SyncableService,
 
   // syncer::SyncableService:
   void WaitUntilReadyToSync(base::OnceClosure done) override;
-  std::optional<syncer::ModelError> MergeDataAndStartSyncing(
+  absl::optional<syncer::ModelError> MergeDataAndStartSyncing(
       syncer::ModelType type,
       const syncer::SyncDataList& initial_sync_data,
       std::unique_ptr<syncer::SyncChangeProcessor> sync_processor) override;
   void StopSyncing(syncer::ModelType type) override;
-  std::optional<syncer::ModelError> ProcessSyncChanges(
+  absl::optional<syncer::ModelError> ProcessSyncChanges(
       const base::Location& from_here,
       const syncer::SyncChangeList& change_list) override;
-  base::WeakPtr<SyncableService> AsWeakPtr() override;
 
   bool SyncStarted();
-
-  // Tries to install/resinstall a package that is in the pending list.
-  // Sends the request to Android.
-  void InstallPendingPackage(const std::string& package_name,
-                             arc::mojom::InstallPriority priority);
 
  private:
   using SyncItemMap =
       std::unordered_map<std::string, std::unique_ptr<SyncItem>>;
+
+  ArcPackageSyncableService(Profile* profile, ArcAppListPrefs* prefs);
 
   // ArcAppListPrefs::Observer:
   void OnPackageInstalled(const mojom::ArcPackageInfo& package_info) override;
@@ -110,6 +102,9 @@ class ArcPackageSyncableService : public syncer::SyncableService,
   // Sends request to uninstall package to Android.
   bool DeleteSyncItemSpecifics(const sync_pb::ArcPackageSpecifics& specifics);
 
+  // Sends install notification for given package to Android.
+  void InstallPackage(const SyncItem* sync_item);
+
   // Sends uninstall notification for given package to Android.
   void UninstallPackage(const SyncItem* sync_item);
 
@@ -121,7 +116,7 @@ class ArcPackageSyncableService : public syncer::SyncableService,
   // Maybe updates installation info for app sync metrics.
   void MaybeUpdateInstallMetrics(const mojom::ArcPackageInfo& package_info);
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
   base::OnceClosure wait_until_ready_to_sync_cb_;
   std::unique_ptr<syncer::SyncChangeProcessor> sync_processor_;
 
@@ -146,11 +141,9 @@ class ArcPackageSyncableService : public syncer::SyncableService,
   // asynchronously via MergeDataAndStartSyncing as soon as possible.
   syncer::SyncableService::StartSyncFlare flare_;
 
-  const raw_ptr<ArcAppListPrefs> prefs_;
+  const raw_ptr<ArcAppListPrefs, ExperimentalAsh> prefs_;
 
   ArcAppSyncMetricsHelper metrics_helper_;
-
-  base::WeakPtrFactory<ArcPackageSyncableService> weak_ptr_factory_{this};
 };
 
 }  // namespace arc

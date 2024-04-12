@@ -14,21 +14,19 @@
 namespace blink {
 
 AtomicString TrackDefault::AudioKeyword() {
-  return AtomicString("audio");
+  return "audio";
 }
 
 AtomicString TrackDefault::VideoKeyword() {
-  return AtomicString("video");
+  return "video";
 }
 
 AtomicString TrackDefault::TextKeyword() {
-  return AtomicString("text");
+  return "text";
 }
 
 ScriptValue TrackDefault::kinds(ScriptState* script_state) const {
-  return ScriptValue(
-      script_state->GetIsolate(),
-      ToV8Traits<IDLSequence<IDLString>>::ToV8(script_state, kinds_));
+  return ScriptValue(script_state->GetIsolate(), ToV8(kinds_, script_state));
 }
 
 TrackDefault* TrackDefault::Create(const AtomicString& type,

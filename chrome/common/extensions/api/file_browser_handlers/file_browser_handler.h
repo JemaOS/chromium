@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/manifest_handler.h"
 #include "extensions/common/url_pattern.h"
 #include "extensions/common/url_pattern_set.h"
@@ -30,7 +29,7 @@ class FileBrowserHandler {
   ~FileBrowserHandler();
 
   // extension id
-  extensions::ExtensionId extension_id() const { return extension_id_; }
+  std::string extension_id() const { return extension_id_; }
   void set_extension_id(const std::string& extension_id) {
     extension_id_ = extension_id;
   }
@@ -84,7 +83,7 @@ class FileBrowserHandler {
  private:
   // The id for the extension this action belongs to (as defined in the
   // extension manifest).
-  extensions::ExtensionId extension_id_;
+  std::string extension_id_;
   std::string title_;
   std::string default_icon_path_;
   // The id for the FileBrowserHandler, for example: "PdfFileAction".

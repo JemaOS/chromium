@@ -28,7 +28,7 @@ scoped_refptr<const extensions::Extension> BuildTestExtension() {
 
 }  // namespace
 
-using ExtensionInstallPromptBrowserTest = InProcessBrowserTest;
+typedef InProcessBrowserTest ExtensionInstallPromptBrowserTest;
 
 // Test that ExtensionInstallPrompt aborts the install if the web contents which
 // were passed to the ExtensionInstallPrompt constructor get destroyed.

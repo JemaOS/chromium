@@ -17,11 +17,9 @@ import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bu
 
 import {routes} from '../route.js';
 import {Router} from '../router.js';
-import type {NotificationPermission, SafetyHubBrowserProxy} from '../safety_hub/safety_hub_browser_proxy.js';
-import {SafetyHubBrowserProxyImpl, SafetyHubEvent} from '../safety_hub/safety_hub_browser_proxy.js';
+import {NotificationPermission, SiteSettingsPrefsBrowserProxy, SiteSettingsPrefsBrowserProxyImpl} from '../site_settings/site_settings_prefs_browser_proxy.js';
 
-import type {SettingsSafetyCheckChildElement} from './safety_check_child.js';
-import {SafetyCheckIconStatus} from './safety_check_child.js';
+import {SafetyCheckIconStatus, SettingsSafetyCheckChildElement} from './safety_check_child.js';
 import {getTemplate} from './safety_check_notification_permissions.html.js';
 
 export interface SettingsSafetyCheckNotificationPermissionsElement {
@@ -58,18 +56,18 @@ export class SettingsSafetyCheckNotificationPermissionsElement extends
 
   private iconStatus_: SafetyCheckIconStatus;
   private headerString_: string;
-  private safetyHubBrowserProxy_: SafetyHubBrowserProxy =
-      SafetyHubBrowserProxyImpl.getInstance();
+  private siteSettingsBrowserProxy_: SiteSettingsPrefsBrowserProxy =
+      SiteSettingsPrefsBrowserProxyImpl.getInstance();
 
   override connectedCallback() {
     super.connectedCallback();
 
     // Register for review notification permission list updates.
     this.addWebUiListener(
-        SafetyHubEvent.NOTIFICATION_PERMISSIONS_MAYBE_CHANGED,
+        'notification-permission-review-list-maybe-changed',
         (sites: NotificationPermission[]) => this.onSitesChanged_(sites));
 
-    this.safetyHubBrowserProxy_.getNotificationPermissionReview().then(
+    this.siteSettingsBrowserProxy_.getNotificationPermissionReview().then(
         this.onSitesChanged_.bind(this));
   }
 

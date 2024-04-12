@@ -165,13 +165,10 @@ HeapVector<Member<Animation>> Animatable::getAnimations(
 HeapVector<Member<Animation>> Animatable::GetAnimationsInternal(
     GetAnimationsOptionsResolved options) {
   Element* element = GetAnimationTarget();
-  if (options.use_subtree) {
-    element->GetDocument().UpdateStyleAndLayoutTreeForSubtree(
-        element, DocumentUpdateReason::kWebAnimation);
-  } else {
-    element->GetDocument().UpdateStyleAndLayoutTreeForElement(
-        element, DocumentUpdateReason::kWebAnimation);
-  }
+  if (options.use_subtree)
+    element->GetDocument().UpdateStyleAndLayoutTreeForSubtree(element);
+  else
+    element->GetDocument().UpdateStyleAndLayoutTreeForNode(element);
 
   HeapVector<Member<Animation>> animations;
   if (!options.use_subtree && !element->HasAnimations())

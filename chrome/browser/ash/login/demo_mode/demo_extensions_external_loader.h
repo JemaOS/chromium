@@ -6,13 +6,13 @@
 #define CHROME_BROWSER_ASH_LOGIN_DEMO_MODE_DEMO_EXTENSIONS_EXTERNAL_LOADER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/files/file_path.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/ash/extensions/external_cache_delegate.h"
 #include "chrome/browser/extensions/external_loader.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -34,13 +34,6 @@ namespace ash {
 // mounted demo resources root to absolute paths that can be used by external
 // extensions provider.
 // NOTE: The class is expected to be used on the UI thread exclusively.
-//
-// TODO(b/290844778): Delete this class. It was used in olden times to launch
-// the Demo Mode Chrome Apps from Chromium, but the Chrome Apps have been
-// replaced by the Demo Mode SWA. Even for 1-2 yearly releases before the
-// SWA migration, the Chrome Apps were installed via policy and self-launched
-// via background script on installation. There's no need for this class
-// anymore.
 class DemoExtensionsExternalLoader : public extensions::ExternalLoader,
                                      public chromeos::ExternalCacheDelegate {
  public:
@@ -75,7 +68,7 @@ class DemoExtensionsExternalLoader : public extensions::ExternalLoader,
   // Called when the external extensions prefs are read from the disk.
   // `prefs` - demo extensions prefs.
   void DemoExternalExtensionsPrefsLoaded(
-      std::optional<base::Value::Dict> prefs);
+      absl::optional<base::Value::Dict> prefs);
 
   std::unique_ptr<chromeos::ExternalCache> external_cache_;
 

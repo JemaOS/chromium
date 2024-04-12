@@ -9,7 +9,6 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
-#include "base/no_destructor.h"
 #include "base/time/default_clock.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
@@ -24,8 +23,7 @@
 
 // static
 ConsentAuditorFactory* ConsentAuditorFactory::GetInstance() {
-  static base::NoDestructor<ConsentAuditorFactory> instance;
-  return instance.get();
+  return base::Singleton<ConsentAuditorFactory>::get();
 }
 
 // static
@@ -52,10 +50,9 @@ ConsentAuditorFactory::ConsentAuditorFactory()
   DependsOn(ModelTypeStoreServiceFactory::GetInstance());
 }
 
-ConsentAuditorFactory::~ConsentAuditorFactory() = default;
+ConsentAuditorFactory::~ConsentAuditorFactory() {}
 
-std::unique_ptr<KeyedService>
-ConsentAuditorFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ConsentAuditorFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = static_cast<Profile*>(context);
 
@@ -72,7 +69,7 @@ ConsentAuditorFactory::BuildServiceInstanceForBrowserContext(
       std::make_unique<consent_auditor::ConsentSyncBridgeImpl>(
           std::move(store_factory), std::move(change_processor));
 
-  return std::make_unique<consent_auditor::ConsentAuditorImpl>(
+  return new consent_auditor::ConsentAuditorImpl(
       std::move(consent_sync_bridge),
       // The locale doesn't change at runtime, so we can pass it directly.
       g_browser_process->GetApplicationLocale(),

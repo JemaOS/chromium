@@ -6,10 +6,8 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -17,6 +15,7 @@
 #include "base/containers/contains.h"
 #include "base/functional/callback.h"
 #include "base/notreached.h"
+#include "base/strings/string_piece.h"
 #include "chrome/browser/ash/printing/oauth2/authorization_zone.h"
 #include "chrome/browser/ash/printing/oauth2/client_ids_database.h"
 #include "chrome/browser/ash/printing/oauth2/log_entry.h"
@@ -30,6 +29,7 @@
 #include "components/sync/model/model_type_store.h"
 #include "components/sync/model/model_type_store_service.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace ash::printing::oauth2 {
@@ -39,7 +39,7 @@ namespace {
 // Logs results to device-log and calls `callback` with parameters `status` and
 // `data`.
 void LogAndCall(StatusCallback callback,
-                std::string_view method,
+                base::StringPiece method,
                 const GURL& auth_server,
                 const chromeos::Uri& ipp_endpoint,
                 StatusCode status,
@@ -55,7 +55,7 @@ void LogAndCall(StatusCallback callback,
 }
 
 void AddLoggingToCallback(StatusCallback& callback,
-                          const std::string_view method,
+                          const base::StringPiece method,
                           const GURL& auth_server,
                           const chromeos::Uri& ipp_endpoint = chromeos::Uri()) {
   // Wrap the `callback` with the function LogAndCall() defined above.
@@ -162,7 +162,7 @@ class AuthorizationZonesManagerImpl
                               const std::string& scope,
                               StatusCallback callback) override {
     PRINTER_LOG(USER) << LogEntry("scope=" + scope, __func__, auth_server,
-                                  std::nullopt, ipp_endpoint);
+                                  absl::nullopt, ipp_endpoint);
     AddLoggingToCallback(callback, __func__, auth_server, ipp_endpoint);
 
     AuthorizationZone* zone = GetAuthorizationZone(auth_server);

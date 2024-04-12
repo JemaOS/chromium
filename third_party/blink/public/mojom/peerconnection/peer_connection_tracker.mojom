@@ -25,6 +25,9 @@ struct PeerConnectionInfo {
   // Serialized version of RTCConfiguration.
   string rtc_configuration;
 
+  // Serialized version of blink::WebMediaConstraints.
+  string constraints;
+
   // The URL of the blink::WebLocalFrame within which this peer connection
   // lives. Used for debugging purposes (displayed by WebRTC-Internals).
   // May be null for eg pages with opaque URLs.
@@ -54,8 +57,8 @@ interface PeerConnectionManager {
     // Requests standard PeerConnection stats for webrtc-internals.
     GetStandardStats();
 
-    // Requests a state dump for webrtc-internals.
-    GetCurrentState();
+    // Requests legacy PeerConnection stats for webrtc-internals.
+    GetLegacyStats();
 };
 
 // This interface allows forwarding PeerConnection events to WebRTCInternals in

@@ -7,14 +7,15 @@
 #import <Cocoa/Cocoa.h>
 #include <stddef.h>
 
-#include <algorithm>
 #include <utility>
 
+#include "base/cxx17_backports.h"
 #include "base/i18n/rtl.h"
 #include "base/mac/mac_util.h"
 #include "base/memory/singleton.h"
 #include "build/branding_buildflags.h"
 #include "chrome/app/chrome_command_ids.h"
+#include "chrome/browser/ui/commander/commander.h"
 #include "printing/buildflags/buildflags.h"
 #import "ui/base/accelerators/platform_accelerator_cocoa.h"
 #import "ui/events/cocoa/cocoa_event_utils.h"
@@ -68,7 +69,7 @@ const struct AcceleratorMapping {
     // The key combinations for IDC_CLOSE_WINDOW and IDC_CLOSE_TAB are context
     // dependent. A static mapping doesn't make sense. :(
     {IDC_CLOSE_TAB, ui::EF_COMMAND_DOWN, ui::VKEY_W},
-    {IDC_CLOSE_WINDOW, ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN, ui::VKEY_W},
+    {IDC_CLOSE_WINDOW, ui::EF_COMMAND_DOWN, ui::VKEY_W},
 
     {IDC_EMAIL_PAGE_LOCATION, ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN,
      ui::VKEY_I},
@@ -116,7 +117,7 @@ ui::Accelerator enterFullscreenAccelerator() {
   int modifiers = ui::EF_COMMAND_DOWN | ui::EF_CONTROL_DOWN;
 
   // The default keyboard accelerator for Enter Full Screen changed in macOS 12.
-  if (base::mac::MacOSMajorVersion() >= 12) {
+  if (base::mac::IsAtLeastOS12()) {
     modifiers = ui::EF_FUNCTION_DOWN;
   }
 
@@ -137,6 +138,13 @@ AcceleratorsCocoa::AcceleratorsCocoa() {
   auto result = accelerators_.insert(
       std::make_pair(IDC_FULLSCREEN, enterFullscreenAccelerator()));
   DCHECK(result.second);
+
+  if (commander::IsEnabled()) {
+    result = accelerators_.insert(
+        std::make_pair(IDC_TOGGLE_QUICK_COMMANDS,
+                       ui::Accelerator(ui::VKEY_SPACE, ui::EF_CONTROL_DOWN)));
+    DCHECK(result.second);
+  }
 
   if (!base::i18n::IsRTL())
     return;

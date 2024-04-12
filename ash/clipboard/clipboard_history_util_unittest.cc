@@ -6,7 +6,6 @@
 
 #include <array>
 #include <deque>
-#include <string_view>
 
 #include "ash/clipboard/test_support/clipboard_history_item_builder.h"
 #include "base/strings/utf_string_conversions.h"
@@ -127,7 +126,7 @@ TEST_F(ClipboardHistoryUtilTest, GetSplitFileSystemData) {
 
   ClipboardHistoryItemBuilder builder;
   std::u16string sources;
-  std::vector<std::u16string_view> source_list;
+  std::vector<base::StringPiece16> source_list;
 
   // Outside the Files app, file system sources are written to filenames.
   builder.SetFilenames(

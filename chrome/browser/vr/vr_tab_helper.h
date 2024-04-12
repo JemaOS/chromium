@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_VR_VR_TAB_HELPER_H_
 #define CHROME_BROWSER_VR_VR_TAB_HELPER_H_
 
+#include "chrome/browser/vr/ui_suppressed_element.h"
 #include "content/public/browser/web_contents_user_data.h"
 
 namespace vr {

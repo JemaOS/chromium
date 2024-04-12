@@ -4,11 +4,10 @@
 
 #include "chrome/browser/ui/ash/accessibility/accessibility_controller_client.h"
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/public/cpp/accessibility_controller.h"
 #include "ash/public/cpp/accessibility_controller_enums.h"
 #include "ash/wm/desks/templates/saved_desk_util.h"
 #include "chrome/browser/ash/accessibility/accessibility_manager.h"
-#include "chrome/browser/ash/accessibility/dictation.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/aura/accessibility/automation_manager_aura.h"
 #include "chrome/grit/generated_resources.h"
@@ -84,9 +83,6 @@ void AccessibilityControllerClient::TriggerAccessibilityAlert(
                 ? IDS_A11Y_ALERT_SAVED_DESKS_LIBRARY_MODE_ENTERED
                 : IDS_A11Y_ALERT_SAVED_DESKS_SAVED_FOR_LATER_MODE_ENTERED;
       break;
-    case ash::AccessibilityAlert::FASTER_SPLIT_SCREEN_SETUP:
-      msg = IDS_A11Y_ALERT_FASTER_SPLITSCREEN_TOAST;
-      break;
     case ash::AccessibilityAlert::NONE:
       msg = 0;
       break;
@@ -134,6 +130,14 @@ void AccessibilityControllerClient::SilenceSpokenFeedback() {
   content::TtsController::GetInstance()->Stop();
 }
 
+void AccessibilityControllerClient::OnTwoFingerTouchStart() {
+  AccessibilityManager::Get()->OnTwoFingerTouchStart();
+}
+
+void AccessibilityControllerClient::OnTwoFingerTouchStop() {
+  AccessibilityManager::Get()->OnTwoFingerTouchStop();
+}
+
 bool AccessibilityControllerClient::ShouldToggleSpokenFeedbackViaTouch() const {
   return AccessibilityManager::Get()->ShouldToggleSpokenFeedbackViaTouch();
 }
@@ -148,7 +152,7 @@ void AccessibilityControllerClient::RequestSelectToSpeakStateChange() {
 }
 
 void AccessibilityControllerClient::RequestAutoclickScrollableBoundsForPoint(
-    const gfx::Point& point_in_screen) {
+    gfx::Point& point_in_screen) {
   AccessibilityManager::Get()->RequestAutoclickScrollableBoundsForPoint(
       point_in_screen);
 }
@@ -172,10 +176,4 @@ void AccessibilityControllerClient::SetA11yOverrideWindow(
     aura::Window* a11y_override_window) {
   AutomationManagerAura::GetInstance()->SetA11yOverrideWindow(
       a11y_override_window);
-}
-
-std::string AccessibilityControllerClient::GetDictationDefaultLocale(
-    bool new_user) {
-  return ash::Dictation::DetermineDefaultSupportedLocale(
-      ProfileManager::GetActiveUserProfile(), new_user);
 }

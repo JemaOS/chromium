@@ -122,7 +122,8 @@ void CastHandler::StartDesktopMirroring(
       base::BindOnce(&CastHandler::OnDesktopMirroringStarted,
                      weak_factory_.GetWeakPtr(), std::move(callback)),
       media_router::GetRouteRequestTimeout(
-          media_router::MediaCastMode::DESKTOP_MIRROR));
+          media_router::MediaCastMode::DESKTOP_MIRROR),
+      web_contents_->GetBrowserContext()->IsOffTheRecord());
 }
 
 void CastHandler::StartTabMirroring(
@@ -146,7 +147,8 @@ void CastHandler::StartTabMirroring(
       base::BindOnce(&CastHandler::OnTabMirroringStarted,
                      weak_factory_.GetWeakPtr(), std::move(callback)),
       media_router::GetRouteRequestTimeout(
-          media_router::MediaCastMode::TAB_MIRROR));
+          media_router::MediaCastMode::TAB_MIRROR),
+      web_contents_->GetBrowserContext()->IsOffTheRecord());
 }
 
 Response CastHandler::StopCasting(const std::string& in_sink_name) {
@@ -231,7 +233,8 @@ void CastHandler::StartPresentation(
       base::BindOnce(&CastHandler::OnPresentationStarted,
                      weak_factory_.GetWeakPtr(), std::move(context)),
       media_router::GetRouteRequestTimeout(
-          media_router::MediaCastMode::PRESENTATION));
+          media_router::MediaCastMode::PRESENTATION),
+      web_contents_->GetBrowserContext()->IsOffTheRecord());
 }
 
 media_router::MediaSink::Id CastHandler::GetSinkIdByName(
@@ -261,11 +264,11 @@ void CastHandler::StartObservingForSinks(
   query_result_manager_->SetSourcesForCastMode(
       media_router::MediaCastMode::TAB_MIRROR, {mirroring_source}, origin);
 
-  if (presentation_url.has_value()) {
+  if (presentation_url.isJust()) {
     url::Origin frame_origin =
         web_contents_->GetPrimaryMainFrame()->GetLastCommittedOrigin();
     std::vector<media_router::MediaSource> sources = {
-        media_router::MediaSource(presentation_url.value())};
+        media_router::MediaSource(presentation_url.fromJust())};
     query_result_manager_->SetSourcesForCastMode(
         media_router::MediaCastMode::PRESENTATION, sources, frame_origin);
   }

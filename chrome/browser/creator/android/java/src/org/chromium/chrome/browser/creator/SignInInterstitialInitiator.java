@@ -6,6 +6,8 @@ package org.chromium.chrome.browser.creator;
 
 /** Interface for showing sign-in insterstitial. */
 public interface SignInInterstitialInitiator {
-    /** Shows a sign-in interstitial. */
+    /**
+     * Shows a sign-in interstitial.
+     */
     void showSignInInterstitial();
 }

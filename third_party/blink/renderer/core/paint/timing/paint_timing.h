@@ -9,7 +9,6 @@
 
 #include "base/gtest_prod_util.h"
 #include "base/time/time.h"
-#include "components/viz/common/frame_timing_details.h"
 #include "third_party/blink/public/web/web_performance_metrics_for_reporting.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -33,7 +32,7 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
                                       public Supplement<Document> {
   friend class FirstMeaningfulPaintDetector;
   using ReportTimeCallback =
-      WTF::CrossThreadOnceFunction<void(const viz::FrameTimingDetails&)>;
+      WTF::CrossThreadOnceFunction<void(base::TimeTicks)>;
   using RequestAnimationFrameTimesAfterBackForwardCacheRestore = std::array<
       base::TimeTicks,
       WebPerformanceMetricsForReporting::
@@ -117,20 +116,22 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
 
   base::TimeTicks FirstContentfulPaintRenderedButNotPresentedAsMonotonicTime()
       const {
-    return paint_details_.first_contentful_paint_;
+    return first_contentful_paint_;
   }
 
   void ResetFirstPaintAndFCP() {
-    soft_navigation_pending_paint_details_ = PaintDetails();
+    first_paint_ = base::TimeTicks();
+    first_paint_presentation_ = base::TimeTicks();
+    first_contentful_paint_ = base::TimeTicks();
+    first_contentful_paint_presentation_ = base::TimeTicks();
+    first_image_paint_ = base::TimeTicks();
+    first_image_paint_presentation_ = base::TimeTicks();
     first_paints_reset_ = true;
-    soft_navigation_detected_ = false;
-    soft_navigation_fp_reported_ = false;
-    soft_navigation_fcp_reported_ = false;
   }
 
   // FirstImagePaint returns the first time that image content was painted.
   base::TimeTicks FirstImagePaint() const {
-    return paint_details_.first_image_paint_presentation_;
+    return first_image_paint_presentation_;
   }
 
   // FirstEligibleToPaint returns the first time that the frame is not
@@ -159,7 +160,7 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
   }
 
   base::TimeTicks FirstContentfulPaintPresentation() const {
-    return paint_details_.first_contentful_paint_presentation_;
+    return first_contentful_paint_presentation_;
   }
 
   FirstMeaningfulPaintDetector& GetFirstMeaningfulPaintDetector() {
@@ -167,11 +168,10 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
   }
 
   void RegisterNotifyPresentationTime(ReportTimeCallback);
-  void ReportPresentationTime(PaintEvent, const viz::FrameTimingDetails&);
-  void RecordFirstContentfulPaintTimingMetrics(const viz::FrameTimingDetails&);
+  void ReportPresentationTime(PaintEvent, base::TimeTicks timestamp);
   void ReportFirstPaintAfterBackForwardCacheRestorePresentationTime(
       wtf_size_t index,
-      const viz::FrameTimingDetails&);
+      base::TimeTicks timestamp);
 
   // The caller owns the |clock| which must outlive the PaintTiming.
   void SetTickClockForTesting(const base::TickClock* clock);
@@ -182,8 +182,6 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
   // HTMLImageElement LCP element.
   bool IsLCPMouseoverDispatchedRecently() const;
   void SetLCPMouseoverDispatched();
-
-  void SoftNavigationDetected();
 
   void Trace(Visitor*) const override;
 
@@ -227,38 +225,24 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
   void RegisterNotifyFirstPaintAfterBackForwardCacheRestorePresentationTime(
       wtf_size_t index);
 
-  base::TimeTicks FirstPaintRendered() const {
-    return paint_details_.first_paint_;
-  }
+  base::TimeTicks FirstPaintRendered() const { return first_paint_; }
 
+  // TODO(crbug/738235): Non first_*_presentation_ variables are only being
+  // tracked to compute deltas for reporting histograms and should be removed
+  // once we confirm the deltas and discrepancies look reasonable.
+  base::TimeTicks first_paint_;
+  base::TimeTicks first_paint_presentation_;
+  // First paint timestamp that doesn't update after soft navigations, and only
+  // used for UKM reporting.
+  base::TimeTicks first_paint_presentation_for_ukm_;
   WTF::Vector<base::TimeTicks>
       first_paints_after_back_forward_cache_restore_presentation_;
   WTF::Vector<RequestAnimationFrameTimesAfterBackForwardCacheRestore>
       request_animation_frames_after_back_forward_cache_restore_;
-  struct PaintDetails {
-    // TODO(crbug/738235): Non first_*_presentation_ variables are only being
-    // tracked to compute deltas for reporting histograms and should be removed
-    // once we confirm the deltas and discrepancies look reasonable.
-    base::TimeTicks first_paint_;
-    base::TimeTicks first_paint_presentation_;
-    base::TimeTicks first_image_paint_;
-    base::TimeTicks first_image_paint_presentation_;
-    base::TimeTicks first_contentful_paint_;
-    base::TimeTicks first_contentful_paint_presentation_;
-  };
-
-  PaintDetails& GetRelevantPaintDetails() {
-    return first_paints_reset_ ? soft_navigation_pending_paint_details_
-                               : paint_details_;
-  }
-
-  PaintDetails paint_details_;
-  PaintDetails soft_navigation_pending_paint_details_;
-  base::TimeTicks soft_navigation_pending_first_paint_presentation_;
-  base::TimeTicks soft_navigation_pending_first_contentful_paint_presentation_;
-  // First paint timestamp that doesn't update after soft navigations, and only
-  // used for UKM reporting.
-  base::TimeTicks first_paint_presentation_for_ukm_;
+  base::TimeTicks first_image_paint_;
+  base::TimeTicks first_image_paint_presentation_;
+  base::TimeTicks first_contentful_paint_;
+  base::TimeTicks first_contentful_paint_presentation_;
   // FCP timestamp that does not update after soft navigations.
   base::TimeTicks
       first_contentful_paint_presentation_ignoring_soft_navigations_;
@@ -266,9 +250,6 @@ class CORE_EXPORT PaintTiming final : public GarbageCollected<PaintTiming>,
   base::TimeTicks first_meaningful_paint_candidate_;
   base::TimeTicks first_eligible_to_paint_;
   bool first_paints_reset_ = false;
-  bool soft_navigation_detected_ = false;
-  bool soft_navigation_fp_reported_ = false;
-  bool soft_navigation_fcp_reported_ = false;
 
   base::TimeTicks last_portal_activated_presentation_;
 

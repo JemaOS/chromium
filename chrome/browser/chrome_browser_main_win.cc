@@ -39,12 +39,13 @@
 #include "base/trace_event/base_tracing.h"
 #include "base/version.h"
 #include "base/win/pe_image.h"
+#include "base/win/registry.h"
 #include "base/win/win_util.h"
+#include "base/win/windows_version.h"
 #include "base/win/wrapped_window_proc.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/about_flags.h"
-#include "chrome/browser/active_use_util.h"
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
@@ -53,6 +54,9 @@
 #include "chrome/browser/os_crypt/app_bound_encryption_metrics_win.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_shortcut_manager.h"
+#include "chrome/browser/safe_browsing/chrome_cleaner/settings_resetter_win.h"
+#include "chrome/browser/safe_browsing/settings_reset_prompt/settings_reset_prompt_config.h"
+#include "chrome/browser/safe_browsing/settings_reset_prompt/settings_reset_prompt_util_win.h"
 #include "chrome/browser/shell_integration_win.h"
 #include "chrome/browser/ui/accessibility_util.h"
 #include "chrome/browser/ui/simple_message_box.h"
@@ -63,14 +67,12 @@
 #include "chrome/browser/web_applications/os_integration/web_app_handler_registration_utils_win.h"
 #include "chrome/browser/web_applications/os_integration/web_app_shortcut.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
-#include "chrome/browser/web_applications/web_app_registrar.h"
 #include "chrome/browser/win/browser_util.h"
 #include "chrome/browser/win/chrome_elf_init.h"
 #include "chrome/browser/win/conflicts/enumerate_input_method_editors.h"
 #include "chrome/browser/win/conflicts/enumerate_shell_extensions.h"
 #include "chrome/browser/win/conflicts/module_database.h"
 #include "chrome/browser/win/conflicts/module_event_sink_impl.h"
-#include "chrome/browser/win/remove_app_compat_entries.h"
 #include "chrome/browser/win/util_win_service.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_constants.h"
@@ -81,7 +83,7 @@
 #include "chrome/common/crash_keys.h"
 #include "chrome/common/env_vars.h"
 #include "chrome/common/pref_names.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/install_static/install_details.h"
 #include "chrome/installer/util/helper.h"
@@ -98,7 +100,6 @@
 #include "components/prefs/pref_service.h"
 #include "components/version_info/channel.h"
 #include "components/version_info/version_info.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_process_host.h"
@@ -109,6 +110,7 @@
 #include "ui/base/ui_base_switches.h"
 #include "ui/base/win/hidden_window.h"
 #include "ui/base/win/message_box_win.h"
+#include "ui/display/win/dpi.h"
 #include "ui/gfx/switches.h"
 #include "ui/gfx/system_fonts_win.h"
 #include "ui/gfx/win/crash_id_helper.h"
@@ -134,6 +136,13 @@ void InitializeWindowProcExceptions() {
 void DumpHungRendererProcessImpl(const base::Process& renderer) {
   // Use a distinguishing process type for these reports.
   crash_reporter::DumpHungProcessWithPtype(renderer, "hung-renderer");
+}
+
+// gfx::Font callbacks
+void AdjustUIFont(gfx::win::FontAdjustment* font_adjustment) {
+  l10n_util::NeedOverrideDefaultUIFont(&font_adjustment->font_family_override,
+                                       &font_adjustment->font_scale);
+  font_adjustment->font_scale *= display::win::GetAccessibilityFontScale();
 }
 
 int GetMinimumFontSize() {
@@ -323,6 +332,15 @@ void ShowCloseBrowserFirstMessageBox() {
       l10n_util::GetStringUTF16(IDS_UNINSTALL_CLOSE_APP));
 }
 
+void MaybePostSettingsResetPrompt() {
+  if (base::FeatureList::IsEnabled(safe_browsing::kSettingsResetPrompt)) {
+    content::GetUIThreadTaskRunner({base::TaskPriority::BEST_EFFORT})
+        ->PostTask(FROM_HERE,
+                   base::BindOnce(
+                       safe_browsing::MaybeShowSettingsResetPromptWithDelay));
+  }
+}
+
 // Updates all Progressive Web App launchers in |profile_dir| to the latest
 // version.
 void UpdatePwaLaunchersForProfile(const base::FilePath& profile_dir) {
@@ -340,7 +358,7 @@ void UpdatePwaLaunchersForProfile(const base::FilePath& profile_dir) {
 
   // Create a vector of all PWA-launcher paths in |profile_dir|.
   std::vector<base::FilePath> pwa_launcher_paths;
-  for (const webapps::AppId& app_id : registrar.GetAppIds()) {
+  for (const web_app::AppId& app_id : registrar.GetAppIds()) {
     base::FilePath web_app_path =
         web_app::GetOsIntegrationResourcesDirectoryForApp(profile_dir, app_id,
                                                           GURL());
@@ -432,7 +450,7 @@ void ChromeBrowserMainPartsWin::ToolkitInitialized() {
   DCHECK_NE(base::PlatformThread::CurrentId(), base::kInvalidThreadId);
   gfx::CrashIdHelper::RegisterMainThread(base::PlatformThread::CurrentId());
   ChromeBrowserMainParts::ToolkitInitialized();
-  gfx::win::SetAdjustFontCallback(&l10n_util::AdjustUiFont);
+  gfx::win::SetAdjustFontCallback(&AdjustUIFont);
   gfx::win::SetGetMinimumFontSizeCallback(&GetMinimumFontSize);
 }
 
@@ -546,29 +564,41 @@ void ChromeBrowserMainPartsWin::PostBrowserStart() {
 
   InitializeChromeElf();
 
-#if BUILDFLAG(USE_GOOGLE_UPDATE_INTEGRATION)
-  if constexpr (kShouldRecordActiveUse) {
-    did_run_updater_.emplace();
+  // Reset settings for the current profile if it's tagged to be reset after a
+  // complete run of the Chrome Cleanup tool. If post-cleanup settings reset is
+  // enabled, we delay checks for settings reset prompt until the scheduled
+  // reset is finished.
+  if (safe_browsing::PostCleanupSettingsResetter::IsEnabled() &&
+      !base::CommandLine::ForCurrentProcess()->HasSwitch(switches::kAppId)) {
+    // Using last opened profiles, because we want to find reset the profile
+    // that was open in the last Chrome run, which may not be open yet in
+    // the current run.
+    safe_browsing::PostCleanupSettingsResetter().ResetTaggedProfiles(
+        g_browser_process->profile_manager()->GetLastOpenedProfiles(),
+        base::BindOnce(&MaybePostSettingsResetPrompt),
+        std::make_unique<
+            safe_browsing::PostCleanupSettingsResetter::Delegate>());
+  } else {
+    MaybePostSettingsResetPrompt();
   }
-#endif
 
-  if (base::FeatureList::IsEnabled(features::kAppBoundEncryptionMetrics)) {
-    // Only record full metrics if the App-Bound provider is not registered. The
-    // App-Bound provider records these itself, and only one place should record
-    // them to accurately reflect the final production environment.
-    os_crypt::MeasureAppBoundEncryptionStatus(
-        g_browser_process->local_state(),
-        /*record_full_metrics=*/!base::FeatureList::IsEnabled(
-            features::kRegisterAppBoundEncryptionProvider));
+  // Query feature first, to include full population in field trial.
+  if (base::FeatureList::IsEnabled(features::kAppBoundEncryptionMetrics) &&
+      install_static::IsSystemInstall()) {
+    os_crypt::MeasureAppBoundEncryptionStatus(g_browser_process->local_state());
   }
 
   // Record Processor Metrics. This is very low priority, hence posting as
-  // BEST_EFFORT to start after Chrome startup has completed.
-  scoped_refptr<base::SequencedTaskRunner> task_runner =
-      base::ThreadPool::CreateSequencedTaskRunner(
-          {base::MayBlock(), base::TaskPriority::BEST_EFFORT});
-  task_runner->PostTask(FROM_HERE,
-                        base::BindOnce(&DelayedRecordProcessorMetrics));
+  // BEST_EFFORT to start after Chrome startup has completed. This metric is
+  // only available starting Windows 10.
+  if (base::win::OSInfo::GetInstance()->version() >=
+      base::win::Version::WIN10) {
+    scoped_refptr<base::SequencedTaskRunner> task_runner =
+        base::ThreadPool::CreateSequencedTaskRunner(
+            {base::MayBlock(), base::TaskPriority::BEST_EFFORT});
+    task_runner->PostTask(FROM_HERE,
+                          base::BindOnce(&DelayedRecordProcessorMetrics));
+  }
 
   // Write current executable path to the User Data directory to inform
   // Progressive Web App launchers, which run from within the User Data
@@ -594,17 +624,6 @@ void ChromeBrowserMainPartsWin::PostBrowserStart() {
           switches::kFromInstaller)) {
     AnnounceInActiveBrowser(l10n_util::GetStringUTF16(IDS_WELCOME_TO_CHROME));
   }
-
-  // Some users are getting stuck in compatibility mode. Try to help them
-  // escape; see http://crbug.com/581499.
-  base::ThreadPool::PostTask(
-      FROM_HERE, {base::TaskPriority::BEST_EFFORT, base::MayBlock()},
-      base::BindOnce([]() {
-        base::FilePath current_exe;
-        if (base::PathService::Get(base::FILE_EXE, &current_exe)) {
-          RemoveAppCompatEntries(current_exe);
-        }
-      }));
 
   base::ImportantFileWriterCleaner::GetInstance().Start();
 }
@@ -703,10 +722,9 @@ bool ChromeBrowserMainPartsWin::CheckMachineLevelInstall() {
   if (version.IsValid()) {
     base::FilePath exe_path;
     base::PathService::Get(base::DIR_EXE, &exe_path);
-    const base::FilePath user_exe_path(
-        installer::GetInstalledDirectory(/*system_install=*/false));
-    if (base::FilePath::CompareEqualIgnoreCase(exe_path.value(),
-                                               user_exe_path.value())) {
+    std::wstring exe = exe_path.value();
+    base::FilePath user_exe_path(installer::GetChromeInstallPath(false));
+    if (base::FilePath::CompareEqualIgnoreCase(exe, user_exe_path.value())) {
       base::CommandLine uninstall_cmd(
           InstallUtil::GetChromeUninstallCmd(false));
       if (!uninstall_cmd.GetProgram().empty()) {

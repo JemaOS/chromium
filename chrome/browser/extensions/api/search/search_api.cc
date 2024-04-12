@@ -33,20 +33,20 @@ void NavigateToURL(WindowOpenDisposition disposition,
 using extensions::api::search::Disposition;
 
 ExtensionFunction::ResponseAction SearchQueryFunction::Run() {
-  std::optional<api::search::Query::Params> params =
+  absl::optional<api::search::Query::Params> params =
       api::search::Query::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   // Convenience for input params.
   const std::string& text = params->query_info.text;
-  const std::optional<int>& tab_id = params->query_info.tab_id;
+  const absl::optional<int>& tab_id = params->query_info.tab_id;
   Disposition disposition = params->query_info.disposition;
 
   // Simple validation of input params.
   if (text.empty()) {
     return RespondNow(Error("Empty text parameter."));
   }
-  if (tab_id && disposition != Disposition::kNone) {
+  if (tab_id && disposition != Disposition::DISPOSITION_NONE) {
     return RespondNow(Error("Cannot set both 'disposition' and 'tabId'."));
   }
 
@@ -65,7 +65,7 @@ ExtensionFunction::ResponseAction SearchQueryFunction::Run() {
           Error(base::StringPrintf("No tab with id: %d.", *tab_id)));
     }
     // If tab_id was specified, disposition couldn't have been (checked above).
-    DCHECK_EQ(Disposition::kNone, disposition);
+    DCHECK_EQ(Disposition::DISPOSITION_NONE, disposition);
   }
 
   // If the extension didn't specify a tab, we need to find a browser to use.
@@ -75,7 +75,7 @@ ExtensionFunction::ResponseAction SearchQueryFunction::Run() {
     // find the associated browser.
     web_contents = GetSenderWebContents();
     if (web_contents) {
-      browser = chrome::FindBrowserWithTab(web_contents);
+      browser = chrome::FindBrowserWithWebContents(web_contents);
     }
     // Otherwise (e.g. when the extension calls the API from the background
     // page or service worker), fall back to the last active browser.
@@ -90,7 +90,8 @@ ExtensionFunction::ResponseAction SearchQueryFunction::Run() {
     }
   }
 
-  DCHECK(browser || (web_contents && disposition == Disposition::kNone));
+  DCHECK(browser ||
+         (web_contents && disposition == Disposition::DISPOSITION_NONE));
 
   // GURL for default search provider.
   TemplateURLService* url_service =
@@ -103,18 +104,18 @@ ExtensionFunction::ResponseAction SearchQueryFunction::Run() {
   }
 
   switch (disposition) {
-    case Disposition::kCurrentTab:
-    case Disposition::kNone:
+    case Disposition::DISPOSITION_CURRENT_TAB:
+    case Disposition::DISPOSITION_NONE:
       DCHECK(url.is_valid());
       web_contents->GetController().LoadURL(
           url, content::Referrer(),
           ui::PageTransition::PAGE_TRANSITION_FROM_API,
-          /*extra_headers=*/std::string());
+          /*extra_header=*/std::string());
       break;
-    case Disposition::kNewTab:
+    case Disposition::DISPOSITION_NEW_TAB:
       NavigateToURL(WindowOpenDisposition::NEW_FOREGROUND_TAB, browser, url);
       break;
-    case Disposition::kNewWindow:
+    case Disposition::DISPOSITION_NEW_WINDOW:
       NavigateToURL(WindowOpenDisposition::NEW_WINDOW, browser, url);
       break;
   }

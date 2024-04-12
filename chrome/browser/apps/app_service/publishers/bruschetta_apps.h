@@ -34,7 +34,12 @@ class BruschettaApps : public GuestOSApps {
   guest_os::VmType VmType() const override;
 
   // apps::AppPublisher overrides.
-  int DefaultIconResourceId() const override;
+  void LoadIcon(const std::string& app_id,
+                const IconKey& icon_key,
+                IconType icon_type,
+                int32_t size_hint_in_dip,
+                bool allow_placeholder_icon,
+                apps::LoadIconCallback callback) override;
   void Launch(const std::string& app_id,
               int32_t event_flags,
               LaunchSource launch_source,
@@ -44,6 +49,8 @@ class BruschettaApps : public GuestOSApps {
                            IntentPtr intent,
                            LaunchSource launch_source,
                            WindowInfoPtr window_info,
+                           LaunchCallback callback) override;
+  void LaunchAppWithParams(AppLaunchParams&& params,
                            LaunchCallback callback) override;
   void GetMenuModel(const std::string& app_id,
                     MenuType menu_type,

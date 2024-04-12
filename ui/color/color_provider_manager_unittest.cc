@@ -4,16 +4,15 @@
 
 #include "ui/color/color_provider_manager.h"
 
-#include <optional>
 #include <vector>
 
 #include "base/functional/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/color/color_mixer.h"
 #include "ui/color/color_provider.h"
-#include "ui/color/color_provider_key.h"
 #include "ui/color/color_recipe.h"
 #include "ui/color/color_test_ids.h"
 #include "ui/gfx/color_palette.h"
@@ -34,12 +33,16 @@ class ColorProviderManagerTest : public testing::Test {
 
 ColorProvider* GetLightNormalColorProvider() {
   return ColorProviderManager::GetForTesting().GetColorProviderFor(
-      ui::ColorProviderKey());
+      {ColorProviderManager::ColorMode::kLight,
+       ColorProviderManager::ContrastMode::kNormal, ui::SystemTheme::kDefault,
+       ColorProviderManager::FrameType::kChromium, /*user_color=*/absl::nullopt,
+       /*scheme_variant=*/absl::nullopt, nullptr});
 }
 
-class TestInitializerSupplier : public ColorProviderKey::InitializerSupplier {
+class TestInitializerSupplier
+    : public ColorProviderManager::InitializerSupplier {
   void AddColorMixers(ColorProvider* provider,
-                      const ColorProviderKey& key) const override {}
+                      const ColorProviderManager::Key& key) const override {}
 };
 
 }  // namespace
@@ -58,9 +61,10 @@ TEST_F(ColorProviderManagerTest, Persistence) {
 // provider.
 TEST_F(ColorProviderManagerTest, SetInitializer) {
   ColorProviderManager::GetForTesting().AppendColorProviderInitializer(
-      base::BindRepeating([](ColorProvider* provider, const ColorProviderKey&) {
-        provider->AddMixer()[kColorTest0] = {SK_ColorBLUE};
-      }));
+      base::BindRepeating(
+          [](ColorProvider* provider, const ColorProviderManager::Key&) {
+            provider->AddMixer()[kColorTest0] = {SK_ColorBLUE};
+          }));
 
   base::HistogramTester histogram_tester;
   ColorProvider* provider = GetLightNormalColorProvider();
@@ -74,9 +78,10 @@ TEST_F(ColorProviderManagerTest, SetInitializer) {
 // unit tests isolated from each other.
 TEST_F(ColorProviderManagerTest, Reset) {
   ColorProviderManager::GetForTesting().AppendColorProviderInitializer(
-      base::BindRepeating([](ColorProvider* provider, const ColorProviderKey&) {
-        provider->AddMixer()[kColorTest0] = {SK_ColorBLUE};
-      }));
+      base::BindRepeating(
+          [](ColorProvider* provider, const ColorProviderManager::Key&) {
+            provider->AddMixer()[kColorTest0] = {SK_ColorBLUE};
+          }));
 
   base::HistogramTester histogram_tester;
   ColorProvider* provider = GetLightNormalColorProvider();
@@ -91,7 +96,7 @@ TEST_F(ColorProviderManagerTest, Reset) {
 
 TEST_F(ColorProviderManagerTest, LookupWithDeletedMember) {
   ColorProviderManager& manager = ColorProviderManager::GetForTesting();
-  ColorProviderKey key;
+  ColorProviderManager::Key key;
 
   {
     TestInitializerSupplier supplier;
@@ -107,7 +112,7 @@ TEST_F(ColorProviderManagerTest, LookupWithDeletedMember) {
 }
 
 TEST_F(ColorProviderManagerTest, KeyOrderIsStable) {
-  ColorProviderKey keys[2];
+  ColorProviderManager::Key keys[2];
 
   // Allocate two suppliers.
   std::vector<TestInitializerSupplier> supplier(2);

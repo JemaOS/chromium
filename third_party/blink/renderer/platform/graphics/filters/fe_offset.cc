@@ -59,7 +59,7 @@ gfx::RectF FEOffset::MapEffect(const gfx::RectF& rect) const {
 
 sk_sp<PaintFilter> FEOffset::CreateImageFilter() {
   Filter* filter = GetFilter();
-  std::optional<PaintFilter::CropRect> crop_rect = GetCropRect();
+  absl::optional<PaintFilter::CropRect> crop_rect = GetCropRect();
   return sk_make_sp<OffsetPaintFilter>(
       SkFloatToScalar(filter->ApplyHorizontalScale(dx_)),
       SkFloatToScalar(filter->ApplyVerticalScale(dy_)),

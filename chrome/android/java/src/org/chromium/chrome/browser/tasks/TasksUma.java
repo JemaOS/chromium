@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.tasks;
 
 import org.chromium.base.Log;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.state.CriticalPersistedTabData;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 
 import java.util.ArrayList;
@@ -13,7 +14,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** This class collects UMA statistics for tab group creation or complex tab navigation patterns. */
+/**
+ * This class collects UMA statistics for tab group creation or complex tab navigation patterns.
+ */
 public class TasksUma {
     private static final String TAG = "TasksUma";
 
@@ -71,7 +74,7 @@ public class TasksUma {
             }
             uniqueUrlCounterMap.put(url, urlDuplicatedCount + 1);
 
-            int parentIdOfCurrentTab = currentTab.getParentId();
+            int parentIdOfCurrentTab = CriticalPersistedTabData.from(currentTab).getParentId();
             if (!tabsRelationList.containsKey(parentIdOfCurrentTab)) {
                 tabsRelationList.put(parentIdOfCurrentTab, new ArrayList<>());
             }

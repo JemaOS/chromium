@@ -14,13 +14,16 @@
 #include "ui/views/view.h"
 
 namespace ash {
+namespace {
 
-RoundedContainer::RoundedContainer(Behavior corner_behavior,
-                                   int non_rounded_radius,
-                                   int rounded_radius)
-    : corner_behavior_(corner_behavior),
-      non_rounded_radius_(non_rounded_radius),
-      rounded_radius_(rounded_radius) {
+// Rounded radius.
+constexpr int kNonRoundedSideRadius = 4;
+constexpr int kRoundedSideRadius = 16;
+
+}  // namespace
+
+RoundedContainer::RoundedContainer(Behavior corner_behavior)
+    : corner_behavior_(corner_behavior) {
   SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical));
   SetBackground(
@@ -48,21 +51,21 @@ void RoundedContainer::SetBorderInsets(const gfx::Insets& insets) {
 gfx::RoundedCornersF RoundedContainer::GetRoundedCorners() {
   switch (corner_behavior_) {
     case Behavior::kNotRounded:
-      return {non_rounded_radius_, non_rounded_radius_, non_rounded_radius_,
-              non_rounded_radius_};
+      return {kNonRoundedSideRadius, kNonRoundedSideRadius,
+              kNonRoundedSideRadius, kNonRoundedSideRadius};
     case Behavior::kAllRounded:
-      return {rounded_radius_, rounded_radius_, rounded_radius_,
-              rounded_radius_};
+      return {kRoundedSideRadius, kRoundedSideRadius, kRoundedSideRadius,
+              kRoundedSideRadius};
     case Behavior::kTopRounded:
-      return {rounded_radius_, rounded_radius_, non_rounded_radius_,
-              non_rounded_radius_};
+      return {kRoundedSideRadius, kRoundedSideRadius, kNonRoundedSideRadius,
+              kNonRoundedSideRadius};
     case Behavior::kBottomRounded:
-      return {non_rounded_radius_, non_rounded_radius_, rounded_radius_,
-              rounded_radius_};
+      return {kNonRoundedSideRadius, kNonRoundedSideRadius, kRoundedSideRadius,
+              kRoundedSideRadius};
   }
 }
 
-BEGIN_METADATA(RoundedContainer);
+BEGIN_METADATA(RoundedContainer, views::View);
 END_METADATA
 
 }  // namespace ash

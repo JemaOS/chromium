@@ -436,7 +436,7 @@ void Matrix44::Flatten() {
 }
 
 // TODO(crbug.com/1359528): Consider letting this function always succeed.
-std::optional<DecomposedTransform> Matrix44::Decompose2d() const {
+absl::optional<DecomposedTransform> Matrix44::Decompose2d() const {
   DCHECK(Is2dTransform());
 
   // https://www.w3.org/TR/css-transforms-1/#decomposing-a-2d-matrix.
@@ -461,7 +461,7 @@ std::optional<DecomposedTransform> Matrix44::Decompose2d() const {
   double determinant = m11 * m22 - m12 * m21;
   // Test for matrix being singular.
   if (determinant == 0)
-    return std::nullopt;
+    return absl::nullopt;
 
   DecomposedTransform decomp;
 
@@ -544,7 +544,7 @@ std::optional<DecomposedTransform> Matrix44::Decompose2d() const {
   return decomp;
 }
 
-std::optional<DecomposedTransform> Matrix44::Decompose() const {
+absl::optional<DecomposedTransform> Matrix44::Decompose() const {
   // See documentation of Transform::Decompose() for why we need the 2d branch.
   if (Is2dTransform())
     return Decompose2d();
@@ -558,7 +558,7 @@ std::optional<DecomposedTransform> Matrix44::Decompose() const {
 
   // Normalize the matrix.
   if (!std::isnormal(c3[3]))
-    return std::nullopt;
+    return absl::nullopt;
 
   double inv_w = 1.0 / c3[3];
   c0 *= inv_w;
@@ -576,7 +576,7 @@ std::optional<DecomposedTransform> Matrix44::Decompose() const {
   Double4 inverse_c2 = c2;
   Double4 inverse_c3 = c3;
   if (!InverseWithDouble4Cols(inverse_c0, inverse_c1, inverse_c2, inverse_c3))
-    return std::nullopt;
+    return absl::nullopt;
 
   DecomposedTransform decomp;
 
@@ -617,7 +617,7 @@ std::optional<DecomposedTransform> Matrix44::Decompose() const {
 
   // Compute X scale factor and normalize the first column.
   if (!extract_scale(c0, decomp.scale[0]))
-    return std::nullopt;
+    return absl::nullopt;
 
   // Compute XY shear factor and make 2nd column orthogonal to 1st.
   decomp.skew[0] = epsilon_to_zero(sum3(c0 * c1));
@@ -625,7 +625,7 @@ std::optional<DecomposedTransform> Matrix44::Decompose() const {
 
   // Now, compute Y scale and normalize 2nd column.
   if (!extract_scale(c1, decomp.scale[1]))
-    return std::nullopt;
+    return absl::nullopt;
 
   decomp.skew[0] /= decomp.scale[1];
 
@@ -637,7 +637,7 @@ std::optional<DecomposedTransform> Matrix44::Decompose() const {
 
   // Next, get Z scale and normalize the 3rd column.
   if (!extract_scale(c2, decomp.scale[2]))
-    return std::nullopt;
+    return absl::nullopt;
 
   decomp.skew[1] /= decomp.scale[2];
   decomp.skew[2] /= decomp.scale[2];

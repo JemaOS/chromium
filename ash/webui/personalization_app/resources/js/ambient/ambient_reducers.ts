@@ -39,12 +39,12 @@ export function ambientModeEnabledReducer(
   }
 }
 
-export function ambientThemeReducer(
-    state: AmbientState['ambientTheme'], action: Actions,
-    _: PersonalizationState): AmbientState['ambientTheme'] {
+export function animationThemeReducer(
+    state: AmbientState['animationTheme'], action: Actions,
+    _: PersonalizationState): AmbientState['animationTheme'] {
   switch (action.name) {
-    case AmbientActionName.SET_AMBIENT_THEME:
-      return action.ambientTheme;
+    case AmbientActionName.SET_ANIMATION_THEME:
+      return action.animationTheme;
     default:
       return state;
   }
@@ -114,28 +114,15 @@ export function shouldShowTimeOfDayBannerReducer(
   }
 }
 
-export function geolocationPermissionEnabledReducer(
-    state: AmbientState['geolocationPermissionEnabled'], action: Actions,
-    _: PersonalizationState): AmbientState['geolocationPermissionEnabled'] {
-  switch (action.name) {
-    case AmbientActionName.SET_GEOLOCATION_PERMISSION_ENABLED:
-      return action.enabled;
-    default:
-      return state;
-  }
-}
-
-
 export const ambientReducers:
     {[K in keyof AmbientState]: ReducerFunction<AmbientState[K]>} = {
       albums: albumsReducer,
       ambientModeEnabled: ambientModeEnabledReducer,
-      ambientTheme: ambientThemeReducer,
+      animationTheme: animationThemeReducer,
       duration: screenSaverDurationReducer,
       previews: previewsReducer,
       temperatureUnit: temperatureUnitReducer,
       topicSource: topicSourceReducer,
       ambientUiVisibility: ambientUiVisibilityReducer,
       shouldShowTimeOfDayBanner: shouldShowTimeOfDayBannerReducer,
-      geolocationPermissionEnabled: geolocationPermissionEnabledReducer,
     };

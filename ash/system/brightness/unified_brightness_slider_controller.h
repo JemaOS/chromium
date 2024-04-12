@@ -9,7 +9,7 @@
 
 #include "ash/constants/quick_settings_catalogs.h"
 #include "ash/system/unified/unified_slider_view.h"
-#include "base/dcheck_is_on.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 
 namespace ash {
@@ -31,7 +31,8 @@ class ASH_EXPORT UnifiedBrightnessSliderController
 
   ~UnifiedBrightnessSliderController() override;
 
-  // Creates a slider view for the brightness slider in `DisplayDetailedView`.
+  // For QsRevamp: Creates a slider view for the brightness slider in
+  // `DisplayDetailedView`.
   std::unique_ptr<UnifiedBrightnessView> CreateBrightnessSlider();
 
   // UnifiedSliderListener:
@@ -44,15 +45,12 @@ class ASH_EXPORT UnifiedBrightnessSliderController
 
  private:
   scoped_refptr<UnifiedSystemTrayModel> model_;
-  views::Button::PressedCallback callback_;
+  views::Button::PressedCallback const callback_;
+  raw_ptr<UnifiedSliderView, ExperimentalAsh> slider_ = nullptr;
 
   // We have to store previous manually set value because |old_value| might be
   // set by UnifiedSystemTrayModel::Observer.
   double previous_percent_ = 100.0;
-
-#if DCHECK_IS_ON()
-  bool created_view_ = false;
-#endif
 };
 
 }  // namespace ash

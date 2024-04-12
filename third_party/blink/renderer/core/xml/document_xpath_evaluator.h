@@ -33,6 +33,7 @@
 namespace blink {
 
 class ExceptionState;
+class NativeXPathNSResolver;
 class V8XPathNSResolver;
 class XPathExpression;
 class XPathResult;
@@ -49,7 +50,8 @@ class CORE_EXPORT DocumentXPathEvaluator final
                                            const String& expression,
                                            V8XPathNSResolver*,
                                            ExceptionState&);
-  static Node* createNSResolver(Document&, Node* node_resolver);
+  static NativeXPathNSResolver* createNSResolver(Document&,
+                                                 Node* node_resolver);
   static XPathResult* evaluate(Document&,
                                const String& expression,
                                Node* context_node,

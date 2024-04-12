@@ -13,7 +13,6 @@
 #include "ash/public/cpp/session/session_observer.h"
 #include "ash/shell_observer.h"
 #include "base/compiler_specific.h"
-#include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "base/scoped_multi_source_observation.h"
 #include "base/timer/timer.h"
@@ -103,7 +102,7 @@ class ASH_EXPORT VideoDetector : public aura::EnvObserver,
   bool video_is_playing_;
 
   // Currently-fullscreen desks containers windows.
-  std::set<raw_ptr<aura::Window, SetExperimental>> fullscreen_desks_containers_;
+  std::set<aura::Window*> fullscreen_desks_containers_;
 
   base::ObserverList<Observer>::Unchecked observers_;
 

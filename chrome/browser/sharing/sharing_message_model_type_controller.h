@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "components/sync/service/model_type_controller.h"
+#include "components/sync/driver/model_type_controller.h"
 
 // Controls syncing of SHARING_MESSAGE.
 class SharingMessageModelTypeController : public syncer::ModelTypeController {
@@ -25,7 +25,7 @@ class SharingMessageModelTypeController : public syncer::ModelTypeController {
   SharingMessageModelTypeController& operator=(
       const SharingMessageModelTypeController&) = delete;
 
-  // ModelTypeController overrides.
+  // DataTypeController overrides.
   void Stop(syncer::SyncStopMetadataFate fate, StopCallback callback) override;
 };
 

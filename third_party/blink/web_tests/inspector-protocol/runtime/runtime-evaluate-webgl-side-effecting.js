@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const { dp } = await testRunner.startBlank(`Tests that Runtime.evaluate for WebGL2RenderingContext preview is side-effect free`);
 
   // Retrieving constructors from |window| should be side-effect free.

@@ -100,9 +100,8 @@ void RecordTimeFromDeviceSetupToInstallMetric() {
       FROM_HERE, {base::MayBlock()},
       base::BindOnce(&ash::StartupUtils::GetTimeSinceOobeFlagFileCreation),
       base::BindOnce([](base::TimeDelta time_from_device_setup) {
-        if (time_from_device_setup.is_zero()) {
+        if (time_from_device_setup.is_zero())
           return;
-        }
 
         // The magic number 1471228928 is used for legacy reasons and changing
         // it would invalidate already logged data.
@@ -576,7 +575,7 @@ void CrostiniInstaller::OnCrostiniRestartFinished(CrostiniResult result) {
   }
 }
 
-void CrostiniInstaller::OnAvailableDiskSpace(std::optional<int64_t> bytes) {
+void CrostiniInstaller::OnAvailableDiskSpace(absl::optional<int64_t> bytes) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
   // |Cancel()| might be called immediately after |Install()|.
@@ -589,9 +588,8 @@ void CrostiniInstaller::OnAvailableDiskSpace(std::optional<int64_t> bytes) {
 
   DCHECK_EQ(installing_state_, InstallerState::kStart);
 
-  if (bytes.has_value()) {
+  if (bytes.has_value())
     free_disk_space_ = bytes.value();
-  }
   // Don't enforce minimum disk size on dev box or trybots because
   // base::SysInfo::AmountOfFreeDiskSpace returns zero in testing.
   if (base::SysInfo::IsRunningOnChromeOS() &&
@@ -623,11 +621,6 @@ void CrostiniInstaller::OnAvailableDiskSpace(std::optional<int64_t> bytes) {
   // subsequently set |state_| to |ERROR|.
   DCHECK_EQ(restart_id_ == CrostiniManager::kUninitializedRestartId,
             state_ == State::ERROR);
-}
-
-// static
-void CrostiniInstaller::EnsureFactoryBuilt() {
-  CrostiniInstallerFactory::GetInstance();
 }
 
 }  // namespace crostini

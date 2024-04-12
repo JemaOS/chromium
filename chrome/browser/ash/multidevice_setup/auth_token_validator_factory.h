@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_MULTIDEVICE_SETUP_AUTH_TOKEN_VALIDATOR_FACTORY_H_
 #define CHROME_BROWSER_ASH_MULTIDEVICE_SETUP_AUTH_TOKEN_VALIDATOR_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class KeyedService;
@@ -28,13 +28,13 @@ class AuthTokenValidatorFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<AuthTokenValidatorFactory>;
+  friend struct base::DefaultSingletonTraits<AuthTokenValidatorFactory>;
 
   AuthTokenValidatorFactory();
   ~AuthTokenValidatorFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

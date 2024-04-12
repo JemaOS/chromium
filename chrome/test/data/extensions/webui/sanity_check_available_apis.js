@@ -38,4 +38,4 @@ if (!isEqual) {
                 'Expected: ' + JSON.stringify(expected) + ', ' +
                 'Actual: ' + JSON.stringify(actual));
 }
-return isEqual;
+domAutomationController.send(isEqual);

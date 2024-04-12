@@ -30,7 +30,7 @@ class GeoNotifier final : public GarbageCollected<GeoNotifier>,
   void Trace(Visitor*) const;
   const char* NameInHeapSnapshot() const override { return "GeoNotifier"; }
 
-  const PositionOptions* Options() const { return options_.Get(); }
+  const PositionOptions* Options() const { return options_; }
 
   // Sets the given error as the fatal error if there isn't one yet.
   // Starts the timer with an interval of 0.

@@ -5,8 +5,6 @@
 #include "third_party/blink/renderer/platform/text/character.h"
 
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/platform/text/emoji_segmentation_category.h"
-#include "third_party/blink/renderer/platform/text/emoji_segmentation_category_inline_header.h"
 #include "third_party/blink/renderer/platform/wtf/text/character_names.h"
 
 namespace blink {
@@ -25,27 +23,10 @@ testing::AssertionResult IsCJKIdeographOrSymbolWithMessage(UChar32 codepoint) {
                                      << " is not a CJKIdeographOrSymbol.";
 }
 
-// Test Unicode-derived functions work as intended.
-// These functions may need to be adjusted if Unicode changes.
-TEST(CharacterTest, Derived) {
-  for (UChar32 ch = 0; ch < kMaxCodepoint; ++ch) {
-    if (Character::IsEmojiEmojiDefault(ch)) {
-      EXPECT_TRUE(IsCJKIdeographOrSymbolWithMessage(ch));
-    }
-
-    const UBlockCode block = ublock_getCode(ch);
-    EXPECT_EQ(Character::IsBlockCjkSymbolsAndPunctuation(ch),
-              block == UBLOCK_CJK_SYMBOLS_AND_PUNCTUATION);
-    EXPECT_EQ(Character::IsBlockHalfwidthAndFullwidthForms(ch),
-              block == UBLOCK_HALFWIDTH_AND_FULLWIDTH_FORMS);
-
-    const UEastAsianWidth eaw = Character::EastAsianWidth(ch);
-    EXPECT_EQ(Character::IsEastAsianWidthFullwidth(ch),
-              eaw == UEastAsianWidth::U_EA_FULLWIDTH);
-
-    if (!Character::MaybeHanKerningOpenOrCloseFast(ch)) {
-      DCHECK(!Character::MaybeHanKerningOpenSlow(ch));
-      DCHECK(!Character::MaybeHanKerningCloseSlow(ch));
+TEST(CharacterTest, HammerEmojiVsCJKIdeographOrSymbol) {
+  for (UChar32 test_char = 0; test_char < kMaxCodepoint; test_char++) {
+    if (Character::IsEmojiEmojiDefault(test_char)) {
+      EXPECT_TRUE(IsCJKIdeographOrSymbolWithMessage(test_char));
     }
   }
 }
@@ -243,30 +224,6 @@ TEST(CharacterTest, TestIsCJKIdeographOrSymbol) {
   TestSpecificUChar32RangeIdeographSymbol(0x1F150, 0x1F169);
   TestSpecificUChar32RangeIdeographSymbol(0x1F170, 0x1F189);
   TestSpecificUChar32RangeIdeographSymbol(0x1F1E6, 0x1F6FF);
-}
-
-TEST(CharacterTest, HanKerning) {
-  struct Data {
-    UChar32 ch;
-    HanKerningCharType type;
-  } data_list[] = {
-      {kLeftDoubleQuotationMarkCharacter, HanKerningCharType::kOpenQuote},
-      {kRightDoubleQuotationMarkCharacter, HanKerningCharType::kCloseQuote},
-      {kMiddleDotCharacter, HanKerningCharType::kMiddle},
-      {kIdeographicSpaceCharacter, HanKerningCharType::kMiddle},
-      {kFullwidthComma, HanKerningCharType::kDot},
-      {0x3008, HanKerningCharType::kOpen},
-      {0xFF5F, HanKerningCharType::kOpen},
-      {0x3009, HanKerningCharType::kClose},
-      {0xFF60, HanKerningCharType::kClose},
-      {0x0028, HanKerningCharType::kOpenNarrow},
-      {0xFF62, HanKerningCharType::kOpenNarrow},
-      {0x0029, HanKerningCharType::kCloseNarrow},
-      {0xFF63, HanKerningCharType::kCloseNarrow},
-  };
-  for (const Data& data : data_list) {
-    EXPECT_EQ(Character::GetHanKerningCharType(data.ch), data.type);
-  }
 }
 
 TEST(CharacterTest, CanTextDecorationSkipInk) {
@@ -508,21 +465,6 @@ TEST(CharacterTest, EmojiComponents) {
 
   for (auto true_test : true_set)
     EXPECT_TRUE(Character::IsEmojiComponent(true_test));
-}
-
-// Ensure that the iterator forwarding in SymbolsIterator is not
-// skipping any other categories that would be computed for the same cursor
-// position and codepoint.
-TEST(CharacterTest, MaybeEmojiPresentationNoIllegalShortcut) {
-  for (UChar32 ch = 0; ch < kMaxCodepoint; ++ch) {
-    const EmojiSegmentationCategory emoji = GetEmojiSegmentationCategory(ch);
-    if (IsEmojiPresentationCategory(emoji)) {
-      EXPECT_TRUE(Character::MaybeEmojiPresentation(ch));
-    }
-    if (!Character::MaybeEmojiPresentation(ch)) {
-      EXPECT_FALSE(IsEmojiPresentationCategory(emoji));
-    }
-  }
 }
 
 }  // namespace blink

@@ -8,7 +8,9 @@ import androidx.annotation.Nullable;
 
 import org.chromium.url.GURL;
 
-/** Exposes the data of a suggestion that can be saved offline. */
+/**
+ * Exposes the data of a suggestion that can be saved offline.
+ */
 public interface OfflinableSuggestion {
     /** @return The URL of this suggestion. */
     GURL getUrl();

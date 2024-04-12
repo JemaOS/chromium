@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_UI_VIEWS_SEND_TAB_TO_SELF_SEND_TAB_TO_SELF_BUBBLE_VIEW_H_
 
 #include "chrome/browser/ui/views/location_bar/location_bar_bubble_delegate_view.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 
 namespace content {
 class WebContents;
@@ -21,8 +20,6 @@ namespace send_tab_to_self {
 // The cross-platform UI interface which displays the share bubble.
 // This object is responsible for its own lifetime.
 class SendTabToSelfBubbleView : public LocationBarBubbleDelegateView {
-  METADATA_HEADER(SendTabToSelfBubbleView, LocationBarBubbleDelegateView)
-
  public:
   ~SendTabToSelfBubbleView() override = default;
 

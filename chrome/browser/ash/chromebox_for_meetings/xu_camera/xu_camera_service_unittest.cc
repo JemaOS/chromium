@@ -7,9 +7,7 @@
 #include <asm-generic/errno.h>
 #include <linux/uvcvideo.h>
 #include <linux/videodev2.h>
-
 #include <cstdint>
-#include <optional>
 
 #include "base/functional/bind.h"
 #include "base/run_loop.h"
@@ -21,68 +19,29 @@
 #include "chromeos/ash/services/chromebox_for_meetings/public/cpp/fake_service_context.h"
 #include "chromeos/ash/services/chromebox_for_meetings/public/cpp/service_connection.h"
 #include "chromeos/ash/services/chromebox_for_meetings/public/mojom/xu_camera.mojom.h"
-#include "content/public/test/browser_task_environment.h"
 #include "content/public/test/test_utils.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gmock/include/gmock/gmock.h"
-
-using chromeos::IpPeripheralServiceClient;
+#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "xu_camera_service.h"
 
 namespace ash::cfm {
 namespace {
 
-const std::vector<uint8_t> kGuid() {
-  return std::vector<uint8_t>({0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34,
-                               0x12, 0x34, 0x12, 0x34, 0x12, 0x34, 0x12, 0x34});
-}
-auto kMenuEntries() {
-  return mojom::MenuEntries::New();
-}
-const std::vector<uint8_t> kEmpty() {
-  return std::vector<uint8_t>();
-}
-const std::vector<uint8_t> kName() {
-  return std::vector<uint8_t>(32, 'a');
-}
-const std::vector<uint8_t> kData() {
-  return std::vector<uint8_t>({0x43, 0x21});
-}
-const std::vector<uint8_t> kLen() {
-  return std::vector<uint8_t>({0x02, 0x00});
-}                                                // little-endian uint16
+constexpr char kFakePath[] = "/fake/dev/path";
+const std::vector<uint8_t> kGuid = {0x12, 0x34, 0x12, 0x34, 0x12, 0x34,
+                                    0x12, 0x34, 0x12, 0x34, 0x12, 0x34,
+                                    0x12, 0x34, 0x12, 0x34};
+const auto kMenuEntries = mojom::MenuEntries::New();
+const std::vector<uint8_t> kName(32, 'a');
+const std::vector<uint8_t> kData = {0x43, 0x21};
+const std::vector<uint8_t> kLen = {0x02, 0x00};  // little-endian uint16
 const int32_t kValue = 123;                      // Fake v4l2 value
-const std::vector<uint8_t> kValueAsUint8() {
-  return std::vector<uint8_t>((std::uint8_t*)&(kValue),
-                              (std::uint8_t*)&(kValue) + sizeof(std::int32_t));
-}
-
-mojom::WebcamIdPtr kDevPath() {
-  return mojom::WebcamId::NewDevPath("/fake/dev/path");
-}
-mojom::WebcamIdPtr kIPAddr() {
-  return mojom::WebcamId::NewDevPath("192.168.19.224");
-}
-mojom::WebcamIdPtr kDevId() {
-  return mojom::WebcamId::NewDeviceId("123");
-}
-mojom::CtrlTypePtr kQueryCtrl() {
-  return mojom::CtrlType::NewQueryCtrl(mojom::ControlQuery::New(1, 1));
-}
-mojom::CtrlTypePtr kCtrlMapping() {
-  return mojom::CtrlType::NewMappingCtrl(mojom::ControlMapping::New(
-      /* id= */ 1,
-      /* name= */ kName(),
-      /* guid= */ kGuid(),
-      /* selector= */ 1,
-      /* size= */ 1,
-      /* offset= */ 1,
-      /* v4l2_type= */ V4L2_CTRL_TYPE_INTEGER,
-      /* data_type= */ UVC_CTRL_DATA_TYPE_SIGNED,
-      /* menu_entries= */ kMenuEntries()->Clone()));
-}
+const std::vector<uint8_t> kValueAsUint8 = {
+    (std::uint8_t*)&(kValue), (std::uint8_t*)&(kValue) + sizeof(std::int32_t)};
 
 class TestDelegate : public XuCameraService::Delegate {
  public:
@@ -96,11 +55,11 @@ class TestDelegate : public XuCameraService::Delegate {
       uvc_xu_control_query* control_query =
           static_cast<uvc_xu_control_query*>(query);
       if (UVC_GET_LEN == control_query->query) {
-        control_query->data[0] = kLen()[0];
-        control_query->data[1] = kLen()[1];
+        control_query->data[0] = kLen[0];
+        control_query->data[1] = kLen[1];
       } else if (UVC_GET_CUR == control_query->query) {
-        control_query->data[0] = kData()[0];
-        control_query->data[1] = kData()[1];
+        control_query->data[0] = kData[0];
+        control_query->data[1] = kData[1];
       }
     }
     return 0;
@@ -117,16 +76,13 @@ class TestDelegate : public XuCameraService::Delegate {
   }
 };
 
-class CfMXuCameraServiceTest
-    : public testing::TestWithParam<struct XuTestCase> {
+class XuCameraServiceTest : public ::testing::Test {
  public:
-  CfMXuCameraServiceTest() = default;
-  CfMXuCameraServiceTest(const CfMXuCameraServiceTest&) = delete;
-  CfMXuCameraServiceTest& operator=(const CfMXuCameraServiceTest&) = delete;
+  XuCameraServiceTest() = default;
+  XuCameraServiceTest(const XuCameraServiceTest&) = delete;
+  XuCameraServiceTest& operator=(const XuCameraServiceTest&) = delete;
 
   void SetUp() override {
-    IpPeripheralServiceClient::InitializeFake();
-
     CfmHotlineClient::InitializeFake();
     ServiceConnection::UseFakeServiceConnectionForTesting(
         &fake_service_connection_);
@@ -136,7 +92,6 @@ class CfMXuCameraServiceTest
   void TearDown() override {
     XuCameraService::Shutdown();
     CfmHotlineClient::Shutdown();
-    IpPeripheralServiceClient::Shutdown();
   }
 
   FakeCfmHotlineClient* GetClient() {
@@ -197,28 +152,29 @@ class CfMXuCameraServiceTest
       context_receiver_set_;
   mojo::Remote<chromeos::cfm::mojom::CfmServiceAdaptor> adaptor_remote_;
   FakeServiceConnectionImpl fake_service_connection_;
-  content::BrowserTaskEnvironment task_environment_;
+  base::test::SingleThreadTaskEnvironment task_environment_;
   TestDelegate delegate_;
 };
 
 // This test ensures that the XuCameraService is discoverable by its
 // mojom name by sending a signal received by CfmHotlineClient.
-TEST_F(CfMXuCameraServiceTest, XuCameraServiceAvailable) {
+TEST_F(XuCameraServiceTest, XuCameraServiceAvailable) {
   ASSERT_TRUE(GetClient()->FakeEmitSignal(mojom::XuCamera::Name_));
 }
 
 // This test ensures that the XuCameraService correctly registers itself
 // for discovery by the cfm mojom binder daemon and correctly returns a
 // working mojom remote.
-TEST_F(CfMXuCameraServiceTest, GetXuCameraRemote) {
+TEST_F(XuCameraServiceTest, GetXuCameraRemote) {
   ASSERT_TRUE(GetXuCameraRemote().is_connected());
 }
 
 // This test ensure that the XU camera can get unit id
-TEST_F(CfMXuCameraServiceTest, GetXuCameraUnitId) {
+TEST_F(XuCameraServiceTest, GetXuCameraUnitId) {
   base::RunLoop run_loop;
+  auto devPath = mojom::WebcamId::NewDevPath(kFakePath);
   GetXuCameraRemote()->GetUnitId(
-      /* id= */ kDevPath().Clone(), /* guid= */ kGuid(),
+      /* id= */ std::move(devPath), /* guid= */ kGuid,
       base::BindLambdaForTesting(
           [&](const uint8_t error_code, const uint8_t unit_id) {
             EXPECT_EQ(error_code, ENOSYS);
@@ -228,25 +184,18 @@ TEST_F(CfMXuCameraServiceTest, GetXuCameraUnitId) {
   run_loop.Run();
 }
 
-TEST_F(CfMXuCameraServiceTest, GetXuCameraUnitIdIPCamera) {
-  base::RunLoop run_loop;
-  GetXuCameraRemote()->GetUnitId(
-      /* id= */ kIPAddr().Clone(), /* guid= */ kGuid(),
-      base::BindLambdaForTesting(
-          [&](const uint8_t error_code, const uint8_t unit_id) {
-            EXPECT_EQ(error_code, 0);
-            EXPECT_EQ(unit_id, 0);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
-}
-
 // This test ensure that the XU camera can map control
-TEST_F(CfMXuCameraServiceTest, GetXuCameraMapCtrl) {
+TEST_F(XuCameraServiceTest, GetXuCameraMapCtrl) {
+  auto devPath = mojom::WebcamId::NewDevPath(kFakePath);
+  auto mapping = mojom::ControlMapping::New(
+      /* id= */ 1, /* name= */ kName, /* guid= */ kGuid, /* selector= */ 1,
+      /* size= */ 1, /* offset= */ 1,
+      /* v4l2_type= */ V4L2_CTRL_TYPE_INTEGER,
+      /* data_type= */ UVC_CTRL_DATA_TYPE_SIGNED, /* menu_entries= */
+      kMenuEntries->Clone());
   base::RunLoop run_loop;
   GetXuCameraRemote()->MapCtrl(
-      /* id= */ kDevPath().Clone(),
-      /* mapping_ctrl= */ kCtrlMapping()->get_mapping_ctrl().Clone(),
+      /* id= */ std::move(devPath), /* mapping_ctrl= */ std::move(mapping),
       base::BindLambdaForTesting([&](const uint8_t error_code) {
         EXPECT_EQ(error_code, 0);
         run_loop.Quit();
@@ -254,93 +203,183 @@ TEST_F(CfMXuCameraServiceTest, GetXuCameraMapCtrl) {
   run_loop.Run();
 }
 
+// This test ensure that the XU camera can get control given a ctrl query
+TEST_F(XuCameraServiceTest, XuCameraGetCtrlWithDeviceIdCtrlMapping) {
+  base::RunLoop run_loop;
+  auto devId = mojom::WebcamId::NewDeviceId("123");
+  auto mapping = mojom::CtrlType::NewMappingCtrl(mojom::ControlMapping::New(
+      /* id= */ 1, /* name= */ kName, /* guid= */ kGuid, /* selector= */ 1,
+      /* size= */ 1, /* offset= */ 1,
+      /* v4l2_type= */ V4L2_CTRL_TYPE_INTEGER,
+      /* data_type= */ UVC_CTRL_DATA_TYPE_SIGNED, /* menu_entries= */
+      kMenuEntries->Clone()));
+  GetXuCameraRemote()->GetCtrl(
+      /* id= */ std::move(devId), /* ctrl= */ std::move(mapping),
+      /* fn= */ mojom::GetFn::kCur,
+      base::BindLambdaForTesting(
+          [&](const uint8_t error_code, const std::vector<uint8_t>& data) {
+            const std::vector<uint8_t> vec;
+            EXPECT_EQ(error_code, ENOENT);
+            EXPECT_EQ(data, vec);
+            run_loop.Quit();
+          }));
+  run_loop.Run();
+}
+
+// This test ensure that the XU camera can get control given a ctrl query
+TEST_F(XuCameraServiceTest, XuCameraGetCtrlWithDevPathCtrlMapping) {
+  base::RunLoop run_loop;
+  auto devPath = mojom::WebcamId::NewDevPath(kFakePath);
+  auto mapping = mojom::CtrlType::NewMappingCtrl(mojom::ControlMapping::New(
+      /* id= */ 1, /* name= */ kName, /* guid= */ kGuid, /* selector= */ 1,
+      /* size= */ 1, /* offset= */ 1,
+      /* v4l2_type= */ V4L2_CTRL_TYPE_INTEGER,
+      /* data_type= */ UVC_CTRL_DATA_TYPE_SIGNED, /* menu_entries= */
+      kMenuEntries->Clone()));
+  GetXuCameraRemote()->GetCtrl(
+      /* id= */ std::move(devPath), /* ctrl= */ std::move(mapping),
+      /* fn= */ mojom::GetFn::kCur,
+      base::BindLambdaForTesting(
+          [&](const uint8_t error_code, const std::vector<uint8_t>& data) {
+            EXPECT_EQ(error_code, 0);
+            EXPECT_EQ(data, kValueAsUint8);
+            run_loop.Quit();
+          }));
+  run_loop.Run();
+}
+
+// This test ensure that the XU camera can get control given a ctrl query
+TEST_F(XuCameraServiceTest, XuCameraGetCtrlWithDeviceIdCtrlQuery) {
+  base::RunLoop run_loop;
+  auto devId = mojom::WebcamId::NewDeviceId("123");
+  auto ctrlTypeQuery =
+      mojom::CtrlType::NewQueryCtrl(mojom::ControlQuery::New(1, 1));
+  std::vector<uint8_t> data{'a', 'b', 'c'};
+  GetXuCameraRemote()->GetCtrl(
+      /* id= */ std::move(devId), /* ctrl= */ std::move(ctrlTypeQuery),
+      /* fn= */ mojom::GetFn::kCur,
+      base::BindLambdaForTesting(
+          [&](const uint8_t error_code, const std::vector<uint8_t>& data) {
+            const std::vector<uint8_t> vec;
+            EXPECT_EQ(error_code, ENOENT);
+            EXPECT_EQ(data, vec);
+            run_loop.Quit();
+          }));
+  run_loop.Run();
+}
+
+// This test ensure that the XU camera can get control given a ctrl query
+TEST_F(XuCameraServiceTest, XuCameraGetCtrlWithDevPathCtrlQuery) {
+  base::RunLoop run_loop;
+  auto devPath = mojom::WebcamId::NewDevPath(kFakePath);
+  auto ctrlTypeQuery =
+      mojom::CtrlType::NewQueryCtrl(mojom::ControlQuery::New(1, 1));
+  GetXuCameraRemote()->GetCtrl(
+      /* id= */ std::move(devPath), /* ctrl= */ std::move(ctrlTypeQuery),
+      /* fn= */ mojom::GetFn::kCur,
+      base::BindLambdaForTesting(
+          [&](const uint8_t error_code, const std::vector<uint8_t>& data) {
+            EXPECT_EQ(error_code, 0);
+            EXPECT_EQ(data, kData);
+            run_loop.Quit();
+          }));
+  run_loop.Run();
+}
+
 // This test ensure that the XU camera can get control length given a ctrl
 // query
-TEST_F(CfMXuCameraServiceTest, XuCameraGetCtrlLenWithDevPathCtrlQuery) {
+TEST_F(XuCameraServiceTest, XuCameraGetCtrlLenWithDevPathCtrlQuery) {
   base::RunLoop run_loop;
+  auto devPath = mojom::WebcamId::NewDevPath(kFakePath);
+  auto ctrlTypeQuery =
+      mojom::CtrlType::NewQueryCtrl(mojom::ControlQuery::New(1, 1));
   GetXuCameraRemote()->GetCtrl(
-      /* id= */ kDevPath().Clone(), /* ctrl= */ kQueryCtrl().Clone(),
+      /* id= */ std::move(devPath), /* ctrl= */ std::move(ctrlTypeQuery),
       /* fn= */ mojom::GetFn::kLen,
       base::BindLambdaForTesting(
           [&](const uint8_t error_code, const std::vector<uint8_t>& data) {
             EXPECT_EQ(error_code, 0);
-            EXPECT_EQ(data, kLen());
+            EXPECT_EQ(data, kLen);
             run_loop.Quit();
           }));
   run_loop.Run();
 }
 
-struct XuTestCase {
-  XuTestCase(std::string test_name,
-             mojom::WebcamIdPtr webcam_id,
-             mojom::CtrlTypePtr ctrl_type,
-             uint8_t expected_error_code,
-             std::vector<uint8_t> expected_data)
-      : test_name(test_name),
-        webcam_id(std::move(webcam_id)),
-        ctrl_type(std::move(ctrl_type)),
-        expected_error_code(expected_error_code),
-        expected_data(expected_data) {}
-  XuTestCase(const XuTestCase& other)
-      : test_name(other.test_name),
-        webcam_id(other.webcam_id.Clone()),
-        ctrl_type(other.ctrl_type.Clone()),
-        expected_error_code(other.expected_error_code),
-        expected_data(other.expected_data) {}
-  std::string test_name;
-  const mojom::WebcamIdPtr webcam_id;
-  const mojom::CtrlTypePtr ctrl_type;
-  uint8_t expected_error_code;
-  std::vector<uint8_t> expected_data;  // used only for GetCtrl tests
-};
-
-const XuTestCase xu_test_cases[] = {
-    {"DevPath_CtrlQuery", kDevPath(), kQueryCtrl(), 0, kData()},
-    {"DevId_CtrlQuery", kDevId(), kQueryCtrl(), ENOENT, kEmpty()},
-    {"DevPath_CtrlMapping", kDevPath(), kCtrlMapping(), 0, kValueAsUint8()},
-    {"DevId_CtrlMapping", kDevId(), kCtrlMapping(), ENOENT, kEmpty()},
-    {"IPAddr_CtrlQuery", kIPAddr(), kQueryCtrl(), 0, kEmpty()},
-    {"IPAddr_CtrlMapping", kIPAddr(), kCtrlMapping(), 0, kValueAsUint8()},
-};
-
-// Test that the XU camera can get control given a ctrl query/mapping
-TEST_P(CfMXuCameraServiceTest, XuCameraGetCtrl) {
+/// This test ensure that the XU camera can get control given a ctrl query
+TEST_F(XuCameraServiceTest, XuCameraSetCtrlWithDeviceIdCtrlMapping) {
   base::RunLoop run_loop;
-  const XuTestCase& param = GetParam();
-  GetXuCameraRemote()->GetCtrl(
-      /* id= */ param.webcam_id.Clone(), /* ctrl= */ param.ctrl_type.Clone(),
-      /* fn= */ mojom::GetFn::kCur,
-      base::BindLambdaForTesting(
-          [&](const uint8_t error_code, const std::vector<uint8_t>& data) {
-            EXPECT_EQ(error_code, param.expected_error_code);
-            EXPECT_EQ(data, param.expected_data);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
-}
-
-// Test that the XU camera can set control given a ctrl query/mapping
-TEST_P(CfMXuCameraServiceTest, XuCameraSetCtrl) {
-  base::RunLoop run_loop;
-  const XuTestCase& param = GetParam();
+  auto devId = mojom::WebcamId::NewDeviceId("123");
+  auto mapping = mojom::CtrlType::NewMappingCtrl(mojom::ControlMapping::New(
+      /* id= */ 1, /* name= */ kName, /* guid= */ kGuid, /* selector= */ 1,
+      /* size= */ 1, /* offset= */ 1,
+      /* v4l2_type= */ V4L2_CTRL_TYPE_INTEGER,
+      /* data_type= */ UVC_CTRL_DATA_TYPE_SIGNED, /* menu_entries= */
+      kMenuEntries->Clone()));
   std::vector<uint8_t> data{'a', 'b', 'c'};
   GetXuCameraRemote()->SetCtrl(
-      /* id= */ param.webcam_id.Clone(), /* ctrl= */ param.ctrl_type.Clone(),
+      /* id= */ std::move(devId), /* ctrl= */ std::move(mapping),
       /* data= */ data,
       base::BindLambdaForTesting([&](const uint8_t error_code) {
-        EXPECT_EQ(error_code, param.expected_error_code);
+        EXPECT_EQ(error_code, ENOENT);
         run_loop.Quit();
       }));
   run_loop.Run();
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    CfMXuCameraServiceTests,
-    CfMXuCameraServiceTest,
-    testing::ValuesIn<XuTestCase>(xu_test_cases),
-    [](const testing::TestParamInfo<CfMXuCameraServiceTest::ParamType>& info) {
-      return info.param.test_name;
-    });
+/// This test ensure that the XU camera can get control given a ctrl query
+TEST_F(XuCameraServiceTest, XuCameraSetCtrlWithDevPathCtrlMapping) {
+  base::RunLoop run_loop;
+  auto devPath = mojom::WebcamId::NewDevPath(kFakePath);
+  auto mapping = mojom::CtrlType::NewMappingCtrl(mojom::ControlMapping::New(
+      /* id= */ 1, /* name= */ kName, /* guid= */ kGuid, /* selector= */ 1,
+      /* size= */ 1, /* offset= */ 1,
+      /* v4l2_type= */ V4L2_CTRL_TYPE_INTEGER,
+      /* data_type= */ UVC_CTRL_DATA_TYPE_SIGNED, /* menu_entries= */
+      kMenuEntries->Clone()));
+  std::vector<uint8_t> data{'a', 'b', 'c'};
+  GetXuCameraRemote()->SetCtrl(
+      /* id= */ std::move(devPath), /* ctrl= */ std::move(mapping),
+      /* data= */ data,
+      base::BindLambdaForTesting([&](const uint8_t error_code) {
+        EXPECT_EQ(error_code, 0);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+/// This test ensure that the XU camera can get control given a ctrl query
+TEST_F(XuCameraServiceTest, XuCameraSetCtrlWithDeviceIdCtrlQuery) {
+  base::RunLoop run_loop;
+  auto devId = mojom::WebcamId::NewDeviceId("123");
+  auto ctrlTypeQuery =
+      mojom::CtrlType::NewQueryCtrl(mojom::ControlQuery::New(1, 1));
+  std::vector<uint8_t> data{'a', 'b', 'c'};
+  GetXuCameraRemote()->SetCtrl(
+      /* id= */ std::move(devId), /* ctrl= */ std::move(ctrlTypeQuery),
+      /* data= */ data,
+      base::BindLambdaForTesting([&](const uint8_t error_code) {
+        EXPECT_EQ(error_code, ENOENT);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+/// This test ensure that the XU camera can get control given a ctrl query
+TEST_F(XuCameraServiceTest, XuCameraSetCtrlWithDevPathCtrlQuery) {
+  base::RunLoop run_loop;
+  auto devPath = mojom::WebcamId::NewDevPath(kFakePath);
+  auto ctrlTypeQuery =
+      mojom::CtrlType::NewQueryCtrl(mojom::ControlQuery::New(1, 1));
+  std::vector<uint8_t> data{'a', 'b', 'c'};
+  GetXuCameraRemote()->SetCtrl(
+      /* id= */ std::move(devPath), /* ctrl= */ std::move(ctrlTypeQuery),
+      /* data= */ data,
+      base::BindLambdaForTesting([&](const uint8_t error_code) {
+        EXPECT_EQ(error_code, 0);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
 
 }  // namespace
 }  // namespace ash::cfm

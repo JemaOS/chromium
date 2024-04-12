@@ -17,14 +17,12 @@
  */
 const TestUtility = {
   async setup() {
-    await Promise.all([
-      importModule('SACommands', '/switch_access/commands.js'),
-      importModule('FocusRingManager', '/switch_access/focus_ring_manager.js'),
-      importModule('Navigator', '/switch_access/navigator.js'),
-      importModule('SwitchAccess', '/switch_access/switch_access.js'),
-      importModule(
-          'SwitchAccessPredicate', '/switch_access/switch_access_predicate.js'),
-    ]);
+    await importModule(
+        'FocusRingManager', '/switch_access/focus_ring_manager.js');
+    await importModule('Navigator', '/switch_access/navigator.js');
+    await importModule('SwitchAccess', '/switch_access/switch_access.js');
+    await importModule(
+        'SwitchAccessPredicate', '/switch_access/switch_access_predicate.js');
 
     FocusRingManager.instance.observer_ = TestUtility.whenFocusChanges_;
   },
@@ -43,17 +41,17 @@ const TestUtility = {
   },
 
   pressNextSwitch() {
-    SACommands.instance.runCommand_(
+    SwitchAccess.commands.runCommand_(
         chrome.accessibilityPrivate.SwitchAccessCommand.NEXT);
   },
 
   pressPreviousSwitch() {
-    SACommands.instance.runCommand_(
+    SwitchAccess.commands.runCommand_(
         chrome.accessibilityPrivate.SwitchAccessCommand.PREVIOUS);
   },
 
   pressSelectSwitch() {
-    SACommands.instance.runCommand_(
+    SwitchAccess.commands.runCommand_(
         chrome.accessibilityPrivate.SwitchAccessCommand.SELECT);
   },
 

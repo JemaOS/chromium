@@ -8,11 +8,17 @@
 #import <AppKit/AppKit.h>
 
 #include "base/component_export.h"
+#include "base/mac/scoped_nsobject.h"
+
+@class CrTrackingAreaOwnerProxy;
 
 // The CrTrackingArea can be used in place of an NSTrackingArea to shut off
 // messaging to the |owner| at a specific point in time.
 COMPONENT_EXPORT(UI_BASE)
-@interface CrTrackingArea : NSTrackingArea
+@interface CrTrackingArea : NSTrackingArea {
+ @private
+  base::scoped_nsobject<CrTrackingAreaOwnerProxy> _ownerProxy;
+}
 
 // Designated initializer. Forwards all arguments to the superclass, but wraps
 // |owner| in a proxy object.
@@ -34,7 +40,7 @@ namespace ui {
 // when this goes out of scope.
 class COMPONENT_EXPORT(UI_BASE) ScopedCrTrackingArea {
  public:
-  // Takes ownership of |tracking_area|.
+  // Takes ownership of |tracking_area| without retaining it.
   explicit ScopedCrTrackingArea(CrTrackingArea* tracking_area = nil);
 
   ScopedCrTrackingArea(const ScopedCrTrackingArea&) = delete;
@@ -42,14 +48,15 @@ class COMPONENT_EXPORT(UI_BASE) ScopedCrTrackingArea {
 
   ~ScopedCrTrackingArea();
 
-  // This will take ownership of the new tracking area.  Note that -clearOwner
-  // is NOT called on the existing tracking area.
+  // This will call |scoped_nsobject<>::reset()| to take ownership of the new
+  // tracking area.  Note that -clearOwner is NOT called on the existing
+  // tracking area.
   void reset(CrTrackingArea* tracking_area = nil);
 
   CrTrackingArea* get() const;
 
  private:
-  CrTrackingArea* __strong tracking_area_;
+  base::scoped_nsobject<CrTrackingArea> tracking_area_;
 };
 
 }  // namespace ui

@@ -22,8 +22,6 @@
 
 namespace blink {
 
-using mojom::blink::FormControlType;
-
 namespace {
 
 // Saturate the length of a paragraph to save time.
@@ -127,9 +125,9 @@ void CollectFeatures(Element& root,
       features.form_count++;
     } else if (element.HasTagName(html_names::kInputTag)) {
       const auto& input = To<HTMLInputElement>(element);
-      if (input.FormControlType() == FormControlType::kInputText) {
+      if (input.type() == input_type_names::kText) {
         features.text_input_count++;
-      } else if (input.FormControlType() == FormControlType::kInputPassword) {
+      } else if (input.type() == input_type_names::kPassword) {
         features.password_input_count++;
       }
     } else if (element.HasTagName(html_names::kPTag) ||

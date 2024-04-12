@@ -1318,9 +1318,9 @@ TEST_F(MultiColumnRenderingTest, ListItem) {
 
   EXPECT_FALSE(flow_thread.ChildrenInline());
   EXPECT_EQ(R"DUMP(
-LayoutListItem DIV id="mc"
+LayoutNGListItem DIV id="mc"
   +--LayoutMultiColumnFlowThread (anonymous)
-  |  +--LayoutOutsideListMarker ::marker
+  |  +--LayoutNGOutsideListMarker ::marker
   |  |  +--LayoutTextFragment (anonymous) ("\u2022 ")
   +--LayoutMultiColumnSet (anonymous)
 )DUMP",

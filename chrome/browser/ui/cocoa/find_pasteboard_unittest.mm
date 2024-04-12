@@ -4,6 +4,7 @@
 
 #import <Cocoa/Cocoa.h>
 
+#include "base/mac/scoped_nsobject.h"
 #include "base/memory/ref_counted.h"
 #import "chrome/browser/ui/cocoa/test/cocoa_test_helper.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -57,56 +58,57 @@ class FindPasteboardTest : public CocoaTest {
 
   void SetUp() override {
     CocoaTest::SetUp();
-    pasteboard_ = [[FindPasteboardTesting alloc] init];
-    ASSERT_TRUE(pasteboard_);
+    pasteboard_.reset([[FindPasteboardTesting alloc] init]);
+    ASSERT_TRUE(pasteboard_.get());
   }
 
   void TearDown() override {
-    pasteboard_ = nil;
+    pasteboard_.reset();
     CocoaTest::TearDown();
   }
 
  protected:
-  FindPasteboardTesting* __strong pasteboard_;
+  base::scoped_nsobject<FindPasteboardTesting> pasteboard_;
 };
 
 TEST_F(FindPasteboardTest, SettingTextUpdatesPboard) {
-  [pasteboard_ setFindText:@"text"];
-  EXPECT_EQ(NSOrderedSame, [[pasteboard_ findPasteboardText] compare:@"text"]);
+  [pasteboard_.get() setFindText:@"text"];
+  EXPECT_EQ(NSOrderedSame,
+            [[pasteboard_.get() findPasteboardText] compare:@"text"]);
 }
 
 TEST_F(FindPasteboardTest, ReadingFromPboardUpdatesFindText) {
-  [pasteboard_ setFindPasteboardText:@"text"];
-  [pasteboard_ loadTextFromPasteboard:nil];
-  EXPECT_EQ(NSOrderedSame, [[pasteboard_ findText] compare:@"text"]);
+  [pasteboard_.get() setFindPasteboardText:@"text"];
+  [pasteboard_.get() loadTextFromPasteboard:nil];
+  EXPECT_EQ(NSOrderedSame, [[pasteboard_.get() findText] compare:@"text"]);
 }
 
 TEST_F(FindPasteboardTest, SendsNotificationWhenTextChanges) {
   __block int notification_count = 0;
   [NSNotificationCenter.defaultCenter
       addObserverForName:kFindPasteboardChangedNotification
-                  object:pasteboard_
+                  object:pasteboard_.get()
                    queue:nil
               usingBlock:^(NSNotification* note) {
                 ++notification_count;
               }];
   EXPECT_EQ(0, notification_count);
-  [pasteboard_ setFindText:@"text"];
+  [pasteboard_.get() setFindText:@"text"];
   EXPECT_EQ(1, notification_count);
-  [pasteboard_ setFindText:@"text"];
+  [pasteboard_.get() setFindText:@"text"];
   EXPECT_EQ(1, notification_count);
-  [pasteboard_ setFindText:@"other text"];
+  [pasteboard_.get() setFindText:@"other text"];
   EXPECT_EQ(2, notification_count);
 
-  [pasteboard_ setFindPasteboardText:@"other text"];
-  [pasteboard_ loadTextFromPasteboard:nil];
+  [pasteboard_.get() setFindPasteboardText:@"other text"];
+  [pasteboard_.get() loadTextFromPasteboard:nil];
   EXPECT_EQ(2, notification_count);
 
-  [pasteboard_ setFindPasteboardText:@"otherer text"];
-  [pasteboard_ loadTextFromPasteboard:nil];
+  [pasteboard_.get() setFindPasteboardText:@"otherer text"];
+  [pasteboard_.get() loadTextFromPasteboard:nil];
   EXPECT_EQ(3, notification_count);
 
-  [NSNotificationCenter.defaultCenter removeObserver:pasteboard_];
+  [[NSNotificationCenter defaultCenter] removeObserver:pasteboard_.get()];
 }
 
 }  // namespace

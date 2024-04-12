@@ -45,9 +45,7 @@
 
 namespace blink {
 
-namespace {
-
-UCPTrie* CreateTrie() {
+static UCPTrie* CreateTrie() {
   // Create a Trie from the value array.
   ICUError error;
   UCPTrie* trie = ucptrie_openFromBinary(
@@ -57,13 +55,11 @@ UCPTrie* CreateTrie() {
   return trie;
 }
 
-unsigned GetProperty(UChar32 c, CharacterProperty property) {
+static bool HasProperty(UChar32 c, CharacterProperty property) {
   static const UCPTrie* trie = CreateTrie();
   return UCPTRIE_FAST_GET(trie, UCPTRIE_16, c) &
          static_cast<CharacterPropertyType>(property);
 }
-
-}  // namespace
 
 bool Character::IsUprightInMixedVertical(UChar32 character) {
   return u_getIntPropertyValue(character,
@@ -72,40 +68,20 @@ bool Character::IsUprightInMixedVertical(UChar32 character) {
 }
 
 bool Character::IsCJKIdeographOrSymbolSlow(UChar32 c) {
-  return GetProperty(c, CharacterProperty::kIsCJKIdeographOrSymbol);
+  return HasProperty(c, CharacterProperty::kIsCJKIdeographOrSymbol);
 }
 
 bool Character::IsPotentialCustomElementNameChar(UChar32 character) {
-  return GetProperty(character,
+  return HasProperty(character,
                      CharacterProperty::kIsPotentialCustomElementNameChar);
 }
 
 bool Character::IsBidiControl(UChar32 character) {
-  return GetProperty(character, CharacterProperty::kIsBidiControl);
+  return HasProperty(character, CharacterProperty::kIsBidiControl);
 }
 
 bool Character::IsHangulSlow(UChar32 character) {
-  return GetProperty(character, CharacterProperty::kIsHangul);
-}
-
-HanKerningCharType Character::GetHanKerningCharType(UChar32 character) {
-  return static_cast<HanKerningCharType>(
-      GetProperty(character, CharacterProperty::kHanKerningShiftedMask) >>
-      static_cast<unsigned>(CharacterProperty::kHanKerningShift));
-}
-
-bool Character::MaybeHanKerningOpenSlow(UChar32 ch) {
-  // See `HanKerning::GetCharType`.
-  const HanKerningCharType type = Character::GetHanKerningCharType(ch);
-  return type == HanKerningCharType::kOpen ||
-         type == HanKerningCharType::kOpenQuote;
-}
-
-bool Character::MaybeHanKerningCloseSlow(UChar32 ch) {
-  // See `HanKerning::GetCharType`.
-  const HanKerningCharType type = Character::GetHanKerningCharType(ch);
-  return type == HanKerningCharType::kClose ||
-         type == HanKerningCharType::kCloseQuote;
+  return HasProperty(character, CharacterProperty::kIsHangul);
 }
 
 unsigned Character::ExpansionOpportunityCount(
@@ -245,14 +221,6 @@ bool Character::IsExtendedPictographic(UChar32 c) {
 
 bool Character::IsEmojiComponent(UChar32 c) {
   return u_hasBinaryProperty(c, UCHAR_EMOJI_COMPONENT);
-}
-
-bool Character::MaybeEmojiPresentation(UChar32 c) {
-  return c == kZeroWidthJoinerCharacter || c == 0x00A9 /* copyright sign */ ||
-         c == 0x00AE /* registered sign */ || IsEmojiKeycapBase(c) ||
-         IsInRange(c, 0x203C, 0x2B55) || c == kVariationSelector15Character ||
-         c == 0x3030 || c == 0x303D || c == 0x3297 || c == 0x3299 ||
-         c == kVariationSelector16Character || c >= 65536;
 }
 
 template <typename CharacterType>

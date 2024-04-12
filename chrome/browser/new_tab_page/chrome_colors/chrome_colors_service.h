@@ -11,18 +11,14 @@
 #include "components/keyed_service/core/keyed_service.h"
 #include "content/public/browser/web_contents.h"
 #include "third_party/skia/include/core/SkColor.h"
-#include "ui/base/mojom/themes.mojom.h"
 
 class TestChromeColorsService;
 
 namespace chrome_colors {
 
-// These constants have to match the values of ChromeColorsInfo and
-// DynamicChromeColorsInfo in enums.xml.
-constexpr int kDefaultColorId = -1;
-constexpr int kOtherColorId = 0;
-constexpr int kOtherDynamicColorId = 0;
-constexpr int kGrayscaleDynamicColorId = 1;
+// These constants have to match the values of ChromeColorsInfo in enums.xml.
+extern const int kDefaultColorId;
+extern const int kOtherColorId;
 
 // Supports theme changes originating from the NTP customization menu. Users can
 // apply a Chrome color or the default theme, which will then either be reverted
@@ -42,12 +38,9 @@ class ChromeColorsService : public KeyedService {
   // |kOtherColorId| otherwise.
   static int GetColorId(const SkColor color);
 
-  // Record installed color id to UMA histograms.
+  // Record installed color id to UMA histogram. If |color| is not in the
+  // predefined set, |kOtherColorId| is recorded.
   static void RecordColorOnLoadHistogram(SkColor color);
-  static void RecordDynamicColorOnLoadHistogramForGrayscale();
-  static void RecordDynamicColorOnLoadHistogram(
-      SkColor color,
-      ui::mojom::BrowserColorVariant variant);
 
   // Applies a theme that can be reverted by saving the previous theme state and
   // the |tab| that changes are made from.

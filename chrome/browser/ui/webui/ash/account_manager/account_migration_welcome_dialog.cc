@@ -90,7 +90,7 @@ bool AccountMigrationWelcomeDialog::ShouldShowCloseButton() const {
   return false;
 }
 
-std::string AccountMigrationWelcomeDialog::Id() {
+const std::string& AccountMigrationWelcomeDialog::Id() {
   return id_;
 }
 

@@ -13,8 +13,7 @@ namespace blink {
 // themselves, not the wrapper pointers.
 
 TEST(ScopedCSSNameTest, HashInsertDuplicate) {
-  ScopedCSSName* foo =
-      MakeGarbageCollected<ScopedCSSName>(AtomicString("foo"), nullptr);
+  ScopedCSSName* foo = MakeGarbageCollected<ScopedCSSName>("foo", nullptr);
 
   HeapHashSet<Member<ScopedCSSName>> hash_set;
   EXPECT_TRUE(hash_set.insert(foo).is_new_entry);
@@ -24,10 +23,8 @@ TEST(ScopedCSSNameTest, HashInsertDuplicate) {
 }
 
 TEST(ScopedCSSNameTest, HashDifferentNames) {
-  ScopedCSSName* foo =
-      MakeGarbageCollected<ScopedCSSName>(AtomicString("foo"), nullptr);
-  ScopedCSSName* bar =
-      MakeGarbageCollected<ScopedCSSName>(AtomicString("bar"), nullptr);
+  ScopedCSSName* foo = MakeGarbageCollected<ScopedCSSName>("foo", nullptr);
+  ScopedCSSName* bar = MakeGarbageCollected<ScopedCSSName>("bar", nullptr);
   EXPECT_NE(foo->GetHash(), bar->GetHash());
 
   HeapHashSet<Member<ScopedCSSName>> hash_set;
@@ -36,12 +33,9 @@ TEST(ScopedCSSNameTest, HashDifferentNames) {
 }
 
 TEST(ScopedCSSNameTest, HashEqualNames) {
-  ScopedCSSName* foo1 =
-      MakeGarbageCollected<ScopedCSSName>(AtomicString("foo"), nullptr);
-  ScopedCSSName* foo2 =
-      MakeGarbageCollected<ScopedCSSName>(AtomicString("foo"), nullptr);
-  ScopedCSSName* foo3 =
-      MakeGarbageCollected<ScopedCSSName>(AtomicString("foo"), nullptr);
+  ScopedCSSName* foo1 = MakeGarbageCollected<ScopedCSSName>("foo", nullptr);
+  ScopedCSSName* foo2 = MakeGarbageCollected<ScopedCSSName>("foo", nullptr);
+  ScopedCSSName* foo3 = MakeGarbageCollected<ScopedCSSName>("foo", nullptr);
   EXPECT_EQ(foo1->GetHash(), foo2->GetHash());
   EXPECT_EQ(foo2->GetHash(), foo3->GetHash());
 
@@ -52,16 +46,14 @@ TEST(ScopedCSSNameTest, HashEqualNames) {
 }
 
 TEST(ScopedCSSNameTest, LookupEmpty) {
-  ScopedCSSName* foo =
-      MakeGarbageCollected<ScopedCSSName>(AtomicString("foo"), nullptr);
+  ScopedCSSName* foo = MakeGarbageCollected<ScopedCSSName>("foo", nullptr);
 
   HeapHashSet<Member<const ScopedCSSName>> hash_set;
   EXPECT_EQ(hash_set.end(), hash_set.find(foo));
 }
 
 TEST(ScopedCSSNameTest, LookupDeleted) {
-  ScopedCSSName* foo =
-      MakeGarbageCollected<ScopedCSSName>(AtomicString("foo"), nullptr);
+  ScopedCSSName* foo = MakeGarbageCollected<ScopedCSSName>("foo", nullptr);
 
   HeapHashSet<Member<const ScopedCSSName>> hash_set;
   EXPECT_TRUE(hash_set.insert(foo).is_new_entry);

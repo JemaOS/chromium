@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <string_view>
 #include <utility>
 
 #include "ash/constants/ash_pref_names.h"
@@ -141,7 +140,7 @@ void InputMethodEngine::DiacriticsSettingsChanged() {
   const bool new_value =
       profile_->GetPrefs()->GetBoolean(ash::prefs::kLongPressDiacriticsEnabled);
   if (!new_value) {
-    SystemNudgeController::MaybeRecordNudgeAction(
+    SystemNudgeController::RecordNudgeAction(
         NudgeCatalogName::kDisableDiacritics);
   }
 }
@@ -216,28 +215,6 @@ bool InputMethodEngine::DeleteSurroundingText(int context_id,
   }
 
   return true;
-}
-
-base::expected<void, InputMethodEngine::Error>
-InputMethodEngine::ReplaceSurroundingText(
-    int context_id,
-    int length_before_selection,
-    int length_after_selection,
-    const std::u16string_view replacement_text) {
-  if (!IsActive()) {
-    return base::unexpected(Error::kInputMethodNotActive);
-  }
-  if (context_id != context_id_ || context_id_ == -1) {
-    return base::unexpected(Error::kIncorrectContextId);
-  }
-
-  if (TextInputTarget* input_context =
-          IMEBridge::Get()->GetInputContextHandler()) {
-    input_context->ReplaceSurroundingText(
-        length_before_selection, length_after_selection, replacement_text);
-  }
-
-  return base::ok();
 }
 
 bool InputMethodEngine::FinishComposingText(int context_id,
@@ -485,6 +462,27 @@ bool InputMethodEngine::SetComposingRange(
       static_cast<uint32_t>(start), static_cast<uint32_t>(end), text_spans);
 }
 
+gfx::Rect InputMethodEngine::GetTextFieldBounds(int context_id,
+                                                std::string* error) {
+  if (!IsActive()) {
+    *error = kErrorNotActive;
+    return gfx::Rect();
+  }
+  if (context_id != context_id_ || context_id_ == -1) {
+    *error = base::StringPrintf(
+        "%s request context id = %d, current context id = %d",
+        kErrorWrongContext, context_id, context_id_);
+    return gfx::Rect();
+  }
+
+  TextInputTarget* input_context = IMEBridge::Get()->GetInputContextHandler();
+  if (!input_context) {
+    return gfx::Rect();
+  }
+
+  return input_context->GetTextFieldBounds();
+}
+
 void InputMethodEngine::KeyEventHandled(const std::string& extension_id,
                                         const std::string& request_id,
                                         bool handled) {
@@ -556,6 +554,13 @@ void InputMethodEngine::Blur() {
   int context_id = context_id_;
   context_id_ = -1;
   observer_->OnBlur(active_component_id_, context_id);
+}
+
+void InputMethodEngine::OnTouch(ui::EventPointerType pointerType) {
+  if (!IsActive() || current_input_type_ == ui::TEXT_INPUT_TYPE_NONE)
+    return;
+
+  observer_->OnTouch(pointerType);
 }
 
 void InputMethodEngine::Enable(const std::string& component_id) {
@@ -709,7 +714,6 @@ bool InputMethodEngine::AcceptSuggestionCandidate(
     int context_id,
     const std::u16string& suggestion,
     size_t delete_previous_utf16_len,
-    bool use_replace_surrounding_text,
     std::string* error) {
   if (!IsActive()) {
     *error = kErrorNotActive;
@@ -720,34 +724,12 @@ bool InputMethodEngine::AcceptSuggestionCandidate(
     return false;
   }
 
-  if (use_replace_surrounding_text) {
-    if (delete_previous_utf16_len) {
-      if (base::expected<void, Error> result = ReplaceSurroundingText(
-              context_id_, delete_previous_utf16_len, 0, suggestion);
-          !result.has_value()) {
-        switch (result.error()) {
-          case Error::kInputMethodNotActive:
-            *error = kErrorNotActive;
-            return false;
-          case Error::kIncorrectContextId:
-            *error = base::StringPrintf(
-                "%s request context id = %d, current context id = %d",
-                kErrorWrongContext, context_id, context_id_);
-            return false;
-        }
-      }
-    } else {
-      CommitText(context_id, suggestion, error);
-    }
-  } else {
-    if (delete_previous_utf16_len) {
-      DeleteSurroundingText(context_id_,
-                            -static_cast<int>(delete_previous_utf16_len),
-                            delete_previous_utf16_len, error);
-    }
-
-    CommitText(context_id, suggestion, error);
+  if (delete_previous_utf16_len) {
+    DeleteSurroundingText(context_id_, -delete_previous_utf16_len,
+                          delete_previous_utf16_len, error);
   }
+
+  CommitText(context_id, suggestion, error);
 
   IMEAssistiveWindowHandlerInterface* aw_handler =
       IMEBridge::Get()->GetAssistiveWindowHandler();
@@ -781,7 +763,6 @@ void InputMethodEngine::SetCandidateWindowProperty(
   dest_property.is_auxiliary_text_visible = property.is_auxiliary_text_visible;
   dest_property.current_candidate_index = property.current_candidate_index;
   dest_property.total_candidates = property.total_candidates;
-  dest_property.is_user_selecting = candidate_window_.is_user_selecting();
 
   candidate_window_.SetProperty(dest_property);
   candidate_window_property_ = {engine_id, property};
@@ -849,8 +830,6 @@ bool InputMethodEngine::SetCandidates(int context_id,
 
     candidate_window_.mutable_candidates()->push_back(entry);
   }
-  candidate_window_.set_is_user_selecting(InferIsUserSelecting(candidates));
-
   if (IsActive()) {
     IMECandidateWindowHandlerInterface* cw_handler =
         IMEBridge::Get()->GetCandidateWindowHandler();
@@ -959,8 +938,8 @@ bool InputMethodEngine::AcceptSuggestion(int context_id, std::string* error) {
     }
     size_t confirmed_length = aw_handler->GetConfirmedLength();
     if (confirmed_length > 0) {
-      DeleteSurroundingText(context_id_, -static_cast<int>(confirmed_length),
-                            confirmed_length, error);
+      DeleteSurroundingText(context_id_, -confirmed_length, confirmed_length,
+                            error);
     }
     CommitText(context_id_, suggestion_text, error);
     aw_handler->HideSuggestion();
@@ -1098,23 +1077,6 @@ void InputMethodEngine::OnScreenProjectionChanged(bool is_projected) {
   if (observer_) {
     observer_->OnScreenProjectionChanged(is_projected);
   }
-}
-
-bool InputMethodEngine::InferIsUserSelecting(
-    base::span<const Candidate> candidates) {
-  if (candidates.empty()) {
-    return false;
-  }
-
-  // Only infer for Japanese IME.
-  if (!active_component_id_.starts_with("nacl_mozc_")) {
-    return true;
-  }
-
-  const bool any_non_empty_label = base::ranges::any_of(
-      candidates,
-      [](const Candidate& candidate) { return !candidate.label.empty(); });
-  return any_non_empty_label;
 }
 
 void InputMethodEngine::NotifyInputMethodExtensionReadyForTesting() {

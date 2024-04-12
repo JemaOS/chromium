@@ -31,16 +31,11 @@ constexpr int kDefaultFontSizeDip = 64;
 constexpr int kDetailsFontSizeDip = 13;
 constexpr int kTimeFontSizeDip = 64;
 
-// Returns the fontlist used for the details label text.
-gfx::FontList GetDetailsLabelFontList() {
-  return ambient::util::GetDefaultFontlist().DeriveWithSizeDelta(
-      kDetailsFontSizeDip - kDefaultFontSizeDip);
-}
-
 views::Label* AddLabel(views::View* parent) {
   auto* label = parent->AddChildView(std::make_unique<views::Label>());
   label->SetAutoColorReadabilityEnabled(false);
-  label->SetFontList(GetDetailsLabelFontList());
+  label->SetFontList(ambient::util::GetDefaultFontlist().DeriveWithSizeDelta(
+      kDetailsFontSizeDip - kDefaultFontSizeDip));
   label->SetPaintToLayer();
   label->layer()->SetFillsBoundsOpaquely(false);
 
@@ -108,30 +103,15 @@ void AmbientInfoView::InitLayout() {
   layout->set_between_child_spacing(kSpacingDip + shadow_insets.top() +
                                     shadow_insets.bottom());
 
-  glanceable_info_view_ = AddChildView(std::make_unique<GlanceableInfoView>(
-      delegate_, this, kTimeFontSizeDip, /*add_text_shadow=*/true));
+  glanceable_info_view_ = AddChildView(
+      std::make_unique<GlanceableInfoView>(delegate_, this, kTimeFontSizeDip));
   glanceable_info_view_->SetPaintToLayer();
 
   details_label_ = AddLabel(this);
   related_details_label_ = AddLabel(this);
 }
 
-// To make the distance from the time/weather to the bottom same as to the left,
-// an extra padding of the time font descent and the height of the details label
-// is needed. If the details label info is not empty, need to consider line
-// height distance too.
-int AmbientInfoView::GetAdjustedLeftPaddingToMatchBottom() {
-  auto details_label_font_list = GetDetailsLabelFontList();
-  int adjusted_left_padding = details_label_font_list.GetHeight() +
-                              glanceable_info_view_->GetTimeFontDescent();
-  return adjusted_left_padding;
-}
-
-GlanceableInfoView* AmbientInfoView::GetGlanceableInfoViewForTesting() const {
-  return glanceable_info_view_;
-}
-
-BEGIN_METADATA(AmbientInfoView)
+BEGIN_METADATA(AmbientInfoView, views::View)
 END_METADATA
 
 }  // namespace ash

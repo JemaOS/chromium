@@ -36,6 +36,6 @@ enum PermissionState {
 };
 
 dictionary PermissionSetParameters {
-  required object descriptor;
+  required PermissionDescriptor descriptor;
   required PermissionState state;
 };

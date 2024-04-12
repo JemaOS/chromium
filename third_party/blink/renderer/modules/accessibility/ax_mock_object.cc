@@ -35,9 +35,7 @@ AXMockObject::AXMockObject(AXObjectCacheImpl& ax_object_cache)
 AXMockObject::~AXMockObject() = default;
 
 Document* AXMockObject::GetDocument() const {
-  // This assumes that the mock object (only used for <select> popups) will not
-  // occur within another popup document (a popup within another popup).
-  return &AXObjectCache().GetDocument();
+  return ParentObject() ? ParentObject()->GetDocument() : nullptr;
 }
 
 ax::mojom::blink::Role AXMockObject::NativeRoleIgnoringAria() const {

@@ -2,15 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
-import * as Common from 'devtools/core/common/common.js';
-import * as Elements from 'devtools/panels/elements/elements.js';
-
 (async function() {
   TestRunner.addResult(`Tests that $0 works with shadow dom.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('console');
   await TestRunner.loadHTML(`
       <div><div><div id="host"></div></div></div>
@@ -21,7 +16,7 @@ import * as Elements from 'devtools/panels/elements/elements.js';
         sr.innerHTML = "<div><div><div id='shadow'><input id='user-agent-host' type='range'></div></div></div>";
     `);
 
-  Common.Settings.settingForTest('show-ua-shadow-dom').set(true);
+  Common.settingForTest('showUAShadowDOM').set(true);
   ElementsTestRunner.selectNodeWithId('shadow', step1);
 
   function step1() {
@@ -33,7 +28,7 @@ import * as Elements from 'devtools/panels/elements/elements.js';
   }
 
   function step4(node) {
-    Elements.ElementsPanel.ElementsPanel.instance().revealAndSelectNode(node.shadowRoots()[0]);
+    UI.panels.elements.revealAndSelectNode(node.shadowRoots()[0]);
     ConsoleTestRunner.evaluateInConsoleAndDump('\'User agent shadow host: \' + $0.id', step5);
   }
 

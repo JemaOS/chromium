@@ -18,7 +18,6 @@ public interface IncognitoReauthController {
      * @return True if the Incognito re-auth page is currently being shown, false otherwise.
      */
     boolean isReauthPageShowing();
-
     /**
      * @return True if the Incognito re-auth is pending, false otherwise.
      */

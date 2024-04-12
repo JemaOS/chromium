@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_WIN_JUMPLIST_FACTORY_H_
 #define CHROME_BROWSER_WIN_JUMPLIST_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -18,7 +18,7 @@ class JumpListFactory : public ProfileKeyedServiceFactory {
   static JumpListFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<JumpListFactory>;
+  friend struct base::DefaultSingletonTraits<JumpListFactory>;
   JumpListFactory();
   ~JumpListFactory() override;
 

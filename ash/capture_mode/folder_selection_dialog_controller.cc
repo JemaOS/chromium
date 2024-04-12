@@ -18,7 +18,6 @@
 #include "ui/events/event.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
 #include "ui/shell_dialogs/select_file_policy.h"
-#include "ui/shell_dialogs/selected_file_info.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_delegate.h"
 #include "ui/wm/core/transient_window_manager.h"
@@ -113,15 +112,12 @@ bool FolderSelectionDialogController::ShouldConsumeEvent(
   return !IsEventTargetingWindowInSubtree(event, keyboard_window);
 }
 
-void FolderSelectionDialogController::FileSelected(
-    const ui::SelectedFileInfo& file,
-    int index,
-    void* params) {
+void FolderSelectionDialogController::FileSelected(const base::FilePath& path,
+                                                   int index,
+                                                   void* params) {
   did_user_select_a_folder_ = true;
-  delegate_->OnFolderSelected(file.path());
+  delegate_->OnFolderSelected(path);
 }
-
-void FolderSelectionDialogController::FileSelectionCanceled(void* params) {}
 
 void FolderSelectionDialogController::OnTransientChildAdded(
     aura::Window* window,
@@ -139,7 +135,6 @@ void FolderSelectionDialogController::OnTransientChildAdded(
   widget_delegate->SetCanResize(false);
   widget_delegate->SetCanMinimize(false);
   widget_delegate->SetCanMaximize(false);
-  widget_delegate->SetCanFullscreen(false);
 
   delegate_->OnSelectionWindowAdded();
 

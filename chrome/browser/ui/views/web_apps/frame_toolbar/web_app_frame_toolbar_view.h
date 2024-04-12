@@ -18,7 +18,7 @@
 #include "ui/views/view_targeter_delegate.h"
 
 namespace {
-class WebAppNonClientFrameViewChromeOSTest;
+class WebAppNonClientFrameViewAshTest;
 }
 
 namespace views {
@@ -36,9 +36,8 @@ class WebAppToolbarButtonContainer;
 class WebAppFrameToolbarView : public views::AccessiblePaneView,
                                public ToolbarButtonProvider,
                                public views::ViewTargeterDelegate {
-  METADATA_HEADER(WebAppFrameToolbarView, views::AccessiblePaneView)
-
  public:
+  METADATA_HEADER(WebAppFrameToolbarView);
   explicit WebAppFrameToolbarView(BrowserView* browser_view);
   WebAppFrameToolbarView(const WebAppFrameToolbarView&) = delete;
   WebAppFrameToolbarView& operator=(const WebAppFrameToolbarView&) = delete;
@@ -65,7 +64,7 @@ class WebAppFrameToolbarView : public views::AccessiblePaneView,
   // Sets own bounds within the available_space.
   void LayoutForWindowControlsOverlay(gfx::Rect available_space);
 
-  std::optional<SkColor> active_color_for_testing() const {
+  absl::optional<SkColor> active_color_for_testing() const {
     return active_foreground_color_;
   }
 
@@ -111,11 +110,11 @@ class WebAppFrameToolbarView : public views::AccessiblePaneView,
  private:
   friend class ImmersiveModeControllerChromeosWebAppBrowserTest;
   friend class WebAppAshInteractiveUITest;
-  friend class WebAppNonClientFrameViewChromeOSTest;
+  friend class WebAppNonClientFrameViewAshTest;
 
   views::View* GetContentSettingContainerForTesting();
 
-  const std::vector<raw_ptr<ContentSettingImageView, VectorExperimental>>&
+  const std::vector<ContentSettingImageView*>&
   GetContentSettingViewsForTesting() const;
 
   void UpdateCachedColors();
@@ -130,10 +129,10 @@ class WebAppFrameToolbarView : public views::AccessiblePaneView,
 
   // Button and text colors.
   bool paint_as_active_ = true;
-  std::optional<SkColor> active_background_color_;
-  std::optional<SkColor> active_foreground_color_;
-  std::optional<SkColor> inactive_background_color_;
-  std::optional<SkColor> inactive_foreground_color_;
+  absl::optional<SkColor> active_background_color_;
+  absl::optional<SkColor> active_foreground_color_;
+  absl::optional<SkColor> inactive_background_color_;
+  absl::optional<SkColor> inactive_foreground_color_;
 
   // All remaining members are owned by the views hierarchy.
 

@@ -4,9 +4,7 @@
 
 #include "ui/base/ime/ash/ime_keyboard_impl.h"
 
-#include "base/functional/callback_forward.h"
 #include "base/time/time.h"
-#include "ui/base/ime/ash/ime_keyboard.h"
 #include "ui/ozone/public/input_controller.h"
 
 namespace ash {
@@ -17,31 +15,38 @@ ImeKeyboardImpl::ImeKeyboardImpl(ui::InputController* input_controller)
 
 ImeKeyboardImpl::~ImeKeyboardImpl() = default;
 
-void ImeKeyboardImpl::SetCurrentKeyboardLayoutByName(
-    const std::string& layout_name,
-    base::OnceCallback<void(bool)> callback) {
-  const bool result =
-      ImeKeyboard::SetCurrentKeyboardLayoutByNameImpl(layout_name);
-  if (!result) {
-    std::move(callback).Run(false);
-    return;
-  }
-
-  input_controller_->SetCurrentLayoutByName(layout_name, std::move(callback));
-}
-
-bool ImeKeyboardImpl::SetAutoRepeatRate(const AutoRepeatRate& rate) {
-  input_controller_->SetAutoRepeatRate(rate.initial_delay,
-                                       rate.repeat_interval);
+bool ImeKeyboardImpl::SetCurrentKeyboardLayoutByName(
+    const std::string& layout_name) {
+  ImeKeyboard::SetCurrentKeyboardLayoutByName(layout_name);
+  last_layout_ = layout_name;
+  input_controller_->SetCurrentLayoutByName(layout_name);
   return true;
 }
 
-void ImeKeyboardImpl::SetAutoRepeatEnabled(bool enabled) {
+bool ImeKeyboardImpl::SetAutoRepeatRate(const AutoRepeatRate& rate) {
+  input_controller_->SetAutoRepeatRate(
+      base::Milliseconds(rate.initial_delay_in_ms),
+      base::Milliseconds(rate.repeat_interval_in_ms));
+  return true;
+}
+
+bool ImeKeyboardImpl::SetAutoRepeatEnabled(bool enabled) {
   input_controller_->SetAutoRepeatEnabled(enabled);
+  return true;
 }
 
 bool ImeKeyboardImpl::GetAutoRepeatEnabled() {
   return input_controller_->IsAutoRepeatEnabled();
+}
+
+bool ImeKeyboardImpl::ReapplyCurrentKeyboardLayout() {
+  return SetCurrentKeyboardLayoutByName(last_layout_);
+}
+
+void ImeKeyboardImpl::ReapplyCurrentModifierLockStatus() {}
+
+void ImeKeyboardImpl::DisableNumLock() {
+  input_controller_->SetNumLockEnabled(false);
 }
 
 void ImeKeyboardImpl::SetCapsLockEnabled(bool enable_caps_lock) {
@@ -51,7 +56,7 @@ void ImeKeyboardImpl::SetCapsLockEnabled(bool enable_caps_lock) {
   input_controller_->SetCapsLockEnabled(enable_caps_lock);
 }
 
-bool ImeKeyboardImpl::IsCapsLockEnabled() {
+bool ImeKeyboardImpl::CapsLockIsEnabled() {
   return input_controller_->IsCapsLockEnabled();
 }
 

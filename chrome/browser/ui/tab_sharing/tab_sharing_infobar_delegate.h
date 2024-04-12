@@ -5,12 +5,12 @@
 #ifndef CHROME_BROWSER_UI_TAB_SHARING_TAB_SHARING_INFOBAR_DELEGATE_H_
 #define CHROME_BROWSER_UI_TAB_SHARING_TAB_SHARING_INFOBAR_DELEGATE_H_
 
-#include <optional>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
-#include "components/infobars/core/infobar_delegate.h"
+#include "components/infobars/core/confirm_infobar_delegate.h"
 #include "content/public/browser/global_routing_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/models/image_model.h"
 
 namespace infobars {
@@ -36,19 +36,12 @@ class TabSharingUI;
 // instead]"
 // 3b. Or if |shared_tab_name_| is empty:
 // "Sharing a tab to |capturer_name_| [Stop] [Share this tab instead]"
-class TabSharingInfoBarDelegate : public infobars::InfoBarDelegate {
+class TabSharingInfoBarDelegate : public ConfirmInfoBarDelegate {
  public:
   // Represents a target to which focus could be switched and its favicon.
   struct FocusTarget {
     content::GlobalRenderFrameHostId id;
     ui::ImageModel icon;
-  };
-
-  enum InfoBarButton {
-    kNone = 0,
-    kStop = 1 << 0,
-    kShareThisTabInstead = 1 << 1,
-    kQuickNav = 1 << 2,
   };
 
   enum class ButtonState {
@@ -67,8 +60,6 @@ class TabSharingInfoBarDelegate : public infobars::InfoBarDelegate {
   };
 
   class TabSharingInfoBarDelegateButton;
-  class ShareTabInsteadButton;
-  class SwitchToTabButton;
 
   // Creates a tab sharing infobar, which has 1-2 buttons.
   //
@@ -85,41 +76,38 @@ class TabSharingInfoBarDelegate : public infobars::InfoBarDelegate {
       const std::u16string& capturer_name,
       bool shared_tab,
       ButtonState share_this_tab_instead_button_state,
-      std::optional<FocusTarget> focus_target,
+      absl::optional<FocusTarget> focus_target,
       TabSharingUI* ui,
       TabShareType capture_type,
       bool favicons_used_for_switch_to_tab_button = false);
 
   ~TabSharingInfoBarDelegate() override;
 
-  // TODO(crbug.com/1224363): Inline these methods into TabSharingInfoBar where
-  // feasible or add comments to document their function better.
-  std::u16string GetMessageText() const;
-  std::u16string GetButtonLabel(InfoBarButton button) const;
-  ui::ImageModel GetButtonImage(InfoBarButton button) const;
-  bool GetButtonEnabled(InfoBarButton button) const;
-  std::u16string GetButtonTooltip(InfoBarButton button) const;
-  int GetButtons() const;
-  bool Stop();
-  bool ShareThisTabInstead();
-  bool QuickNav();
-
-  // InfoBarDelegate:
-  infobars::InfoBarDelegate::InfoBarIdentifier GetIdentifier() const override;
-  const gfx::VectorIcon& GetVectorIcon() const override;
-  bool EqualsDelegate(InfoBarDelegate* delegate) const override;
-  bool ShouldExpire(const NavigationDetails& details) const override;
-  bool IsCloseable() const override;
-
  private:
   TabSharingInfoBarDelegate(std::u16string shared_tab_name,
                             std::u16string capturer_name,
                             bool shared_tab,
                             ButtonState share_this_tab_instead_button_state,
-                            std::optional<FocusTarget> focus_target,
+                            absl::optional<FocusTarget> focus_target,
                             TabSharingUI* ui,
                             TabShareType capture_type,
                             bool favicons_used_for_switch_to_tab_button);
+
+  // ConfirmInfoBarDelegate:
+  bool EqualsDelegate(InfoBarDelegate* delegate) const override;
+  bool ShouldExpire(const NavigationDetails& details) const override;
+  infobars::InfoBarDelegate::InfoBarIdentifier GetIdentifier() const override;
+  std::u16string GetMessageText() const override;
+  std::u16string GetButtonLabel(InfoBarButton button) const override;
+  ui::ImageModel GetButtonImage(InfoBarButton button) const override;
+  bool GetButtonEnabled(InfoBarButton button) const override;
+  std::u16string GetButtonTooltip(InfoBarButton button) const override;
+  int GetButtons() const override;
+  bool Accept() override;
+  bool Cancel() override;
+  bool ExtraButtonPressed() override;
+  bool IsCloseable() const override;
+  const gfx::VectorIcon& GetVectorIcon() const override;
 
   const std::u16string shared_tab_name_;
   const bool shared_tab_;
@@ -130,7 +118,7 @@ class TabSharingInfoBarDelegate : public infobars::InfoBarDelegate {
   const std::u16string capturer_name_;
 
   // Creates and removes delegate's infobar; outlives delegate.
-  const raw_ptr<TabSharingUI, AcrossTasksDanglingUntriaged> ui_;
+  const raw_ptr<TabSharingUI, DanglingUntriaged> ui_;
 
   // TODO(crbug.com/1224363): Re-enable favicons by default or drop the code.
   const bool favicons_used_for_switch_to_tab_button_;
@@ -138,11 +126,8 @@ class TabSharingInfoBarDelegate : public infobars::InfoBarDelegate {
   // Indicates whether this instance is used for casting or capturing.
   const TabShareType capture_type_;
 
-  std::unique_ptr<ShareTabInsteadButton> share_this_tab_instead_button_;
-  std::unique_ptr<SwitchToTabButton> quick_nav_button_;
+  std::unique_ptr<TabSharingInfoBarDelegateButton> secondary_button_;
+  std::unique_ptr<TabSharingInfoBarDelegateButton> tertiary_button_;
 };
-
-std::unique_ptr<infobars::InfoBar> CreateTabSharingInfoBar(
-    std::unique_ptr<TabSharingInfoBarDelegate> delegate);
 
 #endif  // CHROME_BROWSER_UI_TAB_SHARING_TAB_SHARING_INFOBAR_DELEGATE_H_

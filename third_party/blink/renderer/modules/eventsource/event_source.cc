@@ -34,7 +34,6 @@
 
 #include <memory>
 
-#include "base/numerics/safe_conversions.h"
 #include "base/ranges/algorithm.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/platform/task_type.h"
@@ -148,10 +147,8 @@ void EventSource::Connect() {
   ExecutionContext& execution_context = *GetExecutionContext();
   ResourceRequest request(current_url_);
   request.SetHttpMethod(http_names::kGET);
-  request.SetHttpHeaderField(http_names::kAccept,
-                             AtomicString("text/event-stream"));
-  request.SetHttpHeaderField(http_names::kCacheControl,
-                             AtomicString("no-cache"));
+  request.SetHttpHeaderField(http_names::kAccept, "text/event-stream");
+  request.SetHttpHeaderField(http_names::kCacheControl, "no-cache");
   request.SetRequestContext(mojom::blink::RequestContextType::EVENT_SOURCE);
   request.SetFetchLikeAPI(true);
   request.SetMode(network::mojom::RequestMode::kCors);
@@ -305,12 +302,12 @@ void EventSource::DidReceiveResponse(uint64_t identifier,
   }
 }
 
-void EventSource::DidReceiveData(base::span<const char> data) {
+void EventSource::DidReceiveData(const char* data, unsigned length) {
   DCHECK_EQ(kOpen, state_);
   DCHECK(loader_);
   DCHECK(parser_);
 
-  parser_->AddBytes(data.data(), base::checked_cast<uint32_t>(data.size()));
+  parser_->AddBytes(data, length);
 }
 
 void EventSource::DidFinishLoading(uint64_t) {
@@ -388,8 +385,7 @@ void EventSource::Trace(Visitor* visitor) const {
   visitor->Trace(parser_);
   visitor->Trace(loader_);
   visitor->Trace(connect_timer_);
-  visitor->Trace(world_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ThreadableLoaderClient::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
   EventSourceParser::Client::Trace(visitor);

@@ -13,8 +13,6 @@
 #include "ash/system/holding_space/holding_space_ui.h"
 #include "ash/system/holding_space/screen_captures_section.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/base/resource/resource_bundle.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/layout/box_layout.h"
@@ -35,6 +33,10 @@ RecentFilesBubble::RecentFilesBubble(HoldingSpaceViewDelegate* delegate)
 }
 
 RecentFilesBubble::~RecentFilesBubble() = default;
+
+const char* RecentFilesBubble::GetClassName() const {
+  return "RecentFilesBubble";
+}
 
 std::unique_ptr<views::View> RecentFilesBubble::CreatePlaceholder() {
   if (!features::IsHoldingSpacePredictabilityEnabled())
@@ -63,8 +65,5 @@ RecentFilesBubble::CreateSections() {
   sections.push_back(std::make_unique<DownloadsSection>(delegate()));
   return sections;
 }
-
-BEGIN_METADATA(RecentFilesBubble)
-END_METADATA
 
 }  // namespace ash

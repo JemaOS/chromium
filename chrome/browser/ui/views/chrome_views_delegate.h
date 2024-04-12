@@ -42,11 +42,6 @@ class ChromeViewsDelegate : public views::ViewsDelegate {
   bool ShouldCloseMenuIfMouseCaptureLost() const override;
 #endif
 
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  bool ShouldWindowHaveRoundedCorners(
-      const gfx::NativeWindow window) const override;
-#endif
-
 #if BUILDFLAG(IS_CHROMEOS)
   std::unique_ptr<views::NonClientFrameView> CreateDefaultNonClientFrameView(
       views::Widget* widget) override;

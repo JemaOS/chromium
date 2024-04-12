@@ -36,7 +36,6 @@ using blink::AudioProcessingProperties;
 using ConstraintSet = MediaTrackConstraintSetPlatform;
 using BooleanConstraint = blink::BooleanConstraint;
 using EchoCancellationType = AudioProcessingProperties::EchoCancellationType;
-using VoiceIsolationType = AudioProcessingProperties::VoiceIsolationType;
 using ProcessingType = AudioCaptureSettings::ProcessingType;
 using StringConstraint = blink::StringConstraint;
 
@@ -49,8 +48,6 @@ using BoolSet = blink::media_constraints::DiscreteSet<bool>;
 using DoubleRangeSet = blink::media_constraints::NumericRangeSet<double>;
 using EchoCancellationTypeSet =
     blink::media_constraints::DiscreteSet<EchoCancellationType>;
-using VoiceIsolationTypeSet =
-    blink::media_constraints::DiscreteSet<VoiceIsolationType>;
 using IntRangeSet = blink::media_constraints::NumericRangeSet<int>;
 using StringSet = blink::media_constraints::DiscreteSet<std::string>;
 
@@ -140,9 +137,9 @@ class SourceInfo {
  public:
   SourceInfo(SourceType type,
              const AudioProcessingProperties& properties,
-             std::optional<int> channels,
-             std::optional<int> sample_rate,
-             std::optional<double> latency)
+             absl::optional<int> channels,
+             absl::optional<int> sample_rate,
+             absl::optional<double> latency)
       : type_(type),
         properties_(properties),
         channels_(std::move(channels)),
@@ -153,16 +150,16 @@ class SourceInfo {
 
   SourceType type() { return type_; }
   const AudioProcessingProperties& properties() { return properties_; }
-  const std::optional<int>& channels() { return channels_; }
-  const std::optional<int>& sample_rate() { return sample_rate_; }
-  const std::optional<double>& latency() { return latency_; }
+  const absl::optional<int>& channels() { return channels_; }
+  const absl::optional<int>& sample_rate() { return sample_rate_; }
+  const absl::optional<double>& latency() { return latency_; }
 
  private:
   const SourceType type_;
   const AudioProcessingProperties properties_;
-  const std::optional<int> channels_;
-  const std::optional<int> sample_rate_;
-  const std::optional<double> latency_;
+  const absl::optional<int> channels_;
+  const absl::optional<int> sample_rate_;
+  const absl::optional<double> latency_;
 };
 
 // Container for each independent boolean constrainable property.
@@ -260,11 +257,11 @@ class NumericRangeSetContainer {
   // When no ideal is available and |default_setting| is provided, the setting
   // will be |default_setting| or the closest value to it.
   // When |default_setting| is **not** provided, the setting will be a value iff
-  // |allowed_values_| contains only a single value, otherwise std::nullopt is
+  // |allowed_values_| contains only a single value, otherwise absl::nullopt is
   // returned to signal that it was not possible to make a decision.
-  std::tuple<double, std::optional<T>> SelectSettingsAndScore(
+  std::tuple<double, absl::optional<T>> SelectSettingsAndScore(
       const C& constraint,
-      const std::optional<T>& default_setting = std::nullopt) const {
+      const absl::optional<T>& default_setting = absl::nullopt) const {
     DCHECK(!IsEmpty());
 
     if (constraint.HasIdeal()) {
@@ -291,7 +288,7 @@ class NumericRangeSetContainer {
       return std::make_tuple(0.0, *allowed_values_.Min());
     }
 
-    return std::make_tuple(0.0, std::nullopt);
+    return std::make_tuple(0.0, absl::nullopt);
   }
 
   bool IsEmpty() const { return allowed_values_.IsEmpty(); }
@@ -342,11 +339,11 @@ class NumericDiscreteSetContainer {
   // will be |default_setting| or the closest value to it (using fitness
   // distance).
   // When |default_setting| is **not** provided, the setting will be a value iff
-  // |allowed_values_| contains only a single value, otherwise std::nullopt is
+  // |allowed_values_| contains only a single value, otherwise absl::nullopt is
   // returned to signal that it was not possible to make a decision.
-  std::tuple<double, std::optional<T>> SelectSettingsAndScore(
+  std::tuple<double, absl::optional<T>> SelectSettingsAndScore(
       const C& constraint,
-      const std::optional<T>& default_setting = std::nullopt) const {
+      const absl::optional<T>& default_setting = absl::nullopt) const {
     DCHECK(!IsEmpty());
 
     if (constraint.HasIdeal()) {
@@ -372,7 +369,7 @@ class NumericDiscreteSetContainer {
       return std::make_tuple(0.0, *allowed_values_.begin());
     }
 
-    return std::make_tuple(0.0, std::nullopt);
+    return std::make_tuple(0.0, absl::nullopt);
   }
 
   bool IsEmpty() const { return allowed_values_.empty(); }
@@ -420,22 +417,12 @@ class EchoCancellationContainer {
     if (!has_active_source)
       return;
 
-    // If HW echo cancellation is used, reconfiguration is not always supported
-    // and only the current values are allowed. Otherwise, allow all possible
-    // values for echo cancellation.
-    // TODO(crbug.com/1481032): Consider extending to other platforms. It is not
-    // known at the moment what OSes support this behavior.
-    const bool is_aec_reconfiguration_supported =
-#if BUILDFLAG(IS_CHROMEOS)
-        // ChromeOS is currently the only platform where we have confirmed
-        // support for simultaneous streams with and without hardware AEC on the
-        // same device.
-        true;
-#else
+    // If HW echo cancellation is used, reconfiguration is not supported and
+    // only the current values are allowed. Otherwise, allow all possible values
+    // for echo cancellation.
+    if (is_reconfiguration_allowed &&
         properties.echo_cancellation_type !=
-        EchoCancellationType::kEchoCancellationSystem;
-#endif
-    if (is_reconfiguration_allowed && is_aec_reconfiguration_supported) {
+            EchoCancellationType::kEchoCancellationSystem) {
       return;
     }
 
@@ -496,7 +483,6 @@ class EchoCancellationContainer {
     properties->goog_experimental_echo_cancellation &=
         default_audio_processing_value;
     properties->goog_noise_suppression &= default_audio_processing_value;
-    properties->voice_isolation = VoiceIsolationType::kVoiceIsolationDefault;
     properties->goog_experimental_noise_suppression &=
         default_audio_processing_value;
     properties->goog_highpass_filter &= default_audio_processing_value;
@@ -688,54 +674,6 @@ class AutoGainControlContainer {
   BoolSet allowed_values_;
 };
 
-class VoiceIsolationContainer {
- public:
-  // Default constructor intended to temporarily create an empty object.
-  VoiceIsolationContainer(BoolSet allowed_values = BoolSet())
-      : allowed_values_(std::move(allowed_values)) {}
-
-  const char* ApplyConstraintSet(const ConstraintSet& constraint_set) {
-    BoolSet voice_isolation_set =
-        blink::media_constraints::BoolSetFromConstraint(
-            constraint_set.voice_isolation);
-    // Apply voice isolation constraint.
-    allowed_values_ = allowed_values_.Intersection(voice_isolation_set);
-    return IsEmpty() ? constraint_set.voice_isolation.GetName() : nullptr;
-  }
-
-  std::tuple<double, VoiceIsolationType> SelectSettingsAndScore(
-      const ConstraintSet& constraint_set,
-      VoiceIsolationType default_setting) const {
-    BooleanConstraint voice_isolation_constraint =
-        constraint_set.voice_isolation;
-
-    if (voice_isolation_constraint.HasIdeal()) {
-      VoiceIsolationType voice_isolation_type_ideal =
-          voice_isolation_constraint.Ideal()
-              ? VoiceIsolationType::kVoiceIsolationEnabled
-              : VoiceIsolationType::kVoiceIsolationDisabled;
-
-      return std::make_tuple(1.0, voice_isolation_type_ideal);
-    }
-
-    if (allowed_values_.is_universal()) {
-      return std::make_tuple(0.0, default_setting);
-    }
-
-    VoiceIsolationType voice_isolation_first =
-        allowed_values_.FirstElement()
-            ? VoiceIsolationType::kVoiceIsolationEnabled
-            : VoiceIsolationType::kVoiceIsolationDisabled;
-
-    return std::make_tuple(0.0, voice_isolation_first);
-  }
-
-  bool IsEmpty() const { return allowed_values_.IsEmpty(); }
-
- private:
-  BoolSet allowed_values_;
-};
-
 Vector<int> GetApmSupportedChannels(
     const media::AudioParameters& device_params) {
   Vector<int> result;
@@ -784,7 +722,6 @@ class ProcessingBasedContainer {
         BoolSet(), /* goog_noise_suppression_set */
         BoolSet(), /* goog_experimental_noise_suppression_set */
         BoolSet(), /* goog_highpass_filter_set */
-        BoolSet(), /* voice_isolation_set */
         IntRangeSet::FromValue(GetSampleSize()),    /* sample_size_range */
         GetApmSupportedChannels(device_parameters), /* channels_set */
         IntRangeSet::FromValue(sample_rate_hz),     /* sample_rate_range */
@@ -811,7 +748,6 @@ class ProcessingBasedContainer {
         BoolSet({false}), /* goog_noise_suppression_set */
         BoolSet({false}), /* goog_experimental_noise_suppression_set */
         BoolSet({false}), /* goog_highpass_filter_set */
-        BoolSet(),        /* voice_isolation_set */
         IntRangeSet::FromValue(GetSampleSize()), /* sample_size_range */
         {device_parameters.channels()},          /* channels_set */
         IntRangeSet::FromValue(
@@ -838,7 +774,6 @@ class ProcessingBasedContainer {
         BoolSet({false}), /* goog_noise_suppression_set */
         BoolSet({false}), /* goog_experimental_noise_suppression_set */
         BoolSet({false}), /* goog_highpass_filter_set */
-        BoolSet({false}), /* voice_isolation_set */
         IntRangeSet::FromValue(GetSampleSize()), /* sample_size_range */
         {device_parameters.channels()},          /* channels_set */
         IntRangeSet::FromValue(
@@ -859,12 +794,6 @@ class ProcessingBasedContainer {
         auto_gain_control_container_.ApplyConstraintSet(constraint_set);
     if (failed_constraint_name)
       return failed_constraint_name;
-
-    failed_constraint_name =
-        voice_isolation_container_.ApplyConstraintSet(constraint_set);
-    if (failed_constraint_name) {
-      return failed_constraint_name;
-    }
 
     failed_constraint_name =
         sample_size_container_.ApplyConstraintSet(constraint_set.sample_size);
@@ -898,7 +827,7 @@ class ProcessingBasedContainer {
 
   std::tuple<Score,
              AudioProcessingProperties,
-             std::optional<int> /* requested_buffer_size */,
+             absl::optional<int> /* requested_buffer_size */,
              int /* num_channels */>
   SelectSettingsAndScore(const ConstraintSet& constraint_set,
                          bool should_disable_hardware_noise_suppression,
@@ -913,28 +842,28 @@ class ProcessingBasedContainer {
             constraint_set.sample_size, GetSampleSize());
     score += sub_score;
 
-    std::optional<int> num_channels;
+    absl::optional<int> num_channels;
     std::tie(sub_score, num_channels) =
         channels_container_.SelectSettingsAndScore(constraint_set.channel_count,
                                                    /*default_setting=*/1);
     DCHECK(num_channels);
     score += sub_score;
 
-    std::optional<int> sample_size;
+    absl::optional<int> sample_size;
     std::tie(sub_score, sample_size) =
         sample_rate_container_.SelectSettingsAndScore(
             constraint_set.sample_rate);
-    DCHECK(sample_size != std::nullopt);
+    DCHECK(sample_size != absl::nullopt);
     score += sub_score;
 
-    std::optional<double> latency;
+    absl::optional<double> latency;
     std::tie(sub_score, latency) =
         latency_container_.SelectSettingsAndScore(constraint_set.latency);
     score += sub_score;
 
     // Only request an explicit change to the buffer size for the unprocessed
     // container, and only if it's based on a specific user constraint.
-    std::optional<int> requested_buffer_size;
+    absl::optional<int> requested_buffer_size;
     if (processing_type_ == ProcessingType::kUnprocessed && latency &&
         !constraint_set.latency.IsUnconstrained()) {
       auto [min_buffer_size, max_buffer_size] =
@@ -960,11 +889,6 @@ class ProcessingBasedContainer {
     std::tie(sub_score, properties.goog_auto_gain_control) =
         auto_gain_control_container_.SelectSettingsAndScore(
             constraint_set, properties.goog_auto_gain_control);
-    score += sub_score;
-
-    std::tie(sub_score, properties.voice_isolation) =
-        voice_isolation_container_.SelectSettingsAndScore(
-            constraint_set, properties.voice_isolation);
     score += sub_score;
 
     for (size_t i = 0; i < kNumBooleanContainerIds; ++i) {
@@ -1048,7 +972,6 @@ class ProcessingBasedContainer {
                            BoolSet goog_noise_suppression_set,
                            BoolSet goog_experimental_noise_suppression_set,
                            BoolSet goog_highpass_filter_set,
-                           BoolSet voice_isolation_set,
                            IntRangeSet sample_size_range,
                            Vector<int> channels_set,
                            IntRangeSet sample_rate_range,
@@ -1077,8 +1000,6 @@ class ProcessingBasedContainer {
 
     auto_gain_control_container_ =
         AutoGainControlContainer(auto_gain_control_set);
-
-    voice_isolation_container_ = VoiceIsolationContainer(voice_isolation_set);
 
     boolean_containers_[kGoogAudioMirroring] =
         BooleanContainer(goog_audio_mirroring_set);
@@ -1115,10 +1036,10 @@ class ProcessingBasedContainer {
 
     DCHECK(source_info.channels());
     channels_container_ = IntegerDiscreteContainer({*source_info.channels()});
-    DCHECK(source_info.sample_rate() != std::nullopt);
+    DCHECK(source_info.sample_rate() != absl::nullopt);
     sample_rate_container_ = IntegerRangeContainer(
         IntRangeSet::FromValue(*source_info.sample_rate()));
-    DCHECK(source_info.latency() != std::nullopt);
+    DCHECK(source_info.latency() != absl::nullopt);
     latency_container_ =
         DoubleRangeContainer(DoubleRangeSet::FromValue(*source_info.latency()));
   }
@@ -1169,7 +1090,6 @@ class ProcessingBasedContainer {
   std::array<BooleanContainer, kNumBooleanContainerIds> boolean_containers_;
   EchoCancellationContainer echo_cancellation_container_;
   AutoGainControlContainer auto_gain_control_container_;
-  VoiceIsolationContainer voice_isolation_container_;
   IntegerRangeContainer sample_size_container_;
   IntegerDiscreteContainer channels_container_;
   IntegerRangeContainer sample_rate_container_;
@@ -1324,7 +1244,7 @@ class DeviceContainer {
     Score best_score(-1.0);
     AudioProcessingProperties best_properties;
     const ProcessingBasedContainer* best_container = nullptr;
-    std::optional<int> best_requested_buffer_size;
+    absl::optional<int> best_requested_buffer_size;
     int best_num_channels = 1;
     for (const auto& container : processing_based_containers_) {
       if (container.IsEmpty())
@@ -1403,9 +1323,9 @@ class DeviceContainer {
     SourceType source_type;
     AudioProcessingProperties properties;
     auto* processed_source = ProcessedLocalAudioSource::From(source);
-    std::optional<int> channels;
-    std::optional<int> sample_rate;
-    std::optional<double> latency;
+    absl::optional<int> channels;
+    absl::optional<int> sample_rate;
+    absl::optional<double> latency;
 
     if (!source) {
       source_type = SourceType::kNone;
@@ -1663,38 +1583,12 @@ AudioCaptureSettings SelectSettingsAudioCapture(
                                     should_disable_hardware_noise_suppression);
 }
 
-MODULES_EXPORT base::expected<Vector<blink::AudioCaptureSettings>, std::string>
-SelectEligibleSettingsAudioCapture(
-    const AudioDeviceCaptureCapabilities& capabilities,
-    const MediaConstraints& constraints,
-    mojom::blink::MediaStreamType stream_type,
-    bool should_disable_hardware_noise_suppression,
-    bool is_reconfiguration_allowed) {
-  Vector<AudioCaptureSettings> settings;
-  std::string failed_constraint_name;
-  for (const auto& device : capabilities) {
-    const auto device_settings = SelectSettingsAudioCapture(
-        {device}, constraints, stream_type,
-        should_disable_hardware_noise_suppression, is_reconfiguration_allowed);
-    if (device_settings.HasValue()) {
-      settings.push_back(device_settings);
-    } else {
-      failed_constraint_name = device_settings.failed_constraint_name();
-    }
-  }
-
-  if (settings.empty()) {
-    return base::unexpected(failed_constraint_name);
-  }
-  return settings;
-}
-
 std::tuple<int, int> GetMinMaxBufferSizesForAudioParameters(
     const media::AudioParameters& parameters) {
   const int default_buffer_size = parameters.frames_per_buffer();
   DCHECK_GT(default_buffer_size, 0);
 
-  const std::optional<media::AudioParameters::HardwareCapabilities>
+  const absl::optional<media::AudioParameters::HardwareCapabilities>
       hardware_capabilities = parameters.hardware_capabilities();
 
   // Only support platforms where we have both fixed min and max buffer size

@@ -5,11 +5,10 @@
 #ifndef CHROME_BROWSER_ASH_ARC_SESSION_ARC_VM_DATA_MIGRATION_NECESSITY_CHECKER_H_
 #define CHROME_BROWSER_ASH_ARC_SESSION_ARC_VM_DATA_MIGRATION_NECESSITY_CHECKER_H_
 
-#include <optional>
-
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -26,11 +25,11 @@ class ArcVmDataMigrationNecessityChecker {
       const ArcVmDataMigrationNecessityChecker&) = delete;
   ~ArcVmDataMigrationNecessityChecker();
 
-  using CheckCallback = base::OnceCallback<void(std::optional<bool> result)>;
+  using CheckCallback = base::OnceCallback<void(absl::optional<bool> result)>;
 
   // Checks whether /data migration needs to be performed. When the migration is
   // necessary/unnecessary, |callback| is called with true/false, respectively.
-  // On error, |callback| is called with std::nullopt.
+  // On error, |callback| is called with absl::nullopt.
   // Should be called when ARCVM /data migration is enabled.
   void Check(CheckCallback callback);
 
@@ -38,9 +37,9 @@ class ArcVmDataMigrationNecessityChecker {
   void OnArcVmDataMigratorStarted(CheckCallback callback, bool result);
 
   void OnHasDataToMigrateResponse(CheckCallback callback,
-                                  std::optional<bool> response);
+                                  absl::optional<bool> response);
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
 
   base::WeakPtrFactory<ArcVmDataMigrationNecessityChecker> weak_ptr_factory_{
       this};

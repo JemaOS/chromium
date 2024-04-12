@@ -38,7 +38,6 @@ class ChromeCaptureModeDelegate : public ash::CaptureModeDelegate {
   // ash::CaptureModeDelegate:
   base::FilePath GetUserDefaultDownloadsFolder() const override;
   void ShowScreenCaptureItemInFolder(const base::FilePath& file_path) override;
-  void OpenScreenCaptureItem(const base::FilePath& file_path) override;
   void OpenScreenshotInImageEditor(const base::FilePath& file_path) override;
   bool Uses24HourFormat() const override;
   void CheckCaptureModeInitRestrictionByDlp(
@@ -66,8 +65,6 @@ class ChromeCaptureModeDelegate : public ash::CaptureModeDelegate {
   bool GetDriveFsMountPointPath(base::FilePath* path) const override;
   base::FilePath GetAndroidFilesPath() const override;
   base::FilePath GetLinuxFilesPath() const override;
-  base::FilePath GetOneDriveMountPointPath() const override;
-  PolicyCapturePath GetPolicyCapturePath() const override;
   std::unique_ptr<ash::RecordingOverlayView> CreateRecordingOverlayView()
       const override;
   void ConnectToVideoSourceProvider(
@@ -76,15 +73,6 @@ class ChromeCaptureModeDelegate : public ash::CaptureModeDelegate {
   void GetDriveFsFreeSpaceBytes(ash::OnGotDriveFsFreeSpace callback) override;
   bool IsCameraDisabledByPolicy() const override;
   bool IsAudioCaptureDisabledByPolicy() const override;
-  void RegisterVideoConferenceManagerClient(
-      crosapi::mojom::VideoConferenceManagerClient* client,
-      const base::UnguessableToken& client_id) override;
-  void UnregisterVideoConferenceManagerClient(
-      const base::UnguessableToken& client_id) override;
-  void UpdateVideoConferenceManager(
-      crosapi::mojom::VideoConferenceMediaUsageStatusPtr status) override;
-  void NotifyDeviceUsedWhileDisabled(
-      crosapi::mojom::VideoConferenceMediaDevice device) override;
 
  private:
   // Called back by the Drive integration service when the quota usage is

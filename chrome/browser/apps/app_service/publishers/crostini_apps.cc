@@ -8,15 +8,20 @@
 #include <vector>
 
 #include "ash/public/cpp/app_menu_constants.h"
+#include "chrome/browser/apps/app_service/app_launch_params.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
+#include "chrome/browser/apps/app_service/launch_utils.h"
 #include "chrome/browser/apps/app_service/menu_util.h"
 #include "chrome/browser/ash/crostini/crostini_features.h"
 #include "chrome/browser/ash/crostini/crostini_package_service.h"
 #include "chrome/browser/ash/crostini/crostini_util.h"
+#include "chrome/browser/ash/file_manager/fileapi_util.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/grit/chrome_unscaled_resources.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/services/app_service/public/cpp/app_types.h"
 #include "components/services/app_service/public/cpp/intent.h"
+#include "storage/browser/file_system/file_system_context.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/strings/grit/ui_strings.h"
@@ -65,8 +70,15 @@ guest_os::VmType CrostiniApps::VmType() const {
   return guest_os::VmType::TERMINA;
 }
 
-int CrostiniApps::DefaultIconResourceId() const {
-  return IDR_LOGO_CROSTINI_DEFAULT;
+void CrostiniApps::LoadIcon(const std::string& app_id,
+                            const IconKey& icon_key,
+                            IconType icon_type,
+                            int32_t size_hint_in_dip,
+                            bool allow_placeholder_icon,
+                            apps::LoadIconCallback callback) {
+  registry()->LoadIcon(app_id, icon_key, icon_type, size_hint_in_dip,
+                       allow_placeholder_icon, IDR_LOGO_CROSTINI_DEFAULT,
+                       std::move(callback));
 }
 
 void CrostiniApps::Launch(const std::string& app_id,
@@ -85,11 +97,20 @@ void CrostiniApps::LaunchAppWithIntent(const std::string& app_id,
                                        WindowInfoPtr window_info,
                                        LaunchCallback callback) {
   // Retrieve URLs from the files in the intent.
-  auto args = ArgsFromIntent(intent.get());
+  std::vector<crostini::LaunchArg> args;
+  if (intent && intent->files.size() > 0) {
+    args.reserve(intent->files.size());
+    storage::FileSystemContext* file_system_context =
+        file_manager::util::GetFileManagerFileSystemContext(profile());
+    for (auto& file : intent->files) {
+      args.emplace_back(
+          file_system_context->CrackURLInFirstPartyContext(file->url));
+    }
+  }
   crostini::LaunchCrostiniAppWithIntent(
       profile(), app_id,
       window_info ? window_info->display_id : display::kInvalidDisplayId,
-      std::move(intent), std::move(args),
+      std::move(intent), args,
       base::BindOnce(
           [](LaunchCallback callback, bool success,
              const std::string& failure_reason) {
@@ -99,6 +120,23 @@ void CrostiniApps::LaunchAppWithIntent(const std::string& app_id,
             std::move(callback).Run(ConvertBoolToLaunchResult(success));
           },
           std::move(callback)));
+}
+
+void CrostiniApps::LaunchAppWithParams(AppLaunchParams&& params,
+                                       LaunchCallback callback) {
+  auto event_flags = apps::GetEventFlags(params.disposition,
+                                         /*prefer_container=*/false);
+  if (params.intent) {
+    LaunchAppWithIntent(params.app_id, event_flags, std::move(params.intent),
+                        params.launch_source,
+                        std::make_unique<WindowInfo>(params.display_id),
+                        std::move(callback));
+  } else {
+    Launch(params.app_id, event_flags, params.launch_source,
+           std::make_unique<WindowInfo>(params.display_id));
+    // TODO(crbug.com/1244506): Add launch return value.
+    std::move(callback).Run(LaunchResult());
+  }
 }
 
 void CrostiniApps::Uninstall(const std::string& app_id,
@@ -138,8 +176,8 @@ void CrostiniApps::GetMenuModel(const std::string& app_id,
   // to match the system display density, but others are density-unaware and
   // look better when scaled to match the display density.
   if (ShouldShowDisplayDensityMenuItem(app_id, menu_type, display_id)) {
-    std::optional<guest_os::GuestOsRegistryService::Registration> registration =
-        registry()->GetRegistration(app_id);
+    absl::optional<guest_os::GuestOsRegistryService::Registration>
+        registration = registry()->GetRegistration(app_id);
     if (registration) {
       if (registration->IsScaled()) {
         AddCommandItem(ash::CROSTINI_USE_HIGH_DENSITY,
@@ -163,6 +201,8 @@ void CrostiniApps::CreateAppOverrides(
 
   app->allow_uninstall =
       crostini::IsUninstallable(profile(), registration.app_id());
+
+  // TODO(crbug.com/1253250): Add other fields for the App struct.
 }
 
 }  // namespace apps

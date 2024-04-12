@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startURL('../resources/dom-snapshot-ua-shadow-tree.html', 'Tests DOMSnapshot.getSnapshot method with includeUserAgentShadowTree defaulted to false.');
 
   await session.evaluate(`

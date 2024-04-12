@@ -12,6 +12,7 @@
 #include "base/functional/bind.h"
 #include "base/memory/weak_ptr.h"
 #include "bruschetta_terminal_provider.h"
+#include "chrome/browser/ash/bruschetta/bruschetta_features.h"
 #include "chrome/browser/ash/bruschetta/bruschetta_launcher.h"
 #include "chrome/browser/ash/bruschetta/bruschetta_mount_provider.h"
 #include "chrome/browser/ash/bruschetta/bruschetta_pref_names.h"
@@ -43,9 +44,12 @@ BruschettaService::VmRegistration& BruschettaService::VmRegistration::operator=(
 BruschettaService::VmRegistration::~VmRegistration() = default;
 
 BruschettaService::BruschettaService(Profile* profile) : profile_(profile) {
-  if (auto* concierge = ash::ConciergeClient::Get(); concierge) {
-    concierge->AddVmObserver(this);
+  // Don't set up anything if the bruschetta flag isn't enabled.
+  if (!BruschettaFeatures::Get()->IsEnabled()) {
+    return;
   }
+
+  vm_observer_.Observe(ash::ConciergeClient::Get());
 
   pref_observer_.Init(profile_->GetPrefs());
   pref_observer_.Add(
@@ -61,11 +65,32 @@ BruschettaService::BruschettaService(Profile* profile) : profile_(profile) {
                           // `cros_settings_observer_` is destroyed.
                           base::Unretained(this)));
 
+  bool registered_guests = false;
   bool bruschetta_installed = false;
   // Register all bruschetta instances that have already been installed.
   for (auto& guest_id :
        guest_os::GetContainers(profile, guest_os::VmType::BRUSCHETTA)) {
+    // Migration: VMs that aren't associated with a config get associated with
+    // the default config.
+    if (!GetContainerPrefValue(profile, guest_id,
+                               guest_os::prefs::kBruschettaConfigId)) {
+      guest_os::UpdateContainerPref(profile, guest_id,
+                                    guest_os::prefs::kBruschettaConfigId,
+                                    base::Value(kBruschettaPolicyId));
+    }
+
     RegisterWithTerminal(std::move(guest_id));
+    registered_guests = true;
+    bruschetta_installed = true;
+  }
+
+  // Migrate VMs installed during the alpha. These will have been set up by hand
+  // using vmc so chrome doesn't know about them, but we know what the VM name
+  // should be, so register it here if nothing has been registered from prefs
+  // and the migration flag is turned on.
+  if (!registered_guests &&
+      base::FeatureList::IsEnabled(ash::features::kBruschettaAlphaMigrate)) {
+    RegisterInPrefs(GetBruschettaAlphaId(), kBruschettaPolicyId);
     bruschetta_installed = true;
   }
 
@@ -78,13 +103,7 @@ BruschettaService::BruschettaService(Profile* profile) : profile_(profile) {
   OnPolicyChanged();
 }
 
-BruschettaService::~BruschettaService() {
-  // ConciergeClient may be destroyed prior to BruschettaService in tests.
-  // Therefore we do this instead of ScopedObservation.
-  if (auto* concierge = ash::ConciergeClient::Get(); concierge) {
-    concierge->RemoveVmObserver(this);
-  }
-}
+BruschettaService::~BruschettaService() = default;
 
 BruschettaService* BruschettaService::GetForProfile(Profile* profile) {
   return BruschettaServiceFactory::GetForProfile(profile);
@@ -93,18 +112,12 @@ BruschettaService* BruschettaService::GetForProfile(Profile* profile) {
 void BruschettaService::OnPolicyChanged() {
   for (auto guest_id :
        guest_os::GetContainers(profile_, guest_os::VmType::BRUSCHETTA)) {
-    std::string config_id;
-    const base::Value* pref_value = GetContainerPrefValue(
-        profile_, guest_id, guest_os::prefs::kBruschettaConfigId);
-    if (pref_value) {
-      config_id = pref_value->GetString();
-    } else {
-      LOG(WARNING) << "Missing container prefs for VM " << guest_id.vm_name;
-      BlockLaunch(std::move(guest_id));
-      continue;
-    }
+    const std::string& config_id =
+        GetContainerPrefValue(profile_, guest_id,
+                              guest_os::prefs::kBruschettaConfigId)
+            ->GetString();
 
-    std::optional<const base::Value::Dict*> config_opt =
+    absl::optional<const base::Value::Dict*> config_opt =
         GetRunnableConfig(profile_, config_id);
     if (!config_opt.has_value()) {
       // config is either unset or explicitly blocked from running.
@@ -116,15 +129,6 @@ void BruschettaService::OnPolicyChanged() {
     AllowLaunch(guest_id);
 
     StopVmIfRequiredByPolicy(guest_id.vm_name, std::move(config_id), config);
-  }
-
-  // Any change to policy may change the display name of a config, so sync the
-  // terminal prefs.
-  auto* terminal_registry = guest_os::GuestOsService::GetForProfile(profile_)
-                                ->TerminalProviderRegistry();
-  for (const auto& it : terminal_providers_) {
-    auto id = it.second;
-    terminal_registry->SyncPrefs(id);
   }
 }
 
@@ -202,7 +206,7 @@ void BruschettaService::StopVm(std::string vm_name) {
       request,
       base::BindOnce(
           [](std::string vm_name,
-             std::optional<vm_tools::concierge::StopVmResponse> response) {
+             absl::optional<vm_tools::concierge::StopVmResponse> response) {
             // If stopping the VM fails there's not really much we can do about
             // it, but we can log an error.
             if (!response) {
@@ -296,38 +300,20 @@ void BruschettaService::OnRemoveVm(base::OnceCallback<void(bool)> callback,
     return;
   }
   ash::DlcserviceClient::Get()->Uninstall(
-      kToolsDlc, base::BindOnce(&BruschettaService::OnUninstallToolsDlc,
+      kToolsDlc, base::BindOnce(&BruschettaService::OnUninstallDlc,
                                 weak_ptr_factory_.GetWeakPtr(),
                                 std::move(callback), std::move(guest_id)));
 }
 
-void BruschettaService::OnUninstallToolsDlc(
-    base::OnceCallback<void(bool)> callback,
-    guest_os::GuestId guest_id,
-    const std::string& result) {
-  ash::DlcserviceClient::Get()->Uninstall(
-      kUefiDlc,
-      base::BindOnce(&BruschettaService::OnUninstallAllDlcs,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     std::move(guest_id), result));
-}
-
-void BruschettaService::OnUninstallAllDlcs(
-    base::OnceCallback<void(bool)> callback,
-    guest_os::GuestId guest_id,
-    const std::string& tools_result,
-    const std::string& firmware_result) {
-  if ((tools_result != dlcservice::kErrorNone &&
-       tools_result != dlcservice::kErrorInvalidDlc) ||
-      (firmware_result != dlcservice::kErrorNone &&
-       firmware_result != dlcservice::kErrorInvalidDlc)) {
-    LOG(ERROR) << "Error removing bruschetta DLCs";
-    LOG(ERROR) << kToolsDlc << ": " << tools_result;
-    LOG(ERROR) << kUefiDlc << ": " << firmware_result;
+void BruschettaService::OnUninstallDlc(base::OnceCallback<void(bool)> callback,
+                                       guest_os::GuestId guest_id,
+                                       const std::string& result) {
+  if (result != dlcservice::kErrorNone &&
+      result != dlcservice::kErrorInvalidDlc) {
+    LOG(ERROR) << "Error removing DLC. Error: " << result;
     std::move(callback).Run(false);
     return;
   }
-
   profile_->GetPrefs()->SetBoolean(bruschetta::prefs::kBruschettaInstalled,
                                    false);
 

@@ -2,17 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ApplicationTestRunner} from 'application_test_runner';
-import {NetworkTestRunner} from 'network_test_runner';
-
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Verifies that network request previews don't have src set when the request fails`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('application_test_runner');
+  await TestRunner.loadTestModule('network_test_runner');
   await TestRunner.showPanel('network');
 
-  SDK.NetworkManager.MultitargetNetworkManager.instance().setBlockingEnabled(true);
+  SDK.multitargetNetworkManager.setBlockingEnabled(true);
   TestRunner.networkManager.addEventListener(
     SDK.NetworkManager.Events.RequestFinished, (event) => {
       const request = event.data;
@@ -27,7 +23,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
       });
     });
 
-  SDK.NetworkManager.MultitargetNetworkManager.instance().setBlockedPatterns([
+  SDK.multitargetNetworkManager.setBlockedPatterns([
     {url: '*', enabled: true}
   ]);
 

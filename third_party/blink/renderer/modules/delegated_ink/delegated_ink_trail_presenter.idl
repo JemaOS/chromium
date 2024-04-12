@@ -5,6 +5,7 @@
 // https://github.com/WICG/ink-enhancement
 
 [
+    RuntimeEnabled=DelegatedInkTrails,
     Exposed=Window
 ] interface DelegatedInkTrailPresenter {
     [CallWith=ScriptState, RaisesException] void updateInkTrailStartPoint(PointerEvent evt, InkTrailStyle style);

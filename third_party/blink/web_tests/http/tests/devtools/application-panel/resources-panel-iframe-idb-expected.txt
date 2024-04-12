@@ -18,9 +18,9 @@ Storage
   http://127.0.0.1:8000/
   http://devtools.oopif.test:8000/^0http://127.0.0.1
  IndexedDB
-  Database-iframe
+  Database-iframe - http://devtools.oopif.test:8000/^0http://127.0.0.1
    Database-iframe
-  Database-main-frame
+  Database-main-frame - http://127.0.0.1:8000/
  Web SQL
  Cookies
   http://127.0.0.1:8000
@@ -35,7 +35,6 @@ Background Services
  Back/forward cache
  Background Fetch
  Background Sync
- Bounce Tracking Mitigations
  Notifications
  Payment Handler
  Periodic Background Sync
@@ -63,7 +62,7 @@ Storage
  Session Storage
   http://127.0.0.1:8000/
  IndexedDB
-  Database-main-frame
+  Database-main-frame - http://127.0.0.1:8000/
  Web SQL
  Cookies
   http://127.0.0.1:8000
@@ -77,7 +76,6 @@ Background Services
  Back/forward cache
  Background Fetch
  Background Sync
- Bounce Tracking Mitigations
  Notifications
  Payment Handler
  Periodic Background Sync
@@ -105,8 +103,8 @@ Storage
   http://127.0.0.1:8000/
   http://devtools.oopif.test:8000/^0http://127.0.0.1
  IndexedDB
-  Database-main-frame
-  Database-iframe
+  Database-main-frame - http://127.0.0.1:8000/
+  Database-iframe - http://devtools.oopif.test:8000/^0http://127.0.0.1
    Database-iframe
  Web SQL
  Cookies
@@ -122,7 +120,6 @@ Background Services
  Back/forward cache
  Background Fetch
  Background Sync
- Bounce Tracking Mitigations
  Notifications
  Payment Handler
  Periodic Background Sync

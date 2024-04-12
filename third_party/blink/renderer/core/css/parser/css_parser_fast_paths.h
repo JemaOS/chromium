@@ -7,7 +7,6 @@
 
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
-#include "third_party/blink/renderer/core/css/parser/css_parser_context.h"
 #include "third_party/blink/renderer/core/css/properties/css_bitset.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/platform/graphics/color.h"
@@ -34,19 +33,13 @@ class CORE_EXPORT CSSParserFastPaths {
  public:
   // Parses simple values like '10px' or 'green', but makes no guarantees
   // about handling any property completely.
-  static CSSValue* MaybeParseValue(CSSPropertyID,
-                                   StringView,
-                                   const CSSParserContext*);
+  static CSSValue* MaybeParseValue(CSSPropertyID, const String&, CSSParserMode);
 
   // NOTE: Properties handled here shouldn't be explicitly handled in
   // CSSPropertyParser, so if this returns true, the fast path is the only path.
   static bool IsHandledByKeywordFastPath(CSSPropertyID property_id) {
     return handled_by_keyword_fast_paths_properties_.Has(property_id);
   }
-
-  static bool IsNonStandardAppearanceValuesHighUsage(CSSValueID);
-
-  static bool IsNonStandardAppearanceValuesLowUsage(CSSValueID);
 
   static bool IsValidKeywordPropertyAndValue(CSSPropertyID,
                                              CSSValueID,

@@ -34,7 +34,7 @@ enum class DOMExceptionCode;
 
 template <typename Traits>
 class MODULES_EXPORT EncoderBase
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ActiveScriptWrappable<EncoderBase<Traits>>,
       public ReclaimableCodec {
  public:
@@ -63,7 +63,7 @@ class MODULES_EXPORT EncoderBase
               const EncodeOptionsType* opts,
               ExceptionState& exception_state);
 
-  ScriptPromiseTyped<IDLUndefined> flush(ExceptionState&);
+  ScriptPromise flush(ExceptionState&);
 
   void reset(ExceptionState&);
 
@@ -113,9 +113,7 @@ class MODULES_EXPORT EncoderBase
     uint32_t reset_count = 0;
     Member<InputType> input;                     // used by kEncode
     Member<const EncodeOptionsType> encodeOpts;  // used by kEncode
-    // used by kFlush
-    Member<ScriptPromiseResolverTyped<IDLUndefined>> resolver;
-    Member<InternalConfigType> config;  // used by kConfigure and kReconfigure
+    Member<ScriptPromiseResolver> resolver;      // used by kFlush
 
 #if DCHECK_IS_ON()
     // Tracks the state of tracing for debug purposes.
@@ -123,7 +121,6 @@ class MODULES_EXPORT EncoderBase
 #endif
   };
 
-  void QueueHandleError(DOMException* ex);
   virtual void HandleError(DOMException* ex);
   virtual void EnqueueRequest(Request* request);
   virtual void ProcessRequests();
@@ -132,14 +129,13 @@ class MODULES_EXPORT EncoderBase
   virtual void ProcessConfigure(Request* request) = 0;
   virtual void ProcessReconfigure(Request* request) = 0;
   virtual void ProcessFlush(Request* request);
-  virtual void ResetInternal(DOMException* ex);
+  virtual void ResetInternal();
 
   virtual bool CanReconfigure(InternalConfigType& original_config,
                               InternalConfigType& new_config) = 0;
   virtual InternalConfigType* ParseConfig(const ConfigType*,
                                           ExceptionState&) = 0;
-  virtual bool VerifyCodecSupport(InternalConfigType*,
-                                  String* js_error_message) = 0;
+  virtual bool VerifyCodecSupport(InternalConfigType*, ExceptionState&) = 0;
 
   // ReclaimableCodec implementation.
   void OnCodecReclaimed(DOMException*) override;
@@ -170,12 +166,9 @@ class MODULES_EXPORT EncoderBase
 
   // Some kConfigure and kFlush requests can't be executed in parallel with
   // kEncode. Even some kEncode might have synchronous parts like readback.
-  //
-  // Set this to stop processing of new requests in `requests_` until the
-  // current request is finished.
-  //
-  // During reset(), this member is used to reject any pending promises.
-  Member<Request> blocking_request_in_progress_;
+  // This flag stops processing of new requests in the requests_ queue
+  // till the current request is finished.
+  bool blocking_request_in_progress_ = false;
 
   bool first_output_after_configure_ = true;
 

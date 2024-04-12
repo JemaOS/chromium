@@ -27,7 +27,7 @@ class ButtonTestApi {
   void NotifyClick(const ui::Event& event);
 
  private:
-  const raw_ptr<Button, DanglingUntriaged> button_;
+  raw_ptr<Button, DanglingUntriaged> button_;
 };
 
 }  // namespace test

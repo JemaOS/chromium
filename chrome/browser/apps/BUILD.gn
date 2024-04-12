@@ -27,8 +27,4 @@ source_set("user_type_filter") {
     "//chrome/browser/profiles:profile",
     "//content/public/browser:browser",
   ]
-
-  if (is_chromeos) {
-    deps += [ "//chromeos/components/mgs" ]
-  }
 }

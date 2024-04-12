@@ -9,6 +9,7 @@
 
 class Browser;
 class GURL;
+class Profile;
 
 namespace content {
 class WebContents;
@@ -30,6 +31,11 @@ class ExtensionViewHostFactory {
   // profile.
   static std::unique_ptr<ExtensionViewHost> CreatePopupHost(const GURL& url,
                                                             Browser* browser);
+
+  // Some dialogs may not be associated with a particular browser window and
+  // hence only require a |profile|.
+  static std::unique_ptr<ExtensionViewHost> CreateDialogHost(const GURL& url,
+                                                             Profile* profile);
 
   // Creates a new ExtensionHost with its associated view, grouping it in the
   // appropriate SiteInstance (and therefore process) based on the URL and

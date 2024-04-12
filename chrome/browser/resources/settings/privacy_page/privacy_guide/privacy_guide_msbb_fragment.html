@@ -16,11 +16,11 @@
         on-change="onMsbbToggleClick_">
     </settings-toggle-button>
   </div>
-  <div class="settings-columned-section">
-    <div class="column">
-      <h3 class="description-header">
+  <div class="description-wrapper two-column">
+    <div class="description-column description-column-first">
+      <div class=description-header>
         $i18n{privacyGuideFeatureDescriptionHeader}
-      </h3>
+      </div>
       <div role="list">
         <privacy-guide-description-item
             role="listitem"
@@ -32,17 +32,15 @@
             icon="settings20:lightbulb"
             label="$i18n{privacyGuideMsbbFeatureDescription2}">
         </privacy-guide-description-item>
-        <privacy-guide-description-item
-            role="listitem"
-            icon="settings20:notification-add"
-            label="$i18n{privacyGuideMsbbFeatureDescription3}">
-        </privacy-guide-description-item>
       </div>
     </div>
-    <div class="column">
-      <h3 class="description-header">$i18n{privacyGuideThingsToConsider}</h3>
+    <div class="description-column">
+      <div class=description-header>
+        $i18n{privacyGuideThingsToConsider}
+      </div>
       <div role="list">
         <privacy-guide-description-item
+            hidden="[[isJemaProfile_]]"
             role="listitem"
             icon="settings20:link"
             label="$i18n{privacyGuideMsbbPrivacyDescription1}">

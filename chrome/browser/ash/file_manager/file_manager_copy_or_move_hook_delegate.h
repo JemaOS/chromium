@@ -58,8 +58,7 @@ class FileManagerCopyOrMoveHookDelegate
 
   void OnError(const storage::FileSystemURL& source_url,
                const storage::FileSystemURL& destination_url,
-               base::File::Error error,
-               ErrorCallback callback) override;
+               base::File::Error error) override;
 
   void OnEndCopy(const storage::FileSystemURL& source_url,
                  const storage::FileSystemURL& destination_url) override;

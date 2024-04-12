@@ -24,8 +24,7 @@ const parameterCommentFormatRule = {
             if (type !== 'Block') {
               continue;
             }
-            if (!value.match(/ \w+= /) &&
-                !value.match(/^\s*eslint-disable-next-line/)) {
+            if (!value.match(/ \w+= /)) {
               context.report({
                 node: comment,
                 message: 'Inline block comment for parameters' +

@@ -4,9 +4,8 @@
 
 #include "ash/app_list/views/app_list_view_util.h"
 
-#include <optional>
-
 #include "base/functional/callback.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animator.h"
 #include "ui/views/animation/animation_builder.h"
@@ -59,7 +58,7 @@ void StartSlideInAnimation(views::View* view,
 void SlideViewIntoPositionWithSequenceBlock(
     views::View* view,
     int vertical_offset,
-    const std::optional<base::TimeDelta>& time_delta,
+    const absl::optional<base::TimeDelta>& time_delta,
     gfx::Tween::Type tween_type,
     views::AnimationSequenceBlock* sequence_block) {
   DCHECK(view->layer());

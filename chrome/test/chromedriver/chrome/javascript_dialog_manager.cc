@@ -4,10 +4,13 @@
 
 #include "chrome/test/chromedriver/chrome/javascript_dialog_manager.h"
 
+#include "chrome/test/chromedriver/chrome/browser_info.h"
 #include "chrome/test/chromedriver/chrome/devtools_client.h"
 #include "chrome/test/chromedriver/chrome/status.h"
 
-JavaScriptDialogManager::JavaScriptDialogManager(DevToolsClient* client)
+JavaScriptDialogManager::JavaScriptDialogManager(
+    DevToolsClient* client,
+    const BrowserInfo* browser_info)
     : client_(client) {
   client_->AddListener(this);
 }
@@ -70,7 +73,8 @@ Status JavaScriptDialogManager::HandleDialog(bool accept,
 Status JavaScriptDialogManager::OnConnected(DevToolsClient* client) {
   unhandled_dialog_queue_.clear();
   dialog_type_queue_.clear();
-  return Status{kOk};
+  base::Value::Dict params;
+  return client_->SendCommand("Page.enable", params);
 }
 
 Status JavaScriptDialogManager::OnEvent(DevToolsClient* client,

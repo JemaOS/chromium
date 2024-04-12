@@ -12,6 +12,7 @@ import android.view.ViewGroup;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.keyboard_accessory.AccessoryAction;
 import org.chromium.chrome.browser.keyboard_accessory.AccessoryTabType;
 import org.chromium.chrome.browser.keyboard_accessory.R;
@@ -36,27 +37,24 @@ public class PasswordAccessorySheetCoordinator extends AccessorySheetTabCoordina
      */
     public PasswordAccessorySheetCoordinator(
             Context context, @Nullable RecyclerView.OnScrollListener scrollListener) {
-        super(
-                context.getString(R.string.password_list_title),
+        super(context.getString(R.string.password_settings_title),
                 IconProvider.getIcon(context, R.drawable.ic_vpn_key_grey),
                 context.getString(R.string.password_accessory_sheet_toggle),
-                R.layout.password_accessory_sheet,
-                AccessoryTabType.PASSWORDS,
-                scrollListener);
+                R.layout.password_accessory_sheet, AccessoryTabType.PASSWORDS, scrollListener);
         mContext = context;
-        mMediator =
-                new PasswordAccessorySheetMediator(
-                        mModel,
-                        AccessoryTabType.PASSWORDS,
-                        Type.PASSWORD_INFO,
-                        AccessoryAction.MANAGE_PASSWORDS,
-                        this::onToggleChanged);
+        mMediator = new PasswordAccessorySheetMediator(mModel, AccessoryTabType.PASSWORDS,
+                Type.PASSWORD_INFO, AccessoryAction.MANAGE_PASSWORDS, this::onToggleChanged);
     }
 
     @Override
     public void onTabCreated(ViewGroup view) {
         super.onTabCreated(view);
-        PasswordAccessorySheetViewBinder.initializeView((RecyclerView) view, mModel.get(ITEMS));
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_KEYBOARD_ACCESSORY)) {
+            PasswordAccessorySheetModernViewBinder.initializeView(
+                    (RecyclerView) view, mModel.get(ITEMS));
+        } else {
+            PasswordAccessorySheetViewBinder.initializeView((RecyclerView) view, mModel.get(ITEMS));
+        }
     }
 
     @Override
@@ -65,26 +63,35 @@ public class PasswordAccessorySheetCoordinator extends AccessorySheetTabCoordina
     }
 
     private void onToggleChanged(boolean enabled) {
-        getTab().setIcon(
-                        IconProvider.getIcon(
-                                mContext,
-                                enabled ? R.drawable.ic_vpn_key_grey : R.drawable.ic_vpn_key_off));
+        getTab().setIcon(IconProvider.getIcon(
+                mContext, enabled ? R.drawable.ic_vpn_key_grey : R.drawable.ic_vpn_key_off));
     }
 
     /**
-     * Creates an adapter to an {@link PasswordAccessorySheetViewBinder} that is wired up to the
-     * model change processor which listens to the {@link AccessorySheetTabItemsModel}.
-     *
+     * Creates an adapter to an {@link PasswordAccessorySheetViewBinder} that is wired
+     * up to a model change processor listening to the {@link AccessorySheetTabItemsModel}.
      * @param model the {@link AccessorySheetTabItemsModel} the adapter gets its data from.
-     * @return Returns an {@link PasswordAccessorySheetViewBinder} wired to a MCP.
+     * @return Returns a fully initialized and wired adapter to a PasswordAccessorySheetViewBinder.
      */
     static RecyclerViewAdapter<AccessorySheetTabViewBinder.ElementViewHolder, Void> createAdapter(
-            ListModel<AccessorySheetDataPiece> model) {
+            AccessorySheetTabItemsModel model) {
         return new RecyclerViewAdapter<>(
-                new SimpleRecyclerViewMcp<>(
-                        model,
-                        AccessorySheetDataPiece::getType,
+                new SimpleRecyclerViewMcp<>(model, AccessorySheetDataPiece::getType,
                         AccessorySheetTabViewBinder.ElementViewHolder::bind),
                 PasswordAccessorySheetViewBinder::create);
+    }
+
+    /**
+     * Creates an adapter to an {@link PasswordAccessorySheetModernViewBinder} that is wired up to
+     * the model change processor which listens to the {@link AccessorySheetTabItemsModel}.
+     * @param model the {@link AccessorySheetTabItemsModel} the adapter gets its data from.
+     * @return Returns an {@link PasswordAccessorySheetModernViewBinder} wired to a MCP.
+     */
+    static RecyclerViewAdapter<AccessorySheetTabViewBinder.ElementViewHolder, Void>
+    createModernAdapter(ListModel<AccessorySheetDataPiece> model) {
+        return new RecyclerViewAdapter<>(
+                new SimpleRecyclerViewMcp<>(model, AccessorySheetDataPiece::getType,
+                        AccessorySheetTabViewBinder.ElementViewHolder::bind),
+                PasswordAccessorySheetModernViewBinder::create);
     }
 }

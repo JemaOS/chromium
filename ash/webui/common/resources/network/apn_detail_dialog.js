@@ -7,21 +7,20 @@
  * UI element which will show a dialog to create, view or edit APNs.
  */
 
-import '//resources/ash/common/cr_elements/cr_button/cr_button.js';
-import '//resources/ash/common/cr_elements/cr_checkbox/cr_checkbox.js';
-import '//resources/ash/common/cr_elements/icons.html.js';
-import '//resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
-import '//resources/ash/common/cr_elements/cr_input/cr_input.js';
+import '//resources/cr_elements/cr_button/cr_button.js';
+import '//resources/cr_elements/cr_checkbox/cr_checkbox.js';
+import '//resources/cr_elements/icons.html.js';
+import '//resources/cr_elements/cr_dialog/cr_dialog.js';
+import '//resources/cr_elements/cr_input/cr_input.js';
 import '//resources/polymer/v3_0/iron-collapse/iron-collapse.js';
-import '//resources/ash/common/cr_elements/cr_expand_button/cr_expand_button.js';
-import '//resources/ash/common/cr_elements/cr_shared_style.css.js';
-import '//resources/ash/common/cr_elements/md_select.css.js';
+import '//resources/cr_elements/cr_expand_button/cr_expand_button.js';
+import '//resources/cr_elements/cr_shared_style.css.js';
+import '//resources/cr_elements/md_select.css.js';
 
 import {assert} from '//resources/ash/common/assert.js';
 import {I18nBehavior, I18nBehaviorInterface} from '//resources/ash/common/i18n_behavior.js';
-import {focusWithoutInk} from 'chrome://resources/js/focus_without_ink.js';
-import {ApnAuthenticationType, ApnIpType, ApnProperties, ApnState, ApnType, CrosNetworkConfigInterface} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
-import {afterNextRender, mixinBehaviors, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {ApnAuthenticationType, ApnIpType, ApnProperties, ApnState, ApnType, CrosNetworkConfigRemote} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/cros_network_config.mojom-webui.js';
+import {mixinBehaviors, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './apn_detail_dialog.html.js';
 import {ApnDetailDialogMode} from './cellular_utils.js';
@@ -196,29 +195,6 @@ export class ApnDetailDialog extends ApnDetailDialogElementBase {
         computed: 'computeShouldShowApnTypeErrorMessage_(apnList, ' +
             'isDefaultApnType_, isAttachApnType_)',
       },
-
-      /**
-       * If |shouldAnnounceA11yActionButtonState_| === true, an a11y
-       * announcement will be made. No announcement will be made until the
-       * enable state of the action button changes as a result of user changes
-       * in the dialog, and subsequent action button state changes (i.e the
-       * initial enabled state of the button will not be announced).
-       * @private {boolean|undefined}
-       */
-      shouldAnnounceA11yActionButtonState_: {
-        type: Object,
-        value: undefined,
-      },
-
-      /** @private */
-      actionButtonEnabledA11yText_: {
-        type: String,
-        value: '',
-        observer: 'onActionButtonEnabledStateA11yTextChanged_',
-        computed: 'computeActionButtonEnabledStateA11yText_(apn_, ' +
-            'isMaxApnInputLengthReached_, shouldShowApnTypeErrorMessage_,' +
-            'isDefaultApnType_, isAttachApnType_)',
-      },
     };
   }
 
@@ -226,34 +202,9 @@ export class ApnDetailDialog extends ApnDetailDialogElementBase {
   constructor() {
     super();
 
-    /** @private {!CrosNetworkConfigInterface} */
+    /** @private {!CrosNetworkConfigRemote} */
     this.networkConfig_ =
         MojoInterfaceProviderImpl.getInstance().getMojoServiceRemote();
-  }
-
-  /** @override */
-  connectedCallback() {
-    super.connectedCallback();
-
-    // Set the default focus when the dialog opens.
-    afterNextRender(this, function() {
-      let element;
-      switch (this.mode) {
-        case ApnDetailDialogMode.CREATE:
-        case ApnDetailDialogMode.EDIT:
-          element = this.shadowRoot.querySelector('cr-input');
-          break;
-        case ApnDetailDialogMode.VIEW:
-          element = this.shadowRoot.querySelector('#apnDoneBtn');
-          break;
-      }
-      focusWithoutInk(element);
-
-      // Only after dialog is connected and the intended element is focused can
-      // action enabled state changes be a11y announced.
-      assert(this.shouldAnnounceA11yActionButtonState_ === undefined);
-      this.shouldAnnounceA11yActionButtonState_ = false;
-    });
   }
 
   /**
@@ -357,9 +308,11 @@ export class ApnDetailDialog extends ApnDetailDialogElementBase {
       return '';
     }
     if (this.isMaxApnInputLengthReached_) {
-      return this.i18n('apnDetailApnErrorMaxChars', MAX_APN_INPUT_LENGTH);
+      // TODO(b/162365553): Replace with real string when available
+      return `APN cannot have more than 63 characters`;
     }
-    return this.i18n('apnDetailApnErrorInvalidChar');
+    // TODO(b/162365553): Replace with real string when available
+    return 'APN cannot have non-ASCII characters';
   }
 
   /**
@@ -417,39 +370,6 @@ export class ApnDetailDialog extends ApnDetailDialogElementBase {
     }
     return this.i18n('apnDetailDialogAdd');
   }
-
-  /**
-   * @return {string}
-   * @private
-   */
-  computeActionButtonEnabledStateA11yText_() {
-    const isDisabled = this.isUiElementDisabled_(UiElement.ACTION_BUTTON);
-    if (this.mode === ApnDetailDialogMode.EDIT) {
-      return isDisabled ? this.i18n('apnDetailDialogA11ySaveDisabled') :
-                          this.i18n('apnDetailDialogA11ySaveEnabled');
-    } else if (this.mode === ApnDetailDialogMode.CREATE) {
-      return isDisabled ? this.i18n('apnDetailDialogA11yAddDisabled') :
-                          this.i18n('apnDetailDialogA11yAddEnabled');
-    }
-    return '';
-  }
-
-  /**
-   * @param {string} newVal
-   * @param {string} oldVal
-   * @private
-   */
-  onActionButtonEnabledStateA11yTextChanged_(newVal, oldVal) {
-    if (this.shouldAnnounceA11yActionButtonState_ === undefined) {
-      return;
-    }
-    if (!newVal || !oldVal) {
-      this.shouldAnnounceA11yActionButtonState_ = false;
-      return;
-    }
-    this.shouldAnnounceA11yActionButtonState_ = oldVal !== newVal;
-  }
-
   /**
    * @private
    */

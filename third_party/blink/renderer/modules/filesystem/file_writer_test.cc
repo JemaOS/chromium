@@ -2,12 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/core/fileapi/blob.h"
 #include "third_party/blink/renderer/modules/filesystem/file_writer_base.h"
-#include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
+
+#include "testing/gtest/include/gtest/gtest.h"
 
 namespace blink {
 
@@ -30,10 +28,6 @@ KURL mock_path_as_kurl() {
   return KURL("MockPath");
 }
 
-Blob* CreateTestBlob() {
-  return MakeGarbageCollected<Blob>(BlobDataHandle::Create());
-}
-
 }  // namespace
 
 class TestableFileWriter : public GarbageCollected<TestableFileWriter>,
@@ -48,7 +42,7 @@ class TestableFileWriter : public GarbageCollected<TestableFileWriter>,
     received_write_ = false;
     received_write_path_ = KURL();
     received_write_offset_ = kNoOffset;
-    received_write_blob_ = nullptr;
+    received_write_blob_uuid_ = String();
     received_cancel_ = false;
 
     received_did_write_count_ = 0;
@@ -60,7 +54,6 @@ class TestableFileWriter : public GarbageCollected<TestableFileWriter>,
   }
 
   void Trace(Visitor* visitor) const override {
-    visitor->Trace(received_write_blob_);
     FileWriterBase::Trace(visitor);
   }
 
@@ -69,7 +62,7 @@ class TestableFileWriter : public GarbageCollected<TestableFileWriter>,
   int64_t received_truncate_offset_;
   bool received_write_;
   KURL received_write_path_;
-  Member<const Blob> received_write_blob_;
+  String received_write_blob_uuid_;
   int64_t received_write_offset_;
   bool received_cancel_;
 
@@ -103,11 +96,13 @@ class TestableFileWriter : public GarbageCollected<TestableFileWriter>,
     }
   }
 
-  void DoWrite(const KURL& path, const Blob& blob, int64_t offset) override {
+  void DoWrite(const KURL& path,
+               const String& blob_uuid,
+               int64_t offset) override {
     received_write_ = true;
     received_write_path_ = path;
     received_write_offset_ = offset;
-    received_write_blob_ = &blob;
+    received_write_blob_uuid_ = blob_uuid;
 
     if (offset == kBasicFileWrite_Offset) {
       DidWrite(1, true);
@@ -173,19 +168,18 @@ class FileWriterTest : public testing::Test {
     testable_writer_->Initialize(mock_path_as_kurl(), 10);
   }
 
-  test::TaskEnvironment task_environment_;
   Persistent<TestableFileWriter> testable_writer_;
 };
 
 TEST_F(FileWriterTest, BasicFileWrite) {
-  Blob* blob = CreateTestBlob();
-  writer()->Write(kBasicFileWrite_Offset, *blob);
+  const String kBlobId("1234");
+  writer()->Write(kBasicFileWrite_Offset, kBlobId);
 
   // Check that the Do* methods of the derived class get called correctly.
   EXPECT_TRUE(testable_writer_->received_write_);
   EXPECT_EQ(testable_writer_->received_write_path_, mock_path_as_kurl());
   EXPECT_EQ(kBasicFileWrite_Offset, testable_writer_->received_write_offset_);
-  EXPECT_EQ(blob, testable_writer_->received_write_blob_);
+  EXPECT_EQ(kBlobId, testable_writer_->received_write_blob_uuid_);
   EXPECT_FALSE(testable_writer_->received_truncate_);
   EXPECT_FALSE(testable_writer_->received_cancel_);
 
@@ -215,14 +209,14 @@ TEST_F(FileWriterTest, BasicFileTruncate) {
 }
 
 TEST_F(FileWriterTest, ErrorFileWrite) {
-  Blob* blob = CreateTestBlob();
-  writer()->Write(kErrorFileWrite_Offset, *blob);
+  const String kBlobId("1234");
+  writer()->Write(kErrorFileWrite_Offset, kBlobId);
 
   // Check that the Do* methods of the derived class get called correctly.
   EXPECT_TRUE(testable_writer_->received_write_);
   EXPECT_EQ(testable_writer_->received_write_path_, mock_path_as_kurl());
   EXPECT_EQ(kErrorFileWrite_Offset, testable_writer_->received_write_offset_);
-  EXPECT_EQ(blob, testable_writer_->received_write_blob_);
+  EXPECT_EQ(kBlobId, testable_writer_->received_write_blob_uuid_);
   EXPECT_FALSE(testable_writer_->received_truncate_);
   EXPECT_FALSE(testable_writer_->received_cancel_);
 
@@ -254,14 +248,14 @@ TEST_F(FileWriterTest, ErrorFileTruncate) {
 }
 
 TEST_F(FileWriterTest, MultiFileWrite) {
-  Blob* blob = CreateTestBlob();
-  writer()->Write(kMultiFileWrite_Offset, *blob);
+  const String kBlobId("1234");
+  writer()->Write(kMultiFileWrite_Offset, kBlobId);
 
   // Check that the Do* methods of the derived class get called correctly.
   EXPECT_TRUE(testable_writer_->received_write_);
   EXPECT_EQ(testable_writer_->received_write_path_, mock_path_as_kurl());
   EXPECT_EQ(kMultiFileWrite_Offset, testable_writer_->received_write_offset_);
-  EXPECT_EQ(blob, testable_writer_->received_write_blob_);
+  EXPECT_EQ(kBlobId, testable_writer_->received_write_blob_uuid_);
   EXPECT_FALSE(testable_writer_->received_truncate_);
   EXPECT_FALSE(testable_writer_->received_cancel_);
 
@@ -274,15 +268,15 @@ TEST_F(FileWriterTest, MultiFileWrite) {
 }
 
 TEST_F(FileWriterTest, CancelFileWriteBeforeCompletion) {
-  Blob* blob = CreateTestBlob();
-  writer()->Write(kCancelFileWriteBeforeCompletion_Offset, *blob);
+  const String kBlobId("1234");
+  writer()->Write(kCancelFileWriteBeforeCompletion_Offset, kBlobId);
 
   // Check that the Do* methods of the derived class get called correctly.
   EXPECT_TRUE(testable_writer_->received_write_);
   EXPECT_EQ(testable_writer_->received_write_path_, mock_path_as_kurl());
   EXPECT_EQ(kCancelFileWriteBeforeCompletion_Offset,
             testable_writer_->received_write_offset_);
-  EXPECT_EQ(blob, testable_writer_->received_write_blob_);
+  EXPECT_EQ(kBlobId, testable_writer_->received_write_blob_uuid_);
   EXPECT_TRUE(testable_writer_->received_cancel_);
   EXPECT_FALSE(testable_writer_->received_truncate_);
 
@@ -297,15 +291,15 @@ TEST_F(FileWriterTest, CancelFileWriteBeforeCompletion) {
 }
 
 TEST_F(FileWriterTest, CancelFileWriteAfterCompletion) {
-  Blob* blob = CreateTestBlob();
-  writer()->Write(kCancelFileWriteAfterCompletion_Offset, *blob);
+  const String kBlobId("1234");
+  writer()->Write(kCancelFileWriteAfterCompletion_Offset, kBlobId);
 
   // Check that the Do* methods of the derived class get called correctly.
   EXPECT_TRUE(testable_writer_->received_write_);
   EXPECT_EQ(testable_writer_->received_write_path_, mock_path_as_kurl());
   EXPECT_EQ(kCancelFileWriteAfterCompletion_Offset,
             testable_writer_->received_write_offset_);
-  EXPECT_EQ(blob, testable_writer_->received_write_blob_);
+  EXPECT_EQ(kBlobId, testable_writer_->received_write_blob_uuid_);
   EXPECT_TRUE(testable_writer_->received_cancel_);
   EXPECT_FALSE(testable_writer_->received_truncate_);
 

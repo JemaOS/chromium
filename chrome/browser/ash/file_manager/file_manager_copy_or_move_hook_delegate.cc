@@ -55,12 +55,10 @@ void FileManagerCopyOrMoveHookDelegate::OnProgress(
 void FileManagerCopyOrMoveHookDelegate::OnError(
     const storage::FileSystemURL& source_url,
     const storage::FileSystemURL& destination_url,
-    base::File::Error error,
-    ErrorCallback callback) {
+    base::File::Error error) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   progress_callback_.Run(ProgressType::kError, source_url, destination_url,
                          /*size=*/0);
-  std::move(callback).Run(ErrorAction::kDefault);
 }
 
 void FileManagerCopyOrMoveHookDelegate::OnEndCopy(

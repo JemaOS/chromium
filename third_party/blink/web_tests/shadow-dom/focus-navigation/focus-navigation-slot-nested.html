@@ -41,6 +41,8 @@ test(function() {
     'i1'
   ];
 
-  assert_focus_navigation_bidirectional(elements);
+  assert_focus_navigation_forward(elements);
+  elements.reverse();
+  assert_focus_navigation_backward(elements);
 }, 'Focus controller should treat each slot as a focus scope.');
 </script>

@@ -69,8 +69,7 @@ class WebsiteApprovalNotifierTest : public testing::Test {
   TestingProfile profile_;
   NotificationDisplayServiceTester notification_tester_{&profile_};
   WebsiteApprovalNotifier notifier_{&profile_};
-  raw_ptr<MockNewWindowDelegate, DanglingUntriaged>
-      new_window_delegate_primary_;
+  raw_ptr<MockNewWindowDelegate, ExperimentalAsh> new_window_delegate_primary_;
   std::unique_ptr<TestNewWindowDelegateProvider> new_window_provider_;
 };
 
@@ -105,8 +104,8 @@ TEST_F(WebsiteApprovalNotifierTest, MetricRecording) {
                    "SupervisedUsers_RemoteWebApproval_NotificationShown"));
   notification_tester_.SimulateClick(NotificationHandler::Type::TRANSIENT,
                                      GetNotificationId(host),
-                                     /*action_index=*/std::nullopt,
-                                     /*reply=*/std::nullopt);
+                                     /*action_index=*/absl::nullopt,
+                                     /*reply=*/absl::nullopt);
   EXPECT_EQ(1, user_action_tester.GetActionCount(
                    "SupervisedUsers_RemoteWebApproval_NotificationClicked"));
 }
@@ -123,8 +122,8 @@ TEST_F(WebsiteApprovalNotifierTest, UrlOpensInPrimaryBrowser) {
                       NewWindowDelegate::Disposition::kNewForegroundTab));
   notification_tester_.SimulateClick(NotificationHandler::Type::TRANSIENT,
                                      GetNotificationId(host),
-                                     /*action_index=*/std::nullopt,
-                                     /*reply=*/std::nullopt);
+                                     /*action_index=*/absl::nullopt,
+                                     /*reply=*/absl::nullopt);
 }
 
 }  // namespace ash

@@ -30,7 +30,6 @@
 #include "third_party/blink/renderer/core/css/style_color.h"
 #include "ui/gfx/geometry/outsets_f.h"
 #include "ui/gfx/geometry/point_f.h"
-#include "ui/gfx/geometry/vector2d_f.h"
 
 namespace blink {
 
@@ -42,39 +41,40 @@ class CORE_EXPORT ShadowData {
   USING_FAST_MALLOC(ShadowData);
 
  public:
-  ShadowData(gfx::Vector2dF offset,
+  ShadowData(gfx::PointF location,
              float blur,
              float spread,
              ShadowStyle style,
              StyleColor color,
              float opacity = 1.0f)
-      : offset_(offset),
+      : location_(location),
         blur_(blur, blur),
         spread_(spread),
         color_(color),
         style_(style),
         opacity_(opacity) {}
 
-  ShadowData(gfx::Vector2dF offset,
+  ShadowData(gfx::PointF location,
              gfx::PointF blur,
              float spread,
              ShadowStyle style,
              StyleColor color,
              float opacity = 1.0f)
-      : offset_(offset),
+      : location_(location),
         blur_(blur),
         spread_(spread),
         color_(color),
         style_(style),
         opacity_(opacity) {}
 
-  bool operator==(const ShadowData&) const = default;
+  bool operator==(const ShadowData&) const;
+  bool operator!=(const ShadowData& o) const { return !(*this == o); }
 
   static ShadowData NeutralValue();
 
-  float X() const { return offset_.x(); }
-  float Y() const { return offset_.y(); }
-  gfx::Vector2dF Offset() const { return offset_; }
+  float X() const { return location_.x(); }
+  float Y() const { return location_.y(); }
+  gfx::PointF Location() const { return location_; }
   float Blur() const { return blur_.x(); }
   gfx::PointF BlurXY() const { return blur_; }
   float Spread() const { return spread_; }
@@ -82,12 +82,14 @@ class CORE_EXPORT ShadowData {
   StyleColor GetColor() const { return color_; }
   float Opacity() const { return opacity_; }
 
+  void OverrideColor(Color color) { color_ = StyleColor(color); }
+
   // Outsets needed to adjust a source rectangle to the one cast by this
   // shadow.
   gfx::OutsetsF RectOutsets() const;
 
  private:
-  gfx::Vector2dF offset_;
+  gfx::PointF location_;
   gfx::PointF blur_;
   float spread_;
   StyleColor color_;

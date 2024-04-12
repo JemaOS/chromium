@@ -27,7 +27,7 @@ class SpeechRecognitionPrivateStartFunction : public ExtensionFunction {
  private:
   // A callback that is run when the speech recognition service starts.
   void OnStart(speech::SpeechRecognitionType type,
-               std::optional<std::string> error);
+               absl::optional<std::string> error);
 };
 
 // An API function that stops speech recognition.
@@ -42,7 +42,7 @@ class SpeechRecognitionPrivateStopFunction : public ExtensionFunction {
 
  private:
   // A callback that is run when the speech recognition service stops.
-  void OnStop(std::optional<std::string> error);
+  void OnStop(absl::optional<std::string> error);
 };
 
 }  // namespace extensions

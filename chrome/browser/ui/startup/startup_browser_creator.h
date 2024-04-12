@@ -86,13 +86,14 @@ enum class StartupProfileModeReason {
   kMaxValue = kUserOptedOut,
 };
 
-// Bundles the startup profile path together with a `StartupProfileMode`.
+// Bundles the startup profile path together with a StartupProfileMode.
 // Depending on `StartupProfileModeFromReason(reason)`, `path` is either:
-// - regular profile path for `kBrowserWindow`; if the guest mode is requested,
-//   may contain either the default profile path or the guest profile path
-// - empty profile path for `kProfilePicker` and `kError`
+// - regular profile path for kBrowserWindow; if the guest mode is requested,
+//   contains default profile path with kBrowserWindow mode
+// - guest profile path for kProfilePicker,
+// - empty path for kError
 // TODO(https://crbug.com/1150326): return a guest profile path for the Guest
-// mode.
+// mode and an empty path for kProfilePicker mode
 struct StartupProfilePathInfo {
   base::FilePath path;
   StartupProfileModeReason reason = StartupProfileModeReason::kError;
@@ -100,12 +101,14 @@ struct StartupProfilePathInfo {
 
 // Bundles the startup profile together with a StartupProfileMode.
 // Depending on the `mode` value, `profile` is either:
-// - regular profile for `kBrowserWindow`; if the Guest mode is requested,
-//   may contain either the default profile path or the guest profile path
-// - nullptr for `kProfilePicker` and `kError`
-// TODO(https://crbug.com/1150326): return a guest profile for the Guest mode.
+// - regular profile for kBrowserWindow; if the Guest mode is requested,
+//   contains default profile with kBrowserWindow mode
+// - guest profile for kProfilePicker,
+// - nullptr for kError
+// TODO(https://crbug.com/1150326): return a guest profile for the Guest mode
+// and return nullptr for kProfilePicker.
 struct StartupProfileInfo {
-  raw_ptr<Profile, LeakedDanglingUntriaged> profile;
+  raw_ptr<Profile> profile;
   StartupProfileMode mode;
 };
 
@@ -128,6 +131,17 @@ class StartupBrowserCreator {
   // tabs shown at first run.
   // Invalid URLs (per `GURL::is_valid()`) are skipped.
   void AddFirstRunTabs(const std::vector<GURL>& urls);
+
+#if BUILDFLAG(IS_WIN)
+  // Configures the instance to include the specified "welcome back" page in a
+  // tab before other tabs (e.g., those from session restore). This is used for
+  // specific launches via retention experiments for which no URLs are provided
+  // on the command line. No "welcome back" page is shown to supervised users.
+  void set_welcome_back_page(bool welcome_back_page) {
+    welcome_back_page_ = welcome_back_page;
+  }
+  bool welcome_back_page() const { return welcome_back_page_; }
+#endif  // BUILDFLAG(IS_WIN)
 
   // This function is equivalent to ProcessCommandLine but should only be
   // called during actual process startup.
@@ -163,32 +177,24 @@ class StartupBrowserCreator {
   // |process_startup| indicates whether this is the first browser.
   // |is_first_run| indicates that this is a new profile.
   // If |launch_mode_recorder| is non null, and a browser is launched, a launch
-  // mode histogram will be recorded. `restore_tabbed_browser` should only
-  // be flipped false by Ash full restore code path, suppressing restoring a
-  // normal browser when there were only PWAs open in previous session. See
-  // crbug.com/1463906.
+  // mode histogram will be recorded.
   void LaunchBrowser(
       const base::CommandLine& command_line,
       Profile* profile,
       const base::FilePath& cur_dir,
       chrome::startup::IsProcessStartup process_startup,
       chrome::startup::IsFirstRun is_first_run,
-      std::unique_ptr<OldLaunchModeRecorder> launch_mode_recorder,
-      bool restore_tabbed_browser);
+      std::unique_ptr<OldLaunchModeRecorder> launch_mode_recorder);
 
   // Launches browser for `last_opened_profiles` if it's not empty. Otherwise,
-  // launches browser for `profile_info`. `restore_tabbed_browser` should
-  // only be flipped false by Ash full restore code path, suppressing restoring
-  // a normal browser when there were only PWAs open in previous session. See
-  // crbug.com/1463906.
+  // launches browser for `profile_info`.
   void LaunchBrowserForLastProfiles(
       const base::CommandLine& command_line,
       const base::FilePath& cur_dir,
       chrome::startup::IsProcessStartup process_startup,
       chrome::startup::IsFirstRun is_first_run,
       StartupProfileInfo profile_info,
-      const Profiles& last_opened_profiles,
-      bool restore_tabbed_browser);
+      const Profiles& last_opened_profiles);
 
   // Returns true during browser process startup if the previous browser was
   // restarted. This only returns true before the first StartupBrowserCreator
@@ -305,6 +311,11 @@ class StartupBrowserCreator {
 
   // Additional tabs to open during first run.
   std::vector<GURL> first_run_tabs_;
+
+#if BUILDFLAG(IS_WIN)
+  // The page to be shown in a tab when welcoming a user back to Chrome.
+  bool welcome_back_page_ = false;
+#endif  // BUILDFLAG(IS_WIN)
 
   // True if we have already read and reset the preference kWasRestarted. (A
   // member variable instead of a static variable inside WasRestarted because

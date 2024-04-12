@@ -8,7 +8,6 @@
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_binding_for_modules.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
@@ -30,13 +29,12 @@ class OffscreenCanvasRenderingAPIUkmMetricsTest : public PageTestBase {
     GetDocument().documentElement()->setInnerHTML(
         "<body><canvas id='c'></canvas></body>");
     auto* canvas_element =
-        To<HTMLCanvasElement>(GetDocument().getElementById(AtomicString("c")));
+        To<HTMLCanvasElement>(GetDocument().getElementById("c"));
 
     DummyExceptionStateForTesting exception_state;
     offscreen_canvas_element_ =
         HTMLCanvasElementModule::transferControlToOffscreen(
-            ToScriptStateForMainWorld(GetDocument().GetFrame()),
-            *canvas_element, exception_state);
+            GetDocument().domWindow(), *canvas_element, exception_state);
     UpdateAllLifecyclePhasesForTest();
   }
 
@@ -49,7 +47,7 @@ class OffscreenCanvasRenderingAPIUkmMetricsTest : public PageTestBase {
     auto entries = recorder_.GetEntriesByName(
         ukm::builders::ClientRenderingAPI::kEntryName);
     EXPECT_EQ(1ul, entries.size());
-    auto* entry = entries[0].get();
+    auto* entry = entries[0];
     ukm::TestUkmRecorder::ExpectEntryMetric(
         entry,
         ukm::builders::ClientRenderingAPI::

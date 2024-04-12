@@ -30,7 +30,7 @@ using bookmarks::BookmarkNode;
 
 class BookmarkMenuBridgeTest : public BrowserWithTestWindowTest {
  public:
-  BookmarkMenuBridgeTest() = default;
+  BookmarkMenuBridgeTest() {}
 
   BookmarkMenuBridgeTest(const BookmarkMenuBridgeTest&) = delete;
   BookmarkMenuBridgeTest& operator=(const BookmarkMenuBridgeTest&) = delete;
@@ -40,7 +40,7 @@ class BookmarkMenuBridgeTest : public BrowserWithTestWindowTest {
 
     bookmarks::test::WaitForBookmarkModelToLoad(
         BookmarkModelFactory::GetForBrowserContext(profile()));
-    menu_ = [[NSMenu alloc] initWithTitle:@"test"];
+    menu_.reset([[NSMenu alloc] initWithTitle:@"test"]);
 
     bridge_ = std::make_unique<BookmarkMenuBridge>(profile(), menu_);
   }
@@ -82,9 +82,9 @@ class BookmarkMenuBridgeTest : public BrowserWithTestWindowTest {
   }
 
   NSMenuItem* AddTestMenuItem(NSMenu *menu, NSString *title, SEL selector) {
-    NSMenuItem* item = [[NSMenuItem alloc] initWithTitle:title
-                                                  action:nullptr
-                                           keyEquivalent:@""];
+    NSMenuItem* item = [[[NSMenuItem alloc] initWithTitle:title
+                                                   action:nullptr
+                                            keyEquivalent:@""] autorelease];
     if (selector)
       [item setAction:selector];
     [menu addItem:item];
@@ -92,7 +92,7 @@ class BookmarkMenuBridgeTest : public BrowserWithTestWindowTest {
   }
 
  protected:
-  NSMenu* __strong menu_;
+  base::scoped_nsobject<NSMenu> menu_;
   std::unique_ptr<BookmarkMenuBridge> bridge_;
 
  private:
@@ -101,7 +101,7 @@ class BookmarkMenuBridgeTest : public BrowserWithTestWindowTest {
 
 TEST_F(BookmarkMenuBridgeTest, TestBookmarkMenuAutoSeparator) {
   BookmarkModel* model = bridge_->GetBookmarkModel();
-  bridge_->BookmarkModelLoaded(false);
+  bridge_->BookmarkModelLoaded(model, false);
   UpdateRootMenu();
   // The bare menu after loading used to have a separator and an
   // "Other Bookmarks" submenu, but we no longer show those items if the
@@ -127,7 +127,7 @@ TEST_F(BookmarkMenuBridgeTest, TestClearBookmarkMenu) {
   AddTestMenuItem(menu_, @"hi mom", nil);
   AddTestMenuItem(menu_, @"not", @selector(openBookmarkMenuItem:));
   NSMenuItem* test_item = AddTestMenuItem(menu_, @"hi mom", nil);
-  [test_item setSubmenu:[[NSMenu alloc] initWithTitle:@"bar"]];
+  [test_item setSubmenu:[[[NSMenu alloc] initWithTitle:@"bar"] autorelease]];
   AddTestMenuItem(menu_, @"not", @selector(openBookmarkMenuItem:));
   AddTestMenuItem(menu_, @"zippy", @selector(length));
   [menu_ addItem:[NSMenuItem separatorItem]];
@@ -147,7 +147,7 @@ TEST_F(BookmarkMenuBridgeTest, TestInvalidation) {
   BookmarkModel* model = bridge_->GetBookmarkModel();
   model->AddURL(model->bookmark_bar_node(), 0, u"Google",
                 GURL("https://google.com"));
-  bridge_->BookmarkModelLoaded(false);
+  bridge_->BookmarkModelLoaded(model, false);
 
   EXPECT_FALSE(menu_is_valid());
   UpdateRootMenu();
@@ -282,14 +282,15 @@ TEST_F(BookmarkMenuBridgeTest, TestGetMenuItemForNode) {
   model->AddURL(folder, 1, u"Test 2", GURL("http://second-test"));
 
   UpdateRootMenu();
-  NSMenu* old_menu = [[menu_ itemAtIndex:1] submenu];
+  base::scoped_nsobject<NSMenu> old_menu(
+      [[[menu_ itemAtIndex:1] submenu] retain]);
   EXPECT_TRUE([old_menu delegate]);
 
   // If the menu was never built, ensure UpdateRootMenu() also clears delegates
   // from unbuilt submenus, since they will no longer be reachable.
   InvalidateMenu();
   UpdateRootMenu();
-  EXPECT_NE(old_menu, [[menu_ itemAtIndex:1] submenu]);
+  EXPECT_NE(old_menu.get(), [[menu_ itemAtIndex:1] submenu]);
   EXPECT_FALSE([old_menu delegate]);
 
   bridge_->UpdateMenu([[menu_ itemAtIndex:1] submenu], folder,
@@ -360,7 +361,7 @@ TEST_F(BookmarkMenuBridgeTest, TestFaviconLoading) {
   NSMenuItem* item = [menu_ itemWithTitle:@"Test Item"];
   EXPECT_TRUE([item image]);
   [item setImage:nil];
-  bridge_->BookmarkNodeFaviconChanged(node);
+  bridge_->BookmarkNodeFaviconChanged(model, node);
   EXPECT_TRUE([item image]);
 }
 

@@ -7,7 +7,6 @@
 #include "ash/constants/ash_features.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
-#include "base/scoped_observation.h"
 #include "chrome/browser/ash/app_list/app_list_syncable_service.h"
 #include "chrome/browser/ash/app_list/app_list_syncable_service_factory.h"
 #include "chrome/browser/ash/app_list/chrome_app_list_item.h"
@@ -20,8 +19,8 @@
 #include "chrome/browser/sync/test/integration/sync_test.h"
 #include "chrome/browser/sync/test/integration/updated_progress_marker_checker.h"
 #include "components/sync/base/user_selectable_type.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_user_settings.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "content/public/test/browser_test.h"
 
 using syncer::UserSelectableOsTypeSet;
@@ -72,14 +71,15 @@ class AppListSyncUpdateWaiter
     : public StatusChangeChecker,
       public app_list::AppListSyncableService::Observer {
  public:
-  explicit AppListSyncUpdateWaiter(app_list::AppListSyncableService* service) {
-    observer_.Observe(service);
+  explicit AppListSyncUpdateWaiter(app_list::AppListSyncableService* service)
+      : service_(service) {
+    service_->AddObserverAndStart(this);
   }
 
   AppListSyncUpdateWaiter(const AppListSyncUpdateWaiter&) = delete;
   AppListSyncUpdateWaiter& operator=(const AppListSyncUpdateWaiter&) = delete;
 
-  ~AppListSyncUpdateWaiter() override = default;
+  ~AppListSyncUpdateWaiter() override { service_->RemoveObserver(this); }
 
   // StatusChangeChecker:
   bool IsExitConditionSatisfied(std::ostream* os) override {
@@ -94,9 +94,7 @@ class AppListSyncUpdateWaiter
   }
 
  private:
-  base::ScopedObservation<app_list::AppListSyncableService,
-                          app_list::AppListSyncableService::Observer>
-      observer_{this};
+  const raw_ptr<app_list::AppListSyncableService, ExperimentalAsh> service_;
   bool service_updated_ = false;
 };
 
@@ -158,7 +156,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientAppListSyncTestWithVerifier,
   const size_t kNumDefaultApps =
       2u + app_list::GetNumberOfInternalAppsShowInLauncherForTest(
                /*apps_name=*/nullptr, GetProfile(0));
-  ASSERT_EQ(kNumApps + kNumDefaultApps, service->sync_items().size());
+  ASSERT_EQ(kNumApps + kNumDefaultApps, service->GetNumSyncItemsForTest());
 
   ASSERT_TRUE(UpdatedProgressMarkerChecker(GetSyncService(0)).Wait());
   ASSERT_TRUE(AllProfilesHaveSameAppList());
@@ -185,7 +183,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientAppListSyncTest, LocalStorage) {
   base::RunLoop().RunUntilIdle();
 
   for (const std::string& app_id : app_ids) {
-    service->SetPinPosition(app_id, pin_position, /*pinned_by_policy=*/false);
+    service->SetPinPosition(app_id, pin_position);
     pin_position = pin_position.CreateAfter();
   }
   EXPECT_TRUE(SyncItemsHaveNames(service));
@@ -230,7 +228,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientAppListSyncTest, LocalStorage) {
 
   // Change data when sync is off.
   for (const std::string& app_id : app_ids) {
-    service->SetPinPosition(app_id, pin_position, /*pinned_by_policy=*/false);
+    service->SetPinPosition(app_id, pin_position);
     pin_position = pin_position.CreateAfter();
   }
   SyncAppListHelper::GetInstance()->MoveAppFromFolder(profile, app_ids[0],
@@ -266,14 +264,14 @@ IN_PROC_BROWSER_TEST_F(SingleClientAppListOsSyncTest,
 
   // Disable all browser types.
   settings->SetSelectedTypes(false, UserSelectableTypeSet());
-  ASSERT_TRUE(GetClient(0)->AwaitSyncSetupCompletion());
+  GetClient(0)->AwaitSyncSetupCompletion();
 
   // APP_LIST is still synced because it is an OS setting.
   EXPECT_TRUE(service->GetActiveDataTypes().Has(syncer::APP_LIST));
 
   // Disable OS types.
   settings->SetSelectedOsTypes(false, UserSelectableOsTypeSet());
-  ASSERT_TRUE(GetClient(0)->AwaitSyncSetupCompletion());
+  GetClient(0)->AwaitSyncSetupCompletion();
 
   // APP_LIST is not synced.
   EXPECT_FALSE(service->GetActiveDataTypes().Has(syncer::APP_LIST));

@@ -22,8 +22,7 @@ constexpr char kArcPolicyKeyAccountTypesWithManagementDisabled[] =
     "accountTypesWithManagementDisabled";
 constexpr char kArcPolicyKeyAlwaysOnVpnPackage[] = "alwaysOnVpnPackage";
 constexpr char kArcPolicyKeyApplications[] = "applications";
-constexpr char kArcPolicyKeyAvailableAppSetPolicyDeprecated[] =
-    "availableAppSetPolicy";
+constexpr char kArcPolicyKeyAvailableAppSetPolicy[] = "availableAppSetPolicy";
 constexpr char kArcPolicyKeyComplianceRules[] = "complianceRules";
 constexpr char kArcPolicyKeyInstallUnknownSourcesDisabled[] =
     "installUnknownSourcesDisabled";
@@ -36,33 +35,8 @@ constexpr char kArcPolicyKeyPlayStoreMode[] = "playStoreMode";
 constexpr char kArcPolicyKeyShortSupportMessage[] = "shortSupportMessage";
 constexpr char kArcPolicyKeyStatusReportingSettings[] =
     "statusReportingSettings";
-constexpr char kArcPolicyKeyWorkAccountAppWhitelistDeprecated[] =
+constexpr char kArcPolicyKeyWorkAccountAppWhitelist[] =
     "workAccountAppWhitelist";
-constexpr char kArcPolicyKeyGuid[] = "guid";
-constexpr char kArcPolicyKeyApkCacheEnabled[] = "apkCacheEnabled";
-constexpr char kArcPolicyKeyMountPhysicalMediaDisabled[] =
-    "mountPhysicalMediaDisabled";
-constexpr char kArcPolicyKeyDebuggingFeaturesDisabled[] =
-    "debuggingFeaturesDisabled";
-constexpr char kArcPolicyKeyCameraDisabled[] = "cameraDisabled";
-constexpr char kArcPolicyKeyPrintingDisabled[] = "printingDisabled";
-constexpr char kArcPolicyKeyScreenCaptureDisabled[] = "screenCaptureDisabled";
-constexpr char kArcPolicyKeyShareLocationDisabled[] = "shareLocationDisabled";
-constexpr char kArcPolicyKeyUnmuteMicrophoneDisabled[] =
-    "unmuteMicrophoneDisabled";
-constexpr char kArcPolicyKeySetWallpaperDisabled[] = "setWallpaperDisabled";
-constexpr char kArcPolicyKeyVpnConfigDisabled[] = "vpnConfigDisabled";
-constexpr char kArcPolicyKeyPrivateKeySelectionEnabled[] =
-    "privateKeySelectionEnabled";
-constexpr char kArcPolicyKeyChoosePrivateKeyRules[] = "choosePrivateKeyRules";
-constexpr char kArcPolicyKeyCredentialsConfigDisabled[] =
-    "credentialsConfigDisabled";
-constexpr char kArcPolicyKeyCaCerts[] = "caCerts";
-constexpr char kArcPolicyKeyRequiredKeyPairs[] = "requiredKeyPairs";
-constexpr char kArcPolicyKeyDpsInteractionsDisabled[] =
-    "dpsInteractionsDisabled";
-constexpr char kArcPolicyKeyEnabledSystemAppPackageNames[] =
-    "enabledSystemAppPackageNames";
 
 // An app's install type specified by the policy.
 // See google3/wireless/android/enterprise/clouddps/proto/schema.proto.
@@ -91,7 +65,7 @@ enum class ArcPolicyKey {
   kAccountTypesWithManagementDisabled = 1,
   kAlwaysOnVpnPackage = 2,
   kApplications = 3,
-  kAvailableAppSetPolicyDeprecated = 4,
+  kAvailableAppSetPolicy = 4,
   kComplianceRules = 5,
   kInstallUnknownSourcesDisabled = 6,
   kMaintenanceWindow = 7,
@@ -101,23 +75,8 @@ enum class ArcPolicyKey {
   kPlayStoreMode = 11,
   kShortSupportMessage = 12,
   kStatusReportingSettings = 13,
-  kWorkAccountAppWhitelistDeprecated = 14,
-  kApkCacheEnabled = 15,
-  kDebuggingFeaturesDisabled = 16,
-  kCameraDisabled = 17,
-  kPrintingDisabled = 18,
-  kScreenCaptureDisabled = 19,
-  kShareLocationDisabled = 20,
-  kUnmuteMicrophoneDisabled = 21,
-  kSetWallpaperDisabled = 22,
-  kVpnConfigDisabled = 23,
-  kPrivateKeySelectionEnabled = 24,
-  kChoosePrivateKeyRules = 25,
-  kCredentialsConfigDisabled = 26,
-  kCaCerts = 27,
-  kRequiredKeyPairs = 28,
-  kEnabledSystemAppPackageNames = 29,
-  kMaxValue = kEnabledSystemAppPackageNames,
+  kWorkAccountAppWhitelist = 14,
+  kMaxValue = kWorkAccountAppWhitelist,
 };
 
 // Returns true if the account is managed. Otherwise false.
@@ -144,11 +103,10 @@ std::map<std::string, std::set<std::string>> CreateInstallTypeMap(
 InstallType GetInstallTypeEnumFromString(const std::string& install_type);
 
 // Converts a string to its corresponding ArcPolicyKey enum.
-std::optional<ArcPolicyKey> GetPolicyKeyFromString(
-    const std::string& policy_key);
+ArcPolicyKey GetPolicyKeyFromString(const std::string& policy_key);
 
 // Parses policy JSON string to a dictionary.
-std::optional<base::Value> ParsePolicyJson(const std::string& arc_policy);
+absl::optional<base::Value> ParsePolicyJson(const std::string& arc_policy);
 
 }  // namespace policy_util
 }  // namespace arc

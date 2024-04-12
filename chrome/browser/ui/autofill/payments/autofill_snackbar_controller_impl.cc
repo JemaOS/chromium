@@ -1,15 +1,13 @@
 // Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
 #include "chrome/browser/ui/autofill/payments/autofill_snackbar_controller_impl.h"
 
 #include <string>
 #include "base/metrics/histogram_functions.h"
 #include "build/build_config.h"
-#include "chrome/browser/android/preferences/autofill/settings_launcher_helper.h"
-#include "chrome/browser/keyboard_accessory/android/manual_filling_controller.h"
-#include "chrome/browser/keyboard_accessory/android/manual_filling_controller_impl.h"
+#include "chrome/browser/autofill/manual_filling_controller.h"
+#include "chrome/browser/autofill/manual_filling_controller_impl.h"
 #include "chrome/browser/ui/android/autofill/snackbar/autofill_snackbar_view_android.h"
 #include "components/strings/grit/components_strings.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -25,68 +23,35 @@ AutofillSnackbarControllerImpl::~AutofillSnackbarControllerImpl() {
   Dismiss();
 }
 
-void AutofillSnackbarControllerImpl::Show(
-    AutofillSnackbarType autofill_snackbar_type) {
-  CHECK_NE(autofill_snackbar_type, AutofillSnackbarType::kUnspecified);
+void AutofillSnackbarControllerImpl::Show() {
   if (autofill_snackbar_view_) {
     // A snackbar is already showing. Ignore the new request.
     return;
   }
-  autofill_snackbar_type_ = autofill_snackbar_type;
   autofill_snackbar_view_ = AutofillSnackbarView::Create(this);
   autofill_snackbar_view_->Show();
-  base::UmaHistogramBoolean(
-      "Autofill.Snackbar." + GetSnackbarTypeForLogging() + ".Shown", true);
+  base::UmaHistogramBoolean("Autofill.Snackbar.VirtualCard.Shown", true);
 }
 
 void AutofillSnackbarControllerImpl::OnActionClicked() {
-  switch (autofill_snackbar_type_) {
-    case AutofillSnackbarType::kVirtualCard:
-      ManualFillingControllerImpl::GetOrCreate(GetWebContents())
-          ->ShowAccessorySheetTab(autofill::AccessoryTabType::CREDIT_CARDS);
-      break;
-    case AutofillSnackbarType::kMandatoryReauth:
-      // For mandatory reauth snackbar, we will show Android credit card
-      // settings page.
-      ShowAutofillCreditCardSettings(GetWebContents());
-      break;
-    case AutofillSnackbarType::kUnspecified:
-      NOTREACHED_NORETURN();
-  }
-  base::UmaHistogramBoolean(
-      "Autofill.Snackbar." + GetSnackbarTypeForLogging() + ".ActionClicked",
-      true);
+  ManualFillingControllerImpl::GetOrCreate(GetWebContents())
+      ->ShowAccessorySheetTab(autofill::AccessoryTabType::CREDIT_CARDS);
+  base::UmaHistogramBoolean("Autofill.Snackbar.VirtualCard.ActionClicked",
+                            true);
 }
 
 void AutofillSnackbarControllerImpl::OnDismissed() {
   autofill_snackbar_view_ = nullptr;
-  autofill_snackbar_type_ = AutofillSnackbarType::kUnspecified;
 }
 
 std::u16string AutofillSnackbarControllerImpl::GetMessageText() const {
-  switch (autofill_snackbar_type_) {
-    case AutofillSnackbarType::kVirtualCard:
-      return l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_VIRTUAL_CARD_NUMBER_SNACKBAR_MESSAGE_TEXT);
-    case AutofillSnackbarType::kMandatoryReauth:
-      return l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_MANDATORY_REAUTH_SNACKBAR_MESSAGE_TEXT);
-    case AutofillSnackbarType::kUnspecified:
-      NOTREACHED_NORETURN();
-  }
+  return l10n_util::GetStringUTF16(
+      IDS_AUTOFILL_VIRTUAL_CARD_NUMBER_SNACKBAR_MESSAGE_TEXT);
 }
 
 std::u16string AutofillSnackbarControllerImpl::GetActionButtonText() const {
-  switch (autofill_snackbar_type_) {
-    case AutofillSnackbarType::kVirtualCard:
-      return l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_VIRTUAL_CARD_NUMBER_SNACKBAR_ACTION_TEXT);
-    case AutofillSnackbarType::kMandatoryReauth:
-      return l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_MANDATORY_REAUTH_SNACKBAR_ACTION_TEXT);
-    case AutofillSnackbarType::kUnspecified:
-      NOTREACHED_NORETURN();
-  }
+  return l10n_util::GetStringUTF16(
+      IDS_AUTOFILL_VIRTUAL_CARD_NUMBER_SNACKBAR_ACTION_TEXT);
 }
 
 content::WebContents* AutofillSnackbarControllerImpl::GetWebContents() const {
@@ -99,17 +64,6 @@ void AutofillSnackbarControllerImpl::Dismiss() {
   }
 
   autofill_snackbar_view_->Dismiss();
-}
-
-std::string AutofillSnackbarControllerImpl::GetSnackbarTypeForLogging() {
-  switch (autofill_snackbar_type_) {
-    case AutofillSnackbarType::kVirtualCard:
-      return "VirtualCard";
-    case AutofillSnackbarType::kMandatoryReauth:
-      return "MandatoryReauth";
-    case AutofillSnackbarType::kUnspecified:
-      return "Unspecified";
-  }
 }
 
 }  // namespace autofill

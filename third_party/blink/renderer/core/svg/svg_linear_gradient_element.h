@@ -52,10 +52,6 @@ class SVGLinearGradientElement final : public SVGGradientElement {
 
   bool SelfHasRelativeLengths() const override;
 
-  SVGAnimatedPropertyBase* PropertyFromAttribute(
-      const QualifiedName& attribute_name) const override;
-  void SynchronizeAllSVGAttributes() const override;
-
   Member<SVGAnimatedLength> x1_;
   Member<SVGAnimatedLength> y1_;
   Member<SVGAnimatedLength> x2_;

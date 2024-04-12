@@ -14,16 +14,12 @@
 
 namespace ash {
 
-class BlurredBackgroundShield;
-
 // A label button with a rounded rectangle background. It can have an icon
 // inside as well, and its text and background colors will be different based on
 // the type of the button.
 class ASH_EXPORT PillButton : public views::LabelButton {
-  METADATA_HEADER(PillButton, views::LabelButton)
-
  public:
-  using ColorVariant = absl::variant<SkColor, ui::ColorId>;
+  METADATA_HEADER(PillButton);
 
   static constexpr int kPillButtonHorizontalSpacing = 16;
   static constexpr int kPaddingReductionForIcon = 4;
@@ -74,24 +70,22 @@ class ASH_EXPORT PillButton : public views::LabelButton {
 
     // PillButton with default-elevated text and background colors, a leading
     // icon.
-    kDefaultElevatedWithIconLeading = kDefaultElevated | kIconLeading,
+    kDefaultElevatedWithIconLeading = kDefault | kIconLeading,
     // PillButton with default-elevated text and background colors, a following
     // icon.
-    kDefaultElevatedWithIconFollowing = kDefaultElevated | kIconFollowing,
+    kDefaultElevatedWithIconFollowing = kDefault | kIconFollowing,
     // PillButton with default-elevated text and background colors, a large
     // button size, a leading icon.
-    kDefaultElevatedLargeWithIconLeading =
-        kDefaultElevated | kLarge | kIconLeading,
+    kDefaultElevatedLargeWithIconLeading = kDefault | kLarge | kIconLeading,
     // PillButton with default-elevated text and background colors, a large
     // button size, a following icon.
-    kDefaultElevatedLargeWithIconFollowing =
-        kDefaultElevated | kLarge | kIconFollowing,
+    kDefaultElevatedLargeWithIconFollowing = kDefault | kLarge | kIconFollowing,
     // PillButton with default-elevated text and background colors, no icon.
-    kDefaultElevatedWithoutIcon = kDefaultElevated,
+    kDefaultElevatedWithoutIcon = kDefault,
     // PillButton with default-elevated text and background colors, a large
     // button size,
     // no icon.
-    kDefaultElevatedLargeWithoutIcon = kDefaultElevated | kLarge,
+    kDefaultElevatedLargeWithoutIcon = kDefault | kLarge,
 
     // PillButton with primary text and background colors, a leading icon.
     kPrimaryWithIconLeading = kPrimary | kIconLeading,
@@ -178,12 +172,12 @@ class ASH_EXPORT PillButton : public views::LabelButton {
   ~PillButton() override;
 
   // views::LabelButton:
+  void AddedToWidget() override;
   gfx::Size CalculatePreferredSize() const override;
   int GetHeightForWidth(int width) const override;
+  void OnThemeChanged() override;
   gfx::Insets GetInsets() const override;
   void UpdateBackgroundColor() override;
-  views::PropertyEffects UpdateStyleToIndicateDefaultStatus() override;
-  std::u16string GetTooltipText(const gfx::Point& p) const override;
 
   // Sets the button's background color, text's color or icon's color. Note, do
   // this only when the button wants to have different colors from the default
@@ -194,21 +188,11 @@ class ASH_EXPORT PillButton : public views::LabelButton {
   void SetButtonTextColorId(ui::ColorId text_color_id);
   void SetIconColor(const SkColor icon_color);
   void SetIconColorId(ui::ColorId icon_color_id);
-  // TODO(b/290639214): This method is deprecating. Try not to change button
-  // type afterward. If a new button type is needed, please create a new
-  // instance.
   void SetPillButtonType(Type type);
 
   // Sets the button's label to use the default label font, which is smaller
   // and less heavily weighted.
   void SetUseDefaultLabelFont();
-
-  // Sets if the button should enable the background blur. Once the button
-  // enables the background blur, it will use `BlurredBackgroundShield` as the
-  // background which is performance consuming so only use it as needed.
-  void SetEnableBackgroundBlur(bool enable);
-
-  void SetTextWithStringId(int message_id);
 
  private:
   // Initializes the button layout, focus ring and background according to the
@@ -223,7 +207,7 @@ class ASH_EXPORT PillButton : public views::LabelButton {
   int GetHorizontalSpacingWithIcon() const;
 
   Type type_;
-  const raw_ptr<const gfx::VectorIcon> icon_;
+  const raw_ptr<const gfx::VectorIcon, ExperimentalAsh> icon_;
 
   // Horizontal spacing of this button. `kPillButtonHorizontalSpacing` will be
   // set as the default value.
@@ -233,12 +217,12 @@ class ASH_EXPORT PillButton : public views::LabelButton {
   int padding_reduction_for_icon_;
 
   // Custom colors and color IDs.
-  ColorVariant background_color_ = gfx::kPlaceholderColor;
-  ColorVariant text_color_ = gfx::kPlaceholderColor;
-  ColorVariant icon_color_ = gfx::kPlaceholderColor;
-
-  bool enable_background_blur_ = false;
-  std::unique_ptr<BlurredBackgroundShield> blurred_background_;
+  absl::optional<SkColor> background_color_;
+  absl::optional<ui::ColorId> background_color_id_;
+  absl::optional<SkColor> text_color_;
+  absl::optional<ui::ColorId> text_color_id_;
+  absl::optional<SkColor> icon_color_;
+  absl::optional<ui::ColorId> icon_color_id_;
 
   // Called to update background color when the button is enabled/disabled.
   base::CallbackListSubscription enabled_changed_subscription_;
@@ -252,8 +236,6 @@ VIEW_BUILDER_PROPERTY(ui::ColorId, ButtonTextColorId)
 VIEW_BUILDER_PROPERTY(const SkColor, IconColor)
 VIEW_BUILDER_PROPERTY(ui::ColorId, IconColorId)
 VIEW_BUILDER_PROPERTY(PillButton::Type, PillButtonType)
-VIEW_BUILDER_PROPERTY(bool, EnableBackgroundBlur)
-VIEW_BUILDER_PROPERTY(int, TextWithStringId)
 END_VIEW_BUILDER
 
 }  // namespace ash

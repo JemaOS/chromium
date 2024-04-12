@@ -33,8 +33,6 @@
 #include "chrome/browser/prefs/session_startup_pref.h"
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_service.h"
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_service_factory.h"
-#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
-#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_io_data.h"
 #include "chrome/browser/sessions/app_session_service.h"
@@ -60,6 +58,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/webui/welcome/helpers.h"
 #include "chrome/browser/ui/webui/whats_new/whats_new_util.h"
+#include "chrome/browser/web_applications/isolated_web_apps/install_isolated_web_app_from_command_line.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_provider_factory.h"
 #include "chrome/common/chrome_switches.h"
@@ -78,7 +77,6 @@
 
 #if BUILDFLAG(IS_MAC)
 #include "base/mac/mac_util.h"
-#include "chrome/browser/app_controller_mac.h"
 #if BUILDFLAG(ENABLE_UPDATER)
 #include "chrome/browser/ui/cocoa/keystone_infobar_delegate.h"
 #endif
@@ -130,7 +128,7 @@ bool ShouldRestoreApps(bool is_post_restart, Profile* profile) {
   return is_post_restart ||
          (primary_user_profile &&
           BrowserLauncher::GetForProfile(primary_user_profile)
-              ->is_launching_for_last_opened_profiles());
+              ->is_launching_for_full_restore());
 #else
   return is_post_restart;
 #endif
@@ -185,27 +183,32 @@ void StartupBrowserCreatorImpl::MaybeToggleFullscreen(Browser* browser) {
 void StartupBrowserCreatorImpl::Launch(
     Profile* profile,
     chrome::startup::IsProcessStartup process_startup,
-    std::unique_ptr<OldLaunchModeRecorder> launch_mode_recorder,
-    bool restore_tabbed_browser) {
+    std::unique_ptr<OldLaunchModeRecorder> launch_mode_recorder) {
   DCHECK(profile);
   profile_ = profile;
 
-  LaunchResult launch_result =
-      DetermineURLsAndLaunch(process_startup, restore_tabbed_browser);
+  LaunchResult launch_result = DetermineURLsAndLaunch(process_startup);
 
   // Check the true process command line for --try-chrome-again=N rather than
   // the one parsed for startup URLs and such.
   if (launch_mode_recorder) {
-    launch_mode_recorder->SetLaunchMode(launch_result ==
-                                                LaunchResult::kWithGivenUrls
-                                            ? OldLaunchMode::kWithUrls
-                                            : OldLaunchMode::kToBeDecided);
+    if (!command_line_->GetSwitchValueNative(switches::kTryChromeAgain)
+             .empty()) {
+      launch_mode_recorder->SetLaunchMode(OldLaunchMode::kUserExperiment);
+    } else {
+      launch_mode_recorder->SetLaunchMode(launch_result ==
+                                                  LaunchResult::kWithGivenUrls
+                                              ? OldLaunchMode::kWithUrls
+                                              : OldLaunchMode::kToBeDecided);
+    }
   }
 
   if (command_line_->HasSwitch(switches::kInstallChromeApp)) {
     install_chrome_app::InstallChromeApp(
         command_line_->GetSwitchValueASCII(switches::kInstallChromeApp));
   }
+
+  web_app::MaybeInstallAppFromCommandLine(*command_line_, *profile);
 
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_UPDATER)
   if (process_startup == chrome::startup::IsProcessStartup::kYes) {
@@ -245,7 +248,6 @@ Browser* StartupBrowserCreatorImpl::OpenTabsInBrowser(
     profile_ = browser->profile();
 
   if (!browser || !browser->is_type_normal()) {
-    CHECK(profile_);
     // In some conditions a new browser object cannot be created. The most
     // common reason for not being able to create browser is having this call
     // when the browser process is shutting down. This can also fail if the
@@ -265,19 +267,21 @@ Browser* StartupBrowserCreatorImpl::OpenTabsInBrowser(
     params.startup_id =
         command_line_->GetSwitchValueASCII("desktop-startup-id");
 #endif
-    if (command_line_->HasSwitch(switches::kWindowName)) {
-      params.user_title =
-          command_line_->GetSwitchValueASCII(switches::kWindowName);
-    }
-
     browser = Browser::Create(params);
   }
-  CHECK(profile_);
+
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+  auto* init_params = chromeos::BrowserParamsProxy::Get();
+  bool from_arc =
+      init_params->InitialBrowserAction() ==
+          crosapi::mojom::InitialBrowserAction::kOpenWindowWithUrls &&
+      init_params->StartupUrlsFrom() == crosapi::mojom::OpenUrlFrom::kArc;
+#endif
 
   bool first_tab = true;
-  bool process_headless_commands = headless::ShouldProcessHeadlessCommands();
   custom_handlers::ProtocolHandlerRegistry* registry =
-      ProtocolHandlerRegistryFactory::GetForBrowserContext(profile_);
+      profile_ ? ProtocolHandlerRegistryFactory::GetForBrowserContext(profile_)
+               : nullptr;
   for (auto& tab : tabs) {
     // We skip URLs that we'd have to launch an external protocol handler for.
     // This avoids us getting into an infinite loop asking ourselves to open
@@ -300,35 +304,6 @@ Browser* StartupBrowserCreatorImpl::OpenTabsInBrowser(
       continue;
     }
 
-    // Headless mode is restricted to only one url in the command line, so
-    // just grab the first one assuming it's the target.
-    if (first_tab && process_headless_commands) {
-      std::unique_ptr<ScopedProfileKeepAlive> profile_keepalive;
-      if (!profile_->IsOffTheRecord()) {
-        profile_keepalive = std::make_unique<ScopedProfileKeepAlive>(
-            profile_, ProfileKeepAliveOrigin::kHeadlessCommand);
-      }
-      headless::ProcessHeadlessCommands(
-          profile_, tab.url,
-          base::BindOnce(
-              [](base::WeakPtr<Browser> browser,
-                 std::unique_ptr<ScopedProfileKeepAlive> profile_keepalive,
-                 headless::HeadlessCommandHandler::Result result) {
-                if (browser && browser->window()) {
-#if BUILDFLAG(IS_MAC)
-                  // On Macs Chrome keeps running after the last browser
-                  // window is closed which is not expected for headless
-                  // command execution, so explicitly allow application
-                  // to terminate after the browser window is closed.
-                  app_controller_mac::AllowApplicationToTerminate();
-#endif
-                  browser->window()->Close();
-                }
-              },
-              browser->AsWeakPtr(), std::move(profile_keepalive)));
-      continue;
-    }
-
     int add_types = first_tab ? AddTabTypes::ADD_ACTIVE : AddTabTypes::ADD_NONE;
     add_types |= AddTabTypes::ADD_FORCE_INDEX;
     if (tab.type == StartupTab::Type::kPinned)
@@ -348,15 +323,44 @@ Browser* StartupBrowserCreatorImpl::OpenTabsInBrowser(
 #endif  // BUILDFLAG(ENABLE_RLZ)
 
     Navigate(&params);
+
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+    if (from_arc) {
+      auto* contents = params.navigated_or_inserted_contents;
+      if (contents) {
+        // Add a flag to remember this tab originated in the ARC context.
+        contents->SetUserData(
+            &arc::ArcWebContentsData::kArcTransitionFlag,
+            std::make_unique<arc::ArcWebContentsData>(contents));
+      }
+    }
+#endif
+
     first_tab = false;
   }
-  if (!browser->tab_strip_model()->GetActiveWebContents() &&
-      !process_headless_commands) {
+  if (!browser->tab_strip_model()->GetActiveWebContents()) {
     // TODO(sky): this is a work around for 110909. Figure out why it's needed.
     if (!browser->tab_strip_model()->count())
       chrome::AddTabAt(browser, GURL(), -1, true);
     else
       browser->tab_strip_model()->ActivateTabAt(0);
+  }
+
+  if (headless::ShouldProcessHeadlessCommands()) {
+    // Headless mode is restricted to only one url in the command line, so
+    // just grab the actave tab assuming it's the target.
+    content::WebContents* web_contents =
+        browser->tab_strip_model()->GetActiveWebContents();
+    if (web_contents) {
+      headless::ProcessHeadlessCommands(profile_, web_contents->GetVisibleURL(),
+                                        base::BindOnce(
+                                            [](base::WeakPtr<Browser> browser) {
+                                              if (browser->window()) {
+                                                browser->window()->Close();
+                                              }
+                                            },
+                                            browser->AsWeakPtr()));
+    }
   }
 
   browser->window()->Show();
@@ -366,8 +370,7 @@ Browser* StartupBrowserCreatorImpl::OpenTabsInBrowser(
 
 StartupBrowserCreatorImpl::LaunchResult
 StartupBrowserCreatorImpl::DetermineURLsAndLaunch(
-    chrome::startup::IsProcessStartup process_startup,
-    bool restore_tabbed_browser) {
+    chrome::startup::IsProcessStartup process_startup) {
   if (StartupBrowserCreator::ShouldLoadProfileWithoutWindow(*command_line_)) {
     // Checking the flags this late in the launch should be redundant.
     // TODO(https://crbug.com/1300109): Remove by M104.
@@ -421,12 +424,14 @@ StartupBrowserCreatorImpl::DetermineURLsAndLaunch(
   bool privacy_sandbox_dialog_required = false;
   if (privacy_sandbox_service) {
     switch (privacy_sandbox_service->GetRequiredPromptType()) {
+      case PrivacySandboxService::PromptType::kConsent:
       case PrivacySandboxService::PromptType::kM1Consent:
       case PrivacySandboxService::PromptType::kM1NoticeEEA:
       case PrivacySandboxService::PromptType::kM1NoticeROW:
       case PrivacySandboxService::PromptType::kM1NoticeRestricted:
         privacy_sandbox_dialog_required = true;
         break;
+      case PrivacySandboxService::PromptType::kNotice:
       case PrivacySandboxService::PromptType::kNone:
         break;
     }
@@ -459,7 +464,7 @@ StartupBrowserCreatorImpl::DetermineURLsAndLaunch(
       behavior_options);
 
   SessionRestore::BehaviorBitmask restore_options =
-      restore_tabbed_browser ? SessionRestore::RESTORE_BROWSER : 0;
+      SessionRestore::RESTORE_BROWSER;
   if (behavior == BrowserOpenBehavior::SYNCHRONOUS_RESTORE) {
 #if BUILDFLAG(IS_MAC)
     bool was_mac_login_or_resume = base::mac::WasLaunchedAsLoginOrResumeItem();
@@ -470,7 +475,7 @@ StartupBrowserCreatorImpl::DetermineURLsAndLaunch(
         browser_defaults::kAlwaysCreateTabbedBrowserOnSessionRestore,
         base::CommandLine::ForCurrentProcess()->HasSwitch(
             switches::kCreateBrowserOnStartupForTests),
-        was_mac_login_or_resume, restore_tabbed_browser);
+        was_mac_login_or_resume);
   }
 
   Browser* browser = RestoreOrCreateBrowser(
@@ -507,6 +512,15 @@ StartupBrowserCreatorImpl::DetermineStartupTabs(
     bool welcome_enabled,
     bool whats_new_enabled,
     bool privacy_sandbox_dialog_required) {
+#if BUILDFLAG(IS_CHROMEOS_LACROS)
+  {
+    // If URLs are passed via crosapi, forcibly opens those tabs.
+    StartupTabs crosapi_tabs = provider.GetCrosapiTabs();
+    if (!crosapi_tabs.empty())
+      return {std::move(crosapi_tabs), LaunchResult::kWithGivenUrls};
+  }
+#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
+
   StartupTabs tabs =
       provider.GetCommandLineTabs(*command_line_, cur_dir_, profile_);
   LaunchResult launch_result =
@@ -560,6 +574,18 @@ StartupBrowserCreatorImpl::DetermineStartupTabs(
     bool has_welcome_tabs = false;
 
     if (promotional_tabs_enabled) {
+      StartupTabs welcome_back_tabs;
+#if BUILDFLAG(IS_WIN)
+      // This is a launch from a prompt presented to an inactive user who chose
+      // to open Chrome and is being brought to a specific URL for this one
+      // launch. Launch the browser with the desired welcome back URL in the
+      // foreground and the other ordinary URLs (e.g., a restored session) in
+      // the background.
+      welcome_back_tabs = provider.GetWelcomeBackTabs(
+          profile_, browser_creator_, process_startup);
+      AppendTabs(welcome_back_tabs, &tabs);
+#endif  // BUILDFLAG(IS_WIN)
+
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
       if (is_first_run_ == chrome::startup::IsFirstRun::kYes &&
           base::FeatureList::IsEnabled(kForYouFre)) {
@@ -587,9 +613,10 @@ StartupBrowserCreatorImpl::DetermineStartupTabs(
 
       // Potentially add the What's New Page. Note that the What's New page
       // should never be shown in the same session as any first-run onboarding
-      // tabs. It also shouldn't be shown with reset tabs that are required to
-      // always be the first foreground tab.
-      if (!has_first_run_experience && reset_tabs.empty()) {
+      // tabs. It also shouldn't be shown with reset tabs or welcome back tabs
+      // that are required to always be the first foreground tab.
+      if (!has_first_run_experience && reset_tabs.empty() &&
+          welcome_back_tabs.empty()) {
         StartupTabs new_features_tabs;
         new_features_tabs = provider.GetNewFeaturesTabs(whats_new_enabled);
         AppendTabs(new_features_tabs, &tabs);
@@ -727,13 +754,9 @@ SessionRestore::BehaviorBitmask
 StartupBrowserCreatorImpl::DetermineSynchronousRestoreOptions(
     bool has_create_browser_default,
     bool has_create_browser_switch,
-    bool was_mac_login_or_resume,
-    bool restore_tabbed_browser) {
-  SessionRestore::BehaviorBitmask options = SessionRestore::SYNCHRONOUS;
-
-  if (restore_tabbed_browser) {
-    options |= SessionRestore::RESTORE_BROWSER;
-  }
+    bool was_mac_login_or_resume) {
+  SessionRestore::BehaviorBitmask options =
+      SessionRestore::SYNCHRONOUS | SessionRestore::RESTORE_BROWSER;
 
   // Suppress the creation of a new window on Mac when restoring with no windows
   // if launching Chrome via a login item or the resume feature in OS 10.7+.

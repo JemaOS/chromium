@@ -24,7 +24,7 @@ class GLDisplayEglUtilOzone : public GLDisplayEglUtil {
       std::vector<EGLAttrib>* attributes) override;
   void ChoosePlatformCustomAlphaAndBufferSize(EGLint* alpha_size,
                                               EGLint* buffer_size) override;
-  std::optional<base::ScopedEnvironmentVariableOverride>
+  absl::optional<base::ScopedEnvironmentVariableOverride>
   MaybeGetScopedDisplayUnsetForVulkan() override;
 
  private:

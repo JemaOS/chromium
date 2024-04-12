@@ -23,28 +23,22 @@ LanguageSettingsPrivateDelegateFactory::GetForBrowserContext(
 // static
 LanguageSettingsPrivateDelegateFactory*
 LanguageSettingsPrivateDelegateFactory::GetInstance() {
-  static base::NoDestructor<LanguageSettingsPrivateDelegateFactory> instance;
-  return instance.get();
+  return base::Singleton<LanguageSettingsPrivateDelegateFactory>::get();
 }
 
 LanguageSettingsPrivateDelegateFactory::LanguageSettingsPrivateDelegateFactory()
     : ProfileKeyedServiceFactory(
           "LanguageSettingsPrivateDelegate",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(ExtensionsBrowserClient::Get()->GetExtensionSystemFactory());
   DependsOn(SpellcheckServiceFactory::GetInstance());
 }
 
 LanguageSettingsPrivateDelegateFactory::
-    ~LanguageSettingsPrivateDelegateFactory() = default;
+    ~LanguageSettingsPrivateDelegateFactory() {
+}
 
-std::unique_ptr<KeyedService>
-LanguageSettingsPrivateDelegateFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* LanguageSettingsPrivateDelegateFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   return LanguageSettingsPrivateDelegate::Create(context);
 }

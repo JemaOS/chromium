@@ -29,8 +29,7 @@ InspectorStyleResolver::InspectorStyleResolver(
 
   // Update style and layout tree for collecting an up-to-date set of rules
   // and animations.
-  element_->GetDocument().UpdateStyleAndLayoutTreeForElement(
-      element_, DocumentUpdateReason::kInspector);
+  element_->GetDocument().UpdateStyleAndLayoutTreeForNode(element_);
 
   // FIXME: It's really gross for the inspector to reach in and access
   // StyleResolver directly here. We need to provide the Inspector better APIs
@@ -46,14 +45,10 @@ InspectorStyleResolver::InspectorStyleResolver(
   // Skip only if the pseudo element is not tree-abiding.
   // ::placeholder and ::file-selector-button are treated as regular elements
   // and hence don't need to be included here.
-  if (element_pseudo_id &&
-      !(element_pseudo_id == kPseudoIdBefore ||
-        element_pseudo_id == kPseudoIdAfter ||
-        element_pseudo_id == kPseudoIdMarker ||
-        (RuntimeEnabledFeatures::BackdropInheritOriginatingEnabled() &&
-         element_pseudo_id == kPseudoIdBackdrop))) {
+  if (element_pseudo_id && !(element_pseudo_id == kPseudoIdBefore ||
+                             element_pseudo_id == kPseudoIdAfter ||
+                             element_pseudo_id == kPseudoIdMarker))
     return;
-  }
 
   const bool has_active_view_transition =
       element_->IsDocumentElement() &&

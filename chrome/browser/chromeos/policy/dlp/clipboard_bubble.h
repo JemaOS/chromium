@@ -24,18 +24,15 @@ namespace policy {
 
 // This inline bubble shown for restricted copy/paste.
 class ClipboardBubbleView : public views::View {
-  METADATA_HEADER(ClipboardBubbleView, views::View)
-
  public:
+  METADATA_HEADER(ClipboardBubbleView);
+
   explicit ClipboardBubbleView(const std::u16string& text);
   ~ClipboardBubbleView() override;
 
   virtual gfx::Size GetBubbleSize() const = 0;
 
  protected:
-  // views::View:
-  void OnThemeChanged() override;
-
   // This function should get called if the view got updated e.g. AddChildView.
   void UpdateBorderSize(const gfx::Size& size);
 
@@ -46,34 +43,34 @@ class ClipboardBubbleView : public views::View {
 };
 
 class ClipboardBlockBubble : public ClipboardBubbleView {
-  METADATA_HEADER(ClipboardBlockBubble, ClipboardBubbleView)
-
  public:
+  METADATA_HEADER(ClipboardBlockBubble);
+
   explicit ClipboardBlockBubble(const std::u16string& text);
   ~ClipboardBlockBubble() override;
 
   // ClipboardBubbleView::
   gfx::Size GetBubbleSize() const override;
 
-  void SetDismissCallback(base::OnceClosure cb);
+  void SetDismissCallback(base::RepeatingCallback<void()> cb);
 
  private:
   raw_ptr<views::LabelButton> button_ = nullptr;
 };
 
 class ClipboardWarnBubble : public ClipboardBubbleView {
-  METADATA_HEADER(ClipboardWarnBubble, ClipboardBubbleView)
-
  public:
+  METADATA_HEADER(ClipboardWarnBubble);
+
   explicit ClipboardWarnBubble(const std::u16string& text);
   ~ClipboardWarnBubble() override;
 
   // ClipboardBubbleView::
   gfx::Size GetBubbleSize() const override;
 
-  void SetDismissCallback(base::OnceClosure cb);
+  void SetDismissCallback(base::RepeatingCallback<void()> cb);
 
-  void SetProceedCallback(base::OnceClosure cb);
+  void SetProceedCallback(base::RepeatingCallback<void()> cb);
 
   void set_paste_cb(base::OnceCallback<void(bool)> paste_cb) {
     paste_cb_ = std::move(paste_cb);

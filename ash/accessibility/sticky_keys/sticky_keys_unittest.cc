@@ -11,11 +11,8 @@
 #include "base/memory/raw_ptr.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_tree_host.h"
-#include "ui/events/event_constants.h"
 #include "ui/events/event_source.h"
 #include "ui/events/event_utils.h"
-#include "ui/events/keycodes/dom/dom_code.h"
-#include "ui/events/keycodes/keyboard_code_conversion.h"
 
 namespace ash {
 
@@ -44,8 +41,7 @@ class StickyKeysTest : public AshTestBase {
   }
 
   ui::KeyEvent* GenerateKey(ui::EventType type, ui::KeyboardCode code) {
-    return GenerateSynthesizedKeyEvent(type, code,
-                                       ui::UsLayoutKeyboardCodeToDomCode(code));
+    return GenerateSynthesizedKeyEvent(type, code);
   }
 
   // Creates a mouse event backed by a native XInput2 generic button event.
@@ -94,9 +90,8 @@ class StickyKeysTest : public AshTestBase {
 
   // Creates a synthesized KeyEvent that is not backed by a native event.
   ui::KeyEvent* GenerateSynthesizedKeyEvent(ui::EventType type,
-                                            ui::KeyboardCode key_code,
-                                            ui::DomCode dom_code) {
-    return new ui::KeyEvent(type, key_code, dom_code, ui::EF_NONE);
+                                            ui::KeyboardCode code) {
+    return new ui::KeyEvent(type, code, ui::EF_NONE);
   }
 
   // Creates a synthesized MouseEvent that is not backed by a native event.
@@ -151,20 +146,6 @@ class StickyKeysTest : public AshTestBase {
     handler->HandleKeyEvent(*ev.get(), &down_flags, &released);
   }
 
-  void SendActivateStickyKeyPattern(StickyKeysHandler* handler,
-                                    ui::KeyboardCode key_code,
-                                    ui::DomCode dom_code) {
-    bool released = false;
-    int down_flags = 0;
-    std::unique_ptr<ui::KeyEvent> ev;
-    ev.reset(
-        GenerateSynthesizedKeyEvent(ui::ET_KEY_PRESSED, key_code, dom_code));
-    handler->HandleKeyEvent(*ev.get(), &down_flags, &released);
-    ev.reset(
-        GenerateSynthesizedKeyEvent(ui::ET_KEY_RELEASED, key_code, dom_code));
-    handler->HandleKeyEvent(*ev.get(), &down_flags, &released);
-  }
-
   bool HandleKeyEvent(const ui::KeyEvent& key_event,
                       StickyKeysHandler* handler,
                       int* down,
@@ -184,9 +165,9 @@ class StickyKeysTest : public AshTestBase {
 
  private:
   // Owned by root window of shell, but we can still delete |target_| safely.
-  raw_ptr<aura::Window, DanglingUntriaged> target_ = nullptr;
+  raw_ptr<aura::Window, ExperimentalAsh> target_ = nullptr;
   // The root window of |target_|. Not owned.
-  raw_ptr<aura::Window, DanglingUntriaged> root_window_ = nullptr;
+  raw_ptr<aura::Window, ExperimentalAsh> root_window_ = nullptr;
 };
 
 TEST_F(StickyKeysTest, BasicOneshotScenarioTest) {
@@ -230,95 +211,6 @@ TEST_F(StickyKeysTest, BasicOneshotScenarioTest) {
   ev.reset(GenerateKey(ui::ET_KEY_RELEASED, ui::VKEY_A));
   mod_down_flags = HandleKeyEventForDownFlags(*ev.get(), &sticky_key);
   EXPECT_FALSE(mod_down_flags & ui::EF_SHIFT_DOWN);
-}
-
-TEST_F(StickyKeysTest, AltGrKey) {
-  std::unique_ptr<ui::KeyEvent> ev;
-  StickyKeysHandler altgr_sticky_key(ui::EF_ALTGR_DOWN);
-  StickyKeysHandler alt_sticky_key(ui::EF_ALT_DOWN);
-  altgr_sticky_key.set_altgr_active(false);
-  alt_sticky_key.set_altgr_active(false);
-
-  EXPECT_EQ(STICKY_KEY_STATE_DISABLED, altgr_sticky_key.current_state());
-  EXPECT_EQ(STICKY_KEY_STATE_DISABLED, alt_sticky_key.current_state());
-
-  // When the sticky key is not active, typing the right alt key doesn't trigger
-  // the altgr sticky key handler.
-  // On the internal keyboard, right alt has ui::VKEY_MENU and
-  // ui::DomCode::ALT_RIGHT.
-  SendActivateStickyKeyPattern(&altgr_sticky_key, ui::VKEY_MENU,
-                               ui::DomCode::ALT_RIGHT);
-  EXPECT_EQ(STICKY_KEY_STATE_DISABLED, altgr_sticky_key.current_state());
-
-  SendActivateStickyKeyPattern(&alt_sticky_key, ui::VKEY_MENU,
-                               ui::DomCode::ALT_RIGHT);
-  EXPECT_EQ(STICKY_KEY_STATE_ENABLED, alt_sticky_key.current_state());
-
-  // Key press is not modified by altgr, but is modified by alt.
-  ev.reset(GenerateKey(ui::ET_KEY_PRESSED, ui::VKEY_N));
-  int mod_down_flags = 0;
-  mod_down_flags = HandleKeyEventForDownFlags(*ev.get(), &altgr_sticky_key);
-  EXPECT_FALSE(mod_down_flags & ui::EF_ALTGR_DOWN);
-  mod_down_flags = HandleKeyEventForDownFlags(*ev.get(), &alt_sticky_key);
-  EXPECT_TRUE(mod_down_flags & ui::EF_ALT_DOWN);
-
-  ev.reset(GenerateKey(ui::ET_KEY_RELEASED, ui::VKEY_N));
-  mod_down_flags = HandleKeyEventForDownFlags(*ev.get(), &altgr_sticky_key);
-  EXPECT_FALSE(mod_down_flags & ui::EF_ALTGR_DOWN);
-  mod_down_flags = HandleKeyEventForDownFlags(*ev.get(), &alt_sticky_key);
-  EXPECT_FALSE(mod_down_flags & ui::EF_ALT_DOWN);
-
-  // Activate altgr for sticky keys.
-  altgr_sticky_key.set_altgr_active(true);
-  alt_sticky_key.set_altgr_active(true);
-
-  // By typing altgr key with the key active, internal state becomes ENABLED for
-  // altgr key.
-  SendActivateStickyKeyPattern(&altgr_sticky_key, ui::VKEY_MENU,
-                               ui::DomCode::ALT_RIGHT);
-  EXPECT_EQ(STICKY_KEY_STATE_ENABLED, altgr_sticky_key.current_state());
-  // Alt sticky key doesn't enable in this case.
-  SendActivateStickyKeyPattern(&alt_sticky_key, ui::VKEY_MENU,
-                               ui::DomCode::ALT_RIGHT);
-  EXPECT_EQ(STICKY_KEY_STATE_DISABLED, alt_sticky_key.current_state());
-
-  ev.reset(GenerateKey(ui::ET_KEY_PRESSED, ui::VKEY_N));
-  bool released = false;
-  HandleKeyEvent(*ev.get(), &altgr_sticky_key, &mod_down_flags, &released);
-  // Next keyboard event is altgr modified.
-  EXPECT_TRUE(mod_down_flags & ui::EF_ALTGR_DOWN);
-  // Modifier release notification happens.
-  EXPECT_TRUE(released);
-
-  // Next keyboard event is not alt modified.
-  mod_down_flags = 0;
-  HandleKeyEvent(*ev.get(), &altgr_sticky_key, &mod_down_flags, &released);
-  EXPECT_FALSE(mod_down_flags & ui::EF_ALT_DOWN);
-
-  ev.reset(GenerateKey(ui::ET_KEY_RELEASED, ui::VKEY_N));
-  released = false;
-  mod_down_flags = 0;
-  HandleKeyEvent(*ev.get(), &altgr_sticky_key, &mod_down_flags, &released);
-
-  EXPECT_EQ(STICKY_KEY_STATE_DISABLED, altgr_sticky_key.current_state());
-  // Making sure altgr up keyboard event is available.
-  std::unique_ptr<ui::Event> up_event;
-  ASSERT_EQ(0, altgr_sticky_key.GetModifierUpEvent(&up_event));
-  EXPECT_TRUE(up_event.get());
-  EXPECT_EQ(ui::ET_KEY_RELEASED, up_event->type());
-  EXPECT_EQ(ui::VKEY_MENU,
-            static_cast<const ui::KeyEvent*>(up_event.get())->key_code());
-  EXPECT_EQ(ui::DomCode::ALT_RIGHT,
-            static_cast<const ui::KeyEvent*>(up_event.get())->code());
-
-  // Enabled state is one shot, so next key event should not be altgr modified.
-  ev.reset(GenerateKey(ui::ET_KEY_PRESSED, ui::VKEY_N));
-  mod_down_flags = HandleKeyEventForDownFlags(*ev.get(), &altgr_sticky_key);
-  EXPECT_FALSE(mod_down_flags & ui::EF_ALTGR_DOWN);
-
-  ev.reset(GenerateKey(ui::ET_KEY_RELEASED, ui::VKEY_N));
-  mod_down_flags = HandleKeyEventForDownFlags(*ev.get(), &altgr_sticky_key);
-  EXPECT_FALSE(mod_down_flags & ui::EF_ALTGR_DOWN);
 }
 
 TEST_F(StickyKeysTest, BasicLockedScenarioTest) {
@@ -753,12 +645,12 @@ TEST_F(StickyKeysTest, SynthesizedEvents) {
   SendActivateStickyKeyPattern(&sticky_key, ui::VKEY_CONTROL);
   EXPECT_EQ(STICKY_KEY_STATE_ENABLED, sticky_key.current_state());
 
-  kev.reset(GenerateKey(ui::ET_KEY_PRESSED, ui::VKEY_K));
+  kev.reset(GenerateSynthesizedKeyEvent(ui::ET_KEY_PRESSED, ui::VKEY_K));
   int mod_down_flags = HandleKeyEventForDownFlags(*kev.get(), &sticky_key);
   EXPECT_TRUE(mod_down_flags & ui::EF_CONTROL_DOWN);
   EXPECT_EQ(STICKY_KEY_STATE_DISABLED, sticky_key.current_state());
 
-  kev.reset(GenerateKey(ui::ET_KEY_RELEASED, ui::VKEY_K));
+  kev.reset(GenerateSynthesizedKeyEvent(ui::ET_KEY_RELEASED, ui::VKEY_K));
   mod_down_flags = HandleKeyEventForDownFlags(*kev.get(), &sticky_key);
   EXPECT_FALSE(mod_down_flags & ui::EF_CONTROL_DOWN);
   EXPECT_EQ(STICKY_KEY_STATE_DISABLED, sticky_key.current_state());

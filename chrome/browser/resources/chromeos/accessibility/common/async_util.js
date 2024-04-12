@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {Key} from './key_code.js';
-import {TestImportManager} from './testing/test_import_manager.js';
+import {KeyCode} from './key_code.js';
 
 /**
  * @fileoverview Wraps automation and accessibility_private callbacks
  * in Promises.
  */
-const AutomationNode = chrome.automation?.AutomationNode;
+const AutomationNode = chrome.automation.AutomationNode;
 
 export class AsyncUtil {
   /** @return {!Promise<!AutomationNode>} */
@@ -23,7 +22,7 @@ export class AsyncUtil {
   }
 
   /**
-   * @param {!Key.Code} keyCode
+   * @param {!KeyCode} keyCode
    * @return {!Promise<string>}
    */
   static async getLocalizedDomKeyStringForKeyCode(keyCode) {
@@ -33,5 +32,3 @@ export class AsyncUtil {
                 keyCode, resolve));
   }
 }
-
-TestImportManager.exportForTesting(AsyncUtil);

@@ -8,7 +8,6 @@
 #include "base/test/mock_callback.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
-#include "chrome/browser/sync/local_or_syncable_bookmark_sync_service_factory.h"
 #include "chrome/browser/ui/views/bookmarks/bookmark_editor_view.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/views/chrome_test_widget.h"
@@ -16,7 +15,6 @@
 #include "components/bookmarks/browser/bookmark_utils.h"
 #include "components/bookmarks/test/bookmark_test_helpers.h"
 #include "components/strings/grit/components_strings.h"
-#include "components/sync_bookmarks/bookmark_sync_service.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/image_model.h"
@@ -100,13 +98,9 @@ class PriceTrackingBubbleDialogViewUnitTest : public BrowserWithTestWindowTest {
   virtual void SetUpDependencies() {
     bookmark_model_ = BookmarkModelFactory::GetForBrowserContext(profile());
     bookmarks::test::WaitForBookmarkModelToLoad(bookmark_model_);
-
-    // Pretend sync is on for bookmarks, required for price tracking.
-    LocalOrSyncableBookmarkSyncServiceFactory::GetForProfile(profile())
-        ->SetIsTrackingMetadataForTesting();
   }
 
-  raw_ptr<bookmarks::BookmarkModel, DanglingUntriaged> bookmark_model_;
+  raw_ptr<bookmarks::BookmarkModel> bookmark_model_;
 
  private:
   views::UniqueWidgetPtr anchor_widget_;
@@ -131,11 +125,11 @@ class PriceTrackingBubbleDialogViewLayoutUnitTest
     }
   }
 
-  std::u16string GetFolderName() {
+  const std::u16string& GetFolderName() {
     if (BookmarkWasCreated()) {
       return bookmark_folder_name_;
     } else {
-      return u"";
+      return GetDefaultFolderName();
     }
   }
 
@@ -156,6 +150,13 @@ class PriceTrackingBubbleDialogViewLayoutUnitTest
   }
 
  private:
+  const std::u16string& GetDefaultFolderName() {
+    bookmarks::BookmarkModel* const model =
+        BookmarkModelFactory::GetForBrowserContext(profile());
+    const bookmarks::BookmarkNode* node = model->other_node();
+    return node->GetTitle();
+  }
+
   std::u16string bookmark_folder_name_;
 };
 
@@ -185,11 +186,6 @@ TEST_P(PriceTrackingBubbleDialogViewLayoutUnitTest, FUEBubble) {
 }
 
 TEST_P(PriceTrackingBubbleDialogViewLayoutUnitTest, NormalBubble) {
-  // Price tracking can't happen if the bookmark wasn't created.
-  if (!BookmarkWasCreated()) {
-    return;
-  }
-
   CreateBubbleViewAndShow(PriceTrackingBubbleDialogView::Type::TYPE_NORMAL);
 
   auto* bubble = BubbleCoordinator()->GetBubble();
@@ -199,14 +195,10 @@ TEST_P(PriceTrackingBubbleDialogViewLayoutUnitTest, NormalBubble) {
             l10n_util::GetStringUTF16(IDS_OMNIBOX_TRACKING_PRICE_DIALOG_TITLE));
 
   EXPECT_TRUE(bubble->GetBodyLabelForTesting());
-  std::u16string expected_label =
-      l10n_util::GetStringUTF16(IDS_PRICE_TRACKING_SAVE_DESCRIPTION);
-  std::u16string expected_save_label = l10n_util::GetStringFUTF16(
-      IDS_PRICE_TRACKING_SAVE_LOCATION, GetFolderName());
-  EXPECT_TRUE(bubble->GetBodyLabelForTesting()->GetText().find(
-                  expected_label) != std::u16string::npos);
-  EXPECT_TRUE(bubble->GetBodyLabelForTesting()->GetText().find(
-                  expected_save_label) != std::u16string::npos);
+  EXPECT_EQ(
+      bubble->GetBodyLabelForTesting()->GetText(),
+      l10n_util::GetStringFUTF16(IDS_OMNIBOX_TRACKING_PRICE_DIALOG_DESCRIPTION,
+                                 GetFolderName()));
   EXPECT_TRUE(bubble->GetBodyLabelForTesting()->GetFirstLinkForTesting());
 
   EXPECT_EQ(bubble->GetDialogButtonLabel(ui::DIALOG_BUTTON_OK),

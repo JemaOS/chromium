@@ -1,7 +1,7 @@
 // Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include <string_view>
+#include "chrome/browser/extensions/api/enterprise_reporting_private/enterprise_reporting_private_api.h"
 
 #include "base/command_line.h"
 #include "base/test/scoped_feature_list.h"
@@ -9,14 +9,13 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
-#include "chrome/browser/enterprise/connectors/test/deep_scanning_test_utils.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
-#include "chrome/browser/extensions/api/enterprise_reporting_private/enterprise_reporting_private_api.h"
 #include "chrome/browser/net/profile_network_context_service.h"
 #include "chrome/browser/net/profile_network_context_service_factory.h"
 #include "chrome/browser/policy/chrome_browser_policy_connector.h"
 #include "chrome/browser/policy/policy_test_utils.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/safe_browsing/cloud_content_scanning/deep_scanning_test_utils.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/extensions/api/enterprise_reporting_private.h"
@@ -33,7 +32,6 @@
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
 #include "extensions/browser/api_test_utils.h"
-#include "net/base/features.h"
 #include "net/cert/x509_certificate.h"
 #include "net/cert/x509_util.h"
 #include "net/ssl/client_cert_identity_test_util.h"
@@ -136,7 +134,8 @@ class EnterpriseReportingPrivateGetContextInfoBaseBrowserTest
 
   void SetupDMToken() {
 #if BUILDFLAG(IS_CHROMEOS)
-    policy::SetDMTokenForTesting(policy::DMToken::CreateValidToken("dm_token"));
+    policy::SetDMTokenForTesting(
+        policy::DMToken::CreateValidTokenForTesting("dm_token"));
 #else
     browser_dm_token_storage_ =
         std::make_unique<policy::FakeBrowserDMTokenStorage>();
@@ -164,7 +163,7 @@ class EnterpriseReportingPrivateGetContextInfoBrowserTest
     if (browser_managed()) {
       SetupDMToken();
     }
-    feature_list_.InitAndEnableFeature(net::features::kAsyncDns);
+    feature_list_.InitAndEnableFeature(features::kAsyncDns);
   }
 
   bool browser_managed() const { return testing::get<0>(GetParam()); }
@@ -200,8 +199,7 @@ class EnterpriseReportingPrivateGetContextInfoBrowserTest
       profile_policy_manager->core()->client()->SetupRegistration(
           "dm_token", "client_id", {});
 #else
-      enterprise_connectors::test::SetProfileDMToken(browser()->profile(),
-                                                     "dm_token");
+      safe_browsing::SetProfileDMToken(browser()->profile(), "dm_token");
       auto* profile_policy_manager =
           browser()->profile()->GetUserCloudPolicyManager();
 #endif
@@ -253,21 +251,21 @@ IN_PROC_BROWSER_TEST_P(
   ASSERT_TRUE(context_info_value);
   ASSERT_TRUE(context_info_value->is_dict());
 
-  auto info = enterprise_reporting_private::ContextInfo::FromValue(
-      context_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::ContextInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+      context_info_value->GetDict(), info));
 
-  EXPECT_TRUE(info->browser_affiliation_ids.empty());
-  EXPECT_TRUE(info->profile_affiliation_ids.empty());
-  EXPECT_TRUE(info->on_file_attached_providers.empty());
-  EXPECT_TRUE(info->on_file_downloaded_providers.empty());
-  EXPECT_TRUE(info->on_bulk_data_entry_providers.empty());
-  EXPECT_TRUE(info->on_print_providers.empty());
-  EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
-            info->realtime_url_check_mode);
-  EXPECT_TRUE(info->on_security_event_providers.empty());
-  EXPECT_EQ(version_info::GetVersionNumber(), info->browser_version);
-  EXPECT_EQ(site_isolation_enabled(), info->site_isolation_enabled);
+  EXPECT_TRUE(info.browser_affiliation_ids.empty());
+  EXPECT_TRUE(info.profile_affiliation_ids.empty());
+  EXPECT_TRUE(info.on_file_attached_providers.empty());
+  EXPECT_TRUE(info.on_file_downloaded_providers.empty());
+  EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
+  EXPECT_TRUE(info.on_print_providers.empty());
+  EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
+            info.realtime_url_check_mode);
+  EXPECT_TRUE(info.on_security_event_providers.empty());
+  EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
+  EXPECT_EQ(site_isolation_enabled(), info.site_isolation_enabled);
 }
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -315,33 +313,34 @@ IN_PROC_BROWSER_TEST_P(
   ASSERT_TRUE(context_info_value);
   ASSERT_TRUE(context_info_value->is_dict());
 
-  auto info = enterprise_reporting_private::ContextInfo::FromValue(
-      context_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::ContextInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+      context_info_value->GetDict(), info));
 
-  EXPECT_TRUE(info->browser_affiliation_ids.empty());
-  EXPECT_TRUE(info->profile_affiliation_ids.empty());
-  EXPECT_TRUE(info->on_file_attached_providers.empty());
-  EXPECT_TRUE(info->on_file_downloaded_providers.empty());
-  EXPECT_TRUE(info->on_bulk_data_entry_providers.empty());
-  EXPECT_TRUE(info->on_print_providers.empty());
-  EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
-            info->realtime_url_check_mode);
-  EXPECT_TRUE(info->on_security_event_providers.empty());
-  EXPECT_EQ(version_info::GetVersionNumber(), info->browser_version);
-  EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
-            info->safe_browsing_protection_level);
+  EXPECT_TRUE(info.browser_affiliation_ids.empty());
+  EXPECT_TRUE(info.profile_affiliation_ids.empty());
+  EXPECT_TRUE(info.on_file_attached_providers.empty());
+  EXPECT_TRUE(info.on_file_downloaded_providers.empty());
+  EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
+  EXPECT_TRUE(info.on_print_providers.empty());
+  EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
+            info.realtime_url_check_mode);
+  EXPECT_TRUE(info.on_security_event_providers.empty());
+  EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
+  EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
+            info.safe_browsing_protection_level);
   EXPECT_EQ(BuiltInDnsClientPlatformDefault(),
-            info->built_in_dns_client_enabled);
+            info.built_in_dns_client_enabled);
   EXPECT_EQ(
-      enterprise_reporting_private::PasswordProtectionTrigger::kPolicyUnset,
-      info->password_protection_warning_trigger);
-  EXPECT_FALSE(info->chrome_remote_desktop_app_blocked);
-  ExpectDefaultThirdPartyBlockingEnabled(*info);
-  EXPECT_EQ(dev_mode_enabled()
-                ? api::enterprise_reporting_private::SettingValue::kUnknown
-                : api::enterprise_reporting_private::SettingValue::kEnabled,
-            info->os_firewall);
+      enterprise_reporting_private::PASSWORD_PROTECTION_TRIGGER_POLICY_UNSET,
+      info.password_protection_warning_trigger);
+  EXPECT_FALSE(info.chrome_remote_desktop_app_blocked);
+  ExpectDefaultThirdPartyBlockingEnabled(info);
+  EXPECT_EQ(dev_mode_enabled() ? api::enterprise_reporting_private::
+                                     SettingValue::SETTING_VALUE_UNKNOWN
+                               : api::enterprise_reporting_private::
+                                     SettingValue::SETTING_VALUE_ENABLED,
+            info.os_firewall);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -366,54 +365,54 @@ IN_PROC_BROWSER_TEST_P(EnterpriseReportingPrivateGetContextInfoBrowserTest,
   ASSERT_TRUE(context_info_value);
   ASSERT_TRUE(context_info_value->is_dict());
 
-  auto info = enterprise_reporting_private::ContextInfo::FromValue(
-      context_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::ContextInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+      context_info_value->GetDict(), info));
 
   if (profile_managed()) {
-    EXPECT_EQ(2u, info->profile_affiliation_ids.size());
-    EXPECT_EQ(kProfileID1, info->profile_affiliation_ids[0]);
-    EXPECT_EQ(kProfileID2, info->profile_affiliation_ids[1]);
+    EXPECT_EQ(2u, info.profile_affiliation_ids.size());
+    EXPECT_EQ(kProfileID1, info.profile_affiliation_ids[0]);
+    EXPECT_EQ(kProfileID2, info.profile_affiliation_ids[1]);
   } else {
-    EXPECT_TRUE(info->profile_affiliation_ids.empty());
+    EXPECT_TRUE(info.profile_affiliation_ids.empty());
   }
 
   if (browser_managed()) {
-    EXPECT_EQ(2u, info->browser_affiliation_ids.size());
-    EXPECT_EQ(kBrowserID1, info->browser_affiliation_ids[0]);
-    EXPECT_EQ(kBrowserID2, info->browser_affiliation_ids[1]);
+    EXPECT_EQ(2u, info.browser_affiliation_ids.size());
+    EXPECT_EQ(kBrowserID1, info.browser_affiliation_ids[0]);
+    EXPECT_EQ(kBrowserID2, info.browser_affiliation_ids[1]);
   } else {
-    EXPECT_TRUE(info->browser_affiliation_ids.empty());
+    EXPECT_TRUE(info.browser_affiliation_ids.empty());
   }
 
-  EXPECT_TRUE(info->on_file_attached_providers.empty());
-  EXPECT_TRUE(info->on_file_downloaded_providers.empty());
-  EXPECT_TRUE(info->on_bulk_data_entry_providers.empty());
-  EXPECT_TRUE(info->on_print_providers.empty());
-  EXPECT_EQ(enterprise_reporting_private::RealtimeUrlCheckMode::kDisabled,
-            info->realtime_url_check_mode);
-  EXPECT_TRUE(info->on_security_event_providers.empty());
-  EXPECT_EQ(version_info::GetVersionNumber(), info->browser_version);
-  EXPECT_EQ(enterprise_reporting_private::SafeBrowsingLevel::kStandard,
-            info->safe_browsing_protection_level);
-  EXPECT_TRUE(info->built_in_dns_client_enabled);
+  EXPECT_TRUE(info.on_file_attached_providers.empty());
+  EXPECT_TRUE(info.on_file_downloaded_providers.empty());
+  EXPECT_TRUE(info.on_bulk_data_entry_providers.empty());
+  EXPECT_TRUE(info.on_print_providers.empty());
+  EXPECT_EQ(enterprise_reporting_private::REALTIME_URL_CHECK_MODE_DISABLED,
+            info.realtime_url_check_mode);
+  EXPECT_TRUE(info.on_security_event_providers.empty());
+  EXPECT_EQ(version_info::GetVersionNumber(), info.browser_version);
+  EXPECT_EQ(enterprise_reporting_private::SAFE_BROWSING_LEVEL_STANDARD,
+            info.safe_browsing_protection_level);
+  EXPECT_TRUE(info.built_in_dns_client_enabled);
   EXPECT_EQ(
-      enterprise_reporting_private::PasswordProtectionTrigger::kPolicyUnset,
-      info->password_protection_warning_trigger);
-  EXPECT_FALSE(info->chrome_remote_desktop_app_blocked);
+      enterprise_reporting_private::PASSWORD_PROTECTION_TRIGGER_POLICY_UNSET,
+      info.password_protection_warning_trigger);
+  EXPECT_FALSE(info.chrome_remote_desktop_app_blocked);
 #if BUILDFLAG(IS_WIN) && BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  EXPECT_TRUE(*info->third_party_blocking_enabled);
+  EXPECT_TRUE(*info.third_party_blocking_enabled);
 #else
-  EXPECT_FALSE(info->third_party_blocking_enabled.has_value());
+  EXPECT_FALSE(info.third_party_blocking_enabled.has_value());
 #endif
 }
 
 IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
                        TestFileAttachedProviderName) {
   SetupDMToken();
-  enterprise_connectors::test::SetAnalysisConnector(
-      browser()->profile()->GetPrefs(), enterprise_connectors::FILE_ATTACHED,
-      kGoogleServiceProvider);
+  safe_browsing::SetAnalysisConnector(browser()->profile()->GetPrefs(),
+                                      enterprise_connectors::FILE_ATTACHED,
+                                      kGoogleServiceProvider);
 
   auto function =
       base::MakeRefCounted<EnterpriseReportingPrivateGetContextInfoFunction>();
@@ -423,24 +422,24 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
   ASSERT_TRUE(context_info_value);
   ASSERT_TRUE(context_info_value->is_dict());
 
-  auto info = enterprise_reporting_private::ContextInfo::FromValue(
-      context_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::ContextInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+      context_info_value->GetDict(), info));
 
-  EXPECT_EQ(0UL, info->on_file_downloaded_providers.size());
-  EXPECT_EQ(0UL, info->on_bulk_data_entry_providers.size());
-  EXPECT_EQ(0UL, info->on_print_providers.size());
+  EXPECT_EQ(0UL, info.on_file_downloaded_providers.size());
+  EXPECT_EQ(0UL, info.on_bulk_data_entry_providers.size());
+  EXPECT_EQ(0UL, info.on_print_providers.size());
 
-  EXPECT_EQ(1UL, info->on_file_attached_providers.size());
-  EXPECT_EQ("google", info->on_file_attached_providers[0]);
+  EXPECT_EQ(1UL, info.on_file_attached_providers.size());
+  EXPECT_EQ("google", info.on_file_attached_providers[0]);
 }
 
 IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
                        TestFileDownloadedProviderName) {
   SetupDMToken();
-  enterprise_connectors::test::SetAnalysisConnector(
-      browser()->profile()->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-      kGoogleServiceProvider);
+  safe_browsing::SetAnalysisConnector(browser()->profile()->GetPrefs(),
+                                      enterprise_connectors::FILE_DOWNLOADED,
+                                      kGoogleServiceProvider);
 
   auto function =
       base::MakeRefCounted<EnterpriseReportingPrivateGetContextInfoFunction>();
@@ -450,24 +449,24 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
   ASSERT_TRUE(context_info_value);
   ASSERT_TRUE(context_info_value->is_dict());
 
-  auto info = enterprise_reporting_private::ContextInfo::FromValue(
-      context_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::ContextInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+      context_info_value->GetDict(), info));
 
-  EXPECT_EQ(0UL, info->on_file_attached_providers.size());
-  EXPECT_EQ(0UL, info->on_bulk_data_entry_providers.size());
-  EXPECT_EQ(0UL, info->on_print_providers.size());
+  EXPECT_EQ(0UL, info.on_file_attached_providers.size());
+  EXPECT_EQ(0UL, info.on_bulk_data_entry_providers.size());
+  EXPECT_EQ(0UL, info.on_print_providers.size());
 
-  EXPECT_EQ(1UL, info->on_file_downloaded_providers.size());
-  EXPECT_EQ("google", info->on_file_downloaded_providers[0]);
+  EXPECT_EQ(1UL, info.on_file_downloaded_providers.size());
+  EXPECT_EQ("google", info.on_file_downloaded_providers[0]);
 }
 
 IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
                        TestBulkDataEntryProviderName) {
   SetupDMToken();
-  enterprise_connectors::test::SetAnalysisConnector(
-      browser()->profile()->GetPrefs(), enterprise_connectors::BULK_DATA_ENTRY,
-      kGoogleServiceProvider);
+  safe_browsing::SetAnalysisConnector(browser()->profile()->GetPrefs(),
+                                      enterprise_connectors::BULK_DATA_ENTRY,
+                                      kGoogleServiceProvider);
 
   auto function =
       base::MakeRefCounted<EnterpriseReportingPrivateGetContextInfoFunction>();
@@ -477,24 +476,24 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
   ASSERT_TRUE(context_info_value);
   ASSERT_TRUE(context_info_value->is_dict());
 
-  auto info = enterprise_reporting_private::ContextInfo::FromValue(
-      context_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::ContextInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+      context_info_value->GetDict(), info));
 
-  EXPECT_EQ(0UL, info->on_file_downloaded_providers.size());
-  EXPECT_EQ(0UL, info->on_file_attached_providers.size());
-  EXPECT_EQ(0UL, info->on_print_providers.size());
+  EXPECT_EQ(0UL, info.on_file_downloaded_providers.size());
+  EXPECT_EQ(0UL, info.on_file_attached_providers.size());
+  EXPECT_EQ(0UL, info.on_print_providers.size());
 
-  EXPECT_EQ(1UL, info->on_bulk_data_entry_providers.size());
-  EXPECT_EQ("google", info->on_bulk_data_entry_providers[0]);
+  EXPECT_EQ(1UL, info.on_bulk_data_entry_providers.size());
+  EXPECT_EQ("google", info.on_bulk_data_entry_providers[0]);
 }
 
 IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
                        TestPrintProviderName) {
   SetupDMToken();
-  enterprise_connectors::test::SetAnalysisConnector(
-      browser()->profile()->GetPrefs(), enterprise_connectors::PRINT,
-      kGoogleServiceProvider);
+  safe_browsing::SetAnalysisConnector(browser()->profile()->GetPrefs(),
+                                      enterprise_connectors::PRINT,
+                                      kGoogleServiceProvider);
 
   auto function =
       base::MakeRefCounted<EnterpriseReportingPrivateGetContextInfoFunction>();
@@ -504,33 +503,33 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
   ASSERT_TRUE(context_info_value);
   ASSERT_TRUE(context_info_value->is_dict());
 
-  auto info = enterprise_reporting_private::ContextInfo::FromValue(
-      context_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::ContextInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+      context_info_value->GetDict(), info));
 
-  EXPECT_EQ(0UL, info->on_file_downloaded_providers.size());
-  EXPECT_EQ(0UL, info->on_file_attached_providers.size());
-  EXPECT_EQ(0UL, info->on_bulk_data_entry_providers.size());
+  EXPECT_EQ(0UL, info.on_file_downloaded_providers.size());
+  EXPECT_EQ(0UL, info.on_file_attached_providers.size());
+  EXPECT_EQ(0UL, info.on_bulk_data_entry_providers.size());
 
-  EXPECT_EQ(1UL, info->on_print_providers.size());
-  EXPECT_EQ("google", info->on_print_providers[0]);
+  EXPECT_EQ(1UL, info.on_print_providers.size());
+  EXPECT_EQ("google", info.on_print_providers[0]);
 }
 
 IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
                        TestAllProviderNamesSet) {
   SetupDMToken();
-  enterprise_connectors::test::SetAnalysisConnector(
-      browser()->profile()->GetPrefs(), enterprise_connectors::BULK_DATA_ENTRY,
-      kGoogleServiceProvider);
-  enterprise_connectors::test::SetAnalysisConnector(
-      browser()->profile()->GetPrefs(), enterprise_connectors::FILE_ATTACHED,
-      kOtherServiceProvider);
-  enterprise_connectors::test::SetAnalysisConnector(
-      browser()->profile()->GetPrefs(), enterprise_connectors::FILE_DOWNLOADED,
-      kAnotherServiceProvider);
-  enterprise_connectors::test::SetAnalysisConnector(
-      browser()->profile()->GetPrefs(), enterprise_connectors::PRINT,
-      kAndAnotherServiceProvider);
+  safe_browsing::SetAnalysisConnector(browser()->profile()->GetPrefs(),
+                                      enterprise_connectors::BULK_DATA_ENTRY,
+                                      kGoogleServiceProvider);
+  safe_browsing::SetAnalysisConnector(browser()->profile()->GetPrefs(),
+                                      enterprise_connectors::FILE_ATTACHED,
+                                      kOtherServiceProvider);
+  safe_browsing::SetAnalysisConnector(browser()->profile()->GetPrefs(),
+                                      enterprise_connectors::FILE_DOWNLOADED,
+                                      kAnotherServiceProvider);
+  safe_browsing::SetAnalysisConnector(browser()->profile()->GetPrefs(),
+                                      enterprise_connectors::PRINT,
+                                      kAndAnotherServiceProvider);
 
   auto function =
       base::MakeRefCounted<EnterpriseReportingPrivateGetContextInfoFunction>();
@@ -540,21 +539,21 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
   ASSERT_TRUE(context_info_value);
   ASSERT_TRUE(context_info_value->is_dict());
 
-  auto info = enterprise_reporting_private::ContextInfo::FromValue(
-      context_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::ContextInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+      context_info_value->GetDict(), info));
 
-  EXPECT_EQ(1UL, info->on_bulk_data_entry_providers.size());
-  EXPECT_EQ("google", info->on_bulk_data_entry_providers[0]);
+  EXPECT_EQ(1UL, info.on_bulk_data_entry_providers.size());
+  EXPECT_EQ("google", info.on_bulk_data_entry_providers[0]);
 
-  EXPECT_EQ(1UL, info->on_file_attached_providers.size());
-  EXPECT_EQ("other", info->on_file_attached_providers[0]);
+  EXPECT_EQ(1UL, info.on_file_attached_providers.size());
+  EXPECT_EQ("other", info.on_file_attached_providers[0]);
 
-  EXPECT_EQ(1UL, info->on_file_downloaded_providers.size());
-  EXPECT_EQ("another", info->on_file_downloaded_providers[0]);
+  EXPECT_EQ(1UL, info.on_file_downloaded_providers.size());
+  EXPECT_EQ("another", info.on_file_downloaded_providers[0]);
 
-  EXPECT_EQ(1UL, info->on_print_providers.size());
-  EXPECT_EQ("and_another", info->on_print_providers[0]);
+  EXPECT_EQ(1UL, info.on_print_providers.size());
+  EXPECT_EQ("and_another", info.on_print_providers[0]);
 }
 
 IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
@@ -569,19 +568,18 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
   ASSERT_TRUE(context_info_value);
   ASSERT_TRUE(context_info_value->is_dict());
 
-  auto info = enterprise_reporting_private::ContextInfo::FromValue(
-      context_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::ContextInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+      context_info_value->GetDict(), info));
 
-  EXPECT_EQ(0UL, info->on_security_event_providers.size());
+  EXPECT_EQ(0UL, info.on_security_event_providers.size());
 }
 
 IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
                        TestOnSecurityEventProviderNameSet) {
   SetupDMToken();
-  enterprise_connectors::test::SetOnSecurityEventReporting(
-      browser()->profile()->GetPrefs(),
-      /* enabled= */ true);
+  safe_browsing::SetOnSecurityEventReporting(browser()->profile()->GetPrefs(),
+                                             /* enabled= */ true);
 
   auto function =
       base::MakeRefCounted<EnterpriseReportingPrivateGetContextInfoFunction>();
@@ -591,13 +589,13 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetContextInfoBaseBrowserTest,
   ASSERT_TRUE(context_info_value);
   ASSERT_TRUE(context_info_value->is_dict());
 
-  auto info = enterprise_reporting_private::ContextInfo::FromValue(
-      context_info_value->GetDict());
-  ASSERT_TRUE(info);
+  enterprise_reporting_private::ContextInfo info;
+  ASSERT_TRUE(enterprise_reporting_private::ContextInfo::Populate(
+      context_info_value->GetDict(), info));
 
-  EXPECT_EQ(1UL, info->on_security_event_providers.size());
-  // test::SetOnSecurityEventReporting sets the provider name to google
-  EXPECT_EQ("google", info->on_security_event_providers[0]);
+  EXPECT_EQ(1UL, info.on_security_event_providers.size());
+  // SetOnSecurityEventReporting sets the provider name to google
+  EXPECT_EQ("google", info.on_security_event_providers[0]);
 }
 
 class EnterpriseReportingPrivateGetCertificateTest : public policy::PolicyTest {
@@ -640,12 +638,11 @@ class EnterpriseReportingPrivateGetCertificateTest : public policy::PolicyTest {
     EXPECT_TRUE(certificate_value);
     EXPECT_TRUE(certificate_value->is_dict());
 
-    auto cert = enterprise_reporting_private::Certificate::FromValue(
-        certificate_value->GetDict());
-    EXPECT_TRUE(cert);
+    enterprise_reporting_private::Certificate cert;
+    EXPECT_TRUE(enterprise_reporting_private::Certificate::Populate(
+        certificate_value->GetDict(), cert));
 
-    return std::move(cert).value_or(
-        enterprise_reporting_private::Certificate());
+    return cert;
   }
 
   void SetupDefaultClientCertList() {
@@ -674,7 +671,7 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetCertificateTest,
                        TestPolicyUnset) {
   auto cert = GetCertificate();
 
-  EXPECT_EQ(enterprise_reporting_private::CertificateStatus::kPolicyUnset,
+  EXPECT_EQ(enterprise_reporting_private::CERTIFICATE_STATUS_POLICY_UNSET,
             cert.status);
 }
 
@@ -692,7 +689,7 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetCertificateTest,
 
   auto cert = GetCertificate();
 
-  EXPECT_EQ(enterprise_reporting_private::CertificateStatus::kOk, cert.status);
+  EXPECT_EQ(enterprise_reporting_private::CERTIFICATE_STATUS_OK, cert.status);
   EXPECT_FALSE(cert.encoded_certificate.has_value());
 }
 
@@ -712,7 +709,7 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetCertificateTest,
 
   auto cert = GetCertificate();
 
-  EXPECT_EQ(enterprise_reporting_private::CertificateStatus::kOk, cert.status);
+  EXPECT_EQ(enterprise_reporting_private::CERTIFICATE_STATUS_OK, cert.status);
   EXPECT_FALSE(cert.encoded_certificate.has_value());
 }
 
@@ -732,7 +729,7 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetCertificateTest,
 
   auto cert = GetCertificate();
 
-  EXPECT_EQ(enterprise_reporting_private::CertificateStatus::kOk, cert.status);
+  EXPECT_EQ(enterprise_reporting_private::CERTIFICATE_STATUS_OK, cert.status);
   EXPECT_FALSE(cert.encoded_certificate.has_value());
 }
 
@@ -752,10 +749,10 @@ IN_PROC_BROWSER_TEST_F(EnterpriseReportingPrivateGetCertificateTest,
 
   auto cert = GetCertificate();
 
-  EXPECT_EQ(enterprise_reporting_private::CertificateStatus::kOk, cert.status);
+  EXPECT_EQ(enterprise_reporting_private::CERTIFICATE_STATUS_OK, cert.status);
   EXPECT_TRUE(cert.encoded_certificate.has_value());
 
-  std::string_view der_cert = net::x509_util::CryptoBufferAsStringPiece(
+  base::StringPiece der_cert = net::x509_util::CryptoBufferAsStringPiece(
       client_certs()[0]->cert_buffer());
   std::vector<uint8_t> expected_der_bytes(der_cert.begin(), der_cert.end());
 

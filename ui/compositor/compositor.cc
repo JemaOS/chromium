@@ -43,6 +43,8 @@
 #include "components/viz/common/frame_sinks/begin_frame_args.h"
 #include "components/viz/common/frame_sinks/begin_frame_source.h"
 #include "components/viz/common/gpu/context_provider.h"
+#include "components/viz/common/resources/resource_format.h"
+#include "components/viz/common/resources/resource_settings.h"
 #include "components/viz/common/switches.h"
 #include "components/viz/host/host_frame_sink_manager.h"
 #include "components/viz/host/renderer_settings_creation.h"
@@ -50,7 +52,6 @@
 #include "services/viz/privileged/mojom/compositing/external_begin_frame_controller.mojom.h"
 #include "services/viz/privileged/mojom/compositing/vsync_parameter_observer.mojom.h"
 #include "third_party/skia/include/core/SkBitmap.h"
-#include "ui/base/ozone_buildflags.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/compositor/compositor_observer.h"
@@ -192,21 +193,23 @@ Compositor::Compositor(const viz::FrameSinkId& frame_sink_id,
 #if BUILDFLAG(IS_APPLE)
   // Using CoreAnimation to composite requires using GpuMemoryBuffers, which
   // require zero copy.
-  settings.use_gpu_memory_buffer_resources = settings.use_zero_copy;
+  settings.resource_settings.use_gpu_memory_buffer_resources =
+      settings.use_zero_copy;
   settings.enable_elastic_overscroll = true;
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   // Rasterized tiles must be overlay candidates to be forwarded.
   // This is very similar to the line above for Apple.
-  settings.use_gpu_memory_buffer_resources =
+  settings.resource_settings.use_gpu_memory_buffer_resources =
       features::IsDelegatedCompositingEnabled();
 #endif
 
   // Set use_gpu_memory_buffer_resources to false to disable delegated
   // compositing, if RawDraw is enabled.
-  if (settings.use_gpu_memory_buffer_resources && features::IsUsingRawDraw()) {
-    settings.use_gpu_memory_buffer_resources = false;
+  if (settings.resource_settings.use_gpu_memory_buffer_resources &&
+      features::IsUsingRawDraw()) {
+    settings.resource_settings.use_gpu_memory_buffer_resources = false;
   }
 
   settings.memory_policy.bytes_limit_when_visible =
@@ -291,10 +294,6 @@ Compositor::~Compositor() {
   for (auto& observer : animation_observer_list_)
     observer.OnCompositingShuttingDown(this);
 
-  for (auto& observer : simple_begin_frame_observers_) {
-    observer->OnBeginFrameSourceShuttingDown();
-  }
-
   if (root_layer_)
     root_layer_->ResetCompositor();
 
@@ -312,7 +311,7 @@ Compositor::~Compositor() {
     host_frame_sink_manager->UnregisterFrameSinkHierarchy(frame_sink_id_,
                                                           client);
   }
-  host_frame_sink_manager->InvalidateFrameSinkId(frame_sink_id_, this);
+  host_frame_sink_manager->InvalidateFrameSinkId(frame_sink_id_);
 }
 
 void Compositor::AddChildFrameSink(const viz::FrameSinkId& frame_sink_id) {
@@ -348,9 +347,6 @@ void Compositor::SetLayerTreeFrameSink(
     display_private_->SetDisplayColorMatrix(
         gfx::SkM44ToTransform(display_color_matrix_));
     display_private_->SetOutputIsSecure(output_is_secure_);
-#if BUILDFLAG(IS_MAC)
-    display_private_->SetVSyncDisplayID(display_id_);
-#endif
     if (has_vsync_params_) {
       display_private_->SetDisplayVSyncParameters(vsync_timebase_,
                                                   vsync_interval_);
@@ -359,8 +355,6 @@ void Compositor::SetLayerTreeFrameSink(
       display_private_->SetMaxVrrInterval(max_vrr_interval_);
     }
   }
-
-  MaybeUpdateObserveBeginFrame();
 }
 
 void Compositor::SetExternalBeginFrameController(
@@ -534,25 +528,11 @@ void Compositor::SetBackgroundColor(SkColor color) {
 }
 
 void Compositor::SetVisible(bool visible) {
-  const bool changed = visible != IsVisible();
-  if (changed) {
-    for (auto& observer : observer_list_) {
-      observer.OnCompositorVisibilityChanging(this, visible);
-    }
-  }
-
   host_->SetVisible(visible);
   // Visibility is reset when the output surface is lost, so this must also be
-  // updated then. We need to call this even if the visibility hasn't changed,
-  // for the same reason.
+  // updated then.
   if (display_private_)
     display_private_->SetDisplayVisible(visible);
-
-  if (changed) {
-    for (auto& observer : observer_list_) {
-      observer.OnCompositorVisibilityChanged(this, visible);
-    }
-  }
 }
 
 bool Compositor::IsVisible() {
@@ -588,7 +568,7 @@ void Compositor::SetDisplayVSyncParameters(base::TimeTicks timebase,
   }
   DCHECK_GT(interval.InMillisecondsF(), 0);
 
-  // This is called at high frequency on macOS, so early-out of redundant
+  // This is called at high frequenty on macOS, so early-out of redundant
   // updates here.
   if (vsync_timebase_ == timebase && vsync_interval_ == interval)
     return;
@@ -609,7 +589,7 @@ void Compositor::AddVSyncParameterObserver(
 }
 
 void Compositor::SetMaxVrrInterval(
-    const std::optional<base::TimeDelta>& max_vrr_interval) {
+    const absl::optional<base::TimeDelta>& max_vrr_interval) {
   max_vrr_interval_ = max_vrr_interval;
 
   if (display_private_) {
@@ -790,9 +770,7 @@ void Compositor::DidFailToInitializeLayerTreeFrameSink() {
                      context_creation_weak_ptr_factory_.GetWeakPtr()));
 }
 
-void Compositor::DidCommit(int source_frame_number,
-                           base::TimeTicks,
-                           base::TimeTicks) {
+void Compositor::DidCommit(base::TimeTicks, base::TimeTicks) {
   DCHECK(!IsLocked());
   for (auto& observer : observer_list_)
     observer.OnCompositingDidCommit(this);
@@ -827,14 +805,12 @@ void Compositor::DidReceiveCompositorFrameAck() {
 
 void Compositor::DidPresentCompositorFrame(
     uint32_t frame_token,
-    const viz::FrameTimingDetails& frame_timing_details) {
-  TRACE_EVENT_MARK_WITH_TIMESTAMP1(
-      "cc,benchmark", "FramePresented",
-      frame_timing_details.presentation_feedback.timestamp, "environment",
-      "browser");
+    const gfx::PresentationFeedback& feedback) {
+  TRACE_EVENT_MARK_WITH_TIMESTAMP1("cc,benchmark", "FramePresented",
+                                   feedback.timestamp, "environment",
+                                   "browser");
   for (auto& observer : observer_list_)
-    observer.OnDidPresentCompositorFrame(
-        frame_token, frame_timing_details.presentation_feedback);
+    observer.OnDidPresentCompositorFrame(frame_token, feedback);
 }
 
 void Compositor::DidSubmitCompositorFrame() {
@@ -882,7 +858,7 @@ void Compositor::StartThroughputTracker(
   animation_host_->StartThroughputTracking(tracker_id);
 }
 
-bool Compositor::StopThroughputTracker(TrackerId tracker_id) {
+bool Compositor::StopThroughtputTracker(TrackerId tracker_id) {
   auto it = throughput_tracker_map_.find(tracker_id);
   DCHECK(it != throughput_tracker_map_.end());
 
@@ -898,7 +874,7 @@ bool Compositor::StopThroughputTracker(TrackerId tracker_id) {
   return true;
 }
 
-void Compositor::CancelThroughputTracker(TrackerId tracker_id) {
+void Compositor::CancelThroughtputTracker(TrackerId tracker_id) {
   auto it = throughput_tracker_map_.find(tracker_id);
   DCHECK(it != throughput_tracker_map_.end());
 
@@ -916,12 +892,14 @@ void Compositor::OnResume() {
     obs.ResetIfActive();
 }
 
-#if BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
+// of lacros-chrome is complete.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
 void Compositor::OnCompleteSwapWithNewSize(const gfx::Size& size) {
   for (auto& observer : observer_list_)
     observer.OnCompositingCompleteSwapWithNewSize(this, size);
 }
-#endif  // BUILDFLAG(IS_LINUX) && BUILDFLAG(IS_OZONE_X11)
+#endif
 
 void Compositor::SetOutputIsSecure(bool output_is_secure) {
   output_is_secure_ = output_is_secure;
@@ -977,39 +955,6 @@ void Compositor::SetDelegatedInkPointRenderer(
 
 const cc::LayerTreeSettings& Compositor::GetLayerTreeSettings() const {
   return host_->GetSettings();
-}
-
-void Compositor::AddSimpleBeginFrameObserver(
-    ui::HostBeginFrameObserver::SimpleBeginFrameObserver* obs) {
-  DCHECK(obs);
-  DCHECK(!base::Contains(simple_begin_frame_observers_, obs));
-  simple_begin_frame_observers_.insert(obs);
-  MaybeUpdateObserveBeginFrame();
-}
-
-void Compositor::RemoveSimpleBeginFrameObserver(
-    ui::HostBeginFrameObserver::SimpleBeginFrameObserver* obs) {
-  DCHECK(obs);
-  DCHECK(base::Contains(simple_begin_frame_observers_, obs));
-
-  simple_begin_frame_observers_.erase(obs);
-  MaybeUpdateObserveBeginFrame();
-}
-
-void Compositor::MaybeUpdateObserveBeginFrame() {
-  if (simple_begin_frame_observers_.empty() || !display_private_) {
-    host_begin_frame_observer_.reset();
-    return;
-  }
-
-  if (host_begin_frame_observer_) {
-    return;
-  }
-
-  host_begin_frame_observer_ = std::make_unique<ui::HostBeginFrameObserver>(
-      simple_begin_frame_observers_, task_runner_);
-  display_private_->SetStandaloneBeginFrameObserver(
-      host_begin_frame_observer_->GetBoundRemote());
 }
 
 }  // namespace ui

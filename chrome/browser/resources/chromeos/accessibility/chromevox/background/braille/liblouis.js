@@ -5,7 +5,6 @@
 /**
  * @fileoverview JavaScript shim for the liblouis Web Assembly wrapper.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
 
 /** Encapsulates a liblouis Web Assembly instance in the page. */
 export class LibLouis {
@@ -143,16 +142,16 @@ export class LibLouis {
     }
     const message = /** @type {!Object} */ (JSON.parse(e.data));
     const messageId = message['in_reply_to'];
-    if (messageId === undefined) {
+    if (!goog.isDef(messageId)) {
       globalThis.console.warn(
           'liblouis Web Assembly module sent message with no ID', message);
       return;
     }
-    if (message['error'] !== undefined) {
+    if (goog.isDef(message['error'])) {
       globalThis.console.error('liblouis Web Assembly error', message['error']);
     }
     const callback = this.pendingRpcCallbacks_[messageId];
-    if (callback !== undefined) {
+    if (goog.isDef(callback)) {
       delete this.pendingRpcCallbacks_[messageId];
       callback(message);
     }
@@ -249,10 +248,10 @@ LibLouis.Translator = class {
       let brailleToText = null;
       if (reply['success'] && goog.isString(reply['cells'])) {
         cells = LibLouis.Translator.decodeHexString_(reply['cells']);
-        if (reply['text_to_braille'] !== undefined) {
+        if (goog.isDef(reply['text_to_braille'])) {
           textToBraille = reply['text_to_braille'];
         }
-        if (reply['braille_to_text'] !== undefined) {
+        if (goog.isDef(reply['braille_to_text'])) {
           brailleToText = reply['braille_to_text'];
         }
       } else if (text.length > 0) {
@@ -339,5 +338,3 @@ LibLouis.Translator = class {
     return hex;
   }
 };
-
-TestImportManager.exportForTesting(LibLouis);

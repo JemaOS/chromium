@@ -115,7 +115,7 @@ TEST_F(ShillLogSourceTest, NotScrubbed) {
 
 constexpr char kScrubbedDeviceStart[] = R"("/device/wifi1")";
 constexpr char kScrubbedDeviceExpected[] = R"("/device/wifi1": {
-      "Address": "*** MASKED ***",
+      "Address": "23456789abcd",
       "DBus.Object": "/device/wifi1",
       "DBus.Service": "org.freedesktop.ModemManager1",
       "IPConfigs": {

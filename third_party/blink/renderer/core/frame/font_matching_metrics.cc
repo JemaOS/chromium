@@ -6,6 +6,8 @@
 
 #include "base/metrics/histogram_macros.h"
 #include "base/task/single_thread_task_runner.h"
+#include "services/metrics/public/cpp/metrics_utils.h"
+#include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_metric_builder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
@@ -13,11 +15,14 @@
 #include "third_party/blink/public/common/privacy_budget/identifiable_token.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/dactyloscoper.h"
+#include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/platform/fonts/font_global_context.h"
 #include "third_party/blink/renderer/platform/privacy_budget/identifiability_digest_helpers.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 
 namespace {
+
+constexpr double kUkmFontLoadCountBucketSpacing = 1.3;
 
 template <typename T>
 HashSet<T> SetIntersection(const HashSet<T>& a, const HashSet<T>& b) {
@@ -45,8 +50,22 @@ bool IdentifiabilityStudyShouldSampleFonts() {
       IdentifiableSurface::Type::kGenericFontLookup,
       IdentifiableSurface::Type::kLocalFontLoadPostScriptName,
       IdentifiableSurface::Type::kLocalFontExistenceByUniqueNameOnly,
-      IdentifiableSurface::Type::kLocalFontExistenceByUniqueOrFamilyName,
   });
+}
+
+FontMatchingMetrics::FontLoadContext GetLoadContext(
+    ExecutionContext* execution_context) {
+  if (execution_context->IsWorkerOrWorkletGlobalScope()) {
+    return FontMatchingMetrics::kWorker;
+  }
+  if (auto* dom_window = DynamicTo<LocalDOMWindow>(execution_context)) {
+    if (dom_window->GetFrame()) {
+      return dom_window->GetFrame()->IsOutermostMainFrame()
+                 ? FontMatchingMetrics::kTopLevelFrame
+                 : FontMatchingMetrics::kSubframe;
+    }
+  }
+  return FontMatchingMetrics::kTopLevelFrame;
 }
 
 }  // namespace
@@ -54,21 +73,30 @@ bool IdentifiabilityStudyShouldSampleFonts() {
 FontMatchingMetrics::FontMatchingMetrics(
     ExecutionContext* execution_context,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-    : ukm_recorder_(execution_context->UkmRecorder()),
+    : load_context_(GetLoadContext(execution_context)),
+      ukm_recorder_(execution_context->UkmRecorder()),
       source_id_(execution_context->UkmSourceID()),
       execution_context_(execution_context),
       identifiability_metrics_timer_(
           task_runner,
           this,
-          &FontMatchingMetrics::IdentifiabilityMetricsTimerFired) {}
+          &FontMatchingMetrics::IdentifiabilityMetricsTimerFired) {
+  Initialize();
+}
+
+void FontMatchingMetrics::Initialize() {
+  // Estimate of average page font use from anecdotal browsing session.
+  constexpr unsigned kEstimatedFontCount = 7;
+  local_fonts_succeeded_.ReserveCapacityForSize(kEstimatedFontCount);
+  local_fonts_failed_.ReserveCapacityForSize(kEstimatedFontCount);
+}
 
 void FontMatchingMetrics::ReportSuccessfulFontFamilyMatch(
     const AtomicString& font_family_name) {
   if (font_family_name.IsNull()) {
     return;
   }
-  ReportLocalFontExistenceByUniqueOrFamilyName(font_family_name,
-                                               /*font_exists=*/true);
+  successful_font_families_.insert(font_family_name);
 }
 
 void FontMatchingMetrics::ReportFailedFontFamilyMatch(
@@ -76,8 +104,23 @@ void FontMatchingMetrics::ReportFailedFontFamilyMatch(
   if (font_family_name.IsNull()) {
     return;
   }
-  ReportLocalFontExistenceByUniqueOrFamilyName(font_family_name,
-                                               /*font_exists=*/false);
+  failed_font_families_.insert(font_family_name);
+}
+
+void FontMatchingMetrics::ReportSystemFontFamily(
+    const AtomicString& font_family_name) {
+  if (font_family_name.IsNull()) {
+    return;
+  }
+  system_font_families_.insert(font_family_name);
+}
+
+void FontMatchingMetrics::ReportWebFontFamily(
+    const AtomicString& font_family_name) {
+  if (font_family_name.IsNull()) {
+    return;
+  }
+  web_font_families_.insert(font_family_name);
 }
 
 void FontMatchingMetrics::ReportSuccessfulLocalFontMatch(
@@ -85,6 +128,7 @@ void FontMatchingMetrics::ReportSuccessfulLocalFontMatch(
   if (font_name.IsNull()) {
     return;
   }
+  local_fonts_succeeded_.insert(font_name);
   ReportLocalFontExistenceByUniqueNameOnly(font_name, /*font_exists=*/true);
 }
 
@@ -93,22 +137,8 @@ void FontMatchingMetrics::ReportFailedLocalFontMatch(
   if (font_name.IsNull()) {
     return;
   }
+  local_fonts_failed_.insert(font_name);
   ReportLocalFontExistenceByUniqueNameOnly(font_name, /*font_exists=*/false);
-}
-
-void FontMatchingMetrics::ReportLocalFontExistenceByUniqueOrFamilyName(
-    const AtomicString& font_name,
-    bool font_exists) {
-  if (font_name.IsNull()) {
-    return;
-  }
-  if (!IdentifiabilityStudySettings::Get()->ShouldSampleType(
-          IdentifiableSurface::Type::kLocalFontExistenceByUniqueOrFamilyName)) {
-    return;
-  }
-  IdentifiableTokenKey input_key(
-      IdentifiabilityBenignCaseFoldingStringToken(font_name));
-  local_font_existence_by_unique_or_family_name_.insert(input_key, font_exists);
 }
 
 void FontMatchingMetrics::ReportLocalFontExistenceByUniqueNameOnly(
@@ -127,7 +157,7 @@ void FontMatchingMetrics::ReportLocalFontExistenceByUniqueNameOnly(
 }
 
 void FontMatchingMetrics::InsertFontHashIntoMap(IdentifiableTokenKey input_key,
-                                                const SimpleFontData* font_data,
+                                                SimpleFontData* font_data,
                                                 TokenToTokenHashMap& hash_map) {
   DCHECK(IdentifiabilityStudyShouldSampleFonts());
   if (hash_map.Contains(input_key)) {
@@ -160,7 +190,7 @@ FontMatchingMetrics::GetTokenBuilderWithFontSelectionRequest(
 void FontMatchingMetrics::ReportFontLookupByUniqueOrFamilyName(
     const AtomicString& name,
     const FontDescription& font_description,
-    const SimpleFontData* resulting_font_data) {
+    SimpleFontData* resulting_font_data) {
   Dactyloscoper::TraceFontLookup(
       execution_context_, name, font_description,
       Dactyloscoper::FontLookupType::kUniqueOrFamilyName);
@@ -184,7 +214,7 @@ void FontMatchingMetrics::ReportFontLookupByUniqueOrFamilyName(
 void FontMatchingMetrics::ReportFontLookupByUniqueNameOnly(
     const AtomicString& name,
     const FontDescription& font_description,
-    const SimpleFontData* resulting_font_data,
+    SimpleFontData* resulting_font_data,
     bool is_loading_fallback) {
   // We ignore lookups that result in loading fallbacks for now as they should
   // only be temporary.
@@ -217,7 +247,7 @@ void FontMatchingMetrics::ReportFontLookupByFallbackCharacter(
     UChar32 fallback_character,
     FontFallbackPriority fallback_priority,
     const FontDescription& font_description,
-    const SimpleFontData* resulting_font_data) {
+    SimpleFontData* resulting_font_data) {
   if (!IdentifiabilityStudySettings::Get()->ShouldSampleType(
           IdentifiableSurface::Type::kLocalFontLookupByFallbackCharacter)) {
     return;
@@ -236,7 +266,7 @@ void FontMatchingMetrics::ReportFontLookupByFallbackCharacter(
 
 void FontMatchingMetrics::ReportLastResortFallbackFontLookup(
     const FontDescription& font_description,
-    const SimpleFontData* resulting_font_data) {
+    SimpleFontData* resulting_font_data) {
   if (!IdentifiabilityStudySettings::Get()->ShouldSampleType(
           IdentifiableSurface::Type::kLocalFontLookupAsLastResort)) {
     return;
@@ -313,8 +343,6 @@ void FontMatchingMetrics::PublishIdentifiabilityMetrics() {
            IdentifiableSurface::Type::kGenericFontLookup},
           {&font_load_postscript_name_,
            IdentifiableSurface::Type::kLocalFontLoadPostScriptName},
-          {&local_font_existence_by_unique_or_family_name_,
-           IdentifiableSurface::Type::kLocalFontExistenceByUniqueOrFamilyName},
           {&local_font_existence_by_unique_name_only_,
            IdentifiableSurface::Type::kLocalFontExistenceByUniqueNameOnly},
       };
@@ -333,6 +361,36 @@ void FontMatchingMetrics::PublishIdentifiabilityMetrics() {
   }
 
   builder.Record(ukm_recorder_);
+}
+
+void FontMatchingMetrics::PublishUkmMetrics() {
+  ukm::builders::FontMatchAttempts(source_id_)
+      .SetLoadContext(load_context_)
+      .SetSystemFontFamilySuccesses(ukm::GetExponentialBucketMin(
+          SetIntersection(successful_font_families_, system_font_families_)
+              .size(),
+          kUkmFontLoadCountBucketSpacing))
+      .SetSystemFontFamilyFailures(ukm::GetExponentialBucketMin(
+          SetIntersection(failed_font_families_, system_font_families_).size(),
+          kUkmFontLoadCountBucketSpacing))
+      .SetSystemFontFamilyTotal(ukm::GetExponentialBucketMin(
+          system_font_families_.size(), kUkmFontLoadCountBucketSpacing))
+      .SetWebFontFamilySuccesses(ukm::GetExponentialBucketMin(
+          SetIntersection(successful_font_families_, web_font_families_).size(),
+          kUkmFontLoadCountBucketSpacing))
+      .SetWebFontFamilyFailures(ukm::GetExponentialBucketMin(
+          SetIntersection(failed_font_families_, web_font_families_).size(),
+          kUkmFontLoadCountBucketSpacing))
+      .SetWebFontFamilyTotal(ukm::GetExponentialBucketMin(
+          web_font_families_.size(), kUkmFontLoadCountBucketSpacing))
+      .SetLocalFontFailures(ukm::GetExponentialBucketMin(
+          local_fonts_failed_.size(), kUkmFontLoadCountBucketSpacing))
+      .SetLocalFontSuccesses(ukm::GetExponentialBucketMin(
+          local_fonts_succeeded_.size(), kUkmFontLoadCountBucketSpacing))
+      .SetLocalFontTotal(ukm::GetExponentialBucketMin(
+          local_fonts_succeeded_.size() + local_fonts_failed_.size(),
+          kUkmFontLoadCountBucketSpacing))
+      .Record(ukm_recorder_);
 }
 
 void FontMatchingMetrics::PublishEmojiGlyphMetrics() {
@@ -358,11 +416,11 @@ void FontMatchingMetrics::IdentifiabilityMetricsTimerFired(TimerBase*) {
 
 void FontMatchingMetrics::PublishAllMetrics() {
   PublishIdentifiabilityMetrics();
+  PublishUkmMetrics();
   PublishEmojiGlyphMetrics();
 }
 
-int64_t FontMatchingMetrics::GetHashForFontData(
-    const SimpleFontData* font_data) {
+int64_t FontMatchingMetrics::GetHashForFontData(SimpleFontData* font_data) {
   return font_data ? FontGlobalContext::Get()
                          .GetOrComputeTypefaceDigest(font_data->PlatformData())
                          .ToUkmMetricValue()
@@ -370,7 +428,7 @@ int64_t FontMatchingMetrics::GetHashForFontData(
 }
 
 IdentifiableToken FontMatchingMetrics::GetPostScriptNameTokenForFontData(
-    const SimpleFontData* font_data) {
+    SimpleFontData* font_data) {
   DCHECK(font_data);
   return FontGlobalContext::Get().GetOrComputePostScriptNameDigest(
       font_data->PlatformData());

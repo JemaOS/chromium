@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/file_manager/path_util.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "ash/components/arc/arc_features.h"
@@ -15,17 +14,13 @@
 #include "ash/components/arc/test/connection_holder_util.h"
 #include "ash/components/arc/test/fake_file_system_instance.h"
 #include "base/command_line.h"
-#include "base/containers/to_vector.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
-#include "base/pickle.h"
-#include "base/strings/string_util.h"
 #include "base/system/sys_info.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_running_on_chromeos.h"
-#include "base/test/test_future.h"
 #include "chrome/browser/ash/arc/fileapi/arc_documents_provider_util.h"
 #include "chrome/browser/ash/arc/fileapi/arc_file_system_operation_runner.h"
 #include "chrome/browser/ash/arc/fileapi/arc_media_view_util.h"
@@ -33,13 +28,12 @@
 #include "chrome/browser/ash/crostini/crostini_util.h"
 #include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/ash/drive/file_system_util.h"
+#include "chrome/browser/ash/file_manager/fake_disk_mount_manager.h"
 #include "chrome/browser/ash/file_manager/fileapi_util.h"
 #include "chrome/browser/ash/file_manager/volume_manager.h"
 #include "chrome/browser/ash/file_manager/volume_manager_factory.h"
 #include "chrome/browser/ash/file_system_provider/provided_file_system_info.h"
 #include "chrome/browser/ash/fileapi/file_system_backend.h"
-#include "chrome/browser/ash/fusebox/fusebox_server.h"
-#include "chrome/browser/ash/guest_os/guest_os_share_path.h"
 #include "chrome/browser/ash/guest_os/public/types.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
@@ -56,23 +50,21 @@
 #include "chromeos/ash/components/dbus/seneschal/seneschal_client.h"
 #include "chromeos/ash/components/disks/disk.h"
 #include "chromeos/ash/components/disks/disk_mount_manager.h"
-#include "chromeos/ash/components/disks/fake_disk_mount_manager.h"
 #include "components/account_id/account_id.h"
 #include "components/drive/drive_pref_names.h"
 #include "components/user_manager/scoped_user_manager.h"
 #include "content/public/test/browser_task_environment.h"
 #include "storage/browser/file_system/external_mount_points.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
-#include "ui/base/clipboard/custom_data_helper.h"
-#include "ui/base/data_transfer_policy/data_transfer_endpoint.h"
-
-namespace file_manager::util {
-namespace {
 
 using base::FilePath;
-using base::test::TestFuture;
 using storage::FileSystemURL;
+
+namespace file_manager {
+namespace util {
+namespace {
 
 class FileManagerPathUtilTest : public testing::Test {
  public:
@@ -85,9 +77,9 @@ class FileManagerPathUtilTest : public testing::Test {
 
   void SetUp() override {
     ash::disks::DiskMountManager::InitializeForTesting(
-        new ash::disks::FakeDiskMountManager);
+        new FakeDiskMountManager);
     profile_ = std::make_unique<TestingProfile>(
-        FilePath("/home/chronos/u-0123456789abcdef"));
+        base::FilePath("/home/chronos/u-0123456789abcdef"));
     VolumeManagerFactory::GetInstance()->SetTestingFactory(
         profile_.get(),
         base::BindLambdaForTesting([](content::BrowserContext* context) {
@@ -106,8 +98,6 @@ class FileManagerPathUtilTest : public testing::Test {
 
  protected:
   content::BrowserTaskEnvironment task_environment_;
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      user_manager_{std::make_unique<ash::FakeChromeUserManager>()};
   std::unique_ptr<TestingProfile> profile_;
 };
 
@@ -117,7 +107,8 @@ TEST_F(FileManagerPathUtilTest, GetDownloadsFolderForProfile) {
 }
 
 TEST_F(FileManagerPathUtilTest, GetMyFilesFolderForProfile) {
-  FilePath profile_path = FilePath("/home/chronos/u-0123456789abcdef");
+  base::FilePath profile_path =
+      base::FilePath("/home/chronos/u-0123456789abcdef");
 
   // When running outside ChromeOS, it should return $HOME/Downloads for both
   // MyFiles and Downloads.
@@ -149,140 +140,87 @@ TEST_F(FileManagerPathUtilTest, GetMyFilesFolderForProfile) {
 }
 
 TEST_F(FileManagerPathUtilTest, GetPathDisplayTextForSettings) {
-  EXPECT_EQ("My files", GetPathDisplayTextForSettings(
-                            profile_.get(), "/home/chronos/user/MyFiles"));
-
-  EXPECT_EQ("My files",
+  EXPECT_EQ("Downloads", GetPathDisplayTextForSettings(
+                             profile_.get(), "/home/chronos/user/Downloads"));
+  EXPECT_EQ("Downloads",
             GetPathDisplayTextForSettings(
-                profile_.get(), "/home/chronos/u-0123456789abcdef/MyFiles"));
+                profile_.get(), "/home/chronos/u-0123456789abcdef/Downloads"));
 
-  EXPECT_EQ("My files › a › b › c",
-            GetPathDisplayTextForSettings(profile_.get(),
-                                          "/home/chronos/user/MyFiles/a/b/c"));
-  EXPECT_EQ(
-      "My files › a › b › c",
-      GetPathDisplayTextForSettings(
-          profile_.get(), "/home/chronos/u-0123456789abcdef/MyFiles/a/b/c"));
-
-  EXPECT_EQ("My files › Downloads",
+  EXPECT_EQ("My files \u203a Downloads",
             GetPathDisplayTextForSettings(
                 profile_.get(), "/home/chronos/user/MyFiles/Downloads"));
-
-  EXPECT_EQ("My files › Downloads",
+  EXPECT_EQ("My files \u203a Downloads",
             GetPathDisplayTextForSettings(
                 profile_.get(),
                 "/home/chronos/u-0123456789abcdef/MyFiles/Downloads"));
 
-  EXPECT_EQ("My files › Downloads › a › b › c",
+  EXPECT_EQ("My files \u203a other-folder",
             GetPathDisplayTextForSettings(
-                profile_.get(), "/home/chronos/user/MyFiles/Downloads/a/b/c"));
-
-  EXPECT_EQ("My files › Downloads › a › b › c",
-            GetPathDisplayTextForSettings(
-                profile_.get(),
-                "/home/chronos/u-0123456789abcdef/MyFiles/Downloads/a/b/c"));
-
-  EXPECT_NE("My files2", GetPathDisplayTextForSettings(
-                             profile_.get(), "/home/chronos/user/MyFiles2"));
-
-  EXPECT_EQ("Play files",
-            GetPathDisplayTextForSettings(profile_.get(),
-                                          "/run/arc/sdcard/write/emulated/0"));
-
-  EXPECT_EQ("Play files › a › b › c",
-            GetPathDisplayTextForSettings(
-                profile_.get(), "/run/arc/sdcard/write/emulated/0/a/b/c"));
-
-  EXPECT_EQ("Linux files",
+                profile_.get(), "/home/chronos/user/MyFiles/other-folder"));
+  EXPECT_EQ("My files \u203a other-folder",
             GetPathDisplayTextForSettings(
                 profile_.get(),
-                "/media/fuse/crostini_0123456789abcdef_termina_penguin"));
+                "/home/chronos/u-0123456789abcdef/MyFiles/other-folder"));
 
-  EXPECT_EQ("Linux files › a › b › c",
+  EXPECT_EQ("Play files \u203a foo \u203a bar",
+            GetPathDisplayTextForSettings(
+                profile_.get(), "/run/arc/sdcard/write/emulated/0/foo/bar"));
+  EXPECT_EQ("Linux files \u203a foo",
             GetPathDisplayTextForSettings(
                 profile_.get(),
-                "/media/fuse/crostini_0123456789abcdef_termina_penguin/a/b/c"));
-
+                "/media/fuse/crostini_0123456789abcdef_termina_penguin/foo"));
   EXPECT_EQ("foo", GetPathDisplayTextForSettings(profile_.get(),
                                                  "/media/removable/foo"));
-
-  EXPECT_EQ("foo › a › b › c",
-            GetPathDisplayTextForSettings(profile_.get(),
-                                          "/media/removable/foo/a/b/c"));
-
   EXPECT_EQ("foo", GetPathDisplayTextForSettings(profile_.get(),
                                                  "/media/archive/foo"));
 
-  EXPECT_EQ("foo › a › b › c", GetPathDisplayTextForSettings(
-                                   profile_.get(), "/media/archive/foo/a/b/c"));
-
-  TestingProfile profile2(FilePath("/home/chronos/u-0123456789abcdef"));
-  user_manager_->AddUser(
+  TestingProfile profile2(base::FilePath("/home/chronos/u-0123456789abcdef"));
+  ash::FakeChromeUserManager user_manager;
+  user_manager.AddUser(
       AccountId::FromUserEmailGaiaId(profile2.GetProfileUserName(), "12345"));
-  profile2.GetPrefs()->SetString(drive::prefs::kDriveFsProfileSalt, "a");
+  PrefService* prefs = profile2.GetPrefs();
+  prefs->SetString(drive::prefs::kDriveFsProfileSalt, "a");
 
   drive::DriveIntegrationServiceFactory::GetForProfile(&profile2)->SetEnabled(
       true);
-
-  EXPECT_EQ("Google Drive › My Drive",
-            GetPathDisplayTextForSettings(
-                &profile2,
-                "/media/fuse/drivefs-84675c855b63e12f384d45f033826980/root"));
-
   EXPECT_EQ(
-      "Google Drive › My Drive › foo",
+      "Google Drive \u203a My Drive \u203a foo",
       GetPathDisplayTextForSettings(
           &profile2,
           "/media/fuse/drivefs-84675c855b63e12f384d45f033826980/root/foo"));
-
-  EXPECT_EQ("Google Drive › Shared drives › A Team Drive",
-            GetPathDisplayTextForSettings(
-                &profile2,
-                "/media/fuse/drivefs-84675c855b63e12f384d45f033826980/"
-                "team_drives/A Team Drive"));
-
-  EXPECT_EQ("Google Drive › Shared drives › A Team Drive › foo",
+  EXPECT_EQ("Google Drive \u203a Shared drives \u203a A Team Drive \u203a foo",
             GetPathDisplayTextForSettings(
                 &profile2,
                 "/media/fuse/drivefs-84675c855b63e12f384d45f033826980/"
                 "team_drives/A Team Drive/foo"));
-
-  EXPECT_EQ("Google Drive › Computers › My Other Computer",
-            GetPathDisplayTextForSettings(
-                &profile2,
-                "/media/fuse/drivefs-84675c855b63e12f384d45f033826980/"
-                "Computers/My Other Computer"));
-
-  EXPECT_EQ("Google Drive › Computers › My Other Computer › bar",
+  EXPECT_EQ("Google Drive \u203a Computers \u203a My Other Computer \u203a bar",
             GetPathDisplayTextForSettings(
                 &profile2,
                 "/media/fuse/drivefs-84675c855b63e12f384d45f033826980/"
                 "Computers/My Other Computer/bar"));
-
-  EXPECT_EQ("Google Drive › Shared with me › 1234 › shared",
+  EXPECT_EQ("Google Drive \u203a Shared with me \u203a 1234 \u203a shared",
             GetPathDisplayTextForSettings(
                 &profile2,
                 "/media/fuse/drivefs-84675c855b63e12f384d45f033826980/"
                 ".files-by-id/1234/shared"));
+  EXPECT_EQ(
+      "Google Drive \u203a Shared with me \u203a 1-abc-xyz \u203a shortcut",
+      GetPathDisplayTextForSettings(
+          &profile2,
+          "/media/fuse/drivefs-84675c855b63e12f384d45f033826980/"
+          ".shortcut-targets-by-id/1-abc-xyz/shortcut"));
 
-  EXPECT_EQ("Google Drive › Shared with me › 1-abc-xyz › shortcut",
-            GetPathDisplayTextForSettings(
-                &profile2,
-                "/media/fuse/drivefs-84675c855b63e12f384d45f033826980/"
-                ".shortcut-targets-by-id/1-abc-xyz/shortcut"));
-
-  EXPECT_EQ("Google Drive › My Drive › foo",
+  EXPECT_EQ("Google Drive \u203a My Drive \u203a foo",
             GetPathDisplayTextForSettings(&profile2, "${google_drive}/foo"));
 
-  TestingProfile guest_profile(FilePath("/home/chronos/guest"));
+  TestingProfile guest_profile(base::FilePath("/home/chronos/guest"));
   guest_profile.SetGuestSession(true);
   guest_profile.set_profile_name("$guest");
   ASSERT_TRUE(
       drive::DriveIntegrationServiceFactory::GetForProfile(&guest_profile));
 
-  EXPECT_EQ("My files", GetPathDisplayTextForSettings(
-                            &guest_profile, "/home/chronos/user/MyFiles"));
-
+  EXPECT_EQ("Downloads", GetPathDisplayTextForSettings(
+                             &guest_profile, "/home/chronos/user/Downloads"));
   // Test that a passthrough path doesn't crash on requesting the Drive mount
   // path for a guest profile.
   EXPECT_EQ("foo", GetPathDisplayTextForSettings(&guest_profile, "foo"));
@@ -354,56 +292,41 @@ TEST_F(FileManagerPathUtilTest, MultiProfileDownloadsFolderMigration) {
 }
 
 TEST_F(FileManagerPathUtilTest, MigrateToDriveFs) {
-  FilePath home("/home/chronos/u-0123456789abcdef");
-  FilePath other("/some/other/path");
-  FilePath old_drive("/special/drive-0123456789abcdef");
-  FilePath my_drive = old_drive.Append("root");
-  FilePath file_in_my_drive = old_drive.Append("root").Append("file.txt");
+  base::FilePath home("/home/chronos/u-0123456789abcdef");
+  base::FilePath other("/some/other/path");
+  base::FilePath old_drive("/special/drive-0123456789abcdef");
+  base::FilePath my_drive = old_drive.Append("root");
+  base::FilePath file_in_my_drive = old_drive.Append("root").Append("file.txt");
 
   // Migrate paths under old drive mount.
-  TestingProfile profile2(FilePath("/home/chronos/u-0123456789abcdef"));
-  user_manager_->AddUser(
+  TestingProfile profile2(base::FilePath("/home/chronos/u-0123456789abcdef"));
+  ash::FakeChromeUserManager user_manager;
+  user_manager.AddUser(
       AccountId::FromUserEmailGaiaId(profile2.GetProfileUserName(), "12345"));
   PrefService* prefs = profile2.GetPrefs();
   prefs->SetString(drive::prefs::kDriveFsProfileSalt, "a");
   drive::DriveIntegrationServiceFactory::GetForProfile(&profile2)->SetEnabled(
       true);
 
-  FilePath result;
+  base::FilePath result;
   EXPECT_FALSE(MigrateToDriveFs(&profile2, other, &result));
   EXPECT_TRUE(MigrateToDriveFs(&profile2, my_drive, &result));
-  EXPECT_EQ(
-      FilePath("/media/fuse/drivefs-84675c855b63e12f384d45f033826980/root"),
-      result);
-  EXPECT_TRUE(MigrateToDriveFs(&profile2, file_in_my_drive, &result));
-  EXPECT_EQ(FilePath("/media/fuse/drivefs-84675c855b63e12f384d45f033826980/"
-                     "root/file.txt"),
+  EXPECT_EQ(base::FilePath(
+                "/media/fuse/drivefs-84675c855b63e12f384d45f033826980/root"),
             result);
-}
-
-TEST_F(FileManagerPathUtilTest, GetGuestOsMountPointName) {
-  guest_os::GuestId arcvm(guest_os::VmType::ARCVM, "arcvm", "");
-  EXPECT_EQ(GetGuestOsMountPointName(profile_.get(), arcvm), "android_files");
-
-  guest_os::GuestId penguin(guest_os::VmType::TERMINA, "termina", "penguin");
-  EXPECT_EQ(GetGuestOsMountPointName(profile_.get(), penguin),
-            "crostini_0123456789abcdef_termina_penguin");
-
-  guest_os::GuestId other(guest_os::VmType::TERMINA, "termina", "other");
-  EXPECT_EQ(GetGuestOsMountPointName(profile_.get(), other),
-            "guestos+0123456789abcdef+termina+other");
-
-  guest_os::GuestId bru(guest_os::VmType::BRUSCHETTA, "bru", "penguin");
-  EXPECT_EQ(GetGuestOsMountPointName(profile_.get(), bru),
-            "guestos+0123456789abcdef+bru+penguin");
+  EXPECT_TRUE(MigrateToDriveFs(&profile2, file_in_my_drive, &result));
+  EXPECT_EQ(
+      base::FilePath("/media/fuse/drivefs-84675c855b63e12f384d45f033826980/"
+                     "root/file.txt"),
+      result);
 }
 
 TEST_F(FileManagerPathUtilTest, ConvertBetweenFileSystemURLAndPathInsideVM) {
   storage::ExternalMountPoints* mount_points =
       storage::ExternalMountPoints::GetSystemInstance();
-
   // Setup for DriveFS.
-  user_manager_->AddUser(
+  ash::FakeChromeUserManager user_manager;
+  user_manager.AddUser(
       AccountId::FromUserEmailGaiaId(profile_->GetProfileUserName(), "12345"));
   profile_->GetPrefs()->SetString(drive::prefs::kDriveFsProfileSalt, "a");
 
@@ -432,30 +355,30 @@ TEST_F(FileManagerPathUtilTest, ConvertBetweenFileSystemURLAndPathInsideVM) {
                                    GetMyFilesFolderForProfile(profile_.get()));
   mount_points->RegisterFileSystem(
       GetAndroidFilesMountPointName(), storage::kFileSystemTypeLocal,
-      storage::FileSystemMountOption(), FilePath(kAndroidFilesPath));
+      storage::FileSystemMountOption(), base::FilePath(kAndroidFilesPath));
   drive::DriveIntegrationService* integration_service =
       drive::DriveIntegrationServiceFactory::GetForProfile(profile_.get());
-  FilePath mount_point_drive = integration_service->GetMountPointPath();
+  base::FilePath mount_point_drive = integration_service->GetMountPointPath();
   mount_points->RegisterFileSystem(
       mount_point_drive.BaseName().value(), storage::kFileSystemTypeLocal,
       storage::FileSystemMountOption(), mount_point_drive);
   mount_points->RegisterFileSystem(
       ash::kSystemMountNameRemovable, storage::kFileSystemTypeLocal,
-      storage::FileSystemMountOption(), FilePath(kRemovableMediaPath));
+      storage::FileSystemMountOption(), base::FilePath(kRemovableMediaPath));
   mount_points->RegisterFileSystem(
       ash::kSystemMountNameArchive, storage::kFileSystemTypeLocal,
-      storage::FileSystemMountOption(), FilePath(kArchiveMountPath));
+      storage::FileSystemMountOption(), base::FilePath(kArchiveMountPath));
   // SmbFsShare comes up with a unique stable ID for the share, it can
   // just be faked here, the mount ID is expected to appear in the mount
   // path, it's faked too.
   mount_points->RegisterFileSystem(
       "smbfsmountid" /* fake mount ID for mount name */,
       storage::kFileSystemTypeSmbFs, storage::FileSystemMountOption(),
-      FilePath("/media/fuse/smbfs-smbfsmountid"));
+      base::FilePath("/media/fuse/smbfs-smbfsmountid"));
 
-  FilePath inside;
-  FileSystemURL url;
-  FilePath vm_mount("/mnt/chromeos");
+  base::FilePath inside;
+  storage::FileSystemURL url;
+  base::FilePath vm_mount("/mnt/chromeos");
 
   struct Test {
     std::string mount_name;
@@ -521,13 +444,14 @@ TEST_F(FileManagerPathUtilTest, ConvertBetweenFileSystemURLAndPathInsideVM) {
     EXPECT_TRUE(ConvertFileSystemURLToPathInsideVM(
         profile_.get(),
         mount_points->CreateExternalFileSystemURL(
-            blink::StorageKey(), test.mount_name, FilePath(test.relative_path)),
+            blink::StorageKey(), test.mount_name,
+            base::FilePath(test.relative_path)),
         vm_mount, /*map_crostini_home=*/false, &inside));
     EXPECT_EQ(test.inside, inside.value());
 
     // ConvertPathInsideVMToFileSystemURL.
     EXPECT_TRUE(ConvertPathInsideVMToFileSystemURL(
-        profile_.get(), FilePath(test.inside), vm_mount,
+        profile_.get(), base::FilePath(test.inside), vm_mount,
         /*map_crostini_home=*/false, &url));
     EXPECT_TRUE(url.is_valid());
     EXPECT_EQ(file_manager::util::GetFileManagerURL(), url.origin().GetURL());
@@ -541,43 +465,43 @@ TEST_F(FileManagerPathUtilTest, ConvertBetweenFileSystemURLAndPathInsideVM) {
       profile_.get(),
       mount_points->CreateExternalFileSystemURL(
           blink::StorageKey(), "crostini_0123456789abcdef_termina_penguin",
-          FilePath("path/in/crostini")),
+          base::FilePath("path/in/crostini")),
       vm_mount, /*map_crostini_home=*/true, &inside));
   EXPECT_EQ("/home/testuser/path/in/crostini", inside.value());
   EXPECT_TRUE(ConvertFileSystemURLToPathInsideCrostini(
       profile_.get(),
       mount_points->CreateExternalFileSystemURL(
           blink::StorageKey(), "crostini_0123456789abcdef_termina_penguin",
-          FilePath("path/in/crostini")),
+          base::FilePath("path/in/crostini")),
       &inside));
   EXPECT_EQ("/home/testuser/path/in/crostini", inside.value());
 
   EXPECT_FALSE(ConvertFileSystemURLToPathInsideVM(
       profile_.get(),
-      mount_points->CreateExternalFileSystemURL(blink::StorageKey(), "unknown",
-                                                FilePath("path/in/unknown")),
+      mount_points->CreateExternalFileSystemURL(
+          blink::StorageKey(), "unknown", base::FilePath("path/in/unknown")),
       vm_mount, /*map_crostini_home=*/false, &inside));
 
   // Special case for Crostini $HOME ConvertPathInsideVMToFileSystemURL.
   EXPECT_TRUE(ConvertPathInsideVMToFileSystemURL(
-      profile_.get(), FilePath("/home/testuser/path/in/crostini"), vm_mount,
-      /*map_crostini_home=*/true, &url));
+      profile_.get(), base::FilePath("/home/testuser/path/in/crostini"),
+      vm_mount, /*map_crostini_home=*/true, &url));
   EXPECT_TRUE(url.is_valid());
   EXPECT_EQ(file_manager::util::GetFileManagerURL(), url.origin().GetURL());
   EXPECT_EQ("crostini_0123456789abcdef_termina_penguin/path/in/crostini",
             url.virtual_path().value());
   EXPECT_FALSE(ConvertPathInsideVMToFileSystemURL(
-      profile_.get(), FilePath("/home/testuser/path/in/crostini"), vm_mount,
-      /*map_crostini_home=*/false, &url));
+      profile_.get(), base::FilePath("/home/testuser/path/in/crostini"),
+      vm_mount, /*map_crostini_home=*/false, &url));
 
   EXPECT_FALSE(ConvertPathInsideVMToFileSystemURL(
-      profile_.get(), FilePath("/path/not/under/mount"), vm_mount,
+      profile_.get(), base::FilePath("/path/not/under/mount"), vm_mount,
       /*map_crostini_home=*/false, &url));
 
   // Special case for PluginVM case-insensitive hostname matching.
   EXPECT_TRUE(ConvertPathInsideVMToFileSystemURL(
-      profile_.get(), FilePath("//chromeos/MyFiles/path/in/pluginvm"),
-      FilePath("//ChromeOS"), /*map_crostini_home=*/false, &url));
+      profile_.get(), base::FilePath("//chromeos/MyFiles/path/in/pluginvm"),
+      base::FilePath("//ChromeOS"), /*map_crostini_home=*/false, &url));
   EXPECT_EQ("Downloads-testing_profile%40test-hash/path/in/pluginvm",
             url.virtual_path().value());
 
@@ -591,18 +515,18 @@ TEST_F(FileManagerPathUtilTest, ExtractMountNameFileSystemNameFullPath) {
   storage::ExternalMountPoints* mount_points =
       storage::ExternalMountPoints::GetSystemInstance();
   std::string downloads_mount_name = GetDownloadsMountPointName(profile_.get());
-  FilePath downloads = GetDownloadsFolderForProfile(profile_.get());
+  base::FilePath downloads = GetDownloadsFolderForProfile(profile_.get());
   mount_points->RegisterFileSystem(downloads_mount_name,
                                    storage::kFileSystemTypeLocal,
                                    storage::FileSystemMountOption(), downloads);
-  FilePath removable = FilePath(kRemovableMediaPath);
+  base::FilePath removable = base::FilePath(kRemovableMediaPath);
   mount_points->RegisterFileSystem(
       ash::kSystemMountNameRemovable, storage::kFileSystemTypeLocal,
-      storage::FileSystemMountOption(), FilePath(kRemovableMediaPath));
-  FilePath archive = FilePath(kArchiveMountPath);
+      storage::FileSystemMountOption(), base::FilePath(kRemovableMediaPath));
+  base::FilePath archive = base::FilePath(kArchiveMountPath);
   mount_points->RegisterFileSystem(
       ash::kSystemMountNameArchive, storage::kFileSystemTypeLocal,
-      storage::FileSystemMountOption(), FilePath(kArchiveMountPath));
+      storage::FileSystemMountOption(), base::FilePath(kArchiveMountPath));
   std::string relative_path_1 = "foo";
   std::string relative_path_2 = "foo/bar";
   std::string mount_name;
@@ -662,7 +586,8 @@ TEST_F(FileManagerPathUtilTest, ExtractMountNameFileSystemNameFullPath) {
 
   // Unknown.
   EXPECT_FALSE(ExtractMountNameFileSystemNameFullPath(
-      FilePath("/unknown/path"), &mount_name, &file_system_name, &full_path));
+      base::FilePath("/unknown/path"), &mount_name, &file_system_name,
+      &full_path));
 }
 
 std::unique_ptr<KeyedService> CreateFileSystemOperationRunnerForTesting(
@@ -683,20 +608,22 @@ class FileManagerPathUtilConvertUrlTest : public testing::Test {
   ~FileManagerPathUtilConvertUrlTest() override = default;
 
   void SetUp() override {
-    fake_user_manager_.Reset(std::make_unique<ash::FakeChromeUserManager>());
     profile_manager_ = std::make_unique<TestingProfileManager>(
         TestingBrowserProcess::GetGlobal());
     ASSERT_TRUE(profile_manager_->SetUp());
 
     // Set up fake user manager.
+    auto* fake_user_manager = new ash::FakeChromeUserManager();
     const AccountId account_id(
         AccountId::FromUserEmailGaiaId("user@gmail.com", "1111111111"));
     const AccountId account_id_2(
         AccountId::FromUserEmailGaiaId("user2@gmail.com", "2222222222"));
-    fake_user_manager_->AddUser(account_id);
-    fake_user_manager_->LoginUser(account_id);
-    fake_user_manager_->AddUser(account_id_2);
-    fake_user_manager_->LoginUser(account_id_2);
+    fake_user_manager->AddUser(account_id);
+    fake_user_manager->LoginUser(account_id);
+    fake_user_manager->AddUser(account_id_2);
+    fake_user_manager->LoginUser(account_id_2);
+    user_manager_enabler_ = std::make_unique<user_manager::ScopedUserManager>(
+        base::WrapUnique(std::move(fake_user_manager)));
 
     primary_profile_ =
         profile_manager_->CreateTestingProfile(account_id.GetUserEmail());
@@ -737,7 +664,7 @@ class FileManagerPathUtilConvertUrlTest : public testing::Test {
         crostini_mount_point_);
 
     ash::disks::DiskMountManager::InitializeForTesting(
-        new ash::disks::FakeDiskMountManager);
+        new FakeDiskMountManager);
 
     // Add the disk and mount point for a fake removable device.
     ASSERT_TRUE(ash::disks::DiskMountManager::GetInstance()->AddDiskForTest(
@@ -764,9 +691,8 @@ class FileManagerPathUtilConvertUrlTest : public testing::Test {
   void TearDown() override {
     arc_service_manager_->arc_bridge_service()->file_system()->CloseInstance(
         &fake_file_system_);
-    arc_service_manager_->set_browser_context(nullptr);
+    user_manager_enabler_.reset();
     profile_manager_.reset();
-    fake_user_manager_.Reset();
 
     storage::ExternalMountPoints::GetSystemInstance()->RevokeAllFileSystems();
 
@@ -779,17 +705,16 @@ class FileManagerPathUtilConvertUrlTest : public testing::Test {
  protected:
   content::BrowserTaskEnvironment task_environment_;
   arc::FakeFileSystemInstance fake_file_system_;
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_;
   std::unique_ptr<TestingProfileManager> profile_manager_;
-  raw_ptr<TestingProfile, DanglingUntriaged> primary_profile_;
-  raw_ptr<TestingProfile, DanglingUntriaged> secondary_profile_;
+  raw_ptr<TestingProfile, ExperimentalAsh> primary_profile_;
+  raw_ptr<TestingProfile, ExperimentalAsh> secondary_profile_;
+  std::unique_ptr<user_manager::ScopedUserManager> user_manager_enabler_;
   std::unique_ptr<arc::ArcServiceManager> arc_service_manager_;
-  FilePath drive_mount_point_;
-  FilePath crostini_mount_point_;
+  base::FilePath drive_mount_point_;
+  base::FilePath crostini_mount_point_;
 };
 
-FileSystemURL CreateExternalURL(const FilePath& path) {
+FileSystemURL CreateExternalURL(const base::FilePath& path) {
   return FileSystemURL::CreateForTest(blink::StorageKey(),
                                       storage::kFileSystemTypeExternal, path);
 }
@@ -799,9 +724,9 @@ TEST_F(FileManagerPathUtilConvertUrlTest, ConvertPathToArcUrl_Archive) {
   GURL url;
   bool requires_sharing = false;
   EXPECT_TRUE(ConvertPathToArcUrl(
-      FilePath::FromUTF8Unsafe("/media/archive/Smile 🙂.zip/"
-                               "Folder ({[<!@#$%^&*_-+=`~;:'\"?>\\]})/"
-                               ".File.txt"),
+      base::FilePath::FromUTF8Unsafe("/media/archive/Smile 🙂.zip/"
+                                     "Folder ({[<!@#$%^&*_-+=`~;:'\"?>\\]})/"
+                                     ".File.txt"),
       &url, &requires_sharing));
   EXPECT_EQ(
       GURL("content://org.chromium.arc.volumeprovider/archive/"
@@ -815,9 +740,9 @@ TEST_F(FileManagerPathUtilConvertUrlTest, ConvertPathToArcUrl_Archive) {
 TEST_F(FileManagerPathUtilConvertUrlTest, ConvertPathToArcUrl_Removable) {
   GURL url;
   bool requires_sharing = false;
-  EXPECT_TRUE(
-      ConvertPathToArcUrl(FilePath::FromUTF8Unsafe("/media/removable/a/b/c"),
-                          &url, &requires_sharing));
+  EXPECT_TRUE(ConvertPathToArcUrl(
+      base::FilePath::FromUTF8Unsafe("/media/removable/a/b/c"), &url,
+      &requires_sharing));
   EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/0123-abcd/b/c"),
             url);
   EXPECT_FALSE(requires_sharing);
@@ -827,7 +752,7 @@ TEST_F(FileManagerPathUtilConvertUrlTest, ConvertPathToArcUrl_MyFiles) {
   base::test::ScopedRunningOnChromeOS running_on_chromeos;
   GURL url;
   bool requires_sharing = false;
-  const FilePath myfiles = GetMyFilesFolderForProfile(primary_profile_);
+  const base::FilePath myfiles = GetMyFilesFolderForProfile(primary_profile_);
   EXPECT_TRUE(ConvertPathToArcUrl(myfiles.AppendASCII("a/b/c"), &url,
                                   &requires_sharing));
   EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/"
@@ -841,9 +766,9 @@ TEST_F(FileManagerPathUtilConvertUrlTest,
        ConvertPathToArcUrl_InvalidRemovable) {
   GURL url;
   bool requires_sharing = false;
-  EXPECT_FALSE(
-      ConvertPathToArcUrl(FilePath::FromUTF8Unsafe("/media/removable_foobar"),
-                          &url, &requires_sharing));
+  EXPECT_FALSE(ConvertPathToArcUrl(
+      base::FilePath::FromUTF8Unsafe("/media/removable_foobar"), &url,
+      &requires_sharing));
   EXPECT_FALSE(requires_sharing);
 }
 
@@ -852,7 +777,8 @@ TEST_F(FileManagerPathUtilConvertUrlTest,
   // Non-primary profile's downloads folder is not supported for ARC yet.
   GURL url;
   bool requires_sharing = false;
-  const FilePath downloads2 = GetDownloadsFolderForProfile(secondary_profile_);
+  const base::FilePath downloads2 =
+      GetDownloadsFolderForProfile(secondary_profile_);
   EXPECT_FALSE(ConvertPathToArcUrl(downloads2.AppendASCII("a/b/c"), &url,
                                    &requires_sharing));
   EXPECT_FALSE(requires_sharing);
@@ -924,94 +850,141 @@ TEST_F(FileManagerPathUtilConvertUrlTest, ConvertPathToArcUrl_ShareCache) {
 
 TEST_F(FileManagerPathUtilConvertUrlTest,
        ConvertToContentUrls_InvalidMountType) {
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
-  ConvertToContentUrls(ProfileManager::GetPrimaryUserProfile(),
-                       std::vector<FileSystemURL>{FileSystemURL::CreateForTest(
-                           blink::StorageKey(), storage::kFileSystemTypeTest,
-                           FilePath::FromUTF8Unsafe("/media/removable/a/b/c"))},
-                       future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL(), urls[0]);
+  base::RunLoop run_loop;
+  ConvertToContentUrls(
+      ProfileManager::GetPrimaryUserProfile(),
+      std::vector<FileSystemURL>{FileSystemURL::CreateForTest(
+          blink::StorageKey(), storage::kFileSystemTypeTest,
+          base::FilePath::FromUTF8Unsafe("/media/removable/a/b/c"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL(), urls[0]);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest, ConvertToContentUrls_Removable) {
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
-  ConvertToContentUrls(ProfileManager::GetPrimaryUserProfile(),
-                       std::vector<FileSystemURL>{CreateExternalURL(
-                           FilePath::FromUTF8Unsafe("/media/removable/a/b/c"))},
-                       future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/0123-abcd/b/c"),
-            urls[0]);
+  base::RunLoop run_loop;
+  ConvertToContentUrls(
+      ProfileManager::GetPrimaryUserProfile(),
+      std::vector<FileSystemURL>{CreateExternalURL(
+          base::FilePath::FromUTF8Unsafe("/media/removable/a/b/c"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(
+                GURL("content://org.chromium.arc.volumeprovider/0123-abcd/b/c"),
+                urls[0]);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest, ConvertToContentUrls_MyFiles) {
   base::test::ScopedRunningOnChromeOS running_on_chromeos;
-  const FilePath myfiles = GetMyFilesFolderForProfile(primary_profile_);
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
-  ConvertToContentUrls(ProfileManager::GetPrimaryUserProfile(),
-                       std::vector<FileSystemURL>{
-                           CreateExternalURL(myfiles.AppendASCII("a/b/c"))},
-                       future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/"
-                 "0000000000000000000000000000CAFEF00D2019/a/b/c"),
-            urls[0]);
+  const base::FilePath myfiles = GetMyFilesFolderForProfile(primary_profile_);
+  base::RunLoop run_loop;
+  ConvertToContentUrls(
+      ProfileManager::GetPrimaryUserProfile(),
+      std::vector<FileSystemURL>{
+          CreateExternalURL(myfiles.AppendASCII("a/b/c"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/"
+                           "0000000000000000000000000000CAFEF00D2019/"
+                           "a/b/c"),
+                      urls[0]);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest,
        ConvertToContentUrls_InvalidRemovable) {
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
+  base::RunLoop run_loop;
   ConvertToContentUrls(
       ProfileManager::GetPrimaryUserProfile(),
       std::vector<FileSystemURL>{CreateExternalURL(
-          FilePath::FromUTF8Unsafe("/media/removable_foobar"))},
-      future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL(), urls[0]);
+          base::FilePath::FromUTF8Unsafe("/media/removable_foobar"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL(), urls[0]);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest, ConvertToContentUrls_Downloads) {
-  const FilePath downloads = GetDownloadsFolderForProfile(primary_profile_);
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
-  ConvertToContentUrls(ProfileManager::GetPrimaryUserProfile(),
-                       std::vector<FileSystemURL>{
-                           CreateExternalURL(downloads.AppendASCII("a/b/c"))},
-                       future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/download/a/b/c"),
-            urls[0]);
+  const base::FilePath downloads =
+      GetDownloadsFolderForProfile(primary_profile_);
+  base::RunLoop run_loop;
+  ConvertToContentUrls(
+      ProfileManager::GetPrimaryUserProfile(),
+      std::vector<FileSystemURL>{
+          CreateExternalURL(downloads.AppendASCII("a/b/c"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/"
+                           "download/a/b/c"),
+                      urls[0]);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest,
        ConvertToContentUrls_InvalidDownloads) {
-  const FilePath downloads = GetDownloadsFolderForProfile(secondary_profile_);
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
-  ConvertToContentUrls(ProfileManager::GetPrimaryUserProfile(),
-                       std::vector<FileSystemURL>{
-                           CreateExternalURL(downloads.AppendASCII("a/b/c"))},
-                       future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL(), urls[0]);
+  const base::FilePath downloads =
+      GetDownloadsFolderForProfile(secondary_profile_);
+  base::RunLoop run_loop;
+  ConvertToContentUrls(
+      ProfileManager::GetPrimaryUserProfile(),
+      std::vector<FileSystemURL>{
+          CreateExternalURL(downloads.AppendASCII("a/b/c"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL(), urls[0]);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest, ConvertToContentUrls_Special) {
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
-  ConvertToContentUrls(ProfileManager::GetPrimaryUserProfile(),
-                       std::vector<FileSystemURL>{CreateExternalURL(
-                           drive_mount_point_.AppendASCII("a/b/c"))},
-                       future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL("content://org.chromium.arc.chromecontentprovider/externalfile"
-                 "%3Adrivefs-b1f44746e7144c3caafeacaa8bb5c569%2Fa%2Fb%2Fc"),
-            urls[0]);
+  base::RunLoop run_loop;
+  ConvertToContentUrls(
+      ProfileManager::GetPrimaryUserProfile(),
+      std::vector<FileSystemURL>{
+          CreateExternalURL(drive_mount_point_.AppendASCII("a/b/c"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL("content://org.chromium.arc.chromecontentprovider/"
+                           "externalfile%3Adrivefs-b1f44746e7144c3caafeacaa8bb5"
+                           "c569%2Fa%2Fb%2Fc"),
+                      urls[0]);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest,
@@ -1027,63 +1000,85 @@ TEST_F(FileManagerPathUtilConvertUrlTest,
   fake_file_system_.AddDocument(arc::FakeFileSystemInstance::Document(
       kAuthority, "photo-id", "dir-id", "photo.jpg", "image/jpeg", 3, 33));
 
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
+  base::RunLoop run_loop;
   ConvertToContentUrls(
       ProfileManager::GetPrimaryUserProfile(),
       std::vector<FileSystemURL>{FileSystemURL::CreateForTest(
           blink::StorageKey(), storage::kFileSystemTypeArcDocumentsProvider,
-          FilePath::FromUTF8Unsafe("/special/arc-documents-provider/"
-                                   "com.android.providers.media.documents/"
-                                   "images_root/Download/photo.jpg"))},
-      future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL("content://com.android.providers.media.documents/"
-                 "document/photo-id"),
-            urls[0]);
+          base::FilePath::FromUTF8Unsafe(
+              "/special/arc-documents-provider/"
+              "com.android.providers.media.documents/"
+              "images_root/Download/photo.jpg"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL("content://com.android.providers.media.documents/"
+                           "document/photo-id"),
+                      urls[0]);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest,
        ConvertToContentUrls_ArcDocumentsProviderFileNotFound) {
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
+  base::RunLoop run_loop;
   ConvertToContentUrls(
       ProfileManager::GetPrimaryUserProfile(),
       std::vector<FileSystemURL>{FileSystemURL::CreateForTest(
           blink::StorageKey(), storage::kFileSystemTypeArcDocumentsProvider,
-          FilePath::FromUTF8Unsafe("/special/arc-documents-provider/"
-                                   "com.android.providers.media.documents/"
-                                   "images_root/Download/photo.jpg"))},
-      future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL(""), urls[0]);
+          base::FilePath::FromUTF8Unsafe(
+              "/special/arc-documents-provider/"
+              "com.android.providers.media.documents/"
+              "images_root/Download/photo.jpg"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL(""), urls[0]);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest, ConvertToContentUrls_AndroidFiles) {
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
+  base::RunLoop run_loop;
   ConvertToContentUrls(
       ProfileManager::GetPrimaryUserProfile(),
-      std::vector<FileSystemURL>{CreateExternalURL(FilePath::FromUTF8Unsafe(
-          "/run/arc/sdcard/write/emulated/0/Pictures/a/b.jpg"))},
-      future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/"
-                 "external_files/Pictures/a/b.jpg"),
-            urls[0]);
+      std::vector<FileSystemURL>{
+          CreateExternalURL(base::FilePath::FromUTF8Unsafe(
+              "/run/arc/sdcard/write/emulated/0/Pictures/a/b.jpg"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/"
+                           "external_files/Pictures/a/b.jpg"),
+                      urls[0]);
+          },
+          &run_loop));
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest,
        ConvertToContentUrls_InvalidAndroidFiles) {
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
+  base::RunLoop run_loop;
   ConvertToContentUrls(
       ProfileManager::GetPrimaryUserProfile(),
-      std::vector<FileSystemURL>{CreateExternalURL(
-          FilePath::FromUTF8Unsafe("/run/arc/sdcard/read/emulated/0/a/b/c"))},
-      future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL(), urls[0]);  // Invalid URL.
+      std::vector<FileSystemURL>{
+          CreateExternalURL(base::FilePath::FromUTF8Unsafe(
+              "/run/arc/sdcard/read/emulated/0/a/b/c"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL(), urls[0]);  // Invalid URL.
+          },
+          &run_loop));
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest,
@@ -1091,17 +1086,22 @@ TEST_F(FileManagerPathUtilConvertUrlTest,
   auto* command_line = base::CommandLine::ForCurrentProcess();
   command_line->InitFromArgv({"", "--enable-arcvm"});
   EXPECT_TRUE(arc::IsArcVmEnabled());
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
+  base::RunLoop run_loop;
   ConvertToContentUrls(
       ProfileManager::GetPrimaryUserProfile(),
-      std::vector<FileSystemURL>{CreateExternalURL(FilePath::FromUTF8Unsafe(
-          "/media/fuse/android_files/Pictures/a/b.jpg"))},
-      future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/"
-                 "external_files/Pictures/a/b.jpg"),
-            urls[0]);
+      std::vector<FileSystemURL>{
+          CreateExternalURL(base::FilePath::FromUTF8Unsafe(
+              "/media/fuse/android_files/Pictures/a/b.jpg"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/"
+                           "external_files/Pictures/a/b.jpg"),
+                      urls[0]);
+          },
+          &run_loop));
 }
 
 TEST_F(FileManagerPathUtilConvertUrlTest,
@@ -1109,57 +1109,70 @@ TEST_F(FileManagerPathUtilConvertUrlTest,
   auto* command_line = base::CommandLine::ForCurrentProcess();
   command_line->InitFromArgv({"", "--enable-arcvm"});
   EXPECT_TRUE(arc::IsArcVmEnabled());
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
-  ConvertToContentUrls(
-      ProfileManager::GetPrimaryUserProfile(),
-      std::vector<FileSystemURL>{CreateExternalURL(FilePath::FromUTF8Unsafe(
-          "/run/arc/sdcard/write/emulated/0/Pictures/a/b.jpg"))},
-      future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(1U, urls.size());
-  EXPECT_EQ(GURL(), urls[0]);  // Invalid URL.
-}
-
-TEST_F(FileManagerPathUtilConvertUrlTest, ConvertToContentUrls_MultipleUrls) {
-  TestFuture<const std::vector<GURL>&, const std::vector<FilePath>&> future;
+  base::RunLoop run_loop;
   ConvertToContentUrls(
       ProfileManager::GetPrimaryUserProfile(),
       std::vector<FileSystemURL>{
-          CreateExternalURL(FilePath::FromUTF8Unsafe("/invalid")),
-          CreateExternalURL(FilePath::FromUTF8Unsafe("/media/removable/a/b/c")),
+          CreateExternalURL(base::FilePath::FromUTF8Unsafe(
+              "/run/arc/sdcard/write/emulated/0/Pictures/a/b.jpg"))},
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(1U, urls.size());
+            EXPECT_EQ(GURL(), urls[0]);  // Invalid URL.
+          },
+          &run_loop));
+}
+
+TEST_F(FileManagerPathUtilConvertUrlTest, ConvertToContentUrls_MultipleUrls) {
+  base::RunLoop run_loop;
+  ConvertToContentUrls(
+      ProfileManager::GetPrimaryUserProfile(),
+      std::vector<FileSystemURL>{
+          CreateExternalURL(base::FilePath::FromUTF8Unsafe("/invalid")),
+          CreateExternalURL(
+              base::FilePath::FromUTF8Unsafe("/media/removable/a/b/c")),
           CreateExternalURL(drive_mount_point_.AppendASCII("a/b/c")),
-          CreateExternalURL(FilePath::FromUTF8Unsafe(
+          CreateExternalURL(base::FilePath::FromUTF8Unsafe(
               "/run/arc/sdcard/write/emulated/0/a/b/c"))},
-      future.GetCallback());
-  const auto& urls = future.Get<0>();
-  ASSERT_EQ(4U, urls.size());
-  EXPECT_EQ(GURL(), urls[0]);  // Invalid URL.
-  EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/0123-abcd/b/c"),
-            urls[1]);
-  EXPECT_EQ(GURL("content://org.chromium.arc.chromecontentprovider/externalfile"
-                 "%3Adrivefs-b1f44746e7144c3caafeacaa8bb5c569%2Fa%2Fb%2Fc"),
-            urls[2]);
-  EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/"
-                 "external_files/a/b/c"),
-            urls[3]);
+      base::BindOnce(
+          [](base::RunLoop* run_loop, const std::vector<GURL>& urls,
+             const std::vector<base::FilePath>& paths_to_share) {
+            run_loop->Quit();
+            ASSERT_EQ(4U, urls.size());
+            EXPECT_EQ(GURL(), urls[0]);  // Invalid URL.
+            EXPECT_EQ(
+                GURL("content://org.chromium.arc.volumeprovider/0123-abcd/b/c"),
+                urls[1]);
+            EXPECT_EQ(GURL("content://org.chromium.arc.chromecontentprovider/"
+                           "externalfile%3Adrivefs-b1f44746e7144c3caafeacaa8bb5"
+                           "c569%2Fa%2Fb%2Fc"),
+                      urls[2]);
+            EXPECT_EQ(GURL("content://org.chromium.arc.volumeprovider/"
+                           "external_files/a/b/c"),
+                      urls[3]);
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 TEST_F(FileManagerPathUtilTest, GetDisplayablePathTest) {
   auto* volume_manager = VolumeManager::Get(profile_.get());
   volume_manager->RegisterDownloadsDirectoryForTesting(
-      FilePath("/mount_path/my_files"));
+      base::FilePath("/mount_path/my_files"));
   volume_manager->RegisterCrostiniDirectoryForTesting(
-      FilePath("/mount_path/crostini"));
+      base::FilePath("/mount_path/crostini"));
   volume_manager->RegisterAndroidFilesDirectoryForTesting(
-      FilePath("/mount_path/android"));
+      base::FilePath("/mount_path/android"));
 
-  volume_manager->RegisterMediaViewForTesting(arc::kAudioRootId);
-  volume_manager->RegisterMediaViewForTesting(arc::kImagesRootId);
-  volume_manager->RegisterMediaViewForTesting(arc::kVideosRootId);
-  volume_manager->RegisterMediaViewForTesting(arc::kDocumentsRootId);
+  volume_manager->RegisterMediaViewForTesting(arc::kAudioRootDocumentId);
+  volume_manager->RegisterMediaViewForTesting(arc::kImagesRootDocumentId);
+  volume_manager->RegisterMediaViewForTesting(arc::kVideosRootDocumentId);
+  volume_manager->RegisterMediaViewForTesting(arc::kDocumentsRootDocumentId);
 
   volume_manager->AddVolumeForTesting(
-      Volume::CreateForDrive(FilePath("/mount_path/drive")));
+      Volume::CreateForDrive(base::FilePath("/mount_path/drive")));
 
   auto removable_disk =
       ash::disks::Disk::Builder().SetDeviceLabel("removable_label").Build();
@@ -1178,7 +1191,7 @@ TEST_F(FileManagerPathUtilTest, GetDisplayablePathTest) {
   volume_manager->AddVolumeForTesting(Volume::CreateForProvidedFileSystem(
       {ash::file_system_provider::ProviderId::FromString("provider_id"),
        {"file_system_id", "provided_label"},
-       FilePath("/mount_path/provided"),
+       base::FilePath("/mount_path/provided"),
        false,
        false,
        extensions::SOURCE_FILE,
@@ -1186,24 +1199,25 @@ TEST_F(FileManagerPathUtilTest, GetDisplayablePathTest) {
       MOUNT_CONTEXT_USER));
 
   volume_manager->AddVolumeForTesting(Volume::CreateForDocumentsProvider(
-      "authority", "root_id", "documents_provider_label", "summary", {}, false,
-      /*optional_fusebox_subdir=*/std::string()));
+      "authority", "root_id", "document_id", "documents_provider_label",
+      "summary", {}, false, /*optional_fusebox_subdir=*/std::string()));
 
   volume_manager->AddVolumeForTesting(Volume::CreateForSftpGuestOs(
-      "guest_os_label", FilePath("/mount_path/guest_os"),
-      FilePath("/remote_mount_path/guest_os"), guest_os::VmType::TERMINA));
+      "guest_os_label", base::FilePath("/mount_path/guest_os"),
+      base::FilePath("/remote_mount_path/guest_os"),
+      guest_os::VmType::TERMINA));
+
+  volume_manager->AddVolumeForTesting(Volume::CreateForMTP(
+      base::FilePath("/mount_path/mtp"), "mtp_label", false));
 
   volume_manager->AddVolumeForTesting(
-      Volume::CreateForMTP(FilePath("/mount_path/mtp"), "mtp_label", false));
+      Volume::CreateForSmb(base::FilePath("/mount_path/smb"), "smb_label"));
 
   volume_manager->AddVolumeForTesting(
-      Volume::CreateForSmb(FilePath("/mount_path/smb"), "smb_label"));
+      Volume::CreateForShareCache(base::FilePath("/mount_path/share_cache")));
 
   volume_manager->AddVolumeForTesting(
-      Volume::CreateForShareCache(FilePath("/mount_path/share_cache")));
-
-  volume_manager->AddVolumeForTesting(
-      FilePath("/mount_path/testing"), VOLUME_TYPE_TESTING,
+      base::FilePath("/mount_path/testing"), VOLUME_TYPE_TESTING,
       ash::DeviceType::kUnknown, false /* read_only */);
 
   struct Test {
@@ -1260,21 +1274,21 @@ TEST_F(FileManagerPathUtilTest, GetDisplayablePathTest) {
           "My files/foo/bar",
       },
       {arc::GetDocumentsProviderMountPath(arc::kMediaDocumentsProviderAuthority,
-                                          arc::kAudioRootId)
+                                          arc::kAudioRootDocumentId)
            .value(),
        "Audio"},
       {arc::GetDocumentsProviderMountPath(arc::kMediaDocumentsProviderAuthority,
-                                          arc::kImagesRootId)
+                                          arc::kImagesRootDocumentId)
            .Append("foo")
            .value(),
        "Images/foo"},
       {arc::GetDocumentsProviderMountPath(arc::kMediaDocumentsProviderAuthority,
-                                          arc::kVideosRootId)
+                                          arc::kVideosRootDocumentId)
            .Append("foo/bar")
            .value(),
        "Videos/foo/bar"},
       {arc::GetDocumentsProviderMountPath(arc::kMediaDocumentsProviderAuthority,
-                                          arc::kDocumentsRootId)
+                                          arc::kDocumentsRootDocumentId)
            .Append("bar")
            .value(),
        "Documents/bar"},
@@ -1307,7 +1321,8 @@ TEST_F(FileManagerPathUtilTest, GetDisplayablePathTest) {
           "removable_label/foo",
       },
       {
-          arc::GetDocumentsProviderMountPath("authority", "root_id").value(),
+          arc::GetDocumentsProviderMountPath("authority", "document_id")
+              .value(),
           "documents_provider_label",
       },
       {
@@ -1320,86 +1335,20 @@ TEST_F(FileManagerPathUtilTest, GetDisplayablePathTest) {
       },
   };
   for (auto& test : tests) {
-    EXPECT_EQ(FilePath(test.expected),
-              *GetDisplayablePath(profile_.get(), FilePath(test.path)));
+    EXPECT_EQ(base::FilePath(test.expected),
+              *GetDisplayablePath(profile_.get(), base::FilePath(test.path)));
   }
-  EXPECT_EQ(std::nullopt, GetDisplayablePath(profile_.get(),
-                                             FilePath("/non_existent/mount")));
-  EXPECT_EQ(
-      std::nullopt,
-      GetDisplayablePath(profile_.get(), FilePath("/mount_path/share_cache")));
-  EXPECT_EQ(std::nullopt, GetDisplayablePath(profile_.get(),
-                                             FilePath("/mount_path/testing")));
-}
-
-TEST_F(FileManagerPathUtilTest, ParseFileSystemSources) {
-  storage::ExternalMountPoints* mount_points =
-      storage::ExternalMountPoints::GetSystemInstance();
-  FilePath myfiles_dir = GetMyFilesFolderForProfile(profile_.get());
-  mount_points->RegisterFileSystem(
-      GetDownloadsMountPointName(profile_.get()), storage::kFileSystemTypeLocal,
-      storage::FileSystemMountOption(), myfiles_dir);
-  mount_points->RegisterFileSystem(
-      "fake_aa_mount_name", storage::kFileSystemTypeArcContent,
-      storage::FileSystemMountOption(), FilePath("/fake/aa_dir"));
-  mount_points->RegisterFileSystem(
-      "fake_ad_mount_name", storage::kFileSystemTypeArcContent,
-      storage::FileSystemMountOption(), FilePath("/fake/ad_dir"));
-
-  const GURL file_manager_url = GetFileManagerURL();
-  const url::Origin file_manager_origin = url::Origin::Create(file_manager_url);
-  fusebox::Server fusebox_server(nullptr);
-  // Accept the "allow" flavor (but reject the "deny" one).
-  fusebox_server.RegisterFSURLPrefix(
-      "my_subdir",
-      base::StrCat({"filesystem:", file_manager_origin.Serialize(),
-                    "/external/fake_aa_mount_name/"}),
-      true);
-
-  FilePath shared_path = myfiles_dir.Append("shared");
-  auto* guest_os_share_path =
-      guest_os::GuestOsSharePath::GetForProfile(profile_.get());
-  guest_os_share_path->RegisterSharedPath(crostini::kCrostiniDefaultVmName,
-                                          shared_path);
-  // Start with four file_names but the last one is rejected. Its FileSystemURL
-  // has type storage::kFileSystemTypeArcContent, so its cracked data does not
-  // refer to a real (kernel visible) file path. But also, the fusebox_server
-  // (configured above) has no registered mapping.
-  std::vector<std::string> file_names = {
-      "external/Downloads/shared/file1",
-      "external/Downloads/shared/file2",
-      "external/fake_aa_mount_name/a/b/c.txt",
-      "external/fake_ad_mount_name/d/e/f.txt",
-  };
-  std::vector<std::string> file_urls =
-      base::ToVector(file_names, [&file_manager_url](const std::string& name) {
-        return base::StrCat({url::kFileSystemScheme, ":",
-                             file_manager_url.Resolve(name).spec()});
-      });
-  std::u16string urls(base::ASCIIToUTF16(base::JoinString(file_urls, "\n")));
-  base::Pickle pickle;
-  ui::WriteCustomDataToPickle(
-      std::unordered_map<std::u16string, std::u16string>(
-          {{u"fs/tag", u"exo"}, {u"fs/sources", urls}}),
-      &pickle);
-
-  ui::DataTransferEndpoint files_app(file_manager_url.Resolve("main.html"));
-  std::vector<ui::FileInfo> file_info =
-      ParseFileSystemSources(&files_app, pickle);
-  EXPECT_EQ(3u, file_info.size());
-  EXPECT_EQ(shared_path.Append("file1"), file_info[0].path);
-  EXPECT_EQ(shared_path.Append("file2"), file_info[1].path);
-  EXPECT_EQ(FilePath("/media/fuse/fusebox/my_subdir/a/b/c.txt"),
-            file_info[2].path);
-  EXPECT_EQ(FilePath(), file_info[0].display_name);
-  EXPECT_EQ(FilePath(), file_info[1].display_name);
-  EXPECT_EQ(FilePath(), file_info[2].display_name);
-
-  // Should return empty if source is not FilesApp.
-  ui::DataTransferEndpoint crostini(ui::EndpointType::kCrostini);
-  file_info = ParseFileSystemSources(&crostini, pickle);
-  EXPECT_TRUE(file_info.empty());
+  EXPECT_EQ(absl::nullopt,
+            GetDisplayablePath(profile_.get(),
+                               base::FilePath("/non_existent/mount")));
+  EXPECT_EQ(absl::nullopt,
+            GetDisplayablePath(profile_.get(),
+                               base::FilePath("/mount_path/share_cache")));
+  EXPECT_EQ(absl::nullopt,
+            GetDisplayablePath(profile_.get(),
+                               base::FilePath("/mount_path/testing")));
 }
 
 }  // namespace
-}  // namespace file_manager::util
+}  // namespace util
+}  // namespace file_manager

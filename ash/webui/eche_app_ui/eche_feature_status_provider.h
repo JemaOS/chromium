@@ -15,6 +15,10 @@
 
 namespace ash {
 
+namespace device_sync {
+class DeviceSyncClient;
+}
+
 namespace phonehub {
 class PhoneHubManager;
 }
@@ -33,6 +37,7 @@ class EcheFeatureStatusProvider
  public:
   EcheFeatureStatusProvider(
       phonehub::PhoneHubManager* phone_hub_manager,
+      device_sync::DeviceSyncClient* device_sync_client,
       multidevice_setup::MultiDeviceSetupClient* multidevice_setup_client,
       secure_channel::ConnectionManager* connection_manager,
       EcheConnectionStatusHandler* eche_connection_status_handler);
@@ -59,13 +64,17 @@ class EcheFeatureStatusProvider
       const multidevice_setup::MultiDeviceSetupClient::FeatureStatesMap&
           feature_states_map) override;
 
-  raw_ptr<phonehub::FeatureStatusProvider> phone_hub_feature_status_provider_;
-  raw_ptr<multidevice_setup::MultiDeviceSetupClient> multidevice_setup_client_;
-  raw_ptr<secure_channel::ConnectionManager> connection_manager_;
-  raw_ptr<EcheConnectionStatusHandler, DanglingUntriaged>
+  raw_ptr<phonehub::FeatureStatusProvider, ExperimentalAsh>
+      phone_hub_feature_status_provider_;
+  raw_ptr<device_sync::DeviceSyncClient, ExperimentalAsh> device_sync_client_;
+  raw_ptr<multidevice_setup::MultiDeviceSetupClient, ExperimentalAsh>
+      multidevice_setup_client_;
+  raw_ptr<secure_channel::ConnectionManager, ExperimentalAsh>
+      connection_manager_;
+  raw_ptr<EcheConnectionStatusHandler, DanglingUntriaged | ExperimentalAsh>
       eche_connection_status_handler_;
   phonehub::FeatureStatus current_phone_hub_feature_status_;
-  std::optional<FeatureStatus> status_;
+  absl::optional<FeatureStatus> status_;
   base::WeakPtrFactory<EcheFeatureStatusProvider> weak_ptr_factory_{this};
 };
 

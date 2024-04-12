@@ -6,15 +6,15 @@
 #define CHROME_BROWSER_APPS_APP_DEDUPLICATION_SERVICE_APP_DEDUPLICATION_SERVER_CONNECTOR_H_
 
 #include <memory>
-#include <optional>
 #include <string>
+#include <vector>
 
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
-#include "chrome/browser/apps/almanac_api_client/device_info_manager.h"
 #include "chrome/browser/apps/app_deduplication_service/proto/deduplication_data.pb.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class GURL;
 
@@ -25,7 +25,7 @@ class SimpleURLLoader;
 namespace apps {
 
 using GetDeduplicateAppsCallback =
-    base::OnceCallback<void(std::optional<proto::DeduplicateData>)>;
+    base::OnceCallback<void(absl::optional<proto::DeduplicateData>)>;
 
 // The AppDeduplicationServerConnector is used to talk to the App Deduplication
 // Service API endpoint in the Fondue server. Its role is to make requests and
@@ -42,7 +42,6 @@ class AppDeduplicationServerConnector {
   // Fetches a list of duplicate app groups from the App Deduplication Service
   // endpoint in the Fondue server.
   void GetDeduplicateAppsFromServer(
-      const DeviceInfo& device_info,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       GetDeduplicateAppsCallback callback);
 

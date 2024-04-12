@@ -27,16 +27,10 @@ export class CheckMarkWrapperElement extends PolymerElement {
         type: Boolean,
         reflectToAttribute: true,
       },
-      checkmarkBorderHidden: {
-        type: Boolean,
-        value: false,
-        reflectToAttribute: true,
-      },
     };
   }
 
   checked: boolean;
-  checkmarkBorderHidden: boolean;
 }
 
 declare global {

@@ -36,12 +36,6 @@ int StructTraits<ash::shortcut_customization::mojom::SimpleAcceleratorDataView,
   return accelerator.modifiers() & kModifierMask;
 }
 
-ui::Accelerator::KeyState
-StructTraits<ash::shortcut_customization::mojom::SimpleAcceleratorDataView,
-             ui::Accelerator>::key_state(const ui::Accelerator& accelerator) {
-  return accelerator.key_state();
-}
-
 bool StructTraits<ash::shortcut_customization::mojom::SimpleAcceleratorDataView,
                   ui::Accelerator>::
     Read(ash::shortcut_customization::mojom::SimpleAcceleratorDataView data,
@@ -51,12 +45,7 @@ bool StructTraits<ash::shortcut_customization::mojom::SimpleAcceleratorDataView,
     return false;
   }
 
-  ui::Accelerator::KeyState key_state;
-  if (!data.ReadKeyState(&key_state)) {
-    return false;
-  }
-
-  *out = ui::Accelerator(keycode, data.modifiers() & kModifierMask, key_state);
+  *out = ui::Accelerator(keycode, data.modifiers() & kModifierMask);
   return true;
 }
 

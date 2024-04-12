@@ -4,17 +4,22 @@
 
 package org.chromium.chrome.browser.download;
 
-import static org.junit.Assert.assertEquals;
+import static junit.framework.Assert.assertEquals;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.metrics.RecordHistogram;
+import org.chromium.base.metrics.UmaRecorderHolder;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.download.DownloadLocationDialogMetrics.DownloadLocationSuggestionEvent;
 
-/** Unit test for {@link DownloadLocationDialogMetrics}. */
+/**
+ * Unit test for {@link DownloadLocationDialogMetrics}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class DownloadLocationDialogMetricsUnitTest {
@@ -23,12 +28,21 @@ public class DownloadLocationDialogMetricsUnitTest {
     private static final String SELECTED_METRIC_NAME =
             "MobileDownload.Location.Dialog.SuggestionSelected";
 
+    @Before
+    public void setUp() {
+        UmaRecorderHolder.resetForTesting();
+    }
+
+    @After
+    public void tearDown() {
+        UmaRecorderHolder.resetForTesting();
+    }
+
     @Test
     public void testRecordDownloadLocationDialogSuggestionEvent() {
         DownloadLocationDialogMetrics.recordDownloadLocationSuggestionEvent(
                 DownloadLocationSuggestionEvent.NOT_ENOUGH_SPACE_SHOWN);
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         EVENT_METRIC_NAME, DownloadLocationSuggestionEvent.NOT_ENOUGH_SPACE_SHOWN));
     }

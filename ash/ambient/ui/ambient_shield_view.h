@@ -11,9 +11,9 @@
 namespace ash {
 
 class AmbientShieldView : public views::View {
-  METADATA_HEADER(AmbientShieldView, views::View)
-
  public:
+  METADATA_HEADER(AmbientShieldView);
+
   AmbientShieldView();
   AmbientShieldView(const AmbientShieldView&) = delete;
   AmbientShieldView& operator=(const AmbientShieldView&) = delete;

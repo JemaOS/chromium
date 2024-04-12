@@ -95,11 +95,45 @@ ExecutionContext::~ExecutionContext() = default;
 
 // static
 ExecutionContext* ExecutionContext::From(const ScriptState* script_state) {
-  return ToExecutionContext(script_state);
+  v8::HandleScope scope(script_state->GetIsolate());
+  return ToExecutionContext(script_state->GetContext());
 }
 
 // static
 ExecutionContext* ExecutionContext::From(v8::Local<v8::Context> context) {
+  return ToExecutionContext(context);
+}
+
+// static
+ExecutionContext* ExecutionContext::ForCurrentRealm(
+    const v8::FunctionCallbackInfo<v8::Value>& info) {
+  return ToExecutionContext(info.GetIsolate()->GetCurrentContext());
+}
+
+// static
+ExecutionContext* ExecutionContext::ForCurrentRealm(
+    const v8::PropertyCallbackInfo<v8::Value>& info) {
+  auto ctx = info.GetIsolate()->GetCurrentContext();
+  if (ctx.IsEmpty())
+    return nullptr;
+  return ToExecutionContext(ctx);
+}
+
+// static
+ExecutionContext* ExecutionContext::ForRelevantRealm(
+    const v8::FunctionCallbackInfo<v8::Value>& info) {
+  v8::Local<v8::Context> context;
+  if (!info.Holder()->GetCreationContext().ToLocal(&context))
+    return nullptr;
+  return ToExecutionContext(context);
+}
+
+// static
+ExecutionContext* ExecutionContext::ForRelevantRealm(
+    const v8::PropertyCallbackInfo<v8::Value>& info) {
+  v8::Local<v8::Context> context;
+  if (!info.Holder()->GetCreationContext().ToLocal(&context))
+    return nullptr;
   return ToExecutionContext(context);
 }
 
@@ -217,7 +251,12 @@ bool ExecutionContext::SharedArrayBufferTransferAllowed() const {
   else
     origin = GetSecurityOrigin();
 
-  CHECK(origin);
+  if (!origin) {
+    // TODO(crbug.com/1419253): Shared storage worklet architecture currently
+    // has a null security origin.
+    CHECK(IsSharedStorageWorkletGlobalScope());
+    return false;
+  }
 
   if (SecurityPolicy::IsSharedArrayBufferAlwaysAllowedForOrigin(origin))
     return true;
@@ -262,12 +301,22 @@ void ExecutionContext::FileSharedArrayBufferCreationIssue() {
       this, true, SharedArrayBufferIssueType::kCreationIssue);
 }
 
+void ExecutionContext::ReportNavigatorUserAgentAccess() {
+  if (has_filed_navigator_user_agent_issue_)
+    return;
+  has_filed_navigator_user_agent_issue_ = true;
+  AuditsIssue::ReportNavigatorUserAgentAccess(this, Url().GetString());
+  base::UmaHistogramBoolean(
+      "Blink.Navigator.ReducedUserAgent",
+      RuntimeEnabledFeatures::UserAgentReductionEnabled(this));
+}
+
 void ExecutionContext::AddConsoleMessageImpl(
     mojom::blink::ConsoleMessageSource source,
     mojom::blink::ConsoleMessageLevel level,
     const String& message,
     bool discard_duplicates,
-    std::optional<mojom::ConsoleMessageCategory> category) {
+    absl::optional<mojom::ConsoleMessageCategory> category) {
   auto* console_message =
       MakeGarbageCollected<ConsoleMessage>(source, level, message);
   if (category)
@@ -354,7 +403,7 @@ ExecutionContext::GetContentSecurityPolicyDelegate() {
   return *csp_delegate_;
 }
 
-const DOMWrapperWorld* ExecutionContext::GetCurrentWorld() const {
+scoped_refptr<const DOMWrapperWorld> ExecutionContext::GetCurrentWorld() const {
   v8::Isolate* isolate = GetIsolate();
   v8::HandleScope handle_scope(isolate);
   v8::Local<v8::Context> v8_context = isolate->GetCurrentContext();
@@ -368,7 +417,7 @@ const DOMWrapperWorld* ExecutionContext::GetCurrentWorld() const {
 
 ContentSecurityPolicy*
 ExecutionContext::GetContentSecurityPolicyForCurrentWorld() {
-  return GetContentSecurityPolicyForWorld(GetCurrentWorld());
+  return GetContentSecurityPolicyForWorld(GetCurrentWorld().get());
 }
 
 ContentSecurityPolicy* ExecutionContext::GetContentSecurityPolicyForWorld(
@@ -532,6 +581,7 @@ void ExecutionContext::Trace(Visitor* visitor) const {
   visitor->Trace(public_url_manager_);
   visitor->Trace(pending_exceptions_);
   visitor->Trace(csp_delegate_);
+  visitor->Trace(timers_);
   visitor->Trace(origin_trial_context_);
   visitor->Trace(content_security_policy_);
   visitor->Trace(runtime_feature_state_override_context_);
@@ -560,8 +610,7 @@ v8::MicrotaskQueue* ExecutionContext::GetMicrotaskQueue() const {
   return GetAgent()->event_loop()->microtask_queue();
 }
 
-bool ExecutionContext::FeatureEnabled(
-    mojom::blink::OriginTrialFeature feature) const {
+bool ExecutionContext::FeatureEnabled(OriginTrialFeature feature) const {
   return origin_trial_context_->IsFeatureEnabled(feature);
 }
 
@@ -569,24 +618,23 @@ bool ExecutionContext::IsFeatureEnabled(
     mojom::blink::PermissionsPolicyFeature feature,
     ReportOptions report_option,
     const String& message) {
-  SecurityContext::FeatureStatus status =
-      security_context_.IsFeatureEnabled(feature);
+  bool should_report;
+  bool enabled = security_context_.IsFeatureEnabled(feature, &should_report);
 
-  if (status.should_report &&
-      report_option == ReportOptions::kReportOnFailure) {
+  if (should_report && report_option == ReportOptions::kReportOnFailure) {
     mojom::blink::PolicyDisposition disposition =
-        status.enabled ? mojom::blink::PolicyDisposition::kReport
-                       : mojom::blink::PolicyDisposition::kEnforce;
+        enabled ? mojom::blink::PolicyDisposition::kReport
+                : mojom::blink::PolicyDisposition::kEnforce;
 
-    ReportPermissionsPolicyViolation(feature, disposition,
-                                     status.reporting_endpoint, message);
+    ReportPermissionsPolicyViolation(feature, disposition, message);
   }
-  return status.enabled;
+  return enabled;
 }
 
 bool ExecutionContext::IsFeatureEnabled(
     mojom::blink::PermissionsPolicyFeature feature) const {
-  return security_context_.IsFeatureEnabled(feature).enabled;
+  bool should_report;
+  return security_context_.IsFeatureEnabled(feature, &should_report);
 }
 
 bool ExecutionContext::IsFeatureEnabled(
@@ -599,6 +647,10 @@ bool ExecutionContext::IsFeatureEnabled(
 bool ExecutionContext::IsFeatureEnabled(
     mojom::blink::DocumentPolicyFeature feature,
     PolicyValue threshold_value) const {
+  // The default value for any feature should be true unless restricted by
+  // document policy
+  if (!RuntimeEnabledFeatures::DocumentPolicyEnabled())
+    return true;
   return security_context_.IsFeatureEnabled(feature, threshold_value).enabled;
 }
 
@@ -619,6 +671,11 @@ bool ExecutionContext::IsFeatureEnabled(
     ReportOptions report_option,
     const String& message,
     const String& source_file) {
+  // The default value for any feature should be true unless restricted by
+  // document policy
+  if (!RuntimeEnabledFeatures::DocumentPolicyEnabled())
+    return true;
+
   SecurityContext::FeatureStatus status =
       security_context_.IsFeatureEnabled(feature, threshold_value);
   if (status.should_report &&
@@ -658,7 +715,7 @@ ContextType GetContextType(const ExecutionContext& execution_context) {
 
 using WorldType = ExecutionContext::Proto::WorldType;
 WorldType GetWorldType(const ExecutionContext& execution_context) {
-  auto* current_world = execution_context.GetCurrentWorld();
+  auto current_world = execution_context.GetCurrentWorld();
   if (current_world == nullptr) {
     return WorldType::WORLD_UNKNOWN;
   }
@@ -674,7 +731,7 @@ WorldType GetWorldType(const ExecutionContext& execution_context) {
       return WorldType::WORLD_REG_EXP;
     case DOMWrapperWorld::WorldType::kForV8ContextSnapshotNonMain:
       return WorldType::WORLD_FOR_V8_CONTEXT_SNAPSHOT_NON_MAIN;
-    case DOMWrapperWorld::WorldType::kWorkerOrWorklet:
+    case DOMWrapperWorld::WorldType::kWorker:
       return WorldType::WORLD_WORKER;
     case DOMWrapperWorld::WorldType::kShadowRealm:
       return WorldType::WORLD_SHADOW_REALM;
@@ -690,11 +747,6 @@ void ExecutionContext::WriteIntoTrace(
   proto->set_origin(GetSecurityOrigin()->ToString().Utf8());
   proto->set_type(GetContextType(*this));
   proto->set_world_type(GetWorldType(*this));
-}
-
-bool ExecutionContext::CrossOriginIsolatedCapabilityOrDisabledWebSecurity()
-    const {
-  return Agent::IsWebSecurityDisabled() || CrossOriginIsolatedCapability();
 }
 
 }  // namespace blink

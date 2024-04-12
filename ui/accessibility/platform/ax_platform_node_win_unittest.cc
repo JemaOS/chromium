@@ -31,7 +31,6 @@
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/accessibility/platform/ax_fragment_root_win.h"
 #include "ui/accessibility/platform/ax_platform_node_win.h"
-#include "ui/accessibility/platform/sequence_affine_com_object_root_win.h"
 #include "ui/accessibility/platform/test_ax_node_wrapper.h"
 #include "ui/base/win/atl_module.h"
 
@@ -269,8 +268,7 @@ IFACEMETHODIMP MockIRawElementProviderSimple::get_HostRawElementProvider(
 }
 
 AXPlatformNodeWinTest::AXPlatformNodeWinTest()
-    : ax_embedded_object_behavior_(
-          AXEmbeddedObjectBehavior::kExposeCharacterForHypertext) {
+    : ax_embedded_object_behavior_(AXEmbeddedObjectBehavior::kExposeCharacter) {
   scoped_feature_list_.InitAndEnableFeature(features::kIChromeAccessible);
 }
 
@@ -3575,19 +3573,19 @@ TEST_F(AXPlatformNodeWinTest,
 TEST_F(AXPlatformNodeWinTest, IGridProviderGetRowCount) {
   Init(BuildAriaColumnAndRowCountGrids());
 
-  // Empty Grid.
+  // Empty Grid
   ComPtr<IGridProvider> grid1_provider =
       QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[0]);
 
-  // Grid with a cell that defines aria-rowindex (4) and aria-colindex (5).
+  // Grid with a cell that defines aria-rowindex (4) and aria-colindex (5)
   ComPtr<IGridProvider> grid2_provider =
       QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[1]);
 
-  // Grid that specifies aria-rowcount (2) and aria-colcount (3).
+  // Grid that specifies aria-rowcount (2) and aria-colcount (3)
   ComPtr<IGridProvider> grid3_provider =
       QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[2]);
 
-  // Grid that specifies aria-rowcount and aria-colcount are both (-1).
+  // Grid that specifies aria-rowcount and aria-colcount are both (-1)
   ComPtr<IGridProvider> grid4_provider =
       QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[3]);
 
@@ -3608,19 +3606,19 @@ TEST_F(AXPlatformNodeWinTest, IGridProviderGetRowCount) {
 TEST_F(AXPlatformNodeWinTest, IGridProviderGetColumnCount) {
   Init(BuildAriaColumnAndRowCountGrids());
 
-  // Empty Grid.
+  // Empty Grid
   ComPtr<IGridProvider> grid1_provider =
       QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[0]);
 
-  // Grid with a cell that defines aria-rowindex (4) and aria-colindex (5).
+  // Grid with a cell that defines aria-rowindex (4) and aria-colindex (5)
   ComPtr<IGridProvider> grid2_provider =
       QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[1]);
 
-  // Grid that specifies aria-rowcount (2) and aria-colcount (3).
+  // Grid that specifies aria-rowcount (2) and aria-colcount (3)
   ComPtr<IGridProvider> grid3_provider =
       QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[2]);
 
-  // Grid that specifies aria-rowcount and aria-colcount are both (-1).
+  // Grid that specifies aria-rowcount and aria-colcount are both (-1)
   ComPtr<IGridProvider> grid4_provider =
       QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[3]);
 
@@ -3668,35 +3666,6 @@ TEST_F(AXPlatformNodeWinTest, IGridProviderGetItem) {
   EXPECT_HRESULT_SUCCEEDED(root_igridprovider->GetItem(0, 0, &grid_item));
   EXPECT_NE(nullptr, grid_item);
   EXPECT_EQ(cell1_irawelementprovidersimple.Get(), grid_item);
-}
-
-TEST_F(AXPlatformNodeWinTest, IGridProviderGetItemCustomAria) {
-  Init(BuildAriaColumnAndRowCountGrids());
-
-  // Empty Grid.
-  ComPtr<IGridProvider> grid1_provider =
-      QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[0]);
-
-  // Grid with a cell that defines aria-rowindex (4) and aria-colindex (5).
-  ComPtr<IGridProvider> grid2_provider =
-      QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[1]);
-
-  // Grid that specifies aria-rowcount (2) and aria-colcount (3).
-  ComPtr<IGridProvider> grid3_provider =
-      QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[2]);
-
-  // Grid that specifies aria-rowcount and aria-colcount are both (-1).
-  ComPtr<IGridProvider> grid4_provider =
-      QueryInterfaceFromNode<IGridProvider>(GetRoot()->children()[3]);
-
-  IRawElementProviderSimple* grid_item = nullptr;
-  EXPECT_HRESULT_FAILED(grid1_provider->GetItem(0, 0, &grid_item));
-  EXPECT_HRESULT_SUCCEEDED(grid2_provider->GetItem(3, 4, &grid_item));
-  EXPECT_EQ(QueryInterfaceFromNodeId<IRawElementProviderSimple>(5).Get(),
-            grid_item);
-  // This is an empty grid, so we should not be able to get any items.
-  EXPECT_HRESULT_FAILED(grid3_provider->GetItem(1, 2, &grid_item));
-  EXPECT_HRESULT_FAILED(grid4_provider->GetItem(-1, -1, &grid_item));
 }
 
 TEST_F(AXPlatformNodeWinTest, ITableProviderGetColumnHeadersForTable) {
@@ -4069,6 +4038,7 @@ TEST_F(AXPlatformNodeWinTest, UIAGetPropertySimple) {
   root.role = ax::mojom::Role::kList;
   root.SetName("fake name");
   root.AddStringAttribute(ax::mojom::StringAttribute::kAccessKey, "Ctrl+Q");
+  root.AddStringAttribute(ax::mojom::StringAttribute::kLanguage, "en-us");
   root.AddStringAttribute(ax::mojom::StringAttribute::kKeyShortcuts, "Alt+F4");
   root.AddStringAttribute(ax::mojom::StringAttribute::kDescription,
                           "fake description");
@@ -4111,6 +4081,8 @@ TEST_F(AXPlatformNodeWinTest, UIAGetPropertySimple) {
   EXPECT_UIA_BSTR_EQ(root_node, UIA_AriaPropertiesPropertyId,
                      L"readonly=true;expanded=false;multiline=false;"
                      L"multiselectable=false;required=false;setsize=2");
+  constexpr int en_us_lcid = 1033;
+  EXPECT_UIA_INT_EQ(root_node, UIA_CulturePropertyId, en_us_lcid);
   EXPECT_UIA_BSTR_EQ(root_node, UIA_NamePropertyId, L"fake name");
   EXPECT_UIA_INT_EQ(root_node, UIA_ControlTypePropertyId,
                     int{UIA_ListControlTypeId});
@@ -4463,8 +4435,7 @@ TEST_F(AXPlatformNodeWinTest, UIAGetControllerForPropertyId) {
   AXNodeData group1;
   group1.id = 5;
   group1.role = ax::mojom::Role::kGenericContainer;
-  group1.AddIntListAttribute(ax::mojom::IntListAttribute::kErrormessageIds,
-                             std::vector<AXNodeID>{6});
+  group1.AddIntAttribute(ax::mojom::IntAttribute::kErrormessageId, 6);
 
   AXNodeData text1;
   text1.id = 6;
@@ -4509,7 +4480,7 @@ TEST_F(AXPlatformNodeWinTest, UIAGetControllerForPropertyId) {
 TEST_F(AXPlatformNodeWinTest, UIAGetDescribedByPropertyId) {
   AXNodeData root;
   std::vector<AXNodeID> describedby_ids = {2, 3, 4};
-  root.AddIntListAttribute(ax::mojom::IntListAttribute::kDetailsIds,
+  root.AddIntListAttribute(ax::mojom::IntListAttribute::kDescribedbyIds,
                            describedby_ids);
   root.id = 1;
   root.role = ax::mojom::Role::kMarquee;
@@ -4584,7 +4555,7 @@ TEST_F(AXPlatformNodeWinTest, UIAItemStatusPropertyId) {
 
   Init(root, row1, header1, header2, header3, header4);
 
-  auto* row_node = GetRoot()->children()[0].get();
+  auto* row_node = GetRoot()->children()[0];
 
   EXPECT_UIA_BSTR_EQ(QueryInterfaceFromNode<IRawElementProviderSimple>(
                          row_node->children()[0]),
@@ -4864,8 +4835,8 @@ TEST_F(AXPlatformNodeWinTest, GetPropertyValue_HelpText) {
   TestAXTreeUpdate update(std::string(R"HTML(
     ++1 kRootWebArea
     ++++2 kTextField name="name-from-title" state=kEditable stringAttribute=kPlaceholder,placeholder
-    ++++3 kTextField state=kEditable name="name-from-title"
-    ++++4 kTextField name="name-from-placeholder" state=kEditable
+    ++++3 kTextField state=kEditable name="name-from-title"   
+    ++++4 kTextField name="name-from-placeholder" state=kEditable 
     ++++5 kTextField state=kEditable name="name-from-attribute" stringAttribute=kToolTip,tooltip
     ++++6 kTextField state=kEditable name="name-from-attribute"
   )HTML"));
@@ -5813,27 +5784,9 @@ TEST_F(AXPlatformNodeWinTest, ComputeUIAControlType) {
       UIA_ControlTypePropertyId, int{UIA_GroupControlTypeId});
 }
 
-TEST_F(AXPlatformNodeWinTest, IsUIAControlForStatusRole) {
-  TestAXTreeUpdate update(std::string(R"HTML(
-    ++1 kRootWebArea
-    ++++2 kStatus
-  )HTML"));
-
-  Init(update);
-
-  // Turn on web content mode for the AXTree.
-  TestAXNodeWrapper::SetGlobalIsWebContent(true);
-
-  AXNode* status_node = GetRoot()->children()[0];
-
-  ComPtr<IRawElementProviderSimple> status_node_provider =
-      QueryInterfaceFromNode<IRawElementProviderSimple>(status_node);
-  EXPECT_UIA_BOOL_EQ(status_node_provider, UIA_IsControlElementPropertyId, true);
-}
-
 TEST_F(AXPlatformNodeWinTest, UIALandmarkType) {
   auto TestLandmarkType = [this](ax::mojom::Role node_role,
-                                 std::optional<LONG> expected_landmark_type,
+                                 absl::optional<LONG> expected_landmark_type,
                                  const std::string& node_name = {}) {
     AXNodeData root_data;
     root_data.id = 1;
@@ -6197,18 +6150,12 @@ TEST_F(AXPlatformNodeWinTest, GetPatternProviderSupportedPatterns) {
   constexpr AXNodeID tree_item_checked_id = 23;
   constexpr AXNodeID tree_item_unchecked_id = 24;
   constexpr AXNodeID tree_item_id = 25;
-  constexpr AXNodeID tab_id = 26;
-  constexpr AXNodeID toggle_button_with_popup_id = 27;
-  constexpr AXNodeID generic_container_id = 28;
-  constexpr AXNodeID row_group_id = 29;
-  constexpr AXNodeID row_id = 30;
-  constexpr AXNodeID cell_id = 31;
 
   AXTreeUpdate update;
   update.tree_data.tree_id = ui::AXTreeID::CreateNewAXTreeID();
   update.has_tree_data = true;
   update.root_id = root_id;
-  update.nodes.resize(31);
+  update.nodes.resize(25);
   update.nodes[0].id = root_id;
   update.nodes[0].role = ax::mojom::Role::kRootWebArea;
   update.nodes[0].child_ids = {text_field_with_combo_box_id,
@@ -6224,10 +6171,7 @@ TEST_F(AXPlatformNodeWinTest, GetPatternProviderSupportedPatterns) {
                                button_without_value,
                                tree_item_checked_id,
                                tree_item_unchecked_id,
-                               tree_item_id,
-                               tab_id,
-                               toggle_button_with_popup_id,
-                               generic_container_id};
+                               tree_item_id};
   update.nodes[1].id = text_field_with_combo_box_id;
   update.nodes[1].role = ax::mojom::Role::kTextFieldWithComboBox;
   update.nodes[1].AddState(ax::mojom::State::kEditable);
@@ -6302,24 +6246,6 @@ TEST_F(AXPlatformNodeWinTest, GetPatternProviderSupportedPatterns) {
       static_cast<int>(ax::mojom::CheckedState::kFalse));
   update.nodes[24].id = tree_item_id;
   update.nodes[24].role = ax::mojom::Role::kTreeItem;
-  update.nodes[25].id = tab_id;
-  update.nodes[25].role = ax::mojom::Role::kTab;
-  update.nodes[26].id = toggle_button_with_popup_id;
-  update.nodes[26].role = ax::mojom::Role::kToggleButton;
-  update.nodes[26].AddIntAttribute(
-      ax::mojom::IntAttribute::kHasPopup,
-      static_cast<int32_t>(ax::mojom::HasPopup::kTrue));
-  update.nodes[27].role = ax::mojom::Role::kGenericContainer;
-  update.nodes[27].id = generic_container_id;
-  update.nodes[27].child_ids = {row_group_id};
-  update.nodes[28].role = ax::mojom::Role::kRowGroup;
-  update.nodes[28].id = row_group_id;
-  update.nodes[28].child_ids = {row_id};
-  update.nodes[29].role = ax::mojom::Role::kRow;
-  update.nodes[29].id = row_id;
-  update.nodes[29].child_ids = {cell_id};
-  update.nodes[30].role = ax::mojom::Role::kCell;
-  update.nodes[30].id = cell_id;
 
   Init(update);
 
@@ -6400,24 +6326,15 @@ TEST_F(AXPlatformNodeWinTest, GetPatternProviderSupportedPatterns) {
   EXPECT_EQ(PatternSet({UIA_ScrollItemPatternId, UIA_InvokePatternId,
                         UIA_TextChildPatternId}),
             GetSupportedPatternsFromNodeId(button_without_value));
-  EXPECT_EQ(PatternSet({UIA_ScrollItemPatternId, UIA_ExpandCollapsePatternId,
-                        UIA_TextChildPatternId}),
+  EXPECT_EQ(PatternSet({UIA_ScrollItemPatternId, UIA_TogglePatternId,
+                        UIA_ExpandCollapsePatternId, UIA_TextChildPatternId}),
             GetSupportedPatternsFromNodeId(tree_item_checked_id));
-  EXPECT_EQ(PatternSet({UIA_ScrollItemPatternId, UIA_ExpandCollapsePatternId,
-                        UIA_TextChildPatternId}),
+  EXPECT_EQ(PatternSet({UIA_ScrollItemPatternId, UIA_TogglePatternId,
+                        UIA_ExpandCollapsePatternId, UIA_TextChildPatternId}),
             GetSupportedPatternsFromNodeId(tree_item_checked_id));
   EXPECT_EQ(PatternSet({UIA_ScrollItemPatternId, UIA_ExpandCollapsePatternId,
                         UIA_TextChildPatternId}),
             GetSupportedPatternsFromNodeId(tree_item_id));
-  EXPECT_EQ(PatternSet({UIA_SelectionItemPatternId, UIA_ScrollItemPatternId,
-                        UIA_TextChildPatternId}),
-            GetSupportedPatternsFromNodeId(tab_id));
-  EXPECT_EQ(PatternSet({UIA_ScrollItemPatternId, UIA_ExpandCollapsePatternId,
-                        UIA_TextChildPatternId}),
-            GetSupportedPatternsFromNodeId(toggle_button_with_popup_id));
-  EXPECT_EQ(PatternSet({UIA_ScrollItemPatternId, UIA_TableItemPatternId,
-                        UIA_TextChildPatternId}),
-            GetSupportedPatternsFromNodeId(cell_id));
 }
 
 TEST_F(AXPlatformNodeWinTest, GetPatternProviderExpandCollapsePattern) {
@@ -7037,7 +6954,7 @@ TEST_F(AXPlatformNodeWinTest, ISelectionItemProviderDisabled) {
 TEST_F(AXPlatformNodeWinTest, ISelectionItemProviderNotSelectable) {
   AXNodeData root;
   root.id = 1;
-  root.role = ax::mojom::Role::kListBoxOption;
+  root.role = ax::mojom::Role::kTab;
 
   Init(root);
 
@@ -7328,7 +7245,7 @@ TEST_F(AXPlatformNodeWinTest, ISelectionItemProviderGrid) {
 
   Init(root, row1, cell1);
 
-  const auto* row = GetRoot()->children()[0].get();
+  const auto* row = GetRoot()->children()[0];
   ComPtr<IRawElementProviderSimple> raw_element_provider_simple =
       QueryInterfaceFromNode<IRawElementProviderSimple>(row->children()[0]);
 
@@ -7398,7 +7315,7 @@ TEST_F(AXPlatformNodeWinTest, ISelectionItemProviderGetSelectionContainer) {
   ComPtr<IRawElementProviderSimple> container_provider =
       GetRootIRawElementProviderSimple();
 
-  const auto* row = GetRoot()->children()[0].get();
+  const auto* row = GetRoot()->children()[0];
   ComPtr<ISelectionItemProvider> item_provider =
       QueryInterfaceFromNode<ISelectionItemProvider>(row->children()[0]);
 
@@ -7422,7 +7339,7 @@ TEST_F(AXPlatformNodeWinTest, ISelectionItemProviderSelectFollowFocus) {
 
   Init(root, tab1);
 
-  auto* tab1_node = GetRoot()->children()[0].get();
+  auto* tab1_node = GetRoot()->children()[0];
   ComPtr<IRawElementProviderSimple> tab1_raw_element_provider_simple =
       QueryInterfaceFromNode<IRawElementProviderSimple>(tab1_node);
   ASSERT_NE(nullptr, tab1_raw_element_provider_simple.Get());
@@ -7781,26 +7698,12 @@ TEST_F(AXPlatformNodeWinTest, SanitizeStringAttributeForIA2) {
   EXPECT_EQ("\\\\\\:\\=\\,\\;", output);
 }
 
-TEST_F(AXPlatformNodeWinTest, AriaRoleForInsertionAndDeletion) {
-  TestAXTreeUpdate update(std::string(R"HTML(
-    ++1 kRootWebArea
-    ++++2 kContentInsertion
-    ++++3 kContentDeletion
-  )HTML"));
-  Init(update);
-
-  EXPECT_UIA_BSTR_EQ(GetIRawElementProviderSimpleFromChildIndex(0),
-                     UIA_AriaRolePropertyId, L"insertion");
-  EXPECT_UIA_BSTR_EQ(GetIRawElementProviderSimpleFromChildIndex(1),
-                     UIA_AriaRolePropertyId, L"deletion");
-}
-
 //
 // IChromeAccessible tests
 //
 
 class TestIChromeAccessibleDelegate
-    : public SequenceAffineComObjectRoot,
+    : public CComObjectRootEx<CComMultiThreadModel>,
       public IDispatchImpl<IChromeAccessibleDelegate> {
   using IDispatchImpl::Invoke;
 
@@ -7876,7 +7779,7 @@ TEST_F(AXPlatformNodeWinTest, DISABLED_BulkFetch) {
 
   // Note: base::JSONReader is fine for unit tests, but production code
   // that parses untrusted JSON should always use DataDecoder instead.
-  std::optional<base::Value> result_val =
+  absl::optional<base::Value> result_val =
       base::JSONReader::Read(response, base::JSON_ALLOW_TRAILING_COMMAS);
   ASSERT_TRUE(result_val);
   const base::Value::Dict& result = result_val->GetDict();

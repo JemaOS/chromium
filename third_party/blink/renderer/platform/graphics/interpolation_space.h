@@ -29,9 +29,7 @@
 #include "third_party/blink/renderer/platform/graphics/color.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
 
-namespace cc {
-class ColorFilter;
-}
+class SkColorFilter;
 
 namespace blink {
 
@@ -55,7 +53,7 @@ Color ConvertColor(
 
 // Create a color filter that will convert from |src_interpolation_space| into
 // |dst_interpolation_space|.
-sk_sp<cc::ColorFilter> CreateInterpolationSpaceFilter(
+sk_sp<SkColorFilter> CreateInterpolationSpaceFilter(
     InterpolationSpace src_interpolation_space,
     InterpolationSpace dst_interpolation_space);
 

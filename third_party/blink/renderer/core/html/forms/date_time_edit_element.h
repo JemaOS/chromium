@@ -140,7 +140,7 @@ class DateTimeEditElement final : public HTMLDivElement,
   void UpdateUIState();
 
   // Element function.
-  const ComputedStyle* CustomStyleForLayoutObject(
+  scoped_refptr<const ComputedStyle> CustomStyleForLayoutObject(
       const StyleRecalcContext&) override;
   bool IsDateTimeEditElement() const override;
 

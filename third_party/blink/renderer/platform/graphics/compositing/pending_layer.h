@@ -21,14 +21,9 @@ class LayerTreeHost;
 
 namespace blink {
 
-class PendingLayer;
-using PendingLayers = HeapVector<PendingLayer>;
-
 // A pending layer is a collection of paint chunks that will end up in the same
 // cc::Layer.
 class PLATFORM_EXPORT PendingLayer {
-  DISALLOW_NEW();
-
  public:
   enum CompositingType {
     kScrollHitTestLayer,
@@ -38,9 +33,8 @@ class PLATFORM_EXPORT PendingLayer {
     kOther,
   };
 
-  PendingLayer(const PaintArtifact&, const PaintChunk& first_chunk);
-
-  void Trace(Visitor*) const;
+  PendingLayer(scoped_refptr<const PaintArtifact>,
+               const PaintChunk& first_chunk);
 
   // Returns the offset/bounds for the final cc::Layer, rounded if needed.
   gfx::Vector2dF LayerOffset() const;
@@ -65,16 +59,13 @@ class PLATFORM_EXPORT PendingLayer {
     return change_of_decomposited_transforms_;
   }
   CompositingType GetCompositingType() const { return compositing_type_; }
-  cc::HitTestOpaqueness GetHitTestOpaqueness() const {
-    return hit_test_opaqueness_;
-  }
 
   void SetCompositingType(CompositingType new_type) {
     compositing_type_ = new_type;
   }
 
-  void SetPaintArtifact(const PaintArtifact& paint_artifact) {
-    chunks_.SetPaintArtifact(paint_artifact);
+  void SetPaintArtifact(scoped_refptr<const PaintArtifact> paint_artifact) {
+    chunks_.SetPaintArtifact(std::move(paint_artifact));
   }
 
   using IsCompositedScrollFunction =
@@ -132,7 +123,7 @@ class PLATFORM_EXPORT PendingLayer {
 
   bool MightOverlap(const PendingLayer& other) const;
 
-  static void DecompositeTransforms(PendingLayers& pending_layers);
+  static void DecompositeTransforms(Vector<PendingLayer>& pending_layers);
 
   // This is valid only when SetCclayer() or SetContentLayerClient() has been
   // called.
@@ -144,10 +135,8 @@ class PLATFORM_EXPORT PendingLayer {
   }
 
   ContentLayerClientImpl* GetContentLayerClient() const {
-    return content_layer_client_.Get();
+    return content_layer_client_.get();
   }
-
-  void UpdateCcLayerHitTestOpaqueness() const;
 
   // For this PendingLayer, creates a composited layer or uses the existing
   // one in |old_pending_layer|, and updates the layer according to the current
@@ -159,32 +148,24 @@ class PLATFORM_EXPORT PendingLayer {
 
   // A lighter version of UpdateCompositedLayer(). Called when the existing
   // composited layer has only repainted since the last update.
-  void UpdateCompositedLayerForRepaint(const PaintArtifact& repainted_artifact,
-                                       cc::LayerSelection&);
+  void UpdateCompositedLayerForRepaint(
+      scoped_refptr<const PaintArtifact> repainted_artifact,
+      cc::LayerSelection&);
 
   SkColor4f ComputeBackgroundColor() const;
 
-  // True if a solid color chunk exists that makes this entire layer
-  // draw a solid color (see comment above `solid_color_chunk_index_`).
-  bool IsSolidColor() const { return solid_color_chunk_index_ != kNotFound; }
+  // True if this contains only a single solid color PaintChunk in the same
+  // property tree state (decomposited 2d translations are allowed) as this
+  // PendingLayer.
+  bool IsSolidColor() const { return is_solid_color_; }
 
  private:
   // Checks basic merge-ability with `guest` and calls
   // PropertyTreeState::CanUpcastWith().
-  std::optional<PropertyTreeState> CanUpcastWith(
+  absl::optional<PropertyTreeState> CanUpcastWith(
       const PendingLayer& guest,
       const PropertyTreeState& guest_state,
       IsCompositedScrollFunction is_comosited_scroll) const;
-
-  bool CanMerge(const PendingLayer& guest,
-                LCDTextPreference lcd_text_preference,
-                IsCompositedScrollFunction,
-                gfx::RectF& merged_bounds,
-                PropertyTreeState& merged_state,
-                gfx::RectF& merged_rect_known_to_be_opaque,
-                bool& merged_text_known_to_be_on_opaque_background,
-                wtf_size_t& merged_solid_color_chunk_index,
-                cc::HitTestOpaqueness& merged_hit_test_opaqueness) const;
 
   gfx::RectF MapRectKnownToBeOpaque(
       const PropertyTreeState& new_state,
@@ -203,8 +184,9 @@ class PLATFORM_EXPORT PendingLayer {
 
   void UpdateLayerProperties(cc::LayerSelection&, bool selection_only);
 
-  bool UsesSolidColorLayer() const;
-  SkColor4f GetSolidColor() const;
+  bool UsesSolidColorLayer() const {
+    return RuntimeEnabledFeatures::SolidColorLayersEnabled() && is_solid_color_;
+  }
 
   // The rects are in the space of property_tree_state.
   gfx::RectF bounds_;
@@ -213,31 +195,24 @@ class PLATFORM_EXPORT PendingLayer {
   bool draws_content_ = false;
   bool text_known_to_be_on_opaque_background_ = false;
   bool has_decomposited_blend_mode_ = false;
-  // If not kNotFound, this is the index of the chunk that makes this layer
-  // solid color. The solid color chunk must be the last drawable chunk and
-  // must draw a solid color that fully covers this pending layer.
-  wtf_size_t solid_color_chunk_index_ = kNotFound;
+  bool is_solid_color_ = false;
   PaintChunkSubset chunks_;
   RefCountedPropertyTreeState property_tree_state_;
   gfx::Vector2dF offset_of_decomposited_transforms_;
   PaintPropertyChangeType change_of_decomposited_transforms_ =
       PaintPropertyChangeType::kUnchanged;
   CompositingType compositing_type_ = kOther;
-  cc::HitTestOpaqueness hit_test_opaqueness_ =
-      cc::HitTestOpaqueness::kTransparent;
 
   // This is set to non-null after layerization if ChunkRequiresOwnLayer() or
   // UsesSolidColorLayer() is true.
   scoped_refptr<cc::Layer> cc_layer_;
-  // This is set to non-null after layerization if ChunkRequiresOwnLayer() and
-  // UsesSolidColorLayer() are false.
-  Member<ContentLayerClientImpl> content_layer_client_;
+  // This is set to non-null after layerization if !ChunkRequiresOwnLayer() and
+  // UsesSolidColorLayer() is false.
+  std::unique_ptr<ContentLayerClientImpl> content_layer_client_;
 };
 
 PLATFORM_EXPORT std::ostream& operator<<(std::ostream&, const PendingLayer&);
 
 }  // namespace blink
-
-WTF_ALLOW_CLEAR_UNUSED_SLOTS_WITH_MEM_FUNCTIONS(blink::PendingLayer)
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_COMPOSITING_PENDING_LAYER_H_

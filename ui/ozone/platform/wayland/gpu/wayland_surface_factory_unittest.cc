@@ -194,6 +194,12 @@ class WaylandSurfaceFactoryTest : public WaylandTest {
         kSupportedFormatsWithModifiers{
             {gfx::BufferFormat::BGRA_8888, {DRM_FORMAT_MOD_LINEAR}}};
 
+    // Set this bug fix so that WaylandFrameManager does not use a freeze
+    // counter. Otherwise, we won't be able to have a reliable test order of
+    // frame submissions. This must be set before any window is created
+    // (WaylandTest does that for us during the SetUp phase).
+    server_.zaura_shell()->SetBugFixes({1358908});
+
     WaylandTest::SetUp();
 
     auto manager_ptr = connection_->buffer_manager_host()->BindInterface();
@@ -202,9 +208,7 @@ class WaylandSurfaceFactoryTest : public WaylandTest {
         /*supports_dma_buf=*/false,
         /*supports_viewporter=*/true,
         /*supports_acquire_fence=*/false,
-        /*supports_overlays=*/true, kAugmentedSurfaceNotSupportedVersion,
-        /*supports_single_pixel_buffer=*/true,
-        /*server_version=*/{});
+        /*supports_overlays=*/true, kAugmentedSurfaceNotSupportedVersion);
 
     // Wait until initialization and mojo calls go through.
     base::RunLoop().RunUntilIdle();
@@ -238,7 +242,7 @@ class WaylandSurfaceFactoryTest : public WaylandTest {
             gfx::RectF(window_->GetBoundsInPixels()), {}, false,
             gfx::Rect(window_->applied_state().size_px), 1.0f,
             gfx::OverlayPriorityHint::kNone, gfx::RRectF(),
-            gfx::ColorSpace::CreateSRGB(), std::nullopt));
+            gfx::ColorSpace::CreateSRGB(), absl::nullopt));
   }
 
   uint32_t surface_id_ = 0;
@@ -246,9 +250,6 @@ class WaylandSurfaceFactoryTest : public WaylandTest {
 
 TEST_P(WaylandSurfaceFactoryTest,
        GbmSurfacelessWaylandCommitOverlaysCallbacksTest) {
-  if (!connection_->ShouldUseOverlayDelegation()) {
-    GTEST_SKIP();
-  }
   // This tests multiple buffers per-frame and order of SwapCompletionCallbacks.
   // Even when all OnSubmission from later frames are called, their
   // SwapCompletionCallbacks should not run until previous frames'
@@ -342,17 +343,17 @@ TEST_P(WaylandSurfaceFactoryTest,
     // Also, we expect no buffer committed on primary subsurface.
     EXPECT_CALL(*mock_primary_surface, Attach(_, _, _)).Times(0);
     EXPECT_CALL(*mock_primary_surface, Frame(_)).Times(0);
-    EXPECT_CALL(*mock_primary_surface, Damage(_, _, _, _)).Times(0);
+    EXPECT_CALL(*mock_primary_surface, DamageBuffer(_, _, _, _)).Times(0);
     // 1 buffer committed on root surface.
     EXPECT_CALL(*root_surface, Attach(_, _, _)).Times(1);
-    EXPECT_CALL(*root_surface, Frame(_)).Times(1);
+    EXPECT_CALL(*root_surface, Frame(_)).Times(0);
     EXPECT_CALL(*root_surface, Commit()).Times(1);
 
     // The wl_buffers are requested during ScheduleOverlays. Thus, we have
     // pending requests that we need to execute.
     auto params_vector = server->zwp_linux_dmabuf_v1()->buffer_params();
     ASSERT_EQ(params_vector.size(), 2u);
-    for (wl::TestZwpLinuxBufferParamsV1* mock_params : params_vector) {
+    for (auto* mock_params : params_vector) {
       zwp_linux_buffer_params_v1_send_created(mock_params->resource(),
                                               mock_params->buffer_resource());
     }
@@ -370,7 +371,7 @@ TEST_P(WaylandSurfaceFactoryTest,
   // Give mojo the chance to pass the callbacks if any.
   base::RunLoop().RunUntilIdle();
 
-  // We have just received Attach/Damage/Commit for buffer with swap
+  // We have just received Attach/DamageBuffer/Commit for buffer with swap
   // id=0u. The SwapCompletionCallback must be executed automatically as long as
   // we didn't have any buffers attached to the surface before.
   EXPECT_EQ(cbs_helper.GetLastFinishedSwapId(), 0u);
@@ -437,29 +438,29 @@ TEST_P(WaylandSurfaceFactoryTest,
     // Expect no buffer committed on primary subsurface.
     EXPECT_CALL(*mock_primary_surface, Attach(_, _, _)).Times(0);
     EXPECT_CALL(*mock_primary_surface, Frame(_)).Times(0);
-    EXPECT_CALL(*mock_primary_surface, Damage(_, _, _, _)).Times(0);
+    EXPECT_CALL(*mock_primary_surface, DamageBuffer(_, _, _, _)).Times(0);
     // Expect 1 buffer to be committed on overlay subsurface, with frame
     // callback.
     EXPECT_CALL(*mock_overlay_surface, Attach(_, _, _)).Times(1);
     EXPECT_CALL(*mock_overlay_surface, Frame(_)).Times(1);
-    EXPECT_CALL(*mock_overlay_surface, Damage(_, _, _, _)).Times(1);
+    EXPECT_CALL(*mock_overlay_surface, DamageBuffer(_, _, _, _)).Times(1);
     EXPECT_CALL(*mock_overlay_surface, Commit()).Times(1);
     // Expect no buffer committed on root surface.
     EXPECT_CALL(*root_surface, Attach(_, _, _)).Times(0);
     EXPECT_CALL(*root_surface, Frame(_)).Times(0);
-    EXPECT_CALL(*root_surface, Damage(_, _, _, _)).Times(0);
+    EXPECT_CALL(*root_surface, DamageBuffer(_, _, _, _)).Times(0);
     EXPECT_CALL(*root_surface, Commit()).Times(1);
 
     auto params_vector = server->zwp_linux_dmabuf_v1()->buffer_params();
     ASSERT_EQ(params_vector.size(), 1u);
-    for (wl::TestZwpLinuxBufferParamsV1* mock_params : params_vector) {
+    for (auto* mock_params : params_vector) {
       zwp_linux_buffer_params_v1_send_created(mock_params->resource(),
                                               mock_params->buffer_resource());
     }
 
     // Also send the frame callback so that pending buffer for swap id=1u is
     // processed and swapped.
-    root_surface->SendFrameCallback();
+    server->GetObject<wl::MockSurface>(overlay_surface_id)->SendFrameCallback();
   });
 
   // Give a client a chance to send requests and then verify our expectations on
@@ -528,20 +529,20 @@ TEST_P(WaylandSurfaceFactoryTest,
     // Expect 1 buffer committed on primary subsurface, with frame callback.
     EXPECT_CALL(*mock_primary_surface, Attach(_, _, _)).Times(1);
     EXPECT_CALL(*mock_primary_surface, Frame(_)).Times(1);
-    EXPECT_CALL(*mock_primary_surface, Damage(_, _, _, _)).Times(1);
+    EXPECT_CALL(*mock_primary_surface, DamageBuffer(_, _, _, _)).Times(1);
     EXPECT_CALL(*mock_primary_surface, Commit()).Times(1);
     // Expect no buffer to be committed on overlay subsurface.
     EXPECT_CALL(*mock_overlay_surface, Frame(_)).Times(0);
-    EXPECT_CALL(*mock_overlay_surface, Damage(_, _, _, _)).Times(0);
+    EXPECT_CALL(*mock_overlay_surface, DamageBuffer(_, _, _, _)).Times(0);
     // Expect no buffer committed on root surface.
     EXPECT_CALL(*root_surface, Attach(_, _, _)).Times(0);
     EXPECT_CALL(*root_surface, Frame(_)).Times(0);
-    EXPECT_CALL(*root_surface, Damage(_, _, _, _)).Times(0);
+    EXPECT_CALL(*root_surface, DamageBuffer(_, _, _, _)).Times(0);
     EXPECT_CALL(*root_surface, Commit()).Times(1);
 
     auto params_vector = server->zwp_linux_dmabuf_v1()->buffer_params();
     ASSERT_EQ(params_vector.size(), 1u);
-    for (wl::TestZwpLinuxBufferParamsV1* mock_params : params_vector) {
+    for (auto* mock_params : params_vector) {
       zwp_linux_buffer_params_v1_send_created(mock_params->resource(),
                                               mock_params->buffer_resource());
     }
@@ -605,9 +606,6 @@ TEST_P(WaylandSurfaceFactoryTest,
 
 TEST_P(WaylandSurfaceFactoryTest,
        GbmSurfacelessWaylandGroupOnSubmissionCallbacksTest) {
-  if (!connection_->ShouldUseOverlayDelegation()) {
-    GTEST_SKIP();
-  }
   // This tests multiple buffers per-frame. GbmSurfacelessWayland receive 1
   // OnSubmission call per frame before running in submission order.
   gl::SetGLImplementation(gl::kGLImplementationEGLGLES2);
@@ -708,10 +706,10 @@ TEST_P(WaylandSurfaceFactoryTest,
         server->GetObject<wl::MockSurface>(primary_subsurface_id);
 
     EXPECT_CALL(*mock_primary_surface, Attach(_, _, _)).Times(1);
-    EXPECT_CALL(*mock_primary_surface, Frame(_)).Times(0);
-    EXPECT_CALL(*mock_primary_surface, Damage(_, _, _, _)).Times(1);
+    EXPECT_CALL(*mock_primary_surface, Frame(_)).Times(1);
+    EXPECT_CALL(*mock_primary_surface, DamageBuffer(_, _, _, _)).Times(1);
     EXPECT_CALL(*mock_primary_surface, Commit()).Times(1);
-    EXPECT_CALL(*root_surface, Frame(_)).Times(1);
+    EXPECT_CALL(*root_surface, Frame(_)).Times(0);
     EXPECT_CALL(*root_surface, Commit()).Times(1);
 
     testing::Mock::VerifyAndClearExpectations(server->zwp_linux_dmabuf_v1());
@@ -720,19 +718,17 @@ TEST_P(WaylandSurfaceFactoryTest,
     // first commit.
     auto params_vector = server->zwp_linux_dmabuf_v1()->buffer_params();
     ASSERT_EQ(params_vector.size(), 3u);
-    for (wl::TestZwpLinuxBufferParamsV1* param : params_vector) {
+    for (auto* param : params_vector) {
       zwp_linux_buffer_params_v1_send_created(param->resource(),
                                               param->buffer_resource());
     }
   });
 
-  PostToServerAndWait([main_surface_id = surface_id_, primary_subsurface_id](
-                          wl::TestWaylandServerThread* server) {
-    testing::Mock::VerifyAndClearExpectations(
-        server->GetObject<wl::MockSurface>(primary_subsurface_id));
-    testing::Mock::VerifyAndClearExpectations(
-        server->GetObject<wl::MockSurface>(main_surface_id));
-  });
+  PostToServerAndWait(
+      [primary_subsurface_id](wl::TestWaylandServerThread* server) {
+        testing::Mock::VerifyAndClearExpectations(
+            server->GetObject<wl::MockSurface>(primary_subsurface_id));
+      });
 
   auto* subsurface = window_->wayland_subsurfaces().begin()->get();
   const uint32_t overlay_surface_id =
@@ -741,7 +737,7 @@ TEST_P(WaylandSurfaceFactoryTest,
   // Give mojo the chance to pass the callbacks.
   base::RunLoop().RunUntilIdle();
 
-  // We have just received Attach/Damage/Commit for buffer with swap
+  // We have just received Attach/DamageBuffer/Commit for buffer with swap
   // id=0u. The SwapCompletionCallback must be executed automatically as long as
   // we didn't have any buffers attached to the surface before.
   EXPECT_EQ(cbs_helper.GetLastFinishedSwapId(), 0u);
@@ -820,19 +816,19 @@ TEST_P(WaylandSurfaceFactoryTest,
     // surface in the frame it does not setup frame callback.
     EXPECT_CALL(*mock_primary_surface, Attach(_, _, _)).Times(1);
     EXPECT_CALL(*mock_primary_surface, Frame(_)).Times(0);
-    EXPECT_CALL(*mock_primary_surface, Damage(_, _, _, _)).Times(1);
+    EXPECT_CALL(*mock_primary_surface, DamageBuffer(_, _, _, _)).Times(1);
     EXPECT_CALL(*mock_primary_surface, Commit()).Times(1);
 
     // Expect overlay buffer to be committed, and sets up frame callback.
     EXPECT_CALL(*mock_overlay_surface, Attach(_, _, _)).Times(1);
     EXPECT_CALL(*mock_overlay_surface, Frame(_)).Times(1);
-    EXPECT_CALL(*mock_overlay_surface, Damage(_, _, _, _)).Times(1);
+    EXPECT_CALL(*mock_overlay_surface, DamageBuffer(_, _, _, _)).Times(1);
     EXPECT_CALL(*mock_overlay_surface, Commit()).Times(1);
 
     // Expect root surface to be committed without buffer.
     EXPECT_CALL(*root_surface, Attach(_, _, _)).Times(0);
     EXPECT_CALL(*root_surface, Frame(_)).Times(0);
-    EXPECT_CALL(*root_surface, Damage(_, _, _, _)).Times(0);
+    EXPECT_CALL(*root_surface, DamageBuffer(_, _, _, _)).Times(0);
     EXPECT_CALL(*root_surface, Commit()).Times(1);
 
     testing::Mock::VerifyAndClearExpectations(server->zwp_linux_dmabuf_v1());
@@ -840,18 +836,22 @@ TEST_P(WaylandSurfaceFactoryTest,
     // 2 more buffers are to be created.
     auto params_vector = server->zwp_linux_dmabuf_v1()->buffer_params();
     ASSERT_EQ(params_vector.size(), 2u);
-    for (wl::TestZwpLinuxBufferParamsV1* param : params_vector) {
+    for (auto* param : params_vector) {
       zwp_linux_buffer_params_v1_send_created(param->resource(),
                                               param->buffer_resource());
     }
   });
 
-  PostToServerAndWait([main_surface_id =
-                           surface_id_](wl::TestWaylandServerThread* server) {
-    auto* root_surface = server->GetObject<wl::MockSurface>(main_surface_id);
+  PostToServerAndWait([overlay_surface_id, primary_subsurface_id](
+                          wl::TestWaylandServerThread* server) {
+    auto* mock_primary_surface =
+        server->GetObject<wl::MockSurface>(primary_subsurface_id);
+    auto* mock_overlay_surface =
+        server->GetObject<wl::MockSurface>(overlay_surface_id);
     // Send the frame callback so that pending buffer for swap id=1u is
     // processed and swapped.
-    root_surface->SendFrameCallback();
+    mock_primary_surface->SendFrameCallback();
+    mock_overlay_surface->SendFrameCallback();
   });
 
   PostToServerAndWait(
@@ -926,26 +926,17 @@ TEST_P(WaylandSurfaceFactoryTest, Canvas) {
     auto* sk_canvas = canvas->GetCanvas();
     ASSERT_TRUE(sk_canvas);
 
-    const gfx::Rect damage(5, 10, 20, 15);
-    // Surface damage will be affected by the scale, which must be an integer.
-    const gfx::Rect expected_damage = ScaleToEnclosingRect(
-        gfx::Rect(5, 10, 20, 15), 1.f / std::ceil(scale_factor));
-
     const uint32_t surface_id = window_->root_surface()->get_surface_id();
-    PostToServerAndWait([surface_id,
-                         expected_damage](wl::TestWaylandServerThread* server) {
+    PostToServerAndWait([surface_id](wl::TestWaylandServerThread* server) {
       auto* mock_surface = server->GetObject<wl::MockSurface>(surface_id);
       ASSERT_FALSE(mock_surface->attached_buffer());
       Expectation damage =
-          EXPECT_CALL(*mock_surface,
-                      Damage(expected_damage.x(), expected_damage.y(),
-                             expected_damage.width(), expected_damage.height()))
-              .Times(1);
+          EXPECT_CALL(*mock_surface, DamageBuffer(5, 10, 20, 15)).Times(1);
       Expectation attach = EXPECT_CALL(*mock_surface, Attach(_, 0, 0)).Times(1);
       EXPECT_CALL(*mock_surface, Commit()).After(damage, attach);
     });
 
-    canvas->PresentCanvas(damage);
+    canvas->PresentCanvas(gfx::Rect(5, 10, 20, 15));
     canvas->OnSwapBuffers(base::DoNothing(), gfx::FrameData());
 
     // Wait until the mojo calls are done.
@@ -988,7 +979,7 @@ TEST_P(WaylandSurfaceFactoryTest, CanvasResize) {
   PostToServerAndWait([surface_id](wl::TestWaylandServerThread* server) {
     auto* mock_surface = server->GetObject<wl::MockSurface>(surface_id);
     Expectation damage =
-        EXPECT_CALL(*mock_surface, Damage(0, 0, 100, 50)).Times(1);
+        EXPECT_CALL(*mock_surface, DamageBuffer(0, 0, 100, 50)).Times(1);
     Expectation attach = EXPECT_CALL(*mock_surface, Attach(_, 0, 0)).Times(1);
     EXPECT_CALL(*mock_surface, Commit()).After(damage, attach);
   });
@@ -1347,11 +1338,18 @@ TEST_P(WaylandSurfaceFactoryCompositorV3, SurfaceDamageTest) {
   });
 
   gfx::Size test_buffer_size = {300, 100};
+  gfx::RectF test_buffer_dmg_uv = {0.2f, 0.3f, 0.6, 0.32f};
+  gfx::Rect test_buffer_dmg = gfx::ToEnclosingRect(gfx::ScaleRect(
+      test_buffer_dmg_uv, test_buffer_size.width(), test_buffer_size.height()));
   gfx::RectF crop_uv = {0.1f, 0.2f, 0.5, 0.5f};
   gfx::Rect expected_src = gfx::ToEnclosingRect(
       gfx::ScaleRect({0.2f, 0.4f, 0.5f, 0.5f}, test_buffer_size.height(),
                      test_buffer_size.width()));
-  gfx::Rect surface_damage_rect = window_->GetBoundsInPixels();
+  gfx::RectF expected_combined_uv = {0.2, 0.f, 0.64, 0.8};
+
+  auto size_px = window_->applied_state().size_px;
+  gfx::Rect expected_surface_dmg = gfx::ToEnclosingRect(
+      gfx::ScaleRect(expected_combined_uv, size_px.width(), size_px.height()));
 
   // Create buffer and FakeGlImageNativePixmap.
   std::vector<scoped_refptr<OverlayImageHolder>> fake_overlay_image;
@@ -1380,11 +1378,10 @@ TEST_P(WaylandSurfaceFactoryCompositorV3, SurfaceDamageTest) {
     presenter->ScheduleOverlayPlane(
         fake_overlay_image[0]->GetNativePixmap(), nullptr,
         gfx::OverlayPlaneData(
-            INT32_MIN,
-            gfx::OverlayTransform::OVERLAY_TRANSFORM_ROTATE_CLOCKWISE_270,
+            INT32_MIN, gfx::OverlayTransform::OVERLAY_TRANSFORM_ROTATE_270,
             gfx::RectF(window_->GetBoundsInPixels()), crop_uv, false,
-            surface_damage_rect, 1.0f, gfx::OverlayPriorityHint::kNone,
-            gfx::RRectF(), gfx::ColorSpace::CreateSRGB(), std::nullopt));
+            gfx::Rect(test_buffer_dmg), 1.0f, gfx::OverlayPriorityHint::kNone,
+            gfx::RRectF(), gfx::ColorSpace::CreateSRGB(), absl::nullopt));
 
     std::vector<scoped_refptr<OverlayImageHolder>> overlay_images;
     overlay_images.push_back(fake_overlay_image[0]);
@@ -1403,7 +1400,7 @@ TEST_P(WaylandSurfaceFactoryCompositorV3, SurfaceDamageTest) {
 
   PostToServerAndWait(
       [surface_id, expected_src, bounds_dip = window_->GetBoundsInDIP(),
-       surface_damage_rect](wl::TestWaylandServerThread* server) {
+       expected_surface_dmg](wl::TestWaylandServerThread* server) {
         auto* root_surface = server->GetObject<wl::MockSurface>(surface_id);
         auto* test_viewport = root_surface->viewport();
         ASSERT_TRUE(test_viewport);
@@ -1418,10 +1415,10 @@ TEST_P(WaylandSurfaceFactoryCompositorV3, SurfaceDamageTest) {
         EXPECT_CALL(*root_surface, SetBufferTransform(WL_OUTPUT_TRANSFORM_90))
             .Times(1);
         Expectation damage =
-            EXPECT_CALL(*root_surface, Damage(surface_damage_rect.origin().x(),
-                                              surface_damage_rect.origin().y(),
-                                              surface_damage_rect.width(),
-                                              surface_damage_rect.height()))
+            EXPECT_CALL(*root_surface, Damage(expected_surface_dmg.origin().x(),
+                                              expected_surface_dmg.origin().y(),
+                                              expected_surface_dmg.width(),
+                                              expected_surface_dmg.height()))
                 .Times(1);
         Expectation attach =
             EXPECT_CALL(*root_surface, Attach(_, 0, 0)).Times(1);
@@ -1443,7 +1440,7 @@ TEST_P(WaylandSurfaceFactoryCompositorV3, SurfaceDamageTest) {
   // Give mojo the chance to pass the callbacks.
   base::RunLoop().RunUntilIdle();
 
-  // We have just received Attach/Damage/Commit for buffer with swap
+  // We have just received Attach/DamageBuffer/Commit for buffer with swap
   // id=0u. The SwapCompletionCallback must be executed automatically as long as
   // we didn't have any buffers attached to the surface before.
   EXPECT_EQ(cbs_helper.GetLastFinishedSwapId(), 0u);

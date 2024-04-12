@@ -12,6 +12,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.chromium.base.test.util.CommandLineFlags;
+import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.permissions.PermissionTestRule.PermissionUpdateWaiter;
@@ -19,12 +20,14 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
 
-/** Test suite for notifications permissions requests. */
+/**
+ * Test suite for notifications permissions requests.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 public class NotificationTest {
     @Rule
-    public PermissionTestRule mPermissionRule = new PermissionTestRule(/* useHttpsServer= */ true);
+    public PermissionTestRule mPermissionRule = new PermissionTestRule(true /* useHttpsServer */);
 
     private static final String TEST_FILE =
             "/chrome/test/data/notifications/notification_tester.html";
@@ -36,12 +39,12 @@ public class NotificationTest {
 
     @Test
     @MediumTest
+    @DisabledTest(message = "https://crbug.com/1435426")
     @Feature({"Notifications"})
     public void testNotificationDialog() throws Exception {
         Tab tab = mPermissionRule.getActivity().getActivityTab();
-        PermissionUpdateWaiter updateWaiter =
-                new PermissionUpdateWaiter(
-                        "request-callback-granted", mPermissionRule.getActivity());
+        PermissionUpdateWaiter updateWaiter = new PermissionUpdateWaiter(
+                "request-callback-granted", mPermissionRule.getActivity());
         TestThreadUtils.runOnUiThreadBlocking(() -> tab.addObserver(updateWaiter));
         mPermissionRule.runAllowTest(
                 updateWaiter, TEST_FILE, "requestPermission()", 0, false, true);

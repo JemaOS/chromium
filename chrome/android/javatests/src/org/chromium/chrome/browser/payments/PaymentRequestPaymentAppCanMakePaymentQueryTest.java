@@ -19,7 +19,9 @@ import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 
 import java.util.concurrent.TimeoutException;
 
-/** A payment integration test for checking whether user can make a payment using a payment app. */
+/**
+ * A payment integration test for checking whether user can make a payment using a payment app.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 public class PaymentRequestPaymentAppCanMakePaymentQueryTest {
@@ -32,8 +34,7 @@ public class PaymentRequestPaymentAppCanMakePaymentQueryTest {
     @Feature({"Payments"})
     public void testBobPayInstalledLater() throws InterruptedException, TimeoutException {
         // hasEnrolledInstrument returns false, since BobPay is not installed.
-        mPaymentRequestTestRule.clickNodeAndWait(
-                "hasEnrolledInstrument",
+        mPaymentRequestTestRule.clickNodeAndWait("hasEnrolledInstrument",
                 mPaymentRequestTestRule.getHasEnrolledInstrumentQueryResponded());
         mPaymentRequestTestRule.expectResultContains(new String[] {"false, false"});
 
@@ -42,8 +43,7 @@ public class PaymentRequestPaymentAppCanMakePaymentQueryTest {
         Thread.sleep(10000);
 
         // hasEnrolledInstrument returns true now for BobPay, but still returns false for AlicePay.
-        mPaymentRequestTestRule.clickNodeAndWait(
-                "hasEnrolledInstrument",
+        mPaymentRequestTestRule.clickNodeAndWait("hasEnrolledInstrument",
                 mPaymentRequestTestRule.getHasEnrolledInstrumentQueryResponded());
         mPaymentRequestTestRule.expectResultContains(new String[] {"true, false"});
     }
@@ -62,8 +62,7 @@ public class PaymentRequestPaymentAppCanMakePaymentQueryTest {
 
         // hasEnrolledInstrument returns false for BobPay (installed but no instrument) and
         // false for AlicePay (not installed).
-        mPaymentRequestTestRule.clickNodeAndWait(
-                "hasEnrolledInstrument",
+        mPaymentRequestTestRule.clickNodeAndWait("hasEnrolledInstrument",
                 mPaymentRequestTestRule.getHasEnrolledInstrumentQueryResponded());
         mPaymentRequestTestRule.expectResultContains(new String[] {"false, false"});
     }
@@ -83,8 +82,7 @@ public class PaymentRequestPaymentAppCanMakePaymentQueryTest {
 
         // hasEnrolledInstrument returns false for BobPay (installed but no instrument) and
         // false for AlicePay (not installed).
-        mPaymentRequestTestRule.clickNodeAndWait(
-                "hasEnrolledInstrument",
+        mPaymentRequestTestRule.clickNodeAndWait("hasEnrolledInstrument",
                 mPaymentRequestTestRule.getHasEnrolledInstrumentQueryResponded());
         mPaymentRequestTestRule.expectResultContains(new String[] {"false, false"});
     }
@@ -103,8 +101,7 @@ public class PaymentRequestPaymentAppCanMakePaymentQueryTest {
         mPaymentRequestTestRule.expectResultContains(new String[] {"true, false"});
 
         // hasEnrolledInstrument returns true for BobPay and false for AlicePay.
-        mPaymentRequestTestRule.clickNodeAndWait(
-                "hasEnrolledInstrument",
+        mPaymentRequestTestRule.clickNodeAndWait("hasEnrolledInstrument",
                 mPaymentRequestTestRule.getHasEnrolledInstrumentQueryResponded());
         mPaymentRequestTestRule.expectResultContains(new String[] {"true, false"});
     }
@@ -123,8 +120,7 @@ public class PaymentRequestPaymentAppCanMakePaymentQueryTest {
         mPaymentRequestTestRule.expectResultContains(new String[] {"true, false"});
 
         // hasEnrolledInstrument returns true for BobPay and false for AlicePay.
-        mPaymentRequestTestRule.clickNodeAndWait(
-                "hasEnrolledInstrument",
+        mPaymentRequestTestRule.clickNodeAndWait("hasEnrolledInstrument",
                 mPaymentRequestTestRule.getHasEnrolledInstrumentQueryResponded());
         mPaymentRequestTestRule.expectResultContains(new String[] {"true, false"});
     }

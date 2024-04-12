@@ -7,7 +7,6 @@
 
 #include <memory>
 #include "base/task/single_thread_task_runner.h"
-#include "base/types/optional_ref.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/loader/content_security_notifier.mojom-blink.h"
 #include "third_party/blink/public/mojom/loader/request_context_frame_type.mojom-blink-forward.h"
@@ -47,8 +46,10 @@ class WorkerFetchContext final : public BaseFetchContext {
 
   // BaseFetchContext implementation:
   net::SiteForCookies GetSiteForCookies() const override;
+  scoped_refptr<const SecurityOrigin> GetTopFrameOrigin() const override;
+
   SubresourceFilter* GetSubresourceFilter() const override;
-  bool AllowScript() const override;
+  bool AllowScriptFromSource(const KURL&) const override;
   bool ShouldBlockRequestByInspector(const KURL&) const override;
   void DispatchDidBlockRequest(const ResourceRequest&,
                                const ResourceLoaderOptions&,
@@ -65,10 +66,10 @@ class WorkerFetchContext final : public BaseFetchContext {
   bool ShouldBlockFetchByMixedContentCheck(
       mojom::blink::RequestContextType request_context,
       network::mojom::blink::IPAddressSpace target_address_space,
-      base::optional_ref<const ResourceRequest::RedirectInfo> redirect_info,
+      const absl::optional<ResourceRequest::RedirectInfo>& redirect_info,
       const KURL& url,
       ReportingDisposition reporting_disposition,
-      const String& devtools_id) const override;
+      const absl::optional<String>& devtools_id) const override;
   bool ShouldBlockFetchAsCredentialedSubresource(const ResourceRequest&,
                                                  const KURL&) const override;
   const KURL& Url() const override;
@@ -83,12 +84,12 @@ class WorkerFetchContext final : public BaseFetchContext {
   void AddResourceTiming(mojom::blink::ResourceTimingInfoPtr,
                          const AtomicString& initiator_type) override;
   void PopulateResourceRequest(ResourceType,
-                               const std::optional<float> resource_width,
+                               const absl::optional<float> resource_width,
                                ResourceRequest&,
                                const ResourceLoaderOptions&) override;
+
   std::unique_ptr<ResourceLoadInfoNotifierWrapper>
   CreateResourceLoadInfoNotifierWrapper() override;
-  scoped_refptr<const SecurityOrigin> GetTopFrameOrigin() const override;
 
   WorkerSettings* GetWorkerSettings() const;
   WebWorkerFetchContext* GetWebWorkerFetchContext() const {

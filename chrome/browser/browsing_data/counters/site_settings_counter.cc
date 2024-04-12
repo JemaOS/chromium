@@ -5,18 +5,13 @@
 #include "chrome/browser/browsing_data/counters/site_settings_counter.h"
 
 #include <set>
-
-#include "base/json/values_util.h"
 #include "build/build_config.h"
-#include "chrome/browser/performance_manager/public/user_tuning/user_performance_tuning_manager.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "components/browsing_data/core/pref_names.h"
 #include "components/content_settings/core/browser/content_settings_registry.h"
 #include "components/content_settings/core/common/content_settings_pattern.h"
 #include "components/custom_handlers/protocol_handler.h"
 #include "components/custom_handlers/protocol_handler_registry.h"
-#include "components/performance_manager/public/user_tuning/prefs.h"
-#include "components/url_matcher/url_util.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "content/public/browser/host_zoom_map.h"
@@ -64,7 +59,7 @@ void SiteSettingsCounter::Count() {
           if (content_setting.source == "preference" ||
               content_setting.source == "notification_android" ||
               content_setting.source == "ephemeral") {
-            base::Time last_modified = content_setting.metadata.last_modified();
+            base::Time last_modified = content_setting.metadata.last_modified;
             if (last_modified >= period_start && last_modified < period_end) {
               if (content_setting.primary_pattern.GetHost().empty())
                 empty_host_pattern++;
@@ -78,12 +73,17 @@ void SiteSettingsCounter::Count() {
   auto* registry = content_settings::ContentSettingsRegistry::GetInstance();
   for (const content_settings::ContentSettingsInfo* info : *registry) {
     ContentSettingsType type = info->website_settings_info()->type();
-    iterate_content_settings_list(type, map_->GetSettingsForOneType(type));
+    ContentSettingsForOneType content_settings_list;
+    map_->GetSettingsForOneType(type, &content_settings_list);
+    iterate_content_settings_list(type, content_settings_list);
   }
 
-  iterate_content_settings_list(
-      ContentSettingsType::USB_CHOOSER_DATA,
-      map_->GetSettingsForOneType(ContentSettingsType::USB_CHOOSER_DATA));
+  ContentSettingsForOneType content_settings_list_for_usb_chooser;
+  map_->GetSettingsForOneType(ContentSettingsType::USB_CHOOSER_DATA,
+
+                              &content_settings_list_for_usb_chooser);
+  iterate_content_settings_list(ContentSettingsType::USB_CHOOSER_DATA,
+                                content_settings_list_for_usb_chooser);
 
 #if !BUILDFLAG(IS_ANDROID)
   for (const auto& zoom_level : zoom_map_->GetAllZoomLevels()) {
@@ -106,23 +106,6 @@ void SiteSettingsCounter::Count() {
           ->GetNeverPromptSitesBetween(period_start, period_end);
   for (const auto& site : never_prompt_sites)
     hosts.insert(site);
-
-  const std::vector<std::string> tab_discard_exceptions =
-      performance_manager::user_tuning::prefs::GetTabDiscardExceptionsBetween(
-          pref_service_, period_start, period_end);
-  for (auto exception : tab_discard_exceptions) {
-    url_matcher::util::FilterComponents components;
-    bool is_valid = url_matcher::util::FilterToComponents(
-        exception, &components.scheme, &components.host,
-        &components.match_subdomains, &components.port, &components.path,
-        &components.query);
-
-    if (is_valid && !components.host.empty()) {
-      hosts.insert(components.host);
-    } else {
-      empty_host_pattern++;
-    }
-  }
 
   ReportResult(hosts.size() + empty_host_pattern);
 }

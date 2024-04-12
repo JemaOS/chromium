@@ -17,7 +17,6 @@ class ToplevelWindow : public views::WidgetDelegateView {
 
     bool can_resize;
     bool can_maximize;
-    bool can_fullscreen;
     bool use_saved_placement;
   };
 

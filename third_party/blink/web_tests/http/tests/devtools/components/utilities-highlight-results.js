@@ -2,11 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-
-import * as UIModule from 'devtools/ui/legacy/legacy.js';
-import * as TextUtils from 'devtools/models/text_utils/text_utils.js';
-
 (async function() {
   TestRunner.addResult(`Tests how utilities functions highlight text and then revert/re-apply highlighting changes.\n`);
 
@@ -40,11 +35,11 @@ import * as TextUtils from 'devtools/models/text_utils/text_utils.js';
   function performTestForElement(element, ranges) {
     var changes = [];
     TestRunner.addResult('--------- Running test: ----------');
-    UIModule.UIUtils.highlightRangesWithStyleClass(element, ranges, 'highlighted', changes);
+    UI.highlightRangesWithStyleClass(element, ranges, 'highlighted', changes);
     TestRunner.addResult('After highlight: ' + dumpTextNodesAsString(element));
-    UIModule.UIUtils.revertDomChanges(changes);
+    UI.revertDomChanges(changes);
     TestRunner.addResult('After revert: ' + dumpTextNodesAsString(element));
-    UIModule.UIUtils.applyDomChanges(changes);
+    UI.applyDomChanges(changes);
     TestRunner.addResult('After apply: ' + dumpTextNodesAsString(element));
   }
 
@@ -59,7 +54,7 @@ import * as TextUtils from 'devtools/models/text_utils/text_utils.js';
   }
 
   function range(offset, length) {
-    return new TextUtils.TextRange.SourceRange(offset, length);
+    return new TextUtils.SourceRange(offset, length);
   }
 
   performTestForElement(textElement(['function']), [range(0, 8)]);  // Highlight whole text node.

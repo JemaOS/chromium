@@ -70,7 +70,7 @@ class SystemStateDataCollector : public DataCollector {
 
   void OnGetLog(base::RepeatingClosure barrier_closure,
                 std::string log_name,
-                std::optional<std::string> log);
+                absl::optional<std::string> log);
 
   void OnGotAllExtraLogs(
       scoped_refptr<base::SequencedTaskRunner> task_runner_for_redaction_tool,

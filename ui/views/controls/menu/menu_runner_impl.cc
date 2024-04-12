@@ -71,8 +71,10 @@ MenuRunnerImplInterface* MenuRunnerImplInterface::Create(
 }
 #endif
 
-MenuRunnerImpl::MenuRunnerImpl(std::unique_ptr<MenuItemView> menu)
-    : menu_(std::move(menu)) {}
+MenuRunnerImpl::MenuRunnerImpl(MenuItemView* menu)
+    : menu_(menu),
+
+      controller_(nullptr) {}
 
 bool MenuRunnerImpl::IsRunning() const {
   return running_;
@@ -109,15 +111,13 @@ void MenuRunnerImpl::Release() {
   delete this;
 }
 
-void MenuRunnerImpl::RunMenuAt(
-    Widget* parent,
-    MenuButtonController* button_controller,
-    const gfx::Rect& bounds,
-    MenuAnchorPosition anchor,
-    int32_t run_types,
-    gfx::NativeView native_view_for_gestures,
-    std::optional<gfx::RoundedCornersF> corners,
-    std::optional<std::string> show_menu_host_duration_histogram) {
+void MenuRunnerImpl::RunMenuAt(Widget* parent,
+                               MenuButtonController* button_controller,
+                               const gfx::Rect& bounds,
+                               MenuAnchorPosition anchor,
+                               int32_t run_types,
+                               gfx::NativeView native_view_for_gestures,
+                               absl::optional<gfx::RoundedCornersF> corners) {
   closing_event_time_ = base::TimeTicks();
   if (running_) {
     // Ignore requests to show the menu while it's already showing. MenuItemView
@@ -178,15 +178,10 @@ void MenuRunnerImpl::RunMenuAt(
       (run_types & MenuRunner::USE_ASH_SYS_UI_LAYOUT) != 0);
   controller_ = controller->AsWeakPtr();
   menu_->set_controller(controller_.get());
-  menu_->PrepareForRun(has_mnemonics,
+  menu_->PrepareForRun(owns_controller_, has_mnemonics,
                        !for_drop_ && ShouldShowMnemonics(run_types));
-  if (show_menu_host_duration_histogram.has_value() &&
-      !show_menu_host_duration_histogram.value().empty()) {
-    controller->SetShowMenuHostDurationHistogram(
-        std::move(show_menu_host_duration_histogram));
-  }
 
-  controller->Run(parent, button_controller, menu_.get(), bounds, anchor,
+  controller->Run(parent, button_controller, menu_, bounds, anchor,
                   (run_types & MenuRunner::CONTEXT_MENU) != 0,
                   (run_types & MenuRunner::NESTED_DRAG) != 0,
                   native_view_for_gestures);
@@ -212,6 +207,7 @@ void MenuRunnerImpl::OnMenuClosed(NotifyType type,
       parent_widget = controller_->owner()->GetWeakPtr();
   }
 
+  menu_->RemoveEmptyMenus();
   menu_->set_controller(nullptr);
 
   if (owns_controller_ && controller_) {
@@ -245,15 +241,14 @@ void MenuRunnerImpl::OnMenuClosed(NotifyType type,
 }
 
 void MenuRunnerImpl::SiblingMenuCreated(MenuItemView* menu) {
-  if (menu != menu_.get() && sibling_menus_.count(menu) == 0) {
+  if (menu != menu_ && sibling_menus_.count(menu) == 0)
     sibling_menus_.insert(menu);
-  }
 }
 
 MenuRunnerImpl::~MenuRunnerImpl() {
-  for (MenuItemView* sibling_menu : sibling_menus_) {
+  delete menu_;
+  for (auto* sibling_menu : sibling_menus_)
     delete sibling_menu;
-  }
 }
 
 bool MenuRunnerImpl::ShouldShowMnemonics(int32_t run_types) {

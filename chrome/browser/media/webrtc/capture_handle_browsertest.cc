@@ -165,7 +165,7 @@ struct TabInfo {
   }
 
   raw_ptr<Browser> browser;
-  raw_ptr<WebContents, AcrossTasksDanglingUntriaged> web_contents;
+  raw_ptr<WebContents, DanglingUntriaged> web_contents;
   int tab_strip_index;
   std::string capture_handle;  // Expected value for those who may observe.
 };
@@ -262,7 +262,7 @@ class CaptureHandleBrowserTest : public WebRtcTestBase {
       result.StartCapturing();
     }
 
-    event_sinks_.push_back(result.web_contents.get());
+    event_sinks_.push_back(result.web_contents);
 
     return result;
   }
@@ -309,7 +309,7 @@ class CaptureHandleBrowserTest : public WebRtcTestBase {
   };
 
   // Checked for no unconsumed events.
-  std::vector<raw_ptr<WebContents, VectorExperimental>> event_sinks_;
+  std::vector<WebContents*> event_sinks_;
 
   // Three servers to create three origins (different ports). One server for the
   // captured page, one for the top-level capturer and one for the embedded
@@ -319,7 +319,7 @@ class CaptureHandleBrowserTest : public WebRtcTestBase {
 
   // Incognito browser.
   // Note: The regular one is accessible via browser().
-  raw_ptr<Browser, AcrossTasksDanglingUntriaged> incognito_browser_ = nullptr;
+  raw_ptr<Browser, DanglingUntriaged> incognito_browser_ = nullptr;
 };
 
 IN_PROC_BROWSER_TEST_F(CaptureHandleBrowserTest,
@@ -786,8 +786,7 @@ class CaptureHandleBrowserTestPrerender : public CaptureHandleBrowserTest {
 
  protected:
   std::unique_ptr<content::test::PrerenderTestHelper> prerender_helper_;
-  raw_ptr<WebContents, AcrossTasksDanglingUntriaged> captured_web_contents_ =
-      nullptr;
+  raw_ptr<WebContents, DanglingUntriaged> captured_web_contents_ = nullptr;
 };
 
 // Verifies that pre-rendered pages don't change the capture handle config.

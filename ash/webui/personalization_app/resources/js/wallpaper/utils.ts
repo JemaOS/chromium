@@ -4,19 +4,20 @@
 
 /** @fileoverview Wallpaper related utility functions in personalization app */
 
-import {isNonEmptyArray, isNonEmptyFilePath} from 'chrome://resources/ash/common/sea_pen/sea_pen_utils.js';
-import {assert} from 'chrome://resources/js/assert.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {FilePath} from 'chrome://resources/mojo/mojo/public/mojom/base/file_path.mojom-webui.js';
 
-import {CurrentAttribution, CurrentWallpaper, GooglePhotosAlbum, GooglePhotosPhoto, WallpaperImage, WallpaperLayout, WallpaperType} from '../../personalization_app.mojom-webui.js';
-import {getNumberOfGridItemsPerRow, isNonEmptyString} from '../utils.js';
+import {CurrentWallpaper, GooglePhotosAlbum, GooglePhotosPhoto, WallpaperImage, WallpaperLayout, WallpaperType} from '../../personalization_app.mojom-webui.js';
+import {getNumberOfGridItemsPerRow, isNonEmptyArray, isNonEmptyString} from '../utils.js';
 
-import {DefaultImageSymbol, DisplayableImage, kDefaultImageSymbol} from './constants.js';
-import {DailyRefreshState} from './wallpaper_state.js';
+import {DefaultImageSymbol, DisplayableImage, kDefaultImageSymbol, kJemaLightDarkImageSuffixes, JemaImage} from './constants.js';
 
 export function isWallpaperImage(obj: any): obj is WallpaperImage {
   return !!obj && typeof obj.unitId === 'bigint';
+}
+
+export function isFilePath(obj: any): obj is FilePath {
+  return !!obj && typeof obj.path === 'string' && obj.path;
 }
 
 export function isDefaultImage(obj: any): obj is DefaultImageSymbol {
@@ -37,8 +38,11 @@ export function isImageAMatchForKey(
   if (isDefaultImage(image)) {
     return key === kDefaultImageSymbol;
   }
-  if (isNonEmptyFilePath(image)) {
+  if (isFilePath(image)) {
     return key === image.path;
+  }
+  if (isJemaImage(image)) {
+    return key === image.dark.path || key === image.light.path;
   }
   assert(isGooglePhotosPhoto(image));
   // NOTE: Old clients may not support |dedupKey| when setting Google Photos
@@ -69,7 +73,7 @@ export function isImageEqualToSelected(
  */
 export function getPathOrSymbol(image: FilePath|DefaultImageSymbol): string|
     DefaultImageSymbol {
-  if (isNonEmptyFilePath(image)) {
+  if (isFilePath(image)) {
     return image.path;
   }
   assert(image === kDefaultImageSymbol, 'only one symbol should be present');
@@ -103,7 +107,7 @@ export function getLoadingPlaceholderAnimationDelay(index: number): string {
  */
 export function getLoadingPlaceholders<T>(factory: () => T): T[] {
   const x = getNumberOfGridItemsPerRow();
-  const y = Math.max(Math.floor(window.innerHeight / /*tileHeightPx=*/ 136), 2);
+  const y = Math.floor(window.innerHeight / /*tileHeightPx=*/ 136);
   return Array.from({length: x * y}, factory);
 }
 
@@ -119,49 +123,6 @@ export function getLocalStorageAttribution(key: string): string[] {
     console.warn('Unable to get attribution from local storage.', key);
   }
   return attribution;
-}
-
-/**
- * Get the aria label of the currently selected wallpaper.
- */
-export function getWallpaperAriaLabel(
-    image: CurrentWallpaper|null, attribution: CurrentAttribution|null,
-    dailyRefreshState: DailyRefreshState|null): string {
-  if (!image || !attribution || image.key !== attribution.key) {
-    return `${loadTimeData.getString('currentlySet')} ${
-        loadTimeData.getString('unknownImageAttribution')}`;
-  }
-  if (image.type === WallpaperType.kDefault) {
-    return `${loadTimeData.getString('currentlySet')} ${
-        loadTimeData.getString('defaultWallpaper')}`;
-  }
-  const isDailyRefreshActive = !!dailyRefreshState;
-  if (isNonEmptyArray(attribution.attribution)) {
-    return isDailyRefreshActive ?
-        [
-          loadTimeData.getString('currentlySet'),
-          loadTimeData.getString('dailyRefresh'),
-          ...attribution.attribution,
-        ].join(' ') :
-        [
-          loadTimeData.getString('currentlySet'),
-          ...attribution.attribution,
-        ].join(' ');
-  }
-  // Fallback to cached attribution.
-  const cachedAttribution = getLocalStorageAttribution(image.key);
-  if (isNonEmptyArray(cachedAttribution)) {
-    return isDailyRefreshActive ?
-        [
-          loadTimeData.getString('currentlySet'),
-          loadTimeData.getString('dailyRefresh'),
-          ...attribution.attribution,
-        ].join(' ') :
-        [loadTimeData.getString('currentlySet'), ...cachedAttribution].join(
-            ' ');
-  }
-  return `${loadTimeData.getString('currentlySet')} ${
-      loadTimeData.getString('unknownImageAttribution')}`;
 }
 
 /**
@@ -197,4 +158,59 @@ export function findAlbumById(
     return albums.find(album => album.id === albumId) ?? null;
   }
   return null;
+}
+
+export function toggleLightDarkImagePath(image: FilePath|DefaultImageSymbol): string | null {
+  if (!isFilePath(image)) {
+    return null;
+  }
+  if (!image.path.startsWith('/usr/share/chromeos-assets/jemaos_wallpapers')) {
+    return null;
+  }
+  const suffix = kJemaLightDarkImageSuffixes.find(
+    suffix => image.path.endsWith(suffix));
+  if (!suffix) return null;
+
+  const isLight = suffix.includes('light');
+  const newSuffix = isLight ?
+    suffix.replace('light', 'dark') :
+    suffix.replace('dark', 'light');
+  const prefix = image.path.slice(0, -suffix.length);
+  return prefix + newSuffix;
+}
+
+class JemaImageImpl implements JemaImage {
+  name: string;
+  light: FilePath;
+  dark: FilePath;
+  constructor(name: string, light: FilePath, dark: FilePath) {
+    this.name = name;
+    this.light = light;
+    this.dark = dark;
+  }
+}
+
+export function generateJemaImage(image1: FilePath|DefaultImageSymbol, image2: FilePath|DefaultImageSymbol): JemaImage | null {
+  if (!isFilePath(image1) || !isFilePath(image2)) {
+    return null;
+  }
+  const suffix1 = kJemaLightDarkImageSuffixes.find(
+    suffix => image1.path.endsWith(suffix));
+  if (!suffix1) return null;
+
+  const suffix2 = kJemaLightDarkImageSuffixes.find(
+    suffix => image2.path.endsWith(suffix));
+  if (!suffix2) return null;
+
+  if (suffix1 === suffix2) return null;
+
+  const isLight1 = suffix1.includes('light');
+  const name = image1.path.slice(0, -suffix1.length);
+  const light = isLight1 ? image1: image2;
+  const dark = isLight1 ? image2: image1;
+  return new JemaImageImpl(name, light, dark);
+}
+
+export function isJemaImage(obj: any): obj is JemaImage {
+  return obj instanceof JemaImageImpl;
 }

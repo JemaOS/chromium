@@ -4,13 +4,11 @@
 
 #include "chrome/browser/ash/guest_os/guest_os_share_path.h"
 
-#include <optional>
-
 #include "ash/components/arc/arc_features.h"
 #include "ash/components/arc/arc_util.h"
-#include "base/barrier_callback.h"
 #include "base/containers/contains.h"
 #include "base/files/file_util.h"
+#include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/ranges/algorithm.h"
 #include "base/task/thread_pool.h"
@@ -22,7 +20,6 @@
 #include "chrome/browser/ash/file_manager/volume_manager.h"
 #include "chrome/browser/ash/guest_os/guest_id.h"
 #include "chrome/browser/ash/guest_os/guest_os_pref_names.h"
-#include "chrome/browser/ash/guest_os/guest_os_registry_service.h"
 #include "chrome/browser/ash/guest_os/guest_os_session_tracker.h"
 #include "chrome/browser/ash/guest_os/guest_os_share_path_factory.h"
 #include "chrome/browser/ash/plugin_vm/plugin_vm_manager.h"
@@ -41,6 +38,7 @@
 #include "content/public/browser/browser_thread.h"
 #include "storage/browser/file_system/external_mount_points.h"
 #include "storage/browser/file_system/file_system_url.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 
 namespace {
@@ -51,7 +49,7 @@ constexpr base::FilePath::CharType kFuseFsRootPath[] =
 
 void OnSeneschalSharePathResponse(
     guest_os::GuestOsSharePath::SharePathCallback callback,
-    std::optional<vm_tools::seneschal::SharePathResponse> response) {
+    absl::optional<vm_tools::seneschal::SharePathResponse> response) {
   if (!response) {
     std::move(callback).Run(base::FilePath(), false, "System error");
     return;
@@ -64,7 +62,7 @@ void OnSeneschalSharePathResponse(
 
 void OnSeneschalUnsharePathResponse(
     guest_os::SuccessCallback callback,
-    std::optional<vm_tools::seneschal::UnsharePathResponse> response) {
+    absl::optional<vm_tools::seneschal::UnsharePathResponse> response) {
   if (!response) {
     std::move(callback).Run(false, "System error");
     return;
@@ -84,36 +82,40 @@ void LogErrorResult(const std::string& operation,
   }
 }
 
-struct SharePathResponseData {
-  base::FilePath cros_path;
-  base::FilePath container_path;
-  bool success;
-  std::string failure_reason;
-};
-
-SharePathResponseData AssembleSharePathResponseData(
-    const base::FilePath& cros_path,
-    const base::FilePath& container_path,
-    bool success,
-    const std::string& failure_reason) {
-  return {.cros_path = cros_path,
-          .container_path = container_path,
-          .success = success,
-          .failure_reason = failure_reason};
-}
-
-void OnGotSharePathResponses(guest_os::SuccessCallback callback,
-                             std::vector<SharePathResponseData> responses) {
-  for (const auto& response : responses) {
-    if (!response.success) {
-      LOG(WARNING) << "Error SharePath=" << response.cros_path
-                   << ", FailureReason=" << response.failure_reason;
-      std::move(callback).Run(/*success=*/false, response.failure_reason);
-      return;
-    }
+// Barrier Closure that captures the first instance of error.
+class ErrorCapture {
+ public:
+  ErrorCapture(int num_callbacks_left, guest_os::SuccessCallback callback)
+      : num_callbacks_left_(num_callbacks_left),
+        callback_(std::move(callback)) {
+    DCHECK_GE(num_callbacks_left, 0);
+    if (num_callbacks_left == 0)
+      std::move(callback_).Run(true, "");
   }
-  std::move(callback).Run(/*success=*/true, /*failure_reason=*/"");
-}
+
+  void Run(const base::FilePath& cros_path,
+           const base::FilePath& container_path,
+           bool success,
+           const std::string& failure_reason) {
+    if (!success) {
+      LOG(WARNING) << "Error SharePath=" << cros_path.value()
+                   << ", FailureReason=" << failure_reason;
+      if (success_) {
+        success_ = false;
+        first_failure_reason_ = failure_reason;
+      }
+    }
+
+    if (!--num_callbacks_left_)
+      std::move(callback_).Run(success_, first_failure_reason_);
+  }
+
+ private:
+  int num_callbacks_left_;
+  guest_os::SuccessCallback callback_;
+  bool success_ = true;
+  std::string first_failure_reason_;
+};  // class
 
 void RemovePersistedPathFromPrefs(base::Value::Dict& shared_paths,
                                   const std::string& vm_name,
@@ -159,11 +161,6 @@ SharedPathInfo::SharedPathInfo(std::unique_ptr<base::FilePathWatcher> watcher,
 SharedPathInfo::SharedPathInfo(SharedPathInfo&&) = default;
 SharedPathInfo::~SharedPathInfo() = default;
 
-GuestOsSharePath::PathsToShare::PathsToShare() = default;
-GuestOsSharePath::PathsToShare::PathsToShare(GuestOsSharePath::PathsToShare&) =
-    default;
-GuestOsSharePath::PathsToShare::~PathsToShare() = default;
-
 GuestOsSharePath* GuestOsSharePath::GetForProfile(Profile* profile) {
   return GuestOsSharePathFactory::GetForProfile(profile);
 }
@@ -178,14 +175,16 @@ GuestOsSharePath::GuestOsSharePath(Profile* profile)
   }
 
   if (auto* vmgr = file_manager::VolumeManager::Get(profile_)) {
-    volume_manager_observer_.Observe(vmgr);
+    vmgr->AddObserver(this);
   }
 
   // We receive notifications from DriveFS about any deleted paths so
   // that we can remove any that are shared paths.
-  if (drive::DriveIntegrationService* const service =
+  if (auto* integration_service =
           drive::DriveIntegrationServiceFactory::FindForProfile(profile_)) {
-    Observe(service->GetDriveFsHost());
+    if (integration_service->GetDriveFsHost()) {
+      integration_service->GetDriveFsHost()->AddObserver(this);
+    }
   }
 }
 
@@ -207,10 +206,6 @@ void GuestOsSharePath::Shutdown() {
 
 void GuestOsSharePath::AddObserver(Observer* obs) {
   observers_.AddObserver(obs);
-}
-
-void GuestOsSharePath::RemoveObserver(Observer* obs) {
-  observers_.RemoveObserver(obs);
 }
 
 void GuestOsSharePath::CallSeneschalSharePath(const std::string& vm_name,
@@ -436,13 +431,14 @@ void GuestOsSharePath::SharePaths(const std::string& vm_name,
     std::move(callback).Run(true, "");
     return;
   }
-  auto barrier = base::BarrierCallback<SharePathResponseData>(
-      paths.size(),
-      base::BindOnce(&OnGotSharePathResponses, std::move(callback)));
+  base::RepeatingCallback<void(const base::FilePath&, const base::FilePath&,
+                               bool, const std::string&)>
+      barrier = base::BindRepeating(
+          &ErrorCapture::Run,
+          base::Owned(new ErrorCapture(paths.size(), std::move(callback))));
   for (const auto& path : paths) {
-    CallSeneschalSharePath(
-        vm_name, seneschal_server_handle, path,
-        base::BindOnce(&AssembleSharePathResponseData, path).Then(barrier));
+    CallSeneschalSharePath(vm_name, seneschal_server_handle, path,
+                           base::BindOnce(barrier, path));
   }
 }
 
@@ -786,40 +782,6 @@ void GuestOsSharePath::UnregisterGuest(const GuestId& guest) {
 
 const base::flat_set<GuestId>& GuestOsSharePath::ListGuests() {
   return guests_;
-}
-
-absl::variant<GuestOsSharePath::PathsToShare, std::string>
-GuestOsSharePath::ConvertArgsToPathsToShare(
-    const guest_os::GuestOsRegistryService::Registration& registration,
-    const std::vector<guest_os::LaunchArg>& args,
-    const base::FilePath& vm_mount,
-    bool map_crostini_home) {
-  PathsToShare out;
-  const std::string& vm_name = registration.VmName();
-
-  // Convert any paths not in the VM.
-  out.launch_args.reserve(args.size());
-  for (const auto& arg : args) {
-    if (absl::holds_alternative<std::string>(arg)) {
-      out.launch_args.push_back(absl::get<std::string>(arg));
-      continue;
-    }
-    const storage::FileSystemURL& url = absl::get<storage::FileSystemURL>(arg);
-    base::FilePath path;
-    if (!file_manager::util::ConvertFileSystemURLToPathInsideVM(
-            profile_, url, vm_mount, map_crostini_home, &path)) {
-      return "Cannot share URL with VM.";
-    }
-    if (url.mount_filesystem_id() !=
-            file_manager::util::GetGuestOsMountPointName(
-                profile_, registration.ToGuestId()) &&
-
-        !IsPathShared(vm_name, url.path())) {
-      out.paths_to_share.push_back(url.path());
-    }
-    out.launch_args.push_back(path.value());
-  }
-  return out;
 }
 
 }  // namespace guest_os

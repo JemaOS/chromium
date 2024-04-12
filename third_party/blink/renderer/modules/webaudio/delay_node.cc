@@ -101,7 +101,7 @@ DelayNode* DelayNode::Create(BaseAudioContext* context,
 }
 
 AudioParam* DelayNode::delayTime() {
-  return delay_time_.Get();
+  return delay_time_;
 }
 
 void DelayNode::Trace(Visitor* visitor) const {

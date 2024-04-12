@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_API_STORAGE_SETTINGS_SYNC_PROCESSOR_H_
 #define CHROME_BROWSER_EXTENSIONS_API_STORAGE_SETTINGS_SYNC_PROCESSOR_H_
 
-#include <optional>
 #include <set>
 #include <string>
 
@@ -13,7 +12,7 @@
 #include "base/values.h"
 #include "components/sync/base/model_type.h"
 #include "components/value_store/value_store_change.h"
-#include "extensions/common/extension_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace syncer {
 class ModelError;
@@ -30,7 +29,7 @@ namespace extensions {
 //  - rate limiting (inherently per-extension, which is what we want).
 class SettingsSyncProcessor {
  public:
-  SettingsSyncProcessor(const ExtensionId& extension_id,
+  SettingsSyncProcessor(const std::string& extension_id,
                         syncer::ModelType type,
                         syncer::SyncChangeProcessor* sync_processor);
 
@@ -43,7 +42,7 @@ class SettingsSyncProcessor {
   void Init(const base::Value::Dict& initial_state);
 
   // Sends |changes| to sync.
-  std::optional<syncer::ModelError> SendChanges(
+  absl::optional<syncer::ModelError> SendChanges(
       const value_store::ValueStoreChangeList& changes);
 
   // Informs this that |changes| have been receieved from sync. No action will
@@ -54,7 +53,7 @@ class SettingsSyncProcessor {
 
  private:
   // ID of the extension the changes are for.
-  const ExtensionId extension_id_;
+  const std::string extension_id_;
 
   // Sync model type. Either EXTENSION_SETTING or APP_SETTING.
   const syncer::ModelType type_;

@@ -7,12 +7,9 @@
 
 #include "chrome/browser/ui/side_panel/customize_chrome/customize_chrome_tab_helper.h"
 
-class Profile;
-
 namespace customize_chrome {
 
 bool IsSidePanelEnabled();
-bool IsWallpaperSearchEnabledForProfile(Profile* profile);
 
 }  // namespace customize_chrome
 

@@ -176,7 +176,8 @@ ExecutionContext* PresentationRequest::GetExecutionContext() const {
 void PresentationRequest::AddedEventListener(
     const AtomicString& event_type,
     RegisteredEventListener& registered_listener) {
-  EventTarget::AddedEventListener(event_type, registered_listener);
+  EventTargetWithInlineData::AddedEventListener(event_type,
+                                                registered_listener);
   if (event_type == event_type_names::kConnectionavailable) {
     UseCounter::Count(
         GetExecutionContext(),
@@ -198,14 +199,13 @@ bool PresentationRequest::HasPendingActivity() const {
              PresentationAvailabilityProperty::kPending;
 }
 
-ScriptPromiseTyped<PresentationConnection> PresentationRequest::start(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise PresentationRequest::start(ScriptState* script_state,
+                                         ExceptionState& exception_state) {
   if (!script_state->ContextIsValid()) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "The PresentationRequest is no longer associated to a frame.");
-    return ScriptPromiseTyped<PresentationConnection>();
+    return ScriptPromise();
   }
 
   LocalDOMWindow* window = LocalDOMWindow::From(script_state);
@@ -214,13 +214,12 @@ ScriptPromiseTyped<PresentationConnection> PresentationRequest::start(
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidAccessError,
         "PresentationRequest::start() requires user gesture.");
-    return ScriptPromiseTyped<PresentationConnection>();
+    return ScriptPromise();
   }
 
   PresentationController* controller = PresentationController::From(*window);
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<PresentationConnection>>(
-          script_state, exception_state.GetContext());
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
 
   controller->GetPresentationService()->StartPresentation(
       urls_,
@@ -230,22 +229,20 @@ ScriptPromiseTyped<PresentationConnection> PresentationRequest::start(
   return resolver->Promise();
 }
 
-ScriptPromiseTyped<PresentationConnection> PresentationRequest::reconnect(
-    ScriptState* script_state,
-    const String& id,
-    ExceptionState& exception_state) {
+ScriptPromise PresentationRequest::reconnect(ScriptState* script_state,
+                                             const String& id,
+                                             ExceptionState& exception_state) {
   PresentationController* controller =
       PresentationController::FromContext(GetExecutionContext());
   if (!controller) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "The PresentationRequest is no longer associated to a frame.");
-    return ScriptPromiseTyped<PresentationConnection>();
+    return ScriptPromise();
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<PresentationConnection>>(
-          script_state, exception_state.GetContext());
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
 
   ControllerPresentationConnection* existing_connection =
       controller->FindExistingConnection(urls_, id);
@@ -266,16 +263,16 @@ ScriptPromiseTyped<PresentationConnection> PresentationRequest::reconnect(
   return resolver->Promise();
 }
 
-ScriptPromiseTyped<PresentationAvailability>
-PresentationRequest::getAvailability(ScriptState* script_state,
-                                     ExceptionState& exception_state) {
+ScriptPromise PresentationRequest::getAvailability(
+    ScriptState* script_state,
+    ExceptionState& exception_state) {
   PresentationController* controller =
       PresentationController::FromContext(GetExecutionContext());
   if (!controller) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "The PresentationRequest is no longer associated to a frame.");
-    return ScriptPromiseTyped<PresentationAvailability>();
+    return ScriptPromise();
   }
 
   if (!availability_property_) {
@@ -296,7 +293,7 @@ const Vector<KURL>& PresentationRequest::Urls() const {
 
 void PresentationRequest::Trace(Visitor* visitor) const {
   visitor->Trace(availability_property_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextClient::Trace(visitor);
 }
 

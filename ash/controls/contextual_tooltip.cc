@@ -62,10 +62,6 @@ std::string TooltipTypeToString(TooltipType type) {
       return "keyboard_backlight_wallpaper_color";
     case TooltipType::kTimeOfDayFeatureBanner:
       return "time_of_day_feature_banner";
-    case TooltipType::kTimeOfDayWallpaperDialog:
-      return "time_of_day_wallpaper_dialog";
-    case TooltipType::kSeaPenWallpaperTermsDialog:
-      return "sea_pen_wallpaper_terms_dialog";
   }
   return "invalid";
 }
@@ -86,15 +82,15 @@ base::Time GetLastShownTime(PrefService* prefs, TooltipType type) {
 }
 
 int GetSuccessCount(PrefService* prefs, TooltipType type) {
-  std::optional<int> success_count =
+  absl::optional<int> success_count =
       prefs->GetDict(prefs::kContextualTooltips)
           .FindIntByDottedPath(GetPath(type, kSuccessCount));
   return success_count.value_or(0);
 }
 
-const std::optional<base::TimeDelta>& GetMinIntervalOverride() {
+const absl::optional<base::TimeDelta>& GetMinIntervalOverride() {
   // Overridden minimum time between showing contextual nudges to the user.
-  static std::optional<base::TimeDelta> min_interval_override;
+  static absl::optional<base::TimeDelta> min_interval_override;
   if (!min_interval_override) {
     min_interval_override = switches::ContextualNudgesInterval();
   }
@@ -104,9 +100,8 @@ const std::optional<base::TimeDelta>& GetMinIntervalOverride() {
 }  // namespace
 
 void RegisterProfilePrefs(PrefRegistrySimple* registry) {
-  if (features::IsHideShelfControlsInTabletModeEnabled()) {
+  if (features::AreContextualNudgesEnabled())
     registry->RegisterDictionaryPref(prefs::kContextualTooltips);
-  }
 }
 
 bool ShouldShowNudge(PrefService* prefs,
@@ -117,7 +112,7 @@ bool ShouldShowNudge(PrefService* prefs,
       *recheck_delay = delay;
   };
 
-  if (!features::IsHideShelfControlsInTabletModeEnabled()) {
+  if (!features::AreContextualNudgesEnabled()) {
     set_recheck_delay(base::TimeDelta());
     return false;
   }
@@ -138,11 +133,7 @@ bool ShouldShowNudge(PrefService* prefs,
       (type == TooltipType::kKeyboardBacklightColor &&
        success_count >= kSuccessLimitKeyboardBacklightColor) ||
       (type == TooltipType::kTimeOfDayFeatureBanner &&
-       success_count >= kSuccessLimitTimeOfDayFeatureBanner) ||
-      (type == TooltipType::kTimeOfDayWallpaperDialog &&
-       success_count >= kSuccessLimitTimeOfDayWallpaperDialog) ||
-      (type == TooltipType::kSeaPenWallpaperTermsDialog &&
-       success_count >= kSuccessLimitSeaPenWallpaperTermsDialog)) {
+       success_count >= kSuccessLimitTimeOfDayFeatureBanner)) {
     set_recheck_delay(base::TimeDelta());
     return false;
   }
@@ -222,7 +213,7 @@ base::TimeDelta GetNudgeTimeout(PrefService* prefs, TooltipType type) {
 }
 
 int GetShownCount(PrefService* prefs, TooltipType type) {
-  std::optional<int> shown_count =
+  absl::optional<int> shown_count =
       prefs->GetDict(prefs::kContextualTooltips)
           .FindIntByDottedPath(GetPath(type, kShownCount));
   return shown_count.value_or(0);

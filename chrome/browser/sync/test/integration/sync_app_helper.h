@@ -60,7 +60,7 @@ class SyncAppHelper {
   SyncAppHelper();
   ~SyncAppHelper();
 
-  bool setup_completed_ = false;
+  bool setup_completed_;
 };
 
 #endif  // CHROME_BROWSER_SYNC_TEST_INTEGRATION_SYNC_APP_HELPER_H_

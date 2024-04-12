@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <string>
-#include <tuple>
 
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/metrics/user_action_tester.h"
@@ -14,11 +13,12 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/supervised_user/supervised_user_extensions_delegate_impl.h"
 #include "chrome/browser/supervised_user/supervised_user_extensions_metrics_recorder.h"
+#include "chrome/browser/supervised_user/supervised_user_service.h"
+#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
 #include "chrome/browser/supervised_user/supervised_user_test_util.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/supervised_user/core/common/features.h"
-#include "components/supervised_user/core/common/pref_names.h"
 #include "extensions/browser/api_test_utils.h"
 #include "extensions/browser/disable_reason.h"
 #include "extensions/browser/extension_prefs.h"
@@ -37,14 +37,28 @@ const char permissions_increase[] = "pgdpcfcocojkjfbgpiianjngphoopgmo";
 
 namespace extensions {
 
-// Base class for the extension permission tests for supervised users.
-
-class SupervisedUserExtensionTestBase : public ExtensionServiceTestWithInstall {
+class SupervisedUserExtensionTest : public ExtensionServiceTestWithInstall,
+                                    public testing::WithParamInterface<bool> {
  public:
+  SupervisedUserExtensionTest() {
+    if (extensions_permissions_for_supervised_users_on_desktop()) {
+      feature.InitAndEnableFeature(
+          supervised_user::
+              kEnableExtensionsPermissionsForSupervisedUsersOnDesktop);
+    } else {
+      feature.InitAndDisableFeature(
+          supervised_user::
+              kEnableExtensionsPermissionsForSupervisedUsersOnDesktop);
+    }
+  }
+
+ protected:
   void InitServices(bool profile_is_supervised) {
     ExtensionServiceInitParams params;
     params.profile_is_supervised = profile_is_supervised;
     InitializeExtensionService(params);
+
+    supervised_user_service()->Init();
     supervised_user_extensions_delegate_ =
         std::make_unique<SupervisedUserExtensionsDelegateImpl>(profile());
   }
@@ -80,6 +94,19 @@ class SupervisedUserExtensionTestBase : public ExtensionServiceTestWithInstall {
     UpdateTestExtension(dir_path, pem_path, id, version, expected_state);
   }
 
+  const Extension* InstallTestExtension(const std::string& id,
+                                        const base::FilePath& dir_path,
+                                        const base::FilePath& pem_path) {
+    const Extension* extension =
+        PackAndInstallCRX(dir_path, pem_path, INSTALL_WITHOUT_LOAD);
+    // The extension must now be installed.
+    EXPECT_TRUE(extension);
+    EXPECT_EQ(extension->id(), id);
+    CheckDisabledForCustodianApproval(id);
+    EXPECT_EQ(base::Version("1"), extension->version());
+    return extension;
+  }
+
   void UpdateTestExtension(const base::FilePath& dir_path,
                            const base::FilePath& pem_path,
                            const std::string& id,
@@ -104,18 +131,31 @@ class SupervisedUserExtensionTestBase : public ExtensionServiceTestWithInstall {
   const Extension* CheckDisabledForCustodianApproval(
       const std::string& extension_id) {
     EXPECT_TRUE(registry()->disabled_extensions().Contains(extension_id));
-    EXPECT_TRUE(IsPendingCustodianApproval(extension_id));
+    if (extensions_permissions_for_supervised_users_on_desktop()) {
+      EXPECT_TRUE(IsPendingCustodianApproval(extension_id));
+    } else {
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
+      EXPECT_TRUE(IsPendingCustodianApproval(extension_id));
+#else
+      EXPECT_FALSE(IsPendingCustodianApproval(extension_id));
+#endif
+    }
     ExtensionPrefs* extension_prefs = ExtensionPrefs::Get(profile());
     EXPECT_TRUE(extension_prefs->HasDisableReason(
         extension_id, disable_reason::DISABLE_CUSTODIAN_APPROVAL_REQUIRED));
     return registry()->disabled_extensions().GetByID(extension_id);
   }
-
   const Extension* CheckDisabledForPermissionsIncrease(
       const std::string& extension_id) {
     EXPECT_TRUE(registry()->disabled_extensions().Contains(extension_id));
-    if (ShouldExtensionPermissionsApply()) {
+    if (extensions_permissions_for_supervised_users_on_desktop()) {
       EXPECT_TRUE(IsPendingCustodianApproval(extension_id));
+    } else {
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
+      EXPECT_TRUE(IsPendingCustodianApproval(extension_id));
+#else
+      EXPECT_FALSE(IsPendingCustodianApproval(extension_id));
+#endif
     }
     ExtensionPrefs* extension_prefs = ExtensionPrefs::Get(profile());
     EXPECT_TRUE(extension_prefs->HasDisableReason(
@@ -123,34 +163,17 @@ class SupervisedUserExtensionTestBase : public ExtensionServiceTestWithInstall {
     return registry()->disabled_extensions().GetByID(extension_id);
   }
 
+  SupervisedUserService* supervised_user_service() {
+    return SupervisedUserServiceFactory::GetForProfile(profile());
+  }
+
   SupervisedUserExtensionsDelegate* supervised_user_extensions_delegate() {
     return supervised_user_extensions_delegate_.get();
   }
 
-  const Extension* InstallTestExtension(const std::string& id,
-                                        const base::FilePath& dir_path,
-                                        const base::FilePath& pem_path) {
-    // When extension permissions are enabled the extensions will be installed
-    // but disabled until custodian approvals are performed.
-    // When extension permissions are disabled the extensions will be installed
-    // and enabled.
-    auto install_state =
-        ShouldExtensionPermissionsApply() ? INSTALL_WITHOUT_LOAD : INSTALL_NEW;
-    const Extension* extension =
-        PackAndInstallCRX(dir_path, pem_path, install_state);
-    // The extension must now be installed.
-    EXPECT_TRUE(extension);
-    EXPECT_EQ(extension->id(), id);
-    if (ShouldExtensionPermissionsApply()) {
-      CheckDisabledForCustodianApproval(id);
-    } else {
-      CheckEnabled(id);
-    }
-    EXPECT_EQ(base::Version("1"), extension->version());
-    return extension;
+  bool extensions_permissions_for_supervised_users_on_desktop() const {
+    return GetParam();
   }
-
-  virtual bool ShouldExtensionPermissionsApply() = 0;
 
  private:
   // Returns true if the extension has disable reason permissions_increase or
@@ -159,7 +182,7 @@ class SupervisedUserExtensionTestBase : public ExtensionServiceTestWithInstall {
     auto function = base::MakeRefCounted<
         WebstorePrivateIsPendingCustodianApprovalFunction>();
 
-    std::optional<base::Value> result(RunFunctionAndReturnSingleResult(
+    absl::optional<base::Value> result(RunFunctionAndReturnSingleResult(
         function.get(), "[\"" + extension_id + "\"]", browser_context()));
     return result->GetBool();
   }
@@ -176,42 +199,8 @@ class SupervisedUserExtensionTestBase : public ExtensionServiceTestWithInstall {
 
   std::unique_ptr<SupervisedUserExtensionsDelegateImpl>
       supervised_user_extensions_delegate_;
-};
 
-class SupervisedUserExtensionTest : public SupervisedUserExtensionTestBase,
-                                    public testing::WithParamInterface<bool> {
- public:
-  SupervisedUserExtensionTest() {
-    // Parental restrictions on the extensions permissions for supervised users
-    // on Desktop apply when the feature
-    // kEnableExtensionsPermissionsForSupervisedUsersOnDesktop is enabled.
-    // Extension permissions for supervised users are already enabled on
-    // ChromeOS by default.
-    are_extension_permissions_enabled_ = GetParam();
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-    if (are_extension_permissions_enabled_) {
-      feature_list_.InitWithFeatures(
-          /*enabled_features=*/
-          {supervised_user::
-               kEnableExtensionsPermissionsForSupervisedUsersOnDesktop},
-          /*disabled_features=*/{});
-    } else {
-      feature_list_.InitWithFeatures(
-          /*enabled_features=*/{}, /*disabled_features=*/{
-              supervised_user::
-                  kEnableExtensionsPermissionsForSupervisedUsersOnDesktop});
-    }
-#endif
-  }
-
-  // SupervisedUserExtensionTestBase implementation:
-  bool ShouldExtensionPermissionsApply() override {
-    return are_extension_permissions_enabled_;
-  }
-
- private:
-  bool are_extension_permissions_enabled_;
-  base::test::ScopedFeatureList feature_list_;
+  base::test::ScopedFeatureList feature;
 };
 
 // Tests that regular users are not affecting supervised user UMA metrics.
@@ -222,7 +211,6 @@ TEST_P(SupervisedUserExtensionTest,
   base::HistogramTester histogram_tester;
 
   base::FilePath path = data_dir().AppendASCII("good.crx");
-  // The extensions will be installed and enabled.
   const Extension* extension = InstallCRX(path, INSTALL_NEW);
   ASSERT_TRUE(extension);
 
@@ -245,11 +233,12 @@ TEST_P(SupervisedUserExtensionTest,
   supervised_user_test_util::
       SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), false);
 
-  // Install an extension, it should be enabled because this is a regular user.
+  // Install an extension.
   base::FilePath path = data_dir().AppendASCII("good.crx");
   const Extension* extension = InstallCRX(path, INSTALL_NEW);
   std::string id = extension->id();
 
+  // The extension should be enabled because this is a regular user.
   CheckEnabled(id);
 
   // Simulate custodian approval and removal.
@@ -259,128 +248,74 @@ TEST_P(SupervisedUserExtensionTest,
   CheckEnabled(id);
 }
 
-// Tests that if the extension permissions are enabled, adding supervision
-// to a regular account (Gellerization) disables previously installed
-// extensions. Otherise the extension remains enabled.
-TEST_P(SupervisedUserExtensionTest, ExtensionsStateAfterGellerization) {
+// Tests that adding supervision to a regular account (Gellerization) disables
+// previously installed extensions.
+TEST_P(SupervisedUserExtensionTest, ExtensionsDisabledAfterGellerization) {
   InitServices(/*profile_is_supervised=*/false);
   supervised_user_test_util::
       SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), true);
 
-  // Install an extension, it should be enabled because this is a regular user.
+  // Install an extension.
   base::FilePath path = data_dir().AppendASCII("good.crx");
   const Extension* extension = InstallCRX(path, INSTALL_NEW);
   ASSERT_TRUE(extension);
   std::string id = extension->id();
+  // The extension should be enabled because this is a regular user.
   CheckEnabled(id);
 
   // Now make the profile supervised.
   profile()->AsTestingProfile()->SetIsSupervisedProfile();
 
-  if (ShouldExtensionPermissionsApply()) {
-    // The extension should be disabled now pending custodian approval.
-    CheckDisabledForCustodianApproval(id);
+  // The extension should be disabled now pending custodian approval.
+  CheckDisabledForCustodianApproval(id);
 
-    // Grant parent approval.
-    supervised_user_extensions_delegate()->AddExtensionApproval(*extension);
+  // Grant parent approval.
+  supervised_user_extensions_delegate()->AddExtensionApproval(*extension);
 
-    // The extension should be enabled now.
-    CheckEnabled(id);
-
-    // Remove parent approval.
-    supervised_user_extensions_delegate()->RemoveExtensionApproval(*extension);
-
-    // The extension should be disabled again now.
-    CheckDisabledForCustodianApproval(id);
-  } else {
-    // The extension should still be enabled.
-    CheckEnabled(id);
-  }
-}
-
-// Tests that extensions that are disabled pending parent approval
-// for supervised users, become re-enabled if the user becomes unsupervised.
-TEST_P(SupervisedUserExtensionTest, ExtensionsStateAfterGraduation) {
-  InitServices(/*profile_is_supervised=*/true);
-  supervised_user_test_util::
-      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), true);
-
-  // When extension parental controls are enabled on the current platform the
-  // extensions will be installed but disabled until the custodian approval.
-  // When extension permissions are disabled the extensions will be installed
-  // and enabled.
-  auto install_state =
-      ShouldExtensionPermissionsApply() ? INSTALL_WITHOUT_LOAD : INSTALL_NEW;
-  base::FilePath path = data_dir().AppendASCII("good.crx");
-  const Extension* extension = InstallCRX(path, install_state);
-  ASSERT_TRUE(extension);
-  std::string id = extension->id();
-
-  if (ShouldExtensionPermissionsApply()) {
-    // This extension is a supervised user initiated install and should remain
-    // disabled.
-    CheckDisabledForCustodianApproval(id);
-  } else {
-    // The new installed extension should be enabled.
-    CheckEnabled(id);
-  }
-
-  // Make the profile un-supervised.
-  profile()->AsTestingProfile()->SetIsSupervisedProfile(false);
-
-  // The extension should become enabled.
+  // The extension should be enabled now.
   CheckEnabled(id);
+
+  // Remove parent approval.
+  supervised_user_extensions_delegate()->RemoveExtensionApproval(*extension);
+
+  // The extension should be disabled again now.
+  CheckDisabledForCustodianApproval(id);
 }
 
 // Tests that a child user is allowed to install extensions when pref
-// kSupervisedUserExtensionsMayRequestPermissions is set to true.
-// If the extension permissions are enabled the newly-installed extensions
-// are disabled until approved by the parent.
-// Otherwise the newly-installed extensions are enabled.
-TEST_P(SupervisedUserExtensionTest, InstallAllowedForSupervisedUser) {
+// kSupervisedUserExtensionsMayRequestPermissions is set to true, but that
+// newly-installed extensions are disabled until approved by the parent.
+TEST_P(SupervisedUserExtensionTest,
+       InstallAllowedButDisabledForSupervisedUser) {
   InitServices(/*profile_is_supervised=*/true);
   supervised_user_test_util::
       SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), true);
 
-  // When extension parental controls are enabled on the current platform the
-  // extensions will be installed but disabled until the custodian approval.
-  // When extension permissions are disabled the extensions will be installed
-  // and enabled.
-  auto install_state =
-      ShouldExtensionPermissionsApply() ? INSTALL_WITHOUT_LOAD : INSTALL_NEW;
   base::FilePath path = data_dir().AppendASCII("good.crx");
-  const Extension* extension = InstallCRX(path, install_state);
+  const Extension* extension = InstallCRX(path, INSTALL_WITHOUT_LOAD);
   ASSERT_TRUE(extension);
   std::string id = extension->id();
 
-  if (ShouldExtensionPermissionsApply()) {
-    // This extension is a supervised user initiated install and should remain
-    // disabled.
-    CheckDisabledForCustodianApproval(id);
+  // This extension is a supervised user initiated install and should remain
+  // disabled.
+  CheckDisabledForCustodianApproval(id);
 
-    // Grant parent approval.
-    supervised_user_extensions_delegate()->AddExtensionApproval(*extension);
-    // The extension is now enabled.
-    CheckEnabled(id);
+  // Grant parent approval.
+  supervised_user_extensions_delegate()->AddExtensionApproval(*extension);
+  // The extension is now enabled.
+  CheckEnabled(id);
 
-    // Remove parent approval.
-    supervised_user_extensions_delegate()->RemoveExtensionApproval(*extension);
+  // Remove parent approval.
+  supervised_user_extensions_delegate()->RemoveExtensionApproval(*extension);
 
-    // The extension should be disabled again now.
-    CheckDisabledForCustodianApproval(id);
-  } else {
-    // The new installed extension should be enabled.
-    CheckEnabled(id);
-  }
+  // The extension should be disabled again now.
+  CheckDisabledForCustodianApproval(id);
 }
 
 // Tests that supervised users may approve permission updates without parent
-// approval if kSupervisedUserExtensionsMayRequestPermissions is true and
-// the extension permission are enable.
-// If the extension permission are disabled, the child can approve permission
-// updates by default.
+// approval if kSupervisedUserExtensionsMayRequestPermissions is true.
 TEST_P(SupervisedUserExtensionTest, UpdateWithPermissionsIncrease) {
-  InitServices(true);
+  InitServices(/*profile_is_supervised=*/true);
   supervised_user_test_util::
       SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), true);
 
@@ -399,25 +334,24 @@ TEST_P(SupervisedUserExtensionTest, UpdateWithPermissionsIncrease) {
           SupervisedUserExtensionsMetricsRecorder::kApprovalRemovedActionName));
 
   std::string id = InstallPermissionsTestExtension()->id();
-  if (ShouldExtensionPermissionsApply()) {
-    // Simulate parent approval.
-    supervised_user_extensions_delegate()->AddExtensionApproval(
-        *registry()->GetInstalledExtension(id));
-
-    // Should see 1 kApprovalGranted metric count.
-    histogram_tester.ExpectUniqueSample(
-        SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName,
-        SupervisedUserExtensionsMetricsRecorder::UmaExtensionState::
-            kApprovalGranted,
-        1);
-    histogram_tester.ExpectTotalCount(
-        SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName, 1);
-    EXPECT_EQ(1, user_action_tester.GetActionCount(
-                     SupervisedUserExtensionsMetricsRecorder::
-                         kApprovalGrantedActionName));
-  }
+  // Simulate parent approval.
+  supervised_user_extensions_delegate()->AddExtensionApproval(
+      *registry()->GetInstalledExtension(id));
   // The extension should be enabled.
   CheckEnabled(id);
+
+  // Should see 1 kApprovalGranted metric count.
+  histogram_tester.ExpectUniqueSample(
+      SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName,
+      SupervisedUserExtensionsMetricsRecorder::UmaExtensionState::
+          kApprovalGranted,
+      1);
+  histogram_tester.ExpectTotalCount(
+      SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName, 1);
+  EXPECT_EQ(
+      1,
+      user_action_tester.GetActionCount(
+          SupervisedUserExtensionsMetricsRecorder::kApprovalGrantedActionName));
 
   // Update to a new version with increased permissions.
   UpdatePermissionsTestExtension(id, "2", DISABLED);
@@ -431,33 +365,31 @@ TEST_P(SupervisedUserExtensionTest, UpdateWithPermissionsIncrease) {
   // The extension should be enabled.
   CheckEnabled(id);
 
-  if (ShouldExtensionPermissionsApply()) {
-    // Remove extension approval.
-    supervised_user_extensions_delegate()->RemoveExtensionApproval(
-        *registry()->GetInstalledExtension(id));
+  // Remove extension approval.
+  supervised_user_extensions_delegate()->RemoveExtensionApproval(
+      *registry()->GetInstalledExtension(id));
 
-    // Should see 1 kApprovalRemoved metric count.
-    histogram_tester.ExpectBucketCount(
-        SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName,
-        SupervisedUserExtensionsMetricsRecorder::UmaExtensionState::
-            kApprovalRemoved,
-        1);
-    histogram_tester.ExpectTotalCount(
-        SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName, 2);
-    EXPECT_EQ(1, user_action_tester.GetActionCount(
-                     SupervisedUserExtensionsMetricsRecorder::
-                         kApprovalRemovedActionName));
+  // Should see 1 kApprovalRemoved metric count.
+  histogram_tester.ExpectBucketCount(
+      SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName,
+      SupervisedUserExtensionsMetricsRecorder::UmaExtensionState::
+          kApprovalRemoved,
+      1);
+  histogram_tester.ExpectTotalCount(
+      SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName, 2);
+  EXPECT_EQ(
+      1,
+      user_action_tester.GetActionCount(
+          SupervisedUserExtensionsMetricsRecorder::kApprovalRemovedActionName));
 
-    // The extension should be disabled now.
-    CheckDisabledForCustodianApproval(id);
-  }
+  // The extension should be disabled now.
+  CheckDisabledForCustodianApproval(id);
 }
 
 // Tests that if "Permissions for sites, apps and extensions" toggle is
 // disabled, resulting in the pref
-// kSupervisedUserExtensionsMayRequestPermissions set to false, then:
-// If the extension permissions are enabled child users cannot approve
-// permission updates, otherwise they can approve permission updates.
+// kSupervisedUserExtensionsMayRequestPermissions set to false, then child users
+// cannot approve permission updates.
 TEST_P(SupervisedUserExtensionTest,
        ChildUserCannotApproveAdditionalPermissions) {
   InitServices(/*profile_is_supervised=*/true);
@@ -468,53 +400,51 @@ TEST_P(SupervisedUserExtensionTest,
   base::HistogramTester histogram_tester;
 
   std::string id = InstallPermissionsTestExtension()->id();
-  const Extension* extension1 = nullptr;
-  if (ShouldExtensionPermissionsApply()) {
-    extension1 = CheckDisabledForCustodianApproval(id);
-    ASSERT_TRUE(extension1);
+  const Extension* extension1 = CheckDisabledForCustodianApproval(id);
+  ASSERT_TRUE(extension1);
+  // Simulate parent granting approval for the initial version.
+  supervised_user_extensions_delegate()->AddExtensionApproval(*extension1);
+  // The extension should be enabled now.
+  CheckEnabled(id);
 
-    // Simulate parent granting approval for the initial version.
-    supervised_user_extensions_delegate()->AddExtensionApproval(*extension1);
-    // The extension should be enabled now.
-    CheckEnabled(id);
-
-    // Should see 1 kApprovalGranted metric count.
-    histogram_tester.ExpectUniqueSample(
-        SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName,
-        SupervisedUserExtensionsMetricsRecorder::UmaExtensionState::
-            kApprovalGranted,
-        1);
-    histogram_tester.ExpectTotalCount(
-        SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName, 1);
-  } else {
-    // The extension is installed as enabled.
-    extension1 = CheckEnabled(id);
-    ASSERT_TRUE(extension1);
-  }
+  // Should see 1 kApprovalGranted metric count.
+  histogram_tester.ExpectUniqueSample(
+      SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName,
+      SupervisedUserExtensionsMetricsRecorder::UmaExtensionState::
+          kApprovalGranted,
+      1);
+  histogram_tester.ExpectTotalCount(
+      SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName, 1);
 
   // Update to a new version with increased permissions.
-  std::string version2("2");
-  UpdatePermissionsTestExtension(id, version2, DISABLED);
+  UpdatePermissionsTestExtension(id, "2", DISABLED);
   const Extension* extension2 = CheckDisabledForPermissionsIncrease(id);
   ASSERT_TRUE(extension2);
 
-  // Flip toggle to off.
+  // Flip toggle to off. Now the extension is blocked since it requires
+  // additional permissions and the child can't approve additional permissions.
   supervised_user_test_util::
       SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), false);
-  // Now the extension is blocked since it requires additional permissions.
+
   // Simulate child granting approval for the new permissions.
   service()->GrantPermissionsAndEnableExtension(extension2);
 
-  if (ShouldExtensionPermissionsApply()) {
-    // The extension is still disabled because the child cannot grant additonal
-    // permissions.
-    CheckDisabledForPermissionsIncrease(id);
-  } else {
-    // The extension should now be enabled and the version number increased.
-    extension2 = CheckEnabled(id);
-    EXPECT_TRUE(extension2);
-    EXPECT_EQ(base::Version(version2), extension2->version());
-  }
+  // The extension is still disabled. What worked in the
+  // UpdateWithPermissionsIncrease test no longer works here because the toggle
+  // is off.
+  CheckDisabledForPermissionsIncrease(id);
+
+  // Now uninstall the extension, just for UMA histogram tests.
+  UninstallExtension(id);
+
+  // Should see 1 kApprovalRemoved metric count.
+  histogram_tester.ExpectBucketCount(
+      SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName,
+      SupervisedUserExtensionsMetricsRecorder::UmaExtensionState::
+          kApprovalRemoved,
+      1);
+  histogram_tester.ExpectTotalCount(
+      SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName, 2);
 }
 
 // Tests that if an approved extension is updated to a newer version that
@@ -542,10 +472,8 @@ TEST_P(SupervisedUserExtensionTest, UpdateWithoutPermissionIncrease) {
   EXPECT_EQ(base::Version(version2), extension1->version());
 
   // Even though supervised users can't approve additional approvals when the
-  // 1) "Permissions for sites, apps and extensions" toggle is off, and 2)
-  // 2) extension permissions are enabled, additional permissions should be
-  // okay. If extension permissions are disabled, additional permissions should
-  // also be okay.
+  // "Permissions for sites, apps and extensions" toggle is off, updates with no
+  // additional permissions should be okay.
   supervised_user_test_util::
       SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), false);
   std::string version3("3");
@@ -557,151 +485,18 @@ TEST_P(SupervisedUserExtensionTest, UpdateWithoutPermissionIncrease) {
   // The version should have changed again.
   EXPECT_EQ(base::Version(version3), extension2->version());
 
-  if (ShouldExtensionPermissionsApply()) {
-    // Check that the approved extension id has been updated in the prefs as
-    // well. Prefs are updated via sync.
-    PrefService* pref_service = profile()->GetPrefs();
-    ASSERT_TRUE(pref_service);
-    const base::Value::Dict& approved_extensions =
-        pref_service->GetDict(prefs::kSupervisedUserApprovedExtensions);
-    EXPECT_TRUE(approved_extensions.FindString(id));
-  }
+  // Check that the approved extension id has been updated in the prefs as well.
+  // Prefs are updated via sync.
+  PrefService* pref_service = profile()->GetPrefs();
+  ASSERT_TRUE(pref_service);
+  const base::Value::Dict& approved_extensions =
+      pref_service->GetDict(prefs::kSupervisedUserApprovedExtensions);
+  EXPECT_TRUE(approved_extensions.FindString(id));
 }
-
-// Tests that if "Permissions for sites, apps and extensions" toggle is
-// disabled, resulting in the pref
-// kSupervisedUserExtensionsMayRequestPermissions set to false, then:
-// - If extension permissions are enabled child users cannot install new
-// extensions.
-// - If extension permissions are disabled child users can install new
-// extensions.
-TEST_P(SupervisedUserExtensionTest, SupervisedUserCannotInstallExtension) {
-  InitServices(/*profile_is_supervised=*/true);
-  supervised_user_test_util::
-      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), false);
-
-  base::FilePath path = data_dir().AppendASCII("good.crx");
-  // When extension permissions are enabled the extensions will fail
-  // installation. When extension permissions are disabled the extensions will
-  // be installed and enabled.
-  if (ShouldExtensionPermissionsApply()) {
-    const Extension* extension = InstallCRX(path, INSTALL_FAILED);
-    EXPECT_FALSE(extension);
-  } else {
-    const Extension* extension = InstallCRX(path, INSTALL_NEW);
-    EXPECT_TRUE(extension);
-    CheckEnabled(extension->id());
-  }
-}
-
-// Tests that disabling the "Permissions for sites, apps and extensions" toggle
-// has no effect on regular users.
-TEST_P(SupervisedUserExtensionTest, RegularUserCanInstallExtension) {
-  InitServices(/*profile_is_supervised=*/false);
-  supervised_user_test_util::
-      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), false);
-
-  base::FilePath path = data_dir().AppendASCII("good.crx");
-  // The extension should be installed and enabled.
-  const Extension* extension = InstallCRX(path, INSTALL_NEW);
-
-  ASSERT_TRUE(extension);
-  CheckEnabled(extension->id());
-}
-
-// Tests that if "Permissions for sites, apps and extensions" toggle is
-// disabled, resulting in the pref
-// kSupervisedUserExtensionsMayRequestPermissions set to false, previously
-// approved extensions are still enabled.
-TEST_P(SupervisedUserExtensionTest, ToggleOffDoesNotAffectAlreadyEnabled) {
-  InitServices(/*profile_is_supervised=*/true);
-  supervised_user_test_util::
-      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), true);
-
-  // The installation helper function checks that the extension is initially
-  // disabled.
-  const Extension* extension = InstallNoPermissionsTestExtension();
-  std::string id = extension->id();
-
-  if (ShouldExtensionPermissionsApply()) {
-    // Now approve the extension.
-    supervised_user_extensions_delegate()->AddExtensionApproval(*extension);
-  }
-
-  // The extension should be enabled now.
-  CheckEnabled(id);
-
-  // Custodian toggles "Permissions for sites, apps and extensions" to false.
-  supervised_user_test_util::
-      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), false);
-
-  // Already installed and enabled extensions should remain that way.
-  CheckEnabled(id);
-}
-
-// Tests the case when the extension approval arrives through sync before the
-// extension itself is installed.
-TEST_P(SupervisedUserExtensionTest, ExtensionApprovalBeforeInstallation) {
-  InitServices(/*profile_is_supervised=*/true);
-  supervised_user_test_util::
-      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), true);
-
-  scoped_refptr<const Extension> extension =
-      ExtensionBuilder(good_crx).SetID(good_crx).SetVersion("0").Build();
-  if (ShouldExtensionPermissionsApply()) {
-    // Now approve the extension.
-    supervised_user_extensions_delegate()->AddExtensionApproval(*extension);
-  }
-
-  // Now install an extension, it should be enabled upon installation.
-  base::FilePath path = data_dir().AppendASCII("good.crx");
-  InstallCRX(path, INSTALL_NEW);
-
-  // Make sure it's enabled.
-  CheckEnabled(good_crx);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    ExtensionsPermissionsForSupervisedUsersOnDesktopFeature,
-    SupervisedUserExtensionTest,
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-    testing::Bool(),
-#else
-    // On ChromeOS the extension permissions are on by default.
-    testing::Values(true),
-#endif
-    [](const auto& info) {
-      return std::string(info.param ? "WithExtensionPermissions"
-                                    : "WithoutExtensionPermissions");
-    });
-
-// Test class for cases that apply only when Extension Permissions are enabled.
-class SupervisedUserWithEnabledExtensionPermissionsTest
-    : public SupervisedUserExtensionTestBase {
- public:
-  SupervisedUserWithEnabledExtensionPermissionsTest() {
-    // Parental restrictions on the extensions permissions for supervised users
-    // on Desktop apply when the feature
-    // kEnableExtensionsPermissionsForSupervisedUsersOnDesktop is enabled.
-    // Extension permissions for supervised users are already enabled on
-    // ChromeOS by default.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-    feature_list_.InitWithFeatures(
-        /*enabled_features=*/
-        {supervised_user::
-             kEnableExtensionsPermissionsForSupervisedUsersOnDesktop},
-        /*disabled_features=*/{});
-#endif
-  }
-
-  // SupervisedUserExtensionTestBase implementation:
-  bool ShouldExtensionPermissionsApply() override { return true; }
-};
 
 // Tests that the kApprovalGranted UMA metric only increments once without
 // duplication for the same extension id.
-TEST_F(SupervisedUserWithEnabledExtensionPermissionsTest,
-       DontTriggerMetricsIfAlreadyApproved) {
+TEST_P(SupervisedUserExtensionTest, DontTriggerMetricsIfAlreadyApproved) {
   InitServices(/*profile_is_supervised=*/true);
   supervised_user_test_util::
       SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), true);
@@ -709,10 +504,9 @@ TEST_F(SupervisedUserWithEnabledExtensionPermissionsTest,
   base::HistogramTester histogram_tester;
 
   base::FilePath path = data_dir().AppendASCII("good.crx");
-  // The extension should be installed but disabled until we perform custodian
-  // approval.
   const Extension* extension = InstallCRX(path, INSTALL_WITHOUT_LOAD);
   ASSERT_TRUE(extension);
+  // The extension should be installed but disabled pending custodian approval.
   CheckDisabledForCustodianApproval(extension->id());
 
   // Simulate parent approval for the extension installation.
@@ -756,11 +550,86 @@ TEST_F(SupervisedUserWithEnabledExtensionPermissionsTest,
       SupervisedUserExtensionsMetricsRecorder::kExtensionsHistogramName, 2);
 }
 
+// Tests that if "Permissions for sites, apps and extensions" toggle is
+// disabled, resulting in the pref
+// kSupervisedUserExtensionsMayRequestPermissions set to false, then child users
+// cannot install new extensions.
+TEST_P(SupervisedUserExtensionTest, SupervisedUserCannotInstallExtension) {
+  InitServices(/*profile_is_supervised=*/true);
+  supervised_user_test_util::
+      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), false);
+
+  base::FilePath path = data_dir().AppendASCII("good.crx");
+  const Extension* extension = InstallCRX(path, INSTALL_FAILED);
+  // The extension should not have been installed.
+  EXPECT_FALSE(extension);
+}
+
+// Tests that disabling the "Permissions for sites, apps and extensions" toggle
+// has no effect on regular users.
+TEST_P(SupervisedUserExtensionTest, RegularUserCanInstallExtension) {
+  InitServices(/*profile_is_supervised=*/false);
+  supervised_user_test_util::
+      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), false);
+
+  base::FilePath path = data_dir().AppendASCII("good.crx");
+  const Extension* extension = InstallCRX(path, INSTALL_NEW);
+  // The extension should be installed and enabled.
+  ASSERT_TRUE(extension);
+  CheckEnabled(extension->id());
+}
+
+// Tests that if "Permissions for sites, apps and extensions" toggle is
+// disabled, resulting in the pref
+// kSupervisedUserExtensionsMayRequestPermissions set to false, previously
+// approved extensions are still enabled.
+TEST_P(SupervisedUserExtensionTest, ToggleOffDoesNotAffectAlreadyEnabled) {
+  InitServices(/*profile_is_supervised=*/true);
+  supervised_user_test_util::
+      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), true);
+
+  // The installation helper function checks that the extension is initially
+  // disabled.
+  const Extension* extension = InstallNoPermissionsTestExtension();
+  std::string id = extension->id();
+
+  // Now approve the extension.
+  supervised_user_extensions_delegate()->AddExtensionApproval(*extension);
+
+  // The extension should be enabled now.
+  CheckEnabled(id);
+
+  // Custodian toggles "Permissions for sites, apps and extensions" to false.
+  supervised_user_test_util::
+      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), false);
+
+  // Already installed and enabled extensions should remain that way.
+  CheckEnabled(id);
+}
+
+// Tests the case when the extension approval arrives through sync before the
+// extension itself is installed.
+TEST_P(SupervisedUserExtensionTest, ExtensionApprovalBeforeInstallation) {
+  InitServices(/*profile_is_supervised=*/true);
+  supervised_user_test_util::
+      SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), true);
+
+  scoped_refptr<const Extension> extension =
+      ExtensionBuilder(good_crx).SetID(good_crx).SetVersion("0").Build();
+  supervised_user_extensions_delegate()->AddExtensionApproval(*extension.get());
+
+  // Now install an extension.
+  base::FilePath path = data_dir().AppendASCII("good.crx");
+  InstallCRX(path, INSTALL_NEW);
+
+  // Make sure it's enabled.
+  CheckEnabled(good_crx);
+}
+
 // Tests that parent approval is necessary but not sufficient to enable
 // extensions when both disable reasons custodian_approval_required and
 // permissions_increase are present.
-TEST_F(SupervisedUserWithEnabledExtensionPermissionsTest,
-       ParentApprovalNecessaryButNotSufficient) {
+TEST_P(SupervisedUserExtensionTest, ParentApprovalNecessaryButNotSufficient) {
   InitServices(/*profile_is_supervised=*/true);
   supervised_user_test_util::
       SetSupervisedUserExtensionsMayRequestPermissionsPref(profile(), true);
@@ -791,5 +660,9 @@ TEST_F(SupervisedUserWithEnabledExtensionPermissionsTest,
   // The extension should be enabled.
   CheckEnabled(id);
 }
+INSTANTIATE_TEST_SUITE_P(
+    ExtensionsPermissionsForSupervisedUsersOnDesktopFeature,
+    SupervisedUserExtensionTest,
+    testing::Bool());
 
 }  // namespace extensions

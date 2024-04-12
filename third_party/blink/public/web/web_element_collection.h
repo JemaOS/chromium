@@ -67,7 +67,7 @@ class BLINK_EXPORT WebElementCollection {
 #endif
 
  private:
-  WebPrivatePtrForGC<HTMLCollection> private_;
+  WebPrivatePtr<HTMLCollection> private_;
   mutable unsigned current_;
 };
 

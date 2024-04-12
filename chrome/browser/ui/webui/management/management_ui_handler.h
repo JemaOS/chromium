@@ -31,10 +31,6 @@ extern const char kManagementScreenCaptureEvent[];
 extern const char kManagementScreenCaptureData[];
 #endif  // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-extern const char kManagementDeviceSignalsDisclosure[];
-#endif  // #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-
 #if BUILDFLAG(IS_CHROMEOS)
 extern const char kManagementLogUploadEnabled[];
 extern const char kManagementReportActivityTimes[];
@@ -50,8 +46,6 @@ extern const char kManagementReportPrintJobs[];
 extern const char kManagementReportDlpEvents[];
 extern const char kManagementReportLoginLogout[];
 extern const char kManagementReportCRDSessions[];
-extern const char kManagementReportAllWebsiteInfoAndActivity[];
-extern const char kManagementReportWebsiteInfoAndActivity[];
 extern const char kManagementPrinting[];
 extern const char kManagementCrostini[];
 extern const char kManagementCrostiniContainerConfiguration[];
@@ -90,8 +84,6 @@ extern const char kManagementOnPrintVisibleData[];
 extern const char kManagementOnPageVisitedEvent[];
 extern const char kManagementOnPageVisitedVisibleData[];
 
-extern const char kManagementLegacyTechReport[];
-
 extern const char kPolicyKeyReportMachineIdData[];
 extern const char kPolicyKeyReportUserIdData[];
 extern const char kPolicyKeyReportVersionData[];
@@ -106,7 +98,6 @@ extern const char kReportingTypeExtensions[];
 extern const char kReportingTypeSecurity[];
 extern const char kReportingTypeUser[];
 extern const char kReportingTypeUserActivity[];
-extern const char kReportingTypeLegacyTech[];
 
 namespace extensions {
 class Extension;
@@ -118,12 +109,6 @@ class PolicyService;
 class StatusCollector;
 class SystemLogUploader;
 }  // namespace policy
-
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-namespace device_signals {
-class UserPermissionService;
-}  // namespace device_signals
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 class Profile;
 
@@ -177,11 +162,7 @@ class ManagementUIHandler : public content::WebUIMessageHandler,
   base::Value::Dict GetContextualManagedData(Profile* profile);
   base::Value::Dict GetThreatProtectionInfo(Profile* profile);
   base::Value::List GetManagedWebsitesInfo(Profile* profile) const;
-  base::Value::List GetApplicationsInfo(Profile* profile) const;
   virtual policy::PolicyService* GetPolicyService();
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-  virtual device_signals::UserPermissionService* GetUserPermissionService();
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // Protected for testing.
@@ -196,11 +177,11 @@ class ManagementUIHandler : public content::WebUIMessageHandler,
   void AddUpdateRequiredEolInfo(base::Value::Dict* response) const;
 
   // Adds a boolean which indicates if the network traffic can be monitored by
-  // the admin via policy configurations, either via a proxy server, via
-  // secure DNS templates with identifiers, or via XDR monitoring. If true, a
-  // warning will be added to the transparency panel to inform the user that the
-  // admin may be able to see their network traffic.
-  void AddMonitoredNetworkPrivacyDisclosure(base::Value::Dict* response);
+  // the admin via policy configurations, either via a proxy server or via
+  // secure DNS templates with identifiers. If true, a warning will be added to
+  // the transparency panel to inform the user that the admin may be able to see
+  // their network traffic.
+  void AddMonitoredNetworkPrivacyDisclosure(base::Value::Dict* response) const;
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
  private:
   void GetManagementStatus(Profile* profile, base::Value::Dict* status) const;
@@ -220,7 +201,6 @@ class ManagementUIHandler : public content::WebUIMessageHandler,
   void HandleGetContextualManagedData(const base::Value::List& args);
   void HandleGetThreatProtectionInfo(const base::Value::List& args);
   void HandleGetManagedWebsites(const base::Value::List& args);
-  void HandleGetApplications(const base::Value::List& args);
   void HandleInitBrowserReportingInfo(const base::Value::List& args);
 
   void AsyncUpdateLogo();

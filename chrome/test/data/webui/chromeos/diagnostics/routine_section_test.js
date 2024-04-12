@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 import 'chrome://diagnostics/routine_section.js';
-import 'chrome://resources/ash/common/cr_elements/cr_button/cr_button.js';
-import 'chrome://webui-test/chromeos/mojo_webui_test_support.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
 import {createRoutine} from 'chrome://diagnostics/diagnostics_utils.js';
 import {FakeSystemRoutineController} from 'chrome://diagnostics/fake_system_routine_controller.js';
@@ -35,7 +35,7 @@ suite('routineSectionTestSuite', function() {
   const originalTime = performance.now;
 
   setup(function() {
-    document.body.innerHTML = window.trustedTypes.emptyHTML;
+    document.body.innerHTML = '';
 
     // Setup a fake routine controller so that nothing resolves unless
     // done explicitly.

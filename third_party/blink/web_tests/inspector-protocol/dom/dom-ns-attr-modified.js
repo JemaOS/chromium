@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startHTML(`
     <svg>
         <a id='main' xlink:href='http://localhost'>link</a>

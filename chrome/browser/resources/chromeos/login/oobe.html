@@ -22,14 +22,19 @@
   <script type="module" src="./install_oobe_error_store.js"></script>
 
   <!-- OOBE Start Script -->
-  <link rel="modulepreload" href="chrome://oobe/screens.js">
   <script type="module" src="./oobe.js"></script>
 </head>
 <custom-style>
-  <style include="oobe-flex-layout-styles"></style>
+  <style include="oobe-flex-layout-styles">
+    .layout.vertical {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+  </style>
 </custom-style>
 
-<body class="oobe-display chromeos" style="font-family:$i18n{fontfamily}">
+<body class="oobe-display chromeos jemaos" style="font-family:$i18n{fontfamily}">
   <api-keys-notice-element id="api-keys-notice" hidden>
   </api-keys-notice-element>
 
@@ -38,9 +43,6 @@
       <div class="oobe-vertical-margin"></div>
       <div id="oobe" class="faded">
         <div id="inner-container" class="down">
-          <!-- Unconditionally load assets for unbranded test bots -->
-          <img id="welcome-backdrop" aria-hidden="true" decoding="sync"
-              src="internal_assets/welcome_backdrop.svg">
           <!-- SCREENS ARE ADDED HERE DYNAMICALLY -->
         </div>
       </div>

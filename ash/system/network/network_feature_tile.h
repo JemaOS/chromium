@@ -16,9 +16,9 @@ class Button;
 
 // This class is used to notify the view's theme changes to its delegates.
 class ASH_EXPORT NetworkFeatureTile : public FeatureTile {
-  METADATA_HEADER(NetworkFeatureTile, FeatureTile)
-
  public:
+  METADATA_HEADER(NetworkFeatureTile);
+
   class Delegate {
    public:
     virtual void OnFeatureTileThemeChanged() = 0;
@@ -34,7 +34,7 @@ class ASH_EXPORT NetworkFeatureTile : public FeatureTile {
   // views::Button:
   void OnThemeChanged() override;
 
-  const raw_ptr<Delegate, DanglingUntriaged> delegate_;
+  const raw_ptr<Delegate, ExperimentalAsh> delegate_;
 };
 
 }  // namespace ash

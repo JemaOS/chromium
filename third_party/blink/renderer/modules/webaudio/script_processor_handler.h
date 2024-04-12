@@ -19,7 +19,6 @@
 
 namespace base {
 class SingleThreadTaskRunner;
-class WaitableEvent;
 }
 
 namespace blink {
@@ -27,6 +26,7 @@ namespace blink {
 class AudioBuffer;
 class BaseAudioContext;
 class SharedAudioBuffer;
+class WaitableEvent;
 
 class ScriptProcessorHandler final
     : public AudioHandler,

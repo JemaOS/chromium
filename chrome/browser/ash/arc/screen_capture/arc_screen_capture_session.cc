@@ -15,16 +15,16 @@
 #include "chrome/grit/generated_resources.h"
 #include "components/viz/common/frame_sinks/copy_output_request.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
-#include "components/viz/common/gpu/raster_context_provider.h"
-#include "components/viz/common/resources/shared_image_format_utils.h"
+#include "components/viz/common/gpu/context_provider.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/desktop_media_id.h"
 #include "gpu/GLES2/gl2extchromium.h"
-#include "gpu/command_buffer/client/client_shared_image.h"
 #include "gpu/command_buffer/client/context_support.h"
-#include "gpu/command_buffer/client/raster_interface.h"
+#include "gpu/command_buffer/client/gles2_interface.h"
 #include "gpu/command_buffer/client/shared_image_interface.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
+#include "gpu/ipc/common/gpu_memory_buffer_impl.h"
+#include "gpu/ipc/common/gpu_memory_buffer_impl_native_pixmap.h"
 #include "mojo/public/cpp/system/platform_handle.h"
 #include "third_party/blink/public/common/mediastream/media_stream_request.h"
 #include "ui/aura/env.h"
@@ -50,30 +50,33 @@ constexpr size_t kQueueSizeToDropFrames = 8;
 // bytes.
 constexpr size_t kBytesPerPixel = 4;
 
-scoped_refptr<viz::RasterContextProvider> GetContextProvider() {
+scoped_refptr<viz::ContextProvider> GetContextProvider() {
   return aura::Env::GetInstance()
       ->context_factory()
-      ->SharedMainThreadRasterContextProvider();
+      ->SharedMainThreadContextProvider();
 }
 
 }  // namespace
 
-// Holds ARC++ provided buffer to copy into.
 struct ArcScreenCaptureSession::PendingBuffer {
   PendingBuffer(SetOutputBufferCallback callback,
-                scoped_refptr<gpu::ClientSharedImage> shared_image)
-      : buffer_ready_callback_(std::move(callback)),
-        shared_image_(std::move(shared_image)) {}
-  SetOutputBufferCallback buffer_ready_callback_;
-  scoped_refptr<gpu::ClientSharedImage> shared_image_;
+                GLuint texture,
+                const gpu::Mailbox& mailbox)
+      : callback_(std::move(callback)), texture_(texture), mailbox_(mailbox) {}
+  SetOutputBufferCallback callback_;
+  const GLuint texture_;
+  const gpu::Mailbox mailbox_;
 };
 
-// Holds CopyOutputResult texture.
 struct ArcScreenCaptureSession::DesktopTexture {
-  DesktopTexture(const gpu::Mailbox& mailbox,
+  DesktopTexture(GLuint texture,
+                 gfx::Size size,
                  viz::ReleaseCallback release_callback)
-      : mailbox_(mailbox), release_callback_(std::move(release_callback)) {}
-  const gpu::Mailbox mailbox_;
+      : texture_(texture),
+        size_(size),
+        release_callback_(std::move(release_callback)) {}
+  const GLuint texture_;
+  gfx::Size size_;
   viz::ReleaseCallback release_callback_;
 };
 
@@ -90,9 +93,8 @@ ArcScreenCaptureSession::Create(
       new ArcScreenCaptureSession(std::move(notifier), size);
   mojo::PendingRemote<mojom::ScreenCaptureSession> result =
       session->Initialize(desktop_id, display_name, enable_notification);
-  if (!result) {
+  if (!result)
     delete session;
-  }
   return result;
 }
 
@@ -119,9 +121,19 @@ ArcScreenCaptureSession::Initialize(content::DesktopMediaID desktop_id,
   auto context_provider = GetContextProvider();
   context_provider->AddObserver(this);
 
+  gl_helper_ = std::make_unique<gpu::GLHelper>(
+      context_provider->ContextGL(), context_provider->ContextSupport());
+
   display::Display display =
       display::Screen::GetScreen()->GetDisplayNearestWindow(
           display_root_window_);
+
+  gfx::Size desktop_size = display.GetSizeInPixel();
+
+  scaler_ = gl_helper_->CreateScaler(
+      gpu::GLHelper::ScalerQuality::SCALER_QUALITY_GOOD,
+      gfx::Vector2d(desktop_size.width(), desktop_size.height()),
+      gfx::Vector2d(size_.width(), size_.height()), false, true, false);
 
   display_root_window_->GetHost()->compositor()->AddAnimationObserver(this);
 
@@ -130,8 +142,7 @@ ArcScreenCaptureSession::Initialize(content::DesktopMediaID desktop_id,
     std::u16string notification_text =
         l10n_util::GetStringFUTF16(IDS_MEDIA_SCREEN_CAPTURE_NOTIFICATION_TEXT,
                                    base::UTF8ToUTF16(display_name));
-    notification_ui_ = ScreenCaptureNotificationUI::Create(
-        notification_text, /*capturing_web_contents=*/nullptr);
+    notification_ui_ = ScreenCaptureNotificationUI::Create(notification_text);
     notification_ui_->OnStarted(
         base::BindOnce(&ArcScreenCaptureSession::NotificationStop,
                        weak_ptr_factory_.GetWeakPtr()),
@@ -157,9 +168,8 @@ void ArcScreenCaptureSession::Close() {
 ArcScreenCaptureSession::~ArcScreenCaptureSession() {
   GetContextProvider()->RemoveObserver(this);
 
-  if (!display_root_window_) {
+  if (!display_root_window_)
     return;
-  }
 
   display_root_window_->GetHost()->compositor()->RemoveAnimationObserver(this);
   ash::Shell::Get()->display_manager()->dec_screen_capture_active_counter();
@@ -199,9 +209,9 @@ void ArcScreenCaptureSession::SetOutputBuffer(
     std::move(callback).Run();
     return;
   }
-  auto* ri = GetContextProvider()->RasterInterface();
+  gpu::gles2::GLES2Interface* gl = GetContextProvider()->ContextGL();
   auto* sii = GetContextProvider()->SharedImageInterface();
-  if (!ri || !sii) {
+  if (!gl || !sii) {
     LOG(ERROR) << "Unable to get the GL context or SharedImageInterface";
     return;
   }
@@ -220,26 +230,35 @@ void ArcScreenCaptureSession::SetOutputBuffer(
   handle.native_pixmap_handle.planes.emplace_back(
       stride * kBytesPerPixel, 0, stride * kBytesPerPixel * size_.height(),
       std::move(platform_file));
+  std::unique_ptr<gfx::GpuMemoryBuffer> gpu_memory_buffer =
+      gpu::GpuMemoryBufferImplNativePixmap::CreateFromHandle(
+          client_native_pixmap_factory_.get(), std::move(handle), size_,
+          buffer_format, gfx::BufferUsage::SCANOUT,
+          gpu::GpuMemoryBufferImpl::DestructionCallback());
+  if (!gpu_memory_buffer) {
+    LOG(ERROR) << "Failed creating GpuMemoryBuffer";
+    std::move(callback).Run();
+    return;
+  }
 
-  viz::SharedImageFormat si_format =
-      viz::GetSinglePlaneSharedImageFormat(buffer_format);
-  CHECK(!si_format.IsLegacyMultiplanar());
+  auto* gpu_memory_buffer_manager =
+      aura::Env::GetInstance()->context_factory()->GetGpuMemoryBufferManager();
+  gpu::Mailbox mailbox = sii->CreateSharedImage(
+      gpu_memory_buffer.get(), gpu_memory_buffer_manager, gfx::ColorSpace(),
+      kTopLeft_GrSurfaceOrigin, kPremul_SkAlphaType,
+      gpu::SHARED_IMAGE_USAGE_GLES2 |
+          gpu::SHARED_IMAGE_USAGE_GLES2_FRAMEBUFFER_HINT,
+      "ArcScreenCapture");
+  gl->WaitSyncTokenCHROMIUM(sii->GenUnverifiedSyncToken().GetConstData());
 
-  auto client_shared_image = sii->CreateSharedImage(
-      {si_format, size_, gfx::ColorSpace(),
-       // NOTE: This SI will be used as the destination of a copy of the desktop
-       // texture via the raster interface. Hence, it needs RASTER_WRITE usage.
-       // Note that as the browser process raster interface uses
-       // RasterImplementation (and not RasterImplementationGLES) as its
-       // implementation, GLES2_WRITE usage is not needed.
-       gpu::SHARED_IMAGE_USAGE_RASTER_WRITE, "ArcScreenCapture"},
-      std::move(handle));
-  CHECK(client_shared_image);
-  ri->WaitSyncTokenCHROMIUM(sii->GenUnverifiedSyncToken().GetConstData());
+  GLuint texture = gl->CreateAndTexStorage2DSharedImageCHROMIUM(mailbox.name);
+  gl->BeginSharedImageAccessDirectCHROMIUM(
+      texture, GL_SHARED_IMAGE_ACCESS_MODE_READWRITE_CHROMIUM);
+
+  gl->BindTexture(GL_TEXTURE_2D, texture);
 
   std::unique_ptr<PendingBuffer> pending_buffer =
-      std::make_unique<PendingBuffer>(std::move(callback),
-                                      std::move(client_shared_image));
+      std::make_unique<PendingBuffer>(std::move(callback), texture, mailbox);
   if (texture_queue_.empty()) {
     // Put our GPU buffer into a queue so it can be used on the next callback
     // where we get a desktop texture.
@@ -254,75 +273,63 @@ void ArcScreenCaptureSession::SetOutputBuffer(
 }
 
 void ArcScreenCaptureSession::QueryCompleted(
-    uint32_t query_id,
+    GLuint query_id,
     std::unique_ptr<DesktopTexture> desktop_texture,
     std::unique_ptr<PendingBuffer> pending_buffer) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
-  auto* ri = GetContextProvider()->RasterInterface();
+  gpu::gles2::GLES2Interface* gl = GetContextProvider()->ContextGL();
   auto* sii = GetContextProvider()->SharedImageInterface();
-  if (!ri || !sii) {
-    LOG(ERROR) << "Unable to get RasterInterface or SharedImageInterface";
+  if (!gl || !sii) {
+    LOG(ERROR) << "Unable to get the GL context or SharedImageInterface";
     return;
   }
 
   // Return CopyOutputResult resources after texture copy happens.
+  gl->DeleteTextures(1, &desktop_texture->texture_);
   gpu::SyncToken sync_token;
-  ri->GenSyncTokenCHROMIUM(sync_token.GetData());
+  gl->GenSyncTokenCHROMIUM(sync_token.GetData());
   std::move(desktop_texture->release_callback_).Run(sync_token, false);
 
   // Notify ARC++ that the buffer is ready.
-  std::move(pending_buffer->buffer_ready_callback_).Run();
-
-  ri->DeleteQueriesEXT(1, &query_id);
+  std::move(pending_buffer->callback_).Run();
 
   // Return resources for ARC++ buffer.
-  sii->DestroySharedImage(gpu::SyncToken(),
-                          std::move(pending_buffer->shared_image_));
+  gl->EndSharedImageAccessDirectCHROMIUM(pending_buffer->texture_);
+  gl->DeleteTextures(1, &pending_buffer->texture_);
+  gl->DeleteQueriesEXT(1, &query_id);
+
+  sii->DestroySharedImage(gpu::SyncToken(), pending_buffer->mailbox_);
 }
 
 void ArcScreenCaptureSession::OnDesktopCaptured(
     std::unique_ptr<viz::CopyOutputResult> result) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-
-  if (result->IsEmpty() || result->size().width() < size_.width() - 1 ||
-      result->size().width() > size_.width() + 1 ||
-      result->size().height() < size_.height() - 1 ||
-      result->size().height() > size_.height() + 1) {
-    // If the display size changed after the CopyOutputRequest was issued the
-    // scale ratio might not produce the right sized output. Drop this result
-    // since it's not usable. The next CopyOutputRequest to be issued will know
-    // the new display size and have the correct scale ratio.
-    // Note that result->size() is computed, and so may be a +/- one pixel from
-    // the expected size_ value due to rounding and truncation of floating
-    // point values. See b/322075216.
-    LOG(WARNING)
-        << "Ignoring screen capture result due to size mismatch. Expected "
-        << size_.ToString() << " but received " << result->size().ToString();
+  gpu::gles2::GLES2Interface* gl = GetContextProvider()->ContextGL();
+  if (!gl) {
+    LOG(ERROR) << "Unable to get the GL context";
     return;
   }
+  if (result->IsEmpty())
+    return;
 
   DCHECK_EQ(result->format(), viz::CopyOutputResult::Format::RGBA);
   DCHECK_EQ(result->destination(),
             viz::CopyOutputResult::Destination::kNativeTextures);
 
-  auto* ri = GetContextProvider()->RasterInterface();
-  if (!ri) {
-    LOG(ERROR) << "Unable to get RasterInterface";
-    return;
-  }
   // Get the source texture - RGBA format is guaranteed to have 1 valid texture
   // if the CopyOutputRequest succeeded:
-  gpu::MailboxHolder mailbox_holder =
-      result->GetTextureResult()->mailbox_holders[0];
-  ri->WaitSyncTokenCHROMIUM(mailbox_holder.sync_token.GetConstData());
-
+  const gpu::MailboxHolder& plane = result->GetTextureResult()->planes[0];
+  gl->WaitSyncTokenCHROMIUM(plane.sync_token.GetConstData());
+  GLuint src_texture =
+      gl->CreateAndTexStorage2DSharedImageCHROMIUM(plane.mailbox.name);
   viz::CopyOutputResult::ReleaseCallbacks release_callbacks =
       result->TakeTextureOwnership();
-  CHECK_EQ(1u, release_callbacks.size());
+
+  DCHECK_EQ(1u, release_callbacks.size());
 
   std::unique_ptr<DesktopTexture> desktop_texture =
-      std::make_unique<DesktopTexture>(mailbox_holder.mailbox,
+      std::make_unique<DesktopTexture>(src_texture, result->size(),
                                        std::move(release_callbacks[0]));
   if (buffer_queue_.empty()) {
     // We don't have a GPU buffer to render to, so put this in a queue to use
@@ -340,24 +347,23 @@ void ArcScreenCaptureSession::CopyDesktopTextureToGpuBuffer(
     std::unique_ptr<DesktopTexture> desktop_texture,
     std::unique_ptr<PendingBuffer> pending_buffer) {
   auto context_provider = GetContextProvider();
-  auto* ri = context_provider->RasterInterface();
+  gpu::gles2::GLES2Interface* gl = context_provider->ContextGL();
 
-  if (!ri) {
-    LOG(ERROR) << "Unable to get RasterInterface";
+  if (!gl) {
+    LOG(ERROR) << "Unable to get the GL context";
     return;
   }
-  uint32_t query_id;
-  ri->GenQueriesEXT(1, &query_id);
-  ri->BeginQueryEXT(GL_COMMANDS_COMPLETED_CHROMIUM, query_id);
-  ri->CopySharedImage(desktop_texture->mailbox_,
-                      pending_buffer->shared_image_->mailbox(), GL_TEXTURE_2D,
-                      0, 0, 0, 0, size_.width(), size_.height(),
-                      /*unpack_flip_y=*/false,
-                      /*unpack_premultiply_alpha=*/false);
-  ri->EndQueryEXT(GL_COMMANDS_COMPLETED_CHROMIUM);
+  GLuint query_id;
+  gl->GenQueriesEXT(1, &query_id);
+  gl->BeginQueryEXT(GL_COMMANDS_COMPLETED_CHROMIUM, query_id);
+  gl->BeginSharedImageAccessDirectCHROMIUM(
+      desktop_texture->texture_, GL_SHARED_IMAGE_ACCESS_MODE_READ_CHROMIUM);
+  scaler_->Scale(desktop_texture->texture_, desktop_texture->size_,
+                 gfx::Vector2dF(), pending_buffer->texture_,
+                 gfx::Rect(0, 0, size_.width(), size_.height()));
+  gl->EndSharedImageAccessDirectCHROMIUM(desktop_texture->texture_);
+  gl->EndQueryEXT(GL_COMMANDS_COMPLETED_CHROMIUM);
 
-  // The query will be signalled after the copy operation has finished on the
-  // GPU and ARC++ can safely read from the buffer.
   context_provider->ContextSupport()->SignalQuery(
       query_id,
       base::BindOnce(&ArcScreenCaptureSession::QueryCompleted,
@@ -397,14 +403,7 @@ void ArcScreenCaptureSession::OnAnimationStep(base::TimeTicks timestamp) {
           base::BindOnce(&ArcScreenCaptureSession::OnDesktopCaptured,
                          weak_ptr_factory_.GetWeakPtr()));
   // Clip the requested area to the desktop area. See b/118675936.
-  gfx::Size desktop_size = display_root_window_->bounds().size();
-  request->set_area(gfx::Rect(desktop_size));
-  if (desktop_size != size_) {
-    // Perform scaling to desired size when copying output.
-    request->SetScaleRatio(
-        gfx::Vector2d(desktop_size.width(), desktop_size.height()),
-        gfx::Vector2d(size_.width(), size_.height()));
-  }
+  request->set_area(gfx::Rect(display_root_window_->bounds().size()));
   layer->RequestCopyOfOutput(std::move(request));
 }
 

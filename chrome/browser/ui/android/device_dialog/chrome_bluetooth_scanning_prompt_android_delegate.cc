@@ -6,16 +6,13 @@
 
 #include "base/android/jni_android.h"
 #include "chrome/android/chrome_jni_headers/ChromeBluetoothScanningPromptAndroidDelegate_jni.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profile_android.h"
 #include "chrome/browser/ssl/security_state_tab_helper.h"
 
 ChromeBluetoothScanningPromptAndroidDelegate::
-    ChromeBluetoothScanningPromptAndroidDelegate(Profile* profile) {
+    ChromeBluetoothScanningPromptAndroidDelegate() {
   JNIEnv* env = base::android::AttachCurrentThread();
   java_delegate_.Reset(
-      Java_ChromeBluetoothScanningPromptAndroidDelegate_Constructor(
-          env, ProfileAndroid::FromProfile(profile)->GetJavaObject()));
+      Java_ChromeBluetoothScanningPromptAndroidDelegate_create(env));
 }
 
 ChromeBluetoothScanningPromptAndroidDelegate::

@@ -145,7 +145,8 @@ class ModuleDatabase : public ModuleDatabaseEventSource {
   void AddObserver(ModuleDatabaseObserver* observer) override;
   void RemoveObserver(ModuleDatabaseObserver* observer) override;
 
-  void StartInspection();
+  // Skips waiting for startup to be finished to start inspecting modules.
+  void ForceStartInspection();
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   static void RegisterLocalStatePrefs(PrefRegistrySimple* registry);

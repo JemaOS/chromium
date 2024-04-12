@@ -23,23 +23,26 @@ DesktopProfileSessionDurationsServiceFactory::GetForBrowserContext(
 // static
 DesktopProfileSessionDurationsServiceFactory*
 DesktopProfileSessionDurationsServiceFactory::GetInstance() {
-  static base::NoDestructor<DesktopProfileSessionDurationsServiceFactory>
-      instance;
-  return instance.get();
+  return base::Singleton<DesktopProfileSessionDurationsServiceFactory>::get();
 }
 
 DesktopProfileSessionDurationsServiceFactory::
     DesktopProfileSessionDurationsServiceFactory()
     : ProfileKeyedServiceFactory(
           "DesktopProfileSessionDurationsService",
-          // Guest and system profiles are excluded from session metrics.
+          // Avoid counting session duration metrics for System and Guest
+          // profiles.
+          //
+          // Guest profiles are also excluded from session metrics because they
+          // are created when presenting the profile picker (per
+          // crbug.com/1150326) and this would skew the metrics.
           //
           // Session time in incognito is counted towards the session time in
           // the regular profile. That means that for a user that is signed in
           // and syncing in their regular profile and that is browsing in
           // incognito profile, Chromium will record the session time as being
           // signed in and syncing.
-          ProfileSelections::BuildRedirectedInIncognito()) {
+          ProfileSelections::BuildRedirectedInIncognitoNonExperimental()) {
   DependsOn(SyncServiceFactory::GetInstance());
   DependsOn(IdentityManagerFactory::GetInstance());
 }
@@ -47,9 +50,9 @@ DesktopProfileSessionDurationsServiceFactory::
 DesktopProfileSessionDurationsServiceFactory::
     ~DesktopProfileSessionDurationsServiceFactory() = default;
 
-std::unique_ptr<KeyedService> DesktopProfileSessionDurationsServiceFactory::
-    BuildServiceInstanceForBrowserContext(
-        content::BrowserContext* context) const {
+KeyedService*
+DesktopProfileSessionDurationsServiceFactory::BuildServiceInstanceFor(
+    content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
 // On Ash and Lacros IsGuestSession and IsRegularProfile() are not mutually
@@ -68,7 +71,7 @@ std::unique_ptr<KeyedService> DesktopProfileSessionDurationsServiceFactory::
   DesktopSessionDurationTracker* tracker = DesktopSessionDurationTracker::Get();
   signin::IdentityManager* identity_manager =
       IdentityManagerFactory::GetForProfile(profile);
-  return std::make_unique<DesktopProfileSessionDurationsService>(
+  return new DesktopProfileSessionDurationsService(
       profile->GetPrefs(), sync_service, identity_manager, tracker);
 }
 

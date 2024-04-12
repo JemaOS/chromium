@@ -16,7 +16,8 @@ class ASH_EXPORT BatteryImageSource : public gfx::CanvasImageSource {
  public:
   BatteryImageSource(const PowerStatus::BatteryImageInfo& info,
                      int height,
-                     const BatteryColors& colors);
+                     SkColor fg_color,
+                     absl::optional<SkColor> badge_color);
 
   BatteryImageSource(BatteryImageSource&) = delete;
   BatteryImageSource operator=(BatteryImageSource&) = delete;
@@ -29,7 +30,8 @@ class ASH_EXPORT BatteryImageSource : public gfx::CanvasImageSource {
 
  private:
   PowerStatus::BatteryImageInfo info_;
-  BatteryColors resolved_colors_;
+  const SkColor fg_color_;
+  const SkColor badge_color_;
 };
 
 }  // namespace ash

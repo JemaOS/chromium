@@ -170,7 +170,9 @@ void PresentationReceiverWindowView::Init() {
   SecurityStateTabHelper::CreateForWebContents(web_contents);
   ChromeTranslateClient::CreateForWebContents(web_contents);
   autofill::ChromeAutofillClient::CreateForWebContents(web_contents);
-  ChromePasswordManagerClient::CreateForWebContents(web_contents);
+  ChromePasswordManagerClient::CreateForWebContentsWithAutofillClient(
+      web_contents,
+      autofill::ContentAutofillClient::FromWebContents(web_contents));
   ChromePasswordReuseDetectionManagerClient::CreateForWebContents(web_contents);
   ManagePasswordsUIController::CreateForWebContents(web_contents);
   SearchTabHelper::CreateForWebContents(web_contents);
@@ -318,6 +320,7 @@ void PresentationReceiverWindowView::UpdateExclusiveAccessExitBubbleContent(
     ExclusiveAccessBubbleHideCallback bubble_first_hide_callback,
     bool notify_download,
     bool force_update) {
+  DCHECK(!notify_download || exclusive_access_bubble_);
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // On Chrome OS, we will not show the toast for the normal browser fullscreen
   // mode.  The 'F11' text is confusing since how to access F11 on a Chromebook
@@ -346,8 +349,7 @@ void PresentationReceiverWindowView::UpdateExclusiveAccessExitBubbleContent(
   }
 
   exclusive_access_bubble_ = std::make_unique<ExclusiveAccessBubbleViews>(
-      this, url, bubble_type, notify_download,
-      std::move(bubble_first_hide_callback));
+      this, url, bubble_type, std::move(bubble_first_hide_callback));
 }
 
 bool PresentationReceiverWindowView::IsExclusiveAccessBubbleDisplayed() const {
@@ -404,7 +406,7 @@ void PresentationReceiverWindowView::DestroyAnyExclusiveAccessBubble() {
   exclusive_access_bubble_.reset();
 }
 
-bool PresentationReceiverWindowView::CanTriggerOnMousePointer() const {
+bool PresentationReceiverWindowView::CanTriggerOnMouse() const {
   return true;
 }
 
@@ -423,8 +425,8 @@ void PresentationReceiverWindowView::OnFullscreenChanged() {
     exclusive_access_bubble_.reset();
   location_bar_view_->SetVisible(!fullscreen);
   if (fullscreen == (location_bar_view_->height() > 0))
-    DeprecatedLayoutImmediately();
+    Layout();
 }
 
-BEGIN_METADATA(PresentationReceiverWindowView)
+BEGIN_METADATA(PresentationReceiverWindowView, views::WidgetDelegateView)
 END_METADATA

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_API_PASSWORDS_PRIVATE_PASSWORDS_PRIVATE_EVENT_ROUTER_FACTORY_H_
 #define CHROME_BROWSER_EXTENSIONS_API_PASSWORDS_PRIVATE_PASSWORDS_PRIVATE_EVENT_ROUTER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace extensions {
@@ -36,7 +36,8 @@ class PasswordsPrivateEventRouterFactory : public ProfileKeyedServiceFactory {
   bool ServiceIsNULLWhileTesting() const override;
 
  private:
-  friend base::NoDestructor<PasswordsPrivateEventRouterFactory>;
+  friend struct base::DefaultSingletonTraits<
+      PasswordsPrivateEventRouterFactory>;
 
   PasswordsPrivateEventRouterFactory();
   ~PasswordsPrivateEventRouterFactory() override;

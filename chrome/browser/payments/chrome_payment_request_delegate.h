@@ -74,8 +74,6 @@ class ChromePaymentRequestDelegate : public ContentPaymentRequestDelegate {
   SecurePaymentConfirmationNoCreds* GetNoMatchingCredentialsDialogForTesting()
       override;
   const base::WeakPtr<PaymentUIObserver> GetPaymentUIObserver() const override;
-  std::optional<base::UnguessableToken> GetChromeOSTWAInstanceId()
-      const override;
 
  protected:
   // Reference to the dialog so that we can satisfy calls to CloseDialog(). This

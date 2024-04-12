@@ -58,8 +58,7 @@ IN_PROC_BROWSER_TEST_F(AbortPaymentHandlerTest,
 
   NavigateTo("b.com", "/payment_handler_aborter.html");
   EXPECT_EQ(
-      "Failed to execute 'abort' on 'PaymentRequest': Unable to abort the "
-      "payment",
+      "Unable to abort the payment",
       content::EvalJs(GetActiveWebContents(),
                       content::JsReplace("launchAndAbort($1, $2)", method_name,
                                          /*abortResponse=*/false)));
@@ -73,8 +72,7 @@ IN_PROC_BROWSER_TEST_F(AbortPaymentHandlerTest,
 
   NavigateTo("b.com", "/payment_handler_aborter.html");
   EXPECT_EQ(
-      "Failed to execute 'abort' on 'PaymentRequest': Unable to abort the "
-      "payment",
+      "Unable to abort the payment",
       content::EvalJs(GetActiveWebContents(),
                       content::JsReplace("launchAndAbort($1, $2)", method_name,
                                          /*abortResponse=*/false)));

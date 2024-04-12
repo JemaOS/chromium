@@ -26,7 +26,7 @@ class HistoryClustersModuleRankingModelExecutor
   // optimization_guide::BaseModelExecutor:
   bool Preprocess(const std::vector<TfLiteTensor*>& input_tensors,
                   const std::vector<float>& input) override;
-  std::optional<float> Postprocess(
+  absl::optional<float> Postprocess(
       const std::vector<const TfLiteTensor*>& output_tensors) override;
 };
 

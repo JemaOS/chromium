@@ -60,9 +60,9 @@ class VectorBackedLinkedListNode {
   VectorBackedLinkedListNode& operator=(VectorBackedLinkedListNode&& other) =
       default;
 
-  void Trace(auto visitor) const
-    requires Allocator::kIsGarbageCollected
-  {
+  template <typename VisitorDispathcer, typename A = Allocator>
+  std::enable_if_t<A::kIsGarbageCollected> Trace(
+      VisitorDispathcer visitor) const {
     if (!WTF::IsWeak<ValueType>::value) {
       visitor->Trace(value_);
     }
@@ -163,8 +163,6 @@ template <typename ValueType, typename Allocator = PartitionAllocator>
 class VectorBackedLinkedList {
   USE_ALLOCATOR(VectorBackedLinkedList, Allocator);
 
-  static_assert(!IsStackAllocatedType<ValueType>);
-
  private:
   using Node = VectorBackedLinkedListNode<ValueType, Allocator>;
   // Using Vector like this (instead of HeapVector for garbage collected types)
@@ -253,9 +251,9 @@ class VectorBackedLinkedList {
     size_ = 0;
   }
 
-  void Trace(auto visitor) const
-    requires Allocator::kIsGarbageCollected
-  {
+  template <typename VisitorDispatcher, typename A = Allocator>
+  std::enable_if_t<A::kIsGarbageCollected> Trace(
+      VisitorDispatcher visitor) const {
     nodes_.Trace(visitor);
     if (WTF::IsWeak<ValueType>::value) {
       visitor->template RegisterWeakCallbackMethod<
@@ -308,9 +306,8 @@ class VectorBackedLinkedList {
   void Unlink(const Node&);
 
   template <typename A = Allocator>
-  void ProcessCustomWeakness(const typename A::LivenessBroker& broker)
-    requires A::kIsGarbageCollected
-  {
+  std::enable_if_t<A::kIsGarbageCollected> ProcessCustomWeakness(
+      const typename A::LivenessBroker& broker) {
     auto it = begin();
     while (it != end()) {
       if (!broker.IsHeapObjectAlive(it->Get())) {

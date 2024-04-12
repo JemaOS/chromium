@@ -10,7 +10,6 @@
 
 #include "base/metrics/histogram_macros.h"
 #include "base/timer/elapsed_timer.h"
-#include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/gpu_fence.h"
 #include "ui/gfx/linux/drm_util_linux.h"
@@ -93,9 +92,7 @@ DrmOverlayPlane DrmOverlayValidator::MakeOverlayPlane(
   scoped_refptr<DrmFramebuffer> buffer =
       GetBufferForPageFlipTest(window_, param, &reusable_buffers);
 
-  return DrmOverlayPlane(buffer, param.color_space, param.plane_z_order,
-                         absl::get<gfx::OverlayTransform>(param.transform),
-                         gfx::ToNearestRect(param.display_rect),
+  return DrmOverlayPlane(buffer, param.plane_z_order, param.transform,
                          gfx::ToNearestRect(param.display_rect),
                          param.crop_rect, !param.is_opaque,
                          /*gpu_fence=*/nullptr);

@@ -8,7 +8,6 @@
 
 #include "base/containers/flat_set.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/test/simple_test_tick_clock.h"
 #include "base/time/time.h"
@@ -16,7 +15,6 @@
 #include "chrome/browser/resource_coordinator/tab_manager_features.h"
 #include "chrome/browser/sessions/session_restore_test_utils.h"
 #include "chrome/browser/sessions/tab_loader_tester.h"
-#include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -120,7 +118,7 @@ class TabLoaderTest : public BrowserWithTestWindowTest {
     ResourceCoordinatorTabHelper::CreateForWebContents(raw_contents);
     restored_tabs_.push_back(
         RestoredTab(raw_contents, is_active /* is_active */, false /* is_app */,
-                    false /* is_pinned */, std::nullopt /* group */));
+                    false /* is_pinned */, absl::nullopt /* group */));
 
     // Add the contents to the tab strip model, which becomes the owner.
     auto* tab_strip_model = browser()->tab_strip_model();
@@ -161,11 +159,10 @@ class TabLoaderTest : public BrowserWithTestWindowTest {
 
     // Copy because the set can change while calling
     // SimulatePrimaryPageChanged() and the iteration is invalidated.
-    base::flat_set<raw_ptr<content::WebContents, CtnExperimental>>
-        load_initiated = tab_loader_.tabs_load_initiated();
-    for (content::WebContents* web_contents : load_initiated) {
+    base::flat_set<content::WebContents*> load_initiated =
+        tab_loader_.tabs_load_initiated();
+    for (auto* web_contents : load_initiated)
       SimulatePrimaryPageChanged(web_contents);
-    }
   }
 
   void StartTabLoader() {
@@ -465,7 +462,8 @@ TEST_F(TabLoaderTest, RemoveFromTabStrip) {
   EXPECT_EQ(1u, tab_loader_.scheduled_to_load_count());
 
   // Remove the second tab from the tab strip model.
-  browser()->tab_strip_model()->DetachAndDeleteWebContentsAt(1);
+  std::unique_ptr<content::WebContents> contents =
+      browser()->tab_strip_model()->DetachWebContentsAtForInsertion(1);
 
   // The tab being removed won't be noticed by the loader until some state
   // change it cares about occurs. Simulate the first tab finishing loading, at

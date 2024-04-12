@@ -18,7 +18,7 @@ class ManageMirrorSync extends HTMLElement {
    * The <folder-selector> component on the page. Gets set when the
    * <manage-mirrorsync> components connects to the DOM.
    */
-  private folderSelector: FolderSelector|null = null;
+  private folderSelector?: FolderSelector;
 
   /**
    * Bind the onSpecifyFolderSelection event listener to enable removal of it
@@ -41,7 +41,8 @@ class ManageMirrorSync extends HTMLElement {
   connectedCallback() {
     this.shadowRoot!.getElementById('selected')!.addEventListener(
         'click', this.onSpecifyFolderSelectionBound);
-    this.folderSelector = this.shadowRoot!.querySelector('folder-selector');
+    this.folderSelector =
+        this.shadowRoot!.querySelector('folder-selector') as FolderSelector;
   }
 
   /**

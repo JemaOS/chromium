@@ -40,6 +40,7 @@ class UserImageSyncObserver;
 class UserImageManagerImpl : public UserImageManager,
                              public ProfileDownloaderDelegate {
  public:
+  // UserImageManager:
   UserImageManagerImpl(const AccountId& account_id,
                        user_manager::UserManager* user_manager);
 
@@ -48,7 +49,6 @@ class UserImageManagerImpl : public UserImageManager,
 
   ~UserImageManagerImpl() override;
 
-  // UserImageManager:
   void LoadUserImage() override;
   void UserLoggedIn(bool user_is_new, bool user_is_local) override;
   void UserProfileCreated() override;
@@ -58,6 +58,7 @@ class UserImageManagerImpl : public UserImageManager,
   void SaveUserImageFromFile(const base::FilePath& path) override;
   void SaveUserImageFromProfileImage() override;
   void DeleteUserImage() override;
+  void DownloadProfileImage() override;
   const gfx::ImageSkia& DownloadedProfileImage() const override;
   UserImageSyncObserver* GetSyncObserver() const override;
   void Shutdown() override;
@@ -166,7 +167,7 @@ class UserImageManagerImpl : public UserImageManager,
   bool IsCustomizationSelectorsPrefEnabled() const;
 
   // The user manager.
-  raw_ptr<user_manager::UserManager> user_manager_;
+  raw_ptr<user_manager::UserManager, ExperimentalAsh> user_manager_;
 
   // Whether the `profile_downloader_` is downloading the profile image for the
   // currently logged-in user (and not just the full name). Only valid when a
@@ -188,6 +189,11 @@ class UserImageManagerImpl : public UserImageManager,
   // URL from which `downloaded_profile_image_` was downloaded. Empty if no
   // `downloaded_profile_image_` is currently available.
   GURL profile_image_url_;
+
+  // Whether a download of the currently logged-in user's profile image has been
+  // explicitly requested by a call to DownloadProfileImage() and has not been
+  // satisfied by a successful download yet.
+  bool profile_image_requested_;
 
   // Timer used to start a profile data download shortly after login and to
   // restart the download after network errors.

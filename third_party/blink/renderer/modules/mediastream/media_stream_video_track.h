@@ -16,7 +16,6 @@
 #include "third_party/blink/public/web/modules/mediastream/encoded_video_frame.h"
 #include "third_party/blink/public/web/modules/mediastream/media_stream_video_sink.h"
 #include "third_party/blink/public/web/modules/mediastream/media_stream_video_source.h"
-#include "third_party/blink/renderer/modules/mediastream/image_capture_device_settings.h"
 #include "third_party/blink/renderer/modules/mediastream/video_track_adapter_settings.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_track_platform.h"
@@ -45,10 +44,12 @@ class MODULES_EXPORT MediaStreamVideoTrack : public MediaStreamTrackPlatform {
   static WebMediaStreamTrack CreateVideoTrack(
       MediaStreamVideoSource* source,
       const VideoTrackAdapterSettings& adapter_settings,
-      const std::optional<bool>& noise_reduction,
+      const absl::optional<bool>& noise_reduction,
       bool is_screencast,
-      const std::optional<double>& min_frame_rate,
-      const ImageCaptureDeviceSettings* image_capture_device_settings,
+      const absl::optional<double>& min_frame_rate,
+      const absl::optional<double>& pan,
+      const absl::optional<double>& tilt,
+      const absl::optional<double>& zoom,
       bool pan_tilt_zoom_allowed,
       MediaStreamVideoSource::ConstraintsOnceCallback callback,
       bool enabled);
@@ -63,10 +64,12 @@ class MODULES_EXPORT MediaStreamVideoTrack : public MediaStreamTrackPlatform {
   MediaStreamVideoTrack(
       MediaStreamVideoSource* source,
       const VideoTrackAdapterSettings& adapter_settings,
-      const std::optional<bool>& noise_reduction,
+      const absl::optional<bool>& noise_reduction,
       bool is_screen_cast,
-      const std::optional<double>& min_frame_rate,
-      const ImageCaptureDeviceSettings* image_capture_device_settings,
+      const absl::optional<double>& min_frame_rate,
+      const absl::optional<double>& pan,
+      const absl::optional<double>& tilt,
+      const absl::optional<double>& zoom,
       bool pan_tilt_zoom_allowed,
       MediaStreamVideoSource::ConstraintsOnceCallback callback,
       bool enabled);
@@ -80,18 +83,16 @@ class MODULES_EXPORT MediaStreamVideoTrack : public MediaStreamTrackPlatform {
       const MediaStreamComponent* component,
       const String& id) override;
 
-  // MediaStreamTrackPlatform overrides.
+  // MediaStreamTrack overrides.
   void SetEnabled(bool enabled) override;
   void SetContentHint(
       WebMediaStreamTrack::ContentHintType content_hint) override;
   void StopAndNotify(base::OnceClosure callback) override;
   void GetSettings(MediaStreamTrackPlatform::Settings& settings) const override;
-  MediaStreamTrackPlatform::VideoFrameStats GetVideoFrameStats() const override;
   MediaStreamTrackPlatform::CaptureHandle GetCaptureHandle() override;
-  void AddSubCaptureTargetVersionCallback(uint32_t sub_capture_target_version,
-                                          base::OnceClosure callback) override;
-  void RemoveSubCaptureTargetVersionCallback(
-      uint32_t sub_capture_target_version) override;
+  void AddCropVersionCallback(uint32_t crop_version,
+                              base::OnceClosure callback) override;
+  void RemoveCropVersionCallback(uint32_t crop_version) override;
 
   // Add |sink| to receive state changes on the main render thread and video
   // frames in the |callback| method on the video task runner.
@@ -124,23 +125,22 @@ class MODULES_EXPORT MediaStreamVideoTrack : public MediaStreamTrackPlatform {
 
   void OnReadyStateChanged(WebMediaStreamSource::ReadyState state);
 
-  const std::optional<bool>& noise_reduction() const {
+  const absl::optional<bool>& noise_reduction() const {
     return noise_reduction_;
   }
   bool is_screencast() const { return is_screencast_; }
-  const std::optional<double>& min_frame_rate() const {
+  const absl::optional<double>& min_frame_rate() const {
     return min_frame_rate_;
   }
-  std::optional<double> max_frame_rate() const {
+  absl::optional<double> max_frame_rate() const {
     return adapter_settings_.max_frame_rate();
   }
   const VideoTrackAdapterSettings& adapter_settings() const {
     return adapter_settings_;
   }
-  const std::optional<ImageCaptureDeviceSettings>&
-  image_capture_device_settings() const {
-    return image_capture_device_settings_;
-  }
+  const absl::optional<double>& pan() const { return pan_; }
+  const absl::optional<double>& tilt() const { return tilt_; }
+  const absl::optional<double>& zoom() const { return zoom_; }
   bool pan_tilt_zoom_allowed() const { return pan_tilt_zoom_allowed_; }
 
   // Setting information about the track size.
@@ -180,9 +180,7 @@ class MODULES_EXPORT MediaStreamVideoTrack : public MediaStreamTrackPlatform {
 
   MediaStreamVideoSource* source() const { return source_.get(); }
 
-  // Sink dropping frames affects logging and UMAs, but not the MediaStreamTrack
-  // Statistics API since such frames were delivered to the sink before drop.
-  void OnSinkDroppedFrame(media::VideoCaptureFrameDropReason reason);
+  void OnFrameDropped(media::VideoCaptureFrameDropReason reason);
 
   bool IsRefreshFrameTimerRunningForTesting() {
     return refresh_timer_.IsRunning();
@@ -196,26 +194,7 @@ class MODULES_EXPORT MediaStreamVideoTrack : public MediaStreamTrackPlatform {
     return MediaStreamTrackPlatform::StreamType::kVideo;
   }
 
-  bool UsingAlpha() const;
-
-  // Return either the configured target size, or the size of the last observed
-  // frame. If both happened - return the more recent. If neither happened -
-  // return gfx::Size(0, 0).
-  gfx::Size GetVideoSize() const;
-
-  // After this many frame drops of the same reason, we skip logging
-  // Media.VideoCapture.Track.FrameDrop UMAs.
-  static constexpr int kMaxConsecutiveFrameDropForSameReasonCount = 10;
-
-  // After this many frame drops of the same reason, we suppress
-  // EmitLogMessage(), which is wired to MediaStreamVideoSource::OnLog() and
-  // ultimately WebRTC logging in the browser process.
-  static constexpr int kMaxEmittedLogsForDroppedFramesBeforeSuppressing = 3;
-  // Suppressed logs for dropped frames will still be emitted this often.
-  static constexpr int kFrequencyForSuppressedLogs = 100;
-
-  void SetEmitLogMessageForTesting(
-      base::RepeatingCallback<void(const std::string&)> emit_log_message);
+  bool UsingAlpha();
 
  private:
   FRIEND_TEST_ALL_PREFIXES(MediaStreamRemoteVideoSourceTest, StartTrack);
@@ -244,10 +223,12 @@ class MODULES_EXPORT MediaStreamVideoTrack : public MediaStreamTrackPlatform {
   scoped_refptr<FrameDeliverer> frame_deliverer_;
 
   VideoTrackAdapterSettings adapter_settings_;
-  std::optional<bool> noise_reduction_;
+  absl::optional<bool> noise_reduction_;
   bool is_screencast_;
-  std::optional<double> min_frame_rate_;
-  std::optional<ImageCaptureDeviceSettings> image_capture_device_settings_;
+  absl::optional<double> min_frame_rate_;
+  absl::optional<double> pan_;
+  absl::optional<double> tilt_;
+  absl::optional<double> zoom_;
   bool pan_tilt_zoom_allowed_ = false;
 
   // Weak ref to the source this tracks is connected to.
@@ -263,7 +244,7 @@ class MODULES_EXPORT MediaStreamVideoTrack : public MediaStreamTrackPlatform {
   // Remembering our desired video size and frame rate.
   int width_ = 0;
   int height_ = 0;
-  std::optional<double> computed_frame_rate_;
+  absl::optional<double> computed_frame_rate_;
   media::VideoCaptureFormat computed_source_format_;
   base::RepeatingTimer refresh_timer_;
 

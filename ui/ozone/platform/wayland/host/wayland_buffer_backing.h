@@ -31,7 +31,6 @@ class WaylandBufferBacking {
     kShm = 0,
     kDmabuf = 1,
     kSolidColor = 2,
-    kSinglePixel = 3,
   };
 
   WaylandBufferBacking() = delete;

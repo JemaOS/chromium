@@ -6,14 +6,12 @@
 
 #include "base/functional/bind.h"
 #include "base/memory/ref_counted_memory.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
-#include "base/timer/elapsed_timer.h"
 #include "build/branding_buildflags.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/profiles/profile.h"
@@ -38,8 +36,8 @@
 #include "content/public/common/url_constants.h"
 #include "net/base/url_util.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
+#include "ui/base/layout.h"
 #include "ui/base/resource/resource_bundle.h"
-#include "ui/base/resource/resource_scale_factor.h"
 #include "ui/base/webui/web_ui_util.h"
 #include "ui/color/color_provider.h"
 #include "ui/color/color_provider_utils.h"
@@ -153,13 +151,15 @@ void ThemeSource::StartDataRequest(
       case version_info::Channel::DEV:
       case version_info::Channel::BETA:
       case version_info::Channel::STABLE:
-        NOTREACHED();
+        // NOTREACHED();
         [[fallthrough]];
 #endif
       case version_info::Channel::UNKNOWN:
         resource_id = IDR_PRODUCT_LOGO_32;
         break;
     }
+  } else if (parsed_path == "current-channel-os-logo") {
+    resource_id = IDR_PRODUCT_OS_LOGO_32;
   } else {
     resource_id = ResourcesUtil::GetThemeResourceId(parsed_path);
   }
@@ -259,7 +259,6 @@ void ThemeSource::SendColorsCss(
     const GURL& url,
     const content::WebContents::Getter& wc_getter,
     content::URLDataSource::GotDataCallback callback) {
-  base::ElapsedTimer timer;
   const ui::ColorProvider& color_provider = wc_getter.Run()->GetColorProvider();
 
   std::string sets_param;
@@ -270,12 +269,6 @@ void ThemeSource::SendColorsCss(
                                  &generate_rgb_vars_query_value)) {
     generate_rgb_vars =
         base::ToLowerASCII(generate_rgb_vars_query_value) == "true";
-  }
-  bool shadow_host = false;
-  std::string shadow_host_query_value;
-  if (net::GetValueForKeyInQuery(url, "shadow_host",
-                                 &shadow_host_query_value)) {
-    shadow_host = base::ToLowerASCII(shadow_host_query_value) == "true";
   }
   if (!net::GetValueForKeyInQuery(url, "sets", &sets_param)) {
     LOG(ERROR)
@@ -310,7 +303,7 @@ void ThemeSource::SendColorsCss(
         // Also generate a r,g,b string for each color so apps can construct
         // colors with their own opacities in css.
         const std::string css_rgb_color_str =
-            color_utils::SkColorToRgbString(color);
+            color_utils::SkColorToRgbaString(color);
         const std::string css_id_to_rgb_color_mapping =
             base::StringPrintf("%s-rgb:%s;", color_css_name.Run(id).c_str(),
                                css_rgb_color_str.c_str());
@@ -335,43 +328,29 @@ void ThemeSource::SendColorsCss(
     return generate_color_mapping(set_name, start, end, color_id_to_css_name);
   };
 
-  std::string css_selector;
-  if (shadow_host) {
-    css_selector = ":host";
-  } else {
+  std::string css_string = base::StrCat({
     // This selector requires more specificity than other existing CSS
     // selectors that define variables. We increase the specifity by adding
     // a pseudoselector.
-    css_selector = "html:not(#z)";
-  }
-
-  const auto* theme_service =
-      ThemeServiceFactory::GetForProfile(profile_->GetOriginalProfile());
-  std::string theme_id;
-  if (theme_service->GetIsGrayscale()) {
-    theme_id = "--user-color-source: baseline-grayscale;";
-  } else if (theme_service->GetIsBaseline()) {
-    theme_id = "--user-color-source: baseline-default;";
-  }
-
-  std::string css_string = base::StrCat(
-      {css_selector, "{", theme_id,
-       generate_color_provider_mapping("ui", ui::kUiColorsStart,
-                                       ui::kUiColorsEnd, ui::ColorIdName),
-       generate_color_provider_mapping("chrome", kChromeColorsStart,
-                                       kChromeColorsEnd, &ChromeColorIdName),
+    "html:not(#z) {",
+        generate_color_provider_mapping("ui", ui::kUiColorsStart,
+                                        ui::kUiColorsEnd, ui::ColorIdName),
+        generate_color_provider_mapping("chrome", kChromeColorsStart,
+                                        kChromeColorsEnd, &ChromeColorIdName),
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-       generate_color_mapping("ref", cros_tokens::kCrosRefColorsStart,
-                              cros_tokens::kCrosRefColorsEnd,
-                              base::BindRepeating(cros_tokens::ColorIdName)),
-       generate_color_mapping("sys", cros_tokens::kCrosSysColorsStart,
-                              cros_tokens::kCrosSysColorsEnd,
-                              base::BindRepeating(cros_tokens::ColorIdName)),
-       generate_color_mapping("legacy", cros_tokens::kLegacySemanticColorsStart,
-                              cros_tokens::kLegacySemanticColorsEnd,
-                              base::BindRepeating(cros_tokens::ColorIdName)),
+        generate_color_mapping("ref", cros_tokens::kCrosRefColorsStart,
+                               cros_tokens::kCrosRefColorsEnd,
+                               base::BindRepeating(cros_tokens::ColorIdName)),
+        generate_color_mapping("sys", cros_tokens::kCrosSysColorsStart,
+                               cros_tokens::kCrosSysColorsEnd,
+                               base::BindRepeating(cros_tokens::ColorIdName)),
+        generate_color_mapping("legacy",
+                               cros_tokens::kLegacySemanticColorsStart,
+                               cros_tokens::kLegacySemanticColorsEnd,
+                               base::BindRepeating(cros_tokens::ColorIdName)),
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-       "}"});
+        "}"
+  });
   if (!color_id_sets.empty()) {
     LOG(ERROR)
         << "Unrecognized color set(s) specified for chrome://theme/colors.css: "
@@ -379,13 +358,8 @@ void ThemeSource::SendColorsCss(
     std::move(callback).Run(nullptr);
     return;
   }
-
   std::move(callback).Run(
       base::MakeRefCounted<base::RefCountedString>(std::move(css_string)));
-
-  // Measures the time it takes to generate the colors.css and queue it for the
-  // renderer.
-  UmaHistogramTimes("WebUI.ColorsStylesheetServingDuration", timer.Elapsed());
 }
 
 std::string ThemeSource::GetAccessControlAllowOriginForOrigin(

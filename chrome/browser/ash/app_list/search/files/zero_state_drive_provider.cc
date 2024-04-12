@@ -4,18 +4,15 @@
 
 #include "chrome/browser/ash/app_list/search/files/zero_state_drive_provider.h"
 
+#include <algorithm>
 #include <memory>
-#include <optional>
+#include <utility>
 
-#include "ash/constants/ash_features.h"
 #include "ash/public/cpp/app_list/app_list_types.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
-#include "base/trace_event/common/trace_event_common.h"
-#include "base/trace_event/trace_event.h"
 #include "chrome/browser/ash/app_list/search/search_controller.h"
-#include "chrome/browser/ash/app_list/search/search_provider.h"
 #include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/ash/file_suggest/file_suggest_keyed_service.h"
 #include "chrome/browser/ash/file_suggest/file_suggest_keyed_service_factory.h"
@@ -23,6 +20,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chromeos/dbus/power_manager/idle.pb.h"
 #include "content/public/browser/browser_context.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace app_list {
 namespace {
@@ -45,8 +43,7 @@ ZeroStateDriveProvider::ZeroStateDriveProvider(
     SearchController* search_controller,
     drive::DriveIntegrationService* drive_service,
     session_manager::SessionManager* session_manager)
-    : SearchProvider(SearchCategory::kFiles),
-      profile_(profile),
+    : profile_(profile),
       drive_service_(drive_service),
       session_manager_(session_manager),
       file_suggest_service_(
@@ -69,7 +66,7 @@ ZeroStateDriveProvider::ZeroStateDriveProvider(
     } else {
       // Wait for DriveFS to be mounted, then fetch results. This happens in
       // OnFileSystemMounted.
-      Observe(drive_service_.get());
+      drive_observation_.Observe(drive_service_.get());
     }
   }
 
@@ -94,7 +91,6 @@ void ZeroStateDriveProvider::OnFileSystemMounted() {
 }
 
 void ZeroStateDriveProvider::OnSessionStateChanged() {
-  TRACE_EVENT0("ui", "ZeroStateDriveProvider::OnSessionStateChanged");
   // Update cache if the user has logged in.
   if (session_manager_->session_state() ==
       session_manager::SessionState::ACTIVE) {
@@ -139,7 +135,7 @@ void ZeroStateDriveProvider::StartZeroState() {
 }
 
 void ZeroStateDriveProvider::OnSuggestFileDataFetched(
-    const std::optional<SuggestResults>& suggest_results) {
+    const absl::optional<SuggestResults>& suggest_results) {
   // Fail to fetch the suggest data, so return early.
   if (!suggest_results) {
     // Send empty result list to search controller to unblock zero state.
@@ -158,26 +154,15 @@ void ZeroStateDriveProvider::SetSearchResults(
   // Assign scores to results by simply using their position in the results
   // list. The order of results from the ItemSuggest API is significant:
   // the first is better than the second, etc. Resulting scores are in [0, 1].
-  //
-  // If drive files and local files need to be mixed in continue section, create
-  // ranking using time stamps, so local and drive files are consistently
-  // ranked.
-  const bool timestamp_based_score =
-      ash::features::UseMixedFileLauncherContinueSection();
-
   const double total_items = static_cast<double>(suggest_results.size());
   int item_index = 0;
-
-  const base::TimeDelta max_recency = ash::GetMaxFileSuggestionRecency();
   SearchProvider::Results provider_results;
   for (const auto& result : suggest_results) {
-    const double score = timestamp_based_score
-                             ? ash::ToTimestampBasedScore(result, max_recency)
-                             : (1.0 - item_index / total_items);
+    const double score = 1.0 - (item_index / total_items);
     ++item_index;
-    provider_results.emplace_back(
-        MakeListResult(result.id, result.file_path, result.justification_type,
-                       result.prediction_reason, score));
+
+    provider_results.emplace_back(MakeListResult(
+        result.id, result.file_path, result.prediction_reason, score));
   }
 
   SwapResults(&provider_results);
@@ -187,10 +172,9 @@ void ZeroStateDriveProvider::SetSearchResults(
 std::unique_ptr<FileResult> ZeroStateDriveProvider::MakeListResult(
     const std::string& result_id,
     const base::FilePath& filepath,
-    ash::FileSuggestionJustificationType justification_type,
-    const std::optional<std::u16string>& prediction_reason,
+    const absl::optional<std::u16string>& prediction_reason,
     const float relevance) {
-  std::optional<std::u16string> details;
+  absl::optional<std::u16string> details;
   if (prediction_reason)
     details = prediction_reason.value();
 
@@ -199,26 +183,6 @@ std::unique_ptr<FileResult> ZeroStateDriveProvider::MakeListResult(
       ash::AppListSearchResultType::kZeroStateDrive,
       ash::SearchResultDisplayType::kContinue, relevance, std::u16string(),
       FileResult::Type::kFile, profile_);
-  switch (justification_type) {
-    case ash::FileSuggestionJustificationType::kUnknown:
-      break;
-    case ash::FileSuggestionJustificationType::kViewed:
-      result->SetContinueFileSuggestionType(
-          ash::ContinueFileSuggestionType::kViewedDrive);
-      break;
-    case ash::FileSuggestionJustificationType::kModified:
-      result->SetContinueFileSuggestionType(
-          ash::ContinueFileSuggestionType::kModifiedDrive);
-      break;
-    case ash::FileSuggestionJustificationType::kModifiedByCurrentUser:
-      result->SetContinueFileSuggestionType(
-          ash::ContinueFileSuggestionType::kModifiedByCurrentUserDrive);
-      break;
-    case ash::FileSuggestionJustificationType::kShared:
-      result->SetContinueFileSuggestionType(
-          ash::ContinueFileSuggestionType::kSharedWithUserDrive);
-      break;
-  }
   return result;
 }
 

@@ -42,7 +42,7 @@ class X11SurfaceFactory : public SurfaceFactoryOzone {
       gfx::Size size,
       gfx::BufferFormat format,
       gfx::BufferUsage usage,
-      std::optional<gfx::Size> framebuffer_size = std::nullopt) override;
+      absl::optional<gfx::Size> framebuffer_size = absl::nullopt) override;
   bool CanCreateNativePixmapForFormat(gfx::BufferFormat format) override;
   void CreateNativePixmapAsync(gfx::AcceleratedWidget widget,
                                gpu::VulkanDeviceQueue* device_queue,
@@ -55,9 +55,6 @@ class X11SurfaceFactory : public SurfaceFactoryOzone {
       gfx::Size size,
       gfx::BufferFormat format,
       gfx::NativePixmapHandle handle) override;
-
-  std::vector<gfx::BufferFormat> GetSupportedFormatsForTexturing()
-      const override;
 
  private:
   std::unique_ptr<GLOzone> egl_implementation_;

@@ -140,7 +140,6 @@ class CORE_EXPORT CSSPropertyValueSet
   String AsText() const;
 
   bool IsMutable() const { return is_mutable_; }
-  bool ContainsCursorHand() const { return contains_cursor_hand_; }
 
   bool HasFailedOrCanceledSubresources() const;
 
@@ -156,30 +155,24 @@ class CORE_EXPORT CSSPropertyValueSet
   void TraceAfterDispatch(blink::Visitor* visitor) const {}
 
  protected:
-  enum { kMaxArraySize = (1 << 27) - 1 };
+  enum { kMaxArraySize = (1 << 28) - 1 };
 
   explicit CSSPropertyValueSet(CSSParserMode css_parser_mode)
-      : array_size_(0),
-        css_parser_mode_(css_parser_mode),
-        is_mutable_(true),
-        contains_cursor_hand_(false) {}
+      : array_size_(0), css_parser_mode_(css_parser_mode), is_mutable_(true) {}
 
   CSSPropertyValueSet(CSSParserMode css_parser_mode,
-                      unsigned immutable_array_size,
-                      bool contains_cursor_hand)
+                      unsigned immutable_array_size)
       // Avoid min()/max() from std here in the header, because that would
       // require inclusion of <algorithm>, which is slow to compile.
       : array_size_((immutable_array_size < unsigned(kMaxArraySize))
                         ? immutable_array_size
                         : unsigned(kMaxArraySize)),
         css_parser_mode_(css_parser_mode),
-        is_mutable_(false),
-        contains_cursor_hand_(contains_cursor_hand) {}
+        is_mutable_(false) {}
 
-  const uint32_t array_size_ : 26;
-  const uint32_t css_parser_mode_ : 4;
+  const uint32_t array_size_ : 28;
+  const uint32_t css_parser_mode_ : 3;
   const uint32_t is_mutable_ : 1;
-  const uint32_t contains_cursor_hand_ : 1;
 
   friend class PropertySetCSSStyleDeclaration;
 };
@@ -201,14 +194,10 @@ class CORE_EXPORT ALIGNAS(std::max(alignof(Member<const CSSValue>),
  public:
   ImmutableCSSPropertyValueSet(const CSSPropertyValue*,
                                unsigned count,
-                               CSSParserMode,
-                               bool contains_cursor_hand = false);
+                               CSSParserMode);
 
-  static ImmutableCSSPropertyValueSet* Create(
-      const CSSPropertyValue* properties,
-      unsigned count,
-      CSSParserMode,
-      bool contains_cursor_hand = false);
+  static ImmutableCSSPropertyValueSet*
+  Create(const CSSPropertyValue* properties, unsigned count, CSSParserMode);
 
   unsigned PropertyCount() const { return array_size_; }
 
@@ -301,7 +290,7 @@ class CORE_EXPORT MutableCSSPropertyValueSet : public CSSPropertyValueSet {
   // Only for non-custom properties.
   SetResult ParseAndSetProperty(
       CSSPropertyID unresolved_property,
-      StringView value,
+      const String& value,
       bool important,
       SecureContextMode,
       StyleSheetContents* context_style_sheet = nullptr);
@@ -311,7 +300,7 @@ class CORE_EXPORT MutableCSSPropertyValueSet : public CSSPropertyValueSet {
   // custom properties can never be shorthands.) If the value is empty,
   // the property is removed.
   SetResult ParseAndSetCustomProperty(const AtomicString& custom_property_name,
-                                      StringView value,
+                                      const String& value,
                                       bool important,
                                       SecureContextMode,
                                       StyleSheetContents* context_style_sheet,

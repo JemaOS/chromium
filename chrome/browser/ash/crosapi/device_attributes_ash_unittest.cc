@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,7 +14,6 @@
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
-#include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
 #include "chromeos/crosapi/mojom/device_attributes.mojom.h"
 #include "components/account_id/account_id.h"
 #include "components/user_manager/scoped_user_manager.h"
@@ -60,7 +59,9 @@ class DeviceAttributesAshTest
   ~DeviceAttributesAshTest() override = default;
 
   void SetUp() override {
-    fake_user_manager_.Reset(std::make_unique<ash::FakeChromeUserManager>());
+    auto fake_user_manager = std::make_unique<ash::FakeChromeUserManager>();
+    scoped_user_manager_ = std::make_unique<user_manager::ScopedUserManager>(
+        std::move(fake_user_manager));
 
     // Set up fake device attributes.
     device_attributes_ = std::make_unique<policy::FakeDeviceAttributes>();
@@ -79,8 +80,6 @@ class DeviceAttributesAshTest
     profile_manager_ = std::make_unique<TestingProfileManager>(
         TestingBrowserProcess::GetGlobal());
     ASSERT_TRUE(profile_manager_->SetUp());
-    profile_ = profile_manager_->CreateTestingProfile(
-        TestingProfile::kDefaultProfileUserName);
 
     switch (GetParam()) {
       case TestProfileChoice::kSigninProfile:
@@ -103,14 +102,17 @@ class DeviceAttributesAshTest
   void TearDown() override { device_attributes_ash_.reset(); }
 
   void AddUser(bool is_affiliated = true) {
-    AccountId account_id =
-        AccountId::FromUserEmail(TestingProfile::kDefaultProfileUserName);
+    AccountId account_id = AccountId::FromUserEmail("user@test.com");
+    ash::FakeChromeUserManager* user_manager =
+        static_cast<ash::FakeChromeUserManager*>(
+            user_manager::UserManager::Get());
     const user_manager::User* user =
-        fake_user_manager_->AddUserWithAffiliation(account_id, is_affiliated);
-    fake_user_manager_->UserLoggedIn(account_id, user->username_hash(),
-                                     /*browser_restart=*/false,
-                                     /*is_child=*/false);
-    fake_user_manager_->SimulateUserProfileLoad(account_id);
+        user_manager->AddUserWithAffiliation(account_id, is_affiliated);
+    user_manager->UserLoggedIn(account_id, user->username_hash(),
+                               /*browser_restart=*/false, /*is_child=*/false);
+    user_manager->SimulateUserProfileLoad(account_id);
+    ash::ProfileHelper::Get()->SetUserToProfileMappingForTesting(user,
+                                                                 &profile_);
   }
 
   bool IsSigninProfileOrBelongsToAffiliatedUser() {
@@ -126,10 +128,10 @@ class DeviceAttributesAshTest
  protected:
   content::BrowserTaskEnvironment task_environment_;
 
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_;
   std::unique_ptr<TestingProfileManager> profile_manager_;
-  raw_ptr<TestingProfile> profile_;
+  TestingProfile profile_;
+
+  std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
 
   std::unique_ptr<policy::FakeDeviceAttributes> device_attributes_;
   mojo::Remote<mojom::DeviceAttributes> device_attributes_remote_;

@@ -38,11 +38,6 @@ struct ScopedSearchHANDLECloseTraits {
   static void Free(HANDLE handle);
 };
 
-struct ScopedVectoredExceptionRegistrationCloseTraits {
-  static PVOID InvalidValue() { return nullptr; }
-  static void Free(PVOID handle);
-};
-
 }  // namespace internal
 
 using ScopedFileHANDLE =
@@ -51,9 +46,6 @@ using ScopedKernelHANDLE =
     base::ScopedGeneric<HANDLE, internal::ScopedKernelHANDLECloseTraits>;
 using ScopedSearchHANDLE =
     base::ScopedGeneric<HANDLE, internal::ScopedSearchHANDLECloseTraits>;
-using ScopedVectoredExceptionRegistration = base::ScopedGeneric<
-    PVOID,
-    internal::ScopedVectoredExceptionRegistrationCloseTraits>;
 
 }  // namespace crashpad
 

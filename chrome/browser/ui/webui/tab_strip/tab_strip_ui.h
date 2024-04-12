@@ -24,11 +24,8 @@ class Browser;
 class TabStripPageHandler;
 class TabStripUIEmbedder;
 
-// These data types must be in all lowercase.
-constexpr char16_t kWebUITabIdDataType[] = u"application/vnd.chromium.tab";
-constexpr char16_t kWebUITabGroupIdDataType[] =
-    u"application/vnd.chromium.tabgroup";
-
+extern const char kWebUITabIdDataType[];
+extern const char kWebUITabGroupIdDataType[];
 
 // The WebUI version of the tab strip in the browser. It is currently only
 // supported on ChromeOS in tablet mode.
@@ -68,6 +65,9 @@ class TabStripUI : public ui::MojoWebUIController,
   void ReceivedKeyboardFocus();
 
  private:
+  void HandleThumbnailUpdate(int extension_tab_id,
+                             ThumbnailTracker::CompressedThumbnailData image);
+
   // tab_strip::mojom::PageHandlerFactory
   void CreatePageHandler(
       mojo::PendingRemote<tab_strip::mojom::Page> page,

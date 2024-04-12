@@ -76,7 +76,7 @@ TEST_P(IeemSitelistParserTest, BadXmlParsed) {
   TestParseXml("<bogus></bogus>",
                ParsedXml({}, {}, "Invalid XML root element"));
   TestParseXml("<rules version=\"424\"><unknown></unknown></rules>",
-               ParsedXml({}, {}, std::nullopt));
+               ParsedXml({}, {}, absl::nullopt));
 }
 
 TEST_P(IeemSitelistParserTest, V1OnlyBogusElements) {
@@ -86,7 +86,7 @@ TEST_P(IeemSitelistParserTest, V1OnlyBogusElements) {
       "</more><emie><domain>ignoretoo.com<path>/ignored_path</path>"
       "</domain></emie><domain>onemoreignored.com</domain>"
       "<path>/ignore_outside_of_domain></path></unknown></rules>";
-  TestParseXml(xml, ParsedXml({}, {}, std::nullopt));
+  TestParseXml(xml, ParsedXml({}, {}, absl::nullopt));
 }
 
 TEST_P(IeemSitelistParserTest, V1Full) {
@@ -194,7 +194,7 @@ TEST_P(IeemSitelistParserTest, V1Full) {
     };
   }
   TestParseXml(xml, ParsedXml(std::move(expected_sitelist),
-                              std::move(expected_greylist), std::nullopt));
+                              std::move(expected_greylist), absl::nullopt));
 }
 
 TEST_P(IeemSitelistParserTest, V2Full) {
@@ -234,7 +234,7 @@ TEST_P(IeemSitelistParserTest, V2Full) {
     };
   }
   TestParseXml(xml, ParsedXml(std::move(expected_sitelist),
-                              std::move(expected_greylist), std::nullopt));
+                              std::move(expected_greylist), absl::nullopt));
 }
 
 INSTANTIATE_TEST_SUITE_P(

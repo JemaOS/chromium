@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {ModuleIdName} from '../new_tab_page.mojom-webui.js';
+import {ModuleIdName} from '../new_tab_page.mojom-webui.js';
 import {NewTabPageProxy} from '../new_tab_page_proxy.js';
 
-import type {Module, ModuleDescriptor} from './module_descriptor.js';
+import {Module, ModuleDescriptor} from './module_descriptor.js';
 import {descriptors} from './module_descriptors.js';
 
 /**
@@ -102,13 +102,7 @@ export class ModuleRegistry {
 
     const elements =
         await Promise.all(descriptors.map(d => d.initialize(timeout)));
-    return elements.map((e, i) => ({elements: e, descriptor: descriptors[i]}))
-        .filter(m => !!m.elements)
-        .map(m => ({
-                    elements: Array.isArray(m.elements) ? m.elements :
-                                                          [m.elements],
-                    descriptor: m.descriptor,
-                  }) as Module)
-        .filter(m => m.elements.length !== 0);
+    return elements.map((e, i) => ({element: e, descriptor: descriptors[i]}))
+               .filter(m => !!m.element) as Module[];
   }
 }

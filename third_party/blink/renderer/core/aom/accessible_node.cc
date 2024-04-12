@@ -74,6 +74,8 @@ QualifiedName GetCorrespondingARIAAttribute(AOMRelationProperty property) {
   switch (property) {
     case AOMRelationProperty::kActiveDescendant:
       return html_names::kAriaActivedescendantAttr;
+    case AOMRelationProperty::kErrorMessage:
+      return html_names::kAriaErrormessageAttr;
   }
 
   NOTREACHED();
@@ -88,8 +90,6 @@ QualifiedName GetCorrespondingARIAAttribute(AOMRelationListProperty property) {
       return html_names::kAriaDetailsAttr;
     case AOMRelationListProperty::kControls:
       return html_names::kAriaControlsAttr;
-    case AOMRelationListProperty::kErrorMessage:
-      return html_names::kAriaErrormessageAttr;
     case AOMRelationListProperty::kFlowTo:
       return html_names::kAriaFlowtoAttr;
     case AOMRelationListProperty::kLabeledBy:
@@ -205,7 +205,7 @@ AccessibleNode* AccessibleNode::Create(Document& document) {
 Document* AccessibleNode::GetDocument() const {
   if (document_) {
     DCHECK(!element_);
-    return document_.Get();
+    return document_;
   }
   if (element_) {
     DCHECK(!document_);
@@ -234,7 +234,7 @@ AccessibleNode* AccessibleNode::GetProperty(Element* element,
   if (AccessibleNode* accessible_node = element->ExistingAccessibleNode()) {
     for (const auto& item : accessible_node->relation_properties_) {
       if (item.first == property && item.second)
-        return item.second.Get();
+        return item.second;
     }
   }
 
@@ -251,7 +251,7 @@ AccessibleNodeList* AccessibleNode::GetProperty(
   if (AccessibleNode* accessible_node = element->ExistingAccessibleNode()) {
     for (const auto& item : accessible_node->relation_list_properties_) {
       if (item.first == property && item.second)
-        return item.second.Get();
+        return item.second;
     }
   }
 
@@ -278,44 +278,44 @@ bool AccessibleNode::GetProperty(Element* element,
 }
 
 template <typename P, typename T>
-static std::optional<T> FindPropertyValue(
+static absl::optional<T> FindPropertyValue(
     P property,
     const Vector<std::pair<P, T>>& properties) {
   for (const auto& item : properties) {
     if (item.first == property)
       return item.second;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<bool> AccessibleNode::GetProperty(
+absl::optional<bool> AccessibleNode::GetProperty(
     AOMBooleanProperty property) const {
   return FindPropertyValue(property, boolean_properties_);
 }
 
 // static
-std::optional<int32_t> AccessibleNode::GetProperty(Element* element,
-                                                   AOMIntProperty property) {
+absl::optional<int32_t> AccessibleNode::GetProperty(Element* element,
+                                                    AOMIntProperty property) {
   if (!element || !element->ExistingAccessibleNode())
-    return std::nullopt;
+    return absl::nullopt;
   return FindPropertyValue(property,
                            element->ExistingAccessibleNode()->int_properties_);
 }
 
 // static
-std::optional<uint32_t> AccessibleNode::GetProperty(Element* element,
-                                                    AOMUIntProperty property) {
+absl::optional<uint32_t> AccessibleNode::GetProperty(Element* element,
+                                                     AOMUIntProperty property) {
   if (!element || !element->ExistingAccessibleNode())
-    return std::nullopt;
+    return absl::nullopt;
   return FindPropertyValue(property,
                            element->ExistingAccessibleNode()->uint_properties_);
 }
 
 // static
-std::optional<float> AccessibleNode::GetProperty(Element* element,
-                                                 AOMFloatProperty property) {
+absl::optional<float> AccessibleNode::GetProperty(Element* element,
+                                                  AOMFloatProperty property) {
   if (!element || !element->ExistingAccessibleNode())
-    return std::nullopt;
+    return absl::nullopt;
   return FindPropertyValue(
       property, element->ExistingAccessibleNode()->float_properties_);
 }
@@ -362,28 +362,13 @@ const AtomicString& AccessibleNode::GetPropertyOrARIAAttribute(
 }
 
 // static
-const AtomicString& AccessibleNode::GetPropertyOrARIAAttributeValue(
-    Element* element,
-    AOMRelationProperty property) {
-  if (!element)
-    return g_null_atom;
-  QualifiedName attribute = GetCorrespondingARIAAttribute(property);
-  const AtomicString& value =
-      GetElementOrInternalsARIAAttribute(*element, attribute);
-  if (IsUndefinedAttrValue(value)) {
-    return g_null_atom;  // Attribute not set or explicitly undefined.
-  }
-
-  return value;
-}
-
 Element* AccessibleNode::GetPropertyOrARIAAttribute(
     Element* element,
     AOMRelationProperty property) {
-  auto& value = GetPropertyOrARIAAttributeValue(element, property);
-  if (value == g_null_atom) {
+  if (!element)
     return nullptr;
-  }
+  QualifiedName attribute = GetCorrespondingARIAAttribute(property);
+  AtomicString value = GetElementOrInternalsARIAAttribute(*element, attribute);
   return element->GetTreeScope().getElementById(value);
 }
 
@@ -514,11 +499,11 @@ void AccessibleNode::setActiveDescendant(AccessibleNode* active_descendant) {
   NotifyAttributeChanged(html_names::kAriaActivedescendantAttr);
 }
 
-std::optional<bool> AccessibleNode::atomic() const {
+absl::optional<bool> AccessibleNode::atomic() const {
   return GetProperty(AOMBooleanProperty::kAtomic);
 }
 
-void AccessibleNode::setAtomic(std::optional<bool> value) {
+void AccessibleNode::setAtomic(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kAtomic, value);
   NotifyAttributeChanged(html_names::kAriaAtomicAttr);
 }
@@ -532,11 +517,11 @@ void AccessibleNode::setAutocomplete(const AtomicString& autocomplete) {
   NotifyAttributeChanged(html_names::kAriaAutocompleteAttr);
 }
 
-std::optional<bool> AccessibleNode::busy() const {
+absl::optional<bool> AccessibleNode::busy() const {
   return GetProperty(AOMBooleanProperty::kBusy);
 }
 
-void AccessibleNode::setBusy(std::optional<bool> value) {
+void AccessibleNode::setBusy(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kBusy, value);
   NotifyAttributeChanged(html_names::kAriaBusyAttr);
 }
@@ -570,29 +555,29 @@ void AccessibleNode::setChecked(const AtomicString& checked) {
   NotifyAttributeChanged(html_names::kAriaCheckedAttr);
 }
 
-std::optional<int32_t> AccessibleNode::colCount() const {
+absl::optional<int32_t> AccessibleNode::colCount() const {
   return GetProperty(element_, AOMIntProperty::kColCount);
 }
 
-void AccessibleNode::setColCount(std::optional<int32_t> value) {
+void AccessibleNode::setColCount(absl::optional<int32_t> value) {
   SetIntProperty(AOMIntProperty::kColCount, value);
   NotifyAttributeChanged(html_names::kAriaColcountAttr);
 }
 
-std::optional<uint32_t> AccessibleNode::colIndex() const {
+absl::optional<uint32_t> AccessibleNode::colIndex() const {
   return GetProperty(element_, AOMUIntProperty::kColIndex);
 }
 
-void AccessibleNode::setColIndex(std::optional<uint32_t> value) {
+void AccessibleNode::setColIndex(absl::optional<uint32_t> value) {
   SetUIntProperty(AOMUIntProperty::kColIndex, value);
   NotifyAttributeChanged(html_names::kAriaColindexAttr);
 }
 
-std::optional<uint32_t> AccessibleNode::colSpan() const {
+absl::optional<uint32_t> AccessibleNode::colSpan() const {
   return GetProperty(element_, AOMUIntProperty::kColSpan);
 }
 
-void AccessibleNode::setColSpan(std::optional<uint32_t> value) {
+void AccessibleNode::setColSpan(absl::optional<uint32_t> value) {
   SetUIntProperty(AOMUIntProperty::kColSpan, value);
   NotifyAttributeChanged(html_names::kAriaColspanAttr);
 }
@@ -642,30 +627,29 @@ void AccessibleNode::setDetails(AccessibleNodeList* details) {
   NotifyAttributeChanged(html_names::kAriaDetailsAttr);
 }
 
-std::optional<bool> AccessibleNode::disabled() const {
+absl::optional<bool> AccessibleNode::disabled() const {
   return GetProperty(AOMBooleanProperty::kDisabled);
 }
 
-void AccessibleNode::setDisabled(std::optional<bool> value) {
+void AccessibleNode::setDisabled(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kDisabled, value);
   NotifyAttributeChanged(html_names::kAriaDisabledAttr);
 }
 
-AccessibleNodeList* AccessibleNode::errorMessage() const {
-  return GetProperty(element_, AOMRelationListProperty::kErrorMessage);
+AccessibleNode* AccessibleNode::errorMessage() const {
+  return GetProperty(element_, AOMRelationProperty::kErrorMessage);
 }
 
-void AccessibleNode::setErrorMessage(AccessibleNodeList* error_messages) {
-  SetRelationListProperty(AOMRelationListProperty::kErrorMessage,
-                          error_messages);
+void AccessibleNode::setErrorMessage(AccessibleNode* error_message) {
+  SetRelationProperty(AOMRelationProperty::kErrorMessage, error_message);
   NotifyAttributeChanged(html_names::kAriaErrormessageAttr);
 }
 
-std::optional<bool> AccessibleNode::expanded() const {
+absl::optional<bool> AccessibleNode::expanded() const {
   return GetProperty(AOMBooleanProperty::kExpanded);
 }
 
-void AccessibleNode::setExpanded(std::optional<bool> value) {
+void AccessibleNode::setExpanded(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kExpanded, value);
   NotifyAttributeChanged(html_names::kAriaExpandedAttr);
 }
@@ -688,11 +672,11 @@ void AccessibleNode::setHasPopup(const AtomicString& has_popup) {
   NotifyAttributeChanged(html_names::kAriaHaspopupAttr);
 }
 
-std::optional<bool> AccessibleNode::hidden() const {
+absl::optional<bool> AccessibleNode::hidden() const {
   return GetProperty(AOMBooleanProperty::kHidden);
 }
 
-void AccessibleNode::setHidden(std::optional<bool> value) {
+void AccessibleNode::setHidden(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kHidden, value);
   NotifyAttributeChanged(html_names::kAriaHiddenAttr);
 }
@@ -733,11 +717,11 @@ void AccessibleNode::setLabeledBy(AccessibleNodeList* labeled_by) {
   NotifyAttributeChanged(html_names::kAriaLabelledbyAttr);
 }
 
-std::optional<uint32_t> AccessibleNode::level() const {
+absl::optional<uint32_t> AccessibleNode::level() const {
   return GetProperty(element_, AOMUIntProperty::kLevel);
 }
 
-void AccessibleNode::setLevel(std::optional<uint32_t> value) {
+void AccessibleNode::setLevel(absl::optional<uint32_t> value) {
   SetUIntProperty(AOMUIntProperty::kLevel, value);
   NotifyAttributeChanged(html_names::kAriaLevelAttr);
 }
@@ -751,29 +735,29 @@ void AccessibleNode::setLive(const AtomicString& live) {
   NotifyAttributeChanged(html_names::kAriaLiveAttr);
 }
 
-std::optional<bool> AccessibleNode::modal() const {
+absl::optional<bool> AccessibleNode::modal() const {
   return GetProperty(AOMBooleanProperty::kModal);
 }
 
-void AccessibleNode::setModal(std::optional<bool> value) {
+void AccessibleNode::setModal(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kModal, value);
   NotifyAttributeChanged(html_names::kAriaModalAttr);
 }
 
-std::optional<bool> AccessibleNode::multiline() const {
+absl::optional<bool> AccessibleNode::multiline() const {
   return GetProperty(AOMBooleanProperty::kMultiline);
 }
 
-void AccessibleNode::setMultiline(std::optional<bool> value) {
+void AccessibleNode::setMultiline(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kMultiline, value);
   NotifyAttributeChanged(html_names::kAriaMultilineAttr);
 }
 
-std::optional<bool> AccessibleNode::multiselectable() const {
+absl::optional<bool> AccessibleNode::multiselectable() const {
   return GetProperty(AOMBooleanProperty::kMultiselectable);
 }
 
-void AccessibleNode::setMultiselectable(std::optional<bool> value) {
+void AccessibleNode::setMultiselectable(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kMultiselectable, value);
   NotifyAttributeChanged(html_names::kAriaMultiselectableAttr);
 }
@@ -805,11 +789,11 @@ void AccessibleNode::setPlaceholder(const AtomicString& placeholder) {
   NotifyAttributeChanged(html_names::kAriaPlaceholderAttr);
 }
 
-std::optional<uint32_t> AccessibleNode::posInSet() const {
+absl::optional<uint32_t> AccessibleNode::posInSet() const {
   return GetProperty(element_, AOMUIntProperty::kPosInSet);
 }
 
-void AccessibleNode::setPosInSet(std::optional<uint32_t> value) {
+void AccessibleNode::setPosInSet(absl::optional<uint32_t> value) {
   SetUIntProperty(AOMUIntProperty::kPosInSet, value);
   NotifyAttributeChanged(html_names::kAriaPosinsetAttr);
 }
@@ -823,11 +807,11 @@ void AccessibleNode::setPressed(const AtomicString& pressed) {
   NotifyAttributeChanged(html_names::kAriaPressedAttr);
 }
 
-std::optional<bool> AccessibleNode::readOnly() const {
+absl::optional<bool> AccessibleNode::readOnly() const {
   return GetProperty(AOMBooleanProperty::kReadOnly);
 }
 
-void AccessibleNode::setReadOnly(std::optional<bool> value) {
+void AccessibleNode::setReadOnly(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kReadOnly, value);
   NotifyAttributeChanged(html_names::kAriaReadonlyAttr);
 }
@@ -841,11 +825,11 @@ void AccessibleNode::setRelevant(const AtomicString& relevant) {
   NotifyAttributeChanged(html_names::kAriaRelevantAttr);
 }
 
-std::optional<bool> AccessibleNode::required() const {
+absl::optional<bool> AccessibleNode::required() const {
   return GetProperty(AOMBooleanProperty::kRequired);
 }
 
-void AccessibleNode::setRequired(std::optional<bool> value) {
+void AccessibleNode::setRequired(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kRequired, value);
   NotifyAttributeChanged(html_names::kAriaRequiredAttr);
 }
@@ -868,47 +852,47 @@ void AccessibleNode::setRoleDescription(const AtomicString& role_description) {
   NotifyAttributeChanged(html_names::kAriaRoledescriptionAttr);
 }
 
-std::optional<int32_t> AccessibleNode::rowCount() const {
+absl::optional<int32_t> AccessibleNode::rowCount() const {
   return GetProperty(element_, AOMIntProperty::kRowCount);
 }
 
-void AccessibleNode::setRowCount(std::optional<int32_t> value) {
+void AccessibleNode::setRowCount(absl::optional<int32_t> value) {
   SetIntProperty(AOMIntProperty::kRowCount, value);
   NotifyAttributeChanged(html_names::kAriaRowcountAttr);
 }
 
-std::optional<uint32_t> AccessibleNode::rowIndex() const {
+absl::optional<uint32_t> AccessibleNode::rowIndex() const {
   return GetProperty(element_, AOMUIntProperty::kRowIndex);
 }
 
-void AccessibleNode::setRowIndex(std::optional<uint32_t> value) {
+void AccessibleNode::setRowIndex(absl::optional<uint32_t> value) {
   SetUIntProperty(AOMUIntProperty::kRowIndex, value);
   NotifyAttributeChanged(html_names::kAriaRowindexAttr);
 }
 
-std::optional<uint32_t> AccessibleNode::rowSpan() const {
+absl::optional<uint32_t> AccessibleNode::rowSpan() const {
   return GetProperty(element_, AOMUIntProperty::kRowSpan);
 }
 
-void AccessibleNode::setRowSpan(std::optional<uint32_t> value) {
+void AccessibleNode::setRowSpan(absl::optional<uint32_t> value) {
   SetUIntProperty(AOMUIntProperty::kRowSpan, value);
   NotifyAttributeChanged(html_names::kAriaRowspanAttr);
 }
 
-std::optional<bool> AccessibleNode::selected() const {
+absl::optional<bool> AccessibleNode::selected() const {
   return GetProperty(AOMBooleanProperty::kSelected);
 }
 
-void AccessibleNode::setSelected(std::optional<bool> value) {
+void AccessibleNode::setSelected(absl::optional<bool> value) {
   SetBooleanProperty(AOMBooleanProperty::kSelected, value);
   NotifyAttributeChanged(html_names::kAriaSelectedAttr);
 }
 
-std::optional<int32_t> AccessibleNode::setSize() const {
+absl::optional<int32_t> AccessibleNode::setSize() const {
   return GetProperty(element_, AOMIntProperty::kSetSize);
 }
 
-void AccessibleNode::setSetSize(std::optional<int32_t> value) {
+void AccessibleNode::setSetSize(absl::optional<int32_t> value) {
   SetIntProperty(AOMIntProperty::kSetSize, value);
   NotifyAttributeChanged(html_names::kAriaSetsizeAttr);
 }
@@ -922,29 +906,29 @@ void AccessibleNode::setSort(const AtomicString& sort) {
   NotifyAttributeChanged(html_names::kAriaSortAttr);
 }
 
-std::optional<float> AccessibleNode::valueMax() const {
+absl::optional<float> AccessibleNode::valueMax() const {
   return GetProperty(element_, AOMFloatProperty::kValueMax);
 }
 
-void AccessibleNode::setValueMax(std::optional<float> value) {
+void AccessibleNode::setValueMax(absl::optional<float> value) {
   SetFloatProperty(AOMFloatProperty::kValueMax, value);
   NotifyAttributeChanged(html_names::kAriaValuemaxAttr);
 }
 
-std::optional<float> AccessibleNode::valueMin() const {
+absl::optional<float> AccessibleNode::valueMin() const {
   return GetProperty(element_, AOMFloatProperty::kValueMin);
 }
 
-void AccessibleNode::setValueMin(std::optional<float> value) {
+void AccessibleNode::setValueMin(absl::optional<float> value) {
   SetFloatProperty(AOMFloatProperty::kValueMin, value);
   NotifyAttributeChanged(html_names::kAriaValueminAttr);
 }
 
-std::optional<float> AccessibleNode::valueNow() const {
+absl::optional<float> AccessibleNode::valueNow() const {
   return GetProperty(element_, AOMFloatProperty::kValueNow);
 }
 
-void AccessibleNode::setValueNow(std::optional<float> value) {
+void AccessibleNode::setValueNow(absl::optional<float> value) {
   SetFloatProperty(AOMFloatProperty::kValueNow, value);
   NotifyAttributeChanged(html_names::kAriaValuenowAttr);
 }
@@ -1160,7 +1144,7 @@ void AccessibleNode::SetRelationListProperty(AOMRelationListProperty property,
 
 template <typename P, typename T>
 static void SetProperty(P property,
-                        std::optional<T> value,
+                        absl::optional<T> value,
                         Vector<std::pair<P, T>>& properties) {
   for (wtf_size_t i = 0; i < properties.size(); i++) {
     auto& item = properties[i];
@@ -1178,22 +1162,22 @@ static void SetProperty(P property,
 }
 
 void AccessibleNode::SetBooleanProperty(AOMBooleanProperty property,
-                                        std::optional<bool> value) {
+                                        absl::optional<bool> value) {
   SetProperty(property, value, boolean_properties_);
 }
 
 void AccessibleNode::SetIntProperty(AOMIntProperty property,
-                                    std::optional<int32_t> value) {
+                                    absl::optional<int32_t> value) {
   SetProperty(property, value, int_properties_);
 }
 
 void AccessibleNode::SetUIntProperty(AOMUIntProperty property,
-                                     std::optional<uint32_t> value) {
+                                     absl::optional<uint32_t> value) {
   SetProperty(property, value, uint_properties_);
 }
 
 void AccessibleNode::SetFloatProperty(AOMFloatProperty property,
-                                      std::optional<float> value) {
+                                      absl::optional<float> value) {
   SetProperty(property, value, float_properties_);
 }
 
@@ -1214,6 +1198,8 @@ void AccessibleNode::NotifyAttributeChanged(
     return;
   }
 
+  // By definition, any attribute on an AccessibleNode is interesting to
+  // AXObjectCache, so no need to check return value.
   cache->HandleAttributeChanged(attribute, element_);
 }
 
@@ -1231,7 +1217,7 @@ void AccessibleNode::Trace(Visitor* visitor) const {
   visitor->Trace(relation_list_properties_);
   visitor->Trace(children_);
   visitor->Trace(parent_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ElementRareDataField::Trace(visitor);
 }
 

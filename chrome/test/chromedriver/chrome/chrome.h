@@ -7,7 +7,6 @@
 
 #include <list>
 #include <string>
-
 #include "base/values.h"
 
 struct BrowserInfo;

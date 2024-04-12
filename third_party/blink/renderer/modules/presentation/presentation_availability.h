@@ -24,7 +24,7 @@ class KURL;
 // then subscribe to receive callbacks if the status for |url| were to
 // change. The object will only listen to changes when required.
 class MODULES_EXPORT PresentationAvailability final
-    : public EventTarget,
+    : public EventTargetWithInlineData,
       public ActiveScriptWrappable<PresentationAvailability>,
       public ExecutionContextLifecycleStateObserver,
       public PageVisibilityObserver,

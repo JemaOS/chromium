@@ -125,7 +125,6 @@ SyncFileSystemBackend::GetCopyOrMoveFileValidatorFactory(
 
 std::unique_ptr<storage::FileSystemOperation>
 SyncFileSystemBackend::CreateFileSystemOperation(
-    storage::OperationType type,
     const storage::FileSystemURL& url,
     storage::FileSystemContext* context,
     base::File::Error* error_code) const {
@@ -139,12 +138,12 @@ SyncFileSystemBackend::CreateFileSystemOperation(
     return nullptr;
 
   if (url.type() == storage::kFileSystemTypeSyncableForInternalSync) {
-    return storage::FileSystemOperation::Create(type, url, context,
+    return storage::FileSystemOperation::Create(url, context,
                                                 std::move(operation_context));
   }
 
   return std::make_unique<SyncableFileSystemOperation>(
-      type, url, context, std::move(operation_context),
+      url, context, std::move(operation_context),
       base::PassKey<SyncFileSystemBackend>());
 }
 

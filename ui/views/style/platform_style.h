@@ -8,7 +8,6 @@
 #include <memory>
 
 #include "ui/views/controls/button/button.h"
-#include "ui/views/controls/scrollbar/scroll_bar.h"
 #include "ui/views/view.h"
 #include "ui/views/views_export.h"
 
@@ -17,6 +16,8 @@ class Range;
 }  // namespace gfx
 
 namespace views {
+
+class ScrollBar;
 
 // Cross-platform API for providing platform-specific styling for toolkit-views.
 class VIEWS_EXPORT PlatformStyle {
@@ -76,8 +77,7 @@ class VIEWS_EXPORT PlatformStyle {
   static const View::FocusBehavior kDefaultFocusBehavior;
 
   // Creates the default scrollbar for the given orientation.
-  static std::unique_ptr<ScrollBar> CreateScrollBar(
-      ScrollBar::Orientation orientation);
+  static std::unique_ptr<ScrollBar> CreateScrollBar(bool is_horizontal);
 
   // Called whenever a textfield edit fails. Gives visual/audio feedback about
   // the failed edit if platform-appropriate.

@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startURL(
       'resources/test-page.html',
       'Tests that Referer header can be overriden even when it would violate referrer policy');

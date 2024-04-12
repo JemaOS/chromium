@@ -37,7 +37,7 @@ class CORE_EXPORT Report : public ScriptWrappable {
 
   String type() const { return type_; }
   String url() const { return url_; }
-  ReportBody* body() const { return body_.Get(); }
+  ReportBody* body() const { return body_; }
 
   void Trace(Visitor* visitor) const override {
     visitor->Trace(body_);

@@ -5,15 +5,15 @@
 #ifndef UI_ACCESSIBILITY_PLATFORM_INSPECT_AX_INSPECT_TEST_HELPER_H_
 #define UI_ACCESSIBILITY_PLATFORM_INSPECT_AX_INSPECT_TEST_HELPER_H_
 
-#include <optional>
-
+#include "base/component_export.h"
 #include "base/files/file_path.h"
 #include "base/gtest_prod_util.h"
-#include "base/test/scoped_feature_list.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/platform/inspect/ax_api_type.h"
 #include "ui/accessibility/platform/inspect/ax_inspect.h"
 
 namespace base {
+class CommandLine;
 class FilePath;
 }  // namespace base
 
@@ -22,7 +22,7 @@ namespace ui {
 class AXInspectScenario;
 
 // A helper class for writing accessibility tree dump tests.
-class AXInspectTestHelper {
+class COMPONENT_EXPORT(AX_PLATFORM) AXInspectTestHelper {
  public:
   explicit AXInspectTestHelper(AXApiType::Type type);
   explicit AXInspectTestHelper(const char* expectation_type);
@@ -42,9 +42,8 @@ class AXInspectTestHelper {
       const base::FilePath::StringType& expectations_qualifier =
           FILE_PATH_LITERAL(""));
 
-  // Enable/disable features as needed.
-  void InitializeFeatureList();
-  void ResetFeatureList();
+  // Sets up a command line for the test.
+  void SetUpCommandLine(base::CommandLine*) const;
 
   // Parses a given testing scenario. Prepends default property filters if any
   // so the test file filters will take precedence over default filters in case
@@ -56,7 +55,7 @@ class AXInspectTestHelper {
   // Parses a given testing scenario from a file. Prepends default property
   // filters if any so the test file filters will take precedence over default
   // filters in case of conflict.
-  std::optional<AXInspectScenario> ParseScenario(
+  absl::optional<AXInspectScenario> ParseScenario(
       const base::FilePath& scenario_path,
       const std::vector<AXPropertyFilter>& default_filters = {});
 
@@ -71,7 +70,7 @@ class AXInspectTestHelper {
   // Loads the given expectation file and returns the contents. An expectation
   // file may be empty, in which case an empty vector is returned.
   // Returns nullopt if the file contains a skip marker.
-  static std::optional<std::vector<std::string>> LoadExpectationFile(
+  static absl::optional<std::vector<std::string>> LoadExpectationFile(
       const base::FilePath& expected_file);
 
   // Compares the given actual dump against the given expectation and generates
@@ -115,7 +114,6 @@ class AXInspectTestHelper {
       const std::vector<std::string>& expected_lines,
       const std::vector<std::string>& actual_lines);
 
-  base::test::ScopedFeatureList scoped_feature_list_;
   std::string expectation_type_;
 };
 

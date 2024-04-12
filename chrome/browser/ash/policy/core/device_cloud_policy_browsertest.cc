@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -16,10 +15,10 @@
 #include "base/memory/ref_counted.h"
 #include "base/run_loop.h"
 #include "base/values.h"
+#include "chrome/browser/ash/login/test/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
 #include "chrome/browser/ash/policy/core/device_cloud_policy_store_ash.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
-#include "chrome/browser/ash/policy/test_support/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/settings/device_settings_service.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part.h"
@@ -57,6 +56,7 @@
 #include "net/test/embedded_test_server/http_request.h"
 #include "net/test/embedded_test_server/http_response.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace policy {
@@ -100,17 +100,6 @@ class KeyRotationDeviceCloudPolicyTest : public DevicePolicyCrosBrowserTest {
     DevicePolicyCrosBrowserTest::TearDownOnMainThread();
   }
 
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    // The verification key was replaced from the original to the
-    // testing key by the super class. However this class uses the
-    // policy data provided by signature_provider.cc which still
-    // gives data validated by the original verification key. Thus
-    // the flag needs to be removed so that these tests use the
-    // original verification key.
-    DevicePolicyCrosBrowserTest::SetUpCommandLine(command_line);
-    command_line->RemoveSwitch(switches::kPolicyVerificationKey);
-  }
-
   void UpdateBuiltTestPolicyValue(int test_policy_value) {
     device_policy()
         ->payload()
@@ -127,7 +116,7 @@ class KeyRotationDeviceCloudPolicyTest : public DevicePolicyCrosBrowserTest {
     g_browser_process->platform_part()
         ->browser_policy_connector_ash()
         ->GetDeviceCloudPolicyManager()
-        ->RefreshPolicies(PolicyFetchReason::kTest);
+        ->RefreshPolicies();
   }
 
   std::string GetOwnerPublicKey() const {

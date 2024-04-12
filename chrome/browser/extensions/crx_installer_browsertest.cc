@@ -7,7 +7,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/at_exit.h"
@@ -35,8 +34,8 @@
 #include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/extensions/fake_safe_browsing_database_manager.h"
 #include "chrome/browser/extensions/forced_extensions/install_stage_tracker.h"
-#include "chrome/browser/extensions/permissions/scripting_permissions_modifier.h"
 #include "chrome/browser/extensions/scoped_database_manager_for_test.h"
+#include "chrome/browser/extensions/scripting_permissions_modifier.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
@@ -44,6 +43,7 @@
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/safe_browsing/buildflags.h"
+#include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/render_view_host.h"
@@ -58,13 +58,13 @@
 #include "extensions/browser/install/crx_install_error.h"
 #include "extensions/browser/install/sandboxed_unpacker_failure_reason.h"
 #include "extensions/browser/management_policy.h"
+#include "extensions/browser/notification_types.h"
 #include "extensions/browser/permissions_manager.h"
 #include "extensions/browser/renderer_startup_helper.h"
 #include "extensions/browser/test_extension_registry_observer.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/extension_features.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/feature_switch.h"
 #include "extensions/common/file_util.h"
 #include "extensions/common/permissions/api_permission.h"
@@ -72,6 +72,7 @@
 #include "extensions/common/permissions/permissions_data.h"
 #include "extensions/common/switches.h"
 #include "extensions/test/test_extension_dir.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/l10n/l10n_util.h"
 
@@ -103,13 +104,11 @@ class MockPromptProxy {
   ~MockPromptProxy();
 
   bool did_succeed() const { return !extension_id_.empty(); }
-  const extensions::ExtensionId& extension_id() { return extension_id_; }
+  const std::string& extension_id() { return extension_id_; }
   bool confirmation_requested() const { return confirmation_requested_; }
   const std::u16string& error() const { return error_; }
 
-  void set_extension_id(const extensions::ExtensionId& id) {
-    extension_id_ = id;
-  }
+  void set_extension_id(const std::string& id) { extension_id_ = id; }
   void set_confirmation_requested(bool requested) {
     confirmation_requested_ = requested;
   }
@@ -123,7 +122,7 @@ class MockPromptProxy {
 
   // Data reported back to us by the prompt we created.
   bool confirmation_requested_;
-  extensions::ExtensionId extension_id_;
+  std::string extension_id_;
   std::u16string error_;
 
   std::unique_ptr<ScopedTestDialogAutoConfirm> auto_confirm;
@@ -149,7 +148,7 @@ class MockInstallPrompt : public ExtensionInstallPrompt {
   }
 
  private:
-  raw_ptr<MockPromptProxy, AcrossTasksDanglingUntriaged> proxy_;
+  raw_ptr<MockPromptProxy, DanglingUntriaged> proxy_;
 };
 
 MockPromptProxy::MockPromptProxy(
@@ -178,7 +177,7 @@ std::unique_ptr<MockPromptProxy> CreateMockPromptProxyForBrowser(
       browser, ScopedTestDialogAutoConfirm::ACCEPT);
 }
 
-class ManagementPolicyMock : public ManagementPolicy::Provider {
+class ManagementPolicyMock : public extensions::ManagementPolicy::Provider {
  public:
   ManagementPolicyMock() = default;
 
@@ -200,14 +199,14 @@ class ExtensionCrxInstallerTest : public ExtensionBrowserTest {
  protected:
   std::unique_ptr<WebstoreInstaller::Approval> GetApproval(
       const char* manifest_dir,
-      const extensions::ExtensionId& id,
+      const std::string& id,
       bool strict_manifest_checks) {
     std::unique_ptr<WebstoreInstaller::Approval> result;
 
     base::ScopedAllowBlockingForTesting allow_io;
     base::FilePath ext_path = test_data_dir_.AppendASCII(manifest_dir);
     std::string error;
-    std::optional<base::Value::Dict> parsed_manifest(
+    absl::optional<base::Value::Dict> parsed_manifest(
         file_util::LoadManifest(ext_path, &error));
     if (!parsed_manifest || !error.empty())
       return result;
@@ -217,8 +216,7 @@ class ExtensionCrxInstallerTest : public ExtensionBrowserTest {
         strict_manifest_checks);
   }
 
-  const Extension* GetInstalledExtension(
-      const extensions::ExtensionId& extension_id) {
+  const Extension* GetInstalledExtension(const std::string& extension_id) {
     return extension_registry()->GetInstalledExtension(extension_id);
   }
 
@@ -246,7 +244,7 @@ class ExtensionCrxInstallerTest : public ExtensionBrowserTest {
     return base::WriteFile(full_path, content);
   }
 
-  void AddExtension(const extensions::ExtensionId& extension_id,
+  void AddExtension(const std::string& extension_id,
                     const std::string& version) {
     base::ScopedTempDir temp_dir;
     ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
@@ -260,10 +258,11 @@ class ExtensionCrxInstallerTest : public ExtensionBrowserTest {
     ASSERT_TRUE(AddFileToDirectory(temp_dir.GetPath(), bar_html, "world"));
 
     ExtensionBuilder builder;
-    builder.SetManifest(base::Value::Dict()
+    builder.SetManifest(DictionaryBuilder()
                             .Set("name", "My First Extension")
                             .Set("version", version)
-                            .Set("manifest_version", 2));
+                            .Set("manifest_version", 2)
+                            .Build());
     builder.SetID(extension_id);
     builder.SetPath(temp_dir.GetPath());
     extension_service()->AddExtension(builder.Build().get());
@@ -275,7 +274,7 @@ class ExtensionCrxInstallerTest : public ExtensionBrowserTest {
 
   static void InstallerCallback(base::OnceClosure quit_closure,
                                 CrxInstaller::InstallerResultCallback callback,
-                                const std::optional<CrxInstallError>& error) {
+                                const absl::optional<CrxInstallError>& error) {
     if (!callback.is_null())
       std::move(callback).Run(error);
     std::move(quit_closure).Run();
@@ -302,7 +301,7 @@ class ExtensionCrxInstallerTest : public ExtensionBrowserTest {
   void RunCrxInstallerFromUnpackedDirectory(
       std::unique_ptr<ExtensionInstallPrompt> prompt,
       CrxInstaller::InstallerResultCallback callback,
-      const extensions::ExtensionId& extension_id,
+      const std::string& extension_id,
       const std::string& public_key,
       const base::FilePath& crx_directory) {
     base::RunLoop run_loop;
@@ -321,7 +320,7 @@ class ExtensionCrxInstallerTest : public ExtensionBrowserTest {
   }
 
   void RunUpdateExtension(std::unique_ptr<ExtensionInstallPrompt> prompt,
-                          const extensions::ExtensionId& extension_id,
+                          const std::string& extension_id,
                           const std::string& public_key,
                           const base::FilePath& unpacked_dir,
                           CrxInstaller::InstallerResultCallback callback) {
@@ -342,7 +341,7 @@ class ExtensionCrxInstallerTest : public ExtensionBrowserTest {
   // Installs a crx from |crx_relpath| (a path relative to the extension test
   // data dir) with expected id |id|.
   void InstallWithPrompt(const char* ext_relpath,
-                         const extensions::ExtensionId& id,
+                         const std::string& id,
                          CrxInstaller::InstallerResultCallback callback,
                          MockPromptProxy* mock_install_prompt) {
     base::FilePath ext_path = test_data_dir_.AppendASCII(ext_relpath);
@@ -492,7 +491,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   TestExtensionRegistryObserver registry_observer(extension_registry());
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), url, WindowOpenDisposition::CURRENT_TAB,
-      ui_test_utils::BROWSER_TEST_NO_WAIT);
+      ui_test_utils::BROWSER_TEST_NONE);
 
   EXPECT_TRUE(registry_observer.WaitForExtensionInstalled());
   EXPECT_TRUE(mock_prompt->confirmation_requested());
@@ -510,8 +509,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTestWithExperimentalApis,
                        GrantScopes_WithCallback) {
   EXPECT_NO_FATAL_FAILURE(CheckHasEmptyScopesAfterInstall(
       "browsertest/scopes",
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        EXPECT_EQ(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        EXPECT_EQ(absl::nullopt, error);
       }),
       true));
 }
@@ -526,8 +525,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTestWithExperimentalApis,
                        DoNotGrantScopes_WithCallback) {
   EXPECT_NO_FATAL_FAILURE(CheckHasEmptyScopesAfterInstall(
       "browsertest/scopes",
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        EXPECT_EQ(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        EXPECT_EQ(absl::nullopt, error);
       }),
       false));
 }
@@ -578,10 +577,9 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, HiDpiThemeTest) {
 
   ASSERT_TRUE(InstallExtension(crx_path, 1));
 
-  const extensions::ExtensionId extension_id(
-      "gllekhaobjnhgeagipipnkpmmmpchacm");
+  const std::string extension_id("gllekhaobjnhgeagipipnkpmmmpchacm");
   ExtensionRegistry* registry = ExtensionRegistry::Get(browser()->profile());
-  const Extension* extension =
+  const extensions::Extension* extension =
       registry->enabled_extensions().GetByID(extension_id);
   ASSERT_TRUE(extension);
   EXPECT_EQ(extension_id, extension->id());
@@ -592,8 +590,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, HiDpiThemeTest) {
 
 IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
                        InstallDelayedUntilNextUpdate) {
-  const extensions::ExtensionId extension_id(
-      "ldnnhddmnhbkjipkidpdiheffobcpfmf");
+  const std::string extension_id("ldnnhddmnhbkjipkidpdiheffobcpfmf");
   base::FilePath base_path = test_data_dir_.AppendASCII("delayed_install");
 
   ExtensionService* service = extension_service();
@@ -606,7 +603,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   base::FilePath v1_path = PackExtension(base_path.AppendASCII("v1"));
   ASSERT_FALSE(v1_path.empty());
   ASSERT_TRUE(InstallExtension(v1_path, 1));
-  const Extension* extension =
+  const extensions::Extension* extension =
       registry->enabled_extensions().GetByID(extension_id);
   ASSERT_TRUE(extension);
   ASSERT_EQ(extension_id, extension->id());
@@ -655,8 +652,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, Blocklist) {
       new FakeSafeBrowsingDatabaseManager(true));
   ScopedDatabaseManagerForTest scoped_blocklist_db(blocklist_db);
 
-  const extensions::ExtensionId extension_id =
-      "gllekhaobjnhgeagipipnkpmmmpchacm";
+  const std::string extension_id = "gllekhaobjnhgeagipipnkpmmmpchacm";
   blocklist_db->SetUnsafe(extension_id);
 
   base::FilePath crx_path = test_data_dir_.AppendASCII("theme_hidpi_crx")
@@ -670,6 +666,25 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, Blocklist) {
   EXPECT_EQ(CrxInstallErrorDetail::EXTENSION_IS_BLOCKLISTED,
             installation_failure.install_error_detail);
 }
+
+// TODO(alexwchen): Update this test to use a non-theme crx
+IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, BlocklistPolicyDisabled) {
+  // Disable policy which should prevent blocklist from blocking installation of
+  // unsafe Crx
+  browser()->profile()->GetPrefs()->SetBoolean(
+      prefs::kSafeBrowsingExtensionProtectionAllowedByPolicy, false);
+
+  scoped_refptr<FakeSafeBrowsingDatabaseManager> blocklist_db(
+      base::MakeRefCounted<FakeSafeBrowsingDatabaseManager>(true));
+  ScopedDatabaseManagerForTest scoped_blocklist_db(blocklist_db);
+
+  const std::string extension_id = "gllekhaobjnhgeagipipnkpmmmpchacm";
+  blocklist_db->SetUnsafe(extension_id);
+
+  base::FilePath crx_path = test_data_dir_.AppendASCII("theme_hidpi_crx")
+                                .AppendASCII("theme_hidpi.crx");
+  EXPECT_TRUE(InstallExtension(crx_path, 1));
+}
 #endif
 
 IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, NonStrictManifestCheck) {
@@ -680,7 +695,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, NonStrictManifestCheck) {
   // version of the manifest, but the downloaded .crx file is old since
   // the newly published version hasn't fully propagated to all the download
   // servers yet. So load the v2 manifest, but then install the v1 crx file.
-  extensions::ExtensionId id = "ooklpoaelmiimcjipecogjfcejghbogp";
+  std::string id = "ooklpoaelmiimcjipecogjfcejghbogp";
   std::unique_ptr<WebstoreInstaller::Approval> approval =
       GetApproval("crx_installer/v2_no_permission_change/", id, false);
 
@@ -700,14 +715,14 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   // version of the manifest, but the downloaded .crx file is old since
   // the newly published version hasn't fully propagated to all the download
   // servers yet. So load the v2 manifest, but then install the v1 crx file.
-  const extensions::ExtensionId id = "ooklpoaelmiimcjipecogjfcejghbogp";
+  const std::string id = "ooklpoaelmiimcjipecogjfcejghbogp";
   std::unique_ptr<WebstoreInstaller::Approval> approval =
       GetApproval("crx_installer/v2_no_permission_change/", id, false);
 
   RunCrxInstaller(
       approval.get(), mock_prompt->CreatePrompt(),
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        EXPECT_EQ(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        EXPECT_EQ(absl::nullopt, error);
       }),
       test_data_dir_.AppendASCII("crx_installer/v1.crx"));
 
@@ -729,8 +744,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   const std::string public_key = "123456";
   RunCrxInstallerFromUnpackedDirectory(
       mock_prompt->CreatePrompt(),
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        ASSERT_NE(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        ASSERT_NE(absl::nullopt, error);
         ASSERT_EQ(CrxInstallErrorType::SANDBOXED_UNPACKER_FAILURE,
                   error->type());
         EXPECT_EQ(SandboxedUnpackerFailureReason::DIRECTORY_MOVE_FAILED,
@@ -754,8 +769,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   const std::string public_key = "123456";
   RunCrxInstallerFromUnpackedDirectory(
       mock_prompt->CreatePrompt(),
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        ASSERT_NE(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        ASSERT_NE(absl::nullopt, error);
         ASSERT_EQ(CrxInstallErrorType::SANDBOXED_UNPACKER_FAILURE,
                   error->type());
         EXPECT_EQ(SandboxedUnpackerFailureReason::UNPACKER_CLIENT_FAILED,
@@ -785,8 +800,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   const std::string public_key = "123456";
   RunCrxInstallerFromUnpackedDirectory(
       mock_prompt->CreatePrompt(),
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        ASSERT_NE(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        ASSERT_NE(absl::nullopt, error);
         ASSERT_EQ(CrxInstallErrorType::SANDBOXED_UNPACKER_FAILURE,
                   error->type());
         EXPECT_EQ(SandboxedUnpackerFailureReason::INVALID_MANIFEST,
@@ -819,8 +834,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, InstallUnpackedCrx_Success) {
       "y0ury28n8jbN0PnInKKWcxpIXXmNQyC19HBuO3QIeUq9Dqc+7YFQIDAQAB";
   RunCrxInstallerFromUnpackedDirectory(
       mock_prompt->CreatePrompt(),
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        EXPECT_EQ(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        EXPECT_EQ(absl::nullopt, error);
       }),
       std::string(), public_key, temp_dir.GetPath());
 
@@ -835,8 +850,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
       CreateMockPromptProxyForBrowser(browser());
 
   // Update won't work as the extension doesn't exist.
-  const extensions::ExtensionId extension_id =
-      "ldnnhddmnhbkjipkidpdiheffobcpfmf";
+  const std::string extension_id = "ldnnhddmnhbkjipkidpdiheffobcpfmf";
   const std::string public_key =
       "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC8c4fBSPZ6utYoZ8NiWF/"
       "DSaimBhihjwgOsskyleFGaurhi3TDClTVSGPxNkgCzrz0wACML7M4aNjpd05qupdbR2d294j"
@@ -847,8 +861,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   RunUpdateExtension(
       mock_prompt->CreatePrompt(), extension_id, public_key,
       temp_dir->GetPath(),
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        ASSERT_NE(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        ASSERT_NE(absl::nullopt, error);
         EXPECT_EQ(CrxInstallErrorType::OTHER, error->type());
         EXPECT_EQ(CrxInstallErrorDetail::UPDATE_NON_EXISTING_EXTENSION,
                   error->detail());
@@ -866,8 +880,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   std::unique_ptr<MockPromptProxy> mock_prompt =
       CreateMockPromptProxyForBrowser(browser());
 
-  const extensions::ExtensionId extension_id =
-      "ldnnhddmnhbkjipkidpdiheffobcpfmf";
+  const std::string extension_id = "ldnnhddmnhbkjipkidpdiheffobcpfmf";
   const std::string public_key =
       "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC8c4fBSPZ6utYoZ8NiWF/"
       "DSaimBhihjwgOsskyleFGaurhi3TDClTVSGPxNkgCzrz0wACML7M4aNjpd05qupdbR2d294j"
@@ -881,8 +894,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   RunUpdateExtension(
       mock_prompt->CreatePrompt(), extension_id, public_key,
       temp_dir->GetPath(),
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        EXPECT_EQ(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        EXPECT_EQ(absl::nullopt, error);
       }));
 
   EXPECT_TRUE(mock_prompt->did_succeed());
@@ -901,8 +914,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   std::unique_ptr<MockPromptProxy> mock_prompt =
       CreateMockPromptProxyForBrowser(browser());
 
-  const extensions::ExtensionId extension_id =
-      "ldnnhddmnhbkjipkidpdiheffobcpfmf";
+  const std::string extension_id = "ldnnhddmnhbkjipkidpdiheffobcpfmf";
   const std::string public_key = "invalid public key";
 
   // Test updating an existing extension.
@@ -912,8 +924,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   RunUpdateExtension(
       mock_prompt->CreatePrompt(), extension_id, public_key,
       temp_dir->GetPath(),
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        ASSERT_NE(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        ASSERT_NE(absl::nullopt, error);
         ASSERT_EQ(CrxInstallErrorType::SANDBOXED_UNPACKER_FAILURE,
                   error->type());
         EXPECT_EQ(SandboxedUnpackerFailureReason::INVALID_MANIFEST,
@@ -934,7 +946,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   EXPECT_EQ(InstallStageTracker::FailureReason::
                 CRX_INSTALL_ERROR_SANDBOXED_UNPACKER_FAILURE,
             installation_failure.failure_reason);
-  EXPECT_EQ(std::nullopt, installation_failure.install_error_detail);
+  EXPECT_EQ(absl::nullopt, installation_failure.install_error_detail);
 }
 
 IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
@@ -943,8 +955,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   std::unique_ptr<MockPromptProxy> mock_prompt =
       CreateMockPromptProxyForBrowser(browser());
 
-  const extensions::ExtensionId extension_id =
-      "gllekhaobjnhgeagipipnkpmmmpchacm";
+  const std::string extension_id = "gllekhaobjnhgeagipipnkpmmmpchacm";
   const std::string public_key =
       "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC8c4fBSPZ6utYoZ8NiWF/"
       "DSaimBhihjwgOsskyleFGaurhi3TDClTVSGPxNkgCzrz0wACML7M4aNjpd05qupdbR2d294j"
@@ -958,8 +969,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest,
   RunUpdateExtension(
       mock_prompt->CreatePrompt(), extension_id, public_key,
       temp_dir->GetPath(),
-      base::BindOnce([](const std::optional<CrxInstallError>& error) {
-        ASSERT_NE(std::nullopt, error);
+      base::BindOnce([](const absl::optional<CrxInstallError>& error) {
+        ASSERT_NE(absl::nullopt, error);
         EXPECT_EQ(CrxInstallErrorType::OTHER, error->type());
         EXPECT_EQ(CrxInstallErrorDetail::UNEXPECTED_ID, error->detail());
       }));
@@ -1008,13 +1019,13 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, InstallToSharedLocation) {
       cache_dir.GetPath());
 
   base::FilePath crx_path = test_data_dir_.AppendASCII("crx_installer/v1.crx");
-  const Extension* extension =
-      InstallExtension(crx_path, 1, mojom::ManifestLocation::kExternalPref);
+  const extensions::Extension* extension = InstallExtension(
+      crx_path, 1, extensions::mojom::ManifestLocation::kExternalPref);
   base::FilePath extension_path = extension->path();
   EXPECT_TRUE(cache_dir.GetPath().IsParent(extension_path));
   EXPECT_TRUE(base::PathExists(extension_path));
 
-  extensions::ExtensionId extension_id = extension->id();
+  std::string extension_id = extension->id();
   UninstallExtension(extension_id);
   ExtensionRegistry* registry = ExtensionRegistry::Get(browser()->profile());
   EXPECT_FALSE(registry->enabled_extensions().GetByID(extension_id));
@@ -1030,10 +1041,10 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, DoNotSync) {
       CrxInstaller::CreateSilent(extension_service()));
   crx_installer->set_do_not_sync(true);
 
-  base::test::TestFuture<std::optional<CrxInstallError>> installer_done_future;
+  base::test::TestFuture<absl::optional<CrxInstallError>> installer_done_future;
   crx_installer->AddInstallerCallback(
       installer_done_future
-          .GetCallback<const std::optional<CrxInstallError>&>());
+          .GetCallback<const absl::optional<CrxInstallError>&>());
   crx_installer->InstallCrx(test_data_dir_.AppendASCII("good.crx"));
   EXPECT_FALSE(installer_done_future.Get().has_value());
   ASSERT_TRUE(crx_installer->extension());
@@ -1041,14 +1052,15 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, DoNotSync) {
   const ExtensionPrefs* extension_prefs =
       ExtensionPrefs::Get(browser()->profile());
   EXPECT_TRUE(extension_prefs->DoNotSync(crx_installer->extension()->id()));
-  EXPECT_FALSE(
-      util::ShouldSync(crx_installer->extension(), browser()->profile()));
+  EXPECT_FALSE(extensions::util::ShouldSync(crx_installer->extension(),
+                                            browser()->profile()));
 }
 
 IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, ManagementPolicy) {
   ManagementPolicyMock policy;
-  ExtensionSystem::Get(profile())->management_policy()->RegisterProvider(
-      &policy);
+  extensions::ExtensionSystem::Get(profile())
+      ->management_policy()
+      ->RegisterProvider(&policy);
 
   base::FilePath crx_path = test_data_dir_.AppendASCII("crx_installer/v1.crx");
   EXPECT_FALSE(InstallExtension(crx_path, 0));
@@ -1062,16 +1074,15 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, UpdateWithFileAccess) {
 
   ExtensionService* service = extension_service();
 
-  const extensions::ExtensionId extension_id(
-      "bdkapipdccfifhdghmblnenbbncfcpid");
+  const std::string extension_id("bdkapipdccfifhdghmblnenbbncfcpid");
   {
     // Install extension.
     scoped_refptr<CrxInstaller> installer(CrxInstaller::CreateSilent(service));
-    base::test::TestFuture<std::optional<CrxInstallError>>
+    base::test::TestFuture<absl::optional<CrxInstallError>>
         installer_done_future;
     installer->AddInstallerCallback(
         installer_done_future
-            .GetCallback<const std::optional<CrxInstallError>&>());
+            .GetCallback<const absl::optional<CrxInstallError>&>());
     installer->InstallCrx(crx_with_file_permission);
     EXPECT_FALSE(installer_done_future.Get().has_value());
     const Extension* extension = installer->extension();
@@ -1092,11 +1103,11 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, UpdateWithFileAccess) {
     EXPECT_FALSE(ExtensionPrefs::Get(profile())->AllowFileAccess(extension_id));
 
     scoped_refptr<CrxInstaller> installer(CrxInstaller::CreateSilent(service));
-    base::test::TestFuture<std::optional<CrxInstallError>>
+    base::test::TestFuture<absl::optional<CrxInstallError>>
         installer_done_future;
     installer->AddInstallerCallback(
         installer_done_future
-            .GetCallback<const std::optional<CrxInstallError>&>());
+            .GetCallback<const absl::optional<CrxInstallError>&>());
     installer->InstallCrx(crx_with_file_permission);
     EXPECT_FALSE(installer_done_future.Get().has_value());
     const Extension* extension = installer->extension();
@@ -1113,11 +1124,11 @@ IN_PROC_BROWSER_TEST_F(ExtensionCrxInstallerTest, UpdateWithFileAccess) {
     base::FilePath crx_update_with_file_permission = PackExtension(ext_source);
 
     scoped_refptr<CrxInstaller> installer(CrxInstaller::CreateSilent(service));
-    base::test::TestFuture<std::optional<CrxInstallError>>
+    base::test::TestFuture<absl::optional<CrxInstallError>>
         installer_done_future;
     installer->AddInstallerCallback(
         installer_done_future
-            .GetCallback<const std::optional<CrxInstallError>&>());
+            .GetCallback<const absl::optional<CrxInstallError>&>());
     installer->InstallCrx(crx_update_with_file_permission);
     EXPECT_FALSE(installer_done_future.Get().has_value());
     const Extension* extension = installer->extension();

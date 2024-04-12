@@ -5,9 +5,7 @@
 #include "third_party/blink/renderer/core/loader/resource/script_resource.h"
 
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/cached_metadata_handler.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/weborigin/scheme_registry.h"
 #include "third_party/blink/renderer/platform/wtf/text/text_encoding.h"
@@ -16,11 +14,8 @@ namespace blink {
 namespace {
 
 TEST(ScriptResourceTest, SuccessfulRevalidation) {
-  test::TaskEnvironment task_environment;
-  V8TestingScope scope;
   const KURL url("https://www.example.com/script.js");
-  ScriptResource* resource =
-      ScriptResource::CreateForTest(scope.GetIsolate(), url, UTF8Encoding());
+  ScriptResource* resource = ScriptResource::CreateForTest(url, UTF8Encoding());
   ResourceResponse response(url);
   response.SetHttpStatusCode(200);
 
@@ -42,11 +37,9 @@ TEST(ScriptResourceTest, SuccessfulRevalidation) {
 }
 
 TEST(ScriptResourceTest, FailedRevalidation) {
-  test::TaskEnvironment task_environment;
-  V8TestingScope scope;
   const KURL url("https://www.example.com/script.js");
   ScriptResource* resource =
-      ScriptResource::CreateForTest(scope.GetIsolate(), url, Latin1Encoding());
+      ScriptResource::CreateForTest(url, Latin1Encoding());
   ResourceResponse response(url);
   response.SetHttpStatusCode(200);
 
@@ -70,11 +63,8 @@ TEST(ScriptResourceTest, FailedRevalidation) {
 }
 
 TEST(ScriptResourceTest, RedirectDuringRevalidation) {
-  test::TaskEnvironment task_environment;
-  V8TestingScope scope;
   const KURL url("https://www.example.com/script.js");
-  ScriptResource* resource =
-      ScriptResource::CreateForTest(scope.GetIsolate(), url, UTF8Encoding());
+  ScriptResource* resource = ScriptResource::CreateForTest(url, UTF8Encoding());
   ResourceResponse response(url);
   response.SetHttpStatusCode(200);
 
@@ -91,7 +81,7 @@ TEST(ScriptResourceTest, RedirectDuringRevalidation) {
   ResourceResponse revalidation_response(url);
   revalidation_response.SetHttpStatusCode(302);
   revalidation_response.SetHttpHeaderField(
-      http_names::kLocation, AtomicString(destination.GetString()));
+      "location", AtomicString(destination.GetString()));
   ResourceRequest redirect_request(destination);
   resource->WillFollowRedirect(redirect_request, revalidation_response);
 
@@ -100,17 +90,14 @@ TEST(ScriptResourceTest, RedirectDuringRevalidation) {
 }
 
 TEST(ScriptResourceTest, WebUICodeCacheEnabled) {
-  test::TaskEnvironment task_environment;
 #if DCHECK_IS_ON()
   WTF::SetIsBeforeThreadCreatedForTest();  // Required for next operation:
 #endif
   SchemeRegistry::RegisterURLSchemeAsCodeCacheWithHashing(
       "codecachewithhashing");
 
-  V8TestingScope scope;
   const KURL url("codecachewithhashing://www.example.com/script.js");
-  ScriptResource* resource =
-      ScriptResource::CreateForTest(scope.GetIsolate(), url, UTF8Encoding());
+  ScriptResource* resource = ScriptResource::CreateForTest(url, UTF8Encoding());
   ResourceResponse response(url);
   response.SetHttpStatusCode(200);
 
@@ -131,11 +118,8 @@ TEST(ScriptResourceTest, WebUICodeCacheEnabled) {
 }
 
 TEST(ScriptResourceTest, WebUICodeCacheDisabled) {
-  test::TaskEnvironment task_environment;
-  V8TestingScope scope;
   const KURL url("nocodecachewithhashing://www.example.com/script.js");
-  ScriptResource* resource =
-      ScriptResource::CreateForTest(scope.GetIsolate(), url, UTF8Encoding());
+  ScriptResource* resource = ScriptResource::CreateForTest(url, UTF8Encoding());
   ResourceResponse response(url);
   response.SetHttpStatusCode(200);
 
@@ -146,27 +130,6 @@ TEST(ScriptResourceTest, WebUICodeCacheDisabled) {
 
   auto* handler = resource->CacheHandler();
   EXPECT_FALSE(handler);
-}
-
-TEST(ScriptResourceTest, CodeCacheEnabledByResponseFlag) {
-  test::TaskEnvironment task_environment;
-  V8TestingScope scope;
-  const KURL url("https://www.example.com/script.js");
-  ScriptResource* resource =
-      ScriptResource::CreateForTest(scope.GetIsolate(), url, UTF8Encoding());
-  ResourceResponse response(url);
-  response.SetHttpStatusCode(200);
-  response.SetShouldUseSourceHashForJSCodeCache(true);
-
-  resource->ResponseReceived(response);
-  constexpr char kData[5] = "abcd";
-  resource->AppendData(kData, strlen(kData));
-  resource->FinishForTest();
-
-  auto* handler = resource->CacheHandler();
-  EXPECT_TRUE(handler);
-  EXPECT_TRUE(handler->HashRequired());
-  EXPECT_EQ(UTF8Encoding().GetName(), handler->Encoding());
 }
 
 }  // namespace

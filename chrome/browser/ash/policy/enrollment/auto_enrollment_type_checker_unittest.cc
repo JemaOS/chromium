@@ -7,28 +7,14 @@
 #include <string>
 
 #include "ash/constants/ash_switches.h"
-#include "base/i18n/time_formatting.h"
 #include "base/strings/stringprintf.h"
-#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_command_line.h"
-#include "base/test/task_environment.h"
-#include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "build/branding_buildflags.h"
-#include "chrome/browser/browser_process.h"
-#include "chrome/test/base/testing_browser_process.h"
 #include "chromeos/ash/components/system/factory_ping_embargo_check.h"
 #include "chromeos/ash/components/system/fake_statistics_provider.h"
 #include "chromeos/ash/components/system/statistics_provider.h"
-#include "components/policy/core/common/cloud/enterprise_metrics.h"
-#include "net/base/load_flags.h"
-#include "services/network/public/cpp/simple_url_loader.h"
-#include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
-#include "services/network/public/mojom/fetch_api.mojom-shared.h"
-#include "services/network/test/test_url_loader_factory.h"
-#include "services/network/test/test_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/icu/source/i18n/unicode/timezone.h"
 
 namespace {
 
@@ -38,8 +24,21 @@ constexpr char kActivateDateValue[] = "activated";
 constexpr char kMalformedEmbargoDateValue[] = "adventure_time";
 
 std::string ToUTCString(const base::Time& time) {
-  return base::UnlocalizedTimeFormatWithPattern(time, "yyyy-MM-dd",
-                                                icu::TimeZone::getGMT());
+  base::Time::Exploded exploded;
+  time.UTCExplode(&exploded);
+
+  const std::string time_string = base::StringPrintf(
+      "%04d-%02d-%02d", exploded.year, exploded.month, exploded.day_of_month);
+
+  base::Time reparsed_time;
+  EXPECT_TRUE(base::Time::FromUTCString(time_string.c_str(), &reparsed_time));
+  base::Time::Exploded reparsed_exploded;
+  reparsed_time.UTCExplode(&reparsed_exploded);
+  EXPECT_EQ(exploded.year, reparsed_exploded.year);
+  EXPECT_EQ(exploded.month, reparsed_exploded.month);
+  EXPECT_EQ(exploded.day_of_month, reparsed_exploded.day_of_month);
+
+  return time_string;
 }
 
 }  // namespace
@@ -52,21 +51,6 @@ class AutoEnrollmentTypeCheckerTest : public testing::Test {
   ~AutoEnrollmentTypeCheckerTest() override = default;
 
  protected:
-  void SetUpFlexDevice() {
-    fake_statistics_provider_.SetMachineStatistic(
-        ash::system::kFirmwareTypeKey,
-        ash::system::kFirmwareTypeValueNonchrome);
-    command_line_.GetProcessCommandLine()->AppendSwitch(
-        ash::switches::kRevenBranding);
-  }
-
-  void SetUpFlexDeviceWithCommandLineSwitchToAlways() {
-    SetUpFlexDevice();
-    command_line_.GetProcessCommandLine()->AppendSwitchASCII(
-        ash::switches::kEnterpriseEnableForcedReEnrollmentOnFlex,
-        AutoEnrollmentTypeChecker::kForcedReEnrollmentAlways);
-  }
-
   void SetupFREEnabled() {
     command_line_.GetProcessCommandLine()->AppendSwitchASCII(
         ash::switches::kEnterpriseEnableForcedReEnrollment,
@@ -140,12 +124,6 @@ class AutoEnrollmentTypeCheckerTest : public testing::Test {
         kMalformedEmbargoDateValue);
   }
 
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  static constexpr bool is_google_branded_ = true;
-#else
-  static constexpr bool is_google_branded_ = false;
-#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
-
   base::test::ScopedCommandLine command_line_;
   ash::system::ScopedFakeStatisticsProvider fake_statistics_provider_;
 };
@@ -158,47 +136,40 @@ TEST_F(AutoEnrollmentTypeCheckerTest, FREEnabledWhenSwitchIsAlways) {
   EXPECT_TRUE(AutoEnrollmentTypeChecker::IsFREEnabled());
 }
 
+// Without this macro Chrome is never branded so test always fail. Disable them
+// because there there's nothing to test in this case.
+#if !BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#define MAYBE_FREEnabledWhenSwitchIsOfficialBuild \
+  DISABLED_FREEnabledWhenSwitchIsOfficialBuild
+#define MAYBE_FREEnabledWhenSwitchIsEmpty DISABLED_FREEnabledWhenSwitchIsEmpty
+#else
+#define MAYBE_FREEnabledWhenSwitchIsOfficialBuild \
+  FREEnabledWhenSwitchIsOfficialBuild
+#define MAYBE_FREEnabledWhenSwitchIsEmpty FREEnabledWhenSwitchIsEmpty
+#endif  // !BUILDFLAG(GOOGLE_CHROME_BRANDING)
+
 TEST_F(AutoEnrollmentTypeCheckerTest,
-       FREEnabledWhenSwitchIsAlwaysOnFlexAndFlexSpecificSwitchIsAlways) {
-  SetUpFlexDeviceWithCommandLineSwitchToAlways();
-  command_line_.GetProcessCommandLine()->AppendSwitchASCII(
-      ash::switches::kEnterpriseEnableForcedReEnrollment,
-      AutoEnrollmentTypeChecker::kForcedReEnrollmentAlways);
-
-  EXPECT_TRUE(AutoEnrollmentTypeChecker::IsFREEnabled());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerTest,
-       FREDisabledWhenSwitchIsAlwaysOnAndFlexSpecificSwitchIsNotAlways) {
-  SetUpFlexDevice();
-  command_line_.GetProcessCommandLine()->AppendSwitchASCII(
-      ash::switches::kEnterpriseEnableForcedReEnrollment,
-      AutoEnrollmentTypeChecker::kForcedReEnrollmentAlways);
-
-  EXPECT_FALSE(AutoEnrollmentTypeChecker::IsFREEnabled());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerTest, FREEnabledWhenSwitchIsOfficialBuild) {
+       MAYBE_FREEnabledWhenSwitchIsOfficialBuild) {
   fake_statistics_provider_.SetMachineStatistic(
       ash::system::kFirmwareTypeKey, ash::system::kFirmwareTypeValueNormal);
   command_line_.GetProcessCommandLine()->AppendSwitchASCII(
       ash::switches::kEnterpriseEnableForcedReEnrollment,
       AutoEnrollmentTypeChecker::kForcedReEnrollmentOfficialBuild);
 
-  EXPECT_EQ(AutoEnrollmentTypeChecker::IsFREEnabled(), is_google_branded_);
+  EXPECT_TRUE(AutoEnrollmentTypeChecker::IsFREEnabled());
 }
 
-TEST_F(AutoEnrollmentTypeCheckerTest, FREEnabledWhenSwitchIsEmpty) {
+TEST_F(AutoEnrollmentTypeCheckerTest, MAYBE_FREEnabledWhenSwitchIsEmpty) {
   fake_statistics_provider_.SetMachineStatistic(
       ash::system::kFirmwareTypeKey, ash::system::kFirmwareTypeValueNormal);
   command_line_.GetProcessCommandLine()->AppendSwitch(
       ash::switches::kEnterpriseEnableForcedReEnrollment);
 
-  EXPECT_EQ(AutoEnrollmentTypeChecker::IsFREEnabled(), is_google_branded_);
+  EXPECT_TRUE(AutoEnrollmentTypeChecker::IsFREEnabled());
 }
 
 TEST_F(AutoEnrollmentTypeCheckerTest,
-       FREDisabledWhenSwitchIsOfficialBuildOnNonChrome) {
+       FREDisabledWhenSwitchIsOfficialBuildButItsNot) {
   fake_statistics_provider_.SetMachineStatistic(
       ash::system::kFirmwareTypeKey, ash::system::kFirmwareTypeValueNonchrome);
   command_line_.GetProcessCommandLine()->AppendSwitchASCII(
@@ -206,26 +177,6 @@ TEST_F(AutoEnrollmentTypeCheckerTest,
       AutoEnrollmentTypeChecker::kForcedReEnrollmentOfficialBuild);
 
   EXPECT_FALSE(AutoEnrollmentTypeChecker::IsFREEnabled());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerTest,
-       FREDisabledWhenSwitchIsOfficialBuildOnFlexAndFlexSwitchIsNotAlways) {
-  SetUpFlexDevice();
-  command_line_.GetProcessCommandLine()->AppendSwitchASCII(
-      ash::switches::kEnterpriseEnableForcedReEnrollment,
-      AutoEnrollmentTypeChecker::kForcedReEnrollmentOfficialBuild);
-
-  EXPECT_FALSE(AutoEnrollmentTypeChecker::IsFREEnabled());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerTest,
-       FREEnabledWhenSwitchIsOfficialBuildOnFlexAndSwitchFlexIsAlways) {
-  SetUpFlexDeviceWithCommandLineSwitchToAlways();
-  command_line_.GetProcessCommandLine()->AppendSwitchASCII(
-      ash::switches::kEnterpriseEnableForcedReEnrollment,
-      AutoEnrollmentTypeChecker::kForcedReEnrollmentOfficialBuild);
-
-  EXPECT_EQ(AutoEnrollmentTypeChecker::IsFREEnabled(), is_google_branded_);
 }
 
 TEST_F(AutoEnrollmentTypeCheckerTest, FREDisabledWhenSwitchIsNever) {
@@ -245,27 +196,39 @@ TEST_F(AutoEnrollmentTypeCheckerTest,
   EXPECT_TRUE(AutoEnrollmentTypeChecker::IsInitialEnrollmentEnabled());
 }
 
+// Without this macro Chrome is never branded so test always fail. Disable them
+// because there there's nothing to test in this case.
+#if !BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#define MAYBE_InitialEnrollmentEnabledWhenSwitchIsOfficialBuild \
+  DISABLED_InitialEnrollmentEnabledWhenSwitchIsOfficialBuild
+#define MAYBE_InitialEnrollmentEnabledWhenSwitchIsEmpty \
+  DISABLED_InitialEnrollmentEnabledWhenSwitchIsEmpty
+#else
+#define MAYBE_InitialEnrollmentEnabledWhenSwitchIsOfficialBuild \
+  InitialEnrollmentEnabledWhenSwitchIsOfficialBuild
+#define MAYBE_InitialEnrollmentEnabledWhenSwitchIsEmpty \
+  InitialEnrollmentEnabledWhenSwitchIsEmpty
+#endif  // !BUILDFLAG(GOOGLE_CHROME_BRANDING)
+
 TEST_F(AutoEnrollmentTypeCheckerTest,
-       InitialEnrollmentEnabledWhenSwitchIsOfficialBuild) {
+       MAYBE_InitialEnrollmentEnabledWhenSwitchIsOfficialBuild) {
   fake_statistics_provider_.SetMachineStatistic(
       ash::system::kFirmwareTypeKey, ash::system::kFirmwareTypeValueNormal);
   command_line_.GetProcessCommandLine()->AppendSwitchASCII(
       ash::switches::kEnterpriseEnableForcedReEnrollment,
       AutoEnrollmentTypeChecker::kInitialEnrollmentOfficialBuild);
 
-  EXPECT_EQ(AutoEnrollmentTypeChecker::IsInitialEnrollmentEnabled(),
-            is_google_branded_);
+  EXPECT_TRUE(AutoEnrollmentTypeChecker::IsInitialEnrollmentEnabled());
 }
 
 TEST_F(AutoEnrollmentTypeCheckerTest,
-       InitialEnrollmentEnabledWhenSwitchIsEmpty) {
+       MAYBE_InitialEnrollmentEnabledWhenSwitchIsEmpty) {
   fake_statistics_provider_.SetMachineStatistic(
       ash::system::kFirmwareTypeKey, ash::system::kFirmwareTypeValueNormal);
   command_line_.GetProcessCommandLine()->AppendSwitch(
       ash::switches::kEnterpriseEnableInitialEnrollment);
 
-  EXPECT_EQ(AutoEnrollmentTypeChecker::IsInitialEnrollmentEnabled(),
-            is_google_branded_);
+  EXPECT_TRUE(AutoEnrollmentTypeChecker::IsInitialEnrollmentEnabled());
 }
 
 TEST_F(AutoEnrollmentTypeCheckerTest,
@@ -353,12 +316,25 @@ TEST_F(AutoEnrollmentTypeCheckerTest,
 
 TEST_F(AutoEnrollmentTypeCheckerTest,
        FRERequiredAccordingToVPDWhenVPDIsBroken) {
-  fake_statistics_provider_.SetVpdStatus(
-      ash::system::StatisticsProvider::VpdStatus::kRwInvalid);
+  {
+    fake_statistics_provider_.SetVpdStatus(
+        ash::system::StatisticsProvider::VpdStatus::kRwInvalid);
 
-  EXPECT_EQ(AutoEnrollmentTypeChecker::GetFRERequirementAccordingToVPD(
-                &fake_statistics_provider_),
-            AutoEnrollmentTypeChecker::FRERequirement::kExplicitlyRequired);
+    EXPECT_EQ(AutoEnrollmentTypeChecker::GetFRERequirementAccordingToVPD(
+                  &fake_statistics_provider_),
+              AutoEnrollmentTypeChecker::FRERequirement::kExplicitlyRequired);
+  }
+
+  {
+    fake_statistics_provider_.SetVpdStatus(
+        ash::system::StatisticsProvider::VpdStatus::kInvalid);
+    command_line_.GetProcessCommandLine()->AppendSwitch(
+        ash::switches::kRevenBranding);
+
+    EXPECT_EQ(AutoEnrollmentTypeChecker::GetFRERequirementAccordingToVPD(
+                  &fake_statistics_provider_),
+              AutoEnrollmentTypeChecker::FRERequirement::kRequired);
+  }
 }
 
 TEST_F(AutoEnrollmentTypeCheckerTest,
@@ -391,244 +367,6 @@ TEST_F(AutoEnrollmentTypeCheckerTest,
                   &fake_statistics_provider_),
               AutoEnrollmentTypeChecker::FRERequirement::kRequired);
   }
-}
-
-TEST_F(AutoEnrollmentTypeCheckerTest,
-       FRERequiredOnFlexEnabledByCommandLineSwitch) {
-  SetUpFlexDeviceWithCommandLineSwitchToAlways();
-
-  EXPECT_EQ(AutoEnrollmentTypeChecker::GetFRERequirementAccordingToVPD(
-                &fake_statistics_provider_),
-            AutoEnrollmentTypeChecker::FRERequirement::kExplicitlyRequired);
-}
-
-TEST_F(AutoEnrollmentTypeCheckerTest,
-       FRERequiredOnFlexOverridenByFREEnabledCommandLineSwitchSetToNever) {
-  SetUpFlexDeviceWithCommandLineSwitchToAlways();
-  command_line_.GetProcessCommandLine()->AppendSwitchASCII(
-      ash::switches::kEnterpriseEnableForcedReEnrollment,
-      AutoEnrollmentTypeChecker::kForcedReEnrollmentNever);
-
-  EXPECT_FALSE(AutoEnrollmentTypeChecker::IsFREEnabled());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerTest,
-       FRERequiredOnFlexNotEnabledByCommandLineSwitch) {
-  SetUpFlexDevice();
-
-  EXPECT_FALSE(AutoEnrollmentTypeChecker::IsFREEnabled());
-  EXPECT_EQ(AutoEnrollmentTypeChecker::GetFRERequirementAccordingToVPD(
-                &fake_statistics_provider_),
-            AutoEnrollmentTypeChecker::FRERequirement::kDisabled);
-}
-
-TEST_F(AutoEnrollmentTypeCheckerTest,
-       FRERequiredOnFlexNotEnabledByCommandLineSwitchEvenWithFREAlwaysEnabled) {
-  SetUpFlexDevice();
-  command_line_.GetProcessCommandLine()->AppendSwitchASCII(
-      ash::switches::kEnterpriseEnableForcedReEnrollment,
-      AutoEnrollmentTypeChecker::kForcedReEnrollmentAlways);
-
-  EXPECT_FALSE(AutoEnrollmentTypeChecker::IsFREEnabled());
-  EXPECT_EQ(AutoEnrollmentTypeChecker::GetFRERequirementAccordingToVPD(
-                &fake_statistics_provider_),
-            AutoEnrollmentTypeChecker::FRERequirement::kDisabled);
-}
-
-class AutoEnrollmentTypeCheckerInitializationTest
-    : public AutoEnrollmentTypeCheckerTest {
- public:
-  void SetUp() override {
-    AutoEnrollmentTypeCheckerTest::SetUp();
-    AutoEnrollmentTypeChecker::
-        ClearUnifiedStateDeterminationKillSwitchForTesting();
-    test_shared_loader_factory_ = test_url_loader_factory_.GetSafeWeakWrapper();
-  }
-
- protected:
-  network::TestURLLoaderFactory test_url_loader_factory_;
-  scoped_refptr<network::WeakWrapperSharedURLLoaderFactory>
-      test_shared_loader_factory_;
-
- private:
-  base::test::SingleThreadTaskEnvironment task_environment_;
-};
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, Request) {
-  base::test::TestFuture<void> future;
-
-  AutoEnrollmentTypeChecker::Initialize(test_shared_loader_factory_,
-                                        future.GetCallback());
-
-  ASSERT_EQ(test_url_loader_factory_.NumPending(), 1);
-  auto request = test_url_loader_factory_.GetPendingRequest(0)->request;
-  EXPECT_EQ(request.url,
-            "https://www.gstatic.com/chromeos-usd-experiment/v1.json");
-  EXPECT_EQ(request.method, "GET");
-  EXPECT_TRUE(request.load_flags & net::LOAD_DISABLE_CACHE);
-  EXPECT_EQ(request.credentials_mode, network::mojom::CredentialsMode::kOmit);
-}
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, RetriesAllErrors) {
-  base::test::TestFuture<void> future;
-  network::URLLoaderCompletionStatus status;
-
-  AutoEnrollmentTypeChecker::Initialize(test_shared_loader_factory_,
-                                        future.GetCallback());
-
-  // Network changed.
-  ASSERT_EQ(test_url_loader_factory_.NumPending(), 1);
-  status.error_code = net::ERR_NETWORK_CHANGED;
-  test_url_loader_factory_.SimulateResponseForPendingRequest(
-      GURL("https://www.gstatic.com/chromeos-usd-experiment/v1.json"), status,
-      network::mojom::URLResponseHead::New(), "");
-
-  // DNS failed.
-  ASSERT_EQ(test_url_loader_factory_.NumPending(), 1);
-  status.error_code = net::ERR_TIMED_OUT;
-  test_url_loader_factory_.SimulateResponseForPendingRequest(
-      GURL("https://www.gstatic.com/chromeos-usd-experiment/v1.json"), status,
-      network::mojom::URLResponseHead::New(), "");
-
-  // HTTP 5xx error.
-  ASSERT_EQ(test_url_loader_factory_.NumPending(), 1);
-  test_url_loader_factory_.SimulateResponseForPendingRequest(
-      "https://www.gstatic.com/chromeos-usd-experiment/v1.json", "",
-      net::HTTP_SERVICE_UNAVAILABLE);
-
-  EXPECT_EQ(test_url_loader_factory_.NumPending(), 1);
-  EXPECT_FALSE(future.IsReady());
-  EXPECT_FALSE(AutoEnrollmentTypeChecker::Initialized());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, UmaHistograms) {
-  base::HistogramTester histograms;
-  base::test::TestFuture<void> future;
-  network::URLLoaderCompletionStatus status;
-
-  AutoEnrollmentTypeChecker::Initialize(test_shared_loader_factory_,
-                                        future.GetCallback());
-
-  status.error_code = net::ERR_NETWORK_CHANGED;
-  test_url_loader_factory_.SimulateResponseForPendingRequest(
-      GURL("https://www.gstatic.com/chromeos-usd-experiment/v1.json"), status,
-      network::mojom::URLResponseHead::New(), "");
-  test_url_loader_factory_.AddResponse(
-      "https://www.gstatic.com/chromeos-usd-experiment/v1.json",
-      R"({"disable_up_to_version": 1})", net::HTTP_OK);
-
-  ASSERT_TRUE(future.Wait());
-  histograms.ExpectTotalCount(
-      kUMAStateDeterminationKillSwitchFetchNetworkErrorCode, 2);
-  histograms.ExpectBucketCount(
-      kUMAStateDeterminationKillSwitchFetchNetworkErrorCode,
-      -net::ERR_NETWORK_CHANGED, 1);
-  histograms.ExpectBucketCount(
-      kUMAStateDeterminationKillSwitchFetchNetworkErrorCode, -net::OK, 1);
-  histograms.ExpectUniqueSample(kUMAStateDeterminationKillSwitchFetchNumTries,
-                                2, 1);
-}
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, KilledBeforeInitStarted) {
-  EXPECT_FALSE(AutoEnrollmentTypeChecker::Initialized());
-  EXPECT_TRUE(AutoEnrollmentTypeChecker::
-                  IsUnifiedStateDeterminationDisabledByKillSwitchForTesting());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, KilledBeforeInitCompleted) {
-  base::test::TestFuture<void> future;
-
-  AutoEnrollmentTypeChecker::Initialize(test_shared_loader_factory_,
-                                        future.GetCallback());
-
-  EXPECT_FALSE(future.IsReady());
-  EXPECT_FALSE(AutoEnrollmentTypeChecker::Initialized());
-  EXPECT_TRUE(AutoEnrollmentTypeChecker::
-                  IsUnifiedStateDeterminationDisabledByKillSwitchForTesting());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, KilledOnTimeout) {
-  base::test::TestFuture<void> future;
-
-  AutoEnrollmentTypeChecker::Initialize(test_shared_loader_factory_,
-                                        future.GetCallback());
-  network::SimpleURLLoader::SetTimeoutTickClockForTest(nullptr);
-
-  ASSERT_TRUE(future.Wait());
-  EXPECT_TRUE(AutoEnrollmentTypeChecker::Initialized());
-  EXPECT_TRUE(AutoEnrollmentTypeChecker::
-                  IsUnifiedStateDeterminationDisabledByKillSwitchForTesting());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, KilledOnInvalidJSON) {
-  base::test::TestFuture<void> future;
-  test_url_loader_factory_.AddResponse(
-      "https://www.gstatic.com/chromeos-usd-experiment/v1.json", "!!!",
-      net::HTTP_OK);
-
-  AutoEnrollmentTypeChecker::Initialize(test_shared_loader_factory_,
-                                        future.GetCallback());
-
-  ASSERT_TRUE(future.Wait());
-  EXPECT_TRUE(AutoEnrollmentTypeChecker::
-                  IsUnifiedStateDeterminationDisabledByKillSwitchForTesting());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, KilledOnNonDict) {
-  base::test::TestFuture<void> future;
-  test_url_loader_factory_.AddResponse(
-      "https://www.gstatic.com/chromeos-usd-experiment/v1.json", "42",
-      net::HTTP_OK);
-
-  AutoEnrollmentTypeChecker::Initialize(test_shared_loader_factory_,
-                                        future.GetCallback());
-
-  ASSERT_TRUE(future.Wait());
-  EXPECT_TRUE(AutoEnrollmentTypeChecker::
-                  IsUnifiedStateDeterminationDisabledByKillSwitchForTesting());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, KilledOnMissingKey) {
-  base::test::TestFuture<void> future;
-  test_url_loader_factory_.AddResponse(
-      "https://www.gstatic.com/chromeos-usd-experiment/v1.json", "{}",
-      net::HTTP_OK);
-
-  AutoEnrollmentTypeChecker::Initialize(test_shared_loader_factory_,
-                                        future.GetCallback());
-
-  ASSERT_TRUE(future.Wait());
-  EXPECT_TRUE(AutoEnrollmentTypeChecker::
-                  IsUnifiedStateDeterminationDisabledByKillSwitchForTesting());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, KilledVersion) {
-  base::test::TestFuture<void> future;
-  test_url_loader_factory_.AddResponse(
-      "https://www.gstatic.com/chromeos-usd-experiment/v1.json",
-      R"({"disable_up_to_version": 1})", net::HTTP_OK);
-
-  AutoEnrollmentTypeChecker::Initialize(test_shared_loader_factory_,
-                                        future.GetCallback());
-
-  ASSERT_TRUE(future.Wait());
-  EXPECT_TRUE(AutoEnrollmentTypeChecker::
-                  IsUnifiedStateDeterminationDisabledByKillSwitchForTesting());
-}
-
-TEST_F(AutoEnrollmentTypeCheckerInitializationTest, ActiveVersion) {
-  base::test::TestFuture<void> future;
-  test_url_loader_factory_.AddResponse(
-      "https://www.gstatic.com/chromeos-usd-experiment/v1.json",
-      // TODO(b/265923216): Change to 0 when kCodeVersion is 1.
-      R"({"disable_up_to_version": -1})", net::HTTP_OK);
-
-  AutoEnrollmentTypeChecker::Initialize(test_shared_loader_factory_,
-                                        future.GetCallback());
-
-  ASSERT_TRUE(future.Wait());
-  EXPECT_FALSE(AutoEnrollmentTypeChecker::
-                   IsUnifiedStateDeterminationDisabledByKillSwitchForTesting());
 }
 
 // This is parametrized with unified_enrollment_kill_switch.

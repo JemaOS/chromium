@@ -36,10 +36,7 @@
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/url_loader_client.h"
 #include "third_party/blink/renderer/platform/timer.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
-
-namespace WTF {
-class String;
-}  // namespace WTF
+#include "third_party/blink/renderer/platform/wtf/forward.h"
 
 namespace blink {
 
@@ -82,7 +79,7 @@ class CORE_EXPORT PingLoader {
   static bool SendBeacon(const ScriptState&,
                          LocalFrame*,
                          const KURL&,
-                         const WTF::String&);
+                         const String&);
   static bool SendBeacon(const ScriptState&,
                          LocalFrame*,
                          const KURL&,

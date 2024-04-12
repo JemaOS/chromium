@@ -136,10 +136,10 @@ void BaseScrollBarThumb::OnStateChanged() {
 }
 
 bool BaseScrollBarThumb::IsHorizontal() const {
-  return scroll_bar_->GetOrientation() == ScrollBar::Orientation::kHorizontal;
+  return scroll_bar_->IsHorizontal();
 }
 
-BEGIN_METADATA(BaseScrollBarThumb)
+BEGIN_METADATA(BaseScrollBarThumb, View)
 ADD_PROPERTY_METADATA(bool, SnapBackOnDragOutside);
 END_METADATA
 

@@ -71,29 +71,28 @@ void UDPWritableStreamWrapper::OnAbortSignal() {
   }
 }
 
-ScriptPromiseTyped<IDLUndefined> UDPWritableStreamWrapper::Write(
-    ScriptValue chunk,
-    ExceptionState& exception_state) {
+ScriptPromise UDPWritableStreamWrapper::Write(ScriptValue chunk,
+                                              ExceptionState& exception_state) {
   DCHECK(udp_socket_->get().is_bound());
 
   UDPMessage* message = UDPMessage::Create(GetScriptState()->GetIsolate(),
                                            chunk.V8Value(), exception_state);
   if (exception_state.HadException()) {
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   if (!message->hasData()) {
     exception_state.ThrowTypeError("UDPMessage: missing 'data' field.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
-  std::optional<net::HostPortPair> dest_addr;
+  absl::optional<net::HostPortPair> dest_addr;
   if (message->hasRemoteAddress() && message->hasRemotePort()) {
     if (mode_ == network::mojom::RestrictedUDPSocketMode::CONNECTED) {
       exception_state.ThrowTypeError(
           "UDPMessage: 'remoteAddress' and 'remotePort' must not be specified "
           "in 'connected' mode.");
-      return ScriptPromiseTyped<IDLUndefined>();
+      return ScriptPromise();
     }
     dest_addr = net::HostPortPair(message->remoteAddress().Utf8(),
                                   message->remotePort());
@@ -101,12 +100,12 @@ ScriptPromiseTyped<IDLUndefined> UDPWritableStreamWrapper::Write(
     exception_state.ThrowTypeError(
         "UDPMessage: either none or both 'remoteAddress' and 'remotePort' "
         "fields must be specified.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   } else if (mode_ == network::mojom::RestrictedUDPSocketMode::BOUND) {
     exception_state.ThrowTypeError(
         "UDPMessage: 'remoteAddress' and 'remotePort' must be specified "
         "in 'bound' mode.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   auto dns_query_type = net::DnsQueryType::UNSPECIFIED;
@@ -115,7 +114,7 @@ ScriptPromiseTyped<IDLUndefined> UDPWritableStreamWrapper::Write(
       exception_state.ThrowTypeError(
           "UDPMessage: 'dnsQueryType' must not be specified "
           "in 'connected' mode.");
-      return ScriptPromiseTyped<IDLUndefined>();
+      return ScriptPromise();
     }
     switch (message->dnsQueryType().AsEnum()) {
       case V8SocketDnsQueryType::Enum::kIpv4:
@@ -131,9 +130,8 @@ ScriptPromiseTyped<IDLUndefined> UDPWritableStreamWrapper::Write(
   base::span<const uint8_t> data{array_piece.Bytes(), array_piece.ByteLength()};
 
   DCHECK(!write_promise_resolver_);
-  write_promise_resolver_ =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          GetScriptState(), exception_state.GetContext());
+  write_promise_resolver_ = MakeGarbageCollected<ScriptPromiseResolver>(
+      GetScriptState(), exception_state.GetContext());
 
   auto callback = WTF::BindOnce(&UDPWritableStreamWrapper::OnSend,
                                 WrapWeakPersistent(this));
@@ -178,11 +176,11 @@ void UDPWritableStreamWrapper::ErrorStream(int32_t error_code) {
                            ? write_promise_resolver_->GetScriptState()
                            : GetScriptState();
   // Scope is needed because there's no ScriptState* on the call stack for
-  // ScriptValue.
+  // ScriptValue::From.
   ScriptState::Scope scope{script_state};
 
-  auto exception = ScriptValue(
-      script_state->GetIsolate(),
+  auto exception = ScriptValue::From(
+      script_state,
       V8ThrowDOMException::CreateOrDie(script_state->GetIsolate(),
                                        DOMExceptionCode::kNetworkError,
                                        String{"Stream aborted by the remote: " +

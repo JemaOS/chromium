@@ -5,9 +5,8 @@
 #ifndef CHROME_BROWSER_SEND_TAB_TO_SELF_SEND_TAB_TO_SELF_UTIL_H_
 #define CHROME_BROWSER_SEND_TAB_TO_SELF_SEND_TAB_TO_SELF_UTIL_H_
 
-#include <optional>
-
 #include "components/send_tab_to_self/entry_point_display_reason.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace content {
 class WebContents;
@@ -16,7 +15,7 @@ class WebContents;
 namespace send_tab_to_self {
 
 // |web_contents| can be null.
-std::optional<EntryPointDisplayReason> GetEntryPointDisplayReason(
+absl::optional<EntryPointDisplayReason> GetEntryPointDisplayReason(
     content::WebContents* web_contents);
 
 // Returns true if the entry point should be shown.

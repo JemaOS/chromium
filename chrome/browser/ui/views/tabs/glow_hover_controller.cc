@@ -84,7 +84,7 @@ bool GlowHoverController::ShouldDraw() const {
 }
 
 void GlowHoverController::AnimationEnded(const gfx::Animation* animation) {
-  view_->DeprecatedLayoutImmediately();
+  view_->Layout();
 }
 
 void GlowHoverController::AnimationProgressed(const gfx::Animation* animation) {

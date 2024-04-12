@@ -4,14 +4,11 @@
 
 #include "chrome/browser/serial/serial_chooser_context.h"
 
-#include <string_view>
-
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/scoped_observation.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/test/test_future.h"
 #include "base/test/values_test_util.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -43,8 +40,6 @@
 namespace {
 
 using ::base::test::ParseJson;
-using ::base::test::TestFuture;
-using ::testing::_;
 using ::testing::NiceMock;
 
 constexpr char kTestUserEmail[] = "user@example.com";
@@ -58,28 +53,12 @@ class MockPortObserver : public SerialChooserContext::PortObserver {
 
   MOCK_METHOD1(OnPortAdded, void(const device::mojom::SerialPortInfo&));
   MOCK_METHOD1(OnPortRemoved, void(const device::mojom::SerialPortInfo&));
-  MOCK_METHOD1(OnPortConnectedStateChanged,
-               void(const device::mojom::SerialPortInfo&));
   MOCK_METHOD0(OnPortManagerConnectionError, void());
   MOCK_METHOD1(OnPermissionRevoked, void(const url::Origin&));
 };
 
-device::mojom::SerialPortInfoPtr CreatePersistentBluetoothPort(
-    std::optional<std::string> name,
-    const std::string& bluetooth_address) {
-  auto port = device::mojom::SerialPortInfo::New();
-  port->token = base::UnguessableToken::Create();
-  port->display_name = std::move(name);
-  port->path = base::FilePath().AppendASCII(bluetooth_address);
-  port->bluetooth_service_class_id =
-      device::BluetoothUUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-  port->has_vendor_id = false;
-  port->has_product_id = false;
-  return port;
-}
-
-device::mojom::SerialPortInfoPtr CreatePersistentUsbPort(
-    std::optional<std::string> name,
+device::mojom::SerialPortInfoPtr CreatePersistentPort(
+    absl::optional<std::string> name,
     const std::string& persistent_id) {
   auto port = device::mojom::SerialPortInfo::New();
   port->token = base::UnguessableToken::Create();
@@ -148,7 +127,7 @@ class SerialChooserContextTestBase {
     SerialBlocklist::Get().ResetToDefaultValuesForTesting();
   }
 
-  void SetDynamicBlocklist(std::string_view value) {
+  void SetDynamicBlocklist(base::StringPiece value) {
     feature_list_.Reset();
 
     std::map<std::string, std::string> parameters;
@@ -224,23 +203,19 @@ TEST_F(SerialChooserContextTest, GrantAndRevokeEphemeralPermission) {
   auto port_1 = device::mojom::SerialPortInfo::New();
   port_1->token = base::UnguessableToken::Create();
 
-  auto port_2 = CreatePersistentUsbPort("Persistent Port", "ABC123");
-  auto port_3 = CreatePersistentBluetoothPort("Persistent Bluetooth Port",
-                                              "aa:aa:aa:aa:aa:aa");
+  auto port_2 = CreatePersistentPort("Persistent Port", "ABC123");
 
   EXPECT_FALSE(context()->HasPortPermission(origin, *port_1));
   EXPECT_FALSE(context()->HasPortPermission(origin, *port_2));
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_3));
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA));
 
   context()->GrantPortPermission(origin, *port_1);
   EXPECT_TRUE(context()->HasPortPermission(origin, *port_1));
   EXPECT_FALSE(context()->HasPortPermission(origin, *port_2));
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_3));
 
   std::vector<std::unique_ptr<SerialChooserContext::Object>> origin_objects =
       context()->GetGrantedObjects(origin);
@@ -257,14 +232,13 @@ TEST_F(SerialChooserContextTest, GrantAndRevokeEphemeralPermission) {
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA));
   EXPECT_CALL(permission_observer(), OnPermissionRevoked(origin));
 
   context()->RevokeObjectPermission(origin, objects[0]->value);
   EXPECT_FALSE(context()->HasPortPermission(origin, *port_1));
   EXPECT_FALSE(context()->HasPortPermission(origin, *port_2));
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_3));
   origin_objects = context()->GetGrantedObjects(origin);
   EXPECT_EQ(0u, origin_objects.size());
   objects = context()->GetAllGrantedObjects();
@@ -283,14 +257,14 @@ TEST_F(SerialChooserContextTest, RevokeEphemeralPermissionByWebsite) {
   auto port_1 = device::mojom::SerialPortInfo::New();
   port_1->token = base::UnguessableToken::Create();
 
-  auto port_2 = CreatePersistentUsbPort("Persistent Port", "ABC123");
+  auto port_2 = CreatePersistentPort("Persistent Port", "ABC123");
 
   EXPECT_FALSE(context()->HasPortPermission(origin, *port_1));
   EXPECT_FALSE(context()->HasPortPermission(origin, *port_2));
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA));
 
   context()->GrantPortPermission(origin, *port_1);
@@ -312,7 +286,7 @@ TEST_F(SerialChooserContextTest, RevokeEphemeralPermissionByWebsite) {
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA));
   EXPECT_CALL(permission_observer(), OnPermissionRevoked(origin));
 
@@ -329,61 +303,13 @@ TEST_F(SerialChooserContextTest, RevokeEphemeralPermissionByWebsite) {
       SerialPermissionRevoked::kEphemeralByWebsite, 1);
 }
 
-TEST_F(SerialChooserContextTest, GrantAndCheckPersistentUsbPermission) {
-  const auto origin = url::Origin::Create(GURL("https://google.com"));
-
-  // Connect a USB serial port and a Bluetooth serial port. Both are eligible
-  // for persistent permissions.
-  auto port_1 = CreatePersistentUsbPort("Persistent USB Port", "ABC123");
-  auto port_2 = CreatePersistentBluetoothPort("Persistent Bluetooth Port",
-                                              "aa:aa:aa:aa:aa:aa");
-
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_1));
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_2));
-
-  // Grant a persistent permission for the USB serial port.
-  EXPECT_CALL(permission_observer(),
-              OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
-                  ContentSettingsType::SERIAL_CHOOSER_DATA));
-  context()->GrantPortPermission(origin, *port_1);
-
-  // Check that permission was granted only for the USB serial port.
-  EXPECT_TRUE(context()->HasPortPermission(origin, *port_1));
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_2));
-}
-
-TEST_F(SerialChooserContextTest, GrantAndCheckPersistentBluetoothPermission) {
-  const auto origin = url::Origin::Create(GURL("https://google.com"));
-
-  // Connect a USB serial port and a Bluetooth serial port. Both are eligible
-  // for persistent permissions.
-  auto port_1 = CreatePersistentUsbPort("Persistent USB Port", "ABC123");
-  auto port_2 = CreatePersistentBluetoothPort("Persistent Bluetooth Port",
-                                              "aa:aa:aa:aa:aa:aa");
-
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_1));
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_2));
-
-  // Grant a persistent permission for the Bluetooth serial port.
-  EXPECT_CALL(permission_observer(),
-              OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
-                  ContentSettingsType::SERIAL_CHOOSER_DATA));
-  context()->GrantPortPermission(origin, *port_2);
-
-  // Check that permission was granted only for the Bluetooth serial port.
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_1));
-  EXPECT_TRUE(context()->HasPortPermission(origin, *port_2));
-}
-
-TEST_F(SerialChooserContextTest, GrantAndRevokePersistentUsbPermission) {
+TEST_F(SerialChooserContextTest, GrantAndRevokePersistentPermission) {
   base::HistogramTester histogram_tester;
 
   const auto origin = url::Origin::Create(GURL("https://google.com"));
 
   device::mojom::SerialPortInfoPtr port_1 =
-      CreatePersistentUsbPort("Persistent Port", "ABC123");
+      CreatePersistentPort("Persistent Port", "ABC123");
 
   auto port_2 = device::mojom::SerialPortInfo::New();
   port_2->token = base::UnguessableToken::Create();
@@ -393,7 +319,7 @@ TEST_F(SerialChooserContextTest, GrantAndRevokePersistentUsbPermission) {
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA));
 
   context()->GrantPortPermission(origin, *port_1);
@@ -415,62 +341,7 @@ TEST_F(SerialChooserContextTest, GrantAndRevokePersistentUsbPermission) {
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
-                  ContentSettingsType::SERIAL_CHOOSER_DATA));
-  EXPECT_CALL(permission_observer(), OnPermissionRevoked(origin));
-
-  context()->RevokeObjectPermission(origin, objects[0]->value);
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_1));
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_2));
-  origin_objects = context()->GetGrantedObjects(origin);
-  EXPECT_EQ(0u, origin_objects.size());
-  objects = context()->GetAllGrantedObjects();
-  EXPECT_EQ(0u, objects.size());
-
-  histogram_tester.ExpectUniqueSample(
-      "Permissions.Serial.Revoked", SerialPermissionRevoked::kPersistentByUser,
-      1);
-}
-
-TEST_F(SerialChooserContextTest, GrantAndRevokePersistentBluetoothPermission) {
-  base::HistogramTester histogram_tester;
-
-  const auto origin = url::Origin::Create(GURL("https://google.com"));
-
-  auto port_1 = CreatePersistentBluetoothPort("Persistent Bluetooth Port",
-                                              "aa:aa:aa:aa:aa:aa");
-
-  auto port_2 = device::mojom::SerialPortInfo::New();
-  port_2->token = base::UnguessableToken::Create();
-
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_1));
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_2));
-
-  EXPECT_CALL(permission_observer(),
-              OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
-                  ContentSettingsType::SERIAL_CHOOSER_DATA));
-
-  context()->GrantPortPermission(origin, *port_1);
-  EXPECT_TRUE(context()->HasPortPermission(origin, *port_1));
-  EXPECT_FALSE(context()->HasPortPermission(origin, *port_2));
-
-  std::vector<std::unique_ptr<SerialChooserContext::Object>> origin_objects =
-      context()->GetGrantedObjects(origin);
-  ASSERT_EQ(1u, origin_objects.size());
-
-  std::vector<std::unique_ptr<SerialChooserContext::Object>> objects =
-      context()->GetAllGrantedObjects();
-  ASSERT_EQ(1u, objects.size());
-  EXPECT_EQ(origin.GetURL(), objects[0]->origin);
-  EXPECT_EQ(origin_objects[0]->value, objects[0]->value);
-  EXPECT_EQ(content_settings::SettingSource::SETTING_SOURCE_USER,
-            objects[0]->source);
-  EXPECT_FALSE(objects[0]->incognito);
-
-  EXPECT_CALL(permission_observer(),
-              OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA));
   EXPECT_CALL(permission_observer(), OnPermissionRevoked(origin));
 
@@ -493,7 +364,7 @@ TEST_F(SerialChooserContextTest, RevokePersistentPermissionByWebsite) {
   const auto origin = url::Origin::Create(GURL("https://google.com"));
 
   device::mojom::SerialPortInfoPtr port_1 =
-      CreatePersistentUsbPort("Persistent Port", "ABC123");
+      CreatePersistentPort("Persistent Port", "ABC123");
 
   auto port_2 = device::mojom::SerialPortInfo::New();
   port_2->token = base::UnguessableToken::Create();
@@ -503,7 +374,7 @@ TEST_F(SerialChooserContextTest, RevokePersistentPermissionByWebsite) {
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA));
 
   context()->GrantPortPermission(origin, *port_1);
@@ -525,7 +396,7 @@ TEST_F(SerialChooserContextTest, RevokePersistentPermissionByWebsite) {
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA));
   EXPECT_CALL(permission_observer(), OnPermissionRevoked(origin));
 
@@ -553,7 +424,7 @@ TEST_F(SerialChooserContextTest, EphemeralPermissionRevokedOnDisconnect) {
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA))
       .Times(2);
   EXPECT_CALL(permission_observer(), OnPermissionRevoked(origin));
@@ -588,12 +459,12 @@ TEST_F(SerialChooserContextTest, PersistenceRequiresDisplayName) {
   const auto origin = url::Origin::Create(GURL("https://google.com"));
 
   device::mojom::SerialPortInfoPtr port =
-      CreatePersistentUsbPort(/*name=*/std::nullopt, "ABC123");
+      CreatePersistentPort(/*name=*/absl::nullopt, "ABC123");
   port_manager().AddPort(port.Clone());
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA))
       .Times(2);
   EXPECT_CALL(permission_observer(), OnPermissionRevoked(origin));
@@ -627,7 +498,7 @@ TEST_F(SerialChooserContextTest, PersistentPermissionNotRevokedOnDisconnect) {
   const char persistent_id[] = "ABC123";
 
   device::mojom::SerialPortInfoPtr port =
-      CreatePersistentUsbPort("Persistent Port", persistent_id);
+      CreatePersistentPort("Persistent Port", persistent_id);
   port_manager().AddPort(port.Clone());
 
   context()->GrantPortPermission(origin, *port);
@@ -635,7 +506,7 @@ TEST_F(SerialChooserContextTest, PersistentPermissionNotRevokedOnDisconnect) {
 
   EXPECT_CALL(permission_observer(),
               OnObjectPermissionChanged(
-                  std::make_optional(ContentSettingsType::SERIAL_GUARD),
+                  absl::make_optional(ContentSettingsType::SERIAL_GUARD),
                   ContentSettingsType::SERIAL_CHOOSER_DATA))
       .Times(0);
   EXPECT_CALL(permission_observer(), OnPermissionRevoked(origin)).Times(0);
@@ -661,7 +532,7 @@ TEST_F(SerialChooserContextTest, PersistentPermissionNotRevokedOnDisconnect) {
 
   // Simulate reconnection of the port. It gets a new token but the same
   // persistent ID. This SerialPortInfo should still match the old permission.
-  port = CreatePersistentUsbPort("Persistent Port", persistent_id);
+  port = CreatePersistentPort("Persistent Port", persistent_id);
   port_manager().AddPort(port.Clone());
 
   EXPECT_TRUE(context()->HasPortPermission(origin, *port));
@@ -774,27 +645,6 @@ TEST_F(SerialChooserContextTest, PolicyBlockedForUrls) {
   std::vector<std::unique_ptr<SerialChooserContext::Object>>
       all_origin_objects = context()->GetAllGrantedObjects();
   EXPECT_EQ(1u, all_origin_objects.size());
-}
-
-TEST_F(SerialChooserContextTest, BluetoothPortConnectedState) {
-  const auto origin = url::Origin::Create(GURL("https://google.com"));
-
-  // Create a Bluetooth serial port.
-  auto port = CreatePersistentBluetoothPort("Persistent Bluetooth Port",
-                                            "aa:aa:aa:aa:aa:aa");
-
-  // Simulate disconnection of the Bluetooth device hosting `port`. The observer
-  // is notified that the port is now disconnected.
-  TestFuture<const device::mojom::SerialPortInfo&> port_future;
-  EXPECT_CALL(port_observer(), OnPortConnectedStateChanged)
-      .WillOnce([&port_future](const device::mojom::SerialPortInfo& port) {
-        port_future.SetValue(port);
-      });
-  auto disconnected_port = port.Clone();
-  disconnected_port->connected = false;
-  context()->OnPortConnectedStateChanged(std::move(disconnected_port));
-  EXPECT_EQ(port_future.Get().token, port->token);
-  EXPECT_FALSE(port_future.Get().connected);
 }
 
 TEST_P(SerialChooserContextAffiliatedTest, PolicyAllowForUrls) {

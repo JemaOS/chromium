@@ -96,7 +96,7 @@ class AudioWorkletGlobalScopeTest : public PageTestBase, public ModuleTestBase {
             BeginFrameProviderParams(), nullptr /* parent_permissions_policy */,
             window->GetAgentClusterID(), ukm::kInvalidSourceId,
             window->GetExecutionContextToken()),
-        std::nullopt, std::make_unique<WorkerDevToolsParams>());
+        absl::nullopt, std::make_unique<WorkerDevToolsParams>());
     return thread;
   }
 
@@ -214,7 +214,8 @@ class AudioWorkletGlobalScopeTest : public PageTestBase, public ModuleTestBase {
     EXPECT_TRUE(processor);
     EXPECT_EQ(processor->Name(), "testProcessor");
     v8::Local<v8::Value> processor_value =
-        ToV8Traits<AudioWorkletProcessor>::ToV8(script_state, processor);
+        ToV8Traits<AudioWorkletProcessor>::ToV8(script_state, processor)
+            .ToLocalChecked();
     EXPECT_TRUE(processor_value->IsObject());
 
     wait_event->Signal();

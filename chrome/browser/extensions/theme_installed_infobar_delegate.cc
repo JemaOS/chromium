@@ -38,7 +38,8 @@ void ThemeInstalledInfoBarDelegate::Create(
 
   // If there's a previous theme infobar, just replace that instead of adding a
   // new one.
-  for (infobars::InfoBar* old_infobar : infobar_manager->infobars()) {
+  for (size_t i = 0; i < infobar_manager->infobar_count(); ++i) {
+    infobars::InfoBar* old_infobar = infobar_manager->infobar_at(i);
     ThemeInstalledInfoBarDelegate* theme_infobar =
         old_infobar->delegate()->AsThemePreviewInfobarDelegate();
     if (theme_infobar) {

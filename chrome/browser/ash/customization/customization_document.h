@@ -8,7 +8,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -18,6 +17,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "base/values.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 class PrefRegistrySimple;
@@ -153,9 +153,7 @@ class ServicesCustomizationDocument : public CustomizationDocument {
   static void RegisterPrefs(PrefRegistrySimple* registry);
   static void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
 
-  // Template URL where to fetch OEM services customization manifest from.
-  static constexpr char kManifestUrl[] =
-      "https://ssl.gstatic.com/chrome/chromeos-customization/%s.json";
+  static const char kManifestUrl[];
 
   // Return true if the customization was applied. Customization is applied only
   // once per machine.
@@ -179,7 +177,7 @@ class ServicesCustomizationDocument : public CustomizationDocument {
   bool GetDefaultWallpaperUrl(GURL* out_url) const;
 
   // Returns list of default apps.
-  std::optional<base::Value::Dict> GetDefaultApps() const;
+  absl::optional<base::Value::Dict> GetDefaultApps() const;
 
   // Creates an extensions::ExternalLoader that will provide OEM default apps.
   // Cache of OEM default apps stored in profile preferences.
@@ -308,7 +306,7 @@ class ServicesCustomizationDocument : public CustomizationDocument {
 
   // Delay between checks for network online state. If the optional is empty,
   // the default value for delay is used.
-  std::optional<base::TimeDelta> custom_network_delay_ = std::nullopt;
+  absl::optional<base::TimeDelta> custom_network_delay_ = absl::nullopt;
 
   // Known external loaders.
   ExternalLoaders external_loaders_;

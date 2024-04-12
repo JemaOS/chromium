@@ -30,7 +30,9 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.text.NumberFormat;
 
-/** This is a util class for creating the property model of the MerchantTrustMessage. */
+/**
+ * This is a util class for creating the property model of the MerchantTrustMessage.
+ */
 class MerchantTrustMessageViewModel {
     private static final int BASELINE_RATING = 5;
 
@@ -41,11 +43,8 @@ class MerchantTrustMessageViewModel {
         int SEE_STORE_REVIEWS = 1;
     }
 
-    @IntDef({
-        MessageDescriptionUI.NONE,
-        MessageDescriptionUI.RATING_AND_REVIEWS,
-        MessageDescriptionUI.REVIEWS_FROM_GOOGLE
-    })
+    @IntDef({MessageDescriptionUI.NONE, MessageDescriptionUI.RATING_AND_REVIEWS,
+            MessageDescriptionUI.REVIEWS_FROM_GOOGLE})
     @Retention(RetentionPolicy.SOURCE)
     @interface MessageDescriptionUI {
         int NONE = 0;
@@ -70,33 +69,24 @@ class MerchantTrustMessageViewModel {
         void onMessagePrimaryAction(MerchantInfo merchantInfo, String messageAssociatedUrl);
     }
 
-    public static PropertyModel create(
-            Context context,
-            MerchantInfo merchantInfo,
-            String messageAssociatedUrl,
-            MessageActionsHandler actionsHandler) {
-        var resources = context.getResources();
+    public static PropertyModel create(Context context, MerchantInfo merchantInfo,
+            String messageAssociatedUrl, MessageActionsHandler actionsHandler) {
         return new PropertyModel.Builder(MessageBannerProperties.ALL_KEYS)
                 .with(MessageBannerProperties.MESSAGE_IDENTIFIER, MessageIdentifier.MERCHANT_TRUST)
-                .with(
-                        MessageBannerProperties.ICON,
-                        ResourcesCompat.getDrawable(resources, getIconRes(), context.getTheme()))
+                .with(MessageBannerProperties.ICON,
+                        ResourcesCompat.getDrawable(
+                                context.getResources(), getIconRes(), context.getTheme()))
                 .with(MessageBannerProperties.ICON_TINT_COLOR, MessageBannerProperties.TINT_NONE)
-                .with(MessageBannerProperties.TITLE, resources.getString(getTitleStringRes()))
-                .with(
-                        MessageBannerProperties.DESCRIPTION,
-                        getMessageDescription(
-                                context,
-                                merchantInfo,
+                .with(MessageBannerProperties.TITLE,
+                        context.getResources().getString(getTitleStringRes()))
+                .with(MessageBannerProperties.DESCRIPTION,
+                        getMessageDescription(context, merchantInfo,
                                 MerchantViewerConfig.getTrustSignalsMessageDescriptionUI()))
-                .with(
-                        MessageBannerProperties.PRIMARY_BUTTON_TEXT,
-                        resources.getString(R.string.merchant_viewer_message_action))
-                .with(
-                        MessageBannerProperties.ON_DISMISSED,
+                .with(MessageBannerProperties.PRIMARY_BUTTON_TEXT,
+                        context.getResources().getString(R.string.merchant_viewer_message_action))
+                .with(MessageBannerProperties.ON_DISMISSED,
                         (reason) -> actionsHandler.onMessageDismissed(reason, messageAssociatedUrl))
-                .with(
-                        MessageBannerProperties.ON_PRIMARY_ACTION,
+                .with(MessageBannerProperties.ON_PRIMARY_ACTION,
                         () -> {
                             actionsHandler.onMessagePrimaryAction(
                                     merchantInfo, messageAssociatedUrl);
@@ -105,24 +95,19 @@ class MerchantTrustMessageViewModel {
                 .build();
     }
 
-    public static @Nullable Spannable getMessageDescription(
+    @Nullable
+    public static Spannable getMessageDescription(
             Context context, MerchantInfo merchantInfo, int descriptionUI) {
-        if (descriptionUI == MessageDescriptionUI.NONE) {
-            return null;
-        }
-        var resources = context.getResources();
+        if (descriptionUI == MessageDescriptionUI.NONE) return null;
 
         SpannableStringBuilder builder = new SpannableStringBuilder();
         NumberFormat numberFormatter = NumberFormat.getIntegerInstance();
         numberFormatter.setMaximumFractionDigits(1);
         if (descriptionUI == MessageDescriptionUI.REVIEWS_FROM_GOOGLE
                 && merchantInfo.countRating > 0) {
-            String message =
-                    resources.getQuantityString(
-                            R.plurals.merchant_viewer_message_description_reviews_from_google,
-                            merchantInfo.countRating,
-                            numberFormatter.format(merchantInfo.countRating));
-            builder.append(message);
+            builder.append(context.getResources().getQuantityString(
+                    R.plurals.merchant_viewer_message_description_reviews_from_google,
+                    merchantInfo.countRating, numberFormatter.format(merchantInfo.countRating)));
             return builder;
         }
 
@@ -139,27 +124,20 @@ class MerchantTrustMessageViewModel {
             builder.append(" ");
             builder.append(getRatingBarSpan(context, ratingValue));
         } else {
-            builder.append(
-                    resources.getString(
-                            R.string.merchant_viewer_message_description_rating,
-                            numberFormatter.format(ratingValue),
-                            numberFormatter.format(BASELINE_RATING)));
-            builder.setSpan(
-                    new StyleSpan(Typeface.BOLD),
-                    0,
-                    builder.length(),
+            builder.append(context.getResources().getString(
+                    R.string.merchant_viewer_message_description_rating,
+                    numberFormatter.format(ratingValue), numberFormatter.format(BASELINE_RATING)));
+            builder.setSpan(new StyleSpan(Typeface.BOLD), 0, builder.length(),
                     Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
         }
         builder.append(" ");
         if (merchantInfo.countRating > 0) {
-            builder.append(
-                    resources.getQuantityString(
-                            R.plurals.merchant_viewer_message_description_reviews,
-                            merchantInfo.countRating,
-                            numberFormatter.format(merchantInfo.countRating)));
+            builder.append(context.getResources().getQuantityString(
+                    R.plurals.merchant_viewer_message_description_reviews, merchantInfo.countRating,
+                    numberFormatter.format(merchantInfo.countRating)));
         } else {
-            builder.append(
-                    resources.getString(R.string.page_info_store_info_description_with_no_review));
+            builder.append(context.getResources().getString(
+                    R.string.page_info_store_info_description_with_no_review));
         }
         return builder;
     }
@@ -171,38 +149,31 @@ class MerchantTrustMessageViewModel {
         int ceilRatingValue = (int) Math.ceil(ratingValue);
         for (int i = 0; i < floorRatingValue; i++) {
             ratingBarSpan.append(" ");
-            ratingBarSpan.setSpan(
-                    new RatingStarSpan(context, RatingStarType.FULL),
-                    i,
-                    i + 1,
+            ratingBarSpan.setSpan(new RatingStarSpan(context, RatingStarType.FULL), i, i + 1,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         if (ratingValue - floorRatingValue > 0) {
             ratingBarSpan.append(" ");
-            ratingBarSpan.setSpan(
-                    new RatingStarSpan(context, RatingStarType.HALF),
-                    floorRatingValue,
-                    floorRatingValue + 1,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            ratingBarSpan.setSpan(new RatingStarSpan(context, RatingStarType.HALF),
+                    floorRatingValue, floorRatingValue + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         for (int i = ceilRatingValue; i < BASELINE_RATING; i++) {
             ratingBarSpan.append(" ");
-            ratingBarSpan.setSpan(
-                    new RatingStarSpan(context, RatingStarType.OUTLINE),
-                    i,
-                    i + 1,
+            ratingBarSpan.setSpan(new RatingStarSpan(context, RatingStarType.OUTLINE), i, i + 1,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         return ratingBarSpan;
     }
 
-    private static @DrawableRes int getIconRes() {
+    @DrawableRes
+    private static int getIconRes() {
         return MerchantViewerConfig.doesTrustSignalsMessageUseGoogleIcon()
                 ? R.drawable.ic_logo_googleg_24dp
                 : R.drawable.ic_storefront_blue;
     }
 
-    private static @StringRes int getTitleStringRes() {
+    @StringRes
+    private static int getTitleStringRes() {
         int titleUI = MerchantViewerConfig.getTrustSignalsMessageTitleUI();
         if (titleUI == MessageTitleUI.SEE_STORE_REVIEWS) {
             return R.string.merchant_viewer_message_title_see_reviews;

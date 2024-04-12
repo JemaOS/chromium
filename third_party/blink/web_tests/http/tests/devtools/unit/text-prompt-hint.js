@@ -1,9 +1,5 @@
-
-import {TestRunner} from 'test_runner';
-
-import * as UI from 'devtools/ui/legacy/legacy.js';
 (async function() {
-  TestRunner.addResult("Tests that the hint displays properly on a UI.TextPrompt.TextPrompt with autocomplete.");
+  TestRunner.addResult("Tests that the hint displays properly on a UI.TextPrompt with autocomplete.");
 
   var suggestions = [{text:"testTextPrompt"}];
   var waitingForAutocomplete = null;
@@ -11,10 +7,10 @@ import * as UI from 'devtools/ui/legacy/legacy.js';
       console.error("completionsDone called too early!");
       TestRunner.completeTest();
   }
-  var prompt = new UI.TextPrompt.TextPrompt();
+  var prompt = new UI.TextPrompt();
   prompt.initialize(completions);
   var element = createElement("div");
-  UI.InspectorView.InspectorView.instance().element.appendChild(element);
+  UI.inspectorView.element.appendChild(element);
   var proxy = prompt.attachAndStartEditing(element);
   prompt.setText("testT");
   waitForAutocomplete().then(step1);

@@ -126,7 +126,7 @@ class ImportantSitesUtilTest : public ChromeRenderViewHostTestHarness {
   }
 
  private:
-  raw_ptr<BookmarkModel, DanglingUntriaged> model_ = nullptr;
+  raw_ptr<BookmarkModel> model_ = nullptr;
 };
 
 TEST_F(ImportantSitesUtilTest, TestNoImportantSites) {
@@ -468,33 +468,6 @@ TEST_F(ImportantSitesUtilTest, DialogExcluding) {
 
   // Dialog should be disabled.
   EXPECT_TRUE(ImportantSitesUtil::IsDialogDisabled(profile()));
-}
-
-TEST_F(ImportantSitesUtilTest, ExcludeNonRegisterableDomains) {
-  SiteEngagementService* service = SiteEngagementService::Get(profile());
-  ASSERT_TRUE(service);
-
-  GURL url1("http://www.google.com/");
-  GURL url2("chrome://newtab/");
-  GURL url3("chrome://settings/");
-  GURL url4("http://localhost/");
-
-  // Set a bunch of positive signals.
-  service->ResetBaseScoreForURL(url1, 8);
-  service->ResetBaseScoreForURL(url2, 9);
-  AddBookmark(url3);
-  AddContentSetting(ContentSettingsType::NOTIFICATIONS, CONTENT_SETTING_ALLOW,
-                    url4);
-
-  std::vector<ImportantDomainInfo> important_sites =
-      ImportantSitesUtil::GetImportantRegisterableDomains(profile(),
-                                                          kNumImportantSites);
-
-  ASSERT_EQ(1u, important_sites.size());
-  std::vector<std::string> expected_sorted_domains = {"google.com"};
-  std::vector<GURL> expected_sorted_origins = {url1};
-  ExpectImportantResultsEq(expected_sorted_domains, expected_sorted_origins,
-                           important_sites);
 }
 
 }  // namespace site_engagement

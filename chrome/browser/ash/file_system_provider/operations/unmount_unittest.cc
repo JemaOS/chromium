@@ -19,7 +19,9 @@
 #include "extensions/browser/event_router.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 namespace {
 
 const char kExtensionId[] = "mbflcebpggnecokmikipoihdbecnjfoj";
@@ -30,8 +32,8 @@ const int kRequestId = 2;
 
 class FileSystemProviderOperationsUnmountTest : public testing::Test {
  protected:
-  FileSystemProviderOperationsUnmountTest() = default;
-  ~FileSystemProviderOperationsUnmountTest() override = default;
+  FileSystemProviderOperationsUnmountTest() {}
+  ~FileSystemProviderOperationsUnmountTest() override {}
 
   void SetUp() override {
     file_system_info_ = ProvidedFileSystemInfo(
@@ -65,11 +67,11 @@ TEST_F(FileSystemProviderOperationsUnmountTest, Execute) {
   const base::Value* options_as_value = &event_args[0];
   ASSERT_TRUE(options_as_value->is_dict());
 
-  auto options =
-      UnmountRequestedOptions::FromValue(options_as_value->GetDict());
-  ASSERT_TRUE(options);
-  EXPECT_EQ(kFileSystemId, options->file_system_id);
-  EXPECT_EQ(kRequestId, options->request_id);
+  UnmountRequestedOptions options;
+  ASSERT_TRUE(
+      UnmountRequestedOptions::Populate(options_as_value->GetDict(), options));
+  EXPECT_EQ(kFileSystemId, options.file_system_id);
+  EXPECT_EQ(kRequestId, options.request_id);
 }
 
 TEST_F(FileSystemProviderOperationsUnmountTest, Execute_NoListener) {
@@ -115,4 +117,6 @@ TEST_F(FileSystemProviderOperationsUnmountTest, OnError) {
   EXPECT_EQ(base::File::FILE_ERROR_NOT_FOUND, event_result);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

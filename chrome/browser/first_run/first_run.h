@@ -22,6 +22,10 @@ class CommandLine;
 class FilePath;
 }
 
+namespace content {
+class WebContents;
+}
+
 namespace user_prefs {
 class PrefRegistrySyncable;
 }
@@ -103,6 +107,9 @@ base::Time GetFirstRunSentinelCreationTime();
 // Resets the first run status and cached first run sentinel creation time.
 // This is needed for unit tests which are runned in the same process.
 void ResetCachedSentinelDataForTesting();
+
+// Returns true if |contents| hosts one of the welcome pages.
+bool IsOnWelcomePage(content::WebContents* contents);
 
 // Automatically imports items requested by |profile|'s configuration (sum of
 // policies and initial prefs). Also imports bookmarks from file if

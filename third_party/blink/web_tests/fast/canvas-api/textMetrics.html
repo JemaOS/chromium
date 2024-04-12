@@ -22,8 +22,7 @@ function getMetric(ctx, text, baseline, align, rtl, metric) {
   tm.actualBoundingBoxWidth = Math.abs(tm.actualBoundingBoxRight + tm.actualBoundingBoxLeft);
   tm.actualBoundingBoxHeight = Math.abs(tm.actualBoundingBoxDescent + tm.actualBoundingBoxAscent);
   if (["alphabetic", "ideographic", "hanging"].includes(metric)) {
-    var bl = metric + "Baseline";
-    return tm[bl];
+    return tm.getBaselines()[metric];
   } else {
     return tm[metric];
   }

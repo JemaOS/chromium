@@ -4,19 +4,14 @@
 
 #include "third_party/blink/renderer/core/workers/worklet_module_responses_map.h"
 
-#include <optional>
-
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
-#include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/loader/modulescript/module_script_creation_params.h"
 #include "third_party/blink/renderer/core/loader/modulescript/module_script_loader.h"
 #include "third_party/blink/renderer/core/loader/modulescript/worklet_module_script_fetcher.h"
 #include "third_party/blink/renderer/core/script/modulator.h"
 #include "third_party/blink/renderer/core/testing/dummy_modulator.h"
-#include "third_party/blink/renderer/core/testing/page_test_base.h"
-#include "third_party/blink/renderer/core/workers/worker_thread_test_helper.h"
-#include "third_party/blink/renderer/core/workers/worklet_global_scope_test_helper.h"
 #include "third_party/blink/renderer/platform/loader/testing/fetch_testing_platform_support.h"
 #include "third_party/blink/renderer/platform/loader/testing/mock_fetch_context.h"
 #include "third_party/blink/renderer/platform/loader/testing/test_loader_factory.h"
@@ -31,16 +26,10 @@
 
 namespace blink {
 
-class WorkletModuleResponsesMapTest : public PageTestBase {
+class WorkletModuleResponsesMapTest : public testing::Test {
  public:
-  WorkletModuleResponsesMapTest()
-      : PageTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME),
-        url_("https://example.test"),
-        security_origin_(SecurityOrigin::Create(url_)) {
-  }
-
-  void SetUp() override {
-    PageTestBase::SetUp();
+  WorkletModuleResponsesMapTest() {
+    platform_->AdvanceClockSeconds(1.);  // For non-zero DocumentParserTimings
     auto* properties = MakeGarbageCollected<TestResourceFetcherProperties>();
     auto* context = MakeGarbageCollected<MockFetchContext>();
     fetcher_ = MakeGarbageCollected<ResourceFetcher>(ResourceFetcherInit(
@@ -51,33 +40,7 @@ class WorkletModuleResponsesMapTest : public PageTestBase {
             platform_->GetURLLoaderMockFactory()),
         MakeGarbageCollected<MockContextLifecycleNotifier>(),
         nullptr /* back_forward_cache_loader_helper */));
-
-    reporting_proxy_ = std::make_unique<MockWorkerReportingProxy>();
-    auto creation_params = std::make_unique<GlobalScopeCreationParams>(
-        url_, mojom::blink::ScriptType::kModule, "GlobalScopeName", "UserAgent",
-        UserAgentMetadata(), nullptr /* web_worker_fetch_context */,
-        Vector<network::mojom::blink::ContentSecurityPolicyPtr>(),
-        Vector<network::mojom::blink::ContentSecurityPolicyPtr>(),
-        network::mojom::ReferrerPolicy::kDefault, security_origin_.get(),
-        true /* is_secure_context */, HttpsState::kModern,
-        nullptr /* worker_clients */, nullptr /* content_settings_client */,
-        nullptr /* inherited_trial_features */,
-        base::UnguessableToken::Create(), nullptr /* worker_settings */,
-        mojom::blink::V8CacheOptions::kDefault,
-        MakeGarbageCollected<WorkletModuleResponsesMap>(),
-        mojo::NullRemote() /* browser_interface_broker */,
-        mojo::NullRemote() /* code_cache_host_interface */,
-        mojo::NullRemote() /* blob_url_store */, BeginFrameProviderParams(),
-        nullptr /* parent_permissions_policy */,
-        base::UnguessableToken::Create() /* agent_cluster_id */);
-    creation_params->parent_context_token = GetFrame().GetLocalFrameToken();
-    global_scope_ = MakeGarbageCollected<FakeWorkletGlobalScope>(
-        std::move(creation_params), *reporting_proxy_, &GetFrame());
-  }
-  void TearDown() override {
-    global_scope_->Dispose();
-    global_scope_->NotifyContextDestroyed();
-    PageTestBase::TearDown();
+    map_ = MakeGarbageCollected<WorkletModuleResponsesMap>();
   }
 
   class ClientImpl final : public GarbageCollected<ClientImpl>,
@@ -103,7 +66,7 @@ class WorkletModuleResponsesMapTest : public PageTestBase {
 
    private:
     Result result_ = Result::kInitial;
-    std::optional<ModuleScriptCreationParams> params_;
+    absl::optional<ModuleScriptCreationParams> params_;
   };
 
   void Fetch(const KURL& url, ClientImpl* client) {
@@ -117,7 +80,7 @@ class WorkletModuleResponsesMapTest : public PageTestBase {
     fetch_params.SetModuleScript();
     WorkletModuleScriptFetcher* module_fetcher =
         MakeGarbageCollected<WorkletModuleScriptFetcher>(
-            global_scope_, ModuleScriptLoader::CreatePassKeyForTests());
+            map_.Get(), ModuleScriptLoader::CreatePassKeyForTests());
     module_fetcher->Fetch(fetch_params, ModuleType::kJavaScript, fetcher_.Get(),
                           ModuleGraphLevel::kTopLevelModuleFetch, client);
   }
@@ -127,18 +90,10 @@ class WorkletModuleResponsesMapTest : public PageTestBase {
         ->RunUntilIdle();
   }
 
-  const base::TickClock* GetTickClock() override {
-    return PageTestBase::GetTickClock();
-  }
-
  protected:
   ScopedTestingPlatformSupport<FetchTestingPlatformSupport> platform_;
-
-  const KURL url_;
-  const scoped_refptr<const SecurityOrigin> security_origin_;
-  std::unique_ptr<MockWorkerReportingProxy> reporting_proxy_;
-  Persistent<WorkletGlobalScope> global_scope_;
   Persistent<ResourceFetcher> fetcher_;
+  Persistent<WorkletModuleResponsesMap> map_;
   const scoped_refptr<scheduler::FakeTaskRunner> task_runner_;
 };
 
@@ -319,7 +274,7 @@ TEST_F(WorkletModuleResponsesMapTest, Dispose) {
   EXPECT_EQ(ClientImpl::Result::kInitial, clients[3]->GetResult());
 
   // Dispose() should notify to all waiting clients.
-  global_scope_->GetModuleResponsesMap()->Dispose();
+  map_->Dispose();
   RunUntilIdle();
   for (auto client : clients) {
     EXPECT_EQ(ClientImpl::Result::kFailed, client->GetResult());

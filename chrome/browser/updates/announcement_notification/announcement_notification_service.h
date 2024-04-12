@@ -82,7 +82,7 @@ class AnnouncementNotificationService : public KeyedService {
   };
 
   static void RegisterProfilePrefs(PrefRegistrySimple* registry);
-  static std::unique_ptr<AnnouncementNotificationService> Create(
+  static AnnouncementNotificationService* Create(
       Profile* profile,
       PrefService* pref_service,
       std::unique_ptr<Delegate> delegate,

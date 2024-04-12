@@ -203,7 +203,7 @@ TextTrackCueList* TextTrack::activeCues() {
   }
 
   cues_->CollectActiveCues(*active_cues_);
-  return active_cues_.Get();
+  return active_cues_;
 }
 
 void TextTrack::addCue(TextTrackCue* cue) {
@@ -386,7 +386,7 @@ void TextTrack::Trace(Visitor* visitor) const {
   visitor->Trace(style_sheets_);
   visitor->Trace(source_element_);
   TrackBase::Trace(visitor);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
 }
 
 }  // namespace blink

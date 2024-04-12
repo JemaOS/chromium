@@ -12,7 +12,8 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "components/prefs/pref_service.h"
-#include "components/sync/service/sync_service.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "components/user_manager/user_manager.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_system.h"
@@ -118,15 +119,8 @@ void AppSyncUIState::SetStatus(Status status) {
 }
 
 void AppSyncUIState::CheckAppSync() {
-  if (!sync_service_ || !sync_service_->IsSyncFeatureEnabled()) {
-    return;
-  }
-
-  // The sync service will be paused if it encounters errors, transition to
-  // normal UI state.
-  if (sync_service_->GetTransportState() ==
-      syncer::SyncService::TransportState::PAUSED) {
-    SetStatus(STATUS_NORMAL);
+  if (!sync_service_ ||
+      !sync_service_->GetUserSettings()->IsFirstSetupComplete()) {
     return;
   }
 

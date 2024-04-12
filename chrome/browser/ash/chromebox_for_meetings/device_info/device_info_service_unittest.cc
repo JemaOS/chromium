@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/chromebox_for_meetings/device_info/device_info_service.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -21,7 +20,6 @@
 #include "chrome/browser/ash/settings/device_settings_service.h"
 #include "chromeos/ash/components/dbus/chromebox_for_meetings/fake_cfm_hotline_client.h"
 #include "chromeos/ash/components/dbus/session_manager/fake_session_manager_client.h"
-#include "chromeos/ash/components/install_attributes/stub_install_attributes.h"
 #include "chromeos/ash/components/system/fake_statistics_provider.h"
 #include "chromeos/ash/services/chromebox_for_meetings/public/cpp/fake_service_connection.h"
 #include "chromeos/ash/services/chromebox_for_meetings/public/cpp/fake_service_context.h"
@@ -35,6 +33,7 @@
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash::cfm {
 namespace {
@@ -145,10 +144,6 @@ class CfmDeviceInfoServiceTest : public ::testing::Test {
   mojo::Remote<mojom::CfmServiceAdaptor> adaptor_remote_;
   mojo::Remote<mojom::MeetDevicesInfo> device_info_remote_;
   policy::DevicePolicyBuilder device_policy_;
-
-  // A device can become Cfm only if it's enterprise enrolled.
-  ash::ScopedStubInstallAttributes test_install_attributes_{
-      ash::StubInstallAttributes::CreateCloudManaged("domain", "device_id")};
 
   // Require a full task environment for testing device policy
   base::test::TaskEnvironment task_environment_{

@@ -24,6 +24,13 @@ namespace {
 
 constexpr int kImageSize = 16;
 
+gfx::ImageSkia CreateTestImage(SkColor color) {
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(kImageSize, kImageSize);
+  bitmap.eraseColor(color);
+  return gfx::ImageSkia::CreateFrom1xBitmap(bitmap);
+}
+
 }  // namespace
 
 class ThemeTrackingImageViewTest : public ViewsTestBase {
@@ -46,32 +53,28 @@ class ThemeTrackingImageViewTest : public ViewsTestBase {
   bool IsDarkMode() const { return is_dark_; }
   void SetIsDarkMode(bool is_dark) {
     is_dark_ = is_dark;
-    if (view()) {
-      view()->OnThemeChanged();
-    }
+    if (view_)
+      view_->OnThemeChanged();
   }
 
   void SetView(std::unique_ptr<ThemeTrackingImageView> view) {
-    widget_->SetContentsView(std::move(view))
-        ->SetBounds(0, 0, kImageSize, kImageSize);
+    view_ = widget_->SetContentsView(std::move(view));
+    view_->SetBounds(0, 0, kImageSize, kImageSize);
   }
 
-  ThemeTrackingImageView* view() {
-    return static_cast<ThemeTrackingImageView*>(widget_->GetContentsView());
-  }
+  ThemeTrackingImageView* view() { return view_; }
   Widget* widget() { return widget_.get(); }
 
  private:
   std::unique_ptr<Widget> widget_;
+  raw_ptr<ThemeTrackingImageView> view_ = nullptr;
 
   bool is_dark_ = false;
 };
 
 TEST_F(ThemeTrackingImageViewTest, CreateWithImageSkia) {
-  gfx::ImageSkia light_image =
-      gfx::test::CreateImageSkia(kImageSize, SK_ColorRED);
-  gfx::ImageSkia dark_image =
-      gfx::test::CreateImageSkia(kImageSize, SK_ColorBLUE);
+  gfx::ImageSkia light_image{CreateTestImage(SK_ColorRED)};
+  gfx::ImageSkia dark_image{CreateTestImage(SK_ColorBLUE)};
 
   SetView(std::make_unique<ThemeTrackingImageView>(
       light_image, dark_image,

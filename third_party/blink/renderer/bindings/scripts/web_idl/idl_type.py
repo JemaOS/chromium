@@ -12,6 +12,9 @@ from .composition_parts import WithIdentifier
 from .extended_attribute import ExtendedAttributes
 from .reference import RefById
 from .reference import RefByIdFactory
+from .typedef import Typedef
+from .union import Union
+from .user_defined_type import UserDefinedType
 
 # The implementation class hierarchy of IdlType
 #
@@ -220,8 +223,8 @@ class IdlType(WithExtendedAttributes, WithDebugInfo):
     def keyword_typename(self):
         """
         Returns the keyword name of the type if this is a simple built-in type,
-        e.g. "any", "boolean", "unsigned long long", "undefined", etc.
-        Otherwise, returns None.
+        e.g. "any", "boolean", "unsigned long long", "void", etc.  Otherwise,
+        returns None.
         """
         return None
 
@@ -232,7 +235,7 @@ class IdlType(WithExtendedAttributes, WithDebugInfo):
 
         In case of x.apply_to_all_composing_elements(callback), |callback| will
         be recursively called back on x, x.inner_type, x.element_type,
-        x.result_type, x.original_type, etc. if any.
+        x.result_type.original_type, etc. if any.
 
         If |callback| raises a StopIteration, then this function stops
         traversing deeper than this type (inner type, etc.), however, siblings
@@ -289,7 +292,7 @@ class IdlType(WithExtendedAttributes, WithDebugInfo):
         For example, given the following IDL fragments,
 
           typedef [ExtAttr1] long NewLong;
-          undefined f([ExtAttr2] NewLong arg);
+          void f([ExtAttr2] NewLong arg);
 
         arg.idl_type.extended_attributes returns [ExtAttr2],
         arg.idl_type.unwrap().extended_attributes returns [ExtAttr1], and
@@ -395,8 +398,8 @@ class IdlType(WithExtendedAttributes, WithDebugInfo):
         return False
 
     @property
-    def is_undefined(self):
-        """Returns True if this is type 'undefined'."""
+    def is_void(self):
+        """Returns True if this is type 'void'."""
         return False
 
     @property
@@ -422,16 +425,6 @@ class IdlType(WithExtendedAttributes, WithDebugInfo):
     @property
     def is_callback_function(self):
         """Returns True if this is a callback function type."""
-        return False
-
-    @property
-    def is_async_iterator(self):
-        """Returns True if this is an asynchronous iterator type."""
-        return False
-
-    @property
-    def is_sync_iterator(self):
-        """Returns True if this is a synchronous iterator type."""
         return False
 
     @property
@@ -754,7 +747,7 @@ class SimpleType(IdlType):
         return self._name == 'any'
 
     @property
-    def is_undefined(self):
+    def is_void(self):
         return self._name == 'undefined' or self._name == 'void'
 
 
@@ -810,6 +803,7 @@ class DefinitionType(IdlType, WithIdentifier):
 
     def __init__(self, reference_type, user_defined_type, pass_key=None):
         assert isinstance(reference_type, ReferenceType)
+        assert isinstance(user_defined_type, UserDefinedType)
         IdlType.__init__(
             self,
             is_optional=reference_type.is_optional,
@@ -859,14 +853,6 @@ class DefinitionType(IdlType, WithIdentifier):
         return self.type_definition_object.is_callback_function
 
     @property
-    def is_async_iterator(self):
-        return self.type_definition_object.is_async_iterator
-
-    @property
-    def is_sync_iterator(self):
-        return self.type_definition_object.is_sync_iterator
-
-    @property
     def type_definition_object(self):
         return self._type_definition_object
 
@@ -884,6 +870,7 @@ class TypedefType(IdlType, WithIdentifier):
 
     def __init__(self, reference_type, typedef, pass_key=None):
         assert isinstance(reference_type, ReferenceType)
+        assert isinstance(typedef, Typedef)
         IdlType.__init__(
             self,
             is_optional=reference_type.is_optional,
@@ -1084,6 +1071,9 @@ class ObservableArrayType(_ArrayLikeType):
 
     def set_observable_array_definition_object(
             self, observable_array_definition_object):
+        # In Python2, we need to avoid circular imports.
+        from .observable_array import ObservableArray
+        assert isinstance(observable_array_definition_object, ObservableArray)
         assert self._observable_array_definition_object is None
         self._observable_array_definition_object = (
             observable_array_definition_object)
@@ -1333,6 +1323,7 @@ class UnionType(IdlType):
         return self._union_definition_object
 
     def set_union_definition_object(self, union_definition_object):
+        assert isinstance(union_definition_object, Union)
         assert self._union_definition_object is None
         self._union_definition_object = union_definition_object
 

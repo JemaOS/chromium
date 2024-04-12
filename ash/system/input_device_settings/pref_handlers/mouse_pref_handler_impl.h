@@ -44,10 +44,6 @@ class ASH_EXPORT MousePrefHandlerImpl : public MousePrefHandler {
       const AccountId& account_id,
       const mojom::MousePolicies& mouse_policies,
       const mojom::Mouse& mouse) override;
-
-  void UpdateDefaultMouseSettings(PrefService* pref_service,
-                                  const mojom::MousePolicies& mouse_policies,
-                                  const mojom::Mouse& mouse) override;
 };
 
 }  // namespace ash

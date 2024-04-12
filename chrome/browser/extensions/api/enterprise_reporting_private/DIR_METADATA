@@ -1,1 +1,3 @@
-mixins: "//components/device_signals/COMMON_METADATA"
+monorail {
+  component: "Enterprise"
+}

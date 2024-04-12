@@ -15,6 +15,7 @@ mojom("mojo_bindings") {
     "//ui/gfx/geometry/mojom",
   ]
 
+  use_typescript_sources = true
   webui_module_path = "chrome://resources/cr_components/help_bubble/"
 }
 
@@ -41,7 +42,6 @@ build_webui("build") {
     "//ui/webui/resources/js:build_ts",
     "//ui/webui/resources/mojo:build_ts",
   ]
-  webui_context_type = "relative"
   generate_grdp = true
   grd_resource_path_prefix = rebase_path(".", "//ui/webui/resources")
 }

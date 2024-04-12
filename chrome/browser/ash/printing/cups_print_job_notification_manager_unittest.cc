@@ -30,13 +30,13 @@ TEST_F(CupsPrintJobNotificationManagerTest, PrintJobLifetimeCheck) {
                         std::string(), printing::proto::PrintSettings());
 
   manager_.OnPrintJobCreated(printJob.GetWeakPtr());
-  CupsPrintJobNotification* notification =
+  absl::optional<CupsPrintJobNotification*> notification =
       manager_.GetNotificationForTesting(&printJob);
-  ASSERT_TRUE(notification);
+  ASSERT_TRUE(notification.has_value());
 
-  manager_.OnPrintJobNotificationRemoved(notification);
+  manager_.OnPrintJobNotificationRemoved(*notification);
   notification = manager_.GetNotificationForTesting(&printJob);
-  EXPECT_FALSE(notification);
+  EXPECT_FALSE(notification.has_value());
 
   // Call this just to make sure it doesn't crash.
   manager_.OnPrintJobCancelled(printJob.GetWeakPtr());

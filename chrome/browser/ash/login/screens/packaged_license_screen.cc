@@ -10,10 +10,15 @@
 #include "chrome/browser/ash/policy/enrollment/enrollment_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/browser_process_platform_part_ash.h"
-#include "chrome/browser/ui/webui/ash/login/mojom/screens_oobe.mojom.h"
 #include "chrome/browser/ui/webui/ash/login/packaged_license_screen_handler.h"
 
 namespace ash {
+namespace {
+
+constexpr const char kUserActionEnrollButtonClicked[] = "enroll";
+constexpr const char kUserActionDontEnrollButtonClicked[] = "dont-enroll";
+
+}  // namespace
 
 // static
 std::string PackagedLicenseScreen::GetResultString(Result result) {
@@ -33,7 +38,6 @@ PackagedLicenseScreen::PackagedLicenseScreen(
     base::WeakPtr<PackagedLicenseView> view,
     const ScreenExitCallback& exit_callback)
     : BaseScreen(PackagedLicenseView::kScreenId, OobeScreenPriority::DEFAULT),
-      OobeMojoBinder(this),
       view_(std::move(view)),
       exit_callback_(exit_callback) {}
 
@@ -70,18 +74,15 @@ void PackagedLicenseScreen::ShowImpl() {
 
 void PackagedLicenseScreen::HideImpl() {}
 
-void PackagedLicenseScreen::OnEnrollClicked() {
-  if (is_hidden()) {
-    return;
-  }
-  exit_callback_.Run(Result::ENROLL);
-}
+void PackagedLicenseScreen::OnUserAction(const base::Value::List& args) {
+  const std::string& action_id = args[0].GetString();
 
-void PackagedLicenseScreen::OnDontEnrollClicked() {
-  if (is_hidden()) {
-    return;
-  }
-  exit_callback_.Run(Result::DONT_ENROLL);
+  if (action_id == kUserActionEnrollButtonClicked)
+    exit_callback_.Run(Result::ENROLL);
+  else if (action_id == kUserActionDontEnrollButtonClicked)
+    exit_callback_.Run(Result::DONT_ENROLL);
+  else
+    BaseScreen::OnUserAction(args);
 }
 
 bool PackagedLicenseScreen::HandleAccelerator(LoginAcceleratorAction action) {

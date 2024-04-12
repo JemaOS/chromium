@@ -38,9 +38,8 @@ ChromeEnterpriseRealTimeUrlLookupServiceFactory::GetForProfile(
 // static
 ChromeEnterpriseRealTimeUrlLookupServiceFactory*
 ChromeEnterpriseRealTimeUrlLookupServiceFactory::GetInstance() {
-  static base::NoDestructor<ChromeEnterpriseRealTimeUrlLookupServiceFactory>
-      instance;
-  return instance.get();
+  return base::Singleton<
+      ChromeEnterpriseRealTimeUrlLookupServiceFactory>::get();
 }
 
 ChromeEnterpriseRealTimeUrlLookupServiceFactory::
@@ -56,12 +55,11 @@ ChromeEnterpriseRealTimeUrlLookupServiceFactory::
   DependsOn(VerdictCacheManagerFactory::GetInstance());
   DependsOn(enterprise_connectors::ConnectorsServiceFactory::GetInstance());
   DependsOn(SafeBrowsingNavigationObserverManagerFactory::GetInstance());
-  DependsOn(IdentityManagerFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService> ChromeEnterpriseRealTimeUrlLookupServiceFactory::
-    BuildServiceInstanceForBrowserContext(
-        content::BrowserContext* context) const {
+KeyedService*
+ChromeEnterpriseRealTimeUrlLookupServiceFactory::BuildServiceInstanceFor(
+    content::BrowserContext* context) const {
   if (!g_browser_process->safe_browsing_service()) {
     return nullptr;
   }
@@ -69,7 +67,7 @@ std::unique_ptr<KeyedService> ChromeEnterpriseRealTimeUrlLookupServiceFactory::
   auto url_loader_factory =
       std::make_unique<network::CrossThreadPendingSharedURLLoaderFactory>(
           profile->GetURLLoaderFactory());
-  return std::make_unique<ChromeEnterpriseRealTimeUrlLookupService>(
+  return new ChromeEnterpriseRealTimeUrlLookupService(
       network::SharedURLLoaderFactory::Create(std::move(url_loader_factory)),
       VerdictCacheManagerFactory::GetForProfile(profile), profile,
       base::BindRepeating(&safe_browsing::GetUserPopulationForProfile, profile),

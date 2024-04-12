@@ -29,7 +29,7 @@ bool StructTraits<blink::mojom::StorageKeyDataView, blink::StorageKey>::Read(
     return false;
   }
 
-  std::optional<base::UnguessableToken> nonce;
+  absl::optional<base::UnguessableToken> nonce;
   if (!data.ReadNonce(&nonce)) {
     return false;
   }

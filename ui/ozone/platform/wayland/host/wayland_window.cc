@@ -8,12 +8,9 @@
 #include <stdint.h>
 #include <wayland-cursor.h>
 
-#include <algorithm>
 #include <memory>
-#include <optional>
 #include <utility>
 
-#include "base/auto_reset.h"
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/notreached.h"
@@ -22,6 +19,7 @@
 #include "base/run_loop.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/chromeos_buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/cursor/cursor.h"
 #include "ui/base/cursor/mojom/cursor_type.mojom.h"
 #include "ui/base/cursor/platform_cursor.h"
@@ -34,16 +32,13 @@
 #include "ui/events/platform/platform_event_source.h"
 #include "ui/gfx/color_space.h"
 #include "ui/gfx/geometry/point_f.h"
-#include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/rrect_f.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/native_widget_types.h"
 #include "ui/gfx/overlay_priority_hint.h"
 #include "ui/ozone/common/bitmap_cursor.h"
 #include "ui/ozone/platform/wayland/common/wayland_overlay_config.h"
-#include "ui/ozone/platform/wayland/host/dump_util.h"
 #include "ui/ozone/platform/wayland/host/wayland_connection.h"
-#include "ui/ozone/platform/wayland/host/wayland_cursor_shape.h"
 #include "ui/ozone/platform/wayland/host/wayland_data_drag_controller.h"
 #include "ui/ozone/platform/wayland/host/wayland_event_source.h"
 #include "ui/ozone/platform/wayland/host/wayland_frame_manager.h"
@@ -65,15 +60,6 @@ namespace {
 
 using mojom::CursorType;
 using mojom::DragOperation;
-
-// Wayland compositors usually remove keyboard focus during drag
-// sessions, thus modifier events are not sent, instead they are handled
-// at server side, and clients are indirectly notified through, e.g:
-// wl_data_offer.dnd_actions events.
-// There is an open discussion about being more explicit about this on
-// the spec: https://gitlab.freedesktop.org/wayland/wayland/-/issues/441
-// For now, assume no keyboard modifiers info is available during dnd.
-static constexpr int kWaylandDndModifiers = 0;
 
 bool OverlayStackOrderCompare(const wl::WaylandOverlayConfig& i,
                               const wl::WaylandOverlayConfig& j) {
@@ -164,26 +150,23 @@ void WaylandWindow::UpdateWindowScale(bool update_bounds) {
   }
 }
 
-WaylandZAuraSurface* WaylandWindow::GetZAuraSurface() {
-  return root_surface_ ? root_surface_->zaura_surface() : nullptr;
-}
-
 gfx::AcceleratedWidget WaylandWindow::GetWidget() const {
   return accelerated_widget_;
 }
 
 void WaylandWindow::SetWindowScale(float new_scale) {
   DCHECK_GE(new_scale, 0.f);
-  auto state = GetLatestRequestedState();
+  if (applied_state_.window_scale == new_scale) {
+    return;
+  }
+
+  auto state = applied_state_;
   state.window_scale = new_scale;
-  // Note that we still need to call this even if the state does not change,
-  // because we want requests directly from the client (us) to be applied
-  // immediately, since that's what PlatformWindow expects. Also, RequestState
-  // may modify the state before applying it.
+
   RequestStateFromClient(state);
 }
 
-std::optional<WaylandOutput::Id> WaylandWindow::GetPreferredEnteredOutputId() {
+absl::optional<WaylandOutput::Id> WaylandWindow::GetPreferredEnteredOutputId() {
   // Child windows don't store entered outputs. Instead, take the window's
   // root parent window and use its preferred output.
   if (parent_window_) {
@@ -205,7 +188,7 @@ std::optional<WaylandOutput::Id> WaylandWindow::GetPreferredEnteredOutputId() {
           ->wayland_screen()
           ->GetOutputIdMatching(GetBoundsInDIP());
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // PlatformWindowType::kPopup are created as toplevel windows as well.
@@ -231,7 +214,7 @@ std::optional<WaylandOutput::Id> WaylandWindow::GetPreferredEnteredOutputId() {
     DCHECK(output) << " output " << output_id << " not found!";
     DCHECK(preferred_output) << " output " << preferred_id << " not found!";
     if (!output || !preferred_output) {
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     if (output->scale_factor() > preferred_output->scale_factor()) {
@@ -246,17 +229,9 @@ void WaylandWindow::OnPointerFocusChanged(bool focused) {
   // Whenever the window gets the pointer focus back, the cursor shape must be
   // updated. Otherwise, it is invalidated upon wl_pointer::leave and is not
   // restored by the Wayland compositor.
-#if BUILDFLAG(IS_LINUX)
-  if (focused && async_cursor_) {
-    async_cursor_->AddCursorLoadedCallback(
-        base::BindOnce(&WaylandWindow::OnCursorLoaded,
-                       weak_ptr_factory_.GetWeakPtr(), async_cursor_));
-  }
-#else
   if (focused && cursor_) {
     UpdateCursorShape(cursor_);
   }
-#endif
 }
 
 bool WaylandWindow::HasPointerFocus() const {
@@ -354,45 +329,19 @@ void WaylandWindow::OnChannelDestroyed() {
                                      std::move(subsurfaces_to_overlays)));
 }
 
-void WaylandWindow::DumpState(std::ostream& out) const {
-  constexpr auto kWindowTypeToString =
-      base::MakeFixedFlatMap<PlatformWindowType, const char*>(
-          {{PlatformWindowType::kWindow, "window"},
-           {PlatformWindowType::kPopup, "popup"},
-           {PlatformWindowType::kMenu, "menu"},
-           {PlatformWindowType::kTooltip, "tooltip"},
-           {PlatformWindowType::kDrag, "drag"},
-           {PlatformWindowType::kBubble, "bubble"}});
-  out << "type=" << GetMapValueOrDefault(kWindowTypeToString, type_)
-      << ", bounds_in_dip=" << GetBoundsInDIP().ToString()
-      << ", bounds_in_pixels=" << GetBoundsInPixels().ToString()
-      << ", restore_bounds_dip=" << restored_bounds_dip_.ToString()
-      << ", overlay_delegation="
-      << (wayland_overlay_delegation_enabled_ ? "enabled" : "disabled");
-  if (frame_insets_px_) {
-    out << ", frame_insets=" << frame_insets_px_->ToString();
-  }
-  if (has_touch_focus_) {
-    out << ", has_touch_focus";
-  }
-  out << ", ui_scale=" << ui_scale_;
-  constexpr auto kOpacityToString =
-      base::MakeFixedFlatMap<PlatformWindowOpacity, const char*>(
-          {{PlatformWindowOpacity::kInferOpacity, "infer"},
-           {PlatformWindowOpacity::kOpaqueWindow, "opaque"},
-           {PlatformWindowOpacity::kTranslucentWindow, "translucent"}});
-  out << ", opacity=" << GetMapValueOrDefault(kOpacityToString, opacity_);
-  if (shutting_down_) {
-    out << ", shutting_down";
-  }
-}
-
 bool WaylandWindow::SupportsConfigureMinimizedState() const {
   return false;
 }
 
-bool WaylandWindow::SupportsConfigurePinnedState() const {
-  return false;
+void WaylandWindow::SetAuraSurface(zaura_surface* aura_surface) {
+  DCHECK(connection()->zaura_shell());
+  DCHECK_NE(aura_surface_.get(), aura_surface);
+  aura_surface_.reset(aura_surface);
+}
+
+bool WaylandWindow::IsSupportedOnAuraSurface(uint32_t version) const {
+  return aura_surface_ &&
+         zaura_surface_get_version(aura_surface_.get()) >= version;
 }
 
 void WaylandWindow::Close() {
@@ -428,11 +377,8 @@ gfx::Rect WaylandWindow::GetBoundsInPixels() const {
 }
 
 void WaylandWindow::SetBoundsInDIP(const gfx::Rect& bounds_dip) {
-  auto state = GetLatestRequestedState();
+  auto state = applied_state_;
   state.bounds_dip = bounds_dip;
-  // Call this even if the bounds haven't changed, as requesting from the client
-  // forces applying the state, which may (currently) not be applied if it was
-  // throttled. Also, RequestState may modify the state before applying it.
   RequestStateFromClient(state);
 }
 
@@ -507,24 +453,11 @@ bool WaylandWindow::ShouldUseNativeFrame() const {
 void WaylandWindow::SetCursor(scoped_refptr<PlatformCursor> platform_cursor) {
   DCHECK(platform_cursor);
 
-#if BUILDFLAG(IS_LINUX)
-  auto async_cursor = WaylandAsyncCursor::FromPlatformCursor(platform_cursor);
-
-  if (async_cursor_ == async_cursor) {
-    return;
-  }
-
-  async_cursor_ = async_cursor;
-  async_cursor->AddCursorLoadedCallback(
-      base::BindOnce(&WaylandWindow::OnCursorLoaded,
-                     weak_ptr_factory_.GetWeakPtr(), async_cursor));
-#else
   if (cursor_ == platform_cursor) {
     return;
   }
 
   UpdateCursorShape(BitmapCursor::FromPlatformCursor(platform_cursor));
-#endif
 }
 
 void WaylandWindow::MoveCursorTo(const gfx::Point& location) {
@@ -552,6 +485,11 @@ void WaylandWindow::SetAspectRatio(const gfx::SizeF& aspect_ratio) {
   NOTIMPLEMENTED_LOG_ONCE();
 }
 
+bool WaylandWindow::IsTranslucentWindowOpacitySupported() const {
+  // Wayland compositors always support translucency.
+  return true;
+}
+
 void WaylandWindow::SetDecorationInsets(const gfx::Insets* insets_px) {
   // TODO(crbug.com/1395267): Add window geometry to WaylandWindow::State.
   if ((!frame_insets_px_ && !insets_px) ||
@@ -561,7 +499,7 @@ void WaylandWindow::SetDecorationInsets(const gfx::Insets* insets_px) {
   if (insets_px) {
     frame_insets_px_ = *insets_px;
   } else {
-    frame_insets_px_ = std::nullopt;
+    frame_insets_px_ = absl::nullopt;
   }
 }
 
@@ -652,94 +590,9 @@ EventTargeter* WaylandWindow::GetEventTargeter() {
   return nullptr;
 }
 
-void WaylandWindow::OcclusionStateChanged(
-    PlatformWindowOcclusionState occlusion_state) {
-  // Put non-synchronized occlusion state updates into pending occlusion state
-  // as well, to avoid an earlier pending synchronized occlusion state update
-  // being applied later and overwriting a non-synchronized occlusion state that
-  // happened in between. This can only happen if a non-synchronized occlusion
-  // state update is sent after configure is initiated from the server but
-  // before it is finalized (and the pending state is applied). It's also safe
-  // to overwrite the current pending state from a configure, because there's no
-  // happens-before/after guarantees on unsynchronised state setting w.r.t.
-  // configures, so it would be valid for the configure ack's commit to have the
-  // unsynchronised occlusion state set, if that happened after configure but
-  // before the corresponding frame was produced.
-  // TODO(crbug.com/1278648): Remove this once the oldest ash we want to use
-  // supports synchronized occlusion state in configure.
-  SetPendingOcclusionState(occlusion_state);
-}
-
 void WaylandWindow::HandleSurfaceConfigure(uint32_t serial) {
   NOTREACHED()
       << "Only shell surfaces must receive HandleSurfaceConfigure calls.";
-}
-
-WaylandWindow::WindowStates::WindowStates() = default;
-WaylandWindow::WindowStates::~WindowStates() = default;
-
-std::string WaylandWindow::WindowStates::ToString() const {
-  std::string states = "";
-  if (is_maximized) {
-    states += "maximized ";
-  }
-  if (is_fullscreen) {
-    states += "fullscreen ";
-  }
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  if (is_immersive_fullscreen) {
-    states += "immersive ";
-  }
-  if (is_pinned_fullscreen) {
-    states += "pinned ";
-  }
-  if (is_trusted_pinned_fullscreen) {
-    states += "trusted_pinned ";
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-  if (is_activated) {
-    states += "activated ";
-  }
-  if (is_minimized) {
-    states += "minimized ";
-  }
-  if (is_snapped_primary) {
-    states += "snapped_primary ";
-  }
-  if (is_snapped_secondary) {
-    states += "snapped_secondary ";
-  }
-  if (is_floated) {
-    states += "floated ";
-  }
-  if (states.empty()) {
-    states = "<default>";
-  } else {
-    base::TrimString(states, " ", &states);
-  }
-#if BUILDFLAG(IS_LINUX)
-  states += "; tiled_edges: ";
-  std::string tiled = "";
-  if (tiled_edges.left) {
-    tiled += "left ";
-  }
-  if (tiled_edges.right) {
-    tiled += "right ";
-  }
-  if (tiled_edges.top) {
-    tiled += "top ";
-  }
-  if (tiled_edges.bottom) {
-    tiled += "bottom ";
-  }
-  if (tiled.empty()) {
-    tiled = "<none>";
-  } else {
-    base::TrimString(tiled, " ", &tiled);
-  }
-  states += tiled;
-#endif
-  return states;
 }
 
 void WaylandWindow::HandleToplevelConfigure(int32_t widht,
@@ -767,29 +620,28 @@ void WaylandWindow::OnCloseRequest() {
   delegate_->OnCloseRequest();
 }
 
-void WaylandWindow::OnDragEnter(const gfx::PointF& point, int operations) {
+void WaylandWindow::OnDragEnter(const gfx::PointF& point,
+                                std::unique_ptr<OSExchangeData> data,
+                                int operation) {
   WmDropHandler* drop_handler = GetWmDropHandler(*this);
   if (!drop_handler) {
     return;
   }
-  drop_handler->OnDragEnter(point, operations, kWaylandDndModifiers);
+
+  // TODO(crbug.com/1102857): get the real event modifier here.
+  drop_handler->OnDragEnter(point, std::move(data), operation,
+                            /*modifiers=*/0);
 }
 
-void WaylandWindow::OnDragDataAvailable(std::unique_ptr<OSExchangeData> data) {
-  WmDropHandler* drop_handler = GetWmDropHandler(*this);
-  if (!drop_handler) {
-    return;
-  }
-  // TODO(crbug.com/1487784): Factor DataFetched out of Enter callback.
-  drop_handler->OnDragDataAvailable(std::move(data));
-}
-
-int WaylandWindow::OnDragMotion(const gfx::PointF& point, int operations) {
+int WaylandWindow::OnDragMotion(const gfx::PointF& point, int operation) {
   WmDropHandler* drop_handler = GetWmDropHandler(*this);
   if (!drop_handler) {
     return 0;
   }
-  return drop_handler->OnDragMotion(point, operations, kWaylandDndModifiers);
+
+  // TODO(crbug.com/1102857): get the real event modifier here.
+  return drop_handler->OnDragMotion(point, operation,
+                                    /*modifiers=*/0);
 }
 
 void WaylandWindow::OnDragDrop() {
@@ -797,7 +649,8 @@ void WaylandWindow::OnDragDrop() {
   if (!drop_handler) {
     return;
   }
-  drop_handler->OnDragDrop(kWaylandDndModifiers);
+  // TODO(crbug.com/1102857): get the real event modifier here.
+  drop_handler->OnDragDrop({}, /*modifiers=*/0);
 }
 
 void WaylandWindow::OnDragLeave() {
@@ -809,11 +662,7 @@ void WaylandWindow::OnDragLeave() {
 }
 
 void WaylandWindow::OnDragSessionClose(DragOperation operation) {
-  if (!drag_finished_callback_) {
-    // WaylandWindow::PrepareForShutdown() is already called. This window
-    // is about to shut down. Do nothing and return.
-    return;
-  }
+  DCHECK(drag_finished_callback_);
   std::move(drag_finished_callback_).Run(operation);
   connection()->event_source()->ResetPointerFlags();
   std::move(drag_loop_quit_closure_).Run();
@@ -863,8 +712,6 @@ bool WaylandWindow::Initialize(PlatformWindowInitProperties properties) {
 
   connection_->window_manager()->AddWindow(GetWidget(), this);
 
-  SetDecorationInsets(&properties.frame_insets_px);
-
   if (!OnInitialize(std::move(properties), &state)) {
     return false;
   }
@@ -886,8 +733,7 @@ bool WaylandWindow::Initialize(PlatformWindowInitProperties properties) {
   delegate_->OnAcceleratedWidgetAvailable(GetWidget());
 
   std::vector<gfx::Rect> region{gfx::Rect{latched_state().size_px}};
-  root_surface_->set_opaque_region(region);
-  root_surface_->EnableTrustedDamageIfPossible();
+  root_surface_->set_opaque_region(&region);
   root_surface_->ApplyPendingState();
 
   connection_->Flush();
@@ -957,25 +803,16 @@ WaylandPopup* WaylandWindow::AsWaylandPopup() {
   return nullptr;
 }
 
-WaylandToplevelWindow* WaylandWindow::AsWaylandToplevelWindow() {
-  return nullptr;
-}
-
 bool WaylandWindow::IsScreenCoordinatesEnabled() const {
   return false;
 }
 
 uint32_t WaylandWindow::DispatchEventToDelegate(
     const PlatformEvent& native_event) {
-  EventResult result = DispatchEventFromNativeUiEvent(
+  bool handled = DispatchEventFromNativeUiEvent(
       native_event, base::BindOnce(&PlatformWindowDelegate::DispatchEvent,
                                    base::Unretained(delegate_)));
-  if (result == ER_UNHANDLED) {
-    return POST_DISPATCH_NONE;
-  }
-
-  return !!(result & ER_SKIPPED) ? POST_DISPATCH_PERFORM_DEFAULT
-                                 : POST_DISPATCH_STOP_PROPAGATION;
+  return handled ? POST_DISPATCH_STOP_PROPAGATION : POST_DISPATCH_NONE;
 }
 
 std::unique_ptr<WaylandSurface> WaylandWindow::TakeWaylandSurface() {
@@ -1033,19 +870,14 @@ bool WaylandWindow::ArrangeSubsurfaceStack(size_t above, size_t below) {
 
 bool WaylandWindow::CommitOverlays(
     uint32_t frame_id,
-    const gfx::FrameData& data,
+    int64_t seq,
     std::vector<wl::WaylandOverlayConfig>& overlays) {
   if (overlays.empty()) {
     return true;
   }
 
-  // Lacros submits from front to back. A simple reverse can avoid a full sort.
-  std::reverse(overlays.begin(), overlays.end());
-  if (!std::is_sorted(overlays.begin(), overlays.end(),
-                      OverlayStackOrderCompare)) {
-    // |overlays| is sorted from bottom to top.
-    std::sort(overlays.begin(), overlays.end(), OverlayStackOrderCompare);
-  }
+  // |overlays| is sorted from bottom to top.
+  std::sort(overlays.begin(), overlays.end(), OverlayStackOrderCompare);
 
   // Find the location where z_oder becomes non-negative.
   wl::WaylandOverlayConfig value;
@@ -1073,7 +905,7 @@ bool WaylandWindow::CommitOverlays(
   if (!wayland_overlay_delegation_enabled_) {
     DCHECK_EQ(overlays.size(), 1u);
     frame_manager_->RecordFrame(std::make_unique<WaylandFrame>(
-        frame_id, data, root_surface(), std::move(*overlays.begin())));
+        frame_id, seq, root_surface(), std::move(*overlays.begin())));
     return true;
   }
 
@@ -1132,12 +964,12 @@ bool WaylandWindow::CommitOverlays(
             root_surface()->use_blending(), gfx::Rect(),
             root_surface()->opacity(), gfx::OverlayPriorityHint::kNone,
             rounded_clip_bounds.value_or(gfx::RRectF()),
-            gfx::ColorSpace::CreateSRGB(), std::nullopt),
+            gfx::ColorSpace::CreateSRGB(), absl::nullopt),
         nullptr, root_surface()->buffer_id(), buffer_scale);
   }
 
   frame_manager_->RecordFrame(std::make_unique<WaylandFrame>(
-      frame_id, data, root_surface(), std::move(root_config),
+      frame_id, seq, root_surface(), std::move(root_config),
       std::move(subsurfaces_to_overlays)));
 
   return true;
@@ -1150,9 +982,7 @@ void WaylandWindow::UpdateCursorShape(scoped_refptr<BitmapCursor> cursor) {
         base::IsValueInRangeForNumericType<int>(
             cursor->cursor_image_scale_factor()));
 
-  std::optional<uint32_t> shape =
-      WaylandCursorShape::ShapeFromType(cursor->type());
-  std::optional<int32_t> zcr_shape =
+  absl::optional<int32_t> shape =
       WaylandZcrCursorShapes::ShapeFromType(cursor->type());
 
   // Round cursor scale factor to ceil as wl_surface.set_buffer_scale accepts
@@ -1160,25 +990,20 @@ void WaylandWindow::UpdateCursorShape(scoped_refptr<BitmapCursor> cursor) {
   if (cursor->type() == CursorType::kNone) {  // Hide the cursor.
     connection_->SetCursorBitmap(
         {}, gfx::Point(), std::ceil(cursor->cursor_image_scale_factor()));
-  } else if (connection_->wayland_cursor_shape() && shape.has_value()) {
-    // Prefer Wayland server-side cursor support, as the compositor knows better
-    // how to draw the cursor.
-    connection_->wayland_cursor_shape()->SetCursorShape(shape.value());
   } else if (cursor->platform_data()) {  // Check for theme-provided cursor.
     connection_->SetPlatformCursor(
         reinterpret_cast<wl_cursor*>(cursor->platform_data()),
         std::ceil(cursor->cursor_image_scale_factor()));
   } else if (connection_->zcr_cursor_shapes() &&
-             zcr_shape.has_value()) {  // Check for Exo server-side cursor
-                                       // support.
+             shape.has_value()) {  // Check for Wayland server-side cursor
+                                   // support (e.g. exo for lacros).
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
     // Lacros should not load image assets for default cursors. See
     // `BitmapCursorFactory::GetDefaultCursor()`.
     DCHECK(cursor->bitmaps().empty());
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-    connection_->zcr_cursor_shapes()->SetCursorShape(zcr_shape.value());
-  } else if (!cursor->bitmaps()
-                  .empty()) {  // Use client-side bitmap cursors as fallback.
+    connection_->zcr_cursor_shapes()->SetCursorShape(shape.value());
+  } else {  // Use client-side bitmap cursors as fallback.
     // Translate physical pixels to DIPs.
     gfx::Point hotspot_in_dips = gfx::ScaleToRoundedPoint(
         cursor->hotspot(), 1.0f / cursor->cursor_image_scale_factor());
@@ -1186,24 +1011,16 @@ void WaylandWindow::UpdateCursorShape(scoped_refptr<BitmapCursor> cursor) {
         cursor->bitmaps(), hotspot_in_dips,
         std::ceil(cursor->cursor_image_scale_factor()));
   }
-#if !BUILDFLAG(IS_LINUX)
+  // The new cursor needs to be stored last to avoid deleting the old cursor
+  // while it's still in use.
   cursor_ = cursor;
-#endif
 }
-
-#if BUILDFLAG(IS_LINUX)
-void WaylandWindow::OnCursorLoaded(scoped_refptr<WaylandAsyncCursor> cursor,
-                                   scoped_refptr<BitmapCursor> bitmap_cursor) {
-  if (HasPointerFocus() && async_cursor_ == cursor && bitmap_cursor) {
-    UpdateCursorShape(bitmap_cursor);
-  }
-}
-#endif
 
 void WaylandWindow::ProcessPendingConfigureState(uint32_t serial) {
   // For values not specified in pending_configure_state_, use the latest
   // requested values.
-  auto state = GetLatestRequestedState();
+  auto state = in_flight_requests_.empty() ? applied_state_
+                                           : in_flight_requests_.back().state;
   if (pending_configure_state_.bounds_dip.has_value()) {
     state.bounds_dip = pending_configure_state_.bounds_dip.value();
   }
@@ -1212,9 +1029,6 @@ void WaylandWindow::ProcessPendingConfigureState(uint32_t serial) {
   }
   if (pending_configure_state_.raster_scale.has_value()) {
     state.raster_scale = pending_configure_state_.raster_scale.value();
-  }
-  if (pending_configure_state_.occlusion_state.has_value()) {
-    state.occlusion_state = pending_configure_state_.occlusion_state.value();
   }
 
   if (state.bounds_dip.IsEmpty() &&
@@ -1240,17 +1054,7 @@ void WaylandWindow::ProcessPendingConfigureState(uint32_t serial) {
 
 void WaylandWindow::RequestStateFromServer(PlatformWindowDelegate::State state,
                                            int64_t serial) {
-  bool force = false;
-  // Changing the native occlusion state can affect the compositor visibility,
-  // which can affect whether frames are produced. To avoid a bad interaction
-  // with state update throttling and frames not being produced, which could
-  // leave the system not able to apply a new state while also not being able to
-  // produce any frames to clear the previously throttled states, always force
-  // applying the state if the occlusion state changes.
-  if (state.occlusion_state != applied_state_.occlusion_state) {
-    force = true;
-  }
-  RequestState(state, serial, force);
+  RequestState(state, serial, /*force=*/false);
 }
 
 void WaylandWindow::RequestStateFromClient(
@@ -1263,10 +1067,6 @@ void WaylandWindow::RequestStateFromClient(
 void WaylandWindow::RequestState(PlatformWindowDelegate::State state,
                                  int64_t serial,
                                  bool force) {
-  // State should NOT be requested during the ongoing request handling.
-  CHECK(!requesting_state_) << "Detected re-enterancy of state request.";
-  base::AutoReset<bool> setter(&requesting_state_, true);
-
   LOG_IF(WARNING, in_flight_requests_.size() > 100u)
       << "The queue of configures is longer than 100!";
 
@@ -1279,30 +1079,29 @@ void WaylandWindow::RequestState(PlatformWindowDelegate::State state,
 
   // Adjust state values if necessary.
   state.bounds_dip = AdjustBoundsToConstraintsDIP(state.bounds_dip);
+  state.size_px =
+      gfx::ScaleToEnclosingRect(state.bounds_dip, state.window_scale).size();
 
-  state.size_px = gfx::ScaleToEnclosingRectIgnoringError(state.bounds_dip,
-                                                         state.window_scale)
-                      .size();
-  // This will ensure that if insets at the time of the request changed, a new
-  // frame is produced when the state is applied.
-  state.insets = GetDecorationInsetsInDIP();
-
-  StateRequest req{.state = state, .serial = serial};
-  if (in_flight_requests_.empty()) {
-    in_flight_requests_.push_back(req);
+  if (!in_flight_requests_.empty() &&
+      in_flight_requests_.back().state == state) {
+    // If we already asked for this configure state, we can send back a higher
+    // wayland serial for ack while needing a lower viz_seq.
+    in_flight_requests_.back().serial =
+        std::max(in_flight_requests_.back().serial, serial);
   } else {
+    StateRequest req;
+    req.state = state;
+    req.serial = serial;
     // Propagate largest serial number so far, if we have one, since we
     // can have configure requests with no serial number (value -1).
-    req.serial = std::max(req.serial, in_flight_requests_.back().serial);
+    if (!in_flight_requests_.empty()) {
+      req.serial = std::max(req.serial, in_flight_requests_.back().serial);
+    }
 
-    if (!in_flight_requests_.back().applied) {
+    if (!in_flight_requests_.empty() && !in_flight_requests_.back().applied) {
       // If the last request has not been applied yet, overwrite it since
       // there's no point in requesting an old state.
       in_flight_requests_.back() = req;
-    } else if (in_flight_requests_.back().state == req.state) {
-      // If we already asked for this configure state, we can send back a higher
-      // wayland serial for ack while needing a lower viz_seq.
-      in_flight_requests_.back().serial = req.serial;
     } else {
       in_flight_requests_.push_back(req);
     }
@@ -1331,7 +1130,6 @@ void WaylandWindow::ProcessSequencePoint(int64_t viz_seq) {
     if (i->viz_seq > viz_seq && i->viz_seq != -1) {
       break;
     }
-
     if (i->applied) {
       iter = i;
     }
@@ -1339,15 +1137,6 @@ void WaylandWindow::ProcessSequencePoint(int64_t viz_seq) {
 
   if (iter == in_flight_requests_.end()) {
     return;
-  }
-
-  if (UseTestConfigForPlatformWindows()) {
-    for (auto i = in_flight_requests_.begin(); i != iter; ++i) {
-      // We need to set `latest_latched_viz_seq_for_testing_` to the highest viz
-      // seq for all requests at or before the last request we latch.
-      latest_latched_viz_seq_for_testing_ =
-          std::max(i->viz_seq, latest_latched_viz_seq_for_testing_);
-    }
   }
 
   // Latch the latest state which was actually applied.
@@ -1420,23 +1209,8 @@ void WaylandWindow::LatchStateRequest(const StateRequest& req) {
   // Latch the most up to date state we have a frame back for.
   auto old_state = latched_state_;
   latched_state_ = req.state;
-  auto old_latched_insets = latched_insets_;
-  latched_insets_ = GetDecorationInsetsInDIP();
 
-  // Update the geometry if the bounds are different or the window scale has
-  // been changed or if the insets have changed since the last latched request.
-  // If geometry is not updated on window scale update, the insets are set in a
-  // wrong way. That is, aura provides insets in pixels, which are converted by
-  // the device scale factor known from the display. It can be different from
-  // the one that the |latch_state_.window_scale| has. As a result, the geometry
-  // is set with wrong values as Wayland requires them to be in DIP.
-  if (req.state.bounds_dip.size() != old_state.bounds_dip.size() ||
-      req.state.window_scale != old_state.window_scale ||
-      // If insets change that is a geometry change even when the bounds or
-      // scale remain the same. The updated insets may not be known at the time
-      // of the request, hence the need to check this if there are changes in
-      // insets since it latched the last time.
-      old_latched_insets != latched_insets_) {
+  if (req.state.bounds_dip.size() != old_state.bounds_dip.size()) {
     SetWindowGeometry(req.state.bounds_dip.size());
   }
   UpdateWindowMask();
@@ -1468,14 +1242,6 @@ void WaylandWindow::MaybeApplyLatestStateRequest(bool force) {
   }
   latest.applied = true;
 
-  if (UseTestConfigForPlatformWindows()) {
-    latest_applied_viz_seq_for_testing_ = std::max(
-        latest_applied_viz_seq_for_testing_,
-        base::ranges::max(in_flight_requests_, {}, [](const StateRequest& req) {
-          return req.viz_seq;
-        }).viz_seq);
-  }
-
   // Set the applied state here so it can be used by e.g. OnBoundsChanged to
   // pick up the new bounds.
   auto old = applied_state_;
@@ -1497,7 +1263,7 @@ void WaylandWindow::MaybeApplyLatestStateRequest(bool force) {
 
   // Latch in tests immediately if the test config is set.
   // Otherwise, such tests as interactive_ui_tests fail.
-  if (UseTestConfigForPlatformWindows() && latch_immediately_for_testing_) {
+  if (UseTestConfigForPlatformWindows()) {
     ProcessSequencePoint(INT64_MAX);
   }
 }

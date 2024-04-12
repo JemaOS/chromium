@@ -10,7 +10,6 @@ import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.intent.Intents.intended;
 import static androidx.test.espresso.intent.matcher.IntentMatchers.hasAction;
-import static androidx.test.espresso.matcher.ViewMatchers.isDescendantOfA;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withParent;
@@ -36,10 +35,10 @@ import android.os.Build;
 import android.provider.Settings;
 
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.test.InstrumentationRegistry;
 import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.espresso.intent.Intents;
 import androidx.test.filters.MediumTest;
-import androidx.test.platform.app.InstrumentationRegistry;
 
 import org.junit.After;
 import org.junit.Before;
@@ -50,10 +49,7 @@ import org.junit.runner.RunWith;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
-import org.chromium.base.test.util.DisableIf;
-import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Feature;
-import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.MinAndroidSdkLevel;
 import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
@@ -65,7 +61,6 @@ import org.chromium.chrome.browser.price_tracking.PriceDropNotificationManagerFa
 import org.chromium.chrome.browser.price_tracking.PriceDropNotificationManagerImpl;
 import org.chromium.chrome.browser.price_tracking.PriceTrackingFeatures;
 import org.chromium.chrome.browser.price_tracking.PriceTrackingUtilities;
-import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.tasks.tab_management.MessageService.MessageDisableReason;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.ChromeTabbedActivityTestRule;
@@ -73,22 +68,22 @@ import org.chromium.chrome.test.R;
 import org.chromium.chrome.test.util.ActivityTestUtils;
 import org.chromium.chrome.test.util.ChromeRenderTestRule;
 import org.chromium.chrome.test.util.ChromeTabUtils;
+import org.chromium.chrome.test.util.browser.Features;
 import org.chromium.components.browser_ui.notifications.MockNotificationManagerProxy;
-import org.chromium.content_public.browser.test.util.TestThreadUtils;
 import org.chromium.ui.test.util.UiRestriction;
 
 import java.io.IOException;
 
 /** End-to-end tests for PriceAlertsMessageCard. */
 @RunWith(ChromeJUnit4ClassRunner.class)
-@CommandLineFlags.Add({
-    ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE,
-    "enable-features=" + ChromeFeatureList.COMMERCE_PRICE_TRACKING + "<Study",
-    "force-fieldtrials=Study/Group"
-})
+// clang-format off
+@CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE,
+        "enable-features=" + ChromeFeatureList.COMMERCE_PRICE_TRACKING + "<Study",
+        "force-fieldtrials=Study/Group"})
 @Restriction({UiRestriction.RESTRICTION_TYPE_PHONE, RESTRICTION_TYPE_NON_LOW_END_DEVICE})
-@DisableFeatures({ChromeFeatureList.ARCHIVE_TAB_SERVICE})
+@Features.DisableFeatures({ChromeFeatureList.TAB_GROUPS_ANDROID, ChromeFeatureList.CLOSE_TAB_SUGGESTIONS})
 public class PriceAlertsMessageCardTest {
+    // clang-format on
     private static final String BASE_PARAMS =
             "force-fieldtrial-params=Study.Group:implicit_subscriptions_enabled/true";
     private static final String ACTION_APP_NOTIFICATION_SETTINGS =
@@ -128,28 +123,23 @@ public class PriceAlertsMessageCardTest {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             mPriceDropNotificationManager.deleteChannelForTesting();
         }
+        PriceTrackingFeatures.setPriceTrackingEnabledForTesting(null);
+        PriceTrackingFeatures.setIsSignedInAndSyncEnabledForTesting(null);
+        PriceDropNotificationManagerImpl.setNotificationManagerForTesting(null);
+        ShoppingFeatures.setShoppingListEligibleForTesting(null);
         ActivityTestUtils.clearActivityOrientation(mActivityTestRule.getActivity());
         Intents.release();
-    }
-
-    private boolean isPriceAlertsMessageCardEnabled() {
-        return TestThreadUtils.runOnUiThreadBlockingNoException(
-                () -> {
-                    return PriceTrackingUtilities.isPriceAlertsMessageCardEnabled(
-                            ProfileManager.getLastUsedRegularProfile());
-                });
     }
 
     @Test
     @MediumTest
     @CommandLineFlags.Add({BASE_PARAMS})
-    @DisableIf.Build(supported_abis_includes = "arm64-v8a", message = "crbug.com/325923168")
     public void testMessageCardShowing() {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
-        assertTrue(isPriceAlertsMessageCardEnabled());
+        assertTrue(PriceTrackingUtilities.isPriceAlertsMessageCardEnabled());
 
         enterTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
     }
 
@@ -159,7 +149,7 @@ public class PriceAlertsMessageCardTest {
     public void testMessageCardNotShowing_MessageDisabled() {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
         PriceTrackingUtilities.disablePriceAlertsMessageCard();
-        assertFalse(isPriceAlertsMessageCardEnabled());
+        assertFalse(PriceTrackingUtilities.isPriceAlertsMessageCardEnabled());
 
         enterTabSwitcher(cta);
         onView(withId(R.id.large_message_card_item)).check(doesNotExist());
@@ -170,7 +160,7 @@ public class PriceAlertsMessageCardTest {
     @CommandLineFlags.Add({BASE_PARAMS})
     public void testMessageCardNotShowing_InIncognito() {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
-        assertTrue(isPriceAlertsMessageCardEnabled());
+        assertTrue(PriceTrackingUtilities.isPriceAlertsMessageCardEnabled());
 
         createTabs(cta, true, 1);
         enterTabSwitcher(cta);
@@ -180,12 +170,11 @@ public class PriceAlertsMessageCardTest {
 
     @Test
     @MediumTest
-    @CommandLineFlags.Add({
-        "force-fieldtrial-params=Study.Group:implicit_subscriptions_enabled/false"
-    })
+    @CommandLineFlags.
+    Add({"force-fieldtrial-params=Study.Group:implicit_subscriptions_enabled/false"})
     public void testMessageCardNotShowing_ImplicitSubscriptionsParameterDisabled() {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
-        assertFalse(isPriceAlertsMessageCardEnabled());
+        assertFalse(PriceTrackingUtilities.isPriceAlertsMessageCardEnabled());
 
         enterTabSwitcher(cta);
         onView(withId(R.id.large_message_card_item)).check(doesNotExist());
@@ -195,129 +184,109 @@ public class PriceAlertsMessageCardTest {
     @MediumTest
     @CommandLineFlags.Add({BASE_PARAMS})
     @MinAndroidSdkLevel(Build.VERSION_CODES.O)
-    @DisabledTest(message = "crbug.com/1506776")
     public void testReviewMessage_AppNotificationsEnabled() {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
         mMockNotificationManager.setNotificationsEnabled(true);
         assertNull(mPriceDropNotificationManager.getNotificationChannel());
 
         enterTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
 
-        onView(
-                        allOf(
-                                withId(R.id.action_button),
-                                withParent(withId(R.id.large_message_linear_layout))))
+        onView(allOf(withId(R.id.action_button),
+                       withParent(withId(R.id.large_message_linear_layout))))
                 .perform(click());
         assertNotNull(mPriceDropNotificationManager.getNotificationChannel());
-        assertEquals(
-                NotificationManager.IMPORTANCE_DEFAULT,
+        assertEquals(NotificationManager.IMPORTANCE_DEFAULT,
                 mPriceDropNotificationManager.getNotificationChannel().getImportance());
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         METRICS_IDENTIFIER, MessageDisableReason.MESSAGE_ACCEPTED));
-        assertFalse(isPriceAlertsMessageCardEnabled());
+        assertFalse(PriceTrackingUtilities.isPriceAlertsMessageCardEnabled());
         onView(withId(R.id.large_message_card_item)).check(doesNotExist());
     }
 
     @Test
     @MediumTest
     @CommandLineFlags.Add({BASE_PARAMS})
-    @DisabledTest(message = "crbug.com/1500162")
     public void testReviewMessage_AppNotificationsDisabled() {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
         mMockNotificationManager.setNotificationsEnabled(false);
 
         enterTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
 
-        onView(
-                        allOf(
-                                withId(R.id.action_button),
-                                withParent(withId(R.id.large_message_linear_layout))))
+        onView(allOf(withId(R.id.action_button),
+                       withParent(withId(R.id.large_message_linear_layout))))
                 .perform(click());
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             intended(hasAction(ACTION_APP_NOTIFICATION_SETTINGS));
         } else {
             intended(hasAction(Settings.ACTION_APP_NOTIFICATION_SETTINGS));
         }
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         METRICS_IDENTIFIER, MessageDisableReason.MESSAGE_ACCEPTED));
-        assertFalse(isPriceAlertsMessageCardEnabled());
+        assertFalse(PriceTrackingUtilities.isPriceAlertsMessageCardEnabled());
     }
 
     @Test
     @MediumTest
     @CommandLineFlags.Add({BASE_PARAMS})
-    @DisabledTest(message = "crbug.com/1500162")
     public void testDismissMessage() {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
 
         enterTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
 
         onView(allOf(withId(R.id.close_button), withParent(withId(R.id.large_message_card_view))))
                 .perform(click());
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         METRICS_IDENTIFIER, MessageDisableReason.MESSAGE_DISMISSED));
-        assertFalse(isPriceAlertsMessageCardEnabled());
+        assertFalse(PriceTrackingUtilities.isPriceAlertsMessageCardEnabled());
         onView(withId(R.id.large_message_card_item)).check(doesNotExist());
     }
 
     @Test
     @MediumTest
     @CommandLineFlags.Add({BASE_PARAMS})
-    @DisabledTest(message = "crbug.com/1500162")
     public void testSwipeMessage() {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
 
         enterTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
 
-        RecyclerView.ViewHolder viewHolder =
-                ((RecyclerView) cta.findViewById(R.id.tab_list_recycler_view))
-                        .findViewHolderForAdapterPosition(1);
+        RecyclerView.ViewHolder viewHolder = ((RecyclerView) cta.findViewById(R.id.tab_list_view))
+                                                     .findViewHolderForAdapterPosition(1);
         assertEquals(TabProperties.UiType.LARGE_MESSAGE, viewHolder.getItemViewType());
 
-        onView(
-                        allOf(
-                                withId(R.id.tab_list_recycler_view),
-                                isDescendantOfA(
-                                        withId(TabUiTestHelper.getTabSwitcherAncestorId(cta)))))
-                .perform(
-                        RecyclerViewActions.actionOnItemAtPosition(
-                                1, getSwipeToDismissAction(true)));
-        assertEquals(
-                1,
+        onView(allOf(withId(R.id.tab_list_view),
+                       withParent(withId(TabUiTestHelper.getTabSwitcherParentId(cta)))))
+                .perform(RecyclerViewActions.actionOnItemAtPosition(
+                        1, getSwipeToDismissAction(true)));
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         METRICS_IDENTIFIER, MessageDisableReason.MESSAGE_DISMISSED));
-        assertFalse(isPriceAlertsMessageCardEnabled());
+        assertFalse(PriceTrackingUtilities.isPriceAlertsMessageCardEnabled());
         onView(withId(R.id.large_message_card_item)).check(doesNotExist());
     }
 
     @Test
     @MediumTest
     @CommandLineFlags.Add({BASE_PARAMS})
-    @DisabledTest(message = "crbug.com/329099267")
     public void testRemoveMessageWhenClosingLastTab() {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
 
         enterTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
 
         closeFirstTabInTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(
-                () -> !TabSwitcherMessageManager.hasAppendedMessagesForTesting());
+        CriteriaHelper.pollUiThread(() -> !TabSwitcherCoordinator.hasAppendedMessagesForTesting());
         verifyTabSwitcherCardCount(cta, 0);
         onView(withId(R.id.large_message_card_item)).check(doesNotExist());
 
@@ -326,32 +295,30 @@ public class PriceAlertsMessageCardTest {
                 InstrumentationRegistry.getInstrumentation(), cta, false, true);
         enterTabSwitcher(cta);
         verifyTabSwitcherCardCount(cta, 1);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
     }
 
     @Test
     @MediumTest
     @CommandLineFlags.Add({BASE_PARAMS})
-    @DisabledTest(message = "crbug.com/1500162")
     public void testDisableMessageAfterShowingTenTimes() {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
 
         for (int i = 0; i < 10; i++) {
             enterTabSwitcher(cta);
-            CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+            CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
             onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
-            assertTrue(isPriceAlertsMessageCardEnabled());
+            assertTrue(PriceTrackingUtilities.isPriceAlertsMessageCardEnabled());
             clickFirstCardFromTabSwitcher(cta);
         }
 
         enterTabSwitcher(cta);
         onView(withId(R.id.large_message_card_item)).check(doesNotExist());
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         METRICS_IDENTIFIER, MessageDisableReason.MESSAGE_IGNORED));
-        assertFalse(isPriceAlertsMessageCardEnabled());
+        assertFalse(PriceTrackingUtilities.isPriceAlertsMessageCardEnabled());
     }
 
     @Test
@@ -364,11 +331,10 @@ public class PriceAlertsMessageCardTest {
         mMockNotificationManager.setNotificationsEnabled(true);
 
         enterTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
 
-        mRenderTestRule.render(
-                cta.findViewById(R.id.large_message_card_item),
+        mRenderTestRule.render(cta.findViewById(R.id.large_message_card_item),
                 "price_alerts_message_portrait_app_notifications_enabled");
     }
 
@@ -376,17 +342,15 @@ public class PriceAlertsMessageCardTest {
     @MediumTest
     @Feature({"RenderTest"})
     @CommandLineFlags.Add({BASE_PARAMS})
-    @DisabledTest(message = "crbug.com/1500162")
     public void testRenderMessageCard_Portrait_AppNotificationsDisabled() throws IOException {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
         mMockNotificationManager.setNotificationsEnabled(false);
 
         enterTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
 
-        mRenderTestRule.render(
-                cta.findViewById(R.id.large_message_card_item),
+        mRenderTestRule.render(cta.findViewById(R.id.large_message_card_item),
                 "price_alerts_message_portrait_app_notifications_disabled");
     }
 
@@ -395,18 +359,16 @@ public class PriceAlertsMessageCardTest {
     @Feature({"RenderTest"})
     @CommandLineFlags.Add({BASE_PARAMS})
     @MinAndroidSdkLevel(Build.VERSION_CODES.O)
-    @DisabledTest(message = "crbug.com/1463032")
     public void testRenderMessageCard_Landscape_AppNotificationsEnabled() throws IOException {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
         mMockNotificationManager.setNotificationsEnabled(true);
 
         ActivityTestUtils.rotateActivityToOrientation(cta, Configuration.ORIENTATION_LANDSCAPE);
         enterTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
 
-        mRenderTestRule.render(
-                cta.findViewById(R.id.large_message_card_item),
+        mRenderTestRule.render(cta.findViewById(R.id.large_message_card_item),
                 "price_alerts_message_landscape_app_notifications_enabled");
     }
 
@@ -414,18 +376,16 @@ public class PriceAlertsMessageCardTest {
     @MediumTest
     @Feature({"RenderTest"})
     @CommandLineFlags.Add({BASE_PARAMS})
-    @DisabledTest(message = "crbug.com/1463032")
     public void testRenderMessageCard_Landscape_AppNotificationsDisabled() throws IOException {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
         mMockNotificationManager.setNotificationsEnabled(false);
 
         ActivityTestUtils.rotateActivityToOrientation(cta, Configuration.ORIENTATION_LANDSCAPE);
         enterTabSwitcher(cta);
-        CriteriaHelper.pollUiThread(TabSwitcherMessageManager::hasAppendedMessagesForTesting);
+        CriteriaHelper.pollUiThread(TabSwitcherCoordinator::hasAppendedMessagesForTesting);
         onView(withId(R.id.large_message_card_item)).check(matches(isDisplayed()));
 
-        mRenderTestRule.render(
-                cta.findViewById(R.id.large_message_card_item),
+        mRenderTestRule.render(cta.findViewById(R.id.large_message_card_item),
                 "price_alerts_message_landscape_app_notifications_disabled");
     }
 }

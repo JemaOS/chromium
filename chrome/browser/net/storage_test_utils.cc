@@ -24,12 +24,18 @@ const std::vector<std::string> kCrossTabCommunicationTypes{
 
 constexpr char kRequestStorageAccess[] =
     "document.requestStorageAccess()"
-    "  .then(() => document.hasStorageAccess())";
+    "  .then(() => document.hasStorageAccess())"
+    "  .catch(() => false);";
 
 constexpr char kRequestStorageAccessFor[] =
-    "document.requestStorageAccessFor($1)";
+    "document.requestStorageAccessFor($1).then("
+    "  () => true,"
+    "  () => false,"
+    ");";
 
-constexpr char kHasStorageAccess[] = "document.hasStorageAccess()";
+constexpr char kHasStorageAccess[] =
+    "document.hasStorageAccess()"
+    "  .catch(() => false);";
 
 std::vector<std::string> GetStorageTypesForFrame(bool include_cookies) {
   std::vector<std::string> types(kStorageTypesForFrame);
@@ -41,57 +47,46 @@ std::vector<std::string> GetStorageTypesForFrame(bool include_cookies) {
 }
 
 std::string GetFrameContent(content::RenderFrameHost* frame) {
-  return content::EvalJs(frame, "document.body.textContent",
-                         content::EXECUTE_SCRIPT_NO_USER_GESTURE)
-      .ExtractString();
+  return content::EvalJs(frame, "document.body.textContent").ExtractString();
 }
 
-void SetStorageForFrame(content::RenderFrameHost* frame,
-                        bool include_cookies,
-                        bool expected_to_be_set,
-                        const base::Location& location) {
+void SetStorageForFrame(content::RenderFrameHost* frame, bool include_cookies) {
   base::flat_map<std::string, bool> actual;
   base::flat_map<std::string, bool> expected;
   for (const auto& data_type : GetStorageTypesForFrame(include_cookies)) {
-    actual[data_type] = content::EvalJs(frame, "set" + data_type + "()",
-                                        content::EXECUTE_SCRIPT_NO_USER_GESTURE)
-                            .ExtractBool();
+    actual[data_type] =
+        content::EvalJs(frame, "set" + data_type + "()").ExtractBool();
     if (frame->GetLastCommittedOrigin() !=
             frame->GetMainFrame()->GetLastCommittedOrigin() &&
         data_type == "WebSql") {
       // Third-party context WebSQL is disabled as of M97.
       expected[data_type] = false;
     } else {
-      expected[data_type] = expected_to_be_set;
+      expected[data_type] = true;
     }
   }
-  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected))
-      << "(expected at " << location.ToString() << ")";
+  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected));
 }
 
-void SetStorageForWorker(content::RenderFrameHost* frame,
-                         const base::Location& location) {
+void SetStorageForWorker(content::RenderFrameHost* frame) {
   base::flat_map<std::string, bool> actual;
   base::flat_map<std::string, bool> expected;
   for (const auto& data_type : kStorageTypesForWorker) {
-    actual[data_type] = content::EvalJs(frame, "set" + data_type + "()",
-                                        content::EXECUTE_SCRIPT_NO_USER_GESTURE)
-                            .ExtractBool();
+    actual[data_type] =
+        content::EvalJs(frame, "set" + data_type + "()").ExtractBool();
     expected[data_type] = true;
   }
-  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected))
-      << "(expected at " << location.ToString() << ")";
+  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected));
 }
 
 void ExpectStorageForFrame(content::RenderFrameHost* frame,
-                           bool expected,
-                           const base::Location& location) {
+                           bool include_cookies,
+                           bool expected) {
   base::flat_map<std::string, bool> actual;
   base::flat_map<std::string, bool> expected_elts;
-  for (const auto& data_type : GetStorageTypesForFrame(false)) {
-    actual[data_type] = content::EvalJs(frame, "has" + data_type + "();",
-                                        content::EXECUTE_SCRIPT_NO_USER_GESTURE)
-                            .ExtractBool();
+  for (const auto& data_type : GetStorageTypesForFrame(include_cookies)) {
+    actual[data_type] =
+        content::EvalJs(frame, "has" + data_type + "();").ExtractBool();
     if (frame->GetLastCommittedOrigin() !=
             frame->GetMainFrame()->GetLastCommittedOrigin() &&
         data_type == "WebSql") {
@@ -101,78 +96,56 @@ void ExpectStorageForFrame(content::RenderFrameHost* frame,
       expected_elts[data_type] = expected;
     }
   }
-  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected_elts))
-      << "(expected at " << location.ToString() << ")";
+  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected_elts));
 }
 
-void ExpectStorageForWorker(content::RenderFrameHost* frame,
-                            bool expected,
-                            const base::Location& location) {
+void ExpectStorageForWorker(content::RenderFrameHost* frame, bool expected) {
   base::flat_map<std::string, bool> actual;
   base::flat_map<std::string, bool> expected_elts;
   for (const auto& data_type : kStorageTypesForWorker) {
-    actual[data_type] = content::EvalJs(frame, "has" + data_type + "();",
-                                        content::EXECUTE_SCRIPT_NO_USER_GESTURE)
-                            .ExtractBool();
+    actual[data_type] =
+        content::EvalJs(frame, "has" + data_type + "();").ExtractBool();
     expected_elts[data_type] = expected;
   }
-  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected_elts))
-      << "(expected at " << location.ToString() << ")";
+  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected_elts));
 }
 
-void SetCrossTabInfoForFrame(content::RenderFrameHost* frame,
-                             const base::Location& location) {
+void SetCrossTabInfoForFrame(content::RenderFrameHost* frame) {
   base::flat_map<std::string, bool> actual;
   base::flat_map<std::string, bool> expected;
   for (const auto& data_type : kCrossTabCommunicationTypes) {
-    actual[data_type] = content::EvalJs(frame, "set" + data_type + "()",
-                                        content::EXECUTE_SCRIPT_NO_USER_GESTURE)
-                            .ExtractBool();
+    actual[data_type] =
+        content::EvalJs(frame, "set" + data_type + "()").ExtractBool();
     expected[data_type] = true;
   }
-  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected))
-      << "(expected at " << location.ToString() << ")";
+  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected));
 }
 
 void ExpectCrossTabInfoForFrame(content::RenderFrameHost* frame,
-                                bool expected,
-                                const base::Location& location) {
+                                bool expected) {
   base::flat_map<std::string, bool> actual;
   base::flat_map<std::string, bool> expected_elts;
   for (const auto& data_type : kCrossTabCommunicationTypes) {
-    actual[data_type] = content::EvalJs(frame, "has" + data_type + "();",
-                                        content::EXECUTE_SCRIPT_NO_USER_GESTURE)
-                            .ExtractBool();
+    actual[data_type] =
+        content::EvalJs(frame, "has" + data_type + "();").ExtractBool();
     expected_elts[data_type] = expected;
   }
-  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected_elts))
-      << "(expected at " << location.ToString() << ")";
+  EXPECT_THAT(actual, testing::UnorderedElementsAreArray(expected_elts));
 }
 
-bool RequestAndCheckStorageAccessForFrame(content::RenderFrameHost* frame,
-                                          bool omit_user_gesture) {
-  int options = content::EXECUTE_SCRIPT_DEFAULT_OPTIONS;
-  if (omit_user_gesture) {
-    options |= content::EXECUTE_SCRIPT_NO_USER_GESTURE;
-  }
-  return content::EvalJs(frame, kRequestStorageAccess, options).ExtractBool();
+bool RequestAndCheckStorageAccessForFrame(content::RenderFrameHost* frame) {
+  return content::EvalJs(frame, kRequestStorageAccess).ExtractBool();
 }
 
 bool RequestStorageAccessForOrigin(content::RenderFrameHost* frame,
-                                   const std::string& origin,
-                                   bool omit_user_gesture) {
-  int options = content::EXECUTE_SCRIPT_DEFAULT_OPTIONS;
-  if (omit_user_gesture) {
-    options |= content::EXECUTE_SCRIPT_NO_USER_GESTURE;
-  }
-  return content::ExecJs(
-      frame, content::JsReplace(kRequestStorageAccessFor, origin), options);
+                                   const std::string& origin) {
+  return content::EvalJs(frame,
+                         content::JsReplace(kRequestStorageAccessFor, origin))
+      .ExtractBool();
 }
 
 bool HasStorageAccessForFrame(content::RenderFrameHost* frame) {
-  return content::EvalJs(frame, kHasStorageAccess,
-                         content::EXECUTE_SCRIPT_NO_USER_GESTURE)
-      .ExtractBool();
+  return content::EvalJs(frame, kHasStorageAccess).ExtractBool();
 }
 
 std::string FetchWithCredentials(content::RenderFrameHost* frame,
@@ -183,8 +156,7 @@ std::string FetchWithCredentials(content::RenderFrameHost* frame,
       .then((result) => result.text());
     )";
   const std::string mode = cors_enabled ? "cors" : "no-cors";
-  return content::EvalJs(frame, content::JsReplace(script, url, mode),
-                         content::EXECUTE_SCRIPT_NO_USER_GESTURE)
+  return content::EvalJs(frame, content::JsReplace(script, url, mode))
       .ExtractString();
 }
 

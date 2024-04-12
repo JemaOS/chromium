@@ -11,8 +11,7 @@
 
 // static
 AcceptLanguagesServiceFactory* AcceptLanguagesServiceFactory::GetInstance() {
-  static base::NoDestructor<AcceptLanguagesServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<AcceptLanguagesServiceFactory>::get();
 }
 
 // static
@@ -26,19 +25,13 @@ AcceptLanguagesServiceFactory::GetForBrowserContext(
 AcceptLanguagesServiceFactory::AcceptLanguagesServiceFactory()
     : ProfileKeyedServiceFactory(
           "AcceptLanguagesService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
-AcceptLanguagesServiceFactory::~AcceptLanguagesServiceFactory() = default;
+AcceptLanguagesServiceFactory::~AcceptLanguagesServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-AcceptLanguagesServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AcceptLanguagesServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* browser_context) const {
   Profile* profile = Profile::FromBrowserContext(browser_context);
-  return std::make_unique<language::AcceptLanguagesService>(
+  return new language::AcceptLanguagesService(
       profile->GetPrefs(), language::prefs::kAcceptLanguages);
 }

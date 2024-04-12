@@ -17,7 +17,6 @@
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/extensions/api/tabs.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -205,8 +204,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionLoadingTest,
   EXPECT_TRUE(activities.empty());
 
   DevToolsWindowCreationObserver observer;
-  devtools_util::InspectBackgroundPage(extension, profile(),
-                                       DevToolsOpenedByAction::kUnknown);
+  devtools_util::InspectBackgroundPage(extension, profile());
   observer.WaitForLoad();
 
   // This is due to how these keepalive counters are managed by the extension
@@ -313,8 +311,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionLoadingTest,
 
   // Open the devtools and wait until the devtools_page is ready.
   ExtensionTestMessageListener devtools_ready("devtools_page_ready");
-  devtools_util::InspectBackgroundPage(inspect_ext, profile(),
-                                       DevToolsOpenedByAction::kUnknown);
+  devtools_util::InspectBackgroundPage(inspect_ext, profile());
   ASSERT_TRUE(devtools_ready.WaitUntilSatisfied());
 
   // Reload the extension. The devtools window will stay open, but temporarily
@@ -381,7 +378,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionLoadingTest, PRE_ChangeBackgroundScriptType) {
 
 IN_PROC_BROWSER_TEST_F(ExtensionLoadingTest, ChangeBackgroundScriptType) {
   // The goal of this test step is to not crash.
-  const Extension* extension =
+  const extensions::Extension* extension =
       extension_registry()->enabled_extensions().GetByID(
           kChangeBackgroundScriptTypeExtensionId);
   ASSERT_TRUE(extension);

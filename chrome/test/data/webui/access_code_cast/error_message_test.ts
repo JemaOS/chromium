@@ -3,9 +3,10 @@
 // found in the LICENSE file.
 
 import 'chrome://access-code-cast/error_message/error_message.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
 import {AddSinkResultCode} from 'chrome://access-code-cast/access_code_cast.mojom-webui.js';
-import type {ErrorMessageElement} from 'chrome://access-code-cast/error_message/error_message.js';
+import {ErrorMessageElement} from 'chrome://access-code-cast/error_message/error_message.js';
 import {RouteRequestResultCode} from 'chrome://access-code-cast/route_request_result_code.mojom-webui.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
 
@@ -38,7 +39,7 @@ suite('ErrorMessageElementTest', () => {
       {addResult: AddSinkResultCode.SERVICE_NOT_PRESENT, expectedMessage: 3},
       {addResult: AddSinkResultCode.SERVER_ERROR, expectedMessage: 3},
       {addResult: AddSinkResultCode.SINK_CREATION_ERROR, expectedMessage: 1},
-      {addResult: AddSinkResultCode.CHANNEL_OPEN_ERROR, expectedMessage: 7},
+      {addResult: AddSinkResultCode.CHANNEL_OPEN_ERROR, expectedMessage: 1},
       {addResult: AddSinkResultCode.PROFILE_SYNC_ERROR, expectedMessage: 6},
       {
         addResult: AddSinkResultCode.INTERNAL_MEDIA_ROUTER_ERROR,

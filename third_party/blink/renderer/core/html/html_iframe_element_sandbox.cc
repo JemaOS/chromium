@@ -41,7 +41,15 @@ bool IsTokenSupported(const AtomicString& token) {
       return true;
   }
 
-  return token == kStorageAccessAPISandboxToken;
+  // The Storage Access API and corresponding sandbox token is behind the
+  // |StorageAccessAPI| runtimeflag. Only check this token if
+  // the feature is enabled.
+  if (RuntimeEnabledFeatures::StorageAccessAPIEnabled() &&
+      (token == kStorageAccessAPISandboxToken)) {
+    return true;
+  }
+
+  return false;
 }
 
 }  // namespace

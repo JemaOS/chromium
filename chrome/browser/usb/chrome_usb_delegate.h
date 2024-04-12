@@ -35,9 +35,8 @@ class ChromeUsbDelegate : public content::UsbDelegate {
                                        std::vector<uint8_t>& classes) override;
   std::unique_ptr<content::UsbChooser> RunChooser(
       content::RenderFrameHost& frame,
-      blink::mojom::WebUsbRequestDeviceOptionsPtr options,
+      std::vector<device::mojom::UsbDeviceFilterPtr> filters,
       blink::mojom::WebUsbService::GetPermissionCallback callback) override;
-  bool PageMayUseUsb(content::Page& page) override;
   bool CanRequestDevicePermission(content::BrowserContext* browser_context,
                                   const url::Origin& origin) override;
   void RevokeDevicePermissionWebInitiated(
@@ -47,11 +46,9 @@ class ChromeUsbDelegate : public content::UsbDelegate {
   const device::mojom::UsbDeviceInfo* GetDeviceInfo(
       content::BrowserContext* browser_context,
       const std::string& guid) override;
-  bool HasDevicePermission(
-      content::BrowserContext* browser_context,
-      content::RenderFrameHost* frame,
-      const url::Origin& origin,
-      const device::mojom::UsbDeviceInfo& device_info) override;
+  bool HasDevicePermission(content::BrowserContext* browser_context,
+                           const url::Origin& origin,
+                           const device::mojom::UsbDeviceInfo& device) override;
   void GetDevices(
       content::BrowserContext* browser_context,
       blink::mojom::WebUsbService::GetDevicesCallback callback) override;
@@ -67,10 +64,6 @@ class ChromeUsbDelegate : public content::UsbDelegate {
   void RemoveObserver(content::BrowserContext* browser_context,
                       Observer* observer) override;
   bool IsServiceWorkerAllowedForOrigin(const url::Origin& origin) override;
-  void IncrementConnectionCount(content::BrowserContext* browser_context,
-                                const url::Origin& origin) override;
-  void DecrementConnectionCount(content::BrowserContext* browser_context,
-                                const url::Origin& origin) override;
 
  private:
   class ContextObservation;

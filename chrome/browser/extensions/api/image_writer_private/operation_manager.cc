@@ -20,11 +20,12 @@
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/profiles/profile.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/notification_service.h"
 #include "content/public/browser/storage_partition.h"
 #include "extensions/browser/api/extensions_api_client.h"
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/extension_host.h"
-#include "extensions/common/extension_id.h"
+#include "extensions/browser/notification_types.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -44,25 +45,25 @@ namespace {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 crosapi::mojom::Stage ToMojo(image_writer_api::Stage stage) {
   switch (stage) {
-    case image_writer_api::Stage::kConfirmation:
+    case image_writer_api::Stage::STAGE_CONFIRMATION:
       return crosapi::mojom::Stage::kConfirmation;
-    case image_writer_api::Stage::kDownload:
+    case image_writer_api::Stage::STAGE_DOWNLOAD:
       return crosapi::mojom::Stage::kDownload;
-    case image_writer_api::Stage::kVerifyDownload:
+    case image_writer_api::Stage::STAGE_VERIFYDOWNLOAD:
       return crosapi::mojom::Stage::kVerifyDownload;
-    case image_writer_api::Stage::kUnzip:
+    case image_writer_api::Stage::STAGE_UNZIP:
       return crosapi::mojom::Stage::kUnzip;
-    case image_writer_api::Stage::kWrite:
+    case image_writer_api::Stage::STAGE_WRITE:
       return crosapi::mojom::Stage::kWrite;
-    case image_writer_api::Stage::kVerifyWrite:
+    case image_writer_api::Stage::STAGE_VERIFYWRITE:
       return crosapi::mojom::Stage::kVerifyWrite;
-    case image_writer_api::Stage::kUnknown:
-    case image_writer_api::Stage::kNone:
+    case image_writer_api::Stage::STAGE_UNKNOWN:
+    case image_writer_api::Stage::STAGE_NONE:
       return crosapi::mojom::Stage::kUnknown;
   }
 }
 
-bool IsRemoteClientToken(const ExtensionId& id) {
+bool IsRemoteClientToken(const std::string& id) {
   // CrosapiManager is not initialized for unit test cases, since we have
   // not enabled unit tests for Lacros.
   // TODO(crbug.com/1222153): Always expect CrosapiManager::IsInitialized()
@@ -360,7 +361,7 @@ void OperationManager::OnShutdown(ExtensionRegistry* registry) {
   extension_registry_observation_.Reset();
 }
 
-void OperationManager::OnBackgroundHostClose(const ExtensionId& extension_id) {
+void OperationManager::OnBackgroundHostClose(const std::string& extension_id) {
   DeleteOperation(extension_id);
 }
 

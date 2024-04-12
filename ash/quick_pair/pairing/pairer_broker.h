@@ -5,12 +5,11 @@
 #ifndef ASH_QUICK_PAIR_PAIRING_PAIRER_BROKER_H_
 #define ASH_QUICK_PAIR_PAIRING_PAIRER_BROKER_H_
 
-#include <optional>
-
 #include "ash/quick_pair/common/device.h"
 #include "ash/quick_pair/common/pair_failure.h"
 #include "ash/quick_pair/common/protocol.h"
 #include "base/observer_list_types.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace quick_pair {
@@ -29,7 +28,7 @@ class PairerBroker {
     virtual void OnHandshakeComplete(scoped_refptr<Device> device) {}
     virtual void OnDevicePaired(scoped_refptr<Device> device) {}
     virtual void OnAccountKeyWrite(scoped_refptr<Device> device,
-                                   std::optional<AccountKeyFailure> error) {}
+                                   absl::optional<AccountKeyFailure> error) {}
     virtual void OnPairingComplete(scoped_refptr<Device> device) {}
     virtual void OnPairFailure(scoped_refptr<Device> device,
                                PairFailure failure) {}

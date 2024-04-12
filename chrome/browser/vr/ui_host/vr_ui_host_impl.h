@@ -25,17 +25,17 @@
 
 namespace vr {
 
-class VRBrowserRendererThread;
+class VRBrowserRendererThreadWin;
 
 // Concrete implementation of VRBrowserRendererHost, part of the "browser"
 // component. Used on the browser's main thread.
 class VRUiHostImpl : public content::VrUiHost,
                      public permissions::PermissionRequestManager::Observer,
+                     public content::BrowserXRRuntime::Observer,
                      public DesktopMediaPickerManager::DialogObserver {
  public:
-  VRUiHostImpl(content::WebContents& contents,
-               const std::vector<device::mojom::XRViewPtr>& views,
-               mojo::PendingRemote<device::mojom::ImmersiveOverlay> overlay);
+  VRUiHostImpl(device::mojom::XRDeviceId device_id,
+               mojo::PendingRemote<device::mojom::XRCompositorHost> compositor);
 
   VRUiHostImpl(const VRUiHostImpl&) = delete;
   VRUiHostImpl& operator=(const VRUiHostImpl&) = delete;
@@ -71,8 +71,16 @@ class VRUiHostImpl : public content::VrUiHost,
     raw_ptr<CapturingStateModel> active_capture_state_model_;  // Not owned.
   };
 
-  // VrUiHost implementation.
+  // content::BrowserXRRuntime::Observer implementation.
+  void WebXRWebContentsChanged(content::WebContents* contents) override;
   void WebXRFramesThrottledChanged(bool throttled) override;
+  void SetDefaultXrViews(
+      const std::vector<device::mojom::XRViewPtr>& views) override;
+
+  // Internal methods used to start/stop the UI rendering thread that is used
+  // for drawing browser UI (such as permission prompts) for display in VR.
+  void StartUiRendering();
+  void StopUiRendering();
 
   // PermissionRequestManager::Observer
   void OnPromptAdded() override;
@@ -85,12 +93,14 @@ class VRUiHostImpl : public content::VrUiHost,
 
   void ShowExternalNotificationPrompt();
   void RemoveHeadsetNotificationPrompt();
+  void SetLocationInfoOnUi();
 
   void InitCapturingStates();
   void PollCapturingState();
 
-  std::unique_ptr<VRBrowserRendererThread> ui_rendering_thread_;
-  base::WeakPtr<content::WebContents> web_contents_ = nullptr;
+  mojo::Remote<device::mojom::XRCompositorHost> compositor_;
+  std::unique_ptr<VRBrowserRendererThreadWin> ui_rendering_thread_;
+  raw_ptr<content::WebContents> web_contents_ = nullptr;
   scoped_refptr<base::SingleThreadTaskRunner> main_thread_task_runner_;
 
   base::CancelableOnceClosure external_prompt_timeout_task_;
@@ -105,6 +115,7 @@ class VRUiHostImpl : public content::VrUiHost,
   base::Time indicators_shown_start_time_;
   bool indicators_visible_ = false;
   bool indicators_showing_first_time_ = true;
+  bool frames_throttled_ = false;
   std::vector<device::mojom::XRViewPtr> default_views_;
 
   mojo::Remote<device::mojom::GeolocationConfig> geolocation_config_;

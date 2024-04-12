@@ -23,8 +23,7 @@ class ArcHttpRoutine : public NetworkDiagnosticsRoutine {
   using RunArcHttpCallback = chromeos::network_diagnostics::mojom::
       NetworkDiagnosticsRoutines::RunArcHttpCallback;
 
-  explicit ArcHttpRoutine(
-      chromeos::network_diagnostics::mojom::RoutineCallSource source);
+  ArcHttpRoutine();
   ArcHttpRoutine(const ArcHttpRoutine&) = delete;
   ArcHttpRoutine& operator=(const ArcHttpRoutine&) = delete;
   ~ArcHttpRoutine() override;
@@ -54,7 +53,7 @@ class ArcHttpRoutine : public NetworkDiagnosticsRoutine {
   bool successfully_requested_targets_ = true;
   bool failed_to_get_arc_service_manager_ = false;
   bool failed_to_get_net_instance_service_for_http_test_ = false;
-  raw_ptr<arc::mojom::NetInstance, DanglingUntriaged> net_instance_ = nullptr;
+  raw_ptr<arc::mojom::NetInstance, ExperimentalAsh> net_instance_ = nullptr;
   int64_t max_latency_ = 0;
   base::WeakPtrFactory<ArcHttpRoutine> weak_ptr_factory_{this};
 };

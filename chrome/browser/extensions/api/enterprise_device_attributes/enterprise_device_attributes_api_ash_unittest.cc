@@ -71,8 +71,6 @@ class EnterpriseDeviceAttributesApiAshTest
 
     DeviceSettingsTestBase::SetUp();
 
-    testing_profile_ = profile_manager_.CreateTestingProfile(kAccountId);
-
     switch (GetParam()) {
       case TestProfileChoice::kSigninProfile:
         TestingProfile* signin_profile;
@@ -115,8 +113,8 @@ class EnterpriseDeviceAttributesApiAshTest
   void AddUser(bool is_affiliated = true) {
     AccountId account_id = AccountId::FromUserEmail(kAccountId);
     user_manager_->AddUserWithAffiliationAndTypeAndProfile(
-        account_id, is_affiliated, user_manager::UserType::kRegular,
-        testing_profile_);
+        account_id, is_affiliated, user_manager::USER_TYPE_REGULAR,
+        profile_.get());
     user_manager_->LoginUser(account_id);
   }
 
@@ -130,9 +128,8 @@ class EnterpriseDeviceAttributesApiAshTest
     }
   }
 
- protected:
+ private:
   TestingProfileManager profile_manager_;
-  raw_ptr<TestingProfile> testing_profile_;
   std::unique_ptr<crosapi::CrosapiManager> manager_;
   std::unique_ptr<policy::FakeDeviceAttributes> device_attributes_;
 };
@@ -141,9 +138,9 @@ TEST_P(EnterpriseDeviceAttributesApiAshTest, GetDirectoryDeviceIdFunction) {
   auto function = base::MakeRefCounted<
       EnterpriseDeviceAttributesGetDirectoryDeviceIdFunction>();
 
-  std::optional<base::Value> result =
+  absl::optional<base::Value> result =
       api_test_utils::RunFunctionAndReturnSingleResult(
-          function.get(), /*args=*/"[]", testing_profile_);
+          function.get(), /*args=*/"[]", profile_.get());
   ASSERT_TRUE(result->is_string());
   EXPECT_EQ(
       IsSigninProfileOrBelongsToAffiliatedUser() ? kFakeDirectoryApiId : "",
@@ -154,9 +151,9 @@ TEST_P(EnterpriseDeviceAttributesApiAshTest, GetDeviceSerialNumberFunction) {
   auto function = base::MakeRefCounted<
       EnterpriseDeviceAttributesGetDeviceSerialNumberFunction>();
 
-  std::optional<base::Value> result =
+  absl::optional<base::Value> result =
       api_test_utils::RunFunctionAndReturnSingleResult(
-          function.get(), /*args=*/"[]", testing_profile_);
+          function.get(), /*args=*/"[]", profile_.get());
   ASSERT_TRUE(result->is_string());
   EXPECT_EQ(IsSigninProfileOrBelongsToAffiliatedUser() ? kFakeSerialNumber : "",
             result->GetString());
@@ -166,9 +163,9 @@ TEST_P(EnterpriseDeviceAttributesApiAshTest, GetDeviceAssetIdFunction) {
   auto function = base::MakeRefCounted<
       EnterpriseDeviceAttributesGetDeviceAssetIdFunction>();
 
-  std::optional<base::Value> result =
+  absl::optional<base::Value> result =
       api_test_utils::RunFunctionAndReturnSingleResult(
-          function.get(), /*args=*/"[]", testing_profile_);
+          function.get(), /*args=*/"[]", profile_.get());
   ASSERT_TRUE(result->is_string());
   EXPECT_EQ(IsSigninProfileOrBelongsToAffiliatedUser() ? kFakeAssetId : "",
             result->GetString());
@@ -179,9 +176,9 @@ TEST_P(EnterpriseDeviceAttributesApiAshTest,
   auto function = base::MakeRefCounted<
       EnterpriseDeviceAttributesGetDeviceAnnotatedLocationFunction>();
 
-  std::optional<base::Value> result =
+  absl::optional<base::Value> result =
       api_test_utils::RunFunctionAndReturnSingleResult(
-          function.get(), /*args=*/"[]", testing_profile_);
+          function.get(), /*args=*/"[]", profile_.get());
   ASSERT_TRUE(result->is_string());
   EXPECT_EQ(
       IsSigninProfileOrBelongsToAffiliatedUser() ? kFakeAnnotatedLocation : "",
@@ -192,9 +189,9 @@ TEST_P(EnterpriseDeviceAttributesApiAshTest, GetDeviceHostnameFunction) {
   auto function = base::MakeRefCounted<
       EnterpriseDeviceAttributesGetDeviceHostnameFunction>();
 
-  std::optional<base::Value> result =
+  absl::optional<base::Value> result =
       api_test_utils::RunFunctionAndReturnSingleResult(
-          function.get(), /*args=*/"[]", testing_profile_);
+          function.get(), /*args=*/"[]", profile_.get());
   ASSERT_TRUE(result->is_string());
   EXPECT_EQ(IsSigninProfileOrBelongsToAffiliatedUser() ? kFakeHostname : "",
             result->GetString());

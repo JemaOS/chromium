@@ -3,9 +3,7 @@
 # found in the LICENSE file.
 
 import("//build/buildflag_header.gni")
-import("//build/config/ozone.gni")
-import("//build/config/ui.gni")
-import("//chrome/test/fuzzing/in_process_fuzzer.gni")
+import("//chrome/test/fuzzing/in_process_fuzz_test.gni")
 
 # This target exists to reference other test executables to bring these files
 # into the build.
@@ -14,105 +12,27 @@ group("test") {
 }
 
 if (fuzzing_engine_supports_custom_main) {
-  static_library("in_process_fuzzer_runner") {
+  static_library("in_process_fuzz_test_runner") {
     testonly = true
     sources = [
-      "in_process_fuzzer.cc",
-      "in_process_fuzzer.h",
+      "in_process_fuzz_test.cc",
+      "in_process_fuzz_test.h",
     ]
     deps = [
-      ":in_process_fuzzer_buildflags",
+      ":in_process_fuzzing_buildflags",
       "//testing/libfuzzer:fuzzing_engine_no_main",
     ]
-    public_deps = [
-      "//chrome/test:chrome_test_launcher",
-      "//chrome/test:test_support",
-    ]
+    public_deps = [ "//chrome/test:test_support" ]
   }
 
-  buildflag_header("in_process_fuzzer_buildflags") {
-    header = "in_process_fuzzer_buildflags.h"
-    flags = [
-      "IS_CENTIPEDE=$use_centipede",
-      "IS_LIBFUZZER=$use_libfuzzer",
-
-      # crbug.com/1474421: remove these lines once the bug is fixed.
-      "DEBUG_CLUSTERFUZZ_FAILURE=$use_libfuzzer",
-    ]
-  }
-
-  source_set("in_process_proto_fuzzer_runner") {
-    testonly = true
-    sources = [ "in_process_proto_fuzzer.h" ]
-    public_deps = [ ":in_process_fuzzer_runner" ]
+  buildflag_header("in_process_fuzzing_buildflags") {
+    header = "in_process_fuzzing_buildflags.h"
+    flags = [ "AVOID_SINGLE_PROCESS_MODE=$use_libfuzzer" ]
   }
 }
 
 if (!is_android) {
-  in_process_fuzzer("html_in_process_fuzzer") {
-    sources = [ "html_in_process_fuzzer.cc" ]
-    dict = "html_in_process_fuzzer.dictionary"
-  }
-  in_process_fuzzer("js_in_process_fuzzer") {
-    sources = [ "js_in_process_fuzzer.cc" ]
-  }
-  in_process_proto_fuzzer("page_load_in_process_fuzzer") {
-    sources = [ "page_load_in_process_fuzzer.cc" ]
-    proto_source = "page_load_in_process_fuzzer.proto"
-    seed_corpus_sources = [
-      "page_load_in_process_fuzzer_seed_corpus/cross_origin.textproto",
-      "page_load_in_process_fuzzer_seed_corpus/network.textproto",
-      "page_load_in_process_fuzzer_seed_corpus/simple.textproto",
-    ]
-    testcase_proto_kind = "test.fuzzing.page_load_fuzzing.FuzzCase"
-  }
-  in_process_proto_fuzzer("kombucha_in_process_fuzzer") {
-    sources = [
-      "kombucha_in_process_fuzzer.cc",
-      "kombucha_in_process_fuzzer.h",
-    ]
-
-    proto_source = "kombucha_in_process_fuzzer.proto"
-
-    deps = [
-      ":in_process_fuzzer_buildflags",
-      "//chrome:packed_resources",
-      "//chrome/app:command_ids",
-    ]
-
-    # Used for UI controls
-    if (use_aura) {
-      deps += [ "//ui/aura:test_support" ]
-    }
-    if (use_aura && use_ozone) {
-      deps += [
-        "//ui/ozone",
-        "//ui/platform_window/common:common",
-      ]
-    }
-  }
-
-  in_process_mojolpm_generated_fuzzer("renderer_in_process_mojolpm_fuzzer") {
-    sources = [ "renderer_in_process_mojolpm_fuzzer.cc" ]
-
-    mojom_source = "//third_party/blink/public/mojom/blob/blob_registry.mojom"
-    interface = "BlobRegistry"
-    remote_type = "Remote"
-
-    deps = [
-      ":in_process_proto_fuzzer_runner",
-      "//chrome/test:test_support",
-      "//content/test/fuzzer:mojolpm_fuzzer_support",
-      "//testing/libfuzzer:renderer_fuzzing",
-      "//testing/libfuzzer/proto:url_proto_converter",
-      "//third_party/blink/public/common:storage_key_proto_converter",
-      "//third_party/blink/public/mojom:mojom_core_mojolpm",
-      "//third_party/blink/public/mojom:mojom_platform_mojolpm",
-    ]
-
-    proto_deps = [
-      "//third_party/blink/public/mojom:mojom_core_mojolpm",
-      "//third_party/blink/public/mojom:mojom_platform_mojolpm",
-    ]
+  in_process_fuzz_test("html_in_process_fuzz_tests") {
+    sources = [ "html_in_process_fuzz_test.cc" ]
   }
 }

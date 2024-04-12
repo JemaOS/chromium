@@ -175,9 +175,8 @@ class Negation : public DocumentRulePredicate {
 // https://wicg.github.io/nav-speculation/speculation-rules.html#document-rule-url-pattern-predicate
 class URLPatternPredicate : public DocumentRulePredicate {
  public:
-  explicit URLPatternPredicate(HeapVector<Member<URLPattern>> patterns,
-                               ExecutionContext* execution_context)
-      : patterns_(std::move(patterns)), execution_context_(execution_context) {}
+  explicit URLPatternPredicate(HeapVector<Member<URLPattern>> patterns)
+      : patterns_(std::move(patterns)) {}
   ~URLPatternPredicate() override = default;
 
   bool Matches(const HTMLAnchorElement& el) const override {
@@ -186,11 +185,10 @@ class URLPatternPredicate : public DocumentRulePredicate {
     // For each pattern of predicate’s patterns:
     for (const auto& pattern : patterns_) {
       // Match given pattern and href. If the result is not null, return true.
-      if (pattern->test(ToScriptStateForMainWorld(execution_context_),
+      if (pattern->test(/*script_state=*/nullptr,
                         MakeGarbageCollected<V8URLPatternInput>(href),
-                        ASSERT_NO_EXCEPTION)) {
+                        ASSERT_NO_EXCEPTION))
         return true;
-      }
     }
     return false;
   }
@@ -217,13 +215,11 @@ class URLPatternPredicate : public DocumentRulePredicate {
 
   void Trace(Visitor* visitor) const override {
     visitor->Trace(patterns_);
-    visitor->Trace(execution_context_);
     DocumentRulePredicate::Trace(visitor);
   }
 
  private:
   HeapVector<Member<URLPattern>> patterns_;
-  Member<ExecutionContext> execution_context_;
 };
 
 // Represents a document rule CSS selector predicate:
@@ -293,8 +289,7 @@ void SetParseErrorMessage(String* out_error, String message) {
   }
 }
 
-URLPattern* ParseRawPattern(v8::Isolate* isolate,
-                            JSONValue* raw_pattern,
+URLPattern* ParseRawPattern(JSONValue* raw_pattern,
                             const KURL& base_url,
                             ExceptionState& exception_state,
                             String* out_error) {
@@ -305,8 +300,7 @@ URLPattern* ParseRawPattern(v8::Isolate* isolate,
     // serializedBaseURL.
     V8URLPatternInput* url_pattern_input =
         MakeGarbageCollected<V8URLPatternInput>(raw_string);
-    return URLPattern::Create(isolate, url_pattern_input, base_url,
-                              exception_state);
+    return URLPattern::Create(url_pattern_input, base_url, exception_state);
   }
   // Otherwise, if rawPattern is a map
   if (JSONObject* pattern_object = JSONObject::Cast(raw_pattern)) {
@@ -359,7 +353,7 @@ URLPattern* ParseRawPattern(v8::Isolate* isolate,
     // URLPattern(input, baseURL) constructor steps given init.
     V8URLPatternInput* url_pattern_input =
         MakeGarbageCollected<V8URLPatternInput>(init);
-    return URLPattern::Create(isolate, url_pattern_input, exception_state);
+    return URLPattern::Create(url_pattern_input, exception_state);
   }
   SetParseErrorMessage(out_error,
                        "Value for \"href_matches\" should either be a "
@@ -556,8 +550,7 @@ DocumentRulePredicate* DocumentRulePredicate::Parse(
     // For each rawPattern of rawPatterns:
     for (JSONValue* raw_pattern : raw_patterns) {
       URLPattern* pattern =
-          ParseRawPattern(execution_context->GetIsolate(), raw_pattern,
-                          base_url, exception_state, out_error);
+          ParseRawPattern(raw_pattern, base_url, exception_state, out_error);
       // If those steps throw, catch the exception and return null.
       if (exception_state.HadException()) {
         exception_state.ClearException();
@@ -574,8 +567,7 @@ DocumentRulePredicate* DocumentRulePredicate::Parse(
       patterns.push_back(pattern);
     }
     // Return a document rule URL pattern predicate whose patterns is patterns.
-    return MakeGarbageCollected<URLPatternPredicate>(std::move(patterns),
-                                                     execution_context);
+    return MakeGarbageCollected<URLPatternPredicate>(std::move(patterns));
   }
 
   // If predicateType is "selector_matches"
@@ -619,10 +611,10 @@ DocumentRulePredicate* DocumentRulePredicate::Parse(
 
       // Parse a selector from rawSelector. If the result is failure, then
       // return null. Otherwise, let selector be the result.
-      base::span<CSSSelector> selector_vector = CSSParser::ParseSelector(
-          css_parser_context, CSSNestingType::kNone,
-          /*parent_rule_for_nesting=*/nullptr, /*is_within_scope=*/false,
-          nullptr, raw_selector_string, arena);
+      base::span<CSSSelector> selector_vector =
+          CSSParser::ParseSelector(css_parser_context, CSSNestingType::kNone,
+                                   /*parent_rule_for_nesting=*/nullptr, nullptr,
+                                   raw_selector_string, arena);
       if (selector_vector.empty()) {
         SetParseErrorMessage(
             out_error, String::Format("\"%s\" is not a valid selector.",

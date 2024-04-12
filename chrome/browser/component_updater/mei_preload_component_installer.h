@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_COMPONENT_UPDATER_MEI_PRELOAD_COMPONENT_INSTALLER_H_
 
 #include <stdint.h>
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -58,6 +57,7 @@ class MediaEngagementPreloadComponentInstallerPolicy
 
   // Called when the data is loaded into the preloaded list.
   base::OnceClosure on_load_closure_;
+
 };
 
 // Call once during startup to make the component update service aware of

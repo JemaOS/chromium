@@ -19,6 +19,7 @@
 #include "base/task/thread_pool.h"
 #include "base/values.h"
 #include "components/safe_browsing/android/real_time_url_checks_allowlist.h"
+#include "components/safe_browsing/core/common/features.h"
 
 using component_updater::ComponentUpdateService;
 
@@ -41,9 +42,8 @@ const char kRealTimeUrlChecksAllowlistManifestName[] =
 
 void LoadFromDisk(const base::FilePath& pb_path) {
   base::UmaHistogramBoolean(kInstallerLoadFromDiskPbFileEmpty, pb_path.empty());
-  if (pb_path.empty()) {
+  if (pb_path.empty())
     return;
-  }
 
   std::string binary_pb;
   if (!base::ReadFileToString(pb_path, &binary_pb)) {
@@ -126,9 +126,12 @@ RealTimeUrlChecksAllowlistComponentInstallerPolicy::GetInstallerAttributes()
 }
 
 void RegisterRealTimeUrlChecksAllowlistComponent(ComponentUpdateService* cus) {
-  auto installer = base::MakeRefCounted<ComponentInstaller>(
-      std::make_unique<RealTimeUrlChecksAllowlistComponentInstallerPolicy>());
-  installer->Register(cus, base::OnceClosure());
+  if (base::FeatureList::IsEnabled(
+          safe_browsing::kComponentUpdaterAndroidProtegoAllowlist)) {
+    auto installer = base::MakeRefCounted<ComponentInstaller>(
+        std::make_unique<RealTimeUrlChecksAllowlistComponentInstallerPolicy>());
+    installer->Register(cus, base::OnceClosure());
+  }
 }
 
 }  // namespace component_updater

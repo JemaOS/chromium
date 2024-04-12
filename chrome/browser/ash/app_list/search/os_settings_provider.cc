@@ -12,13 +12,12 @@
 #include "base/containers/flat_set.h"
 #include "base/metrics/histogram_macros.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
-#include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/ash/app_list/search/common/icon_constants.h"
 #include "chrome/browser/ash/app_list/vector_icons/vector_icons.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
-#include "chrome/browser/ui/webui/ash/settings/search/hierarchy.h"
-#include "chrome/browser/ui/webui/ash/settings/search/search_handler.h"
+#include "chrome/browser/ui/webui/settings/ash/hierarchy.h"
+#include "chrome/browser/ui/webui/settings/ash/search/search_handler.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "components/services/app_service/public/cpp/app_registry_cache.h"
 #include "components/services/app_service/public/cpp/app_types.h"
@@ -146,7 +145,7 @@ bool ContainsBetterAncestor(Setting setting,
 OsSettingsResult::OsSettingsResult(Profile* profile,
                                    const SettingsResultPtr& result,
                                    const double relevance_score,
-                                   const ui::ImageModel& icon,
+                                   const gfx::ImageSkia& icon,
                                    const std::u16string& query)
     : profile_(profile), url_path_(result->url_path_with_parameters) {
   set_id(kOsSettingsResultPrefix + url_path_);
@@ -195,11 +194,12 @@ void OsSettingsResult::Open(int event_flags) {
 OsSettingsProvider::OsSettingsProvider(
     Profile* profile,
     ash::settings::SearchHandler* search_handler,
-    const ash::settings::Hierarchy* hierarchy)
-    : SearchProvider(SearchCategory::kSettings),
-      profile_(profile),
+    const ash::settings::Hierarchy* hierarchy,
+    apps::AppServiceProxy* app_service_proxy)
+    : profile_(profile),
       search_handler_(search_handler),
-      hierarchy_(hierarchy) {
+      hierarchy_(hierarchy),
+      app_service_proxy_(app_service_proxy) {
   DCHECK(profile_);
 
   // |search_handler_| can be nullptr in the case that the new OS settings
@@ -220,18 +220,21 @@ OsSettingsProvider::OsSettingsProvider(
   // TODO(b/261867385): We manually load the icon from the local codebase as
   // the icon load from proxy is flaky. When the flakiness if solved, we can
   // safely remove this.
-  icon_ = ui::ImageModel::FromVectorIcon(
-      app_list::kOsSettingsIcon, SK_ColorTRANSPARENT, kAppIconDimension);
+  icon_ = gfx::CreateVectorIcon(app_list::kOsSettingsIcon, kAppIconDimension,
+                                SK_ColorTRANSPARENT);
 
-  app_registry_cache_observer_.Observe(
-      &apps::AppServiceProxyFactory::GetForProfile(profile)
-           ->AppRegistryCache());
+  if (app_service_proxy_) {
+    Observe(&app_service_proxy_->AppRegistryCache());
 
-  // TODO(b/261867385): `LoadIcon()` from constructor is removed as it never
-  // succeeds and the icon is only updated from "OnAppUpdate()" according to
-  // the UMA metrics. We can either remove this comments if this issue is
-  // confirmed, or revert the remove if this issue is solved.
-  LogIconLoadStatus(IconLoadStatus::kBindOnLoadIconFromConstructor);
+    // TODO(b/261867385): `LoadIcon()` from constructor is removed as it never
+    // succeeds and the icon is only updated from "OnAppUpdate()" according to
+    // the UMA metrics. We can either remove this comments if this issue is
+    // confirmed, or revert the remove if this issue is solved.
+    LogIconLoadStatus(IconLoadStatus::kBindOnLoadIconFromConstructor);
+  } else {
+    LogStatus(Status::kNoAppServiceProxy);
+    LogIconLoadStatus(IconLoadStatus::kNoAppServiceProxy);
+  }
 }
 
 OsSettingsProvider::~OsSettingsProvider() = default;
@@ -249,7 +252,7 @@ void OsSettingsProvider::Start(const std::u16string& query) {
   //  - we don't have an icon to display with results.
   if (!search_handler_) {
     return;
-  } else if (icon_.IsEmpty()) {
+  } else if (icon_.isNull()) {
     LogStatus(Status::kNoSettingsIcon);
     return;
   }
@@ -308,14 +311,14 @@ void OsSettingsProvider::OnAppUpdate(const apps::AppUpdate& update) {
 
   // Request the Settings app icon when either the readiness or the icon has
   // changed.
-  auto* proxy = apps::AppServiceProxyFactory::GetForProfile(profile_);
-  if (update.ReadinessChanged() || update.IconKeyChanged()) {
-    proxy->LoadIcon(web_app::kOsSettingsAppId, apps::IconType::kStandard,
-                    kAppIconDimension,
-                    /*allow_placeholder_icon=*/false,
-                    base::BindOnce(&OsSettingsProvider::OnLoadIcon,
-                                   weak_factory_.GetWeakPtr(),
-                                   /*is_from_constructor=*/false));
+  if (app_service_proxy_ &&
+      (update.ReadinessChanged() || update.IconKeyChanged())) {
+    app_service_proxy_->LoadIcon(update.AppType(), web_app::kOsSettingsAppId,
+                                 apps::IconType::kStandard, kAppIconDimension,
+                                 /*allow_placeholder_icon=*/false,
+                                 base::BindOnce(&OsSettingsProvider::OnLoadIcon,
+                                                weak_factory_.GetWeakPtr(),
+                                                /*is_from_constructor=*/false));
     LogIconLoadStatus(IconLoadStatus::kBindOnLoadIconFromOnAppUpdate);
   } else {
     if (!update.ReadinessChanged()) {
@@ -329,8 +332,8 @@ void OsSettingsProvider::OnAppUpdate(const apps::AppUpdate& update) {
 
 void OsSettingsProvider::OnAppRegistryCacheWillBeDestroyed(
     apps::AppRegistryCache* cache) {
-  app_registry_cache_observer_.Reset();
-  if (icon_.IsEmpty()) {
+  Observe(nullptr);
+  if (icon_.isNull()) {
     LogIconLoadStatus(IconLoadStatus::kIconNotExistOnDestroyed);
   } else {
     LogIconLoadStatus(IconLoadStatus::kIconExistOnDestroyed);
@@ -410,7 +413,7 @@ std::vector<SettingsResultPtr> OsSettingsProvider::FilterResults(
 void OsSettingsProvider::OnLoadIcon(bool is_from_constructor,
                                     apps::IconValuePtr icon_value) {
   if (icon_value && icon_value->icon_type == apps::IconType::kStandard) {
-    icon_ = ui::ImageModel::FromImageSkia(icon_value->uncompressed);
+    icon_ = icon_value->uncompressed;
     LogIconLoadStatus(is_from_constructor ? IconLoadStatus::kOkFromConstructor
                                           : IconLoadStatus::kOkFromOnAppUpdate);
   } else if (!icon_value) {

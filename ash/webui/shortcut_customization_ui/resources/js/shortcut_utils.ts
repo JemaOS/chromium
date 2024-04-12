@@ -5,20 +5,9 @@
 import '../strings.m.js';
 
 import {loadTimeData} from 'chrome://resources/ash/common/load_time_data.m.js';
-import {VKey as ash_mojom_VKey} from 'chrome://resources/ash/common/shortcut_input_ui/accelerator_keys.mojom-webui.js';
-import {KeyEvent} from 'chrome://resources/ash/common/shortcut_input_ui/input_device_settings.mojom-webui.js';
-import {ModifierKeyCodes} from 'chrome://resources/ash/common/shortcut_input_ui/shortcut_utils.js';
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
-import {mojoString16ToString} from 'chrome://resources/js/mojo_type_util.js';
+import {assertNotReached} from 'chrome://resources/js/assert_ts.js';
 
-import {Accelerator, AcceleratorCategory, AcceleratorConfigResult, AcceleratorId, AcceleratorInfo, AcceleratorKeyState, AcceleratorSource, AcceleratorState, AcceleratorSubcategory, AcceleratorType, Modifier, MojoAcceleratorInfo, MojoSearchResult, StandardAcceleratorInfo, TextAcceleratorInfo, TextAcceleratorPart} from './shortcut_types.js';
-
-// TODO(jimmyxgong): ChromeOS currently supports up to F24 but can be updated to
-// F32. Update here when F32 is available.
-const kF11 = 112;  // Keycode for F11.
-const kF24 = 135;  // Keycode for F24.
-
-const kMeta = 91;  // Keycode for Meta.
+import {Accelerator, AcceleratorCategory, AcceleratorId, AcceleratorInfo, AcceleratorState, AcceleratorSubcategory, AcceleratorType, Modifier, MojoAcceleratorInfo, MojoSearchResult, StandardAcceleratorInfo, TextAcceleratorInfo} from './shortcut_types.js';
 
 const modifiers: Modifier[] = [
   Modifier.SHIFT,
@@ -27,72 +16,29 @@ const modifiers: Modifier[] = [
   Modifier.COMMAND,
 ];
 
-export const keyCodeToModifier: {[keyCode: number]: number} = {
-  16: Modifier.SHIFT,
-  17: Modifier.CONTROL,
-  18: Modifier.ALT,
-  91: Modifier.COMMAND,
-  92: Modifier.COMMAND,
+// Returns true if shortcut customization is disabled via the feature flag.
+export const isCustomizationDisabled = (): boolean => {
+  return !loadTimeData.getBoolean('isCustomizationEnabled');
 };
 
-export const unidentifiedKeyCodeToKey: {[keyCode: number]: string} = {
-  159: 'MicrophoneMuteToggle',
-  192: '`',  // Backquote key.
-  218: 'KeyboardBrightnessUp',
-  232: 'KeyboardBrightnessDown',
-  237: 'EmojiPicker',
-  238: 'EnableOrToggleDictation',
-  239: 'ViewAllApps',
+// Returns true if search is enabled via the feature flag.
+export const isSearchEnabled = (): boolean => {
+  return loadTimeData.getBoolean('isSearchEnabled');
 };
 
-// The keys in this map are pulled from the file:
-// ui/events/keycodes/dom/dom_code_data.inc
-export const keyToIconNameMap: {[key: string]: string|undefined} = {
-  'ArrowDown': 'arrow-down',
-  'ArrowLeft': 'arrow-left',
-  'ArrowRight': 'arrow-right',
-  'ArrowUp': 'arrow-up',
-  'AudioVolumeDown': 'volume-down',
-  'AudioVolumeMute': 'volume-mute',
-  'AudioVolumeUp': 'volume-up',
-  'BrightnessDown': 'display-brightness-down',
-  'BrightnessUp': 'display-brightness-up',
-  'BrowserBack': 'back',
-  'BrowserForward': 'forward',
-  'BrowserHome': 'browser-home',
-  'BrowserRefresh': 'refresh',
-  'BrowserSearch': 'browser-search',
-  'ContextMenu': 'menu',
-  'EmojiPicker': 'emoji-picker',
-  'EnableOrToggleDictation': 'dictation-toggle',
-  'KeyboardBacklightToggle': 'keyboard-brightness-toggle',
-  'KeyboardBrightnessUp': 'keyboard-brightness-up',
-  'KeyboardBrightnessDown': 'keyboard-brightness-down',
-  'LaunchApplication1': 'overview',
-  'LaunchApplication2': 'calculator',
-  'LaunchAssistant': 'assistant',
-  'LaunchMail': 'launch-mail',
-  'MediaFastForward': 'fast-forward',
-  'MediaPause': 'pause',
-  'MediaPlay': 'play',
-  'MediaPlayPause': 'play-pause',
-  'MediaTrackNext': 'next-track',
-  'MediaTrackPrevious': 'last-track',
-  'MicrophoneMuteToggle': 'microphone-mute',
-  'ModeChange': 'globe',
-  'ViewAllApps': 'view-all-apps',
-  'Power': 'power',
-  'PrintScreen': 'screenshot',
-  'PrivacyScreenToggle': 'electronic-privacy-screen',
-  'Settings': 'settings',
-  'Standby': 'lock',
-  'ZoomToggle': 'fullscreen',
-};
-
-// Return true if shortcut customization is allowed.
-export const isCustomizationAllowed = (): boolean => {
-  return loadTimeData.getBoolean('isCustomizationAllowed');
-};
+export const areAcceleratorsEqual =
+    (accelA: Accelerator, accelB: Accelerator): boolean => {
+      // This picking of types is necessary because Accelerators are a subset
+      // of MojoAccelerators, and MojoAccelerators have properties that error
+      // when they're stringified. Due to TypeScript's structural typing, we
+      // can't prevent MojoAccelerators from being passed to this function.
+      const accelAComparable:
+          Accelerator = {keyCode: accelA.keyCode, modifiers: accelA.modifiers};
+      const accelBComparable:
+          Accelerator = {keyCode: accelB.keyCode, modifiers: accelB.modifiers};
+      return JSON.stringify(accelAComparable) ===
+          JSON.stringify(accelBComparable);
+    };
 
 export const isTextAcceleratorInfo =
     (accelInfo: AcceleratorInfo|MojoAcceleratorInfo):
@@ -120,18 +66,7 @@ export const createEmptyAccelInfoFromAccel =
     };
 
 export const createEmptyAcceleratorInfo = (): StandardAcceleratorInfo => {
-  return createEmptyAccelInfoFromAccel(
-      {modifiers: 0, keyCode: 0, keyState: AcceleratorKeyState.PRESSED});
-};
-
-export const resetKeyEvent = (): KeyEvent => {
-  return {
-    vkey: ash_mojom_VKey.MIN_VALUE,
-    domCode: 0,
-    domKey: 0,
-    modifiers: 0,
-    keyDisplay: '',
-  };
+  return createEmptyAccelInfoFromAccel({modifiers: 0, keyCode: 0});
 };
 
 export const getAcceleratorId =
@@ -220,23 +155,6 @@ export const getAccelerator =
       return acceleratorInfo.layoutProperties.standardAccelerator.accelerator;
     };
 
-export const areAcceleratorsEqual =
-    (first: Accelerator, second: Accelerator): boolean => {
-      return first.keyCode === second.keyCode &&
-          first.modifiers === second.modifiers &&
-          first.keyState === second.keyState;
-    };
-
-/**
- * Checks if a retry can bypass the last error. Returns true for
- * kConflictCanOverride or kNonSearchAcceleratorWarning results.
- */
-export const canBypassErrorWithRetry =
-    (result: AcceleratorConfigResult): boolean => {
-      return result === AcceleratorConfigResult.kConflictCanOverride ||
-          result === AcceleratorConfigResult.kNonSearchAcceleratorWarning;
-    };
-
 /**
  * Sort the modifiers in the order of ctrl, alt, shift, meta.
  */
@@ -260,11 +178,6 @@ function getModifierCount(accelerator: Accelerator): number {
   return count;
 }
 
-function isSearchOnlyAccelerator(accelerator: Accelerator): boolean {
-  return accelerator.keyCode === kMeta &&
-      accelerator.modifiers === Modifier.NONE;
-}
-
 // Comparison function that checks the number of modifiers in an accelerator.
 // Lower number of modifiers get higher priority.
 // @returns a negative number if the first accelerator info should be higher in
@@ -276,17 +189,6 @@ export function compareAcceleratorInfos(
   // a no-opt.
   if (!isStandardAcceleratorInfo(first) || !isStandardAcceleratorInfo(second)) {
     return 0;
-  }
-
-  // Search/meta as the activation key should always be the highest priority.
-  if (isSearchOnlyAccelerator(
-          first.layoutProperties.standardAccelerator.accelerator)) {
-    return -1;
-  }
-
-  if (isSearchOnlyAccelerator(
-          second.layoutProperties.standardAccelerator.accelerator)) {
-    return 1;
   }
 
   const firstModifierCount =
@@ -330,8 +232,6 @@ export function getModifiersForAcceleratorInfo(
 }
 
 export const SHORTCUTS_APP_URL = 'chrome://shortcut-customization';
-export const META_KEY = 'meta';
-export const LWIN_KEY = 'Meta';
 
 export const getURLForSearchResult = (searchResult: MojoSearchResult): URL => {
   const url = new URL(SHORTCUTS_APP_URL);
@@ -339,194 +239,4 @@ export const getURLForSearchResult = (searchResult: MojoSearchResult): URL => {
   url.searchParams.append('action', action.toString());
   url.searchParams.append('category', category.toString());
   return url;
-};
-
-export const isFunctionKey = (keycode: number): boolean => {
-  return keycode >= kF11 && keycode <= kF24;
-};
-
-export const isModifierKey = (keycode: number): boolean => {
-  return ModifierKeyCodes.includes(keycode);
-};
-
-export const isValidAccelerator = (accelerator: Accelerator): boolean => {
-  // A valid default accelerator is one that has modifier(s) and a key or
-  // is function key.
-  return (accelerator.modifiers > 0 && accelerator.keyCode > 0) ||
-      isFunctionKey(accelerator.keyCode);
-};
-
-export const containsAccelerator =
-    (accelerators: Accelerator[], accelerator: Accelerator): boolean => {
-      return accelerators.some(
-          accel => areAcceleratorsEqual(accel, accelerator));
-    };
-
-export const getSourceAndActionFromAcceleratorId =
-    (uuid: AcceleratorId): {source: number, action: number} => {
-      // Split '{source}-{action}` into [source][action].
-      const uuidSplit = uuid.split('-');
-      const source: AcceleratorSource = parseInt(uuidSplit[0], 10);
-      const action = parseInt(uuidSplit[1], 10);
-
-      return {source, action};
-    };
-
-/**
- *
- * @param keyOrIcon the text for an individual accelerator key.
- * @returns the associated icon label for the given `keyOrIcon` text if it
- *     exists, otherwise returns `keyOrIcon` itself.
- */
-export const getKeyDisplay = (keyOrIcon: string): string => {
-  const iconName = keyToIconNameMap[keyOrIcon];
-  return iconName ? loadTimeData.getString(`iconLabel${keyOrIcon}`) : keyOrIcon;
-};
-
-/**
- * Translate a numpadKey code to a display string.
- */
-export const getNumpadKeyDisplay = (code: string): string => {
-  // For "NumpadEnter", it is the same as "enter" key.
-  if (code === 'NumpadEnter') {
-    return 'enter';
-  }
-  // Map of special numpad key codes to their display symbols.
-  const numpadKeyMap: {[code: string]: string} = {
-    'NumpadAdd': '+',
-    'NumpadDecimal': '.',
-    'NumpadDivide': '/',
-    'NumpadMultiply': '*',
-    'NumpadSubtract': '-',
-  };
-
-  // Return the formatted string, using the map for special keys,
-  // or stripping 'Numpad' for numeric keys.
-  const numpadKey = numpadKeyMap[code] || code.replace('Numpad', '');
-  return `numpad ${numpadKey}`.toLowerCase();
-};
-
-/**
- * Translate an unidentified key to a display string.
- */
-export const getUnidentifiedKeyDisplay = (e: KeyboardEvent): string => {
-  if (e.code === 'Backquote') {
-    // Backquote `key` will become 'unidentified' when ctrl
-    // is pressed.
-    if (e.ctrlKey) {
-      return unidentifiedKeyCodeToKey[e.keyCode];
-    }
-    return e.key;
-  }
-  if (e.code === '') {
-    // If there is no `code`, check the `key`. If the `key` is
-    // `unidentified`, we need to manually lookup the key.
-    return unidentifiedKeyCodeToKey[e.keyCode] || e.key;
-  }
-
-  return `Key ${e.keyCode}`;
-};
-
-/**
- * @returns the Aria label for the standard accelerators.
- */
-export const getAriaLabelForStandardAccelerators =
-    (acceleratorInfos: StandardAcceleratorInfo[], dividerString: string):
-        string => {
-          return acceleratorInfos
-              .map(
-                  (acceleratorInfo: StandardAcceleratorInfo) =>
-                      getAriaLabelForStandardAcceleratorInfo(acceleratorInfo))
-              .join(` ${dividerString} `);
-        };
-
-/**
- * @returns the Aria label for the text accelerators.
- */
-export const getAriaLabelForTextAccelerators =
-    (acceleratorInfos: TextAcceleratorInfo[]): string => {
-      return getTextAcceleratorParts(acceleratorInfos as TextAcceleratorInfo[])
-          .map(part => getKeyDisplay(mojoString16ToString(part.text)))
-          .join('');
-    };
-
-/**
- * @returns the Aria label for the given StandardAcceleratorInfo.
- */
-export const getAriaLabelForStandardAcceleratorInfo =
-    (acceleratorInfo: StandardAcceleratorInfo): string => {
-      const keyOrIcon =
-          acceleratorInfo.layoutProperties.standardAccelerator.keyDisplay;
-      return getModifiersForAcceleratorInfo(acceleratorInfo)
-          .join(' ')
-          .concat(` ${getKeyDisplay(keyOrIcon)}`);
-    };
-
-/**
- * @returns the text accelerator parts for the given TextAcceleratorInfo.
- */
-export const getTextAcceleratorParts =
-    (infos: TextAcceleratorInfo[]): TextAcceleratorPart[] => {
-      // For text based layout accelerators, we always expect this to be an
-      // array with a single element.
-      assert(infos.length === 1);
-      const textAcceleratorInfo = infos[0];
-
-      assert(isTextAcceleratorInfo(textAcceleratorInfo));
-      return textAcceleratorInfo.layoutProperties.textAccelerator.parts;
-    };
-
-export const getModifiersFromKeyboardEvent = (e: KeyboardEvent): Modifier => {
-  let modifiers = 0;
-  if (e.metaKey) {
-    modifiers |= Modifier.COMMAND;
-  }
-  if (e.ctrlKey) {
-    modifiers |= Modifier.CONTROL;
-  }
-  if (e.altKey) {
-    modifiers |= Modifier.ALT;
-  }
-  if (e.key == 'Shift' || e.shiftKey) {
-    modifiers |= Modifier.SHIFT;
-  }
-  return modifiers;
-};
-
-export const getKeyDisplayFromKeyboardEvent = (e: KeyboardEvent): string => {
-  // Handle numpad keys:
-  if (e.code.startsWith('Numpad')) {
-    return getNumpadKeyDisplay(e.code);
-  }
-  // Handle unidentified keys:
-  if (e.key === 'Unidentified' || e.code === '') {
-    return getUnidentifiedKeyDisplay(e);
-  }
-
-  switch (e.code) {
-    case 'Space':  // Space key: e.key: ' ', e.code: 'Space', set keyDisplay
-      // to be 'space' text.
-      return 'space';
-    case 'ShowAllWindows':  // Overview key: e.key: 'F4', e.code:
-      // 'ShowAllWindows', set keyDisplay to be
-      // 'LaunchApplication1' and will display as
-      // 'overview' icon.
-      return 'LaunchApplication1';
-    default:  // All other keys: Use the original e.key as keyDisplay.
-      return e.key;
-  }
-};
-
-export const keyEventToAccelerator = (keyEvent: KeyEvent): Accelerator => {
-  const output: Accelerator = {
-    modifiers: 0,
-    keyCode: 0,
-    keyState: AcceleratorKeyState.PRESSED,
-  };
-  output.modifiers = keyEvent.modifiers;
-  if (!isModifierKey(keyEvent.vkey) || isFunctionKey(keyEvent.vkey)) {
-    output.keyCode = keyEvent.vkey;
-  }
-
-  return output;
 };

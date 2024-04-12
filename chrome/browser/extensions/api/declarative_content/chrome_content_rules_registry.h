@@ -75,12 +75,12 @@ class ChromeContentRulesRegistry
       const std::vector<std::string>& css_selectors) override;
   // RulesRegistry:
   std::string AddRulesImpl(
-      const ExtensionId& extension_id,
+      const std::string& extension_id,
       const std::vector<const api::events::Rule*>& rules) override;
   std::string RemoveRulesImpl(
-      const ExtensionId& extension_id,
+      const std::string& extension_id,
       const std::vector<std::string>& rule_identifiers) override;
-  std::string RemoveAllRulesImpl(const ExtensionId& extension_id) override;
+  std::string RemoveAllRulesImpl(const std::string& extension_id) override;
 
   // DeclarativeContentConditionTrackerDelegate:
   void RequestEvaluation(content::WebContents* contents) override;
@@ -144,7 +144,7 @@ class ChromeContentRulesRegistry
   static bool EvaluateConditionForTab(const ContentCondition* condition,
                                       content::WebContents* tab);
 
-  std::set<raw_ptr<const ContentRule, SetExperimental>> GetMatchingRules(
+  std::set<const ContentRule*> GetMatchingRules(
       content::WebContents* tab) const;
 
   // Evaluates the conditions for |tab| based on the tab state and matching CSS
@@ -166,9 +166,7 @@ class ChromeContentRulesRegistry
   // This lets us call Revert as appropriate. Note that this is expected to have
   // a key-value pair for every WebContents the registry is tracking, even if
   // the value is the empty set.
-  std::map<content::WebContents*,
-           std::set<raw_ptr<const ContentRule, SetExperimental>>>
-      active_rules_;
+  std::map<content::WebContents*, std::set<const ContentRule*>> active_rules_;
 
   // The evaluators responsible for creating predicates and tracking
   // predicate-related state.
@@ -179,7 +177,7 @@ class ChromeContentRulesRegistry
 
   // Contains WebContents which require rule evaluation. Only used while
   // |evaluation_disposition_| is DEFER.
-  std::set<raw_ptr<content::WebContents, SetExperimental>> evaluation_pending_;
+  std::set<content::WebContents*> evaluation_pending_;
 };
 
 }  // namespace extensions

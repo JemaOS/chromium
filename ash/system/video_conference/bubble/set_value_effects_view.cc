@@ -4,17 +4,13 @@
 
 #include "ash/system/video_conference/bubble/set_value_effects_view.h"
 
-#include "ash/bubble/bubble_utils.h"
-#include "ash/constants/ash_features.h"
 #include "ash/style/tab_slider.h"
 #include "ash/style/tab_slider_button.h"
-#include "ash/style/typography.h"
 #include "ash/system/video_conference/bubble/bubble_view_ids.h"
 #include "ash/system/video_conference/effects/video_conference_tray_effects_delegate.h"
 #include "ash/system/video_conference/effects/video_conference_tray_effects_manager_types.h"
 #include "ash/system/video_conference/video_conference_tray_controller.h"
 #include "ash/system/video_conference/video_conference_utils.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/box_layout_view.h"
@@ -41,14 +37,8 @@ SetValueEffectSlider::SetValueEffectSlider(const VcHostedEffect* effect)
         views::BoxLayout::MainAxisAlignment::kStart);
     label_container->SetInsideBorderInsets(gfx::Insets::TLBR(0, 8, 0, 0));
 
-    auto* label = label_container->AddChildView(
+    label_container->AddChildView(
         std::make_unique<views::Label>(effect->label_text()));
-    label->SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
-    label->SetAutoColorReadabilityEnabled(false);
-    TypographyProvider::Get()->StyleLabel(TypographyToken::kCrosButton2,
-                                          *label);
-    label->SetEnabledColorId(cros_tokens::kCrosSysOnSurface);
-
     auto* spacer_view =
         label_container->AddChildView(std::make_unique<views::View>());
     // Let the spacer fill the remaining space, pushing the label to the
@@ -63,43 +53,43 @@ SetValueEffectSlider::SetValueEffectSlider(const VcHostedEffect* effect)
 
   // `effect` is expected to provide the current state of the effect, and
   // a `current_state` with no value means it couldn't be obtained.
-  std::optional<int> current_state = effect->get_state_callback().Run();
+  absl::optional<int> current_state = effect->get_state_callback().Run();
   DCHECK(current_state.has_value());
 
+  auto tab_slider = std::make_unique<TabSlider>();
   const int num_states = effect->GetNumStates();
-  const int max_num_states =
-      ::ash::features::IsVcBackgroundReplaceEnabled() ? 4 : 3;
-  DCHECK_LE(num_states, max_num_states)
-      << "UX Requests no more than " << max_num_states
-      << " states, otherwise "
-         "the bubble will need to be wider.";
-
-  auto tab_slider = std::make_unique<TabSlider>(
-      num_states, IconLabelSliderButton::kSliderParams);
+  DCHECK_LE(num_states, 3) << "UX Requests no more than 3 states, otherwise "
+                              "the bubble will need to be wider.";
   for (int i = 0; i < num_states; ++i) {
     const VcEffectState* state = effect->GetState(/*index=*/i);
     DCHECK(state->state_value());
     auto* slider_button =
         tab_slider->AddButton(std::make_unique<IconLabelSliderButton>(
             base::BindRepeating(
-                [](const VcHostedEffect* effect, const VcEffectState* state) {
+                [](const VcHostedEffect* effect, const VcEffectState* state,
+                   const ui::Event& event) {
                   if (effect->delegate()) {
-                    effect->delegate()->RecordMetricsForSetValueEffectOnClick(
+                    effect->delegate()->RecordMetricsForSetValueEffect(
                         effect->id(), state->state_value().value());
                   }
 
-                  state->button_callback().Run();
+                  auto callback = state->button_callback();
+                  callback.Run(event);
                 },
                 base::Unretained(effect), base::Unretained(state)),
             state->icon(), state->label_text()));
 
     slider_button->SetSelected(state->state_value().value() == current_state);
+
+    // See comments above `kSetValueButton*` in `BubbleViewID` for details
+    // on how the IDs of these buttons are set.
+    slider_button->SetID(i <= BubbleViewID::kSetValueButtonMax -
+                                     BubbleViewID::kSetValueButtonMin
+                             ? BubbleViewID::kSetValueButtonMin + i
+                             : BubbleViewID::kSetValueButtonMax);
   }
   tab_slider_ = AddChildView(std::move(tab_slider));
 }
-
-BEGIN_METADATA(SetValueEffectSlider)
-END_METADATA
 
 SetValueEffectsView::SetValueEffectsView(
     VideoConferenceTrayController* controller) {
@@ -111,8 +101,8 @@ SetValueEffectsView::SetValueEffectsView(
   layout->SetMainAxisAlignment(views::LayoutAlignment::kCenter);
   layout->SetCrossAxisAlignment(views::LayoutAlignment::kStretch);
 
-  if (controller->GetEffectsManager().HasSetValueEffects()) {
-    for (auto* effect : controller->GetEffectsManager().GetSetValueEffects()) {
+  if (controller->effects_manager().HasSetValueEffects()) {
+    for (auto* effect : controller->effects_manager().GetSetValueEffects()) {
       // If the current state of `effect` has no value, it means the state of
       // the effect cannot be obtained. This can happen if the
       // `VcEffectsDelegate` hosting `effect` has encountered an error or is
@@ -125,8 +115,5 @@ SetValueEffectsView::SetValueEffectsView(
     }
   }
 }
-
-BEGIN_METADATA(SetValueEffectsView)
-END_METADATA
 
 }  // namespace ash::video_conference

@@ -9,14 +9,10 @@
 
 #include <string>
 
-#include "ash/constants/ash_features.h"
-#include "base/feature_list.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/ash/input_method/ui/candidate_view.h"
 #include "chrome/browser/ash/input_method/ui/candidate_window_constants.h"
 #include "ui/accessibility/ax_node_data.h"
-#include "ui/base/ime/ash/extension_ime_util.h"
-#include "ui/base/ime/ash/input_method_manager.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
@@ -41,11 +37,18 @@ namespace ime {
 
 namespace {
 
+const int kOuterCornerRadius = 8;
+const int kInnerCornerRadius = kOuterCornerRadius;
+
 class CandidateWindowBorder : public views::BubbleBorder {
  public:
   CandidateWindowBorder()
       : views::BubbleBorder(views::BubbleBorder::TOP_CENTER,
-                            views::BubbleBorder::STANDARD_SHADOW) {}
+                            views::BubbleBorder::NO_SHADOW) {
+    // 这里比 OnThemeChanged 里设置的 border radius 小的话，最终 candidate view 背景会突出来一点点
+    // 如果大的话，OnThemeChanged 里设置的 border 边上会有一点点空白，可以通过 gfx::Insets(1) 来解决
+    // SetCornerRadius(kOuterCornerRadius);
+  }
   CandidateWindowBorder(const CandidateWindowBorder&) = delete;
   CandidateWindowBorder& operator=(const CandidateWindowBorder&) = delete;
   ~CandidateWindowBorder() override = default;
@@ -101,21 +104,12 @@ int ComputePageIndex(const ui::CandidateWindow& candidate_window) {
   return -1;
 }
 
-// Returns 0-indexed cursor position in a page. See also |ComputePageIndex|.
-// Returns -1 on error.
-int ComputeIndexInPage(const ui::CandidateWindow& candidate_window) {
-  if (candidate_window.page_size() > 0) {
-    return candidate_window.cursor_position() % candidate_window.page_size();
-  }
-  return -1;
-}
-
 }  // namespace
 
 class InformationTextArea : public views::View {
-  METADATA_HEADER(InformationTextArea, views::View)
-
  public:
+  METADATA_HEADER(InformationTextArea);
+
   // InformationTextArea's border is drawn as a separator, it should appear
   // at either top or bottom.
   enum BorderPosition { TOP, BOTTOM };
@@ -125,7 +119,8 @@ class InformationTextArea : public views::View {
       : min_width_(min_width) {
     label_ = new views::Label;
     label_->SetHorizontalAlignment(align);
-    label_->SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(2, 2, 2, 4)));
+    label_->SetBorder(views::CreateEmptyBorder(gfx::Insets::TLBR(8, 2, 8, 8)));
+    label_->SetFontList(label_->font_list().DeriveWithSizeDelta(kFontSizeDelta));
 
     SetLayoutManager(std::make_unique<views::FillLayout>());
     AddChildView(label_.get());
@@ -137,9 +132,10 @@ class InformationTextArea : public views::View {
   // views::View:
   void OnThemeChanged() override {
     View::OnThemeChanged();
-    SetBackground(views::CreateSolidBackground(color_utils::AlphaBlend(
-        SK_ColorBLACK, GetColorProvider()->GetColor(ui::kColorWindowBackground),
-        0.0625f)));
+    // SetBackground(views::CreateSolidBackground(color_utils::AlphaBlend(
+    //     SK_ColorBLACK, GetColorProvider()->GetColor(ui::kColorWindowBackground),
+    //     0.0625f)));
+    SetBackground(nullptr);
     UpdateBorder();
   }
 
@@ -174,12 +170,12 @@ class InformationTextArea : public views::View {
   }
 
  private:
-  raw_ptr<views::Label> label_;
+  raw_ptr<views::Label, ExperimentalAsh> label_;
   int min_width_;
-  std::optional<BorderPosition> position_;
+  absl::optional<BorderPosition> position_;
 };
 
-BEGIN_METADATA(InformationTextArea)
+BEGIN_METADATA(InformationTextArea, views::View)
 END_METADATA
 
 CandidateWindowView::CandidateWindowView(gfx::NativeView parent)
@@ -199,7 +195,8 @@ CandidateWindowView::CandidateWindowView(gfx::NativeView parent)
   // We want to disable the use of round corners here to ensure that the radius
   // of the frame view created by the BubbleDialogDelegateView is consistent
   // with what CandidateWindowView expects.
-  set_use_round_corners(false);
+  set_use_round_corners(kOuterCornerRadius != 0);
+  set_corner_radius(kOuterCornerRadius);
 
   SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical));
@@ -214,7 +211,7 @@ CandidateWindowView::CandidateWindowView(gfx::NativeView parent)
     AddChildView(preedit_.get());
     AddChildView(candidate_area_.get());
     AddChildView(auxiliary_text_.get());
-    auxiliary_text_->SetBorderFromPosition(InformationTextArea::TOP);
+    // auxiliary_text_->SetBorderFromPosition(InformationTextArea::TOP);
     candidate_area_->SetLayoutManager(std::make_unique<views::BoxLayout>(
         views::BoxLayout::Orientation::kVertical));
   } else {
@@ -222,7 +219,7 @@ CandidateWindowView::CandidateWindowView(gfx::NativeView parent)
     AddChildView(auxiliary_text_.get());
     AddChildView(candidate_area_.get());
     auxiliary_text_->SetAlignment(gfx::ALIGN_LEFT);
-    auxiliary_text_->SetBorderFromPosition(InformationTextArea::BOTTOM);
+    // auxiliary_text_->SetBorderFromPosition(InformationTextArea::BOTTOM);
     candidate_area_->SetLayoutManager(std::make_unique<views::BoxLayout>(
         views::BoxLayout::Orientation::kHorizontal));
   }
@@ -238,14 +235,22 @@ views::Widget* CandidateWindowView::InitWidget() {
 
   GetBubbleFrameView()->SetBubbleBorder(
       std::make_unique<CandidateWindowBorder>());
+  GetBubbleFrameView()->SetCornerRadius(kOuterCornerRadius);
   GetBubbleFrameView()->OnThemeChanged();
   return widget;
 }
 
 void CandidateWindowView::OnThemeChanged() {
   BubbleDialogDelegateView::OnThemeChanged();
-  SetBorder(views::CreateSolidBorder(
-      1, GetColorProvider()->GetColor(ui::kColorMenuBorder)));
+  // SetBorder(views::CreateSolidBorder(
+  //     1, GetColorProvider()->GetColor(ui::kColorMenuBorder)));
+  // 这里会决定候选词边框的 radius
+  // 不设置 bubble radius 时（set_use_corner_radius(false) 并且 CandidateWindowBorder 不调用 SetCornerRadius(X))
+  //  候选词的背景会突出总体边框
+  // 如果设置了
+  // SetBorder(nullptr);
+  SetBorder(views::CreateRoundedRectBorder(
+      1, kInnerCornerRadius, GetColorProvider()->GetColor(ui::kColorMenuBorder)));
 }
 
 void CandidateWindowView::UpdateVisibility() {
@@ -293,13 +298,13 @@ void CandidateWindowView::UpdateCandidates(
       if (new_candidate_window.orientation() == ui::CandidateWindow::VERTICAL) {
         ReorderChildView(auxiliary_text_, children().size());
         auxiliary_text_->SetAlignment(gfx::ALIGN_RIGHT);
-        auxiliary_text_->SetBorderFromPosition(InformationTextArea::TOP);
+        // auxiliary_text_->SetBorderFromPosition(InformationTextArea::TOP);
         candidate_area_->SetLayoutManager(std::make_unique<views::BoxLayout>(
             views::BoxLayout::Orientation::kVertical));
       } else {
         ReorderChildView(auxiliary_text_, 1);
         auxiliary_text_->SetAlignment(gfx::ALIGN_LEFT);
-        auxiliary_text_->SetBorderFromPosition(InformationTextArea::BOTTOM);
+        // auxiliary_text_->SetBorderFromPosition(InformationTextArea::BOTTOM);
         candidate_area_->SetLayoutManager(std::make_unique<views::BoxLayout>(
             views::BoxLayout::Orientation::kHorizontal));
       }
@@ -319,10 +324,15 @@ void CandidateWindowView::UpdateCandidates(
 
     int max_shortcut_width = 0;
     int max_candidate_width = 0;
-    for (size_t i = 0; i < candidate_views_.size(); ++i) {
+    const bool auxiliary_text_visible =
+        new_candidate_window.is_auxiliary_text_visible();
+    const size_t candidate_views_size = candidate_views_.size();
+    for (size_t i = 0; i < candidate_views_size; ++i) {
       const size_t index_in_page = i;
       const size_t candidate_index = start_from + index_in_page;
       CandidateView* candidate_view = candidate_views_[index_in_page];
+      candidate_view->SetIndexData(index_in_page, candidate_views_size + (auxiliary_text_visible ? 1 : 0));
+      candidate_view->SetBackgroundRadius(kInnerCornerRadius - 1.25);
       // Set the candidate text.
       if (candidate_index < new_candidate_window.candidates().size()) {
         const ui::CandidateWindow::Entry& entry =
@@ -346,9 +356,8 @@ void CandidateWindowView::UpdateCandidates(
       }
     }
     if (new_candidate_window.orientation() == ui::CandidateWindow::VERTICAL) {
-      for (ui::ime::CandidateView* view : candidate_views_) {
+      for (auto* view : candidate_views_)
         view->SetWidths(max_shortcut_width, max_candidate_width);
-      }
     }
 
     std::unique_ptr<CandidateWindowBorder> border =
@@ -358,23 +367,9 @@ void CandidateWindowView::UpdateCandidates(
     else
       border->set_offset(0);
     GetBubbleFrameView()->SetBubbleBorder(std::move(border));
+    GetBubbleFrameView()->SetCornerRadius(kOuterCornerRadius);
     GetBubbleFrameView()->OnThemeChanged();
   }
-
-  const int new_candidate_index_in_page =
-      ComputeIndexInPage(new_candidate_window);
-  // Notify accessibility if selection changes.
-  // Don't notify while showing suggestions, because it interrupts user typing.
-  if (new_candidate_window.is_user_selecting()) {
-    // Notify when index changes, or when candidate window type changes.
-    if (!candidate_window_.is_user_selecting() ||
-        (selected_candidate_index_in_page_ != new_candidate_index_in_page &&
-         new_candidate_index_in_page != -1)) {
-      candidate_views_[new_candidate_index_in_page]->NotifyAccessibilityEvent(
-          ax::mojom::Event::kSelection, false);
-    }
-  }
-
   // Update the current candidate window. We'll use candidate_window_ from here.
   // Note that SelectCandidateAt() uses candidate_window_.
   candidate_window_.CopyFrom(new_candidate_window);
@@ -382,7 +377,9 @@ void CandidateWindowView::UpdateCandidates(
   // Select the current candidate in the page.
   if (candidate_window_.is_cursor_visible()) {
     if (candidate_window_.page_size()) {
-      SelectCandidateAt(new_candidate_index_in_page);
+      const int current_candidate_in_page =
+          candidate_window_.cursor_position() % candidate_window_.page_size();
+      SelectCandidateAt(current_candidate_in_page);
     }
   } else {
     // Unselect the currently selected candidate.
@@ -404,47 +401,10 @@ void CandidateWindowView::UpdateCandidates(
 void CandidateWindowView::SetCursorAndCompositionBounds(
     const gfx::Rect& cursor_bounds,
     const gfx::Rect& composition_bounds) {
-  if (base::FeatureList::IsEnabled(ash::features::kImeKoreanModeSwitchDebug)) {
-    auto* input_method_manager = ash::input_method::InputMethodManager::Get();
-
-    if (input_method_manager) {
-      const std::string& current_input_method_id =
-          input_method_manager->GetActiveIMEState()
-              ->GetCurrentInputMethod()
-              .id();
-
-      if (ash::extension_ime_util::IsCros1pKorean(current_input_method_id)) {
-        pending_anchor_rect_ = candidate_window_.show_window_at_composition()
-                                   ? composition_bounds
-                                   : cursor_bounds;
-        ash::input_method::GetTextFieldContextualInfo(base::BindOnce(
-            &CandidateWindowView::OnTextFieldContextualInfoAvailable,
-            base::Unretained(this)));
-        return;
-      }
-    }
-  }
-
   if (candidate_window_.show_window_at_composition())
     SetAnchorRect(composition_bounds);
   else
     SetAnchorRect(cursor_bounds);
-}
-
-void CandidateWindowView::OnTextFieldContextualInfoAvailable(
-    const ash::input_method::TextFieldContextualInfo& info) {
-  if (!base::FeatureList::IsEnabled(ash::features::kImeKoreanModeSwitchDebug)) {
-    return;
-  }
-
-  if (!info.tab_url.DomainIs("docs.google.com")) {
-    SetAnchorRect(pending_anchor_rect_);
-    return;
-  }
-
-  const gfx::Rect& display_bounds =
-      display::Screen::GetScreen()->GetPrimaryDisplay().bounds();
-  SetAnchorRect(gfx::Rect(80, display_bounds.height() - 60, 0, 0));
 }
 
 void CandidateWindowView::MaybeInitializeCandidateViews(
@@ -515,7 +475,7 @@ void CandidateWindowView::CandidateViewPressed(int index) {
     observer.OnCandidateCommitted(index);
 }
 
-BEGIN_METADATA(CandidateWindowView)
+BEGIN_METADATA(CandidateWindowView, views::BubbleDialogDelegateView)
 END_METADATA
 
 }  // namespace ime

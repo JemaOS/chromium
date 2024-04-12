@@ -4,8 +4,7 @@
 
 #include "third_party/blink/renderer/core/scroll/scroll_into_view_util.h"
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/scroll/scroll_into_view_params.mojom-blink.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
@@ -71,7 +70,7 @@ bool AllowedToPropagateToParent(
 // a scroll should bubble up to or nullptr if the local root has been reached.
 // The return optional will be empty if the scroll is blocked from bubbling to
 // the root.
-std::optional<LayoutBox*> GetScrollParent(
+absl::optional<LayoutBox*> GetScrollParent(
     const LayoutBox& box,
     const mojom::blink::ScrollIntoViewParamsPtr& params) {
   bool is_fixed_to_frame = box.StyleRef().GetPosition() == EPosition::kFixed &&
@@ -88,7 +87,7 @@ std::optional<LayoutBox*> GetScrollParent(
   // prevented from doing so for security or policy reasons. If so, we're
   // done.
   if (!AllowedToPropagateToParent(*box.GetFrame(), params))
-    return std::nullopt;
+    return absl::nullopt;
 
   if (!box.GetFrame()->IsLocalRoot()) {
     // The parent is a local iframe, convert to the absolute coordinate space
@@ -99,7 +98,7 @@ std::optional<LayoutBox*> GetScrollParent(
     // A display:none iframe can have a LayoutView but its owner element won't
     // have a LayoutObject. If that happens, don't bubble the scroll.
     if (!owner_element->GetLayoutObject())
-      return std::nullopt;
+      return absl::nullopt;
 
     return owner_element->GetLayoutObject()->EnclosingBox();
   }
@@ -116,22 +115,19 @@ std::optional<LayoutBox*> GetScrollParent(
 // LayoutObject::ScrollRectToVisible. If the scroll bubbled up to the local
 // root successfully, returns the updated absolute rect in the absolute
 // coordinates of the local root. Otherwise returns an empty optional.
-std::optional<PhysicalRect> PerformBubblingScrollIntoView(
+absl::optional<PhysicalRect> PerformBubblingScrollIntoView(
     const LayoutBox& box,
     const PhysicalRect& absolute_rect,
     mojom::blink::ScrollIntoViewParamsPtr& params,
-    const PhysicalBoxStrut& scroll_margin,
     bool from_remote_frame) {
   DCHECK(params->type == mojom::blink::ScrollType::kProgrammatic ||
          params->type == mojom::blink::ScrollType::kUser);
 
   if (!box.GetFrameView())
-    return std::nullopt;
+    return absl::nullopt;
 
   const LayoutBox* current_box = &box;
   PhysicalRect absolute_rect_to_scroll = absolute_rect;
-  PhysicalBoxStrut active_scroll_margin = scroll_margin;
-  bool scrolled_to_area = false;
 
   // TODO(bokan): Temporary, to track cross-origin scroll-into-view prevalence.
   // https://crbug.com/1339003.
@@ -169,16 +165,12 @@ std::optional<PhysicalRect> PerformBubblingScrollIntoView(
 
     if (area_to_scroll) {
       ScrollOffset scroll_before = area_to_scroll->GetScrollOffset();
-      CHECK(!params->is_for_scroll_sequence ||
-            area_to_scroll->GetSmoothScrollSequencer());
+      DCHECK(area_to_scroll->GetSmoothScrollSequencer());
       wtf_size_t num_scroll_sequences =
-          params->is_for_scroll_sequence
-              ? area_to_scroll->GetSmoothScrollSequencer()->GetCount()
-              : 0ul;
+          area_to_scroll->GetSmoothScrollSequencer()->GetCount();
 
-      absolute_rect_to_scroll = area_to_scroll->ScrollIntoView(
-          absolute_rect_to_scroll, active_scroll_margin, params);
-      scrolled_to_area = true;
+      absolute_rect_to_scroll =
+          area_to_scroll->ScrollIntoView(absolute_rect_to_scroll, params);
 
       // TODO(bokan): Temporary, to track cross-origin scroll-into-view
       // prevalence. https://crbug.com/1339003.
@@ -229,9 +221,7 @@ std::optional<PhysicalRect> PerformBubblingScrollIntoView(
             current_box->GetFrame()
                 ->GetPage()
                 ->GetVisualViewport()
-                .ScrollIntoView(absolute_rect_to_scroll, active_scroll_margin,
-                                params);
-        scrolled_to_area = true;
+                .ScrollIntoView(absolute_rect_to_scroll, params);
       }
 
       // TODO(bokan): To be correct we should continue to bubble the scroll
@@ -244,10 +234,10 @@ std::optional<PhysicalRect> PerformBubblingScrollIntoView(
 
     // If the scroll was stopped prior to reaching the local root, we cannot
     // return a rect since the caller cannot know which frame it's relative to.
-    std::optional<LayoutBox*> next_box_opt =
+    absl::optional<LayoutBox*> next_box_opt =
         GetScrollParent(*current_box, params);
     if (!next_box_opt)
-      return std::nullopt;
+      return absl::nullopt;
 
     LayoutBox* next_box = *next_box_opt;
 
@@ -261,17 +251,6 @@ std::optional<PhysicalRect> PerformBubblingScrollIntoView(
       absolute_rect_to_scroll = current_box->View()->LocalToAncestorRect(
           absolute_rect_to_scroll, next_box->View(),
           kTraverseDocumentBoundaries);
-    }
-
-    // Once we've taken the scroll-margin into account, don't apply it to
-    // ancestor scrollers.
-    // TODO(crbug.com/1325839): Instead of just nullifying the scroll-margin,
-    // maybe we should be applying the scroll-margin of the containing
-    // scrollers themselves? This will probably need to be spec'd as the current
-    // scroll-into-view spec[1] only refers to the bounding border box.
-    // [1] https://drafts.csswg.org/cssom-view-1/#scroll-a-target-into-view
-    if (scrolled_to_area) {
-      active_scroll_margin = PhysicalBoxStrut();
     }
 
     current_box = next_box;
@@ -294,46 +273,16 @@ void ScrollRectToVisible(const LayoutObject& layout_object,
 
   LocalFrame* frame = layout_object.GetFrame();
 
+  frame->GetSmoothScrollSequencer().AbortAnimations();
+  frame->GetSmoothScrollSequencer().SetScrollType(params->type);
   params->is_for_scroll_sequence |=
       params->type == mojom::blink::ScrollType::kProgrammatic;
 
-  SmoothScrollSequencer* old_sequencer = nullptr;
-  if (params->is_for_scroll_sequence) {
-    old_sequencer = frame->CreateNewSmoothScrollSequence();
-    frame->GetSmoothScrollSequencer()->SetScrollType(params->type);
-  }
+  absl::optional<PhysicalRect> updated_absolute_rect =
+      PerformBubblingScrollIntoView(*enclosing_box, absolute_rect, params,
+                                    from_remote_frame);
 
-  PhysicalBoxStrut scroll_margin = PhysicalBoxStrut();
-  PhysicalRect scroll_into_view_rect = absolute_rect;
-  if (const auto* object_style = layout_object.Style()) {
-    scroll_margin =
-        PhysicalBoxStrut(LayoutUnit(object_style->ScrollMarginTop()),
-                         LayoutUnit(object_style->ScrollMarginRight()),
-                         LayoutUnit(object_style->ScrollMarginBottom()),
-                         LayoutUnit(object_style->ScrollMarginLeft()));
-    scroll_into_view_rect.ExpandEdges(scroll_margin.top, scroll_margin.right,
-                                      scroll_margin.bottom, scroll_margin.left);
-  }
-
-  std::optional<PhysicalRect> updated_absolute_rect =
-      PerformBubblingScrollIntoView(*enclosing_box, scroll_into_view_rect,
-                                    params, scroll_margin, from_remote_frame);
-
-  if (params->is_for_scroll_sequence) {
-    if (frame->GetSmoothScrollSequencer()->IsEmpty()) {
-      // If the scroll into view was a no-op (the element was already in the
-      // proper place), reinstate any previously running smooth scroll sequence
-      // so that it can continue running. This prevents unintentionally
-      // clobbering a scroll by e.g. setting focus() to an in-view element.
-      frame->ReinstateSmoothScrollSequence(old_sequencer);
-    } else {
-      // Otherwise clobber any previous sequence.
-      if (old_sequencer) {
-        old_sequencer->AbortAnimations();
-      }
-      frame->GetSmoothScrollSequencer()->RunQueuedAnimations();
-    }
-  }
+  frame->GetSmoothScrollSequencer().RunQueuedAnimations();
 
   // If the scroll into view stopped early (i.e. before the local root),
   // there's no need to continue bubbling or finishing a scroll focused

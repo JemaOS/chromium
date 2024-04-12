@@ -39,11 +39,9 @@ SystemLiveCaptionServiceFactory::SystemLiveCaptionServiceFactory()
 
 SystemLiveCaptionServiceFactory::~SystemLiveCaptionServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-SystemLiveCaptionServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SystemLiveCaptionServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<SystemLiveCaptionService>(
-      Profile::FromBrowserContext(context));
+  return new SystemLiveCaptionService(Profile::FromBrowserContext(context));
 }
 
 }  // namespace ash

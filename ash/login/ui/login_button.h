@@ -7,16 +7,14 @@
 
 #include "ash/ash_export.h"
 #include "base/memory/weak_ptr.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/view.h"
 
 namespace ash {
 
 // This class adds ripple effects for touch targets in the lockscreen.
-class ASH_EXPORT LoginButton : public views::ImageButton {
-  METADATA_HEADER(LoginButton, views::ImageButton)
-
+class ASH_EXPORT LoginButton : public views::ImageButton,
+                               public base::SupportsWeakPtr<LoginButton> {
  public:
   explicit LoginButton(PressedCallback callback);
 
@@ -25,15 +23,8 @@ class ASH_EXPORT LoginButton : public views::ImageButton {
 
   ~LoginButton() override;
 
-  base::WeakPtr<LoginButton> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
  protected:
   virtual int GetInkDropRadius() const;
-
- private:
-  base::WeakPtrFactory<LoginButton> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

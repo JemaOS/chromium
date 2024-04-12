@@ -16,21 +16,25 @@
 #include <vector>
 
 #include "base/containers/adapters.h"
+#include "base/functional/callback.h"
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversion_utils.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/test/chromedriver/basic_types.h"
+#include "chrome/test/chromedriver/chrome/browser_info.h"
 #include "chrome/test/chromedriver/chrome/chrome.h"
 #include "chrome/test/chromedriver/chrome/chrome_desktop_impl.h"
 #include "chrome/test/chromedriver/chrome/devtools_client.h"
 #include "chrome/test/chromedriver/chrome/geoposition.h"
 #include "chrome/test/chromedriver/chrome/javascript_dialog_manager.h"
+#include "chrome/test/chromedriver/chrome/js.h"
 #include "chrome/test/chromedriver/chrome/mobile_emulation_override_manager.h"
 #include "chrome/test/chromedriver/chrome/network_conditions.h"
 #include "chrome/test/chromedriver/chrome/status.h"
@@ -39,6 +43,7 @@
 #include "chrome/test/chromedriver/element_commands.h"
 #include "chrome/test/chromedriver/element_util.h"
 #include "chrome/test/chromedriver/key_converter.h"
+#include "chrome/test/chromedriver/keycode_text_conversion.h"
 #include "chrome/test/chromedriver/net/command_id.h"
 #include "chrome/test/chromedriver/net/timeout.h"
 #include "chrome/test/chromedriver/session.h"
@@ -340,8 +345,8 @@ Status ExecuteTouchEvent(Session* session,
                          WebView* web_view,
                          TouchEventType type,
                          const base::Value::Dict& params) {
-  std::optional<int> x = params.FindInt("x");
-  std::optional<int> y = params.FindInt("y");
+  absl::optional<int> x = params.FindInt("x");
+  absl::optional<int> y = params.FindInt("y");
   if (!x)
     return Status(kInvalidArgument, "'x' must be an integer");
   if (!y)
@@ -377,11 +382,11 @@ Status WindowViewportSize(Session* session,
   if (!status.IsOk())
     return status;
   const base::Value::Dict& view_attrib = value->GetDict();
-  std::optional<int> maybe_inner_width = view_attrib.FindInt("view_width");
+  absl::optional<int> maybe_inner_width = view_attrib.FindInt("view_width");
   if (maybe_inner_width)
     *inner_width = *maybe_inner_width;
 
-  std::optional<int> maybe_inner_height = view_attrib.FindInt("view_height");
+  absl::optional<int> maybe_inner_height = view_attrib.FindInt("view_height");
   if (maybe_inner_height)
     *inner_height = *maybe_inner_height;
   return Status(kOk);
@@ -627,27 +632,27 @@ Status ParsePageRanges(const base::Value::Dict& params,
 //    unexpected type.
 // 3. Optional with value from dictionary.
 template <typename T>
-std::optional<T> ParseIfInDictionary(
+absl::optional<T> ParseIfInDictionary(
     const base::Value::Dict& dict,
     base::StringPiece key,
     T default_value,
-    std::optional<T> (base::Value::*getterIfType)() const) {
+    absl::optional<T> (base::Value::*getterIfType)() const) {
   const auto* val = dict.Find(key);
   if (!val)
-    return std::make_optional(default_value);
+    return absl::make_optional(default_value);
   return (val->*getterIfType)();
 }
 
-std::optional<double> ParseDoubleIfInDictionary(const base::Value::Dict& dict,
-                                                base::StringPiece key,
-                                                double default_value) {
+absl::optional<double> ParseDoubleIfInDictionary(const base::Value::Dict& dict,
+                                                 base::StringPiece key,
+                                                 double default_value) {
   return ParseIfInDictionary(dict, key, default_value,
                              &base::Value::GetIfDouble);
 }
 
-std::optional<int> ParseIntIfInDictionary(const base::Value::Dict& dict,
-                                          base::StringPiece key,
-                                          int default_value) {
+absl::optional<int> ParseIntIfInDictionary(const base::Value::Dict& dict,
+                                           base::StringPiece key,
+                                           int default_value) {
   return ParseIfInDictionary(dict, key, default_value, &base::Value::GetIfInt);
 }
 }  // namespace
@@ -678,23 +683,18 @@ Status ExecuteWindowCommand(const WindowCommand& command,
     // before returning an error, so that subsequent commands do not fail.
     const std::string& prompt_behavior = session->unhandled_prompt_behavior;
 
-    if (prompt_behavior == ::prompt_behavior::kAccept ||
-        prompt_behavior == ::prompt_behavior::kAcceptAndNotify) {
+    if (prompt_behavior == kAccept || prompt_behavior == kAcceptAndNotify)
       status = dialog_manager->HandleDialog(true, session->prompt_text.get());
-    } else if (prompt_behavior == ::prompt_behavior::kDismiss ||
-               prompt_behavior == ::prompt_behavior::kDismissAndNotify) {
+    else if (prompt_behavior == kDismiss ||
+             prompt_behavior == kDismissAndNotify)
       status = dialog_manager->HandleDialog(false, session->prompt_text.get());
-    }
     if (status.IsError())
       return status;
 
     // For backward compatibility, in legacy mode we always notify.
-    if (!session->w3c_compliant ||
-        prompt_behavior == ::prompt_behavior::kAcceptAndNotify ||
-        prompt_behavior == ::prompt_behavior::kDismissAndNotify ||
-        prompt_behavior == ::prompt_behavior::kIgnore) {
+    if (!session->w3c_compliant || prompt_behavior == kAcceptAndNotify ||
+        prompt_behavior == kDismissAndNotify || prompt_behavior == kIgnore)
       return Status(kUnexpectedAlertOpen, "{Alert text : " + alert_text + "}");
-    }
   }
 
   Status nav_status(kOk);
@@ -786,9 +786,6 @@ Status ExecuteExecuteScript(Session* session,
     return web_view->EndProfile(value);
 
   const base::Value::List* args = params.FindList("args");
-  if (args == nullptr) {
-    return Status(kInvalidArgument, "'args' must be a list");
-  }
   // Need to support line oriented comment
   if (script.find("//") != std::string::npos)
     script = script + "\n";
@@ -811,9 +808,6 @@ Status ExecuteExecuteAsyncScript(Session* session,
     return Status(kInvalidArgument, "'script' must be a string");
   std::string script = *maybe_script;
   const base::Value::List* args = params.FindList("args");
-  if (args == nullptr) {
-    return Status(kInvalidArgument, "'args' must be a list");
-  }
 
   // Need to support line oriented comment
   if (script.find("//") != std::string::npos)
@@ -1094,8 +1088,8 @@ Status ExecuteMouseMoveTo(Session* session,
     element_id = *maybe_element_id;
     has_element = true;
   }
-  std::optional<int> x_offset = params.FindInt("xoffset");
-  std::optional<int> y_offset = params.FindInt("yoffset");
+  absl::optional<int> x_offset = params.FindInt("xoffset");
+  absl::optional<int> y_offset = params.FindInt("yoffset");
   bool has_offset = x_offset.has_value() && y_offset.has_value();
   if (!has_element && !has_offset)
     return Status(kInvalidArgument,
@@ -1252,10 +1246,10 @@ Status ExecuteTouchScroll(Session* session,
     if (status.IsError())
       return status;
   }
-  std::optional<int> xoffset = params.FindInt("xoffset");
+  absl::optional<int> xoffset = params.FindInt("xoffset");
   if (!xoffset)
     return Status(kInvalidArgument, "'xoffset' must be an integer");
-  std::optional<int> yoffset = params.FindInt("yoffset");
+  absl::optional<int> yoffset = params.FindInt("yoffset");
   if (!yoffset)
     return Status(kInvalidArgument, "'yoffset' must be an integer");
   return web_view->SynthesizeScrollGesture(location.x, location.y, *xoffset,
@@ -1365,9 +1359,6 @@ Status ProcessInputActionSequence(Session* session,
   }
 
   const base::Value::List* actions = action_sequence.FindList("actions");
-  if (actions == nullptr) {
-    return Status(kInvalidArgument, "'actions' in the sequence must be a list");
-  }
 
   std::unique_ptr<base::Value::List> actions_result(new base::Value::List);
   for (const base::Value& action_item_value : *actions) {
@@ -1463,10 +1454,10 @@ Status ProcessInputActionSequence(Session* session,
           action_dict.Set("button", button_str);
         }
       } else if (*subtype == "pointerMove" || *subtype == "scroll") {
-        std::optional<int> x = action_item.FindInt("x");
+        absl::optional<int> x = action_item.FindInt("x");
         if (!x.has_value())
           return Status(kInvalidArgument, "'x' must be an int");
-        std::optional<int> y = action_item.FindInt("y");
+        absl::optional<int> y = action_item.FindInt("y");
         if (!y.has_value())
           return Status(kInvalidArgument, "'y' must be an int");
         action_dict.Set("x", *x);
@@ -1504,10 +1495,10 @@ Status ProcessInputActionSequence(Session* session,
           return status;
 
         if (*subtype == "scroll") {
-          std::optional<int> delta_x = action_item.FindInt("deltaX");
+          absl::optional<int> delta_x = action_item.FindInt("deltaX");
           if (!delta_x)
             return Status(kInvalidArgument, "'delta x' must be an int");
-          std::optional<int> delta_y = action_item.FindInt("deltaY");
+          absl::optional<int> delta_y = action_item.FindInt("deltaY");
           if (!delta_y)
             return Status(kInvalidArgument, "'delta y' must be an int");
           action_dict.Set("deltaX", *delta_x);
@@ -1520,8 +1511,8 @@ Status ProcessInputActionSequence(Session* session,
       }
 
       // Process Pointer Event's properties.
-      std::optional<double> maybe_double_value;
-      std::optional<int> maybe_int_value;
+      absl::optional<double> maybe_double_value;
+      absl::optional<int> maybe_int_value;
 
       maybe_double_value = ParseDoubleIfInDictionary(action_item, "width", 1);
       if (!maybe_double_value.has_value() || maybe_double_value.value() < 0)
@@ -1586,9 +1577,6 @@ Status ExecutePerformActions(Session* session,
                              Timeout* timeout) {
   // extract action sequence
   const base::Value::List* actions_input = params.FindList("actions");
-  if (actions_input == nullptr) {
-    return Status(kInvalidArgument, "'actions' must be a list");
-  }
 
   // the processed actions
   std::vector<std::vector<base::Value::Dict>> actions_list;
@@ -1676,11 +1664,11 @@ Status ExecutePerformActions(Session* session,
                 session, web_view, &viewport_width, &viewport_height);
             if (status.IsError())
               return status;
-            std::optional<int> maybe_init_x = input_state->FindInt("x");
+            absl::optional<int> maybe_init_x = input_state->FindInt("x");
             if (maybe_init_x)
               init_x = *maybe_init_x;
 
-            std::optional<int> maybe_init_y = input_state->FindInt("y");
+            absl::optional<int> maybe_init_y = input_state->FindInt("y");
             if (maybe_init_y)
               init_y = *maybe_init_y;
             action_locations.insert(
@@ -1995,7 +1983,7 @@ Status ExecuteSendCommandFromWebSocket(Session* session,
   if (!cmd_params) {
     return Status(kInvalidArgument, "params not passed");
   }
-  std::optional<int> client_cmd_id = params.FindInt("id");
+  absl::optional<int> client_cmd_id = params.FindInt("id");
   if (!client_cmd_id || !CommandId::IsClientCommandId(*client_cmd_id)) {
     return Status(kInvalidArgument, "command id must be negative");
   }
@@ -2033,9 +2021,6 @@ Status ExecuteSendKeysToActiveElement(Session* session,
                                       std::unique_ptr<base::Value>* value,
                                       Timeout* timeout) {
   const base::Value::List* key_list = params.FindList("value");
-  if (key_list == nullptr) {
-    return Status(kInvalidArgument, "'value' must be a list");
-  }
   return SendKeysOnWindow(
       web_view, key_list, false, &session->sticky_modifiers);
 }
@@ -2176,24 +2161,19 @@ Status ExecuteFullPageScreenshot(Session* session,
     return status;
 
   std::unique_ptr<base::Value> layout_metrics;
-  // TODO(crbug.com/1444533): Pass base::Value::Dict* as return param.
   status = web_view->SendCommandAndGetResult(
       "Page.getLayoutMetrics", base::Value::Dict(), &layout_metrics);
   if (status.IsError())
     return status;
 
-  CHECK(layout_metrics && layout_metrics->is_dict());
-  const auto& layout_metrics_dict = layout_metrics->GetDict();
-  const auto width =
-      layout_metrics_dict.FindDoubleByDottedPath("contentSize.width");
+  const auto width = layout_metrics->FindDoublePath("contentSize.width");
   if (!width.has_value())
     return Status(kUnknownError, "invalid width type");
   int w = ceil(width.value());
   if (w == 0)
     return Status(kUnknownError, "invalid width 0");
 
-  const auto height =
-      layout_metrics_dict.FindDoubleByDottedPath("contentSize.height");
+  const auto height = layout_metrics->FindDoublePath("contentSize.height");
   if (!height.has_value())
     return Status(kUnknownError, "invalid height type");
   int h = ceil(height.value());
@@ -2495,46 +2475,6 @@ Status ExecuteDeleteAllCookies(Session* session,
   return Status(kOk);
 }
 
-Status ExecuteRunBounceTrackingMitigations(Session* session,
-                                           WebView* web_view,
-                                           const base::Value::Dict& params,
-                                           std::unique_ptr<base::Value>* value,
-                                           Timeout* timeout) {
-  // Run command and get result
-  auto result = std::make_unique<base::Value>(base::Value::Type::DICT);
-  Status status = web_view->SendCommandAndGetResult(
-      "Storage.runBounceTrackingMitigations", base::Value::Dict(), &result);
-  if (status.IsError()) {
-    return status;
-  }
-
-  if (result->GetDict().empty()) {
-    // The result dictionary should only be empty if there is no bounce tracking
-    // mitigations service (DIPSService) for the current browser context.
-    return Status(
-        kUnsupportedOperation,
-        "current remote end configuration does not support bounce tracking "
-        "mitigations");
-  }
-
-  const base::Value::List* deleted_sites =
-      result->GetDict().FindList("deletedSites");
-
-  // create copies of items `deleted_sites` and add them to the output list.
-  auto site_list = std::make_unique<base::Value>(base::Value::Type::LIST);
-  for (const base::Value& site : *deleted_sites) {
-    if (!site.is_string()) {
-      return Status(kUnknownError,
-                    "DevTools returns a non-string bounce tracker site");
-    }
-    site_list->GetList().Append(site.GetString());
-  }
-
-  *value = std::move(site_list);
-
-  return Status(kOk);
-}
-
 Status ExecuteSetRPHRegistrationMode(Session* session,
                                      WebView* web_view,
                                      const base::Value::Dict& params,
@@ -2562,19 +2502,19 @@ Status ExecuteSetLocation(Session* session,
   if (!location)
     return Status(kInvalidArgument, "missing or invalid 'location'");
 
-  std::optional<double> maybe_latitude = location->FindDouble("latitude");
+  absl::optional<double> maybe_latitude = location->FindDouble("latitude");
   if (!maybe_latitude.has_value())
     return Status(kInvalidArgument, "missing or invalid 'location.latitude'");
   geoposition.latitude = maybe_latitude.value();
 
-  std::optional<double> maybe_longitude = location->FindDouble("longitude");
+  absl::optional<double> maybe_longitude = location->FindDouble("longitude");
   if (!maybe_longitude.has_value())
     return Status(kInvalidArgument, "missing or invalid 'location.longitude'");
   geoposition.longitude = maybe_longitude.value();
 
   // |accuracy| is not part of the WebDriver spec yet, so if it is not given
   // default to 100 meters accuracy.
-  std::optional<double> maybe_accuracy =
+  absl::optional<double> maybe_accuracy =
       ParseDoubleIfInDictionary(*location, "accuracy", 100);
   if (!maybe_accuracy.has_value())
     return Status(kInvalidArgument, "invalid 'accuracy'");
@@ -2604,7 +2544,7 @@ Status ExecuteSetNetworkConditions(Session* session,
   } else if (const base::Value::Dict* conditions =
                  params.FindDict("network_conditions")) {
     // |latency| is required.
-    std::optional<double> maybe_latency = conditions->FindDouble("latency");
+    absl::optional<double> maybe_latency = conditions->FindDouble("latency");
     if (!maybe_latency.has_value())
       return Status(kInvalidArgument,
                     "invalid 'network_conditions' is missing 'latency'");
@@ -2613,7 +2553,7 @@ Status ExecuteSetNetworkConditions(Session* session,
     // Either |throughput| or the pair |download_throughput| and
     // |upload_throughput| is required.
     if (conditions->Find("throughput")) {
-      std::optional<double> maybe_throughput =
+      absl::optional<double> maybe_throughput =
           conditions->FindDouble("throughput");
       if (!maybe_throughput.has_value())
         return Status(kInvalidArgument, "invalid 'throughput'");
@@ -2621,9 +2561,9 @@ Status ExecuteSetNetworkConditions(Session* session,
       network_conditions->download_throughput = maybe_throughput.value();
     } else if (conditions->Find("download_throughput") &&
                conditions->Find("upload_throughput")) {
-      std::optional<double> maybe_download_throughput =
+      absl::optional<double> maybe_download_throughput =
           conditions->FindDouble("download_throughput");
-      std::optional<double> maybe_upload_throughput =
+      absl::optional<double> maybe_upload_throughput =
           conditions->FindDouble("upload_throughput");
 
       if (!maybe_download_throughput.has_value() ||

@@ -8,20 +8,21 @@
 
 export class BrowserUtil {
   /**
-   * Opens a URL in the user's preferred browser (Lacros if enabled, Ash
-   * otherwise). If a feature needs to always open in the Ash browser, for
-   * example to show an extension page, it should not use this method.
+   * Opens a URL in the user's preferred browser (Lacros if Lacros-primary or
+   * Lacros-only, Ash otherwise). If a feature needs to always open in the Ash
+   * browser, for example to show an extension page, it should not use this
+   * method.
    * @param {string} url The URL to open.
    */
   static async openBrowserUrl(url) {
-    if (BrowserUtil.isLacrosEnabled_ === null) {
+    if (BrowserUtil.isLacrosPrimary_ === null) {
       // Cache the value on first use. This will not change after Chrome OS
       // is already running.
-      BrowserUtil.isLacrosEnabled_ = await new Promise(
+      BrowserUtil.isLacrosPrimary_ = await new Promise(
           resolve => chrome.accessibilityPrivate.isLacrosPrimary(resolve));
     }
 
-    if (BrowserUtil.isLacrosEnabled_) {
+    if (BrowserUtil.isLacrosPrimary_) {
       globalThis.open(url, '_blank');
       return;
     }
@@ -44,4 +45,4 @@ export class BrowserUtil {
  * null if it hasn't been fetched yet.
  * @private {?boolean}
  */
-BrowserUtil.isLacrosEnabled_ = null;
+BrowserUtil.isLacrosPrimary_ = null;

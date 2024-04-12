@@ -28,7 +28,8 @@ import java.util.Map;
  * with "new", and pass the mocks.
  */
 public class ModuleFactoryOverrides {
-    @Nullable private static Map<Class<?>, Object> sOverrides;
+    @Nullable
+    private static Map<Class<?>, Object> sOverrides;
 
     /** Override the Module factory of specified type. */
     static void setOverride(Class<?> factoryClass, Object override) {
@@ -43,7 +44,9 @@ public class ModuleFactoryOverrides {
         sOverrides = null;
     }
 
-    /** Returns an overridden factory for the given factory class, if present. */
+    /**
+     * Returns an overridden factory for the given factory class, if present.
+     */
     @Nullable
     @SuppressWarnings("unchecked") // Unsafe cast occurs only in test environment
     public static <T> T getOverrideFor(Class<T> factoryClass) {

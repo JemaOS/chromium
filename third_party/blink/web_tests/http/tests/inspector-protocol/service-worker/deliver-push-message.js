@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startURL(
       'resources/push-message-service-worker.html',
       `Tests delivery of a push message to the service worker.`);

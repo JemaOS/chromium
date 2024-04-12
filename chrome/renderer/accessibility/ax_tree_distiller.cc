@@ -12,12 +12,8 @@
 #include "base/containers/contains.h"
 #include "base/strings/utf_string_conversions.h"
 #include "content/public/renderer/render_frame.h"
-#include "content/public/renderer/render_thread.h"
-#include "services/metrics/public/cpp/mojo_ukm_recorder.h"
-#include "services/metrics/public/cpp/ukm_builders.h"
 #include "third_party/blink/public/common/browser_interface_broker_proxy.h"
 #include "ui/accessibility/accessibility_features.h"
-#include "ui/accessibility/ax_enums.mojom-shared.h"
 #include "ui/accessibility/ax_node.h"
 #include "ui/accessibility/ax_tree.h"
 
@@ -25,9 +21,9 @@ namespace {
 
 // TODO: Consider moving this to AXNodeProperties.
 static const ax::mojom::Role kContentRoles[]{
-    ax::mojom::Role::kHeading, ax::mojom::Role::kParagraph,
-    ax::mojom::Role::kNote, ax::mojom::Role::kImage,
-    ax::mojom::Role::kFigcaption};
+    ax::mojom::Role::kHeading,
+    ax::mojom::Role::kParagraph,
+};
 
 // TODO: Consider moving this to AXNodeProperties.
 static const ax::mojom::Role kRolesToSkip[]{
@@ -38,12 +34,12 @@ static const ax::mojom::Role kRolesToSkip[]{
     ax::mojom::Role::kContentInfo,
     ax::mojom::Role::kFooter,
     ax::mojom::Role::kFooterAsNonLandmark,
+    ax::mojom::Role::kImage,
     ax::mojom::Role::kLabelText,
     ax::mojom::Role::kNavigation,
 };
 
-// Find all of the main and article nodes. Also, include unignored heading nodes
-// which lie outside of the main and article node.
+// Find all of the main and article nodes.
 // TODO(crbug.com/1266555): Replace this with a call to
 // OneShotAccessibilityTreeSearch.
 void GetContentRootNodes(const ui::AXNode* root,
@@ -53,7 +49,6 @@ void GetContentRootNodes(const ui::AXNode* root,
   }
   std::queue<const ui::AXNode*> queue;
   queue.push(root);
-  bool has_main_or_heading = false;
   while (!queue.empty()) {
     const ui::AXNode* node = queue.front();
     queue.pop();
@@ -62,23 +57,12 @@ void GetContentRootNodes(const ui::AXNode* root,
     if (node->GetRole() == ax::mojom::Role::kMain ||
         node->GetRole() == ax::mojom::Role::kArticle) {
       content_root_nodes->push_back(node);
-      has_main_or_heading = true;
-      continue;
-    }
-    // If a heading node is found, add it to the list of content root nodes,
-    // too. It may be removed later if the tree doesn't contain a main or
-    // article node.
-    if (node->GetRole() == ax::mojom::Role::kHeading) {
-      content_root_nodes->push_back(node);
       continue;
     }
     for (auto iter = node->UnignoredChildrenBegin();
          iter != node->UnignoredChildrenEnd(); ++iter) {
       queue.push(iter.get());
     }
-  }
-  if (!has_main_or_heading) {
-    content_root_nodes->clear();
   }
 }
 
@@ -88,15 +72,7 @@ void GetContentRootNodes(const ui::AXNode* root,
 // |content_node_ids|, whose pointer is passed through the recursion.
 void AddContentNodesToVector(const ui::AXNode* node,
                              std::vector<ui::AXNodeID>* content_node_ids) {
-  const auto& role = node->GetRole();
-  if (base::Contains(kContentRoles, role)) {
-    // TODO(1464340): Remove when flag is no longer necessary. Skip these roles
-    // if the flag is not enabled.
-    if (!features::IsReadAnythingImagesViaAlgorithmEnabled() &&
-        (role == ax::mojom::Role::kFigcaption ||
-         role == ax::mojom::Role::kImage)) {
-      return;
-    }
+  if (base::Contains(kContentRoles, node->GetRole())) {
     content_node_ids->emplace_back(node->id());
     return;
   }
@@ -111,117 +87,76 @@ void AddContentNodesToVector(const ui::AXNode* node,
 }  // namespace
 
 AXTreeDistiller::AXTreeDistiller(
+    content::RenderFrame* render_frame,
     OnAXTreeDistilledCallback on_ax_tree_distilled_callback)
-    : on_ax_tree_distilled_callback_(on_ax_tree_distilled_callback) {
-  // TODO(crbug.com/1450930): Use a global ukm recorder instance instead.
-  mojo::Remote<ukm::mojom::UkmRecorderFactory> factory;
-  content::RenderThread::Get()->BindHostReceiver(
-      factory.BindNewPipeAndPassReceiver());
-  ukm_recorder_ = ukm::MojoUkmRecorder::Create(*factory);
-}
+    : render_frame_(render_frame),
+      on_ax_tree_distilled_callback_(on_ax_tree_distilled_callback) {}
 
 AXTreeDistiller::~AXTreeDistiller() = default;
 
 void AXTreeDistiller::Distill(const ui::AXTree& tree,
                               const ui::AXTreeUpdate& snapshot,
-                              const ukm::SourceId ukm_source_id) {
-  base::TimeTicks start_time = base::TimeTicks::Now();
-
-  std::vector<ui::AXNodeID> content_node_ids;
-  if (features::IsReadAnythingWithAlgorithmEnabled()) {
-    // Try with the algorithm first.
-    DistillViaAlgorithm(tree, ukm_source_id, &content_node_ids);
-  }
-
+                              const ukm::SourceId& ukm_source_id) {
   // If Read Anything with Screen 2x is enabled and the main content extractor
-  // is bound, kick off Screen 2x run, which distills the AXTree in the
-  // utility process using ML.
+  // is bound, kick off Screen 2x run, which distills the AXTree in the utility
+  // process using ML.
+#if BUILDFLAG(ENABLE_SCREEN_AI_SERVICE)
   if (features::IsReadAnythingWithScreen2xEnabled() &&
       main_content_extractor_.is_bound()) {
-    DistillViaScreen2x(tree, snapshot, ukm_source_id, start_time,
-                       &content_node_ids);
+    DistillViaScreen2x(tree, snapshot, ukm_source_id);
     return;
   }
+#endif
 
-  // Ensure we still callback if Screen2x is not available.
+  // Otherwise, distill the AXTree in process using the rules-based algorithm.
+  DistillViaAlgorithm(tree);
+}
+
+void AXTreeDistiller::DistillViaAlgorithm(const ui::AXTree& tree) {
+  std::vector<const ui::AXNode*> content_root_nodes;
+  std::vector<ui::AXNodeID> content_node_ids;
+  GetContentRootNodes(tree.root(), &content_root_nodes);
+  for (const ui::AXNode* content_root_node : content_root_nodes) {
+    AddContentNodesToVector(content_root_node, &content_node_ids);
+  }
   on_ax_tree_distilled_callback_.Run(tree.GetAXTreeID(), content_node_ids);
 }
 
-void AXTreeDistiller::DistillViaAlgorithm(
-    const ui::AXTree& tree,
-    const ukm::SourceId ukm_source_id,
-    std::vector<ui::AXNodeID>* content_node_ids) {
-  base::TimeTicks start_time = base::TimeTicks::Now();
-  std::vector<const ui::AXNode*> content_root_nodes;
-  GetContentRootNodes(tree.root(), &content_root_nodes);
-  for (const ui::AXNode* content_root_node : content_root_nodes) {
-    AddContentNodesToVector(content_root_node, content_node_ids);
-  }
-  RecordRulesMetrics(ukm_source_id, base::TimeTicks::Now() - start_time,
-                     !content_node_ids->empty());
-}
-
-void AXTreeDistiller::RecordRulesMetrics(ukm::SourceId ukm_source_id,
-                                         base::TimeDelta elapsed_time,
-                                         bool success) {
-  if (success) {
-    base::UmaHistogramTimes(
-        "Accessibility.ReadAnything.RulesDistillationTime.Success",
-        elapsed_time);
-    ukm::builders::Accessibility_ReadAnything(ukm_source_id)
-        .SetRulesDistillationTime_Success(elapsed_time.InMilliseconds())
-        .Record(ukm_recorder_.get());
-  } else {
-    base::UmaHistogramTimes(
-        "Accessibility.ReadAnything.RulesDistillationTime.Failure",
-        elapsed_time);
-    ukm::builders::Accessibility_ReadAnything(ukm_source_id)
-        .SetRulesDistillationTime_Failure(elapsed_time.InMilliseconds())
-        .Record(ukm_recorder_.get());
-  }
-}
-
-void AXTreeDistiller::DistillViaScreen2x(
-    const ui::AXTree& tree,
-    const ui::AXTreeUpdate& snapshot,
-    const ukm::SourceId ukm_source_id,
-    base::TimeTicks start_time,
-    std::vector<ui::AXNodeID>* content_node_ids_algorithm) {
+#if BUILDFLAG(ENABLE_SCREEN_AI_SERVICE)
+void AXTreeDistiller::DistillViaScreen2x(const ui::AXTree& tree,
+                                         const ui::AXTreeUpdate& snapshot,
+                                         const ukm::SourceId& ukm_source_id) {
   DCHECK(main_content_extractor_.is_bound());
-  // Make a copy of |content_node_ids_algorithm| rather than sending a pointer.
   main_content_extractor_->ExtractMainContent(
       snapshot, ukm_source_id,
       base::BindOnce(&AXTreeDistiller::ProcessScreen2xResult,
-                     weak_ptr_factory_.GetWeakPtr(), tree.GetAXTreeID(),
-                     ukm_source_id, start_time, *content_node_ids_algorithm));
+                     weak_ptr_factory_.GetWeakPtr(),
+                     base::UnsafeDanglingUntriaged(
+                         base::raw_ref<const ui::AXTree>(tree))));
 }
 
 void AXTreeDistiller::ProcessScreen2xResult(
-    const ui::AXTreeID& tree_id,
-    const ukm::SourceId ukm_source_id,
-    base::TimeTicks start_time,
-    std::vector<ui::AXNodeID> content_node_ids_algorithm,
-    const std::vector<ui::AXNodeID>& content_node_ids_screen2x) {
-  // Merge the results from the algorithm and from screen2x.
-  for (ui::AXNodeID content_node_id_screen2x : content_node_ids_screen2x) {
-    if (!base::Contains(content_node_ids_algorithm, content_node_id_screen2x)) {
-      content_node_ids_algorithm.push_back(content_node_id_screen2x);
-    }
+    const ui::AXTree& tree,
+    const std::vector<ui::AXNodeID>& content_node_ids) {
+  // If content nodes were identified, run callback.
+  if (!content_node_ids.empty()) {
+    on_ax_tree_distilled_callback_.Run(tree.GetAXTreeID(), content_node_ids);
+    return;
   }
-  RecordMergedMetrics(ukm_source_id, base::TimeTicks::Now() - start_time,
-                      !content_node_ids_algorithm.empty());
-  on_ax_tree_distilled_callback_.Run(tree_id, content_node_ids_algorithm);
 
-  // TODO(crbug.com/1266555): If no content nodes were identified, and
+  // Otherwise, try the rules-based approach.
+  DistillViaAlgorithm(tree);
+
+  // TODO(crbug.com/1266555): If still no content nodes were identified, and
   // there is a selection, try sending Screen2x a partial tree just containing
   // the selected nodes.
 }
 
-void AXTreeDistiller::ScreenAIServiceReady(content::RenderFrame* render_frame) {
-  if (main_content_extractor_.is_bound() || !render_frame) {
+void AXTreeDistiller::ScreenAIServiceReady() {
+  if (main_content_extractor_.is_bound()) {
     return;
   }
-  render_frame->GetBrowserInterfaceBroker()->GetInterface(
+  render_frame_->GetBrowserInterfaceBroker()->GetInterface(
       main_content_extractor_.BindNewPipeAndPassReceiver());
   main_content_extractor_.set_disconnect_handler(
       base::BindOnce(&AXTreeDistiller::OnMainContentExtractorDisconnected,
@@ -232,23 +167,4 @@ void AXTreeDistiller::OnMainContentExtractorDisconnected() {
   on_ax_tree_distilled_callback_.Run(ui::AXTreeIDUnknown(),
                                      std::vector<ui::AXNodeID>());
 }
-
-void AXTreeDistiller::RecordMergedMetrics(ukm::SourceId ukm_source_id,
-                                          base::TimeDelta elapsed_time,
-                                          bool success) {
-  if (success) {
-    base::UmaHistogramTimes(
-        "Accessibility.ReadAnything.MergedDistillationTime.Success",
-        elapsed_time);
-    ukm::builders::Accessibility_ReadAnything(ukm_source_id)
-        .SetMergedDistillationTime_Success(elapsed_time.InMilliseconds())
-        .Record(ukm_recorder_.get());
-  } else {
-    base::UmaHistogramTimes(
-        "Accessibility.ReadAnything.MergedDistillationTime.Failure",
-        elapsed_time);
-    ukm::builders::Accessibility_ReadAnything(ukm_source_id)
-        .SetMergedDistillationTime_Failure(elapsed_time.InMilliseconds())
-        .Record(ukm_recorder_.get());
-  }
-}
+#endif

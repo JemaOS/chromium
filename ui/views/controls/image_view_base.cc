@@ -23,7 +23,7 @@ ImageViewBase::ImageViewBase() {
   // inclusion/exclusion behavior without unexpected platform-specific
   // side effects related to the role changing.
   if (GetAccessibleName().empty() && tooltip_text_.empty()) {
-    GetViewAccessibility().SetIsIgnored(true);
+    GetViewAccessibility().OverrideIsIgnored(true);
   }
 }
 
@@ -93,7 +93,7 @@ void ImageViewBase::AdjustAccessibleName(std::u16string& new_name,
     new_name = tooltip_text_;
   }
 
-  GetViewAccessibility().SetIsIgnored(new_name.empty());
+  GetViewAccessibility().OverrideIsIgnored(new_name.empty());
 }
 
 std::u16string ImageViewBase::GetTooltipText(const gfx::Point& p) const {
@@ -171,7 +171,7 @@ void ImageViewBase::PreferredSizeChanged() {
   UpdateImageOrigin();
 }
 
-BEGIN_METADATA(ImageViewBase)
+BEGIN_METADATA(ImageViewBase, View)
 ADD_PROPERTY_METADATA(Alignment, HorizontalAlignment)
 ADD_PROPERTY_METADATA(Alignment, VerticalAlignment)
 ADD_PROPERTY_METADATA(std::u16string, TooltipText)

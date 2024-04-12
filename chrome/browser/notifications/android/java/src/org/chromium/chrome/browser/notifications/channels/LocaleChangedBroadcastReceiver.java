@@ -11,7 +11,9 @@ import android.content.Intent;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
 
-/** Triggered when Android's locale changes. */
+/**
+ * Triggered when Android's locale changes.
+ */
 public class LocaleChangedBroadcastReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -19,14 +21,14 @@ public class LocaleChangedBroadcastReceiver extends BroadcastReceiver {
         updateChannels();
     }
 
-    /** Updates notification channels to reflect the new locale. */
+    /**
+     * Updates notification channels to reflect the new locale.
+     */
     private void updateChannels() {
         final PendingResult result = goAsync();
-        PostTask.postTask(
-                TaskTraits.BEST_EFFORT_MAY_BLOCK,
-                () -> {
-                    ChannelsUpdater.getInstance().updateLocale();
-                    result.finish();
-                });
+        PostTask.postTask(TaskTraits.BEST_EFFORT_MAY_BLOCK, () -> {
+            ChannelsUpdater.getInstance().updateLocale();
+            result.finish();
+        });
     }
 }

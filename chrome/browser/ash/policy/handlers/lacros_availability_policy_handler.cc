@@ -38,13 +38,13 @@ void LacrosAvailabilityPolicyHandler::ApplyPolicySettings(
   }
 }
 
-std::optional<ash::standalone_browser::LacrosAvailability>
+absl::optional<ash::standalone_browser::LacrosAvailability>
 LacrosAvailabilityPolicyHandler::GetValue(const PolicyMap& policies,
                                           PolicyErrorMap* errors) {
   const base::Value* value;
   const bool value_found = CheckAndGetValue(policies, errors, &value) && value;
   if (!value_found)
-    return std::nullopt;
+    return absl::nullopt;
 
   auto parsed =
       ash::standalone_browser::ParseLacrosAvailability(value->GetString());

@@ -6,9 +6,6 @@
 
 #include <windows.h>
 
-#include "base/ranges/algorithm.h"
-#include "base/strings/string_number_conversions.h"
-
 namespace {
 
 // Returns true if the given two ASCII characters are same (ignoring case).
@@ -33,8 +30,16 @@ bool HexEncode(const void* bytes, size_t size, wchar_t* str, size_t str_size) {
     return false;
   }
 
-  base::ranges::copy(base::HexEncode(bytes, size), str);
+  static const wchar_t kHexChars[] = L"0123456789ABCDEF";
+
   str[size * 2] = L'\0';
+
+  for (size_t i = 0; i < size; ++i) {
+    char b = reinterpret_cast<const char*>(bytes)[i];
+    str[(i * 2)] = kHexChars[(b >> 4) & 0xf];
+    str[(i * 2) + 1] = kHexChars[b & 0xf];
+  }
+
   return true;
 }
 

@@ -6,7 +6,6 @@
 
 #include "base/functional/bind.h"
 #include "base/logging.h"
-#include "base/memory/raw_ptr.h"
 #include "components/dbus/thread_linux/dbus_thread_linux.h"
 #include "dbus/bus.h"
 #include "dbus/message.h"
@@ -15,9 +14,18 @@
 #include "ui/linux/linux_ui_factory.h"
 #include "ui/native_theme/native_theme.h"
 
-namespace ui {
-
 namespace {
+
+constexpr char kFreedesktopSettingsService[] = "org.freedesktop.portal.Desktop";
+constexpr char kFreedesktopSettingsObjectPath[] =
+    "/org/freedesktop/portal/desktop";
+constexpr char kFreedesktopSettingsInterface[] =
+    "org.freedesktop.portal.Settings";
+constexpr char kSettingChangedSignal[] = "SettingChanged";
+constexpr char kReadMethod[] = "Read";
+constexpr char kSettingsNamespace[] = "org.freedesktop.appearance";
+constexpr char kColorSchemeKey[] = "color-scheme";
+constexpr int kFreedesktopColorSchemeDark = 1;
 
 scoped_refptr<dbus::Bus> CreateBus() {
   dbus::Bus::Options options;
@@ -29,24 +37,10 @@ scoped_refptr<dbus::Bus> CreateBus() {
 
 }  // namespace
 
-DarkModeManagerLinux::DarkModeManagerLinux()
-    : DarkModeManagerLinux(
-          CreateBus(),
-          ui::GetDefaultLinuxUiTheme(),
-          &ui::GetLinuxUiThemes(),
-          std::vector<raw_ptr<ui::NativeTheme, VectorExperimental>>{
-              ui::NativeTheme::GetInstanceForNativeUi(),
-              ui::NativeTheme::GetInstanceForWeb()}) {}
+namespace ui {
 
-DarkModeManagerLinux::DarkModeManagerLinux(
-    scoped_refptr<dbus::Bus> bus,
-    LinuxUiTheme* default_linux_ui_theme,
-    const std::vector<raw_ptr<LinuxUiTheme, VectorExperimental>>*
-        linux_ui_themes,
-    std::vector<raw_ptr<NativeTheme, VectorExperimental>> native_themes)
-    : linux_ui_themes_(linux_ui_themes),
-      native_themes_(native_themes),
-      bus_(bus),
+DarkModeManagerLinux::DarkModeManagerLinux()
+    : bus_(CreateBus()),
       settings_proxy_(bus_->GetObjectProxy(
           kFreedesktopSettingsService,
           dbus::ObjectPath(kFreedesktopSettingsObjectPath))) {
@@ -63,36 +57,30 @@ DarkModeManagerLinux::DarkModeManagerLinux(
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(kSettingsNamespace);
   writer.AppendString(kColorSchemeKey);
-  settings_proxy_->CallMethodWithErrorCallback(
+  settings_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::BindOnce(&DarkModeManagerLinux::OnReadColorSchemeResponse,
-                     weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&DarkModeManagerLinux::OnReadColorSchemeError,
                      weak_ptr_factory_.GetWeakPtr()));
 
   // Read the toolkit preference while asynchronously fetching the
   // portal preference.
-  if (default_linux_ui_theme) {
-    auto* native_theme = default_linux_ui_theme->GetNativeTheme();
+  if (auto* linux_ui_theme = ui::GetDefaultLinuxUiTheme()) {
+    auto* native_theme = linux_ui_theme->GetNativeTheme();
     native_theme_observer_.Observe(native_theme);
-    SetColorScheme(native_theme->ShouldUseDarkColors(), true);
+    SetColorScheme(native_theme->ShouldUseDarkColors());
   }
 }
 
 DarkModeManagerLinux::~DarkModeManagerLinux() {
   settings_proxy_ = nullptr;
   dbus::Bus* const bus_ptr = bus_.get();
-  // `task_runner` may be nullptr in testing.
-  if (auto* task_runner = bus_ptr->GetDBusTaskRunner()) {
-    task_runner->PostTask(
-        FROM_HERE,
-        base::BindOnce(&dbus::Bus::ShutdownAndBlock, std::move(bus_)));
-  }
+  bus_ptr->GetDBusTaskRunner()->PostTask(
+      FROM_HERE, base::BindOnce(&dbus::Bus::ShutdownAndBlock, std::move(bus_)));
 }
 
 void DarkModeManagerLinux::OnNativeThemeUpdated(
     ui::NativeTheme* observed_theme) {
-  SetColorScheme(observed_theme->ShouldUseDarkColors(), true);
+  SetColorScheme(observed_theme->ShouldUseDarkColors());
 }
 
 void DarkModeManagerLinux::OnSignalConnected(const std::string& interface_name,
@@ -126,7 +114,7 @@ void DarkModeManagerLinux::OnPortalSettingChanged(dbus::Signal* signal) {
     return;
   }
 
-  SetColorScheme(new_color_scheme == kFreedesktopColorSchemeDark, false);
+  SetColorScheme(new_color_scheme == kFreedesktopColorSchemeDark);
 }
 
 void DarkModeManagerLinux::OnReadColorSchemeResponse(dbus::Response* response) {
@@ -149,34 +137,20 @@ void DarkModeManagerLinux::OnReadColorSchemeResponse(dbus::Response* response) {
     return;
   }
 
-  // Once we read the org.freedesktop.appearance color-scheme setting
-  // successfully, it should always take precedence over the toolkit color
-  // scheme.
-  ignore_toolkit_theme_changes_ = true;
+  // Ignore future updates from the toolkit theme.
+  native_theme_observer_.Reset();
 
-  SetColorScheme(new_color_scheme == kFreedesktopColorSchemeDark, false);
+  SetColorScheme(new_color_scheme == kFreedesktopColorSchemeDark);
 }
 
-void DarkModeManagerLinux::OnReadColorSchemeError(dbus::ErrorResponse* error) {
-  // Ignore errors.  It's expected that the settings portal may not exist.
-}
-
-void DarkModeManagerLinux::SetColorScheme(bool prefer_dark_theme,
-                                          bool from_toolkit_theme) {
-  if (from_toolkit_theme && ignore_toolkit_theme_changes_) {
-    return;
-  }
-  if (!from_toolkit_theme) {
-    for (ui::LinuxUiTheme* linux_ui_theme : *linux_ui_themes_) {
-      linux_ui_theme->SetDarkTheme(prefer_dark_theme);
-    }
-  }
+void DarkModeManagerLinux::SetColorScheme(bool prefer_dark_theme) {
   if (prefer_dark_theme_ == prefer_dark_theme) {
     return;
   }
   prefer_dark_theme_ = prefer_dark_theme;
 
-  for (NativeTheme* theme : native_themes_) {
+  for (NativeTheme* theme : {NativeTheme::GetInstanceForNativeUi(),
+                             NativeTheme::GetInstanceForWeb()}) {
     theme->set_use_dark_colors(prefer_dark_theme_);
     theme->set_preferred_color_scheme(
         prefer_dark_theme_ ? NativeTheme::PreferredColorScheme::kDark

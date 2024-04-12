@@ -68,8 +68,7 @@ image_fetcher::ImageFetcherService* ImageFetcherServiceFactory::GetForKey(
 
 // static
 ImageFetcherServiceFactory* ImageFetcherServiceFactory::GetInstance() {
-  static base::NoDestructor<ImageFetcherServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<ImageFetcherServiceFactory>::get();
 }
 
 ImageFetcherServiceFactory::ImageFetcherServiceFactory()

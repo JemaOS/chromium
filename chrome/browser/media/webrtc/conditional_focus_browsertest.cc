@@ -18,7 +18,6 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "third_party/blink/public/common/switches.h"
 #include "ui/gl/gl_switches.h"
 
@@ -36,24 +35,22 @@ const char kCapturedPage[] = "/webrtc/conditional_focus_captured_page.html";
 const char kCapturedPageTitle[] = "Conditional Focus Test - Captured Page";
 
 enum class FocusEnumValue {
-  kNoValue,                    // ""
-  kFocusCapturingApplication,  // "focus-capturing-application"
-  kFocusCapturedSurface,       // "focus-captured-surface"
-  kNoFocusChange               // "no-focus-change"
+  kNoValue,               // ""
+  kFocusCapturedSurface,  // "focus-captured-surface"
+  kNoFocusChange          // "no-focus-change"
 };
 
 const char* ToString(FocusEnumValue focus_enum_value) {
   switch (focus_enum_value) {
     case FocusEnumValue::kNoValue:
       return "";
-    case FocusEnumValue::kFocusCapturingApplication:
-      return "focus-capturing-application";
     case FocusEnumValue::kFocusCapturedSurface:
       return "focus-captured-surface";
     case FocusEnumValue::kNoFocusChange:
       return "no-focus-change";
   }
-  NOTREACHED_NORETURN();
+  NOTREACHED();
+  return "";
 }
 
 enum class Tab { kUnknownTab, kCapturingTab, kCapturedTab };
@@ -176,8 +173,8 @@ class ConditionalFocusBrowserTest : public WebRtcTestBase {
   }
 
  protected:
-  raw_ptr<WebContents, AcrossTasksDanglingUntriaged> captured_tab_ = nullptr;
-  raw_ptr<WebContents, AcrossTasksDanglingUntriaged> capturing_tab_ = nullptr;
+  raw_ptr<WebContents, DanglingUntriaged> captured_tab_ = nullptr;
+  raw_ptr<WebContents, DanglingUntriaged> capturing_tab_ = nullptr;
 };
 
 // Flaky on Win bots and on linux release bots http://crbug.com/1264744
@@ -210,40 +207,10 @@ IN_PROC_BROWSER_TEST_F(ConditionalFocusBrowserTest,
   EXPECT_TRUE(WaitForFocusSwitchToCapturedTab());
 }
 
-// This class only uses the values of FocusEnumValue that lead to the capturing
-// application keeping focus.
-class ConditionalFocusBrowserTestWithFocusCapturingApplication
-    : public ConditionalFocusBrowserTest,
-      public testing::WithParamInterface<FocusEnumValue> {
- public:
-  ConditionalFocusBrowserTestWithFocusCapturingApplication()
-      : focus_behavior_(GetParam()) {}
-
-  ~ConditionalFocusBrowserTestWithFocusCapturingApplication() override =
-      default;
-
- protected:
-  const FocusEnumValue focus_behavior_;
-};
-
-INSTANTIATE_TEST_SUITE_P(
-    _,
-    ConditionalFocusBrowserTestWithFocusCapturingApplication,
-    testing::Values(FocusEnumValue::kFocusCapturingApplication,
-                    FocusEnumValue::kNoFocusChange));
-
-// TODO(crbug.com/1446884): Flaky on a TSan bot.
-#if BUILDFLAG(IS_LINUX) && defined(THREAD_SANITIZER)
-#define MAYBE_CapturedTabNotFocusedIfExplicitlyCallingNoFocus \
-  DISABLED_CapturedTabNotFocusedIfExplicitlyCallingNoFocus
-#else
-#define MAYBE_CapturedTabNotFocusedIfExplicitlyCallingNoFocus \
-  CapturedTabNotFocusedIfExplicitlyCallingNoFocus
-#endif
-IN_PROC_BROWSER_TEST_P(ConditionalFocusBrowserTestWithFocusCapturingApplication,
-                       MAYBE_CapturedTabNotFocusedIfExplicitlyCallingNoFocus) {
+IN_PROC_BROWSER_TEST_F(ConditionalFocusBrowserTest,
+                       CapturedTabNotFocusedIfExplicitlyCallingNoFocus) {
   SetUpTestTabs();
-  Capture(0, focus_behavior_);
+  Capture(0, FocusEnumValue::kNoFocusChange);
   // Whereas calls to Wait() in previous tests served to minimize flakiness,
   // this one is to prove no false-positives. Namely, we allow enough time
   // for the focus-change, yet it does not occur.
@@ -251,19 +218,10 @@ IN_PROC_BROWSER_TEST_P(ConditionalFocusBrowserTestWithFocusCapturingApplication,
   EXPECT_EQ(ActiveTab(), Tab::kCapturingTab);
 }
 
-// TODO(crbug.com/1446884): Flaky on a TSan bot.
-#if BUILDFLAG(IS_LINUX) && defined(THREAD_SANITIZER)
-#define MAYBE_CapturedTabFocusedIfAppWaitsTooLongBeforeCallingFocus \
-  DISABLED_CapturedTabFocusedIfAppWaitsTooLongBeforeCallingFocus
-#else
-#define MAYBE_CapturedTabFocusedIfAppWaitsTooLongBeforeCallingFocus \
-  CapturedTabFocusedIfAppWaitsTooLongBeforeCallingFocus
-#endif
-IN_PROC_BROWSER_TEST_P(
-    ConditionalFocusBrowserTestWithFocusCapturingApplication,
-    MAYBE_CapturedTabFocusedIfAppWaitsTooLongBeforeCallingFocus) {
+IN_PROC_BROWSER_TEST_F(ConditionalFocusBrowserTest,
+                       CapturedTabFocusedIfAppWaitsTooLongBeforeCallingFocus) {
   SetUpTestTabs();
-  Capture(15000, focus_behavior_);
+  Capture(15000, FocusEnumValue::kNoFocusChange);
   EXPECT_TRUE(WaitForFocusSwitchToCapturedTab());
 }
 
@@ -320,17 +278,10 @@ IN_PROC_BROWSER_TEST_F(ConditionalFocusBrowserTest, FocusBeforeCapture) {
   EXPECT_TRUE(WaitForFocusSwitchToCapturedTab());
 }
 
-// TODO(crbug.com/1446884): Flaky on a TSan bot.
-#if BUILDFLAG(IS_LINUX) && defined(THREAD_SANITIZER)
-#define MAYBE_NoFocusBeforeCapture DISABLED_NoFocusBeforeCapture
-#else
-#define MAYBE_NoFocusBeforeCapture NoFocusBeforeCapture
-#endif
-IN_PROC_BROWSER_TEST_P(ConditionalFocusBrowserTestWithFocusCapturingApplication,
-                       MAYBE_NoFocusBeforeCapture) {
+IN_PROC_BROWSER_TEST_F(ConditionalFocusBrowserTest, NoFocusBeforeCapture) {
   // Setup.
   SetUpTestTabs();
-  CallSetFocusBehaviorBeforeCapture(focus_behavior_);
+  CallSetFocusBehaviorBeforeCapture(FocusEnumValue::kNoFocusChange);
   // Whereas calls to Wait() in previous tests served to minimize flakiness,
   // this one is to prove no false-positives. Namely, we allow enough time
   // for the focus-change, yet it does not occur.
@@ -338,20 +289,12 @@ IN_PROC_BROWSER_TEST_P(ConditionalFocusBrowserTestWithFocusCapturingApplication,
   EXPECT_EQ(ActiveTab(), Tab::kCapturingTab);
 }
 
-// TODO(crbug.com/1446884): Flaky on a TSan bot.
-#if BUILDFLAG(IS_LINUX) && defined(THREAD_SANITIZER)
-#define MAYBE_NoFocusAfterCaptureOverrideFocusBeforeCapture \
-  DISABLED_NoFocusAfterCaptureOverrideFocusBeforeCapture
-#else
-#define MAYBE_NoFocusAfterCaptureOverrideFocusBeforeCapture \
-  NoFocusAfterCaptureOverrideFocusBeforeCapture
-#endif
-IN_PROC_BROWSER_TEST_P(ConditionalFocusBrowserTestWithFocusCapturingApplication,
-                       MAYBE_NoFocusAfterCaptureOverrideFocusBeforeCapture) {
+IN_PROC_BROWSER_TEST_F(ConditionalFocusBrowserTest,
+                       NoFocusAfterCaptureOverrideFocusBeforeCapture) {
   // Setup.
   SetUpTestTabs();
   CallSetFocusBehaviorBeforeCapture(FocusEnumValue::kFocusCapturedSurface,
-                                    focus_behavior_);
+                                    FocusEnumValue::kNoFocusChange);
   // Whereas calls to Wait() in previous tests served to minimize flakiness,
   // this one is to prove no false-positives. Namely, we allow enough time
   // for the focus-change, yet it does not occur.
@@ -359,19 +302,11 @@ IN_PROC_BROWSER_TEST_P(ConditionalFocusBrowserTestWithFocusCapturingApplication,
   EXPECT_EQ(ActiveTab(), Tab::kCapturingTab);
 }
 
-// TODO(crbug.com/1446884): Flaky on a TSan bot.
-#if BUILDFLAG(IS_LINUX) && defined(THREAD_SANITIZER)
-#define MAYBE_FocusAfterCaptureOverrideNoFocusBeforeCapture \
-  DISABLED_FocusAfterCaptureOverrideNoFocusBeforeCapture
-#else
-#define MAYBE_FocusAfterCaptureOverrideNoFocusBeforeCapture \
-  FocusAfterCaptureOverrideNoFocusBeforeCapture
-#endif
-IN_PROC_BROWSER_TEST_P(ConditionalFocusBrowserTestWithFocusCapturingApplication,
-                       MAYBE_FocusAfterCaptureOverrideNoFocusBeforeCapture) {
+IN_PROC_BROWSER_TEST_F(ConditionalFocusBrowserTest,
+                       FocusAfterCaptureOverrideNoFocusBeforeCapture) {
   // Setup.
   SetUpTestTabs();
-  CallSetFocusBehaviorBeforeCapture(focus_behavior_,
+  CallSetFocusBehaviorBeforeCapture(FocusEnumValue::kNoFocusChange,
                                     FocusEnumValue::kFocusCapturedSurface);
   EXPECT_TRUE(WaitForFocusSwitchToCapturedTab());
 }

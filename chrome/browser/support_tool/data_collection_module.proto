@@ -3,7 +3,8 @@
 // found in the LICENSE file.
 
 // DISCLAIMER: Please keep messages and enums in this file in sync with
-// http://google3/chrome/cros/dpanel/data/devices/proto/requests.proto file.
+// chrome/cros/dpanel/data/devices/proto/requests.proto file in google3
+// repository.
 
 syntax = "proto3";
 
@@ -38,9 +39,6 @@ enum DataCollectorType {
   CHROMEOS_TRAFFIC_COUNTERS = 21;
   CHROMEOS_VIRTUAL_KEYBOARD = 22;
   CHROMEOS_NETWORK_HEALTH = 23;
-  PERFORMANCE = 24;
-  SIGN_IN_STATE = 25;
-  CHROMEOS_APP_SERVICE = 26;
 }
 
 // PiiType represent the different known categories of PII that can exist in
@@ -53,7 +51,7 @@ enum PiiType {
   GAIA_ID = 3;
   IPP_ADDRESS = 4;
   IP_ADDRESS = 5;
-  CELLULAR_LOCATION_INFO = 6;
+  LOCATION_INFO = 6;
   MAC_ADDRESS = 7;
   UI_HIEARCHY_WINDOW_TITLE = 8;
   URL = 9;
@@ -69,4 +67,16 @@ enum PiiType {
 message DataCollectionModule {
   // List of DataCollectors that will be used when Support Tool collects data.
   repeated DataCollectorType included_data_collectors = 1;
+}
+
+// Used for storing the support packet details that's requested in "Remote Log
+// Capture" device command.
+message SupportPacketDetails {
+  optional string issue_case_id = 1;
+  optional string issue_description = 2;
+  repeated DataCollectorType requested_data_collectors = 3;
+  repeated PiiType requested_pii_types = 4;
+  // Metadata that will be echoed back to the server with the remote command
+  // response. The client should not attempt to parse it.
+  optional string requester_metadata = 5;
 }

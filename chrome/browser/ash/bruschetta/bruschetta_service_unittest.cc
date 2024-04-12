@@ -42,6 +42,10 @@ class BruschettaServiceTest : public testing::Test,
 
  protected:
   void SetUp() override {
+    feature_list_.InitWithFeatures(
+        {ash::features::kBruschetta, ash::features::kBruschettaAlphaMigrate},
+        {});
+
     SetupPrefs();
 
     service_ = std::make_unique<BruschettaService>(&profile_);
@@ -62,7 +66,6 @@ class BruschettaServiceTest : public testing::Test,
                  prefs::PolicyUpdateAction::FORCE_SHUTDOWN_IF_MORE_RESTRICTED));
 
     config.Set(prefs::kPolicyVTPMKey, std::move(vtpm));
-    config.Set(prefs::kPolicyNameKey, "Display Name");
 
     pref.Set(kTestVmConfig, std::move(config));
     profile_.GetPrefs()->SetDict(prefs::kBruschettaVMConfiguration,
@@ -99,10 +102,53 @@ class BruschettaServiceTest : public testing::Test,
     vtpm->Set(prefs::kPolicyVTPMUpdateActionKey, static_cast<int>(action));
   }
 
+  base::test::ScopedFeatureList feature_list_;
   content::BrowserTaskEnvironment task_environment_;
   TestingProfile profile_;
   std::unique_ptr<BruschettaService> service_;
 };
+
+TEST_F(BruschettaServiceTest, StartUpMigration) {
+  service_.reset();
+
+  guest_os::AddContainerToPrefs(&profile_, MakeBruschettaId("first-vm"), {});
+  guest_os::AddContainerToPrefs(&profile_, MakeBruschettaId("second-vm"), {});
+  guest_os::UpdateContainerPref(&profile_, MakeBruschettaId("second-vm"),
+                                guest_os::prefs::kBruschettaConfigId,
+                                base::Value(kTestVmConfig));
+
+  service_ = std::make_unique<BruschettaService>(&profile_);
+
+  ASSERT_TRUE(IsInstalled(&profile_, GetBruschettaAlphaId()));
+  ASSERT_TRUE(IsInstalled(&profile_, MakeBruschettaId("first-vm")));
+  ASSERT_TRUE(IsInstalled(&profile_, MakeBruschettaId("second-vm")));
+
+  ASSERT_EQ(
+      guest_os::GetContainerPrefValue(&profile_, GetBruschettaAlphaId(),
+                                      guest_os::prefs::kBruschettaConfigId)
+          ->GetString(),
+      "glinux-latest");
+  ASSERT_EQ(
+      guest_os::GetContainerPrefValue(&profile_, MakeBruschettaId("first-vm"),
+                                      guest_os::prefs::kBruschettaConfigId)
+          ->GetString(),
+      "glinux-latest");
+  ASSERT_EQ(
+      guest_os::GetContainerPrefValue(&profile_, MakeBruschettaId("second-vm"),
+                                      guest_os::prefs::kBruschettaConfigId)
+          ->GetString(),
+      kTestVmConfig);
+
+  ASSERT_TRUE(guest_os::GuestOsService::GetForProfile(&profile_)
+                  ->TerminalProviderRegistry()
+                  ->Get(GetBruschettaAlphaId()));
+  ASSERT_TRUE(guest_os::GuestOsService::GetForProfile(&profile_)
+                  ->TerminalProviderRegistry()
+                  ->Get(MakeBruschettaId("first-vm")));
+  ASSERT_TRUE(guest_os::GuestOsService::GetForProfile(&profile_)
+                  ->TerminalProviderRegistry()
+                  ->Get(MakeBruschettaId("second-vm")));
+}
 
 TEST_F(BruschettaServiceTest, GetLauncherPolicyEnabled) {
   EnableByPolicy();

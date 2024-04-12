@@ -4,12 +4,9 @@
 
 #include "chrome/browser/ash/file_suggest/file_suggest_keyed_service.h"
 
-#include "ash/constants/ash_features.h"
 #include "ash/public/cpp/app_list/app_list_types.h"
-#include "base/functional/bind.h"
 #include "chrome/browser/ash/file_manager/fileapi_util.h"
 #include "chrome/browser/ash/file_suggest/drive_file_suggestion_provider.h"
-#include "chrome/browser/ash/file_suggest/drive_recent_file_suggestion_provider.h"
 #include "chrome/browser/ash/file_suggest/file_suggest_util.h"
 #include "chrome/browser/ash/file_suggest/local_file_suggestion_provider.h"
 #include "storage/browser/file_system/file_system_context.h"
@@ -22,31 +19,20 @@ using SuggestResults = std::vector<FileSuggestData>;
 
 FileSuggestKeyedService::FileSuggestKeyedService(
     Profile* profile,
-    PersistentProto<app_list::RemovedResultsProto> proto)
+    app_list::PersistentProto<app_list::RemovedResultsProto> proto)
     : profile_(profile), proto_(std::move(proto)) {
   DCHECK(profile_);
 
-  // `proto_` is a class member so it is safe to call `RegisterOnInitUnsafe()`.
-  proto_.RegisterOnInitUnsafe(
+  proto_.RegisterOnRead(
       base::BindOnce(&FileSuggestKeyedService::OnRemovedSuggestionProtoReady,
-                     base::Unretained(this)));
-
+                     weak_factory_.GetWeakPtr()));
   proto_.Init();
 
-  if (features::IsLauncherContinueSectionWithRecentsEnabled() ||
-      features::IsForestFeatureEnabled()) {
-    drive_file_suggestion_provider_ =
-        std::make_unique<DriveRecentFileSuggestionProvider>(
-            profile, base::BindRepeating(
-                         &FileSuggestKeyedService::OnSuggestionProviderUpdated,
-                         weak_factory_.GetWeakPtr()));
-  } else {
-    drive_file_suggestion_provider_ =
-        std::make_unique<DriveFileSuggestionProvider>(
-            profile, base::BindRepeating(
-                         &FileSuggestKeyedService::OnSuggestionProviderUpdated,
-                         weak_factory_.GetWeakPtr()));
-  }
+  drive_file_suggestion_provider_ =
+      std::make_unique<DriveFileSuggestionProvider>(
+          profile, base::BindRepeating(
+                       &FileSuggestKeyedService::OnSuggestionProviderUpdated,
+                       weak_factory_.GetWeakPtr()));
 
   local_file_suggestion_provider_ =
       std::make_unique<LocalFileSuggestionProvider>(
@@ -68,7 +54,7 @@ void FileSuggestKeyedService::GetSuggestFileData(
     GetSuggestFileDataCallback callback) {
   // Always return null if `proto_` is not ready.
   if (!proto_.initialized()) {
-    std::move(callback).Run(/*suggestions=*/std::nullopt);
+    std::move(callback).Run(/*suggestions=*/absl::nullopt);
     return;
   }
 
@@ -138,7 +124,7 @@ void FileSuggestKeyedService::RemoveSuggestionBySearchResultAndNotify(
         search_result.id}});
 }
 
-PersistentProto<app_list::RemovedResultsProto>*
+app_list::PersistentProto<app_list::RemovedResultsProto>*
 FileSuggestKeyedService::GetProto(
     base::PassKey<app_list::RemovedResultsRanker>) {
   return &proto_;
@@ -150,6 +136,13 @@ void FileSuggestKeyedService::AddObserver(Observer* observer) {
 
 void FileSuggestKeyedService::RemoveObserver(Observer* observer) {
   observers_.RemoveObserver(observer);
+}
+
+bool FileSuggestKeyedService::HasPendingSuggestionFetchForTest() const {
+  return drive_file_suggestion_provider_
+             ->HasPendingDriveSuggestionFetchForTest() ||
+         local_file_suggestion_provider_
+             ->HasPendingLocalSuggestionFetchForTest();
 }
 
 void FileSuggestKeyedService::OnSuggestionProviderUpdated(
@@ -168,7 +161,7 @@ bool FileSuggestKeyedService::IsReadyForTest() const {
 
 void FileSuggestKeyedService::FilterRemovedSuggestions(
     GetSuggestFileDataCallback callback,
-    const std::optional<std::vector<FileSuggestData>>& suggestions) {
+    const absl::optional<std::vector<FileSuggestData>>& suggestions) {
   DCHECK(IsProtoInitialized());
 
   // There are no candidate suggestions to filter. Therefore, return early.
@@ -192,7 +185,8 @@ bool FileSuggestKeyedService::IsProtoInitialized() const {
   return proto_.initialized();
 }
 
-void FileSuggestKeyedService::OnRemovedSuggestionProtoReady() {
+void FileSuggestKeyedService::OnRemovedSuggestionProtoReady(
+    app_list::ReadStatus read_status) {
   OnSuggestionProviderUpdated(FileSuggestionType::kDriveFile);
 
   if (local_file_suggestion_provider_->IsInitialized()) {

@@ -28,9 +28,9 @@ class AppListViewDelegate;
 // feature where the user can drag an app icon to the top or bottom of the
 // containing ScrollView and the view will be scrolled automatically.
 class ASH_EXPORT ScrollableAppsGridView : public AppsGridView {
-  METADATA_HEADER(ScrollableAppsGridView, AppsGridView)
-
  public:
+  METADATA_HEADER(ScrollableAppsGridView);
+
   ScrollableAppsGridView(AppListA11yAnnouncer* a11y_announcer,
                          AppListViewDelegate* view_delegate,
                          AppsGridViewFolderDelegate* folder_delegate,
@@ -46,7 +46,7 @@ class ASH_EXPORT ScrollableAppsGridView : public AppsGridView {
   void SetMaxColumns(int max_cols);
 
   // views::View:
-  void Layout(PassKey) override;
+  void Layout() override;
 
   // AppsGridView:
   gfx::Size GetTileViewSize() const override;
@@ -63,14 +63,14 @@ class ASH_EXPORT ScrollableAppsGridView : public AppsGridView {
                                   ui::EventType type) override;
   void SetFocusAfterEndDrag(AppListItem* drag_item) override;
   void RecordAppMovingTypeMetrics(AppListAppMovingType type) override;
-  std::optional<int> GetMaxRowsInPage(int page) const override;
+  absl::optional<int> GetMaxRowsInPage(int page) const override;
   gfx::Vector2d GetGridCenteringOffset(int page) const override;
   const gfx::Vector2d CalculateTransitionOffset(
       int page_of_view) const override;
   void EnsureViewVisible(const GridIndex& index) override;
-  std::optional<VisibleItemIndexRange> GetVisibleItemIndexRange()
+  absl::optional<VisibleItemIndexRange> GetVisibleItemIndexRange()
       const override;
-  bool ShouldContainerHandleDragEvents() override;
+  base::ScopedClosureRunner LockAppsGridOpacity() override;
 
   views::ScrollView* scroll_view_for_test() { return scroll_view_; }
   base::OneShotTimer* auto_scroll_timer_for_test() {
@@ -93,7 +93,7 @@ class ASH_EXPORT ScrollableAppsGridView : public AppsGridView {
   int GetAutoScrollOffset() const;
 
   // The scroll view that contains this view (and other views).
-  const raw_ptr<views::ScrollView> scroll_view_;
+  const raw_ptr<views::ScrollView, ExperimentalAsh> scroll_view_;
 
   // Timer to scroll the `scroll_view_`.
   base::OneShotTimer auto_scroll_timer_;

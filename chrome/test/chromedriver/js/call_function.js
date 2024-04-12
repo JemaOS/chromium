@@ -122,9 +122,7 @@ function isElement(value) {
  */
 function isCollection(value) {
   const Symbol = window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol || window.Symbol;
-  return (typeof value[Symbol.iterator] === 'function') &&
-      ('length' in value) &&
-      (typeof value.length === 'number');
+  return (typeof value[Symbol.iterator] === 'function');
 }
 
 /**
@@ -225,9 +223,8 @@ function preprocessResult(item, seen, nodes) {
   if (isElement(item)) {
     if (!isNodeReachable(item)) {
       if (item instanceof ShadowRoot)
-        throw newError('shadow root is detached from the current frame',
-            StatusCode.DETACHED_SHADOW_ROOT);
-      throw newError('stale element not found in the current frame',
+        throw newError('detached shadow root', StatusCode.DETACHED_SHADOW_ROOT);
+      throw newError('stale element not found',
                      StatusCode.STALE_ELEMENT_REFERENCE);
     }
     const ret = {};
@@ -266,7 +263,7 @@ function preprocessResult(item, seen, nodes) {
  * @param {!Array<*>} nodes List of referred nodes
  * @return {*} Clone of item with status of cloning.
  */
-function resolveReferencesRecursive(item, seen, nodes) {
+function resolveReferences(item, seen, nodes) {
   if (item === undefined ||
       item === null ||
       typeof item === 'boolean' ||
@@ -274,40 +271,24 @@ function resolveReferencesRecursive(item, seen, nodes) {
       typeof item === 'string' ||
       typeof item === 'function')
     return item;
-  if (item.hasOwnProperty(ELEMENT_KEY) ||
-      item.hasOwnProperty(SHADOW_ROOT_KEY)) {
-    let idx = item[ELEMENT_KEY];
-    if (item.hasOwnProperty(SHADOW_ROOT_KEY))
-      idx = item[SHADOW_ROOT_KEY];
+  if (item.hasOwnProperty(ELEMENT_KEY)) {
+    const idx = item[ELEMENT_KEY];
     if (idx < 0 || idx >= nodes.length) {
-      throw newError('unable to resove node reference. '
-          + 'Node index is out of range.', StatusCode.JAVA_SCRIPT_ERROR);
+      throw newError('element is not attached to the page document',
+                    StatusCode.STALE_ELEMENT_REFERENCE);
+    }
+    return nodes[idx];
+  }
+  if (item.hasOwnProperty(SHADOW_ROOT_KEY)) {
+    const idx = item[SHADOW_ROOT_KEY];
+    if (idx < 0 || idx >= nodes.length) {
+        throw newError('detached shadow root', StatusCode.DETACHED_SHADOW_ROOT);
     }
     return nodes[idx];
   }
   if (isCollection(item) || typeof item === 'object')
-    return cloneWithAlgorithm(item, seen, resolveReferencesRecursive, nodes);
+    return cloneWithAlgorithm(item, seen, resolveReferences, nodes);
   throw newError('unhandled object', StatusCode.JAVA_SCRIPT_ERROR);
-}
-
-/**
- * Returns deserialized deep clone of given value, replacing serialized string
- * references to elements with a element reference, if found.
- * @param {*} item Object or collection to deep clone.
- * @param {!Array<*>} nodes List of referred nodes
- * @return {*} Clone of item with status of cloning.
- */
-function resolveReferences(args, nodes) {
-  for (let idx = 0; idx < nodes.length; ++idx) {
-    if (!isNodeReachable(nodes[idx])) {
-      if (nodes[idx] instanceof ShadowRoot)
-        throw newError('shadow root is detached from the current frame',
-            StatusCode.DETACHED_SHADOW_ROOT);
-      throw newError('stale element not found in the current frame',
-                     StatusCode.STALE_ELEMENT_REFERENCE);
-    }
-  }
-  return resolveReferencesRecursive(args, [], nodes);
 }
 
 /**
@@ -339,30 +320,21 @@ function callFunction(func, args, w3c, nodes) {
       status: error.code || StatusCode.JAVA_SCRIPT_ERROR,
       value: error.message || error
     });
-    const JSON = window.cdc_adoQpoasnfa76pfcZLmcfl_JSON || window.JSON;
     return [JSON.stringify(errorResponse)];
   }
 
-  function wrapErrorAsJavascriptError(error) {
-    originalResponse = buildError(error);
-    originalStatus = error.code || StatusCode.JAVA_SCRIPT_ERROR;
-    if (originalStatus === StatusCode.JAVA_SCRIPT_ERROR) {
-      return originalResponse;
-    }
-    return buildError({
-      code: StatusCode.JAVA_SCRIPT_ERROR,
-      message: originalResponse[0]});
-  }
-
   const Promise = window.cdc_adoQpoasnfa76pfcZLmcfl_Promise || window.Promise;
-  let unwrappedArgs = null;
   try {
-    unwrappedArgs = resolveReferences(args, nodes);
-  } catch (error) {
-    return Promise.resolve(buildError(error));
-  }
-
-  try {
+    for (let idx = 0; idx < nodes.length; ++idx) {
+      if (!isNodeReachable(nodes[idx])) {
+        if (nodes[idx] instanceof ShadowRoot)
+          throw newError('detached shadow root',
+                         StatusCode.DETACHED_SHADOW_ROOT);
+        throw newError('stale element not found',
+                       StatusCode.STALE_ELEMENT_REFERENCE);
+      }
+    }
+    const unwrappedArgs = resolveReferences(args, [], nodes);
     const tmp = func.apply(null, unwrappedArgs);
     return Promise.resolve(tmp).then((result) => {
       ret_nodes = [];
@@ -370,10 +342,9 @@ function callFunction(func, args, w3c, nodes) {
         status: 0,
         value: preprocessResult(result, [], ret_nodes)
       };
-      const JSON = window.cdc_adoQpoasnfa76pfcZLmcfl_JSON || window.JSON;
       return [JSON.stringify(response), ...ret_nodes];
-    }).catch(wrapErrorAsJavascriptError);
+    }).catch(buildError);
   } catch (error) {
-    return Promise.resolve(wrapErrorAsJavascriptError(error));
+    return Promise.resolve(buildError(error));
   }
 }

@@ -5,11 +5,22 @@
 /** @fileoverview Suite of tests for extensions-code-section. */
 import 'chrome://extensions/extensions.js';
 
-import type {ExtensionsCodeSectionElement} from 'chrome://extensions/extensions.js';
+import {ExtensionsCodeSectionElement} from 'chrome://extensions/extensions.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {isChildVisible} from 'chrome://webui-test/test_util.js';
 
-suite('ExtensionCodeSectionTest', function() {
+const extension_code_section_tests = {
+  suiteName: 'ExtensionCodeSectionTest',
+  TestNames: {
+    Layout: 'layout',
+    LongSource: 'long source',
+  },
+};
+
+Object.assign(
+    window, {extension_code_section_tests: extension_code_section_tests});
+
+suite(extension_code_section_tests.suiteName, function() {
   let codeSection: ExtensionsCodeSectionElement;
 
   const couldNotDisplayCode: string = 'No code here';
@@ -22,7 +33,7 @@ suite('ExtensionCodeSectionTest', function() {
     document.body.appendChild(codeSection);
   });
 
-  test('Layout', function() {
+  test(extension_code_section_tests.TestNames.Layout, function() {
     const code: chrome.developerPrivate.RequestFileSourceResponse = {
       beforeHighlight: 'this part before the highlight\nAnd this too\n',
       highlight: 'highlight this part\n',
@@ -58,7 +69,7 @@ suite('ExtensionCodeSectionTest', function() {
                 '#line-numbers span')!.textContent!.trim());
   });
 
-  test('LongSource', function() {
+  test(extension_code_section_tests.TestNames.LongSource, function() {
     let lineNums;
 
     function setCodeContent(beforeLineCount: number, afterLineCount: number):

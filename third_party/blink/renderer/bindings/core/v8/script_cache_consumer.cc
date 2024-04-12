@@ -28,17 +28,16 @@
 namespace blink {
 
 ScriptCacheConsumer::ScriptCacheConsumer(
-    v8::Isolate* isolate,
     scoped_refptr<CachedMetadata> cached_metadata,
     const String& script_url_string,
     uint64_t script_resource_identifier)
-    : isolate_(isolate),
-      cached_metadata_(cached_metadata),
+    : cached_metadata_(cached_metadata),
       script_url_string_(script_url_string),
       script_resource_identifier_(script_resource_identifier),
       state_(State::kRunning) {
+  v8::Isolate* isolate = V8PerIsolateData::MainThreadIsolate();
   consume_task_.reset(v8::ScriptCompiler::StartConsumingCodeCache(
-      isolate_, V8CodeCache::CreateCachedData(cached_metadata_)));
+      isolate, V8CodeCache::CreateCachedData(cached_metadata_)));
 
   if (consume_task_) {
     TRACE_EVENT_WITH_FLOW1(
@@ -161,12 +160,15 @@ void ScriptCacheConsumer::NotifyClientWaiting(
   finish_callback_task_runner_ = task_runner;
 
   {
-    v8::HandleScope scope(isolate_);
+    v8::Isolate* isolate = V8PerIsolateData::MainThreadIsolate();
+    v8::HandleScope scope(isolate);
     const ParkableString& source_text = classic_script->SourceText();
-    v8::ScriptOrigin origin = classic_script->CreateScriptOrigin(isolate_);
+    v8::ScriptOrigin origin = classic_script->CreateScriptOrigin(isolate);
     if (consume_task_) {
       consume_task_->SourceTextAvailable(
-          isolate_, V8String(isolate_, source_text), origin);
+          isolate,
+          V8String(isolate, source_text, classic_script->ResourceKeepAlive()),
+          origin);
     }
   }
 

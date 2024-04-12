@@ -4,10 +4,9 @@
 
 #include "third_party/blink/renderer/modules/content_index/content_index.h"
 
-#include <optional>
-
 #include "base/feature_list.h"
 #include "base/task/sequenced_task_runner.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/browser_interface_broker_proxy.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
@@ -88,14 +87,13 @@ ContentIndex::ContentIndex(ServiceWorkerRegistration* registration,
 
 ContentIndex::~ContentIndex() = default;
 
-ScriptPromiseTyped<IDLUndefined> ContentIndex::add(
-    ScriptState* script_state,
-    const ContentDescription* description,
-    ExceptionState& exception_state) {
+ScriptPromise ContentIndex::add(ScriptState* script_state,
+                                const ContentDescription* description,
+                                ExceptionState& exception_state) {
   if (!registration_->active()) {
     exception_state.ThrowTypeError(
         "No active registration available on the ServiceWorkerRegistration.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   ExecutionContext* execution_context = ExecutionContext::From(script_state);
@@ -103,43 +101,45 @@ ScriptPromiseTyped<IDLUndefined> ContentIndex::add(
     exception_state.ThrowDOMException(
         DOMExceptionCode::kNotAllowedError,
         "ContentIndex is not allowed in fenced frames.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   WTF::String description_error =
       ValidateDescription(*description, registration_.Get());
   if (!description_error.IsNull()) {
     exception_state.ThrowTypeError(description_error);
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
   auto mojo_description = mojom::blink::ContentDescription::From(description);
   auto category = mojo_description->category;
   GetService()->GetIconSizes(
-      category,
-      WTF::BindOnce(&ContentIndex::DidGetIconSizes, WrapPersistent(this),
-                    std::move(mojo_description), WrapPersistent(resolver)));
+      category, resolver->WrapCallbackInScriptScope(WTF::BindOnce(
+                    &ContentIndex::DidGetIconSizes, WrapPersistent(this),
+                    std::move(mojo_description))));
 
   return promise;
 }
 
 void ContentIndex::DidGetIconSizes(
     mojom::blink::ContentDescriptionPtr description,
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver,
+    ScriptPromiseResolver* resolver,
     const Vector<gfx::Size>& icon_sizes) {
   if (!icon_sizes.empty() && description->icons.empty()) {
-    resolver->RejectWithTypeError("icons must be provided");
+    resolver->Reject(V8ThrowException::CreateTypeError(
+        resolver->GetScriptState()->GetIsolate(), "icons must be provided"));
     return;
   }
 
   if (!registration_->GetExecutionContext()) {
     // The SW execution context is not valid for some reason. Bail out.
-    resolver->RejectWithTypeError("Service worker is no longer valid.");
+    resolver->Reject(V8ThrowException::CreateTypeError(
+        resolver->GetScriptState()->GetIsolate(),
+        "Service worker is no longer valid."));
     return;
   }
 
@@ -149,26 +149,29 @@ void ContentIndex::DidGetIconSizes(
   }
 
   auto* icon_loader = MakeGarbageCollected<ContentIndexIconLoader>();
-  icon_loader->Start(
-      registration_->GetExecutionContext(), std::move(description), icon_sizes,
-      WTF::BindOnce(&ContentIndex::DidGetIcons, WrapPersistent(this),
-                    WrapPersistent(resolver)));
+  icon_loader->Start(registration_->GetExecutionContext(),
+                     std::move(description), icon_sizes,
+                     resolver->WrapCallbackInScriptScope(WTF::BindOnce(
+                         &ContentIndex::DidGetIcons, WrapPersistent(this))));
 }
 
-void ContentIndex::DidGetIcons(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver,
-    mojom::blink::ContentDescriptionPtr description,
-    Vector<SkBitmap> icons) {
+void ContentIndex::DidGetIcons(ScriptPromiseResolver* resolver,
+                               mojom::blink::ContentDescriptionPtr description,
+                               Vector<SkBitmap> icons) {
   for (const auto& icon : icons) {
     if (icon.isNull()) {
-      resolver->RejectWithTypeError("Icon could not be loaded");
+      resolver->Reject(V8ThrowException::CreateTypeError(
+          resolver->GetScriptState()->GetIsolate(),
+          "Icon could not be loaded"));
       return;
     }
   }
 
   if (!registration_->GetExecutionContext()) {
     // The SW execution context is not valid for some reason. Bail out.
-    resolver->RejectWithTypeError("Service worker is no longer valid.");
+    resolver->Reject(V8ThrowException::CreateTypeError(
+        resolver->GetScriptState()->GetIsolate(),
+        "Service worker is no longer valid."));
     return;
   }
 
@@ -178,9 +181,9 @@ void ContentIndex::DidGetIcons(
   if (base::FeatureList::IsEnabled(features::kContentIndexCheckOffline)) {
     GetService()->CheckOfflineCapability(
         registration_->RegistrationId(), launch_url,
-        WTF::BindOnce(&ContentIndex::DidCheckOfflineCapability,
-                      WrapPersistent(this), launch_url, std::move(description),
-                      std::move(icons), WrapPersistent(resolver)));
+        resolver->WrapCallbackInScriptScope(WTF::BindOnce(
+            &ContentIndex::DidCheckOfflineCapability, WrapPersistent(this),
+            launch_url, std::move(description), std::move(icons))));
     return;
   }
 
@@ -193,49 +196,52 @@ void ContentIndex::DidCheckOfflineCapability(
     KURL launch_url,
     mojom::blink::ContentDescriptionPtr description,
     Vector<SkBitmap> icons,
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver,
+    ScriptPromiseResolver* resolver,
     bool is_offline_capable) {
   if (!is_offline_capable) {
-    resolver->RejectWithTypeError(
-        "The provided launch URL is not offline-capable.");
+    resolver->Reject(V8ThrowException::CreateTypeError(
+        resolver->GetScriptState()->GetIsolate(),
+        "The provided launch URL is not offline-capable."));
     return;
   }
 
-  GetService()->Add(
-      registration_->RegistrationId(), std::move(description), icons,
-      launch_url,
-      WTF::BindOnce(&ContentIndex::DidAdd, WrapPersistent(resolver)));
+  GetService()->Add(registration_->RegistrationId(), std::move(description),
+                    icons, launch_url,
+                    resolver->WrapCallbackInScriptScope(WTF::BindOnce(
+                        &ContentIndex::DidAdd, WrapPersistent(this))));
 }
 
-void ContentIndex::DidAdd(ScriptPromiseResolverTyped<IDLUndefined>* resolver,
+void ContentIndex::DidAdd(ScriptPromiseResolver* resolver,
                           mojom::blink::ContentIndexError error) {
   switch (error) {
     case mojom::blink::ContentIndexError::NONE:
       resolver->Resolve();
       return;
     case mojom::blink::ContentIndexError::STORAGE_ERROR:
-      resolver->RejectWithDOMException(
+      resolver->Reject(V8ThrowDOMException::CreateOrDie(
+          resolver->GetScriptState()->GetIsolate(),
           DOMExceptionCode::kAbortError,
-          "Failed to add description due to I/O error.");
+          "Failed to add description due to I/O error."));
       return;
     case mojom::blink::ContentIndexError::INVALID_PARAMETER:
       // The renderer should have been killed.
       NOTREACHED();
       return;
     case mojom::blink::ContentIndexError::NO_SERVICE_WORKER:
-      resolver->RejectWithTypeError("Service worker must be active");
+      resolver->Reject(V8ThrowException::CreateTypeError(
+          resolver->GetScriptState()->GetIsolate(),
+          "Service worker must be active"));
       return;
   }
 }
 
-ScriptPromiseTyped<IDLUndefined> ContentIndex::deleteDescription(
-    ScriptState* script_state,
-    const String& id,
-    ExceptionState& exception_state) {
+ScriptPromise ContentIndex::deleteDescription(ScriptState* script_state,
+                                              const String& id,
+                                              ExceptionState& exception_state) {
   if (!registration_->active()) {
     exception_state.ThrowTypeError(
         "No active registration available on the ServiceWorkerRegistration.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   ExecutionContext* execution_context = ExecutionContext::From(script_state);
@@ -243,32 +249,32 @@ ScriptPromiseTyped<IDLUndefined> ContentIndex::deleteDescription(
     exception_state.ThrowDOMException(
         DOMExceptionCode::kNotAllowedError,
         "ContentIndex is not allowed in fenced frames.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
-  GetService()->Delete(registration_->RegistrationId(), id,
-                       WTF::BindOnce(&ContentIndex::DidDeleteDescription,
-                                     WrapPersistent(resolver)));
+  GetService()->Delete(
+      registration_->RegistrationId(), id,
+      resolver->WrapCallbackInScriptScope(WTF::BindOnce(
+          &ContentIndex::DidDeleteDescription, WrapPersistent(this))));
 
   return promise;
 }
 
-void ContentIndex::DidDeleteDescription(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver,
-    mojom::blink::ContentIndexError error) {
+void ContentIndex::DidDeleteDescription(ScriptPromiseResolver* resolver,
+                                        mojom::blink::ContentIndexError error) {
   switch (error) {
     case mojom::blink::ContentIndexError::NONE:
       resolver->Resolve();
       return;
     case mojom::blink::ContentIndexError::STORAGE_ERROR:
-      resolver->RejectWithDOMException(
+      resolver->Reject(V8ThrowDOMException::CreateOrDie(
+          resolver->GetScriptState()->GetIsolate(),
           DOMExceptionCode::kAbortError,
-          "Failed to delete description due to I/O error.");
+          "Failed to delete description due to I/O error."));
       return;
     case mojom::blink::ContentIndexError::INVALID_PARAMETER:
       // The renderer should have been killed.
@@ -281,13 +287,12 @@ void ContentIndex::DidDeleteDescription(
   }
 }
 
-ScriptPromiseTyped<IDLSequence<ContentDescription>>
-ContentIndex::getDescriptions(ScriptState* script_state,
-                              ExceptionState& exception_state) {
+ScriptPromise ContentIndex::getDescriptions(ScriptState* script_state,
+                                            ExceptionState& exception_state) {
   if (!registration_->active()) {
     exception_state.ThrowTypeError(
         "No active registration available on the ServiceWorkerRegistration.");
-    return ScriptPromiseTyped<IDLSequence<ContentDescription>>();
+    return ScriptPromise();
   }
 
   ExecutionContext* execution_context = ExecutionContext::From(script_state);
@@ -295,23 +300,23 @@ ContentIndex::getDescriptions(ScriptState* script_state,
     exception_state.ThrowDOMException(
         DOMExceptionCode::kNotAllowedError,
         "ContentIndex is not allowed in fenced frames.");
-    return ScriptPromiseTyped<IDLSequence<ContentDescription>>();
+    return ScriptPromise();
   }
 
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLSequence<ContentDescription>>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
 
-  GetService()->GetDescriptions(registration_->RegistrationId(),
-                                WTF::BindOnce(&ContentIndex::DidGetDescriptions,
-                                              WrapPersistent(resolver)));
+  GetService()->GetDescriptions(
+      registration_->RegistrationId(),
+      resolver->WrapCallbackInScriptScope(WTF::BindOnce(
+          &ContentIndex::DidGetDescriptions, WrapPersistent(this))));
 
   return promise;
 }
 
 void ContentIndex::DidGetDescriptions(
-    ScriptPromiseResolverTyped<IDLSequence<ContentDescription>>* resolver,
+    ScriptPromiseResolver* resolver,
     mojom::blink::ContentIndexError error,
     Vector<mojom::blink::ContentDescriptionPtr> descriptions) {
   HeapVector<Member<ContentDescription>> blink_descriptions;

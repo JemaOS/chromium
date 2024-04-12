@@ -30,7 +30,7 @@ enum AudioContextLatencyCategory {
     "playback"
 };
 
-dictionary AudioSinkOptions {
+[RuntimeEnabled=AudioContextSetSinkId] dictionary AudioSinkOptions {
   required AudioSinkType type;
 };
 
@@ -39,10 +39,10 @@ dictionary AudioSinkOptions {
     Exposed=Window,
     ActiveScriptWrappable
 ] interface AudioContext : BaseAudioContext {
-    [HighEntropy, CallWith=ExecutionContext, RaisesException, Measure] constructor(optional AudioContextOptions contextOptions = {});
-    [MeasureAs=AudioContextSuspend, RaisesException, CallWith=ScriptState, ImplementedAs=suspendContext] Promise<undefined> suspend();
-    [MeasureAs=AudioContextClose, RaisesException, CallWith=ScriptState, ImplementedAs=closeContext] Promise<undefined> close();
-    [MeasureAs=AudioContextResume, RaisesException, CallWith=ScriptState, ImplementedAs=resumeContext] Promise<undefined> resume();
+    [HighEntropy, CallWith=Document, RaisesException, Measure] constructor(optional AudioContextOptions contextOptions = {});
+    [MeasureAs=AudioContextSuspend, RaisesException, CallWith=ScriptState, ImplementedAs=suspendContext] Promise<void> suspend();
+    [MeasureAs=AudioContextClose, RaisesException, CallWith=ScriptState, ImplementedAs=closeContext] Promise<void> close();
+    [MeasureAs=AudioContextResume, RaisesException, CallWith=ScriptState, ImplementedAs=resumeContext] Promise<void> resume();
 
     // Output timestamp
     [MeasureAs=AudioContextGetOutputTimestamp, CallWith=ScriptState] AudioTimestamp getOutputTimestamp();
@@ -57,6 +57,6 @@ dictionary AudioSinkOptions {
     [RaisesException, MeasureAs=AudioContextCreateMediaStreamDestination] MediaStreamAudioDestinationNode createMediaStreamDestination();
 
     [MeasureAs=AudioContextSinkId, SecureContext] readonly attribute (DOMString or AudioSinkInfo) sinkId;
-    [MeasureAs=AudioContextSetSinkId, RaisesException, CallWith=ScriptState, SecureContext] Promise<undefined> setSinkId((DOMString or AudioSinkOptions) sinkId);
+    [MeasureAs=AudioContextSetSinkId, RaisesException, CallWith=ScriptState, SecureContext] Promise<void> setSinkId((DOMString or AudioSinkOptions) sinkId);
     [SecureContext] attribute EventHandler onsinkchange;
 };

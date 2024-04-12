@@ -8,10 +8,7 @@
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/grit/generated_resources.h"
-#include "components/omnibox/browser/omnibox_field_trial.h"
-#include "components/omnibox/browser/vector_icons.h"
 #include "components/search_engines/template_url_service.h"
-#include "components/search_engines/template_url_starter_pack_data.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -28,10 +25,9 @@ SelectedKeywordView::GetKeywordLabelNames(const std::u16string& keyword,
   KeywordLabelNames names;
   if (service) {
     bool is_extension_keyword = false;
-    bool is_ask_google_keyword = false;
-    names.short_name = service->GetKeywordShortName(
-        keyword, &is_extension_keyword, &is_ask_google_keyword);
-    names.full_name = (is_extension_keyword || is_ask_google_keyword)
+    names.short_name =
+        service->GetKeywordShortName(keyword, &is_extension_keyword);
+    names.full_name = is_extension_keyword
                           ? names.short_name
                           : l10n_util::GetStringFUTF16(
                                 IDS_OMNIBOX_KEYWORD_TEXT_MD, names.short_name);
@@ -60,10 +56,10 @@ SelectedKeywordView::SelectedKeywordView(
   // make more sense to only set `FocusBehavior` when this view will be shown.
   // For now, Eliminate the paint check failure.
   if (GetAccessibleName().empty()) {
-    SetAccessibilityProperties(/*role*/ std::nullopt,
+    SetAccessibilityProperties(/*role*/ absl::nullopt,
                                /*name*/ std::u16string(),
-                               /*description*/ std::nullopt,
-                               /*role_description*/ std::nullopt,
+                               /*description*/ absl::nullopt,
+                               /*role_description*/ absl::nullopt,
                                ax::mojom::NameFrom::kAttributeExplicitlyEmpty);
   }
 }
@@ -74,20 +70,11 @@ void SelectedKeywordView::SetCustomImage(const gfx::Image& image) {
   using_custom_image_ = !image.IsEmpty();
   if (using_custom_image_) {
     IconLabelBubbleView::SetImageModel(ui::ImageModel::FromImage(image));
-    return;
+  } else {
+    IconLabelBubbleView::SetImageModel(ui::ImageModel::FromVectorIcon(
+        vector_icons::kSearchIcon, GetForegroundColor(),
+        GetLayoutConstant(LOCATION_BAR_ICON_SIZE)));
   }
-
-  // The @gemini starter pack isn't a search engine, so use the spark icon
-  // instead of the search icon. Use the search icon for all other keywords
-  // without a custom image.
-  const TemplateURL* template_url =
-      template_url_service_->GetTemplateURLForKeyword(keyword_);
-  bool use_spark_icon =
-      template_url &&
-      template_url->starter_pack_id() == TemplateURLStarterPackData::kAskGoogle;
-  IconLabelBubbleView::SetImageModel(ui::ImageModel::FromVectorIcon(
-      use_spark_icon ? omnibox::kSparkIcon : vector_icons::kSearchIcon,
-      GetForegroundColor(), GetLayoutConstant(LOCATION_BAR_ICON_SIZE)));
 }
 
 void SelectedKeywordView::OnBoundsChanged(const gfx::Rect& previous_bounds) {
@@ -130,8 +117,8 @@ void SelectedKeywordView::SetKeyword(const std::u16string& keyword) {
   partial_label_.SetText(names.short_name);
 
   // Update the label now so ShouldShowLabel() works correctly when the parent
-  // class is calculating the preferred size. It will be updated again during
-  // layout, taking into account how much space has actually been allotted.
+  // class is calculating the preferred size. It will be updated again in
+  // Layout(), taking into account how much space has actually been allotted.
   SetLabelForCurrentWidth();
   NotifyAccessibilityEvent(ax::mojom::Event::kLiveRegionChanged, true);
 }
@@ -142,7 +129,7 @@ const std::u16string& SelectedKeywordView::GetKeyword() const {
 
 int SelectedKeywordView::GetExtraInternalSpacing() const {
   // Align the label text with the suggestion text.
-  return OmniboxFieldTrial::IsCr23LayoutEnabled() ? 14 : 11;
+  return 11;
 }
 
 void SelectedKeywordView::SetLabelForCurrentWidth() {
@@ -155,6 +142,6 @@ void SelectedKeywordView::SetLabelForCurrentWidth() {
   SetLabel(use_full_label ? full_label_.GetText() : partial_label_.GetText());
 }
 
-BEGIN_METADATA(SelectedKeywordView)
+BEGIN_METADATA(SelectedKeywordView, IconLabelBubbleView)
 ADD_PROPERTY_METADATA(std::u16string, Keyword)
 END_METADATA

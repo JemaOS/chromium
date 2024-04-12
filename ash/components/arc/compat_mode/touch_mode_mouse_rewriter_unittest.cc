@@ -6,6 +6,7 @@
 
 #include "ash/components/arc/compat_mode/metrics.h"
 #include "base/run_loop.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "ui/events/test/event_generator.h"
 #include "ui/views/test/views_test_base.h"
@@ -93,6 +94,8 @@ class TouchModeMouseRewriterTest : public views::ViewsTestBase {
       : views::ViewsTestBase(
             base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
   ~TouchModeMouseRewriterTest() override = default;
+
+  base::HistogramTester histogram_tester;
 };
 
 TEST_F(TouchModeMouseRewriterTest, RightClickConvertedToLongPress) {
@@ -113,6 +116,10 @@ TEST_F(TouchModeMouseRewriterTest, RightClickConvertedToLongPress) {
   generator.PressRightButton();
   EXPECT_TRUE(view->left_pressed());
   EXPECT_FALSE(view->right_pressed());
+
+  histogram_tester.ExpectUniqueSample(
+      "Arc.CompatMode.RightClickConversion",
+      RightClickConversionResultHistogramResult::kConverted, 1);
 
   // Immediately release the right button. It will not generate any event.
   generator.ReleaseRightButton();
@@ -150,6 +157,10 @@ TEST_F(TouchModeMouseRewriterTest, DisabledForWindow) {
   // Press the right button.
   generator.PressRightButton();
   EXPECT_TRUE(view2->right_pressed());
+
+  histogram_tester.ExpectUniqueSample(
+      "Arc.CompatMode.RightClickConversion",
+      RightClickConversionResultHistogramResult::kNotConverted, 1);
 
   // Immediately release the right button.
   generator.ReleaseRightButton();

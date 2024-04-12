@@ -18,14 +18,14 @@ const CSSBitset kLogicalGroupProperties{ {
   {% endfor %}
 } };
 
-const CSSBitset kKnownExposedProperties{ {
-  {% for property in known_exposed_properties %}
+const CSSBitset kPropertiesWithVisited{ {
+  {% for property in properties_with_visited %}
     CSSPropertyID::{{ property }},
   {% endfor %}
 } };
 
-const CSSBitset kSurrogateProperties{ {
-  {% for property in surrogate_properties %}
+const CSSBitset kKnownExposedProperties{ {
+  {% for property in known_exposed_properties %}
     CSSPropertyID::{{ property }},
   {% endfor %}
 } };

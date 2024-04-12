@@ -6,16 +6,12 @@ package org.chromium.chrome.browser.tasks.tab_management;
 
 import android.app.Activity;
 import android.content.Context;
-import android.util.Pair;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 
 import androidx.annotation.IntDef;
-import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import org.chromium.base.lifetime.Destroyable;
 import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.Supplier;
@@ -24,17 +20,17 @@ import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider
 import org.chromium.chrome.browser.compositor.layouts.Layout;
 import org.chromium.chrome.browser.compositor.layouts.LayoutRenderHost;
 import org.chromium.chrome.browser.compositor.layouts.LayoutUpdateHost;
-import org.chromium.chrome.browser.hub.Pane;
+import org.chromium.chrome.browser.compositor.layouts.content.TabContentManager;
 import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthController;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
-import org.chromium.chrome.browser.profiles.ProfileProvider;
-import org.chromium.chrome.browser.tab_ui.TabContentManager;
 import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
+import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
-import org.chromium.chrome.browser.tasks.tab_management.ColorPickerCoordinator.ColorPickerLayoutType;
+import org.chromium.chrome.browser.tasks.tab_groups.TabGroupModelFilter;
+import org.chromium.chrome.browser.tasks.tab_management.suggestions.TabSuggestions;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.widget.MenuOrKeyboardActionController;
@@ -44,20 +40,17 @@ import org.chromium.ui.resources.dynamics.DynamicResourceLoader;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.List;
-import java.util.function.DoubleConsumer;
 
-/** Interface to get access to components concerning tab management. */
+/**
+ * Interface to get access to components concerning tab management.
+ */
 public interface TabManagementDelegate {
-    @IntDef({
-        TabSwitcherType.GRID,
-        TabSwitcherType.SINGLE,
-        TabSwitcherType.NONE
-    })
+    @IntDef({TabSwitcherType.GRID, TabSwitcherType.CAROUSEL, TabSwitcherType.SINGLE,
+            TabSwitcherType.NONE})
     @Retention(RetentionPolicy.SOURCE)
     public @interface TabSwitcherType {
         int GRID = 0;
-        // int CAROUSEL_DEPRECATED = 1;
+        int CAROUSEL = 1;
         int SINGLE = 2;
         int NONE = 3;
     }
@@ -66,29 +59,19 @@ public interface TabManagementDelegate {
      * Create the {@link TabSwitcherLayout}.
      * @param context The current Android's context.
      * @param updateHost The parent {@link LayoutUpdateHost}.
-     * @param layoutStateProvider The {@link LayoutStateProvider} to provide layout state changes.
      * @param renderHost The parent {@link LayoutRenderHost}.
-     * @param browserControlsStateProvider The {@link BrowserControlsStateProvider} for the top
-     *         controls.
      * @param tabSwitcher The {@link TabSwitcher} the layout should own.
      * @param tabSwitcherScrimAnchor {@link ViewGroup} used by tab switcher layout to show scrim
      *         when overview is visible.
      * @param scrimCoordinator {@link ScrimCoordinator} to show/hide scrim.
      * @return The {@link TabSwitcherLayout}.
      */
-    Layout createTabSwitcherLayout(
-            Context context,
-            LayoutUpdateHost updateHost,
-            LayoutStateProvider layoutStateProvider,
-            LayoutRenderHost renderHost,
-            BrowserControlsStateProvider browserControlsStateProvider,
-            TabSwitcher tabSwitcher,
-            ViewGroup tabSwitcherScrimAnchor,
+    Layout createTabSwitcherLayout(Context context, LayoutUpdateHost updateHost,
+            LayoutRenderHost renderHost, TabSwitcher tabSwitcher, ViewGroup tabSwitcherScrimAnchor,
             ScrimCoordinator scrimCoordinator);
 
     /**
      * Create the {@link TabSwitcher} to display Tabs in grid.
-     *
      * @param activity The current android {@link Activity}.
      * @param activityLifecycleDispatcher Allows observation of the activity lifecycle.
      * @param tabModelSelector Gives access to the current set of {@TabModel}.
@@ -103,16 +86,12 @@ public interface TabManagementDelegate {
      * @param dynamicResourceLoaderSupplier Supplies the current {@link DynamicResourceLoader}.
      * @param snackbarManager Manages the snackbar.
      * @param modalDialogManager Manages modal dialogs.
-     * @param bottomSheetController The {@link BottomSheetController} for the current activity.
      * @param incognitoReauthControllerSupplier {@link OneshotSupplier<IncognitoReauthController>}
-     *     to detect pending re-auth when tab switcher is shown.
+     *         to detect pending re-auth when tab switcher is shown.
      * @param backPressManager {@link BackPressManager} to handle back press gesture.
-     * @param layoutStateProviderSupplier {@link OneshotSupplier<LayoutStateProvider>} to provide
-     *     the layout state changes.
      * @return The {@link TabSwitcher}.
      */
-    TabSwitcher createGridTabSwitcher(
-            @NonNull Activity activity,
+    TabSwitcher createGridTabSwitcher(@NonNull Activity activity,
             @NonNull ActivityLifecycleDispatcher activityLifecycleDispatcher,
             @NonNull TabModelSelector tabModelSelector,
             @NonNull TabContentManager tabContentManager,
@@ -121,27 +100,53 @@ public interface TabManagementDelegate {
             @NonNull MenuOrKeyboardActionController menuOrKeyboardActionController,
             @NonNull ViewGroup containerView,
             @NonNull MultiWindowModeStateDispatcher multiWindowModeStateDispatcher,
-            @NonNull ScrimCoordinator scrimCoordinator,
-            @NonNull ViewGroup rootView,
+            @NonNull ScrimCoordinator scrimCoordinator, @NonNull ViewGroup rootView,
             @NonNull Supplier<DynamicResourceLoader> dynamicResourceLoaderSupplier,
             @NonNull SnackbarManager snackbarManager,
             @NonNull ModalDialogManager modalDialogManager,
-            @NonNull BottomSheetController bottomSheetController,
             @NonNull OneshotSupplier<IncognitoReauthController> incognitoReauthControllerSupplier,
-            @Nullable BackPressManager backPressManager,
-            @Nullable OneshotSupplier<LayoutStateProvider> layoutStateProviderSupplier);
+            @Nullable BackPressManager backPressManager);
+
+    /**
+     * Create the {@link TabSwitcher} to display Tabs in carousel.
+     * @param activity The current Android {@link Activity}.
+     * @param lifecycleDispatcher Allows observation of the activity lifecycle.
+     * @param tabModelSelector Gives access to the current set of {@TabModel}.
+     * @param tabContentManager Gives access to the tab content.
+     * @param browserControls Allows observation of the browser controls state.
+     * @param tabCreatorManager Manages creation of tabs.
+     * @param menuOrKeyboardActionController allows access to menu or keyboard actions.
+     * @param containerView The {@link ViewGroup} to add the switcher to.
+     * @param multiWindowModeStateDispatcher Gives access to the multi window mode state.
+     * @param scrimCoordinator The {@link ScrimCoordinator} to control the scrim view.
+     * @param rootView The root view of the app.
+     * @param dynamicResourceLoaderSupplier Supplies the current {@link DynamicResourceLoader}.
+     * @param snackbarManager Manages the snackbar.
+     * @param modalDialogManager Manages modal dialogs.
+     * @return The {@link TabSwitcher}.
+     */
+    TabSwitcher createCarouselTabSwitcher(@NonNull Activity activity,
+            @NonNull ActivityLifecycleDispatcher lifecycleDispatcher,
+            @NonNull TabModelSelector tabModelSelector,
+            @NonNull TabContentManager tabContentManager,
+            @NonNull BrowserControlsStateProvider browserControls,
+            @NonNull TabCreatorManager tabCreatorManager,
+            @NonNull MenuOrKeyboardActionController menuOrKeyboardActionController,
+            @NonNull ViewGroup containerView,
+            @NonNull MultiWindowModeStateDispatcher multiWindowModeStateDispatcher,
+            @NonNull ScrimCoordinator scrimCoordinator, @NonNull ViewGroup rootView,
+            @NonNull Supplier<DynamicResourceLoader> dynamicResourceLoaderSupplier,
+            @NonNull SnackbarManager snackbarManager,
+            @NonNull ModalDialogManager modalDialogManager);
 
     /**
      * Create the {@link TabGroupUi}.
-     *
      * @param activity The {@link Activity} that creates this surface.
      * @param parentView The parent view of this UI.
-     * @param browserControlsStateProvider The {@link BrowserControlsStateProvider} of the top
-     *     controls.
      * @param incognitoStateProvider Observable provider of incognito state.
      * @param scrimCoordinator The {@link ScrimCoordinator} to control scrim view.
      * @param omniboxFocusStateSupplier Supplier to access the focus state of the omnibox.
-     * @param bottomSheetController The {@link BottomSheetController} for the current activity.
+     * @param bottomSheetController Controls the state of the bottom sheet.
      * @param activityLifecycleDispatcher Allows observation of the activity lifecycle.
      * @param isWarmOnResumeSupplier Supplies whether the app was warm on resume.
      * @param tabModelSelector Gives access to the current set of {@TabModel}.
@@ -153,10 +158,7 @@ public interface TabManagementDelegate {
      * @param snackbarManager Manages the display of snackbars.
      * @return The {@link TabGroupUi}.
      */
-    TabGroupUi createTabGroupUi(
-            @NonNull Activity activity,
-            @NonNull ViewGroup parentView,
-            @NonNull BrowserControlsStateProvider browserControlsStateProvider,
+    TabGroupUi createTabGroupUi(@NonNull Activity activity, @NonNull ViewGroup parentView,
             @NonNull IncognitoStateProvider incognitoStateProvider,
             @NonNull ScrimCoordinator scrimCoordinator,
             @NonNull ObservableSupplier<Boolean> omniboxFocusStateSupplier,
@@ -164,94 +166,26 @@ public interface TabManagementDelegate {
             @NonNull ActivityLifecycleDispatcher activityLifecycleDispatcher,
             @NonNull Supplier<Boolean> isWarmOnResumeSupplier,
             @NonNull TabModelSelector tabModelSelector,
-            @NonNull TabContentManager tabContentManager,
-            @NonNull ViewGroup rootView,
+            @NonNull TabContentManager tabContentManager, @NonNull ViewGroup rootView,
             @NonNull Supplier<DynamicResourceLoader> dynamicResourceLoaderSupplier,
             @NonNull TabCreatorManager tabCreatorManager,
             @NonNull OneshotSupplier<LayoutStateProvider> layoutStateProviderSupplier,
             @NonNull SnackbarManager snackbarManager);
 
     /**
-     * Create a {@link TabSwitcher} and {@link Pane} for the Hub.
-     *
-     * @param activity The {@link Activity} that hosts the pane.
-     * @param lifecycleDispatcher The lifecycle dispatcher for the activity.
-     * @param profileProviderSupplier The supplier for profiles.
-     * @param tabModelSelector For access to {@link TabModel}.
-     * @param tabContentManager For management of thumbnails.
-     * @param tabCreatorManager For creating new tabs.
-     * @param browserControlsStateProvider For determining thumbnail size.
-     * @param multiWindowModeStateDispatcher For managing behavior in multi-window.
-     * @param rootUiScrimCoordinator The root UI coordinator's scrim coordinator. On LFF this is
-     *     unused as the root UI's scrim coordinator is used for the show/hide animation.
-     * @param snackbarManager The activity level snackbar manager.
-     * @param modalDialogManager The modal dialog manager for the activity.
-     * @param bottomSheetController The {@link BottomSheetController} for the current activity.
-     * @param incognitoReauthControllerSupplier The incognito reauth controller supplier.
-     * @param newTabButtonOnClickListener The listener for clicking the new tab button.
-     * @param isIncognito Whether this is an incognito pane.
-     * @param onToolbarAlphaChange Observer to notify when alpha changes during animations.
+     * Create a {@link TabGroupModelFilter} for the given {@link TabModel}.
+     * @return The {@link TabGroupModelFilter}.
      */
-    Pair<TabSwitcher, Pane> createTabSwitcherPane(
-            @NonNull Activity activity,
-            @NonNull ActivityLifecycleDispatcher lifecycleDispatcher,
-            @NonNull OneshotSupplier<ProfileProvider> profileProviderSupplier,
+    TabGroupModelFilter createTabGroupModelFilter(TabModel tabModel);
+
+    /**
+     * Create a {@link TabSuggestions} for the given {@link Activity}
+     * @param context The activity context.
+     * @param tabModelSelector Allows access to the current set of {@link TabModel}.
+     * @param activityLifecycleDispatcher Allows observation of the activity lifecycle.
+     * @return the {@link TabSuggestions} for the activity
+     */
+    TabSuggestions createTabSuggestions(@NonNull Context context,
             @NonNull TabModelSelector tabModelSelector,
-            @NonNull TabContentManager tabContentManager,
-            @NonNull TabCreatorManager tabCreatorManager,
-            @NonNull BrowserControlsStateProvider browserControlsStateProvider,
-            @NonNull MultiWindowModeStateDispatcher multiWindowModeStateDispatcher,
-            @NonNull ScrimCoordinator rootUiScrimCoordinator,
-            @NonNull SnackbarManager snackbarManager,
-            @NonNull ModalDialogManager modalDialogManager,
-            @NonNull BottomSheetController bottomSheetController,
-            @Nullable OneshotSupplier<IncognitoReauthController> incognitoReauthControllerSupplier,
-            @NonNull OnClickListener newTabButtonOnClickListener,
-            boolean isIncognito,
-            @NonNull DoubleConsumer onToolbarAlphaChange);
-
-    /**
-     * *
-     *
-     * @param context Used to inflate UI.
-     * @param tabModelSelector Used to pull tab data from.
-     * @param onToolbarAlphaChange Observer to notify when alpha changes during animations.
-     * @return The pane implementation that displays and allows interactions with tab groups.
-     */
-    Pane createTabGroupsPane(
-            @NonNull Context context,
-            @NonNull TabModelSelector tabModelSelector,
-            @NonNull DoubleConsumer onToolbarAlphaChange);
-
-    /**
-     * Create a TabGroupCreationDialogManager when creating a new tab group.
-     *
-     * @param activity The {@link Activity} that hosts this dialog.
-     * @param modalDialogManager The modal dialog manager for the activity.
-     * @param tabModelSelector The current {@link TabModelSelector}.
-     */
-    Destroyable createTabGroupCreationDialogManager(
-            @NonNull Activity activity,
-            @NonNull ModalDialogManager modalDialogManager,
-            @NonNull TabModelSelector tabModelSelector);
-
-    /**
-     * Create a {@link ColorPicker} when creating a custom color picker component.
-     *
-     * @param activity The current Android's context.
-     * @param colors The list of colors used for this color picker component.
-     * @param colorPickerLayout The layout resource to be inflated.
-     * @param colorPickerType The {@link ColorPickerType} that this color picker use.
-     * @param isIncognito Whether the current tab model is in incognito mode.
-     * @param layoutType The {@ColorPickerLayoutType} that the component will be arranged as.
-     * @param onColorItemClicked The runnable for performing an action on each color click event.
-     */
-    ColorPicker createColorPickerCoordinator(
-            @NonNull Context context,
-            @NonNull List<Integer> colors,
-            @NonNull @LayoutRes int colorPickerLayout,
-            @NonNull @ColorPickerType int colorPickerType,
-            @NonNull boolean isIncognito,
-            @NonNull @ColorPickerLayoutType int layoutType,
-            @Nullable Runnable onColorItemClicked);
+            @NonNull ActivityLifecycleDispatcher activityLifecycleDispatcher);
 }

@@ -25,9 +25,15 @@ ServiceWorkerContainer* NavigatorServiceWorker::From(LocalDOMWindow& window) {
 // static
 ServiceWorkerContainer* NavigatorServiceWorker::serviceWorker(
     ScriptState* script_state,
-    Navigator&,
+    Navigator& navigator,
     ExceptionState& exception_state) {
-  LocalDOMWindow& window = *LocalDOMWindow::From(script_state);
+  if (!navigator.DomWindow())
+    return nullptr;
+  LocalDOMWindow& window = *navigator.DomWindow();
+  DCHECK(ExecutionContext::From(script_state)
+             ->GetSecurityOrigin()
+             ->CanAccess(window.GetSecurityOrigin()));
+
   auto* container = From(window);
   if (!container) {
     String error_message;

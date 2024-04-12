@@ -8,8 +8,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
-#include <string_view>
 #include <utility>
 
 #include "ash/constants/ash_features.h"
@@ -26,7 +24,6 @@
 #include "base/values.h"
 #include "chrome/browser/ash/ownership/owner_settings_service_ash.h"
 #include "chrome/browser/ash/policy/core/device_policy_decoder.h"
-#include "chrome/browser/ash/policy/handlers/device_dlc_predownload_list_policy_handler.h"
 #include "chrome/browser/ash/policy/handlers/system_proxy_handler.h"
 #include "chrome/browser/ash/policy/off_hours/off_hours_proto_parser.h"
 #include "chrome/browser/ash/settings/cros_settings.h"
@@ -44,7 +41,11 @@
 #include "components/policy/proto/device_management_backend.pb.h"
 #include "components/prefs/pref_service.h"
 #include "components/user_manager/user_manager.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/re2/src/re2/re2.h"
+
+#include "ui/display/display.h"
+#include "jemaos/switches/accelerometer/accelerometer_switches.h"
 
 using google::protobuf::RepeatedField;
 using google::protobuf::RepeatedPtrField;
@@ -78,16 +79,14 @@ const char* const kKnownSettings[] = {
     kDeviceActivityHeartbeatCollectionRateMs,
     kDeviceActivityHeartbeatEnabled,
     kDeviceAllowedBluetoothServices,
+    kDeviceAttestationEnabled,
     kDeviceAutoUpdateTimeRestrictions,
     kDeviceCrostiniArcAdbSideloadingAllowed,
     kDeviceDisabled,
     kDeviceDisabledMessage,
     kDeviceDisplayResolution,
-    kDeviceDlcPredownloadList,
     kDeviceDockMacAddressSource,
     kDeviceEncryptedReportingPipelineEnabled,
-    kDeviceExtendedAutoUpdateEnabled,
-    kDeviceHindiInscriptLayoutEnabled,
     kDeviceHostnameTemplate,
     kDeviceHostnameUserConfigurable,
     kDeviceLoginScreenInputMethods,
@@ -114,6 +113,7 @@ const char* const kKnownSettings[] = {
     kDeviceUnaffiliatedCrostiniAllowed,
     kDeviceWebBasedAttestationAllowedUrls,
     kDeviceWiFiAllowed,
+    kDeviceWilcoDtcAllowed,
     kDisplayRotationDefault,
     kExtensionCacheSize,
     kFeatureFlags,
@@ -130,8 +130,6 @@ const char* const kKnownSettings[] = {
     kReleaseLtsTag,
     kDeviceChannelDowngradeBehavior,
     kDeviceSystemAecEnabled,
-    kDeviceReportRuntimeCounters,
-    kDeviceReportRuntimeCountersCheckingRateMs,
     kReportDeviceActivityTimes,
     kReportDeviceAudioStatus,
     kReportDeviceAudioStatusCheckingRateMs,
@@ -189,7 +187,7 @@ const char* const kKnownSettings[] = {
 constexpr char InvalidCombinationsOfAllowedUsersPoliciesHistogram[] =
     "Login.InvalidCombinationsOfAllowedUsersPolicies";
 
-// Re-use the DecodeJsonStringAndNormalize() from device_policy_decoder.h
+// Re-use the DecodeJsonStringAndNormalize from device_policy_decoder.h
 // here to decode the json string and validate it against |policy_name|'s
 // schema. If the json string is valid, the decoded base::Value will be stored
 // as |setting_name| in |pref_value_map|. The error can be ignored here since it
@@ -199,27 +197,11 @@ void SetJsonDeviceSetting(const std::string& setting_name,
                           const std::string& json_string,
                           PrefValueMap* pref_value_map) {
   std::string error;
-  std::optional<base::Value> decoded_json =
+  absl::optional<base::Value> decoded_json =
       policy::DecodeJsonStringAndNormalize(json_string, policy_name, &error);
   if (decoded_json.has_value()) {
     pref_value_map->SetValue(setting_name, std::move(decoded_json.value()));
   }
-}
-
-// Re-use the DecodeDeviceDlcPredownloadListPolicy() from
-// device_policy_decoder.h here to decode the list of DLCs that should be pre
-// downloaded to the device.
-void SetDeviceDlcPredownloadListSetting(
-    const RepeatedPtrField<std::string>& raw_policy_value,
-    PrefValueMap* pref_value_map) {
-  std::string warning;
-  base::Value::List decoded_dlc_list =
-      policy::DeviceDlcPredownloadListPolicyHandler::
-          DecodeDeviceDlcPredownloadListPolicy(raw_policy_value, warning);
-  // The warning can be ignored here since it is already reported during
-  // decoding in device_policy_decoder.cc.
-  pref_value_map->SetValue(kDeviceDlcPredownloadList,
-                           base::Value(std::move(decoded_dlc_list)));
 }
 
 // Puts the policy value into the settings store if only it matches the regex
@@ -243,17 +225,17 @@ enum class AllowedUsersPoliciesInvalidState {
 };
 
 // Returns the value of the allow_new_users (DeviceAllowNewUsers) device
-// policy or an empty std::optional if the policy was not set.
-std::optional<bool> GetAllowNewUsers(
+// policy or an empty absl::optional if the policy was not set.
+absl::optional<bool> GetAllowNewUsers(
     const em::ChromeDeviceSettingsProto& policy) {
   if (!policy.has_allow_new_users() ||
       !policy.allow_new_users().has_allow_new_users())
-    return std::nullopt;
-  return std::optional<bool>{policy.allow_new_users().allow_new_users()};
+    return absl::nullopt;
+  return absl::optional<bool>{policy.allow_new_users().allow_new_users()};
 }
 
 // Returns:
-// - an empty std::optional if the user_allowlist and user_whitelist
+// - an empty absl::optional if the user_allowlist and user_whitelist
 // outer wrapper message is not present.
 // - true if the user_allowlist outer wrapper message is present and the
 //   user_allowlist inner list is empty, or when it's not present,
@@ -261,7 +243,7 @@ std::optional<bool> GetAllowNewUsers(
 // - false if the user_allowlist outer wrapper message is present and the
 //   user_allowlist inner list has at least one element, or when it's not
 //   present, and the user_whitelist has at least one element.
-std::optional<bool> GetIsEmptyAllowList(
+absl::optional<bool> GetIsEmptyAllowList(
     const em::ChromeDeviceSettingsProto& policy) {
   if (policy.has_user_allowlist()) {
     base::UmaHistogramBoolean(kAllowlistCOILFallbackHistogram, false);
@@ -274,7 +256,7 @@ std::optional<bool> GetIsEmptyAllowList(
     return policy.user_whitelist().user_whitelist_size() == 0;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // Decodes the allow_new_users (DeviceAllowNewUsers) and user_allowlist
@@ -681,15 +663,6 @@ void DecodeAutoUpdatePolicies(const em::ChromeDeviceSettingsProto& policy,
                            new_values_cache);
     }
   }
-
-  if (policy.has_deviceextendedautoupdateenabled()) {
-    const em::BooleanPolicyProto& container(
-        policy.deviceextendedautoupdateenabled());
-    if (container.has_value()) {
-      new_values_cache->SetValue(kDeviceExtendedAutoUpdateEnabled,
-                                 base::Value(container.value()));
-    }
-  }
 }
 
 void DecodeReportingPolicies(const em::ChromeDeviceSettingsProto& policy,
@@ -708,10 +681,6 @@ void DecodeReportingPolicies(const em::ChromeDeviceSettingsProto& policy,
     if (reporting_policy.has_report_audio_status()) {
       new_values_cache->SetBoolean(kReportDeviceAudioStatus,
                                    reporting_policy.report_audio_status());
-    }
-    if (reporting_policy.has_report_runtime_counters()) {
-      new_values_cache->SetBoolean(kDeviceReportRuntimeCounters,
-                                   reporting_policy.report_runtime_counters());
     }
     if (reporting_policy.has_report_boot_mode()) {
       new_values_cache->SetBoolean(kReportDeviceBootMode,
@@ -838,12 +807,6 @@ void DecodeReportingPolicies(const em::ChromeDeviceSettingsProto& policy,
           kReportDeviceAudioStatusCheckingRateMs,
           reporting_policy.report_device_audio_status_checking_rate_ms());
     }
-    if (reporting_policy
-            .has_device_report_runtime_counters_checking_rate_ms()) {
-      new_values_cache->SetInteger(
-          kDeviceReportRuntimeCountersCheckingRateMs,
-          reporting_policy.device_report_runtime_counters_checking_rate_ms());
-    }
     if (reporting_policy.has_report_signal_strength_event_driven_telemetry()) {
       base::Value::List signal_strength_telemetry_list;
       for (const std::string& telemetry_entry :
@@ -959,6 +922,10 @@ void DecodeGenericPolicies(const em::ChromeDeviceSettingsProto& policy,
                                 policy.variations_parameter().parameter());
   }
 
+  new_values_cache->SetBoolean(
+      kDeviceAttestationEnabled,
+      policy.attestation_settings().attestation_enabled());
+
   if (policy.has_attestation_settings() &&
       policy.attestation_settings().has_content_protection_enabled()) {
     new_values_cache->SetBoolean(
@@ -991,6 +958,22 @@ void DecodeGenericPolicies(const em::ChromeDeviceSettingsProto& policy,
     new_values_cache->SetInteger(
         kDisplayRotationDefault,
         policy.display_rotation_default().display_rotation_default());
+  }else{
+    display::Display::Rotation default_rotate = display::Display::ROTATE_0;
+
+    if (jemaos::switches::IsRotate_90()){
+      default_rotate = display::Display::ROTATE_90;
+    }else if (jemaos::switches::IsRotate_180()){
+      default_rotate = display::Display::ROTATE_180;
+    }else if (jemaos::switches::IsRotate_270()){
+      default_rotate = display::Display::ROTATE_270;
+    }
+
+    if (default_rotate != display::Display::ROTATE_0){
+      new_values_cache->SetInteger(
+        kDisplayRotationDefault,
+        default_rotate);
+    }
   }
 
   if (policy.has_device_display_resolution() &&
@@ -1188,6 +1171,16 @@ void DecodeGenericPolicies(const em::ChromeDeviceSettingsProto& policy,
     }
   }
 
+  if (policy.has_device_wilco_dtc_allowed()) {
+    const em::DeviceWilcoDtcAllowedProto& container(
+        policy.device_wilco_dtc_allowed());
+    if (container.has_device_wilco_dtc_allowed()) {
+      new_values_cache->SetValue(
+          kDeviceWilcoDtcAllowed,
+          base::Value(container.device_wilco_dtc_allowed()));
+    }
+  }
+
   int dock_mac_address_source =
       em::DeviceDockMacAddressSourceProto::DOCK_NIC_MAC_ADDRESS;
   if (policy.has_device_dock_mac_address_source() &&
@@ -1311,21 +1304,6 @@ void DecodeGenericPolicies(const em::ChromeDeviceSettingsProto& policy,
                                  base::Value(container.enabled()));
     }
   }
-
-  if (policy.has_device_hindi_inscript_layout_enabled()) {
-    const em::DeviceHindiInscriptLayoutEnabledProto& container(
-        policy.device_hindi_inscript_layout_enabled());
-    if (container.has_enabled()) {
-      new_values_cache->SetValue(kDeviceHindiInscriptLayoutEnabled,
-                                 base::Value(container.enabled()));
-    }
-  }
-
-  if (policy.has_device_dlc_predownload_list()) {
-    SetDeviceDlcPredownloadListSetting(
-        policy.device_dlc_predownload_list().value().entries(),
-        new_values_cache);
-  }
 }
 
 void DecodeLogUploadPolicies(const em::ChromeDeviceSettingsProto& policy,
@@ -1382,7 +1360,7 @@ DeviceSettingsProvider::~DeviceSettingsProvider() {
 }
 
 // static
-bool DeviceSettingsProvider::IsDeviceSetting(std::string_view name) {
+bool DeviceSettingsProvider::IsDeviceSetting(const std::string& name) {
   return base::Contains(kKnownSettings, name);
 }
 
@@ -1404,8 +1382,7 @@ void DeviceSettingsProvider::DoSet(const std::string& path,
   // Make sure that either the current user is the device owner or the
   // device doesn't have an owner yet.
   if (!(device_settings_service_->HasPrivateOwnerKey() ||
-        ownership_status_ ==
-            DeviceSettingsService::OwnershipStatus::kOwnershipNone)) {
+        ownership_status_ == DeviceSettingsService::OWNERSHIP_NONE)) {
     LOG(WARNING) << "Changing settings from non-owner, setting=" << path;
 
     // Revert UI change.
@@ -1458,10 +1435,8 @@ void DeviceSettingsProvider::OwnershipStatusChanged() {
   // cache to device settings proper. It is important that writing only happens
   // in this case, as during normal operation, the contents of the cache should
   // never overwrite actual device settings.
-  if (new_ownership_status ==
-          DeviceSettingsService::OwnershipStatus::kOwnershipTaken &&
-      ownership_status_ ==
-          DeviceSettingsService::OwnershipStatus::kOwnershipNone) {
+  if (new_ownership_status == DeviceSettingsService::OWNERSHIP_TAKEN &&
+      ownership_status_ == DeviceSettingsService::OWNERSHIP_NONE) {
     if (device_settings_service_->HasPrivateOwnerKey()) {
       // There shouldn't be any pending writes, since the cache writes are all
       // immediate.
@@ -1616,7 +1591,7 @@ bool DeviceSettingsProvider::MitigateMissingPolicy() {
   return true;
 }
 
-const base::Value* DeviceSettingsProvider::Get(std::string_view path) const {
+const base::Value* DeviceSettingsProvider::Get(const std::string& path) const {
   if (IsDeviceSetting(path)) {
     const base::Value* value;
     if (values_cache_.GetValue(path, &value))
@@ -1636,16 +1611,14 @@ DeviceSettingsProvider::PrepareTrustedValues(base::OnceClosure* callback) {
   return status;
 }
 
-bool DeviceSettingsProvider::HandlesSetting(std::string_view path) const {
+bool DeviceSettingsProvider::HandlesSetting(const std::string& path) const {
   return IsDeviceSetting(path);
 }
 
 DeviceSettingsProvider::TrustedStatus
 DeviceSettingsProvider::RequestTrustedEntity() {
-  if (ownership_status_ ==
-      DeviceSettingsService::OwnershipStatus::kOwnershipNone) {
+  if (ownership_status_ == DeviceSettingsService::OWNERSHIP_NONE)
     return TRUSTED;
-  }
   return trusted_status_;
 }
 
@@ -1683,7 +1656,9 @@ bool DeviceSettingsProvider::UpdateFromService() {
         break;
       [[fallthrough]];
     case DeviceSettingsService::STORE_KEY_UNAVAILABLE:
-      if (user_manager::UserManager::Get()->GetOwnerEmail().has_value()) {
+      if (base::FeatureList::IsEnabled(
+              ownership::kChromeSideOwnerKeyGeneration) &&
+          user_manager::UserManager::Get()->GetOwnerEmail().has_value()) {
         // On the consumer owned device Chrome is responsible for generating a
         // new key and/or policy if they are missing (which happens after the
         // user session starts).

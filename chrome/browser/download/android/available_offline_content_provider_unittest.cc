@@ -13,7 +13,6 @@
 #include "base/strings/string_util.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/test/test_future.h"
 #include "chrome/browser/offline_items_collection/offline_content_aggregator_factory.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/common/available_offline_content.mojom-test-utils.h"
@@ -152,11 +151,12 @@ class AvailableOfflineContentTest : public ChromeRenderViewHostTestHarness {
 
   std::tuple<bool, std::vector<chrome::mojom::AvailableOfflineContentPtr>>
   ListAndWait() {
-    base::test::TestFuture<
-        bool, std::vector<chrome::mojom::AvailableOfflineContentPtr>>
-        future;
-    provider_->List(future.GetCallback());
-    return future.Take();
+    bool list_visible_by_prefs;
+    std::vector<chrome::mojom::AvailableOfflineContentPtr> suggestions;
+    chrome::mojom::AvailableOfflineContentProviderAsyncWaiter waiter(
+        provider_.get());
+    waiter.List(&list_visible_by_prefs, &suggestions);
+    return std::make_tuple(list_visible_by_prefs, std::move(suggestions));
   }
 
   std::unique_ptr<base::test::ScopedFeatureList> scoped_feature_list_ =

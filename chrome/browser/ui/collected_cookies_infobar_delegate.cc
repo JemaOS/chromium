@@ -13,7 +13,6 @@
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/ui_base_features.h"
 
 // static
 void CollectedCookiesInfoBarDelegate::Create(
@@ -34,9 +33,7 @@ CollectedCookiesInfoBarDelegate::GetIdentifier() const {
 }
 
 const gfx::VectorIcon& CollectedCookiesInfoBarDelegate::GetVectorIcon() const {
-  return features::IsChromeRefresh2023()
-             ? vector_icons::kSettingsChromeRefreshIcon
-             : vector_icons::kSettingsIcon;
+  return vector_icons::kCookieIcon;
 }
 
 std::u16string CollectedCookiesInfoBarDelegate::GetMessageText() const {

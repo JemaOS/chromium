@@ -60,12 +60,10 @@ public class SignalAccumulator {
         for (ActionProvider actionProvider : mActionProviders) {
             actionProvider.getAction(mTab, this);
         }
-        mHandler.postDelayed(
-                () -> {
-                    mHasTimedOut = true;
-                    proceedToNextStepIfReady();
-                },
-                ACTION_PROVIDER_TIMEOUT_MS);
+        mHandler.postDelayed(() -> {
+            mHasTimedOut = true;
+            proceedToNextStepIfReady();
+        }, ACTION_PROVIDER_TIMEOUT_MS);
     }
 
     /**
@@ -98,7 +96,9 @@ public class SignalAccumulator {
         mHasReaderMode = hasReaderMode;
     }
 
-    /** Central method invoked whenever a backend responds or time out happens. */
+    /**
+     * Central method invoked whenever a backend responds or time out happens.
+     */
     private void proceedToNextStepIfReady() {
         boolean isReady = mHasTimedOut || hasAllSignals();
         if (!isReady || mIsInValid) return;

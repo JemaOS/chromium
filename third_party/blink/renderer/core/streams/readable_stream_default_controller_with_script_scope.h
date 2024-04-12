@@ -19,9 +19,8 @@ class ScriptState;
 class CORE_EXPORT ReadableStreamDefaultControllerWithScriptScope
     : public GarbageCollected<ReadableStreamDefaultControllerWithScriptScope> {
  public:
-  ReadableStreamDefaultControllerWithScriptScope(
-      ScriptState* script_state,
-      ReadableStreamDefaultController* controller);
+  ReadableStreamDefaultControllerWithScriptScope(ScriptState* script_state,
+                                                 ScriptValue controller);
 
   // After calling this the other methods will no longer do anything.
   void Deactivate();
@@ -33,23 +32,21 @@ class CORE_EXPORT ReadableStreamDefaultControllerWithScriptScope
 
   // Helper methods
   template <typename ChunkType>
-    requires std::derived_from<ChunkType, bindings::DictionaryBase> ||
-             std::derived_from<ChunkType, ScriptWrappable>
-  void Enqueue(ChunkType* chunk) const {
+  void Enqueue(ChunkType chunk) const {
     ScriptState::Scope scope(script_state_);
-    Enqueue(chunk->ToV8(script_state_));
+    v8::Local<v8::Value> js_chunk = ToV8(chunk, script_state_);
+    Enqueue(js_chunk);
   }
 
   template <typename ErrorType>
-    requires std::derived_from<ErrorType, bindings::DictionaryBase> ||
-             std::derived_from<ErrorType, ScriptWrappable>
-  void Error(ErrorType* error) {
+  void Error(ErrorType error) {
     ScriptState::Scope scope(script_state_);
-    Error(error->ToV8(script_state_));
+    v8::Local<v8::Value> js_error = ToV8(error, script_state_);
+    Error(js_error);
   }
 
   ReadableStreamDefaultController* GetOriginalController() {
-    return controller_.Get();
+    return controller_;
   }
 
   void Trace(Visitor*) const;

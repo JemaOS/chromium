@@ -8,11 +8,9 @@
 #define CHROME_BROWSER_PROFILES_PROFILE_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
@@ -32,9 +30,6 @@ class PrefStore;
 class ProfileDestroyer;
 class ProfileKey;
 class TestingProfile;
-class ThemeService;
-class TemplateURLService;
-class InstantService;
 
 namespace base {
 class FilePath;
@@ -43,6 +38,7 @@ class Time;
 }
 
 namespace content {
+class ResourceContext;
 class WebUI;
 }
 
@@ -53,6 +49,7 @@ class ProfileCloudPolicyManager;
 class UserCloudPolicyManager;
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+class ActiveDirectoryPolicyManager;
 class UserCloudPolicyManagerAsh;
 #endif
 }  // namespace policy
@@ -72,6 +69,15 @@ class ProfileObserver;
 // http://dev.chromium.org/developers/design-documents/profile-architecture
 class Profile : public content::BrowserContext {
  public:
+  enum CreateStatus {
+    // Profile services were not created due to a local error (e.g., disk full).
+    CREATE_STATUS_LOCAL_FAIL,
+    // Profile created but before initializing extensions and promo resources.
+    CREATE_STATUS_CREATED,
+    // Profile is created, extensions and promo resources are initialized.
+    CREATE_STATUS_INITIALIZED,
+  };
+
   enum CreateMode {
     CREATE_MODE_SYNCHRONOUS,
     CREATE_MODE_ASYNCHRONOUS
@@ -231,6 +237,8 @@ class Profile : public content::BrowserContext {
 
   variations::VariationsClient* GetVariationsClient() override;
 
+  content::ResourceContext* GetResourceContext() override;
+
   // Returns the creation time of this profile. This will either be the creation
   // time of the profile directory or, for ephemeral off-the-record profiles,
   // the creation time of the profile object instance.
@@ -343,6 +351,10 @@ class Profile : public content::BrowserContext {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // Returns the UserCloudPolicyManagerAsh.
   virtual policy::UserCloudPolicyManagerAsh* GetUserCloudPolicyManagerAsh() = 0;
+
+  // Returns the ActiveDirectoryPolicyManager.
+  virtual policy::ActiveDirectoryPolicyManager*
+  GetActiveDirectoryPolicyManager() = 0;
 #else
   // Returns the UserCloudPolicyManager.
   virtual policy::UserCloudPolicyManager* GetUserCloudPolicyManager() = 0;
@@ -358,22 +370,24 @@ class Profile : public content::BrowserContext {
   virtual void set_last_selected_directory(const base::FilePath& path) = 0;
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  enum AppLocaleChangedVia{// Caused by chrome://settings change.
-                           APP_LOCALE_CHANGED_VIA_SETTINGS,
-                           // Locale has been reverted via LocaleChangeGuard.
-                           APP_LOCALE_CHANGED_VIA_REVERT,
-                           // From login screen.
-                           APP_LOCALE_CHANGED_VIA_LOGIN,
-                           // From login to a public session.
-                           APP_LOCALE_CHANGED_VIA_PUBLIC_SESSION_LOGIN,
-                           // From AllowedLanguages policy.
-                           APP_LOCALE_CHANGED_VIA_POLICY,
-                           // Locale is reverted in the next demo session.
-                           APP_LOCALE_CHANGED_VIA_DEMO_SESSION_REVERT,
-                           // From system tray.
-                           APP_LOCALE_CHANGED_VIA_SYSTEM_TRAY,
-                           // Source unknown.
-                           APP_LOCALE_CHANGED_VIA_UNKNOWN};
+  enum AppLocaleChangedVia {
+    // Caused by chrome://settings change.
+    APP_LOCALE_CHANGED_VIA_SETTINGS,
+    // Locale has been reverted via LocaleChangeGuard.
+    APP_LOCALE_CHANGED_VIA_REVERT,
+    // From login screen.
+    APP_LOCALE_CHANGED_VIA_LOGIN,
+    // From login to a public session.
+    APP_LOCALE_CHANGED_VIA_PUBLIC_SESSION_LOGIN,
+    // From AllowedLanguages policy.
+    APP_LOCALE_CHANGED_VIA_POLICY,
+    // From demo session.
+    APP_LOCALE_CHANGED_VIA_DEMO_SESSION,
+    // From system tray.
+    APP_LOCALE_CHANGED_VIA_SYSTEM_TRAY,
+    // Source unknown.
+    APP_LOCALE_CHANGED_VIA_UNKNOWN
+  };
 
   // Changes application locale for a profile.
   virtual void ChangeAppLocale(
@@ -408,9 +422,6 @@ class Profile : public content::BrowserContext {
 
   // Returns whether it is an Incognito profile. An Incognito profile is an
   // off-the-record profile that is used for incognito mode.
-  //
-  // TODO(crbug.com/1348572): Also returns true for Lacros in a Ash guest
-  // profile.
   bool IsIncognitoProfile() const;
 
   // Returns true if this is a primary OffTheRecord profile, which covers the
@@ -424,6 +435,10 @@ class Profile : public content::BrowserContext {
   // Returns whether it is a system profile.
   bool IsSystemProfile() const;
 
+  //---***JEMAOS BEGIN***---
+  virtual bool IsJemaProfile() const;
+  //---***JEMAOS END***---
+
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   // Returns `true` if this is the first/initial Profile path in Lacros, and -
   // for regular sessions, if this Profile has the Device Account logged in.
@@ -434,6 +449,13 @@ class Profile : public content::BrowserContext {
 
   // Returns true if this is the main profile as defined above.
   virtual bool IsMainProfile() const = 0;
+
+  // Returns true if the profile path is for an web app profile.
+  static bool IsWebAppProfilePath(const base::FilePath& profile_path);
+
+  // Returns true if the name of the profile (i.e. `profile_path.BaseName()`) is
+  // for an web app profile.
+  static bool IsWebAppProfileName(const std::string& profile_path);
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
   bool CanUseDiskWhenOffTheRecord() override;
@@ -487,31 +509,15 @@ class Profile : public content::BrowserContext {
 
   virtual void RecordPrimaryMainFrameNavigation() = 0;
 
-  base::WeakPtr<const Profile> GetWeakPtr() const;
   base::WeakPtr<Profile> GetWeakPtr();
 
-  // Experimental getters/setters to gauge the performance of caching
-  // frequently used KeyedServices in a Profile pointer.
-  void set_theme_service(ThemeService* theme_service) {
-    theme_service_ = theme_service;
-  }
-  const std::optional<raw_ptr<ThemeService>>& theme_service() {
-    return theme_service_;
-  }
-  void set_template_url_service(TemplateURLService* template_url_service) {
-    template_url_service_ = template_url_service;
-  }
-  const std::optional<raw_ptr<TemplateURLService>>& template_url_service() {
-    return template_url_service_;
-  }
-  void set_instant_service(InstantService* instant_service) {
-    instant_service_ = instant_service;
-  }
-  const std::optional<raw_ptr<InstantService>>& instant_service() {
-    return instant_service_;
-  }
-
  protected:
+  //---***JEMAOS BEGIN***---
+  void set_is_jema_profile(bool is_jema_profile) {
+    is_jema_profile_ = is_jema_profile;
+  }
+  //---***JEMAOS END***---
+
   // Creates an OffTheRecordProfile which points to this Profile.
   static std::unique_ptr<Profile> CreateOffTheRecordProfile(
       Profile* parent,
@@ -529,6 +535,12 @@ class Profile : public content::BrowserContext {
   virtual bool IsSignedIn() = 0;
 
  private:
+  // Created on the UI thread, and returned by GetResourceContext(), but
+  // otherwise lives on and is destroyed on the IO thread.
+  //
+  // TODO(https://crbug.com/908955): Get rid of ResourceContext.
+  std::unique_ptr<content::ResourceContext> resource_context_;
+
   bool restored_last_session_ = false;
 
   // Used to prevent the notification that this Profile is destroyed from
@@ -541,11 +553,9 @@ class Profile : public content::BrowserContext {
   // true or false, so that calls can be nested.
   int accessibility_pause_level_ = 0;
 
-  // Experimental objects to gauge the performance of caching frequently used
-  // KeyedServices in a Profile pointer.
-  std::optional<raw_ptr<ThemeService>> theme_service_;
-  std::optional<raw_ptr<TemplateURLService>> template_url_service_;
-  std::optional<raw_ptr<InstantService>> instant_service_;
+  //---***JEMAOS BEGIN***---
+  bool is_jema_profile_;
+  //---***JEMAOS END***---
 
   base::ObserverList<ProfileObserver,
                      /*check_empty=*/true,

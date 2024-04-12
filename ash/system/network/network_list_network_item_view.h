@@ -23,9 +23,9 @@ class ViewClickListener;
 class ASH_EXPORT NetworkListNetworkItemView
     : public NetworkListItemView,
       public network_icon::AnimationObserver {
-  METADATA_HEADER(NetworkListNetworkItemView, NetworkListItemView)
-
  public:
+  METADATA_HEADER(NetworkListNetworkItemView);
+
   explicit NetworkListNetworkItemView(ViewClickListener* listener);
   NetworkListNetworkItemView(const NetworkListNetworkItemView&) = delete;
   NetworkListNetworkItemView& operator=(const NetworkListNetworkItemView&) =

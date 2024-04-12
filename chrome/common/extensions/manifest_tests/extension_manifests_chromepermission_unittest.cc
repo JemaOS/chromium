@@ -21,7 +21,7 @@ const char kChromeUntrustedTestURL[] = "chrome-untrusted://test/";
 
 namespace errors = manifest_errors;
 
-using ChromePermissionManifestTest = ChromeManifestTest;
+typedef ChromeManifestTest ChromePermissionManifestTest;
 
 TEST_F(ChromePermissionManifestTest, ChromeURLPermissionInvalid) {
   LoadAndExpectWarning(

@@ -8,11 +8,8 @@
 #include "chrome/browser/ui/views/frame/browser_frame_view_paint_utils_linux.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/desktop_browser_frame_aura_linux.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/geometry/skia_conversions.h"
-#include "ui/gfx/shadow_value.h"
 #include "ui/linux/linux_ui.h"
-#include "ui/ozone/public/ozone_platform.h"
 #include "ui/views/layout/layout_provider.h"
 #include "ui/views/window/window_button_order_provider.h"
 
@@ -52,37 +49,10 @@ SkRRect BrowserFrameViewLinux::GetRestoredClipRegion() const {
 }
 
 // static
-gfx::ShadowValues BrowserFrameViewLinux::GetShadowValues(bool active) {
+gfx::ShadowValues BrowserFrameViewLinux::GetShadowValues() {
   int elevation = ChromeLayoutProvider::Get()->GetShadowElevationMetric(
-      active ? views::Emphasis::kMaximum : views::Emphasis::kMedium);
+      views::Emphasis::kMaximum);
   return gfx::ShadowValue::MakeMdShadowValues(elevation);
-}
-
-void BrowserFrameViewLinux::PaintRestoredFrameBorder(
-    gfx::Canvas* canvas) const {
-#if BUILDFLAG(IS_LINUX)
-  const bool tiled = frame()->tiled();
-#else
-  const bool tiled = false;
-#endif
-  auto shadow_values =
-      tiled ? gfx::ShadowValues() : GetShadowValues(ShouldPaintAsActive());
-  PaintRestoredFrameBorderLinux(
-      *canvas, *this, frame_background(), GetRestoredClipRegion(),
-      ShouldDrawRestoredFrameShadow(), ShouldPaintAsActive(),
-      layout_->MirroredFrameBorderInsets(), shadow_values, tiled);
-}
-
-void BrowserFrameViewLinux::GetWindowMask(const gfx::Size& size,
-                                          SkPath* window_mask) {
-  // This class uses transparency to draw rounded corners, so a
-  // window mask is not necessary.
-}
-
-bool BrowserFrameViewLinux::ShouldDrawRestoredFrameShadow() const {
-  return static_cast<DesktopBrowserFrameAuraLinux*>(
-             frame()->native_browser_frame())
-      ->ShouldDrawRestoredFrameShadow();
 }
 
 void BrowserFrameViewLinux::OnWindowButtonOrderingChange() {
@@ -98,21 +68,34 @@ void BrowserFrameViewLinux::OnWindowButtonOrderingChange() {
     // a relayout of the tabstrip.  Do a full relayout to handle the
     // frame buttons as well as open tabs.
     views::View* root_view = widget->GetRootView();
-    root_view->DeprecatedLayoutImmediately();
+    root_view->Layout();
     root_view->SchedulePaint();
   }
 }
 
+void BrowserFrameViewLinux::PaintRestoredFrameBorder(
+    gfx::Canvas* canvas) const {
+  PaintRestoredFrameBorderLinux(
+      *canvas, *this, frame_background(), GetRestoredClipRegion(),
+      ShouldDrawRestoredFrameShadow(), layout_->MirroredFrameBorderInsets(),
+      GetShadowValues());
+}
+
+void BrowserFrameViewLinux::GetWindowMask(const gfx::Size& size,
+                                          SkPath* window_mask) {
+  // This class uses transparency to draw rounded corners, so a
+  // window mask is not necessary.
+}
+
+bool BrowserFrameViewLinux::ShouldDrawRestoredFrameShadow() const {
+  return static_cast<DesktopBrowserFrameAuraLinux*>(
+             frame()->native_browser_frame())
+      ->ShouldDrawRestoredFrameShadow();
+}
+
 float BrowserFrameViewLinux::GetRestoredCornerRadiusDip() const {
-#if BUILDFLAG(IS_LINUX)
-  const bool tiled = frame()->tiled();
-#else
-  const bool tiled = false;
-#endif
-  if (tiled || !UseCustomFrame() ||
-      !views::Widget::IsWindowCompositingSupported()) {
+  if (!UseCustomFrame() || !IsTranslucentWindowOpacitySupported())
     return 0;
-  }
   return ChromeLayoutProvider::Get()->GetCornerRadiusMetric(
       views::Emphasis::kHigh);
 }
@@ -120,6 +103,3 @@ float BrowserFrameViewLinux::GetRestoredCornerRadiusDip() const {
 int BrowserFrameViewLinux::GetTranslucentTopAreaHeight() const {
   return 0;
 }
-
-BEGIN_METADATA(BrowserFrameViewLinux)
-END_METADATA

@@ -4,17 +4,13 @@
 
 #include "chrome/browser/ash/system/timezone_resolver_manager.h"
 
-#include "ash/constants/ash_features.h"
-#include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
-#include "ash/constants/geolocation_access_level.h"
-#include "ash/system/privacy_hub/privacy_hub_controller.h"
 #include "chrome/browser/ash/login/login_manager_test.h"
 #include "chrome/browser/ash/login/test/device_state_mixin.h"
+#include "chrome/browser/ash/login/test/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/login/test/login_manager_mixin.h"
 #include "chrome/browser/ash/login/ui/user_adding_screen.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
-#include "chrome/browser/ash/policy/test_support/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/settings/scoped_testing_cros_settings.h"
 #include "chrome/browser/ash/settings/stub_cros_settings_provider.h"
 #include "chrome/browser/browser_process.h"
@@ -22,7 +18,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/common/pref_names.h"
-#include "chrome/test/base/testing_browser_process.h"
 #include "chromeos/ash/components/dbus/session_manager/fake_session_manager_client.h"
 #include "chromeos/ash/components/settings/cros_settings_names.h"
 #include "components/account_id/account_id.h"
@@ -63,9 +58,9 @@ constexpr std::array<system::TimeZoneResolverManager::TimeZoneResolveMethod, 4>
 
 }  // namespace
 
-class TimeZoneResolverManagerTestBase : public LoginManagerTest {
+class TimeZoneResolverManagerTest : public LoginManagerTest {
  public:
-  TimeZoneResolverManagerTestBase() {
+  TimeZoneResolverManagerTest() {
     login_manager_.AppendManagedUsers(1);
     login_manager_.AppendRegularUsers(2);
 
@@ -74,7 +69,7 @@ class TimeZoneResolverManagerTestBase : public LoginManagerTest {
     regular_secondary_user_id_ = login_manager_.users()[2].account_id;
   }
 
-  ~TimeZoneResolverManagerTestBase() override = default;
+  ~TimeZoneResolverManagerTest() override = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     // This is needed so that tests don't need to mock our policy
@@ -84,69 +79,6 @@ class TimeZoneResolverManagerTestBase : public LoginManagerTest {
     LoginManagerTest::SetUpCommandLine(command_line);
   }
 
-  void SetUserTimeZoneResolveMethod(
-      PrefService* pref_service,
-      system::TimeZoneResolverManager::TimeZoneResolveMethod method) {
-    // The way the automatic time zone is implemented today is that we have 2
-    // user preferences. kResolveTimezoneByGeolocationMigratedToMethod - marked
-    // to true, when user first interacts with the automatic time zone setting.
-    // kResolveTimezoneByGeolocationMethod - storing the user choice, whether
-    // they want to use coarse (IP-based) or precise (Wi-Fi and Cellular-based)
-    // location.
-    if (!pref_service->GetBoolean(
-            ::prefs::kResolveTimezoneByGeolocationMigratedToMethod)) {
-      pref_service->SetBoolean(
-          ::prefs::kResolveTimezoneByGeolocationMigratedToMethod, true);
-    }
-
-    pref_service->SetInteger(::prefs::kResolveTimezoneByGeolocationMethod,
-                             static_cast<int>(method));
-  }
-
-  bool IsStaticTimezoneSelected(PrefService* pref_service) {
-    return !pref_service->GetBoolean(
-               ::prefs::kResolveTimezoneByGeolocationMigratedToMethod) &&
-           static_cast<system::TimeZoneResolverManager::TimeZoneResolveMethod>(
-               pref_service->GetInteger(
-                   ::prefs::kResolveTimezoneByGeolocationMethod)) ==
-               system::TimeZoneResolverManager::TimeZoneResolveMethod::DISABLED;
-  }
-
-  void UpdateUserGeolocationPermission(PrefService* pref_service,
-                                       GeolocationAccessLevel access_level) {
-    pref_service->SetInteger(ash::prefs::kUserGeolocationAccessLevel,
-                             static_cast<int>(access_level));
-  }
-
-  void UpdateDeviceGeolocationPermission(bool enabled) {
-    PrefService* local_state = g_browser_process->local_state();
-
-    GeolocationAccessLevel access_level;
-    if (enabled) {
-      access_level = GeolocationAccessLevel::kAllowed;
-    } else {
-      access_level = GeolocationAccessLevel::kDisallowed;
-    }
-
-    local_state->SetInteger(ash::prefs::kDeviceGeolocationAllowed,
-                            static_cast<int>(access_level));
-  }
-
- protected:
-  AccountId managed_user_id_;
-  AccountId regular_primary_user_id_;
-  AccountId regular_secondary_user_id_;
-
-  ash::EmbeddedPolicyTestServerMixin policy_test_server_mixin_{&mixin_host_};
-  LoginManagerMixin login_manager_{&mixin_host_};
-
-  ScopedTestingCrosSettings cros_settings_;
-  policy::DevicePolicyBuilder device_policy_builder_;
-};
-
-class TimeZoneResolverManagerEnrolledDeviceTest
-    : public TimeZoneResolverManagerTestBase {
- public:
   // Set the cloud policy for automatic time zone detection and wait until it's
   // propagated to the local state.
   void SetDeviceTimeZoneAutomaticDetectionPolicy(
@@ -168,7 +100,7 @@ class TimeZoneResolverManagerEnrolledDeviceTest
 
     // Wait for the policy value to get propagated.
     policy::LocalStateValueWaiter(
-        ::prefs::kSystemTimezoneAutomaticDetectionPolicy,
+        prefs::kSystemTimezoneAutomaticDetectionPolicy,
         base::Value(detection_type))
         .Wait();
   }
@@ -178,27 +110,40 @@ class TimeZoneResolverManagerEnrolledDeviceTest
     cros_settings_.device_settings()->SetString(kSystemTimezonePolicy, value);
   }
 
- private:
-  DeviceStateMixin device_state_{
-      &mixin_host_, DeviceStateMixin::State::OOBE_COMPLETED_CLOUD_ENROLLED};
-};
+  void SetUserTimeZoneResolveMethod(
+      PrefService* pref_service,
+      system::TimeZoneResolverManager::TimeZoneResolveMethod method) {
+    // The way the automatic time zone is implemented today is that we have 2
+    // user preferences. kResolveTimezoneByGeolocationMigratedToMethod - marked
+    // to true, when user first interacts with the automatic time zone setting.
+    // kResolveTimezoneByGeolocationMethod - storing the user choice, whether
+    // they want to use coarse (IP-based) or precise (Wi-Fi and Cellular-based)
+    // location.
+    if (!pref_service->GetBoolean(
+            ::prefs::kResolveTimezoneByGeolocationMigratedToMethod)) {
+      pref_service->SetBoolean(
+          ::prefs::kResolveTimezoneByGeolocationMigratedToMethod, true);
+    }
 
-class TimeZoneResolverManagerUnenrolledDeviceTest
-    : public TimeZoneResolverManagerTestBase {
- protected:
-  TimeZoneResolverManagerUnenrolledDeviceTest() {
-    // Enabling Privacy Hub with location switch
-    scoped_feature_list_.InitWithFeatures({ash::features::kCrosPrivacyHub}, {});
+    pref_service->SetInteger(::prefs::kResolveTimezoneByGeolocationMethod,
+                             static_cast<int>(method));
   }
 
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
+ protected:
+  AccountId managed_user_id_;
+  AccountId regular_primary_user_id_;
+  AccountId regular_secondary_user_id_;
+
   DeviceStateMixin device_state_{
-      &mixin_host_, DeviceStateMixin::State::OOBE_COMPLETED_CONSUMER_OWNED};
+      &mixin_host_, DeviceStateMixin::State::OOBE_COMPLETED_CLOUD_ENROLLED};
+  ash::EmbeddedPolicyTestServerMixin policy_test_server_mixin_{&mixin_host_};
+  LoginManagerMixin login_manager_{&mixin_host_};
+
+  ScopedTestingCrosSettings cros_settings_;
+  policy::DevicePolicyBuilder device_policy_builder_;
 };
 
-IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerUnenrolledDeviceTest,
-                       RegularUser) {
+IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerTest, RegularUser) {
   ash::system::TimeZoneResolverManager* tz_resolver_manager =
       g_browser_process->platform_part()->GetTimezoneResolverManager();
 
@@ -234,8 +179,7 @@ IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerUnenrolledDeviceTest,
   EXPECT_TRUE(tz_resolver_manager->ShouldSendCellularGeolocationData());
 }
 
-IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerUnenrolledDeviceTest,
-                       RegularMultiUser) {
+IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerTest, RegularMultiUser) {
   ash::system::TimeZoneResolverManager* tz_resolver_manager =
       g_browser_process->platform_part()->GetTimezoneResolverManager();
 
@@ -291,7 +235,7 @@ IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerUnenrolledDeviceTest,
   }
 }
 
-IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerEnrolledDeviceTest, ManagedUser) {
+IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerTest, ManagedUser) {
   ash::system::TimeZoneResolverManager* tz_resolver_manager =
       g_browser_process->platform_part()->GetTimezoneResolverManager();
 
@@ -338,7 +282,7 @@ IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerEnrolledDeviceTest, ManagedUser) {
   EXPECT_TRUE(tz_resolver_manager->ShouldSendCellularGeolocationData());
 }
 
-IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerEnrolledDeviceTest,
+IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerTest,
                        ManagedUserStaticTimeZonePolicy) {
   // Set static time zone by policy and log in a managed user.
   // Static time zone policy overrides automatic time zone policies,
@@ -372,108 +316,6 @@ IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerEnrolledDeviceTest,
     EXPECT_FALSE(tz_resolver_manager->ShouldSendWiFiGeolocationData());
     EXPECT_FALSE(tz_resolver_manager->ShouldSendCellularGeolocationData());
   }
-}
-
-IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerEnrolledDeviceTest,
-                       CheckSystemGeolocationPermissionOnLogInScreen) {
-  ash::system::TimeZoneResolverManager* tz_resolver_manager =
-      g_browser_process->platform_part()->GetTimezoneResolverManager();
-  ASSERT_NE(tz_resolver_manager, nullptr);
-
-  // By default the resolver is up and running.
-  EXPECT_TRUE(tz_resolver_manager->TimeZoneResolverShouldBeRunning());
-
-  // Setting the detection policy to USERS_DECIDE should keep the default state.
-  SetDeviceTimeZoneAutomaticDetectionPolicy(
-      em::SystemTimezoneProto::AutomaticTimezoneDetectionType::
-          SystemTimezoneProto_AutomaticTimezoneDetectionType_USERS_DECIDE);
-  EXPECT_TRUE(tz_resolver_manager->TimeZoneResolverShouldBeRunning());
-
-  // Disable timezone detection:
-  SetDeviceTimeZoneAutomaticDetectionPolicy(
-      em::SystemTimezoneProto::AutomaticTimezoneDetectionType::
-          SystemTimezoneProto_AutomaticTimezoneDetectionType_DISABLED);
-  ASSERT_TRUE(
-      system::TimeZoneResolverManager::IsTimeZoneResolutionPolicyControlled());
-  EXPECT_FALSE(tz_resolver_manager->TimeZoneResolverShouldBeRunning());
-
-  // Re-enable timezone detection:
-  SetDeviceTimeZoneAutomaticDetectionPolicy(
-      em::SystemTimezoneProto::AutomaticTimezoneDetectionType::
-          SystemTimezoneProto_AutomaticTimezoneDetectionType_IP_ONLY);
-  EXPECT_TRUE(tz_resolver_manager->TimeZoneResolverShouldBeRunning());
-}
-
-IN_PROC_BROWSER_TEST_F(TimeZoneResolverManagerUnenrolledDeviceTest,
-                       CheckSystemGeolocationPermission) {
-  ASSERT_FALSE(
-      system::TimeZoneResolverManager::IsTimeZoneResolutionPolicyControlled());
-
-  ash::system::TimeZoneResolverManager* tz_resolver_manager =
-      g_browser_process->platform_part()->GetTimezoneResolverManager();
-
-  TimeZoneResolver* tz_resolver = tz_resolver_manager->GetResolver();
-  ASSERT_NE(tz_resolver_manager, nullptr);
-  ASSERT_NE(tz_resolver, nullptr);
-
-  // Login-screen geolocation permission is On by default.
-  EXPECT_TRUE(system::TimeZoneResolverManager::
-                  IfServiceShouldBeRunningForSigninScreen());
-
-  // Log in a user.
-  LoginUser(regular_primary_user_id_);
-
-  PrefService* pref_service =
-      g_browser_process->profile_manager()->GetActiveUserProfile()->GetPrefs();
-
-  // Check the default configuration: Should be set to IP-resolution.
-  EXPECT_TRUE(
-      tz_resolver_manager->TimeZoneResolverAllowedByTimeZoneConfigData());
-  EXPECT_EQ(
-      system::TimeZoneResolverManager::GetEffectiveUserTimeZoneResolveMethod(
-          pref_service, true),
-      system::TimeZoneResolverManager::TimeZoneResolveMethod::IP_ONLY);
-
-  // Check the permission is granted and timezone resolver is actually running.
-  EXPECT_EQ(
-      SimpleGeolocationProvider::GetInstance()->GetGeolocationAccessLevel(),
-      GeolocationAccessLevel::kAllowed);
-  EXPECT_TRUE(tz_resolver_manager->TimeZoneResolverShouldBeRunning());
-  EXPECT_TRUE(tz_resolver->IsRunning());
-
-  // Disable geolocation permission.
-  UpdateUserGeolocationPermission(pref_service,
-                                  GeolocationAccessLevel::kDisallowed);
-  // Change of `kUserGeolocationAccessLevel` will trigger the
-  // `OnGeolocationPermissionChanged()`, stopping the scheduler.
-  EXPECT_FALSE(tz_resolver_manager->TimeZoneResolverShouldBeRunning());
-  EXPECT_FALSE(tz_resolver->IsRunning());
-  // Check the timezone configuration didn't change on permission update.
-  EXPECT_TRUE(
-      tz_resolver_manager->TimeZoneResolverAllowedByTimeZoneConfigData());
-
-  // Re-enable geolocation permission and check that the resolver is working
-  // again.
-  UpdateUserGeolocationPermission(pref_service,
-                                  GeolocationAccessLevel::kAllowed);
-  EXPECT_TRUE(tz_resolver_manager->TimeZoneResolverShouldBeRunning());
-  EXPECT_TRUE(tz_resolver->IsRunning());
-  // Check timezone configuration still hasn't changed.
-  EXPECT_TRUE(
-      tz_resolver_manager->TimeZoneResolverAllowedByTimeZoneConfigData());
-
-  // Disable and re-enable geolocation permission with `kOnlyAllowedForSystem`.
-  // Check that the resolver is working.
-  UpdateUserGeolocationPermission(pref_service,
-                                  GeolocationAccessLevel::kDisallowed);
-  UpdateUserGeolocationPermission(
-      pref_service, GeolocationAccessLevel::kOnlyAllowedForSystem);
-  // Check that resolver is actually running.
-  EXPECT_TRUE(tz_resolver_manager->TimeZoneResolverShouldBeRunning());
-  EXPECT_TRUE(tz_resolver->IsRunning());
-  // Check timezone configuration is still unchanged.
-  EXPECT_TRUE(
-      tz_resolver_manager->TimeZoneResolverAllowedByTimeZoneConfigData());
 }
 
 }  // namespace ash

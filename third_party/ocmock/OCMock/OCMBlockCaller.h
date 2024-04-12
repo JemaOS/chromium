@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2010-2021 Erik Doernenburg and contributors
+ *  Copyright (c) 2010-2015 Erik Doernenburg and contributors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may
  *  not use these files except in compliance with the License. You may obtain
@@ -16,9 +16,10 @@
 
 #import <Foundation/Foundation.h>
 
-@interface OCMBlockCaller : NSObject
+
+@interface OCMBlockCaller : NSObject 
 {
-    void (^block)(NSInvocation *);
+	void (^block)(NSInvocation *);
 }
 
 - (id)initWithCallBlock:(void (^)(NSInvocation *))theBlock;
@@ -26,3 +27,4 @@
 - (void)handleInvocation:(NSInvocation *)anInvocation;
 
 @end
+

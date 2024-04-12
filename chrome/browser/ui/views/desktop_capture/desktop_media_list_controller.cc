@@ -7,8 +7,6 @@
 #include "base/command_line.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/utf_string_conversions.h"
-#include "build/build_config.h"
-#include "build/config/chromebox_for_meetings/buildflags.h"  // PLATFORM_CFM
 #include "chrome/browser/ui/views/desktop_capture/desktop_media_list_view.h"
 #include "chrome/browser/ui/views/desktop_capture/desktop_media_picker_views.h"
 #include "chrome/browser/ui/views/desktop_capture/desktop_media_tab_list.h"
@@ -17,20 +15,7 @@
 #include "content/public/browser/browser_thread.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 
-namespace {
-
-bool ShouldAutoAcceptThisTabCapture() {
-#if BUILDFLAG(PLATFORM_CFM)
-  return true;
-#else
-  return base::CommandLine::ForCurrentProcess()->HasSwitch(
-      switches::kThisTabCaptureAutoAccept);
-#endif
-}
-
-}  // namespace
-
-BEGIN_METADATA(DesktopMediaListController, ListView)
+BEGIN_METADATA(DesktopMediaListController, ListView, views::View)
 END_METADATA
 
 DesktopMediaListController::DesktopMediaListController(
@@ -41,13 +26,12 @@ DesktopMediaListController::DesktopMediaListController(
       auto_select_tab_(
           base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
               switches::kAutoSelectTabCaptureSourceByTitle)),
-      auto_select_window_(
-          base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
-              switches::kAutoSelectWindowCaptureSourceByTitle)),
       auto_select_source_(
           base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
               switches::kAutoSelectDesktopCaptureSource)),
-      auto_accept_this_tab_capture_(ShouldAutoAcceptThisTabCapture()),
+      auto_accept_this_tab_capture_(
+          base::CommandLine::ForCurrentProcess()->HasSwitch(
+              switches::kThisTabCaptureAutoAccept)),
       auto_reject_this_tab_capture_(
           base::CommandLine::ForCurrentProcess()->HasSwitch(
               switches::kThisTabCaptureAutoReject)) {
@@ -135,9 +119,9 @@ void DesktopMediaListController::OnReselectRequested() {
   SetCanReselect(false);
 }
 
-std::optional<content::DesktopMediaID>
+absl::optional<content::DesktopMediaID>
 DesktopMediaListController::GetSelection() const {
-  return view_ ? view_->GetSelection() : std::nullopt;
+  return view_ ? view_->GetSelection() : absl::nullopt;
 }
 
 void DesktopMediaListController::ClearSelection() {
@@ -181,7 +165,7 @@ void DesktopMediaListController::SetThumbnailSize(const gfx::Size& size) {
 }
 
 void DesktopMediaListController::SetPreviewedSource(
-    const std::optional<content::DesktopMediaID>& id) {
+    const absl::optional<content::DesktopMediaID>& id) {
   media_list_->SetPreviewedSource(id);
 }
 
@@ -270,12 +254,6 @@ bool DesktopMediaListController::ShouldAutoAccept(
                  DesktopMediaList::Type::kWebContents &&
              !auto_select_tab_.empty() &&
              source.name.find(base::ASCIIToUTF16(auto_select_tab_)) !=
-                 std::u16string::npos) {
-    return true;
-  } else if (media_list_->GetMediaListType() ==
-                 DesktopMediaList::Type::kWindow &&
-             !auto_select_window_.empty() &&
-             source.name.find(base::ASCIIToUTF16(auto_select_window_)) !=
                  std::u16string::npos) {
     return true;
   }

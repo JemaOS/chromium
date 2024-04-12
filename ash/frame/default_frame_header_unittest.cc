@@ -10,12 +10,9 @@
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/test/ash_test_base.h"
 #include "ash/wm/desks/desks_util.h"
-#include "base/containers/contains.h"
 #include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/icu_test_util.h"
-#include "base/test/metrics/histogram_tester.h"
-#include "base/time/time.h"
 #include "chromeos/ui/base/window_properties.h"
 #include "chromeos/ui/frame/caption_buttons/frame_back_button.h"
 #include "chromeos/ui/frame/caption_buttons/frame_caption_button_container_view.h"
@@ -45,19 +42,7 @@ using views::Widget;
 
 namespace ash {
 
-class DefaultFrameHeaderTest : public AshTestBase {
- public:
-  DefaultFrameHeaderTest()
-      : AshTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
-  DefaultFrameHeaderTest(const DefaultFrameHeaderTest&) = delete;
-  DefaultFrameHeaderTest& operator=(const DefaultFrameHeaderTest&) = delete;
-  ~DefaultFrameHeaderTest() override = default;
-
-  void AdvanceClock(base::TimeDelta delay) {
-    task_environment()->AdvanceClock(delay);
-    task_environment()->RunUntilIdle();
-  }
-};
+using DefaultFrameHeaderTest = AshTestBase;
 
 // Ensure the title text is vertically aligned with the window icon.
 TEST_F(DefaultFrameHeaderTest, TitleIconAlignment) {
@@ -128,7 +113,7 @@ TEST_F(DefaultFrameHeaderTest, FrameColors) {
   EXPECT_EQ(active, frame_header->GetCurrentFrameColor());
   frame_header->mode_ = FrameHeader::MODE_INACTIVE;
   EXPECT_EQ(inactive, frame_header->GetCurrentFrameColor());
-  EXPECT_EQ(active, frame_header->active_frame_color_);
+  EXPECT_EQ(active, frame_header->GetActiveFrameColorForPaintForTest());
 
   // Update to the new value which has no blue, which should animate.
   frame_header->mode_ = FrameHeader::MODE_ACTIVE;
@@ -190,7 +175,7 @@ class FramePaintWaiter : public ui::CompositorObserver {
 
  private:
   base::RunLoop run_loop_;
-  raw_ptr<FrameHeader> frame_header_ = nullptr;
+  raw_ptr<FrameHeader, ExperimentalAsh> frame_header_ = nullptr;
 };
 
 TEST_F(DefaultFrameHeaderTest, DeleteDuringAnimation) {
@@ -211,16 +196,16 @@ TEST_F(DefaultFrameHeaderTest, DeleteDuringAnimation) {
   wm::ActivateWindow(win0.get());
 
   auto* frame_view = NonClientFrameViewAsh::Get(win0.get());
-  auto* animating_layer_holding_view = frame_view->children()[0].get();
+  auto* animating_layer_holding_view = frame_view->children()[0];
   EXPECT_TRUE(views::IsViewClass<chromeos::FrameHeader::FrameAnimatorView>(
       animating_layer_holding_view));
   ASSERT_TRUE(animating_layer_holding_view->layer());
   ASSERT_GT(animating_layer_holding_view->layer()->parent()->children().size(),
             2u);
   auto* animating_layer =
-      animating_layer_holding_view->layer()->parent()->children()[0].get();
+      animating_layer_holding_view->layer()->parent()->children()[0];
   EXPECT_EQ(ui::LAYER_TEXTURED, animating_layer->type());
-  EXPECT_TRUE(base::Contains(animating_layer->name(), ":Old"));
+  EXPECT_NE(std::string::npos, animating_layer->name().find(":Old", 0));
   EXPECT_TRUE(animating_layer->GetAnimator()->is_animating());
 
   LayerDestroyedChecker checker(animating_layer);
@@ -246,7 +231,7 @@ TEST_F(DefaultFrameHeaderTest, ResizeAndReorderDuringAnimation) {
       ui::ScopedAnimationDurationScaleMode::NON_ZERO_DURATION);
 
   auto* frame_view_0 = NonClientFrameViewAsh::Get(win_0.get());
-  auto* animating_layer_holding_view_0 = frame_view_0->children()[0].get();
+  auto* animating_layer_holding_view_0 = frame_view_0->children()[0];
   EXPECT_TRUE(views::IsViewClass<chromeos::FrameHeader::FrameAnimatorView>(
       animating_layer_holding_view_0));
   size_t original_layers_count_0 =
@@ -256,7 +241,7 @@ TEST_F(DefaultFrameHeaderTest, ResizeAndReorderDuringAnimation) {
   auto* extra_view_1 =
       frame_view_1->AddChildView(std::make_unique<views::View>());
 
-  auto* animating_layer_holding_view_1 = frame_view_1->children()[0].get();
+  auto* animating_layer_holding_view_1 = frame_view_1->children()[0];
   EXPECT_TRUE(views::IsViewClass<chromeos::FrameHeader::FrameAnimatorView>(
       animating_layer_holding_view_1));
   size_t original_layers_count_1 =
@@ -270,7 +255,7 @@ TEST_F(DefaultFrameHeaderTest, ResizeAndReorderDuringAnimation) {
         animating_layer_holding_view_0->layer()->parent()->children().size(),
         original_layers_count_0 + 1);
     auto* animating_layer =
-        animating_layer_holding_view_0->layer()->parent()->children()[0].get();
+        animating_layer_holding_view_0->layer()->parent()->children()[0];
     EXPECT_TRUE(animating_layer->GetAnimator()->is_animating());
 
     LayerDestroyedChecker checker(animating_layer);
@@ -290,7 +275,7 @@ TEST_F(DefaultFrameHeaderTest, ResizeAndReorderDuringAnimation) {
         animating_layer_holding_view_1->layer()->parent()->children().size(),
         original_layers_count_1 + 1);
     auto* animating_layer =
-        animating_layer_holding_view_1->layer()->parent()->children()[0].get();
+        animating_layer_holding_view_1->layer()->parent()->children()[0];
     EXPECT_TRUE(animating_layer->GetAnimator()->is_animating());
     LayerDestroyedChecker checker(animating_layer);
 
@@ -330,35 +315,6 @@ TEST_F(DefaultFrameHeaderTest, AnimateDuringAnimation) {
   EXPECT_TRUE(wm::IsActiveWindow(win_0.get()));
   // Makes sure that the layer has full damaged bounds.
   EXPECT_TRUE(win_0->layer()->damaged_region().Contains(layer_bounds));
-}
-
-// Ensure that the number of frame color changes is recorded as metrics.
-TEST_F(DefaultFrameHeaderTest, FrameColorChangeMetrics) {
-  const auto app_type = AppType::ARC_APP;
-  auto win0 = CreateAppWindow(gfx::Rect(300, 300), app_type);
-  Widget* widget = Widget::GetWidgetForNativeWindow(win0.get());
-  DefaultFrameHeader* frame_header =
-      static_cast<DefaultFrameHeader*>(FrameHeader::Get(widget));
-
-  const auto frame_color_change_histogram =
-      chromeos::FrameColorMetricsHelper::GetFrameColorChangeHistogramName(
-          app_type);
-  base::HistogramTester histogram_tester;
-
-  win0->SetProperty(kFrameActiveColorKey, SkColorSetRGB(70, 70, 70));
-  win0->SetProperty(kFrameInactiveColorKey, SkColorSetRGB(70, 70, 70));
-  frame_header->UpdateFrameColors();
-
-  constexpr base::TimeDelta kFrameColorTracingTime = base::Seconds(3);
-  // Advances the mock clock in the task environment because the metrics is
-  // recorded `kFrameColorTracingTime` after the `frame_header` is instantiated.
-  AdvanceClock(kFrameColorTracingTime);
-
-  histogram_tester.ExpectTotalCount(frame_color_change_histogram, 1);
-
-  // The recorded number of frame color changes should be at least 1.
-  EXPECT_GE(histogram_tester.GetAllSamples(frame_color_change_histogram)[0].min,
-            1);
 }
 
 }  // namespace ash

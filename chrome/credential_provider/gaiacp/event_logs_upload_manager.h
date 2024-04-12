@@ -58,7 +58,7 @@ class EventLogsUploadManager {
         : event_id(id), created_ts(ts), data(data), severity_level(level) {}
 
     // Converts to dictionary in a base::Value.
-    base::Value::Dict ToValue() const;
+    void ToValue(base::Value& dict) const;
   };
 
  protected:

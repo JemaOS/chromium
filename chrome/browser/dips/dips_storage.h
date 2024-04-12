@@ -26,33 +26,17 @@ using UrlPredicate = base::RepeatingCallback<bool(const GURL&)>;
 // Manages the storage of DIPSState values.
 class DIPSStorage {
  public:
-  explicit DIPSStorage(const std::optional<base::FilePath>& path);
+  explicit DIPSStorage(const absl::optional<base::FilePath>& path);
   ~DIPSStorage();
 
   DIPSState Read(const GURL& url);
-
-  std::optional<PopupsStateValue> ReadPopup(const std::string& first_party_site,
-                                            const std::string& tracking_site);
-
-  std::vector<PopupWithTime> ReadRecentPopupsWithInteraction(
-      const base::TimeDelta& lookback);
-
-  bool WritePopup(const std::string& first_party_site,
-                  const std::string& tracking_site,
-                  const uint64_t access_id,
-                  const base::Time& popup_time,
-                  bool is_current_interaction);
 
   void RemoveEvents(base::Time delete_begin,
                     base::Time delete_end,
                     network::mojom::ClearDataFilterPtr filter,
                     const DIPSEventRemovalType type);
 
-  // Delete all DB rows for |sites|.
   void RemoveRows(const std::vector<std::string>& sites);
-  // Delete all DB rows for |sites| without a protective event. A protective
-  // event is a user interaction or successful WebAuthn assertion.
-  void RemoveRowsWithoutProtectiveEvent(const std::set<std::string>& sites);
 
   // DIPS Helper Method Impls --------------------------------------------------
 
@@ -60,47 +44,35 @@ class DIPSStorage {
   void RecordStorage(const GURL& url, base::Time time, DIPSCookieMode mode);
   // Record that the user interacted on |url|.
   void RecordInteraction(const GURL& url, base::Time time, DIPSCookieMode mode);
-  void RecordWebAuthnAssertion(const GURL& url,
-                               base::Time time,
-                               DIPSCookieMode mode);
   // Record that |url| redirected the user and whether it was |stateful|,
   // meaning that |url| wrote to storage while redirecting.
   void RecordBounce(const GURL& url, base::Time time, bool stateful);
 
   // Storage querying Methods --------------------------------------------------
 
-  // Returns the subset of sites in |sites| WITHOUT a protective event recorded.
-  // A protective event is a user interaction or successful WebAuthn assertion.
-  std::set<std::string> FilterSitesWithoutProtectiveEvent(
+  // Returns the subset of sites in |sites| WITHOUT user interaction recorded.
+  std::set<std::string> FilterSitesWithoutInteraction(
       std::set<std::string> sites) const;
 
   // Returns all sites that did a bounce that aren't protected from DIPS.
   std::vector<std::string> GetSitesThatBounced(
-      base::TimeDelta grace_period) const;
+      const base::TimeDelta& grace_period) const;
 
   // Returns all sites that did a stateful bounce that aren't protected from
   // DIPS.
   std::vector<std::string> GetSitesThatBouncedWithState(
-      base::TimeDelta grace_period) const;
+      const base::TimeDelta& grace_period) const;
 
   // Returns all sites which use storage that aren't protected from DIPS.
   std::vector<std::string> GetSitesThatUsedStorage(
-      base::TimeDelta grace_period) const;
+      const base::TimeDelta& grace_period) const;
 
   // Returns the list of sites that should have their state cleared by DIPS. How
   // these sites are determined is controlled by the value of
-  // `features::kDIPSTriggeringAction`. Passing a non-NULL `grace_period`
-  // parameter overrides the use of `features::kDIPSGracePeriod` when
-  // evaluating sites to clear.
+  // `dips::kTriggeringAction`. Passing a non-NULL `grace_period` parameter
+  // overrides the use of `dips::kGracePeriod` when evaluating sites to clear.
   std::vector<std::string> GetSitesToClear(
-      std::optional<base::TimeDelta> grace_period) const;
-
-  // Returns true if `url`'s site has had user interaction since `bound`.
-  bool DidSiteHaveInteractionSince(const GURL& url, base::Time bound);
-
-  // Returns the timestamp of the last user interaction time on `url`, or
-  // std::nullopt if there has been no user interaction on `url`.
-  std::optional<base::Time> LastInteractionTime(const GURL& url);
+      absl::optional<base::TimeDelta> grace_period) const;
 
   // Utility Methods -----------------------------------------------------------
 

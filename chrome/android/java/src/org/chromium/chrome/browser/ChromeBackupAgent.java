@@ -9,8 +9,8 @@ import org.chromium.chrome.browser.base.SplitCompatBackupAgent;
 
 /** See {@link ChromeBackupAgentImpl}. */
 public class ChromeBackupAgent extends SplitCompatBackupAgent {
-    private static @IdentifierNameString String sImplClassName =
-            "org.chromium.chrome.browser.ChromeBackupAgentImpl";
+    @IdentifierNameString
+    private static String sImplClassName = "org.chromium.chrome.browser.ChromeBackupAgentImpl";
 
     public ChromeBackupAgent() {
         super(sImplClassName);

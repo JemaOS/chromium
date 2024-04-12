@@ -10,17 +10,9 @@ let loadScript = chrome.test.loadScript(scriptUrl);
 loadScript.then(async function() {
 chrome.test.runTests([
   function createTab() {
-    chrome.tabs.create({}, function(tab) {
+    chrome.tabs.create({}, pass(function(tab) {
       testTabId_ = tab.id;
-      // Wait for tab loading complete.
-      chrome.tabs.onUpdated.addListener(function local(tabId, changeInfo, tab) {
-        if (tabId != testTabId_ || changeInfo.status != 'complete') {
-          return;
-        }
-        chrome.tabs.onUpdated.removeListener(local);
-        chrome.test.succeed();
-      })
-    });
+    }));
   },
 
   function mutedStartsFalse() {
@@ -44,9 +36,6 @@ chrome.test.runTests([
     };
 
     chrome.tabs.onUpdated.addListener(function local(tabId, changeInfo, tab) {
-      if (tabId != testTabId_ || !changeInfo.mutedInfo) {
-        return;  // Ignore unrelated events.
-      }
       assertEq(expectedAfterMute, changeInfo.mutedInfo);
       chrome.tabs.onUpdated.removeListener(local);
       chrome.test.succeed();
@@ -57,11 +46,16 @@ chrome.test.runTests([
 
   function testStaysMutedAfterChangingWindow() {
     chrome.windows.create({}, function(window) {
-      // chrome.tabs.onUpdated is not sent on tab movement.
+      chrome.tabs.onUpdated.addListener(function local(tabId, changeInfo, tab) {
+        if (changeInfo.status != 'complete')
+          return;
+
+        chrome.tabs.onUpdated.removeListener(local);
+        chrome.test.succeed();
+      });
       chrome.tabs.move(testTabId_, {windowId: window.id, index: -1},
                        function(tab) {
         assertEq(true, tab.mutedInfo.muted);
-        chrome.test.succeed();
       });
     });
   },
@@ -74,9 +68,6 @@ chrome.test.runTests([
     };
 
     chrome.tabs.onUpdated.addListener(function local(tabId, changeInfo, tab) {
-      if (tabId != testTabId_ || !changeInfo.mutedInfo) {
-        return;  // Ignore unrelated events.
-      }
       chrome.tabs.onUpdated.removeListener(local);
       assertEq(expectedAfterUnmute, changeInfo.mutedInfo);
       chrome.test.succeed();

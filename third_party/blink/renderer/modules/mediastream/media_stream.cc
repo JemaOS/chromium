@@ -322,14 +322,8 @@ void MediaStream::addTrack(MediaStreamTrack* track,
     ScheduleDispatchEvent(Event::Create(event_type_names::kActive));
   }
 
-  for (auto& observer : observers_) {
-    observer->OnStreamAddTrack(this, track, exception_state);
-
-    // If processing by the observer failed, it is most likely because it was
-    // not necessary and it became a no-op. The exception can be suppressed,
-    // there is nothing to do.
-    exception_state.ClearException();
-  }
+  for (auto& observer : observers_)
+    observer->OnStreamAddTrack(this, track);
 }
 
 void MediaStream::removeTrack(MediaStreamTrack* track,
@@ -365,14 +359,8 @@ void MediaStream::removeTrack(MediaStreamTrack* track,
     ScheduleDispatchEvent(Event::Create(event_type_names::kInactive));
   }
 
-  for (auto& observer : observers_) {
-    observer->OnStreamRemoveTrack(this, track, exception_state);
-
-    // If processing by the observer failed, it is most likely because it was
-    // not necessary and it became a no-op. The exception can be suppressed,
-    // there is nothing to do.
-    exception_state.ClearException();
-  }
+  for (auto& observer : observers_)
+    observer->OnStreamRemoveTrack(this, track);
 }
 
 MediaStreamTrack* MediaStream::getTrackById(String id) {
@@ -449,7 +437,8 @@ bool MediaStream::AddEventListenerInternal(
                       WebFeature::kMediaStreamOnInactive);
   }
 
-  return EventTarget::AddEventListenerInternal(event_type, listener, options);
+  return EventTargetWithInlineData::AddEventListenerInternal(event_type,
+                                                             listener, options);
 }
 
 const AtomicString& MediaStream::InterfaceName() const {
@@ -588,7 +577,7 @@ void MediaStream::Trace(Visitor* visitor) const {
   visitor->Trace(observers_);
   visitor->Trace(scheduled_event_timer_);
   visitor->Trace(scheduled_events_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextClient::Trace(visitor);
   MediaStreamDescriptorClient::Trace(visitor);
 }

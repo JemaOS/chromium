@@ -19,8 +19,7 @@ namespace network_diagnostics {
 // resolution.
 class DnsResolverPresentRoutine : public NetworkDiagnosticsRoutine {
  public:
-  explicit DnsResolverPresentRoutine(
-      chromeos::network_diagnostics::mojom::RoutineCallSource source);
+  DnsResolverPresentRoutine();
   DnsResolverPresentRoutine(const DnsResolverPresentRoutine&) = delete;
   DnsResolverPresentRoutine& operator=(const DnsResolverPresentRoutine&) =
       delete;

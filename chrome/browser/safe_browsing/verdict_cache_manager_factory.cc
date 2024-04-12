@@ -24,29 +24,22 @@ VerdictCacheManager* VerdictCacheManagerFactory::GetForProfile(
 
 // static
 VerdictCacheManagerFactory* VerdictCacheManagerFactory::GetInstance() {
-  static base::NoDestructor<VerdictCacheManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<VerdictCacheManagerFactory>::get();
 }
 
 VerdictCacheManagerFactory::VerdictCacheManagerFactory()
     : ProfileKeyedServiceFactory(
           "VerdictCacheManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HistoryServiceFactory::GetInstance());
   DependsOn(HostContentSettingsMapFactory::GetInstance());
   DependsOn(SyncServiceFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService>
-VerdictCacheManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* VerdictCacheManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<VerdictCacheManager>(
+  return new VerdictCacheManager(
       HistoryServiceFactory::GetForProfile(profile,
                                            ServiceAccessType::EXPLICIT_ACCESS),
       HostContentSettingsMapFactory::GetForProfile(profile),

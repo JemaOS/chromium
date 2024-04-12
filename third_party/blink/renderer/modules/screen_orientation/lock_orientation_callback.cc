@@ -15,7 +15,7 @@
 namespace blink {
 
 LockOrientationCallback::LockOrientationCallback(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver)
+    ScriptPromiseResolver* resolver)
     : resolver_(resolver) {}
 
 LockOrientationCallback::~LockOrientationCallback() = default;
@@ -26,12 +26,11 @@ void LockOrientationCallback::OnSuccess() {
   // resolving the promise.
   resolver_->GetExecutionContext()
       ->GetTaskRunner(TaskType::kMiscPlatformAPI)
-      ->PostTask(FROM_HERE,
-                 WTF::BindOnce(
-                     [](ScriptPromiseResolverTyped<IDLUndefined>* resolver) {
-                       resolver->Resolve();
-                     },
-                     std::move(resolver_)));
+      ->PostTask(FROM_HERE, WTF::BindOnce(
+                                [](ScriptPromiseResolver* resolver) {
+                                  resolver->Resolve();
+                                },
+                                std::move(resolver_)));
 }
 
 void LockOrientationCallback::OnError(WebLockOrientationError error) {

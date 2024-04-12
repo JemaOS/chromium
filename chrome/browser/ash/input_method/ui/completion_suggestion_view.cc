@@ -182,14 +182,17 @@ void CompletionSuggestionView::SetHighlighted(bool highlighted) {
 }
 
 void CompletionSuggestionView::OnThemeChanged() {
-  down_icon_->SetImage(ui::ImageModel::FromVectorIcon(
-      kKeyboardArrowDownIcon, ui::kColorIcon, kDownIconSize));
-  arrow_icon_->SetImage(ui::ImageModel::FromVectorIcon(
-      kKeyboardArrowRightIcon, ui::kColorIcon, kArrowIconSize));
+  const auto* color_provider = GetColorProvider();
+  down_icon_->SetImage(
+      gfx::CreateVectorIcon(kKeyboardArrowDownIcon, kDownIconSize,
+                            color_provider->GetColor(ui::kColorIcon)));
+  arrow_icon_->SetImage(
+      gfx::CreateVectorIcon(kKeyboardArrowRightIcon, kArrowIconSize,
+                            color_provider->GetColor(ui::kColorIcon)));
   views::View::OnThemeChanged();
 }
 
-void CompletionSuggestionView::Layout(PassKey) {
+void CompletionSuggestionView::Layout() {
   int left = kPadding;
 
   suggestion_label_->SetBounds(left, 0, suggestion_width_, height());
@@ -236,7 +239,7 @@ CompletionSuggestionView::suggestion_label_for_testing() const {
   return suggestion_label_;
 }
 
-BEGIN_METADATA(CompletionSuggestionView)
+BEGIN_METADATA(CompletionSuggestionView, views::Button)
 END_METADATA
 
 }  // namespace ime

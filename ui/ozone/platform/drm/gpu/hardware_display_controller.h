@@ -24,7 +24,6 @@
 #include "ui/ozone/platform/drm/gpu/drm_overlay_plane.h"
 #include "ui/ozone/platform/drm/gpu/hardware_display_plane_manager.h"
 #include "ui/ozone/platform/drm/gpu/page_flip_watchdog.h"
-#include "ui/ozone/public/drm_modifiers_filter.h"
 #include "ui/ozone/public/swap_completion_callback.h"
 
 namespace gfx {
@@ -95,8 +94,7 @@ class DrmDevice;
 class HardwareDisplayController {
  public:
   HardwareDisplayController(std::unique_ptr<CrtcController> controller,
-                            const gfx::Point& origin,
-                            raw_ptr<DrmModifiersFilter> drm_modifiers_filter);
+                            const gfx::Point& origin);
 
   HardwareDisplayController(const HardwareDisplayController&) = delete;
   HardwareDisplayController& operator=(const HardwareDisplayController&) =
@@ -204,19 +202,18 @@ class HardwareDisplayController {
                                const DrmOverlayPlaneList& modeset_planes,
                                bool use_current_crtc_mode,
                                const drmModeModeInfo& mode,
-                               std::optional<bool> enable_vrr);
+                               absl::optional<bool> enable_vrr);
   void OnModesetComplete(const DrmOverlayPlaneList& modeset_planes);
   PageFlipResult ScheduleOrTestPageFlip(
       const DrmOverlayPlaneList& plane_list,
       scoped_refptr<PageFlipRequest> page_flip_request,
       gfx::GpuFenceHandle* release_fence);
   void AllocateCursorBuffers();
-  DrmDumbBuffer* NextCursorBuffer(const SkBitmap& image);
-  bool UpdateCursorImage();
+  DrmDumbBuffer* NextCursorBuffer();
+  void UpdateCursorImage();
   void UpdateCursorLocation();
   void ResetCursor();
   void DisableCursor();
-  void ProbeValidCursorSizes();
 
   std::vector<uint64_t> GetFormatModifiers(uint32_t fourcc_format) const;
 
@@ -233,14 +230,10 @@ class HardwareDisplayController {
   DrmOverlayPlaneList current_planes_;
   base::TimeTicks time_of_last_flip_;
 
-  // Stores all the valid width/height for cursor plane. We assume the
-  // width/height are always the same here.
-  std::vector<int> valid_cursor_sizes_;
-  // |cursor_buffer_map_| stores active buffers for each |valid_cursor_sizes_|.
-  base::flat_map<int, std::vector<std::unique_ptr<DrmDumbBuffer>>>
-      cursor_buffer_map_;
+  std::unique_ptr<DrmDumbBuffer> cursor_buffers_[2];
   gfx::Point cursor_location_;
-  raw_ptr<DrmDumbBuffer> current_cursor_ = nullptr;
+  int cursor_frontbuffer_ = 0;
+  raw_ptr<DrmDumbBuffer, ExperimentalAsh> current_cursor_ = nullptr;
 
   // Maps each fourcc_format to its preferred modifier which was generated
   // through modeset-test and updated in UpdatePreferredModifierForFormat().
@@ -249,8 +242,6 @@ class HardwareDisplayController {
 
   // Used to crash the GPU process when unrecoverable failures occur.
   PageFlipWatchdog watchdog_;
-
-  raw_ptr<DrmModifiersFilter> drm_modifiers_filter_;
 
   base::WeakPtrFactory<HardwareDisplayController> weak_ptr_factory_{this};
 };

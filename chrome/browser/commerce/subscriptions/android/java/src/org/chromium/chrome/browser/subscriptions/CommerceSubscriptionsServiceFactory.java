@@ -4,57 +4,51 @@
 
 package org.chromium.chrome.browser.subscriptions;
 
-import org.chromium.base.ResettersForTesting;
+import androidx.annotation.VisibleForTesting;
+
 import org.chromium.chrome.browser.commerce.ShoppingServiceFactory;
 import org.chromium.chrome.browser.price_tracking.PriceDropNotificationManager;
 import org.chromium.chrome.browser.price_tracking.PriceDropNotificationManagerFactory;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileKeyedMap;
 
-/** {@link CommerceSubscriptionsService} cached by {@link Profile}. */
+/**
+ * {@link CommerceSubscriptionsService} cached by {@link Profile}.
+ */
 public class CommerceSubscriptionsServiceFactory {
-    private static CommerceSubscriptionsServiceFactory sInstance;
+    private static ProfileKeyedMap<CommerceSubscriptionsService> sProfileToSubscriptionsService;
     private static CommerceSubscriptionsService sSubscriptionsServiceForTesting;
 
-    private final ProfileKeyedMap<CommerceSubscriptionsService> mProfileToSubscriptionsService;
-
-    /** Return the singleton instance of the CommerceSubscriptionsServiceFactory. */
-    public static CommerceSubscriptionsServiceFactory getInstance() {
-        if (sInstance == null) sInstance = new CommerceSubscriptionsServiceFactory();
-        return sInstance;
-    }
-
     /** Creates new instance. */
-    private CommerceSubscriptionsServiceFactory() {
-        mProfileToSubscriptionsService = ProfileKeyedMap.createMapOfDestroyables();
+    public CommerceSubscriptionsServiceFactory() {
+        if (sProfileToSubscriptionsService == null) {
+            sProfileToSubscriptionsService = ProfileKeyedMap.createMapOfDestroyables();
+        }
     }
 
     /**
-     * Creates a new instance or reuses an existing one based on the {@link Profile}.
+     * Creates a new instance or reuses an existing one based on the current {@link Profile}.
      *
-     * <p>Note: Don't hold a reference to the returned value. Always use this method to access
-     * {@link CommerceSubscriptionsService} instead.
-     *
-     * @return {@link CommerceSubscriptionsService} instance for the regular profile.
+     * Note: Don't hold a reference to the returned value. Always use this method to access {@link
+     * CommerceSubscriptionsService} instead.
+     * @return {@link CommerceSubscriptionsService} instance for the current regular
+     *         profile.
      */
-    public CommerceSubscriptionsService getForProfile(Profile profile) {
+    public CommerceSubscriptionsService getForLastUsedProfile() {
         if (sSubscriptionsServiceForTesting != null) return sSubscriptionsServiceForTesting;
-        Profile originalProfile = profile.getOriginalProfile();
-        return mProfileToSubscriptionsService.getForProfile(
-                originalProfile,
-                () -> {
-                    PriceDropNotificationManager priceDropNotificationManager =
-                            PriceDropNotificationManagerFactory.create();
-                    return new CommerceSubscriptionsService(
-                            ShoppingServiceFactory.getForProfile(originalProfile),
-                            priceDropNotificationManager);
-                });
+        Profile profile = Profile.getLastUsedRegularProfile();
+        return sProfileToSubscriptionsService.getForProfile(profile, () -> {
+            PriceDropNotificationManager priceDropNotificationManager =
+                    PriceDropNotificationManagerFactory.create();
+            return new CommerceSubscriptionsService(
+                    ShoppingServiceFactory.getForProfile(profile), priceDropNotificationManager);
+        });
     }
 
     /** Sets the CommerceSubscriptionsService for testing. */
+    @VisibleForTesting
     public static void setSubscriptionsServiceForTesting(
             CommerceSubscriptionsService subscriptionsService) {
         sSubscriptionsServiceForTesting = subscriptionsService;
-        ResettersForTesting.register(() -> sSubscriptionsServiceForTesting = null);
     }
 }

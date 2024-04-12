@@ -7,13 +7,11 @@
 #include <memory>
 
 #include "base/auto_reset.h"
-#include "base/notreached.h"
 #include "build/build_config.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom-blink.h"
 #include "third_party/blink/public/mojom/input/focus_type.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
-#include "third_party/blink/public/web/web_link_preview_triggerer.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/events/simulated_click_options.h"
 #include "third_party/blink/renderer/core/dom/focus_params.h"
@@ -178,7 +176,6 @@ KeyboardEventManager::KeyboardEventManager(LocalFrame& frame,
 void KeyboardEventManager::Trace(Visitor* visitor) const {
   visitor->Trace(frame_);
   visitor->Trace(scroll_manager_);
-  visitor->Trace(scrollend_event_target_);
 }
 
 bool KeyboardEventManager::HandleAccessKey(const WebKeyboardEvent& evt) {
@@ -198,8 +195,7 @@ bool KeyboardEventManager::HandleAccessKey(const WebKeyboardEvent& evt) {
   if (!elem)
     return false;
   elem->Focus(FocusParams(SelectionBehaviorOnFocus::kReset,
-                          mojom::blink::FocusType::kAccessKey, nullptr,
-                          FocusOptions::Create(), FocusTrigger::kUserGesture));
+                          mojom::blink::FocusType::kAccessKey, nullptr));
   elem->AccessKeyAction(SimulatedClickCreationScope::kFromUserAgent);
   return true;
 }
@@ -209,8 +205,6 @@ WebInputEventResult KeyboardEventManager::KeyEvent(
   base::AutoReset<bool> is_handling_key_event(&is_handling_key_event_, true);
   if (initial_key_event.windows_key_code == VK_CAPITAL)
     CapsLockStateMayHaveChanged();
-
-  KeyEventModifierMayHaveChanged(initial_key_event.GetModifiers());
 
   if (scroll_manager_->MiddleClickAutoscrollInProgress()) {
     DCHECK(RuntimeEnabledFeatures::MiddleClickAutoscrollEnabled());
@@ -244,6 +238,19 @@ WebInputEventResult KeyboardEventManager::KeyEvent(
         RuntimeEnabledFeatures::BrowserVerifiedUserActivationKeyboardEnabled());
   }
 
+  // In IE, access keys are special, they are handled after default keydown
+  // processing, but cannot be canceled - this is hard to match.  On Mac OS X,
+  // we process them before dispatching keydown, as the default keydown handler
+  // implements Emacs key bindings, which may conflict with access keys. Then we
+  // dispatch keydown, but suppress its default handling.
+  // On Windows, WebKit explicitly calls handleAccessKey() instead of
+  // dispatching a keypress event for WM_SYSCHAR messages.  Other platforms
+  // currently match either Mac or Windows behavior, depending on whether they
+  // send combined KeyDown events.
+  bool matched_an_access_key = false;
+  if (initial_key_event.GetType() == WebInputEvent::Type::kKeyDown)
+    matched_an_access_key = HandleAccessKey(initial_key_event);
+
   // Don't expose key events to pages while browsing on the drive-by web. This
   // is to prevent pages from accidentally interfering with the built-in
   // behavior eg. spatial-navigation. Installed PWAs are a signal from the user
@@ -260,9 +267,7 @@ WebInputEventResult KeyboardEventManager::KeyEvent(
     should_send_key_events_to_js =
         display_mode == blink::mojom::DisplayMode::kMinimalUi ||
         display_mode == blink::mojom::DisplayMode::kStandalone ||
-        display_mode == blink::mojom::DisplayMode::kFullscreen ||
-        display_mode == blink::mojom::DisplayMode::kBorderless ||
-        display_mode == blink::mojom::DisplayMode::kWindowControlsOverlay;
+        display_mode == blink::mojom::DisplayMode::kFullscreen;
   }
 
   // We have 2 level of not exposing key event to js, not send and send but not
@@ -298,107 +303,80 @@ WebInputEventResult KeyboardEventManager::KeyEvent(
     send_key_event = initial_key_event.dom_key != kDomKeyNeverSend;
   }
 
-  DispatchEventResult dispatch_result = DispatchEventResult::kNotCanceled;
-  switch (initial_key_event.GetType()) {
-    // TODO: it would be fair to let an input method handle KeyUp events
-    // before DOM dispatch.
-    case WebInputEvent::Type::kKeyUp: {
-      KeyboardEvent* event = KeyboardEvent::Create(
-          initial_key_event, frame_->GetDocument()->domWindow(),
-          event_cancellable);
-      event->SetTarget(node);
-      event->SetStopPropagation(!send_key_event);
+  // TODO: it would be fair to let an input method handle KeyUp events
+  // before DOM dispatch.
+  if (initial_key_event.GetType() == WebInputEvent::Type::kKeyUp ||
+      initial_key_event.GetType() == WebInputEvent::Type::kChar) {
+    KeyboardEvent* dom_event = KeyboardEvent::Create(
+        initial_key_event, frame_->GetDocument()->domWindow(),
+        event_cancellable);
 
-      dispatch_result = node->DispatchEvent(*event);
-      break;
-    }
-    case WebInputEvent::Type::kRawKeyDown:
-    case WebInputEvent::Type::kKeyDown: {
-      WebKeyboardEvent web_event = initial_key_event;
-      web_event.SetType(WebInputEvent::Type::kRawKeyDown);
+    dom_event->SetStopPropagation(!send_key_event);
 
-      KeyboardEvent* event = KeyboardEvent::Create(
-          web_event, frame_->GetDocument()->domWindow(), event_cancellable);
-      event->SetTarget(node);
-      event->SetStopPropagation(!send_key_event);
+    return event_handling_util::ToWebInputEventResult(
+        node->DispatchEvent(*dom_event));
+  }
 
-      // In IE, access keys are special, they are handled after default keydown
-      // processing, but cannot be canceled - this is hard to match.  On Mac OS
-      // X, we process them before dispatching keydown, as the default keydown
-      // handler implements Emacs key bindings, which may conflict with access
-      // keys. Then we dispatch keydown, but suppress its default handling. On
-      // Windows, WebKit explicitly calls handleAccessKey() instead of
-      // dispatching a keypress event for WM_SYSCHAR messages.  Other platforms
-      // currently match either Mac or Windows behavior, depending on whether
-      // they send combined KeyDown events.
-      if (initial_key_event.GetType() == WebInputEvent::Type::kKeyDown &&
-          HandleAccessKey(initial_key_event)) {
-        event->preventDefault();
-      }
+  WebKeyboardEvent key_down_event = initial_key_event;
+  if (key_down_event.GetType() != WebInputEvent::Type::kRawKeyDown)
+    key_down_event.SetType(WebInputEvent::Type::kRawKeyDown);
+  KeyboardEvent* keydown = KeyboardEvent::Create(
+      key_down_event, frame_->GetDocument()->domWindow(), event_cancellable);
+  if (matched_an_access_key)
+    keydown->preventDefault();
+  keydown->SetTarget(node);
 
-      // If this keydown did not involve a meta-key press, update the keyboard
-      // event state and trigger :focus-visible matching if necessary.
-      if (!event->ctrlKey() && !event->altKey() && !event->metaKey()) {
-        node->UpdateHadKeyboardEvent(*event);
-      }
+  keydown->SetStopPropagation(!send_key_event);
 
-      if (dispatch_result = node->DispatchEvent(*event);
-          dispatch_result != DispatchEventResult::kNotCanceled) {
-        break;
-      }
+  // If this keydown did not involve a meta-key press, update the keyboard event
+  // state and trigger :focus-visible matching if necessary.
+  if (!keydown->ctrlKey() && !keydown->altKey() && !keydown->metaKey())
+    node->UpdateHadKeyboardEvent(*keydown);
 
-      // If frame changed as a result of keydown dispatch, then return early to
-      // avoid sending a subsequent keypress message to the new frame.
-      if (frame_->GetPage() &&
-          frame_ !=
-              frame_->GetPage()->GetFocusController().FocusedOrMainFrame()) {
-        return WebInputEventResult::kHandledSystem;
-      }
+  DispatchEventResult dispatch_result = node->DispatchEvent(*keydown);
+  if (dispatch_result != DispatchEventResult::kNotCanceled)
+    return event_handling_util::ToWebInputEventResult(dispatch_result);
 
-      // kRawKeyDown doesn't trigger `keypress`es, so we end the logic here.
-      if (initial_key_event.GetType() != WebInputEvent::Type::kKeyDown) {
-        return WebInputEventResult::kNotHandled;
-      }
+  // If frame changed as a result of keydown dispatch, then return early to
+  // avoid sending a subsequent keypress message to the new frame.
+  bool changed_focused_frame =
+      frame_->GetPage() &&
+      frame_ != frame_->GetPage()->GetFocusController().FocusedOrMainFrame();
+  if (changed_focused_frame)
+    return WebInputEventResult::kHandledSystem;
 
-      // Focus may have changed during keydown handling, so refetch node.
-      // But if we are dispatching a fake backward compatibility keypress, then
-      // we pretend that the keypress happened on the original node.
-      node = EventTargetNodeForDocument(frame_->GetDocument());
-      if (!node) {
-        return WebInputEventResult::kNotHandled;
-      }
+  if (initial_key_event.GetType() == WebInputEvent::Type::kRawKeyDown)
+    return WebInputEventResult::kNotHandled;
+
+  // Focus may have changed during keydown handling, so refetch node.
+  // But if we are dispatching a fake backward compatibility keypress, then we
+  // pretend that the keypress happened on the original node.
+  node = EventTargetNodeForDocument(frame_->GetDocument());
+  if (!node)
+    return WebInputEventResult::kNotHandled;
 
 #if BUILDFLAG(IS_MAC)
-      // According to NSEvents.h, OpenStep reserves the range 0xF700-0xF8FF for
-      // function keys. However, some actual private use characters happen to be
-      // in this range, e.g. the Apple logo (Option+Shift+K). 0xF7FF is an
-      // arbitrary cut-off.
-      if (initial_key_event.text[0U] >= 0xF700 &&
-          initial_key_event.text[0U] <= 0xF7FF) {
-        return WebInputEventResult::kNotHandled;
-      }
-#endif
-      if (initial_key_event.text[0] == 0) {
-        return WebInputEventResult::kNotHandled;
-      }
-      [[fallthrough]];
-    }
-    case WebInputEvent::Type::kChar: {
-      WebKeyboardEvent char_event = initial_key_event;
-      char_event.SetType(WebInputEvent::Type::kChar);
-
-      KeyboardEvent *event = KeyboardEvent::Create(
-          char_event, frame_->GetDocument()->domWindow(), event_cancellable);
-      event->SetTarget(node);
-      event->SetStopPropagation(!send_key_event);
-
-      dispatch_result = node->DispatchEvent(*event);
-      break;
-    }
-    default:
-      NOTREACHED_NORETURN();
+  // According to NSEvents.h, OpenStep reserves the range 0xF700-0xF8FF for
+  // function keys. However, some actual private use characters happen to be
+  // in this range, e.g. the Apple logo (Option+Shift+K). 0xF7FF is an
+  // arbitrary cut-off.
+  if (initial_key_event.text[0U] >= 0xF700 &&
+      initial_key_event.text[0U] <= 0xF7FF) {
+    return WebInputEventResult::kNotHandled;
   }
-  return event_handling_util::ToWebInputEventResult(dispatch_result);
+#endif
+
+  WebKeyboardEvent key_press_event = initial_key_event;
+  key_press_event.SetType(WebInputEvent::Type::kChar);
+  if (key_press_event.text[0] == 0)
+    return WebInputEventResult::kNotHandled;
+  KeyboardEvent* keypress = KeyboardEvent::Create(
+      key_press_event, frame_->GetDocument()->domWindow(), event_cancellable);
+  keypress->SetTarget(node);
+  keypress->SetStopPropagation(!send_key_event);
+
+  return event_handling_util::ToWebInputEventResult(
+      node->DispatchEvent(*keypress));
 }
 
 void KeyboardEventManager::CapsLockStateMayHaveChanged() {
@@ -406,16 +384,6 @@ void KeyboardEventManager::CapsLockStateMayHaveChanged() {
     if (auto* text_control = DynamicTo<HTMLInputElement>(element))
       text_control->CapsLockStateMayHaveChanged();
   }
-}
-
-void KeyboardEventManager::KeyEventModifierMayHaveChanged(int modifiers) {
-  WebLinkPreviewTriggerer* triggerer =
-      frame_->GetOrCreateLinkPreviewTriggerer();
-  if (!triggerer) {
-    return;
-  }
-
-  triggerer->MaybeChangedKeyEventModifier(modifiers);
 }
 
 void KeyboardEventManager::DefaultKeyboardEventHandler(
@@ -461,14 +429,6 @@ void KeyboardEventManager::DefaultKeyboardEventHandler(
     if (event->key() == "Enter") {
       DefaultEnterEventHandler(event);
     }
-    if (event->keyCode() == last_scrolling_keycode_) {
-      if (scrollend_event_target_ && has_pending_scrollend_on_key_up_) {
-        scrollend_event_target_->OnScrollFinished(true);
-      }
-      scrollend_event_target_.Clear();
-      last_scrolling_keycode_ = VKEY_UNKNOWN;
-      has_pending_scrollend_on_key_up_ = false;
-    }
   }
 }
 
@@ -485,22 +445,13 @@ void KeyboardEventManager::DefaultSpaceEventHandler(
           ? mojom::blink::ScrollDirection::kScrollBlockDirectionBackward
           : mojom::blink::ScrollDirection::kScrollBlockDirectionForward;
 
-  // We must clear |scrollend_event_target_| at the beginning of each scroll
-  // so that we don't fire scrollend based on a prior scroll if a newer scroll
-  // begins before the keyup event associated with the prior scroll/keydown.
-  // If a newer scroll begins before the keyup event and ends after it,
-  // we should fire scrollend at the end of that newer scroll rather than at
-  // the keyup event.
-  scrollend_event_target_.Clear();
   // TODO(bokan): enable scroll customization in this case. See
   // crbug.com/410974.
   if (scroll_manager_->LogicalScroll(direction,
-                                     ui::ScrollGranularity::kScrollByPage,
-                                     nullptr, possible_focused_node, true)) {
+                                     ui::ScrollGranularity::kScrollByPage, nullptr,
+                                     possible_focused_node)) {
     UseCounter::Count(frame_->GetDocument(),
                       WebFeature::kScrollByKeyboardSpacebarKey);
-    last_scrolling_keycode_ = event->keyCode();
-    has_pending_scrollend_on_key_up_ = true;
     event->SetDefaultHandled();
     return;
   }
@@ -516,7 +467,8 @@ void KeyboardEventManager::DefaultArrowEventHandler(
     return;
 
   ExecutionContext* context = frame_->GetDocument()->GetExecutionContext();
-  if (RuntimeEnabledFeatures::FocusgroupEnabled(context) &&
+  if ((RuntimeEnabledFeatures::FocusgroupEnabled(context) ||
+       RuntimeEnabledFeatures::CSSTogglesEnabled(context)) &&
       FocusgroupController::HandleArrowKeyboardEvent(event, frame_)) {
     event->SetDefaultHandled();
     return;
@@ -543,14 +495,9 @@ void KeyboardEventManager::DefaultArrowEventHandler(
                            &scroll_use_uma))
     return;
 
-  // See KeyboardEventManager::DefaultSpaceEventHandler for the reason for
-  // this Clear.
-  scrollend_event_target_.Clear();
   if (scroll_manager_->BubblingScroll(scroll_direction, scroll_granularity,
-                                      nullptr, possible_focused_node, true)) {
+                                      nullptr, possible_focused_node)) {
     UseCounter::Count(frame_->GetDocument(), scroll_use_uma);
-    last_scrolling_keycode_ = event->keyCode();
-    has_pending_scrollend_on_key_up_ = true;
     event->SetDefaultHandled();
     return;
   }
@@ -643,22 +590,24 @@ void KeyboardEventManager::DefaultEscapeEventHandler(KeyboardEvent* event) {
     page->GetSpatialNavigationController().HandleEscapeKeyboardEvent(event);
   }
 
-  frame_->DomWindow()->closewatcher_stack()->EscapeKeyHandler(event);
+  bool cancel_skipped = false;
+  frame_->DomWindow()->closewatcher_stack()->EscapeKeyHandler(event,
+                                                              &cancel_skipped);
 
   HTMLDialogElement* dialog = frame_->GetDocument()->ActiveModalDialog();
   if (dialog && !RuntimeEnabledFeatures::CloseWatcherEnabled()) {
     auto* cancel_event = Event::CreateCancelable(event_type_names::kCancel);
     dialog->DispatchEvent(*cancel_event);
-    if (!cancel_event->defaultPrevented()) {
-      dialog->close();
+    if (cancel_event->defaultPrevented() && cancel_skipped) {
+      UseCounter::Count(
+          frame_->GetDocument(),
+          WebFeature::kDialogCloseWatcherCancelSkippedAndDefaultPrevented);
     }
   }
 
-  if (!RuntimeEnabledFeatures::CloseWatcherEnabled()) {
-    auto* target_node = event->GetEventPath()[0].Target()->ToNode();
-    DCHECK(target_node);
-    HTMLElement::HandlePopoverLightDismiss(*event, *target_node);
-  }
+  auto* target_node = event->GetEventPath()[0].Target()->ToNode();
+  DCHECK(target_node);
+  HTMLElement::HandlePopoverLightDismiss(*event, *target_node);
 }
 
 void KeyboardEventManager::DefaultEnterEventHandler(KeyboardEvent* event) {

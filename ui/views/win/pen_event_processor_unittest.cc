@@ -4,7 +4,6 @@
 
 #include "ui/views/win/pen_event_processor.h"
 
-#include "base/test/task_environment.h"
 #include "base/win/scoped_winrt_initializer.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/gfx/sequential_id_generator.h"
@@ -21,7 +20,6 @@ class PenProcessorTest : public ::testing::Test {
 
  private:
   base::win::ScopedWinrtInitializer scoped_winrt_initializer_;
-  base::test::TaskEnvironment task_environment_;
 };
 
 void PenProcessorTest::SetUp() {
@@ -29,7 +27,6 @@ void PenProcessorTest::SetUp() {
 }
 
 TEST_F(PenProcessorTest, TypicalCaseDMDisabled) {
-  views::PenIdHandler::ScopedPenIdStaticsForTesting scoper(nullptr);
   ui::SequentialIDGenerator id_generator(0);
   PenEventProcessor processor(&id_generator,
                               /*direct_manipulation_enabled*/ false);
@@ -84,7 +81,6 @@ TEST_F(PenProcessorTest, TypicalCaseDMDisabled) {
 }
 
 TEST_F(PenProcessorTest, TypicalCaseDMEnabled) {
-  views::PenIdHandler::ScopedPenIdStaticsForTesting scoper(nullptr);
   ui::SequentialIDGenerator id_generator(0);
   PenEventProcessor processor(&id_generator,
                               /*direct_manipulation_enabled*/ true);
@@ -150,7 +146,6 @@ TEST_F(PenProcessorTest, TypicalCaseDMEnabled) {
 }
 
 TEST_F(PenProcessorTest, UnpairedPointerDownTouchDMEnabled) {
-  views::PenIdHandler::ScopedPenIdStaticsForTesting scoper(nullptr);
   ui::SequentialIDGenerator id_generator(0);
   PenEventProcessor processor(&id_generator,
                               /*direct_manipulation_enabled*/ true);
@@ -169,7 +164,6 @@ TEST_F(PenProcessorTest, UnpairedPointerDownTouchDMEnabled) {
 }
 
 TEST_F(PenProcessorTest, UnpairedPointerDownMouseDMEnabled) {
-  views::PenIdHandler::ScopedPenIdStaticsForTesting scoper(nullptr);
   ui::SequentialIDGenerator id_generator(0);
   PenEventProcessor processor(&id_generator,
                               /*direct_manipulation_enabled*/ true);
@@ -187,7 +181,6 @@ TEST_F(PenProcessorTest, UnpairedPointerDownMouseDMEnabled) {
 }
 
 TEST_F(PenProcessorTest, TouchFlagDMEnabled) {
-  views::PenIdHandler::ScopedPenIdStaticsForTesting scoper(nullptr);
   ui::SequentialIDGenerator id_generator(0);
   PenEventProcessor processor(&id_generator,
                               /*direct_manipulation_enabled*/ true);
@@ -218,7 +211,6 @@ TEST_F(PenProcessorTest, TouchFlagDMEnabled) {
 }
 
 TEST_F(PenProcessorTest, MouseFlagDMEnabled) {
-  views::PenIdHandler::ScopedPenIdStaticsForTesting scoper(nullptr);
   ui::SequentialIDGenerator id_generator(0);
   PenEventProcessor processor(&id_generator,
                               /*direct_manipulation_enabled*/ true);
@@ -252,7 +244,6 @@ TEST_F(PenProcessorTest, MouseFlagDMEnabled) {
 }
 
 TEST_F(PenProcessorTest, PenEraserFlagDMEnabled) {
-  views::PenIdHandler::ScopedPenIdStaticsForTesting scoper(nullptr);
   ui::SequentialIDGenerator id_generator(0);
   PenEventProcessor processor(&id_generator,
                               /*direct_manipulation_enabled*/ true);
@@ -286,7 +277,6 @@ TEST_F(PenProcessorTest, PenEraserFlagDMEnabled) {
 }
 
 TEST_F(PenProcessorTest, MultiPenDMEnabled) {
-  views::PenIdHandler::ScopedPenIdStaticsForTesting scoper(nullptr);
   ui::SequentialIDGenerator id_generator(0);
   PenEventProcessor processor(&id_generator,
                               /*direct_manipulation_enabled*/ true);

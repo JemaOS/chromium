@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {dp, session} = await testRunner.startBlank(
       `Tests that side-effect free Runtime.evaluate does not trigger window.onerror.`);
 

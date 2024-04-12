@@ -11,10 +11,8 @@ namespace ui {
 
 WaylandEventWatcherFdWatch::WaylandEventWatcherFdWatch(
     wl_display* display,
-    wl_event_queue* event_queue,
-    bool use_threaded_polling)
-    : WaylandEventWatcher(display, event_queue, use_threaded_polling),
-      controller_(FROM_HERE) {}
+    wl_event_queue* event_queue)
+    : WaylandEventWatcher(display, event_queue), controller_(FROM_HERE) {}
 
 WaylandEventWatcherFdWatch::~WaylandEventWatcherFdWatch() {
   StopProcessingEvents();
@@ -59,10 +57,8 @@ void WaylandEventWatcherFdWatch::OnFileCanWriteWithoutBlocking(int fd) {
 // static
 std::unique_ptr<WaylandEventWatcher>
 WaylandEventWatcher::CreateWaylandEventWatcher(wl_display* display,
-                                               wl_event_queue* event_queue,
-                                               bool use_threaded_polling) {
-  return std::make_unique<WaylandEventWatcherFdWatch>(display, event_queue,
-                                                      use_threaded_polling);
+                                               wl_event_queue* event_queue) {
+  return std::make_unique<WaylandEventWatcherFdWatch>(display, event_queue);
 }
 
 }  // namespace ui

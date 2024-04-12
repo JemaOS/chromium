@@ -57,16 +57,6 @@ String ToString(CSSMathOperator op) {
       return "rem";
     case CSSMathOperator::kHypot:
       return "hypot";
-    case CSSMathOperator::kAbs:
-      return "abs";
-    case CSSMathOperator::kSign:
-      return "sign";
-    case CSSMathOperator::kProgress:
-      return "progress";
-    case CSSMathOperator::kCalcSize:
-      return "calc-size";
-    case CSSMathOperator::kMediaProgress:
-      return "media-progress";
     default:
       NOTREACHED();
       return String();

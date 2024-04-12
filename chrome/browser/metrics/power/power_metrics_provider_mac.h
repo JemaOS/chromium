@@ -5,10 +5,10 @@
 #ifndef CHROME_BROWSER_METRICS_POWER_POWER_METRICS_PROVIDER_MAC_H_
 #define CHROME_BROWSER_METRICS_POWER_POWER_METRICS_PROVIDER_MAC_H_
 
-#include <optional>
+#include "components/metrics/metrics_provider.h"
 
 #include "base/threading/sequence_bound.h"
-#include "components/metrics/metrics_provider.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PowerMetricsProvider : public metrics::MetricsProvider {
  public:
@@ -25,7 +25,7 @@ class PowerMetricsProvider : public metrics::MetricsProvider {
  private:
   // Records metrics from the ThreadPool.
   class Impl;
-  std::optional<base::SequenceBound<Impl>> impl_;
+  absl::optional<base::SequenceBound<Impl>> impl_;
 };
 
 #endif  // CHROME_BROWSER_METRICS_POWER_POWER_METRICS_PROVIDER_MAC_H_

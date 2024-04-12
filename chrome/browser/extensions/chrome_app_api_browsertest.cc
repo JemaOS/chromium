@@ -133,7 +133,7 @@ IN_PROC_BROWSER_TEST_F(ChromeAppAPITest, IsInstalled) {
       content::EvalJs(browser()->tab_strip_model()->GetActiveWebContents(),
                       kGetAppDetails)
           .ExtractString();
-  std::optional<base::Value> result_value = base::JSONReader::Read(result);
+  absl::optional<base::Value> result_value = base::JSONReader::Read(result);
   ASSERT_TRUE(result_value && result_value->is_dict());
   base::Value::Dict& app_details = result_value.value().GetDict();
 
@@ -270,7 +270,6 @@ class ChromeAppAPIFencedFrameTest : public ChromeAppAPITest {
     feature_list_.InitWithFeaturesAndParameters(
         {{blink::features::kFencedFrames, {}},
          {blink::features::kFencedFramesAPIChanges, {}},
-         {blink::features::kFencedFramesDefaultMode, {}},
          {features::kPrivacySandboxAdsAPIsOverride, {}}},
         {/* disabled_features */});
   }

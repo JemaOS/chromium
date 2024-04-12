@@ -109,7 +109,8 @@ class ComponentUpdaterServiceProvider
   scoped_refptr<dbus::ExportedObject> exported_object_;
 
   // Weak pointer to CrOSComponentManager to avoid calling BrowserProcess.
-  raw_ptr<component_updater::CrOSComponentManager> cros_component_manager_;
+  raw_ptr<component_updater::CrOSComponentManager, ExperimentalAsh>
+      cros_component_manager_;
 
   // Keep this last so that all weak pointers will be invalidated at the
   // beginning of destruction.

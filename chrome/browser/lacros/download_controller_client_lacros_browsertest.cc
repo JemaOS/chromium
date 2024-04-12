@@ -13,7 +13,6 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chromeos/crosapi/mojom/download_controller.mojom.h"
-#include "content/public/browser/browser_context.h"
 #include "content/public/browser/download_item_utils.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/fake_download_item.h"
@@ -52,8 +51,7 @@ class DownloadControllerClientLacrosBrowserTest : public InProcessBrowserTest {
   }
 
   testing::NiceMock<content::MockDownloadManager>* download_manager() {
-    return static_cast<testing::NiceMock<content::MockDownloadManager>*>(
-        browser()->profile()->GetDownloadManager());
+    return download_manager_;
   }
 
   Profile* profile() { return browser()->profile(); }
@@ -66,6 +64,7 @@ class DownloadControllerClientLacrosBrowserTest : public InProcessBrowserTest {
     // Download manager.
     auto download_manager =
         std::make_unique<testing::NiceMock<content::MockDownloadManager>>();
+    download_manager_ = download_manager.get();
     profile()->GetDownloadManager()->Shutdown();
     profile()->SetDownloadManagerForTesting(std::move(download_manager));
 
@@ -81,6 +80,8 @@ class DownloadControllerClientLacrosBrowserTest : public InProcessBrowserTest {
 
   std::unique_ptr<crosapi::mojom::DownloadControllerClient>
       download_controller_client_;
+  raw_ptr<testing::NiceMock<content::MockDownloadManager>, DanglingUntriaged>
+      download_manager_ = nullptr;
 };
 
 // Tests -----------------------------------------------------------------------
@@ -97,8 +98,7 @@ IN_PROC_BROWSER_TEST_F(DownloadControllerClientLacrosBrowserTest,
   // Mock `download_manager()` response for `GetAllDownloads()`.
   EXPECT_CALL(*download_manager(), GetAllDownloads)
       .WillRepeatedly(testing::Invoke(
-          [&](std::vector<raw_ptr<download::DownloadItem, VectorExperimental>>*
-                  download_ptrs) {
+          [&](std::vector<download::DownloadItem*>* download_ptrs) {
             for (auto& download : downloads)
               download_ptrs->push_back(download.get());
           }));

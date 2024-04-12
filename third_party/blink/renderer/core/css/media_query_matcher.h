@@ -48,7 +48,7 @@ class CORE_EXPORT MediaQueryMatcher final
   MediaQueryMatcher& operator=(const MediaQueryMatcher&) = delete;
   ~MediaQueryMatcher();
 
-  Document* GetDocument() const { return document_.Get(); }
+  Document* GetDocument() const { return document_; }
   void DocumentDetached();
 
   void AddMediaQueryList(MediaQueryList*);

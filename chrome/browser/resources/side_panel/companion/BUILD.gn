@@ -12,8 +12,6 @@ build_webui("build") {
   static_files = [
     "companion.html",
     "companion.css",
-    "generic-error-icon.png",
-    "generic-error-icon-dark.png",
   ]
   non_web_component_files = [
     "companion.ts",
@@ -27,6 +25,4 @@ build_webui("build") {
     "//ui/webui/resources/js:build_ts",
     "//ui/webui/resources/mojo:build_ts",
   ]
-
-  webui_context_type = "untrusted"
 }

@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/app_list/search/ranking/best_match_ranker.h"
 
-#include "base/containers/to_vector.h"
 #include "base/ranges/algorithm.h"
 #include "chrome/browser/ash/app_list/search/chrome_search_result.h"
 #include "chrome/browser/ash/app_list/search/test/test_result.h"
@@ -18,7 +17,7 @@ namespace {
 
 using testing::ElementsAreArray;
 
-std::unique_ptr<ChromeSearchResult> MakeResult(
+std::unique_ptr<TestResult> MakeResult(
     const std::string& id,
     double normalized_relevance,
     ChromeSearchResult::MetricsType metrics_type =
@@ -30,9 +29,11 @@ std::unique_ptr<ChromeSearchResult> MakeResult(
 
 Results MakeAnswers(
     std::vector<std::pair<std::string, double>> ids_relevances) {
-  return base::ToVector(ids_relevances, [](const auto& ids_relevance) {
-    return MakeResult(ids_relevance.first, ids_relevance.second);
-  });
+  Results results;
+  for (const auto& ids_relevance : ids_relevances) {
+    results.push_back(MakeResult(ids_relevance.first, ids_relevance.second));
+  }
+  return results;
 }
 
 }  // namespace
@@ -42,13 +43,13 @@ class BestMatchRankerTest : public testing::Test {
   void ExpectBestMatchOrderAndRanks(
       std::vector<std::pair<std::string, int>> expected_ids_ranks) {
     EXPECT_EQ(expected_ids_ranks.size(), ranker_.best_matches_.size());
-    EXPECT_THAT(base::ToVector(ranker_.best_matches_,
-                               [](const auto& res) {
-                                 return std::make_pair(
-                                     res->id(),
-                                     res->scoring().best_match_rank());
-                               }),
-                ElementsAreArray(expected_ids_ranks));
+    std::vector<std::pair<std::string, int>> actual_ids_ranks;
+    base::ranges::transform(ranker_.best_matches_,
+                            std::back_inserter(actual_ids_ranks), [](auto res) {
+                              return std::make_pair(
+                                  res->id(), res->scoring().best_match_rank());
+                            });
+    EXPECT_THAT(actual_ids_ranks, ElementsAreArray(expected_ids_ranks));
   }
 
   void ElapseBurnInPeriod() { ranker_.OnBurnInPeriodElapsed(); }
@@ -241,7 +242,7 @@ TEST_F(BestMatchRankerTest, RankerResetBetweenQueries) {
   ResultsMap results_1;
   CategoriesList categories_1;
 
-  ranker_.Start(u"ABC", categories_1);
+  ranker_.Start(u"ABC", results_1, categories_1);
   results_1[ResultType::kOmnibox] =
       MakeAnswers({{"omni_1", 0.92}, {"omni_2", 0.3}});
   ranker_.UpdateResultRanks(results_1, ProviderType::kOmnibox);
@@ -251,7 +252,7 @@ TEST_F(BestMatchRankerTest, RankerResetBetweenQueries) {
   ResultsMap results_2;
   CategoriesList categories_2;
 
-  ranker_.Start(u"ABC", categories_2);
+  ranker_.Start(u"ABC", results_2, categories_2);
   results_2[ResultType::kFileSearch] =
       MakeAnswers({{"files_1", 0.7}, {"files_2", 0.97}});
   ranker_.UpdateResultRanks(results_2, ProviderType::kFileSearch);

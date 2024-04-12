@@ -49,7 +49,7 @@
 #include "third_party/blink/renderer/platform/wtf/wtf_export.h"
 
 #if BUILDFLAG(IS_APPLE)
-#include "base/apple/scoped_cftyperef.h"
+#include "base/mac/scoped_cftyperef.h"
 
 typedef const struct __CFString* CFStringRef;
 #endif
@@ -78,7 +78,7 @@ typedef HashMap<wtf_size_t, StringImpl*, AlreadyHashedTraits>
     StaticStringsTable;
 
 // You can find documentation about this class in this doc:
-// https://chromium.googlesource.com/chromium/src/+/HEAD/third_party/blink/renderer/platform/wtf/text/README.md
+// https://docs.google.com/document/d/1kOCUlJdh2WJMJGDf-WoEQhmnjKLaOYRbiHz5TiGJl14/edit?usp=sharing
 class WTF_EXPORT StringImpl {
  private:
   // StringImpls are allocated out of the WTF buffer partition.
@@ -336,9 +336,7 @@ class WTF_EXPORT StringImpl {
   static void CopyChars(T* destination,
                         const T* source,
                         wtf_size_t num_characters) {
-    if (num_characters > 0) {
-      memcpy(destination, source, num_characters * sizeof(T));
-    }
+    memcpy(destination, source, num_characters * sizeof(T));
   }
 
   ALWAYS_INLINE static void CopyChars(UChar* destination,
@@ -480,7 +478,7 @@ class WTF_EXPORT StringImpl {
                  wtf_size_t length = UINT_MAX) const;
 
 #if BUILDFLAG(IS_APPLE)
-  base::apple::ScopedCFTypeRef<CFStringRef> CreateCFString();
+  base::ScopedCFTypeRef<CFStringRef> CreateCFString();
 #endif
 #ifdef __OBJC__
   operator NSString*();
@@ -666,7 +664,7 @@ template <typename CharType>
 ALWAYS_INLINE bool Equal(const CharType* a,
                          const CharType* b,
                          wtf_size_t length) {
-  return std::equal(a, a + length, b);
+  return !memcmp(a, b, length * sizeof(CharType));
 }
 
 ALWAYS_INLINE bool Equal(const LChar* a, const UChar* b, wtf_size_t length) {

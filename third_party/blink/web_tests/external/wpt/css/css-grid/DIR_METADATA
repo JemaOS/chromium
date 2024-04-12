@@ -1,9 +1,7 @@
-monorail: {
+monorail {
   component: "Blink>Layout>Grid"
 }
-wpt: {
+wpt {
   notify: YES
 }
-buganizer_public: {
-  component_id: 1456463
-}
+

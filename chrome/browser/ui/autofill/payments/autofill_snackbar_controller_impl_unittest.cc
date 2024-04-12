@@ -6,11 +6,11 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "chrome/browser/autofill/manual_filling_controller_impl.h"
+#include "chrome/browser/autofill/mock_address_accessory_controller.h"
+#include "chrome/browser/autofill/mock_credit_card_accessory_controller.h"
 #include "chrome/browser/autofill/mock_manual_filling_view.h"
-#include "chrome/browser/keyboard_accessory/android/manual_filling_controller_impl.h"
-#include "chrome/browser/keyboard_accessory/test_utils/android/mock_address_accessory_controller.h"
-#include "chrome/browser/keyboard_accessory/test_utils/android/mock_credit_card_accessory_controller.h"
-#include "chrome/browser/keyboard_accessory/test_utils/android/mock_password_accessory_controller.h"
+#include "chrome/browser/autofill/mock_password_accessory_controller.h"
 #include "chrome/browser/ui/autofill/payments/autofill_snackbar_view.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -46,9 +46,9 @@ class AutofillSnackbarControllerImplTest
   NiceMock<MockCreditCardAccessoryController> mock_cc_controller_;
 };
 
-TEST_F(AutofillSnackbarControllerImplTest, VirtualCardTypeMetricsTest) {
+TEST_F(AutofillSnackbarControllerImplTest, MetricsTest) {
   base::HistogramTester histogram_tester;
-  controller()->Show(AutofillSnackbarType::kVirtualCard);
+  controller()->Show();
   // Verify that the count for Shown is incremented and ActionClicked hasn't
   // changed.
   histogram_tester.ExpectUniqueSample("Autofill.Snackbar.VirtualCard.Shown", 1,
@@ -57,7 +57,7 @@ TEST_F(AutofillSnackbarControllerImplTest, VirtualCardTypeMetricsTest) {
       "Autofill.Snackbar.VirtualCard.ActionClicked", 1, 0);
   controller()->OnDismissed();
 
-  controller()->Show(AutofillSnackbarType::kVirtualCard);
+  controller()->Show();
   controller()->OnActionClicked();
   // Verify that the count for both Shown and ActionClicked is incremented.
   histogram_tester.ExpectUniqueSample("Autofill.Snackbar.VirtualCard.Shown", 1,
@@ -69,7 +69,7 @@ TEST_F(AutofillSnackbarControllerImplTest, VirtualCardTypeMetricsTest) {
 TEST_F(AutofillSnackbarControllerImplTest,
        AttemptToShowDialogWhileAlreadyShowing) {
   base::HistogramTester histogram_tester;
-  controller()->Show(AutofillSnackbarType::kVirtualCard);
+  controller()->Show();
   // Verify that the count for Shown is incremented and ActionClicked hasn't
   // changed.
   histogram_tester.ExpectUniqueSample("Autofill.Snackbar.VirtualCard.Shown", 1,
@@ -78,26 +78,10 @@ TEST_F(AutofillSnackbarControllerImplTest,
       "Autofill.Snackbar.VirtualCard.ActionClicked", 1, 0);
 
   // Attempt to show another dialog without dismissing the previous one.
-  controller()->Show(AutofillSnackbarType::kVirtualCard);
+  controller()->Show();
 
-  // Verify that the count for both Shown is not incremented.
+  // Verify that the count for Shown is not incremented.
   histogram_tester.ExpectUniqueSample("Autofill.Snackbar.VirtualCard.Shown", 1,
                                       1);
 }
-
-TEST_F(AutofillSnackbarControllerImplTest, MandatoryReauthTypeMetricsTest) {
-  base::HistogramTester histogram_tester;
-  controller()->Show(AutofillSnackbarType::kMandatoryReauth);
-  // Verify that the count for Shown is incremented and ActionClicked hasn't
-  // changed.
-  histogram_tester.ExpectUniqueSample("Autofill.Snackbar.MandatoryReauth.Shown",
-                                      1, 1);
-  histogram_tester.ExpectUniqueSample(
-      "Autofill.Snackbar.MandatoryReauth.ActionClicked", 1, 0);
-  controller()->OnDismissed();
-
-  // TODO(https://crbug.com/831123): Figure out how to mock
-  // ShowAutofillCreditCardSettings to test ActionClicked metric.
-}
-
 }  // namespace autofill

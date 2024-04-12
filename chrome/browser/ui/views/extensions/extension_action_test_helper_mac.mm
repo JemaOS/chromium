@@ -6,22 +6,22 @@
 
 #include <AppKit/AppKit.h>
 
+#import "base/mac/scoped_nsobject.h"
 #import "ui/base/test/windowed_nsnotification_observer.h"
 
 bool ExtensionActionTestHelper::WaitForPopup() {
-  NSWindow* window = GetPopupNativeView().GetNativeNSView().window;
+  NSWindow* window = [GetPopupNativeView().GetNativeNSView() window];
   if (!window)
     return false;
 
-  if (window.keyWindow) {
+  if ([window isKeyWindow])
     return true;
-  }
 
-  WindowedNSNotificationObserver* waiter =
+  base::scoped_nsobject<WindowedNSNotificationObserver> waiter(
       [[WindowedNSNotificationObserver alloc]
           initForNotification:NSWindowDidBecomeKeyNotification
-                       object:window];
+                       object:window]);
 
   BOOL notification_observed = [waiter wait];
-  return notification_observed && window.keyWindow;
+  return notification_observed && [window isKeyWindow];
 }

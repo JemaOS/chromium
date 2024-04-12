@@ -6,9 +6,8 @@
 
 #include <cursor-shapes-unstable-v1-client-protocol.h>
 
-#include <optional>
-
 #include "base/check.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/cursor/mojom/cursor_type.mojom-shared.h"
 #include "ui/gfx/native_widget_types.h"
 #include "ui/ozone/platform/wayland/host/wayland_connection.h"
@@ -60,7 +59,7 @@ WaylandZcrCursorShapes::WaylandZcrCursorShapes(
 WaylandZcrCursorShapes::~WaylandZcrCursorShapes() = default;
 
 // static
-std::optional<int32_t> WaylandZcrCursorShapes::ShapeFromType(CursorType type) {
+absl::optional<int32_t> WaylandZcrCursorShapes::ShapeFromType(CursorType type) {
   switch (type) {
     case CursorType::kNull:
       // kNull is an alias for kPointer. Fall through.
@@ -157,10 +156,10 @@ std::optional<int32_t> WaylandZcrCursorShapes::ShapeFromType(CursorType type) {
     case CursorType::kNorthSouthNoResize:
     case CursorType::kNorthWestSouthEastNoResize:
       // Not supported by this API.
-      return std::nullopt;
+      return absl::nullopt;
     case CursorType::kCustom:
       // Custom means a bitmap cursor, which can't use the shape API.
-      return std::nullopt;
+      return absl::nullopt;
     case CursorType::kDndNone:
       return ZCR_CURSOR_SHAPES_V1_CURSOR_SHAPE_TYPE_DND_NONE;
     case CursorType::kDndMove:
@@ -169,6 +168,8 @@ std::optional<int32_t> WaylandZcrCursorShapes::ShapeFromType(CursorType type) {
       return ZCR_CURSOR_SHAPES_V1_CURSOR_SHAPE_TYPE_DND_COPY;
     case CursorType::kDndLink:
       return ZCR_CURSOR_SHAPES_V1_CURSOR_SHAPE_TYPE_DND_LINK;
+      // NOTE: If you add a new cursor shape, please also update
+      // UseDefaultCursorForType() in bitmap_cursor_factory_ozone.cc.
   }
 }
 

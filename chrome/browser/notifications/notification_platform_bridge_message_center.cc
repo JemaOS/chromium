@@ -42,8 +42,8 @@ class PassThroughDelegate : public message_center::NotificationDelegate {
     NotificationDisplayServiceImpl::GetForProfile(profile_)
         ->ProcessNotificationOperation(
             NotificationOperation::kSettings, notification_type_,
-            notification_.origin_url(), notification_.id(), std::nullopt,
-            std::nullopt, std::nullopt /* by_user */);
+            notification_.origin_url(), notification_.id(), absl::nullopt,
+            absl::nullopt, absl::nullopt /* by_user */);
   }
 
   void DisableNotification() override {
@@ -51,8 +51,8 @@ class PassThroughDelegate : public message_center::NotificationDelegate {
         ->ProcessNotificationOperation(
             NotificationOperation::kDisablePermission, notification_type_,
             notification_.origin_url(), notification_.id(),
-            std::nullopt /* action_index */, std::nullopt /* reply */,
-            std::nullopt /* by_user */);
+            absl::nullopt /* action_index */, absl::nullopt /* reply */,
+            absl::nullopt /* by_user */);
   }
 
   void Close(bool by_user) override {
@@ -60,16 +60,17 @@ class PassThroughDelegate : public message_center::NotificationDelegate {
         ->ProcessNotificationOperation(
             NotificationOperation::kClose, notification_type_,
             notification_.origin_url(), notification_.id(),
-            std::nullopt /* action_index */, std::nullopt /* reply */, by_user);
+            absl::nullopt /* action_index */, absl::nullopt /* reply */,
+            by_user);
   }
 
-  void Click(const std::optional<int>& button_index,
-             const std::optional<std::u16string>& reply) override {
+  void Click(const absl::optional<int>& button_index,
+             const absl::optional<std::u16string>& reply) override {
     NotificationDisplayServiceImpl::GetForProfile(profile_)
         ->ProcessNotificationOperation(
             NotificationOperation::kClick, notification_type_,
             notification_.origin_url(), notification_.id(), button_index, reply,
-            std::nullopt /* by_user */);
+            absl::nullopt /* by_user */);
   }
 
  protected:
@@ -141,24 +142,6 @@ void NotificationPlatformBridgeMessageCenter::GetDisplayed(
   if (ui_manager) {
     displayed_notifications = ui_manager->GetAllIdsByProfile(
         ProfileNotification::GetProfileID(profile));
-  }
-
-  content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(std::move(callback), std::move(displayed_notifications),
-                     true /* supports_synchronization */));
-}
-
-void NotificationPlatformBridgeMessageCenter::GetDisplayedForOrigin(
-    Profile* profile,
-    const GURL& origin,
-    GetDisplayedNotificationsCallback callback) const {
-  std::set<std::string> displayed_notifications;
-  NotificationUIManager* ui_manager =
-      g_browser_process->notification_ui_manager();
-  if (ui_manager) {
-    displayed_notifications = ui_manager->GetAllIdsByProfileAndOrigin(
-        ProfileNotification::GetProfileID(profile), origin);
   }
 
   content::GetUIThreadTaskRunner({})->PostTask(

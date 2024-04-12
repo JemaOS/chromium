@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "components/media_router/common/discovery/media_sink_internal.h"
-#include "components/media_router/common/providers/cast/channel/cast_device_capability.h"
 
 namespace media_router {
 
@@ -19,8 +18,7 @@ static constexpr char kCastServiceType[] = "_googlecast._tcp.local";
 
 // Returns the icon type to use according to |capabilities|. |capabilities| is
 // a bit set of cast_channel::CastDeviceCapabilities in CastSinkExtraData.
-SinkIconType GetCastSinkIconType(
-    cast_channel::CastDeviceCapabilitySet capabilities);
+SinkIconType GetCastSinkIconType(uint8_t capabilities);
 
 enum CreateCastMediaSinkResult {
   kOk,

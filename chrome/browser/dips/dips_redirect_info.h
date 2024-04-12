@@ -19,9 +19,7 @@ struct DIPSRedirectChainInfo {
  public:
   DIPSRedirectChainInfo(const GURL& initial_url,
                         const GURL& final_url,
-                        size_t length,
-                        bool is_partial_chain);
-  DIPSRedirectChainInfo(const DIPSRedirectChainInfo&);
+                        int length);
   ~DIPSRedirectChainInfo();
 
   const GURL initial_url;
@@ -32,14 +30,11 @@ struct DIPSRedirectChainInfo {
   const std::string final_site;
   // initial_site == final_site, cached.
   const bool initial_and_final_sites_same;
-  const size_t length;
-  // True if the chain is missing the end URL. This occurs when redirects are
-  // trimmed from the front of the in-progress redirect chain.
-  const bool is_partial_chain;
+  const int length;
 
   // These properties aren't known at the time of creation, and are filled in
   // later:
-  std::optional<DIPSCookieMode> cookie_mode;
+  absl::optional<DIPSCookieMode> cookie_mode;
 };
 
 // Properties of one URL within a redirect chain.
@@ -48,47 +43,42 @@ struct DIPSRedirectInfo {
   // Constructor for server-side redirects.
   DIPSRedirectInfo(const GURL& url,
                    DIPSRedirectType redirect_type,
-                   SiteDataAccessType access_type,
+                   CookieAccessType access_type,
+                   int index,
                    ukm::SourceId source_id,
                    base::Time time);
   // Constructor for client-side redirects.
   DIPSRedirectInfo(const GURL& url,
                    DIPSRedirectType redirect_type,
-                   SiteDataAccessType access_type,
+                   CookieAccessType access_type,
+                   int index,
                    ukm::SourceId source_id,
                    base::Time time,
                    base::TimeDelta client_bounce_delay,
-                   bool has_sticky_activation,
-                   bool web_authn_assertion_request_succeeded);
-  DIPSRedirectInfo(const DIPSRedirectInfo&);
+                   bool has_sticky_activation);
   ~DIPSRedirectInfo();
 
   // These properties are required for all redirects:
 
   const GURL url;
-  const std::string site;  // the cached result of GetSiteForDIPS(url)
   const DIPSRedirectType redirect_type;
-  SiteDataAccessType
-      access_type;  // may be updated by late cookie notifications
+  CookieAccessType access_type;  // may be updated by late cookie notifications
+  // Index of this URL within the overall chain.
+  const int index;
   const ukm::SourceId source_id;
   const base::Time time;
 
   // These properties aren't known at the time of creation, and are filled in
   // later:
-  std::optional<bool> has_interaction;
-  size_t chain_index = 0u;
+  absl::optional<bool> has_interaction;
 
   // The following properties are only applicable for client-side redirects:
 
   // For client redirects, the time between the previous page committing
   // and the redirect navigation starting. (For server redirects, zero)
   const base::TimeDelta client_bounce_delay;
-  // For client redirects, whether the user ever interacted with the page during
-  // this navigation.
+  // For client redirects, whether the user ever interacted with the page.
   const bool has_sticky_activation;
-  // For client redirects, whether the user ever triggered a web authn assertion
-  // call.
-  const bool web_authn_assertion_request_succeeded;
 };
 
 // a movable DIPSRedirectInfo, essentially

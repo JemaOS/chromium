@@ -16,12 +16,12 @@
 #include <memory>
 #include <vector>
 
-#include "base/component_export.h"
 #include "base/files/file.h"
 #include "base/files/memory_mapped_file.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/string_piece.h"
 #include "build/chromeos_buildflags.h"
+#include "ui/base/resource/data_pack_export.h"
 #include "ui/base/resource/resource_handle.h"
 
 namespace base {
@@ -32,7 +32,7 @@ class RefCountedStaticMemory;
 namespace ui {
 enum ResourceScaleFactor : int;
 
-class COMPONENT_EXPORT(UI_DATA_PACK) DataPack : public ResourceHandle {
+class UI_DATA_PACK_EXPORT DataPack : public ResourceHandle {
  public:
   explicit DataPack(ResourceScaleFactor resource_scale_factor);
 
@@ -41,14 +41,7 @@ class COMPONENT_EXPORT(UI_DATA_PACK) DataPack : public ResourceHandle {
 
   ~DataPack() override;
 
-// Pack Entry and Alias. This removes padding between fields, and alignment
-// requirements, which makes the structs usable for aliasing into the input
-// buffer directly.
-//
-// TODO(davidben): Ideally we would load these structures through memcpy, or
-// a little-endian variant of base/big_endian.h, rather than type-punning
-// pointers. This code currently depends on Chromium disabling strict aliasing.
-#pragma pack(push, 1)
+#pragma pack(push, 2)
   struct Entry {
     static int CompareById(const void* void_key, const void* void_entry);
 
@@ -167,8 +160,8 @@ class COMPONENT_EXPORT(UI_DATA_PACK) DataPack : public ResourceHandle {
 
   // ResourceHandle implementation:
   bool HasResource(uint16_t resource_id) const override;
-  std::optional<base::StringPiece> GetStringPiece(
-      uint16_t resource_id) const override;
+  bool GetStringPiece(uint16_t resource_id,
+                      base::StringPiece* data) const override;
   base::RefCountedStaticMemory* GetStaticMemory(
       uint16_t resource_id) const override;
   TextEncodingType GetTextEncodingType() const override;
@@ -215,16 +208,18 @@ class COMPONENT_EXPORT(UI_DATA_PACK) DataPack : public ResourceHandle {
                                            const uint8_t* data,
                                            size_t data_length);
 
-  // Returns the string between `target_offset` and `next_offset` in data pack.
-  static base::StringPiece GetStringPieceFromOffset(uint32_t target_offset,
-                                                    uint32_t next_offset,
-                                                    const uint8_t* data_source);
+  // Get string data from file offset in bytes.
+  // Returns string between `target_offset` and `next_offset` in data pack.
+  static void GetStringPieceFromOffset(uint32_t target_offset,
+                                       uint32_t next_offset,
+                                       const uint8_t* data_source,
+                                       base::StringPiece* data);
 
   std::unique_ptr<DataSource> data_source_;
 
-  raw_ptr<const Entry, AllowPtrArithmetic> resource_table_;
+  raw_ptr<const Entry> resource_table_;
   size_t resource_count_;
-  raw_ptr<const Alias, AllowPtrArithmetic> alias_table_;
+  raw_ptr<const Alias> alias_table_;
   size_t alias_count_;
 
   // Type of encoding for text resources.

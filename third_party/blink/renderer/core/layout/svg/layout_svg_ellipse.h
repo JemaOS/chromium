@@ -37,26 +37,34 @@ class LayoutSVGEllipse final : public LayoutSVGShape {
   explicit LayoutSVGEllipse(SVGGeometryElement*);
   ~LayoutSVGEllipse() override;
 
+  ShapeGeometryCodePath GeometryCodePath() const override {
+    NOT_DESTROYED();
+    return use_path_fallback_ ? kPathGeometry : kEllipseGeometryFastPath;
+  }
+
   const char* GetName() const override {
     NOT_DESTROYED();
     return "LayoutSVGEllipse";
   }
 
  private:
-  void StyleDidChange(StyleDifference, const ComputedStyle* old_style) override;
-
-  gfx::RectF UpdateShapeFromElement() override;
+  void UpdateShapeFromElement() override;
+  bool IsShapeEmpty() const override {
+    NOT_DESTROYED();
+    return use_path_fallback_ ? LayoutSVGShape::IsShapeEmpty()
+                              : fill_bounding_box_.IsEmpty();
+  }
   bool ShapeDependentStrokeContains(const HitTestLocation&) override;
   bool ShapeDependentFillContains(const HitTestLocation&,
                                   const WindRule) const override;
   void CalculateRadiiAndCenter();
-  bool CanUseStrokeHitTestFastPath() const;
   bool HasContinuousStroke() const;
 
  private:
   gfx::PointF center_;
   float radius_x_ = 0;
   float radius_y_ = 0;
+  bool use_path_fallback_ = false;
 };
 
 }  // namespace blink

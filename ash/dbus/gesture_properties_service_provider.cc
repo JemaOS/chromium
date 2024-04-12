@@ -84,7 +84,8 @@ void GetPropertyCallback(dbus::MethodCall* method_call,
     case ui::ozone::mojom::GesturePropValue::Tag::kInts: {
       writer.AppendUint32(values->get_ints().size());
       writer.OpenVariant("ai", &variant_writer);
-      variant_writer.AppendArrayOfInt32s(values->get_ints());
+      variant_writer.AppendArrayOfInt32s(values->get_ints().data(),
+                                         values->get_ints().size());
       writer.CloseContainer(&variant_writer);
       break;
     }
@@ -118,7 +119,8 @@ void GetPropertyCallback(dbus::MethodCall* method_call,
     case ui::ozone::mojom::GesturePropValue::Tag::kReals: {
       writer.AppendUint32(values->get_reals().size());
       writer.OpenVariant("ad", &variant_writer);
-      variant_writer.AppendArrayOfDoubles(values->get_reals());
+      variant_writer.AppendArrayOfDoubles(values->get_reals().data(),
+                                          values->get_reals().size());
       writer.CloseContainer(&variant_writer);
       break;
     }

@@ -7,13 +7,11 @@
 #include "chrome/browser/media/webrtc/desktop_media_list.h"
 #include "chrome/browser/ui/views/desktop_capture/desktop_media_list_view.h"
 #include "chrome/browser/ui/views/desktop_capture/desktop_media_picker_views.h"
-#include "chrome/browser/ui/views/desktop_capture/rounded_corner_image_view.h"
 #include "chrome/grit/generated_resources.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
 #include "ui/gfx/canvas.h"
@@ -34,13 +32,15 @@ DesktopMediaSourceViewStyle::DesktopMediaSourceViewStyle(
     const gfx::Rect& icon_rect,
     const gfx::Rect& label_rect,
     gfx::HorizontalAlignment text_alignment,
-    const gfx::Rect& image_rect)
+    const gfx::Rect& image_rect,
+    int focus_rectangle_inset)
     : columns(columns),
       item_size(item_size),
       icon_rect(icon_rect),
       label_rect(label_rect),
       text_alignment(text_alignment),
-      image_rect(image_rect) {}
+      image_rect(image_rect),
+      focus_rectangle_inset(focus_rectangle_inset) {}
 
 DesktopMediaSourceView::DesktopMediaSourceView(
     DesktopMediaListView* parent,
@@ -49,13 +49,9 @@ DesktopMediaSourceView::DesktopMediaSourceView(
     : parent_(parent),
       source_id_(source_id),
       selected_(false) {
-  icon_view_ = AddChildView(std::make_unique<views::ImageView>());
-  image_view_ =
-      AddChildView(base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign) &&
-                           features::IsChromeRefresh2023()
-                       ? std::make_unique<RoundedCornerImageView>()
-                       : std::make_unique<views::ImageView>());
-  label_ = AddChildView(std::make_unique<views::Label>());
+  AddChildView(icon_view_.get());
+  AddChildView(image_view_.get());
+  AddChildView(label_.get());
   icon_view_->SetCanProcessEventsWithinSubtree(false);
   image_view_->SetCanProcessEventsWithinSubtree(false);
   SetFocusBehavior(FocusBehavior::ALWAYS);
@@ -70,11 +66,11 @@ void DesktopMediaSourceView::SetName(const std::u16string& name) {
 }
 
 void DesktopMediaSourceView::SetThumbnail(const gfx::ImageSkia& thumbnail) {
-  image_view_->SetImage(ui::ImageModel::FromImageSkia(thumbnail));
+  image_view_->SetImage(thumbnail);
 }
 
 void DesktopMediaSourceView::SetIcon(const gfx::ImageSkia& icon) {
-  icon_view_->SetImage(ui::ImageModel::FromImageSkia(icon));
+  icon_view_->SetImage(icon);
 }
 
 void DesktopMediaSourceView::SetSelected(bool selected) {
@@ -95,24 +91,13 @@ void DesktopMediaSourceView::SetSelected(bool selected) {
       }
     }
 
-    if (base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign) &&
-        features::IsChromeRefresh2023()) {
-      SetBackground(views::CreateRoundedRectBackground(
-          GetColorProvider()->GetColor(ui::kColorSysTonalContainer), 8));
-    } else {
-      image_view_->SetBackground(views::CreateSolidBackground(
-          GetColorProvider()->GetColor(ui::kColorMenuItemBackgroundSelected)));
-    }
+    image_view_->SetBackground(views::CreateSolidBackground(
+        GetColorProvider()->GetColor(ui::kColorMenuItemBackgroundSelected)));
     label_->SetFontList(label_->font_list().Derive(0, gfx::Font::NORMAL,
                                                    gfx::Font::Weight::BOLD));
     parent_->OnSelectionChanged();
   } else {
-    if (base::FeatureList::IsEnabled(kDisplayMediaPickerRedesign) &&
-        features::IsChromeRefresh2023()) {
-      SetBackground(nullptr);
-    } else {
-      image_view_->SetBackground(nullptr);
-    }
+    image_view_->SetBackground(nullptr);
     label_->SetFontList(label_->font_list().Derive(0, gfx::Font::NORMAL,
                                                    gfx::Font::Weight::NORMAL));
   }
@@ -188,6 +173,6 @@ void DesktopMediaSourceView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
           : label_->GetText());
 }
 
-BEGIN_METADATA(DesktopMediaSourceView)
+BEGIN_METADATA(DesktopMediaSourceView, views::View)
 ADD_PROPERTY_METADATA(bool, Selected)
 END_METADATA

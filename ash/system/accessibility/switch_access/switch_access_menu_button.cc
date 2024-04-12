@@ -80,7 +80,7 @@ SwitchAccessMenuButton::SwitchAccessMenuButton(std::string action_name,
                         bottom_padding_dip, right_padding_dip));
   SetLayoutManager(std::move(layout));
 
-  GetViewAccessibility().SetName(label_text, ax::mojom::NameFrom::kAttribute);
+  GetViewAccessibility().OverrideName(label_text);
   GetViewAccessibility().OverrideIsLeaf(true);
 }
 
@@ -95,7 +95,7 @@ void SwitchAccessMenuButton::OnButtonPressed() {
                            /*send_native_event=*/false);
 }
 
-BEGIN_METADATA(SwitchAccessMenuButton)
+BEGIN_METADATA(SwitchAccessMenuButton, views::Button)
 END_METADATA
 
 }  // namespace ash

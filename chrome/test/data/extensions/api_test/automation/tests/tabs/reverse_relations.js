@@ -27,4 +27,4 @@ var allTests = [
   },
 ];
 
-setUpAndRunTabsTests(allTests, 'reverse_relations.html');
+setUpAndRunTests(allTests, 'reverse_relations.html');

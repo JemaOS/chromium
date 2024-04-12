@@ -9,17 +9,27 @@ import static org.junit.Assert.assertTrue;
 
 import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.UI_THEME_SETTING;
 
+import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 
-/** Unit tests for {@link GlobalNightModeStateProviderHolder}. */
+/**
+ * Unit tests for {@link GlobalNightModeStateProviderHolder}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class GlobalNightModeStateProviderHolderTest {
+    @After
+    public void tearDown() {
+        GlobalNightModeStateProviderHolder.setInstanceForTesting(null);
+        NightModeUtils.setNightModeSupportedForTesting(null);
+        SharedPreferencesManager.getInstance().removeKey(UI_THEME_SETTING);
+    }
+
     @Test
     public void testNightModeNotAvailable() {
         NightModeUtils.setNightModeSupportedForTesting(false);
@@ -28,7 +38,7 @@ public class GlobalNightModeStateProviderHolderTest {
         assertFalse(GlobalNightModeStateProviderHolder.getInstance().isInNightMode());
 
         // Verify that night mode cannot be enabled.
-        ChromeSharedPreferences.getInstance().writeInt(UI_THEME_SETTING, ThemeType.DARK);
+        SharedPreferencesManager.getInstance().writeInt(UI_THEME_SETTING, ThemeType.DARK);
         assertFalse(GlobalNightModeStateProviderHolder.getInstance().isInNightMode());
     }
 
@@ -36,8 +46,7 @@ public class GlobalNightModeStateProviderHolderTest {
     public void testNightModeAvailable() {
         // Verify that the instance is a GlobalNightModeStateController. Other tests are covered
         // in GlobalNightModeStateControllerTest.java.
-        assertTrue(
-                GlobalNightModeStateProviderHolder.getInstance()
-                        instanceof GlobalNightModeStateController);
+        assertTrue(GlobalNightModeStateProviderHolder.getInstance()
+                           instanceof GlobalNightModeStateController);
     }
 }

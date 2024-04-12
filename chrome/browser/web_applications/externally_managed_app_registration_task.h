@@ -29,23 +29,15 @@ class WebAppUrlLoader;
 class ExternallyManagedAppRegistrationTaskBase
     : public content::ServiceWorkerContextObserver {
  public:
-  virtual void Start() = 0;
   ~ExternallyManagedAppRegistrationTaskBase() override;
 
   const GURL& install_url() const { return install_url_; }
 
-  const base::TimeDelta registration_timeout() const {
-    return registration_timeout_;
-  }
-
  protected:
-  ExternallyManagedAppRegistrationTaskBase(
-      GURL install_url,
-      const base::TimeDelta registration_timeout);
+  explicit ExternallyManagedAppRegistrationTaskBase(GURL install_url);
 
  private:
   const GURL install_url_;
-  const base::TimeDelta registration_timeout_;
 };
 
 class ExternallyManagedAppRegistrationTask
@@ -53,13 +45,10 @@ class ExternallyManagedAppRegistrationTask
  public:
   using RegistrationCallback = base::OnceCallback<void(RegistrationResultCode)>;
 
-  ExternallyManagedAppRegistrationTask(
-      GURL install_url,
-      const base::TimeDelta registration_timeout,
-      WebAppUrlLoader* url_loader,
-      content::WebContents* web_contents,
-      RegistrationCallback callback);
-
+  ExternallyManagedAppRegistrationTask(GURL install_url,
+                                       WebAppUrlLoader* url_loader,
+                                       content::WebContents* web_contents,
+                                       RegistrationCallback callback);
   ExternallyManagedAppRegistrationTask(
       const ExternallyManagedAppRegistrationTask&) = delete;
   ExternallyManagedAppRegistrationTask& operator=(
@@ -70,7 +59,7 @@ class ExternallyManagedAppRegistrationTask
   void OnRegistrationCompleted(const GURL& scope) override;
   void OnDestruct(content::ServiceWorkerContext* context) override;
 
-  void Start() override;
+  static void SetTimeoutForTesting(int registration_timeout_in_seconds);
 
  private:
   // Check to see if there is already a service worker for the install url.
@@ -78,17 +67,21 @@ class ExternallyManagedAppRegistrationTask
 
   void OnDidCheckHasServiceWorker(content::ServiceWorkerCapability capability);
 
+  void OnWebContentsReady(WebAppUrlLoader::Result result);
+
   void OnRegistrationTimeout();
 
   const raw_ptr<WebAppUrlLoader> url_loader_;
   const raw_ptr<content::WebContents> web_contents_;
   RegistrationCallback callback_;
-  raw_ptr<content::ServiceWorkerContext> service_worker_context_ = nullptr;
+  raw_ptr<content::ServiceWorkerContext> service_worker_context_;
 
   base::OneShotTimer registration_timer_;
 
   base::WeakPtrFactory<ExternallyManagedAppRegistrationTask> weak_ptr_factory_{
       this};
+
+  static int registration_timeout_in_seconds_;
 };
 
 }  // namespace web_app

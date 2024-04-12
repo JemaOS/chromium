@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-GEN_INCLUDE(['../testing/chromevox_e2e_test_base.js']);
+GEN_INCLUDE(['../../common/testing/accessibility_test_base.js']);
 
 UnserializableSpan = function() {};
 
@@ -57,7 +57,7 @@ function assertSpanNotFound(spannable, annotation) {
 /**
  * Test fixture.
  */
-ChromeVoxSpannableUnitTest = class extends ChromeVoxE2ETest {
+ChromeVoxSpannableUnitTest = class extends AccessibilityTestBase {
   /** @override */
   setUp() {
     super.setUp();
@@ -65,6 +65,10 @@ ChromeVoxSpannableUnitTest = class extends ChromeVoxE2ETest {
 
   async setUpDeferred() {
     await super.setUpDeferred();
+
+    // Alphabetical based on file path.
+    await importModule(
+        ['Spannable', 'MultiSpannable'], '/chromevox/common/spannable.js');
 
     Spannable.registerStatelessSerializableSpan(
         StatelessSerializableSpan, 'StatelessSerializableSpan');
@@ -76,20 +80,28 @@ ChromeVoxSpannableUnitTest = class extends ChromeVoxE2ETest {
   }
 };
 
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'ToStringUnannotated', function() {
+
+/** @override */
+ChromeVoxSpannableUnitTest.prototype.extraLibraries = [
+  '../../common/testing/assert_additions.js',
+  '../testing/fake_dom.js',
+];
+
+
+TEST_F('ChromeVoxSpannableUnitTest', 'ToStringUnannotated', function() {
   assertEquals('', new Spannable().toString());
   assertEquals('hello world', new Spannable('hello world').toString());
 });
 
 /** Tests that toString works correctly on annotated strings. */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'ToStringAnnotated', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'ToStringAnnotated', function() {
   const spannable = new Spannable('Hello Google');
   spannable.setSpan('http://www.google.com/', 6, 12);
   assertEquals('Hello Google', spannable.toString());
 });
 
 /** Tests the length calculation. */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'LengthProperty', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'LengthProperty', function() {
   const spannable = new Spannable('Hello');
   spannable.setSpan({}, 0, 3);
   assertEquals(5, spannable.length);
@@ -100,7 +112,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'LengthProperty', function() {
 });
 
 /** Tests that a span can be added and retrieved at the beginning. */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'SpanBeginning', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'SpanBeginning', function() {
   const annotation = {};
   const spannable = new Spannable('Hello world');
   spannable.setSpan(annotation, 0, 5);
@@ -112,7 +124,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'SpanBeginning', function() {
 });
 
 /** Tests that a span can be added and retrieved at the beginning. */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'SpanEnd', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'SpanEnd', function() {
   const annotation = {};
   const spannable = new Spannable('Hello world');
   spannable.setSpan(annotation, 6, 11);
@@ -124,7 +136,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'SpanEnd', function() {
 });
 
 /** Tests that a zero-length span is not retrieved. */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'SpanZeroLength', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'SpanZeroLength', function() {
   const annotation = {};
   const spannable = new Spannable('Hello world');
   spannable.setSpan(annotation, 3, 3);
@@ -135,7 +147,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'SpanZeroLength', function() {
 });
 
 /** Tests that a removed span is not returned. */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'RemoveSpan', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'RemoveSpan', function() {
   const annotation = {};
   const spannable = new Spannable('Hello world');
   spannable.setSpan(annotation, 0, 3);
@@ -146,7 +158,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'RemoveSpan', function() {
 });
 
 /** Tests that adding a span in one place removes it from another. */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'SetSpanMoves', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'SetSpanMoves', function() {
   const annotation = {};
   const spannable = new Spannable('Hello world');
   spannable.setSpan(annotation, 0, 3);
@@ -158,7 +170,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'SetSpanMoves', function() {
 });
 
 /** Tests that setSpan objects to out-of-range arguments. */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'SetSpanRangeError', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'SetSpanRangeError', function() {
   const spannable = new Spannable('Hello world');
 
   // Start index out of range.
@@ -181,7 +193,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'SetSpanRangeError', function() {
  * Tests that multiple spans can be retrieved at one point.
  * The first one added which applies should be returned by getSpan.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'MultipleSpans', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'MultipleSpans', function() {
   const annotation1 = {number: 1};
   const annotation2 = {number: 2};
   assertNotSame(annotation1, annotation2);
@@ -197,7 +209,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'MultipleSpans', function() {
 });
 
 /** Tests that appending appends the strings. */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'AppendToString', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'AppendToString', function() {
   const spannable = new Spannable('Google');
   assertEquals('Google', spannable.toString());
   spannable.append(' Chrome');
@@ -209,7 +221,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'AppendToString', function() {
 /**
  * Tests that appending Spannables combines annotations.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'AppendAnnotations', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'AppendAnnotations', function() {
   const annotation1 = {number: 1};
   const annotation2 = {number: 2};
   assertNotSame(annotation1, annotation2);
@@ -225,20 +237,19 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'AppendAnnotations', function() {
 /**
  * Tests that a span's bounds can be retrieved.
  */
-AX_TEST_F(
-    'ChromeVoxSpannableUnitTest', 'GetSpanStartAndEndAndLength', function() {
-      const annotation = {};
-      const spannable = new Spannable('potato wedges');
-      spannable.setSpan(annotation, 8, 12);
-      assertEquals(8, spannable.getSpanStart(annotation));
-      assertEquals(12, spannable.getSpanEnd(annotation));
-      assertEquals(4, spannable.getSpanLength(annotation));
-    });
+TEST_F('ChromeVoxSpannableUnitTest', 'GetSpanStartAndEndAndLength', function() {
+  const annotation = {};
+  const spannable = new Spannable('potato wedges');
+  spannable.setSpan(annotation, 8, 12);
+  assertEquals(8, spannable.getSpanStart(annotation));
+  assertEquals(12, spannable.getSpanEnd(annotation));
+  assertEquals(4, spannable.getSpanLength(annotation));
+});
 
 /**
  * Tests that an absent span's bounds are reported correctly.
  */
-AX_TEST_F(
+TEST_F(
     'ChromeVoxSpannableUnitTest', 'GetSpanStartAndEndAndLengthAbsent',
     function() {
       const annotation = {};
@@ -249,7 +260,7 @@ AX_TEST_F(
 /**
  * Test that a zero length span can still be found.
  */
-AX_TEST_F(
+TEST_F(
     'ChromeVoxSpannableUnitTest', 'GetSpanStartAndEndAndLengthZeroLength',
     function() {
       const annotation = {};
@@ -264,22 +275,21 @@ AX_TEST_F(
  * Tests that == (but not ===) objects are treated distinctly when getting
  * span bounds.
  */
-AX_TEST_F(
-    'ChromeVoxSpannableUnitTest', 'GetSpanStartAndEndEquality', function() {
-      // Note that 0 == '' and '' == 0 in JavaScript.
-      const spannable = new Spannable('wat');
-      spannable.setSpan(0, 0, 0);
-      spannable.setSpan('', 1, 3);
-      assertEquals(0, spannable.getSpanStart(0));
-      assertEquals(0, spannable.getSpanEnd(0));
-      assertEquals(1, spannable.getSpanStart(''));
-      assertEquals(3, spannable.getSpanEnd(''));
-    });
+TEST_F('ChromeVoxSpannableUnitTest', 'GetSpanStartAndEndEquality', function() {
+  // Note that 0 == '' and '' == 0 in JavaScript.
+  const spannable = new Spannable('wat');
+  spannable.setSpan(0, 0, 0);
+  spannable.setSpan('', 1, 3);
+  assertEquals(0, spannable.getSpanStart(0));
+  assertEquals(0, spannable.getSpanEnd(0));
+  assertEquals(1, spannable.getSpanStart(''));
+  assertEquals(3, spannable.getSpanEnd(''));
+});
 
 /**
  * Tests that substrings have the correct character sequence.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'Substring', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'Substring', function() {
   const assertSubstringResult = function(expected, initial, start, opt_end) {
     const spannable = new Spannable(initial);
     const substring = spannable.substring(start, opt_end);
@@ -294,7 +304,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'Substring', function() {
 /**
  * Tests that substring arguments are validated properly.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'SubstringRangeError', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'SubstringRangeError', function() {
   const assertRangeError = function(initial, start, opt_end) {
     const spannable = new Spannable(initial);
     assertException('expected range error', function() {
@@ -309,7 +319,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'SubstringRangeError', function() {
 /**
  * Tests that spans in the substring range are preserved.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'SubstringSpansIncluded', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'SubstringSpansIncluded', function() {
   const assertSpanIncluded = function(
       expectedSpanStart, expectedSpanEnd, initial, initialSpanStart,
       initialSpanEnd, start, opt_end) {
@@ -343,7 +353,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'SubstringSpansIncluded', function() {
  * Tests that spans outside the range are omitted.
  * It's fine to keep zero-length spans at the ends, though.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'SubstringSpansExcluded', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'SubstringSpansExcluded', function() {
   const assertSpanExcluded = function(
       initial, spanStart, spanEnd, start, opt_end) {
     const annotation = {};
@@ -361,7 +371,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'SubstringSpansExcluded', function() {
 /**
  * Tests that spans which cross the boundary are clipped.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'SubstringSpansClipped', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'SubstringSpansClipped', function() {
   const assertSpanIncluded = function(
       expectedSpanStart, expectedSpanEnd, initial, initialSpanStart,
       initialSpanEnd, start, opt_end) {
@@ -384,7 +394,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'SubstringSpansClipped', function() {
 /**
  * Tests that whitespace is trimmed.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'Trim', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'Trim', function() {
   const assertTrimResult = function(expected, initial) {
     assertEquals(expected, new Spannable(initial).trim().toString());
   };
@@ -399,7 +409,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'Trim', function() {
 /**
  * Tests that trim keeps, drops and clips spans.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'TrimSpans', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'TrimSpans', function() {
   const spannable = new Spannable(' \t Kennedy\n');
   spannable.setSpan('tab', 1, 2);
   spannable.setSpan('jfk', 3, 10);
@@ -415,7 +425,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'TrimSpans', function() {
 /**
  * Tests that when a string is all whitespace, we trim off the *end*.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'TrimAllWhitespace', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'TrimAllWhitespace', function() {
   const spannable = new Spannable('    ');
   spannable.setSpan('cursor 1', 0, 0);
   spannable.setSpan('cursor 2', 2, 2);
@@ -428,7 +438,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'TrimAllWhitespace', function() {
 /**
  * Tests finding a span which is an instance of a given class.
  */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'GetSpanInstanceOf', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'GetSpanInstanceOf', function() {
   function ExampleConstructorBase() {}
   function ExampleConstructor1() {}
   function ExampleConstructor2() {}
@@ -448,7 +458,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'GetSpanInstanceOf', function() {
 });
 
 /** Tests trimming only left or right. */
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'TrimLeftOrRight', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'TrimLeftOrRight', function() {
   const spannable = new Spannable('    ');
   spannable.setSpan('cursor 1', 0, 0);
   spannable.setSpan('cursor 2', 2, 2);
@@ -484,7 +494,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'TrimLeftOrRight', function() {
   assertEquals(0, trimmed3.getSpanEnd('cursor 2'));
 });
 
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'Serialize', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'Serialize', function() {
   const fresh = new Spannable('text');
   const freshStatelessSerializable = new StatelessSerializableSpan();
   const freshNonStatelessSerializable = new NonStatelessSerializableSpan(14);
@@ -508,7 +518,7 @@ AX_TEST_F('ChromeVoxSpannableUnitTest', 'Serialize', function() {
       freshNonStatelessSerializable, thawnNonStatelessSerializable);
 });
 
-AX_TEST_F('ChromeVoxSpannableUnitTest', 'GetSpanIntervals', function() {
+TEST_F('ChromeVoxSpannableUnitTest', 'GetSpanIntervals', function() {
   function Foo() {}
   function Bar() {}
   const ms = new MultiSpannable('f12b45f78b01');

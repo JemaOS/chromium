@@ -213,8 +213,7 @@ void DeviceLocalAccountPolicyStore::Validate(
     ValidateCompletionCallback callback,
     bool validate_in_background,
     ash::DeviceSettingsService::OwnershipStatus ownership_status) {
-  DCHECK_NE(ash::DeviceSettingsService::OwnershipStatus::kOwnershipUnknown,
-            ownership_status);
+  DCHECK_NE(ash::DeviceSettingsService::OWNERSHIP_UNKNOWN, ownership_status);
   const em::PolicyData* device_policy_data =
       device_settings_service_->policy_data();
   // Note that the key is obtained through the device settings service instead

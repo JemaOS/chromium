@@ -12,8 +12,7 @@
 
 // static
 SCTReportingServiceFactory* SCTReportingServiceFactory::GetInstance() {
-  static base::NoDestructor<SCTReportingServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<SCTReportingServiceFactory>::get();
 }
 
 // static
@@ -26,17 +25,11 @@ SCTReportingService* SCTReportingServiceFactory::GetForBrowserContext(
 SCTReportingServiceFactory::SCTReportingServiceFactory()
     : ProfileKeyedServiceFactory(
           "sct_reporting::Factory",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 SCTReportingServiceFactory::~SCTReportingServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-SCTReportingServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SCTReportingServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
   safe_browsing::SafeBrowsingService* safe_browsing_service =
       g_browser_process->safe_browsing_service();
@@ -45,8 +38,8 @@ SCTReportingServiceFactory::BuildServiceInstanceForBrowserContext(
   if (!safe_browsing_service)
     return nullptr;
 
-  return std::make_unique<SCTReportingService>(safe_browsing_service,
-                                               static_cast<Profile*>(profile));
+  return new SCTReportingService(safe_browsing_service,
+                                 static_cast<Profile*>(profile));
 }
 
 // Force this to be created during BrowserContext creation, since we can't

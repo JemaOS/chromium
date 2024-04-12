@@ -6,7 +6,7 @@ import {isChromeOS, isLacros, isLinux, isMac, isWindows} from 'chrome://resource
 import {getFavicon, getFaviconForPageURL, getFileIconUrl} from 'chrome://resources/js/icon.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 
-suite('IconTest', function() {
+suite('IconModuleTest', function() {
   test('GetFaviconForPageURL', function() {
     const url = 'http://foo.com';
 

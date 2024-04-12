@@ -2,15 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {checkPdfTitleIsExpectedTitle} from './test_util.js';
-
 chrome.test.runTests([
   /**
    * Test that the correct title is displayed for test-whitespace-title.pdf.
    */
   function testHasCorrectTitle() {
-    chrome.test.assertTrue(
-        checkPdfTitleIsExpectedTitle('test-whitespace-title.pdf'));
+    chrome.test.assertEq('test-whitespace-title.pdf', document.title);
 
     chrome.test.succeed();
   },

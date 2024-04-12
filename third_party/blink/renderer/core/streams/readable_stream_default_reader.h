@@ -59,8 +59,7 @@ class CORE_EXPORT ReadableStreamDefaultReader
   // https://streams.spec.whatwg.org/#readable-stream-default-reader-read
   static void Read(ScriptState*,
                    ReadableStreamDefaultReader* reader,
-                   ReadRequest*,
-                   ExceptionState&);
+                   ReadRequest*);
 
   // https://streams.spec.whatwg.org/#abstract-opdef-readablestreamdefaultreadererrorreadrequests
   static void ErrorReadRequests(ScriptState*,

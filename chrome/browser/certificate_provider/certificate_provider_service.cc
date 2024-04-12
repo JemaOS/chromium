@@ -21,7 +21,6 @@
 #include "base/task/task_runner.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/certificate_provider/certificate_provider.h"
-#include "extensions/common/extension_id.h"
 #include "net/base/net_errors.h"
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -92,7 +91,7 @@ class CertificateProviderService::SSLPrivateKey : public net::SSLPrivateKey {
  private:
   ~SSLPrivateKey() override;
 
-  const extensions::ExtensionId extension_id_;
+  const std::string extension_id_;
   const CertificateInfo cert_info_;
   const base::WeakPtr<CertificateProviderService> service_;
   SEQUENCE_CHECKER(sequence_checker_);
@@ -246,7 +245,7 @@ void CertificateProviderService::SetCertificatesProvidedByExtension(
   // Synchronize with Ash-Chrome
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
   if (service && service->IsAvailable<crosapi::mojom::CertDatabase>() &&
-      service->GetInterfaceVersion<crosapi::mojom::CertDatabase>() >=
+      service->GetInterfaceVersion(crosapi::mojom::CertDatabase::Uuid_) >=
           static_cast<int>(crosapi::mojom::CertDatabase::MethodMinVersions::
                                kSetCertsProvidedByExtensionMinVersion)) {
     service->GetRemote<crosapi::mojom::CertDatabase>()
@@ -354,7 +353,7 @@ void CertificateProviderService::RequestSignatureBySpki(
     const std::string& subject_public_key_info,
     uint16_t algorithm,
     base::span<const uint8_t> input,
-    const std::optional<AccountId>& authenticating_user_account_id,
+    const absl::optional<AccountId>& authenticating_user_account_id,
     net::SSLPrivateKey::SignCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bool is_currently_provided = false;
@@ -479,7 +478,7 @@ void CertificateProviderService::RequestSignatureFromExtension(
     const scoped_refptr<net::X509Certificate>& certificate,
     uint16_t algorithm,
     base::span<const uint8_t> input,
-    const std::optional<AccountId>& authenticating_user_account_id,
+    const absl::optional<AccountId>& authenticating_user_account_id,
     net::SSLPrivateKey::SignCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 

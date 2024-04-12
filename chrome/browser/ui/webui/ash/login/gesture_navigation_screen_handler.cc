@@ -19,11 +19,6 @@ void GestureNavigationScreenHandler::Show() {
   ShowInWebUI();
 }
 
-base::WeakPtr<GestureNavigationScreenView>
-GestureNavigationScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 void GestureNavigationScreenHandler::DeclareLocalizedValues(
     ::login::LocalizedValuesBuilder* builder) {
   builder->Add("gestureNavigationIntroTitle",

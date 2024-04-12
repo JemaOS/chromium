@@ -12,8 +12,7 @@
 #include "chrome/common/privacy_budget/privacy_budget_features.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_surface.h"
 
-PrivacyBudgetSettingsProvider::PrivacyBudgetSettingsProvider(
-    bool meta_experiment_active)
+PrivacyBudgetSettingsProvider::PrivacyBudgetSettingsProvider()
     : blocked_surfaces_(
           DecodeIdentifiabilityFieldTrialParam<IdentifiableSurfaceSet>(
               features::kIdentifiabilityStudyBlockedMetrics.Get())),
@@ -21,17 +20,14 @@ PrivacyBudgetSettingsProvider::PrivacyBudgetSettingsProvider(
           DecodeIdentifiabilityFieldTrialParam<IdentifiableSurfaceTypeSet>(
               features::kIdentifiabilityStudyBlockedTypes.Get())),
       enabled_(base::FeatureList::IsEnabled(features::kIdentifiabilityStudy)),
-      meta_experiment_active_(meta_experiment_active) {}
+      active_sampling_enabled_(
+          features::kIdentifiabilityStudyEnableActiveSampling.Get()) {}
 
 PrivacyBudgetSettingsProvider::PrivacyBudgetSettingsProvider(
     const PrivacyBudgetSettingsProvider&) = default;
 PrivacyBudgetSettingsProvider::PrivacyBudgetSettingsProvider(
     PrivacyBudgetSettingsProvider&&) = default;
 PrivacyBudgetSettingsProvider::~PrivacyBudgetSettingsProvider() = default;
-
-bool PrivacyBudgetSettingsProvider::IsMetaExperimentActive() const {
-  return meta_experiment_active_;
-}
 
 bool PrivacyBudgetSettingsProvider::IsActive() const {
   return enabled_;
@@ -50,4 +46,14 @@ bool PrivacyBudgetSettingsProvider::IsSurfaceAllowed(
 bool PrivacyBudgetSettingsProvider::IsTypeAllowed(
     blink::IdentifiableSurface::Type type) const {
   return !base::Contains(blocked_types_, type);
+}
+
+bool PrivacyBudgetSettingsProvider::ShouldActivelySample() const {
+  return active_sampling_enabled_;
+}
+
+std::vector<std::string>
+PrivacyBudgetSettingsProvider::FontFamiliesToActivelySample() const {
+  return DecodeIdentifiabilityFieldTrialParam<std::vector<std::string>>(
+      features::kIdentifiabilityStudyActivelySampledFonts.Get());
 }

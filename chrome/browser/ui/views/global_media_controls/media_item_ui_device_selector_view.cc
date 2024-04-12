@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ui/views/global_media_controls/media_item_ui_device_selector_view.h"
 
-#include <utility>
-
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
@@ -46,9 +44,8 @@ using media_router::mojom::MediaRouteProviderId;
 namespace {
 
 // Constants for the MediaItemUIDeviceSelectorView
-const int kExpandButtonStripWidth = 400;
 constexpr auto kExpandButtonStripInsets = gfx::Insets::VH(6, 15);
-constexpr gfx::Size kExpandButtonStripSize{kExpandButtonStripWidth, 30};
+constexpr gfx::Size kExpandButtonStripSize{400, 30};
 constexpr auto kExpandButtonBorderInsets = gfx::Insets::VH(4, 8);
 
 // Constant for DropdownButton
@@ -63,8 +60,6 @@ constexpr gfx::Insets kDropdownButtonBorderInsets{4};
 const int kAudioDevicesCountHistogramMax = 30;
 
 class ExpandDeviceSelectorLabel : public views::Label {
-  METADATA_HEADER(ExpandDeviceSelectorLabel, views::Label)
-
  public:
   explicit ExpandDeviceSelectorLabel(
       global_media_controls::GlobalMediaControlsEntryPoint entry_point);
@@ -73,12 +68,7 @@ class ExpandDeviceSelectorLabel : public views::Label {
   void OnColorsChanged(SkColor foreground_color, SkColor background_color);
 };
 
-BEGIN_METADATA(ExpandDeviceSelectorLabel)
-END_METADATA
-
 class ExpandDeviceSelectorButton : public views::ToggleImageButton {
-  METADATA_HEADER(ExpandDeviceSelectorButton, views::ToggleImageButton)
-
  public:
   explicit ExpandDeviceSelectorButton(PressedCallback callback,
                                       SkColor background_color);
@@ -86,9 +76,6 @@ class ExpandDeviceSelectorButton : public views::ToggleImageButton {
 
   void OnColorsChanged(SkColor foreground_color);
 };
-
-BEGIN_METADATA(ExpandDeviceSelectorButton)
-END_METADATA
 
 }  // namespace
 
@@ -115,7 +102,7 @@ void ExpandDeviceSelectorLabel::OnColorsChanged(SkColor foreground_color,
 
 ExpandDeviceSelectorButton::ExpandDeviceSelectorButton(PressedCallback callback,
                                                        SkColor foreground_color)
-    : ToggleImageButton(std::move(callback)) {
+    : ToggleImageButton(callback) {
   SetFocusBehavior(views::View::FocusBehavior::ALWAYS);
   SetBorder(views::CreateEmptyBorder(kDropdownButtonBorderInsets));
 
@@ -155,21 +142,16 @@ MediaItemUIDeviceSelectorView::MediaItemUIDeviceSelectorView(
         receiver,
     bool has_audio_output,
     global_media_controls::GlobalMediaControlsEntryPoint entry_point,
-    bool show_devices,
-    std::optional<media_message_center::MediaColorTheme> media_color_theme)
+    bool show_expand_button)
     : item_id_(item_id),
       delegate_(delegate),
       entry_point_(entry_point),
-      media_color_theme_(media_color_theme),
       device_list_host_(std::move(device_list_host)),
       receiver_(this, std::move(receiver)) {
   SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical));
 
-  // Do not create the expand button strip if this device selector view is used
-  // on Chrome OS ash with media::kGlobalMediaControlsCrOSUpdatedUI enabled.
-  CreateExpandButtonStrip(
-      /*show_expand_button=*/!media_color_theme_.has_value());
+  CreateExpandButtonStrip(show_expand_button);
 
   device_entry_views_container_ = AddChildView(std::make_unique<views::View>());
   device_entry_views_container_->SetLayoutManager(
@@ -177,11 +159,14 @@ MediaItemUIDeviceSelectorView::MediaItemUIDeviceSelectorView(
           views::BoxLayout::Orientation::kVertical));
   device_entry_views_container_->SetVisible(false);
 
-  if (show_devices) {
+  if (entry_point_ ==
+      global_media_controls::GlobalMediaControlsEntryPoint::kPresentation) {
     ShowDevices();
   }
   SetBackground(views::CreateSolidBackground(background_color_));
-  DeprecatedLayoutImmediately();
+  // Set the size of this view
+  SetPreferredSize(kExpandButtonStripSize);
+  Layout();
 
   // This view will become visible when devices are discovered.
   SetVisible(false);
@@ -214,7 +199,7 @@ void MediaItemUIDeviceSelectorView::UpdateCurrentAudioDevice(
   current_audio_device_entry_view_->SetHighlighted(true);
   device_entry_views_container_->ReorderChildView(
       current_audio_device_entry_view_, 0);
-  current_audio_device_entry_view_->DeprecatedLayoutImmediately();
+  current_audio_device_entry_view_->Layout();
 }
 
 MediaItemUIDeviceSelectorView::~MediaItemUIDeviceSelectorView() {
@@ -261,10 +246,6 @@ void MediaItemUIDeviceSelectorView::UpdateAvailableAudioDevices(
   for (auto& observer : observers_) {
     observer.OnMediaItemUIDeviceSelectorUpdated(device_entry_ui_map_);
   }
-  if (media_item_ui_) {
-    media_item_ui_->OnDeviceSelectorViewDevicesChanged(
-        device_entry_views_container_->children().size() > 0);
-  }
 }
 
 void MediaItemUIDeviceSelectorView::SetMediaItemUIView(
@@ -304,14 +285,8 @@ void MediaItemUIDeviceSelectorView::ShowDevices() {
   DCHECK(!is_expanded_);
   is_expanded_ = true;
   NotifyAccessibilityEvent(ax::mojom::Event::kExpandedChanged, true);
-
-  // When this device selector view is used on Chrome OS ash with
-  // media::kGlobalMediaControlsCrOSUpdatedUI enabled, accessibility text will
-  // be handled by MediaItemUIDetailedView instead of here.
-  if (!media_color_theme_.has_value()) {
-    GetViewAccessibility().AnnounceText(
-        l10n_util::GetStringUTF16(IDS_GLOBAL_MEDIA_CONTROLS_SHOW_DEVICE_LIST));
-  }
+  GetViewAccessibility().AnnounceText(
+      l10n_util::GetStringUTF16(IDS_GLOBAL_MEDIA_CONTROLS_SHOW_DEVICE_LIST));
 
   if (!have_devices_been_shown_) {
     base::UmaHistogramExactLinear(
@@ -324,28 +299,14 @@ void MediaItemUIDeviceSelectorView::ShowDevices() {
 
   device_entry_views_container_->SetVisible(true);
   PreferredSizeChanged();
-
-  // When this device selector view is used on Chrome OS ash with
-  // media::kGlobalMediaControlsCrOSUpdatedUI enabled, focus the first available
-  // device when the device list is shown for accessibility.
-  if (media_color_theme_.has_value() &&
-      device_entry_views_container_->children().size() > 0) {
-    device_entry_views_container_->children()[0]->RequestFocus();
-  }
 }
 
 void MediaItemUIDeviceSelectorView::HideDevices() {
   DCHECK(is_expanded_);
   is_expanded_ = false;
   NotifyAccessibilityEvent(ax::mojom::Event::kExpandedChanged, true);
-
-  // When this device selector view is used on Chrome OS ash with
-  // media::kGlobalMediaControlsCrOSUpdatedUI enabled, accessibility text will
-  // be handled by MediaItemUIDetailedView instead of here.
-  if (!media_color_theme_.has_value()) {
-    GetViewAccessibility().AnnounceText(
-        l10n_util::GetStringUTF16(IDS_GLOBAL_MEDIA_CONTROLS_HIDE_DEVICE_LIST));
-  }
+  GetViewAccessibility().AnnounceText(
+      l10n_util::GetStringUTF16(IDS_GLOBAL_MEDIA_CONTROLS_HIDE_DEVICE_LIST));
 
   device_entry_views_container_->SetVisible(false);
   PreferredSizeChanged();
@@ -417,11 +378,8 @@ void MediaItemUIDeviceSelectorView::CreateExpandButtonStrip(
             foreground_color_));
   }
 
-  if (show_expand_button) {
-    SetPreferredSize(kExpandButtonStripSize);
-  } else {
+  if (!show_expand_button) {
     expand_button_strip_->SetVisible(false);
-    SetPreferredSize(gfx::Size(kExpandButtonStripWidth, 0));
   }
 }
 
@@ -431,9 +389,7 @@ void MediaItemUIDeviceSelectorView::ShowOrHideDeviceList() {
   } else {
     ShowDevices();
   }
-  if (dropdown_button_) {
-    dropdown_button_->SetToggled(is_expanded_);
-  }
+  dropdown_button_->SetToggled(is_expanded_);
 
   if (media_item_ui_) {
     media_item_ui_->OnDeviceSelectorViewSizeChanged();
@@ -452,7 +408,7 @@ void MediaItemUIDeviceSelectorView::UpdateIsAudioDeviceSwitchingEnabled(
 void MediaItemUIDeviceSelectorView::RemoveDevicesOfType(
     DeviceEntryUIType type) {
   std::vector<views::View*> views_to_remove;
-  for (views::View* view : device_entry_views_container_->children()) {
+  for (auto* view : device_entry_views_container_->children()) {
     if (GetDeviceEntryUI(view)->GetType() == type) {
       views_to_remove.push_back(view);
     }
@@ -477,40 +433,24 @@ void MediaItemUIDeviceSelectorView::OnDevicesUpdated(
   has_cast_device_ = false;
   for (const auto& device : devices) {
     has_cast_device_ = true;
-    if (media_color_theme_.has_value()) {
-      auto device_entry_view = std::make_unique<CastDeviceEntryViewAsh>(
-          base::BindRepeating(
-              &MediaItemUIDeviceSelectorView::OnCastDeviceSelected,
-              base::Unretained(this), device->id),
-          media_color_theme_.value().primary_foreground_color_id,
-          media_color_theme_.value().secondary_foreground_color_id, device);
-      device_entry_view->set_tag(next_tag_++);
-      device_entry_ui_map_[device_entry_view->tag()] = device_entry_view.get();
-      device_entry_views_container_->AddChildView(std::move(device_entry_view));
-    } else {
-      auto device_entry_view = std::make_unique<CastDeviceEntryView>(
-          base::BindRepeating(
-              &MediaItemUIDeviceSelectorView::OnCastDeviceSelected,
-              base::Unretained(this), device->id),
-          foreground_color_, background_color_, device);
-      device_entry_view->set_tag(next_tag_++);
-      device_entry_ui_map_[device_entry_view->tag()] = device_entry_view.get();
-      auto* entry = device_entry_views_container_->AddChildView(
-          std::move(device_entry_view));
-      // After the |device_entry_view| is added, its icon color will change
-      // according to the system theme. So we need to override the system color.
-      entry->OnColorsChanged(foreground_color_, background_color_);
-    }
+    auto device_entry_view = std::make_unique<CastDeviceEntryView>(
+        base::BindRepeating(
+            &MediaItemUIDeviceSelectorView::OnCastDeviceSelected,
+            base::Unretained(this), device->id),
+        foreground_color_, background_color_, device);
+    device_entry_view->set_tag(next_tag_++);
+    device_entry_ui_map_[device_entry_view->tag()] = device_entry_view.get();
+    auto* entry = device_entry_views_container_->AddChildView(
+        std::move(device_entry_view));
+    // After the |device_entry_view| is added, its icon color will change
+    // according to the system theme. So we need to override the system color.
+    entry->OnColorsChanged(foreground_color_, background_color_);
   }
-  device_entry_views_container_->DeprecatedLayoutImmediately();
+  device_entry_views_container_->Layout();
 
   UpdateVisibility();
   for (auto& observer : observers_) {
     observer.OnMediaItemUIDeviceSelectorUpdated(device_entry_ui_map_);
-  }
-  if (media_item_ui_) {
-    media_item_ui_->OnDeviceSelectorViewDevicesChanged(
-        device_entry_views_container_->children().size() > 0);
   }
 }
 
@@ -573,7 +513,7 @@ bool MediaItemUIDeviceSelectorView::GetDeviceEntryViewVisibilityForTesting() {
 std::vector<CastDeviceEntryView*>
 MediaItemUIDeviceSelectorView::GetCastDeviceEntryViewsForTesting() {
   std::vector<CastDeviceEntryView*> buttons;
-  for (views::View* view : device_entry_views_container_->children()) {
+  for (auto* view : device_entry_views_container_->children()) {
     if (GetDeviceEntryUI(view)->GetType() == DeviceEntryUIType::kCast) {
       buttons.push_back(static_cast<CastDeviceEntryView*>(view));
     }
@@ -604,5 +544,5 @@ void MediaItemUIDeviceSelectorView::RegisterAudioDeviceCallbacks() {
                                         weak_ptr_factory_.GetWeakPtr()));
 }
 
-BEGIN_METADATA(MediaItemUIDeviceSelectorView)
+BEGIN_METADATA(MediaItemUIDeviceSelectorView, views::View)
 END_METADATA

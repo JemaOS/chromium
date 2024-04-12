@@ -79,7 +79,7 @@ class CORE_EXPORT SVGMatrixTearOff final : public ScriptWrappable {
   SVGMatrixTearOff* inverse(ExceptionState&);
   SVGMatrixTearOff* rotateFromVector(double x, double y, ExceptionState&);
 
-  SVGTransformTearOff* ContextTransform() { return context_transform_.Get(); }
+  SVGTransformTearOff* ContextTransform() { return context_transform_; }
 
   const AffineTransform& Value() const;
 

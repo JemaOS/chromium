@@ -114,7 +114,7 @@ void SharingHubBubbleControllerChromeOsImpl::HideBubble() {
 
 void SharingHubBubbleControllerChromeOsImpl::ShowBubble(
     share::ShareAttempt attempt) {
-  Browser* browser = chrome::FindBrowserWithTab(web_contents());
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents());
 
   // Ignore subsequent calls to open the Sharesheet if it already is open. This
   // is especially for the Nearby Share dialog, where clicking outside of it
@@ -206,10 +206,10 @@ void SharingHubBubbleControllerChromeOsImpl::ShowSharesheetAsh() {
       &GetWebContents(), std::move(intent),
       sharesheet::LaunchSource::kOmniboxShare,
       base::BindOnce(&SharingHubBubbleControllerChromeOsImpl::OnShareDelivered,
-                     weak_ptr_factory_.GetWeakPtr()),
+                     AsWeakPtr()),
       base::BindOnce(
           &SharingHubBubbleControllerChromeOsImpl::OnSharesheetClosed,
-          weak_ptr_factory_.GetWeakPtr()));
+          AsWeakPtr()));
 }
 
 void SharingHubBubbleControllerChromeOsImpl::CloseSharesheetAsh() {
@@ -242,7 +242,7 @@ void SharingHubBubbleControllerChromeOsImpl::ShowSharesheetLacros() {
       sharesheet::LaunchSource::kOmniboxShare, std::move(intent),
       base::BindOnce(
           &SharingHubBubbleControllerChromeOsImpl::OnSharesheetClosedLacros,
-          weak_ptr_factory_.GetWeakPtr()));
+          AsWeakPtr()));
 }
 
 void SharingHubBubbleControllerChromeOsImpl::CloseSharesheetLacros() {

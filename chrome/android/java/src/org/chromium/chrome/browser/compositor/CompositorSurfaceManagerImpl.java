@@ -138,7 +138,9 @@ class CompositorSurfaceManagerImpl implements SurfaceHolder.Callback2, Composito
         mOpaque = new SurfaceState(mParentView.getContext(), PixelFormat.OPAQUE, this);
     }
 
-    /** Turn off everything. */
+    /**
+     * Turn off everything.
+     */
     @Override
     public void shutDown() {
         mRequestedByClient = null;
@@ -202,11 +204,8 @@ class CompositorSurfaceManagerImpl implements SurfaceHolder.Callback2, Composito
 
         // See if we're expecting a surfaceChanged.  If not, then send a synthetic one.
         if (mOwnedByClient.format != PixelFormat.UNKNOWN) {
-            mClient.surfaceChanged(
-                    mOwnedByClient.surfaceHolder().getSurface(),
-                    mOwnedByClient.format,
-                    mOwnedByClient.width,
-                    mOwnedByClient.height);
+            mClient.surfaceChanged(mOwnedByClient.surfaceHolder().getSurface(),
+                    mOwnedByClient.format, mOwnedByClient.width, mOwnedByClient.height);
         }
     }
 
@@ -240,17 +239,16 @@ class CompositorSurfaceManagerImpl implements SurfaceHolder.Callback2, Composito
         // the client still owns the surface, then our surfaceDestroyed would assume that Android
         // initiated the destruction, and wait for Android to recreate it.
 
-        mParentView.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        if (mOwnedByClient == null) return;
-                        SurfaceState owned = mOwnedByClient;
-                        mClient.surfaceDestroyed(owned.surfaceHolder().getSurface(), true);
-                        mOwnedByClient = null;
-                        detachSurfaceNow(owned);
-                    }
-                });
+        mParentView.post(new Runnable() {
+            @Override
+            public void run() {
+                if (mOwnedByClient == null) return;
+                SurfaceState owned = mOwnedByClient;
+                mClient.surfaceDestroyed(owned.surfaceHolder().getSurface(), true);
+                mOwnedByClient = null;
+                detachSurfaceNow(owned);
+            }
+        });
     }
 
     @Override
@@ -389,7 +387,9 @@ class CompositorSurfaceManagerImpl implements SurfaceHolder.Callback2, Composito
         return mOwnedByClient == null ? null : mOwnedByClient.surfaceView;
     }
 
-    /** Return the SurfaceState for |holder|, or null if it isn't either. */
+    /**
+     * Return the SurfaceState for |holder|, or null if it isn't either.
+     */
     private SurfaceState getStateForHolder(SurfaceHolder holder) {
         if (mTranslucent.surfaceHolder() == holder) return mTranslucent;
 
@@ -398,7 +398,9 @@ class CompositorSurfaceManagerImpl implements SurfaceHolder.Callback2, Composito
         return null;
     }
 
-    /** Attach |state| to |mParentView| immedaitely. */
+    /**
+     * Attach |state| to |mParentView| immedaitely.
+     */
     private void attachSurfaceNow(SurfaceState state) {
         if (state.isAttached()) return;
 
@@ -406,9 +408,8 @@ class CompositorSurfaceManagerImpl implements SurfaceHolder.Callback2, Composito
         if (state.destroyPending) return;
 
         state.createPending = true;
-        FrameLayout.LayoutParams lp =
-                new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         state.attachTo(mParentView, lp);
         mParentView.bringChildToFront(state.surfaceView);
         mParentView.postInvalidateOnAnimation();
@@ -423,13 +424,12 @@ class CompositorSurfaceManagerImpl implements SurfaceHolder.Callback2, Composito
         assert !state.destroyPending;
         state.createPending = true;
 
-        mParentView.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        attachSurfaceNow(state);
-                    }
-                });
+        mParentView.post(new Runnable() {
+            @Override
+            public void run() {
+                attachSurfaceNow(state);
+            }
+        });
     }
 
     /**
@@ -444,7 +444,9 @@ class CompositorSurfaceManagerImpl implements SurfaceHolder.Callback2, Composito
         mOwnedByClient = null;
     }
 
-    /** Detach |state| from |mParentView| immediately. */
+    /**
+     * Detach |state| from |mParentView| immediately.
+     */
     private void detachSurfaceNow(SurfaceState state) {
         // If we're called while we're not attached, then do nothing.  This makes it easier for the
         // client, since it doesn't have to keep track of whether the outgoing surface has been
@@ -475,19 +477,20 @@ class CompositorSurfaceManagerImpl implements SurfaceHolder.Callback2, Composito
         if (state == mRequestedByClient) attachSurfaceNow(mRequestedByClient);
     }
 
-    /** Post detachment of |state|. This is safe during Surface callbacks. */
+    /**
+     * Post detachment of |state|.  This is safe during Surface callbacks.
+     */
     private void detachSurfaceLater(final SurfaceState state) {
         // If |state| is not attached, then do nothing.  There might be a destroy pending from
         // Android, but in any case leave it be.
         if (!state.isAttached()) return;
 
         state.destroyPending = true;
-        mParentView.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        detachSurfaceNow(state);
-                    }
-                });
+        mParentView.post(new Runnable() {
+            @Override
+            public void run() {
+                detachSurfaceNow(state);
+            }
+        });
     }
 }

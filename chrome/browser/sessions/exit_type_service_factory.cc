@@ -34,8 +34,7 @@ ExitTypeServiceFactory::ExitTypeServiceFactory()
 
 ExitTypeServiceFactory::~ExitTypeServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-ExitTypeServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ExitTypeServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   // TODO(sky): is this necessary?
@@ -43,7 +42,7 @@ ExitTypeServiceFactory::BuildServiceInstanceForBrowserContext(
   if (ash::ProfileHelper::IsSigninProfile(profile))
     return nullptr;
 #endif
-  return std::make_unique<ExitTypeService>(profile);
+  return new ExitTypeService(profile);
 }
 
 bool ExitTypeServiceFactory::ServiceIsCreatedWithBrowserContext() const {

@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROME_BROWSER_KEYBOARD_ACCESSORY_ANDROID_MANUAL_FILLING_VIEW_INTERFACE_H_
-#define CHROME_BROWSER_KEYBOARD_ACCESSORY_ANDROID_MANUAL_FILLING_VIEW_INTERFACE_H_
+#ifndef CHROME_BROWSER_AUTOFILL_MANUAL_FILLING_VIEW_INTERFACE_H_
+#define CHROME_BROWSER_AUTOFILL_MANUAL_FILLING_VIEW_INTERFACE_H_
 
 #include <memory>
 #include <vector>
 
 #include "base/types/strong_alias.h"
 #include "build/build_config.h"
-#include "chrome/browser/keyboard_accessory/android/accessory_sheet_enums.h"
+#include "components/autofill/core/browser/ui/accessory_sheet_enums.h"
 #include "url/gurl.h"
 
 class ManualFillingController;
@@ -56,7 +56,6 @@ class ManualFillingViewInterface {
   };
 
   using WaitForKeyboard = base::StrongAlias<struct WaitForKeyboardTag, bool>;
-  using ShouldShowAction = base::StrongAlias<struct ShouldShowActionTag, bool>;
 
   virtual ~ManualFillingViewInterface() = default;
 
@@ -64,10 +63,9 @@ class ManualFillingViewInterface {
   // accessory sheet of the same type.
   virtual void OnItemsAvailable(autofill::AccessorySheetData data) = 0;
 
-  // Called when a keyboard accessory action should be offered or rescinded.
-  virtual void OnAccessoryActionAvailabilityChanged(
-      ShouldShowAction shouldShowAction,
-      autofill::AccessoryAction action) = 0;
+  // Called when the generation action should be offered or rescinded
+  // in the keyboard accessory.
+  virtual void OnAutomaticGenerationStatusChanged(bool available) = 0;
 
   // Called to inform the view that the accessory sheet should be closed now.
   virtual void CloseAccessorySheet() = 0;
@@ -94,4 +92,4 @@ class ManualFillingViewInterface {
       content::WebContents* web_contents);
 };
 
-#endif  // CHROME_BROWSER_KEYBOARD_ACCESSORY_ANDROID_MANUAL_FILLING_VIEW_INTERFACE_H_
+#endif  // CHROME_BROWSER_AUTOFILL_MANUAL_FILLING_VIEW_INTERFACE_H_

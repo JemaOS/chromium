@@ -19,7 +19,9 @@ public interface ReliabilityLoggingTestUtil {
         return "";
     }
 
-    /** Return the number of recent flows that would be rendered by getRecentFlowsForTesting(). */
+    /**
+     * Return the number of recent flows that would be rendered by getRecentFlowsForTesting().
+     */
     default int getRecentFlowsCountForTesting() {
         return 0;
     }

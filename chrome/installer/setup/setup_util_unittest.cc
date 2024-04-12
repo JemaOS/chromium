@@ -10,7 +10,6 @@
 #include <ios>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <tuple>
 
 #include "base/base64.h"
@@ -34,6 +33,7 @@
 #include "base/win/scoped_handle.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
+#include "chrome/browser/chrome_for_testing/buildflags.h"
 #include "chrome/install_static/install_details.h"
 #include "chrome/install_static/install_util.h"
 #include "chrome/install_static/test/scoped_install_details.h"
@@ -136,10 +136,10 @@ TEST(SetupUtilTest, RegisterEventLogProvider) {
             key.Open(HKEY_LOCAL_MACHINE, reg_path.c_str(), KEY_READ));
 }
 
-const char kAdjustThreadPriority[] = "adjust-thread-priority";
+const char kAdjustProcessPriority[] = "adjust-process-priority";
 
-PriorityClassChangeResult DoThreadPriorityAdjustment() {
-  return installer::AdjustThreadPriority() ? PCCR_CHANGED : PCCR_UNCHANGED;
+PriorityClassChangeResult DoProcessPriorityAdjustment() {
+  return installer::AdjustProcessPriority() ? PCCR_CHANGED : PCCR_UNCHANGED;
 }
 
 namespace {
@@ -186,9 +186,9 @@ ScopedPriorityClass::~ScopedPriorityClass() {
   EXPECT_NE(FALSE, result);
 }
 
-PriorityClassChangeResult RelaunchAndDoThreadPriorityAdjustment() {
+PriorityClassChangeResult RelaunchAndDoProcessPriorityAdjustment() {
   base::CommandLine cmd_line(*base::CommandLine::ForCurrentProcess());
-  cmd_line.AppendSwitch(kAdjustThreadPriority);
+  cmd_line.AppendSwitch(kAdjustProcessPriority);
   base::Process process = base::LaunchProcess(cmd_line, base::LaunchOptions());
   int exit_code = 0;
   if (!process.IsValid()) {
@@ -212,7 +212,7 @@ TEST(SetupUtilTest, AdjustFromNormalPriority) {
                  << std::hex << priority_class;
     return;
   }
-  EXPECT_EQ(PCCR_UNCHANGED, RelaunchAndDoThreadPriorityAdjustment());
+  EXPECT_EQ(PCCR_UNCHANGED, RelaunchAndDoProcessPriorityAdjustment());
 }
 
 // Launching a subprocess below normal priority class drops it to bg mode for
@@ -224,7 +224,7 @@ TEST(SetupUtilTest, AdjustFromBelowNormalPriority) {
     below_normal = ScopedPriorityClass::Create(BELOW_NORMAL_PRIORITY_CLASS);
     ASSERT_TRUE(below_normal);
   }
-  EXPECT_EQ(PCCR_CHANGED, RelaunchAndDoThreadPriorityAdjustment());
+  EXPECT_EQ(PCCR_CHANGED, RelaunchAndDoProcessPriorityAdjustment());
 }
 
 TEST(SetupUtilTest, GetInstallAge) {
@@ -552,7 +552,8 @@ TEST(SetupUtilTest, DecodeDMTokenSwitchValue) {
   EXPECT_FALSE(installer::DecodeDMTokenSwitchValue(L"not-base64-string"));
 
   std::string token("this is a token");
-  std::string encoded = base::Base64Encode(token);
+  std::string encoded;
+  base::Base64Encode(token, &encoded);
   EXPECT_EQ(token,
             *installer::DecodeDMTokenSwitchValue(base::UTF8ToWide(encoded)));
 }
@@ -854,7 +855,7 @@ TEST_F(DeleteRegistryKeyPartialTest, NonEmptyKeyWithPreserve) {
   {
     base::win::RegistryKeyIterator it(root_, path_.c_str());
     ASSERT_EQ(to_preserve_.size(), it.SubkeyCount());
-    std::wstring (*to_lower)(std::wstring_view) = &base::ToLowerASCII;
+    std::wstring (*to_lower)(base::WStringPiece) = &base::ToLowerASCII;
     for (; it.Valid(); ++it) {
       ASSERT_TRUE(
           base::Contains(to_preserve_, base::ToLowerASCII(it.Name()), to_lower))

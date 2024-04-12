@@ -89,7 +89,7 @@ void KAnonymityTrustTokenGetter::TryGetTrustTokenAndKey(
        !base::FeatureList::IsEnabled(network::features::kFledgePst)) ||
       !identity_manager_ ||
       !identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
@@ -156,7 +156,7 @@ void KAnonymityTrustTokenGetter::OnAccessTokenRequestCompleted(
 }
 
 void KAnonymityTrustTokenGetter::CheckTrustTokenKeyCommitment() {
-  std::optional<KeyAndNonUniqueUserIdWithExpiration> key_commitment =
+  absl::optional<KeyAndNonUniqueUserIdWithExpiration> key_commitment =
       storage_->GetKeyAndNonUniqueUserId();
   if (!key_commitment ||
       key_commitment->expiration <= base::Time::Now() + kRequestMargin) {
@@ -222,7 +222,7 @@ void KAnonymityTrustTokenGetter::OnParsedNonUniqueUserId(
     return;
   }
 
-  std::optional<int> maybe_non_unique_user_id =
+  absl::optional<int> maybe_non_unique_user_id =
       response_dict->FindInt("shortClientIdentifier");
   if (!maybe_non_unique_user_id) {
     RecordTrustTokenGetterAction(
@@ -306,7 +306,7 @@ void KAnonymityTrustTokenGetter::OnParsedTrustTokenKeyCommitment(
     return;
   }
 
-  const std::optional<int> maybe_id = response_dict->FindInt("id");
+  const absl::optional<int> maybe_id = response_dict->FindInt("id");
   if (!maybe_id) {
     RecordTrustTokenGetterAction(
         KAnonymityTrustTokenGetterAction::kFetchTrustTokenKeyParseError);
@@ -314,7 +314,7 @@ void KAnonymityTrustTokenGetter::OnParsedTrustTokenKeyCommitment(
     return;
   }
 
-  const std::optional<int> maybe_batchsize =
+  const absl::optional<int> maybe_batchsize =
       response_dict->FindInt("batchSize");
   if (!maybe_batchsize) {
     RecordTrustTokenGetterAction(
@@ -351,7 +351,8 @@ void KAnonymityTrustTokenGetter::OnParsedTrustTokenKeyCommitment(
       return;
     }
     const std::string* maybe_key = key_commit_dict->FindString("keyMaterial");
-    std::optional<int> maybe_key_id = key_commit_dict->FindInt("keyIdentifier");
+    absl::optional<int> maybe_key_id =
+        key_commit_dict->FindInt("keyIdentifier");
     const std::string* maybe_expiry =
         key_commit_dict->FindString("expirationTimestampUsec");
     int64_t expiry;
@@ -446,6 +447,8 @@ void KAnonymityTrustTokenGetter::FetchTrustToken() {
 
   network::mojom::TrustTokenParamsPtr params =
       network::mojom::TrustTokenParams::New();
+  params->version =
+      network::mojom::TrustTokenMajorVersion::kPrivateStateTokenV1;
   params->operation = network::mojom::TrustTokenOperationType::kIssuance;
   params->custom_key_commitment = key_commitment->key_and_id.key_commitment;
   resource_request->trust_token_params = *params;
@@ -495,7 +498,7 @@ void KAnonymityTrustTokenGetter::CompleteOneRequest() {
 void KAnonymityTrustTokenGetter::DoCallback(bool status) {
   DCHECK(!pending_callbacks_.empty());
 
-  std::optional<KeyAndNonUniqueUserId> result;
+  absl::optional<KeyAndNonUniqueUserId> result;
   if (status) {
     auto key_commitment = storage_->GetKeyAndNonUniqueUserId();
     DCHECK(key_commitment);

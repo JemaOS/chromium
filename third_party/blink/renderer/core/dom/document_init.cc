@@ -29,7 +29,6 @@
 
 #include "third_party/blink/renderer/core/dom/document_init.h"
 
-#include "base/uuid.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/mojom/security_context/insecure_request_policy.mojom-blink.h"
@@ -44,7 +43,6 @@
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
 #include "third_party/blink/renderer/core/html/html_view_source_document.h"
 #include "third_party/blink/renderer/core/html/image_document.h"
-#include "third_party/blink/renderer/core/html/json_document.h"
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
 #include "third_party/blink/renderer/core/html/media/media_document.h"
 #include "third_party/blink/renderer/core/html/plugin_document.h"
@@ -56,7 +54,6 @@
 #include "third_party/blink/renderer/platform/network/mime/content_type.h"
 #include "third_party/blink/renderer/platform/network/mime/mime_type_registry.h"
 #include "third_party/blink/renderer/platform/network/network_utils.h"
-#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
 
@@ -137,8 +134,11 @@ DocumentInit& DocumentInit::WithToken(const DocumentToken& token) {
   return *this;
 }
 
-const std::optional<DocumentToken>& DocumentInit::GetToken() const {
-  return token_;
+const DocumentToken& DocumentInit::GetToken() const {
+  if (!token_) {
+    token_.emplace();
+  }
+  return *token_;
 }
 
 DocumentInit& DocumentInit::ForInitialEmptyDocument(bool empty) {
@@ -291,12 +291,6 @@ DocumentInit& DocumentInit::WithUkmSourceId(ukm::SourceId ukm_source_id) {
   return *this;
 }
 
-DocumentInit& DocumentInit::WithBaseAuctionNonce(
-    base::Uuid base_auction_nonce) {
-  base_auction_nonce_ = base_auction_nonce;
-  return *this;
-}
-
 Document* DocumentInit::CreateDocument() const {
 #if DCHECK_IS_ON()
   DCHECK(execution_context_);
@@ -325,13 +319,8 @@ Document* DocumentInit::CreateDocument() const {
       return MakeGarbageCollected<XMLDocument>(*this);
     case Type::kViewSource:
       return MakeGarbageCollected<HTMLViewSourceDocument>(*this);
-    case Type::kText: {
-      if (MIMETypeRegistry::IsJSONMimeType(mime_type_) &&
-          RuntimeEnabledFeatures::PrettyPrintJSONDocumentEnabled()) {
-        return MakeGarbageCollected<JSONDocument>(*this);
-      }
+    case Type::kText:
       return MakeGarbageCollected<TextDocument>(*this);
-    }
     case Type::kUnspecified:
       [[fallthrough]];
     default:

@@ -18,28 +18,21 @@ ChromeAppIconService* ChromeAppIconServiceFactory::GetForBrowserContext(
 
 // static
 ChromeAppIconServiceFactory* ChromeAppIconServiceFactory::GetInstance() {
-  static base::NoDestructor<ChromeAppIconServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<ChromeAppIconServiceFactory>::get();
 }
 
 ChromeAppIconServiceFactory::ChromeAppIconServiceFactory()
     : ProfileKeyedServiceFactory(
           "ChromeAppIconService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(ExtensionRegistryFactory::GetInstance());
 }
 
 ChromeAppIconServiceFactory::~ChromeAppIconServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-ChromeAppIconServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ChromeAppIconServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<ChromeAppIconService>(context);
+  return new ChromeAppIconService(context);
 }
 
 }  // namespace extensions

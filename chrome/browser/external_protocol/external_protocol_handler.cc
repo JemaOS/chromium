@@ -10,7 +10,6 @@
 
 #include "base/check_op.h"
 #include "base/functional/bind.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
 #include "base/strings/escape.h"
@@ -47,8 +46,6 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "components/url_formatter/elide_url.h"
-#include "components/web_modal/web_contents_modal_dialog_manager.h"
 #endif
 
 namespace {
@@ -89,6 +86,10 @@ constexpr const char* kDeniedSchemes[] = {
     "vnd.ms.radio",
 };
 
+constexpr const char* kAllowedSchemes[] = {
+    "mailto", "news", "snews",
+};
+
 void AddMessageToConsole(const content::WeakDocumentPtr& document,
                          blink::mojom::ConsoleMessageLevel level,
                          const std::string& message) {
@@ -127,7 +128,7 @@ void RunExternalProtocolDialogWithDelegate(
     ui::PageTransition page_transition,
     bool has_user_gesture,
     bool is_in_fenced_frame_tree,
-    const std::optional<url::Origin>& initiating_origin,
+    const absl::optional<url::Origin>& initiating_origin,
     content::WeakDocumentPtr initiator_document,
     const std::u16string& program_name,
     ExternalProtocolHandler::Delegate* delegate) {
@@ -188,7 +189,7 @@ void LaunchUrlWithoutSecurityCheckWithDelegate(
   // Avoid calling CloseContents if the tab is not in this browser's tab strip
   // model; this can happen if the protocol was initiated by something
   // internal to Chrome.
-  Browser* browser = chrome::FindBrowserWithTab(web_contents);
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents);
   if (browser && web_contents->GetController().IsInitialNavigation() &&
       browser->tab_strip_model()->count() > 1 &&
       browser->tab_strip_model()->GetIndexOfWebContents(web_contents) !=
@@ -209,7 +210,7 @@ void OnDefaultSchemeClientWorkerFinished(
     ui::PageTransition page_transition,
     bool has_user_gesture,
     bool is_in_fenced_frame_tree,
-    const std::optional<url::Origin>& initiating_origin,
+    const absl::optional<url::Origin>& initiating_origin,
     content::WeakDocumentPtr initiator_document,
     ExternalProtocolHandler::Delegate* delegate,
     shell_integration::DefaultWebClientState state,
@@ -250,26 +251,8 @@ void OnDefaultSchemeClientWorkerFinished(
   // what the default is, so we proceed.
   if (prompt_user) {
     // Never prompt the user without a web_contents.
-    if (!web_contents) {
+    if (!web_contents)
       return;
-    }
-
-    // Anchor to the outermost WebContents, for e.g. embedded <webview>s.
-    web_contents = web_contents->GetOutermostWebContents();
-
-    // Skip if the WebContents instance is not prepared to show a dialog.
-    if (!web_modal::WebContentsModalDialogManager::FromWebContents(
-            web_contents)) {
-      LOG(ERROR) << "Skipping ExternalProtocolDialog"
-                 << ", escaped_url=" << escaped_url.possibly_invalid_spec()
-                 << ", initiating_origin="
-                 << url_formatter::FormatOriginForSecurityDisplay(
-                        initiating_origin.value_or(url::Origin()))
-                 << ", web_contents?" << !!web_contents << ", browser?"
-                 << (web_contents && chrome::FindBrowserWithTab(web_contents));
-      base::debug::DumpWithoutCrashing();
-      return;
-    }
 
     // Ask the user if they want to allow the protocol. This will call
     // LaunchUrlWithoutSecurityCheck if the user decides to accept the
@@ -321,8 +304,6 @@ bool IsSchemeOriginPairAllowedByPolicy(const std::string& scheme,
 
 }  // namespace
 
-const char ExternalProtocolHandler::kBlockStateMetric[] =
-    "BrowserDialogs.ExternalProtocol.BlockState";
 const char ExternalProtocolHandler::kHandleStateMetric[] =
     "BrowserDialogs.ExternalProtocol.HandleState";
 
@@ -356,28 +337,21 @@ ExternalProtocolHandler::BlockState ExternalProtocolHandler::GetBlockState(
   }
 
   // Always block the hard-coded denied schemes.
-  for (const auto* candidate : kDeniedSchemes) {
-    if (candidate == scheme) {
-      base::UmaHistogramEnumeration(kBlockStateMetric,
-                                    BlockStateMetric::kDeniedDefault);
+  for (size_t i = 0; i < std::size(kDeniedSchemes); ++i) {
+    if (kDeniedSchemes[i] == scheme)
       return BLOCK;
-    }
   }
 
-  // The mailto scheme is allowed explicitly because of its ubiquity on the web
-  // and because every platform provides a default handler for it.
-  if (scheme == "mailto") {
-    base::UmaHistogramEnumeration(kBlockStateMetric,
-                                  BlockStateMetric::kAllowedDefaultMail);
-    return DONT_BLOCK;
+  // Always allow the hard-coded allowed schemes.
+  for (size_t i = 0; i < std::size(kAllowedSchemes); ++i) {
+    if (kAllowedSchemes[i] == scheme)
+      return DONT_BLOCK;
   }
 
   PrefService* profile_prefs = profile->GetPrefs();
   if (profile_prefs) {  // May be NULL during testing.
     if (IsSchemeOriginPairAllowedByPolicy(scheme, initiating_origin,
                                           profile_prefs)) {
-      base::UmaHistogramEnumeration(
-          kBlockStateMetric, BlockStateMetric::kAllowedByEnterprisePolicy);
       return DONT_BLOCK;
     }
 
@@ -390,18 +364,14 @@ ExternalProtocolHandler::BlockState ExternalProtocolHandler::GetBlockState(
           allowed_origin_protocol_pairs.FindDict(
               initiating_origin->Serialize());
       if (allowed_protocols_for_origin) {
-        std::optional<bool> allow =
+        absl::optional<bool> allow =
             allowed_protocols_for_origin->FindBool(scheme);
-        if (allow.has_value() && allow.value()) {
-          base::UmaHistogramEnumeration(kBlockStateMetric,
-                                        BlockStateMetric::kAllowedByPreference);
+        if (allow.has_value() && allow.value())
           return DONT_BLOCK;
-        }
       }
     }
   }
 
-  base::UmaHistogramEnumeration(kBlockStateMetric, BlockStateMetric::kPrompt);
   return UNKNOWN;
 }
 
@@ -457,7 +427,7 @@ void ExternalProtocolHandler::LaunchUrl(
     ui::PageTransition page_transition,
     bool has_user_gesture,
     bool is_in_fenced_frame_tree,
-    const std::optional<url::Origin>& initiating_origin,
+    const absl::optional<url::Origin>& initiating_origin,
     content::WeakDocumentPtr initiator_document
 #if BUILDFLAG(IS_ANDROID)
     ,
@@ -520,7 +490,7 @@ void ExternalProtocolHandler::LaunchUrl(
   }
   return;
 #else
-  std::optional<url::Origin> initiating_origin_or_precursor;
+  absl::optional<url::Origin> initiating_origin_or_precursor;
   if (initiating_origin) {
     // Transform the initiating origin to its precursor origin if it is
     // opaque. |initiating_origin| is shown in the UI to attribute the external

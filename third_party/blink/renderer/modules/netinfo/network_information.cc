@@ -65,10 +65,6 @@ bool NetworkInformation::IsObserving() const {
 }
 
 String NetworkInformation::type() const {
-  if (RuntimeEnabledFeatures::NetInfoConstantTypeEnabled()) {
-    return ConnectionTypeToString(kWebConnectionTypeUnknown);
-  }
-
   // type_ is only updated when listening for events, so ask
   // networkStateNotifier if not listening (crbug.com/379841).
   if (!IsObserving())
@@ -79,10 +75,6 @@ String NetworkInformation::type() const {
 }
 
 double NetworkInformation::downlinkMax() const {
-  if (RuntimeEnabledFeatures::NetInfoConstantTypeEnabled()) {
-    return std::numeric_limits<double>::infinity();
-  }
-
   if (!IsObserving())
     return GetNetworkStateNotifier().MaxBandwidth();
 
@@ -91,7 +83,7 @@ double NetworkInformation::downlinkMax() const {
 
 String NetworkInformation::effectiveType() {
   MaybeShowWebHoldbackConsoleMsg();
-  std::optional<WebEffectiveConnectionType> override_ect =
+  absl::optional<WebEffectiveConnectionType> override_ect =
       GetNetworkStateNotifier().GetWebHoldbackEffectiveType();
   if (override_ect) {
     return NetworkStateNotifier::EffectiveConnectionTypeToString(
@@ -111,7 +103,7 @@ String NetworkInformation::effectiveType() {
 
 uint32_t NetworkInformation::rtt() {
   MaybeShowWebHoldbackConsoleMsg();
-  std::optional<base::TimeDelta> override_rtt =
+  absl::optional<base::TimeDelta> override_rtt =
       GetNetworkStateNotifier().GetWebHoldbackHttpRtt();
   if (override_rtt) {
     return GetNetworkStateNotifier().RoundRtt(Host(), override_rtt.value());
@@ -127,7 +119,7 @@ uint32_t NetworkInformation::rtt() {
 
 double NetworkInformation::downlink() {
   MaybeShowWebHoldbackConsoleMsg();
-  std::optional<double> override_downlink_mbps =
+  absl::optional<double> override_downlink_mbps =
       GetNetworkStateNotifier().GetWebHoldbackDownlinkThroughputMbps();
   if (override_downlink_mbps) {
     return GetNetworkStateNotifier().RoundMbps(Host(),
@@ -151,9 +143,9 @@ void NetworkInformation::ConnectionChange(
     WebConnectionType type,
     double downlink_max_mbps,
     WebEffectiveConnectionType effective_type,
-    const std::optional<base::TimeDelta>& http_rtt,
-    const std::optional<base::TimeDelta>& transport_rtt,
-    const std::optional<double>& downlink_mbps,
+    const absl::optional<base::TimeDelta>& http_rtt,
+    const absl::optional<base::TimeDelta>& transport_rtt,
+    const absl::optional<double>& downlink_mbps,
     bool save_data) {
   DCHECK(GetExecutionContext()->IsContextThread());
 
@@ -216,7 +208,8 @@ ExecutionContext* NetworkInformation::GetExecutionContext() const {
 void NetworkInformation::AddedEventListener(
     const AtomicString& event_type,
     RegisteredEventListener& registered_listener) {
-  EventTarget::AddedEventListener(event_type, registered_listener);
+  EventTargetWithInlineData::AddedEventListener(event_type,
+                                                registered_listener);
   MaybeShowWebHoldbackConsoleMsg();
   StartObserving();
 }
@@ -224,13 +217,14 @@ void NetworkInformation::AddedEventListener(
 void NetworkInformation::RemovedEventListener(
     const AtomicString& event_type,
     const RegisteredEventListener& registered_listener) {
-  EventTarget::RemovedEventListener(event_type, registered_listener);
+  EventTargetWithInlineData::RemovedEventListener(event_type,
+                                                  registered_listener);
   if (!HasEventListeners())
     StopObserving();
 }
 
 void NetworkInformation::RemoveAllEventListeners() {
-  EventTarget::RemoveAllEventListeners();
+  EventTargetWithInlineData::RemoveAllEventListeners();
   DCHECK(!HasEventListeners());
   StopObserving();
 }
@@ -284,8 +278,8 @@ NetworkInformation::NetworkInformation(NavigatorBase& navigator)
       ExecutionContextLifecycleObserver(navigator.GetExecutionContext()),
       web_holdback_console_message_shown_(false),
       context_stopped_(false) {
-  std::optional<base::TimeDelta> http_rtt;
-  std::optional<double> downlink_mbps;
+  absl::optional<base::TimeDelta> http_rtt;
+  absl::optional<double> downlink_mbps;
 
   GetNetworkStateNotifier().GetMetricsWithWebHoldback(
       &type_, &downlink_max_mbps_, &effective_type_, &http_rtt, &downlink_mbps,
@@ -299,7 +293,7 @@ NetworkInformation::NetworkInformation(NavigatorBase& navigator)
 }
 
 void NetworkInformation::Trace(Visitor* visitor) const {
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   Supplement<NavigatorBase>::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }

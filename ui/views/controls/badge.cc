@@ -14,7 +14,7 @@ Badge::Badge(const std::u16string& text) : text_(text) {}
 
 Badge::~Badge() = default;
 
-const std::u16string& Badge::GetText() const {
+std::u16string Badge::GetText() const {
   return text_;
 }
 
@@ -33,7 +33,7 @@ void Badge::OnPaint(gfx::Canvas* canvas) {
                            Label::GetDefaultFontList());
 }
 
-BEGIN_METADATA(Badge)
+BEGIN_METADATA(Badge, View)
 ADD_PROPERTY_METADATA(std::u16string, Text)
 END_METADATA
 

@@ -61,6 +61,8 @@ test(() => {
       'x-foo/l1'
     ];
 
-    assert_focus_navigation_bidirectional(elements);
+    assert_focus_navigation_forward(elements);
+    elements.reverse();
+    assert_focus_navigation_backward(elements);
 }, 'Focus should jump to fallback elements when a slot does not have any assigned nodes.');
 </script>

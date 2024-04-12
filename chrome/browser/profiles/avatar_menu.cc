@@ -4,24 +4,22 @@
 
 #include "chrome/browser/profiles/avatar_menu.h"
 
-#include <optional>
-
 #include "base/functional/bind.h"
 #include "base/i18n/case_conversion.h"
 #include "base/metrics/field_trial.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/profiles/avatar_menu_observer.h"
 #include "chrome/browser/profiles/profile_list_desktop.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/profiles/profiles_state.h"
-#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_dialogs.h"
 #include "chrome/browser/ui/chrome_pages.h"
-#include "chrome/browser/ui/profiles/profile_picker.h"
+#include "chrome/browser/ui/profile_picker.h"
 #include "chrome/browser/ui/startup/startup_browser_creator.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/common/chrome_switches.h"
@@ -29,10 +27,16 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/prefs/pref_service.h"
-#include "components/supervised_user/core/browser/supervised_user_service.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/notification_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/resource/resource_bundle.h"
+
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+#include "chrome/browser/supervised_user/supervised_user_service.h"
+#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
+#endif
 
 using content::BrowserThread;
 
@@ -68,15 +72,14 @@ AvatarMenu::AvatarMenu(ProfileAttributesStorage* profile_storage,
   // Register this as an observer of the info cache.
   profile_storage_->AddObserver(this);
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
   // Register this as an observer of the SupervisedUserService to be notified
   // of changes to the custodian info.
   if (browser_) {
-    auto* supervised_user_service =
-        SupervisedUserServiceFactory::GetForProfile(browser_->profile());
-    if (supervised_user_service) {
-      supervised_user_observation_.Observe(supervised_user_service);
-    }
+    supervised_user_observation_.Observe(
+        SupervisedUserServiceFactory::GetForProfile(browser_->profile()));
   }
+#endif
 }
 
 AvatarMenu::~AvatarMenu() {
@@ -148,26 +151,26 @@ const AvatarMenu::Item& AvatarMenu::GetItemAt(size_t index) const {
 
 size_t AvatarMenu::GetIndexOfItemWithProfilePathForTesting(
     const base::FilePath& path) const {
-  std::optional<size_t> index = profile_list_->MenuIndexFromProfilePath(path);
+  absl::optional<size_t> index = profile_list_->MenuIndexFromProfilePath(path);
   DCHECK(index.has_value());
   return index.value();
 }
 
-std::optional<size_t> AvatarMenu::GetActiveProfileIndex() const {
+absl::optional<size_t> AvatarMenu::GetActiveProfileIndex() const {
   // During singleton profile deletion, this function can be called with no
   // profiles in the model - crbug.com/102278 .
   if (profile_list_->GetNumberOfItems() == 0)
-    return std::nullopt;
+    return absl::nullopt;
 
   Profile* active_profile = browser_
                                 ? browser_->profile()
                                 : ProfileManager::GetLastUsedProfileIfLoaded();
 
   if (!active_profile)
-    return std::nullopt;
+    return absl::nullopt;
 
   // The profile may be missing from the menu (e.g. omitted profile, guest).
-  std::optional<size_t> index =
+  absl::optional<size_t> index =
       profile_list_->MenuIndexFromProfilePath(active_profile->GetPath());
 
   DCHECK(!index.has_value() ||
@@ -193,7 +196,7 @@ bool AvatarMenu::ShouldShowAddNewProfileLink() const {
 }
 
 bool AvatarMenu::ShouldShowEditProfileLink() const {
-  std::optional<size_t> active_profile_index = GetActiveProfileIndex();
+  absl::optional<size_t> active_profile_index = GetActiveProfileIndex();
   if (!active_profile_index)
     return false;
 
@@ -236,9 +239,11 @@ void AvatarMenu::OnProfileIsOmittedChanged(const base::FilePath& profile_path) {
   Update();
 }
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
 void AvatarMenu::OnCustodianInfoChanged() {
   Update();
 }
+#endif
 
 void AvatarMenu::Update() {
   RebuildMenu();

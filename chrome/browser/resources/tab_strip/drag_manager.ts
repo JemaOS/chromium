@@ -4,17 +4,13 @@
 
 import './strings.m.js';
 
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 
-import type {TabElement} from './tab.js';
-import {isTabElement} from './tab.js';
-import type {TabGroupElement} from './tab_group.js';
-import {isDragHandle, isTabGroupElement} from './tab_group.js';
-import type {Tab} from './tab_strip.mojom-webui.js';
-import {TabNetworkState} from './tab_strip.mojom-webui.js';
-import type {TabsApiProxy} from './tabs_api_proxy.js';
-import {TabsApiProxyImpl} from './tabs_api_proxy.js';
+import {isTabElement, TabElement} from './tab.js';
+import {isDragHandle, isTabGroupElement, TabGroupElement} from './tab_group.js';
+import {Tab, TabNetworkState} from './tab_strip.mojom-webui.js';
+import {TabsApiProxy, TabsApiProxyImpl} from './tabs_api_proxy.js';
 
 export const PLACEHOLDER_TAB_ID: number = -1;
 
@@ -54,9 +50,13 @@ function getDefaultTabData(): Tab {
     showIcon: true,
     title: '',
     url: {url: ''},
-    faviconUrl: null,
-    activeFaviconUrl: null,
-    groupId: null,
+
+    // TODO(crbug.com/1293911): Remove once Mojo can produce proper TypeScript
+    // or TypeScript definitions, so that these properties are recognized as
+    // optional.
+    faviconUrl: undefined,
+    activeFaviconUrl: undefined,
+    groupId: undefined,
   };
 }
 
@@ -65,7 +65,7 @@ export interface DragManagerDelegate {
 
   placeTabElement(
       element: TabElement, index: number, pinned: boolean,
-      groupId: string|null): void;
+      groupId?: string): void;
 
   placeTabGroupElement(element: TabGroupElement, index: number): void;
 
@@ -79,13 +79,13 @@ class DragSession {
   private element_: TabElement|TabGroupElement;
 
   srcIndex: number;
-  srcGroup: string|null;
+  srcGroup?: string;
 
   private tabsProxy_: TabsApiProxy = TabsApiProxyImpl.getInstance();
 
   constructor(
       delegate: DragManagerDelegateElement, element: TabElement|TabGroupElement,
-      srcIndex: number, srcGroup: string|null) {
+      srcIndex: number, srcGroup?: string) {
     this.delegate_ = delegate;
     this.element_ = element;
 
@@ -99,15 +99,14 @@ class DragSession {
     if (isTabGroupElement(element)) {
       return new DragSession(
           delegate, element,
-          delegate.getIndexOfTab(element.firstElementChild as TabElement),
-          null);
+          delegate.getIndexOfTab(element.firstElementChild as TabElement));
     }
 
     const srcIndex = delegate.getIndexOfTab(element as TabElement);
     const srcGroup =
         (element.parentElement && isTabGroupElement(element.parentElement)) ?
-        element.parentElement.dataset['groupId']! :
-        null;
+        element.parentElement.dataset['groupId'] :
+        undefined;
     return new DragSession(delegate, element, srcIndex, srcGroup);
   }
 
@@ -120,7 +119,7 @@ class DragSession {
       placeholderTabElement.tab = Object.assign(
           getDefaultTabData(), {id: PLACEHOLDER_TAB_ID, pinned: isPinned});
       placeholderTabElement.setDragging(true);
-      delegate.placeTabElement(placeholderTabElement, -1, isPinned, null);
+      delegate.placeTabElement(placeholderTabElement, -1, isPinned);
       return DragSession.createFromElement(delegate, placeholderTabElement);
     }
 
@@ -168,9 +167,15 @@ class DragSession {
           1;
     }
 
-    const dstIndex = this.delegate_.getIndexOfTab(
+    // If a tab group is moving backwards (to the front of the tab strip), the
+    // new index is the index of the first tab in that group. If a tab group is
+    // moving forwards (to the end of the tab strip), the new index is the index
+    // of the last tab in that group.
+    let dstIndex = this.delegate_.getIndexOfTab(
         this.element_.firstElementChild as TabElement);
-
+    if (this.srcIndex <= dstIndex) {
+      dstIndex += this.element_.childElementCount - 1;
+    }
     return dstIndex;
   }
 
@@ -370,8 +375,8 @@ class DragSession {
 
     const previousGroupId = (tabElement.parentElement &&
                              isTabGroupElement(tabElement.parentElement)) ?
-        tabElement.parentElement.dataset['groupId']! :
-        null;
+        tabElement.parentElement.dataset['groupId'] :
+        undefined;
 
     const dragOverTabGroup =
         composedPath.find(isTabGroupElement) as TabGroupElement | undefined;
@@ -380,12 +385,13 @@ class DragSession {
         dragOverTabGroup.isValidDragOverTarget) {
       this.delegate_.placeTabElement(
           tabElement, this.dstIndex, false,
-          dragOverTabGroup.dataset['groupId'] || null);
+          dragOverTabGroup.dataset['groupId']);
       return;
     }
 
     if (!dragOverTabGroup && previousGroupId) {
-      this.delegate_.placeTabElement(tabElement, this.dstIndex, false, null);
+      this.delegate_.placeTabElement(
+          tabElement, this.dstIndex, false, undefined);
       return;
     }
 

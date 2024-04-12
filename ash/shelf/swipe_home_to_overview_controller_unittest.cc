@@ -4,7 +4,6 @@
 
 #include "ash/shelf/swipe_home_to_overview_controller.h"
 
-#include <optional>
 #include <tuple>
 
 #include "ash/app_list/app_list_controller_impl.h"
@@ -24,6 +23,7 @@
 #include "base/run_loop.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/simple_test_tick_clock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/compositor/compositor.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animator.h"
@@ -87,7 +87,7 @@ class SwipeHomeToOverviewControllerTest : public AshTestBase {
   }
 
   void EndDrag(const gfx::PointF& location_in_screen,
-               std::optional<float> velocity_y) {
+               absl::optional<float> velocity_y) {
     home_to_overview_controller_->EndDrag(location_in_screen, velocity_y);
   }
 

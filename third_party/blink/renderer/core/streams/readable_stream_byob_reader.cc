@@ -14,6 +14,7 @@
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer_view.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
+#include "third_party/blink/renderer/platform/bindings/to_v8.h"
 #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
 #include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
 
@@ -26,15 +27,16 @@ class ReadableStreamBYOBReader::BYOBReaderReadIntoRequest final
       : resolver_(resolver) {}
 
   void ChunkSteps(ScriptState* script_state,
-                  DOMArrayBufferView* chunk,
-                  ExceptionState& exception_state) const override {
+                  DOMArrayBufferView* chunk) const override {
     auto* read_result = ReadableStreamReadResult::Create();
     read_result->setValue(
         ScriptValue(script_state->GetIsolate(),
-                    ToV8Traits<DOMArrayBufferView>::ToV8(script_state, chunk)));
+                    ToV8Traits<DOMArrayBufferView>::ToV8(script_state, chunk)
+                        .ToLocalChecked()));
     read_result->setDone(false);
-    resolver_->Resolve(script_state, ToV8Traits<ReadableStreamReadResult>::ToV8(
-                                         script_state, read_result));
+    resolver_->Resolve(script_state,
+                       ToV8(read_result, script_state->GetContext()->Global(),
+                            script_state->GetIsolate()));
   }
 
   void CloseSteps(ScriptState* script_state,
@@ -43,11 +45,13 @@ class ReadableStreamBYOBReader::BYOBReaderReadIntoRequest final
     read_result->setValue(ScriptValue(
         script_state->GetIsolate(),
         chunk ? ToV8Traits<DOMArrayBufferView>::ToV8(script_state, chunk)
+                    .ToLocalChecked()
               : static_cast<v8::Local<v8::Value>>(
                     v8::Undefined(script_state->GetIsolate()))));
     read_result->setDone(true);
-    resolver_->Resolve(script_state, ToV8Traits<ReadableStreamReadResult>::ToV8(
-                                         script_state, read_result));
+    resolver_->Resolve(script_state,
+                       ToV8(read_result, script_state->GetContext()->Global(),
+                            script_state->GetIsolate()));
   }
 
   void ErrorSteps(ScriptState* script_state,
@@ -126,8 +130,7 @@ ScriptPromise ReadableStreamBYOBReader::read(ScriptState* script_state,
   }
 
   // 5. Let promise be a new promise.
-  auto* promise = MakeGarbageCollected<StreamPromiseResolver>(script_state,
-                                                              exception_state);
+  auto* promise = MakeGarbageCollected<StreamPromiseResolver>(script_state);
 
   // 6. Let readIntoRequest be a new read-into request with the following items:
   //    chunk steps, given chunk
@@ -183,13 +186,12 @@ void ReadableStreamBYOBReader::ErrorReadIntoRequests(
   // https://streams.spec.whatwg.org/#abstract-opdef-readablestreambyobreadererrorreadintorequests
   // 1. Let readIntoRequests be reader.[[readIntoRequests]].
   // 2. Set reader.[[readIntoRequests]] to a new empty list.
-  HeapDeque<Member<ReadIntoRequest>> read_into_requests;
-  read_into_requests.Swap(reader->read_into_requests_);
   // 3. For each readIntoRequest of readIntoRequests,
-  for (ReadIntoRequest* request : read_into_requests) {
+  for (ReadIntoRequest* request : reader->read_into_requests_) {
     //   a. Perform readIntoRequest’s error steps, given e.
     request->ErrorSteps(script_state, e);
   }
+  reader->read_into_requests_.clear();
 }
 
 void ReadableStreamBYOBReader::Release(ScriptState* script_state,

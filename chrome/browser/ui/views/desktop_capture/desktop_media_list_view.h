@@ -37,12 +37,12 @@ class DesktopMediaListView
 
   // views::View:
   gfx::Size CalculatePreferredSize() const override;
-  void Layout(PassKey) override;
+  void Layout() override;
   bool OnKeyPressed(const ui::KeyEvent& event) override;
   void GetAccessibleNodeData(ui::AXNodeData* node_data) override;
 
   // DesktopMediaListController::ListView:
-  std::optional<content::DesktopMediaID> GetSelection() override;
+  absl::optional<content::DesktopMediaID> GetSelection() override;
   DesktopMediaListController::SourceListListener* GetSourceListListener()
       override;
   void ClearSelection() override;
@@ -61,10 +61,6 @@ class DesktopMediaListView
   void SetStyle(DesktopMediaSourceViewStyle* style);
 
   DesktopMediaSourceView* GetSelectedView();
-
-  const int item_spacing_;
-  const int horizontal_margins_;
-  const int vertical_margins_;
 
   raw_ptr<DesktopMediaListController, DanglingUntriaged> controller_;
 

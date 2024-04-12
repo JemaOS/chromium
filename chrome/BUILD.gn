@@ -8,7 +8,6 @@ import("//build/config/compiler/compiler.gni")
 import("//build/config/compiler/pgo/pgo.gni")
 import("//build/config/features.gni")
 import("//build/config/locales.gni")
-import("//build/config/ozone.gni")
 import("//build/config/python.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//build/config/ui.gni")
@@ -32,8 +31,6 @@ import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("//ui/gl/features.gni")
 import("//v8/gni/v8.gni")
 
-assert(!is_fuchsia, "Fuchsia shouldn't use anything in //chrome")
-
 if (is_android) {
   import("//build/config/android/rules.gni")
 } else if (is_linux || is_chromeos) {
@@ -53,11 +50,15 @@ if (is_android) {
   import("//chrome/version.gni")
   import("//content/public/app/mac_helpers.gni")
   import("//media/cdm/library_cdm/cdm_paths.gni")
-  import("//services/on_device_model/on_device_model.gni")
   import("//third_party/icu/config.gni")
 }
 
 declare_args() {
+  # Indicates whether keystone registration framework should be enabled (see
+  # action("keystone_registration_framework") below).  There are some tests
+  # where we'd like for it to be disabled. (https://crbug.com/909080)
+  enable_keystone_registration_framework = true
+
   # On macOS, `is_chrome_branded` builds that have been signed locally will not
   # launch because certain entitlements are tied to the official Google code
   # signing identity. If `include_branded_entitlements` is set to false, these
@@ -167,10 +168,13 @@ if (!is_android && !is_mac) {
 
       if (is_chromeos_ash) {
         data_deps += [
-          "//components/variations/cros_evaluate_seed:evaluate_seed",
+          "//components/variations/cros:evaluate_seed",
           "//sandbox/linux:chrome_sandbox",
         ]
-        deps += [ "//components/exo/wayland:ui_controls_protocol_stub" ]
+        deps += [
+          "//components/exo/wayland:ui_controls_protocol_stub",
+          "//components/exo/wayland:weston_test_stub",
+        ]
       }
 
       if (also_build_lacros_chrome_for_architecture != "") {
@@ -193,7 +197,7 @@ if (!is_android && !is_mac) {
           ":chrome_dll",
           ":chrome_exe_version",
           ":copy_first_run",
-          ":packed_resources_integrity_header",
+          ":packed_resources_integrity",
           ":visual_elements_resources",
           "//base",
           "//build:branding_buildflags",
@@ -268,7 +272,7 @@ if (!is_android && !is_mac) {
         sources += [ "app/chrome_exe_main_aura.cc" ]
       }
 
-      if (is_linux || is_chromeos) {
+      if (is_linux || is_chromeos || is_fuchsia) {
         sources += [
           "app/chrome_dll_resource.h",
           "app/chrome_main.cc",
@@ -280,7 +284,6 @@ if (!is_android && !is_mac) {
           # On Linux, link the dependencies (libraries) that make up actual
           # Chromium functionality directly into the executable.
           ":dependencies",
-          "//chrome/common:version_header",
 
           # For the sampling profiler.
           "//chrome/common/profiler",
@@ -293,12 +296,15 @@ if (!is_android && !is_mac) {
           "//headless:headless_shell_lib",
         ]
 
-        public_deps = [
-          ":xdg_mime",  # Needs to be public for installer to consume files.
-          "//chrome/common:buildflags",
-        ]
+        public_deps = [ "//chrome/common:buildflags" ]
 
-        data_deps += [ "//components/crash/core/app:chrome_crashpad_handler" ]
+        if (!is_fuchsia) {
+          public_deps += [
+            ":xdg_mime",  # Needs to be public for installer to consume files.
+          ]
+
+          data_deps += [ "//components/crash/core/app:chrome_crashpad_handler" ]
+        }
 
         ldflags = []
 
@@ -342,14 +348,18 @@ if (!is_android && !is_mac) {
             "//ui/base",
           ]
         }
-
-        if (use_ozone) {
-          deps += [ "//ui/ozone" ]
-        }
       }
 
       if (is_chromeos_ash || is_win) {
         data_deps += [ "//mojo/core:shared_library" ]
+      }
+
+      if (is_chromeos_ash) {
+        data_deps += [ "//mojo/core:shared_libraries_for_arc" ]
+        if (is_chromeos_device) {
+          configs += [ "//build/config/chromeos:print_orderfile" ]
+          configs += [ "//build/config/compiler:chrome_orderfile_config" ]
+        }
       }
 
       # These files are used by the installer so we need a public dep.
@@ -425,7 +435,6 @@ if (is_win) {
       "//chrome/app/theme:chrome_unscaled_resources",
       "//chrome/chrome_elf",
       "//chrome/common:buildflags",
-      "//chrome/common:version_header",
       "//chrome/common/profiler",
       "//chrome/install_static:install_static_util",
       "//chrome/install_static:secondary_module",
@@ -460,8 +469,7 @@ if (is_win) {
   chrome_framework_name = chrome_product_full_name + " Framework"
   chrome_framework_version = chrome_version_full
 
-  verify_dynamic_libraries = !is_component_build && !is_asan && !is_ubsan &&
-                             !is_ubsan_vptr && !is_ubsan_security
+  verify_dynamic_libraries = !is_component_build && !is_asan
   if (host_os == "mac") {
     objdump_path = mac_bin_path
   } else {
@@ -519,21 +527,18 @@ if (is_win) {
 
     sources = [ "app/chrome_exe_main_mac.cc" ]
 
-    configs += [ "//build/config/compiler:wexit_time_destructors" ]
+    extra_configs = [ "//build/config/compiler:wexit_time_destructors" ]
 
     deps = [
       ":chrome_app_strings_bundle_data",
       ":chrome_resources",
       ":chrome_versioned_bundle_data",
-      "//base/allocator:early_zone_registration_apple",
+      ":chromium_updater_privileged_helper",
+      "//base/allocator:early_zone_registration_mac",
       "//build:branding_buildflags",
       "//chrome/common:buildflags",
       "//chrome/common:version_header",
     ]
-
-    if (enable_updater) {
-      deps += [ ":chromium_updater_privileged_helper" ]
-    }
 
     if (enable_stripping) {
       # At link time, preserve the global symbols specified in the .exports
@@ -588,7 +593,11 @@ if (is_win) {
     outputs = []
 
     foreach(locale, platform_pak_locales) {
-      _strings_file = "${branding_path_product}_strings"
+      if (is_chrome_branded) {
+        _strings_file = "google_chrome_strings"
+      } else {
+        _strings_file = "chromium_strings"
+      }
 
       inputs += [ "$root_gen_dir/chrome/${_strings_file}_${locale}.pak" ]
     }
@@ -613,7 +622,11 @@ if (is_win) {
           "main",
         ] + platform_pak_locales
 
-    deps = [ "//chrome/app:branded_strings" ]
+    if (is_chrome_branded) {
+      deps = [ "//chrome/app:google_chrome_strings" ]
+    } else {
+      deps = [ "//chrome/app:chromium_strings" ]
+    }
   }
 
   foreach(locale, locales_as_apple_outputs) {
@@ -675,15 +688,13 @@ if (is_win) {
     }
   }
 
-  if (enable_updater) {
-    bundle_data("chromium_updater_privileged_helper") {
-      sources = [ "$root_out_dir/$privileged_helper_name" ]
-      outputs = [
-        "{{bundle_contents_dir}}/Library/LaunchServices/{{source_file_part}}",
-      ]
+  bundle_data("chromium_updater_privileged_helper") {
+    sources = [ "$root_out_dir/$privileged_helper_name" ]
+    outputs = [
+      "{{bundle_contents_dir}}/Library/LaunchServices/{{source_file_part}}",
+    ]
 
-      public_deps = [ "//chrome/updater/mac:privileged_helper" ]
-    }
+    public_deps = [ "//chrome/updater/mac:privileged_helper" ]
   }
 
   action("clean_up_old_versions") {
@@ -753,12 +764,12 @@ if (is_win) {
 
       sources = [ "app/chrome_exe_main_mac.cc" ]
 
-      configs += [ "//build/config/compiler:wexit_time_destructors" ]
+      extra_configs = [ "//build/config/compiler:wexit_time_destructors" ]
 
       defines = [ "HELPER_EXECUTABLE" ]
 
       deps = [
-        "//base/allocator:early_zone_registration_apple",
+        "//base/allocator:early_zone_registration_mac",
         "//build:branding_buildflags",
         "//chrome/common:version_header",
         "//sandbox/mac:seatbelt",
@@ -896,14 +907,12 @@ if (is_win) {
     sources = [
       "$root_out_dir/app_mode_loader",
       "$root_out_dir/chrome_crashpad_handler",
-      "$root_out_dir/web_app_shortcut_copier",
     ]
 
     outputs = [ "{{bundle_contents_dir}}/Helpers/{{source_file_part}}" ]
 
     public_deps = [
       "//chrome/app_shim:app_mode_loader",
-      "//chrome/browser/web_applications:web_app_shortcut_copier",
       "//components/crash/core/app:chrome_crashpad_handler",
     ]
 
@@ -943,8 +952,8 @@ if (is_win) {
       # resource bundle because that's the interface that
       # Authorization Services uses.  Also, Authorization Services
       # can't deal with .icns files.
-      "$root_gen_dir/chrome/browser/mac/install.sh",
       "app/theme/default_100_percent/$branding_path_component/product_logo_32.png",
+      "browser/mac/install.sh",
     ]
 
     outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
@@ -952,8 +961,14 @@ if (is_win) {
     public_deps = [
       ":packed_resources",
       "//chrome/app_shim:app_mode_loader_plist_bundle_data",
-      "//chrome/browser/mac:install",
     ]
+
+    if (is_chrome_branded) {
+      sources += [
+        "browser/mac/keystone_promote_postflight.sh",
+        "browser/mac/keystone_promote_preflight.sh",
+      ]
+    }
 
     if (icu_use_data_file) {
       sources += [ "$root_out_dir/icudtl.dat" ]
@@ -1078,6 +1093,17 @@ if (is_win) {
     }
   }
 
+  if (is_chrome_branded && enable_keystone_registration_framework) {
+    bundle_data("keystone_registration_framework") {
+      sources = [ "//third_party/googlemac/Releases/Keystone/KeystoneRegistration.framework" ]
+
+      outputs = [ "{{bundle_contents_dir}}/Frameworks/{{source_file_part}}" ]
+    }
+  } else {
+    group("keystone_registration_framework") {
+    }
+  }
+
   if (build_with_internal_optimization_guide) {
     # Add the optimization guide .dylib in the MODULE_DIR of Chromium.app
     bundle_data("optimization_guide_library") {
@@ -1100,24 +1126,6 @@ if (is_win) {
       "--scm=1",
       "--branding",
       chrome_product_short_name,
-    ]
-  }
-
-  # Limit the exported symbols of the framework library.
-  config("chrome_dll_symbol_exports") {
-    inputs = [ rebase_path("app/framework.exports") ]
-    ldflags = [
-      "-Wl,-exported_symbols_list",
-      "-Wl," + rebase_path("app/framework.exports", root_build_dir),
-    ]
-  }
-
-  # Control the order of exported symbols in the framework library.
-  config("chrome_dll_symbol_order") {
-    inputs = [ rebase_path("app/framework.order") ]
-    ldflags = [
-      "-Wl,-order_file",
-      "-Wl," + rebase_path("app/framework.order", root_build_dir),
     ]
   }
 
@@ -1153,8 +1161,8 @@ if (is_win) {
       ":dependencies",
       "//build:chromeos_buildflags",
       "//chrome/app:command_ids",
+      "//chrome/app:notification_metrics",
       "//chrome/common:buildflags",
-      "//chrome/common:version_header",
       "//chrome/common/profiler",
       "//components/crash/core/app",
       "//components/memory_system",
@@ -1168,15 +1176,13 @@ if (is_win) {
       frameworks = [ "Carbon.framework" ]
     }
 
-    ldflags = [ "-ObjC" ]
-
-    configs += [
-      ":chrome_dll_symbol_order",
-      "//build/config/compiler:wexit_time_destructors",
+    ldflags = [
+      "-Wl,-order_file",
+      "-Wl," + rebase_path("app/framework.order", root_build_dir),
+      "-ObjC",
     ]
-    if (!is_component_build && !using_sanitizer) {
-      configs += [ ":chrome_dll_symbol_exports" ]
-    }
+
+    configs += [ "//build/config/compiler:wexit_time_destructors" ]
   }
 
   mac_framework_bundle("chrome_framework") {
@@ -1191,6 +1197,10 @@ if (is_win) {
 
     if (is_chrome_branded) {
       framework_contents += [ "Default Apps" ]
+      if (enable_keystone_registration_framework) {
+        # For KeystoneRegistration.framework.
+        framework_contents += [ "Frameworks" ]
+      }
     }
 
     if (enable_nacl) {
@@ -1214,6 +1224,7 @@ if (is_win) {
       ":chrome_framework_helpers",
       ":chrome_framework_plugins",
       ":chrome_framework_resources",
+      ":keystone_registration_framework",
       ":optimization_guide_library",
       ":swiftshader_library",
       ":widevine_cdm_library",
@@ -1224,16 +1235,12 @@ if (is_win) {
       bundle_deps += [ ":preinstalled_apps" ]
     }
 
-    configs += [ ":chrome_dll_symbol_order" ]
-    if (!is_component_build && !using_sanitizer) {
-      configs += [ ":chrome_dll_symbol_exports" ]
-    }
-
     ldflags = [
       "-compatibility_version",
       chrome_dylib_version,
       "-current_version",
       chrome_dylib_version,
+      "-Wl,-order_file," + rebase_path("app/framework.order", root_build_dir),
     ]
 
     if (!is_component_build) {
@@ -1426,10 +1433,9 @@ group("dependencies") {
     "//chrome/renderer",
     "//chrome/utility",
     "//components/about_ui",
-    "//components/crash/core/app",
     "//components/devtools/devtools_pipe",
     "//components/memory_system",
-    "//components/startup_metric_utils",
+    "//components/startup_metric_utils/browser",
     "//components/sync",
     "//components/upload_list:upload_list",
     "//content/public/child",
@@ -1474,6 +1480,10 @@ group("dependencies") {
       "//chromeos/ash/components/memory",
     ]
   }
+
+  if (!is_fuchsia) {
+    public_deps += [ "//components/crash/core/app" ]
+  }
 }
 
 if (is_win) {
@@ -1493,6 +1503,11 @@ if (is_win) {
       as_invoker_manifest,
       common_controls_manifest,
     ]
+  }
+
+  process_version_rc_template("nacl64_exe_version") {
+    sources = [ "app/nacl64_exe.ver" ]
+    output = "$target_gen_dir/nacl64_exe_version.rc"
   }
 
   process_version_rc_template("other_version") {
@@ -1586,7 +1601,6 @@ if (!is_android) {
       public_deps = [ ":preinstalled_apps" ]
     }
 
-    # This needs to be in-sync with //chrome/app/packed_resources_integrity.h.
     files_to_hash = [
       "resources.pak",
       "chrome_100_percent.pak",
@@ -1594,15 +1608,6 @@ if (!is_android) {
     if (enable_hidpi) {
       files_to_hash += [ "chrome_200_percent.pak" ]
     }
-  }
-
-  # This is extracted to deserialize build dependency around
-  # :packed_resources_integrity_hash and improve build parallelism.
-  source_set("packed_resources_integrity_header") {
-    sources = [ "app/packed_resources_integrity.h" ]
-
-    # chrome/app/packed_resources_integrity.cc file is generated in dependency.
-    deps = [ ":packed_resources_integrity" ]
   }
 }
 
@@ -1617,8 +1622,9 @@ if (!is_android) {
 
 group("strings") {
   public_deps = [
-    "//chrome/app:branded_strings",
+    "//chrome/app:chromium_strings",
     "//chrome/app:generated_resources",
+    "//chrome/app:google_chrome_strings",
     "//chrome/app/resources:locale_settings",
   ]
 }
@@ -1670,7 +1676,6 @@ if (is_android) {
       "//chrome/browser/ui",
       "//chrome/child",
       "//chrome/common",
-      "//chrome/common:version_header",
       "//chrome/common/profiler",
       "//chrome/gpu",
       "//chrome/renderer",
@@ -1700,6 +1705,10 @@ if (is_android) {
 
     if (is_chromeos_ash) {
       public_deps += [ "//ui/lottie" ]
+    }
+
+    if (enable_vr) {
+      deps += [ "//third_party/gvr-android-sdk:gvr_shim" ]
     }
   }
 }

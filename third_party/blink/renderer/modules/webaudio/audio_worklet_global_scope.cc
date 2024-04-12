@@ -17,7 +17,6 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_blink_audio_worklet_process_callback.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_blink_audio_worklet_processor_constructor.h"
 #include "third_party/blink/renderer/core/workers/global_scope_creation_params.h"
-#include "third_party/blink/renderer/core/workers/worker_backing_thread.h"
 #include "third_party/blink/renderer/core/workers/worker_thread.h"
 #include "third_party/blink/renderer/modules/webaudio/audio_worklet_object_proxy.h"
 #include "third_party/blink/renderer/modules/webaudio/audio_worklet_processor.h"
@@ -25,6 +24,7 @@
 #include "third_party/blink/renderer/modules/webaudio/cross_thread_audio_worklet_processor_info.h"
 #include "third_party/blink/renderer/platform/bindings/callback_method_retriever.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/scheduler/common/features.h"
 
 namespace blink {
 
@@ -33,12 +33,15 @@ AudioWorkletGlobalScope::AudioWorkletGlobalScope(
     WorkerThread* thread)
     : WorkletGlobalScope(std::move(creation_params),
                          thread->GetWorkerReportingProxy(),
-                         thread) {
+                         thread,
+                         /*create_microtask_queue=*/
+                         base::FeatureList::IsEnabled(
+                             scheduler::kMicrotaskQueuePerAudioWorklet)) {
   // Audio is prone to jank introduced by e.g. the garbage collector. Workers
   // are generally put in a background mode (as they are non-visible). Audio is
   // an exception here, requiring low-latency behavior similar to any visible
   // state.
-  GetThread()->GetWorkerBackingThread().SetForegrounded();
+  GetIsolate()->IsolateInForegroundNotification();
 }
 
 AudioWorkletGlobalScope::~AudioWorkletGlobalScope() = default;
@@ -231,7 +234,11 @@ AudioWorkletProcessor* AudioWorkletGlobalScope::CreateProcessor(
 
   // ToImplWithTypeCheck() may return nullptr when the type does not match.
   AudioWorkletProcessor* processor =
-      V8AudioWorkletProcessor::ToWrappable(isolate, instance.V8Value());
+      V8AudioWorkletProcessor::ToImplWithTypeCheck(isolate, instance.V8Value());
+
+  if (processor) {
+    processor_instances_.push_back(processor);
+  }
 
   return processor;
 }
@@ -287,6 +294,7 @@ void AudioWorkletGlobalScope::SetObjectProxy(
 
 void AudioWorkletGlobalScope::Trace(Visitor* visitor) const {
   visitor->Trace(processor_definition_map_);
+  visitor->Trace(processor_instances_);
   WorkletGlobalScope::Trace(visitor);
 }
 

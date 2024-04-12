@@ -22,6 +22,11 @@
             /* Safari paints filters in software when drop-shadow appears before another filter in the chain. */
             filter: drop-shadow(10px 10px 0px black) blur(0);
         }
+        .final-drop-shadow {
+            filter: drop-shadow(10px 10px 0px black) blur(25px);
+            animation-name: blur-animation;
+            animation-duration: 0.1s;
+        }
         @keyframes blur-animation {
             from {
                 filter: drop-shadow(10px 10px 0px black) blur(0);
@@ -40,7 +45,7 @@
             var targetElement = document.getElementById("composited-layer");
             if (window.testRunner)
                 targetElement.addEventListener("animationend", finishTest);
-            targetElement.style = "filter: drop-shadow(10px 10px 0px black) blur(25px); animation-name: blur-animation; animation-duration: 0.1s;";
+            targetElement.className = "final-drop-shadow";
         }
 
         function finishTest()

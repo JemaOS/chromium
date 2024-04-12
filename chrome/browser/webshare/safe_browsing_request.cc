@@ -43,7 +43,10 @@ class SafeBrowsingRequest::SafeBrowsingClient
   }
 
   void CheckUrl(const GURL& url) {
-    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+    DCHECK_CURRENTLY_ON(
+        base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)
+            ? content::BrowserThread::UI
+            : content::BrowserThread::IO);
 
     // Start the timer before the call to CheckDownloadUrl(), as it may
     // call back into CheckDownloadUrl() synchronously.
@@ -76,8 +79,7 @@ class SafeBrowsingRequest::SafeBrowsingClient
       const std::vector<GURL>& url_chain,
       safe_browsing::SBThreatType threat_type) override {
     timeout_.AbandonAndStop();
-    bool is_url_safe =
-        threat_type == safe_browsing::SBThreatType::SB_THREAT_TYPE_SAFE;
+    bool is_url_safe = threat_type == safe_browsing::SB_THREAT_TYPE_SAFE;
     SendResultToHandler(is_url_safe);
   }
 
@@ -97,10 +99,21 @@ SafeBrowsingRequest::SafeBrowsingRequest(
   client_ = std::make_unique<SafeBrowsingClient>(
       database_manager, weak_factory_.GetWeakPtr(),
       base::SequencedTaskRunner::GetCurrentDefault());
-  client_->CheckUrl(url);
+  if (base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)) {
+    client_->CheckUrl(url);
+  } else {
+    content::GetIOThreadTaskRunner({})->PostTask(
+        FROM_HERE, base::BindOnce(&SafeBrowsingClient::CheckUrl,
+                                  base::Unretained(client_.get()), url));
+  }
 }
 
-SafeBrowsingRequest::~SafeBrowsingRequest() = default;
+SafeBrowsingRequest::~SafeBrowsingRequest() {
+  if (!base::FeatureList::IsEnabled(safe_browsing::kSafeBrowsingOnUIThread)) {
+    content::BrowserThread::DeleteSoon(content::BrowserThread::IO, FROM_HERE,
+                                       client_.release());
+  }
+}
 
 void SafeBrowsingRequest::OnResultReceived(bool is_url_safe) {
   DCHECK(callback_);

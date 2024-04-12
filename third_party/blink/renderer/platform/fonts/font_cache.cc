@@ -38,7 +38,6 @@
 #include "base/trace_event/process_memory_dump.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
-#include "skia/ext/font_utils.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/platform/font_family_names.h"
 #include "third_party/blink/renderer/platform/fonts/alternate_font_family.h"
@@ -80,6 +79,7 @@ float FontCache::device_scale_factor_ = 1.0;
 #if BUILDFLAG(IS_WIN)
 bool FontCache::antialiased_text_enabled_ = false;
 bool FontCache::lcd_text_enabled_ = false;
+bool FontCache::use_skia_font_fallback_ = false;
 static bool should_use_test_font_mgr = false;
 #endif  // BUILDFLAG(IS_WIN)
 
@@ -87,7 +87,10 @@ FontCache& FontCache::Get() {
   return FontGlobalContext::GetFontCache();
 }
 
-FontCache::FontCache() : font_manager_(sk_ref_sp(static_font_manager_)) {
+FontCache::FontCache()
+    : font_manager_(sk_ref_sp(static_font_manager_)),
+      font_platform_data_cache_(FontPlatformDataCache::Create()),
+      font_data_cache_(FontDataCache::Create()) {
 #if BUILDFLAG(IS_WIN)
   if (!font_manager_ || should_use_test_font_mgr) {
     // This code path is only for unit tests. This SkFontMgr does not work in
@@ -111,16 +114,8 @@ FontCache::FontCache() : font_manager_(sk_ref_sp(static_font_manager_)) {
 
 FontCache::~FontCache() = default;
 
-void FontCache::Trace(Visitor* visitor) const {
-  visitor->Trace(font_cache_clients_);
-  visitor->Trace(font_platform_data_cache_);
-  visitor->Trace(fallback_list_shaper_cache_);
-  visitor->Trace(font_data_cache_);
-  visitor->Trace(font_fallback_map_);
-}
-
 #if !BUILDFLAG(IS_MAC)
-const FontPlatformData* FontCache::SystemFontPlatformData(
+FontPlatformData* FontCache::SystemFontPlatformData(
     const FontDescription& font_description) {
   const AtomicString& family = FontCache::SystemFontFamily();
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_FUCHSIA) || \
@@ -135,7 +130,7 @@ const FontPlatformData* FontCache::SystemFontPlatformData(
 }
 #endif
 
-const FontPlatformData* FontCache::GetFontPlatformData(
+FontPlatformData* FontCache::GetFontPlatformData(
     const FontDescription& font_description,
     const FontFaceCreationParams& creation_params,
     AlternateFontName alternate_font_name) {
@@ -153,16 +148,54 @@ const FontPlatformData* FontCache::GetFontPlatformData(
   }
 #endif
 
-  return font_platform_data_cache_.GetOrCreateFontPlatformData(
+  return font_platform_data_cache_->GetOrCreateFontPlatformData(
       this, font_description, creation_params, alternate_font_name);
 }
 
-ShapeCache* FontCache::GetShapeCache(const FallbackListCompositeKey& key) {
-  auto result = fallback_list_shaper_cache_.insert(key, nullptr);
-  if (result.is_new_entry) {
-    result.stored_value->value = MakeGarbageCollected<ShapeCache>();
+std::unique_ptr<FontPlatformData> FontCache::ScaleFontPlatformData(
+    const FontPlatformData& font_platform_data,
+    const FontDescription& font_description,
+    const FontFaceCreationParams& creation_params,
+    float font_size) {
+  TRACE_EVENT0("fonts,ui", "FontCache::ScaleFontPlatformData");
+
+#if BUILDFLAG(IS_MAC)
+  return CreateFontPlatformData(font_description, creation_params, font_size);
+#else
+  return std::make_unique<FontPlatformData>(font_platform_data, font_size);
+#endif
+}
+
+NGShapeCache* FontCache::GetNGShapeCache(const FallbackListCompositeKey& key) {
+  if (!fallback_list_ng_shaper_cache_) {
+    fallback_list_ng_shaper_cache_.emplace();
   }
-  return result.stored_value->value.Get();
+  FallbackListNGShaperCache::iterator it =
+      fallback_list_ng_shaper_cache_->find(key);
+  NGShapeCache* result = nullptr;
+  if (it == fallback_list_ng_shaper_cache_->end()) {
+    result = new NGShapeCache();
+    fallback_list_ng_shaper_cache_->Set(key, base::WrapUnique(result));
+  } else {
+    result = it->value.get();
+  }
+
+  DCHECK(result);
+  return result;
+}
+
+ShapeCache* FontCache::GetShapeCache(const FallbackListCompositeKey& key) {
+  FallbackListShaperCache::iterator it = fallback_list_shaper_cache_.find(key);
+  ShapeCache* result = nullptr;
+  if (it == fallback_list_shaper_cache_.end()) {
+    result = new ShapeCache();
+    fallback_list_shaper_cache_.Set(key, base::WrapUnique(result));
+  } else {
+    result = it->value.get();
+  }
+
+  DCHECK(result);
+  return result;
 }
 
 void FontCache::SetFontManager(sk_sp<SkFontMgr> font_manager) {
@@ -175,26 +208,34 @@ void FontCache::AcceptLanguagesChanged(const String& accept_languages) {
   Get().InvalidateShapeCache();
 }
 
-const SimpleFontData* FontCache::GetFontData(
+scoped_refptr<SimpleFontData> FontCache::GetFontData(
     const FontDescription& font_description,
     const AtomicString& family,
-    AlternateFontName altername_font_name) {
-  if (const FontPlatformData* platform_data = GetFontPlatformData(
+    AlternateFontName altername_font_name,
+    ShouldRetain should_retain) {
+  if (FontPlatformData* platform_data = GetFontPlatformData(
           font_description,
           FontFaceCreationParams(
               AdjustFamilyNameToAvoidUnsupportedFonts(family)),
           altername_font_name)) {
     return FontDataFromFontPlatformData(
-        platform_data, font_description.SubpixelAscentDescent());
+        platform_data, should_retain, font_description.SubpixelAscentDescent());
   }
 
   return nullptr;
 }
 
-const SimpleFontData* FontCache::FontDataFromFontPlatformData(
+scoped_refptr<SimpleFontData> FontCache::FontDataFromFontPlatformData(
     const FontPlatformData* platform_data,
+    ShouldRetain should_retain,
     bool subpixel_ascent_descent) {
-  return font_data_cache_.Get(platform_data, subpixel_ascent_descent);
+#if DCHECK_IS_ON()
+  if (should_retain == kDoNotRetain)
+    DCHECK(purge_prevent_count_);
+#endif
+
+  return font_data_cache_->Get(platform_data, should_retain,
+                               subpixel_ascent_descent);
 }
 
 bool FontCache::IsPlatformFamilyMatchAvailable(
@@ -223,7 +264,15 @@ String FontCache::FirstAvailableOrFirst(const String& families) {
       gfx::FontList::FirstAvailableOrFirst(families.Utf8().c_str()));
 }
 
-const SimpleFontData* FontCache::FallbackFontForCharacter(
+SimpleFontData* FontCache::GetNonRetainedLastResortFallbackFont(
+    const FontDescription& font_description) {
+  auto font = GetLastResortFallbackFont(font_description, kDoNotRetain);
+  if (font)
+    font->AddRef();
+  return font.get();
+}
+
+scoped_refptr<SimpleFontData> FontCache::FallbackFontForCharacter(
     const FontDescription& description,
     UChar32 lookup_char,
     const SimpleFontData* font_data_to_substitute,
@@ -240,37 +289,65 @@ const SimpleFontData* FontCache::FallbackFontForCharacter(
       Character::IsNonCharacter(lookup_char))
     return nullptr;
   base::ElapsedTimer timer;
-  const SimpleFontData* result = PlatformFallbackFontForCharacter(
+  scoped_refptr<SimpleFontData> result = PlatformFallbackFontForCharacter(
       description, lookup_char, font_data_to_substitute, fallback_priority);
   FontPerformance::AddSystemFallbackFontTime(timer.Elapsed());
   return result;
 }
 
+void FontCache::ReleaseFontData(const SimpleFontData* font_data) {
+  font_data_cache_->Release(font_data);
+}
+
+void FontCache::PurgePlatformFontDataCache() {
+  TRACE_EVENT0("fonts,ui", "FontCache::PurgePlatformFontDataCache");
+  font_platform_data_cache_->Purge(*font_data_cache_);
+}
+
+void FontCache::PurgeFallbackListNGShaperCache() {
+  TRACE_EVENT0("fonts,ui", "FontCache::PurgeFallbackListNGShaperCache");
+  if (UNLIKELY(fallback_list_ng_shaper_cache_)) {
+    fallback_list_ng_shaper_cache_->clear();
+  }
+}
+
 void FontCache::PurgeFallbackListShaperCache() {
   TRACE_EVENT0("fonts,ui", "FontCache::PurgeFallbackListShaperCache");
-  for (auto& shape_cache : fallback_list_shaper_cache_.Values()) {
-    shape_cache->Clear();
-  }
+  fallback_list_shaper_cache_.clear();
+}
+
+void FontCache::InvalidateNGShapeCache() {
+  PurgeFallbackListNGShaperCache();
 }
 
 void FontCache::InvalidateShapeCache() {
   PurgeFallbackListShaperCache();
 }
 
-void FontCache::Purge() {
+void FontCache::Purge(PurgeSeverity purge_severity) {
   // Ideally we should never be forcing the purge while the
   // FontCachePurgePreventer is in scope, but we call purge() at any timing
   // via MemoryPressureListenerRegistry.
   if (purge_prevent_count_)
     return;
 
+  if (!font_data_cache_->Purge(purge_severity))
+    return;
+
+  PurgePlatformFontDataCache();
+  PurgeFallbackListNGShaperCache();
   PurgeFallbackListShaperCache();
 }
 
 void FontCache::AddClient(FontCacheClient* client) {
   CHECK(client);
-  DCHECK(!font_cache_clients_.Contains(client));
-  font_cache_clients_.insert(client);
+  if (!font_cache_clients_) {
+    font_cache_clients_ =
+        MakeGarbageCollected<HeapHashSet<WeakMember<FontCacheClient>>>();
+    LEAK_SANITIZER_IGNORE_OBJECT(&font_cache_clients_);
+  }
+  DCHECK(!font_cache_clients_->Contains(client));
+  font_cache_clients_->insert(client);
 }
 
 uint16_t FontCache::Generation() {
@@ -279,15 +356,15 @@ uint16_t FontCache::Generation() {
 
 void FontCache::Invalidate() {
   TRACE_EVENT0("fonts,ui", "FontCache::Invalidate");
-  font_platform_data_cache_.Clear();
-  font_data_cache_.Clear();
+  font_platform_data_cache_->Clear();
   generation_++;
 
-  for (const auto& client : font_cache_clients_) {
-    client->FontCacheInvalidated();
+  if (font_cache_clients_) {
+    for (const auto& client : *font_cache_clients_)
+      client->FontCacheInvalidated();
   }
 
-  Purge();
+  Purge(kForcePurge);
 }
 
 void FontCache::CrashWithFontInfo(const FontDescription* font_description) {
@@ -307,7 +384,7 @@ void FontCache::CrashWithFontInfo(const FontDescription* font_description) {
   // In production, these 3 font managers must match.
   // They don't match in unit tests or in single process mode.
   SkFontMgr* static_font_mgr = static_font_manager_;
-  SkFontMgr* skia_default_font_mgr = skia::DefaultFontMgr().get();
+  SkFontMgr* skia_default_font_mgr = SkFontMgr::RefDefault().get();
   base::debug::Alias(&font_mgr);
   base::debug::Alias(&static_font_mgr);
   base::debug::Alias(&skia_default_font_mgr);
@@ -320,14 +397,26 @@ void FontCache::CrashWithFontInfo(const FontDescription* font_description) {
   CHECK(false);
 }
 
+void FontCache::DumpFontPlatformDataCache(
+    base::trace_event::ProcessMemoryDump* memory_dump) {
+  DCHECK(IsMainThread());
+  base::trace_event::MemoryAllocatorDump* dump =
+      memory_dump->CreateAllocatorDump("font_caches/font_platform_data_cache");
+  dump->AddScalar("size", "bytes", font_platform_data_cache_->ByteSize());
+  memory_dump->AddSuballocation(dump->guid(),
+                                WTF::Partitions::kAllocatedObjectPoolName);
+}
+
 void FontCache::DumpShapeResultCache(
     base::trace_event::ProcessMemoryDump* memory_dump) {
   DCHECK(IsMainThread());
   base::trace_event::MemoryAllocatorDump* dump =
       memory_dump->CreateAllocatorDump("font_caches/shape_caches");
   size_t shape_result_cache_size = 0;
-  for (const auto& shape_cache : fallback_list_shaper_cache_.Values()) {
-    shape_result_cache_size += shape_cache->ByteSize();
+  FallbackListShaperCache::iterator iter;
+  for (iter = fallback_list_shaper_cache_.begin();
+       iter != fallback_list_shaper_cache_.end(); ++iter) {
+    shape_result_cache_size += iter->value->ByteSize();
   }
   dump->AddScalar("size", "bytes", shape_result_cache_size);
   memory_dump->AddSuballocation(dump->guid(),

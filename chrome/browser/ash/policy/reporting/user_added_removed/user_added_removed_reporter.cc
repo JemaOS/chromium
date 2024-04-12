@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/policy/reporting/user_added_removed/user_added_removed_reporter.h"
 
-#include <string_view>
 #include <utility>
 
 #include "base/memory/ptr_util.h"
@@ -44,7 +43,7 @@ UserAddedRemovedReporter::CreateForTesting(
 UserAddedRemovedReporter::~UserAddedRemovedReporter() = default;
 
 void UserAddedRemovedReporter::ProcessRemovedUser(
-    std::string_view user_email,
+    base::StringPiece user_email,
     user_manager::UserRemovalReason reason) {
   auto record = std::make_unique<UserAddedRemovedRecord>();
   record->set_event_timestamp_sec(base::Time::Now().ToTimeT());
@@ -66,8 +65,8 @@ void UserAddedRemovedReporter::OnLogin(Profile* profile) {
   user_manager::User* user =
       ash::ProfileHelper::Get()->GetUserByProfile(profile);
   if (!user || user->IsKioskType() ||
-      user->GetType() == user_manager::UserType::kPublicAccount ||
-      user->GetType() == user_manager::UserType::kGuest) {
+      user->GetType() == user_manager::USER_TYPE_PUBLIC_ACCOUNT ||
+      user->GetType() == user_manager::USER_TYPE_GUEST) {
     return;
   }
 
@@ -89,8 +88,8 @@ void UserAddedRemovedReporter::OnUserToBeRemoved(const AccountId& account_id) {
   const user_manager::User* user =
       user_manager::UserManager::Get()->FindUser(account_id);
   if (!user || user->IsKioskType() ||
-      user->GetType() == user_manager::UserType::kPublicAccount ||
-      user->GetType() == user_manager::UserType::kGuest) {
+      user->GetType() == user_manager::USER_TYPE_PUBLIC_ACCOUNT ||
+      user->GetType() == user_manager::USER_TYPE_GUEST) {
     return;
   }
 

@@ -11,7 +11,6 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/testing/null_execution_context.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -25,7 +24,6 @@ class TestListener : public MediaQueryListListener {
 }  // anonymous namespace
 
 TEST(MediaQueryListTest, CrashInStop) {
-  test::TaskEnvironment task_environment;
   ScopedNullExecutionContext execution_context;
   auto* document =
       Document::CreateForTest(execution_context.GetExecutionContext());

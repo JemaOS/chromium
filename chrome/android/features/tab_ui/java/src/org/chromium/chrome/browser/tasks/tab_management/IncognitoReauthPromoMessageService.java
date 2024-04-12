@@ -15,15 +15,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.ResettersForTesting;
 import org.chromium.base.metrics.RecordHistogram;
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthManager;
 import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthSettingUtils;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.lifecycle.PauseResumeWithNativeObserver;
 import org.chromium.chrome.browser.preferences.Pref;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -37,9 +36,12 @@ import java.lang.annotation.RetentionPolicy;
  * Message service class to show the Incognito re-auth promo inside the incognito
  * tab switcher.
  */
-public class IncognitoReauthPromoMessageService extends MessageService
-        implements PauseResumeWithNativeObserver {
-    /** TODO(crbug.com/1227656): Remove this when we support all the Android versions. */
+public class IncognitoReauthPromoMessageService
+        extends MessageService implements PauseResumeWithNativeObserver {
+    /**
+     * TODO(crbug.com/1227656): Remove this when we support all the Android versions.
+     */
+    @VisibleForTesting
     public static Boolean sIsPromoEnabledForTesting;
 
     /**
@@ -48,22 +50,26 @@ public class IncognitoReauthPromoMessageService extends MessageService
      * triggering and simply call the next set of actions which would have been call, if
      * the re-auth was indeed successful.
      */
-    private static Boolean sTriggerReviewActionWithoutReauthForTesting;
+    @VisibleForTesting
+    public static Boolean sTriggerReviewActionWithoutReauthForTesting;
 
-    @VisibleForTesting public final int mMaxPromoMessageCount = 10;
-
+    private final int mMaxPromoMessageCount = 10;
     /**
      *  TODO(crbug.com/1148020): Currently every time entering the tab switcher,
      *  {@link ResetHandler.resetWithTabs} will be called twice if
      *  {@link TabUiFeatureUtilities#isTabToGtsAnimationEnabled} returns true, see
      *  {@link TabSwitcherMediator#prepareOverview}.
      */
-    private final int mTabSwitcherImpressionMultiplier;
+    private final int mPrepareMessageEnteringTabSwitcher;
 
+    @VisibleForTesting
+    public final int mMaximumPromoShowCountLimit;
     /** The re-auth manager that is used to trigger the re-authentication. */
     private final @NonNull IncognitoReauthManager mIncognitoReauthManager;
 
-    /** This is the data type that this MessageService is serving to its Observer. */
+    /**
+     * This is the data type that this MessageService is serving to its Observer.
+     */
     class IncognitoReauthMessageData implements MessageData {
         private final MessageCardView.ReviewActionProvider mReviewActionProvider;
         private final MessageCardView.DismissActionProvider mDismissActionProvider;
@@ -103,12 +109,9 @@ public class IncognitoReauthPromoMessageService extends MessageService
      * DO NOT reorder items in this interface, because it's mirrored to UMA
      * (as IncognitoReauthPromoActionType).
      */
-    @IntDef({
-        IncognitoReauthPromoActionType.PROMO_ACCEPTED,
-        IncognitoReauthPromoActionType.NO_THANKS,
-        IncognitoReauthPromoActionType.PROMO_EXPIRED,
-        IncognitoReauthPromoActionType.NUM_ENTRIES
-    })
+    @IntDef({IncognitoReauthPromoActionType.PROMO_ACCEPTED,
+            IncognitoReauthPromoActionType.NO_THANKS, IncognitoReauthPromoActionType.PROMO_EXPIRED,
+            IncognitoReauthPromoActionType.NUM_ENTRIES})
     @Retention(RetentionPolicy.SOURCE)
     @interface IncognitoReauthPromoActionType {
         int PROMO_ACCEPTED = 0;
@@ -129,11 +132,8 @@ public class IncognitoReauthPromoMessageService extends MessageService
      * @param activityLifecycleDispatcher The {@link ActivityLifecycleDispatcher} dispacther to
      *         register listening to onResume events.
      */
-    IncognitoReauthPromoMessageService(
-            int mMessageType,
-            @NonNull Profile profile,
-            @NonNull Context context,
-            @NonNull SharedPreferencesManager sharedPreferencesManager,
+    IncognitoReauthPromoMessageService(int mMessageType, @NonNull Profile profile,
+            @NonNull Context context, @NonNull SharedPreferencesManager sharedPreferencesManager,
             @NonNull IncognitoReauthManager incognitoReauthManager,
             @NonNull SnackbarManager snackbarManager,
             @NonNull Supplier<Boolean> isTabToGtsAnimationEnabledSupplier,
@@ -144,14 +144,10 @@ public class IncognitoReauthPromoMessageService extends MessageService
         mSharedPreferencesManager = sharedPreferencesManager;
         mIncognitoReauthManager = incognitoReauthManager;
         mSnackBarManager = snackbarManager;
-        mTabSwitcherImpressionMultiplier = isTabToGtsAnimationEnabledSupplier.get() ? 2 : 1;
+        mPrepareMessageEnteringTabSwitcher = isTabToGtsAnimationEnabledSupplier.get() ? 2 : 1;
+        mMaximumPromoShowCountLimit = mMaxPromoMessageCount * mPrepareMessageEnteringTabSwitcher;
         mActivityLifecycleDispatcher = activityLifecycleDispatcher;
         activityLifecycleDispatcher.register(this);
-    }
-
-    void destroy() {
-        // Duplicate unregister is safe if dismiss() was invoked.
-        mActivityLifecycleDispatcher.unregister(this);
     }
 
     @VisibleForTesting
@@ -166,7 +162,7 @@ public class IncognitoReauthPromoMessageService extends MessageService
     }
 
     void increasePromoShowCountAndMayDisableIfCountExceeds() {
-        if (getPromoShowCount() > mMaxPromoMessageCount) {
+        if (getPromoShowCount() > mMaximumPromoShowCountLimit) {
             dismiss();
 
             RecordHistogram.recordEnumeratedHistogram(
@@ -177,20 +173,12 @@ public class IncognitoReauthPromoMessageService extends MessageService
             return;
         }
 
-        increasePomoImpressionCount();
-    }
-
-    private void increasePomoImpressionCount() {
         mSharedPreferencesManager.writeInt(
-                INCOGNITO_REAUTH_PROMO_SHOW_COUNT,
-                mSharedPreferencesManager.readInt(INCOGNITO_REAUTH_PROMO_SHOW_COUNT, 0) + 1);
+                INCOGNITO_REAUTH_PROMO_SHOW_COUNT, getPromoShowCount() + 1);
     }
 
     int getPromoShowCount() {
-        // We divide the recorded count by the multiplier to get the number of times
-        // the user has actually seen the promo.
-        return mSharedPreferencesManager.readInt(INCOGNITO_REAUTH_PROMO_SHOW_COUNT, 0)
-                / mTabSwitcherImpressionMultiplier;
+        return mSharedPreferencesManager.readInt(INCOGNITO_REAUTH_PROMO_SHOW_COUNT, 0);
     }
 
     /**
@@ -202,7 +190,12 @@ public class IncognitoReauthPromoMessageService extends MessageService
     boolean preparePromoMessage() {
         if (!isIncognitoReauthPromoMessageEnabled(mProfile)) return false;
 
-        if (getPromoShowCount() >= mMaxPromoMessageCount) {
+        // We also need to ensure an "equality" check because, we only increase the count of the
+        // promo when we actually show it in the tab switcher. At the |mMaximumPromoShowCountLimit|
+        // time (the last time) we show the promo, we haven't yet dismissed the dialog.
+        // Now, if the user recreates the Chrome Activity instance, the count will be read as
+        // |mMaximumPromoShowCountLimit| at this point, so we should dismiss the promo.
+        if (getPromoShowCount() >= mMaximumPromoShowCountLimit) {
             dismiss();
             return false;
         }
@@ -220,15 +213,13 @@ public class IncognitoReauthPromoMessageService extends MessageService
 
     void prepareSnackBarAndShow() {
         Snackbar snackbar =
-                Snackbar.make(
-                        mContext.getString(R.string.incognito_reauth_snackbar_text),
-                        /* controller= */ null,
-                        Snackbar.TYPE_NOTIFICATION,
+                Snackbar.make(mContext.getString(R.string.incognito_reauth_snackbar_text),
+                        /*controller= */ null, Snackbar.TYPE_NOTIFICATION,
                         Snackbar.UMA_INCOGNITO_REAUTH_ENABLED_FROM_PROMO);
         // TODO(crbug.com/1227656):  Confirm with UX to see how the background color of the
         // snackbar needs to be revised.
         snackbar.setBackgroundColor(
-                mContext.getColor(R.color.snackbar_background_color_baseline_dark));
+                mContext.getResources().getColor(R.color.snackbar_background_color_baseline_dark));
         snackbar.setTextAppearance(R.style.TextAppearance_TextMedium_Secondary_Baseline_Light);
         snackbar.setSingleLine(false);
         mSnackBarManager.showSnackbar(snackbar);
@@ -247,7 +238,9 @@ public class IncognitoReauthPromoMessageService extends MessageService
     @Override
     public void onPauseWithNative() {}
 
-    /** Provides the functionality to the {@link MessageCardView.ReviewActionProvider} */
+    /**
+     * Provides the functionality to the {@link MessageCardView.ReviewActionProvider}
+     */
     public void review() {
         // Add a safety net in-case for potential multi window flows.
         if (!isIncognitoReauthPromoMessageEnabled(mProfile)) {
@@ -304,14 +297,9 @@ public class IncognitoReauthPromoMessageService extends MessageService
         return mSharedPreferencesManager.readBoolean(INCOGNITO_REAUTH_PROMO_CARD_ENABLED, true);
     }
 
-    public static void setTriggerReviewActionWithoutReauthForTesting(boolean enabled) {
-        sTriggerReviewActionWithoutReauthForTesting = enabled;
-        ResettersForTesting.register(() -> sTriggerReviewActionWithoutReauthForTesting = null);
-    }
-
+    @VisibleForTesting
     public static void setIsPromoEnabledForTesting(@Nullable Boolean enabled) {
         sIsPromoEnabledForTesting = enabled;
-        ResettersForTesting.register(() -> sIsPromoEnabledForTesting = null);
     }
 
     private void disableIncognitoReauthPromoMessage() {
@@ -355,7 +343,8 @@ public class IncognitoReauthPromoMessageService extends MessageService
      * A method which gets fired when the re-authentication was successful after the review action.
      */
     private void onAfterReviewActionSuccessful() {
-        UserPrefs.get(mProfile).setBoolean(Pref.INCOGNITO_REAUTHENTICATION_FOR_ANDROID, true);
+        UserPrefs.get(Profile.getLastUsedRegularProfile())
+                .setBoolean(Pref.INCOGNITO_REAUTHENTICATION_FOR_ANDROID, true);
         RecordHistogram.recordEnumeratedHistogram(
                 "Android.IncognitoReauth.PromoAcceptedOrDismissed",
                 IncognitoReauthPromoActionType.PROMO_ACCEPTED,
@@ -367,8 +356,7 @@ public class IncognitoReauthPromoMessageService extends MessageService
 
     private void recordPromoImpressionsCount() {
         RecordHistogram.recordExactLinearHistogram(
-                "Android.IncognitoReauth.PromoImpressionAfterActionCount",
-                getPromoShowCount(),
+                "Android.IncognitoReauth.PromoImpressionAfterActionCount", getPromoShowCount(),
                 mMaxPromoMessageCount);
     }
 }

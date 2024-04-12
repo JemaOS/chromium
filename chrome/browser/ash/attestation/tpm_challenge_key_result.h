@@ -38,8 +38,7 @@ enum class TpmChallengeKeyResultCode {
   kAttestationServiceInternalError = 20,
   kUploadCertificateFailedError = 21,
   kDeviceTrustURLConflictError = 22,
-  kVerifiedAccessFlowUnsupportedError = 23,
-  kMaxValue = kVerifiedAccessFlowUnsupportedError,
+  kMaxValue = kDeviceTrustURLConflictError,
 };
 
 // If |IsSuccess| returns false, |result_code| contains error code and
@@ -71,7 +70,6 @@ struct TpmChallengeKeyResult {
   static const char kAttestationServiceInternalErrorMsg[];
   static const char kUploadCertificateFailedErrorMsg[];
   static const char kDeviceTrustURLConflictError[];
-  static const char kVerifiedAccessFlowUnsupportedErrorMsg[];
 
   static TpmChallengeKeyResult MakeChallengeResponse(
       const std::string& challenge_response);

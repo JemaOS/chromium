@@ -20,7 +20,6 @@
 #include "ui/gfx/color_palette.h"
 #include "ui/views/view.h"
 
-class Browser;
 class PageActionIconContainer;
 struct PageActionIconParams;
 class ZoomView;
@@ -85,9 +84,6 @@ class PageActionIconController : public PageActionIconViewObserver,
   // hub.
   int VisibleEphemeralActionCount() const;
 
-  // Logs UMA data as appropriate when the current displayed URL changes.
-  void RecordMetricsOnURLChange(GURL url);
-
   // Logs UMA data about the set of currently visible page actions overall, eg.
   // the total number of page actions shown.
   void RecordOverallMetrics();
@@ -101,16 +97,11 @@ class PageActionIconController : public PageActionIconViewObserver,
   void RecordClickMetrics(PageActionIconType type,
                           PageActionIconView* view) const;
 
-  raw_ptr<Browser> browser_ = nullptr;
-
   raw_ptr<PageActionIconContainer> icon_container_ = nullptr;
 
   raw_ptr<ZoomView> zoom_icon_ = nullptr;
 
   IconViews page_action_icon_views_;
-
-  std::map<GURL, std::vector<raw_ptr<PageActionIconView, VectorExperimental>>>
-      page_actions_excluded_from_logging_;
 
   base::ScopedObservation<zoom::ZoomEventManager,
                           zoom::ZoomEventManagerObserver>

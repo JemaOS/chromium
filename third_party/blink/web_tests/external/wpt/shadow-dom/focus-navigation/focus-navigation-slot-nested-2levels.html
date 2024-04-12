@@ -56,6 +56,8 @@ promise_test(async () => {
     'i1'
   ];
 
-  await assert_focus_navigation_bidirectional(elements);
+  await assert_focus_navigation_forward(elements);
+  elements.reverse();
+  await assert_focus_navigation_backward(elements);
 }, 'Focus controller should treat each slot as a focus scope.');
 </script>

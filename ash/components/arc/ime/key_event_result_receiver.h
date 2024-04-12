@@ -5,10 +5,9 @@
 #ifndef ASH_COMPONENTS_ARC_IME_KEY_EVENT_RESULT_RECEIVER_H_
 #define ASH_COMPONENTS_ARC_IME_KEY_EVENT_RESULT_RECEIVER_H_
 
-#include <optional>
-
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/ime/ime_key_event_dispatcher.h"
 #include "ui/events/event.h"
 
@@ -38,7 +37,7 @@ class KeyEventResultReceiver {
   void RunCallbackIfNeeded(bool result);
 
   KeyEventDoneCallback callback_{};
-  std::optional<ui::KeyEvent> expected_key_event_{};
+  absl::optional<ui::KeyEvent> expected_key_event_{};
   base::WeakPtrFactory<KeyEventResultReceiver> weak_ptr_factory_{this};
 };
 

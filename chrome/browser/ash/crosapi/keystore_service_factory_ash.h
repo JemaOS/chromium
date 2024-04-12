@@ -30,7 +30,7 @@ class KeystoreServiceFactoryAsh : public ProfileKeyedServiceFactory {
   ~KeystoreServiceFactoryAsh() override = default;
 
   // BrowserStateKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

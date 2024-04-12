@@ -77,9 +77,6 @@ class TestContextMenuController : public ContextMenuController {
 
 class EditableComboboxTest : public ViewsTestBase {
  public:
-  static constexpr gfx::Rect kWidgetBounds = gfx::Rect(0, 0, 1000, 1000);
-  static constexpr gfx::Rect kComboboxBounds = gfx::Rect(0, 0, 500, 40);
-
   EditableComboboxTest() { views::test::DisableMenuClosureAnimations(); }
 
   EditableComboboxTest(const EditableComboboxTest&) = delete;
@@ -169,12 +166,8 @@ void EditableComboboxTest::TearDown() {
     GetMenuRunner()->Cancel();
     WaitForMenuClosureAnimation();
   }
-  if (widget_) {
-    combobox_ = nullptr;
-    dummy_focusable_view_ = nullptr;
-    parent_of_combobox_ = nullptr;
-    widget_.ExtractAsDangling()->Close();
-  }
+  if (widget_)
+    widget_->Close();
   ViewsTestBase::TearDown();
 }
 
@@ -203,23 +196,20 @@ void EditableComboboxTest::InitEditableCombobox(
     const std::vector<ui::SimpleComboboxModel::Item>& items,
     const bool filter_on_edit,
     const bool show_on_empty) {
-  InitWidget();
-
-  View* container = widget_->SetContentsView(std::make_unique<View>());
-  parent_of_combobox_ = container->AddChildView(std::make_unique<View>());
-  parent_of_combobox_->SetBoundsRect(kComboboxBounds);
-
+  parent_of_combobox_ = new View();
+  parent_of_combobox_->SetID(1);
   combobox_ =
-      parent_of_combobox_->AddChildView(std::make_unique<EditableCombobox>(
-          std::make_unique<ui::SimpleComboboxModel>(items), filter_on_edit,
-          show_on_empty));
+      new EditableCombobox(std::make_unique<ui::SimpleComboboxModel>(items),
+                           filter_on_edit, show_on_empty);
   combobox_->SetCallback(base::BindRepeating(
       &EditableComboboxTest::OnContentChanged, base::Unretained(this)));
+  combobox_->SetID(2);
   combobox_->SetAccessibleName(u"abc");
-  combobox_->SetBoundsRect(kComboboxBounds);
-
-  dummy_focusable_view_ = container->AddChildView(std::make_unique<View>());
+  dummy_focusable_view_ = new View();
   dummy_focusable_view_->SetFocusBehavior(View::FocusBehavior::ALWAYS);
+  dummy_focusable_view_->SetID(3);
+
+  InitWidget();
 }
 
 // Initializes the widget where the combobox and the dummy control live.
@@ -227,8 +217,15 @@ void EditableComboboxTest::InitWidget() {
   widget_ = new Widget();
   Widget::InitParams params =
       CreateParams(Widget::InitParams::TYPE_WINDOW_FRAMELESS);
-  params.bounds = kWidgetBounds;
+  params.bounds = gfx::Rect(0, 0, 1000, 1000);
+  parent_of_combobox_->SetBoundsRect(gfx::Rect(0, 0, 500, 40));
+  combobox_->SetBoundsRect(gfx::Rect(0, 0, 500, 40));
+
   widget_->Init(std::move(params));
+  View* container = widget_->SetContentsView(std::make_unique<View>());
+  container->AddChildView(parent_of_combobox_.get());
+  parent_of_combobox_->AddChildView(combobox_.get());
+  container->AddChildView(dummy_focusable_view_.get());
   widget_->Show();
 
 #if BUILDFLAG(IS_MAC)

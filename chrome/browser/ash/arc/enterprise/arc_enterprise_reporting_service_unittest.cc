@@ -20,7 +20,6 @@
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
 #include "chromeos/ash/components/dbus/concierge/concierge_client.h"
-#include "components/session_manager/core/session_manager.h"
 #include "components/user_manager/scoped_user_manager.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -42,19 +41,20 @@ class ArcEnterpriseReportingServiceTest : public testing::Test {
   ~ArcEnterpriseReportingServiceTest() override = default;
 
   void SetUp() override {
-    // Set up user manager and profile and for ReportCloudDpcOperationTime tests
-    fake_user_manager_.Reset(std::make_unique<ash::FakeChromeUserManager>());
-
+    // Set up profile and user manager for ReportCloudDpcOperationTime tests
     profile_manager_ = std::make_unique<TestingProfileManager>(
         TestingBrowserProcess::GetGlobal());
     ASSERT_TRUE(profile_manager_->SetUp());
+
+    user_manager_enabler_ = std::make_unique<user_manager::ScopedUserManager>(
+        std::make_unique<ash::FakeChromeUserManager>());
 
     profile_ = profile_manager_->CreateTestingProfile(kTestProfileName);
 
     const auto account_id = AccountId::FromUserEmailGaiaId(
         profile_->GetProfileUserName(), kTestGaiaId);
-    fake_user_manager_->AddUser(account_id);
-    fake_user_manager_->LoginUser(account_id);
+    GetFakeUserManager()->AddUser(account_id);
+    GetFakeUserManager()->LoginUser(account_id);
 
     // Set up ArcSessionManager for ReportManagementState tests
     ash::ConciergeClient::InitializeFake(/*fake_cicerone_client=*/nullptr);
@@ -75,8 +75,8 @@ class ArcEnterpriseReportingServiceTest : public testing::Test {
     arc_session_manager_->Shutdown();
     profile_manager_->DeleteTestingProfile(kTestProfileName);
     profile_ = nullptr;
+    user_manager_enabler_.reset();
     profile_manager_.reset();
-    fake_user_manager_.Reset();
     arc_session_manager_.reset();
     arc_service_manager_.reset();
   }
@@ -85,21 +85,39 @@ class ArcEnterpriseReportingServiceTest : public testing::Test {
     return arc_session_manager_.get();
   }
 
+  ash::FakeChromeUserManager* GetFakeUserManager() const {
+    return static_cast<ash::FakeChromeUserManager*>(
+        user_manager::UserManager::Get());
+  }
+
   TestingProfile* profile() { return profile_; }
 
   ArcEnterpriseReportingService* service() { return service_; }
 
  private:
-  raw_ptr<ArcEnterpriseReportingService, DanglingUntriaged> service_ = nullptr;
+  raw_ptr<ArcEnterpriseReportingService, ExperimentalAsh> service_ = nullptr;
   content::BrowserTaskEnvironment task_environment_;
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_;
-  session_manager::SessionManager session_manager_;
-  raw_ptr<TestingProfile, DanglingUntriaged> profile_;
+  raw_ptr<TestingProfile, ExperimentalAsh> profile_;
   std::unique_ptr<ArcServiceManager> arc_service_manager_;
   std::unique_ptr<arc::ArcSessionManager> arc_session_manager_;
   std::unique_ptr<TestingProfileManager> profile_manager_;
+  std::unique_ptr<user_manager::ScopedUserManager> user_manager_enabler_;
 };
+
+TEST_F(ArcEnterpriseReportingServiceTest, ReportManagementState_RemoveData) {
+  arc_session_manager()->Initialize();
+  service()->ReportManagementState(mojom::ManagementState::MANAGED_DO_LOST);
+  ASSERT_TRUE(
+      profile()->GetPrefs()->GetBoolean(prefs::kArcDataRemoveRequested));
+}
+
+TEST_F(ArcEnterpriseReportingServiceTest,
+       ReportManagementState_DoNotRemoveData) {
+  arc_session_manager()->Initialize();
+  service()->ReportManagementState(mojom::ManagementState::UNMANAGED);
+  ASSERT_FALSE(
+      profile()->GetPrefs()->GetBoolean(prefs::kArcDataRemoveRequested));
+}
 
 TEST_F(ArcEnterpriseReportingServiceTest, ReportCloudDpcOperationTime_Success) {
   base::HistogramTester tester;

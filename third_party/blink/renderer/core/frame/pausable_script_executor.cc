@@ -41,10 +41,11 @@ namespace {
 // then-able).
 class PromiseAggregator : public GarbageCollected<PromiseAggregator> {
  public:
-  using Callback = base::OnceCallback<void(const v8::LocalVector<v8::Value>&)>;
+  using Callback =
+      base::OnceCallback<void(const Vector<v8::Local<v8::Value>>&)>;
 
   PromiseAggregator(ScriptState* script_state,
-                    const v8::LocalVector<v8::Value>& values,
+                    const Vector<v8::Local<v8::Value>>& values,
                     Callback callback);
 
   void Trace(Visitor* visitor) const { visitor->Trace(results_); }
@@ -110,21 +111,19 @@ class PromiseAggregator : public GarbageCollected<PromiseAggregator> {
 };
 
 PromiseAggregator::PromiseAggregator(ScriptState* script_state,
-                                     const v8::LocalVector<v8::Value>& values,
+                                     const Vector<v8::Local<v8::Value>>& values,
                                      Callback callback)
-    : results_(static_cast<wtf_size_t>(values.size())),
-      callback_(std::move(callback)) {
+    : results_(values.size()), callback_(std::move(callback)) {
   for (wtf_size_t i = 0; i < values.size(); ++i) {
     if (values[i].IsEmpty())
       continue;
 
     ++outstanding_;
-    // ScriptPromise::FromUntypedValueForBindings() will turn any non-promise
-    // into a promise that resolves to the value. Calling
-    // ScriptPromise::FromUntypedValueForBindings().Then() will either  wait for
-    // the promise (or then-able) to settle, or will immediately finish  with
-    // the value. Thus, it's safe to just do this for every value.
-    ScriptPromise::FromUntypedValueForBindings(script_state, values[i])
+    // ScriptPromise::Cast() will turn any non-promise into a promise that
+    // resolves to the value. Calling ScriptPromise::Cast().Then() will either
+    // wait for the promise (or then-able) to settle, or will immediately finish
+    // with the value. Thus, it's safe to just do this for every value.
+    ScriptPromise::Cast(script_state, values[i])
         .Then(OnSettled::New(script_state, this, i, /*was_fulfilled=*/true),
               OnSettled::New(script_state, this, i, /*was_fulfilled=*/false));
   }
@@ -135,7 +134,7 @@ PromiseAggregator::PromiseAggregator(ScriptState* script_state,
 
 void PromiseAggregator::OnAllSettled(v8::Isolate* isolate) {
   DCHECK_EQ(0u, outstanding_);
-  v8::LocalVector<v8::Value> converted_results(isolate, results_.size());
+  Vector<v8::Local<v8::Value>> converted_results(results_.size());
   for (wtf_size_t i = 0; i < results_.size(); ++i)
     converted_results[i] = results_[i].Get(isolate);
 
@@ -149,8 +148,8 @@ class WebScriptExecutor : public PausableScriptExecutor::Executor {
       : sources_(std::move(sources)),
         execute_script_policy_(execute_script_policy) {}
 
-  v8::LocalVector<v8::Value> Execute(ScriptState* script_state) override {
-    v8::LocalVector<v8::Value> results(script_state->GetIsolate());
+  Vector<v8::Local<v8::Value>> Execute(ScriptState* script_state) override {
+    Vector<v8::Local<v8::Value>> results;
     for (const auto& source : sources_) {
       // Note: An error event in an isolated world will never be dispatched to
       // a foreign world.
@@ -178,7 +177,7 @@ class V8FunctionExecutor : public PausableScriptExecutor::Executor {
                      int argc,
                      v8::Local<v8::Value> argv[]);
 
-  v8::LocalVector<v8::Value> Execute(ScriptState*) override;
+  Vector<v8::Local<v8::Value>> Execute(ScriptState*) override;
 
   void Trace(Visitor*) const override;
 
@@ -199,22 +198,21 @@ V8FunctionExecutor::V8FunctionExecutor(v8::Isolate* isolate,
     args_.push_back(TraceWrapperV8Reference<v8::Value>(isolate, argv[i]));
 }
 
-v8::LocalVector<v8::Value> V8FunctionExecutor::Execute(
+Vector<v8::Local<v8::Value>> V8FunctionExecutor::Execute(
     ScriptState* script_state) {
   v8::Isolate* isolate = script_state->GetIsolate();
+  Vector<v8::Local<v8::Value>> results;
+  v8::Local<v8::Value> single_result;
 
-  v8::LocalVector<v8::Value> args(isolate);
+  Vector<v8::Local<v8::Value>> args;
   args.reserve(args_.size());
   for (wtf_size_t i = 0; i < args_.size(); ++i)
     args.push_back(args_[i].Get(isolate));
 
-  v8::LocalVector<v8::Value> results(isolate);
   {
-    v8::Local<v8::Value> single_result;
     if (V8ScriptRunner::CallFunction(
             function_.Get(isolate), ExecutionContext::From(script_state),
-            receiver_.Get(isolate), static_cast<int>(args.size()), args.data(),
-            isolate)
+            receiver_.Get(isolate), args.size(), args.data(), isolate)
             .ToLocal(&single_result)) {
       results.push_back(single_result);
     }
@@ -360,7 +358,7 @@ void PausableScriptExecutor::ExecuteAndDestroySelf() {
     }
   }
 
-  v8::LocalVector<v8::Value> results = executor_->Execute(script_state_);
+  Vector<v8::Local<v8::Value>> results = executor_->Execute(script_state_);
 
   // The script may have removed the frame, in which case contextDestroyed()
   // will have handled the disposal/callback.
@@ -388,7 +386,7 @@ void PausableScriptExecutor::ExecuteAndDestroySelf() {
 }
 
 void PausableScriptExecutor::HandleResults(
-    const v8::LocalVector<v8::Value>& results) {
+    const Vector<v8::Local<v8::Value>>& results) {
   // The script may have removed the frame, in which case ContextDestroyed()
   // will have handled the disposal/callback.
   if (!script_state_->ContextIsValid())
@@ -400,7 +398,7 @@ void PausableScriptExecutor::HandleResults(
   }
 
   if (callback_) {
-    std::optional<base::Value> value;
+    absl::optional<base::Value> value;
     switch (want_result_option_) {
       case mojom::blink::WantResultOption::kWantResult:
       case mojom::blink::WantResultOption::kWantResultDateAndRegExpAllowed:

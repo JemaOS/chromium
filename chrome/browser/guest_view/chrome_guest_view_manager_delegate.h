@@ -16,7 +16,7 @@ namespace extensions {
 class ChromeGuestViewManagerDelegate
     : public ExtensionsGuestViewManagerDelegate {
  public:
-  ChromeGuestViewManagerDelegate();
+  explicit ChromeGuestViewManagerDelegate(content::BrowserContext* context);
 
   ChromeGuestViewManagerDelegate(const ChromeGuestViewManagerDelegate&) =
       delete;
@@ -27,8 +27,6 @@ class ChromeGuestViewManagerDelegate
 
   // GuestViewManagerDelegate:
   void OnGuestAdded(content::WebContents* guest_web_contents) const override;
-  bool IsOwnedByControlledFrameEmbedder(
-      const guest_view::GuestViewBase* guest) override;
 };
 
 }  // namespace extensions

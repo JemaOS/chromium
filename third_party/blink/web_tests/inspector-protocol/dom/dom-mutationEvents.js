@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function (testRunner) {
   const { searchNodesByAttributeValue } = await testRunner.loadScript('resources/dom-test-helper.js');
   const testUrl = 'resources/dom-mutation-events-test.html';
 

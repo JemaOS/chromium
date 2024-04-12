@@ -7,10 +7,8 @@
 #include <linux/magic.h>
 #include <sys/statvfs.h>
 
-#include <array>
 #include <string>
 
-#include "base/bit_cast.h"
 #include "base/containers/span.h"
 #include "base/files/file_util.h"
 #include "base/logging.h"
@@ -69,13 +67,13 @@ bool FileSystemStatus::IsSystemImageExtFormat(const base::FilePath& path) {
     return false;
   }
 
-  std::array<uint8_t, 2> buf;
-  if (!file.ReadAndCheck(0x400 + 0x38, base::make_span(buf))) {
+  uint8_t buf[2];
+  if (!file.ReadAndCheck(0x400 + 0x38, base::make_span(buf, sizeof(buf)))) {
     PLOG(ERROR) << "File read error on system image file: " << path.value();
     return false;
   }
 
-  uint16_t magic_le = base::bit_cast<uint16_t>(buf);
+  uint16_t magic_le = *reinterpret_cast<uint16_t*>(buf);
 #if defined(ARCH_CPU_LITTLE_ENDIAN)
   return magic_le == EXT4_SUPER_MAGIC;
 #else

@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "ash/shell.h"
 #include "ash/style/style_viewer/system_ui_components_grid_view.h"
@@ -15,8 +14,6 @@
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "chromeos/constants/chromeos_features.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
@@ -36,8 +33,7 @@ namespace {
 
 // The width and height of viewer contents.
 constexpr int kContentWidth = 960;
-constexpr int kContentHeight = 496;
-constexpr int kBottomSpacing = 16;
+constexpr int kContentHeight = 480;
 // The width of components menu.
 constexpr int kMenuWidth = 160;
 // The height of component button.
@@ -54,30 +50,6 @@ constexpr ui::ColorId kInactiveButtonBackgroundColorId =
 constexpr ui::ColorId kInactiveButtonTextColorId =
     cros_tokens::kCrosSysOnSurface;
 
-class SystemUIComponentsStyleViewerClientView : public views::ClientView {
- public:
-  SystemUIComponentsStyleViewerClientView(views::Widget* widget,
-                                          views::View* contents_view)
-      : views::ClientView(widget, contents_view) {}
-
-  SystemUIComponentsStyleViewerClientView(
-      const SystemUIComponentsStyleViewerClientView&) = delete;
-  SystemUIComponentsStyleViewerClientView& operator=(
-      const SystemUIComponentsStyleViewerClientView&) = delete;
-
-  ~SystemUIComponentsStyleViewerClientView() override = default;
-
-  // ClientView:
-  void UpdateWindowRoundedCorners(int corner_radius) override {
-    //  The top corners will be rounded by NonClientFrameViewAsh. The
-    // client-view is responsible for rounding the bottom corners.
-
-    const gfx::RoundedCornersF radii(0, 0, corner_radius, corner_radius);
-    contents_view()->SetBackground(views::CreateThemedRoundedRectBackground(
-        ui::kColorDialogBackground, radii));
-  }
-};
-
 }  // namespace
 
 // The global singleton of the viewer widget.
@@ -87,12 +59,10 @@ static views::Widget* g_instance = nullptr;
 // SystemUIComponentsStyleViewerView::ComponentButton:
 class SystemUIComponentsStyleViewerView::ComponentButton
     : public views::LabelButton {
-  METADATA_HEADER(ComponentButton, views::LabelButton)
-
  public:
   ComponentButton(views::LabelButton::PressedCallback pressed_callback,
                   const std::u16string& name)
-      : views::LabelButton(std::move(pressed_callback), name) {
+      : views::LabelButton(pressed_callback, name) {
     SetHorizontalAlignment(gfx::HorizontalAlignment::ALIGN_CENTER);
     SetBorder(std::make_unique<views::HighlightBorder>(
         0, chromeos::features::IsJellyrollEnabled()
@@ -144,9 +114,6 @@ class SystemUIComponentsStyleViewerView::ComponentButton
   ui::ColorId text_color_id_ = kInactiveButtonTextColorId;
 };
 
-BEGIN_METADATA(SystemUIComponentsStyleViewerView, ComponentButton)
-END_METADATA
-
 // -----------------------------------------------------------------------------
 // SystemUIComponentsStyleViewerView:
 SystemUIComponentsStyleViewerView::SystemUIComponentsStyleViewerView()
@@ -157,8 +124,6 @@ SystemUIComponentsStyleViewerView::SystemUIComponentsStyleViewerView()
   SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kHorizontal));
   SetBackground(views::CreateThemedSolidBackground(ui::kColorDialogBackground));
-  SetBorder(
-      views::CreateEmptyBorder(gfx::Insets::TLBR(0, 0, kBottomSpacing, 0)));
 
   // Set menu scroll view.
   menu_scroll_view_->SetPreferredSize(gfx::Size(kMenuWidth, kContentHeight));
@@ -192,6 +157,8 @@ void SystemUIComponentsStyleViewerView::CreateAndShowWidget() {
   viewer_view->AddComponent(
       u"IconButton", base::BindRepeating(&CreateIconButtonInstancesGridView));
   viewer_view->AddComponent(
+      u"IconSwitch", base::BindRepeating(&CreateIconSwitchInstancesGridView));
+  viewer_view->AddComponent(
       u"Checkbox", base::BindRepeating(&CreateCheckboxInstancesGridView));
   viewer_view->AddComponent(
       u"CheckboxGroup",
@@ -210,8 +177,6 @@ void SystemUIComponentsStyleViewerView::CreateAndShowWidget() {
       base::BindRepeating(&CreateSystemTextfieldInstancesGridView));
   viewer_view->AddComponent(
       u"Pagination", base::BindRepeating(&CreatePaginationInstancesGridView));
-  viewer_view->AddComponent(
-      u"Combobox", base::BindRepeating(&CreateComboboxInstancesGridView));
   viewer_view->AddComponent(
       u"Typography", base::BindRepeating(&CreateTypographyInstancesGridView));
 
@@ -253,38 +218,28 @@ void SystemUIComponentsStyleViewerView::ShowComponentInstances(
 
   // Set the button corresponding to the component indicated by the name active.
   // Set other buttons inactive.
-  for (ash::SystemUIComponentsStyleViewerView::ComponentButton* button :
-       buttons_) {
+  for (auto* button : buttons_)
     button->SetActive(button->GetText() == name);
-  }
 
   // Toggle corresponding components grid view.
   components_grid_view_ = component_instances_scroll_view_->SetContents(
       components_grid_view_factories_[name].Run());
 }
 
-void SystemUIComponentsStyleViewerView::Layout(PassKey) {
+void SystemUIComponentsStyleViewerView::Layout() {
   menu_contents_view_->SetSize(
       gfx::Size(kMenuWidth, menu_contents_view_->GetPreferredSize().height()));
   components_grid_view_->SizeToPreferredSize();
-  LayoutSuperclass<views::View>(this);
+  views::View::Layout();
 }
 
 std::u16string SystemUIComponentsStyleViewerView::GetWindowTitle() const {
   return u"System Components Style Viewer";
 }
 
-views::ClientView* SystemUIComponentsStyleViewerView::CreateClientView(
-    views::Widget* widget) {
-  return new SystemUIComponentsStyleViewerClientView(widget, this);
-}
-
 void SystemUIComponentsStyleViewerView::OnWidgetDestroyed(
     views::Widget* widget) {
   g_instance = nullptr;
 }
-
-BEGIN_METADATA(SystemUIComponentsStyleViewerView)
-END_METADATA
 
 }  // namespace ash

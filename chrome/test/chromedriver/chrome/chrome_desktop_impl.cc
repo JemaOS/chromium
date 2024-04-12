@@ -23,7 +23,6 @@
 #include "chrome/test/chromedriver/chrome/devtools_event_listener.h"
 #include "chrome/test/chromedriver/chrome/devtools_http_client.h"
 #include "chrome/test/chromedriver/chrome/status.h"
-#include "chrome/test/chromedriver/chrome/target_utils.h"
 #include "chrome/test/chromedriver/chrome/web_view_impl.h"
 #include "chrome/test/chromedriver/constants/version.h"
 #include "chrome/test/chromedriver/net/timeout.h"
@@ -74,23 +73,23 @@ bool KillProcess(const base::Process& process, bool kill_gracefully) {
 }  // namespace
 
 ChromeDesktopImpl::ChromeDesktopImpl(
-    BrowserInfo browser_info,
-    std::set<WebViewInfo::Type> window_types,
+    std::unique_ptr<DevToolsHttpClient> http_client,
     std::unique_ptr<DevToolsClient> websocket_client,
     std::vector<std::unique_ptr<DevToolsEventListener>>
         devtools_event_listeners,
-    std::optional<MobileDevice> mobile_device,
+    absl::optional<MobileDevice> mobile_device,
+    SyncWebSocketFactory socket_factory,
     std::string page_load_strategy,
     base::Process process,
     const base::CommandLine& command,
     base::ScopedTempDir* user_data_dir,
     base::ScopedTempDir* extension_dir,
     bool network_emulation_enabled)
-    : ChromeImpl(std::move(browser_info),
-                 std::move(window_types),
+    : ChromeImpl(std::move(http_client),
                  std::move(websocket_client),
                  std::move(devtools_event_listeners),
                  std::move(mobile_device),
+                 std::move(socket_factory),
                  page_load_strategy),
       process_(std::move(process)),
       command_(command),
@@ -127,10 +126,9 @@ Status ChromeDesktopImpl::WaitForPageToLoad(
   Timeout timeout(timeout_raw);
   std::string id;
   WebViewInfo::Type type = WebViewInfo::Type::kPage;
-  while (!timeout.IsExpired()) {
+  while (timeout.GetRemainingTime().is_positive()) {
     WebViewsInfo views_info;
-    Status status = target_utils::GetWebViewsInfo(*devtools_websocket_client_,
-                                                  &timeout, views_info);
+    Status status = GetWebViewsInfo(&views_info);
     if (status.IsError())
       return status;
 
@@ -149,7 +147,7 @@ Status ChromeDesktopImpl::WaitForPageToLoad(
   if (id.empty())
     return Status(kUnknownError, "page could not be found: " + url);
 
-  std::optional<MobileDevice> mobile_device = mobile_device_;
+  absl::optional<MobileDevice> mobile_device = mobile_device_;
   if (type == WebViewInfo::Type::kApp ||
       type == WebViewInfo::Type::kBackgroundPage) {
     // Apps and extensions don't work on Android, so it doesn't make sense to
@@ -159,16 +157,16 @@ Status ChromeDesktopImpl::WaitForPageToLoad(
     mobile_device.reset();
   }
 
-  std::unique_ptr<DevToolsClient> client;
-  Status status = target_utils::AttachToPageTarget(*devtools_websocket_client_,
-                                                   id, &timeout, client);
+  std::unique_ptr<DevToolsClientImpl> client;
+  Status status = CreateClient(id, &client);
   if (status.IsError())
     return status;
-  std::unique_ptr<WebViewImpl> web_view_tmp =
-      WebViewImpl::CreateTopLevelWebView(id, w3c_compliant, &browser_info_,
-                                         std::move(client), mobile_device,
-                                         page_load_strategy());
-  status = web_view_tmp->AttachTo(devtools_websocket_client_.get());
+  std::unique_ptr<WebViewImpl> web_view_tmp(new WebViewImpl(
+      id, w3c_compliant, nullptr, devtools_http_client_->browser_info(),
+      std::move(client), mobile_device, page_load_strategy()));
+  DevToolsClientImpl* parent =
+      static_cast<DevToolsClientImpl*>(devtools_websocket_client_.get());
+  status = web_view_tmp->AttachTo(parent);
   if (status.IsError()) {
     return status;
   }
@@ -213,12 +211,16 @@ Status ChromeDesktopImpl::QuitImpl() {
   // to allow Chrome to write out all the net logs to the log path.
   kill_gracefully = kill_gracefully || command_.HasSwitch("log-net-log");
   if (kill_gracefully) {
-    Status status = devtools_websocket_client_->SendCommandAndIgnoreResponse(
-        "Browser.close", base::Value::Dict());
-    // If status is not okay, we will try the old method of KillProcess
-    if (status.IsOk() &&
-        process_.WaitForExitWithTimeout(base::Seconds(10), nullptr)) {
-      return status;
+    Status status{kOk};
+    if (!devtools_websocket_client_->IsConnected())
+      status = devtools_websocket_client_->Connect();
+    if (status.IsOk()) {
+      status = devtools_websocket_client_->SendCommandAndIgnoreResponse(
+          "Browser.close", base::Value::Dict());
+      // If status is not okay, we will try the old method of KillProcess
+      if (status.IsOk() &&
+          process_.WaitForExitWithTimeout(base::Seconds(10), nullptr))
+        return status;
     }
   }
 

@@ -24,8 +24,7 @@ class EmojiPageHandler : public emoji_picker::mojom::PageHandler {
       content::WebUI* web_ui,
       EmojiUI* webui_controller,
       bool incognito_mode,
-      bool no_text_field,
-      emoji_picker::mojom::Category initial_category);
+      bool no_text_field);
   EmojiPageHandler(const EmojiPageHandler&) = delete;
   EmojiPageHandler& operator=(const EmojiPageHandler&) = delete;
   ~EmojiPageHandler() override;
@@ -38,28 +37,25 @@ class EmojiPageHandler : public emoji_picker::mojom::PageHandler {
   void IsIncognitoTextField(IsIncognitoTextFieldCallback callback) override;
   void GetFeatureList(GetFeatureListCallback callback) override;
   void GetCategories(GetCategoriesCallback callback) override;
-  void GetFeaturedGifs(const std::optional<std::string>& pos,
+  void GetFeaturedGifs(const absl::optional<std::string>& pos,
                        GetFeaturedGifsCallback callback) override;
   void SearchGifs(const std::string& query,
-                  const std::optional<std::string>& pos,
+                  const absl::optional<std::string>& pos,
                   SearchGifsCallback callback) override;
   void GetGifsByIds(const std::vector<std::string>& ids,
                     GetGifsByIdsCallback callback) override;
   void InsertGif(const GURL& gif) override;
   void OnUiFullyLoaded() override;
-  void GetInitialCategory(GetInitialCategoryCallback callback) override;
 
  private:
   mojo::Receiver<emoji_picker::mojom::PageHandler> receiver_;
 
   base::TimeTicks shown_time_;
-  const raw_ptr<EmojiUI> webui_controller_;
-  bool gif_support_enabled_;
+  const raw_ptr<EmojiUI, ExperimentalAsh> webui_controller_;
   bool incognito_mode_;
   bool no_text_field_;
   GifTenorApiFetcher gif_tenor_api_fetcher_;
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
-  emoji_picker::mojom::Category initial_category_;
 };
 
 }  // namespace ash

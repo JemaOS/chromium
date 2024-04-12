@@ -7,9 +7,8 @@ import '//resources/cr_elements/cr_checkbox/cr_checkbox.js';
 import '//resources/cr_elements/cr_drawer/cr_drawer.js';
 import '//resources/cr_elements/cr_hidden_style.css.js';
 import './nav_menu.js';
-import '../demo.css.js';
 
-import type {CrDrawerElement} from '//resources/cr_elements/cr_drawer/cr_drawer.js';
+import {CrDrawerElement} from '//resources/cr_elements/cr_drawer/cr_drawer.js';
 import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './nav_menu_demo.html.js';
@@ -68,7 +67,5 @@ class NavMenuDemoElement extends PolymerElement {
     this.selectedIndex_ = e.detail.value;
   }
 }
-
-export const tagName = NavMenuDemoElement.is;
 
 customElements.define(NavMenuDemoElement.is, NavMenuDemoElement);

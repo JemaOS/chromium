@@ -7,12 +7,10 @@
 
 #include <memory>
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/synchronization/lock.h"
 #include "base/task/sequence_manager/test/sequence_manager_for_test.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/test/test_mock_time_task_runner.h"
 #include "base/threading/thread_checker.h"
 #include "base/time/time.h"
@@ -78,7 +76,7 @@ class PLATFORM_EXPORT ThreadManager {
     bool is_running_;
 
     // Should outlive |this|.
-    raw_ptr<ThreadManager> thread_manager_;
+    ThreadManager* thread_manager_;
     base::WeakPtrFactory<Task> weak_ptr_factory_{this};
   };
 
@@ -131,9 +129,6 @@ class PLATFORM_EXPORT ThreadManager {
 
   scoped_refptr<TaskQueueWithVoters> GetTaskQueueFor(uint64_t task_queue_id);
 
-  scoped_refptr<SingleThreadTaskRunner> GetTaskRunnerFor(
-      uint64_t task_queue_id);
-
   // Used to protect |task_queues_| and |pending_tasks_|.
   Lock lock_;
 
@@ -162,7 +157,7 @@ class PLATFORM_EXPORT ThreadManager {
 
   // Outlives this class. |processor_| owns a thread pool manager that creates
   // threads.
-  const raw_ptr<SequenceManagerFuzzerProcessor> processor_;
+  SequenceManagerFuzzerProcessor* const processor_;
 
   THREAD_CHECKER(thread_checker_);
 };

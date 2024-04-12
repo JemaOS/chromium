@@ -4,6 +4,7 @@
 #include "base/check.h"
 #include "base/process/process.h"
 #endif  // defined(UNRAR_NO_EXCEPTIONS)
+
 #include "rar.hpp"
 
 #include <ostream>
@@ -171,13 +172,10 @@ void ErrorHandler::OpenErrorMsg(const wchar *FileName)
 
 void ErrorHandler::OpenErrorMsg(const wchar *ArcName,const wchar *FileName)
 {
+  Wait(); // Keep GUI responsive if many files cannot be opened when archiving.
   uiMsg(UIERROR_FILEOPEN,ArcName,FileName);
   SysErrMsg();
   SetErrorCode(RARX_OPEN);
-
-  // Keep GUI responsive if many files cannot be opened when archiving.
-  // Call after SysErrMsg to avoid modifying the error code and SysErrMsg text.
-  Wait();
 }
 
 
@@ -376,7 +374,7 @@ bool ErrorHandler::GetSysErrMsg(wchar *Msg,size_t Size)
 
 void ErrorHandler::SysErrMsg()
 {
-#ifndef SILENT
+#if !defined(SFX_MODULE) && !defined(SILENT)
   wchar Msg[1024];
   if (!GetSysErrMsg(Msg,ASIZE(Msg)))
     return;

@@ -7,8 +7,6 @@
 #include <stddef.h>
 
 #include <algorithm>
-#include <optional>
-#include <string_view>
 
 #include "ash/constants/ash_features.h"
 #include "base/feature_list.h"
@@ -17,19 +15,21 @@
 #include "base/logging.h"
 #include "base/path_service.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/strings/string_util.h"
 #include "base/system/sys_info.h"
 #include "base/task/thread_pool.h"
 #include "base/trace_event/trace_event.h"
 #include "build/branding_buildflags.h"
-#include "chrome/browser/ash/settings/cros_settings.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/extensions/component_loader.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/extensions/extension_constants.h"
+#include "chrome/common/pref_names.h"
 #include "chrome/grit/browser_resources.h"
-#include "chromeos/ash/components/settings/cros_settings_names.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "chromeos/ime/input_methods.h"
 #include "extensions/browser/extension_pref_value_map.h"
@@ -38,7 +38,7 @@
 #include "extensions/browser/extension_system.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest_constants.h"
-#include "net/base/url_util.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/ime/ash/extension_ime_util.h"
 #include "ui/base/resource/resource_bundle.h"
 
@@ -53,18 +53,18 @@ struct AllowlistedComponentExtensionIME {
 } allowlisted_component_extensions[] = {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
     {
-        // Official Google ChromeOS 1P Input.
+        // Official Google XKB Input.
         extension_ime_util::kXkbExtensionId,
         IDR_GOOGLE_XKB_MANIFEST,
     },
 #else
     {
-        // Open-sourced ChromiumOS xkb extension.
+        // Open-sourced ChromeOS xkb extension.
         extension_ime_util::kXkbExtensionId,
         IDR_XKB_MANIFEST,
     },
     {
-        // Open-sourced ChromiumOS Keyboards extension.
+        // Open-sourced ChromeOS Keyboards extension.
         extension_ime_util::kM17nExtensionId,
         IDR_M17N_MANIFEST,
     },
@@ -119,7 +119,8 @@ void DoLoadExtension(Profile* profile,
   extensions::ExtensionRegistry* extension_registry =
       extensions::ExtensionRegistry::Get(profile);
   DCHECK(extension_registry);
-  if (extension_registry->enabled_extensions().GetByID(extension_id)) {
+  if (extension_registry->GetExtensionById(
+          extension_id, extensions::ExtensionRegistry::ENABLED)) {
     VLOG(1) << "the IME extension(id=\"" << extension_id
             << "\") is already enabled";
     return;
@@ -221,22 +222,22 @@ bool ComponentExtensionIMEManagerDelegateImpl::IsInLoginLayoutAllowlist(
   return login_layout_set_.find(layout) != login_layout_set_.end();
 }
 
-std::optional<base::Value::Dict>
+absl::optional<base::Value::Dict>
 ComponentExtensionIMEManagerDelegateImpl::ParseManifest(
-    std::string_view manifest_string) {
+    const base::StringPiece& manifest_string) {
   base::JSONReader::Result result =
       base::JSONReader::ReadAndReturnValueWithError(manifest_string);
   if (!result.has_value()) {
     LOG(ERROR) << "Failed to parse manifest: " << result.error().message
                << " at line " << result.error().line << " column "
                << result.error().column;
-    return std::nullopt;
+    return absl::nullopt;
   }
   if (!result.value().is_dict()) {
     LOG(ERROR) << "Failed to parse manifest: parsed value is not a dictionary";
-    return std::nullopt;
+    return absl::nullopt;
   }
-  return std::make_optional(std::move(result.value()).TakeDict());
+  return absl::make_optional(std::move(result.value()).TakeDict());
 }
 
 // static
@@ -297,32 +298,20 @@ bool ComponentExtensionIMEManagerDelegateImpl::ReadEngineComponent(
   if (!layouts)
     return false;
 
-  if (*engine_id == "ko-t-i0-und" &&
-      base::FeatureList::IsEnabled(
-          features::kImeKoreanOnlyModeSwitchOnRightAlt)) {
-    out->layout = "kr(cros)";
-  } else if (!layouts->empty() && layouts->front().is_string()) {
+  if (!layouts->empty() && layouts->front().is_string())
     out->layout = layouts->front().GetString();
-  } else {
+  else
     out->layout = "us";
-  }
 
   std::string url_string;
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  bool is_jelly_enabled = chromeos::features::IsJellyEnabled();
-  bool is_global_emoji_preferences_enabled = base::FeatureList::IsEnabled(
-      features::kVirtualKeyboardGlobalEmojiPreferences);
-  GURL url = extensions::Extension::GetResourceURL(
-      extensions::Extension::GetBaseURLFromExtensionId(component_extension.id),
-      "inputview.html");
-  url = net::AppendOrReplaceQueryParameter(url, "jelly",
-                                           is_jelly_enabled ? "true" : "false");
-  url = net::AppendOrReplaceQueryParameter(
-      url, "globalemojipreferences",
-      is_global_emoji_preferences_enabled ? "true" : "false");
   // Information is managed on VK extension side so just use a default value
   // here.
-  url = net::AppendOrReplaceRef(url, "id=default");
+  std::string query_part = base::StrCat(
+      {"?", "jelly=", chromeos::features::IsJellyEnabled() ? "true" : "false"});
+  GURL url = extensions::Extension::GetResourceURL(
+      extensions::Extension::GetBaseURLFromExtensionId(component_extension.id),
+      "inputview.html" + query_part + "#id=default");
   if (!url.is_valid())
     return false;
   out->input_view_url = url;
@@ -343,12 +332,7 @@ bool ComponentExtensionIMEManagerDelegateImpl::ReadEngineComponent(
 
   const std::string* option_page =
       dict.FindString(extensions::manifest_keys::kOptionsPage);
-
-  bool flag_allows_settings_page =
-      (*engine_id != "vkd_vi_vni" && *engine_id != "vkd_vi_telex") ||
-      base::FeatureList::IsEnabled(features::kFirstPartyVietnameseInput);
-
-  if (option_page && flag_allows_settings_page) {
+  if (option_page) {
     url_string = *option_page;
     GURL options_page_url = extensions::Extension::GetResourceURL(
         extensions::Extension::GetBaseURLFromExtensionId(
@@ -360,15 +344,6 @@ bool ComponentExtensionIMEManagerDelegateImpl::ReadEngineComponent(
   } else {
     // Fallback to extension level options page.
     out->options_page_url = component_extension.options_page_url;
-  }
-
-  const std::string* handwriting_language =
-      dict.FindString(extensions::manifest_keys::kHandwritingLanguage);
-
-  if (handwriting_language != nullptr) {
-    out->handwriting_language = *handwriting_language;
-  } else {
-    out->handwriting_language = std::nullopt;
   }
 
   return true;
@@ -409,7 +384,7 @@ void ComponentExtensionIMEManagerDelegateImpl::ReadComponentExtensionsInfo(
   for (auto& extension : allowlisted_component_extensions) {
     ComponentExtensionIME component_ime;
     ui::ResourceBundle& rb = ui::ResourceBundle::GetSharedInstance();
-    std::string_view manifest_string =
+    const base::StringPiece& manifest_string =
         rb.GetRawDataResource(extension.manifest_resource_id);
     component_ime.manifest = std::string(manifest_string);
 
@@ -419,7 +394,7 @@ void ComponentExtensionIMEManagerDelegateImpl::ReadComponentExtensionsInfo(
       continue;
     }
 
-    std::optional<base::Value::Dict> maybe_manifest =
+    absl::optional<base::Value::Dict> maybe_manifest =
         ParseManifest(manifest_string);
     if (!maybe_manifest.has_value()) {
       LOG(ERROR) << "Failed to load invalid manifest: "
@@ -464,14 +439,13 @@ void ComponentExtensionIMEManagerDelegateImpl::ReadComponentExtensionsInfo(
       }
 
       const char* kHindiInscriptEngineId = "vkd_hi_inscript";
+      DCHECK(g_browser_process);
+      DCHECK(g_browser_process->local_state());
       if (engine.engine_id == kHindiInscriptEngineId &&
-          !base::FeatureList::IsEnabled(features::kHindiInscriptLayout)) {
-        bool policy_value = false;
-        CrosSettings::Get()->GetBoolean(kDeviceHindiInscriptLayoutEnabled,
-                                        &policy_value);
-        if (!policy_value) {
-          continue;
-        }
+          !base::FeatureList::IsEnabled(features::kHindiInscriptLayout) &&
+          !g_browser_process->local_state()->GetBoolean(
+              prefs::kDeviceHindiInscriptLayoutEnabled)) {
+        continue;
       }
 
       component_ime.engines.push_back(engine);

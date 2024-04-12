@@ -36,7 +36,7 @@ class DragDropTrackerDelegate : public aura::WindowDelegate {
   void OnBoundsChanged(const gfx::Rect& old_bounds,
                        const gfx::Rect& new_bounds) override {}
   gfx::NativeCursor GetCursor(const gfx::Point& point) override {
-    return gfx::NativeCursor{};
+    return gfx::kNullCursor;
   }
   int GetNonClientComponent(const gfx::Point& point) const override {
     return HTCAPTION;
@@ -90,8 +90,8 @@ std::unique_ptr<aura::Window> CreateCaptureWindow(
   // trying to manage this window.
   window->SetType(aura::client::WINDOW_TYPE_POPUP);
   window->Init(ui::LAYER_NOT_DRAWN);
-  aura::client::ParentWindowWithContext(window.get(), context_root, gfx::Rect(),
-                                        display::kInvalidDisplayId);
+  aura::client::ParentWindowWithContext(window.get(), context_root,
+                                        gfx::Rect());
   ::wm::SetActivationDelegate(window.get(), activation_delegate_instance);
   window->Show();
   DCHECK(window->bounds().size().IsEmpty());

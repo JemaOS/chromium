@@ -23,25 +23,23 @@ import './all_sites_icons.html.js';
 import './clear_storage_dialog_shared.css.js';
 import './site_details_permission.js';
 
-import type {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {focusWithoutInk} from 'chrome://resources/js/focus_without_ink.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {loadTimeData} from '../i18n_setup.js';
 import {MetricsBrowserProxyImpl, PrivacyElementInteractions} from '../metrics_browser_proxy.js';
 import {routes} from '../route.js';
-import type {Route} from '../router.js';
-import {RouteObserverMixin, Router} from '../router.js';
+import {Route, RouteObserverMixin, Router} from '../router.js';
 
 import {ChooserType, ContentSetting, ContentSettingsTypes} from './constants.js';
 import {getTemplate} from './site_details.html.js';
-import type {SiteDetailsPermissionElement} from './site_details_permission.js';
+import {SiteDetailsPermissionElement} from './site_details_permission.js';
 import {SiteSettingsMixin} from './site_settings_mixin.js';
-import type {WebsiteUsageBrowserProxy} from './website_usage_browser_proxy.js';
-import {WebsiteUsageBrowserProxyImpl} from './website_usage_browser_proxy.js';
+import {WebsiteUsageBrowserProxy, WebsiteUsageBrowserProxyImpl} from './website_usage_browser_proxy.js';
 
 export interface SiteDetailsElement {
   $: {
@@ -130,15 +128,11 @@ export class SiteDetailsElement extends SiteDetailsElementBase {
             loadTimeData.getBoolean('enableWebBluetoothNewPermissionsBackend'),
       },
 
-      autoPictureInPictureEnabled_: {
+      isPrivacySandboxSettings4_: {
         type: Boolean,
-        value: () => loadTimeData.getBoolean('autoPictureInPictureEnabled'),
-      },
-
-      enableAutomaticFullscreenContentSetting_: {
-        type: Boolean,
-        value: () =>
-            loadTimeData.getBoolean('enableAutomaticFullscreenContentSetting'),
+        value() {
+          return loadTimeData.getBoolean('isPrivacySandboxSettings4');
+        },
       },
 
       contentSettingsTypesEnum_: {
@@ -162,8 +156,6 @@ export class SiteDetailsElement extends SiteDetailsElementBase {
   private fpsEnterprisePref_: chrome.settingsPrivate.PrefObject;
   private enableExperimentalWebPlatformFeatures_: boolean;
   private enableWebBluetoothNewPermissionsBackend_: boolean;
-  private autoPictureInPictureEnabled_: boolean;
-  private enableAutomaticFullscreenContentSetting_: boolean;
   private websiteUsageProxy_: WebsiteUsageBrowserProxy =
       WebsiteUsageBrowserProxyImpl.getInstance();
 
@@ -193,8 +185,10 @@ export class SiteDetailsElement extends SiteDetailsElementBase {
     if (route !== routes.SITE_SETTINGS_SITE_DETAILS) {
       return;
     }
-
-    const site = Router.getInstance().getQueryParameters().get('site') ?? '';
+    const site = Router.getInstance().getQueryParameters().get('site');
+    if (!site) {
+      return;
+    }
     this.origin_ = site;
     this.browserProxy.isOriginValid(this.origin_).then((valid) => {
       if (!valid) {
@@ -289,6 +283,15 @@ export class SiteDetailsElement extends SiteDetailsElementBase {
           // exception.
           assert(exceptionList.length > 0);
           this.pageTitle = exceptionList[0].displayName;
+
+          // If the origin is an extension origin, use the extension name if
+          // available.
+          if (exceptionList[0].extensionNameWithId !== undefined) {
+            const url = this.toUrl(exceptionList[0].origin);
+            if (url !== null && url.protocol === 'chrome-extension:') {
+              this.pageTitle = exceptionList[0].extensionNameWithId;
+            }
+          }
         });
   }
 

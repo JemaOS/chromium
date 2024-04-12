@@ -77,7 +77,9 @@ void ExpectInvalidCastInternalMessage(const std::string& message_str,
 
 class CastInternalMessageUtilDeathTest : public testing::Test {
  public:
-  void SetUp() override { GTEST_FLAG_SET(death_test_style, "threadsafe"); }
+  void SetUp() override {
+    testing::FLAGS_gtest_death_test_style = "threadsafe";
+  }
 };
 
 }  // namespace
@@ -346,7 +348,7 @@ TEST(CastInternalMessageUtilTest, CreateReceiverActionCastMessage) {
            "displayStatus": null,
            "friendlyName": "friendly name 1",
            "isActiveInput": null,
-           "label": "Pr2CqqG4_NOPcVV6oKbocxyAik0",
+           "label": "yYH_HCL9CKJFmvKJ9m3Une2cS8s",
            "receiverType": "cast",
            "volume": null
         }
@@ -371,7 +373,7 @@ TEST(CastInternalMessageUtilTest, CreateReceiverActionStopMessage) {
            "displayStatus": null,
            "friendlyName": "friendly name 1",
            "isActiveInput": null,
-           "label": "Pr2CqqG4_NOPcVV6oKbocxyAik0",
+           "label": "yYH_HCL9CKJFmvKJ9m3Une2cS8s",
            "receiverType": "cast",
            "volume": null
         }
@@ -405,7 +407,7 @@ TEST(CastInternalMessageUtilTest, CreateNewSessionMessage) {
          "displayStatus": null,
          "friendlyName": "friendly name 1",
          "isActiveInput": null,
-         "label": "Pr2CqqG4_NOPcVV6oKbocxyAik0",
+         "label": "yYH_HCL9CKJFmvKJ9m3Une2cS8s",
          "receiverType": "cast",
          "volume": null
       },
@@ -443,7 +445,7 @@ TEST(CastInternalMessageUtilTest, CreateNewSessionMessageWithUniversalAppId) {
          "displayStatus": null,
          "friendlyName": "friendly name 1",
          "isActiveInput": null,
-         "label": "Pr2CqqG4_NOPcVV6oKbocxyAik0",
+         "label": "yYH_HCL9CKJFmvKJ9m3Une2cS8s",
          "receiverType": "cast",
          "volume": null
       },
@@ -483,7 +485,7 @@ TEST(CastInternalMessageUtilTest, CreateUpdateSessionMessage) {
          "displayStatus": null,
          "friendlyName": "friendly name 1",
          "isActiveInput": null,
-         "label": "Pr2CqqG4_NOPcVV6oKbocxyAik0",
+         "label": "yYH_HCL9CKJFmvKJ9m3Une2cS8s",
          "receiverType": "cast",
          "volume": null
       },

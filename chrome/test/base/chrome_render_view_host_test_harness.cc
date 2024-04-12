@@ -48,7 +48,8 @@ ChromeRenderViewHostTestHarness::CreateTestingProfile(
   builder.SetIsMainProfile(is_main_profile);
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
-  builder.AddTestingFactories(GetTestingFactories());
+  for (auto& pair : GetTestingFactories())
+    builder.AddTestingFactory(pair.first, pair.second);
 
   return builder.Build();
 }

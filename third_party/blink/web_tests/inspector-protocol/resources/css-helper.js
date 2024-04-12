@@ -202,18 +202,6 @@
     }
   }
 
-  async loadAndDumpCSSPositionTryForNode(nodeId) {
-    const {result} =
-        await this._dp.CSS.getMatchedStylesForNode({'nodeId': nodeId});
-    this._testRunner.log('Dumping CSS position-try rules: ');
-    for (const cssPositionTryRule of result.cssPositionTryRules) {
-      this._testRunner.log(
-          '@position-try ' + cssPositionTryRule.name.text + ' {');
-      this.dumpStyle(cssPositionTryRule.style, 0);
-      this._testRunner.log('}');
-    }
-  }
-
   async loadAndDumpCSSAnimationsForNode(nodeId) {
     var {result} =
         await this._dp.CSS.getMatchedStylesForNode({'nodeId': nodeId});

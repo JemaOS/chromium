@@ -165,11 +165,6 @@ class WebServiceWorkerContextClient {
   // timeout.
   virtual void RequestTermination(RequestTerminationCallback) {}
 
-  virtual bool ShouldNotifyServiceWorkerOnWebSocketActivity(
-      v8::Local<v8::Context> context) {
-    return false;
-  }
-
   // Off-main-thread start up:
   // Creates a WebWorkerFetchContext for subresource fetches on a service
   // worker. This is called on the initiator thread.

@@ -16,17 +16,20 @@
 
 <ul id="d"></ul>
 <script>
-promise_test(async t => {
+var t = async_test("");
+_addTest(function(canvas, ctx) {
 
-  var canvas = document.getElementById('c');
-  var ctx = canvas.getContext('2d');
+fetch('/images/red.png')
+  .then(response => response.blob())
+    .then(blob => {
+      createImageBitmap(blob)
+        .then(bitmap => {
+          ctx.drawImage(bitmap, 10.1, 10.1, 0.1, 0.1, 0, 0, 100, 50);
+          _assertPixelApprox(canvas, 50,25, 0,255,0,255, 2);
+    });
+});
 
-  const response = await fetch('/images/green.png');
-  const blob = await response.blob();
-  const bitmap = await createImageBitmap(blob);
-  ctx.drawImage(bitmap, 10.1, 10.1, 0.1, 0.1, 0, 0, 100, 50);
-  _assertPixelApprox(canvas, 50,25, 0,255,0,255, 2);
 
-}, "");
+});
 </script>
 

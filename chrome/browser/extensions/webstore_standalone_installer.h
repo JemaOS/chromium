@@ -6,13 +6,11 @@
 #define CHROME_BROWSER_EXTENSIONS_WEBSTORE_STANDALONE_INSTALLER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/extensions/active_install_data.h"
 #include "chrome/browser/extensions/extension_install_prompt.h"
@@ -22,6 +20,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_observer.h"
 #include "chrome/common/extensions/webstore_install_result.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 
 namespace extensions {
@@ -41,6 +40,7 @@ class WebstoreDataFetcher;
 class WebstoreStandaloneInstaller
     : public base::RefCountedThreadSafe<WebstoreStandaloneInstaller>,
       public WebstoreDataFetcherDelegate,
+      public WebstoreInstaller::Delegate,
       public WebstoreInstallHelper::Delegate,
       public ProfileObserver {
  public:
@@ -185,11 +185,12 @@ class WebstoreStandaloneInstaller
                               InstallHelperResultCode result_code,
                               const std::string& error_message) override;
 
-  // WebstoreInstaller::Delegate callbacks.
-  void OnExtensionInstallSuccess(const std::string& id);
-  void OnExtensionInstallFailure(const std::string& id,
-                                 const std::string& error,
-                                 WebstoreInstaller::FailureReason reason);
+  // WebstoreInstaller::Delegate interface implementation.
+  void OnExtensionInstallSuccess(const std::string& id) override;
+  void OnExtensionInstallFailure(
+      const std::string& id,
+      const std::string& error,
+      WebstoreInstaller::FailureReason reason) override;
 
   // ProfileObserver
   void OnProfileWillBeDestroyed(Profile* profile) override;
@@ -223,7 +224,7 @@ class WebstoreStandaloneInstaller
   std::string localized_user_count_;
   double average_rating_{0.0};
   int rating_count_{0};
-  std::optional<base::Value::Dict> manifest_;
+  absl::optional<base::Value::Dict> manifest_;
   SkBitmap icon_;
 
   // Active install registered with the InstallTracker.
@@ -232,8 +233,6 @@ class WebstoreStandaloneInstaller
   // Created by ShowInstallUI() when a prompt is shown (if
   // the implementor returns a non-NULL in CreateInstallPrompt()).
   scoped_refptr<Extension> localized_extension_for_display_;
-
-  base::WeakPtrFactory<WebstoreStandaloneInstaller> weak_ptr_factory_{this};
 };
 
 }  // namespace extensions

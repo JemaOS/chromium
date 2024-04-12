@@ -10,7 +10,6 @@
 
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
-#include "build/branding_buildflags.h"
 #include "components/password_manager/core/browser/manage_passwords_referrer.h"
 #include "components/password_manager/core/browser/ui/password_check_referrer.h"
 #include "components/password_manager/core/common/credential_manager_types.h"
@@ -57,8 +56,8 @@ class PasswordsModelDelegate {
   virtual password_manager::ui::State GetState() const = 0;
 
   // Returns the pending password in PENDING_PASSWORD_STATE and
-  // PENDING_PASSWORD_UPDATE_STATE, the saved password in
-  // SAVE_CONFIRMATION_STATE, the returned credential in AUTO_SIGNIN_STATE.
+  // PENDING_PASSWORD_UPDATE_STATE, the saved password in CONFIRMATION_STATE,
+  // the returned credential in AUTO_SIGNIN_STATE.
   virtual const password_manager::PasswordForm& GetPendingPassword() const = 0;
 
   // Returns unsynced credentials being deleted upon signout.
@@ -125,16 +124,12 @@ class PasswordsModelDelegate {
   virtual void DiscardUnsyncedCredentials() = 0;
 
   // Called from the dialog controller when a user confirms moving the recently
-  // used or selected credential to their account store.
+  // used credential to their account store.
   virtual void MovePasswordToAccountStore() = 0;
 
   // Called from the dialog controller when a user rejects moving the recently
   // used credential to their account store.
   virtual void BlockMovingPasswordToAccountStore() = 0;
-
-  // Called from the dialog controller when the user acknowledges that their
-  // default password store setting changed.
-  virtual void PromptSaveBubbleAfterDefaultStoreChanged() = 0;
 
   // Called from the dialog controller when the user chooses a credential.
   // Controller can be destroyed inside the method.
@@ -142,26 +137,18 @@ class PasswordsModelDelegate {
       const password_manager::PasswordForm& form,
       password_manager::CredentialType credential_type) = 0;
 
+  // Open a new tab, pointing to passwords.google.com.
+  virtual void NavigateToPasswordManagerAccountDashboard(
+      password_manager::ManagePasswordsReferrer referrer) = 0;
   // Open a new tab, pointing to the password manager settings page.
   virtual void NavigateToPasswordManagerSettingsPage(
       password_manager::ManagePasswordsReferrer referrer) = 0;
-
-  // Open a new tab, pointing to the password manager subpage with the
-  // credential details for the `password_domain_name`.
-  virtual void NavigateToPasswordDetailsPageInPasswordManager(
-      const std::string& password_domain_name,
-      password_manager::ManagePasswordsReferrer referrer) = 0;
-
-  // Opens password manager settings page and focuses account store toggle.
-  virtual void NavigateToPasswordManagerSettingsAccountStoreToggle(
-      password_manager::ManagePasswordsReferrer referrer) = 0;
-
   // Open a new tab, pointing to the password check in the settings page.
   virtual void NavigateToPasswordCheckup(
       password_manager::PasswordCheckReferrer referrer) = 0;
   // Called by the view when the "Sign in to Chrome" button or the "Sync to"
   // button in the promo bubble are clicked.
-  virtual void SignIn(const AccountInfo& account) = 0;
+  virtual void EnableSync(const AccountInfo& account) = 0;
 
   // Called from the dialog controller when the dialog is hidden.
   virtual void OnDialogHidden() = 0;
@@ -183,6 +170,11 @@ class PasswordsModelDelegate {
       const std::u16string& username,
       const std::u16string& password) = 0;
 
+  // Called from the Move bubble controller when gaia re-auth is needed
+  // to move passwords. This method triggers the reauth flow. Upon successful
+  // reauth, it moves the password.
+  virtual void AuthenticateUserForAccountStoreOptInAndMovePassword() = 0;
+
   // Called from the Save/Update bubble controller when a "new" user (i.e. who
   // hasn't chosen whether to use the account-scoped storage yet) saves a
   // password (locally). If the reauth is successful, this moves the just-saved
@@ -194,24 +186,9 @@ class PasswordsModelDelegate {
   // enabled.
   virtual void ShowBiometricActivationConfirmation() = 0;
 
-  // Called from the Management bubble when user wants to save local password in
-  // the account. It opens the Move bubble for the selected password.
-  virtual void ShowMovePasswordBubble(
-      const password_manager::PasswordForm& form) = 0;
-
   // Called when user clicked "No thanks" button on Biometric Authentication
   // before filling promo dialog.
   virtual void OnBiometricAuthBeforeFillingDeclined() = 0;
-
-  // Called when user clicked "Add username" button in AddUsername bubble.
-  virtual void OnAddUsernameSaveClicked(const std::u16string& username) = 0;
-
-  // Called from the Save/Update bubble controller to decide whether or not we
-  // should show the user the Chrome for iOS promo.
-  virtual void MaybeShowIOSPasswordPromo() = 0;
-
-  // Called from the Relaunch Chrome bubble to gracefully restart the Chrome.
-  virtual void RelaunchChrome() = 0;
 
  protected:
   virtual ~PasswordsModelDelegate() = default;

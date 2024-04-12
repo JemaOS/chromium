@@ -82,16 +82,11 @@ class AudioWorkletHandler final
   Vector<scoped_refptr<AudioBus>> inputs_;
   Vector<scoped_refptr<AudioBus>> outputs_;
 
-  // For unconnected outputs, the handler needs to provide an AudioBus object
-  // to the AudioWorkletProcessor.
-  Vector<scoped_refptr<AudioBus>> unconnected_outputs_;
-
   HashMap<String, scoped_refptr<AudioParamHandler>> param_handler_map_;
   HashMap<String, std::unique_ptr<AudioFloatArray>> param_value_map_;
 
-  // TODO(crbug.com/1447088): The tail time of AudioWorkletNode is decided by
-  // the active processing flag. So it doesn't need an automatic tail time
-  // management from the renderer.
+  // TODO(): Adjust this if needed based on the result of the process
+  // method or the value of `tail_time_`.
   bool RequiresTailProcessing() const override { return true; }
 
   scoped_refptr<base::SingleThreadTaskRunner> main_thread_task_runner_;

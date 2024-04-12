@@ -4,8 +4,6 @@
 
 #include "ash/hud_display/graph_page_view_base.h"
 
-#include <utility>
-
 #include "ash/hud_display/hud_constants.h"
 #include "ash/hud_display/hud_properties.h"
 #include "ash/hud_display/legend.h"
@@ -33,11 +31,11 @@ constexpr int kMinMaxButtonBorder = 5;
 
 // ImageButton with underline
 class MinMaxButton : public views::ImageButton {
-  METADATA_HEADER(MinMaxButton, views::ImageButton)
-
  public:
+  METADATA_HEADER(MinMaxButton);
+
   explicit MinMaxButton(views::Button::PressedCallback callback)
-      : views::ImageButton(std::move(callback)) {
+      : views::ImageButton(callback) {
     SetBorder(views::CreateEmptyBorder(kMinMaxButtonBorder));
     SetBackground(std::make_unique<SolidSourceBackground>(kHUDLegendBackground,
                                                           /*radius=*/0));
@@ -70,7 +68,7 @@ class MinMaxButton : public views::ImageButton {
   }
 };
 
-BEGIN_METADATA(MinMaxButton)
+BEGIN_METADATA(MinMaxButton, views::ImageButton)
 END_METADATA
 
 void SetMinimizeIconToButton(views::ImageButton* button) {
@@ -89,7 +87,7 @@ void SetRestoreIconToButton(views::ImageButton* button) {
 
 }  // namespace
 
-BEGIN_METADATA(GraphPageViewBase)
+BEGIN_METADATA(GraphPageViewBase, views::View)
 END_METADATA
 
 GraphPageViewBase::GraphPageViewBase() {

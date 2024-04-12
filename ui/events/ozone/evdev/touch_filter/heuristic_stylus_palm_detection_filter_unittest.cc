@@ -72,7 +72,6 @@ TEST_F(HeuristicStylusPalmDetectionFilterTest, TestCancelAfterStylus) {
   std::bitset<kNumTouchEvdevSlots> suppress, hold;
   // Set Palm as test_start_time_;
   palm_detection_filter_->Filter(touches_, test_start_time_, &hold, &suppress);
-  shared_palm_state->latest_stylus_touch_time = test_start_time_;
   EXPECT_TRUE(hold.none());
   EXPECT_TRUE(suppress.none());
 
@@ -108,9 +107,9 @@ TEST_F(HeuristicStylusPalmDetectionFilterTest, TestHoldAfterStylus) {
   std::bitset<kNumTouchEvdevSlots> suppress, hold;
   // Set Palm as test_start_time_;
   palm_detection_filter_->Filter(touches_, test_start_time_, &hold, &suppress);
-  shared_palm_state->latest_stylus_touch_time = test_start_time_;
   EXPECT_TRUE(hold.none());
   EXPECT_TRUE(suppress.none());
+  EXPECT_EQ(0u, shared_palm_state->active_finger_touches);
 
   // Now, lets start two touches a little before end of hold time.
   touches_[0].tool_code = 0;
@@ -137,7 +136,11 @@ TEST_F(HeuristicStylusPalmDetectionFilterTest, TestHoldAfterStylus) {
       hold.reset(0);
       hold.reset(1);
       EXPECT_TRUE(hold.none());
+      ASSERT_EQ(0u, shared_palm_state->active_finger_touches)
+          << " Failed at i = " << i;
     } else {
+      ASSERT_EQ(2u, shared_palm_state->active_finger_touches)
+          << " Failed at i = " << i;
       EXPECT_TRUE(hold.none());
     }
   }
@@ -149,7 +152,6 @@ TEST_F(HeuristicStylusPalmDetectionFilterTest, TestNothingLongAfterStylus) {
   std::bitset<kNumTouchEvdevSlots> suppress, hold;
   // Set Palm as test_start_time_;
   palm_detection_filter_->Filter(touches_, test_start_time_, &hold, &suppress);
-  shared_palm_state->latest_stylus_touch_time = test_start_time_;
   EXPECT_TRUE(hold.none());
   EXPECT_TRUE(suppress.none());
   touches_[0].tool_code = 0;
@@ -157,6 +159,7 @@ TEST_F(HeuristicStylusPalmDetectionFilterTest, TestNothingLongAfterStylus) {
   base::TimeTicks start_time =
       test_start_time_ + hold_time + base::Milliseconds(1e-2);
   palm_detection_filter_->Filter(touches_, start_time, &hold, &suppress);
+  EXPECT_EQ(2u, shared_palm_state->active_finger_touches);
   EXPECT_TRUE(hold.none());
   EXPECT_TRUE(suppress.none());
 }
@@ -167,7 +170,6 @@ TEST_F(HeuristicStylusPalmDetectionFilterTest, TestHover) {
   std::bitset<kNumTouchEvdevSlots> suppress, hold;
   // Set Palm as test_start_time_;
   palm_detection_filter_->Filter(touches_, test_start_time_, &hold, &suppress);
-  shared_palm_state->latest_stylus_touch_time = test_start_time_;
   EXPECT_TRUE(hold.none());
   EXPECT_TRUE(suppress.none());
 

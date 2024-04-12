@@ -14,9 +14,9 @@ namespace switches {
 
 GFX_SWITCHES_EXPORT extern const char kAnimationDurationScale[];
 GFX_SWITCHES_EXPORT extern const char kDisableFontSubpixelPositioning[];
+GFX_SWITCHES_EXPORT extern const char kDisablePPAPISharedImagesSwapChain[];
 GFX_SWITCHES_EXPORT extern const char kEnableNativeGpuMemoryBuffers[];
 GFX_SWITCHES_EXPORT extern const char kForcePrefersReducedMotion[];
-GFX_SWITCHES_EXPORT extern const char kForcePrefersNoReducedMotion[];
 GFX_SWITCHES_EXPORT extern const char kHeadless[];
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
@@ -30,10 +30,11 @@ namespace features {
 
 GFX_SWITCHES_EXPORT BASE_DECLARE_FEATURE(kOddHeightMultiPlanarBuffers);
 GFX_SWITCHES_EXPORT BASE_DECLARE_FEATURE(kOddWidthMultiPlanarBuffers);
-GFX_SWITCHES_EXPORT BASE_DECLARE_FEATURE(kUseSmartRefForGPUFenceHandle);
+GFX_SWITCHES_EXPORT BASE_DECLARE_FEATURE(kPPAPISharedImagesSwapChain);
 
 #if BUILDFLAG(IS_CHROMEOS)
-GFX_SWITCHES_EXPORT BASE_DECLARE_FEATURE(kEnableIntelMediaCompression);
+GFX_SWITCHES_EXPORT BASE_DECLARE_FEATURE(kVariableGoogleSansFont);
+GFX_SWITCHES_EXPORT bool UseVariableGoogleSansFont();
 #endif
 
 }  // namespace features

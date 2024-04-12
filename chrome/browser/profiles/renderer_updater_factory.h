@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_PROFILES_RENDERER_UPDATER_FACTORY_H_
 #define CHROME_BROWSER_PROFILES_RENDERER_UPDATER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -26,12 +26,12 @@ class RendererUpdaterFactory : public ProfileKeyedServiceFactory {
 
  protected:
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 
  private:
-  friend base::NoDestructor<RendererUpdaterFactory>;
+  friend struct base::DefaultSingletonTraits<RendererUpdaterFactory>;
 
   RendererUpdaterFactory();
   ~RendererUpdaterFactory() override;

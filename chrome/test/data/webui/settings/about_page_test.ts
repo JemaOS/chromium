@@ -4,31 +4,21 @@
 
 // clang-format off
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import type {SettingsAboutPageElement, SettingsRoutes} from 'chrome://settings/settings.js';
-import {AboutPageBrowserProxyImpl, LifetimeBrowserProxyImpl, Route, Router} from 'chrome://settings/settings.js';
+import {AboutPageBrowserProxyImpl, LifetimeBrowserProxyImpl, Route, Router, SettingsAboutPageElement, SettingsRoutes} from 'chrome://settings/settings.js';
 import {assertTrue} from 'chrome://webui-test/chai_assert.js';
 
 import {TestAboutPageBrowserProxy} from './test_about_page_browser_proxy.js';
 import {TestLifetimeBrowserProxy} from './test_lifetime_browser_proxy.js';
 
-// <if expr="_google_chrome">
-import {ABOUT_PAGE_PRIVACY_POLICY_URL, OpenWindowProxyImpl} from 'chrome://settings/settings.js';
-import {TestOpenWindowProxy} from 'chrome://webui-test/test_open_window_proxy.js';
-// </if>
-
 // <if expr="_google_chrome and is_macosx">
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {PromoteUpdaterStatus} from 'chrome://settings/settings.js';
+import {PromoteUpdaterStatus} from 'chrome://settings/settings.js';
 // </if>
 
 // <if expr="not chromeos_ash">
 import {UpdateStatus} from 'chrome://settings/settings.js';
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
-import {assertFalse, assertNotEquals} from 'chrome://webui-test/chai_assert.js';
-// </if>
-
-// <if expr="_google_chrome or not chromeos_ash">
-import {assertEquals} from 'chrome://webui-test/chai_assert.js';
+import {assertEquals, assertFalse, assertNotEquals} from 'chrome://webui-test/chai_assert.js';
 // </if>
 
 // clang-format on
@@ -54,7 +44,7 @@ function fireStatusChanged(
 }
 // </if>
 
-suite('AllBuilds', function() {
+suite('AboutPageTest_AllBuilds', function() {
   let page: SettingsAboutPageElement;
   let aboutBrowserProxy: TestAboutPageBrowserProxy;
   let lifetimeBrowserProxy: TestLifetimeBrowserProxy;
@@ -308,19 +298,8 @@ suite('AllBuilds', function() {
     fireStatusChanged(UpdateStatus.DISABLED_BY_ADMIN);
     assertTrue(relaunch.hidden);
   });
-
-  // <if expr="_google_chrome or _is_chrome_for_testing_branded">
-  test('TermsOfService', function() {
-    const termsOfServiceEl =
-        page.shadowRoot!.querySelector<HTMLAnchorElement>('a#tos');
-    assertTrue(!!termsOfServiceEl);
-
-    assertEquals(page.i18n('aboutProductTos'), termsOfServiceEl.textContent);
-    assertEquals(page.i18n('aboutTermsURL'), termsOfServiceEl.href);
-  });
   // </if>
 
-  // </if>
   test('GetHelp', function() {
     assertTrue(!!page.shadowRoot!.querySelector('#help'));
     page.shadowRoot!.querySelector<HTMLElement>('#help')!.click();
@@ -328,18 +307,14 @@ suite('AllBuilds', function() {
   });
 });
 
-// <if expr="_google_chrome">
-suite('OfficialBuild', function() {
+suite('AboutPageTest_OfficialBuilds', function() {
   let page: SettingsAboutPageElement;
   let browserProxy: TestAboutPageBrowserProxy;
-  let openWindowProxy: TestOpenWindowProxy;
 
   setup(function() {
     setupRouter();
     browserProxy = new TestAboutPageBrowserProxy();
     AboutPageBrowserProxyImpl.setInstance(browserProxy);
-    openWindowProxy = new TestOpenWindowProxy();
-    OpenWindowProxyImpl.setInstance(openWindowProxy);
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     page = document.createElement('settings-about-page');
     document.body.appendChild(page);
@@ -351,16 +326,7 @@ suite('OfficialBuild', function() {
     await browserProxy.whenCalled('openFeedbackDialog');
   });
 
-  test('PrivacyPolicy', async function() {
-    const privacyPolicyLink =
-        page.shadowRoot!.querySelector<HTMLElement>('#privacyPolicy');
-    assertTrue(!!privacyPolicyLink);
-    privacyPolicyLink.click();
-    const url = await openWindowProxy.whenCalled('openUrl');
-    assertEquals(ABOUT_PAGE_PRIVACY_POLICY_URL, url);
-  });
-
-  // <if expr="is_macosx">
+  // <if expr="_google_chrome and is_macosx">
   type Scenarios = 'CANT_PROMOTE'|'CAN_PROMOTE'|'IN_BETWEEN'|'PROMOTED';
 
   /**
@@ -471,4 +437,3 @@ suite('OfficialBuild', function() {
   });
   // </if>
 });
-// </if>

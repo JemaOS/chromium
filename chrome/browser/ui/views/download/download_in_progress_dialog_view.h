@@ -11,9 +11,9 @@
 // Dialog shown when the user tries to exit the browser or all incognito windows
 // while a download is in progress.
 class DownloadInProgressDialogView : public views::DialogDelegateView {
-  METADATA_HEADER(DownloadInProgressDialogView, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(DownloadInProgressDialogView);
+
   DownloadInProgressDialogView(const DownloadInProgressDialogView&) = delete;
   DownloadInProgressDialogView& operator=(const DownloadInProgressDialogView&) =
       delete;

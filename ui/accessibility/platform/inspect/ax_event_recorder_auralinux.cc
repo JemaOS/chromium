@@ -53,7 +53,7 @@ bool AXEventRecorderAuraLinux::ShouldUseATSPI() {
 }
 
 AXEventRecorderAuraLinux::AXEventRecorderAuraLinux(
-    base::WeakPtr<AXPlatformTreeManager> manager,
+    AXPlatformTreeManager* manager,
     base::ProcessId pid,
     const AXTreeSelector& selector)
     : manager_(manager), pid_(pid), selector_(selector) {
@@ -121,12 +121,8 @@ std::string AXEventRecorderAuraLinux::AtkObjectToString(AtkObject* obj,
       base::StringPrintf("role=ROLE_%s", base::ToUpperASCII(role).c_str());
   // Getting the name breaks firing of name-change events. Allow disabling of
   // logging the name in those situations.
-  if (include_name) {
-    // Supplying null to the corresponding argument of a "%s" specifier is UB.
-    // Explicitly avoid this.
-    const gchar* name = atk_object_get_name(obj);
-    str += base::StringPrintf(" name='%s'", name ? name : "(null)");
-  }
+  if (include_name)
+    str += base::StringPrintf(" name='%s'", atk_object_get_name(obj));
   return str;
 }
 
@@ -134,7 +130,7 @@ void AXEventRecorderAuraLinux::ProcessATKEvent(const char* event,
                                                unsigned int n_params,
                                                const GValue* params) {
   // If we don't have a root object, it means the tree is being destroyed.
-  if (!manager_ || !manager_->RootDelegate()) {
+  if (!manager_->RootDelegate()) {
     RemoveATKEventListeners();
     return;
   }

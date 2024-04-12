@@ -27,7 +27,6 @@
 #include "ui/accessibility/platform/ax_platform_node_base.h"
 #include "ui/accessibility/platform/ax_platform_text_boundary.h"
 #include "ui/accessibility/platform/ichromeaccessible.h"
-#include "ui/accessibility/platform/sequence_affine_com_object_root_win.h"
 #include "ui/gfx/range/range.h"
 
 // This nonstandard GUID is taken directly from the Mozilla sources
@@ -311,25 +310,6 @@ enum {
   SCOPED_UMA_HISTOGRAM_TIMER_MICROS(                     \
       "Accessibility.Performance.WinAPIs." #enum_value)
 
-#define StringForSource_WebContents "WebContents."
-#define StringForSource_Views "Views."
-
-#define WIN_ACCESSIBILITY_SOURCE_API_PERF_HISTOGRAM(api_enum)                  \
-  if (GetDelegate() && GetDelegate()->node()) {                                \
-    if (!GetDelegate()->node()->IsView()) {                                    \
-      SCOPED_UMA_HISTOGRAM_TIMER_MICROS(                                       \
-          "Accessibility.Performance."                                         \
-          "WinAPIs." StringForSource_WebContents #api_enum);                   \
-    } else {                                                                   \
-      SCOPED_UMA_HISTOGRAM_TIMER_MICROS(                                       \
-          "Accessibility.Performance."                                         \
-          "WinAPIs." StringForSource_Views #api_enum);                         \
-    }                                                                          \
-  } else {                                                                     \
-    SCOPED_UMA_HISTOGRAM_TIMER_MICROS(                                         \
-        "Accessibility.Performance.WinAPIs." StringForSource_Views #api_enum); \
-  }
-
 //
 // Macros to use at the top of any AXPlatformNodeWin (or derived class) method
 // that implements a UIA COM interface. The error code UIA_E_ELEMENTNOTAVAILABLE
@@ -345,11 +325,6 @@ enum {
   if (!arg)                               \
     return E_INVALIDARG;                  \
   *arg = {};
-
-// A helper for tracing calls for functions implementing accessibility COM
-// interfaces.
-#define WIN_ACCESSIBILITY_API_TRACE_EVENT(function) \
-  TRACE_EVENT("accessibility", function, perfetto::Flow::FromPointer(this))
 
 namespace base {
 namespace win {
@@ -397,9 +372,10 @@ class COMPONENT_EXPORT(AX_PLATFORM)
   ~WinAccessibilityAPIUsageScopedUIAEventsNotifier();
 };
 
+// TODO(nektar): Remove multithread superclass since we don't support it.
 class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
     uuid("26f5641a-246d-457b-a96d-07f3fae6acf2")) AXPlatformNodeWin
-    : public SequenceAffineComObjectRoot,
+    : public CComObjectRootEx<CComMultiThreadModel>,
       public IDispatchImpl<IAccessible2_4,
                            &IID_IAccessible2_4,
                            &LIBID_IAccessible2Lib>,
@@ -487,19 +463,6 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
   // AXPlatformNodeBase overrides.
   void Destroy() override;
   bool IsPlatformCheckable() const override;
-
-  // CComObjectRootEx (non-virtual) overrides.
-  ULONG InternalAddRef();
-  ULONG InternalRelease();
-
-  // Invoked when the instance's refcount rises above 1. This generally means
-  // that a reference to an interface pointer is being handed out to an
-  // accessibility consumer.
-  virtual void OnReferenced();
-
-  // Invoked when the instance's refcount drops to 1. This generally means that
-  // an accessibility consumer has released its last reference to the instance.
-  virtual void OnDereferenced();
 
   //
   // IAccessible methods.
@@ -1164,8 +1127,8 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
   // If either |start_offset| or |end_offset| are not provided then the
   // endpoint is treated as the start or end of the node respectively.
   HRESULT GetTextAttributeValue(TEXTATTRIBUTEID attribute_id,
-                                const std::optional<int>& start_offset,
-                                const std::optional<int>& end_offset,
+                                const absl::optional<int>& start_offset,
+                                const absl::optional<int>& end_offset,
                                 base::win::VariantVector* result);
 
   // IRawElementProviderSimple support method.
@@ -1202,17 +1165,14 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
   // depth-first pre-order traversal.
   AXPlatformNodeWin* GetFirstTextOnlyDescendant();
 
-  // Clear the computed hypertext.
-  void ResetComputedHypertext();
-
   // Convert a mojo event to an MSAA event. Exposed for testing.
-  static std::optional<DWORD> MojoEventToMSAAEvent(ax::mojom::Event event);
+  static absl::optional<DWORD> MojoEventToMSAAEvent(ax::mojom::Event event);
 
   // Convert a mojo event to a UIA event. Exposed for testing.
-  static std::optional<EVENTID> MojoEventToUIAEvent(ax::mojom::Event event);
+  static absl::optional<EVENTID> MojoEventToUIAEvent(ax::mojom::Event event);
 
   // Convert a mojo event to a UIA property id. Exposed for testing.
-  static std::optional<PROPERTYID> MojoEventToUIAProperty(
+  static absl::optional<PROPERTYID> MojoEventToUIAProperty(
       ax::mojom::Event event);
 
  protected:
@@ -1246,7 +1206,7 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
 
   bool IsUIAControl() const;
 
-  std::optional<LONG> ComputeUIALandmarkType() const;
+  absl::optional<LONG> ComputeUIALandmarkType() const;
 
   bool IsInaccessibleForUIA() const;
 
@@ -1260,6 +1220,8 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
   // Relationships between this node and other nodes.
   std::vector<Microsoft::WRL::ComPtr<AXPlatformRelationWin>> relations_;
 
+  AXLegacyHypertext old_hypertext_;
+
   // These protected methods are still used by BrowserAccessibilityComWin. At
   // some point post conversion, we can probably move these to be private
   // methods.
@@ -1271,6 +1233,9 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
   // Also, in IA2, text that includes embedded objects is called hypertext.
   // Returns true if the current object is an IA2 hyperlink.
   bool IsHyperlink();
+  void ComputeHypertextRemovedAndInserted(size_t* start,
+                                          size_t* old_len,
+                                          size_t* new_len);
 
   // If offset is a member of IA2TextSpecialOffsets this function updates the
   // value of offset and returns, otherwise offset remains unchanged.
@@ -1475,12 +1440,12 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
   // Computes the AnnotationObjects Attribute for the current node.
   void GetAnnotationObjectsAttribute(base::win::VariantVector* result);
   // Computes the AnnotationTypes Attribute for the current node.
-  HRESULT GetAnnotationTypesAttribute(const std::optional<int>& start_offset,
-                                      const std::optional<int>& end_offset,
+  HRESULT GetAnnotationTypesAttribute(const absl::optional<int>& start_offset,
+                                      const absl::optional<int>& end_offset,
                                       base::win::VariantVector* result);
   // Lookup the LCID for the language this node is using.
-  // Returns std::nullopt if there was an error.
-  std::optional<LCID> GetCultureAttributeAsLCID() const;
+  // Returns absl::nullopt if there was an error.
+  absl::optional<LCID> GetCultureAttributeAsLCID() const;
   // Converts an int attribute to a COLORREF
   COLORREF GetIntAttributeAsCOLORREF(ax::mojom::IntAttribute attribute) const;
   // Converts the ListStyle to UIA BulletStyle
@@ -1488,7 +1453,7 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
   // Helper to get the UIA StyleId enumeration for this node
   LONG ComputeUIAStyleId() const;
   // Convert mojom TextAlign to UIA HorizontalTextAlignment enumeration
-  static std::optional<HorizontalTextAlignment>
+  static absl::optional<HorizontalTextAlignment>
   AXTextAlignToUIAHorizontalTextAlignment(ax::mojom::TextAlign text_align);
   // Converts IntAttribute::kHierarchicalLevel to UIA StyleId enumeration
   static LONG AXHierarchicalLevelToUIAStyleId(int32_t hierarchical_level);
@@ -1505,7 +1470,7 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
       ax::mojom::MarkerType marker_type,
       int offset_ranges_amount,
       std::vector<std::pair<int, int>>* ranges,
-      const std::optional<ax::mojom::HighlightType>& highlight_type);
+      const absl::optional<ax::mojom::HighlightType>& highlight_type);
 
   enum class MarkerTypeRangeResult {
     // The MarkerType does not overlap the range.
@@ -1519,11 +1484,11 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
   // Determine if a text range overlaps a |marker_type|, and whether
   // the overlap is a partial or or complete match.
   MarkerTypeRangeResult GetMarkerTypeFromRange(
-      const std::optional<int>& start_offset,
-      const std::optional<int>& end_offset,
+      const absl::optional<int>& start_offset,
+      const absl::optional<int>& end_offset,
       ax::mojom::MarkerType marker_type,
-      const std::optional<ax::mojom::HighlightType>& highlight_type =
-          std::nullopt);
+      const absl::optional<ax::mojom::HighlightType>& highlight_type =
+          absl::nullopt);
 
   bool IsAncestorComboBox();
 
@@ -1571,8 +1536,6 @@ class COMPONENT_EXPORT(AX_PLATFORM) __declspec(
   static bool IsValidUiaRelationTarget(AXPlatformNode* ax_platform_node);
 
   UIARoleProperties GetUIARoleProperties();
-
-  AXPlatformNodeWin* GetUIATableAncestor() const;
 
   // Start and end offsets of an active composition
   gfx::Range active_composition_range_;

@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {session, dp} = await testRunner.startBlank('Test that CSS coverage works for a newly added stylesheet.');
 
   await dp.DOM.enable();

@@ -10,16 +10,15 @@
 #include "base/run_loop.h"
 #include "base/values.h"
 #include "chrome/browser/extensions/extension_service.h"
-#include "chrome/browser/extensions/permissions/scripting_permissions_modifier.h"
+#include "chrome/browser/extensions/scripting_permissions_modifier.h"
 #include "chrome/browser/extensions/webstore_installer_test.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "content/public/test/browser_test.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/permissions_manager.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/extension_features.h"
+#include "extensions/common/value_builder.h"
 
 namespace extensions {
 
@@ -42,15 +41,13 @@ const char kCrxWithPermissionsFilename[] =
 class TestWebstoreInstaller : public WebstoreInstaller {
  public:
   TestWebstoreInstaller(Profile* profile,
-                        SuccessCallback success_callback,
-                        FailureCallback failure_callback,
+                        Delegate* delegate,
                         content::WebContents* web_contents,
                         const std::string& id,
                         std::unique_ptr<Approval> approval,
                         InstallSource source)
       : WebstoreInstaller(profile,
-                          std::move(success_callback),
-                          std::move(failure_callback),
+                          delegate,
                           web_contents,
                           id,
                           std::move(approval),
@@ -69,7 +66,8 @@ class TestWebstoreInstaller : public WebstoreInstaller {
   base::OnceClosure deleted_closure_;
 };
 
-class WebstoreInstallerBrowserTest : public WebstoreInstallerTest {
+class WebstoreInstallerBrowserTest : public WebstoreInstallerTest,
+                                     public WebstoreInstaller::Delegate {
  public:
   WebstoreInstallerBrowserTest(const std::string& webstore_domain,
                                const std::string& test_data_path,
@@ -89,14 +87,19 @@ class WebstoreInstallerBrowserTest : public WebstoreInstallerTest {
 
   bool success() const { return success_; }
 
-  void OnExtensionInstallSuccess(const std::string& id) {
+  // Overridden from WebstoreInstaller::Delegate:
+  void OnExtensionDownloadStarted(const std::string& id,
+                                  download::DownloadItem* item) override {}
+  void OnExtensionDownloadProgress(const std::string& id,
+                                   download::DownloadItem* item) override {}
+  void OnExtensionInstallSuccess(const std::string& id) override {
     success_ = true;
     std::move(done_closure_).Run();
   }
-
-  void OnExtensionInstallFailure(const std::string& id,
-                                 const std::string& error,
-                                 WebstoreInstaller::FailureReason reason) {
+  void OnExtensionInstallFailure(
+      const std::string& id,
+      const std::string& error,
+      WebstoreInstaller::FailureReason reason) override {
     success_ = false;
     std::move(done_closure_).Run();
   }
@@ -119,11 +122,12 @@ class WebstoreInstallerMV2BrowserTest : public WebstoreInstallerBrowserTest {
   // The manifest used by the test installer must match `kCrxFilename` manifest
   // in the test directory.
   base::Value::Dict GetManifest() {
-    return base::Value::Dict()
+    return DictionaryBuilder()
         .Set("name", "Installer Extension")
         .Set("manifest_version", 2)
         .Set("version", "1.0")
-        .Set("permissions", base::Value::List().Append("tabs"));
+        .Set("permissions", ListBuilder().Append("tabs").Build())
+        .Build();
   }
 };
 
@@ -141,13 +145,8 @@ IN_PROC_BROWSER_TEST_F(WebstoreInstallerMV2BrowserTest, WebstoreInstall) {
   base::RunLoop run_loop;
   SetDoneClosure(run_loop.QuitClosure());
   TestWebstoreInstaller* installer = new TestWebstoreInstaller(
-      browser()->profile(),
-      base::BindOnce(&WebstoreInstallerBrowserTest::OnExtensionInstallSuccess,
-                     base::Unretained(this)),
-      base::BindOnce(&WebstoreInstallerBrowserTest::OnExtensionInstallFailure,
-                     base::Unretained(this)),
-      active_web_contents, kTestExtensionId, std::move(approval),
-      WebstoreInstaller::INSTALL_SOURCE_OTHER);
+      browser()->profile(), this, active_web_contents, kTestExtensionId,
+      std::move(approval), WebstoreInstaller::INSTALL_SOURCE_OTHER);
   installer->Start();
   run_loop.Run();
 
@@ -172,13 +171,8 @@ IN_PROC_BROWSER_TEST_F(WebstoreInstallerMV2BrowserTest, SimultaneousInstall) {
   base::RunLoop run_loop;
   SetDoneClosure(run_loop.QuitClosure());
   scoped_refptr<TestWebstoreInstaller> installer = new TestWebstoreInstaller(
-      browser()->profile(),
-      base::BindOnce(&WebstoreInstallerBrowserTest::OnExtensionInstallSuccess,
-                     base::Unretained(this)),
-      base::BindOnce(&WebstoreInstallerBrowserTest::OnExtensionInstallFailure,
-                     base::Unretained(this)),
-      active_web_contents, kTestExtensionId, std::move(approval),
-      WebstoreInstaller::INSTALL_SOURCE_OTHER);
+      browser()->profile(), this, active_web_contents, kTestExtensionId,
+      std::move(approval), WebstoreInstaller::INSTALL_SOURCE_OTHER);
   installer->Start();
 
   // Simulate another mechanism installing the same extension.
@@ -224,11 +218,12 @@ class WebstoreInstallerWithWithholdingUIBrowserTest
   // Th manifest used by the test installer must match
   // `kCrxWithPermissionsFilename` manifest in the test directory.
   base::Value::Dict GetManifest() {
-    return base::Value::Dict()
+    return DictionaryBuilder()
         .Set("name", "Installer Extension")
         .Set("manifest_version", 3)
         .Set("version", "1.0")
-        .Set("host_permissions", base::Value::List().Append("<all_urls>"));
+        .Set("host_permissions", ListBuilder().Append("<all_urls>").Build())
+        .Build();
   }
 
  private:
@@ -257,12 +252,8 @@ IN_PROC_BROWSER_TEST_P(WebstoreInstallerWithWithholdingUIBrowserTest,
   base::RunLoop run_loop;
   SetDoneClosure(run_loop.QuitClosure());
   TestWebstoreInstaller* installer = new TestWebstoreInstaller(
-      browser()->profile(),
-      base::BindOnce(&WebstoreInstallerBrowserTest::OnExtensionInstallSuccess,
-                     base::Unretained(this)),
-      base::BindOnce(&WebstoreInstallerBrowserTest::OnExtensionInstallFailure,
-                     base::Unretained(this)),
-      active_web_contents, kTestExtensionWithPermissionsId, std::move(approval),
+      browser()->profile(), this, active_web_contents,
+      kTestExtensionWithPermissionsId, std::move(approval),
       WebstoreInstaller::INSTALL_SOURCE_OTHER);
   installer->Start();
   run_loop.Run();

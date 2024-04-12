@@ -4,12 +4,12 @@
 
 #include "ash/wm/desks/desk.h"
 
-#include <absl/cleanup/cleanup.h>
 #include <utility>
-#include <vector>
 
 #include "ash/constants/app_types.h"
+#include "ash/public/cpp/shell_window_ids.h"
 #include "ash/public/cpp/window_properties.h"
+#include "ash/scoped_animation_disabler.h"
 #include "ash/shell.h"
 #include "ash/wm/desks/desks_controller.h"
 #include "ash/wm/desks/desks_restore_util.h"
@@ -18,7 +18,6 @@
 #include "ash/wm/mru_window_tracker.h"
 #include "ash/wm/overview/overview_controller.h"
 #include "ash/wm/window_positioner.h"
-#include "ash/wm/window_properties.h"
 #include "ash/wm/window_state.h"
 #include "ash/wm/window_util.h"
 #include "ash/wm/workspace/backdrop_controller.h"
@@ -32,12 +31,11 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/stringprintf.h"
-#include "components/app_restore/full_restore_utils.h"
+#include "chromeos/ui/wm/features.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/window_tracker.h"
 #include "ui/compositor/layer.h"
 #include "ui/display/screen.h"
-#include "ui/wm/core/scoped_animation_disabler.h"
 #include "ui/wm/core/window_util.h"
 
 namespace ash {
@@ -47,7 +45,7 @@ namespace {
 constexpr char kConsecutiveDailyVisitsHistogramName[] =
     "Ash.Desks.ConsecutiveDailyVisits";
 
-// Prefix for the desks lifetime histograms.
+// Prefix for the desks lifetime histogram.
 constexpr char kDeskLifetimeHistogramNamePrefix[] = "Ash.Desks.DeskLifetime_";
 
 // The amount of time a user has to stay on a recently activated desk for it to
@@ -76,7 +74,10 @@ void UpdateBackdropController(aura::Window* desk_container) {
 }
 
 bool IsOverviewUiWindow(aura::Window* window) {
-  return window->GetProperty(kOverviewUiKey);
+  return window->GetId() == kShellWindowId_DesksBarWindow ||
+         window->GetId() == kShellWindowId_SaveDeskButtonContainer ||
+         window->GetId() == kShellWindowId_OverviewNoWindowsLabelWindow ||
+         window->GetId() == kShellWindowId_SavedDeskLibraryWindow;
 }
 
 // Returns true if |window| can be managed by the desk, and therefore can be
@@ -122,7 +123,7 @@ void FixWindowStackingAccordingToGlobalMru(aura::Window* window_to_fix) {
   // Find the closest sibling that is not a transient descendant, which
   // |window_to_fix| should be stacked below.
   aura::Window* closest_sibling_above_window = nullptr;
-  for (aura::Window* window : mru_windows) {
+  for (auto* window : mru_windows) {
     if (window == window_to_fix) {
       if (closest_sibling_above_window)
         container->StackChildBelow(window_to_fix, closest_sibling_above_window);
@@ -236,8 +237,8 @@ class DeskContainerObserver : public aura::WindowObserver {
   }
 
  private:
-  const raw_ptr<Desk> owner_;
-  const raw_ptr<aura::Window> container_;
+  const raw_ptr<Desk, ExperimentalAsh> owner_;
+  const raw_ptr<aura::Window, ExperimentalAsh> container_;
 };
 
 // -----------------------------------------------------------------------------
@@ -270,7 +271,7 @@ Desk::ScopedContentUpdateNotificationDisabler::
 
 Desk::ScopedContentUpdateNotificationDisabler::
     ~ScopedContentUpdateNotificationDisabler() {
-  for (ash::Desk* desk : desks_) {
+  for (auto* desk : desks_) {
     desk->ResumeContentUpdateNotification(notify_when_destroyed_);
   }
 }
@@ -294,7 +295,7 @@ Desk::Desk(int associated_container_id, bool desk_being_restored)
 
 Desk::~Desk() {
 #if DCHECK_IS_ON()
-  for (aura::Window* window : windows_) {
+  for (auto* window : windows_) {
     DCHECK(!CanMoveWindowOutOfDeskContainer(window))
         << "DesksController should remove this desk's application windows "
            "first.";
@@ -350,13 +351,9 @@ void Desk::OnRootWindowClosing(aura::Window* root) {
   // WindowTreeHostManager will move those windows to another host/root, and
   // they will be added again to the desk container on the new root.
   const auto windows = windows_;
-  for (aura::Window* window : windows) {
+  for (auto* window : windows) {
     if (window->GetRootWindow() == root)
-      std::erase(windows_, window);
-  }
-
-  if (last_active_root_ == root) {
-    last_active_root_ = nullptr;
+      base::Erase(windows_, window);
   }
 
   all_desk_window_stacking_.erase(root);
@@ -373,11 +370,6 @@ void Desk::AddWindowToDesk(aura::Window* window) {
     aura::Window* root = window->GetRootWindow();
     auto& adw_data = all_desk_window_stacking_[root];
 
-    // Update `last_active_root_` in case it has changed.
-    if (!is_active_ && last_active_root_ != root) {
-      last_active_root_ = root;
-    }
-
     // Find z-order of the added window.
     auto* container = GetDeskContainerForRoot(root);
     if (auto order =
@@ -389,10 +381,6 @@ void Desk::AddWindowToDesk(aura::Window* window) {
           ++adw.order;
       }
     }
-  } else if (HasAllDeskWindowDataOnOtherRoot(window)) {
-    // This indicates that the window has moved to a new root. We will notify
-    // the controller about this and it will in turn notify all desks.
-    DesksController::Get()->NotifyAllDeskWindowMovedToNewRoot(window);
   }
 
   windows_.push_back(window);
@@ -409,9 +397,9 @@ void Desk::AddWindowToDesk(aura::Window* window) {
   if (!is_desk_being_removed_ &&
       !desks_util::IsWindowVisibleOnAllWorkspaces(window)) {
     // Setting the property for `kWindowWorkspaceKey` or
-    // `kDeskUuidKey` will trigger a save for the window state. To
+    // `kDeskGuidKey` will trigger a save for the window state. To
     // avoid doing this twice, we tell the window state to hold off on saving
-    // until we save the `kDeskUuidKey` value.
+    // until we save the `kDeskGuidKey` value.
     // TODO(b/265490703): We should eventually clean up this and
     // `GetScopedIgnorePropertyChange` when unit tests no longer need this
     // scoping to prevent double saves.
@@ -422,7 +410,7 @@ void Desk::AddWindowToDesk(aura::Window* window) {
                           desks_controller->GetDeskIndex(this));
     }
 
-    window->SetProperty(aura::client::kDeskUuidKey, uuid_.AsLowercaseString());
+    window->SetProperty(kDeskGuidKey, uuid_.AsLowercaseString());
   }
 
   MaybeIncrementWeeklyActiveDesks();
@@ -431,7 +419,7 @@ void Desk::AddWindowToDesk(aura::Window* window) {
 void Desk::RemoveWindowFromDesk(aura::Window* window) {
   DCHECK(base::Contains(windows_, window));
 
-  std::erase(windows_, window);
+  base::Erase(windows_, window);
   // No need to refresh the mini_views if the destroyed window doesn't show up
   // there in the first place. Also don't refresh for visible on all desks
   // windows since they're already refreshed in OnWindowRemoved().
@@ -499,39 +487,18 @@ void Desk::SetGuid(base::Uuid new_guid) {
   }
 }
 
-void Desk::SetLacrosProfileId(
-    uint64_t lacros_profile_id,
-    std::optional<DeskProfilesSelectProfileSource> source,
-    bool skip_prefs_update) {
-  if (lacros_profile_id == lacros_profile_id_) {
-    return;
-  }
-
-  if (source) {
-    base::UmaHistogramEnumeration(kDeskProfilesSelectProfileHistogramName,
-                                  *source);
-  }
-
-  lacros_profile_id_ = lacros_profile_id;
-  if (!skip_prefs_update) {
-    desks_restore_util::UpdatePrimaryUserDeskLacrosProfileIdPrefs();
-  }
-
-  for (auto& observer : observers_) {
-    observer.OnDeskProfileChanged(lacros_profile_id_);
-  }
-}
-
 void Desk::PrepareForActivationAnimation() {
   DCHECK(!is_active_);
 
   // Floated window doesn't belong to desk container and needed to be handled
   // separately.
-  if (aura::Window* floated_window =
-          Shell::Get()->float_controller()->FindFloatedWindowOfDesk(this)) {
+  aura::Window* floated_window = nullptr;
+  if (chromeos::wm::features::IsWindowLayoutMenuEnabled() &&
+      (floated_window =
+           Shell::Get()->float_controller()->FindFloatedWindowOfDesk(this))) {
     // Ensure the floated window remain hidden during activation animation.
     // The floated window will be shown when desk is activated.
-    wm::ScopedAnimationDisabler disabler(floated_window);
+    ScopedAnimationDisabler disabler(floated_window);
     floated_window->Hide();
   }
 
@@ -545,10 +512,6 @@ void Desk::PrepareForActivationAnimation() {
 
 void Desk::Activate(bool update_window_activation) {
   DCHECK(!is_active_);
-
-  absl::Cleanup last_active_root_reset = [this] {
-    last_active_root_ = nullptr;
-  };
 
   if (!MaybeResetContainersOpacities()) {
     for (aura::Window* root : Shell::GetAllRootWindows())
@@ -579,18 +542,13 @@ void Desk::Activate(bool update_window_activation) {
   auto mru_window_list =
       Shell::Get()->mru_window_tracker()->BuildMruWindowList(kActiveDesk);
 
-  // If there's an adw window that has order=0 (should be on top) and was on the
-  // last active root window, then we'll find it first and activate it. We use
-  // the MRU list here so that in the case that there are multiple roots that
-  // each have a topmost adw window, we'll activate the one most recently used.
+  // If there's an adw window that has order=0 (should be on top), then we'll
+  // find it first and activate it. We use the MRU list here so that in the
+  // case that there are multiple roots that each have a topmost adw window,
+  // we'll activate the one most recently used.
   if (features::IsPerDeskZOrderEnabled()) {
-    for (aura::Window* window : mru_window_list) {
+    for (auto* window : mru_window_list) {
       aura::Window* root = window->GetRootWindow();
-
-      if (last_active_root_ != nullptr && last_active_root_ != root) {
-        continue;
-      }
-
       auto& adw_data = all_desk_window_stacking_[root];
 
       if (!adw_data.empty() && adw_data.front().window == window &&
@@ -604,7 +562,7 @@ void Desk::Activate(bool update_window_activation) {
 
   // Activate the window on this desk that was most recently used right before
   // the user switched to another desk, so as not to break the user's workflow.
-  for (aura::Window* window : mru_window_list) {
+  for (auto* window : mru_window_list) {
     const auto* window_state = WindowState::Get(window);
     // Floated window should be activated with the desk window, but it doesn't
     // belong to `windows_`.
@@ -697,8 +655,10 @@ void Desk::MoveWindowsToDesk(Desk* target_desk) {
   // floated window back to desk container before the removal, so all windows
   // under the to-be-removed desk's container can be collected in
   // `windows_to_move` to move to target desk.
-  Shell::Get()->float_controller()->OnMovingAllWindowsOutToDesk(this,
-                                                                target_desk);
+  if (chromeos::wm::features::IsWindowLayoutMenuEnabled()) {
+    Shell::Get()->float_controller()->OnMovingAllWindowsOutToDesk(this,
+                                                                  target_desk);
+  }
 
   // Moving windows will change the hierarchy and hence `windows_`, and has to
   // be done without changing the relative z-order. So we make a copy of all the
@@ -711,7 +671,7 @@ void Desk::MoveWindowsToDesk(Desk* target_desk) {
   aura::WindowTracker windows_to_move;
   for (aura::Window* root : Shell::GetAllRootWindows()) {
     const aura::Window* container = GetDeskContainerForRoot(root);
-    for (aura::Window* window : base::Reversed(container->children())) {
+    for (auto* window : base::Reversed(container->children())) {
       windows_to_move.Add(window);
     }
   }
@@ -804,27 +764,16 @@ void Desk::NotifyContentChanged() {
 }
 
 void Desk::UpdateDeskBackdrops() {
-  for (aura::Window* root : Shell::GetAllRootWindows()) {
+  for (auto* root : Shell::GetAllRootWindows())
     UpdateBackdropController(GetDeskContainerForRoot(root));
-  }
 }
 
 void Desk::RecordLifetimeHistogram(int index) {
-  // Desk index is 1-indexed in histograms. The histogram is only defined for
-  // the first 8 desks.
-  if (const int desk_index = index + 1; desk_index <= 8) {
-    std::string histogram;
-    if (lacros_profile_id() != 0) {
-      histogram = base::StringPrintf(
-          "%sProfile_%i", kDeskLifetimeHistogramNamePrefix, desk_index);
-    } else {
-      histogram = base::StringPrintf("%s%i", kDeskLifetimeHistogramNamePrefix,
-                                     desk_index);
-    }
-
-    base::UmaHistogramCounts1000(
-        histogram, (base::Time::Now() - creation_time_).InHours());
-  }
+  // Desk index is 1-indexed in histograms.
+  const int desk_index = index + 1;
+  base::UmaHistogramCounts1000(
+      base::StringPrintf("%s%i", kDeskLifetimeHistogramNamePrefix, desk_index),
+      (base::Time::Now() - creation_time_).InHours());
 }
 
 bool Desk::IsConsecutiveDailyVisit() const {
@@ -853,12 +802,11 @@ void Desk::RecordAndResetConsecutiveDailyVisits(bool being_removed) {
   first_day_visited_ = -1;
 }
 
-std::vector<raw_ptr<aura::Window, VectorExperimental>> Desk::GetAllAppWindows()
-    const {
+std::vector<aura::Window*> Desk::GetAllAppWindows() const {
   // We need to copy the app windows from `windows_` into `app_windows` so
   // that we do not modify `windows_` in place. This also gives us a filtered
   // list with all of the app windows that we need to remove.
-  std::vector<raw_ptr<aura::Window, VectorExperimental>> app_windows;
+  std::vector<aura::Window*> app_windows;
   base::ranges::copy_if(windows_, std::back_inserter(app_windows),
                         [](aura::Window* window) {
                           return window->GetProperty(aura::client::kAppType) !=
@@ -866,21 +814,25 @@ std::vector<raw_ptr<aura::Window, VectorExperimental>> Desk::GetAllAppWindows()
                         });
   // Note that floated window is also app window but needs to be handled
   // separately since it doesn't store in desk container.
-  if (aura::Window* floated_window =
-          Shell::Get()->float_controller()->FindFloatedWindowOfDesk(this)) {
+  aura::Window* floated_window = nullptr;
+  if (chromeos::wm::features::IsWindowLayoutMenuEnabled() &&
+      (floated_window =
+           Shell::Get()->float_controller()->FindFloatedWindowOfDesk(this))) {
     app_windows.push_back(floated_window);
   }
 
   return app_windows;
 }
 
-std::vector<raw_ptr<aura::Window, VectorExperimental>>
-Desk::GetAllAssociatedWindows() const {
+std::vector<aura::Window*> Desk::GetAllAssociatedWindows() const {
   // Note that floated window needs to be handled separately since it doesn't
   // store in desk container.
   if (auto* floated_window =
-          Shell::Get()->float_controller()->FindFloatedWindowOfDesk(this)) {
-    std::vector<raw_ptr<aura::Window, VectorExperimental>> all_windows;
+          !chromeos::wm::features::IsWindowLayoutMenuEnabled()
+              ? nullptr
+              : Shell::Get()->float_controller()->FindFloatedWindowOfDesk(
+                    this)) {
+    std::vector<aura::Window*> all_windows;
     base::ranges::copy(windows_, std::back_inserter(all_windows));
     all_windows.push_back(floated_window);
     return all_windows;
@@ -891,9 +843,6 @@ Desk::GetAllAssociatedWindows() const {
 void Desk::BuildAllDeskStackingData() {
   // This function should not be invoked when this feature isn't enabled.
   DCHECK(features::IsPerDeskZOrderEnabled());
-
-  auto* active_window = window_util::GetActiveWindow();
-  last_active_root_ = active_window ? active_window->GetRootWindow() : nullptr;
 
   for (aura::Window* root : Shell::GetAllRootWindows()) {
     auto& adw_data = all_desk_window_stacking_[root];
@@ -919,9 +868,8 @@ void Desk::RestackAllDeskWindows() {
 
   for (aura::Window* root : Shell::GetAllRootWindows()) {
     auto& adw_data = all_desk_window_stacking_[root];
-    if (adw_data.empty()) {
-      continue;
-    }
+    if (adw_data.empty())
+      return;
 
     aura::Window* container = GetDeskContainerForRoot(root);
 
@@ -951,23 +899,6 @@ void Desk::RestackAllDeskWindows() {
 
     for (auto& adw : adw_data) {
       DCHECK(adw.window);
-
-      if (adw.window->parent() != container) {
-        // TODO(b/295371112): Clean this up when the root cause has been
-        // resolved. When this function is called, `this` is going to be the
-        // active desk and it is expected that all all-desk windows have been
-        // moved to this desk. If this branch is taken, we have an ADW that is
-        // *not* on the current desk and we must not try to stack it.
-        SCOPED_CRASH_KEY_NUMBER(
-            "Restack", "adw_app_type",
-            adw.window->GetProperty(aura::client::kAppType));
-        SCOPED_CRASH_KEY_STRING32("Restack", "adw_app_id",
-                                  full_restore::GetAppId(adw.window));
-
-        base::debug::DumpWithoutCrashing();
-        continue;
-      }
-
       if (adw.order == 0) {
         container->StackChildAtTop(adw.window);
       } else if (aura::Window* stack_below =
@@ -981,72 +912,36 @@ void Desk::RestackAllDeskWindows() {
   }
 }
 
-void Desk::TrackAllDeskWindow(aura::Window* window) {
-  // Floated windows are always on top, so we should not track their stacking
-  // data.
-  if (WindowState::Get(window)->IsFloated()) {
-    return;
-  }
+void Desk::AddAllDeskWindow(aura::Window* window) {
+  DCHECK(features::IsPerDeskZOrderEnabled());
   aura::Window* root = window->GetRootWindow();
   auto& adw_data = all_desk_window_stacking_[root];
 
-  // Update `last_active_root_` in case it has changed.
-  if (!is_active_ && last_active_root_ != root) {
-    last_active_root_ = root;
-  }
-
   // Assume this window is going to be on top and bump remaining windows down.
   adw_data.insert(adw_data.begin(), {.window = window, .order = 0});
-  for (size_t i = 1; i != adw_data.size(); ++i) {
+  for (size_t i = 1; i != adw_data.size(); ++i)
     ++adw_data[i].order;
-  }
 }
 
-void Desk::UntrackAllDeskWindow(aura::Window* window,
-                                aura::Window* recent_root) {
-  CHECK(recent_root);
+void Desk::RemoveAllDeskWindow(aura::Window* window) {
+  DCHECK(features::IsPerDeskZOrderEnabled());
+  aura::Window* root = window->GetRootWindow();
+  DCHECK(root);
 
-  auto& adw_data = all_desk_window_stacking_[recent_root];
+  auto& adw_data = all_desk_window_stacking_[root];
   auto it =
       base::ranges::find(adw_data, window, &AllDeskWindowStackingData::window);
   if (it == adw_data.end()) {
     // This will happen when the desk was created after the window was made into
     // an all desk window. In this case, there's nothing to do since this desk
-    // doesn't have any stacking info for this window. This will also happen
-    // when the window is floated, as floated windows are always on top and
-    // shouldn't have stacking data.
+    // doesn't have any stacking info for this window.
     return;
-  }
-
-  // Reset `last_active_root_` if the adw being removed was the mru window.
-  if (!is_active_ && recent_root == last_active_root_ && it->order == 0) {
-    last_active_root_ = nullptr;
   }
 
   it = adw_data.erase(it);
   // Raise all remaining windows up.
-  for (; it != adw_data.end(); ++it) {
+  for (; it != adw_data.end(); ++it)
     --it->order;
-  }
-}
-
-void Desk::AllDeskWindowMovedToNewRoot(aura::Window* window) {
-  // `window` has been moved to a new root, so `all_desk_window_stacking_` will
-  // need to be updated.
-  for (const auto& [root, adw_vec] : all_desk_window_stacking_) {
-    for (const auto& adw : adw_vec) {
-      if (adw.window == window) {
-        UntrackAllDeskWindow(window, /*recent_root=*/root);
-        TrackAllDeskWindow(window);
-
-        // Note: Both functions above will manipulate ADW data, so it is
-        // imperative that we end the iteration here.
-        return;
-      }
-    }
-  }
-
-  NOTREACHED();
 }
 
 bool Desk::ContentUpdateNotificationSuspended() const {
@@ -1119,26 +1014,6 @@ void Desk::ResumeContentUpdateNotification(bool notify_when_fully_resumed) {
       notify_when_fully_resumed) {
     NotifyContentChanged();
   }
-}
-
-bool Desk::HasAllDeskWindowDataOnOtherRoot(aura::Window* window) const {
-  if (!desks_util::IsWindowVisibleOnAllWorkspaces(window) ||
-      !features::IsPerDeskZOrderEnabled()) {
-    return false;
-  }
-
-  aura::Window* current_root = window->GetRootWindow();
-  for (const auto& [root, adw_vec] : all_desk_window_stacking_) {
-    if (root != current_root) {
-      for (const auto& adw : adw_vec) {
-        if (adw.window == window) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
 }
 
 }  // namespace ash

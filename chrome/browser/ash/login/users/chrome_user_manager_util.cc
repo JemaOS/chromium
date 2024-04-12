@@ -15,7 +15,8 @@
 #include "components/user_manager/user_names.h"
 #include "components/user_manager/user_type.h"
 
-namespace ash::chrome_user_manager_util {
+namespace ash {
+namespace chrome_user_manager_util {
 
 bool AreAllUsersAllowed(const user_manager::UserList& users,
                         const enterprise_management::ChromeDeviceSettingsProto&
@@ -48,9 +49,8 @@ bool AreAllUsersAllowed(const user_manager::UserList& users,
     const bool is_gaia_user_allowed =
         allow_new_user || is_user_allowlisted || is_allowed_because_family_link;
     if (!IsUserAllowed(*user, is_guest_allowed,
-                       user->HasGaiaAccount() && is_gaia_user_allowed)) {
+                       user->HasGaiaAccount() && is_gaia_user_allowed))
       return false;
-    }
   }
   return true;
 }
@@ -58,11 +58,14 @@ bool AreAllUsersAllowed(const user_manager::UserList& users,
 bool IsUserAllowed(const user_manager::User& user,
                    bool is_guest_allowed,
                    bool is_user_allowlisted) {
-  DCHECK(user.GetType() == user_manager::UserType::kRegular ||
-         user.GetType() == user_manager::UserType::kGuest ||
-         user.GetType() == user_manager::UserType::kChild);
+  DCHECK(user.GetType() == user_manager::USER_TYPE_REGULAR ||
+         user.GetType() == user_manager::USER_TYPE_GUEST ||
+         user.GetType() == user_manager::USER_TYPE_FLINT_ACCOUNT ||
+         user.GetType() == user_manager::USER_TYPE_JEMA_ACCOUNT ||
+         user.GetType() == user_manager::USER_TYPE_JEMA_CHILD ||
+         user.GetType() == user_manager::USER_TYPE_CHILD);
 
-  if (user.GetType() == user_manager::UserType::kGuest && !is_guest_allowed) {
+  if (user.GetType() == user_manager::USER_TYPE_GUEST && !is_guest_allowed) {
     return false;
   }
   if (user.HasGaiaAccount() && !is_user_allowlisted) {
@@ -71,38 +74,12 @@ bool IsUserAllowed(const user_manager::User& user,
   return true;
 }
 
-bool IsManagedGuestSessionOrEphemeralLogin() {
+bool IsPublicSessionOrEphemeralLogin() {
   const user_manager::UserManager* user_manager =
       user_manager::UserManager::Get();
-  return user_manager->IsLoggedInAsManagedGuestSession() ||
+  return user_manager->IsLoggedInAsPublicAccount() ||
          user_manager->IsCurrentUserCryptohomeDataEphemeral();
 }
 
-user_manager::UserList FindLoginAllowedUsers(
-    const user_manager::UserList& users) {
-  bool show_users_on_signin;
-  CrosSettings::Get()->GetBoolean(kAccountsPrefShowUserNamesOnSignIn,
-                                  &show_users_on_signin);
-  user_manager::UserList found_users;
-  for (user_manager::User* user : users) {
-    // Skip kiosk apps for login screen user list. Kiosk apps as pods (aka new
-    // kiosk UI) is currently disabled and it gets the apps directly from
-    // KioskChromeAppManager, ArcKioskAppManager and WebKioskAppManager.
-    if (user->IsKioskType()) {
-      continue;
-    }
-    const bool meets_allowlist_requirements =
-        !user->HasGaiaAccount() ||
-        user_manager::UserManager::Get()->IsGaiaUserAllowed(*user);
-    // Public session accounts are always shown on login screen.
-    const bool meets_show_users_requirements =
-        show_users_on_signin ||
-        user->GetType() == user_manager::UserType::kPublicAccount;
-    if (meets_allowlist_requirements && meets_show_users_requirements) {
-      found_users.push_back(user);
-    }
-  }
-  return found_users;
-}
-
-}  // namespace ash::chrome_user_manager_util
+}  // namespace chrome_user_manager_util
+}  // namespace ash

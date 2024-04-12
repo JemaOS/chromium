@@ -6,14 +6,12 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "ash/constants/ash_features.h"
 #include "ash/webui/common/backend/plural_string_handler.h"
 #include "ash/webui/common/keyboard_diagram_strings.h"
-#include "ash/webui/common/trusted_types_util.h"
 #include "ash/webui/diagnostics_ui/backend/common/histogram_util.h"
 #include "ash/webui/diagnostics_ui/backend/connectivity/network_health_provider.h"
 #include "ash/webui/diagnostics_ui/backend/diagnostics_manager.h"
@@ -32,6 +30,7 @@
 #include "base/files/file_path.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
@@ -47,6 +46,7 @@
 #include "ui/chromeos/strings/network/network_element_localized_strings_provider.h"
 #include "ui/resources/grit/webui_resources.h"
 #include "ui/webui/color_change_listener/color_change_handler.h"
+#include "jemaos/switches/urls/urls_constants.h"
 
 namespace ash {
 
@@ -65,7 +65,7 @@ diagnostics::metrics::NavigationView GetInitialView(const GURL url) {
   // Note: Valid query strings map to strings in the GetUrlForPage located in
   // chrome/browser/ui/webui/ash/diagnostics_dialog.cc.
   const std::string& original_query = url.query();  // must outlive |query|.
-  std::string_view query =
+  const base::StringPiece& query =
       base::TrimString(original_query, " \t", base::TRIM_ALL);
 
   if (base::EqualsCaseInsensitiveASCII(query, "system")) {
@@ -103,7 +103,7 @@ base::Value::Dict GetDataSourceUpdate() {
       "keyboardTesterHelpLink",
       GetLinkLabel(
           IDS_INPUT_DIAGNOSTICS_KEYBOARD_TESTER_HELP_LINK,
-          "https://support.google.com/chromebook?p=keyboard_troubleshoot"));
+          jemaos::constants::kJemaOSHelpURL));
   return update;
 }
 
@@ -300,8 +300,6 @@ void AddDiagnosticsStrings(content::WebUIDataSource* html_source) {
       {"noIpAddressText", IDS_NETWORK_DIAGNOSTICS_NO_IP_ADDRESS_TEXT},
       {"notEnoughAvailableMemoryMessage",
        IDS_DIAGNOSTICS_NOT_ENOUGH_AVAILABLE_MEMORY},
-      {"notEnoughAvailableMemoryCpuMessage",
-       IDS_DIAGNOSTICS_NOT_ENOUGH_AVAILABLE_MEMORY_CPU},
       {"percentageLabel", IDS_DIAGNOSTICS_PERCENTAGE_LABEL},
       {"reconnectLinkText", IDS_DIAGNOSTICS_RECONNECT_LINK_TEXT},
       {"remainingCharge", IDS_DIAGNOSTICS_REMAINING_CHARGE_LABEL},
@@ -381,10 +379,15 @@ void SetUpWebUIDataSource(content::WebUIDataSource* source,
   source->AddResourcePath("test_loader_util.js",
                           IDR_WEBUI_JS_TEST_LOADER_UTIL_JS);
   source->AddBoolean("isLoggedIn", LoginState::Get()->IsUserLoggedIn());
+  source->AddBoolean("isInputEnabled",
+                     features::IsInputInDiagnosticsAppEnabled());
   source->AddBoolean("isTouchpadEnabled",
                      features::IsTouchpadInDiagnosticsAppEnabled());
   source->AddBoolean("isTouchscreenEnabled",
                      features::IsTouchscreenInDiagnosticsAppEnabled());
+  source->AddBoolean("isJellyEnabledForDiagnosticsApp",
+                     ash::features::IsJellyEnabledForDiagnosticsApp());
+  source->AddString("jemaDiagnosticAppUrl", jemaos::constants::kJemaDiagnosticAppUrl);
 }
 
 void SetUpPluralStringHandler(content::WebUI* web_ui) {
@@ -408,8 +411,9 @@ DiagnosticsDialogUI::DiagnosticsDialogUI(
           kChromeUIDiagnosticsAppHost);
   html_source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ScriptSrc,
-      "script-src chrome://resources chrome://webui-test 'self';");
-  ash::EnableTrustedTypesCSP(html_source);
+      "script-src chrome://resources chrome://test chrome://webui-test "
+      "'self';");
+  html_source->DisableTrustedTypesCSP();
 
   const auto resources = base::make_span(kAshDiagnosticsAppResources,
                                          kAshDiagnosticsAppResourcesSize);

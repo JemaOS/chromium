@@ -115,7 +115,7 @@ class CrostiniUpgradeAvailableNotificationTest
 
   void RunUntilIdle() { task_environment()->RunUntilIdle(); }
 
-  std::optional<message_center::Notification> GetNotification(std::string id) {
+  absl::optional<message_center::Notification> GetNotification(std::string id) {
     return display_service_->GetNotification(id);
   }
 
@@ -136,7 +136,7 @@ TEST_F(CrostiniUpgradeAvailableNotificationTest, ShowsWhenNotified) {
 
   // Wait for notification, press Upgrade
   ASSERT_TRUE(notification);
-  notification->Get()->delegate()->Click(0, std::nullopt);
+  notification->Get()->delegate()->Click(0, absl::nullopt);
   ASSERT_TRUE(result_future.Wait());
 
   // Dialog should show because we clicked button 0 (Upgrade).

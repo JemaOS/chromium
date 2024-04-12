@@ -50,14 +50,15 @@ class COMPONENT_EXPORT(AX_PLATFORM) AutomationAXTreeWrapper
 
   AutomationTreeManagerOwner* owner() { return owner_; }
 
-  // Called by AutomationInternalCustomBindings::DispatchAccessibilityEvents on
+  // Called by AutomationInternalCustomBindings::OnAccessibilityEvents on
   // the AutomationAXTreeWrapper instance for the correct tree corresponding
   // to this event. Unserializes the tree update and calls back to
   // AutomationTreeManagerOwner to fire any automation events needed.
   bool OnAccessibilityEvents(const AXTreeID& tree_id,
                              const std::vector<AXTreeUpdate>& updates,
                              const std::vector<AXEvent>& events,
-                             gfx::Point mouse_location);
+                             gfx::Point mouse_location,
+                             bool is_active_profile);
 
   // Returns true if this is the desktop tree.
   bool IsDesktopTree() const;

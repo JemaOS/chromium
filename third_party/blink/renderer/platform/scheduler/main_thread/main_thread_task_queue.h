@@ -5,11 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_SCHEDULER_MAIN_THREAD_MAIN_THREAD_TASK_QUEUE_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_SCHEDULER_MAIN_THREAD_MAIN_THREAD_TASK_QUEUE_H_
 
-#include <bit>
 #include <memory>
-#include <optional>
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/task/common/lazy_now.h"
@@ -18,6 +15,7 @@
 #include "base/task/sequence_manager/time_domain.h"
 #include "base/task/single_thread_task_runner.h"
 #include "net/base/request_priority.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/platform/scheduler/common/blink_scheduler_single_thread_task_runner.h"
 #include "third_party/blink/renderer/platform/scheduler/common/task_priority.h"
 #include "third_party/blink/renderer/platform/scheduler/common/throttling/budget_pool.h"
@@ -75,7 +73,6 @@ class PLATFORM_EXPORT MainThreadTaskQueue
     kFramePausable = 14,
     kFrameUnpausable = 15,
     kV8 = 16,
-    kV8LowPriority = 27,
     // 17 : kIPC, obsolete
     kInput = 18,
 
@@ -95,7 +92,7 @@ class PLATFORM_EXPORT MainThreadTaskQueue
 
     // Used to group multiple types when calculating Expected Queueing Time.
     kOther = 23,
-    kCount = 28
+    kCount = 27
   };
 
   // The ThrottleHandle controls throttling and unthrottling the queue. When
@@ -103,19 +100,14 @@ class PLATFORM_EXPORT MainThreadTaskQueue
   // the queue will remain throttled as long as the handle is alive.
   class ThrottleHandle {
    public:
-    explicit ThrottleHandle(MainThreadTaskQueue& task_queue)
-        : task_queue_(task_queue.AsWeakPtr()) {
-      // The throttler is reset for detached task queues, which we shouldn't be
-      // attempting to throttle.
-      CHECK(task_queue_->throttler_);
-      task_queue_->throttler_->IncreaseThrottleRefCount();
+    explicit ThrottleHandle(base::WeakPtr<MainThreadTaskQueue> task_queue)
+        : task_queue_(std::move(task_queue)) {
+      if (task_queue_)
+        task_queue_->throttler_->IncreaseThrottleRefCount();
     }
-
     ~ThrottleHandle() {
-      // The throttler is reset for detached task queues.
-      if (task_queue_ && task_queue_->throttler_) {
+      if (task_queue_)
         task_queue_->throttler_->DecreaseThrottleRefCount();
-      }
     }
 
     // Move-only.
@@ -172,29 +164,20 @@ class PLATFORM_EXPORT MainThreadTaskQueue
       kInput = 10,
       kPostMessageForwarding = 11,
       kInternalNavigationCancellation = 12,
-      kRenderBlocking = 13,
-      kLow = 14,
-      kAsyncScript = 15,
 
-      kMaxValue = kAsyncScript
+      kCount = 13
     };
 
-    // Bit width required for the PrioritisationType enumeration
-    static constexpr unsigned kPrioritisationTypeWidthBits =
-        std::bit_width(static_cast<unsigned>(PrioritisationType::kMaxValue));
-
-    // Ensure that the count of the enumeration does not exceed the
-    // representable range
-    static_assert(static_cast<unsigned>(PrioritisationType::kMaxValue) <
-                      (1u << kPrioritisationTypeWidthBits),
-                  "PrioritisationType count exceeds the bit width range");
-
-    // Ensure that the count of the enumeration is not less than half the
-    // representable range
-    static_assert(
-        static_cast<unsigned>(PrioritisationType::kMaxValue) >=
-            (1u << (kPrioritisationTypeWidthBits - 1)),
-        "PrioritisationType count is less than half the bit width range");
+    // kPrioritisationTypeWidthBits is the number of bits required
+    // for PrioritisationType::kCount - 1, which is the number of bits needed
+    // to represent |prioritisation_type| in QueueTraitKeyType.
+    // We need to update it whenever there is a change in
+    // PrioritisationType::kCount.
+    // TODO(sreejakshetty) make the number of bits calculation automated.
+    static constexpr int kPrioritisationTypeWidthBits = 4;
+    static_assert(static_cast<int>(PrioritisationType::kCount) <=
+                      (1 << kPrioritisationTypeWidthBits),
+                  "Wrong Instanstiation for kPrioritisationTypeWidthBits");
 
     QueueTraits(const QueueTraits&) = default;
     QueueTraits& operator=(const QueueTraits&) = default;
@@ -296,13 +279,13 @@ class PLATFORM_EXPORT MainThreadTaskQueue
         : queue_type(queue_type), spec(NameForQueueType(queue_type)) {}
 
     QueueCreationParams SetWebSchedulingQueueType(
-        std::optional<WebSchedulingQueueType> type) {
+        absl::optional<WebSchedulingQueueType> type) {
       web_scheduling_queue_type = type;
       return *this;
     }
 
     QueueCreationParams SetWebSchedulingPriority(
-        std::optional<WebSchedulingPriority> priority) {
+        absl::optional<WebSchedulingPriority> priority) {
       web_scheduling_priority = priority;
       return *this;
     }
@@ -389,10 +372,10 @@ class PLATFORM_EXPORT MainThreadTaskQueue
     QueueType queue_type;
     TaskQueue::Spec spec;
     WeakPersistent<AgentGroupSchedulerImpl> agent_group_scheduler;
-    raw_ptr<FrameSchedulerImpl> frame_scheduler = nullptr;
+    FrameSchedulerImpl* frame_scheduler = nullptr;
     QueueTraits queue_traits;
-    std::optional<WebSchedulingQueueType> web_scheduling_queue_type;
-    std::optional<WebSchedulingPriority> web_scheduling_priority;
+    absl::optional<WebSchedulingQueueType> web_scheduling_queue_type;
+    absl::optional<WebSchedulingPriority> web_scheduling_priority;
 
    private:
     void ApplyQueueTraitsToSpec() {
@@ -458,11 +441,8 @@ class PLATFORM_EXPORT MainThreadTaskQueue
           on_ipc_task_posted_callback);
   void DetachOnIPCTaskPostedWhileInBackForwardCache();
 
-  // Called when the underlying scheduler is destroyed. Tasks in this queue will
-  // continue to run until the queue becomes empty.
-  void DetachTaskQueue();
+  void DetachFromMainThreadScheduler();
 
-  // Shuts down the task queue. No tasks will run after this is called.
   void ShutdownTaskQueue();
 
   AgentGroupScheduler* GetAgentGroupScheduler();
@@ -472,11 +452,11 @@ class PLATFORM_EXPORT MainThreadTaskQueue
   scoped_refptr<base::SingleThreadTaskRunner> CreateTaskRunner(
       TaskType task_type);
 
-  std::optional<WebSchedulingQueueType> GetWebSchedulingQueueType() const {
+  absl::optional<WebSchedulingQueueType> GetWebSchedulingQueueType() const {
     return web_scheduling_queue_type_;
   }
 
-  std::optional<WebSchedulingPriority> GetWebSchedulingPriority() const {
+  absl::optional<WebSchedulingPriority> GetWebSchedulingPriority() const {
     return web_scheduling_priority_;
   }
 
@@ -563,38 +543,42 @@ class PLATFORM_EXPORT MainThreadTaskQueue
   friend class blink::scheduler::main_thread_scheduler_impl_unittest::
       MainThreadSchedulerImplTest;
 
+  // Clear references to main thread scheduler and frame scheduler and dispatch
+  // appropriate notifications. This is the common part of ShutdownTaskQueue and
+  // DetachFromMainThreadScheduler.
+  void ClearReferencesToSchedulers();
+
   scoped_refptr<BlinkSchedulerSingleThreadTaskRunner> WrapTaskRunner(
       scoped_refptr<base::SingleThreadTaskRunner>);
 
-  TaskQueue::Handle task_queue_;
+  scoped_refptr<TaskQueue> task_queue_;
   scoped_refptr<base::SingleThreadTaskRunner>
       task_runner_with_default_task_type_;
-  std::optional<TaskQueueThrottler> throttler_;
+  absl::optional<TaskQueueThrottler> throttler_;
 
   const QueueType queue_type_;
   const QueueTraits queue_traits_;
 
   // Set if this is queue is used for the web-exposed scheduling API. Used to
   // differentiate initial tasks from continuations for prioritization.
-  const std::optional<WebSchedulingQueueType> web_scheduling_queue_type_;
+  const absl::optional<WebSchedulingQueueType> web_scheduling_queue_type_;
 
   // |web_scheduling_priority_| is the priority of the task queue within the web
   // scheduling API. This priority is used in conjunction with the frame
   // scheduling policy to determine the task queue priority.
-  std::optional<WebSchedulingPriority> web_scheduling_priority_;
+  absl::optional<WebSchedulingPriority> web_scheduling_priority_;
 
   // Needed to notify renderer scheduler about completed tasks.
-  raw_ptr<MainThreadSchedulerImpl> main_thread_scheduler_;  // NOT OWNED
+  MainThreadSchedulerImpl* main_thread_scheduler_;  // NOT OWNED
 
   WeakPersistent<AgentGroupSchedulerImpl> agent_group_scheduler_;
 
-  // Set in the constructor. Cleared in `DetachTaskQueue()` and
-  // `ShutdownTaskQueue()`. Can never be set to a different value afterwards
-  // (except in tests).
-  raw_ptr<FrameSchedulerImpl, DanglingUntriaged> frame_scheduler_;  // NOT OWNED
+  // Set in the constructor. Cleared in ClearReferencesToSchedulers(). Can never
+  // be set to a different value afterwards (except in tests).
+  FrameSchedulerImpl* frame_scheduler_;  // NOT OWNED
 
   // The WakeUpBudgetPool for this TaskQueue, if any.
-  raw_ptr<WakeUpBudgetPool> wake_up_budget_pool_{nullptr};  // NOT OWNED
+  WakeUpBudgetPool* wake_up_budget_pool_{nullptr};  // NOT OWNED
 
   std::unique_ptr<TaskQueue::OnTaskPostedCallbackHandle>
       on_ipc_task_posted_callback_handle_;

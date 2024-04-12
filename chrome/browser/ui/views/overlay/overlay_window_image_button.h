@@ -10,9 +10,9 @@
 
 // Base class for image buttons on the PiP window.
 class OverlayWindowImageButton : public views::ImageButton {
-  METADATA_HEADER(OverlayWindowImageButton, views::ImageButton)
-
  public:
+  METADATA_HEADER(OverlayWindowImageButton);
+
   OverlayWindowImageButton(const OverlayWindowImageButton&) = delete;
   OverlayWindowImageButton& operator=(const OverlayWindowImageButton&) = delete;
 

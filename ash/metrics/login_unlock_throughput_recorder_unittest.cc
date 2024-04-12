@@ -6,9 +6,9 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "ash/login/ui/login_test_base.h"
+#include "ash/metrics/user_metrics_recorder.h"
 #include "ash/public/cpp/shelf_item_delegate.h"
 #include "ash/public/cpp/shelf_model.h"
 #include "ash/session/test_session_controller_client.h"
@@ -21,7 +21,6 @@
 #include "chromeos/ash/components/login/login_state/login_state.h"
 #include "components/app_constants/constants.h"
 #include "ui/aura/window_tree_host.h"
-#include "ui/compositor/test/begin_main_frame_waiter.h"
 #include "ui/compositor/test/draw_waiter_for_test.h"
 #include "ui/gfx/image/image_unittest_util.h"
 
@@ -32,11 +31,10 @@ constexpr char kAshLoginAnimationDurationTabletMode[] =
     "Ash.LoginAnimation.Duration.TabletMode";
 constexpr char kAshLoginAnimationDurationClamshellMode[] =
     "Ash.LoginAnimation.Duration.ClamshellMode";
-constexpr char kAshUnlockAnimationSmoothnessTabletMode[] =
-    "Ash.UnlockAnimation.Smoothness.TabletMode";
-constexpr char kAshUnlockAnimationSmoothnessClamshellMode[] =
-    "Ash.UnlockAnimation.Smoothness.ClamshellMode";
-constexpr char kBootTimeLogin3[] = "BootTime.Login3";
+constexpr char kAshUnlockAnimationDurationTabletMode[] =
+    "Ash.UnlockAnimation.Duration.TabletMode";
+constexpr char kAshUnlockAnimationDurationClamshellMode[] =
+    "Ash.UnlockAnimation.Duration.ClamshellMode";
 
 // A test shelf item delegate that simulates an activated window when a shelf
 // item is selected.
@@ -117,7 +115,40 @@ class TestObserver final : public ui::CompositorAnimationObserver {
 
  private:
   int count_ = 0;
-  const raw_ptr<ui::Compositor> compositor_;
+  const base::raw_ptr<ui::Compositor> compositor_;
+};
+
+class BeginMainFrameWaiter : public ui::CompositorObserver {
+ public:
+  explicit BeginMainFrameWaiter(ui::Compositor* compositor)
+      : compositor_(compositor) {
+    compositor->AddObserver(this);
+  }
+
+  ~BeginMainFrameWaiter() override { compositor_->RemoveObserver(this); }
+
+  // ui::CompositorObserver
+  void OnDidBeginMainFrame(ui::Compositor* compositor) override {
+    DCHECK_EQ(compositor_, compositor);
+    done_ = true;
+    if (run_loop_)
+      run_loop_->Quit();
+  }
+
+  void Wait() {
+    if (done_)
+      return;
+
+    run_loop_ = std::make_unique<base::RunLoop>(
+        base::RunLoop::Type::kNestableTasksAllowed);
+    run_loop_->Run();
+    run_loop_.reset();
+  }
+
+ private:
+  const base::raw_ptr<ui::Compositor> compositor_;
+  bool done_ = false;
+  std::unique_ptr<base::RunLoop> run_loop_;
 };
 
 class FirstNonAnimatedFrameStartedWaiter : public ui::CompositorObserver {
@@ -150,7 +181,7 @@ class FirstNonAnimatedFrameStartedWaiter : public ui::CompositorObserver {
   }
 
  private:
-  raw_ptr<ui::Compositor> compositor_;
+  raw_ptr<ui::Compositor, ExperimentalAsh> compositor_;
   bool done_ = false;
   std::unique_ptr<base::RunLoop> run_loop_;
 };
@@ -193,14 +224,16 @@ class MetricsWaiter {
   }
 
  private:
-  raw_ptr<base::HistogramTester> histogram_tester_;
+  base::raw_ptr<base::HistogramTester> histogram_tester_;
   const std::string metrics_name_;
 };
 
 }  // namespace
 
 // Test fixture for the LoginUnlockThroughputRecorder class.
-class LoginUnlockThroughputRecorderTestBase : public LoginTestBase {
+class LoginUnlockThroughputRecorderTestBase
+    : public LoginTestBase,
+      public testing::WithParamInterface<bool> {
  public:
   LoginUnlockThroughputRecorderTestBase() = default;
 
@@ -271,21 +304,11 @@ class LoginUnlockThroughputRecorderTestBase : public LoginTestBase {
   }
 
  protected:
-  void SetupDisplay(bool has_display) {
-    if (has_display) {
-      // A single default display will be configured automatically.
-      return;
-    }
-    const std::vector<display::ManagedDisplayInfo> empty;
-    display_manager()->OnNativeDisplaysChanged(empty);
-    EXPECT_EQ(1U, display_manager()->GetNumDisplays());
-  }
-
   void RunSimpleAnimation() {
     ui::Compositor* compositor =
         Shell::GetPrimaryRootWindow()->GetHost()->compositor();
     TestObserver observer(compositor);
-    ui::BeginMainFrameWaiter(compositor).Wait();
+    BeginMainFrameWaiter(compositor).Wait();
     FirstNonAnimatedFrameStartedWaiter(compositor).Wait();
     ui::DrawWaiterForTest::WaitForCompositingEnded(compositor);
   }
@@ -308,9 +331,8 @@ class LoginUnlockThroughputRecorderTestBase : public LoginTestBase {
   std::unique_ptr<base::HistogramTester> histogram_tester_;
 };
 
-class LoginUnlockThroughputRecorderLoginAnimationTest
-    : public LoginUnlockThroughputRecorderTestBase,
-      public testing::WithParamInterface<bool> {};
+using LoginUnlockThroughputRecorderLoginAnimationTest =
+    LoginUnlockThroughputRecorderTestBase;
 
 // Boolean parameter controls tablet mode.
 INSTANTIATE_TEST_SUITE_P(All,
@@ -357,8 +379,7 @@ TEST_P(LoginUnlockThroughputRecorderLoginAnimationTest,
   GiveItSomeTime(base::Milliseconds(100));
 
   // Do not expect any windows to be restored.
-  throughput_recorder()->BrowserSessionRestoreDataLoaded();
-  throughput_recorder()->FullSessionRestoreDataLoaded();
+  throughput_recorder()->RestoreDataLoaded();
 
   // Should not report login histogram until shelf is initialized.
   EXPECT_EQ(histogram_tester_.get()->GetTotalSum(metrics_name), 0);
@@ -423,27 +444,23 @@ TEST_P(LoginUnlockThroughputRecorderLoginAnimationTest, ReportUnlock) {
   UnlockScreenAndAnimate();
 
   MetricsWaiter(histogram_tester_.get(),
-                GetParam() ? kAshUnlockAnimationSmoothnessTabletMode
-                           : kAshUnlockAnimationSmoothnessClamshellMode)
+                GetParam() ? kAshUnlockAnimationDurationTabletMode
+                           : kAshUnlockAnimationDurationClamshellMode)
       .Wait();
 }
 
-class LoginUnlockThroughputRecorderWindowRestoreTest
-    : public LoginUnlockThroughputRecorderTestBase,
-      public testing::WithParamInterface<
-          std::tuple</*is_lacros=*/bool, /*has_display=*/bool>> {};
+using LoginUnlockThroughputRecorderWindowRestoreTest =
+    LoginUnlockThroughputRecorderTestBase;
 
+// Boolean parameter controls lacros mode.
 INSTANTIATE_TEST_SUITE_P(All,
                          LoginUnlockThroughputRecorderWindowRestoreTest,
-                         testing::Combine(/*is_lacros=*/testing::Bool(),
-                                          /*has_display=*/testing::Bool()));
+                         testing::Bool());
 
 // Verifies that window restore metrics are reported correctly.
 TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
        ReportWindowRestoreMetrics) {
-  const bool is_lacros = std::get<0>(GetParam());
-  const bool has_display = std::get<1>(GetParam());
-  SetupDisplay(has_display);
+  const bool is_lacros = GetParam();
 
   EXPECT_FALSE(histogram_tester_.get()->GetTotalSum(
       "Ash.LoginSessionRestore.AllBrowserWindowsCreated"));
@@ -522,13 +539,8 @@ TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
       "Ash.LoginSessionRestore.AllBrowserWindowsShown"));
 
   RestoredWindowsPresented({1});
-  if (has_display) {
-    EXPECT_TRUE(histogram_tester_.get()->GetTotalSum(
-        "Ash.LoginSessionRestore.AllBrowserWindowsPresented"));
-  } else {
-    EXPECT_FALSE(histogram_tester_.get()->GetTotalSum(
-        "Ash.LoginSessionRestore.AllBrowserWindowsPresented"));
-  }
+  EXPECT_TRUE(histogram_tester_.get()->GetTotalSum(
+      "Ash.LoginSessionRestore.AllBrowserWindowsPresented"));
 
   // Should not report login histograms until shelf icons are loaded.
   EXPECT_TRUE(histogram_tester_.get()
@@ -538,16 +550,13 @@ TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
       histogram_tester_.get()
           ->GetAllSamples("Ash.LoginSessionRestore.ShelfLoginAnimationEnd")
           .empty());
-  EXPECT_TRUE(histogram_tester_.get()->GetAllSamples(kBootTimeLogin3).empty());
 }
 
 // Verifies that Login animation duration is reported when all shelf icons were
 // loaded but only after windows were restored.
 TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
        ReportLoginAnimationDurationOnlyAfterWindowsRestore) {
-  const bool is_lacros = std::get<0>(GetParam());
-  const bool has_display = std::get<1>(GetParam());
-  SetupDisplay(has_display);
+  const bool is_lacros = GetParam();
 
   EXPECT_TRUE(
       histogram_tester_.get()
@@ -568,7 +577,6 @@ TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
   EXPECT_TRUE(histogram_tester_.get()
                   ->GetAllSamples(kAshLoginAnimationDurationClamshellMode)
                   .empty());
-  EXPECT_TRUE(histogram_tester_.get()->GetAllSamples(kBootTimeLogin3).empty());
   EXPECT_TRUE(
       histogram_tester_.get()
           ->GetAllSamples("Ash.LoginSessionRestore.ShelfLoginAnimationEnd")
@@ -582,16 +590,9 @@ TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
   MetricsWaiter(histogram_tester_.get(),
                 "Ash.LoginSessionRestore.AllBrowserWindowsShown")
       .Wait();
-  if (has_display) {
-    MetricsWaiter(histogram_tester_.get(),
-                  "Ash.LoginSessionRestore.AllBrowserWindowsPresented")
-        .Wait();
-  } else {
-    EXPECT_TRUE(histogram_tester_.get()
-                    ->GetAllSamples(
-                        "Ash.LoginSessionRestore.AllBrowserWindowsPresented")
-                    .empty());
-  }
+  MetricsWaiter(histogram_tester_.get(),
+                "Ash.LoginSessionRestore.AllBrowserWindowsPresented")
+      .Wait();
 
   TestShelfModel model;
   model.InitializeIconList({1, 2, 3});
@@ -606,16 +607,13 @@ TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
   MetricsWaiter(histogram_tester_.get(),
                 kAshLoginAnimationDurationClamshellMode)
       .Wait();
-  MetricsWaiter(histogram_tester_.get(), kBootTimeLogin3).Wait();
 }
 
 // Verifies that Login animation duration is reported when all browser windows
 // were restored but only after shelf icons were loaded.
 TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
        ReportLoginAnimationDurationOnlyAfterShelfIconsLoaded) {
-  const bool is_lacros = std::get<0>(GetParam());
-  const bool has_display = std::get<1>(GetParam());
-  SetupDisplay(has_display);
+  const bool is_lacros = GetParam();
 
   EXPECT_TRUE(
       histogram_tester_.get()
@@ -636,7 +634,6 @@ TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
   EXPECT_TRUE(histogram_tester_.get()
                   ->GetAllSamples(kAshLoginAnimationDurationClamshellMode)
                   .empty());
-  EXPECT_TRUE(histogram_tester_.get()->GetAllSamples(kBootTimeLogin3).empty());
 
   LoginOwner();
 
@@ -654,7 +651,6 @@ TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
   EXPECT_TRUE(histogram_tester_.get()
                   ->GetAllSamples(kAshLoginAnimationDurationClamshellMode)
                   .empty());
-  EXPECT_TRUE(histogram_tester_.get()->GetAllSamples(kBootTimeLogin3).empty());
   GiveItSomeTime(base::Milliseconds(100));
 
   AddScheduledRestoreBrowserWindows({1, 2, 3}, is_lacros);
@@ -669,16 +665,9 @@ TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
   MetricsWaiter(histogram_tester_.get(),
                 "Ash.LoginSessionRestore.AllBrowserWindowsShown")
       .Wait();
-  if (has_display) {
-    MetricsWaiter(histogram_tester_.get(),
-                  "Ash.LoginSessionRestore.AllBrowserWindowsPresented")
-        .Wait();
-  } else {
-    EXPECT_TRUE(histogram_tester_.get()
-                    ->GetAllSamples(
-                        "Ash.LoginSessionRestore.AllBrowserWindowsPresented")
-                    .empty());
-  }
+  MetricsWaiter(histogram_tester_.get(),
+                "Ash.LoginSessionRestore.AllBrowserWindowsPresented")
+      .Wait();
 
   // Login metrics should be reported.
   // Start login animation. It should trigger LoginAnimation.Duration reporting.
@@ -689,7 +678,6 @@ TEST_P(LoginUnlockThroughputRecorderWindowRestoreTest,
   MetricsWaiter(histogram_tester_.get(),
                 kAshLoginAnimationDurationClamshellMode)
       .Wait();
-  MetricsWaiter(histogram_tester_.get(), kBootTimeLogin3).Wait();
 }
 
 }  // namespace ash

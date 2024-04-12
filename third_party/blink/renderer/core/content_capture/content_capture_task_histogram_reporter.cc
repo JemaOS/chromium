@@ -26,9 +26,8 @@ ContentCaptureTaskHistogramReporter::~ContentCaptureTaskHistogramReporter() =
     default;
 
 void ContentCaptureTaskHistogramReporter::OnContentChanged() {
-  if (content_change_time_) {
+  if (content_change_time_)
     return;
-  }
   content_change_time_ = base::TimeTicks::Now();
 }
 
@@ -81,9 +80,8 @@ void ContentCaptureTaskHistogramReporter::OnSendContentEnded(
         kCaptureContentDelayTime, now - content_change_time,
         base::Milliseconds(500), base::Seconds(30), 50);
   }
-  if (!sent_content_count) {
+  if (!sent_content_count)
     return;
-  }
   send_content_time_histogram_.CountMicroseconds(now -
                                                  send_content_start_time_);
 }

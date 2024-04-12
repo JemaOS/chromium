@@ -4,7 +4,7 @@
 
 #import "chrome/browser/ui/cocoa/bookmarks/bookmark_menu_cocoa_controller.h"
 
-#import "base/apple/foundation_util.h"
+#import "base/mac/foundation_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/metrics/user_metrics.h"
 #include "base/strings/sys_string_conversions.h"
@@ -68,31 +68,38 @@ class BookmarkRestorer : public bookmarks::BookmarkModelObserver {
   ~BookmarkRestorer() override = default;
 
   // bookmarks::BookmarkModelObserver:
-  void BookmarkModelBeingDeleted() override;
-  void BookmarkModelLoaded(bool ids_reassigned) override;
-  void BookmarkNodeMoved(const BookmarkNode* old_parent,
+  void BookmarkModelBeingDeleted(BookmarkModel* model) override;
+  void BookmarkModelLoaded(BookmarkModel* model, bool ids_reassigned) override;
+  void BookmarkNodeMoved(BookmarkModel* model,
+                         const BookmarkNode* old_parent,
                          size_t old_index,
                          const BookmarkNode* new_parent,
                          size_t new_index) override {}
-  void BookmarkNodeAdded(const BookmarkNode* parent,
+  void BookmarkNodeAdded(BookmarkModel* model,
+                         const BookmarkNode* parent,
                          size_t index,
                          bool added_by_user) override {}
-  void BookmarkNodeRemoved(const BookmarkNode* parent,
+  void BookmarkNodeRemoved(BookmarkModel* model,
+                           const BookmarkNode* parent,
                            size_t old_index,
                            const BookmarkNode* node,
                            const std::set<GURL>& removed_urls) override {}
-  void BookmarkNodeChanged(const BookmarkNode* node) override {}
-  void BookmarkNodeFaviconChanged(const BookmarkNode* node) override {}
-  void BookmarkNodeChildrenReordered(const BookmarkNode* node) override {}
+  void BookmarkNodeChanged(BookmarkModel* model,
+                           const BookmarkNode* node) override {}
+  void BookmarkNodeFaviconChanged(BookmarkModel* model,
+                                  const BookmarkNode* node) override {}
+  void BookmarkNodeChildrenReordered(BookmarkModel* model,
+                                     const BookmarkNode* node) override {}
   void BookmarkAllUserNodesRemoved(
+      BookmarkModel* model,
       const std::set<GURL>& removed_urls) override {}
 
  private:
-  const raw_ptr<Profile> profile_;
-  const WindowOpenDisposition disposition_;
-  const base::Uuid guid_;
   base::ScopedObservation<BookmarkModel, BookmarkModelObserver> observation_{
       this};
+  raw_ptr<Profile> profile_;
+  WindowOpenDisposition disposition_;
+  base::Uuid guid_;
 };
 
 BookmarkRestorer::BookmarkRestorer(Profile* profile,
@@ -102,14 +109,15 @@ BookmarkRestorer::BookmarkRestorer(Profile* profile,
   observation_.Observe(BookmarkModelFactory::GetForBrowserContext(profile));
 }
 
-void BookmarkRestorer::BookmarkModelBeingDeleted() {
+void BookmarkRestorer::BookmarkModelBeingDeleted(BookmarkModel* model) {
+  model->RemoveObserver(this);
   delete this;
 }
 
-void BookmarkRestorer::BookmarkModelLoaded(bool ids_reassigned) {
-  const BookmarkModel* model = observation_.GetSource();
-  if (const BookmarkNode* node = model->GetNodeByUuid(
-          guid_, BookmarkModel::NodeTypeForUuidLookup::kLocalOrSyncableNodes)) {
+void BookmarkRestorer::BookmarkModelLoaded(BookmarkModel* model,
+                                           bool ids_reassigned) {
+  model->RemoveObserver(this);
+  if (const auto* node = bookmarks::GetBookmarkNodeByUuid(model, guid_)) {
     DoOpenBookmark(profile_, disposition_, node);
   }
   delete this;
@@ -120,39 +128,29 @@ void BookmarkRestorer::BookmarkModelLoaded(bool ids_reassigned) {
 void OpenBookmarkByGUID(WindowOpenDisposition disposition,
                         base::Uuid guid,
                         Profile* profile) {
-  if (!profile) {
-    // Failed to load profile, ignore.
-    return;
-  }
+  if (!profile)
+    return;  // Failed to load profile, ignore.
 
-  const BookmarkModel* model =
-      BookmarkModelFactory::GetForBrowserContext(profile);
-  CHECK(model);
+  const auto* model = BookmarkModelFactory::GetForBrowserContext(profile);
+  DCHECK(model);
+  if (!model)
+    return;  // Should never be reached.
 
-  if (!model->loaded()) {
+  if (const auto* node = bookmarks::GetBookmarkNodeByUuid(model, guid)) {
+    // BookmarkModel already loaded this bookmark. Open it immediately.
+    DoOpenBookmark(profile, disposition, node);
+  } else {
     // BookmarkModel hasn't loaded yet. Wait for BookmarkModelLoaded(), and
     // *then* open it.
+    DCHECK(!model->loaded());
     std::ignore = new BookmarkRestorer(profile, disposition, std::move(guid));
-    return;
   }
-
-  const BookmarkNode* node = model->GetNodeByUuid(
-      guid, BookmarkModel::NodeTypeForUuidLookup::kLocalOrSyncableNodes);
-  if (!node) {
-    // Bookmark not known, ignore.
-    return;
-  }
-
-  // BookmarkModel already loaded and the bookmark is known. Open it
-  // immediately.
-  DoOpenBookmark(profile, disposition, node);
 }
 
 }  // namespace
 
 @implementation BookmarkMenuCocoaController {
-  raw_ptr<BookmarkMenuBridge, AcrossTasksDanglingUntriaged>
-      _bridge;  // Weak. Owns |self|.
+  raw_ptr<BookmarkMenuBridge, DanglingUntriaged> _bridge;  // Weak. Owns |self|.
 }
 
 + (NSString*)tooltipForNode:(const BookmarkNode*)node {
@@ -173,23 +171,20 @@ void OpenBookmarkByGUID(WindowOpenDisposition disposition,
 }
 
 - (BOOL)validateMenuItem:(NSMenuItem*)menuItem {
-  return ![AppController.sharedController keyWindowIsModal];
+  AppController* controller =
+      base::mac::ObjCCastStrict<AppController>([NSApp delegate]);
+  return ![controller keyWindowIsModal];
 }
 
 // NSMenu delegate method: called just before menu is displayed.
 - (void)menuNeedsUpdate:(NSMenu*)menu {
   NSMenuItem* item = GetItemWithSubmenu(menu);
   Profile* profile = _bridge->GetProfile();
-  if (!profile) {
-    // Unfortunately, we can't update a menu with a dead profile.
-    return;
-  }
-
-  const BookmarkModel* model =
-      BookmarkModelFactory::GetForBrowserContext(profile);
+  if (!profile)
+    return;  // Unfortunately, we can't update a menu with a dead profile.
+  const auto* model = BookmarkModelFactory::GetForBrowserContext(profile);
   base::Uuid guid = _bridge->TagToGUID([item tag]);
-  const BookmarkNode* node = model->GetNodeByUuid(
-      guid, BookmarkModel::NodeTypeForUuidLookup::kLocalOrSyncableNodes);
+  const auto* node = bookmarks::GetBookmarkNodeByUuid(model, guid);
   _bridge->UpdateMenu(menu, node, /*recurse=*/false);
 }
 
@@ -220,16 +215,16 @@ void OpenBookmarkByGUID(WindowOpenDisposition disposition,
   }
 }
 
-- (IBAction)openBookmarkMenuItem:(id)sender {
-  NSInteger tag = [sender tag];
-  base::Uuid guid = _bridge->TagToGUID(tag);
-  [self openURLForGUID:std::move(guid)];
+// Return the GUID of the BookmarkNode that has the given id (called
+// "identifier" here to avoid conflict with objc's concept of "id").
+- (base::Uuid)guidForIdentifier:(int)identifier {
+  return _bridge->TagToGUID(identifier);
 }
 
-+ (void)openBookmarkByGUID:(base::Uuid)guid
-                 inProfile:(Profile*)profile
-           withDisposition:(WindowOpenDisposition)disposition {
-  OpenBookmarkByGUID(disposition, guid, profile);
+- (IBAction)openBookmarkMenuItem:(id)sender {
+  NSInteger tag = [sender tag];
+  base::Uuid guid = [self guidForIdentifier:tag];
+  [self openURLForGUID:std::move(guid)];
 }
 
 @end  // BookmarkMenuCocoaController

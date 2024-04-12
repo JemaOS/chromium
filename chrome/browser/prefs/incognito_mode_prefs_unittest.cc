@@ -59,12 +59,7 @@ TEST_F(IncognitoModePrefsTest, GetAvailability) {
 
 typedef IncognitoModePrefsTest IncognitoModePrefsDeathTest;
 
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
-#define MAYBE_GetAvailabilityBadValue DISABLED_GetAvailabilityBadValue
-#else
-#define MAYBE_GetAvailabilityBadValue GetAvailabilityBadValue
-#endif
-TEST_F(IncognitoModePrefsDeathTest, MAYBE_GetAvailabilityBadValue) {
+TEST_F(IncognitoModePrefsDeathTest, GetAvailabilityBadValue) {
   prefs_.SetUserPref(policy::policy_prefs::kIncognitoModeAvailability,
                      std::make_unique<base::Value>(-1));
   EXPECT_DCHECK_DEATH({

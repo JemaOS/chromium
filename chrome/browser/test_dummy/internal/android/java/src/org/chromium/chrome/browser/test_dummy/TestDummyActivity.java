@@ -8,7 +8,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import org.chromium.base.CommandLine;
 import org.chromium.base.StrictModeContext;
-import org.chromium.base.library_loader.LibraryLoader;
 import org.chromium.chrome.modules.test_dummy.TestDummyModuleProvider;
 
 /** Helper activity to launch test dummy module.  */
@@ -22,7 +21,6 @@ public class TestDummyActivity extends AppCompatActivity {
             finish();
             return;
         }
-        LibraryLoader.getInstance().ensureInitialized();
         if (TestDummyModuleProvider.isModuleInstalled()) {
             onModuleInstalled(true);
         } else {

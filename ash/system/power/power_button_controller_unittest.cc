@@ -19,7 +19,8 @@
 #include "ash/test_media_client.h"
 #include "ash/touch/touch_devices_controller.h"
 #include "ash/wm/lock_state_controller_test_api.h"
-#include "ash/wm/test/test_session_state_animator.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
+#include "ash/wm/test_session_state_animator.h"
 #include "ash/wm/window_util.h"
 #include "base/command_line.h"
 #include "base/json/json_writer.h"
@@ -28,7 +29,6 @@
 #include "chromeos/dbus/power/fake_power_manager_client.h"
 #include "chromeos/dbus/power_manager/suspend.pb.h"
 #include "ui/compositor/scoped_animation_duration_scale_mode.h"
-#include "ui/display/screen.h"
 #include "ui/display/test/display_manager_test_api.h"
 #include "ui/events/event.h"
 #include "ui/events/test/event_generator.h"
@@ -126,7 +126,7 @@ class PowerButtonControllerTest : public PowerButtonTestBase {
   // Press the power button to show the menu.
   void OpenPowerButtonMenu() {
     PressPowerButton();
-    if (display::Screen::GetScreen()->InTabletMode()) {
+    if (Shell::Get()->tablet_mode_controller()->InTabletMode()) {
       EXPECT_TRUE(power_button_test_api_->PowerButtonMenuTimerIsRunning());
       ASSERT_TRUE(power_button_test_api_->TriggerPowerButtonMenuTimeout());
     }
@@ -1081,38 +1081,6 @@ TEST_F(PowerButtonControllerTest, PartiallyShownMenuInTabletMode) {
   EXPECT_FALSE(power_manager_client()->backlights_forced_off());
 }
 
-TEST_F(PowerButtonControllerTest, PowerMenuItemsInTabletKiosk) {
-  ClearLogin();
-  SimulateKioskMode(user_manager::UserType::kWebKioskApp);
-  SetCanLockScreen(false);
-
-  EnableTabletMode(true);
-
-  OpenPowerButtonMenu();
-
-  EXPECT_TRUE(power_button_test_api_->MenuHasPowerOffItem());
-  EXPECT_TRUE(power_button_test_api_->MenuHasSignOutItem());
-  EXPECT_FALSE(power_button_test_api_->MenuHasLockScreenItem());
-  EXPECT_FALSE(power_button_test_api_->MenuHasCaptureModeItem());
-  EXPECT_FALSE(power_button_test_api_->MenuHasFeedbackItem());
-}
-
-TEST_F(PowerButtonControllerTest, PowerMenuItemsInLaptopKiosk) {
-  ClearLogin();
-  SimulateKioskMode(user_manager::UserType::kWebKioskApp);
-  SetCanLockScreen(false);
-
-  EnableTabletMode(false);
-
-  OpenPowerButtonMenu();
-
-  EXPECT_TRUE(power_button_test_api_->MenuHasPowerOffItem());
-  EXPECT_TRUE(power_button_test_api_->MenuHasSignOutItem());
-  EXPECT_FALSE(power_button_test_api_->MenuHasLockScreenItem());
-  EXPECT_FALSE(power_button_test_api_->MenuHasCaptureModeItem());
-  EXPECT_FALSE(power_button_test_api_->MenuHasFeedbackItem());
-}
-
 class PowerButtonControllerWithPositionTest
     : public PowerButtonControllerTest,
       public testing::WithParamInterface<PowerButtonPosition> {
@@ -1160,7 +1128,7 @@ class PowerButtonControllerWithPositionTest
 
   // Returns true if it is in tablet mode.
   bool IsTabletMode() const {
-    return display::Screen::GetScreen()->InTabletMode();
+    return Shell::Get()->tablet_mode_controller()->InTabletMode();
   }
 
   // Returns true if the menu is at the center of the display.
@@ -1396,9 +1364,10 @@ TEST_P(PowerButtonControllerWithPositionTest, AdjustMenuShownForDisplaySize) {
       power_button_test_api_->GetMenuBoundsInScreen()));
 }
 
+// Disabled due to consistent failures. http://crbug.com/1286199
 // Tests that a power button press before the menu is fully shown will not
 // create a new menu.
-TEST_F(PowerButtonControllerTest, LegacyPowerButtonIgnoreExtraPress) {
+TEST_F(PowerButtonControllerTest, DISABLED_LegacyPowerButtonIgnoreExtraPress) {
   Initialize(ButtonType::LEGACY, LoginStatus::USER);
 
   // Enable animations so that we can make sure that they occur.

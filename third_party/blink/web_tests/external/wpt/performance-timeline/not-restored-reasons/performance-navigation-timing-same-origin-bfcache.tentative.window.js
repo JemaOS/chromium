@@ -38,18 +38,21 @@ promise_test(async t => {
   await assertBFCacheEligibility(rc1, /*shouldRestoreFromBFCache=*/ false);
   await assertNotRestoredReasonsEquals(
       rc1,
+      /*blocked=*/ false,
       /*url=*/ rc1_url,
       /*src=*/ null,
       /*id=*/ null,
       /*name=*/ null,
       /*reasons=*/[],
       /*children=*/[{
+        'blocked': true,
         'url': rc1_child_url,
         'src': rc1_child_url,
         'id': 'test-id',
         'name': '',
-        'reasons': [{'reason': 'websocket'}],
+        'reasons': ['WebSocket'],
         'children': [{
+          'blocked': false,
           'url': rc1_grand_child_url,
           'src': rc1_grand_child_url,
           'id': '',

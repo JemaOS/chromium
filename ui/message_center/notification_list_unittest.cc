@@ -130,7 +130,7 @@ class NotificationListTest : public testing::Test {
     return iter->second;
   }
 
-  static constexpr char kIdFormat[] = "id%zu";
+  static const char kIdFormat[];
   static const char16_t kDisplaySource[];
   static const char kExtensionId[];
 
@@ -149,6 +149,7 @@ bool IsInNotifications(const NotificationList::Notifications& notifications,
   return false;
 }
 
+const char NotificationListTest::kIdFormat[] = "id%ld";
 const char16_t NotificationListTest::kDisplaySource[] = u"source";
 const char NotificationListTest::kExtensionId[] = "ext";
 
@@ -478,7 +479,7 @@ TEST_F(NotificationListTest, GetNotificationsByAppId) {
   }
 
   for (std::string app_id : {app_id1, app_id2}) {
-    for (Notification* notification :
+    for (auto* notification :
          notification_list_->GetNotificationsByAppId(app_id)) {
       EXPECT_EQ(app_id, notification->notifier_id().id);
     }
@@ -546,7 +547,7 @@ TEST_F(NotificationListTest, GetNotificationsByOriginUrl) {
   }
 
   for (GURL url : {kUrl1, kUrl2}) {
-    for (Notification* notification :
+    for (auto* notification :
          notification_list_->GetNotificationsByOriginUrl(url)) {
       EXPECT_EQ(url, notification->origin_url());
     }
@@ -562,7 +563,7 @@ TEST_F(NotificationListTest, HasPopupsWithPriority) {
   EXPECT_EQ(1u, GetPopupCounts());
 }
 
-TEST_F(NotificationListTest, AllPopupsDismissedWhenMarkedAsShown) {
+TEST_F(NotificationListTest, HasPopupsWithSystemPriority) {
   ASSERT_EQ(0u, notification_list_->NotificationCount(blockers_));
 
   std::string normal_id = AddPriorityNotification(DEFAULT_PRIORITY);
@@ -577,6 +578,10 @@ TEST_F(NotificationListTest, AllPopupsDismissedWhenMarkedAsShown) {
   notification_list_->MarkSinglePopupAsShown(normal_id, false);
   notification_list_->MarkSinglePopupAsShown(system_id, false);
 
+  EXPECT_EQ(1u, GetPopupCounts());
+
+  // Mark as read -- emulation of mouse click.
+  notification_list_->MarkSinglePopupAsShown(system_id, true);
   EXPECT_EQ(0u, GetPopupCounts());
 }
 

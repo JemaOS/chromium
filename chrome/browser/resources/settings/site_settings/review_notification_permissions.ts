@@ -10,29 +10,25 @@ import '../settings_shared.css.js';
 import '../site_settings_page/site_review_shared.css.js';
 import '../i18n_setup.js';
 
-import type {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
+import {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
 import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
-import {isUndoKeyboardEvent} from 'chrome://resources/js/util.js';
-import type {DomRepeatEvent} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {isUndoKeyboardEvent} from 'chrome://resources/js/util_ts.js';
+import {DomRepeatEvent, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {BaseMixin} from '../base_mixin.js';
-import type {MetricsBrowserProxy} from '../metrics_browser_proxy.js';
-import {MetricsBrowserProxyImpl, SafetyCheckNotificationsModuleInteractions} from '../metrics_browser_proxy.js';
+import {MetricsBrowserProxy, MetricsBrowserProxyImpl, SafetyCheckNotificationsModuleInteractions} from '../metrics_browser_proxy.js';
 import {routes} from '../route.js';
-import type {Route} from '../router.js';
-import {RouteObserverMixin} from '../router.js';
-import type {NotificationPermission, SafetyHubBrowserProxy} from '../safety_hub/safety_hub_browser_proxy.js';
-import {SafetyHubBrowserProxyImpl, SafetyHubEvent} from '../safety_hub/safety_hub_browser_proxy.js';
+import {Route, RouteObserverMixin} from '../router.js';
 import {MODEL_UPDATE_DELAY_MS} from '../site_settings/constants.js';
 import {TooltipMixin} from '../tooltip_mixin.js';
 
 import {getTemplate} from './review_notification_permissions.html.js';
 import {SiteSettingsMixin} from './site_settings_mixin.js';
+import {NotificationPermission, SiteSettingsPrefsBrowserProxy, SiteSettingsPrefsBrowserProxyImpl} from './site_settings_prefs_browser_proxy.js';
 
 export interface SettingsReviewNotificationPermissionsElement {
   $: {
@@ -128,15 +124,15 @@ export class SettingsReviewNotificationPermissionsElement extends
   private toastText_: string|null;
   private eventTracker_: EventTracker = new EventTracker();
   private shouldRefocusExpandButton_: boolean = false;
-  private browserProxy_: SafetyHubBrowserProxy =
-      SafetyHubBrowserProxyImpl.getInstance();
+  private browserProxy_: SiteSettingsPrefsBrowserProxy =
+      SiteSettingsPrefsBrowserProxyImpl.getInstance();
   private metricsBrowserProxy_: MetricsBrowserProxy =
       MetricsBrowserProxyImpl.getInstance();
 
   override async connectedCallback() {
     // Register for review notification permission list updates.
     this.addWebUiListener(
-        SafetyHubEvent.NOTIFICATION_PERMISSIONS_MAYBE_CHANGED,
+        'notification-permission-review-list-maybe-changed',
         (sites: NotificationPermission[]) =>
             this.onReviewNotificationPermissionListChanged_(sites));
 

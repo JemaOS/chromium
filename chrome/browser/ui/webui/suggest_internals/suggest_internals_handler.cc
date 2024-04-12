@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ui/webui/suggest_internals/suggest_internals_handler.h"
 
-#include "base/strings/string_number_conversions.h"
 #include "base/time/time.h"
 #include "chrome/browser/autocomplete/remote_suggestions_service_factory.h"
 #include "components/variations/net/variations_http_headers.h"
@@ -48,7 +47,7 @@ void SuggestInternalsHandler::HardcodeResponse(
   std::move(callback).Run(std::move(mojom_request));
 }
 
-void SuggestInternalsHandler::OnSuggestRequestCreated(
+void SuggestInternalsHandler::OnSuggestRequestStarting(
     const base::UnguessableToken& request_id,
     const network::ResourceRequest* request) {
   // Update the page with the request information.
@@ -60,34 +59,19 @@ void SuggestInternalsHandler::OnSuggestRequestCreated(
   variations::GetVariationsHeader(*request, &variations_header);
   mojom_request->data[variations::kClientDataHeader] = variations_header;
   mojom_request->data[request->method] = request->url.spec();
-  mojom_request->status = suggest_internals::mojom::RequestStatus::kCreated;
-  page_->OnSuggestRequestCreated(std::move(mojom_request));
-}
-
-void SuggestInternalsHandler::OnSuggestRequestStarted(
-    const base::UnguessableToken& request_id,
-    network::SimpleURLLoader* loader,
-    const std::string& request_body) {
-  // Update the page with the request information.
-  suggest_internals::mojom::RequestPtr mojom_request =
-      suggest_internals::mojom::Request::New();
-  mojom_request->id = request_id;
-  mojom_request->data["Request-Body"] = request_body;
   mojom_request->status = suggest_internals::mojom::RequestStatus::kSent;
   mojom_request->start_time = base::Time::Now();
-  page_->OnSuggestRequestStarted(std::move(mojom_request));
+  page_->OnSuggestRequestStarting(std::move(mojom_request));
 }
 
 void SuggestInternalsHandler::OnSuggestRequestCompleted(
     const base::UnguessableToken& request_id,
-    const int response_code,
+    const bool response_received,
     const std::unique_ptr<std::string>& response_body) {
   // Update the page with the request information.
   suggest_internals::mojom::RequestPtr mojom_request =
       suggest_internals::mojom::Request::New();
   mojom_request->id = request_id;
-  mojom_request->data["Response-Code"] = base::NumberToString(response_code);
-  const bool response_received = response_code == 200;
   mojom_request->status =
       response_received ? suggest_internals::mojom::RequestStatus::kSucceeded
                         : suggest_internals::mojom::RequestStatus::kFailed;

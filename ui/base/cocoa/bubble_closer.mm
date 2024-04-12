@@ -13,7 +13,7 @@
 namespace ui {
 
 struct BubbleCloser::ObjCStorage {
-  id __strong event_tap;
+  id event_tap_ = nil;  // Weak. Owned by AppKit.
 };
 
 BubbleCloser::BubbleCloser(NSWindow* window,
@@ -26,26 +26,24 @@ BubbleCloser::BubbleCloser(NSWindow* window,
 
   // Note that |window| will be retained when captured by the block below.
   auto block = ^NSEvent*(NSEvent* event) {
-    NSWindow* event_window = event.window;
-    if (event_window.sheet) {
+    NSWindow* event_window = [event window];
+    if ([event_window isSheet])
       return event;
-    }
 
     // Do not close the bubble if the event happened on a window with a
     // higher level.  For example, the content of a browser action bubble
     // opens a calendar picker window with NSPopUpMenuWindowLevel, and a
     // date selection closes the picker window, but it should not close
     // the bubble.
-    if (event_window.level > window.level) {
+    if ([event_window level] > [window level])
       return event;
-    }
 
     // If the event is in |window|'s hierarchy, do not close the bubble.
     NSWindow* ancestor = event_window;
     while (ancestor) {
       if (ancestor == window)
         return event;
-      ancestor = ancestor.parentWindow;
+      ancestor = [ancestor parentWindow];
     }
 
     if (weak_ptr) {
@@ -54,14 +52,14 @@ BubbleCloser::BubbleCloser(NSWindow* window,
 
     return event;
   };
-  objc_storage_->event_tap =
+  objc_storage_->event_tap_ =
       [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskLeftMouseDown |
                                                     NSEventMaskRightMouseDown
                                             handler:block];
 }
 
 BubbleCloser::~BubbleCloser() {
-  [NSEvent removeMonitor:objc_storage_->event_tap];
+  [NSEvent removeMonitor:objc_storage_->event_tap_];
 }
 
 void BubbleCloser::OnClickOutside() {

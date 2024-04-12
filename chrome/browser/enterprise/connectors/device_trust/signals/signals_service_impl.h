@@ -16,13 +16,11 @@
 namespace enterprise_connectors {
 
 class SignalsDecorator;
-class SignalsFilterer;
 
 class SignalsServiceImpl : public SignalsService {
  public:
-  SignalsServiceImpl(
-      std::vector<std::unique_ptr<SignalsDecorator>> signals_decorators,
-      std::unique_ptr<SignalsFilterer> signals_filterer);
+  explicit SignalsServiceImpl(
+      std::vector<std::unique_ptr<SignalsDecorator>> signals_decorators);
 
   SignalsServiceImpl(const SignalsServiceImpl&) = delete;
   SignalsServiceImpl& operator=(const SignalsServiceImpl&) = delete;
@@ -38,7 +36,6 @@ class SignalsServiceImpl : public SignalsService {
                           std::unique_ptr<base::Value::Dict> signals);
 
   std::vector<std::unique_ptr<SignalsDecorator>> signals_decorators_;
-  std::unique_ptr<SignalsFilterer> signals_filterer_;
 
   base::WeakPtrFactory<SignalsServiceImpl> weak_ptr_factory_{this};
 };

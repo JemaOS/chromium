@@ -45,7 +45,7 @@ gfx::GpuFenceHandle CreateMergedGpuFenceFromFDs(
 
   gfx::GpuFenceHandle handle;
   if (merged_fd.is_valid())
-    handle.Adopt(std::move(merged_fd));
+    handle.owned_fd = std::move(merged_fd);
 
   return handle;
 }
@@ -60,44 +60,6 @@ std::vector<uint32_t> GetCrtcIdsOfPlanes(
       crtcs.push_back(atomic_plane->AssignedCrtcId());
   }
   return crtcs;
-}
-
-bool AddPendingCrtcProperty(drmModeAtomicReq* property_set,
-                            uint32_t crtc_id,
-                            DrmWrapper::Property& prop,
-                            std::optional<ScopedDrmPropertyBlob>& pending_blob,
-                            std::vector<ScopedDrmPropertyBlob>& pending_blobs) {
-  // If `pending_blob` is std::nullopt then don't change the property.
-  if (!pending_blob.has_value()) {
-    return true;
-  }
-
-  // Take the pending blob. If we successfully set it, we'll add it to
-  // `pending_blobs`.
-  ScopedDrmPropertyBlob blob = std::move(pending_blob.value());
-  pending_blob = std::nullopt;
-  if (!prop.id) {
-    return true;
-  }
-
-  // Update the CRTC property and add the change to the commit.
-  if (blob) {
-    prop.value = blob->id();
-  } else {
-    // If the blob was nullptr, then un-set the property.
-    prop.value = 0;
-  }
-  int ret =
-      drmModeAtomicAddProperty(property_set, crtc_id, prop.id, prop.value);
-  if (ret < 0) {
-    LOG(ERROR) << "Failed to set CTM property for crtc=" << crtc_id;
-    return false;
-  }
-
-  // Save the pending blob in `pending_blobs` so that it can be freed after
-  // `property_set` is committed.
-  pending_blobs.push_back(std::move(blob));
-  return true;
 }
 
 }  // namespace
@@ -140,19 +102,12 @@ bool HardwareDisplayPlaneManagerAtomic::SetConnectorProps(
   // updated only after a successful modeset.
   ConnectorProperties connector_props = connectors_props_[*connector_index];
   connector_props.crtc_id.value = crtc_id;
-  // Set link-status to DRM_MODE_LINK_STATUS_GOOD when a connector is connected
-  // and has modes. In case a link training has failed and link-status is now
-  // BAD, the kernel expects the userspace to reset it to GOOD; otherwise, it
-  // will ignore modeset requests which have the same mode as the reported bad
-  // status. However, if a connector is marked connected but has no modes, it
-  // effectively has a bandwidth of 0Gbps and failed all link training
-  // attempts. Leave it in link_status bad, since resetting the connector's
-  // resources in DRM should not be affected by this state.
+  // Always set link-status to DRM_MODE_LINK_STATUS_GOOD. In case a link
+  // training has failed and link-status is now BAD, the kernel expects the
+  // userspace to reset it to GOOD; otherwise, it will ignore modeset requests
+  // which have the same mode as the reported bad status.
   // https://www.kernel.org/doc/html/latest/gpu/drm-kms.html#standard-connector-properties
-  if (connector_props.connection == DRM_MODE_CONNECTED &&
-      connector_props.count_modes != 0) {
-    connector_props.link_status.value = DRM_MODE_LINK_STATUS_GOOD;
-  }
+  connector_props.link_status.value = DRM_MODE_LINK_STATUS_GOOD;
 
   bool status =
       AddPropertyIfValid(atomic_request, connector_id, connector_props.crtc_id);
@@ -271,10 +226,9 @@ void HardwareDisplayPlaneManagerAtomic::SetAtomicPropsForCommit(
     plane->set_owning_crtc(0);
     HardwareDisplayPlaneAtomic* atomic_plane =
         static_cast<HardwareDisplayPlaneAtomic*>(plane);
-    atomic_plane->AssignPlaneProps(nullptr, 0, 0, gfx::Rect(), gfx::Rect(),
-                                   gfx::Rect(), gfx::OVERLAY_TRANSFORM_NONE,
-                                   base::kInvalidPlatformFile,
-                                   DRM_FORMAT_INVALID, false);
+    atomic_plane->AssignPlaneProps(
+        0, 0, gfx::Rect(), gfx::Rect(), gfx::OVERLAY_TRANSFORM_NONE,
+        base::kInvalidPlatformFile, DRM_FORMAT_INVALID, false);
     atomic_plane->SetPlaneProps(atomic_request);
   }
 
@@ -286,6 +240,18 @@ void HardwareDisplayPlaneManagerAtomic::SetAtomicPropsForCommit(
     auto idx = LookupCrtcIndex(crtc);
     if (!idx)
       continue;
+
+#if defined(COMMIT_PROPERTIES_ON_PAGE_FLIP)
+    // Apply all CRTC properties in the page-flip so we don't block the
+    // swap chain for a vsync.
+    // TODO(dnicoara): See if we can apply these properties async using
+    // DRM_MODE_ATOMIC_ASYNC_UPDATE flag when committing.
+    AddPropertyIfValid(atomic_request, crtc,
+                       crtc_state_[*idx].properties.degamma_lut);
+    AddPropertyIfValid(atomic_request, crtc,
+                       crtc_state_[*idx].properties.gamma_lut);
+    AddPropertyIfValid(atomic_request, crtc, crtc_state_[*idx].properties.ctm);
+#endif
 
     AddPropertyIfValid(atomic_request, crtc,
                        crtc_state_[*idx].properties.background_color);
@@ -369,10 +335,9 @@ bool HardwareDisplayPlaneManagerAtomic::DisableOverlayPlanes(
 
       HardwareDisplayPlaneAtomic* atomic_plane =
           static_cast<HardwareDisplayPlaneAtomic*>(plane);
-      atomic_plane->AssignPlaneProps(nullptr, 0, 0, gfx::Rect(), gfx::Rect(),
-                                     gfx::Rect(), gfx::OVERLAY_TRANSFORM_NONE,
-                                     base::kInvalidPlatformFile,
-                                     DRM_FORMAT_INVALID, false);
+      atomic_plane->AssignPlaneProps(
+          0, 0, gfx::Rect(), gfx::Rect(), gfx::OVERLAY_TRANSFORM_NONE,
+          base::kInvalidPlatformFile, DRM_FORMAT_INVALID, false);
       atomic_plane->SetPlaneProps(plane_list->atomic_property_set.get());
     }
     ret = drm_->CommitProperties(plane_list->atomic_property_set.get(),
@@ -382,6 +347,31 @@ bool HardwareDisplayPlaneManagerAtomic::DisableOverlayPlanes(
 
   plane_list->atomic_property_set.reset(drmModeAtomicAlloc());
   return ret;
+}
+
+bool HardwareDisplayPlaneManagerAtomic::SetColorCorrectionOnAllCrtcPlanes(
+    uint32_t crtc_id,
+    ScopedDrmColorCtmPtr ctm_blob_data) {
+  ScopedDrmAtomicReqPtr property_set(drmModeAtomicAlloc());
+  ScopedDrmPropertyBlob property_blob(
+      drm_->CreatePropertyBlob(ctm_blob_data.get(), sizeof(drm_color_ctm)));
+
+  for (auto& plane : planes_) {
+    HardwareDisplayPlaneAtomic* atomic_plane =
+        static_cast<HardwareDisplayPlaneAtomic*>(plane.get());
+
+    // This assumes planes can only belong to one crtc.
+    if (!atomic_plane->CanUseForCrtcId(crtc_id))
+      continue;
+
+    if (!atomic_plane->SetPlaneCtm(property_set.get(), property_blob->id())) {
+      LOG(ERROR) << "Failed to set PLANE_CTM for plane=" << atomic_plane->id();
+      return false;
+    }
+  }
+
+  return drm_->CommitProperties(property_set.get(), DRM_MODE_ATOMIC_NONBLOCK, 0,
+                                nullptr);
 }
 
 bool HardwareDisplayPlaneManagerAtomic::ValidatePrimarySize(
@@ -414,12 +404,12 @@ bool HardwareDisplayPlaneManagerAtomic::SetPlaneData(
 
   if (overlay.gpu_fence) {
     const auto& gpu_fence_handle = overlay.gpu_fence->GetGpuFenceHandle();
-    fence_fd = gpu_fence_handle.Peek();
+    fence_fd = gpu_fence_handle.owned_fd.get();
   }
 
   if (!atomic_plane->AssignPlaneProps(
-          drm_, crtc_id, framebuffer_id, overlay.display_bounds, src_rect,
-          overlay.damage_rect, overlay.plane_transform, fence_fd,
+          crtc_id, framebuffer_id, overlay.display_bounds, src_rect,
+          overlay.plane_transform, fence_fd,
           overlay.buffer->framebuffer_pixel_format(),
           overlay.buffer->is_original_buffer())) {
     return false;
@@ -450,38 +440,16 @@ HardwareDisplayPlaneManagerAtomic::CreatePlane(uint32_t plane_id) {
   return std::make_unique<HardwareDisplayPlaneAtomic>(plane_id);
 }
 
-bool HardwareDisplayPlaneManagerAtomic::CommitPendingCrtcState(
-    CrtcState* crtc_state) {
-  CrtcProperties& crtc_props = crtc_state->properties;
-  std::vector<ScopedDrmPropertyBlob> pending_blobs;
+bool HardwareDisplayPlaneManagerAtomic::CommitColorMatrix(
+    const CrtcProperties& crtc_props) {
+  DCHECK(crtc_props.ctm.id);
+#if !defined(COMMIT_PROPERTIES_ON_PAGE_FLIP)
   ScopedDrmAtomicReqPtr property_set(drmModeAtomicAlloc());
-  bool result = true;
-
-  if (!AddPendingCrtcProperty(property_set.get(), crtc_props.id, crtc_props.ctm,
-                              crtc_state->pending_ctm_blob, pending_blobs)) {
+  int ret = drmModeAtomicAddProperty(property_set.get(), crtc_props.id,
+                                     crtc_props.ctm.id, crtc_props.ctm.value);
+  if (ret < 0) {
     LOG(ERROR) << "Failed to set CTM property for crtc=" << crtc_props.id;
-    result = false;
-  }
-
-  if (!AddPendingCrtcProperty(
-          property_set.get(), crtc_props.id, crtc_props.degamma_lut,
-          crtc_state->pending_degamma_lut_blob, pending_blobs)) {
-    LOG(ERROR) << "Failed to set DEGAMMA_LUT property for crtc="
-               << crtc_props.id;
-    result = false;
-  }
-
-  if (!AddPendingCrtcProperty(
-          property_set.get(), crtc_props.id, crtc_props.gamma_lut,
-          crtc_state->pending_gamma_lut_blob, pending_blobs)) {
-    LOG(ERROR) << "Failed to set GAMMA_LUT property for crtc="
-               << crtc_props.id;
-    result = false;
-  }
-
-  // If we aren't committing any new blobs, early-out.
-  if (pending_blobs.empty()) {
-    return result;
+    return false;
   }
 
   // If we try to do this in a non-blocking fashion this can return EBUSY since
@@ -489,12 +457,48 @@ bool HardwareDisplayPlaneManagerAtomic::CommitPendingCrtcState(
   // API) to ensure the properties are applied.
   // TODO(dnicoara): Should cache these values locally and aggregate them with
   // the page flip event otherwise this "steals" a vsync to apply the property.
-  if (!drm_->CommitProperties(property_set.get(), 0, 0, nullptr)) {
-    LOG(ERROR) << "Failed to commit properties for crtc=" << crtc_props.id;
-    result = false;
+  return drm_->CommitProperties(property_set.get(), 0, 0, nullptr);
+#else
+  return true;
+#endif
+}
+
+bool HardwareDisplayPlaneManagerAtomic::CommitGammaCorrection(
+    const CrtcProperties& crtc_props) {
+  DCHECK(crtc_props.degamma_lut.id || crtc_props.gamma_lut.id);
+#if !defined(COMMIT_PROPERTIES_ON_PAGE_FLIP)
+  ScopedDrmAtomicReqPtr property_set(drmModeAtomicAlloc());
+  if (crtc_props.degamma_lut.id) {
+    int ret = drmModeAtomicAddProperty(property_set.get(), crtc_props.id,
+                                       crtc_props.degamma_lut.id,
+                                       crtc_props.degamma_lut.value);
+    if (ret < 0) {
+      LOG(ERROR) << "Failed to set DEGAMMA_LUT property for crtc="
+                 << crtc_props.id;
+      return false;
+    }
   }
 
-  return result;
+  if (crtc_props.gamma_lut.id) {
+    int ret = drmModeAtomicAddProperty(property_set.get(), crtc_props.id,
+                                       crtc_props.gamma_lut.id,
+                                       crtc_props.gamma_lut.value);
+    if (ret < 0) {
+      LOG(ERROR) << "Failed to set GAMMA_LUT property for crtc="
+                 << crtc_props.id;
+      return false;
+    }
+  }
+
+  // If we try to do this in a non-blocking fashion this can return EBUSY since
+  // there is a pending page flip. Do a blocking commit (the same as the legacy
+  // API) to ensure the properties are applied.
+  // TODO(dnicoara): Should cache these values locally and aggregate them with
+  // the page flip event otherwise this "steals" a vsync to apply the property.
+  return drm_->CommitProperties(property_set.get(), 0, 0, nullptr);
+#else
+  return true;
+#endif
 }
 
 bool HardwareDisplayPlaneManagerAtomic::AddOutFencePtrProperties(

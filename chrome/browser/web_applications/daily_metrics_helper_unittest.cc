@@ -4,19 +4,12 @@
 
 #include "chrome/browser/web_applications/daily_metrics_helper.h"
 
-#include <stdint.h>
-#include <vector>
-
-#include "base/numerics/clamped_math.h"
-#include "base/strings/string_piece.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "chrome/browser/web_applications/test/web_app_test.h"
-#include "chrome/test/base/testing_profile.h"
+#include "components/sync/test/test_sync_service.h"
 #include "components/ukm/test_ukm_recorder.h"
-#include "content/public/test/browser_task_environment.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
-#include "services/metrics/public/mojom/ukm_interface.mojom.h"
 #include "testing/gmock/include/gmock/gmock-matchers.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -56,7 +49,7 @@ class DailyMetricsHelperTest : public WebAppTest {
   }
 
   void FlushOldRecordsAndUpdate(DailyInteraction record) {
-    web_app::FlushOldRecordsAndUpdate(record, profile());
+    web_app::FlushOldRecordsAndUpdate(record, profile(), &sync_service_);
   }
 
   void RecordSomethingTheNextDaySoItEmits() {
@@ -68,6 +61,7 @@ class DailyMetricsHelperTest : public WebAppTest {
   DailyMetricsHelperTest(const DailyMetricsHelperTest&) = delete;
   DailyMetricsHelperTest& operator=(const DailyMetricsHelperTest&) = delete;
 
+  syncer::TestSyncService sync_service_;
   ukm::TestAutoSetUkmRecorder ukm_recorder_;
 };
 
@@ -159,7 +153,7 @@ TEST_F(DailyMetricsHelperTest, EmitsLatestValues) {
   RecordSomethingTheNextDaySoItEmits();
 
   EXPECT_EQ(ukm_recorder_.entries_count(), 1U);
-  auto* entry = ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName)[0].get();
+  auto* entry = ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName)[0];
   ukm::TestAutoSetUkmRecorder::ExpectEntryMetric(
       entry, UkmEntry::kInstalledName, true);
   ukm::TestAutoSetUkmRecorder::ExpectEntryMetric(
@@ -188,7 +182,7 @@ TEST_F(DailyMetricsHelperTest, EmitsSumsForDurationsAndSessions) {
   RecordSomethingTheNextDaySoItEmits();
 
   ASSERT_EQ(ukm_recorder_.entries_count(), 1U);
-  auto* entry = ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName)[0].get();
+  auto* entry = ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName)[0];
   // 50 linear buckets per day, ie buckets of 1728 seconds,
   // 1+4 = 5 hours = 18000 seconds, bucketed into 10th bucket is 17280.
   ukm::TestAutoSetUkmRecorder::ExpectEntryMetric(
@@ -214,7 +208,7 @@ TEST_F(DailyMetricsHelperTest, EmitsClampedSumsForExtremeDurations) {
   RecordSomethingTheNextDaySoItEmits();
 
   ASSERT_EQ(ukm_recorder_.entries_count(), 1U);
-  auto* entry = ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName)[0].get();
+  auto* entry = ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName)[0];
   // 50 linear buckets per day, ie buckets of 1728 seconds,
   // 1+3 = 4 seconds, bucketed into 1st bucket so min value of 1.
   ukm::TestAutoSetUkmRecorder::ExpectEntryMetric(
@@ -233,7 +227,7 @@ TEST_F(DailyMetricsHelperTest, DoesNotEmitZeroDurationsOrSessions) {
 
   auto entries = ukm_recorder_.GetEntriesByName(UkmEntry::kEntryName);
   ASSERT_EQ(entries.size(), 1U);
-  auto* entry = entries[0].get();
+  auto* entry = entries[0];
   ukm_recorder_.ExpectEntrySourceHasUrl(entries[0], record1.start_url);
   ASSERT_THAT(entry->metrics,
               Not(Contains(Key(UkmEntry::kForegroundDurationNameHash))));

@@ -37,9 +37,7 @@ PaintPropertyChangeType EffectPaintPropertyNode::State::ComputeChange(
       output_clip != other.output_clip || blend_mode != other.blend_mode ||
       view_transition_element_id != other.view_transition_element_id ||
       view_transition_element_resource_id !=
-          other.view_transition_element_resource_id ||
-      self_or_ancestor_participates_in_view_transition !=
-          other.self_or_ancestor_participates_in_view_transition) {
+          other.view_transition_element_resource_id) {
     return PaintPropertyChangeType::kChangedOnlyValues;
   }
   bool opacity_changed = opacity != other.opacity;
@@ -195,7 +193,7 @@ gfx::RectF EffectPaintPropertyNode::MapRect(const gfx::RectF& rect) const {
 }
 
 std::unique_ptr<JSONObject> EffectPaintPropertyNode::ToJSON() const {
-  auto json = EffectPaintPropertyNodeOrAlias::ToJSON();
+  auto json = ToJSONBase();
   json->SetString("localTransformSpace",
                   String::Format("%p", state_.local_transform_space.get()));
   json->SetString("outputClip", String::Format("%p", state_.output_clip.get()));

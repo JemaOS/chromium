@@ -22,7 +22,6 @@ dictionary MediaTrackConstraintSet {
     ConstrainBoolean echoCancellation;
     ConstrainBoolean autoGainControl;
     ConstrainBoolean noiseSuppression;
-    ConstrainBoolean voiceIsolation;
     ConstrainDouble latency;
     ConstrainLong channelCount;
     ConstrainDOMString deviceId;
@@ -51,8 +50,6 @@ dictionary MediaTrackConstraintSet {
 
     // W3C Media Capture Extensions
     [RuntimeEnabled=MediaCaptureBackgroundBlur] ConstrainBoolean backgroundBlur;
-    [RuntimeEnabled=MediaCaptureCameraControls] ConstrainBoolean eyeGazeCorrection;
-    [RuntimeEnabled=MediaCaptureCameraControls] ConstrainBoolean faceFraming;
 
     // Screen Capture API
     // https://w3c.github.io/mediacapture-screen-share/#extensions-to-mediatrackconstraintset

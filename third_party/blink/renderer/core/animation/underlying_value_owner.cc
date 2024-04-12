@@ -3,17 +3,14 @@
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/animation/underlying_value_owner.h"
-#include "third_party/blink/renderer/platform/heap/persistent.h"
 
 #include <memory>
 
 namespace blink {
 
 struct NullValueWrapper {
-  NullValueWrapper()
-      : value(MakeGarbageCollected<InterpolationValueGCed>(nullptr)) {}
-
-  const Persistent<const InterpolationValueGCed> value;
+  NullValueWrapper() : value(nullptr) {}
+  const InterpolationValue value;
 };
 
 InterpolableValue& UnderlyingValueOwner::MutableInterpolableValue() {
@@ -21,9 +18,9 @@ InterpolableValue& UnderlyingValueOwner::MutableInterpolableValue() {
 }
 
 void UnderlyingValueOwner::SetInterpolableValue(
-    InterpolableValue* interpolable_value) {
+    std::unique_ptr<InterpolableValue> interpolable_value) {
   DCHECK(type_);
-  MutableValue().interpolable_value = interpolable_value;
+  MutableValue().interpolable_value = std::move(interpolable_value);
 }
 
 const NonInterpolableValue* UnderlyingValueOwner::GetNonInterpolableValue()
@@ -39,7 +36,7 @@ void UnderlyingValueOwner::SetNonInterpolableValue(
 
 const InterpolationValue& UnderlyingValueOwner::Value() const {
   DEFINE_STATIC_LOCAL(NullValueWrapper, null_value_wrapper, ());
-  return *this ? *value_ : null_value_wrapper.value->underlying();
+  return *this ? *value_ : null_value_wrapper.value;
 }
 
 void UnderlyingValueOwner::Set(std::nullptr_t) {
@@ -67,7 +64,7 @@ void UnderlyingValueOwner::Set(const InterpolationType& type,
   value_ = &value_owner_;
 }
 
-void UnderlyingValueOwner::Set(TypedInterpolationValue* value) {
+void UnderlyingValueOwner::Set(std::unique_ptr<TypedInterpolationValue> value) {
   if (value)
     Set(value->GetType(), std::move(value->MutableValue()));
   else

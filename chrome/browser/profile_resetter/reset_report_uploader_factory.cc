@@ -4,15 +4,14 @@
 
 #include "chrome/browser/profile_resetter/reset_report_uploader_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profile_resetter/reset_report_uploader.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/storage_partition.h"
 
 // static
 ResetReportUploaderFactory* ResetReportUploaderFactory::GetInstance() {
-  static base::NoDestructor<ResetReportUploaderFactory> instance;
-  return instance.get();
+  return base::Singleton<ResetReportUploaderFactory>::get();
 }
 
 // static
@@ -32,12 +31,10 @@ ResetReportUploaderFactory::ResetReportUploaderFactory()
               .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
-ResetReportUploaderFactory::~ResetReportUploaderFactory() = default;
+ResetReportUploaderFactory::~ResetReportUploaderFactory() {}
 
-std::unique_ptr<KeyedService>
-ResetReportUploaderFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ResetReportUploaderFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<ResetReportUploader>(
-      context->GetDefaultStoragePartition()
-          ->GetURLLoaderFactoryForBrowserProcess());
+  return new ResetReportUploader(context->GetDefaultStoragePartition()
+                                     ->GetURLLoaderFactoryForBrowserProcess());
 }

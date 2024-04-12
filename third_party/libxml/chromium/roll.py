@@ -64,16 +64,10 @@ import tempfile
 #    c. Make and commit any final changes to README.chromium, BUILD.gn, etc.
 #    d. git cl upload
 #    e. Complete the review as usual
-#
-# The --linuxfast argument is an alternative to --linux which also deletes
-# files which are not intended to be checked in. This would normally happen at
-# the end of the --mac run, but if you want to run the roll script and get to
-# the final state without running the configure scripts on all three platforms,
-# this is helpful.
 
 PATCHES = [
+    'libxml2-2.9.4-security-xpath-nodetab-uaf.patch',
     'undo-sax-deprecation.patch',
-    'remove-getentropy.patch',
 ]
 
 
@@ -128,12 +122,12 @@ EXTRA_NIX_XML_CONFIGURE_OPTIONS = [
     '--without-minimum',
     '--without-readline',
     '--without-history',
-    '--without-tls',
 ]
 
 
 # These options are only available in win32/configure.js for Windows.
 EXTRA_WIN32_XML_CONFIGURE_OPTIONS = [
+    'trio=no',
     'walker=no',
 ]
 
@@ -160,12 +154,10 @@ FILES_TO_REMOVE = [
     # This is unneeded "legacy" SAX API, even though we enable SAX1.
     'src/SAX.c',
     'src/VxWorks',
-    'src/aclocal.m4',
     'src/autogen.sh',
     'src/autom4te.cache',
     'src/bakefile',
     'src/build_glob.py',
-    'src/CMakeLists.txt',
     'src/c14n.c',
     'src/catalog.c',
     'src/compile',
@@ -188,7 +180,6 @@ FILES_TO_REMOVE = [
     'src/install-sh',
     'src/legacy.c',
     'src/libxml2.doap',
-    'src/libxml2.syms',
     'src/ltmain.sh',
     'src/m4',
     'src/macos/libxml2.mcp.xml.sit.hqx',
@@ -204,9 +195,13 @@ FILES_TO_REMOVE = [
     'src/testOOM.c',
     'src/testOOMlib.c',
     'src/testOOMlib.h',
+    'src/trio.c',
+    'src/trio.h',
+    'src/triop.h',
+    'src/triostr.c',
+    'src/triostr.h',
     'src/vms',
     'src/win32/VC10/config.h',
-    'src/win32/configure.js',
     'src/win32/wince',
     'src/xinclude.c',
     'src/xlink.c',
@@ -280,7 +275,7 @@ def remove_tracked_files(files_to_remove):
     """
     files_to_remove = [f for f in files_to_remove if os.path.exists(f)]
     if files_to_remove:
-        git('rm', '-rf', '--ignore-unmatch', *files_to_remove)
+        git('rm', '-rf', *files_to_remove)
 
 
 def sed_in_place(input_filename, program):
@@ -357,7 +352,7 @@ def prepare_libxml_distribution(src_path, libxml2_repo_path, temp_dir):
         return commit, os.path.abspath(tar_file)
 
 
-def roll_libxml_linux(src_path, libxml2_repo_path, fast):
+def roll_libxml_linux(src_path, libxml2_repo_path):
     with WorkingDir(src_path):
         # Export the upstream git repo.
         try:
@@ -393,14 +388,8 @@ def roll_libxml_linux(src_path, libxml2_repo_path, fast):
             # Add *everything*
             with WorkingDir('../src'):
                 git('add', '*')
-                if fast:
-                    with WorkingDir('..'):
-                        remove_tracked_files(FILES_TO_REMOVE)
                 git('commit', '-am', '%s libxml, linux' % commit)
-    if fast:
-        print('Now upload for review, etc.')
-    else:
-        print('Now push to Windows and run steps there.')
+    print('Now push to Windows and run steps there.')
 
 
 def roll_libxml_win32(src_path):
@@ -468,7 +457,6 @@ def main():
     platform.add_argument('--linux', action='store_true')
     platform.add_argument('--win32', action='store_true')
     platform.add_argument('--mac', action='store_true')
-    platform.add_argument('--linuxfast', action='store_true')
     parser.add_argument(
         'libxml2_repo_path',
         type=str,
@@ -479,13 +467,13 @@ def main():
         help='The path to the homebrew installation of icu4c.')
     args = parser.parse_args()
 
-    if args.linux or args.linuxfast:
+    if args.linux:
         libxml2_repo_path = args.libxml2_repo_path
         if not libxml2_repo_path:
             print('Specify the path to the local libxml2 repo clone.')
             sys.exit(1)
         libxml2_repo_path = os.path.abspath(libxml2_repo_path)
-        roll_libxml_linux(src_dir, libxml2_repo_path, args.linuxfast)
+        roll_libxml_linux(src_dir, libxml2_repo_path)
     elif args.win32:
         roll_libxml_win32(src_dir)
     elif args.mac:

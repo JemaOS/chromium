@@ -6,7 +6,6 @@
 
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_audio_data.h"
-#include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/streams/writable_stream_transferring_optimizer.h"
 #include "third_party/blink/renderer/modules/breakout_box/metrics.h"
 #include "third_party/blink/renderer/modules/breakout_box/pushable_media_stream_audio_source.h"
@@ -28,9 +27,6 @@ class TransferringOptimizer : public WritableStreamTransferringOptimizer {
   UnderlyingSinkBase* PerformInProcessOptimization(
       ScriptState* script_state) override {
     RecordBreakoutBoxUsage(BreakoutBoxUsage::kWritableAudioWorker);
-    if (ExecutionContext::From(script_state)->IsWorkerGlobalScope()) {
-      source_broker_->SetShouldDeliverAudioOnAudioTaskRunner(false);
-    }
     return MakeGarbageCollected<MediaStreamAudioTrackUnderlyingSink>(
         source_broker_);
   }
@@ -48,73 +44,61 @@ MediaStreamAudioTrackUnderlyingSink::MediaStreamAudioTrackUnderlyingSink(
   RecordBreakoutBoxUsage(BreakoutBoxUsage::kWritableAudio);
 }
 
-ScriptPromiseTyped<IDLUndefined> MediaStreamAudioTrackUnderlyingSink::start(
+ScriptPromise MediaStreamAudioTrackUnderlyingSink::start(
     ScriptState* script_state,
     WritableStreamDefaultController* controller,
     ExceptionState& exception_state) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   source_broker_->OnClientStarted();
   is_connected_ = true;
-  return ToResolvedUndefinedPromise(script_state);
+  return ScriptPromise::CastUndefined(script_state);
 }
 
-ScriptPromiseTyped<IDLUndefined> MediaStreamAudioTrackUnderlyingSink::write(
+ScriptPromise MediaStreamAudioTrackUnderlyingSink::write(
     ScriptState* script_state,
     ScriptValue chunk,
     WritableStreamDefaultController* controller,
     ExceptionState& exception_state) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  AudioData* audio_data =
-      V8AudioData::ToWrappable(script_state->GetIsolate(), chunk.V8Value());
+  AudioData* audio_data = V8AudioData::ToImplWithTypeCheck(
+      script_state->GetIsolate(), chunk.V8Value());
   if (!audio_data) {
     exception_state.ThrowTypeError("Null audio data.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   if (!audio_data->data()) {
     exception_state.ThrowTypeError("Empty or closed audio data.");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   if (!source_broker_->IsRunning()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       "Stream closed");
-    return ScriptPromiseTyped<IDLUndefined>();
-  }
-
-  const auto& data = audio_data->data();
-  media::AudioParameters params(
-      media::AudioParameters::AUDIO_PCM_LOW_LATENCY,
-      media::ChannelLayoutConfig::Guess(data->channel_count()),
-      data->sample_rate(), data->frame_count());
-  if (!params.IsValid()) {
-    audio_data->close();
-    exception_state.ThrowDOMException(DOMExceptionCode::kOperationError,
-                                      "Invalid audio data");
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
   source_broker_->PushAudioData(audio_data->data());
   audio_data->close();
 
-  return ToResolvedUndefinedPromise(script_state);
+  return ScriptPromise::CastUndefined(script_state);
 }
 
-ScriptPromiseTyped<IDLUndefined> MediaStreamAudioTrackUnderlyingSink::abort(
+ScriptPromise MediaStreamAudioTrackUnderlyingSink::abort(
     ScriptState* script_state,
     ScriptValue reason,
     ExceptionState& exception_state) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   Disconnect();
-  return ToResolvedUndefinedPromise(script_state);
+  return ScriptPromise::CastUndefined(script_state);
 }
 
-ScriptPromiseTyped<IDLUndefined> MediaStreamAudioTrackUnderlyingSink::close(
+ScriptPromise MediaStreamAudioTrackUnderlyingSink::close(
     ScriptState* script_state,
     ExceptionState& exception_state) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   Disconnect();
-  return ToResolvedUndefinedPromise(script_state);
+  return ScriptPromise::CastUndefined(script_state);
 }
 
 std::unique_ptr<WritableStreamTransferringOptimizer>

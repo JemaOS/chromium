@@ -9,7 +9,7 @@
 #include "components/prefs/scoped_user_pref_update.h"
 
 const char DevToolsSettings::kSyncDevToolsPreferencesFrontendName[] =
-    "sync-preferences";
+    "sync_preferences";
 const bool DevToolsSettings::kSyncDevToolsPreferencesDefault = false;
 
 DevToolsSettings::DevToolsSettings(Profile* profile) : profile_(profile) {
@@ -79,7 +79,7 @@ base::Value::Dict DevToolsSettings::Get() {
   return settings;
 }
 
-std::optional<base::Value> DevToolsSettings::Get(const std::string& name) {
+absl::optional<base::Value> DevToolsSettings::Get(const std::string& name) {
   PrefService* prefs = profile_->GetPrefs();
   if (name == kSyncDevToolsPreferencesFrontendName) {
     // DevTools expects any kind of preference to be a string. Parsing is
@@ -90,7 +90,7 @@ std::optional<base::Value> DevToolsSettings::Get(const std::string& name) {
   const char* dict_name = GetDictionaryNameForSettingsName(name);
   const base::Value::Dict& dict = prefs->GetDict(dict_name);
   const base::Value* value = dict.Find(name);
-  return value ? std::optional<base::Value>(value->Clone()) : std::nullopt;
+  return value ? absl::optional<base::Value>(value->Clone()) : absl::nullopt;
 }
 
 void DevToolsSettings::Set(const std::string& name, const std::string& value) {
@@ -112,15 +112,9 @@ void DevToolsSettings::Remove(const std::string& name) {
     return;
   }
 
-  PrefService* prefs = profile_->GetPrefs();
-  for (auto* dict_name :
-       {GetDictionaryNameForSyncedPrefs(), prefs::kDevToolsPreferences}) {
-    const base::Value::Dict& dict = prefs->GetDict(dict_name);
-    if (dict.Find(name)) {
-      ScopedDictPrefUpdate update(profile_->GetPrefs(), dict_name);
-      update->Remove(name);
-    }
-  }
+  ScopedDictPrefUpdate update(profile_->GetPrefs(),
+                              GetDictionaryNameForSettingsName(name));
+  update->Remove(name);
 }
 
 void DevToolsSettings::Clear() {

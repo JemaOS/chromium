@@ -85,13 +85,12 @@ static WebVector<WebEncryptedMediaSessionType> ConvertSessionTypes(
 }  // namespace
 
 MediaKeySystemAccessInitializerBase::MediaKeySystemAccessInitializerBase(
-    ExecutionContext* context,
-    ScriptPromiseResolver* resolver,
+    ScriptState* script_state,
     const String& key_system,
     const HeapVector<Member<MediaKeySystemConfiguration>>&
         supported_configurations)
-    : ExecutionContextClient(context),
-      resolver_(resolver),
+    : ExecutionContextClient(ExecutionContext::From((script_state))),
+      resolver_(MakeGarbageCollected<ScriptPromiseResolver>(script_state)),
       key_system_(key_system),
       supported_configurations_(supported_configurations.size()) {
   for (wtf_size_t i = 0; i < supported_configurations.size(); ++i) {
@@ -145,6 +144,10 @@ const SecurityOrigin* MediaKeySystemAccessInitializerBase::GetSecurityOrigin()
     const {
   return IsExecutionContextValid() ? GetExecutionContext()->GetSecurityOrigin()
                                    : nullptr;
+}
+
+ScriptPromise MediaKeySystemAccessInitializerBase::Promise() {
+  return resolver_->Promise();
 }
 
 void MediaKeySystemAccessInitializerBase::Trace(Visitor* visitor) const {

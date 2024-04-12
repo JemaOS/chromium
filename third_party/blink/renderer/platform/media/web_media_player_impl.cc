@@ -39,7 +39,6 @@
 #include "media/base/cdm_context.h"
 #include "media/base/demuxer.h"
 #include "media/base/encryption_scheme.h"
-#include "media/base/key_systems.h"
 #include "media/base/limits.h"
 #include "media/base/media_content_type.h"
 #include "media/base/media_log.h"
@@ -50,6 +49,7 @@
 #include "media/base/renderer.h"
 #include "media/base/routing_token_callback.h"
 #include "media/base/supported_types.h"
+#include "media/base/text_renderer.h"
 #include "media/base/timestamp_constants.h"
 #include "media/base/video_frame.h"
 #include "media/filters/chunk_demuxer.h"
@@ -64,13 +64,11 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "net/base/data_url.h"
-#include "net/url_request/url_request_job.h"
 #include "services/device/public/mojom/battery_monitor.mojom-blink.h"
 #include "third_party/blink/public/common/media/display_type.h"
 #include "third_party/blink/public/common/media/watch_time_reporter.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/media/url_index.h"
-#include "third_party/blink/public/platform/web_audio_source_provider_impl.h"
 #include "third_party/blink/public/platform/web_content_decryption_module.h"
 #include "third_party/blink/public/platform/web_encrypted_media_types.h"
 #include "third_party/blink/public/platform/web_fullscreen_video_status.h"
@@ -82,23 +80,26 @@
 #include "third_party/blink/public/platform/web_security_origin.h"
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_surface_layer_bridge.h"
+#include "third_party/blink/public/platform/web_texttrack_metadata.h"
 #include "third_party/blink/public/platform/web_url.h"
+#include "third_party/blink/public/platform/webaudiosourceprovider_impl.h"
 #include "third_party/blink/public/strings/grit/blink_strings.h"
-#include "third_party/blink/public/web/modules/media/web_media_player_util.h"
+#include "third_party/blink/public/web/modules/media/webmediaplayer_util.h"
 #include "third_party/blink/public/web/web_document.h"
 #include "third_party/blink/public/web/web_frame.h"
 #include "third_party/blink/public/web/web_local_frame.h"
 #include "third_party/blink/public/web/web_view.h"
 #include "third_party/blink/renderer/platform/media/buffered_data_source_host_impl.h"
 #include "third_party/blink/renderer/platform/media/power_status_helper.h"
+#include "third_party/blink/renderer/platform/media/text_track_impl.h"
 #include "third_party/blink/renderer/platform/media/video_decode_stats_reporter.h"
 #include "third_party/blink/renderer/platform/media/web_content_decryption_module_impl.h"
+#include "third_party/blink/renderer/platform/media/web_inband_text_track_impl.h"
 #include "third_party/blink/renderer/platform/media/web_media_source_impl.h"
 #include "ui/gfx/geometry/size.h"
 
 #if BUILDFLAG(ENABLE_HLS_DEMUXER)
-#include "media/filters/hls_data_source_provider_impl.h"
-#include "third_party/blink/renderer/platform/media/multi_buffer_data_source_factory.h"
+#include "third_party/blink/renderer/platform/media/hls_data_source_provider_impl.h"
 #endif  // BUILDFLAG(ENABLE_HLS_DEMUXER)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -113,22 +114,6 @@ enum SplitHistogramTypes {
   kPlaybackType = 0x1 << 1,
   kEncrypted = 0x1 << 2,
 };
-
-constexpr const char* GetHistogramName(SplitHistogramName type) {
-  switch (type) {
-    case SplitHistogramName::kTimeToMetadata:
-      return "Media.TimeToMetadata";
-    case SplitHistogramName::kTimeToPlayReady:
-      return "Media.TimeToPlayReady";
-    case SplitHistogramName::kUnderflowDuration2:
-      return "Media.UnderflowDuration2";
-    case SplitHistogramName::kVideoHeightInitial:
-      return "Media.VideoHeight.Initial";
-    case SplitHistogramName::kTimeToFirstFrame:
-      return "Media.TimeToFirstFrame";
-  }
-  NOTREACHED_NORETURN();
-}
 
 namespace learning = ::media::learning;
 using ::media::Demuxer;
@@ -460,7 +445,6 @@ WebMediaPlayerImpl::WebMediaPlayerImpl(
   // |pipeline_controller_|.
   pipeline_controller_ = std::make_unique<media::PipelineController>(
       std::move(pipeline),
-      base::BindRepeating(&WebMediaPlayerImpl::OnPipelineStarted, weak_this_),
       base::BindRepeating(&WebMediaPlayerImpl::OnPipelineSeeked, weak_this_),
       base::BindRepeating(&WebMediaPlayerImpl::OnPipelineSuspended, weak_this_),
       base::BindRepeating(&WebMediaPlayerImpl::OnBeforePipelineResume,
@@ -590,7 +574,7 @@ WebMediaPlayerImpl::~WebMediaPlayerImpl() {
   simple_watch_timer_.Stop();
   media_log_->OnWebMediaPlayerDestroyed();
 
-  demuxer_manager_->StopAndResetClient();
+  demuxer_manager_->StopAndResetClient(nullptr);
   demuxer_manager_->InvalidateWeakPtrs();
 
   // Disconnect from the surface layer. We still preserve the `bridge_` until
@@ -819,9 +803,6 @@ void WebMediaPlayerImpl::DoLoad(LoadType load_type,
   DVLOG(1) << __func__;
   DCHECK(main_task_runner_->BelongsToCurrentThread());
 
-  is_cache_disabled_ = is_cache_disabled;
-  cors_mode_ = cors_mode;
-
   // Start a new observation.  If there was one before, then we didn't play it.
   will_play_helper_.CompleteObservationIfNeeded(learning::TargetValue(false));
   // For now, send in an empty set of features.  We should fill some in here,
@@ -839,17 +820,16 @@ void WebMediaPlayerImpl::DoLoad(LoadType load_type,
 #endif  // BUILDFLAG(IS_ANDROID)
 
   // Note: `url` may be very large, take care when making copies.
-  demuxer_manager_->SetLoadedUrl(GURL(url));
+  loaded_url_ = GURL(url);
   load_type_ = load_type;
 
-  ReportMetrics(load_type, demuxer_manager_->LoadedUrl(), media_log_.get());
+  ReportMetrics(load_type, loaded_url_, *frame_, media_log_.get());
 
   // Set subresource URL for crash reporting; will be truncated to 256 bytes.
   static base::debug::CrashKeyString* subresource_url =
       base::debug::AllocateCrashKeyString("subresource_url",
                                           base::debug::CrashKeySize::Size256);
-  base::debug::SetCrashKeyString(subresource_url,
-                                 demuxer_manager_->LoadedUrl().spec());
+  base::debug::SetCrashKeyString(subresource_url, loaded_url_.spec());
 
   SetNetworkState(WebMediaPlayer::kNetworkStateLoading);
   SetReadyState(WebMediaPlayer::kReadyStateHaveNothing);
@@ -859,23 +839,29 @@ void WebMediaPlayerImpl::DoLoad(LoadType load_type,
       url.GetString().Substring(0, media::kMaxUrlLength + 1).Utf8());
   load_start_time_ = base::TimeTicks::Now();
 
+  std::vector<media::TextTrackConfig> text_configs;
+  for (const auto& metadata : client_->GetTextTrackMetadata()) {
+    text_configs.emplace_back(
+        media::TextTrackConfig::ConvertKind(metadata.kind()), metadata.label(),
+        metadata.language(), metadata.id());
+  }
+  media_log_->SetProperty<MediaLogProperty::kTextTracks>(text_configs);
+
   // If we're adapting, then restart the smoothness experiment.
   if (smoothness_helper_)
     smoothness_helper_.reset();
 
   media_metrics_provider_->Initialize(
       load_type == kLoadTypeMediaSource,
-      load_type == kLoadTypeURL
-          ? GetMediaURLScheme(demuxer_manager_->LoadedUrl())
-          : media::mojom::MediaURLScheme::kUnknown,
+      load_type == kLoadTypeURL ? GetMediaURLScheme(loaded_url_)
+                                : media::mojom::MediaURLScheme::kUnknown,
       media::mojom::MediaStreamType::kNone);
 
   // If a demuxer override was specified or a Media Source pipeline will be
   // used, the pipeline can start immediately.
   if (demuxer_manager_->HasDemuxerOverride() ||
       load_type == kLoadTypeMediaSource ||
-      demuxer_manager_->LoadedUrl().SchemeIs(
-          media::remoting::kRemotingScheme)) {
+      loaded_url_.SchemeIs(media::remoting::kRemotingScheme)) {
     StartPipeline();
     return;
   }
@@ -883,14 +869,14 @@ void WebMediaPlayerImpl::DoLoad(LoadType load_type,
   // Short circuit the more complex loading path for data:// URLs. Sending
   // them through the network based loading path just wastes memory and causes
   // worse performance since reads become asynchronous.
-  if (demuxer_manager_->LoadedUrl().SchemeIs(url::kDataScheme)) {
+  if (loaded_url_.SchemeIs(url::kDataScheme)) {
     std::string mime_type, charset, data;
-    if (!net::DataURL::Parse(demuxer_manager_->LoadedUrl(), &mime_type,
-                             &charset, &data) ||
+    if (!net::DataURL::Parse(loaded_url_, &mime_type, &charset, &data) ||
         data.empty()) {
       return MemoryDataSourceInitialized(false, 0);
     }
     size_t data_size = data.size();
+    demuxer_manager_->SetLoadedUrl(loaded_url_);
     demuxer_manager_->SetDataSource(
         std::make_unique<media::MemoryDataSource>(std::move(data)));
     MemoryDataSourceInitialized(true, data_size);
@@ -1111,7 +1097,14 @@ void WebMediaPlayerImpl::SetVolume(double volume) {
 
   if (delegate_has_audio_ != HasUnmutedAudio()) {
     delegate_has_audio_ = HasUnmutedAudio();
-    DidMediaMetadataChange();
+    media::MediaContentType content_type = GetMediaContentType();
+    client_->DidMediaMetadataChange(
+        delegate_has_audio_, HasVideo(),
+        pipeline_metadata_.audio_decoder_config.codec(),
+        pipeline_metadata_.video_decoder_config.codec(), content_type,
+        pipeline_metadata_.video_decoder_config.is_encrypted());
+    delegate_->DidMediaMetadataChange(delegate_id_, delegate_has_audio_,
+                                      HasVideo(), content_type);
 
     // If we paused a background video since it was muted, the volume change
     // should resume the playback.
@@ -1131,7 +1124,7 @@ void WebMediaPlayerImpl::SetVolume(double volume) {
 void WebMediaPlayerImpl::SetLatencyHint(double seconds) {
   DVLOG(1) << __func__ << "(" << seconds << ")";
   DCHECK(main_task_runner_->BelongsToCurrentThread());
-  std::optional<base::TimeDelta> latency_hint;
+  absl::optional<base::TimeDelta> latency_hint;
   if (std::isfinite(seconds)) {
     DCHECK_GE(seconds, 0);
     latency_hint = base::Seconds(seconds);
@@ -1152,7 +1145,8 @@ void WebMediaPlayerImpl::SetWasPlayedWithUserActivation(
 }
 
 void WebMediaPlayerImpl::OnRequestPictureInPicture() {
-  ActivateSurfaceLayerForVideo();
+  if (!surface_layer_for_video_enabled_)
+    ActivateSurfaceLayerForVideo();
 
   DCHECK(bridge_);
   DCHECK(bridge_->GetSurfaceId().is_valid());
@@ -1217,7 +1211,7 @@ void WebMediaPlayerImpl::SelectedVideoTrackChanged(
     WebMediaPlayer::TrackId* selectedTrackId) {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
 
-  std::optional<MediaTrack::Id> selected_video_track_id;
+  absl::optional<MediaTrack::Id> selected_video_track_id;
   if (selectedTrackId && !video_track_disabled_)
     selected_video_track_id = MediaTrack::Id(selectedTrackId->Utf8().data());
   MEDIA_LOG(INFO, media_log_.get())
@@ -1268,7 +1262,7 @@ double WebMediaPlayerImpl::Duration() const {
 
   // Some demuxer's might have more accurate duration information than the
   // pipeline, so check that first.
-  std::optional<double> duration = demuxer_manager_->GetDemuxerDuration();
+  absl::optional<double> duration = demuxer_manager_->GetDemuxerDuration();
   if (duration.has_value()) {
     return *duration;
   }
@@ -1285,7 +1279,7 @@ double WebMediaPlayerImpl::timelineOffset() const {
   if (pipeline_metadata_.timeline_offset.is_null())
     return std::numeric_limits<double>::quiet_NaN();
 
-  return pipeline_metadata_.timeline_offset.InMillisecondsFSinceUnixEpoch();
+  return pipeline_metadata_.timeline_offset.ToJsTime();
 }
 
 base::TimeDelta WebMediaPlayerImpl::GetCurrentTimeInternal() const {
@@ -1359,13 +1353,8 @@ WebTimeRanges WebMediaPlayerImpl::Buffered() const {
 WebTimeRanges WebMediaPlayerImpl::Seekable() const {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
 
-  if (ready_state_ < WebMediaPlayer::kReadyStateHaveMetadata) {
+  if (ready_state_ < WebMediaPlayer::kReadyStateHaveMetadata)
     return WebTimeRanges();
-  }
-
-  if (demuxer_manager_->IsLiveContent()) {
-    return WebTimeRanges();
-  }
 
   const double seekable_end = Duration();
 
@@ -1458,18 +1447,18 @@ WebMediaPlayerImpl::GetCurrentFrameThenUpdate() {
   return GetCurrentFrameFromCompositor();
 }
 
-std::optional<media::VideoFrame::ID> WebMediaPlayerImpl::CurrentFrameId()
+absl::optional<media::VideoFrame::ID> WebMediaPlayerImpl::CurrentFrameId()
     const {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
   TRACE_EVENT0("media", "WebMediaPlayerImpl::GetCurrentFrameID");
 
   // We can't copy from protected frames.
   if (cdm_context_ref_)
-    return std::nullopt;
+    return absl::nullopt;
 
   if (auto frame = compositor_->GetCurrentFrameOnAnyThread())
     return frame->unique_id();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 media::PaintCanvasVideoRenderer*
@@ -1508,10 +1497,6 @@ uint64_t WebMediaPlayerImpl::VideoDecodedByteCount() const {
 
 bool WebMediaPlayerImpl::HasAvailableVideoFrame() const {
   return has_first_frame_;
-}
-
-bool WebMediaPlayerImpl::HasReadableVideoFrame() const {
-  return has_first_frame_ && is_frame_readable_;
 }
 
 void WebMediaPlayerImpl::SetContentDecryptionModule(
@@ -1591,27 +1576,11 @@ void WebMediaPlayerImpl::AddVideoTrack(const std::string& id,
 #endif  // BUILDFLAG(ENABLE_FFMPEG)
 
 #if BUILDFLAG(ENABLE_HLS_DEMUXER)
-
-void WebMediaPlayerImpl::GetUrlData(
-    const GURL& gurl,
-    base::OnceCallback<void(scoped_refptr<UrlData>)> cb) {
-  DCHECK(main_task_runner_->BelongsToCurrentThread());
-  auto url_data = url_index_->GetByUrl(
-      gurl, static_cast<UrlData::CorsMode>(cors_mode_),
-      is_cache_disabled_ ? UrlIndex::kCacheDisabled : UrlIndex::kNormal);
-  std::move(cb).Run(std::move(url_data));
-}
-
 base::SequenceBound<media::HlsDataSourceProvider>
 WebMediaPlayerImpl::GetHlsDataSourceProvider() {
-  DCHECK(main_task_runner_->BelongsToCurrentThread());
-  return base::SequenceBound<media::HlsDataSourceProviderImpl>(
-      main_task_runner_,
-      std::make_unique<MultiBufferDataSourceFactory>(
-          media_log_.get(),
-          base::BindRepeating(&WebMediaPlayerImpl::GetUrlData,
-                              weak_factory_.GetWeakPtr()),
-          main_task_runner_, tick_clock_));
+  return base::SequenceBound<HlsDataSourceProviderImpl>(
+      main_task_runner_, media_log_.get(), url_index_, main_task_runner_,
+      media_task_runner_, tick_clock_);
 }
 #endif
 
@@ -1645,8 +1614,6 @@ void WebMediaPlayerImpl::SetCdmInternal(WebContentDecryptionModule* cdm) {
   cdm_config_ = web_cdm->GetCdmConfig();
   DCHECK(!cdm_config_->key_system.empty());
 
-  media_log_->SetProperty<MediaLogProperty::kSetCdm>(cdm_config_.value());
-
   media_metrics_provider_->SetKeySystem(cdm_config_->key_system);
   if (cdm_config_->use_hw_secure_codecs)
     media_metrics_provider_->SetIsHardwareSecure();
@@ -1668,11 +1635,11 @@ void WebMediaPlayerImpl::OnCdmAttached(bool success) {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
   DCHECK(pending_cdm_context_ref_);
 
-  media_log_->SetProperty<MediaLogProperty::kIsCdmAttached>(success);
-
   // If the CDM is set from the constructor there is no promise
   // (`set_cdm_result_`) to fulfill.
   if (success) {
+    media_log_->SetProperty<MediaLogProperty::kIsVideoEncrypted>(true);
+
     // This will release the previously attached CDM (if any).
     cdm_context_ref_ = std::move(pending_cdm_context_ref_);
     if (set_cdm_result_) {
@@ -1738,10 +1705,6 @@ void WebMediaPlayerImpl::OnPipelineSeeked(bool time_updated) {
   }
 
   attempting_suspended_start_ = false;
-}
-
-void WebMediaPlayerImpl::OnPipelineStarted(media::PipelineStatus status) {
-  media_metrics_provider_->OnStarted(status);
 }
 
 void WebMediaPlayerImpl::OnPipelineSuspended() {
@@ -1838,6 +1801,9 @@ void WebMediaPlayerImpl::StopForDemuxerReset() {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
   DCHECK(pipeline_controller_);
   pipeline_controller_->Stop();
+  // Note: Does not consider the full redirect chain, which could contain
+  // undetected mixed content.
+  demuxer_manager_->SetLoadedUrl(loaded_url_);
 
   // delete the thread dumper on the media thread.
   media_task_runner_->DeleteSoon(FROM_HERE,
@@ -1851,12 +1817,7 @@ bool WebMediaPlayerImpl::IsSecurityOriginCryptographic() const {
 }
 
 void WebMediaPlayerImpl::UpdateLoadedUrl(const GURL& url) {
-  demuxer_manager_->SetLoadedUrl(url);
-}
-
-void WebMediaPlayerImpl::DemuxerRequestsSeek(base::TimeDelta seek_time) {
-  DCHECK(main_task_runner_->BelongsToCurrentThread());
-  DoSeek(seek_time, true);
+  loaded_url_ = url;
 }
 
 void WebMediaPlayerImpl::RestartForHls() {
@@ -1953,7 +1914,7 @@ void WebMediaPlayerImpl::OnMetadata(const media::PipelineMetadata& metadata) {
   time_to_metadata_ = base::TimeTicks::Now() - load_start_time_;
   media_metrics_provider_->SetTimeToMetadata(time_to_metadata_);
   WriteSplitHistogram<kPlaybackType | kEncrypted>(
-      &base::UmaHistogramMediumTimes, SplitHistogramName::kTimeToMetadata,
+      &base::UmaHistogramMediumTimes, "Media.TimeToMetadata",
       time_to_metadata_);
 
   MaybeSetContainerNameForMetrics();
@@ -1999,7 +1960,14 @@ void WebMediaPlayerImpl::OnMetadata(const media::PipelineMetadata& metadata) {
     observer_->OnMetadataChanged(pipeline_metadata_);
 
   delegate_has_audio_ = HasUnmutedAudio();
-  DidMediaMetadataChange();
+  media::MediaContentType content_type = GetMediaContentType();
+  client_->DidMediaMetadataChange(
+      delegate_has_audio_, HasVideo(),
+      pipeline_metadata_.audio_decoder_config.codec(),
+      pipeline_metadata_.video_decoder_config.codec(), content_type,
+      pipeline_metadata_.video_decoder_config.is_encrypted());
+  delegate_->DidMediaMetadataChange(delegate_id_, delegate_has_audio_,
+                                    HasVideo(), content_type);
 
   // It could happen that the demuxer successfully completed initialization
   // (implying it had determined media metadata), but then removed all audio and
@@ -2033,10 +2001,7 @@ void WebMediaPlayerImpl::OnMetadata(const media::PipelineMetadata& metadata) {
 
 void WebMediaPlayerImpl::ActivateSurfaceLayerForVideo() {
   // Note that we might or might not already be in VideoLayer mode.
-  if (surface_layer_for_video_enabled_) {
-    // Surface layer has already been activated.
-    return;
-  }
+  DCHECK(!bridge_);
 
   surface_layer_for_video_enabled_ = true;
 
@@ -2202,8 +2167,7 @@ void WebMediaPlayerImpl::OnBufferingStateChangeInternal(
       const base::TimeDelta elapsed = base::TimeTicks::Now() - load_start_time_;
       media_metrics_provider_->SetTimeToPlayReady(elapsed);
       WriteSplitHistogram<kPlaybackType | kEncrypted>(
-          &base::UmaHistogramMediumTimes, SplitHistogramName::kTimeToPlayReady,
-          elapsed);
+          &base::UmaHistogramMediumTimes, "Media.TimeToPlayReady", elapsed);
     }
 
     // Warning: This call may be re-entrant.
@@ -2283,10 +2247,36 @@ void WebMediaPlayerImpl::OnDurationChange() {
     return;
 
   client_->DurationChanged();
-  DidMediaMetadataChange();
+  media::MediaContentType content_type = GetMediaContentType();
+  client_->DidMediaMetadataChange(
+      delegate_has_audio_, HasVideo(),
+      pipeline_metadata_.audio_decoder_config.codec(),
+      pipeline_metadata_.video_decoder_config.codec(), content_type,
+      pipeline_metadata_.video_decoder_config.is_encrypted());
+  delegate_->DidMediaMetadataChange(delegate_id_, delegate_has_audio_,
+                                    HasVideo(), content_type);
 
   if (watch_time_reporter_)
     watch_time_reporter_->OnDurationChanged(GetPipelineMediaDuration());
+}
+
+void WebMediaPlayerImpl::OnAddTextTrack(const media::TextTrackConfig& config,
+                                        media::AddTextTrackDoneCB done_cb) {
+  DCHECK(main_task_runner_->BelongsToCurrentThread());
+
+  const WebInbandTextTrackImpl::Kind web_kind =
+      static_cast<WebInbandTextTrackImpl::Kind>(config.kind());
+  const WebString web_label = WebString::FromUTF8(config.label());
+  const WebString web_language = WebString::FromUTF8(config.language());
+  const WebString web_id = WebString::FromUTF8(config.id());
+
+  std::unique_ptr<WebInbandTextTrackImpl> web_inband_text_track(
+      new WebInbandTextTrackImpl(web_kind, web_label, web_language, web_id));
+
+  std::unique_ptr<media::TextTrack> text_track(new TextTrackImpl(
+      main_task_runner_, client_, std::move(web_inband_text_track)));
+
+  std::move(done_cb).Run(std::move(text_track));
 }
 
 void WebMediaPlayerImpl::OnWaiting(media::WaitingReason reason) {
@@ -2296,8 +2286,6 @@ void WebMediaPlayerImpl::OnWaiting(media::WaitingReason reason) {
   switch (reason) {
     case media::WaitingReason::kNoCdm:
     case media::WaitingReason::kNoDecryptionKey:
-      has_waiting_for_key_ = true;
-      media_metrics_provider_->SetHasWaitingForKey();
       encrypted_client_->DidBlockPlaybackWaitingForKey();
       // TODO(jrummell): didResumePlaybackBlockedForKey() should only be called
       // when a key has been successfully added (e.g. OnSessionKeysChange() with
@@ -2385,7 +2373,7 @@ void WebMediaPlayerImpl::OnVideoOpacityChange(bool opaque) {
     bridge_->SetContentsOpaque(opaque_);
 }
 
-void WebMediaPlayerImpl::OnVideoFrameRateChange(std::optional<int> fps) {
+void WebMediaPlayerImpl::OnVideoFrameRateChange(absl::optional<int> fps) {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
   if (power_status_helper_)
     power_status_helper_->SetAverageFrameRate(fps);
@@ -2633,10 +2621,10 @@ void WebMediaPlayerImpl::OnRemotePlayStateChange(
   DCHECK(is_flinging_);
   DCHECK(main_task_runner_->BelongsToCurrentThread());
 
-  if (state == media::MediaStatus::State::kPlaying && Paused()) {
+  if (state == media::MediaStatus::State::PLAYING && Paused()) {
     DVLOG(1) << __func__ << " requesting PLAY.";
     client_->ResumePlayback();
-  } else if (state == media::MediaStatus::State::kPaused && !Paused()) {
+  } else if (state == media::MediaStatus::State::PAUSED && !Paused()) {
     DVLOG(1) << __func__ << " requesting PAUSE.";
     client_->PausePlayback(
         WebMediaPlayerClient::PauseReason::kRemotePlayStateChange);
@@ -2651,8 +2639,8 @@ void WebMediaPlayerImpl::SetPoster(const WebURL& poster) {
 void WebMediaPlayerImpl::MemoryDataSourceInitialized(bool success,
                                                      size_t data_size) {
   if (success) {
-    // Replace the loaded url with an empty data:// URL since it may be large.
-    demuxer_manager_->SetLoadedUrl(GURL("data:,"));
+    // Replace `loaded_url_` with an empty data:// URL since it may be large.
+    loaded_url_ = GURL("data:,");
 
     // Mark all the data as buffered.
     buffered_data_source_host_->SetTotalBytes(data_size);
@@ -2794,7 +2782,7 @@ void WebMediaPlayerImpl::MaybeSendOverlayInfoToDecoder() {
 }
 
 std::unique_ptr<media::Renderer> WebMediaPlayerImpl::CreateRenderer(
-    std::optional<media::RendererType> renderer_type) {
+    absl::optional<media::RendererType> renderer_type) {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
 
   // Make sure that overlays are enabled if they're always allowed.
@@ -2817,11 +2805,6 @@ std::unique_ptr<media::Renderer> WebMediaPlayerImpl::CreateRenderer(
   bool old_uses_audio_service = UsesAudioService(renderer_type_);
   renderer_type_ = renderer_factory_selector_->GetCurrentRendererType();
 
-  // TODO(crbug/1426179): Support codec changing for Media Foundation.
-  if (renderer_type_ == media::RendererType::kMediaFoundation) {
-    demuxer_manager_->DisableDemuxerCanChangeType();
-  }
-
   bool new_uses_audio_service = UsesAudioService(renderer_type_);
   if (new_uses_audio_service != old_uses_audio_service)
     client_->DidUseAudioServiceChange(new_uses_audio_service);
@@ -2835,13 +2818,13 @@ std::unique_ptr<media::Renderer> WebMediaPlayerImpl::CreateRenderer(
       client_->TargetColorSpace());
 }
 
-std::optional<media::DemuxerType> WebMediaPlayerImpl::GetDemuxerType() const {
+absl::optional<media::DemuxerType> WebMediaPlayerImpl::GetDemuxerType() const {
   // Note: this can't be a ternary expression because the compiler throws a fit
   // over type conversions.
   if (demuxer_manager_) {
     return demuxer_manager_->GetDemuxerType();
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 media::PipelineStatus WebMediaPlayerImpl::OnDemuxerCreated(
@@ -2880,21 +2863,13 @@ void WebMediaPlayerImpl::StartPipeline() {
                      base::Unretained(compositor_.get()),
                      base::BindPostTaskToCurrentDefault(base::BindOnce(
                          &WebMediaPlayerImpl::OnFirstFrame, weak_this_))));
-  base::flat_map<std::string, std::string> headers;
-  headers["Referrer"] =
-      net::URLRequestJob::ComputeReferrerForPolicy(
-          frame_->GetDocument().GetReferrerPolicy(),
-          GURL(frame_->GetDocument().OutgoingReferrer().Utf8()),
-          demuxer_manager_->LoadedUrl())
-          .spec();
 
   // base::Unretained(this) is safe here, since |CreateDemuxer| calls the bound
   // method directly and immediately.
   auto create_demuxer_error = demuxer_manager_->CreateDemuxer(
-      load_type_ == kLoadTypeMediaSource, preload_, needs_first_frame_,
+      load_type_ == kLoadTypeMediaSource, preload_, has_poster_,
       base::BindOnce(&WebMediaPlayerImpl::OnDemuxerCreated,
-                     base::Unretained(this)), 
-      headers);
+                     base::Unretained(this)));
 
   if (!create_demuxer_error.is_ok()) {
     return OnError(std::move(create_demuxer_error));
@@ -3242,7 +3217,7 @@ bool WebMediaPlayerImpl::IsMediaPlayerRendererClient() {
   // MediaResource::Type::URL for the moment.
   return renderer_factory_selector_->GetCurrentFactory()
              ->GetRequiredMediaResourceType() ==
-         media::MediaResource::Type::KUrl;
+         media::MediaResource::Type::URL;
 }
 
 void WebMediaPlayerImpl::ReportMemoryUsage() {
@@ -3315,7 +3290,7 @@ void WebMediaPlayerImpl::OnMainThreadMemoryDump(
       base::trace_event::MemoryAllocatorDump::kUnitsObjects, 1);
 
   if (args.level_of_detail !=
-      base::trace_event::MemoryDumpLevelOfDetail::kBackground) {
+      base::trace_event::MemoryDumpLevelOfDetail::BACKGROUND) {
     bool suspended = pipeline_controller_->IsPipelineSuspended();
     auto player_state =
         base::StringPrintf("Paused: %d Ended: %d ReadyState: %d Suspended: %d",
@@ -3456,8 +3431,7 @@ bool WebMediaPlayerImpl::DoesOverlaySupportMetadata() const {
 void WebMediaPlayerImpl::UpdateRemotePlaybackCompatibility(bool is_compatible) {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
 
-  client_->RemotePlaybackCompatibilityChanged(demuxer_manager_->LoadedUrl(),
-                                              is_compatible);
+  client_->RemotePlaybackCompatibilityChanged(loaded_url_, is_compatible);
 }
 
 void WebMediaPlayerImpl::ForceStaleStateForTesting(ReadyState target_state) {
@@ -3489,9 +3463,9 @@ int WebMediaPlayerImpl::GetDelegateId() {
   return delegate_id_;
 }
 
-std::optional<viz::SurfaceId> WebMediaPlayerImpl::GetSurfaceId() {
+absl::optional<viz::SurfaceId> WebMediaPlayerImpl::GetSurfaceId() {
   if (!surface_layer_for_video_enabled_)
-    return std::nullopt;
+    return absl::nullopt;
   return bridge_->GetSurfaceId();
 }
 
@@ -3578,38 +3552,30 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
 bool WebMediaPlayerImpl::ShouldDisableVideoWhenHidden() const {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
 
-  if (!is_background_video_track_optimization_supported_) {
+  if (!is_background_video_track_optimization_supported_)
     return false;
-  }
 
   // Only disable the video track on audio + video playbacks, otherwise they
   // should be paused or left alone.
-  if (!HasVideo() || !HasAudio()) {
+  if (!HasVideo() || !HasAudio())
     return false;
-  }
 
   // Disabling tracks causes seeks which can cause problematic network delays
   // on streaming resources.
-  if (IsStreaming()) {
+  if (IsStreaming())
     return false;
-  }
 
   // In these cases something external needs the frames.
-  if (IsInPictureInPicture() || IsVideoBeingCaptured() || is_flinging_) {
+  if (IsInPictureInPicture() || IsVideoBeingCaptured() || is_flinging_)
     return false;
-  }
-
-  // Media Foundation does not currently support smoothly disabling &
-  // re-enabling video tracks.
-  if (renderer_type_ == media::RendererType::kMediaFoundation) {
-    return false;
-  }
 
   // Videos shorter than the maximum allowed keyframe distance can be optimized.
   base::TimeDelta duration = GetPipelineMediaDuration();
-  if (duration < kMaxKeyframeDistanceToDisableBackgroundVideo) {
+
+  constexpr base::TimeDelta kMaxKeyframeDistanceToDisableBackgroundVideo =
+      base::Milliseconds(kMaxKeyframeDistanceToDisableBackgroundVideoMs);
+  if (duration < kMaxKeyframeDistanceToDisableBackgroundVideo)
     return true;
-  }
 
   // Otherwise, only optimize videos with shorter average keyframe distance.
   auto stats = GetPipelineStatistics();
@@ -3693,7 +3659,7 @@ void WebMediaPlayerImpl::DisableVideoTrackIfNeeded() {
 
 void WebMediaPlayerImpl::SetPipelineStatisticsForTest(
     const media::PipelineStatistics& stats) {
-  pipeline_statistics_for_test_ = std::make_optional(stats);
+  pipeline_statistics_for_test_ = absl::make_optional(stats);
 }
 
 media::PipelineStatistics WebMediaPlayerImpl::GetPipelineStatistics() const {
@@ -3705,7 +3671,7 @@ media::PipelineStatistics WebMediaPlayerImpl::GetPipelineStatistics() const {
 
 void WebMediaPlayerImpl::SetPipelineMediaDurationForTest(
     base::TimeDelta duration) {
-  pipeline_media_duration_for_test_ = std::make_optional(duration);
+  pipeline_media_duration_for_test_ = absl::make_optional(duration);
 }
 
 base::TimeDelta WebMediaPlayerImpl::GetPipelineMediaDuration() const {
@@ -3764,9 +3730,9 @@ void WebMediaPlayerImpl::SwitchToLocalRenderer(
 template <uint32_t Flags, typename... T>
 void WebMediaPlayerImpl::WriteSplitHistogram(
     void (*UmaFunction)(const std::string&, T...),
-    SplitHistogramName key,
+    const std::string& key,
     const T&... values) {
-  std::string strkey = std::string(GetHistogramName(key));
+  std::string strkey = std::string(key);
 
   if constexpr (Flags & kEncrypted) {
     if (is_encrypted_)
@@ -3784,11 +3750,8 @@ void WebMediaPlayerImpl::WriteSplitHistogram(
       case media::DemuxerType::kChunkDemuxer:
         UmaFunction(strkey + ".MSE", values...);
         break;
-      case media::DemuxerType::kManifestDemuxer:
-      case media::DemuxerType::kMediaUrlDemuxer:
-        UmaFunction(strkey + ".HLS", values...);
-        break;
       default:
+        // TODO (crbug/1377053): Add additional cases for HLS, eventually.
         UmaFunction(strkey + ".SRC", values...);
         break;
     }
@@ -3800,8 +3763,7 @@ void WebMediaPlayerImpl::RecordUnderflowDuration(base::TimeDelta duration) {
          GetDemuxerType() == media::DemuxerType::kChunkDemuxer ||
          GetDemuxerType() == media::DemuxerType::kManifestDemuxer);
   WriteSplitHistogram<kPlaybackType | kEncrypted>(
-      &base::UmaHistogramTimes, SplitHistogramName::kUnderflowDuration2,
-      duration);
+      &base::UmaHistogramTimes, "Media.UnderflowDuration2", duration);
 }
 
 void WebMediaPlayerImpl::RecordVideoNaturalSize(const gfx::Size& natural_size) {
@@ -3817,8 +3779,8 @@ void WebMediaPlayerImpl::RecordVideoNaturalSize(const gfx::Size& natural_size) {
   int height = natural_size.height();
 
   WriteSplitHistogram<kPlaybackType | kEncrypted | kTotal>(
-      &base::UmaHistogramCustomCounts, SplitHistogramName::kVideoHeightInitial,
-      height, 100, 10000, size_t{50});
+      &base::UmaHistogramCustomCounts, "Media.VideoHeight.Initial", height, 100,
+      10000, size_t{50});
 
   if (playback_events_recorder_)
     playback_events_recorder_->OnNaturalSizeChanged(natural_size);
@@ -3830,20 +3792,15 @@ void WebMediaPlayerImpl::SetTickClockForTest(
   buffered_data_source_host_->SetTickClockForTest(tick_clock);
 }
 
-void WebMediaPlayerImpl::OnFirstFrame(base::TimeTicks frame_time,
-                                      bool is_frame_readable) {
+void WebMediaPlayerImpl::OnFirstFrame(base::TimeTicks frame_time) {
   DCHECK(!load_start_time_.is_null());
   DCHECK(!skip_metrics_due_to_startup_suspend_);
-
   has_first_frame_ = true;
   needs_first_frame_ = false;
-  is_frame_readable_ = is_frame_readable;
-
   const base::TimeDelta elapsed = frame_time - load_start_time_;
   media_metrics_provider_->SetTimeToFirstFrame(elapsed);
   WriteSplitHistogram<kPlaybackType | kEncrypted>(
-      &base::UmaHistogramMediumTimes, SplitHistogramName::kTimeToFirstFrame,
-      elapsed);
+      &base::UmaHistogramMediumTimes, "Media.TimeToFirstFrame", elapsed);
 
   media::PipelineStatistics ps = GetPipelineStatistics();
   if (client_) {
@@ -4011,34 +3968,10 @@ void WebMediaPlayerImpl::ReportSessionUMAs() const {
     uma_name += GetRendererName(renderer_type_);
     base::UmaHistogramCounts10M(uma_name, video_frame_readback_count_);
   }
-
-  if (cdm_config_) {
-    // Report the `Media.EME.{KeySystem}.{Robustness}.WaitingForKey` UMA.
-    auto key_system_name_for_uma = media::GetKeySystemNameForUMA(
-        cdm_config_->key_system, cdm_config_->use_hw_secure_codecs);
-    uma_name = "Media.EME." + key_system_name_for_uma + ".WaitingForKey";
-    base::UmaHistogramBoolean(uma_name, has_waiting_for_key_);
-  }
 }
 
 bool WebMediaPlayerImpl::PassedTimingAllowOriginCheck() const {
   return demuxer_manager_->PassedDataSourceTimingAllowOriginCheck();
-}
-
-void WebMediaPlayerImpl::DidMediaMetadataChange() {
-  media::MediaContentType content_type = GetMediaContentType();
-  bool is_encrypted_media =
-      pipeline_metadata_.audio_decoder_config.is_encrypted() ||
-      pipeline_metadata_.video_decoder_config.is_encrypted();
-
-  client_->DidMediaMetadataChange(
-      delegate_has_audio_, HasVideo(),
-      pipeline_metadata_.audio_decoder_config.codec(),
-      pipeline_metadata_.video_decoder_config.codec(), content_type,
-      is_encrypted_media);
-
-  delegate_->DidMediaMetadataChange(delegate_id_, delegate_has_audio_,
-                                    HasVideo(), content_type);
 }
 
 }  // namespace blink

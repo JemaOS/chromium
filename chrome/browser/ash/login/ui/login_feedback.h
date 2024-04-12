@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
 
 class Profile;
@@ -26,12 +25,9 @@ class LoginFeedback {
 
   // Request to show the feedback UI with `description`.
   void Request(const std::string& description);
-  // Request to show the feedback Dialog with `description`. The callback will
-  // be invoked after the dialog is shown.
-  void Request(const std::string& description, base::OnceClosure callback);
 
  private:
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
   std::string description_;
 };
 

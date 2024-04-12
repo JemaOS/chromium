@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   // The number includes the initial request and the redirected one that follows.
   const numberOfURLs = 2;
 

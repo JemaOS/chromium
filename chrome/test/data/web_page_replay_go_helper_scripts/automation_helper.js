@@ -135,10 +135,3 @@ const automation_helper = (function() {
 
   return automation_helper;
 })();
-(function () {
-  // Some sites have beforeunload triggers to stop user navigation away.
-  // For testing purposes, we can suppress those here.
-  window.addEventListener('beforeunload', function (event) {
-    event.stopImmediatePropagation();
-  });
-})();

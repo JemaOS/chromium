@@ -10,7 +10,7 @@
 #include "extensions/common/extension_urls.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace chromeos {
+namespace ash {
 
 namespace {
 
@@ -158,4 +158,4 @@ TEST_F(ChromeKioskExternalLoaderBrokerTest,
             base::Value::Dict().Set("secondary-app", SecondaryAppData()));
 }
 
-}  // namespace chromeos
+}  // namespace ash

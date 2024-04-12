@@ -134,34 +134,41 @@ template <typename T, typename U>
 struct IsTraceable<std::pair<T, U>>
     : std::bool_constant<IsTraceable<T>::value || IsTraceable<U>::value> {};
 
+// Convenience template wrapping the IsTraceableInCollection template in
+// Collection Traits. It helps make the code more readable.
+template <typename Traits>
+struct IsTraceableInCollectionTrait
+    : std::bool_constant<Traits::template IsTraceableInCollection<>::value> {};
+
 enum WeakHandlingFlag {
   kNoWeakHandling,
   kWeakHandling,
 };
 
-// This is for tracing inside collections that have special support for weak
-// pointers.
-//
-// Structure:
-// - `Trace()`: Traces the contents.
-// - `IsAlive()`: Returns true if the contents are still considered alive, and
-// false otherwise.
-//
-// Default implementation for non-weak types is to use the regular non-weak
-// TraceTrait. Default implementation for types with weakness is to
-// delegate to sub types until reaching WeakMember or KeyValuePair which
-// have defined weakness semantics.
-template <WeakHandlingFlag weakness, typename T, typename Traits>
-struct TraceInCollectionTrait;
-
 template <typename T>
-inline constexpr WeakHandlingFlag kWeakHandlingTrait =
-    IsWeak<T>::value ? kWeakHandling : kNoWeakHandling;
+struct WeakHandlingTrait
+    : std::integral_constant<WeakHandlingFlag,
+                             IsWeak<T>::value ? kWeakHandling
+                                              : kNoWeakHandling> {};
 
 // This is used to check that DISALLOW_NEW objects are not
 // stored in off-heap Vectors, HashTables etc.
 template <typename T>
-concept IsDisallowNew = requires { typename T::IsDisallowNewMarker; };
+struct IsDisallowNew {
+ private:
+  using YesType = char;
+  struct NoType {
+    char padding[8];
+  };
+
+  template <typename U>
+  static YesType CheckMarker(typename U::IsDisallowNewMarker*);
+  template <typename U>
+  static NoType CheckMarker(...);
+
+ public:
+  static const bool value = sizeof(CheckMarker<T>(nullptr)) == sizeof(YesType);
+};
 
 template <>
 class IsGarbageCollectedType<void> {
@@ -185,27 +192,13 @@ class IsPointerToGarbageCollectedType<T*, false> {
   static const bool value = IsGarbageCollectedType<T>::value;
 };
 
-template <typename T>
-concept IsStackAllocatedType =
-    requires { typename T::IsStackAllocatedTypeMarker; };
+template <typename T, typename = void>
+struct IsStackAllocatedType : std::false_type {};
 
 template <typename T>
-struct IsPointerToGced {
- private:
-  typedef char YesType;
-  struct NoType {
-    char padding[8];
-  };
-
-  template <typename X,
-            typename = std::enable_if_t<WTF::IsGarbageCollectedType<X>::value>>
-  static YesType SubclassCheck(X**);
-  static NoType SubclassCheck(...);
-  static T* t_;
-
- public:
-  static const bool value = sizeof(SubclassCheck(t_)) == sizeof(YesType);
-};
+struct IsStackAllocatedType<T,
+                            std::void_t<typename T::IsStackAllocatedTypeMarker>>
+    : std::true_type {};
 
 }  // namespace WTF
 

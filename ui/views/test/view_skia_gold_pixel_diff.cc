@@ -12,7 +12,6 @@
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkImage.h"
 #include "ui/base/test/skia_gold_matching_algorithm.h"
-#include "ui/base/test/skia_gold_pixel_diff.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/image/image.h"
 #include "ui/snapshot/snapshot.h"
@@ -35,13 +34,7 @@ void SnapshotCallback(base::RunLoop* run_loop,
 }
 }  // namespace
 
-ViewSkiaGoldPixelDiff::ViewSkiaGoldPixelDiff(
-    const std::string& screenshot_prefix,
-    const std::optional<std::string>& corpus)
-    : screenshot_prefix_(screenshot_prefix),
-      pixel_diff_(ui::test::SkiaGoldPixelDiff::GetSession(corpus)) {
-  CHECK(pixel_diff_);
-}
+ViewSkiaGoldPixelDiff::ViewSkiaGoldPixelDiff() = default;
 
 ViewSkiaGoldPixelDiff::~ViewSkiaGoldPixelDiff() = default;
 
@@ -49,6 +42,8 @@ bool ViewSkiaGoldPixelDiff::CompareViewScreenshot(
     const std::string& screenshot_name,
     const views::View* view,
     const ui::test::SkiaGoldMatchingAlgorithm* algorithm) const {
+  DCHECK(Initialized()) << "Initialize the class before using this method.";
+
   // Calculate the snapshot bounds in the widget's coordinates.
   gfx::Rect rc = view->GetBoundsInScreen();
   const views::Widget* widget = view->GetWidget();
@@ -66,17 +61,16 @@ bool ViewSkiaGoldPixelDiff::CompareNativeWindowScreenshot(
     gfx::NativeWindow window,
     const gfx::Rect& snapshot_bounds,
     const ui::test::SkiaGoldMatchingAlgorithm* algorithm) const {
+  DCHECK(Initialized()) << "Initialize the class before using this method.";
+
   gfx::Image image;
   bool ret = GrabWindowSnapshotInternal(window, snapshot_bounds, &image);
   if (!ret) {
     return false;
   }
 
-  return pixel_diff_->CompareScreenshot(
-      ui::test::SkiaGoldPixelDiff::GetGoldenImageName(
-          screenshot_prefix_, screenshot_name,
-          ui::test::SkiaGoldPixelDiff::GetPlatform()),
-      *image.ToSkBitmap(), algorithm);
+  return SkiaGoldPixelDiff::CompareScreenshot(screenshot_name,
+                                              *image.ToSkBitmap(), algorithm);
 }
 
 bool ViewSkiaGoldPixelDiff::CompareNativeWindowScreenshotInRects(
@@ -85,6 +79,7 @@ bool ViewSkiaGoldPixelDiff::CompareNativeWindowScreenshotInRects(
     const gfx::Rect& snapshot_bounds,
     const ui::test::SkiaGoldMatchingAlgorithm* algorithm,
     const std::vector<gfx::Rect>& regions_of_interest) const {
+  DCHECK(Initialized()) << "Initialize the class before using this method.";
   CHECK(!algorithm || algorithm->GetCommandLineSwitchName() != "sobel");
 
   gfx::Image image;
@@ -97,11 +92,8 @@ bool ViewSkiaGoldPixelDiff::CompareNativeWindowScreenshotInRects(
   // outside of `regions_of_interest` are ignored.
   KeepPixelsInRects(regions_of_interest, &image);
 
-  return pixel_diff_->CompareScreenshot(
-      ui::test::SkiaGoldPixelDiff::GetGoldenImageName(
-          screenshot_prefix_, screenshot_name,
-          ui::test::SkiaGoldPixelDiff::GetPlatform()),
-      *image.ToSkBitmap(), algorithm);
+  return SkiaGoldPixelDiff::CompareScreenshot(screenshot_name,
+                                              *image.ToSkBitmap(), algorithm);
 }
 
 bool ViewSkiaGoldPixelDiff::GrabWindowSnapshotInternal(
@@ -110,9 +102,9 @@ bool ViewSkiaGoldPixelDiff::GrabWindowSnapshotInternal(
     gfx::Image* image) const {
   base::RunLoop run_loop(base::RunLoop::Type::kNestableTasksAllowed);
 #if defined(USE_AURA)
-  ui::GrabWindowSnapshotAura(
+  ui::GrabWindowSnapshotAsyncAura(
 #else
-  ui::GrabWindowSnapshot(
+  ui::GrabWindowSnapshotAsync(
 #endif
       window, snapshot_bounds,
       base::BindOnce(&SnapshotCallback, &run_loop, image));

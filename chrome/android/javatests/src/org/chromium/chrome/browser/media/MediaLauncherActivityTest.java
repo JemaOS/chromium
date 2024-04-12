@@ -10,9 +10,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.util.Pair;
 
-import androidx.test.core.app.ApplicationProvider;
+import androidx.test.InstrumentationRegistry;
 import androidx.test.filters.SmallTest;
-import androidx.test.platform.app.InstrumentationRegistry;
 
 import org.hamcrest.Matchers;
 import org.junit.After;
@@ -26,7 +25,6 @@ import org.junit.runner.RunWith;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
-import org.chromium.base.test.util.Features;
 import org.chromium.base.test.util.UrlUtils;
 import org.chromium.chrome.browser.customtabs.CustomTabActivity;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
@@ -35,24 +33,29 @@ import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.MultiActivityTestRule;
 import org.chromium.chrome.test.TestContentProvider;
 import org.chromium.chrome.test.util.ActivityTestUtils;
+import org.chromium.chrome.test.util.browser.Features;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-/** Integration test suite for the MediaLauncherActivity. */
+/**
+ * Integration test suite for the MediaLauncherActivity.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 public class MediaLauncherActivityTest {
-    @Rule public MultiActivityTestRule mTestRule = new MultiActivityTestRule();
+    @Rule
+    public MultiActivityTestRule mTestRule = new MultiActivityTestRule();
 
-    @Rule public TestRule mProcessor = new Features.JUnitProcessor();
+    @Rule
+    public TestRule mProcessor = new Features.JUnitProcessor();
 
     private Context mContext;
 
     @Before
     public void setUp() {
-        mContext = ApplicationProvider.getApplicationContext();
+        mContext = InstrumentationRegistry.getTargetContext();
         MediaViewerUtils.forceEnableMediaLauncherActivityForTest();
     }
 
@@ -92,15 +95,12 @@ public class MediaLauncherActivityTest {
     @Test
     @SmallTest
     public void testFilterURI() {
-        List<Pair<String, String>> testCases =
-                Arrays.asList(
-                        new Pair<>("file:///test.jpg", "file:///test.jpg"),
-                        new Pair<>("file:///test.jp!g", "file:///test.jp!g"),
-                        new Pair<>("file:///test!$'.jpg", "file:///test.jpg"),
-                        new Pair<>("file:///test!$'.jpg?x=y", "file:///test.jpg?x=y"),
-                        new Pair<>(
-                                "file:///test!$'.jpg?x=y#fragment!",
-                                "file:///test.jpg?x=y#fragment!"));
+        List<Pair<String, String>> testCases = Arrays.asList(
+                new Pair<>("file:///test.jpg", "file:///test.jpg"),
+                new Pair<>("file:///test.jp!g", "file:///test.jp!g"),
+                new Pair<>("file:///test!$'.jpg", "file:///test.jpg"),
+                new Pair<>("file:///test!$'.jpg?x=y", "file:///test.jpg?x=y"),
+                new Pair<>("file:///test!$'.jpg?x=y#fragment!", "file:///test.jpg?x=y#fragment!"));
 
         for (Pair<String, String> testCase : testCases) {
             String testInput = testCase.first;
@@ -116,30 +116,24 @@ public class MediaLauncherActivityTest {
         intent.setDataAndType(uri, mimeType);
         intent.setComponent(componentName);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        waitForCustomTabActivityToStart(
-                new Callable<Void>() {
-                    @Override
-                    public Void call() {
-                        mContext.startActivity(intent);
-                        return null;
-                    }
-                },
-                url);
+        waitForCustomTabActivityToStart(new Callable<Void>() {
+            @Override
+            public Void call() {
+                mContext.startActivity(intent);
+                return null;
+            }
+        }, url);
     }
 
     private void waitForCustomTabActivityToStart(Callable<Void> trigger, String expectedUrl)
             throws Exception {
-        CustomTabActivity cta =
-                ActivityTestUtils.waitForActivity(
-                        InstrumentationRegistry.getInstrumentation(),
-                        CustomTabActivity.class,
-                        trigger);
+        CustomTabActivity cta = ActivityTestUtils.waitForActivity(
+                InstrumentationRegistry.getInstrumentation(), CustomTabActivity.class, trigger);
 
-        CriteriaHelper.pollUiThread(
-                () -> {
-                    Tab tab = cta.getActivityTab();
-                    Criteria.checkThat(tab, Matchers.notNullValue());
-                    Criteria.checkThat(tab.getUrl().getSpec(), Matchers.is(expectedUrl));
-                });
+        CriteriaHelper.pollUiThread(() -> {
+            Tab tab = cta.getActivityTab();
+            Criteria.checkThat(tab, Matchers.notNullValue());
+            Criteria.checkThat(tab.getUrl().getSpec(), Matchers.is(expectedUrl));
+        });
     }
 }

@@ -9,8 +9,6 @@
 #include "chrome/browser/apps/app_service/app_icon/app_icon_factory.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
-#include "chrome/browser/ash/crostini/fake_crostini_features.h"
-#include "chrome/browser/ash/guest_os/guest_os_terminal.h"
 #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
 #include "chrome/browser/extensions/component_loader.h"
 #include "chrome/browser/extensions/extension_service.h"
@@ -30,7 +28,6 @@
 #include "components/services/app_service/public/cpp/app_types.h"
 #include "components/strings/grit/components_strings.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "extensions/browser/extension_system.h"
 #include "extensions/common/constants.h"
@@ -58,7 +55,6 @@ class SystemFeaturesPolicyTest : public PolicyTest {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/{ash::features::kEcheSWA},
         /*disabled_features=*/{});
-    fake_crostini_features_.set_is_allowed_now(true);
   }
 
  protected:
@@ -158,10 +154,10 @@ class SystemFeaturesPolicyTest : public PolicyTest {
   }
 
   void InstallPWA(const GURL& app_url, const char* app_id) {
-    auto web_app_info = std::make_unique<web_app::WebAppInstallInfo>();
+    auto web_app_info = std::make_unique<WebAppInstallInfo>();
     web_app_info->start_url = app_url;
     web_app_info->scope = app_url.GetWithoutFilename();
-    webapps::AppId installed_app_id = web_app::test::InstallWebApp(
+    web_app::AppId installed_app_id = web_app::test::InstallWebApp(
         browser()->profile(), std::move(web_app_info));
     EXPECT_EQ(app_id, installed_app_id);
   }
@@ -237,10 +233,6 @@ class SystemFeaturesPolicyTest : public PolicyTest {
   }
 
   base::test::ScopedFeatureList scoped_feature_list_;
-
-  // Fake the Crostini feature to have the Terminal app icon show in the
-  // launcher when installed.
-  crostini::FakeCrostiniFeatures fake_crostini_features_;
 };
 
 IN_PROC_BROWSER_TEST_F(SystemFeaturesPolicyTest, DisableWebStoreBeforeInstall) {
@@ -336,12 +328,6 @@ IN_PROC_BROWSER_TEST_F(SystemFeaturesPolicyTest, DisableSWAs) {
 
   // Disable Explore app.
   VerifyAppDisableMode(web_app::kHelpAppId, kExploreFeature);
-
-  // Disable Gallery app.
-  VerifyAppDisableMode(web_app::kMediaAppId, kGalleryFeature);
-
-  // Disable Terminal app.
-  VerifyAppDisableMode(guest_os::kTerminalSystemAppId, kTerminalFeature);
 }
 
 IN_PROC_BROWSER_TEST_F(SystemFeaturesPolicyTest,
@@ -350,14 +336,12 @@ IN_PROC_BROWSER_TEST_F(SystemFeaturesPolicyTest,
   InstallPWA(GURL(kCanvasAppURL), web_app::kCanvasAppId);
 
   // Disable app with hidden mode.
-  const base::Value::List system_features = base::Value::List()
-                                                .Append(kCameraFeature)
-                                                .Append(kScanningFeature)
-                                                .Append(kWebStoreFeature)
-                                                .Append(kCanvasFeature)
-                                                .Append(kCroshFeature)
-                                                .Append(kGalleryFeature)
-                                                .Append(kTerminalFeature);
+  base::Value::List system_features;
+  system_features.Append(kCameraFeature);
+  system_features.Append(kScanningFeature);
+  system_features.Append(kWebStoreFeature);
+  system_features.Append(kCanvasFeature);
+  system_features.Append(kCroshFeature);
   UpdateSystemFeaturesDisableList(system_features.Clone(), kHiddenDisableMode);
 
   VisibilityFlags expected_visibility =
@@ -373,10 +357,6 @@ IN_PROC_BROWSER_TEST_F(SystemFeaturesPolicyTest,
                  true, expected_visibility);
   VerifyAppState(web_app::kCroshAppId, apps::Readiness::kDisabledByPolicy, true,
                  expected_visibility);
-  VerifyAppState(web_app::kMediaAppId, apps::Readiness::kDisabledByPolicy, true,
-                 expected_visibility);
-  VerifyAppState(guest_os::kTerminalSystemAppId,
-                 apps::Readiness::kDisabledByPolicy, true, expected_visibility);
 
   // Disable and block apps.
   expected_visibility = GetVisibilityFlags(false /* is_hidden */);
@@ -396,10 +376,6 @@ IN_PROC_BROWSER_TEST_F(SystemFeaturesPolicyTest,
                  true, expected_visibility);
   VerifyAppState(web_app::kCroshAppId, apps::Readiness::kDisabledByPolicy, true,
                  crosh_expected_visibility);
-  VerifyAppState(web_app::kMediaAppId, apps::Readiness::kDisabledByPolicy, true,
-                 expected_visibility);
-  VerifyAppState(guest_os::kTerminalSystemAppId,
-                 apps::Readiness::kDisabledByPolicy, true, expected_visibility);
 
   // Enable apps.
   UpdateSystemFeaturesDisableList(base::Value(), nullptr);
@@ -413,22 +389,16 @@ IN_PROC_BROWSER_TEST_F(SystemFeaturesPolicyTest,
                  expected_visibility);
   VerifyAppState(web_app::kCroshAppId, apps::Readiness::kReady, false,
                  crosh_expected_visibility);
-  VerifyAppState(web_app::kMediaAppId, apps::Readiness::kReady, false,
-                 expected_visibility);
-  VerifyAppState(guest_os::kTerminalSystemAppId, apps::Readiness::kReady, false,
-                 expected_visibility);
 }
 
 IN_PROC_BROWSER_TEST_F(SystemFeaturesPolicyTest,
                        DisableMultipleAppsWithHiddenModeBeforeInstall) {
-  const base::Value::List system_features = base::Value::List()
-                                                .Append(kCameraFeature)
-                                                .Append(kScanningFeature)
-                                                .Append(kWebStoreFeature)
-                                                .Append(kCanvasFeature)
-                                                .Append(kCroshFeature)
-                                                .Append(kGalleryFeature)
-                                                .Append(kTerminalFeature);
+  base::Value::List system_features;
+  system_features.Append(kCameraFeature);
+  system_features.Append(kScanningFeature);
+  system_features.Append(kWebStoreFeature);
+  system_features.Append(kCanvasFeature);
+  system_features.Append(kCroshFeature);
   UpdateSystemFeaturesDisableList(system_features.Clone(), kHiddenDisableMode);
 
   InstallSWAs();
@@ -449,10 +419,6 @@ IN_PROC_BROWSER_TEST_F(SystemFeaturesPolicyTest,
                  true, expected_visibility);
   VerifyAppState(web_app::kCroshAppId, apps::Readiness::kDisabledByPolicy, true,
                  expected_visibility);
-  VerifyAppState(web_app::kMediaAppId, apps::Readiness::kDisabledByPolicy, true,
-                 expected_visibility);
-  VerifyAppState(guest_os::kTerminalSystemAppId,
-                 apps::Readiness::kDisabledByPolicy, true, expected_visibility);
 }
 
 IN_PROC_BROWSER_TEST_F(SystemFeaturesPolicyTest, RedirectChromeSettingsURL) {

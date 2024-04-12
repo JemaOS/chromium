@@ -8,7 +8,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/gtest_prod_util.h"
@@ -17,12 +16,11 @@
 #include "base/observer_list.h"
 #include "base/scoped_observation.h"
 #include "base/timer/timer.h"
-#include "chrome/browser/ash/app_mode/kiosk_chrome_app_manager.h"
-#include "chrome/browser/ash/http_auth_dialog.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
 #include "chrome/browser/ash/login/saml/password_sync_token_checkers_collection.h"
 #include "chrome/browser/ash/login/screens/encryption_migration_mode.h"
 #include "chrome/browser/ash/login/session/user_session_manager.h"
-#include "chrome/browser/ash/login/signin_specifics.h"
+#include "chrome/browser/ash/login/ui/login_display.h"
 #include "chromeos/ash/components/login/auth/login_performer.h"
 #include "chromeos/ash/components/login/auth/public/auth_failure.h"
 #include "chromeos/ash/components/login/auth/public/user_context.h"
@@ -30,6 +28,9 @@
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
 #include "components/user_manager/user_type.h"
+#include "content/public/browser/notification_observer.h"
+#include "content/public/browser/notification_registrar.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/cros_system_api/dbus/cryptohome/dbus-constants.h"
 #include "ui/base/user_activity/user_activity_observer.h"
 #include "url/gurl.h"
@@ -55,7 +56,7 @@ class PinSaltStorage;
 // ExistingUserController is used to handle login when someone has already
 // logged into the machine. ExistingUserController is created and owned by
 // LoginDisplayHost.
-class ExistingUserController : public HttpAuthDialog::Observer,
+class ExistingUserController : public content::NotificationObserver,
                                public LoginPerformer::Delegate,
                                public UserSessionManagerDelegate,
                                public user_manager::UserManager::Observer,
@@ -93,11 +94,6 @@ class ExistingUserController : public HttpAuthDialog::Observer,
   // user data.
   void ResyncUserData();
 
-  // Resumes login process once local authentication is completed.
-  void ResumeAfterLocalAuthentication(std::unique_ptr<UserContext>);
-  // Invoked if login process was cancelled at local authentication.
-  void OnLocalAuthenticationCancelled();
-
   // Returns name of the currently connected network, for error message,
   std::u16string GetConnectedNetworkName() const;
 
@@ -112,9 +108,11 @@ class ExistingUserController : public HttpAuthDialog::Observer,
   void CompleteLogin(const UserContext& user_context);
   void OnGaiaScreenReady();
   void SetDisplayEmail(const std::string& email);
+  void SetDisplayAndGivenName(const std::string& display_name,
+                              const std::string& given_name);
   bool IsUserAllowlisted(
       const AccountId& account_id,
-      const std::optional<user_manager::UserType>& user_type);
+      const absl::optional<user_manager::UserType>& user_type);
 
   // This is virtual to be mocked in unit tests.
   virtual bool IsSigninInProgress() const;
@@ -123,10 +121,10 @@ class ExistingUserController : public HttpAuthDialog::Observer,
   // user_manager::UserManager::Observer:
   void LocalStateChanged(user_manager::UserManager* user_manager) override;
 
-  // HttpAuthDialog::Observer implementation:
-  void HttpAuthDialogShown(content::WebContents* web_contents) override;
-  void HttpAuthDialogCancelled(content::WebContents* web_contents) override;
-  void HttpAuthDialogSupplied(content::WebContents* web_contents) override;
+  // content::NotificationObserver implementation.
+  void Observe(int type,
+               const content::NotificationSource& source,
+               const content::NotificationDetails& details) override;
 
   // Add/remove a delegate that we will pass AuthStatusConsumer events to.
   void AddLoginStatusConsumer(AuthStatusConsumer* consumer);
@@ -180,22 +178,25 @@ class ExistingUserController : public HttpAuthDialog::Observer,
   void OnAuthFailure(const AuthFailure& error) override;
   void OnAuthSuccess(const UserContext& user_context) override;
   void OnOffTheRecordAuthSuccess() override;
-  void OnOnlinePasswordUnusable(std::unique_ptr<UserContext>,
-                                bool online_password_mismatch) override;
-  void OnLocalAuthenticationRequired(
-      std::unique_ptr<UserContext> user_context) override;
+  void OnPasswordChangeDetectedLegacy(const UserContext& user_context) override;
+  void OnPasswordChangeDetected(std::unique_ptr<UserContext>) override;
   void OnOldEncryptionDetected(std::unique_ptr<UserContext>,
                                bool has_incomplete_migration) override;
   void AllowlistCheckFailed(const std::string& email) override;
   void PolicyLoadFailed() override;
-  void ReportOnAuthSuccessMetrics() override;
 
-  void OnOnlinePasswordUnusableImpl(std::unique_ptr<UserContext>,
-                                    bool online_password_mismatch);
+  void OnPasswordChangeDetectedImpl(std::unique_ptr<UserContext>);
+
+  // Handles the continuation of successful login after an attempt has been made
+  // to divert to a hibernate resume flow. The execution of this method means
+  // that the diversion to a resume flow did not occur, indicating either no
+  // hibernation image was present, the resume was cancelled/aborted, or
+  // hibernate is simply not supported.
+  void ContinueAuthSuccessAfterResumeAttempt(const UserContext& user_context,
+                                             bool resume_call_success);
 
   // UserSessionManagerDelegate implementation:
   void OnProfilePrepared(Profile* profile, bool browser_launched) override;
-  base::WeakPtr<UserSessionManagerDelegate> AsWeakPtr() override;
 
   // Called when device settings change.
   void DeviceSettingsChanged();
@@ -208,7 +209,7 @@ class ExistingUserController : public HttpAuthDialog::Observer,
   // Handles result of consumer kiosk configurability check and starts
   // enable kiosk screen if applicable.
   void OnConsumerKioskAutoLaunchCheckCompleted(
-      KioskChromeAppManager::ConsumerKioskAutoLaunchStatus status);
+      KioskAppManager::ConsumerKioskAutoLaunchStatus status);
 
   // Shows privacy notification in case of auto lunch managed guest session.
   void ShowAutoLaunchManagedGuestSessionNotification();
@@ -222,6 +223,9 @@ class ExistingUserController : public HttpAuthDialog::Observer,
 
   // Shows "critical TPM error" screen.
   void ShowTPMError();
+
+  // Shows "password changed" dialog.
+  void ShowPasswordChangedDialogLegacy(const UserContext& user_context);
 
   // Creates `login_performer_` if necessary and calls login() on it.
   void PerformLogin(const UserContext& user_context,
@@ -298,6 +302,11 @@ class ExistingUserController : public HttpAuthDialog::Observer,
   // affect any future attempts.
   void ClearRecordedNames();
 
+  // Restart authpolicy daemon in case of Active Directory authentication.
+  // Used to prevent data from leaking from one user session into another.
+  // Should be called to cancel AuthPolicyHelper::TryAuthenticateUser call.
+  void ClearActiveDirectoryState();
+
   // Public session auto-login timer.
   std::unique_ptr<base::OneShotTimer> auto_login_timer_;
 
@@ -328,16 +337,23 @@ class ExistingUserController : public HttpAuthDialog::Observer,
   size_t num_login_attempts_ = 0;
 
   // Interface to the signed settings store.
-  raw_ptr<CrosSettings> cros_settings_;
+  raw_ptr<CrosSettings, ExperimentalAsh> cros_settings_;
 
   // URL to append to start Guest mode with.
   GURL guest_mode_url_;
 
-  // Once Lacros is shipped, this will no longer be necessary.
-  std::unique_ptr<HttpAuthDialog::ScopedEnabler> enable_ash_httpauth_;
+  // Used for notifications during the login process.
+  content::NotificationRegistrar registrar_;
 
   // The displayed email for the next login attempt set by `SetDisplayEmail`.
   std::string display_email_;
+
+  // The displayed name for the next login attempt set by
+  // `SetDisplayAndGivenName`.
+  std::u16string display_name_;
+
+  // The given name for the next login attempt set by `SetDisplayAndGivenName`.
+  std::u16string given_name_;
 
   // Whether login attempt is running.
   bool is_login_in_progress_ = false;
@@ -360,6 +376,10 @@ class ExistingUserController : public HttpAuthDialog::Observer,
 
   // Timer for the interval to wait for the reboot after TPM error UI was shown.
   base::OneShotTimer reboot_timer_;
+
+  // Collection of verifiers that check validity of password sync token for SAML
+  // users.
+  std::unique_ptr<PasswordSyncTokenCheckersCollection> sync_token_checkers_;
 
   std::unique_ptr<login::NetworkStateHelper> network_state_helper_;
 

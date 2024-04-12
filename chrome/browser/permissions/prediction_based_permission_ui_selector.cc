@@ -16,7 +16,6 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
-#include "components/content_settings/core/common/pref_names.h"
 #include "components/optimization_guide/machine_learning_tflite_buildflags.h"
 #include "components/permissions/features.h"
 #include "components/permissions/permission_actions_history.h"
@@ -25,10 +24,8 @@
 #include "components/permissions/prediction_service/prediction_common.h"
 #include "components/permissions/prediction_service/prediction_service.h"
 #include "components/permissions/prediction_service/prediction_service_messages.pb.h"
-#include "components/permissions/request_type.h"
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
-#include "components/unified_consent/pref_names.h"
 
 #if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
 #include "chrome/browser/permissions/prediction_model_handler_provider_factory.h"
@@ -53,7 +50,7 @@ constexpr base::TimeDelta kPermissionActionCutoffAge = base::Days(28);
 // the particular permission type.
 constexpr size_t kRequestedPermissionMinimumHistoricalActions = 4;
 
-std::optional<
+absl::optional<
     permissions::PermissionPrediction_Likelihood_DiscretizedLikelihood>
 ParsePredictionServiceMockLikelihood(const std::string& value) {
   if (value == "very-unlikely") {
@@ -73,7 +70,7 @@ ParsePredictionServiceMockLikelihood(const std::string& value) {
         PermissionPrediction_Likelihood_DiscretizedLikelihood_VERY_LIKELY;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool ShouldPredictionTriggerQuietUi(
@@ -91,10 +88,18 @@ PredictionBasedPermissionUiSelector::PredictionBasedPermissionUiSelector(
     auto mock_likelihood = ParsePredictionServiceMockLikelihood(
         base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
             switches::kPredictionServiceMockLikelihood));
-    if (mock_likelihood.has_value()) {
+    if (mock_likelihood.has_value())
       set_likelihood_override(mock_likelihood.value());
-    }
   }
+
+#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
+  if (base::FeatureList::IsEnabled(
+          permissions::features::kPermissionOnDeviceNotificationPredictions) ||
+      base::FeatureList::IsEnabled(
+          permissions::features::kPermissionOnDeviceGeolocationPredictions)) {
+    PredictionModelHandlerProviderFactory::GetForBrowserContext(profile);
+  }
+#endif  // BUILDFLAG(BUILD_WITH_TFLITE_LIB)
 }
 
 PredictionBasedPermissionUiSelector::~PredictionBasedPermissionUiSelector() =
@@ -105,8 +110,8 @@ void PredictionBasedPermissionUiSelector::SelectUiToUse(
     DecisionMadeCallback callback) {
   VLOG(1) << "[CPSS] Selector activated";
   callback_ = std::move(callback);
-  last_request_grant_likelihood_ = std::nullopt;
-  was_decision_held_back_ = std::nullopt;
+  last_request_grant_likelihood_ = absl::nullopt;
+  was_decision_held_back_ = absl::nullopt;
   const PredictionSource prediction_source =
       GetPredictionTypeToUse(request->request_type());
   if (prediction_source == PredictionSource::USE_NONE) {
@@ -142,24 +147,9 @@ void PredictionBasedPermissionUiSelector::SelectUiToUse(
 
   DCHECK(!request_);
 
-  if (prediction_source == PredictionSource::USE_SERVER_SIDE) {
-    permissions::PredictionService* service =
-        PredictionServiceFactory::GetForProfile(profile_);
-
-    VLOG(1) << "[CPSS] Starting prediction service request";
-    permissions::PermissionUmaUtil::RecordPermissionPredictionSource(
-        permissions::PermissionPredictionSource::SERVER_SIDE);
-    request_ = std::make_unique<PredictionServiceRequest>(
-        service, features,
-        base::BindOnce(
-            &PredictionBasedPermissionUiSelector::LookupResponseReceived,
-            base::Unretained(this), /*is_on_device=*/false,
-            request->request_type()));
-    return;
-  }
-
 #if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
-  if (prediction_source == PredictionSource::USE_ONDEVICE) {
+  if (prediction_source == PredictionSource::USE_ANY ||
+      prediction_source == PredictionSource::USE_ONDEVICE) {
     permissions::PredictionModelHandlerProvider*
         prediction_model_handler_provider =
             PredictionModelHandlerProviderFactory::GetForBrowserContext(
@@ -184,19 +174,31 @@ void PredictionBasedPermissionUiSelector::SelectUiToUse(
               /*lookup_succesful=*/true, /*response_from_cache=*/false),
           std::move(proto_request));
       return;
-    } else {
-      VLOG(1) << "[CPSS] On device model unavailable";
+    } else if (prediction_source == PredictionSource::USE_ONDEVICE) {
+      VLOG(1) << "[CPSS] Model is not available and cannot fall back to server "
+                 "side execution";
       std::move(callback_).Run(Decision::UseNormalUiAndShowNoWarning());
       return;
     }
   }
-#else
-  if (prediction_source == PredictionSource::USE_ONDEVICE) {
-    VLOG(1) << "[CPSS] Client doesnt support tflite";
-    std::move(callback_).Run(Decision::UseNormalUiAndShowNoWarning());
+#endif  // BUILDFLAG(BUILD_WITH_TFLITE_LIB)
+
+  if (prediction_source == PredictionSource::USE_ANY ||
+      prediction_source == PredictionSource::USE_SERVER_SIDE) {
+    permissions::PredictionService* service =
+        PredictionServiceFactory::GetForProfile(profile_);
+
+    VLOG(1) << "[CPSS] Starting prediction service request";
+    permissions::PermissionUmaUtil::RecordPermissionPredictionSource(
+        permissions::PermissionPredictionSource::SERVER_SIDE);
+    request_ = std::make_unique<PredictionServiceRequest>(
+        service, features,
+        base::BindOnce(
+            &PredictionBasedPermissionUiSelector::LookupResponseReceived,
+            base::Unretained(this), /*is_on_device=*/false,
+            request->request_type()));
     return;
   }
-#endif  // BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   NOTREACHED();
 }
 
@@ -211,12 +213,12 @@ bool PredictionBasedPermissionUiSelector::IsPermissionRequestSupported(
          request_type == permissions::RequestType::kGeolocation;
 }
 
-std::optional<permissions::PermissionUmaUtil::PredictionGrantLikelihood>
+absl::optional<permissions::PermissionUmaUtil::PredictionGrantLikelihood>
 PredictionBasedPermissionUiSelector::PredictedGrantLikelihoodForUKM() {
   return last_request_grant_likelihood_;
 }
 
-std::optional<bool>
+absl::optional<bool>
 PredictionBasedPermissionUiSelector::WasSelectorDecisionHeldback() {
   return was_decision_held_back_;
 }
@@ -227,10 +229,6 @@ PredictionBasedPermissionUiSelector::BuildPredictionRequestFeatures(
   permissions::PredictionRequestFeatures features;
   features.gesture = request->GetGestureType();
   features.type = request->request_type();
-  if (base::FeatureList::IsEnabled(
-          permissions::features::kPermissionPredictionsV2)) {
-    features.url = request->requesting_origin().GetWithEmptyPath();
-  }
 
   base::Time cutoff = base::Time::Now() - kPermissionActionCutoffAge;
 
@@ -257,7 +255,7 @@ void PredictionBasedPermissionUiSelector::LookupResponseReceived(
     permissions::RequestType request_type,
     bool lookup_succesful,
     bool response_from_cache,
-    const std::optional<permissions::GeneratePredictionsResponse>& response) {
+    const absl::optional<permissions::GeneratePredictionsResponse>& response) {
   request_.reset();
   if (!callback_) {
     VLOG(1) << "[CPSS] Prediction service response ignored as the request is "
@@ -300,8 +298,6 @@ void PredictionBasedPermissionUiSelector::LookupResponseReceived(
 bool PredictionBasedPermissionUiSelector::ShouldHoldBack(
     bool is_on_device,
     permissions::RequestType request_type) {
-  DCHECK(request_type == permissions::RequestType::kNotifications ||
-         request_type == permissions::RequestType::kGeolocation);
   // Different holdback threshold for the different experiments.
   const double on_device_geolocation_holdback_threshold =
       permissions::feature_params::
@@ -309,8 +305,10 @@ bool PredictionBasedPermissionUiSelector::ShouldHoldBack(
   const double on_device_notification_holdback_threshold =
       permissions::feature_params::
           kPermissionOnDeviceNotificationPredictionsHoldbackChance.Get();
-  const double server_side_holdback_threshold =
-      permissions::feature_params::kPermissionPredictionsV2HoldbackChance.Get();
+  const double server_side_notification_holdback_threshold =
+      features::kPermissionPredictionsHoldbackChance.Get();
+  const double server_side_geolocation_holdback_threshold =
+      features::kPermissionGeolocationPredictionsHoldbackChance.Get();
 
   // Holdback probability for this request.
   const double holdback_chance = base::RandDouble();
@@ -326,7 +324,15 @@ bool PredictionBasedPermissionUiSelector::ShouldHoldBack(
       NOTREACHED();
     }
   } else {
-    should_holdback = holdback_chance < server_side_holdback_threshold;
+    if (request_type == permissions::RequestType::kNotifications) {
+      should_holdback =
+          holdback_chance < server_side_notification_holdback_threshold;
+    } else if (request_type == permissions::RequestType::kGeolocation) {
+      should_holdback =
+          holdback_chance < server_side_geolocation_holdback_threshold;
+    } else {
+      NOTREACHED();
+    }
   }
   permissions::PermissionUmaUtil::RecordPermissionPredictionServiceHoldback(
       request_type, is_on_device, should_holdback);
@@ -335,47 +341,50 @@ bool PredictionBasedPermissionUiSelector::ShouldHoldBack(
 
 PredictionSource PredictionBasedPermissionUiSelector::GetPredictionTypeToUse(
     permissions::RequestType request_type) {
-  const bool is_msbb_enabled = profile_->GetPrefs()->GetBoolean(
-      unified_consent::prefs::kUrlKeyedAnonymizedDataCollectionEnabled);
-
-  const bool is_notification_cpss_enabled =
-      profile_->GetPrefs()->GetBoolean(prefs::kEnableNotificationCPSS) &&
-      (base::FeatureList::IsEnabled(features::kQuietNotificationPrompts) ||
-       permissions::PermissionUtil::DoesPlatformSupportChip());
-
-  const bool is_geolocation_cpss_enabled =
-      profile_->GetPrefs()->GetBoolean(prefs::kEnableGeolocationCPSS) &&
-      permissions::PermissionUtil::DoesPlatformSupportChip();
-
-  if (request_type == permissions::RequestType::kNotifications &&
-      !is_notification_cpss_enabled) {
+  if (!safe_browsing::IsSafeBrowsingEnabled(*(profile_->GetPrefs()))) {
     return PredictionSource::USE_NONE;
   }
 
-  if (request_type == permissions::RequestType::kGeolocation &&
-      !is_geolocation_cpss_enabled) {
-    return PredictionSource::USE_NONE;
-  }
+  bool is_server_side_prediction_enabled = false;
+  bool is_ondevice_prediction_enabled = false;
 
   bool is_tflite_available = false;
 #if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   is_tflite_available = true;
 #endif  // BUILDFLAG(BUILD_WITH_TFLITE_LIB)
 
-  bool is_on_device_enabled = false;
+  // Notification supports both flavours of the quiet prompt
+  if (request_type == permissions::RequestType::kNotifications &&
+      (base::FeatureList::IsEnabled(features::kQuietNotificationPrompts) ||
+       base::FeatureList::IsEnabled(
+           permissions::features::kPermissionQuietChip))) {
+    is_server_side_prediction_enabled =
+        base::FeatureList::IsEnabled(features::kPermissionPredictions);
 
-  if (request_type == permissions::RequestType::kNotifications) {
-    is_on_device_enabled = base::FeatureList::IsEnabled(
-        permissions::features::kPermissionOnDeviceNotificationPredictions);
-  } else if (request_type == permissions::RequestType::kGeolocation) {
-    is_on_device_enabled = base::FeatureList::IsEnabled(
-        permissions::features::kPermissionOnDeviceGeolocationPredictions);
+    is_ondevice_prediction_enabled =
+        is_tflite_available &&
+        base::FeatureList::IsEnabled(
+            permissions::features::kPermissionOnDeviceNotificationPredictions);
   }
 
-  if (is_msbb_enabled && base::FeatureList::IsEnabled(
-                             permissions::features::kPermissionPredictionsV2)) {
+  // Geolocation supports only the quiet chip ui
+  if (request_type == permissions::RequestType::kGeolocation &&
+      base::FeatureList::IsEnabled(
+          permissions::features::kPermissionQuietChip)) {
+    is_server_side_prediction_enabled = base::FeatureList::IsEnabled(
+        features::kPermissionGeolocationPredictions);
+
+    is_ondevice_prediction_enabled =
+        is_tflite_available &&
+        base::FeatureList::IsEnabled(
+            permissions::features::kPermissionOnDeviceGeolocationPredictions);
+  }
+
+  if (is_server_side_prediction_enabled && is_ondevice_prediction_enabled) {
+    return PredictionSource::USE_ANY;
+  } else if (is_server_side_prediction_enabled) {
     return PredictionSource::USE_SERVER_SIDE;
-  } else if (is_tflite_available && is_on_device_enabled) {
+  } else if (is_ondevice_prediction_enabled) {
     return PredictionSource::USE_ONDEVICE;
   } else {
     return PredictionSource::USE_NONE;

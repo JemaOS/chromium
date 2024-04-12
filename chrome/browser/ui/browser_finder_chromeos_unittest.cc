@@ -7,6 +7,7 @@
 #include "ash/public/cpp/multi_user_window_manager.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
+#include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ui/ash/multi_user/multi_profile_support.h"
 #include "chrome/browser/ui/ash/multi_user/multi_user_window_manager_helper.h"
@@ -14,6 +15,7 @@
 #include "chrome/test/base/test_browser_window_aura.h"
 #include "chrome/test/base/testing_profile_manager.h"
 #include "components/account_id/account_id.h"
+#include "components/user_manager/scoped_user_manager.h"
 #include "components/user_manager/user.h"
 #include "ui/base/ui_base_features.h"
 
@@ -21,17 +23,34 @@ namespace test {
 
 namespace {
 
-constexpr char kTestAccount1[] = "user1@test.com";
-constexpr char kTestAccount2[] = "user2@test.com";
+const char kTestAccount1[] = "user1@test.com";
+const char kTestAccount2[] = "user2@test.com";
 
 }  // namespace
 
 class BrowserFinderChromeOSTest : public BrowserWithTestWindowTest {
  protected:
-  BrowserFinderChromeOSTest() = default;
+  BrowserFinderChromeOSTest()
+      : fake_user_manager_(new ash::FakeChromeUserManager),
+        user_manager_enabler_(base::WrapUnique(fake_user_manager_.get())) {}
+
   BrowserFinderChromeOSTest(const BrowserFinderChromeOSTest&) = delete;
   BrowserFinderChromeOSTest& operator=(const BrowserFinderChromeOSTest&) =
       delete;
+
+  TestingProfile* CreateMultiUserProfile(const AccountId& account_id) {
+    TestingProfile* profile =
+        profile_manager()->CreateTestingProfile(account_id.GetUserEmail());
+    const user_manager::User* user = fake_user_manager_->AddUser(account_id);
+    ash::ProfileHelper::Get()->SetUserToProfileMappingForTesting(
+        const_cast<user_manager::User*>(user), profile);
+    ash::ProfileHelper::Get()->SetProfileToUserMappingForTesting(
+        const_cast<user_manager::User*>(user));
+    // Force creation of MultiProfileSupport.
+    GetMultiUserWindowManager();
+    MultiProfileSupport::GetInstanceForTest()->AddUser(profile);
+    return profile;
+  }
 
   ash::MultiUserWindowManager* GetMultiUserWindowManager() {
     if (!MultiUserWindowManagerHelper::GetInstance())
@@ -39,38 +58,31 @@ class BrowserFinderChromeOSTest : public BrowserWithTestWindowTest {
     return MultiUserWindowManagerHelper::GetWindowManager();
   }
 
-  const AccountId test_account_id1_ = AccountId::FromUserEmail(kTestAccount1);
-  const AccountId test_account_id2_ = AccountId::FromUserEmail(kTestAccount2);
+  AccountId test_account_id1_ = EmptyAccountId();
+  AccountId test_account_id2_ = EmptyAccountId();
 
  private:
   void SetUp() override {
+    test_account_id1_ = AccountId::FromUserEmail(kTestAccount1);
+    test_account_id2_ = AccountId::FromUserEmail(kTestAccount2);
     BrowserWithTestWindowTest::SetUp();
-    // Create secondary user/profile.
-    LogIn(kTestAccount2);
-    second_profile_ = CreateProfile(kTestAccount2);
+    second_profile_ = CreateMultiUserProfile(test_account_id2_);
   }
 
   void TearDown() override {
-    second_profile_ = nullptr;
     MultiUserWindowManagerHelper::DeleteInstance();
     BrowserWithTestWindowTest::TearDown();
   }
 
-  // BrowserWithTestWindow:
-  std::string GetDefaultProfileName() override { return kTestAccount1; }
-
-  TestingProfile* CreateProfile(const std::string& profile_name) override {
-    auto* profile = BrowserWithTestWindowTest::CreateProfile(profile_name);
-    auto* user = user_manager()->FindUserAndModify(
-        AccountId::FromUserEmail(profile_name));
-    ash::ProfileHelper::Get()->SetUserToProfileMappingForTesting(user, profile);
-    // Force creation of MultiProfileSupport.
-    GetMultiUserWindowManager();
-    MultiProfileSupport::GetInstanceForTest()->AddUser(profile);
-    return profile;
+  TestingProfile* CreateProfile() override {
+    return CreateMultiUserProfile(test_account_id1_);
   }
 
-  raw_ptr<TestingProfile> second_profile_;
+  raw_ptr<TestingProfile, ExperimentalAsh> second_profile_;
+
+  // |fake_user_manager_| is owned by |user_manager_enabler_|
+  raw_ptr<ash::FakeChromeUserManager, ExperimentalAsh> fake_user_manager_;
+  user_manager::ScopedUserManager user_manager_enabler_;
 };
 
 TEST_F(BrowserFinderChromeOSTest, IncognitoBrowserMatchTest) {

@@ -22,9 +22,6 @@ class CustomStateSet;
 class HTMLElement;
 class ValidityStateFlags;
 
-template <typename IDLType>
-class FrozenArray;
-
 class CORE_EXPORT ElementInternals : public ScriptWrappable,
                                      public ListedElement,
                                      public ElementRareDataField {
@@ -51,7 +48,7 @@ class CORE_EXPORT ElementInternals : public ScriptWrappable,
                    ExceptionState& exception_state);
   void setValidity(ValidityStateFlags* flags,
                    const String& message,
-                   HTMLElement* anchor,
+                   Element* anchor,
                    ExceptionState& exception_state);
   bool willValidate(ExceptionState& exception_state) const;
   ValidityState* validity(ExceptionState& exception_state);
@@ -72,27 +69,10 @@ class CORE_EXPORT ElementInternals : public ScriptWrappable,
 
   void SetElementAttribute(const QualifiedName& name, Element* element);
   Element* GetElementAttribute(const QualifiedName& name);
-  void SetElementArrayAttribute(
-      const QualifiedName& name,
-      const HeapVector<Member<Element>>* given_elements);
-  const FrozenArray<Element>* GetElementArrayAttribute(
-      const QualifiedName& name);
-
-  const FrozenArray<Element>* ariaControlsElements();
-  void setAriaControlsElements(HeapVector<Member<Element>>* given_elements);
-  const FrozenArray<Element>* ariaDescribedByElements();
-  void setAriaDescribedByElements(HeapVector<Member<Element>>* given_elements);
-  const FrozenArray<Element>* ariaDetailsElements();
-  void setAriaDetailsElements(HeapVector<Member<Element>>* given_elements);
-  const FrozenArray<Element>* ariaErrorMessageElements();
-  void setAriaErrorMessageElements(HeapVector<Member<Element>>* given_elements);
-  const FrozenArray<Element>* ariaFlowToElements();
-  void setAriaFlowToElements(HeapVector<Member<Element>>* given_elements);
-  const FrozenArray<Element>* ariaLabelledByElements();
-  void setAriaLabelledByElements(HeapVector<Member<Element>>* given_elements);
-  const FrozenArray<Element>* ariaOwnsElements();
-  void setAriaOwnsElements(HeapVector<Member<Element>>* given_elements);
-
+  HeapVector<Member<Element>>* GetElementArrayAttribute(
+      const QualifiedName& name) const;
+  void SetElementArrayAttribute(const QualifiedName& name,
+                                const HeapVector<Member<Element>>* elements);
   bool HasAttribute(const QualifiedName& attribute) const;
   const HashMap<QualifiedName, AtomicString>& GetAttributes() const;
 
@@ -138,7 +118,7 @@ class CORE_EXPORT ElementInternals : public ScriptWrappable,
 
   // See
   // https://whatpr.org/html/3917/common-dom-interfaces.html#reflecting-content-attributes-in-idl-attributes:element
-  HeapHashMap<QualifiedName, Member<FrozenArray<Element>>>
+  HeapHashMap<QualifiedName, Member<HeapLinkedHashSet<WeakMember<Element>>>>
       explicitly_set_attr_elements_map_;
 };
 

@@ -122,13 +122,17 @@ class NetworkChangeManagerClientBrowserTest : public InProcessBrowserTest {
         network::mojom::ConnectionType::CONNECTION_ETHERNET);
 
     // Wait for all services to be removed.
-    ShillServiceClient::Get()->GetTestInterface()->ClearServices();
+    service_client_ = ShillServiceClient::Get()->GetTestInterface();
+    service_client_->ClearServices();
     base::RunLoop().RunUntilIdle();
   }
 
   ShillServiceClient::TestInterface* service_client() {
-    return ShillServiceClient::Get()->GetTestInterface();
+    return service_client_;
   }
+
+ private:
+  raw_ptr<ShillServiceClient::TestInterface, ExperimentalAsh> service_client_;
 };
 
 // Tests that network changes from shill are received by both the

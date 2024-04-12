@@ -22,15 +22,11 @@
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ui/webui/ash/settings/app_management/app_management_uma.h"
+#include "chrome/browser/ui/webui/settings/ash/app_management/app_management_uma.h"
 #endif
 
 namespace apps {
 enum class LaunchSource;
-}
-
-namespace safe_browsing {
-enum class SafeBrowsingSettingReferralMethod;
 }
 
 namespace signin {
@@ -67,9 +63,6 @@ enum HelpSource {
   // WebUI (the OS "About" page).
   HELP_SOURCE_WEBUI_CHROME_OS,
 #endif
-
-  // WebUSB help center article.
-  HELP_SOURCE_WEBUSB,
 };
 
 // Sources of feedback requests.
@@ -121,18 +114,6 @@ enum FeedbackSource {
   kFeedbackSourceAutofillContextMenu,
   kFeedbackSourceUnknownLacrosSource,
   kFeedbackSourceWindowLayoutMenu,
-  kFeedbackSourcePriceInsights,
-  kFeedbackSourceCookieControls,
-  kFeedbackSourceGameDashboard,
-  kFeedbackSourceLogin,
-  kFeedbackSourceAI,
-  kFeedbackSourceFocusMode,
-  kFeedbackSourceOverview,
-  kFeedbackSourceSnapGroups,
-
-  // ATTENTION: Before making any changes or adding to feedback collection,
-  // please ensure the teams that operationalize feedback are aware and
-  // supportive. Contact: chrome-gtech@
 
   // Must be last.
   kFeedbackSourceCount,
@@ -148,25 +129,25 @@ void ShowExtensions(Browser* browser,
 
 // ShowFeedbackPage() uses |browser| to determine the URL of the current tab.
 // |browser| should be NULL if there are no currently open browser windows.
-void ShowFeedbackPage(const Browser* browser,
-                      FeedbackSource source,
-                      const std::string& description_template,
-                      const std::string& description_placeholder_text,
-                      const std::string& category_tag,
-                      const std::string& extra_diagnostics,
-                      base::Value::Dict autofill_metadata = base::Value::Dict(),
-                      base::Value::Dict ai_metadata = base::Value::Dict());
+void ShowFeedbackPage(
+    const Browser* browser,
+    FeedbackSource source,
+    const std::string& description_template,
+    const std::string& description_placeholder_text,
+    const std::string& category_tag,
+    const std::string& extra_diagnostics,
+    base::Value::Dict autofill_metadata = base::Value::Dict());
 
 // Displays the Feedback ui.
-void ShowFeedbackPage(const GURL& page_url,
-                      Profile* profile,
-                      FeedbackSource source,
-                      const std::string& description_template,
-                      const std::string& description_placeholder_text,
-                      const std::string& category_tag,
-                      const std::string& extra_diagnostics,
-                      base::Value::Dict autofill_metadata = base::Value::Dict(),
-                      base::Value::Dict ai_metadata = base::Value::Dict());
+void ShowFeedbackPage(
+    const GURL& page_url,
+    Profile* profile,
+    FeedbackSource source,
+    const std::string& description_template,
+    const std::string& description_placeholder_text,
+    const std::string& category_tag,
+    const std::string& extra_diagnostics,
+    base::Value::Dict autofill_metadata = base::Value::Dict());
 
 void ShowHelp(Browser* browser, HelpSource source);
 void ShowHelpForProfile(Profile* profile, HelpSource source);
@@ -176,6 +157,7 @@ void ShowChromeWhatsNew(Browser* browser);
 #endif
 void LaunchReleaseNotes(Profile* profile, apps::LaunchSource source);
 void ShowBetaForum(Browser* browser);
+void ShowPolicy(Browser* browser);
 void ShowSlow(Browser* browser);
 
 // Constructs a settings GURL for the specified |sub_page|.
@@ -201,28 +183,22 @@ void ShowContentSettingsExceptionsForProfile(
 void ShowSiteSettings(Profile* profile, const GURL& url);
 void ShowSiteSettings(Browser* browser, const GURL& url);
 
-void ShowSiteSettingsFileSystem(Profile* profile, const GURL& url);
-void ShowSiteSettingsFileSystem(Browser* browser, const GURL& url);
-
 void ShowContentSettings(Browser* browser,
                          ContentSettingsType content_settings_type);
 void ShowSettingsSubPageInTabbedBrowser(Browser* browser,
                                         const std::string& sub_page);
 void ShowClearBrowsingDataDialog(Browser* browser);
 void ShowPasswordManager(Browser* browser);
-void ShowPasswordDetailsPage(Browser* browser,
-                             const std::string& password_domain_name);
 void ShowPasswordCheck(Browser* browser);
 void ShowSafeBrowsingEnhancedProtection(Browser* browser);
-void ShowSafeBrowsingEnhancedProtectionWithIph(
-    Browser* browser,
-    safe_browsing::SafeBrowsingSettingReferralMethod referral_method);
 void ShowImportDialog(Browser* browser);
 void ShowAboutChrome(Browser* browser);
 void ShowSearchEngineSettings(Browser* browser);
-void ShowWebStore(Browser* browser, const base::StringPiece& utm_source_value);
+void ShowWebStoreFromAppMenu(Browser* browser);
 void ShowPrivacySandboxSettings(Browser* browser);
 void ShowPrivacySandboxAdMeasurementSettings(Browser* browser);
+void ShowPrivacySandboxAdPersonalization(Browser* browser);
+void ShowPrivacySandboxLearnMore(Browser* browser);
 void ShowAddresses(Browser* browser);
 void ShowPaymentMethods(Browser* browser);
 void ShowAllSitesSettingsFilteredByFpsOwner(
@@ -254,20 +230,24 @@ void ShowDiagnosticsApp(Profile* profile);
 void ShowFirmwareUpdatesApp(Profile* profile);
 
 void ShowShortcutCustomizationApp(Profile* profile);
-// The `action` and `category` will be appended the app URL in the following
-// format: url?action={action}&category={category}.
-void ShowShortcutCustomizationApp(Profile* profile,
-                                  const std::string& action,
-                                  const std::string& category);
+#endif
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+// Initiates signin in a new browser tab.
+void ShowBrowserSignin(Browser* browser,
+                       signin_metrics::AccessPoint access_point,
+                       signin::ConsentLevel consent_level);
+
+// If the user is already signed in, shows the "Signin" portion of Settings,
+// otherwise initiates signin in a new browser tab.
+void ShowBrowserSigninOrSettings(Browser* browser,
+                                 signin_metrics::AccessPoint access_point);
 #endif
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_FUCHSIA)
 // Show chrome://app-settings/<app-id> page.
 void ShowWebAppSettings(Browser* browser,
-                        const std::string& app_id,
-                        web_app::AppSettingsPageEntryPoint entry_point);
-void ShowWebAppSettings(Profile* profile,
                         const std::string& app_id,
                         web_app::AppSettingsPageEntryPoint entry_point);
 #endif

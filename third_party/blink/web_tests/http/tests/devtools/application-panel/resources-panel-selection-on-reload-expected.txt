@@ -7,38 +7,33 @@ Application
     Presentation
     Protocol Handlers
     Icons
-    Window Controls Overlay
-  Service workers
+  Service Workers
   Storage
 Storage
-  Local storage
-    http://127.0.0.1:8000
-  Session storage
-    http://127.0.0.1:8000
+  Local Storage
+    http://127.0.0.1:8000/
+  Session Storage
+    http://127.0.0.1:8000/
   IndexedDB
-    Database1
+    Database1 - http://127.0.0.1:8000/
   Web SQL
+    database-for-test
   Cookies
     http://127.0.0.1:8000
-  Private state tokens
-  Interest groups
-  Shared storage
+  Private State Tokens
+  Interest Groups
+  Shared Storage
     http://127.0.0.1:8000
-  Cache storage
-Background services
+  Cache Storage
+Background Services
   Back/forward cache
-  Background fetch
-  Background sync
-  Bounce tracking mitigations
+  Background Fetch
+  Background Sync
   Notifications
-  Payment handler
-  Periodic background sync
-  Push messaging
+  Payment Handler
+  Periodic Background Sync
+  Push Messaging
   Reporting API
-Speculative loads
-  Rules
-  Speculations
-  This page
 Frames
   top
     inspected-page.html
@@ -52,38 +47,32 @@ Application
     Presentation
     Protocol Handlers
     Icons
-    Window Controls Overlay
-  Service workers
+  Service Workers
   Storage
 Storage
-  Local storage
-    http://127.0.0.1:8000
-  Session storage
-    http://127.0.0.1:8000
+  Local Storage
+    http://127.0.0.1:8000/
+  Session Storage
+    http://127.0.0.1:8000/
   IndexedDB
-    Database1
+    Database1 - http://127.0.0.1:8000/
   Web SQL
   Cookies
     http://127.0.0.1:8000
-  Private state tokens
-  Interest groups
-  Shared storage
+  Private State Tokens
+  Interest Groups
+  Shared Storage
     http://127.0.0.1:8000
-  Cache storage
-Background services
+  Cache Storage
+Background Services
   Back/forward cache
-  Background fetch
-  Background sync
-  Bounce tracking mitigations
+  Background Fetch
+  Background Sync
   Notifications
-  Payment handler
-  Periodic background sync
-  Push messaging
+  Payment Handler
+  Periodic Background Sync
+  Push Messaging
   Reporting API
-Speculative loads
-  Rules
-  Speculations
-  This page
 Frames
   top
     inspected-page.html

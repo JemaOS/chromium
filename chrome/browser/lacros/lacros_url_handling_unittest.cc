@@ -13,13 +13,27 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 
+TEST(LacrosUrlHandlingTest, IsURLAcceptedByAshOldVersion) {
+  base::test::TaskEnvironment task_environment;
+
+  auto params = crosapi::mojom::BrowserInitParams::New();
+  chromeos::BrowserInitParams::SetInitParamsForTests(std::move(params));
+  EXPECT_TRUE(lacros_url_handling::IsUrlAcceptedByAsh(
+      GURL(chrome::kChromeUIOSSettingsURL)));
+  EXPECT_TRUE(
+      lacros_url_handling::IsUrlAcceptedByAsh(GURL(chrome::kChromeUIFlagsURL)));
+  EXPECT_FALSE(lacros_url_handling::IsUrlAcceptedByAsh(GURL("")));
+  EXPECT_FALSE(
+      lacros_url_handling::IsUrlAcceptedByAsh(GURL("chrome://flags2")));
+}
+
 TEST(LacrosUrlHandlingTest, IsURLAcceptedByAsh) {
   base::test::TaskEnvironment task_environment;
 
   auto params = crosapi::mojom::BrowserInitParams::New();
   params->accepted_internal_ash_urls = std::vector<GURL>{
       GURL(chrome::kChromeUIFlagsURL), GURL(chrome::kChromeUIOSSettingsURL),
-      GURL("chrome://version"), GURL("chrome://settings")};
+      GURL("chrome://version"), GURL("chrome://settings/network")};
   chromeos::BrowserInitParams::SetInitParamsForTests(std::move(params));
   EXPECT_TRUE(lacros_url_handling::IsUrlAcceptedByAsh(
       GURL(chrome::kChromeUIOSSettingsURL)));

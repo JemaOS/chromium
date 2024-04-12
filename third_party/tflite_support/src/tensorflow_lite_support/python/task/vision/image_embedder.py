@@ -37,11 +37,8 @@ class ImageEmbedderOptions:
     base_options: Base options for the image embedder task.
     embedding_options: Embedding options for the image embedder task.
   """
-
   base_options: _BaseOptions
-  embedding_options: _EmbeddingOptions = dataclasses.field(
-      default_factory=_EmbeddingOptions
-  )
+  embedding_options: _EmbeddingOptions = _EmbeddingOptions()
 
 
 class ImageEmbedder(object):

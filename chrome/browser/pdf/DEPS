@@ -1,5 +1,4 @@
 include_rules = [
-  "+chrome/browser/profiles/profile.h",
   "+pdf/pdf_features.h",
 ]
 

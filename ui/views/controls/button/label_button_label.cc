@@ -9,8 +9,6 @@
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/layout/layout_provider.h"
-#include "ui/views/style/typography.h"
-#include "ui/views/style/typography_provider.h"
 
 namespace views::internal {
 
@@ -25,7 +23,8 @@ void LabelButtonLabel::SetDisabledColor(SkColor color) {
     Label::SetEnabledColor(color);
 }
 
-void LabelButtonLabel::SetDisabledColorId(std::optional<ui::ColorId> color_id) {
+void LabelButtonLabel::SetDisabledColorId(
+    absl::optional<ui::ColorId> color_id) {
   if (!color_id.has_value()) {
     return;
   }
@@ -35,11 +34,11 @@ void LabelButtonLabel::SetDisabledColorId(std::optional<ui::ColorId> color_id) {
   }
 }
 
-std::optional<ui::ColorId> LabelButtonLabel::GetDisabledColorId() const {
+absl::optional<ui::ColorId> LabelButtonLabel::GetDisabledColorId() const {
   if (absl::holds_alternative<ui::ColorId>(requested_disabled_color_)) {
     return absl::get<ui::ColorId>(requested_disabled_color_);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void LabelButtonLabel::SetEnabledColor(SkColor color) {
@@ -48,7 +47,7 @@ void LabelButtonLabel::SetEnabledColor(SkColor color) {
     Label::SetEnabledColor(color);
 }
 
-void LabelButtonLabel::SetEnabledColorId(std::optional<ui::ColorId> color_id) {
+void LabelButtonLabel::SetEnabledColorId(absl::optional<ui::ColorId> color_id) {
   if (!color_id.has_value()) {
     return;
   }
@@ -58,11 +57,11 @@ void LabelButtonLabel::SetEnabledColorId(std::optional<ui::ColorId> color_id) {
   }
 }
 
-std::optional<ui::ColorId> LabelButtonLabel::GetEnabledColorId() const {
+absl::optional<ui::ColorId> LabelButtonLabel::GetEnabledColorId() const {
   if (absl::holds_alternative<ui::ColorId>(requested_enabled_color_)) {
     return absl::get<ui::ColorId>(requested_enabled_color_);
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void LabelButtonLabel::OnThemeChanged() {
@@ -83,17 +82,18 @@ void LabelButtonLabel::SetColorForEnableState() {
     Label::SetEnabledColorId(absl::get<ui::ColorId>(color));
   } else {
     // Get default color Id.
-    const ui::ColorId default_color_id = TypographyProvider::Get().GetColorId(
-        GetTextContext(),
-        GetEnabled() ? style::STYLE_PRIMARY : style::STYLE_DISABLED);
+    const ui::ColorId default_color_id =
+        LayoutProvider::Get()->GetTypographyProvider().GetColorId(
+            GetTextContext(),
+            GetEnabled() ? style::STYLE_PRIMARY : style::STYLE_DISABLED);
     // Set default color Id.
     Label::SetEnabledColorId(default_color_id);
   }
 }
 
-BEGIN_METADATA(LabelButtonLabel)
-ADD_PROPERTY_METADATA(std::optional<ui::ColorId>, EnabledColorId)
-ADD_PROPERTY_METADATA(std::optional<ui::ColorId>, DisabledColorId)
+BEGIN_METADATA(LabelButtonLabel, Label)
+ADD_PROPERTY_METADATA(absl::optional<ui::ColorId>, EnabledColorId)
+ADD_PROPERTY_METADATA(absl::optional<ui::ColorId>, DisabledColorId)
 END_METADATA
 
 }  // namespace views::internal

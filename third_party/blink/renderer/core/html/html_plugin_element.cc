@@ -31,7 +31,6 @@
 #include "third_party/blink/public/mojom/permissions_policy/policy_value.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/web_url_request.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
-#include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
 #include "third_party/blink/renderer/core/css/style_change_reason.h"
 #include "third_party/blink/renderer/core/display_lock/display_lock_utilities.h"
@@ -39,7 +38,6 @@
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/node.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
-#include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/exported/web_plugin_container_impl.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -173,11 +171,8 @@ void HTMLPlugInElement::SetFocused(bool focused,
 }
 
 bool HTMLPlugInElement::CanProcessDrag() const {
-  // Be careful to call PluginEmbeddedContentView only once, because calling
-  // it can change things such that another call will return a different
-  // result.
-  WebPluginContainerImpl* plugin = PluginEmbeddedContentView();
-  return plugin && plugin->CanProcessDrag();
+  return PluginEmbeddedContentView() &&
+         PluginEmbeddedContentView()->CanProcessDrag();
 }
 
 bool HTMLPlugInElement::CanStartSelection() const {
@@ -251,8 +246,10 @@ void HTMLPlugInElement::AttachLayoutTree(AttachContext& context) {
     GetDocument().IncrementLoadEventDelayCount();
     GetDocument().LoadPluginsSoon();
   }
-  if (image_loader_ && IsA<LayoutImage>(*layout_object)) {
-    image_loader_->OnAttachLayoutTree();
+  if (image_loader_ && layout_object->IsLayoutImage()) {
+    LayoutImageResource* image_resource =
+        To<LayoutImage>(layout_object)->ImageResource();
+    image_resource->SetImageResource(image_loader_->GetContent());
   }
   if (layout_object->AffectsWhitespaceSiblings())
     context.previous_in_flow = layout_object;
@@ -387,13 +384,10 @@ v8::Local<v8::Object> HTMLPlugInElement::PluginWrapper() {
   // If the host dynamically turns off JavaScript (or Java) we will still
   // return the cached allocated Bindings::Instance. Not supporting this
   // edge-case is OK.
-  v8::Isolate* isolate = GetDocument().GetAgent().isolate();
+  v8::Isolate* isolate = V8PerIsolateData::MainThreadIsolate();
   if (plugin_wrapper_.IsEmpty()) {
     WebPluginContainerImpl* plugin;
 
-    // Be careful to call PluginEmbeddedContentView only once, because calling
-    // it can change things such that another call will return a different
-    // result.
     if (persisted_plugin_)
       plugin = persisted_plugin_;
     else
@@ -417,99 +411,6 @@ v8::Local<v8::Object> HTMLPlugInElement::PluginWrapper() {
     }
   }
   return plugin_wrapper_.Get(isolate);
-}
-
-ScriptValue HTMLPlugInElement::AnonymousNamedGetter(const AtomicString& name) {
-  if (!GetExecutionContext()) {
-    // PluginWrapper() is guaranteed nullptr if there's no ExecutionContext.
-    return ScriptValue();
-  }
-
-  v8::Local<v8::Context> context =
-      GetExecutionContext()->GetIsolate()->GetCurrentContext();
-  ScriptState* script_state = ScriptState::From(context);
-  if (!script_state->World().IsMainWorld()) {
-    if (script_state->World().IsIsolatedWorld()) {
-      UseCounter::Count(GetExecutionContext(),
-                        WebFeature::kPluginInstanceAccessFromIsolatedWorld);
-    }
-    // The plugin system cannot deal with multiple worlds, so block any
-    // non-main world access.
-    return ScriptValue();
-  }
-  UseCounter::Count(GetExecutionContext(),
-                    WebFeature::kPluginInstanceAccessFromMainWorld);
-
-  v8::Local<v8::Object> instance = PluginWrapper();
-  if (instance.IsEmpty()) {
-    return ScriptValue();
-  }
-
-  v8::Local<v8::String> v8_name =
-      V8AtomicString(script_state->GetIsolate(), name);
-  bool has_own_property;
-  v8::Local<v8::Value> value;
-  if (!instance->HasOwnProperty(context, v8_name).To(&has_own_property) ||
-      !has_own_property || !instance->Get(context, v8_name).ToLocal(&value)) {
-    return ScriptValue();
-  }
-
-  UseCounter::Count(GetExecutionContext(),
-                    WebFeature::kPluginInstanceAccessSuccessful);
-  return ScriptValue(script_state->GetIsolate(), value);
-}
-
-NamedPropertySetterResult HTMLPlugInElement::AnonymousNamedSetter(
-    const AtomicString& name,
-    const ScriptValue& value) {
-  if (!GetExecutionContext()) {
-    // PluginWrapper() is guaranteed nullptr if there's no ExecutionContext.
-    return NamedPropertySetterResult::kDidNotIntercept;
-  }
-
-  v8::Local<v8::Context> context =
-      GetExecutionContext()->GetIsolate()->GetCurrentContext();
-  ScriptState* script_state = ScriptState::From(context);
-  if (!script_state->World().IsMainWorld()) {
-    // The plugin system cannot deal with multiple worlds, so block any
-    // non-main world access.
-    return NamedPropertySetterResult::kDidNotIntercept;
-  }
-
-  v8::Local<v8::Object> instance = PluginWrapper();
-  if (instance.IsEmpty()) {
-    return NamedPropertySetterResult::kDidNotIntercept;
-  }
-
-  // Don't intercept any of the properties of the HTMLPluginElement.
-  v8::Local<v8::String> v8_name =
-      V8AtomicString(script_state->GetIsolate(), name);
-  v8::Local<v8::Object> this_wrapper =
-      ToV8Traits<HTMLPlugInElement>::ToV8(script_state, this)
-          .As<v8::Object>();
-  bool instance_has_property;
-  bool holder_has_property;
-  if (!instance->HasOwnProperty(context, v8_name).To(&instance_has_property) ||
-      !this_wrapper->Has(context, v8_name).To(&holder_has_property) ||
-      (!instance_has_property && holder_has_property)) {
-    return NamedPropertySetterResult::kDidNotIntercept;
-  }
-
-  // FIXME: The gTalk pepper plugin is the only plugin to make use of
-  // SetProperty and that is being deprecated. This can be removed as soon as
-  // it goes away.
-  // Call SetProperty on a pepper plugin's scriptable object. Note that we
-  // never set the return value here which would indicate that the plugin has
-  // intercepted the SetProperty call, which means that the property on the
-  // DOM element will also be set. For plugin's that don't intercept the call
-  // (all except gTalk) this makes no difference at all. For gTalk the fact
-  // that the property on the DOM element also gets set is inconsequential.
-  bool created;
-  if (!instance->CreateDataProperty(context, v8_name, value.V8Value())
-           .To(&created)) {
-    return NamedPropertySetterResult::kDidNotIntercept;
-  }
-  return NamedPropertySetterResult::kIntercepted;
 }
 
 WebPluginContainerImpl* HTMLPlugInElement::PluginEmbeddedContentView() const {
@@ -595,11 +496,9 @@ LayoutEmbeddedContent* HTMLPlugInElement::LayoutEmbeddedContentForJSBindings()
   return ExistingLayoutEmbeddedContent();
 }
 
-bool HTMLPlugInElement::IsKeyboardFocusable(
-    UpdateBehavior update_behavior) const {
-  if (HTMLFrameOwnerElement::IsKeyboardFocusable(update_behavior)) {
+bool HTMLPlugInElement::IsKeyboardFocusable() const {
+  if (HTMLFrameOwnerElement::IsKeyboardFocusable())
     return true;
-  }
 
   WebPluginContainerImpl* embedded_content_view = nullptr;
   if (LayoutEmbeddedContent* layout_embedded_content =
@@ -609,7 +508,7 @@ bool HTMLPlugInElement::IsKeyboardFocusable(
 
   return GetDocument().IsActive() && embedded_content_view &&
          embedded_content_view->SupportsKeyboardFocus() &&
-         IsFocusable(update_behavior);
+         IsBaseElementFocusable();
 }
 
 bool HTMLPlugInElement::HasCustomFocusLogic() const {
@@ -621,11 +520,10 @@ bool HTMLPlugInElement::IsPluginElement() const {
 }
 
 bool HTMLPlugInElement::IsErrorplaceholder() {
-  // Be careful to call PluginEmbeddedContentView only once, because calling
-  // it can change things such that another call will return a different
-  // result.
-  WebPluginContainerImpl* plugin = PluginEmbeddedContentView();
-  return plugin && plugin->IsErrorplaceholder();
+  if (PluginEmbeddedContentView() &&
+      PluginEmbeddedContentView()->IsErrorplaceholder())
+    return true;
+  return false;
 }
 
 void HTMLPlugInElement::DisconnectContentFrame() {
@@ -633,16 +531,13 @@ void HTMLPlugInElement::DisconnectContentFrame() {
   SetPersistedPlugin(nullptr);
 }
 
-bool HTMLPlugInElement::IsFocusableStyle(UpdateBehavior update_behavior) const {
-  if (HTMLFrameOwnerElement::SupportsFocus(update_behavior) &&
-      HTMLFrameOwnerElement::IsFocusableStyle(update_behavior)) {
+bool HTMLPlugInElement::IsFocusableStyle() const {
+  if (HTMLFrameOwnerElement::SupportsFocus() &&
+      HTMLFrameOwnerElement::IsFocusableStyle())
     return true;
-  }
 
-  if (UseFallbackContent() ||
-      !HTMLFrameOwnerElement::IsFocusableStyle(update_behavior)) {
+  if (UseFallbackContent() || !HTMLFrameOwnerElement::IsFocusableStyle())
     return false;
-  }
   return plugin_is_available_;
 }
 
@@ -857,7 +752,7 @@ bool HTMLPlugInElement::AllowedToLoadObject(const KURL& url,
              frame, mojom::blink::RequestContextType::OBJECT,
              network::mojom::blink::IPAddressSpace::kUnknown, url,
              ResourceRequest::RedirectStatus::kNoRedirect, url,
-             /* devtools_id= */ String(), ReportingDisposition::kReport,
+             /* devtools_id= */ absl::nullopt, ReportingDisposition::kReport,
              GetDocument().Loader()->GetContentSecurityNotifier());
 }
 
@@ -930,9 +825,10 @@ void HTMLPlugInElement::UpdateServiceTypeIfEmpty() {
   }
 }
 
-const ComputedStyle* HTMLPlugInElement::CustomStyleForLayoutObject(
+scoped_refptr<const ComputedStyle>
+HTMLPlugInElement::CustomStyleForLayoutObject(
     const StyleRecalcContext& style_recalc_context) {
-  const ComputedStyle* style =
+  scoped_refptr<const ComputedStyle> style =
       OriginalStyleForLayoutObject(style_recalc_context);
   if (IsImageType() && !GetLayoutObject() && style &&
       LayoutObjectIsNeeded(*style)) {

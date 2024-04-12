@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <string_view>
 #include <type_traits>
 
 #include "base/rand_util.h"
@@ -90,7 +89,7 @@ bool UUID::InitializeFromString(const base::StringPiece& string) {
 }
 
 #if BUILDFLAG(IS_WIN)
-bool UUID::InitializeFromString(const std::wstring_view& string) {
+bool UUID::InitializeFromString(const base::WStringPiece& string) {
   return InitializeFromString(base::WideToUTF8(string));
 }
 #endif

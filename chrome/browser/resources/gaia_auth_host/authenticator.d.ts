@@ -7,7 +7,7 @@
  * authenticator.js is used from TypeScript files.
  */
 
-import type {PasswordAttributes} from './saml_password_attributes.js';
+import {PasswordAttributes} from './saml_password_attributes.js';
 
 export interface SyncTrustedVaultKey {
   keyMaterial: ArrayBuffer;
@@ -26,6 +26,7 @@ export interface SyncTrustedVaultKeys {
 }
 
 export interface AuthCompletedCredentials {
+  chooseWhatToSync: boolean;
   email: string;
   gaiaId: string;
   passwordAttributes: PasswordAttributes;
@@ -59,7 +60,6 @@ export interface AuthParams {
   isDeviceOwner: boolean;
   isLoginPrimaryAccount: boolean;
   isSupervisedUser: boolean;
-  needPassword?: boolean;
   platformVersion: string;
   readOnlyEmail: boolean;
   samlAclUrl: string;
@@ -67,7 +67,6 @@ export interface AuthParams {
   showTos: string;
   ssoProfile: string;
   urlParameterToAutofillSAMLUsername: string;
-  frameUrl: URL;
 }
 
 export enum AuthMode {
@@ -81,21 +80,8 @@ export enum AuthFlow {
   SAML = 0,
 }
 
-export const SUPPORTED_PARAMS: string[];
-
 export class Authenticator extends EventTarget {
   constructor(webview: HTMLElement|string);
   getAccountsResponse(accounts: string[]): void;
-  getDeviceIdResponse(deviceId: string): void;
   load(authMode: AuthMode, data: AuthParams): void;
-  sendMessageToWebview(messageType: string, messageData?: string|Object): void;
-  setWebviewPartition(newWebviewPartitionName: string): void;
-  resetWebview(): void;
-  resetStates(): void;
-  reload(): void;
-
-  insecureContentBlockedCallback: ((url: string) => void)|null;
-  missingGaiaInfoCallback: (() => void)|null;
-  samlApiUsedCallback: ((isThirdPartyIdP: boolean) => void)|null;
-  recordSamlProviderCallback: ((x509Certificate: string) => void)|null;
 }

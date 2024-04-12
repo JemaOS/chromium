@@ -149,7 +149,8 @@ void PluginVmManagerImpl::OnPrimaryUserSessionStarted() {
   ash::VmPluginDispatcherClient::Get()->ListVms(
       std::move(request),
       base::BindOnce(
-          [](std::optional<vm_tools::plugin_dispatcher::ListVmResponse> reply) {
+          [](absl::optional<vm_tools::plugin_dispatcher::ListVmResponse>
+                 reply) {
             // If the dispatcher is already running here, Chrome probably
             // crashed. Restart it so it can bind to the new wayland socket.
             // TODO(b/149180115): Fix this properly.
@@ -261,7 +262,7 @@ void PluginVmManagerImpl::RelaunchPluginVm() {
 }
 
 void PluginVmManagerImpl::OnSuspendVmForRelaunch(
-    std::optional<vm_tools::plugin_dispatcher::SuspendVmResponse> reply) {
+    absl::optional<vm_tools::plugin_dispatcher::SuspendVmResponse> reply) {
   LOG_FUNCTION_CALL();
   if (reply &&
       reply->error() == vm_tools::plugin_dispatcher::VmErrorCode::VM_SUCCESS) {
@@ -423,6 +424,7 @@ void PluginVmManagerImpl::InstallDlcAndUpdateVmState(
   in_progress_installation_ =
       std::make_unique<guest_os::GuestOsDlcInstallation>(
           kPitaDlc,
+          /*retry=*/false,
           base::BindOnce(&PluginVmManagerImpl::OnInstallPluginVmDlc,
                          weak_ptr_factory_.GetWeakPtr(),
                          std::move(success_callback),
@@ -471,7 +473,7 @@ void PluginVmManagerImpl::OnStartDispatcher(
 void PluginVmManagerImpl::OnListVms(
     base::OnceCallback<void(bool)> success_callback,
     base::OnceClosure error_callback,
-    std::optional<vm_tools::plugin_dispatcher::ListVmResponse> reply) {
+    absl::optional<vm_tools::plugin_dispatcher::ListVmResponse> reply) {
   LOG_FUNCTION_CALL();
   if (!reply.has_value()) {
     LOG(ERROR) << "Failed to list VMs.";
@@ -547,7 +549,7 @@ void PluginVmManagerImpl::StartVm() {
 }
 
 void PluginVmManagerImpl::OnStartVm(
-    std::optional<vm_tools::plugin_dispatcher::StartVmResponse> reply) {
+    absl::optional<vm_tools::plugin_dispatcher::StartVmResponse> reply) {
   PluginVmLaunchResult result;
   if (reply) {
     switch (reply->error()) {
@@ -589,7 +591,7 @@ void PluginVmManagerImpl::ShowVm() {
 }
 
 void PluginVmManagerImpl::OnShowVm(
-    std::optional<vm_tools::plugin_dispatcher::ShowVmResponse> reply) {
+    absl::optional<vm_tools::plugin_dispatcher::ShowVmResponse> reply) {
   LOG_FUNCTION_CALL();
   if (!reply.has_value() || reply->error()) {
     LOG(ERROR) << "Failed to show VM.";
@@ -608,7 +610,7 @@ void PluginVmManagerImpl::OnShowVm(
 }
 
 void PluginVmManagerImpl::OnGetVmInfoForSharing(
-    std::optional<vm_tools::concierge::GetVmInfoResponse> reply) {
+    absl::optional<vm_tools::concierge::GetVmInfoResponse> reply) {
   LOG_FUNCTION_CALL();
   if (!reply.has_value()) {
     LOG(ERROR) << "Failed to get concierge VM info.";
@@ -728,7 +730,7 @@ void PluginVmManagerImpl::StopVmForUninstall() {
 }
 
 void PluginVmManagerImpl::OnStopVmForUninstall(
-    std::optional<vm_tools::plugin_dispatcher::StopVmResponse> reply) {
+    absl::optional<vm_tools::plugin_dispatcher::StopVmResponse> reply) {
   LOG_FUNCTION_CALL();
   if (!reply || reply->error() != vm_tools::plugin_dispatcher::VM_SUCCESS) {
     LOG(ERROR) << "Failed to stop VM.";
@@ -755,7 +757,7 @@ void PluginVmManagerImpl::DestroyDiskImage() {
 }
 
 void PluginVmManagerImpl::OnDestroyDiskImage(
-    std::optional<vm_tools::concierge::DestroyDiskImageResponse> response) {
+    absl::optional<vm_tools::concierge::DestroyDiskImageResponse> response) {
   LOG_FUNCTION_CALL();
   if (!response) {
     LOG(ERROR) << "Failed to uninstall Plugin Vm. Received empty "

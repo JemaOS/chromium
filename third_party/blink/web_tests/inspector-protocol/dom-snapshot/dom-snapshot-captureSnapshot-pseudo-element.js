@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startURL('../resources/dom-snapshot-pseudo-element.html', 'Tests DOMSnapshot.captureSnapshot exports layout tree nodes associated with pseudo elements.');
 
   var response = await dp.DOMSnapshot.captureSnapshot({'computedStyles': ['font-weight', 'color'], 'includeEventListeners': true});

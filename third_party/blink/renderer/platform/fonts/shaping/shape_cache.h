@@ -29,9 +29,8 @@
 
 #include "base/containers/span.h"
 #include "base/hash/hash.h"
+#include "base/memory/weak_ptr.h"
 #include "third_party/blink/renderer/platform/fonts/shaping/shape_result.h"
-#include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
-#include "third_party/blink/renderer/platform/heap/weak_cell.h"
 #include "third_party/blink/renderer/platform/text/text_run.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 #include "third_party/blink/renderer/platform/wtf/hash_functions.h"
@@ -39,9 +38,10 @@
 
 namespace blink {
 
-using ShapeCacheEntry = Member<const ShapeResult>;
+using ShapeCacheEntry = scoped_refptr<const ShapeResult>;
 
-class ShapeCache : public GarbageCollected<ShapeCache> {
+class ShapeCache {
+  USING_FAST_MALLOC(ShapeCache);
   // Used to optimize small strings as hash table keys. Avoids malloc'ing an
   // out-of-line StringImpl.
   class SmallStringKey {
@@ -111,11 +111,6 @@ class ShapeCache : public GarbageCollected<ShapeCache> {
   ShapeCache(const ShapeCache&) = delete;
   ShapeCache& operator=(const ShapeCache&) = delete;
 
-  void Trace(Visitor* visitor) const {
-    visitor->Trace(single_char_map_);
-    visitor->Trace(short_string_map_);
-  }
-
   ShapeCacheEntry* Add(const TextRun& run, ShapeCacheEntry entry) {
     if (run.length() > SmallStringKey::Capacity())
       return nullptr;
@@ -149,6 +144,8 @@ class ShapeCache : public GarbageCollected<ShapeCache> {
     }
     return self_byte_size;
   }
+
+  base::WeakPtr<ShapeCache> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
 
  private:
   ShapeCacheEntry* AddSlowCase(const TextRun& run, ShapeCacheEntry entry) {
@@ -200,11 +197,9 @@ class ShapeCache : public GarbageCollected<ShapeCache> {
 
   friend bool operator==(const SmallStringKey&, const SmallStringKey&);
 
-  typedef HeapHashMap<SmallStringKey, ShapeCacheEntry, SmallStringKeyHashTraits>
+  typedef HashMap<SmallStringKey, ShapeCacheEntry, SmallStringKeyHashTraits>
       SmallStringMap;
-  typedef HeapHashMap<uint32_t,
-                      ShapeCacheEntry,
-                      IntWithZeroKeyHashTraits<uint32_t>>
+  typedef HashMap<uint32_t, ShapeCacheEntry, IntWithZeroKeyHashTraits<uint32_t>>
       SingleCharMap;
 
   // Hard limit to guard against pathological growth. The expected number of
@@ -219,6 +214,7 @@ class ShapeCache : public GarbageCollected<ShapeCache> {
   SingleCharMap single_char_map_;
   SmallStringMap short_string_map_;
   unsigned version_ = 0;
+  base::WeakPtrFactory<ShapeCache> weak_factory_{this};
 };
 
 inline bool operator==(const ShapeCache::SmallStringKey& a,

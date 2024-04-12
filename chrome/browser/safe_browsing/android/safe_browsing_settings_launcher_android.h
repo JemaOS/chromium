@@ -6,12 +6,15 @@
 #define CHROME_BROWSER_SAFE_BROWSING_ANDROID_SAFE_BROWSING_SETTINGS_LAUNCHER_ANDROID_H_
 
 #include "components/safe_browsing/core/common/safe_browsing_settings_metrics.h"
-#include "ui/android/window_android.h"
+
+namespace content {
+class WebContents;
+}
 
 namespace safe_browsing {
 
 // Opens the Safe Browsing settings page on Android.
-void ShowSafeBrowsingSettings(ui::WindowAndroid* window,
+void ShowSafeBrowsingSettings(content::WebContents* web_contents,
                               SettingsAccessPoint access_point);
 
 }  // namespace safe_browsing

@@ -4,7 +4,6 @@
 
 #include "chrome/browser/printing/print_preview_context_menu_observer.h"
 
-#include "base/check.h"
 #include "base/notreached.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/printing/print_preview_dialog_controller.h"
@@ -17,9 +16,11 @@ PrintPreviewContextMenuObserver::~PrintPreviewContextMenuObserver() {
 }
 
 bool PrintPreviewContextMenuObserver::IsPrintPreviewDialog() {
-  auto* controller = printing::PrintPreviewDialogController::GetInstance();
-  CHECK(controller);
-  return !!controller->GetPrintPreviewForContents(contents_);
+  printing::PrintPreviewDialogController* controller =
+      printing::PrintPreviewDialogController::GetInstance();
+  if (!controller)
+    return false;
+  return (controller->GetPrintPreviewForContents(contents_) != nullptr);
 }
 
 bool PrintPreviewContextMenuObserver::IsCommandIdSupported(int command_id) {

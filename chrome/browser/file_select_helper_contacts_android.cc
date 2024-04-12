@@ -17,7 +17,7 @@ FileSelectHelperContactsAndroid::FileSelectHelperContactsAndroid(
     Profile* profile)
     : FileSelectHelper(profile) {}
 
-void FileSelectHelperContactsAndroid::FileSelected(
+void FileSelectHelperContactsAndroid::FileSelectedWithExtraInfo(
     const ui::SelectedFileInfo& file,
     int index,
     void* params) {
@@ -28,8 +28,6 @@ void FileSelectHelperContactsAndroid::FileSelected(
           &FileSelectHelperContactsAndroid::ProcessContactsForAndroid, this,
           (char*)params));
 }
-
-void FileSelectHelperContactsAndroid::FileSelectionCanceled(void* params) {}
 
 void FileSelectHelperContactsAndroid::ProcessContactsForAndroid(
     const std::string& contacts) {

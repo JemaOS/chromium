@@ -4,10 +4,8 @@
 
 #include "ui/message_center/views/message_popup_collection.h"
 
-#include <algorithm>
-#include <vector>
-
 #include "base/containers/adapters.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/ranges/algorithm.h"
 #include "base/task/single_thread_task_runner.h"
@@ -17,11 +15,9 @@
 #include "ui/compositor/scoped_animation_duration_scale_mode.h"
 #include "ui/gfx/animation/linear_animation.h"
 #include "ui/gfx/animation/tween.h"
-#include "ui/message_center/message_center.h"
 #include "ui/message_center/message_center_types.h"
 #include "ui/message_center/notification_view_controller.h"
 #include "ui/message_center/public/cpp/message_center_constants.h"
-#include "ui/message_center/public/cpp/notification_types.h"
 #include "ui/message_center/views/message_popup_view.h"
 #include "ui/message_center/views/message_view.h"
 #include "ui/message_center/views/notification_view.h"
@@ -31,10 +27,10 @@ namespace message_center {
 
 namespace {
 
-// Animation duration for kFadeIn and kFadeOut.
+// Animation duration for FADE_IN and FADE_OUT.
 constexpr base::TimeDelta kFadeInFadeOutDuration = base::Milliseconds(200);
 
-// Animation duration for kMoveDown.
+// Animation duration for MOVE_DOWN.
 constexpr base::TimeDelta kMoveDownDuration = base::Milliseconds(120);
 
 }  // namespace
@@ -49,7 +45,7 @@ MessagePopupCollection::~MessagePopupCollection() {
   // Ignore calls to update which can cause crashes.
   is_updating_ = true;
   for (const auto& item : popup_items_)
-    ClosePopupItem(item);
+    item.popup->Close();
 }
 
 void MessagePopupCollection::Update() {
@@ -69,18 +65,18 @@ void MessagePopupCollection::Update() {
     return;
   }
 
-  if (state_ != State::kIdle)
+  if (state_ != State::IDLE)
     TransitionFromAnimation();
 
-  if (state_ == State::kIdle)
+  if (state_ == State::IDLE)
     TransitionToAnimation();
 
   UpdatePopupTimers();
 
-  if (state_ != State::kIdle) {
-    // If not in kIdle state, start animation.
+  if (state_ != State::IDLE) {
+    // If not in IDLE state, start animation.
     base::TimeDelta animation_duration;
-    if (state_ == State::kMoveDown) {
+    if (state_ == State::MOVE_DOWN) {
       animation_duration = kMoveDownDuration;
     } else {
       animation_duration = kFadeInFadeOutDuration;
@@ -93,7 +89,7 @@ void MessagePopupCollection::Update() {
     UpdateByAnimation();
   }
 
-  DCHECK(state_ == State::kIdle || animation_->is_animating());
+  DCHECK(state_ == State::IDLE || animation_->is_animating());
 }
 
 void MessagePopupCollection::ResetBounds() {
@@ -103,10 +99,10 @@ void MessagePopupCollection::ResetBounds() {
     base::AutoReset<bool> reset(&is_updating_, true);
 
     RemoveClosedPopupItems();
-    state_ = State::kIdle;
+    state_ = State::IDLE;
     animation_->End();
 
-    CalculateAndUpdateBounds();
+    CalculateBounds();
 
     // Remove popups that are no longer in work area.
     ClosePopupsOutsideWorkArea();
@@ -129,16 +125,13 @@ void MessagePopupCollection::NotifyPopupResized() {
 
 void MessagePopupCollection::NotifyPopupClosed(MessagePopupView* popup) {
   for (auto& item : popup_items_) {
-    if (item.popup && item.popup == popup) {
-      // Make sure this item's popup is closed before removing it.
-      item.popup->Close();
+    if (item.popup == popup)
       item.popup = nullptr;
-    }
   }
 }
 
 void MessagePopupCollection::AnimateResize() {
-  CalculateAndUpdateBounds();
+  CalculateBounds();
 
   views::AnimationBuilder animation_builder;
   for (auto popup : popup_items_) {
@@ -198,22 +191,6 @@ void MessagePopupCollection::ConvertGroupedNotificationViewToNotificationView(
   it->popup->message_view()->set_notification_id(new_single_notification_id);
 }
 
-void MessagePopupCollection::OnChildNotificationViewUpdated(
-    const std::string& parent_notification_id,
-    const std::string& child_notification_id) {
-  auto* notification =
-      MessageCenter::Get()->FindNotificationById(child_notification_id);
-  if (!notification) {
-    return;
-  }
-
-  auto* parent_popup = GetPopupViewForNotificationID(parent_notification_id);
-  if (parent_popup) {
-    parent_popup->UpdateContentsForChildNotification(child_notification_id,
-                                                     *notification);
-  }
-}
-
 void MessagePopupCollection::OnNotificationAdded(
     const std::string& notification_id) {
   // Should not call MessagePopupCollection::Update here. Because notification
@@ -223,14 +200,6 @@ void MessagePopupCollection::OnNotificationAdded(
   // MessagePopupCollection::Update will not update the popup's content. Then
   // the new notification popup fails to show. (see https://crbug.com/921402)
   OnNotificationUpdated(notification_id);
-
-  // Notify if the incoming notification is silent.
-  const Notification* notification =
-      message_center::MessageCenter::Get()->FindNotificationById(
-          notification_id);
-  if (notification && notification->priority() < DEFAULT_PRIORITY) {
-    NotifySilentNotification(notification->id());
-  }
 }
 
 void MessagePopupCollection::OnNotificationRemoved(
@@ -310,10 +279,6 @@ MessagePopupView* MessagePopupCollection::GetPopupViewForNotificationID(
   return nullptr;
 }
 
-size_t MessagePopupCollection::GetPopupItemsCount() {
-  return popup_items_.size();
-}
-
 MessagePopupView* MessagePopupCollection::CreatePopup(
     const Notification& notification) {
   bool a11_feedback_on_init =
@@ -321,28 +286,6 @@ MessagePopupView* MessagePopupCollection::CreatePopup(
           .should_make_spoken_feedback_for_popup_updates;
   return new MessagePopupView(new NotificationView(notification), this,
                               a11_feedback_on_init);
-}
-
-bool MessagePopupCollection::IsNextEdgeOutsideWorkArea(
-    const PopupItem& item) const {
-  const int next_edge = GetNextEdge(item);
-
-  const gfx::Rect work_area = GetWorkArea();
-  return IsTopDown() ? next_edge > work_area.bottom()
-                     : next_edge < work_area.y();
-}
-
-void MessagePopupCollection::ClosePopupItem(const PopupItem& item) {
-  if (MessagePopupView* popup = item.popup) {
-    popup->Close();
-  }
-}
-
-void MessagePopupCollection::MoveDownPopups() {
-  CalculateAndUpdateBounds();
-  for (auto& item : popup_items_) {
-    item.is_animating = true;
-  }
 }
 
 void MessagePopupCollection::RestartPopupTimers() {
@@ -353,68 +296,48 @@ void MessagePopupCollection::PausePopupTimers() {
   MessageCenter::Get()->PausePopupTimers();
 }
 
-void MessagePopupCollection::CloseAllPopupsNow() {
-  for (auto& item : popup_items_) {
-    // A popup might have already been removed when this is called.
-    if (!item.popup) {
-      continue;
-    }
-
-    item.is_animating = true;
-
-    // Mark the popup as shown so that the popup item will not re-appear after
-    // any subsequent calls to `GetPopupNotifications()`.
-    MessageCenter::Get()->MarkSinglePopupAsShown(
-        item.id, /*mark_notification_as_read=*/true);
-  }
-  CloseAnimatingPopups();
-
-  state_ = State::kIdle;
-  animation_->End();
-}
-
 void MessagePopupCollection::TransitionFromAnimation() {
-  DCHECK_NE(state_, State::kIdle);
+  DCHECK_NE(state_, State::IDLE);
   DCHECK(!animation_->is_animating());
 
   // The animation of type |state_| is now finished.
   UpdateByAnimation();
 
-  // If kFadeOut animation is finished, remove the animated popup.
-  if (state_ == State::kFadeOut) {
+  // If FADE_OUT animation is finished, remove the animated popup.
+  if (state_ == State::FADE_OUT) {
     CloseAnimatingPopups();
   }
 
-  if (state_ == State::kFadeIn || state_ == State::kMoveDown ||
-      (state_ == State::kFadeOut && popup_items_.empty())) {
-    // If the animation is finished, transition to kIdle.
-    state_ = State::kIdle;
-  } else if (state_ == State::kFadeOut && !popup_items_.empty()) {
+  if (state_ == State::FADE_IN || state_ == State::MOVE_DOWN ||
+      (state_ == State::FADE_OUT && popup_items_.empty())) {
+    // If the animation is finished, transition to IDLE.
+    state_ = State::IDLE;
+  } else if (state_ == State::FADE_OUT && !popup_items_.empty()) {
     if (HasAddedPopup()) {
       CollapseAllPopups();
     }
-    // If kFadeOut animation is finished and we still have remaining popups,
-    // we have to kMoveDown them.
-    // If we're going to add a new popup after this kMoveDown, do the collapse
-    // animation at the same time. Otherwise it will take another kMoveDown.
-    state_ = State::kMoveDown;
+    // If FADE_OUT animation is finished and we still have remaining popups,
+    // we have to MOVE_DOWN them.
+    // If we're going to add a new popup after this MOVE_DOWN, do the collapse
+    // animation at the same time. Otherwise it will take another MOVE_DOWN.
+    state_ = State::MOVE_DOWN;
     MoveDownPopups();
   }
 }
 
 void MessagePopupCollection::TransitionToAnimation() {
-  DCHECK_EQ(state_, State::kIdle);
+  DCHECK_EQ(state_, State::IDLE);
   DCHECK(!animation_->is_animating());
 
   if (HasRemovedPopup()) {
     MarkRemovedPopup();
 
     if (CloseTransparentPopups()) {
-      // If the popup is already transparent, skip kFadeOut.
-      state_ = State::kMoveDown;
+      // If the popup is already transparent, skip FADE_OUT.
+      state_ = State::MOVE_DOWN;
       MoveDownPopups();
     } else {
-      state_ = State::kFadeOut;
+      state_ = State::FADE_OUT;
     }
     return;
   }
@@ -423,12 +346,12 @@ void MessagePopupCollection::TransitionToAnimation() {
     if (CollapseAllPopups()) {
       // If we had existing popups that weren't collapsed, first show collapsing
       // animation.
-      state_ = State::kMoveDown;
+      state_ = State::MOVE_DOWN;
       MoveDownPopups();
       return;
     } else if (AddPopup()) {
-      // A popup is actually added. Show kFadein animation.
-      state_ = State::kFadeIn;
+      // A popup is actually added. Show FADE_IN animation.
+      state_ = State::FADE_IN;
       return;
     }
   }
@@ -436,7 +359,7 @@ void MessagePopupCollection::TransitionToAnimation() {
   if (resize_requested_) {
     // Resize is requested e.g. a user manually expanded notification.
     resize_requested_ = false;
-    state_ = State::kMoveDown;
+    state_ = State::MOVE_DOWN;
     MoveDownPopups();
 
     // This function may be called by a child MessageView when a notification is
@@ -451,38 +374,28 @@ void MessagePopupCollection::TransitionToAnimation() {
 }
 
 void MessagePopupCollection::UpdatePopupTimers() {
-  if (state_ == State::kIdle) {
+  if (state_ == State::IDLE) {
     if (IsAnyPopupHovered() || IsAnyPopupFocused()) {
       // If any popup is hovered or focused, pause popup timer.
       PausePopupTimers();
     } else {
-      // If in kIdle state, restart popup timer.
+      // If in IDLE state, restart popup timer.
       RestartPopupTimers();
     }
   } else {
-    // If not in kIdle state, pause popup timer.
+    // If not in IDLE state, pause popup timer.
     PausePopupTimers();
   }
 }
 
-void MessagePopupCollection::CalculateAndUpdateBounds() {
+void MessagePopupCollection::CalculateBounds() {
   int base = GetBaseline();
-
-  int popup_bounds_origin_x = 0;
-  int popup_bounds_origin_y = 0;
-  int popup_bounds_height = 0;
-  if (IsTopDown()) {
-    popup_bounds_origin_y = base;
-  }
-
   for (size_t i = 0; i < popup_items_.size(); ++i) {
     gfx::Size preferred_size(
         kNotificationWidth,
         GetPopupItem(i)->popup->GetHeightForWidth(kNotificationWidth));
 
     int origin_x = GetPopupOriginX(gfx::Rect(preferred_size));
-
-    popup_bounds_origin_x = origin_x;
 
     int origin_y = base;
     if (!IsTopDown())
@@ -497,42 +410,26 @@ void MessagePopupCollection::CalculateAndUpdateBounds() {
       base += delta;
     else
       base -= delta;
-
-    popup_bounds_height += delta;
-  }
-
-  if (!IsTopDown()) {
-    popup_bounds_origin_y = base + kMarginBetweenPopups;
-  }
-
-  int old_popup_collection_height = popup_collection_bounds_.height();
-
-  popup_collection_bounds_ =
-      gfx::Rect(popup_bounds_origin_x, popup_bounds_origin_y,
-                kNotificationWidth, popup_bounds_height - kMarginBetweenPopups);
-
-  if (old_popup_collection_height != popup_collection_bounds_.height()) {
-    NotifyPopupCollectionHeightChanged();
   }
 }
 
 void MessagePopupCollection::UpdateByAnimation() {
-  DCHECK_NE(state_, State::kIdle);
+  DCHECK_NE(state_, State::IDLE);
 
   for (auto& item : popup_items_) {
     if (!item.is_animating)
       continue;
 
     double value = gfx::Tween::CalculateValue(
-        state_ == State::kFadeOut ? gfx::Tween::EASE_IN : gfx::Tween::EASE_OUT,
+        state_ == State::FADE_OUT ? gfx::Tween::EASE_IN : gfx::Tween::EASE_OUT,
         animation_->GetCurrentValue());
 
-    if (state_ == State::kFadeIn)
+    if (state_ == State::FADE_IN)
       item.popup->SetOpacity(gfx::Tween::FloatValueBetween(value, 0.0f, 1.0f));
-    else if (state_ == State::kFadeOut)
+    else if (state_ == State::FADE_OUT)
       item.popup->SetOpacity(gfx::Tween::FloatValueBetween(value, 1.0f, 0.0f));
 
-    if (state_ == State::kFadeIn || state_ == State::kMoveDown) {
+    if (state_ == State::FADE_IN || state_ == State::MOVE_DOWN) {
       item.popup->SetPopupBounds(
           gfx::Tween::RectValueBetween(value, item.start_bounds, item.bounds));
     }
@@ -597,7 +494,7 @@ bool MessagePopupCollection::AddPopup() {
     item.popup = CreatePopup(*new_notification);
 
     if (IsNextEdgeOutsideWorkArea(item)) {
-      ClosePopupItem(item);
+      item.popup->Close();
       return false;
     }
 
@@ -610,18 +507,12 @@ bool MessagePopupCollection::AddPopup() {
   MessageCenter::Get()->DisplayedNotification(new_notification->id(),
                                               DISPLAY_SOURCE_POPUP);
 
-  CalculateAndUpdateBounds();
+  CalculateBounds();
 
-  // We might remove all popup items after update bounds.
-  // TODO(b/302172146): Remove this check once we have the long-term solution
-  // for notifier collision.
-  if (!popup_items_.empty()) {
-    auto& item = popup_items_.back();
-    item.start_bounds = item.bounds;
-    item.start_bounds +=
-        gfx::Vector2d((IsFromLeft() ? -1 : 1) * item.bounds.width(), 0);
-  }
-
+  auto& item = popup_items_.back();
+  item.start_bounds = item.bounds;
+  item.start_bounds +=
+      gfx::Vector2d((IsFromLeft() ? -1 : 1) * item.bounds.width(), 0);
   return true;
 }
 
@@ -639,6 +530,12 @@ void MessagePopupCollection::MarkRemovedPopup() {
   }
 }
 
+void MessagePopupCollection::MoveDownPopups() {
+  CalculateBounds();
+  for (auto& item : popup_items_)
+    item.is_animating = true;
+}
+
 int MessagePopupCollection::GetNextEdge(const PopupItem& item) const {
   const int delta =
       item.popup->GetHeightForWidth(kNotificationWidth) + kMarginBetweenPopups;
@@ -654,11 +551,19 @@ int MessagePopupCollection::GetNextEdge(const PopupItem& item) const {
   return IsTopDown() ? base + delta : base - delta;
 }
 
+bool MessagePopupCollection::IsNextEdgeOutsideWorkArea(
+    const PopupItem& item) const {
+  const int next_edge = GetNextEdge(item);
+  const gfx::Rect work_area = GetWorkArea();
+  return IsTopDown() ? next_edge > work_area.bottom()
+                     : next_edge < work_area.y();
+}
+
 void MessagePopupCollection::CloseAnimatingPopups() {
   for (auto& item : popup_items_) {
     if (!item.is_animating)
       continue;
-    ClosePopupItem(item);
+    item.popup->Close();
   }
   RemoveClosedPopupItems();
 }
@@ -668,7 +573,7 @@ bool MessagePopupCollection::CloseTransparentPopups() {
   for (auto& item : popup_items_) {
     if (item.popup->GetOpacity() > 0.0)
       continue;
-    ClosePopupItem(item);
+    item.popup->Close();
     removed = true;
   }
   RemoveClosedPopupItems();
@@ -680,13 +585,22 @@ void MessagePopupCollection::ClosePopupsOutsideWorkArea() {
   for (auto& item : popup_items_) {
     if (work_area.Contains(item.bounds))
       continue;
-    ClosePopupItem(item);
+    item.popup->Close();
   }
   RemoveClosedPopupItems();
 }
 
 void MessagePopupCollection::RemoveClosedPopupItems() {
-  std::erase_if(popup_items_, [](const auto& item) { return !item.popup; });
+  base::EraseIf(popup_items_, [](const auto& item) { return !item.popup; });
+}
+
+void MessagePopupCollection::CloseAllPopupsNow() {
+  for (auto& item : popup_items_)
+    item.is_animating = true;
+  CloseAnimatingPopups();
+
+  state_ = State::IDLE;
+  animation_->End();
 }
 
 bool MessagePopupCollection::CollapseAllPopups() {

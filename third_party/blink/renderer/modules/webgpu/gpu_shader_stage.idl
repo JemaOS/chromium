@@ -6,10 +6,10 @@
 
 typedef [EnforceRange] unsigned long GPUShaderStageFlags;
 [
-    Exposed=(Window, Worker),
+    Exposed(Window WebGPU, DedicatedWorker WebGPU),
     SecureContext
 ] namespace GPUShaderStage {
-    const GPUFlagsConstant VERTEX = 1;
-    const GPUFlagsConstant FRAGMENT = 2;
-    const GPUFlagsConstant COMPUTE = 4;
+    const unsigned long VERTEX = 1;
+    const unsigned long FRAGMENT = 2;
+    const unsigned long COMPUTE = 4;
 };

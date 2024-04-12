@@ -12,11 +12,9 @@
 #include "ash/shell.h"
 #include "ash/wm/mru_window_tracker.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/trace_event/trace_event.h"
 #include "chrome/browser/ash/crosapi/crosapi_ash.h"
 #include "chrome/browser/ash/crosapi/crosapi_manager.h"
 #include "chrome/browser/profiles/profile.h"
@@ -30,7 +28,6 @@
 #include "chromeos/constants/devicetype.h"
 #include "chromeos/dbus/power_manager/power_supply_properties.pb.h"
 #include "components/site_engagement/content/site_engagement_service.h"
-#include "components/user_manager/user_manager.h"
 #include "ui/aura/client/aura_constants.h"
 
 namespace ash {
@@ -101,10 +98,10 @@ void LogMetricsToUMA(const UserActivityEvent& event) {
 // True if the first browser window in mru windows list is from Lacros.
 bool ShouldUseLacrosFeatures() {
   if (ash::Shell::HasInstance()) {
-    std::vector<raw_ptr<aura::Window, VectorExperimental>> mru_windows =
+    std::vector<aura::Window*> mru_windows =
         ash::Shell::Get()->mru_window_tracker()->BuildMruWindowList(
             ash::kActiveDesk);
-    for (aura::Window* window : mru_windows) {
+    for (auto* window : mru_windows) {
       if (!window->IsVisible())
         continue;
 
@@ -158,7 +155,7 @@ UserActivityManager::UserActivityManager(
     chromeos::PowerManagerClient* power_manager_client,
     session_manager::SessionManager* session_manager,
     mojo::PendingReceiver<viz::mojom::VideoDetectorObserver> receiver,
-    const user_manager::UserManager* user_manager)
+    const ChromeUserManager* user_manager)
     : ukm_logger_(ukm_logger),
       session_manager_(session_manager),
       receiver_(this, std::move(receiver)),
@@ -406,7 +403,6 @@ void UserActivityManager::HandleSmartDimDecision(
 }
 
 void UserActivityManager::OnSessionStateChanged() {
-  TRACE_EVENT0("ui", "UserActivityManager::OnSessionStateChanged");
   DCHECK(session_manager_);
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   const bool was_locked = screen_is_locked_;
@@ -428,7 +424,7 @@ void UserActivityManager::OnLacrosInstanceDisconnected(
 }
 
 void UserActivityManager::OnReceiveSwitchStates(
-    std::optional<chromeos::PowerManagerClient::SwitchStates> switch_states) {
+    absl::optional<chromeos::PowerManagerClient::SwitchStates> switch_states) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (switch_states.has_value()) {
     lid_state_ = switch_states->lid_state;
@@ -437,7 +433,7 @@ void UserActivityManager::OnReceiveSwitchStates(
 }
 
 void UserActivityManager::OnReceiveInactivityDelays(
-    std::optional<power_manager::PowerManagementPolicy::Delays> delays) {
+    absl::optional<power_manager::PowerManagementPolicy::Delays> delays) {
   if (delays.has_value()) {
     screen_dim_delay_ = base::Milliseconds(delays->screen_dim_ms());
     screen_off_delay_ = base::Milliseconds(delays->screen_off_ms());
@@ -713,9 +709,9 @@ void UserActivityManager::PopulatePreviousEventData(
 
 void UserActivityManager::ResetAfterLogging() {
   features_.Clear();
-  idle_event_start_since_boot_ = std::nullopt;
+  idle_event_start_since_boot_ = absl::nullopt;
   waiting_for_final_action_ = false;
-  model_prediction_ = std::nullopt;
+  model_prediction_ = absl::nullopt;
 
   previous_idle_event_data_.reset();
 }

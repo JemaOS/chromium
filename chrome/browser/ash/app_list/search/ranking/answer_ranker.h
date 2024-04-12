@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_APP_LIST_SEARCH_RANKING_ANSWER_RANKER_H_
 #define CHROME_BROWSER_ASH_APP_LIST_SEARCH_RANKING_ANSWER_RANKER_H_
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/ash/app_list/search/ranking/ranker.h"
 #include "chrome/browser/ash/app_list/search/types.h"
@@ -24,7 +23,9 @@ class AnswerRanker : public Ranker {
   AnswerRanker& operator=(const AnswerRanker&) = delete;
 
   // Ranker:
-  void Start(const std::u16string& query, CategoriesList& categories) override;
+  void Start(const std::u16string& query,
+             ResultsMap& results,
+             CategoriesList& categories) override;
   void UpdateResultRanks(ResultsMap& results, ProviderType provider) override;
   void OnBurnInPeriodElapsed() override;
 
@@ -37,8 +38,7 @@ class AnswerRanker : public Ranker {
   base::WeakPtr<ChromeSearchResult> chosen_answer_;
 
   // All current Omnibox answer candidates.
-  std::vector<raw_ptr<ChromeSearchResult, VectorExperimental>>
-      omnibox_candidates_;
+  std::vector<ChromeSearchResult*> omnibox_candidates_;
 
   bool burn_in_elapsed_ = false;
 };

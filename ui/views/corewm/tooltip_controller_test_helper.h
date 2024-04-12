@@ -10,8 +10,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "build/chromeos_buildflags.h"
-#include "ui/aura/window_observer.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/ozone/public/ozone_platform.h"
 #include "ui/views/corewm/tooltip_controller.h"
 #include "ui/views/corewm/tooltip_state_manager.h"
@@ -34,21 +32,17 @@ namespace views::corewm::test {
 
 // TooltipControllerTestHelper provides access to TooltipControllers private
 // state.
-class TooltipControllerTestHelper : public aura::WindowObserver {
+class TooltipControllerTestHelper {
  public:
-  // `root_window` must be non null.
-  explicit TooltipControllerTestHelper(aura::Window* root_window);
+  explicit TooltipControllerTestHelper(TooltipController* controller);
 
   TooltipControllerTestHelper(const TooltipControllerTestHelper&) = delete;
   TooltipControllerTestHelper& operator=(const TooltipControllerTestHelper&) =
       delete;
 
-  ~TooltipControllerTestHelper() override;
+  ~TooltipControllerTestHelper();
 
   TooltipController* controller() { return controller_; }
-  void set_controller(TooltipController* controller) {
-    controller_ = controller;
-  }
 
   TooltipStateManager* state_manager() {
     return controller_->state_manager_.get();
@@ -76,21 +70,12 @@ class TooltipControllerTestHelper : public aura::WindowObserver {
   void SkipTooltipShowDelay(bool enable);
   void MockWindowActivated(aura::Window* window, bool active);
 
-  // aura::WindowObserver:
-  void OnWindowPropertyChanged(aura::Window* window,
-                               const void* key,
-                               intptr_t old) override;
-  void OnWindowDestroyed(aura::Window* window) override;
-
  private:
-  raw_ptr<aura::Window> root_window_;
-  raw_ptr<TooltipController> controller_;
+  raw_ptr<TooltipController, DanglingUntriaged> controller_;
 };
 
 // Trivial View subclass that lets you set the tooltip text.
 class TooltipTestView : public views::View {
-  METADATA_HEADER(TooltipTestView, views::View)
-
  public:
   TooltipTestView();
 

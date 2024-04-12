@@ -57,7 +57,6 @@ div { (<style>)
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 ======== Inherited from div.container ========
 [expanded] 

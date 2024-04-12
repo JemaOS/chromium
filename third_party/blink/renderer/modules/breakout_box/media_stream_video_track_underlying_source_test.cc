@@ -4,7 +4,6 @@
 
 #include "third_party/blink/renderer/modules/breakout_box/media_stream_video_track_underlying_source.h"
 
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/test/gmock_callback_support.h"
 #include "media/capture/video/video_capture_buffer_pool_util.h"
@@ -28,7 +27,6 @@
 #include "third_party/blink/renderer/modules/webcodecs/video_frame_monitor.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/testing/io_task_runner_testing_platform_support.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/testing_platform_support.h"
 
 using testing::_;
@@ -45,7 +43,7 @@ class MediaStreamVideoTrackUnderlyingSourceTest : public testing::Test {
             MediaStreamSource::kTypeVideo,
             "dummy_source_name",
             false /* remote */,
-            base::WrapUnique(pushable_video_source_.get()))) {}
+            base::WrapUnique(pushable_video_source_))) {}
 
   ~MediaStreamVideoTrackUnderlyingSourceTest() override {
     RunIOUntilIdle();
@@ -85,7 +83,7 @@ class MediaStreamVideoTrackUnderlyingSourceTest : public testing::Test {
 
  protected:
   void PushFrame(
-      const std::optional<base::TimeDelta>& timestamp = std::nullopt) {
+      const absl::optional<base::TimeDelta>& timestamp = absl::nullopt) {
     const scoped_refptr<media::VideoFrame> frame =
         media::VideoFrame::CreateBlackFrame(gfx::Size(10, 5));
     if (timestamp)
@@ -111,9 +109,8 @@ class MediaStreamVideoTrackUnderlyingSourceTest : public testing::Test {
     return media_stream_source;
   }
 
-  test::TaskEnvironment task_environment_;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform_;
-  const raw_ptr<PushableMediaStreamVideoSource> pushable_video_source_;
+  PushableMediaStreamVideoSource* const pushable_video_source_;
   const Persistent<MediaStreamSource> media_stream_source_;
 };
 
@@ -211,7 +208,7 @@ TEST_F(MediaStreamVideoTrackUnderlyingSourceTest,
   // Pulling causes a pending pull since there are no frames available for
   // reading.
   EXPECT_EQ(source->NumPendingPullsForTesting(), 0);
-  source->Pull(script_state, ASSERT_NO_EXCEPTION);
+  source->pull(script_state);
   EXPECT_EQ(source->NumPendingPullsForTesting(), 1);
 
   source->Close();

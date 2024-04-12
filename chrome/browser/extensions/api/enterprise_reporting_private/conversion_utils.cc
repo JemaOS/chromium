@@ -33,10 +33,10 @@ namespace {
 
 constexpr size_t kGeneralSignalUpperLimit = 128U;
 
-std::optional<ParsedSignalsError> TryParseError(
+absl::optional<ParsedSignalsError> TryParseError(
     const device_signals::SignalsAggregationResponse& response,
-    const std::optional<device_signals::BaseSignalResponse>& bundle) {
-  std::optional<std::string> error_string;
+    const absl::optional<device_signals::BaseSignalResponse>& bundle) {
+  absl::optional<std::string> error_string;
   if (response.top_level_error) {
     return ParsedSignalsError{response.top_level_error.value(),
                               /*is_top_level_error=*/true};
@@ -52,20 +52,20 @@ std::optional<ParsedSignalsError> TryParseError(
                               /*is_top_level_error=*/false};
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 api::enterprise_reporting_private::PresenceValue ConvertPresenceValue(
     PresenceValue presence) {
   switch (presence) {
     case PresenceValue::kUnspecified:
-      return api::enterprise_reporting_private::PresenceValue::kUnspecified;
+      return api::enterprise_reporting_private::PRESENCE_VALUE_UNSPECIFIED;
     case PresenceValue::kAccessDenied:
-      return api::enterprise_reporting_private::PresenceValue::kAccessDenied;
+      return api::enterprise_reporting_private::PRESENCE_VALUE_ACCESS_DENIED;
     case PresenceValue::kNotFound:
-      return api::enterprise_reporting_private::PresenceValue::kNotFound;
+      return api::enterprise_reporting_private::PRESENCE_VALUE_NOT_FOUND;
     case PresenceValue::kFound:
-      return api::enterprise_reporting_private::PresenceValue::kFound;
+      return api::enterprise_reporting_private::PRESENCE_VALUE_FOUND;
   }
 }
 
@@ -89,33 +89,34 @@ std::vector<std::string> EncodeHashes(
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
-std::optional<device_signals::RegistryHive> ConvertHiveFromApi(
+absl::optional<device_signals::RegistryHive> ConvertHiveFromApi(
     api::enterprise_reporting_private::RegistryHive api_hive) {
   switch (api_hive) {
-    case api::enterprise_reporting_private::RegistryHive::kHkeyClassesRoot:
+    case api::enterprise_reporting_private::REGISTRY_HIVE_HKEY_CLASSES_ROOT:
       return device_signals::RegistryHive::kHkeyClassesRoot;
-    case api::enterprise_reporting_private::RegistryHive::kHkeyLocalMachine:
+    case api::enterprise_reporting_private::REGISTRY_HIVE_HKEY_LOCAL_MACHINE:
       return device_signals::RegistryHive::kHkeyLocalMachine;
-    case api::enterprise_reporting_private::RegistryHive::kHkeyCurrentUser:
+    case api::enterprise_reporting_private::REGISTRY_HIVE_HKEY_CURRENT_USER:
       return device_signals::RegistryHive::kHkeyCurrentUser;
-    case api::enterprise_reporting_private::RegistryHive::kNone:
-      return std::nullopt;
+    case api::enterprise_reporting_private::REGISTRY_HIVE_NONE:
+      return absl::nullopt;
   }
 }
 
 api::enterprise_reporting_private::RegistryHive ConvertHiveToApi(
-    std::optional<device_signals::RegistryHive> hive) {
+    absl::optional<device_signals::RegistryHive> hive) {
   if (!hive) {
-    return api::enterprise_reporting_private::RegistryHive::kNone;
+    return api::enterprise_reporting_private::REGISTRY_HIVE_NONE;
   }
 
   switch (hive.value()) {
     case device_signals::RegistryHive::kHkeyClassesRoot:
-      return api::enterprise_reporting_private::RegistryHive::kHkeyClassesRoot;
+      return api::enterprise_reporting_private::REGISTRY_HIVE_HKEY_CLASSES_ROOT;
     case device_signals::RegistryHive::kHkeyLocalMachine:
-      return api::enterprise_reporting_private::RegistryHive::kHkeyLocalMachine;
+      return api::enterprise_reporting_private::
+          REGISTRY_HIVE_HKEY_LOCAL_MACHINE;
     case device_signals::RegistryHive::kHkeyCurrentUser:
-      return api::enterprise_reporting_private::RegistryHive::kHkeyCurrentUser;
+      return api::enterprise_reporting_private::REGISTRY_HIVE_HKEY_CURRENT_USER;
   }
 }
 
@@ -141,7 +142,7 @@ ConvertFileSystemInfoOptions(
   return converted_options;
 }
 
-std::optional<ParsedSignalsError> ConvertFileSystemInfoResponse(
+absl::optional<ParsedSignalsError> ConvertFileSystemInfoResponse(
     const device_signals::SignalsAggregationResponse& aggregation_response,
     std::vector<api::enterprise_reporting_private::GetFileSystemInfoResponse>*
         arg_list) {
@@ -185,7 +186,7 @@ std::optional<ParsedSignalsError> ConvertFileSystemInfoResponse(
   }
 
   *arg_list = std::move(api_responses);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
@@ -206,7 +207,7 @@ std::vector<device_signals::GetSettingsOptions> ConvertSettingsOptions(
   return converted_options;
 }
 
-std::optional<ParsedSignalsError> ConvertSettingsResponse(
+absl::optional<ParsedSignalsError> ConvertSettingsResponse(
     const device_signals::SignalsAggregationResponse& aggregation_response,
     std::vector<api::enterprise_reporting_private::GetSettingsResponse>*
         arg_list) {
@@ -235,14 +236,14 @@ std::optional<ParsedSignalsError> ConvertSettingsResponse(
   }
 
   *arg_list = std::move(api_responses);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
 #if BUILDFLAG(IS_WIN)
 
-std::optional<ParsedSignalsError> ConvertAvProductsResponse(
+absl::optional<ParsedSignalsError> ConvertAvProductsResponse(
     const device_signals::SignalsAggregationResponse& aggregation_response,
     std::vector<api::enterprise_reporting_private::AntiVirusSignal>* arg_list) {
   auto error = TryParseError(aggregation_response,
@@ -264,20 +265,20 @@ std::optional<ParsedSignalsError> ConvertAvProductsResponse(
 
     switch (av_product.state) {
       case device_signals::AvProductState::kOn:
-        api_av_signal.state =
-            api::enterprise_reporting_private::AntiVirusProductState::kOn;
+        api_av_signal.state = api::enterprise_reporting_private::
+            AntiVirusProductState::ANTI_VIRUS_PRODUCT_STATE_ON;
         break;
       case device_signals::AvProductState::kOff:
-        api_av_signal.state =
-            api::enterprise_reporting_private::AntiVirusProductState::kOff;
+        api_av_signal.state = api::enterprise_reporting_private::
+            AntiVirusProductState::ANTI_VIRUS_PRODUCT_STATE_OFF;
         break;
       case device_signals::AvProductState::kSnoozed:
-        api_av_signal.state =
-            api::enterprise_reporting_private::AntiVirusProductState::kSnoozed;
+        api_av_signal.state = api::enterprise_reporting_private::
+            AntiVirusProductState::ANTI_VIRUS_PRODUCT_STATE_SNOOZED;
         break;
       case device_signals::AvProductState::kExpired:
-        api_av_signal.state =
-            api::enterprise_reporting_private::AntiVirusProductState::kExpired;
+        api_av_signal.state = api::enterprise_reporting_private::
+            AntiVirusProductState::ANTI_VIRUS_PRODUCT_STATE_EXPIRED;
         break;
     }
 
@@ -285,10 +286,10 @@ std::optional<ParsedSignalsError> ConvertAvProductsResponse(
   }
 
   *arg_list = std::move(api_av_signals);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<ParsedSignalsError> ConvertHotfixesResponse(
+absl::optional<ParsedSignalsError> ConvertHotfixesResponse(
     const device_signals::SignalsAggregationResponse& aggregation_response,
     std::vector<api::enterprise_reporting_private::HotfixSignal>* arg_list) {
   auto error = TryParseError(aggregation_response,
@@ -311,7 +312,7 @@ std::optional<ParsedSignalsError> ConvertHotfixesResponse(
   }
 
   *arg_list = std::move(api_hotfix_signals);
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 #endif  // BUILDFLAG(IS_WIN)

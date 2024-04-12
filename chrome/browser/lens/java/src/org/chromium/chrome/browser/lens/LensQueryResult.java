@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.lens;
 
 import android.text.TextUtils;
 
-/** A wrapper class for the Lens image query result from Lens Prime SDK. */
+/**
+ * A wrapper class for the Lens image query result from Lens Prime SDK.
+ */
 public class LensQueryResult {
     private boolean mIsShoppyIntent;
     private boolean mIsTranslateIntent;
@@ -14,7 +16,9 @@ public class LensQueryResult {
     private String mSessionId;
     private int mQueryId;
 
-    /** Builder class for LensQueryParams. */
+    /**
+     * Builder class for LensQueryParams.
+     */
     public static class Builder {
         private boolean mIsShoppyIntent;
         private boolean mIsTranslateIntent;

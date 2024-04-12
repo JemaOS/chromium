@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://resources/ash/common/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/ash/common/cr_elements/cr_checkbox/cr_checkbox.js';
-import 'chrome://resources/ash/common/cr_elements/cr_shared_vars.css.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
+import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 import 'chrome://resources/polymer/v3_0/paper-progress/paper-progress.js';
 import './strings.m.js';
 
 import {assert, assertNotReached} from 'chrome://resources/ash/common/assert.js';
 import {loadTimeData} from 'chrome://resources/ash/common/load_time_data.m.js';
-import {sanitizeInnerHtml} from 'chrome://resources/js/parse_html_subset.js';
 import {Polymer} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './app.html.js';
@@ -225,7 +224,7 @@ Polymer({
     ];
 
     document.addEventListener('keyup', event => {
-      if (event.key === 'Escape' && this.canCancel_(this.state_)) {
+      if (event.key == 'Escape' && this.canCancel_(this.state_)) {
         this.onCancelButtonClick_();
         event.preventDefault();
       }
@@ -478,7 +477,7 @@ Polymer({
 
   /**
    * @param {State} state
-   * @return {TrustedHTML}
+   * @return {string}
    * @private
    */
   getProgressMessage_(state, precheckStatus, file_name) {
@@ -515,17 +514,14 @@ Polymer({
         messageId = 'restoreErrorMessage';
         break;
       case State.SUCCEEDED:
-        return sanitizeInnerHtml(
-            loadTimeData.getStringF('logFileMessageSuccess', file_name));
+        return loadTimeData.getStringF('logFileMessageSuccess', file_name);
         break;
       case State.UPGRADE_ERROR:
       case State.OFFER_RESTORE:
-        return sanitizeInnerHtml(
-            loadTimeData.getStringF('logFileMessageError', file_name));
+        return loadTimeData.getStringF('logFileMessageError', file_name);
         break;
     }
-    return messageId ? sanitizeInnerHtml(loadTimeData.getString(messageId)) :
-                       trustedTypes.emptyHTML;
+    return messageId ? loadTimeData.getString(messageId) : '';
   },
 
   /**

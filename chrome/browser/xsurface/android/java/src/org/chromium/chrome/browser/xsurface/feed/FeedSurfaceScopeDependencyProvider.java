@@ -6,10 +6,6 @@ package org.chromium.chrome.browser.xsurface.feed;
 
 import android.graphics.Rect;
 
-import androidx.annotation.Nullable;
-
-import org.chromium.chrome.browser.xsurface.LoggingParameters;
-import org.chromium.chrome.browser.xsurface.PersistentKeyValueCache;
 import org.chromium.chrome.browser.xsurface.SurfaceHeaderOffsetObserver;
 import org.chromium.chrome.browser.xsurface.SurfaceScopeDependencyProvider;
 
@@ -45,10 +41,8 @@ public interface FeedSurfaceScopeDependencyProvider extends SurfaceScopeDependen
          * partially visible or invisible.
          */
         int AUTOPLAY_STOPPED = 0;
-
         /** Auto-play reaches the end. */
         int AUTOPLAY_ENDED = 1;
-
         /** User clicks on the auto-play video. */
         int AUTOPLAY_CLICKED = 2;
 
@@ -56,7 +50,6 @@ public interface FeedSurfaceScopeDependencyProvider extends SurfaceScopeDependen
 
         /** The player starts to play the video. */
         int PLAY_REQUESTED = 3;
-
         int PLAY_STARTED = 4;
         int PLAY_ERROR = 5;
         int NUM_ENTRIES = 6;
@@ -116,7 +109,9 @@ public interface FeedSurfaceScopeDependencyProvider extends SurfaceScopeDependen
      */
     default void reportVideoPlayError(boolean isMutedAutoplay, @VideoPlayError int error) {}
 
-    /** Returns the bounds of the toolbar in global (root) coordinates. */
+    /**
+     * Returns the bounds of the toolbar in global (root) coordinates.
+     */
     default Rect getToolbarGlobalVisibleRect() {
         return new Rect();
     }
@@ -125,7 +120,7 @@ public interface FeedSurfaceScopeDependencyProvider extends SurfaceScopeDependen
      * Adds a header offset observer to the surface this scope is associated with.
      *
      * @param observer The observer to add.
-     * @return a reference to be used when removing the observer, or null if not successful.
+     * @Return a reference to be used when removing the observer, or null if not successful.
      */
     default void addHeaderOffsetObserver(SurfaceHeaderOffsetObserver observer) {}
 
@@ -135,27 +130,4 @@ public interface FeedSurfaceScopeDependencyProvider extends SurfaceScopeDependen
      * @param observer An Object returned by |addHeaderOffsetObserver|.
      */
     default void removeHeaderOffsetObserver(SurfaceHeaderOffsetObserver observer) {}
-
-    /**
-     * Stores a view FeedAction for eventual upload. 'data' is a serialized FeedAction protobuf
-     * message.
-     */
-    default void processViewAction(byte[] data, LoggingParameters loggingParameters) {}
-
-    /**
-     * Returns a {@link PersistentKeyValueCache}. This value will be cached as an account-level
-     * dependency, and only cleared after {@link ProcessScope#resetAccount()} is called.
-     */
-    @Nullable
-    default PersistentKeyValueCache getPersistentKeyValueCache() {
-        return null;
-    }
-
-    /**
-     * Returns an ResourceFetcher to fetch the data asynchronously. Null will be returned if it is
-     * unavailable.
-     */
-    default @Nullable ResourceFetcher getAsyncDataFetcher() {
-        return null;
-    }
 }

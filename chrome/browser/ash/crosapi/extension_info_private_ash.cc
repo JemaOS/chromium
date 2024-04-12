@@ -4,11 +4,10 @@
 
 #include "chrome/browser/ash/crosapi/extension_info_private_ash.h"
 
-#include <string_view>
-
 #include "ash/components/arc/arc_util.h"
 #include "ash/constants/ash_pref_names.h"
 #include "ash/public/cpp/stylus_utils.h"
+#include "ash/public/cpp/tablet_mode.h"
 #include "base/memory/ptr_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/system/sys_info.h"
@@ -39,7 +38,6 @@
 #include "extensions/browser/extensions_browser_client.h"
 #include "extensions/common/error_utils.h"
 #include "third_party/cros_system_api/dbus/service_constants.h"
-#include "ui/display/screen.h"
 
 using ash::NetworkHandler;
 
@@ -247,10 +245,10 @@ std::string GetClientId() {
 }
 
 const char* GetBoolPrefNameForApiProperty(const char* api_name) {
-  for (const auto& item : kPreferencesMap) {
-    if (strcmp(item.api_name, api_name) == 0) {
-      return item.preference_name;
-    }
+  for (size_t i = 0; i < (sizeof(kPreferencesMap) / sizeof(*kPreferencesMap));
+       i++) {
+    if (strcmp(kPreferencesMap[i].api_name, api_name) == 0)
+      return kPreferencesMap[i].preference_name;
   }
 
   return nullptr;
@@ -260,7 +258,7 @@ std::unique_ptr<base::Value> GetValue(const std::string& property_name) {
   if (property_name == kPropertyHWID) {
     ash::system::StatisticsProvider* provider =
         ash::system::StatisticsProvider::GetInstance();
-    const std::optional<std::string_view> hwid =
+    const absl::optional<base::StringPiece> hwid =
         provider->GetMachineStatistic(ash::system::kHardwareClassKey);
     return std::make_unique<base::Value>(hwid.value_or(""));
   }
@@ -268,7 +266,7 @@ std::unique_ptr<base::Value> GetValue(const std::string& property_name) {
   if (property_name == kPropertyCustomizationID) {
     ash::system::StatisticsProvider* provider =
         ash::system::StatisticsProvider::GetInstance();
-    const std::optional<std::string_view> customization_id =
+    const absl::optional<base::StringPiece> customization_id =
         provider->GetMachineStatistic(ash::system::kCustomizationIdKey);
     return std::make_unique<base::Value>(customization_id.value_or(""));
   }
@@ -276,7 +274,7 @@ std::unique_ptr<base::Value> GetValue(const std::string& property_name) {
   if (property_name == kPropertyDeviceRequisition) {
     ash::system::StatisticsProvider* provider =
         ash::system::StatisticsProvider::GetInstance();
-    const std::optional<std::string_view> device_requisition =
+    const absl::optional<base::StringPiece> device_requisition =
         provider->GetMachineStatistic(ash::system::kOemDeviceRequisitionKey);
     return std::make_unique<base::Value>(device_requisition.value_or(""));
   }
@@ -419,17 +417,16 @@ void ExtensionInfoPrivateAsh::BindReceiver(
 void ExtensionInfoPrivateAsh::GetSystemProperties(
     const std::vector<std::string>& property_names,
     GetSystemPropertiesCallback callback) {
-  base::Value::Dict result;
+  base::Value result(base::Value::Type::DICT);
   for (const std::string& property_name : property_names) {
     std::unique_ptr<base::Value> value = GetValue(property_name);
     if (value) {
-      result.Set(property_name,
-                 base::Value::FromUniquePtrValue(std::move(value)));
+      result.SetKey(property_name,
+                    base::Value::FromUniquePtrValue(std::move(value)));
     }
   }
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(std::move(callback), base::Value(std::move(result))));
+      FROM_HERE, base::BindOnce(std::move(callback), std::move(result)));
 }
 
 void ExtensionInfoPrivateAsh::SetTimezone(const std::string& value) {
@@ -463,8 +460,9 @@ void ExtensionInfoPrivateAsh::SetBool(const std::string& property_name,
 void ExtensionInfoPrivateAsh::IsTabletModeEnabled(
     IsTabletModeEnabledCallback callback) {
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback),
-                                display::Screen::GetScreen()->InTabletMode()));
+      FROM_HERE,
+      base::BindOnce(std::move(callback),
+                     std::move(ash::TabletMode::Get()->InTabletMode())));
 }
 
 }  // namespace crosapi

@@ -19,11 +19,11 @@
 #include "chrome/common/chrome_switches.h"
 #include "sql/error_delegate_util.h"
 #include "sql/init_status.h"
-#include "sql/sqlite_result_code_values.h"
 #include "sql/transaction.h"
+#include "third_party/sqlite/sqlite3.h"
 
 #if BUILDFLAG(IS_MAC)
-#include "base/apple/backup_util.h"
+#include "base/mac/backup_util.h"
 #endif
 
 namespace extensions {
@@ -40,6 +40,7 @@ static const int kSizeThresholdForFlush = 200;
 ActivityDatabase::ActivityDatabase(ActivityDatabase::Delegate* delegate)
     : delegate_(delegate),
       db_({
+          .exclusive_locking = true,
           .page_size = 4096,
           .cache_size = 32,
           // TODO(pwnall): Add a meta table and remove this option.
@@ -86,7 +87,7 @@ void ActivityDatabase::Init(const base::FilePath& db_name) {
 
 #if BUILDFLAG(IS_MAC)
   // Exclude the database from backups.
-  base::apple::SetBackupExclusion(db_name);
+  base::mac::SetBackupExclusion(db_name);
 #endif
 
   if (!delegate_->InitDatabase(&db_))
@@ -192,7 +193,7 @@ void ActivityDatabase::DatabaseErrorCallback(int error, sql::Statement* stmt) {
   if (sql::IsErrorCatastrophic(error)) {
     LOG(ERROR) << "Killing the ActivityDatabase due to catastrophic error.";
     HardFailureClose();
-  } else if (error != static_cast<int>(sql::SqliteResultCode::kBusy)) {
+  } else if (error != SQLITE_BUSY) {
     // We ignore SQLITE_BUSY errors because they are presumably transient.
     LOG(ERROR) << "Closing the ActivityDatabase due to error.";
     SoftFailureClose();

@@ -49,6 +49,7 @@ constexpr char kCrostiniAppsCountHistogramName[] =
 constexpr char kExtensionAppsCountHistogramName[] =
     "FamilyUser.ExtensionAppsCount2";
 constexpr char kWebAppsCountHistogramName[] = "FamilyUser.WebAppsCount2";
+constexpr char kMacOsAppsCountHistogramName[] = "FamilyUser.MacOsAppsCount2";
 constexpr char kPluginVmAppsCountHistogramName[] =
     "FamilyUser.PluginVmAppsCount2";
 constexpr char kStandaloneBrowserAppsCountHistogramName[] = "FamilyUser.LacrosAppsCount2";
@@ -83,6 +84,8 @@ const char* GetAppsCountHistogramName(apps::AppType app_type) {
       return kExtensionAppsCountHistogramName;
     case apps::AppType::kWeb:
       return kWebAppsCountHistogramName;
+    case apps::AppType::kMacOs:
+      return kMacOsAppsCountHistogramName;
     case apps::AppType::kPluginVm:
       return kPluginVmAppsCountHistogramName;
     case apps::AppType::kStandaloneBrowser:
@@ -120,7 +123,7 @@ FamilyUserAppMetrics::FamilyUserAppMetrics(Profile* profile)
           user_manager::UserManager::Get()->IsCurrentUserNew()) {
   DCHECK(extension_registry_);
   DCHECK(app_registry_);
-  app_registry_cache_observer_.Observe(app_registry_);
+  Observe(app_registry_);
   DCHECK(instance_registry_);
 }
 
@@ -178,7 +181,7 @@ void FamilyUserAppMetrics::OnAppTypeInitialized(apps::AppType app_type) {
 void FamilyUserAppMetrics::OnAppRegistryCacheWillBeDestroyed(
     apps::AppRegistryCache* cache) {
   DCHECK_EQ(cache, app_registry_);
-  app_registry_cache_observer_.Reset();
+  Observe(nullptr);
 }
 
 void FamilyUserAppMetrics::OnAppUpdate(const apps::AppUpdate& update) {}

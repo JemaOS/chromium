@@ -109,12 +109,6 @@
   </div>
   <div class="buttons">
     <cr-button class="internals-button"
-        on-click="onNearbyShareReceivedNotificationClicked_">
-      Nearby Share Received Notification
-    </cr-button>
-  </div>
-  <div class="buttons">
-    <cr-button class="internals-button"
         on-click="onFastPairErrorNotificationClicked_">
       Fast Pair Error Notification
     </cr-button>
@@ -139,9 +133,9 @@
       Fast Pair Save Account Notification
     </cr-button>
   </div>
-</div>
-<div class="buttons">
-  <cross-device-internals></cross-device-internals>
+  <div class="buttons">
+    <cross-device-internals></cross-device-internals>
+  </div>
 </div>
 <iron-list items="[[uiTriggerObjectList_]]" as="generic-object"
     id="logging-section">

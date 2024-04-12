@@ -16,11 +16,8 @@ class ExceptionState;
 class LocalDOMWindow;
 class NavigatorBase;
 class RequestInit;
-class DeferredRequestInit;
-class Response;
 class ScriptState;
 class WorkerGlobalScope;
-class FetchLaterResult;
 
 class CORE_EXPORT GlobalFetch {
   STATIC_ONLY(GlobalFetch);
@@ -30,15 +27,10 @@ class CORE_EXPORT GlobalFetch {
    public:
     virtual ~ScopedFetcher();
 
-    virtual ScriptPromiseTyped<Response> Fetch(ScriptState*,
-                                               const V8RequestInfo*,
-                                               const RequestInit*,
-                                               ExceptionState&) = 0;
-
-    virtual FetchLaterResult* FetchLater(ScriptState*,
-                                         const V8RequestInfo*,
-                                         const DeferredRequestInit*,
-                                         ExceptionState&);
+    virtual ScriptPromise Fetch(ScriptState*,
+                                const V8RequestInfo*,
+                                const RequestInit*,
+                                ExceptionState&) = 0;
 
     // Returns the number of fetch() method calls in the associated execution
     // context.  This is used for metrics.
@@ -51,22 +43,16 @@ class CORE_EXPORT GlobalFetch {
     void Trace(Visitor*) const override;
   };
 
-  static ScriptPromiseTyped<Response> fetch(ScriptState* script_state,
-                                            LocalDOMWindow& window,
-                                            const V8RequestInfo* input,
-                                            const RequestInit* init,
-                                            ExceptionState& exception_state);
-  static ScriptPromiseTyped<Response> fetch(ScriptState* script_state,
-                                            WorkerGlobalScope& worker,
-                                            const V8RequestInfo* input,
-                                            const RequestInit* init,
-                                            ExceptionState& exception_state);
-
-  static FetchLaterResult* fetchLater(ScriptState* script_state,
-                                      LocalDOMWindow& window,
-                                      const V8RequestInfo* input,
-                                      const DeferredRequestInit* init,
-                                      ExceptionState& exception_state);
+  static ScriptPromise fetch(ScriptState* script_state,
+                             LocalDOMWindow& window,
+                             const V8RequestInfo* input,
+                             const RequestInit* init,
+                             ExceptionState& exception_state);
+  static ScriptPromise fetch(ScriptState* script_state,
+                             WorkerGlobalScope& worker,
+                             const V8RequestInfo* input,
+                             const RequestInit* init,
+                             ExceptionState& exception_state);
 };
 
 }  // namespace blink

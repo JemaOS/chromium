@@ -20,8 +20,9 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/managed_ui.h"
 #include "chrome/browser/ui/webui/intro/intro_ui.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
+#include "chrome/grit/google_chrome_strings.h"
 #include "components/policy/core/common/cloud/cloud_policy_store.h"
 #include "components/policy/core/common/cloud/machine_level_user_cloud_policy_manager.h"
 #include "components/signin/public/base/consent_level.h"
@@ -137,7 +138,7 @@ class PolicyStoreObserver : public policy::CloudPolicyStore::Observer {
     std::string managed_device_disclaimer;
     if (state == PolicyStoreState::kSuccess ||
         state == PolicyStoreState::kSuccessAlreadyLoaded) {
-      std::optional<std::string> manager = chrome::GetDeviceManagerIdentity();
+      absl::optional<std::string> manager = chrome::GetDeviceManagerIdentity();
       managed_device_disclaimer =
           manager->empty()
               ? l10n_util::GetStringUTF8(IDS_FRE_MANAGED_DESCRIPTION)
@@ -237,6 +238,7 @@ std::string GetLacrosIntroManagementDisclaimer(
 }
 
 base::Value::Dict GetProfileInfoValue(content::WebUI& web_ui) {
+  base::Value::Dict dict;
   auto* profile = Profile::FromWebUI(&web_ui);
 
   const auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
@@ -247,30 +249,26 @@ base::Value::Dict GetProfileInfoValue(content::WebUI& web_ui) {
           core_account_info.account_id);
 
   if (account_info.email.empty()) {
-    return base::Value::Dict();
+    return dict;
   }
+  dict.Set("pictureUrl", GetPictureUrl(web_ui, account_info));
 
-  return base::Value::Dict()
-      .Set("pictureUrl", GetPictureUrl(web_ui, account_info))
-      .Set("managementDisclaimer", GetLacrosIntroManagementDisclaimer(
-                                       *profile, account_info.hosted_domain))
-      .Set("title", GetLacrosIntroWelcomeTitle(account_info))
-      .Set("subtitle",
+  dict.Set("managementDisclaimer", GetLacrosIntroManagementDisclaimer(
+                                       *profile, account_info.hosted_domain));
+
+  dict.Set("title", GetLacrosIntroWelcomeTitle(account_info));
+  dict.Set("subtitle",
            l10n_util::GetStringFUTF8(IDS_PRIMARY_PROFILE_FIRST_RUN_SUBTITLE,
                                      base::UTF8ToUTF16(account_info.email)));
+  return dict;
 }
 #endif
 }  // namespace
 
-IntroHandler::IntroHandler(
-    base::RepeatingCallback<void(IntroChoice)> intro_callback,
-    base::OnceCallback<void(DefaultBrowserChoice)> default_browser_callback,
-    bool is_device_managed)
-    : intro_callback_(std::move(intro_callback)),
-      default_browser_callback_(std::move(default_browser_callback)),
-      is_device_managed_(is_device_managed) {
-  DCHECK(intro_callback_);
-  DCHECK(default_browser_callback_);
+IntroHandler::IntroHandler(base::RepeatingCallback<void(IntroChoice)> callback,
+                           bool is_device_managed)
+    : callback_(std::move(callback)), is_device_managed_(is_device_managed) {
+  DCHECK(callback_);
 }
 
 IntroHandler::~IntroHandler() = default;
@@ -289,14 +287,6 @@ void IntroHandler::RegisterMessages() {
   web_ui()->RegisterMessageCallback(
       "initializeMainView",
       base::BindRepeating(&IntroHandler::HandleInitializeMainView,
-                          base::Unretained(this)));
-  web_ui()->RegisterMessageCallback(
-      "setAsDefaultBrowser",
-      base::BindRepeating(&IntroHandler::HandleSetAsDefaultBrowser,
-                          base::Unretained(this)));
-  web_ui()->RegisterMessageCallback(
-      "skipDefaultBrowser",
-      base::BindRepeating(&IntroHandler::HandleSkipDefaultBrowser,
                           base::Unretained(this)));
 }
 
@@ -320,13 +310,13 @@ void IntroHandler::OnJavascriptAllowed() {
 
 void IntroHandler::HandleContinueWithAccount(const base::Value::List& args) {
   CHECK(args.empty());
-  intro_callback_.Run(IntroChoice::kContinueWithAccount);
+  callback_.Run(IntroChoice::kContinueWithAccount);
 }
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 void IntroHandler::HandleContinueWithoutAccount(const base::Value::List& args) {
   CHECK(args.empty());
-  intro_callback_.Run(IntroChoice::kContinueWithoutAccount);
+  callback_.Run(IntroChoice::kContinueWithoutAccount);
 }
 
 void IntroHandler::ResetIntroButtons() {
@@ -339,27 +329,6 @@ void IntroHandler::ResetIntroButtons() {
 void IntroHandler::HandleInitializeMainView(const base::Value::List& args) {
   CHECK(args.empty());
   AllowJavascript();
-}
-
-void IntroHandler::HandleSetAsDefaultBrowser(const base::Value::List& args) {
-  CHECK(args.empty());
-  if (default_browser_callback_) {
-    std::move(default_browser_callback_)
-        .Run(DefaultBrowserChoice::kClickSetAsDefault);
-  }
-}
-
-void IntroHandler::HandleSkipDefaultBrowser(const base::Value::List& args) {
-  CHECK(args.empty());
-  if (default_browser_callback_) {
-    std::move(default_browser_callback_).Run(DefaultBrowserChoice::kSkip);
-  }
-}
-
-void IntroHandler::ResetDefaultBrowserButtons() {
-  if (IsJavascriptAllowed()) {
-    FireWebUIListener("reset-default-browser-buttons");
-  }
 }
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)

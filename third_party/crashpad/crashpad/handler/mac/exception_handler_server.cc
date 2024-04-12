@@ -16,9 +16,8 @@
 
 #include <utility>
 
-#include "base/apple/mach_logging.h"
-#include "base/check.h"
 #include "base/logging.h"
+#include "base/mac/mach_logging.h"
 #include "util/mach/composite_mach_message_server.h"
 #include "util/mach/mach_extensions.h"
 #include "util/mach/mach_message.h"
@@ -74,7 +73,7 @@ class ExceptionHandlerServerRun : public UniversalMachExcServer::Interface,
                                           MACH_MSG_TYPE_MAKE_SEND_ONCE,
                                           &previous);
       MACH_CHECK(kr == KERN_SUCCESS, kr) << "mach_port_request_notification";
-      base::apple::ScopedMachSendRight previous_owner(previous);
+      base::mac::ScopedMachSendRight previous_owner(previous);
     }
 
     // A single CompositeMachMessageServer will dispatch both exception messages
@@ -85,7 +84,7 @@ class ExceptionHandlerServerRun : public UniversalMachExcServer::Interface,
     // from ever existing. Using distinct receive rights also allows the handler
     // methods to ensure that the messages they process were sent by a holder of
     // the proper send right.
-    base::apple::ScopedMachPortSet server_port_set(
+    base::mac::ScopedMachPortSet server_port_set(
         NewMachPort(MACH_PORT_RIGHT_PORT_SET));
     CHECK(server_port_set.is_valid());
 
@@ -193,7 +192,7 @@ class ExceptionHandlerServerRun : public UniversalMachExcServer::Interface,
 }  // namespace
 
 ExceptionHandlerServer::ExceptionHandlerServer(
-    base::apple::ScopedMachReceiveRight receive_port,
+    base::mac::ScopedMachReceiveRight receive_port,
     bool launchd)
     : receive_port_(std::move(receive_port)),
       notify_port_(NewMachPort(MACH_PORT_RIGHT_RECEIVE)),

@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace chromeos {
@@ -25,7 +25,8 @@ class ExtensionPlatformKeysServiceFactory : public ProfileKeyedServiceFactory {
   static ExtensionPlatformKeysServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<ExtensionPlatformKeysServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      ExtensionPlatformKeysServiceFactory>;
 
   ExtensionPlatformKeysServiceFactory();
   ExtensionPlatformKeysServiceFactory(

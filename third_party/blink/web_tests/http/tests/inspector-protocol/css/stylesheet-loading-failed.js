@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   let {dp} = await testRunner.startHTML(
       `
       <link rel="stylesheet" href="404.css">

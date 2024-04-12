@@ -7,8 +7,11 @@
 
 #include <stdint.h>
 
+#include "components/prefs/pref_change_registrar.h"
+#include "components/sync/base/model_type.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -18,8 +21,6 @@
 #include "chrome/browser/sync/test/integration/single_client_status_change_checker.h"
 #include "chrome/browser/sync/test/integration/status_change_checker.h"
 #include "components/prefs/json_pref_store.h"
-#include "components/prefs/pref_change_registrar.h"
-#include "components/sync/base/model_type.h"
 #include "components/sync/protocol/preference_specifics.pb.h"
 #include "components/sync/test/fake_server.h"
 
@@ -81,7 +82,7 @@ void ChangeListPref(int index,
 
 // Returns a server-side preference in FakeServer for |pref_name| or nullopt if
 // no preference exists.
-std::optional<sync_pb::PreferenceSpecifics> GetPreferenceInFakeServer(
+absl::optional<sync_pb::PreferenceSpecifics> GetPreferenceInFakeServer(
     syncer::ModelType model_type,
     const std::string& pref_name,
     fake_server::FakeServer* fake_server);
@@ -102,7 +103,7 @@ class BooleanPrefValueChecker : public StatusChangeChecker {
   const char* path_;
   const bool expected_value_;
 
-  const raw_ptr<PrefService> pref_service_;
+  const base::raw_ptr<PrefService> pref_service_;
   PrefChangeRegistrar pref_change_registrar_;
 };
 

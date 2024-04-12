@@ -166,6 +166,7 @@ class MockInputHandler : public cc::InputHandler {
                void(ui::ScrollInputType type,
                     cc::ScrollBeginThreadState state));
   MOCK_METHOD1(RecordScrollEnd, void(ui::ScrollInputType type));
+  MOCK_METHOD0(ScrollingShouldSwitchtoMainThread, bool());
   MOCK_METHOD1(HitTest,
                cc::PointerResultType(const gfx::PointF& mouse_position));
   MOCK_METHOD2(MouseDown,
@@ -174,7 +175,6 @@ class MockInputHandler : public cc::InputHandler {
   MOCK_METHOD1(
       MouseUp,
       cc::InputHandlerPointerResult(const gfx::PointF& mouse_position));
-  MOCK_METHOD1(SetIsHandlingTouchSequence, void(bool));
   void NotifyInputEvent() override {}
 
   std::unique_ptr<cc::LatencyInfoSwapPromiseMonitor>
@@ -231,9 +231,8 @@ class MockInputHandler : public cc::InputHandler {
   }
   void set_is_scrolling_root(bool is) { is_scrolling_root_ = is; }
 
-  MOCK_METHOD4(GetSnapFlingInfoAndSetAnimatingSnapTarget,
-               bool(const gfx::Vector2dF& current_delta,
-                    const gfx::Vector2dF& natural_displacement,
+  MOCK_METHOD3(GetSnapFlingInfoAndSetAnimatingSnapTarget,
+               bool(const gfx::Vector2dF& natural_displacement,
                     gfx::PointF* initial_offset,
                     gfx::PointF* target_offset));
   MOCK_METHOD1(ScrollEndForSnapFling, void(bool));
@@ -280,6 +279,11 @@ class MockInputHandlerProxyClient : public InputHandlerProxyClient {
                     const WebInputEventAttribution&,
                     const cc::EventMetrics*));
 
+  void DispatchNonBlockingEventToMainThread(
+      std::unique_ptr<WebCoalescedInputEvent> event,
+      const WebInputEventAttribution&,
+      std::unique_ptr<cc::EventMetrics> metrics) override {}
+
   MOCK_METHOD5(DidOverscroll,
                void(const gfx::Vector2dF& accumulated_overscroll,
                     const gfx::Vector2dF& latest_overscroll_delta,
@@ -317,18 +321,24 @@ WebTouchPoint CreateWebTouchPoint(WebTouchPoint::State state,
 }
 
 const cc::InputHandler::ScrollStatus kImplThreadScrollState{
-    cc::InputHandler::ScrollThread::kScrollOnImplThread};
+    cc::InputHandler::ScrollThread::SCROLL_ON_IMPL_THREAD,
+    cc::MainThreadScrollingReason::kNotScrollingOnMain};
 
 const cc::InputHandler::ScrollStatus kRequiresMainThreadHitTestState{
-    cc::InputHandler::ScrollThread::kScrollOnImplThread,
-    /*main_thread_hit_test_reasons*/
+    cc::InputHandler::ScrollThread::SCROLL_ON_IMPL_THREAD,
+    cc::MainThreadScrollingReason::kNotScrollingOnMain,
     cc::MainThreadScrollingReason::kNonFastScrollableRegion};
 
 constexpr auto kSampleMainThreadScrollingReason =
     cc::MainThreadScrollingReason::kHasBackgroundAttachmentFixedObjects;
 
+const cc::InputHandler::ScrollStatus kMainThreadScrollState{
+    cc::InputHandler::ScrollThread::SCROLL_ON_MAIN_THREAD,
+    kSampleMainThreadScrollingReason};
+
 const cc::InputHandler::ScrollStatus kScrollIgnoredScrollState{
-    cc::InputHandler::ScrollThread::kScrollIgnored};
+    cc::InputHandler::ScrollThread::SCROLL_IGNORED,
+    cc::MainThreadScrollingReason::kNotScrollingOnMain};
 
 }  // namespace
 
@@ -338,9 +348,7 @@ class TestInputHandlerProxy : public InputHandlerProxy {
                         InputHandlerProxyClient* client)
       : InputHandlerProxy(input_handler, client) {}
   void RecordScrollBeginForTest(WebGestureDevice device, uint32_t reasons) {
-    RecordScrollBegin(device,
-                      reasons & cc::MainThreadScrollingReason::kHitTestReasons,
-                      reasons & cc::MainThreadScrollingReason::kRepaintReasons);
+    RecordScrollBegin(device, reasons, false, 0);
   }
 
   MOCK_METHOD0(SetNeedsAnimateInput, void());
@@ -371,14 +379,26 @@ enum class ScrollerType { kRoot, kChild };
 // that WebView runs in.
 enum class HandlerType { kNormal, kSynchronous };
 
-class InputHandlerProxyTest : public testing::Test,
-                              public testing::WithParamInterface<
-                                  std::tuple<ScrollerType, HandlerType>> {
+// Run tests with unification both on and off.
+enum class ScrollUnification { kEnabled, kDisabled };
+
+class InputHandlerProxyTest
+    : public testing::Test,
+      public testing::WithParamInterface<
+          std::tuple<ScrollerType, HandlerType, ScrollUnification>> {
   ScrollerType GetScrollerType() { return std::get<0>(GetParam()); }
   HandlerType GetHandlerType() { return std::get<1>(GetParam()); }
+  ScrollUnification GetScrollUnificationState() {
+    return std::get<2>(GetParam());
+  }
 
  public:
   InputHandlerProxyTest() {
+    if (GetScrollUnificationState() == ScrollUnification::kEnabled)
+      scoped_feature_list_.InitAndEnableFeature(features::kScrollUnification);
+    else
+      scoped_feature_list_.InitAndDisableFeature(features::kScrollUnification);
+
     input_handler_ = std::make_unique<TestInputHandlerProxy>(
         mock_input_handler_, &mock_client_);
     scroll_result_did_scroll_.did_scroll = true;
@@ -429,6 +449,7 @@ class InputHandlerProxyTest : public testing::Test,
 
  protected:
   void GestureScrollStarted();
+  void ScrollHandlingSwitchedToMainThread();
   void GestureScrollIgnored();
   void FlingAndSnap();
 
@@ -468,7 +489,8 @@ InputHandlerProxy::EventDisposition HandleInputEventWithLatencyInfo(
               std::unique_ptr<blink::WebCoalescedInputEvent> event,
               std::unique_ptr<InputHandlerProxy::DidOverscrollParams> callback,
               const WebInputEventAttribution& attribution,
-              std::unique_ptr<cc::EventMetrics> metrics) {
+              std::unique_ptr<cc::EventMetrics> metrics,
+              mojom::blink::ScrollResultDataPtr scroll_result_data) {
             event_disposition = disposition;
           }));
   return event_disposition;
@@ -495,7 +517,8 @@ InputHandlerProxy::EventDisposition HandleInputEventAndFlushEventQueue(
               std::unique_ptr<blink::WebCoalescedInputEvent> event,
               std::unique_ptr<InputHandlerProxy::DidOverscrollParams> callback,
               const WebInputEventAttribution& attribution,
-              std::unique_ptr<cc::EventMetrics> metrics) {
+              std::unique_ptr<cc::EventMetrics> metrics,
+              mojom::blink::ScrollResultDataPtr scroll_result_data) {
             event_disposition = disposition;
           }));
 
@@ -554,7 +577,8 @@ class InputHandlerProxyEventQueueTest : public testing::Test {
       std::unique_ptr<WebCoalescedInputEvent> input_event,
       std::unique_ptr<InputHandlerProxy::DidOverscrollParams> overscroll_params,
       const WebInputEventAttribution& attribution,
-      std::unique_ptr<cc::EventMetrics> metrics) {
+      std::unique_ptr<cc::EventMetrics> metrics,
+      mojom::blink::ScrollResultDataPtr scroll_result_data) {
     event_disposition_recorder_.push_back(event_disposition);
     latency_info_recorder_.push_back(input_event->latency_info());
   }
@@ -646,6 +670,10 @@ TEST_P(InputHandlerProxyTest, NestedGestureBasedScrollsDifferentSourceDevice) {
                         cc::ScrollBeginThreadState::kScrollingOnCompositor))
       .Times(1);
   EXPECT_CALL(mock_input_handler_, ScrollUpdate(_, _)).Times(1);
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
 
   WebMouseEvent mouse_event(WebInputEvent::Type::kMouseDown,
                             WebInputEvent::kNoModifiers,
@@ -817,6 +845,10 @@ TEST_P(InputHandlerProxyTest, ScrollbarScrollEndOnDeviceChange) {
                         cc::ScrollBeginThreadState::kScrollingOnCompositor))
       .Times(1);
   EXPECT_CALL(mock_input_handler_, ScrollUpdate(_, _)).Times(1);
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
   WebMouseEvent mouse_event(WebInputEvent::Type::kMouseDown,
                             WebInputEvent::kNoModifiers,
                             WebInputEvent::GetStaticTimeStampForTests());
@@ -919,6 +951,10 @@ void InputHandlerProxyTest::GestureScrollStarted() {
       ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
                    _))
       .WillOnce(testing::Return(scroll_result_did_not_scroll_));
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
   EXPECT_EQ(expected_disposition_,
             HandleInputEventAndFlushEventQueue(mock_input_handler_,
                                                input_handler_.get(), gesture_));
@@ -927,6 +963,10 @@ void InputHandlerProxyTest::GestureScrollStarted() {
   expected_disposition_ = InputHandlerProxy::DID_HANDLE;
   VERIFY_AND_RESET_MOCKS();
 
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
   gesture_.SetType(WebInputEvent::Type::kGestureScrollUpdate);
   gesture_.data.scroll_update.delta_y =
       -40;  // -Y means scroll down - i.e. in the +Y direction.
@@ -953,6 +993,45 @@ void InputHandlerProxyTest::GestureScrollStarted() {
 }
 TEST_P(InputHandlerProxyTest, GestureScrollStarted) {
   GestureScrollStarted();
+}
+
+TEST_P(InputHandlerProxyTest, GestureScrollOnMainThread) {
+  // After scroll unification, we do not handle scrolls on the main thread.
+  if (base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    return;
+  }
+
+  // We should send all events to the widget for this gesture.
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  VERIFY_AND_RESET_MOCKS();
+
+  EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
+      .WillOnce(testing::Return(kMainThreadScrollState));
+  EXPECT_CALL(
+      mock_input_handler_,
+      RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnMain))
+      .Times(1);
+
+  gesture_.SetType(WebInputEvent::Type::kGestureScrollBegin);
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(), gesture_));
+
+  VERIFY_AND_RESET_MOCKS();
+
+  gesture_.SetType(WebInputEvent::Type::kGestureScrollUpdate);
+  gesture_.data.scroll_update.delta_y = 40;
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(), gesture_));
+
+  VERIFY_AND_RESET_MOCKS();
+
+  gesture_.SetType(WebInputEvent::Type::kGestureScrollEnd);
+  gesture_.data.scroll_update.delta_y = 0;
+  EXPECT_CALL(mock_input_handler_, RecordScrollEnd(_)).Times(1);
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(), gesture_));
+
+  VERIFY_AND_RESET_MOCKS();
 }
 
 TEST_P(InputHandlerProxyTest, GestureScrollIgnored) {
@@ -1004,6 +1083,10 @@ TEST_P(InputHandlerProxyTest, GestureScrollByPage) {
 
   VERIFY_AND_RESET_MOCKS();
 
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
   EXPECT_CALL(mock_input_handler_, ScrollUpdate(_, _))
       .WillOnce(testing::Return(scroll_result_did_scroll_));
 
@@ -1071,9 +1154,9 @@ void InputHandlerProxyTest::FlingAndSnap() {
   gesture_.data.scroll_update.inertial_phase =
       WebGestureEvent::InertialPhaseState::kMomentum;
   EXPECT_CALL(mock_input_handler_,
-              GetSnapFlingInfoAndSetAnimatingSnapTarget(_, _, _, _))
-      .WillOnce(DoAll(testing::SetArgPointee<2>(gfx::PointF(0, 0)),
-                      testing::SetArgPointee<3>(gfx::PointF(0, 100)),
+              GetSnapFlingInfoAndSetAnimatingSnapTarget(_, _, _))
+      .WillOnce(DoAll(testing::SetArgPointee<1>(gfx::PointF(0, 0)),
+                      testing::SetArgPointee<2>(gfx::PointF(0, 100)),
                       testing::Return(true)));
   EXPECT_CALL(mock_input_handler_, ScrollUpdate(_, _)).Times(1);
   EXPECT_SET_NEEDS_ANIMATE_INPUT(1);
@@ -1089,7 +1172,7 @@ TEST_P(InputHandlerProxyTest, SnapFlingIgnoresFollowingGSUAndGSE) {
   expected_disposition_ = InputHandlerProxy::DROP_EVENT;
 
   EXPECT_CALL(mock_input_handler_,
-              GetSnapFlingInfoAndSetAnimatingSnapTarget(_, _, _, _))
+              GetSnapFlingInfoAndSetAnimatingSnapTarget(_, _, _))
       .Times(0);
   EXPECT_CALL(mock_input_handler_, ScrollUpdate(_, _)).Times(0);
   EXPECT_EQ(expected_disposition_,
@@ -1150,6 +1233,187 @@ TEST_P(InputHandlerProxyTest, GesturePinch) {
                                                input_handler_.get(), gesture_));
 
   VERIFY_AND_RESET_MOCKS();
+}
+
+TEST_P(InputHandlerProxyTest, GesturePinchAfterScrollOnMainThread) {
+  // This situation is no longer possible under scroll unification as all
+  // scrolling now happens on the compositor thread. This test can be removed
+  // when the feature ships.
+  if (base::FeatureList::IsEnabled(features::kScrollUnification))
+    return;
+
+  // Scrolls will start by being sent to the main thread.
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  VERIFY_AND_RESET_MOCKS();
+
+  EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
+      .WillOnce(testing::Return(kMainThreadScrollState));
+  EXPECT_CALL(
+      mock_input_handler_,
+      RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnMain))
+      .Times(1);
+
+  gesture_.SetType(WebInputEvent::Type::kGestureScrollBegin);
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+
+  VERIFY_AND_RESET_MOCKS();
+
+  gesture_.SetType(WebInputEvent::Type::kGestureScrollUpdate);
+  gesture_.data.scroll_update.delta_y = 40;
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+
+  // However, after the pinch gesture starts, they should go to the impl
+  // thread.
+  expected_disposition_ = InputHandlerProxy::DID_HANDLE;
+  VERIFY_AND_RESET_MOCKS();
+
+  gesture_.SetType(WebInputEvent::Type::kGesturePinchBegin);
+  EXPECT_CALL(mock_input_handler_, PinchGestureBegin(_, _));
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+
+  VERIFY_AND_RESET_MOCKS();
+
+  gesture_.SetType(WebInputEvent::Type::kGesturePinchUpdate);
+  gesture_.data.pinch_update.scale = 1.5;
+  gesture_.SetPositionInWidget(gfx::PointF(7, 13));
+  EXPECT_CALL(mock_input_handler_, PinchGestureUpdate(1.5, gfx::Point(7, 13)));
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+
+  VERIFY_AND_RESET_MOCKS();
+
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
+  gesture_.SetType(WebInputEvent::Type::kGestureScrollUpdate);
+  gesture_.data.scroll_update.delta_y =
+      -40;  // -Y means scroll down - i.e. in the +Y direction.
+  EXPECT_CALL(
+      mock_input_handler_,
+      ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
+                   _))
+      .WillOnce(testing::Return(scroll_result_did_scroll_));
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+
+  VERIFY_AND_RESET_MOCKS();
+
+  gesture_.SetType(WebInputEvent::Type::kGesturePinchUpdate);
+  gesture_.data.pinch_update.scale = 0.5;
+  gesture_.SetPositionInWidget(gfx::PointF(9, 6));
+  EXPECT_CALL(mock_input_handler_, PinchGestureUpdate(.5, gfx::Point(9, 6)));
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+
+  VERIFY_AND_RESET_MOCKS();
+
+  gesture_.SetType(WebInputEvent::Type::kGesturePinchEnd);
+  EXPECT_CALL(mock_input_handler_, PinchGestureEnd(gfx::Point(9, 6)));
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+
+  // After the pinch gesture ends, they should go to back to the main
+  // thread.
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  VERIFY_AND_RESET_MOCKS();
+
+  gesture_.SetType(WebInputEvent::Type::kGestureScrollEnd);
+  gesture_.data.scroll_update.delta_y = 0;
+  EXPECT_CALL(mock_input_handler_, RecordScrollEnd(_)).Times(1);
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(), gesture_));
+
+  VERIFY_AND_RESET_MOCKS();
+}
+
+void InputHandlerProxyTest::ScrollHandlingSwitchedToMainThread() {
+  // We shouldn't send any events to the widget for this gesture.
+  expected_disposition_ = InputHandlerProxy::DID_HANDLE;
+  VERIFY_AND_RESET_MOCKS();
+
+  EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
+      .WillOnce(testing::Return(kImplThreadScrollState));
+  EXPECT_CALL(
+      mock_input_handler_,
+      RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnCompositor))
+      .Times(1);
+
+  // HandleGestureScrollBegin will set gesture_scroll_on_impl_thread_.
+  gesture_.SetType(WebInputEvent::Type::kGestureScrollBegin);
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+  EXPECT_TRUE(input_handler_->gesture_scroll_on_impl_thread_for_testing());
+
+  VERIFY_AND_RESET_MOCKS();
+
+  gesture_.SetType(WebInputEvent::Type::kGestureScrollUpdate);
+  gesture_.data.scroll_update.delta_y = -40;
+  EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+      .WillOnce(testing::Return(false));
+  EXPECT_CALL(
+      mock_input_handler_,
+      ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
+                   _))
+      .WillOnce(testing::Return(scroll_result_did_scroll_));
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+  EXPECT_TRUE(input_handler_->gesture_scroll_on_impl_thread_for_testing());
+  VERIFY_AND_RESET_MOCKS();
+
+  // The scroll handling switches to the main thread, a GSB is sent to the main
+  // thread to initiate the hit testing and compute the scroll chain.
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  EXPECT_CALL(mock_input_handler_, ScrollUpdate(_, _)).Times(0);
+  EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_client_, GenerateScrollBeginAndSendToMainThread(_, _, _));
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+  EXPECT_FALSE(input_handler_->gesture_scroll_on_impl_thread_for_testing());
+
+  VERIFY_AND_RESET_MOCKS();
+
+  gesture_.SetType(WebInputEvent::Type::kGestureScrollEnd);
+  EXPECT_CALL(mock_input_handler_, RecordScrollEnd(_)).Times(1);
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventAndFlushEventQueue(mock_input_handler_,
+                                               input_handler_.get(), gesture_));
+
+  VERIFY_AND_RESET_MOCKS();
+}
+TEST_P(InputHandlerProxyTest, WheelScrollHandlingSwitchedToMainThread) {
+  // This situation is no longer possible under scroll unification as all
+  // scrolling now happens on the compositor thread. This test can be removed
+  // when the feature ships.
+  if (base::FeatureList::IsEnabled(features::kScrollUnification))
+    return;
+
+  gesture_.SetSourceDevice(WebGestureDevice::kTouchpad);
+  ScrollHandlingSwitchedToMainThread();
+}
+TEST_P(InputHandlerProxyTest, TouchScrollHandlingSwitchedToMainThread) {
+  // This situation is no longer possible under scroll unification as all
+  // scrolling now happens on the compositor thread. This test can be removed
+  // when the feature ships.
+  if (base::FeatureList::IsEnabled(features::kScrollUnification))
+    return;
+
+  gesture_.SetSourceDevice(WebGestureDevice::kTouchscreen);
+  ScrollHandlingSwitchedToMainThread();
 }
 
 TEST_P(InputHandlerProxyTest,
@@ -1225,7 +1489,7 @@ TEST_P(InputHandlerProxyTest, HitTestTouchEventNonNullTouchAction) {
       .WillOnce(testing::Invoke([](const gfx::Point&,
                                    cc::TouchAction* touch_action) {
         *touch_action = cc::TouchAction::kMax;
-        return cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler;
+        return cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER;
       }));
 
   EXPECT_CALL(mock_input_handler_,
@@ -1235,7 +1499,7 @@ TEST_P(InputHandlerProxyTest, HitTestTouchEventNonNullTouchAction) {
           testing::Invoke([](const gfx::Point&, cc::TouchAction* touch_action) {
             *touch_action = cc::TouchAction::kPanUp;
             return cc::InputHandler::TouchStartOrMoveEventListenerType::
-                kHandlerOnScrollingLayer;
+                HANDLER_ON_SCROLLING_LAYER;
           }));
   // Since the second touch point hits a touch-region, there should be no
   // hit-testing for the third touch point.
@@ -1292,6 +1556,10 @@ TEST_F(InputHandlerProxyEventQueueTest,
   EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
       .WillOnce(Return(kImplThreadScrollState));
   EXPECT_CALL(mock_input_handler_, RecordScrollBegin(_, _)).Times(1);
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(Return(false));
+  }
   EXPECT_CALL(mock_input_handler_, ScrollUpdate(_, _)).Times(1);
 
   DeliverInputForBeginFrame();
@@ -1342,6 +1610,10 @@ TEST_F(InputHandlerProxyEventQueueTest,
   EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
       .WillOnce(Return(kImplThreadScrollState));
   EXPECT_CALL(mock_input_handler_, RecordScrollBegin(_, _)).Times(1);
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(Return(false));
+  }
   EXPECT_CALL(mock_input_handler_, ScrollUpdate(_, _)).Times(1);
   EXPECT_CALL(mock_input_handler_, FindFrameElementIdAtPoint(_))
       .Times(3)
@@ -1396,6 +1668,10 @@ TEST_F(InputHandlerProxyEventQueueTest, AckTouchActionNonBlockingForFling) {
       EXPECT_CALL(mock_input_handler_, FindFrameElementIdAtPoint(_))
           .Times(1)
           .WillOnce(testing::Return(cc::ElementId()));
+      if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+        EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+            .WillOnce(Return(false));
+      }
       EXPECT_CALL(mock_input_handler_, ScrollUpdate(_, _)).Times(1);
 
       HandleGestureEvent(WebInputEvent::Type::kGestureScrollUpdate, delta);
@@ -1413,8 +1689,12 @@ TEST_F(InputHandlerProxyEventQueueTest, AckTouchActionNonBlockingForFling) {
       EXPECT_CALL(mock_input_handler_, FindFrameElementIdAtPoint(_))
           .Times(2)
           .WillRepeatedly(testing::Return(cc::ElementId()));
+      if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+        EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+            .WillOnce(Return(false));
+      }
       EXPECT_CALL(mock_input_handler_,
-                  GetSnapFlingInfoAndSetAnimatingSnapTarget(_, _, _, _))
+                  GetSnapFlingInfoAndSetAnimatingSnapTarget(_, _, _))
           .WillOnce(Return(false));
 
       auto gsu_fling = CreateGestureScrollPinch(
@@ -1443,7 +1723,7 @@ TEST_F(InputHandlerProxyEventQueueTest, AckTouchActionNonBlockingForFling) {
                 EventListenerTypeForTouchStartOrMoveAt(_, _))
         .WillOnce(DoAll(SetArgPointee<1>(TouchAction::kNone),
                         Return(InputHandler::TouchStartOrMoveEventListenerType::
-                                   kHandlerOnScrollingLayer)));
+                                   HANDLER_ON_SCROLLING_LAYER)));
 
     std::unique_ptr<WebTouchEvent> touch_start =
         std::make_unique<WebTouchEvent>(
@@ -1459,7 +1739,6 @@ TEST_F(InputHandlerProxyEventQueueTest, AckTouchActionNonBlockingForFling) {
     // matches the non blocking expectation (i.e. all touches are allowed).
     EXPECT_CALL(mock_client_, SetAllowedTouchAction(TouchAction::kAuto))
         .WillOnce(Return());
-    EXPECT_CALL(mock_input_handler_, SetIsHandlingTouchSequence(true));
 
     InjectInputEvent(std::move(touch_start));
   }
@@ -1475,14 +1754,14 @@ TEST_P(InputHandlerProxyTest, HitTestTouchEventNullTouchAction) {
               EventListenerTypeForTouchStartOrMoveAt(
                   testing::Property(&gfx::Point::x, testing::Eq(0)), _))
       .WillOnce(testing::Return(
-          cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler));
+          cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER));
 
   EXPECT_CALL(mock_input_handler_,
               EventListenerTypeForTouchStartOrMoveAt(
                   testing::Property(&gfx::Point::x, testing::Gt(0)), _))
       .WillOnce(
           testing::Return(cc::InputHandler::TouchStartOrMoveEventListenerType::
-                              kHandlerOnScrollingLayer));
+                              HANDLER_ON_SCROLLING_LAYER));
   // Since the second touch point hits a touch-region, there should be no
   // hit-testing for the third touch point.
 
@@ -1527,7 +1806,7 @@ TEST_P(InputHandlerProxyTest, MultiTouchPointHitTestNegative) {
       .WillRepeatedly(testing::Invoke([](const gfx::Point&,
                                          cc::TouchAction* touch_action) {
         *touch_action = cc::TouchAction::kPanUp;
-        return cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler;
+        return cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER;
       }));
   EXPECT_CALL(mock_client_, SetAllowedTouchAction(cc::TouchAction::kPanUp))
       .WillOnce(testing::Return());
@@ -1563,7 +1842,7 @@ TEST_P(InputHandlerProxyTest, MultiTouchPointHitTestPositive) {
       .WillOnce(testing::Invoke([](const gfx::Point&,
                                    cc::TouchAction* touch_action) {
         *touch_action = cc::TouchAction::kAuto;
-        return cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler;
+        return cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER;
       }));
   EXPECT_CALL(mock_input_handler_,
               EventListenerTypeForTouchStartOrMoveAt(
@@ -1572,11 +1851,10 @@ TEST_P(InputHandlerProxyTest, MultiTouchPointHitTestPositive) {
           testing::Invoke([](const gfx::Point&, cc::TouchAction* touch_action) {
             *touch_action = cc::TouchAction::kPanY;
             return cc::InputHandler::TouchStartOrMoveEventListenerType::
-                kHandlerOnScrollingLayer;
+                HANDLER_ON_SCROLLING_LAYER;
           }));
   EXPECT_CALL(mock_client_, SetAllowedTouchAction(cc::TouchAction::kPanY))
       .WillOnce(testing::Return());
-  EXPECT_CALL(mock_input_handler_, SetIsHandlingTouchSequence(true));
   // Since the second touch point hits a touch-region, there should be no
   // hit-testing for the third touch point.
 
@@ -1614,16 +1892,15 @@ TEST_P(InputHandlerProxyTest, MultiTouchPointHitTestPassivePositive) {
       .WillOnce(testing::Invoke([](const gfx::Point&,
                                    cc::TouchAction* touch_action) {
         *touch_action = cc::TouchAction::kPanRight;
-        return cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler;
+        return cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER;
       }))
       .WillRepeatedly(testing::Invoke([](const gfx::Point&,
                                          cc::TouchAction* touch_action) {
         *touch_action = cc::TouchAction::kPanX;
-        return cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler;
+        return cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER;
       }));
   EXPECT_CALL(mock_client_, SetAllowedTouchAction(cc::TouchAction::kPanRight))
       .WillOnce(testing::Return());
-  EXPECT_CALL(mock_input_handler_, SetIsHandlingTouchSequence(true));
 
   WebTouchEvent touch(WebInputEvent::Type::kTouchStart,
                       WebInputEvent::kNoModifiers,
@@ -1641,67 +1918,6 @@ TEST_P(InputHandlerProxyTest, MultiTouchPointHitTestPassivePositive) {
   EXPECT_EQ(expected_disposition_,
             HandleInputEventWithLatencyInfo(input_handler_.get(), touch));
 
-  VERIFY_AND_RESET_MOCKS();
-}
-
-TEST_P(InputHandlerProxyTest, TouchTrackingEndsOnCancel) {
-  // One of the touch points is not on a touch-region. So the event should be
-  // sent to the impl thread.
-  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE_NON_BLOCKING;
-  VERIFY_AND_RESET_MOCKS();
-
-  EXPECT_CALL(
-      mock_input_handler_,
-      GetEventListenerProperties(cc::EventListenerClass::kTouchStartOrMove))
-      .WillRepeatedly(testing::Return(cc::EventListenerProperties::kPassive));
-  EXPECT_CALL(mock_input_handler_, EventListenerTypeForTouchStartOrMoveAt(_, _))
-      .Times(1)
-      .WillOnce(testing::Invoke([](const gfx::Point&,
-                                   cc::TouchAction* touch_action) {
-        *touch_action = cc::TouchAction::kPanRight;
-        return cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler;
-      }));
-  EXPECT_CALL(mock_client_, SetAllowedTouchAction(cc::TouchAction::kPanRight))
-      .WillOnce(testing::Return());
-  EXPECT_CALL(mock_input_handler_, SetIsHandlingTouchSequence(true));
-  EXPECT_CALL(mock_input_handler_, HitTest(_))
-      .WillOnce(testing::Return(cc::PointerResultType::kUnhandled));
-
-  WebTouchEvent touch(WebInputEvent::Type::kTouchStart,
-                      WebInputEvent::kNoModifiers,
-                      WebInputEvent::GetStaticTimeStampForTests());
-
-  touch.unique_touch_event_id = 1;
-  touch.touches_length = 1;
-  touch.touch_start_or_first_touch_move = true;
-  touch.touches[0] =
-      CreateWebTouchPoint(WebTouchPoint::State::kStatePressed, 0, 0);
-  EXPECT_EQ(expected_disposition_,
-            HandleInputEventWithLatencyInfo(input_handler_.get(), touch));
-
-  VERIFY_AND_RESET_MOCKS();
-
-  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
-  EXPECT_CALL(mock_input_handler_, HitTest(_))
-      .WillOnce(testing::Return(cc::PointerResultType::kUnhandled));
-
-  WebMouseEvent mouse_down(WebInputEvent::Type::kMouseDown,
-                           WebInputEvent::kNoModifiers,
-                           WebInputEvent::GetStaticTimeStampForTests());
-  mouse_down.button = WebMouseEvent::Button::kLeft;
-  EXPECT_EQ(expected_disposition_,
-            HandleInputEventWithLatencyInfo(input_handler_.get(), mouse_down));
-
-  VERIFY_AND_RESET_MOCKS();
-
-  EXPECT_CALL(mock_input_handler_, SetIsHandlingTouchSequence(false));
-  WebTouchEvent touch_cancel(WebInputEvent::Type::kTouchCancel,
-                             WebInputEvent::kNoModifiers,
-                             WebInputEvent::GetStaticTimeStampForTests());
-
-  touch_cancel.unique_touch_event_id = 2;
-  EXPECT_EQ(expected_disposition_, HandleInputEventWithLatencyInfo(
-                                       input_handler_.get(), touch_cancel));
   VERIFY_AND_RESET_MOCKS();
 }
 
@@ -1724,11 +1940,10 @@ TEST_P(InputHandlerProxyTest, TouchStartPassiveAndTouchEndBlocking) {
       .WillOnce(testing::Invoke([](const gfx::Point&,
                                    cc::TouchAction* touch_action) {
         *touch_action = cc::TouchAction::kNone;
-        return cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler;
+        return cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER;
       }));
   EXPECT_CALL(mock_client_, SetAllowedTouchAction(cc::TouchAction::kNone))
       .WillOnce(testing::Return());
-  EXPECT_CALL(mock_input_handler_, SetIsHandlingTouchSequence(true));
 
   WebTouchEvent touch(WebInputEvent::Type::kTouchStart,
                       WebInputEvent::kNoModifiers,
@@ -1763,12 +1978,11 @@ TEST_P(InputHandlerProxyTest, TouchMoveBlockingAddedAfterPassiveTouchStart) {
       .WillOnce(testing::Return(cc::EventListenerProperties::kPassive));
   EXPECT_CALL(mock_input_handler_, EventListenerTypeForTouchStartOrMoveAt(_, _))
       .WillOnce(testing::Return(
-          cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler));
+          cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER));
   EXPECT_CALL(mock_client_, SetAllowedTouchAction(_))
       .WillOnce(testing::Return());
   EXPECT_CALL(mock_input_handler_, HitTest(_))
       .WillOnce(testing::Return(cc::PointerResultType::kUnhandled));
-  EXPECT_CALL(mock_input_handler_, SetIsHandlingTouchSequence(true));
 
   WebTouchEvent touch(WebInputEvent::Type::kTouchStart,
                       WebInputEvent::kNoModifiers,
@@ -1782,7 +1996,7 @@ TEST_P(InputHandlerProxyTest, TouchMoveBlockingAddedAfterPassiveTouchStart) {
 
   EXPECT_CALL(mock_input_handler_, EventListenerTypeForTouchStartOrMoveAt(_, _))
       .WillOnce(testing::Return(
-          cc::InputHandler::TouchStartOrMoveEventListenerType::kHandler));
+          cc::InputHandler::TouchStartOrMoveEventListenerType::HANDLER));
   EXPECT_CALL(mock_client_, SetAllowedTouchAction(_))
       .WillOnce(testing::Return());
 
@@ -1816,10 +2030,14 @@ class UnifiedScrollingInputHandlerProxyTest : public testing::Test {
   using LatencyInfo = ui::LatencyInfo;
   using ScrollGranularity = ui::ScrollGranularity;
   using ScrollState = cc::ScrollState;
-  using ReturnedDisposition = std::optional<EventDisposition>;
+  using ReturnedDisposition = absl::optional<EventDisposition>;
 
   UnifiedScrollingInputHandlerProxyTest()
       : input_handler_proxy_(mock_input_handler_, &mock_client_) {}
+
+  void SetUp() override {
+    scoped_feature_list_.InitAndEnableFeature(features::kScrollUnification);
+  }
 
   std::unique_ptr<WebCoalescedInputEvent> ScrollBegin() {
     auto gsb = std::make_unique<WebGestureEvent>(
@@ -1905,7 +2123,8 @@ class UnifiedScrollingInputHandlerProxyTest : public testing::Test {
       std::unique_ptr<WebCoalescedInputEvent> input_event,
       std::unique_ptr<InputHandlerProxy::DidOverscrollParams> overscroll_params,
       const WebInputEventAttribution& attribution,
-      std::unique_ptr<cc::EventMetrics> metrics) {
+      std::unique_ptr<cc::EventMetrics> metrics,
+      mojom::blink::ScrollResultDataPtr scroll_result_data) {
     if (out_disposition)
       *out_disposition = event_disposition;
   }
@@ -2273,7 +2492,7 @@ TEST_F(UnifiedScrollingInputHandlerProxyTest, MainThreadHitTestFailed) {
     DispatchEvent(ScrollUpdate());
 
     EXPECT_EQ(InputHandlerProxy::DID_HANDLE, *disposition);
-    disposition = std::nullopt;
+    disposition = absl::nullopt;
 
     DispatchEvent(ScrollUpdate(), &disposition);
     EXPECT_FALSE(disposition);
@@ -2439,6 +2658,10 @@ TEST_F(InputHandlerProxyEventQueueTest, VSyncAlignedGestureScroll) {
   EXPECT_EQ(1ul, event_disposition_recorder_.size());
   testing::Mock::VerifyAndClearExpectations(&mock_input_handler_);
 
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
   EXPECT_CALL(
       mock_input_handler_,
       ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
@@ -2462,7 +2685,7 @@ TEST_F(InputHandlerProxyEventQueueTest, VSyncAlignedGestureScroll) {
 }
 
 #if defined(ADDRESS_SANITIZER) || defined(THREAD_SANITIZER) || \
-    defined(MEMORY_SANITIZER) || defined(UNDEFINED_SANITIZER)
+    defined(MEMORY_SANITIZER)
 // Flaky under sanitizers and in other "slow" bot configs:
 // https://crbug.com/1029250
 #define MAYBE_VSyncAlignedGestureScrollPinchScroll \
@@ -2485,6 +2708,10 @@ TEST_F(InputHandlerProxyEventQueueTest,
       mock_input_handler_,
       RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnCompositor))
       .Times(1);
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
   EXPECT_CALL(
       mock_input_handler_,
       ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
@@ -2514,6 +2741,10 @@ TEST_F(InputHandlerProxyEventQueueTest,
       mock_input_handler_,
       RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnCompositor))
       .Times(1);
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillRepeatedly(testing::Return(false));
+  }
   EXPECT_CALL(
       mock_input_handler_,
       ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
@@ -2571,6 +2802,10 @@ TEST_F(InputHandlerProxyEventQueueTest, VSyncAlignedQueueingTime) {
   EXPECT_CALL(mock_input_handler_, FindFrameElementIdAtPoint(_))
       .Times(3)
       .WillRepeatedly(testing::Return(cc::ElementId()));
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
   EXPECT_CALL(
       mock_input_handler_,
       ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
@@ -2718,6 +2953,10 @@ TEST_F(InputHandlerProxyEventQueueTest, OriginalEventsTracing) {
   EXPECT_CALL(mock_input_handler_, FindFrameElementIdAtPoint(_))
       .Times(9)
       .WillRepeatedly(testing::Return(cc::ElementId()));
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillRepeatedly(testing::Return(false));
+  }
   EXPECT_CALL(
       mock_input_handler_,
       ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
@@ -2829,6 +3068,10 @@ TEST_F(InputHandlerProxyEventQueueTest, TouchpadGestureScrollEndFlushQueue) {
       mock_input_handler_,
       RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnCompositor))
       .Times(2);
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillRepeatedly(testing::Return(false));
+  }
   EXPECT_CALL(
       mock_input_handler_,
       ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
@@ -2904,6 +3147,10 @@ TEST_F(InputHandlerProxyEventQueueTest, CoalescedLatencyInfo) {
   EXPECT_CALL(mock_input_handler_, FindFrameElementIdAtPoint(_))
       .Times(3)
       .WillRepeatedly(testing::Return(cc::ElementId()));
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
   EXPECT_CALL(
       mock_input_handler_,
       ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
@@ -2930,6 +3177,86 @@ TEST_F(InputHandlerProxyEventQueueTest, CoalescedLatencyInfo) {
   testing::Mock::VerifyAndClearExpectations(&mock_input_handler_);
 }
 
+TEST_F(InputHandlerProxyEventQueueTest, CoalescedEventSwitchToMainThread) {
+  // After scroll unification, we do not handle scrolls on the main thread.
+  if (base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    return;
+  }
+
+  cc::InputHandlerScrollResult scroll_result_did_scroll_;
+  cc::InputHandlerScrollResult scroll_result_did_not_scroll_;
+  scroll_result_did_scroll_.did_scroll = true;
+  scroll_result_did_not_scroll_.did_scroll = false;
+
+  // scroll begin on main thread
+  EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
+      .WillOnce(testing::Return(kMainThreadScrollState));
+  EXPECT_CALL(
+      mock_input_handler_,
+      RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnMain))
+      .Times(1);
+  EXPECT_CALL(mock_input_handler_, SetNeedsAnimateInput()).Times(2);
+  EXPECT_CALL(mock_input_handler_, FindFrameElementIdAtPoint(_))
+      .Times(8)
+      .WillRepeatedly(testing::Return(cc::ElementId()));
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
+  EXPECT_CALL(
+      mock_input_handler_,
+      ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
+                   _))
+      .WillOnce(testing::Return(scroll_result_did_not_scroll_));
+
+  HandleGestureEvent(WebInputEvent::Type::kGestureScrollBegin);
+  HandleGestureEvent(WebInputEvent::Type::kGestureScrollUpdate, -20);
+  HandleGestureEvent(WebInputEvent::Type::kGestureScrollUpdate, -10);
+  DeliverInputForBeginFrame();
+  EXPECT_EQ(3ul, event_disposition_recorder_.size());
+  EXPECT_EQ(InputHandlerProxy::DID_NOT_HANDLE,
+            event_disposition_recorder_.back());
+  // GSU should not be coalesced
+  EXPECT_EQ(false, latency_info_recorder_[1].coalesced());
+  EXPECT_EQ(false, latency_info_recorder_[2].coalesced());
+
+  // pinch start, handle scroll and pinch on compositor.
+  EXPECT_CALL(mock_input_handler_, PinchGestureBegin(_, _));
+  EXPECT_CALL(mock_input_handler_, PinchGestureUpdate(_, _));
+  EXPECT_CALL(mock_input_handler_, PinchGestureEnd(_));
+
+  HandleGestureEvent(WebInputEvent::Type::kGesturePinchBegin);
+  HandleGestureEvent(WebInputEvent::Type::kGesturePinchUpdate, 10.0f, 1, 10);
+  HandleGestureEvent(WebInputEvent::Type::kGestureScrollUpdate, -10);
+  HandleGestureEvent(WebInputEvent::Type::kGestureScrollUpdate, -30);
+  EXPECT_EQ(2ul, event_queue().size());
+  DeliverInputForBeginFrame();
+
+  EXPECT_EQ(7ul, event_disposition_recorder_.size());
+  EXPECT_EQ(false, latency_info_recorder_[4].coalesced());
+  // Coalesced events should have latency set to coalesced.
+  EXPECT_EQ(true, latency_info_recorder_[5].coalesced());
+  EXPECT_EQ(true, latency_info_recorder_[6].coalesced());
+  EXPECT_EQ(InputHandlerProxy::DID_HANDLE, event_disposition_recorder_.back());
+
+  // Pinch end, handle scroll on main thread.
+  HandleGestureEvent(WebInputEvent::Type::kGesturePinchEnd);
+  HandleGestureEvent(WebInputEvent::Type::kGestureScrollUpdate, -40);
+  HandleGestureEvent(WebInputEvent::Type::kGestureScrollUpdate, -30);
+  DeliverInputForBeginFrame();
+
+  EXPECT_EQ(0ul, event_queue().size());
+  // Should run callbacks for every original events.
+  EXPECT_EQ(10ul, event_disposition_recorder_.size());
+  EXPECT_EQ(10ul, latency_info_recorder_.size());
+  // Latency should not be set to coalesced when send to main thread
+  EXPECT_EQ(false, latency_info_recorder_[8].coalesced());
+  EXPECT_EQ(false, latency_info_recorder_[9].coalesced());
+  EXPECT_EQ(InputHandlerProxy::DID_NOT_HANDLE,
+            event_disposition_recorder_.back());
+  testing::Mock::VerifyAndClearExpectations(&mock_input_handler_);
+}
+
 TEST_F(InputHandlerProxyEventQueueTest, ScrollPredictorTest) {
   base::SimpleTestTickClock tick_clock;
   tick_clock.SetNowTicks(base::TimeTicks());
@@ -2947,6 +3274,10 @@ TEST_F(InputHandlerProxyEventQueueTest, ScrollPredictorTest) {
   EXPECT_CALL(mock_input_handler_, FindFrameElementIdAtPoint(_))
       .Times(2)
       .WillRepeatedly(testing::Return(cc::ElementId()));
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
   EXPECT_CALL(
       mock_input_handler_,
       ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
@@ -3010,6 +3341,10 @@ TEST_F(InputHandlerProxyEventQueueTest, DeliverInputWithHighLatencyMode) {
   EXPECT_CALL(mock_input_handler_, FindFrameElementIdAtPoint(_))
       .Times(3)
       .WillRepeatedly(testing::Return(cc::ElementId()));
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillRepeatedly(testing::Return(false));
+  }
   EXPECT_CALL(
       mock_input_handler_,
       ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
@@ -3225,7 +3560,7 @@ TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
               EventListenerTypeForTouchStartOrMoveAt(
                   testing::Property(&gfx::Point::x, testing::Gt(0)), _))
       .WillOnce(testing::Return(
-          cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler));
+          cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER));
   EXPECT_CALL(
       mock_input_handler_,
       GetEventListenerProperties(cc::EventListenerClass::kTouchStartOrMove))
@@ -3234,7 +3569,6 @@ TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
       .WillOnce(testing::Return());
   EXPECT_CALL(mock_input_handler_, HitTest(_))
       .WillOnce(testing::Return(cc::PointerResultType::kUnhandled));
-  EXPECT_CALL(mock_input_handler_, SetIsHandlingTouchSequence(true));
 
   expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE_NON_BLOCKING;
   EXPECT_EQ(expected_disposition_,
@@ -3275,12 +3609,11 @@ TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
                   testing::Property(&gfx::Point::x, testing::Gt(0)), _))
       .WillOnce(
           testing::Return(cc::InputHandler::TouchStartOrMoveEventListenerType::
-                              kHandlerOnScrollingLayer));
+                              HANDLER_ON_SCROLLING_LAYER));
   EXPECT_CALL(mock_client_, SetAllowedTouchAction(_))
       .WillOnce(testing::Return());
   EXPECT_CALL(mock_input_handler_, HitTest(_))
       .WillOnce(testing::Return(cc::PointerResultType::kUnhandled));
-  EXPECT_CALL(mock_input_handler_, SetIsHandlingTouchSequence(true));
 
   expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE_NON_BLOCKING;
   EXPECT_EQ(expected_disposition_,
@@ -3311,7 +3644,115 @@ TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
 }
 
 TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
+       GestureScrollTouchEventHandlerRegionAndHandlingScrollFromMainThread) {
+  // After scroll unification, we do not handle scrolls on the main thread.
+  if (base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    return;
+  }
+
+  // The touch event hits a touch event handler and should block on main thread.
+  // Since ScrollBegin doesn't allow the gesture to scroll on impl. We report
+  // TouchEventHandler reason as well as HandlingScrollFromMainThread. Since we
+  // do not collect HandlingScrollFromMainThread when there are other reasons
+  // present, TouchEventHandler is the only reason being collected in the
+  // histogram.
+  SetupEvents(TestEventType::kTouch);
+
+  EXPECT_CALL(mock_input_handler_,
+              EventListenerTypeForTouchStartOrMoveAt(
+                  testing::Property(&gfx::Point::x, testing::Gt(0)), _))
+      .WillOnce(
+          testing::Return(cc::InputHandler::TouchStartOrMoveEventListenerType::
+                              HANDLER_ON_SCROLLING_LAYER));
+  EXPECT_CALL(mock_client_, SetAllowedTouchAction(_))
+      .WillOnce(testing::Return());
+  EXPECT_CALL(mock_input_handler_, HitTest(_))
+      .WillOnce(testing::Return(cc::PointerResultType::kUnhandled));
+
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE_NON_BLOCKING;
+  EXPECT_EQ(expected_disposition_, HandleInputEventWithLatencyInfo(
+                                       input_handler_.get(), touch_start_));
+
+  EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
+      .WillOnce(testing::Return(kMainThreadScrollState));
+  EXPECT_CALL(
+      mock_input_handler_,
+      RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnMain))
+      .Times(1);
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(),
+                                            gesture_scroll_begin_));
+
+  EXPECT_MAIN_THREAD_GESTURE_SCROLL_SAMPLE(kSampleMainThreadScrollingReason);
+
+  // Handle touch end event so that input handler proxy is out of the state of
+  // DID_NOT_HANDLE.
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  EXPECT_CALL(mock_input_handler_, RecordScrollEnd(_)).Times(1);
+  cc::InputHandlerPointerResult pointer_up_result;
+  pointer_up_result.type = cc::PointerResultType::kUnhandled;
+  EXPECT_CALL(mock_input_handler_, MouseUp(_))
+      .WillOnce(testing::Return(pointer_up_result));
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(),
+                                            gesture_scroll_end_));
+
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(), touch_end_));
+}
+
+TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
+       GestureScrollHandlingScrollFromMainThread) {
+  // After scroll unification, we do not handle scrolls on the main thread.
+  if (base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    return;
+  }
+
+  // Gesture scrolling on main thread. We only record
+  // HandlingScrollFromMainThread when it's the only available reason.
+  SetupEvents(TestEventType::kTouch);
+  EXPECT_CALL(mock_input_handler_,
+              EventListenerTypeForTouchStartOrMoveAt(
+                  testing::Property(&gfx::Point::x, testing::Gt(0)), _))
+      .WillOnce(testing::Return(
+          cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER));
+  EXPECT_CALL(mock_client_, SetAllowedTouchAction(_))
+      .WillOnce(testing::Return());
+  EXPECT_CALL(mock_input_handler_, GetEventListenerProperties(_))
+      .WillRepeatedly(testing::Return(cc::EventListenerProperties::kPassive));
+  EXPECT_CALL(mock_input_handler_, HitTest(_))
+      .WillOnce(testing::Return(cc::PointerResultType::kUnhandled));
+
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE_NON_BLOCKING;
+  EXPECT_EQ(expected_disposition_, HandleInputEventWithLatencyInfo(
+                                       input_handler_.get(), touch_start_));
+
+  EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
+      .WillOnce(testing::Return(kMainThreadScrollState));
+  EXPECT_CALL(
+      mock_input_handler_,
+      RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnMain))
+      .Times(1);
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(),
+                                            gesture_scroll_begin_));
+
+  EXPECT_MAIN_THREAD_GESTURE_SCROLL_SAMPLE(kSampleMainThreadScrollingReason);
+
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  EXPECT_CALL(mock_input_handler_, RecordScrollEnd(_)).Times(1);
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(),
+                                            gesture_scroll_end_));
+}
+
+TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
        ImplHandled_MainThreadHitTest) {
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification))
+    return;
+
   expected_disposition_ = InputHandlerProxy::DID_HANDLE;
   VERIFY_AND_RESET_MOCKS();
 
@@ -3339,12 +3780,15 @@ TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
 
 TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
        ImplHandled_MainThreadRepaint) {
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification))
+    return;
+
   expected_disposition_ = InputHandlerProxy::DID_HANDLE;
   VERIFY_AND_RESET_MOCKS();
 
   cc::InputHandler::ScrollStatus scroll_status = kImplThreadScrollState;
   scroll_status.main_thread_repaint_reasons =
-      cc::MainThreadScrollingReason::kPreferNonCompositedScrolling;
+      cc::MainThreadScrollingReason::kNoScrollingLayer;
 
   EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
       .WillOnce(testing::Return(scroll_status));
@@ -3360,7 +3804,7 @@ TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
   VERIFY_AND_RESET_MOCKS();
 
   EXPECT_MAIN_THREAD_WHEEL_SCROLL_SAMPLE(
-      cc::MainThreadScrollingReason::kPreferNonCompositedScrolling);
+      cc::MainThreadScrollingReason::kNoScrollingLayer);
 }
 
 TEST_P(InputHandlerProxyMainThreadScrollingReasonTest, WheelScrollHistogram) {
@@ -3373,11 +3817,11 @@ TEST_P(InputHandlerProxyMainThreadScrollingReasonTest, WheelScrollHistogram) {
   input_handler_->RecordScrollBeginForTest(
       WebGestureDevice::kTouchpad,
       kSampleMainThreadScrollingReason |
-          cc::MainThreadScrollingReason::kPreferNonCompositedScrolling);
+          cc::MainThreadScrollingReason::kThreadedScrollingDisabled);
 
   EXPECT_MAIN_THREAD_WHEEL_SCROLL_SAMPLE_2(
       kSampleMainThreadScrollingReason,
-      cc::MainThreadScrollingReason::kPreferNonCompositedScrolling);
+      cc::MainThreadScrollingReason::kThreadedScrollingDisabled);
 }
 
 TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
@@ -3452,6 +3896,83 @@ TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
                                             gesture_scroll_end_));
 }
 
+TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
+       WheelScrollWheelEventHandlerRegionAndHandlingScrollFromMainThread) {
+  // After scroll unification, we do not handle scrolls on the main thread.
+  if (base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    return;
+  }
+
+  // Wheel scrolling on main thread. Because we also block scrolling with wheel
+  // event handler, we should record that reason as well.
+  SetupEvents(TestEventType::kMouseWheel);
+  EXPECT_CALL(mock_input_handler_, HasBlockingWheelEventHandlerAt(_))
+      .WillRepeatedly(testing::Return(true));
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  EXPECT_EQ(expected_disposition_, HandleInputEventWithLatencyInfo(
+                                       input_handler_.get(), wheel_event_));
+
+  EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
+      .WillOnce(testing::Return(kMainThreadScrollState));
+  EXPECT_CALL(
+      mock_input_handler_,
+      RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnMain))
+      .Times(1);
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(),
+                                            gesture_scroll_begin_));
+
+  EXPECT_MAIN_THREAD_WHEEL_SCROLL_SAMPLE_2(
+      kSampleMainThreadScrollingReason,
+      cc::MainThreadScrollingReason::kWheelEventHandlerRegion);
+
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  EXPECT_CALL(mock_input_handler_, RecordScrollEnd(_)).Times(1);
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(),
+                                            gesture_scroll_end_));
+}
+
+TEST_P(InputHandlerProxyMainThreadScrollingReasonTest,
+       WheelScrollHandlingScrollFromMainThread) {
+  // After scroll unification, we do not handle scrolls on the main thread.
+  if (base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    return;
+  }
+
+  // Gesture scrolling on main thread. We only record
+  // HandlingScrollFromMainThread when it's the only available reason.
+  SetupEvents(TestEventType::kMouseWheel);
+  EXPECT_CALL(mock_input_handler_, HasBlockingWheelEventHandlerAt(_))
+      .WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(mock_input_handler_,
+              GetEventListenerProperties(cc::EventListenerClass::kMouseWheel))
+      .WillOnce(testing::Return(cc::EventListenerProperties::kNone));
+  expected_disposition_ = InputHandlerProxy::DROP_EVENT;
+  EXPECT_EQ(expected_disposition_, HandleInputEventWithLatencyInfo(
+                                       input_handler_.get(), wheel_event_));
+
+  EXPECT_CALL(mock_input_handler_, ScrollBegin(_, _))
+      .WillOnce(testing::Return(kMainThreadScrollState));
+  EXPECT_CALL(
+      mock_input_handler_,
+      RecordScrollBegin(_, cc::ScrollBeginThreadState::kScrollingOnMain))
+      .Times(1);
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(),
+                                            gesture_scroll_begin_));
+
+  EXPECT_MAIN_THREAD_WHEEL_SCROLL_SAMPLE(kSampleMainThreadScrollingReason);
+
+  expected_disposition_ = InputHandlerProxy::DID_NOT_HANDLE;
+  EXPECT_CALL(mock_input_handler_, RecordScrollEnd(_)).Times(1);
+  EXPECT_EQ(expected_disposition_,
+            HandleInputEventWithLatencyInfo(input_handler_.get(),
+                                            gesture_scroll_end_));
+}
+
 class InputHandlerProxyTouchScrollbarTest : public InputHandlerProxyTest {
  public:
   void SetupEvents() {
@@ -3491,7 +4012,7 @@ TEST_P(InputHandlerProxyTouchScrollbarTest,
       .WillOnce(testing::Invoke([](const gfx::Point&,
                                    cc::TouchAction* touch_action) {
         *touch_action = cc::TouchAction::kAuto;
-        return cc::InputHandler::TouchStartOrMoveEventListenerType::kNoHandler;
+        return cc::InputHandler::TouchStartOrMoveEventListenerType::NO_HANDLER;
       }));
   EXPECT_CALL(
       mock_input_handler_,
@@ -3505,11 +4026,14 @@ TEST_P(InputHandlerProxyTouchScrollbarTest,
       .WillOnce(testing::Return(pointer_down_result.type));
   EXPECT_CALL(mock_input_handler_, MouseDown(_, _))
       .WillOnce(testing::Return(pointer_down_result));
-  EXPECT_CALL(mock_input_handler_, SetIsHandlingTouchSequence(true));
   cc::InputHandlerScrollResult scroll_result_did_scroll;
   scroll_result_did_scroll.did_scroll = true;
   expected_disposition_ = InputHandlerProxy::DID_HANDLE;
 
+  if (!base::FeatureList::IsEnabled(features::kScrollUnification)) {
+    EXPECT_CALL(mock_input_handler_, ScrollingShouldSwitchtoMainThread())
+        .WillOnce(testing::Return(false));
+  }
   EXPECT_CALL(
       mock_input_handler_,
       RecordScrollBegin(ui::ScrollInputType::kScrollbar,
@@ -3534,17 +4058,332 @@ TEST_P(InputHandlerProxyTouchScrollbarTest,
                 mock_input_handler_, input_handler_.get(), touch_end_));
 }
 
+class InputHandlerProxyMomentumScrollJankTest : public testing::Test {
+ public:
+  InputHandlerProxyMomentumScrollJankTest()
+      : input_handler_proxy_(mock_input_handler_, &mock_client_) {
+    tick_clock_.SetNowTicks(base::TimeTicks::Now());
+    // Disable scroll predictor for this test.
+    input_handler_proxy_.scroll_predictor_ = nullptr;
+    input_handler_proxy_.SetTickClockForTesting(&tick_clock_);
+  }
+
+  ~InputHandlerProxyMomentumScrollJankTest() override = default;
+
+  void HandleScrollBegin() {
+    auto gesture = std::make_unique<WebGestureEvent>(
+        WebInputEvent::Type::kGestureScrollBegin, WebInputEvent::kNoModifiers,
+        tick_clock_.NowTicks(), WebGestureDevice::kTouchscreen);
+    HandleGesture(std::move(gesture));
+  }
+
+  void HandleScrollEnd() {
+    auto gesture = std::make_unique<WebGestureEvent>(
+        WebInputEvent::Type::kGestureScrollEnd, WebInputEvent::kNoModifiers,
+        tick_clock_.NowTicks(), WebGestureDevice::kTouchscreen);
+    HandleGesture(std::move(gesture));
+  }
+
+  void HandleScrollUpdate(bool is_momentum) {
+    auto gesture = std::make_unique<WebGestureEvent>(
+        WebInputEvent::Type::kGestureScrollUpdate, WebInputEvent::kNoModifiers,
+        tick_clock_.NowTicks(), WebGestureDevice::kTouchscreen);
+    gesture->data.scroll_update.delta_y = -20;
+    if (is_momentum) {
+      gesture->data.scroll_update.inertial_phase =
+          WebGestureEvent::InertialPhaseState::kMomentum;
+    }
+    HandleGesture(std::move(gesture));
+  }
+
+  void AdvanceClock(uint32_t milliseconds) {
+    tick_clock_.Advance(base::Milliseconds(milliseconds));
+  }
+
+  void AddNonJankyEvents(uint32_t count) {
+    for (uint32_t i = 0; i < count; ++i) {
+      AdvanceClock(16);
+      HandleScrollUpdate(true /* is_momentum */);
+      DeliverInputForBeginFrame();
+    }
+  }
+
+  void DeliverInputForBeginFrame() {
+    constexpr base::TimeDelta interval = base::Milliseconds(16);
+    base::TimeTicks frame_time =
+        base::TimeTicks() +
+        (next_begin_frame_number_ - viz::BeginFrameArgs::kStartingFrameNumber) *
+            interval;
+    input_handler_proxy_.DeliverInputForBeginFrame(viz::BeginFrameArgs::Create(
+        BEGINFRAME_FROM_HERE, 0, next_begin_frame_number_++, frame_time,
+        frame_time + interval, interval, viz::BeginFrameArgs::NORMAL));
+  }
+
+ protected:
+  void HandleGesture(std::unique_ptr<WebInputEvent> event) {
+    input_handler_proxy_.HandleInputEventWithLatencyInfo(
+        std::make_unique<WebCoalescedInputEvent>(std::move(event),
+                                                 ui::LatencyInfo()),
+        nullptr, base::DoNothing());
+  }
+
+  uint64_t next_begin_frame_number_ = viz::BeginFrameArgs::kStartingFrameNumber;
+
+  base::test::SingleThreadTaskEnvironment task_environment_;
+  testing::NiceMock<MockInputHandler> mock_input_handler_;
+  testing::NiceMock<MockInputHandlerProxyClient> mock_client_;
+  TestInputHandlerProxy input_handler_proxy_;
+  base::SimpleTestTickClock tick_clock_;
+};
+
+TEST_F(InputHandlerProxyMomentumScrollJankTest, TestJank) {
+  cc::InputHandlerScrollResult scroll_result_did_scroll;
+  scroll_result_did_scroll.did_scroll = true;
+  EXPECT_CALL(
+      mock_input_handler_,
+      ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
+                   _))
+      .WillRepeatedly(testing::Return(scroll_result_did_scroll));
+
+  base::HistogramTester histogram_tester;
+  HandleScrollBegin();
+
+  // Flush one update, the first update is always ignored.
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  DeliverInputForBeginFrame();
+
+  // Enqueue three updates, they will be coalesced and count as two janks.
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(1);
+  DeliverInputForBeginFrame();
+
+  // Enqueue two updates, they will be coalesced and count as one jank
+  // (https://crbug.com/952930).
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(1);
+  DeliverInputForBeginFrame();
+
+  // Enqueue two updates, they will be coalesced and count as one
+  // jank(https://crbug.com/952930).
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(1);
+  DeliverInputForBeginFrame();
+
+  // Add 93 non-janky events, bringing us to a total of 100 events.
+  AddNonJankyEvents(93);
+
+  HandleScrollEnd();
+  DeliverInputForBeginFrame();
+
+  histogram_tester.ExpectUniqueSample("Renderer4.MomentumScrollJankPercentage",
+                                      4, 1);
+}
+
+TEST_F(InputHandlerProxyMomentumScrollJankTest, TestJankMultipleGestures) {
+  cc::InputHandlerScrollResult scroll_result_did_scroll;
+  scroll_result_did_scroll.did_scroll = true;
+  EXPECT_CALL(
+      mock_input_handler_,
+      ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
+                   _))
+      .WillRepeatedly(testing::Return(scroll_result_did_scroll));
+
+  base::HistogramTester histogram_tester;
+
+  for (int i = 0; i < 3; ++i) {
+    HandleScrollBegin();
+
+    // Flush one update, the first update is always ignored.
+    AdvanceClock(16);
+    HandleScrollUpdate(true /* is_momentum */);
+    DeliverInputForBeginFrame();
+
+    // Enqueue two updates, they will be coalesced and count as one jank
+    // (https://crbug.com/952930).
+    AdvanceClock(16);
+    HandleScrollUpdate(true /* is_momentum */);
+    AdvanceClock(16);
+    HandleScrollUpdate(true /* is_momentum */);
+    AdvanceClock(1);
+    DeliverInputForBeginFrame();
+
+    // Add 98 non-janky events, bringing us to a total of 100 events.
+    AddNonJankyEvents(98);
+
+    HandleScrollEnd();
+    DeliverInputForBeginFrame();
+
+    histogram_tester.ExpectUniqueSample(
+        "Renderer4.MomentumScrollJankPercentage", 1, i + 1);
+  }
+}
+
+TEST_F(InputHandlerProxyMomentumScrollJankTest, TestJankRounding) {
+  cc::InputHandlerScrollResult scroll_result_did_scroll;
+  scroll_result_did_scroll.did_scroll = true;
+  EXPECT_CALL(
+      mock_input_handler_,
+      ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
+                   _))
+      .WillRepeatedly(testing::Return(scroll_result_did_scroll));
+
+  base::HistogramTester histogram_tester;
+
+  HandleScrollBegin();
+
+  // Flush one update, the first update is always ignored.
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  DeliverInputForBeginFrame();
+
+  // Enqueue two updates, they will be coalesced and count as one jank
+  // (https://crbug.com/952930).
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(1);
+  DeliverInputForBeginFrame();
+
+  // Add 500 non-janky events. Even with this many events, our round-up logic
+  // should cause us to report 1% jank.
+  AddNonJankyEvents(500);
+
+  HandleScrollEnd();
+  DeliverInputForBeginFrame();
+
+  histogram_tester.ExpectUniqueSample("Renderer4.MomentumScrollJankPercentage",
+                                      1, 1);
+}
+
+TEST_F(InputHandlerProxyMomentumScrollJankTest, TestSimpleNoJank) {
+  cc::InputHandlerScrollResult scroll_result_did_scroll;
+  scroll_result_did_scroll.did_scroll = true;
+  EXPECT_CALL(
+      mock_input_handler_,
+      ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
+                   _))
+      .WillRepeatedly(testing::Return(scroll_result_did_scroll));
+
+  base::HistogramTester histogram_tester;
+  HandleScrollBegin();
+
+  // Flush one update, the first update is always ignored.
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(1);
+  DeliverInputForBeginFrame();
+
+  // Enqueue one updates, no jank.
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(1);
+  DeliverInputForBeginFrame();
+
+  // Enqueue one updates, no jank.
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(1);
+  DeliverInputForBeginFrame();
+
+  HandleScrollEnd();
+  DeliverInputForBeginFrame();
+
+  histogram_tester.ExpectUniqueSample("Renderer4.MomentumScrollJankPercentage",
+                                      0, 1);
+}
+
+TEST_F(InputHandlerProxyMomentumScrollJankTest, TestFirstGestureNoJank) {
+  cc::InputHandlerScrollResult scroll_result_did_scroll;
+  scroll_result_did_scroll.did_scroll = true;
+  EXPECT_CALL(
+      mock_input_handler_,
+      ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
+                   _))
+      .WillRepeatedly(testing::Return(scroll_result_did_scroll));
+
+  base::HistogramTester histogram_tester;
+  HandleScrollBegin();
+
+  // Even with 3 coalesced frames, the first gesture should not trigger a jank.
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(16);
+  HandleScrollUpdate(true /* is_momentum */);
+  AdvanceClock(1);
+  DeliverInputForBeginFrame();
+
+  HandleScrollEnd();
+  DeliverInputForBeginFrame();
+
+  histogram_tester.ExpectTotalCount("Renderer4.MomentumScrollJankPercentage",
+                                    0);
+}
+
+TEST_F(InputHandlerProxyMomentumScrollJankTest, TestNonMomentumNoJank) {
+  cc::InputHandlerScrollResult scroll_result_did_scroll;
+  scroll_result_did_scroll.did_scroll = true;
+  EXPECT_CALL(
+      mock_input_handler_,
+      ScrollUpdate(testing::Property(&cc::ScrollState::delta_y, testing::Gt(0)),
+                   _))
+      .WillRepeatedly(testing::Return(scroll_result_did_scroll));
+
+  base::HistogramTester histogram_tester;
+  HandleScrollBegin();
+
+  // Flush one update, the first update is always ignored.
+  AdvanceClock(16);
+  HandleScrollUpdate(false /* is_momentum */);
+  AdvanceClock(1);
+  DeliverInputForBeginFrame();
+
+  // Enqueue three updates, these will not cause jank, as none are momentum.
+  AdvanceClock(16);
+  HandleScrollUpdate(false /* is_momentum */);
+  AdvanceClock(16);
+  HandleScrollUpdate(false /* is_momentum */);
+  AdvanceClock(16);
+  HandleScrollUpdate(false /* is_momentum */);
+  AdvanceClock(1);
+  DeliverInputForBeginFrame();
+
+  HandleScrollEnd();
+  DeliverInputForBeginFrame();
+
+  histogram_tester.ExpectTotalCount("Renderer4.MomentumScrollJankPercentage",
+                                    0);
+}
+
 const auto kTestCombinations = testing::Combine(
     testing::Values(ScrollerType::kRoot, ScrollerType::kChild),
-    testing::Values(HandlerType::kNormal, HandlerType::kSynchronous));
+    testing::Values(HandlerType::kNormal, HandlerType::kSynchronous),
+    testing::Values(ScrollUnification::kEnabled, ScrollUnification::kDisabled));
 
 const auto kSuffixGenerator =
-    [](const testing::TestParamInfo<std::tuple<ScrollerType, HandlerType>>&
-           info) {
+    [](const testing::TestParamInfo<
+        std::tuple<ScrollerType, HandlerType, ScrollUnification>>& info) {
       std::string name = std::get<1>(info.param) == HandlerType::kSynchronous
                              ? "Synchronous"
                              : "";
       name += std::get<0>(info.param) == ScrollerType::kRoot ? "Root" : "Child";
+      name += std::get<2>(info.param) == ScrollUnification::kEnabled
+                  ? "UnifiedScroll"
+                  : "LegacyScroll";
       return name;
     };
 

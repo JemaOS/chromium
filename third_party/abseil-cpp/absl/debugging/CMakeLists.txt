@@ -41,7 +41,6 @@ absl_cc_library(
     absl::debugging_internal
     absl::config
     absl::core_headers
-    absl::dynamic_annotations
     absl::raw_logging_internal
   PUBLIC
 )
@@ -101,15 +100,14 @@ absl_cc_test(
   LINKOPTS
     $<$<BOOL:${MSVC}>:-DEBUG>
   DEPS
+    absl::stack_consumption
+    absl::symbolize
     absl::base
-    absl::check
     absl::config
     absl::core_headers
-    absl::log
     absl::memory
-    absl::stack_consumption
+    absl::raw_logging_internal
     absl::strings
-    absl::symbolize
     GTest::gmock
 )
 
@@ -158,7 +156,6 @@ absl_cc_test(
   COPTS
     ${ABSL_TEST_COPTS}
   DEPS
-    absl::check
     absl::failure_signal_handler
     absl::stacktrace
     absl::symbolize
@@ -218,8 +215,8 @@ absl_cc_test(
     absl::stack_consumption
     absl::config
     absl::core_headers
-    absl::log
     absl::memory
+    absl::raw_logging_internal
     GTest::gmock_main
 )
 
@@ -250,7 +247,6 @@ absl_cc_test(
   DEPS
     absl::leak_check
     absl::base
-    absl::log
     GTest::gmock_main
 )
 
@@ -281,7 +277,7 @@ absl_cc_test(
   DEPS
     absl::stack_consumption
     absl::core_headers
-    absl::log
+    absl::raw_logging_internal
     GTest::gmock_main
 )
 

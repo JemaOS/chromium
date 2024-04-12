@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors
+// Copyright 2019 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,7 +21,7 @@ const MAX_INITIALIZATION_ATTEMPTS = 8;
  * over the PostMessageAPI.  This should be subclassed and the subclass should
  * provide supported methods.
  */
-export class PostMessageApiServer extends RequestHandler {
+export class PostMessageAPIServer extends RequestHandler {
   constructor(clientElement, targetURL, messageOriginURLFilter) {
     super(clientElement, messageOriginURLFilter, targetURL);
     /**
@@ -77,7 +77,7 @@ export class PostMessageApiServer extends RequestHandler {
           'Sending init message to guest content,  attempt # :' +
           this.numInitializationAttempts_);
 
-      this.targetWindow().postMessage('init', this.targetUrl().toString());
+      this.targetWindow().postMessage('init', this.targetURL().toString());
 
       // Set timeout to check if initialization message has been received using
       // exponential backoff.

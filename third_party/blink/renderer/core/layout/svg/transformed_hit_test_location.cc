@@ -10,17 +10,22 @@ namespace blink {
 
 namespace {
 
-void LocationTransformHelper(const HitTestLocation& location,
-                             const AffineTransform& transform,
-                             std::optional<HitTestLocation>& storage) {
-  gfx::PointF transformed_point =
-      transform.MapPoint(location.TransformedPoint());
+const HitTestLocation* InverseTransformLocationIfNeeded(
+    const HitTestLocation& location,
+    const AffineTransform& transform,
+    absl::optional<HitTestLocation>& storage) {
+  if (transform.IsIdentity())
+    return &location;
+  if (!transform.IsInvertible())
+    return nullptr;
+  const AffineTransform inverse = transform.Inverse();
+  gfx::PointF transformed_point = inverse.MapPoint(location.TransformedPoint());
   if (UNLIKELY(location.IsRectBasedTest())) {
     storage.emplace(transformed_point,
-                    transform.MapQuad(location.TransformedRect()));
+                    inverse.MapQuad(location.TransformedRect()));
   } else {
     gfx::RectF mapped_rect =
-        transform.MapRect(gfx::RectF(location.BoundingBox()));
+        inverse.MapRect(gfx::RectF(location.BoundingBox()));
     if (mapped_rect.width() < 1 || mapped_rect.height() < 1) {
       // Specify |bounding_box| argument even if |location| is not rect-based.
       // Without it, HitTestLocation would have 1x1 bounding box, and it would
@@ -31,31 +36,6 @@ void LocationTransformHelper(const HitTestLocation& location,
       storage.emplace(transformed_point);
     }
   }
-}
-
-const HitTestLocation* InverseTransformLocationIfNeeded(
-    const HitTestLocation& location,
-    const AffineTransform& transform,
-    std::optional<HitTestLocation>& storage) {
-  if (transform.IsIdentity()) {
-    return &location;
-  }
-  if (!transform.IsInvertible()) {
-    return nullptr;
-  }
-  const AffineTransform inverse = transform.Inverse();
-  LocationTransformHelper(location, inverse, storage);
-  return &*storage;
-}
-
-const HitTestLocation* TransformLocationIfNeeded(
-    const HitTestLocation& location,
-    const AffineTransform& transform,
-    std::optional<HitTestLocation>& storage) {
-  if (transform.IsIdentity()) {
-    return &location;
-  }
-  LocationTransformHelper(location, transform, storage);
   return &*storage;
 }
 
@@ -66,11 +46,5 @@ TransformedHitTestLocation::TransformedHitTestLocation(
     const AffineTransform& transform)
     : location_(
           InverseTransformLocationIfNeeded(location, transform, storage_)) {}
-
-TransformedHitTestLocation::TransformedHitTestLocation(
-    const HitTestLocation& location,
-    const AffineTransform& transform,
-    InverseTag)
-    : location_(TransformLocationIfNeeded(location, transform, storage_)) {}
 
 }  // namespace blink

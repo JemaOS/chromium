@@ -384,12 +384,12 @@ Status ExecuteFlick(Session* session,
 
   int xoffset, yoffset, speed;
 
-  std::optional<int> maybe_xoffset = params.FindInt("xoffset");
+  absl::optional<int> maybe_xoffset = params.FindInt("xoffset");
   if (!maybe_xoffset)
     return Status(kInvalidArgument, "'xoffset' must be an integer");
   xoffset = *maybe_xoffset;
 
-  std::optional<int> maybe_yoffset = params.FindInt("yoffset");
+  absl::optional<int> maybe_yoffset = params.FindInt("yoffset");
   if (!maybe_yoffset)
     return Status(kInvalidArgument, "'yoffset' must be an integer");
   yoffset = *maybe_yoffset;
@@ -529,9 +529,6 @@ Status ExecuteSendKeysToElement(Session* session,
     key_list = &key_list_local;
   } else {
     key_list = params.FindList("value");
-    if (key_list == nullptr) {
-      return Status(kInvalidArgument, "'value' must be a list");
-    }
   }
 
   bool is_input = false;
@@ -839,7 +836,7 @@ Status ExecuteGetComputedLabel(Session* session,
     return Status(kOk);
   }
 
-  std::optional<base::Value> name_val = name_node->Extract("value");
+  absl::optional<base::Value> name_val = name_node->Extract("value");
   if (!name_val)
     return Status(kUnknownError,
                   "No name value found in the node in CDP response");
@@ -866,7 +863,7 @@ Status ExecuteGetComputedRole(Session* session,
     return Status(kOk);
   }
 
-  std::optional<base::Value> role_val = role_node->Extract("value");
+  absl::optional<base::Value> role_val = role_node->Extract("value");
   if (!role_val) {
     return Status(kUnknownError,
                   "No role value found in the node in CDP response");
@@ -937,19 +934,19 @@ Status ExecuteGetElementRect(Session* session,
     return Status(kUnknownError, "could not convert to Value::Dict");
 
   // grab values
-  std::optional<double> maybe_x = location_dict->FindDouble("x");
+  absl::optional<double> maybe_x = location_dict->FindDouble("x");
   if (!maybe_x.has_value())
     return Status(kUnknownError, "x coordinate is missing in element location");
 
-  std::optional<double> maybe_y = location_dict->FindDouble("y");
+  absl::optional<double> maybe_y = location_dict->FindDouble("y");
   if (!maybe_y.has_value())
     return Status(kUnknownError, "y coordinate is missing in element location");
 
-  std::optional<double> maybe_height = size_dict->FindDouble("height");
+  absl::optional<double> maybe_height = size_dict->FindDouble("height");
   if (!maybe_height.has_value())
     return Status(kUnknownError, "height is missing in element size");
 
-  std::optional<double> maybe_width = size_dict->FindDouble("width");
+  absl::optional<double> maybe_width = size_dict->FindDouble("width");
   if (!maybe_width.has_value())
     return Status(kUnknownError, "width is missing in element size");
 

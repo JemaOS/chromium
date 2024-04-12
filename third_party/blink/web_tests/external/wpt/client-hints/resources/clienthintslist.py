@@ -23,7 +23,6 @@ def client_hints_list():
           b"sec-ch-viewport-width",
           b"sec-ch-ua-full-version-list",
           b"sec-ch-ua-wow64",
-          b"sec-ch-prefers-reduced-transparency",
   ]
 
 def client_hints_full_list():

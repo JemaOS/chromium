@@ -3,9 +3,8 @@ Short Name: colorama
 URL: https://github.com/tartley/colorama.git
 Version: 0.4.6
 License: BSD
-License File: LICENSE
+License File: NOT_SHIPPED
 Security Critical: no
-Shipped: no
 
 Description:
 Provides a simple cross-platform API to print colored terminal text from Python

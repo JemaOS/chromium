@@ -25,7 +25,6 @@
 #include "third_party/blink/renderer/core/css/css_numeric_literal_value.h"
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
 #include "third_party/blink/renderer/core/css/css_style_sheet.h"
-#include "third_party/blink/renderer/core/css/parser/css_property_parser.h"
 #include "third_party/blink/renderer/core/css/style_attribute_mutation_scope.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/dom/document.h"
@@ -236,7 +235,7 @@ DISABLE_CFI_PERF
 void AbstractPropertySetCSSStyleDeclaration::SetPropertyInternal(
     CSSPropertyID unresolved_property,
     const String& custom_property_name,
-    StringView value,
+    const String& value,
     bool important,
     SecureContextMode secure_context_mode,
     ExceptionState&) {

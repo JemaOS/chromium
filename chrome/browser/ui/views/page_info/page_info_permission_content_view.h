@@ -6,15 +6,8 @@
 #define CHROME_BROWSER_UI_VIEWS_PAGE_INFO_PAGE_INFO_PERMISSION_CONTENT_VIEW_H_
 
 #include "base/memory/raw_ptr.h"
-#include "base/scoped_observation.h"
 #include "components/page_info/page_info_ui.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/view.h"
-
-#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_FUCHSIA)
-#include "chrome/browser/ui/views/media_preview/active_devices_media_coordinator.h"
-#include "components/media_effects/media_device_info.h"
-#endif
 
 class ChromePageInfoUiDelegate;
 class NonAccessibleImageView;
@@ -37,32 +30,11 @@ class ToggleButton;
 // |---------------------------------------------------------------|
 // | Manage button                                                 |
 // *---------------------------------------------------------------*
-// The view for the File System permission subpage additionally contains a
-// scrollable panel listing the files and/or directories with granted,
-// active permissions.
-// *---------------------------------------------------------------*
-// | Icon | Title                                         | Toggle |
-// |      | State label                                   |        |
-// |      |--------------------------------------------------------|
-// |      | Scrollable panel of files / directories                |
-// |      |                                                        |
-// |      | "Remember this setting" checkbox                       |
-// |---------------------------------------------------------------|
-// | Manage button                                                 |
-// *---------------------------------------------------------------*
-class PageInfoPermissionContentView
-    : public views::View,
-#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_FUCHSIA)
-      public media_effects::MediaDeviceInfo::Observer,
-#endif
-      public PageInfoUI {
-  METADATA_HEADER(PageInfoPermissionContentView, views::View)
-
+class PageInfoPermissionContentView : public views::View, public PageInfoUI {
  public:
   PageInfoPermissionContentView(PageInfo* presenter,
                                 ChromePageInfoUiDelegate* ui_delegate,
-                                ContentSettingsType type,
-                                content::WebContents* web_contents);
+                                ContentSettingsType type);
   ~PageInfoPermissionContentView() override;
 
   // PageInfoUI implementations.
@@ -70,34 +42,13 @@ class PageInfoPermissionContentView
                          ChosenObjectInfoList chosen_object_info_list) override;
 
  private:
-  // views::View overrides
-  void ChildPreferredSizeChanged(views::View* child) override;
-
   void OnToggleButtonPressed();
   void OnRememberSettingPressed();
   void PermissionChanged();
-  void ToggleFileSystemExtendedPermissions();
-
-#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_FUCHSIA)
-  // media_effects::MediaDeviceInfo::Observer overrides.
-  void OnAudioDevicesChanged(
-      const std::optional<std::vector<media::AudioDeviceDescription>>&
-          device_infos) override;
-  void OnVideoDevicesChanged(
-      const std::optional<std::vector<media::VideoCaptureDeviceInfo>>&
-          device_infos) override;
-  void SetTitleTextAndTooltip(int message_id,
-                              const std::vector<std::string>& device_names);
-#endif
-
-  // Adds Media (Camera or Mic) live preview feeds.
-  void MaybeAddMediaPreview(content::WebContents* web_contents,
-                            views::View& preceding_separator);
 
   raw_ptr<PageInfo> presenter_ = nullptr;
   ContentSettingsType type_;
   raw_ptr<ChromePageInfoUiDelegate> ui_delegate_ = nullptr;
-  raw_ptr<content::WebContents> web_contents_ = nullptr;
   PageInfo::PermissionInfo permission_;
 
   raw_ptr<NonAccessibleImageView> icon_ = nullptr;
@@ -105,14 +56,6 @@ class PageInfoPermissionContentView
   raw_ptr<views::Label> state_label_ = nullptr;
   raw_ptr<views::ToggleButton> toggle_button_ = nullptr;
   raw_ptr<views::Checkbox> remember_setting_ = nullptr;
-
-#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_FUCHSIA)
-  std::optional<ActiveDevicesMediaCoordinator>
-      active_devices_media_preview_coordinator_;
-  base::ScopedObservation<media_effects::MediaDeviceInfo,
-                          PageInfoPermissionContentView>
-      devices_observer_{this};
-#endif
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_PAGE_INFO_PAGE_INFO_PERMISSION_CONTENT_VIEW_H_

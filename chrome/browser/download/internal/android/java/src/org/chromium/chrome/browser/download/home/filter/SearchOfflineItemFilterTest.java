@@ -30,11 +30,14 @@ import java.util.Collections;
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class SearchOfflineItemFilterTest {
-    @Mock private OfflineItemFilterSource mSource;
+    @Mock
+    private OfflineItemFilterSource mSource;
 
-    @Mock private OfflineItemFilterObserver mObserver;
+    @Mock
+    private OfflineItemFilterObserver mObserver;
 
-    @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     @Test
     public void testTitleFiltering() {
@@ -88,9 +91,10 @@ public class SearchOfflineItemFilterTest {
 
     @Test
     public void testUrlFiltering() {
-        OfflineItem item1 = buildItem("", JUnitTestGURLs.GOOGLE_URL);
-        OfflineItem item2 = buildItem("", JUnitTestGURLs.GOOGLE_URL_DOGS);
-        OfflineItem item3 = buildItem("", new GURL("http://www.google.com/dogs-are-fun"));
+        OfflineItem item1 = buildItem("", JUnitTestGURLs.getGURL(JUnitTestGURLs.GOOGLE_URL));
+        OfflineItem item2 = buildItem("", JUnitTestGURLs.getGURL(JUnitTestGURLs.GOOGLE_URL_DOGS));
+        OfflineItem item3 =
+                buildItem("", JUnitTestGURLs.getGURL(JUnitTestGURLs.GOOGLE_URL_DOGS_FUN));
         Collection<OfflineItem> sourceItems = CollectionUtil.newHashSet(item1, item2, item3);
         when(mSource.getItems()).thenReturn(sourceItems);
 
@@ -138,9 +142,9 @@ public class SearchOfflineItemFilterTest {
 
     @Test
     public void testUrlOrTitleFiltering() {
-        OfflineItem item1 = buildItem("cat", JUnitTestGURLs.GOOGLE_URL_DOG);
-        OfflineItem item2 = buildItem("dog", JUnitTestGURLs.GOOGLE_URL_CAT);
-        OfflineItem item3 = buildItem("cow", new GURL("http://www.google.com/pig"));
+        OfflineItem item1 = buildItem("cat", JUnitTestGURLs.getGURL(JUnitTestGURLs.GOOGLE_URL_DOG));
+        OfflineItem item2 = buildItem("dog", JUnitTestGURLs.getGURL(JUnitTestGURLs.GOOGLE_URL_CAT));
+        OfflineItem item3 = buildItem("cow", JUnitTestGURLs.getGURL(JUnitTestGURLs.GOOGLE_URL_PIG));
         Collection<OfflineItem> sourceItems = CollectionUtil.newHashSet(item1, item2, item3);
         when(mSource.getItems()).thenReturn(sourceItems);
 

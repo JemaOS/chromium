@@ -73,7 +73,7 @@ class OptimizationGuideWebContentsObserver
       content::NavigationHandle* navigation_handle) override;
   void WebContentsDestroyed() override;
 
-  void DocumentOnLoadCompletedInPrimaryMainFrame() override;
+  void PostFetchHintsUsingManager();
 
   // Ask |hints_manager| to fetch hints for navigations that were predicted for
   // the current page load.

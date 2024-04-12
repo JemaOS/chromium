@@ -274,11 +274,7 @@ void SameThreadMediaSourceAttachment::Close(MediaSourceTracer* tracer) {
 
 WebTimeRanges SameThreadMediaSourceAttachment::BufferedInternal(
     MediaSourceTracer* tracer) const {
-  // The ordering of MediaSource versus HTMLMediaElement context destruction
-  // notification is nondeterminate.
-  if (media_source_context_destroyed_) {
-    return {};
-  }
+  VerifyCalledWhileContextsAliveForDebugging();
 
   // Since the attached MediaSource, HTMLMediaElement and the element's player's
   // underlying demuxer are all owned by the main thread in this SameThread
@@ -315,11 +311,7 @@ void SameThreadMediaSourceAttachment::OnTrackChanged(MediaSourceTracer* tracer,
 void SameThreadMediaSourceAttachment::OnElementTimeUpdate(double time) {
   DVLOG(3) << __func__ << " this=" << this << ", time=" << time;
 
-  // The ordering of MediaSource versus HTMLMediaElement context destruction
-  // notification is nondeterminate.
-  if (media_source_context_destroyed_) {
-    return;
-  }
+  VerifyCalledWhileContextsAliveForDebugging();
 
   recent_element_time_ = time;
 }

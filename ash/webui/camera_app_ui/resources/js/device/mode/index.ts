@@ -17,7 +17,6 @@ import {
 } from '../../type.js';
 import {getFpsRangeFromConstraints} from '../../util.js';
 import {StreamConstraints} from '../stream_constraints.js';
-import {StreamManagerChrome} from '../stream_manager_chrome.js';
 
 import {
   ModeBase,
@@ -37,11 +36,15 @@ import {
   VideoHandler,
 } from './video.js';
 
-export type{PhotoHandler, PhotoResult} from './photo.js';
-export {getDefaultScanCorners} from './scan.js';
-export type{ScanHandler} from './scan.js';
-export {setAvc1Parameters, Video} from './video.js';
-export type{GifResult, VideoHandler, VideoResult} from './video.js';
+export {PhotoHandler, PhotoResult} from './photo.js';
+export {getDefaultScanCorners, ScanHandler} from './scan.js';
+export {
+  GifResult,
+  setAvc1Parameters,
+  Video,
+  VideoHandler,
+  VideoResult,
+} from './video.js';
 
 /**
  * Callback to trigger mode switching. Should return whether mode switching
@@ -68,7 +71,7 @@ interface CaptureParams {
 interface ModeConfig {
   /**
    * @return Resolves to boolean indicating whether the mode is supported by
-   *     video device with specified `deviceId`.
+   *     video device with specified device id.
    */
   isSupported(deviceId: string|null): Promise<boolean>;
 
@@ -124,7 +127,7 @@ export class Modes {
     }
 
     /**
-     * Prepares the device for the specific `resolution` and `captureIntent`.
+     * Prepare the device for the specific resolution and capture intent.
      */
     async function prepareDeviceForPhoto(
         constraints: StreamConstraints, resolution: Resolution,
@@ -155,25 +158,12 @@ export class Modes {
           }
           const deviceId = constraints.deviceId;
           await deviceOperator.setCaptureIntent(
-              deviceId, CaptureIntent.kVideoRecord);
+              deviceId, CaptureIntent.VIDEO_RECORD);
           await deviceOperator.setMultipleStreamsEnabled(
               deviceId,
               expert.isEnabled(
                   expert.ExpertOption.ENABLE_MULTISTREAM_RECORDING),
           );
-          if (expert.isEnabled(
-                  expert.ExpertOption.ENABLE_MULTISTREAM_RECORDING_CHROME)) {
-            const captureResolution =
-                assertExists(this.getCaptureParams().captureResolution);
-            await StreamManagerChrome.getInstance().prepare({
-              ...constraints,
-              video: {
-                ...constraints.video,
-                width: captureResolution.width,
-                height: captureResolution.height,
-              },
-            });
-          }
 
           if (await deviceOperator.isBlobVideoSnapshotEnabled(deviceId)) {
             await deviceOperator.setStillCaptureResolution(
@@ -200,7 +190,7 @@ export class Modes {
         isSupported: () => Promise.resolve(true),
         isSupportPTZ: checkSupportPTZForPhotoMode,
         prepareDevice: async (constraints, resolution) => prepareDeviceForPhoto(
-            constraints, resolution, CaptureIntent.kStillCapture),
+            constraints, resolution, CaptureIntent.STILL_CAPTURE),
         fallbackMode: Mode.SCAN,
       },
       [Mode.PORTRAIT]: {
@@ -222,7 +212,7 @@ export class Modes {
         },
         isSupportPTZ: checkSupportPTZForPhotoMode,
         prepareDevice: async (constraints, resolution) => prepareDeviceForPhoto(
-            constraints, resolution, CaptureIntent.kPortraitCapture),
+            constraints, resolution, CaptureIntent.STILL_CAPTURE),
         fallbackMode: Mode.PHOTO,
       },
       [Mode.SCAN]: {
@@ -235,7 +225,7 @@ export class Modes {
         isSupported: async () => Promise.resolve(true),
         isSupportPTZ: checkSupportPTZForPhotoMode,
         prepareDevice: async (constraints, resolution) => prepareDeviceForPhoto(
-            constraints, resolution, CaptureIntent.kStillCapture),
+            constraints, resolution, CaptureIntent.STILL_CAPTURE),
         fallbackMode: Mode.PHOTO,
       },
     };
@@ -273,7 +263,7 @@ export class Modes {
   }
 
   /**
-   * Gets factory to create `mode` capture object.
+   * Gets factory to create mode capture object.
    */
   getModeFactory(mode: Mode): ModeFactory {
     return this.allModes[mode].getCaptureFactory();
@@ -326,7 +316,7 @@ export class Modes {
   async updateMode(factory: ModeFactory): Promise<void> {
     if (this.current !== null) {
       await this.current.clear();
-      this.disableSaveMetadata();
+      await this.disableSaveMetadata();
     }
     this.current = factory.produce();
     await this.updateSaveMetadata();
@@ -338,7 +328,7 @@ export class Modes {
   async clear(): Promise<void> {
     if (this.current !== null) {
       await this.current.clear();
-      this.disableSaveMetadata();
+      await this.disableSaveMetadata();
     }
     this.captureParams = null;
     this.current = null;
@@ -346,17 +336,21 @@ export class Modes {
 
   /**
    * Checks whether to save image metadata or not.
+   *
+   * @return Promise for the operation.
    */
   private async updateSaveMetadata(): Promise<void> {
     if (expert.isEnabled(expert.ExpertOption.SAVE_METADATA)) {
       await this.enableSaveMetadata();
     } else {
-      this.disableSaveMetadata();
+      await this.disableSaveMetadata();
     }
   }
 
   /**
    * Enables save metadata of subsequent photos in the current mode.
+   *
+   * @return Promise for the operation.
    */
   private async enableSaveMetadata(): Promise<void> {
     if (this.current !== null) {
@@ -366,10 +360,12 @@ export class Modes {
 
   /**
    * Disables save metadata of subsequent photos in the current mode.
+   *
+   * @return Promise for the operation.
    */
-  private disableSaveMetadata(): void {
+  private async disableSaveMetadata(): Promise<void> {
     if (this.current !== null) {
-      this.current.removeMetadataObserver();
+      await this.current.removeMetadataObserver();
     }
   }
 }

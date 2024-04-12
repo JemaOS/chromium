@@ -15,9 +15,7 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/history_clusters/core/features.h"
-#include "components/history_clusters/core/history_clusters_prefs.h"
 #include "components/history_clusters/core/url_constants.h"
-#include "components/prefs/pref_service.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "ui/webui/resources/cr_components/history_clusters/history_clusters.mojom.h"
@@ -32,11 +30,8 @@ class HistoryClustersHandlerBrowserTest : public InProcessBrowserTest {
   ~HistoryClustersHandlerBrowserTest() override = default;
 
   void SetUpOnMainThread() override {
-    browser()->profile()->GetPrefs()->SetInteger(
-        history_clusters::prefs::kLastSelectedTab,
-        history_clusters::prefs::TabbedPage::GROUP);
     EXPECT_TRUE(ui_test_utils::NavigateToURL(
-        browser(), GURL(GetChromeUIHistoryClustersURL())));
+        browser(), GURL(kChromeUIHistoryClustersURL)));
     EXPECT_TRUE(content::WaitForLoadStop(
         browser()->tab_strip_model()->GetActiveWebContents()));
     handler_ = browser()
@@ -49,7 +44,7 @@ class HistoryClustersHandlerBrowserTest : public InProcessBrowserTest {
   }
 
  protected:
-  raw_ptr<HistoryClustersHandler, AcrossTasksDanglingUntriaged> handler_;
+  raw_ptr<HistoryClustersHandler, DanglingUntriaged> handler_;
 
  private:
   base::test::ScopedFeatureList feature_list_;

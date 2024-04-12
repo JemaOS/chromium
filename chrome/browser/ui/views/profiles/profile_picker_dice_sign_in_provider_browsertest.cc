@@ -60,10 +60,20 @@ Profile* GetContentsProfile(content::WebContents* contents) {
 
 }  // namespace
 
-class ProfilePickerDiceSignInProviderBrowserTest : public InProcessBrowserTest {
+class ProfilePickerDiceSignInProviderBrowserTest
+    : public InProcessBrowserTest,
+      public testing::WithParamInterface<bool> {
  public:
-  ProfilePickerDiceSignInProviderBrowserTest() = default;
+  ProfilePickerDiceSignInProviderBrowserTest() {
+    if (should_use_promo_gaia_flow()) {
+      scoped_feature_list_.InitAndEnableFeature(kPromoGaiaFlow);
+    } else {
+      scoped_feature_list_.InitAndDisableFeature(kPromoGaiaFlow);
+    }
+  }
   ~ProfilePickerDiceSignInProviderBrowserTest() override = default;
+
+  bool should_use_promo_gaia_flow() const { return GetParam(); }
 
   testing::NiceMock<MockHost>* host() { return &host_; }
 
@@ -72,7 +82,7 @@ class ProfilePickerDiceSignInProviderBrowserTest : public InProcessBrowserTest {
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_F(ProfilePickerDiceSignInProviderBrowserTest,
+IN_PROC_BROWSER_TEST_P(ProfilePickerDiceSignInProviderBrowserTest,
                        SwitchToSignInThenExit) {
   ProfileDeletionObserver observer;
   base::FilePath provider_profile_path;
@@ -95,7 +105,11 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerDiceSignInProviderBrowserTest,
           EXPECT_NE(browser()->profile()->GetPath(), provider_profile_path);
 
           EXPECT_TRUE(url.spec().starts_with(kExpectedSigninBaseUrl));
-          EXPECT_THAT(url.query(), HasSubstr("flow=promo"));
+          if (should_use_promo_gaia_flow()) {
+            EXPECT_THAT(url.query(), HasSubstr("flow=promo"));
+          } else {
+            EXPECT_THAT(url.query(), Not(HasSubstr("flow")));
+          }
 
           std::move(callback).Run();
         });
@@ -117,7 +131,7 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerDiceSignInProviderBrowserTest,
   EXPECT_EQ(entry, nullptr);
 }
 
-IN_PROC_BROWSER_TEST_F(ProfilePickerDiceSignInProviderBrowserTest,
+IN_PROC_BROWSER_TEST_P(ProfilePickerDiceSignInProviderBrowserTest,
                        SwitchToSignInThenExit_ForFirstRun) {
   base::FilePath provider_profile_path;
   base::RunLoop switch_finished_loop;
@@ -140,6 +154,8 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerDiceSignInProviderBrowserTest,
           EXPECT_EQ(browser()->profile()->GetPath(), provider_profile_path);
 
           EXPECT_TRUE(url.spec().starts_with(kExpectedSigninBaseUrl));
+
+          // Regardless of `kPromoGaiaFlow`, we use the promo flow.
           EXPECT_THAT(url.query(), HasSubstr("flow=promo"));
 
           std::move(callback).Run();
@@ -155,3 +171,11 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerDiceSignInProviderBrowserTest,
   // Since a profile has been passed in, the provider should not delete it.
   EXPECT_FALSE(IsProfileDirectoryMarkedForDeletion(provider_profile_path));
 }
+
+INSTANTIATE_TEST_SUITE_P(,
+                         ProfilePickerDiceSignInProviderBrowserTest,
+                         testing::Bool(),
+                         [](const ::testing::TestParamInfo<bool>& params) {
+                           return params.param ? "WithPromoGaiaFlow"
+                                               : "NoPromoGaiaFlow";
+                         });

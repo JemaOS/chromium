@@ -4,8 +4,7 @@
 
 #include "third_party/blink/renderer/core/annotation/annotation_selector.h"
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/annotation/text_annotation_selector.h"
 #include "third_party/blink/renderer/core/fragment_directive/text_fragment_selector.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -14,8 +13,8 @@
 namespace blink {
 
 namespace {
-std::optional<AnnotationSelector::GeneratorFunc>& GetGeneratorForTesting() {
-  DEFINE_STATIC_LOCAL(std::optional<AnnotationSelector::GeneratorFunc>,
+absl::optional<AnnotationSelector::GeneratorFunc>& GetGeneratorForTesting() {
+  DEFINE_STATIC_LOCAL(absl::optional<AnnotationSelector::GeneratorFunc>,
                       generator, ());
   return generator;
 }

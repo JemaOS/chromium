@@ -34,8 +34,7 @@ class TaskGroupSampler : public base::RefCountedThreadSafe<TaskGroupSampler> {
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC)
   using OnOpenFdCountCallback = base::RepeatingCallback<void(int)>;
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC)
-  using OnProcessPriorityCallback =
-      base::RepeatingCallback<void(base::Process::Priority)>;
+  using OnProcessPriorityCallback = base::RepeatingCallback<void(bool)>;
 
   TaskGroupSampler(
       base::Process process,
@@ -66,7 +65,7 @@ class TaskGroupSampler : public base::RefCountedThreadSafe<TaskGroupSampler> {
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC)
   int RefreshOpenFdCount();
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC)
-  base::Process::Priority RefreshProcessPriority();
+  bool RefreshProcessPriority();
 
   // The process that holds the handle that we own so that we can use it for
   // creating the ProcessMetrics.

@@ -5,7 +5,6 @@
 #include "ui/shell_dialogs/fake_select_file_dialog.h"
 
 #include "ui/shell_dialogs/select_file_policy.h"
-#include "ui/shell_dialogs/selected_file_info.h"
 #include "url/gurl.h"
 
 namespace ui {
@@ -33,10 +32,9 @@ void FakeSelectFileDialog::Factory::SetOpenCallback(
 
 // static
 FakeSelectFileDialog::Factory* FakeSelectFileDialog::RegisterFactory() {
-  auto factory = std::make_unique<Factory>();
-  Factory* result = factory.get();
-  ui::SelectFileDialog::SetFactory(std::move(factory));
-  return result;
+  Factory* factory = new Factory;
+  ui::SelectFileDialog::SetFactory(factory);
+  return factory;
 }
 
 FakeSelectFileDialog::FakeSelectFileDialog(
@@ -81,8 +79,7 @@ bool FakeSelectFileDialog::CallFileSelected(const base::FilePath& file_path,
          file_types_.extensions[index]) {
       if (base::FilePath(ext).MaybeAsASCII() == filter_text) {
         // FileSelected accepts a 1-based index.
-        listener_->FileSelected(SelectedFileInfo(file_path), index + 1,
-                                params_);
+        listener_->FileSelected(file_path, index + 1, params_);
         return true;
       }
     }
@@ -92,12 +89,7 @@ bool FakeSelectFileDialog::CallFileSelected(const base::FilePath& file_path,
 
 void FakeSelectFileDialog::CallMultiFilesSelected(
     const std::vector<base::FilePath>& files) {
-  listener_->MultiFilesSelected(FilePathListToSelectedFileInfoList(files),
-                                params_);
-}
-
-void FakeSelectFileDialog::ListenerDestroyed() {
-  listener_ = nullptr;
+  listener_->MultiFilesSelected(files, params_);
 }
 
 }  // namespace ui

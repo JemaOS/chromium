@@ -4,9 +4,8 @@
 
 package org.chromium.chrome.browser.metrics;
 
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.Callback;
+import org.chromium.base.annotations.NativeMethods;
 
 /**
  * Sets up communication with the VariationsService. This is primarily used for
@@ -20,7 +19,9 @@ public class VariationsSession {
         // No-op, but overridden by the internal subclass for extra logic.
     }
 
-    /** Triggers to the native VariationsService that the application has entered the foreground. */
+    /**
+     * Triggers to the native VariationsService that the application has entered the foreground.
+     */
     public void start() {
         // If |mRestrictModeFetchStarted| is true and |mRestrictMode| is null, then async
         // initialization is in progress and VariationsSessionJni.get().startVariationsSession()
@@ -30,14 +31,13 @@ public class VariationsSession {
         }
 
         mRestrictModeFetchStarted = true;
-        getRestrictModeValue(
-                new Callback<String>() {
-                    @Override
-                    public void onResult(String restrictMode) {
-                        VariationsSessionJni.get()
-                                .startVariationsSession(VariationsSession.this, mRestrictMode);
-                    }
-                });
+        getRestrictModeValue(new Callback<String>() {
+            @Override
+            public void onResult(String restrictMode) {
+                VariationsSessionJni.get().startVariationsSession(
+                        VariationsSession.this, mRestrictMode);
+            }
+        });
     }
 
     /**
@@ -54,15 +54,14 @@ public class VariationsSession {
             callback.onResult(mRestrictMode);
             return;
         }
-        getRestrictMode(
-                new Callback<String>() {
-                    @Override
-                    public void onResult(String restrictMode) {
-                        assert restrictMode != null;
-                        mRestrictMode = restrictMode;
-                        callback.onResult(restrictMode);
-                    }
-                });
+        getRestrictMode(new Callback<String>() {
+            @Override
+            public void onResult(String restrictMode) {
+                assert restrictMode != null;
+                mRestrictMode = restrictMode;
+                callback.onResult(restrictMode);
+            }
+        });
     }
 
     /**
@@ -84,7 +83,6 @@ public class VariationsSession {
     @NativeMethods
     interface Natives {
         void startVariationsSession(VariationsSession caller, String restrictMode);
-
         String getLatestCountry(VariationsSession caller);
     }
 }

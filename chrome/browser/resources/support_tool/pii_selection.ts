@@ -12,8 +12,7 @@ import './support_tool_shared.css.js';
 
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {BrowserProxy, PiiDataItem} from './browser_proxy.js';
-import {BrowserProxyImpl} from './browser_proxy.js';
+import {BrowserProxy, BrowserProxyImpl, PiiDataItem} from './browser_proxy.js';
 import {getTemplate} from './pii_selection.html.js';
 import {SupportToolPageMixin} from './support_tool_page_mixin.js';
 

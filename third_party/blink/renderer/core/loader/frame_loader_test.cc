@@ -17,7 +17,6 @@
 #include "third_party/blink/renderer/core/testing/mock_policy_container_host.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_request.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_test.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
 
@@ -130,7 +129,6 @@ class FrameLoaderTest : public testing::Test {
     url_test_helpers::UnregisterAllURLsAndClearMemoryCache();
   }
 
-  test::TaskEnvironment task_environment_;
   frame_test_helpers::WebViewHelper web_view_helper_;
 };
 
@@ -160,9 +158,7 @@ TEST_F(FrameLoaderTest, PolicyContainerIsStoredOnCommitNavigation) {
                 Vector<network::mojom::blink::ContentSecurityPolicyPtr>(),
                 /*anonymous=*/false, network::mojom::WebSandboxFlags::kNone,
                 network::mojom::blink::IPAddressSpace::kUnknown,
-                /*can_navigate_top_without_user_gesture=*/true,
-                /*allow_cross_origin_isolation_under_initial_empty_document=*/
-                false),
+                /*can_navigate_top_without_user_gesture=*/true),
             local_frame->DomWindow()->GetPolicyContainer()->GetPolicies());
 }
 

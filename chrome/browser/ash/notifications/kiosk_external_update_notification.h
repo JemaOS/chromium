@@ -32,7 +32,7 @@ class KioskExternalUpdateNotification {
   void Dismiss();
   void CreateAndShowNotificationView(const std::u16string& message);
 
-  raw_ptr<KioskExternalUpdateNotificationView>
+  raw_ptr<KioskExternalUpdateNotificationView, ExperimentalAsh>
       view_;  // Owned by views hierarchy.
 };
 

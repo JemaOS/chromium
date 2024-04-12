@@ -105,7 +105,9 @@ TEST_F(L10nUtilTest, GetUILanguageList) {
 TEST_F(L10nUtilTest, FindMostRelevantLocale) {
   base::Value::List available_locales;
   for (const char* locale : {"de", "fr", "en-GB"}) {
-    available_locales.Append(base::Value::Dict().Set("value", locale));
+    base::Value::Dict dict;
+    dict.Set("value", locale);
+    available_locales.Append(std::move(dict));
   }
 
   std::vector<std::string> most_relevant_language_codes;

@@ -20,8 +20,9 @@
 namespace ui {
 
 void AddCoreDefaultColorMixer(ColorProvider* provider,
-                              const ColorProviderKey& key) {
-  const bool dark_mode = key.color_mode == ColorProviderKey::ColorMode::kDark;
+                              const ColorProviderManager::Key& key) {
+  const bool dark_mode =
+      key.color_mode == ColorProviderManager::ColorMode::kDark;
   DVLOG(2) << "Adding CoreDefaultColorMixer to ColorProvider for "
            << (dark_mode ? "Dark" : "Light") << " window.";
   ColorMixer& mixer = provider->AddMixer();
@@ -72,6 +73,15 @@ void AddCoreDefaultColorMixer(ColorProvider* provider,
   mixer[kColorTextSelectionBackground] =
       AlphaBlend(kColorAccentWithGuaranteedContrastAtopPrimaryBackground,
                  kColorPrimaryBackground, gfx::kGoogleGreyAlpha500);
+  // change the background color of ime candidate_view here
+  // mixer[kJemaColorTextSelectionBackground] = AlphaBlend(
+  //     dark_mode ? gfx::kGoogleBlue500 : gfx::kGoogleBlue200,
+  //     dark_mode ? SkColorSetRGB(0x29, 0x2A, 0x2D) : SK_ColorWHITE,
+  //     gfx::kGoogleGreyAlpha700);
+  mixer[kJemaColorTextSelectionBackground] =
+      {dark_mode
+        ? SkColorSetRGB(0x3C, 0x8A, 0xFF)
+        : SkColorSetRGB(0xC2, 0xDB, 0xFF)};
   mixer[kColorTextSelectionForeground] =
       GetColorWithMaxContrast(kColorTextSelectionBackground);
 }

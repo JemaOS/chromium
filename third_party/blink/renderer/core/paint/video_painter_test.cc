@@ -8,14 +8,12 @@
 #include "cc/layers/layer.h"
 #include "components/paint_preview/common/paint_preview_tracker.h"
 #include "third_party/blink/public/platform/platform.h"
-#include "third_party/blink/renderer/core/css/css_default_style_sheets.h"
 #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
 #include "third_party/blink/renderer/core/paint/paint_controller_paint_test.h"
 #include "third_party/blink/renderer/platform/testing/empty_web_media_player.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 // Integration tests of video painting code (in CAP mode).
@@ -26,14 +24,14 @@ namespace {
 void ExtractLinks(const PaintRecord& record,
                   std::vector<std::pair<GURL, SkRect>>* links) {
   for (const cc::PaintOp& op : record) {
-    if (op.GetType() == cc::PaintOpType::kAnnotate) {
+    if (op.GetType() == cc::PaintOpType::Annotate) {
       const auto& annotate_op = static_cast<const cc::AnnotateOp&>(op);
       links->push_back(std::make_pair(
           GURL(std::string(
               reinterpret_cast<const char*>(annotate_op.data->data()),
               annotate_op.data->size())),
           annotate_op.rect));
-    } else if (op.GetType() == cc::PaintOpType::kDrawRecord) {
+    } else if (op.GetType() == cc::PaintOpType::DrawRecord) {
       const auto& record_op = static_cast<const cc::DrawRecordOp&>(op);
       ExtractLinks(record_op.record, links);
     }
@@ -43,17 +41,17 @@ void ExtractLinks(const PaintRecord& record,
 size_t CountImagesOfType(const PaintRecord& record, cc::ImageType image_type) {
   size_t count = 0;
   for (const cc::PaintOp& op : record) {
-    if (op.GetType() == cc::PaintOpType::kDrawImage) {
+    if (op.GetType() == cc::PaintOpType::DrawImage) {
       const auto& image_op = static_cast<const cc::DrawImageOp&>(op);
       if (image_op.image.GetImageHeaderMetadata()->image_type == image_type) {
         ++count;
       }
-    } else if (op.GetType() == cc::PaintOpType::kDrawImageRect) {
+    } else if (op.GetType() == cc::PaintOpType::DrawImageRect) {
       const auto& image_op = static_cast<const cc::DrawImageRectOp&>(op);
       if (image_op.image.GetImageHeaderMetadata()->image_type == image_type) {
         ++count;
       }
-    } else if (op.GetType() == cc::PaintOpType::kDrawRecord) {
+    } else if (op.GetType() == cc::PaintOpType::DrawRecord) {
       const auto& record_op = static_cast<const cc::DrawRecordOp&>(op);
       count += CountImagesOfType(record_op.record, image_type);
     }
@@ -146,7 +144,6 @@ class MockWebMediaPlayer : public StubWebMediaPlayer {
   explicit MockWebMediaPlayer(WebMediaPlayerClient* client)
       : StubWebMediaPlayer(client) {}
   MOCK_CONST_METHOD0(HasAvailableVideoFrame, bool());
-  MOCK_CONST_METHOD0(HasReadableVideoFrame, bool());
   MOCK_METHOD3(Paint,
                void(cc::PaintCanvas*, const gfx::Rect&, cc::PaintFlags&));
 };
@@ -172,10 +169,6 @@ class TestWebFrameClientImpl : public frame_test_helpers::TestWebFrameClient {
 class VideoPaintPreviewTest : public testing::Test,
                               public PaintTestConfigurations {
  public:
-  ~VideoPaintPreviewTest() {
-    CSSDefaultStyleSheets::Instance().PrepareForLeakDetection();
-  }
-
   void SetUp() override {
     web_view_helper_.Initialize(&web_frame_client_);
 
@@ -236,8 +229,6 @@ class VideoPaintPreviewTest : public testing::Test,
   }
 
  private:
-  test::TaskEnvironment task_environment_;
-
   LocalFrame* GetFrame() { return GetLocalMainFrame().GetFrame(); }
 
   frame_test_helpers::WebViewHelper web_view_helper_;

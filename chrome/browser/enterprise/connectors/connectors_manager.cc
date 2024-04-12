@@ -16,27 +16,7 @@
 #include "components/prefs/pref_service.h"
 #include "url/gurl.h"
 
-#if BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-#include "chrome/browser/enterprise/connectors/analysis/content_analysis_sdk_manager.h"  // nogncheck
-#include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_list.h"
-#include "chrome/browser/ui/tabs/tab_strip_model.h"
-#endif  // BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-
 namespace enterprise_connectors {
-
-#if BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-namespace {
-
-static constexpr enterprise_connectors::AnalysisConnector
-    kLocalAnalysisConnectors[] = {
-        AnalysisConnector::BULK_DATA_ENTRY,
-        AnalysisConnector::FILE_ATTACHED,
-        AnalysisConnector::PRINT,
-};
-
-}  // namespace
-#endif  // BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
 
 ConnectorsManager::ConnectorsManager(
     std::unique_ptr<BrowserCrashEventRouter> browser_crash_event_router,
@@ -50,36 +30,12 @@ ConnectorsManager::ConnectorsManager(
           std::move(extension_install_event_router)) {
   DCHECK(browser_crash_event_router_) << "Crash event router is null";
   DCHECK(extension_install_event_router_) << "Extension event router is null";
-
-#if BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-  // Start observing tab strip models for all browsers.
-  BrowserList* browser_list = BrowserList::GetInstance();
-  for (Browser* browser : *browser_list) {
-    OnBrowserAdded(browser);
-  }
-  browser_list->AddObserver(this);
-#endif  // BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-
-  if (observe_prefs) {
+  if (observe_prefs)
     StartObservingPrefs(pref_service);
-#if BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-    MaybeCloseLocalContentAnalysisAgentConnection();
-#endif
-  }
   extension_install_event_router_->StartObserving();
 }
 
-#if BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-ConnectorsManager::~ConnectorsManager() {
-  BrowserList* browser_list = BrowserList::GetInstance();
-  browser_list->RemoveObserver(this);
-  for (Browser* browser : *browser_list) {
-    OnBrowserRemoved(browser);
-  }
-}
-#else
 ConnectorsManager::~ConnectorsManager() = default;
-#endif  // BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
 
 bool ConnectorsManager::IsConnectorEnabled(AnalysisConnector connector) const {
   if (analysis_connector_settings_.count(connector) == 0 &&
@@ -87,18 +43,17 @@ bool ConnectorsManager::IsConnectorEnabled(AnalysisConnector connector) const {
     CacheAnalysisConnectorPolicy(connector);
   }
 
-  return analysis_connector_settings_.count(connector);
-}
-
-#if BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-bool ConnectorsManager::IsConnectorEnabledForLocalAgent(
-    AnalysisConnector connector) const {
-  if (!IsConnectorEnabled(connector)) {
+  if (analysis_connector_settings_.count(connector) != 1) {
     return false;
   }
-  return analysis_connector_settings_.at(connector)[0].is_local_analysis();
+
+  // If the connector is for local content analysis, make sure it is also
+  // enabled by flags.  For now, only one connector is supported at a time.
+  const auto& settings = analysis_connector_settings_.at(connector)[0];
+
+  return settings.is_cloud_analysis() ||
+         base::FeatureList::IsEnabled(kLocalContentAnalysisEnabled);
 }
-#endif  // BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
 
 bool ConnectorsManager::IsConnectorEnabled(ReportingConnector connector) const {
   if (reporting_connector_settings_.count(connector) == 1)
@@ -108,10 +63,10 @@ bool ConnectorsManager::IsConnectorEnabled(ReportingConnector connector) const {
   return pref && prefs()->HasPrefPath(pref);
 }
 
-std::optional<ReportingSettings> ConnectorsManager::GetReportingSettings(
+absl::optional<ReportingSettings> ConnectorsManager::GetReportingSettings(
     ReportingConnector connector) {
   if (!IsConnectorEnabled(connector))
-    return std::nullopt;
+    return absl::nullopt;
 
   if (reporting_connector_settings_.count(connector) == 0)
     CacheReportingConnectorPolicy(connector);
@@ -119,18 +74,18 @@ std::optional<ReportingSettings> ConnectorsManager::GetReportingSettings(
   // If the connector is still not in memory, it means the pref is set to an
   // empty list or that it is not a list.
   if (reporting_connector_settings_.count(connector) == 0)
-    return std::nullopt;
+    return absl::nullopt;
 
   // While multiple services can be set by the connector policies, only the
   // first one is considered for now.
   return reporting_connector_settings_[connector][0].GetReportingSettings();
 }
 
-std::optional<AnalysisSettings> ConnectorsManager::GetAnalysisSettings(
+absl::optional<AnalysisSettings> ConnectorsManager::GetAnalysisSettings(
     const GURL& url,
     AnalysisConnector connector) {
   if (!IsConnectorEnabled(connector))
-    return std::nullopt;
+    return absl::nullopt;
 
   if (analysis_connector_settings_.count(connector) == 0)
     CacheAnalysisConnectorPolicy(connector);
@@ -138,7 +93,7 @@ std::optional<AnalysisSettings> ConnectorsManager::GetAnalysisSettings(
   // If the connector is still not in memory, it means the pref is set to an
   // empty list or that it is not a list.
   if (analysis_connector_settings_.count(connector) == 0)
-    return std::nullopt;
+    return absl::nullopt;
 
   // While multiple services can be set by the connector policies, only the
   // first one is considered for now.
@@ -146,13 +101,13 @@ std::optional<AnalysisSettings> ConnectorsManager::GetAnalysisSettings(
 }
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-std::optional<AnalysisSettings> ConnectorsManager::GetAnalysisSettings(
+absl::optional<AnalysisSettings> ConnectorsManager::GetAnalysisSettings(
     content::BrowserContext* context,
     const storage::FileSystemURL& source_url,
     const storage::FileSystemURL& destination_url,
     AnalysisConnector connector) {
   if (!IsConnectorEnabled(connector))
-    return std::nullopt;
+    return absl::nullopt;
 
   if (analysis_connector_settings_.count(connector) == 0)
     CacheAnalysisConnectorPolicy(connector);
@@ -160,7 +115,7 @@ std::optional<AnalysisSettings> ConnectorsManager::GetAnalysisSettings(
   // If the connector is still not in memory, it means the pref is set to an
   // empty list or that it is not a list.
   if (analysis_connector_settings_.count(connector) == 0)
-    return std::nullopt;
+    return absl::nullopt;
 
   // While multiple services can be set by the connector policies, only the
   // first one is considered for now.
@@ -169,39 +124,7 @@ std::optional<AnalysisSettings> ConnectorsManager::GetAnalysisSettings(
 }
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
-#if BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-void ConnectorsManager::OnBrowserAdded(Browser* browser) {
-  browser->tab_strip_model()->AddObserver(this);
-}
-
-void ConnectorsManager::OnBrowserRemoved(Browser* browser) {
-  browser->tab_strip_model()->RemoveObserver(this);
-}
-
-void ConnectorsManager::OnTabStripModelChanged(
-    TabStripModel* tab_strip_model,
-    const TabStripModelChange& change,
-    const TabStripSelectionChange& selection) {
-  // Checking only when new tab is open.
-  if (change.type() != TabStripModelChange::kInserted) {
-    return;
-  }
-
-  for (auto connector : kLocalAnalysisConnectors) {
-    if (!IsConnectorEnabledForLocalAgent(connector)) {
-      continue;
-    }
-
-    // Send a connection event to the local agent. If all the enabled connectors
-    // are configured to use the same agent, the same connection is reused here.
-    auto configs = GetAnalysisServiceConfigs(connector);
-    enterprise_connectors::ContentAnalysisSdkManager::Get()->GetClient(
-        {configs[0]->local_path, configs[0]->user_specific});
-  }
-}
-#endif  // BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-
-std::optional<AnalysisSettings>
+absl::optional<AnalysisSettings>
 ConnectorsManager::GetAnalysisSettingsFromConnectorPolicy(
     const GURL& url,
     AnalysisConnector connector) {
@@ -211,7 +134,7 @@ ConnectorsManager::GetAnalysisSettingsFromConnectorPolicy(
   // If the connector is still not in memory, it means the pref is set to an
   // empty list or that it is not a list.
   if (analysis_connector_settings_.count(connector) == 0)
-    return std::nullopt;
+    return absl::nullopt;
 
   // While multiple services can be set by the connector policies, only the
   // first one is considered for now.
@@ -230,27 +153,6 @@ void ConnectorsManager::CacheAnalysisConnectorPolicy(
   for (const base::Value& service_settings : policy_value)
     analysis_connector_settings_[connector].emplace_back(
         service_settings, *service_provider_config_);
-}
-
-#if BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-void ConnectorsManager::MaybeCloseLocalContentAnalysisAgentConnection() {
-  for (auto connector : kLocalAnalysisConnectors) {
-    if (IsConnectorEnabledForLocalAgent(connector)) {
-      // Return early because at lease one access point is enabled for local
-      // agent.
-      return;
-    }
-  }
-  // Delete connection with local agents when no access point is enabled.
-  ContentAnalysisSdkManager::Get()->ResetAllClients();
-}
-#endif  // BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-
-void ConnectorsManager::OnPrefChanged(AnalysisConnector connector) {
-  CacheAnalysisConnectorPolicy(connector);
-#if BUILDFLAG(ENTERPRISE_LOCAL_CONTENT_ANALYSIS)
-  MaybeCloseLocalContentAnalysisAgentConnection();
-#endif
 }
 
 void ConnectorsManager::CacheReportingConnectorPolicy(
@@ -282,7 +184,7 @@ bool ConnectorsManager::DelayUntilVerdict(AnalysisConnector connector) {
   return false;
 }
 
-std::optional<std::u16string> ConnectorsManager::GetCustomMessage(
+absl::optional<std::u16string> ConnectorsManager::GetCustomMessage(
     AnalysisConnector connector,
     const std::string& tag) {
   if (IsConnectorEnabled(connector)) {
@@ -295,10 +197,10 @@ std::optional<std::u16string> ConnectorsManager::GetCustomMessage(
           tag);
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<GURL> ConnectorsManager::GetLearnMoreUrl(
+absl::optional<GURL> ConnectorsManager::GetLearnMoreUrl(
     AnalysisConnector connector,
     const std::string& tag) {
   if (IsConnectorEnabled(connector)) {
@@ -311,7 +213,7 @@ std::optional<GURL> ConnectorsManager::GetLearnMoreUrl(
           tag);
     }
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool ConnectorsManager::GetBypassJustificationRequired(
@@ -407,8 +309,9 @@ void ConnectorsManager::StartObservingPref(AnalysisConnector connector) {
   DCHECK(pref);
   if (!pref_change_registrar_.IsObserved(pref)) {
     pref_change_registrar_.Add(
-        pref, base::BindRepeating(&ConnectorsManager::OnPrefChanged,
-                                  base::Unretained(this), connector));
+        pref,
+        base::BindRepeating(&ConnectorsManager::CacheAnalysisConnectorPolicy,
+                            base::Unretained(this), connector));
   }
 }
 

@@ -5,13 +5,25 @@
 /** @fileoverview Suite of tests for extensions-detail-view. */
 import 'chrome://extensions/extensions.js';
 
-import type {ErrorPageDelegate, ExtensionsErrorPageElement} from 'chrome://extensions/extensions.js';
+import {ErrorPageDelegate, ExtensionsErrorPageElement} from 'chrome://extensions/extensions.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {isChildVisible} from 'chrome://webui-test/test_util.js';
 
 import {ClickMock, createExtensionInfo} from './test_util.js';
+
+const extension_error_page_tests = {
+  suiteName: 'ExtensionErrorPageTest',
+  TestNames: {
+    Layout: 'layout',
+    CodeSection: 'code section',
+    ErrorSelection: 'error selection',
+    InvalidUrl: 'invalid url',
+  },
+};
+
+Object.assign(window, {extension_error_page_tests: extension_error_page_tests});
 
 class MockErrorPageDelegate extends ClickMock implements ErrorPageDelegate {
   requestFileSourceArgs: chrome.developerPrivate.RequestFileSourceProperties|
@@ -31,7 +43,7 @@ class MockErrorPageDelegate extends ClickMock implements ErrorPageDelegate {
   }
 }
 
-suite('ExtensionErrorPageTest', function() {
+suite(extension_error_page_tests.suiteName, function() {
   let extensionData: chrome.developerPrivate.ExtensionInfo;
 
   let errorPage: ExtensionsErrorPageElement;
@@ -82,7 +94,7 @@ suite('ExtensionErrorPageTest', function() {
     document.body.appendChild(errorPage);
   });
 
-  test('Layout', function() {
+  test(extension_error_page_tests.TestNames.Layout, function() {
     flush();
 
     const testIsVisible = isChildVisible.bind(null, errorPage);
@@ -124,7 +136,7 @@ suite('ExtensionErrorPageTest', function() {
   });
 
   test(
-      'CodeSection', function(done) {
+      extension_error_page_tests.TestNames.CodeSection, function(done) {
         flush();
 
         assertTrue(!!mockDelegate.requestFileSourceArgs);
@@ -152,7 +164,7 @@ suite('ExtensionErrorPageTest', function() {
         });
       });
 
-  test('ErrorSelection', function() {
+  test(extension_error_page_tests.TestNames.ErrorSelection, function() {
     const nextRuntimeError = Object.assign(
         {
           source: 'chrome-extension://' + extensionId + '/other_source.html',
@@ -212,7 +224,7 @@ suite('ExtensionErrorPageTest', function() {
   // Tests that the element can still be shown with an invalid URL. Regression
   // test for crbug.com/1257170, as without the fix, this test would simply
   // crash when the page tries and fails to create a URL object.
-  test('InvalidUrl', function() {
+  test(extension_error_page_tests.TestNames.InvalidUrl, function() {
     const newRuntimeError = Object.assign(
         {
           severity: chrome.developerPrivate.ErrorLevel.ERROR,

@@ -70,10 +70,10 @@ bool TestCustomElementDefinition::RunConstructor(Element& element) {
       GetCustomElementConstructionStack(GetRegistry().GetOwnerWindow(),
                                         constructor_->CallbackObject());
   if (!construction_stack || construction_stack->empty() ||
-      construction_stack->back().element != &element) {
+      construction_stack->back() != &element) {
     return false;
   }
-  construction_stack->back() = CustomElementConstructionStackEntry();
+  construction_stack->back().Clear();
   return true;
 }
 

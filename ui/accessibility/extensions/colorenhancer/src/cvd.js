@@ -28,10 +28,10 @@ class CVD {
    */
   static cssContent_ = `
 html[cvd="0"] {
-  filter: url('#cvd_extension_0');
+  -webkit-filter: url('#cvd_extension_0');
 }
 html[cvd="1"] {
-  filter: url('#cvd_extension_1');
+  -webkit-filter: url('#cvd_extension_1');
 }
 `;
 

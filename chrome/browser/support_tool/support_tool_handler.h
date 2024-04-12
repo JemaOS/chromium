@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_SUPPORT_TOOL_SUPPORT_TOOL_HANDLER_H_
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <vector>
 
@@ -23,6 +22,7 @@
 #include "components/feedback/redaction_tool/pii_types.h"
 #include "components/feedback/redaction_tool/redaction_tool.h"
 #include "components/feedback/system_logs/system_logs_source.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using SupportToolDataCollectedCallback =
     base::OnceCallback<void(const PIIMap&, std::set<SupportToolError>)>;
@@ -106,16 +106,12 @@ class SupportToolHandler {
       base::FilePath target_path,
       SupportToolDataExportedCallback on_data_exported_callback);
 
-  // Returns reference to `data_collectors_` for testing.
-  const std::vector<std::unique_ptr<DataCollector>>&
-  GetDataCollectorsForTesting();
-
  private:
   // OnDataCollected is called when a single DataCollector finished collecting
   // data. Runs `barrier_closure` to make the handler wait until all
   // DataCollectors finish collecting.
   void OnDataCollected(base::RepeatingClosure barrier_closure,
-                       std::optional<SupportToolError> error);
+                       absl::optional<SupportToolError> error);
 
   // OnAllDataCollected is called by a BarrierClosure when all DataCollectors
   // finish collecting data. Returns the detected PII by running
@@ -139,7 +135,7 @@ class SupportToolHandler {
   // exporting data. Runs `barrier_closure` to make the handler wait until all
   // DataCollectors finish collecting.
   void OnDataCollectorDoneExporting(base::RepeatingClosure barrier_closure,
-                                    std::optional<SupportToolError> error);
+                                    absl::optional<SupportToolError> error);
 
   // OnAllDataCollectorsDoneExporting is called by a BarrierClosure when all
   // DataCollectors finish exporting data to their given filepaths. Calls

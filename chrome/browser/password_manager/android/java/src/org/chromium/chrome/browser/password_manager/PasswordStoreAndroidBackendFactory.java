@@ -5,8 +5,8 @@
 package org.chromium.chrome.browser.password_manager;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.ResettersForTesting;
 import org.chromium.chrome.browser.password_manager.PasswordStoreAndroidBackend.BackendException;
 
 /**
@@ -54,15 +54,13 @@ public abstract class PasswordStoreAndroidBackendFactory {
      * @return An implementation of the {@link PasswordStoreAndroidBackend} if one exists.
      */
     protected PasswordStoreAndroidBackend doCreateBackend() throws BackendException {
-        throw new BackendException(
-                "Downstream implementation is not present.",
+        throw new BackendException("Downstream implementation is not present.",
                 AndroidBackendErrorType.BACKEND_NOT_AVAILABLE);
     }
 
+    @VisibleForTesting
     public static void setFactoryInstanceForTesting(
             @Nullable PasswordStoreAndroidBackendFactory factory) {
-        var oldValue = sInstance;
         sInstance = factory;
-        ResettersForTesting.register(() -> sInstance = oldValue);
     }
 }

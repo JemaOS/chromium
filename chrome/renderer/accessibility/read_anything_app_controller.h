@@ -11,18 +11,16 @@
 #include <string>
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
 #include "chrome/common/accessibility/read_anything.mojom.h"
 #include "chrome/renderer/accessibility/read_anything_app_model.h"
+#include "components/services/screen_ai/buildflags/buildflags.h"
 #include "gin/wrappable.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
-#include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/accessibility/ax_node_id_forward.h"
-#include "ui/accessibility/ax_node_position.h"
-#include "ui/accessibility/ax_position.h"
+#include "ui/accessibility/ax_tree_observer.h"
 #include "ui/accessibility/ax_tree_update_forward.h"
 
 namespace content {
@@ -42,8 +40,7 @@ class ReadAnythingAppControllerTest;
 // ReadAnythingAppController
 //
 //  A class that controls the Read Anything WebUI app. It serves two purposes:
-//  1. Communicate with ReadAnythingUntrustedPageHandler (written in c++) via
-//  mojom.
+//  1. Communicate with ReadAnythingPageHandler (written in c++) via mojom.
 //  2. Communicate with ReadAnythingApp (written in ts) via gin bindings.
 //  The ReadAnythingAppController unserializes the AXTreeUpdate and exposes
 //  methods on it to the ts resource for accessing information about the AXTree.
@@ -61,7 +58,8 @@ class ReadAnythingAppControllerTest;
 //
 class ReadAnythingAppController
     : public gin::Wrappable<ReadAnythingAppController>,
-      public read_anything::mojom::UntrustedPage {
+      public read_anything::mojom::Page,
+      public ui::AXTreeObserver {
  public:
   static gin::WrapperInfo kWrapperInfo;
 
@@ -69,7 +67,7 @@ class ReadAnythingAppController
   ReadAnythingAppController& operator=(const ReadAnythingAppController&) =
       delete;
 
-  // Installs v8 context for Read Anything and adds chrome.readingMode binding
+  // Installs v8 context for Read Anything and adds chrome.readAnything binding
   // to page.
   static ReadAnythingAppController* Install(content::RenderFrame* render_frame);
 
@@ -83,29 +81,26 @@ class ReadAnythingAppController
   gin::ObjectTemplateBuilder GetObjectTemplateBuilder(
       v8::Isolate* isolate) override;
 
-  // read_anything::mojom::UntrustedPage:
+  // read_anything::mojom::Page:
   void AccessibilityEventReceived(
       const ui::AXTreeID& tree_id,
       const std::vector<ui::AXTreeUpdate>& updates,
       const std::vector<ui::AXEvent>& events) override;
   void OnActiveAXTreeIDChanged(const ui::AXTreeID& tree_id,
-                               ukm::SourceId ukm_source_id,
-                               bool is_pdf) override;
+                               ukm::SourceId ukm_source_id) override;
   void OnAXTreeDestroyed(const ui::AXTreeID& tree_id) override;
   void OnThemeChanged(
       read_anything::mojom::ReadAnythingThemePtr new_theme) override;
-  void OnSettingsRestoredFromPrefs(
-      read_anything::mojom::LineSpacing line_spacing,
-      read_anything::mojom::LetterSpacing letter_spacing,
-      const std::string& font,
-      double font_size,
-      bool links_enabled,
-      read_anything::mojom::Colors color,
-      double speech_rate,
-      base::Value::Dict voices,
-      read_anything::mojom::HighlightGranularity granularity) override;
-  void SetDefaultLanguageCode(const std::string& code) override;
+#if BUILDFLAG(ENABLE_SCREEN_AI_SERVICE)
   void ScreenAIServiceReady() override;
+#endif
+
+  // ui::AXTreeObserver:
+  void OnAtomicUpdateFinished(ui::AXTree* tree,
+                              bool root_changed,
+                              const std::vector<Change>& changes) override;
+  // TODO(crbug.com/1266555): Implement OnNodeWillBeDeleted to capture the
+  // deletion of child trees.
 
   // gin templates:
   ui::AXNodeID RootId() const;
@@ -116,148 +111,40 @@ class ReadAnythingAppController
   SkColor BackgroundColor() const;
   std::string FontName() const;
   float FontSize() const;
-  bool LinksEnabled() const;
-  float SpeechRate() const;
-  void OnFontSizeChanged(bool increase);
-  void OnFontSizeReset();
-  void OnLinksEnabledToggled();
   SkColor ForegroundColor() const;
   float LetterSpacing() const;
   float LineSpacing() const;
-  int ColorTheme() const;
-  int HighlightGranularity() const;
-  int HighlightOn() const;
-  int StandardLineSpacing() const;
-  int LooseLineSpacing() const;
-  int VeryLooseLineSpacing() const;
-  int StandardLetterSpacing() const;
-  int WideLetterSpacing() const;
-  int VeryWideLetterSpacing() const;
-  int DefaultTheme() const;
-  int LightTheme() const;
-  int DarkTheme() const;
-  int YellowTheme() const;
-  int BlueTheme() const;
-  std::string GetStoredVoice(const std::string& lang) const;
   std::vector<ui::AXNodeID> GetChildren(ui::AXNodeID ax_node_id) const;
-  std::string GetDataFontCss(ui::AXNodeID ax_node_id) const;
   std::string GetHtmlTag(ui::AXNodeID ax_node_id) const;
   std::string GetLanguage(ui::AXNodeID ax_node_id) const;
-  std::string GetNameAttributeText(ui::AXNode* ax_node) const;
   std::string GetTextContent(ui::AXNodeID ax_node_id) const;
   std::string GetTextDirection(ui::AXNodeID ax_node_id) const;
   std::string GetUrl(ui::AXNodeID ax_node_id) const;
-  std::string GetAltText(ui::AXNodeID ax_node_id) const;
   bool ShouldBold(ui::AXNodeID ax_node_id) const;
   bool IsOverline(ui::AXNodeID ax_node_id) const;
-  bool IsLeafNode(ui::AXNodeID ax_node_id) const;
   void OnConnected();
-  void OnCopy() const;
-  void OnScroll(bool on_selection) const;
   void OnLinkClicked(ui::AXNodeID ax_node_id) const;
   void OnSelectionChange(ui::AXNodeID anchor_node_id,
                          int anchor_offset,
                          ui::AXNodeID focus_node_id,
                          int focus_offset) const;
-  void OnCollapseSelection() const;
-  bool IsGoogleDocs() const;
-  bool IsWebUIToolbarEnabled() const;
-  bool IsReadAloudEnabled() const;
-  void OnStandardLineSpacing();
-  void OnLooseLineSpacing();
-  void OnVeryLooseLineSpacing();
-  void OnStandardLetterSpacing();
-  void OnWideLetterSpacing();
-  void OnVeryWideLetterSpacing();
-  void OnLightTheme();
-  void OnDefaultTheme();
-  void OnDarkTheme();
-  void OnYellowTheme();
-  void OnBlueTheme();
-  void OnFontChange(const std::string& font);
-  void OnSpeechRateChange(double rate);
-  void OnVoiceChange(const std::string& voice, const std::string& lang);
-  void TurnedHighlightOn();
-  void TurnedHighlightOff();
-  double GetLineSpacingValue(int line_spacing) const;
-  double GetLetterSpacingValue(int letter_spacing) const;
-  std::vector<std::string> GetSupportedFonts() const;
-  void RequestImageDataUrl(ui::AXNodeID node_id) const;
-  std::string GetImageDataUrl(ui::AXNodeID node_id) const;
-
-  // The language code that should be used to determine which voices are
-  // supported for speech.
-  const std::string& GetLanguageCodeForSpeech() const;
-
-  const std::string GetDisplayNameForLocale(
-      const std::string& locale,
-      const std::string& display_locale) const;
 
   void Distill();
   void Draw();
   void DrawSelection();
 
-  void ExecuteJavaScript(const std::string& script);
+  void UnserializeUpdates(std::vector<ui::AXTreeUpdate> updates,
+                          const ui::AXTreeID& tree_id);
 
   // Called when distillation has completed.
   void OnAXTreeDistilled(const ui::AXTreeID& tree_id,
                          const std::vector<ui::AXNodeID>& content_node_ids);
 
-  // Returns true if a draw occured.
-  bool PostProcessSelection();
+  void PostProcessSelection();
 
-  // Signals that the side panel has finished loading and it's safe to show
-  // the UI to avoid loading artifacts.
-  void ShouldShowUI();
-
-  // Inits the AXPosition with a starting node.
-  // TODO(crbug.com/1474951): We should be able to use AXPosition in a way
-  // where this isn't needed.
-  void InitAXPositionWithNode(const ui::AXNodeID& starting_node_id);
-
-  // Returns a list of AXNodeIds representing the next nodes that should be
-  // spoken and highlighted with Read Aloud.
-  // This defaults to returning the first granularity until
-  // MovePositionTo<Next,Previous>Granularity() moves the position.
-  // If the the current processed_granularity_index_ has not been calculated
-  // yet, GetNextNodes() is called which updates the AXPosition.
-  // GetCurrentTextStartIndex and GetCurrentTextEndIndex called with an AXNodeID
-  // return by GetCurrentText will return the starting text and ending text
-  // indices for specific text that should be referenced within the node.
-  std::vector<ui::AXNodeID> GetCurrentText();
-
-  // TODO(crbug.com/1474951): Random access to processed nodes might not always
-  // work (e.g. if we're switching granularities or jumping to a specific node),
-  // so we should implement a method of retrieving previous text from
-  // AXPosition.
-
-  // Increments the processed_granularity_index_, updating ReadAloud's state of
-  // the current granularity to refer to the next granularity. The current
-  // behavior allows the client to increment past the end of the page's content.
-  void MovePositionToNextGranularity();
-
-  // Decrements the processed_granularity_index_,updating ReadAloud's state of
-  // the current granularity to refer to the previous granularity
-  void MovePositionToPreviousGranularity();
-
-  int GetAccessibleBoundary(const std::u16string& text, int max_text_length);
-
-  // Returns the Read Aloud starting text index for a node. For example,
-  // if the entire text of the node should be read by Read Aloud at a particular
-  // moment, this will return 0. Returns -1 if the node isn't in the current
-  // segment.
-  int GetCurrentTextStartIndex(ui::AXNodeID node_id);
-
-  // Returns the Read Aloud ending text index for a node. For example,
-  // if the entire text of the node should be read by Read Aloud at a particular
-  // moment, this will return the length of the node's text. Returns -1 if the
-  // node isn't in the current segment.
-  int GetCurrentTextEndIndex(ui::AXNodeID node_id);
-
-  // SetContentForTesting, SetThemeForTesting, and SetLanguageForTesting are
-  // used by ReadAnythingAppTest and thus need to be kept in
-  // ReadAnythingAppController even though ReadAnythingAppControllerBrowserTest
-  // is friended.
+  // SetContentForTesting and SetThemeForTesting are used by
+  // ReadAnythingAppTest and thus need to be kept in ReadAnythingAppController
+  // even though ReadAnythingAppControllerBrowserTest is friended.
   // Snapshot_lite is a data structure which resembles an
   // AXTreeUpdate. E.g.:
   //   const axTree = {
@@ -279,33 +166,19 @@ class ReadAnythingAppController
                             std::vector<ui::AXNodeID> content_node_ids);
   void SetThemeForTesting(const std::string& font_name,
                           float font_size,
-                          bool links_enabled,
                           SkColor foreground_color,
                           SkColor background_color,
                           int line_spacing,
                           int letter_spacing);
-  void SetLanguageForTesting(const std::string& language_code);
 
-  content::RenderFrame* GetRenderFrame();
-
-  const blink::LocalFrameToken frame_token_;
+  content::RenderFrame* render_frame_;
   std::unique_ptr<AXTreeDistiller> distiller_;
-  mojo::Remote<read_anything::mojom::UntrustedPageHandlerFactory>
-      page_handler_factory_;
-  mojo::Remote<read_anything::mojom::UntrustedPageHandler> page_handler_;
-  mojo::Receiver<read_anything::mojom::UntrustedPage> receiver_{this};
+  mojo::Remote<read_anything::mojom::PageHandlerFactory> page_handler_factory_;
+  mojo::Remote<read_anything::mojom::PageHandler> page_handler_;
+  mojo::Receiver<read_anything::mojom::Page> receiver_{this};
 
   // Model that holds state for this controller.
   ReadAnythingAppModel model_;
-
-  // For metrics logging
-
-  // The time when the renderer constructor is first triggered.
-  base::TimeTicks renderer_load_triggered_time_ms_;
-
-  // The time when the WebUI connects i.e. when onConnected is called.
-  base::TimeTicks web_ui_connected_time_ms_;
-
   base::WeakPtrFactory<ReadAnythingAppController> weak_ptr_factory_{this};
 };
 

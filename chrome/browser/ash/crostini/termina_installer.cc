@@ -24,8 +24,14 @@
 #include "content/public/browser/network_service_instance.h"
 #include "services/network/public/cpp/network_connection_tracker.h"
 #include "third_party/cros_system_api/dbus/service_constants.h"
+#include "base/files/file_util.h"
 
 namespace crostini {
+
+namespace {
+  const base::FilePath::CharType kJemaminaImageDirName[] =
+    FILE_PATH_LITERAL("/run/imageloader/cros-termina/99999.0.0");
+}  // namespace
 
 TerminaInstaller::TerminaInstaller() = default;
 TerminaInstaller::~TerminaInstaller() = default;
@@ -34,13 +40,11 @@ void TerminaInstaller::CancelInstall() {
   // TODO(b/277835995): Tests demand concurrent installations despite that they
   // need to be mass cancelled here (which is probably unintended). Consider
   // switching to CachedCallback or similar.
-  for (auto& installation : installations_) {
-    installation->CancelGracefully();
-  }
+  installations_.clear();
 }
 
-void TerminaInstaller::Install(
-    base::OnceCallback<void(InstallResult)> callback) {
+void TerminaInstaller::Install(base::OnceCallback<void(InstallResult)> callback,
+                               bool is_initial_install) {
   // The Remove*IfPresent methods require an unowned UninstallResult pointer to
   // record their success/failure state. This has to be unowned so that in
   // Uninstall it can be accessed further down the callback chain, but here we
@@ -52,11 +56,24 @@ void TerminaInstaller::Install(
       [](std::unique_ptr<UninstallResult> ptr) {}, std::move(ptr));
   RemoveComponentIfPresent(std::move(remove_callback), uninstall_result_ptr);
 
+  if (!base::IsDirectoryEmpty(base::FilePath(kJemaminaImageDirName))) {
+    InstallJemamina(std::move(callback));
+    return;
+  }
+  // Crostini should retry installation only if it is the first-time
+  // installation (with a cancel button).
+  bool retry = is_initial_install;
   installations_.push_back(std::make_unique<guest_os::GuestOsDlcInstallation>(
-      kCrostiniDlcName,
+      kCrostiniDlcName, retry,
       base::BindOnce(&TerminaInstaller::OnInstallDlc,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
       base::DoNothing()));
+}
+
+void TerminaInstaller::InstallJemamina(
+    base::OnceCallback<void(InstallResult)> callback) {
+  termina_location_ = base::FilePath(kJemaminaImageDirName);
+  std::move(callback).Run(InstallResult::Success);
 }
 
 void TerminaInstaller::OnInstallDlc(
@@ -99,7 +116,7 @@ void TerminaInstaller::OnInstallDlc(
 void TerminaInstaller::Uninstall(base::OnceCallback<void(bool)> callback) {
   // Unset |termina_location_| now since it will become invalid at some point
   // soon.
-  termina_location_ = std::nullopt;
+  termina_location_ = absl::nullopt;
 
   // This is really a vector of bool, but std::vector<bool> has weird properties
   // that stop us from using it in this way.
@@ -220,7 +237,7 @@ base::FilePath TerminaInstaller::GetInstallLocation() {
   return *termina_location_;
 }
 
-std::optional<std::string> TerminaInstaller::GetDlcId() {
+absl::optional<std::string> TerminaInstaller::GetDlcId() {
   CHECK(termina_location_) << "GetDlcId() called while termina not installed";
   return dlc_id_;
 }

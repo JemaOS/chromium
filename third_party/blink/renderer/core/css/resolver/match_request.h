@@ -65,29 +65,21 @@ class CORE_EXPORT MatchRequest {
         scope_(scope),
         vtt_originating_element_(vtt_originating_element) {
     if (rule_set) {
-      AddRuleset(rule_set);
+      AddRuleset(rule_set, css_sheet);
     }
   }
 
   const ContainerNode* Scope() const { return scope_; }
   Element* VTTOriginatingElement() const { return vtt_originating_element_; }
 
-  void AddRuleset(RuleSet* rule_set) {
+  void AddRuleset(RuleSet* rule_set, const CSSStyleSheet* style_sheet) {
     DCHECK(!IsFull());
-
-    if (num_rule_sets_ > 0 && rule_set == rule_sets_[num_rule_sets_ - 1]) {
-      // Some frameworks generate a ton of identical <style> tags;
-      // we have already deduplicated them earlier to have the same
-      // pointer, so we can just discard them here. Of course,
-      // this assumes they come immediately after each other,
-      // but this is a cheap win for something that is rather pathological.
-      return;
-    }
 
     // Now that we're about to read from the RuleSet, we're done adding more
     // rules to the set and we should make sure it's compacted.
     rule_set->CompactRulesIfNeeded();
-    rule_sets_[num_rule_sets_] = rule_set;
+    rule_sets_[num_rule_sets_].rule_set = rule_set;
+    rule_sets_[num_rule_sets_].style_sheet = style_sheet;
     ++num_rule_sets_;
   }
 
@@ -103,12 +95,22 @@ class CORE_EXPORT MatchRequest {
     num_rule_sets_ = 0;
   }
 
-  // Used for returning from RuleSetIterator; not actually stored.
-  struct RuleSetWithIndex {
+  // A rule set and the style sheet it is coming from.
+  struct RuleSetAndSheet {
     STACK_ALLOCATED();
 
    public:
     const RuleSet* rule_set;
+    const CSSStyleSheet* style_sheet;
+  };
+
+  // Used for returning from RuleSetIterator; not actually stored.
+  struct RuleSetAndSheetWithIndex {
+    STACK_ALLOCATED();
+
+   public:
+    const RuleSet* rule_set;
+    const CSSStyleSheet* style_sheet;
     unsigned style_sheet_index;
   };
 
@@ -122,8 +124,9 @@ class CORE_EXPORT MatchRequest {
     RuleSetIterator(const MatchRequest* match_request, unsigned index)
         : match_request_(*match_request), index_(index) {}
 
-    RuleSetWithIndex operator*() const {
-      return {match_request_.rule_sets_[index_],
+    RuleSetAndSheetWithIndex operator*() const {
+      return {match_request_.rule_sets_[index_].rule_set,
+              match_request_.rule_sets_[index_].style_sheet,
               index_ + match_request_.style_sheet_first_index_};
     }
 
@@ -172,7 +175,7 @@ class CORE_EXPORT MatchRequest {
   friend class RuleSetIterator;
 
   static constexpr unsigned kRulesetsRoom = 32;
-  const RuleSet* rule_sets_[kRulesetsRoom];
+  RuleSetAndSheet rule_sets_[kRulesetsRoom];
   unsigned num_rule_sets_ = 0;
   unsigned style_sheet_first_index_ = 0;
 

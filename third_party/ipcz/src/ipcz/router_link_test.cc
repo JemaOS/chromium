@@ -117,10 +117,12 @@ class TestNodePair {
   }
 
  private:
-  const Ref<Node> node_a_{
-      MakeRefCounted<Node>(Node::Type::kBroker, kTestDriver)};
-  const Ref<Node> node_b_{
-      MakeRefCounted<Node>(Node::Type::kNormal, kTestDriver)};
+  const Ref<Node> node_a_{MakeRefCounted<Node>(Node::Type::kBroker,
+                                               kTestDriver,
+                                               IPCZ_INVALID_DRIVER_HANDLE)};
+  const Ref<Node> node_b_{MakeRefCounted<Node>(Node::Type::kNormal,
+                                               kTestDriver,
+                                               IPCZ_INVALID_DRIVER_HANDLE)};
   Ref<NodeLink> node_link_a_;
   Ref<NodeLink> node_link_b_;
 };

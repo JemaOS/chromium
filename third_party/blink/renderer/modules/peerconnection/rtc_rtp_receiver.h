@@ -5,10 +5,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_PEERCONNECTION_RTC_RTP_RECEIVER_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_PEERCONNECTION_RTC_RTP_RECEIVER_H_
 
-#include <optional>
-
 #include "base/synchronization/lock.h"
 #include "base/task/single_thread_task_runner.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/platform/web_vector.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_rtc_rtp_contributing_source.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_rtc_rtp_receive_parameters.h"
@@ -37,7 +36,6 @@ class RTCInsertableStreams;
 class RTCPeerConnection;
 class RTCRtpCapabilities;
 class RTCRtpTransceiver;
-class RTCStatsReport;
 
 // https://w3c.github.io/webrtc-pc/#rtcrtpreceiver-interface
 class RTCRtpReceiver final : public ScriptWrappable,
@@ -47,21 +45,12 @@ class RTCRtpReceiver final : public ScriptWrappable,
  public:
   enum class MediaKind { kAudio, kVideo };
 
-  // If |require_encoded_insertable_streams| is true, no received frames will be
-  // passed to the decoder until |createEncodedStreams()| has been called and
-  // the frames have been transformed and passed back to the returned
-  // WritableStream. If it's false, during construction a task will be posted to
-  // |encoded_transform_shortcircuit_runner| to check if
-  // |createEncodedStreams()| has been called yet and if not will tell the
-  // underlying WebRTC receiver to 'short circuit' the transform, so frames will
-  // flow directly to the decoder.
+  // Takes ownership of the receiver.
   RTCRtpReceiver(RTCPeerConnection*,
                  std::unique_ptr<RTCRtpReceiverPlatform>,
                  MediaStreamTrack*,
                  MediaStreamVector,
-                 bool require_encoded_insertable_streams,
-                 scoped_refptr<base::SequencedTaskRunner>
-                     encoded_transform_shortcircuit_runner);
+                 bool encoded_insertable_streams);
 
   static RTCRtpCapabilities* getCapabilities(ScriptState* state,
                                              const String& kind);
@@ -69,10 +58,8 @@ class RTCRtpReceiver final : public ScriptWrappable,
   MediaStreamTrack* track() const;
   RTCDtlsTransport* transport();
   RTCDtlsTransport* rtcpTransport();
-  std::optional<double> playoutDelayHint() const;
-  void setPlayoutDelayHint(std::optional<double>, ExceptionState&);
-  std::optional<double> jitterBufferTarget() const;
-  void setJitterBufferTarget(std::optional<double>, ExceptionState&);
+  absl::optional<double> playoutDelayHint() const;
+  void setPlayoutDelayHint(absl::optional<double>, ExceptionState&);
   RTCRtpReceiveParameters* getParameters();
   HeapVector<Member<RTCRtpSynchronizationSource>> getSynchronizationSources(
       ScriptState*,
@@ -80,7 +67,7 @@ class RTCRtpReceiver final : public ScriptWrappable,
   HeapVector<Member<RTCRtpContributingSource>> getContributingSources(
       ScriptState*,
       ExceptionState&);
-  ScriptPromiseTyped<RTCStatsReport> getStats(ScriptState*);
+  ScriptPromise getStats(ScriptState*);
   RTCInsertableStreams* createEncodedStreams(ScriptState*, ExceptionState&);
   // TODO(crbug.com/1069295): Make these methods private.
   RTCInsertableStreams* createEncodedAudioStreams(ScriptState*,
@@ -105,8 +92,7 @@ class RTCRtpReceiver final : public ScriptWrappable,
   void UnregisterEncodedAudioStreamCallback();
   void InitializeEncodedAudioStreams(ScriptState*);
   void OnAudioFrameFromDepacketizer(
-      std::unique_ptr<webrtc::TransformableAudioFrameInterface>
-          encoded_audio_frame);
+      std::unique_ptr<webrtc::TransformableFrameInterface> encoded_audio_frame);
   void RegisterEncodedVideoStreamCallback();
   void UnregisterEncodedVideoStreamCallback();
   void InitializeEncodedVideoStreams(ScriptState*);
@@ -123,11 +109,6 @@ class RTCRtpReceiver final : public ScriptWrappable,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
   void SetVideoUnderlyingSink(
       RTCEncodedVideoUnderlyingSink* new_underlying_sink);
-  void LogMessage(const std::string& message);
-
-  // If createEncodedStreams has not yet been called, instead tell the webrtc
-  // encoded transform to 'short circuit', skipping calling the transform.
-  void MaybeShortCircuitEncodedStreams();
 
   Member<RTCPeerConnection> pc_;
   std::unique_ptr<RTCRtpReceiverPlatform> receiver_;
@@ -143,8 +124,11 @@ class RTCRtpReceiver final : public ScriptWrappable,
   // Hint to the WebRTC Jitter Buffer about desired playout delay. Actual
   // observed delay may differ depending on the congestion control. |nullopt|
   // means default value must be used.
-  std::optional<double> playout_delay_hint_;
-  std::optional<double> jitter_buffer_target_;
+  absl::optional<double> playout_delay_hint_;
+
+  // Insertable Streams flag, |True| if the receiver has been configured to
+  // use Encoded Insertable Streams.
+  bool encoded_insertable_streams_;
 
   THREAD_CHECKER(thread_checker_);
 
@@ -171,7 +155,6 @@ class RTCRtpReceiver final : public ScriptWrappable,
   Member<RTCInsertableStreams> encoded_video_streams_;
   const scoped_refptr<blink::RTCEncodedVideoStreamTransformer::Broker>
       encoded_video_transformer_;
-  bool transform_shortcircuited_;
 };
 
 }  // namespace blink

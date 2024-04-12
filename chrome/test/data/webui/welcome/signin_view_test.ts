@@ -5,7 +5,8 @@
 import 'chrome://welcome/signin_view.js';
 
 import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import type {SigninViewElement} from 'chrome://welcome/signin_view.js';
+
+import {SigninViewElement} from 'chrome://welcome/signin_view.js';
 import {SigninViewProxyImpl} from 'chrome://welcome/signin_view_proxy.js';
 import {WelcomeBrowserProxyImpl} from 'chrome://welcome/welcome_browser_proxy.js';
 

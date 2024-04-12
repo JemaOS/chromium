@@ -3,79 +3,36 @@
 # found in the LICENSE file.
 
 import base64
-import enum
 import json
 import logging
 from datetime import datetime
 from requests.exceptions import HTTPError
-from typing import Iterator, List, Mapping, Tuple
-from urllib.parse import urlencode, urlsplit, urlunsplit, quote
 
-from blinkpy.common.host import Host
 from blinkpy.common.net.network_transaction import NetworkTimeout
 from blinkpy.common.path_finder import RELATIVE_WPT_TESTS
-from blinkpy.common.net.git_cl import CLRevisionID
 from blinkpy.w3c.chromium_commit import ChromiumCommit
+from blinkpy.w3c.chromium_finder import absolute_chromium_dir
 from blinkpy.w3c.common import is_file_exportable
 
 _log = logging.getLogger(__name__)
-URL_BASE = urlsplit('https://chromium-review.googlesource.com')
+URL_BASE = 'https://chromium-review.googlesource.com'
+# https://gerrit-review.googlesource.com/Documentation/rest-api-changes.html#query-options
+QUERY_OPTIONS = 'o=CURRENT_FILES&o=CURRENT_REVISION&o=COMMIT_FOOTERS&o=DETAILED_ACCOUNTS'
 
 
-class OutputOption(enum.Flag):
-    """A mask denoting what data Gerrit should return in a query.
-
-    See [0] for the full list of options, which should be added here as needed.
-
-    [0]: https://gerrit-review.googlesource.com/Documentation/rest-api-changes.html#query-options
-    """
-    CURRENT_FILES = enum.auto()
-    CURRENT_REVISION = enum.auto()
-    COMMIT_FOOTERS = enum.auto()
-    DETAILED_ACCOUNTS = enum.auto()
-    MESSAGES = enum.auto()
-    ALL_REVISIONS = enum.auto()
-
-    def __iter__(self) -> Iterator['OutputOption']:
-        # TODO(crbug.com/40631540): Remove this handcrafted `__iter__` after
-        # python3.11+ when `enum.Flag` instances become iterable over their
-        # members.
-        for option in self.__class__:
-            if option in self:
-                yield option
-
-
-class GerritAPI:
+class GerritAPI(object):
     """A utility class for the Chromium code review API.
 
     Wraps the API for Chromium's Gerrit instance at chromium-review.googlesource.com.
     """
 
-    DEFAULT_OUTPUT = (OutputOption.CURRENT_FILES
-                      | OutputOption.CURRENT_REVISION
-                      | OutputOption.COMMIT_FOOTERS
-                      | OutputOption.DETAILED_ACCOUNTS)
-
     def __init__(self, host, user, token):
         self.host = host
-        self.project_config = host.project_config
         self.user = user
         self.token = token
 
-    @classmethod
-    def from_credentials(cls, host: Host,
-                         credentials: Mapping[str, str]) -> 'GerritAPI':
-        return cls(host, credentials['GERRIT_USER'],
-                   credentials['GERRIT_TOKEN'])
-
-    def get(self,
-            path: str,
-            query_params: List[Tuple[str, str]],
-            raw: bool = False,
-            return_none_on_404: bool = False):
-        query_str = urlencode(query_params, safe='":')
-        url = urlunsplit(
-            (URL_BASE.scheme, URL_BASE.netloc, path, query_str, ''))
+    def get(self, path, raw=False, return_none_on_404=False):
+        url = URL_BASE + path
         raw_data = self.host.web.get_binary(
             url, return_none_on_404=return_none_on_404)
         if raw:
@@ -95,7 +52,7 @@ class GerritAPI:
         """
         assert path.startswith('/a/'), \
             'POST requests need to use authenticated routes.'
-        url = urlunsplit((URL_BASE.scheme, URL_BASE.netloc, path, '', ''))
+        url = URL_BASE + path
         assert self.user and self.token, 'Gerrit user and token required for authenticated routes.'
 
         b64auth = base64.b64encode('{}:{}'.format(self.user,
@@ -109,74 +66,37 @@ class GerritAPI:
                                      data=json.dumps(data).encode('utf-8'),
                                      headers=headers)
 
-    def query_cl_comments_and_revisions(self, change_id: str) -> 'GerritCL':
+    def query_cl_comments_and_revisions(self, change_id):
         """Queries a CL with comments and revisions information."""
-        return self.query_cl(
-            change_id, OutputOption.MESSAGES | OutputOption.ALL_REVISIONS)
+        return self.query_cl(change_id, 'o=MESSAGES&o=ALL_REVISIONS')
 
-    def query_cl(
-        self,
-        change_id: str,
-        output_options: OutputOption = DEFAULT_OUTPUT,
-    ) -> 'GerritCL':
+    def query_cl(self, change_id, query_options=QUERY_OPTIONS):
         """Queries a commit information from Gerrit."""
-        path = (
-            f'/changes/{self.escaped_repo}~{self.project_config.gerrit_branch}'
-            f'~{change_id}')
-        query_params = [('o', option.name) for option in output_options]
+        path = '/changes/chromium%2Fsrc~main~{}?{}'.format(
+            change_id, query_options)
         try:
-            cl_data = self.get(path, query_params, return_none_on_404=True)
+            cl_data = self.get(path, return_none_on_404=True)
         except NetworkTimeout:
             raise GerritError('Timed out querying CL using Change-Id')
 
         if not cl_data:
             raise GerritError('Cannot find Change-Id')
+
         cl = GerritCL(data=cl_data, api=self)
         return cl
 
-    def query_cls(
-        self,
-        query: str,
-        limit: int = 500,
-        output_options: OutputOption = DEFAULT_OUTPUT,
-    ) -> List['GerritCL']:
-        """Query Gerrit for CLs that match the given criteria.
-
-        Arguments:
-            query: The search criteria written in the syntax given by [0].
-            limit: The maximum number of CLs to fetch.
-            output_options: Fields to return (see `OutputOption`).
-
-        [0]: https://gerrit-review.googlesource.com/Documentation/user-search.html
-        """
-        assert limit > 0
-        query_params = [('q', query), ('n', str(limit))]
-        query_params.extend(('o', option.name) for option in output_options)
+    def query_exportable_open_cls(self, limit=500):
+        path = ('/changes/?q=project:\"chromium/src\"+branch:main+is:open+'
+                '-is:wip&{}&n={}').format(QUERY_OPTIONS, limit)
         # The underlying host.web.get_binary() automatically retries until it
         # times out, at which point NetworkTimeout is raised.
         try:
-            raw_cls = self.get('/changes/', query_params)
+            open_cls_data = self.get(path)
         except NetworkTimeout:
             raise GerritError('Timed out querying exportable open CLs.')
-        return [GerritCL(data, self) for data in raw_cls]
+        open_cls = [GerritCL(data, self) for data in open_cls_data]
 
-    def query_exportable_open_cls(
-        self,
-        limit: int = 500,
-        output_options: OutputOption = DEFAULT_OUTPUT,
-    ) -> List['GerritCL']:
-        query = ' '.join([
-            f'project:"{self.project_config.gerrit_project}"',
-            f'branch:{self.project_config.gerrit_branch}',
-            'is:open',
-            '-is:wip',
-        ])
-        open_cls = self.query_cls(query, limit, output_options)
         return [cl for cl in open_cls if cl.is_exportable()]
-
-    @property
-    def escaped_repo(self):
-        return quote(self.project_config.gerrit_project, safe='')
 
 
 class GerritCL(object):
@@ -193,7 +113,7 @@ class GerritCL(object):
 
     @property
     def url(self):
-        return '{}/{}'.format(urlunsplit(URL_BASE), self.number)
+        return '{}/{}'.format(URL_BASE, self.number)
 
     @property
     def subject(self):
@@ -202,11 +122,6 @@ class GerritCL(object):
     @property
     def change_id(self):
         return self._data['change_id']
-
-    @property
-    def id(self):
-        branch = self.api.project_config.gerrit_branch
-        return f"{self.api.escaped_repo}~{branch}~{self.change_id}"
 
     @property
     def owner_email(self):
@@ -219,11 +134,6 @@ class GerritCL(object):
     @property
     def current_revision(self):
         return self._data['revisions'][self.current_revision_sha]
-
-    @property
-    def current_revision_id(self) -> CLRevisionID:
-        patchset = int(self.current_revision['_number'])
-        return CLRevisionID(self.number, patchset)
 
     @property
     def has_review_started(self):
@@ -255,7 +165,8 @@ class GerritCL(object):
 
     def post_comment(self, message):
         """Posts a comment to the CL."""
-        path = '/a/changes/{id}/revisions/current/review'.format(id=self.id)
+        path = '/a/changes/{change_id}/revisions/current/review'.format(
+            change_id=self.change_id, )
         try:
             return self.api.post(path, {'message': message})
         except HTTPError as e:
@@ -292,10 +203,7 @@ class GerritCL(object):
         if not files_in_wpt:
             return False
 
-        exportable_files = [
-            f for f in files_in_wpt
-            if is_file_exportable(f, self.api.project_config)
-        ]
+        exportable_files = [f for f in files_in_wpt if is_file_exportable(f)]
 
         if not exportable_files:
             return False
@@ -316,7 +224,7 @@ class GerritCL(object):
         Returns:
             A ChromiumCommit object (the fetched commit).
         """
-        git = host.git(host.project_config.project_root)
+        git = host.git(absolute_chromium_dir(host))
         url = self.current_revision['fetch']['http']['url']
         ref = self.current_revision['fetch']['http']['ref']
         git.run(['fetch', url, ref])

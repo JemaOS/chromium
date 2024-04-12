@@ -14,7 +14,6 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
-#include "base/i18n/time_formatting.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_string_value_serializer.h"
 #include "base/memory/ptr_util.h"
@@ -40,7 +39,6 @@
 #include "content/public/common/url_constants.h"
 #include "content/public/test/browser_task_environment.h"
 #include "extensions/browser/api/declarative_net_request/test_utils.h"
-#include "extensions/browser/api/web_request/extension_web_request_event_router.h"
 #include "extensions/browser/api/web_request/upload_data_presenter.h"
 #include "extensions/browser/api/web_request/web_request_api.h"
 #include "extensions/browser/api/web_request/web_request_api_constants.h"
@@ -49,6 +47,7 @@
 #include "extensions/common/api/declarative_net_request.h"
 #include "extensions/common/api/web_request.h"
 #include "extensions/common/constants.h"
+#include "extensions/common/extension_messages.h"
 #include "extensions/common/features/feature.h"
 #include "google_apis/gaia/gaia_urls.h"
 #include "net/http/http_util.h"
@@ -145,45 +144,55 @@ TEST_F(ExtensionWebRequestTest, AddAndRemoveListeners) {
   const std::string kEventName(web_request::OnBeforeRequest::kEventName);
   const std::string kSubEventName1 = kEventName + "/1";
   const std::string kSubEventName2 = kEventName + "/2";
-  WebRequestEventRouter* const event_router =
-      WebRequestEventRouter::Get(&profile_);
-  EXPECT_EQ(0u,
-            event_router->GetListenerCountForTesting(&profile_, kEventName));
+  EXPECT_EQ(
+      0u,
+      ExtensionWebRequestEventRouter::GetInstance()->GetListenerCountForTesting(
+          &profile_, kEventName));
 
   // Add two listeners.
-  event_router->AddEventListener(
-      &profile_, ext_id, ext_id, kEventName, kSubEventName1,
-      WebRequestEventRouter::RequestFilter(), 0, 1 /* render_process_id */, 0,
-      extensions::kMainThreadId, blink::mojom::kInvalidServiceWorkerVersionId);
-  event_router->AddEventListener(
-      &profile_, ext_id, ext_id, kEventName, kSubEventName2,
-      WebRequestEventRouter::RequestFilter(), 0, 1 /* render_process_id */, 0,
-      extensions::kMainThreadId, blink::mojom::kInvalidServiceWorkerVersionId);
-  EXPECT_EQ(2u,
-            event_router->GetListenerCountForTesting(&profile_, kEventName));
+  ExtensionWebRequestEventRouter::GetInstance()->AddEventListener(
+      &profile_, ext_id, ext_id, events::FOR_TEST, kEventName, kSubEventName1,
+      ExtensionWebRequestEventRouter::RequestFilter(), 0,
+      1 /* render_process_id */, 0, extensions::kMainThreadId,
+      blink::mojom::kInvalidServiceWorkerVersionId);
+  ExtensionWebRequestEventRouter::GetInstance()->AddEventListener(
+      &profile_, ext_id, ext_id, events::FOR_TEST, kEventName, kSubEventName2,
+      ExtensionWebRequestEventRouter::RequestFilter(), 0,
+      1 /* render_process_id */, 0, extensions::kMainThreadId,
+      blink::mojom::kInvalidServiceWorkerVersionId);
+  EXPECT_EQ(
+      2u,
+      ExtensionWebRequestEventRouter::GetInstance()->GetListenerCountForTesting(
+          &profile_, kEventName));
 
   // Now remove the listeners one at a time, verifying the counts after each
   // removal.
-  event_router->UpdateActiveListenerForTesting(
-      &profile_, WebRequestEventRouter::ListenerUpdateType::kRemove, ext_id,
+  ExtensionWebRequestEventRouter::GetInstance()->UpdateActiveListener(
+      ExtensionWebRequestEventRouter::ListenerUpdateType::kRemove,
+      ExtensionWebRequestEventRouter::GetBrowserContextID(&profile_), ext_id,
       kSubEventName1, extensions::kMainThreadId,
       blink::mojom::kInvalidServiceWorkerVersionId);
-  EXPECT_EQ(1u,
-            event_router->GetListenerCountForTesting(&profile_, kEventName));
+  EXPECT_EQ(
+      1u,
+      ExtensionWebRequestEventRouter::GetInstance()->GetListenerCountForTesting(
+          &profile_, kEventName));
 
-  event_router->UpdateActiveListenerForTesting(
-      &profile_, WebRequestEventRouter::ListenerUpdateType::kRemove, ext_id,
+  ExtensionWebRequestEventRouter::GetInstance()->UpdateActiveListener(
+      ExtensionWebRequestEventRouter::ListenerUpdateType::kRemove,
+      ExtensionWebRequestEventRouter::GetBrowserContextID(&profile_), ext_id,
       kSubEventName2, extensions::kMainThreadId,
       blink::mojom::kInvalidServiceWorkerVersionId);
-  EXPECT_EQ(0u,
-            event_router->GetListenerCountForTesting(&profile_, kEventName));
+  EXPECT_EQ(
+      0u,
+      ExtensionWebRequestEventRouter::GetInstance()->GetListenerCountForTesting(
+          &profile_, kEventName));
 }
 
 // Tests that when a browser_context shuts down, all data keyed to that
 // context is removed.
 TEST_F(ExtensionWebRequestTest, BrowserContextShutdown) {
-  WebRequestEventRouter* const event_router =
-      WebRequestEventRouter::Get(&profile_);
+  ExtensionWebRequestEventRouter* const event_router =
+      ExtensionWebRequestEventRouter::GetInstance();
   ASSERT_TRUE(event_router);
 
   std::string ext_id("abcdefghijklmnopabcdefghijklmnop");
@@ -191,21 +200,23 @@ TEST_F(ExtensionWebRequestTest, BrowserContextShutdown) {
   const std::string kSubEventName = kEventName + "/1";
   EXPECT_EQ(0u,
             event_router->GetListenerCountForTesting(&profile_, kEventName));
-  EXPECT_FALSE(event_router->HasAnyExtraHeadersListenerForTesting(&profile_));
+  EXPECT_FALSE(event_router->HasAnyExtraHeadersListenerImpl(&profile_));
 
   // Add two listeners for the main profile.
   event_router->AddEventListener(
-      &profile_, ext_id, ext_id, kEventName, kSubEventName,
-      WebRequestEventRouter::RequestFilter(), 0, 1 /* render_process_id */, 0,
-      extensions::kMainThreadId, blink::mojom::kInvalidServiceWorkerVersionId);
+      &profile_, ext_id, ext_id, events::FOR_TEST, kEventName, kSubEventName,
+      ExtensionWebRequestEventRouter::RequestFilter(), 0,
+      1 /* render_process_id */, 0, extensions::kMainThreadId,
+      blink::mojom::kInvalidServiceWorkerVersionId);
   event_router->AddEventListener(
-      &profile_, ext_id, ext_id, kEventName, kSubEventName,
-      WebRequestEventRouter::RequestFilter(), 0, 2 /* render_process_id */, 0,
-      extensions::kMainThreadId, blink::mojom::kInvalidServiceWorkerVersionId);
+      &profile_, ext_id, ext_id, events::FOR_TEST, kEventName, kSubEventName,
+      ExtensionWebRequestEventRouter::RequestFilter(), 0,
+      2 /* render_process_id */, 0, extensions::kMainThreadId,
+      blink::mojom::kInvalidServiceWorkerVersionId);
   event_router->IncrementExtraHeadersListenerCount(&profile_);
   EXPECT_EQ(2u,
             event_router->GetListenerCountForTesting(&profile_, kEventName));
-  EXPECT_TRUE(event_router->HasAnyExtraHeadersListenerForTesting(&profile_));
+  EXPECT_TRUE(event_router->HasAnyExtraHeadersListenerImpl(&profile_));
 
   // Create an off-the-record profile.
   auto otr_profile_id = Profile::OTRProfileID::CreateUniqueForTesting();
@@ -217,31 +228,33 @@ TEST_F(ExtensionWebRequestTest, BrowserContextShutdown) {
   // Because the ExtensionWebRequestEventRouter is a singleton, there are hooks
   // in the off-the-record profile for notifying it when an OTR profile is
   // created and destroyed. Unfortunately, that doesn't work with test profiles,
-  // so the test needs to simulate those calls.
-  WebRequestEventRouter::OnOTRBrowserContextCreated(&profile_, otr_profile);
+  // so the test needs to simulate those calls
+  event_router->OnOTRBrowserContextCreated(&profile_, otr_profile);
   EXPECT_EQ(0u,
             event_router->GetListenerCountForTesting(otr_profile, kEventName));
-  EXPECT_FALSE(event_router->HasAnyExtraHeadersListenerForTesting(otr_profile));
+  EXPECT_FALSE(event_router->HasAnyExtraHeadersListenerImpl(otr_profile));
 
   // Add two listeners for the otr profile.
   event_router->AddEventListener(
-      otr_profile, ext_id, ext_id, kEventName, kSubEventName,
-      WebRequestEventRouter::RequestFilter(), 0, 1 /* render_process_id */, 0,
-      extensions::kMainThreadId, blink::mojom::kInvalidServiceWorkerVersionId);
+      otr_profile, ext_id, ext_id, events::FOR_TEST, kEventName, kSubEventName,
+      ExtensionWebRequestEventRouter::RequestFilter(), 0,
+      1 /* render_process_id */, 0, extensions::kMainThreadId,
+      blink::mojom::kInvalidServiceWorkerVersionId);
   event_router->AddEventListener(
-      otr_profile, ext_id, ext_id, kEventName, kSubEventName,
-      WebRequestEventRouter::RequestFilter(), 0, 2 /* render_process_id */, 0,
-      extensions::kMainThreadId, blink::mojom::kInvalidServiceWorkerVersionId);
+      otr_profile, ext_id, ext_id, events::FOR_TEST, kEventName, kSubEventName,
+      ExtensionWebRequestEventRouter::RequestFilter(), 0,
+      2 /* render_process_id */, 0, extensions::kMainThreadId,
+      blink::mojom::kInvalidServiceWorkerVersionId);
   event_router->IncrementExtraHeadersListenerCount(otr_profile);
   EXPECT_EQ(2u,
             event_router->GetListenerCountForTesting(otr_profile, kEventName));
-  EXPECT_TRUE(event_router->HasAnyExtraHeadersListenerForTesting(otr_profile));
+  EXPECT_TRUE(event_router->HasAnyExtraHeadersListenerImpl(otr_profile));
 
   // Simulate the OTR being destroyed.
   event_router->OnOTRBrowserContextDestroyed(&profile_, otr_profile);
   EXPECT_EQ(0u,
             event_router->GetListenerCountForTesting(otr_profile, kEventName));
-  EXPECT_FALSE(event_router->HasAnyExtraHeadersListenerForTesting(otr_profile));
+  EXPECT_FALSE(event_router->HasAnyExtraHeadersListenerImpl(otr_profile));
 
   // We can't just delete the profile, because the call comes through the
   // WebRequestAPI instance for that profile, and creating that requires
@@ -250,7 +263,7 @@ TEST_F(ExtensionWebRequestTest, BrowserContextShutdown) {
   event_router->OnBrowserContextShutdown(&profile_);
   EXPECT_EQ(0u,
             event_router->GetListenerCountForTesting(&profile_, kEventName));
-  EXPECT_FALSE(event_router->HasAnyExtraHeadersListenerForTesting(&profile_));
+  EXPECT_FALSE(event_router->HasAnyExtraHeadersListenerImpl(&profile_));
 }
 
 namespace {
@@ -547,7 +560,7 @@ TEST(ExtensionWebRequestHelpersTest, TestCalculateOnAuthRequiredDelta) {
 
 TEST(ExtensionWebRequestHelpersTest, TestMergeCancelOfResponses) {
   EventResponseDeltas deltas;
-  std::optional<extensions::ExtensionId> canceled_by_extension;
+  absl::optional<extensions::ExtensionId> canceled_by_extension;
 
   // Single event that does not cancel.
   {
@@ -903,7 +916,7 @@ TEST(ExtensionWebRequestHelpersTest, TestMergeOnBeforeSendHeadersResponses) {
   modify_headers_action.request_headers_to_modify = {
       DNRRequestAction::HeaderInfo(
           "key5", api::declarative_net_request::HeaderOperation::kRemove,
-          std::nullopt)};
+          absl::nullopt)};
   info.dnr_actions = std::vector<DNRRequestAction>();
   info.dnr_actions->push_back(std::move(modify_headers_action));
 
@@ -998,7 +1011,7 @@ namespace {
 
 struct ExpectedHeader {
   std::string header_name;
-  std::optional<std::string> expected_value;
+  absl::optional<std::string> expected_value;
 };
 
 // Applies the DNR actions in `info` to `base_headers` and compares the results
@@ -1066,7 +1079,7 @@ TEST(ExtensionWebRequestHelpersTest,
       DNRRequestAction::HeaderInfo("connection", dnr_api::HeaderOperation::kSet,
                                    "dnr_action_2"),
       DNRRequestAction::HeaderInfo(
-          "forwarded", dnr_api::HeaderOperation::kRemove, std::nullopt)};
+          "forwarded", dnr_api::HeaderOperation::kRemove, absl::nullopt)};
 
   WebRequestInfoInitParams info_params;
   WebRequestInfo info(std::move(info_params));
@@ -1138,7 +1151,7 @@ TEST(ExtensionWebRequestHelpersTest,
       DNRRequestAction::HeaderInfo("key5", dnr_api::HeaderOperation::kSet,
                                    "dnr_action_3"),
       DNRRequestAction::HeaderInfo("key6", dnr_api::HeaderOperation::kRemove,
-                                   std::nullopt)};
+                                   absl::nullopt)};
 
   WebRequestInfoInitParams info_params;
   WebRequestInfo info(std::move(info_params));
@@ -1192,10 +1205,10 @@ TEST(ExtensionWebRequestHelpersTest,
   action_1.request_headers_to_modify = {
       DNRRequestAction::HeaderInfo(
           "upgrade", api::declarative_net_request::HeaderOperation::kRemove,
-          std::nullopt),
+          absl::nullopt),
       DNRRequestAction::HeaderInfo(
           "key8", api::declarative_net_request::HeaderOperation::kRemove,
-          std::nullopt)};
+          absl::nullopt)};
 
   DNRRequestAction action_2 =
       CreateRequestActionForTesting(DNRRequestAction::Type::MODIFY_HEADERS);
@@ -1221,8 +1234,8 @@ TEST(ExtensionWebRequestHelpersTest,
   std::vector<ExpectedHeader> expected_headers({
       // Once a header is removed by a DNR action, it cannot be changed by
       // subsequent actions.
-      {"upgrade", std::nullopt},
-      {"key8", std::nullopt},
+      {"upgrade", absl::nullopt},
+      {"key8", absl::nullopt},
   });
 
   ExecuteDNRActionsAndCheckHeaders(info, base_headers, expected_headers);
@@ -1675,7 +1688,7 @@ TEST(ExtensionWebRequestHelpersTest, TestMergeOnHeadersReceivedResponses) {
   modify_headers_action.response_headers_to_modify = {
       DNRRequestAction::HeaderInfo(
           "key3", api::declarative_net_request::HeaderOperation::kRemove,
-          std::nullopt)};
+          absl::nullopt)};
 
   info.dnr_actions = std::vector<DNRRequestAction>();
   info.dnr_actions->push_back(std::move(modify_headers_action));
@@ -1916,9 +1929,9 @@ TEST(ExtensionWebRequestHelpersTest,
                  "dnr_action_1"),
 
       HeaderInfo("key7", api::declarative_net_request::HeaderOperation::kRemove,
-                 std::nullopt),
+                 absl::nullopt),
       HeaderInfo("key8", api::declarative_net_request::HeaderOperation::kRemove,
-                 std::nullopt),
+                 absl::nullopt),
 
       HeaderInfo("same_ext_key",
                  api::declarative_net_request::HeaderOperation::kSet,
@@ -1940,14 +1953,14 @@ TEST(ExtensionWebRequestHelpersTest,
       HeaderInfo("key2", api::declarative_net_request::HeaderOperation::kSet,
                  "dnr_action_3"),
       HeaderInfo("key3", api::declarative_net_request::HeaderOperation::kRemove,
-                 std::nullopt),
+                 absl::nullopt),
 
       HeaderInfo("key4", api::declarative_net_request::HeaderOperation::kAppend,
                  "dnr_action_3"),
       HeaderInfo("key5", api::declarative_net_request::HeaderOperation::kSet,
                  "dnr_action_3"),
       HeaderInfo("key6", api::declarative_net_request::HeaderOperation::kRemove,
-                 std::nullopt),
+                 absl::nullopt),
 
       HeaderInfo("key7", api::declarative_net_request::HeaderOperation::kAppend,
                  "dnr_action_3"),
@@ -2047,10 +2060,10 @@ TEST(ExtensionWebRequestHelpersTest,
                  "dnr_action_1"),
       HeaderInfo("set-cookie",
                  api::declarative_net_request::HeaderOperation::kRemove,
-                 std::nullopt),
+                 absl::nullopt),
       HeaderInfo("warning",
                  api::declarative_net_request::HeaderOperation::kRemove,
-                 std::nullopt)};
+                 absl::nullopt)};
 
   DNRRequestAction action_2 =
       CreateRequestActionForTesting(DNRRequestAction::Type::MODIFY_HEADERS);

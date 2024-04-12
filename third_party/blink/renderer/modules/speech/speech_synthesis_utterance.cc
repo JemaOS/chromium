@@ -64,7 +64,7 @@ const AtomicString& SpeechSynthesisUtterance::InterfaceName() const {
 }
 
 SpeechSynthesisVoice* SpeechSynthesisUtterance::voice() const {
-  return voice_.Get();
+  return voice_;
 }
 
 void SpeechSynthesisUtterance::setVoice(SpeechSynthesisVoice* voice) {
@@ -102,7 +102,7 @@ void SpeechSynthesisUtterance::Trace(Visitor* visitor) const {
   visitor->Trace(synthesis_);
   visitor->Trace(voice_);
   ExecutionContextClient::Trace(visitor);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
 }
 
 void SpeechSynthesisUtterance::OnStartedSpeaking() {

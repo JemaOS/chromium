@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/ash/policy/handlers/minimum_version_policy_handler.h"
-
-#include <optional>
 #include <string>
 
 #include "ash/constants/ash_features.h"
@@ -17,7 +14,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
-#include "base/test/gtest_tags.h"
 #include "base/test/scoped_chromeos_version_info.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/time/default_clock.h"
@@ -39,6 +35,7 @@
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
 #include "chrome/browser/ash/policy/core/device_policy_builder.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
+#include "chrome/browser/ash/policy/handlers/minimum_version_policy_handler.h"
 #include "chrome/browser/ash/policy/handlers/minimum_version_policy_handler_delegate_impl.h"
 #include "chrome/browser/ash/policy/handlers/minimum_version_policy_test_helpers.h"
 #include "chrome/browser/browser_process.h"
@@ -69,6 +66,7 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/cros_system_api/dbus/service_constants.h"
 
 namespace policy {
@@ -135,12 +133,12 @@ class MinimumVersionPolicyTestBase : public ash::LoginManagerTest {
 
   DevicePolicyCrosTestHelper helper_;
   base::test::ScopedFeatureList feature_list_;
-  raw_ptr<ash::FakeUpdateEngineClient, DanglingUntriaged>
+  raw_ptr<ash::FakeUpdateEngineClient, ExperimentalAsh>
       fake_update_engine_client_ = nullptr;
   ash::DeviceStateMixin device_state_{
       &mixin_host_,
       ash::DeviceStateMixin::State::OOBE_COMPLETED_CLOUD_ENROLLED};
-  std::optional<base::test::ScopedChromeOSVersionInfo> version_info_;
+  absl::optional<base::test::ScopedChromeOSVersionInfo> version_info_;
 };
 
 MinimumVersionPolicyTestBase::MinimumVersionPolicyTestBase() {
@@ -256,37 +254,6 @@ void MinimumVersionPolicyTest::LoginUnmanagedUser() {
 IN_PROC_BROWSER_TEST_F(MinimumVersionPolicyTest, CriticalUpdateOnLoginScreen) {
   EXPECT_EQ(ash::LoginScreenTestApi::GetUsersCount(), 2);
   EXPECT_FALSE(ash::LoginScreenTestApi::IsOobeDialogVisible());
-
-  // Set new value for policy and check update required screen is shown on the
-  // login screen.
-  SetDevicePolicyAndWaitForSettingChange(
-      CreateMinimumVersionSingleRequirementPolicyValue(
-          kNewVersion, kNoWarning, kNoWarning,
-          false /* unmanaged_user_restricted */));
-  ash::OobeScreenWaiter(ash::UpdateRequiredView::kScreenId).Wait();
-  EXPECT_TRUE(ash::LoginScreenTestApi::IsOobeDialogVisible());
-
-  // Revoke policy and check update required screen is hidden.
-  SetDevicePolicyAndWaitForSettingChange(base::Value::Dict());
-  ash::OobeScreenExitWaiter(ash::UpdateRequiredView::kScreenId).Wait();
-  EXPECT_FALSE(ash::LoginScreenTestApi::IsOobeDialogVisible());
-}
-
-IN_PROC_BROWSER_TEST_F(MinimumVersionPolicyTest,
-                       CriticalUpdateOnLoginScreenForEolDevice) {
-  // Configure "Enforce updates" in "Auto-update settings" in Admin Console:
-  // - Choose the latest version in "if they are not running at least version"
-  // - Set "Extend this period where devices which are not receiving automatic
-  //   updates are not yet blocked to" to "No warning"
-  // - Then ensure the user is logged out of a AUE device running an older
-  //   version and can no longer log in.
-  // COM_FOUND_CUJ23_TASK5_WF2
-  base::AddTagToTestResult("feature_id",
-                           "screenplay-6267b5f4-e674-4b94-920a-d99c83f701eb");
-
-  EXPECT_FALSE(ash::LoginScreenTestApi::IsOobeDialogVisible());
-  fake_update_engine_client_->set_eol_date(
-      base::DefaultClock::GetInstance()->Now() - base::Days(1));
 
   // Set new value for policy and check update required screen is shown on the
   // login screen.
@@ -496,7 +463,7 @@ IN_PROC_BROWSER_TEST_F(MinimumVersionPolicyTest, NoNetworkNotificationClick) {
   // notification.
   display_service_tester_->SimulateClick(NotificationHandler::Type::TRANSIENT,
                                          kUpdateRequiredNotificationId,
-                                         0 /*action_index*/, std::nullopt);
+                                         0 /*action_index*/, absl::nullopt);
   EXPECT_FALSE(
       display_service_tester_->GetNotification(kUpdateRequiredNotificationId));
   EXPECT_TRUE(tray_test_api_->IsTrayBubbleOpen());
@@ -530,15 +497,6 @@ IN_PROC_BROWSER_TEST_F(MinimumVersionPolicyTest,
 }
 
 IN_PROC_BROWSER_TEST_F(MinimumVersionPolicyTest, LastDayNotificationOnLogin) {
-  // Configure "Enforce updates" in "Auto-update settings" in Admin Console:
-  // - Choose the latest version in "if they are not running at least version"
-  // - Set "Block devices & user sessions after" to "1 week"
-  // - Then ensure that the device running an older version receives a
-  //   notification.
-  // COM_FOUND_CUJ23_TASK3_WF1
-  base::AddTagToTestResult("feature_id",
-                           "screenplay-62ab245b-b322-43df-8b01-370688e2c228");
-
   DisconectAllNetworks();
   EXPECT_FALSE(
       display_service_tester_->GetNotification(kUpdateRequiredNotificationId));
@@ -557,7 +515,7 @@ IN_PROC_BROWSER_TEST_F(MinimumVersionPolicyTest, LastDayNotificationOnLogin) {
   // network settings and hides the notification.
   display_service_tester_->SimulateClick(NotificationHandler::Type::TRANSIENT,
                                          kUpdateRequiredNotificationId,
-                                         0 /*action_index*/, std::nullopt);
+                                         0 /*action_index*/, absl::nullopt);
   EXPECT_FALSE(
       display_service_tester_->GetNotification(kUpdateRequiredNotificationId));
   EXPECT_TRUE(tray_test_api_->IsTrayBubbleOpen());
@@ -582,16 +540,6 @@ IN_PROC_BROWSER_TEST_F(MinimumVersionPolicyTest,
 
 IN_PROC_BROWSER_TEST_F(MinimumVersionPolicyTest,
                        NotificationOnUnmanagedUserEnabled) {
-  // Configure "Enforce updates" in "Auto-update settings" in Admin Console:
-  // - Choose the latest version in "if they are not running at least version"
-  // - Set "Extend this period where devices which are not receiving automatic
-  //   updates are not yet blocked to" to "1 week".
-  // - Then ensure that the AUE device running an older version receives a
-  //   notification and user is not logged out.
-  // COM_FOUND_CUJ23_TASK5_WF1
-  base::AddTagToTestResult("feature_id",
-                           "screenplay-7a1101a5-03c1-4cfd-a0c9-495145151a8b");
-
   fake_update_engine_client_->set_eol_date(
       base::DefaultClock::GetInstance()->Now() - base::Days(1));
   LoginUnmanagedUser();
@@ -648,7 +596,7 @@ IN_PROC_BROWSER_TEST_F(MinimumVersionPolicyTest,
   // Clicking on notification button starts update and hides the notification.
   display_service_tester_->SimulateClick(NotificationHandler::Type::TRANSIENT,
                                          kUpdateRequiredNotificationId,
-                                         0 /*action_index*/, std::nullopt);
+                                         0 /*action_index*/, absl::nullopt);
   EXPECT_FALSE(
       display_service_tester_->GetNotification(kUpdateRequiredNotificationId));
 
@@ -693,7 +641,7 @@ IN_PROC_BROWSER_TEST_F(MinimumVersionPolicyTest, EolNotificationClick) {
   // Clicking on notification button opens settings page and hides notification.
   display_service_tester_->SimulateClick(NotificationHandler::Type::TRANSIENT,
                                          kUpdateRequiredNotificationId,
-                                         0 /*action_index*/, std::nullopt);
+                                         0 /*action_index*/, absl::nullopt);
   EXPECT_FALSE(
       display_service_tester_->GetNotification(kUpdateRequiredNotificationId));
   Browser* settings_browser = chrome::FindLastActive();
@@ -961,7 +909,7 @@ class MinimumVersionPolicyChildUser : public MinimumVersionPolicyTestBase {
     login_manager_.WaitForActiveSession();
     EXPECT_EQ(user_manager::UserManager::Get()->GetLoggedInUsers().size(), 1u);
     EXPECT_EQ(user_manager::UserManager::Get()->GetActiveUser()->GetType(),
-              user_manager::UserType::kChild);
+              user_manager::USER_TYPE_CHILD);
     EXPECT_EQ(session_manager::SessionManager::Get()->session_state(),
               session_manager::SessionState::ACTIVE);
   }

@@ -32,7 +32,7 @@ class CursorWindowDelegate;
 // When cursor compositing is disabled, draw nothing as the native cursor is
 // shown.
 // When cursor compositing is enabled, just draw the cursor as-is.
-class ASH_EXPORT CursorWindowController : public aura::WindowObserver {
+class ASH_EXPORT CursorWindowController {
  public:
   class Observer : public base::CheckedObserver {
    public:
@@ -47,7 +47,7 @@ class ASH_EXPORT CursorWindowController : public aura::WindowObserver {
   CursorWindowController(const CursorWindowController&) = delete;
   CursorWindowController& operator=(const CursorWindowController&) = delete;
 
-  ~CursorWindowController() override;
+  ~CursorWindowController();
 
   bool is_cursor_compositing_enabled() const {
     return is_cursor_compositing_enabled_;
@@ -87,13 +87,6 @@ class ASH_EXPORT CursorWindowController : public aura::WindowObserver {
   void SetCursorSize(ui::CursorSize cursor_size);
   void SetVisibility(bool visible);
 
-  // aura::WindowObserver:
-  void OnWindowBoundsChanged(aura::Window* window,
-                             const gfx::Rect& old_bounds,
-                             const gfx::Rect& new_bounds,
-                             ui::PropertyChangeReason reason) override;
-  void OnWindowDestroying(aura::Window* window) override;
-
   // Gets the cursor container for testing purposes.
   const aura::Window* GetContainerForTest() const;
   SkColor GetCursorColorForTest() const;
@@ -124,7 +117,7 @@ class ASH_EXPORT CursorWindowController : public aura::WindowObserver {
 
   base::ObserverList<Observer> observers_;
 
-  raw_ptr<aura::Window, DanglingUntriaged> container_ = nullptr;
+  raw_ptr<aura::Window, ExperimentalAsh> container_ = nullptr;
 
   // The current cursor-compositing state.
   bool is_cursor_compositing_enabled_ = false;
@@ -155,9 +148,7 @@ class ASH_EXPORT CursorWindowController : public aura::WindowObserver {
   std::unique_ptr<CursorWindowDelegate> delegate_;
   views::UniqueWidgetPtr cursor_view_widget_;
 
-  const bool is_fast_ink_enabled_;
-  base::ScopedObservation<aura::Window, aura::WindowObserver>
-      scoped_container_observer_{this};
+  const bool is_cursor_motion_blur_enabled_;
 };
 
 }  // namespace ash

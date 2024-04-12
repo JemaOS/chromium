@@ -35,7 +35,6 @@ namespace blink {
 class HTMLImageLoader;
 class LayoutEmbeddedContent;
 class LayoutEmbeddedObject;
-enum class NamedPropertySetterResult;
 class WebPluginContainerImpl;
 
 class PluginParameters {
@@ -68,6 +67,18 @@ class CORE_EXPORT HTMLPlugInElement
 
   void SetFocused(bool, mojom::blink::FocusType) override;
   void ResetInstance();
+  // TODO(dcheng): Consider removing this, since HTMLEmbedElementLegacyCall
+  // and HTMLObjectElementLegacyCall usage is extremely low.
+  v8::Local<v8::Object> PluginWrapper();
+  // TODO(joelhockey): Clean up PluginEmbeddedContentView and
+  // OwnedEmbeddedContentView (maybe also PluginWrapper).  It would be good to
+  // remove and/or rename some of these. PluginEmbeddedContentView and
+  // OwnedPlugin both return the plugin that is stored as
+  // HTMLFrameOwnerElement::embedded_content_view_.  However
+  // PluginEmbeddedContentView will synchronously create the plugin if required
+  // by calling LayoutEmbeddedContentForJSBindings. Possibly the
+  // PluginEmbeddedContentView code can be inlined into PluginWrapper.
+  WebPluginContainerImpl* PluginEmbeddedContentView() const;
   WebPluginContainerImpl* OwnedPlugin() const;
   bool CanProcessDrag() const;
   const String& Url() const { return url_; }
@@ -86,10 +97,6 @@ class CORE_EXPORT HTMLPlugInElement
   bool IsImageType() const;
   HTMLImageLoader* ImageLoader() const { return image_loader_.Get(); }
   virtual bool UseFallbackContent() const;
-
-  ScriptValue AnonymousNamedGetter(const AtomicString&);
-  NamedPropertySetterResult AnonymousNamedSetter(const AtomicString&,
-                                                 const ScriptValue&);
 
  protected:
   HTMLPlugInElement(const QualifiedName& tag_name,
@@ -157,13 +164,11 @@ class CORE_EXPORT HTMLPlugInElement
 
   // Element overrides:
   LayoutObject* CreateLayoutObject(const ComputedStyle&) override;
-  bool SupportsFocus(UpdateBehavior) const final { return true; }
-  bool IsFocusableStyle(UpdateBehavior update_behavior =
-                            UpdateBehavior::kStyleAndLayout) const final;
-  bool IsKeyboardFocusable(UpdateBehavior update_behavior =
-                               UpdateBehavior::kStyleAndLayout) const final;
+  bool SupportsFocus() const final { return true; }
+  bool IsFocusableStyle() const final;
+  bool IsKeyboardFocusable() const final;
   void DidAddUserAgentShadowRoot(ShadowRoot&) final;
-  const ComputedStyle* CustomStyleForLayoutObject(
+  scoped_refptr<const ComputedStyle> CustomStyleForLayoutObject(
       const StyleRecalcContext&) final;
 
   // HTMLElement overrides:
@@ -173,21 +178,6 @@ class CORE_EXPORT HTMLPlugInElement
   // HTMLFrameOwnerElement overrides:
   void DisconnectContentFrame() override;
   void IntrinsicSizingInfoChanged() final;
-
-  // TODO(dcheng): Consider removing this, since HTMLEmbedElementLegacyCall
-  // and HTMLObjectElementLegacyCall usage is extremely low.
-  v8::Local<v8::Object> PluginWrapper();
-  // TODO(joelhockey): Clean up PluginEmbeddedContentView and
-  // OwnedEmbeddedContentView (maybe also PluginWrapper).  It would be good to
-  // remove and/or rename some of these. PluginEmbeddedContentView and
-  // OwnedPlugin both return the plugin that is stored as
-  // HTMLFrameOwnerElement::embedded_content_view_.  However
-  // PluginEmbeddedContentView will synchronously create the plugin if required
-  // by calling LayoutEmbeddedContentForJSBindings.  This can cause
-  // navigations, and it also means that two successive calls to
-  // PluginEmbeddedContentView might not return the same result.  Possibly the
-  // PluginEmbeddedContentView code can be inlined into PluginWrapper.
-  WebPluginContainerImpl* PluginEmbeddedContentView() const;
 
   // Return any existing LayoutEmbeddedContent without triggering relayout, or 0
   // if it doesn't yet exist.

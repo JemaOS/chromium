@@ -5,18 +5,10 @@
 import '//resources/cr_elements/cr_button/cr_button.js';
 import '//resources/cr_elements/cr_tabs/cr_tabs.js';
 import '//resources/polymer/v3_0/iron-pages/iron-pages.js';
-import '../demo.css.js';
 
-import type {CrTabsElement} from '//resources/cr_elements/cr_tabs/cr_tabs.js';
 import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './cr_tabs_demo.html.js';
-
-interface CrTabsDemoElement {
-  $: {
-    tabs: CrTabsElement,
-  };
-}
 
 class CrTabsDemoElement extends PolymerElement {
   static get is() {
@@ -39,19 +31,15 @@ class CrTabsDemoElement extends PolymerElement {
 
   private onAddClick_() {
     this.push('tabNames_', 'Added');
-    this.$.tabs.requestUpdate();
   }
 
   private onAddAt1Click_() {
     this.splice('tabNames_', 1, 0, 'Added at 1');
-    this.$.tabs.requestUpdate();
   }
 
   private onSelectAt1Click_() {
     this.selectedTabIndex_ = 1;
   }
 }
-
-export const tagName = CrTabsDemoElement.is;
 
 customElements.define(CrTabsDemoElement.is, CrTabsDemoElement);

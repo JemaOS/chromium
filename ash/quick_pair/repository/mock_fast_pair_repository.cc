@@ -7,13 +7,9 @@
 namespace ash {
 namespace quick_pair {
 
-MockFastPairRepository::MockFastPairRepository() {
-  SetInstanceForTesting(this);
-}
+MockFastPairRepository::MockFastPairRepository() = default;
 
-MockFastPairRepository::~MockFastPairRepository() {
-  SetInstanceForTesting(nullptr);
-}
+MockFastPairRepository::~MockFastPairRepository() = default;
 
 }  // namespace quick_pair
 }  // namespace ash

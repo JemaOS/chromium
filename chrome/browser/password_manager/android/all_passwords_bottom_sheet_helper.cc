@@ -4,22 +4,16 @@
 
 #include "chrome/browser/password_manager/android/all_passwords_bottom_sheet_helper.h"
 
-#include <functional>
-
+#include "base/functional/not_fn.h"
 #include "base/ranges/algorithm.h"
 #include "components/password_manager/core/browser/password_form.h"
-#include "components/password_manager/core/browser/password_store/password_store_interface.h"
+#include "components/password_manager/core/browser/password_store_interface.h"
 
 AllPasswordsBottomSheetHelper::AllPasswordsBottomSheetHelper(
-    password_manager::PasswordStoreInterface* profile_store,
-    password_manager::PasswordStoreInterface* account_store) {
-  DCHECK(profile_store);
-  profile_store->GetAllLoginsWithAffiliationAndBrandingInformation(
+    password_manager::PasswordStoreInterface* store) {
+  DCHECK(store);
+  store->GetAllLoginsWithAffiliationAndBrandingInformation(
       weak_ptr_factory_.GetWeakPtr());
-  if (account_store) {
-    account_store->GetAllLoginsWithAffiliationAndBrandingInformation(
-        weak_ptr_factory_.GetWeakPtr());
-  }
 }
 
 AllPasswordsBottomSheetHelper::~AllPasswordsBottomSheetHelper() = default;
@@ -41,9 +35,8 @@ void AllPasswordsBottomSheetHelper::ClearUpdateCallback() {
 
 void AllPasswordsBottomSheetHelper::OnGetPasswordStoreResults(
     std::vector<std::unique_ptr<password_manager::PasswordForm>> results) {
-  int results_count = base::ranges::count_if(
-      results, std::not_fn(&password_manager::PasswordForm::blocked_by_user));
-  available_credentials_ = available_credentials_.value_or(0) + results_count;
+  available_credentials_ = base::ranges::count_if(
+      results, base::not_fn(&password_manager::PasswordForm::blocked_by_user));
   if (available_credentials_.value() == 0)
     return;  // Don't update if sheet still wouldn't be available.
   if (update_callback_.is_null())

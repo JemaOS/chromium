@@ -10,6 +10,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/user_manager/user.h"
+#include "components/user_manager/user_manager.h"
 #include "content/public/browser/browser_context.h"
 
 namespace ash {
@@ -17,8 +18,7 @@ namespace ash {
 // static
 PasswordSyncTokenVerifierFactory*
 PasswordSyncTokenVerifierFactory::GetInstance() {
-  static base::NoDestructor<PasswordSyncTokenVerifierFactory> instance;
-  return instance.get();
+  return base::Singleton<PasswordSyncTokenVerifierFactory>::get();
 }
 
 // static
@@ -42,8 +42,7 @@ PasswordSyncTokenVerifierFactory::PasswordSyncTokenVerifierFactory()
 
 PasswordSyncTokenVerifierFactory::~PasswordSyncTokenVerifierFactory() = default;
 
-std::unique_ptr<KeyedService>
-PasswordSyncTokenVerifierFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PasswordSyncTokenVerifierFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   user_manager::User* user = ProfileHelper::Get()->GetUserByProfile(profile);
@@ -53,7 +52,7 @@ PasswordSyncTokenVerifierFactory::BuildServiceInstanceForBrowserContext(
       !user->using_saml()) {
     return nullptr;
   }
-  return std::make_unique<PasswordSyncTokenVerifier>(profile);
+  return new PasswordSyncTokenVerifier(profile);
 }
 
 }  // namespace ash

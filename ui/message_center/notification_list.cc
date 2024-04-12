@@ -26,7 +26,7 @@ namespace {
 bool ShouldShowNotificationAsPopup(const Notification& notification,
                                    const NotificationBlockers& blockers,
                                    const NotificationBlocker* except) {
-  for (message_center::NotificationBlocker* blocker : blockers) {
+  for (auto* blocker : blockers) {
     if (blocker != except &&
         !blocker->ShouldShowNotificationAsPopup(notification)) {
       return false;
@@ -74,25 +74,6 @@ NotificationList::NotificationList(MessageCenter* message_center)
     : message_center_(message_center), quiet_mode_(false) {}
 
 NotificationList::~NotificationList() = default;
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-std::string NotificationList::GetOldestNonGroupedNotificationId() {
-  auto oldest_lowest_priority_notification_iter = --notifications_.end();
-
-  // Do not return a parent notification with grouped children because this kind
-  // of notification is a container of child notifications, and do not return a
-  // pinned notification.
-  while (oldest_lowest_priority_notification_iter->first->pinned() ||
-         oldest_lowest_priority_notification_iter->first->group_parent()) {
-    // If all of the notifications are pinned or grouped, return nothing.
-    if (oldest_lowest_priority_notification_iter == notifications_.begin()) {
-      return std::string();
-    }
-    --oldest_lowest_priority_notification_iter;
-  }
-  return oldest_lowest_priority_notification_iter->first->id();
-}
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 void NotificationList::SetNotificationsShown(
     const NotificationBlockers& blockers,
@@ -324,11 +305,16 @@ void NotificationList::MarkSinglePopupAsShown(const std::string& id,
   DCHECK(iter != notifications_.end());
 
   NotificationState* state = &iter->second;
+  const Notification& notification = *iter->first;
+
   if (iter->second.shown_as_popup) {
     return;
   }
 
-  state->shown_as_popup = true;
+  // System notification is marked as shown only when marked as read.
+  if (notification.priority() != SYSTEM_PRIORITY || mark_notification_as_read) {
+    state->shown_as_popup = true;
+  }
 
   // The popup notification is already marked as read when it's displayed.
   // Set the is_read back to false if necessary.
@@ -424,8 +410,7 @@ NotificationList::GetVisibleNotificationsWithoutBlocker(
   Notifications result;
   for (const auto& tuple : notifications_) {
     auto it = (base::ranges::find_if(
-        blockers, [&ignored_blocker,
-                   &tuple](message_center::NotificationBlocker* blocker) {
+        blockers, [&ignored_blocker, &tuple](auto* blocker) {
           return blocker != ignored_blocker &&
                  !blocker->ShouldShowNotification(*tuple.first);
         }));

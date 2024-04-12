@@ -5,7 +5,6 @@
 #include "third_party/blink/renderer/modules/xr/xr_transient_input_hit_test_result.h"
 
 #include "device/vr/public/mojom/vr_service.mojom-blink.h"
-#include "third_party/blink/renderer/bindings/core/v8/frozen_array.h"
 #include "third_party/blink/renderer/modules/xr/xr_hit_test_result.h"
 #include "third_party/blink/renderer/modules/xr/xr_input_source.h"
 
@@ -15,22 +14,18 @@ XRTransientInputHitTestResult::XRTransientInputHitTestResult(
     XRInputSource* input_source,
     const Vector<device::mojom::blink::XRHitResultPtr>& results)
     : input_source_(input_source) {
-  FrozenArray<XRHitTestResult>::VectorType result_vec;
   for (const auto& result : results) {
-    result_vec.push_back(MakeGarbageCollected<XRHitTestResult>(
+    results_.push_back(MakeGarbageCollected<XRHitTestResult>(
         input_source->session(), *result));
   }
-  results_ =
-      MakeGarbageCollected<FrozenArray<XRHitTestResult>>(std::move(result_vec));
 }
 
 XRInputSource* XRTransientInputHitTestResult::inputSource() {
-  return input_source_.Get();
+  return input_source_;
 }
 
-const FrozenArray<XRHitTestResult>& XRTransientInputHitTestResult::results()
-    const {
-  return *results_.Get();
+HeapVector<Member<XRHitTestResult>> XRTransientInputHitTestResult::results() {
+  return results_;
 }
 
 void XRTransientInputHitTestResult::Trace(Visitor* visitor) const {

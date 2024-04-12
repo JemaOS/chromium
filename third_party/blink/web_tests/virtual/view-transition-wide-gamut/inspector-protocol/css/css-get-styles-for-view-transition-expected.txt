@@ -4,9 +4,7 @@ The test verifies functionality of querying style information for view-transitio
     result : {
         cssKeyframesRules : [
         ]
-        cssPropertyRegistrations : [
-        ]
-        cssPropertyRules : [
+        cssPositionFallbackRules : [
         ]
         inherited : [
         ]
@@ -39,18 +37,11 @@ The test verifies functionality of querying style information for view-transitio
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
                                 text : html
                             }
                         ]
@@ -82,18 +73,11 @@ The test verifies functionality of querying style information for view-transitio
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 0
-                                }
                                 text : :root
                             }
                         ]
@@ -130,18 +114,11 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
                                         text : html::view-transition
                                     }
                                 ]
@@ -198,22 +175,15 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 1
-                                        }
-                                        text : html::view-transition-group(*)
+                                        text : html::view-transition-group()
                                     }
                                 ]
-                                text : html::view-transition-group(*)
+                                text : html::view-transition-group()
                             }
                             style : {
                                 cssProperties : [
@@ -249,22 +219,15 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 1
-                                        }
-                                        text : html::view-transition-group(*)
+                                        text : html::view-transition-group()
                                     }
                                 ]
-                                text : html::view-transition-group(*)
+                                text : html::view-transition-group()
                             }
                             style : {
                                 cssProperties : [
@@ -296,18 +259,11 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
                                         text : html::view-transition-group(root)
                                     }
                                 ]
@@ -316,95 +272,12 @@ The test verifies functionality of querying style information for view-transitio
                             style : {
                                 cssProperties : [
                                     [0] : {
-                                        name : width
-                                        value : 800px
+                                        name : right
+                                        value : 0px
                                     }
                                     [1] : {
-                                        name : height
-                                        value : 600px
-                                    }
-                                    [2] : {
-                                        name : transform
-                                        value : matrix(1, 0, 0, 1, 0, 0)
-                                    }
-                                    [3] : {
-                                        name : color-scheme
-                                        value : normal
-                                    }
-                                    [4] : {
-                                        name : text-orientation
-                                        value : mixed
-                                    }
-                                    [5] : {
-                                        name : writing-mode
-                                        value : horizontal-tb
-                                    }
-                                    [6] : {
-                                        name : backdrop-filter
-                                        value : none
-                                    }
-                                    [7] : {
-                                        name : mix-blend-mode
-                                        value : normal
-                                    }
-                                ]
-                                shorthandEntries : [
-                                ]
-                            }
-                            supports : [
-                            ]
-                        }
-                    }
-                    [3] : {
-                        matchingSelectors : [
-                            [0] : 0
-                        ]
-                        rule : {
-                            containerQueries : [
-                            ]
-                            layers : [
-                            ]
-                            media : [
-                            ]
-                            origin : user-agent
-                            ruleTypes : [
-                            ]
-                            scopes : [
-                            ]
-                            selectorList : {
-                                selectors : [
-                                    [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
-                                        text : html::view-transition-group(root)
-                                    }
-                                ]
-                                text : html::view-transition-group(root)
-                            }
-                            style : {
-                                cssProperties : [
-                                    [0] : {
-                                        name : animation-name
-                                        value : -ua-view-transition-group-anim-root
-                                    }
-                                    [1] : {
-                                        name : animation-timing-function
-                                        value : ease
-                                    }
-                                    [2] : {
-                                        name : animation-delay
-                                        value : 0s
-                                    }
-                                    [3] : {
-                                        name : animation-iteration-count
-                                        value : 1
-                                    }
-                                    [4] : {
-                                        name : animation-direction
-                                        value : normal
+                                        name : bottom
+                                        value : 0px
                                     }
                                 ]
                                 shorthandEntries : [
@@ -432,22 +305,15 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 1
-                                        }
-                                        text : html::view-transition-group(*)
+                                        text : html::view-transition-group()
                                     }
                                 ]
-                                text : html::view-transition-group(*)
+                                text : html::view-transition-group()
                             }
                             style : {
                                 cssProperties : [
@@ -483,22 +349,15 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 1
-                                        }
-                                        text : html::view-transition-group(*)
+                                        text : html::view-transition-group()
                                     }
                                 ]
-                                text : html::view-transition-group(*)
+                                text : html::view-transition-group()
                             }
                             style : {
                                 cssProperties : [
@@ -530,18 +389,11 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
                                         text : html::view-transition-group(shared)
                                     }
                                 ]
@@ -562,24 +414,8 @@ The test verifies functionality of querying style information for view-transitio
                                         value : matrix(1, 0, 0, 1, 8, 8)
                                     }
                                     [3] : {
-                                        name : color-scheme
-                                        value : normal
-                                    }
-                                    [4] : {
-                                        name : text-orientation
-                                        value : mixed
-                                    }
-                                    [5] : {
                                         name : writing-mode
                                         value : horizontal-tb
-                                    }
-                                    [6] : {
-                                        name : backdrop-filter
-                                        value : none
-                                    }
-                                    [7] : {
-                                        name : mix-blend-mode
-                                        value : normal
                                     }
                                 ]
                                 shorthandEntries : [
@@ -601,18 +437,11 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
                                         text : html::view-transition-group(shared)
                                     }
                                 ]
@@ -629,19 +458,27 @@ The test verifies functionality of querying style information for view-transitio
                                         value : ease
                                     }
                                     [2] : {
-                                        name : animation-delay
+                                        name : animation-delay-start
                                         value : 0s
                                     }
                                     [3] : {
+                                        name : animation-delay-end
+                                        value : 0s
+                                    }
+                                    [4] : {
                                         name : animation-iteration-count
                                         value : 1
                                     }
-                                    [4] : {
+                                    [5] : {
                                         name : animation-direction
                                         value : normal
                                     }
                                 ]
                                 shorthandEntries : [
+                                    [0] : {
+                                        name : animation-delay
+                                        value : 0s
+                                    }
                                 ]
                             }
                             supports : [
@@ -666,22 +503,15 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
-                                        text : ::view-transition-image-pair(*)
+                                        text : ::view-transition-image-pair()
                                     }
                                 ]
-                                text : ::view-transition-image-pair(*)
+                                text : ::view-transition-image-pair()
                             }
                             style : {
                                 cssProperties : [
@@ -729,22 +559,15 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 1
-                                        }
-                                        text : html::view-transition-image-pair(*)
+                                        text : html::view-transition-image-pair()
                                     }
                                 ]
-                                text : html::view-transition-image-pair(*)
+                                text : html::view-transition-image-pair()
                             }
                             style : {
                                 cssProperties : [
@@ -776,18 +599,11 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
                                         text : html::view-transition-image-pair(root)
                                     }
                                 ]
@@ -825,22 +641,15 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
-                                        text : ::view-transition-image-pair(*)
+                                        text : ::view-transition-image-pair()
                                     }
                                 ]
-                                text : ::view-transition-image-pair(*)
+                                text : ::view-transition-image-pair()
                             }
                             style : {
                                 cssProperties : [
@@ -888,22 +697,15 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 1
-                                        }
-                                        text : html::view-transition-image-pair(*)
+                                        text : html::view-transition-image-pair()
                                     }
                                 ]
-                                text : html::view-transition-image-pair(*)
+                                text : html::view-transition-image-pair()
                             }
                             style : {
                                 cssProperties : [
@@ -935,18 +737,11 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
                                         text : html::view-transition-image-pair(shared)
                                     }
                                 ]
@@ -984,30 +779,18 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
-                                        text : ::view-transition-new(*)
+                                        text : ::view-transition-new()
                                     }
                                     [1] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
-                                        text : ::view-transition-old(*)
+                                        text : ::view-transition-old()
                                     }
                                 ]
-                                text : ::view-transition-new(*), ::view-transition-old(*)
+                                text : ::view-transition-new(), ::view-transition-old()
                             }
                             style : {
                                 cssProperties : [
@@ -1047,30 +830,27 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 1
-                                        }
-                                        text : html::view-transition-old(*)
+                                        text : html::view-transition-old()
                                     }
                                 ]
-                                text : html::view-transition-old(*)
+                                text : html::view-transition-old()
                             }
                             style : {
                                 cssProperties : [
                                     [0] : {
+                                        name : animation-name
+                                        value : -ua-view-transition-fade-out
+                                    }
+                                    [1] : {
                                         name : animation-duration
                                         value : inherit
                                     }
-                                    [1] : {
+                                    [2] : {
                                         name : animation-fill-mode
                                         value : inherit
                                     }
@@ -1094,18 +874,11 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
                                         text : html::view-transition-old(root)
                                     }
                                 ]
@@ -1114,8 +887,8 @@ The test verifies functionality of querying style information for view-transitio
                             style : {
                                 cssProperties : [
                                     [0] : {
-                                        name : animation-name
-                                        value : -ua-view-transition-fade-out, -ua-mix-blend-mode-plus-lighter
+                                        name : mix-blend-mode
+                                        value : plus-lighter
                                     }
                                 ]
                                 shorthandEntries : [
@@ -1137,8 +910,6 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : regular
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
@@ -1150,15 +921,10 @@ The test verifies functionality of querying style information for view-transitio
                                             startColumn : 1
                                             startLine : 0
                                         }
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
                                         text : ::view-transition-old(*)
                                     }
                                 ]
-                                text : ::view-transition-old(*)
+                                text : ::view-transition-old()
                             }
                             style : {
                                 cssProperties : [
@@ -1183,22 +949,26 @@ The test verifies functionality of querying style information for view-transitio
                                                 value : initial
                                             }
                                             [4] : {
-                                                name : background-repeat
+                                                name : background-repeat-x
                                                 value : initial
                                             }
                                             [5] : {
-                                                name : background-attachment
+                                                name : background-repeat-y
                                                 value : initial
                                             }
                                             [6] : {
-                                                name : background-origin
+                                                name : background-attachment
                                                 value : initial
                                             }
                                             [7] : {
-                                                name : background-clip
+                                                name : background-origin
                                                 value : initial
                                             }
                                             [8] : {
+                                                name : background-clip
+                                                value : initial
+                                            }
+                                            [9] : {
                                                 name : background-color
                                                 value : red
                                             }
@@ -1230,22 +1000,26 @@ The test verifies functionality of querying style information for view-transitio
                                         value : initial
                                     }
                                     [5] : {
-                                        name : background-repeat
+                                        name : background-repeat-x
                                         value : initial
                                     }
                                     [6] : {
-                                        name : background-attachment
+                                        name : background-repeat-y
                                         value : initial
                                     }
                                     [7] : {
-                                        name : background-origin
+                                        name : background-attachment
                                         value : initial
                                     }
                                     [8] : {
-                                        name : background-clip
+                                        name : background-origin
                                         value : initial
                                     }
                                     [9] : {
+                                        name : background-clip
+                                        value : initial
+                                    }
+                                    [10] : {
                                         name : background-color
                                         value : red
                                     }
@@ -1288,30 +1062,18 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
-                                        text : ::view-transition-new(*)
+                                        text : ::view-transition-new()
                                     }
                                     [1] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
-                                        text : ::view-transition-old(*)
+                                        text : ::view-transition-old()
                                     }
                                 ]
-                                text : ::view-transition-new(*), ::view-transition-old(*)
+                                text : ::view-transition-new(), ::view-transition-old()
                             }
                             style : {
                                 cssProperties : [
@@ -1351,30 +1113,27 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 1
-                                        }
-                                        text : html::view-transition-old(*)
+                                        text : html::view-transition-old()
                                     }
                                 ]
-                                text : html::view-transition-old(*)
+                                text : html::view-transition-old()
                             }
                             style : {
                                 cssProperties : [
                                     [0] : {
+                                        name : animation-name
+                                        value : -ua-view-transition-fade-out
+                                    }
+                                    [1] : {
                                         name : animation-duration
                                         value : inherit
                                     }
-                                    [1] : {
+                                    [2] : {
                                         name : animation-fill-mode
                                         value : inherit
                                     }
@@ -1398,18 +1157,11 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
                                         text : html::view-transition-old(shared)
                                     }
                                 ]
@@ -1418,8 +1170,8 @@ The test verifies functionality of querying style information for view-transitio
                             style : {
                                 cssProperties : [
                                     [0] : {
-                                        name : animation-name
-                                        value : -ua-view-transition-fade-out, -ua-mix-blend-mode-plus-lighter
+                                        name : mix-blend-mode
+                                        value : plus-lighter
                                     }
                                 ]
                                 shorthandEntries : [
@@ -1441,8 +1193,6 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : regular
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
@@ -1454,15 +1204,10 @@ The test verifies functionality of querying style information for view-transitio
                                             startColumn : 1
                                             startLine : 0
                                         }
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
                                         text : ::view-transition-old(*)
                                     }
                                 ]
-                                text : ::view-transition-old(*)
+                                text : ::view-transition-old()
                             }
                             style : {
                                 cssProperties : [
@@ -1487,22 +1232,26 @@ The test verifies functionality of querying style information for view-transitio
                                                 value : initial
                                             }
                                             [4] : {
-                                                name : background-repeat
+                                                name : background-repeat-x
                                                 value : initial
                                             }
                                             [5] : {
-                                                name : background-attachment
+                                                name : background-repeat-y
                                                 value : initial
                                             }
                                             [6] : {
-                                                name : background-origin
+                                                name : background-attachment
                                                 value : initial
                                             }
                                             [7] : {
-                                                name : background-clip
+                                                name : background-origin
                                                 value : initial
                                             }
                                             [8] : {
+                                                name : background-clip
+                                                value : initial
+                                            }
+                                            [9] : {
                                                 name : background-color
                                                 value : red
                                             }
@@ -1534,22 +1283,26 @@ The test verifies functionality of querying style information for view-transitio
                                         value : initial
                                     }
                                     [5] : {
-                                        name : background-repeat
+                                        name : background-repeat-x
                                         value : initial
                                     }
                                     [6] : {
-                                        name : background-attachment
+                                        name : background-repeat-y
                                         value : initial
                                     }
                                     [7] : {
-                                        name : background-origin
+                                        name : background-attachment
                                         value : initial
                                     }
                                     [8] : {
-                                        name : background-clip
+                                        name : background-origin
                                         value : initial
                                     }
                                     [9] : {
+                                        name : background-clip
+                                        value : initial
+                                    }
+                                    [10] : {
                                         name : background-color
                                         value : red
                                     }
@@ -1592,30 +1345,18 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
-                                        text : ::view-transition-new(*)
+                                        text : ::view-transition-new()
                                     }
                                     [1] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
-                                        text : ::view-transition-old(*)
+                                        text : ::view-transition-old()
                                     }
                                 ]
-                                text : ::view-transition-new(*), ::view-transition-old(*)
+                                text : ::view-transition-new(), ::view-transition-old()
                             }
                             style : {
                                 cssProperties : [
@@ -1655,30 +1396,27 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 1
-                                        }
-                                        text : html::view-transition-new(*)
+                                        text : html::view-transition-new()
                                     }
                                 ]
-                                text : html::view-transition-new(*)
+                                text : html::view-transition-new()
                             }
                             style : {
                                 cssProperties : [
                                     [0] : {
+                                        name : animation-name
+                                        value : -ua-view-transition-fade-in
+                                    }
+                                    [1] : {
                                         name : animation-duration
                                         value : inherit
                                     }
-                                    [1] : {
+                                    [2] : {
                                         name : animation-fill-mode
                                         value : inherit
                                     }
@@ -1702,18 +1440,11 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
                                         text : html::view-transition-new(root)
                                     }
                                 ]
@@ -1722,8 +1453,8 @@ The test verifies functionality of querying style information for view-transitio
                             style : {
                                 cssProperties : [
                                     [0] : {
-                                        name : animation-name
-                                        value : -ua-view-transition-fade-in, -ua-mix-blend-mode-plus-lighter
+                                        name : mix-blend-mode
+                                        value : plus-lighter
                                     }
                                 ]
                                 shorthandEntries : [
@@ -1751,30 +1482,18 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
-                                        text : ::view-transition-new(*)
+                                        text : ::view-transition-new()
                                     }
                                     [1] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 0
-                                        }
-                                        text : ::view-transition-old(*)
+                                        text : ::view-transition-old()
                                     }
                                 ]
-                                text : ::view-transition-new(*), ::view-transition-old(*)
+                                text : ::view-transition-new(), ::view-transition-old()
                             }
                             style : {
                                 cssProperties : [
@@ -1814,30 +1533,27 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 0
-                                            c : 1
-                                        }
-                                        text : html::view-transition-new(*)
+                                        text : html::view-transition-new()
                                     }
                                 ]
-                                text : html::view-transition-new(*)
+                                text : html::view-transition-new()
                             }
                             style : {
                                 cssProperties : [
                                     [0] : {
+                                        name : animation-name
+                                        value : -ua-view-transition-fade-in
+                                    }
+                                    [1] : {
                                         name : animation-duration
                                         value : inherit
                                     }
-                                    [1] : {
+                                    [2] : {
                                         name : animation-fill-mode
                                         value : inherit
                                     }
@@ -1861,18 +1577,11 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : user-agent
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
                                 selectors : [
                                     [0] : {
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 1
-                                        }
                                         text : html::view-transition-new(shared)
                                     }
                                 ]
@@ -1881,8 +1590,8 @@ The test verifies functionality of querying style information for view-transitio
                             style : {
                                 cssProperties : [
                                     [0] : {
-                                        name : animation-name
-                                        value : -ua-view-transition-fade-in, -ua-mix-blend-mode-plus-lighter
+                                        name : mix-blend-mode
+                                        value : plus-lighter
                                     }
                                 ]
                                 shorthandEntries : [
@@ -1904,8 +1613,6 @@ The test verifies functionality of querying style information for view-transitio
                             media : [
                             ]
                             origin : regular
-                            ruleTypes : [
-                            ]
                             scopes : [
                             ]
                             selectorList : {
@@ -1916,11 +1623,6 @@ The test verifies functionality of querying style information for view-transitio
                                             endLine : 0
                                             startColumn : 1
                                             startLine : 0
-                                        }
-                                        specificity : {
-                                            a : 0
-                                            b : 1
-                                            c : 0
                                         }
                                         text : ::view-transition-new(shared)
                                     }
@@ -1974,12 +1676,6 @@ The test verifies functionality of querying style information for view-transitio
 Dumping styles for : ::view-transition with id undefined{
     id : <number>
     result : {
-        cssKeyframesRules : [
-        ]
-        cssPropertyRegistrations : [
-        ]
-        cssPropertyRules : [
-        ]
         inherited : [
         ]
         matchedCSSRules : [
@@ -1995,18 +1691,11 @@ Dumping styles for : ::view-transition with id undefined{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
                                 text : html::view-transition
                             }
                         ]
@@ -2053,47 +1742,6 @@ Dumping styles for : ::view-transition with id undefined{
 Dumping styles for : ::view-transition-group with id root{
     id : <number>
     result : {
-        cssKeyframesRules : [
-            [0] : {
-                animationName : {
-                    text : -ua-view-transition-group-anim-root
-                }
-                keyframes : [
-                    [0] : {
-                        keyText : {
-                            text : 0%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : transform
-                                    value : matrix(1, 0, 0, 1, 0, 0)
-                                }
-                                [1] : {
-                                    name : width
-                                    value : 800px
-                                }
-                                [2] : {
-                                    name : height
-                                    value : 600px
-                                }
-                                [3] : {
-                                    name : backdrop-filter
-                                    value : none
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                ]
-            }
-        ]
-        cssPropertyRegistrations : [
-        ]
-        cssPropertyRules : [
-        ]
         inherited : [
         ]
         matchedCSSRules : [
@@ -2109,22 +1757,15 @@ Dumping styles for : ::view-transition-group with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
-                                text : html::view-transition-group(*)
+                                text : html::view-transition-group()
                             }
                         ]
-                        text : html::view-transition-group(*)
+                        text : html::view-transition-group()
                     }
                     style : {
                         cssProperties : [
@@ -2160,22 +1801,15 @@ Dumping styles for : ::view-transition-group with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
-                                text : html::view-transition-group(*)
+                                text : html::view-transition-group()
                             }
                         ]
-                        text : html::view-transition-group(*)
+                        text : html::view-transition-group()
                     }
                     style : {
                         cssProperties : [
@@ -2207,18 +1841,11 @@ Dumping styles for : ::view-transition-group with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
                                 text : html::view-transition-group(root)
                             }
                         ]
@@ -2227,95 +1854,12 @@ Dumping styles for : ::view-transition-group with id root{
                     style : {
                         cssProperties : [
                             [0] : {
-                                name : width
-                                value : 800px
+                                name : right
+                                value : 0px
                             }
                             [1] : {
-                                name : height
-                                value : 600px
-                            }
-                            [2] : {
-                                name : transform
-                                value : matrix(1, 0, 0, 1, 0, 0)
-                            }
-                            [3] : {
-                                name : color-scheme
-                                value : normal
-                            }
-                            [4] : {
-                                name : text-orientation
-                                value : mixed
-                            }
-                            [5] : {
-                                name : writing-mode
-                                value : horizontal-tb
-                            }
-                            [6] : {
-                                name : backdrop-filter
-                                value : none
-                            }
-                            [7] : {
-                                name : mix-blend-mode
-                                value : normal
-                            }
-                        ]
-                        shorthandEntries : [
-                        ]
-                    }
-                    supports : [
-                    ]
-                }
-            }
-            [3] : {
-                matchingSelectors : [
-                    [0] : 0
-                ]
-                rule : {
-                    containerQueries : [
-                    ]
-                    layers : [
-                    ]
-                    media : [
-                    ]
-                    origin : user-agent
-                    ruleTypes : [
-                    ]
-                    scopes : [
-                    ]
-                    selectorList : {
-                        selectors : [
-                            [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
-                                text : html::view-transition-group(root)
-                            }
-                        ]
-                        text : html::view-transition-group(root)
-                    }
-                    style : {
-                        cssProperties : [
-                            [0] : {
-                                name : animation-name
-                                value : -ua-view-transition-group-anim-root
-                            }
-                            [1] : {
-                                name : animation-timing-function
-                                value : ease
-                            }
-                            [2] : {
-                                name : animation-delay
-                                value : 0s
-                            }
-                            [3] : {
-                                name : animation-iteration-count
-                                value : 1
-                            }
-                            [4] : {
-                                name : animation-direction
-                                value : normal
+                                name : bottom
+                                value : 0px
                             }
                         ]
                         shorthandEntries : [
@@ -2332,12 +1876,6 @@ Dumping styles for : ::view-transition-group with id root{
 Dumping styles for : ::view-transition-image-pair with id root{
     id : <number>
     result : {
-        cssKeyframesRules : [
-        ]
-        cssPropertyRegistrations : [
-        ]
-        cssPropertyRules : [
-        ]
         inherited : [
         ]
         matchedCSSRules : [
@@ -2353,22 +1891,15 @@ Dumping styles for : ::view-transition-image-pair with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
-                                text : ::view-transition-image-pair(*)
+                                text : ::view-transition-image-pair()
                             }
                         ]
-                        text : ::view-transition-image-pair(*)
+                        text : ::view-transition-image-pair()
                     }
                     style : {
                         cssProperties : [
@@ -2416,22 +1947,15 @@ Dumping styles for : ::view-transition-image-pair with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
-                                text : html::view-transition-image-pair(*)
+                                text : html::view-transition-image-pair()
                             }
                         ]
-                        text : html::view-transition-image-pair(*)
+                        text : html::view-transition-image-pair()
                     }
                     style : {
                         cssProperties : [
@@ -2463,18 +1987,11 @@ Dumping styles for : ::view-transition-image-pair with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
                                 text : html::view-transition-image-pair(root)
                             }
                         ]
@@ -2501,74 +2018,6 @@ Dumping styles for : ::view-transition-image-pair with id root{
 Dumping styles for : ::view-transition-old with id root{
     id : <number>
     result : {
-        cssKeyframesRules : [
-            [0] : {
-                animationName : {
-                    text : -ua-view-transition-fade-out
-                }
-                keyframes : [
-                    [0] : {
-                        keyText : {
-                            text : 100%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : opacity
-                                    value : 0
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                ]
-            }
-            [1] : {
-                animationName : {
-                    text : -ua-mix-blend-mode-plus-lighter
-                }
-                keyframes : [
-                    [0] : {
-                        keyText : {
-                            text : 0%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : mix-blend-mode
-                                    value : plus-lighter
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                    [1] : {
-                        keyText : {
-                            text : 100%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : mix-blend-mode
-                                    value : plus-lighter
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                ]
-            }
-        ]
-        cssPropertyRegistrations : [
-        ]
-        cssPropertyRules : [
-        ]
         inherited : [
         ]
         matchedCSSRules : [
@@ -2584,30 +2033,18 @@ Dumping styles for : ::view-transition-old with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
-                                text : ::view-transition-new(*)
+                                text : ::view-transition-new()
                             }
                             [1] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
-                                text : ::view-transition-old(*)
+                                text : ::view-transition-old()
                             }
                         ]
-                        text : ::view-transition-new(*), ::view-transition-old(*)
+                        text : ::view-transition-new(), ::view-transition-old()
                     }
                     style : {
                         cssProperties : [
@@ -2647,30 +2084,27 @@ Dumping styles for : ::view-transition-old with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
-                                text : html::view-transition-old(*)
+                                text : html::view-transition-old()
                             }
                         ]
-                        text : html::view-transition-old(*)
+                        text : html::view-transition-old()
                     }
                     style : {
                         cssProperties : [
                             [0] : {
+                                name : animation-name
+                                value : -ua-view-transition-fade-out
+                            }
+                            [1] : {
                                 name : animation-duration
                                 value : inherit
                             }
-                            [1] : {
+                            [2] : {
                                 name : animation-fill-mode
                                 value : inherit
                             }
@@ -2694,18 +2128,11 @@ Dumping styles for : ::view-transition-old with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
                                 text : html::view-transition-old(root)
                             }
                         ]
@@ -2714,8 +2141,8 @@ Dumping styles for : ::view-transition-old with id root{
                     style : {
                         cssProperties : [
                             [0] : {
-                                name : animation-name
-                                value : -ua-view-transition-fade-out, -ua-mix-blend-mode-plus-lighter
+                                name : mix-blend-mode
+                                value : plus-lighter
                             }
                         ]
                         shorthandEntries : [
@@ -2737,8 +2164,6 @@ Dumping styles for : ::view-transition-old with id root{
                     media : [
                     ]
                     origin : regular
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
@@ -2750,15 +2175,10 @@ Dumping styles for : ::view-transition-old with id root{
                                     startColumn : 1
                                     startLine : 0
                                 }
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
                                 text : ::view-transition-old(*)
                             }
                         ]
-                        text : ::view-transition-old(*)
+                        text : ::view-transition-old()
                     }
                     style : {
                         cssProperties : [
@@ -2783,22 +2203,26 @@ Dumping styles for : ::view-transition-old with id root{
                                         value : initial
                                     }
                                     [4] : {
-                                        name : background-repeat
+                                        name : background-repeat-x
                                         value : initial
                                     }
                                     [5] : {
-                                        name : background-attachment
+                                        name : background-repeat-y
                                         value : initial
                                     }
                                     [6] : {
-                                        name : background-origin
+                                        name : background-attachment
                                         value : initial
                                     }
                                     [7] : {
-                                        name : background-clip
+                                        name : background-origin
                                         value : initial
                                     }
                                     [8] : {
+                                        name : background-clip
+                                        value : initial
+                                    }
+                                    [9] : {
                                         name : background-color
                                         value : red
                                     }
@@ -2830,22 +2254,26 @@ Dumping styles for : ::view-transition-old with id root{
                                 value : initial
                             }
                             [5] : {
-                                name : background-repeat
+                                name : background-repeat-x
                                 value : initial
                             }
                             [6] : {
-                                name : background-attachment
+                                name : background-repeat-y
                                 value : initial
                             }
                             [7] : {
-                                name : background-origin
+                                name : background-attachment
                                 value : initial
                             }
                             [8] : {
-                                name : background-clip
+                                name : background-origin
                                 value : initial
                             }
                             [9] : {
+                                name : background-clip
+                                value : initial
+                            }
+                            [10] : {
                                 name : background-color
                                 value : red
                             }
@@ -2877,74 +2305,6 @@ Dumping styles for : ::view-transition-old with id root{
 Dumping styles for : ::view-transition-new with id root{
     id : <number>
     result : {
-        cssKeyframesRules : [
-            [0] : {
-                animationName : {
-                    text : -ua-view-transition-fade-in
-                }
-                keyframes : [
-                    [0] : {
-                        keyText : {
-                            text : 0%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : opacity
-                                    value : 0
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                ]
-            }
-            [1] : {
-                animationName : {
-                    text : -ua-mix-blend-mode-plus-lighter
-                }
-                keyframes : [
-                    [0] : {
-                        keyText : {
-                            text : 0%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : mix-blend-mode
-                                    value : plus-lighter
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                    [1] : {
-                        keyText : {
-                            text : 100%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : mix-blend-mode
-                                    value : plus-lighter
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                ]
-            }
-        ]
-        cssPropertyRegistrations : [
-        ]
-        cssPropertyRules : [
-        ]
         inherited : [
         ]
         matchedCSSRules : [
@@ -2960,30 +2320,18 @@ Dumping styles for : ::view-transition-new with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
-                                text : ::view-transition-new(*)
+                                text : ::view-transition-new()
                             }
                             [1] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
-                                text : ::view-transition-old(*)
+                                text : ::view-transition-old()
                             }
                         ]
-                        text : ::view-transition-new(*), ::view-transition-old(*)
+                        text : ::view-transition-new(), ::view-transition-old()
                     }
                     style : {
                         cssProperties : [
@@ -3023,30 +2371,27 @@ Dumping styles for : ::view-transition-new with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
-                                text : html::view-transition-new(*)
+                                text : html::view-transition-new()
                             }
                         ]
-                        text : html::view-transition-new(*)
+                        text : html::view-transition-new()
                     }
                     style : {
                         cssProperties : [
                             [0] : {
+                                name : animation-name
+                                value : -ua-view-transition-fade-in
+                            }
+                            [1] : {
                                 name : animation-duration
                                 value : inherit
                             }
-                            [1] : {
+                            [2] : {
                                 name : animation-fill-mode
                                 value : inherit
                             }
@@ -3070,18 +2415,11 @@ Dumping styles for : ::view-transition-new with id root{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
                                 text : html::view-transition-new(root)
                             }
                         ]
@@ -3090,8 +2428,8 @@ Dumping styles for : ::view-transition-new with id root{
                     style : {
                         cssProperties : [
                             [0] : {
-                                name : animation-name
-                                value : -ua-view-transition-fade-in, -ua-mix-blend-mode-plus-lighter
+                                name : mix-blend-mode
+                                value : plus-lighter
                             }
                         ]
                         shorthandEntries : [
@@ -3108,47 +2446,6 @@ Dumping styles for : ::view-transition-new with id root{
 Dumping styles for : ::view-transition-group with id shared{
     id : <number>
     result : {
-        cssKeyframesRules : [
-            [0] : {
-                animationName : {
-                    text : -ua-view-transition-group-anim-shared
-                }
-                keyframes : [
-                    [0] : {
-                        keyText : {
-                            text : 0%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : transform
-                                    value : matrix(1, 0, 0, 1, 8, 8)
-                                }
-                                [1] : {
-                                    name : width
-                                    value : 100px
-                                }
-                                [2] : {
-                                    name : height
-                                    value : 100px
-                                }
-                                [3] : {
-                                    name : backdrop-filter
-                                    value : none
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                ]
-            }
-        ]
-        cssPropertyRegistrations : [
-        ]
-        cssPropertyRules : [
-        ]
         inherited : [
         ]
         matchedCSSRules : [
@@ -3164,22 +2461,15 @@ Dumping styles for : ::view-transition-group with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
-                                text : html::view-transition-group(*)
+                                text : html::view-transition-group()
                             }
                         ]
-                        text : html::view-transition-group(*)
+                        text : html::view-transition-group()
                     }
                     style : {
                         cssProperties : [
@@ -3215,22 +2505,15 @@ Dumping styles for : ::view-transition-group with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
-                                text : html::view-transition-group(*)
+                                text : html::view-transition-group()
                             }
                         ]
-                        text : html::view-transition-group(*)
+                        text : html::view-transition-group()
                     }
                     style : {
                         cssProperties : [
@@ -3262,18 +2545,11 @@ Dumping styles for : ::view-transition-group with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
                                 text : html::view-transition-group(shared)
                             }
                         ]
@@ -3294,24 +2570,8 @@ Dumping styles for : ::view-transition-group with id shared{
                                 value : matrix(1, 0, 0, 1, 8, 8)
                             }
                             [3] : {
-                                name : color-scheme
-                                value : normal
-                            }
-                            [4] : {
-                                name : text-orientation
-                                value : mixed
-                            }
-                            [5] : {
                                 name : writing-mode
                                 value : horizontal-tb
-                            }
-                            [6] : {
-                                name : backdrop-filter
-                                value : none
-                            }
-                            [7] : {
-                                name : mix-blend-mode
-                                value : normal
                             }
                         ]
                         shorthandEntries : [
@@ -3333,18 +2593,11 @@ Dumping styles for : ::view-transition-group with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
                                 text : html::view-transition-group(shared)
                             }
                         ]
@@ -3361,19 +2614,27 @@ Dumping styles for : ::view-transition-group with id shared{
                                 value : ease
                             }
                             [2] : {
-                                name : animation-delay
+                                name : animation-delay-start
                                 value : 0s
                             }
                             [3] : {
+                                name : animation-delay-end
+                                value : 0s
+                            }
+                            [4] : {
                                 name : animation-iteration-count
                                 value : 1
                             }
-                            [4] : {
+                            [5] : {
                                 name : animation-direction
                                 value : normal
                             }
                         ]
                         shorthandEntries : [
+                            [0] : {
+                                name : animation-delay
+                                value : 0s
+                            }
                         ]
                     }
                     supports : [
@@ -3387,12 +2648,6 @@ Dumping styles for : ::view-transition-group with id shared{
 Dumping styles for : ::view-transition-image-pair with id shared{
     id : <number>
     result : {
-        cssKeyframesRules : [
-        ]
-        cssPropertyRegistrations : [
-        ]
-        cssPropertyRules : [
-        ]
         inherited : [
         ]
         matchedCSSRules : [
@@ -3408,22 +2663,15 @@ Dumping styles for : ::view-transition-image-pair with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
-                                text : ::view-transition-image-pair(*)
+                                text : ::view-transition-image-pair()
                             }
                         ]
-                        text : ::view-transition-image-pair(*)
+                        text : ::view-transition-image-pair()
                     }
                     style : {
                         cssProperties : [
@@ -3471,22 +2719,15 @@ Dumping styles for : ::view-transition-image-pair with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
-                                text : html::view-transition-image-pair(*)
+                                text : html::view-transition-image-pair()
                             }
                         ]
-                        text : html::view-transition-image-pair(*)
+                        text : html::view-transition-image-pair()
                     }
                     style : {
                         cssProperties : [
@@ -3518,18 +2759,11 @@ Dumping styles for : ::view-transition-image-pair with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
                                 text : html::view-transition-image-pair(shared)
                             }
                         ]
@@ -3556,74 +2790,6 @@ Dumping styles for : ::view-transition-image-pair with id shared{
 Dumping styles for : ::view-transition-old with id shared{
     id : <number>
     result : {
-        cssKeyframesRules : [
-            [0] : {
-                animationName : {
-                    text : -ua-view-transition-fade-out
-                }
-                keyframes : [
-                    [0] : {
-                        keyText : {
-                            text : 100%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : opacity
-                                    value : 0
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                ]
-            }
-            [1] : {
-                animationName : {
-                    text : -ua-mix-blend-mode-plus-lighter
-                }
-                keyframes : [
-                    [0] : {
-                        keyText : {
-                            text : 0%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : mix-blend-mode
-                                    value : plus-lighter
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                    [1] : {
-                        keyText : {
-                            text : 100%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : mix-blend-mode
-                                    value : plus-lighter
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                ]
-            }
-        ]
-        cssPropertyRegistrations : [
-        ]
-        cssPropertyRules : [
-        ]
         inherited : [
         ]
         matchedCSSRules : [
@@ -3639,30 +2805,18 @@ Dumping styles for : ::view-transition-old with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
-                                text : ::view-transition-new(*)
+                                text : ::view-transition-new()
                             }
                             [1] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
-                                text : ::view-transition-old(*)
+                                text : ::view-transition-old()
                             }
                         ]
-                        text : ::view-transition-new(*), ::view-transition-old(*)
+                        text : ::view-transition-new(), ::view-transition-old()
                     }
                     style : {
                         cssProperties : [
@@ -3702,30 +2856,27 @@ Dumping styles for : ::view-transition-old with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
-                                text : html::view-transition-old(*)
+                                text : html::view-transition-old()
                             }
                         ]
-                        text : html::view-transition-old(*)
+                        text : html::view-transition-old()
                     }
                     style : {
                         cssProperties : [
                             [0] : {
+                                name : animation-name
+                                value : -ua-view-transition-fade-out
+                            }
+                            [1] : {
                                 name : animation-duration
                                 value : inherit
                             }
-                            [1] : {
+                            [2] : {
                                 name : animation-fill-mode
                                 value : inherit
                             }
@@ -3749,18 +2900,11 @@ Dumping styles for : ::view-transition-old with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
                                 text : html::view-transition-old(shared)
                             }
                         ]
@@ -3769,8 +2913,8 @@ Dumping styles for : ::view-transition-old with id shared{
                     style : {
                         cssProperties : [
                             [0] : {
-                                name : animation-name
-                                value : -ua-view-transition-fade-out, -ua-mix-blend-mode-plus-lighter
+                                name : mix-blend-mode
+                                value : plus-lighter
                             }
                         ]
                         shorthandEntries : [
@@ -3792,8 +2936,6 @@ Dumping styles for : ::view-transition-old with id shared{
                     media : [
                     ]
                     origin : regular
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
@@ -3805,15 +2947,10 @@ Dumping styles for : ::view-transition-old with id shared{
                                     startColumn : 1
                                     startLine : 0
                                 }
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
                                 text : ::view-transition-old(*)
                             }
                         ]
-                        text : ::view-transition-old(*)
+                        text : ::view-transition-old()
                     }
                     style : {
                         cssProperties : [
@@ -3838,22 +2975,26 @@ Dumping styles for : ::view-transition-old with id shared{
                                         value : initial
                                     }
                                     [4] : {
-                                        name : background-repeat
+                                        name : background-repeat-x
                                         value : initial
                                     }
                                     [5] : {
-                                        name : background-attachment
+                                        name : background-repeat-y
                                         value : initial
                                     }
                                     [6] : {
-                                        name : background-origin
+                                        name : background-attachment
                                         value : initial
                                     }
                                     [7] : {
-                                        name : background-clip
+                                        name : background-origin
                                         value : initial
                                     }
                                     [8] : {
+                                        name : background-clip
+                                        value : initial
+                                    }
+                                    [9] : {
                                         name : background-color
                                         value : red
                                     }
@@ -3885,22 +3026,26 @@ Dumping styles for : ::view-transition-old with id shared{
                                 value : initial
                             }
                             [5] : {
-                                name : background-repeat
+                                name : background-repeat-x
                                 value : initial
                             }
                             [6] : {
-                                name : background-attachment
+                                name : background-repeat-y
                                 value : initial
                             }
                             [7] : {
-                                name : background-origin
+                                name : background-attachment
                                 value : initial
                             }
                             [8] : {
-                                name : background-clip
+                                name : background-origin
                                 value : initial
                             }
                             [9] : {
+                                name : background-clip
+                                value : initial
+                            }
+                            [10] : {
                                 name : background-color
                                 value : red
                             }
@@ -3932,74 +3077,6 @@ Dumping styles for : ::view-transition-old with id shared{
 Dumping styles for : ::view-transition-new with id shared{
     id : <number>
     result : {
-        cssKeyframesRules : [
-            [0] : {
-                animationName : {
-                    text : -ua-view-transition-fade-in
-                }
-                keyframes : [
-                    [0] : {
-                        keyText : {
-                            text : 0%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : opacity
-                                    value : 0
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                ]
-            }
-            [1] : {
-                animationName : {
-                    text : -ua-mix-blend-mode-plus-lighter
-                }
-                keyframes : [
-                    [0] : {
-                        keyText : {
-                            text : 0%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : mix-blend-mode
-                                    value : plus-lighter
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                    [1] : {
-                        keyText : {
-                            text : 100%
-                        }
-                        origin : user-agent
-                        style : {
-                            cssProperties : [
-                                [0] : {
-                                    name : mix-blend-mode
-                                    value : plus-lighter
-                                }
-                            ]
-                            shorthandEntries : [
-                            ]
-                        }
-                    }
-                ]
-            }
-        ]
-        cssPropertyRegistrations : [
-        ]
-        cssPropertyRules : [
-        ]
         inherited : [
         ]
         matchedCSSRules : [
@@ -4015,30 +3092,18 @@ Dumping styles for : ::view-transition-new with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
-                                text : ::view-transition-new(*)
+                                text : ::view-transition-new()
                             }
                             [1] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 0
-                                }
-                                text : ::view-transition-old(*)
+                                text : ::view-transition-old()
                             }
                         ]
-                        text : ::view-transition-new(*), ::view-transition-old(*)
+                        text : ::view-transition-new(), ::view-transition-old()
                     }
                     style : {
                         cssProperties : [
@@ -4078,30 +3143,27 @@ Dumping styles for : ::view-transition-new with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 0
-                                    c : 1
-                                }
-                                text : html::view-transition-new(*)
+                                text : html::view-transition-new()
                             }
                         ]
-                        text : html::view-transition-new(*)
+                        text : html::view-transition-new()
                     }
                     style : {
                         cssProperties : [
                             [0] : {
+                                name : animation-name
+                                value : -ua-view-transition-fade-in
+                            }
+                            [1] : {
                                 name : animation-duration
                                 value : inherit
                             }
-                            [1] : {
+                            [2] : {
                                 name : animation-fill-mode
                                 value : inherit
                             }
@@ -4125,18 +3187,11 @@ Dumping styles for : ::view-transition-new with id shared{
                     media : [
                     ]
                     origin : user-agent
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
                         selectors : [
                             [0] : {
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 1
-                                }
                                 text : html::view-transition-new(shared)
                             }
                         ]
@@ -4145,8 +3200,8 @@ Dumping styles for : ::view-transition-new with id shared{
                     style : {
                         cssProperties : [
                             [0] : {
-                                name : animation-name
-                                value : -ua-view-transition-fade-in, -ua-mix-blend-mode-plus-lighter
+                                name : mix-blend-mode
+                                value : plus-lighter
                             }
                         ]
                         shorthandEntries : [
@@ -4168,8 +3223,6 @@ Dumping styles for : ::view-transition-new with id shared{
                     media : [
                     ]
                     origin : regular
-                    ruleTypes : [
-                    ]
                     scopes : [
                     ]
                     selectorList : {
@@ -4180,11 +3233,6 @@ Dumping styles for : ::view-transition-new with id shared{
                                     endLine : 0
                                     startColumn : 1
                                     startLine : 0
-                                }
-                                specificity : {
-                                    a : 0
-                                    b : 1
-                                    c : 0
                                 }
                                 text : ::view-transition-new(shared)
                             }

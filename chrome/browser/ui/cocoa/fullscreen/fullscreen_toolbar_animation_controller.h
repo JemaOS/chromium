@@ -73,7 +73,7 @@ class FullscreenToolbarAnimationController
   void StartHideTimerIfPossible();
 
   // Our owner.
-  FullscreenToolbarController* __weak owner_;
+  FullscreenToolbarController* owner_;  // weak.
 
   // The animation of the decoration.
   gfx::SlideAnimation animation_;

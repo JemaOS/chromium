@@ -23,64 +23,62 @@ class ObjectDetectorTests: XCTestCase {
   static let modelPath = bundle.path(
     forResource: "coco_ssd_mobilenet_v1_1.0_quant_2018_06_29",
     ofType: "tflite")
-  let kMaxPixelOffset: CGFloat = 5
 
-  func verifyDetectionResult(_ detectionResult: DetectionResult, precision: Float) {
+  func verifyDetectionResult(_ detectionResult: DetectionResult) {
     XCTAssertGreaterThan(detectionResult.detections.count, 0)
 
     self.verifyDetection(
       detectionResult.detections[0],
       expectedBoundingBox: CGRect(x: 54, y: 396, width: 393, height: 199),
-      expectedFirstScore: 0.63,
-      expectedFirstLabel: "cat", precision: precision)
+      expectedFirstScore: 0.632812,
+      expectedFirstLabel: "cat")
 
     self.verifyDetection(
       detectionResult.detections[1],
-      expectedBoundingBox: CGRect(x: 602, y: 157, width: 390, height: 447),
-      expectedFirstScore: 0.6,
-      expectedFirstLabel: "cat", precision: precision)
+      expectedBoundingBox: CGRect(x: 602, y: 157, width: 394, height: 447),
+      expectedFirstScore: 0.609375,
+      expectedFirstLabel: "cat")
 
     self.verifyDetection(
       detectionResult.detections[2],
-      expectedBoundingBox: CGRect(x: 260, y: 390, width: 179, height: 209),
-      expectedFirstScore: 0.56,
-      expectedFirstLabel: "cat", precision: precision)
+      expectedBoundingBox: CGRect(x: 260, y: 394, width: 179, height: 209),
+      expectedFirstScore: 0.5625,
+      expectedFirstLabel: "cat")
 
     self.verifyDetection(
       detectionResult.detections[3],
-      expectedBoundingBox: CGRect(x: 390, y: 197, width: 281, height: 409),
-      expectedFirstScore: 0.5,
-      expectedFirstLabel: "dog", precision: precision)
+      expectedBoundingBox: CGRect(x: 387, y: 197, width: 281, height: 409),
+      expectedFirstScore: 0.488281,
+      expectedFirstLabel: "dog")
   }
 
   func verifyDetection(
     _ detection: Detection, expectedBoundingBox: CGRect,
     expectedFirstScore: Float,
-    expectedFirstLabel: String,
-    precision: Float
+    expectedFirstLabel: String
   ) {
     XCTAssertGreaterThan(detection.categories.count, 0)
     XCTAssertEqual(
       detection.boundingBox.origin.x,
-      expectedBoundingBox.origin.x, accuracy: kMaxPixelOffset)
+      expectedBoundingBox.origin.x)
     XCTAssertEqual(
       detection.boundingBox.origin.y,
-      expectedBoundingBox.origin.y, accuracy: kMaxPixelOffset)
+      expectedBoundingBox.origin.y)
     XCTAssertEqual(
       detection.boundingBox.size.width,
-      expectedBoundingBox.size.width, accuracy: kMaxPixelOffset)
+      expectedBoundingBox.size.width)
     XCTAssertEqual(
       detection.boundingBox.size.height,
-      expectedBoundingBox.size.height, accuracy: kMaxPixelOffset)
+      expectedBoundingBox.size.height)
     XCTAssertEqual(
       detection.categories[0].label,
       expectedFirstLabel)
     XCTAssertEqual(
       detection.categories[0].score,
-      expectedFirstScore, accuracy: precision)
+      expectedFirstScore, accuracy: 0.001)
   }
 
-  func testSuccessfulInferenceOnMLImageWithUIImage() throws {
+  func testSuccessfullInferenceOnMLImageWithUIImage() throws {
 
     let modelPath = try XCTUnwrap(ObjectDetectorTests.modelPath)
 
@@ -97,7 +95,7 @@ class ObjectDetectorTests: XCTestCase {
     let detectionResults: DetectionResult =
       try objectDetector.detect(mlImage: gmlImage)
 
-    self.verifyDetectionResult(detectionResults, precision: 0.05)
+    self.verifyDetectionResult(detectionResults)
   }
 
   func testModelOptionsWithMaxResults() throws {
@@ -125,19 +123,19 @@ class ObjectDetectorTests: XCTestCase {
     self.verifyDetection(
       detectionResult.detections[0],
       expectedBoundingBox: CGRect(x: 54, y: 396, width: 393, height: 199),
-      expectedFirstScore: 0.63,
-      expectedFirstLabel: "cat", precision: 0.05)
+      expectedFirstScore: 0.632812,
+      expectedFirstLabel: "cat")
 
     self.verifyDetection(
       detectionResult.detections[1],
-      expectedBoundingBox: CGRect(x: 602, y: 157, width: 390, height: 447),
-      expectedFirstScore: 0.60,
-      expectedFirstLabel: "cat", precision: 0.05)
+      expectedBoundingBox: CGRect(x: 602, y: 157, width: 394, height: 447),
+      expectedFirstScore: 0.609375,
+      expectedFirstLabel: "cat")
 
     self.verifyDetection(
       detectionResult.detections[2],
       expectedBoundingBox: CGRect(x: 260, y: 394, width: 179, height: 209),
       expectedFirstScore: 0.5625,
-      expectedFirstLabel: "cat", precision: 0.05)
+      expectedFirstLabel: "cat")
   }
 }

@@ -25,7 +25,8 @@ FastPairHandshake::FastPairHandshake(
     : adapter_(std::move(adapter)),
       device_(std::move(device)),
       on_complete_callback_(std::move(on_complete)),
-      fast_pair_data_encryptor_(std::move(data_encryptor)) {}
+      fast_pair_data_encryptor_(std::move(data_encryptor)),
+      fast_pair_gatt_service_client_(std::move(gatt_service_client)) {}
 
 FastPairHandshake::FastPairHandshake(
     scoped_refptr<device::BluetoothAdapter> adapter,

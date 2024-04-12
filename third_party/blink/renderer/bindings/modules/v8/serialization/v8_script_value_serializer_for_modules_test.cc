@@ -29,7 +29,6 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_crypto_key.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_dom_file_system.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_media_stream_track.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_restriction_target.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_rtc_certificate.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_video_frame.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
@@ -46,11 +45,10 @@
 #include "third_party/blink/renderer/modules/mediastream/media_stream_video_track.h"
 #include "third_party/blink/renderer/modules/mediastream/mock_media_stream_video_source.h"
 #include "third_party/blink/renderer/modules/mediastream/mock_video_capturer_source.h"
-#include "third_party/blink/renderer/modules/mediastream/restriction_target.h"
 #include "third_party/blink/renderer/modules/mediastream/test/transfer_test_utils.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtc_certificate.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtc_certificate_generator.h"
-#include "third_party/blink/renderer/modules/webcodecs/array_buffer_util.h"
+#include "third_party/blink/renderer/modules/webcodecs/allow_shared_buffer_source_util.h"
 #include "third_party/blink/renderer/modules/webcodecs/audio_data.h"
 #include "third_party/blink/renderer/modules/webcodecs/audio_data_transfer_list.h"
 #include "third_party/blink/renderer/modules/webcodecs/video_frame.h"
@@ -62,7 +60,6 @@
 #include "third_party/blink/renderer/platform/mediastream/media_stream_source.h"
 #include "third_party/blink/renderer/platform/testing/io_task_runner_testing_platform_support.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 using testing::ElementsAre;
@@ -100,7 +97,7 @@ testing::AssertionResult HadDOMExceptionInModulesTest(
     ExceptionState& exception_state) {
   if (!exception_state.HadException())
     return testing::AssertionFailure() << "no exception thrown";
-  DOMException* dom_exception = V8DOMException::ToWrappable(
+  DOMException* dom_exception = V8DOMException::ToImplWithTypeCheck(
       script_state->GetIsolate(), exception_state.GetException());
   if (!dom_exception) {
     return testing::AssertionFailure()
@@ -189,7 +186,6 @@ static const uint8_t kEcdsaCertificateEncoded[] = {
     0x2d, 0x0a};
 
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripRTCCertificate) {
-  test::TaskEnvironment task_environment;
   // If WebRTC is not supported in this build, this test is meaningless.
   std::unique_ptr<RTCCertificateGenerator> certificate_generator =
       std::make_unique<RTCCertificateGenerator>();
@@ -200,26 +196,27 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripRTCCertificate) {
 
   // Make a certificate with the existing key above.
   rtc::scoped_refptr<rtc::RTCCertificate> web_certificate =
-      certificate_generator->FromPEM(WebString::FromUTF8(kEcdsaPrivateKey),
-                                     WebString::FromUTF8(kEcdsaCertificate));
+      certificate_generator->FromPEM(
+          WebString::FromUTF8(kEcdsaPrivateKey, sizeof(kEcdsaPrivateKey)),
+          WebString::FromUTF8(kEcdsaCertificate, sizeof(kEcdsaCertificate)));
   ASSERT_TRUE(web_certificate);
   RTCCertificate* certificate =
       MakeGarbageCollected<RTCCertificate>(std::move(web_certificate));
 
   // Round trip test.
   v8::Local<v8::Value> wrapper =
-      ToV8Traits<RTCCertificate>::ToV8(scope.GetScriptState(), certificate);
+      ToV8Traits<RTCCertificate>::ToV8(scope.GetScriptState(), certificate)
+          .ToLocalChecked();
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
+  ASSERT_TRUE(V8RTCCertificate::HasInstance(result, scope.GetIsolate()));
   RTCCertificate* new_certificate =
-      V8RTCCertificate::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_certificate, nullptr);
+      V8RTCCertificate::ToImpl(result.As<v8::Object>());
   rtc::RTCCertificatePEM pem = new_certificate->Certificate()->ToPEM();
   EXPECT_EQ(kEcdsaPrivateKey, pem.private_key());
   EXPECT_EQ(kEcdsaCertificate, pem.certificate());
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeRTCCertificate) {
-  test::TaskEnvironment task_environment;
   // If WebRTC is not supported in this build, this test is meaningless.
   std::unique_ptr<RTCCertificateGenerator> certificate_generator =
       std::make_unique<RTCCertificateGenerator>();
@@ -238,16 +235,15 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeRTCCertificate) {
   // Decode test.
   v8::Local<v8::Value> result =
       V8ScriptValueDeserializerForModules(script_state, input).Deserialize();
+  ASSERT_TRUE(V8RTCCertificate::HasInstance(result, scope.GetIsolate()));
   RTCCertificate* new_certificate =
-      V8RTCCertificate::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_certificate, nullptr);
+      V8RTCCertificate::ToImpl(result.As<v8::Object>());
   rtc::RTCCertificatePEM pem = new_certificate->Certificate()->ToPEM();
   EXPECT_EQ(kEcdsaPrivateKey, pem.private_key());
   EXPECT_EQ(kEcdsaCertificate, pem.certificate());
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeInvalidRTCCertificate) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   // This is valid, except that "private" is not a valid private key PEM and
@@ -274,7 +270,7 @@ T ConvertCryptoResult(v8::Isolate*, const ScriptValue&);
 template <>
 CryptoKey* ConvertCryptoResult<CryptoKey*>(v8::Isolate* isolate,
                                            const ScriptValue& value) {
-  return V8CryptoKey::ToWrappable(isolate, value.V8Value());
+  return V8CryptoKey::ToImplWithTypeCheck(isolate, value.V8Value());
 }
 template <>
 CryptoKeyPair ConvertCryptoResult<CryptoKeyPair>(v8::Isolate* isolate,
@@ -284,13 +280,13 @@ CryptoKeyPair ConvertCryptoResult<CryptoKeyPair>(v8::Isolate* isolate,
   v8::Local<v8::Value> private_key, public_key;
   EXPECT_TRUE(dictionary.Get("publicKey", public_key));
   EXPECT_TRUE(dictionary.Get("privateKey", private_key));
-  return std::make_pair(V8CryptoKey::ToWrappable(isolate, public_key),
-                        V8CryptoKey::ToWrappable(isolate, private_key));
+  return std::make_pair(V8CryptoKey::ToImplWithTypeCheck(isolate, public_key),
+                        V8CryptoKey::ToImplWithTypeCheck(isolate, private_key));
 }
 template <>
 DOMException* ConvertCryptoResult<DOMException*>(v8::Isolate* isolate,
                                                  const ScriptValue& value) {
-  return V8DOMException::ToWrappable(isolate, value.V8Value());
+  return V8DOMException::ToImplWithTypeCheck(isolate, value.V8Value());
 }
 template <>
 WebVector<unsigned char> ConvertCryptoResult<WebVector<unsigned char>>(
@@ -318,8 +314,7 @@ class WebCryptoResultAdapter : public ScriptFunction::Callable {
 
   ScriptValue Call(ScriptState* script_state, ScriptValue value) final {
     function_.Run(ConvertCryptoResult<T>(script_state->GetIsolate(), value));
-    return ScriptValue(script_state->GetIsolate(),
-                       v8::Undefined(script_state->GetIsolate()));
+    return ScriptValue::From(script_state, ToV8UndefinedGenerator());
   }
 
  private:
@@ -329,13 +324,11 @@ class WebCryptoResultAdapter : public ScriptFunction::Callable {
                                            base::RepeatingCallback<void(U)>);
 };
 
-template <typename IDLType, typename T>
+template <typename T>
 WebCryptoResult ToWebCryptoResult(ScriptState* script_state,
                                   base::RepeatingCallback<void(T)> function) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLType>>(script_state);
-  auto* result = MakeGarbageCollected<CryptoResultImpl>(script_state, resolver);
-  resolver->Promise().Then(
+  auto* result = MakeGarbageCollected<CryptoResultImpl>(script_state);
+  result->Promise().Then(
       (MakeGarbageCollected<ScriptFunction>(
            script_state, MakeGarbageCollected<WebCryptoResultAdapter<T>>(
                              std::move(function))))
@@ -350,22 +343,19 @@ WebCryptoResult ToWebCryptoResult(ScriptState* script_state,
   return result->Result();
 }
 
-template <typename T, typename IDLType, typename PMF, typename... Args>
+template <typename T, typename PMF, typename... Args>
 T SubtleCryptoSync(ScriptState* script_state, PMF func, Args&&... args) {
   T result;
-  base::RunLoop run_loop;
   (Platform::Current()->Crypto()->*func)(
       std::forward<Args>(args)...,
-      ToWebCryptoResult<IDLType>(
-          script_state,
-          WTF::BindRepeating(
-              [](T* out, base::OnceClosure quit_closure, T result) {
-                *out = result;
-                std::move(quit_closure).Run();
-              },
-              WTF::Unretained(&result), run_loop.QuitClosure())),
+      ToWebCryptoResult(script_state, WTF::BindRepeating(
+                                          [](T* out, T result) {
+                                            *out = result;
+                                            test::ExitRunLoop();
+                                          },
+                                          WTF::Unretained(&result))),
       scheduler::GetSingleThreadTaskRunnerForTesting());
-  run_loop.Run();
+  test::EnterRunLoop();
   return result;
 }
 
@@ -373,16 +363,16 @@ CryptoKey* SyncGenerateKey(ScriptState* script_state,
                            const WebCryptoAlgorithm& algorithm,
                            bool extractable,
                            WebCryptoKeyUsageMask usages) {
-  return SubtleCryptoSync<CryptoKey*, IDLAny>(
-      script_state, &WebCrypto::GenerateKey, algorithm, extractable, usages);
+  return SubtleCryptoSync<CryptoKey*>(script_state, &WebCrypto::GenerateKey,
+                                      algorithm, extractable, usages);
 }
 
 CryptoKeyPair SyncGenerateKeyPair(ScriptState* script_state,
                                   const WebCryptoAlgorithm& algorithm,
                                   bool extractable,
                                   WebCryptoKeyUsageMask usages) {
-  return SubtleCryptoSync<CryptoKeyPair, IDLAny>(
-      script_state, &WebCrypto::GenerateKey, algorithm, extractable, usages);
+  return SubtleCryptoSync<CryptoKeyPair>(script_state, &WebCrypto::GenerateKey,
+                                         algorithm, extractable, usages);
 }
 
 CryptoKey* SyncImportKey(ScriptState* script_state,
@@ -391,15 +381,15 @@ CryptoKey* SyncImportKey(ScriptState* script_state,
                          const WebCryptoAlgorithm& algorithm,
                          bool extractable,
                          WebCryptoKeyUsageMask usages) {
-  return SubtleCryptoSync<CryptoKey*, CryptoKey>(
-      script_state, &WebCrypto::ImportKey, format, data, algorithm, extractable,
-      usages);
+  return SubtleCryptoSync<CryptoKey*>(script_state, &WebCrypto::ImportKey,
+                                      format, data, algorithm, extractable,
+                                      usages);
 }
 
 WebVector<uint8_t> SyncExportKey(ScriptState* script_state,
                                  WebCryptoKeyFormat format,
                                  const WebCryptoKey& key) {
-  return SubtleCryptoSync<WebVector<uint8_t>, IDLAny>(
+  return SubtleCryptoSync<WebVector<uint8_t>>(
       script_state, &WebCrypto::ExportKey, format, key);
 }
 
@@ -407,24 +397,24 @@ WebVector<uint8_t> SyncEncrypt(ScriptState* script_state,
                                const WebCryptoAlgorithm& algorithm,
                                const WebCryptoKey& key,
                                WebVector<unsigned char> data) {
-  return SubtleCryptoSync<WebVector<uint8_t>, IDLAny>(
-      script_state, &WebCrypto::Encrypt, algorithm, key, data);
+  return SubtleCryptoSync<WebVector<uint8_t>>(script_state, &WebCrypto::Encrypt,
+                                              algorithm, key, data);
 }
 
 WebVector<uint8_t> SyncDecrypt(ScriptState* script_state,
                                const WebCryptoAlgorithm& algorithm,
                                const WebCryptoKey& key,
                                WebVector<unsigned char> data) {
-  return SubtleCryptoSync<WebVector<uint8_t>, IDLAny>(
-      script_state, &WebCrypto::Decrypt, algorithm, key, data);
+  return SubtleCryptoSync<WebVector<uint8_t>>(script_state, &WebCrypto::Decrypt,
+                                              algorithm, key, data);
 }
 
 WebVector<uint8_t> SyncSign(ScriptState* script_state,
                             const WebCryptoAlgorithm& algorithm,
                             const WebCryptoKey& key,
                             WebVector<unsigned char> message) {
-  return SubtleCryptoSync<WebVector<uint8_t>, IDLAny>(
-      script_state, &WebCrypto::Sign, algorithm, key, message);
+  return SubtleCryptoSync<WebVector<uint8_t>>(script_state, &WebCrypto::Sign,
+                                              algorithm, key, message);
 }
 
 bool SyncVerifySignature(ScriptState* script_state,
@@ -432,22 +422,20 @@ bool SyncVerifySignature(ScriptState* script_state,
                          const WebCryptoKey& key,
                          WebVector<unsigned char> signature,
                          WebVector<unsigned char> message) {
-  return SubtleCryptoSync<bool, IDLAny>(script_state,
-                                        &WebCrypto::VerifySignature, algorithm,
-                                        key, signature, message);
+  return SubtleCryptoSync<bool>(script_state, &WebCrypto::VerifySignature,
+                                algorithm, key, signature, message);
 }
 
 WebVector<uint8_t> SyncDeriveBits(ScriptState* script_state,
                                   const WebCryptoAlgorithm& algorithm,
                                   const WebCryptoKey& key,
                                   unsigned length) {
-  return SubtleCryptoSync<WebVector<uint8_t>, DOMArrayBuffer>(
+  return SubtleCryptoSync<WebVector<uint8_t>>(
       script_state, &WebCrypto::DeriveBits, algorithm, key, length);
 }
 
 // AES-128-CBC uses AES key params.
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyAES) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -460,11 +448,10 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyAES) {
                       kWebCryptoKeyUsageEncrypt | kWebCryptoKeyUsageDecrypt);
 
   // Round trip it and check the visible attributes.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<CryptoKey>::ToV8(scope.GetScriptState(), key);
+  v8::Local<v8::Value> wrapper = ToV8(key, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
-  CryptoKey* new_key = V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("secret", new_key->type());
   EXPECT_TRUE(new_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageEncrypt | kWebCryptoKeyUsageDecrypt,
@@ -490,7 +477,6 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyAES) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyAES) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -501,8 +487,8 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyAES) {
                        0x70, 0xa2, 0xae, 0x98, 0x79, 0x1b, 0xc5, 0xf7});
   v8::Local<v8::Value> result =
       V8ScriptValueDeserializerForModules(script_state, input).Deserialize();
-  CryptoKey* new_key = V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("secret", new_key->type());
   EXPECT_FALSE(new_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageDecrypt, new_key->Key().Usages());
@@ -520,7 +506,6 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyAES) {
 
 // HMAC-SHA256 uses HMAC key params.
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyHMAC) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -535,11 +520,10 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyHMAC) {
                       kWebCryptoKeyUsageSign | kWebCryptoKeyUsageVerify);
 
   // Round trip it and check the visible attributes.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<CryptoKey>::ToV8(scope.GetScriptState(), key);
+  v8::Local<v8::Value> wrapper = ToV8(key, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
-  CryptoKey* new_key = V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("secret", new_key->type());
   EXPECT_TRUE(new_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageSign | kWebCryptoKeyUsageVerify,
@@ -562,7 +546,6 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyHMAC) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyHMAC) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -577,8 +560,8 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyHMAC) {
        0x85, 0xaf, 0x41, 0xc4, 0x6a, 0x2d, 0x06, 0x7a});
   v8::Local<v8::Value> result =
       V8ScriptValueDeserializerForModules(script_state, input).Deserialize();
-  CryptoKey* new_key = V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("secret", new_key->type());
   EXPECT_FALSE(new_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageVerify, new_key->Key().Usages());
@@ -596,7 +579,6 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyHMAC) {
 
 // RSA-PSS-SHA256 uses RSA hashed key params.
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyRSAHashed) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -613,12 +595,10 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyRSAHashed) {
                           kWebCryptoKeyUsageSign | kWebCryptoKeyUsageVerify);
 
   // Round trip the private key and check the visible attributes.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<CryptoKey>::ToV8(scope.GetScriptState(), private_key);
+  v8::Local<v8::Value> wrapper = ToV8(private_key, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
-  CryptoKey* new_private_key =
-      V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_private_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_private_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("private", new_private_key->type());
   EXPECT_TRUE(new_private_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageSign, new_private_key->Key().Usages());
@@ -641,7 +621,6 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyRSAHashed) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyRSAHashed) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -664,9 +643,8 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyRSAHashed) {
        0xb1, 0x19, 0x24, 0xae, 0x8d, 0x22, 0xb5, 0x02, 0x03, 0x01, 0x00, 0x01});
   v8::Local<v8::Value> result =
       V8ScriptValueDeserializerForModules(script_state, input).Deserialize();
-  CryptoKey* new_public_key =
-      V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_public_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_public_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("public", new_public_key->type());
   EXPECT_TRUE(new_public_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageVerify, new_public_key->Key().Usages());
@@ -693,7 +671,6 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyRSAHashed) {
 
 // ECDSA uses EC key params.
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyEC) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -709,12 +686,10 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyEC) {
                           kWebCryptoKeyUsageSign | kWebCryptoKeyUsageVerify);
 
   // Round trip the private key and check the visible attributes.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<CryptoKey>::ToV8(scope.GetScriptState(), private_key);
+  v8::Local<v8::Value> wrapper = ToV8(private_key, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
-  CryptoKey* new_private_key =
-      V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_private_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_private_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("private", new_private_key->type());
   EXPECT_TRUE(new_private_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageSign, new_private_key->Key().Usages());
@@ -738,7 +713,6 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyEC) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyEC) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -756,9 +730,8 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyEC) {
 
   v8::Local<v8::Value> result =
       V8ScriptValueDeserializerForModules(script_state, input).Deserialize();
-  CryptoKey* new_public_key =
-      V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_public_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_public_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("public", new_public_key->type());
   EXPECT_TRUE(new_public_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageVerify, new_public_key->Key().Usages());
@@ -781,7 +754,6 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyEC) {
 
 // Ed25519 uses no params.
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyEd25519) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -795,12 +767,10 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyEd25519) {
                           kWebCryptoKeyUsageSign | kWebCryptoKeyUsageVerify);
 
   // Round trip the private key and check the visible attributes.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<CryptoKey>::ToV8(scope.GetScriptState(), private_key);
+  v8::Local<v8::Value> wrapper = ToV8(private_key, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
-  CryptoKey* new_private_key =
-      V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_private_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_private_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("private", new_private_key->type());
   EXPECT_TRUE(new_private_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageSign, new_private_key->Key().Usages());
@@ -824,7 +794,6 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyEd25519) {
 
 // Ed25519 uses no params.
 TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyEd25519) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -839,9 +808,8 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyEd25519) {
   });
   v8::Local<v8::Value> result =
       V8ScriptValueDeserializerForModules(script_state, input).Deserialize();
-  CryptoKey* new_public_key =
-      V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_public_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_public_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("public", new_public_key->type());
   EXPECT_TRUE(new_public_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageVerify, new_public_key->Key().Usages());
@@ -862,7 +830,6 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyEd25519) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyX25519) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -874,12 +841,10 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyX25519) {
       kWebCryptoKeyUsageDeriveKey | kWebCryptoKeyUsageDeriveBits);
 
   // Round trip the private key and check the visible attributes.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<CryptoKey>::ToV8(scope.GetScriptState(), private_key);
+  v8::Local<v8::Value> wrapper = ToV8(private_key, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
-  CryptoKey* new_private_key =
-      V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_private_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_private_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("private", new_private_key->type());
   EXPECT_TRUE(new_private_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageDeriveKey | kWebCryptoKeyUsageDeriveBits,
@@ -905,7 +870,6 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyX25519) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyX25519) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -920,8 +884,8 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyX25519) {
   });
   v8::Local<v8::Value> result =
       V8ScriptValueDeserializerForModules(script_state, input).Deserialize();
-  CryptoKey* private_key = V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(private_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* private_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("private", private_key->type());
   EXPECT_FALSE(private_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageDeriveBits, private_key->Key().Usages());
@@ -937,8 +901,8 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyX25519) {
   });
   result =
       V8ScriptValueDeserializerForModules(script_state, input).Deserialize();
-  CryptoKey* public_key = V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(public_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* public_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("public", public_key->type());
   EXPECT_TRUE(public_key->extractable());
   EXPECT_EQ(0, public_key->Key().Usages());
@@ -956,7 +920,6 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyX25519) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyNoParams) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -967,11 +930,10 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyNoParams) {
                                  false, kWebCryptoKeyUsageDeriveBits);
 
   // Round trip the key and check the visible attributes.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<CryptoKey>::ToV8(scope.GetScriptState(), key);
+  v8::Local<v8::Value> wrapper = ToV8(key, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
-  CryptoKey* new_key = V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("secret", new_key->type());
   EXPECT_FALSE(new_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageDeriveBits, new_key->Key().Usages());
@@ -991,7 +953,6 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripCryptoKeyNoParams) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyNoParams) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -1001,8 +962,8 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyNoParams) {
                        0x03, 0x01, 0x02, 0x03, 0x00});
   v8::Local<v8::Value> result =
       V8ScriptValueDeserializerForModules(script_state, input).Deserialize();
-  CryptoKey* new_key = V8CryptoKey::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_key, nullptr);
+  ASSERT_TRUE(V8CryptoKey::HasInstance(result, scope.GetIsolate()));
+  CryptoKey* new_key = V8CryptoKey::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("secret", new_key->type());
   EXPECT_FALSE(new_key->extractable());
   EXPECT_EQ(kWebCryptoKeyUsageDeriveKey | kWebCryptoKeyUsageDeriveBits,
@@ -1020,7 +981,6 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyNoParams) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyInvalid) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope(KURL("https://secure.context/"));
   ScriptState* script_state = scope.GetScriptState();
 
@@ -1142,7 +1102,6 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeCryptoKeyInvalid) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripDOMFileSystem) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   auto* fs = MakeGarbageCollected<DOMFileSystem>(
@@ -1151,13 +1110,11 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripDOMFileSystem) {
       KURL("filesystem:http://example.com/persistent/"));
   // At time of writing, this can only happen for filesystems from PPAPI.
   fs->MakeClonable();
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<DOMFileSystem>::ToV8(scope.GetScriptState(), fs);
+  v8::Local<v8::Value> wrapper = ToV8(fs, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
   ASSERT_FALSE(result.IsEmpty());
-  DOMFileSystem* new_fs =
-      V8DOMFileSystem::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_fs, nullptr);
+  ASSERT_TRUE(V8DOMFileSystem::HasInstance(result, scope.GetIsolate()));
+  DOMFileSystem* new_fs = V8DOMFileSystem::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("http_example.com_0:Persistent", new_fs->name());
   EXPECT_EQ(mojom::blink::FileSystemType::kPersistent, new_fs->GetType());
   EXPECT_EQ("filesystem:http://example.com/persistent/",
@@ -1165,19 +1122,17 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripDOMFileSystem) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripDOMFileSystemNotClonable) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ExceptionState exception_state(scope.GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
-                                 "Window", "postMessage");
+                                 ExceptionState::kExecutionContext, "Window",
+                                 "postMessage");
 
   auto* fs = MakeGarbageCollected<DOMFileSystem>(
       scope.GetExecutionContext(), "http_example.com_0:Persistent",
       mojom::blink::FileSystemType::kPersistent,
       KURL("filesystem:http://example.com/persistent/0/"));
   ASSERT_FALSE(fs->Clonable());
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<DOMFileSystem>::ToV8(scope.GetScriptState(), fs);
+  v8::Local<v8::Value> wrapper = ToV8(fs, scope.GetScriptState());
   EXPECT_FALSE(V8ScriptValueSerializer(scope.GetScriptState())
                    .Serialize(wrapper, exception_state));
   EXPECT_TRUE(HadDOMExceptionInModulesTest(
@@ -1185,7 +1140,6 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripDOMFileSystemNotClonable) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeDOMFileSystem) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   // This is encoded data generated from Chromium (around M56).
@@ -1202,9 +1156,8 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeDOMFileSystem) {
   // Decode test.
   v8::Local<v8::Value> result =
       V8ScriptValueDeserializerForModules(script_state, input).Deserialize();
-  DOMFileSystem* new_fs =
-      V8DOMFileSystem::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_fs, nullptr);
+  ASSERT_TRUE(V8DOMFileSystem::HasInstance(result, scope.GetIsolate()));
+  DOMFileSystem* new_fs = V8DOMFileSystem::ToImpl(result.As<v8::Object>());
   EXPECT_EQ("http_example.com_0:Persistent", new_fs->name());
   EXPECT_EQ(mojom::blink::FileSystemType::kPersistent, new_fs->GetType());
   EXPECT_EQ("filesystem:http://example.com/persistent/",
@@ -1212,7 +1165,6 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeDOMFileSystem) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, DecodeInvalidDOMFileSystem) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScriptState* script_state = scope.GetScriptState();
 
@@ -1236,7 +1188,6 @@ TEST(V8ScriptValueSerializerForModulesTest, DecodeInvalidDOMFileSystem) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripVideoFrame) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   const gfx::Size kFrameSize(600, 480);
@@ -1247,12 +1198,12 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripVideoFrame) {
       media_frame, scope.GetExecutionContext());
 
   // Round trip the frame and make sure the size is the same.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<VideoFrame>::ToV8(scope.GetScriptState(), blink_frame);
+  v8::Local<v8::Value> wrapper = ToV8(blink_frame, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
 
-  VideoFrame* new_frame = V8VideoFrame::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_frame, nullptr);
+  ASSERT_TRUE(V8VideoFrame::HasInstance(result, scope.GetIsolate()));
+
+  VideoFrame* new_frame = V8VideoFrame::ToImpl(result.As<v8::Object>());
   EXPECT_EQ(new_frame->frame()->natural_size(), kFrameSize);
 
   EXPECT_FALSE(media_frame->HasOneRef());
@@ -1267,7 +1218,6 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripVideoFrame) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, TransferVideoFrame) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   const gfx::Size kFrameSize(600, 480);
@@ -1282,13 +1232,13 @@ TEST(V8ScriptValueSerializerForModulesTest, TransferVideoFrame) {
   VideoFrameTransferList* transfer_list =
       transferables.GetOrCreateTransferList<VideoFrameTransferList>();
   transfer_list->video_frames.push_back(blink_frame);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<VideoFrame>::ToV8(scope.GetScriptState(), blink_frame);
+  v8::Local<v8::Value> wrapper = ToV8(blink_frame, scope.GetScriptState());
   v8::Local<v8::Value> result =
       RoundTripForModules(wrapper, scope, &transferables);
 
-  VideoFrame* new_frame = V8VideoFrame::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_frame, nullptr);
+  ASSERT_TRUE(V8VideoFrame::HasInstance(result, scope.GetIsolate()));
+
+  VideoFrame* new_frame = V8VideoFrame::ToImpl(result.As<v8::Object>());
   EXPECT_EQ(new_frame->frame()->natural_size(), kFrameSize);
 
   EXPECT_FALSE(media_frame->HasOneRef());
@@ -1302,11 +1252,10 @@ TEST(V8ScriptValueSerializerForModulesTest, TransferVideoFrame) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, ClosedVideoFrameThrows) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ExceptionState exception_state(scope.GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
-                                 "Window", "postMessage");
+                                 ExceptionState::kExecutionContext, "Window",
+                                 "postMessage");
 
   const gfx::Size kFrameSize(600, 480);
   scoped_refptr<media::VideoFrame> media_frame =
@@ -1318,8 +1267,7 @@ TEST(V8ScriptValueSerializerForModulesTest, ClosedVideoFrameThrows) {
   blink_frame->close();
 
   // Serializing the closed frame should throw an error.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<VideoFrame>::ToV8(scope.GetScriptState(), blink_frame);
+  v8::Local<v8::Value> wrapper = ToV8(blink_frame, scope.GetScriptState());
   EXPECT_FALSE(V8ScriptValueSerializer(scope.GetScriptState())
                    .Serialize(wrapper, exception_state));
   EXPECT_TRUE(HadDOMExceptionInModulesTest(
@@ -1327,7 +1275,6 @@ TEST(V8ScriptValueSerializerForModulesTest, ClosedVideoFrameThrows) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripAudioData) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   const unsigned kChannels = 2;
@@ -1355,15 +1302,15 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripAudioData) {
   auto* audio_data = MakeGarbageCollected<AudioData>(std::move(audio_buffer));
 
   // Round trip the frame and make sure the size is the same.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<AudioData>::ToV8(scope.GetScriptState(), audio_data);
+  v8::Local<v8::Value> wrapper = ToV8(audio_data, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
 
   // The data should have been copied, not transferred.
   EXPECT_TRUE(audio_data->data());
 
-  AudioData* new_data = V8AudioData::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_data, nullptr);
+  ASSERT_TRUE(V8AudioData::HasInstance(result, scope.GetIsolate()));
+
+  AudioData* new_data = V8AudioData::ToImpl(result.As<v8::Object>());
   EXPECT_EQ(base::Microseconds(new_data->timestamp()), kTimestamp);
   EXPECT_EQ(new_data->numberOfChannels(), kChannels);
   EXPECT_EQ(new_data->numberOfFrames(), kFrames);
@@ -1394,7 +1341,6 @@ TEST(V8ScriptValueSerializerForModulesTest, RoundTripAudioData) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, TransferAudioData) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   const unsigned kFrames = 500;
@@ -1410,19 +1356,19 @@ TEST(V8ScriptValueSerializerForModulesTest, TransferAudioData) {
   AudioDataTransferList* transfer_list =
       transferables.GetOrCreateTransferList<AudioDataTransferList>();
   transfer_list->audio_data_collection.push_back(audio_data);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<AudioData>::ToV8(scope.GetScriptState(), audio_data);
+  v8::Local<v8::Value> wrapper = ToV8(audio_data, scope.GetScriptState());
   v8::Local<v8::Value> result =
       RoundTripForModules(wrapper, scope, &transferables);
 
-  AudioData* new_data = V8AudioData::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_data, nullptr);
+  ASSERT_TRUE(V8AudioData::HasInstance(result, scope.GetIsolate()));
+
+  AudioData* new_data = V8AudioData::ToImpl(result.As<v8::Object>());
   EXPECT_EQ(new_data->numberOfFrames(), kFrames);
 
   EXPECT_FALSE(audio_buffer->HasOneRef());
 
   // The transfer should have closed the source data.
-  EXPECT_EQ(audio_data->format(), std::nullopt);
+  EXPECT_EQ(audio_data->format(), absl::nullopt);
 
   // Closing |new_data| should remove all references to |audio_buffer|.
   new_data->close();
@@ -1430,11 +1376,10 @@ TEST(V8ScriptValueSerializerForModulesTest, TransferAudioData) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, ClosedAudioDataThrows) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ExceptionState exception_state(scope.GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
-                                 "Window", "postMessage");
+                                 ExceptionState::kExecutionContext, "Window",
+                                 "postMessage");
 
   auto audio_buffer = media::AudioBuffer::CreateEmptyBuffer(
       media::ChannelLayout::CHANNEL_LAYOUT_STEREO,
@@ -1447,8 +1392,7 @@ TEST(V8ScriptValueSerializerForModulesTest, ClosedAudioDataThrows) {
   audio_data->close();
 
   // Serializing the closed frame should throw an error.
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<AudioData>::ToV8(scope.GetScriptState(), audio_data);
+  v8::Local<v8::Value> wrapper = ToV8(audio_data, scope.GetScriptState());
   EXPECT_FALSE(V8ScriptValueSerializer(scope.GetScriptState())
                    .Serialize(wrapper, exception_state));
   EXPECT_TRUE(HadDOMExceptionInModulesTest(
@@ -1456,7 +1400,6 @@ TEST(V8ScriptValueSerializerForModulesTest, ClosedAudioDataThrows) {
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, TransferMediaStreamTrack) {
-  test::TaskEnvironment task_environment;
   // This flag is default-off for Android, so we force it on to test this
   // functionality.
   ScopedRegionCaptureForTest region_capture(true);
@@ -1477,15 +1420,15 @@ TEST(V8ScriptValueSerializerForModulesTest, TransferMediaStreamTrack) {
 
   Transferables transferables;
   transferables.media_stream_tracks.push_back(blink_track);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<MediaStreamTrack>::ToV8(scope.GetScriptState(), blink_track);
+  v8::Local<v8::Value> wrapper = ToV8(blink_track, scope.GetScriptState());
   v8::Local<v8::Value> result =
       RoundTripForModules(wrapper, scope, &transferables);
 
   // Transferring should have ended the original track.
   EXPECT_TRUE(blink_track->Ended());
 
-  EXPECT_EQ(V8MediaStreamTrack::ToWrappable(scope.GetIsolate(), result),
+  ASSERT_TRUE(V8MediaStreamTrack::HasInstance(result, scope.GetIsolate()));
+  EXPECT_EQ(V8MediaStreamTrack::ToImpl(result.As<v8::Object>()),
             mock_impl.return_value.Get());
 
   const auto& data = mock_impl.last_argument;
@@ -1505,12 +1448,11 @@ TEST(V8ScriptValueSerializerForModulesTest, TransferMediaStreamTrack) {
   EXPECT_EQ(data.content_hint,
             WebMediaStreamTrack::ContentHintType::kVideoMotion);
   EXPECT_EQ(data.ready_state, MediaStreamSource::ReadyState::kReadyStateLive);
-  EXPECT_EQ(data.sub_capture_target_version, std::optional<uint32_t>(0));
+  EXPECT_EQ(data.crop_version, absl::optional<uint32_t>(0));
 }
 
 TEST(V8ScriptValueSerializerForModulesTest,
      TransferMediaStreamTrackRegionCaptureDisabled) {
-  test::TaskEnvironment task_environment;
   // Test with region capture disabled, since this is the default for Android.
   ScopedRegionCaptureForTest region_capture(false);
   V8TestingScope scope;
@@ -1528,22 +1470,21 @@ TEST(V8ScriptValueSerializerForModulesTest,
 
   Transferables transferables;
   transferables.media_stream_tracks.push_back(blink_track);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<MediaStreamTrack>::ToV8(scope.GetScriptState(), blink_track);
+  v8::Local<v8::Value> wrapper = ToV8(blink_track, scope.GetScriptState());
   v8::Local<v8::Value> result =
       RoundTripForModules(wrapper, scope, &transferables);
 
-  EXPECT_EQ(V8MediaStreamTrack::ToWrappable(scope.GetIsolate(), result),
+  ASSERT_TRUE(V8MediaStreamTrack::HasInstance(result, scope.GetIsolate()));
+  EXPECT_EQ(V8MediaStreamTrack::ToImpl(result.As<v8::Object>()),
             mock_impl.return_value.Get());
 
   const auto& data = mock_impl.last_argument;
   EXPECT_EQ(data.track_impl_subtype,
             MediaStreamTrack::GetStaticWrapperTypeInfo());
-  EXPECT_FALSE(data.sub_capture_target_version.has_value());
+  EXPECT_FALSE(data.crop_version.has_value());
 }
 
 TEST(V8ScriptValueSerializerForModulesTest, TransferAudioMediaStreamTrack) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   const auto session_id = base::UnguessableToken::Create();
@@ -1558,15 +1499,15 @@ TEST(V8ScriptValueSerializerForModulesTest, TransferAudioMediaStreamTrack) {
 
   Transferables transferables;
   transferables.media_stream_tracks.push_back(blink_track);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<MediaStreamTrack>::ToV8(scope.GetScriptState(), blink_track);
+  v8::Local<v8::Value> wrapper = ToV8(blink_track, scope.GetScriptState());
   v8::Local<v8::Value> result =
       RoundTripForModules(wrapper, scope, &transferables);
 
   // Transferring should have ended the original track.
   EXPECT_TRUE(blink_track->Ended());
 
-  EXPECT_EQ(V8MediaStreamTrack::ToWrappable(scope.GetIsolate(), result),
+  ASSERT_TRUE(V8MediaStreamTrack::HasInstance(result, scope.GetIsolate()));
+  EXPECT_EQ(V8MediaStreamTrack::ToImpl(result.As<v8::Object>()),
             mock_impl.return_value.Get());
 
   const auto& data = mock_impl.last_argument;
@@ -1590,13 +1531,12 @@ TEST(V8ScriptValueSerializerForModulesTest, TransferAudioMediaStreamTrack) {
 
 TEST(V8ScriptValueSerializerForModulesTest,
      TransferClonedMediaStreamTrackFails) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform;
   ScriptState* script_state = scope.GetScriptState();
   ExceptionState exception_state(scope.GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
-                                 "Window", "postMessage");
+                                 ExceptionState::kExecutionContext, "Window",
+                                 "postMessage");
   MediaStreamComponent* video_component = MakeTabCaptureVideoComponentForTest(
       &scope.GetFrame(), base::UnguessableToken::Create());
   MediaStreamComponent* audio_component =
@@ -1612,8 +1552,7 @@ TEST(V8ScriptValueSerializerForModulesTest,
     for (MediaStreamTrack* track : {original_track, cloned_track}) {
       Transferables transferables;
       transferables.media_stream_tracks.push_back(track);
-      v8::Local<v8::Value> wrapper =
-          ToV8Traits<MediaStreamTrack>::ToV8(scope.GetScriptState(), track);
+      v8::Local<v8::Value> wrapper = ToV8(track, scope.GetScriptState());
       V8ScriptValueSerializer::Options serialize_options;
       serialize_options.transferables = &transferables;
       EXPECT_FALSE(
@@ -1627,7 +1566,6 @@ TEST(V8ScriptValueSerializerForModulesTest,
 
 TEST(V8ScriptValueSerializerForModulesTest,
      TransferDeviceCaptureMediaStreamTrackFails) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform;
 
@@ -1660,14 +1598,13 @@ TEST(V8ScriptValueSerializerForModulesTest,
   // Transferring MediaStreamTrack should fail for Device Capture type device.
   Transferables transferables;
   transferables.media_stream_tracks.push_back(blink_track);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<MediaStreamTrack>::ToV8(scope.GetScriptState(), blink_track);
+  v8::Local<v8::Value> wrapper = ToV8(blink_track, scope.GetScriptState());
   V8ScriptValueSerializer::Options serialize_options;
   serialize_options.transferables = &transferables;
   ScriptState* script_state = scope.GetScriptState();
   ExceptionState exception_state(scope.GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
-                                 "Window", "postMessage");
+                                 ExceptionState::kExecutionContext, "Window",
+                                 "postMessage");
   EXPECT_FALSE(
       V8ScriptValueSerializerForModules(script_state, serialize_options)
           .Serialize(wrapper, exception_state));
@@ -1677,7 +1614,6 @@ TEST(V8ScriptValueSerializerForModulesTest,
 
 TEST(V8ScriptValueSerializerForModulesTest,
      TransferScreenCaptureMediaStreamTrackFails) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform;
 
@@ -1697,8 +1633,7 @@ TEST(V8ScriptValueSerializerForModulesTest,
   device.display_media_info = media::mojom::DisplayMediaInformation::New(
       media::mojom::DisplayCaptureSurfaceType::MONITOR,
       /*logical_surface=*/true, media::mojom::CursorCaptureType::NEVER,
-      /*capture_handle=*/nullptr,
-      /*initial_zoom_level=*/100);
+      /*capture_handle=*/nullptr);
   mock_source->SetDevice(device);
   MediaStreamSource* source = MakeGarbageCollected<MediaStreamSource>(
       "test_id", MediaStreamSource::StreamType::kTypeVideo, "test_name",
@@ -1715,14 +1650,13 @@ TEST(V8ScriptValueSerializerForModulesTest,
   // Transferring MediaStreamTrack should fail for screen captures.
   Transferables transferables;
   transferables.media_stream_tracks.push_back(blink_track);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<MediaStreamTrack>::ToV8(scope.GetScriptState(), blink_track);
+  v8::Local<v8::Value> wrapper = ToV8(blink_track, scope.GetScriptState());
   V8ScriptValueSerializer::Options serialize_options;
   serialize_options.transferables = &transferables;
   ScriptState* script_state = scope.GetScriptState();
   ExceptionState exception_state(scope.GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
-                                 "Window", "postMessage");
+                                 ExceptionState::kExecutionContext, "Window",
+                                 "postMessage");
   EXPECT_FALSE(
       V8ScriptValueSerializerForModules(script_state, serialize_options)
           .Serialize(wrapper, exception_state));
@@ -1732,7 +1666,6 @@ TEST(V8ScriptValueSerializerForModulesTest,
 
 TEST(V8ScriptValueSerializerForModulesTest,
      TransferWindowCaptureMediaStreamTrackFails) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform;
 
@@ -1752,8 +1685,7 @@ TEST(V8ScriptValueSerializerForModulesTest,
   device.display_media_info = media::mojom::DisplayMediaInformation::New(
       media::mojom::DisplayCaptureSurfaceType::WINDOW,
       /*logical_surface=*/true, media::mojom::CursorCaptureType::NEVER,
-      /*capture_handle=*/nullptr,
-      /*zoom_level=*/100);
+      /*capture_handle=*/nullptr);
   mock_source->SetDevice(device);
   MediaStreamSource* source = MakeGarbageCollected<MediaStreamSource>(
       "test_id", MediaStreamSource::StreamType::kTypeVideo, "test_name",
@@ -1770,14 +1702,13 @@ TEST(V8ScriptValueSerializerForModulesTest,
   // Transferring MediaStreamTrack should fail for window captures.
   Transferables transferables;
   transferables.media_stream_tracks.push_back(blink_track);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<MediaStreamTrack>::ToV8(scope.GetScriptState(), blink_track);
+  v8::Local<v8::Value> wrapper = ToV8(blink_track, scope.GetScriptState());
   V8ScriptValueSerializer::Options serialize_options;
   serialize_options.transferables = &transferables;
   ScriptState* script_state = scope.GetScriptState();
   ExceptionState exception_state(scope.GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
-                                 "Window", "postMessage");
+                                 ExceptionState::kExecutionContext, "Window",
+                                 "postMessage");
   EXPECT_FALSE(
       V8ScriptValueSerializerForModules(script_state, serialize_options)
           .Serialize(wrapper, exception_state));
@@ -1787,13 +1718,12 @@ TEST(V8ScriptValueSerializerForModulesTest,
 
 TEST(V8ScriptValueSerializerForModulesTest,
      TransferClosedMediaStreamTrackFails) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform;
   ScriptState* script_state = scope.GetScriptState();
   ExceptionState exception_state(scope.GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
-                                 "Window", "postMessage");
+                                 ExceptionState::kExecutionContext, "Window",
+                                 "postMessage");
 
   MediaStreamComponent* component = MakeTabCaptureVideoComponentForTest(
       &scope.GetFrame(), base::UnguessableToken::Create());
@@ -1807,8 +1737,7 @@ TEST(V8ScriptValueSerializerForModulesTest,
   // Transferring a closed MediaStreamTrack should throw an error.
   Transferables transferables;
   transferables.media_stream_tracks.push_back(blink_track);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<MediaStreamTrack>::ToV8(scope.GetScriptState(), blink_track);
+  v8::Local<v8::Value> wrapper = ToV8(blink_track, scope.GetScriptState());
   V8ScriptValueSerializer::Options serialize_options;
   serialize_options.transferables = &transferables;
   EXPECT_FALSE(
@@ -1820,13 +1749,12 @@ TEST(V8ScriptValueSerializerForModulesTest,
 
 TEST(V8ScriptValueSerializerForModulesTest,
      TransferMediaStreamTrackInvalidContentHintFails) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform;
   ScriptState* script_state = scope.GetScriptState();
   ExceptionState exception_state(scope.GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
-                                 "Window", "postMessage");
+                                 ExceptionState::kExecutionContext, "Window",
+                                 "postMessage");
 
   MediaStreamComponent* component = MakeTabCaptureVideoComponentForTest(
       &scope.GetFrame(), base::UnguessableToken::Create());
@@ -1841,8 +1769,7 @@ TEST(V8ScriptValueSerializerForModulesTest,
   // an error.
   Transferables transferables;
   transferables.media_stream_tracks.push_back(blink_track);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<MediaStreamTrack>::ToV8(scope.GetScriptState(), blink_track);
+  v8::Local<v8::Value> wrapper = ToV8(blink_track, script_state);
   V8ScriptValueSerializer::Options serialize_options;
   serialize_options.transferables = &transferables;
   EXPECT_FALSE(V8ScriptValueSerializer(script_state, serialize_options)
@@ -1854,13 +1781,12 @@ TEST(V8ScriptValueSerializerForModulesTest,
 
 TEST(V8ScriptValueSerializerForModulesTest,
      TransferMediaStreamTrackNoSessionIdThrows) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform;
   ScriptState* script_state = scope.GetScriptState();
   ExceptionState exception_state(scope.GetIsolate(),
-                                 ExceptionContextType::kOperationInvoke,
-                                 "Window", "postMessage");
+                                 ExceptionState::kExecutionContext, "Window",
+                                 "postMessage");
 
   auto mock_source = std::make_unique<MediaStreamVideoCapturerSource>(
       scope.GetFrame().GetTaskRunner(TaskType::kInternalMediaRealTime),
@@ -1877,8 +1803,7 @@ TEST(V8ScriptValueSerializerForModulesTest,
   device.display_media_info = media::mojom::DisplayMediaInformation::New(
       media::mojom::DisplayCaptureSurfaceType::BROWSER,
       /*logical_surface=*/true, media::mojom::CursorCaptureType::NEVER,
-      /*capture_handle=*/nullptr,
-      /*zoom_level=*/100);
+      /*capture_handle=*/nullptr);
   mock_source->SetDevice(device);
   MediaStreamSource* source = MakeGarbageCollected<MediaStreamSource>(
       "test_id", MediaStreamSource::StreamType::kTypeVideo, "test_name",
@@ -1895,8 +1820,7 @@ TEST(V8ScriptValueSerializerForModulesTest,
   // Transfer a MediaStreamTrack with no session id should throw an error.
   Transferables transferables;
   transferables.media_stream_tracks.push_back(blink_track);
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<MediaStreamTrack>::ToV8(scope.GetScriptState(), blink_track);
+  v8::Local<v8::Value> wrapper = ToV8(blink_track, script_state);
   V8ScriptValueSerializer::Options serialize_options;
   serialize_options.transferables = &transferables;
   EXPECT_FALSE(
@@ -1907,49 +1831,27 @@ TEST(V8ScriptValueSerializerForModulesTest,
   EXPECT_FALSE(blink_track->Ended());
 }
 
-#if !BUILDFLAG(IS_ANDROID)  // SubCaptureTargets are not exposed on Android.
+#if !BUILDFLAG(IS_ANDROID)  // CropTarget is not exposed on Android.
 TEST(V8ScriptValueSerializerForModulesTest, RoundTripCropTarget) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   const String crop_id("8e7e0c22-67a0-4c39-b4dc-a20433262f8e");
 
   CropTarget* const crop_target = MakeGarbageCollected<CropTarget>(crop_id);
 
-  v8::Local<v8::Value> wrapper =
-      ToV8Traits<CropTarget>::ToV8(scope.GetScriptState(), crop_target);
+  v8::Local<v8::Value> wrapper = ToV8(crop_target, scope.GetScriptState());
   v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
+
+  ASSERT_TRUE(V8CropTarget::HasInstance(result, scope.GetIsolate()));
 
   CropTarget* const new_crop_target =
-      V8CropTarget::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_crop_target, nullptr);
-  EXPECT_EQ(new_crop_target->GetId(), crop_id);
-}
-
-TEST(V8ScriptValueSerializerForModulesTest, RoundTripRestrictionTarget) {
-  test::TaskEnvironment task_environment;
-  V8TestingScope scope;
-  ScopedElementCaptureForTest element_capture(true);
-
-  const String restriction_id("8e7e0c22-67a0-4c39-b4dc-a20433262f8e");
-
-  RestrictionTarget* const restriction_target =
-      MakeGarbageCollected<RestrictionTarget>(restriction_id);
-
-  v8::Local<v8::Value> wrapper = ToV8Traits<RestrictionTarget>::ToV8(
-      scope.GetScriptState(), restriction_target);
-  v8::Local<v8::Value> result = RoundTripForModules(wrapper, scope);
-
-  RestrictionTarget* const new_restriction_target =
-      V8RestrictionTarget::ToWrappable(scope.GetIsolate(), result);
-  ASSERT_NE(new_restriction_target, nullptr);
-  EXPECT_EQ(new_restriction_target->GetId(), restriction_id);
+      V8CropTarget::ToImpl(result.As<v8::Object>());
+  EXPECT_EQ(new_crop_target->GetCropId(), crop_id);
 }
 #endif
 
 TEST(V8ScriptValueSerializerForModulesTest,
      ArrayBufferDetachKeyPreventsTransfer) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScriptState* script_state = scope.GetScriptState();
   v8::Isolate* isolate = scope.GetIsolate();
@@ -1957,6 +1859,7 @@ TEST(V8ScriptValueSerializerForModulesTest,
   DOMArrayBuffer* ab = DOMArrayBuffer::Create(10, sizeof(float));
   v8::Local<v8::ArrayBuffer> v8_ab =
       ToV8Traits<DOMArrayBuffer>::ToV8(script_state, ab)
+          .ToLocalChecked()
           .As<v8::ArrayBuffer>();
   v8_ab->SetDetachKey(V8AtomicString(isolate, "my key"));
 
@@ -1966,15 +1869,15 @@ TEST(V8ScriptValueSerializerForModulesTest,
   transferables.array_buffers.push_back(ab);
   V8ScriptValueSerializer::Options serialize_options;
   serialize_options.transferables = &transferables;
-  ExceptionState exception_state(
-      isolate, ExceptionContextType::kOperationInvoke, "Window", "postMessage");
+  ExceptionState exception_state(isolate, ExceptionState::kExecutionContext,
+                                 "Window", "postMessage");
   EXPECT_FALSE(
       V8ScriptValueSerializerForModules(script_state, serialize_options)
           .Serialize(v8_ab, exception_state));
   EXPECT_TRUE(exception_state.HadException());
-  EXPECT_THAT(ToCoreString(isolate, exception_state.GetException()
-                                        ->ToString(scope.GetContext())
-                                        .ToLocalChecked())
+  EXPECT_THAT(ToCoreString(exception_state.GetException()
+                               ->ToString(scope.GetContext())
+                               .ToLocalChecked())
                   .Ascii(),
               testing::StartsWith("TypeError"));
   EXPECT_FALSE(v8_ab->WasDetached());
@@ -1982,7 +1885,6 @@ TEST(V8ScriptValueSerializerForModulesTest,
 
 TEST(V8ScriptValueSerializerForModulesTest,
      ArrayBufferDetachKeyDoesNotPreventSerialize) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   ScriptState* script_state = scope.GetScriptState();
   v8::Isolate* isolate = scope.GetIsolate();
@@ -1990,14 +1892,15 @@ TEST(V8ScriptValueSerializerForModulesTest,
   DOMArrayBuffer* ab = DOMArrayBuffer::Create(10, sizeof(float));
   v8::Local<v8::ArrayBuffer> v8_ab =
       ToV8Traits<DOMArrayBuffer>::ToV8(script_state, ab)
+          .ToLocalChecked()
           .As<v8::ArrayBuffer>();
   v8_ab->SetDetachKey(V8AtomicString(isolate, "my key"));
 
   // Attempt to serialize the ArrayBuffer. It should not fail with a TypeError
   // even though it has an ArrayBufferDetachKey because it will not be detached.
   V8ScriptValueSerializer::Options serialize_options;
-  ExceptionState exception_state(
-      isolate, ExceptionContextType::kOperationInvoke, "Window", "postMessage");
+  ExceptionState exception_state(isolate, ExceptionState::kExecutionContext,
+                                 "Window", "postMessage");
   EXPECT_TRUE(V8ScriptValueSerializerForModules(script_state, serialize_options)
                   .Serialize(v8_ab, exception_state));
   EXPECT_FALSE(exception_state.HadException());

@@ -25,7 +25,7 @@ class TestBlocklistStateFetcher;
 
 class BlocklistStateFetcher {
  public:
-  using RequestCallback = base::OnceCallback<void(BlocklistState)>;
+  typedef base::OnceCallback<void(BlocklistState)> RequestCallback;
 
   BlocklistStateFetcher();
 
@@ -50,7 +50,7 @@ class BlocklistStateFetcher {
 
  private:
   friend class TestBlocklistStateFetcher;
-  using CallbackMultiMap = std::multimap<std::string, RequestCallback>;
+  typedef std::multimap<std::string, RequestCallback> CallbackMultiMap;
 
   GURL RequestUrl() const;
 

@@ -6,10 +6,12 @@
 
 #include <array>
 #include <string>
-#include <string_view>
 
+#include "base/strings/string_piece.h"
 #include "chrome/browser/ash/policy/affiliation/affiliation_test_helper.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
+#include "chromeos/ash/components/dbus/authpolicy/authpolicy_client.h"
+#include "chromeos/ash/components/dbus/authpolicy/fake_authpolicy_client.h"
 #include "chromeos/ash/components/dbus/session_manager/fake_session_manager_client.h"
 #include "chromeos/ash/components/dbus/session_manager/session_manager_client.h"
 #include "components/account_id/account_id.h"
@@ -26,11 +28,13 @@ namespace {
 // If running with `affiliated==false`, the test will use `kAffiliationID` as
 // device and `kAnotherAffiliationID` as user affiliation ID, which makes the
 // user non-affiliated (affiliation IDs don't overlap).
-constexpr std::string_view kAffiliationID = "some-affiliation-id";
-constexpr std::string_view kAnotherAffiliationID = "another-affiliation-id";
+constexpr base::StringPiece kAffiliationID = "some-affiliation-id";
+constexpr base::StringPiece kAnotherAffiliationID = "another-affiliation-id";
 
 constexpr char kAffiliatedUserEmail[] = "affiliateduser@example.com";
 constexpr char kAffiliatedUserGaiaId[] = "1029384756";
+constexpr char kAffiliatedUserObjGuid[] =
+    "{11111111-1111-1111-1111-111111111111}";
 
 }  // namespace
 
@@ -57,9 +61,29 @@ void AffiliationMixin::SetUpInProcessBrowserTestFixture() {
       std::array{affiliated_ ? kAffiliationID : kAnotherAffiliationID}));
 }
 
+void AffiliationMixin::SetIsForActiveDirectory(bool is_for_active_directory) {
+  if (is_for_active_directory == is_for_active_directory_)
+    return;
+
+  is_for_active_directory_ = is_for_active_directory;
+  if (is_for_active_directory) {
+    account_id_ = AccountId::AdFromUserEmailObjGuid(kAffiliatedUserEmail,
+                                                    kAffiliatedUserObjGuid);
+  } else {
+    account_id_ = AccountId::FromUserEmailGaiaId(kAffiliatedUserEmail,
+                                                 kAffiliatedUserGaiaId);
+  }
+}
+
 AffiliationTestHelper AffiliationMixin::GetAffiliationTestHelper() const {
   auto* session_manager_client = ash::FakeSessionManagerClient::Get();
   CHECK(session_manager_client);
+  if (is_for_active_directory_) {
+    auto* fake_auth_policy_client = ash::FakeAuthPolicyClient::Get();
+    CHECK(fake_auth_policy_client);
+    return AffiliationTestHelper::CreateForActiveDirectory(
+        session_manager_client, fake_auth_policy_client);
+  }
   return AffiliationTestHelper::CreateForCloud(session_manager_client);
 }
 

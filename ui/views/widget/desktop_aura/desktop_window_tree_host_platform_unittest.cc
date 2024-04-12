@@ -11,8 +11,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "build/build_config.h"
-#include "ui/aura/client/capture_client.h"
-#include "ui/aura/test/aura_test_utils.h"
 #include "ui/aura/window_tree_host.h"
 #include "ui/aura/window_tree_host_observer.h"
 #include "ui/base/ui_base_features.h"
@@ -20,19 +18,12 @@
 #include "ui/display/display_switches.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/platform_window/platform_window.h"
-#include "ui/views/accessible_pane_view.h"
 #include "ui/views/test/views_test_base.h"
 #include "ui/views/widget/desktop_aura/desktop_native_widget_aura.h"
-#include "ui/views/widget/widget_delegate.h"
 #include "ui/views/widget/widget_observer.h"
 
 #if BUILDFLAG(IS_OZONE)
 #include "ui/ozone/public/ozone_platform.h"
-#endif
-
-#if !BUILDFLAG(IS_FUCHSIA)
-#include "ui/aura/window_tree_host_platform.h"    // nogncheck
-#include "ui/platform_window/stub/stub_window.h"  // nogncheck
 #endif
 
 namespace views {
@@ -167,7 +158,6 @@ TEST_F(DesktopWindowTreeHostPlatformTest, CallOnNativeWidgetVisibilityChanged) {
 
   widget->Show();
   EXPECT_TRUE(observer.visible());
-  EXPECT_TRUE(observer.visible());
 
   widget->Hide();
   EXPECT_FALSE(observer.visible());
@@ -228,26 +218,6 @@ TEST_F(DesktopWindowTreeHostPlatformTest, UpdateWindowShapeFromWindowMask) {
   EXPECT_TRUE(host_platform->GetWindowMaskForWindowShapeInPixels().isEmpty());
   EXPECT_TRUE(host_platform->GetWindowMaskForClipping().isEmpty());
   EXPECT_TRUE(widget->GetLayer()->FillsBoundsCompletely());
-}
-
-// Calling show/hide/show triggers changing visibility of the native widget.
-TEST_F(DesktopWindowTreeHostPlatformTest,
-       OnAcceleratedWidgetMadeVisibleCalled) {
-  std::unique_ptr<Widget> widget = CreateWidgetWithNativeWidget();
-
-  auto* host_platform = DesktopWindowTreeHostPlatform::GetHostForWidget(
-      widget->GetNativeWindow()->GetHost()->GetAcceleratedWidget());
-  ASSERT_TRUE(host_platform);
-  EXPECT_FALSE(aura::test::AcceleratedWidgetMadeVisible(host_platform));
-
-  widget->Show();
-  EXPECT_TRUE(aura::test::AcceleratedWidgetMadeVisible(host_platform));
-
-  widget->Hide();
-  EXPECT_FALSE(aura::test::AcceleratedWidgetMadeVisible(host_platform));
-
-  widget->Show();
-  EXPECT_TRUE(aura::test::AcceleratedWidgetMadeVisible(host_platform));
 }
 
 // A Widget that allows setting the min/max size for the widget.
@@ -405,186 +375,6 @@ TEST_F(DesktopWindowTreeHostPlatformTest, MakesParentChildRelationship) {
     EXPECT_NE(host_platform->window_children_.find(host_platform3),
               host_platform->window_children_.end());
   }
-}
-
-class TestWidgetDelegate : public WidgetDelegate {
- public:
-  TestWidgetDelegate() = default;
-  TestWidgetDelegate(const TestWidgetDelegate&) = delete;
-  TestWidgetDelegate operator=(const TestWidgetDelegate&) = delete;
-  ~TestWidgetDelegate() override = default;
-
-  void GetAccessiblePanes(std::vector<View*>* panes) override {
-    base::ranges::copy(accessible_panes_, std::back_inserter(*panes));
-  }
-
-  void AddAccessiblePane(View* pane) { accessible_panes_.push_back(pane); }
-
- private:
-  std::vector<raw_ptr<View, VectorExperimental>> accessible_panes_;
-};
-
-TEST_F(DesktopWindowTreeHostPlatformTest, OnRotateFocus) {
-  using Direction = ui::PlatformWindowDelegate::RotateDirection;
-
-  auto delegate = std::make_unique<TestWidgetDelegate>();
-  Widget::InitParams widget_params =
-      CreateParams(Widget::InitParams::TYPE_WINDOW);
-  widget_params.bounds = gfx::Rect(110, 110, 100, 100);
-  widget_params.delegate = delegate.get();
-  widget_params.ownership = Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
-  auto widget = std::make_unique<Widget>();
-  widget->Init(std::move(widget_params));
-
-  View* views[2];
-  for (auto*& view : views) {
-    auto child_view = std::make_unique<View>();
-    child_view->SetFocusBehavior(View::FocusBehavior::ALWAYS);
-
-    auto pane = std::make_unique<AccessiblePaneView>();
-    delegate->AddAccessiblePane(pane.get());
-    view = pane->AddChildView(std::move(child_view));
-    widget->GetContentsView()->AddChildView(std::move(pane));
-  }
-  widget->Show();
-  ASSERT_TRUE(widget->IsActive());
-
-  auto* focus_manager = widget->GetFocusManager();
-
-  // Start rotating from start.
-  EXPECT_TRUE(DesktopWindowTreeHostPlatform::RotateFocusForWidget(
-      *widget, Direction::kForward, true));
-  EXPECT_EQ(views[0], focus_manager->GetFocusedView());
-
-  EXPECT_TRUE(DesktopWindowTreeHostPlatform::RotateFocusForWidget(
-      *widget, Direction::kForward, false));
-  EXPECT_EQ(views[1], focus_manager->GetFocusedView());
-
-  EXPECT_TRUE(DesktopWindowTreeHostPlatform::RotateFocusForWidget(
-      *widget, Direction::kBackward, false));
-  EXPECT_EQ(views[0], focus_manager->GetFocusedView());
-
-  // Attempting to rotate again without resetting should notify that we've
-  // reached the end.
-  EXPECT_FALSE(DesktopWindowTreeHostPlatform::RotateFocusForWidget(
-      *widget, Direction::kBackward, false));
-  EXPECT_EQ(views[0], focus_manager->GetFocusedView());
-
-  // Restart rotating from back.
-  EXPECT_TRUE(DesktopWindowTreeHostPlatform::RotateFocusForWidget(
-      *widget, Direction::kBackward, true));
-  EXPECT_EQ(views[1], focus_manager->GetFocusedView());
-}
-
-TEST_F(DesktopWindowTreeHostPlatformTest, CanMaximize) {
-  auto widget = CreateWidgetWithNativeWidget();
-  auto* host_platform = DesktopWindowTreeHostPlatform::GetHostForWidget(
-      widget->GetNativeWindow()->GetHost()->GetAcceleratedWidget());
-
-  widget->widget_delegate()->SetCanMaximize(true);
-  EXPECT_TRUE(host_platform->CanMaximize());
-
-  widget->widget_delegate()->SetCanMaximize(false);
-  EXPECT_FALSE(host_platform->CanMaximize());
-}
-
-TEST_F(DesktopWindowTreeHostPlatformTest, CanFullscreen) {
-  auto widget = CreateWidgetWithNativeWidget();
-  auto* host_platform = DesktopWindowTreeHostPlatform::GetHostForWidget(
-      widget->GetNativeWindow()->GetHost()->GetAcceleratedWidget());
-
-  widget->widget_delegate()->SetCanFullscreen(true);
-  EXPECT_TRUE(host_platform->CanFullscreen());
-
-  widget->widget_delegate()->SetCanFullscreen(false);
-  EXPECT_FALSE(host_platform->CanFullscreen());
-}
-
-#if !BUILDFLAG(IS_FUCHSIA)
-class ScopedPlatformWindowFactoryDelegate
-    : public aura::WindowTreeHostPlatform::
-          PlatformWindowFactoryDelegateForTesting {
- public:
-  ScopedPlatformWindowFactoryDelegate() {
-    aura::WindowTreeHostPlatform::SetPlatformWindowFactoryDelegateForTesting(
-        this);
-  }
-  ScopedPlatformWindowFactoryDelegate(
-      const ScopedPlatformWindowFactoryDelegate&) = delete;
-  ScopedPlatformWindowFactoryDelegate& operator=(
-      const ScopedPlatformWindowFactoryDelegate&) = delete;
-  ~ScopedPlatformWindowFactoryDelegate() override {
-    aura::WindowTreeHostPlatform::SetPlatformWindowFactoryDelegateForTesting(
-        nullptr);
-  }
-
-  std::unique_ptr<ui::PlatformWindow> Create(
-      aura::WindowTreeHostPlatform* host) override {
-    return std::make_unique<ui::StubWindow>(host, false);
-  }
-};
-
-TEST_F(DesktopWindowTreeHostPlatformTest, ShowInitiallyMinimizedWidget) {
-  Widget::InitParams params(Widget::InitParams::TYPE_WINDOW);
-  params.delegate = nullptr;
-  params.remove_standard_frame = true;
-  params.bounds = gfx::Rect(100, 100, 100, 100);
-  params.show_state = ui::SHOW_STATE_MINIMIZED;
-  std::unique_ptr<ScopedPlatformWindowFactoryDelegate>
-      scoped_platform_window_factory_delegate(
-          new ScopedPlatformWindowFactoryDelegate);
-  std::unique_ptr<Widget> widget =
-      CreateWidgetWithNativeWidgetWithParams(std::move(params));
-  scoped_platform_window_factory_delegate.reset();
-
-  // Calling `Widget::Show()` for a widget initially created as minimized does
-  // not cause the widget to get activated yet. (i.e. stays minimized). This
-  // happens specifically when the widget is created as part of a session
-  // restore and `Widget::Show()` is called for initialization and not to
-  // actually show the widget. The widget will use `Widget::saved_show_state_`
-  // to pass to the native widget and window tree host. Essentially this is
-  // testing that `DesktopWindowTreeHostPlatform` does not get activated if
-  // `DesktopWindowTreeHostPlatform::Show()` is called with
-  // `ui::SHOW_STATE_MINIMIZED`.
-  widget->Show();
-  EXPECT_FALSE(widget->IsActive());
-
-  widget->Show();
-  EXPECT_TRUE(widget->IsActive());
-}
-#endif  // !BUILDFLAG(IS_FUCHSIA)
-
-class VisibilityObserver : public aura::WindowObserver {
- public:
-  VisibilityObserver() = default;
-  int shown() const { return shown_; }
-  void OnWindowVisibilityChanging(aura::Window*, bool visible) override {
-    if (visible) {
-      shown_++;
-    }
-  }
-
- private:
-  int shown_ = 0;
-};
-
-TEST_F(DesktopWindowTreeHostPlatformTest, ContentWindowShownOnce) {
-  std::unique_ptr<Widget> widget = CreateWidgetWithNativeWidget();
-  widget->Show();
-
-  auto* host_platform = DesktopWindowTreeHostPlatform::GetHostForWidget(
-      widget->GetNativeWindow()->GetHost()->GetAcceleratedWidget());
-  VisibilityObserver observer;
-  host_platform->GetContentWindow()->AddObserver(&observer);
-
-  widget->Hide();
-  widget->SetOpacity(0.f);
-  widget->Show();
-
-  // Show is only called once.
-  EXPECT_EQ(observer.shown(), 1);
-
-  host_platform->GetContentWindow()->RemoveObserver(&observer);
 }
 
 }  // namespace views

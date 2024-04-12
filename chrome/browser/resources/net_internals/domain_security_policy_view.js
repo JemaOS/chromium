@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {$} from 'chrome://resources/js/util.js';
+import {$} from 'chrome://resources/js/util_ts.js';
 
 import {BrowserBridge} from './browser_bridge.js';
 import {addNode, addNodeWithText, addTextNode} from './util.js';
@@ -51,15 +51,14 @@ export class DomainSecurityPolicyView extends DivView {
   }
 
   onSubmitDelete_(event) {
-    this.browserBridge_.sendDomainSecurityPolicyDelete(
-        this.deleteInput_.value.trim());
+    this.browserBridge_.sendDomainSecurityPolicyDelete(this.deleteInput_.value);
     this.deleteInput_.value = '';
     event.preventDefault();
   }
 
   onSubmitHSTSAdd_(event) {
     this.browserBridge_.sendHSTSAdd(
-        this.addStsInput_.value.trim(), this.addStsCheck_.checked);
+        this.addStsInput_.value, this.addStsCheck_.checked);
     this.browserBridge_.sendHSTSQuery(this.addStsInput_.value).then(result => {
       this.onHSTSQueryResult_(result);
     });
@@ -69,8 +68,14 @@ export class DomainSecurityPolicyView extends DivView {
     event.preventDefault();
   }
 
+  onSubmitDelete_(event) {
+    this.browserBridge_.sendDomainSecurityPolicyDelete(this.deleteInput_.value);
+    this.deleteInput_.value = '';
+    event.preventDefault();
+  }
+
   onSubmitHSTSQuery_(event) {
-    this.browserBridge_.sendHSTSQuery(this.queryStsInput_.value.trim())
+    this.browserBridge_.sendHSTSQuery(this.queryStsInput_.value)
         .then(result => {
           this.onHSTSQueryResult_(result);
         });

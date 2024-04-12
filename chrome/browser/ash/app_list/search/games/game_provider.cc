@@ -22,7 +22,6 @@
 #include "chrome/browser/ash/app_list/app_list_controller_delegate.h"
 #include "chrome/browser/ash/app_list/search/games/game_result.h"
 #include "chrome/browser/ash/app_list/search/search_features.h"
-#include "chrome/browser/ash/app_list/search/types.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chromeos/ash/components/string_matching/fuzzy_tokenized_string_match.h"
 #include "chromeos/ash/components/string_matching/tokenized_string.h"
@@ -93,7 +92,8 @@ std::u16string GetStrippedText(const std::u16string& text) {
 
 double CalculateTitleRelevance(const TokenizedString& tokenized_query,
                                const std::u16string& game_title) {
-  const TokenizedString tokenized_title(GetStrippedText(game_title),
+  std::u16string stripped_title = GetStrippedText(game_title);
+  const TokenizedString tokenized_title(stripped_title,
                                         TokenizedString::Mode::kWords);
 
   if (tokenized_query.text().empty() || tokenized_title.text().empty()) {
@@ -111,7 +111,8 @@ std::vector<std::pair<const apps::Result*, double>> SearchGames(
     const GameProvider::GameIndex* index) {
   DCHECK(index);
 
-  TokenizedString tokenized_query(GetStrippedText(query),
+  std::u16string stripped_query = GetStrippedText(query);
+  TokenizedString tokenized_query(stripped_query,
                                   TokenizedString::Mode::kWords);
   std::vector<std::pair<const apps::Result*, double>> matches;
   for (const auto& game : *index) {
@@ -128,8 +129,7 @@ std::vector<std::pair<const apps::Result*, double>> SearchGames(
 
 GameProvider::GameProvider(Profile* profile,
                            AppListControllerDelegate* list_controller)
-    : SearchProvider(SearchCategory::kGames),
-      profile_(profile),
+    : profile_(profile),
       list_controller_(list_controller),
       app_discovery_service_(
           apps::AppDiscoveryServiceFactory::GetForProfile(profile)) {

@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "base/memory/raw_ptr_exclusion.h"
 #include "base/observer_list.h"
 #include "base/observer_list_types.h"
 #include "base/strings/utf_string_conversions.h"
@@ -36,21 +35,20 @@ class ReadAnythingFontModel : public ui::ComboboxModel {
   ReadAnythingFontModel& operator=(const ReadAnythingFontModel&) = delete;
   ~ReadAnythingFontModel() override;
 
-  // The name of the font
-  std::u16string name;
-
   std::string GetFontNameAt(size_t index);
+  bool IsValidFontName(const std::string& font_name);
   bool IsValidFontIndex(size_t index);
-  void SetDefaultLanguage(const std::string& lang);
   size_t GetFontNameIndex(std::string font_name);
   void SetSelectedIndex(size_t index);
+  std::vector<std::string> GetLabelFontNameAt(size_t index) override;
+  absl::optional<int> GetLabelFontSize() override;
   size_t GetSelectedIndex() { return selected_index_; }
 
-  std::optional<ui::ColorId> GetDropdownForegroundColorIdAt(
+  absl::optional<ui::ColorId> GetDropdownForegroundColorIdAt(
       size_t index) const override;
-  std::optional<ui::ColorId> GetDropdownBackgroundColorIdAt(
+  absl::optional<ui::ColorId> GetDropdownBackgroundColorIdAt(
       size_t index) const override;
-  std::optional<ui::ColorId> GetDropdownSelectedBackgroundColorIdAt(
+  absl::optional<ui::ColorId> GetDropdownSelectedBackgroundColorIdAt(
       size_t index) const override;
 
   void SetForegroundColorId(ui::ColorId foreground_color) {
@@ -66,11 +64,11 @@ class ReadAnythingFontModel : public ui::ComboboxModel {
   }
 
   // Used by tests only.
-  std::optional<size_t> GetDefaultIndexForTesting();
+  absl::optional<size_t> GetDefaultIndexForTesting();
 
  protected:
   // ui::Combobox implementation:
-  std::optional<size_t> GetDefaultIndex() const override;
+  absl::optional<size_t> GetDefaultIndex() const override;
   size_t GetItemCount() const override;
   std::u16string GetItemAt(size_t index) const override;
   std::u16string GetDropDownTextAt(size_t index) const override;
@@ -81,9 +79,9 @@ class ReadAnythingFontModel : public ui::ComboboxModel {
 
   size_t selected_index_ = 0;
 
-  std::optional<ui::ColorId> foreground_color_id_;
-  std::optional<ui::ColorId> background_color_id_;
-  std::optional<ui::ColorId> selected_color_id_;
+  absl::optional<ui::ColorId> foreground_color_id_;
+  absl::optional<ui::ColorId> background_color_id_;
+  absl::optional<ui::ColorId> selected_color_id_;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -97,6 +95,18 @@ class ReadAnythingColorsModel : public ReadAnythingMenuModel {
  public:
   // Simple struct to hold the various colors to keep code cleaner.
   struct ColorInfo {
+    // Enum for logging the user-chosen color.
+    // These values are persisted to logs. Entries should not be renumbered and
+    // numeric values should never be reused.
+    enum class ReadAnythingColor {
+      kDefault = 0,
+      kLight = 1,
+      kDark = 2,
+      kYellow = 3,
+      kBlue = 4,
+      kMaxValue = kBlue,
+    };
+
     ColorInfo(std::u16string name,
               int icon_asset,
               ui::ColorId foreground_color_id,
@@ -104,12 +114,11 @@ class ReadAnythingColorsModel : public ReadAnythingMenuModel {
               ui::ColorId separator_color_id,
               ui::ColorId dropdown_color_id,
               ui::ColorId selected_color_id,
-              ui::ColorId focus_ring_color_id);
+              ColorInfo::ReadAnythingColor logging_value);
     ColorInfo(const ColorInfo& other);
     ColorInfo(ColorInfo&&);
     ColorInfo& operator=(const ColorInfo&);
     ColorInfo& operator=(ColorInfo&&);
-    ~ColorInfo();
 
     // The name of the colors, e.g. Default, Light, Dark.
     std::u16string name;
@@ -134,8 +143,8 @@ class ReadAnythingColorsModel : public ReadAnythingMenuModel {
     // menu model.
     ui::ColorId selected_dropdown_color_id;
 
-    // The color of the focus ring, used for all elements in the toolbar.
-    ui::ColorId focus_ring_color_id;
+    // The enum value used to log this theme.
+    ColorInfo::ReadAnythingColor logging_value;
   };
 
   ReadAnythingColorsModel();
@@ -176,9 +185,7 @@ class ReadAnythingLineSpacingModel : public ReadAnythingMenuModel {
     std::u16string name;
 
     // The resources value/identifier for the icon image asset.
-    // RAW_PTR_EXCLUSION: Never allocated by PartitionAlloc (always points to a
-    // global), so there is no benefit to using a raw_ptr, only cost.
-    RAW_PTR_EXCLUSION const gfx::VectorIcon& icon_asset;
+    const gfx::VectorIcon& icon_asset;
   };
 
   bool IsValidIndex(size_t index) override;
@@ -216,9 +223,7 @@ class ReadAnythingLetterSpacingModel : public ReadAnythingMenuModel {
     std::u16string name;
 
     // The resources value/identifier for the icon image asset.
-    // RAW_PTR_EXCLUSION: Never allocated by PartitionAlloc (always points to a
-    // global), so there is no benefit to using a raw_ptr, only cost.
-    RAW_PTR_EXCLUSION const gfx::VectorIcon& icon_asset;
+    const gfx::VectorIcon& icon_asset;
   };
 
   bool IsValidIndex(size_t index) override;
@@ -245,13 +250,11 @@ class ReadAnythingModel {
     virtual void OnReadAnythingThemeChanged(
         const std::string& font_name,
         double font_scale,
-        bool links_enabled,
         ui::ColorId foreground_color_id,
         ui::ColorId background_color_id,
         ui::ColorId separator_color_id,
         ui::ColorId dropdown_color_id,
         ui::ColorId selected_color_id,
-        ui::ColorId focus_ring_color_id,
         read_anything::mojom::LineSpacing line_spacing,
         read_anything::mojom::LetterSpacing letter_spacing) = 0;
   };
@@ -261,10 +264,8 @@ class ReadAnythingModel {
   ReadAnythingModel& operator=(const ReadAnythingModel&) = delete;
   ~ReadAnythingModel();
 
-  void Init(const std::string& lang_code,
-            const std::string& font_name,
+  void Init(const std::string& font_name,
             double font_scale,
-            bool links_enabled,
             read_anything::mojom::Colors colors,
             read_anything::mojom::LineSpacing line_spacing,
             read_anything::mojom::LetterSpacing letter_spacing);
@@ -276,7 +277,6 @@ class ReadAnythingModel {
   double GetValidFontScale(double font_scale);
   void DecreaseTextSize();
   void IncreaseTextSize();
-  void SetLinksEnabled(bool enabled);
   void SetSelectedColorsByIndex(size_t new_index);
   void SetSelectedLineSpacingByIndex(size_t new_index);
   void SetSelectedLetterSpacingByIndex(size_t new_index);
@@ -295,8 +295,9 @@ class ReadAnythingModel {
   read_anything::mojom::LetterSpacing letter_spacing() {
     return letter_spacing_;
   }
-
-  bool GetLinksEnabled() { return links_enabled_; }
+  ReadAnythingColorsModel::ColorInfo::ReadAnythingColor color_logging_value() {
+    return colors_model_->GetColorsAt(colors_combobox_index_).logging_value;
+  }
 
  private:
   void NotifyThemeChanged();
@@ -304,7 +305,7 @@ class ReadAnythingModel {
   // State:
 
   // Members of read_anything::mojom::ReadAnythingTheme:
-  std::string font_name_ = string_constants::kReadAnythingPlaceholderFontName;
+  std::string font_name_ = string_constants::kReadAnythingDefaultFontName;
   ui::ColorId foreground_color_id_ = kColorReadAnythingForeground;
   ui::ColorId background_color_id_ = kColorReadAnythingBackground;
 
@@ -312,12 +313,9 @@ class ReadAnythingModel {
   ui::ColorId separator_color_id_ = kColorReadAnythingSeparator;
   ui::ColorId dropdown_color_id_ = kColorReadAnythingDropdownBackground;
   ui::ColorId selected_dropdown_color_id_ = kColorReadAnythingDropdownSelected;
-  ui::ColorId focus_ring_color_id_ = kColorReadAnythingFocusRingBackground;
 
   // A scale multiplier for font size (internal use only, not shown to user).
   float font_scale_ = kReadAnythingDefaultFontScale;
-
-  bool links_enabled_ = kReadAnythingDefaultLinksEnabled;
 
   read_anything::mojom::LineSpacing line_spacing_ = LineSpacing::kDefaultValue;
   read_anything::mojom::LetterSpacing letter_spacing_ =

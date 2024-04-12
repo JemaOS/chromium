@@ -168,7 +168,6 @@ std::string FormatNetworkDiagnosticResults(
     output << "Routine: " << result.first << "\n";
     output << "Verdict: " << result.second->verdict << "\n";
     output << "Timestamp: " << result.second->timestamp << "\n";
-    output << "Source: " << result.second->source << "\n";
 
     auto problems = GetProblemsString(result.second->problems);
     if (!problems.empty())

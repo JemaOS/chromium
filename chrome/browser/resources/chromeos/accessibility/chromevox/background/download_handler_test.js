@@ -33,9 +33,21 @@ ChromeVoxDownloadTest = class extends ChromeVoxE2ETest {
   }
 
   /** @override */
+  setUp() {
+    super.setUp();
+    globalThis.simulateEvent = item => this.simulateEvent(item);
+  }
+
+  /** @override */
   async setUpDeferred() {
     await super.setUpDeferred();
-    globalThis.simulateEvent = item => this.simulateEvent(item);
+
+    // Alphabetical based on file path.
+    await importModule(
+        'DownloadHandler', '/chromevox/background/download_handler.js');
+    await importModule('LocalStorage', '/common/local_storage.js');
+    await importModule(
+        'SettingsManager', '/chromevox/common/settings_manager.js');
   }
 
   /**

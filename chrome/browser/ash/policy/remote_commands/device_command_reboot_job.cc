@@ -9,7 +9,6 @@
 #include "ash/constants/ash_switches.h"
 #include "base/command_line.h"
 #include "base/functional/bind.h"
-#include "base/json/json_reader.h"
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/system/sys_info.h"
@@ -34,48 +33,29 @@ const char kLoginScreenRebootDescription[] =
 const char kUserSessionRebootDescription[] =
     "Reboot remote command (user session)";
 
-const char kPayloadUserSessionRebootDelayField[] = "user_session_delay_seconds";
+constexpr base::TimeDelta kDefaultUserSessionRebootTimeout = base::Minutes(5);
 
-constexpr base::TimeDelta kDefaultUserSessionRebootDelay = base::Minutes(5);
-
-std::optional<base::TimeDelta> ExtractUserSessionDelayFromCommandLine() {
+base::TimeDelta GetUserSessionTimeout() {
   const base::CommandLine* command_line =
       base::CommandLine::ForCurrentProcess();
 
-  const std::string delay_string = command_line->GetSwitchValueASCII(
-      ash::switches::kRemoteRebootCommandDelayInSecondsForTesting);
+  std::string timeout_string = command_line->GetSwitchValueASCII(
+      ash::switches::kRemoteRebootCommandTimeoutInSecondsForTesting);
 
-  if (delay_string.empty()) {
-    return std::nullopt;
+  if (timeout_string.empty()) {
+    return kDefaultUserSessionRebootTimeout;
   }
 
-  int delay_in_seconds;
-  if (!base::StringToInt(delay_string, &delay_in_seconds) ||
-      delay_in_seconds < 0) {
+  int timeout_in_seconds;
+  if (!base::StringToInt(timeout_string, &timeout_in_seconds) ||
+      timeout_in_seconds < 0) {
     LOG(ERROR) << "Ignored "
-               << ash::switches::kRemoteRebootCommandDelayInSecondsForTesting
-               << " = " << delay_string;
-    return std::nullopt;
+               << ash::switches::kRemoteRebootCommandTimeoutInSecondsForTesting
+               << "=" << timeout_string;
+    return kDefaultUserSessionRebootTimeout;
   }
 
-  return base::Seconds(delay_in_seconds);
-}
-
-std::optional<base::TimeDelta> ExtractUserSessionDelayFromPayload(
-    const std::string& command_payload) {
-  const std::optional<base::Value> root =
-      base::JSONReader::Read(command_payload);
-  if (!root || !root->is_dict()) {
-    return std::nullopt;
-  }
-
-  std::optional<int> delay_in_seconds =
-      root->GetDict().FindInt(kPayloadUserSessionRebootDelayField);
-  if (!delay_in_seconds || delay_in_seconds.value() < 0) {
-    return std::nullopt;
-  }
-
-  return base::Seconds(delay_in_seconds.value());
+  return base::Seconds(timeout_in_seconds);
 }
 
 base::TimeTicks GetBootTime() {
@@ -108,7 +88,7 @@ DeviceCommandRebootJob::DeviceCommandRebootJob(
       in_session_reboot_timer_(clock, tick_clock),
       clock_(clock),
       get_boot_time_callback_(std::move(get_boot_time_callback)),
-      user_session_delay_(kDefaultUserSessionRebootDelay) {
+      user_session_timeout_(GetUserSessionTimeout()) {
   DCHECK(get_boot_time_callback_);
 }
 
@@ -117,28 +97,6 @@ DeviceCommandRebootJob::~DeviceCommandRebootJob() = default;
 enterprise_management::RemoteCommand_Type DeviceCommandRebootJob::GetType()
     const {
   return enterprise_management::RemoteCommand_Type_DEVICE_REBOOT;
-}
-
-bool DeviceCommandRebootJob::ParseCommandPayload(
-    const std::string& command_payload) {
-  const std::optional<base::TimeDelta> commandline_delay =
-      ExtractUserSessionDelayFromCommandLine();
-
-  // Ignore payload if delay is set in command line.
-  if (commandline_delay) {
-    user_session_delay_ = commandline_delay.value();
-    return true;
-  }
-
-  const std::optional<base::TimeDelta> payload_delay =
-      ExtractUserSessionDelayFromPayload(command_payload);
-  if (payload_delay) {
-    user_session_delay_ = payload_delay.value();
-    return true;
-  }
-
-  // Don't fail even if delay is not supplied. Use default one.
-  return true;
 }
 
 void DeviceCommandRebootJob::RunImpl(CallbackWithResult result_callback) {
@@ -192,12 +150,7 @@ void DeviceCommandRebootJob::PowerManagerBecameAvailable(bool available) {
 }
 
 void DeviceCommandRebootJob::RebootUserSession() {
-  if (user_session_delay_.is_zero()) {
-    // Do not show the reboot notification if no delay.
-    return OnRebootTimeoutExpired();
-  }
-
-  const auto reboot_time = clock_->Now() + user_session_delay_;
+  const auto reboot_time = clock_->Now() + user_session_timeout_;
   in_session_notifications_scheduler_->SchedulePendingRebootNotifications(
       base::BindOnce(&DeviceCommandRebootJob::OnRebootButtonClicked,
                      weak_factory_.GetWeakPtr()),
@@ -263,7 +216,7 @@ void DeviceCommandRebootJob::RunAsyncCallback(CallbackWithResult callback,
                                               ResultType result,
                                               base::Location from_where) {
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      from_where, base::BindOnce(std::move(callback), result, std::nullopt));
+      from_where, base::BindOnce(std::move(callback), result, absl::nullopt));
 }
 
 }  // namespace policy

@@ -78,14 +78,14 @@ v8::Local<v8::Array> EnumerateCrossOriginProperties(
   };
   const uint32_t length = static_cast<uint32_t>(
       attributes.size() + operations.size() + std::size(default_supported));
-  v8::LocalVector<v8::Value> elements(isolate);
+  Vector<v8::Local<v8::Value>> elements;
   elements.reserve(length);
   for (const auto& attribute : attributes)
-    elements.push_back(V8AtomicString(isolate, attribute.name));
+    elements.UncheckedAppend(V8AtomicString(isolate, attribute.name));
   for (const auto& operation : operations)
-    elements.push_back(V8AtomicString(isolate, operation.name));
+    elements.UncheckedAppend(V8AtomicString(isolate, operation.name));
   for (const auto& name : default_supported)
-    elements.push_back(name);
+    elements.UncheckedAppend(name);
   return v8::Array::New(isolate, elements.data(), elements.size());
 }
 

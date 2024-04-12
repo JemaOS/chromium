@@ -19,7 +19,7 @@ from collections import defaultdict, OrderedDict
 from io import IOBase
 from itertools import chain, product
 from html5lib import html5parser
-from typing import ClassVar, List, Optional, Set, Tuple
+from typing import ClassVar, List, Set, Tuple
 
 from localpaths import repo_root  # type: ignore
 
@@ -97,7 +97,7 @@ class WrapperHandler:
 
     __meta__ = abc.ABCMeta
 
-    headers: ClassVar[List[Tuple[str, str]]] = []
+    headers = []  # type: ClassVar[List[Tuple[str, str]]]
 
     def __init__(self, base_path=None, url_base="/"):
         self.base_path = base_path
@@ -214,18 +214,18 @@ class WrapperHandler:
 
 
 class HtmlWrapperHandler(WrapperHandler):
-    global_type: ClassVar[Optional[str]] = None
+    global_type = None  # type: ClassVar[str]
     headers = [('Content-Type', 'text/html')]
 
     def check_exposure(self, request):
-        if self.global_type is not None:
-            global_variants = ""
+        if self.global_type:
+            globals = ""
             for (key, value) in self._get_metadata(request):
                 if key == "global":
-                    global_variants = value
+                    globals = value
                     break
 
-            if self.global_type not in parse_variants(global_variants):
+            if self.global_type not in parse_variants(globals):
                 raise HTTPException(404, "This test cannot be loaded in %s mode" %
                                     self.global_type)
 
@@ -312,20 +312,6 @@ class WindowHandler(HtmlWrapperHandler):
 %(script)s
 <div id=log></div>
 <script src="%(path)s"></script>
-"""
-
-
-class WindowModulesHandler(HtmlWrapperHandler):
-    global_type = "window-module"
-    path_replace = [(".any.window-module.html", ".any.js")]
-    wrapper = """<!doctype html>
-<meta charset=utf-8>
-%(meta)s
-<script src="/resources/testharness.js"></script>
-<script src="/resources/testharnessreport.js"></script>
-%(script)s
-<div id=log></div>
-<script type=module src="%(path)s"></script>
 """
 
 
@@ -437,18 +423,7 @@ class ShadowRealmHandler(HtmlWrapperHandler):
 <script>
 (async function() {
   const r = new ShadowRealm();
-  r.evaluate("globalThis.self = globalThis; undefined;");
-  r.evaluate(`func => {
-    globalThis.fetch_json = (resource) => {
-      const thenMethod = func(resource);
-      return new Promise((resolve, reject) => thenMethod((s) => resolve(JSON.parse(s)), reject));
-    };
-  }`)((resource) => function (resolve, reject) {
-    fetch(resource).then(res => res.text(), String).then(resolve, reject);
-  });
-  r.evaluate(`s => {
-    globalThis.location = { search: s };
-  }`)(location.search);
+
   await new Promise(r.evaluate(`
     (resolve, reject) => {
       (async () => {
@@ -591,7 +566,6 @@ class RoutesBuilder:
             ("GET", "*.any.serviceworker.html", ServiceWorkersHandler),
             ("GET", "*.any.serviceworker-module.html", ServiceWorkerModulesHandler),
             ("GET", "*.any.shadowrealm.html", ShadowRealmHandler),
-            ("GET", "*.any.window-module.html", WindowModulesHandler),
             ("GET", "*.any.worker.js", ClassicWorkerHandler),
             ("GET", "*.any.worker-module.js", ModuleWorkerHandler),
             ("GET", "*.asis", handlers.AsIsHandler),
@@ -600,8 +574,6 @@ class RoutesBuilder:
             ("*", "/.well-known/attribution-reporting/report-aggregate-attribution", handlers.PythonScriptHandler),
             ("*", "/.well-known/attribution-reporting/debug/report-aggregate-attribution", handlers.PythonScriptHandler),
             ("*", "/.well-known/attribution-reporting/debug/verbose", handlers.PythonScriptHandler),
-            ("GET", "/.well-known/interest-group/permissions/", handlers.PythonScriptHandler),
-            ("*", "/.well-known/private-aggregation/*", handlers.PythonScriptHandler),
             ("*", "/.well-known/web-identity", handlers.PythonScriptHandler),
             ("*", "*.py", handlers.PythonScriptHandler),
             ("GET", "*", handlers.FileHandler)
@@ -649,19 +621,19 @@ class ServerProc:
     def start(self, init_func, host, port, paths, routes, bind_address, config, log_handlers, **kwargs):
         self.proc = self.mp_context.Process(target=self.create_daemon,
                                             args=(init_func, host, port, paths, routes, bind_address,
-                                                  config, log_handlers, dict(**os.environ)),
+                                                  config, log_handlers),
                                             name='%s on port %s' % (self.scheme, port),
                                             kwargs=kwargs)
         self.proc.daemon = True
         self.proc.start()
 
     def create_daemon(self, init_func, host, port, paths, routes, bind_address,
-                      config, log_handlers, env, **kwargs):
+                      config, log_handlers, **kwargs):
         # Ensure that when we start this in a new process we have the global lock
         # in the logging module unlocked
         importlib.reload(logging)
-        os.environ = env
-        logger = get_logger(config.logging["level"], log_handlers)
+
+        logger = get_logger(config.log_level, log_handlers)
 
         if sys.platform == "darwin":
             # on Darwin, NOFILE starts with a very low limit (256), so bump it up a little
@@ -1031,6 +1003,7 @@ class ConfigBuilder(config.ConfigBuilder):
             "webtransport-h3": ["auto"],
         },
         "check_subdomains": True,
+        "log_level": "info",
         "bind_address": True,
         "ssl": {
             "type": "pregenerated",
@@ -1049,11 +1022,7 @@ class ConfigBuilder(config.ConfigBuilder):
             },
             "none": {}
         },
-        "aliases": [],
-        "logging": {
-            "level": "info",
-            "suppress_handler_traceback": False
-        }
+        "aliases": []
     }
 
     computed_properties = ["ws_doc_root"] + config.ConfigBuilder.computed_properties
@@ -1113,7 +1082,7 @@ def build_config(logger, override_path=None, config_cls=ConfigBuilder, **kwargs)
             raise ValueError("Config path %s does not exist" % other_path)
 
     if kwargs.get("verbose"):
-        rv.logging["level"] = "DEBUG"
+        rv.log_level = "debug"
 
     setattr(rv, "inject_script", kwargs.get("inject_script"))
 
@@ -1205,7 +1174,7 @@ def run(config_cls=ConfigBuilder, route_builder=None, mp_context=None, log_handl
                       config_cls=config_cls,
                       **kwargs) as config:
         # This sets the right log level
-        logger = get_logger(config.logging["level"], log_handlers)
+        logger = get_logger(config.log_level, log_handlers)
 
         bind_address = config["bind_address"]
 

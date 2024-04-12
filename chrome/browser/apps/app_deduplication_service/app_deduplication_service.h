@@ -9,15 +9,16 @@
 #include <string>
 
 #include "base/functional/callback.h"
-#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
-#include "chrome/browser/apps/almanac_api_client/proto_file_manager.h"
+#include "chrome/browser/apps/app_deduplication_service/app_deduplication_cache.h"
 #include "chrome/browser/apps/app_deduplication_service/app_deduplication_server_connector.h"
 #include "chrome/browser/apps/app_deduplication_service/duplicate_group.h"
 #include "chrome/browser/apps/app_deduplication_service/entry_types.h"
 #include "chrome/browser/apps/app_deduplication_service/proto/deduplication_data.pb.h"
+#include "chrome/browser/apps/app_provisioning_service/app_provisioning_data_manager.h"
+#include "chrome/browser/apps/app_provisioning_service/proto/app_data.pb.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/services/app_service/public/cpp/app_registry_cache.h"
 
@@ -30,6 +31,7 @@ class PrefRegistrySyncable;
 namespace apps::deduplication {
 
 class AppDeduplicationService : public KeyedService,
+                                public AppProvisioningDataManager::Observer,
                                 public apps::AppRegistryCache::Observer {
  public:
   explicit AppDeduplicationService(Profile* profile);
@@ -37,37 +39,42 @@ class AppDeduplicationService : public KeyedService,
   AppDeduplicationService(const AppDeduplicationService&) = delete;
   AppDeduplicationService& operator=(const AppDeduplicationService&) = delete;
 
-  // Call this function before using any other function.
-  // This function returns true if the Deduplication Service has been
-  // properly initialised, ensuring the correctness of method responses.
-  bool IsServiceOn();
-  std::vector<Entry> GetDuplicates(const Entry& entry);
-  bool AreDuplicates(const Entry& entry_1, const Entry& entry_2);
+  std::vector<Entry> GetDuplicates(const EntryId& entry_id);
+  bool AreDuplicates(const EntryId& entry_id_1, const EntryId& entry_id_2);
 
   // Registers prefs used for the App Deduplication Service.
   static void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
 
  private:
-  friend class AppDeduplicationServiceAlmanacTest;
-  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceAlmanacTest,
+  friend class AppDeduplicationServiceTest;
+  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceTest,
+                           OnDuplicatedGroupListUpdated);
+  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceTest,
+                           ExactDuplicateAllInstalled);
+  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceTest, Installation);
+  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceTest, Websites);
+  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceTest,
                            DeduplicateDataToEntries);
-  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceAlmanacTest,
-                           DeduplicateDataToEntriesInvalidAppType);
-  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceAlmanacTest,
-                           DeduplicateDataToEntriesInvalidAppId);
-  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceAlmanacTest,
+  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceTest,
                            PrefUnchangedAfterServerError);
-  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceAlmanacTest,
+  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceTest,
                            PrefSetAfterServerSuccess);
-  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceAlmanacTest,
-                           ValidServiceNoDuplicates);
-  FRIEND_TEST_ALL_PREFIXES(AppDeduplicationServiceAlmanacTest,
-                           ValidServiceWithDuplicates);
+
+  enum class EntryStatus {
+    // This entry is not an app entry (could be website, phonehub, etc.).
+    kNonApp = 0,
+    kInstalledApp = 1,
+    kNotInstalledApp = 2
+  };
 
   // Starts the process of calling the server to retrieve duplicate app data.
   // A call is only made to the server if there is a difference of over 24 hours
   // between now and the time stored in the server pref.
   void StartLoginFlow();
+
+  // AppProvisioningDataManager::Observer:
+  void OnDuplicatedGroupListUpdated(
+      const proto::DuplicatedGroupList& duplicated_apps_map) override;
 
   // apps::AppRegistryCache::Observer:
   void OnAppUpdate(const apps::AppUpdate& update) override;
@@ -80,15 +87,15 @@ class AppDeduplicationService : public KeyedService,
   // Returns the map key of the duplicate group in the duplication map if a
   // group is found, and return nullptr if the entry id doesn't belong to
   // and duplicate group.
-  std::optional<uint32_t> FindDuplicationIndex(const Entry& entry);
+  absl::optional<uint32_t> FindDuplicationIndex(const EntryId& entry_id);
 
   // Calls server connector to make a request to the Fondue server to retrieve
   // duplicate app group data.
-  void GetDeduplicateDataFromServer(DeviceInfo device_info);
+  void GetDeduplicateDataFromServer();
 
   // Processes data retrieved by server connector and stores in disk.
   void OnGetDeduplicateDataFromServerCompleted(
-      std::optional<proto::DeduplicateData> response);
+      absl::optional<proto::DeduplicateData> response);
 
   // Checks for any errors after data is written to cache. If the write is
   // successful, it will call the cache to read from disk.
@@ -96,7 +103,7 @@ class AppDeduplicationService : public KeyedService,
 
   // Process data read from cache and converts it into `Entry`s.
   void OnReadDeduplicationCacheCompleted(
-      std::optional<proto::DeduplicateData> data);
+      absl::optional<proto::DeduplicateData> data);
 
   // Maps deduplicate data read from disk to `Entry`s which are then stored
   // inside the class as maps.
@@ -112,16 +119,19 @@ class AppDeduplicationService : public KeyedService,
   }
 
   std::map<uint32_t, DuplicateGroup> duplication_map_;
-  std::map<Entry, uint32_t> entry_to_group_map_;
-  raw_ptr<Profile> profile_;
+  std::map<EntryId, uint32_t> entry_to_group_map_;
+  std::map<EntryId, EntryStatus> entry_status_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
 
+  base::ScopedObservation<AppProvisioningDataManager,
+                          AppProvisioningDataManager::Observer>
+      app_provisioning_data_observeration_{this};
   base::ScopedObservation<apps::AppRegistryCache,
                           apps::AppRegistryCache::Observer>
       app_registry_cache_observation_{this};
 
   std::unique_ptr<AppDeduplicationServerConnector> server_connector_;
-  std::unique_ptr<DeviceInfoManager> device_info_manager_;
-  std::unique_ptr<ProtoFileManager<proto::DeduplicateData>> proto_file_manager_;
+  std::unique_ptr<AppDeduplicationCache> cache_;
 
   // For testing
   base::OnceCallback<void(bool)> get_data_complete_callback_for_testing_;

@@ -37,9 +37,8 @@ using views::BoxLayout;
 namespace {
 
 class SafeBrowsingImageView : public NonAccessibleImageView {
-  METADATA_HEADER(SafeBrowsingImageView, NonAccessibleImageView)
-
  public:
+  METADATA_HEADER(SafeBrowsingImageView);
   SafeBrowsingImageView() {
     SetVerticalAlignment(views::ImageView::Alignment::kLeading);
   }
@@ -48,13 +47,13 @@ class SafeBrowsingImageView : public NonAccessibleImageView {
   // NonAccessibleImageView:
   void OnThemeChanged() override {
     NonAccessibleImageView::OnThemeChanged();
-    SetImage(ui::ImageModel::FromResourceId(
+    SetImage(*ui::ResourceBundle::GetSharedInstance().GetImageSkiaNamed(
         GetNativeTheme()->ShouldUseDarkColors() ? IDR_PASSWORD_CHECK_DARK
                                                 : IDR_PASSWORD_CHECK));
   }
 };
 
-BEGIN_METADATA(SafeBrowsingImageView)
+BEGIN_METADATA(SafeBrowsingImageView, NonAccessibleImageView)
 END_METADATA
 
 // Sets up the content containing the title and description for the dialog
@@ -216,7 +215,7 @@ void PasswordReuseModalWarningDialog::CreateGaiaPasswordReuseModalWarningDialog(
   // Makes message label align with title label.
   const int horizontal_adjustment =
       provider->GetDistanceMetric(DISTANCE_BUBBLE_HEADER_VECTOR_ICON_SIZE) +
-      provider->GetDistanceMetric(views::DISTANCE_UNRELATED_CONTROL_HORIZONTAL);
+      provider->GetDistanceMetric(DISTANCE_UNRELATED_CONTROL_HORIZONTAL);
   if (base::i18n::IsRTL()) {
     message_body_label->SetBorder(views::CreateEmptyBorder(
         gfx::Insets::TLBR(0, 0, 0, horizontal_adjustment)));
@@ -290,7 +289,7 @@ void PasswordReuseModalWarningDialog::WebContentsDestroyed() {
   GetWidget()->Close();
 }
 
-BEGIN_METADATA(PasswordReuseModalWarningDialog)
+BEGIN_METADATA(PasswordReuseModalWarningDialog, views::DialogDelegateView)
 END_METADATA
 
 }  // namespace safe_browsing

@@ -4,45 +4,33 @@
 
 #include "chrome/browser/search/background/ntp_custom_background_service.h"
 
-#include <optional>
 #include <string>
 
-#include "base/barrier_callback.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/observer_list.h"
-#include "base/strings/strcat.h"
 #include "base/task/thread_pool.h"
 #include "base/time/clock.h"
 #include "base/time/default_clock.h"
 #include "base/time/time.h"
-#include "base/token.h"
 #include "base/values.h"
 #include "chrome/browser/image_fetcher/image_decoder_impl.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search/background/ntp_background_service_factory.h"
 #include "chrome/browser/search/background/ntp_custom_background_service_observer.h"
-#include "chrome/browser/search/background/wallpaper_search/wallpaper_search_background_manager.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/search/instant_types.h"
 #include "chrome/common/url_constants.h"
-#include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "components/search/ntp_features.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/storage_partition.h"
-#include "net/http/http_status_code.h"
-#include "services/network/public/cpp/resource_request.h"
-#include "services/network/public/cpp/shared_url_loader_factory.h"
-#include "skia/ext/image_operations.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkBitmap.h"
-#include "ui/base/mojom/themes.mojom.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/gfx/color_analysis.h"
 #include "ui/gfx/image/image.h"
 #include "url/gurl.h"
@@ -66,9 +54,9 @@ base::Value::Dict GetBackgroundInfoAsDict(
     const std::string& attribution_line_1,
     const std::string& attribution_line_2,
     const GURL& action_url,
-    const std::optional<std::string>& collection_id,
-    const std::optional<std::string>& resume_token,
-    const std::optional<int> refresh_timestamp) {
+    const absl::optional<std::string>& collection_id,
+    const absl::optional<std::string>& resume_token,
+    const absl::optional<int> refresh_timestamp) {
   base::Value::Dict background_info;
   background_info.Set(kNtpCustomBackgroundURL,
                       base::Value(background_url.spec()));
@@ -122,21 +110,7 @@ void CopyFileToProfilePath(const base::FilePath& from_path,
                      chrome::kChromeUIUntrustedNewTabPageBackgroundFilename));
 }
 
-std::string ReadFileToString(const base::FilePath& path) {
-  std::string image_data;
-  base::ReadFileToString(path, &image_data);
-  return image_data;
-}
-
 void RemoveLocalBackgroundImageCopy(Profile* profile) {
-  // Delete wallpaper search image.
-  if (base::FeatureList::IsEnabled(
-          ntp_features::kCustomizeChromeWallpaperSearch) &&
-      base::FeatureList::IsEnabled(
-          optimization_guide::features::kOptimizationGuideModelExecution)) {
-    WallpaperSearchBackgroundManager::RemoveWallpaperSearchBackground(profile);
-  }
-  // Delete uploaded image.
   base::FilePath path = profile->GetPath().AppendASCII(
       chrome::kChromeUIUntrustedNewTabPageBackgroundFilename);
   base::ThreadPool::PostTask(
@@ -161,38 +135,14 @@ void NtpCustomBackgroundService::RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterBooleanPref(prefs::kNtpCustomBackgroundLocalToDevice,
                                 false);
-  registry->RegisterStringPref(prefs::kNtpCustomBackgroundLocalToDeviceId, "");
-  registry->RegisterBooleanPref(prefs::kNtpCustomBackgroundInspiration, false);
-  // Register wallpaper search profile prefs.
-  if (base::FeatureList::IsEnabled(
-          ntp_features::kCustomizeChromeWallpaperSearch) &&
-      base::FeatureList::IsEnabled(
-          optimization_guide::features::kOptimizationGuideModelExecution)) {
-    WallpaperSearchBackgroundManager::RegisterProfilePrefs(registry);
-  }
-}
-
-// static
-void NtpCustomBackgroundService::ResetNtpTheme(Profile* profile) {
-  auto* pref_service = profile->GetPrefs();
-  RemoveLocalBackgroundImageCopy(profile);
-  pref_service->ClearPref(prefs::kNtpCustomBackgroundDict);
-  pref_service->SetBoolean(prefs::kNtpCustomBackgroundLocalToDevice, false);
-  pref_service->ClearPref(prefs::kNtpCustomBackgroundLocalToDeviceId);
-  pref_service->SetBoolean(prefs::kNtpCustomBackgroundInspiration, false);
 }
 
 // static
 void NtpCustomBackgroundService::ResetProfilePrefs(Profile* profile) {
-  // Clear wallpaper search profile prefs.
-  if (base::FeatureList::IsEnabled(
-          ntp_features::kCustomizeChromeWallpaperSearch) &&
-      base::FeatureList::IsEnabled(
-          optimization_guide::features::kOptimizationGuideModelExecution)) {
-    WallpaperSearchBackgroundManager::ResetProfilePrefs(profile);
-  }
-  // Clear theme.
-  ResetNtpTheme(profile);
+  profile->GetPrefs()->ClearPref(prefs::kNtpCustomBackgroundDict);
+  profile->GetPrefs()->SetBoolean(prefs::kNtpCustomBackgroundLocalToDevice,
+                                  false);
+  RemoveLocalBackgroundImageCopy(profile);
 }
 
 NtpCustomBackgroundService::NtpCustomBackgroundService(Profile* profile)
@@ -264,15 +214,95 @@ void NtpCustomBackgroundService::OnNtpBackgroundServiceShuttingDown() {
 
 void NtpCustomBackgroundService::UpdateBackgroundFromSync() {
   // Any incoming change to synced background data should clear the local image.
-  RemoveLocalBackgroundImageCopy(profile_);
   pref_service_->SetBoolean(prefs::kNtpCustomBackgroundLocalToDevice, false);
-  pref_service_->ClearPref(prefs::kNtpCustomBackgroundLocalToDeviceId);
+  RemoveLocalBackgroundImageCopy(profile_);
   NotifyAboutBackgrounds();
 }
 
 void NtpCustomBackgroundService::ResetCustomBackgroundInfo() {
   SetCustomBackgroundInfo(GURL(), GURL(), std::string(), std::string(), GURL(),
                           std::string());
+}
+
+void NtpCustomBackgroundService::UpdateCustomBackgroundColorAsync(
+    const GURL& image_url,
+    const gfx::Image& fetched_image,
+    const image_fetcher::RequestMetadata& metadata) {
+  if (metadata.http_response_code ==
+      image_fetcher::RequestMetadata::ResponseCode::RESPONSE_CODE_INVALID) {
+    return;
+  }
+  // Calculate the bitmap color asynchronously as it is slow (1-2 seconds for
+  // the thumbnail). However, prefs should be updated on the main thread.
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::TaskPriority::BEST_EFFORT},
+      base::BindOnce(&GetBitmapMainColor, fetched_image.AsBitmap()),
+      base::BindOnce(
+          &NtpCustomBackgroundService::UpdateCustomBackgroundPrefsWithColor,
+          weak_ptr_factory_.GetWeakPtr(), image_url));
+}
+
+void NtpCustomBackgroundService::FetchCustomBackgroundAndExtractBackgroundColor(
+    const GURL& image_url,
+    const GURL& fetch_url) {
+  net::NetworkTrafficAnnotationTag traffic_annotation =
+      net::DefineNetworkTrafficAnnotation("ntp_custom_background",
+                                          R"(
+          semantics {
+            sender: "Desktop Chrome background fetcher"
+            description:
+              "Fetch New Tab Page background image for color calculation."
+            trigger:
+              "User selects new collection image background on the New Tab "
+              "Page."
+            data: "The only data sent is the URL to an image."
+            destination: GOOGLE_OWNED_SERVICE
+            internal {
+              contacts {
+                email: "chrome-desktop-ntp@google.com"
+              }
+            }
+            user_data {
+              type: NONE
+            }
+            last_reviewed: "2023-01-09"
+          }
+          policy {
+            cookies_allowed: NO
+            setting:
+              "Users cannot disable this feature. The feature is enabled by "
+              "default."
+            chrome_policy {
+              NTPCustomBackgroundEnabled {
+                NTPCustomBackgroundEnabled: true
+              }
+            }
+          })");
+
+  image_fetcher::ImageFetcherParams params(traffic_annotation,
+                                           "NtpCustomBackgrounds");
+  image_fetcher_->FetchImage(
+      fetch_url,
+      base::BindOnce(
+          &NtpCustomBackgroundService::UpdateCustomBackgroundColorAsync,
+          weak_ptr_factory_.GetWeakPtr(), image_url),
+      std::move(params));
+}
+
+void NtpCustomBackgroundService::UpdateCustomBackgroundPrefsWithColor(
+    const GURL& image_url,
+    SkColor color) {
+  // Update background color only if the selected background is still the same.
+  const base::Value::Dict& background_info =
+      pref_service_->GetDict(prefs::kNtpCustomBackgroundDict);
+
+  GURL current_bg_url(
+      background_info.Find(kNtpCustomBackgroundURL)->GetString());
+  if (current_bg_url == image_url) {
+    pref_service_->SetDict(prefs::kNtpCustomBackgroundDict,
+                           GetBackgroundInfoWithColor(&background_info, color));
+    theme_service_->BuildAutogeneratedThemeFromColor(color);
+  }
 }
 
 void NtpCustomBackgroundService::SetCustomBackgroundInfo(
@@ -288,8 +318,8 @@ void NtpCustomBackgroundService::SetCustomBackgroundInfo(
   }
   // Store current background info before it is changed so it can be used if
   // RevertBackgroundChanges is called.
-  if (previous_background_info_ == std::nullopt) {
-    previous_background_info_ = std::make_optional(
+  if (previous_background_info_ == absl::nullopt) {
+    previous_background_info_ = absl::make_optional(
         pref_service_->GetValue(prefs::kNtpCustomBackgroundDict).Clone());
     previous_local_background_ = false;
   }
@@ -305,15 +335,14 @@ void NtpCustomBackgroundService::SetCustomBackgroundInfo(
       pref_service_->GetBoolean(prefs::kNtpCustomBackgroundLocalToDevice) &&
       pref_service_->FindPreference(prefs::kNtpCustomBackgroundDict)
           ->IsDefaultValue();
-  RemoveLocalBackgroundImageCopy(profile_);
   pref_service_->SetBoolean(prefs::kNtpCustomBackgroundLocalToDevice, false);
-  pref_service_->ClearPref(prefs::kNtpCustomBackgroundLocalToDeviceId);
+  RemoveLocalBackgroundImageCopy(profile_);
 
   background_updated_timestamp_ = base::TimeTicks::Now();
 
   if (!background_url.is_valid() && !collection_id.empty() &&
       is_backdrop_collection) {
-    background_service_->FetchNextCollectionImage(collection_id, std::nullopt);
+    background_service_->FetchNextCollectionImage(collection_id, absl::nullopt);
   } else if (background_url.is_valid() && is_backdrop_url) {
     if (base::FeatureList::IsEnabled(
             ntp_features::kCustomizeChromeColorExtraction) &&
@@ -323,7 +352,7 @@ void NtpCustomBackgroundService::SetCustomBackgroundInfo(
     }
     base::Value::Dict background_info = GetBackgroundInfoAsDict(
         background_url, attribution_line_1, attribution_line_2, action_url,
-        collection_id, std::nullopt, std::nullopt);
+        collection_id, absl::nullopt, absl::nullopt);
     pref_service_->SetDict(prefs::kNtpCustomBackgroundDict,
                            std::move(background_info));
   } else {
@@ -335,43 +364,6 @@ void NtpCustomBackgroundService::SetCustomBackgroundInfo(
     if (need_forced_refresh) {
       NotifyAboutBackgrounds();
     }
-  }
-}
-
-void NtpCustomBackgroundService::UpdateLocalCustomBackgroundPrefsWithColor(
-    SkColor color) {
-  // Make sure that local background is still set.
-  if (pref_service_->GetBoolean(prefs::kNtpCustomBackgroundLocalToDevice)) {
-    // Set background color.
-    theme_service_->SetUserColorAndBrowserColorVariant(
-        color, ui::mojom::BrowserColorVariant::kTonalSpot);
-  }
-}
-
-void NtpCustomBackgroundService::UpdateCustomLocalBackgroundColorAsync(
-    const gfx::Image& image) {
-  // If decoding fails, it will send an empty image to this callback,
-  // in which case, don't continue.
-  if (!image.IsEmpty()) {
-    auto resized_image = skia::ImageOperations::Resize(
-        *image.ToSkBitmap(), skia::ImageOperations::RESIZE_GOOD, 100, 100);
-
-    base::ThreadPool::PostTaskAndReplyWithResult(
-        FROM_HERE, {base::TaskPriority::BEST_EFFORT},
-        base::BindOnce(&GetBitmapMainColor, resized_image),
-        base::BindOnce(&NtpCustomBackgroundService::
-                           UpdateLocalCustomBackgroundPrefsWithColor,
-                       weak_ptr_factory_.GetWeakPtr()));
-  }
-}
-
-void NtpCustomBackgroundService::ProcessLocalImageData(std::string image_data) {
-  if (!image_data.empty()) {
-    image_fetcher_->GetImageDecoder()->DecodeImage(
-        image_data, gfx::Size(), nullptr,
-        base::BindOnce(
-            &NtpCustomBackgroundService::UpdateCustomLocalBackgroundColorAsync,
-            weak_ptr_factory_.GetWeakPtr()));
   }
 }
 
@@ -397,7 +389,7 @@ void NtpCustomBackgroundService::RefreshBackgroundIfNeeded() {
   }
 
   const base::Value::Dict& background_info =
-      pref_service_->GetDict(prefs::kNtpCustomBackgroundDict);
+      profile_->GetPrefs()->GetDict(prefs::kNtpCustomBackgroundDict);
   int64_t refresh_timestamp = 0;
   const base::Value* timestamp_value =
       background_info.Find(kNtpCustomBackgroundRefreshTimestamp);
@@ -415,44 +407,19 @@ void NtpCustomBackgroundService::RefreshBackgroundIfNeeded() {
   }
 }
 
-void NtpCustomBackgroundService::RevertBackgroundChanges() {
-  if (previous_background_info_.has_value()) {
-    pref_service_->Set(prefs::kNtpCustomBackgroundDict,
-                       *previous_background_info_);
-  }
-  if (previous_local_background_) {
-    SetBackgroundToLocalResource();
-  }
-  previous_background_info_.reset();
-  previous_local_background_ = false;
-}
-
-void NtpCustomBackgroundService::ConfirmBackgroundChanges() {
-  previous_background_info_.reset();
-  previous_local_background_ = false;
-}
-
-std::optional<CustomBackground>
+absl::optional<CustomBackground>
 NtpCustomBackgroundService::GetCustomBackground() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
   if (pref_service_->GetBoolean(prefs::kNtpCustomBackgroundLocalToDevice)) {
-    auto custom_background = std::make_optional<CustomBackground>();
+    auto custom_background = absl::make_optional<CustomBackground>();
     // Add a timestamp to the url to prevent the browser from using a cached
     // version when "Upload an image" is used multiple times.
     std::string time_string = std::to_string(base::Time::Now().ToTimeT());
-    std::string local_background_id =
-        pref_service_->GetString(prefs::kNtpCustomBackgroundLocalToDeviceId);
-    std::string local_string(
-        chrome::kChromeUIUntrustedNewTabPageUrl + local_background_id +
-        chrome::kChromeUIUntrustedNewTabPageBackgroundFilename);
+    std::string local_string(chrome::kChromeUIUntrustedNewTabPageBackgroundUrl);
     GURL timestamped_url(local_string + "?ts=" + time_string);
     custom_background->custom_background_url = timestamped_url;
     custom_background->is_uploaded_image = true;
-    custom_background->local_background_id =
-        base::Token::FromString(local_background_id);
-    custom_background->is_inspiration_image =
-        pref_service_->GetBoolean(prefs::kNtpCustomBackgroundInspiration);
     custom_background->custom_background_snapshot_url = GURL();
     custom_background->custom_background_attribution_line_1 = std::string();
     custom_background->custom_background_attribution_line_2 = std::string();
@@ -464,7 +431,7 @@ NtpCustomBackgroundService::GetCustomBackground() {
 
   // Attempt to get custom background URL from preferences.
   if (IsCustomBackgroundPrefValid()) {
-    auto custom_background = std::make_optional<CustomBackground>();
+    auto custom_background = absl::make_optional<CustomBackground>();
     const base::Value::Dict& background_info =
         pref_service_->GetDict(prefs::kNtpCustomBackgroundDict);
     GURL custom_background_url(
@@ -535,7 +502,7 @@ NtpCustomBackgroundService::GetCustomBackground() {
     return custom_background;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void NtpCustomBackgroundService::AddObserver(
@@ -570,100 +537,30 @@ void NtpCustomBackgroundService::AddValidBackdropUrlForTesting(
   background_service_->AddValidBackdropUrlForTesting(url);
 }
 
+void NtpCustomBackgroundService::AddValidBackdropCollectionForTesting(
+    const std::string& collection_id) const {
+  background_service_->AddValidBackdropCollectionForTesting(collection_id);
+}
+
+void NtpCustomBackgroundService::SetNextCollectionImageForTesting(
+    const CollectionImage& image) const {
+  background_service_->SetNextCollectionImageForTesting(image);
+}
+
 void NtpCustomBackgroundService::SetClockForTesting(base::Clock* clock) {
   clock_ = clock;
 }
 
-void NtpCustomBackgroundService::UpdateCustomBackgroundColorAsync(
-    const GURL& image_url,
-    const gfx::Image& fetched_image,
-    const image_fetcher::RequestMetadata& metadata) {
-  if (metadata.http_response_code ==
-      image_fetcher::RequestMetadata::ResponseCode::RESPONSE_CODE_INVALID) {
-    return;
-  }
-  // Calculate the bitmap color asynchronously as it is slow (1-2 seconds for
-  // the thumbnail). However, prefs should be updated on the main thread.
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::TaskPriority::BEST_EFFORT},
-      base::BindOnce(&GetBitmapMainColor, fetched_image.AsBitmap()),
-      base::BindOnce(
-          &NtpCustomBackgroundService::UpdateCustomBackgroundPrefsWithColor,
-          weak_ptr_factory_.GetWeakPtr(), image_url));
-}
-
-void NtpCustomBackgroundService::VerifyCustomBackgroundImageURL() {
-  auto custom_background = GetCustomBackground();
-  if (custom_background && !custom_background->is_uploaded_image) {
-    GURL custom_background_url = custom_background->custom_background_url;
-    background_service_->VerifyImageURL(
-        custom_background_url,
-        base::BindOnce(
-            &NtpCustomBackgroundService::OnCustomBackgroundURLHeadersReceived,
-            weak_ptr_factory_.GetWeakPtr(), custom_background_url));
-  } else {
-    NotifyAboutBackgrounds();
-  }
-}
-
 void NtpCustomBackgroundService::SetBackgroundToLocalResource() {
   background_updated_timestamp_ = base::TimeTicks::Now();
-  // If the current background is a wallpaper search background, delete the
-  // file before setting the new background. This is temporary until multiple
-  // local images is supported.
-  if (pref_service_->GetBoolean(prefs::kNtpCustomBackgroundLocalToDevice) &&
-      !pref_service_->GetString(prefs::kNtpCustomBackgroundLocalToDeviceId)
-           .empty()) {
-    RemoveLocalBackgroundImageCopy(profile_);
-  }
   pref_service_->SetBoolean(prefs::kNtpCustomBackgroundLocalToDevice, true);
-  pref_service_->ClearPref(prefs::kNtpCustomBackgroundLocalToDeviceId);
   NotifyAboutBackgrounds();
-  if (base::FeatureList::IsEnabled(
-          ntp_features::kCustomizeChromeWallpaperSearch) &&
-      base::FeatureList::IsEnabled(
-          optimization_guide::features::kOptimizationGuideModelExecution)) {
-    base::FilePath path = profile_->GetPath().AppendASCII(
-        chrome::kChromeUIUntrustedNewTabPageBackgroundFilename);
-    base::ThreadPool::PostTaskAndReplyWithResult(
-        FROM_HERE, {base::TaskPriority::USER_VISIBLE, base::MayBlock()},
-        base::BindOnce(&ReadFileToString, path),
-        base::BindOnce(&NtpCustomBackgroundService::ProcessLocalImageData,
-                       weak_ptr_factory_.GetWeakPtr()));
-  }
-}
-
-void NtpCustomBackgroundService::SetBackgroundToLocalResourceWithId(
-    const base::Token& id,
-    bool is_inspiration_image) {
-  background_updated_timestamp_ = base::TimeTicks::Now();
-  // Remove the last local background if it exists. This is
-  // temporary until multiple local images is supported.
-  RemoveLocalBackgroundImageCopy(profile_);
-  pref_service_->SetBoolean(prefs::kNtpCustomBackgroundLocalToDevice, true);
-  pref_service_->SetString(prefs::kNtpCustomBackgroundLocalToDeviceId,
-                           id.ToString());
-  pref_service_->SetBoolean(prefs::kNtpCustomBackgroundInspiration,
-                            is_inspiration_image);
-  NotifyAboutBackgrounds();
-}
-
-void NtpCustomBackgroundService::ForceRefreshBackground() {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-
-  const base::Value::Dict& background_info =
-      pref_service_->GetDict(prefs::kNtpCustomBackgroundDict);
-  std::string collection_id =
-      background_info.Find(kNtpCustomBackgroundCollectionId)->GetString();
-  std::string resume_token =
-      background_info.Find(kNtpCustomBackgroundResumeToken)->GetString();
-  background_service_->FetchNextCollectionImage(collection_id, resume_token);
 }
 
 bool NtpCustomBackgroundService::IsCustomBackgroundPrefValid() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   const base::Value::Dict& background_info =
-      pref_service_->GetDict(prefs::kNtpCustomBackgroundDict);
+      profile_->GetPrefs()->GetDict(prefs::kNtpCustomBackgroundDict);
 
   const base::Value* background_url =
       background_info.Find(kNtpCustomBackgroundURL);
@@ -678,98 +575,19 @@ void NtpCustomBackgroundService::NotifyAboutBackgrounds() {
     observer.OnCustomBackgroundImageUpdated();
 }
 
-void NtpCustomBackgroundService::UpdateCustomBackgroundPrefsWithColor(
-    const GURL& image_url,
-    SkColor color) {
-  // Update background color only if the selected background is still the same.
-  const base::Value::Dict& background_info =
-      pref_service_->GetDict(prefs::kNtpCustomBackgroundDict);
-
-  GURL current_bg_url(
-      background_info.Find(kNtpCustomBackgroundURL)->GetString());
-  if (current_bg_url == image_url) {
-    pref_service_->SetDict(prefs::kNtpCustomBackgroundDict,
-                           GetBackgroundInfoWithColor(&background_info, color));
-    if (features::IsChromeWebuiRefresh2023()) {
-      theme_service_->SetUserColorAndBrowserColorVariant(
-          color, ui::mojom::BrowserColorVariant::kTonalSpot);
-    } else {
-      theme_service_->BuildAutogeneratedThemeFromColor(color);
-    }
+void NtpCustomBackgroundService::RevertBackgroundChanges() {
+  if (previous_background_info_.has_value()) {
+    pref_service_->Set(prefs::kNtpCustomBackgroundDict,
+                       *previous_background_info_);
   }
+  if (previous_local_background_) {
+    SetBackgroundToLocalResource();
+  }
+  previous_background_info_.reset();
+  previous_local_background_ = false;
 }
 
-void NtpCustomBackgroundService::FetchCustomBackgroundAndExtractBackgroundColor(
-    const GURL& image_url,
-    const GURL& fetch_url) {
-  net::NetworkTrafficAnnotationTag traffic_annotation =
-      net::DefineNetworkTrafficAnnotation("ntp_custom_background",
-                                          R"(
-          semantics {
-            sender: "Desktop Chrome background fetcher"
-            description:
-              "Fetch New Tab Page background image for color calculation."
-            trigger:
-              "User selects new collection image background on the New Tab "
-              "Page."
-            data: "The only data sent is the URL to an image."
-            destination: GOOGLE_OWNED_SERVICE
-            internal {
-              contacts {
-                email: "chrome-desktop-ntp@google.com"
-              }
-            }
-            user_data {
-              type: NONE
-            }
-            last_reviewed: "2023-01-09"
-          }
-          policy {
-            cookies_allowed: NO
-            setting:
-              "Users cannot disable this feature. The feature is enabled by "
-              "default."
-            chrome_policy {
-              NTPCustomBackgroundEnabled {
-                NTPCustomBackgroundEnabled: true
-              }
-            }
-          })");
-
-  image_fetcher::ImageFetcherParams params(traffic_annotation,
-                                           "NtpCustomBackgrounds");
-  image_fetcher_->FetchImage(
-      fetch_url,
-      base::BindOnce(
-          &NtpCustomBackgroundService::UpdateCustomBackgroundColorAsync,
-          weak_ptr_factory_.GetWeakPtr(), image_url),
-      std::move(params));
-}
-
-void NtpCustomBackgroundService::OnCustomBackgroundURLHeadersReceived(
-    const GURL& verified_custom_background_url,
-    int headers_response_code) {
-  // URL headers are fetched asynchronously. If the user's background changed
-  // during the header fetch, we do not need to do anything.
-  auto custom_background = GetCustomBackground();
-  if (!custom_background.has_value() ||
-      custom_background->custom_background_url !=
-          verified_custom_background_url) {
-    return;
-  }
-
-  if (headers_response_code != net::HTTP_NOT_FOUND) {
-    NotifyAboutBackgrounds();
-    return;
-  }
-
-  UMA_HISTOGRAM_ENUMERATION(
-      "NewTabPage.BackgroundService.Images.Headers.ErrorDetected",
-      NtpImageType::kBackgroundImage);
-
-  if (custom_background->daily_refresh_enabled) {
-    ForceRefreshBackground();
-  } else {
-    ResetCustomBackgroundInfo();
-  }
+void NtpCustomBackgroundService::ConfirmBackgroundChanges() {
+  previous_background_info_.reset();
+  previous_local_background_ = false;
 }

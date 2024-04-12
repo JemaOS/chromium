@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 class Profile;
@@ -32,7 +32,7 @@ class StrikeDatabaseFactory : public ProfileKeyedServiceFactory {
   StrikeDatabaseFactory& operator=(const StrikeDatabaseFactory&) = delete;
 
  private:
-  friend base::NoDestructor<StrikeDatabaseFactory>;
+  friend struct base::DefaultSingletonTraits<StrikeDatabaseFactory>;
 
   StrikeDatabaseFactory();
   ~StrikeDatabaseFactory() override;

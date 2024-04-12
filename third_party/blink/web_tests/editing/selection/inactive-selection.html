@@ -1,24 +1,31 @@
-<!DOCTYPE html>
-<script src="../../resources/testharness.js"></script>
-<script src="../../resources/testharnessreport.js"></script>
+<p>This test verifies that an editable element in one frame retains an inactive selection
+after you've made a selection in another frame.</p>
+<hr>
+<pre id="console"></pre>
 
 <iframe srcdoc="<div id='input' contenteditable='true'>should be an inactive selection</div>"></iframe>
 <br>
 <input id='input' type="text" value="random text">
+<div>
 <script>
-async_test(t => {
-  window.onload = t.step_func_done(() => {
+window.onload = function() {
+    if (window.testRunner)
+        testRunner.dumpAsText();
+        
     var div = frames[0].document.getElementById('input');
     frames[0].getSelection().setBaseAndExtent(div, 0, div, 1);
     frames[0].focus();
 
+    window.addEventListener('focus', afterFocus);
     window.focus();
-    document.getElementById('input').focus();
+    function afterFocus() {
+        document.getElementById('input').focus();
 
-    var selectionString = frames[0].getSelection().toString();
-    assert_equals(div.innerText, selectionString,
-                  'Inactive selection should be retained');
-  });
-}, 'An editable element in one frame retains an inactive ' +
-   'selection after you\'ve made a selection in another frame');
+        var selectionString = frames[0].getSelection().toString();
+        if (div.innerText == selectionString)
+            document.getElementById('console').innerHTML = 'PASS: inactive selection retained.';
+        else
+            document.getElementById('console').innerHTML = 'FAIL: inactive selection should be "' + div.innerText + '" but instead is ' + selectionString  + '.';
+    }
+}
 </script>

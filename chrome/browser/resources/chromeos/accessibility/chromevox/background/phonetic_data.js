@@ -6,10 +6,6 @@
  * @fileoverview Provides phonetic disambiguation functionality across multiple
  * languages for ChromeVox.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
-
-import {PhoneticDictionaries} from '../phonetic_dictionaries.js';
-import {JaPhoneticData} from '../third_party/tamachiyomi/ja_phonetic_data.js';
 
 export class PhoneticData {
   /**
@@ -26,6 +22,10 @@ export class PhoneticData {
 
     if (locale === 'ja') {
       return JaPhoneticData.forCharacter(char);
+    }
+
+    if (!PhoneticDictionaries || !PhoneticDictionaries.phoneticMap_) {
+      throw Error('PhoneticDictionaries map must be defined.');
     }
 
     char = char.toLowerCase();
@@ -63,5 +63,3 @@ export class PhoneticData {
     return result.join(', ');
   }
 }
-
-TestImportManager.exportForTesting(PhoneticData, JaPhoneticData);

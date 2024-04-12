@@ -7,9 +7,9 @@
 #import <AppKit/AppKit.h>
 #include <Carbon/Carbon.h>
 
-#include "base/apple/foundation_util.h"
 #include "base/check.h"
 #include "base/feature_list.h"
+#include "base/mac/foundation_util.h"
 #include "base/no_destructor.h"
 #include "build/buildflag.h"
 #include "chrome/app/chrome_command_ids.h"
@@ -170,15 +170,16 @@ const std::vector<NSMenuItem*>& GetMenuItemsNotPresentInMainMenu() {
     std::vector<NSMenuItem*> menu_items;
     for (const auto& shortcut : GetShortcutsNotPresentInMainMenu()) {
       ui::Accelerator accelerator = AcceleratorFromShortcut(shortcut);
-      KeyEquivalentAndModifierMask* equivalent =
-          ui::GetKeyEquivalentAndModifierMaskFromAccelerator(accelerator);
+      NSString* key_equivalent = nil;
+      NSUInteger modifier_mask = 0;
+      ui::GetKeyEquivalentAndModifierMaskFromAccelerator(
+          accelerator, &key_equivalent, &modifier_mask);
 
       // Intentionally leaked!
-      NSMenuItem* item =
-          [[NSMenuItem alloc] initWithTitle:@""
-                                     action:nullptr
-                              keyEquivalent:equivalent.keyEquivalent];
-      item.keyEquivalentModifierMask = equivalent.modifierMask;
+      NSMenuItem* item = [[NSMenuItem alloc] initWithTitle:@""
+                                                    action:nullptr
+                                             keyEquivalent:key_equivalent];
+      item.keyEquivalentModifierMask = modifier_mask;
 
       // We store the command in the tag.
       item.tag = shortcut.chrome_command;

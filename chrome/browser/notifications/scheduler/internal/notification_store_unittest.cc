@@ -94,9 +94,7 @@ class NotificationStoreTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   // Database test objects.
-  raw_ptr<FakeDB<proto::NotificationEntry, NotificationEntry>,
-          DanglingUntriaged>
-      db_;
+  raw_ptr<FakeDB<proto::NotificationEntry, NotificationEntry>> db_;
   std::map<std::string, proto::NotificationEntry> db_protos_;
 
   std::unique_ptr<CollectionStore<NotificationEntry>> store_;

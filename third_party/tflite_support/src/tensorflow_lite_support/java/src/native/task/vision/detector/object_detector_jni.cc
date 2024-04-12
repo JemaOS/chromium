@@ -54,7 +54,8 @@ using ::tflite::task::vision::ObjectDetector;
 using ::tflite::task::vision::ObjectDetectorOptions;
 
 // Creates an ObjectDetectorOptions proto based on the Java class.
-ObjectDetectorOptions ConvertToProtoOptions(JNIEnv* env, jobject java_options,
+ObjectDetectorOptions ConvertToProtoOptions(JNIEnv* env,
+                                            jobject java_options,
                                             jlong base_options_handle) {
   ObjectDetectorOptions proto_options;
 
@@ -183,7 +184,9 @@ jlong CreateObjectDetectorFromOptions(JNIEnv* env,
 
 extern "C" JNIEXPORT void JNICALL
 Java_org_tensorflow_lite_task_vision_detector_ObjectDetector_deinitJni(
-    JNIEnv* env, jobject thiz, jlong native_handle) {
+    JNIEnv* env,
+    jobject thiz,
+    jlong native_handle) {
   delete reinterpret_cast<ObjectDetector*>(native_handle);
 }
 
@@ -192,9 +195,13 @@ Java_org_tensorflow_lite_task_vision_detector_ObjectDetector_deinitJni(
 // values will be ignored.
 extern "C" JNIEXPORT jlong JNICALL
 Java_org_tensorflow_lite_task_vision_detector_ObjectDetector_initJniWithModelFdAndOptions(
-    JNIEnv* env, jclass thiz, jint file_descriptor,
-    jlong file_descriptor_length, jlong file_descriptor_offset,
-    jobject java_options, jlong base_options_handle) {
+    JNIEnv* env,
+    jclass thiz,
+    jint file_descriptor,
+    jlong file_descriptor_length,
+    jlong file_descriptor_offset,
+    jobject java_options,
+    jlong base_options_handle) {
   ObjectDetectorOptions proto_options =
       ConvertToProtoOptions(env, java_options, base_options_handle);
   auto file_descriptor_meta = proto_options.mutable_base_options()
@@ -212,7 +219,10 @@ Java_org_tensorflow_lite_task_vision_detector_ObjectDetector_initJniWithModelFdA
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_org_tensorflow_lite_task_vision_detector_ObjectDetector_initJniWithByteBuffer(
-    JNIEnv* env, jclass thiz, jobject model_buffer, jobject java_options,
+    JNIEnv* env,
+    jclass thiz,
+    jobject model_buffer,
+    jobject java_options,
     jlong base_options_handle) {
   ObjectDetectorOptions proto_options =
       ConvertToProtoOptions(env, java_options, base_options_handle);
@@ -224,7 +234,10 @@ Java_org_tensorflow_lite_task_vision_detector_ObjectDetector_initJniWithByteBuff
 
 extern "C" JNIEXPORT jobject JNICALL
 Java_org_tensorflow_lite_task_vision_detector_ObjectDetector_detectNative(
-    JNIEnv* env, jclass thiz, jlong native_handle, jlong frame_buffer_handle) {
+    JNIEnv* env,
+    jclass thiz,
+    jlong native_handle,
+    jlong frame_buffer_handle) {
   auto* detector = reinterpret_cast<ObjectDetector*>(native_handle);
   // frame_buffer will be deleted after inference is done in
   // base_vision_api_jni.cc.

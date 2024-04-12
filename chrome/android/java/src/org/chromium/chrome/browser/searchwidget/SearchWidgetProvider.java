@@ -23,13 +23,12 @@ import androidx.core.app.ActivityOptionsCompat;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.IntentUtils;
 import org.chromium.base.Log;
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.firstrun.FirstRunFlowSequencer;
 import org.chromium.chrome.browser.locale.LocaleManager;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
-import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityClient;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
+import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityConstants;
 import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityPreferencesManager;
 import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityPreferencesManager.SearchActivityPreferences;
 
@@ -38,16 +37,16 @@ import java.util.function.Consumer;
 /**
  * Widget that lets the user search using their default search engine.
  *
- * <p>Because this is a BroadcastReceiver, it dies immediately after it runs. A new one is created
+ * Because this is a BroadcastReceiver, it dies immediately after it runs.  A new one is created
  * for each new broadcast.
  *
- * <p>This class avoids loading the native library because it can be triggered at regular intervals
- * by Android when it tells widgets that they need updates.
+ * This class avoids loading the native library because it can be triggered at regular intervals by
+ * Android when it tells widgets that they need updates.
  *
- * <p>Methods on instances of this class called directly by Android (when a broadcast is received
- * e.g.) catch all Exceptions up to some number of times before letting them go through to allow us
- * to get a crash stack. This is done to prevent Android from labeling the whole process as "bad"
- * and blocking taps on the widget. See http://crbug.com/712061.
+ * Methods on instances of this class called directly by Android (when a broadcast is received e.g.)
+ * catch all Exceptions up to some number of times before letting them go through to allow us to get
+ * a crash stack.  This is done to prevent Android from labeling the whole process as "bad" and
+ * blocking taps on the widget.  See http://crbug.com/712061.
  */
 public class SearchWidgetProvider extends AppWidgetProvider {
     /** Wraps up all things that a {@link SearchWidgetProvider} can request things from. */
@@ -66,8 +65,8 @@ public class SearchWidgetProvider extends AppWidgetProvider {
         }
 
         /** Returns the {@link SharedPreferencesManager} to store prefs. */
-        protected SharedPreferencesManager getChromeSharedPreferences() {
-            return ChromeSharedPreferences.getInstance();
+        protected SharedPreferencesManager getSharedPreferencesManager() {
+            return SharedPreferencesManager.getInstance();
         }
 
         /** Returns IDs for all search widgets that exist. */
@@ -94,7 +93,6 @@ public class SearchWidgetProvider extends AppWidgetProvider {
 
     /** Number of consecutive crashes this widget will absorb before giving up. */
     private static final int CRASH_LIMIT = 3;
-
     private static final Object DELEGATE_LOCK = new Object();
 
     @SuppressLint("StaticFieldLeak")
@@ -106,37 +104,30 @@ public class SearchWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onUpdate(final Context context, final AppWidgetManager manager, final int[] ids) {
-        run(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        performUpdate(ids, null);
-                    }
-                });
+        run(new Runnable() {
+            @Override
+            public void run() {
+                performUpdate(ids, null);
+            }
+        });
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
     public static PendingIntent createIntent(Context context, boolean startVoiceSearch) {
-        SearchActivityClient client = new SearchActivityUtils();
         // Launch the SearchActivity.
         Intent searchIntent =
-                client.createIntent(
-                        context,
-                        SearchActivityClient.IntentOrigin.SEARCH_WIDGET,
-                        null,
-                        startVoiceSearch
-                                ? SearchActivityClient.SearchType.VOICE
-                                : SearchActivityClient.SearchType.TEXT);
+                new Intent(startVoiceSearch ? SearchActivityConstants.ACTION_START_VOICE_SEARCH
+                                            : SearchActivityConstants.ACTION_START_TEXT_SEARCH);
 
+        searchIntent.setClass(context, SearchActivity.class);
+        searchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        searchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
         searchIntent.putExtra(EXTRA_FROM_SEARCH_WIDGET, true);
 
         Bundle optionsBundle =
                 ActivityOptionsCompat.makeCustomAnimation(context, R.anim.activity_open_enter, 0)
                         .toBundle();
-        return PendingIntent.getActivity(
-                context,
-                0,
-                searchIntent,
+        return PendingIntent.getActivity(context, 0, searchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT
                         | IntentUtils.getPendingIntentMutabilityFlag(false),
                 optionsBundle);
@@ -149,12 +140,8 @@ public class SearchWidgetProvider extends AppWidgetProvider {
         if (prefs == null) prefs = SearchActivityPreferencesManager.getCurrent();
 
         for (int id : ids) {
-            RemoteViews views =
-                    createWidgetViews(
-                            delegate.getContext(),
-                            id,
-                            prefs.searchEngineName,
-                            prefs.voiceSearchAvailable);
+            RemoteViews views = createWidgetViews(
+                    delegate.getContext(), id, prefs.searchEngineName, prefs.voiceSearchAvailable);
             delegate.updateAppWidget(id, views);
         }
     }
@@ -170,10 +157,9 @@ public class SearchWidgetProvider extends AppWidgetProvider {
                 R.id.microphone_icon, isVoiceSearchAvailable ? View.VISIBLE : View.GONE);
 
         // Update what string is displayed by the widget.
-        String text =
-                TextUtils.isEmpty(engineName) || !shouldShowFullString()
-                        ? context.getString(R.string.search_widget_default)
-                        : context.getString(R.string.search_with_product, engineName);
+        String text = TextUtils.isEmpty(engineName) || !shouldShowFullString()
+                ? context.getString(R.string.search_widget_default)
+                : context.getString(R.string.search_with_product, engineName);
         views.setCharSequence(R.id.title, "setHint", text);
 
         return views;
@@ -182,7 +168,7 @@ public class SearchWidgetProvider extends AppWidgetProvider {
     /** Updates the number of consecutive crashes this widget has absorbed. */
     @SuppressLint({"ApplySharedPref", "CommitPrefEdits"})
     static void updateNumConsecutiveCrashes(int newValue) {
-        SharedPreferencesManager prefs = getDelegate().getChromeSharedPreferences();
+        SharedPreferencesManager prefs = getDelegate().getSharedPreferencesManager();
         if (getNumConsecutiveCrashes(prefs) == newValue) return;
 
         // This metric is committed synchronously because it relates to crashes.
@@ -210,15 +196,13 @@ public class SearchWidgetProvider extends AppWidgetProvider {
             updateNumConsecutiveCrashes(0);
         } catch (Exception e) {
             int numCrashes =
-                    getNumConsecutiveCrashes(getDelegate().getChromeSharedPreferences()) + 1;
+                    getNumConsecutiveCrashes(getDelegate().getSharedPreferencesManager()) + 1;
             updateNumConsecutiveCrashes(numCrashes);
 
             if (numCrashes < CRASH_LIMIT) {
                 // Absorb the crash.
-                Log.e(
-                        SearchActivity.TAG,
-                        "Absorbing exception caught when attempting to launch widget.",
-                        e);
+                Log.e(SearchActivity.TAG,
+                        "Absorbing exception caught when attempting to launch widget.", e);
             } else {
                 // Too many crashes have happened consecutively.  Let Android handle it.
                 throw e;
@@ -234,6 +218,7 @@ public class SearchWidgetProvider extends AppWidgetProvider {
     }
 
     /** Sets an {@link SearchWidgetProviderDelegate} to interact with. */
+    @VisibleForTesting
     static void setActivityDelegateForTest(SearchWidgetProviderDelegate delegate) {
         assert sDelegate == null;
         sDelegate = delegate;

@@ -2,14 +2,13 @@
 
 from .client import (
     Cookies,
+    Element,
     Find,
+    Frame,
     Session,
     ShadowRoot,
     Timeouts,
-    WebElement,
-    WebFrame,
-    WebWindow,
-)
+    Window)
 from .error import (
     ElementNotSelectableException,
     ElementNotVisibleException,

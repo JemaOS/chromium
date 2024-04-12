@@ -4,7 +4,7 @@
 
 package org.chromium.chrome.browser.gcore;
 
-import static org.junit.Assert.assertEquals;
+import static junit.framework.Assert.assertEquals;
 
 /** Spying mock for ConnectedTask. */
 class MockConnectedTask<T extends ChromeGoogleApiClient> extends ConnectedTask<T> {

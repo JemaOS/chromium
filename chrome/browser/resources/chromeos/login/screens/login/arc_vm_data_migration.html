@@ -21,25 +21,19 @@ found in the LICENSE file.
     margin-bottom: 20px;
     margin-top: 20px;
   }
-
-  :host-context(.jelly-enabled) paper-progress {
-    --paper-progress-active-color: var(--cros-sys-primary);
-    --paper-progress-container-color: var(--cros-sys-primary_container);
-    --paper-progress-secondary-color: var(--cros-color-prominent-dark);
-  }
 </style>
 
 <oobe-loading-dialog id="loading-dialog" for-step="loading" role="dialog"
     title-key="loadingDialogTitle">
   <iron-icon slot="icon"
-             icon="oobe-32:arc-vm-data-migration-icon"
+             src="/images/arc_vm_data_migration_icon.svg"
              aria-hidden="true">
   </iron-icon>
 </oobe-loading-dialog>
 
 <oobe-adaptive-dialog id="welcome-dialog" for-step="welcome" role="dialog">
   <iron-icon slot="icon"
-             icon="oobe-32:arc-vm-data-migration-icon"
+             src="/images/arc_vm_data_migration_icon.svg"
              aria-hidden="true">
   </iron-icon>
   <h1 slot="title">[[i18nDynamic(locale, 'welcomeScreenTitle')]]</h1>
@@ -73,13 +67,13 @@ found in the LICENSE file.
   </div>
   <div slot="bottom-buttons">
     <oobe-text-button id="skip-button"
-        on-click="onSkipButtonClicked"
+        on-click="onSkipButtonClicked_"
         text-key="skipButtonLabel">
     </oobe-text-button>
     <oobe-next-button inverse id="update-button"
-        disabled="[[shouldDisableUpdateButton(hasEnoughFreeDiskSpace,
+        disabled="[[shouldDisableUpdateButton_(hasEnoughFreeDiskSpace,
                                                hasEnoughBattery)]]"
-        on-click="onUpdateButtonClicked"
+        on-click="onUpdateButtonClicked_"
         text-key="updateButtonLabel">
     </oobe-next-button>
   </div>
@@ -87,7 +81,7 @@ found in the LICENSE file.
 
 <oobe-adaptive-dialog id="resume-dialog" for-step="resume" role="dialog">
   <iron-icon slot="icon"
-             icon="oobe-32:arc-vm-data-migration-icon"
+             src="/images/arc_vm_data_migration_icon.svg"
              aria-hidden="true">
   </iron-icon>
   <h1 slot="title">[[i18nDynamic(locale, 'resumeScreenTitle')]]</h1>
@@ -112,7 +106,7 @@ found in the LICENSE file.
   <div slot="bottom-buttons">
     <oobe-next-button inverse id="resume-button"
         disabled="[[!hasEnoughBattery]]"
-        on-click="onResumeButtonClicked"
+        on-click="onResumeButtonClicked_"
         text-key="resumeButtonLabel">
     </oobe-next-button>
   </div>
@@ -120,13 +114,13 @@ found in the LICENSE file.
 
 <oobe-adaptive-dialog id="progress-dialog" for-step="progress" role="dialog">
   <iron-icon slot="icon"
-             icon="oobe-32:arc-vm-data-migration-icon"
+             src="/images/arc_vm_data_migration_icon.svg"
              aria-hidden="true">
   </iron-icon>
   <h1 slot="title">[[i18nDynamic(locale, 'progressScreenTitle')]]</h1>
   <div slot="subtitle" class="progress">
     <div id="progress-message"
-         hidden="[[isProgressIndeterminate(migrationProgress)]]">
+         hidden="[[isProgressIndeterminate_(migrationProgress)]]">
       [[i18nDynamic(locale, 'progressScreenSubtitle',
           migrationProgress, estimatedRemainingTimeInString)]]
     </div>
@@ -134,16 +128,15 @@ found in the LICENSE file.
         value="[[migrationProgress]]"
         max="100"
         step="0.1"
-        indeterminate="[[isProgressIndeterminate(migrationProgress)]]">
+        indeterminate="[[isProgressIndeterminate_(migrationProgress)]]">
     </paper-progress>
     <div id="progress-screen-connect-to-charger-message">
       [[i18nDynamic(locale, 'connectToChargerMessage')]]
     </div>
   </div>
   <div slot="content" class="flex layout vertical center center-justified">
-    <iron-icon icon="oobe-illos:update-no-waiting-illo"
-        class="illustration-jelly">
-    </iron-icon>
+    <img src="/images/update-no-waiting.svg"
+         class="oobe-illustration" aria-hidden="true">
   </div>
 </oobe-adaptive-dialog>
 
@@ -151,13 +144,12 @@ found in the LICENSE file.
   <iron-icon slot="icon" icon="oobe-32:checkmark"></iron-icon>
   <h1 slot="title">[[i18nDynamic(locale, 'successScreenTitle')]]</h1>
   <div slot="content" class="flex layout vertical center center-justified">
-    <iron-icon icon="oobe-illos:arc-vm-data-migration-success-illo"
-        class="illustration-jelly">
-    </iron-icon>
+    <img src="/images/arc_vm_data_migration_success.svg"
+         class="oobe-illustration" aria-hidden="true">
   </div>
   <div slot="bottom-buttons">
     <oobe-text-button inverse id="finish-button"
-        on-click="onFinishButtonClicked"
+        on-click="onFinishButtonClicked_"
         text-key="finishButtonLabel">
     </oobe-text-button>
   </div>
@@ -171,16 +163,16 @@ found in the LICENSE file.
     <p>[[i18nDynamic(locale, 'failureScreenAskFeedbackReport')]]</p>
   </div>
   <div slot="content" class="flex layout vertical center center-justified">
-    <iron-icon icon="oobe-illos:error-illo" class="illustration-jelly">
-    </iron-icon>
+    <img src="/images/error.svg"
+         class="oobe-illustration" aria-hidden="true">
   </div>
   <div slot="bottom-buttons">
     <oobe-text-button id="report-button"
-        on-click="onReportButtonClicked"
+        on-click="onReportButtonClicked_"
         text-key="reportButtonLabel">
     </oobe-text-button>
     <oobe-text-button inverse id="finish-button"
-        on-click="onFinishButtonClicked"
+        on-click="onFinishButtonClicked_"
         text-key="finishButtonLabel">
     </oobe-text-button>
   </div>

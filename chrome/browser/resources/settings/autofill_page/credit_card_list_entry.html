@@ -1,4 +1,4 @@
-    <style include="settings-shared passwords-shared screen-reader-only">
+    <style include="settings-shared passwords-shared">
       .expiration-column,
       .misc-column {
         align-items: center;
@@ -15,45 +15,60 @@
         margin-top: 8px;
       }
 
+      #creditCardExpiration {
+        flex: 1;
+      }
+
       .sub-label {
         color: var(--cr-secondary-text-color);
+      }
+
+      #paymentsLabel {
+        margin-inline-start: 16px;
       }
 
       #paymentsIcon {
         vertical-align: middle;
       }
 
+      #virtualCardLabel {
+        margin-inline-start: 8px;
+      }
+
       #cardImage {
         margin-inline-end: 16px;
         vertical-align: middle;
       }
-
-      #summaryTermsLink {
-        text-decoration: none;
-      }
     </style>
     <div class="list-item" role="row">
       <div class="type-column" role="cell">
-        <img id="cardImage" src="[[creditCard.imageSrc]]" alt="">
-        <div class="summary-column screen-reader-only-host-node">
-          <div class="screen-reader-only">
-            [[getSummaryAriaLabel_(creditCard)]],
-            [[getSummaryAriaSublabel_(creditCard)]]
-          </div>
-          <div id="summaryLabel" class="ellipses" aria-hidden="true">
+        <template is="dom-if" if="[[showExpirationAsSecondaryLabelEnabled_]]">
+          <img id="cardImage" src="[[creditCard.imageSrc]]" alt="">
+        </template>
+        <div class="summary-column">
+          <div id="summaryLabel" class="ellipses">
             [[creditCard.metadata.summaryLabel]]
           </div>
           <div id="summarySublabel"
-              class="sub-label" aria-hidden="true">
-            [[getSummarySublabel_(creditCard)]]
-            <template is="dom-if" if="[[isCardBenefitsProductUrlAvailable_(creditCard)]]">
-              (<a id="summaryTermsLink" href="[[getCardBenefitsProductUrl_(creditCard)]]"
-                  target="_blank">$i18n{benefitsTermsTagForCreditCardListEntry}</a>)
-            </template>
+              hidden$="[[!showExpirationAsSecondaryLabelEnabled_]]"
+              class="ellipses sub-label">
+            [[getSummarySublabel_(creditCard, virtualCardEnrollmentEnabled_)]]
           </div>
         </div>
+        <span id="virtualCardLabel"
+            hidden$="[[!shouldShowVirtualCardLabel_(creditCard.metadata)]]">
+          $i18n{virtualCardEnabled}
+        </span>
+        <span id="paymentsLabel" class="sub-label"
+            hidden$="[[!shouldShowPaymentsLabel_(creditCard.metadata)]]">
+            [[getPaymentsLabel_(creditCard.metadata)]]
+        </span>
       </div>
       <div class="expiration-column">
+        <div id="creditCardExpiration" role="cell"
+            hidden$="[[showExpirationAsSecondaryLabelEnabled_]]">
+          [[creditCard.expirationMonth]]/[[creditCard.expirationYear]]
+        </div>
         <div role="cell" class="misc-column">
           <div id="paymentsIndicator"
               hidden$="[[!shouldShowPaymentsIndicator_(creditCard.metadata)]]">
@@ -67,7 +82,7 @@
             </if>
             <if expr="not _google_chrome">
               <span class="sub-label">
-                $i18n{googlePayments}
+                [[getPaymentsLabel_(creditCard.metadata)]]
               </span>
             </if>
           </div>
@@ -79,7 +94,7 @@
           </template>
           <template is="dom-if" if="[[!showDots_(creditCard.metadata)]]">
             <cr-icon-button class="icon-external" id="remoteCreditCardLink"
-                title="$i18n{remotePaymentMethodsLinkLabel}" role="link"
+                title="$i18n{remoteCreditCardLinkLabel}" role="link"
                 on-click="onRemoteEditClick_"></cr-icon-button>
           </template>
         </div>

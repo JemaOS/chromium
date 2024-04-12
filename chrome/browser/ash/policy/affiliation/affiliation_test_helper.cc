@@ -8,7 +8,6 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 
 #include "ash/constants/ash_switches.h"
 #include "base/command_line.h"
@@ -26,6 +25,7 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/common/chrome_paths.h"
 #include "chromeos/ash/components/cryptohome/cryptohome_parameters.h"
+#include "chromeos/ash/components/dbus/authpolicy/fake_authpolicy_client.h"
 #include "chromeos/ash/components/dbus/session_manager/fake_session_manager_client.h"
 #include "chromeos/ash/components/dbus/session_manager/session_manager_client.h"
 #include "chromeos/ash/components/dbus/userdataauth/userdataauth_client.h"
@@ -80,25 +80,42 @@ constexpr char AffiliationTestHelper::kEnterpriseUserGaiaId[] = "01234567890";
 // static
 AffiliationTestHelper AffiliationTestHelper::CreateForCloud(
     ash::FakeSessionManagerClient* fake_session_manager_client) {
-  return AffiliationTestHelper(fake_session_manager_client);
+  return AffiliationTestHelper(ManagementType::kCloud,
+                               fake_session_manager_client,
+                               nullptr /* fake_authpolicy_client */);
+}
+
+// static
+AffiliationTestHelper AffiliationTestHelper::CreateForActiveDirectory(
+    ash::FakeSessionManagerClient* fake_session_manager_client,
+    ash::FakeAuthPolicyClient* fake_authpolicy_client) {
+  return AffiliationTestHelper(ManagementType::kActiveDirectory,
+                               fake_session_manager_client,
+                               fake_authpolicy_client);
 }
 
 AffiliationTestHelper::AffiliationTestHelper(AffiliationTestHelper&& other) =
     default;
 
 AffiliationTestHelper::AffiliationTestHelper(
-    ash::FakeSessionManagerClient* fake_session_manager_client)
-    : fake_session_manager_client_(fake_session_manager_client) {
+    ManagementType management_type,
+    ash::FakeSessionManagerClient* fake_session_manager_client,
+    ash::FakeAuthPolicyClient* fake_authpolicy_client)
+    : management_type_(management_type),
+      fake_session_manager_client_(fake_session_manager_client),
+      fake_authpolicy_client_(fake_authpolicy_client) {
   DCHECK(fake_session_manager_client);
 }
 
 void AffiliationTestHelper::CheckPreconditions() {
   ASSERT_TRUE(fake_session_manager_client_);
+  ASSERT_TRUE(management_type_ != ManagementType::kActiveDirectory ||
+              fake_authpolicy_client_);
 }
 
 void AffiliationTestHelper::SetDeviceAffiliationIDs(
     DevicePolicyCrosTestHelper* test_helper,
-    const base::span<const std::string_view>& device_affiliation_ids) {
+    const base::span<const base::StringPiece>& device_affiliation_ids) {
   ASSERT_NO_FATAL_FAILURE(CheckPreconditions());
 
   DevicePolicyBuilder* device_policy = test_helper->device_policy();
@@ -106,23 +123,34 @@ void AffiliationTestHelper::SetDeviceAffiliationIDs(
     device_policy->policy_data().add_device_affiliation_ids(
         std::string(device_affiliation_id));
   }
-  // Create keys and sign policy.
-  device_policy->SetDefaultSigningKey();
+  if (management_type_ != ManagementType::kActiveDirectory) {
+    // Create keys and sign policy. Note that Active Directory policy is
+    // unsigned.
+    device_policy->SetDefaultSigningKey();
+  }
   device_policy->Build();
 
   fake_session_manager_client_->set_device_policy(device_policy->GetBlob());
   fake_session_manager_client_->OnPropertyChangeComplete(true);
+
+  if (management_type_ == ManagementType::kActiveDirectory)
+    fake_authpolicy_client_->set_device_affiliation_ids(device_affiliation_ids);
 }
 
 void AffiliationTestHelper::SetUserAffiliationIDs(
     UserPolicyBuilder* user_policy,
     const AccountId& user_account_id,
-    const base::span<const std::string_view>& user_affiliation_ids) {
+    const base::span<const base::StringPiece>& user_affiliation_ids) {
   ASSERT_NO_FATAL_FAILURE(CheckPreconditions());
+  ASSERT_TRUE(management_type_ != ManagementType::kActiveDirectory ||
+              user_account_id.GetAccountType() ==
+                  AccountType::ACTIVE_DIRECTORY);
 
   user_policy->policy_data().set_username(user_account_id.GetUserEmail());
-  user_policy->policy_data().set_gaia_id(user_account_id.GetGaiaId());
-  ASSERT_NO_FATAL_FAILURE(SetUserKeys(*user_policy));
+  if (management_type_ != ManagementType::kActiveDirectory) {
+    user_policy->policy_data().set_gaia_id(user_account_id.GetGaiaId());
+    ASSERT_NO_FATAL_FAILURE(SetUserKeys(*user_policy));
+  }
   for (const auto& user_affiliation_id : user_affiliation_ids) {
     user_policy->policy_data().add_user_affiliation_ids(
         std::string(user_affiliation_id));
@@ -132,6 +160,9 @@ void AffiliationTestHelper::SetUserAffiliationIDs(
   fake_session_manager_client_->set_user_policy(
       cryptohome::CreateAccountIdentifierFromAccountId(user_account_id),
       user_policy->GetBlob());
+
+  if (management_type_ == ManagementType::kActiveDirectory)
+    fake_authpolicy_client_->set_user_affiliation_ids(user_affiliation_ids);
 }
 
 // static
@@ -154,8 +185,12 @@ void AffiliationTestHelper::LoginUser(const AccountId& account_id) {
       ash::UserSessionManager::GetInstance());
   session_manager_test_api.SetShouldObtainTokenHandleInTests(false);
 
-  CHECK(account_id.GetAccountType() != AccountType::ACTIVE_DIRECTORY);
-  ash::UserContext user_context(user_manager::UserType::kRegular, account_id);
+  const bool is_active_directory =
+      account_id.GetAccountType() == AccountType::ACTIVE_DIRECTORY;
+  const user_manager::UserType user_type =
+      is_active_directory ? user_manager::UserType::USER_TYPE_ACTIVE_DIRECTORY
+                          : user_manager::UserType::USER_TYPE_REGULAR;
+  ash::UserContext user_context(user_type, account_id);
   user_context.SetKey(ash::Key("password"));
   if (account_id.GetUserEmail() == kEnterpriseUserEmail) {
     user_context.SetRefreshToken(kFakeRefreshToken);

@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/guest_os/guest_os_terminal.h"
 
-#include <string_view>
-
 #include "ash/public/cpp/app_menu_constants.h"
 #include "ash/webui/system_apps/public/system_web_app_type.h"
 #include "base/functional/bind.h"
@@ -54,7 +52,7 @@
 
 namespace guest_os {
 
-// web_app::GenerateAppId(/*manifest_id=*/std::nullopt,
+// web_app::GenerateAppId(/*manifest_id=*/absl::nullopt,
 //     GURL("chrome-untrusted://terminal/html/terminal.html"))
 const char kTerminalSystemAppId[] = "fhicihalidkgcimdmhpohldehjmcabcf";
 
@@ -194,17 +192,15 @@ void LaunchTerminal(Profile* profile,
                     const std::vector<std::string>& terminal_args) {
   GURL url = GenerateTerminalURL(profile, /*settings_profile=*/std::string(),
                                  container_id, cwd, terminal_args);
-  LaunchTerminalWithUrl(profile, display_id, /*restore_id=*/0, url);
+  LaunchTerminalWithUrl(profile, display_id, url);
 }
 
-void LaunchTerminalHome(Profile* profile, int64_t display_id, int restore_id) {
-  LaunchTerminalWithUrl(profile, display_id, restore_id,
-                        GURL(GetTerminalHomeUrl()));
+void LaunchTerminalHome(Profile* profile, int64_t display_id) {
+  LaunchTerminalWithUrl(profile, display_id, GURL(GetTerminalHomeUrl()));
 }
 
 void LaunchTerminalWithUrl(Profile* profile,
                            int64_t display_id,
-                           int restore_id,
                            const GURL& url) {
   if (url.DeprecatedGetOriginAsURL() != chrome::kChromeUIUntrustedTerminalURL) {
     LOG(ERROR) << "Trying to launch terminal with an invalid url: " << url;
@@ -222,8 +218,6 @@ void LaunchTerminalWithUrl(Profile* profile,
 
   // Terminal Home page will be restored by app service.
   params->omit_from_session_restore = true;
-
-  params->restore_id = restore_id;
 
   // Always launch asynchronously to avoid disturbing the caller. See
   // https://crbug.com/1262890#c12 for more details.
@@ -299,7 +293,7 @@ void LaunchTerminalWithIntent(
 
   GURL url = GenerateTerminalURL(profile, settings_profile, guest_id, cwd,
                                  /*terminal_args=*/{});
-  LaunchTerminalWithUrl(profile, display_id, /*restore_id=*/0, url);
+  LaunchTerminalWithUrl(profile, display_id, url);
   std::move(callback).Run(true, "");
 }
 
@@ -325,7 +319,7 @@ void LaunchTerminalSettings(Profile* profile, int64_t display_id) {
 }
 
 void RecordTerminalSettingsChangesUMAs(Profile* profile) {
-  static constexpr auto kSettingsMap = base::MakeFixedFlatMap<std::string_view,
+  static constexpr auto kSettingsMap = base::MakeFixedFlatMap<base::StringPiece,
                                                               TerminalSetting>({
       {"alt-gr-mode", TerminalSetting::kAltGrMode},
       {"alt-backspace-is-meta-backspace",
@@ -403,14 +397,6 @@ void RecordTerminalSettingsChangesUMAs(Profile* profile) {
       {"allow-images-inline", TerminalSetting::kAllowImagesInline},
       {"theme", TerminalSetting::kTheme},
       {"theme-variations", TerminalSetting::kThemeVariations},
-      {"find-result-color", TerminalSetting::kFindResultColor},
-      {"find-result-selected-color", TerminalSetting::kFindResultSelectedColor},
-      {"line-height-padding-size", TerminalSetting::kLineHeightPaddingSize},
-      {"keybindings-os-defaults", TerminalSetting::kKeybindingsOsDefaults},
-      {"screen-padding-size", TerminalSetting::kScreenPaddingSize},
-      {"screen-border-size", TerminalSetting::kScreenBorderSize},
-      {"screen-border-color", TerminalSetting::kScreenBorderColor},
-      {"line-height", TerminalSetting::kLineHeight},
   });
 
   const base::Value::Dict& settings =
@@ -421,8 +407,8 @@ void RecordTerminalSettingsChangesUMAs(Profile* profile) {
                           base::CompareCase::SENSITIVE)) {
       continue;
     }
-    const auto it = kSettingsMap.find(
-        std::string_view(item.first).substr(kSettingPrefixSize));
+    const auto* it = kSettingsMap.find(
+        base::StringPiece(item.first).substr(kSettingPrefixSize));
     base::UmaHistogramEnumeration(
         "Crostini.TerminalSettingsChanged",
         it != kSettingsMap.end() ? it->second : TerminalSetting::kUnknown);
@@ -432,7 +418,7 @@ void RecordTerminalSettingsChangesUMAs(Profile* profile) {
 std::string GetTerminalSettingBackgroundColor(
     Profile* profile,
     GURL url,
-    std::optional<SkColor> opener_background_color) {
+    absl::optional<SkColor> opener_background_color) {
   auto key = [](const std::string& profile) {
     return GetSettingsKey(kSettingsPrefixHterm, profile,
                           kSettingsKeyBackgroundColor);
@@ -507,9 +493,9 @@ std::string ShortcutIdFromContainerId(Profile* profile,
 }
 
 base::flat_map<std::string, std::string> ExtrasFromShortcutId(
-    const base::Value::Dict& shortcut) {
+    const base::Value& shortcut) {
   base::flat_map<std::string, std::string> extras;
-  for (const auto it : shortcut) {
+  for (const auto it : shortcut.GetDict()) {
     if (it.second.is_string()) {
       extras[it.first] = it.second.GetString();
     }
@@ -593,14 +579,13 @@ void AddTerminalMenuShortcuts(
 bool ExecuteTerminalMenuShortcutCommand(Profile* profile,
                                         const std::string& shortcut_id,
                                         int64_t display_id) {
-  std::optional<base::Value::Dict> shortcut =
-      base::JSONReader::ReadDict(shortcut_id);
-  if (!shortcut) {
+  auto shortcut = base::JSONReader::Read(shortcut_id);
+  if (!shortcut || !shortcut->is_dict()) {
     return false;
   }
-  const std::string* shortcut_value = shortcut->FindString(kShortcutKey);
+  const std::string* shortcut_value = shortcut->FindStringKey(kShortcutKey);
   if (shortcut_value && *shortcut_value == kShortcutValueSSH) {
-    const std::string* profileId = shortcut->FindString(kProfileIdKey);
+    const std::string* profileId = shortcut->FindStringKey(kProfileIdKey);
     if (!profileId) {
       return false;
     }
@@ -618,7 +603,7 @@ bool ExecuteTerminalMenuShortcutCommand(Profile* profile,
           {"?", kSettingsProfileUrlParam, "=", escape(*settings_profile)});
     }
     LaunchTerminalWithUrl(
-        profile, display_id, /*restore_id=*/0,
+        profile, display_id,
         GURL(base::StrCat({chrome::kChromeUIUntrustedTerminalURL,
                            "html/terminal_ssh.html", settings_profile_param,
                            "#profile-id:", escape(*profileId)})));
@@ -629,7 +614,7 @@ bool ExecuteTerminalMenuShortcutCommand(Profile* profile,
     return false;
   }
   auto intent = std::make_unique<apps::Intent>(apps_util::kIntentActionView);
-  intent->extras = ExtrasFromShortcutId(*shortcut);
+  intent->extras = ExtrasFromShortcutId(std::move(*shortcut));
   LaunchTerminalWithIntent(profile, display_id, std::move(intent),
                            base::DoNothing());
   return true;

@@ -194,7 +194,7 @@ const std::u16string& ChipView::GetText() const {
   return text_view_->GetText();
 }
 
-BEGIN_METADATA(ChipView)
+BEGIN_METADATA(ChipView, views::Button)
 END_METADATA
 
 }  // namespace ash

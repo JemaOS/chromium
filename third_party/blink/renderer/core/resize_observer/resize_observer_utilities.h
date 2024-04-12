@@ -17,8 +17,8 @@ class ComputedStyle;
 class DOMRectReadOnly;
 class LayoutBox;
 class LayoutObject;
-struct LogicalSize;
-struct PhysicalRect;
+class LayoutRect;
+class LayoutSize;
 
 // Helper functions for ResizeObserverEntry and ResizeObservation.
 class ResizeObserverUtilities {
@@ -34,15 +34,11 @@ class ResizeObserverUtilities {
   // Compute a scaled and pixel snapped device pixel content box for svg
   // bounding boxes.
   static gfx::SizeF ComputeSnappedDevicePixelContentBox(
-      LogicalSize box_size,
-      const LayoutObject& layout_object,
-      const ComputedStyle& style);
-  static gfx::SizeF ComputeSnappedDevicePixelContentBox(
-      const gfx::SizeF& box_size,
+      LayoutSize box_size,
       const LayoutObject& layout_object,
       const ComputedStyle& style);
 
-  static DOMRectReadOnly* ZoomAdjustedLayoutRect(PhysicalRect content_rect,
+  static DOMRectReadOnly* ZoomAdjustedLayoutRect(LayoutRect content_rect,
                                                  const ComputedStyle& style);
 };
 

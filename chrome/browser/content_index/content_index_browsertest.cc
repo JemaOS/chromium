@@ -4,7 +4,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "base/command_line.h"
@@ -25,10 +24,10 @@
 #include "components/ukm/test_ukm_recorder.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/service_worker/service_worker_status_code.h"
 #include "third_party/re2/src/re2/re2.h"
 #include "url/gurl.h"
@@ -78,6 +77,14 @@ class ContentIndexTest : public InProcessBrowserTest,
         switches::kEnableExperimentalWebPlatformFeatures);
   }
 
+  // Runs |script| and expects it to complete successfully. |script| must
+  // result in a Promise. Returns the resolved contents of the Promise.
+  std::string RunScript(const std::string& script) {
+    std::string result;
+    RunScript(script, &result);
+    return result.substr(5);  // Ignore the trailing `ok - `.
+  }
+
   // OfflineContentProvider::Observer implementation:
   void OnItemsAdded(const std::vector<OfflineItem>& items) override {
     ASSERT_EQ(items.size(), 1u);
@@ -89,16 +96,14 @@ class ContentIndexTest : public InProcessBrowserTest,
     offline_items_.erase(GetDescriptionIdFromOfflineItemKey(id.id));
   }
 
-  void OnItemUpdated(const OfflineItem& item,
-                     const std::optional<offline_items_collection::UpdateDelta>&
-                         update_delta) override {
+  void OnItemUpdated(
+      const OfflineItem& item,
+      const absl::optional<offline_items_collection::UpdateDelta>& update_delta)
+      override {
     NOTREACHED();
   }
 
-  void OnContentProviderGoingDown() override {
-    // Clear the cached pointer to avoid a dangling pointer error later.
-    provider_ = nullptr;
-  }
+  void OnContentProviderGoingDown() override {}
 
   // TabStripModelObserver implementation:
   void TabChangedAt(content::WebContents* contents,
@@ -112,14 +117,15 @@ class ContentIndexTest : public InProcessBrowserTest,
     wait_for_tab_change_ = std::move(closure);
   }
 
-  std::optional<OfflineItem> GetItem(const ContentId& id) {
-    std::optional<OfflineItem> out_item;
+  absl::optional<OfflineItem> GetItem(const ContentId& id) {
+    absl::optional<OfflineItem> out_item;
     base::RunLoop run_loop;
-    provider_->GetItemById(id, base::BindLambdaForTesting(
-                                   [&](const std::optional<OfflineItem>& item) {
-                                     out_item = item;
-                                     run_loop.Quit();
-                                   }));
+    provider_->GetItemById(id,
+                           base::BindLambdaForTesting(
+                               [&](const absl::optional<OfflineItem>& item) {
+                                 out_item = item;
+                                 run_loop.Quit();
+                               }));
     run_loop.Run();
     return out_item;
   }
@@ -139,23 +145,21 @@ class ContentIndexTest : public InProcessBrowserTest,
   std::map<std::string, OfflineItem>& offline_items() { return offline_items_; }
   ContentIndexProviderImpl* provider() { return provider_; }
 
-  std::string RunScript(const std::string& script) {
-    std::string result =
-        content::EvalJs(browser()
-                            ->tab_strip_model()
-                            ->GetActiveWebContents()
-                            ->GetPrimaryMainFrame(),
-                        "WrapFunction(async () => " + script + ")")
-            .ExtractString();
-    EXPECT_TRUE(base::StartsWith(result, "ok - ", base::CompareCase::SENSITIVE))
-        << "Unexpected result: " << result;
-
-    return result.substr(5);  // Ignore the leading "ok - ".
+ private:
+  void RunScript(const std::string& script, std::string* result) {
+    *result = content::EvalJs(browser()
+                                  ->tab_strip_model()
+                                  ->GetActiveWebContents()
+                                  ->GetPrimaryMainFrame(),
+                              "WrapFunction(async () => " + script + ")")
+                  .ExtractString();
+    ASSERT_TRUE(
+        base::StartsWith(*result, "ok - ", base::CompareCase::SENSITIVE))
+        << "Unexpected result: " << *result;
   }
 
- private:
   std::map<std::string, OfflineItem> offline_items_;
-  raw_ptr<ContentIndexProviderImpl> provider_;
+  raw_ptr<ContentIndexProviderImpl, DanglingUntriaged> provider_;
   std::unique_ptr<net::EmbeddedTestServer> https_server_;
   base::OnceClosure wait_for_tab_change_;
 };

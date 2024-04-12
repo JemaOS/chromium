@@ -8,7 +8,9 @@ import android.view.View;
 
 import org.chromium.ui.modelutil.PropertyModel;
 
-/** Interface to handle clicks and long-clicks on menu items. */
+/**
+ * Interface to handle clicks and long-clicks on menu items.
+ */
 public interface AppMenuClickHandler {
     /**
      * Handles clicks on the AppMenu popup.

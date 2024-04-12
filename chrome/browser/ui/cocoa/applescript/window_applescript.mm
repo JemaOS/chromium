@@ -6,7 +6,8 @@
 
 #include <memory>
 
-#import "base/apple/foundation_util.h"
+#import "base/mac/foundation_util.h"
+#import "base/mac/scoped_nsobject.h"
 #include "base/memory/weak_ptr.h"
 #include "base/notreached.h"
 #include "base/strings/sys_string_conversions.h"
@@ -55,8 +56,11 @@
   // Check which mode to open a new window.
   NSScriptCommand* command = [NSScriptCommand currentCommand];
   NSString* mode = command.evaluatedArguments[@"KeyDictionary"][@"mode"];
+  AppController* appDelegate =
+      base::mac::ObjCCastStrict<AppController>(NSApp.delegate);
 
-  Profile* lastProfile = AppController.sharedController.lastProfile;
+  Profile* lastProfile = appDelegate.lastProfile;
+
   if (!lastProfile) {
     AppleScript::SetError(AppleScript::Error::kGetProfile);
     return nil;
@@ -83,7 +87,7 @@
 
 - (instancetype)initWithProfile:(Profile*)aProfile {
   if (!aProfile) {
-    self = nil;
+    [self release];
     return nil;
   }
 
@@ -93,7 +97,7 @@
     // to spawn a new browser for the specified profile or not.
     if (Browser::GetCreationStatusForProfile(aProfile) !=
         Browser::CreationStatus::kOk) {
-      self = nil;
+      [self release];
       return nil;
     }
 
@@ -111,7 +115,7 @@
 
 - (instancetype)initWithBrowser:(Browser*)browser {
   if (!browser) {
-    self = nil;
+    [self release];
     return nil;
   }
 
@@ -207,9 +211,11 @@
     return nil;
   }
 
-  TabAppleScript* currentTab = [[TabAppleScript alloc]
-      initWithWebContents:_browser->tab_strip_model()->GetActiveWebContents()];
-  [currentTab setContainer:self property:AppleScript::kTabsProperty];
+  TabAppleScript* currentTab =
+      [[[TabAppleScript alloc] initWithWebContents:
+          _browser->tab_strip_model()->GetActiveWebContents()] autorelease];
+  [currentTab setContainer:self
+                  property:AppleScript::kTabsProperty];
   return currentTab;
 }
 
@@ -228,8 +234,8 @@
       continue;
     }
 
-    TabAppleScript* tab =
-        [[TabAppleScript alloc] initWithWebContents:webContents];
+    base::scoped_nsobject<TabAppleScript> tab(
+        [[TabAppleScript alloc] initWithWebContents:webContents]);
     [tab setContainer:self
              property:AppleScript::kTabsProperty];
     [tabs addObject:tab];
@@ -244,7 +250,8 @@
 
   // This method gets called when a new tab is created so
   // the container and property are set here.
-  [aTab setContainer:self property:AppleScript::kTabsProperty];
+  [aTab setContainer:self
+            property:AppleScript::kTabsProperty];
 
   // Set how long it takes a tab to be created.
   base::TimeTicks newTabStartTime = base::TimeTicks::Now();
@@ -263,7 +270,8 @@
 
   // This method gets called when a new tab is created so
   // the container and property are set here.
-  [aTab setContainer:self property:AppleScript::kTabsProperty];
+  [aTab setContainer:self
+            property:AppleScript::kTabsProperty];
 
   // Set how long it takes a tab to be created.
   base::TimeTicks newTabStartTime = base::TimeTicks::Now();

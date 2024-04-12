@@ -277,7 +277,7 @@ function doLoopUntilDone(operation, bundle) {
           break;
         }
 
-        bundle.download();
+        bundle.install();
         break;
 
       case STATE_WAITING_TO_DOWNLOAD:
@@ -296,11 +296,9 @@ function doLoopUntilDone(operation, bundle) {
       case STATE_EXTRACTING:
       case STATE_APPLYING_DIFFERENTIAL_PATCH:
       case STATE_READY_TO_INSTALL:
-        stateDescription = 'Ready to install!';
+        stateDescription = 'Download completed!';
         extraData = '[Bytes downloaded][' + state.bytesDownloaded + ']' +
                     '[Bytes total][' + state.totalBytesToDownload + ']';
-
-        bundle.install();
         break;
 
       case STATE_WAITING_TO_INSTALL:

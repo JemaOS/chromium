@@ -33,7 +33,7 @@ void CloseAllHandles(absl::Span<const IpczDriverHandle> handles) {
 // Provides shared ownership of a transport object given to the driver by ipcz
 // during driver transport activation. Within ipcz this corresponds to a
 // DriverTransport object.
-class TransportWrapper : public RefCounted<TransportWrapper> {
+class TransportWrapper : public RefCounted {
  public:
   TransportWrapper(IpczHandle transport,
                    IpczTransportActivityHandler activity_handler)
@@ -47,9 +47,7 @@ class TransportWrapper : public RefCounted<TransportWrapper> {
   void NotifyError() { DoNotify(IPCZ_TRANSPORT_ACTIVITY_ERROR); }
 
  private:
-  friend class RefCounted<TransportWrapper>;
-
-  ~TransportWrapper() {
+  ~TransportWrapper() override {
     // Since this is destruction, we can safely assume the invocation will be
     // exclusive. Otherwise someone is mismanaging a reference count or has
     // a UAF bug.
@@ -342,31 +340,32 @@ IpczResult IPCZ_API CreateTransports(IpczDriverHandle transport0,
   return IPCZ_RESULT_OK;
 }
 
-IpczResult IPCZ_API ActivateTransport(IpczDriverHandle transport,
-                                      IpczHandle listener,
+IpczResult IPCZ_API ActivateTransport(IpczDriverHandle driver_transport,
+                                      IpczHandle transport,
                                       IpczTransportActivityHandler handler,
                                       uint32_t flags,
                                       const void* options) {
-  return InProcessTransport::FromHandle(transport)->Activate(listener, handler);
+  return InProcessTransport::FromHandle(driver_transport)
+      ->Activate(transport, handler);
 }
 
-IpczResult IPCZ_API DeactivateTransport(IpczDriverHandle transport,
+IpczResult IPCZ_API DeactivateTransport(IpczDriverHandle driver_transport,
                                         uint32_t flags,
                                         const void* options) {
-  InProcessTransport::FromHandle(transport)->Deactivate();
+  InProcessTransport::FromHandle(driver_transport)->Deactivate();
   return IPCZ_RESULT_OK;
 }
 
-IpczResult IPCZ_API Transmit(IpczDriverHandle transport,
+IpczResult IPCZ_API Transmit(IpczDriverHandle driver_transport,
                              const void* data,
                              size_t num_bytes,
                              const IpczDriverHandle* handles,
                              size_t num_handles,
                              uint32_t flags,
                              const void* options) {
-  return InProcessTransport::FromHandle(transport)->Transmit(
-      absl::MakeSpan(static_cast<const uint8_t*>(data), num_bytes),
-      absl::MakeSpan(handles, num_handles));
+  return InProcessTransport::FromHandle(driver_transport)
+      ->Transmit(absl::MakeSpan(static_cast<const uint8_t*>(data), num_bytes),
+                 absl::MakeSpan(handles, num_handles));
 }
 
 }  // namespace

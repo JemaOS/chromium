@@ -18,9 +18,9 @@ namespace views {
 // `dark_image` must be of the same size. The `light_image` is set by default
 // upon construction.
 class VIEWS_EXPORT ThemeTrackingImageView : public ImageView {
-  METADATA_HEADER(ThemeTrackingImageView, ImageView)
-
  public:
+  METADATA_HEADER(ThemeTrackingImageView);
+
   ThemeTrackingImageView(
       const ui::ImageModel& light_image_model,
       const ui::ImageModel& dark_image_model,

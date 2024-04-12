@@ -19,13 +19,12 @@ import org.junit.runner.RunWith;
 
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.test.util.CommandLineFlags;
-import org.chromium.base.test.util.Features;
-import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.incognito.IncognitoDataTestUtils;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
+import org.chromium.chrome.test.util.browser.Features;
 import org.chromium.net.test.EmbeddedTestServerRule;
 
 import java.util.concurrent.TimeoutException;
@@ -47,13 +46,16 @@ public class CustomTabActivityIncognitoMetricTest {
     public IncognitoCustomTabActivityTestRule mCustomTabActivityTestRule =
             new IncognitoCustomTabActivityTestRule();
 
-    @Rule public TestRule mProcessor = new Features.InstrumentationProcessor();
+    @Rule
+    public TestRule mProcessor = new Features.InstrumentationProcessor();
 
-    @Rule public EmbeddedTestServerRule mEmbeddedTestServerRule = new EmbeddedTestServerRule();
+    @Rule
+    public EmbeddedTestServerRule mEmbeddedTestServerRule = new EmbeddedTestServerRule();
 
     @Before
     public void setUp() throws TimeoutException {
         mTestPage = mEmbeddedTestServerRule.getServer().getURL(TEST_PAGE);
+        // Ensuring native is initialized before we access the CCT_INCOGNITO feature flag.
         IncognitoDataTestUtils.fireAndWaitForCctWarmup();
     }
 
@@ -64,20 +66,21 @@ public class CustomTabActivityIncognitoMetricTest {
 
     @Test
     @MediumTest
+    @Features.EnableFeatures({ChromeFeatureList.CCT_INCOGNITO})
     public void recordsHistogram_1P() {
         assertEquals(0, RecordHistogram.getHistogramTotalCountForTesting(UMA_KEY));
         Intent intent = createMinimalIncognitoCustomTabIntent();
         mCustomTabActivityTestRule.startCustomTabActivityWithIntent(intent);
 
         assertEquals(1, RecordHistogram.getHistogramTotalCountForTesting(UMA_KEY));
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         UMA_KEY, IntentHandler.IncognitoCCTCallerId.GOOGLE_APPS));
     }
 
     @Test
     @MediumTest
+    @Features.EnableFeatures({ChromeFeatureList.CCT_INCOGNITO})
     public void recordsHistogram_ReaderMode_WithExtra() {
         assertEquals(0, RecordHistogram.getHistogramTotalCountForTesting(UMA_KEY));
         Intent intent = createMinimalIncognitoCustomTabIntent();
@@ -87,16 +90,17 @@ public class CustomTabActivityIncognitoMetricTest {
 
         mCustomTabActivityTestRule.startCustomTabActivityWithIntent(intent);
         assertEquals(1, RecordHistogram.getHistogramTotalCountForTesting(UMA_KEY));
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         UMA_KEY, IntentHandler.IncognitoCCTCallerId.READER_MODE));
     }
 
     @Test
     @MediumTest
-    @EnableFeatures(ChromeFeatureList.CCT_INCOGNITO_AVAILABLE_TO_THIRD_PARTY)
-    public void recordsHistogram_Other() {
+    @Features.EnableFeatures({ChromeFeatureList.CCT_INCOGNITO,
+            ChromeFeatureList.CCT_INCOGNITO_AVAILABLE_TO_THIRD_PARTY})
+    public void
+    recordsHistogram_Other() {
         assertEquals(0, RecordHistogram.getHistogramTotalCountForTesting(UMA_KEY));
         Intent intent = createMinimalIncognitoCustomTabIntent();
         // Remove the first party override to emulate third party
@@ -104,16 +108,17 @@ public class CustomTabActivityIncognitoMetricTest {
 
         mCustomTabActivityTestRule.startCustomTabActivityWithIntent(intent);
         assertEquals(1, RecordHistogram.getHistogramTotalCountForTesting(UMA_KEY));
-        assertEquals(
-                1,
+        assertEquals(1,
                 RecordHistogram.getHistogramValueCountForTesting(
                         UMA_KEY, IntentHandler.IncognitoCCTCallerId.OTHER_APPS));
     }
 
     @Test
     @MediumTest
-    @EnableFeatures(ChromeFeatureList.CCT_INCOGNITO_AVAILABLE_TO_THIRD_PARTY)
-    public void doesNotRecordThirdPartySpecificHistogram() {
+    @Features.EnableFeatures({ChromeFeatureList.CCT_INCOGNITO,
+            ChromeFeatureList.CCT_INCOGNITO_AVAILABLE_TO_THIRD_PARTY})
+    public void
+    doesNotRecordThirdPartySpecificHistogram() {
         assertEquals(0, RecordHistogram.getHistogramTotalCountForTesting(FIRST_PARTY_UMA_KEY));
         Intent intent = createMinimalIncognitoCustomTabIntent();
 

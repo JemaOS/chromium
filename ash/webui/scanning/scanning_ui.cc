@@ -11,7 +11,6 @@
 #include "ash/constants/ash_features.h"
 #include "ash/webui/common/backend/accessibility_features.h"
 #include "ash/webui/common/mojom/accessibility_features.mojom.h"
-#include "ash/webui/common/trusted_types_util.h"
 #include "ash/webui/grit/ash_scanning_app_resources.h"
 #include "ash/webui/grit/ash_scanning_app_resources_map.h"
 #include "ash/webui/scanning/mojom/scanning.mojom.h"
@@ -45,6 +44,8 @@ void SetUpWebUIDataSource(content::WebUIDataSource* source,
   source->AddResourcePath("test_loader.js", IDR_WEBUI_JS_TEST_LOADER_JS);
   source->AddResourcePath("test_loader_util.js",
                           IDR_WEBUI_JS_TEST_LOADER_UTIL_JS);
+  source->AddBoolean("isJellyEnabledForScanningApp",
+                     ash::features::IsJellyEnabledForScanningApp());
 }
 
 void AddScanningAppStrings(content::WebUIDataSource* html_source) {
@@ -155,24 +156,32 @@ void AddScanningAppPluralStrings(ScanningHandler* handler) {
 
 ScanningUI::ScanningUI(
     content::WebUI* web_ui,
+    BindScanServiceCallback callback,
     std::unique_ptr<ScanningAppDelegate> scanning_app_delegate)
     : ui::MojoWebUIController(web_ui, true /* enable_chrome_send */),
-      bind_pending_receiver_callback_(
-          scanning_app_delegate->GetBindScanServiceCallback(web_ui)) {
+      bind_pending_receiver_callback_(std::move(callback)) {
   content::WebUIDataSource* html_source =
       content::WebUIDataSource::CreateAndAdd(
           web_ui->GetWebContents()->GetBrowserContext(),
           kChromeUIScanningAppHost);
   html_source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ScriptSrc,
-      "script-src chrome://resources chrome://webui-test 'self';");
-  ash::EnableTrustedTypesCSP(html_source);
+      "script-src chrome://resources chrome://test chrome://webui-test "
+      "'self';");
+  html_source->DisableTrustedTypesCSP();
 
   accessibility_features_ = std::make_unique<AccessibilityFeatures>();
 
   const auto resources =
       base::make_span(kAshScanningAppResources, kAshScanningAppResourcesSize);
-  SetUpWebUIDataSource(html_source, resources, IDR_ASH_SCANNING_APP_INDEX_HTML);
+  SetUpWebUIDataSource(html_source, resources, IDR_SCANNING_APP_INDEX_HTML);
+
+  html_source->AddResourcePath("scanning.mojom-lite.js",
+                               IDR_SCANNING_MOJO_LITE_JS);
+  html_source->AddResourcePath("file_path.mojom-lite.js",
+                               IDR_SCANNING_APP_FILE_PATH_MOJO_LITE_JS);
+  html_source->AddResourcePath("accessibility_features.mojom-lite.js",
+                               IDR_ACCESSIBILITY_FEATURES_MOJO_LITE_JS);
 
   AddScanningAppStrings(html_source);
 

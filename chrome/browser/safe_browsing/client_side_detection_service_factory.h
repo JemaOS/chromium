@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SAFE_BROWSING_CLIENT_SIDE_DETECTION_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_SAFE_BROWSING_CLIENT_SIDE_DETECTION_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class KeyedService;
@@ -33,16 +33,14 @@ class ClientSideDetectionServiceFactory : public ProfileKeyedServiceFactory {
       const ClientSideDetectionServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<ClientSideDetectionServiceFactory>;
+  friend struct base::DefaultSingletonTraits<ClientSideDetectionServiceFactory>;
 
   ClientSideDetectionServiceFactory();
   ~ClientSideDetectionServiceFactory() override = default;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
-  bool ServiceIsCreatedWithBrowserContext() const override;
-  bool ServiceIsNULLWhileTesting() const override;
 };
 
 }  // namespace safe_browsing

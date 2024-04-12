@@ -12,11 +12,11 @@ function checkFirstMessageEquals(expectedRequest) {
   };
 }
 
-var onMessage = chrome.runtime.onMessage;
+var onRequest = chrome.extension.onRequest;
 chrome.test.getConfig(function(config) {
   chrome.test.runTests([
     function testDontInjectInAboutBlankFrame() {
-      chrome.test.listenOnce(onMessage, checkFirstMessageEquals('parent'));
+      chrome.test.listenOnce(onRequest, checkFirstMessageEquals('parent'));
       chrome.test.log('Creating tab...');
       var test_url =
           ('http://localhost:PORT/extensions/' +
@@ -25,7 +25,7 @@ chrome.test.getConfig(function(config) {
       chrome.tabs.create({ url: test_url });
     },
     function testDontInjectInAboutSrcdocFrame() {
-      chrome.test.listenOnce(onMessage, checkFirstMessageEquals('parent'));
+      chrome.test.listenOnce(onRequest, checkFirstMessageEquals('parent'));
       chrome.test.log('Creating tab...');
       var test_url =
           ('http://localhost:PORT/extensions/' +
@@ -34,7 +34,7 @@ chrome.test.getConfig(function(config) {
       chrome.tabs.create({ url: test_url });
     },
     function testDontInjectInNestedAboutFrames() {
-      chrome.test.listenOnce(onMessage, checkFirstMessageEquals('parent'));
+      chrome.test.listenOnce(onRequest, checkFirstMessageEquals('parent'));
       chrome.test.log('Creating tab...');
       var test_url =
           ('http://localhost:PORT/extensions/' +
@@ -43,8 +43,8 @@ chrome.test.getConfig(function(config) {
       chrome.tabs.create({ url: test_url });
     },
     function testDocumentStartRunsInSameWorldAsDocumentEndOfJavaScriptUrl() {
-      onMessage.addListener(function listener(request) {
-        onMessage.removeListener(listener);
+      onRequest.addListener(function listener(request) {
+        onRequest.removeListener(listener);
         // The empty document was replaced with the result of the evaluated
         // JavaScript code.
         checkFirstMessageEquals('jsresult/something')(request);

@@ -31,7 +31,7 @@ class CredentialsCleanerRunnerFactory : public ProfileKeyedServiceFactory {
   CredentialsCleanerRunnerFactory();
   ~CredentialsCleanerRunnerFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

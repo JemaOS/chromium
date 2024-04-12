@@ -52,7 +52,7 @@ class CORE_EXPORT ModuleMap final : public GarbageCollected<ModuleMap>,
   // nullptr.
   ModuleScript* GetFetchedModuleScript(const KURL&, ModuleType) const;
 
-  Modulator* GetModulator() { return modulator_.Get(); }
+  Modulator* GetModulator() { return modulator_; }
 
  private:
   using Key = std::pair<KURL, ModuleType>;

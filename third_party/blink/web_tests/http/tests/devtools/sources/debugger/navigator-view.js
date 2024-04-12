@@ -2,31 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-import {SDKTestRunner} from 'sdk_test_runner';
-
-import * as Bindings from 'devtools/models/bindings/bindings.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-import * as Sources from 'devtools/panels/sources/sources.js';
-import * as UI from 'devtools/ui/legacy/legacy.js';
-import * as Workspace from 'devtools/models/workspace/workspace.js';
-
 (async function() {
   TestRunner.addResult(`Tests scripts panel file selectors.\n`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
+  await TestRunner.loadTestModule('sdk_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.addIframe(
       'resources/post-message-listener.html', {name: 'childframe'});
 
-  Bindings.DebuggerWorkspaceBinding.DebuggerWorkspaceBinding.instance().resetForTest(TestRunner.mainTarget);
-  Bindings.DebuggerWorkspaceBinding.DebuggerWorkspaceBinding.instance().resourceMapping.resetForTest(TestRunner.mainTarget);
+  Bindings.debuggerWorkspaceBinding.resetForTest(TestRunner.mainTarget);
+  Bindings.resourceMapping.resetForTest(TestRunner.mainTarget);
 
   var subframe = TestRunner.mainFrame().childFrames[0];
 
-  var sourcesNavigatorView = new Sources.SourcesNavigator.NetworkNavigatorView();
-  sourcesNavigatorView.show(UI.InspectorView.InspectorView.instance().element);
-  var contentScriptsNavigatorView = new Sources.SourcesNavigator.ContentScriptsNavigatorView();
-  contentScriptsNavigatorView.show(UI.InspectorView.InspectorView.instance().element);
+  var sourcesNavigatorView = new Sources.NetworkNavigatorView();
+  sourcesNavigatorView.show(UI.inspectorView.element);
+  var contentScriptsNavigatorView = new Sources.ContentScriptsNavigatorView();
+  contentScriptsNavigatorView.show(UI.inspectorView.element);
 
   var uiSourceCodes = [];
   async function addUISourceCode(url, isContentScript, frame) {
@@ -53,14 +45,14 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
   function waitForUISourceCodeAdded(url) {
     var fulfill;
     var promise = new Promise(x => fulfill = x);
-    Workspace.Workspace.WorkspaceImpl.instance().addEventListener(
+    Workspace.workspace.addEventListener(
         Workspace.Workspace.Events.UISourceCodeAdded, uiSourceCodeAdded);
     return promise;
 
     function uiSourceCodeAdded(event) {
       if (event.data.url() !== url)
         return;
-      Workspace.Workspace.WorkspaceImpl.instance().removeEventListener(
+      Workspace.workspace.removeEventListener(
           Workspace.Workspace.Events.UISourceCodeAdded, uiSourceCodeAdded);
       fulfill(event.data);
     }
@@ -156,9 +148,9 @@ import * as Workspace from 'devtools/models/workspace/workspace.js';
 
   TestRunner.addResult('\n\n================================================');
   TestRunner.addResult('Removing all resources:');
-  for (const target of SDK.TargetManager.TargetManager.instance().targets()) {
+  for (const target of SDK.targetManager.targets()) {
     if (target !== TestRunner.mainTarget)
-      Bindings.DebuggerWorkspaceBinding.DebuggerWorkspaceBinding.instance().resetForTest(target);
+      Bindings.debuggerWorkspaceBinding.resetForTest(target);
   }
   SourcesTestRunner.dumpNavigatorViewInAllModes(sourcesNavigatorView);
   SourcesTestRunner.dumpNavigatorViewInAllModes(contentScriptsNavigatorView);

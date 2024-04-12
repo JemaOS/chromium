@@ -7,7 +7,6 @@
 
 #include "ash/ash_export.h"
 #include "base/memory/raw_ptr.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/view.h"
 #include "ui/views/view_observer.h"
@@ -20,8 +19,6 @@ class AutozoomToastController;
 // The view shown inside the autozoom toast bubble.
 class ASH_EXPORT AutozoomToastView : public views::View,
                                      public views::ViewObserver {
-  METADATA_HEADER(AutozoomToastView, views::View)
-
  public:
   explicit AutozoomToastView(AutozoomToastController* controller);
   AutozoomToastView(AutozoomToastView&) = delete;
@@ -39,9 +36,9 @@ class ASH_EXPORT AutozoomToastView : public views::View,
   void OnViewFocused(views::View* observed_view) override;
   void OnViewBlurred(views::View* observed_view) override;
 
-  raw_ptr<AutozoomToastController> controller_ = nullptr;
-  raw_ptr<FeaturePodIconButton> button_ = nullptr;
-  raw_ptr<views::Label> label_ = nullptr;
+  raw_ptr<AutozoomToastController, ExperimentalAsh> controller_ = nullptr;
+  raw_ptr<FeaturePodIconButton, ExperimentalAsh> button_ = nullptr;
+  raw_ptr<views::Label, ExperimentalAsh> label_ = nullptr;
 };
 
 }  // namespace ash

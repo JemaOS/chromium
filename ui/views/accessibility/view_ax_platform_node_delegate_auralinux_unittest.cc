@@ -8,7 +8,6 @@
 #include <memory>
 
 #include "base/test/gtest_util.h"
-#include "ui/accessibility/platform/ax_platform_for_test.h"
 #include "ui/accessibility/platform/ax_platform_node.h"
 #include "ui/views/controls/textfield/textfield.h"
 #include "ui/views/test/views_test_base.h"
@@ -23,7 +22,7 @@ class ViewAXPlatformNodeDelegateAuraLinuxTest : public ViewsTestBase {
   ~ViewAXPlatformNodeDelegateAuraLinuxTest() override = default;
 
  private:
-  ::ui::ScopedAXModeSetter ax_mode_setter_;
+  ScopedAXModeSetter ax_mode_setter_;
 };
 
 TEST_F(ViewAXPlatformNodeDelegateAuraLinuxTest, TextfieldAccessibility) {

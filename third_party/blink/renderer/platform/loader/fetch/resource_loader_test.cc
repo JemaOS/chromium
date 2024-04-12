@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "base/task/single_thread_task_runner.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "mojo/public/c/system/data_pipe.h"
 #include "net/http/http_response_headers.h"
@@ -19,7 +20,6 @@
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
 #include "third_party/blink/public/platform/resource_load_info_notifier_wrapper.h"
-#include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/public/platform/web_url_request_extra_data.h"
 #include "third_party/blink/renderer/platform/exported/wrapped_resource_response.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -35,12 +35,26 @@
 #include "third_party/blink/renderer/platform/loader/testing/mock_fetch_context.h"
 #include "third_party/blink/renderer/platform/loader/testing/test_resource_fetcher_properties.h"
 #include "third_party/blink/renderer/platform/network/http_names.h"
+#include "third_party/blink/renderer/platform/testing/code_cache_loader_mock.h"
 #include "third_party/blink/renderer/platform/testing/mock_context_lifecycle_notifier.h"
 #include "third_party/blink/renderer/platform/testing/noop_url_loader.h"
 #include "third_party/blink/renderer/platform/testing/testing_platform_support_with_mock_scheduler.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 namespace blink {
+
+const char kCnameAliasHadAliasesHistogram[] =
+    "SubresourceFilter.CnameAlias.Renderer.HadAliases";
+const char kCnameAliasIsInvalidCountHistogram[] =
+    "SubresourceFilter.CnameAlias.Renderer.InvalidCount";
+const char kCnameAliasIsRedundantCountHistogram[] =
+    "SubresourceFilter.CnameAlias.Renderer.RedundantCount";
+const char kCnameAliasListLengthHistogram[] =
+    "SubresourceFilter.CnameAlias.Renderer.ListLength";
+const char kCnameAliasWasAdTaggedHistogram[] =
+    "SubresourceFilter.CnameAlias.Renderer.WasAdTaggedBasedOnAlias";
+const char kCnameAliasWasBlockedHistogram[] =
+    "SubresourceFilter.CnameAlias.Renderer.WasBlockedBasedOnAlias";
 
 namespace {
 
@@ -87,17 +101,17 @@ class ResourceLoaderTest : public testing::Test {
 
   class NoopLoaderFactory final : public ResourceFetcher::LoaderFactory {
     std::unique_ptr<URLLoader> CreateURLLoader(
-        const network::ResourceRequest& request,
+        const ResourceRequest& request,
         const ResourceLoaderOptions& options,
         scoped_refptr<base::SingleThreadTaskRunner> freezable_task_runner,
         scoped_refptr<base::SingleThreadTaskRunner> unfreezable_task_runner,
-        BackForwardCacheLoaderHelper* back_forward_cache_loader_helper,
-        const std::optional<base::UnguessableToken>&
-            service_worker_race_network_request_token,
-        bool is_from_origin_dirty_style_sheet) override {
+        BackForwardCacheLoaderHelper* back_forward_cache_loader_helper)
+        override {
       return std::make_unique<NoopURLLoader>(std::move(freezable_task_runner));
     }
-    CodeCacheHost* GetCodeCacheHost() override { return nullptr; }
+    std::unique_ptr<WebCodeCacheLoader> CreateCodeCacheLoader() override {
+      return std::make_unique<CodeCacheLoaderMock>();
+    }
   };
 
   static scoped_refptr<base::SingleThreadTaskRunner> CreateTaskRunner() {
@@ -163,10 +177,9 @@ TEST_F(ResourceLoaderTest, LoadResponseBody) {
   MojoResult result = CreateDataPipe(&options, producer, consumer);
   ASSERT_EQ(result, MOJO_RESULT_OK);
 
-  loader->DidReceiveResponse(WrappedResourceResponse(response),
-                             std::move(consumer),
-                             /*cached_metadata=*/std::nullopt);
-  loader->DidFinishLoading(base::TimeTicks(), 0, 0, 0);
+  loader->DidReceiveResponse(WrappedResourceResponse(response));
+  loader->DidStartLoadingResponseBody(std::move(consumer));
+  loader->DidFinishLoading(base::TimeTicks(), 0, 0, 0, false);
 
   uint32_t num_bytes = 2;
   result = producer->WriteData("he", &num_bytes, MOJO_WRITE_DATA_FLAG_NONE);
@@ -244,7 +257,7 @@ class TestRawResourceClient final
     RawResourceClient::Trace(visitor);
   }
 
-  BytesConsumer* body() { return body_.Get(); }
+  BytesConsumer* body() { return body_; }
 
  private:
   Member<BytesConsumer> body_;
@@ -466,11 +479,10 @@ bool WillFollowRedirect(ResourceLoader* loader, KURL new_url) {
                              /*report_security_info=*/true, /*request_id=*/1);
   bool has_devtools_request_id = false;
   std::vector<std::string> removed_headers;
-  net::HttpRequestHeaders modified_headers;
   return loader->WillFollowRedirect(
       new_url, net::SiteForCookies(), /*new_referrer=*/String(),
       network::mojom::ReferrerPolicy::kAlways, "GET", response,
-      has_devtools_request_id, &removed_headers, modified_headers,
+      has_devtools_request_id, &removed_headers,
       /*insecure_scheme_was_upgraded=*/false);
 }
 
@@ -484,8 +496,8 @@ TEST_F(ResourceLoaderTest, AuthorizationCrossOriginRedirect) {
   KURL url("https://a.test/");
   ResourceRequest request(url);
   request.SetRequestContext(mojom::blink::RequestContextType::FETCH);
-  request.SetHttpHeaderField(http_names::kAuthorization,
-                             AtomicString("Basic foo"));
+  request.SetHttpHeaderField(net::HttpRequestHeaders::kAuthorization,
+                             "Basic foo");
 
   FetchParameters params = FetchParameters::CreateForTest(std::move(request));
   Resource* resource = RawResource::Fetch(params, fetcher, nullptr);
@@ -529,6 +541,73 @@ TEST_F(ResourceLoaderTest, CrossOriginRedirect_NoAuthorization) {
   ::testing::Mock::VerifyAndClear(UseCounter());
 }
 
+class ResourceLoaderIsolatedCodeCacheTest : public ResourceLoaderTest {
+ protected:
+  bool LoadAndCheckIsolatedCodeCache(ResourceResponse response) {
+    const scoped_refptr<const SecurityOrigin> origin =
+        SecurityOrigin::Create(foo_url_);
+
+    auto* properties =
+        MakeGarbageCollected<TestResourceFetcherProperties>(origin);
+    FetchContext* context = MakeGarbageCollected<MockFetchContext>();
+    auto* fetcher = MakeResourceFetcher(properties, context);
+    ResourceRequest request;
+    request.SetUrl(foo_url_);
+    request.SetRequestContext(mojom::blink::RequestContextType::FETCH);
+
+    FetchParameters fetch_parameters =
+        FetchParameters::CreateForTest(std::move(request));
+    Resource* resource = RawResource::Fetch(fetch_parameters, fetcher, nullptr);
+    ResourceLoader* loader = resource->Loader();
+
+    loader->DidReceiveResponse(WrappedResourceResponse(response));
+    return loader->should_use_isolated_code_cache_;
+  }
+};
+
+TEST_F(ResourceLoaderIsolatedCodeCacheTest, ResponseFromNetwork) {
+  ResourceResponse response(foo_url_);
+  response.SetHttpStatusCode(200);
+  EXPECT_EQ(true, LoadAndCheckIsolatedCodeCache(response));
+}
+
+TEST_F(ResourceLoaderIsolatedCodeCacheTest,
+       SyntheticResponseFromServiceWorker) {
+  ResourceResponse response(foo_url_);
+  response.SetHttpStatusCode(200);
+  response.SetWasFetchedViaServiceWorker(true);
+  EXPECT_EQ(false, LoadAndCheckIsolatedCodeCache(response));
+}
+
+TEST_F(ResourceLoaderIsolatedCodeCacheTest,
+       PassThroughResponseFromServiceWorker) {
+  ResourceResponse response(foo_url_);
+  response.SetHttpStatusCode(200);
+  response.SetWasFetchedViaServiceWorker(true);
+  response.SetUrlListViaServiceWorker(Vector<KURL>(1, foo_url_));
+  EXPECT_EQ(true, LoadAndCheckIsolatedCodeCache(response));
+}
+
+TEST_F(ResourceLoaderIsolatedCodeCacheTest,
+       DifferentUrlResponseFromServiceWorker) {
+  ResourceResponse response(foo_url_);
+  response.SetHttpStatusCode(200);
+  response.SetWasFetchedViaServiceWorker(true);
+  response.SetUrlListViaServiceWorker(Vector<KURL>(1, bar_url_));
+  EXPECT_EQ(false, LoadAndCheckIsolatedCodeCache(response));
+}
+
+TEST_F(ResourceLoaderIsolatedCodeCacheTest, CacheResponseFromServiceWorker) {
+  ResourceResponse response(foo_url_);
+  response.SetHttpStatusCode(200);
+  response.SetWasFetchedViaServiceWorker(true);
+  response.SetCacheStorageCacheName("dummy");
+  // The browser does support code cache for cache_storage Responses, but they
+  // are loaded via a different mechanism.  So the ResourceLoader code caching
+  // value should be false here.
+  EXPECT_EQ(false, LoadAndCheckIsolatedCodeCache(response));
+}
+
 class ResourceLoaderSubresourceFilterCnameAliasTest
     : public ResourceLoaderTest {
  public:
@@ -540,6 +619,8 @@ class ResourceLoaderSubresourceFilterCnameAliasTest
         features::kSendCnameAliasesToSubresourceFilterFromRenderer);
     ResourceLoaderTest::SetUp();
   }
+
+  base::HistogramTester* histogram_tester() { return &histogram_tester_; }
 
   void SetMockSubresourceFilterBlockLists(Vector<String> blocked_urls,
                                           Vector<String> tagged_urls) {
@@ -555,9 +636,7 @@ class ResourceLoaderSubresourceFilterCnameAliasTest
 
   void GiveResponseToLoader(ResourceResponse response, ResourceLoader* loader) {
     CreateMojoDataPipe();
-    loader->DidReceiveResponse(WrappedResourceResponse(response),
-                               /*body=*/mojo::ScopedDataPipeConsumerHandle(),
-                               /*cached_metadata=*/std::nullopt);
+    loader->DidReceiveResponse(WrappedResourceResponse(response));
   }
 
  protected:
@@ -590,29 +669,28 @@ class ResourceLoaderSubresourceFilterCnameAliasTest
     ASSERT_EQ(result, MOJO_RESULT_OK);
   }
 
-  void ExpectCnameAliasInfoMatching(CnameAliasInfoForTesting info,
-                                    ResourceLoader* loader) {
-    EXPECT_EQ(loader->cname_alias_info_for_testing_.has_aliases,
-              info.has_aliases);
+  void ExpectHistogramsMatching(CnameAliasMetricInfo info) {
+    histogram_tester()->ExpectUniqueSample(kCnameAliasHadAliasesHistogram,
+                                           info.has_aliases, 1);
 
     if (info.has_aliases) {
-      EXPECT_EQ(
-          loader->cname_alias_info_for_testing_.was_ad_tagged_based_on_alias,
-          info.was_ad_tagged_based_on_alias);
-      EXPECT_EQ(
-          loader->cname_alias_info_for_testing_.was_blocked_based_on_alias,
-          info.was_blocked_based_on_alias);
-      EXPECT_EQ(loader->cname_alias_info_for_testing_.list_length,
-                info.list_length);
-      EXPECT_EQ(loader->cname_alias_info_for_testing_.invalid_count,
-                info.invalid_count);
-      EXPECT_EQ(loader->cname_alias_info_for_testing_.redundant_count,
-                info.redundant_count);
+      histogram_tester()->ExpectUniqueSample(kCnameAliasWasAdTaggedHistogram,
+                                             info.was_ad_tagged_based_on_alias,
+                                             1);
+      histogram_tester()->ExpectUniqueSample(
+          kCnameAliasWasBlockedHistogram, info.was_blocked_based_on_alias, 1);
+      histogram_tester()->ExpectUniqueSample(kCnameAliasListLengthHistogram,
+                                             info.list_length, 1);
+      histogram_tester()->ExpectUniqueSample(kCnameAliasIsInvalidCountHistogram,
+                                             info.invalid_count, 1);
+      histogram_tester()->ExpectUniqueSample(
+          kCnameAliasIsRedundantCountHistogram, info.redundant_count, 1);
     }
   }
 
  private:
   base::test::ScopedFeatureList feature_list_;
+  base::HistogramTester histogram_tester_;
   Vector<String> blocked_urls_;
   Vector<String> tagged_urls_;
 };
@@ -647,14 +725,14 @@ TEST_F(ResourceLoaderSubresourceFilterCnameAliasTest,
   // Test the histograms to verify that the CNAME aliases were detected.
   // Expect that the resource was tagged as a ad, due to first alias.
   // Expect that the resource was blocked, due to second alias.
-  CnameAliasInfoForTesting info = {.has_aliases = true,
-                                   .was_ad_tagged_based_on_alias = true,
-                                   .was_blocked_based_on_alias = true,
-                                   .list_length = 3,
-                                   .invalid_count = 0,
-                                   .redundant_count = 0};
+  CnameAliasMetricInfo info = {.has_aliases = true,
+                               .was_ad_tagged_based_on_alias = true,
+                               .was_blocked_based_on_alias = true,
+                               .list_length = 3,
+                               .invalid_count = 0,
+                               .redundant_count = 0};
 
-  ExpectCnameAliasInfoMatching(info, loader);
+  ExpectHistogramsMatching(info);
 }
 
 TEST_F(ResourceLoaderSubresourceFilterCnameAliasTest,
@@ -686,14 +764,14 @@ TEST_F(ResourceLoaderSubresourceFilterCnameAliasTest,
 
   // Test the histograms to verify that the CNAME aliases were detected.
   // Expect that the resource was blocked, due to second alias.
-  CnameAliasInfoForTesting info = {.has_aliases = true,
-                                   .was_ad_tagged_based_on_alias = false,
-                                   .was_blocked_based_on_alias = true,
-                                   .list_length = 3,
-                                   .invalid_count = 0,
-                                   .redundant_count = 0};
+  CnameAliasMetricInfo info = {.has_aliases = true,
+                               .was_ad_tagged_based_on_alias = false,
+                               .was_blocked_based_on_alias = true,
+                               .list_length = 3,
+                               .invalid_count = 0,
+                               .redundant_count = 0};
 
-  ExpectCnameAliasInfoMatching(info, loader);
+  ExpectHistogramsMatching(info);
 }
 
 TEST_F(ResourceLoaderSubresourceFilterCnameAliasTest,
@@ -726,14 +804,14 @@ TEST_F(ResourceLoaderSubresourceFilterCnameAliasTest,
   // Test the histograms to verify that the CNAME aliases were detected.
   // Expect that the resource was tagged, due to fourth alias.
   // Expect that the invalid empty alias is counted as such.
-  CnameAliasInfoForTesting info = {.has_aliases = true,
-                                   .was_ad_tagged_based_on_alias = true,
-                                   .was_blocked_based_on_alias = false,
-                                   .list_length = 4,
-                                   .invalid_count = 1,
-                                   .redundant_count = 0};
+  CnameAliasMetricInfo info = {.has_aliases = true,
+                               .was_ad_tagged_based_on_alias = true,
+                               .was_blocked_based_on_alias = false,
+                               .list_length = 4,
+                               .invalid_count = 1,
+                               .redundant_count = 0};
 
-  ExpectCnameAliasInfoMatching(info, loader);
+  ExpectHistogramsMatching(info);
 }
 
 TEST_F(ResourceLoaderSubresourceFilterCnameAliasTest,
@@ -769,14 +847,14 @@ TEST_F(ResourceLoaderSubresourceFilterCnameAliasTest,
   // Expect that the invalid alias is counted as such.
   // Expect that the redundant (i.e. matching the request URL) fifth alias to be
   // counted as such.
-  CnameAliasInfoForTesting info = {.has_aliases = true,
-                                   .was_ad_tagged_based_on_alias = false,
-                                   .was_blocked_based_on_alias = false,
-                                   .list_length = 5,
-                                   .invalid_count = 1,
-                                   .redundant_count = 1};
+  CnameAliasMetricInfo info = {.has_aliases = true,
+                               .was_ad_tagged_based_on_alias = false,
+                               .was_blocked_based_on_alias = false,
+                               .list_length = 5,
+                               .invalid_count = 1,
+                               .redundant_count = 1};
 
-  ExpectCnameAliasInfoMatching(info, loader);
+  ExpectHistogramsMatching(info);
 }
 
 TEST_F(ResourceLoaderSubresourceFilterCnameAliasTest,
@@ -807,9 +885,9 @@ TEST_F(ResourceLoaderSubresourceFilterCnameAliasTest,
   GiveResponseToLoader(response, loader);
 
   // Test the histogram to verify that no aliases were detected.
-  CnameAliasInfoForTesting info = {.has_aliases = false};
+  CnameAliasMetricInfo info = {.has_aliases = false};
 
-  ExpectCnameAliasInfoMatching(info, loader);
+  ExpectHistogramsMatching(info);
 }
 
 }  // namespace blink

@@ -152,7 +152,8 @@ base::flat_set<MediaSink::Id> CastAppAvailabilityTracker::GetAvailableSinks(
 
 CastAppAvailabilityTracker::CapabilitiesAndAvailabilityMap::
     CapabilitiesAndAvailabilityMap(const MediaSinkInternal& sink)
-    : capabilities(sink.cast_data().capabilities) {}
+    : capabilities(BitwiseOr<cast_channel::CastDeviceCapability>::FromBits(
+          sink.cast_data().capabilities)) {}
 
 CastAppAvailabilityTracker::CapabilitiesAndAvailabilityMap::
     CapabilitiesAndAvailabilityMap(const CapabilitiesAndAvailabilityMap&) =

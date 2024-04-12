@@ -6,91 +6,44 @@
 
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
-#include "base/no_destructor.h"
-#include "ui/accessibility/ax_jni_headers/AccessibilityAutofillHelper_jni.h"
 #include "ui/accessibility/ax_jni_headers/AccessibilityState_jni.h"
 
 using base::android::AppendJavaStringArrayToStringVector;
 using base::android::AttachCurrentThread;
 
 namespace ui {
-
-namespace {
-
-// Returns the static vector of Delegates.
-std::vector<AccessibilityState::AccessibilityStateDelegate*>& GetDelegates() {
-  static base::NoDestructor<
-      std::vector<AccessibilityState::AccessibilityStateDelegate*>>
-      delegates;
-  return *delegates;
-}
-
-}  // namespace
-
 // static
 void JNI_AccessibilityState_OnAnimatorDurationScaleChanged(JNIEnv* env) {
   AccessibilityState::NotifyAnimatorDurationScaleObservers();
 }
 
 // static
-void JNI_AccessibilityState_OnDisplayInversionEnabledChanged(JNIEnv* env,
-                                                             jboolean enabled) {
-  AccessibilityState::NotifyDisplayInversionEnabledObservers((bool)enabled);
-}
-
-// static
-void JNI_AccessibilityState_RecordAccessibilityServiceInfoHistograms(
-    JNIEnv* env) {
-  AccessibilityState::NotifyRecordAccessibilityServiceInfoHistogram();
-}
-
-// static
-void AccessibilityState::RegisterAccessibilityStateDelegate(
-    AccessibilityStateDelegate* delegate) {
+void AccessibilityState::RegisterAnimatorDurationScaleDelegate(
+    Delegate* delegate) {
   GetDelegates().push_back(delegate);
 }
 
 // static
-void AccessibilityState::UnregisterAccessibilityStateDelegate(
-    AccessibilityStateDelegate* delegate) {
-  auto& delegates = GetDelegates();
-  delegates.erase(std::find(delegates.begin(), delegates.end(), delegate));
+void AccessibilityState::UnregisterAnimatorDurationScaleDelegate(
+    Delegate* delegate) {
+  std::vector<Delegate*> delegates = GetDelegates();
+  auto it = std::find(delegates.begin(), delegates.end(), delegate);
+  delegates.erase(it);
 }
 
 // static
 void AccessibilityState::NotifyAnimatorDurationScaleObservers() {
-  for (AccessibilityStateDelegate* delegate : GetDelegates()) {
+  for (Delegate* delegate : GetDelegates()) {
     delegate->OnAnimatorDurationScaleChanged();
   }
 }
 
 // static
-void AccessibilityState::NotifyDisplayInversionEnabledObservers(bool enabled) {
-  for (AccessibilityStateDelegate* delegate : GetDelegates()) {
-    delegate->OnDisplayInversionEnabledChanged(enabled);
-  }
-}
-
-// static
-void AccessibilityState::NotifyContrastLevelObservers(
-    bool highContrastEnabled) {
-  for (AccessibilityStateDelegate* delegate : GetDelegates()) {
-    delegate->OnContrastLevelChanged(highContrastEnabled);
-  }
-}
-
-// static
-void JNI_AccessibilityState_OnContrastLevelChanged(
-    JNIEnv* env,
-    jboolean highContrastEnabled) {
-  AccessibilityState::NotifyContrastLevelObservers((bool)highContrastEnabled);
-}
-
-// static
-void AccessibilityState::NotifyRecordAccessibilityServiceInfoHistogram() {
-  for (AccessibilityStateDelegate* delegate : GetDelegates()) {
-    delegate->RecordAccessibilityServiceInfoHistograms();
-  }
+void AccessibilityState::RegisterObservers() {
+  // Setup the listeners for accessibility state changes, so we can
+  // inform the renderer about changes.
+  JNIEnv* env = AttachCurrentThread();
+  ui::Java_AccessibilityState_registerObservers(env);
 }
 
 // static
@@ -129,18 +82,4 @@ std::vector<std::string> AccessibilityState::GetAccessibilityServiceIds() {
   AppendJavaStringArrayToStringVector(env, j_service_ids, &service_ids);
   return service_ids;
 }
-
-// static
-bool AccessibilityState::ShouldRespectDisplayedPasswordText() {
-  JNIEnv* env = AttachCurrentThread();
-  return ui::
-      Java_AccessibilityAutofillHelper_shouldRespectDisplayedPasswordText(env);
-}
-
-// static
-bool AccessibilityState::ShouldExposePasswordText() {
-  JNIEnv* env = AttachCurrentThread();
-  return ui::Java_AccessibilityAutofillHelper_shouldExposePasswordText(env);
-}
-
 }  // namespace ui

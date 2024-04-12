@@ -132,8 +132,8 @@ SelectionBoundsRecorder::~SelectionBoundsRecorder() {
   if (state_ == SelectionState::kInside)
     return;
 
-  std::optional<PaintedSelectionBound> start;
-  std::optional<PaintedSelectionBound> end;
+  absl::optional<PaintedSelectionBound> start;
+  absl::optional<PaintedSelectionBound> end;
   gfx::Rect selection_rect = ToPixelSnappedRect(selection_rect_);
   const bool is_ltr = IsLtr(text_direction_);
   BoundEdges edges = GetBoundEdges(writing_mode_, is_ltr);
@@ -159,7 +159,7 @@ SelectionBoundsRecorder::~SelectionBoundsRecorder() {
                    PhysicalOffset(end->edge_end));
   }
 
-  paint_controller_.RecordSelection(start, end, "");
+  paint_controller_.RecordSelection(start, end);
 }
 
 bool SelectionBoundsRecorder::ShouldRecordSelection(

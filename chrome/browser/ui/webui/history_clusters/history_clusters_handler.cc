@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/webui/history_clusters/history_clusters_handler.h"
 
 #include <algorithm>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -18,6 +17,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
+#include "base/time/time_to_iso8601.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/history_clusters/history_clusters_metrics_logger.h"
@@ -28,10 +28,6 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/tabs/tab_group.h"
-#include "chrome/browser/ui/tabs/tab_group_model.h"
-#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
-#include "chrome/browser/ui/webui/top_chrome/top_chrome_web_ui_controller.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/history/core/common/pref_names.h"
@@ -40,7 +36,7 @@
 #include "components/history_clusters/core/features.h"
 #include "components/history_clusters/core/history_cluster_type_utils.h"
 #include "components/history_clusters/core/history_clusters_prefs.h"
-#include "components/history_clusters/core/query_clusters_state.h"
+#include "components/history_clusters/ui/query_clusters_state.h"
 #include "components/keyed_service/core/service_access_type.h"
 #include "components/page_image_service/image_service.h"
 #include "components/prefs/pref_service.h"
@@ -49,12 +45,14 @@
 #include "components/strings/grit/components_strings.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
 #include "ui/base/l10n/time_format.h"
 #include "ui/base/models/simple_menu_model.h"
 #include "ui/base/mojom/window_open_disposition.mojom.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/base/window_open_disposition_utils.h"
+#include "ui/webui/mojo_bubble_web_ui_controller.h"
 #include "ui/webui/resources/cr_components/history_clusters/history_clusters.mojom.h"
 #include "url/gurl.h"
 
@@ -187,7 +185,8 @@ HistoryClustersHandler::HistoryClustersHandler(
 HistoryClustersHandler::~HistoryClustersHandler() = default;
 
 void HistoryClustersHandler::SetSidePanelUIEmbedder(
-    base::WeakPtr<TopChromeWebUIController::Embedder> side_panel_embedder) {
+    base::WeakPtr<ui::MojoBubbleWebUIController::Embedder>
+        side_panel_embedder) {
   history_clusters_side_panel_embedder_ = side_panel_embedder;
 }
 
@@ -256,8 +255,7 @@ void HistoryClustersHandler::StartQueryClusters(const std::string& query,
   auto* history_clusters_service =
       HistoryClustersServiceFactory::GetForBrowserContext(profile_);
   query_clusters_state_ = std::make_unique<QueryClustersState>(
-      history_clusters_service->GetWeakPtr(), history_service_, query,
-      recluster);
+      history_clusters_service->GetWeakPtr(), query, recluster);
   LoadMoreClusters(query);
 }
 
@@ -340,8 +338,7 @@ void HistoryClustersHandler::RemoveVisits(
 }
 
 void HistoryClustersHandler::OpenVisitUrlsInTabGroup(
-    std::vector<mojom::URLVisitPtr> visits,
-    const std::optional<std::string>& tab_group_name) {
+    std::vector<mojom::URLVisitPtr> visits) {
   auto* browser = chrome::FindTabbedBrowser(profile_, false);
   if (!browser) {
     return;
@@ -375,16 +372,7 @@ void HistoryClustersHandler::OpenVisitUrlsInTabGroup(
   if (tab_indices.empty()) {
     return;
   }
-  auto new_group_id = model->AddToNewGroup(tab_indices);
-  if (!new_group_id.is_empty() && tab_group_name) {
-    if (auto* group_model = model->group_model()) {
-      auto* tab_group = group_model->GetTabGroup(new_group_id);
-      // Copy and modify the existing visual data with a new title.
-      tab_groups::TabGroupVisualData visual_data = *tab_group->visual_data();
-      visual_data.SetTitle(base::UTF8ToUTF16(*tab_group_name));
-      tab_group->SetVisualData(visual_data);
-    }
-  }
+  model->AddToNewGroup(tab_indices);
 }
 
 void HistoryClustersHandler::OnDebugMessage(const std::string& message) {

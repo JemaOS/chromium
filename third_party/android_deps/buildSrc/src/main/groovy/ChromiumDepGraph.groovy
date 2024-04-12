@@ -31,8 +31,8 @@ class ChromiumDepGraph {
             licenseName: 'MIT License'),
         com_google_android_datatransport_transport_api: new PropertyOverride(
             description: 'Interfaces for data logging in GmsCore SDKs.'),
-        // Chrome uses the window APIs directly instead of going through the androidx middleware.
-        // See //third_party/android_sdk/window_extensions/README.md
+        // Exclude androidx_window_window since it currently addes <uses-library>
+        // to our AndroidManfest.xml, which we don't allow. http://crbug.com/1302987
         androidx_window_window: new PropertyOverride(exclude: true),
         com_google_android_datatransport_transport_backend_cct: new PropertyOverride(
             exclude: true),  // We're not using datatransport functionality.
@@ -58,22 +58,13 @@ class ChromiumDepGraph {
             licenseUrl: 'https://raw.githubusercontent.com/google/gson/master/LICENSE',
             licenseName: 'Apache 2.0'),
         com_google_errorprone_error_prone_annotation: new PropertyOverride(
-            url: 'https://github.com/google/error-prone/tree/master/annotation',
+            url: 'https://errorprone.info/',
             licenseUrl: 'https://www.apache.org/licenses/LICENSE-2.0.txt',
-            licenseName: 'Apache 2.0',
-            description: 'ErrorProne Annotations.',),
+            licenseName: 'Apache 2.0'),
         com_google_errorprone_error_prone_annotations: new PropertyOverride(
-            url: 'https://github.com/google/error-prone/tree/master/annotations',
+            url: 'https://errorprone.info/',
             licenseUrl: 'https://www.apache.org/licenses/LICENSE-2.0.txt',
-            licenseName: 'Apache 2.0',
-            description: 'ErrorProne Annotations.',),
-        com_google_errorprone_error_prone_type_annotations: new PropertyOverride(
-            url: 'https://github.com/google/error-prone/tree/master/type_annotations',
-            description: 'ErrorProne Annotations.',),
-        com_google_errorprone_error_prone_check_api: new PropertyOverride(
-            url: 'https://github.com/google/error-prone/tree/master/check_api'),
-        com_google_errorprone_error_prone_core: new PropertyOverride(
-            url: 'https://github.com/google/error-prone/tree/master/core'),
+            licenseName: 'Apache 2.0'),
         com_google_firebase_firebase_annotations: new PropertyOverride(
             description: 'Common annotations for Firebase SKDs.'),
         com_google_firebase_firebase_common: new PropertyOverride(
@@ -109,20 +100,19 @@ class ChromiumDepGraph {
         com_google_guava_guava: new PropertyOverride(
             url: 'https://github.com/google/guava',
             licenseUrl: 'https://www.apache.org/licenses/LICENSE-2.0.txt',
-            licenseName: 'Apache 2.0',
-            // Both -jre and -android versions are listed. Filter to only the -jre ones.
-            versionFilter: '-jre'),
+            licenseName: 'Apache 2.0'),
         com_google_guava_guava_android: new PropertyOverride(
             url: 'https://github.com/google/guava',
             licenseUrl: 'https://www.apache.org/licenses/LICENSE-2.0.txt',
-            licenseName: 'Apache 2.0',
-            // Both -jre and -android versions are listed. Filter to only the -android ones.
-            versionFilter: '-android'),
-        com_squareup_wire_wire_runtime_jvm: new PropertyOverride(
+            licenseName: 'Apache 2.0'),
+        com_google_guava_listenablefuture: new PropertyOverride(
+            url: 'https://github.com/google/guava',
+            // Avoid resolving to 9999 version, which  is empty.
+            resolveVersion: '1.0',
             licenseUrl: 'https://www.apache.org/licenses/LICENSE-2.0.txt',
             licenseName: 'Apache 2.0'),
-        org_bouncycastle_bcprov_jdk18on: new PropertyOverride(
-            cpePrefix: 'cpe:/a:bouncycastle:legion-of-the-bouncy-castle:1.72',
+        org_bouncycastle_bcprov_jdk15on: new PropertyOverride(
+            cpePrefix: 'cpe:/a:bouncycastle:legion-of-the-bouncy-castle:1.68',
             url: 'https://github.com/bcgit/bc-java',
             licensePath: 'licenses/Bouncy_Castle-2015.txt',
             licenseName: 'MIT'),
@@ -221,46 +211,44 @@ class ChromiumDepGraph {
             licenseUrl: 'https://raw.githubusercontent.com/hrldcpr/pcollections/master/LICENSE',
             licenseName: 'The MIT License'),
         org_robolectric_annotations: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_junit: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_nativeruntime: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
-            licenseName: 'MIT'),
-        org_robolectric_nativeruntime_dist_compat: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_pluginapi: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_plugins_maven_dependency_resolver: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_resources: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_robolectric: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_sandbox: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_shadowapi: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_shadows_framework: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
-        org_robolectric_shadows_versioning: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+        org_robolectric_shadows_multidex: new PropertyOverride(exclude: true),
+        org_robolectric_shadows_playservices: new PropertyOverride(
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_utils: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         org_robolectric_utils_reflector: new PropertyOverride(
-            licenseUrl: 'https://raw.githubusercontent.com/robolectric/robolectric/master/LICENSE',
+            licensePath: 'licenses/Codehaus_License-2009.txt',
             licenseName: 'MIT'),
         // Prevent version changing ~weekly. https://crbug.com/1257197
         org_jetbrains_kotlinx_kotlinx_coroutines_core_jvm: new PropertyOverride(
@@ -269,8 +257,6 @@ class ChromiumDepGraph {
             resolveVersion: '1.6.4'),
         org_jetbrains_kotlinx_kotlinx_coroutines_guava: new PropertyOverride(
             resolveVersion: '1.6.4'),
-        org_jetbrains_kotlinx_atomicfu_jvm: new PropertyOverride(
-            overrideLatest: true),
         org_jetbrains_kotlin_kotlin_stdlib_jdk8: new PropertyOverride(
             resolveVersion: '1.8.20'),
         org_jetbrains_kotlin_kotlin_stdlib_jdk7: new PropertyOverride(
@@ -279,8 +265,6 @@ class ChromiumDepGraph {
             resolveVersion: '1.8.20'),
         org_jetbrains_kotlin_kotlin_stdlib_common: new PropertyOverride(
             resolveVersion: '1.8.20'),
-        org_jetbrains_kotlin_kotlin_parcelize_runtime: new PropertyOverride(
-            overrideLatest: true),
         io_grpc_grpc_binder: new PropertyOverride(
             licenseUrl: 'https://www.apache.org/licenses/LICENSE-2.0.txt',
             licenseName: 'Apache 2.0'),
@@ -304,9 +288,12 @@ class ChromiumDepGraph {
             licenseName: 'Apache 2.0'),
     ]
 
-    // Bill of materials (BOM) deps are used to specify versions for other dependencies and don't have children or
-    // artifacts of their own. Add other such empty deps here when we encounter them.
-    private static final Set<String> ALLOWED_EMPTY_DEPS = [] as Set
+    private static final Set<String> ALLOWED_EMPTY_DEPS = [
+        // Bill of materials (BOM) deps are used to specify versions for other dependencies and don't have children or
+        // artifacts of their own. Add other such empty deps here when we encounter them.
+        'org_jetbrains_kotlinx_kotlinx_coroutines_bom',
+        'com_squareup_okio_okio_bom',
+    ] as Set
 
     // Local text versions of HTML licenses. This cannot replace PROPERTY_OVERRIDES because some libraries refer to
     // license templates such as https://opensource.org/licenses/MIT.
@@ -422,22 +409,21 @@ class ChromiumDepGraph {
             dep.testOnly = false
         }
 
-        PROPERTY_OVERRIDES.each { id, overrides ->
+        PROPERTY_OVERRIDES.each { id, fallbackProperties ->
             DependencyDescription dep = dependencies.get(id)
             if (dep) {
                 // Null-check is required since isShipped is a boolean. This
                 // check must come after all the deps are resolved instead of in
                 // customizeDep, since otherwise it gets overwritten.
-                if (overrides?.isShipped != null) {
-                    dep.isShipped = overrides.isShipped
+                if (fallbackProperties?.isShipped != null) {
+                    dep.isShipped = fallbackProperties.isShipped
                 }
                 // if overrideLatest is truey, set it recursively on the dep and
                 // all its children. This makes it easier to manage since you do
                 // not have to set it on a whole set of old deps.
-                if (overrides?.overrideLatest) {
+                if (fallbackProperties?.overrideLatest) {
                     recursivelyOverrideLatestVersion(dep)
                 }
-                dep.versionFilter = overrides.versionFilter
             } else {
                 logger.warn('PROPERTY_OVERRIDES has stale dep: ' + id)
             }
@@ -491,7 +477,7 @@ class ChromiumDepGraph {
                         childDependenciesWithArtifacts += childDependency.children
                     } else {
                         String childDepId = makeModuleId(childDependency.module)
-                        if (!childDepId.endsWith("_bom") && childDepId !in ALLOWED_EMPTY_DEPS) {
+                        if (childDepId !in ALLOWED_EMPTY_DEPS) {
                             // BOM dependencies are deps that only specify other deps as dependencies but have no
                             // artifact of their own. These typically have _bom at the end of their names but may also
                             // be identified by looking at their pom.xml file. For more context see maven's doc:
@@ -613,7 +599,7 @@ class ChromiumDepGraph {
         ))
     }
 
-    private void customizeLicenses(DependencyDescription dep, PropertyOverride overrides) {
+    private void customizeLicenses(DependencyDescription dep, PropertyOverride fallbackProperties) {
         for (LicenseSpec license : dep.licenses) {
             if (!license.url) {
                 continue
@@ -634,17 +620,17 @@ class ChromiumDepGraph {
                 path: 'licenses/Android_SDK_License-December_9_2016.txt'))
         }
 
-        if (overrides) {
-            if (overrides.licenseName) {
+        if (fallbackProperties) {
+            if (fallbackProperties.licenseName) {
                 dep.licenses.clear()
                 LicenseSpec license = new LicenseSpec(
-                    name : overrides.licenseName,
-                    path: overrides.licensePath,
-                    url: overrides.licenseUrl,
+                    name : fallbackProperties.licenseName,
+                    path: fallbackProperties.licensePath,
+                    url: fallbackProperties.licenseUrl,
                 )
                 dep.licenses.add(license)
             } else {
-                if (overrides.licensePath || overrides.licenseUrl) {
+                if (fallbackProperties.licensePath || fallbackProperties.licenseUrl) {
                     throw new IllegalStateException('PropertyOverride must specify "licenseName" if either ' +
                                                     '"licensePath" or "licenseUrl" is specified.')
                 }
@@ -661,20 +647,20 @@ class ChromiumDepGraph {
             dep.url = dep.url ?: 'https://firebase.google.com'
         }
 
-        PropertyOverride overrides = PROPERTY_OVERRIDES.get(dep.id)
-        if (overrides) {
-            logger.debug("Using override properties for $dep.id")
+        PropertyOverride fallbackProperties = PROPERTY_OVERRIDES.get(dep.id)
+        if (fallbackProperties) {
+            logger.debug("Using fallback properties for $dep.id")
             dep.with {
-                description = overrides.description ?: description
-                url = overrides.url ?: url
-                cipdSuffix = overrides.cipdSuffix ?: cipdSuffix
-                cpePrefix = overrides.cpePrefix ?: cpePrefix
+                description = fallbackProperties.description ?: description
+                url = fallbackProperties.url ?: url
+                cipdSuffix = fallbackProperties.cipdSuffix ?: cipdSuffix
+                cpePrefix = fallbackProperties.cpePrefix ?: cpePrefix
                 // Boolean properties require explicit null checks instead of only when truish.
-                if (overrides.generateTarget != null) {
-                    generateTarget = overrides.generateTarget
+                if (fallbackProperties.generateTarget != null) {
+                    generateTarget = fallbackProperties.generateTarget
                 }
-                if (overrides.exclude != null) {
-                    exclude = overrides.exclude
+                if (fallbackProperties.exclude != null) {
+                    exclude = fallbackProperties.exclude
                 }
             }
         }
@@ -685,7 +671,7 @@ class ChromiumDepGraph {
                 dep.exclude = true
             }
         } else {
-            customizeLicenses(dep, overrides)
+            customizeLicenses(dep, fallbackProperties)
         }
 
         return dep
@@ -842,8 +828,6 @@ class ChromiumDepGraph {
         // be, instead of the latest available, the resolved version by gradle
         // in this run.
         Boolean overrideLatest
-        // When set, consider only versions that contain this string.
-        String versionFilter
 
     }
 
@@ -866,8 +850,9 @@ class ChromiumDepGraph {
         Boolean exclude
         // Set to false to skip creation of BUILD.gn target.
         Boolean generateTarget
+        // Set to override the 3pp fetch script returing the latest version and
+        // instead forcibly return the version required by gradle.
         Boolean overrideLatest
-        String versionFilter
 
     }
 

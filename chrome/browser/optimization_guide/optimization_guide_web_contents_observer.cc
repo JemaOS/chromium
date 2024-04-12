@@ -10,7 +10,6 @@
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/preloading/prefetch/no_state_prefetch/no_state_prefetch_manager_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "components/google/core/common/google_util.h"
 #include "components/no_state_prefetch/browser/no_state_prefetch_manager.h"
 #include "components/optimization_guide/core/hints_fetcher.h"
 #include "components/optimization_guide/core/hints_processing_util.h"
@@ -146,8 +145,7 @@ void OptimizationGuideWebContentsObserver::WebContentsDestroyed() {
   Observe(/*web_contents=*/nullptr);
 }
 
-void OptimizationGuideWebContentsObserver::
-    DocumentOnLoadCompletedInPrimaryMainFrame() {
+void OptimizationGuideWebContentsObserver::PostFetchHintsUsingManager() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!web_contents() || !web_contents()
                               ->GetPrimaryMainFrame()
@@ -159,18 +157,13 @@ void OptimizationGuideWebContentsObserver::
   if (!optimization_guide_keyed_service_)
     return;
 
-  if (optimization_guide::features::IsSRPFetchingEnabled() &&
-      google_util::IsGoogleSearchUrl(
-          web_contents()->GetPrimaryMainFrame()->GetLastCommittedURL())) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(
-            &OptimizationGuideWebContentsObserver::FetchHintsUsingManager,
-            weak_factory_.GetWeakPtr(),
-            optimization_guide_keyed_service_->GetHintsManager(),
-            web_contents()->GetPrimaryPage().GetWeakPtr()),
-        optimization_guide::features::GetOnloadDelayForHintsFetching());
-  }
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &OptimizationGuideWebContentsObserver::FetchHintsUsingManager,
+          weak_factory_.GetWeakPtr(),
+          optimization_guide_keyed_service_->GetHintsManager(),
+          web_contents()->GetPrimaryPage().GetWeakPtr()));
 }
 
 void OptimizationGuideWebContentsObserver::FetchHintsUsingManager(
@@ -181,19 +174,12 @@ void OptimizationGuideWebContentsObserver::FetchHintsUsingManager(
   if (!page)
     return;
 
-  CHECK(optimization_guide::features::IsSRPFetchingEnabled());
   PageData& page_data = GetPageData(*page);
+  page_data.set_sent_batched_hints_request();
 
-  std::vector<GURL> top_urls = page_data.GetHintsTargetUrls();
-
-  if (!top_urls.empty()) {
-    page_data.set_sent_batched_hints_request();
-    top_urls.resize(
-        std::min(top_urls.size(),
-                 optimization_guide::features::MaxResultsForSRPFetch()));
-    hints_manager->FetchHintsForURLs(
-        top_urls, optimization_guide::proto::CONTEXT_BATCH_UPDATE_GOOGLE_SRP);
-  }
+  hints_manager->FetchHintsForURLs(
+      page_data.GetHintsTargetUrls(),
+      optimization_guide::proto::CONTEXT_BATCH_UPDATE_GOOGLE_SRP);
 }
 
 void OptimizationGuideWebContentsObserver::NotifyNavigationFinish(
@@ -239,18 +225,7 @@ void OptimizationGuideWebContentsObserver::AddURLsToBatchFetchBasedOnPrediction(
     return;
   page_data.InsertHintTargetUrls(urls);
 
-  // In rare cases (such as some in browsertests), the onload event could come
-  // earlier than the first predictions, in which case we should attempt the
-  // fetch as prediction URLs are received.
-  if (web_contents->IsDocumentOnLoadCompletedInPrimaryMainFrame()) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(
-            &OptimizationGuideWebContentsObserver::FetchHintsUsingManager,
-            weak_factory_.GetWeakPtr(),
-            optimization_guide_keyed_service_->GetHintsManager(),
-            web_contents->GetPrimaryPage().GetWeakPtr()));
-  }
+  PostFetchHintsUsingManager();
 }
 
 OptimizationGuideWebContentsObserver::PageData&

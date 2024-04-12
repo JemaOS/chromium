@@ -13,8 +13,33 @@ ChromeVoxEditingTest = class extends ChromeVoxE2ETest {
   async setUpDeferred() {
     await super.setUpDeferred();
 
+    // Alphabetical based on file path.
+    await importModule(
+        'BrailleCommandHandler',
+        '/chromevox/background/braille/braille_command_handler.js');
+    await importModule(
+        'BrailleDisplayManager',
+        '/chromevox/background/braille/braille_display_manager.js');
+    await importModule(
+        'BrailleTranslatorManager',
+        '/chromevox/background/braille/braille_translator_manager.js');
+    await importModule(
+        'EditableLine', '/chromevox/background/editing/editable_line.js');
+    await importModule(
+        'TextEditHandler', '/chromevox/background/editing/editing.js');
+    await importModule(
+        'DesktopAutomationInterface',
+        '/chromevox/background/event/desktop_automation_interface.js');
+    await importModule(
+        ['BrailleKeyEvent', 'BrailleKeyCommand'],
+        '/chromevox/common/braille/braille_key_types.js');
+    await importModule('EventGenerator', '/common/event_generator.js');
+    await importModule('KeyCode', '/common/key_code.js');
+    await importModule('LocalStorage', '/common/local_storage.js');
+    await importModule(
+        'SettingsManager', '/chromevox/common/settings_manager.js');
+
     globalThis.EventType = chrome.automation.EventType;
-    globalThis.IntentCommandType = chrome.automation.IntentCommandType;
     globalThis.RoleType = chrome.automation.RoleType;
   }
 
@@ -111,7 +136,7 @@ AX_TEST_F('ChromeVoxEditingTest', 'TextButNoSelectionChange', async function() {
         let timer;
         let input = document.getElementById('input');
         function poll(e) {
-          if (input.selectionStart === 0) {
+          if (input.selectionStart == 0) {
             return;
           }
 
@@ -149,16 +174,16 @@ AX_TEST_F('ChromeVoxEditingTest', 'RichTextMoveByLine', async function() {
       document.getElementById('go').addEventListener('click', function() {
         let sel = getSelection();
         sel.modify('move', dir, 'line');
-        if (dir === 'forward') {
+        if (dir == 'forward') {
           line++;
         } else {
           line--;
         }
 
-        if (line === 0) {
+        if (line == 0) {
           dir = 'forward';
         }
-        if (line === 2) {
+        if (line == 2) {
           dir = 'backward';
         }
       }, true);
@@ -198,16 +223,16 @@ AX_TEST_F('ChromeVoxEditingTest', 'RichTextMoveByCharacter', async function() {
       document.getElementById('go').addEventListener('click', function() {
         let sel = getSelection();
         sel.modify('move', dir, 'character');
-        if (dir === 'forward') {
+        if (dir == 'forward') {
           char++;
         } else {
           char--;
         }
 
-        if (char === 0) {
+        if (char == 0) {
           dir = 'forward';
         }
-        if (char === 16) {
+        if (char == 16) {
           dir = 'backward';
         }
       }, true);
@@ -592,7 +617,7 @@ AX_TEST_F('ChromeVoxEditingTest', 'RichTextImageByCharacter', async function() {
       let moveCount = 0;
       document.getElementById('go').addEventListener('click', function() {
         moveCount++;
-        if (moveCount === 9) {
+        if (moveCount == 9) {
           dir = 'backward';
         }
 
@@ -1594,11 +1619,9 @@ AX_TEST_F('ChromeVoxEditingTest', 'NestedInsertionDeletion', async function() {
   await mockFeedback.replay();
 });
 
-// TODO(b/321663219): Re-enable when flakiness is resolved.
-AX_TEST_F(
-    'ChromeVoxEditingTest', 'DISABLED_MoveByCharSuggestions', async function() {
-      const mockFeedback = this.createMockFeedback();
-      const site = `
+AX_TEST_F('ChromeVoxEditingTest', 'MoveByCharSuggestions', async function() {
+  const mockFeedback = this.createMockFeedback();
+  const site = `
     <div contenteditable="true" role="textbox">
       <p>Start</p>
       <span>I </span>
@@ -1608,41 +1631,41 @@ AX_TEST_F(
       <p>End</p>
     </div>
   `;
-      const root = await this.runWithLoadedTree(site);
-      await this.focusFirstTextField(root);
+  const root = await this.runWithLoadedTree(site);
+  await this.focusFirstTextField(root);
 
-      mockFeedback.call(this.press(KeyCode.DOWN))
-          .expectSpeech('I ')
-          // Move forward through line.
-          .call(this.press(KeyCode.RIGHT))
-          .expectSpeech(' ')
-          .call(this.press(KeyCode.RIGHT))
-          .expectSpeech('Suggest', 'Username', 'Insert', 'w')
-          .call(this.press(KeyCode.RIGHT))
-          .expectSpeech('a')
-          .call(this.press(KeyCode.RIGHT))
-          .expectSpeech('s')
-          .expectSpeech('Insert end')
-          .call(this.press(KeyCode.RIGHT))
-          .call(this.press(KeyCode.RIGHT))
-          .expectSpeech('Delete', 'a')
-          .call(this.press(KeyCode.RIGHT))
-          .expectSpeech('m')
-          .expectSpeech('Delete end', 'Suggest end')
-          // Move backward through the same line.
-          .call(this.press(KeyCode.LEFT))
-          .expectSpeech('Delete', 'a')
-          .call(this.press(KeyCode.LEFT))
-          .call(this.press(KeyCode.LEFT))
-          .expectSpeech('s', 'Insert end')
-          .call(this.press(KeyCode.LEFT))
-          .expectSpeech('a')
-          .call(this.press(KeyCode.LEFT))
-          .expectSpeech('Suggest', 'Insert', 'w')
-          .call(this.press(KeyCode.DOWN))
-          .expectSpeech('End');
-      await mockFeedback.replay();
-    });
+  mockFeedback.call(this.press(KeyCode.DOWN))
+      .expectSpeech('I ')
+      // Move forward through line.
+      .call(this.press(KeyCode.RIGHT))
+      .expectSpeech(' ')
+      .call(this.press(KeyCode.RIGHT))
+      .expectSpeech('Suggest', 'Username', 'Insert', 'w')
+      .call(this.press(KeyCode.RIGHT))
+      .expectSpeech('a')
+      .call(this.press(KeyCode.RIGHT))
+      .expectSpeech('s')
+      .expectSpeech('Insert end')
+      .call(this.press(KeyCode.RIGHT))
+      .call(this.press(KeyCode.RIGHT))
+      .expectSpeech('Delete', 'a')
+      .call(this.press(KeyCode.RIGHT))
+      .expectSpeech('m')
+      .expectSpeech('Delete end', 'Suggest end')
+      // Move backward through the same line.
+      .call(this.press(KeyCode.LEFT))
+      .expectSpeech('Delete', 'a')
+      .call(this.press(KeyCode.LEFT))
+      .call(this.press(KeyCode.LEFT))
+      .expectSpeech('s', 'Insert end')
+      .call(this.press(KeyCode.LEFT))
+      .expectSpeech('a')
+      .call(this.press(KeyCode.LEFT))
+      .expectSpeech('Suggest', 'Insert', 'w')
+      .call(this.press(KeyCode.DOWN))
+      .expectSpeech('End');
+  await mockFeedback.replay();
+});
 
 AX_TEST_F(
     'ChromeVoxEditingTest', 'MoveByWordSuggestions', async function() {
@@ -1878,7 +1901,7 @@ AX_TEST_F(
       state = {editable: true};
       handler = new TextEditHandler(input);
       assertEquals(
-          'RichEditableText', handler.editableText_.constructor.name,
+          'AutomationRichEditableText', handler.editableText_.constructor.name,
           'Incorrect object for textarea html tag.');
 
       // A rich editable via state.
@@ -1887,7 +1910,7 @@ AX_TEST_F(
       state = {editable: true, richlyEditable: true};
       handler = new TextEditHandler(input);
       assertEquals(
-          'RichEditableText', handler.editableText_.constructor.name,
+          'AutomationRichEditableText', handler.editableText_.constructor.name,
           'Incorrect object for richly editable state.');
 
       // A rich editable via contenteditable. (aka <div contenteditable>).
@@ -1896,7 +1919,7 @@ AX_TEST_F(
       state = {editable: true};
       handler = new TextEditHandler(input);
       assertEquals(
-          'RichEditableText', handler.editableText_.constructor.name,
+          'AutomationRichEditableText', handler.editableText_.constructor.name,
           'Incorrect object for content editable.');
 
       // A rich editable via contenteditable. (aka <div
@@ -1906,7 +1929,7 @@ AX_TEST_F(
       state = {editable: true};
       handler = new TextEditHandler(input);
       assertEquals(
-          'RichEditableText', handler.editableText_.constructor.name,
+          'AutomationRichEditableText', handler.editableText_.constructor.name,
           'Incorrect object for content editable true.');
 
       // Note that it is not possible to have <div
@@ -2123,39 +2146,36 @@ AX_TEST_F('ChromeVoxEditingTest', 'ContextMenus', async function() {
   await mockFeedback.replay();
 });
 
-// TODO(b/321663219): Re-enable when flakiness is resolved.
-AX_TEST_F(
-    'ChromeVoxEditingTest', 'DISABLED_NativeCharWordCommands',
-    async function() {
-      const mockFeedback = this.createMockFeedback();
-      const site = `
+AX_TEST_F('ChromeVoxEditingTest', 'NativeCharWordCommands', async function() {
+  const mockFeedback = this.createMockFeedback();
+  const site = `
     <p>start</p>
     <div role="textbox" contenteditable>This is a test</div>
   `;
-      const root = await this.runWithLoadedTree(site);
-      await this.focusFirstTextField(root);
+  const root = await this.runWithLoadedTree(site);
+  await this.focusFirstTextField(root);
 
-      const textField = root.find({role: RoleType.TEXT_FIELD});
-      mockFeedback.expectSpeech('Text area')
-          .call(this.press(KeyCode.HOME, {ctrl: true}))
-          .call(this.press(KeyCode.RIGHT))
-          .expectSpeech('h')
-          .call(this.press(KeyCode.RIGHT))
-          .expectSpeech('i')
-          .call(this.press(KeyCode.LEFT))
-          .expectSpeech('h')
+  const textField = root.find({role: RoleType.TEXT_FIELD});
+  mockFeedback.expectSpeech('Text area')
+      .call(this.press(KeyCode.HOME, {ctrl: true}))
+      .call(this.press(KeyCode.RIGHT))
+      .expectSpeech('h')
+      .call(this.press(KeyCode.RIGHT))
+      .expectSpeech('i')
+      .call(this.press(KeyCode.LEFT))
+      .expectSpeech('h')
 
-          .call(this.press(KeyCode.RIGHT, {ctrl: true}))
-          .expectSpeech(/This\s*/)
-          .call(this.press(KeyCode.RIGHT, {ctrl: true}))
-          .expectSpeech('is')
-          .call(this.press(KeyCode.LEFT, {ctrl: true}))
-          .expectSpeech('is')
-          .call(this.press(KeyCode.LEFT, {ctrl: true}))
-          .expectSpeech(/This\s*/);
+      .call(this.press(KeyCode.RIGHT, {ctrl: true}))
+      .expectSpeech(/This\s*/)
+      .call(this.press(KeyCode.RIGHT, {ctrl: true}))
+      .expectSpeech('is')
+      .call(this.press(KeyCode.LEFT, {ctrl: true}))
+      .expectSpeech('is')
+      .call(this.press(KeyCode.LEFT, {ctrl: true}))
+      .expectSpeech(/This\s*/);
 
-      await mockFeedback.replay();
-    });
+  await mockFeedback.replay();
+});
 
 AX_TEST_F('ChromeVoxEditingTest', 'TablesWithEmptyCells', async function() {
   const mockFeedback = this.createMockFeedback();
@@ -2190,7 +2210,8 @@ AX_TEST_F('ChromeVoxEditingTest', 'TablesWithEmptyCells', async function() {
       .expectSpeech('A', 'selected')
 
       // Non-breaking spaces (\u00a0) get preprocessed later by PrimaryTts
-      // to ' '. This comes as part of speak line output in RichEditableText.
+      // to ' '. This comes as part of speak line output in
+      // AutomationRichEditableText.
       .call(doCmd('nativeNextCharacter'))
       .call(() => textField.setSelection(1, 1))
       .expectSpeech('\u00a0', 'row 1 column 1')
@@ -2210,10 +2231,8 @@ AX_TEST_F('ChromeVoxEditingTest', 'TablesWithEmptyCells', async function() {
   await mockFeedback.replay();
 });
 
-// TODO(b/321663219): Re-enable when flakiness is resolved.
 AX_TEST_F(
-    'ChromeVoxEditingTest', 'DISABLED_NonbreakingSpaceNewLineOrSpace',
-    async function() {
+    'ChromeVoxEditingTest', 'NonbreakingSpaceNewLineOrSpace', async function() {
       const mockFeedback = this.createMockFeedback();
       const site = `
     <div contenteditable="true" role="textbox">
@@ -2342,10 +2361,11 @@ AX_TEST_F(
     });
 
 // Regression test that large text areas produce output.
-// TODO(crbug.com/1503691): re-enable this test once its flakiness is resolved.
-AX_TEST_F('ChromeVoxEditingTest', 'GiantTextAreaPerformance', async function() {
-  const mockFeedback = this.createMockFeedback();
-  const site = `
+AX_TEST_F(
+    'ChromeVoxEditingTest', 'GiantTextAreaPerformance',
+    async function() {
+      const mockFeedback = this.createMockFeedback();
+      const site = `
     <p>start</p>
     <textarea></textarea>
     <script>
@@ -2467,61 +2487,4 @@ like this one.
           'selected');
 
   await mockFeedback.replay();
-});
-
-AX_TEST_F('ChromeVoxEditingTest', 'OnEvent', async function() {
-  const setIntent = {command: IntentCommandType.SET_SELECTION};
-  const clearIntent = {command: IntentCommandType.CLEAR_SELECTION};
-  const otherIntent = {command: 'something else'};
-
-  const root = await this.runWithLoadedTree('<input type=text>');
-  await this.focusFirstTextField(root);
-  const textField = root.find({role: RoleType.TEXT_FIELD});
-
-  const handler = TextEditHandler.createForNode(textField);
-  let receivedIntents;
-  const captureIntents = intents => receivedIntents = intents;
-
-  // If the event target is not focused, onEvent should exit early.
-  handler.editableText_.onUpdate = captureIntents;
-  handler.onEvent({target: {state: {}}});
-  assertUndefined(receivedIntents);
-
-  // If the event target is not the node given to the event handler, onEvent
-  // should exit early.
-  handler.editableText_.onUpdate = captureIntents;
-  handler.onEvent({target: root});
-  assertUndefined(receivedIntents);
-
-  // Check that the intents are set, as expected, and onUpdate is called.
-  textField.state.focused = true;
-  handler.inferredIntents_ = ['b'];
-  handler.editableText_.onUpdate = captureIntents;
-  handler.onEvent({target: textField, intents: [otherIntent]});
-  assertEquals(1, receivedIntents.length);
-  assertEquals(otherIntent, receivedIntents[0]);
-
-  // Check that inferred intents are used if no intents are provided.
-  handler.inferredIntents_ = ['b'];
-  receivedIntents = false;
-  const intents = [];
-  handler.onEvent({target: textField, intents});
-  assertEquals(1, receivedIntents.length);
-  assertEquals('b', receivedIntents[0]);
-
-  // Check that inferred intents override provided intents if event.intents
-  // contains SET_SELECTION.
-  handler.inferredIntents_ = ['b'];
-  receivedIntents = false;
-  handler.onEvent({target: textField, intents: [setIntent, otherIntent]});
-  assertEquals(1, receivedIntents.length);
-  assertEquals('b', receivedIntents[0]);
-
-  // Check that inferred intents override provided intents if event.intents
-  // contains CLEAR_SELECTION.
-  handler.inferredIntents_ = ['b'];
-  receivedIntents = false;
-  handler.onEvent({target: textField, intents: [otherIntent, clearIntent]});
-  assertEquals(1, receivedIntents.length);
-  assertEquals('b', receivedIntents[0]);
 });

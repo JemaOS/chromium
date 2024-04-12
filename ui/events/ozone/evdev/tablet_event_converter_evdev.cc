@@ -13,10 +13,6 @@
 #include "ui/events/event.h"
 #include "ui/events/ozone/evdev/device_event_dispatcher_evdev.h"
 
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "ash/constants/ash_features.h"
-#endif
-
 namespace ui {
 
 namespace {
@@ -100,27 +96,6 @@ void TabletEventConverterEvdev::OnFileCanReadWithoutBlocking(int fd) {
   ProcessEvents(inputs, read_size / sizeof(*inputs));
 }
 
-bool TabletEventConverterEvdev::HasGraphicsTablet() const {
-  return true;
-}
-
-std::ostream& TabletEventConverterEvdev::DescribeForLog(
-    std::ostream& os) const {
-  os << "class=ui::TabletEventConverterEvdev id=" << input_device_.id
-     << std::endl
-     << " x_abs_min=" << x_abs_min_ << std::endl
-     << " x_abs_range=" << x_abs_range_ << std::endl
-     << " y_abs_min=" << y_abs_min_ << std::endl
-     << " y_abs_range=" << y_abs_range_ << std::endl
-     << " tilt_x_min=" << tilt_x_min_ << std::endl
-     << " tilt_x_range=" << tilt_x_range_ << std::endl
-     << " tilt_y_min=" << tilt_y_min_ << std::endl
-     << " tilt_y_range=" << tilt_y_range_ << std::endl
-     << " pressure_max=" << pressure_max_ << std::endl
-     << "base ";
-  return EventConverterEvdev::DescribeForLog(os);
-}
-
 void TabletEventConverterEvdev::ProcessEvents(const input_event* inputs,
                                               int count) {
   for (int i = 0; i < count; ++i) {
@@ -156,21 +131,6 @@ void TabletEventConverterEvdev::ConvertKeyEvent(const input_event& input) {
     DispatchMouseButton(input);
     return;
   }
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  if (!ash::features::IsPeripheralCustomizationEnabled()) {
-    return;
-  }
-
-  if ((input.code >= BTN_0 && input.code <= BTN_9) ||
-      (input.code >= BTN_A && input.code <= BTN_Z)) {
-    dispatcher_->DispatchKeyEvent(KeyEventParams{
-        input_device_.id, EF_NONE, input.code, input.code,
-        static_cast<bool>(input.value), /*suppress_auto_repeat=*/false,
-        TimeTicksFromInputEvent(input)});
-    return;
-  }
-#endif
 }
 
 void TabletEventConverterEvdev::ConvertAbsEvent(const input_event& input) {

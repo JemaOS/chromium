@@ -12,7 +12,7 @@ function getImageData() {
   return ctx.getImageData(50, 50, 100, 100);
 }
 
-chrome.tabs.query({active: true}, function(tabs) {
+chrome.tabs.getSelected(null, function(tab) {
   // When the browser action is clicked, add an icon.
   chrome.browserAction.onClicked.addListener(function(tab) {
     chrome.browserAction.setIcon({

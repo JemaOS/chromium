@@ -36,10 +36,6 @@
 #include "third_party/blink/renderer/platform/wtf/wtf_export.h"
 #include "third_party/perfetto/include/perfetto/tracing/traced_value_forward.h"
 
-#ifdef __OBJC__
-#include "base/apple/bridging.h"
-#endif
-
 namespace WTF {
 
 // An AtomicString instance represents a string, and multiple AtomicString
@@ -54,7 +50,7 @@ class WTF_EXPORT AtomicString {
   static void Init();
 
   AtomicString() = default;
-  explicit AtomicString(const LChar* chars)
+  AtomicString(const LChar* chars)
       : AtomicString(chars,
                      chars ? strlen(reinterpret_cast<const char*>(chars)) : 0) {
   }
@@ -65,14 +61,14 @@ class WTF_EXPORT AtomicString {
   AtomicString(const LChar* chars, size_t length);
 #endif  // defined(ARCH_CPU_64_BITS)
 
-  explicit AtomicString(const char* chars)
+  AtomicString(const char* chars)
       : AtomicString(reinterpret_cast<const LChar*>(chars)) {}
   AtomicString(const LChar* chars, unsigned length);
   AtomicString(
       const UChar* chars,
       unsigned length,
       AtomicStringUCharEncoding encoding = AtomicStringUCharEncoding::kUnknown);
-  explicit AtomicString(const UChar* chars);
+  AtomicString(const UChar* chars);
 
   // Constructing an AtomicString from a String / StringImpl can be expensive if
   // the StringImpl is not already atomic.
@@ -151,6 +147,9 @@ class WTF_EXPORT AtomicString {
       TextCaseSensitivity case_sensitivity = kTextCaseSensitive) const {
     return string_.StartsWith(prefix, case_sensitivity);
   }
+  bool StartsWithIgnoringCase(const StringView& prefix) const {
+    return string_.StartsWithIgnoringCase(prefix);
+  }
   bool StartsWithIgnoringASCIICase(const StringView& prefix) const {
     return string_.StartsWithIgnoringASCIICase(prefix);
   }
@@ -191,7 +190,7 @@ class WTF_EXPORT AtomicString {
   unsigned Hash() const { return string_.Impl()->ExistingHash(); }
 
 #ifdef __OBJC__
-  AtomicString(NSString* s) : string_(Add(base::apple::NSToCFPtrCast(s))) {}
+  AtomicString(NSString* s) : string_(Add((CFStringRef)s)) {}
   operator NSString*() const { return string_; }
 #endif
   // AtomicString::fromUTF8 will return a null string if

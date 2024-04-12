@@ -7,9 +7,7 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/callback_list.h"
@@ -21,6 +19,7 @@
 #include "chromeos/ash/components/settings/cros_settings_names.h"
 #include "chromeos/ash/components/settings/cros_settings_provider.h"
 #include "components/user_manager/user_type.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 static_assert(BUILDFLAG(IS_CHROMEOS_ASH), "For ChromeOS ash-chrome only");
 
@@ -61,10 +60,10 @@ class CrosSettings {
   virtual ~CrosSettings();
 
   // Helper function to test if the given |path| is a valid cros setting.
-  static bool IsCrosSettings(std::string_view path);
+  static bool IsCrosSettings(const std::string& path);
 
   // Returns setting value for the given |path|.
-  const base::Value* GetPref(std::string_view path) const;
+  const base::Value* GetPref(const std::string& path) const;
 
   // Requests that all providers ensure the values they are serving were read
   // from a trusted store:
@@ -85,13 +84,13 @@ class CrosSettings {
   // These are convenience forms of Get().  The value will be retrieved
   // and the return value will be true if the |path| is valid and the value at
   // the end of the path can be returned in the form specified.
-  bool GetBoolean(std::string_view path, bool* out_value) const;
-  bool GetInteger(std::string_view path, int* out_value) const;
-  bool GetDouble(std::string_view path, double* out_value) const;
-  bool GetString(std::string_view path, std::string* out_value) const;
-  bool GetList(std::string_view path,
+  bool GetBoolean(const std::string& path, bool* out_value) const;
+  bool GetInteger(const std::string& path, int* out_value) const;
+  bool GetDouble(const std::string& path, double* out_value) const;
+  bool GetString(const std::string& path, std::string* out_value) const;
+  bool GetList(const std::string& path,
                const base::Value::List** out_value) const;
-  bool GetDictionary(std::string_view path,
+  bool GetDictionary(const std::string& path,
                      const base::Value::Dict** out_value) const;
 
   // Checks if the given username is on the list of users allowed to sign-in to
@@ -102,7 +101,7 @@ class CrosSettings {
   bool IsUserAllowlisted(
       const std::string& username,
       bool* wildcard_match,
-      const std::optional<user_manager::UserType>& user_type) const;
+      const absl::optional<user_manager::UserType>& user_type) const;
 
   // Helper function for the allowlist op. Implemented here because we will need
   // this in a few places. The functions searches for |email| in the pref |path|
@@ -128,7 +127,7 @@ class CrosSettings {
       base::RepeatingClosure callback);
 
   // Returns the provider that handles settings with the |path| or prefix.
-  CrosSettingsProvider* GetProvider(std::string_view path) const;
+  CrosSettingsProvider* GetProvider(const std::string& path) const;
 
   const SupervisedUserCrosSettingsProvider*
   supervised_user_cros_settings_provider() const {

@@ -35,13 +35,10 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/theme_provider.h"
-#include "ui/base/ui_base_features.h"
-#include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
 #include "ui/events/event.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/paint_vector_icon.h"
-#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/background.h"
 #include "ui/views/border.h"
 #include "ui/views/bubble/bubble_border.h"
@@ -63,16 +60,10 @@ void SetCommonButtonAttributes(views::ImageButton* button) {
 }
 }  // namespace
 
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(FindBarView, kElementId);
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(FindBarView, kTextField);
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(FindBarView, kPreviousButtonElementId);
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(FindBarView, kNextButtonElementId);
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(FindBarView, kCloseButtonElementId);
-
 class FindBarMatchCountLabel : public views::Label {
-  METADATA_HEADER(FindBarMatchCountLabel, views::Label)
-
  public:
+  METADATA_HEADER(FindBarMatchCountLabel);
+
   FindBarMatchCountLabel() = default;
 
   FindBarMatchCountLabel(const FindBarMatchCountLabel&) = delete;
@@ -80,12 +71,11 @@ class FindBarMatchCountLabel : public views::Label {
 
   ~FindBarMatchCountLabel() override = default;
 
-  gfx::Size CalculatePreferredSize(
-      const views::SizeBounds& available_size) const override {
+  gfx::Size CalculatePreferredSize() const override {
     // We need to return at least 1dip so that box layout adds padding on either
     // side (otherwise there will be a jump when our size changes between empty
     // and non-empty).
-    gfx::Size size = views::Label::CalculatePreferredSize(available_size);
+    gfx::Size size = views::Label::CalculatePreferredSize();
     size.set_width(std::max(1, size.width()));
     return size;
   }
@@ -110,17 +100,14 @@ class FindBarMatchCountLabel : public views::Label {
       return;
 
     last_result_ = result;
-    // TODO(1499078): Get NO_RESULTS to be announced under Orca and ChromeVox.
     SetText(l10n_util::GetStringFUTF16(
         IDS_FIND_IN_PAGE_COUNT,
         base::FormatNumber(last_result_->active_match_ordinal()),
         base::FormatNumber(last_result_->number_of_matches())));
 
     if (last_result_->final_update()) {
-      ui::AXNodeData node_data;
-      GetAccessibleNodeData(&node_data);
-      GetViewAccessibility().AnnouncePolitely(
-          node_data.GetString16Attribute(ax::mojom::StringAttribute::kName));
+      NotifyAccessibilityEvent(ax::mojom::Event::kLiveRegionChanged,
+                               /* send_native_event = */ true);
     }
   }
 
@@ -130,7 +117,7 @@ class FindBarMatchCountLabel : public views::Label {
   }
 
  private:
-  std::optional<find_in_page::FindNotificationDetails> last_result_;
+  absl::optional<find_in_page::FindNotificationDetails> last_result_;
 };
 
 BEGIN_VIEW_BUILDER(/* No Export */, FindBarMatchCountLabel, views::Label)
@@ -138,7 +125,7 @@ END_VIEW_BUILDER
 
 DEFINE_VIEW_BUILDER(/* No Export */, FindBarMatchCountLabel)
 
-BEGIN_METADATA(FindBarMatchCountLabel)
+BEGIN_METADATA(FindBarMatchCountLabel, views::Label)
 END_METADATA
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,58 +140,40 @@ FindBarView::FindBarView(FindBarHost* host) {
   // we place views directly adjacent, with horizontal margins on each view
   // that will add up to the right spacing amounts.
 
-  ChromeLayoutProvider* layout_provider = ChromeLayoutProvider::Get();
-  const auto horizontal_margin =
-      gfx::Insets::VH(0, layout_provider->GetDistanceMetric(
-                             views::DISTANCE_UNRELATED_CONTROL_HORIZONTAL) /
-                             2);
+  ChromeLayoutProvider* provider = ChromeLayoutProvider::Get();
+  const auto horizontal_margin = gfx::Insets::VH(
+      0,
+      provider->GetDistanceMetric(DISTANCE_UNRELATED_CONTROL_HORIZONTAL) / 2);
   const gfx::Insets vector_button =
-      layout_provider->GetInsetsMetric(views::INSETS_VECTOR_IMAGE_BUTTON);
+      provider->GetInsetsMetric(views::INSETS_VECTOR_IMAGE_BUTTON);
   const auto vector_button_horizontal_margin =
       gfx::Insets::TLBR(0, horizontal_margin.left() - vector_button.left(), 0,
                         horizontal_margin.right() - vector_button.right());
   const auto toast_control_vertical_margin = gfx::Insets::VH(
-      layout_provider->GetDistanceMetric(DISTANCE_TOAST_CONTROL_VERTICAL), 0);
+      provider->GetDistanceMetric(DISTANCE_TOAST_CONTROL_VERTICAL), 0);
   const auto toast_label_vertical_margin = gfx::Insets::VH(
-      layout_provider->GetDistanceMetric(DISTANCE_TOAST_LABEL_VERTICAL), 0);
+      provider->GetDistanceMetric(DISTANCE_TOAST_LABEL_VERTICAL), 0);
   const auto image_button_margins =
       toast_control_vertical_margin + vector_button_horizontal_margin;
-
-  // Align separator with textbox.
-  const auto chrome_refresh_separator_vertical_margin =
-      gfx::Insets::VH(layout_provider->GetDistanceMetric(
-                          views::DISTANCE_CONTROL_VERTICAL_TEXT_PADDING),
-                      0);
-  // In ChromeRefresh we have a hover state for Textfield. We will
-  // match the horizontal hover insets to that of the vector button
-  // and take this into account when calculating the margins and Textfield
-  // border. This gives us symmetry between the left margin of the FindBarView
-  // which is lined up with the Textfield and the right margin of
-  // the FindBarView which is lined up with the close button.
-  gfx::Insets textfield_hover_padding =
-      features::IsChromeRefresh2023() ? vector_button : gfx::Insets();
-  textfield_hover_padding.set_top_bottom(0, 0);
 
   views::Builder<FindBarView>(this)
       .SetOrientation(views::BoxLayout::Orientation::kHorizontal)
       .SetInsideBorderInsets(gfx::Insets(
-          layout_provider->GetInsetsMetric(INSETS_TOAST) - horizontal_margin))
+          provider->GetInsetsMetric(INSETS_TOAST) - horizontal_margin))
       .SetHost(host)
       .SetFlipCanvasOnPaintForRTLUI(true)
-      .SetProperty(views::kElementIdentifierKey, kElementId)
       .AddChildren(
           views::Builder<views::Textfield>()
               .CopyAddressTo(&find_text_)
               .SetAccessibleName(l10n_util::GetStringUTF16(IDS_ACCNAME_FIND))
-              .SetBorder(views::CreateEmptyBorder(textfield_hover_padding))
+              .SetBorder(views::NullBorder())
               .SetDefaultWidthInChars(30)
               .SetID(VIEW_ID_FIND_IN_PAGE_TEXT_FIELD)
               .SetMinimumWidthInChars(1)
               .SetTextInputFlags(ui::TEXT_INPUT_FLAG_AUTOCORRECT_OFF)
-              .SetProperty(views::kElementIdentifierKey, kTextField)
-              .SetProperty(views::kMarginsKey, toast_control_vertical_margin +
-                                                   horizontal_margin -
-                                                   textfield_hover_padding)
+              .SetProperty(views::kMarginsKey,
+                           gfx::Insets(toast_control_vertical_margin +
+                                       horizontal_margin))
               .SetController(this),
           views::Builder<FindBarMatchCountLabel>()
               .CopyAddressTo(&match_count_text_)
@@ -215,20 +184,15 @@ FindBarView::FindBarView(FindBarHost* host) {
           views::Builder<views::Separator>()
               .CopyAddressTo(&separator_)
               .SetCanProcessEventsWithinSubtree(false)
-              .SetColorId(ui::kColorSeparator)
-              .SetProperty(
-                  views::kMarginsKey,
-                  gfx::Insets(horizontal_margin +
-                              (features::IsChromeRefresh2023()
-                                   ? chrome_refresh_separator_vertical_margin
-                                   : toast_control_vertical_margin))),
+              .SetColorId(kColorFindBarSeparator)
+              .SetProperty(views::kMarginsKey,
+                           gfx::Insets(toast_control_vertical_margin +
+                                       horizontal_margin)),
           views::Builder<views::ImageButton>()
               .CopyAddressTo(&find_previous_button_)
               .SetAccessibleName(
                   l10n_util::GetStringUTF16(IDS_ACCNAME_PREVIOUS))
               .SetID(VIEW_ID_FIND_IN_PAGE_PREVIOUS_BUTTON)
-              .SetProperty(views::kElementIdentifierKey,
-                           kPreviousButtonElementId)
               .SetTooltipText(
                   l10n_util::GetStringUTF16(IDS_FIND_IN_PAGE_PREVIOUS_TOOLTIP))
               .SetCallback(base::BindRepeating(&FindBarView::FindNext,
@@ -238,7 +202,6 @@ FindBarView::FindBarView(FindBarHost* host) {
               .CopyAddressTo(&find_next_button_)
               .SetAccessibleName(l10n_util::GetStringUTF16(IDS_ACCNAME_NEXT))
               .SetID(VIEW_ID_FIND_IN_PAGE_NEXT_BUTTON)
-              .SetProperty(views::kElementIdentifierKey, kNextButtonElementId)
               .SetTooltipText(
                   l10n_util::GetStringUTF16(IDS_FIND_IN_PAGE_NEXT_TOOLTIP))
               .SetCallback(base::BindRepeating(&FindBarView::FindNext,
@@ -247,7 +210,6 @@ FindBarView::FindBarView(FindBarHost* host) {
           views::Builder<views::ImageButton>()
               .CopyAddressTo(&close_button_)
               .SetID(VIEW_ID_FIND_IN_PAGE_CLOSE_BUTTON)
-              .SetProperty(views::kElementIdentifierKey, kCloseButtonElementId)
               .SetTooltipText(
                   l10n_util::GetStringUTF16(IDS_FIND_IN_PAGE_CLOSE_TOOLTIP))
               .SetAnimationDuration(base::TimeDelta())
@@ -255,11 +217,7 @@ FindBarView::FindBarView(FindBarHost* host) {
                                                base::Unretained(this)))
               .SetProperty(views::kMarginsKey, image_button_margins))
       .BuildChildren();
-  if (features::IsChromeRefresh2023()) {
-    find_text_->SetFontList(
-        views::Textfield::GetDefaultFontList().DeriveWithWeight(
-            gfx::Font::Weight::MEDIUM));
-  }
+
   SetFlexForView(find_text_, 1, true);
   SetCommonButtonAttributes(find_previous_button_);
   SetCommonButtonAttributes(find_next_button_);
@@ -334,14 +292,14 @@ void FindBarView::UpdateForResult(
   // The match_count label may have increased/decreased in size so we need to
   // do a layout and repaint the dialog so that the find text field doesn't
   // partially overlap the match-count label when it increases on no matches.
-  DeprecatedLayoutImmediately();
+  Layout();
   SchedulePaint();
 }
 
 void FindBarView::ClearMatchCount() {
   match_count_text_->ClearResult();
   UpdateMatchCountAppearance(false);
-  DeprecatedLayoutImmediately();
+  Layout();
   SchedulePaint();
 }
 
@@ -484,14 +442,12 @@ void FindBarView::UpdateMatchCountAppearance(bool no_match) {
 
 void FindBarView::OnThemeChanged() {
   views::View::OnThemeChanged();
-  views::LayoutProvider* layout_provider = views::LayoutProvider::Get();
   auto border = std::make_unique<views::BubbleBorder>(
       views::BubbleBorder::NONE, views::BubbleBorder::STANDARD_SHADOW,
       kColorFindBarBackground);
-  border->set_md_shadow_elevation(
-      layout_provider->GetCornerRadiusMetric(views::Emphasis::kHigh));
-  border->SetCornerRadius(layout_provider->GetCornerRadiusMetric(
-      views::ShapeContextTokens::kFindBarViewRadius));
+
+  border->SetCornerRadius(views::LayoutProvider::Get()->GetCornerRadiusMetric(
+      views::Emphasis::kMedium));
 
   SetBackground(std::make_unique<views::BubbleBackground>(border.get()));
   SetBorder(std::move(border));
@@ -506,21 +462,15 @@ void FindBarView::OnThemeChanged() {
   const SkColor fg_disabled_color =
       color_provider->GetColor(kColorFindBarButtonIconDisabled);
   views::SetImageFromVectorIconWithColor(find_previous_button_,
-                                         features::IsChromeRefresh2023()
-                                             ? kKeyboardArrowUpChromeRefreshIcon
-                                             : vector_icons::kCaretUpIcon,
-                                         fg_color, fg_disabled_color);
-  views::SetImageFromVectorIconWithColor(
-      find_next_button_,
-      features::IsChromeRefresh2023() ? kKeyboardArrowDownChromeRefreshIcon
-                                      : vector_icons::kCaretDownIcon,
-      fg_color, fg_disabled_color);
+                                         vector_icons::kCaretUpIcon, fg_color,
+                                         fg_disabled_color);
+  views::SetImageFromVectorIconWithColor(find_next_button_,
+                                         vector_icons::kCaretDownIcon, fg_color,
+                                         fg_disabled_color);
   views::SetImageFromVectorIconWithColor(close_button_,
-                                         features::IsChromeRefresh2023()
-                                             ? kCloseChromeRefreshIcon
-                                             : vector_icons::kCloseRoundedIcon,
+                                         vector_icons::kCloseRoundedIcon,
                                          fg_color, fg_disabled_color);
 }
 
-BEGIN_METADATA(FindBarView)
+BEGIN_METADATA(FindBarView, views::View)
 END_METADATA

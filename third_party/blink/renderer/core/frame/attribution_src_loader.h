@@ -7,11 +7,9 @@
 
 #include <stdint.h>
 
-#include <optional>
-
-#include "components/attribution_reporting/registration_eligibility.mojom-blink-forward.h"
-#include "services/network/public/cpp/attribution_reporting_runtime_features.h"
+#include "components/attribution_reporting/registration_type.mojom-blink-forward.h"
 #include "services/network/public/mojom/attribution.mojom-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/heap/forward.h"
@@ -20,12 +18,11 @@
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 
 namespace network {
-class TriggerVerification;
+class TriggerAttestation;
 }  // namespace network
 
 namespace attribution_reporting {
 class SuitableOrigin;
-struct RegistrationInfo;
 }  // namespace attribution_reporting
 
 namespace blink {
@@ -75,19 +72,17 @@ class CORE_EXPORT AttributionSrcLoader
   // and notifies the browser to begin tracking it.
   //
   // If at least one URL is eligible or `navigation_url` is, returns a
-  // non-`std::nullopt` `Impression` to live alongside the navigation.
-  [[nodiscard]] std::optional<Impression> RegisterNavigation(
+  // non-`absl::nullopt` `Impression` to live alongside the navigation.
+  [[nodiscard]] absl::optional<Impression> RegisterNavigation(
       const KURL& navigation_url,
       const AtomicString& attribution_src,
-      HTMLAnchorElement* element,
-      bool has_transient_user_activation);
+      HTMLAnchorElement* element);
 
   // Same as the above, but uses an already-tokenized attribution src for use
   // with `window.open`.
-  [[nodiscard]] std::optional<Impression> RegisterNavigation(
+  [[nodiscard]] absl::optional<Impression> RegisterNavigation(
       const KURL& navigation_url,
-      const WebVector<WebString>& attribution_srcs,
-      bool has_transient_user_activation);
+      const WebVector<WebString>& attribution_srcs);
 
   // Returns true if `url` can be used as an attributionsrc: its scheme is HTTP
   // or HTTPS, its origin is potentially trustworthy, the document's permission
@@ -98,14 +93,12 @@ class CORE_EXPORT AttributionSrcLoader
   // `log_issues` is true.
   [[nodiscard]] bool CanRegister(const KURL& url,
                                  HTMLElement* element,
-                                 std::optional<uint64_t> request_id,
+                                 absl::optional<uint64_t> request_id,
                                  bool log_issues = true);
 
   void Trace(Visitor* visitor) const;
 
   network::mojom::AttributionSupport GetSupport() const;
-
-  network::AttributionReportingRuntimeFeatures GetRuntimeFeatures() const;
 
  private:
   class ResourceClient;
@@ -113,37 +106,34 @@ class CORE_EXPORT AttributionSrcLoader
   Vector<KURL> ParseAttributionSrc(const AtomicString& attribution_src,
                                    HTMLElement*);
 
-  bool DoRegistration(const Vector<KURL>&, std::optional<AttributionSrcToken>);
+  bool DoRegistration(const Vector<KURL>&, absl::optional<AttributionSrcToken>);
 
-  [[nodiscard]] std::optional<Impression> RegisterNavigationInternal(
+  [[nodiscard]] absl::optional<Impression> RegisterNavigationInternal(
       const KURL& navigation_url,
       Vector<KURL> attribution_src_urls,
-      HTMLAnchorElement*,
-      bool has_transient_user_activation);
+      HTMLAnchorElement*);
 
   // Returns the reporting origin corresponding to `url` if its protocol is in
   // the HTTP family, its origin is potentially trustworthy, and attribution is
-  // allowed. Returns `std::nullopt` otherwise, and reports a DevTools issue
+  // allowed. Returns `absl::nullopt` otherwise, and reports a DevTools issue
   // using `element` and `request_id if `log_issues` is true.
-  std::optional<attribution_reporting::SuitableOrigin>
+  absl::optional<attribution_reporting::SuitableOrigin>
   ReportingOriginForUrlIfValid(const KURL& url,
                                HTMLElement* element,
-                               std::optional<uint64_t> request_id,
+                               absl::optional<uint64_t> request_id,
                                bool log_issues = true);
 
   bool CreateAndSendRequests(Vector<KURL>,
                              HTMLElement*,
-                             std::optional<AttributionSrcToken>);
+                             absl::optional<AttributionSrcToken>);
 
   struct AttributionHeaders;
 
   void RegisterAttributionHeaders(
-      attribution_reporting::mojom::blink::RegistrationEligibility,
-      network::mojom::AttributionSupport,
+      attribution_reporting::mojom::blink::RegistrationType,
       attribution_reporting::SuitableOrigin reporting_origin,
       const AttributionHeaders&,
-      const Vector<network::TriggerVerification>&,
-      const attribution_reporting::RegistrationInfo&);
+      const absl::optional<network::TriggerAttestation>& trigger_attestation);
 
   const Member<LocalFrame> local_frame_;
 };

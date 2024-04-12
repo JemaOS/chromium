@@ -46,6 +46,7 @@ public class RecentTabsTest {
             new BlankCTATabInitialStateRule(sActivityTestRule, false);
 
     private static final String TEST_PAGE = "/chrome/test/data/android/about.html";
+    private static final int TIMEOUT_MS = 5000;
 
     private OfflinePageBridge mOfflinePageBridge;
     private EmbeddedTestServer mTestServer;
@@ -53,19 +54,17 @@ public class RecentTabsTest {
 
     @Before
     public void setUp() throws Exception {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    // Ensure we start in an offline state.
-                    NetworkChangeNotifier.forceConnectivityState(false);
-                    if (!NetworkChangeNotifier.isInitialized()) {
-                        NetworkChangeNotifier.init();
-                    }
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            // Ensure we start in an offline state.
+            NetworkChangeNotifier.forceConnectivityState(false);
+            if (!NetworkChangeNotifier.isInitialized()) {
+                NetworkChangeNotifier.init();
+            }
+        });
 
         mOfflinePageBridge = OfflineTestUtil.getOfflinePageBridge();
-        mTestServer =
-                EmbeddedTestServer.createAndStartServer(
-                        ApplicationProvider.getApplicationContext());
+        mTestServer = EmbeddedTestServer.createAndStartServer(
+                ApplicationProvider.getApplicationContext());
         mTestPage = mTestServer.getURL(TEST_PAGE);
     }
 
@@ -124,13 +123,12 @@ public class RecentTabsTest {
 
         // Requests closing of the tab allowing for closure undo and checks it's actually closing.
         boolean closeTabReturnValue =
-                TestThreadUtils.runOnUiThreadBlocking(
-                        new Callable<Boolean>() {
-                            @Override
-                            public Boolean call() {
-                                return tabModel.closeTab(tab, false, false, true);
-                            }
-                        });
+                TestThreadUtils.runOnUiThreadBlocking(new Callable<Boolean>() {
+                    @Override
+                    public Boolean call() {
+                        return tabModel.closeTab(tab, false, false, true);
+                    }
+                });
         Assert.assertTrue(closeTabReturnValue);
         Assert.assertTrue(tab.isHidden());
         Assert.assertTrue(tab.isClosing());
@@ -140,12 +138,11 @@ public class RecentTabsTest {
         Assert.assertNull(OfflineTestUtil.getPageByClientId(firstTabClientId));
 
         // Undo the closure and make sure the tab is again the current one on foreground.
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    tabModel.cancelTabClosure(tab.getId());
-                    int tabIndex = TabModelUtils.getTabIndexById(tabModel, tab.getId());
-                    TabModelUtils.setIndex(tabModel, tabIndex, false);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            tabModel.cancelTabClosure(tab.getId());
+            int tabIndex = TabModelUtils.getTabIndexById(tabModel, tab.getId());
+            TabModelUtils.setIndex(tabModel, tabIndex, false);
+        });
         Assert.assertFalse(tab.isHidden());
         Assert.assertFalse(tab.isClosing());
         Assert.assertEquals(tabModelSelector.getCurrentTab(), tab);
@@ -159,8 +156,6 @@ public class RecentTabsTest {
 
     private void waitForPageWithClientId(final ClientId clientId) {
         CriteriaHelper.pollInstrumentationThread(
-                () -> {
-                    return OfflineTestUtil.getPageByClientId(clientId) != null;
-                });
+                () -> { return OfflineTestUtil.getPageByClientId(clientId) != null; });
     }
 }

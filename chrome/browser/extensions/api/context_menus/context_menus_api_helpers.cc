@@ -30,8 +30,7 @@ const char kParentsMustBeNormalError[] =
     "Parent items must have type \"normal\"";
 const char kTitleNeededError[] =
     "All menu items except for separators must have a title";
-const char kTooManyMenuItems[] =
-    "An extension can create a maximum of * menu items.";
+
 
 std::string GetIDString(const MenuItem::Id& id) {
   if (id.uid == 0)
@@ -61,50 +60,50 @@ MenuItem::ContextList GetContexts(const std::vector<
   MenuItem::ContextList contexts;
   for (auto context : in_contexts) {
     switch (context) {
-      case extensions::api::context_menus::ContextType::kAll:
+      case extensions::api::context_menus::CONTEXT_TYPE_ALL:
         contexts.Add(extensions::MenuItem::ALL);
         break;
-      case extensions::api::context_menus::ContextType::kPage:
+      case extensions::api::context_menus::CONTEXT_TYPE_PAGE:
         contexts.Add(extensions::MenuItem::PAGE);
         break;
-      case extensions::api::context_menus::ContextType::kSelection:
+      case extensions::api::context_menus::CONTEXT_TYPE_SELECTION:
         contexts.Add(extensions::MenuItem::SELECTION);
         break;
-      case extensions::api::context_menus::ContextType::kLink:
+      case extensions::api::context_menus::CONTEXT_TYPE_LINK:
         contexts.Add(extensions::MenuItem::LINK);
         break;
-      case extensions::api::context_menus::ContextType::kEditable:
+      case extensions::api::context_menus::CONTEXT_TYPE_EDITABLE:
         contexts.Add(extensions::MenuItem::EDITABLE);
         break;
-      case extensions::api::context_menus::ContextType::kImage:
+      case extensions::api::context_menus::CONTEXT_TYPE_IMAGE:
         contexts.Add(extensions::MenuItem::IMAGE);
         break;
-      case extensions::api::context_menus::ContextType::kVideo:
+      case extensions::api::context_menus::CONTEXT_TYPE_VIDEO:
         contexts.Add(extensions::MenuItem::VIDEO);
         break;
-      case extensions::api::context_menus::ContextType::kAudio:
+      case extensions::api::context_menus::CONTEXT_TYPE_AUDIO:
         contexts.Add(extensions::MenuItem::AUDIO);
         break;
-      case extensions::api::context_menus::ContextType::kFrame:
+      case extensions::api::context_menus::CONTEXT_TYPE_FRAME:
         contexts.Add(extensions::MenuItem::FRAME);
         break;
-      case extensions::api::context_menus::ContextType::kLauncher:
+      case extensions::api::context_menus::CONTEXT_TYPE_LAUNCHER:
         // Not available for <webview>.
         contexts.Add(extensions::MenuItem::LAUNCHER);
         break;
-      case extensions::api::context_menus::ContextType::kBrowserAction:
+      case extensions::api::context_menus::CONTEXT_TYPE_BROWSER_ACTION:
         // Not available for <webview>.
         contexts.Add(extensions::MenuItem::BROWSER_ACTION);
         break;
-      case extensions::api::context_menus::ContextType::kPageAction:
+      case extensions::api::context_menus::CONTEXT_TYPE_PAGE_ACTION:
         // Not available for <webview>.
         contexts.Add(extensions::MenuItem::PAGE_ACTION);
         break;
-      case extensions::api::context_menus::ContextType::kAction:
+      case extensions::api::context_menus::CONTEXT_TYPE_ACTION:
         // Not available for <webview>.
         contexts.Add(extensions::MenuItem::ACTION);
         break;
-      case extensions::api::context_menus::ContextType::kNone:
+      case extensions::api::context_menus::CONTEXT_TYPE_NONE:
         NOTREACHED();
     }
   }
@@ -114,15 +113,15 @@ MenuItem::ContextList GetContexts(const std::vector<
 MenuItem::Type GetType(extensions::api::context_menus::ItemType type,
                        MenuItem::Type default_type) {
   switch (type) {
-    case extensions::api::context_menus::ItemType::kNone:
+    case extensions::api::context_menus::ITEM_TYPE_NONE:
       return default_type;
-    case extensions::api::context_menus::ItemType::kNormal:
+    case extensions::api::context_menus::ITEM_TYPE_NORMAL:
       return extensions::MenuItem::NORMAL;
-    case extensions::api::context_menus::ItemType::kCheckbox:
+    case extensions::api::context_menus::ITEM_TYPE_CHECKBOX:
       return extensions::MenuItem::CHECKBOX;
-    case extensions::api::context_menus::ItemType::kRadio:
+    case extensions::api::context_menus::ITEM_TYPE_RADIO:
       return extensions::MenuItem::RADIO;
-    case extensions::api::context_menus::ItemType::kSeparator:
+    case extensions::api::context_menus::ITEM_TYPE_SEPARATOR:
       return extensions::MenuItem::SEPARATOR;
   }
   return extensions::MenuItem::NORMAL;

@@ -5,14 +5,13 @@
 #ifndef CHROME_BROWSER_ASH_GUEST_OS_GUEST_OS_REMOVER_H_
 #define CHROME_BROWSER_ASH_GUEST_OS_GUEST_OS_REMOVER_H_
 
-#include <optional>
 #include <string>
-
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "chrome/browser/ash/guest_os/public/types.h"
 #include "chromeos/ash/components/dbus/vm_concierge/concierge_service.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -42,11 +41,11 @@ class GuestOsRemover : public base::RefCountedThreadSafe<GuestOsRemover> {
   ~GuestOsRemover();
 
   void StopVmFinished(
-      std::optional<vm_tools::concierge::StopVmResponse> response);
+      absl::optional<vm_tools::concierge::StopVmResponse> response);
   void DestroyDiskImageFinished(
-      std::optional<vm_tools::concierge::DestroyDiskImageResponse> response);
+      absl::optional<vm_tools::concierge::DestroyDiskImageResponse> response);
 
-  raw_ptr<Profile> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
   guest_os::VmType vm_type_;
   std::string vm_name_;
   base::OnceCallback<void(Result)> callback_;

@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_CERTIFICATE_PROVIDER_SIGN_REQUESTS_H_
 
 #include <map>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,6 +15,7 @@
 #include "components/account_id/account_id.h"
 #include "net/cert/x509_certificate.h"
 #include "net/ssl/ssl_private_key.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace chromeos {
 namespace certificate_provider {
@@ -29,10 +29,11 @@ class SignRequests {
 
   // Returns the id of the new request. The returned request id is specific to
   // the given extension.
-  int AddRequest(const std::string& extension_id,
-                 const scoped_refptr<net::X509Certificate>& certificate,
-                 const std::optional<AccountId>& authenticating_user_account_id,
-                 net::SSLPrivateKey::SignCallback callback);
+  int AddRequest(
+      const std::string& extension_id,
+      const scoped_refptr<net::X509Certificate>& certificate,
+      const absl::optional<AccountId>& authenticating_user_account_id,
+      net::SSLPrivateKey::SignCallback callback);
 
   // Returns the list of requests that correspond to the authentication of the
   // given user.
@@ -55,14 +56,14 @@ class SignRequests {
  private:
   struct Request {
     Request(const scoped_refptr<net::X509Certificate>& certificate,
-            const std::optional<AccountId>& authenticating_user_account_id,
+            const absl::optional<AccountId>& authenticating_user_account_id,
             net::SSLPrivateKey::SignCallback callback);
     Request(Request&& other);
     Request& operator=(Request&&);
     ~Request();
 
     scoped_refptr<net::X509Certificate> certificate;
-    std::optional<AccountId> authenticating_user_account_id;
+    absl::optional<AccountId> authenticating_user_account_id;
     net::SSLPrivateKey::SignCallback callback;
   };
 

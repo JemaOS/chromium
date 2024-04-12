@@ -10,6 +10,11 @@
 #include <memory>
 #include <string>
 
+
+namespace base {
+class TimeDelta;
+}  // namespace base
+
 namespace safe_browsing {
 
 class IncidentReceiver;
@@ -22,6 +27,10 @@ void RegisterBinaryIntegrityAnalysis();
 // Callback to pass to the incident reporting service. The incident reporting
 // service will decide when to start the analysis.
 void VerifyBinaryIntegrity(std::unique_ptr<IncidentReceiver> incident_receiver);
+
+// Record how long the signature verification took.
+void RecordSignatureVerificationTime(size_t file_index,
+                                     const base::TimeDelta& verification_time);
 
 // Clear past incident reports for a file or bundle. This is used if the code
 // object is now integral, as it will allow future incidents to be reported.

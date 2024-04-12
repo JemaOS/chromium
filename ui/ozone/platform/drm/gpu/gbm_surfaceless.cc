@@ -44,6 +44,8 @@ GbmSurfaceless::GbmSurfaceless(GbmSurfaceFactory* surface_factory,
     : surface_factory_(surface_factory),
       window_(std::move(window)),
       widget_(widget),
+      has_implicit_external_sync_(
+          display->ext->b_EGL_ARM_implicit_external_sync),
       display_(display) {
   surface_factory_->RegisterSurface(window_->widget(), this);
   supports_plane_gpu_fences_ = window_->SupportsGpuFences();
@@ -68,6 +70,9 @@ bool GbmSurfaceless::Resize(const gfx::Size& size,
                             float scale_factor,
                             const gfx::ColorSpace& color_space,
                             bool has_alpha) {
+  if (window_)
+    window_->SetColorSpace(color_space);
+
   return true;
 }
 
@@ -119,7 +124,7 @@ void GbmSurfaceless::Present(SwapCompletionCallback completion_callback,
 
   // TODO: the following should be replaced by a per surface flush as it gets
   // implemented in GL drivers.
-  EGLSyncKHR fence = InsertFence();
+  EGLSyncKHR fence = InsertFence(has_implicit_external_sync_);
   CHECK_NE(fence, EGL_NO_SYNC_KHR) << "eglCreateSyncKHR failed";
 
   base::OnceClosure fence_wait_task =
@@ -187,23 +192,12 @@ void GbmSurfaceless::SubmitFrame() {
   }
 }
 
-EGLSyncKHR GbmSurfaceless::InsertFence() {
-  const bool has_global_fence = display_->ext->b_EGL_ANGLE_global_fence_sync;
-  const bool has_implicit_external_fence =
-      display_->ext->b_EGL_ARM_implicit_external_sync;
-
-  // Prefer EGL_ANGLE_global_fence_sync as it guarantees synchronization with
-  // past submissions from all contexts, rather than the current context.
-  const EGLenum syncType =
-      has_global_fence ? EGL_SYNC_GLOBAL_FENCE_ANGLE : EGL_SYNC_FENCE_KHR;
-  const bool use_implicit_external_sync =
-      has_implicit_external_fence && !has_global_fence;
+EGLSyncKHR GbmSurfaceless::InsertFence(bool implicit) {
   const EGLint attrib_list[] = {EGL_SYNC_CONDITION_KHR,
                                 EGL_SYNC_PRIOR_COMMANDS_IMPLICIT_EXTERNAL_ARM,
                                 EGL_NONE};
-
-  return eglCreateSyncKHR(GetEGLDisplay(), syncType,
-                          use_implicit_external_sync ? attrib_list : nullptr);
+  return eglCreateSyncKHR(GetEGLDisplay(), EGL_SYNC_FENCE_KHR,
+                          implicit ? attrib_list : nullptr);
 }
 
 void GbmSurfaceless::FenceRetired(PendingFrame* frame) {

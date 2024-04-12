@@ -20,6 +20,7 @@
 #include "base/version.h"
 #include "components/component_updater/component_updater_paths.h"
 #include "components/safe_browsing/content/common/file_type_policies.h"
+#include "components/safe_browsing/core/common/features.h"
 
 using component_updater::ComponentUpdateService;
 
@@ -38,9 +39,8 @@ const uint8_t kFileTypePoliciesPublicKeySHA256[32] = {
 const char kFileTypePoliciesManifestName[] = "File Type Policies";
 
 void LoadFileTypesFromDisk(const base::FilePath& pb_path) {
-  if (pb_path.empty()) {
+  if (pb_path.empty())
     return;
-  }
 
   VLOG(1) << "Reading Download File Types from file: " << pb_path.value();
   std::string binary_pb;
@@ -122,7 +122,9 @@ std::string FileTypePoliciesComponentInstallerPolicy::GetName() const {
 
 update_client::InstallerAttributes
 FileTypePoliciesComponentInstallerPolicy::GetInstallerAttributes() const {
-  return update_client::InstallerAttributes();
+  update_client::InstallerAttributes attributes;
+  attributes["tag"] = safe_browsing::GetFileTypePoliciesTag();
+  return attributes;
 }
 
 void RegisterFileTypePoliciesComponent(ComponentUpdateService* cus) {

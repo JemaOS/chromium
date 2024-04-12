@@ -7,15 +7,12 @@
 
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/devtools/devtools_contents_resizing_strategy.h"
-#include "ui/views/layout/layout_manager_base.h"
-#include "ui/views/layout/proposed_layout.h"
+#include "ui/views/layout/layout_manager.h"
 
 // ContentsLayoutManager positions the WebContents and devtools WebContents.
-class ContentsLayoutManager : public views::LayoutManagerBase {
+class ContentsLayoutManager : public views::LayoutManager {
  public:
-  ContentsLayoutManager(views::View* devtools_view,
-                        views::View* contents_view,
-                        views::View* watermark_view = nullptr);
+  ContentsLayoutManager(views::View* devtools_view, views::View* contents_view);
 
   ContentsLayoutManager(const ContentsLayoutManager&) = delete;
   ContentsLayoutManager& operator=(const ContentsLayoutManager&) = delete;
@@ -26,15 +23,16 @@ class ContentsLayoutManager : public views::LayoutManagerBase {
   void SetContentsResizingStrategy(
       const DevToolsContentsResizingStrategy& strategy);
 
- protected:
-  // views::LayoutManagerBase overrides:
-  views::ProposedLayout CalculateProposedLayout(
-      const views::SizeBounds& size_bounds) const override;
+  // views::LayoutManager overrides:
+  void Layout(views::View* host) override;
+  gfx::Size GetPreferredSize(const views::View* host) const override;
+  void Installed(views::View* host) override;
 
  private:
   raw_ptr<views::View> devtools_view_;
   raw_ptr<views::View> contents_view_;
-  raw_ptr<views::View> watermark_view_;
+
+  raw_ptr<views::View> host_;
 
   DevToolsContentsResizingStrategy strategy_;
 };

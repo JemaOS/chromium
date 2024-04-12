@@ -22,8 +22,6 @@ void RecordFloatingWorkspaceV2TemplateLaunchFailureType(
                                 type);
 }
 
-// TODO(b/274501763): rename for better clarity since this does not just record
-// for timeout reasons.
 void RecordFloatingWorkspaceV2TemplateLaunchTimeout(
     LaunchTemplateTimeoutType type) {
   base::UmaHistogramEnumeration(kFloatingWorkspaceV2TemplateLaunchTimedOut,
@@ -47,13 +45,6 @@ void RecordFloatingWorkspaceV2TemplateUploadStatusHistogram(
     desks_storage::DeskModel::AddOrUpdateEntryStatus status) {
   base::UmaHistogramEnumeration(kFloatingWorkspaceV2TemplateUploadStatus,
                                 status);
-}
-
-void RecordFloatingWorkspaceV2InitializedHistogram() {
-  base::UmaHistogramBoolean(kFloatingWorkspaceV2Initialized, true);
-}
-void RecordFloatingWorkspaceV2TemplateNotFound() {
-  base::UmaHistogramBoolean(kFloatingWorkspaceV2TemplateNotFound, true);
 }
 
 }  // namespace ash::floating_workspace_metrics_util

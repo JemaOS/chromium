@@ -8,7 +8,8 @@
 
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 class SmbServiceHelperTest : public ::testing::Test {
  public:
@@ -145,4 +146,5 @@ TEST_F(SmbServiceHelperTest, ParseUserName) {
   EXPECT_EQ(realm_, "");
 }
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

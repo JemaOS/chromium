@@ -9,7 +9,9 @@ import android.view.View;
 import android.view.View.MeasureSpec;
 import android.view.ViewGroup;
 
-/** SimpleVerticalLayoutView is a fast and specialized vertical layout view. */
+/**
+ * SimpleVerticalLayoutView is a fast and specialized vertical layout view.
+ */
 public class SimpleVerticalLayoutView extends ViewGroup {
     public SimpleVerticalLayoutView(Context context) {
         super(context);
@@ -38,14 +40,12 @@ public class SimpleVerticalLayoutView extends ViewGroup {
         for (int index = 0; index < getChildCount(); ++index) {
             View v = getChildAt(index);
             LayoutParams p = v.getLayoutParams();
-            v.measure(
-                    MeasureSpec.makeMeasureSpec(viewWidth, MeasureSpec.EXACTLY),
+            v.measure(MeasureSpec.makeMeasureSpec(viewWidth, MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
             totalHeight += v.getMeasuredHeight();
         }
 
-        setMeasuredDimension(
-                widthPx,
+        setMeasuredDimension(widthPx,
                 MeasureSpec.makeMeasureSpec(
                         totalHeight + getPaddingTop() + getPaddingBottom(), MeasureSpec.EXACTLY));
     }

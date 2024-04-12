@@ -6,6 +6,9 @@
  * Stream constraints for audio and video.
  */
 export interface StreamConstraints {
+  /**
+   * Target device id.
+   */
   deviceId: string;
 
   /**
@@ -20,19 +23,13 @@ export interface StreamConstraints {
 }
 
 /**
- * Converts `constraints` to MediaStreamConstraints that is suitable to be used
- * in getUserMedia.
+ * Convert this to MediaStreamConstraints that is suitable to be used in
+ * getUserMedia.
  */
 export function toMediaStreamConstraints(constraints: StreamConstraints):
     MediaStreamConstraints {
-  // TODO(pihsun): Investigate why deviceId is '' for fake VCD on non-CrOS
-  // environment.
-  const videoCostraint = {...constraints.video};
-  if (constraints.deviceId !== '') {
-    videoCostraint.deviceId = {exact: constraints.deviceId};
-  }
   return {
     audio: constraints.audio ? {echoCancellation: false} : false,
-    video: videoCostraint,
+    video: {...constraints.video, deviceId: {exact: constraints.deviceId}},
   };
 }

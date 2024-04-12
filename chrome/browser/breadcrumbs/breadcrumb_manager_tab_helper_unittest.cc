@@ -82,8 +82,6 @@ class BreadcrumbManagerTabHelperTest : public ChromeRenderViewHostTestHarness {
   }
 
   std::unique_ptr<content::WebContents> second_web_contents_;
-
-  const GURL kTestURL = GURL("https://test");
 };
 
 // Tests that the identifiers returned for different WebContents are unique.
@@ -106,7 +104,7 @@ TEST_F(BreadcrumbManagerTabHelperTest, EventsLogged) {
   ASSERT_EQ(0u, GetNumEvents());
 
   auto simulator = content::NavigationSimulator::CreateBrowserInitiated(
-      kTestURL, web_contents());
+      GURL(), web_contents());
   simulator->Start();
 
   auto events = GetEvents();
@@ -131,10 +129,10 @@ TEST_F(BreadcrumbManagerTabHelperTest, EventsLogged) {
 // WebContents are unique.
 TEST_F(BreadcrumbManagerTabHelperTest, UniqueEvents) {
   auto first_simulator = content::NavigationSimulator::CreateBrowserInitiated(
-      kTestURL, web_contents());
+      GURL(), web_contents());
   first_simulator->Start();
   auto second_simulator = content::NavigationSimulator::CreateBrowserInitiated(
-      kTestURL, second_web_contents_.get());
+      GURL(), web_contents());
   second_simulator->Start();
   const auto& events = GetEvents();
   ASSERT_EQ(2u, events.size());
@@ -202,7 +200,7 @@ TEST_F(BreadcrumbManagerTabHelperTest, NavigationUniqueId) {
   ASSERT_EQ(0u, GetNumEvents());
   // DidStartNavigation
   auto simulator = content::NavigationSimulator::CreateBrowserInitiated(
-      kTestURL, web_contents());
+      GURL("https://test"), web_contents());
   simulator->Start();
   auto events = GetEvents();
   ASSERT_EQ(1u, events.size());
@@ -232,7 +230,7 @@ TEST_F(BreadcrumbManagerTabHelperTest, NavigationUniqueId) {
 TEST_F(BreadcrumbManagerTabHelperTest, RendererInitiatedByUser) {
   ASSERT_EQ(0u, GetNumEvents());
   auto simulator = content::NavigationSimulator::CreateRendererInitiated(
-      kTestURL, web_contents()->GetPrimaryMainFrame());
+      GURL(), web_contents()->GetPrimaryMainFrame());
   simulator->SetHasUserGesture(true);
   simulator->SetTransition(ui::PAGE_TRANSITION_LINK);
   simulator->Start();
@@ -255,7 +253,7 @@ TEST_F(BreadcrumbManagerTabHelperTest, RendererInitiatedByUser) {
 TEST_F(BreadcrumbManagerTabHelperTest, RendererInitiatedByScript) {
   ASSERT_EQ(0u, GetNumEvents());
   auto simulator = content::NavigationSimulator::CreateRendererInitiated(
-      kTestURL, web_contents()->GetPrimaryMainFrame());
+      GURL(), web_contents()->GetPrimaryMainFrame());
   simulator->SetHasUserGesture(false);
   simulator->Start();
   const auto& events = GetEvents();
@@ -277,7 +275,7 @@ TEST_F(BreadcrumbManagerTabHelperTest, RendererInitiatedByScript) {
 TEST_F(BreadcrumbManagerTabHelperTest, BrowserInitiatedByScript) {
   ASSERT_EQ(0u, GetNumEvents());
   auto simulator = content::NavigationSimulator::CreateBrowserInitiated(
-      kTestURL, web_contents());
+      GURL(), web_contents());
   simulator->SetTransition(ui::PAGE_TRANSITION_TYPED);
   simulator->Start();
   const auto& events = GetEvents();
@@ -299,7 +297,7 @@ TEST_F(BreadcrumbManagerTabHelperTest, BrowserInitiatedByScript) {
 TEST_F(BreadcrumbManagerTabHelperTest, PdfLoad) {
   ASSERT_EQ(0u, GetNumEvents());
   auto simulator = content::NavigationSimulator::CreateBrowserInitiated(
-      kTestURL, web_contents());
+      GURL(), web_contents());
   simulator->SetContentsMimeType("application/pdf");
   simulator->Commit();
   const auto& events = GetEvents();
@@ -316,7 +314,7 @@ TEST_F(BreadcrumbManagerTabHelperTest, PdfLoad) {
 TEST_F(BreadcrumbManagerTabHelperTest, PageLoadSuccess) {
   ASSERT_EQ(0u, GetNumEvents());
   content::NavigationSimulator::NavigateAndCommitFromBrowser(web_contents(),
-                                                             kTestURL);
+                                                             GURL());
   const auto& events = GetEvents();
   ASSERT_EQ(3u, events.size());
   EXPECT_NE(std::string::npos,
@@ -330,13 +328,13 @@ TEST_F(BreadcrumbManagerTabHelperTest, PageLoadSuccess) {
 // Tests page load failure.
 TEST_F(BreadcrumbManagerTabHelperTest, PageLoadFailure) {
   auto simulator = content::NavigationSimulator::CreateBrowserInitiated(
-      kTestURL, web_contents());
+      GURL(), web_contents());
   simulator->Start();
   ASSERT_EQ(1u, GetNumEvents());
 
   static_cast<content::TestWebContents*>(web_contents())
       ->GetPrimaryMainFrame()
-      ->DidFailLoadWithError(kTestURL, net::ERR_ABORTED);
+      ->DidFailLoadWithError(GURL(), net::ERR_ABORTED);
   const auto& events = GetEvents();
   ASSERT_EQ(2u, events.size());
   EXPECT_NE(std::string::npos,
@@ -374,7 +372,7 @@ TEST_F(BreadcrumbManagerTabHelperTest, NtpPageLoad) {
 TEST_F(BreadcrumbManagerTabHelperTest, NavigationError) {
   ASSERT_EQ(0u, GetNumEvents());
   content::NavigationSimulator::NavigateAndFailFromBrowser(
-      web_contents(), kTestURL, net::ERR_INTERNET_DISCONNECTED);
+      web_contents(), GURL("https://test"), net::ERR_INTERNET_DISCONNECTED);
   const auto& events = GetEvents();
   ASSERT_EQ(2u, events.size());
   EXPECT_NE(std::string::npos,

@@ -15,7 +15,6 @@
 #include "ash/public/cpp/session/session_controller.h"
 #include "ash/public/cpp/session/session_types.h"
 #include "ash/session/session_activation_observer_holder.h"
-#include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -65,10 +64,6 @@ class ASH_EXPORT SessionControllerImpl : public SessionController {
 
   // Gets the policy of adding a user session to ash.
   AddUserSessionPolicy GetAddUserPolicy() const;
-
-  // Returns true if the active user account is under any policy management.
-  // NOTE: This function should only be called if the active account exists.
-  bool IsActiveAccountManaged() const;
 
   // Returns |true| if the session has been fully started for the active user.
   // When a user becomes active, the profile and browser UI are not immediately
@@ -132,7 +127,7 @@ class ASH_EXPORT SessionControllerImpl : public SessionController {
 
   // Returns the type of the current user, or empty if there is no current user
   // logged in.
-  std::optional<user_manager::UserType> GetUserType() const;
+  absl::optional<user_manager::UserType> GetUserType() const;
 
   // Returns true if the current user is the primary user in a multi-profile
   // scenario. This always return true if there is only one user logged in.
@@ -153,6 +148,8 @@ class ASH_EXPORT SessionControllerImpl : public SessionController {
   void HideLockScreen();
 
   // Requests signing out all users, ending the current session.
+  // NOTE: This should only be called from LockStateController, other callers
+  // should use LockStateController::RequestSignOut() instead.
   void RequestSignOut();
 
   // Requests a system restart to apply an OS update.
@@ -161,7 +158,7 @@ class ASH_EXPORT SessionControllerImpl : public SessionController {
   // Attempts to restart the chrome browser.
   void AttemptRestartChrome();
 
-  // Switches to another active user with `account_id` (if that user has
+  // Switches to another active user with |account_id| (if that user has
   // already signed in).
   void SwitchActiveUser(const AccountId& account_id);
 
@@ -176,11 +173,8 @@ class ASH_EXPORT SessionControllerImpl : public SessionController {
   // incognito profile in chrome and is valid until the browser exits.
   PrefService* GetSigninScreenPrefService() const;
 
-  // Returns the PrefService for `account_id` or null if one does not exist.
+  // Returns the PrefService for |account_id| or null if one does not exist.
   PrefService* GetUserPrefServiceForUser(const AccountId& account_id) const;
-
-  // Returns the profile path for `account_id` or empty if one does not exist.
-  base::FilePath GetProfilePath(const AccountId& account_id) const;
 
   // Returns the PrefService for the primary user or null if no user is signed
   // in or the PrefService connection hasn't been established.
@@ -233,7 +227,7 @@ class ASH_EXPORT SessionControllerImpl : public SessionController {
   void RemoveObserver(SessionObserver* observer) override;
   bool IsScreenLocked() const override;
   bool IsEnterpriseManaged() const override;
-  std::optional<int> GetExistingUsersCount() const override;
+  absl::optional<int> GetExistingUsersCount() const override;
 
   // Test helpers.
   void ClearUserSessionsForTest();
@@ -287,7 +281,7 @@ class ASH_EXPORT SessionControllerImpl : public SessionController {
   void RemoveScopedScreenLockBlocker();
 
   // Client interface to session manager code (chrome).
-  raw_ptr<SessionControllerClient> client_ = nullptr;
+  raw_ptr<SessionControllerClient, ExperimentalAsh> client_ = nullptr;
 
   // Cached session info.
   bool can_lock_ = false;
@@ -341,7 +335,7 @@ class ASH_EXPORT SessionControllerImpl : public SessionController {
 
   bool signin_screen_prefs_obtained_ = false;
 
-  raw_ptr<PrefService> last_active_user_prefs_ = nullptr;
+  raw_ptr<PrefService, ExperimentalAsh> last_active_user_prefs_ = nullptr;
 
   std::unique_ptr<FullscreenController> fullscreen_controller_;
 

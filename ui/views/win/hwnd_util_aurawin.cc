@@ -8,7 +8,6 @@
 
 #include "base/i18n/rtl.h"
 #include "base/trace_event/base_tracing.h"
-#include "ui/aura/client/aura_constants.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_tree_host.h"
 #include "ui/views/widget/widget.h"
@@ -47,19 +46,6 @@ gfx::Rect GetWindowBoundsForClientBounds(View* view,
     return gfx::Rect(rect);
   }
   return client_bounds;
-}
-
-gfx::Rect GetHeadlessWindowBounds(HWND window) {
-  gfx::Rect bounds;
-  if (aura::WindowTreeHost* host =
-          aura::WindowTreeHost::GetForAcceleratedWidget(window)) {
-    if (gfx::Rect* headless_bounds =
-            host->window()->GetProperty(aura::client::kHeadlessBoundsKey)) {
-      bounds = *headless_bounds;
-    }
-  }
-
-  return bounds;
 }
 
 void ShowSystemMenuAtScreenPixelLocation(HWND window, const gfx::Point& point) {

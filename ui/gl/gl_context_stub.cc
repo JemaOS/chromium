@@ -18,8 +18,8 @@ GLContextStub::GLContextStub(GLShareGroup* share_group)
   SetExtensionsString("GL_EXT_framebuffer_object");
 }
 
-bool GLContextStub::InitializeImpl(GLSurface* compatible_surface,
-                                   const GLContextAttribs& attribs) {
+bool GLContextStub::Initialize(GLSurface* compatible_surface,
+                               const GLContextAttribs& attribs) {
   return true;
 }
 
@@ -80,9 +80,7 @@ bool GLContextStub::HasRobustness() {
 void GLContextStub::FlushForDriverCrashWorkaround() {}
 #endif
 
-GLContextStub::~GLContextStub() {
-  OnContextWillDestroy();
-}
+GLContextStub::~GLContextStub() {}
 
 GLApi* GLContextStub::CreateGLApi(DriverGL* driver) {
   if (use_stub_api_) {

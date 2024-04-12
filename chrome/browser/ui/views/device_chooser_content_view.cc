@@ -10,14 +10,13 @@
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/strcat.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/resource/resource_bundle.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
@@ -36,7 +35,6 @@
 #include "ui/views/controls/throbber.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/fill_layout.h"
-#include "ui/views/layout/layout_provider.h"
 #include "ui/views/widget/widget.h"
 
 DeviceChooserContentView::DeviceChooserContentView(
@@ -66,17 +64,14 @@ DeviceChooserContentView::DeviceChooserContentView(
   std::vector<ui::TableColumn> table_columns = {ui::TableColumn()};
   auto table_view = std::make_unique<views::TableView>(
       this, table_columns,
-      chooser_controller_->ShouldShowIconBeforeText()
-          ? views::TableType::kIconAndText
-          : views::TableType::kTextOnly,
+      chooser_controller_->ShouldShowIconBeforeText() ? views::ICON_AND_TEXT
+                                                      : views::TEXT_ONLY,
       !chooser_controller_->AllowMultipleSelection() /* single_selection */);
   table_view_ = table_view.get();
   table_view->SetSelectOnRemove(false);
   table_view->set_observer(table_view_observer);
-  table_view->GetViewAccessibility().SetName(
-      l10n_util::GetStringUTF16(
-          IDS_DEVICE_CHOOSER_ACCNAME_COMPATIBLE_DEVICES_LIST),
-      ax::mojom::NameFrom::kAttribute);
+  table_view->GetViewAccessibility().OverrideName(l10n_util::GetStringUTF16(
+      IDS_DEVICE_CHOOSER_ACCNAME_COMPATIBLE_DEVICES_LIST));
 
   table_parent_ = AddChildView(
       views::TableView::CreateScrollViewWithTable(std::move(table_view)));
@@ -221,19 +216,19 @@ void DeviceChooserContentView::OnAdapterEnabledChanged(bool enabled) {
   // No row is selected since the adapter status has changed.
   // This will also disable the OK button if it was enabled because
   // of a previously selected row.
-  table_view_->Select(std::nullopt);
+  table_view_->Select(absl::nullopt);
   adapter_enabled_ = enabled;
   UpdateTableView();
 
   ShowReScanButton(enabled);
 
   if (GetWidget() && GetWidget()->GetRootView())
-    GetWidget()->GetRootView()->DeprecatedLayoutImmediately();
+    GetWidget()->GetRootView()->Layout();
 }
 
 void DeviceChooserContentView::OnAdapterAuthorizationChanged(bool authorized) {
   // No row is selected since we are not authorized to get device info anyway.
-  table_view_->Select(std::nullopt);
+  table_view_->Select(absl::nullopt);
   adapter_authorized_ = authorized;
   UpdateTableView();
 
@@ -245,7 +240,7 @@ void DeviceChooserContentView::OnRefreshStateChanged(bool refreshing) {
     // No row is selected since the chooser is refreshing. This will also
     // disable the OK button if it was enabled because of a previously
     // selected row.
-    table_view_->Select(std::nullopt);
+    table_view_->Select(absl::nullopt);
     UpdateTableView();
   }
 
@@ -255,7 +250,7 @@ void DeviceChooserContentView::OnRefreshStateChanged(bool refreshing) {
     ShowReScanButton(/*enable=*/true);
 
   if (GetWidget() && GetWidget()->GetRootView())
-    GetWidget()->GetRootView()->DeprecatedLayoutImmediately();
+    GetWidget()->GetRootView()->Layout();
 }
 
 std::u16string DeviceChooserContentView::GetWindowTitle() const {
@@ -272,24 +267,10 @@ std::unique_ptr<views::View> DeviceChooserContentView::CreateExtraView() {
       ->set_cross_axis_alignment(views::BoxLayout::CrossAxisAlignment::kCenter);
 
   if (chooser_controller_->ShouldShowHelpButton()) {
-    std::unique_ptr<views::ImageButton> help_button;
-    if (features::IsChromeRefresh2023()) {
-      help_button = views::ImageButton::CreateIconButton(
-          base::BindRepeating(
-              &permissions::ChooserController::OpenHelpCenterUrl,
-              base::Unretained(chooser_controller_.get())),
-          vector_icons::kHelpOutlineIcon,
-          l10n_util::GetStringUTF16(IDS_LEARN_MORE),
-          views::ImageButton::MaterialIconStyle::kLarge,
-          views::LayoutProvider::Get()->GetInsetsMetric(
-              views::INSETS_VECTOR_IMAGE_BUTTON));
-    } else {
-      help_button = views::CreateVectorImageButtonWithNativeTheme(
-          base::BindRepeating(
-              &permissions::ChooserController::OpenHelpCenterUrl,
-              base::Unretained(chooser_controller_.get())),
-          vector_icons::kHelpOutlineIcon);
-    }
+    auto help_button = views::CreateVectorImageButtonWithNativeTheme(
+        base::BindRepeating(&permissions::ChooserController::OpenHelpCenterUrl,
+                            base::Unretained(chooser_controller_.get())),
+        vector_icons::kHelpOutlineIcon);
     help_button->SetTooltipText(l10n_util::GetStringUTF16(IDS_LEARN_MORE));
     container->AddChildView(std::move(help_button));
   }
@@ -437,6 +418,6 @@ views::Label* DeviceChooserContentView::ThrobberLabelForTesting() {
   return throbber_label_;
 }
 
-BEGIN_METADATA(DeviceChooserContentView)
+BEGIN_METADATA(DeviceChooserContentView, views::View)
 ADD_READONLY_PROPERTY_METADATA(std::u16string, WindowTitle)
 END_METADATA

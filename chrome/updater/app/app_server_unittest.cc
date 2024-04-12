@@ -4,17 +4,14 @@
 
 #include "chrome/updater/app/app_server.h"
 
-#include <optional>
 #include <string>
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/callback.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/test/scoped_command_line.h"
 #include "base/test/task_environment.h"
 #include "build/build_config.h"
-#include "chrome/updater/constants.h"
 #include "chrome/updater/prefs.h"
 #include "chrome/updater/test_scope.h"
 #include "chrome/updater/update_service.h"
@@ -25,6 +22,7 @@
 #include "components/prefs/pref_service.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using testing::Invoke;
 using testing::Return;
@@ -38,8 +36,6 @@ class AppServerTest : public AppServer {
   AppServerTest() {
     ON_CALL(*this, ActiveDuty)
         .WillByDefault(Invoke(this, &AppServerTest::Shutdown0));
-    ON_CALL(*this, ActiveDutyInternal)
-        .WillByDefault(Invoke(this, &AppServerTest::Shutdown0));
   }
 
   MOCK_METHOD(void, ActiveDuty, (scoped_refptr<UpdateService>), (override));
@@ -48,10 +44,11 @@ class AppServerTest : public AppServer {
               (scoped_refptr<UpdateServiceInternal>),
               (override));
   MOCK_METHOD(bool, SwapInNewVersion, (), (override));
-  MOCK_METHOD(void, RepairUpdater, (UpdaterScope, bool), (override));
+  MOCK_METHOD(bool,
+              MigrateLegacyUpdaters,
+              (base::RepeatingCallback<void(const RegistrationRequest&)>),
+              (override));
   MOCK_METHOD(void, UninstallSelf, (), (override));
-  MOCK_METHOD(bool, ShutdownIfIdleAfterTask, (), (override));
-  MOCK_METHOD(void, OnDelayedTaskComplete, (), (override));
 
  protected:
   ~AppServerTest() override = default;
@@ -64,7 +61,7 @@ class AppServerTest : public AppServer {
 
 void ClearPrefs() {
   const UpdaterScope updater_scope = GetTestScope();
-  for (const std::optional<base::FilePath>& path :
+  for (const absl::optional<base::FilePath>& path :
        {GetInstallDirectory(updater_scope),
         GetVersionedInstallDirectory(updater_scope)}) {
     ASSERT_TRUE(path);
@@ -76,6 +73,7 @@ void ClearPrefs() {
 class AppServerTestCase : public testing::Test {
  public:
   void SetUp() override {
+// TODO(crbug.com/1428653): Fix these test cases to work for mac system scope.
 #if BUILDFLAG(IS_MAC)
     if (GetTestScope() == UpdaterScope::kSystem) {
       GTEST_SKIP();
@@ -91,9 +89,6 @@ class AppServerTestCase : public testing::Test {
 }  // namespace
 
 TEST_F(AppServerTestCase, SelfUninstall) {
-  base::test::ScopedCommandLine command_line;
-  command_line.GetProcessCommandLine()->AppendSwitchASCII(
-      kServerServiceSwitch, kServerUpdateServiceInternalSwitchValue);
   {
     scoped_refptr<GlobalPrefs> global_prefs = CreateGlobalPrefs(GetTestScope());
     global_prefs->SetActiveVersion("9999999");
@@ -104,10 +99,10 @@ TEST_F(AppServerTestCase, SelfUninstall) {
   }
   auto app = base::MakeRefCounted<AppServerTest>();
 
-  // Expect the app to ActiveDutyInternal then SelfUninstall.
-  EXPECT_CALL(*app, ActiveDuty).Times(0);
-  EXPECT_CALL(*app, ActiveDutyInternal).Times(1);
+  // Expect the app to ActiveDuty then SelfUninstall.
+  EXPECT_CALL(*app, ActiveDuty).Times(1);
   EXPECT_CALL(*app, SwapInNewVersion).Times(0);
+  EXPECT_CALL(*app, MigrateLegacyUpdaters).Times(0);
   EXPECT_CALL(*app, UninstallSelf).Times(1);
   EXPECT_EQ(app->Run(), 0);
   EXPECT_TRUE(CreateLocalPrefs(GetTestScope())->GetQualified());
@@ -126,6 +121,7 @@ TEST_F(AppServerTestCase, SelfPromote) {
     // Shutdown(0).
     EXPECT_CALL(*app, ActiveDuty).Times(1);
     EXPECT_CALL(*app, SwapInNewVersion).WillOnce(Return(true));
+    EXPECT_CALL(*app, MigrateLegacyUpdaters).WillOnce(Return(true));
     EXPECT_CALL(*app, UninstallSelf).Times(0);
     EXPECT_EQ(app->Run(), 0);
   }
@@ -142,6 +138,7 @@ TEST_F(AppServerTestCase, InstallAutoPromotes) {
     // Shutdown(0). In this case it bypasses qualification.
     EXPECT_CALL(*app, ActiveDuty).Times(1);
     EXPECT_CALL(*app, SwapInNewVersion).WillOnce(Return(true));
+    EXPECT_CALL(*app, MigrateLegacyUpdaters).WillOnce(Return(true));
     EXPECT_CALL(*app, UninstallSelf).Times(0);
     EXPECT_EQ(app->Run(), 0);
     EXPECT_FALSE(CreateLocalPrefs(GetTestScope())->GetQualified());
@@ -162,6 +159,7 @@ TEST_F(AppServerTestCase, SelfPromoteFails) {
 
     // Expect the app to SwapInNewVersion and then Shutdown(2).
     EXPECT_CALL(*app, ActiveDuty).Times(0);
+    EXPECT_CALL(*app, MigrateLegacyUpdaters).WillOnce(Return(true));
     EXPECT_CALL(*app, SwapInNewVersion).WillOnce(Return(false));
     EXPECT_CALL(*app, UninstallSelf).Times(0);
     EXPECT_EQ(app->Run(), 2);
@@ -186,6 +184,7 @@ TEST_F(AppServerTestCase, ActiveDutyAlready) {
     // Expect the app to ActiveDuty and then Shutdown(0).
     EXPECT_CALL(*app, ActiveDuty).Times(1);
     EXPECT_CALL(*app, SwapInNewVersion).Times(0);
+    EXPECT_CALL(*app, MigrateLegacyUpdaters).Times(0);
     EXPECT_CALL(*app, UninstallSelf).Times(0);
     EXPECT_EQ(app->Run(), 0);
   }
@@ -211,6 +210,7 @@ TEST_F(AppServerTestCase, StateDirty) {
     // Shutdown(0).
     EXPECT_CALL(*app, ActiveDuty).Times(1);
     EXPECT_CALL(*app, SwapInNewVersion).WillOnce(Return(true));
+    EXPECT_CALL(*app, MigrateLegacyUpdaters).WillOnce(Return(true));
     EXPECT_CALL(*app, UninstallSelf).Times(0);
     EXPECT_EQ(app->Run(), 0);
   }
@@ -234,6 +234,7 @@ TEST_F(AppServerTestCase, StateDirtySwapFails) {
 
     // Expect the app to SwapInNewVersion and Shutdown(2).
     EXPECT_CALL(*app, ActiveDuty).Times(0);
+    EXPECT_CALL(*app, MigrateLegacyUpdaters).WillOnce(Return(true));
     EXPECT_CALL(*app, SwapInNewVersion).WillOnce(Return(false));
     EXPECT_CALL(*app, UninstallSelf).Times(0);
     EXPECT_EQ(app->Run(), 2);

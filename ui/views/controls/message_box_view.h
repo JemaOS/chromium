@@ -31,9 +31,9 @@ class Textfield;
 // within a constrained window, and has options for a message, prompt, OK
 // and Cancel buttons.
 class VIEWS_EXPORT MessageBoxView : public BoxLayoutView {
-  METADATA_HEADER(MessageBoxView, BoxLayoutView)
-
  public:
+  METADATA_HEADER(MessageBoxView);
+
   // |detect_directionality| indicates whether |message|'s directionality is
   // auto-detected.
   // For a message from a web page (not from Chrome's UI), such as script
@@ -103,7 +103,7 @@ class VIEWS_EXPORT MessageBoxView : public BoxLayoutView {
   gfx::Insets GetHorizontalInsets(const LayoutProvider* provider);
 
   // Message for the message box.
-  std::vector<raw_ptr<Label, VectorExperimental>> message_labels_;
+  std::vector<Label*> message_labels_;
 
   // Scrolling view containing the message labels.
   raw_ptr<ScrollView> scroll_view_ = nullptr;

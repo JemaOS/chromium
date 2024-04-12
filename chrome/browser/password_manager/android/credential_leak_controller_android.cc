@@ -7,11 +7,13 @@
 #include <memory>
 
 #include "base/android/jni_android.h"
+#include "base/android/jni_string.h"
+#include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/password_manager/android/password_checkup_launcher_helper.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/android/passwords/credential_leak_dialog_view_android.h"
 #include "components/password_manager/core/browser/leak_detection_dialog_utils.h"
 #include "ui/android/window_android.h"
+#include "url/android/gurl_android.h"
 
 using password_manager::CreateDialogTraits;
 using password_manager::PasswordCheckReferrerAndroid;
@@ -23,20 +25,14 @@ CredentialLeakControllerAndroid::CredentialLeakControllerAndroid(
     password_manager::CredentialLeakType leak_type,
     const GURL& origin,
     const std::u16string& username,
-    Profile* profile,
     ui::WindowAndroid* window_android,
-    std::unique_ptr<PasswordCheckupLauncherHelper> checkup_launcher,
-    std::unique_ptr<LeakDialogMetricsRecorder> metrics_recorder,
-    std::string account_email)
+    std::unique_ptr<LeakDialogMetricsRecorder> metrics_recorder)
     : leak_type_(leak_type),
       origin_(origin),
       username_(username),
-      profile_(profile),
       window_android_(window_android),
       leak_dialog_traits_(CreateDialogTraits(leak_type)),
-      checkup_launcher_(std::move(checkup_launcher)),
-      metrics_recorder_(std::move(metrics_recorder)),
-      account_email_(account_email) {}
+      metrics_recorder_(std::move(metrics_recorder)) {}
 
 CredentialLeakControllerAndroid::~CredentialLeakControllerAndroid() = default;
 
@@ -67,17 +63,21 @@ void CredentialLeakControllerAndroid::OnAcceptDialog() {
 
   metrics_recorder_->LogLeakDialogTypeAndDismissalReason(dismissal_reason);
 
+  // |window_android_| might be null in tests.
+  if (!window_android_) {
+    delete this;
+    return;
+  }
+
   JNIEnv* env = base::android::AttachCurrentThread();
 
   switch (dialog_type) {
     case LeakDialogType::kChange:
-      // No-op.
-      break;
     case LeakDialogType::kCheckup:
     case LeakDialogType::kCheckupAndChange:
-      checkup_launcher_->LaunchCheckupOnDevice(
-          env, profile_, window_android_,
-          PasswordCheckReferrerAndroid::kLeakDialog, account_email_);
+      PasswordCheckupLauncherHelper::LaunchLocalCheckup(
+          env, window_android_->GetJavaObject(),
+          PasswordCheckReferrerAndroid::kLeakDialog);
       break;
   }
 

@@ -18,6 +18,7 @@ class ChromeBrowserMainExtraPartsOzone : public ChromeBrowserMainExtraParts {
 
  protected:
   // ChromeBrowserMainExtraParts overrides.
+  void PreEarlyInitialization() override;
   void PostCreateMainMessageLoop() override;
   void PostMainMessageLoopRun() override;
 };

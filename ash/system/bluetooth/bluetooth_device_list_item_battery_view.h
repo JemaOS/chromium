@@ -5,13 +5,12 @@
 #ifndef ASH_SYSTEM_BLUETOOTH_BLUETOOTH_DEVICE_LIST_ITEM_BATTERY_VIEW_H_
 #define ASH_SYSTEM_BLUETOOTH_BLUETOOTH_DEVICE_LIST_ITEM_BATTERY_VIEW_H_
 
-#include <optional>
-
 #include "ash/ash_export.h"
 #include "ash/system/power/power_status.h"
 #include "ash/system/tray/hover_highlight_view.h"
 #include "base/memory/raw_ptr.h"
 #include "chromeos/ash/services/bluetooth_config/public/mojom/cros_bluetooth_config.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace views {
 class ImageView;
@@ -24,9 +23,9 @@ namespace ash {
 // Bluetooth device battery for a device in the detailed Bluetooth page within
 // the quick settings.
 class ASH_EXPORT BluetoothDeviceListItemBatteryView : public views::View {
-  METADATA_HEADER(BluetoothDeviceListItemBatteryView, views::View)
-
  public:
+  METADATA_HEADER(BluetoothDeviceListItemBatteryView);
+
   BluetoothDeviceListItemBatteryView();
   BluetoothDeviceListItemBatteryView(
       const BluetoothDeviceListItemBatteryView&) = delete;
@@ -46,10 +45,10 @@ class ASH_EXPORT BluetoothDeviceListItemBatteryView : public views::View {
   bool ApproximatelyEqual(uint8_t old_charge_percent,
                           uint8_t new_charge_percent) const;
 
-  std::optional<uint8_t> last_shown_battery_percentage_;
+  absl::optional<uint8_t> last_shown_battery_percentage_;
 
-  raw_ptr<views::Label> label_ = nullptr;
-  raw_ptr<views::ImageView> icon_ = nullptr;
+  raw_ptr<views::Label, ExperimentalAsh> label_ = nullptr;
+  raw_ptr<views::ImageView, ExperimentalAsh> icon_ = nullptr;
 };
 
 }  // namespace ash

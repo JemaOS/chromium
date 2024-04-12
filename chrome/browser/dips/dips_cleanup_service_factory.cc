@@ -4,9 +4,9 @@
 
 #include "chrome/browser/dips/dips_cleanup_service_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/dips/dips_cleanup_service.h"
-#include "content/public/common/content_features.h"
+#include "chrome/browser/dips/dips_features.h"
 
 // static
 DIPSCleanupService* DIPSCleanupServiceFactory::GetForBrowserContext(
@@ -16,13 +16,12 @@ DIPSCleanupService* DIPSCleanupServiceFactory::GetForBrowserContext(
 }
 
 DIPSCleanupServiceFactory* DIPSCleanupServiceFactory::GetInstance() {
-  static base::NoDestructor<DIPSCleanupServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<DIPSCleanupServiceFactory>::get();
 }
 
 /*static*/
 ProfileSelections DIPSCleanupServiceFactory::CreateProfileSelections() {
-  if (!base::FeatureList::IsEnabled(features::kDIPS)) {
+  if (!base::FeatureList::IsEnabled(dips::kFeature)) {
     return ProfileSelections::Builder()
         .WithRegular(ProfileSelection::kOriginalOnly)
         .WithGuest(ProfileSelection::kNone)

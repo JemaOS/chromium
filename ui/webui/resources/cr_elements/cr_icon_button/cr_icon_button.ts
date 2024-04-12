@@ -44,15 +44,13 @@
  * the |ironIcon| property to a comma-delimited list of keys.
  */
 
+import '../cr_shared_vars.css.js';
 import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
 
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
-import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
+import {PaperRippleBehavior} from '//resources/polymer/v3_0/paper-behaviors/paper-ripple-behavior.js';
+import {mixinBehaviors, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {CrRippleMixin} from '../cr_ripple/cr_ripple_mixin.js';
-
-import {getCss} from './cr_icon_button.css.js';
-import {getHtml} from './cr_icon_button.html.js';
+import {getTemplate} from './cr_icon_button.html.js';
 
 export interface CrIconButtonElement {
   $: {
@@ -60,43 +58,55 @@ export interface CrIconButtonElement {
   };
 }
 
-const CrIconbuttonElementBase = CrRippleMixin(CrLitElement);
+const CrIconbuttonElementBase =
+    mixinBehaviors([PaperRippleBehavior], PolymerElement) as {
+      new (): PolymerElement & PaperRippleBehavior,
+    };
+
 
 export class CrIconButtonElement extends CrIconbuttonElementBase {
   static get is() {
     return 'cr-icon-button';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
       disabled: {
         type: Boolean,
-        reflect: true,
+        value: false,
+        reflectToAttribute: true,
+        observer: 'disabledChanged_',
+      },
+
+      /**
+       * Use this property in order to configure the "tabindex" attribute.
+       */
+      customTabIndex: {
+        type: Number,
+        observer: 'applyTabIndex_',
       },
 
       ironIcon: {
         type: String,
-        reflect: true,
+        observer: 'onIronIconChanged_',
+        reflectToAttribute: true,
       },
 
       multipleIcons_: {
         type: Boolean,
-        reflect: true,
+        reflectToAttribute: true,
       },
     };
   }
 
-  disabled: boolean = false;
-  ironIcon?: string;
-  private multipleIcons_: boolean = false;
+  disabled: boolean;
+  customTabIndex: number;
+  ironIcon: string;
+  private multipleIcons_: boolean;
 
   /**
    * It is possible to activate a tab when the space key is pressed down. When
@@ -115,19 +125,15 @@ export class CrIconButtonElement extends CrIconbuttonElementBase {
     this.addEventListener('click', this.onClick_.bind(this));
     this.addEventListener('keydown', this.onKeyDown_.bind(this));
     this.addEventListener('keyup', this.onKeyUp_.bind(this));
-    this.ensureRippleOnPointerdown();
-  }
 
-  override willUpdate(changedProperties: PropertyValues<this>) {
-    super.willUpdate(changedProperties);
-
-    if (changedProperties.has('ironIcon')) {
-      const icons = (this.ironIcon || '').split(',');
-      this.multipleIcons_ = icons.length > 1;
+    if (document.documentElement.hasAttribute('chrome-refresh-2023')) {
+      this.addEventListener('pointerdown', this.onPointerDown_.bind(this));
     }
   }
 
-  override firstUpdated() {
+  override ready() {
+    super.ready();
+    this.setAttribute('aria-disabled', this.disabled ? 'true' : 'false');
     if (!this.hasAttribute('role')) {
       this.setAttribute('role', 'button');
     }
@@ -136,27 +142,30 @@ export class CrIconButtonElement extends CrIconbuttonElementBase {
     }
   }
 
-  override updated(changedProperties: PropertyValues<this>) {
-    super.updated(changedProperties);
-
-    if (changedProperties.has('disabled')) {
-      this.setAttribute('aria-disabled', this.disabled ? 'true' : 'false');
-      this.disabledChanged_(this.disabled, changedProperties.get('disabled'));
-    }
-
-    if (changedProperties.has('ironIcon')) {
-      this.onIronIconChanged_();
-    }
+  toggleClass(className: string) {
+    this.classList.toggle(className);
   }
 
-  private disabledChanged_(newValue: boolean, oldValue: boolean|undefined) {
+  private disabledChanged_(newValue: boolean, oldValue?: boolean) {
     if (!newValue && oldValue === undefined) {
       return;
     }
     if (this.disabled) {
       this.blur();
     }
-    this.setAttribute('tabindex', String(this.disabled ? -1 : 0));
+    this.setAttribute('aria-disabled', this.disabled ? 'true' : 'false');
+    this.applyTabIndex_();
+  }
+
+  /**
+   * Updates the tabindex HTML attribute to the actual value.
+   */
+  private applyTabIndex_() {
+    let value = this.customTabIndex;
+    if (value === undefined) {
+      value = this.disabled ? -1 : 0;
+    }
+    this.setAttribute('tabindex', value.toString());
   }
 
   private onBlur_() {
@@ -175,6 +184,7 @@ export class CrIconButtonElement extends CrIconbuttonElementBase {
       return;
     }
     const icons = (this.ironIcon || '').split(',');
+    this.multipleIcons_ = icons.length > 1;
     icons.forEach(icon => {
       const ironIcon = document.createElement('iron-icon');
       ironIcon.icon = icon;
@@ -214,6 +224,10 @@ export class CrIconButtonElement extends CrIconbuttonElementBase {
       this.spaceKeyDown_ = false;
       this.click();
     }
+  }
+
+  private onPointerDown_() {
+    this.ensureRipple();
   }
 }
 

@@ -21,7 +21,7 @@ typedef extensions::api::downloads_internal::DetermineFilename::Params
 
 ExtensionFunction::ResponseAction
 DownloadsInternalDetermineFilenameFunction::Run() {
-  std::optional<DetermineFilenameParams> params =
+  absl::optional<DetermineFilenameParams> params =
       DetermineFilenameParams::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   EXTENSION_FUNCTION_VALIDATE(args().size() >= 2);

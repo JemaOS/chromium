@@ -1,31 +1,5 @@
 
 
-#ifdef _WIN_ALL
-// StreamName must include the leading ':'.
-static bool IsNtfsReservedStream(const wchar* StreamName) {
-  const wchar* Reserved[]{L"::$ATTRIBUTE_LIST",
-                          L"::$BITMAP",
-                          L"::$DATA",
-                          L"::$EA",
-                          L"::$EA_INFORMATION",
-                          L"::$FILE_NAME",
-                          L"::$INDEX_ALLOCATION",
-                          L":$I30:$INDEX_ALLOCATION",
-                          L"::$INDEX_ROOT",
-                          L"::$LOGGED_UTILITY_STREAM",
-                          L":$EFS:$LOGGED_UTILITY_STREAM",
-                          L":$TXF_DATA:$LOGGED_UTILITY_STREAM",
-                          L"::$OBJECT_ID",
-                          L"::$REPARSE_POINT"};
-  for (const wchar* Name : Reserved) {
-    if (wcsicomp(StreamName, Name) == 0) {
-      return true;
-    }
-  }
-  return false;
-}
-#endif
-
 #if !defined(SFX_MODULE) && defined(_WIN_ALL)
 void ExtractStreams20(Archive &Arc,const wchar *FileName)
 {
@@ -64,10 +38,6 @@ void ExtractStreams20(Archive &Arc,const wchar *FileName)
   wchar StoredName[NM];
   CharToWide(Arc.StreamHead.StreamName,StoredName,ASIZE(StoredName));
   ConvertPath(StoredName+1,StoredName+1,ASIZE(StoredName)-1);
-
-  if (IsNtfsReservedStream(StoredName)) {
-    return;
-  }
 
   wcsncatz(StreamName,StoredName,ASIZE(StreamName));
 
@@ -141,29 +111,18 @@ void ExtractStreams(Archive &Arc,const wchar *FileName,bool TestMode)
 
   wcsncatz(FullName,StreamName,ASIZE(FullName));
 
-  if (IsNtfsReservedStream(StreamName)) {
-    return;
-  }
-
   FindData fd;
-  bool HostFound = FindFile::FastFind(FileName, &fd);
+  bool Found=FindFile::FastFind(FileName,&fd);
 
   if ((fd.FileAttr & FILE_ATTRIBUTE_READONLY)!=0)
     SetFileAttr(FileName,fd.FileAttr & ~FILE_ATTRIBUTE_READONLY);
   File CurFile;
-
-  if (CurFile.WCreate(FullName)) {
-    if (Arc.ReadSubData(NULL, &CurFile, false)) {
-      CurFile.Close();
-    }
-  }
-
-  // Restoring original file timestamps.
+  if (CurFile.WCreate(FullName) && Arc.ReadSubData(NULL,&CurFile,false))
+    CurFile.Close();
   File HostFile;
-  if (HostFound && HostFile.Open(FileName, FMF_OPENSHARED | FMF_UPDATE)) {
-    SetFileTime(HostFile.GetHandle(), &fd.ftCreationTime, &fd.ftLastAccessTime,
+  if (Found && HostFile.Open(FileName,FMF_OPENSHARED|FMF_UPDATE))
+    SetFileTime(HostFile.GetHandle(),&fd.ftCreationTime,&fd.ftLastAccessTime,
                 &fd.ftLastWriteTime);
-  }
 
   // Restoring original file attributes. Important if file was read only
   // or did not have "Archive" attribute

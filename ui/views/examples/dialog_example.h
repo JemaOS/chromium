@@ -60,11 +60,10 @@ class VIEWS_EXAMPLES_EXPORT DialogExample : public ExampleBase,
   ui::ModalType GetModalType() const;
   int GetDialogButtons() const;
 
-  void OnCloseCallback();
   // Invoked when the dialog is closing.
   bool AllowDialogClose(bool accept);
 
-  // Resize the dialog Widget to match the preferred size. Triggers layout.
+  // Resize the dialog Widget to match the preferred size. Triggers Layout().
   void ResizeDialog();
 
   void ShowButtonPressed();

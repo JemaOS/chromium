@@ -16,7 +16,6 @@
 #include "base/files/file_util.h"
 #include "base/files/important_file_writer.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/logging.h"
 #include "build/build_config.h"
 #include "chrome/updater/device_management/dm_cached_policy_info.h"
 #include "chrome/updater/device_management/dm_message.h"
@@ -47,18 +46,21 @@ constexpr char kPolicyFileName[] = "PolicyFetchResponse";
 bool DeleteObsoletePolicies(const base::FilePath& cache_root,
                             const std::set<std::string>& policy_types_base64) {
   bool result = true;
-  base::FileEnumerator(cache_root,
-                       /* recursive */ false, base::FileEnumerator::DIRECTORIES,
-                       FILE_PATH_LITERAL("*"))
-      .ForEach([&policy_types_base64, &result](const base::FilePath& file) {
-        if (policy_types_base64.count(file.BaseName().MaybeAsASCII())) {
-          return;
-        }
+  base::FileEnumerator cached_files(cache_root,
+                                    /* recursive */ false,
+                                    base::FileEnumerator::DIRECTORIES,
+                                    FILE_PATH_LITERAL("*"));
+  for (base::FilePath file = cached_files.Next(); !file.empty();
+       file = cached_files.Next()) {
+    const std::string file_base_name = file.BaseName().MaybeAsASCII();
+    if (policy_types_base64.count(file_base_name)) {
+      continue;
+    }
 
-        if (!base::DeletePathRecursively(file)) {
-          result = false;
-        }
-      });
+    if (!base::DeletePathRecursively(file)) {
+      result = false;
+    }
+  }
 
   return result;
 }
@@ -78,16 +80,6 @@ bool MakePathGlobalAccessible(const base::FilePath& path) {
 }
 
 }  // namespace
-
-bool CreateGlobalAccessibleDirectory(const base::FilePath& path) {
-  return base::CreateDirectory(path) && MakePathGlobalAccessible(path);
-}
-
-bool WriteContentToGlobalReadableFile(const base::FilePath& path,
-                                      const std::string& content) {
-  return base::ImportantFileWriter::WriteFileAtomically(path, content) &&
-         MakePathGlobalAccessible(path);
-}
 
 DMStorage::DMStorage(const base::FilePath& policy_cache_root,
                      std::unique_ptr<TokenServiceInterface> token_service)
@@ -138,33 +130,42 @@ bool DMStorage::PersistPolicies(const DMPolicyMap& policy_map) const {
     return true;
   }
 
+  // Each policy in the map should be signed in the same way. If a policy
+  // in the map contains a public key, normally it means the server rotates the
+  // key. In this case, we persists the policy into the cached policy info file
+  // for future policy fetch.
+  const std::string policy_info_data = policy_map.cbegin()->second;
+  CachedPolicyInfo cached_info;
+  if (cached_info.Populate(policy_info_data) &&
+      !cached_info.public_key().empty()) {
+    if (!base::ImportantFileWriter::WriteFileAtomically(policy_info_file_,
+                                                        policy_info_data) ||
+        !MakePathGlobalAccessible(policy_info_file_)) {
+      return false;
+    }
+  }
+
   // Persists individual policies.
   std::set<std::string> policy_types_base64;
-  bool policy_info_data_saved = false;
   for (const auto& policy_entry : policy_map) {
     const std::string& policy_type = policy_entry.first;
     const std::string& policy_value = policy_entry.second;
-    if (!policy_info_data_saved) {
-      // Policy info has a new public key when server rotates the key.
-      // In this case, persists the policy info as the cached policy info
-      // for future policy fetch.
-      CachedPolicyInfo cached_info;
-      if (cached_info.Populate(policy_value) &&
-          !cached_info.public_key().empty() &&
-          WriteContentToGlobalReadableFile(policy_info_file_, policy_value)) {
-        VLOG(1) << "Public key rotated.";
-        policy_info_data_saved = true;
-      }
-    }
 
-    std::string encoded_policy_type = base::Base64Encode(policy_type);
+    std::string encoded_policy_type;
+    base::Base64Encode(policy_type, &encoded_policy_type);
+
     policy_types_base64.emplace(encoded_policy_type);
 
-    const base::FilePath policy_dir =
+    base::FilePath policy_dir =
         policy_cache_root_.AppendASCII(encoded_policy_type);
-    if (!CreateGlobalAccessibleDirectory(policy_dir) ||
-        !WriteContentToGlobalReadableFile(
-            policy_dir.AppendASCII(kPolicyFileName), policy_value)) {
+    if (!base::CreateDirectory(policy_dir) ||
+        !MakePathGlobalAccessible(policy_dir)) {
+      return false;
+    }
+    base::FilePath policy_file = policy_dir.AppendASCII(kPolicyFileName);
+    if (!base::ImportantFileWriter::WriteFileAtomically(policy_file,
+                                                        policy_value) ||
+        !MakePathGlobalAccessible(policy_file)) {
       return false;
     }
   }
@@ -177,10 +178,15 @@ std::unique_ptr<CachedPolicyInfo> DMStorage::GetCachedPolicyInfo() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto cached_info = std::make_unique<CachedPolicyInfo>();
 
+  if (!IsValidDMToken()) {
+    return cached_info;
+  }
+
   std::string policy_info_data;
-  if (IsValidDMToken() && base::PathExists(policy_info_file_) &&
-      base::ReadFileToString(policy_info_file_, &policy_info_data)) {
-    cached_info->Populate(policy_info_data);
+  if (!base::PathExists(policy_info_file_) ||
+      !base::ReadFileToString(policy_info_file_, &policy_info_data) ||
+      !cached_info->Populate(policy_info_data)) {
+    return cached_info;
   }
 
   return cached_info;
@@ -192,12 +198,11 @@ DMStorage::GetOmahaPolicySettings() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!IsValidDMToken()) {
-    VLOG(1) << "No valid DM token.";
     return nullptr;
   }
 
-  std::string encoded_omaha_policy_type =
-      base::Base64Encode(kGoogleUpdatePolicyType);
+  std::string encoded_omaha_policy_type;
+  base::Base64Encode(kGoogleUpdatePolicyType, &encoded_omaha_policy_type);
 
   base::FilePath omaha_policy_file =
       policy_cache_root_.AppendASCII(encoded_omaha_policy_type)
@@ -214,7 +219,6 @@ DMStorage::GetOmahaPolicySettings() const {
       !policy_data.ParseFromString(response.policy_data()) ||
       !policy_data.has_policy_value() ||
       !omaha_settings->ParseFromString(policy_data.policy_value())) {
-    VLOG(1) << "No Omaha policies.";
     return nullptr;
   }
 

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_EXTENSIONS_FILE_MANAGER_EVENT_ROUTER_FACTORY_H_
 #define CHROME_BROWSER_ASH_EXTENSIONS_FILE_MANAGER_EVENT_ROUTER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -29,13 +29,13 @@ class EventRouterFactory : public ProfileKeyedServiceFactory {
   bool ServiceIsNULLWhileTesting() const override;
 
  private:
-  friend base::NoDestructor<EventRouterFactory>;
+  friend struct base::DefaultSingletonTraits<EventRouterFactory>;
 
   EventRouterFactory();
   ~EventRouterFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

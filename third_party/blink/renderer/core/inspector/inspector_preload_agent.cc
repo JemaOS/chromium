@@ -4,7 +4,6 @@
 
 #include "third_party/blink/renderer/core/inspector/inspector_preload_agent.h"
 
-#include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/html/html_anchor_element.h"
@@ -16,11 +15,11 @@ namespace blink {
 
 namespace {
 
-std::optional<protocol::Preload::RuleSetErrorType> GetProtocolRuleSetErrorType(
+absl::optional<protocol::Preload::RuleSetErrorType> GetProtocolRuleSetErrorType(
     SpeculationRuleSetErrorType error_type) {
   switch (error_type) {
     case SpeculationRuleSetErrorType::kNoError:
-      return std::nullopt;
+      return absl::nullopt;
     case SpeculationRuleSetErrorType::kSourceIsNotJsonObject:
       return protocol::Preload::RuleSetErrorTypeEnum::SourceIsNotJsonObject;
     case SpeculationRuleSetErrorType::kInvalidRulesSkipped:
@@ -36,6 +35,23 @@ String GetProtocolRuleSetErrorMessage(const SpeculationRuleSet& rule_set) {
     case SpeculationRuleSetErrorType::kInvalidRulesSkipped:
       return rule_set.error_message();
   }
+}
+
+std::unique_ptr<protocol::Preload::RuleSet> BuildProtocolRuleSet(
+    const SpeculationRuleSet& rule_set,
+    const String& loader_id) {
+  auto builder = protocol::Preload::RuleSet::create()
+                     .setId(rule_set.InspectorId())
+                     .setLoaderId(loader_id)
+                     .setSourceText(rule_set.source()->GetSourceText())
+                     .build();
+
+  if (auto error_type = GetProtocolRuleSetErrorType(rule_set.error_type())) {
+    builder->setErrorType(error_type.value());
+    builder->setErrorMessage(GetProtocolRuleSetErrorMessage(rule_set));
+  }
+
+  return builder;
 }
 
 // Struct to represent a unique preloading attempt (corresponds to
@@ -95,12 +111,12 @@ protocol::Preload::SpeculationAction GetProtocolSpeculationAction(
   }
 }
 
-std::optional<protocol::Preload::SpeculationTargetHint>
+absl::optional<protocol::Preload::SpeculationTargetHint>
 GetProtocolSpeculationTargetHint(
     mojom::blink::SpeculationTargetHint target_hint) {
   switch (target_hint) {
     case mojom::blink::SpeculationTargetHint::kNoHint:
-      return std::nullopt;
+      return absl::nullopt;
     case mojom::blink::SpeculationTargetHint::kSelf:
       return protocol::Preload::SpeculationTargetHintEnum::Self;
     case mojom::blink::SpeculationTargetHint::kBlank:
@@ -117,7 +133,7 @@ BuildProtocolPreloadingAttemptKey(const PreloadingAttemptKey& key,
           .setAction(GetProtocolSpeculationAction(key.action))
           .setUrl(key.url)
           .build();
-  std::optional<String> target_hint_str =
+  absl::optional<String> target_hint_str =
       GetProtocolSpeculationTargetHint(key.target_hint);
   if (target_hint_str) {
     preloading_attempt_key->setTargetHint(target_hint_str.value());
@@ -143,7 +159,7 @@ BuildProtocolPreloadingAttemptSource(
     }
     if (HTMLAnchorElement* anchor = candidate->anchor();
         anchor && unique_anchors.insert(anchor).is_new_entry) {
-      node_ids->push_back(anchor->GetDomNodeId());
+      node_ids->push_back(DOMNodeIds::IdForNode(anchor));
     }
   }
   return protocol::Preload::PreloadingAttemptSource::create()
@@ -154,46 +170,6 @@ BuildProtocolPreloadingAttemptSource(
 }
 
 }  // namespace
-
-namespace internal {
-
-std::unique_ptr<protocol::Preload::RuleSet> BuildProtocolRuleSet(
-    const SpeculationRuleSet& rule_set,
-    const String& loader_id) {
-  auto builder = protocol::Preload::RuleSet::create()
-                     .setId(rule_set.InspectorId())
-                     .setLoaderId(loader_id)
-                     .setSourceText(rule_set.source()->GetSourceText())
-                     .build();
-
-  auto* source = rule_set.source();
-  if (source->IsFromInlineScript()) {
-    builder->setBackendNodeId(source->GetNodeId().value());
-  } else if (source->IsFromRequest()) {
-    builder->setUrl(source->GetSourceURL().value());
-
-    String request_id_string = IdentifiersFactory::SubresourceRequestId(
-        source->GetRequestId().value());
-    if (!request_id_string.IsNull()) {
-      builder->setRequestId(request_id_string);
-    }
-  } else {
-    CHECK(source->IsFromBrowserInjected());
-    CHECK(base::FeatureList::IsEnabled(features::kAutoSpeculationRules));
-
-    // TODO(https://crbug.com/1472970): show something nicer than this.
-    builder->setUrl("chrome://auto-speculation-rules");
-  }
-
-  if (auto error_type = GetProtocolRuleSetErrorType(rule_set.error_type())) {
-    builder->setErrorType(error_type.value());
-    builder->setErrorMessage(GetProtocolRuleSetErrorMessage(rule_set));
-  }
-
-  return builder;
-}
-
-}  // namespace internal
 
 InspectorPreloadAgent::InspectorPreloadAgent()
     : enabled_(&agent_state_, /*default_value=*/false) {}
@@ -214,8 +190,7 @@ void InspectorPreloadAgent::DidAddSpeculationRuleSet(
   }
 
   String loader_id = IdentifiersFactory::LoaderId(document.Loader());
-  GetFrontend()->ruleSetUpdated(
-      internal::BuildProtocolRuleSet(rule_set, loader_id));
+  GetFrontend()->ruleSetUpdated(BuildProtocolRuleSet(rule_set, loader_id));
 }
 
 void InspectorPreloadAgent::DidRemoveSpeculationRuleSet(

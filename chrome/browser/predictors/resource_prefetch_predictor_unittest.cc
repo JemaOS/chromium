@@ -18,7 +18,6 @@
 #include "base/test/test_simple_task_runner.h"
 #include "base/time/time.h"
 #include "chrome/browser/history/history_service_factory.h"
-#include "chrome/browser/predictors/lcp_critical_path_predictor/lcp_critical_path_predictor_util.h"
 #include "chrome/browser/predictors/loading_predictor.h"
 #include "chrome/browser/predictors/loading_test_util.h"
 #include "chrome/browser/predictors/predictors_features.h"
@@ -43,7 +42,6 @@ namespace {
 
 using RedirectDataMap = std::map<std::string, RedirectData>;
 using OriginDataMap = std::map<std::string, OriginData>;
-using LcppDataMap = std::map<std::string, LcppData>;
 
 template <typename T>
 class FakeLoadingPredictorKeyValueTable
@@ -94,13 +92,8 @@ class MockResourcePrefetchPredictorTables
     return &origin_table_;
   }
 
-  sqlite_proto::KeyValueTable<LcppData>* lcpp_table() override {
-    return &lcpp_table_;
-  }
-
   FakeLoadingPredictorKeyValueTable<RedirectData> host_redirect_table_;
   FakeLoadingPredictorKeyValueTable<OriginData> origin_table_;
-  FakeLoadingPredictorKeyValueTable<LcppData> lcpp_table_;
 
  protected:
   ~MockResourcePrefetchPredictorTables() override = default;
@@ -145,49 +138,16 @@ class ResourcePrefetchPredictorTest : public testing::Test {
 
   void InitializeSampleData();
 
-  double SumOfLcppStringFrequencyStatData(
-      const LcppStringFrequencyStatData& data) {
-    double sum = data.other_bucket_frequency();
-    for (const auto& [url, frequency] : data.main_buckets()) {
-      sum += frequency;
-    }
-    return sum;
-  }
-
-  void LearnLcpp(const GURL& url,
-                 const std::string& lcp_element_locator,
-                 const std::vector<GURL>& lcp_influencer_scripts) {
-    predictors::LcppDataInputs inputs;
-    inputs.lcp_element_locator = lcp_element_locator;
-    inputs.lcp_influencer_scripts = lcp_influencer_scripts;
-    predictor_->LearnLcpp(url, inputs);
-  }
-
-  void LearnFontUrls(const GURL& url, const std::vector<GURL>& font_urls) {
-    LcppDataInputs inputs;
-    inputs.font_urls = font_urls;
-    predictor_->LearnLcpp(url, inputs);
-  }
-
-  void LearnSubresourceUrls(
-      const GURL& url,
-      const std::map<GURL, base::TimeDelta>& subresource_urls) {
-    LcppDataInputs inputs;
-    inputs.subresource_urls = subresource_urls;
-    predictor_->LearnLcpp(url, inputs);
-  }
-
   content::BrowserTaskEnvironment task_environment_;
   std::unique_ptr<TestingProfile> profile_;
   scoped_refptr<base::TestSimpleTaskRunner> db_task_runner_;
 
   std::unique_ptr<LoadingPredictor> loading_predictor_;
-  raw_ptr<ResourcePrefetchPredictor, DanglingUntriaged> predictor_;
+  raw_ptr<ResourcePrefetchPredictor> predictor_;
   scoped_refptr<StrictMock<MockResourcePrefetchPredictorTables>> mock_tables_;
 
   RedirectDataMap test_host_redirect_data_;
   OriginDataMap test_origin_data_;
-  LcppDataMap test_lcpp_data_;
 
   std::unique_ptr<base::HistogramTester> histogram_tester_;
 };
@@ -232,64 +192,45 @@ void ResourcePrefetchPredictorTest::TearDown() {
             mock_tables_->host_redirect_table_.data_);
   EXPECT_EQ(predictor_->origin_data_->GetAllCached(),
             mock_tables_->origin_table_.data_);
-  EXPECT_EQ(predictor_->lcpp_data_->GetAllCached(),
-            mock_tables_->lcpp_table_.data_);
   loading_predictor_->Shutdown();
 }
 
 void ResourcePrefetchPredictorTest::InitializeSampleData() {
   {  // Host redirect data.
-    RedirectData redirect = CreateRedirectData("foo.test", 9);
-    InitializeRedirectStat(redirect.add_redirect_endpoints(),
-                           GURL("https://www.foo.test"), 8, 4, 1);
-    InitializeRedirectStat(redirect.add_redirect_endpoints(),
-                           GURL("https://m.foo.test"), 5, 8, 0);
-    InitializeRedirectStat(redirect.add_redirect_endpoints(),
-                           GURL("http://foo.test"), 1, 3, 0);
-    InitializeRedirectStat(redirect.add_redirect_endpoints(),
-                           GURL("https://foo.test"), 1, 3, 0);
+    RedirectData bbc = CreateRedirectData("bbc.com", 9);
+    InitializeRedirectStat(bbc.add_redirect_endpoints(),
+                           GURL("https://www.bbc.com"), 8, 4, 1);
+    InitializeRedirectStat(bbc.add_redirect_endpoints(),
+                           GURL("https://m.bbc.com"), 5, 8, 0);
+    InitializeRedirectStat(bbc.add_redirect_endpoints(),
+                           GURL("http://bbc.co.uk"), 1, 3, 0);
+    InitializeRedirectStat(bbc.add_redirect_endpoints(),
+                           GURL("https://bbc.co.uk"), 1, 3, 0);
 
-    RedirectData redirect2 = CreateRedirectData("bar.test", 10);
-    InitializeRedirectStat(redirect.add_redirect_endpoints(),
-                           GURL("https://www.bar.test"), 10, 0, 0);
+    RedirectData microsoft = CreateRedirectData("microsoft.com", 10);
+    InitializeRedirectStat(microsoft.add_redirect_endpoints(),
+                           GURL("https://www.microsoft.com"), 10, 0, 0);
 
     test_host_redirect_data_.clear();
+    test_host_redirect_data_.insert(std::make_pair(bbc.primary_key(), bbc));
     test_host_redirect_data_.insert(
-        std::make_pair(redirect.primary_key(), redirect));
-    test_host_redirect_data_.insert(
-        std::make_pair(redirect2.primary_key(), redirect2));
+        std::make_pair(microsoft.primary_key(), microsoft));
   }
 
   {  // Origin data.
-    OriginData google = CreateOriginData("google.test", 12);
-    InitializeOriginStat(google.add_origins(), "https://static.google.test", 12,
+    OriginData google = CreateOriginData("google.com", 12);
+    InitializeOriginStat(google.add_origins(), "https://static.google.com", 12,
                          0, 0, 3., false, true);
-    InitializeOriginStat(google.add_origins(), "https://cats.google.test", 12,
-                         0, 0, 5., true, true);
-    test_origin_data_.insert({"google.test", google});
+    InitializeOriginStat(google.add_origins(), "https://cats.google.com", 12, 0,
+                         0, 5., true, true);
+    test_origin_data_.insert({"google.com", google});
 
-    OriginData origin = CreateOriginData("baz.test", 42);
-    InitializeOriginStat(origin.add_origins(), "https://static.baz.test", 12, 0,
-                         0, 3., false, true);
-    InitializeOriginStat(origin.add_origins(), "https://random.140chars.test",
+    OriginData twitter = CreateOriginData("twitter.com", 42);
+    InitializeOriginStat(twitter.add_origins(), "https://static.twitter.com",
                          12, 0, 0, 3., false, true);
-    test_origin_data_.insert({"baz.test", origin});
-  }
-
-  {  // LCPP data.
-    LcppData google = CreateLcppData("google.test", 20);
-    InitializeLcpElementLocatorBucket(google, "/#lcpImage1", 3);
-    InitializeLcpElementLocatorBucket(google, "/#lcpImage2", 2);
-    InitializeLcpInfluencerScriptUrlsBucket(
-        google, {GURL("https://google.test/script1.js")}, 3);
-    test_lcpp_data_.insert({"google.test", google});
-
-    LcppData lcpp2 = CreateLcppData("baz.test", 20);
-    InitializeLcpElementLocatorBucket(lcpp2, "/#lcpImageA", 5);
-    InitializeLcpElementLocatorBucket(lcpp2, "/#lcpImageB", 1);
-    InitializeLcpInfluencerScriptUrlsBucket(
-        lcpp2, {GURL("https://baz.test/script2.js")}, 5);
-    test_lcpp_data_.insert({"baz.test", lcpp2});
+    InitializeOriginStat(twitter.add_origins(), "https://random.140chars.com",
+                         12, 0, 0, 3., false, true);
+    test_origin_data_.insert({"twitter.com", twitter});
   }
 }
 
@@ -297,14 +238,12 @@ void ResourcePrefetchPredictorTest::InitializeSampleData() {
 TEST_F(ResourcePrefetchPredictorTest, LazilyInitializeEmpty) {
   EXPECT_TRUE(mock_tables_->host_redirect_table_.data_.empty());
   EXPECT_TRUE(mock_tables_->origin_table_.data_.empty());
-  EXPECT_TRUE(mock_tables_->lcpp_table_.data_.empty());
 }
 
 // Tests that the history and the db tables data are loaded correctly.
 TEST_F(ResourcePrefetchPredictorTest, LazilyInitializeWithData) {
   mock_tables_->host_redirect_table_.data_ = test_host_redirect_data_;
   mock_tables_->origin_table_.data_ = test_origin_data_;
-  mock_tables_->lcpp_table_.data_ = test_lcpp_data_;
 
   ResetPredictor();
   InitializePredictor();
@@ -320,64 +259,65 @@ TEST_F(ResourcePrefetchPredictorTest, LazilyInitializeWithData) {
 // resources and also for number of resources saved.
 TEST_F(ResourcePrefetchPredictorTest, NavigationUrlNotInDB) {
   std::vector<blink::mojom::ResourceLoadInfoPtr> resources;
-  resources.push_back(CreateResourceLoadInfo("http://www.google.test"));
+  resources.push_back(CreateResourceLoadInfo("http://www.google.com"));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/style1.css",
+      CreateResourceLoadInfo("http://google.com/style1.css",
                              network::mojom::RequestDestination::kStyle));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/script1.js",
+      CreateResourceLoadInfo("http://google.com/script1.js",
                              network::mojom::RequestDestination::kScript));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/script2.js",
+      CreateResourceLoadInfo("http://google.com/script2.js",
                              network::mojom::RequestDestination::kScript));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/script1.js",
+      CreateResourceLoadInfo("http://google.com/script1.js",
                              network::mojom::RequestDestination::kScript));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/image1.png",
+      CreateResourceLoadInfo("http://google.com/image1.png",
                              network::mojom::RequestDestination::kImage));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/image2.png",
+      CreateResourceLoadInfo("http://google.com/image2.png",
                              network::mojom::RequestDestination::kImage));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/style2.css",
+      CreateResourceLoadInfo("http://google.com/style2.css",
                              network::mojom::RequestDestination::kStyle));
   resources.push_back(
-      CreateResourceLoadInfo("http://static.google.test/style2-no-store.css",
+      CreateResourceLoadInfo("http://static.google.com/style2-no-store.css",
                              network::mojom::RequestDestination::kStyle,
                              /* always_access_network */ true));
   resources.push_back(CreateResourceLoadInfoWithRedirects(
-      {"http://reader.google.test/style.css",
-       "http://dev.null.google.test/style.css"},
+      {"http://reader.google.com/style.css",
+       "http://dev.null.google.com/style.css"},
       network::mojom::RequestDestination::kStyle));
   resources.back()->network_info->always_access_network = true;
 
   auto page_summary = CreatePageRequestSummary(
-      "http://www.google.test", "http://www.google.test", resources);
+      "http://www.google.com", "http://www.google.com", resources);
 
   StrictMock<MockResourcePrefetchPredictorObserver> mock_observer(predictor_);
   EXPECT_CALL(mock_observer, OnNavigationLearned(page_summary));
 
-  predictor_->RecordPageRequestSummary(page_summary);
+  predictor_->RecordPageRequestSummary(
+      std::make_unique<PageRequestSummary>(page_summary));
   profile_->BlockUntilHistoryProcessesPendingRequests();
 
-  OriginData origin_data = CreateOriginData("www.google.test");
-  InitializeOriginStat(origin_data.add_origins(), "http://www.google.test/", 1,
+  OriginData origin_data = CreateOriginData("www.google.com");
+  InitializeOriginStat(origin_data.add_origins(), "http://www.google.com/", 1,
                        0, 0, 1., false, true);
-  InitializeOriginStat(origin_data.add_origins(), "http://static.google.test/",
+  InitializeOriginStat(origin_data.add_origins(), "http://static.google.com/",
                        1, 0, 0, 3., true, true);
-  InitializeOriginStat(origin_data.add_origins(),
-                       "http://dev.null.google.test/", 1, 0, 0, 5., true, true);
-  InitializeOriginStat(origin_data.add_origins(), "http://google.test/", 1, 0,
-                       0, 2., false, true);
-  InitializeOriginStat(origin_data.add_origins(), "http://reader.google.test/",
+  InitializeOriginStat(origin_data.add_origins(), "http://dev.null.google.com/",
+                       1, 0, 0, 5., true, true);
+  InitializeOriginStat(origin_data.add_origins(), "http://google.com/", 1, 0, 0,
+                       2., false, true);
+  InitializeOriginStat(origin_data.add_origins(), "http://reader.google.com/",
                        1, 0, 0, 4., false, true);
   EXPECT_EQ(mock_tables_->origin_table_.data_,
             OriginDataMap({{origin_data.host(), origin_data}}));
 
-  RedirectData host_redirect_data = CreateRedirectData("www.google.test");
+  RedirectData host_redirect_data = CreateRedirectData("www.google.com");
   InitializeRedirectStat(host_redirect_data.add_redirect_endpoints(),
-                         GURL("http://www.google.test"), 1, 0, 0);
+                         GURL("http://www.google.com"), 1, 0, 0);
   EXPECT_EQ(mock_tables_->host_redirect_table_.data_,
             RedirectDataMap(
                 {{host_redirect_data.primary_key(), host_redirect_data}}));
@@ -392,64 +332,65 @@ TEST_F(ResourcePrefetchPredictorTest,
       features::kLoadingPredictorDisregardAlwaysAccessesNetwork);
 
   std::vector<blink::mojom::ResourceLoadInfoPtr> resources;
-  resources.push_back(CreateResourceLoadInfo("http://www.google.test"));
+  resources.push_back(CreateResourceLoadInfo("http://www.google.com"));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/style1.css",
+      CreateResourceLoadInfo("http://google.com/style1.css",
                              network::mojom::RequestDestination::kStyle));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/script1.js",
+      CreateResourceLoadInfo("http://google.com/script1.js",
                              network::mojom::RequestDestination::kScript));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/script2.js",
+      CreateResourceLoadInfo("http://google.com/script2.js",
                              network::mojom::RequestDestination::kScript));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/script1.js",
+      CreateResourceLoadInfo("http://google.com/script1.js",
                              network::mojom::RequestDestination::kScript));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/image1.png",
+      CreateResourceLoadInfo("http://google.com/image1.png",
                              network::mojom::RequestDestination::kImage));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/image2.png",
+      CreateResourceLoadInfo("http://google.com/image2.png",
                              network::mojom::RequestDestination::kImage));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/style2.css",
+      CreateResourceLoadInfo("http://google.com/style2.css",
                              network::mojom::RequestDestination::kStyle));
   resources.push_back(
-      CreateResourceLoadInfo("http://static.google.test/style2-no-store.css",
+      CreateResourceLoadInfo("http://static.google.com/style2-no-store.css",
                              network::mojom::RequestDestination::kStyle,
                              /* always_access_network */ true));
   resources.push_back(CreateResourceLoadInfoWithRedirects(
-      {"http://reader.google.test/style.css",
-       "http://dev.null.google.test/style.css"},
+      {"http://reader.google.com/style.css",
+       "http://dev.null.google.com/style.css"},
       network::mojom::RequestDestination::kStyle));
   resources.back()->network_info->always_access_network = true;
 
   auto page_summary = CreatePageRequestSummary(
-      "http://www.google.test", "http://www.google.test", resources);
+      "http://www.google.com", "http://www.google.com", resources);
 
   StrictMock<MockResourcePrefetchPredictorObserver> mock_observer(predictor_);
   EXPECT_CALL(mock_observer, OnNavigationLearned(page_summary));
 
-  predictor_->RecordPageRequestSummary(page_summary);
+  predictor_->RecordPageRequestSummary(
+      std::make_unique<PageRequestSummary>(page_summary));
   profile_->BlockUntilHistoryProcessesPendingRequests();
 
-  OriginData origin_data = CreateOriginData("www.google.test");
-  InitializeOriginStat(origin_data.add_origins(), "http://www.google.test/", 1,
+  OriginData origin_data = CreateOriginData("www.google.com");
+  InitializeOriginStat(origin_data.add_origins(), "http://www.google.com/", 1,
                        0, 0, 1., false, true);
-  InitializeOriginStat(origin_data.add_origins(), "http://google.test/", 1, 0,
-                       0, 2., false, true);
-  InitializeOriginStat(origin_data.add_origins(), "http://static.google.test/",
+  InitializeOriginStat(origin_data.add_origins(), "http://google.com/", 1, 0, 0,
+                       2., false, true);
+  InitializeOriginStat(origin_data.add_origins(), "http://static.google.com/",
                        1, 0, 0, 3., true, true);
-  InitializeOriginStat(origin_data.add_origins(), "http://reader.google.test/",
+  InitializeOriginStat(origin_data.add_origins(), "http://reader.google.com/",
                        1, 0, 0, 4., false, true);
-  InitializeOriginStat(origin_data.add_origins(),
-                       "http://dev.null.google.test/", 1, 0, 0, 5., true, true);
+  InitializeOriginStat(origin_data.add_origins(), "http://dev.null.google.com/",
+                       1, 0, 0, 5., true, true);
   EXPECT_EQ(mock_tables_->origin_table_.data_,
             OriginDataMap({{origin_data.host(), origin_data}}));
 
-  RedirectData host_redirect_data = CreateRedirectData("www.google.test");
+  RedirectData host_redirect_data = CreateRedirectData("www.google.com");
   InitializeRedirectStat(host_redirect_data.add_redirect_endpoints(),
-                         GURL("http://www.google.test"), 1, 0, 0);
+                         GURL("http://www.google.com"), 1, 0, 0);
   EXPECT_EQ(mock_tables_->host_redirect_table_.data_,
             RedirectDataMap(
                 {{host_redirect_data.primary_key(), host_redirect_data}}));
@@ -462,56 +403,57 @@ TEST_F(ResourcePrefetchPredictorTest, NavigationUrlInDB) {
   InitializePredictor();
 
   std::vector<blink::mojom::ResourceLoadInfoPtr> resources;
-  resources.push_back(CreateResourceLoadInfo("http://www.google.test"));
+  resources.push_back(CreateResourceLoadInfo("http://www.google.com"));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/style1.css",
+      CreateResourceLoadInfo("http://google.com/style1.css",
                              network::mojom::RequestDestination::kStyle));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/script1.js",
+      CreateResourceLoadInfo("http://google.com/script1.js",
                              network::mojom::RequestDestination::kScript));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/script2.js",
+      CreateResourceLoadInfo("http://google.com/script2.js",
                              network::mojom::RequestDestination::kScript));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/script1.js",
+      CreateResourceLoadInfo("http://google.com/script1.js",
                              network::mojom::RequestDestination::kScript));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/image1.png",
+      CreateResourceLoadInfo("http://google.com/image1.png",
                              network::mojom::RequestDestination::kImage));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/image2.png",
+      CreateResourceLoadInfo("http://google.com/image2.png",
                              network::mojom::RequestDestination::kImage));
   resources.push_back(
-      CreateResourceLoadInfo("http://google.test/style2.css",
+      CreateResourceLoadInfo("http://google.com/style2.css",
                              network::mojom::RequestDestination::kStyle));
   resources.push_back(
-      CreateResourceLoadInfo("http://static.google.test/style2-no-store.css",
+      CreateResourceLoadInfo("http://static.google.com/style2-no-store.css",
                              network::mojom::RequestDestination::kStyle,
                              /* always_access_network */ true));
 
   auto page_summary = CreatePageRequestSummary(
-      "http://www.google.test", "http://www.google.test", resources);
+      "http://www.google.com", "http://www.google.com", resources);
 
   StrictMock<MockResourcePrefetchPredictorObserver> mock_observer(predictor_);
   EXPECT_CALL(mock_observer, OnNavigationLearned(page_summary));
 
-  predictor_->RecordPageRequestSummary(page_summary);
+  predictor_->RecordPageRequestSummary(
+      std::make_unique<PageRequestSummary>(page_summary));
   profile_->BlockUntilHistoryProcessesPendingRequests();
 
-  RedirectData host_redirect_data = CreateRedirectData("www.google.test");
+  RedirectData host_redirect_data = CreateRedirectData("www.google.com");
   InitializeRedirectStat(host_redirect_data.add_redirect_endpoints(),
-                         GURL("http://www.google.test"), 1, 0, 0);
+                         GURL("http://www.google.com"), 1, 0, 0);
   EXPECT_EQ(mock_tables_->host_redirect_table_.data_,
             RedirectDataMap(
                 {{host_redirect_data.primary_key(), host_redirect_data}}));
 
-  OriginData origin_data = CreateOriginData("www.google.test");
-  InitializeOriginStat(origin_data.add_origins(), "http://www.google.test/", 1.,
+  OriginData origin_data = CreateOriginData("www.google.com");
+  InitializeOriginStat(origin_data.add_origins(), "http://www.google.com/", 1.,
                        0, 0, 1., false, true);
-  InitializeOriginStat(origin_data.add_origins(), "http://static.google.test/",
+  InitializeOriginStat(origin_data.add_origins(), "http://static.google.com/",
                        1, 0, 0, 3., true, true);
-  InitializeOriginStat(origin_data.add_origins(), "http://google.test/", 1, 0,
-                       0, 2., false, true);
+  InitializeOriginStat(origin_data.add_origins(), "http://google.com/", 1, 0, 0,
+                       2., false, true);
   EXPECT_EQ(mock_tables_->origin_table_.data_,
             OriginDataMap({{origin_data.host(), origin_data}}));
 }
@@ -524,48 +466,49 @@ TEST_F(ResourcePrefetchPredictorTest, NavigationUrlNotInDBAndDBFull) {
   InitializePredictor();
 
   std::vector<blink::mojom::ResourceLoadInfoPtr> resources;
-  resources.push_back(CreateResourceLoadInfo("http://www.foo.test"));
+  resources.push_back(CreateResourceLoadInfo("http://www.nike.com"));
   resources.push_back(
-      CreateResourceLoadInfo("http://foo.test/style1.css",
+      CreateResourceLoadInfo("http://nike.com/style1.css",
                              network::mojom::RequestDestination::kStyle));
   resources.push_back(
-      CreateResourceLoadInfo("http://foo.test/image2.png",
+      CreateResourceLoadInfo("http://nike.com/image2.png",
                              network::mojom::RequestDestination::kImage));
 
   auto page_summary = CreatePageRequestSummary(
-      "http://www.foo.test", "http://www.foo.test", resources);
+      "http://www.nike.com", "http://www.nike.com", resources);
 
   StrictMock<MockResourcePrefetchPredictorObserver> mock_observer(predictor_);
   EXPECT_CALL(mock_observer, OnNavigationLearned(page_summary));
 
-  predictor_->RecordPageRequestSummary(page_summary);
+  predictor_->RecordPageRequestSummary(
+      std::make_unique<PageRequestSummary>(page_summary));
   profile_->BlockUntilHistoryProcessesPendingRequests();
 
-  RedirectData host_redirect_data = CreateRedirectData("www.foo.test");
+  RedirectData host_redirect_data = CreateRedirectData("www.nike.com");
   InitializeRedirectStat(host_redirect_data.add_redirect_endpoints(),
-                         GURL("http://www.foo.test"), 1, 0, 0);
+                         GURL("http://www.nike.com"), 1, 0, 0);
   EXPECT_EQ(mock_tables_->host_redirect_table_.data_,
             RedirectDataMap(
                 {{host_redirect_data.primary_key(), host_redirect_data}}));
 
-  OriginData origin_data = CreateOriginData("www.foo.test");
-  InitializeOriginStat(origin_data.add_origins(), "http://www.foo.test/", 1, 0,
+  OriginData origin_data = CreateOriginData("www.nike.com");
+  InitializeOriginStat(origin_data.add_origins(), "http://www.nike.com/", 1, 0,
                        0, 1., false, true);
-  InitializeOriginStat(origin_data.add_origins(), "http://foo.test/", 1, 0, 0,
+  InitializeOriginStat(origin_data.add_origins(), "http://nike.com/", 1, 0, 0,
                        2., false, true);
   OriginDataMap expected_origin_data = test_origin_data_;
-  expected_origin_data.erase("google.test");
-  expected_origin_data["www.foo.test"] = origin_data;
+  expected_origin_data.erase("google.com");
+  expected_origin_data["www.nike.com"] = origin_data;
   EXPECT_EQ(mock_tables_->origin_table_.data_, expected_origin_data);
 }
 
 TEST_F(ResourcePrefetchPredictorTest,
        NavigationManyResourcesWithDifferentOrigins) {
   std::vector<blink::mojom::ResourceLoadInfoPtr> resources;
-  resources.push_back(CreateResourceLoadInfo("http://www.google.test"));
+  resources.push_back(CreateResourceLoadInfo("http://www.google.com"));
 
   auto gen = [](int i) {
-    return base::StringPrintf("http://cdn%d.google.test/script.js", i);
+    return base::StringPrintf("http://cdn%d.google.com/script.js", i);
   };
   const int num_resources = predictor_->config_.max_origins_per_entry + 10;
   for (int i = 1; i <= num_resources; ++i) {
@@ -574,16 +517,17 @@ TEST_F(ResourcePrefetchPredictorTest,
   }
 
   auto page_summary = CreatePageRequestSummary(
-      "http://www.google.test", "http://www.google.test", resources);
+      "http://www.google.com", "http://www.google.com", resources);
 
   StrictMock<MockResourcePrefetchPredictorObserver> mock_observer(predictor_);
   EXPECT_CALL(mock_observer, OnNavigationLearned(page_summary));
 
-  predictor_->RecordPageRequestSummary(page_summary);
+  predictor_->RecordPageRequestSummary(
+      std::make_unique<PageRequestSummary>(page_summary));
   profile_->BlockUntilHistoryProcessesPendingRequests();
 
-  OriginData origin_data = CreateOriginData("www.google.test");
-  InitializeOriginStat(origin_data.add_origins(), "http://www.google.test/", 1,
+  OriginData origin_data = CreateOriginData("www.google.com");
+  InitializeOriginStat(origin_data.add_origins(), "http://www.google.com/", 1,
                        0, 0, 1, false, true);
   for (int i = 1;
        i <= static_cast<int>(predictor_->config_.max_origins_per_entry) - 1;
@@ -599,19 +543,20 @@ TEST_F(ResourcePrefetchPredictorTest,
 TEST_F(ResourcePrefetchPredictorTest, RedirectUrlNotInDB) {
   std::vector<blink::mojom::ResourceLoadInfoPtr> resources;
   resources.push_back(CreateResourceLoadInfoWithRedirects(
-      {"http://baz.test/google", "https://bar.test/google"}));
+      {"http://fb.com/google", "https://facebook.com/google"}));
   auto page_summary = CreatePageRequestSummary(
-      "https://bar.test/google", "http://baz.test/google", resources);
+      "https://facebook.com/google", "http://fb.com/google", resources);
 
   StrictMock<MockResourcePrefetchPredictorObserver> mock_observer(predictor_);
   EXPECT_CALL(mock_observer, OnNavigationLearned(page_summary));
 
-  predictor_->RecordPageRequestSummary(page_summary);
+  predictor_->RecordPageRequestSummary(
+      std::make_unique<PageRequestSummary>(page_summary));
   profile_->BlockUntilHistoryProcessesPendingRequests();
 
-  RedirectData host_redirect_data = CreateRedirectData("baz.test");
+  RedirectData host_redirect_data = CreateRedirectData("fb.com");
   InitializeRedirectStat(host_redirect_data.add_redirect_endpoints(),
-                         GURL("https://bar.test"), 1, 0, 0);
+                         GURL("https://facebook.com"), 1, 0, 0);
   EXPECT_EQ(mock_tables_->host_redirect_table_.data_,
             RedirectDataMap(
                 {{host_redirect_data.primary_key(), host_redirect_data}}));
@@ -627,21 +572,22 @@ TEST_F(ResourcePrefetchPredictorTest, RedirectUrlInDB) {
 
   std::vector<blink::mojom::ResourceLoadInfoPtr> resources;
   resources.push_back(CreateResourceLoadInfoWithRedirects(
-      {"http://baz.test/google", "https://bar.test/google"}));
+      {"http://fb.com/google", "https://facebook.com/google"}));
   auto page_summary = CreatePageRequestSummary(
-      "https://bar.test/google", "http://baz.test/google", resources);
+      "https://facebook.com/google", "http://fb.com/google", resources);
 
   StrictMock<MockResourcePrefetchPredictorObserver> mock_observer(predictor_);
   EXPECT_CALL(mock_observer, OnNavigationLearned(page_summary));
 
-  predictor_->RecordPageRequestSummary(page_summary);
+  predictor_->RecordPageRequestSummary(
+      std::make_unique<PageRequestSummary>(page_summary));
   profile_->BlockUntilHistoryProcessesPendingRequests();
 
-  RedirectData host_redirect_data = CreateRedirectData("baz.test");
+  RedirectData host_redirect_data = CreateRedirectData("fb.com");
   InitializeRedirectStat(host_redirect_data.add_redirect_endpoints(),
-                         GURL("https://bar.test"), 1, 0, 0);
+                         GURL("https://facebook.com"), 1, 0, 0);
   RedirectDataMap expected_host_redirect_data = test_host_redirect_data_;
-  expected_host_redirect_data.erase("foo.test");
+  expected_host_redirect_data.erase("bbc.com");
   expected_host_redirect_data[host_redirect_data.primary_key()] =
       host_redirect_data;
   EXPECT_EQ(mock_tables_->host_redirect_table_.data_,
@@ -660,22 +606,24 @@ TEST_F(ResourcePrefetchPredictorTest, RedirectUrlInDB_MultipleSchemes) {
   {
     std::vector<blink::mojom::ResourceLoadInfoPtr> resources_https;
     resources_https.push_back(CreateResourceLoadInfoWithRedirects(
-        {"https://baz.test/google", "https://bar.test/google"}));
-    auto page_summary_https = CreatePageRequestSummary(
-        "https://bar.test/google", "https://baz.test/google", resources_https);
+        {"https://fb.com/google", "https://facebook.com/google"}));
+    auto page_summary_https =
+        CreatePageRequestSummary("https://facebook.com/google",
+                                 "https://fb.com/google", resources_https);
 
     StrictMock<MockResourcePrefetchPredictorObserver> mock_observer(predictor_);
     EXPECT_CALL(mock_observer, OnNavigationLearned(page_summary_https));
 
-    predictor_->RecordPageRequestSummary(page_summary_https);
+    predictor_->RecordPageRequestSummary(
+        std::make_unique<PageRequestSummary>(page_summary_https));
     profile_->BlockUntilHistoryProcessesPendingRequests();
 
-    RedirectData host_redirect_data_https = CreateRedirectData("baz.test");
+    RedirectData host_redirect_data_https = CreateRedirectData("fb.com");
     InitializeRedirectStat(host_redirect_data_https.add_redirect_endpoints(),
-                           GURL("https://bar.test"), 1, 0, 0);
+                           GURL("https://facebook.com"), 1, 0, 0);
     RedirectDataMap expected_host_redirect_data_https =
         test_host_redirect_data_;
-    expected_host_redirect_data_https.erase("foo.test");
+    expected_host_redirect_data_https.erase("bbc.com");
     expected_host_redirect_data_https[host_redirect_data_https.primary_key()] =
         host_redirect_data_https;
     EXPECT_EQ(mock_tables_->host_redirect_table_.data_,
@@ -696,31 +644,32 @@ TEST_F(ResourcePrefetchPredictorTest, RedirectUrlInDB_MultipleSchemes) {
   {
     std::vector<blink::mojom::ResourceLoadInfoPtr> resources_http;
     resources_http.push_back(CreateResourceLoadInfoWithRedirects(
-        {"http://baz.test/google", "http://bar.test/google"}));
+        {"http://fb.com/google", "http://facebook.com/google"}));
     auto page_summary_http = CreatePageRequestSummary(
-        "http://bar.test/google", "http://baz.test/google", resources_http);
+        "http://facebook.com/google", "http://fb.com/google", resources_http);
 
     StrictMock<MockResourcePrefetchPredictorObserver> mock_observer(predictor_);
     EXPECT_CALL(mock_observer, OnNavigationLearned(page_summary_http));
 
-    predictor_->RecordPageRequestSummary(page_summary_http);
+    predictor_->RecordPageRequestSummary(
+        std::make_unique<PageRequestSummary>(page_summary_http));
     profile_->BlockUntilHistoryProcessesPendingRequests();
 
-    RedirectData host_redirect_data_http = CreateRedirectData("baz.test");
+    RedirectData host_redirect_data_http = CreateRedirectData("fb.com");
     InitializeRedirectStat(host_redirect_data_http.add_redirect_endpoints(),
-                           GURL("http://bar.test"), 1, 0, 0);
+                           GURL("http://facebook.com"), 1, 0, 0);
     RedirectDataMap expected_host_redirect_data_http = test_host_redirect_data_;
-    expected_host_redirect_data_http.erase("foo.test");
+    expected_host_redirect_data_http.erase("bbc.com");
     expected_host_redirect_data_http[host_redirect_data_http.primary_key()] =
         host_redirect_data_http;
     EXPECT_EQ(2, mock_tables_->host_redirect_table_
                      .data_[host_redirect_data_http.primary_key()]
                      .redirect_endpoints()
                      .size());
-    EXPECT_EQ("bar.test", mock_tables_->host_redirect_table_
-                              .data_[host_redirect_data_http.primary_key()]
-                              .redirect_endpoints(1)
-                              .url());
+    EXPECT_EQ("facebook.com", mock_tables_->host_redirect_table_
+                                  .data_[host_redirect_data_http.primary_key()]
+                                  .redirect_endpoints(1)
+                                  .url());
     EXPECT_EQ("http", mock_tables_->host_redirect_table_
                           .data_[host_redirect_data_http.primary_key()]
                           .redirect_endpoints(1)
@@ -740,9 +689,10 @@ TEST_F(ResourcePrefetchPredictorTest, DeleteUrls) {
 
   RedirectDataMap host_redirects;
   host_redirects.insert(
-      {"www.google.test", CreateRedirectData("www.google.test")});
-  host_redirects.insert({"www.foo.test", CreateRedirectData("www.foo.test")});
-  host_redirects.insert({"www.bar.org", CreateRedirectData("www.bar.org")});
+      {"www.google.com", CreateRedirectData("www.google.com")});
+  host_redirects.insert({"www.nike.com", CreateRedirectData("www.nike.com")});
+  host_redirects.insert(
+      {"www.wikipedia.org", CreateRedirectData("www.wikipedia.org")});
   for (const auto& redirect : host_redirects) {
     predictor_->host_redirect_data_->UpdateData(redirect.first,
                                                 redirect.second);
@@ -751,12 +701,12 @@ TEST_F(ResourcePrefetchPredictorTest, DeleteUrls) {
   // TODO(alexilin): Add origin data.
 
   history::URLRows rows;
-  rows.emplace_back(GURL("http://www.google.test/page2.html"));
-  rows.emplace_back(GURL("http://www.baz.test"));
-  rows.emplace_back(GURL("http://www.foo.test"));
+  rows.push_back(history::URLRow(GURL("http://www.google.com/page2.html")));
+  rows.push_back(history::URLRow(GURL("http://www.apple.com")));
+  rows.push_back(history::URLRow(GURL("http://www.nike.com")));
 
-  host_redirects.erase("www.google.test");
-  host_redirects.erase("www.foo.test");
+  host_redirects.erase("www.google.com");
+  host_redirects.erase("www.nike.com");
 
   predictor_->DeleteUrls(rows);
   EXPECT_EQ(mock_tables_->host_redirect_table_.data_, host_redirects);
@@ -770,7 +720,6 @@ TEST_F(ResourcePrefetchPredictorTest, DeleteUrls) {
 TEST_F(ResourcePrefetchPredictorTest, DeleteAllUrlsUninitialized) {
   mock_tables_->host_redirect_table_.data_ = test_host_redirect_data_;
   mock_tables_->origin_table_.data_ = test_origin_data_;
-  mock_tables_->lcpp_table_.data_ = test_lcpp_data_;
   ResetPredictor();
 
   CHECK_EQ(predictor_->initialization_state_,
@@ -790,44 +739,44 @@ TEST_F(ResourcePrefetchPredictorTest, DeleteAllUrlsUninitialized) {
 
 TEST_F(ResourcePrefetchPredictorTest, GetRedirectOrigin) {
   auto& redirect_data = *predictor_->host_redirect_data_;
-  url::Origin foo_origin = url::Origin::Create(GURL("https://foo.test/"));
+  url::Origin bbc_origin = url::Origin::Create(GURL("https://bbc.com/"));
   url::Origin redirect_origin;
   // Returns the initial url if data_map doesn't contain an entry for the url.
-  EXPECT_TRUE(predictor_->GetRedirectOrigin(foo_origin, redirect_data,
+  EXPECT_TRUE(predictor_->GetRedirectOrigin(bbc_origin, redirect_data,
                                             &redirect_origin));
-  EXPECT_EQ(foo_origin, redirect_origin);
+  EXPECT_EQ(bbc_origin, redirect_origin);
 
-  url::Origin bar_origin = url::Origin::Create(GURL("https://bar.test/"));
+  url::Origin nyt_origin = url::Origin::Create(GURL("https://nyt.com/"));
   // The data to be requested for the confident endpoint.
-  RedirectData bar = CreateRedirectData(bar_origin.host(), 1);
-  GURL bar_redirect_url("https://mobile.bar.test:8080/");
-  url::Origin bar_redirect_origin = url::Origin::Create(bar_redirect_url);
-  InitializeRedirectStat(bar.add_redirect_endpoints(), bar_redirect_url, 10, 0,
+  RedirectData nyt = CreateRedirectData(nyt_origin.host(), 1);
+  GURL nyt_redirect_url("https://mobile.nytimes.com:8080/");
+  url::Origin nyt_redirect_origin = url::Origin::Create(nyt_redirect_url);
+  InitializeRedirectStat(nyt.add_redirect_endpoints(), nyt_redirect_url, 10, 0,
                          0);
-  redirect_data.UpdateData(bar.primary_key(), bar);
-  EXPECT_TRUE(predictor_->GetRedirectOrigin(bar_origin, redirect_data,
+  redirect_data.UpdateData(nyt.primary_key(), nyt);
+  EXPECT_TRUE(predictor_->GetRedirectOrigin(nyt_origin, redirect_data,
                                             &redirect_origin));
-  EXPECT_EQ(bar_redirect_origin, redirect_origin);
+  EXPECT_EQ(nyt_redirect_origin, redirect_origin);
 
-  url::Origin baz_origin = url::Origin::Create(GURL("http://baz.test/"));
+  url::Origin facebook_origin = url::Origin::Create(GURL("http://fb.com/"));
   // The data to check negative result due not enough confidence.
-  RedirectData baz = CreateRedirectData(baz_origin.host(), 3);
-  GURL baz_redirect_url("https://baz.test/");
-  InitializeRedirectStat(baz.add_redirect_endpoints(), baz_redirect_url, 5, 5,
-                         0);
-  redirect_data.UpdateData(baz.primary_key(), baz);
-  EXPECT_FALSE(predictor_->GetRedirectOrigin(baz_origin, redirect_data,
+  RedirectData facebook = CreateRedirectData(facebook_origin.host(), 3);
+  GURL facebook_redirect_url("https://fb.com/");
+  InitializeRedirectStat(facebook.add_redirect_endpoints(),
+                         facebook_redirect_url, 5, 5, 0);
+  redirect_data.UpdateData(facebook.primary_key(), facebook);
+  EXPECT_FALSE(predictor_->GetRedirectOrigin(facebook_origin, redirect_data,
                                              &redirect_origin));
 
   // The data to check negative result due ambiguity.
-  url::Origin google_origin = url::Origin::Create(GURL("https://google.test/"));
+  url::Origin google_origin = url::Origin::Create(GURL("https://google.com/"));
   RedirectData google = CreateRedirectData(google_origin.host(), 4);
   InitializeRedirectStat(google.add_redirect_endpoints(),
-                         GURL("https://google.test"), 10, 0, 0);
+                         GURL("https://google.com"), 10, 0, 0);
   InitializeRedirectStat(google.add_redirect_endpoints(),
-                         GURL("https://google2.test"), 10, 1, 0);
+                         GURL("https://google.fr"), 10, 1, 0);
   InitializeRedirectStat(google.add_redirect_endpoints(),
-                         GURL("https://google3.test"), 20, 20, 0);
+                         GURL("https://google.ws"), 20, 20, 0);
   redirect_data.UpdateData(google.primary_key(), google);
   EXPECT_FALSE(predictor_->GetRedirectOrigin(google_origin, redirect_data,
                                              &redirect_origin));
@@ -894,12 +843,12 @@ TEST_P(ResourcePrefetchPredictorPreconnectToRedirectTargetTest,
         {features::kLoadingPreconnectToRedirectTarget});
   }
 
-  const GURL main_frame_url("http://google.test/?query=cats");
+  const GURL main_frame_url("http://google.com/?query=cats");
   const net::SchemefulSite site = net::SchemefulSite(main_frame_url);
   auto network_anonymization_key =
       net::NetworkAnonymizationKey::CreateSameSite(site);
   const url::Origin www_google_origin =
-      url::Origin::Create(GURL("https://www.google.test"));
+      url::Origin::Create(GURL("https://www.google.com"));
   const net::SchemefulSite www_google_site =
       net::SchemefulSite(www_google_origin);
   auto www_google_network_anonymization_key =
@@ -910,12 +859,13 @@ TEST_P(ResourcePrefetchPredictorPreconnectToRedirectTargetTest,
   EXPECT_FALSE(
       predictor_->PredictPreconnectOrigins(main_frame_url, prediction.get()));
 
-  auto gen_origin = [](int n) {
-    return base::StringPrintf("https://cdn%d.google.test", n);
+  const char* cdn_origin = "https://cdn%d.google.com";
+  auto gen_origin = [cdn_origin](int n) {
+    return base::StringPrintf(cdn_origin, n);
   };
 
   // Add origins associated with the main frame host.
-  OriginData google = CreateOriginData("google.test");
+  OriginData google = CreateOriginData("google.com");
   InitializeOriginStat(google.add_origins(), gen_origin(1), 10, 0, 0, 1.0, true,
                        true);  // High confidence - preconnect.
   InitializeOriginStat(google.add_origins(), gen_origin(2), 10, 5, 0, 2.0, true,
@@ -929,16 +879,16 @@ TEST_P(ResourcePrefetchPredictorPreconnectToRedirectTargetTest,
   EXPECT_TRUE(
       predictor_->PredictPreconnectOrigins(main_frame_url, prediction.get()));
   EXPECT_EQ(*prediction, CreatePreconnectPrediction(
-                             "google.test", false,
+                             "google.com", false,
                              {{url::Origin::Create(GURL(gen_origin(1))), 1,
                                network_anonymization_key},
                               {url::Origin::Create(GURL(gen_origin(2))), 0,
                                network_anonymization_key}}));
 
   // Add a redirect.
-  RedirectData redirect = CreateRedirectData("google.test", 3);
+  RedirectData redirect = CreateRedirectData("google.com", 3);
   InitializeRedirectStat(redirect.add_redirect_endpoints(),
-                         GURL("https://www.google.test"), 10, 0, 0);
+                         GURL("https://www.google.com"), 10, 0, 0);
   predictor_->host_redirect_data_->UpdateData(redirect.primary_key(), redirect);
 
   // Prediction should succeed: The redirect endpoint should be associated
@@ -950,8 +900,8 @@ TEST_P(ResourcePrefetchPredictorPreconnectToRedirectTargetTest,
       enable_preconnect_to_redirect_target_experiment,
       predictor_->PredictPreconnectOrigins(main_frame_url, prediction.get()));
   auto expected_prediction_1 = CreatePreconnectPrediction(
-      "google.test", false,
-      {{url::Origin::Create(GURL("https://www.google.test/")), 1,
+      "google.com", false,
+      {{url::Origin::Create(GURL("https://www.google.com/")), 1,
         www_google_network_anonymization_key}});
   if (enable_preconnect_to_redirect_target_experiment) {
     EXPECT_EQ(expected_prediction_1, *prediction);
@@ -960,8 +910,8 @@ TEST_P(ResourcePrefetchPredictorPreconnectToRedirectTargetTest,
   }
 
   // Add a resource associated with the redirect endpoint
-  // (https://www.google.test).
-  OriginData www_google = CreateOriginData("www.google.test", 4);
+  // (https://www.google.com).
+  OriginData www_google = CreateOriginData("www.google.com", 4);
   InitializeOriginStat(www_google.add_origins(), gen_origin(4), 10, 0, 0, 1.0,
                        true,
                        true);  // High confidence - preconnect.
@@ -973,15 +923,15 @@ TEST_P(ResourcePrefetchPredictorPreconnectToRedirectTargetTest,
       predictor_->PredictPreconnectOrigins(main_frame_url, prediction.get()));
 
   auto expected_prediction_2 =
-      CreatePreconnectPrediction("www.google.test", true,
+      CreatePreconnectPrediction("www.google.com", true,
                                  {{url::Origin::Create(GURL(gen_origin(4))), 1,
                                    www_google_network_anonymization_key}});
   if (enable_preconnect_to_redirect_target_experiment) {
-    // Getting the prediction for google.test should include the redirect
+    // Getting the prediction for google.com should include the redirect
     // target as well. The redirect target should be present in the front.
     expected_prediction_2.requests.emplace(
         expected_prediction_2.requests.begin(),
-        url::Origin::Create(GURL("https://www.google.test")), 1,
+        url::Origin::Create(GURL("https://www.google.com")), 1,
         www_google_network_anonymization_key);
   }
   EXPECT_EQ(expected_prediction_2, *prediction);
@@ -997,7 +947,7 @@ TEST_F(ResourcePrefetchPredictorTest,
        features::kLoadingPreconnectToRedirectTarget},
       {});
 
-  const GURL main_frame_url("http://google.test/?query=cats");
+  const GURL main_frame_url("http://google.com/?query=cats");
   const net::SchemefulSite site = net::SchemefulSite(main_frame_url);
   auto network_anonymization_key =
       net::NetworkAnonymizationKey::CreateSameSite(site);
@@ -1007,12 +957,13 @@ TEST_F(ResourcePrefetchPredictorTest,
   EXPECT_FALSE(
       predictor_->PredictPreconnectOrigins(main_frame_url, prediction.get()));
 
-  auto gen_origin = [](int n) {
-    return base::StringPrintf("https://cdn%d.google.test", n);
+  const char* cdn_origin = "https://cdn%d.google.com";
+  auto gen_origin = [cdn_origin](int n) {
+    return base::StringPrintf(cdn_origin, n);
   };
 
   // Add origins associated with the main frame host.
-  OriginData google = CreateOriginData("google.test");
+  OriginData google = CreateOriginData("google.com");
   InitializeOriginStat(google.add_origins(), gen_origin(1), 10, 0, 0, 1.0, true,
                        true);  // High confidence - preconnect.
   InitializeOriginStat(google.add_origins(), gen_origin(2), 10, 5, 0, 2.0, true,
@@ -1026,16 +977,16 @@ TEST_F(ResourcePrefetchPredictorTest,
   EXPECT_TRUE(
       predictor_->PredictPreconnectOrigins(main_frame_url, prediction.get()));
   EXPECT_EQ(*prediction, CreatePreconnectPrediction(
-                             "google.test", false,
+                             "google.com", false,
                              {{url::Origin::Create(GURL(gen_origin(1))), 1,
                                network_anonymization_key},
                               {url::Origin::Create(GURL(gen_origin(2))), 0,
                                network_anonymization_key}}));
 
   // Add a redirect.
-  RedirectData redirect = CreateRedirectData("google.test", 3);
+  RedirectData redirect = CreateRedirectData("google.com", 3);
   InitializeRedirectStat(redirect.add_redirect_endpoints(),
-                         GURL("https://www.google-redirected-to.test"), 10, 0,
+                         GURL("https://www.google-redirected-to.com"), 10, 0,
                          0);
   predictor_->host_redirect_data_->UpdateData(redirect.primary_key(), redirect);
 
@@ -1048,16 +999,16 @@ TEST_F(ResourcePrefetchPredictorTest,
 
   const auto www_google_redirected_to_network_anonymization_key =
       net::NetworkAnonymizationKey::CreateSameSite(
-          net::SchemefulSite(GURL("https://www.google-redirected-to.test")));
+          net::SchemefulSite(GURL("https://www.google-redirected-to.com")));
 
   const auto expected_prediction = CreatePreconnectPrediction(
-      "google.test", false,
-      {{url::Origin::Create(GURL("https://www.google-redirected-to.test/")), 1,
+      "google.com", false,
+      {{url::Origin::Create(GURL("https://www.google-redirected-to.com/")), 1,
         www_google_redirected_to_network_anonymization_key}});
   EXPECT_EQ(expected_prediction, *prediction);
 
   // Add a resource associated with the redirect endpoint.
-  OriginData www_google = CreateOriginData("www.google.test", 4);
+  OriginData www_google = CreateOriginData("www.google.com", 4);
   InitializeOriginStat(www_google.add_origins(), gen_origin(4), 10, 0, 0, 1.0,
                        true,
                        true);  // High confidence - preconnect.
@@ -1065,7 +1016,7 @@ TEST_F(ResourcePrefetchPredictorTest,
 
   // Add a resource associated with the redirect endpoint.
   OriginData www_google_redirected_to =
-      CreateOriginData("www.google-redirected-to.test", 4);
+      CreateOriginData("www.google-redirected-to.com", 4);
   InitializeOriginStat(www_google_redirected_to.add_origins(), gen_origin(4),
                        10, 0, 0, 1.0, true,
                        true);  // High confidence - preconnect.
@@ -1077,279 +1028,14 @@ TEST_F(ResourcePrefetchPredictorTest,
   EXPECT_TRUE(
       predictor_->PredictPreconnectOrigins(main_frame_url, prediction.get()));
   const auto expected_prediction_redirected_to = CreatePreconnectPrediction(
-      "www.google-redirected-to.test", true,
+      "www.google-redirected-to.com", true,
       {
-          {url::Origin::Create(GURL("https://www.google-redirected-to.test")),
-           1, www_google_redirected_to_network_anonymization_key},
+          {url::Origin::Create(GURL("https://www.google-redirected-to.com")), 1,
+           www_google_redirected_to_network_anonymization_key},
           {url::Origin::Create(GURL(gen_origin(4))), 1,
            www_google_redirected_to_network_anonymization_key},
       });
   EXPECT_EQ(expected_prediction_redirected_to, *prediction);
-}
-
-TEST_F(ResourcePrefetchPredictorTest, LearnLcpp) {
-  ResetPredictor();
-  InitializePredictor();
-  EXPECT_EQ(5U, predictor_->config_.lcpp_histogram_sliding_window_size);
-  EXPECT_EQ(2U, predictor_->config_.max_lcpp_histogram_buckets);
-  EXPECT_TRUE(mock_tables_->lcpp_table_.data_.empty());
-
-  auto SumOfElementLocatorFrequency = [](const LcppData& data) {
-    const LcpElementLocatorStat& stat =
-        data.lcpp_stat().lcp_element_locator_stat();
-    double sum = stat.other_bucket_frequency();
-    for (const auto& bucket : stat.lcp_element_locator_buckets()) {
-      sum += bucket.frequency();
-    }
-    return sum;
-  };
-
-  auto SumOfInfluencerUrlFrequency = [](const LcppData& data) {
-    const LcppStringFrequencyStatData& stat =
-        data.lcpp_stat().lcp_script_url_stat();
-    double sum = stat.other_bucket_frequency();
-    for (const auto& [url, frequency] : stat.main_buckets()) {
-      sum += frequency;
-    }
-    return sum;
-  };
-
-  for (int i = 0; i < 3; ++i) {
-    LearnLcpp(GURL("http://a.test"), "/#a", {});
-  }
-  {
-    LcppData data = CreateLcppData("a.test", 10);
-    InitializeLcpElementLocatorBucket(data, "/#a", 3);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["a.test"]);
-    EXPECT_DOUBLE_EQ(3, SumOfElementLocatorFrequency(data));
-  }
-
-  for (int i = 0; i < 2; ++i) {
-    LearnLcpp(GURL("http://a.test"), "/#b", {});
-  }
-  {
-    LcppData data = CreateLcppData("a.test", 10);
-    InitializeLcpElementLocatorBucket(data, "/#a", 3);
-    InitializeLcpElementLocatorBucket(data, "/#b", 2);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["a.test"]);
-    EXPECT_DOUBLE_EQ(5, SumOfElementLocatorFrequency(data));
-  }
-
-  LearnLcpp(GURL("http://a.test"), "/#c", {});
-  {
-    LcppData data = CreateLcppData("a.test", 10);
-    InitializeLcpElementLocatorBucket(data, "/#a", 2.4);
-    InitializeLcpElementLocatorBucket(data, "/#b", 1.6);
-    InitializeLcpElementLocatorOtherBucket(data, 1);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["a.test"]);
-    EXPECT_DOUBLE_EQ(5, SumOfElementLocatorFrequency(data));
-  }
-
-  LearnLcpp(GURL("http://a.test"), "/#d", {});
-  {
-    LcppData data = CreateLcppData("a.test", 10);
-    InitializeLcpElementLocatorBucket(data, "/#a", 1.92);
-    InitializeLcpElementLocatorBucket(data, "/#b", 1.28);
-    InitializeLcpElementLocatorOtherBucket(data, 1.8);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["a.test"]);
-    EXPECT_DOUBLE_EQ(5, SumOfElementLocatorFrequency(data));
-  }
-
-  for (int i = 0; i < 2; ++i) {
-    LearnLcpp(GURL("http://a.test"), "/#c", {});
-    LearnLcpp(GURL("http://a.test"), "/#d", {});
-  }
-  {
-    LcppData data = CreateLcppData("a.test", 10);
-    InitializeLcpElementLocatorBucket(data, "/#d", 1);
-    InitializeLcpElementLocatorBucket(data, "/#c", 0.8);
-    InitializeLcpElementLocatorOtherBucket(data, 3.2);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["a.test"]);
-    EXPECT_DOUBLE_EQ(5, SumOfElementLocatorFrequency(data));
-  }
-
-  // Test that element locators and influencer scripts are independently learnt.
-  for (int i = 0; i < 2; ++i) {
-    LearnLcpp(
-        GURL("http://a.test"), "",
-        {GURL("https://a.test/script1.js"), GURL("https://a.test/script2.js")});
-  }
-  {
-    LcppData data = CreateLcppData("a.test", 10);
-    InitializeLcpElementLocatorBucket(data, "/#d", 1);
-    InitializeLcpElementLocatorBucket(data, "/#c", 0.8);
-    InitializeLcpElementLocatorOtherBucket(data, 3.2);
-    InitializeLcpInfluencerScriptUrlsBucket(
-        data,
-        {GURL("https://a.test/script1.js"), GURL("https://a.test/script2.js")},
-        2);
-    InitializeLcpInfluencerScriptUrlsOtherBucket(data, 0);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["a.test"]);
-    EXPECT_DOUBLE_EQ(5, SumOfElementLocatorFrequency(data));
-    EXPECT_DOUBLE_EQ(4, SumOfInfluencerUrlFrequency(data));
-  }
-
-  for (int i = 0; i < 3; ++i) {
-    LearnLcpp(
-        GURL("http://a.test"), "",
-        {GURL("https://a.test/script3.js"), GURL("https://a.test/script4.js")});
-  }
-  {
-    LcppData data = CreateLcppData("a.test", 10);
-    InitializeLcpElementLocatorBucket(data, "/#d", 1);
-    InitializeLcpElementLocatorBucket(data, "/#c", 0.8);
-    InitializeLcpElementLocatorOtherBucket(data, 3.2);
-    InitializeLcpInfluencerScriptUrlsBucket(
-        data, {GURL("https://a.test/script3.js")}, 0.8);
-    InitializeLcpInfluencerScriptUrlsBucket(
-        data, {GURL("https://a.test/script4.js")}, 1);
-    InitializeLcpInfluencerScriptUrlsOtherBucket(data, 3.2);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["a.test"]);
-    EXPECT_DOUBLE_EQ(5, SumOfInfluencerUrlFrequency(data));
-  }
-}
-
-TEST_F(ResourcePrefetchPredictorTest, LearnFontUrls) {
-  ResetPredictor();
-  InitializePredictor();
-  EXPECT_EQ(5U, predictor_->config_.lcpp_histogram_sliding_window_size);
-  EXPECT_EQ(2U, predictor_->config_.max_lcpp_histogram_buckets);
-  EXPECT_TRUE(mock_tables_->lcpp_table_.data_.empty());
-
-  auto SumOfFontUrlFrequency = [this](const LcppData& data) {
-    return SumOfLcppStringFrequencyStatData(
-        data.lcpp_stat().fetched_font_url_stat());
-  };
-  for (int i = 0; i < 2; ++i) {
-    LearnFontUrls(GURL("http://example.test"),
-                  {
-                      GURL("https://example.test/test.woff"),
-                      GURL("https://example.test/test.ttf"),
-                  });
-  }
-  {
-    LcppData data = CreateLcppData("example.test", 10);
-    InitializeFontUrlsBucket(data,
-                             {GURL("https://example.test/test.woff"),
-                              GURL("https://example.test/test.ttf")},
-                             2);
-    InitializeFontUrlsOtherBucket(data, 0);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["example.test"]);
-    EXPECT_DOUBLE_EQ(4, SumOfFontUrlFrequency(data));
-  }
-  for (int i = 0; i < 3; ++i) {
-    LearnFontUrls(GURL("http://example.test"),
-                  {
-                      GURL("https://example.org/test.otf"),
-                      GURL("https://example.net/test.svg"),
-                  });
-  }
-  {
-    LcppData data = CreateLcppData("example.test", 10);
-    InitializeFontUrlsBucket(data, {GURL("https://example.org/test.otf")}, 0.8);
-    InitializeFontUrlsBucket(data, {GURL("https://example.net/test.svg")}, 1);
-    InitializeFontUrlsOtherBucket(data, 3.2);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["example.test"]);
-    EXPECT_DOUBLE_EQ(5, SumOfFontUrlFrequency(data));
-  }
-}
-
-TEST_F(ResourcePrefetchPredictorTest, LearnSubresourceUrls) {
-  ResetPredictor();
-  InitializePredictor();
-  EXPECT_EQ(5U, predictor_->config_.lcpp_histogram_sliding_window_size);
-  EXPECT_EQ(2U, predictor_->config_.max_lcpp_histogram_buckets);
-  EXPECT_TRUE(mock_tables_->lcpp_table_.data_.empty());
-
-  auto SumOfFontUrlFrequency = [this](const LcppData& data) {
-    return SumOfLcppStringFrequencyStatData(
-        data.lcpp_stat().fetched_subresource_url_stat());
-  };
-  for (int i = 0; i < 2; ++i) {
-    LearnSubresourceUrls(GURL("http://example.test"),
-                         {
-                             {GURL("https://a.test/a.jpeg"), base::Seconds(1)},
-                             {GURL("https://b.test/b.jpeg"), base::Seconds(2)},
-                         });
-  }
-  {
-    LcppData data = CreateLcppData("example.test", 10);
-    InitializeSubresourceUrlsBucket(
-        data, {GURL("https://a.test/a.jpeg"), GURL("https://b.test/b.jpeg")},
-        2);
-    InitializeSubresourceUrlsOtherBucket(data, 0);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["example.test"]);
-    EXPECT_DOUBLE_EQ(4, SumOfFontUrlFrequency(data));
-  }
-  for (int i = 0; i < 3; ++i) {
-    LearnSubresourceUrls(GURL("http://example.test"),
-                         {
-                             {GURL("https://c.test/a.jpeg"), base::Seconds(1)},
-                             {GURL("https://d.test/b.jpeg"), base::Seconds(2)},
-                         });
-  }
-  {
-    LcppData data = CreateLcppData("example.test", 10);
-    InitializeSubresourceUrlsBucket(data, {GURL("https://c.test/a.jpeg")}, 1);
-    InitializeSubresourceUrlsBucket(data, {GURL("https://d.test/b.jpeg")}, 0.8);
-    InitializeSubresourceUrlsOtherBucket(data, 3.2);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["example.test"]);
-    EXPECT_DOUBLE_EQ(5, SumOfFontUrlFrequency(data));
-  }
-}
-
-TEST_F(ResourcePrefetchPredictorTest, WhenLcppDataIsCorrupted_ResetData) {
-  EXPECT_TRUE(mock_tables_->lcpp_table_.data_.empty());
-
-  // Prepare a corrupted data.
-  {
-    LcppData data = CreateLcppData("a.test", 10);
-    InitializeLcpElementLocatorBucket(data, "/#a", 1.92);
-    InitializeLcpElementLocatorBucket(data, "/#b", 1.28);
-    InitializeLcpElementLocatorBucket(data, "/#c", -1);
-    InitializeLcpElementLocatorOtherBucket(data, -1);
-    predictor_->lcpp_data_->UpdateData(data.host(), data);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["a.test"]);
-  }
-
-  // Confirm that new learning process reset the corrupted data.
-  LearnLcpp(GURL("http://a.test"), "/#a", {});
-  {
-    LcppData data = CreateLcppData("a.test", 10);
-    InitializeLcpElementLocatorBucket(data, "/#a", 1);
-    EXPECT_EQ(data, mock_tables_->lcpp_table_.data_["a.test"]);
-  }
-}
-
-TEST_F(ResourcePrefetchPredictorTest, LcppShouldNotLearnInvalidURLs) {
-  ResetPredictor();
-  InitializePredictor();
-  EXPECT_TRUE(mock_tables_->lcpp_table_.data_.empty());
-
-  const std::string invalid_urls[] = {
-      // Invalid urls
-      "http://?k=v",
-      "http:://google.com",
-      "http://google.com:12three45",
-      "://google.com",
-      "path",
-      "",                  // Empty
-      "file://server:0",   // File
-      "ftp://server",      // Ftp
-      "http://localhost",  // Localhost
-      "http://127.0.0.1",  // Localhost
-      "https://example" +
-          std::string(ResourcePrefetchPredictorTables::kMaxStringLength, 'a') +
-          ".test/",  // Too long
-  };
-
-  for (auto& invalid_url : invalid_urls) {
-    const GURL url(invalid_url);
-    EXPECT_FALSE(ResourcePrefetchPredictor::IsURLValidForLcpp(url))
-        << invalid_url;
-    LearnLcpp(url, "/#a", {});
-    EXPECT_TRUE(mock_tables_->lcpp_table_.data_.empty()) << invalid_url;
-  }
 }
 
 }  // namespace predictors

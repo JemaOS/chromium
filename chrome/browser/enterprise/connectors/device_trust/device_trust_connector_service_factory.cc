@@ -4,21 +4,23 @@
 
 #include "chrome/browser/enterprise/connectors/device_trust/device_trust_connector_service_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "chrome/browser/enterprise/connectors/device_trust/device_trust_connector_service.h"
+#include "chrome/browser/enterprise/connectors/device_trust/device_trust_features.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/keyed_service/core/keyed_service.h"
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 #include "chrome/browser/browser_process.h"
-#include "chrome/browser/enterprise/connectors/device_trust/browser/signing_key_policy_observer.h"
+#include "chrome/browser/enterprise/connectors/device_trust/browser/browser_device_trust_connector_service.h"
 #include "chrome/browser/policy/chrome_browser_policy_connector.h"
 #include "components/enterprise/browser/controller/chrome_browser_cloud_management_controller.h"
 #include "components/enterprise/browser/device_trust/device_trust_key_manager.h"
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "ash/constants/ash_features.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
@@ -27,8 +29,7 @@ namespace enterprise_connectors {
 // static
 DeviceTrustConnectorServiceFactory*
 DeviceTrustConnectorServiceFactory::GetInstance() {
-  static base::NoDestructor<DeviceTrustConnectorServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<DeviceTrustConnectorServiceFactory>::get();
 }
 
 // static
@@ -41,7 +42,7 @@ DeviceTrustConnectorService* DeviceTrustConnectorServiceFactory::GetForProfile(
 bool DeviceTrustConnectorServiceFactory::ServiceIsCreatedWithBrowserContext()
     const {
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
-  return true;
+  return IsDeviceTrustConnectorFeatureEnabled();
 #else
   return false;
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
@@ -54,37 +55,43 @@ bool DeviceTrustConnectorServiceFactory::ServiceIsNULLWhileTesting() const {
 DeviceTrustConnectorServiceFactory::DeviceTrustConnectorServiceFactory()
     : ProfileKeyedServiceFactory(
           "DeviceTrustConnectorService",
-          ProfileSelections::BuildForRegularAndIncognito()) {}
+          ProfileSelections::BuildForRegularAndIncognitoNonExperimental()) {}
 
 DeviceTrustConnectorServiceFactory::~DeviceTrustConnectorServiceFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-DeviceTrustConnectorServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* DeviceTrustConnectorServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   auto* profile = Profile::FromBrowserContext(context);
   // Disallow service for Incognito except for the sign-in profile of ChromeOS
   // (on the login screen).
   if (context->IsOffTheRecord()) {
-    bool unsupported_profile = true;
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-    unsupported_profile = !ash::ProfileHelper::IsSigninProfile(profile);
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-    if (unsupported_profile) {
+    if (!ash::features::IsLoginScreenDeviceTrustConnectorFeatureEnabled() ||
+        !ash::ProfileHelper::IsSigninProfile(profile))
       return nullptr;
-    }
+#else
+    return nullptr;
+#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
   }
 
-  std::unique_ptr<DeviceTrustConnectorService> service =
-      std::make_unique<DeviceTrustConnectorService>(profile->GetPrefs());
+  DeviceTrustConnectorService* service = nullptr;
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
-  auto* key_manager = g_browser_process->browser_policy_connector()
-                          ->chrome_browser_cloud_management_controller()
-                          ->GetDeviceTrustKeyManager();
-  service->AddObserver(std::make_unique<SigningKeyPolicyObserver>(key_manager));
+  if (IsDeviceTrustConnectorFeatureEnabled()) {
+    auto* key_manager = g_browser_process->browser_policy_connector()
+                            ->chrome_browser_cloud_management_controller()
+                            ->GetDeviceTrustKeyManager();
+    service = new BrowserDeviceTrustConnectorService(key_manager,
+                                                     profile->GetPrefs());
+  }
+#else
+  service = new DeviceTrustConnectorService(profile->GetPrefs());
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+
+  if (service) {
+    service->Initialize();
+  }
 
   return service;
 }

@@ -5,7 +5,6 @@
 #include "chrome/browser/win/conflicts/module_list_filter.h"
 
 #include <string>
-#include <string_view>
 
 #include "base/check.h"
 #include "base/files/file_path.h"
@@ -18,8 +17,8 @@
 namespace {
 
 bool MatchesModuleGroup(const chrome::conflicts::ModuleGroup& module_group,
-                        std::string_view module_basename_hash,
-                        std::string_view module_code_id_hash) {
+                        base::StringPiece module_basename_hash,
+                        base::StringPiece module_code_id_hash) {
   // Now look at each module in the group in detail.
   for (const auto& module : module_group.modules()) {
     // A valid entry contains one of the basename and the code id.
@@ -61,8 +60,8 @@ bool ModuleListFilter::Initialize(const base::FilePath& module_list_path) {
 }
 
 bool ModuleListFilter::IsAllowlisted(
-    std::string_view module_basename_hash,
-    std::string_view module_code_id_hash) const {
+    base::StringPiece module_basename_hash,
+    base::StringPiece module_code_id_hash) const {
   DCHECK(initialized_);
 
   for (const auto& module_group : module_list_.allowlist().module_groups()) {

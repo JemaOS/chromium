@@ -24,7 +24,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "absl/log/log.h"
+#include "absl/base/internal/raw_logging.h"
 #include "absl/random/internal/chi_square.h"
 #include "absl/random/internal/distribution_test_util.h"
 #include "absl/random/internal/pcg_engine.h"
@@ -107,7 +107,8 @@ TYPED_TEST(UniformIntDistributionTest, ParamSerializeTest) {
         sample_min = sample;
       }
     }
-    LOG(INFO) << "Range: " << sample_min << ", " << sample_max;
+    std::string msg = absl::StrCat("Range: ", +sample_min, ", ", +sample_max);
+    ABSL_RAW_LOG(INFO, "%s", msg.c_str());
   }
 }
 
@@ -209,7 +210,7 @@ TYPED_TEST(UniformIntDistributionTest, ChiSquaredTest50) {
     absl::StrAppend(&msg, kChiSquared, " p-value ", p_value, "\n");
     absl::StrAppend(&msg, "High ", kChiSquared, " value: ", chi_square, " > ",
                     kThreshold);
-    LOG(INFO) << msg;
+    ABSL_RAW_LOG(INFO, "%s", msg.c_str());
     FAIL() << msg;
   }
 }

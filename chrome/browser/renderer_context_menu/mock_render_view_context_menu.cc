@@ -4,8 +4,6 @@
 
 #include "chrome/browser/renderer_context_menu/mock_render_view_context_menu.h"
 
-#include <vector>
-
 #include "base/ranges/algorithm.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/profiles/profile.h"
@@ -13,8 +11,8 @@
 #include "chrome/test/base/testing_profile.h"
 #include "components/prefs/pref_service.h"
 #include "components/renderer_context_menu/render_view_context_menu_observer.h"
+#include "components/services/screen_ai/buildflags/buildflags.h"
 #include "content/public/browser/browser_context.h"
-#include "services/screen_ai/buildflags/buildflags.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/gfx/color_palette.h"
@@ -177,14 +175,17 @@ void MockRenderViewContextMenu::UpdateMenuIcon(int command_id,
 }
 
 void MockRenderViewContextMenu::RemoveMenuItem(int command_id) {
-  size_t deleted_item_count = std::erase_if(
-      items_,
+  auto old_end = items_.end();
+  auto new_end = std::remove_if(
+      items_.begin(), old_end,
       [command_id](const auto& item) { return item.command_id == command_id; });
 
-  if (deleted_item_count == 0) {
+  if (new_end == old_end) {
     FAIL() << "Menu observer is trying to remove a menu item it doesn't own."
            << " command_id: " << command_id;
   }
+
+  items_.erase(new_end, old_end);
 }
 
 void MockRenderViewContextMenu::RemoveAdjacentSeparators() {}
@@ -236,16 +237,31 @@ void MockRenderViewContextMenu::AddAccessibilityLabelsServiceItem(
   }
 }
 
-void MockRenderViewContextMenu::AddPdfOcrMenuItem() {
+void MockRenderViewContextMenu::AddPdfOcrMenuItem(bool is_checked) {
 #if BUILDFLAG(ENABLE_SCREEN_AI_SERVICE)
-  AddCheckItem(
-      IDC_CONTENT_CONTEXT_PDF_OCR,
-      l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PDF_OCR_MENU_OPTION));
+  if (is_checked) {
+    AddCheckItem(
+        IDC_CONTENT_CONTEXT_PDF_OCR,
+        l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PDF_OCR_MENU_OPTION));
+  } else {
+    ui::SimpleMenuModel pdf_ocr_submenu_model_(this);
+    pdf_ocr_submenu_model_.AddItem(
+        IDC_CONTENT_CONTEXT_PDF_OCR_ALWAYS,
+        l10n_util::GetStringUTF16(
+            IDS_CONTENT_CONTEXT_PDF_OCR_MENU_OPTION_ALWAYS));
+    pdf_ocr_submenu_model_.AddItem(
+        IDC_CONTENT_CONTEXT_PDF_OCR_ONCE,
+        l10n_util::GetStringUTF16(
+            IDS_CONTENT_CONTEXT_PDF_OCR_MENU_OPTION_ONCE));
+    AddSubMenu(
+        IDC_CONTENT_CONTEXT_PDF_OCR,
+        l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PDF_OCR_MENU_OPTION),
+        &pdf_ocr_submenu_model_);
+  }
 #endif  // BUILDFLAG(ENABLE_SCREEN_AI_SERVICE)
 }
 
-content::RenderFrameHost* MockRenderViewContextMenu::GetRenderFrameHost()
-    const {
+content::RenderViewHost* MockRenderViewContextMenu::GetRenderViewHost() const {
   return nullptr;
 }
 

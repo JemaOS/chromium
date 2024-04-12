@@ -40,7 +40,6 @@ namespace blink {
 HTMLMeterElement::HTMLMeterElement(Document& document)
     : HTMLElement(html_names::kMeterTag, document) {
   UseCounter::Count(document, WebFeature::kMeterElement);
-  SetHasCustomStyleCallbacks();
   EnsureUserAgentShadowRoot();
 }
 
@@ -60,26 +59,6 @@ LayoutObject* HTMLMeterElement::CreateLayoutObject(const ComputedStyle& style) {
       break;
   }
   return HTMLElement::CreateLayoutObject(style);
-}
-
-void HTMLMeterElement::DidRecalcStyle(const StyleRecalcChange change) {
-  HTMLElement::DidRecalcStyle(change);
-  const ComputedStyle* style = GetComputedStyle();
-  if (RuntimeEnabledFeatures::
-          FormControlsVerticalWritingModeDirectionSupportEnabled() &&
-      style) {
-    bool is_horizontal = style->IsHorizontalWritingMode();
-    bool is_ltr = style->IsLeftToRightDirection();
-    if (is_horizontal && is_ltr) {
-      UseCounter::Count(GetDocument(), WebFeature::kMeterElementHorizontalLtr);
-    } else if (is_horizontal && !is_ltr) {
-      UseCounter::Count(GetDocument(), WebFeature::kMeterElementHorizontalRtl);
-    } else if (is_ltr) {
-      UseCounter::Count(GetDocument(), WebFeature::kMeterElementVerticalLtr);
-    } else {
-      UseCounter::Count(GetDocument(), WebFeature::kMeterElementVerticalRtl);
-    }
-  }
 }
 
 void HTMLMeterElement::ParseAttribute(

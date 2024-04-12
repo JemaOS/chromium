@@ -23,8 +23,8 @@ class TrayBubbleView;
 // Widgets they make.
 class ASH_EXPORT TrayBubbleBase : public views::WidgetObserver {
  public:
-  TrayBubbleBase() = default;
-  ~TrayBubbleBase() override = default;
+  TrayBubbleBase();
+  ~TrayBubbleBase() override;
 
   // Returns the tray button instance.
   virtual TrayBackgroundView* GetTray() const = 0;
@@ -34,6 +34,9 @@ class ASH_EXPORT TrayBubbleBase : public views::WidgetObserver {
 
   // Returns the widget of the bubble.
   virtual views::Widget* GetBubbleWidget() const = 0;
+
+  // views::WidgetObserver overrides:
+  void OnWidgetVisibilityChanged(views::Widget* widget, bool visible) override;
 };
 
 }  // namespace ash

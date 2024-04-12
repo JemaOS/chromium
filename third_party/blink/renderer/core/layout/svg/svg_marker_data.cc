@@ -231,19 +231,11 @@ SVGMarkerDataBuilder::ExtractPathElementFeatures(
       data.start_tangent = data.position - origin_;
       data.end_tangent = data.position - origin_;
       break;
-    case kPathElementCloseSubpath: {
-      gfx::Vector2dF tangent = subpath_start_ - origin_;
-      // If the current point equals the start point of the subpath, and this
-      // not a subpath with just a 'moveto', then use the saved tangent from
-      // the start of the subpath.
-      if (last_element_type_ != kPathElementMoveToPoint && tangent.IsZero()) {
-        tangent = last_moveto_out_slope_;
-      }
+    case kPathElementCloseSubpath:
       data.position = subpath_start_;
-      data.start_tangent = tangent;
-      data.end_tangent = tangent;
+      data.start_tangent = data.position - origin_;
+      data.end_tangent = data.position - origin_;
       break;
-    }
   }
   return data;
 }
@@ -274,6 +266,8 @@ void SVGMarkerDataBuilder::UpdateFromPathElement(const PathElement& element) {
   if (starts_new_subpath) {
     subpath_start_ = element.points[0];
     last_moveto_index_ = positions_.size();
+  } else if (element.type == kPathElementCloseSubpath) {
+    subpath_start_ = gfx::PointF();
   }
 
   last_element_type_ = element.type;

@@ -10,7 +10,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace ash {
@@ -43,7 +43,7 @@ class KerberosCredentialsManagerFactory : public ProfileKeyedServiceFactory {
       const KerberosCredentialsManagerFactory&) = delete;
 
  private:
-  friend base::NoDestructor<KerberosCredentialsManagerFactory>;
+  friend struct base::DefaultSingletonTraits<KerberosCredentialsManagerFactory>;
 
   KerberosCredentialsManagerFactory();
   ~KerberosCredentialsManagerFactory() override;
@@ -53,7 +53,7 @@ class KerberosCredentialsManagerFactory : public ProfileKeyedServiceFactory {
 
   // Returns nullptr in case context is not a primary profile. Otherwise returns
   // a valid KerberosCredentialsManager.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

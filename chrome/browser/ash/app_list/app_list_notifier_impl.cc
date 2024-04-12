@@ -60,12 +60,11 @@ void AppListNotifierImpl::NotifyResultsUpdated(
   if (location == Location::kList) {
     for (const auto& result : results)
       list_results_[result.id] = result;
-  } else if (location == Location::kAnswerCard ||
-             location == Location::kImage) {
+  } else if (location == Location::kAnswerCard) {
     if (results.size() > 0) {
-      DoStateTransition(location, State::kShown);
+      DoStateTransition(Location::kAnswerCard, State::kShown);
     } else {
-      DoStateTransition(location, State::kNone);
+      DoStateTransition(Location::kAnswerCard, State::kNone);
     }
     results_[location] = results;
   } else {
@@ -156,11 +155,9 @@ void AppListNotifierImpl::OnAppListVisibilityWillChange(bool shown,
       DoStateTransition(Location::kRecentApps, State::kShown);
     // kList is not shown until a search query is entered.
   } else {
-    if (search_session_in_progress_) {
-      search_session_in_progress_ = false;
-      for (auto& observer : observers_) {
-        observer.OnSearchSessionEnded(query_);
-      }
+    search_session_in_progress_ = false;
+    for (auto& observer : observers_) {
+      observer.OnSearchSessionEnded(query_);
     }
 
     DoStateTransition(Location::kList, State::kNone);
@@ -171,7 +168,7 @@ void AppListNotifierImpl::OnAppListVisibilityWillChange(bool shown,
 }
 
 void AppListNotifierImpl::OnViewStateChanged(ash::AppListViewState state) {
-  if (state == ash::AppListViewState::kFullscreenSearch && !query_.empty()) {
+  if (state == ash::AppListViewState::kFullscreenSearch) {
     search_session_in_progress_ = true;
     for (auto& observer : observers_) {
       observer.OnSearchSessionStarted();

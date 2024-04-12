@@ -66,6 +66,7 @@ class BrowserDesktopWindowTreeHostWin
   bool GetDwmFrameInsetsInPixels(gfx::Insets* insets) const override;
   void HandleCreate() override;
   void HandleDestroying() override;
+  void HandleFrameChanged() override;
   void HandleWindowScaleFactorChanged(float window_scale_factor) override;
   bool PreHandleMSG(UINT message,
                     WPARAM w_param,

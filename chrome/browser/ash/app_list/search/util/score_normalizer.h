@@ -5,7 +5,8 @@
 #ifndef CHROME_BROWSER_ASH_APP_LIST_SEARCH_UTIL_SCORE_NORMALIZER_H_
 #define CHROME_BROWSER_ASH_APP_LIST_SEARCH_UTIL_SCORE_NORMALIZER_H_
 
-#include "ash/utility/persistent_proto.h"
+#include "base/memory/weak_ptr.h"
+#include "chrome/browser/ash/app_list/search/util/persistent_proto.h"
 #include "chrome/browser/ash/app_list/search/util/score_normalizer.pb.h"
 
 namespace app_list {
@@ -38,7 +39,7 @@ class ScoreNormalizer {
     int32_t max_bins = 5;
   };
 
-  using Proto = ash::PersistentProto<ScoreNormalizerProto>;
+  using Proto = PersistentProto<ScoreNormalizerProto>;
 
   ScoreNormalizer(ScoreNormalizer::Proto proto, const Params& params);
   ~ScoreNormalizer();
@@ -55,10 +56,12 @@ class ScoreNormalizer {
  private:
   friend class test::ScoreNormalizerTest;
 
-  void OnProtoInit();
+  void OnProtoRead(ReadStatus status);
 
-  ash::PersistentProto<ScoreNormalizerProto> proto_;
+  PersistentProto<ScoreNormalizerProto> proto_;
   Params params_;
+
+  base::WeakPtrFactory<ScoreNormalizer> weak_factory_{this};
 };
 
 }  // namespace app_list

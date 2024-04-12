@@ -42,4 +42,4 @@ class FastCheckoutPersonalDataHelper {
   FastCheckoutPersonalDataHelper() = default;
 };
 
-#endif  // CHROME_BROWSER_FAST_CHECKOUT_FAST_CHECKOUT_PERSONAL_DATA_HELPER_H_
+#endif

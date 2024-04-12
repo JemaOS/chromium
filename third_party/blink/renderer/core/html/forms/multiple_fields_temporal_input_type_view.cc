@@ -35,7 +35,6 @@
 #include "third_party/blink/renderer/core/css_value_keywords.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/events/scoped_event_queue.h"
-#include "third_party/blink/renderer/core/dom/focus_params.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/events/keyboard_event.h"
 #include "third_party/blink/renderer/core/events/mouse_event.h"
@@ -61,8 +60,6 @@
 #include "ui/base/ui_base_features.h"
 
 namespace blink {
-
-using mojom::blink::FormControlType;
 
 class DateTimeFormatValidator : public DateTimeFormat::TokenHandler {
  public:
@@ -149,11 +146,6 @@ MultipleFieldsTemporalInputTypeView::GetDateTimeEditElement() const {
       shadow_element_names::kIdDateTimeEdit);
   CHECK(!element || IsA<DateTimeEditElement>(element));
   return To<DateTimeEditElement>(element);
-}
-
-DateTimeEditElement*
-MultipleFieldsTemporalInputTypeView::GetDateTimeEditElementIfCreated() const {
-  return HasCreatedShadowSubtree() ? GetDateTimeEditElement() : nullptr;
 }
 
 SpinButtonElement* MultipleFieldsTemporalInputTypeView::GetSpinButtonElement()
@@ -303,11 +295,11 @@ void MultipleFieldsTemporalInputTypeView::PickerIndicatorChooseValue(
   EventQueueScope scope;
   DateComponents date;
   unsigned end;
-  if (input_type_->FormControlType() == FormControlType::kInputTime) {
+  if (input_type_->FormControlType() == input_type_names::kTime) {
     if (date.ParseTime(value, 0, end) && end == value.length())
       edit->SetOnlyTime(date);
   } else if (input_type_->FormControlType() ==
-             FormControlType::kInputDatetimeLocal) {
+             input_type_names::kDatetimeLocal) {
     if (date.ParseDateTimeLocal(value, 0, end) && end == value.length())
       edit->SetDateTimeLocal(date);
   } else {
@@ -412,8 +404,6 @@ void MultipleFieldsTemporalInputTypeView::CreateShadowSubtree() {
     auto* container_div = MakeGarbageCollected<HTMLDivElement>(document);
     container_div->SetShadowPseudoId(
         shadow_element_names::kPseudoInternalDatetimeContainer);
-    container_div->SetInlineStyleProperty(CSSPropertyID::kUnicodeBidi,
-                                          CSSValueID::kNormal);
     GetElement().UserAgentShadowRoot()->AppendChild(container_div);
     container = container_div;
   }
@@ -422,9 +412,9 @@ void MultipleFieldsTemporalInputTypeView::CreateShadowSubtree() {
       MakeGarbageCollected<DateTimeEditElement, Document&,
                            DateTimeEditElement::EditControlOwner&>(document,
                                                                    *this));
-  if (LayoutTheme::GetTheme().SupportsCalendarPicker(input_type_->type())) {
+  if (LayoutTheme::GetTheme().SupportsCalendarPicker(
+          input_type_->FormControlType()))
     picker_indicator_is_always_visible_ = true;
-  }
   container->AppendChild(
       MakeGarbageCollected<PickerIndicatorElement, Document&,
                            PickerIndicatorElement::PickerIndicatorOwner&>(
@@ -448,7 +438,7 @@ void MultipleFieldsTemporalInputTypeView::DestroyShadowSubtree() {
   // If a field element has focus, set focus back to the <input> itself before
   // deleting the field. This prevents unnecessary focusout/blur events.
   if (ContainsFocusedShadowElement())
-    GetElement().Focus(FocusParams(FocusTrigger::kUserGesture));
+    GetElement().Focus();
 
   InputTypeView::DestroyShadowSubtree();
   is_destroying_shadow_subtree_ = false;
@@ -516,8 +506,8 @@ void MultipleFieldsTemporalInputTypeView::HandleKeydownEvent(
 }
 
 bool MultipleFieldsTemporalInputTypeView::HasBadInput() const {
-  DateTimeEditElement* edit = GetDateTimeEditElementIfCreated();
-  return edit && GetElement().Value().empty() &&
+  DateTimeEditElement* edit = GetDateTimeEditElement();
+  return GetElement().Value().empty() && edit &&
          edit->AnyEditableFieldsHaveValues();
 }
 
@@ -628,9 +618,6 @@ void MultipleFieldsTemporalInputTypeView::OpenPopupView() {
 }
 
 void MultipleFieldsTemporalInputTypeView::ClosePopupView() {
-  if (!HasCreatedShadowSubtree()) {
-    return;
-  }
   if (PickerIndicatorElement* picker = GetPickerIndicatorElement())
     picker->ClosePopup();
 }
@@ -681,7 +668,7 @@ void MultipleFieldsTemporalInputTypeView::ShowPickerIndicator() {
 }
 
 void MultipleFieldsTemporalInputTypeView::FocusAndSelectClearButtonOwner() {
-  GetElement().Focus(FocusParams(FocusTrigger::kUserGesture));
+  GetElement().Focus();
 }
 
 bool MultipleFieldsTemporalInputTypeView::

@@ -38,7 +38,7 @@ class ChildStatusReportingServiceFactory : public ProfileKeyedServiceFactory {
   ~ChildStatusReportingServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

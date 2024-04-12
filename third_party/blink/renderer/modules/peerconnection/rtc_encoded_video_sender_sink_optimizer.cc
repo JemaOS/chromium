@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,7 +19,8 @@ UnderlyingSinkBase*
 RtcEncodedVideoSenderSinkOptimizer::PerformInProcessOptimization(
     ScriptState* script_state) {
   auto* new_sink = MakeGarbageCollected<RTCEncodedVideoUnderlyingSink>(
-      script_state, std::move(transformer_));
+      script_state, std::move(transformer_),
+      webrtc::TransformableFrameInterface::Direction::kSender);
 
   std::move(set_underlying_sink_).Run(WrapCrossThreadPersistent(new_sink));
 

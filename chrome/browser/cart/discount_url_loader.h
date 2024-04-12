@@ -41,7 +41,7 @@ class DiscountURLLoader : public BrowserListObserver,
  private:
   void NavigateToDiscountURL(base::WeakPtr<content::WebContents> contents,
                              const GURL& discount_url);
-  std::optional<GURL> last_interacted_url_;
+  absl::optional<GURL> last_interacted_url_;
   raw_ptr<CartService> cart_service_;
   base::WeakPtrFactory<DiscountURLLoader> weak_ptr_factory_{this};
 };

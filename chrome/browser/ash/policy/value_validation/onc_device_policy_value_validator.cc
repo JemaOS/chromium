@@ -16,7 +16,7 @@ ONCDevicePolicyValueValidator::ONCDevicePolicyValueValidator()
           key::kDeviceOpenNetworkConfiguration,
           ::onc::ONCSource::ONC_SOURCE_DEVICE_POLICY) {}
 
-std::optional<std::string>
+absl::optional<std::string>
 ONCDevicePolicyValueValidator::GetONCStringFromPayload(
     const em::ChromeDeviceSettingsProto& policy_payload) const {
   if (policy_payload.has_open_network_configuration() &&
@@ -25,7 +25,7 @@ ONCDevicePolicyValueValidator::GetONCStringFromPayload(
     return policy_payload.open_network_configuration()
         .open_network_configuration();
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace policy

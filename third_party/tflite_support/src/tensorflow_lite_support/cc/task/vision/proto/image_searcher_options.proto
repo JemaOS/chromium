@@ -21,7 +21,6 @@ import "tensorflow_lite_support/cc/task/core/proto/base_options.proto";
 import "tensorflow_lite_support/cc/task/processor/proto/embedding_options.proto";
 import "tensorflow_lite_support/cc/task/processor/proto/search_options.proto";
 
-
 // Options for setting up an ImageSearcher.
 // Next Id: 4.
 message ImageSearcherOptions {
@@ -37,5 +36,4 @@ message ImageSearcherOptions {
   // Options specifying the index to search into and controlling the search
   // behavior.
   optional tflite.task.processor.SearchOptions search_options = 3;
-
 }

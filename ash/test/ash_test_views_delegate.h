@@ -21,16 +21,13 @@ class AshTestViewsDelegate : public views::TestViewsDelegate {
 
   ~AshTestViewsDelegate() override;
 
-  // views::TestViewsDelegate:
+  // Overriden from TestViewsDelegate.
   void OnBeforeWidgetInit(
       views::Widget::InitParams* params,
       views::internal::NativeWidgetDelegate* delegate) override;
   views::TestViewsDelegate::ProcessMenuAcceleratorResult
   ProcessAcceleratorWhileMenuShowing(
       const ui::Accelerator& accelerator) override;
-
-  // views::ViewsDelegate:
-  bool ShouldCloseMenuIfMouseCaptureLost() const override;
 
   void set_close_menu_accelerator(const ui::Accelerator& accelerator) {
     close_menu_accelerator_ = accelerator;

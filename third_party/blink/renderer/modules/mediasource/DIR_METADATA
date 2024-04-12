@@ -1,6 +1,3 @@
-monorail: {
+monorail {
   component: "Internals>Media>Source"
-}
-buganizer_public: {
-  component_id: 1456837
 }

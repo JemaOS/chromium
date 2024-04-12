@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/net/rollback_network_config/rollback_network_config.h"
 
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -30,6 +29,7 @@
 #include "chromeos/ash/components/network/network_state_handler.h"
 #include "components/onc/onc_constants.h"
 #include "dbus/object_path.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/cros_system_api/dbus/shill/dbus-constants.h"
 
 namespace ash {
@@ -135,7 +135,7 @@ void ReconfigureUiData(const base::Value::Dict& network_config,
 }
 
 using GetPasswordResult =
-    base::OnceCallback<void(std::optional<std::string> password,
+    base::OnceCallback<void(absl::optional<std::string> password,
                             const std::string& error_name,
                             const std::string& error_message)>;
 
@@ -147,7 +147,7 @@ void OnGetPassword(GetPasswordResult callback, const std::string& password) {
 void OnGetPasswordError(GetPasswordResult callback,
                         const std::string& error_name,
                         const std::string& error_message) {
-  std::move(callback).Run(std::nullopt, error_name, error_message);
+  std::move(callback).Run(absl::nullopt, error_name, error_message);
 }
 
 void GetPskPassword(GetPasswordResult callback,
@@ -182,17 +182,17 @@ class RollbackNetworkConfig::Exporter {
  private:
   void OnGetManagedNetworkConfig(base::OnceClosure network_finished,
                                  const std::string& service_path,
-                                 std::optional<base::Value::Dict> properties,
-                                 std::optional<std::string> error);
+                                 absl::optional<base::Value::Dict> properties,
+                                 absl::optional<std::string> error);
 
   void AddPskPassword(base::ScopedClosureRunner exit_call,
                       int network_idx,
-                      std::optional<std::string> password,
+                      absl::optional<std::string> password,
                       const std::string& error_name,
                       const std::string& error_message);
   void AddEapPassword(base::ScopedClosureRunner exit_call,
                       int network_idx,
-                      std::optional<std::string> password,
+                      absl::optional<std::string> password,
                       const std::string& error_name,
                       const std::string& error_message);
 
@@ -228,8 +228,8 @@ void RollbackNetworkConfig::Exporter::Export(ExportCallback callback) {
 void RollbackNetworkConfig::Exporter::OnGetManagedNetworkConfig(
     base::OnceClosure network_finished,
     const std::string& service_path,
-    std::optional<base::Value::Dict> managed_network,
-    std::optional<std::string> error) {
+    absl::optional<base::Value::Dict> managed_network,
+    absl::optional<std::string> error) {
   base::ScopedClosureRunner exit_call(std::move(network_finished));
 
   if (!managed_network.has_value()) {
@@ -267,7 +267,7 @@ void RollbackNetworkConfig::Exporter::OnGetManagedNetworkConfig(
 void RollbackNetworkConfig::Exporter::AddPskPassword(
     base::ScopedClosureRunner exit_call,
     int network_idx,
-    std::optional<std::string> password,
+    absl::optional<std::string> password,
     const std::string& error_name,
     const std::string& error_message) {
   if (!password) {
@@ -281,7 +281,7 @@ void RollbackNetworkConfig::Exporter::AddPskPassword(
 void RollbackNetworkConfig::Exporter::AddEapPassword(
     base::ScopedClosureRunner exit_call,
     int network_idx,
-    std::optional<std::string> password,
+    absl::optional<std::string> password,
     const std::string& error_name,
     const std::string& error_message) {
   if (!password) {
@@ -303,9 +303,10 @@ std::string RollbackNetworkConfig::Exporter::SerializeNetworkConfigs() const {
     network_config_list.Append(network_config.Clone());
   }
 
-  auto complete_network_configuration =
-      base::Value::Dict().Set(onc::toplevel_config::kNetworkConfigurations,
-                              std::move(network_config_list));
+  base::Value::Dict complete_network_configuration;
+  complete_network_configuration.Set(
+      onc::toplevel_config::kNetworkConfigurations,
+      std::move(network_config_list));
   std::string serialized_config;
   base::JSONWriter::Write(complete_network_configuration, &serialized_config);
   return serialized_config;
@@ -367,7 +368,7 @@ RollbackNetworkConfig::Importer::~Importer() {
 
 void RollbackNetworkConfig::Importer::Import(const std::string& network_config,
                                              ImportCallback callback) {
-  std::optional<base::Value> managed_onc_network_config =
+  absl::optional<base::Value> managed_onc_network_config =
       base::JSONReader::Read(network_config);
 
   if (!managed_onc_network_config.has_value() ||
@@ -497,7 +498,7 @@ bool RollbackNetworkConfig::Importer::IsOwnershipTaken() const {
     return true;
   }
   return DeviceSettingsService::Get()->GetOwnershipStatus() ==
-         DeviceSettingsService::OwnershipStatus::kOwnershipTaken;
+         DeviceSettingsService::OwnershipStatus::OWNERSHIP_TAKEN;
 }
 
 RollbackNetworkConfig::RollbackNetworkConfig() = default;

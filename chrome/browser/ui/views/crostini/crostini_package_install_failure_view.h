@@ -18,10 +18,9 @@ void ShowCrostiniPackageInstallFailureView(const std::string& error_message);
 // Displays error information when the user fails to install a package.
 class CrostiniPackageInstallFailureView
     : public views::BubbleDialogDelegateView {
-  METADATA_HEADER(CrostiniPackageInstallFailureView,
-                  views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(CrostiniPackageInstallFailureView);
+
   static void Show(const std::string& error_message);
 
  private:

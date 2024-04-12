@@ -75,7 +75,7 @@ void DesktopDragDropClientOzoneLinux::OnDragOperationChanged(
   cursor_client->SetCursor(cursor_type);
 }
 
-std::optional<gfx::AcceleratedWidget>
+absl::optional<gfx::AcceleratedWidget>
 DesktopDragDropClientOzoneLinux::GetDragWidget() {
   DCHECK(drag_context());
   if (drag_context()->widget)
@@ -83,7 +83,7 @@ DesktopDragDropClientOzoneLinux::GetDragWidget() {
         ->widget->GetNativeWindow()
         ->GetHost()
         ->GetAcceleratedWidget();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void DesktopDragDropClientOzoneLinux::UpdateDragWidgetLocation() {

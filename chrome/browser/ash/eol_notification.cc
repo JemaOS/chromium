@@ -12,7 +12,6 @@
 #include "ash/public/cpp/style/dark_light_mode_controller.h"
 #include "ash/public/cpp/system_notification_builder.h"
 #include "ash/style/dark_light_mode_controller_impl.h"
-#include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/i18n/time_formatting.h"
 #include "base/time/default_clock.h"
@@ -40,6 +39,8 @@
 #include "ui/gfx/image/image.h"
 #include "ui/gfx/image/image_skia_operations.h"
 #include "ui/gfx/paint_vector_icon.h"
+#include "jemaos/switches/urls/urls_constants.h"
+#include "jemaos/misc/jemaos_release_note_url.h"
 
 namespace ash {
 namespace {
@@ -139,14 +140,10 @@ void EolNotification::OnEolInfo(UpdateEngineClient::EolInfo eol_info) {
   } else if (SecondWarningDate(eol_date) <= now) {
     dismiss_pref_ = prefs::kSecondEolWarningDismissed;
   } else if (FirstWarningDate(eol_date) <= now) {
-    if (base::FeatureList::IsEnabled(features::kSuppressFirstEolWarning)) {
-      dismiss_pref_ = std::nullopt;
-      return;
-    }
     dismiss_pref_ = prefs::kFirstEolWarningDismissed;
   } else {
     // |now| < FirstWarningDate() so don't show anything.
-    dismiss_pref_ = std::nullopt;
+    dismiss_pref_ = absl::nullopt;
     return;
   }
 
@@ -197,7 +194,7 @@ void EolNotification::CreateNotification(base::Time eol_date, base::Time now) {
           .SetDelegate(
               base::MakeRefCounted<message_center::ThunkNotificationDelegate>(
                   weak_ptr_factory_.GetWeakPtr()))
-          .Build(false),
+          .Build(),
       /*metadata=*/nullptr);
 
   eol_incentive_util::RecordShowSourceHistogram(
@@ -216,8 +213,8 @@ void EolNotification::Close(bool by_user) {
   profile_->GetPrefs()->SetBoolean(*dismiss_pref_, true);
 }
 
-void EolNotification::Click(const std::optional<int>& button_index,
-                            const std::optional<std::u16string>& reply) {
+void EolNotification::Click(const absl::optional<int>& button_index,
+                            const absl::optional<std::u16string>& reply) {
   if (!button_index) {
     return;
   }
@@ -255,7 +252,7 @@ void EolNotification::Click(const std::optional<int>& button_index,
       case kButtonAboutUpdates:
         // Open link to learn more about updates.
         NewWindowDelegate::GetPrimary()->OpenUrl(
-            GURL(chrome::kEolNotificationURL),
+            GURL(jemaos::constants::kEolNotificationURL),
             NewWindowDelegate::OpenUrlFrom::kUserInteraction,
             NewWindowDelegate::Disposition::kNewForegroundTab);
 
@@ -272,9 +269,10 @@ void EolNotification::Click(const std::optional<int>& button_index,
   } else {
     switch (*button_index) {
       case BUTTON_MORE_INFO: {
-        const GURL url(dismiss_pref_ == prefs::kEolNotificationDismissed
-                           ? chrome::kEolNotificationURL
-                           : chrome::kAutoUpdatePolicyURL);
+        const GURL url = dismiss_pref_ == prefs::kEolNotificationDismissed
+                            ? GURL(jemaos::constants::kEolNotificationURL)
+                            : GURL(
+                      jemaos::misc::BuildJemaReleaseNoteUrlWithPath(profile_));
         // Show eol link.
         NewWindowDelegate::GetPrimary()->OpenUrl(
             url, NewWindowDelegate::OpenUrlFrom::kUserInteraction,
@@ -446,7 +444,7 @@ void EolNotification::ShowIncentiveNotification(
           .SetDelegate(
               base::MakeRefCounted<message_center::ThunkNotificationDelegate>(
                   weak_ptr_factory_.GetWeakPtr()))
-          .Build(false),
+          .Build(),
       /*metadata=*/nullptr);
 
   if (incentive_type == eol_incentive_util::EolIncentiveType::kEolApproaching) {

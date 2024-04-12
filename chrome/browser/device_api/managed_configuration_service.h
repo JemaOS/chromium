@@ -5,14 +5,9 @@
 #ifndef CHROME_BROWSER_DEVICE_API_MANAGED_CONFIGURATION_SERVICE_H_
 #define CHROME_BROWSER_DEVICE_API_MANAGED_CONFIGURATION_SERVICE_H_
 
-#include <string>
-#include <vector>
-
+#include "base/memory/raw_ptr.h"
 #include "chrome/browser/device_api/managed_configuration_api.h"
 #include "content/public/browser/document_service.h"
-#include "content/public/browser/render_frame_host.h"
-#include "mojo/public/cpp/bindings/pending_remote.h"
-#include "mojo/public/cpp/bindings/remote.h"
 #include "third_party/blink/public/mojom/device/device.mojom.h"
 
 class ManagedConfigurationServiceImpl
@@ -20,10 +15,7 @@ class ManagedConfigurationServiceImpl
           blink::mojom::ManagedConfigurationService>,
       public ManagedConfigurationAPI::Observer {
  public:
-  // Creates a `ManagedConfigurationServiceImpl` owned by the given `host`, and
-  // returns a reference to it. May return `nullptr` when `host` is not allowed
-  // to use managed configurations, for example in incognito.
-  static ManagedConfigurationServiceImpl* Create(
+  static void Create(
       content::RenderFrameHost* host,
       mojo::PendingReceiver<blink::mojom::ManagedConfigurationService>
           receiver);
@@ -34,7 +26,12 @@ class ManagedConfigurationServiceImpl
       const ManagedConfigurationServiceImpl&) = delete;
   ~ManagedConfigurationServiceImpl() override;
 
-  // blink::mojom::ManagedConfigurationService:
+ private:
+  ManagedConfigurationServiceImpl(
+      content::RenderFrameHost& host,
+      mojo::PendingReceiver<blink::mojom::ManagedConfigurationService>
+          receiver);
+  // blink::mojom::DeviceApiService:
   void GetManagedConfiguration(
       const std::vector<std::string>& keys,
       GetManagedConfigurationCallback callback) override;
@@ -42,18 +39,11 @@ class ManagedConfigurationServiceImpl
       mojo::PendingRemote<blink::mojom::ManagedConfigurationObserver> observer)
       override;
 
-  // ManagedConfigurationAPI::Observer:
-  void OnManagedConfigurationChanged() override;
-
- private:
-  ManagedConfigurationServiceImpl(
-      content::RenderFrameHost& host,
-      mojo::PendingReceiver<blink::mojom::ManagedConfigurationService>
-          receiver);
-
   ManagedConfigurationAPI* managed_configuration_api();
 
-  const url::Origin& GetOrigin() const override;
+  // ManagedConfigurationAPI::Observer:
+  void OnManagedConfigurationChanged() override;
+  const url::Origin& GetOrigin() override;
 
   mojo::Remote<blink::mojom::ManagedConfigurationObserver>
       configuration_subscription_;

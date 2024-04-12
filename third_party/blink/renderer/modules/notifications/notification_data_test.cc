@@ -13,7 +13,6 @@
 #include "third_party/blink/renderer/modules/notifications/notification.h"
 #include "third_party/blink/renderer/modules/notifications/timestamp_trigger.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
@@ -51,7 +50,6 @@ const unsigned kNotificationVibrationUnnormalized[] = {10, 1000000, 50, 42};
 const int kNotificationVibrationNormalized[] = {10, 10000, 50};
 
 TEST(NotificationDataTest, ReflectProperties) {
-  test::TaskEnvironment task_environment;
   const KURL base_url(kNotificationBaseUrl);
   V8TestingScope scope(base_url);
 
@@ -75,9 +73,8 @@ TEST(NotificationDataTest, ReflectProperties) {
     actions.push_back(action);
   }
 
-  const DOMTimeStamp show_timestamp =
-      base::Time::Now().InMillisecondsSinceUnixEpoch();
-  TimestampTrigger* showTrigger = TimestampTrigger::Create(show_timestamp);
+  DOMTimeStamp showTimestamp = base::Time::Now().ToDoubleT() * 1000.0;
+  TimestampTrigger* showTrigger = TimestampTrigger::Create(showTimestamp);
 
   NotificationOptions* options =
       NotificationOptions::Create(scope.GetIsolate());
@@ -111,8 +108,7 @@ TEST(NotificationDataTest, ReflectProperties) {
   EXPECT_EQ(kNotificationLang, notification_data->lang);
   EXPECT_EQ(kNotificationBody, notification_data->body);
   EXPECT_EQ(kNotificationTag, notification_data->tag);
-  EXPECT_EQ(base::Time::FromMillisecondsSinceUnixEpoch(
-                static_cast<int64_t>(show_timestamp)),
+  EXPECT_EQ(base::Time::FromJsTime(showTimestamp),
             notification_data->show_trigger_timestamp);
 
   // URLs should be resolved against the base URL of the execution context.
@@ -143,7 +139,6 @@ TEST(NotificationDataTest, ReflectProperties) {
 }
 
 TEST(NotificationDataTest, SilentNotificationWithVibration) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   Vector<unsigned> vibration_pattern;
@@ -170,7 +165,6 @@ TEST(NotificationDataTest, SilentNotificationWithVibration) {
 }
 
 TEST(NotificationDataTest, ActionTypeButtonWithPlaceholder) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   HeapVector<Member<NotificationAction>> actions;
@@ -194,7 +188,6 @@ TEST(NotificationDataTest, ActionTypeButtonWithPlaceholder) {
 }
 
 TEST(NotificationDataTest, RenotifyWithEmptyTag) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   NotificationOptions* options =
@@ -214,7 +207,6 @@ TEST(NotificationDataTest, RenotifyWithEmptyTag) {
 }
 
 TEST(NotificationDataTest, InvalidIconUrls) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   HeapVector<Member<NotificationAction>> actions;
@@ -247,7 +239,6 @@ TEST(NotificationDataTest, InvalidIconUrls) {
 }
 
 TEST(NotificationDataTest, VibrationNormalization) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   Vector<unsigned> unnormalized_pattern;
@@ -281,7 +272,6 @@ TEST(NotificationDataTest, VibrationNormalization) {
 }
 
 TEST(NotificationDataTest, DefaultTimestampValue) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   NotificationOptions* options =
@@ -297,11 +287,10 @@ TEST(NotificationDataTest, DefaultTimestampValue) {
   // wasn't supplied by the developer. "32" has no significance, but an equal
   // comparison of the value could lead to flaky failures.
   EXPECT_NEAR(notification_data->timestamp,
-              base::Time::Now().InMillisecondsFSinceUnixEpoch(), 32);
+              base::Time::Now().ToDoubleT() * 1000.0, 32);
 }
 
 TEST(NotificationDataTest, DirectionValues) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   WTF::HashMap<String, mojom::blink::NotificationDirection> mappings;
@@ -325,7 +314,6 @@ TEST(NotificationDataTest, DirectionValues) {
 }
 
 TEST(NotificationDataTest, MaximumActionCount) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   HeapVector<Member<NotificationAction>> actions;
@@ -357,13 +345,12 @@ TEST(NotificationDataTest, MaximumActionCount) {
 }
 
 TEST(NotificationDataTest, RejectsTriggerTimestampOverAYear) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
 
   base::Time show_timestamp =
       base::Time::Now() + kMaxNotificationShowTriggerDelay + base::Days(1);
   TimestampTrigger* show_trigger =
-      TimestampTrigger::Create(show_timestamp.InMillisecondsFSinceUnixEpoch());
+      TimestampTrigger::Create(show_timestamp.ToJsTime());
 
   NotificationOptions* options =
       NotificationOptions::Create(scope.GetIsolate());

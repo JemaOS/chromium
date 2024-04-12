@@ -29,8 +29,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_MEDIA_QUERY_EXP_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_MEDIA_QUERY_EXP_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
 #include "third_party/blink/renderer/core/css/css_value.h"
@@ -39,10 +38,6 @@
 #include "third_party/blink/renderer/core/layout/geometry/axis.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
-
-namespace WTF {
-class StringBuilder;
-}  // namespace WTF
 
 namespace blink {
 
@@ -138,8 +133,8 @@ class CORE_EXPORT MediaQueryExpValue {
   // Consume a MediaQueryExpValue for the provided feature, which must already
   // be lower-cased.
   //
-  // std::nullopt is returned on errors.
-  static std::optional<MediaQueryExpValue> Consume(
+  // absl::nullopt is returned on errors.
+  static absl::optional<MediaQueryExpValue> Consume(
       const String& lower_media_feature,
       CSSParserTokenRange&,
       const CSSParserTokenOffsets&,
@@ -321,8 +316,6 @@ class CORE_EXPORT MediaQueryExpNode
     kFeatureInlineSize = 1 << 4,
     kFeatureBlockSize = 1 << 5,
     kFeatureStyle = 1 << 6,
-    kFeatureSticky = 1 << 7,
-    kFeatureSnap = 1 << 8,
   };
 
   using FeatureFlags = unsigned;
@@ -332,7 +325,7 @@ class CORE_EXPORT MediaQueryExpNode
   bool HasUnknown() const { return CollectFeatureFlags() & kFeatureUnknown; }
 
   virtual Type GetType() const = 0;
-  virtual void SerializeTo(WTF::StringBuilder&) const = 0;
+  virtual void SerializeTo(StringBuilder&) const = 0;
   virtual void CollectExpressions(HeapVector<MediaQueryExp>&) const = 0;
   virtual FeatureFlags CollectFeatureFlags() const = 0;
 
@@ -364,7 +357,7 @@ class CORE_EXPORT MediaQueryFeatureExpNode : public MediaQueryExpNode {
   bool IsBlockSizeDependent() const;
 
   Type GetType() const override { return Type::kFeature; }
-  void SerializeTo(WTF::StringBuilder&) const override;
+  void SerializeTo(StringBuilder&) const override;
   void CollectExpressions(HeapVector<MediaQueryExp>&) const override;
   FeatureFlags CollectFeatureFlags() const override;
 
@@ -394,7 +387,7 @@ class CORE_EXPORT MediaQueryNestedExpNode : public MediaQueryUnaryExpNode {
       : MediaQueryUnaryExpNode(operand) {}
 
   Type GetType() const override { return Type::kNested; }
-  void SerializeTo(WTF::StringBuilder&) const override;
+  void SerializeTo(StringBuilder&) const override;
 };
 
 class CORE_EXPORT MediaQueryFunctionExpNode : public MediaQueryUnaryExpNode {
@@ -404,7 +397,7 @@ class CORE_EXPORT MediaQueryFunctionExpNode : public MediaQueryUnaryExpNode {
       : MediaQueryUnaryExpNode(operand), name_(name) {}
 
   Type GetType() const override { return Type::kFunction; }
-  void SerializeTo(WTF::StringBuilder&) const override;
+  void SerializeTo(StringBuilder&) const override;
   FeatureFlags CollectFeatureFlags() const override;
 
  private:
@@ -417,7 +410,7 @@ class CORE_EXPORT MediaQueryNotExpNode : public MediaQueryUnaryExpNode {
       : MediaQueryUnaryExpNode(operand) {}
 
   Type GetType() const override { return Type::kNot; }
-  void SerializeTo(WTF::StringBuilder&) const override;
+  void SerializeTo(StringBuilder&) const override;
 };
 
 class CORE_EXPORT MediaQueryCompoundExpNode : public MediaQueryExpNode {
@@ -447,7 +440,7 @@ class CORE_EXPORT MediaQueryAndExpNode : public MediaQueryCompoundExpNode {
       : MediaQueryCompoundExpNode(left, right) {}
 
   Type GetType() const override { return Type::kAnd; }
-  void SerializeTo(WTF::StringBuilder&) const override;
+  void SerializeTo(StringBuilder&) const override;
 };
 
 class CORE_EXPORT MediaQueryOrExpNode : public MediaQueryCompoundExpNode {
@@ -457,7 +450,7 @@ class CORE_EXPORT MediaQueryOrExpNode : public MediaQueryCompoundExpNode {
       : MediaQueryCompoundExpNode(left, right) {}
 
   Type GetType() const override { return Type::kOr; }
-  void SerializeTo(WTF::StringBuilder&) const override;
+  void SerializeTo(StringBuilder&) const override;
 };
 
 class CORE_EXPORT MediaQueryUnknownExpNode : public MediaQueryExpNode {
@@ -465,7 +458,7 @@ class CORE_EXPORT MediaQueryUnknownExpNode : public MediaQueryExpNode {
   explicit MediaQueryUnknownExpNode(String string) : string_(string) {}
 
   Type GetType() const override { return Type::kUnknown; }
-  void SerializeTo(WTF::StringBuilder&) const override;
+  void SerializeTo(StringBuilder&) const override;
   void CollectExpressions(HeapVector<MediaQueryExp>&) const override;
   FeatureFlags CollectFeatureFlags() const override;
 

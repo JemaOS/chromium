@@ -9,11 +9,8 @@ import android.util.Pair;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
-import org.chromium.chrome.browser.profiles.ProfileProvider;
-import org.chromium.chrome.browser.tabmodel.MismatchedIndicesHandler;
 import org.chromium.chrome.browser.tabmodel.NextTabPolicy.NextTabPolicySupplier;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -41,15 +38,10 @@ public class TabbedModeTabModelOrchestrator extends TabModelOrchestrator {
      * Creates the TabModelSelector and the TabPersistentStore.
      *
      * @return Whether the creation was successful. It may fail is we reached the limit of number of
-     *     windows.
+     *         windows.
      */
-    public boolean createTabModels(
-            Activity activity,
-            OneshotSupplier<ProfileProvider> profileProviderSupplier,
-            TabCreatorManager tabCreatorManager,
-            NextTabPolicySupplier nextTabPolicySupplier,
-            MismatchedIndicesHandler mismatchedIndicesHandler,
-            int selectorIndex) {
+    public boolean createTabModels(Activity activity, TabCreatorManager tabCreatorManager,
+            NextTabPolicySupplier nextTabPolicySupplier, int selectorIndex) {
         boolean mergeTabsOnStartup = shouldMergeTabs(activity);
         if (mergeTabsOnStartup) {
             MultiInstanceManager.mergedOnStartup();
@@ -57,14 +49,8 @@ public class TabbedModeTabModelOrchestrator extends TabModelOrchestrator {
 
         // Instantiate TabModelSelectorImpl
         Pair<Integer, TabModelSelector> selectorAssignment =
-                TabWindowManagerSingleton.getInstance()
-                        .requestSelector(
-                                activity,
-                                profileProviderSupplier,
-                                tabCreatorManager,
-                                nextTabPolicySupplier,
-                                mismatchedIndicesHandler,
-                                selectorIndex);
+                TabWindowManagerSingleton.getInstance().requestSelector(
+                        activity, tabCreatorManager, nextTabPolicySupplier, selectorIndex);
         if (selectorAssignment == null) {
             mTabModelSelector = null;
         } else {
@@ -73,11 +59,10 @@ public class TabbedModeTabModelOrchestrator extends TabModelOrchestrator {
 
         if (mTabModelSelector == null) {
             markTabModelsInitialized();
-            Toast.makeText(
-                            activity,
-                            activity.getString(
-                                    org.chromium.chrome.R.string.unsupported_number_of_windows),
-                            Toast.LENGTH_LONG)
+            Toast.makeText(activity,
+                         activity.getString(
+                                 org.chromium.chrome.R.string.unsupported_number_of_windows),
+                         Toast.LENGTH_LONG)
                     .show();
             return false;
         }
@@ -85,9 +70,9 @@ public class TabbedModeTabModelOrchestrator extends TabModelOrchestrator {
         int assignedIndex = selectorAssignment.first;
 
         // Instantiate TabPersistentStore
-        mTabPersistencePolicy =
-                new TabbedModeTabPersistencePolicy(
-                        assignedIndex, mergeTabsOnStartup, mTabMergingEnabled);
+        int maxSelectors = TabWindowManagerSingleton.getInstance().getMaxSimultaneousSelectors();
+        mTabPersistencePolicy = new TabbedModeTabPersistencePolicy(
+                assignedIndex, mergeTabsOnStartup, mTabMergingEnabled, maxSelectors);
         mTabPersistentStore =
                 new TabPersistentStore(mTabPersistencePolicy, mTabModelSelector, tabCreatorManager);
 
@@ -109,18 +94,16 @@ public class TabbedModeTabModelOrchestrator extends TabModelOrchestrator {
         // that it is a cold start or process restart in fullscreen mode.
         boolean mergeTabs = mTabMergingEnabled && !activity.isInMultiWindowMode();
         if (MultiInstanceManager.shouldMergeOnStartup(activity)) {
-            mergeTabs =
-                    mergeTabs
-                            && (!MultiWindowUtils.getInstance().isInMultiDisplayMode(activity)
-                                    || TabWindowManagerSingleton.getInstance()
-                                                    .getNumberOfAssignedTabModelSelectors()
-                                            == 0);
-        } else {
-            mergeTabs =
-                    mergeTabs
-                            && TabWindowManagerSingleton.getInstance()
+            mergeTabs = mergeTabs
+                    && (!MultiWindowUtils.getInstance().isInMultiDisplayMode(activity)
+                            || TabWindowManagerSingleton.getInstance()
                                             .getNumberOfAssignedTabModelSelectors()
-                                    == 0;
+                                    == 0);
+        } else {
+            mergeTabs = mergeTabs
+                    && TabWindowManagerSingleton.getInstance()
+                                    .getNumberOfAssignedTabModelSelectors()
+                            == 0;
         }
         return mergeTabs;
     }
@@ -135,6 +118,7 @@ public class TabbedModeTabModelOrchestrator extends TabModelOrchestrator {
         mTabPersistentStore.cleanupStateFile(instanceId);
     }
 
+    @VisibleForTesting
     public TabPersistentStore getTabPersistentStoreForTesting() {
         return mTabPersistentStore;
     }

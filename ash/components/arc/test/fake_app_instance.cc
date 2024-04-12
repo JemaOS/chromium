@@ -190,7 +190,7 @@ arc::mojom::RawIconPngDataPtr FakeAppInstance::GenerateIconResponse(
     }
     case IconResponseType::ICON_RESPONSE_SEND_GOOD: {
       base::FilePath base_path;
-      CHECK(base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &base_path));
+      CHECK(base::PathService::Get(base::DIR_SOURCE_ROOT, &base_path));
       base::FilePath icon_file_path =
           base_path.AppendASCII("ash")
               .AppendASCII("components")
@@ -252,7 +252,7 @@ arc::mojom::RawIconPngDataPtr FakeAppInstance::GetFakeIcon(
 
   base::FilePath base_path;
   std::string png_data_as_string;
-  CHECK(base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &base_path));
+  CHECK(base::PathService::Get(base::DIR_SOURCE_ROOT, &base_path));
   base::FilePath icon_file_path = base_path.AppendASCII("ash")
                                       .AppendASCII("components")
                                       .AppendASCII("arc")
@@ -290,21 +290,30 @@ void FakeAppInstance::SendInstallationStarted(const std::string& package_name) {
 }
 
 void FakeAppInstance::SendInstallationFinished(const std::string& package_name,
-                                               bool success,
-                                               bool is_launchable_app) {
+                                               bool success) {
   mojom::InstallationResult result;
   result.package_name = package_name;
   result.success = success;
-  result.is_launchable_app = is_launchable_app;
   app_host_->OnInstallationFinished(
       mojom::InstallationResultPtr(result.Clone()));
+}
+
+void FakeAppInstance::CanHandleResolutionDeprecated(
+    const std::string& package_name,
+    const std::string& activity,
+    const gfx::Rect& dimension,
+    CanHandleResolutionDeprecatedCallback callback) {
+  std::move(callback).Run(true);
 }
 
 void FakeAppInstance::UninstallPackage(const std::string& package_name) {
   app_host_->OnPackageRemoved(package_name);
 }
 
-void FakeAppInstance::UpdateAppDetails(const std::string& package_name) {}
+void FakeAppInstance::GetTaskInfoDeprecated(
+    int32_t task_id, GetTaskInfoDeprecatedCallback callback) {
+  LOG(FATAL) << "GetTaskInfo is deprecated: b/265158447";
+}
 
 void FakeAppInstance::SetTaskActive(int32_t task_id) {}
 
@@ -464,6 +473,11 @@ void FakeAppInstance::StartFastAppReinstallFlow(
   ++start_fast_app_reinstall_request_count_;
 }
 
+void FakeAppInstance::RequestAssistStructure(
+    RequestAssistStructureCallback callback) {
+  std::move(callback).Run(nullptr, nullptr);
+}
+
 void FakeAppInstance::IsInstallable(const std::string& package_name,
                                     IsInstallableCallback callback) {
   std::move(callback).Run(is_installable_);
@@ -476,11 +490,6 @@ void FakeAppInstance::GetAppCategory(const std::string& package_name,
 
   if (itr != pkg_name_to_app_category_.end()) category = itr->second;
   std::move(callback).Run(category);
-}
-
-void FakeAppInstance::SetAppLocale(const std::string& package_name,
-                                   const std::string& locale_tag) {
-  selected_locales_[package_name] = locale_tag;
 }
 
 void FakeAppInstance::LaunchIntentWithWindowInfo(
@@ -524,17 +533,5 @@ void FakeAppInstance::GetPackageIcon(const std::string& package_name,
 }
 
 void FakeAppInstance::RemoveCachedIcon(const std::string& icon_resource_id) {}
-
-void FakeAppInstance::SendInstallationProgressChanged(
-    const std::string& package_name,
-    float progress) {
-  app_host_->OnInstallationProgressChanged(package_name, progress);
-}
-
-void FakeAppInstance::SendInstallationActiveChanged(
-    const std::string& package_name,
-    bool active) {
-  app_host_->OnInstallationActiveChanged(package_name, active);
-}
 
 }  // namespace arc

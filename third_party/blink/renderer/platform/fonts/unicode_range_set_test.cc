@@ -11,9 +11,9 @@ namespace blink {
 static const UChar kHiraganaA[2] = {0x3042, 0};
 
 TEST(UnicodeRangeSet, Empty) {
-  HeapVector<UnicodeRange> ranges;
-  UnicodeRangeSet* set =
-      MakeGarbageCollected<UnicodeRangeSet>(std::move(ranges));
+  Vector<UnicodeRange> ranges;
+  scoped_refptr<UnicodeRangeSet> set =
+      base::AdoptRef(new UnicodeRangeSet(ranges));
   EXPECT_TRUE(set->IsEntireRange());
   EXPECT_EQ(0u, set->size());
   EXPECT_FALSE(set->IntersectsWith(String()));
@@ -22,10 +22,10 @@ TEST(UnicodeRangeSet, Empty) {
 }
 
 TEST(UnicodeRangeSet, SingleCharacter) {
-  HeapVector<UnicodeRange> ranges;
+  Vector<UnicodeRange> ranges;
   ranges.push_back(UnicodeRange('b', 'b'));
-  UnicodeRangeSet* set =
-      MakeGarbageCollected<UnicodeRangeSet>(std::move(ranges));
+  scoped_refptr<UnicodeRangeSet> set =
+      base::AdoptRef(new UnicodeRangeSet(ranges));
   EXPECT_FALSE(set->IsEntireRange());
   EXPECT_FALSE(set->IntersectsWith(String()));
   EXPECT_FALSE(set->IntersectsWith(String("a")));
@@ -39,11 +39,11 @@ TEST(UnicodeRangeSet, SingleCharacter) {
 }
 
 TEST(UnicodeRangeSet, TwoRanges) {
-  HeapVector<UnicodeRange> ranges;
+  Vector<UnicodeRange> ranges;
   ranges.push_back(UnicodeRange('6', '7'));
   ranges.push_back(UnicodeRange('2', '4'));
-  UnicodeRangeSet* set =
-      MakeGarbageCollected<UnicodeRangeSet>(std::move(ranges));
+  scoped_refptr<UnicodeRangeSet> set =
+      base::AdoptRef(new UnicodeRangeSet(ranges));
   EXPECT_FALSE(set->IsEntireRange());
   EXPECT_FALSE(set->IntersectsWith(String()));
   EXPECT_FALSE(set->IntersectsWith(String("1")));
@@ -62,23 +62,23 @@ TEST(UnicodeRangeSet, TwoRanges) {
 }
 
 TEST(UnicodeRangeSet, Overlap) {
-  HeapVector<UnicodeRange> ranges;
+  Vector<UnicodeRange> ranges;
   ranges.push_back(UnicodeRange('0', '2'));
   ranges.push_back(UnicodeRange('1', '1'));
   ranges.push_back(UnicodeRange('3', '5'));
   ranges.push_back(UnicodeRange('4', '6'));
-  UnicodeRangeSet* set =
-      MakeGarbageCollected<UnicodeRangeSet>(std::move(ranges));
+  scoped_refptr<UnicodeRangeSet> set =
+      base::AdoptRef(new UnicodeRangeSet(ranges));
   ASSERT_EQ(1u, set->size());
   EXPECT_EQ('0', set->RangeAt(0).From());
   EXPECT_EQ('6', set->RangeAt(0).To());
 }
 
 TEST(UnicodeRangeSet, Non8Bit) {
-  HeapVector<UnicodeRange> ranges;
+  Vector<UnicodeRange> ranges;
   ranges.push_back(UnicodeRange(0x3042, 0x3042));
-  UnicodeRangeSet* set =
-      MakeGarbageCollected<UnicodeRangeSet>(std::move(ranges));
+  scoped_refptr<UnicodeRangeSet> set =
+      base::AdoptRef(new UnicodeRangeSet(ranges));
   ASSERT_EQ(1u, set->size());
   EXPECT_EQ(0x3042, set->RangeAt(0).From());
   EXPECT_EQ(0x3042, set->RangeAt(0).To());

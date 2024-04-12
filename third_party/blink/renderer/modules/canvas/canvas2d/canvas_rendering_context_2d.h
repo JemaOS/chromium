@@ -58,7 +58,9 @@ class FormattedText;
 class CanvasImageSource;
 class Element;
 class ExceptionState;
+class Font;
 class Path2D;
+class TextMetrics;
 
 class MODULES_EXPORT CanvasRenderingContext2D final
     : public CanvasRenderingContext,
@@ -114,8 +116,25 @@ class MODULES_EXPORT CanvasRenderingContext2D final
 
   void Reset() override;
 
-  void setFontForTesting(const String& new_font) override;
+  String font() const;
+  void setFont(const String&) override;
 
+  String direction() const;
+  void setDirection(const String&);
+
+  void setLetterSpacing(const String&);
+  void setWordSpacing(const String&);
+  void setTextRendering(const String&);
+
+  void setFontKerning(const String&);
+  void setFontStretch(const String&);
+  void setFontVariantCaps(const String&);
+
+  void fillText(const String& text, double x, double y);
+  void fillText(const String& text, double x, double y, double max_width);
+  void strokeText(const String& text, double x, double y);
+  void strokeText(const String& text, double x, double y, double max_width);
+  TextMetrics* measureText(const String& text);
   void drawFormattedText(FormattedText* formatted_text,
                          double x,
                          double y,
@@ -146,8 +165,10 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   // BaseRenderingContext2D implementation
   bool OriginClean() const final;
   void SetOriginTainted() final;
+  bool WouldTaintOrigin(CanvasImageSource* source) final {
+    return CanvasRenderingContext::WouldTaintOrigin(source);
+  }
   void DisableAcceleration() override;
-  bool ShouldDisableAccelerationBecauseOfReadback() const override;
 
   int Width() const final;
   int Height() const final;
@@ -159,23 +180,24 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   Color GetCurrentColor() const final;
 
   cc::PaintCanvas* GetOrCreatePaintCanvas() final;
-  using BaseRenderingContext2D::GetPaintCanvas;  // Pull the non-const overload.
-  const cc::PaintCanvas* GetPaintCanvas() const final;
-  const MemoryManagedPaintRecorder* Recorder() const override;
-
+  cc::PaintCanvas* GetPaintCanvas() final;
   void WillDraw(const SkIRect& dirty_rect,
                 CanvasPerformanceMonitor::DrawType) final;
 
   SkColorInfo CanvasRenderingContextSkColorInfo() const override {
     return color_params_.GetSkColorInfo();
   }
-  scoped_refptr<StaticBitmapImage> GetImage(FlushReason) final;
+  scoped_refptr<StaticBitmapImage> GetImage(
+      CanvasResourceProvider::FlushReason) final;
 
   sk_sp<PaintFilter> StateGetFilter() final;
+  void SnapshotStateForFilter() final;
 
-  void FinalizeFrame(FlushReason) override;
+  void ValidateStateStackWithCanvas(const cc::PaintCanvas*) const final;
 
-  CanvasRenderingContextHost* GetCanvasRenderingContextHost() const override;
+  void FinalizeFrame(CanvasResourceProvider::FlushReason) override;
+
+  CanvasRenderingContextHost* GetCanvasRenderingContextHost() override;
   ExecutionContext* GetTopExecutionContext() const override;
 
   bool IsPaintable() const final {
@@ -184,7 +206,7 @@ class MODULES_EXPORT CanvasRenderingContext2D final
 
   void WillDrawImage(CanvasImageSource*) const final;
 
-  std::optional<cc::PaintRecord> FlushCanvas(FlushReason) override;
+  void FlushCanvas(CanvasResourceProvider::FlushReason) override;
 
   void Trace(Visitor*) const override;
 
@@ -213,12 +235,7 @@ class MODULES_EXPORT CanvasRenderingContext2D final
     return identifiability_study_helper_.encountered_partially_digested_image();
   }
 
-  int LayerCount() const override;
-
  protected:
-  HTMLCanvasElement* HostAsHTMLCanvasElement() const final;
-  FontSelector* GetFontSelector() const final;
-
   PredefinedColorSpace GetDefaultImageDataColorSpace() const final {
     return color_params_.ColorSpace();
   }
@@ -227,11 +244,8 @@ class MODULES_EXPORT CanvasRenderingContext2D final
                    size_t row_bytes,
                    int x,
                    int y) override;
+  void WillOverwriteCanvas() override;
   void TryRestoreContextEvent(TimerBase*) override;
-
-  bool WillSetFont() const final;
-  bool CurrentFontResolvedAndUpToDate() const final;
-  bool ResolveFont(const String& new_font) final;
 
  private:
   friend class CanvasRenderingContext2DAutoRestoreSkCanvas;
@@ -239,6 +253,14 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   void PruneLocalFontCache(size_t target_size);
 
   void ScrollPathIntoViewInternal(const Path&);
+
+  void DrawTextInternal(const String&,
+                        double x,
+                        double y,
+                        CanvasRenderingContext2DState::PaintType,
+                        double* max_width = nullptr);
+
+  const Font& AccessFont();
 
   void DrawFocusIfNeededInternal(
       const Path&,
@@ -249,12 +271,14 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   void UpdateElementAccessibility(const Path&, Element*);
 
   bool IsComposited() const override;
+  bool IsAccelerated() const override;
   bool IsOriginTopLeft() const override;
   bool HasAlpha() const override { return CreationAttributes().alpha; }
   bool IsDesynchronized() const override {
     return CreationAttributes().desynchronized;
   }
-  void PageVisibilityChanged() override;
+  void SetIsInHiddenPage(bool) override;
+  void SetIsBeingDisplayed(bool) override;
   void Stop() final;
 
   cc::Layer* CcLayer() const override;

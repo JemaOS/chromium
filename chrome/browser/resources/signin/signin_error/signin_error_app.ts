@@ -9,9 +9,8 @@ import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 import './strings.m.js';
 import './signin_shared.css.js';
 
-import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './signin_error_app.html.js';
@@ -80,10 +79,7 @@ class SigninErrorAppElement extends SigninErrorAppElementBase {
     this.addWebUiListener('switch-button-unavailable', () => {
       this.switchButtonUnavailable_ = true;
       // Move focus to the only displayed button in this case.
-      const button =
-          this.shadowRoot!.querySelector<HTMLElement>('#confirmButton');
-      assert(button);
-      button.focus();
+      (this.shadowRoot!.querySelector('#confirmButton') as HTMLElement).focus();
     });
   }
 

@@ -34,33 +34,21 @@ class NearbyInternalsPresenceHandler
  private:
   // ash::nearby::presence::NearbyPresenceService::ScanDelegate:
   void OnPresenceDeviceFound(
-      nearby::presence::PresenceDevice presence_device) override;
+      const ash::nearby::presence::NearbyPresenceService::PresenceDevice&
+          presence_device) override;
   void OnPresenceDeviceChanged(
-      nearby::presence::PresenceDevice presence_device) override;
+      const ash::nearby::presence::NearbyPresenceService::PresenceDevice&
+          presence_device) override;
   void OnPresenceDeviceLost(
-      nearby::presence::PresenceDevice presence_device) override;
-  void OnScanSessionInvalidated() override;
+      const ash::nearby::presence::NearbyPresenceService::PresenceDevice&
+          presence_device) override;
 
   void Initialize(const base::Value::List& args);
   void HandleStartPresenceScan(const base::Value::List& args);
-  void HandleStopPresenceScan(const base::Value::List& args);
   void HandleSyncPresenceCredentials(const base::Value::List& args);
   void HandleFirstTimePresenceFlow(const base::Value::List& args);
 
-  void OnScanStarted(
-      std::unique_ptr<ash::nearby::presence::NearbyPresenceService::ScanSession>
-          scan_session,
-      ash::nearby::presence::NearbyPresenceService::StatusCode status);
-  void OnNearbyPresenceCredentialManagerInitialized();
-
-  void HandleConnectToPresenceDevice(const base::Value::List& args);
-
-  void HandleSendUpdateCredentialsMessage(const base::Value::List& args);
-
- private:
-  const raw_ptr<content::BrowserContext> context_;
-  std::unique_ptr<ash::nearby::presence::NearbyPresenceService::ScanSession>
-      scan_session_;
+  const raw_ptr<content::BrowserContext, ExperimentalAsh> context_;
 
   base::WeakPtrFactory<NearbyInternalsPresenceHandler> weak_ptr_factory_{this};
 };

@@ -36,10 +36,14 @@ public class OverlayContentDelegate {
      */
     public void onTitleUpdated(String title) {}
 
-    /** Called when content started loading in the panel. */
+    /**
+     * Called when content started loading in the panel.
+     */
     public void onContentLoadStarted() {}
 
-    /** Called when the navigation entry has been committed. */
+    /**
+     * Called when the navigation entry has been committed.
+     */
     public void onNavigationEntryCommitted() {}
 
     /**
@@ -48,16 +52,10 @@ public class OverlayContentDelegate {
      * @param navigationHandle The NavigationHandle for the current navigation.
      * @return True if the navigation should be intercepted.
      */
-    public boolean shouldInterceptNavigation(
-            ExternalNavigationHandler externalNavHandler,
-            GURL escapedUrl,
-            @PageTransition int pageTransition,
-            boolean isRedirect,
-            boolean hasUserGesture,
-            boolean isRendererInitiated,
-            GURL referrerUrl,
-            boolean isInPrimaryMainFrame,
-            boolean isExternalProtocol) {
+    public boolean shouldInterceptNavigation(ExternalNavigationHandler externalNavHandler,
+            GURL escapedUrl, @PageTransition int pageTransition, boolean isRedirect,
+            boolean hasUserGesture, boolean isRendererInitiated, GURL referrerUrl,
+            boolean isInPrimaryMainFrame, boolean isExternalProtocol) {
         return true;
     }
 
@@ -71,15 +69,24 @@ public class OverlayContentDelegate {
      */
     public void onVisibilityChanged(boolean isVisible) {}
 
-    /** Called when the SSL state changes. */
+    /**
+     * Called when the SSL state changes.
+     */
+
     public void onSSLStateUpdated() {}
 
-    /** Called once the WebContents has been seen. */
+    /**
+     * Called once the WebContents has been seen.
+     */
     public void onContentViewSeen() {}
 
-    /** Called once the WebContents has been created and set up completely. */
+    /**
+     * Called once the WebContents has been created and set up completely.
+     */
     public void onContentViewCreated() {}
 
-    /** Notifies that the document has been loaded and painting started in the content view. */
+    /**
+     * Notifies that the document has been loaded and painting started in the content view.
+     */
     public void onFirstNonEmptyPaint() {}
 }

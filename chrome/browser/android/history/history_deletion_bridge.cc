@@ -50,11 +50,11 @@ HistoryDeletionBridge::HistoryDeletionBridge(const JavaRef<jobject>& jobj)
 
 HistoryDeletionBridge::~HistoryDeletionBridge() = default;
 
-void HistoryDeletionBridge::OnHistoryDeletions(
+void HistoryDeletionBridge::OnURLsDeleted(
     history::HistoryService* history_service,
     const history::DeletionInfo& deletion_info) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  JNIEnv* env = jni_zero::AttachCurrentThread();
+  JNIEnv* env = base::android::AttachCurrentThread();
   history::DeletionInfo sanitized_info = SanitizeDeletionInfo(deletion_info);
   Java_HistoryDeletionBridge_onURLsDeleted(
       env, jobj_, CreateHistoryDeletionInfo(env, &sanitized_info));

@@ -14,7 +14,6 @@
 
 #include "util/stream/file_output_stream.h"
 
-#include "base/check.h"
 #include "base/logging.h"
 
 namespace crashpad {

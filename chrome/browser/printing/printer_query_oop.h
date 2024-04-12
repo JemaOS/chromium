@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_PRINTING_PRINTER_QUERY_OOP_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/functional/callback.h"
 #include "base/values.h"
@@ -19,6 +18,7 @@
 #include "printing/mojom/print.mojom.h"
 #include "printing/print_settings.h"
 #include "printing/printing_context.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace printing {
 
@@ -86,26 +86,27 @@ class PrinterQueryOop : public PrinterQuery {
 #endif
 
   // Used by `TransferContextToNewWorker()`.  Virtual to support testing.
-  virtual std::unique_ptr<PrintJobWorkerOop> CreatePrintJobWorkerOop(
+  virtual std::unique_ptr<PrintJobWorkerOop> CreatePrintJobWorker(
       PrintJob* print_job);
 
-  const std::optional<PrintBackendServiceManager::ClientId>&
+  const absl::optional<PrintBackendServiceManager::ClientId>&
   print_document_client_id() const {
     return print_document_client_id_;
   }
 
   bool print_from_system_dialog() const { return print_from_system_dialog_; }
 
-  const std::optional<PrintBackendServiceManager::ContextId>& context_id()
+  const absl::optional<PrintBackendServiceManager::ContextId>& context_id()
       const {
     return context_id_;
   }
 
  private:
   bool print_from_system_dialog_ = false;
-  std::optional<PrintBackendServiceManager::ClientId> query_with_ui_client_id_;
-  std::optional<PrintBackendServiceManager::ClientId> print_document_client_id_;
-  std::optional<PrintBackendServiceManager::ContextId> context_id_;
+  absl::optional<PrintBackendServiceManager::ClientId> query_with_ui_client_id_;
+  absl::optional<PrintBackendServiceManager::ClientId>
+      print_document_client_id_;
+  absl::optional<PrintBackendServiceManager::ContextId> context_id_;
 
   base::WeakPtrFactory<PrinterQueryOop> weak_factory_{this};
 };

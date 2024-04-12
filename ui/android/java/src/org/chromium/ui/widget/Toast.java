@@ -64,20 +64,17 @@ public class Toast {
             // Don't HW accelerate Toasts. Unfortunately the only way to do that is to make
             // toast.getView().getContext().getApplicationInfo() return lies to prevent
             // WindowManagerGlobal.addView() from adding LayoutParams.FLAG_HARDWARE_ACCELERATED.
-            mSWLayout =
-                    new FrameLayout(
-                            new ContextWrapper(context) {
-                                @Override
-                                public ApplicationInfo getApplicationInfo() {
-                                    ApplicationInfo info =
-                                            new ApplicationInfo(super.getApplicationInfo());
+            mSWLayout = new FrameLayout(new ContextWrapper(context) {
+                @Override
+                public ApplicationInfo getApplicationInfo() {
+                    ApplicationInfo info = new ApplicationInfo(super.getApplicationInfo());
 
-                                    // On M+ the condition we need to fail is
-                                    // "flags & ApplicationInfo.FLAG_HARDWARE_ACCELERATED"
-                                    info.flags &= ~ApplicationInfo.FLAG_HARDWARE_ACCELERATED;
-                                    return info;
-                                }
-                            });
+                    // On M+ the condition we need to fail is
+                    // "flags & ApplicationInfo.FLAG_HARDWARE_ACCELERATED"
+                    info.flags &= ~ApplicationInfo.FLAG_HARDWARE_ACCELERATED;
+                    return info;
+                }
+            });
         }
 
         mToast = UiWidgetFactory.getInstance().createToast(context);
@@ -87,11 +84,19 @@ public class Toast {
     }
 
     public void show() {
-        ToastManager.getInstance().requestShow(this);
+        if (ToastManager.isEnabled()) {
+            ToastManager.getInstance().requestShow(this);
+        } else {
+            mToast.show();
+        }
     }
 
     public void cancel() {
-        ToastManager.getInstance().cancel(this);
+        if (ToastManager.isEnabled()) {
+            ToastManager.getInstance().cancel(this);
+        } else {
+            mToast.cancel();
+        }
     }
 
     public void setView(View view) {

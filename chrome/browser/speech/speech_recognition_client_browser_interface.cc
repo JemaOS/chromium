@@ -43,11 +43,6 @@ SpeechRecognitionClientBrowserInterface::
       base::BindRepeating(&SpeechRecognitionClientBrowserInterface::
                               OnSpeechRecognitionLanguageChanged,
                           base::Unretained(this)));
-  pref_change_registrar_->Add(
-      prefs::kLiveCaptionMaskOffensiveWords,
-      base::BindRepeating(&SpeechRecognitionClientBrowserInterface::
-                              OnSpeechRecognitionMaskOffensiveWordsChanged,
-                          base::Unretained(this)));
   speech::SodaInstaller::GetInstance()->AddObserver(this);
 }
 
@@ -91,6 +86,10 @@ void SpeechRecognitionClientBrowserInterface::OnSodaInstalled(
   if (!prefs::IsLanguageCodeForLiveCaption(language_code, profile_prefs_))
     return;
   NotifyObservers(profile_prefs_->GetBoolean(prefs::kLiveCaptionEnabled));
+
+  if (base::FeatureList::IsEnabled(media::kLiveCaptionMultiLanguage)) {
+    OnSpeechRecognitionLanguageChanged();
+  }
 }
 
 void SpeechRecognitionClientBrowserInterface::
@@ -114,19 +113,9 @@ void SpeechRecognitionClientBrowserInterface::
 
 void SpeechRecognitionClientBrowserInterface::
     OnSpeechRecognitionLanguageChanged() {
-  const std::string language =
-      prefs::GetLiveCaptionLanguageCode(profile_prefs_);
   for (auto& observer : speech_recognition_availibility_observers_) {
-    observer->SpeechRecognitionLanguageChanged(language);
-  }
-}
-
-void SpeechRecognitionClientBrowserInterface::
-    OnSpeechRecognitionMaskOffensiveWordsChanged() {
-  bool mask_offensive_words =
-      profile_prefs_->GetBoolean(prefs::kLiveCaptionMaskOffensiveWords);
-  for (auto& observer : speech_recognition_availibility_observers_) {
-    observer->SpeechRecognitionMaskOffensiveWordsChanged(mask_offensive_words);
+    observer->SpeechRecognitionLanguageChanged(
+        prefs::GetLiveCaptionLanguageCode(profile_prefs_));
   }
 }
 

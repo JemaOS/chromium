@@ -9,7 +9,6 @@
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "chrome/browser/ui/views/chrome_typography.h"
-#include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/base/ui_base_features.h"
@@ -58,10 +57,6 @@ gfx::Insets ChromeLayoutProvider::GetInsetsMetric(int metric) const {
       return features::IsChromeRefresh2023() ? gfx::Insets::VH(20, 20)
                                              : gfx::Insets(kHarmonyLayoutUnit);
     }
-    case views::INSETS_DIALOG_FOOTNOTE: {
-      return features::IsChromeRefresh2023() ? gfx::Insets::TLBR(10, 20, 15, 20)
-                                             : gfx::Insets(kHarmonyLayoutUnit);
-    }
     case views::INSETS_CHECKBOX_RADIO_BUTTON: {
       gfx::Insets insets = LayoutProvider::GetInsetsMetric(metric);
       // Checkboxes and radio buttons should be aligned flush to the left edge.
@@ -93,9 +88,7 @@ gfx::Insets ChromeLayoutProvider::GetInsetsMetric(int metric) const {
       const gfx::Insets insets =
           LayoutProvider::GetInsetsMetric(views::INSETS_LABEL_BUTTON);
       const int horizontal_padding =
-          features::IsChromeRefresh2023()
-              ? 20
-              : GetDistanceMetric(views::DISTANCE_BUTTON_HORIZONTAL_PADDING);
+          GetDistanceMetric(views::DISTANCE_BUTTON_HORIZONTAL_PADDING);
       // Hover button in page info requires double the height compared to the
       // label button because it behaves like a menu control.
       return gfx::Insets::VH(insets.height(), horizontal_padding);
@@ -123,11 +116,7 @@ int ChromeLayoutProvider::GetDistanceMetric(int metric) const {
       return 8;
     case DISTANCE_DROPDOWN_BUTTON_RIGHT_MARGIN:
       return 12;
-    case DISTANCE_EXTENSIONS_MENU_WIDTH:
-      return kMediumDialogWidth;
     case DISTANCE_EXTENSIONS_MENU_BUTTON_ICON_SIZE:
-      return features::IsChromeRefresh2023() ? 20 : 16;
-    case DISTANCE_EXTENSIONS_MENU_BUTTON_ICON_SMALL_SIZE:
       return 16;
     case DISTANCE_EXTENSIONS_MENU_EXTENSION_ICON_SIZE:
       return 28;
@@ -151,6 +140,8 @@ int ChromeLayoutProvider::GetDistanceMetric(int metric) const {
       return 8;
     case DISTANCE_TOAST_LABEL_VERTICAL:
       return 12;
+    case DISTANCE_UNRELATED_CONTROL_HORIZONTAL:
+      return kHarmonyLayoutUnit;
     case DISTANCE_UNRELATED_CONTROL_HORIZONTAL_LARGE:
       return kHarmonyLayoutUnit;
     case DISTANCE_UNRELATED_CONTROL_VERTICAL_LARGE:
@@ -164,7 +155,7 @@ int ChromeLayoutProvider::GetDistanceMetric(int metric) const {
     case DISTANCE_BETWEEN_PRIMARY_AND_SECONDARY_LABELS_HORIZONTAL:
       return 24;
     case DISTANCE_OMNIBOX_CELL_VERTICAL_PADDING:
-      return OmniboxFieldTrial::IsCr23LayoutEnabled() ? 12 : 8;
+      return 8;
     case DISTANCE_OMNIBOX_TWO_LINE_CELL_VERTICAL_PADDING:
       return 4;
     case DISTANCE_SIDE_PANEL_HEADER_VECTOR_ICON_SIZE:
@@ -172,21 +163,7 @@ int ChromeLayoutProvider::GetDistanceMetric(int metric) const {
     case DISTANCE_SIDE_PANEL_HEADER_BUTTON_MINIMUM_SIZE:
       return 20;
     case DISTANCE_SIDE_PANEL_HEADER_INTERIOR_MARGIN_HORIZONTAL:
-      return 4;
-    case DISTANCE_HORIZONTAL_SEPARATOR_PADDING_PAGE_INFO_VIEW:
-      return features::IsChromeRefresh2023() ? 20 : 0;
-    case DISTANCE_INFOBAR_HORIZONTAL_ICON_LABEL_PADDING:
-      return features::IsChromeRefresh2023() ? 16 : 12;
-    case DISTANCE_INFOBAR_HEIGHT:
-      // Spec says height of button should be 36dp, vertical padding on both
-      // top and bottom should be 8dp.
-      return 36 + 2 * 8;
-    case DISTANCE_PERMISSION_PROMPT_HORIZONTAL_ICON_LABEL_PADDING:
-      return features::IsChromeRefresh2023()
-                 ? 8
-                 : GetDistanceMetric(views::DISTANCE_RELATED_LABEL_HORIZONTAL);
-    case DISTANCE_RICH_HOVER_BUTTON_ICON_HORIZONTAL:
-      return features::IsChromeRefresh2023() ? 8 : 12;
+      return 8;
   }
   NOTREACHED_NORETURN();
 }

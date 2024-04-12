@@ -98,12 +98,6 @@ class Preferences : public sync_preferences::PrefServiceSyncableObserver,
       const std::string& started_histogram_name,
       int sensitivity_int);
 
-  // Add a sample to the appropriate UMA histogram for a time/rate preference.
-  void ReportTimePrefApplication(ApplyReason reason,
-                                 const std::string& changed_histogram_name,
-                                 const std::string& started_histogram_name,
-                                 base::TimeDelta duration);
-
   // This will set the OS settings when the preference changed or the user
   // owning these preferences became active. Also this method is called on
   // initialization. The reason of the call is stored as the |reason| parameter.
@@ -138,11 +132,12 @@ class Preferences : public sync_preferences::PrefServiceSyncableObserver,
 
   // UpdateEngineClient::Observer implementation.
   void UpdateStatusChanged(const update_engine::StatusResult& status) override;
-  void OnIsConsumerAutoUpdateEnabled(std::optional<bool> enabled);
+  void OnIsConsumerAutoUpdateEnabled(absl::optional<bool> enabled);
 
-  raw_ptr<sync_preferences::PrefServiceSyncable> prefs_;
+  raw_ptr<sync_preferences::PrefServiceSyncable, ExperimentalAsh> prefs_;
 
-  raw_ptr<input_method::InputMethodManager> input_method_manager_;
+  raw_ptr<input_method::InputMethodManager, ExperimentalAsh>
+      input_method_manager_;
   std::unique_ptr<ContentTracingManager> tracing_manager_;
 
   BooleanPrefMember performance_tracing_enabled_;
@@ -193,7 +188,7 @@ class Preferences : public sync_preferences::PrefServiceSyncableObserver,
   PrefChangeRegistrar pref_change_registrar_;
 
   // User owning these preferences.
-  raw_ptr<const user_manager::User> user_;
+  raw_ptr<const user_manager::User, ExperimentalAsh> user_;
 
   // Whether user is a primary user.
   bool user_is_primary_;

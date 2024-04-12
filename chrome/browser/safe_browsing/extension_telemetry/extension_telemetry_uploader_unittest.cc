@@ -29,10 +29,7 @@ namespace safe_browsing {
 
 class ExtensionTelemetryUploaderTest : public testing::Test {
  public:
-  void OnUploadTestCallback(bool success, const std::string& response_data) {
-    upload_success_ = success;
-    response_data_ = response_data;
-  }
+  void OnUploadTestCallback(bool success) { upload_success_ = success; }
 
  protected:
   ExtensionTelemetryUploaderTest()
@@ -49,7 +46,6 @@ class ExtensionTelemetryUploaderTest : public testing::Test {
 
   std::string upload_data_;
   bool upload_success_ = false;
-  std::string response_data_;
   base::HistogramTester histograms_;
   content::BrowserTaskEnvironment task_environment_;
   network::TestURLLoaderFactory test_url_loader_factory_;

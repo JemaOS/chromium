@@ -19,7 +19,6 @@
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/modules/event_target_modules.h"
 #include "third_party/blink/renderer/modules/webgpu/dawn_conversions.h"
-#include "third_party/blink/renderer/modules/webgpu/gpu.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_adapter.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_bind_group.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_bind_group_layout.h"
@@ -50,7 +49,7 @@ namespace blink {
 
 namespace {
 
-std::optional<V8GPUFeatureName::Enum> RequiredFeatureForTextureFormat(
+absl::optional<V8GPUFeatureName::Enum> RequiredFeatureForTextureFormat(
     V8GPUTextureFormat::Enum format) {
   switch (format) {
     case V8GPUTextureFormat::Enum::kBc1RgbaUnorm:
@@ -115,7 +114,7 @@ std::optional<V8GPUFeatureName::Enum> RequiredFeatureForTextureFormat(
       return V8GPUFeatureName::Enum::kDepth32FloatStencil8;
 
     default:
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
@@ -125,17 +124,15 @@ GPUDevice::GPUDevice(ExecutionContext* execution_context,
                      scoped_refptr<DawnControlClientHolder> dawn_control_client,
                      GPUAdapter* adapter,
                      WGPUDevice dawn_device,
-                     const GPUDeviceDescriptor* descriptor,
-                     GPUDeviceLostInfo* lost_info)
+                     const GPUDeviceDescriptor* descriptor)
     : ExecutionContextClient(execution_context),
-      DawnObject(dawn_control_client, dawn_device, descriptor->label()),
+      DawnObject(dawn_control_client, dawn_device),
       adapter_(adapter),
       features_(MakeGarbageCollected<GPUSupportedFeatures>(
           descriptor->requiredFeatures())),
-      queue_(
-          MakeGarbageCollected<GPUQueue>(this,
-                                         GetProcs().deviceGetQueue(GetHandle()),
-                                         descriptor->defaultQueue()->label())),
+      queue_(MakeGarbageCollected<GPUQueue>(
+          this,
+          GetProcs().deviceGetQueue(GetHandle()))),
       lost_property_(MakeGarbageCollected<LostProperty>(execution_context)),
       error_callback_(BindWGPURepeatingCallback(&GPUDevice::OnUncapturedError,
                                                 WrapWeakPersistent(this))),
@@ -152,14 +149,6 @@ GPUDevice::GPUDevice(ExecutionContext* execution_context,
   DCHECK(dawn_device);
 
   WGPUSupportedLimits limits = {};
-  // Chain to get experimental subgroup limits, if device has experimental
-  // subgroups feature.
-  WGPUDawnExperimentalSubgroupLimits subgroupLimits = {};
-  subgroupLimits.chain.sType = WGPUSType_DawnExperimentalSubgroupLimits;
-  if (features_->has(V8GPUFeatureName::Enum::kChromiumExperimentalSubgroups)) {
-    limits.nextInChain = &subgroupLimits.chain;
-  }
-
   GetProcs().deviceGetLimits(GetHandle(), &limits);
   limits_ = MakeGarbageCollected<GPUSupportedLimits>(limits);
 
@@ -173,13 +162,13 @@ GPUDevice::GPUDevice(ExecutionContext* execution_context,
                                          lost_callback_->UnboundCallback(),
                                          lost_callback_->AsUserdata());
 
-  external_texture_cache_ = MakeGarbageCollected<ExternalTextureCache>(this);
+  if (descriptor->hasLabel())
+    setLabel(descriptor->label());
 
-  // If lost_info is supplied it means the device should be treated as being
-  // lost at creation time.
-  if (lost_info) {
-    lost_property_->Resolve(lost_info);
-  }
+  if (descriptor->defaultQueue()->hasLabel())
+    queue_->setLabel(descriptor->defaultQueue()->label());
+
+  external_texture_cache_ = MakeGarbageCollected<ExternalTextureCache>(this);
 }
 
 GPUDevice::~GPUDevice() {
@@ -198,15 +187,12 @@ void GPUDevice::InjectError(WGPUErrorType type, const char* message) {
 }
 
 void GPUDevice::AddConsoleWarning(const char* message) {
-  AddConsoleWarning(StringFromASCIIAndUTF8(message));
-}
-
-void GPUDevice::AddConsoleWarning(const String& message) {
   ExecutionContext* execution_context = GetExecutionContext();
   if (execution_context && allowed_console_warnings_remaining_ > 0) {
     auto* console_message = MakeGarbageCollected<ConsoleMessage>(
         mojom::blink::ConsoleMessageSource::kRendering,
-        mojom::blink::ConsoleMessageLevel::kWarning, message);
+        mojom::blink::ConsoleMessageLevel::kWarning,
+        StringFromASCIIAndUTF8(message));
     execution_context->AddConsoleMessage(console_message);
 
     allowed_console_warnings_remaining_--;
@@ -217,41 +203,6 @@ void GPUDevice::AddConsoleWarning(const String& message) {
           "WebGPU: too many warnings, no more warnings will be reported to the "
           "console for this GPUDevice.");
       execution_context->AddConsoleMessage(final_message);
-    }
-  }
-}
-
-void GPUDevice::AddSingletonWarning(GPUSingletonWarning type) {
-  size_t index = static_cast<size_t>(type);
-  if (UNLIKELY(!singleton_warning_fired_[index])) {
-    singleton_warning_fired_[index] = true;
-
-    std::string message;
-    switch (type) {
-      case GPUSingletonWarning::kNonPreferredFormat:
-        message =
-            "WebGPU canvas configured with a different format than is "
-            "preferred by this device (\"" +
-            std::string(FromDawnEnum(GPU::preferred_canvas_format())) +
-            "\"). This requires an extra copy, which may impact performance.";
-        break;
-      case GPUSingletonWarning::kDepthKey:
-        message =
-            "The key \"depth\" was included in a GPUExtent3D dictionary, which "
-            "has no effect. It is likely that \"depthOrArrayLayers\" was "
-            "intended instead.";
-        break;
-      case GPUSingletonWarning::kCount:
-        NOTREACHED();
-    }
-
-    ExecutionContext* execution_context = GetExecutionContext();
-    if (execution_context) {
-      auto* console_message = MakeGarbageCollected<ConsoleMessage>(
-          mojom::blink::ConsoleMessageSource::kRendering,
-          mojom::blink::ConsoleMessageLevel::kWarning,
-          StringFromASCIIAndUTF8(message.c_str()));
-      execution_context->AddConsoleMessage(console_message);
     }
   }
 }
@@ -355,7 +306,6 @@ void GPUDevice::OnLogging(WGPULoggingType loggingType, const char* message) {
 
 void GPUDevice::OnDeviceLostError(WGPUDeviceLostReason reason,
                                   const char* message) {
-  // Early-out if the context is being destroyed (see WrapCallbackInScriptScope)
   if (!GetExecutionContext())
     return;
 
@@ -371,62 +321,25 @@ void GPUDevice::OnDeviceLostError(WGPUDeviceLostReason reason,
 }
 
 void GPUDevice::OnCreateRenderPipelineAsyncCallback(
-    const String& label,
-    ScriptPromiseResolverTyped<GPURenderPipeline>* resolver,
+    ScriptPromiseResolver* resolver,
+    absl::optional<String> label,
     WGPUCreatePipelineAsyncStatus status,
     WGPURenderPipeline render_pipeline,
     const char* message) {
-  ScriptState* script_state = resolver->GetScriptState();
-
   switch (status) {
     case WGPUCreatePipelineAsyncStatus_Success: {
       GPURenderPipeline* pipeline =
-          MakeGarbageCollected<GPURenderPipeline>(this, render_pipeline, label);
+          MakeGarbageCollected<GPURenderPipeline>(this, render_pipeline);
+      if (label) {
+        pipeline->setLabel(label.value());
+      }
       resolver->Resolve(pipeline);
       break;
     }
 
     case WGPUCreatePipelineAsyncStatus_ValidationError: {
-      resolver->Reject(GPUPipelineError::Create(
-          script_state->GetIsolate(), StringFromASCIIAndUTF8(message),
-          V8GPUPipelineErrorReason::Enum::kValidation));
-      break;
-    }
-
-    case WGPUCreatePipelineAsyncStatus_InternalError:
-    case WGPUCreatePipelineAsyncStatus_DeviceLost:
-    case WGPUCreatePipelineAsyncStatus_DeviceDestroyed:
-    case WGPUCreatePipelineAsyncStatus_Unknown:
-    default: {
-      // TODO(dawn:1987): Remove the default case after handling
-      // InstanceDropped.
-      resolver->Reject(GPUPipelineError::Create(
-          script_state->GetIsolate(), StringFromASCIIAndUTF8(message),
-          V8GPUPipelineErrorReason::Enum::kInternal));
-      break;
-    }
-  }
-}
-
-void GPUDevice::OnCreateComputePipelineAsyncCallback(
-    const String& label,
-    ScriptPromiseResolverTyped<GPUComputePipeline>* resolver,
-    WGPUCreatePipelineAsyncStatus status,
-    WGPUComputePipeline compute_pipeline,
-    const char* message) {
-  ScriptState* script_state = resolver->GetScriptState();
-
-  switch (status) {
-    case WGPUCreatePipelineAsyncStatus_Success: {
-      GPUComputePipeline* pipeline = MakeGarbageCollected<GPUComputePipeline>(
-          this, compute_pipeline, label);
-      resolver->Resolve(pipeline);
-      break;
-    }
-
-    case WGPUCreatePipelineAsyncStatus_ValidationError: {
-      resolver->Reject(GPUPipelineError::Create(
-          script_state->GetIsolate(), StringFromASCIIAndUTF8(message),
+      resolver->Reject(MakeGarbageCollected<GPUPipelineError>(
+          StringFromASCIIAndUTF8(message),
           V8GPUPipelineErrorReason::Enum::kValidation));
       break;
     }
@@ -435,37 +348,72 @@ void GPUDevice::OnCreateComputePipelineAsyncCallback(
     case WGPUCreatePipelineAsyncStatus_DeviceLost:
     case WGPUCreatePipelineAsyncStatus_DeviceDestroyed:
     case WGPUCreatePipelineAsyncStatus_Unknown: {
-      resolver->Reject(GPUPipelineError::Create(
-          script_state->GetIsolate(), StringFromASCIIAndUTF8(message),
+      resolver->Reject(MakeGarbageCollected<GPUPipelineError>(
+          StringFromASCIIAndUTF8(message),
           V8GPUPipelineErrorReason::Enum::kInternal));
       break;
     }
+
     default: {
-      // TODO(dawn:1987): Remove the default case after handling
-      // InstanceDropped.
-      resolver->Reject(GPUPipelineError::Create(
-          script_state->GetIsolate(), StringFromASCIIAndUTF8(message),
+      NOTREACHED();
+    }
+  }
+}
+
+void GPUDevice::OnCreateComputePipelineAsyncCallback(
+    ScriptPromiseResolver* resolver,
+    absl::optional<String> label,
+    WGPUCreatePipelineAsyncStatus status,
+    WGPUComputePipeline compute_pipeline,
+    const char* message) {
+  switch (status) {
+    case WGPUCreatePipelineAsyncStatus_Success: {
+      GPUComputePipeline* pipeline =
+          MakeGarbageCollected<GPUComputePipeline>(this, compute_pipeline);
+      if (label) {
+        pipeline->setLabel(label.value());
+      }
+      resolver->Resolve(pipeline);
+      break;
+    }
+
+    case WGPUCreatePipelineAsyncStatus_ValidationError: {
+      resolver->Reject(MakeGarbageCollected<GPUPipelineError>(
+          StringFromASCIIAndUTF8(message),
+          V8GPUPipelineErrorReason::Enum::kValidation));
+      break;
+    }
+
+    case WGPUCreatePipelineAsyncStatus_InternalError:
+    case WGPUCreatePipelineAsyncStatus_DeviceLost:
+    case WGPUCreatePipelineAsyncStatus_DeviceDestroyed:
+    case WGPUCreatePipelineAsyncStatus_Unknown: {
+      resolver->Reject(MakeGarbageCollected<GPUPipelineError>(
+          StringFromASCIIAndUTF8(message),
           V8GPUPipelineErrorReason::Enum::kInternal));
       break;
+    }
+
+    default: {
+      NOTREACHED();
     }
   }
 }
 
 GPUAdapter* GPUDevice::adapter() const {
-  return adapter_.Get();
+  return adapter_;
 }
 
 GPUSupportedFeatures* GPUDevice::features() const {
-  return features_.Get();
+  return features_;
 }
 
-ScriptPromiseTyped<GPUDeviceLostInfo> GPUDevice::lost(
-    ScriptState* script_state) {
+ScriptPromise GPUDevice::lost(ScriptState* script_state) {
   return lost_property_->Promise(script_state->World());
 }
 
 GPUQueue* GPUDevice::queue() {
-  return queue_.Get();
+  return queue_;
 }
 
 bool GPUDevice::destroyed() const {
@@ -498,9 +446,11 @@ GPUSampler* GPUDevice::createSampler(const GPUSamplerDescriptor* descriptor) {
 }
 
 GPUExternalTexture* GPUDevice::importExternalTexture(
+    ScriptState* script_state,
     const GPUExternalTextureDescriptor* descriptor,
     ExceptionState& exception_state) {
-  return external_texture_cache_->Import(descriptor, exception_state);
+  return external_texture_cache_->Import(ExecutionContext::From(script_state),
+                                         descriptor, exception_state);
 }
 
 GPUBindGroup* GPUDevice::createBindGroup(
@@ -538,17 +488,14 @@ GPUComputePipeline* GPUDevice::createComputePipeline(
   return GPUComputePipeline::Create(this, descriptor);
 }
 
-ScriptPromiseTyped<GPURenderPipeline> GPUDevice::createRenderPipelineAsync(
+ScriptPromise GPUDevice::createRenderPipelineAsync(
     ScriptState* script_state,
     const GPURenderPipelineDescriptor* descriptor) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<GPURenderPipeline>>(
-          script_state);
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   v8::Isolate* isolate = script_state->GetIsolate();
-  ExceptionState exception_state(isolate,
-                                 ExceptionContextType::kOperationInvoke,
+  ExceptionState exception_state(isolate, ExceptionState::kExecutionContext,
                                  "GPUDevice", "createRenderPipelineAsync");
   OwnedRenderPipelineDescriptor dawn_desc_info;
   ConvertToDawnType(isolate, this, descriptor, &dawn_desc_info,
@@ -556,9 +503,13 @@ ScriptPromiseTyped<GPURenderPipeline> GPUDevice::createRenderPipelineAsync(
   if (exception_state.HadException()) {
     resolver->Reject(exception_state);
   } else {
-    auto* callback = MakeWGPUOnceCallback(resolver->WrapCallbackInScriptScope(
-        WTF::BindOnce(&GPUDevice::OnCreateRenderPipelineAsyncCallback,
-                      WrapPersistent(this), descriptor->label())));
+    absl::optional<String> label = {};
+    if (descriptor->hasLabel()) {
+      label = descriptor->label();
+    }
+    auto* callback = BindWGPUOnceCallback(
+        &GPUDevice::OnCreateRenderPipelineAsyncCallback, WrapPersistent(this),
+        WrapPersistent(resolver), std::move(label));
 
     GetProcs().deviceCreateRenderPipelineAsync(
         GetHandle(), &dawn_desc_info.dawn_desc, callback->UnboundCallback(),
@@ -571,33 +522,24 @@ ScriptPromiseTyped<GPURenderPipeline> GPUDevice::createRenderPipelineAsync(
   return promise;
 }
 
-ScriptPromiseTyped<GPUComputePipeline> GPUDevice::createComputePipelineAsync(
+ScriptPromise GPUDevice::createComputePipelineAsync(
     ScriptState* script_state,
     const GPUComputePipelineDescriptor* descriptor) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<GPUComputePipeline>>(
-          script_state);
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   std::string desc_label;
   OwnedProgrammableStage computeStage;
   WGPUComputePipelineDescriptor dawn_desc =
       AsDawnType(this, descriptor, &desc_label, &computeStage);
 
-  // If ChromiumExperimentalSubgroups feature is enabled, chain the full
-  // subgroups options after compute pipeline descriptor.
-  WGPUDawnComputePipelineFullSubgroups fullSubgroupsOptions = {};
-  if (features_->has(V8GPUFeatureName::Enum::kChromiumExperimentalSubgroups)) {
-    fullSubgroupsOptions.chain.sType =
-        WGPUSType_DawnComputePipelineFullSubgroups;
-    fullSubgroupsOptions.requiresFullSubgroups =
-        descriptor->getRequiresFullSubgroupsOr(false);
-    dawn_desc.nextInChain = &fullSubgroupsOptions.chain;
+  absl::optional<String> label = {};
+  if (descriptor->hasLabel()) {
+    label = descriptor->label();
   }
-
-  auto* callback = MakeWGPUOnceCallback(resolver->WrapCallbackInScriptScope(
-      WTF::BindOnce(&GPUDevice::OnCreateComputePipelineAsyncCallback,
-                    WrapPersistent(this), descriptor->label())));
+  auto* callback = BindWGPUOnceCallback(
+      &GPUDevice::OnCreateComputePipelineAsyncCallback, WrapPersistent(this),
+      WrapPersistent(resolver), std::move(label));
 
   GetProcs().deviceCreateComputePipelineAsync(GetHandle(), &dawn_desc,
                                               callback->UnboundCallback(),
@@ -621,19 +563,14 @@ GPURenderBundleEncoder* GPUDevice::createRenderBundleEncoder(
 
 GPUQuerySet* GPUDevice::createQuerySet(const GPUQuerySetDescriptor* descriptor,
                                        ExceptionState& exception_state) {
-  const V8GPUFeatureName::Enum kTimestampQuery =
-      V8GPUFeatureName::Enum::kTimestampQuery;
-  const V8GPUFeatureName::Enum kTimestampQueryInsidePasses =
-      V8GPUFeatureName::Enum::kChromiumExperimentalTimestampQueryInsidePasses;
   if (descriptor->type() == V8GPUQueryType::Enum::kTimestamp &&
-      !features_->has(kTimestampQuery) &&
-      !features_->has(kTimestampQueryInsidePasses)) {
-    exception_state.ThrowTypeError(
-        String::Format("Use of timestamp queries requires the '%s' or '%s' "
-                       "feature to be enabled on %s.",
-                       V8GPUFeatureName(kTimestampQuery).AsCStr(),
-                       V8GPUFeatureName(kTimestampQueryInsidePasses).AsCStr(),
-                       formattedLabel().c_str()));
+      !features_->has(V8GPUFeatureName::Enum::kTimestampQuery) &&
+      !features_->has(V8GPUFeatureName::Enum::kTimestampQueryInsidePasses)) {
+    exception_state.ThrowTypeError(String::Format(
+        "Use of 'timestamp' queries requires the 'timestamp-query' or "
+        "'timestamp-query-inside-passes' feature to "
+        "be enabled on %s.",
+        formattedLabel().c_str()));
     return nullptr;
   }
   return GPUQuerySet::Create(this, descriptor);
@@ -643,16 +580,14 @@ void GPUDevice::pushErrorScope(const V8GPUErrorFilter& filter) {
   GetProcs().devicePushErrorScope(GetHandle(), AsDawnEnum(filter));
 }
 
-ScriptPromiseTyped<IDLNullable<GPUError>> GPUDevice::popErrorScope(
-    ScriptState* script_state) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLNullable<GPUError>>>(
-          script_state);
-  auto promise = resolver->Promise();
+ScriptPromise GPUDevice::popErrorScope(ScriptState* script_state) {
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   auto* callback =
-      MakeWGPUOnceCallback(resolver->WrapCallbackInScriptScope(WTF::BindOnce(
-          &GPUDevice::OnPopErrorScopeCallback, WrapPersistent(this))));
+      BindWGPUOnceCallback(&GPUDevice::OnPopErrorScopeCallback,
+                           WrapPersistent(this), WrapPersistent(resolver));
 
   GetProcs().devicePopErrorScope(GetHandle(), callback->UnboundCallback(),
                                  callback->AsUserdata());
@@ -663,13 +598,13 @@ ScriptPromiseTyped<IDLNullable<GPUError>> GPUDevice::popErrorScope(
   return promise;
 }
 
-void GPUDevice::OnPopErrorScopeCallback(
-    ScriptPromiseResolverTyped<IDLNullable<GPUError>>* resolver,
-    WGPUErrorType type,
-    const char* message) {
+void GPUDevice::OnPopErrorScopeCallback(ScriptPromiseResolver* resolver,
+                                        WGPUErrorType type,
+                                        const char* message) {
+  v8::Isolate* isolate = resolver->GetScriptState()->GetIsolate();
   switch (type) {
     case WGPUErrorType_NoError:
-      resolver->Resolve(nullptr);
+      resolver->Resolve(v8::Null(isolate));
       break;
     case WGPUErrorType_OutOfMemory:
       resolver->Resolve(MakeGarbageCollected<GPUOutOfMemoryError>(
@@ -684,14 +619,9 @@ void GPUDevice::OnPopErrorScopeCallback(
           StringFromASCIIAndUTF8(message)));
       break;
     case WGPUErrorType_Unknown:
-      resolver->RejectWithDOMException(DOMExceptionCode::kOperationError,
-                                       "Unknown failure in popErrorScope");
-      break;
     case WGPUErrorType_DeviceLost:
-      resolver->RejectWithDOMException(
-          DOMExceptionCode::kOperationError,
-          "Device lost during popErrorScope (do not use this error for "
-          "recovery - it is NOT guaranteed to happen on device loss)");
+      resolver->Reject(MakeGarbageCollected<DOMException>(
+          DOMExceptionCode::kOperationError));
       break;
     default:
       NOTREACHED();
@@ -716,7 +646,7 @@ void GPUDevice::Trace(Visitor* visitor) const {
   visitor->Trace(textures_with_mailbox_);
   visitor->Trace(mappable_buffers_);
   ExecutionContextClient::Trace(visitor);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
 }
 
 void GPUDevice::Dispose() {

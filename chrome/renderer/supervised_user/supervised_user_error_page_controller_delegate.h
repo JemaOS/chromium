@@ -24,6 +24,10 @@ class SupervisedUserErrorPageControllerDelegate {
   // Called to initiate local URL approval flow.
   virtual void RequestUrlAccessLocal(UrlAccessRequestInitiated callback) = 0;
 
+  // Called to trigger user feedback UI from the URL blocked with explicit
+  // content filter.
+  virtual void Feedback() = 0;
+
  protected:
   virtual ~SupervisedUserErrorPageControllerDelegate() {}
 };

@@ -23,8 +23,12 @@ void Binary::AppendSerialized(std::vector<uint8_t>* out) const {
 }
 
 std::string Binary::toBase64() const {
-  return base::Base64Encode(base::StringPiece(
-      reinterpret_cast<const char*>(bytes_->front()), bytes_->size()));
+  std::string encoded;
+  base::Base64Encode(
+      base::StringPiece(reinterpret_cast<const char*>(bytes_->front()),
+                        bytes_->size()),
+      &encoded);
+  return encoded;
 }
 
 // static

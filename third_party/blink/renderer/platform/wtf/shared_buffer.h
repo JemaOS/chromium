@@ -124,6 +124,8 @@ class WTF_EXPORT SharedBuffer : public RefCounted<SharedBuffer> {
 
   static scoped_refptr<SharedBuffer> AdoptVector(Vector<char>&);
 
+  ~SharedBuffer();
+
   // DEPRECATED: use a segment iterator, FlatData or explicit Copy() instead.
   //
   // Calling this function will force internal segmented buffers to be merged
@@ -200,9 +202,6 @@ class WTF_EXPORT SharedBuffer : public RefCounted<SharedBuffer> {
   };
 
  private:
-  friend class RefCounted<SharedBuffer>;
-  ~SharedBuffer();
-
   struct SegmentDeleter;
   using Segment = std::unique_ptr<char[], SegmentDeleter>;
   static Segment CreateSegment();

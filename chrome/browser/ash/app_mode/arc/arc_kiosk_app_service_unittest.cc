@@ -12,8 +12,8 @@
 #include "ash/test/test_window_builder.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/strcat.h"
+#include "base/test/repeating_test_future.h"
 #include "base/test/task_environment.h"
-#include "base/test/test_future.h"
 #include "chrome/browser/ash/app_list/arc/arc_app_test.h"
 #include "chrome/browser/ash/app_mode/arc/arc_kiosk_app_manager.h"
 #include "chrome/browser/ash/arc/policy/arc_policy_bridge.h"
@@ -30,7 +30,7 @@
 
 namespace ash {
 
-using base::test::TestFuture;
+using base::test::RepeatingTestFuture;
 
 namespace {
 
@@ -57,30 +57,29 @@ class FakeController : public KioskAppLauncher::NetworkDelegate,
 
   // KioskAppLauncher::Delegate:
   bool IsNetworkReady() const override { return true; }
+  bool IsShowingNetworkConfigScreen() const override { return false; }
 
-  void OnAppWindowCreated(const std::optional<std::string>& app_name) override {
-    window_created_signal_.SetValue();
+  void OnAppWindowCreated(
+      const absl::optional<std::string>& app_name) override {
+    window_created_semaphore_.AddValue(true);
   }
 
-  void OnAppPrepared() override { app_prepared_signal_.SetValue(); }
+  void OnAppPrepared() override { app_prepared_semaphore_.AddValue(true); }
 
   void WaitUntilWindowCreated() {
-    EXPECT_TRUE(window_created_signal_.Wait());
-    window_created_signal_.Clear();
+    EXPECT_TRUE(window_created_semaphore_.Take());
   }
 
-  void WaitForAppToBePrepared() {
-    EXPECT_TRUE(app_prepared_signal_.Wait());
-    app_prepared_signal_.Clear();
-  }
+  void WaitForAppToBePrepared() { EXPECT_TRUE(app_prepared_semaphore_.Take()); }
 
   void InitializeNetwork() override {}
 
  private:
-  TestFuture<void> window_created_signal_;
-  TestFuture<void> app_prepared_signal_;
+  // TODO(crbug/1379290): Replace with `RepeatingTestFuture<void>`
+  RepeatingTestFuture<bool> window_created_semaphore_;
+  RepeatingTestFuture<bool> app_prepared_semaphore_;
 
-  raw_ptr<ArcKioskAppService> service_;
+  raw_ptr<ArcKioskAppService, ExperimentalAsh> service_;
 };
 
 class ArcKioskAppServiceTest : public testing::Test {
@@ -97,7 +96,7 @@ class ArcKioskAppServiceTest : public testing::Test {
     arc_app_test_.set_persist_service_manager(true);
     arc_app_test_.SetUp(profile_.get());
     app_info_ = arc::mojom::AppInfo::New(kAppName, kAppPackageName,
-                                         kAppClassName, /*sticky=*/true);
+                                         kAppClassName, true /* sticky */);
     arc_policy_bridge_ =
         arc::ArcPolicyBridge::GetForBrowserContextForTesting(profile_.get());
     app_manager_ = std::make_unique<ArcKioskAppManager>();
@@ -174,7 +173,7 @@ class ArcKioskAppServiceTest : public testing::Test {
   std::unique_ptr<ArcKioskAppManager> app_manager_;
   std::unique_ptr<exo::WMHelper> wm_helper_;
 
-  raw_ptr<arc::ArcPolicyBridge, DanglingUntriaged> arc_policy_bridge_;
+  raw_ptr<arc::ArcPolicyBridge, ExperimentalAsh> arc_policy_bridge_;
 };
 
 TEST_F(ArcKioskAppServiceTest, LaunchConditions) {

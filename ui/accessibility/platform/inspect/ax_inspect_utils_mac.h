@@ -5,13 +5,11 @@
 #ifndef UI_ACCESSIBILITY_PLATFORM_INSPECT_AX_INSPECT_UTILS_MAC_H_
 #define UI_ACCESSIBILITY_PLATFORM_INSPECT_AX_INSPECT_UTILS_MAC_H_
 
-#include <ApplicationServices/ApplicationServices.h>
+#import <Cocoa/Cocoa.h>
 
-#include <optional>
-
-#include "base/apple/scoped_cftyperef.h"
 #include "base/component_export.h"
 #include "base/functional/callback_forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/platform/inspect/ax_inspect.h"
 
 using ui::AXTreeSelector;
@@ -26,20 +24,17 @@ bool IsValidAXAttribute(const std::string& attribute);
 // Return AXElement in a tree by a given criteria.
 using AXFindCriteria = base::RepeatingCallback<bool(const AXUIElementRef)>;
 COMPONENT_EXPORT(AX_PLATFORM)
-base::apple::ScopedCFTypeRef<AXUIElementRef> FindAXUIElement(
-    const AXUIElementRef node,
-    const AXFindCriteria& criteria);
+AXUIElementRef FindAXUIElement(const AXUIElementRef node,
+                               const AXFindCriteria& criteria);
 
 // Returns AXUIElement and its application process id by a given tree selector.
 COMPONENT_EXPORT(AX_PLATFORM)
-std::pair<base::apple::ScopedCFTypeRef<AXUIElementRef>, int> FindAXUIElement(
-    const AXTreeSelector&);
+std::pair<AXUIElementRef, int> FindAXUIElement(const AXTreeSelector&);
 
 // Returns AXUIElement for a window having title matching the given pattern.
 COMPONENT_EXPORT(AX_PLATFORM)
-base::apple::ScopedCFTypeRef<AXUIElementRef> FindAXWindowChild(
-    AXUIElementRef parent,
-    const std::string& pattern);
+AXUIElementRef FindAXWindowChild(AXUIElementRef parent,
+                                 const std::string& pattern);
 
 }  // namespace ui
 

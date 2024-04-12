@@ -24,7 +24,7 @@ function createTab(index, url) {
 var getProcessId = chrome.processes.getProcessIdForTab;
 
 function pageUrl(letter) {
-  return chrome.runtime.getURL(letter + ".html");
+  return chrome.extension.getURL(letter + ".html");
 }
 
 function dumpProcess(process) {

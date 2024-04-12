@@ -20,7 +20,7 @@ class StopCastingHandler {
   StopCastingHandler() = default;
   ~StopCastingHandler() = default;
 
-  MOCK_METHOD(void, StopCasting, (), ());
+  MOCK_METHOD0(StopCasting, void());
 };
 
 }  // namespace

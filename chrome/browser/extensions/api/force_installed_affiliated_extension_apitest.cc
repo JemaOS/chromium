@@ -4,8 +4,6 @@
 
 #include "chrome/browser/extensions/api/force_installed_affiliated_extension_apitest.h"
 
-#include <optional>
-
 #include "base/files/file_path.h"
 #include "base/json/json_writer.h"
 #include "base/path_service.h"
@@ -19,6 +17,7 @@
 #include "components/prefs/pref_service.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/test/result_catcher.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 

@@ -21,7 +21,6 @@ namespace views {
 class DialogDelegate;
 class FlexSpecification;
 class HighlightPathGenerator;
-class BoxLayoutFlexSpecification;
 
 // The hit test component (e.g. HTCLIENT) for a View in a window frame. Defaults
 // to HTNOWHERE.
@@ -49,18 +48,13 @@ VIEWS_EXPORT extern const ui::ClassProperty<gfx::Insets*>* const
 VIEWS_EXPORT extern const ui::ClassProperty<DialogDelegate*>* const
     kAnchoredDialogKey;
 
-// A property to store how a view should flex when placed in a layout.
-// Only supported by BoxLayout.
-VIEWS_EXPORT extern const ui::ClassProperty<BoxLayoutFlexSpecification*>* const
-    kBoxLayoutFlexKey;
-
 // A property to store a highlight-path generator. This generator is used to
 // generate a highlight path for focus rings or ink-drop effects.
 VIEWS_EXPORT extern const ui::ClassProperty<HighlightPathGenerator*>* const
     kHighlightPathGeneratorKey;
 
 // A property to store how a view should flex when placed in a layout.
-// Currently only supported by FlexLayout.
+// Currently only fully supported by FlexLayout. BoxLayout supports weight.
 VIEWS_EXPORT extern const ui::ClassProperty<FlexSpecification*>* const
     kFlexBehaviorKey;
 
@@ -83,11 +77,6 @@ VIEWS_EXPORT extern const ui::ClassProperty<LayoutAlignment*>* const
 // TODO(kylixrd): Use for other layouts.
 VIEWS_EXPORT extern const ui::ClassProperty<bool>* const
     kViewIgnoredByLayoutKey;
-
-// A decorative view, e.g. FocusRing, is a view that logically attaches to other
-// views and decorates them. It manages its own visibility and layout and does
-// not participate in its container's layout.
-VIEWS_EXPORT extern const ui::ClassProperty<bool>* const kIsDecorativeViewKey;
 
 // Tag for the view associated with ui::ElementTracker.
 VIEWS_EXPORT extern const ui::ClassProperty<ui::ElementIdentifier>* const

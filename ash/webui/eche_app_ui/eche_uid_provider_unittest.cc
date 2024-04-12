@@ -4,7 +4,7 @@
 
 #include "ash/webui/eche_app_ui/eche_uid_provider.h"
 
-#include "base/base64.h"
+#include <base/base64.h>
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/task_environment.h"
 #include "components/prefs/pref_registry_simple.h"
@@ -102,7 +102,7 @@ class EcheUidProviderTest : public testing::Test {
   void GetUid() {
     uid_provider_->GetUid(base::BindOnce(&Callback::GetUidCallback));
   }
-  std::optional<std::vector<uint8_t>> DecodeStringWithSeed(
+  absl::optional<std::vector<uint8_t>> DecodeStringWithSeed(
       size_t expected_len) {
     std::string pref_seed = pref_service_.GetString(kEcheAppSeedPref);
     return uid_provider_->ConvertStringToBinary(pref_seed, expected_len);
@@ -157,13 +157,13 @@ TEST_F(EcheUidProviderTest, BindPendingReceiverCanGetUid) {
 TEST_F(EcheUidProviderTest, GetBinaryWhenSeedSizeCorrect) {
   GetUid();
 
-  EXPECT_NE(DecodeStringWithSeed(kSeedSizeInByte), std::nullopt);
+  EXPECT_NE(DecodeStringWithSeed(kSeedSizeInByte), absl::nullopt);
 }
 
 TEST_F(EcheUidProviderTest, GetNulloptWhenSeedSizeIncorrect) {
   GetUid();
 
-  EXPECT_EQ(DecodeStringWithSeed(kSeedSizeInByte - 1), std::nullopt);
+  EXPECT_EQ(DecodeStringWithSeed(kSeedSizeInByte - 1), absl::nullopt);
 }
 
 }  // namespace eche_app

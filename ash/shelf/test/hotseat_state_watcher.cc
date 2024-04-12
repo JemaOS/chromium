@@ -4,8 +4,6 @@
 
 #include "ash/shelf/test/hotseat_state_watcher.h"
 
-#include "ash/shelf/shelf_layout_manager_observer.h"
-
 namespace ash {
 
 HotseatStateWatcher::HotseatStateWatcher(

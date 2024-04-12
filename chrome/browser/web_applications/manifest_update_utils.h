@@ -10,9 +10,8 @@
 
 #include "chrome/browser/web_applications/web_app_constants.h"
 #include "chrome/browser/web_applications/web_app_icon_generator.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
-#include "chrome/browser/web_applications/web_app_install_utils.h"
-#include "components/webapps/common/web_app_id.h"
 
 namespace web_app {
 
@@ -42,8 +41,7 @@ enum class ManifestUpdateResult {
   kAppIdentityUpdateRejectedAndUninstalled = 16,
   kAppIsIsolatedWebApp = 17,
   kCancelledDueToMainFrameNavigation = 18,
-  kShortcutIgnoresManifest = 19,
-  kMaxValue = kShortcutIgnoresManifest,
+  kMaxValue = kCancelledDueToMainFrameNavigation,
 };
 
 std::ostream& operator<<(std::ostream& os, ManifestUpdateResult result);
@@ -108,7 +106,7 @@ struct ManifestDataChanges {
 
   bool app_name_changed = false;
 
-  std::optional<AppIconIdentityChange> app_icon_identity_change;
+  absl::optional<AppIconIdentityChange> app_icon_identity_change;
 
   // `any_app_icon_changed` represents whether any app icon has changed
   // including identity and non-identity affecting app icons because reverting
@@ -117,8 +115,8 @@ struct ManifestDataChanges {
 
   bool other_fields_changed = false;
 
-  std::optional<IdentityUpdateDecision> app_name_identity_update_decision;
-  std::optional<IdentityUpdateDecision> app_icon_identity_update_decision;
+  absl::optional<IdentityUpdateDecision> app_name_identity_update_decision;
+  absl::optional<IdentityUpdateDecision> app_icon_identity_update_decision;
 
   bool HasIdentityChanges() const {
     return app_name_changed || app_icon_identity_change;
@@ -144,7 +142,7 @@ ManifestDataChanges GetManifestDataChanges(
     const ShortcutsMenuIconBitmaps* existing_shortcuts_menu_icon_bitmaps,
     const WebAppInstallInfo& new_install_info);
 
-std::optional<AppIconIdentityChange> CompareIdentityIconBitmaps(
+absl::optional<AppIconIdentityChange> CompareIdentityIconBitmaps(
     const IconBitmaps& existing_app_icon_bitmaps,
     const IconBitmaps& new_app_icon_bitmaps);
 

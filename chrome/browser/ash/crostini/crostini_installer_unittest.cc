@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/crostini/crostini_installer.h"
 
-#include <optional>
-
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
@@ -38,6 +36,7 @@
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using crostini::mojom::InstallerError;
 using crostini::mojom::InstallerState;
@@ -100,7 +99,7 @@ class CrostiniInstallerTest : public testing::Test {
   void SetOSRelease() {
     vm_tools::cicerone::OsRelease os_release;
     os_release.set_id("debian");
-    os_release.set_version_id("11");
+    os_release.set_version_id("10");
     ash::FakeCiceroneClient::Get()->set_lxd_container_os_release(os_release);
   }
 
@@ -190,10 +189,10 @@ class CrostiniInstallerTest : public testing::Test {
   base::HistogramTester histogram_tester_;
 
   // Owned by DiskMountManager
-  raw_ptr<ash::disks::MockDiskMountManager, DanglingUntriaged>
+  raw_ptr<ash::disks::MockDiskMountManager, ExperimentalAsh>
       disk_mount_manager_mock_ = nullptr;
 
-  raw_ptr<WaitingFakeConciergeClient, DanglingUntriaged>
+  raw_ptr<WaitingFakeConciergeClient, ExperimentalAsh>
       waiting_fake_concierge_client_ = nullptr;
 
   std::unique_ptr<TestingProfile> profile_;

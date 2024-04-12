@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -34,7 +34,7 @@ class TrackerFactory : public ProfileKeyedServiceFactory {
   TrackerFactory& operator=(const TrackerFactory&) = delete;
 
  private:
-  friend base::NoDestructor<TrackerFactory>;
+  friend struct base::DefaultSingletonTraits<TrackerFactory>;
 
   TrackerFactory();
   ~TrackerFactory() override;

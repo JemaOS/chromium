@@ -12,7 +12,6 @@
 namespace blink {
 
 class ExceptionState;
-class NavigationPreloadState;
 class ServiceWorkerRegistration;
 
 class NavigationPreloadManager final : public ScriptWrappable {
@@ -21,18 +20,17 @@ class NavigationPreloadManager final : public ScriptWrappable {
  public:
   explicit NavigationPreloadManager(ServiceWorkerRegistration*);
 
-  ScriptPromiseTyped<IDLUndefined> enable(ScriptState*);
-  ScriptPromiseTyped<IDLUndefined> disable(ScriptState*);
-  ScriptPromiseTyped<IDLUndefined> setHeaderValue(
-      ScriptState*,
-      const String& value,
-      ExceptionState& exception_state);
-  ScriptPromiseTyped<NavigationPreloadState> getState(ScriptState*);
+  ScriptPromise enable(ScriptState*);
+  ScriptPromise disable(ScriptState*);
+  ScriptPromise setHeaderValue(ScriptState*,
+                               const String& value,
+                               ExceptionState& exception_state);
+  ScriptPromise getState(ScriptState*);
 
   void Trace(Visitor*) const override;
 
  private:
-  ScriptPromiseTyped<IDLUndefined> SetEnabled(bool enable, ScriptState*);
+  ScriptPromise SetEnabled(bool enable, ScriptState*);
 
   Member<ServiceWorkerRegistration> registration_;
 };

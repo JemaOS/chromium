@@ -9,7 +9,6 @@
 #include <utility>
 
 #include "base/memory/ptr_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
 #include "base/task/single_thread_task_runner.h"
@@ -24,7 +23,6 @@
 #include "third_party/blink/renderer/platform/scheduler/public/frame_scheduler.h"
 #include "third_party/blink/renderer/platform/scheduler/public/page_scheduler.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
@@ -102,8 +100,12 @@ class MockDataChannel : public webrtc::DataChannelInterface {
   std::string label() const override { return std::string(); }
   bool reliable() const override { return false; }
   bool ordered() const override { return false; }
-  std::optional<int> maxPacketLifeTime() const override { return std::nullopt; }
-  std::optional<int> maxRetransmitsOpt() const override { return std::nullopt; }
+  absl::optional<int> maxPacketLifeTime() const override {
+    return absl::nullopt;
+  }
+  absl::optional<int> maxRetransmitsOpt() const override {
+    return absl::nullopt;
+  }
   std::string protocol() const override { return std::string(); }
   bool negotiated() const override { return false; }
   int id() const override { return 0; }
@@ -233,7 +235,7 @@ class MockDataChannel : public webrtc::DataChannelInterface {
 
   // Accessed on signaling thread.
   uint64_t buffered_amount_;
-  raw_ptr<webrtc::DataChannelObserver> observer_;
+  webrtc::DataChannelObserver* observer_;
   webrtc::DataChannelInterface::DataState state_;
 };
 
@@ -253,7 +255,6 @@ class RTCDataChannelTest : public ::testing::Test {
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   Persistent<NullExecutionContext> execution_context_ =
       MakeGarbageCollected<NullExecutionContext>();
 

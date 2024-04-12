@@ -60,7 +60,7 @@ class BrowserVersionServiceAsh
   // can be launched.
   std::string GetLatestLaunchableBrowserVersion() const;
 
-  const raw_ptr<component_updater::ComponentUpdateService>
+  const raw_ptr<component_updater::ComponentUpdateService, ExperimentalAsh>
       component_update_service_;
 
   // Optional delegate member for testing.

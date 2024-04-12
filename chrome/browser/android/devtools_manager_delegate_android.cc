@@ -54,11 +54,10 @@ class ClientProxy : public content::DevToolsAgentHostClient {
 
 class TabProxyDelegate : public content::DevToolsExternalAgentProxyDelegate {
  public:
-  TabProxyDelegate(TabAndroid* tab, bool use_tab_target)
+  explicit TabProxyDelegate(TabAndroid* tab, bool use_tab_target)
       : tab_id_(tab->GetAndroidId()),
         title_(base::UTF16ToUTF8(tab->GetTitle())),
-        url_(tab->GetURL()),
-        use_tab_target_(use_tab_target) {
+        url_(tab->GetURL()) {
     if (tab->web_contents()) {
       agent_host_ =
           use_tab_target
@@ -161,9 +160,7 @@ class TabProxyDelegate : public content::DevToolsExternalAgentProxyDelegate {
     WebContents* web_contents = model->GetWebContentsAt(index);
     if (!web_contents)
       return;
-    agent_host_ = use_tab_target_
-                      ? DevToolsAgentHost::GetOrCreateForTab(web_contents)
-                      : DevToolsAgentHost::GetOrCreateFor(web_contents);
+    agent_host_ = DevToolsAgentHost::GetOrCreateFor(web_contents);
   }
 
   bool FindTab(TabModel** model_result, int* index_result) const {
@@ -183,7 +180,6 @@ class TabProxyDelegate : public content::DevToolsExternalAgentProxyDelegate {
   const int tab_id_;
   const std::string title_;
   const GURL url_;
-  const bool use_tab_target_;
   scoped_refptr<DevToolsAgentHost> agent_host_;
   std::map<content::DevToolsExternalAgentProxy*, std::unique_ptr<ClientProxy>>
       proxies_;
@@ -233,8 +229,8 @@ std::string DevToolsManagerDelegateAndroid::GetTargetType(
       DevToolsAgentHost::kTypeOther;
 }
 
-DevToolsAgentHost::List DevToolsManagerDelegateAndroid::RemoteDebuggingTargets(
-    DevToolsManagerDelegate::TargetType target_type) {
+DevToolsAgentHost::List
+DevToolsManagerDelegateAndroid::RemoteDebuggingTargets() {
   // Enumerate existing tabs, including the ones with no WebContents.
   DevToolsAgentHost::List result;
   std::set<WebContents*> tab_web_contents;
@@ -249,8 +245,7 @@ DevToolsAgentHost::List DevToolsManagerDelegateAndroid::RemoteDebuggingTargets(
       // tab proxies to avoid clients being confused by the fact they get more
       // targets than they create and match the behavior of desktop chrome.
       if (!wc || !IsCreatedByDevTools(*wc)) {
-        result.push_back(DevToolsAgentHostForTab(
-            tab, target_type == DevToolsManagerDelegate::kTab));
+        result.push_back(DevToolsAgentHostForTab(tab, false));
         if (wc) {
           tab_web_contents.insert(wc);
         }
@@ -273,9 +268,7 @@ DevToolsAgentHost::List DevToolsManagerDelegateAndroid::RemoteDebuggingTargets(
 }
 
 scoped_refptr<DevToolsAgentHost>
-DevToolsManagerDelegateAndroid::CreateNewTarget(
-    const GURL& url,
-    DevToolsManagerDelegate::TargetType target_type) {
+DevToolsManagerDelegateAndroid::CreateNewTarget(const GURL& url, bool for_tab) {
   if (TabModelList::models().empty())
     return nullptr;
 
@@ -288,9 +281,8 @@ DevToolsManagerDelegateAndroid::CreateNewTarget(
     return nullptr;
 
   MarkCreatedByDevTools(*web_contents);
-  return target_type == DevToolsManagerDelegate::kTab
-             ? DevToolsAgentHost::GetOrCreateForTab(web_contents)
-             : DevToolsAgentHost::GetOrCreateFor(web_contents);
+  return for_tab ? DevToolsAgentHost::GetOrCreateForTab(web_contents)
+                 : DevToolsAgentHost::GetOrCreateFor(web_contents);
 }
 
 bool DevToolsManagerDelegateAndroid::IsBrowserTargetDiscoverable() {

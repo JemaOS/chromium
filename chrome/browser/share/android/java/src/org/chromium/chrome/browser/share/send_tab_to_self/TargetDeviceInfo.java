@@ -4,8 +4,7 @@
 
 package org.chromium.chrome.browser.share.send_tab_to_self;
 
-import org.jni_zero.CalledByNative;
-
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.components.sync_device_info.FormFactor;
 
 /**
@@ -13,7 +12,7 @@ import org.chromium.components.sync_device_info.FormFactor;
  * //components/send_tab_to_self/target_device_info.h. This provides useful getters and methods
  * called by native code.
  */
-class TargetDeviceInfo {
+public class TargetDeviceInfo {
     public final String cacheGuid;
     public final @FormFactor int formFactor;
     public final String deviceName;

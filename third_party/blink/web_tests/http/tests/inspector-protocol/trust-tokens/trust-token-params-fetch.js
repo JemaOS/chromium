@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {session, dp} = await testRunner.startBlank(
     `Check that PrivateTokenParams are included in the basic Private Token operations on 'fetch'`);
 

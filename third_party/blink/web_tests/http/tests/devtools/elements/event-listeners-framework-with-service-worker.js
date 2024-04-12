@@ -2,19 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-import {ApplicationTestRunner} from 'application_test_runner';
-
-import * as Common from 'devtools/core/common/common.js';
-import * as UI from 'devtools/ui/legacy/legacy.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-import * as BrowserDebugger from 'devtools/panels/browser_debugger/browser_debugger.js';
-
 (async function() {
   TestRunner.addResult(`Tests framework event listeners output in Sources panel when service worker is present.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('application_test_runner');
   await TestRunner.showPanel('elements');
 
   await TestRunner.evaluateInPage(`
@@ -27,17 +20,18 @@ import * as BrowserDebugger from 'devtools/panels/browser_debugger/browser_debug
       </body>
     `);
 
-  Common.Settings.settingForTest('show-event-listeners-for-ancestors').set(false);
+  Common.settingForTest('showEventListenersForAncestors').set(false);
   var scriptURL = 'http://127.0.0.1:8000/devtools/service-workers/resources/service-worker-empty.js';
   var scope = 'http://127.0.0.1:8000/devtools/service-workers/resources/scope1/';
 
   ApplicationTestRunner.waitForServiceWorker(step1);
   ApplicationTestRunner.registerServiceWorker(scriptURL, scope);
 
-  var objectEventListenersPane;
+  var objectEventListenersPane =
+      BrowserDebugger.ObjectEventListenersSidebarPane.instance();
 
   function isServiceWorker() {
-    var target = UI.Context.Context.instance().flavor(SDK.RuntimeModel.ExecutionContext).target();
+    var target = UI.context.flavor(SDK.ExecutionContext).target();
     return target.type() === SDK.Target.Type.ServiceWorker;
   }
 
@@ -50,8 +44,7 @@ import * as BrowserDebugger from 'devtools/panels/browser_debugger/browser_debug
     SourcesTestRunner.selectThread(executionContext.target());
     TestRunner.addResult('Context is service worker: ' + isServiceWorker());
     TestRunner.addResult('Dumping listeners');
-    await UI.ViewManager.ViewManager.instance().showView('sources.global-listeners').then(() => {
-      objectEventListenersPane = UI.Context.Context.instance().flavor(BrowserDebugger.ObjectEventListenersSidebarPane.ObjectEventListenersSidebarPane);
+    await UI.viewManager.showView('sources.globalListeners').then(() => {
       objectEventListenersPane.update();
       ElementsTestRunner.expandAndDumpEventListeners(objectEventListenersPane.eventListenersView, step3);
     });
@@ -59,7 +52,7 @@ import * as BrowserDebugger from 'devtools/panels/browser_debugger/browser_debug
 
   function step3() {
     TestRunner.addResult('Selecting main thread');
-    SourcesTestRunner.selectThread(SDK.TargetManager.TargetManager.instance().primaryPageTarget());
+    SourcesTestRunner.selectThread(SDK.targetManager.primaryPageTarget());
     TestRunner.addResult('Context is service worker: ' + isServiceWorker());
     TestRunner.addResult('Dumping listeners');
     ElementsTestRunner.expandAndDumpEventListeners(objectEventListenersPane.eventListenersView, step4);

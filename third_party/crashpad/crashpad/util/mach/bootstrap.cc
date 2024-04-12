@@ -17,7 +17,7 @@
 #include <mach/mach.h>
 #include <servers/bootstrap.h>
 
-#include "base/apple/mach_logging.h"
+#include "base/mac/mach_logging.h"
 
 namespace {
 
@@ -26,7 +26,7 @@ namespace {
 // and the right type returned.
 
 struct BootstrapCheckInTraits {
-  using Type = base::apple::ScopedMachReceiveRight;
+  using Type = base::mac::ScopedMachReceiveRight;
   static kern_return_t Call(mach_port_t bootstrap_port,
                             const char* service_name,
                             mach_port_t* service_port) {
@@ -37,7 +37,7 @@ struct BootstrapCheckInTraits {
 constexpr char BootstrapCheckInTraits::kName[];
 
 struct BootstrapLookUpTraits {
-  using Type = base::apple::ScopedMachSendRight;
+  using Type = base::mac::ScopedMachSendRight;
   static kern_return_t Call(mach_port_t bootstrap_port,
                             const char* service_name,
                             mach_port_t* service_port) {
@@ -73,14 +73,14 @@ typename Traits::Type BootstrapCheckInOrLookUp(
 
 namespace crashpad {
 
-base::apple::ScopedMachReceiveRight BootstrapCheckIn(
+base::mac::ScopedMachReceiveRight BootstrapCheckIn(
     const std::string& service_name) {
   return BootstrapCheckInOrLookUp<BootstrapCheckInTraits>(service_name);
 }
 
-base::apple::ScopedMachSendRight BootstrapLookUp(
+base::mac::ScopedMachSendRight BootstrapLookUp(
     const std::string& service_name) {
-  base::apple::ScopedMachSendRight send(
+  base::mac::ScopedMachSendRight send(
       BootstrapCheckInOrLookUp<BootstrapLookUpTraits>(service_name));
 
   // It’s possible to race the bootstrap server when the receive right
@@ -102,7 +102,7 @@ base::apple::ScopedMachSendRight BootstrapLookUp(
   return send;
 }
 
-base::apple::ScopedMachSendRight SystemCrashReporterHandler() {
+base::mac::ScopedMachSendRight SystemCrashReporterHandler() {
   return BootstrapLookUp("com.apple.ReportCrash");
 }
 

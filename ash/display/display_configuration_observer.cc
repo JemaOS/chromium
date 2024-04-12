@@ -14,7 +14,6 @@
 #include "base/task/single_thread_task_runner.h"
 #include "ui/display/manager/display_layout_store.h"
 #include "ui/display/manager/display_manager.h"
-#include "ui/display/tablet_state.h"
 
 namespace ash {
 
@@ -23,10 +22,12 @@ DisplayConfigurationObserver::DisplayConfigurationObserver() {
 }
 
 DisplayConfigurationObserver::~DisplayConfigurationObserver() {
+  Shell::Get()->tablet_mode_controller()->RemoveObserver(this);
   Shell::Get()->window_tree_host_manager()->RemoveObserver(this);
 }
 
 void DisplayConfigurationObserver::OnDisplaysInitialized() {
+  Shell::Get()->tablet_mode_controller()->AddObserver(this);
   // Update the display pref with the initial power state.
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(switches::kFirstExecAfterBoot))
@@ -37,30 +38,20 @@ void DisplayConfigurationObserver::OnDisplayConfigurationChanged() {
   Shell::Get()->display_prefs()->MaybeStoreDisplayPrefs();
 }
 
-void DisplayConfigurationObserver::OnDisplayTabletStateChanged(
-    display::TabletState state) {
-  switch (state) {
-    case display::TabletState::kEnteringTabletMode:
-    case display::TabletState::kExitingTabletMode:
-      // Do nothing when the tablet state is still in the process of transition.
-      break;
-    case display::TabletState::kInTabletMode:
-      // Setting mirror mode may destroy the secondary SystemTray, so use
-      // PostTask to set mirror mode in the next frame in case other
-      // TabletModeObserver entries are owned by the SystemTray.
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE,
-          base::BindOnce(&DisplayConfigurationObserver::StartMirrorMode,
-                         weak_ptr_factory_.GetWeakPtr()));
-      break;
-    case display::TabletState::kInClamshellMode:
-      // See comment for kInTabletMode.
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE,
-          base::BindOnce(&DisplayConfigurationObserver::EndMirrorMode,
-                         weak_ptr_factory_.GetWeakPtr()));
-      break;
-  }
+void DisplayConfigurationObserver::OnTabletModeStarted() {
+  // Setting mirror mode may destroy the secondary SystemTray, so use
+  // PostTask to set mirror mode in the next frame in case other
+  // TabletModeObserver entries are owned by the SystemTray.
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindOnce(&DisplayConfigurationObserver::StartMirrorMode,
+                                weak_ptr_factory_.GetWeakPtr()));
+}
+
+void DisplayConfigurationObserver::OnTabletModeEnded() {
+  // See comment for OnTabletModeStarted.
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindOnce(&DisplayConfigurationObserver::EndMirrorMode,
+                                weak_ptr_factory_.GetWeakPtr()));
 }
 
 void DisplayConfigurationObserver::StartMirrorMode() {
@@ -70,13 +61,13 @@ void DisplayConfigurationObserver::StartMirrorMode() {
   display::DisplayManager* display_manager = Shell::Get()->display_manager();
   was_in_mirror_mode_ = display_manager->IsInMirrorMode();
   display_manager->layout_store()->set_forced_mirror_mode_for_tablet(true);
-  display_manager->SetMirrorMode(display::MirrorMode::kNormal, std::nullopt);
+  display_manager->SetMirrorMode(display::MirrorMode::kNormal, absl::nullopt);
 }
 
 void DisplayConfigurationObserver::EndMirrorMode() {
   if (!was_in_mirror_mode_) {
     Shell::Get()->display_manager()->SetMirrorMode(display::MirrorMode::kOff,
-                                                   std::nullopt);
+                                                   absl::nullopt);
   }
   display::DisplayManager* display_manager = Shell::Get()->display_manager();
   display_manager->layout_store()->set_forced_mirror_mode_for_tablet(false);

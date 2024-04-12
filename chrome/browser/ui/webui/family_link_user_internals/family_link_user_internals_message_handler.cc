@@ -14,18 +14,16 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/supervised_user/child_accounts/child_account_service.h"
 #include "chrome/browser/supervised_user/supervised_user_browser_utils.h"
 #include "chrome/browser/supervised_user/supervised_user_service_factory.h"
 #include "chrome/browser/supervised_user/supervised_user_settings_service_factory.h"
 #include "chrome/common/channel_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/tribool.h"
-#include "components/supervised_user/core/browser/child_account_service.h"
 #include "components/supervised_user/core/browser/supervised_user_error_page.h"
-#include "components/supervised_user/core/browser/supervised_user_preferences.h"
 #include "components/supervised_user/core/browser/supervised_user_settings_service.h"
-#include "components/supervised_user/core/browser/supervised_user_utils.h"
-#include "components/supervised_user/core/common/features.h"
+#include "components/supervised_user/core/common/supervised_user_utils.h"
 #include "components/url_formatter/url_fixer.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/storage_partition.h"
@@ -75,20 +73,20 @@ void AddSectionEntry(base::Value::List* section_list,
 }
 
 std::string FilteringBehaviorToString(
-    supervised_user::FilteringBehavior behavior) {
+    supervised_user::SupervisedUserURLFilter::FilteringBehavior behavior) {
   switch (behavior) {
-    case supervised_user::FilteringBehavior::kAllow:
+    case supervised_user::SupervisedUserURLFilter::ALLOW:
       return "Allow";
-    case supervised_user::FilteringBehavior::kBlock:
+    case supervised_user::SupervisedUserURLFilter::BLOCK:
       return "Block";
-    case supervised_user::FilteringBehavior::kInvalid:
+    case supervised_user::SupervisedUserURLFilter::INVALID:
       return "Invalid";
   }
   return "Unknown";
 }
 
 std::string FilteringBehaviorToString(
-    supervised_user::FilteringBehavior behavior,
+    supervised_user::SupervisedUserURLFilter::FilteringBehavior behavior,
     bool uncertain) {
   std::string result = FilteringBehaviorToString(behavior);
   if (uncertain)
@@ -134,7 +132,7 @@ void FamilyLinkUserInternalsMessageHandler::OnURLFilterChanged() {
   SendBasicInfo();
 }
 
-supervised_user::SupervisedUserService*
+SupervisedUserService*
 FamilyLinkUserInternalsMessageHandler::GetSupervisedUserService() {
   Profile* profile = Profile::FromWebUI(web_ui());
   return SupervisedUserServiceFactory::GetForProfile(
@@ -189,6 +187,11 @@ void FamilyLinkUserInternalsMessageHandler::HandleTryURL(
 
 void FamilyLinkUserInternalsMessageHandler::SendBasicInfo() {
   base::Value::List section_list;
+
+  base::Value::List* section_general = AddSection(&section_list, "General");
+  AddSectionEntry(section_general, "Child detection enabled",
+                  ChildAccountService::IsChildAccountDetectionEnabled());
+
   Profile* profile = Profile::FromWebUI(web_ui());
 
   base::Value::List* section_profile = AddSection(&section_list, "Profile");
@@ -199,8 +202,8 @@ void FamilyLinkUserInternalsMessageHandler::SendBasicInfo() {
       GetSupervisedUserService()->GetURLFilter();
 
   base::Value::List* section_filter = AddSection(&section_list, "Filter");
-  AddSectionEntry(section_filter, "SafeSites enabled",
-                  supervised_user::IsSafeSitesEnabled(*profile->GetPrefs()));
+  AddSectionEntry(section_filter, "Online checks active",
+                  filter->HasAsyncURLChecker());
   AddSectionEntry(
       section_filter, "Default behavior",
       FilteringBehaviorToString(filter->GetDefaultFilteringBehavior()));
@@ -247,14 +250,14 @@ void FamilyLinkUserInternalsMessageHandler::SendFamilyLinkUserSettings(
 
 void FamilyLinkUserInternalsMessageHandler::OnTryURLResult(
     const std::string& callback_id,
-    supervised_user::FilteringBehavior behavior,
+    supervised_user::SupervisedUserURLFilter::FilteringBehavior behavior,
     supervised_user::FilteringBehaviorReason reason,
     bool uncertain) {
   base::Value::Dict result;
   result.Set("allowResult", FilteringBehaviorToString(behavior, uncertain));
   result.Set("manual",
              reason == supervised_user::FilteringBehaviorReason::MANUAL &&
-                 behavior == supervised_user::FilteringBehavior::kAllow);
+                 behavior == supervised_user::SupervisedUserURLFilter::ALLOW);
   ResolveJavascriptCallback(base::Value(callback_id), result);
 }
 
@@ -262,7 +265,7 @@ void FamilyLinkUserInternalsMessageHandler::OnSiteListUpdated() {}
 
 void FamilyLinkUserInternalsMessageHandler::OnURLChecked(
     const GURL& url,
-    supervised_user::FilteringBehavior behavior,
+    supervised_user::SupervisedUserURLFilter::FilteringBehavior behavior,
     supervised_user::FilteringBehaviorReason reason,
     bool uncertain) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);

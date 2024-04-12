@@ -28,14 +28,6 @@ const AtomicString& CustomHighlightMarker::GetPseudoArgument() const {
   return GetHighlightName();
 }
 
-void CustomHighlightMarker::SetHasVisualOverflow(bool has_overflow) {
-  highlight_has_visual_overflow_ = has_overflow;
-}
-
-bool CustomHighlightMarker::HasVisualOverflow() const {
-  return highlight_has_visual_overflow_;
-}
-
 void CustomHighlightMarker::Trace(blink::Visitor* visitor) const {
   visitor->Trace(highlight_);
   DocumentMarker::Trace(visitor);

@@ -29,8 +29,7 @@ TEST_F(SameBlockWordIteratorTest, GetNextWord) {
     <p id='first'>First paragraph text</p>
     <p>new block</p>
   )HTML");
-  Node* node =
-      GetDocument().getElementById(AtomicString("first"))->firstChild();
+  Node* node = GetDocument().getElementById("first")->firstChild();
   ForwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 0));
   iterator.AdvanceNextWord();
   EXPECT_EQ("First", iterator.TextFromStart());
@@ -56,8 +55,7 @@ TEST_F(SameBlockWordIteratorTest, GetNextWord_ExtraSpace) {
 
      text</p>
   )HTML");
-  Node* node =
-      GetDocument().getElementById(AtomicString("first"))->firstChild();
+  Node* node = GetDocument().getElementById("first")->firstChild();
   ForwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 6));
   iterator.AdvanceNextWord();
   EXPECT_EQ("paragraph", iterator.TextFromStart());
@@ -85,7 +83,7 @@ TEST_F(SameBlockWordIteratorTest, GetNextWord_WithComment) {
     </div>
     <p>new block</p>
   )HTML");
-  Node* node = GetDocument().getElementById(AtomicString("span"))->firstChild();
+  Node* node = GetDocument().getElementById("span")->firstChild();
   BackwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 9));
   iterator.AdvanceNextWord();
   EXPECT_EQ("paragraph", iterator.TextFromStart());
@@ -105,8 +103,7 @@ TEST_F(SameBlockWordIteratorTest, GetNextWord_NestedTextNode) {
     <!DOCTYPE html>
     <p id='first'>First <b>bold text</b> paragraph text</p>
   )HTML");
-  Node* node =
-      GetDocument().getElementById(AtomicString("first"))->firstChild();
+  Node* node = GetDocument().getElementById("first")->firstChild();
   ForwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 5));
   iterator.AdvanceNextWord();
   EXPECT_EQ("bold", iterator.TextFromStart());
@@ -132,8 +129,7 @@ TEST_F(SameBlockWordIteratorTest, GetNextWord_NestedBlock) {
     <!DOCTYPE html>
     <div id='first'>First paragraph <div id='div'>div</div> text</div>
   )HTML");
-  Node* node =
-      GetDocument().getElementById(AtomicString("first"))->firstChild();
+  Node* node = GetDocument().getElementById("first")->firstChild();
   ForwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 5));
   iterator.AdvanceNextWord();
   EXPECT_EQ("paragraph", iterator.TextFromStart());
@@ -151,8 +147,7 @@ TEST_F(SameBlockWordIteratorTest, GetNextWord_NestedBlockInNestedText) {
     <!DOCTYPE html>
     <div id='first'>First <b>bold<div id='div'>div</div></b> paragraph text</div>
   )HTML");
-  Node* node =
-      GetDocument().getElementById(AtomicString("first"))->firstChild();
+  Node* node = GetDocument().getElementById("first")->firstChild();
   ForwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 5));
   iterator.AdvanceNextWord();
   EXPECT_EQ("bold", iterator.TextFromStart());
@@ -169,8 +164,7 @@ TEST_F(SameBlockWordIteratorTest, GetNextWord_NestedInvisibleBlock) {
     <!DOCTYPE html>
     <div id='first'>First <div id='div' style='display:none'>invisible</div> paragraph text</div>
   )HTML");
-  Node* node =
-      GetDocument().getElementById(AtomicString("first"))->firstChild();
+  Node* node = GetDocument().getElementById("first")->firstChild();
   ForwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 5));
   iterator.AdvanceNextWord();
   EXPECT_EQ("paragraph", iterator.TextFromStart());
@@ -191,8 +185,7 @@ TEST_F(SameBlockWordIteratorTest, GetPreviousWord) {
     <p>new block</p>
     <p id='first'>First paragraph next word</p>
   )HTML");
-  Node* node =
-      GetDocument().getElementById(AtomicString("first"))->firstChild();
+  Node* node = GetDocument().getElementById("first")->firstChild();
 
   BackwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 16));
   iterator.AdvanceNextWord();
@@ -216,8 +209,7 @@ TEST_F(SameBlockWordIteratorTest, GetPreviousWord_ExtraSpace) {
 
          paragraph text</p>
   )HTML");
-  Node* node =
-      GetDocument().getElementById(AtomicString("first"))->firstChild();
+  Node* node = GetDocument().getElementById("first")->firstChild();
   BackwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 25));
   iterator.AdvanceNextWord();
   EXPECT_EQ("paragraph", iterator.TextFromStart());
@@ -245,7 +237,7 @@ TEST_F(SameBlockWordIteratorTest, GetPreviousWord_WithComment) {
     </div>
     <p>new block</p>
   )HTML");
-  Node* node = GetDocument().getElementById(AtomicString("span"))->firstChild();
+  Node* node = GetDocument().getElementById("span")->firstChild();
   BackwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 9));
   iterator.AdvanceNextWord();
   iterator.TextFromStart();
@@ -265,7 +257,7 @@ TEST_F(SameBlockWordIteratorTest, GetPreviousWord_NestedTextNode) {
     <!DOCTYPE html>
     <p id='first'>First <b>bold text</b> paragraph text</p>
   )HTML");
-  Node* node = GetDocument().getElementById(AtomicString("first"))->lastChild();
+  Node* node = GetDocument().getElementById("first")->lastChild();
   BackwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 11));
   iterator.AdvanceNextWord();
   EXPECT_EQ("paragraph", iterator.TextFromStart());
@@ -291,7 +283,7 @@ TEST_F(SameBlockWordIteratorTest, GetPreviousWord_NestedBlock) {
     <!DOCTYPE html>
     <div id='first'>First <div id='div'>div</div> paragraph text</div>
   )HTML");
-  Node* node = GetDocument().getElementById(AtomicString("div"))->nextSibling();
+  Node* node = GetDocument().getElementById("div")->nextSibling();
   BackwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 11));
   iterator.AdvanceNextWord();
   EXPECT_EQ("paragraph", iterator.TextFromStart());
@@ -309,7 +301,7 @@ TEST_F(SameBlockWordIteratorTest, GetPreviousWord_NestedBlockInNestedText) {
     <!DOCTYPE html>
     <div id='first'>First <b><div id='div'>div</div>bold</b> paragraph text</div>
   )HTML");
-  Node* node = GetDocument().getElementById(AtomicString("first"))->lastChild();
+  Node* node = GetDocument().getElementById("first")->lastChild();
   BackwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 11));
   iterator.AdvanceNextWord();
   EXPECT_EQ("paragraph", iterator.TextFromStart());
@@ -329,7 +321,7 @@ TEST_F(SameBlockWordIteratorTest, GetPreviousWord_NestedInvisibleBlock) {
     <!DOCTYPE html>
     <div id='first'>First <div id='div' style='display:none'>invisible</div> paragraph text</div>
   )HTML");
-  Node* node = GetDocument().getElementById(AtomicString("div"))->nextSibling();
+  Node* node = GetDocument().getElementById("div")->nextSibling();
   BackwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 0));
   iterator.AdvanceNextWord();
   EXPECT_EQ("First", iterator.TextFromStart());
@@ -347,8 +339,7 @@ TEST_F(SameBlockWordIteratorTest, GetNextWord_HalfWord) {
     <p id='first'>First paragraph text</p>
     <p>new block</p>
   )HTML");
-  Node* node =
-      GetDocument().getElementById(AtomicString("first"))->firstChild();
+  Node* node = GetDocument().getElementById("first")->firstChild();
   ForwardSameBlockWordIterator iterator(PositionInFlatTree(*node, 2));
   iterator.AdvanceNextWord();
   EXPECT_EQ("rst", iterator.TextFromStart());

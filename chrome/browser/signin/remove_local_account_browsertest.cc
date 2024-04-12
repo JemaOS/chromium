@@ -73,9 +73,9 @@ class RemoveLocalAccountTest : public MixinBasedInProcessBrowserTest {
     MixinBasedInProcessBrowserTest::SetUpOnMainThread();
     fake_gaia_.Initialize();
 
-    FakeGaia::Configuration params;
+    FakeGaia::MergeSessionParams params;
     params.signed_out_gaia_ids.push_back(kTestGaiaId);
-    fake_gaia_.UpdateConfiguration(params);
+    fake_gaia_.UpdateMergeSessionParams(params);
 
     embedded_test_server_.StartAcceptingConnections();
 

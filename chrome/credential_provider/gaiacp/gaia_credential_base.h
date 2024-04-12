@@ -51,7 +51,7 @@ class ATL_NO_VTABLE CGaiaCredentialBase
   static HRESULT OnDllUnregisterServer();
 
   // Perform non-critical post-sign operations after everything is setup here.
-  static HRESULT PerformPostSigninActions(const base::Value::Dict& properties,
+  static HRESULT PerformPostSigninActions(const base::Value& properties,
                                           bool com_initialized);
 
   // Allocates a BSTR from a DLL string resource given by |id|.
@@ -93,13 +93,13 @@ class ATL_NO_VTABLE CGaiaCredentialBase
   const CComBSTR& get_current_windows_password() const {
     return current_windows_password_;
   }
-  const std::optional<base::Value::Dict>& get_authentication_results() const {
+  const absl::optional<base::Value>& get_authentication_results() const {
     return authentication_results_;
   }
 
   // Saves account association and user profile information. Makes various HTTP
   // calls regarding device provisioning and password management.
-  static HRESULT PerformActions(const base::Value::Dict& properties);
+  static HRESULT PerformActions(const base::Value& properties);
 
   // Returns true if the current credentials stored in |username_| and
   // |password_| are valid and should succeed a local Windows logon. This
@@ -161,9 +161,8 @@ class ATL_NO_VTABLE CGaiaCredentialBase
   virtual void DisplayErrorInUI(LONG status, LONG substatus, BSTR status_text);
 
   // Forks a stub process to perform all post sign-in actions for a user.
-  virtual HRESULT ForkPerformPostSigninActionsStub(
-      const base::Value::Dict& dict,
-      BSTR* status_text);
+  virtual HRESULT ForkPerformPostSigninActionsStub(const base::Value& dict,
+                                                   BSTR* status_text);
 
   // Forks the logon stub process and waits for it to start.
   virtual HRESULT ForkGaiaLogonStub(OSProcessManager* process_manager,
@@ -276,7 +275,7 @@ class ATL_NO_VTABLE CGaiaCredentialBase
   // The caller must take ownership of this memory.
   // On failure |error_text| will be allocated and filled with an error message.
   // The caller must take ownership of this memory.
-  HRESULT ValidateOrCreateUser(const base::Value::Dict& result,
+  HRESULT ValidateOrCreateUser(const base::Value& result,
                                BSTR* domain,
                                BSTR* username,
                                BSTR* sid,
@@ -326,7 +325,7 @@ class ATL_NO_VTABLE CGaiaCredentialBase
 
   // Contains the information about the Gaia account that signed in.  See the
   // kKeyXXX constants for the data that is stored here.
-  std::optional<base::Value::Dict> authentication_results_;
+  absl::optional<base::Value> authentication_results_;
 
   // Holds information about the success or failure of the sign in.
   NTSTATUS result_status_ = STATUS_SUCCESS;

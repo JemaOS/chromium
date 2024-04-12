@@ -5,9 +5,8 @@
 #ifndef CHROME_BROWSER_ASH_WALLPAPER_HANDLERS_WALLPAPER_HANDLERS_METRIC_UTILS_H_
 #define CHROME_BROWSER_ASH_WALLPAPER_HANDLERS_WALLPAPER_HANDLERS_METRIC_UTILS_H_
 
-#include <optional>
-
 #include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace wallpaper_handlers {
 
@@ -28,7 +27,7 @@ enum class GooglePhotosApi {
 // NOTE: success/failure is assumed by the presence/absence of `result_count`.
 void RecordGooglePhotosApiResponseParsed(GooglePhotosApi api,
                                          base::TimeDelta response_time,
-                                         std::optional<size_t> result_count);
+                                         absl::optional<size_t> result_count);
 
 // Records Ash.Wallpaper.GooglePhotos.Api.{Api}.RefreshCount metric.
 void RecordGooglePhotosApiRefreshCount(GooglePhotosApi api, int refresh_count);

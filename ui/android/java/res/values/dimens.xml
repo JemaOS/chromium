@@ -7,19 +7,16 @@ found in the LICENSE file.
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Common text sizes -->
     <dimen name="headline_size">22sp</dimen>
-    <dimen name="headline2_size">18sp</dimen>
     <dimen name="text_size_large">16sp</dimen>
     <dimen name="text_size_medium">14sp</dimen>
     <dimen name="text_size_small">12sp</dimen>
 
     <dimen name="headline_size_leading" tools:ignore="UnusedResources">28sp</dimen>
-    <dimen name="headline2_size_leading" tools:ignore="UnusedResources">24sp</dimen>
     <dimen name="text_size_large_leading" tools:ignore="UnusedResources">24sp</dimen>
     <dimen name="text_size_medium_leading" tools:ignore="UnusedResources">20sp</dimen>
     <dimen name="text_size_small_leading" tools:ignore="UnusedResources">16sp</dimen>
 
     <!-- Common alpha values -->
-    <item name="default_enabled_alpha" format="float" type="dimen">1.0</item>
     <item name="default_disabled_alpha" format="float" type="dimen">0.38</item>
     <item name="default_pressed_alpha" format="float" type="dimen">0.06</item>
     <item name="default_focused_hovered_alpha" format="float" type="dimen">0.06</item>
@@ -63,7 +60,6 @@ found in the LICENSE file.
 
     <!-- Divider Dimensions -->
     <dimen name="divider_height">1dp</dimen>
-    <dimen name="list_section_divider_padding">8dp</dimen>
 
     <!-- Drag shadow dimens -->
     <dimen name="drag_shadow_border_corner_radius">8dp</dimen>
@@ -97,22 +93,4 @@ found in the LICENSE file.
 
     <!-- Arbitrary shadow length for elevation levels -->
     <dimen name="default_shadow_length_elev_2">6dp</dimen>
-
-    <dimen name="default_list_row_padding">16dp</dimen>
-
-    <!-- List menu & item dimensions -->
-    <dimen name="list_menu_bg_corner_radius">4dp</dimen>
-    <dimen name="list_menu_vertical_padding">8dp</dimen>
-    <dimen name="list_menu_width">180dp</dimen>
-    <dimen name="list_menu_popup_min_width">112dp</dimen>
-    <dimen name="list_menu_popup_max_width">280dp</dimen>
-    <dimen name="list_menu_item_icon_size">24dp</dimen>
-    <dimen name="list_menu_item_start_icon_end_margin">16dp</dimen>
-    <dimen name="list_menu_item_horizontal_padding">12dp</dimen>
-    <dimen name="list_menu_item_text_size">14sp</dimen>
-    <dimen name="list_menu_elevation">@dimen/default_elevation_2</dimen>
-    <dimen name="list_menu_item_min_height">48dp</dimen>
-
-    <!-- Automotive -->
-    <item name="automotive_ui_scale_factor" format="float" type="dimen">1.34</item>
 </resources>

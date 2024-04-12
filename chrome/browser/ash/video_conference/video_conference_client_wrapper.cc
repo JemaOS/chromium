@@ -84,15 +84,6 @@ void VideoConferenceClientWrapper::SetSystemMediaDeviceStatus(
   }
 }
 
-void VideoConferenceClientWrapper::StopAllScreenShare() {
-  if (cpp_client_ != nullptr) {
-    cpp_client_->StopAllScreenShare();
-  } else {
-    DCHECK(mojo_client_.is_bound());
-    mojo_client_->StopAllScreenShare();
-  }
-}
-
 VideoConferenceMediaState& VideoConferenceClientWrapper::state() {
   return state_;
 }

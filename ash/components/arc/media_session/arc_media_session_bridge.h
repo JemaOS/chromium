@@ -50,7 +50,7 @@ class ArcMediaSessionBridge
  private:
   void SetupAudioFocus();
 
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
 };
 

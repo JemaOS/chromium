@@ -135,18 +135,22 @@ TEST_F(PrintingMetricsApiUnittest, GetPrintJobs_OnePrintJob) {
   ASSERT_TRUE(result);
   ASSERT_TRUE(result->is_list());
   ASSERT_EQ(1u, result->GetList().size());
-  std::optional<api::printing_metrics::PrintJobInfo> print_job_info =
-      api::printing_metrics::PrintJobInfo::FromValue(result->GetList()[0]);
-  ASSERT_TRUE(print_job_info.has_value());
+  std::unique_ptr<api::printing_metrics::PrintJobInfo> print_job_info =
+      api::printing_metrics::PrintJobInfo::FromValueDeprecated(
+          result->GetList()[0]);
 
   EXPECT_THAT(
       print_job_info,
-      testing::AllOf(testing::Optional(testing::AllOf(
-          testing::Field(&api::printing_metrics::PrintJobInfo::title, kTitle1),
-          testing::Field(&api::printing_metrics::PrintJobInfo::status,
-                         api::printing_metrics::PrintJobStatus::kFailed),
-          testing::Field(&api::printing_metrics::PrintJobInfo::number_of_pages,
-                         kPagesNumber)))));
+      testing::AllOf(
+          testing::NotNull(),
+          testing::Pointee(testing::AllOf(
+              testing::Field(&api::printing_metrics::PrintJobInfo::title,
+                             kTitle1),
+              testing::Field(&api::printing_metrics::PrintJobInfo::status,
+                             api::printing_metrics::PRINT_JOB_STATUS_FAILED),
+              testing::Field(
+                  &api::printing_metrics::PrintJobInfo::number_of_pages,
+                  kPagesNumber)))));
 }
 
 // Test that calling |printingMetrics.getPrintJobs()| returns both mock print
@@ -160,13 +164,15 @@ TEST_F(PrintingMetricsApiUnittest, GetPrintJobs_TwoPrintJobs) {
   ASSERT_TRUE(result);
   ASSERT_TRUE(result->is_list());
   ASSERT_EQ(2u, result->GetList().size());
-  std::optional<api::printing_metrics::PrintJobInfo> print_job_info1 =
-      api::printing_metrics::PrintJobInfo::FromValue(result->GetList()[0]);
-  ASSERT_TRUE(print_job_info1.has_value());
+  std::unique_ptr<api::printing_metrics::PrintJobInfo> print_job_info1 =
+      api::printing_metrics::PrintJobInfo::FromValueDeprecated(
+          result->GetList()[0]);
+  EXPECT_TRUE(print_job_info1);
   EXPECT_EQ(kTitle1, print_job_info1->title);
-  std::optional<api::printing_metrics::PrintJobInfo> print_job_info2 =
-      api::printing_metrics::PrintJobInfo::FromValue(result->GetList()[1]);
-  ASSERT_TRUE(print_job_info2.has_value());
+  std::unique_ptr<api::printing_metrics::PrintJobInfo> print_job_info2 =
+      api::printing_metrics::PrintJobInfo::FromValueDeprecated(
+          result->GetList()[1]);
+  EXPECT_TRUE(print_job_info2);
   EXPECT_EQ(kTitle2, print_job_info2->title);
 }
 

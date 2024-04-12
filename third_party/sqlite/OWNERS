@@ -1,1 +1,6 @@
-file://sql/OWNERS
+# Primary
+asully@chromium.org
+
+# Secondary
+ayui@chromium.org
+estade@chromium.org

@@ -5,7 +5,7 @@
 import unittest
 from unittest import mock
 
-from signing import model, parts, signing, test_config
+from . import model, parts, signing, test_config
 
 
 def _get_identity_hash(i):
@@ -103,12 +103,6 @@ class TestGetParts(unittest.TestCase):
             | model.CodeSignOptions.KILL
             | model.CodeSignOptions.HARDENED_RUNTIME,
             all_parts['app-mode-app'].options)
-        self.assertEqual(
-            model.CodeSignOptions.RESTRICT
-            | model.CodeSignOptions.LIBRARY_VALIDATION
-            | model.CodeSignOptions.KILL
-            | model.CodeSignOptions.HARDENED_RUNTIME,
-            all_parts['web-app-shortcut-copier'].options)
         self.assertEqual(
             model.CodeSignOptions.RESTRICT
             | model.CodeSignOptions.LIBRARY_VALIDATION

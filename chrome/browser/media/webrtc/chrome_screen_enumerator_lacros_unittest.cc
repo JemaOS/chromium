@@ -59,7 +59,7 @@ class ChromeScreenEnumeratorLacrosTest : public ::testing::Test {
     enumerator_ = std::make_unique<ChromeScreenEnumerator>();
     scoped_feature_list_.InitFromCommandLine(
         /*enable_features=*/
-        "GetAllScreensMedia",
+        "GetDisplayMediaSet,GetDisplayMediaSetAutoSelectAllScreens",
         /*disable_features=*/"");
   }
 

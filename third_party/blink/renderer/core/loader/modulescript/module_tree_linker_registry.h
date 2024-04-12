@@ -36,8 +36,7 @@ class CORE_EXPORT ModuleTreeLinkerRegistry final
              const ScriptFetchOptions&,
              Modulator*,
              ModuleScriptCustomFetchType,
-             ModuleTreeClient*,
-             String referrer);
+             ModuleTreeClient*);
 
   // https://html.spec.whatwg.org/C/#fetch-an-inline-module-script-graph
   void FetchDescendantsForInlineScript(

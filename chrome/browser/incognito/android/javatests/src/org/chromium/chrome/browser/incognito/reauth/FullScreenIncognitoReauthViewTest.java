@@ -42,7 +42,9 @@ import org.chromium.ui.test.util.BlankUiTestActivityTestCase;
 
 import java.io.IOException;
 
-/** Tests for Incognito reauth view layout. */
+/**
+ * Tests for Incognito reauth view layout.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @Batch(Batch.PER_CLASS)
@@ -52,10 +54,14 @@ public class FullScreenIncognitoReauthViewTest extends BlankUiTestActivityTestCa
     private PropertyModelChangeProcessor mModelChangeProcessor;
     private IncognitoReauthMenuDelegate mIncognitoReauthMenuDelegate;
 
-    @Mock private Runnable mUnlockIncognitoRunnableMock;
-    @Mock private Runnable mSeeOtherTabsRunnableMock;
-    @Mock private Runnable mCloseAllIncognitoTabsRunnable;
-    @Mock private SettingsLauncher mSettingsLauncherMock;
+    @Mock
+    private Runnable mUnlockIncognitoRunnableMock;
+    @Mock
+    private Runnable mSeeOtherTabsRunnableMock;
+    @Mock
+    private Runnable mCloseAllIncognitoTabsRunnable;
+    @Mock
+    private SettingsLauncher mSettingsLauncherMock;
 
     @Rule
     public ChromeRenderTestRule mRenderTestRule =
@@ -67,22 +73,18 @@ public class FullScreenIncognitoReauthViewTest extends BlankUiTestActivityTestCa
     public void setUpTest() throws Exception {
         super.setUpTest();
         MockitoAnnotations.initMocks(this);
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    getActivity().setContentView(R.layout.incognito_reauth_view);
-                    mView = getActivity().findViewById(android.R.id.content);
-                    mIncognitoReauthMenuDelegate =
-                            new IncognitoReauthMenuDelegate(
-                                    getActivity(),
-                                    mCloseAllIncognitoTabsRunnable,
-                                    mSettingsLauncherMock);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            getActivity().setContentView(R.layout.incognito_reauth_view);
+            mView = getActivity().findViewById(android.R.id.content);
+            mIncognitoReauthMenuDelegate = new IncognitoReauthMenuDelegate(
+                    getActivity(), mCloseAllIncognitoTabsRunnable, mSettingsLauncherMock);
+        });
     }
 
     @Test
     @MediumTest
     public void testIncognitoReauthView_FullScreen() {
-        buildPropertyModelAndBindProcessor(/* isFullScreen= */ true);
+        buildPropertyModelAndBindProcessor(/*isFullScreen=*/true);
         onView(withId(R.id.incognito_reauth_menu_button)).check(matches(isDisplayed()));
         onView(withId(R.id.incognito_reauth_unlock_incognito_button)).check(matches(isDisplayed()));
         onView(withText(R.string.incognito_reauth_page_unlock_incognito_button_label))
@@ -102,7 +104,7 @@ public class FullScreenIncognitoReauthViewTest extends BlankUiTestActivityTestCa
     @Test
     @MediumTest
     public void testIncognitoReauthView_FullScreen_MenuButton_CloseIncognitoTabs_SubMenu() {
-        buildPropertyModelAndBindProcessor(/* isFullScreen= */ true);
+        buildPropertyModelAndBindProcessor(/*isFullScreen=*/true);
         onView(withId(R.id.incognito_reauth_menu_button)).perform(click());
 
         // Inside three dots menu.
@@ -114,7 +116,7 @@ public class FullScreenIncognitoReauthViewTest extends BlankUiTestActivityTestCa
     @Test
     @MediumTest
     public void testIncognitoReauthView_FullScreen_MenuButton_Settings_SubMenu() {
-        buildPropertyModelAndBindProcessor(/* isFullScreen= */ true);
+        buildPropertyModelAndBindProcessor(/*isFullScreen=*/true);
         onView(withId(R.id.incognito_reauth_menu_button)).perform(click());
 
         // Inside three dots menu.
@@ -126,7 +128,7 @@ public class FullScreenIncognitoReauthViewTest extends BlankUiTestActivityTestCa
     @MediumTest
     @Feature("RenderTest")
     public void testIncongitoReauthViewRenderTest() throws IOException {
-        buildPropertyModelAndBindProcessor(/* isFullScreen= */ true);
+        buildPropertyModelAndBindProcessor(/*isFullScreen=*/true);
         mRenderTestRule.render(mView, "incognito_reauth_view");
     }
 
@@ -134,28 +136,20 @@ public class FullScreenIncognitoReauthViewTest extends BlankUiTestActivityTestCa
     @MediumTest
     @Feature("RenderTest")
     public void testIncongitoReauthViewRenderTest_WithThreeDotsMenu() throws IOException {
-        buildPropertyModelAndBindProcessor(/* isFullScreen= */ true);
+        buildPropertyModelAndBindProcessor(/*isFullScreen=*/true);
         onView(withId(R.id.incognito_reauth_menu_button)).perform(click());
         onViewWaiting(allOf(withText(R.string.menu_settings), isDisplayed()));
-        mRenderTestRule.render(
-                mIncognitoReauthMenuDelegate.getBasicListMenu().getContentView(),
+        mRenderTestRule.render(mIncognitoReauthMenuDelegate.getBasicListMenu().getContentView(),
                 "incognito_reauth_view_three_dots_menu");
     }
 
     private void buildPropertyModelAndBindProcessor(boolean isFullScreen) {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mPropertyModel =
-                            IncognitoReauthProperties.createPropertyModel(
-                                    mUnlockIncognitoRunnableMock,
-                                    mSeeOtherTabsRunnableMock,
-                                    isFullScreen,
-                                    (isFullScreen)
-                                            ? () -> mIncognitoReauthMenuDelegate.getBasicListMenu()
-                                            : null);
-                    mModelChangeProcessor =
-                            PropertyModelChangeProcessor.create(
-                                    mPropertyModel, mView, IncognitoReauthViewBinder::bind);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mPropertyModel = IncognitoReauthProperties.createPropertyModel(
+                    mUnlockIncognitoRunnableMock, mSeeOtherTabsRunnableMock, isFullScreen,
+                    (isFullScreen) ? () -> mIncognitoReauthMenuDelegate.getBasicListMenu() : null);
+            mModelChangeProcessor = PropertyModelChangeProcessor.create(
+                    mPropertyModel, mView, IncognitoReauthViewBinder::bind);
+        });
     }
 }

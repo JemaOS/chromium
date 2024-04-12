@@ -30,7 +30,6 @@
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/style/typography.h"
-#include "ui/views/style/typography_provider.h"
 #include "ui/views/view_class_properties.h"
 
 namespace {
@@ -49,9 +48,8 @@ std::unique_ptr<views::Border> CreateBorderWithVerticalSpacing(
 // layout should be the same whether or not the icon is badged, so allow the
 // badged part of the icon to extend into the padding.
 class IconWrapper : public views::View {
-  METADATA_HEADER(IconWrapper, views::View)
-
  public:
+  METADATA_HEADER(IconWrapper);
   explicit IconWrapper(std::unique_ptr<views::View> icon, int vertical_spacing)
       : icon_(AddChildView(std::move(icon))) {
     SetLayoutManager(std::make_unique<views::BoxLayout>(
@@ -80,19 +78,15 @@ class IconWrapper : public views::View {
   raw_ptr<views::View> icon_;
 };
 
-BEGIN_METADATA(IconWrapper)
+BEGIN_METADATA(IconWrapper, views::View)
 END_METADATA
 
 }  // namespace
 
 HoverButton::HoverButton(PressedCallback callback, const std::u16string& text)
-    : views::LabelButton(
-          base::BindRepeating(&HoverButton::OnPressed, base::Unretained(this)),
-          text,
-          views::style::CONTEXT_BUTTON),
-      callback_(std::move(callback)) {
+    : views::LabelButton(callback, text, views::style::CONTEXT_BUTTON) {
   SetButtonController(std::make_unique<HoverButtonController>(
-      this,
+      this, std::move(callback),
       std::make_unique<views::Button::DefaultButtonControllerDelegate>(this)));
 
   views::InstallRectHighlightPathGenerator(this);
@@ -109,9 +103,8 @@ HoverButton::HoverButton(PressedCallback callback, const std::u16string& text)
   views::InkDrop::UseInkDropForFloodFillRipple(views::InkDrop::Get(this),
                                                /*highlight_on_hover=*/false,
                                                /*highlight_on_focus=*/true);
-  views::InkDrop::Get(this)->SetBaseColorId(
-      views::TypographyProvider::Get().GetColorId(
-          views::style::CONTEXT_BUTTON, views::style::STYLE_SECONDARY));
+  views::InkDrop::Get(this)->SetBaseColorId(views::style::GetColorId(
+      views::style::CONTEXT_BUTTON, views::style::STYLE_SECONDARY));
 
   SetTriggerableEventFlags(ui::EF_LEFT_MOUSE_BUTTON |
                            ui::EF_RIGHT_MOUSE_BUTTON);
@@ -131,16 +124,16 @@ HoverButton::HoverButton(PressedCallback callback,
                          const std::u16string& title,
                          const std::u16string& subtitle,
                          std::unique_ptr<views::View> secondary_view,
-                         bool add_vertical_label_spacing)
+                         bool resize_row_for_secondary_view,
+                         bool secondary_view_can_process_events)
     : HoverButton(std::move(callback), std::u16string()) {
   label()->SetHandlesTooltips(false);
 
   // Set the layout manager to ignore the ink_drop_container to ensure the ink
   // drop tracks the bounds of its parent.
-  ink_drop_container()->SetProperty(views::kViewIgnoredByLayoutKey, true);
-
   SetLayoutManager(std::make_unique<views::FlexLayout>())
-      ->SetCrossAxisAlignment(views::LayoutAlignment::kCenter);
+      ->SetCrossAxisAlignment(views::LayoutAlignment::kCenter)
+      .SetChildViewIgnoredByLayout(ink_drop_container(), true);
 
   // The vertical space that must exist on the top and the bottom of the item
   // to ensure the proper spacing is maintained between items when stacking
@@ -165,25 +158,12 @@ HoverButton::HoverButton(PressedCallback callback,
   // Hover the whole button when hovering |title_|. This is OK because |title_|
   // will never have a link in it.
   title_->SetCanProcessEventsWithinSubtree(false);
-  // A title text update may result in the same label size and not trigger any
-  // observers. Thus, we need to add a callback that updates tooltip and
-  // accessible name when title text changes.
-  text_changed_subscriptions_.push_back(title_->AddTextChangedCallback(
-      base::BindRepeating(&HoverButton::UpdateTooltipAndAccessibleName,
-                          base::Unretained(this))));
 
   if (!subtitle.empty()) {
     auto subtitle_label = std::make_unique<views::Label>(
         subtitle, views::style::CONTEXT_BUTTON, views::style::STYLE_SECONDARY);
     subtitle_label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
     subtitle_label->SetAutoColorReadabilityEnabled(false);
-    // A subtitle text update may result in the same label size and not trigger
-    // any observers. Thus, we need to add a callback that updates tooltip and
-    // accessible name when subtitle text changes.
-    text_changed_subscriptions_.push_back(
-        subtitle_label->AddTextChangedCallback(
-            base::BindRepeating(&HoverButton::UpdateTooltipAndAccessibleName,
-                                base::Unretained(this))));
     subtitle_ = label_wrapper->AddChildView(std::move(subtitle_label));
   }
 
@@ -195,16 +175,16 @@ HoverButton::HoverButton(PressedCallback callback,
       views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
                                views::MaximumFlexSizeRule::kUnbounded));
   label_wrapper->SetCanProcessEventsWithinSubtree(false);
-  label_wrapper->SetProperty(
-      views::kMarginsKey,
-      gfx::Insets::VH(add_vertical_label_spacing ? vertical_spacing : 0, 0));
+  label_wrapper->SetProperty(views::kMarginsKey,
+                             gfx::Insets::VH(vertical_spacing, 0));
   label_wrapper_ = AddChildView(std::move(label_wrapper));
   // Observe |label_wrapper_| bounds changes to ensure the HoverButton tooltip
   // is kept in sync with the size.
   label_observation_.Observe(label_wrapper_.get());
 
   if (secondary_view) {
-    secondary_view->SetCanProcessEventsWithinSubtree(false);
+    secondary_view->SetCanProcessEventsWithinSubtree(
+        secondary_view_can_process_events);
     // |secondary_view| needs a layer otherwise it's obscured by the layer
     // used in drawing ink drops.
     secondary_view->SetPaintToLayer();
@@ -213,12 +193,17 @@ HoverButton::HoverButton(PressedCallback callback,
         ChromeLayoutProvider::Get()->GetDistanceMetric(
             views::DISTANCE_RELATED_LABEL_HORIZONTAL);
 
-    // Set vertical margins such that the vertical distance between HoverButtons
-    // is maintained.
+    // If |resize_row_for_secondary_view| is true set vertical margins such that
+    // the vertical distance between HoverButtons is maintained.
+    // Otherwise set vertical margins to 0 and allow the secondary view to grow
+    // into the vertical margins that would otherwise exist due to |icon_view_|
+    // and the |label_wrapper_|.
+    const int secondary_spacing =
+        resize_row_for_secondary_view ? vertical_spacing : 0;
     secondary_view->SetProperty(
         views::kMarginsKey,
-        gfx::Insets::TLBR(vertical_spacing, icon_label_spacing,
-                          vertical_spacing, 0));
+        gfx::Insets::TLBR(secondary_spacing, icon_label_spacing,
+                          secondary_spacing, 0));
     secondary_view_ = AddChildView(std::move(secondary_view));
   }
 
@@ -246,23 +231,14 @@ void HoverButton::PreferredSizeChanged() {
 
 void HoverButton::OnViewBoundsChanged(View* observed_view) {
   LabelButton::OnViewBoundsChanged(observed_view);
-  if (observed_view == label_wrapper_) {
-    UpdateTooltipAndAccessibleName();
-  }
+  if (observed_view == label_wrapper_)
+    SetTooltipAndAccessibleName();
 }
 
 void HoverButton::SetTitleTextStyle(views::style::TextStyle text_style,
-                                    SkColor background_color,
-                                    std::optional<ui::ColorId> color_id) {
-  if (!title()) {
-    return;
-  }
-
-  title_->SetDefaultTextStyle(text_style);
+                                    SkColor background_color) {
   title_->SetDisplayedOnBackgroundColor(background_color);
-  if (color_id) {
-    title_->SetDefaultEnabledColorId(color_id);
-  }
+  title_->SetDefaultTextStyle(text_style);
 }
 
 void HoverButton::SetSubtitleTextStyle(int text_context,
@@ -280,7 +256,7 @@ void HoverButton::SetSubtitleTextStyle(int text_context,
   PreferredSizeChanged();
 }
 
-void HoverButton::UpdateTooltipAndAccessibleName() {
+void HoverButton::SetTooltipAndAccessibleName() {
   const std::u16string accessible_name =
       subtitle_ == nullptr
           ? title_->GetText()
@@ -341,11 +317,5 @@ views::View* HoverButton::GetTooltipHandlerForPoint(const gfx::Point& point) {
   return this;
 }
 
-void HoverButton::OnPressed(const ui::Event& event) {
-  if (callback_) {
-    callback_.Run(event);
-  }
-}
-
-BEGIN_METADATA(HoverButton)
+BEGIN_METADATA(HoverButton, views::LabelButton)
 END_METADATA

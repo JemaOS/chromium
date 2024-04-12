@@ -67,6 +67,10 @@ void MarketingOptInScreenHandler::DeclareLocalizedValues(
       IDS_MARKETING_OPT_IN_ACCESSIBILITY_NAV_BUTTON_SETTING_DESCRIPTION);
   builder->Add("finalA11yPageDoneButtonTitle",
                IDS_MARKETING_OPT_IN_ACCESSIBILITY_DONE_BUTTON);
+  // ---***JEMAOS BEGIN***---
+  builder->Add("jemaOSImprovementPlanOptionLabel",
+               IDS_MARKETING_OPT_IN_JEMAOS_IMPROVEMENT_PLAN);
+  // ---***JEMAOS END***---
 }
 
 void MarketingOptInScreenHandler::Show(bool opt_in_visible,
@@ -90,11 +94,6 @@ void MarketingOptInScreenHandler::UpdateA11ySettingsButtonVisibility(
 void MarketingOptInScreenHandler::UpdateA11yShelfNavigationButtonToggle(
     bool enabled) {
   CallExternalAPI("updateA11yNavigationButtonToggle", enabled);
-}
-
-base::WeakPtr<MarketingOptInScreenView>
-MarketingOptInScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
 }
 
 void MarketingOptInScreenHandler::GetAdditionalParameters(

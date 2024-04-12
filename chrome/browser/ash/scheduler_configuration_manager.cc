@@ -52,7 +52,7 @@ void SchedulerConfigurationManager::RegisterLocalStatePrefs(
   registry->RegisterStringPref(prefs::kSchedulerConfiguration, std::string());
 }
 
-std::optional<std::pair<bool, size_t>>
+absl::optional<std::pair<bool, size_t>>
 SchedulerConfigurationManager::GetLastReply() const {
   return last_reply_;
 }

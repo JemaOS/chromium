@@ -19,14 +19,7 @@ load(
     "ABSL_TEST_COPTS",
 )
 
-package(
-    default_visibility = ["//visibility:public"],
-    features = [
-        "header_modules",
-        "layering_check",
-        "parse_headers",
-    ],
-)
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
@@ -46,7 +39,7 @@ cc_library(
 
 cc_binary(
     name = "bits_benchmark",
-    testonly = True,
+    testonly = 1,
     srcs = ["bits_benchmark.cc"],
     copts = ABSL_DEFAULT_COPTS,
     linkopts = ABSL_DEFAULT_LINKOPTS,
@@ -55,7 +48,6 @@ cc_binary(
         "//absl/base:core_headers",
         "//absl/random",
         "@com_github_google_benchmark//:benchmark_main",
-        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -70,7 +62,6 @@ cc_test(
     deps = [
         ":bits",
         "//absl/random",
-        "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -106,8 +97,6 @@ cc_test(
         "//absl/base",
         "//absl/hash:hash_testing",
         "//absl/meta:type_traits",
-        "//absl/strings",
-        "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -122,7 +111,6 @@ cc_test(
         ":int128",
         "//absl/base:config",
         "@com_github_google_benchmark//:benchmark_main",
-        "@com_google_googletest//:gtest",
     ],
 )
 

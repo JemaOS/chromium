@@ -72,7 +72,6 @@ const char* CookieControlsHandler::GetEnforcementIcon(
       return kExtensionIcon;
     case CookieControlsEnforcement::kEnforcedByCookieSetting:
       return kSettingsIcon;
-    case CookieControlsEnforcement::kEnforcedByTpcdGrant:
     case CookieControlsEnforcement::kNoEnforcement:
       return "";
   }

@@ -55,7 +55,13 @@ SVGFESpecularLightingElement::SVGFESpecularLightingElement(Document& document)
           this,
           svg_names::kKernelUnitLengthAttr,
           0.0f)),
-      in1_(MakeGarbageCollected<SVGAnimatedString>(this, svg_names::kInAttr)) {}
+      in1_(MakeGarbageCollected<SVGAnimatedString>(this, svg_names::kInAttr)) {
+  AddToPropertyMap(specular_constant_);
+  AddToPropertyMap(specular_exponent_);
+  AddToPropertyMap(surface_scale_);
+  AddToPropertyMap(kernel_unit_length_);
+  AddToPropertyMap(in1_);
+}
 
 SVGAnimatedNumber* SVGFESpecularLightingElement::kernelUnitLengthX() {
   return kernel_unit_length_->FirstNumber();
@@ -96,7 +102,7 @@ bool SVGFESpecularLightingElement::SetFilterEffectAttribute(
         specular_exponent_->CurrentValue()->Value());
 
   if (const auto* light_element = SVGFELightElement::FindLightElement(*this)) {
-    std::optional<bool> light_source_update =
+    absl::optional<bool> light_source_update =
         light_element->SetLightSourceAttribute(specular_lighting, attr_name);
     if (light_source_update)
       return *light_source_update;
@@ -168,32 +174,6 @@ bool SVGFESpecularLightingElement::TaintsOrigin() const {
   // (see above), so we should have a ComputedStyle here.
   DCHECK(style);
   return style->LightingColor().IsCurrentColor();
-}
-
-SVGAnimatedPropertyBase* SVGFESpecularLightingElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kSpecularConstantAttr) {
-    return specular_constant_.Get();
-  } else if (attribute_name == svg_names::kSpecularExponentAttr) {
-    return specular_exponent_.Get();
-  } else if (attribute_name == svg_names::kSurfaceScaleAttr) {
-    return surface_scale_.Get();
-  } else if (attribute_name == svg_names::kKernelUnitLengthAttr) {
-    return kernel_unit_length_.Get();
-  } else if (attribute_name == svg_names::kInAttr) {
-    return in1_.Get();
-  } else {
-    return SVGFilterPrimitiveStandardAttributes::PropertyFromAttribute(
-        attribute_name);
-  }
-}
-
-void SVGFESpecularLightingElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{
-      specular_constant_.Get(), specular_exponent_.Get(), surface_scale_.Get(),
-      kernel_unit_length_.Get(), in1_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGFilterPrimitiveStandardAttributes::SynchronizeAllSVGAttributes();
 }
 
 }  // namespace blink

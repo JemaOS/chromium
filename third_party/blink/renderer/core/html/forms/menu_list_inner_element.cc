@@ -17,7 +17,8 @@ MenuListInnerElement::MenuListInnerElement(Document& document)
   SetHasCustomStyleCallbacks();
 }
 
-const ComputedStyle* MenuListInnerElement::CustomStyleForLayoutObject(
+scoped_refptr<const ComputedStyle>
+MenuListInnerElement::CustomStyleForLayoutObject(
     const StyleRecalcContext& style_recalc_context) {
   const ComputedStyle& parent_style = OwnerShadowHost()->ComputedStyleRef();
   ComputedStyleBuilder style_builder =
@@ -28,9 +29,7 @@ const ComputedStyle* MenuListInnerElement::CustomStyleForLayoutObject(
   style_builder.SetFlexShrink(1);
   // min-width: 0; is needed for correct shrinking.
   style_builder.SetMinWidth(Length::Fixed(0));
-  if (parent_style.ApplyControlFixedSize(OwnerShadowHost())) {
-    style_builder.SetHasLineIfEmpty(true);
-  }
+  style_builder.SetHasLineIfEmpty(true);
   style_builder.SetOverflowX(EOverflow::kHidden);
   style_builder.SetOverflowY(EOverflow::kHidden);
   style_builder.SetShouldIgnoreOverflowPropertyForInlineBlockBaseline();
@@ -53,38 +52,31 @@ const ComputedStyle* MenuListInnerElement::CustomStyleForLayoutObject(
   // when the content overflows, treat it the same as align-items: flex-start.
   // But we only do that for the cases where html.css would otherwise use
   // center.
-  if (parent_style.AlignItems().GetPosition() == ItemPosition::kCenter ||
-      parent_style.AlignItems().GetPosition() == ItemPosition::kAnchorCenter) {
+  if (parent_style.AlignItems().GetPosition() == ItemPosition::kCenter) {
     style_builder.SetMarginTop(Length());
     style_builder.SetMarginBottom(Length());
     style_builder.SetAlignSelf(StyleSelfAlignmentData(
         ItemPosition::kStart, OverflowAlignment::kDefault));
   }
 
-  // We set margin-* instead of padding-* to clip text by 'overflow: hidden'.
-  LogicalToPhysicalSetter margin_setter(style_builder.GetWritingDirection(),
-                                        style_builder,
-                                        &ComputedStyleBuilder::SetMarginTop,
-                                        &ComputedStyleBuilder::SetMarginRight,
-                                        &ComputedStyleBuilder::SetMarginBottom,
-                                        &ComputedStyleBuilder::SetMarginLeft);
+  // We set margin-left/right instead of padding-left/right to clip text by
+  // 'overflow: hidden'.
   LayoutTheme& theme = LayoutTheme::GetTheme();
   Length margin_start =
       Length::Fixed(theme.PopupInternalPaddingStart(parent_style));
   Length margin_end = Length::Fixed(
       theme.PopupInternalPaddingEnd(GetDocument().GetFrame(), parent_style));
-  margin_setter.SetInlineEnd(margin_end);
-  margin_setter.SetInlineStart(margin_start);
+  if (parent_style.IsLeftToRightDirection()) {
+    style_builder.SetMarginLeft(margin_start);
+    style_builder.SetMarginRight(margin_end);
+  } else {
+    style_builder.SetMarginLeft(margin_end);
+    style_builder.SetMarginRight(margin_start);
+  }
   style_builder.SetTextAlign(parent_style.GetTextAlign(true));
-  LogicalToPhysicalSetter padding_setter(
-      style_builder.GetWritingDirection(), style_builder,
-      &ComputedStyleBuilder::SetPaddingTop,
-      &ComputedStyleBuilder::SetPaddingRight,
-      &ComputedStyleBuilder::SetPaddingBottom,
-      &ComputedStyleBuilder::SetPaddingLeft);
-  padding_setter.SetBlockStart(
+  style_builder.SetPaddingTop(
       Length::Fixed(theme.PopupInternalPaddingTop(parent_style)));
-  padding_setter.SetBlockEnd(
+  style_builder.SetPaddingBottom(
       Length::Fixed(theme.PopupInternalPaddingBottom(parent_style)));
 
   if (const ComputedStyle* option_style =

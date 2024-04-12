@@ -83,15 +83,14 @@ void MediaStreamAudioSourceHandler::SetFormat(uint32_t number_of_channels,
     source_number_of_channels_ = number_of_channels;
   }
 
-  DeferredTaskHandler::GraphAutoLocker graph_locker(Context());
+  BaseAudioContext::GraphAutoLocker graph_locker(Context());
   Output(0).SetNumberOfChannels(number_of_channels);
 }
 
 void MediaStreamAudioSourceHandler::Process(uint32_t number_of_frames) {
   TRACE_EVENT2(TRACE_DISABLED_BY_DEFAULT("webaudio.audionode"),
                "MediaStreamAudioSourceHandler::Process", "this",
-               reinterpret_cast<void*>(this), "number_of_frames",
-               number_of_frames);
+               static_cast<void*>(this), "number_of_frames", number_of_frames);
 
   AudioBus* output_bus = Output(0).Bus();
 

@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <utility>
 #include <vector>
@@ -22,6 +21,7 @@
 #include "chrome/browser/predictors/resource_prefetch_predictor.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/keyed_service/core/keyed_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -31,7 +31,6 @@ namespace predictors {
 
 class ResourcePrefetchPredictor;
 class LoadingStatsCollector;
-class PrewarmHttpDiskCacheManager;
 
 // Entry point for the Loading predictor.
 // From a high-level request (GURL and motivation) and a database of historical
@@ -60,11 +59,11 @@ class LoadingPredictor : public KeyedService,
   // over local predictions to trigger actions, such as prefetch and/or
   // preconnect. Returns true if no more preconnect actions should be taken by
   // the caller.
-  bool PrepareForPageLoad(
-      const GURL& url,
-      HintOrigin origin,
-      bool preconnectable = false,
-      std::optional<PreconnectPrediction> preconnect_prediction = std::nullopt);
+  bool PrepareForPageLoad(const GURL& url,
+                          HintOrigin origin,
+                          bool preconnectable = false,
+                          absl::optional<PreconnectPrediction>
+                              preconnect_prediction = absl::nullopt);
 
   // Indicates that a page load hint is no longer active.
   void CancelPageLoadHint(const GURL& url);
@@ -123,19 +122,11 @@ class LoadingPredictor : public KeyedService,
       bool allow_credentials,
       const net::NetworkAnonymizationKey& network_anonymization_key);
 
-  void MaybePrewarmResources(const GURL& top_frame_main_resource_url);
-
  private:
   // Stores the information necessary to keep track of the active navigations.
   struct NavigationInfo {
     GURL main_frame_url;
     base::TimeTicks creation_time;
-  };
-
-  struct PreconnectData {
-    url::Origin last_origin_;
-    base::TimeTicks last_preconnect_time_;
-    base::TimeTicks last_preresolve_time_;
   };
 
   // Cancels an active hint, from its iterator inside |active_hints_|. If the
@@ -145,21 +136,20 @@ class LoadingPredictor : public KeyedService,
       std::map<GURL, base::TimeTicks>::iterator hint_it);
   void CleanupAbandonedHintsAndNavigations(NavigationId navigation_id);
 
-  // May start preconnect and preresolve jobs according to `prediction` for
-  // `url`.
+  // May start preconnect and preresolve jobs according to |prediction| for
+  // |url| with a given hint |origin|.
   //
-  // When LoadingPredictorPrefetch is enabled, starts prefetch jobs if
-  // `prediction` has prefetch requests.
-  void MaybeAddPreconnect(const GURL& url, PreconnectPrediction prediction);
-  // If a preconnect or prefetch exists for `url`, stop it.
+  // When LoadingPredictorPrefetch is enabled, starts prefetch
+  // jobs if |prediction| has prefetch requests.
+  void MaybeAddPreconnect(const GURL& url,
+                          PreconnectPrediction prediction,
+                          HintOrigin origin);
+  // If a preconnect or prefetch exists for |url|, stop it.
   void MaybeRemovePreconnect(const GURL& url);
 
-  // May start a preconnect or a preresolve for `url`. `preconnectable`
-  // indicates if preconnect is possible, or only preresolve will be performed.
-  bool HandleHintByOrigin(const GURL& url,
-                          bool preconnectable,
-                          bool only_allow_https,
-                          PreconnectData& preconnect_data);
+  // May start a preconnect or a preresolve for |url|. |preconnectable|
+  // indicates if preconnect is possible.
+  void HandleOmniboxHint(const GURL& url, bool preconnectable);
 
   // For testing.
   void set_mock_resource_prefetch_predictor(
@@ -180,24 +170,21 @@ class LoadingPredictor : public KeyedService,
   }
 
   LoadingPredictorConfig config_;
-  raw_ptr<Profile, DanglingUntriaged> profile_;
+  raw_ptr<Profile> profile_;
   std::unique_ptr<ResourcePrefetchPredictor> resource_prefetch_predictor_;
   std::unique_ptr<LoadingStatsCollector> stats_collector_;
   std::unique_ptr<LoadingDataCollector> loading_data_collector_;
   std::unique_ptr<PreconnectManager> preconnect_manager_;
   std::unique_ptr<PrefetchManager> prefetch_manager_;
-  std::unique_ptr<PrewarmHttpDiskCacheManager> prewarm_http_disk_cache_manager_;
   std::map<GURL, base::TimeTicks> active_hints_;
   std::map<NavigationId, NavigationInfo> active_navigations_;
   std::map<GURL, std::set<NavigationId>> active_urls_to_navigations_;
   bool shutdown_ = false;
   size_t total_hints_activated_ = 0;
 
-  PreconnectData omnibox_preconnect_data_;
-
-  PreconnectData bookmark_bar_preconnect_data_;
-
-  PreconnectData new_tab_page_preconnect_data_;
+  url::Origin last_omnibox_origin_;
+  base::TimeTicks last_omnibox_preconnect_time_;
+  base::TimeTicks last_omnibox_preresolve_time_;
 
   friend class LoadingPredictorTest;
   friend class LoadingPredictorPreconnectTest;
@@ -218,12 +205,6 @@ class LoadingPredictor : public KeyedService,
   FRIEND_TEST_ALL_PREFIXES(LoadingPredictorTest,
                            TestDontTrackNonPrefetchableUrls);
   FRIEND_TEST_ALL_PREFIXES(LoadingPredictorTest, TestDontPredictOmniboxHints);
-  FRIEND_TEST_ALL_PREFIXES(LoadingPredictorPreconnectTest,
-                           TestHandleHintWithOpaqueOrigins);
-  FRIEND_TEST_ALL_PREFIXES(LoadingPredictorPreconnectTest,
-                           TestHandleHintWhenOnlyHttpsAllowed);
-  FRIEND_TEST_ALL_PREFIXES(LoadingPredictorPreconnectTest,
-                           TestHandleHintPreresolveWhenOnlyHttpsAllowed);
 
   base::WeakPtrFactory<LoadingPredictor> weak_factory_{this};
 };

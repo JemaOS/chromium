@@ -21,7 +21,6 @@ build_webui("build") {
 
   ts_deps = [
     "//third_party/polymer/v3_0:library",
-    "//ui/webui/resources/cr_components/color_change_listener:build_ts",
     "//ui/webui/resources/cr_components/help_bubble:build_ts",
     "//ui/webui/resources/cr_elements:build_ts",
     "//ui/webui/resources/js:build_ts",
@@ -30,5 +29,4 @@ build_webui("build") {
 
   generate_grdp = true
   grd_resource_path_prefix = "user-education"
-  webui_context_type = "trusted"
 }

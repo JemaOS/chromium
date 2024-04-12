@@ -15,7 +15,6 @@
 class BookmarkTabHelperObserver;
 
 namespace bookmarks {
-class BookmarkModel;
 struct BookmarkNodeData;
 }
 
@@ -73,16 +72,21 @@ class BookmarkTabHelper
 
   // Overridden from bookmarks::BaseBookmarkModelObserver:
   void BookmarkModelChanged() override;
-  void BookmarkModelLoaded(bool ids_reassigned) override;
-  void BookmarkNodeAdded(const bookmarks::BookmarkNode* parent,
+  void BookmarkModelLoaded(bookmarks::BookmarkModel* model,
+                           bool ids_reassigned) override;
+  void BookmarkNodeAdded(bookmarks::BookmarkModel* model,
+                         const bookmarks::BookmarkNode* parent,
                          size_t index,
                          bool added_by_user) override;
-  void BookmarkNodeRemoved(const bookmarks::BookmarkNode* parent,
+  void BookmarkNodeRemoved(bookmarks::BookmarkModel* model,
+                           const bookmarks::BookmarkNode* parent,
                            size_t old_index,
                            const bookmarks::BookmarkNode* node,
                            const std::set<GURL>& removed_urls) override;
-  void BookmarkAllUserNodesRemoved(const std::set<GURL>& removed_urls) override;
-  void BookmarkNodeChanged(const bookmarks::BookmarkNode* node) override;
+  void BookmarkAllUserNodesRemoved(bookmarks::BookmarkModel* model,
+                                   const std::set<GURL>& removed_urls) override;
+  void BookmarkNodeChanged(bookmarks::BookmarkModel* model,
+                           const bookmarks::BookmarkNode* node) override;
 
   // Overridden from content::WebContentsObserver:
   void DidStartNavigation(
@@ -100,7 +104,7 @@ class BookmarkTabHelper
 
   // The BookmarkDrag is used to forward bookmark drag and drop events to
   // extensions.
-  raw_ptr<BookmarkDrag, AcrossTasksDanglingUntriaged> bookmark_drag_;
+  raw_ptr<BookmarkDrag, DanglingUntriaged> bookmark_drag_;
 
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };

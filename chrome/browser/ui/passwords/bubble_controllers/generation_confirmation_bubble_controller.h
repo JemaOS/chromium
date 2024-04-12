@@ -18,9 +18,9 @@ class GenerationConfirmationBubbleController
       DisplayReason display_reason);
   ~GenerationConfirmationBubbleController() override;
 
-  // Called by the view code when the navigate to Google password manager is
+  // Called by the view code when the navigate to passwords.google.com link is
   // clicked by the user.
-  void OnGooglePasswordManagerLinkClicked(
+  void OnNavigateToPasswordManagerAccountDashboardLinkClicked(
       password_manager::ManagePasswordsReferrer referrer);
 
  private:

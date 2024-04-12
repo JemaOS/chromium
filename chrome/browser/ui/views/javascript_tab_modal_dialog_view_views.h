@@ -24,9 +24,8 @@ class MessageBoxView;
 class JavaScriptTabModalDialogViewViews
     : public javascript_dialogs::TabModalDialogView,
       public views::DialogDelegateView {
-  METADATA_HEADER(JavaScriptTabModalDialogViewViews, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(JavaScriptTabModalDialogViewViews);
   JavaScriptTabModalDialogViewViews(const JavaScriptTabModalDialogViewViews&) =
       delete;
   JavaScriptTabModalDialogViewViews& operator=(

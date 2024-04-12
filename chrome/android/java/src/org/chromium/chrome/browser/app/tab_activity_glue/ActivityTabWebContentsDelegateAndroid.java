@@ -49,6 +49,7 @@ import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
+import org.chromium.chrome.browser.tasks.tab_management.TabUiFeatureUtilities;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.common.ResourceRequestBody;
 import org.chromium.ui.base.WindowAndroid;
@@ -73,7 +74,8 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
 
     private final Tab mTab;
 
-    @Nullable private Activity mActivity;
+    @Nullable
+    private Activity mActivity;
     private final ChromeActivityNativeDelegate mChromeActivityNativeDelegate;
     private final boolean mIsCustomTab;
     private final BrowserControlsStateProvider mBrowserControlsStateProvider;
@@ -83,14 +85,10 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
     private final Supplier<CompositorViewHolder> mCompositorViewHolderSupplier;
     private final Supplier<ModalDialogManager> mModalDialogManagerSupplier;
 
-    public ActivityTabWebContentsDelegateAndroid(
-            Tab tab,
-            Activity activity,
-            ChromeActivityNativeDelegate chromeActivityNativeDelegate,
-            boolean isCustomTab,
+    public ActivityTabWebContentsDelegateAndroid(Tab tab, Activity activity,
+            ChromeActivityNativeDelegate chromeActivityNativeDelegate, boolean isCustomTab,
             BrowserControlsStateProvider browserControlsStateProvider,
-            FullscreenManager fullscreenManager,
-            TabCreatorManager tabCreatorManager,
+            FullscreenManager fullscreenManager, TabCreatorManager tabCreatorManager,
             @NonNull Supplier<TabModelSelector> tabModelSelectorSupplier,
             @NonNull Supplier<CompositorViewHolder> compositorViewHolderSupplier,
             @NonNull Supplier<ModalDialogManager> modalDialogManagerSupplier) {
@@ -105,28 +103,22 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
         mCompositorViewHolderSupplier = compositorViewHolderSupplier;
         mModalDialogManagerSupplier = modalDialogManagerSupplier;
 
-        tab.addObserver(
-                new EmptyTabObserver() {
-                    @Override
-                    public void onActivityAttachmentChanged(
-                            Tab tab, @Nullable WindowAndroid window) {
-                        if (window == null) mActivity = null;
-                    }
+        tab.addObserver(new EmptyTabObserver() {
+            @Override
+            public void onActivityAttachmentChanged(Tab tab, @Nullable WindowAndroid window) {
+                if (window == null) mActivity = null;
+            }
 
-                    @Override
-                    public void onDestroyed(Tab tab) {
-                        tab.removeObserver(this);
-                    }
-                });
+            @Override
+            public void onDestroyed(Tab tab) {
+                tab.removeObserver(this);
+            }
+        });
     }
 
     @Override
-    public void openNewTab(
-            GURL url,
-            String extraHeaders,
-            ResourceRequestBody postData,
-            int disposition,
-            boolean isRendererInitiated) {
+    public void openNewTab(GURL url, String extraHeaders, ResourceRequestBody postData,
+            int disposition, boolean isRendererInitiated) {
         // New tabs are handled by the tab model (see
         // TabWebContentsDelegateAndroid::OpenURLFromTab().
         assert false;
@@ -149,12 +141,8 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
     }
 
     @Override
-    public void webContentsCreated(
-            WebContents sourceWebContents,
-            long openerRenderProcessId,
-            long openerRenderFrameId,
-            String frameName,
-            GURL targetUrl,
+    public void webContentsCreated(WebContents sourceWebContents, long openerRenderProcessId,
+            long openerRenderFrameId, String frameName, GURL targetUrl,
             WebContents newWebContents) {
         // The URL can't be taken from the WebContents if it's paused.  Save it for later.
         assert !mWebContentsUrlMapping.containsKey(newWebContents);
@@ -163,23 +151,21 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
 
     @Override
     public boolean isFullscreenForTabOrPending() {
-        return mFullscreenManager != null
-                ? mFullscreenManager.getPersistentFullscreenMode()
-                : false;
+        return mFullscreenManager != null ? mFullscreenManager.getPersistentFullscreenMode()
+                                          : false;
     }
 
     @Override
     protected boolean shouldResumeRequestsForCreatedWindow() {
-        return true;
+        // Pause the WebContents if an Activity has to be created for it first.
+        TabCreator tabCreator = mTabCreatorManager.getTabCreator(mTab.isIncognito());
+        assert tabCreator != null;
+        return !tabCreator.createsTabsAsynchronously();
     }
 
     @Override
-    protected boolean addNewContents(
-            WebContents sourceWebContents,
-            WebContents webContents,
-            int disposition,
-            Rect initialPosition,
-            boolean userGesture) {
+    protected boolean addNewContents(WebContents sourceWebContents, WebContents webContents,
+            int disposition, Rect initialPosition, boolean userGesture) {
         assert mWebContentsUrlMapping.containsKey(webContents);
 
         TabCreator tabCreator = mTabCreatorManager.getTabCreator(mTab.isIncognito());
@@ -194,21 +180,28 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
         // Creating new Tabs asynchronously requires starting a new Activity to create the Tab,
         // so the Tab returned will always be null.  There's no way to know synchronously
         // whether the Tab is created, so assume it's always successful.
-        boolean success =
-                tabCreator.createTabWithWebContents(
-                        mTab, webContents, TabLaunchType.FROM_LONGPRESS_FOREGROUND, url);
+        boolean createdSuccessfully = tabCreator.createTabWithWebContents(
+                mTab, webContents, TabLaunchType.FROM_LONGPRESS_FOREGROUND, url);
+        boolean success = tabCreator.createsTabsAsynchronously() || createdSuccessfully;
 
         if (success) {
             if (disposition == WindowOpenDisposition.NEW_FOREGROUND_TAB) {
+                if (TabUiFeatureUtilities.ENABLE_TAB_GROUP_AUTO_CREATION.getValue()
+                        && mTabModelSelectorSupplier.hasValue()
+                        && mTabModelSelectorSupplier.get()
+                                        .getTabModelFilterProvider()
+                                        .getCurrentTabModelFilter()
+                                        .getRelatedTabList(mTab.getId())
+                                        .size()
+                                == 2) {
+                    RecordUserAction.record("TabGroup.Created.DeveloperRequestedNewTab");
+                }
                 RecordUserAction.record("LinkNavigationOpenedInForegroundTab");
             } else if (disposition == WindowOpenDisposition.NEW_POPUP) {
                 PolicyAuditor auditor = AppHooks.get().getPolicyAuditor();
                 if (auditor != null) {
-                    auditor.notifyAuditEvent(
-                            ContextUtils.getApplicationContext(),
-                            AuditEvent.OPEN_POPUP_URL_SUCCESS,
-                            url.getSpec(),
-                            "");
+                    auditor.notifyAuditEvent(ContextUtils.getApplicationContext(),
+                            AuditEvent.OPEN_POPUP_URL_SUCCESS, url.getSpec(), "");
                 }
             }
         }
@@ -247,7 +240,9 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
         }
     }
 
-    /** Brings chrome's Activity to foreground, if it is not so. */
+    /**
+     * Brings chrome's Activity to foreground, if it is not so.
+     */
     protected void bringActivityToForeground() {
         // This intent is sent in order to get the activity back to the foreground if it was
         // not already. The previous call will activate the right tab in the context of the
@@ -259,9 +254,8 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
         // Note that calling only the intent in order to activate the tab is slightly slower
         // because it will change the tab when the intent is handled, which happens after
         // Chrome gets back to the foreground.
-        Intent newIntent =
-                IntentHandler.createTrustedBringTabToFrontIntent(
-                        mTab.getId(), IntentHandler.BringToFrontSource.ACTIVATE_TAB);
+        Intent newIntent = IntentHandler.createTrustedBringTabToFrontIntent(
+                mTab.getId(), IntentHandler.BringToFrontSource.ACTIVATE_TAB);
         if (newIntent != null) {
             newIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             ContextUtils.getApplicationContext().startActivity(newIntent);
@@ -325,9 +319,8 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
             case KeyEvent.KEYCODE_MEDIA_EJECT:
             case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK:
                 AudioManager am =
-                        (AudioManager)
-                                ContextUtils.getApplicationContext()
-                                        .getSystemService(Context.AUDIO_SERVICE);
+                        (AudioManager) ContextUtils.getApplicationContext().getSystemService(
+                                Context.AUDIO_SERVICE);
                 am.dispatchMediaKeyEvent(e);
                 break;
             default:
@@ -415,9 +408,8 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
 
     @Override
     protected boolean isPictureInPictureEnabled() {
-        return mActivity != null
-                ? PictureInPicture.isEnabled(mActivity.getApplicationContext())
-                : false;
+        return mActivity != null ? PictureInPicture.isEnabled(mActivity.getApplicationContext())
+                                 : false;
     }
 
     @Override
@@ -431,14 +423,17 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
             return true;
         }
         if (!ChromeFeatureList.isEnabled(
-                ChromeFeatureList.DARKEN_WEBSITES_CHECKBOX_IN_THEMES_SETTING)) {
+                    ChromeFeatureList.DARKEN_WEBSITES_CHECKBOX_IN_THEMES_SETTING)) {
             return false;
         }
         WebContents webContents = mTab.getWebContents();
         if (webContents == null) {
             return false;
         }
-        Profile profile = mTab.getProfile();
+        Profile profile = Profile.fromWebContents(mTab.getWebContents());
+        if (profile == null) {
+            return false;
+        }
         return isNightModeEnabled()
                 && WebContentsDarkModeController.isEnabledForUrl(
                         profile, webContents.getVisibleUrl());
@@ -460,46 +455,33 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
 
         ModalDialogManager modalDialogManager = mModalDialogManagerSupplier.get();
         ModalDialogProperties.Controller dialogController =
-                new SimpleModalDialogController(
-                        modalDialogManager,
-                        (Integer dismissalCause) -> {
-                            if (!mTab.isInitialized()) return;
-                            switch (dismissalCause) {
-                                case DialogDismissalCause.POSITIVE_BUTTON_CLICKED:
-                                    mTab.getWebContents()
-                                            .getNavigationController()
-                                            .continuePendingReload();
-                                    break;
-                                case DialogDismissalCause.ACTIVITY_DESTROYED:
-                                case DialogDismissalCause.TAB_DESTROYED:
-                                    // Intentionally ignored as the tab object is gone.
-                                    break;
-                                default:
-                                    mTab.getWebContents()
-                                            .getNavigationController()
-                                            .cancelPendingReload();
-                                    break;
-                            }
-                        });
+                new SimpleModalDialogController(modalDialogManager, (Integer dismissalCause) -> {
+                    if (!mTab.isInitialized()) return;
+                    switch (dismissalCause) {
+                        case DialogDismissalCause.POSITIVE_BUTTON_CLICKED:
+                            mTab.getWebContents().getNavigationController().continuePendingReload();
+                            break;
+                        case DialogDismissalCause.ACTIVITY_DESTROYED:
+                        case DialogDismissalCause.TAB_DESTROYED:
+                            // Intentionally ignored as the tab object is gone.
+                            break;
+                        default:
+                            mTab.getWebContents().getNavigationController().cancelPendingReload();
+                            break;
+                    }
+                });
 
         Resources resources = mActivity.getResources();
         PropertyModel dialogModel =
                 new PropertyModel.Builder(ModalDialogProperties.ALL_KEYS)
                         .with(ModalDialogProperties.CONTROLLER, dialogController)
-                        .with(
-                                ModalDialogProperties.TITLE,
-                                resources,
+                        .with(ModalDialogProperties.TITLE, resources,
                                 R.string.http_post_warning_title)
-                        .with(
-                                ModalDialogProperties.MESSAGE_PARAGRAPH_1,
+                        .with(ModalDialogProperties.MESSAGE_PARAGRAPH_1,
                                 resources.getString(R.string.http_post_warning))
-                        .with(
-                                ModalDialogProperties.POSITIVE_BUTTON_TEXT,
-                                resources,
+                        .with(ModalDialogProperties.POSITIVE_BUTTON_TEXT, resources,
                                 R.string.http_post_warning_resend)
-                        .with(
-                                ModalDialogProperties.NEGATIVE_BUTTON_TEXT,
-                                resources,
+                        .with(ModalDialogProperties.NEGATIVE_BUTTON_TEXT, resources,
                                 R.string.cancel)
                         .with(ModalDialogProperties.CANCEL_ON_TOUCH_OUTSIDE, true)
                         .build();

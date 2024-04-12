@@ -30,11 +30,10 @@
 
 #include "third_party/blink/renderer/core/animation/animation.h"
 
-#include <bit>
 #include <memory>
 #include <tuple>
 
-#include "base/test/metrics/histogram_tester.h"
+#include "base/bits.h"
 #include "build/build_config.h"
 #include "cc/trees/target_property.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -72,6 +71,7 @@
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/thread_state.h"
 #include "third_party/blink/renderer/platform/scheduler/public/event_loop.h"
+#include "third_party/blink/renderer/platform/testing/histogram_tester.h"
 #include "third_party/blink/renderer/platform/testing/paint_test_configurations.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
@@ -112,8 +112,8 @@ class AnimationAnimationTestNoCompositing : public PaintTestConfigurations,
     static CSSNumberInterpolationType opacity_type(PropertyHandleOpacity);
     TransitionKeyframe* start_keyframe =
         MakeGarbageCollected<TransitionKeyframe>(PropertyHandleOpacity);
-    start_keyframe->SetValue(MakeGarbageCollected<TypedInterpolationValue>(
-        opacity_type, MakeGarbageCollected<InterpolableNumber>(1.0)));
+    start_keyframe->SetValue(std::make_unique<TypedInterpolationValue>(
+        opacity_type, std::make_unique<InterpolableNumber>(1.0)));
     start_keyframe->SetOffset(0.0);
     // Egregious hack: Sideload the compositor value.
     // This is usually set in a part of the rendering process SimulateFrame
@@ -122,8 +122,8 @@ class AnimationAnimationTestNoCompositing : public PaintTestConfigurations,
         MakeGarbageCollected<CompositorKeyframeDouble>(1.0));
     TransitionKeyframe* end_keyframe =
         MakeGarbageCollected<TransitionKeyframe>(PropertyHandleOpacity);
-    end_keyframe->SetValue(MakeGarbageCollected<TypedInterpolationValue>(
-        opacity_type, MakeGarbageCollected<InterpolableNumber>(0.0)));
+    end_keyframe->SetValue(std::make_unique<TypedInterpolationValue>(
+        opacity_type, std::make_unique<InterpolableNumber>(0.0)));
     end_keyframe->SetOffset(1.0);
     // Egregious hack: Sideload the compositor value.
     end_keyframe->SetCompositorValue(
@@ -1016,10 +1016,10 @@ TEST_P(AnimationAnimationTestNoCompositing, SetEffectUnlimitsAnimation) {
 TEST_P(AnimationAnimationTestNoCompositing, EmptyAnimationsDontUpdateEffects) {
   animation = timeline->Play(nullptr);
   animation->Update(kTimingUpdateOnDemand);
-  EXPECT_EQ(std::nullopt, animation->TimeToEffectChange());
+  EXPECT_EQ(absl::nullopt, animation->TimeToEffectChange());
 
   SimulateFrame(1234);
-  EXPECT_EQ(std::nullopt, animation->TimeToEffectChange());
+  EXPECT_EQ(absl::nullopt, animation->TimeToEffectChange());
 }
 
 TEST_P(AnimationAnimationTestNoCompositing, AnimationsDisassociateFromEffect) {
@@ -1072,7 +1072,7 @@ TEST_P(AnimationAnimationTestNoCompositing, AnimationsReturnTimeToNextEffect) {
 
   // Still in effect if fillmode = forward|both.
   SimulateFrame(3000);
-  EXPECT_EQ(std::nullopt, animation->TimeToEffectChange());
+  EXPECT_EQ(absl::nullopt, animation->TimeToEffectChange());
 
   // Reset to start of animation. Next effect at the end of the start delay.
   animation->setCurrentTime(MakeGarbageCollected<V8CSSNumberish>(0),
@@ -1090,7 +1090,7 @@ TEST_P(AnimationAnimationTestNoCompositing, AnimationsReturnTimeToNextEffect) {
   // Effectively a paused animation.
   animation->setPlaybackRate(0);
   animation->Update(kTimingUpdateOnDemand);
-  EXPECT_EQ(std::nullopt, animation->TimeToEffectChange());
+  EXPECT_EQ(absl::nullopt, animation->TimeToEffectChange());
 
   // Reversed animation from end time. Next effect after end delay.
   animation->setCurrentTime(MakeGarbageCollected<V8CSSNumberish>(3000),
@@ -1118,7 +1118,7 @@ TEST_P(AnimationAnimationTestNoCompositing, TimeToNextEffectWhenPaused) {
   SimulateAwaitReady();
   EXPECT_FALSE(animation->pending());
   animation->Update(kTimingUpdateOnDemand);
-  EXPECT_EQ(std::nullopt, animation->TimeToEffectChange());
+  EXPECT_EQ(absl::nullopt, animation->TimeToEffectChange());
 }
 
 TEST_P(AnimationAnimationTestNoCompositing,
@@ -1135,7 +1135,7 @@ TEST_P(AnimationAnimationTestNoCompositing,
   animation->Update(kTimingUpdateOnDemand);
   // This frame will fire the finish event event though no start time has been
   // received from the compositor yet, as cancel() nukes start times.
-  EXPECT_EQ(std::nullopt, animation->TimeToEffectChange());
+  EXPECT_EQ(absl::nullopt, animation->TimeToEffectChange());
 }
 
 TEST_P(AnimationAnimationTestNoCompositing,
@@ -1150,7 +1150,7 @@ TEST_P(AnimationAnimationTestNoCompositing,
   EXPECT_EQ("idle", animation->playState());
   EXPECT_FALSE(animation->pending());
   animation->Update(kTimingUpdateOnDemand);
-  EXPECT_EQ(std::nullopt, animation->TimeToEffectChange());
+  EXPECT_EQ(absl::nullopt, animation->TimeToEffectChange());
 }
 
 TEST_P(AnimationAnimationTestNoCompositing,
@@ -1162,13 +1162,12 @@ TEST_P(AnimationAnimationTestNoCompositing,
   EXPECT_EQ("idle", animation->playState());
   EXPECT_FALSE(animation->pending());
   animation->Update(kTimingUpdateOnDemand);
-  EXPECT_EQ(std::nullopt, animation->TimeToEffectChange());
+  EXPECT_EQ(absl::nullopt, animation->TimeToEffectChange());
 }
 
 TEST_P(AnimationAnimationTestNoCompositing, AttachedAnimations) {
   // Prevent |element| from being collected by |CollectAllGarbageForTesting|.
-  Persistent<Element> element =
-      GetDocument().CreateElementForBinding(AtomicString("foo"));
+  Persistent<Element> element = GetDocument().CreateElementForBinding("foo");
 
   Timing timing;
   auto* keyframe_effect = MakeGarbageCollected<KeyframeEffect>(
@@ -1296,7 +1295,7 @@ TEST_P(AnimationAnimationTestNoCompositing, SetPlaybackRateAfterFinish) {
   animation->finish();
   animation->Update(kTimingUpdateOnDemand);
   EXPECT_EQ("finished", animation->playState());
-  EXPECT_EQ(std::nullopt, animation->TimeToEffectChange());
+  EXPECT_EQ(absl::nullopt, animation->TimeToEffectChange());
 
   // Reversing a finished animation marks the animation as outdated. Required
   // to recompute the time to next interval.
@@ -1315,7 +1314,7 @@ TEST_P(AnimationAnimationTestNoCompositing, UpdatePlaybackRateAfterFinish) {
   animation->finish();
   animation->Update(kTimingUpdateOnDemand);
   EXPECT_EQ("finished", animation->playState());
-  EXPECT_EQ(std::nullopt, animation->TimeToEffectChange());
+  EXPECT_EQ(absl::nullopt, animation->TimeToEffectChange());
 
   // Reversing a finished animation marks the animation as outdated. Required
   // to recompute the time to next interval. The pending playback rate is
@@ -1420,7 +1419,7 @@ int GenerateHistogramValue(CompositorAnimations::FailureReason reason) {
   // as 0 and recorded as 0.
   if (reason == CompositorAnimations::kNoFailure)
     return CompositorAnimations::kNoFailure;
-  return std::countr_zero(static_cast<uint32_t>(reason)) + 1;
+  return base::bits::CountTrailingZeroBits(static_cast<uint32_t>(reason)) + 1;
 }
 }  // namespace
 
@@ -1430,7 +1429,7 @@ TEST_P(AnimationAnimationTestCompositing, PreCommitRecordsHistograms) {
 
   // Initially the animation in this test has no target, so it is invalid.
   {
-    base::HistogramTester histogram;
+    HistogramTester histogram;
     ASSERT_TRUE(animation->PreCommit(0, nullptr, true));
     histogram.ExpectBucketCount(
         histogram_name,
@@ -1440,7 +1439,7 @@ TEST_P(AnimationAnimationTestCompositing, PreCommitRecordsHistograms) {
 
   // Restart the animation with a target and compositing state.
   {
-    base::HistogramTester histogram;
+    HistogramTester histogram;
     ResetWithCompositedAnimation();
     histogram.ExpectBucketCount(
         histogram_name,
@@ -1452,7 +1451,7 @@ TEST_P(AnimationAnimationTestCompositing, PreCommitRecordsHistograms) {
   animation->setPlaybackRate(0);
   animation->NotifyReady(ANIMATION_TIME_DELTA_FROM_SECONDS(100));
   {
-    base::HistogramTester histogram;
+    HistogramTester histogram;
     ASSERT_TRUE(animation->PreCommit(0, nullptr, true));
     histogram.ExpectBucketCount(
         histogram_name,
@@ -1479,7 +1478,7 @@ TEST_P(AnimationAnimationTestCompositing, PreCommitRecordsHistograms) {
       ->SetKeyframes({start_keyframe, end_keyframe});
   UpdateAllLifecyclePhasesForTest();
   {
-    base::HistogramTester histogram;
+    HistogramTester histogram;
     ASSERT_TRUE(animation->PreCommit(0, nullptr, true));
     histogram.ExpectBucketCount(
         histogram_name,
@@ -1758,7 +1757,6 @@ TEST_P(AnimationAnimationTestCompositing,
 
   UpdateAllLifecyclePhasesForTest();
   scroll_animation->play();
-  scroll_animation->SetDeferredStartTimeForTesting();
   EXPECT_EQ(scroll_animation->CheckCanStartAnimationOnCompositor(nullptr),
             CompositorAnimations::kNoFailure);
 }
@@ -1826,11 +1824,11 @@ TEST_P(AnimationAnimationTestCompositing,
 
   UpdateAllLifecyclePhasesForTest();
   const double TEST_START_PERCENT = 10;
-  scroll_animation->play();
   scroll_animation->setStartTime(
       MakeGarbageCollected<V8CSSNumberish>(
           CSSUnitValues::percent(TEST_START_PERCENT)),
       ASSERT_NO_EXCEPTION);
+  scroll_animation->play();
   EXPECT_EQ(scroll_animation->CheckCanStartAnimationOnCompositor(nullptr),
             CompositorAnimations::kNoFailure);
   UpdateAllLifecyclePhasesForTest();
@@ -1842,13 +1840,8 @@ TEST_P(AnimationAnimationTestCompositing,
           ->GetCompositorAnimation()
           ->CcAnimation()
           ->GetKeyframeModel(cc::TargetProperty::OPACITY);
-
-  double timeline_duration_ms =
-      scroll_timeline->GetDuration()->InMillisecondsF();
-  double start_time_ms =
-      (keyframe_model->start_time() - base::TimeTicks()).InMillisecondsF();
-  double progress_percent = (start_time_ms / timeline_duration_ms) * 100;
-  EXPECT_NEAR(progress_percent, TEST_START_PERCENT, 1e-3);
+  EXPECT_EQ(keyframe_model->start_time() - base::TimeTicks(),
+            base::Seconds(TEST_START_PERCENT));
   EXPECT_EQ(keyframe_model->time_offset(), base::TimeDelta());
 }
 
@@ -1886,8 +1879,8 @@ TEST_P(AnimationAnimationTestNoCompositing, ScrollLinkedAnimationCreation) {
   scroll_animation->play();
 
   // Verify start and current times in Pending state.
-  EXPECT_FALSE(StartTimeIsSet(scroll_animation));
-  EXPECT_FALSE(CurrentTimeIsSet(scroll_animation));
+  EXPECT_TIME(0, GetStartTimePercent(scroll_animation));
+  EXPECT_TIME(20, GetCurrentTimePercent(scroll_animation));
 
   UpdateAllLifecyclePhasesForTest();
   // Verify start and current times in Playing state.
@@ -1918,8 +1911,11 @@ TEST_P(AnimationAnimationTestCompositing,
     </div>
   )HTML");
 
-  auto* scroller = GetLayoutBoxByElementId("scroller");
-  ASSERT_TRUE(scroller->UsesCompositedScrolling());
+  auto* scroller =
+      To<LayoutBoxModelObject>(GetLayoutObjectByElementId("scroller"));
+  if (!RuntimeEnabledFeatures::CompositeScrollAfterPaintEnabled()) {
+    ASSERT_TRUE(scroller->UsesCompositedScrolling());
+  }
 
   // Create ScrollTimeline
   ScrollTimelineOptions* options = ScrollTimelineOptions::Create();
@@ -2261,7 +2257,7 @@ TEST_P(AnimationPendingAnimationsTest,
 }
 
 TEST_P(AnimationAnimationTestCompositing,
-       ScrollLinkedAnimationCompositedEvenIfSourceIsNotComposited) {
+       ScrollLinkedAnimationNotCompositedIfSourceIsNotComposited) {
   SetPreferCompositingToLCDText(false);
   SetBodyInnerHTML(R"HTML(
     <style>
@@ -2278,7 +2274,8 @@ TEST_P(AnimationAnimationTestCompositing,
   )HTML");
 
   // Create ScrollTimeline
-  auto* scroller = GetLayoutBoxByElementId("scroller");
+  auto* scroller =
+      To<LayoutBoxModelObject>(GetLayoutObjectByElementId("scroller"));
   PaintLayerScrollableArea* scrollable_area = scroller->GetScrollableArea();
   ASSERT_FALSE(scroller->UsesCompositedScrolling());
   scrollable_area->SetScrollOffset(ScrollOffset(0, 20),
@@ -2319,12 +2316,8 @@ TEST_P(AnimationAnimationTestCompositing,
 
   UpdateAllLifecyclePhasesForTest();
   scroll_animation->play();
-  scroll_animation->SetDeferredStartTimeForTesting();
-  EXPECT_EQ(
-      scroll_animation->CheckCanStartAnimationOnCompositor(nullptr),
-      RuntimeEnabledFeatures::ScrollTimelineAlwaysOnCompositorEnabled()
-          ? CompositorAnimations::kNoFailure
-          : CompositorAnimations::kTimelineSourceHasInvalidCompositingState);
+  EXPECT_EQ(scroll_animation->CheckCanStartAnimationOnCompositor(nullptr),
+            CompositorAnimations::kTimelineSourceHasInvalidCompositingState);
 }
 
 #if BUILDFLAG(IS_MAC) && defined(ARCH_CPU_ARM64)
@@ -2375,18 +2368,15 @@ TEST_P(AnimationAnimationTestCompositing, MAYBE_ContentVisibleDisplayLockTest) {
   ASSERT_TRUE(!!animation);
   EXPECT_FALSE(animation->IsInDisplayLockedSubtree());
 
-  inner->setAttribute(html_names::kStyleAttr,
-                      AtomicString("content-visibility: hidden"));
+  inner->setAttribute(html_names::kStyleAttr, "content-visibility: hidden");
   RunDocumentLifecycle();
   EXPECT_TRUE(animation->IsInDisplayLockedSubtree());
 
-  inner->setAttribute(html_names::kStyleAttr,
-                      AtomicString("content-visibility: visible"));
+  inner->setAttribute(html_names::kStyleAttr, "content-visibility: visible");
   RunDocumentLifecycle();
   EXPECT_FALSE(animation->IsInDisplayLockedSubtree());
 
-  outer->setAttribute(html_names::kStyleAttr,
-                      AtomicString("content-visibility: hidden"));
+  outer->setAttribute(html_names::kStyleAttr, "content-visibility: hidden");
   RunDocumentLifecycle();
   EXPECT_TRUE(animation->IsInDisplayLockedSubtree());
 
@@ -2428,7 +2418,7 @@ TEST_P(AnimationAnimationTestCompositing, HiddenAnimationsDoNotTick) {
   // The animation should run on main because compositor properties are missing.
   EXPECT_EQ(
       animation->CheckCanStartAnimationOnCompositor(paint_artifact_compositor),
-      CompositorAnimations::kAnimationHasNoVisibleChange);
+      CompositorAnimations::kCompositorPropertyAnimationsHaveNoEffect);
   EXPECT_TRUE(animation->CompositorPropertyAnimationsHaveNoEffectForTesting());
   EXPECT_TRUE(animation->AnimationHasNoEffect());
 
@@ -2471,13 +2461,13 @@ TEST_P(AnimationAnimationTestCompositing, HiddenAnimationsTickWhenVisible) {
   // The animation should run on main because compositor properties are missing.
   EXPECT_EQ(
       animation->CheckCanStartAnimationOnCompositor(paint_artifact_compositor),
-      CompositorAnimations::kAnimationHasNoVisibleChange);
+      CompositorAnimations::kCompositorPropertyAnimationsHaveNoEffect);
   EXPECT_TRUE(animation->CompositorPropertyAnimationsHaveNoEffectForTesting());
   EXPECT_TRUE(animation->AnimationHasNoEffect());
 
   // The no-effect animation doesn't count. The one animation is
   // AnimationAnimationTestCompositing::animation_.
-  EXPECT_EQ(1u, animation->TimelineInternal()->AnimationsNeedingUpdateCount());
+  EXPECT_EQ(1u, animation->timeline()->AnimationsNeedingUpdateCount());
 
   // The next effect change should be at the end because the animation does not
   // tick while hidden.
@@ -2485,8 +2475,7 @@ TEST_P(AnimationAnimationTestCompositing, HiddenAnimationsTickWhenVisible) {
                    animation->TimeToEffectChange().value());
 
   Element* visibility = GetElementById("visibility");
-  visibility->setAttribute(html_names::kStyleAttr,
-                           AtomicString("visibility: visible;"));
+  visibility->setAttribute(html_names::kStyleAttr, "visibility: visible;");
   RunDocumentLifecycle();
 
   // The animation should run on the compositor after the properties are
@@ -2496,7 +2485,7 @@ TEST_P(AnimationAnimationTestCompositing, HiddenAnimationsTickWhenVisible) {
       CompositorAnimations::kNoFailure);
   EXPECT_FALSE(animation->CompositorPropertyAnimationsHaveNoEffectForTesting());
   EXPECT_FALSE(animation->AnimationHasNoEffect());
-  EXPECT_EQ(2u, animation->TimelineInternal()->AnimationsNeedingUpdateCount());
+  EXPECT_EQ(2u, animation->timeline()->AnimationsNeedingUpdateCount());
 
   // The next effect change should be at the end because the animation is
   // running on the compositor.

@@ -7,8 +7,7 @@
  * DiscoveryManager which allows interaction with native code.
  */
 
-import type {DiscoveryManagerInterface, DiscoveryManagerRemote, DiscoveryObserverInterface, DiscoveryObserverRemote} from '/shared/nearby_share.mojom-webui.js';
-import {DiscoveryManager, DiscoveryObserverReceiver} from '/shared/nearby_share.mojom-webui.js';
+import {DiscoveryManager, DiscoveryManagerInterface, DiscoveryManagerRemote, DiscoveryObserverInterface, DiscoveryObserverReceiver, DiscoveryObserverRemote} from '/shared/nearby_share.mojom-webui.js';
 
 let discoveryManager: DiscoveryManagerInterface|null = null;
 let isTesting: boolean = false;

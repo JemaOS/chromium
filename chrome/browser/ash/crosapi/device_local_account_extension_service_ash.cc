@@ -1,10 +1,9 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/ash/crosapi/device_local_account_extension_service_ash.h"
 
-#include <optional>
 #include <string>
 
 #include "base/debug/dump_without_crashing.h"
@@ -15,17 +14,18 @@
 #include "components/account_id/account_id.h"
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace crosapi {
 namespace {
 
-std::optional<std::string> GetPrimaryUserEmail() {
+absl::optional<std::string> GetPrimaryUserEmail() {
   const user_manager::User* user =
       user_manager::UserManager::Get()->GetPrimaryUser();
   if (user)
     return user->GetAccountId().GetUserEmail();
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace
@@ -46,7 +46,7 @@ void DeviceLocalAccountExtensionServiceAsh::BindExtensionInstaller(
         installer) {
   policy::BrowserPolicyConnectorAsh* connector =
       g_browser_process->platform_part()->browser_policy_connector_ash();
-  std::optional<std::string> primary_user_email = GetPrimaryUserEmail();
+  absl::optional<std::string> primary_user_email = GetPrimaryUserEmail();
   DCHECK(primary_user_email);
   policy::DeviceLocalAccountPolicyBroker* broker =
       connector->GetDeviceLocalAccountPolicyService()->GetBrokerForUser(

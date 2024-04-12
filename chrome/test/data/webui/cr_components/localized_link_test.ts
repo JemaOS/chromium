@@ -4,7 +4,7 @@
 
 import '//resources/cr_components/localized_link/localized_link.js';
 
-import type {LocalizedLinkElement} from '//resources/cr_components/localized_link/localized_link.js';
+import {LocalizedLinkElement} from '//resources/cr_components/localized_link/localized_link.js';
 import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
@@ -99,25 +99,6 @@ suite('localized_link', function() {
           eventToPromise('link-clicked', localizedLink);
 
       anchorTag.click();
-      await Promise.all([localizedLinkPromise, flushTasks()]);
-    });
-  });
-
-  test('LinkAuxclick', function() {
-    document.body.innerHTML = getLocalizedStringWithLinkElementHtml(
-        `Text with a <a href='#'>link</a>`, ``);
-
-    return flushTasks().then(async () => {
-      const localizedLink = document.body.querySelector('localized-link');
-      assertTrue(!!localizedLink);
-      const anchorTag = localizedLink.shadowRoot!.querySelector('a');
-      assertTrue(!!anchorTag);
-      const localizedLinkPromise =
-          eventToPromise('link-clicked', localizedLink);
-
-      // simulate a middle-button click
-      anchorTag.dispatchEvent(new MouseEvent('auxclick', {button: 1}));
-
       await Promise.all([localizedLinkPromise, flushTasks()]);
     });
   });

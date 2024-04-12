@@ -46,5 +46,5 @@ void ToggleMicrophoneButton::UpdateImageAndTooltipText() {
   SetTooltipText(l10n_util::GetStringUTF16(text));
 }
 
-BEGIN_METADATA(ToggleMicrophoneButton)
+BEGIN_METADATA(ToggleMicrophoneButton, OverlayWindowImageButton)
 END_METADATA

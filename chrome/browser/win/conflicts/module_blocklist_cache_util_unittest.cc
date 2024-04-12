@@ -7,7 +7,6 @@
 #include <memory>
 #include <random>
 #include <set>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -101,12 +100,15 @@ class ModuleBlocklistCacheUtilTest : public testing::Test {
 };
 
 TEST_F(ModuleBlocklistCacheUtilTest, CalculateTimeDateStamp) {
-  static constexpr base::Time::Exploded kChromeBirthday = {
-      .year = 2008, .month = 9, .day_of_week = 2, .day_of_month = 2};
+  base::Time::Exploded chrome_birthday = {};
+  chrome_birthday.year = 2008;
+  chrome_birthday.month = 9;        // September.
+  chrome_birthday.day_of_week = 2;  // Tuesday.
+  chrome_birthday.day_of_month = 2;
 
   base::Time time;
-  ASSERT_TRUE(kChromeBirthday.HasValidValues());
-  ASSERT_TRUE(base::Time::FromUTCExploded(kChromeBirthday, &time));
+  ASSERT_TRUE(chrome_birthday.HasValidValues());
+  ASSERT_TRUE(base::Time::FromUTCExploded(chrome_birthday, &time));
 
   // Ensure that CalculateTimeDateStamp() will always return the number of
   // hours between |time| and the Windows epoch.
@@ -189,16 +191,17 @@ class FakeModuleListFilter : public ModuleListFilter {
 
   void AddAllowlistedModule(const third_party_dlls::PackedListModule& module) {
     allowlisted_modules_.emplace(
-        std::string_view(
+        base::StringPiece(
             reinterpret_cast<const char*>(&module.basename_hash[0]),
             std::size(module.basename_hash)),
-        std::string_view(reinterpret_cast<const char*>(&module.code_id_hash[0]),
-                         std::size(module.basename_hash)));
+        base::StringPiece(
+            reinterpret_cast<const char*>(&module.code_id_hash[0]),
+            std::size(module.basename_hash)));
   }
 
   // ModuleListFilter:
-  bool IsAllowlisted(std::string_view module_basename_hash,
-                     std::string_view module_code_id_hash) const override {
+  bool IsAllowlisted(base::StringPiece module_basename_hash,
+                     base::StringPiece module_code_id_hash) const override {
     return base::Contains(
         allowlisted_modules_,
         std::make_pair(module_basename_hash, module_code_id_hash));
@@ -213,7 +216,8 @@ class FakeModuleListFilter : public ModuleListFilter {
  private:
   ~FakeModuleListFilter() override = default;
 
-  std::set<std::pair<std::string_view, std::string_view>> allowlisted_modules_;
+  std::set<std::pair<base::StringPiece, base::StringPiece>>
+      allowlisted_modules_;
 };
 
 TEST_F(ModuleBlocklistCacheUtilTest, RemoveAllowlistedEntries) {

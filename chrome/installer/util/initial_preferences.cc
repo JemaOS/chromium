@@ -7,7 +7,6 @@
 #include <stddef.h>
 
 #include <memory>
-#include <optional>
 
 #include "base/environment.h"
 #include "base/files/file_util.h"
@@ -24,6 +23,7 @@
 #include "chrome/installer/util/util_constants.h"
 #include "components/variations/pref_names.h"
 #include "rlz/buildflags/buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -50,19 +50,19 @@ std::vector<std::string> GetNamedList(const char* name,
   return list;
 }
 
-std::optional<base::Value::Dict> ParseDistributionPreferences(
+absl::optional<base::Value::Dict> ParseDistributionPreferences(
     const std::string& json_data) {
   JSONStringValueDeserializer json(json_data);
   std::string error;
   std::unique_ptr<base::Value> root(json.Deserialize(nullptr, &error));
   if (!root.get()) {
     LOG(WARNING) << "Failed to parse initial prefs file: " << error;
-    return std::nullopt;
+    return absl::nullopt;
   }
   if (!root->is_dict()) {
     LOG(WARNING) << "Failed to parse initial prefs file: "
                  << "Root item must be a dictionary.";
-    return std::nullopt;
+    return absl::nullopt;
   }
   return std::move(*root).TakeDict();
 }
@@ -70,19 +70,6 @@ std::optional<base::Value::Dict> ParseDistributionPreferences(
 }  // namespace
 
 namespace installer {
-
-#if !BUILDFLAG(IS_MAC)
-// static
-base::FilePath InitialPreferences::Path(const base::FilePath& dir,
-                                        bool for_read) {
-  base::FilePath initial_prefs = dir.AppendASCII("initial_preferences");
-  if (!for_read || base::PathIsReadable(initial_prefs)) {
-    return initial_prefs;
-  }
-
-  return dir.AppendASCII("master_preferences");
-}
-#endif  // !BUILDFLAG(IS_MAC)
 
 InitialPreferences::InitialPreferences() {
   InitializeFromCommandLine(*base::CommandLine::ForCurrentProcess());
@@ -273,7 +260,7 @@ void InitialPreferences::EnforceLegacyPreferences() {
 bool InitialPreferences::GetBool(const std::string& name, bool* value) const {
   if (!distribution_)
     return false;
-  const std::optional<bool> v = distribution_->FindBoolByDottedPath(name);
+  const absl::optional<bool> v = distribution_->FindBoolByDottedPath(name);
   if (!v)
     return false;
   *value = *v;
@@ -283,7 +270,7 @@ bool InitialPreferences::GetBool(const std::string& name, bool* value) const {
 bool InitialPreferences::GetInt(const std::string& name, int* value) const {
   if (!distribution_)
     return false;
-  const std::optional<int> v = distribution_->FindInt(name);
+  const absl::optional<int> v = distribution_->FindInt(name);
   if (!v)
     return false;
   *value = *v;
@@ -335,7 +322,7 @@ std::string InitialPreferences::GetVariationsSeedSignature() {
 
 std::string InitialPreferences::ExtractPrefString(const std::string& name) {
   std::string result;
-  std::optional<base::Value> pref_value = initial_dictionary_->Extract(name);
+  absl::optional<base::Value> pref_value = initial_dictionary_->Extract(name);
   if (pref_value.has_value()) {
     if (pref_value->is_string())
       result = pref_value->GetString();

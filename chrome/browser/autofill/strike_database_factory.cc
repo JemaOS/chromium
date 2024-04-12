@@ -4,7 +4,7 @@
 
 #include "chrome/browser/autofill/strike_database_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/autofill/core/browser/strike_databases/strike_database.h"
 #include "content/public/browser/storage_partition.h"
@@ -19,8 +19,7 @@ StrikeDatabase* StrikeDatabaseFactory::GetForProfile(Profile* profile) {
 
 // static
 StrikeDatabaseFactory* StrikeDatabaseFactory::GetInstance() {
-  static base::NoDestructor<StrikeDatabaseFactory> instance;
-  return instance.get();
+  return base::Singleton<StrikeDatabaseFactory>::get();
 }
 
 StrikeDatabaseFactory::StrikeDatabaseFactory()

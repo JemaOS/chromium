@@ -42,28 +42,27 @@
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
-#include "third_party/blink/renderer/core/layout/absolute_utils.h"
-#include "third_party/blink/renderer/core/layout/fragmentation_utils.h"
 #include "third_party/blink/renderer/core/layout/hit_test_location.h"
-#include "third_party/blink/renderer/core/layout/inline/inline_cursor.h"
-#include "third_party/blink/renderer/core/layout/inline/offset_mapping.h"
 #include "third_party/blink/renderer/core/layout/layout_flow_thread.h"
 #include "third_party/blink/renderer/core/layout/layout_inline.h"
 #include "third_party/blink/renderer/core/layout/layout_multi_column_flow_thread.h"
 #include "third_party/blink/renderer/core/layout/layout_multi_column_spanner_placeholder.h"
-#include "third_party/blink/renderer/core/layout/layout_ng_block_flow.h"
 #include "third_party/blink/renderer/core/layout/layout_object_inlines.h"
-#include "third_party/blink/renderer/core/layout/layout_result.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
-#include "third_party/blink/renderer/core/layout/legacy_layout_tree_walking.h"
-#include "third_party/blink/renderer/core/layout/logical_box_fragment.h"
-#include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_inline_cursor.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_offset_mapping.h"
+#include "third_party/blink/renderer/core/layout/ng/layout_ng_block_flow.h"
+#include "third_party/blink/renderer/core/layout/ng/legacy_layout_tree_walking.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_absolute_utils.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_box_fragment.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_fragmentation_utils.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_layout_result.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_physical_box_fragment.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_unpositioned_float.h"
 #include "third_party/blink/renderer/core/layout/shapes/shape_outside_info.h"
-#include "third_party/blink/renderer/core/layout/table/layout_table.h"
 #include "third_party/blink/renderer/core/layout/text_autosizer.h"
-#include "third_party/blink/renderer/core/layout/unpositioned_float.h"
-#include "third_party/blink/renderer/core/paint/inline_paint_context.h"
-#include "third_party/blink/renderer/core/paint/object_paint_invalidator.h"
+#include "third_party/blink/renderer/core/paint/block_flow_paint_invalidator.h"
+#include "third_party/blink/renderer/core/paint/ng/ng_inline_paint_context.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/clear_collection_scope.h"
@@ -86,8 +85,9 @@ LayoutBlockFlow::LayoutBlockFlow(ContainerNode* node) : LayoutBlock(node) {
 
 LayoutBlockFlow::~LayoutBlockFlow() = default;
 
-LayoutBlockFlow* LayoutBlockFlow::CreateAnonymous(Document* document,
-                                                  const ComputedStyle* style) {
+LayoutBlockFlow* LayoutBlockFlow::CreateAnonymous(
+    Document* document,
+    scoped_refptr<const ComputedStyle> style) {
   auto* layout_block_flow = MakeGarbageCollected<LayoutNGBlockFlow>(nullptr);
   layout_block_flow->SetDocumentForAnonymous(document);
   layout_block_flow->SetStyle(style);
@@ -97,6 +97,82 @@ LayoutBlockFlow* LayoutBlockFlow::CreateAnonymous(Document* document,
 bool LayoutBlockFlow::IsInitialLetterBox() const {
   return IsA<FirstLetterPseudoElement>(GetNode()) &&
          !StyleRef().InitialLetter().IsNormal();
+}
+
+void LayoutBlockFlow::AddVisualOverflowFromInlineChildren() {
+  NOT_DESTROYED();
+  DCHECK(!NeedsLayout());
+  DCHECK(!ChildPrePaintBlockedByDisplayLock());
+
+  if (!PhysicalFragmentCount()) {
+    return;
+  }
+
+  // TODO(crbug.com/1144203): This should compute in the stitched coordinate
+  // system, but overflows in the block direction is converted to the inline
+  // direction in the multicol container. Just unite overflows in the inline
+  // direction only for now.
+  for (const NGPhysicalBoxFragment& fragment : PhysicalFragments()) {
+    if (const NGFragmentItems* items = fragment.Items()) {
+      PhysicalRect children_rect;
+      for (NGInlineCursor cursor(fragment, *items); cursor;
+           cursor.MoveToNextSkippingChildren()) {
+        const NGFragmentItem* child = cursor.CurrentItem();
+        DCHECK(child);
+        if (child->HasSelfPaintingLayer()) {
+          continue;
+        }
+        PhysicalRect child_rect = child->InkOverflow();
+        if (!child_rect.IsEmpty()) {
+          child_rect.offset += child->OffsetInContainerFragment();
+          children_rect.Unite(child_rect);
+        }
+      }
+      AddContentsVisualOverflow(children_rect);
+    } else if (fragment.HasFloatingDescendantsForPaint()) {
+      AddVisualOverflowFromFloats(fragment);
+    }
+  }
+}
+
+void LayoutBlockFlow::AddVisualOverflowFromFloats(
+    const NGPhysicalFragment& fragment) {
+  NOT_DESTROYED();
+  DCHECK(!NeedsLayout());
+  DCHECK(!ChildPrePaintBlockedByDisplayLock());
+  DCHECK(fragment.HasFloatingDescendantsForPaint());
+
+  for (const NGLink& child : fragment.PostLayoutChildren()) {
+    if (child->HasSelfPaintingLayer())
+      continue;
+
+    if (child->IsFloating()) {
+      AddVisualOverflowFromChild(To<LayoutBox>(*child->GetLayoutObject()));
+      continue;
+    }
+
+    if (const NGPhysicalFragment* child_container = child.get()) {
+      if (child_container->HasFloatingDescendantsForPaint() &&
+          !child_container->IsFormattingContextRoot())
+        AddVisualOverflowFromFloats(*child_container);
+    }
+  }
+}
+
+void LayoutBlockFlow::ComputeVisualOverflow() {
+  NOT_DESTROYED();
+  DCHECK(!SelfNeedsLayout());
+
+  LayoutRect previous_visual_overflow_rect = VisualOverflowRectAllowingUnset();
+  ClearVisualOverflow();
+  AddVisualOverflowFromChildren();
+  AddVisualEffectOverflow();
+
+  if (VisualOverflowRect() != previous_visual_overflow_rect) {
+    InvalidateIntersectionObserverCachedRects();
+    SetShouldCheckForPaintInvalidation();
+    GetFrameView()->SetIntersectionObservationState(LocalFrameView::kDesired);
+  }
 }
 
 bool LayoutBlockFlow::CanContainFirstFormattedLine() const {
@@ -123,7 +199,6 @@ void LayoutBlockFlow::WillBeDestroyed() {
 void LayoutBlockFlow::AddChild(LayoutObject* new_child,
                                LayoutObject* before_child) {
   NOT_DESTROYED();
-
   if (LayoutMultiColumnFlowThread* flow_thread = MultiColumnFlowThread()) {
     if (before_child == flow_thread)
       before_child = flow_thread->FirstChild();
@@ -143,12 +218,8 @@ void LayoutBlockFlow::AddChild(LayoutObject* new_child,
   // children as blocks.
   // So, if our children are currently inline and a block child has to be
   // inserted, we move all our inline children into anonymous block boxes.
-  const bool child_is_inline_level =
-      new_child->IsInline() ||
-      (LayoutObject::RequiresAnonymousTableWrappers(new_child) &&
-       LayoutTable::ShouldCreateInlineAnonymous(*this));
   bool child_is_block_level =
-      !child_is_inline_level && !new_child->IsFloatingOrOutOfFlowPositioned();
+      !new_child->IsInline() && !new_child->IsFloatingOrOutOfFlowPositioned();
 
   if (ChildrenInline()) {
     if (child_is_block_level) {
@@ -178,9 +249,9 @@ void LayoutBlockFlow::AddChild(LayoutObject* new_child,
       return;
     }
 
-    // LayoutOutsideListMarker is out-of-flow for the tree building purpose,
+    // LayoutNGOutsideListMarker is out-of-flow for the tree building purpose,
     // and that is not inline level, but IsInline().
-    if (new_child->IsInline() && !new_child->IsLayoutOutsideListMarker()) {
+    if (new_child->IsInline() && !new_child->IsLayoutNGOutsideListMarker()) {
       // No suitable existing anonymous box - create a new one.
       auto* new_block = To<LayoutBlockFlow>(CreateAnonymousBlock());
       LayoutBox::AddChild(new_block, before_child);
@@ -205,8 +276,7 @@ void LayoutBlockFlow::AddChild(LayoutObject* new_child,
 
 static bool IsMergeableAnonymousBlock(const LayoutBlockFlow* block) {
   return block->IsAnonymousBlock() && !block->BeingDestroyed() &&
-         !block->IsRubyColumn() && !block->IsRubyBase() &&
-         !block->IsViewTransitionRoot();
+         !block->IsRubyRun() && !block->IsRubyBase();
 }
 
 void LayoutBlockFlow::RemoveChild(LayoutObject* old_child) {
@@ -261,8 +331,8 @@ void LayoutBlockFlow::RemoveChild(LayoutObject* old_child) {
 
   LayoutObject* child = prev ? prev : next;
   auto* child_block_flow = DynamicTo<LayoutBlockFlow>(child);
-  if (child_block_flow && !child_block_flow->PreviousSibling() &&
-      !child_block_flow->NextSibling()) {
+  if (child && child_block_flow && !child->PreviousSibling() &&
+      !child->NextSibling()) {
     // If the removal has knocked us down to containing only a single anonymous
     // box we can go ahead and pull the content right back up into our
     // box.
@@ -277,6 +347,10 @@ void LayoutBlockFlow::RemoveChild(LayoutObject* old_child) {
     // inline without the need for anonymous blocks, then do that.
     MakeChildrenInlineIfPossible();
   }
+}
+
+bool LayoutBlockFlow::CreatesAnonymousWrapper() const {
+  return IsLayoutFlowThread() && Parent()->IsLayoutNGObject();
 }
 
 void LayoutBlockFlow::MoveAllChildrenIncludingFloatsTo(
@@ -296,17 +370,19 @@ void LayoutBlockFlow::ChildBecameFloatingOrOutOfFlow(LayoutBox* child) {
   MakeChildrenInlineIfPossible();
 
   // Reparent the child to an adjacent anonymous block if one is available.
-  auto* prev = DynamicTo<LayoutBlockFlow>(child->PreviousSibling());
-  if (prev && prev->IsAnonymousBlock()) {
-    MoveChildTo(prev, child, nullptr, false);
+  LayoutObject* prev = child->PreviousSibling();
+  auto* new_container = DynamicTo<LayoutBlockFlow>(prev);
+  if (prev && prev->IsAnonymousBlock() && new_container) {
+    MoveChildTo(new_container, child, nullptr, false);
     // The anonymous block we've moved to may now be adjacent to former siblings
     // of ours that it can contain also.
-    prev->ReparentSubsequentFloatingOrOutOfFlowSiblings();
+    new_container->ReparentSubsequentFloatingOrOutOfFlowSiblings();
     return;
   }
-  auto* next = DynamicTo<LayoutBlockFlow>(child->NextSibling());
-  if (next && next->IsAnonymousBlock()) {
-    MoveChildTo(next, child, next->FirstChild(), false);
+  LayoutObject* next = child->NextSibling();
+  new_container = DynamicTo<LayoutBlockFlow>(next);
+  if (next && next->IsAnonymousBlock() && next->IsLayoutBlockFlow()) {
+    MoveChildTo(new_container, child, new_container->FirstChild(), false);
   }
 }
 
@@ -317,16 +393,10 @@ static bool AllowsCollapseAnonymousBlockChild(const LayoutBlockFlow& parent,
   // destroyed. See crbug.com/282088
   if (child.BeingDestroyed())
     return false;
-  // Ruby elements use anonymous wrappers for ruby columns and ruby bases by
+  // Ruby elements use anonymous wrappers for ruby runs and ruby bases by
   // design, so we don't remove them.
-  if (child.IsRubyColumn() || child.IsRubyBase()) {
+  if (child.IsRubyRun() || child.IsRubyBase())
     return false;
-  }
-  // The ViewTransitionRoot is also anonymous by design and shouldn't be
-  // elided.
-  if (child.IsViewTransitionRoot()) {
-    return false;
-  }
   if (IsA<LayoutMultiColumnFlowThread>(parent) &&
       parent.Parent()->IsLayoutNGObject() && child.ChildrenInline()) {
     // The test[1] reaches here.
@@ -455,11 +525,10 @@ void LayoutBlockFlow::MakeChildrenInlineIfPossible() {
     // siblings underneath them.
     if (!child->ChildrenInline())
       return;
-    // Ruby elements use anonymous wrappers for ruby columns and ruby bases by
+    // Ruby elements use anonymous wrappers for ruby runs and ruby bases by
     // design, so we don't remove them.
-    if (child->IsRubyColumn() || child->IsRubyBase()) {
+    if (child->IsRubyRun() || child->IsRubyBase())
       return;
-    }
 
     blocks_to_remove.push_back(child_block_flow);
   }
@@ -488,11 +557,10 @@ static void GetInlineRun(LayoutObject* start,
   // Start by skipping as many non-inlines as we can.
   LayoutObject* curr = start;
 
-  // LayoutOutsideListMarker is out-of-flow for the tree building purpose.
+  // LayoutNGOutsideListMarker is out-of-flow for the tree building purpose.
   // Skip here because it's the first child.
-  if (curr && curr->IsLayoutOutsideListMarker()) {
+  if (curr && curr->IsLayoutNGOutsideListMarker())
     curr = curr->NextSibling();
-  }
 
   bool saw_inline;
   do {
@@ -533,7 +601,7 @@ void LayoutBlockFlow::MakeChildrenNonInline(LayoutObject* insertion_point) {
   DCHECK(!insertion_point || insertion_point->Parent() == this);
 
   SetChildrenInline(false);
-  ClearInlineNodeData();
+  ClearNGInlineNodeData();
 
   LayoutObject* child = FirstChild();
   if (!child)
@@ -556,7 +624,7 @@ void LayoutBlockFlow::MakeChildrenNonInline(LayoutObject* insertion_point) {
 
 #if DCHECK_IS_ON()
   for (LayoutObject* c = FirstChild(); c; c = c->NextSibling())
-    DCHECK(!c->IsInline() || c->IsLayoutOutsideListMarker());
+    DCHECK(!c->IsInline() || c->IsLayoutNGOutsideListMarker());
 #endif
 
   SetShouldDoFullPaintInvalidation();
@@ -715,8 +783,8 @@ void LayoutBlockFlow::SetShouldDoFullPaintInvalidationForFirstLine() {
   if (fragments.IsEmpty()) {
     return;
   }
-  for (const PhysicalBoxFragment& fragment : fragments) {
-    InlineCursor first_line(fragment);
+  for (const NGPhysicalBoxFragment& fragment : fragments) {
+    NGInlineCursor first_line(fragment);
     if (!first_line) {
       continue;
     }
@@ -726,9 +794,9 @@ void LayoutBlockFlow::SetShouldDoFullPaintInvalidationForFirstLine() {
     }
     if (first_line.Current().UsesFirstLineStyle()) {
       // Mark all descendants of the first line if first-line style.
-      for (InlineCursor descendants = first_line.CursorForDescendants();
+      for (NGInlineCursor descendants = first_line.CursorForDescendants();
            descendants; descendants.MoveToNext()) {
-        const FragmentItem* item = descendants.Current().Item();
+        const NGFragmentItem* item = descendants.Current().Item();
         if (UNLIKELY(item->IsLayoutObjectDestroyedOrMoved())) {
           descendants.MoveToNextSkippingChildren();
           continue;
@@ -741,6 +809,50 @@ void LayoutBlockFlow::SetShouldDoFullPaintInvalidationForFirstLine() {
       StyleRef().ClearCachedPseudoElementStyles();
       SetShouldDoFullPaintInvalidation();
       return;
+    }
+  }
+}
+
+void LayoutBlockFlow::RecalcInlineChildrenVisualOverflow() {
+  NOT_DESTROYED();
+  DCHECK(ChildrenInline());
+
+  if (!CanUseFragmentsForVisualOverflow()) {
+    return;
+  }
+
+  // TODO(crbug.com/1144203): This code path should be switch to
+  // |RecalcFragmentsVisualOverflow|.
+  for (const NGPhysicalBoxFragment& fragment : PhysicalFragments()) {
+    if (const NGFragmentItems* items = fragment.Items()) {
+      NGInlineCursor cursor(fragment, *items);
+      NGInlinePaintContext inline_context;
+      NGFragmentItem::RecalcInkOverflowForCursor(&cursor, &inline_context);
+    }
+    // Even if this turned out to be an inline formatting context with
+    // fragment items (handled above), we need to handle floating descendants.
+    // If a float is block-fragmented, it is resumed as a regular box fragment
+    // child, rather than becoming a fragment item.
+    if (fragment.HasFloatingDescendantsForPaint()) {
+      RecalcFloatingDescendantsVisualOverflow(fragment);
+    }
+  }
+}
+
+void LayoutBlockFlow::RecalcFloatingDescendantsVisualOverflow(
+    const NGPhysicalFragment& fragment) {
+  DCHECK(fragment.HasFloatingDescendantsForPaint());
+
+  for (const NGLink& child : fragment.PostLayoutChildren()) {
+    if (child->IsFloating()) {
+      child->GetMutableLayoutObject()
+          ->RecalcNormalFlowChildVisualOverflowIfNeeded();
+      continue;
+    }
+
+    if (const NGPhysicalFragment* child_container_fragment = child.get()) {
+      if (child_container_fragment->HasFloatingDescendantsForPaint())
+        RecalcFloatingDescendantsVisualOverflow(*child_container_fragment);
     }
   }
 }
@@ -778,33 +890,8 @@ bool LayoutBlockFlow::ShouldMoveCaretToHorizontalBoundaryWhenPastTopOrBottom()
 void LayoutBlockFlow::InvalidateDisplayItemClients(
     PaintInvalidationReason invalidation_reason) const {
   NOT_DESTROYED();
-  LayoutBlock::InvalidateDisplayItemClients(invalidation_reason);
-
-  InlineCursor cursor(*this);
-  if (!cursor) {
-    return;
-  }
-
-  ObjectPaintInvalidator paint_invalidator(*this);
-  // Line boxes record hit test data (see BoxFragmentPainter::PaintLineBox)
-  // and should be invalidated if they change.
-  bool invalidate_all_lines =
-      HasEffectiveAllowedTouchAction() || InsideBlockingWheelEventHandler();
-
-  for (cursor.MoveToFirstLine(); cursor; cursor.MoveToNextLine()) {
-    // The first line LineBoxFragment paints the ::first-line background.
-    // Because it may be expensive to figure out if the first line is affected
-    // by any ::first-line selectors at all, we just invalidate
-    // unconditionally which is typically cheaper.
-    if (invalidate_all_lines || cursor.Current().UsesFirstLineStyle()) {
-      DCHECK(cursor.Current().GetDisplayItemClient());
-      paint_invalidator.InvalidateDisplayItemClient(
-          *cursor.Current().GetDisplayItemClient(), invalidation_reason);
-    }
-    if (!invalidate_all_lines) {
-      break;
-    }
-  }
+  BlockFlowPaintInvalidator(*this).InvalidateDisplayItemClients(
+      invalidation_reason);
 }
 
 }  // namespace blink

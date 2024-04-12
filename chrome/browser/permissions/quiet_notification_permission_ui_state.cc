@@ -16,30 +16,21 @@ void QuietNotificationPermissionUiState::RegisterProfilePrefs(
     user_prefs::PrefRegistrySyncable* registry) {
   // TODO(crbug.com/1001857): Consider making this syncable.
   registry->RegisterBooleanPref(prefs::kEnableQuietNotificationPermissionUi,
-                                /*default_value=*/false);
-  registry->RegisterBooleanPref(prefs::kEnableQuietGeolocationPermissionUi,
-                                /*default_value=*/false);
+                                false /* default_value */);
   registry->RegisterBooleanPref(
       prefs::kQuietNotificationPermissionShouldShowPromo,
-      /*default_value=*/false);
+      false /* default_value */);
   registry->RegisterBooleanPref(
       prefs::kQuietNotificationPermissionPromoWasShown,
-      /*default_value=*/false);
+      false /* default_value */);
   registry->RegisterBooleanPref(
       prefs::kHadThreeConsecutiveNotificationPermissionDenies,
-      /*default_value=*/false);
+      false /* default_value */);
   registry->RegisterIntegerPref(
       prefs::kQuietNotificationPermissionUiEnablingMethod,
       static_cast<int>(EnablingMethod::kUnspecified));
   registry->RegisterTimePref(prefs::kQuietNotificationPermissionUiDisabledTime,
                              base::Time());
-  registry->RegisterBooleanPref(prefs::kEnableNotificationCPSS,
-                                /*default_value=*/true);
-  registry->RegisterBooleanPref(prefs::kEnableGeolocationCPSS,
-                                /*default_value=*/true);
-  registry->RegisterBooleanPref(
-      prefs::kDidMigrateAdaptiveNotifiationQuietingToCPSS,
-      /*default_value=*/false);
 }
 
 // static

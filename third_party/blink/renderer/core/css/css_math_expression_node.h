@@ -31,20 +31,15 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_MATH_EXPRESSION_NODE_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_MATH_EXPRESSION_NODE_H_
 
-#include <optional>
-
 #include "base/check_op.h"
-#include "base/containers/enum_set.h"
 #include "base/dcheck_is_on.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_anchor_query_enums.h"
-#include "third_party/blink/renderer/core/css/css_length_resolver.h"
 #include "third_party/blink/renderer/core/css/css_math_operator.h"
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
 #include "third_party/blink/renderer/core/css/css_value.h"
 #include "third_party/blink/renderer/core/css/parser/css_parser_token_range.h"
-#include "third_party/blink/renderer/core/css_value_keywords.h"
-#include "third_party/blink/renderer/core/layout/geometry/axis.h"
 #include "third_party/blink/renderer/platform/geometry/calculation_value.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
 
@@ -55,33 +50,23 @@ static const int kMaxExpressionDepth = 100;
 class CalculationExpressionNode;
 class CSSNumericLiteralValue;
 class CSSParserContext;
-class TryTacticTransform;
-class WritingDirectionMode;
 
 // The order of this enum should not change since its elements are used as
 // indices in the addSubtractResult matrix.
-enum CalculationResultCategory {
+enum CalculationCategory {
   kCalcNumber,
   kCalcLength,
   kCalcPercent,
-  // kCalcLengthFunction is used for calculated lengths that can't be resolved
-  // at style time.  This includes mixes of length and percent, and also
-  // anchor queries and intrinsic size keywords in calc-size().
-  kCalcLengthFunction,
-  // kCalcIntrinsicSize is a special case of kCalcLengthFunction that is
-  // forbidden within most expression contexts.
-  kCalcIntrinsicSize,
+  // TODO(crbug.com/1309178): We are now using this for all calculated lengths
+  // that can't be resolved at style time, including not only calc(px + %) but
+  // also anchor queries. Rename this category accordingly.
+  kCalcPercentLength,
   kCalcAngle,
   kCalcTime,
   kCalcFrequency,
   kCalcResolution,
-  kCalcIdent,
   kCalcOther,
 };
-using CalculationResultCategorySet =
-    base::EnumSet<CalculationResultCategory,
-                  CalculationResultCategory::kCalcNumber,
-                  CalculationResultCategory::kCalcOther>;
 
 class CORE_EXPORT CSSMathExpressionNode
     : public GarbageCollected<CSSMathExpressionNode> {
@@ -90,34 +75,15 @@ class CORE_EXPORT CSSMathExpressionNode
   static CSSMathExpressionNode* Create(PixelsAndPercent pixels_and_percent);
   static CSSMathExpressionNode* Create(const CalculationExpressionNode& node);
 
-  enum class Flag : uint8_t {
-    AllowPercent,
-    AllowCalcSize,
-    AllowAutoInCalcSize,
-
-    MinValue = AllowPercent,
-    MaxValue = AllowAutoInCalcSize,
-  };
-
-  using Flags = base::EnumSet<Flag, Flag::MinValue, Flag::MaxValue>;
-
   static CSSMathExpressionNode* ParseMathFunction(
       CSSValueID function_id,
       CSSParserTokenRange tokens,
       const CSSParserContext&,
-      const Flags parsing_flags,
-      CSSAnchorQueryTypes allowed_anchor_queries,
-      // Variable substitutions for relative color syntax.
-      // https://www.w3.org/TR/css-color-5/#relative-colors
-      const HashMap<CSSValueID, double>& color_channel_keyword_values = {});
-
-  virtual CSSMathExpressionNode* Copy() const = 0;
+      CSSAnchorQueryTypes allowed_anchor_queries);
 
   virtual bool IsNumericLiteral() const { return false; }
   virtual bool IsOperation() const { return false; }
   virtual bool IsAnchorQuery() const { return false; }
-  virtual bool IsIdentifierLiteral() const { return false; }
-  virtual bool IsKeywordLiteral() const { return false; }
 
   virtual bool IsMathFunction() const { return false; }
 
@@ -127,9 +93,6 @@ class CORE_EXPORT CSSMathExpressionNode
   // Hits DCHECK if type conversion is required.
   virtual double DoubleValue() const = 0;
 
-  double ComputeNumber(const CSSLengthResolver& length_resolver) const {
-    return ComputeDouble(length_resolver);
-  }
   virtual double ComputeLengthPx(const CSSLengthResolver&) const = 0;
   virtual bool AccumulateLengthArray(CSSLengthArray&,
                                      double multiplier) const = 0;
@@ -137,7 +100,7 @@ class CORE_EXPORT CSSMathExpressionNode
       CSSPrimitiveValue::LengthTypeFlags& types) const = 0;
   virtual scoped_refptr<const CalculationExpressionNode>
   ToCalculationExpression(const CSSLengthResolver&) const = 0;
-  virtual std::optional<PixelsAndPercent> ToPixelsAndPercent(
+  virtual absl::optional<PixelsAndPercent> ToPixelsAndPercent(
       const CSSLengthResolver&) const = 0;
 
   scoped_refptr<const CalculationValue> ToCalcValue(
@@ -151,12 +114,11 @@ class CORE_EXPORT CSSMathExpressionNode
   // TODO(crbug.com/984372): We currently use 'ms' as the canonical unit of
   // <time>. Switch to 's' to follow the spec.
   // Returns |nullopt| on evaluation failures due to the following reasons:
-  // - The category doesn't have a canonical unit (e.g.,
-  //   |kCalcLengthFunction|, |kCalcIntrinsicSize|).
+  // - The category doesn't have a canonical unit (e.g., |kCalcPercentLength|).
   // - A type conversion that doesn't have a fixed conversion ratio is needed
   //   (e.g., between 'px' and 'em').
   // - There's an unsupported calculation, e.g., dividing two lengths.
-  virtual std::optional<double> ComputeValueInCanonicalUnit() const = 0;
+  virtual absl::optional<double> ComputeValueInCanonicalUnit() const = 0;
 
   virtual String CustomCSSText() const = 0;
   virtual bool operator==(const CSSMathExpressionNode& other) const {
@@ -165,26 +127,10 @@ class CORE_EXPORT CSSMathExpressionNode
 
   virtual bool IsComputationallyIndependent() const = 0;
 
-  CalculationResultCategory Category() const { return category_; }
-
-  // HasPercentage returns whether the toplevel result type involves a
-  // percentage.  In some cases a result type having a percentage requires
-  // different layout behavior (when there's nothing to resolve percentages
-  // against), so this needs to be tracked accurately.  This examines the
-  // cases of kCalcLengthFunction or kCalcIntrinsicSize to determine whether
-  // it results from a percentage.
-  virtual bool HasPercentage() const { return Category() == kCalcPercent; }
-
-  // InvolvesLayout returns whether a percentage, an anchor query, or a
-  // calc-size() keyword is used anywhere in the value, including in contexts
-  // (such as the progress() function) that convert the result type of their
-  // arguments into a number.
-  virtual bool InvolvesLayout() const {
-    return Category() == kCalcPercent || Category() == kCalcLengthFunction ||
-           Category() == kCalcIntrinsicSize;
+  CalculationCategory Category() const { return category_; }
+  bool HasPercentage() const {
+    return category_ == kCalcPercent || category_ == kCalcPercentLength;
   }
-
-  virtual bool InvolvesAnchorQueries() const { return IsAnchorQuery(); }
 
   // Returns the unit type of the math expression *without doing any type
   // conversion* (e.g., 1px + 1em needs type conversion to resolve).
@@ -215,20 +161,10 @@ class CORE_EXPORT CSSMathExpressionNode
   virtual bool InvolvesPercentageComparisons() const = 0;
 #endif
 
-  // Rewrite this function according to the specified TryTacticTransform,
-  // e.g. anchor(left) -> anchor(right). If this function is not affected
-  // by the transform, returns `this`.
-  //
-  // See also TryTacticTransform.
-  virtual const CSSMathExpressionNode* TransformAnchors(
-      LogicalAxis,
-      const TryTacticTransform&,
-      const WritingDirectionMode&) const = 0;
-
   virtual void Trace(Visitor* visitor) const {}
 
  protected:
-  CSSMathExpressionNode(CalculationResultCategory category,
+  CSSMathExpressionNode(CalculationCategory category,
                         bool has_comparisons,
                         bool needs_tree_scope_population)
       : category_(category),
@@ -237,14 +173,7 @@ class CORE_EXPORT CSSMathExpressionNode
     DCHECK_NE(category, kCalcOther);
   }
 
-  virtual double ComputeDouble(
-      const CSSLengthResolver& length_resolver) const = 0;
-  static double ComputeDouble(const CSSMathExpressionNode* operand,
-                              const CSSLengthResolver& length_resolver) {
-    return operand->ComputeDouble(length_resolver);
-  }
-
-  CalculationResultCategory category_;
+  CalculationCategory category_;
   bool is_nested_calc_ = false;
   bool has_comparisons_;
   bool needs_tree_scope_population_;
@@ -261,8 +190,6 @@ class CORE_EXPORT CSSMathExpressionNumericLiteral final
 
   explicit CSSMathExpressionNumericLiteral(const CSSNumericLiteralValue* value);
 
-  CSSMathExpressionNode* Copy() const final { return Create(value_.Get()); }
-
   const CSSNumericLiteralValue& GetValue() const { return *value_; }
 
   bool IsNumericLiteral() const final { return true; }
@@ -272,21 +199,15 @@ class CORE_EXPORT CSSMathExpressionNumericLiteral final
     NOTREACHED();
     return *this;
   }
-  const CSSMathExpressionNode* TransformAnchors(
-      LogicalAxis,
-      const TryTacticTransform&,
-      const WritingDirectionMode&) const final {
-    return this;
-  }
 
   bool IsZero() const final;
   String CustomCSSText() const final;
   scoped_refptr<const CalculationExpressionNode> ToCalculationExpression(
       const CSSLengthResolver&) const final;
-  std::optional<PixelsAndPercent> ToPixelsAndPercent(
+  absl::optional<PixelsAndPercent> ToPixelsAndPercent(
       const CSSLengthResolver&) const final;
   double DoubleValue() const final;
-  std::optional<double> ComputeValueInCanonicalUnit() const final;
+  absl::optional<double> ComputeValueInCanonicalUnit() const final;
   double ComputeLengthPx(const CSSLengthResolver& length_resolver) const final;
   bool AccumulateLengthArray(CSSLengthArray& length_array,
                              double multiplier) const final;
@@ -301,9 +222,6 @@ class CORE_EXPORT CSSMathExpressionNumericLiteral final
   bool InvolvesPercentageComparisons() const final;
 #endif
 
- protected:
-  double ComputeDouble(const CSSLengthResolver& length_resolver) const final;
-
  private:
   Member<const CSSNumericLiteralValue> value_;
 };
@@ -312,184 +230,6 @@ template <>
 struct DowncastTraits<CSSMathExpressionNumericLiteral> {
   static bool AllowFrom(const CSSMathExpressionNode& node) {
     return node.IsNumericLiteral();
-  }
-};
-
-// Used for container name in container-progress().
-// Will possibly be used in container name for container units function.
-class CORE_EXPORT CSSMathExpressionIdentifierLiteral final
-    : public CSSMathExpressionNode {
- public:
-  static CSSMathExpressionIdentifierLiteral* Create(AtomicString identifier) {
-    return MakeGarbageCollected<CSSMathExpressionIdentifierLiteral>(
-        std::move(identifier));
-  }
-
-  explicit CSSMathExpressionIdentifierLiteral(AtomicString identifier);
-
-  CSSMathExpressionNode* Copy() const final { return Create(identifier_); }
-
-  const AtomicString& GetValue() const { return identifier_; }
-
-  bool IsIdentifierLiteral() const final { return true; }
-
-  const CSSMathExpressionNode& PopulateWithTreeScope(
-      const TreeScope* tree_scope) const final {
-    NOTREACHED();
-    return *this;
-  }
-  const CSSMathExpressionNode* TransformAnchors(
-      LogicalAxis,
-      const TryTacticTransform&,
-      const WritingDirectionMode&) const final {
-    return this;
-  }
-
-  bool IsZero() const final { return false; }
-  String CustomCSSText() const final { return identifier_; }
-  scoped_refptr<const CalculationExpressionNode> ToCalculationExpression(
-      const CSSLengthResolver&) const final;
-  std::optional<PixelsAndPercent> ToPixelsAndPercent(
-      const CSSLengthResolver&) const final {
-    return std::nullopt;
-  }
-  double DoubleValue() const final {
-    NOTREACHED();
-    return 0;
-  }
-  std::optional<double> ComputeValueInCanonicalUnit() const final {
-    return std::nullopt;
-  }
-  double ComputeLengthPx(const CSSLengthResolver& length_resolver) const final {
-    NOTREACHED();
-    return 0;
-  }
-  bool AccumulateLengthArray(CSSLengthArray& length_array,
-                             double multiplier) const final {
-    return false;
-  }
-  void AccumulateLengthUnitTypes(
-      CSSPrimitiveValue::LengthTypeFlags& types) const final {}
-  bool IsComputationallyIndependent() const final { return true; }
-  bool operator==(const CSSMathExpressionNode& other) const final {
-    return other.IsIdentifierLiteral() &&
-           DynamicTo<CSSMathExpressionIdentifierLiteral>(other)->GetValue() ==
-               GetValue();
-  }
-  CSSPrimitiveValue::UnitType ResolvedUnitType() const final {
-    return CSSPrimitiveValue::UnitType::kIdent;
-  }
-  void Trace(Visitor* visitor) const final {
-    CSSMathExpressionNode::Trace(visitor);
-  }
-
-#if DCHECK_IS_ON()
-  bool InvolvesPercentageComparisons() const final { return false; }
-#endif
-
- protected:
-  double ComputeDouble(const CSSLengthResolver& length_resolver) const final {
-    NOTREACHED();
-    return 0;
-  }
-
- private:
-  AtomicString identifier_;
-};
-
-template <>
-struct DowncastTraits<CSSMathExpressionIdentifierLiteral> {
-  static bool AllowFrom(const CSSMathExpressionNode& node) {
-    return node.IsIdentifierLiteral();
-  }
-};
-
-// Used for representation of the keywords, e.g. `size` keyword
-// and intrinsic size keywords in calc-size(). Some of the keywords can
-// be resolved to double with CSSLengthResolver.
-class CORE_EXPORT CSSMathExpressionKeywordLiteral final
-    : public CSSMathExpressionNode {
- public:
-  static CSSMathExpressionKeywordLiteral* Create(CSSValueID keyword,
-                                                 CSSMathOperator op) {
-    return MakeGarbageCollected<CSSMathExpressionKeywordLiteral>(keyword, op);
-  }
-
-  CSSMathExpressionKeywordLiteral(CSSValueID keyword, CSSMathOperator op);
-
-  CSSMathExpressionNode* Copy() const final {
-    return Create(keyword_, operator_);
-  }
-
-  CSSValueID GetValue() const { return keyword_; }
-  CSSMathOperator GetOperator() const { return operator_; }
-
-  bool IsKeywordLiteral() const final { return true; }
-
-  const CSSMathExpressionNode& PopulateWithTreeScope(
-      const TreeScope* tree_scope) const final {
-    NOTREACHED();
-    return *this;
-  }
-  const CSSMathExpressionNode* TransformAnchors(
-      LogicalAxis,
-      const TryTacticTransform&,
-      const WritingDirectionMode&) const final {
-    return this;
-  }
-
-  bool IsZero() const final { return false; }
-  String CustomCSSText() const final { return getValueName(keyword_); }
-  scoped_refptr<const CalculationExpressionNode> ToCalculationExpression(
-      const CSSLengthResolver&) const final;
-  std::optional<PixelsAndPercent> ToPixelsAndPercent(
-      const CSSLengthResolver&) const final;
-  double DoubleValue() const final {
-    NOTREACHED();
-    return 0;
-  }
-  std::optional<double> ComputeValueInCanonicalUnit() const final {
-    return std::nullopt;
-  }
-  double ComputeLengthPx(const CSSLengthResolver& length_resolver) const final {
-    NOTREACHED();
-    return 0;
-  }
-  bool AccumulateLengthArray(CSSLengthArray& length_array,
-                             double multiplier) const final {
-    return false;
-  }
-  void AccumulateLengthUnitTypes(
-      CSSPrimitiveValue::LengthTypeFlags& types) const final {}
-  bool IsComputationallyIndependent() const final { return true; }
-  bool operator==(const CSSMathExpressionNode& other) const final {
-    auto* other_keyword = DynamicTo<CSSMathExpressionKeywordLiteral>(other);
-    return other_keyword && other_keyword->GetValue() == GetValue() &&
-           other_keyword->GetOperator() == GetOperator();
-  }
-  CSSPrimitiveValue::UnitType ResolvedUnitType() const final {
-    return CSSPrimitiveValue::UnitType::kIdent;
-  }
-  void Trace(Visitor* visitor) const final {
-    CSSMathExpressionNode::Trace(visitor);
-  }
-
-#if DCHECK_IS_ON()
-  bool InvolvesPercentageComparisons() const final { return false; }
-#endif
-
- protected:
-  double ComputeDouble(const CSSLengthResolver& length_resolver) const final;
-
- private:
-  CSSValueID keyword_;
-  CSSMathOperator operator_;
-};
-
-template <>
-struct DowncastTraits<CSSMathExpressionKeywordLiteral> {
-  static bool AllowFrom(const CSSMathExpressionNode& node) {
-    return node.IsKeywordLiteral();
   }
 };
 
@@ -525,58 +265,25 @@ class CORE_EXPORT CSSMathExpressionOperation final
       const CSSMathExpressionNode* right_side,
       CSSMathOperator op);
 
-  // In addition to the simplifications in
-  // CreateArithmeticOperationSimplified, this does simplifications of
-  // calc-size() that are invalid for parsing, but are useful for the
-  // animation code to do math on things involving calc-size() expressions
-  // while keeping the calc-size() expression at the top level.  For example,
-  // calc(0.5 * calc-size(auto, size)) is not valid syntax, but this lets the
-  // animation code pass that multiplication to this function and have it turn
-  // into calc-size(auto, 0.5 * size).
-  static CSSMathExpressionNode* CreateArithmeticOperationAndSimplifyCalcSize(
-      const CSSMathExpressionNode* left_side,
-      const CSSMathExpressionNode* right_side,
-      CSSMathOperator op);
-
-  static CSSMathExpressionNode* CreateSignRelatedFunction(
+  static CSSMathExpressionNode* CreateSignRelatedFunctionSimplified(
       Operands&& operands,
       CSSValueID function_id);
-
-  static CSSMathExpressionNode* CreateCalcSizeOperation(
-      const CSSMathExpressionNode* left_side,
-      const CSSMathExpressionNode* right_side);
 
   CSSMathExpressionOperation(const CSSMathExpressionNode* left_side,
                              const CSSMathExpressionNode* right_side,
                              CSSMathOperator op,
-                             CalculationResultCategory category);
+                             CalculationCategory category);
 
-  CSSMathExpressionOperation(CalculationResultCategory category,
+  CSSMathExpressionOperation(CalculationCategory category,
                              Operands&& operands,
                              CSSMathOperator op);
 
-  CSSMathExpressionOperation(CalculationResultCategory category,
-                             CSSMathOperator op);
-
-  CSSMathExpressionNode* Copy() const final {
-    Operands operands(operands_);
-    return MakeGarbageCollected<CSSMathExpressionOperation>(
-        category_, std::move(operands), operator_);
-  }
+  CSSMathExpressionOperation(CalculationCategory category, CSSMathOperator op);
 
   const Operands& GetOperands() const { return operands_; }
   CSSMathOperator OperatorType() const { return operator_; }
 
   bool IsOperation() const final { return true; }
-  bool IsAddOrSubtract() const {
-    return operator_ == CSSMathOperator::kAdd ||
-           operator_ == CSSMathOperator::kSubtract;
-  }
-  bool IsMultiplyOrDivide() const {
-    return operator_ == CSSMathOperator::kMultiply ||
-           operator_ == CSSMathOperator::kDivide;
-  }
-  bool AllOperandsAreNumeric() const;
   bool IsMinOrMax() const {
     return operator_ == CSSMathOperator::kMin ||
            operator_ == CSSMathOperator::kMax;
@@ -593,36 +300,22 @@ class CORE_EXPORT CSSMathExpressionOperation final
   bool IsTrigonometricFunction() const {
     return operator_ == CSSMathOperator::kHypot;
   }
-  bool IsSignRelatedFunction() const {
-    return operator_ == CSSMathOperator::kAbs ||
-           operator_ == CSSMathOperator::kSign;
-  }
-  bool IsCalcSize() const { return operator_ == CSSMathOperator::kCalcSize; }
-  bool IsProgressNotation() const {
-    return operator_ == CSSMathOperator::kProgress ||
-           operator_ == CSSMathOperator::kMediaProgress;
-  }
 
   // TODO(crbug.com/1284199): Check other math functions too.
   bool IsMathFunction() const final {
     return IsMinOrMax() || IsClamp() || IsSteppedValueFunction() ||
-           IsTrigonometricFunction() || IsSignRelatedFunction() ||
-           IsCalcSize() || IsProgressNotation();
+           IsTrigonometricFunction();
   }
-
-  bool HasPercentage() const final;
-  bool InvolvesLayout() const final;
-  bool InvolvesAnchorQueries() const final;
 
   String CSSTextAsClamp() const;
 
   bool IsZero() const final;
   scoped_refptr<const CalculationExpressionNode> ToCalculationExpression(
       const CSSLengthResolver&) const final;
-  std::optional<PixelsAndPercent> ToPixelsAndPercent(
+  absl::optional<PixelsAndPercent> ToPixelsAndPercent(
       const CSSLengthResolver&) const final;
   double DoubleValue() const final;
-  std::optional<double> ComputeValueInCanonicalUnit() const final;
+  absl::optional<double> ComputeValueInCanonicalUnit() const final;
   double ComputeLengthPx(const CSSLengthResolver& length_resolver) const final;
   bool AccumulateLengthArray(CSSLengthArray& length_array,
                              double multiplier) const final;
@@ -634,21 +327,14 @@ class CORE_EXPORT CSSMathExpressionOperation final
   CSSPrimitiveValue::UnitType ResolvedUnitType() const final;
   const CSSMathExpressionNode& PopulateWithTreeScope(
       const TreeScope*) const final;
-  const CSSMathExpressionNode* TransformAnchors(
-      LogicalAxis,
-      const TryTacticTransform&,
-      const WritingDirectionMode&) const final;
   void Trace(Visitor* visitor) const final;
 
 #if DCHECK_IS_ON()
   bool InvolvesPercentageComparisons() const final;
 #endif
 
- protected:
-  double ComputeDouble(const CSSLengthResolver& length_resolver) const final;
-
  private:
-  static const CSSMathExpressionNode* GetNumericLiteralSide(
+  static const CSSMathExpressionNode* GetNumberSide(
       const CSSMathExpressionNode* left_side,
       const CSSMathExpressionNode* right_side);
 
@@ -685,11 +371,6 @@ class CORE_EXPORT CSSMathExpressionAnchorQuery final
                                const CSSValue& value,
                                const CSSPrimitiveValue* fallback);
 
-  CSSMathExpressionNode* Copy() const final {
-    return MakeGarbageCollected<CSSMathExpressionAnchorQuery>(
-        type_, anchor_specifier_, *value_, fallback_);
-  }
-
   bool IsAnchor() const { return type_ == CSSAnchorQueryType::kAnchor; }
   bool IsAnchorSize() const { return type_ == CSSAnchorQueryType::kAnchorSize; }
 
@@ -704,20 +385,28 @@ class CORE_EXPORT CSSMathExpressionAnchorQuery final
   CSSPrimitiveValue::UnitType ResolvedUnitType() const final {
     return CSSPrimitiveValue::UnitType::kUnknown;
   }
-  std::optional<double> ComputeValueInCanonicalUnit() const final {
-    return std::nullopt;
+  absl::optional<double> ComputeValueInCanonicalUnit() const final {
+    return absl::nullopt;
   }
-  std::optional<PixelsAndPercent> ToPixelsAndPercent(
+  absl::optional<PixelsAndPercent> ToPixelsAndPercent(
       const CSSLengthResolver&) const final {
-    return std::nullopt;
+    return absl::nullopt;
   }
   bool AccumulateLengthArray(CSSLengthArray& length_array,
                              double multiplier) const final {
     return false;
   }
   bool IsComputationallyIndependent() const final { return false; }
-  double DoubleValue() const final;
-  double ComputeLengthPx(const CSSLengthResolver& length_resolver) const final;
+  double DoubleValue() const final {
+    // We can't resolve an anchor query until layout time.
+    NOTREACHED();
+    return 0;
+  }
+  double ComputeLengthPx(const CSSLengthResolver& length_resolver) const final {
+    // We can't resolve an anchor query until layout time.
+    NOTREACHED();
+    return 0;
+  }
   void AccumulateLengthUnitTypes(
       CSSPrimitiveValue::LengthTypeFlags& types) const final {
     // AccumulateLengthUnitTypes() is only used when interpolating the
@@ -738,19 +427,7 @@ class CORE_EXPORT CSSMathExpressionAnchorQuery final
   bool InvolvesPercentageComparisons() const final { return false; }
 #endif
 
-  const CSSMathExpressionNode* TransformAnchors(
-      LogicalAxis,
-      const TryTacticTransform&,
-      const WritingDirectionMode&) const final;
-
- protected:
-  double ComputeDouble(const CSSLengthResolver&) const final;
-
  private:
-  std::optional<LayoutUnit> EvaluateQuery(const AnchorQuery& query,
-                                          const CSSLengthResolver&) const;
-  AnchorQuery ToQuery(const CSSLengthResolver& length_resolver) const;
-
   CSSAnchorQueryType type_;
   Member<const CSSValue> anchor_specifier_;
   Member<const CSSValue> value_;

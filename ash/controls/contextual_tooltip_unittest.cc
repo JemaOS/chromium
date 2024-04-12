@@ -27,12 +27,14 @@ class ContextualTooltipTest : public AshTestBase,
  public:
   ContextualTooltipTest() {
     if (GetParam()) {
-      scoped_feature_list_.InitAndEnableFeature(
-          features::kHideShelfControlsInTabletMode);
+      scoped_feature_list_.InitWithFeatures(
+          {ash::features::kContextualNudges,
+           ash::features::kHideShelfControlsInTabletMode},
+          {});
 
     } else {
       scoped_feature_list_.InitAndDisableFeature(
-          features::kHideShelfControlsInTabletMode);
+          ash::features::kContextualNudges);
     }
   }
   ~ContextualTooltipTest() override = default;

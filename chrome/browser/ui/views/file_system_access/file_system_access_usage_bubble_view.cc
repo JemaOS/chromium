@@ -4,9 +4,8 @@
 
 #include "chrome/browser/ui/views/file_system_access/file_system_access_usage_bubble_view.h"
 
-#include <vector>
-
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/i18n/message_formatter.h"
 #include "base/i18n/unicodestring.h"
 #include "base/memory/raw_ptr.h"
@@ -128,9 +127,9 @@ int ComputeHeadingMessageFromUsage(
 // first few items, with a toggle button to expand a table below to contain the
 // full list of items.
 class CollapsibleListView : public views::View {
-  METADATA_HEADER(CollapsibleListView, views::View)
-
  public:
+  METADATA_HEADER(CollapsibleListView);
+
   // How many rows to show in the expanded table without having to scroll.
   static constexpr int kExpandedTableRowCount = 3;
 
@@ -185,7 +184,7 @@ class CollapsibleListView : public views::View {
 
     std::vector<ui::TableColumn> table_columns{ui::TableColumn()};
     auto table_view = std::make_unique<views::TableView>(
-        model, std::move(table_columns), views::TableType::kIconAndText,
+        model, std::move(table_columns), views::ICON_AND_TEXT,
         /*single_selection=*/true);
     table_view->SetEnabled(false);
     int row_height = table_view->GetRowHeight();
@@ -232,7 +231,7 @@ class CollapsibleListView : public views::View {
   raw_ptr<views::ToggleImageButton> expand_collapse_button_;
 };
 
-BEGIN_METADATA(CollapsibleListView)
+BEGIN_METADATA(CollapsibleListView, views::View)
 END_METADATA
 
 }  // namespace
@@ -298,7 +297,7 @@ void FileSystemAccessUsageBubbleView::ShowBubble(
   base::RecordAction(
       base::UserMetricsAction("NativeFileSystemAPI.OpenedBubble"));
 
-  Browser* browser = chrome::FindBrowserWithTab(web_contents);
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents);
   if (!browser)
     return;
 
@@ -310,12 +309,12 @@ void FileSystemAccessUsageBubbleView::ShowBubble(
   // the readable lists.
   std::set<base::FilePath> writable_directories(
       usage.writable_directories.begin(), usage.writable_directories.end());
-  std::erase_if(usage.readable_directories, [&](const base::FilePath& path) {
+  base::EraseIf(usage.readable_directories, [&](const base::FilePath& path) {
     return base::Contains(writable_directories, path);
   });
   std::set<base::FilePath> writable_files(usage.writable_files.begin(),
                                           usage.writable_files.end());
-  std::erase_if(usage.readable_files, [&](const base::FilePath& path) {
+  base::EraseIf(usage.readable_files, [&](const base::FilePath& path) {
     return base::Contains(writable_files, path);
   });
 
@@ -369,7 +368,7 @@ FileSystemAccessUsageBubbleView::~FileSystemAccessUsageBubbleView() = default;
 
 std::u16string FileSystemAccessUsageBubbleView::GetAccessibleWindowTitle()
     const {
-  Browser* browser = chrome::FindBrowserWithTab(web_contents());
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents());
   // Don't crash if the web_contents is destroyed/unloaded.
   if (!browser)
     return {};
@@ -459,7 +458,9 @@ void FileSystemAccessUsageBubbleView::OnDialogCancelled() {
   if (!context)
     return;
 
-  context->RevokeGrants(origin_);
+  context->RevokeGrants(
+      origin_, ChromeFileSystemAccessPermissionContext::
+                   PersistedPermissionOptions::kUpdatePersistedPermission);
 }
 
 void FileSystemAccessUsageBubbleView::WindowClosing() {
@@ -481,6 +482,3 @@ void FileSystemAccessUsageBubbleView::ChildPreferredSizeChanged(
   LocationBarBubbleDelegateView::ChildPreferredSizeChanged(child);
   SizeToContents();
 }
-
-BEGIN_METADATA(FileSystemAccessUsageBubbleView)
-END_METADATA

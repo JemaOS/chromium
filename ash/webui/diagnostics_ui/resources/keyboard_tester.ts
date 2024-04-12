@@ -2,20 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'chrome://resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
-import 'chrome://resources/ash/common/cr_elements/cr_shared_vars.css.js';
-import 'chrome://resources/ash/common/cr_elements/cr_toast/cr_toast.js';
+import 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
+import 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
 import 'chrome://resources/polymer/v3_0/iron-icon/iron-icon.js';
 import './strings.m.js';
 
 import {KeyboardDiagramElement, MechanicalLayout as DiagramMechanicalLayout, PhysicalLayout as DiagramPhysicalLayout, TopRightKey as DiagramTopRightKey, TopRowKey as DiagramTopRowKey} from 'chrome://resources/ash/common/keyboard_diagram.js';
 import {KeyboardKeyState} from 'chrome://resources/ash/common/keyboard_key.js';
 import {loadTimeData} from 'chrome://resources/ash/common/load_time_data.m.js';
-import {getInstance} from 'chrome://resources/ash/common/cr_elements/cr_a11y_announcer/cr_a11y_announcer.js';
-import {CrDialogElement} from 'chrome://resources/ash/common/cr_elements/cr_dialog/cr_dialog.js';
-import {CrToastElement} from 'chrome://resources/ash/common/cr_elements/cr_toast/cr_toast.js';
-import {I18nMixin} from 'chrome://resources/ash/common/cr_elements/i18n_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {getInstance} from 'chrome://resources/cr_elements/cr_a11y_announcer/cr_a11y_announcer.js';
+import {CrDialogElement} from 'chrome://resources/cr_elements/cr_dialog/cr_dialog.js';
+import {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
+import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
 import {PolymerElementProperties} from 'chrome://resources/polymer/v3_0/polymer/interfaces.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
@@ -40,12 +40,6 @@ declare global {
   }
 }
 
-export interface KeyboardDiagramTopRowKey {
-  icon?: string;
-  ariaNameI18n?: string;
-  text?: string;
-}
-
 /**
  * @fileoverview
  * 'keyboard-tester' displays a tester UI for a keyboard.
@@ -55,33 +49,37 @@ export interface KeyboardDiagramTopRowKey {
  * Map from Mojo TopRowKey constants to keyboard diagram top row key
  * definitions.
  */
-const topRowKeyMap: {[index: number]: KeyboardDiagramTopRowKey} = {
-  [TopRowKey.kNone]: DiagramTopRowKey['kNone'],
-  [TopRowKey.kBack]: DiagramTopRowKey['kBack'],
-  [TopRowKey.kForward]: DiagramTopRowKey['kForward'],
-  [TopRowKey.kRefresh]: DiagramTopRowKey['kRefresh'],
-  [TopRowKey.kFullscreen]: DiagramTopRowKey['kFullscreen'],
-  [TopRowKey.kOverview]: DiagramTopRowKey['kOverview'],
-  [TopRowKey.kScreenshot]: DiagramTopRowKey['kScreenshot'],
-  [TopRowKey.kScreenBrightnessDown]: DiagramTopRowKey['kScreenBrightnessDown'],
-  [TopRowKey.kScreenBrightnessUp]: DiagramTopRowKey['kScreenBrightnessUp'],
-  [TopRowKey.kPrivacyScreenToggle]: DiagramTopRowKey['kPrivacyScreenToggle'],
-  [TopRowKey.kMicrophoneMute]: DiagramTopRowKey['kMicrophoneMute'],
-  [TopRowKey.kVolumeMute]: DiagramTopRowKey['kVolumeMute'],
-  [TopRowKey.kVolumeDown]: DiagramTopRowKey['kVolumeDown'],
-  [TopRowKey.kVolumeUp]: DiagramTopRowKey['kVolumeUp'],
-  [TopRowKey.kKeyboardBacklightToggle]:
-      DiagramTopRowKey['kKeyboardBacklightToggle'],
-  [TopRowKey.kKeyboardBacklightDown]:
-      DiagramTopRowKey['kKeyboardBacklightDown'],
-  [TopRowKey.kKeyboardBacklightUp]: DiagramTopRowKey['kKeyboardBacklightUp'],
-  [TopRowKey.kNextTrack]: DiagramTopRowKey['kNextTrack'],
-  [TopRowKey.kPreviousTrack]: DiagramTopRowKey['kPreviousTrack'],
-  [TopRowKey.kPlayPause]: DiagramTopRowKey['kPlayPause'],
-  [TopRowKey.kScreenMirror]: DiagramTopRowKey['kScreenMirror'],
-  [TopRowKey.kDelete]: DiagramTopRowKey['kDelete'],
-  [TopRowKey.kUnknown]: DiagramTopRowKey['kUnknown'],
-};
+const topRowKeyMap:
+    {[index: number]: {icon?: string, ariaNameI18n?: string, text?: string}} = {
+      [TopRowKey.kNone]: DiagramTopRowKey['kNone'],
+      [TopRowKey.kBack]: DiagramTopRowKey['kBack'],
+      [TopRowKey.kForward]: DiagramTopRowKey['kForward'],
+      [TopRowKey.kRefresh]: DiagramTopRowKey['kRefresh'],
+      [TopRowKey.kFullscreen]: DiagramTopRowKey['kFullscreen'],
+      [TopRowKey.kOverview]: DiagramTopRowKey['kOverview'],
+      [TopRowKey.kScreenshot]: DiagramTopRowKey['kScreenshot'],
+      [TopRowKey.kScreenBrightnessDown]:
+          DiagramTopRowKey['kScreenBrightnessDown'],
+      [TopRowKey.kScreenBrightnessUp]: DiagramTopRowKey['kScreenBrightnessUp'],
+      [TopRowKey.kPrivacyScreenToggle]:
+          DiagramTopRowKey['kPrivacyScreenToggle'],
+      [TopRowKey.kMicrophoneMute]: DiagramTopRowKey['kMicrophoneMute'],
+      [TopRowKey.kVolumeMute]: DiagramTopRowKey['kVolumeMute'],
+      [TopRowKey.kVolumeDown]: DiagramTopRowKey['kVolumeDown'],
+      [TopRowKey.kVolumeUp]: DiagramTopRowKey['kVolumeUp'],
+      [TopRowKey.kKeyboardBacklightToggle]:
+          DiagramTopRowKey['kKeyboardBacklightToggle'],
+      [TopRowKey.kKeyboardBacklightDown]:
+          DiagramTopRowKey['kKeyboardBacklightDown'],
+      [TopRowKey.kKeyboardBacklightUp]:
+          DiagramTopRowKey['kKeyboardBacklightUp'],
+      [TopRowKey.kNextTrack]: DiagramTopRowKey['kNextTrack'],
+      [TopRowKey.kPreviousTrack]: DiagramTopRowKey['kPreviousTrack'],
+      [TopRowKey.kPlayPause]: DiagramTopRowKey['kPlayPause'],
+      [TopRowKey.kScreenMirror]: DiagramTopRowKey['kScreenMirror'],
+      [TopRowKey.kDelete]: DiagramTopRowKey['kDelete'],
+      [TopRowKey.kUnknown]: DiagramTopRowKey['kUnknown'],
+    };
 
 /** Maps top-right key evdev codes to the corresponding DiagramTopRightKey. */
 const topRightKeyByCode: Map<number, DiagramTopRightKey> = new Map([
@@ -188,14 +186,22 @@ export class KeyboardTesterElement extends KeyboardTesterElementBase {
   }
 
   keyboard: KeyboardInfo;
+  // TODO(crbug.com/1257138): use the proper type annotation instead of
+  // string.
   protected isLoggedIn: boolean;
-  protected diagramTopRightKey: DiagramTopRightKey|null;
+  protected diagramTopRightKey: string;
   private lostFocusToastLingerMs: number;
   private layoutIsKnown: boolean;
-  private diagramMechanicalLayout: DiagramMechanicalLayout|null;
-  private diagramPhysicalLayout: DiagramPhysicalLayout|null;
+  // TODO(crbug.com/1257138): use the proper type annotation instead of
+  // string.
+  private diagramMechanicalLayout: string;
+  // TODO(crbug.com/1257138): use the proper type annotation instead of
+  // string.
+  private diagramPhysicalLayout: string;
   private showNumberPad: boolean;
-  private topRowKeys: KeyboardDiagramTopRowKey[];
+  // TODO(crbug.com/1257138): use the proper type annotation instead of
+  // Object.
+  private topRowKeys: Object[];
   private receiver: KeyboardObserverReceiver|null = null;
   private inputDataProvider: InputDataProviderInterface =
       getInputDataProvider();
@@ -226,8 +232,11 @@ export class KeyboardTesterElement extends KeyboardTesterElementBase {
     // a number pad event we weren't expecting.
   }
 
-  private computeDiagramMechanicalLayout(keyboardInfo?: KeyboardInfo):
-      DiagramMechanicalLayout|null {
+  /**
+   * TODO(crbug.com/1257138): use the proper type annotation instead of string.
+   */
+  private computeDiagramMechanicalLayout(keyboardInfo?: KeyboardInfo): string
+      |null {
     if (!keyboardInfo) {
       return null;
     }
@@ -239,8 +248,8 @@ export class KeyboardTesterElement extends KeyboardTesterElementBase {
     }[keyboardInfo.mechanicalLayout];
   }
 
-  private computeDiagramPhysicalLayout(keyboardInfo?: KeyboardInfo):
-      DiagramPhysicalLayout|null {
+  private computeDiagramPhysicalLayout(keyboardInfo?: KeyboardInfo): string
+      |null {
     if (!keyboardInfo) {
       return null;
     }
@@ -254,8 +263,10 @@ export class KeyboardTesterElement extends KeyboardTesterElementBase {
     }[keyboardInfo.physicalLayout];
   }
 
-  private computeDiagramTopRightKey(keyboardInfo?: KeyboardInfo):
-      DiagramTopRightKey|null {
+  /**
+   * TODO(crbug.com/1257138): use the proper type annotation instead of string.
+   */
+  private computeDiagramTopRightKey(keyboardInfo?: KeyboardInfo): string|null {
     if (!keyboardInfo) {
       return null;
     }
@@ -273,8 +284,7 @@ export class KeyboardTesterElement extends KeyboardTesterElementBase {
   }
 
 
-  private computeTopRowKeys(keyboard?: KeyboardInfo):
-      KeyboardDiagramTopRowKey[] {
+  private computeTopRowKeys(keyboard?: KeyboardInfo): Object[] {
     if (!keyboard) {
       return [];
     }

@@ -40,7 +40,7 @@
 #define SANITIZER_CHECK_LT(val1, val2) DCHECK_LT(val1, val2)
 #define SANITIZER_CHECK_GE(val1, val2) DCHECK_GE(val1, val2)
 #define SANITIZER_CHECK_GT(val1, val2) DCHECK_GT(val1, val2)
-#define SANITIZER_NOTREACHED() DCHECK(false)
+#define SANITIZER_NOTREACHED() NOTREACHED()
 #endif  // AX_FAIL_FAST_BUILD && !DCHECK_IS_ON()
 
 #endif  // UI_ACCESSIBILITY_AX_COMMON_H_

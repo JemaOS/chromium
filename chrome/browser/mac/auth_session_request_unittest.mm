@@ -7,7 +7,12 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 TEST(AuthSessionRequestTest, SchemeCanonicalization) {
-  EXPECT_EQ("abcdefg", AuthSessionRequest::CanonicalizeScheme("abcdefg"));
-  EXPECT_EQ("abcdefg", AuthSessionRequest::CanonicalizeScheme("aBcDeFg"));
-  EXPECT_EQ(std::nullopt, AuthSessionRequest::CanonicalizeScheme("🥰"));
+  if (@available(macOS 10.15, *)) {
+    EXPECT_EQ("abcdefg", AuthSessionRequest::CanonicalizeScheme("abcdefg"));
+    EXPECT_EQ("abcdefg", AuthSessionRequest::CanonicalizeScheme("aBcDeFg"));
+    EXPECT_EQ(absl::nullopt, AuthSessionRequest::CanonicalizeScheme("🥰"));
+  } else {
+    GTEST_SKIP() << "ASWebAuthenticationSessionRequest is only available on "
+                    "macOS 10.15 and higher.";
+  }
 }

@@ -4,9 +4,9 @@
 
 package org.chromium.chrome.browser.omnibox;
 
-import androidx.annotation.NonNull;
-
-/** Provider of editing text state from the UrlBar/Omnibox. */
+/**
+ * Provider of editing text state from the UrlBar/Omnibox.
+ */
 public interface UrlBarEditingTextStateProvider {
     /** Return the starting selection index for the text. */
     public int getSelectionStart();
@@ -21,8 +21,8 @@ public interface UrlBarEditingTextStateProvider {
     public boolean wasLastEditPaste();
 
     /** Return the full text with any inline autocomplete. */
-    public @NonNull String getTextWithAutocomplete();
+    public String getTextWithAutocomplete();
 
     /** Return the text excluding any inline autocomplete. */
-    public @NonNull String getTextWithoutAutocomplete();
+    public String getTextWithoutAutocomplete();
 }

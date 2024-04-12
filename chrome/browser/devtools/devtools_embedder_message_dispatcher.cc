@@ -8,9 +8,7 @@
 
 #include "base/functional/bind.h"
 #include "base/values.h"
-#include "chrome/browser/browser_features.h"
 #include "chrome/browser/devtools/devtools_settings.h"
-#include "chrome/browser/devtools/visual_logging.h"
 
 namespace {
 
@@ -52,10 +50,10 @@ bool GetValue(const base::Value& value, gfx::Rect* rect) {
   if (!value.is_dict())
     return false;
   const base::Value::Dict& dict = value.GetDict();
-  std::optional<int> x = dict.FindInt("x");
-  std::optional<int> y = dict.FindInt("y");
-  std::optional<int> width = dict.FindInt("width");
-  std::optional<int> height = dict.FindInt("height");
+  absl::optional<int> x = dict.FindInt("x");
+  absl::optional<int> y = dict.FindInt("y");
+  absl::optional<int> width = dict.FindInt("width");
+  absl::optional<int> height = dict.FindInt("height");
   if (!x.has_value() || !y.has_value() || !width.has_value() ||
       !height.has_value()) {
     return false;
@@ -72,171 +70,6 @@ bool GetValue(const base::Value& value, RegisterOptions* options) {
   const bool synced = value.GetDict().FindBool("synced").value_or(false);
   options->sync_mode = synced ? RegisterOptions::SyncMode::kSync
                               : RegisterOptions::SyncMode::kDontSync;
-  return true;
-}
-
-bool GetValue(const base::Value& value, ImpressionEvent* event) {
-  if (!value.is_dict()) {
-    return false;
-  }
-
-  const base::Value::List* impressions =
-      value.GetDict().FindList("impressions");
-  if (!impressions) {
-    return false;
-  }
-  for (const auto& impression : *impressions) {
-    if (!impression.is_dict()) {
-      return false;
-    }
-    std::optional<int> id = impression.GetDict().FindInt("id");
-    std::optional<int> type = impression.GetDict().FindInt("type");
-    if (!id || !type) {
-      return false;
-    }
-    event->impressions.emplace_back(VisualElementImpression{*id, *type});
-
-    std::optional<int> parent = impression.GetDict().FindInt("parent");
-    if (parent) {
-      event->impressions.back().parent = *parent;
-    }
-    std::optional<int> context = impression.GetDict().FindInt("context");
-    if (context) {
-      event->impressions.back().context = *context;
-    }
-    std::optional<int> width = impression.GetDict().FindInt("width");
-    if (width) {
-      event->impressions.back().width = *width;
-    }
-    std::optional<int> height = impression.GetDict().FindInt("height");
-    if (height) {
-      event->impressions.back().height = *height;
-    }
-  }
-  return true;
-}
-
-bool GetValue(const base::Value& value, ResizeEvent* event) {
-  if (!value.is_dict()) {
-    return false;
-  }
-
-  std::optional<int> veid = value.GetDict().FindInt("veid");
-  if (!veid) {
-    return false;
-  }
-  event->veid = *veid;
-
-  std::optional<int> width = value.GetDict().FindInt("width");
-  if (width) {
-    event->width = *width;
-  }
-  std::optional<int> height = value.GetDict().FindInt("height");
-  if (height) {
-    event->height = *height;
-  }
-  return true;
-}
-
-bool GetValue(const base::Value& value, ClickEvent* event) {
-  if (!value.is_dict()) {
-    return false;
-  }
-
-  std::optional<int> veid = value.GetDict().FindInt("veid");
-  if (!veid) {
-    return false;
-  }
-  event->veid = *veid;
-
-  std::optional<int> mouse_button = value.GetDict().FindInt("mouseButton");
-  if (mouse_button) {
-    event->mouse_button = *mouse_button;
-  }
-  std::optional<int> context = value.GetDict().FindInt("context");
-  if (context) {
-    event->context = *context;
-  }
-  return true;
-}
-
-bool GetValue(const base::Value& value, HoverEvent* event) {
-  if (!value.is_dict()) {
-    return false;
-  }
-
-  std::optional<int> veid = value.GetDict().FindInt("veid");
-  if (!veid) {
-    return false;
-  }
-  event->veid = *veid;
-
-  std::optional<int> time = value.GetDict().FindInt("time");
-  if (time) {
-    event->time = *time;
-  }
-  std::optional<int> context = value.GetDict().FindInt("context");
-  if (context) {
-    event->context = *context;
-  }
-  return true;
-}
-
-bool GetValue(const base::Value& value, DragEvent* event) {
-  if (!value.is_dict()) {
-    return false;
-  }
-
-  std::optional<int> veid = value.GetDict().FindInt("veid");
-  if (!veid) {
-    return false;
-  }
-  event->veid = *veid;
-
-  std::optional<int> distance = value.GetDict().FindInt("distance");
-  if (distance) {
-    event->distance = *distance;
-  }
-  std::optional<int> context = value.GetDict().FindInt("context");
-  if (context) {
-    event->context = *context;
-  }
-  return true;
-}
-
-bool GetValue(const base::Value& value, ChangeEvent* event) {
-  if (!value.is_dict()) {
-    return false;
-  }
-
-  std::optional<int> veid = value.GetDict().FindInt("veid");
-  if (!veid) {
-    return false;
-  }
-  event->veid = *veid;
-
-  std::optional<int> context = value.GetDict().FindInt("context");
-  if (context) {
-    event->context = *context;
-  }
-  return true;
-}
-
-bool GetValue(const base::Value& value, KeyDownEvent* event) {
-  if (!value.is_dict()) {
-    return false;
-  }
-
-  std::optional<int> veid = value.GetDict().FindInt("veid");
-  if (!veid) {
-    return false;
-  }
-  event->veid = *veid;
-
-  std::optional<int> context = value.GetDict().FindInt("context");
-  if (context) {
-    event->context = *context;
-  }
   return true;
 }
 
@@ -367,8 +200,6 @@ DevToolsEmbedderMessageDispatcher::CreateForDevToolsFrontend(
   d->RegisterHandlerWithCallback("setIsDocked",
                                  &Delegate::SetIsDocked, delegate);
   d->RegisterHandler("openInNewTab", &Delegate::OpenInNewTab, delegate);
-  d->RegisterHandler("openSearchResultsInNewTab",
-                     &Delegate::OpenSearchResultsInNewTab, delegate);
   d->RegisterHandler("showItemInFolder", &Delegate::ShowItemInFolder, delegate);
   d->RegisterHandler("save", &Delegate::SaveToFile, delegate);
   d->RegisterHandler("append", &Delegate::AppendToFile, delegate);
@@ -396,12 +227,12 @@ DevToolsEmbedderMessageDispatcher::CreateForDevToolsFrontend(
                      &Delegate::SetDevicesDiscoveryConfig, delegate);
   d->RegisterHandler("setDevicesUpdatesEnabled",
                      &Delegate::SetDevicesUpdatesEnabled, delegate);
+  d->RegisterHandler("performActionOnRemotePage",
+                     &Delegate::PerformActionOnRemotePage, delegate);
   d->RegisterHandler("openRemotePage", &Delegate::OpenRemotePage, delegate);
   d->RegisterHandler("openNodeFrontend", &Delegate::OpenNodeFrontend, delegate);
   d->RegisterHandler("dispatchProtocolMessage",
                      &Delegate::DispatchProtocolMessageFromDevToolsFrontend,
-                     delegate);
-  d->RegisterHandler("recordCountHistogram", &Delegate::RecordCountHistogram,
                      delegate);
   d->RegisterHandler("recordEnumeratedHistogram",
                      &Delegate::RecordEnumeratedHistogram, delegate);
@@ -409,13 +240,6 @@ DevToolsEmbedderMessageDispatcher::CreateForDevToolsFrontend(
                      &Delegate::RecordPerformanceHistogram, delegate);
   d->RegisterHandler("recordUserMetricsAction",
                      &Delegate::RecordUserMetricsAction, delegate);
-  d->RegisterHandler("recordImpression", &Delegate::RecordImpression, delegate);
-  d->RegisterHandler("recordResize", &Delegate::RecordResize, delegate);
-  d->RegisterHandler("recordClick", &Delegate::RecordClick, delegate);
-  d->RegisterHandler("recordHover", &Delegate::RecordHover, delegate);
-  d->RegisterHandler("recordDrag", &Delegate::RecordDrag, delegate);
-  d->RegisterHandler("recordChange", &Delegate::RecordChange, delegate);
-  d->RegisterHandler("recordKeyDown", &Delegate::RecordKeyDown, delegate);
   d->RegisterHandlerWithCallback("sendJsonRequest",
                                  &Delegate::SendJsonRequest, delegate);
   d->RegisterHandler("registerPreference", &Delegate::RegisterPreference,
@@ -444,11 +268,5 @@ DevToolsEmbedderMessageDispatcher::CreateForDevToolsFrontend(
   d->RegisterHandlerWithCallback("showSurvey", &Delegate::ShowSurvey, delegate);
   d->RegisterHandlerWithCallback("canShowSurvey", &Delegate::CanShowSurvey,
                                  delegate);
-  if (base::FeatureList::IsEnabled(::features::kDevToolsConsoleInsights)) {
-    d->RegisterHandlerWithCallback("doAidaConversation",
-                                   &Delegate::DoAidaConversation, delegate);
-    d->RegisterHandler("registerAidaClientEvent",
-                       &Delegate::RegisterAidaClientEvent, delegate);
-  }
   return d;
 }

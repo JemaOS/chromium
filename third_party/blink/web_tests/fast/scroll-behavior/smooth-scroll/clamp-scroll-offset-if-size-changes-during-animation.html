@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<link rel="help" href="https://drafts.csswg.org/css-scroll-snap-1" />
+<link rel="stylesheet" href="resources/simple-snap.css">
 <script src="../../../resources/testharness.js"></script>
 <script src="../../../resources/testharnessreport.js"></script>
 <script src="../../../resources/gesture-util.js"></script>
@@ -10,12 +12,16 @@
 <script>
 var scroller = document.getElementById("scroller");
 
+function scrollTop() {
+  return scroller.scrollTop;
+}
+
 promise_test (async () => {
-  const scrollendPromise = waitForScrollendEvent(scroller);
+  scroller.scrollTo(0, 0);
   scroller.scrollTo({top: 1500, behavior: 'smooth'});
   scroller.style.height = "1000px";
-  await scrollendPromise;
-  var expected = scroller.scrollHeight - scroller.clientHeight;
+  await waitForAnimationEnd(scrollTop, 500, 15);
+  var expected = 2000 - scroller.clientHeight;
   assert_equals(scroller.scrollTop, expected);
 }, "Clamps the scroll offset if the scroller's size is changed during animation.");
 

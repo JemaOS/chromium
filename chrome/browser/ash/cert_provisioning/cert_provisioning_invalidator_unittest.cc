@@ -6,13 +6,11 @@
 
 #include <memory>
 
+#include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/test/task_environment.h"
-#include "base/test/test_future.h"
 #include "chrome/browser/ash/cert_provisioning/cert_provisioning_common.h"
 #include "components/invalidation/impl/fake_invalidation_service.h"
-#include "components/invalidation/public/invalidation.h"
-#include "components/invalidation/public/invalidation_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace ash {
@@ -30,7 +28,9 @@ class CertProvisioningInvalidationHandlerTest
                 GetScope(),
                 &invalidation_service_,
                 kInvalidatorTopic,
-                invalidation_events_.GetRepeatingCallback())) {
+                base::BindRepeating(&CertProvisioningInvalidationHandlerTest::
+                                        OnIncomingInvalidation,
+                                    base::Unretained(this)))) {
     EXPECT_NE(nullptr, invalidation_handler_);
 
     EnableInvalidationService();
@@ -64,7 +64,7 @@ class CertProvisioningInvalidationHandlerTest
 
   invalidation::Invalidation CreateInvalidation(
       const invalidation::Topic& topic) {
-    return invalidation::Invalidation(topic, 42, "foo");
+    return invalidation::Invalidation::InitUnknownVersion(topic);
   }
 
   invalidation::Invalidation FireInvalidation(
@@ -96,6 +96,8 @@ class CertProvisioningInvalidationHandlerTest
     return IsInvalidatorRegistered(invalidation_handler_.get());
   }
 
+  void OnIncomingInvalidation() { ++incoming_invalidations_count_; }
+
   base::test::SingleThreadTaskEnvironment task_environment_;
 
   const invalidation::Topic kInvalidatorTopic;
@@ -103,7 +105,7 @@ class CertProvisioningInvalidationHandlerTest
 
   invalidation::FakeInvalidationService invalidation_service_;
 
-  base::test::TestFuture<InvalidationEvent> invalidation_events_;
+  int incoming_invalidations_count_{0};
 
   std::unique_ptr<CertProvisioningInvalidationHandler> invalidation_handler_;
 };
@@ -133,24 +135,25 @@ TEST_P(CertProvisioningInvalidationHandlerTest,
 TEST_P(CertProvisioningInvalidationHandlerTest,
        ShouldReceiveInvalidationForRegisteredTopic) {
   EXPECT_TRUE(IsInvalidatorRegistered());
+  EXPECT_EQ(0, incoming_invalidations_count_);
 
   const auto invalidation = FireInvalidation(kInvalidatorTopic);
 
   EXPECT_TRUE(IsInvalidationSent(invalidation));
   EXPECT_TRUE(IsInvalidationAcknowledged(invalidation));
-  EXPECT_EQ(invalidation_events_.Take(),
-            InvalidationEvent::kInvalidationReceived);
+  EXPECT_EQ(1, incoming_invalidations_count_);
 }
 
 TEST_P(CertProvisioningInvalidationHandlerTest,
        ShouldNotReceiveInvalidationForDifferentTopic) {
   EXPECT_TRUE(IsInvalidatorRegistered());
+  EXPECT_EQ(0, incoming_invalidations_count_);
 
   const auto invalidation = FireInvalidation(kSomeOtherTopic);
 
   EXPECT_FALSE(IsInvalidationSent(invalidation));
   EXPECT_FALSE(IsInvalidationAcknowledged(invalidation));
-  EXPECT_FALSE(invalidation_events_.IsReady());
+  EXPECT_EQ(0, incoming_invalidations_count_);
 }
 
 TEST_P(CertProvisioningInvalidationHandlerTest,
@@ -165,7 +168,7 @@ TEST_P(CertProvisioningInvalidationHandlerTest,
 
   EXPECT_FALSE(IsInvalidationSent(invalidation));
   EXPECT_FALSE(IsInvalidationAcknowledged(invalidation));
-  EXPECT_FALSE(invalidation_events_.IsReady());
+  EXPECT_EQ(0, incoming_invalidations_count_);
 }
 
 TEST_P(CertProvisioningInvalidationHandlerTest,
@@ -178,10 +181,10 @@ TEST_P(CertProvisioningInvalidationHandlerTest,
   // cause undefined behaviour.
   EXPECT_FALSE(IsInvalidatorRegistered());
   FireInvalidation(kInvalidatorTopic);
-  EXPECT_FALSE(invalidation_events_.IsReady());
+  EXPECT_EQ(0, incoming_invalidations_count_);
 
   // Ensure that topic is still subscribed.
-  const invalidation::TopicMap topics =
+  const invalidation::Topics topics =
       invalidation_service_.invalidator_registrar().GetAllSubscribedTopics();
   EXPECT_NE(topics.end(), topics.find(kInvalidatorTopic));
 }

@@ -6,13 +6,10 @@ header("Content-Security-Policy: sandbox allow-scripts");
 <script>
 var orginURL = document.URL;
 test(function () {
-    try {
+    assert_throws_dom('SecurityError', function () {
         history.pushState(null, null, orginURL + "/path");
-        done();
-    } catch (e) {
-        assert_unreached("pushState #hash should not fail.");
-    }
-}, 'pushState /path in unique origin should not fail with SecurityError');
+    });
+}, 'pushState to a new path in unique origin should fail with SecurityError');
 
 test(function () {
     try {

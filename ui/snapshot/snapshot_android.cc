@@ -20,6 +20,20 @@
 
 namespace ui {
 
+// Sync versions are not supported in Android.  Callers should fall back
+// to the async version.
+bool GrabViewSnapshot(gfx::NativeView view,
+                      const gfx::Rect& snapshot_bounds,
+                      gfx::Image* image) {
+  return GrabWindowSnapshot(view->GetWindowAndroid(), snapshot_bounds, image);
+}
+
+bool GrabWindowSnapshot(gfx::NativeWindow window,
+                        const gfx::Rect& snapshot_bounds,
+                        gfx::Image* image) {
+  return false;
+}
+
 static std::unique_ptr<viz::CopyOutputRequest> CreateCopyRequest(
     gfx::NativeView view,
     const gfx::Rect& source_rect,
@@ -44,10 +58,10 @@ static void MakeAsyncCopyRequest(
       std::move(copy_request));
 }
 
-void GrabWindowSnapshotAndScale(gfx::NativeWindow window,
-                                const gfx::Rect& source_rect,
-                                const gfx::Size& target_size,
-                                GrabSnapshotImageCallback callback) {
+void GrabWindowSnapshotAndScaleAsync(gfx::NativeWindow window,
+                                     const gfx::Rect& source_rect,
+                                     const gfx::Size& target_size,
+                                     GrabWindowSnapshotAsyncCallback callback) {
   MakeAsyncCopyRequest(
       window, source_rect,
       CreateCopyRequest(window, source_rect,
@@ -55,9 +69,9 @@ void GrabWindowSnapshotAndScale(gfx::NativeWindow window,
                                        std::move(callback), target_size)));
 }
 
-void GrabWindowSnapshot(gfx::NativeWindow window,
-                        const gfx::Rect& source_rect,
-                        GrabSnapshotImageCallback callback) {
+void GrabWindowSnapshotAsync(gfx::NativeWindow window,
+                             const gfx::Rect& source_rect,
+                             GrabWindowSnapshotAsyncCallback callback) {
   MakeAsyncCopyRequest(
       window, source_rect,
       CreateCopyRequest(
@@ -66,9 +80,9 @@ void GrabWindowSnapshot(gfx::NativeWindow window,
                          std::move(callback))));
 }
 
-void GrabViewSnapshot(gfx::NativeView view,
-                      const gfx::Rect& source_rect,
-                      GrabSnapshotImageCallback callback) {
+void GrabViewSnapshotAsync(gfx::NativeView view,
+                           const gfx::Rect& source_rect,
+                           GrabWindowSnapshotAsyncCallback callback) {
   std::unique_ptr<viz::CopyOutputRequest> copy_request =
       view->MaybeRequestCopyOfView(CreateCopyRequest(
           view, source_rect,

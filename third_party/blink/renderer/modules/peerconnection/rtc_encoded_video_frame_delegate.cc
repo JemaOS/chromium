@@ -7,8 +7,6 @@
 #include <utility>
 
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
-#include "third_party/blink/renderer/platform/bindings/exception_code.h"
-#include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/webrtc/api/frame_transformer_factory.h"
 #include "third_party/webrtc/api/frame_transformer_interface.h"
 
@@ -28,27 +26,16 @@ String RTCEncodedVideoFrameDelegate::Type() const {
   return webrtc_frame_->IsKeyFrame() ? "key" : "delta";
 }
 
-uint32_t RTCEncodedVideoFrameDelegate::RtpTimestamp() const {
+uint32_t RTCEncodedVideoFrameDelegate::Timestamp() const {
   base::AutoLock lock(lock_);
   return webrtc_frame_ ? webrtc_frame_->GetTimestamp() : 0;
 }
 
-bool RTCEncodedVideoFrameDelegate::SetRtpTimestamp(uint32_t timestamp,
-                                                   String& error_message) {
-  base::AutoLock lock(lock_);
-  if (!webrtc_frame_) {
-    error_message = "underlying webrtc frame is empty.";
-    return false;
-  }
-  webrtc_frame_->SetRTPTimestamp(timestamp);
-  return true;
-}
-
-std::optional<webrtc::Timestamp>
-RTCEncodedVideoFrameDelegate::PresentationTimestamp() const {
+absl::optional<webrtc::Timestamp>
+RTCEncodedVideoFrameDelegate::CaptureTimeIdentifier() const {
   base::AutoLock lock(lock_);
   return webrtc_frame_ ? webrtc_frame_->GetCaptureTimeIdentifier()
-                       : std::nullopt;
+                       : absl::nullopt;
 }
 
 DOMArrayBuffer* RTCEncodedVideoFrameDelegate::CreateDataBuffer() const {
@@ -77,36 +64,27 @@ void RTCEncodedVideoFrameDelegate::SetData(const DOMArrayBuffer* data) {
   }
 }
 
-std::optional<uint8_t> RTCEncodedVideoFrameDelegate::PayloadType() const {
+absl::optional<uint8_t> RTCEncodedVideoFrameDelegate::PayloadType() const {
   base::AutoLock lock(lock_);
-  return webrtc_frame_ ? std::make_optional(webrtc_frame_->GetPayloadType())
-                       : std::nullopt;
+  return webrtc_frame_ ? absl::make_optional(webrtc_frame_->GetPayloadType())
+                       : absl::nullopt;
 }
 
-std::optional<std::string> RTCEncodedVideoFrameDelegate::MimeType() const {
-  base::AutoLock lock(lock_);
-  return webrtc_frame_ ? std::make_optional(webrtc_frame_->GetMimeType())
-                       : std::nullopt;
-}
-
-std::optional<webrtc::VideoFrameMetadata>
+absl::optional<webrtc::VideoFrameMetadata>
 RTCEncodedVideoFrameDelegate::GetMetadata() const {
   base::AutoLock lock(lock_);
-  return webrtc_frame_ ? std::optional<webrtc::VideoFrameMetadata>(
+  return webrtc_frame_ ? absl::optional<webrtc::VideoFrameMetadata>(
                              webrtc_frame_->Metadata())
-                       : std::nullopt;
+                       : absl::nullopt;
 }
 
-bool RTCEncodedVideoFrameDelegate::SetMetadata(
-    const webrtc::VideoFrameMetadata& metadata,
-    String& error_message) {
+void RTCEncodedVideoFrameDelegate::SetMetadata(
+    const webrtc::VideoFrameMetadata& metadata) {
   base::AutoLock lock(lock_);
   if (!webrtc_frame_) {
-    error_message = "underlying webrtc frame is empty.";
-    return false;
+    return;
   }
   webrtc_frame_->SetMetadata(metadata);
-  return true;
 }
 
 std::unique_ptr<webrtc::TransformableVideoFrameInterface>

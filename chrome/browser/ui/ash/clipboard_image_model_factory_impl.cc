@@ -6,45 +6,16 @@
 
 #include "base/ranges/algorithm.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chromeos/ash/components/browser_context_helper/browser_context_helper.h"
-#include "components/user_manager/user_manager.h"
 
-namespace {
-
-// Helpers ---------------------------------------------------------------------
-
-// Analogous to `ProfileManager::GetPrimaryUserProfile()` except this method
-// returns `nullptr` in the case where the primary user profile is not ready.
-Profile* GetPrimaryUserProfile() {
-  const auto* const user_manager = user_manager::UserManager::Get();
-  if (!user_manager) {
-    return nullptr;
-  }
-
-  const auto* const user = user_manager->GetPrimaryUser();
-  if (!user) {
-    return nullptr;
-  }
-
-  auto* const helper = ash::BrowserContextHelper::Get();
-  if (!helper) {
-    return nullptr;
-  }
-
-  auto* const browser_context = helper->GetBrowserContextByUser(user);
-  return browser_context ? Profile::FromBrowserContext(browser_context)
-                         : nullptr;
-}
-
-}  // namespace
-
-// ClipboardImageModelFactoryImpl ----------------------------------------------
-
-ClipboardImageModelFactoryImpl::ClipboardImageModelFactoryImpl()
-    : idle_timer_(FROM_HERE,
+ClipboardImageModelFactoryImpl::ClipboardImageModelFactoryImpl(
+    Profile* primary_profile)
+    : primary_profile_(primary_profile),
+      idle_timer_(FROM_HERE,
                   base::Minutes(2),
                   this,
-                  &ClipboardImageModelFactoryImpl::OnRequestIdle) {}
+                  &ClipboardImageModelFactoryImpl::OnRequestIdle) {
+  DCHECK(primary_profile_);
+}
 
 ClipboardImageModelFactoryImpl::~ClipboardImageModelFactoryImpl() = default;
 
@@ -118,10 +89,8 @@ void ClipboardImageModelFactoryImpl::StartNextRequest() {
   }
 
   if (!request_) {
-    // Use the primary profile instead of the active profile to create the
-    // `content::WebContents` that renders html.
     request_ = std::make_unique<ClipboardImageModelRequest>(
-        GetPrimaryUserProfile(),
+        primary_profile_,
         base::BindRepeating(&ClipboardImageModelFactoryImpl::StartNextRequest,
                             weak_ptr_factory_.GetWeakPtr()));
   }

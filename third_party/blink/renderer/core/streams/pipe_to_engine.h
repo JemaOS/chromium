@@ -41,9 +41,7 @@ class PipeToEngine final : public GarbageCollected<PipeToEngine> {
   PipeToEngine& operator=(const PipeToEngine&) = delete;
 
   // This is the main entrypoint for ReadableStreamPipeTo().
-  ScriptPromise Start(ReadableStream* readable,
-                      WritableStream* destination,
-                      ExceptionState&);
+  ScriptPromise Start(ReadableStream* readable, WritableStream* destination);
 
   void Trace(Visitor* visitor) const {
     visitor->Trace(script_state_);

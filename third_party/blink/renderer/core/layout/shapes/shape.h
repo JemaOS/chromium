@@ -32,7 +32,6 @@
 
 #include <memory>
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/layout/geometry/logical_rect.h"
 #include "third_party/blink/renderer/core/style/basic_shapes.h"
 #include "third_party/blink/renderer/core/style/style_image.h"
 #include "third_party/blink/renderer/platform/geometry/layout_rect.h"
@@ -43,7 +42,6 @@
 namespace blink {
 
 class FloatRoundedRect;
-struct LogicalSize;
 
 struct LineSegment {
   STACK_ALLOCATED();
@@ -79,24 +77,23 @@ class CORE_EXPORT Shape {
     Path margin_shape;
   };
   static std::unique_ptr<Shape> CreateShape(const BasicShape*,
-                                            const LogicalSize& logical_box_size,
+                                            const LayoutSize& logical_box_size,
                                             WritingMode,
                                             float margin);
-  static std::unique_ptr<Shape> CreateRasterShape(
-      Image*,
-      float threshold,
-      const DeprecatedLayoutRect& image_rect,
-      const DeprecatedLayoutRect& margin_rect,
-      WritingMode,
-      float margin,
-      RespectImageOrientationEnum);
+  static std::unique_ptr<Shape> CreateRasterShape(Image*,
+                                                  float threshold,
+                                                  const LayoutRect& image_rect,
+                                                  const LayoutRect& margin_rect,
+                                                  WritingMode,
+                                                  float margin,
+                                                  RespectImageOrientationEnum);
   static std::unique_ptr<Shape> CreateLayoutBoxShape(const FloatRoundedRect&,
                                                      WritingMode,
                                                      float margin);
 
   virtual ~Shape() = default;
 
-  virtual LogicalRect ShapeMarginLogicalBoundingBox() const = 0;
+  virtual LayoutRect ShapeMarginLogicalBoundingBox() const = 0;
   virtual bool IsEmpty() const = 0;
   virtual LineSegment GetExcludedInterval(LayoutUnit logical_top,
                                           LayoutUnit logical_height) const = 0;
@@ -119,13 +116,11 @@ class CORE_EXPORT Shape {
 
   bool LineOverlapsBoundingBox(LayoutUnit line_top,
                                LayoutUnit line_height,
-                               const LogicalRect& rect) const {
+                               const LayoutRect& rect) const {
     if (rect.IsEmpty())
       return false;
-    const LayoutUnit rect_line_top = rect.offset.block_offset;
-    return (line_top < rect.BlockEndOffset() &&
-            line_top + line_height > rect_line_top) ||
-           (!line_height && line_top == rect_line_top);
+    return (line_top < rect.MaxY() && line_top + line_height > rect.Y()) ||
+           (!line_height && line_top == rect.Y());
   }
 
   WritingMode writing_mode_ = WritingMode::kHorizontalTb;

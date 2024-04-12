@@ -19,8 +19,10 @@
 #include <libxml/HTMLparser.h>
 #include <libxml/HTMLtree.h>
 #include <libxml/entities.h>
+#include <libxml/valid.h>
 #include <libxml/xmlerror.h>
 #include <libxml/parserInternals.h>
+#include <libxml/globals.h>
 #include <libxml/uri.h>
 
 #include "private/buf.h"
@@ -334,6 +336,17 @@ htmlIsBooleanAttr(const xmlChar *name)
  *			Output error handlers				*
  *									*
  ************************************************************************/
+/**
+ * htmlSaveErrMemory:
+ * @extra:  extra information
+ *
+ * Handle an out of memory condition
+ */
+static void
+htmlSaveErrMemory(const char *extra)
+{
+    __xmlSimpleError(XML_FROM_OUTPUT, XML_ERR_NO_MEMORY, NULL, NULL, extra);
+}
 
 /**
  * htmlSaveErr:
@@ -347,7 +360,6 @@ static void
 htmlSaveErr(int code, xmlNodePtr node, const char *extra)
 {
     const char *msg = NULL;
-    int res;
 
     switch(code) {
         case XML_SAVE_NOT_UTF8:
@@ -365,13 +377,7 @@ htmlSaveErr(int code, xmlNodePtr node, const char *extra)
 	default:
 	    msg = "unexpected error number\n";
     }
-
-    res = __xmlRaiseError(NULL, NULL, NULL, NULL, node,
-                          XML_FROM_OUTPUT, code, XML_ERR_ERROR, NULL, 0,
-                          extra, NULL, NULL, 0, 0,
-                          msg, extra);
-    if (res < 0)
-        xmlRaiseMemoryError(NULL, NULL, NULL, XML_FROM_OUTPUT, NULL);
+    __xmlSimpleError(XML_FROM_OUTPUT, code, node, msg, extra);
 }
 
 /************************************************************************
@@ -379,32 +385,6 @@ htmlSaveErr(int code, xmlNodePtr node, const char *extra)
  *		Dumping HTML tree content to a simple buffer		*
  *									*
  ************************************************************************/
-
-static xmlCharEncodingHandler *
-htmlFindOutputEncoder(const char *encoding) {
-    xmlCharEncodingHandler *handler = NULL;
-
-    if (encoding != NULL) {
-	xmlCharEncoding enc;
-
-	enc = xmlParseCharEncoding(encoding);
-	if (enc != XML_CHAR_ENCODING_UTF8) {
-	    xmlOpenCharEncodingHandler(encoding, /* output */ 1, &handler);
-	    if (handler == NULL)
-		htmlSaveErr(XML_SAVE_UNKNOWN_ENCODING, NULL, encoding);
-	}
-    } else {
-        /*
-         * Fallback to HTML or ASCII when the encoding is unspecified
-         */
-        if (handler == NULL)
-            xmlOpenCharEncodingHandler("HTML", /* output */ 1, &handler);
-        if (handler == NULL)
-            xmlOpenCharEncodingHandler("ascii", /* output */ 1, &handler);
-    }
-
-    return(handler);
-}
 
 /**
  * htmlBufNodeDumpFormat:
@@ -431,8 +411,10 @@ htmlBufNodeDumpFormat(xmlBufPtr buf, xmlDocPtr doc, xmlNodePtr cur,
 	return (-1);
     }
     outbuf = (xmlOutputBufferPtr) xmlMalloc(sizeof(xmlOutputBuffer));
-    if (outbuf == NULL)
+    if (outbuf == NULL) {
+        htmlSaveErrMemory("allocating HTML output buffer");
 	return (-1);
+    }
     memset(outbuf, 0, sizeof(xmlOutputBuffer));
     outbuf->buffer = buf;
     outbuf->encoder = NULL;
@@ -499,15 +481,33 @@ int
 htmlNodeDumpFileFormat(FILE *out, xmlDocPtr doc,
 	               xmlNodePtr cur, const char *encoding, int format) {
     xmlOutputBufferPtr buf;
-    xmlCharEncodingHandlerPtr handler;
+    xmlCharEncodingHandlerPtr handler = NULL;
     int ret;
 
     xmlInitParser();
 
+    if (encoding != NULL) {
+	xmlCharEncoding enc;
+
+	enc = xmlParseCharEncoding(encoding);
+	if (enc != XML_CHAR_ENCODING_UTF8) {
+	    handler = xmlFindCharEncodingHandler(encoding);
+	    if (handler == NULL)
+		htmlSaveErr(XML_SAVE_UNKNOWN_ENCODING, NULL, encoding);
+	}
+    } else {
+        /*
+         * Fallback to HTML or ASCII when the encoding is unspecified
+         */
+        if (handler == NULL)
+            handler = xmlFindCharEncodingHandler("HTML");
+        if (handler == NULL)
+            handler = xmlFindCharEncodingHandler("ascii");
+    }
+
     /*
      * save the content to a temp buffer.
      */
-    handler = htmlFindOutputEncoder(encoding);
     buf = xmlOutputBufferCreateFile(out, handler);
     if (buf == NULL) return(0);
 
@@ -558,7 +558,27 @@ htmlDocDumpMemoryFormat(xmlDocPtr cur, xmlChar**mem, int *size, int format) {
     }
 
     encoding = (const char *) htmlGetMetaEncoding(cur);
-    handler = htmlFindOutputEncoder(encoding);
+
+    if (encoding != NULL) {
+	xmlCharEncoding enc;
+
+	enc = xmlParseCharEncoding(encoding);
+	if (enc != XML_CHAR_ENCODING_UTF8) {
+	    handler = xmlFindCharEncodingHandler(encoding);
+	    if (handler == NULL)
+                htmlSaveErr(XML_SAVE_UNKNOWN_ENCODING, NULL, encoding);
+
+	}
+    } else {
+        /*
+         * Fallback to HTML or ASCII when the encoding is unspecified
+         */
+        if (handler == NULL)
+            handler = xmlFindCharEncodingHandler("HTML");
+        if (handler == NULL)
+            handler = xmlFindCharEncodingHandler("ascii");
+    }
+
     buf = xmlAllocOutputBufferInternal(handler);
     if (buf == NULL) {
 	*mem = NULL;
@@ -694,14 +714,14 @@ htmlAttrDumpOutput(xmlOutputBufferPtr buf, xmlDocPtr doc, xmlAttrPtr cur) {
 		    xmlBufWriteQuotedString(buf->buffer, escaped);
 		    xmlFree(escaped);
 		} else {
-                    buf->error = XML_ERR_NO_MEMORY;
+		    xmlBufWriteQuotedString(buf->buffer, value);
 		}
 	    } else {
 		xmlBufWriteQuotedString(buf->buffer, value);
 	    }
 	    xmlFree(value);
 	} else  {
-            buf->error = XML_ERR_NO_MEMORY;
+	    xmlOutputBufferWriteString(buf, "=\"\"");
 	}
     }
 }
@@ -842,12 +862,10 @@ htmlNodeDumpFormatOutput(xmlOutputBufferPtr buf, xmlDocPtr doc,
                 xmlChar *buffer;
 
                 buffer = xmlEncodeEntitiesReentrant(doc, cur->content);
-                if (buffer == NULL) {
-                    buf->error = XML_ERR_NO_MEMORY;
-                    return;
+                if (buffer != NULL) {
+                    xmlOutputBufferWriteString(buf, (const char *)buffer);
+                    xmlFree(buffer);
                 }
-                xmlOutputBufferWriteString(buf, (const char *)buffer);
-                xmlFree(buffer);
             } else {
                 xmlOutputBufferWriteString(buf, (const char *)cur->content);
             }
@@ -1023,7 +1041,26 @@ htmlDocDump(FILE *f, xmlDocPtr cur) {
     }
 
     encoding = (const char *) htmlGetMetaEncoding(cur);
-    handler = htmlFindOutputEncoder(encoding);
+
+    if (encoding != NULL) {
+	xmlCharEncoding enc;
+
+	enc = xmlParseCharEncoding(encoding);
+	if (enc != XML_CHAR_ENCODING_UTF8) {
+	    handler = xmlFindCharEncodingHandler(encoding);
+	    if (handler == NULL)
+		htmlSaveErr(XML_SAVE_UNKNOWN_ENCODING, NULL, encoding);
+	}
+    } else {
+        /*
+         * Fallback to HTML or ASCII when the encoding is unspecified
+         */
+        if (handler == NULL)
+            handler = xmlFindCharEncodingHandler("HTML");
+        if (handler == NULL)
+            handler = xmlFindCharEncodingHandler("ascii");
+    }
+
     buf = xmlOutputBufferCreateFile(f, handler);
     if (buf == NULL) return(-1);
     htmlDocContentDumpOutput(buf, cur, NULL);
@@ -1054,7 +1091,29 @@ htmlSaveFile(const char *filename, xmlDocPtr cur) {
     xmlInitParser();
 
     encoding = (const char *) htmlGetMetaEncoding(cur);
-    handler = htmlFindOutputEncoder(encoding);
+
+    if (encoding != NULL) {
+	xmlCharEncoding enc;
+
+	enc = xmlParseCharEncoding(encoding);
+	if (enc != XML_CHAR_ENCODING_UTF8) {
+	    handler = xmlFindCharEncodingHandler(encoding);
+	    if (handler == NULL)
+		htmlSaveErr(XML_SAVE_UNKNOWN_ENCODING, NULL, encoding);
+	}
+    } else {
+        /*
+         * Fallback to HTML or ASCII when the encoding is unspecified
+         */
+        if (handler == NULL)
+            handler = xmlFindCharEncodingHandler("HTML");
+        if (handler == NULL)
+            handler = xmlFindCharEncodingHandler("ascii");
+    }
+
+    /*
+     * save the content to a temp buffer.
+     */
     buf = xmlOutputBufferCreateFilename(filename, handler, cur->compression);
     if (buf == NULL) return(0);
 
@@ -1087,11 +1146,27 @@ htmlSaveFileFormat(const char *filename, xmlDocPtr cur,
 
     xmlInitParser();
 
-    handler = htmlFindOutputEncoder(encoding);
-    if (handler != NULL)
-        htmlSetMetaEncoding(cur, (const xmlChar *) handler->name);
-    else
+    if (encoding != NULL) {
+	xmlCharEncoding enc;
+
+	enc = xmlParseCharEncoding(encoding);
+	if (enc != XML_CHAR_ENCODING_UTF8) {
+	    handler = xmlFindCharEncodingHandler(encoding);
+	    if (handler == NULL)
+		htmlSaveErr(XML_SAVE_UNKNOWN_ENCODING, NULL, encoding);
+	}
+        htmlSetMetaEncoding(cur, (const xmlChar *) encoding);
+    } else {
 	htmlSetMetaEncoding(cur, (const xmlChar *) "UTF-8");
+
+        /*
+         * Fallback to HTML or ASCII when the encoding is unspecified
+         */
+        if (handler == NULL)
+            handler = xmlFindCharEncodingHandler("HTML");
+        if (handler == NULL)
+            handler = xmlFindCharEncodingHandler("ascii");
+    }
 
     /*
      * save the content to a temp buffer.

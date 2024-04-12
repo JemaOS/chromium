@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   // This needs to be https:// for the headers to work.
   const base = 'https://devtools.test:8443';
 

@@ -5,7 +5,7 @@
 chrome.test.runTests([
   function noContentScriptsInViewSource() {
 
-    chrome.runtime.onMessage.addListener(
+    chrome.extension.onRequest.addListener(
       function(request, sender, sendResponse) {
         chrome.test.fail('Got a content script request from view source mode.');
     });

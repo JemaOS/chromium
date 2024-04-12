@@ -140,8 +140,7 @@ class MediaControlsRotateToFullscreenDelegateTest
 
   bool IsObservingVisibility() const {
     return GetMediaControls()
-               .rotate_to_fullscreen_delegate_->intersection_observer_ !=
-           nullptr;
+        .rotate_to_fullscreen_delegate_->intersection_observer_;
   }
 
   bool ObservedVisibility() const {
@@ -201,7 +200,7 @@ void MediaControlsRotateToFullscreenDelegateTest::InitScreenAndVideo(
 
   // Set up the WebMediaPlayer instance.
   GetDocument().body()->AppendChild(&GetVideo());
-  GetVideo().SetSrc(AtomicString("https://example.com"));
+  GetVideo().SetSrc("https://example.com");
   test::RunPendingTasks();
   SimulateVideoReadyState(HTMLMediaElement::kHaveMetadata);
 
@@ -256,7 +255,7 @@ TEST_F(MediaControlsRotateToFullscreenDelegateTest, DelegateRequiresVideo) {
 TEST_F(MediaControlsRotateToFullscreenDelegateTest, ComputeVideoOrientation) {
   // Set up the WebMediaPlayer instance.
   GetDocument().body()->AppendChild(&GetVideo());
-  GetVideo().SetSrc(AtomicString("https://example.com"));
+  GetVideo().SetSrc("https://example.com");
   test::RunPendingTasks();
 
   // Video is not yet ready.
@@ -739,8 +738,7 @@ TEST_F(MediaControlsRotateToFullscreenDelegateTest,
 
   EXPECT_FALSE(ObservedVisibility());
 
-  GetVideo().setAttribute(AtomicString("controlslist"),
-                          AtomicString("nofullscreen"));
+  GetVideo().setAttribute("controlslist", "nofullscreen");
 
   PlayVideo();
   UpdateVisibilityObserver();
@@ -788,8 +786,7 @@ TEST_F(MediaControlsRotateToFullscreenDelegateTest,
 
   EXPECT_FALSE(ObservedVisibility());
 
-  GetVideo().setAttribute(AtomicString("controlslist"),
-                          AtomicString("nodownload"));
+  GetVideo().setAttribute("controlslist", "nodownload");
 
   PlayVideo();
   UpdateVisibilityObserver();

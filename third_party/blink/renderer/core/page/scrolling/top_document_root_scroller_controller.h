@@ -16,7 +16,9 @@ class LocalFrameView;
 class Node;
 class Page;
 class RootFrameViewport;
+class ScrollStateCallback;
 class ScrollableArea;
+class ViewportScrollCallback;
 
 // This class manages the the page level aspects of the root scroller.  That
 // is, given all the iframes on a page and their individual root scrollers,
@@ -35,8 +37,17 @@ class CORE_EXPORT TopDocumentRootScrollerController
   // disposed so that we can remove them as the root scroller.
   void DidDisposeScrollableArea(ScrollableArea&);
 
-  // This method initializes the global root scroller.
-  void Initialize(RootFrameViewport&, Document&);
+  // This method needs to be called to create a ViewportScrollCallback that
+  // will be used to apply viewport scrolling actions like browser controls
+  // movement and overscroll glow.
+  void InitializeViewportScrollCallback(RootFrameViewport&, Document&);
+
+  // Returns true if the given ScrollStateCallback is the
+  // ViewportScrollCallback managed by this class.
+  // TODO(bokan): Temporarily needed to allow ScrollCustomization to
+  // differentiate between real custom callback and the built-in viewport
+  // apply scroll. crbug.com/623079.
+  bool IsViewportScrollCallback(const ScrollStateCallback*) const;
 
   // Returns the Node that's the global root scroller.  See README.md for the
   // difference between this and the root scroller types in
@@ -56,7 +67,8 @@ class CORE_EXPORT TopDocumentRootScrollerController
   gfx::Size RootScrollerVisibleArea() const;
 
   // Called when a document is shutdown to releases the global_root_scroller_
-  // without any side effects (i.e. doesn't call DidChangeGlobalRootScroller).
+  // and viewport_apply_scroll_ members, without any side effects (i.e. doesn't
+  // call DidChangeGlobalRootScroller).
   void Reset();
 
  private:
@@ -76,7 +88,10 @@ class CORE_EXPORT TopDocumentRootScrollerController
 
   Document* TopDocument() const;
 
-  WeakMember<RootFrameViewport> root_frame_viewport_;
+  // The apply-scroll callback that moves browser controls and produces
+  // overscroll effects. This class makes sure this callback is set on the
+  // global root scroller element.
+  Member<ViewportScrollCallback> viewport_apply_scroll_;
 
   // The page level root scroller. i.e. The actual node for which scrolling
   // should move browser controls and produce overscroll glow. Once an

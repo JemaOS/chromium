@@ -10,8 +10,11 @@ import org.chromium.base.ContextUtils;
 import org.chromium.chrome.browser.feed.FeedServiceUtil;
 import org.chromium.chrome.browser.feed.TabGroupEnabledState;
 import org.chromium.chrome.browser.tasks.ReturnToChromeUtil;
+import org.chromium.chrome.browser.tasks.tab_management.TabUiFeatureUtilities;
 
-/** Implements some utilities used for the feed service. */
+/**
+ * Implements some utilities used for the feed service.
+ */
 public class FeedServiceUtilImpl implements FeedServiceUtil {
     @Override
     public @TabGroupEnabledState int getTabGroupEnabledState() {
@@ -19,6 +22,13 @@ public class FeedServiceUtilImpl implements FeedServiceUtil {
         if (ReturnToChromeUtil.isStartSurfaceEnabled(context)) {
             return TabGroupEnabledState.NONE;
         }
-        return TabGroupEnabledState.BOTH;
+        if (TabUiFeatureUtilities.isTabGroupsAndroidEnabled(context)) {
+            if (TabUiFeatureUtilities.ENABLE_TAB_GROUP_AUTO_CREATION.getValue()) {
+                return TabGroupEnabledState.REPLACED;
+            } else {
+                return TabGroupEnabledState.BOTH;
+            }
+        }
+        return TabGroupEnabledState.NONE;
     }
 }

@@ -18,9 +18,7 @@
 #include "media/base/format_utils.h"
 #include "media/base/video_types.h"
 #include "media/gpu/buffer_validation.h"
-#include "media/gpu/chromeos/video_frame_resource.h"
 #include "media/gpu/macros.h"
-#include "media/media_buildflags.h"
 #include "ui/gfx/buffer_format_util.h"
 
 #if BUILDFLAG(USE_CHROMEOS_MEDIA_ACCELERATION)
@@ -34,11 +32,11 @@ namespace {
 // Helper thunk called when all references to a video frame have been dropped.
 // The thunk reschedules the OnFrameReleased callback on the correct task runner
 // as frames can be destroyed on any thread. Note that the WeakPtr is wrapped in
-// an std::optional, as a WeakPtr should only be dereferenced on the thread it
+// an absl::optional, as a WeakPtr should only be dereferenced on the thread it
 // was created on. If we don't wrap the WeakPtr the task runner will dereference
 // the WeakPtr before calling this function causing an assert.
 void OnFrameReleasedThunk(
-    std::optional<base::WeakPtr<GpuArcVideoFramePool>> weak_this,
+    absl::optional<base::WeakPtr<GpuArcVideoFramePool>> weak_this,
     base::SequencedTaskRunner* task_runner,
     scoped_refptr<media::VideoFrame> origin_frame) {
   DCHECK(weak_this);
@@ -76,6 +74,8 @@ GpuArcVideoFramePool::GpuArcVideoFramePool(
   weak_this_ = weak_this_factory_.GetWeakPtr();
 
   client_task_runner_ = base::SingleThreadTaskRunner::GetCurrentDefault();
+  vda_video_frame_pool_ = std::make_unique<media::VdaVideoFramePool>(
+      weak_this_, client_task_runner_);
 }
 
 GpuArcVideoFramePool::~GpuArcVideoFramePool() {
@@ -184,10 +184,6 @@ void GpuArcVideoFramePool::AddVideoFrame(mojom::VideoFramePtr video_frame,
     return;
   }
 
-  // This passes because GetFrameStorageType() is hard coded to match
-  // the storage type of frames produced by CreateVideoFrame().
-  CHECK_EQ(origin_frame->storage_type(), GetFrameStorageType());
-
   const gfx::GpuMemoryBufferId buffer_id =
       origin_frame->GetGpuMemoryBuffer()->GetId();
   auto it = buffer_id_to_video_frame_id_.emplace(buffer_id, video_frame->id);
@@ -205,8 +201,7 @@ void GpuArcVideoFramePool::AddVideoFrame(mojom::VideoFramePtr video_frame,
 
   // Add the frame to the underlying video frame pool.
   DCHECK(import_frame_cb_);
-  import_frame_cb_.Run(
-      media::VideoFrameResource::Create(std::move(wrapped_frame)));
+  import_frame_cb_.Run(std::move(wrapped_frame));
 
   std::move(callback).Run(true);
 }
@@ -236,21 +231,14 @@ void GpuArcVideoFramePool::RequestFrames(
   request_frames_cb_.Run();
 }
 
-media::VideoFrame::StorageType GpuArcVideoFramePool::GetFrameStorageType()
-    const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // This is validated at runtime to be in sync with the frame storage type.
-  return media::VideoFrame::STORAGE_GPU_MEMORY_BUFFER;
-}
-
-std::optional<int32_t> GpuArcVideoFramePool::GetVideoFrameId(
+absl::optional<int32_t> GpuArcVideoFramePool::GetVideoFrameId(
     const media::VideoFrame* video_frame) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto it = buffer_id_to_video_frame_id_.find(
       video_frame->GetGpuMemoryBuffer()->GetId());
   return it != buffer_id_to_video_frame_id_.end()
-             ? std::optional<int32_t>(it->second)
-             : std::nullopt;
+             ? absl::optional<int32_t>(it->second)
+             : absl::nullopt;
 }
 
 void GpuArcVideoFramePool::OnFrameReleased(
@@ -271,10 +259,8 @@ gfx::GpuMemoryBufferHandle GpuArcVideoFramePool::CreateGpuMemoryHandle(
     uint64_t modifier) {
   // Check whether we need to use protected buffers.
   if (!secure_mode_.has_value()) {
-    base::ScopedFD dup_fd(HANDLE_EINTR(dup(fd.get())));
     secure_mode_ = protected_buffer_manager_ &&
-                   protected_buffer_manager_->IsProtectedNativePixmapHandle(
-                       std::move(dup_fd));
+                   IsBufferSecure(protected_buffer_manager_.get(), fd);
   }
 
   gfx::GpuMemoryBufferHandle gmb_handle;

@@ -91,7 +91,7 @@ IN_PROC_BROWSER_TEST_P(MajorityAgeUserMetricsProviderTest,
   std::unique_ptr<SyncServiceImplHarness> harness =
       metrics::test::InitializeProfileForSync(browser()->profile(),
                                               GetFakeServer()->AsWeakPtr());
-  ASSERT_TRUE(harness->SetupSync());
+  harness->SetupSync();
 
   // Simulate calling ProvideCurrentSessionData() after logging in.
   ProvideCurrentSessionData();

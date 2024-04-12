@@ -11,7 +11,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace send_tab_to_self {
@@ -30,7 +30,7 @@ class SendTabToSelfSyncServiceFactory : public ProfileKeyedServiceFactory {
       const SendTabToSelfSyncServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<SendTabToSelfSyncServiceFactory>;
+  friend struct base::DefaultSingletonTraits<SendTabToSelfSyncServiceFactory>;
 
   SendTabToSelfSyncServiceFactory();
   ~SendTabToSelfSyncServiceFactory() override;

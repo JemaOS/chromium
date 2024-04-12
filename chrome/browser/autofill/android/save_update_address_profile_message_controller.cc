@@ -4,13 +4,11 @@
 
 #include "chrome/browser/autofill/android/save_update_address_profile_message_controller.h"
 
-#include <optional>
 #include <utility>
 
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/android/android_theme_resources.h"
 #include "chrome/browser/android/resource_mapper.h"
-#include "chrome/browser/autofill/ui/ui_util.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -88,7 +86,7 @@ bool SaveUpdateAddressProfileMessageController::IsMessageDisplayed() {
 
 void SaveUpdateAddressProfileMessageController::OnPrimaryAction() {
   std::move(primary_action_callback_)
-      .Run(web_contents_.get(), *profile_, original_profile_.get(),
+      .Run(web_contents_.get(), profile_, original_profile_.get(),
            is_migration_to_account_, std::move(save_address_profile_callback_));
 }
 
@@ -102,17 +100,18 @@ void SaveUpdateAddressProfileMessageController::OnMessageDismissed(
     case messages::DismissReason::GESTURE:
       // User explicitly dismissed the message.
       RunSaveAddressProfileCallback(
-          AutofillClient::AddressPromptUserDecision::kMessageDeclined);
+          AutofillClient::SaveAddressProfileOfferUserDecision::
+              kMessageDeclined);
       break;
     case messages::DismissReason::TIMER:
       // The message was auto-dismissed after a timeout.
       RunSaveAddressProfileCallback(
-          AutofillClient::AddressPromptUserDecision::kMessageTimeout);
+          AutofillClient::SaveAddressProfileOfferUserDecision::kMessageTimeout);
       break;
     default:
       // Dismissal for any other reason.
       RunSaveAddressProfileCallback(
-          AutofillClient::AddressPromptUserDecision::kIgnored);
+          AutofillClient::SaveAddressProfileOfferUserDecision::kIgnored);
       break;
   }
 
@@ -137,8 +136,8 @@ void SaveUpdateAddressProfileMessageController::DismissMessage() {
 }
 
 void SaveUpdateAddressProfileMessageController::RunSaveAddressProfileCallback(
-    AutofillClient::AddressPromptUserDecision decision) {
-  std::move(save_address_profile_callback_).Run(decision, std::nullopt);
+    AutofillClient::SaveAddressProfileOfferUserDecision decision) {
+  std::move(save_address_profile_callback_).Run(decision, profile_);
   primary_action_callback_.Reset();
 }
 
@@ -164,21 +163,24 @@ std::u16string SaveUpdateAddressProfileMessageController::GetDescription() {
   }
 
   if (is_migration_to_account_ ||
-      profile_->source() == AutofillProfile::Source::kAccount) {
+      profile_.source() == AutofillProfile::Source::kAccount) {
     return GetSourceNotice();
   }
 
   // Address profile won't be saved to Google Account when user is not logged
   // in.
-  return GetProfileDescription(*profile_,
+  return GetProfileDescription(profile_,
                                g_browser_process->GetApplicationLocale(),
                                /*include_address_and_contacts=*/true);
 }
 
 std::u16string SaveUpdateAddressProfileMessageController::GetSourceNotice() {
-  std::optional<AccountInfo> account = GetPrimaryAccountInfoFromBrowserContext(
-      web_contents_->GetBrowserContext());
-  if (!account) {
+  const signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(
+          Profile::FromBrowserContext(web_contents_->GetBrowserContext()));
+  const CoreAccountInfo primary_account_info =
+      identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin);
+  if (primary_account_info.IsEmpty()) {
     return std::u16string();
   }
 
@@ -187,7 +189,7 @@ std::u16string SaveUpdateAddressProfileMessageController::GetSourceNotice() {
                    IDS_AUTOFILL_SAVE_IN_ACCOUNT_MESSAGE_ADDRESS_MIGRATION_SOURCE_NOTICE)
              : l10n_util::GetStringFUTF16(
                    IDS_AUTOFILL_SAVE_IN_ACCOUNT_MESSAGE_ADDRESS_SOURCE_NOTICE,
-                   base::UTF8ToUTF16(account->email));
+                   base::UTF8ToUTF16(primary_account_info.email));
 }
 
 std::u16string

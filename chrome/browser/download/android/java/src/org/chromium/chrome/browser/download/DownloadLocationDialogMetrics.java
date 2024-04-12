@@ -17,9 +17,10 @@ public final class DownloadLocationDialogMetrics {
      * remove items. Keep in sync with DownloadLocationSuggestionEvent in enums.xml.
      */
     @IntDef({
-        DownloadLocationSuggestionEvent.LOCATION_SUGGESTION_SHOWN,
-        DownloadLocationSuggestionEvent.NOT_ENOUGH_SPACE_SHOWN,
+            DownloadLocationSuggestionEvent.LOCATION_SUGGESTION_SHOWN,
+            DownloadLocationSuggestionEvent.NOT_ENOUGH_SPACE_SHOWN,
     })
+
     public @interface DownloadLocationSuggestionEvent {
         int LOCATION_SUGGESTION_SHOWN = 0;
         int NOT_ENOUGH_SPACE_SHOWN = 1;
@@ -45,8 +46,7 @@ public final class DownloadLocationDialogMetrics {
     public static void recordDownloadLocationSuggestionEvent(
             @DownloadLocationSuggestionEvent int event) {
         RecordHistogram.recordEnumeratedHistogram(
-                "MobileDownload.Location.Dialog.Suggestion.Events",
-                event,
+                "MobileDownload.Location.Dialog.Suggestion.Events", event,
                 DownloadLocationSuggestionEvent.COUNT);
     }
 }

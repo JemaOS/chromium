@@ -6,10 +6,8 @@
 
 #include "chrome/android/chrome_jni_headers/CardUnmaskBridge_jni.h"
 #include "chrome/browser/android/resource_mapper.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profile_android.h"
+#include "chrome/browser/autofill/autofill_popup_controller_utils.h"
 #include "chrome/browser/ui/autofill/payments/create_card_unmask_prompt_view.h"
-#include "components/autofill/core/browser/ui/autofill_resource_utils.h"
 #include "components/autofill/core/browser/ui/payments/card_unmask_prompt_controller.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "content/public/browser/web_contents.h"
@@ -73,13 +71,11 @@ void CardUnmaskPromptViewAndroid::OnUserInput(
     const JavaParamRef<jstring>& cvc,
     const JavaParamRef<jstring>& month,
     const JavaParamRef<jstring>& year,
-    jboolean enable_fido_auth,
-    jboolean was_checkbox_visible) {
+    jboolean enable_fido_auth) {
   controller_->OnUnmaskPromptAccepted(
       base::android::ConvertJavaStringToUTF16(env, cvc),
       base::android::ConvertJavaStringToUTF16(env, month),
-      base::android::ConvertJavaStringToUTF16(env, year), enable_fido_auth,
-      was_checkbox_visible);
+      base::android::ConvertJavaStringToUTF16(env, year), enable_fido_auth);
 }
 
 void CardUnmaskPromptViewAndroid::OnNewCardLinkClicked(
@@ -172,14 +168,9 @@ CardUnmaskPromptViewAndroid::GetOrCreateJavaObject() {
           env, controller_->GetCvcImageAnnouncement());
 
   return java_object_internal_ = Java_CardUnmaskBridge_create(
-             env, reinterpret_cast<intptr_t>(this),
-             ProfileAndroid::FromProfile(
-                 Profile::FromBrowserContext(
-                     web_contents_->GetBrowserContext()))
-                 ->GetJavaObject(),
-             dialog_title, instructions,
+             env, reinterpret_cast<intptr_t>(this), dialog_title, instructions,
              ResourceMapper::MapToJavaDrawableId(
-                 GetIconResourceID(controller_->GetCardIcon())),
+                 GetIconResourceID(controller_->GetCardIconString())),
              card_name, card_last_four_digits, card_expiration, card_art_url,
              confirm,
              ResourceMapper::MapToJavaDrawableId(controller_->GetCvcImageRid()),

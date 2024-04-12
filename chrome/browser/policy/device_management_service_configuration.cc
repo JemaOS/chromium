@@ -6,10 +6,7 @@
 
 #include <stdint.h>
 
-#include <string_view>
-
 #include "base/logging.h"
-#include "base/strings/strcat.h"
 #include "base/strings/stringprintf.h"
 #include "base/system/sys_info.h"
 #include "build/build_config.h"
@@ -47,9 +44,10 @@ std::string DeviceManagementServiceConfiguration::GetDMServerUrl() const {
 }
 
 std::string DeviceManagementServiceConfiguration::GetAgentParameter() const {
-  return base::StrCat({version_info::GetProductName(), " ",
-                       version_info::GetVersionNumber(), "(",
-                       version_info::GetLastChange(), ")"});
+  return base::StringPrintf("%s %s(%s)",
+                            version_info::GetProductName().c_str(),
+                            version_info::GetVersionNumber().c_str(),
+                            version_info::GetLastChange().c_str());
 }
 
 std::string DeviceManagementServiceConfiguration::GetPlatformParameter() const {
@@ -60,7 +58,7 @@ std::string DeviceManagementServiceConfiguration::GetPlatformParameter() const {
   ash::system::StatisticsProvider* provider =
       ash::system::StatisticsProvider::GetInstance();
 
-  const std::optional<std::string_view> hwclass =
+  const absl::optional<base::StringPiece> hwclass =
       provider->GetMachineStatistic(ash::system::kHardwareClassKey);
   if (!hwclass) {
     LOG(ERROR) << "Failed to get machine information";

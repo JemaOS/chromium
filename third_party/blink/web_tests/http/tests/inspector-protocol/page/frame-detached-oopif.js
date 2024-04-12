@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {session, dp} = await testRunner.startBlank('Tests that frameDetached event is emitted when the OOPIF is gone.');
 
   const url = 'http://oopif.test:8000/inspector-protocol/resources/empty.html';
@@ -19,18 +19,17 @@
   await dp.Target.setDiscoverTargets({discover: true});
 
   testRunner.log('Creating a frame with the URL ' + url);
-  const frameLoaded = session.evaluateAsync(`
+  session.evaluate(`
     window.frame = document.createElement('iframe');
     frame.src = '${url}';
     document.body.appendChild(frame);
-    new Promise(resolve => { frame.onload = resolve });
   `);
-
+  const onceFrameStoppedLoading = dp.Page.onceFrameStoppedLoading();
   const onceFrameAttached = dp.Page.onceFrameAttached();
   const onceFrameDetachedSwap = dp.Page.onceFrameDetached();
   testRunner.log(await onceFrameAttached, 'Attached frame ', replacedAttributes);
   testRunner.log(await onceFrameDetachedSwap, 'Detached frame (swap)', replacedAttributes);
-  await frameLoaded;
+  await onceFrameStoppedLoading;
 
   testRunner.log('Removing the frame');
   const onceTargetDestroyed = dp.Target.onceTargetDestroyed();

@@ -27,10 +27,9 @@ class WebContents;
 class LocationBarBubbleDelegateView : public views::BubbleDialogDelegateView,
                                       public FullscreenObserver,
                                       public content::WebContentsObserver {
-  METADATA_HEADER(LocationBarBubbleDelegateView,
-                  views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(LocationBarBubbleDelegateView);
+
   enum DisplayReason {
     // The bubble appears as a direct result of a user action (clicking on the
     // location bar icon).

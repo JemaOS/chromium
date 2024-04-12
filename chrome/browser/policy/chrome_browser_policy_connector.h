@@ -32,14 +32,10 @@ class PrefService;
 
 namespace policy {
 class ConfigurationPolicyProvider;
-class LocalTestPolicyProvider;
 class ProxyPolicyProvider;
 
-#if !BUILDFLAG(IS_CHROMEOS)
-class ChromeBrowserCloudManagementController;
-#endif
-
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
+class ChromeBrowserCloudManagementController;
 class MachineLevelUserCloudPolicyManager;
 #endif
 
@@ -66,9 +62,9 @@ class ChromeBrowserPolicyConnector : public BrowserPolicyConnector {
   void Init(PrefService* local_state,
             scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory)
       override;
-
-  // Called to signal the browser has started.
-  virtual void OnBrowserStarted();
+  // ---***JEMAOS BEGIN***---
+  void ResetDeviceManagementServiceConfiguration();
+  // ---***JEMAOS END***---
 
   bool IsDeviceEnterpriseManaged() const override;
 
@@ -78,41 +74,15 @@ class ChromeBrowserPolicyConnector : public BrowserPolicyConnector {
 
   ConfigurationPolicyProvider* GetPlatformProvider();
 
-  ConfigurationPolicyProvider* local_test_policy_provider();
-  void SetLocalTestPolicyProviderForTesting(
-      ConfigurationPolicyProvider* provider);
-
-  // If the kLocalTestPoliciesForNextStartup pref is non-empty, read and apply
-  // the policies stored in it, and then clear the pref. This must be called
-  // right after the `local_state` is created to ensure policies are applied
-  // at the right time.
-  void MaybeApplyLocalTestPolicies(PrefService* local_state);
-
-#if !BUILDFLAG(IS_CHROMEOS)
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
   ChromeBrowserCloudManagementController*
   chrome_browser_cloud_management_controller() {
     return chrome_browser_cloud_management_controller_.get();
   }
-
-  // On non-Android platforms, starts controller initialization right away.
-  // On Android, delays controller initialization until platform policies have
-  // been initialized, or starts controller initialization right away otherwise.
-  void InitCloudManagementController(
-      PrefService* local_state,
-      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory);
-#endif  // !BUILDFLAG(IS_CHROMEOS)
-
-#if !BUILDFLAG(IS_CHROMEOS_ASH)
-  // TODO(chromium:1502062): MachineLevelUserCloudPolicyManager is CBCM's policy
-  // provider. Since CBCM doesn't exist in Lacros,
-  // MachineLevelUserCloudPolicyManager shouldn't have to exist there either.
-  // Refactor the code accordingly.
   MachineLevelUserCloudPolicyManager*
   machine_level_user_cloud_policy_manager() {
     return machine_level_user_cloud_policy_manager_;
   }
-  void SetMachineLevelUserCloudPolicyManagerForTesting(
-      MachineLevelUserCloudPolicyManager* manager);
 
   ProxyPolicyProvider* proxy_policy_provider() {
     return proxy_policy_provider_;
@@ -121,6 +91,13 @@ class ChromeBrowserPolicyConnector : public BrowserPolicyConnector {
   ConfigurationPolicyProvider* command_line_policy_provider() {
     return command_line_provider_;
   }
+
+  // On non-Android platforms, starts controller initialization right away.
+  // On Android, delays controller initialization until platform policies have
+  // been initialized, or starts controller initialization right away otherwise.
+  void InitCloudManagementController(
+      PrefService* local_state,
+      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory);
 
   // Set ProxyPolicyProvider for testing, caller needs to init and shutdown the
   // provider.
@@ -152,10 +129,6 @@ class ChromeBrowserPolicyConnector : public BrowserPolicyConnector {
   PolicyLoaderLacros* device_account_policy_loader() {
     return device_account_policy_loader_;
   }
-
-  ConfigurationPolicyProvider* ash_policy_provider() {
-    return ash_policy_provider_;
-  }
 #endif
 
  protected:
@@ -167,10 +140,7 @@ class ChromeBrowserPolicyConnector : public BrowserPolicyConnector {
   // Returns the policy provider that supplies platform policies.
   std::unique_ptr<ConfigurationPolicyProvider> CreatePlatformProvider();
 
-#if !BUILDFLAG(IS_CHROMEOS)
-  std::unique_ptr<ChromeBrowserCloudManagementController>
-      chrome_browser_cloud_management_controller_;
-
+#if !BUILDFLAG(IS_CHROMEOS_ASH)
   // Creates the MachineLevelUserCloudPolicyManager if the browser should be
   // enrolled in CBCM. On Android, the decision may be postponed until platform
   // policies have been loaded and it can be decided if an enrollment token is
@@ -178,15 +148,16 @@ class ChromeBrowserPolicyConnector : public BrowserPolicyConnector {
   void MaybeCreateCloudPolicyManager(
       std::vector<std::unique_ptr<policy::ConfigurationPolicyProvider>>*
           providers);
-#endif  // !BUILDFLAG(IS_CHROMEOS)
 
-#if !BUILDFLAG(IS_CHROMEOS_ASH)
   // Invoked once it can be decided if cloud management is enabled. If enabled,
   // invoked with a MachineLevelUserCloudPolicyManager instance. Otherwise,
   // nullptr is passed on instead.
   void OnMachineLevelCloudPolicyManagerCreated(
       std::unique_ptr<MachineLevelUserCloudPolicyManager>
           machine_level_user_cloud_policy_manager);
+
+  std::unique_ptr<ChromeBrowserCloudManagementController>
+      chrome_browser_cloud_management_controller_;
 
   // If CBCM enrollment is needed, then this proxy points to a
   // MachineLevelUserCloudPolicyManager object. Otherwise, this is innocuous.
@@ -215,17 +186,11 @@ class ChromeBrowserPolicyConnector : public BrowserPolicyConnector {
   // Owned by base class.
   raw_ptr<ConfigurationPolicyProvider> command_line_provider_ = nullptr;
 
-  raw_ptr<ConfigurationPolicyProvider> local_test_provider_for_testing_ =
-      nullptr;
-  std::unique_ptr<LocalTestPolicyProvider> local_test_provider_;
-
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   std::unique_ptr<DeviceSettingsLacros> device_settings_ = nullptr;
   // Owned by |platform_provider_|.
   raw_ptr<PolicyLoaderLacros, DanglingUntriaged> device_account_policy_loader_ =
       nullptr;
-  // Provides the user policy fetched/cached by ash-chrome. Owned by base class.
-  raw_ptr<ConfigurationPolicyProvider> ash_policy_provider_ = nullptr;
 #endif
 
   // Weak pointers needed for tasks that need to wait until it can be decided

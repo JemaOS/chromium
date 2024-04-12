@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
-
 #include "base/check.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -14,7 +12,6 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/content_browser_test_utils.h"
-#include "content/public/test/scoped_accessibility_mode_override.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "net/test/embedded_test_server/request_handler_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -38,9 +35,8 @@ int CountOffscreenButtons(const ui::AXTree* tree, const ui::AXNode* node) {
       count++;
   }
 
-  for (const ui::AXNode* child : node->children()) {
+  for (const auto* child : node->children())
     count += CountOffscreenButtons(tree, child);
-  }
 
   return count;
 }
@@ -68,18 +64,16 @@ class WebViewBrowserTest : public InProcessBrowserTest {
 
     ASSERT_TRUE(https_server_.Start());
 
-    scoped_accessibility_mode_.emplace(
-        browser()->tab_strip_model()->GetActiveWebContents(),
-        ui::kAXModeComplete | ui::AXMode::kLabelImages);
+    content::WebContents* web_contents =
+        browser()->tab_strip_model()->GetActiveWebContents();
+
+    ui::AXMode mode = ui::kAXModeComplete;
+    mode.set_mode(ui::AXMode::kLabelImages, true);
+    web_contents->SetAccessibilityMode(mode);
   }
 
-  void TearDownOnMainThread() override { scoped_accessibility_mode_.reset(); }
-
+ protected:
   net::EmbeddedTestServer https_server_;
-
- private:
-  std::optional<content::ScopedAccessibilityModeOverride>
-      scoped_accessibility_mode_;
 };
 
 // Flaky. https://crbug.com/1013805

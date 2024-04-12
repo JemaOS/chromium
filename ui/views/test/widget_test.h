@@ -74,10 +74,6 @@ class WidgetTest : public ViewsTestBase {
   explicit WidgetTest(
       std::unique_ptr<base::test::TaskEnvironment> task_environment);
 
-  template <typename... TaskEnvironmentTraits>
-  explicit WidgetTest(TaskEnvironmentTraits&&... traits)
-      : ViewsTestBase(std::forward<TaskEnvironmentTraits>(traits)...) {}
-
   WidgetTest(const WidgetTest&) = delete;
   WidgetTest& operator=(const WidgetTest&) = delete;
 
@@ -120,7 +116,8 @@ class WidgetTest : public ViewsTestBase {
 
   // Return true if |above| is higher than |below| in the native window Z-order.
   // Both windows must be visible.
-  // WARNING: This does not work for Aura desktop widgets (crbug.com/1333445).
+  // WARNING: this does not work for Aura desktop widgets (crbug.com/1333445)
+  // and is not reliable on MacOS 10.13 and earlier.
   static bool IsWindowStackedAbove(Widget* above, Widget* below);
 
   // Query the native window system for the minimum size configured for user
@@ -260,6 +257,33 @@ class TestInitialFocusWidgetDelegate : public TestDesktopWidgetDelegate {
   raw_ptr<View> view_;
 };
 
+// Use in tests to wait until a Widget's activation change to a particular
+// value. To use create and call Wait().
+class WidgetActivationWaiter : public WidgetObserver {
+ public:
+  WidgetActivationWaiter(Widget* widget, bool active);
+
+  WidgetActivationWaiter(const WidgetActivationWaiter&) = delete;
+  WidgetActivationWaiter& operator=(const WidgetActivationWaiter&) = delete;
+
+  ~WidgetActivationWaiter() override;
+
+  // Returns when the active status matches that supplied to the constructor. If
+  // the active status does not match that of the constructor a RunLoop is used
+  // until the active status matches, otherwise this returns immediately.
+  void Wait();
+
+ private:
+  // views::WidgetObserver override:
+  void OnWidgetActivationChanged(Widget* widget, bool active) override;
+
+  bool observed_ = false;
+  bool active_;
+
+  base::RunLoop run_loop_;
+  base::ScopedObservation<Widget, WidgetObserver> widget_observation_{this};
+};
+
 // Use in tests to wait for a widget to be destroyed.
 class WidgetDestroyedWaiter : public WidgetObserver {
  public:
@@ -300,6 +324,7 @@ class WidgetVisibleWaiter : public WidgetObserver {
   void OnWidgetVisibilityChanged(Widget* widget, bool visible) override;
   void OnWidgetDestroying(Widget* widget) override;
 
+  const raw_ptr<Widget, DanglingUntriaged> widget_;
   base::RunLoop run_loop_;
   base::ScopedObservation<Widget, WidgetObserver> widget_observation_{this};
 };

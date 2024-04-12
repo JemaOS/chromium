@@ -5,21 +5,15 @@
 #ifndef ASH_WEBUI_CAMERA_APP_UI_CAMERA_APP_UI_DELEGATE_H_
 #define ASH_WEBUI_CAMERA_APP_UI_CAMERA_APP_UI_DELEGATE_H_
 
-#include <optional>
 #include <string>
 
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
 
 namespace content {
-class BrowserContext;
 class WebContents;
 class WebUIDataSource;
 }  // namespace content
-
-namespace media_device_salt {
-class MediaDeviceSaltService;
-}  // namespace media_device_salt
 
 namespace ash {
 class HoldingSpaceClient;
@@ -30,46 +24,31 @@ class CameraAppUIDelegate {
  public:
   enum class FileMonitorResult {
     // The file is deleted.
-    kDeleted = 0,
+    DELETED = 0,
 
     // The request is canceled since there is another monitor request.
-    kCanceled = 1,
+    CANCELED = 1,
 
     // Fails to monitor the file due to errors.
-    kError = 2,
+    ERROR = 2,
   };
 
   enum class StorageMonitorStatus {
     // Storage has enough space to operate CCA functions.
-    kNormal = 0,
+    NORMAL = 0,
 
     // Storage is getting low, display warning to users.
-    kLow = 1,
+    LOW = 1,
 
     // Storage is almost full. Should stop ongoing recording and don't allow new
     // recording.
-    kCriticallyLow = 2,
+    CRITICALLY_LOW = 2,
 
     // Monitoring got canceled since there is another monitor request.
-    kCanceled = 3,
+    CANCELED = 3,
 
     // Monitoring get errors.
-    kError = 4,
-  };
-
-  struct WifiConfig {
-    WifiConfig();
-    WifiConfig(const WifiConfig&);
-    WifiConfig& operator=(const WifiConfig&);
-    ~WifiConfig();
-
-    std::string ssid;
-    std::string security;
-    std::optional<std::string> password;
-    std::optional<std::string> eap_method;
-    std::optional<std::string> eap_phase2_method;
-    std::optional<std::string> eap_identity;
-    std::optional<std::string> eap_anonymous_identity;
+    ERROR = 4,
   };
 
   virtual ~CameraAppUIDelegate() = default;
@@ -83,7 +62,8 @@ class CameraAppUIDelegate {
   // Takes a WebUIDataSource, and adds load time data into it.
   virtual void PopulateLoadTimeData(content::WebUIDataSource* source) = 0;
 
-  // Checks if the logging consent option is enabled.
+  // TODO(crbug.com/1113567): Remove this method once we migrate to use UMA to
+  // collect metrics. Checks if the logging consent option is enabled.
   virtual bool IsMetricsAndCrashReportingEnabled() = 0;
 
   // Opens the file in Downloads folder by its |name| in gallery.
@@ -122,17 +102,6 @@ class CameraAppUIDelegate {
 
   // Gets the file path by given file |name|.
   virtual base::FilePath GetFilePathByName(const std::string& name) = 0;
-
-  // Returns a service that provides persistent salts for generating media
-  // device IDs. Can be null if the embedder does not support persistent salts.
-  virtual media_device_salt::MediaDeviceSaltService* GetMediaDeviceSaltService(
-      content::BrowserContext* context) = 0;
-
-  // Opens a Wi-Fi connection dialog based on the given information.
-  virtual void OpenWifiDialog(WifiConfig wifi_config) = 0;
-
-  // Gets the system language of the current profile.
-  virtual std::string GetSystemLanguage() = 0;
 };
 
 }  // namespace ash

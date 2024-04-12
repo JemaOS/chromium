@@ -12,6 +12,7 @@
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/autofill/save_update_address_profile_bubble_controller.h"
 #include "chrome/browser/ui/hats/hats_service.h"
 #include "chrome/browser/ui/hats/hats_service_factory.h"
 #include "chrome/browser/ui/views/accessibility/theme_tracking_non_accessible_image_view.h"
@@ -47,7 +48,6 @@
 #include "ui/views/layout/layout_provider.h"
 #include "ui/views/metadata/view_factory_internal.h"
 #include "ui/views/style/typography.h"
-#include "ui/views/style/typography_provider.h"
 #include "ui/views/view_class_properties.h"
 
 namespace autofill {
@@ -59,8 +59,8 @@ constexpr int kIconSize = 16;
 int ComboboxIconSize() {
   // Use the line height of the body small text. This allows the icons to adapt
   // if the user changes the font size.
-  return views::TypographyProvider::Get().GetLineHeight(
-      views::style::CONTEXT_MENU, views::style::STYLE_PRIMARY);
+  return views::style::GetLineHeight(views::style::CONTEXT_MENU,
+                                     views::style::STYLE_PRIMARY);
 }
 
 std::unique_ptr<views::ImageView> CreateAddressSectionIcon(
@@ -152,23 +152,25 @@ std::unique_ptr<views::EditableCombobox> CreateNicknameEditableCombobox() {
 }  // namespace
 
 SaveAddressProfileView::SaveAddressProfileView(
-    std::unique_ptr<SaveAddressBubbleController> controller,
     views::View* anchor_view,
-    content::WebContents* web_contents)
-    : AddressBubbleBaseView(anchor_view, web_contents),
-      controller_(std::move(controller)) {
+    content::WebContents* web_contents,
+    SaveUpdateAddressProfileBubbleController* controller)
+    : LocationBarBubbleDelegateView(anchor_view, web_contents),
+      controller_(controller) {
+  // Since this is a save prompt, original profile must not be set. Otherwise,
+  // it would have been an update prompt.
+  DCHECK(!controller_->GetOriginalProfile());
+
   // TODO(crbug.com/1167060): Accept action should consider the selected
   // nickname when saving the address.
   SetAcceptCallback(base::BindOnce(
-      &SaveAddressBubbleController::OnUserDecision,
-      base::Unretained(controller_.get()),
-      AutofillClient::AddressPromptUserDecision::kAccepted, std::nullopt));
-  SetCancelCallback(base::BindOnce(&SaveAddressBubbleController::OnUserDecision,
-                                   base::Unretained(controller_.get()),
-                                   controller_->GetCancelCallbackValue(),
-                                   std::nullopt));
+      &SaveUpdateAddressProfileBubbleController::OnUserDecision,
+      base::Unretained(controller_),
+      AutofillClient::SaveAddressProfileOfferUserDecision::kAccepted));
+  SetCancelCallback(base::BindOnce(
+      &SaveUpdateAddressProfileBubbleController::OnUserDecision,
+      base::Unretained(controller_), controller_->GetCancelCallbackValue()));
 
-  SetProperty(views::kElementIdentifierKey, kTopViewId);
   SetTitle(controller_->GetWindowTitle());
   SetButtonLabel(ui::DIALOG_BUTTON_OK, controller_->GetOkButtonLabel());
   SetButtonLabel(ui::DIALOG_BUTTON_CANCEL,
@@ -180,7 +182,7 @@ SaveAddressProfileView::SaveAddressProfileView(
       views::LayoutProvider::Get()->GetDistanceMetric(
           views::DISTANCE_UNRELATED_CONTROL_VERTICAL)));
 
-  std::u16string description = controller_->GetBodyText();
+  std::u16string description = controller->GetBodyText();
   if (!description.empty()) {
     AddChildView(
         views::Builder<views::Label>()
@@ -221,10 +223,10 @@ SaveAddressProfileView::SaveAddressProfileView(
                   DISTANCE_CONTROL_LIST_VERTICAL))
           .Build());
 
-  edit_button_ = details_section->AddChildView(CreateEditButton(
-      base::BindRepeating(&SaveAddressBubbleController::OnEditButtonClicked,
-                          base::Unretained(controller_.get()))));
-  edit_button_->SetProperty(views::kElementIdentifierKey, kEditButtonViewId);
+  edit_button_ =
+      details_section->AddChildView(CreateEditButton(base::BindRepeating(
+          &SaveUpdateAddressProfileBubbleController::OnEditButtonClicked,
+          base::Unretained(controller_))));
 
   std::u16string address = controller_->GetAddressSummary();
   if (!address.empty()) {
@@ -269,13 +271,10 @@ SaveAddressProfileView::SaveAddressProfileView(
     SetFootnoteView(
         views::Builder<views::Label>()
             .SetText(footer_message)
-            .SetTextContext(views::style::CONTEXT_BUBBLE_FOOTER)
-            .SetTextStyle(views::style::STYLE_SECONDARY)
             .SetHorizontalAlignment(gfx::HorizontalAlignment::ALIGN_LEFT)
             .SetMultiLine(true)
             .Build());
   }
-  AlignIcons();
 
   Profile* browser_profile =
       Profile::FromBrowserContext(web_contents->GetBrowserContext());
@@ -317,8 +316,8 @@ void SaveAddressProfileView::Hide() {
 }
 
 void SaveAddressProfileView::AddedToWidget() {
-  std::optional<SaveAddressBubbleController::HeaderImages> images =
-      controller_->GetHeaderImages();
+  absl::optional<SaveUpdateAddressProfileBubbleController::HeaderImages>
+      images = controller_->GetHeaderImages();
   if (images) {
     GetBubbleFrameView()->SetHeaderView(
         std::make_unique<ThemeTrackingNonAccessibleImageView>(
@@ -329,12 +328,17 @@ void SaveAddressProfileView::AddedToWidget() {
   }
 }
 
+void SaveAddressProfileView::OnThemeChanged() {
+  LocationBarBubbleDelegateView::OnThemeChanged();
+  AlignIcons();
+}
+
 void SaveAddressProfileView::AlignIcons() {
-  CHECK(edit_button_);
-  CHECK(address_components_view_);
+  DCHECK(edit_button_);
+  DCHECK(address_components_view_);
   // Adjust margins to make sure the edit button is vertically centered with the
   // first line in the address components view.
-  int label_line_height = views::TypographyProvider::Get().GetLineHeight(
+  int label_line_height = views::style::GetLineHeight(
       views::style::CONTEXT_LABEL, views::style::STYLE_PRIMARY);
   for (views::ImageView* icon_view : address_section_icons_) {
     DCHECK(icon_view);
@@ -360,9 +364,5 @@ void SaveAddressProfileView::AlignIcons() {
                               gfx::Insets::VH(-height_difference, 0));
   }
 }
-
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(SaveAddressProfileView, kTopViewId);
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(SaveAddressProfileView,
-                                      kEditButtonViewId);
 
 }  // namespace autofill

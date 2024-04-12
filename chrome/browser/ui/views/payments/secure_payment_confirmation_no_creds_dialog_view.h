@@ -17,10 +17,9 @@ namespace payments {
 class SecurePaymentConfirmationNoCredsDialogView
     : public SecurePaymentConfirmationNoCredsView,
       public views::DialogDelegateView {
-  METADATA_HEADER(SecurePaymentConfirmationNoCredsDialogView,
-                  views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(SecurePaymentConfirmationNoCredsDialogView);
+
   class ObserverForTest {
    public:
     virtual void OnDialogClosed() = 0;

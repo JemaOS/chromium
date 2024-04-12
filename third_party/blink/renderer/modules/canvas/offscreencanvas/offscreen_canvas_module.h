@@ -22,7 +22,7 @@ class MODULES_EXPORT OffscreenCanvasModule {
 
  public:
   static V8OffscreenRenderingContext* getContext(
-      ScriptState* script_state,
+      ExecutionContext* execution_context,
       OffscreenCanvas& offscreen_canvas,
       const String& context_id,
       const CanvasContextCreationAttributesModule* attributes,

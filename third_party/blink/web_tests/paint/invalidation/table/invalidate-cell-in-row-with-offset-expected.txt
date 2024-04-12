@@ -1,20 +1,20 @@
 {
   "layers": [
     {
-      "name": "Scrolling background of LayoutView #document",
+      "name": "Scrolling background of LayoutNGView #document",
       "bounds": [800, 600],
       "contentsOpaque": true,
       "backgroundColor": "#FFFFFF"
     },
     {
-      "name": "LayoutTableRow TR",
+      "name": "LayoutNGTableRow TR",
       "bounds": [102, 102],
       "contentsOpaque": true,
       "backgroundColor": "#FF0000",
       "transform": 1
     },
     {
-      "name": "LayoutTableRow TR class='shadow-inset'",
+      "name": "LayoutNGTableRow TR class='shadow-inset'",
       "bounds": [214, 102],
       "invalidations": [
         [0, 0, 102, 102]

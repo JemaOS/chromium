@@ -11,30 +11,22 @@
 #include <memory>
 
 #include "base/compiler_specific.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
 #include "base/logging.h"
 #include "base/memory/weak_ptr.h"
 #include "base/strings/stringprintf.h"
-#include "base/task/bind_post_task.h"
 #include "base/threading/thread_checker.h"
 #include "base/trace_event/trace_event.h"
-#include "base/unguessable_token.h"
 #include "components/webrtc/net_address_utils.h"
 #include "net/base/ip_address.h"
 #include "net/base/port_util.h"
 #include "third_party/blink/public/platform/modules/webrtc/webrtc_logging.h"
-#include "third_party/blink/renderer/platform/heap/cross_thread_persistent.h"
 #include "third_party/blink/renderer/platform/p2p/host_address_request.h"
 #include "third_party/blink/renderer/platform/p2p/socket_client_delegate.h"
 #include "third_party/blink/renderer/platform/p2p/socket_client_impl.h"
 #include "third_party/blink/renderer/platform/p2p/socket_dispatcher.h"
-#include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
-#include "third_party/webrtc/api/async_dns_resolver.h"
 #include "third_party/webrtc/rtc_base/async_packet_socket.h"
-#include "third_party/webrtc/rtc_base/network/received_packet.h"
 
 namespace blink {
 
@@ -118,18 +110,12 @@ class IpcPacketSocket : public rtc::AsyncPacketSocket,
   typedef std::list<InFlightPacketRecord> InFlightPacketList;
 
   // Always takes ownership of client even if initialization fails.
-  bool Init(
-      P2PSocketDispatcher* dispatcher,
-      const net::NetworkTrafficAnnotationTag& traffic_annotation,
-      network::P2PSocketType type,
-      std::unique_ptr<P2PSocketClientImpl> client,
-      const rtc::SocketAddress& local_address,
-      uint16_t min_port,
-      uint16_t max_port,
-      const rtc::SocketAddress& remote_address,
-      WTF::CrossThreadFunction<void(
-          base::OnceCallback<void(std::optional<base::UnguessableToken>)>)>&
-          devtools_token);
+  bool Init(network::P2PSocketType type,
+            std::unique_ptr<P2PSocketClientImpl> client,
+            const rtc::SocketAddress& local_address,
+            uint16_t min_port,
+            uint16_t max_port,
+            const rtc::SocketAddress& remote_address);
 
   // rtc::AsyncPacketSocket interface.
   rtc::SocketAddress GetLocalAddress() const override;
@@ -159,22 +145,6 @@ class IpcPacketSocket : public rtc::AsyncPacketSocket,
                       const base::TimeTicks& timestamp) override;
 
  private:
-  static void DoCreateSocket(
-      network::P2PSocketType type,
-      P2PSocketDispatcher* dispatcher,
-      net::IPEndPoint local_endpoint,
-      uint16_t min_port,
-      uint16_t max_port,
-      network::P2PHostAndIPEndPoint remote_info,
-      net::NetworkTrafficAnnotationTag traffic_annotation,
-      mojo::PendingRemote<network::mojom::blink::P2PSocketClient> remote,
-      mojo::PendingReceiver<network::mojom::blink::P2PSocket> receiver,
-      std::optional<base::UnguessableToken> devtools_token);
-  int SendToInternal(const void* pv,
-                     size_t cb,
-                     const rtc::SocketAddress& addr,
-                     const rtc::PacketOptions& options);
-
   enum InternalState {
     kIsUninitialized,
     kIsOpening,
@@ -192,6 +162,10 @@ class IpcPacketSocket : public rtc::AsyncPacketSocket,
   // |in_flight_packet_records_|.
   void TraceSendThrottlingState() const;
 
+  void InitAcceptedTcp(std::unique_ptr<blink::P2PSocketClient> client,
+                       const rtc::SocketAddress& local_address,
+                       const rtc::SocketAddress& remote_address);
+
   int DoSetOption(network::P2PSocketOption option, int value);
 
   network::P2PSocketType type_;
@@ -200,7 +174,7 @@ class IpcPacketSocket : public rtc::AsyncPacketSocket,
   THREAD_CHECKER(thread_checker_);
 
   // Corresponding P2P socket client.
-  std::unique_ptr<blink::P2PSocketClientImpl> client_;
+  std::unique_ptr<blink::P2PSocketClient> client_;
 
   // Local address is allocated by the browser process, and the
   // renderer side doesn't know the address until it receives OnOpen()
@@ -244,25 +218,21 @@ class IpcPacketSocket : public rtc::AsyncPacketSocket,
 };
 
 // Simple wrapper around P2PAsyncAddressResolver. The main purpose of this
-// class is to call the right callback after OnDone callback from
-// P2PAsyncAddressResolver, and keep track of the result.
-// Thread jumping is handled by P2PAsyncAddressResolver.
-class AsyncDnsAddressResolverImpl : public webrtc::AsyncDnsResolverInterface,
-                                    public webrtc::AsyncDnsResolverResult {
+// class is to send SignalDone, after OnDone callback from
+// P2PAsyncAddressResolver. Libjingle sig slots are not thread safe. In case
+// of MT sig slots clients must call disconnect. This class is to make sure
+// we destruct from the same thread on which is created.
+class AsyncAddressResolverImpl : public rtc::AsyncResolverInterface {
  public:
-  explicit AsyncDnsAddressResolverImpl(P2PSocketDispatcher* dispatcher);
-  ~AsyncDnsAddressResolverImpl() override;
+  AsyncAddressResolverImpl(P2PSocketDispatcher* dispatcher);
+  ~AsyncAddressResolverImpl() override;
 
-  // webrtc::AsyncDnsResolverInterface interface.
-  void Start(const rtc::SocketAddress& addr,
-             absl::AnyInvocable<void()> callback) override;
-  void Start(const rtc::SocketAddress& addr,
-             int address_family,
-             absl::AnyInvocable<void()> callback) override;
-  const AsyncDnsResolverResult& result() const override { return *this; }
-  // webrtc::AsyncDnsResolverResult interface
+  // rtc::AsyncResolverInterface interface.
+  void Start(const rtc::SocketAddress& addr) override;
+  void Start(const rtc::SocketAddress& addr, int address_family) override;
   bool GetResolvedAddress(int family, rtc::SocketAddress* addr) const override;
   int GetError() const override;
+  void Destroy(bool wait) override;
 
  private:
   virtual void OnAddressResolved(const Vector<net::IPAddress>& addresses);
@@ -272,11 +242,9 @@ class AsyncDnsAddressResolverImpl : public webrtc::AsyncDnsResolverInterface,
   THREAD_CHECKER(thread_checker_);
 
   rtc::SocketAddress addr_;           // Address to resolve.
-  bool started_ = false;
-  absl::AnyInvocable<void()> callback_;
   Vector<rtc::IPAddress> addresses_;  // Resolved addresses.
 
-  base::WeakPtrFactory<AsyncDnsAddressResolverImpl> weak_factory_{this};
+  base::WeakPtrFactory<AsyncAddressResolverImpl> weak_factory_{this};
 };
 
 IpcPacketSocket::IpcPacketSocket()
@@ -314,22 +282,17 @@ void IpcPacketSocket::IncrementDiscardCounters(size_t bytes_discarded) {
   }
 }
 
-bool IpcPacketSocket::Init(
-    P2PSocketDispatcher* dispatcher,
-    const net::NetworkTrafficAnnotationTag& traffic_annotation,
-    network::P2PSocketType type,
-    std::unique_ptr<P2PSocketClientImpl> client,
-    const rtc::SocketAddress& local_address,
-    uint16_t min_port,
-    uint16_t max_port,
-    const rtc::SocketAddress& remote_address,
-    WTF::CrossThreadFunction<
-        void(base::OnceCallback<void(std::optional<base::UnguessableToken>)>)>&
-        devtools_token_getter) {
+bool IpcPacketSocket::Init(network::P2PSocketType type,
+                           std::unique_ptr<P2PSocketClientImpl> client,
+                           const rtc::SocketAddress& local_address,
+                           uint16_t min_port,
+                           uint16_t max_port,
+                           const rtc::SocketAddress& remote_address) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   DCHECK_EQ(state_, kIsUninitialized);
 
   type_ = type;
+  auto* client_ptr = client.get();
   client_ = std::move(client);
   local_address_ = local_address;
   remote_address_ = remote_address;
@@ -361,34 +324,24 @@ bool IpcPacketSocket::Init(
   network::P2PHostAndIPEndPoint remote_info(remote_address.hostname(),
                                             remote_endpoint);
 
-  devtools_token_getter.Run(base::BindPostTaskToCurrentDefault(WTF::BindOnce(
-      &IpcPacketSocket::DoCreateSocket, type_,
-      WrapCrossThreadPersistent(dispatcher), local_endpoint, min_port, max_port,
-      remote_info, traffic_annotation, client_->CreatePendingRemote(),
-      client_->CreatePendingReceiver())));
-
-  client_->Init(this);
+  client_ptr->Init(type, local_endpoint, min_port, max_port, remote_info, this);
 
   return true;
 }
 
-void IpcPacketSocket::DoCreateSocket(
-    network::P2PSocketType type,
-    P2PSocketDispatcher* dispatcher,
-    net::IPEndPoint local_endpoint,
-    uint16_t min_port,
-    uint16_t max_port,
-    network::P2PHostAndIPEndPoint remote_info,
-    net::NetworkTrafficAnnotationTag traffic_annotation,
-    mojo::PendingRemote<network::mojom::blink::P2PSocketClient> remote,
-    mojo::PendingReceiver<network::mojom::blink::P2PSocket> receiver,
-    std::optional<base::UnguessableToken> devtools_token) {
-  CHECK(dispatcher);
+void IpcPacketSocket::InitAcceptedTcp(
+    std::unique_ptr<blink::P2PSocketClient> client,
+    const rtc::SocketAddress& local_address,
+    const rtc::SocketAddress& remote_address) {
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  DCHECK_EQ(state_, kIsUninitialized);
 
-  dispatcher->GetP2PSocketManager()->CreateSocket(
-      type, local_endpoint, network::P2PPortRange(min_port, max_port),
-      remote_info, net::MutableNetworkTrafficAnnotationTag(traffic_annotation),
-      devtools_token, std::move(remote), std::move(receiver));
+  client_ = std::move(client);
+  local_address_ = local_address;
+  remote_address_ = remote_address;
+  state_ = kIsOpen;
+  TraceSendThrottlingState();
+  client_->SetDelegate(this);
 }
 
 // rtc::AsyncPacketSocket interface.
@@ -413,18 +366,6 @@ int IpcPacketSocket::SendTo(const void* data,
                             size_t data_size,
                             const rtc::SocketAddress& address,
                             const rtc::PacketOptions& options) {
-  int result = SendToInternal(data, data_size, address, options);
-  // Ensure a batch is sent in case the packet in the batch has been dropped.
-  if (result < 0 && options.last_packet_in_batch) {
-    client_->FlushBatch();
-  }
-  return result;
-}
-
-int IpcPacketSocket::SendToInternal(const void* data,
-                                    size_t data_size,
-                                    const rtc::SocketAddress& address,
-                                    const rtc::PacketOptions& options) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   switch (state_) {
@@ -489,11 +430,13 @@ int IpcPacketSocket::SendToInternal(const void* data,
 
   uint64_t packet_id = client_->Send(
       address_chrome,
-      base::make_span(static_cast<const uint8_t*>(data), data_size), options);
+      base::make_span(reinterpret_cast<const uint8_t*>(data), data_size),
+      options);
 
   // Ensure packet_id is not 0. It can't be the case according to
   // P2PSocketClientImpl::Send().
   DCHECK_NE(packet_id, 0uL);
+
   in_flight_packet_records_.push_back(
       InFlightPacketRecord(packet_id, data_size));
   TraceSendThrottlingState();
@@ -708,52 +651,44 @@ void IpcPacketSocket::OnDataReceived(const net::IPEndPoint& address,
       return;
     }
   }
-  NotifyPacketReceived(rtc::ReceivedPacket(
-      data, address_lj,
-      webrtc::Timestamp::Micros(timestamp.since_origin().InMicroseconds())));
+
+  SignalReadPacket(this, reinterpret_cast<const char*>(data.data()),
+                   data.size(), address_lj,
+                   timestamp.since_origin().InMicroseconds());
 }
 
-AsyncDnsAddressResolverImpl::AsyncDnsAddressResolverImpl(
+AsyncAddressResolverImpl::AsyncAddressResolverImpl(
     P2PSocketDispatcher* dispatcher)
     : resolver_(base::MakeRefCounted<P2PAsyncAddressResolver>(dispatcher)) {}
 
-AsyncDnsAddressResolverImpl::~AsyncDnsAddressResolverImpl() {
+AsyncAddressResolverImpl::~AsyncAddressResolverImpl() {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 }
 
-void AsyncDnsAddressResolverImpl::Start(const rtc::SocketAddress& addr,
-                                        absl::AnyInvocable<void()> callback) {
+void AsyncAddressResolverImpl::Start(const rtc::SocketAddress& addr) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  DCHECK(!started_);
-  started_ = true;
   // Port and hostname must be copied to the resolved address returned from
   // GetResolvedAddress.
   addr_ = addr;
-  callback_ = std::move(callback);
 
-  resolver_->Start(
-      addr, /*address_family=*/std::nullopt,
-      WTF::BindOnce(&AsyncDnsAddressResolverImpl::OnAddressResolved,
-                    weak_factory_.GetWeakPtr()));
+  resolver_->Start(addr, /*address_family=*/absl::nullopt,
+                   WTF::BindOnce(&AsyncAddressResolverImpl::OnAddressResolved,
+                                 weak_factory_.GetWeakPtr()));
 }
 
-void AsyncDnsAddressResolverImpl::Start(const rtc::SocketAddress& addr,
-                                        int address_family,
-                                        absl::AnyInvocable<void()> callback) {
+void AsyncAddressResolverImpl::Start(const rtc::SocketAddress& addr,
+                                     int address_family) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  DCHECK(!started_);
-  started_ = true;
   // Port and hostname must be copied to the resolved address returned from
   // GetResolvedAddress.
   addr_ = addr;
-  callback_ = std::move(callback);
-  resolver_->Start(
-      addr, std::make_optional(address_family),
-      WTF::BindOnce(&AsyncDnsAddressResolverImpl::OnAddressResolved,
-                    weak_factory_.GetWeakPtr()));
+
+  resolver_->Start(addr, absl::make_optional(address_family),
+                   WTF::BindOnce(&AsyncAddressResolverImpl::OnAddressResolved,
+                                 weak_factory_.GetWeakPtr()));
 }
 
-bool AsyncDnsAddressResolverImpl::GetResolvedAddress(
+bool AsyncAddressResolverImpl::GetResolvedAddress(
     int family,
     rtc::SocketAddress* addr) const {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
@@ -768,12 +703,20 @@ bool AsyncDnsAddressResolverImpl::GetResolvedAddress(
   return false;
 }
 
-int AsyncDnsAddressResolverImpl::GetError() const {
+int AsyncAddressResolverImpl::GetError() const {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   return addresses_.empty() ? -1 : 0;
 }
 
-void AsyncDnsAddressResolverImpl::OnAddressResolved(
+void AsyncAddressResolverImpl::Destroy(bool wait) {
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  resolver_->Cancel();
+  // Libjingle doesn't need this object any more and it's not going to delete
+  // it explicitly.
+  delete this;
+}
+
+void AsyncAddressResolverImpl::OnAddressResolved(
     const Vector<net::IPAddress>& addresses) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   for (wtf_size_t i = 0; i < addresses.size(); ++i) {
@@ -784,21 +727,15 @@ void AsyncDnsAddressResolverImpl::OnAddressResolved(
     }
     addresses_.push_back(socket_address.ipaddr());
   }
-  callback_();
+  SignalDone(this);
 }
 
 }  // namespace
 
 IpcPacketSocketFactory::IpcPacketSocketFactory(
-    WTF::CrossThreadFunction<
-        void(base::OnceCallback<void(std::optional<base::UnguessableToken>)>)>
-        devtools_token_getter,
     P2PSocketDispatcher* socket_dispatcher,
-    const net::NetworkTrafficAnnotationTag& traffic_annotation,
-    bool batch_udp_packets)
-    : devtools_token_getter_(std::move(devtools_token_getter)),
-      batch_udp_packets_(batch_udp_packets),
-      socket_dispatcher_(socket_dispatcher),
+    const net::NetworkTrafficAnnotationTag& traffic_annotation)
+    : socket_dispatcher_(socket_dispatcher),
       traffic_annotation_(traffic_annotation) {}
 
 IpcPacketSocketFactory::~IpcPacketSocketFactory() {}
@@ -809,14 +746,11 @@ rtc::AsyncPacketSocket* IpcPacketSocketFactory::CreateUdpSocket(
     uint16_t max_port) {
   auto socket_dispatcher = socket_dispatcher_.Lock();
   DCHECK(socket_dispatcher);
-  auto socket_client =
-      std::make_unique<P2PSocketClientImpl>(batch_udp_packets_);
+  auto socket_client = std::make_unique<P2PSocketClientImpl>(
+      socket_dispatcher, traffic_annotation_);
   std::unique_ptr<IpcPacketSocket> socket(new IpcPacketSocket());
-
-  if (!socket->Init(socket_dispatcher, traffic_annotation_,
-                    network::P2P_SOCKET_UDP, std::move(socket_client),
-                    local_address, min_port, max_port, rtc::SocketAddress(),
-                    devtools_token_getter_)) {
+  if (!socket->Init(network::P2P_SOCKET_UDP, std::move(socket_client),
+                    local_address, min_port, max_port, rtc::SocketAddress())) {
     return nullptr;
   }
   return socket.release();
@@ -857,22 +791,19 @@ rtc::AsyncPacketSocket* IpcPacketSocketFactory::CreateClientTcpSocket(
   }
   auto socket_dispatcher = socket_dispatcher_.Lock();
   DCHECK(socket_dispatcher);
-  auto socket_client =
-      std::make_unique<P2PSocketClientImpl>(/*batch_packets=*/false);
+  auto socket_client = std::make_unique<P2PSocketClientImpl>(
+      socket_dispatcher, traffic_annotation_);
   std::unique_ptr<IpcPacketSocket> socket(new IpcPacketSocket());
-  if (!socket->Init(socket_dispatcher, traffic_annotation_, type,
-                    std::move(socket_client), local_address, 0, 0,
-                    remote_address, devtools_token_getter_)) {
+  if (!socket->Init(type, std::move(socket_client), local_address, 0, 0,
+                    remote_address))
     return nullptr;
-  }
   return socket.release();
 }
 
-std::unique_ptr<webrtc::AsyncDnsResolverInterface>
-IpcPacketSocketFactory::CreateAsyncDnsResolver() {
+rtc::AsyncResolverInterface* IpcPacketSocketFactory::CreateAsyncResolver() {
   auto socket_dispatcher = socket_dispatcher_.Lock();
   DCHECK(socket_dispatcher);
-  return absl::make_unique<AsyncDnsAddressResolverImpl>(socket_dispatcher);
+  return new AsyncAddressResolverImpl(socket_dispatcher);
 }
 
 }  // namespace blink

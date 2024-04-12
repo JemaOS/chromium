@@ -10,7 +10,8 @@
 #include "base/functional/bind.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 namespace {
 
@@ -155,4 +156,5 @@ TEST_F(InMemoryHostLocatorTest, AddHostsShouldKeepPreviousHostsAndOverwrite) {
   ExpectHostMapEqual(expected);
 }
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

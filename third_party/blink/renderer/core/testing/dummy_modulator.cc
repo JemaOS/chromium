@@ -78,8 +78,7 @@ void DummyModulator::FetchTree(const KURL&,
                                network::mojom::RequestDestination,
                                const ScriptFetchOptions&,
                                ModuleScriptCustomFetchType,
-                               ModuleTreeClient*,
-                               String referrer) {
+                               ModuleTreeClient*) {
   NOTREACHED();
 }
 
@@ -118,7 +117,7 @@ bool DummyModulator::HasValidContext() {
 
 void DummyModulator::ResolveDynamically(const ModuleRequest& module_request,
                                         const ReferrerScriptInfo&,
-                                        ScriptPromiseResolverTyped<IDLAny>*) {
+                                        ScriptPromiseResolver*) {
   NOTREACHED();
 }
 

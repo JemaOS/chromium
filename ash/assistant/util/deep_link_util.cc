@@ -7,7 +7,6 @@
 #include <set>
 
 #include "ash/assistant/util/i18n_util.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
 #include "base/containers/contains.h"
 #include "base/strings/escape.h"
 #include "base/strings/string_number_conversions.h"
@@ -17,7 +16,9 @@
 #include "net/base/url_util.h"
 #include "url/gurl.h"
 
-namespace ash::assistant::util {
+namespace ash {
+namespace assistant {
+namespace util {
 
 namespace {
 
@@ -145,22 +146,22 @@ GURL AppendOrReplaceQuerySourceParam(const GURL& deep_link,
       base::NumberToString(static_cast<int>(query_source)));
 }
 
-std::optional<GURL> CreateAlarmTimerDeepLink(
+absl::optional<GURL> CreateAlarmTimerDeepLink(
     AlarmTimerAction action,
-    std::optional<std::string> alarm_timer_id,
-    std::optional<base::TimeDelta> duration) {
+    absl::optional<std::string> alarm_timer_id,
+    absl::optional<base::TimeDelta> duration) {
   switch (action) {
     case assistant::util::AlarmTimerAction::kAddTimeToTimer:
       DCHECK(alarm_timer_id.has_value() && duration.has_value());
       if (!alarm_timer_id.has_value() || !duration.has_value())
-        return std::nullopt;
+        return absl::nullopt;
       break;
     case assistant::util::AlarmTimerAction::kPauseTimer:
     case assistant::util::AlarmTimerAction::kRemoveAlarmOrTimer:
     case assistant::util::AlarmTimerAction::kResumeTimer:
       DCHECK(alarm_timer_id.has_value() && !duration.has_value());
       if (!alarm_timer_id.has_value() || duration.has_value())
-        return std::nullopt;
+        return absl::nullopt;
       break;
   }
 
@@ -214,23 +215,23 @@ std::map<std::string, std::string> GetDeepLinkParams(const GURL& deep_link) {
   return params;
 }
 
-std::optional<std::string> GetDeepLinkParam(
+absl::optional<std::string> GetDeepLinkParam(
     const std::map<std::string, std::string>& params,
     DeepLinkParam param) {
   const std::string key = GetDeepLinkParamKey(param);
   const auto it = params.find(key);
   return it != params.end()
-             ? std::optional<std::string>(base::UnescapeBinaryURLComponent(
+             ? absl::optional<std::string>(base::UnescapeBinaryURLComponent(
                    it->second, base::UnescapeRule::REPLACE_PLUS_WITH_SPACE))
-             : std::nullopt;
+             : absl::nullopt;
 }
 
-std::optional<AlarmTimerAction> GetDeepLinkParamAsAlarmTimerAction(
+absl::optional<AlarmTimerAction> GetDeepLinkParamAsAlarmTimerAction(
     const std::map<std::string, std::string>& params) {
-  const std::optional<std::string>& action_string_value =
+  const absl::optional<std::string>& action_string_value =
       GetDeepLinkParam(params, DeepLinkParam::kAction);
   if (!action_string_value.has_value())
-    return std::nullopt;
+    return absl::nullopt;
 
   if (action_string_value.value() == kAddTimeToTimer)
     return AlarmTimerAction::kAddTimeToTimer;
@@ -244,100 +245,100 @@ std::optional<AlarmTimerAction> GetDeepLinkParamAsAlarmTimerAction(
   if (action_string_value.value() == kResumeTimer)
     return AlarmTimerAction::kResumeTimer;
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<bool> GetDeepLinkParamAsBool(
+absl::optional<bool> GetDeepLinkParamAsBool(
     const std::map<std::string, std::string>& params,
     DeepLinkParam param) {
-  const std::optional<std::string>& value = GetDeepLinkParam(params, param);
+  const absl::optional<std::string>& value = GetDeepLinkParam(params, param);
   if (value == "true")
     return true;
 
   if (value == "false")
     return false;
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<AssistantEntryPoint> GetDeepLinkParamAsEntryPoint(
+absl::optional<AssistantEntryPoint> GetDeepLinkParamAsEntryPoint(
     const std::map<std::string, std::string>& params,
     DeepLinkParam param) {
-  const std::optional<int> value = GetDeepLinkParamAsInt(params, param);
+  const absl::optional<int> value = GetDeepLinkParamAsInt(params, param);
   if (!value.has_value() || (value.value() < 0) ||
       (value.value() > static_cast<int>(AssistantEntryPoint::kMaxValue))) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return static_cast<AssistantEntryPoint>(value.value());
 }
 
-std::optional<GURL> GetDeepLinkParamAsGURL(
+absl::optional<GURL> GetDeepLinkParamAsGURL(
     const std::map<std::string, std::string>& params,
     DeepLinkParam param) {
-  const std::optional<std::string>& spec = GetDeepLinkParam(params, param);
-  return spec.has_value() ? std::optional<GURL>(spec.value()) : std::nullopt;
+  const absl::optional<std::string>& spec = GetDeepLinkParam(params, param);
+  return spec.has_value() ? absl::optional<GURL>(spec.value()) : absl::nullopt;
 }
 
-std::optional<int> GetDeepLinkParamAsInt(
+absl::optional<int> GetDeepLinkParamAsInt(
     const std::map<std::string, std::string>& params,
     DeepLinkParam param) {
-  const std::optional<std::string>& value = GetDeepLinkParam(params, param);
+  const absl::optional<std::string>& value = GetDeepLinkParam(params, param);
   if (value.has_value()) {
     int result;
     if (base::StringToInt(value.value(), &result))
       return result;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<int64_t> GetDeepLinkParamAsInt64(
+absl::optional<int64_t> GetDeepLinkParamAsInt64(
     const std::map<std::string, std::string>& params,
     DeepLinkParam param) {
-  const std::optional<std::string>& value = GetDeepLinkParam(params, param);
+  const absl::optional<std::string>& value = GetDeepLinkParam(params, param);
   if (value.has_value()) {
     int64_t result;
     if (base::StringToInt64(value.value(), &result))
       return result;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<AssistantQuerySource> GetDeepLinkParamAsQuerySource(
+absl::optional<AssistantQuerySource> GetDeepLinkParamAsQuerySource(
     const std::map<std::string, std::string>& params,
     DeepLinkParam param) {
-  const std::optional<int> value = GetDeepLinkParamAsInt(params, param);
+  const absl::optional<int> value = GetDeepLinkParamAsInt(params, param);
   if (!value.has_value() || (value.value() < 0) ||
       (value.value() > static_cast<int>(AssistantQuerySource::kMaxValue))) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return static_cast<AssistantQuerySource>(value.value());
 }
 
-std::optional<ReminderAction> GetDeepLinkParamAsRemindersAction(
+absl::optional<ReminderAction> GetDeepLinkParamAsRemindersAction(
     const std::map<std::string, std::string> params,
     DeepLinkParam param) {
-  const std::optional<std::string>& value = GetDeepLinkParam(params, param);
+  const absl::optional<std::string>& value = GetDeepLinkParam(params, param);
   if (value == kCreateReminder)
     return ReminderAction::kCreate;
 
   if (value == kEditReminder)
     return ReminderAction::kEdit;
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
-std::optional<base::TimeDelta> GetDeepLinkParamAsTimeDelta(
+absl::optional<base::TimeDelta> GetDeepLinkParamAsTimeDelta(
     const std::map<std::string, std::string>& params,
     DeepLinkParam param) {
   if (param != DeepLinkParam::kDurationMs)
-    return std::nullopt;
+    return absl::nullopt;
 
-  const std::optional<int64_t>& duration_ms =
+  const absl::optional<int64_t>& duration_ms =
       GetDeepLinkParamAsInt64(params, DeepLinkParam::kDurationMs);
   if (!duration_ms.has_value())
-    return std::nullopt;
+    return absl::nullopt;
 
   return base::Milliseconds(duration_ms.value());
 }
@@ -375,7 +376,7 @@ bool IsDeepLinkUrl(const GURL& url) {
   return GetDeepLinkType(url) != DeepLinkType::kUnsupported;
 }
 
-std::optional<GURL> GetAssistantUrl(
+absl::optional<GURL> GetAssistantUrl(
     DeepLinkType type,
     const std::map<std::string, std::string>& params) {
   std::string top_level_url;
@@ -403,7 +404,7 @@ std::optional<GURL> GetAssistantUrl(
       break;
     default:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 
   const auto& id = GetDeepLinkParam(params, DeepLinkParam::kId);
@@ -420,7 +421,7 @@ std::optional<GURL> GetAssistantUrl(
                                             kSourceParamKey, kDefaultSource);
 }
 
-GURL GetChromeSettingsUrl(const std::optional<std::string>& page) {
+GURL GetChromeSettingsUrl(const absl::optional<std::string>& page) {
   static constexpr char kChromeOsSettingsUrl[] = "chrome://os-settings/";
 
   // Note that we only allow deep linking to a subset of pages. If a deep link
@@ -428,29 +429,32 @@ GURL GetChromeSettingsUrl(const std::optional<std::string>& page) {
   // top-level Chrome OS Settings. We may wish to allow deep linking into
   // Browser Settings at some point in the future at which point we will define
   // an analogous collection of |kAllowedBrowserPages|.
+  // These values are copied from
+  // chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.
+  // We can not reuse the generated defines as we can not depend on //chrome.
+  // TODO(b/168138594): use generated defines once that header has been moved to
+  // chromeos.
   static const std::map<std::string, std::string> kAllowedOsPages = {
-      {/*page=*/"googleAssistant",
-       /*os_page=*/chromeos::settings::mojom::kAssistantSubpagePath},
-      {/*page=*/"languages",
-       /*os_page=*/chromeos::settings::mojom::kLanguagesSubpagePath}};
+      {/*page=*/"googleAssistant", /*os_page=*/"googleAssistant"},
+      {/*page=*/"languages", /*os_page=*/"osLanguages/languages"}};
 
   return page && base::Contains(kAllowedOsPages, page.value())
              ? GURL(kChromeOsSettingsUrl + kAllowedOsPages.at(page.value()))
              : GURL(kChromeOsSettingsUrl);
 }
 
-std::optional<GURL> GetWebUrl(const GURL& deep_link) {
+absl::optional<GURL> GetWebUrl(const GURL& deep_link) {
   return GetWebUrl(GetDeepLinkType(deep_link), GetDeepLinkParams(deep_link));
 }
 
-std::optional<GURL> GetWebUrl(
+absl::optional<GURL> GetWebUrl(
     DeepLinkType type,
     const std::map<std::string, std::string>& params) {
   static constexpr char kAssistantSettingsWebUrl[] =
       "https://assistant.google.com/settings/mainpage";
 
   if (!IsWebDeepLinkType(type, params))
-    return std::nullopt;
+    return absl::nullopt;
 
   switch (type) {
     case DeepLinkType::kLists:
@@ -468,11 +472,11 @@ std::optional<GURL> GetWebUrl(
     case DeepLinkType::kScreenshot:
     case DeepLinkType::kTaskManager:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 
   NOTREACHED();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool IsWebDeepLink(const GURL& deep_link) {
@@ -495,4 +499,6 @@ bool IsWebDeepLinkType(DeepLinkType type,
   return base::Contains(kWebDeepLinks, type);
 }
 
-}  // namespace ash::assistant::util
+}  // namespace util
+}  // namespace assistant
+}  // namespace ash

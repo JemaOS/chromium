@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/login/quick_unlock/pin_storage_cryptohome.h"
 
-#include <string>
-#include <utility>
 #include <vector>
 
 #include "base/functional/bind.h"
@@ -47,7 +45,7 @@ class PinStorageCryptohomeUnitTest : public testing::Test {
   // testing::Test:
   void SetUp() override {
     user_context_ = std::make_unique<UserContext>(
-        user_manager::UserType::kRegular, test_account_id_);
+        user_manager::USER_TYPE_REGULAR, test_account_id_);
 
     test_api_ = std::make_unique<TestApi>(/*override_quick_unlock=*/true);
     test_api_->EnablePinByPolicy(Purpose::kAny);
@@ -62,10 +60,10 @@ class PinStorageCryptohomeUnitTest : public testing::Test {
         cryptohome::CreateAccountIdentifierFromAccountId(test_account_id_);
     FakeUserDataAuthClient::TestApi::Get()->AddExistingUser(cryptohome_user_id);
 
-    auto session_ids = FakeUserDataAuthClient::TestApi::Get()->AddSession(
+    std::string session = FakeUserDataAuthClient::TestApi::Get()->AddSession(
         cryptohome_user_id, true /*authenticated*/);
-    user_context_->SetAuthSessionIds(session_ids.first, session_ids.second);
     user_context_->SetIsUsingPin(true);
+    user_context_->SetAuthSessionId(std::move(session));
     user_context_->SetAuthFactorsConfiguration(AuthFactorsConfiguration());
 
     storage_ = std::make_unique<PinStorageCryptohome>();
@@ -111,7 +109,7 @@ class PinStorageCryptohomeUnitTest : public testing::Test {
 
   bool TryAuthenticate(const std::string& pin, Purpose purpose) {
     auto user_context = std::make_unique<UserContext>(*user_context_);
-    user_context->ResetAuthSessionIds();
+    user_context->ResetAuthSessionId();
     bool res;
     base::RunLoop loop;
     storage_->TryAuthenticate(
@@ -120,7 +118,7 @@ class PinStorageCryptohomeUnitTest : public testing::Test {
             [](PinStorageCryptohomeUnitTest* self, bool* res,
                base::OnceClosure closure,
                std::unique_ptr<UserContext> user_context,
-               std::optional<AuthenticationError> error) {
+               absl::optional<AuthenticationError> error) {
               *res = !error.has_value();
               std::move(closure).Run();
             },
@@ -136,12 +134,12 @@ class PinStorageCryptohomeUnitTest : public testing::Test {
 
     bool res;
     base::RunLoop loop;
-    storage_->SetPin(std::move(user_context_), pin, std::nullopt,
+    storage_->SetPin(std::move(user_context_), pin, absl::nullopt,
                      base::BindOnce(
                          [](PinStorageCryptohomeUnitTest* self, bool* res,
                             base::OnceClosure closure,
                             std::unique_ptr<UserContext> user_context,
-                            std::optional<AuthenticationError> error) {
+                            absl::optional<AuthenticationError> error) {
                            self->user_context_ = std::move(user_context);
                            *res = !error.has_value();
                            std::move(closure).Run();
@@ -166,7 +164,7 @@ class PinStorageCryptohomeUnitTest : public testing::Test {
         request,
         base::BindOnce(
             [](base::OnceClosure closure,
-               std::optional<::user_data_auth::AddAuthFactorReply> reply) {
+               absl::optional<::user_data_auth::AddAuthFactorReply> reply) {
               std::move(closure).Run();
             },
             run_loop.QuitClosure()));
@@ -188,7 +186,7 @@ class PinStorageCryptohomeUnitTest : public testing::Test {
         request,
         base::BindOnce(
             [](base::OnceClosure closure,
-               std::optional<::user_data_auth::AddAuthFactorReply> reply) {
+               absl::optional<::user_data_auth::AddAuthFactorReply> reply) {
               std::move(closure).Run();
             },
             run_loop.QuitClosure()));
@@ -211,7 +209,7 @@ class PinStorageCryptohomeUnitTest : public testing::Test {
                             [](PinStorageCryptohomeUnitTest* self, bool* res,
                                base::OnceClosure closure,
                                std::unique_ptr<UserContext> user_context,
-                               std::optional<AuthenticationError> error) {
+                               absl::optional<AuthenticationError> error) {
                               self->user_context_ = std::move(user_context);
                               *res = !error.has_value();
                               std::move(closure).Run();
@@ -229,7 +227,7 @@ class PinStorageCryptohomeUnitTest : public testing::Test {
   AccountId test_account_id_{
       AccountId::FromUserEmailGaiaId("user@example.com", "11111")};
   std::unique_ptr<UserContext> user_context_ =
-      std::make_unique<UserContext>(user_manager::UserType::kRegular,
+      std::make_unique<UserContext>(user_manager::USER_TYPE_REGULAR,
                                     test_account_id_);
   std::unique_ptr<TestApi> test_api_;
 };
@@ -280,6 +278,30 @@ TEST_F(PinStorageCryptohomeUnitTest, AuthLockedTest) {
 
   ASSERT_FALSE(CanAuthenticate());
   ASSERT_TRUE(IsPinSet());
+}
+
+// Verifies the `unlock_webauthn_secret` parameter is set correctly when
+// TryAuthenticate with different purposes.
+TEST_F(PinStorageCryptohomeUnitTest, UnlockWebAuthnSecret) {
+  ASSERT_TRUE(SetPin(kDummyPin));
+  ASSERT_TRUE(IsPinSet());
+  ASSERT_TRUE(CanAuthenticate());
+
+  // Only calling TryAuthenticate with purpose Purpose::kWebAuthn should set the
+  // `unlock_webauthn_secret` parameter to true.
+
+  ASSERT_TRUE(TryAuthenticate(kDummyPin, Purpose::kAny));
+  EXPECT_FALSE(
+      FakeUserDataAuthClient::Get()->get_last_unlock_webauthn_secret());
+
+  test_api_->EnablePinByPolicy(Purpose::kWebAuthn);
+  ASSERT_TRUE(TryAuthenticate(kDummyPin, Purpose::kWebAuthn));
+  EXPECT_TRUE(FakeUserDataAuthClient::Get()->get_last_unlock_webauthn_secret());
+
+  test_api_->EnablePinByPolicy(Purpose::kUnlock);
+  ASSERT_TRUE(TryAuthenticate(kDummyPin, Purpose::kUnlock));
+  EXPECT_FALSE(
+      FakeUserDataAuthClient::Get()->get_last_unlock_webauthn_secret());
 }
 
 }  // namespace ash::quick_unlock

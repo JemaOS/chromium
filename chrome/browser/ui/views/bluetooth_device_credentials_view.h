@@ -9,6 +9,7 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "chrome/browser/ui/browser_dialogs.h"
 #include "content/public/browser/bluetooth_delegate.h"
 #include "ui/views/controls/textfield/textfield.h"
 #include "ui/views/controls/textfield/textfield_controller.h"
@@ -17,9 +18,8 @@
 // A dialog allowing the user to enter Bluetooth credentials (i.e. a PIN).
 class BluetoothDeviceCredentialsView : public views::DialogDelegateView,
                                        public views::TextfieldController {
-  METADATA_HEADER(BluetoothDeviceCredentialsView, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(BluetoothDeviceCredentialsView);
   BluetoothDeviceCredentialsView(
       const std::u16string& device_identifier,
       content::BluetoothDelegate::PairPromptCallback close_callback);

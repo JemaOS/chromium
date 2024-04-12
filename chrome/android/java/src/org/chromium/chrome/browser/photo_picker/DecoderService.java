@@ -9,7 +9,8 @@ import org.chromium.chrome.browser.base.SplitCompatService;
 
 /** See {@link DecoderServiceImpl}. */
 public class DecoderService extends SplitCompatService {
-    private static @IdentifierNameString String sImplClassName =
+    @IdentifierNameString
+    private static String sImplClassName =
             "org.chromium.chrome.browser.photo_picker.DecoderServiceImpl";
 
     public DecoderService() {

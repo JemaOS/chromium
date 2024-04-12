@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/extensions/api/language_settings_private/language_settings_private_api.h"
-
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -17,6 +14,7 @@
 #include "base/values.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
+#include "chrome/browser/extensions/api/language_settings_private/language_settings_private_api.h"
 #include "chrome/browser/extensions/api/language_settings_private/language_settings_private_delegate.h"
 #include "chrome/browser/extensions/api/language_settings_private/language_settings_private_delegate_factory.h"
 #include "chrome/browser/extensions/extension_service_test_base.h"
@@ -174,7 +172,7 @@ TEST_F(LanguageSettingsPrivateApiTest, GetSpellcheckDictionaryStatusesTest) {
   auto function = base::MakeRefCounted<
       LanguageSettingsPrivateGetSpellcheckDictionaryStatusesFunction>();
 
-  std::optional<base::Value> actual =
+  absl::optional<base::Value> actual =
       api_test_utils::RunFunctionAndReturnSingleResult(function.get(), "[]",
                                                        profile());
   ASSERT_TRUE(actual) << function->GetError();
@@ -225,7 +223,7 @@ TEST_F(LanguageSettingsPrivateApiTest, GetAlwaysTranslateLanguagesListTest) {
   auto function = base::MakeRefCounted<
       LanguageSettingsPrivateGetAlwaysTranslateLanguagesFunction>();
 
-  std::optional<base::Value> result =
+  absl::optional<base::Value> result =
       api_test_utils::RunFunctionAndReturnSingleResult(function.get(), "[]",
                                                        profile());
 
@@ -257,7 +255,7 @@ TEST_F(LanguageSettingsPrivateApiTest, SetTranslateTargetLanguageTest) {
   auto function = base::MakeRefCounted<
       LanguageSettingsPrivateSetTranslateTargetLanguageFunction>();
 
-  std::optional<base::Value> result =
+  absl::optional<base::Value> result =
       api_test_utils::RunFunctionAndReturnSingleResult(function.get(),
                                                        "[\"af\"]", profile());
   ASSERT_EQ(translate_prefs_->GetRecentTargetLanguage(), "af");
@@ -279,7 +277,7 @@ TEST_F(LanguageSettingsPrivateApiTest, GetNeverTranslateLanguagesListTest) {
   auto function = base::MakeRefCounted<
       LanguageSettingsPrivateGetNeverTranslateLanguagesFunction>();
 
-  std::optional<base::Value> result =
+  absl::optional<base::Value> result =
       api_test_utils::RunFunctionAndReturnSingleResult(function.get(), "[]",
                                                        profile());
 
@@ -384,7 +382,7 @@ void LanguageSettingsPrivateApiTest::RunGetLanguageListTest() {
   auto function =
       base::MakeRefCounted<LanguageSettingsPrivateGetLanguageListFunction>();
 
-  std::optional<base::Value> result =
+  absl::optional<base::Value> result =
       api_test_utils::RunFunctionAndReturnSingleResult(function.get(), "[]",
                                                        profile());
 
@@ -399,7 +397,7 @@ void LanguageSettingsPrivateApiTest::RunGetLanguageListTest() {
     std::string language_code = *language_code_ptr;
     EXPECT_FALSE(language_code.empty());
 
-    const std::optional<bool> maybe_supports_spellcheck =
+    const absl::optional<bool> maybe_supports_spellcheck =
         language_val.GetDict().FindBool("supportsSpellcheck");
     const bool supports_spellcheck = maybe_supports_spellcheck.has_value()
                                          ? maybe_supports_spellcheck.value()
@@ -418,7 +416,7 @@ void LanguageSettingsPrivateApiTest::RunGetLanguageListTest() {
 
     // Check that zh and zh-HK aren't shown as supporting UI.
     if (language_code == "zh" || language_code == "zh-HK") {
-      const std::optional<bool> maybe_supports_ui =
+      const absl::optional<bool> maybe_supports_ui =
           language_val.GetDict().FindBool("supportsUI");
       const bool supports_ui =
           maybe_supports_ui.has_value() ? maybe_supports_ui.value() : false;
@@ -465,17 +463,14 @@ class TestInputMethodManager : public input_method::MockInputMethodManager {
       std::string layout("us");
       InputMethodDescriptor extension_ime(
           GetExtensionImeId(), "ExtensionIme", "", layout, {"vi"},
-          false /* is_login_keyboard */, GURL(), GURL(),
-          /*handwriting_language=*/std::nullopt);
+          false /* is_login_keyboard */, GURL(), GURL());
       InputMethodDescriptor component_extension_ime(
           GetComponentExtensionImeId(), "ComponentExtensionIme", "", layout,
-          {"en-US", "en"}, false /* is_login_keyboard */, GURL(), GURL(),
-          /*handwriting_language=*/std::nullopt);
+          {"en-US", "en"}, false /* is_login_keyboard */, GURL(), GURL());
       InputMethodDescriptor arc_ime(GetArcImeId(), "ArcIme", "", layout,
                                     {ash::extension_ime_util::kArcImeLanguage},
                                     false /* is_login_keyboard */, GURL(),
-                                    GURL(),
-                                    /*handwriting_language=*/std::nullopt);
+                                    GURL());
       input_methods_ = {extension_ime, component_extension_ime, arc_ime};
     }
 
@@ -541,7 +536,7 @@ TEST_F(LanguageSettingsPrivateApiTest, GetInputMethodListsTest) {
 
   auto function = base::MakeRefCounted<
       LanguageSettingsPrivateGetInputMethodListsFunction>();
-  std::optional<base::Value> result_val =
+  absl::optional<base::Value> result_val =
       api_test_utils::RunFunctionAndReturnSingleResult(function.get(), "[]",
                                                        profile());
 

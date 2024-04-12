@@ -4,11 +4,9 @@
 
 #include "chrome/browser/policy/developer_tools_policy_handler.h"
 
-#include "base/command_line.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/values.h"
-#include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
 #include "components/policy/core/browser/configuration_policy_pref_store.h"
 #include "components/policy/core/browser/configuration_policy_pref_store_test.h"
@@ -19,6 +17,8 @@
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 
+#include "ash/constants/ash_switches.h"
+#include "base/command_line.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/test/base/testing_browser_process.h"
@@ -210,7 +210,7 @@ class DeveloperToolsPolicyHandlerWithProfileTest
 
       user_manager->AddUserWithAffiliationAndTypeAndProfile(
           account_id, /* is_affiliated= */ true,
-          user_manager::UserType::kRegular, primary_profile_);
+          user_manager::UserType::USER_TYPE_REGULAR, primary_profile_);
       user_manager->LoginUser(account_id);
     }
     {
@@ -222,7 +222,7 @@ class DeveloperToolsPolicyHandlerWithProfileTest
 
       user_manager->AddUserWithAffiliationAndTypeAndProfile(
           account_id, /* is_affiliated= */ true,
-          user_manager::UserType::kRegular, secondary_profile_);
+          user_manager::UserType::USER_TYPE_REGULAR, secondary_profile_);
     }
     scoped_user_manager_ = std::make_unique<user_manager::ScopedUserManager>(
         std::move(user_manager));
@@ -250,8 +250,8 @@ class DeveloperToolsPolicyHandlerWithProfileTest
   content::BrowserTaskEnvironment task_environment_;
   TestingProfileManager profile_manager_;
   std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_;
-  raw_ptr<TestingProfile> primary_profile_;
-  raw_ptr<TestingProfile> secondary_profile_;
+  raw_ptr<TestingProfile, ExperimentalAsh> primary_profile_;
+  raw_ptr<TestingProfile, ExperimentalAsh> secondary_profile_;
 };
 
 TEST_F(DeveloperToolsPolicyHandlerWithProfileTest,
@@ -261,7 +261,7 @@ TEST_F(DeveloperToolsPolicyHandlerWithProfileTest,
       DeveloperToolsPolicyHandler::GetEffectiveAvailability(primary_profile_));
 
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  command_line->AppendSwitch(switches::kForceDevToolsAvailable);
+  command_line->AppendSwitch(ash::switches::kForceDevToolsAvailable);
 
   EXPECT_EQ(
       Availability::kAllowed,

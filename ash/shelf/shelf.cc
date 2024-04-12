@@ -18,7 +18,6 @@
 #include "ash/public/cpp/shelf_types.h"
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/root_window_controller.h"
-#include "ash/shelf/desk_button_widget.h"
 #include "ash/shelf/hotseat_widget.h"
 #include "ash/shelf/login_shelf_widget.h"
 #include "ash/shelf/scrollable_shelf_view.h"
@@ -43,6 +42,7 @@
 #include "base/notreached.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/gfx/geometry/rect.h"
+#include "ash/jemaos_ai/jemaos_ai_view.h"
 
 namespace ash {
 
@@ -136,7 +136,7 @@ class HotseatWidgetAnimationMetricsReporter {
 
   metrics_util::ReportCallback GetReportCallback(HotseatState target_state) {
     DCHECK_NE(target_state, HotseatState::kNone);
-    return metrics_util::ForSmoothnessV3(base::BindRepeating(
+    return metrics_util::ForSmoothness(base::BindRepeating(
         &HotseatWidgetAnimationMetricsReporter::ReportSmoothness,
         weak_ptr_factory_.GetWeakPtr(), target_state));
   }
@@ -191,7 +191,7 @@ class ASH_EXPORT NavigationWidgetAnimationMetricsReporter {
   metrics_util::ReportCallback GetReportCallback(
       HotseatState target_hotseat_state) {
     DCHECK_NE(target_hotseat_state, HotseatState::kNone);
-    return metrics_util::ForSmoothnessV3(base::BindRepeating(
+    return metrics_util::ForSmoothness(base::BindRepeating(
         &NavigationWidgetAnimationMetricsReporter::ReportSmoothness,
         weak_ptr_factory_.GetWeakPtr(), target_hotseat_state));
   }
@@ -250,7 +250,7 @@ class Shelf::AutoHideEventHandler : public ui::EventHandler {
   }
 
  private:
-  raw_ptr<Shelf> shelf_;
+  raw_ptr<Shelf, ExperimentalAsh> shelf_;
 };
 
 // Shelf::AutoDimEventHandler -----------------------------------------------
@@ -324,7 +324,7 @@ class Shelf::AutoDimEventHandler : public ui::EventHandler,
 
  private:
   // Unowned pointer to the shelf that owns this event handler.
-  raw_ptr<Shelf> shelf_;
+  raw_ptr<Shelf, ExperimentalAsh> shelf_;
   // OneShotTimer that dims shelf due to inactivity.
   base::OneShotTimer dim_shelf_timer_;
   // An observer that notifies the AutoDimHandler that shelf visibility has
@@ -364,6 +364,7 @@ Shelf::ScopedDisableAutoHide::~ScopedDisableAutoHide() {
 Shelf::Shelf()
     : shelf_locking_manager_(this),
       shelf_focus_cycler_(std::make_unique<ShelfFocusCycler>(this)),
+      jema_assistant_view_(std::make_unique<JemaAssistantView>()),
       tooltip_(std::make_unique<ShelfTooltipManager>(this)) {}
 
 Shelf::~Shelf() = default;
@@ -407,7 +408,7 @@ void Shelf::ActivateShelfItemOnDisplay(int item_index, int64_t display_id) {
 
 // static
 void Shelf::UpdateShelfVisibility() {
-  for (aura::Window* root : Shell::Get()->GetAllRootWindows()) {
+  for (auto* root : Shell::Get()->GetAllRootWindows()) {
     Shelf::ForWindow(root)->UpdateVisibilityState();
   }
 }
@@ -420,15 +421,6 @@ void Shelf::CreateNavigationWidget(aura::Window* container) {
   navigation_widget_->Initialize(container);
   navigation_widget_metrics_reporter_ =
       std::make_unique<NavigationWidgetAnimationMetricsReporter>();
-}
-
-void Shelf::CreateDeskButtonWidget(aura::Window* container) {
-  CHECK(container);
-  CHECK(!desk_button_widget_);
-  CHECK(ash::features::IsDeskButtonEnabled());
-
-  desk_button_widget_ = std::make_unique<DeskButtonWidget>(this);
-  desk_button_widget_->Initialize(container);
 }
 
 void Shelf::CreateHotseatWidget(aura::Window* container) {
@@ -467,11 +459,10 @@ void Shelf::CreateShelfWidget(aura::Window* root) {
   // Create the various shelf components.
   CreateHotseatWidget(shelf_container);
   CreateNavigationWidget(shelf_container);
-  if (ash::features::IsDeskButtonEnabled()) {
-    CreateDeskButtonWidget(shelf_container);
+  if (features::IsUseLoginShelfWidgetEnabled()) {
+    login_shelf_widget_ =
+        std::make_unique<LoginShelfWidget>(/*shelf=*/this, shelf_container);
   }
-  login_shelf_widget_ =
-      std::make_unique<LoginShelfWidget>(/*shelf=*/this, shelf_container);
 
   // Must occur after |shelf_widget_| is constructed because the system tray
   // constructors call back into Shelf::shelf_widget().
@@ -482,6 +473,10 @@ void Shelf::CreateShelfWidget(aura::Window* root) {
 
   // The Hotseat should be above everything in the shelf.
   hotseat_widget()->StackAtTop();
+
+  if (ash::features::IsJemaAssistantEnabled()) {
+    jema_assistant_view_->CreateAssistantWidget(shelf_container);
+  }
 }
 
 void Shelf::ShutdownShelfWidget() {
@@ -582,8 +577,8 @@ void Shelf::UpdateAutoHideState() {
 }
 
 ShelfBackgroundType Shelf::GetBackgroundType() const {
-  return shelf_layout_manager_ ? shelf_layout_manager_->shelf_background_type()
-                               : ShelfBackgroundType::kDefaultBg;
+  return shelf_widget_ ? shelf_widget_->GetBackgroundType()
+                       : ShelfBackgroundType::kDefaultBg;
 }
 
 void Shelf::UpdateVisibilityState() {
@@ -787,6 +782,9 @@ void Shelf::OnAutoHideStateChanged(ShelfAutoHideState new_state) {
 
 void Shelf::OnBackgroundUpdated(ShelfBackgroundType background_type,
                                 AnimationChangeType change_type) {
+  if (background_type == GetBackgroundType())
+    return;
+
   // Shelf should undim when transitioning to show app list.
   if (auto_dim_event_handler_ && IsAppListBackground(background_type))
     UndimShelf();

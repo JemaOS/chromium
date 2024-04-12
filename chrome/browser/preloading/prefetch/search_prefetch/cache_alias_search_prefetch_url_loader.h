@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_PRELOADING_PREFETCH_SEARCH_PREFETCH_CACHE_ALIAS_SEARCH_PREFETCH_URL_LOADER_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,6 +20,7 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/mojom/url_response_head.mojom-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 // This class tries to fetch a prefetch response from cache, and if one is not
 // available, it fetches the non-prefetch URL directly. This case is only
@@ -38,17 +38,17 @@ class CacheAliasSearchPrefetchURLLoader
 
   ~CacheAliasSearchPrefetchURLLoader() override;
 
-  static SearchPrefetchURLLoader::RequestHandler
-  GetServingResponseHandlerFromLoader(
-      std::unique_ptr<CacheAliasSearchPrefetchURLLoader> loader);
-
  private:
+  // SearchPrefetchURLLoader:
+  SearchPrefetchURLLoader::RequestHandler ServingResponseHandlerImpl(
+      std::unique_ptr<SearchPrefetchURLLoader> loader) override;
+
   // network::mojom::URLLoader:
   void FollowRedirect(
       const std::vector<std::string>& removed_headers,
       const net::HttpRequestHeaders& modified_headers,
       const net::HttpRequestHeaders& modified_cors_exempt_headers,
-      const std::optional<GURL>& new_url) override;
+      const absl::optional<GURL>& new_url) override;
   void SetPriority(net::RequestPriority priority,
                    int32_t intra_priority_value) override;
   void PauseReadingBodyFromNet() override;
@@ -59,7 +59,7 @@ class CacheAliasSearchPrefetchURLLoader
   void OnReceiveResponse(
       network::mojom::URLResponseHeadPtr head,
       mojo::ScopedDataPipeConsumerHandle body,
-      std::optional<mojo_base::BigBuffer> cached_metadata) override;
+      absl::optional<mojo_base::BigBuffer> cached_metadata) override;
   void OnReceiveRedirect(const net::RedirectInfo& redirect_info,
                          network::mojom::URLResponseHeadPtr head) override;
   void OnUploadProgress(int64_t current_position,

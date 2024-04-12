@@ -11,7 +11,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace device_signals {
@@ -27,7 +27,7 @@ class SignalsAggregatorFactory : public ProfileKeyedServiceFactory {
   static device_signals::SignalsAggregator* GetForProfile(Profile* profile);
 
  private:
-  friend base::NoDestructor<SignalsAggregatorFactory>;
+  friend struct base::DefaultSingletonTraits<SignalsAggregatorFactory>;
 
   SignalsAggregatorFactory();
   ~SignalsAggregatorFactory() override;

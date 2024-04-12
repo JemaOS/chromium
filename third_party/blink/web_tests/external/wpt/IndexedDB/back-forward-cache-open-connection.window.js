@@ -29,7 +29,7 @@ promise_test(async t => {
   await rc2.historyBack();
   // The previous page receiving versionchange event should be evicted with the
   // correct reason.
-  // `kIgnoreEventAndEvict` will be reported as "masked".
+  // `kIgnoreEventAndEvict` will be reported as "Internal error".
   // See `NotRestoredReasonToReportString()`.
-  await assertNotRestoredFromBFCache(rc1, ['masked']);
+  await assertNotRestoredFromBFCache(rc1, ['Internal error']);
 });

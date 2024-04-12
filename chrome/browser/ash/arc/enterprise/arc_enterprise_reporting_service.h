@@ -41,6 +41,7 @@ class ArcEnterpriseReportingService
   ~ArcEnterpriseReportingService() override;
 
   // mojom::EnterpriseReportingHost overrides:
+  void ReportManagementState(mojom::ManagementState state) override;
   void ReportCloudDpcOperationTime(int64_t time_ms,
                                    mojom::TimedCloudDpcOp op,
                                    bool success) override;
@@ -50,7 +51,7 @@ class ArcEnterpriseReportingService
  private:
   THREAD_CHECKER(thread_checker_);
 
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
 
   base::WeakPtrFactory<ArcEnterpriseReportingService> weak_ptr_factory_{this};

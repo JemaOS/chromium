@@ -91,13 +91,12 @@ base::TimeDelta GetNextRequestDelay(base::TimeDelta last_delay) {
   return std::min(last_delay * 2, kMaxRequestDelay);
 }
 
-void NotifyCertsChangedInAshOnUIThread(
-    crosapi::mojom::CertDatabaseChangeType change_type) {
+void NotifyCertsChangedInAshOnUIThread() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   crosapi::CrosapiManager::Get()
       ->crosapi_ash()
       ->cert_database_ash()
-      ->NotifyCertsChangedInAsh(change_type);
+      ->NotifyCertsChangedInAsh();
 }
 
 }  // namespace
@@ -260,18 +259,9 @@ void SystemTokenCertDBInitializer::InitializeDatabase(
   system_token_cert_db_storage->SetDatabase(system_token_cert_database_.get());
 }
 
-void SystemTokenCertDBInitializer::OnTrustStoreChanged() {
+void SystemTokenCertDBInitializer::OnCertDBChanged() {
   content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(&NotifyCertsChangedInAshOnUIThread,
-                     crosapi::mojom::CertDatabaseChangeType::kTrustStore));
-}
-
-void SystemTokenCertDBInitializer::OnClientCertStoreChanged() {
-  content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(&NotifyCertsChangedInAshOnUIThread,
-                     crosapi::mojom::CertDatabaseChangeType::kClientCertStore));
+      FROM_HERE, base::BindOnce(&NotifyCertsChangedInAshOnUIThread));
 }
 
 }  // namespace ash

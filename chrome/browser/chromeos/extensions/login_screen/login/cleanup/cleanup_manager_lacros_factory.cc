@@ -27,19 +27,13 @@ CleanupManagerLacrosFactory::CleanupManagerLacrosFactory()
     : ProfileKeyedServiceFactory(
           "CleanupManagerLacros",
           // Service is available for incognito profiles.
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 CleanupManagerLacrosFactory::~CleanupManagerLacrosFactory() = default;
 
-std::unique_ptr<KeyedService>
-CleanupManagerLacrosFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* CleanupManagerLacrosFactory::BuildServiceInstanceFor(
     content::BrowserContext* browser_context) const {
-  return std::make_unique<CleanupManagerLacros>(browser_context);
+  return new CleanupManagerLacros(browser_context);
 }
 
 bool CleanupManagerLacrosFactory::ServiceIsNULLWhileTesting() const {

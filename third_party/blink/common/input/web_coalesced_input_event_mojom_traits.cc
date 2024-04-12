@@ -7,7 +7,7 @@
 #include <memory>
 
 #include "base/containers/contains.h"
-#include "base/strings/string_util.h"
+#include "base/i18n/char_iterator.h"
 #include "base/time/time.h"
 #include "mojo/public/cpp/base/time_mojom_traits.h"
 #include "third_party/blink/public/common/input/web_gesture_event.h"
@@ -18,6 +18,16 @@
 
 namespace mojo {
 namespace {
+
+void CopyString(char16_t* dst, const std::u16string& text) {
+  size_t pos = 0;
+  for (base::i18n::UTF16CharIterator iter(text);
+       !iter.end() && pos < blink::WebKeyboardEvent::kTextLengthCap - 1;
+       iter.Advance()) {
+    dst[pos++] = iter.get();
+  }
+  dst[pos] = '\0';
+}
 
 blink::mojom::PointerDataPtr PointerDataFromPointerProperties(
     const blink::WebPointerProperties& pointer,
@@ -108,11 +118,8 @@ bool StructTraits<blink::mojom::EventDataView,
     key_event->dom_key = key_data->dom_key;
     key_event->is_system_key = key_data->is_system_key;
     key_event->is_browser_shortcut = key_data->is_browser_shortcut;
-    base::u16cstrlcpy(key_event->text, key_data->text.c_str(),
-                      blink::WebKeyboardEvent::kTextLengthCap);
-    base::u16cstrlcpy(key_event->unmodified_text,
-                      key_data->unmodified_text.c_str(),
-                      blink::WebKeyboardEvent::kTextLengthCap);
+    CopyString(key_event->text, key_data->text);
+    CopyString(key_event->unmodified_text, key_data->unmodified_text);
   } else if (blink::WebInputEvent::IsGestureEventType(type)) {
     blink::mojom::GestureDataPtr gesture_data;
     if (!event.ReadGestureData<blink::mojom::GestureDataPtr>(&gesture_data))
@@ -254,12 +261,6 @@ bool StructTraits<blink::mojom::EventDataView,
               gesture_data->tap_data->needs_wheel_event;
           break;
       }
-    }
-
-    if (gesture_data->tap_down_data &&
-        type == blink::WebInputEvent::Type::kGestureTapDown) {
-      gesture_event->data.tap_down.tap_down_count =
-          gesture_data->tap_down_data->tap_down_count;
     }
 
     if (gesture_data->fling_data) {
@@ -453,8 +454,6 @@ StructTraits<blink::mojom::EventDataView,
       gesture_data->contact_size =
           gfx::Size(gesture_event->data.tap_down.width,
                     gesture_event->data.tap_down.height);
-      gesture_data->tap_down_data = blink::mojom::TapDownData::New(
-          gesture_event->data.tap_down.tap_down_count);
       break;
     case blink::WebInputEvent::Type::kGestureShowPress:
       gesture_data->contact_size =

@@ -4,12 +4,10 @@
 
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/path_service.h"
 #include "base/run_loop.h"
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/pdf/pdf_extension_test_util.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/common/chrome_content_client.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -69,6 +67,7 @@ class DownloadObserver : public content::DownloadManager::Observer {
   }
 
  private:
+  content::NotificationRegistrar registrar_;
   base::RunLoop download_run_loop_;
   GURL last_url_;
 };
@@ -94,7 +93,7 @@ IN_PROC_BROWSER_TEST_F(PluginResponseInterceptorURLLoaderThrottleBrowserTest,
 
   // Cancel the download to shutdown cleanly.
   download_manager->RemoveObserver(&download_observer);
-  std::vector<raw_ptr<download::DownloadItem, VectorExperimental>> downloads;
+  std::vector<download::DownloadItem*> downloads;
   download_manager->GetAllDownloads(&downloads);
   ASSERT_EQ(1u, downloads.size());
   downloads[0]->Cancel(false);

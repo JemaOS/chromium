@@ -5,7 +5,6 @@
 package org.chromium.chrome.browser.incognito;
 
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.tabmodel.IncognitoTabHostUtils;
 import org.chromium.chrome.browser.tabmodel.IncognitoTabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -40,7 +39,7 @@ public class IncognitoProfileDestroyer implements IncognitoTabModelObserver {
             // model selector as the profile is shared between them.
             Profile profile = mTabModelSelector.getModel(true).getProfile();
             if (profile != null) {
-                ProfileManager.destroyWhenAppropriate(profile);
+                profile.destroyWhenAppropriate();
             }
         }
     }

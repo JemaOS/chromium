@@ -34,7 +34,7 @@ class PermissionBubbleMediaAccessHandler
                           const extensions::Extension* extension) override;
   bool CheckMediaAccessPermission(
       content::RenderFrameHost* render_frame_host,
-      const url::Origin& security_origin,
+      const GURL& security_origin,
       blink::mojom::MediaStreamType type,
       const extensions::Extension* extension) override;
   void HandleRequest(content::WebContents* web_contents,
@@ -55,8 +55,7 @@ class PermissionBubbleMediaAccessHandler
   using RequestsMap = std::map<int64_t, PendingAccessRequest>;
   using RequestsMaps = std::map<content::WebContents*, RequestsMap>;
 
-  void ProcessQueuedAccessRequest(
-      MayBeDangling<content::WebContents> web_contents);
+  void ProcessQueuedAccessRequest(content::WebContents* web_contents);
   void OnMediaStreamRequestResponse(
       content::WebContents* web_contents,
       int64_t request_id,

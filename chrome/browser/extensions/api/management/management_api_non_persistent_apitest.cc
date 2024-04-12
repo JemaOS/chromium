@@ -6,8 +6,6 @@
 #include "chrome/browser/extensions/browsertest_util.h"
 #include "chrome/browser/extensions/extension_action_runner.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/test/browser_test.h"
 #include "extensions/browser/extension_dialog_auto_confirm.h"
@@ -97,7 +95,8 @@ IN_PROC_BROWSER_TEST_P(ManagementApiNonPersistentApiTest,
   // installed or not (ExtensionRegistry::EVERYTHING)
   // is enough. But for clarity, we check for enabled-ness
   // (ExtensionRegistry::ENABLED) here.
-  EXPECT_TRUE(registry->enabled_extensions().GetByID(extension_b_id));
+  EXPECT_TRUE(
+      registry->GetExtensionById(extension_b_id, ExtensionRegistry::ENABLED));
 
   // Load extension_a and wait for browserAction.onClicked listener
   // registration.

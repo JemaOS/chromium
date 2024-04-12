@@ -53,12 +53,11 @@ AdditionalBytesForImmutableCSSPropertyValueSetWithPropertyCount(
 ImmutableCSSPropertyValueSet* ImmutableCSSPropertyValueSet::Create(
     const CSSPropertyValue* properties,
     unsigned count,
-    CSSParserMode css_parser_mode,
-    bool contains_cursor_hand) {
+    CSSParserMode css_parser_mode) {
   DCHECK_LE(count, static_cast<unsigned>(kMaxArraySize));
   return MakeGarbageCollected<ImmutableCSSPropertyValueSet>(
       AdditionalBytesForImmutableCSSPropertyValueSetWithPropertyCount(count),
-      properties, count, css_parser_mode, contains_cursor_hand);
+      properties, count, css_parser_mode);
 }
 
 ImmutableCSSPropertyValueSet* CSSPropertyValueSet::ImmutableCopyIfNeeded()
@@ -94,15 +93,13 @@ MutableCSSPropertyValueSet::MutableCSSPropertyValueSet(
 ImmutableCSSPropertyValueSet::ImmutableCSSPropertyValueSet(
     const CSSPropertyValue* properties,
     unsigned length,
-    CSSParserMode css_parser_mode,
-    bool contains_query_hand)
-    : CSSPropertyValueSet(css_parser_mode, length, contains_query_hand) {
+    CSSParserMode css_parser_mode)
+    : CSSPropertyValueSet(css_parser_mode, length) {
   CSSPropertyValueMetadata* metadata_array =
       const_cast<CSSPropertyValueMetadata*>(MetadataArray());
   Member<const CSSValue>* value_array =
       const_cast<Member<const CSSValue>*>(ValueArray());
   for (unsigned i = 0; i < array_size_; ++i) {
-    new (metadata_array + i) CSSPropertyValueMetadata();
     metadata_array[i] = properties[i].Metadata();
     value_array[i] = properties[i].Value();
   }
@@ -397,7 +394,7 @@ bool CSSPropertyValueSet::IsPropertyImplicit(CSSPropertyID property_id) const {
 MutableCSSPropertyValueSet::SetResult
 MutableCSSPropertyValueSet::ParseAndSetProperty(
     CSSPropertyID unresolved_property,
-    StringView value,
+    const String& value,
     bool important,
     SecureContextMode secure_context_mode,
     StyleSheetContents* context_style_sheet) {
@@ -422,7 +419,7 @@ MutableCSSPropertyValueSet::ParseAndSetProperty(
 MutableCSSPropertyValueSet::SetResult
 MutableCSSPropertyValueSet::ParseAndSetCustomProperty(
     const AtomicString& custom_property_name,
-    StringView value,
+    const String& value,
     bool important,
     SecureContextMode secure_context_mode,
     StyleSheetContents* context_style_sheet,
@@ -450,7 +447,8 @@ void MutableCSSPropertyValueSet::SetProperty(CSSPropertyID property_id,
                                              const CSSValue& value,
                                              bool important) {
   DCHECK_NE(property_id, CSSPropertyID::kVariable);
-  DCHECK_NE(property_id, CSSPropertyID::kWhiteSpace);
+  DCHECK(!RuntimeEnabledFeatures::CSSWhiteSpaceShorthandEnabled() ||
+         property_id != CSSPropertyID::kWhiteSpace);
   StylePropertyShorthand shorthand = shorthandForProperty(property_id);
   if (!shorthand.length()) {
     SetLonghandProperty(
@@ -461,7 +459,7 @@ void MutableCSSPropertyValueSet::SetProperty(CSSPropertyID property_id,
   RemovePropertiesInSet(shorthand.properties(), shorthand.length());
 
   // The simple shorthand expansion below doesn't work for `white-space`.
-  DCHECK_NE(property_id, CSSPropertyID::kWhiteSpace);
+  DCHECK_NE(property_id, CSSPropertyID::kAlternativeWhiteSpace);
   for (unsigned i = 0; i < shorthand.length(); ++i) {
     CSSPropertyName longhand_name(shorthand.properties()[i]->PropertyID());
     property_vector_.push_back(
@@ -499,6 +497,8 @@ MutableCSSPropertyValueSet::SetLonghandProperty(CSSPropertyValue property) {
   const CSSPropertyID id = property.Id();
   DCHECK_EQ(shorthandForProperty(id).length(), 0u)
       << CSSProperty::Get(id).GetPropertyNameString() << " is a shorthand";
+  DCHECK(!RuntimeEnabledFeatures::CSSWhiteSpaceShorthandEnabled() ||
+         id != CSSPropertyID::kWhiteSpace);
   CSSPropertyValue* to_replace;
   if (id == CSSPropertyID::kVariable) {
     to_replace = const_cast<CSSPropertyValue*>(
@@ -524,6 +524,8 @@ void MutableCSSPropertyValueSet::SetLonghandProperty(CSSPropertyID property_id,
   DCHECK_EQ(shorthandForProperty(property_id).length(), 0u)
       << CSSProperty::Get(property_id).GetPropertyNameString()
       << " is a shorthand";
+  DCHECK(!RuntimeEnabledFeatures::CSSWhiteSpaceShorthandEnabled() ||
+         property_id != CSSPropertyID::kWhiteSpace);
   CSSPropertyValue* to_replace = FindInsertionPointForID(property_id);
   if (to_replace) {
     *to_replace = CSSPropertyValue(CSSPropertyName(property_id), value);

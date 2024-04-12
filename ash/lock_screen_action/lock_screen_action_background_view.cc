@@ -11,8 +11,6 @@
 #include "base/functional/callback.h"
 #include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
@@ -28,8 +26,6 @@
 namespace ash {
 
 class LockScreenActionBackgroundView::NoteBackground : public views::View {
-  METADATA_HEADER(NoteBackground, views::View)
-
  public:
   explicit NoteBackground(views::InkDropObserver* observer)
       : observer_(observer) {
@@ -70,15 +66,11 @@ class LockScreenActionBackgroundView::NoteBackground : public views::View {
   ~NoteBackground() override = default;
 
  private:
-  raw_ptr<views::InkDropObserver> observer_;
+  raw_ptr<views::InkDropObserver, ExperimentalAsh> observer_;
 };
-
-BEGIN_METADATA(LockScreenActionBackgroundView, NoteBackground)
-END_METADATA
 
 LockScreenActionBackgroundView::LockScreenActionBackgroundView() {
   SetCanMaximize(true);
-  SetCanFullscreen(true);
 
   auto layout_manager = std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical);
@@ -132,8 +124,5 @@ bool LockScreenActionBackgroundView::CanActivate() const {
 views::View* LockScreenActionBackgroundView::GetBackgroundView() {
   return background_;
 }
-
-BEGIN_METADATA(LockScreenActionBackgroundView)
-END_METADATA
 
 }  // namespace ash

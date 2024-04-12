@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -38,7 +38,8 @@ class SegmentationPlatformServiceFactory : public ProfileKeyedServiceFactory {
       const SegmentationPlatformServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<SegmentationPlatformServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      SegmentationPlatformServiceFactory>;
 
   SegmentationPlatformServiceFactory();
   ~SegmentationPlatformServiceFactory() override;

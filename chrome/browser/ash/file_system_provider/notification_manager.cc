@@ -16,7 +16,8 @@
 #include "ui/message_center/public/cpp/notification_types.h"
 #include "ui/message_center/public/cpp/notifier_id.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 namespace {
 
 // Extension icon size for the notification.
@@ -59,8 +60,8 @@ void NotificationManager::HideUnresponsiveNotification(int id) {
   }
 }
 
-void NotificationManager::Click(const std::optional<int>& button_index,
-                                const std::optional<std::u16string>& reply) {
+void NotificationManager::Click(const absl::optional<int>& button_index,
+                                const absl::optional<std::u16string>& reply) {
   if (!button_index)
     return;
 
@@ -71,11 +72,8 @@ void NotificationManager::Close(bool by_user) {
   OnNotificationResult(CONTINUE);
 }
 
-void NotificationManager::OnAppImageUpdated(
-    const std::string& id,
-    const gfx::ImageSkia& image,
-    bool is_placeholder_icon,
-    const std::optional<gfx::ImageSkia>& badge_image) {
+void NotificationManager::OnAppImageUpdated(const std::string& id,
+                                            const gfx::ImageSkia& image) {
   extension_icon_ = ui::ImageModel::FromImageSkia(image);
   ShowNotification();
 }
@@ -89,8 +87,9 @@ void NotificationManager::ShowNotification() {
     icon_loader_->FetchImage(file_system_info_.provider_id().GetExtensionId());
 
   message_center::RichNotificationData rich_notification_data;
-  rich_notification_data.buttons.emplace_back(l10n_util::GetStringUTF16(
-      IDS_FILE_SYSTEM_PROVIDER_UNRESPONSIVE_ABORT_BUTTON));
+  rich_notification_data.buttons.push_back(
+      message_center::ButtonInfo(l10n_util::GetStringUTF16(
+          IDS_FILE_SYSTEM_PROVIDER_UNRESPONSIVE_ABORT_BUTTON)));
 
   message_center::NotifierId notifier_id(
       message_center::NotifierType::SYSTEM_COMPONENT,
@@ -127,4 +126,5 @@ void NotificationManager::OnNotificationResult(NotificationResult result) {
   }
 }
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

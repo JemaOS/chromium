@@ -21,25 +21,24 @@
 #include "third_party/blink/renderer/platform/wtf/text/string_impl.h"
 
 #import <Foundation/Foundation.h>
-
-#include "base/apple/bridging.h"
+#include "base/mac/foundation_util.h"
 
 namespace WTF {
 
-base::apple::ScopedCFTypeRef<CFStringRef> StringImpl::CreateCFString() {
-  return base::apple::ScopedCFTypeRef<CFStringRef>(
+base::ScopedCFTypeRef<CFStringRef> StringImpl::CreateCFString() {
+  return base::ScopedCFTypeRef<CFStringRef>(
       Is8Bit()
           ? CFStringCreateWithBytes(
                 kCFAllocatorDefault,
                 reinterpret_cast<const UInt8*>(Characters8()), length_,
-                kCFStringEncodingISOLatin1, /*isExternalRepresentation=*/false)
+                kCFStringEncodingISOLatin1, false)
           : CFStringCreateWithCharacters(
                 kCFAllocatorDefault,
                 reinterpret_cast<const UniChar*>(Characters16()), length_));
 }
 
 StringImpl::operator NSString*() {
-  return base::apple::CFToNSOwnershipCast(CreateCFString().release());
+  return [base::mac::CFToNSCast(CreateCFString().release()) autorelease];
 }
 
 }  // namespace WTF

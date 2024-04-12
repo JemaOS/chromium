@@ -24,24 +24,24 @@ import org.robolectric.annotation.Config;
 
 import org.chromium.base.supplier.Supplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Batch;
-import org.chromium.base.test.util.Features;
-import org.chromium.base.test.util.Features.DisableFeatures;
-import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.test.util.browser.Features;
 
-/** Robolectric tests for {@link IncognitoCustomTabSnapshotController}. */
+/**
+ * Robolectric tests for {@link IncognitoCustomTabSnapshotController}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
-@Batch(Batch.UNIT_TESTS)
 @Config(manifest = Config.NONE)
 public class IncognitoCustomTabSnapshotControllerTest {
-    @Mock private Window mWindowMock;
+    @Mock
+    private Window mWindowMock;
 
     private boolean mIsIncognitoShowing;
     private WindowManager.LayoutParams mParams;
     private final Supplier<Boolean> mIsIncognitoShowingSupplier = () -> mIsIncognitoShowing;
 
-    @Rule public TestRule mJunitProcessor = new Features.JUnitProcessor();
+    @Rule
+    public TestRule mJunitProcessor = new Features.JUnitProcessor();
 
     @Before
     public void setUp() {
@@ -52,7 +52,7 @@ public class IncognitoCustomTabSnapshotControllerTest {
 
     @Test
     @SmallTest
-    @DisableFeatures({ChromeFeatureList.INCOGNITO_SCREENSHOT})
+    @Features.DisableFeatures({ChromeFeatureList.INCOGNITO_SCREENSHOT})
     public void testSecureFlagsAdded() {
         mParams.flags = 0;
         mIsIncognitoShowing = true;
@@ -63,7 +63,7 @@ public class IncognitoCustomTabSnapshotControllerTest {
 
     @Test
     @SmallTest
-    @EnableFeatures({ChromeFeatureList.INCOGNITO_SCREENSHOT})
+    @Features.EnableFeatures({ChromeFeatureList.INCOGNITO_SCREENSHOT})
     public void testSecureFlagsRemoved() {
         mParams.flags = WindowManager.LayoutParams.FLAG_SECURE;
         mIsIncognitoShowing = true;

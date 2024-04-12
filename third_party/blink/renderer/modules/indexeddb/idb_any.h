@@ -65,6 +65,7 @@ class MODULES_EXPORT IDBAny final : public GarbageCollected<IDBAny> {
     kKeyType,
     kIDBValueType,
     kIDBValueArrayType,
+    kIDBValueArrayArrayType,
   };
 
   explicit IDBAny(Type);
@@ -72,6 +73,7 @@ class MODULES_EXPORT IDBAny final : public GarbageCollected<IDBAny> {
   explicit IDBAny(IDBDatabase*);
   explicit IDBAny(std::unique_ptr<IDBKey>);
   explicit IDBAny(Vector<std::unique_ptr<IDBValue>>);
+  explicit IDBAny(Vector<Vector<std::unique_ptr<IDBValue>>>);
   explicit IDBAny(std::unique_ptr<IDBValue>);
   explicit IDBAny(int64_t);
   ~IDBAny();
@@ -86,15 +88,9 @@ class MODULES_EXPORT IDBAny final : public GarbageCollected<IDBAny> {
   IDBDatabase* IdbDatabase() const;
   IDBValue* Value() const;
   const Vector<std::unique_ptr<IDBValue>>& Values() const;
+  const Vector<Vector<std::unique_ptr<IDBValue>>>& ValuesArray() const;
   int64_t Integer() const;
   const IDBKey* Key() const;
-
-  // IDBAny is a variant type used to hold the values produced by the |result|
-  // attribute of IDBRequest and (as a convenience) the |source| attribute of
-  // IDBRequest and IDBCursor.
-  // TODO(jsbell): Replace the use of IDBAny for |source| attributes (which are
-  // ScriptWrappable types) using unions per IDL.
-  v8::MaybeLocal<v8::Value> ToV8(ScriptState* script_state);
 
  private:
   const Type type_;
@@ -105,6 +101,7 @@ class MODULES_EXPORT IDBAny final : public GarbageCollected<IDBAny> {
   const std::unique_ptr<IDBKey> idb_key_;
   const std::unique_ptr<IDBValue> idb_value_;
   const Vector<std::unique_ptr<IDBValue>> idb_values_;
+  const Vector<Vector<std::unique_ptr<IDBValue>>> idb_values_array_;
   const int64_t integer_ = 0;
 };
 

@@ -42,10 +42,10 @@ class MODULES_EXPORT AudioWorkletProcessorDefinition final
 
   const String& GetName() const { return name_; }
   V8BlinkAudioWorkletProcessorConstructor* ConstructorFunction() const {
-    return constructor_.Get();
+    return constructor_;
   }
   V8BlinkAudioWorkletProcessCallback* ProcessFunction() const {
-    return process_.Get();
+    return process_;
   }
   void SetAudioParamDescriptors(
       const HeapVector<Member<AudioParamDescriptor>>&);

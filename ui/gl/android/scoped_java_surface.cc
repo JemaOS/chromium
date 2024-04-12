@@ -21,15 +21,14 @@ ScopedJavaSurface::ScopedJavaSurface(
     const base::android::JavaRef<jobject>& surface,
     bool auto_release)
     : auto_release_(auto_release), j_surface_(surface) {
-  JNIEnv* env = jni_zero::AttachCurrentThread();
+  JNIEnv* env = base::android::AttachCurrentThread();
   DCHECK(env->IsInstanceOf(surface.obj(), android_view_Surface_clazz(env)));
 }
 
 ScopedJavaSurface::ScopedJavaSurface(const SurfaceTexture* surface_texture) {
-  JNIEnv* env = jni_zero::AttachCurrentThread();
-  ScopedJavaLocalRef<jobject> tmp(
-      JNI_Surface::Java_Surface_Constructor__android_graphics_SurfaceTexture(
-          env, surface_texture->j_surface_texture()));
+  JNIEnv* env = base::android::AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> tmp(JNI_Surface::Java_Surface_ConstructorAVS_AGST(
+      env, surface_texture->j_surface_texture()));
   DCHECK(!tmp.is_null());
   j_surface_.Reset(tmp);
 }
@@ -53,8 +52,8 @@ ScopedJavaSurface ScopedJavaSurface::CopyRetainOwnership() const {
 
 void ScopedJavaSurface::ReleaseSurfaceIfNeeded() {
   if (auto_release_ && !j_surface_.is_null()) {
-    JNIEnv* env = jni_zero::AttachCurrentThread();
-    JNI_Surface::Java_Surface_release(env, j_surface_);
+    JNIEnv* env = base::android::AttachCurrentThread();
+    JNI_Surface::Java_Surface_releaseV(env, j_surface_);
   }
 }
 
@@ -72,8 +71,8 @@ bool ScopedJavaSurface::IsEmpty() const {
 }
 
 bool ScopedJavaSurface::IsValid() const {
-  JNIEnv* env = jni_zero::AttachCurrentThread();
-  return !IsEmpty() && JNI_Surface::Java_Surface_isValid(env, j_surface_);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  return !IsEmpty() && JNI_Surface::Java_Surface_isValidZ(env, j_surface_);
 }
 
 }  // namespace gl

@@ -16,7 +16,7 @@
 #include "extensions/common/file_util.h"
 #include "extensions/common/manifest_handlers/kiosk_mode_info.h"
 
-namespace chromeos {
+namespace ash {
 
 namespace {
 
@@ -34,7 +34,7 @@ ChromeKioskAppInstaller::ChromeKioskAppInstaller(
     const AppInstallParams& install_data)
     : profile_(profile), primary_app_install_data_(install_data) {}
 
-ChromeKioskAppInstaller::~ChromeKioskAppInstaller() = default;
+ChromeKioskAppInstaller::~ChromeKioskAppInstaller() {}
 
 void ChromeKioskAppInstaller::BeginInstall(InstallCallback callback) {
   DCHECK(!install_complete_);
@@ -110,8 +110,8 @@ void ChromeKioskAppInstaller::MaybeCheckExtensionUpdate() {
   SYSLOG(INFO) << "MaybeCheckExtensionUpdate";
 
   // Record update start time to calculate time consumed by update check. When
-  // `OnExtensionUpdateCheckFinished` is called the update is already finished
-  // because `extensions::ExtensionUpdater::CheckParams::install_immediately` is
+  // |OnExtensionUpdateCheckFinished| is called the update is already finished
+  // because |extensions::ExtensionUpdater::CheckParams::install_immediately| is
   // set to true.
   extension_update_start_time_ = base::Time::Now();
 
@@ -176,7 +176,6 @@ void ChromeKioskAppInstaller::FinalizeAppInstall() {
 
 void ChromeKioskAppInstaller::OnFinishCrxInstall(
     content::BrowserContext* context,
-    const extensions::CrxInstaller& installer,
     const std::string& extension_id,
     bool success) {
   DCHECK(!install_complete_);
@@ -321,4 +320,4 @@ bool ChromeKioskAppInstaller::DidPrimaryOrSecondaryAppFailedToInstall(
   return false;
 }
 
-}  // namespace chromeos
+}  // namespace ash

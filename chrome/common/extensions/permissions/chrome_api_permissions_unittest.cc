@@ -13,7 +13,7 @@ namespace extensions {
 
 TEST(ChromeAPIPermissionsUnitTest, AllApiPermissionsHaveACorrespondingFeature) {
   APIPermissionSet all_api_permissions =
-      PermissionsInfo::GetInstance()->GetAllForTest();
+      PermissionsInfo::GetInstance()->GetAll();
   ASSERT_FALSE(all_api_permissions.empty());
 
   // Sanity check that the returned API permissions include both those from

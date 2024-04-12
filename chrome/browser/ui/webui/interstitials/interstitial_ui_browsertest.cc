@@ -3,17 +3,15 @@
 // found in the LICENSE file.
 
 #include "base/strings/utf_string_conversions.h"
-#include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/devtools/devtools_window_testing.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/common/chrome_switches.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
-#include "components/safe_browsing/core/common/features.h"
 #include "components/strings/grit/components_strings.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
@@ -21,22 +19,24 @@
 #include "content/public/test/test_navigation_observer.h"
 #include "ui/base/l10n/l10n_util.h"
 
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "ash/constants/ash_switches.h"
+#endif
+
 class InterstitialUITest : public InProcessBrowserTest {
  public:
   InterstitialUITest() {}
   ~InterstitialUITest() override {}
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
-    scoped_feature_list_.InitAndEnableFeature(
-        safe_browsing::kRedInterstitialFacelift);
     InProcessBrowserTest::SetUpCommandLine(command_line);
 
-#if BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
     // These tests use chrome:// URLs and are written on the assumption devtools
     // are always available, so guarantee that assumption holds. Tests that
     // check if devtools can be disabled should use a test fixture without the
     // kForceDevToolsAvailable switch set.
-    command_line->AppendSwitch(switches::kForceDevToolsAvailable);
+    command_line->AppendSwitch(ash::switches::kForceDevToolsAvailable);
 #endif
   }
 
@@ -83,9 +83,6 @@ class InterstitialUITest : public InProcessBrowserTest {
                         int message_id) {
     TestInterstitial(url, page_title, l10n_util::GetStringUTF16(message_id));
   }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(InterstitialUITest, HomePage) {
@@ -139,17 +136,17 @@ IN_PROC_BROWSER_TEST_F(InterstitialUITest, EnterpriseWarnInterstitial) {
 
 IN_PROC_BROWSER_TEST_F(InterstitialUITest, MalwareInterstitial) {
   TestInterstitial(GURL("chrome://interstitials/safebrowsing?type=malware"),
-                   "Security error", IDS_HEADING_NEW);
+                   "Security error", IDS_MALWARE_V3_HEADING);
 }
 
 IN_PROC_BROWSER_TEST_F(InterstitialUITest, PhishingInterstitial) {
   TestInterstitial(GURL("chrome://interstitials/safebrowsing?type=phishing"),
-                   "Security error", IDS_HEADING_NEW);
+                   "Security error", IDS_PHISHING_V4_HEADING);
 }
 
 IN_PROC_BROWSER_TEST_F(InterstitialUITest, UnwantedSoftwareInterstitial) {
   TestInterstitial(GURL("chrome://interstitials/safebrowsing?type=unwanted"),
-                   "Security error", IDS_HEADING_NEW);
+                   "Security error", IDS_HARMFUL_V3_HEADING);
 }
 
 IN_PROC_BROWSER_TEST_F(InterstitialUITest, MalwareInterstitialQuiet) {
@@ -179,13 +176,13 @@ IN_PROC_BROWSER_TEST_F(InterstitialUITest, BillingInterstitialQuiet) {
 IN_PROC_BROWSER_TEST_F(InterstitialUITest, ClientsideMalwareInterstitial) {
   TestInterstitial(
       GURL("chrome://interstitials/safebrowsing?type=clientside_malware"),
-      "Security error", IDS_HEADING_NEW);
+      "Security error", IDS_MALWARE_V3_HEADING);
 }
 
 IN_PROC_BROWSER_TEST_F(InterstitialUITest, ClientsidePhishingInterstitial) {
   TestInterstitial(
       GURL("chrome://interstitials/safebrowsing?type=clientside_phishing"),
-      "Security error", IDS_HEADING_NEW);
+      "Security error", IDS_PHISHING_V4_HEADING);
 }
 
 IN_PROC_BROWSER_TEST_F(InterstitialUITest, BillingInterstitial) {

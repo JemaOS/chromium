@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ENTERPRISE_IDLE_IDLE_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_ENTERPRISE_IDLE_IDLE_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/enterprise/idle/idle_service.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
@@ -17,13 +17,13 @@ class IdleServiceFactory : public ProfileKeyedServiceFactory {
   static IdleServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<IdleServiceFactory>;
+  friend struct base::DefaultSingletonTraits<IdleServiceFactory>;
 
   IdleServiceFactory();
   ~IdleServiceFactory() override = default;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 
   void RegisterProfilePrefs(

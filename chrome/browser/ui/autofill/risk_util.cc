@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/autofill/risk_util.h"
 
 #include <memory>
-#include <string>
 
 #include "base/base64.h"
 #include "base/functional/bind.h"
@@ -44,9 +43,10 @@ namespace {
 
 void PassRiskData(base::OnceCallback<void(const std::string&)> callback,
                   std::unique_ptr<risk::Fingerprint> fingerprint) {
-  std::string proto_data;
+  std::string proto_data, risk_data;
   fingerprint->SerializeToString(&proto_data);
-  std::move(callback).Run(base::Base64Encode(proto_data));
+  base::Base64Encode(proto_data, &risk_data);
+  std::move(callback).Run(risk_data);
 }
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -55,7 +55,7 @@ void PassRiskData(base::OnceCallback<void(const std::string&)> callback,
 // window for a platform app.
 ui::BaseWindow* GetBaseWindowForWebContents(
     content::WebContents* web_contents) {
-  Browser* browser = chrome::FindBrowserWithTab(web_contents);
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents);
   if (browser)
     return browser->window();
 
@@ -101,7 +101,7 @@ void LoadRiskDataHelper(uint64_t obfuscated_gaia_id,
 
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   risk::GetFingerprint(obfuscated_gaia_id, window_bounds, web_contents,
-                       std::string(version_info::GetVersionNumber()), charset,
+                       version_info::GetVersionNumber(), charset,
                        accept_languages, install_time,
                        g_browser_process->GetApplicationLocale(),
                        embedder_support::GetUserAgent(),

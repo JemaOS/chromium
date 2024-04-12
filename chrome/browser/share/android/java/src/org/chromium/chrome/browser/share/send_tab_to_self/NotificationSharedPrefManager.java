@@ -8,9 +8,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -23,7 +22,7 @@ import java.util.regex.PatternSyntaxException;
  * the version should be incremented and the new serialization format should be incorporated along
  * with all previous versions.
  */
-class NotificationSharedPrefManager {
+public class NotificationSharedPrefManager {
     // Any time the serialization of the ActiveNotification needs to change, increment this version.
     private static final int VERSION = 1;
 
@@ -32,7 +31,7 @@ class NotificationSharedPrefManager {
      *         this id hits close to the INT_MAX_VALUE (unlikely), gets reset to 0.
      */
     static int getNextNotificationId() {
-        SharedPreferencesManager prefs = ChromeSharedPreferences.getInstance();
+        SharedPreferencesManager prefs = SharedPreferencesManager.getInstance();
         int nextId = prefs.readInt(ChromePreferenceKeys.SEND_TAB_TO_SELF_NEXT_NOTIFICATION_ID, -1);
         // Reset the counter when it gets close to max value
         if (nextId >= Integer.MAX_VALUE - 1) {
@@ -49,7 +48,8 @@ class NotificationSharedPrefManager {
      */
     static class ActiveNotification {
         public final int notificationId;
-        @NonNull public final String guid;
+        @NonNull
+        public final String guid;
         public final int version;
 
         ActiveNotification(int version, int notificationId, @NonNull String guid) {
@@ -68,8 +68,7 @@ class NotificationSharedPrefManager {
                 return false;
             }
             ActiveNotification other = (ActiveNotification) obj;
-            return this.notificationId == other.notificationId
-                    && this.guid.equals(other.guid)
+            return this.notificationId == other.notificationId && this.guid.equals(other.guid)
                     && this.version == other.version;
         }
     }
@@ -132,14 +131,12 @@ class NotificationSharedPrefManager {
      * @param notification Notification to be inserted into the active set.
      */
     static void addActiveNotification(ActiveNotification notification) {
-        SharedPreferencesManager prefs = ChromeSharedPreferences.getInstance();
-        Set<String> activeNotifications =
-                getMutableStringSetPreference(
-                        prefs, ChromePreferenceKeys.SEND_TAB_TO_SELF_ACTIVE_NOTIFICATIONS);
+        SharedPreferencesManager prefs = SharedPreferencesManager.getInstance();
+        Set<String> activeNotifications = getMutableStringSetPreference(
+                prefs, ChromePreferenceKeys.SEND_TAB_TO_SELF_ACTIVE_NOTIFICATIONS);
         boolean added = activeNotifications.add(serializeNotification(notification));
         if (added) {
-            prefs.writeStringSet(
-                    ChromePreferenceKeys.SEND_TAB_TO_SELF_ACTIVE_NOTIFICATIONS,
+            prefs.writeStringSet(ChromePreferenceKeys.SEND_TAB_TO_SELF_ACTIVE_NOTIFICATIONS,
                     activeNotifications);
         }
     }
@@ -154,20 +151,18 @@ class NotificationSharedPrefManager {
         if (guid == null) {
             return false;
         }
-        SharedPreferencesManager prefs = ChromeSharedPreferences.getInstance();
+        SharedPreferencesManager prefs = SharedPreferencesManager.getInstance();
         ActiveNotification notification = findActiveNotification(guid);
         if (notification == null) {
             return false;
         }
 
-        Set<String> activeNotifications =
-                getMutableStringSetPreference(
-                        prefs, ChromePreferenceKeys.SEND_TAB_TO_SELF_ACTIVE_NOTIFICATIONS);
+        Set<String> activeNotifications = getMutableStringSetPreference(
+                prefs, ChromePreferenceKeys.SEND_TAB_TO_SELF_ACTIVE_NOTIFICATIONS);
         boolean removed = activeNotifications.remove(serializeNotification(notification));
 
         if (removed) {
-            prefs.writeStringSet(
-                    ChromePreferenceKeys.SEND_TAB_TO_SELF_ACTIVE_NOTIFICATIONS,
+            prefs.writeStringSet(ChromePreferenceKeys.SEND_TAB_TO_SELF_ACTIVE_NOTIFICATIONS,
                     activeNotifications);
         }
         return removed;
@@ -180,14 +175,14 @@ class NotificationSharedPrefManager {
      * @return The Active Notification associated with the passed in GUID. May be null if none
      *         found.
      */
-    static @Nullable ActiveNotification findActiveNotification(@Nullable String guid) {
+    @Nullable
+    static ActiveNotification findActiveNotification(@Nullable String guid) {
         if (guid == null) {
             return null;
         }
-        SharedPreferencesManager prefs = ChromeSharedPreferences.getInstance();
-        Set<String> activeNotifications =
-                prefs.readStringSet(
-                        ChromePreferenceKeys.SEND_TAB_TO_SELF_ACTIVE_NOTIFICATIONS, null);
+        SharedPreferencesManager prefs = SharedPreferencesManager.getInstance();
+        Set<String> activeNotifications = prefs.readStringSet(
+                ChromePreferenceKeys.SEND_TAB_TO_SELF_ACTIVE_NOTIFICATIONS, null);
         if (activeNotifications == null) {
             return null;
         }

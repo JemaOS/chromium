@@ -50,6 +50,7 @@ class BuilderList:
             "is_try_builder": Whether the builder is a trybot.
             "main": The main name of the builder. It is deprecated, but still required
                 by test-results.appspot.com API."
+            "has_webdriver_tests": Whether webdriver_tests_suite runs on this builder.
 
         Possible refactoring note: Potentially, it might make sense to use
         blinkpy.common.net.results_fetcher.Builder and add port_name and
@@ -108,6 +109,7 @@ class BuilderList:
             builder
             for builder in self.filter_builders(is_try=True,
                                                 exclude_specifiers={'android'})
+            if not self.uses_wptrunner(builder)
         }
         # Remove CQ builders whose port is a duplicate of a *-blink-rel builder
         # to avoid wasting resources.
@@ -119,9 +121,9 @@ class BuilderList:
     def try_bots_with_cq_mirror(self):
         """Returns a sorted list of (try_builder_names, cq_mirror_builder_names).
 
-        When all steps in a cq trybot exist in a blink-rel trybot and the port
-        name matches, we say that blink-rel trybot has a cq mirror, and thus there
-        is no need to trigger the cq trybot together with the blink-rel trybot.
+        When all steps in a blink-rel trybot exist in a cq trybot and the port
+        name matches, we say that blink-rel trybot has a cq mirror, and thus
+        there is no need to trigger both the blink-rel trybot and its cq mirror.
 
         As of today, this should return:
         [("linux-blink-rel", "linux-rel"),
@@ -138,9 +140,8 @@ class BuilderList:
                 if (self.port_name_for_builder_name(cq_builder_name) !=
                         self.port_name_for_builder_name(builder_name)):
                     continue
-                cq_step_names = set(
-                    self.step_names_for_builder(cq_builder_name))
-                if cq_step_names.issubset(step_names):
+                cq_step_names = self.step_names_for_builder(cq_builder_name)
+                if step_names.issubset(cq_step_names):
                     rv.append((builder_name, cq_builder_name))
                     break
         return rv
@@ -189,20 +190,16 @@ class BuilderList:
         return sorted(builders)
 
     def all_port_names(self):
-        port_names = set()
-        for builder_name, builder in self._builders.items():
-            port_names.add(builder['port_name'])
-            for step in self.step_names_for_builder(builder_name):
-                product = self.product_for_build_step(builder_name, step)
-                if product != 'content_shell':
-                    port_names.add(product)
-        return sorted(port_names)
+        return sorted({b['port_name'] for b in self._builders.values()})
 
     def bucket_for_builder(self, builder_name):
         return self._builders[builder_name].get('bucket', '')
 
     def main_for_builder(self, builder_name):
         return self._builders[builder_name].get('main', '')
+
+    def has_webdriver_tests_for_builder(self, builder_name):
+        return self._builders[builder_name].get('has_webdriver_tests')
 
     def port_name_for_builder_name(self, builder_name):
         return self._builders[builder_name]['port_name']
@@ -225,12 +222,14 @@ class BuilderList:
     def is_try_server_builder(self, builder_name):
         return self._builders[builder_name].get('is_try_builder', False)
 
+    def uses_wptrunner(self, builder_name: str) -> bool:
+        return any(
+            step.get('uses_wptrunner', 'wpt_tests_suite' in step_name)
+            for step_name, step in self._steps(builder_name).items())
+
     def product_for_build_step(self, builder_name: str, step_name: str) -> str:
-        try:
-            steps = self._steps(builder_name)
-            return steps[step_name].get('product', 'content_shell')
-        except KeyError:
-            return 'content_shell'
+        steps = self._steps(builder_name)
+        return steps[step_name].get('product', 'content_shell')
 
     def has_experimental_steps(self, builder_name):
         steps = self.step_names_for_builder(builder_name)
@@ -279,13 +278,6 @@ class BuilderList:
         the version specifier for the first builder that matches, even
         if it's a try bot builder.
         """
-        # TODO(crbug.com/41484800): Remove this special logic by either:
-        #  1. Implement better way of defining port as per-suite, not
-        #     per-builder, property in `BuilderList`
-        #  2. Replace the `chrome` port with regular platform ports with
-        #     chrome-specific logic (detected via the `driver_name` option).
-        if target_port_name == 'chrome':
-            return 'Chrome'
         for _, builder_info in sorted(self._builders.items()):
             if builder_info['port_name'] == target_port_name:
                 return builder_info['specifiers'][0]
@@ -295,7 +287,7 @@ class BuilderList:
         """Returns the builder name for a give version and build type.
 
         Args:
-            version: A string with the OS or OS version specifier. e.g. "Win10".
+            version: A string with the OS version specifier. e.g. "Trusty", "Win10".
             build_type: A string with the build type. e.g. "Debug" or "Release".
 
         Returns:

@@ -5,8 +5,8 @@
 #include "chrome/browser/ui/views/bubble/webui_bubble_dialog_view.h"
 
 #include "content/public/browser/keyboard_event_processing_result.h"
+#include "content/public/browser/native_web_keyboard_event.h"
 #include "content/public/browser/visibility.h"
-#include "content/public/common/input/native_web_keyboard_event.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rounded_corners_f.h"
@@ -24,8 +24,6 @@ constexpr gfx::Size kMinSize(25, 25);
 // WebUIBubbleView provides the functionality needed to embed a WebContents
 // within a Views hierarchy.
 class WebUIBubbleView : public views::WebView {
-  METADATA_HEADER(WebUIBubbleView, views::WebView)
-
  public:
   explicit WebUIBubbleView(content::WebContents* web_contents) {
     SetWebContents(web_contents);
@@ -43,23 +41,24 @@ class WebUIBubbleView : public views::WebView {
   }
 };
 
-BEGIN_METADATA(WebUIBubbleView)
-END_METADATA
-
 }  // namespace
 
 WebUIBubbleDialogView::WebUIBubbleDialogView(
     views::View* anchor_view,
-    base::WeakPtr<WebUIContentsWrapper> contents_wrapper,
-    const std::optional<gfx::Rect>& anchor_rect,
-    views::BubbleBorder::Arrow arrow)
-    : BubbleDialogDelegateView(anchor_view, arrow),
+    BubbleContentsWrapper* contents_wrapper,
+    const absl::optional<gfx::Rect>& anchor_rect)
+    : BubbleDialogDelegateView(anchor_view, views::BubbleBorder::TOP_RIGHT),
       contents_wrapper_(contents_wrapper),
       web_view_(AddChildView(std::make_unique<WebUIBubbleView>(
           contents_wrapper_->web_contents()))),
       bubble_anchor_(anchor_rect) {
   DCHECK(!contents_wrapper_->GetHost());
+  contents_wrapper_->SetHost(weak_factory_.GetWeakPtr());
 
+  // Ensure the WebContents is in a visible state after being added to the
+  // Views bubble so the correct lifecycle hooks are triggered.
+  DCHECK_NE(content::Visibility::VISIBLE,
+            contents_wrapper_->web_contents()->GetVisibility());
   contents_wrapper_->web_contents()->WasShown();
 
   SetButtons(ui::DIALOG_BUTTON_NONE);
@@ -100,10 +99,6 @@ gfx::Size WebUIBubbleDialogView::CalculatePreferredSize() const {
 
 void WebUIBubbleDialogView::AddedToWidget() {
   BubbleDialogDelegateView::AddedToWidget();
-  // This view needs to be added to the widget before setting itself as the host
-  // of the contents, so that the contents' resizing request can be propagated
-  // to the widget.
-  contents_wrapper_->SetHost(weak_factory_.GetWeakPtr());
   bubble_widget_observation_.Observe(GetWidget());
   web_view_->holder()->SetCornerRadii(gfx::RoundedCornersF(GetCornerRadius()));
 }
@@ -139,5 +134,5 @@ gfx::Rect WebUIBubbleDialogView::GetAnchorRect() const {
   return BubbleDialogDelegateView::GetAnchorRect();
 }
 
-BEGIN_METADATA(WebUIBubbleDialogView)
+BEGIN_METADATA(WebUIBubbleDialogView, views::BubbleDialogDelegateView)
 END_METADATA

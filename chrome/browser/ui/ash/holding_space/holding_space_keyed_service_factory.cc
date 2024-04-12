@@ -38,7 +38,7 @@ HoldingSpaceKeyedServiceFactory::GetInstance() {
 BrowserContextKeyedServiceFactory::TestingFactory
 HoldingSpaceKeyedServiceFactory::GetDefaultTestingFactory() {
   return base::BindRepeating([](content::BrowserContext* context) {
-    return BuildServiceInstanceForInternal(context);
+    return base::WrapUnique(BuildServiceInstanceForInternal(context));
   });
 }
 
@@ -77,17 +77,15 @@ HoldingSpaceKeyedServiceFactory::GetBrowserContextToUse(
   return profile->IsOffTheRecord() ? nullptr : context;
 }
 
-std::unique_ptr<KeyedService>
-HoldingSpaceKeyedServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* HoldingSpaceKeyedServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   TestingFactory* testing_factory = GetTestingFactory();
   return testing_factory->is_null() ? BuildServiceInstanceForInternal(context)
-                                    : testing_factory->Run(context);
+                                    : testing_factory->Run(context).release();
 }
 
 // static
-std::unique_ptr<KeyedService>
-HoldingSpaceKeyedServiceFactory::BuildServiceInstanceForInternal(
+KeyedService* HoldingSpaceKeyedServiceFactory::BuildServiceInstanceForInternal(
     content::BrowserContext* context) {
   Profile* const profile = Profile::FromBrowserContext(context);
   DCHECK_EQ(profile->IsGuestSession(), profile->IsOffTheRecord());
@@ -96,12 +94,10 @@ HoldingSpaceKeyedServiceFactory::BuildServiceInstanceForInternal(
   if (!user)
     return nullptr;
 
-  if (user->GetType() == user_manager::UserType::kKioskApp) {
+  if (user->GetType() == user_manager::USER_TYPE_KIOSK_APP)
     return nullptr;
-  }
 
-  return std::make_unique<HoldingSpaceKeyedService>(profile,
-                                                    user->GetAccountId());
+  return new HoldingSpaceKeyedService(profile, user->GetAccountId());
 }
 
 void HoldingSpaceKeyedServiceFactory::RegisterProfilePrefs(

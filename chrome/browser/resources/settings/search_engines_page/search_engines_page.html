@@ -44,7 +44,8 @@
       </div>
     </div>
     <settings-search-engines-list hidden="[[!matchingDefaultEngines_.length]]"
-        engines="[[matchingDefaultEngines_]]" show-shortcut>
+        engines="[[matchingDefaultEngines_]]"
+        show-shortcut name-column-header="$i18n{searchEnginesSearchEngine}">
     </settings-search-engines-list>
 
     <div class="no-search-results list-frame"
@@ -91,7 +92,8 @@
         engines="[[matchingActiveEngines_]]"
         scroll-target="[[subpageScrollTarget]]"
         show-shortcut collapse-list
-        expand-list-text="$i18n{searchEnginesAdditionalSites}">
+        expand-list-text="$i18n{searchEnginesAdditionalSites}"
+        name-column-header="$i18n{searchEnginesSiteOrPage}">
     </settings-search-engines-list>
 
     <div class="cr-row first">
@@ -102,7 +104,8 @@
         engines="[[matchingOtherEngines_]]"
         scroll-target="[[subpageScrollTarget]]"
         show-query-url collapse-list
-        expand-list-text="$i18n{searchEnginesAdditionalInactiveSites}">
+        expand-list-text="$i18n{searchEnginesAdditionalInactiveSites}"
+        name-column-header="$i18n{searchEnginesSiteOrPage}">
     </settings-search-engines-list>
 
     <div id="noOtherEngines" class="list-frame"

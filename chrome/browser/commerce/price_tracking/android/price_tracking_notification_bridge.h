@@ -15,8 +15,6 @@ namespace content {
 class BrowserContext;
 }  // namespace content
 
-class Profile;
-
 // JNI bridge that receives the price tracking notification payload from
 // optimization_guide::PushNotificationManager. This class is owned by a browser
 // context through SupportsUserData.
@@ -35,7 +33,7 @@ class PriceTrackingNotificationBridge
       const optimization_guide::proto::Any& payload) override;
 
  private:
-  explicit PriceTrackingNotificationBridge(Profile* profile);
+  PriceTrackingNotificationBridge();
 
   // The Java object, owned by the native object.
   base::android::ScopedJavaGlobalRef<jobject> java_obj_;

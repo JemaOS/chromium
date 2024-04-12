@@ -10,30 +10,25 @@ import {FakeChromeEvent} from './fake_chrome_event.js';
 
 /** @fileoverview Fake implementation of chrome.settingsPrivate for testing. */
 
-type SettingsPrivateApi = typeof chrome.settingsPrivate;
-type PrefObject = chrome.settingsPrivate.PrefObject;
-type PrefType = chrome.settingsPrivate.PrefType;
+/**
+ * Creates a deep copy of the object.
+ */
+function deepCopy(obj: object): object {
+  return JSON.parse(JSON.stringify(obj));
+}
 
 /**
  * Fake of chrome.settingsPrivate API. Use by setting
  * CrSettingsPrefs.deferInitialization to true, then passing a
  * FakeSettingsPrivate to settings-prefs#initialize().
  */
-export class FakeSettingsPrivate extends TestBrowserProxy implements
-    SettingsPrivateApi {
-  // Mirroring chrome.settingsPrivate API members.
-  /* eslint-disable @typescript-eslint/naming-convention */
-  PrefType = chrome.settingsPrivate.PrefType;
-  ControlledBy = chrome.settingsPrivate.ControlledBy;
-  Enforcement = chrome.settingsPrivate.Enforcement;
-  /* eslint-enable @typescript-eslint/naming-convention */
-
-  prefs: Record<string, PrefObject> = {};
-  onPrefsChanged: FakeChromeEvent = new FakeChromeEvent();
+export class FakeSettingsPrivate extends TestBrowserProxy {
   private disallowSetPref_: boolean = false;
   private failNextSetPref_: boolean = false;
+  prefs: {[key: string]: chrome.settingsPrivate.PrefObject} = {};
+  onPrefsChanged: FakeChromeEvent = new FakeChromeEvent();
 
-  constructor(initialPrefs?: PrefObject[]) {
+  constructor(initialPrefs?: chrome.settingsPrivate.PrefObject[]) {
     super([
       'setPref',
       'getPref',
@@ -48,16 +43,17 @@ export class FakeSettingsPrivate extends TestBrowserProxy implements
   }
 
   // chrome.settingsPrivate overrides.
-  getAllPrefs(): Promise<PrefObject[]> {
+  getAllPrefs(): Promise<chrome.settingsPrivate.PrefObject[]> {
     // Send a copy of prefs to keep our internal state private.
     const prefs = [];
     for (const key in this.prefs) {
-      prefs.push(structuredClone(this.prefs[key]!));
+      prefs.push(
+          deepCopy(this.prefs[key]!) as chrome.settingsPrivate.PrefObject);
     }
     return Promise.resolve(prefs);
   }
 
-  setPref(key: string, value: any, _pageId?: string): Promise<boolean> {
+  setPref(key: string, value: any, _pageId: string): Promise<boolean> {
     this.methodCalled('setPref', {key, value});
     const pref = this.prefs[key];
     assertNotEquals(undefined, pref);
@@ -71,19 +67,20 @@ export class FakeSettingsPrivate extends TestBrowserProxy implements
     assertNotEquals(true, this.disallowSetPref_);
 
     const changed = JSON.stringify(pref!.value) !== JSON.stringify(value);
-    pref!.value = structuredClone(value);
+    pref!.value = deepCopy(value);
     // Like chrome.settingsPrivate, send a notification when prefs change.
     if (changed) {
-      this.sendPrefChanges([{key: key, value: structuredClone(value)}]);
+      this.sendPrefChanges([{key: key, value: deepCopy(value)}]);
     }
     return Promise.resolve(true);
   }
 
-  getPref(key: string): Promise<PrefObject> {
+  getPref(key: string): Promise<chrome.settingsPrivate.PrefObject> {
     this.methodCalled('getPref', key);
     const pref = this.prefs[key];
     assertNotEquals(undefined, pref);
-    return Promise.resolve(structuredClone(pref!));
+    return Promise.resolve(
+        deepCopy(pref!) as chrome.settingsPrivate.PrefObject);
   }
 
   // Functions used by tests.
@@ -111,20 +108,19 @@ export class FakeSettingsPrivate extends TestBrowserProxy implements
       const pref = this.prefs[change.key];
       assertNotEquals(undefined, pref);
       pref!.value = change.value;
-      prefs.push(structuredClone(pref!) as PrefObject);
+      prefs.push(deepCopy(pref!) as chrome.settingsPrivate.PrefObject);
     }
     this.onPrefsChanged.callListeners(prefs);
   }
 
-  getDefaultZoom(): Promise<number> {
-    return Promise.resolve(100);
-  }
+  getDefaultZoom() {}
 
-  setDefaultZoom(): void {}
+  setDefaultZoom() {}
 
   // Private methods for use by the fake API.
 
-  private addPref_(type: PrefType, key: string, value: any) {
+  private addPref_(
+      type: chrome.settingsPrivate.PrefType, key: string, value: any) {
     this.prefs[key] = {
       type: type,
       key: key,

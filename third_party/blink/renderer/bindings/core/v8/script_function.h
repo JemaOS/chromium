@@ -32,6 +32,7 @@
 #define THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_SCRIPT_FUNCTION_H_
 
 #include "base/dcheck_is_on.h"
+#include "third_party/blink/renderer/bindings/core/v8/custom_wrappable_adapter.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_value.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
@@ -81,7 +82,10 @@ class CORE_EXPORT ScriptFunction final
     const ScriptValue value_;
   };
 
-  ScriptFunction(ScriptState*, Callable*);
+  ScriptFunction(ScriptState* script_state, Callable* callable)
+      : script_state_(script_state),
+        function_(script_state->GetIsolate(),
+                  BindToV8Function(script_state, callable)) {}
 
   void Trace(Visitor* visitor) const {
     visitor->Trace(script_state_);
@@ -93,6 +97,9 @@ class CORE_EXPORT ScriptFunction final
   }
 
  private:
+  static v8::Local<v8::Function> BindToV8Function(ScriptState*, Callable*);
+  static void CallCallback(const v8::FunctionCallbackInfo<v8::Value>&);
+
   Member<ScriptState> script_state_;
   TraceWrapperV8Reference<v8::Function> function_;
 };

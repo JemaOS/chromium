@@ -24,10 +24,8 @@ import java.util.List;
  */
 class RelatedSearchesList {
     private static final String TAG = "ContextualSearch";
-
     /** JSON keys sent by the server. */
     private static final String SELECTION_SUGGESTIONS = "selection";
-
     private static final String TITLE = "title";
     private static final String SEARCH_URL = "searchUrl";
 
@@ -45,11 +43,8 @@ class RelatedSearchesList {
             try {
                 suggestions = new JSONObject(jsonString);
             } catch (JSONException e) {
-                Log.w(
-                        TAG,
-                        "RelatedSearchesList cannot parse JSON: "
-                                + jsonString
-                                + "\n"
+                Log.w(TAG,
+                        "RelatedSearchesList cannot parse JSON: " + jsonString + "\n"
                                 + e.getMessage());
             }
         }
@@ -70,13 +65,9 @@ class RelatedSearchesList {
             try {
                 results.add(suggestions.getJSONObject(i).getString(TITLE));
             } catch (JSONException e) {
-                Log.w(
-                        TAG,
+                Log.w(TAG,
                         "RelatedSearchesList cannot find a query with a title at suggestion "
-                                + "index: "
-                                + i
-                                + "\n"
-                                + e.getMessage());
+                                + "index: " + i + "\n" + e.getMessage());
             }
         }
         return results;
@@ -97,12 +88,9 @@ class RelatedSearchesList {
             Uri searchUri = Uri.parse(searchUrl);
             return RelatedSearchesStamp.updateUriForSuggestionPosition(searchUri, suggestionIndex);
         } catch (JSONException e) {
-            Log.w(
-                    TAG,
-                    "RelatedSearchesList cannot find a searchUrl in suggestion "
-                            + suggestionIndex
-                            + "\n"
-                            + e.getMessage());
+            Log.w(TAG,
+                    "RelatedSearchesList cannot find a searchUrl in suggestion " + suggestionIndex
+                            + "\n" + e.getMessage());
         }
         return null;
     }

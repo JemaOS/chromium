@@ -1,10 +1,12 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 // https://drafts.csswg.org/css-fonts-4/#om-fontfeaturevalues
 
-interface CSSFontFeatureValuesRule : CSSRule {
+[
+    RuntimeEnabled = FontVariantAlternates
+] interface CSSFontFeatureValuesRule : CSSRule {
   attribute CSSOMString fontFamily;
 
   readonly attribute CSSFontFeatureValuesMap annotation;
@@ -15,7 +17,9 @@ interface CSSFontFeatureValuesRule : CSSRule {
   readonly attribute CSSFontFeatureValuesMap styleset;
 };
 
-interface CSSFontFeatureValuesMap {
+[
+    RuntimeEnabled = FontVariantAlternates
+] interface CSSFontFeatureValuesMap {
    maplike<CSSOMString, sequence<unsigned long>>;
    undefined set(CSSOMString featureValueName,
      (unsigned long or sequence<unsigned long>) values);

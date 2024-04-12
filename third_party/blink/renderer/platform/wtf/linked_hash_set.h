@@ -27,7 +27,6 @@
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/sanitizers.h"
-#include "third_party/blink/renderer/platform/wtf/type_traits.h"
 #include "third_party/blink/renderer/platform/wtf/vector_backed_linked_list.h"
 
 namespace WTF {
@@ -85,9 +84,6 @@ class LinkedHashSet {
   template <typename T>
   class IteratorWrapper {
    public:
-    IteratorWrapper(const IteratorWrapper&) = default;
-    IteratorWrapper& operator=(const IteratorWrapper&) = default;
-
     const Value& operator*() const { return *(iterator_.Get()); }
     const Value* operator->() const { return iterator_.Get(); }
 
@@ -101,17 +97,8 @@ class LinkedHashSet {
       return *this;
     }
 
-    IteratorWrapper operator++(int) {
-      auto copy = *this;
-      operator++();
-      return copy;
-    }
-
-    IteratorWrapper operator--(int) {
-      auto copy = *this;
-      operator--();
-      return copy;
-    }
+    IteratorWrapper& operator++(int) = delete;
+    IteratorWrapper& operator--(int) = delete;
 
     bool operator==(const IteratorWrapper& other) const {
       // No need to compare map_iterator_ here because it is not related to
@@ -227,9 +214,9 @@ class LinkedHashSet {
   void pop_back();
   void clear();
 
-  void Trace(auto visitor) const
-    requires Allocator::kIsGarbageCollected
-  {
+  template <typename VisitorDispatcher, typename A = Allocator>
+  std::enable_if_t<A::kIsGarbageCollected> Trace(
+      VisitorDispatcher visitor) const {
     value_to_index_.Trace(visitor);
     list_.Trace(visitor);
   }
@@ -265,7 +252,6 @@ class LinkedHashSet {
 
 template <typename T, typename TraitsArg, typename Allocator>
 inline LinkedHashSet<T, TraitsArg, Allocator>::LinkedHashSet() {
-  static_assert(!IsStackAllocatedType<T>);
   static_assert(Allocator::kIsGarbageCollected ||
                     !IsPointerToGarbageCollectedType<T>::value,
                 "Cannot put raw pointers to garbage-collected classes into "

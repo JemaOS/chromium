@@ -25,6 +25,9 @@ preprocess_if_expr("preprocess") {
   in_files = [
     "action_link.css",
     "chrome_shared.css",
+    "list.css",
+    "menu_button.css",
+    "menu.css",
     "spinner.css",
     "text_defaults.css",
     "text_defaults_md.css",
@@ -32,7 +35,7 @@ preprocess_if_expr("preprocess") {
     "widgets.css",
   ]
 
-  if (is_linux) {
+  if (!is_chromeos_ash && !is_android) {
     in_files += [ "roboto.css" ]
   }
 

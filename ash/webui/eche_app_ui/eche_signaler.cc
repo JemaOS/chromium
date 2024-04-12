@@ -172,9 +172,7 @@ void EcheSignaler::ProcessAndroidNetworkInfo(const proto::ExoMessage& message) {
       is_different_network, remote_on_cellular);
 }
 
-void EcheSignaler::OnConnectionClosed() {
-  // When a background connection is closed, reset the timer so no data will be
-  // recoreded into ConnectionFail bucket.
+void EcheSignaler::OnRequestCloseConnnection() {
   signaling_timeout_timer_.reset();
 }
 
@@ -200,7 +198,7 @@ void EcheSignaler::RecordSignalingTimeout() {
   if (eche_tray && eche_tray->IsBackgroundConnectionAttemptInProgress()) {
     base::UmaHistogramEnumeration("Eche.NetworkCheck.FailureReason",
                                   probably_connection_failed_reason_);
-  } else if (apps_launch_info_provider_->GetConnectionStatusFromLastAttempt() ==
+  } else if (apps_launch_info_provider_->GetConnectionStatusForUi() ==
                  mojom::ConnectionStatus::kConnectionStatusFailed &&
              apps_launch_info_provider_->entry_point() ==
                  mojom::AppStreamLaunchEntryPoint::NOTIFICATION) {

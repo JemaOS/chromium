@@ -47,7 +47,7 @@ class ArcKeyMintBridge : public KeyedService,
   // Return the factory instance for this class.
   static BrowserContextKeyedServiceFactory* GetFactory();
 
-  // Update the list of placeholder keys to be installed in arc-keymintd.
+  // Update the list of placeholder keys to be instlaled in arc-keymasterd.
   //
   // Made virtual for override in tests.
   virtual void UpdatePlaceholderKeys(
@@ -60,8 +60,6 @@ class ArcKeyMintBridge : public KeyedService,
   // KeyMintHost mojo interface.
   void GetServer(GetServerCallback callback) override;
 
-  static void EnsureFactoryBuilt();
-
  private:
   using BootstrapMojoConnectionCallback = base::OnceCallback<void(bool)>;
 
@@ -71,7 +69,7 @@ class ArcKeyMintBridge : public KeyedService,
   void GetServerAfterBootstrap(GetServerCallback callback,
                                bool bootstrapResult);
 
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
                             //
   // Points to a proxy bound to the implementation in arc-keymintd.

@@ -19,17 +19,10 @@ class GPUPipelineLayout : public DawnObject<WGPUPipelineLayout> {
       GPUDevice* device,
       const GPUPipelineLayoutDescriptor* webgpu_desc);
   explicit GPUPipelineLayout(GPUDevice* device,
-                             WGPUPipelineLayout pipeline_layout,
-                             const String& label);
+                             WGPUPipelineLayout pipeline_layout);
 
   GPUPipelineLayout(const GPUPipelineLayout&) = delete;
   GPUPipelineLayout& operator=(const GPUPipelineLayout&) = delete;
-
- private:
-  void setLabelImpl(const String& value) override {
-    std::string utf8_label = value.Utf8();
-    GetProcs().pipelineLayoutSetLabel(GetHandle(), utf8_label.c_str());
-  }
 };
 
 }  // namespace blink

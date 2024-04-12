@@ -9,9 +9,7 @@
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "chrome/browser/headless/headless_mode_util.h"
-#include "chrome/common/chrome_switches.h"
-#include "components/keep_alive_registry/keep_alive_types.h"
-#include "components/keep_alive_registry/scoped_keep_alive.h"
+#include "components/headless/command_handler/headless_command_handler.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
@@ -24,24 +22,19 @@ bool ShouldProcessHeadlessCommands() {
                                  *base::CommandLine::ForCurrentProcess());
 }
 
-void ProcessHeadlessCommands(
-    content::BrowserContext* browser_context,
-    const GURL& target_url,
-    HeadlessCommandHandler::DoneCallback done_callback) {
+void ProcessHeadlessCommands(content::BrowserContext* browser_context,
+                             GURL target_url,
+                             base::OnceClosure done_callback) {
   DCHECK(browser_context);
-
-  // Ensure lazy loaded content is being captured by the commands.
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  if (!command_line->HasSwitch(switches::kDisableLazyLoading)) {
-    command_line->AppendSwitch(switches::kDisableLazyLoading);
-  }
-
-  auto keepalive = std::make_unique<ScopedKeepAlive>(
-      KeepAliveOrigin::HEADLESS_COMMAND, KeepAliveRestartOption::DISABLED);
 
   // Create web contents to run the command processing in.
   content::WebContents::CreateParams create_params(browser_context);
-  auto web_contents = content::WebContents::Create(create_params);
+  create_params.is_never_visible = true;
+  std::unique_ptr<content::WebContents> web_contents(
+      content::WebContents::Create(create_params));
+  if (!web_contents) {
+    return;
+  }
 
   // Navigate web contents to the command processor page.
   GURL handler_url = HeadlessCommandHandler::GetHandlerUrl();
@@ -56,15 +49,11 @@ void ProcessHeadlessCommands(
       web_contents_ptr, std::move(target_url),
       base::BindOnce(
           [](std::unique_ptr<content::WebContents> web_contents,
-             std::unique_ptr<ScopedKeepAlive> keepalive,
-             HeadlessCommandHandler::DoneCallback done_callback,
-             HeadlessCommandHandler::Result result) {
+             base::OnceClosure done_callback) {
             web_contents.reset();
-            keepalive.reset();
-            std::move(done_callback).Run(result);
+            std::move(done_callback).Run();
           },
-          std::move(web_contents), std::move(keepalive),
-          std::move(done_callback)));
+          std::move(web_contents), std::move(done_callback)));
 }
 
 }  // namespace headless

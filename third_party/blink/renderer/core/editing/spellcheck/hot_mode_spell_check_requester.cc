@@ -44,9 +44,8 @@ EphemeralRange CurrentWordIfTypingInPartialWord(const Element& editable) {
       frame.Selection().GetSelectionInDOMTree();
   if (!selection.IsCaret())
     return EphemeralRange();
-  if (RootEditableElementOf(selection.Anchor()) != &editable) {
+  if (RootEditableElementOf(selection.Base()) != &editable)
     return EphemeralRange();
-  }
 
   CompositeEditCommand* last_command = frame.GetEditor().LastEditCommand();
   if (!last_command || !last_command->IsTypingCommand())
@@ -55,7 +54,7 @@ EphemeralRange CurrentWordIfTypingInPartialWord(const Element& editable) {
     return EphemeralRange();
   if (last_command->EndingSelection().AsSelection() != selection)
     return EphemeralRange();
-  return AdjacentWordIfExists(selection.Anchor());
+  return AdjacentWordIfExists(selection.Base());
 }
 
 EphemeralRange CalculateHotModeCheckingRange(const Element& editable,

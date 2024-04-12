@@ -6,20 +6,15 @@
 
 #include <cstddef>
 #include <memory>
-#include <optional>
 
 #include "base/no_destructor.h"
-#include "base/strings/stringprintf.h"
-#include "chrome/browser/extensions/extension_tab_util.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/extensions/extension_side_panel_utils.h"
-#include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/extensions/api/side_panel.h"
 #include "chrome/common/extensions/api/side_panel/side_panel_info.h"
 #include "components/sessions/core/session_id.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/pref_types.h"
 #include "extensions/common/extension_features.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace extensions {
 
@@ -42,6 +37,14 @@ api::side_panel::PanelOptions GetPanelOptionsFromManifest(
   return options;
 }
 
+// TODO(crbug.com/1332599): Add a Clone() method for generated types.
+api::side_panel::PanelOptions CloneOptions(
+    const api::side_panel::PanelOptions& options) {
+  auto clone = api::side_panel::PanelOptions::FromValueDeprecated(
+      base::Value(options.ToValue()));
+  return clone ? std::move(*clone) : api::side_panel::PanelOptions();
+}
+
 }  // namespace
 
 SidePanelService::~SidePanelService() = default;
@@ -61,23 +64,6 @@ bool SidePanelService::HasSidePanelActionForTab(const Extension& extension,
     return false;
   }
 
-  return HasSidePanelAvailableForTab(extension, tab_id);
-}
-
-bool SidePanelService::HasSidePanelContextMenuActionForTab(
-    const Extension& extension,
-    TabId tab_id) {
-  if (!features::IsSidePanelPinningEnabled() ||
-      !base::FeatureList::IsEnabled(
-          extensions_features::kExtensionSidePanelIntegration)) {
-    return false;
-  }
-
-  return HasSidePanelAvailableForTab(extension, tab_id);
-}
-
-bool SidePanelService::HasSidePanelAvailableForTab(const Extension& extension,
-                                                   TabId tab_id) {
   api::side_panel::PanelOptions options = GetOptions(extension, tab_id);
   return options.enabled.has_value() && *options.enabled &&
          options.path.has_value();
@@ -85,7 +71,7 @@ bool SidePanelService::HasSidePanelAvailableForTab(const Extension& extension,
 
 api::side_panel::PanelOptions SidePanelService::GetOptions(
     const Extension& extension,
-    std::optional<TabId> id) {
+    absl::optional<TabId> id) {
   auto extension_panel_options = panels_.find(extension.id());
 
   // Get default path from manifest if nothing was stored in this service for
@@ -102,14 +88,15 @@ api::side_panel::PanelOptions SidePanelService::GetOptions(
   if (tab_id != default_tab_id) {
     auto specific_tab_options = tab_panel_options.find(tab_id);
     if (specific_tab_options != tab_panel_options.end())
-      return specific_tab_options->second.Clone();
+      return CloneOptions(specific_tab_options->second);
   }
 
   // Fall back to the default tab if no tab ID was specified or entries for the
   // specific tab weren't found.
   auto default_options = tab_panel_options.find(default_tab_id);
   if (default_options != tab_panel_options.end()) {
-    return default_options->second.Clone();
+    auto options = CloneOptions(default_options->second);
+    return options;
   }
 
   // Fall back to the manifest-specified options as a last resort.
@@ -128,7 +115,7 @@ api::side_panel::PanelOptions SidePanelService::GetSpecificOptionsForTab(
   auto specific_tab_options = tab_panel_options.find(tab_id);
   return specific_tab_options == tab_panel_options.end()
              ? api::side_panel::PanelOptions()
-             : specific_tab_options->second.Clone();
+             : CloneOptions(specific_tab_options->second);
 }
 
 // Upsert to merge `panels_[extension_id][tab_id]` with `set_options`.
@@ -201,8 +188,6 @@ void SidePanelService::RemoveExtensionOptions(const ExtensionId& id) {
 bool SidePanelService::OpenSidePanelOnIconClick(
     const ExtensionId& extension_id) {
   bool open_side_panel_on_icon_click = false;
-  // TODO(tjudkins): This should be taking in a browser context to read the pref
-  // on, rather than using the one the service was created with.
   ExtensionPrefs::Get(browser_context_)
       ->ReadPrefAsBoolean(extension_id, kOpenSidePanelOnIconClickPref,
                           &open_side_panel_on_icon_click);
@@ -212,96 +197,9 @@ bool SidePanelService::OpenSidePanelOnIconClick(
 void SidePanelService::SetOpenSidePanelOnIconClick(
     const ExtensionId& extension_id,
     bool open_side_panel_on_icon_click) {
-  // TODO(tjudkins): This should be taking in a browser context to set the pref
-  // on, rather than using the one the service was created with.
   ExtensionPrefs::Get(browser_context_)
       ->SetBooleanPref(extension_id, kOpenSidePanelOnIconClickPref,
                        open_side_panel_on_icon_click);
-}
-
-base::expected<bool, std::string> SidePanelService::OpenSidePanelForWindow(
-    const Extension& extension,
-    content::BrowserContext* context,
-    int window_id,
-    bool include_incognito_information) {
-  std::string error;
-  Browser* browser = ExtensionTabUtil::GetBrowserInProfileWithId(
-      Profile::FromBrowserContext(context), window_id,
-      include_incognito_information, &error);
-  if (!browser) {
-    return base::unexpected(error);
-  }
-
-  auto global_options = GetOptions(extension, std::nullopt);
-  if (!global_options.path || !global_options.enabled.has_value() ||
-      !(*global_options.enabled)) {
-    return base::unexpected(
-        base::StringPrintf("No active side panel for windowId: %d", window_id));
-  }
-
-  side_panel_util::OpenGlobalExtensionSidePanel(
-      *browser, /*web_contents=*/nullptr, extension.id());
-  return true;
-}
-
-base::expected<bool, std::string> SidePanelService::OpenSidePanelForTab(
-    const Extension& extension,
-    content::BrowserContext* context,
-    int tab_id,
-    std::optional<int> window_id,
-    bool include_incognito_information) {
-  // First, find the corresponding tab.
-  Browser* browser = nullptr;
-  content::WebContents* web_contents = nullptr;
-  if (!ExtensionTabUtil::GetTabById(tab_id, context,
-                                    include_incognito_information, &browser,
-                                    nullptr, &web_contents, nullptr)) {
-    return base::unexpected(
-        base::StringPrintf("No tab with tabId: %d", tab_id));
-  }
-
-  CHECK(browser);
-
-  // If both `tab_id` and `window_id` were provided, ensure the tab is in
-  // the specified window.
-  if (window_id && window_id != ExtensionTabUtil::GetWindowId(browser)) {
-    return base::unexpected(
-        "The specified tab does not belong to the specified window.");
-  }
-
-  // Next, determine if we an active side panel (contextual or global) for that
-  // tab.
-  api::side_panel::PanelOptions panel_options = GetOptions(extension, tab_id);
-  if (!panel_options.path || !panel_options.enabled.has_value() ||
-      !(*panel_options.enabled)) {
-    return base::unexpected(
-        base::StringPrintf("No active side panel for tabId: %d", tab_id));
-  }
-
-  // If we do have an active panel, check if it's a contextual panel.
-  bool has_contextual_panel = false;
-  auto panels_iter = panels_.find(extension.id());
-  if (panels_iter != panels_.end()) {
-    auto tab_panels_iter = panels_iter->second.find(tab_id);
-    if (tab_panels_iter != panels_iter->second.end()) {
-      auto& options = tab_panels_iter->second;
-      CHECK(options.path);
-      CHECK(options.enabled.has_value());
-      CHECK(options.enabled.value());
-      has_contextual_panel = true;
-    }
-  }
-
-  // Open the appropriate panel.
-  if (has_contextual_panel) {
-    side_panel_util::OpenContextualExtensionSidePanel(*browser, *web_contents,
-                                                      extension.id());
-  } else {
-    side_panel_util::OpenGlobalExtensionSidePanel(*browser, web_contents,
-                                                  extension.id());
-  }
-
-  return true;
 }
 
 void SidePanelService::AddObserver(Observer* observer) {

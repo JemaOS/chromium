@@ -6,7 +6,8 @@
 
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ui::test {
+namespace ui {
+namespace test {
 
 // Test the creation of UIImages.
 TEST(UIImageTestUtilsTest, TestImageCreation) {
@@ -50,4 +51,5 @@ TEST(UIImageTestUtilsTest, TestImageEquality) {
       uiimage_utils::UIImagesAreEqual(imageGreen10x10, imageGreen10x10Bis));
 }
 
-}  // namespace ui::test
+}  // namespace test
+}  // namespace ui

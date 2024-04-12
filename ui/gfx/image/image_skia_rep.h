@@ -9,9 +9,9 @@
 #include "build/build_config.h"
 
 #if BUILDFLAG(IS_IOS) && !BUILDFLAG(USE_BLINK)
-#include "ui/gfx/image/image_skia_rep_ios.h"  // IWYU pragma: export
+#include "ui/gfx/image/image_skia_rep_ios.h"
 #else
-#include "ui/gfx/image/image_skia_rep_default.h"  // IWYU pragma: export
+#include "ui/gfx/image/image_skia_rep_default.h"
 #endif  // BUILDFLAG(IS_IOS)
 
 #endif  // UI_GFX_IMAGE_IMAGE_SKIA_REP_H_

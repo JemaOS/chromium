@@ -39,11 +39,12 @@ class SharingHubBubbleView;
 
 // Controller component of the omnibox entry point for the Sharesheet dialog.
 // Responsible for showing and hiding the Sharesheet.
-class SharingHubBubbleControllerChromeOsImpl final
+class SharingHubBubbleControllerChromeOsImpl
     : public SharingHubBubbleController,
       public content::WebContentsObserver,
       public content::WebContentsUserData<
-          SharingHubBubbleControllerChromeOsImpl> {
+          SharingHubBubbleControllerChromeOsImpl>,
+      public base::SupportsWeakPtr<SharingHubBubbleControllerChromeOsImpl> {
  public:
   SharingHubBubbleControllerChromeOsImpl(
       const SharingHubBubbleControllerChromeOsImpl&) = delete;
@@ -93,11 +94,9 @@ class SharingHubBubbleControllerChromeOsImpl final
   void DeselectIcon();
 
   views::ViewTracker highlighted_button_tracker_;
-  gfx::NativeWindow parent_window_ = gfx::NativeWindow();
+  gfx::NativeWindow parent_window_ = nullptr;
   std::unique_ptr<views::NativeWindowTracker> parent_window_tracker_ = nullptr;
   bool bubble_showing_ = false;
-  base::WeakPtrFactory<SharingHubBubbleControllerChromeOsImpl>
-      weak_ptr_factory_{this};
 
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };

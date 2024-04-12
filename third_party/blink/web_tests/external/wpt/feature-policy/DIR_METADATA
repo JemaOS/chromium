@@ -1,10 +1,8 @@
-monorail: {
-  component: "Blink>PermissionsPolicy"
+monorail {
+  component: "Blink>FeaturePolicy"
 }
-team_email: "permissions-dev@chromium.org"
-wpt: {
+team_email: "feature-control@chromium.org"
+wpt {
   notify: YES
 }
-buganizer_public: {
-  component_id: 1456181
-}
+

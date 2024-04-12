@@ -32,9 +32,8 @@
 namespace views::examples {
 
 class InkDropView : public View {
-  METADATA_HEADER(InkDropView, View)
-
  public:
+  METADATA_HEADER(InkDropView);
   InkDropView() = default;
   InkDropView(const InkDropView&) = delete;
   InkDropView& operator=(const InkDropView&) = delete;
@@ -48,7 +47,7 @@ class InkDropView : public View {
   }
 };
 
-BEGIN_METADATA(InkDropView)
+BEGIN_METADATA(InkDropView, View)
 END_METADATA
 
 BEGIN_VIEW_BUILDER(, InkDropView, View)

@@ -10,13 +10,11 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/component_export.h"
 #include "base/containers/flat_map.h"
-#include "base/containers/span.h"
 #include "base/functional/callback.h"
 #include "base/observer_list.h"
 #include "base/process/process.h"
@@ -28,19 +26,20 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "mojo/public/cpp/base/big_buffer.h"
-#include "third_party/abseil-cpp/absl/types/variant.h"
-#include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/clipboard/clipboard_buffer.h"
+#include "ui/base/clipboard/clipboard_content_type.h"
 #include "ui/base/clipboard/clipboard_format_type.h"
 #include "ui/base/clipboard/clipboard_sequence_number_token.h"
 #include "ui/base/clipboard/file_info.h"
 #include "ui/base/data_transfer_policy/data_transfer_endpoint.h"
 
 class GURL;
+class SkBitmap;
 
 namespace ui {
 class TestClipboard;
 class ScopedClipboardWriter;
+class DataTransferEndpoint;
 
 // Clipboard:
 // - reads from and writes to the system clipboard.
@@ -69,22 +68,6 @@ class COMPONENT_EXPORT(UI_BASE_CLIPBOARD) Clipboard
   using ReadBookmarkCallback =
       base::OnceCallback<void(std::u16string title, GURL url)>;
   using ReadDataCallback = base::OnceCallback<void(std::string result)>;
-
-  // This enum is used to specify different privacy types of the clipboard
-  // data. If a password is copied to the clipboard, based on platform support,
-  // it can be marked as concealed or a combination of types can be used to
-  // treat it as confidential.
-  // `kNoCloudClipboard` - The clipboard data should not be uploaded to the
-  // cloud.
-  // `kNoLocalClipboardHistory` - The clipboard data should not be stored in the
-  // local clipboard history.
-  // `kNoDisplay` - The clipboard data should be concealed.
-  enum PrivacyTypes {
-    kNone = 0,
-    kNoCloudClipboard = 1 << 0,
-    kNoLocalClipboardHistory = 1 << 1,
-    kNoDisplay = 1 << 2,  // Passwords and other credentials
-  };
 
   // An observer interface for content copied to the clipboard.
   class ClipboardWriteObserver : public base::CheckedObserver {
@@ -145,7 +128,7 @@ class COMPONENT_EXPORT(UI_BASE_CLIPBOARD) Clipboard
   virtual void OnPreShutdown() = 0;
 
   // Gets the source of the current clipboard buffer contents.
-  virtual std::optional<DataTransferEndpoint> GetSource(
+  virtual const DataTransferEndpoint* GetSource(
       ClipboardBuffer buffer) const = 0;
 
   // Returns a token which uniquely identifies clipboard state.
@@ -177,6 +160,11 @@ class COMPONENT_EXPORT(UI_BASE_CLIPBOARD) Clipboard
   // as confidential information, like passwords, might legitimately need to be
   // manipulated.
   virtual bool IsMarkedByOriginatorAsConfidential() const;
+
+  // Mark the data on the clipboard as being confidential. This isn't
+  // implemented for all platforms yet, but this call should be made on every
+  // platform so that when it is implemented on other platforms it is picked up.
+  virtual void MarkAsConfidential();
 
   // Clear the clipboard data.
   virtual void Clear(ClipboardBuffer buffer) = 0;
@@ -313,110 +301,72 @@ class COMPONENT_EXPORT(UI_BASE_CLIPBOARD) Clipboard
                          const GURL& main_frame);
 
  protected:
-  struct BitmapData {
-    SkBitmap bitmap;
-  };
-  struct HtmlData {
-    HtmlData() noexcept;
-    ~HtmlData();
-    HtmlData(const HtmlData&);
-    HtmlData& operator=(const HtmlData&);
-    HtmlData(HtmlData&&);
-    HtmlData& operator=(HtmlData&&);
-
-    std::string markup;
-    std::optional<std::string> source_url;
-  };
-  struct RtfData {
-    std::string data;
-  };
-  struct BookmarkData {
-    std::string title;
-    std::string url;
-  };
-  struct TextData {
-    std::string data;
-  };
-  struct WebkitData {
-    // Empty: this is just a placeholder for the WebKit smart paste marker.
-  };
-  struct RawData {
-    RawData() noexcept;
-    ~RawData();
-    RawData(const RawData&);
-    RawData& operator=(const RawData&);
-    RawData(RawData&&);
-    RawData& operator=(RawData&&);
-
-    ClipboardFormatType format;
-    std::vector<uint8_t> data;
-  };
-  struct SvgData {
-    std::string markup;
-  };
-  struct FilenamesData {
-    std::string text_uri_list;
-  };
-  struct WebCustomFormatMapData {
-    // TODO(dcheng): Describe format here.
-    std::string data;
-  };
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  struct EncodedDataTransferEndpointData {
-    std::string data;
-  };
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-
-  // Data is a variant that that represents all types that Chromium supports
-  // writing to the clipboard. This representation is OS-agnostic; the
-  // system-specific designation is defined by ClipboardFormatType. A single
-  // piece of data represented by this variant might be represented by several
-  // system-specific ClipboardFormatTypes. For example, on Linux the kText
-  // PortableFormat maps to "text/plain", "STRING", and several other formats.
-  // On Windows it maps to CF_UNICODETEXT.
+  // PortableFormat designates the type of data to be stored in the clipboard.
+  // This designation is shared across all OSes. The system-specific designation
+  // is defined by ClipboardFormatType. A single PortableFormat might be
+  // represented by several system-specific ClipboardFormatTypes. For example,
+  // on Linux the kText PortableFormat maps to "text/plain", "STRING", and
+  // several other formats. On Windows it maps to CF_UNICODETEXT.
   //
-  // The order of types in the variant is the order in which data will be
-  // written to the clipboard, so more specific types must be listed before less
-  // specific types. For example, placing an image on the clipboard might cause
-  // the clipboard to contain a bitmap, HTML markup representing the image, a
-  // URL to the image, and the image's alt text. Having the types follow this
-  // order maximizes the amount of data that can be extracted by various
-  // programs.  Documentation on motivation for format ordering is also
-  // available here:
+  // The order below is the order in which data will be written to the
+  // clipboard, so more specific types must be listed before less specific
+  // types. For example, placing an image on the clipboard might cause the
+  // clipboard to contain a bitmap, HTML markup representing the image, a URL to
+  // the image, and the image's alt text. Having the types follow this order
+  // maximizes the amount of data that can be extracted by various programs.
+  // Documentation on motivation for format ordering is also available here:
   // https://docs.microsoft.com/en-us/windows/win32/dataxchg/clipboard-formats#multiple-clipboard-formats
-  using Data = absl::variant<BitmapData,
-                             HtmlData,
-                             RtfData,
-                             BookmarkData,
-                             TextData,
-                             WebkitData,
-                             RawData,
-                             SvgData,
-                             FilenamesData,
+  enum class PortableFormat {
+    kBitmap,  // Bitmap from shared memory.
+    kHtml,
+    kRtf,
+    kBookmark,
+    kText,
+    kWebkit,
+    kData,  // Arbitrary block of bytes.
+    kSvg,
+    kFilenames,
+    kWebCustomFormatMap,
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
-                             WebCustomFormatMapData,
-                             EncodedDataTransferEndpointData
-#else
-                             WebCustomFormatMapData
+    kEncodedDataTransferEndpoint,
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-                             >;
+  };
 
   // TODO (https://crbug.com/994928): Rename ObjectMap-related types.
+  // ObjectMap is a map from PortableFormat to associated data.
+  // The data is organized differently for each PortableFormat. The following
+  // table summarizes what kind of data is stored for each key.
+  // * indicates an optional argument.
+  //
+  // Key        Arguments     Type
+  // -------------------------------------
+  // kBitmap    bitmap             A pointer to a SkBitmap. The caller must
+  //                               ensure the SkBitmap remains live for the
+  //                               duration of the WritePortableRepresentations
+  //                               call.
+  // kHtml      html               char array
+  //            url*               char array
+  // kRtf       data               byte array
+  // kFilenames text/uri-list      char array
+  // kBookmark  html               char array
+  //            url                char array
+  // kText      text               char array
+  // kWebkit    none               empty vector
+  // kData      format             char array
+  //            data               byte array
+  // kWebCustomFormatMap           char array
+  // kEncodedDataTransferEndpoint  char array
+  using ObjectMapParam = std::vector<char>;
   struct ObjectMapParams {
-    ObjectMapParams();
-    explicit ObjectMapParams(Data data);
-
+    ObjectMapParams(std::vector<ObjectMapParam> data,
+                    ClipboardContentType content_type);
     ObjectMapParams(const ObjectMapParams& other);
-    ObjectMapParams& operator=(const ObjectMapParams& other);
-    ObjectMapParams(ObjectMapParams&& other);
-    ObjectMapParams& operator=(ObjectMapParams&& other);
-
+    ObjectMapParams();
     ~ObjectMapParams();
-    // The index is the variant's index, to ensure that this map only holds one
-    // of each possible variant subtype.
-    Data data;
+    std::vector<ObjectMapParam> data;
+    ClipboardContentType content_type;
   };
-  using ObjectMap = std::map<size_t, ObjectMapParams>;
+  using ObjectMap = base::flat_map<PortableFormat, ObjectMapParams>;
 
   // PlatformRepresentation is used for DispatchPlatformRepresentations, and
   // supports writing directly to the system clipboard, without custom type
@@ -444,41 +394,48 @@ class COMPONENT_EXPORT(UI_BASE_CLIPBOARD) Clipboard
       ClipboardBuffer buffer,
       const ObjectMap& objects,
       std::vector<Clipboard::PlatformRepresentation> platform_representations,
-      std::unique_ptr<DataTransferEndpoint> data_src,
-      uint32_t privacy_types) = 0;
+      std::unique_ptr<DataTransferEndpoint> data_src) = 0;
 
-  virtual void WriteText(base::StringPiece text) = 0;
+  void DispatchPortableRepresentation(PortableFormat format,
+                                      const ObjectMapParams& params);
 
-  virtual void WriteHTML(base::StringPiece markup,
-                         std::optional<base::StringPiece> source_url) = 0;
+  // Write directly to the system clipboard.
+  void DispatchPlatformRepresentations(
+      std::vector<Clipboard::PlatformRepresentation> platform_representations);
 
-  virtual void WriteSvg(base::StringPiece markup) = 0;
+  virtual void WriteText(const char* text_data, size_t text_len) = 0;
 
-  virtual void WriteRTF(base::StringPiece rtf) = 0;
+  virtual void WriteHTML(const char* markup_data,
+                         size_t markup_len,
+                         const char* url_data,
+                         size_t url_len) = 0;
+
+  virtual void WriteUnsanitizedHTML(const char* markup_data,
+                                    size_t markup_len,
+                                    const char* url_data,
+                                    size_t url_len) = 0;
+
+  virtual void WriteSvg(const char* markup_data, size_t markup_len) = 0;
+
+  virtual void WriteRTF(const char* rtf_data, size_t data_len) = 0;
 
   virtual void WriteFilenames(std::vector<ui::FileInfo> filenames) = 0;
 
-  virtual void WriteBookmark(base::StringPiece title,
-                             base::StringPiece url) = 0;
+  virtual void WriteBookmark(const char* title_data,
+                             size_t title_len,
+                             const char* url_data,
+                             size_t url_len) = 0;
 
   virtual void WriteWebSmartPaste() = 0;
 
   virtual void WriteBitmap(const SkBitmap& bitmap) = 0;
 
-  // Note: |data| may reference shared memory and may be concurrently mutated.
+  // |data_data| is shared memory, and is still writable from the renderer.
+  // Therefore, |data_data| must not be branched on, and *|data_data| must not
+  // be accessed, except to copy it into private memory.
   virtual void WriteData(const ClipboardFormatType& format,
-                         base::span<const uint8_t> data) = 0;
-
-  // Prevent data from being written to the clipboard history and cloud.
-  virtual void WriteClipboardHistory() = 0;
-  virtual void WriteUploadCloudClipboard() = 0;
-  virtual void WriteConfidentialDataForPassword() = 0;
-
-  void DispatchPortableRepresentation(const ObjectMapParams& params);
-
-  // Write directly to the system clipboard.
-  void DispatchPlatformRepresentations(
-      std::vector<Clipboard::PlatformRepresentation> platform_representations);
+                         const char* data_data,
+                         size_t data_len) = 0;
 
  private:
   // For access to WritePortableRepresentations().

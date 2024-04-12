@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_NEARBY_SHARING_NEARBY_CONNECTIONS_MANAGER_IMPL_H_
 #define CHROME_BROWSER_NEARBY_SHARING_NEARBY_CONNECTIONS_MANAGER_IMPL_H_
 
+#include "base/memory/raw_ptr.h"
 #include "chrome/browser/nearby_sharing/public/cpp/nearby_connections_manager.h"
 
 #include <memory>
@@ -17,10 +18,8 @@
 #include "base/timer/timer.h"
 #include "chrome/browser/nearby_sharing/nearby_connection_impl.h"
 #include "chrome/browser/nearby_sharing/nearby_file_handler.h"
-#include "chromeos/ash/components/nearby/presence/nearby_presence_service.h"
 #include "chromeos/ash/services/nearby/public/cpp/nearby_process_manager.h"
 #include "chromeos/ash/services/nearby/public/mojom/nearby_connections.mojom.h"
-#include "chromeos/ash/services/nearby/public/mojom/nearby_connections_types.mojom.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 
@@ -29,9 +28,7 @@ class NearbyConnectionsManagerImpl
     : public NearbyConnectionsManager,
       public nearby::connections::mojom::EndpointDiscoveryListener,
       public nearby::connections::mojom::ConnectionLifecycleListener,
-      public nearby::connections::mojom::PayloadListener,
-      public nearby::connections::mojom::ConnectionListenerV3,
-      public nearby::connections::mojom::PayloadListenerV3 {
+      public nearby::connections::mojom::PayloadListener {
  public:
   NearbyConnectionsManagerImpl(
       ash::nearby::NearbyProcessManager* process_manager,
@@ -55,7 +52,7 @@ class NearbyConnectionsManagerImpl
   void StopDiscovery() override;
   void Connect(std::vector<uint8_t> endpoint_info,
                const std::string& endpoint_id,
-               std::optional<std::vector<uint8_t>> bluetooth_mac_address,
+               absl::optional<std::vector<uint8_t>> bluetooth_mac_address,
                DataUsage data_usage,
                NearbyConnectionCallback callback) override;
   void Disconnect(const std::string& endpoint_id) override;
@@ -71,20 +68,12 @@ class NearbyConnectionsManagerImpl
   Payload* GetIncomingPayload(int64_t payload_id) override;
   void Cancel(int64_t payload_id) override;
   void ClearIncomingPayloads() override;
-  void ClearIncomingPayloadWithId(int64_t payload_id) override;
-  std::optional<std::string> GetAuthenticationToken(
+  absl::optional<std::string> GetAuthenticationToken(
       const std::string& endpoint_id) override;
-  std::optional<std::vector<uint8_t>> GetRawAuthenticationToken(
+  absl::optional<std::vector<uint8_t>> GetRawAuthenticationToken(
       const std::string& endpoint_id) override;
-  void RegisterBandwidthUpgradeListener(
-      base::WeakPtr<BandwidthUpgradeListener> listener) override;
   void UpgradeBandwidth(const std::string& endpoint_id) override;
   base::WeakPtr<NearbyConnectionsManager> GetWeakPtr() override;
-  void ConnectV3(nearby::presence::PresenceDevice remote_presence_device,
-                 DataUsage data_usage,
-                 NearbyConnectionCallback callback) override;
-  void DisconnectV3(
-      nearby::presence::PresenceDevice remote_presence_device) override;
 
  private:
   using AdvertisingOptions = nearby::connections::mojom::AdvertisingOptions;
@@ -104,13 +93,6 @@ class NearbyConnectionsManagerImpl
   using PayloadStatus = nearby::connections::mojom::PayloadStatus;
   using PayloadTransferUpdatePtr =
       nearby::connections::mojom::PayloadTransferUpdatePtr;
-  using NearbyPresenceService = ash::nearby::presence::NearbyPresenceService;
-  using ConnectionListenerV3 = nearby::connections::mojom::ConnectionListenerV3;
-  using PresenceDevicePtr = ash::nearby::presence::mojom::PresenceDevicePtr;
-  using InitialConnectionInfoV3Ptr =
-      nearby::connections::mojom::InitialConnectionInfoV3Ptr;
-  using PayloadListenerV3 = nearby::connections::mojom::PayloadListenerV3;
-  using BandwidthInfoPtr = nearby::connections::mojom::BandwidthInfoPtr;
   using Status = nearby::connections::mojom::Status;
   using Medium = nearby::connections::mojom::Medium;
 
@@ -138,21 +120,9 @@ class NearbyConnectionsManagerImpl
   void OnPayloadTransferUpdate(const std::string& endpoint_id,
                                PayloadTransferUpdatePtr update) override;
 
-  // ConnectionListenerV3:
-  void OnConnectionInitiated(PresenceDevicePtr remote_device,
-                             InitialConnectionInfoV3Ptr info) override;
-  void OnConnectionResult(PresenceDevicePtr remote_device,
-                          Status status) override;
-  void OnDisconnected(PresenceDevicePtr remote_device) override;
-  void OnBandwidthChanged(PresenceDevicePtr remote_device,
-                          BandwidthInfoPtr bandwidth_info) override;
-
   void OnConnectionTimedOut(const std::string& endpoint_id);
   void OnConnectionRequested(const std::string& endpoint_id,
                              ConnectionsStatus status);
-  void OnConnectionRequestedV3(
-      nearby::presence::PresenceDevice remote_presence_device,
-      ConnectionsStatus status);
   void OnNearbyProcessStopped(
       ash::nearby::NearbyProcessManager::NearbyProcessShutdownReason
           shutdown_reason);
@@ -164,15 +134,16 @@ class NearbyConnectionsManagerImpl
                      NearbyFileHandler::CreateFileResult result);
 
   // For metrics.
-  std::optional<Medium> GetUpgradedMedium(const std::string& endpoint_id) const;
+  absl::optional<Medium> GetUpgradedMedium(
+      const std::string& endpoint_id) const;
 
-  raw_ptr<ash::nearby::NearbyProcessManager> process_manager_;
+  raw_ptr<ash::nearby::NearbyProcessManager, ExperimentalAsh> process_manager_;
   std::unique_ptr<ash::nearby::NearbyProcessManager::NearbyProcessReference>
       process_reference_;
   NearbyFileHandler file_handler_;
-  raw_ptr<IncomingConnectionListener> incoming_connection_listener_ = nullptr;
-  raw_ptr<DiscoveryListener> discovery_listener_ = nullptr;
-  base::WeakPtr<BandwidthUpgradeListener> bandwidth_upgrade_listener_;
+  raw_ptr<IncomingConnectionListener, ExperimentalAsh>
+      incoming_connection_listener_ = nullptr;
+  raw_ptr<DiscoveryListener, ExperimentalAsh> discovery_listener_ = nullptr;
   base::flat_set<std::string> discovered_endpoints_;
   // A map of endpoint_id to NearbyConnectionCallback.
   base::flat_map<std::string, NearbyConnectionCallback>
@@ -182,9 +153,6 @@ class NearbyConnectionsManagerImpl
   // A map of endpoint_id to NearbyConnection.
   base::flat_map<std::string, std::unique_ptr<NearbyConnectionImpl>>
       connections_;
-  // A map of endpoint_id to NearbyConnection for V3 connections.
-  base::flat_map<std::string, std::unique_ptr<NearbyConnectionImpl>>
-      connections_v3_;
   // A map of endpoint_id to timers that timeout a connection request.
   base::flat_map<std::string, std::unique_ptr<base::OneShotTimer>>
       connect_timeout_timers_;
@@ -197,17 +165,8 @@ class NearbyConnectionsManagerImpl
   // For metrics. A set of endpoint_ids for which we have requested a bandwidth
   // upgrade.
   base::flat_set<std::string> requested_bwu_endpoint_ids_;
-  // For metrics. A set of endpoint_ids for which we have received the first
-  // OnBandwidthChanged event.
-  base::flat_set<std::string> on_bandwidth_changed_endpoint_ids_;
   // For metrics. A map of endpoint_id to current upgraded medium.
   base::flat_map<std::string, Medium> current_upgraded_mediums_;
-  // For metrics. A set of endpoint_ids for which we have received the first
-  // OnBandwidthChanged V3 event.
-  base::flat_set<std::string> on_bandwidth_changed_endpoint_ids_v3_;
-  // For metrics. A map of endpoint_id to current upgraded medium for V3
-  // connections.
-  base::flat_map<std::string, Medium> current_upgraded_mediums_v3_;
 
   const std::string service_id_;
 
@@ -215,8 +174,6 @@ class NearbyConnectionsManagerImpl
   mojo::ReceiverSet<ConnectionLifecycleListener>
       connection_lifecycle_listeners_;
   mojo::ReceiverSet<PayloadListener> payload_listeners_;
-  mojo::ReceiverSet<ConnectionListenerV3> connection_listener_v3s_;
-  mojo::ReceiverSet<PayloadListenerV3> payload_listener_v3s_;
 
   base::WeakPtrFactory<NearbyConnectionsManagerImpl> weak_ptr_factory_{this};
 };

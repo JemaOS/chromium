@@ -23,13 +23,11 @@ class CascadeLayerTest : public testing::Test {
 };
 
 TEST_F(CascadeLayerTest, Basic) {
-  CascadeLayer* one =
-      root_layer_->GetOrAddSubLayer(LayerName({AtomicString("one")}));
-  one->GetOrAddSubLayer(LayerName({AtomicString("two")}));
-  root_layer_->GetOrAddSubLayer(
-      LayerName({AtomicString("three"), AtomicString("four")}));
+  CascadeLayer* one = root_layer_->GetOrAddSubLayer(LayerName({"one"}));
+  one->GetOrAddSubLayer(LayerName({"two"}));
+  root_layer_->GetOrAddSubLayer(LayerName({"three", "four"}));
   root_layer_->GetOrAddSubLayer(LayerName({g_empty_atom}));
-  root_layer_->GetOrAddSubLayer(LayerName({AtomicString("five")}));
+  root_layer_->GetOrAddSubLayer(LayerName({"five"}));
 
   EXPECT_EQ(
       "one,"
@@ -44,13 +42,12 @@ TEST_F(CascadeLayerTest, Basic) {
 TEST_F(CascadeLayerTest, RepeatedGetOrAdd) {
   // GetOrAddSubLayer() does not add duplicate layers.
 
-  root_layer_->GetOrAddSubLayer(
-      LayerName({AtomicString("one"), AtomicString("two")}));
-  root_layer_->GetOrAddSubLayer(LayerName({AtomicString("three")}));
+  root_layer_->GetOrAddSubLayer(LayerName({"one", "two"}));
+  root_layer_->GetOrAddSubLayer(LayerName({"three"}));
 
-  root_layer_->GetOrAddSubLayer(LayerName({AtomicString("one")}))
-      ->GetOrAddSubLayer(LayerName({AtomicString("two")}));
-  root_layer_->GetOrAddSubLayer(LayerName({AtomicString("three")}));
+  root_layer_->GetOrAddSubLayer(LayerName({"one"}))
+      ->GetOrAddSubLayer(LayerName({"two"}));
+  root_layer_->GetOrAddSubLayer(LayerName({"three"}));
 
   EXPECT_EQ(
       "one,"
@@ -67,17 +64,15 @@ TEST_F(CascadeLayerTest, RepeatedGetOrAddAnonymous) {
   root_layer_->GetOrAddSubLayer(LayerName({g_empty_atom}));
 
   // Two distinct anonymous sublayers of "one"
-  CascadeLayer* one =
-      root_layer_->GetOrAddSubLayer(LayerName({AtomicString("one")}));
-  root_layer_->GetOrAddSubLayer(LayerName({AtomicString("one"), g_empty_atom}));
+  CascadeLayer* one = root_layer_->GetOrAddSubLayer(LayerName({"one"}));
+  root_layer_->GetOrAddSubLayer(LayerName({"one", g_empty_atom}));
   CascadeLayer* anonymous = one->GetOrAddSubLayer(LayerName({g_empty_atom}));
 
-  anonymous->GetOrAddSubLayer(LayerName({AtomicString("two")}));
+  anonymous->GetOrAddSubLayer(LayerName({"two"}));
 
   // This is a different layer "two" from the previously inserted "two" because
   // the parent layers are different anonymous layers.
-  root_layer_->GetOrAddSubLayer(
-      LayerName({AtomicString("one"), g_empty_atom, AtomicString("two")}));
+  root_layer_->GetOrAddSubLayer(LayerName({"one", g_empty_atom, "two"}));
 
   EXPECT_EQ(
       "(anonymous),"
@@ -94,10 +89,9 @@ TEST_F(CascadeLayerTest, RepeatedGetOrAddAnonymous) {
 TEST_F(CascadeLayerTest, LayerOrderNotInsertionOrder) {
   // Layer order and insertion order can be different.
 
-  root_layer_->GetOrAddSubLayer(LayerName({AtomicString("one")}));
-  root_layer_->GetOrAddSubLayer(LayerName({AtomicString("two")}));
-  root_layer_->GetOrAddSubLayer(
-      LayerName({AtomicString("one"), AtomicString("three")}));
+  root_layer_->GetOrAddSubLayer(LayerName({"one"}));
+  root_layer_->GetOrAddSubLayer(LayerName({"two"}));
+  root_layer_->GetOrAddSubLayer(LayerName({"one", "three"}));
 
   EXPECT_EQ(
       "one,"

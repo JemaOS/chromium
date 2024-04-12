@@ -11,7 +11,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 namespace permissions {
 class PredictionService;
@@ -26,13 +26,13 @@ class PredictionServiceFactory : public ProfileKeyedServiceFactory {
   PredictionServiceFactory& operator=(const PredictionServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<PredictionServiceFactory>;
+  friend struct base::DefaultSingletonTraits<PredictionServiceFactory>;
 
   PredictionServiceFactory();
   ~PredictionServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

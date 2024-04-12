@@ -10,27 +10,29 @@
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/grit/generated_resources.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 
 WindowControlsOverlayToggleButton::WindowControlsOverlayToggleButton(
     BrowserView* browser_view)
     : ToolbarButton(
           base::BindRepeating(&WindowControlsOverlayToggleButton::ButtonPressed,
                               base::Unretained(this))),
-      browser_view_(browser_view) {
-  UpdateState();
-}
+      browser_view_(browser_view) {}
 
 WindowControlsOverlayToggleButton::~WindowControlsOverlayToggleButton() =
     default;
 
 void WindowControlsOverlayToggleButton::ButtonPressed(const ui::Event& event) {
   browser_view_->ToggleWindowControlsOverlayEnabled(
-      base::BindOnce(&WindowControlsOverlayToggleButton::UpdateState,
+      base::BindOnce(&WindowControlsOverlayToggleButton::UpdateIcon,
                      weak_factory_.GetWeakPtr()));
 }
 
-void WindowControlsOverlayToggleButton::UpdateState() {
+void WindowControlsOverlayToggleButton::SetColor(SkColor icon_color) {
+  icon_color_ = icon_color;
+  UpdateIcon();
+}
+
+void WindowControlsOverlayToggleButton::UpdateIcon() {
   // Use app_controller's IsWindowControlsOverlayEnabled rather than
   // browser_view's to avoid this returning false at startup due to the CCT
   // displaying momentarily.
@@ -38,19 +40,16 @@ void WindowControlsOverlayToggleButton::UpdateState() {
                      ->app_controller()
                      ->IsWindowControlsOverlayEnabled();
 
-  SetVectorIcon(enabled ? kKeyboardArrowDownIcon : kKeyboardArrowUpIcon);
-  SetTooltipText(l10n_util::GetStringUTF16(
-      enabled ? IDS_WEB_APP_DISABLE_WINDOW_CONTROLS_OVERLAY_TOOLTIP
-              : IDS_WEB_APP_ENABLE_WINDOW_CONTROLS_OVERLAY_TOOLTIP));
-}
+  SetImageModel(
+      views::Button::STATE_NORMAL,
+      enabled
+          ? ui::ImageModel::FromVectorIcon(kKeyboardArrowDownIcon, icon_color_)
+          : ui::ImageModel::FromVectorIcon(kKeyboardArrowUpIcon, icon_color_));
 
-int WindowControlsOverlayToggleButton::GetIconSize() const {
-  // Rather than use the default toolbar icon size, use whatever icon size is
-  // embedded in the vector icon. While this matches the original implementation
-  // of this class, perhaps using the default toolbar icon size would make more
-  // sense.
-  return 0;
+  SetTooltipText(enabled
+                     ? l10n_util::GetStringUTF16(
+                           IDS_WEB_APP_DISABLE_WINDOW_CONTROLS_OVERLAY_TOOLTIP)
+                     : l10n_util::GetStringUTF16(
+                           IDS_WEB_APP_ENABLE_WINDOW_CONTROLS_OVERLAY_TOOLTIP));
+  ToolbarButton::UpdateIcon();
 }
-
-BEGIN_METADATA(WindowControlsOverlayToggleButton)
-END_METADATA

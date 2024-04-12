@@ -24,4 +24,4 @@ var allTests = [function testIntents() {
   text.setSelection(0, 1);
 }];
 
-setUpAndRunTabsTests(allTests, 'intents.html');
+setUpAndRunTests(allTests, 'intents.html');

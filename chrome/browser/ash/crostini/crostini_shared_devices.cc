@@ -107,10 +107,6 @@ void CrostiniSharedDevices::SetVmDeviceShared(guest_os::GuestId container_id,
   }
 }
 
-void CrostiniSharedDevices::EnsureFactoryBuilt() {
-  CrostiniSharedDevicesFactory::GetInstance();
-}
-
 void CrostiniSharedDevices::ApplySharingState(
     const guest_os::GuestId container_id,
     base::Value::Dict next_shared_devices,
@@ -145,7 +141,7 @@ void CrostiniSharedDevices::OnUpdateContainerDevices(
     const guest_os::GuestId container_id,
     base::Value::Dict next_shared_devices,
     ResultCallback callback,
-    std::optional<vm_tools::cicerone::UpdateContainerDevicesResponse>
+    absl::optional<vm_tools::cicerone::UpdateContainerDevicesResponse>
         response) {
   bool success = true;
   if (!response.has_value()) {

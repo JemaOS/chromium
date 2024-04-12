@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_WEB_APPLICATIONS_FILE_UTILS_WRAPPER_H_
 #define CHROME_BROWSER_WEB_APPLICATIONS_FILE_UTILS_WRAPPER_H_
 
-#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -25,8 +24,6 @@ class FilePath;
 
 namespace web_app {
 
-class TestFileUtils;
-
 // A simple wrapper for base/files/file_util.h utilities.
 // See detailed comments for functionality in corresponding
 // base/files/file_util.h functions.
@@ -39,14 +36,19 @@ class FileUtilsWrapper : public base::RefCountedThreadSafe<FileUtilsWrapper> {
 
   bool PathExists(const base::FilePath& path);
 
+  bool PathIsWritable(const base::FilePath& path);
+
   bool DirectoryExists(const base::FilePath& path);
 
   bool CreateDirectory(const base::FilePath& full_path);
 
   bool GetFileInfo(const base::FilePath& file_path, base::File::Info* info);
 
-  virtual bool WriteFile(const base::FilePath& filename,
-                         base::span<const uint8_t> file_data);
+  int ReadFile(const base::FilePath& filename, char* data, int max_size);
+
+  virtual int WriteFile(const base::FilePath& filename,
+                        const char* data,
+                        int size);
 
   bool Move(const base::FilePath& from_path, const base::FilePath& to_path);
 
@@ -58,8 +60,6 @@ class FileUtilsWrapper : public base::RefCountedThreadSafe<FileUtilsWrapper> {
   bool DeleteFile(const base::FilePath& path, bool recursive);
 
   virtual bool DeleteFileRecursively(const base::FilePath& path);
-
-  virtual TestFileUtils* AsTestFileUtils();
 
  protected:
   friend class base::RefCountedThreadSafe<FileUtilsWrapper>;

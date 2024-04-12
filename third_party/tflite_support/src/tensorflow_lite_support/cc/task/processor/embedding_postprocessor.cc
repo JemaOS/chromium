@@ -24,12 +24,12 @@ tflite::support::StatusOr<std::unique_ptr<EmbeddingPostprocessor>>
 EmbeddingPostprocessor::Create(core::TfLiteEngine* engine,
                                const std::initializer_list<int> output_indices,
                                std::unique_ptr<EmbeddingOptions> options) {
-  TFLITE_ASSIGN_OR_RETURN(auto processor,
+  ASSIGN_OR_RETURN(auto processor,
                    Processor::Create<EmbeddingPostprocessor>(
                        /* num_expected_tensors = */ 1, engine, output_indices,
                        /* requires_metadata = */ false));
 
-  TFLITE_RETURN_IF_ERROR(processor->Init(std::move(options)));
+  RETURN_IF_ERROR(processor->Init(std::move(options)));
   return processor;
 }
 

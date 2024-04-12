@@ -30,6 +30,7 @@ PropertyTreeManager::PropertyTreeManager(PropertyTreeManagerClient& client,
                                          LayerListBuilder& layer_list_builder,
                                          int new_sequence_number)
     : client_(client),
+      property_trees_(property_trees),
       clip_tree_(property_trees.clip_tree_mutable()),
       effect_tree_(property_trees.effect_tree_mutable()),
       scroll_tree_(property_trees.scroll_tree_mutable()),
@@ -61,7 +62,7 @@ static void UpdateCcTransformLocalMatrix(
     cc::TransformNode& compositor_node,
     const TransformPaintPropertyNode& transform_node) {
   if (transform_node.GetStickyConstraint() ||
-      transform_node.GetAnchorPositionScrollData()) {
+      transform_node.GetAnchorScrollContainersData()) {
     // The sticky offset on the blink transform node is pre-computed and stored
     // to the local matrix. Cc applies sticky offset dynamically on top of the
     // local matrix. We should not set the local matrix on cc node if it is a
@@ -86,12 +87,12 @@ static void UpdateCcTransformLocalMatrix(
 }
 
 static void SetTransformTreePageScaleFactor(
-    cc::TransformTree& transform_tree,
-    const cc::TransformNode& page_scale_node) {
-  DCHECK(page_scale_node.local.IsScale2d());
-  auto page_scale = page_scale_node.local.To2dScale();
+    cc::TransformTree* transform_tree,
+    cc::TransformNode* page_scale_node) {
+  DCHECK(page_scale_node->local.IsScale2d());
+  auto page_scale = page_scale_node->local.To2dScale();
   DCHECK_EQ(page_scale.x(), page_scale.y());
-  transform_tree.set_page_scale_factor(page_scale.x());
+  transform_tree->set_page_scale_factor(page_scale.x());
 }
 
 bool PropertyTreeManager::DirectlyUpdateCompositedOpacityValue(
@@ -129,8 +130,11 @@ bool PropertyTreeManager::DirectlyUpdateScrollOffsetTransform(
   auto* cc_scroll_node = property_trees->scroll_tree_mutable().Node(
       scroll_node->CcNodeId(property_trees->sequence_number()));
   if (!cc_scroll_node ||
-      property_trees->scroll_tree().ShouldRealizeScrollsOnMain(
-          *cc_scroll_node)) {
+      // TODO(wangxianzhu): For now non-composited scroll offset change needs
+      // full update to issue raster invalidations and repaint scrollbars.
+      // We can directly update non-composited scroll offset once we implement
+      // raster-inducing scroll for both scrolling contents and scrollbars.
+      !cc_scroll_node->is_composited) {
     return false;
   }
 
@@ -194,8 +198,8 @@ bool PropertyTreeManager::DirectlyUpdatePageScaleTransform(
     return false;
 
   UpdateCcTransformLocalMatrix(*cc_transform, transform);
-  SetTransformTreePageScaleFactor(property_trees->transform_tree_mutable(),
-                                  *cc_transform);
+  SetTransformTreePageScaleFactor(&property_trees->transform_tree_mutable(),
+                                  cc_transform);
   cc_transform->transform_changed = true;
   property_trees->transform_tree_mutable().set_needs_update(true);
   return true;
@@ -218,9 +222,10 @@ void PropertyTreeManager::DirectlySetScrollOffset(
 
 static uint32_t NonCompositedMainThreadScrollingReasons(
     const ScrollPaintPropertyNode& scroll) {
+  DCHECK(RuntimeEnabledFeatures::CompositeScrollAfterPaintEnabled());
   // TODO(crbug.com/1414885): We can't distinguish kNotOpaqueForTextAndLCDText
   // and kCantPaintScrollingBackgroundAndLCDText here. We should probably
-  // merge the two reasons.
+  // merge the two reasons for CompositeScrollAfterPaint.
   return scroll.GetCompositedScrollingPreference() ==
                  CompositedScrollingPreference::kNotPreferred
              ? cc::MainThreadScrollingReason::kPreferNonCompositedScrolling
@@ -230,22 +235,30 @@ static uint32_t NonCompositedMainThreadScrollingReasons(
 uint32_t PropertyTreeManager::GetMainThreadScrollingReasons(
     const cc::LayerTreeHost& host,
     const ScrollPaintPropertyNode& scroll) {
+  DCHECK(RuntimeEnabledFeatures::CompositeScrollAfterPaintEnabled());
   const auto* property_trees = host.property_trees();
   const auto* cc_scroll = property_trees->scroll_tree().Node(
       scroll.CcNodeId(property_trees->sequence_number()));
-  DCHECK(cc_scroll);
+  if (!cc_scroll) {
+    DCHECK(!base::FeatureList::IsEnabled(features::kScrollUnification));
+    return scroll.GetMainThreadScrollingReasons() |
+           NonCompositedMainThreadScrollingReasons(scroll);
+  }
   return cc_scroll->main_thread_scrolling_reasons;
 }
 
 bool PropertyTreeManager::UsesCompositedScrolling(
     const cc::LayerTreeHost& host,
     const ScrollPaintPropertyNode& scroll) {
-  CHECK(!RuntimeEnabledFeatures::RasterInducingScrollEnabled() ||
-        !RuntimeEnabledFeatures::ScrollTimelineAlwaysOnCompositorEnabled());
+  DCHECK(RuntimeEnabledFeatures::CompositeScrollAfterPaintEnabled());
   const auto* property_trees = host.property_trees();
   const auto* cc_scroll = property_trees->scroll_tree().Node(
       scroll.CcNodeId(property_trees->sequence_number()));
-  return cc_scroll && cc_scroll->is_composited;
+  if (!cc_scroll) {
+    DCHECK(!base::FeatureList::IsEnabled(features::kScrollUnification));
+    return false;
+  }
+  return cc_scroll->is_composited;
 }
 
 void PropertyTreeManager::SetupRootTransformNode() {
@@ -467,14 +480,16 @@ int PropertyTreeManager::EnsureCompositorTransformNode(
             sticky_data.constraints.nearest_element_shifting_containing_block) {
       // TODO(crbug.com/1224888): Get rid of the nullptr check below:
       if (cc::TransformNode* node = transform_tree_.FindNodeFromElementId(
-              shifting_containing_block_element_id)) {
+              shifting_containing_block_element_id))
         sticky_data.nearest_node_shifting_containing_block = node->id;
-      }
     }
   }
 
-  if (const auto* data = transform_node.GetAnchorPositionScrollData()) {
-    transform_tree_.EnsureAnchorPositionScrollData(id) = *data;
+  if (const auto* anchor_scroll_data =
+          transform_node.GetAnchorScrollContainersData()) {
+    cc::AnchorScrollContainersData& compositor_data =
+        transform_tree_.EnsureAnchorScrollContainersData(id);
+    compositor_data = *anchor_scroll_data;
   }
 
   auto compositor_element_id = transform_node.GetCompositorElementId();
@@ -484,24 +499,14 @@ int PropertyTreeManager::EnsureCompositorTransformNode(
   }
 
   transform_node.SetCcNodeId(new_sequence_number_, id);
-
   // If this transform is a scroll offset translation, create the associated
   // compositor scroll property node and adjust the compositor transform node's
   // scroll offset.
-  // TODO(ScrollUnification): Move this code into
-  // EnsureCompositorScrollAndTransformNode().
-  if (transform_node.ScrollNode()) {
+  // TODO(ScrollUnification): Move this code into EnsureCompositorScrollNodes().
+  if (auto* scroll_node = transform_node.ScrollNode()) {
     compositor_node.scrolls = true;
     compositor_node.should_be_snapped = true;
-    int scroll_id = EnsureCompositorScrollNode(transform_node);
-    cc::ScrollNode* scroll_node = scroll_tree_.Node(scroll_id);
-    scroll_node->transform_id = id;
-    scroll_node->is_composited =
-        client_.NeedsCompositedScrolling(transform_node);
-    if (!scroll_node->is_composited) {
-      scroll_node->main_thread_scrolling_reasons |=
-          NonCompositedMainThreadScrollingReasons(*transform_node.ScrollNode());
-    }
+    EnsureCompositorScrollNode(*scroll_node, transform_node);
   }
 
   compositor_node.visible_frame_element_id =
@@ -531,7 +536,7 @@ int PropertyTreeManager::EnsureCompositorPageScaleTransformNode(
   int id = EnsureCompositorTransformNode(node);
   DCHECK(transform_tree_.Node(id));
   cc::TransformNode& compositor_node = *transform_tree_.Node(id);
-  SetTransformTreePageScaleFactor(transform_tree_, compositor_node);
+  SetTransformTreePageScaleFactor(&transform_tree_, &compositor_node);
   transform_tree_.set_needs_update(true);
   return id;
 }
@@ -564,27 +569,56 @@ int PropertyTreeManager::EnsureCompositorClipNode(
   return id;
 }
 
-int PropertyTreeManager::EnsureCompositorScrollNode(
-    const TransformPaintPropertyNode& scroll_translation) {
-  const auto* scroll_node = scroll_translation.ScrollNode();
-  CHECK(scroll_node);
-  int scroll_id = EnsureCompositorScrollNodeInternal(*scroll_node);
-  scroll_tree_.SetScrollOffset(
-      scroll_node->GetCompositorElementId(),
-      gfx::PointAtOffsetFromOrigin(-scroll_translation.Get2dTranslation()));
-  return scroll_id;
+static const TransformPaintPropertyNode* GetScrollTranslationNodeForParent(
+    const ScrollPaintPropertyNode& scroll_node,
+    const TransformPaintPropertyNode& scroll_translation_node) {
+  const ScrollPaintPropertyNode* parent_scroll_node = scroll_node.Parent();
+  const TransformPaintPropertyNode* parent_scroll_translation =
+      &scroll_translation_node.UnaliasedParent()
+           ->NearestScrollTranslationNode();
+
+  if (parent_scroll_node != parent_scroll_translation->ScrollNode()) {
+    // The transform tree and the scroll tree have different hierarchies
+    // because of fixed-position elements.
+    parent_scroll_translation = scroll_translation_node.UnaliasedParent();
+    while (parent_scroll_translation) {
+      const auto* scroll_translation_for_fixed =
+          parent_scroll_translation->ScrollTranslationForFixed();
+      if (scroll_translation_for_fixed &&
+          scroll_translation_for_fixed->ScrollNode() == parent_scroll_node) {
+        parent_scroll_translation = scroll_translation_for_fixed;
+        break;
+      }
+      parent_scroll_translation = parent_scroll_translation->UnaliasedParent();
+    }
+  }
+  return parent_scroll_translation;
 }
 
-int PropertyTreeManager::EnsureCompositorScrollNodeInternal(
-    const ScrollPaintPropertyNode& scroll_node) {
-  int id = scroll_node.CcNodeId(new_sequence_number_);
-  if (id != cc::kInvalidPropertyNodeId) {
-    return id;
+void PropertyTreeManager::EnsureCompositorScrollNode(
+    const ScrollPaintPropertyNode& scroll_node,
+    const TransformPaintPropertyNode& scroll_translation_node) {
+  if (scroll_tree_.Node(scroll_node.CcNodeId(new_sequence_number_))) {
+    return;
   }
 
-  CHECK(scroll_node.Parent());
-  int parent_id = EnsureCompositorScrollNodeInternal(*scroll_node.Parent());
-  id = scroll_tree_.Insert(cc::ScrollNode(), parent_id);
+  if (const auto* parent_scroll_translation = GetScrollTranslationNodeForParent(
+          scroll_node, scroll_translation_node)) {
+    // TODO(awogbemila): Figure out in exactly which cases
+    // GetScrollTranslationNodeForParent returns NULL.
+    const ScrollPaintPropertyNode* parent_scroll_node =
+        scroll_node.Parent();
+
+    DCHECK_EQ(parent_scroll_node, parent_scroll_translation->ScrollNode());
+    EnsureCompositorScrollNode(*parent_scroll_node, *parent_scroll_translation);
+  }
+
+  int parent_id = scroll_node.Parent()->CcNodeId(new_sequence_number_);
+  // Compositor transform nodes up to scroll_offset_translation must exist.
+  // Scrolling uses the transform tree for scroll offsets so this means all
+  // ancestor scroll nodes must also exist.
+  DCHECK(scroll_tree_.Node(parent_id));
+  int id = scroll_tree_.Insert(cc::ScrollNode(), parent_id);
 
   cc::ScrollNode& compositor_node = *scroll_tree_.Node(id);
   compositor_node.scrollable = true;
@@ -613,37 +647,50 @@ int PropertyTreeManager::EnsureCompositorScrollNodeInternal(
     scroll_tree_.SetElementIdForNodeId(id, compositor_element_id);
   }
 
-  // These three fields are either permanent for unpainted scrolls, or will be
-  // overridden when we handle the painted scroll.
-  compositor_node.transform_id = cc::kInvalidPropertyNodeId;
-  compositor_node.is_composited = false;
+  compositor_node.transform_id =
+      scroll_translation_node.CcNodeId(new_sequence_number_);
+  compositor_node.is_composited =
+      client_.NeedsCompositedScrolling(scroll_translation_node);
   compositor_node.main_thread_scrolling_reasons =
       scroll_node.GetMainThreadScrollingReasons();
+  if (RuntimeEnabledFeatures::CompositeScrollAfterPaintEnabled() &&
+      !compositor_node.is_composited) {
+    compositor_node.main_thread_scrolling_reasons |=
+        NonCompositedMainThreadScrollingReasons(scroll_node);
+  }
 
   scroll_node.SetCcNodeId(new_sequence_number_, id);
-  return id;
+
+  scroll_tree_.SetScrollOffset(
+      compositor_element_id, gfx::PointAtOffsetFromOrigin(
+                                 -scroll_translation_node.Get2dTranslation()));
 }
 
 int PropertyTreeManager::EnsureCompositorScrollAndTransformNode(
-    const TransformPaintPropertyNode& scroll_translation) {
-  const auto* scroll_node = scroll_translation.ScrollNode();
+    const TransformPaintPropertyNode& scroll_offset_translation) {
+  // TODO(ScrollUnification): Remove this function and let
+  // EnsureCompositorScrollNodes() call EnsureCompositorTransformNode() and
+  // CreateCompositorScrollNode() directly.
+  const auto* scroll_node = scroll_offset_translation.ScrollNode();
   DCHECK(scroll_node);
-  EnsureCompositorTransformNode(scroll_translation);
+  EnsureCompositorTransformNode(scroll_offset_translation);
   int id = scroll_node->CcNodeId(new_sequence_number_);
   DCHECK(scroll_tree_.Node(id));
   return id;
 }
 
-int PropertyTreeManager::EnsureCompositorInnerScrollAndTransformNode(
-    const TransformPaintPropertyNode& scroll_translation) {
-  int node_id = EnsureCompositorScrollAndTransformNode(scroll_translation);
+int PropertyTreeManager::EnsureCompositorInnerScrollNode(
+    const TransformPaintPropertyNode& scroll_offset_translation) {
+  int node_id =
+      EnsureCompositorScrollAndTransformNode(scroll_offset_translation);
   scroll_tree_.Node(node_id)->scrolls_inner_viewport = true;
   return node_id;
 }
 
-int PropertyTreeManager::EnsureCompositorOuterScrollAndTransformNode(
-    const TransformPaintPropertyNode& scroll_translation) {
-  int node_id = EnsureCompositorScrollAndTransformNode(scroll_translation);
+int PropertyTreeManager::EnsureCompositorOuterScrollNode(
+    const TransformPaintPropertyNode& scroll_offset_translation) {
+  int node_id =
+      EnsureCompositorScrollAndTransformNode(scroll_offset_translation);
   scroll_tree_.Node(node_id)->scrolls_outer_viewport = true;
   return node_id;
 }
@@ -1140,9 +1187,8 @@ void PropertyTreeManager::BuildEffectNodesRecursively(
     // with the first contiguous set of chunks) is tagged with the shared
     // element resource ID. The view transition should either prevent such
     // content or ensure effect nodes are contiguous. See crbug.com/1303081 for
-    // details. This restriction also applies to element capture.
-    DCHECK((!next_effect.ViewTransitionElementId().valid() &&
-            next_effect.ElementCaptureId()->is_zero()) ||
+    // details.
+    DCHECK(!next_effect.ViewTransitionElementId().valid() ||
            !has_multiple_groups)
         << next_effect.ToString();
     PopulateCcEffectNode(effect_node, next_effect, output_clip_id);
@@ -1221,9 +1267,6 @@ static cc::RenderSurfaceReason RenderSurfaceReasonForEffect(
   if (effect.FlattensAtLeafOf3DScene())
     return cc::RenderSurfaceReason::k3dTransformFlattening;
 
-  if (!effect.ElementCaptureId()->is_zero()) {
-    return cc::RenderSurfaceReason::kSubtreeIsBeingCaptured;
-  }
   auto conditional_reason = ConditionalRenderSurfaceReasonForEffect(effect);
   DCHECK(conditional_reason == cc::RenderSurfaceReason::kNone ||
          IsConditionalRenderSurfaceReason(conditional_reason));
@@ -1259,9 +1302,6 @@ void PropertyTreeManager::PopulateCcEffectNode(
       effect.ViewTransitionElementId();
   effect_node.view_transition_element_resource_id =
       effect.ViewTransitionElementResourceId();
-
-  effect_node.subtree_capture_id =
-      viz::SubtreeCaptureId(*effect.ElementCaptureId());
 }
 
 void PropertyTreeManager::UpdateConditionalRenderSurfaceReasons(

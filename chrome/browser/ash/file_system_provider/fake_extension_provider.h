@@ -16,11 +16,12 @@
 
 class Profile;
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 class FakeExtensionProvider : public ProviderInterface {
  public:
-  ~FakeExtensionProvider() override = default;
+  ~FakeExtensionProvider() override {}
 
   // Returns a fake provider instance for the specified extension. The extension
   // doesn't have to exist.
@@ -30,8 +31,7 @@ class FakeExtensionProvider : public ProviderInterface {
   // ProviderInterface overrides.
   std::unique_ptr<ProvidedFileSystemInterface> CreateProvidedFileSystem(
       Profile* profile,
-      const ProvidedFileSystemInfo& file_system_info,
-      CacheManager* cache_manager) override;
+      const ProvidedFileSystemInfo& file_system_info) override;
   const Capabilities& GetCapabilities() const override;
   const ProviderId& GetId() const override;
   const std::string& GetName() const override;
@@ -49,6 +49,7 @@ class FakeExtensionProvider : public ProviderInterface {
   IconSet icon_set_;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_FAKE_EXTENSION_PROVIDER_H_

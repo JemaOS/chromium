@@ -4,11 +4,9 @@
 
 #include "chrome/browser/ash/scanning/lorgnette_scanner_manager_factory.h"
 
-#include "base/no_destructor.h"
-#include "chrome/browser/ash/profiles/profile_helper.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/ash/scanning/lorgnette_scanner_manager.h"
 #include "chrome/browser/ash/scanning/zeroconf_scanner_detector.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_selections.h"
 #include "content/public/browser/browser_context.h"
 
@@ -24,15 +22,14 @@ LorgnetteScannerManager* LorgnetteScannerManagerFactory::GetForBrowserContext(
 
 // static
 LorgnetteScannerManagerFactory* LorgnetteScannerManagerFactory::GetInstance() {
-  static base::NoDestructor<LorgnetteScannerManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<LorgnetteScannerManagerFactory>::get();
 }
 
 LorgnetteScannerManagerFactory::LorgnetteScannerManagerFactory()
     : ProfileKeyedServiceFactory(
           "LorgnetteScannerManager",
           ProfileSelections::Builder()
-              .WithGuest(ProfileSelection::kOriginalOnly)
+              .WithGuest(ProfileSelections::kRegularProfileDefault)
               .WithAshInternals(ProfileSelection::kNone)
               // Prevent an instance of LorgnetteScannerManager from being
               // created on the lock screen.
@@ -40,12 +37,10 @@ LorgnetteScannerManagerFactory::LorgnetteScannerManagerFactory()
 
 LorgnetteScannerManagerFactory::~LorgnetteScannerManagerFactory() = default;
 
-std::unique_ptr<KeyedService>
-LorgnetteScannerManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* LorgnetteScannerManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  auto* profile = Profile::FromBrowserContext(context);
-  return LorgnetteScannerManager::Create(ZeroconfScannerDetector::Create(),
-                                         profile);
+  return LorgnetteScannerManager::Create(ZeroconfScannerDetector::Create())
+      .release();
 }
 
 bool LorgnetteScannerManagerFactory::ServiceIsCreatedWithBrowserContext()

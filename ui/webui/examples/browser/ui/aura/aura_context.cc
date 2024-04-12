@@ -4,7 +4,6 @@
 
 #include "ui/webui/examples/browser/ui/aura/aura_context.h"
 
-#include "base/memory/raw_ptr.h"
 #include "ui/aura/client/cursor_client.h"
 #include "ui/aura/client/focus_client.h"
 #include "ui/aura/test/test_screen.h"
@@ -64,9 +63,8 @@ class AuraContext::NativeCursorManager : public wm::NativeCursorManager {
     cursor_loader_.SetPlatformCursor(&new_cursor);
     delegate->CommitCursor(new_cursor);
     if (delegate->IsCursorVisible()) {
-      for (aura::WindowTreeHost* host : hosts_) {
+      for (auto* host : hosts_)
         host->SetCursor(new_cursor);
-      }
     }
   }
 
@@ -79,14 +77,12 @@ class AuraContext::NativeCursorManager : public wm::NativeCursorManager {
     } else {
       gfx::NativeCursor invisible_cursor(ui::mojom::CursorType::kNone);
       cursor_loader_.SetPlatformCursor(&invisible_cursor);
-      for (aura::WindowTreeHost* host : hosts_) {
+      for (auto* host : hosts_)
         host->SetCursor(invisible_cursor);
-      }
     }
 
-    for (aura::WindowTreeHost* host : hosts_) {
+    for (auto* host : hosts_)
       host->OnCursorVisibilityChanged(visible);
-    }
   }
 
   void SetCursorSize(ui::CursorSize cursor_size,
@@ -99,13 +95,12 @@ class AuraContext::NativeCursorManager : public wm::NativeCursorManager {
       wm::NativeCursorManagerDelegate* delegate) override {
     delegate->CommitMouseEventsEnabled(enabled);
     SetVisibility(delegate->IsCursorVisible(), delegate);
-    for (aura::WindowTreeHost* host : hosts_) {
+    for (auto* host : hosts_)
       host->dispatcher()->OnMouseEventsEnableStateChanged(enabled);
-    }
   }
 
   // The set of hosts to notify of changes in cursor state.
-  base::flat_set<raw_ptr<aura::WindowTreeHost, CtnExperimental>> hosts_;
+  base::flat_set<aura::WindowTreeHost*> hosts_;
 
   wm::CursorLoader cursor_loader_;
 };

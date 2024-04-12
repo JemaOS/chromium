@@ -6,10 +6,10 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "base/check.h"
+#include "base/strings/string_piece.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
@@ -18,7 +18,6 @@
 #include "chrome/browser/metrics/chrome_metrics_service_accessor.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_key.h"
-#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_version.h"
@@ -27,8 +26,8 @@
 #include "components/feed/core/proto/v2/keyvalue_store.pb.h"
 #include "components/feed/core/proto/v2/store.pb.h"
 #include "components/feed/core/v2/public/feed_service.h"
+#include "components/feed/feed_feature_list.h"
 #include "components/offline_pages/core/offline_page_feature.h"
-#include "components/search_engines/template_url_service.h"
 #include "components/version_info/version_info.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/storage_partition.h"
@@ -42,12 +41,8 @@
 
 namespace feed {
 const base::FilePath::CharType kFeedv2Folder[] = FILE_PATH_LITERAL("feedv2");
-#if BUILDFLAG(IS_ANDROID)
-const char kEeaCountryOnly[] = "eea_country_only";
-#endif
-
 namespace internal {
-const std::string_view GetFollowingFeedFollowCountGroupName(
+const base::StringPiece GetFollowingFeedFollowCountGroupName(
     size_t follow_count) {
   if (follow_count == 0)
     return "None";
@@ -100,6 +95,13 @@ class FeedServiceDelegateImpl : public FeedService::Delegate {
     return metrics;
 #endif
   }
+  bool IsAutoplayEnabled() override {
+#if BUILDFLAG(IS_ANDROID)
+    return FeedServiceBridge::IsAutoplayEnabled();
+#else
+    return false;
+#endif
+  }
   TabGroupEnabledState GetTabGroupEnabledState() override {
 #if BUILDFLAG(IS_ANDROID)
     return FeedServiceBridge::GetTabGroupEnabledState();
@@ -136,7 +138,7 @@ class FeedServiceDelegateImpl : public FeedService::Delegate {
         "FollowingFeedFollowCount",
         internal::GetFollowingFeedFollowCountGroupName(follow_count));
   }
-  void RegisterFeedUserSettingsFieldTrial(std::string_view group) override {
+  void RegisterFeedUserSettingsFieldTrial(base::StringPiece group) override {
     ChromeMetricsServiceAccessor::RegisterSyntheticFieldTrial(
         "FeedUserSettings", group);
   }
@@ -160,8 +162,7 @@ FeedService* FeedServiceFactory::GetForBrowserContext(
 
 // static
 FeedServiceFactory* FeedServiceFactory::GetInstance() {
-  static base::NoDestructor<FeedServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<FeedServiceFactory>::get();
 }
 
 FeedServiceFactory::FeedServiceFactory()
@@ -176,14 +177,19 @@ FeedServiceFactory::FeedServiceFactory()
   DependsOn(IdentityManagerFactory::GetInstance());
   DependsOn(HistoryServiceFactory::GetInstance());
   DependsOn(background_task::BackgroundTaskSchedulerFactory::GetInstance());
-  DependsOn(TemplateURLServiceFactory::GetInstance());
 }
 
 FeedServiceFactory::~FeedServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-FeedServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* FeedServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
+  // Currently feed service is only supported for kWebUiFeed on desktop.
+  // TODO(jianli): Update all other places that depend on FeedServiceFactory
+  // when we want to roll this out.
+#if !BUILDFLAG(IS_ANDROID)
+  CHECK(base::FeatureList::IsEnabled(feed::kWebUiFeed));
+#endif
+
   Profile* profile = Profile::FromBrowserContext(context);
 
   content::StoragePartition* storage_partition =
@@ -208,24 +214,14 @@ FeedServiceFactory::BuildServiceInstanceForBrowserContext(
   feed::ChromeInfo chrome_info;
   chrome_info.version = base::Version({CHROME_VERSION});
   chrome_info.channel = chrome::GetChannel();
-  TemplateURLService* template_url_service =
-      TemplateURLServiceFactory::GetForProfile(profile);
 #if BUILDFLAG(IS_ANDROID)
   chrome_info.start_surface =
       base::FeatureList::IsEnabled(chrome::android::kStartSurfaceAndroid);
-  chrome_info.is_new_tab_search_engine_url_android_enabled =
-      base::FeatureList::IsEnabled(
-          chrome::android::kNewTabSearchEngineUrlAndroid) &&
-      (!base::GetFieldTrialParamByFeatureAsBool(
-           chrome::android::kNewTabSearchEngineUrlAndroid, kEeaCountryOnly,
-           false) ||
-       template_url_service->IsEeaChoiceCountry());
 #else
   chrome_info.start_surface = false;
-  chrome_info.is_new_tab_search_engine_url_android_enabled = false;
 #endif
 
-  return std::make_unique<FeedService>(
+  return new FeedService(
       std::make_unique<FeedServiceDelegateImpl>(),
 #if BUILDFLAG(IS_ANDROID)
       std::make_unique<RefreshTaskSchedulerImpl>(
@@ -245,7 +241,7 @@ FeedServiceFactory::BuildServiceInstanceForBrowserContext(
       HistoryServiceFactory::GetForProfile(profile,
                                            ServiceAccessType::IMPLICIT_ACCESS),
       storage_partition->GetURLLoaderFactoryForBrowserProcess(),
-      background_task_runner, api_key, chrome_info, template_url_service);
+      background_task_runner, api_key, chrome_info);
 }
 
 bool FeedServiceFactory::ServiceIsNULLWhileTesting() const {

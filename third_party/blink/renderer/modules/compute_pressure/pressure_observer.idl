@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// https://w3c.github.io/compute-pressure/#dom-pressuresource
+// https://wicg.github.io/compute-pressure/#dom-pressuresource
 enum PressureSource {
   "cpu"
 };
 
-// https://w3c.github.io/compute-pressure/#the-pressureobserver-object
+// https://wicg.github.io/compute-pressure/#dom-pressureobserver
 [
     Exposed=(DedicatedWorker,SharedWorker,Window),
     RuntimeEnabled=ComputePressure,
@@ -23,7 +23,7 @@ enum PressureSource {
     CallWith=ScriptState,
     MeasureAs=PressureObserver_Observe,
     RaisesException
-  ] Promise<undefined> observe(PressureSource source);
+  ] Promise<void> observe(PressureSource source);
 
   [
     MeasureAs=PressureObserver_Unobserve

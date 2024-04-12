@@ -26,10 +26,9 @@ class Profile;
 // allowlist.
 class ExtensionInstallFrictionDialogView
     : public views::BubbleDialogDelegateView {
-  METADATA_HEADER(ExtensionInstallFrictionDialogView,
-                  views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(ExtensionInstallFrictionDialogView);
+
   // `web_contents` ownership is not passed, `callback` will be invoked with
   // `true` if the user accepts or `false` if the user cancels.
   ExtensionInstallFrictionDialogView(content::WebContents* web_contents,

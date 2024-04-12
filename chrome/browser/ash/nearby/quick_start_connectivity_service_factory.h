@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_NEARBY_QUICK_START_CONNECTIVITY_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_ASH_NEARBY_QUICK_START_CONNECTIVITY_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/ash/nearby/quick_start_connectivity_service.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
@@ -24,12 +24,13 @@ class QuickStartConnectivityServiceFactory : public ProfileKeyedServiceFactory {
   ~QuickStartConnectivityServiceFactory() override;
 
  private:
-  friend base::NoDestructor<QuickStartConnectivityServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      QuickStartConnectivityServiceFactory>;
 
   QuickStartConnectivityServiceFactory();
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

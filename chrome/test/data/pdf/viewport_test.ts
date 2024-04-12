@@ -2,12 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {Point, Rect, Viewport} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
-import {FittingType, PAGE_SHADOW, SwipeDirection} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
+import {FittingType, PAGE_SHADOW, Point, Rect, SwipeDirection, Viewport} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
 import {isMac} from 'chrome://resources/js/platform.js';
 
-import type {MockPdfPluginElement} from './test_util.js';
-import {createMockPdfPluginForTest, getZoomableViewport, MockDocumentDimensions, MockElement, MockSizer, MockViewportChangedCallback} from './test_util.js';
+import {createMockUnseasonedPdfPluginForTest, getZoomableViewport, MockDocumentDimensions, MockElement, MockSizer, MockUnseasonedPdfPluginElement, MockViewportChangedCallback} from './test_util.js';
 
 const SCROLLBAR_WIDTH: number = 15;
 
@@ -23,7 +21,7 @@ class ScrollEventCounter {
  * Simulates acknowledgements to all "syncScrollToRemote" messages.
  */
 function ackAllScrollToRemoteMessages(
-    viewport: Viewport, plugin: MockPdfPluginElement) {
+    viewport: Viewport, plugin: MockUnseasonedPdfPluginElement) {
   for (const message of plugin.messages) {
     if (message.type === 'syncScrollToRemote') {
       viewport.ackScrollToRemote(message);
@@ -62,14 +60,14 @@ const tests = [
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 43, 1);
 
-    chrome.test.assertEq(16, viewport.overlayScrollbarWidth);
+    chrome.test.assertEq(isMac ? 16 : 0, viewport.overlayScrollbarWidth);
     chrome.test.succeed();
   },
 
   function testOverlayScrollbarWidth_remote() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 43, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
 
     chrome.test.assertEq(isMac ? 16 : 43, viewport.overlayScrollbarWidth);
     chrome.test.succeed();
@@ -337,22 +335,9 @@ const tests = [
     documentDimensions.addPage(0, 0);
     viewport.setDocumentDimensions(documentDimensions);
 
-    const params = {
-      page: 0,
-      boundingBox: {x: 0, y: 0, width: 1, height: 1},
-      fitToWidth: true,
-    };
+    const params = {page: 0, boundingBox: {x: 0, y: 0, width: 1, height: 1}};
     viewport.setFittingType(FittingType.FIT_TO_BOUNDING_BOX, params);
     chrome.test.assertEq(FittingType.FIT_TO_BOUNDING_BOX, viewport.fittingType);
-
-    viewport.setFittingType(FittingType.FIT_TO_BOUNDING_BOX_WIDTH, params);
-    chrome.test.assertEq(
-        FittingType.FIT_TO_BOUNDING_BOX_WIDTH, viewport.fittingType);
-
-    params.fitToWidth = false;
-    viewport.setFittingType(FittingType.FIT_TO_BOUNDING_BOX_HEIGHT, params);
-    chrome.test.assertEq(
-        FittingType.FIT_TO_BOUNDING_BOX_HEIGHT, viewport.fittingType);
 
     viewport.setFittingType(FittingType.NONE);
     chrome.test.assertEq(FittingType.NONE, viewport.fittingType);
@@ -390,23 +375,6 @@ const tests = [
       assertZoomed(expectedMockWidth, expectedMockHeight, expectedZoom);
     }
 
-    function assertPositionAndZoom(
-        expectedPosition: Point, expectedZoom: number) {
-      chrome.test.assertEq(FittingType.FIT_TO_WIDTH, viewport.fittingType);
-      chrome.test.assertTrue(mockCallback.wasCalled);
-      chrome.test.assertEq(expectedPosition, viewport.position);
-      chrome.test.assertEq(expectedZoom, viewport.getZoom());
-    }
-
-    function testForPosition(
-        expectedX: number, expectedY: number, expectedZoom: number,
-        page?: number, viewPosition?: number) {
-      viewport.setZoom(0.1);
-      mockCallback.reset();
-      viewport.fitToWidth({page, viewPosition});
-      assertPositionAndZoom({x: expectedX, y: expectedY}, expectedZoom);
-    }
-
     // Document width which matches the window width.
     testForSize(100, 100, 100, 100, 1);
 
@@ -422,36 +390,8 @@ const tests = [
     // Document width which is half the size of the window width.
     testForSize(50, 100, 100, 200, 2);
 
-    // Test params.
-    documentDimensions.reset();
-    documentDimensions.addPage(50, 400);
-    documentDimensions.addPage(100, 600);
-    documentDimensions.addPage(200, 800);
-    viewport.setDocumentDimensions(documentDimensions);
-
-    testForPosition(0, 0, 0.5, 0, undefined);
-    testForPosition(0, 200, 0.5, 1, undefined);
-    testForPosition(0, 500, 0.5, 2, undefined);
-
-    testForPosition(0, 0, 0.5, 0, 0);
-    testForPosition(0, 200, 0.5, 1, 0);
-    testForPosition(0, 500, 0.5, 2, 0);
-
-    testForPosition(0, 5.5, 0.5, 0, 11);
-    testForPosition(0, 211, 0.5, 1, 22);
-    testForPosition(0, 527.5, 0.5, 2, 55);
-
-    // Check that the viewPosition offset uses the current page if page is not
-    // provided.
-    viewport.goToPage(0);
-    testForPosition(0, 5.5, 0.5, undefined, 11);
-    viewport.goToPage(1);
-    testForPosition(0, 211, 0.5, undefined, 22);
-    viewport.goToPage(2);
-    testForPosition(0, 527.5, 0.5, undefined, 55);
-
     // Test that the scroll position stays the same relative to the page after
-    // fit to width is called.
+    // fit to page is called.
     documentDimensions.reset();
     documentDimensions.addPage(50, 400);
     viewport.setDocumentDimensions(documentDimensions);
@@ -512,23 +452,6 @@ const tests = [
       assertZoomed(expectedMockWidth, expectedMockHeight, expectedZoom);
     }
 
-    function assertPositionAndZoom(
-        expectedPosition: Point, expectedZoom: number) {
-      chrome.test.assertEq(FittingType.FIT_TO_PAGE, viewport.fittingType);
-      chrome.test.assertTrue(mockCallback.wasCalled);
-      chrome.test.assertEq(expectedPosition, viewport.position);
-      chrome.test.assertEq(expectedZoom, viewport.getZoom());
-    }
-
-    function testForPosition(
-        expectedX: number, expectedY: number, expectedZoom: number,
-        page?: number, scrollToTop?: boolean) {
-      viewport.setZoom(0.1);
-      mockCallback.reset();
-      viewport.fitToPage({page, scrollToTop});
-      assertPositionAndZoom({x: expectedX, y: expectedY}, expectedZoom);
-    }
-
     // Page size which matches the window size.
     testForSize(100, 100, 100, 100, 1);
 
@@ -549,29 +472,6 @@ const tests = [
 
     // Page size smaller in one dimension and bigger in another.
     testForSize(50, 200, 25, 100, 0.5);
-
-    // Test params.
-    documentDimensions.reset();
-    documentDimensions.addPage(50, 400);
-    documentDimensions.addPage(100, 500);
-    documentDimensions.addPage(200, 1000);
-    viewport.setDocumentDimensions(documentDimensions);
-
-    testForPosition(0, 0, 0.25, 0);
-    testForPosition(0, 80, 0.2, 1);
-    testForPosition(0, 90, 0.1, 2);
-
-    // Check that the current scroll position is maintained if `page` is
-    // undefined and `scrollToTop` is false.
-    viewport.goToPageAndXy(0, 10, 20);
-    testForPosition(2.5, 5, 0.25, undefined, false);
-    viewport.goToPageAndXy(1, 10, 20);
-    testForPosition(2, 84, 0.2, undefined, false);
-    viewport.goToPageAndXy(1, 30, 50);
-    testForPosition(6, 90, 0.2, undefined, false);
-
-    // Check that `scrollToTop` value is ignored if `page` is defined.
-    testForPosition(0, 80, 0.2, 1, false);
 
     // Test that when there are multiple pages the height of the most visible
     // page and the width of the widest page are sized to.
@@ -652,25 +552,8 @@ const tests = [
       viewport.setDocumentDimensions(documentDimensions);
       viewport.setZoom(0.1);
       mockCallback.reset();
-      viewport.fitToHeight({page: viewport.getMostVisiblePage()});
+      viewport.fitToHeight();
       assertZoomed(expectedMockWidth, expectedMockHeight, expectedZoom);
-    }
-
-    function assertPositionAndZoom(
-        expectedPosition: Point, expectedZoom: number) {
-      chrome.test.assertEq(FittingType.FIT_TO_HEIGHT, viewport.fittingType);
-      chrome.test.assertTrue(mockCallback.wasCalled);
-      chrome.test.assertEq(expectedPosition, viewport.position);
-      chrome.test.assertEq(expectedZoom, viewport.getZoom());
-    }
-
-    function testForPosition(
-        expectedX: number, expectedY: number, expectedZoom: number,
-        page?: number, viewPosition?: number) {
-      viewport.setZoom(0.1);
-      mockCallback.reset();
-      viewport.fitToHeight({page, viewPosition});
-      assertPositionAndZoom({x: expectedX, y: expectedY}, expectedZoom);
     }
 
     // Page size which matches the window size.
@@ -688,43 +571,6 @@ const tests = [
     // Page size taller than window.
     testForSize(100, 200, 50, 100, 0.5);
 
-    // Test params.
-    documentDimensions.reset();
-    documentDimensions.addPage(50, 400);
-    documentDimensions.addPage(100, 500);
-    documentDimensions.addPage(200, 1000);
-    viewport.setDocumentDimensions(documentDimensions);
-
-    testForPosition(0, 0, 0.25, 0);
-    testForPosition(0, 80, 0.2, 1);
-    testForPosition(0, 90, 0.1, 2);
-
-    testForPosition(0, 0, 0.25, 0, 0);
-    testForPosition(0, 80, 0.2, 1, 0);
-    testForPosition(0, 90, 0.1, 2, 0);
-
-    testForPosition(2.75, 0, 0.25, 0, 11);
-    testForPosition(4, 80, 0.2, 1, 20);
-    testForPosition(5.5, 90, 0.1, 2, 55);
-
-    // Check that the viewPosition offset uses the current page if page is not
-    // provided.
-    viewport.goToPageAndXy(0, 10, 0);
-    testForPosition(2.75, 0, 0.25, undefined, 11);
-    viewport.goToPageAndXy(1, 10, 0);
-    testForPosition(4, 80, 0.2, undefined, 20);
-    viewport.goToPageAndXy(2, 10, 0);
-    testForPosition(5.5, 90, 0.1, undefined, 55);
-
-    // Check that the current scroll position is maintained if the page and
-    // viewPosition params are missing.
-    viewport.goToPageAndXy(1, 10, 0);
-    testForPosition(2, 80, 0.2);
-    viewport.goToPageAndXy(1, 20, 10);
-    testForPosition(4, 82, 0.2);
-    viewport.goToPageAndXy(1, 50, 50);
-    testForPosition(10, 90, 0.2);
-
     // Test that when there are multiple pages the height of the most visible
     // page and the width of the widest page are sized to.
     documentDimensions.reset();
@@ -735,14 +581,14 @@ const tests = [
     mockWindow.scrollTo(0, 0);
     chrome.test.assertEq(0, viewport.getMostVisiblePage());
     mockCallback.reset();
-    viewport.fitToHeight({page: viewport.getMostVisiblePage()});
+    viewport.fitToHeight();
     assertZoomed(200, 500, 1);
 
     viewport.setZoom(1);
     mockWindow.scrollTo(0, 100);
     chrome.test.assertEq(1, viewport.getMostVisiblePage());
     mockCallback.reset();
-    viewport.fitToHeight({page: viewport.getMostVisiblePage()});
+    viewport.fitToHeight();
     assertZoomed(50, 125, 0.25);
 
     // Test that the top of the most visible page is scrolled to.
@@ -753,7 +599,7 @@ const tests = [
     viewport.setZoom(1);
     mockWindow.scrollTo(0, 0);
     chrome.test.assertEq(0, viewport.getMostVisiblePage());
-    viewport.fitToHeight({page: viewport.getMostVisiblePage()});
+    viewport.fitToHeight();
     chrome.test.assertEq(0, viewport.getMostVisiblePage());
     chrome.test.assertEq(FittingType.FIT_TO_HEIGHT, viewport.fittingType);
     chrome.test.assertEq(0.5, viewport.getZoom());
@@ -762,7 +608,7 @@ const tests = [
     viewport.setZoom(1);
     mockWindow.scrollTo(0, 175);
     chrome.test.assertEq(1, viewport.getMostVisiblePage());
-    viewport.fitToHeight({page: viewport.getMostVisiblePage()});
+    viewport.fitToHeight();
     chrome.test.assertEq(1, viewport.getMostVisiblePage());
     chrome.test.assertEq(0.25, viewport.getZoom());
     chrome.test.assertEq(0, viewport.position.x);
@@ -772,7 +618,7 @@ const tests = [
     // scroll to the top of the page (it should stay at the scaled scroll
     // position).
     mockWindow.scrollTo(0, 0);
-    viewport.fitToHeight({page: viewport.getMostVisiblePage()});
+    viewport.fitToHeight();
     chrome.test.assertEq(FittingType.FIT_TO_HEIGHT, viewport.fittingType);
     chrome.test.assertEq(0.5, viewport.getZoom());
     mockWindow.scrollTo(0, 10);
@@ -812,7 +658,8 @@ const tests = [
         expectedZoom: number) {
       viewport.setZoom(0.1);
       mockCallback.reset();
-      viewport.fitToBoundingBox({boundingBox, page});
+      viewport.setFittingType(
+          FittingType.FIT_TO_BOUNDING_BOX, {page, boundingBox});
       assertPositionAndZoom({x: expectedX, y: expectedY}, expectedZoom);
     }
 
@@ -848,197 +695,6 @@ const tests = [
 
     chrome.test.succeed();
   },
-
-  function testFitToBoundingBoxDimensionWidth() {
-    const mockWindow = new MockElement(100, 100, null);
-    const mockSizer = new MockSizer();
-    const mockCallback = new MockViewportChangedCallback();
-    const viewport = getZoomableViewport(mockWindow, mockSizer, 0, 1);
-    viewport.setViewportChangedCallback(mockCallback.callback);
-    const documentDimensions = new MockDocumentDimensions();
-    documentDimensions.addPage(200, 200);
-    documentDimensions.addPage(200, 200);
-    viewport.setDocumentDimensions(documentDimensions);
-
-    function assertPositionAndZoom(
-        expectedPosition: Point, expectedZoom: number) {
-      chrome.test.assertEq(
-          FittingType.FIT_TO_BOUNDING_BOX_WIDTH, viewport.fittingType);
-      chrome.test.assertTrue(mockCallback.wasCalled);
-      chrome.test.assertEq(expectedPosition, viewport.position);
-      chrome.test.assertEq(expectedZoom, viewport.getZoom());
-    }
-
-    function testForVisibleBoundingBoxWidth(
-        boundingBox: Rect, page: number, viewPosition: number|undefined,
-        expectedX: number, expectedY: number, expectedZoom: number) {
-      viewport.setZoom(0.1);
-      viewport.setPosition({
-        x: 0,
-        y: 0,
-      });
-      mockCallback.reset();
-      viewport.fitToBoundingBoxDimension(
-          {boundingBox, page, viewPosition, fitToWidth: true});
-      assertPositionAndZoom({x: expectedX, y: expectedY}, expectedZoom);
-    }
-
-    // Test that the zoom matches the height of the bounding box and not the
-    // width.
-
-    // Bounding box is smaller than window size with larger height.
-    let boundingBox = {x: 20, y: 25, width: 50, height: 80};
-    testForVisibleBoundingBoxWidth(boundingBox, 0, undefined, 50, 6, 2);
-    testForVisibleBoundingBoxWidth(boundingBox, 0, 20, 50, 46, 2);
-    testForVisibleBoundingBoxWidth(boundingBox, 1, undefined, 50, 406, 2);
-    testForVisibleBoundingBoxWidth(boundingBox, 1, 20, 50, 446, 2);
-
-    // Bounding box is smaller than window size with larger width.
-    boundingBox = {x: 25, y: 20, width: 80, height: 50};
-    testForVisibleBoundingBoxWidth(boundingBox, 0, undefined, 37.5, 3.75, 1.25);
-    testForVisibleBoundingBoxWidth(boundingBox, 0, 30, 37.5, 41.25, 1.25);
-    testForVisibleBoundingBoxWidth(
-        boundingBox, 1, undefined, 37.5, 253.75, 1.25);
-    testForVisibleBoundingBoxWidth(boundingBox, 1, 30, 37.5, 291.25, 1.25);
-
-    // Bounding box height is the same size as window size with larger height.
-    boundingBox = {x: 0, y: 0, width: 100, height: 120};
-    testForVisibleBoundingBoxWidth(boundingBox, 0, undefined, 5, 3, 1);
-    testForVisibleBoundingBoxWidth(boundingBox, 0, 97, 5, 100, 1);
-    testForVisibleBoundingBoxWidth(boundingBox, 1, undefined, 5, 203, 1);
-    testForVisibleBoundingBoxWidth(boundingBox, 1, 97, 5, 300, 1);
-
-    // Bounding box height is the same size as window size with larger width.
-    boundingBox = {x: 0, y: 0, width: 100, height: 80};
-    testForVisibleBoundingBoxWidth(boundingBox, 0, undefined, 5, 3, 1);
-    testForVisibleBoundingBoxWidth(boundingBox, 0, 20, 5, 23, 1);
-    testForVisibleBoundingBoxWidth(boundingBox, 1, undefined, 5, 203, 1);
-    testForVisibleBoundingBoxWidth(boundingBox, 1, 20, 5, 223, 1);
-
-    // Bounding box height is larger than window size with larger height.
-    boundingBox = {x: 10, y: 20, width: 120, height: 150};
-    testForVisibleBoundingBoxWidth(
-        boundingBox, 0, undefined, 12.5, 2.5, 0.8333333333333334);
-    testForVisibleBoundingBoxWidth(
-        boundingBox, 0, 100, 12.5, 85.83333333333334, 0.8333333333333334);
-    testForVisibleBoundingBoxWidth(
-        boundingBox, 1, undefined, 12.5, 169.16666666666669,
-        0.8333333333333334);
-    testForVisibleBoundingBoxWidth(
-        boundingBox, 1, 100, 12.5, 252.5, 0.8333333333333334);
-
-    // Bounding box height is larger than window size with larger width.
-    boundingBox = {x: 10, y: 20, width: 120, height: 20};
-    testForVisibleBoundingBoxWidth(
-        boundingBox, 0, undefined, 12.5, 2.5, 0.8333333333333334);
-    testForVisibleBoundingBoxWidth(
-        boundingBox, 0, 100, 12.5, 85.83333333333334, 0.8333333333333334);
-    testForVisibleBoundingBoxWidth(
-        boundingBox, 1, undefined, 12.5, 169.16666666666669,
-        0.8333333333333334);
-    testForVisibleBoundingBoxWidth(
-        boundingBox, 1, 100, 12.5, 252.5, 0.8333333333333334);
-
-
-    chrome.test.succeed();
-  },
-
-  function testFitToBoundingBoxDimensionHeight() {
-    const mockWindow = new MockElement(100, 100, null);
-    const mockSizer = new MockSizer();
-    const mockCallback = new MockViewportChangedCallback();
-    const viewport = getZoomableViewport(mockWindow, mockSizer, 0, 1);
-    viewport.setViewportChangedCallback(mockCallback.callback);
-    const documentDimensions = new MockDocumentDimensions();
-    documentDimensions.addPage(200, 200);
-    documentDimensions.addPage(200, 200);
-    viewport.setDocumentDimensions(documentDimensions);
-
-    function assertPositionAndZoom(
-        expectedPosition: Point, expectedZoom: number) {
-      chrome.test.assertEq(
-          FittingType.FIT_TO_BOUNDING_BOX_HEIGHT, viewport.fittingType);
-      chrome.test.assertTrue(mockCallback.wasCalled);
-      chrome.test.assertEq(expectedPosition, viewport.position);
-      chrome.test.assertEq(expectedZoom, viewport.getZoom());
-    }
-
-    function testForVisibleBoundingBoxHeight(
-        boundingBox: Rect, page: number, viewPosition: number|undefined,
-        expectedX: number, expectedY: number, expectedZoom: number) {
-      viewport.setZoom(0.1);
-      viewport.setPosition({
-        x: 0,
-        y: 0,
-      });
-      mockCallback.reset();
-      viewport.fitToBoundingBoxDimension(
-          {boundingBox, page, viewPosition, fitToWidth: false});
-      assertPositionAndZoom({x: expectedX, y: expectedY}, expectedZoom);
-    }
-
-    // Test that the zoom matches the height of the bounding box and not the
-    // width.
-
-    // Bounding box is smaller than window size with larger width.
-    let boundingBox = {x: 20, y: 25, width: 80, height: 50};
-    testForVisibleBoundingBoxHeight(boundingBox, 0, undefined, 10, 56, 2);
-    testForVisibleBoundingBoxHeight(boundingBox, 0, 20, 50, 56, 2);
-    testForVisibleBoundingBoxHeight(boundingBox, 1, undefined, 10, 456, 2);
-    testForVisibleBoundingBoxHeight(boundingBox, 1, 20, 50, 456, 2);
-
-    // Bounding box is smaller than window size with larger height.
-    boundingBox = {x: 25, y: 20, width: 50, height: 80};
-    testForVisibleBoundingBoxHeight(
-        boundingBox, 0, undefined, 6.25, 28.75, 1.25);
-    testForVisibleBoundingBoxHeight(boundingBox, 0, 30, 43.75, 28.75, 1.25);
-    testForVisibleBoundingBoxHeight(
-        boundingBox, 1, undefined, 6.25, 278.75, 1.25);
-    testForVisibleBoundingBoxHeight(boundingBox, 1, 30, 43.75, 278.75, 1.25);
-
-    // Bounding box height is the same size as window size with larger width.
-    boundingBox = {x: 0, y: 0, width: 120, height: 100};
-    testForVisibleBoundingBoxHeight(boundingBox, 0, undefined, 5, 3, 1);
-    testForVisibleBoundingBoxHeight(boundingBox, 0, 95, 100, 3, 1);
-    testForVisibleBoundingBoxHeight(boundingBox, 1, undefined, 5, 203, 1);
-    testForVisibleBoundingBoxHeight(boundingBox, 1, 95, 100, 203, 1);
-
-    // Bounding box height is the same size as window size with larger height.
-    boundingBox = {x: 0, y: 0, width: 80, height: 100};
-    testForVisibleBoundingBoxHeight(boundingBox, 0, undefined, 5, 3, 1);
-    testForVisibleBoundingBoxHeight(boundingBox, 0, 20, 25, 3, 1);
-    testForVisibleBoundingBoxHeight(boundingBox, 1, undefined, 5, 203, 1);
-    testForVisibleBoundingBoxHeight(boundingBox, 1, 20, 25, 203, 1);
-
-    // Bounding box height is larger than window size with larger width.
-    boundingBox = {x: 10, y: 20, width: 200, height: 150};
-    testForVisibleBoundingBoxHeight(
-        boundingBox, 0, undefined, 3.333333333333333, 15.333333333333332,
-        0.6666666666666666);
-    testForVisibleBoundingBoxHeight(
-        boundingBox, 0, 100, 70, 15.333333333333332, 0.6666666666666666);
-    testForVisibleBoundingBoxHeight(
-        boundingBox, 1, undefined, 3.333333333333333, 148.66666666666666,
-        0.6666666666666666);
-    testForVisibleBoundingBoxHeight(
-        boundingBox, 1, 100, 70, 148.66666666666666, 0.6666666666666666);
-
-    // Bounding box height is larger than window size with larger height.
-    boundingBox = {x: 10, y: 20, width: 100, height: 150};
-    testForVisibleBoundingBoxHeight(
-        boundingBox, 0, undefined, 3.333333333333333, 15.333333333333332,
-        0.6666666666666666);
-    testForVisibleBoundingBoxHeight(
-        boundingBox, 0, 100, 70, 15.333333333333332, 0.6666666666666666);
-    testForVisibleBoundingBoxHeight(
-        boundingBox, 1, undefined, 3.333333333333333, 148.66666666666666,
-        0.6666666666666666);
-    testForVisibleBoundingBoxHeight(
-        boundingBox, 1, 100, 70, 148.66666666666666, 0.6666666666666666);
-
-    chrome.test.succeed();
-  },
-
   async function testPinchZoomInWithGestureEvent() {
     const mockWindow = new MockElement(100, 100, null);
     const viewport = getZoomableViewport(mockWindow, new MockSizer(), 0, 1);
@@ -1754,7 +1410,7 @@ const tests = [
     const mockSizer = new MockSizer();
     const viewport =
         getZoomableViewport(new MockElement(100, 100, null), mockSizer, 0, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
 
     const dummyPlugin = document.body.querySelector('#plugin');
     viewport.setContent(dummyPlugin);
@@ -1767,7 +1423,7 @@ const tests = [
     const mockSizer = new MockSizer();
     const viewport =
         getZoomableViewport(new MockElement(100, 100, null), mockSizer, 0, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
     viewport.setDocumentDimensions(new MockDocumentDimensions(20, 30));
     chrome.test.assertEq('0px', mockSizer.style.width);
     chrome.test.assertEq('0px', mockSizer.style.height);
@@ -1783,7 +1439,7 @@ const tests = [
   function testSetContent_scrollToLocal() {
     const mockWindow = new MockElement(100, 100, null);
     const viewport = getZoomableViewport(mockWindow, new MockSizer(), 0, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 200));
     viewport.setZoom(1);
     viewport.setPosition({x: 20, y: 30});
@@ -1802,7 +1458,7 @@ const tests = [
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
 
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
 
     const dummyContent = document.body.querySelector('div');
@@ -1815,7 +1471,7 @@ const tests = [
     const viewport =
         getZoomableViewport(new MockElement(100, 100, null), mockSizer, 0, 1);
 
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
 
     chrome.test.assertEq('none', mockSizer.style.display);
     chrome.test.succeed();
@@ -1826,7 +1482,7 @@ const tests = [
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
     viewport.setDocumentDimensions(new MockDocumentDimensions(20, 30));
 
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
 
     const {width, height} = mockPlugin.findMessage('updateSize');
@@ -1842,7 +1498,7 @@ const tests = [
     viewport.setZoom(1);
     viewport.setPosition({x: 20, y: 30});
 
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
 
     const {x, y} = mockPlugin.findMessage('syncScrollToRemote');
@@ -1854,7 +1510,7 @@ const tests = [
   function testSetDocumentDimensions_remote() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
     mockPlugin.clearMessages();
 
@@ -1871,7 +1527,7 @@ const tests = [
   function testSetPosition_remote() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 200));
     viewport.setZoom(1);
@@ -1890,7 +1546,7 @@ const tests = [
   function testSetPosition_remote_modifiedByAck() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 200));
     viewport.setZoom(1);
@@ -1909,7 +1565,7 @@ const tests = [
   function testSetPosition_remote_modifiedByAck_ignoreOverlapping() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 200));
     viewport.setZoom(1);
@@ -1929,7 +1585,7 @@ const tests = [
   function testSetPosition_remote_modifiedByAck_multiple() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 200));
     viewport.setZoom(1);
@@ -1950,7 +1606,7 @@ const tests = [
   function testSetPosition_remote_NaN() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
 
     viewport.setPosition({x: NaN, y: NaN});
 
@@ -1962,7 +1618,7 @@ const tests = [
   function testSetPosition_remote_underflow_leftAndTop() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), SCROLLBAR_WIDTH, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 200));
     viewport.setZoom(1);
 
@@ -1978,7 +1634,7 @@ const tests = [
     mockWindow.dir = 'rtl';
     const viewport =
         getZoomableViewport(mockWindow, new MockSizer(), SCROLLBAR_WIDTH, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 200));
     viewport.setZoom(1);
 
@@ -1992,7 +1648,7 @@ const tests = [
   function testSetPosition_remote_overflow_rightAndBottom() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), SCROLLBAR_WIDTH, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 300));
     viewport.setZoom(1);
 
@@ -2008,7 +1664,7 @@ const tests = [
     mockWindow.dir = 'rtl';
     const viewport =
         getZoomableViewport(mockWindow, new MockSizer(), SCROLLBAR_WIDTH, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 300));
     viewport.setZoom(1);
 
@@ -2022,7 +1678,7 @@ const tests = [
   function testSetPosition_remote_overflowWithoutVerticalScrollbar_right() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), SCROLLBAR_WIDTH, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 85));
     viewport.setZoom(1);
 
@@ -2038,7 +1694,7 @@ const tests = [
     mockWindow.dir = 'rtl';
     const viewport =
         getZoomableViewport(mockWindow, new MockSizer(), SCROLLBAR_WIDTH, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
     viewport.setDocumentDimensions(new MockDocumentDimensions(200, 85));
     viewport.setZoom(1);
 
@@ -2052,7 +1708,7 @@ const tests = [
   function testSetPosition_remote_overflowWithoutHorizontalScrollbar_bottom() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), SCROLLBAR_WIDTH, 1);
-    viewport.setRemoteContent(createMockPdfPluginForTest());
+    viewport.setRemoteContent(createMockUnseasonedPdfPluginForTest());
     viewport.setDocumentDimensions(new MockDocumentDimensions(85, 300));
     viewport.setZoom(1);
 
@@ -2066,7 +1722,7 @@ const tests = [
   function testSyncScrollFromRemote() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
     ackAllScrollToRemoteMessages(viewport, mockPlugin);
 
@@ -2082,7 +1738,7 @@ const tests = [
   function testSyncScrollFromRemote_duplicateScroll() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
     ackAllScrollToRemoteMessages(viewport, mockPlugin);
     viewport.syncScrollFromRemote({x: 30, y: 20});
@@ -2099,7 +1755,7 @@ const tests = [
   function testSyncScrollFromRemote_scrollToRemoteUnacked() {
     const viewport = getZoomableViewport(
         new MockElement(100, 100, null), new MockSizer(), 0, 1);
-    const mockPlugin = createMockPdfPluginForTest();
+    const mockPlugin = createMockUnseasonedPdfPluginForTest();
     viewport.setRemoteContent(mockPlugin);
     chrome.test.assertTrue(!!mockPlugin.findMessage('syncScrollToRemote'));
 

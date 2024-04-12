@@ -14,8 +14,7 @@ export const SELECTOR_MAP = {
   backVideoResolutionOptions: `#view-video-resolution-settings ` +
       `.menu-item>input[data-facing="environment"]`,
   barcodeChipText: '.barcode-chip-text',
-  barcodeChipURL: '#barcode-chip-url',
-  barcodeChipWifi: '#barcode-chip-wifi',
+  barcodeChipURL: '.barcode-chip-url a',
   barcodeCopyTextButton: '#barcode-chip-text-container .barcode-copy-button',
   barcodeCopyURLButton: '#barcode-chip-url-container .barcode-copy-button',
   bitrateMultiplierRangeInput: '#bitrate-slider input[type=range]',
@@ -43,19 +42,17 @@ export const SELECTOR_MAP = {
   expertModeButton: '#settings-expert',
   expertModeOption: '#expert-enable-expert-mode',
   expertMultiStreamRecordingOption: '#expert-enable-multistream-recording',
-  expertMultiStreamRecordingChromeOption:
-      '#expert-enable-multistream-recording-chrome',
   expertSaveMetadataOption: '#expert-save-metadata',
   expertShowMetadataOption: '#expert-show-metadata',
   feedbackButton: '#settings-feedback',
-  fps60Buttons: `.fps-60:not(.invisible)`,
   frontAspectRatioOptions:
       '#view-photo-aspect-ratio-settings .menu-item>input[data-facing="user"]',
   frontPhotoResolutionOptions:
       '#view-photo-resolution-settings .menu-item>input[data-facing="user"]',
   frontVideoResolutionOptions:
       '#view-video-resolution-settings .menu-item>input[data-facing="user"]',
-  galleryButton: 'gallery-button',
+  galleryButton: '#gallery-enter',
+  galleryButtonCover: '#gallery-enter>img',
   gifRecordingOption: 'input[type=radio][data-state=record-type-gif]',
   gifReviewRetakeButton: '#review-retake',
   gifReviewSaveButton: '#view-review button[i18n-text=label_save]',
@@ -69,7 +66,7 @@ export const SELECTOR_MAP = {
   lowStorageWarning: '#nudge',
   mirrorOptionOff: 'span[i18n-aria=aria_mirror_off]',
   mirrorOptionOn: 'span[i18n-aria=aria_mirror_on]',
-  modeSelector: 'mode-selector',
+  modeSelector: '#modes-group',
   openGridPanelButton: '#open-grid-panel',
   openMirrorPanelButton: '#open-mirror-panel',
   openPTZPanelButton: '#open-ptz-panel',
@@ -78,9 +75,6 @@ export const SELECTOR_MAP = {
   panRightButton: '#pan-right',
   photoAspectRatioSettingButton: '#settings-photo-aspect-ratio',
   photoResolutionSettingButton: '#settings-photo-resolution',
-  // TODO(kamchonlathorn): Remove this once its usage in Tast is removed.
-  previewExposureTime: '#preview-exposure-time',
-  previewResolution: '#preview-resolution',
   previewVideo: '#preview-video',
   previewViewport: '#preview-viewport',
   ptzResetAllButton: '#ptz-reset-all',
@@ -91,8 +85,7 @@ export const SELECTOR_MAP = {
   settingsButtonContainer: 'div:has(> #open-settings)',
   settingsHeader: '#settings-header',
   shutter: '.shutter',
-  switchDeviceButton: 'switch-device-button',
-  snackbar: '.snackbar',
+  switchDeviceButton: '#switch-device',
   tiltDownButton: '#tilt-down',
   tiltUpButton: '#tilt-up',
   timeLapseRecordingOption:
@@ -100,12 +93,10 @@ export const SELECTOR_MAP = {
   timerOption10Seconds: 'span[i18n-aria=aria_timer_10s]',
   timerOption3Seconds: 'span[i18n-aria=aria_timer_3s]',
   timerOptionOff: 'span[i18n-aria=aria_timer_off]',
-  toggleMicButton: '#toggle-mic',
   videoPauseResumeButton: '#pause-recordvideo',
   videoProfileSelect: '#video-profile',
   videoResolutionSettingButton: '#settings-video-resolution',
   videoSnapshotButton: '#video-snapshot',
-  warningMessage: '#view-warning',
   zoomInButton: '#zoom-in',
   zoomOutButton: '#zoom-out',
 } as const;
@@ -123,10 +114,6 @@ export const SETTING_OPTION_MAP = {
   multiStreamRecordingOption: {
     component: 'expertMultiStreamRecordingOption',
     state: ExpertOption.ENABLE_MULTISTREAM_RECORDING,
-  },
-  multiStreamRecordingChromeOption: {
-    component: 'expertMultiStreamRecordingChromeOption',
-    state: ExpertOption.ENABLE_MULTISTREAM_RECORDING_CHROME,
   },
   saveMetadataOption: {
     component: 'expertSaveMetadataOption',

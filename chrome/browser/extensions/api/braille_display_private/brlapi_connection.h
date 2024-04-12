@@ -13,13 +13,15 @@
 #include "base/functional/callback_forward.h"
 #include "library_loaders/libbrlapi.h"
 
-namespace extensions::api::braille_display_private {
+namespace extensions {
+namespace api {
+namespace braille_display_private {
 
 // A connection to the brlapi server.  See brlapi.h for more information
 // about the semantics of the methods in this class.
 class BrlapiConnection {
  public:
-  using OnDataReadyCallback = base::RepeatingClosure;
+  typedef base::RepeatingClosure OnDataReadyCallback;
 
   enum ConnectResult {
     CONNECT_ERROR_RETRY,
@@ -73,6 +75,8 @@ class BrlapiConnection {
   BrlapiConnection() = default;
 };
 
-}  // namespace extensions::api::braille_display_private
+}  // namespace braille_display_private
+}  // namespace api
+}  // namespace extensions
 
 #endif  // CHROME_BROWSER_EXTENSIONS_API_BRAILLE_DISPLAY_PRIVATE_BRLAPI_CONNECTION_H_

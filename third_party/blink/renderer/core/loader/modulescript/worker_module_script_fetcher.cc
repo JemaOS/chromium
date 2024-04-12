@@ -79,16 +79,8 @@ void WorkerModuleScriptFetcher::Fetch(
   // <spec step="12.2">Fetch request, and asynchronously wait to run the
   // remaining steps as part of fetch's process response for the response
   // response.</spec>
-
-  // If streaming is not allowed, no compile hints are needed either.
-  constexpr v8_compile_hints::V8CrowdsourcedCompileHintsProducer*
-      kNoCompileHintsProducer = nullptr;
-  constexpr v8_compile_hints::V8CrowdsourcedCompileHintsConsumer*
-      kNoCompileHintsConsumer = nullptr;
   ScriptResource::Fetch(fetch_params, fetch_client_settings_object_fetcher,
-                        this, global_scope_->GetIsolate(),
-                        ScriptResource::kNoStreaming, kNoCompileHintsProducer,
-                        kNoCompileHintsConsumer);
+                        this, ScriptResource::kNoStreaming);
 }
 
 void WorkerModuleScriptFetcher::Trace(Visitor* visitor) const {
@@ -129,16 +121,6 @@ void WorkerModuleScriptFetcher::NotifyClient(
 
   const KURL response_url = response.ResponseUrl();
 
-  network::mojom::ReferrerPolicy response_referrer_policy =
-      network::mojom::ReferrerPolicy::kDefault;
-  const String response_referrer_policy_header =
-      response.HttpHeaderField(http_names::kReferrerPolicy);
-  if (!response_referrer_policy_header.IsNull()) {
-    SecurityPolicy::ReferrerPolicyFromHeaderValue(
-        response_referrer_policy_header,
-        kDoNotSupportReferrerPolicyLegacyKeywords, &response_referrer_policy);
-  }
-
   if (level_ == ModuleGraphLevel::kTopLevelModuleFetch) {
     // TODO(nhiroki, hiroshige): Access to WorkerGlobalScope in module loaders
     // is a layering violation. Also, updating WorkerGlobalScope ('module map
@@ -177,6 +159,15 @@ void WorkerModuleScriptFetcher::NotifyClient(
       return;
     }
 
+    auto response_referrer_policy = network::mojom::ReferrerPolicy::kDefault;
+    const String response_referrer_policy_header =
+        response.HttpHeaderField(http_names::kReferrerPolicy);
+    if (!response_referrer_policy_header.IsNull()) {
+      SecurityPolicy::ReferrerPolicyFromHeaderValue(
+          response_referrer_policy_header,
+          kDoNotSupportReferrerPolicyLegacyKeywords, &response_referrer_policy);
+    }
+
     std::unique_ptr<Vector<String>> response_origin_trial_tokens =
         OriginTrialContext::ParseHeaderValue(
             response.HttpHeaderField(http_names::kOriginTrial));
@@ -196,23 +187,21 @@ void WorkerModuleScriptFetcher::NotifyClient(
   client_->NotifyFetchFinishedSuccess(ModuleScriptCreationParams(
       /*source_url=*/response_url, /*base_url=*/response_url,
       ScriptSourceLocationType::kExternalFile, module_type, source_text,
-      cache_handler, response_referrer_policy));
+      cache_handler));
 }
 
-void WorkerModuleScriptFetcher::DidReceiveDataWorkerMainScript(
-    base::span<const char> span) {
+void WorkerModuleScriptFetcher::DidReceiveData(base::span<const char> span) {
   if (!decoder_) {
     decoder_ = std::make_unique<TextResourceDecoder>(TextResourceDecoderOptions(
         TextResourceDecoderOptions::kPlainTextContent,
         worker_main_script_loader_->GetScriptEncoding()));
   }
-  if (!span.size()) {
+  if (!span.size())
     return;
-  }
   source_text_.Append(decoder_->Decode(span.data(), span.size()));
 }
 
-void WorkerModuleScriptFetcher::OnStartLoadingBodyWorkerMainScript(
+void WorkerModuleScriptFetcher::OnStartLoadingBody(
     const ResourceResponse& resource_response) {
   if (!MIMETypeRegistry::IsSupportedJavaScriptMIMEType(
           resource_response.HttpContentType())) {

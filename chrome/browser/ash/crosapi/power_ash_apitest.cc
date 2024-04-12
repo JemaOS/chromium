@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
 #include "content/public/test/browser_test.h"
 #include "extensions/browser/api/idle/idle_manager.h"
 #include "extensions/browser/api/idle/idle_manager_factory.h"

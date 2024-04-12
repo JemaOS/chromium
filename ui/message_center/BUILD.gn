@@ -182,7 +182,6 @@ if (enable_message_center) {
 
     sources = [
       "message_center_impl_unittest.cc",
-      "notification_blocker_unittest.cc",
       "notification_list_unittest.cc",
       "public/cpp/notification_delegate_unittest.cc",
       "test/run_all_unittests.cc",
@@ -198,7 +197,6 @@ if (enable_message_center) {
       "//skia",
       "//testing/gmock",
       "//testing/gtest",
-      "//ui/accessibility:test_support",
       "//ui/base",
       "//ui/base:test_support",
       "//ui/events",
@@ -228,7 +226,6 @@ if (enable_message_center) {
       sources += [
         "views/large_image_view_unittest.cc",
         "views/message_popup_collection_unittest.cc",
-        "views/message_view_unittest.cc",
         "views/notification_control_buttons_unittest.cc",
         "views/notification_header_view_unittest.cc",
         "views/notification_view_base_unittest.cc",

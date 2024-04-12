@@ -8,13 +8,11 @@
 
 #include <algorithm>
 #include <climits>
-#include <utility>
 
 #include "base/check_op.h"
 #include "base/command_line.h"
 #include "base/i18n/break_iterator.h"
 #include "base/i18n/char_iterator.h"
-#include "base/i18n/rtl.h"
 #include "base/notreached.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/ranges/algorithm.h"
@@ -40,7 +38,6 @@
 #include "ui/gfx/render_text_harfbuzz.h"
 #include "ui/gfx/scoped_canvas.h"
 #include "ui/gfx/skia_paint_util.h"
-#include "ui/gfx/text_constants.h"
 #include "ui/gfx/text_elider.h"
 #include "ui/gfx/text_utils.h"
 #include "ui/gfx/utf16_indexing.h"
@@ -317,7 +314,7 @@ namespace internal {
 SkiaTextRenderer::SkiaTextRenderer(Canvas* canvas)
     : canvas_(canvas), canvas_skia_(canvas->sk_canvas()) {
   DCHECK(canvas_skia_);
-  SetFillStyle(cc::PaintFlags::kFill_Style);
+  flags_.setStyle(cc::PaintFlags::kFill_Style);
 
   font_.setEdging(SkFont::Edging::kSubpixelAntiAlias);
   font_.setSubpixel(true);
@@ -350,14 +347,6 @@ void SkiaTextRenderer::SetForegroundColor(SkColor foreground) {
 
 void SkiaTextRenderer::SetShader(sk_sp<cc::PaintShader> shader) {
   flags_.setShader(std::move(shader));
-}
-
-void SkiaTextRenderer::SetFillStyle(cc::PaintFlags::Style fill_style) {
-  flags_.setStyle(fill_style);
-}
-
-void SkiaTextRenderer::SetStrokeWidth(SkScalar stroke_width) {
-  flags_.setStrokeWidth(stroke_width);
 }
 
 void SkiaTextRenderer::DrawPosText(const SkPoint* pos,
@@ -394,8 +383,7 @@ void SkiaTextRenderer::DrawStrike(int x,
                                   int width,
                                   SkScalar thickness_factor) {
   const SkScalar text_size = font_.getSize();
-  // Strike should have a minimum height of 1.0f.
-  const SkScalar height = std::max(1.0f, text_size * thickness_factor);
+  const SkScalar height = text_size * thickness_factor;
   const SkScalar top = y - text_size * kStrikeThroughOffset - height / 2;
   SkScalar x_scalar = SkIntToScalar(x);
   const SkRect r =
@@ -403,27 +391,20 @@ void SkiaTextRenderer::DrawStrike(int x,
   canvas_skia_->drawRect(r, flags_);
 }
 
-StyleIterator::StyleIterator(
-    const BreakList<SkColor>* colors,
-    const BreakList<BaselineStyle>* baselines,
-    const BreakList<int>* font_size_overrides,
-    const BreakList<Font::Weight>* weights,
-    const BreakList<cc::PaintFlags::Style>* fill_styles,
-    const BreakList<SkScalar>* stroke_widths,
-    const StyleArray* styles)
+StyleIterator::StyleIterator(const BreakList<SkColor>* colors,
+                             const BreakList<BaselineStyle>* baselines,
+                             const BreakList<int>* font_size_overrides,
+                             const BreakList<Font::Weight>* weights,
+                             const StyleArray* styles)
     : colors_(colors),
       baselines_(baselines),
       font_size_overrides_(font_size_overrides),
       weights_(weights),
-      fill_styles_(fill_styles),
-      stroke_widths_(stroke_widths),
       styles_(styles) {
   color_ = colors_->breaks().begin();
   baseline_ = baselines_->breaks().begin();
   font_size_override_ = font_size_overrides_->breaks().begin();
   weight_ = weights_->breaks().begin();
-  fill_style_ = fill_styles_->breaks().begin();
-  stroke_width_ = stroke_widths_->breaks().begin();
   for (size_t i = 0; i < styles_->size(); ++i)
     style_[i] = (*styles_)[i].breaks().begin();
 }
@@ -440,8 +421,6 @@ Range StyleIterator::GetTextBreakingRange() const {
   Range range = baselines_->GetRange(baseline_);
   range = range.Intersect(font_size_overrides_->GetRange(font_size_override_));
   range = range.Intersect(weights_->GetRange(weight_));
-  range = range.Intersect(fill_styles_->GetRange(fill_style_));
-  range = range.Intersect(stroke_widths_->GetRange(stroke_width_));
   for (size_t i = 0; i < styles_->size(); ++i)
     range = range.Intersect((*styles_)[i].GetRange(style_[i]));
   return range;
@@ -454,10 +433,6 @@ void StyleIterator::IncrementToPosition(size_t position) {
   font_size_override_ = IncrementBreakListIteratorToPosition(
       *font_size_overrides_, font_size_override_, position);
   weight_ = IncrementBreakListIteratorToPosition(*weights_, weight_, position);
-  fill_style_ = IncrementBreakListIteratorToPosition(*fill_styles_, fill_style_,
-                                                     position);
-  stroke_width_ = IncrementBreakListIteratorToPosition(*stroke_widths_,
-                                                       stroke_width_, position);
   for (size_t i = 0; i < styles_->size(); ++i) {
     style_[i] = IncrementBreakListIteratorToPosition((*styles_)[i], style_[i],
                                                      position);
@@ -524,17 +499,15 @@ std::unique_ptr<RenderText> RenderText::CreateInstanceOfSameStyle(
   render_text->font_size_overrides_ = font_size_overrides_;
   render_text->colors_ = colors_;
   render_text->weights_ = weights_;
-  render_text->fill_styles_ = fill_styles_;
-  render_text->stroke_widths_ = stroke_widths_;
   render_text->glyph_width_for_test_ = glyph_width_for_test_;
   return render_text;
 }
 
-void RenderText::SetText(std::u16string text) {
+void RenderText::SetText(const std::u16string& text) {
   DCHECK(!composition_range_.IsValid());
   if (text_ == text)
     return;
-  text_ = std::move(text);
+  text_ = text;
   UpdateStyleLengths();
 
   // Clear style ranges as they might break new text graphemes and apply
@@ -543,11 +516,8 @@ void RenderText::SetText(std::u16string text) {
   baselines_.SetValue(baselines_.breaks().front().second);
   font_size_overrides_.SetValue(font_size_overrides_.breaks().front().second);
   weights_.SetValue(weights_.breaks().front().second);
-  fill_styles_.SetValue(fill_styles_.breaks().front().second);
-  stroke_widths_.SetValue(stroke_widths_.breaks().front().second);
   for (auto& style : styles_)
     style.SetValue(style.breaks().front().second);
-  elidings_.SetValue(false);
   cached_bounds_and_offset_valid_ = false;
 
   // Reset selection model. SetText should always followed by SetSelectionModel
@@ -558,7 +528,7 @@ void RenderText::SetText(std::u16string text) {
   if (directionality_mode_ == DIRECTIONALITY_FROM_TEXT)
     text_direction_ = base::i18n::UNKNOWN_DIRECTION;
 
-  obscured_reveal_index_ = std::nullopt;
+  obscured_reveal_index_ = absl::nullopt;
   OnTextAttributeChanged();
 }
 
@@ -566,7 +536,7 @@ void RenderText::AppendText(const std::u16string& text) {
   text_ += text;
   UpdateStyleLengths();
   cached_bounds_and_offset_valid_ = false;
-  obscured_reveal_index_ = std::nullopt;
+  obscured_reveal_index_ = absl::nullopt;
 
   // Invalidate the cached text direction if it depends on the text contents.
   if (directionality_mode_ == DIRECTIONALITY_FROM_TEXT)
@@ -598,7 +568,6 @@ void RenderText::SetFontList(const FontList& font_list) {
   styles_[TEXT_STYLE_ITALIC].SetValue((font_style & Font::ITALIC) != 0);
   styles_[TEXT_STYLE_UNDERLINE].SetValue((font_style & Font::UNDERLINE) != 0);
   styles_[TEXT_STYLE_HEAVY_UNDERLINE].SetValue(false);
-  styles_[TEXT_STYLE_STRIKE].SetValue((font_style & Font::STRIKE_THROUGH) != 0);
   baseline_ = kInvalidBaseline;
   cached_bounds_and_offset_valid_ = false;
   OnLayoutTextAttributeChanged(false);
@@ -614,13 +583,13 @@ void RenderText::SetCursorEnabled(bool cursor_enabled) {
 void RenderText::SetObscured(bool obscured) {
   if (obscured != obscured_) {
     obscured_ = obscured;
-    obscured_reveal_index_ = std::nullopt;
+    obscured_reveal_index_ = absl::nullopt;
     cached_bounds_and_offset_valid_ = false;
     OnTextAttributeChanged();
   }
 }
 
-void RenderText::SetObscuredRevealIndex(std::optional<size_t> index) {
+void RenderText::SetObscuredRevealIndex(absl::optional<size_t> index) {
   if (obscured_reveal_index_ != index) {
     obscured_reveal_index_ = index;
     cached_bounds_and_offset_valid_ = false;
@@ -689,7 +658,7 @@ void RenderText::SetElideBehavior(ElideBehavior elide_behavior) {
   }
 }
 
-void RenderText::SetWhitespaceElision(std::optional<bool> whitespace_elision) {
+void RenderText::SetWhitespaceElision(absl::optional<bool> whitespace_elision) {
   if (whitespace_elision_ != whitespace_elision) {
     whitespace_elision_ = whitespace_elision;
     OnDisplayTextAttributeChanged();
@@ -946,40 +915,6 @@ void RenderText::ApplyWeight(Font::Weight weight, const Range& range) {
     cached_bounds_and_offset_valid_ = false;
     OnLayoutTextAttributeChanged(false);
   }
-}
-
-void RenderText::SetFillStyle(cc::PaintFlags::Style style) {
-  if (fill_styles_.SetValue(style)) {
-    OnLayoutTextAttributeChanged(false);
-  }
-}
-
-void RenderText::ApplyFillStyle(cc::PaintFlags::Style style,
-                                const Range& range) {
-  if (fill_styles_.ApplyValue(style, range)) {
-    OnLayoutTextAttributeChanged(false);
-  }
-}
-
-void RenderText::SetStrokeWidth(SkScalar stroke_width) {
-  if (stroke_widths_.SetValue(stroke_width)) {
-    OnLayoutTextAttributeChanged(false);
-  }
-}
-
-void RenderText::ApplyStrokeWidth(SkScalar stroke_width, const Range& range) {
-  if (stroke_widths_.ApplyValue(stroke_width, range)) {
-    OnLayoutTextAttributeChanged(false);
-  }
-}
-void RenderText::SetEliding(bool value) {
-  elidings_.SetValue(value);
-  OnLayoutTextAttributeChanged(false);
-}
-
-void RenderText::ApplyEliding(bool value, const Range& range) {
-  elidings_.ApplyValue(value, range);
-  OnLayoutTextAttributeChanged(false);
 }
 
 bool RenderText::GetStyle(TextStyle style) const {
@@ -1375,7 +1310,7 @@ Vector2d RenderText::GetLineOffset(size_t line_number) {
 
 bool RenderText::GetWordLookupDataAtPoint(const Point& point,
                                           DecoratedText* decorated_word,
-                                          Rect* rect) {
+                                          Point* baseline_point) {
   if (obscured())
     return false;
 
@@ -1390,19 +1325,18 @@ bool RenderText::GetWordLookupDataAtPoint(const Point& point,
   DCHECK(!word_range.is_reversed());
   DCHECK(!word_range.is_empty());
 
-  return GetLookupDataForRange(word_range, decorated_word, rect);
+  return GetLookupDataForRange(word_range, decorated_word, baseline_point);
 }
 
 bool RenderText::GetLookupDataForRange(const Range& range,
                                        DecoratedText* decorated_text,
-                                       Rect* rect) {
+                                       Point* baseline_point) {
   const internal::ShapedText* shaped_text = GetShapedText();
 
   const std::vector<Rect> word_bounds = GetSubstringBounds(range);
-  if (word_bounds.empty()) {
+  if (word_bounds.empty() || !GetDecoratedTextForRange(range, decorated_text)) {
     return false;
   }
-  GetDecoratedTextForRange(range, decorated_text);
 
   // Retrieve the baseline origin of the left-most glyph.
   const auto left_rect = std::min_element(
@@ -1413,9 +1347,8 @@ bool RenderText::GetLookupDataForRange(const Range& range,
   if (line_index < 0 ||
       line_index >= static_cast<int>(shaped_text->lines().size()))
     return false;
-  *rect = Rect(left_rect->origin() +
-                   Vector2d(0, shaped_text->lines()[line_index].baseline),
-               left_rect->size());
+  *baseline_point = left_rect->origin() +
+                    Vector2d(0, shaped_text->lines()[line_index].baseline);
   return true;
 }
 
@@ -1518,15 +1451,13 @@ RenderText::RenderText() = default;
 
 internal::StyleIterator RenderText::GetTextStyleIterator() const {
   return internal::StyleIterator(&colors_, &baselines_, &font_size_overrides_,
-                                 &weights_, &fill_styles_, &stroke_widths_,
-                                 &styles_);
+                                 &weights_, &styles_);
 }
 
 internal::StyleIterator RenderText::GetLayoutTextStyleIterator() const {
   EnsureLayoutTextUpdated();
   return internal::StyleIterator(&layout_colors_, &layout_baselines_,
                                  &layout_font_size_overrides_, &layout_weights_,
-                                 &layout_fill_styles_, &layout_stroke_widths_,
                                  &layout_styles_);
 }
 
@@ -1659,9 +1590,6 @@ void RenderText::EnsureLayoutTextUpdated() const {
       U16_SET_CP_START(text_.data(), 0, reveal_index);
   }
 
-  BreakList<bool>::const_iterator eliding_iterator = elidings_.breaks().begin();
-  bool previous_grapheme_elided = false;
-
   // Iterates through graphemes from |text_| and rewrite its codepoints to
   // |layout_text_|.
   base::i18n::UTF16CharIterator text_iter(text_);
@@ -1670,12 +1598,6 @@ void RenderText::EnsureLayoutTextUpdated() const {
   while (!text_iter.end() && !text_truncated) {
     std::vector<uint32_t> grapheme_codepoints;
     const size_t text_grapheme_start_position = text_iter.array_pos();
-    // We have not added the codepoints of the current grapheme to
-    // `layout_text_` yet. The rest of the loop will either add the codepoints
-    // of the current grapheme to `layout_text_` or skip the grapheme if it will
-    // not exist in `layout_text_`. Therefore, layout_text_.size() will either
-    // be the start of the current grapeheme or indicate that the grapheme does
-    // not exist in `layout_text_`.
     const size_t layout_grapheme_start_position = layout_text_.size();
 
     // Retrieve codepoints of the current grapheme.
@@ -1707,38 +1629,32 @@ void RenderText::EnsureLayoutTextUpdated() const {
       grapheme_codepoints.push_back(RenderText::kPasswordReplacementChar);
     }
 
-    // Handle unicode control characters ISO 6429 (block C0). Range from 0 to
-    // 0x1F and 0x7F. The newline character should be kept as-is when
-    // rendertext is multiline.
-    if (!multiline_ || !is_newline_grapheme) {
-      for (uint32_t& codepoint : grapheme_codepoints)
-        codepoint = ReplaceControlCharacter(codepoint);
-    }
-
-    // Truncate text when the input text it above |truncate_length_|.
-    text_truncated = (truncate_length_ != 0 &&
-                      ((text_grapheme_end_position > truncate_length_) ||
-                       (!text_iter.end() &&
-                        (text_grapheme_end_position == truncate_length_))));
-
-    // If the text is elided, replace it by an ellipsis. Do not append an
-    // ellipsis if it was already inserted.
-    eliding_iterator = IncrementBreakListIteratorToPosition(
-        elidings_, eliding_iterator, text_grapheme_start_position);
-    const bool elided_grapheme = eliding_iterator->second;
-    if (elided_grapheme || text_truncated) {
-      grapheme_codepoints.clear();
-      // Append an ellipsis if not already done.
-      if (!previous_grapheme_elided) {
-        grapheme_codepoints.push_back(kEllipsisCodepoint);
-      }
-    }
-    previous_grapheme_elided = elided_grapheme;
-
+    // Rewrite each codepoint of the grapheme.
     for (uint32_t codepoint : grapheme_codepoints) {
+      // Handle unicode control characters ISO 6429 (block C0). Range from 0 to
+      // 0x1F and 0x7F. The newline character should be kept as-is when
+      // rendertext is multiline.
+      if (!multiline_ || !is_newline_grapheme)
+        codepoint = ReplaceControlCharacter(codepoint);
+
+      // Truncate the remaining codepoints if appending the codepoint to
+      // |layout_text_| is making the text larger than |truncate_length_|.
+      size_t codepoint_length = U16_LENGTH(codepoint);
+      text_truncated =
+          (truncate_length_ != 0 &&
+           ((layout_text_.size() + codepoint_length > truncate_length_) ||
+            (!text_iter.end() &&
+             (layout_text_.size() + codepoint_length == truncate_length_))));
+
+      if (text_truncated) {
+        codepoint = kEllipsisCodepoint;
+        codepoint_length = U16_LENGTH(codepoint);
+        // On truncate, remove the whole current grapheme.
+        layout_text_.resize(layout_grapheme_start_position);
+      }
+
       // Append the codepoint to the layout text.
       const size_t current_layout_text_position = layout_text_.size();
-      const size_t codepoint_length = U16_LENGTH(codepoint);
       if (codepoint_length == 1) {
         layout_text_ += codepoint;
       } else {
@@ -1754,8 +1670,6 @@ void RenderText::EnsureLayoutTextUpdated() const {
       layout_baselines_.ApplyValue(styles.baseline(), range);
       layout_font_size_overrides_.ApplyValue(styles.font_size_override(),
                                              range);
-      layout_fill_styles_.ApplyValue(styles.fill_style(), range);
-      layout_stroke_widths_.ApplyValue(styles.stroke_width(), range);
       layout_weights_.ApplyValue(styles.weight(), range);
       for (size_t i = 0; i < layout_styles_.size(); ++i) {
         layout_styles_[i].ApplyValue(styles.style(static_cast<TextStyle>(i)),
@@ -1767,6 +1681,10 @@ void RenderText::EnsureLayoutTextUpdated() const {
                                        text_grapheme_start_position + 1);
       if (composition_range_.Contains(grapheme_start_range))
         layout_styles_[TEXT_STYLE_HEAVY_UNDERLINE].ApplyValue(true, range);
+
+      // Stop appending characters if the text is truncated.
+      if (text_truncated)
+        break;
     }
   }
 
@@ -1877,16 +1795,6 @@ Point RenderText::ToViewPoint(const PointF& point, size_t line) {
 HorizontalAlignment RenderText::GetCurrentHorizontalAlignment() {
   if (horizontal_alignment_ != ALIGN_TO_HEAD)
     return horizontal_alignment_;
-
-  if (directionality_mode_ == gfx::DIRECTIONALITY_FROM_TEXT) {
-    if (base::i18n::GetForcedTextDirection() == base::i18n::RIGHT_TO_LEFT) {
-      return ALIGN_RIGHT;
-    }
-    if (base::i18n::GetForcedTextDirection() == base::i18n::LEFT_TO_RIGHT) {
-      return ALIGN_LEFT;
-    }
-  }
-
   return GetDisplayTextDirection() == base::i18n::RIGHT_TO_LEFT ?
       ALIGN_RIGHT : ALIGN_LEFT;
 }
@@ -1978,6 +1886,9 @@ base::i18n::TextDirection RenderText::GetTextDirectionForGivenText(
       // Derive the direction from the display text, which differs from text()
       // in the case of obscured (password) textfields.
       return base::i18n::GetFirstStrongCharacterDirection(text);
+    case DIRECTIONALITY_FROM_UI:
+      return base::i18n::IsRTL() ? base::i18n::RIGHT_TO_LEFT
+                                 : base::i18n::LEFT_TO_RIGHT;
     case DIRECTIONALITY_FORCE_LTR:
       return base::i18n::LEFT_TO_RIGHT;
     case DIRECTIONALITY_FORCE_RTL:
@@ -2014,11 +1925,8 @@ void RenderText::UpdateStyleLengths() {
   baselines_.SetMax(text_length);
   font_size_overrides_.SetMax(text_length);
   weights_.SetMax(text_length);
-  fill_styles_.SetMax(text_length);
-  stroke_widths_.SetMax(text_length);
   for (auto& style : styles_)
     style.SetMax(text_length);
-  elidings_.SetMax(text_length);
 }
 
 void RenderText::UpdateLayoutStyleLengths(size_t max_length) const {
@@ -2026,8 +1934,6 @@ void RenderText::UpdateLayoutStyleLengths(size_t max_length) const {
   layout_baselines_.SetMax(max_length);
   layout_font_size_overrides_.SetMax(max_length);
   layout_weights_.SetMax(max_length);
-  layout_fill_styles_.SetMax(max_length);
-  layout_stroke_widths_.SetMax(max_length);
   for (auto& layout_style : layout_styles_)
     layout_style.SetMax(max_length);
 }
@@ -2237,7 +2143,7 @@ std::u16string RenderText::Elide(const std::u16string& text,
     // The elided text must be smaller in bytes. Otherwise, break-lists are not
     // consistent and the characters after the last range are not styled.
     DCHECK_LE(new_text.size(), text.size());
-    render_text->SetText(std::move(new_text));
+    render_text->SetText(new_text);
 
     // Restore styles and baselines without breaking multi-character graphemes.
     render_text->styles_ = styles_;
@@ -2247,8 +2153,6 @@ std::u16string RenderText::Elide(const std::u16string& text,
     RestoreBreakList(render_text.get(), &render_text->font_size_overrides_);
     render_text->weights_ = weights_;
     RestoreBreakList(render_text.get(), &render_text->weights_);
-    RestoreBreakList(render_text.get(), &render_text->fill_styles_);
-    RestoreBreakList(render_text.get(), &render_text->stroke_widths_);
 
     // We check the width of the whole desired string at once to ensure we
     // handle kerning/ligatures/etc. correctly.
@@ -2397,8 +2301,8 @@ internal::GraphemeIterator RenderText::GetGraphemeIteratorAtIndex(
   if (index == text.length())
     return text_to_display_indices_.end();
 
-  CHECK(layout_text_up_to_date_);
-  CHECK(!text_to_display_indices_.empty());
+  DCHECK(layout_text_up_to_date_);
+  DCHECK(!text_to_display_indices_.empty());
 
   // The function std::lower_bound(...) finds the first not less than |index|.
   internal::GraphemeIterator iter = std::lower_bound(
@@ -2408,7 +2312,7 @@ internal::GraphemeIterator RenderText::GetGraphemeIteratorAtIndex(
       });
 
   if (iter == text_to_display_indices_.end() || *iter.*field != index) {
-    CHECK(iter != text_to_display_indices_.begin());
+    DCHECK(iter != text_to_display_indices_.begin());
     --iter;
   }
 

@@ -107,9 +107,7 @@ class CORE_EXPORT WritableStream : public ScriptWrappable {
 
   // Inherited methods used internally.
 
-  static bool IsLocked(const WritableStream* stream) {
-    return stream->writer_ != nullptr;
-  }
+  static bool IsLocked(const WritableStream* stream) { return stream->writer_; }
 
   void Serialize(ScriptState*, MessagePort*, ExceptionState&);
 
@@ -198,7 +196,7 @@ class CORE_EXPORT WritableStream : public ScriptWrappable {
   bool HasBackpressure() const { return has_backpressure_; }
 
   const StreamPromiseResolver* InFlightWriteRequest() const {
-    return in_flight_write_request_.Get();
+    return in_flight_write_request_;
   }
 
   bool IsClosingOrClosed() const {
@@ -208,13 +206,13 @@ class CORE_EXPORT WritableStream : public ScriptWrappable {
   v8::Local<v8::Value> GetStoredError(v8::Isolate*) const;
 
   WritableStreamDefaultController* Controller() {
-    return writable_stream_controller_.Get();
+    return writable_stream_controller_;
   }
   const WritableStreamDefaultController* Controller() const {
-    return writable_stream_controller_.Get();
+    return writable_stream_controller_;
   }
 
-  const WritableStreamDefaultWriter* Writer() const { return writer_.Get(); }
+  const WritableStreamDefaultWriter* Writer() const { return writer_; }
 
   void SetCloseRequest(StreamPromiseResolver*);
   void SetController(WritableStreamDefaultController*);

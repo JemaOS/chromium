@@ -11,6 +11,9 @@
 
 namespace blink {
 
+// DEPRECATED: please use IsRequestDestinationFrame instead.
+BLINK_COMMON_EXPORT bool IsResourceTypeFrame(blink::mojom::ResourceType type);
+
 BLINK_COMMON_EXPORT bool IsRequestDestinationFrame(
     network::mojom::RequestDestination destination);
 

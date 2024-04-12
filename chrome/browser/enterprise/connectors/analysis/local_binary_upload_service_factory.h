@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ENTERPRISE_CONNECTORS_ANALYSIS_LOCAL_BINARY_UPLOAD_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_ENTERPRISE_CONNECTORS_ANALYSIS_LOCAL_BINARY_UPLOAD_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class KeyedService;
@@ -36,7 +36,7 @@ class LocalBinaryUploadServiceFactory : public ProfileKeyedServiceFactory {
       const LocalBinaryUploadServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<LocalBinaryUploadServiceFactory>;
+  friend struct base::DefaultSingletonTraits<LocalBinaryUploadServiceFactory>;
 
   LocalBinaryUploadServiceFactory();
   ~LocalBinaryUploadServiceFactory() override = default;

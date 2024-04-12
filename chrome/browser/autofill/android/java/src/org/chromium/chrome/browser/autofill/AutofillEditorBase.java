@@ -7,6 +7,8 @@ package org.chromium.chrome.browser.autofill;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -26,11 +28,10 @@ import androidx.fragment.app.Fragment;
 
 import org.chromium.components.browser_ui.settings.SettingsUtils;
 import org.chromium.components.browser_ui.widget.FadingEdgeScrollView;
-import org.chromium.ui.text.EmptyTextWatcher;
 
 /** Base class for Autofill editors (e.g. credit cards and profiles). */
-public abstract class AutofillEditorBase extends Fragment
-        implements OnItemSelectedListener, OnTouchListener, EmptyTextWatcher {
+public abstract class AutofillEditorBase
+        extends Fragment implements OnItemSelectedListener, OnTouchListener, TextWatcher {
     /** We know which profile to edit based on the GUID stuffed in extras. */
     public static final String AUTOFILL_GUID = "guid";
 
@@ -72,11 +73,9 @@ public abstract class AutofillEditorBase extends Fragment
                 (FadingEdgeScrollView) baseView.findViewById(R.id.scroll_view);
         scrollView.setEdgeVisibility(
                 FadingEdgeScrollView.EdgeType.NONE, FadingEdgeScrollView.EdgeType.FADING);
-        scrollView
-                .getViewTreeObserver()
-                .addOnScrollChangedListener(
-                        SettingsUtils.getShowShadowOnScrollListener(
-                                scrollView, baseView.findViewById(R.id.shadow)));
+        scrollView.getViewTreeObserver().addOnScrollChangedListener(
+                SettingsUtils.getShowShadowOnScrollListener(
+                        scrollView, baseView.findViewById(R.id.shadow)));
         // Inflate the editor and buttons into the "content" LinearLayout.
         LinearLayout contentLayout = (LinearLayout) scrollView.findViewById(R.id.content);
         inflater.inflate(getLayoutId(), contentLayout, true);
@@ -90,9 +89,8 @@ public abstract class AutofillEditorBase extends Fragment
     @SuppressLint("ClickableViewAccessibility")
     public boolean onTouch(View v, MotionEvent event) {
         if (v instanceof Spinner) {
-            InputMethodManager imm =
-                    (InputMethodManager)
-                            v.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            InputMethodManager imm = (InputMethodManager) v.getContext().getSystemService(
+                    Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
         }
         return false;
@@ -115,24 +113,22 @@ public abstract class AutofillEditorBase extends Fragment
     /** Initializes the buttons within the layout. */
     protected void initializeButtons(View layout) {
         Button button = (Button) layout.findViewById(R.id.button_secondary);
-        button.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        getActivity().finish();
-                    }
-                });
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getActivity().finish();
+            }
+        });
 
         button = (Button) layout.findViewById(R.id.button_primary);
-        button.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        if (saveEntry()) {
-                            getActivity().finish();
-                        }
-                    }
-                });
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (saveEntry()) {
+                    getActivity().finish();
+                }
+            }
+        });
         button.setEnabled(false);
     }
 
@@ -152,4 +148,13 @@ public abstract class AutofillEditorBase extends Fragment
 
     @Override
     public void onNothingSelected(AdapterView<?> parent) {}
+
+    @Override
+    public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+    @Override
+    public void afterTextChanged(Editable s) {}
+
+    @Override
+    public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 }

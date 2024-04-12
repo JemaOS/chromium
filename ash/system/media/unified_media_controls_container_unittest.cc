@@ -11,6 +11,7 @@
 #include "ash/system/status_area_widget_test_helper.h"
 #include "ash/system/unified/unified_system_tray.h"
 #include "ash/system/unified/unified_system_tray_bubble.h"
+#include "ash/system/unified/unified_system_tray_view.h"
 #include "ash/test/ash_test_base.h"
 #include "base/test/scoped_feature_list.h"
 #include "media/base/media_switches.h"
@@ -23,9 +24,8 @@ class UnifiedMediaControlsContainerTest : public AshTestBase {
   ~UnifiedMediaControlsContainerTest() override = default;
 
   void SetUp() override {
+    feature_list_.InitAndEnableFeature(media::kGlobalMediaControlsForChromeOS);
     AshTestBase::SetUp();
-    feature_list_.InitAndDisableFeature(
-        media::kGlobalMediaControlsCrOSUpdatedUI);
 
     // Ensure media tray is not pinned to shelf so that media controls
     // show up in quick settings.
@@ -36,25 +36,16 @@ class UnifiedMediaControlsContainerTest : public AshTestBase {
         ->ShowBubble();
   }
 
-  QuickSettingsView* quick_settings_view() {
+  UnifiedSystemTrayView* system_tray_view() {
     return StatusAreaWidgetTestHelper::GetStatusAreaWidget()
         ->unified_system_tray()
         ->bubble()
-        ->quick_settings_view();
+        ->unified_view();
   }
 
   UnifiedMediaControlsContainer* media_controls_container() {
-    return quick_settings_view()->media_controls_container_for_testing();
+    return system_tray_view()->media_controls_container_for_testing();
   }
-
-  void ShowMediaControls() { quick_settings_view()->ShowMediaControls(); }
-
-  void ShowDetailedView() {
-    auto view = std::make_unique<views::View>();
-    quick_settings_view()->SetDetailedView(std::move(view));
-  }
-
-  void ResetDetailedView() { quick_settings_view()->ResetDetailedView(); }
 
  private:
   base::test::ScopedFeatureList feature_list_;
@@ -62,20 +53,33 @@ class UnifiedMediaControlsContainerTest : public AshTestBase {
 
 TEST_F(UnifiedMediaControlsContainerTest, DoNotShowControlsWhenInDetailedView) {
   // Navigate to a dummy detailed view.
-  ShowDetailedView();
+  system_tray_view()->SetDetailedView(std::make_unique<views::View>());
 
   // Simulate media playing, container should still be hidden.
-  ShowMediaControls();
+  system_tray_view()->ShowMediaControls();
   EXPECT_FALSE(media_controls_container()->GetVisible());
 
   // Return back to main menu, now media controls should show.
-  ResetDetailedView();
+  system_tray_view()->ResetDetailedView();
+  EXPECT_TRUE(media_controls_container()->GetVisible());
+}
+
+TEST_F(UnifiedMediaControlsContainerTest, HideControlsWhenSystemMenuCollapse) {
+  EXPECT_FALSE(media_controls_container()->GetVisible());
+  system_tray_view()->SetExpandedAmount(0.0f);
+
+  // Simulate media playing, container should be hidden since menu is collapsed.
+  system_tray_view()->ShowMediaControls();
+  EXPECT_FALSE(media_controls_container()->GetVisible());
+
+  // Controls should be shown as the menu is expanding back to normal state.
+  system_tray_view()->SetExpandedAmount(0.1f);
   EXPECT_TRUE(media_controls_container()->GetVisible());
 }
 
 TEST_F(UnifiedMediaControlsContainerTest, ShowMediaControls) {
   // Simulate media playing and media controls should show.
-  ShowMediaControls();
+  system_tray_view()->ShowMediaControls();
   EXPECT_TRUE(media_controls_container()->GetVisible());
 }
 

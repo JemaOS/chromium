@@ -9,7 +9,9 @@
 
 #include "base/hash/hash.h"
 #include "base/rand_util.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/uuid.h"
 #include "build/build_config.h"
 #include "chrome/browser/sync/test/integration/encryption_helper.h"
@@ -17,12 +19,12 @@
 #include "chrome/browser/sync/test/integration/sync_service_impl_harness.h"
 #include "chrome/browser/sync/test/integration/sync_test.h"
 #include "chrome/browser/sync/test/integration/updated_progress_marker_checker.h"
-#include "components/password_manager/core/browser/features/password_manager_features_util.h"
 #include "components/password_manager/core/browser/password_form.h"
-#include "components/password_manager/core/browser/password_store/password_store_interface.h"
+#include "components/password_manager/core/browser/password_store_interface.h"
 #include "components/password_manager/core/common/password_manager_features.h"
-#include "components/signin/public/base/signin_switches.h"
+#include "components/sync/base/features.h"
 #include "components/sync/engine/cycle/entity_change_metric_recording.h"
+#include "components/sync/engine/cycle/sync_cycle_snapshot.h"
 #include "components/sync/test/fake_server_http_post_provider.h"
 #include "content/public/test/browser_test.h"
 #include "net/base/network_change_notifier.h"
@@ -30,7 +32,6 @@
 using passwords_helper::AllProfilesContainSamePasswordForms;
 using passwords_helper::AllProfilesContainSamePasswordFormsAsVerifier;
 using passwords_helper::CreateTestPasswordForm;
-using passwords_helper::GetAccountPasswordStoreInterface;
 using passwords_helper::GetAllLogins;
 using passwords_helper::GetLogins;
 using passwords_helper::GetPasswordCount;
@@ -54,7 +55,6 @@ static const char* kValidPassphrase = "passphrase!";
 class TwoClientPasswordsSyncTest : public SyncTest {
  public:
   TwoClientPasswordsSyncTest() : SyncTest(TWO_CLIENT) {}
-
   ~TwoClientPasswordsSyncTest() override = default;
 };
 
@@ -81,41 +81,6 @@ IN_PROC_BROWSER_TEST_F(TwoClientPasswordsSyncTest, E2E_ENABLED(Add)) {
 
   ASSERT_TRUE(SamePasswordFormsChecker().Wait());
   ASSERT_EQ(1, GetPasswordCount(1));
-}
-
-IN_PROC_BROWSER_TEST_F(TwoClientPasswordsSyncTest,
-                       E2E_ENABLED(AddInTransportMode)) {
-  ResetSyncForPrimaryAccount();
-  ASSERT_TRUE(SetupClients()) << "SetupClients() failed.";
-
-  // Sign in on all clients without enabling Sync-the-feature.
-  for (int i = 0; i < num_clients(); i++) {
-    ASSERT_TRUE(GetClient(i)->SignInPrimaryAccount());
-    ASSERT_TRUE(GetClient(i)->AwaitSyncTransportActive());
-    ASSERT_FALSE(GetSyncService(i)->IsSyncFeatureEnabled());
-
-    // The PASSWORDS are active only if the signin was explicit.
-    if (!switches::IsExplicitBrowserSigninUIOnDesktopEnabled(
-            switches::ExplicitBrowserSigninPhase::kExperimental)) {
-      // Opt in. PASSWORDS should become active.
-      password_manager::features_util::OptInToAccountStorage(
-          GetProfile(i)->GetPrefs(), GetSyncService(i));
-    }
-    PasswordSyncActiveChecker(GetSyncService(i)).Wait();
-  }
-
-  ASSERT_TRUE(
-      SamePasswordFormsChecker(PasswordForm::Store::kAccountStore).Wait());
-
-  // Create an account password on the first client.
-  PasswordForm form = CreateTestPasswordForm(0);
-  GetAccountPasswordStoreInterface(0)->AddLogin(form);
-  ASSERT_EQ(1, GetPasswordCount(0, PasswordForm::Store::kAccountStore));
-
-  // The second client should receive the password in its own account store.
-  EXPECT_TRUE(
-      SamePasswordFormsChecker(PasswordForm::Store::kAccountStore).Wait());
-  EXPECT_EQ(1, GetPasswordCount(1, PasswordForm::Store::kAccountStore));
 }
 
 IN_PROC_BROWSER_TEST_F(TwoClientPasswordsSyncTest, E2E_ENABLED(Race)) {
@@ -216,26 +181,6 @@ IN_PROC_BROWSER_TEST_F(TwoClientPasswordsSyncTestWithVerifier, Update) {
 
   // Wait for client 1 to commit and client 0 to receive the update.
   ASSERT_TRUE(SamePasswordFormsAsVerifierChecker(0).Wait());
-  ASSERT_TRUE(AllProfilesContainSamePasswordFormsAsVerifier());
-}
-
-IN_PROC_BROWSER_TEST_F(TwoClientPasswordsSyncTestWithVerifier,
-                       SharedPasswordMetadataAreSynced) {
-  ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
-  ASSERT_TRUE(AllProfilesContainSamePasswordFormsAsVerifier());
-
-  PasswordForm form = CreateTestPasswordForm(0);
-  form.sender_email = u"sender@example.com";
-  form.sender_name = u"Sender Name";
-  form.sender_profile_image_url = GURL("http://www.sender.com/profile_image");
-  form.date_received = form.date_created;
-  form.sharing_notification_displayed = true;
-  GetVerifierProfilePasswordStoreInterface()->AddLogin(form);
-  GetProfilePasswordStoreInterface(0)->AddLogin(form);
-
-  // Wait for client 0 to commit and client 1 to receive the update.
-  ASSERT_TRUE(SamePasswordFormsAsVerifierChecker(1).Wait());
-
   ASSERT_TRUE(AllProfilesContainSamePasswordFormsAsVerifier());
 }
 
@@ -596,7 +541,20 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_TRUE(AwaitQuiescence());
 }
 
-IN_PROC_BROWSER_TEST_F(TwoClientPasswordsSyncTest,
+class TwoClientPasswordsSyncTestWithNotes : public SyncTest {
+ public:
+  TwoClientPasswordsSyncTestWithNotes() : SyncTest(TWO_CLIENT) {
+    feature_list_.InitWithFeatures(
+        /*enabled_features=*/{syncer::kPasswordNotesWithBackup},
+        /*disabled_features=*/{});
+  }
+  ~TwoClientPasswordsSyncTestWithNotes() override = default;
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(TwoClientPasswordsSyncTestWithNotes,
                        SyncPasswordNotesBetweenDevices) {
   ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
   ASSERT_TRUE(AllProfilesContainSamePasswordForms());
@@ -634,7 +592,7 @@ IN_PROC_BROWSER_TEST_F(TwoClientPasswordsSyncTest,
 
 // This tests the  logic for reading and writing the notes backup blob when
 // notes are empty.
-IN_PROC_BROWSER_TEST_F(TwoClientPasswordsSyncTest,
+IN_PROC_BROWSER_TEST_F(TwoClientPasswordsSyncTestWithNotes,
                        SyncPasswordWithEmptyNotesBetweenDevices) {
   ASSERT_TRUE(SetupSync()) << "SetupSync() failed.";
   ASSERT_TRUE(AllProfilesContainSamePasswordForms());

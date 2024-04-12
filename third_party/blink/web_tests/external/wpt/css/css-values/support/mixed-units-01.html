@@ -3,14 +3,21 @@
   <head>
     <style>
       body {
-        background: rgb(0, 0, 255);
+        margin: 0;
+        font-size: 16px;
       }
+      .box {
+        background: rgb(0, 0, 255);
+        width: 100%;
+        height: 10px;
+      }
+
       @media (width: calc(116px - 1em)) {
-        body {
+        .box {
           background: rgb(255, 165, 0);
         }
       }
     </style>
   </head>
-  <body></body>
+  <div class="box"></div>
 </html>

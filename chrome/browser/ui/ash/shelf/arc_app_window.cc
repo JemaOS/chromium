@@ -86,11 +86,8 @@ void ArcAppWindow::Close() {
     arc::CloseTask(*task_id);
 }
 
-void ArcAppWindow::OnAppImageUpdated(
-    const std::string& app_id,
-    const gfx::ImageSkia& image,
-    bool is_placeholder_icon,
-    const std::optional<gfx::ImageSkia>& badge_image) {
+void ArcAppWindow::OnAppImageUpdated(const std::string& app_id,
+                                     const gfx::ImageSkia& image) {
   if (image_fetching_) {
     // This is default app icon. Don't assign it right now to avoid flickering.
     // Wait for another image is loaded and only in case next image is not

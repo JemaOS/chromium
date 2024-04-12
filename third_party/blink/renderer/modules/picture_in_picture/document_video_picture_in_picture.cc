@@ -31,8 +31,7 @@ bool DocumentVideoPictureInPicture::pictureInPictureEnabled(
 }
 
 // static
-ScriptPromiseTyped<IDLUndefined>
-DocumentVideoPictureInPicture::exitPictureInPicture(
+ScriptPromise DocumentVideoPictureInPicture::exitPictureInPicture(
     ScriptState* script_state,
     Document& document,
     ExceptionState& exception_state) {
@@ -43,18 +42,24 @@ DocumentVideoPictureInPicture::exitPictureInPicture(
   if (!picture_in_picture_element) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
                                       kNoPictureInPictureElement);
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
   DCHECK(IsA<HTMLVideoElement>(picture_in_picture_element));
   controller.ExitPictureInPicture(
       To<HTMLVideoElement>(picture_in_picture_element), resolver);
   return promise;
+}
+
+// static
+Element* DocumentVideoPictureInPicture::pictureInPictureElement(
+    TreeScope& scope) {
+  return PictureInPictureController::From(scope.GetDocument())
+      .PictureInPictureElement(scope);
 }
 
 }  // namespace blink

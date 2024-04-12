@@ -23,9 +23,6 @@ WizardContext::WizardContext()
 
 WizardContext::~WizardContext() = default;
 
-WizardContext::GaiaConfig::GaiaConfig() = default;
-WizardContext::GaiaConfig::~GaiaConfig() = default;
-
 bool IsRollbackFlow(const WizardContext& context) {
   return context.configuration.FindBool(configuration::kRestoreAfterRollback)
       .value_or(false);

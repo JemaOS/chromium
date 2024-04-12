@@ -5,8 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_RESOURCE_IMAGE_RESOURCE_INFO_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_RESOURCE_IMAGE_RESOURCE_INFO_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_error.h"
@@ -32,8 +31,6 @@ class CORE_EXPORT ImageResourceInfo : public GarbageCollectedMixin {
   virtual const KURL& Url() const = 0;
   virtual base::TimeTicks LoadResponseEnd() const = 0;
   virtual base::TimeTicks LoadStart() const = 0;
-  virtual base::TimeTicks LoadEnd() const = 0;
-  virtual base::TimeTicks DiscoveryTime() const = 0;
   virtual const ResourceResponse& GetResponse() const = 0;
   virtual bool IsCacheValidator() const = 0;
   enum DoesCurrentFrameHaveSingleSecurityOrigin {
@@ -43,7 +40,7 @@ class CORE_EXPORT ImageResourceInfo : public GarbageCollectedMixin {
   virtual bool IsAccessAllowed(
       DoesCurrentFrameHaveSingleSecurityOrigin) const = 0;
   virtual bool HasCacheControlNoStoreHeader() const = 0;
-  virtual std::optional<ResourceError> GetResourceError() const = 0;
+  virtual absl::optional<ResourceError> GetResourceError() const = 0;
 
   // TODO(hiroshige): Remove this once MemoryCache becomes further weaker.
   virtual void SetDecodedSize(size_t) = 0;
@@ -64,7 +61,7 @@ class CORE_EXPORT ImageResourceInfo : public GarbageCollectedMixin {
 
   virtual const HashSet<String>* GetUnsupportedImageMimeTypes() const = 0;
 
-  virtual std::optional<WebURLRequest::Priority> RequestPriority() const = 0;
+  virtual absl::optional<WebURLRequest::Priority> RequestPriority() const = 0;
 
   void Trace(Visitor* visitor) const override {}
 };

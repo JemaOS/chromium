@@ -7,20 +7,19 @@ import 'chrome://settings/lazy_load.js';
 
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 // <if expr="not is_chromeos">
-import {listenOnce} from 'chrome://resources/js/util.js';
+import {listenOnce} from 'chrome://resources/js/util_ts.js';
 // </if>
 
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 // <if expr="not is_chromeos">
-import type {CrCheckboxElement} from 'chrome://settings/lazy_load.js';
+import {CrCheckboxElement} from 'chrome://settings/lazy_load.js';
 // </if>
 
 // <if expr="not chromeos_lacros">
 import {loadTimeData} from 'chrome://settings/settings.js';
 // </if>
 
-import type {SettingsPeoplePageElement} from 'chrome://settings/settings.js';
-import {pageVisibility, ProfileInfoBrowserProxyImpl, Router, routes, StatusAction, SyncBrowserProxyImpl} from 'chrome://settings/settings.js';
+import {pageVisibility, ProfileInfoBrowserProxyImpl, Router, routes, SettingsPeoplePageElement, StatusAction, SyncBrowserProxyImpl} from 'chrome://settings/settings.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 // <if expr="not is_chromeos">
 import {assertLT} from 'chrome://webui-test/chai_assert.js';

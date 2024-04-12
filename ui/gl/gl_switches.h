@@ -7,8 +7,6 @@
 
 // Defines all the command-line switches used by ui/gl.
 
-#include <stddef.h>
-
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
 #include "ui/gl/gl_export.h"
@@ -82,35 +80,33 @@ GL_EXPORT extern const char kDisableGLDrawingForTests[];
 GL_EXPORT extern const char kOverrideUseSoftwareGLForTests[];
 
 GL_EXPORT extern const char* const kGLSwitchesCopiedFromGpuProcessHost[];
-GL_EXPORT extern const size_t kGLSwitchesCopiedFromGpuProcessHostNumSwitches;
+GL_EXPORT extern const int kGLSwitchesCopiedFromGpuProcessHostNumSwitches;
 
 }  // namespace switches
 
 namespace features {
 
-GL_EXPORT BASE_DECLARE_FEATURE(kDCompDebugVisualization);
 GL_EXPORT BASE_DECLARE_FEATURE(kDCompTripleBufferRootSwapChain);
 GL_EXPORT BASE_DECLARE_FEATURE(kDCompTripleBufferVideoSwapChain);
-GL_EXPORT BASE_DECLARE_FEATURE(kDCompVisualTreeOptimization);
+GL_EXPORT BASE_DECLARE_FEATURE(kDirectCompositionGpuVSync);
+GL_EXPORT BASE_DECLARE_FEATURE(kDirectCompositionLowLatencyPresentation);
+GL_EXPORT BASE_DECLARE_FEATURE(kDirectCompositionVerifyDrawOffset);
+GL_EXPORT extern const base::FeatureParam<int> kVerifyDrawOffsetX;
+GL_EXPORT extern const base::FeatureParam<int> kVerifyDrawOffsetY;
 GL_EXPORT BASE_DECLARE_FEATURE(kDirectCompositionSoftwareOverlays);
 GL_EXPORT BASE_DECLARE_FEATURE(kDirectCompositionLetterboxVideoOptimization);
-GL_EXPORT BASE_DECLARE_FEATURE(kDirectCompositionUnlimitedOverlays);
-GL_EXPORT BASE_DECLARE_FEATURE(kCopyNonOverlayResourcesToDCompSurfaces);
 GL_EXPORT BASE_DECLARE_FEATURE(kEGLDualGPURendering);
 GL_EXPORT BASE_DECLARE_FEATURE(kIntelVpSuperResolution);
 GL_EXPORT BASE_DECLARE_FEATURE(kNvidiaVpSuperResolution);
-GL_EXPORT BASE_DECLARE_FEATURE(kNvidiaVpTrueHDR);
 GL_EXPORT BASE_DECLARE_FEATURE(kDefaultANGLEOpenGL);
 GL_EXPORT BASE_DECLARE_FEATURE(kDefaultANGLEMetal);
 GL_EXPORT BASE_DECLARE_FEATURE(kDefaultANGLEVulkan);
 GL_EXPORT BASE_DECLARE_FEATURE(kTrackCurrentShaders);
 GL_EXPORT BASE_DECLARE_FEATURE(kVulkanFromANGLE);
-GL_EXPORT BASE_DECLARE_FEATURE(kANGLEDebugLayer);
 GL_EXPORT BASE_DECLARE_FEATURE(kDXGIWaitableSwapChain);
 GL_EXPORT extern const base::FeatureParam<int>
     kDXGIWaitableSwapChainMaxQueuedFrames;
 GL_EXPORT BASE_DECLARE_FEATURE(kDXGISwapChainPresentInterval0);
-GL_EXPORT BASE_DECLARE_FEATURE(kUseSwapChainPresenterFloatingPointAdjustments);
 
 GL_EXPORT bool IsDefaultANGLEVulkan();
 

@@ -5,18 +5,14 @@
 #ifndef CHROME_BROWSER_ASH_LOGIN_LOCK_VIEWS_SCREEN_LOCKER_H_
 #define CHROME_BROWSER_ASH_LOGIN_LOCK_VIEWS_SCREEN_LOCKER_H_
 
-#include <string>
-
-#include "base/functional/callback.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/lock_screen_apps/focus_cycler_delegate.h"
-#include "chrome/browser/ash/login/help_app_launcher.h"
+#include "chrome/browser/ash/login/lock/screen_locker.h"
 #include "chrome/browser/ui/ash/login_screen_client_impl.h"
 #include "chromeos/dbus/power/power_manager_client.h"
-#include "components/account_id/account_id.h"
 
 namespace ash {
 
@@ -26,22 +22,27 @@ class UserSelectionScreen;
 
 // ViewsScreenLocker acts like LoginScreenClientImpl::Delegate which handles
 // method calls coming from ash into chrome.
-// It also handles calls from chrome into ash (views-based lockscreen).
+// It is also a ScreenLocker::Delegate which handles calls from chrome into
+// ash (views-based lockscreen).
 class ViewsScreenLocker : public LoginScreenClientImpl::Delegate,
+                          public ScreenLocker::Delegate,
                           public chromeos::PowerManagerClient::Observer,
                           public lock_screen_apps::FocusCyclerDelegate {
  public:
-  ViewsScreenLocker();
+  explicit ViewsScreenLocker(ScreenLocker* screen_locker);
 
   ViewsScreenLocker(const ViewsScreenLocker&) = delete;
   ViewsScreenLocker& operator=(const ViewsScreenLocker&) = delete;
 
   ~ViewsScreenLocker() override;
 
-  void Init(const user_manager::UserList& users);
+  void Init();
 
-  // Called by ScreenLocker to notify that ash lock animation finishes.
-  void OnAshLockAnimationFinished();
+  // ScreenLocker::Delegate:
+  void ShowErrorMessage(int error_msg_id,
+                        HelpAppLauncher::HelpTopic help_topic_id) override;
+  void ClearErrors() override;
+  void OnAshLockAnimationFinished() override;
 
   // LoginScreenClientImpl::Delegate
   void HandleAuthenticateUserWithPasswordOrPin(
@@ -55,6 +56,7 @@ class ViewsScreenLocker : public LoginScreenClientImpl::Delegate,
       const AccountId& account_id,
       base::OnceCallback<void(bool)> callback) override;
   void HandleOnFocusPod(const AccountId& account_id) override;
+  void HandleOnNoPodFocused() override;
   bool HandleFocusLockScreenApps(bool reverse) override;
   void HandleFocusOobeDialog() override;
   void HandleLaunchPublicSession(const AccountId& account_id,
@@ -80,6 +82,9 @@ class ViewsScreenLocker : public LoginScreenClientImpl::Delegate,
 
   std::unique_ptr<UserBoardViewMojo> user_board_view_mojo_;
   std::unique_ptr<UserSelectionScreen> user_selection_screen_;
+
+  // The ScreenLocker that owns this instance.
+  const raw_ptr<ScreenLocker, ExperimentalAsh> screen_locker_ = nullptr;
 
   // Time when lock was initiated, required for metrics.
   base::TimeTicks lock_time_;

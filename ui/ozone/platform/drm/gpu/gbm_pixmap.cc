@@ -24,7 +24,7 @@ GbmPixmap::GbmPixmap(GbmSurfaceFactory* surface_manager,
       buffer_(std::move(buffer)),
       framebuffer_(std::move(framebuffer)) {}
 
-gfx::NativePixmapHandle GbmPixmap::ExportHandle() const {
+gfx::NativePixmapHandle GbmPixmap::ExportHandle() {
   return buffer_->ExportHandle();
 }
 

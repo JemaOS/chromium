@@ -27,7 +27,7 @@ class HidChooserContextFactory : public ProfileKeyedServiceFactory {
   ~HidChooserContextFactory() override;
 
   // BrowserContextKeyedBaseFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   void BrowserContextShutdown(content::BrowserContext* context) override;
 };

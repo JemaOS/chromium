@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/webui/side_panel/bookmarks/bookmarks_page_handler.h"
 
 #include "base/memory/ptr_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
 #include "chrome/app/chrome_command_ids.h"
@@ -34,7 +33,6 @@
 #include "components/prefs/pref_service.h"
 #include "components/profile_metrics/browser_profile_type.h"
 #include "components/strings/grit/components_strings.h"
-#include "mojo/public/cpp/bindings/message.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/simple_menu_model.h"
 #include "ui/base/mojom/window_open_disposition.mojom.h"
@@ -49,9 +47,8 @@ class BookmarkContextMenu : public ui::SimpleMenuModel,
  public:
   explicit BookmarkContextMenu(
       Browser* browser,
-      base::WeakPtr<TopChromeWebUIController::Embedder> embedder,
-      std::vector<raw_ptr<const bookmarks::BookmarkNode, VectorExperimental>>
-          bookmarks,
+      base::WeakPtr<ui::MojoBubbleWebUIController::Embedder> embedder,
+      std::vector<const bookmarks::BookmarkNode*> bookmarks,
       const side_panel::mojom::ActionSource& source,
       commerce::ShoppingListContextMenuController* shopping_list_controller)
       : ui::SimpleMenuModel(this),
@@ -62,14 +59,10 @@ class BookmarkContextMenu : public ui::SimpleMenuModel,
             browser,
             browser->profile(),
             BookmarkLaunchLocation::kSidePanelContextMenu,
-            bookmarks.size() > 0 ? bookmarks.front()->parent() : nullptr,
+            bookmarks.front()->parent(),
             bookmarks))),
         shopping_list_controller_(shopping_list_controller),
         bookmarks_(bookmarks) {
-    if (bookmarks.size() == 0) {
-      mojo::ReportBadMessage("BookmarkContextMenu has empty bookmarks");
-      return;
-    }
     if (source == side_panel::mojom::ActionSource::kPriceTracking) {
       DCHECK(shopping_list_controller_);
       AddItem(IDC_BOOKMARK_BAR_OPEN_ALL);
@@ -140,17 +133,16 @@ class BookmarkContextMenu : public ui::SimpleMenuModel,
                                          ->GetIndexOfCommandId(command_id)
                                          .value()));
   }
-  base::WeakPtr<TopChromeWebUIController::Embedder> embedder_;
+  base::WeakPtr<ui::MojoBubbleWebUIController::Embedder> embedder_;
   std::unique_ptr<BookmarkContextMenuController> controller_;
   raw_ptr<commerce::ShoppingListContextMenuController>
       shopping_list_controller_;
-  std::vector<raw_ptr<const bookmarks::BookmarkNode, VectorExperimental>>
-      bookmarks_;
+  std::vector<const bookmarks::BookmarkNode*> bookmarks_;
 };
 
 std::unique_ptr<BookmarkContextMenu> ContextMenuFromNodes(
     const std::vector<int64_t> node_ids,
-    base::WeakPtr<TopChromeWebUIController::Embedder> embedder,
+    base::WeakPtr<ui::MojoBubbleWebUIController::Embedder> embedder,
     side_panel::mojom::ActionSource source,
     commerce::ShoppingListContextMenuController* shopping_list_controller) {
   Browser* browser = chrome::FindLastActive();
@@ -160,8 +152,7 @@ std::unique_ptr<BookmarkContextMenu> ContextMenuFromNodes(
 
   bookmarks::BookmarkModel* bookmark_model =
       BookmarkModelFactory::GetForBrowserContext(browser->profile());
-  std::vector<raw_ptr<const bookmarks::BookmarkNode, VectorExperimental>>
-      bookmarks = {};
+  std::vector<const bookmarks::BookmarkNode*> bookmarks = {};
   for (const int64_t id : node_ids) {
     const bookmarks::BookmarkNode* bookmark =
         bookmarks::GetBookmarkNodeByID(bookmark_model, id);

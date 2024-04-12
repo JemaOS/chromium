@@ -45,7 +45,7 @@ OAuthLoginDetector::OAuthLoginDetector()
 
 OAuthLoginDetector::~OAuthLoginDetector() = default;
 
-std::optional<GURL> OAuthLoginDetector::GetSuccessfulLoginFlowSite(
+absl::optional<GURL> OAuthLoginDetector::GetSuccessfulLoginFlowSite(
     const GURL& prev_navigation_url,
     const std::vector<GURL>& redirect_chain) {
   for (size_t i = 0; i < redirect_chain.size(); i++) {
@@ -53,7 +53,7 @@ std::optional<GURL> OAuthLoginDetector::GetSuccessfulLoginFlowSite(
     // Allow login flows to be detected only on HTTPS pages.
     if (!navigation_url.SchemeIs(url::kHttpsScheme)) {
       login_flow_info_.reset();
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     // Check for OAuth login completion.
@@ -86,7 +86,7 @@ std::optional<GURL> OAuthLoginDetector::GetSuccessfulLoginFlowSite(
   }
   if (login_flow_info_)
     login_flow_info_->count_navigations_since_login_flow_start++;
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void OAuthLoginDetector::DidOpenAsPopUp(const GURL& opener_navigation_url) {
@@ -97,14 +97,14 @@ void OAuthLoginDetector::DidOpenAsPopUp(const GURL& opener_navigation_url) {
   }
 }
 
-std::optional<GURL> OAuthLoginDetector::GetPopUpLoginFlowSite() const {
+absl::optional<GURL> OAuthLoginDetector::GetPopUpLoginFlowSite() const {
   // OAuth has never started.
   if (!login_flow_info_)
-    return std::nullopt;
+    return absl::nullopt;
 
   // Only consider OAuth completion when this is a popup window.
   if (!popup_opener_navigation_site_)
-    return std::nullopt;
+    return absl::nullopt;
 
   return login_flow_info_->oauth_requestor_site;
 }

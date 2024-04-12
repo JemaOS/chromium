@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_API_NOTIFICATIONS_EXTENSION_NOTIFICATION_DISPLAY_HELPER_FACTORY_H_
 #define CHROME_BROWSER_EXTENSIONS_API_NOTIFICATIONS_EXTENSION_NOTIFICATION_DISPLAY_HELPER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -30,11 +30,12 @@ class ExtensionNotificationDisplayHelperFactory
 
  protected:
   // Overridden from BrowserContextKeyedServiceFactory.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 
  private:
-  friend base::NoDestructor<ExtensionNotificationDisplayHelperFactory>;
+  friend struct base::DefaultSingletonTraits<
+      ExtensionNotificationDisplayHelperFactory>;
 
   ExtensionNotificationDisplayHelperFactory();
   ~ExtensionNotificationDisplayHelperFactory() override;

@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/keyed_service/core/simple_keyed_service_factory.h"
 
@@ -29,7 +29,7 @@ class PaintPreviewTabServiceFactory : public SimpleKeyedServiceFactory {
       const PaintPreviewTabServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<PaintPreviewTabServiceFactory>;
+  friend struct base::DefaultSingletonTraits<PaintPreviewTabServiceFactory>;
 
   PaintPreviewTabServiceFactory();
   ~PaintPreviewTabServiceFactory() override;

@@ -49,7 +49,7 @@ TransformOperation::OperationType GetTypeForScale(double x,
 }
 }  // namespace
 
-TransformOperation* ScaleTransformOperation::Accumulate(
+scoped_refptr<TransformOperation> ScaleTransformOperation::Accumulate(
     const TransformOperation& other) {
   DCHECK(other.CanBlendWith(*this));
   const auto& other_op = To<ScaleTransformOperation>(other);
@@ -58,18 +58,18 @@ TransformOperation* ScaleTransformOperation::Accumulate(
   double new_x = x_ + other_op.x_ - 1;
   double new_y = y_ + other_op.y_ - 1;
   double new_z = z_ + other_op.z_ - 1;
-  return MakeGarbageCollected<ScaleTransformOperation>(
-      new_x, new_y, new_z, GetTypeForScale(new_x, new_y, new_z));
+  return ScaleTransformOperation::Create(new_x, new_y, new_z,
+                                         GetTypeForScale(new_x, new_y, new_z));
 }
 
-TransformOperation* ScaleTransformOperation::Blend(
+scoped_refptr<TransformOperation> ScaleTransformOperation::Blend(
     const TransformOperation* from,
     double progress,
     bool blend_to_identity) {
   DCHECK(!from || CanBlendWith(*from));
 
   if (blend_to_identity) {
-    return MakeGarbageCollected<ScaleTransformOperation>(
+    return ScaleTransformOperation::Create(
         blink::Blend(x_, 1.0, progress), blink::Blend(y_, 1.0, progress),
         blink::Blend(z_, 1.0, progress), type_);
   }
@@ -84,7 +84,7 @@ TransformOperation* ScaleTransformOperation::Blend(
 
   CommonPrimitiveForInterpolation(from, type);
 
-  return MakeGarbageCollected<ScaleTransformOperation>(
+  return ScaleTransformOperation::Create(
       blink::Blend(from_x, x_, progress), blink::Blend(from_y, y_, progress),
       blink::Blend(from_z, z_, progress), type);
 }

@@ -22,13 +22,22 @@ public final class ScrollingStripStackerUnitTest {
     private static final float TAB_OFFSET_Y = 2;
     private static final float TAB_WIDTH = 25;
     private static final float CACHED_TAB_WIDTH = 30;
+    private static final float STRIP_WIDTH = 200;
+    private static final float TAB_OVERLAP = 5;
+    private static final float STRIP_MARGIN = 2;
+    private static final float BUTTON_WIDTH = 10;
 
     private ScrollingStripStacker mTarget = new ScrollingStripStacker();
-    @Mock private StripLayoutTab mTab1;
-    @Mock private StripLayoutTab mTab2;
-    @Mock private StripLayoutTab mTab3;
-    @Mock private StripLayoutTab mTab4;
-    @Mock private StripLayoutTab mTab5;
+    @Mock
+    private StripLayoutTab mTab1;
+    @Mock
+    private StripLayoutTab mTab2;
+    @Mock
+    private StripLayoutTab mTab3;
+    @Mock
+    private StripLayoutTab mTab4;
+    @Mock
+    private StripLayoutTab mTab5;
     private StripLayoutTab[] mInput;
 
     @Before
@@ -50,23 +59,28 @@ public final class ScrollingStripStackerUnitTest {
 
     @Test
     public void testSetTabOffsets_tabNotClosing() {
-        mTarget.setTabOffsets(mInput, false, false, CACHED_TAB_WIDTH);
+        mTarget.setTabOffsets(2, mInput, 0, 0, 0, 0, 0, 0, false, false, false, CACHED_TAB_WIDTH);
 
         float expected_x = 0;
         for (StripLayoutTab tab : mInput) {
             verify(tab).setDrawX(expected_x);
             verify(tab).setWidth(CACHED_TAB_WIDTH);
             verify(tab).setDrawY(TAB_OFFSET_Y);
+            verify(tab).setVisiblePercentage(1.f);
+            verify(tab).setContentOffsetX(0.f);
             expected_x += TAB_WIDTH;
         }
     }
 
     @Test
     public void testSetTabOffsets_tabClosing() {
-        mTarget.setTabOffsets(mInput, true, false, CACHED_TAB_WIDTH);
+        mTarget.setTabOffsets(
+                2, mInput, 0, 0, 0, 0, 0, STRIP_WIDTH, false, true, false, CACHED_TAB_WIDTH);
 
         for (StripLayoutTab tab : mInput) {
             verify(tab).setDrawY(TAB_OFFSET_Y);
+            verify(tab).setVisiblePercentage(1.f);
+            verify(tab).setContentOffsetX(0.f);
             verify(tab).getOffsetY();
             verifyNoMoreInteractions(tab);
         }
@@ -74,7 +88,8 @@ public final class ScrollingStripStackerUnitTest {
 
     @Test
     public void testSetTabOffsets_tabCreating() {
-        mTarget.setTabOffsets(mInput, false, true, CACHED_TAB_WIDTH);
+        mTarget.setTabOffsets(
+                2, mInput, 0, 0, 0, 0, 0, STRIP_WIDTH, false, false, true, CACHED_TAB_WIDTH);
 
         float expected_x = 0;
         for (StripLayoutTab tab : mInput) {
@@ -82,6 +97,8 @@ public final class ScrollingStripStackerUnitTest {
             verify(tab).getOffsetX();
             verify(tab).setDrawX(expected_x);
             verify(tab).setDrawY(TAB_OFFSET_Y);
+            verify(tab).setVisiblePercentage(1.f);
+            verify(tab).setContentOffsetX(0.f);
             verify(tab).getOffsetY();
             verifyNoMoreInteractions(tab);
             expected_x += TAB_WIDTH;
@@ -90,37 +107,8 @@ public final class ScrollingStripStackerUnitTest {
 
     @Test
     public void testPerformOcclusionPass() {
-        mTarget.performOcclusionPass(mInput, 0, 2 * TAB_WIDTH);
+        mTarget.performOcclusionPass(2, mInput, 2 * TAB_WIDTH);
 
-        for (StripLayoutTab tab : mInput) {
-            if (tab == mTab1 || tab == mTab5) {
-                verify(tab).setVisible(false);
-            } else {
-                verify(tab).setVisible(true);
-            }
-        }
-    }
-
-    @Test
-    public void testPerformOcclusionPassWithXOffset() {
-        mTarget.performOcclusionPass(mInput, TAB_WIDTH, 2 * TAB_WIDTH);
-
-        // Move the window with xOffset = TAB_WIDTH, will make TAB_2 invisible, but TAB_5 visible.
-        for (StripLayoutTab tab : mInput) {
-            if (tab == mTab1 || tab == mTab2) {
-                verify(tab).setVisible(false);
-            } else {
-                verify(tab).setVisible(true);
-            }
-        }
-    }
-
-    @Test
-    public void testPerformOcclusionPassWithPartialXOffset() {
-        mTarget.performOcclusionPass(mInput, TAB_WIDTH / 2, 2 * TAB_WIDTH);
-
-        // Move the window with xOffset = TAB_WIDTH / 2, will make both TAB_2 and TAB_4 partially
-        // invisible. TAB_5 will still be invisible in this case.
         for (StripLayoutTab tab : mInput) {
             if (tab == mTab1 || tab == mTab5) {
                 verify(tab).setVisible(false);

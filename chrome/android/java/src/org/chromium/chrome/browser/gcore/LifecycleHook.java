@@ -67,6 +67,7 @@ class LifecycleHook implements ApplicationStateListener {
         }
     }
 
+
     @Override
     public void onApplicationStateChange(int newState) {
         Log.d(TAG, "onApplicationStateChange");
@@ -75,11 +76,8 @@ class LifecycleHook implements ApplicationStateListener {
         boolean newVisibility = ApplicationStatus.hasVisibleActivities();
         if (mIsApplicationVisible == newVisibility) return;
 
-        Log.d(
-                TAG,
-                "Application visibilty changed to %s. Updating state of %d client(s).",
-                newVisibility,
-                mClientHelpers.size());
+        Log.d(TAG, "Application visibilty changed to %s. Updating state of %d client(s).",
+                newVisibility, mClientHelpers.size());
 
         mIsApplicationVisible = newVisibility;
 

@@ -31,12 +31,7 @@ PrinterEventTracker* PrinterEventTrackerFactory::GetForBrowserContext(
 PrinterEventTrackerFactory::PrinterEventTrackerFactory()
     : ProfileKeyedServiceFactory(
           "PrinterEventTracker",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 PrinterEventTrackerFactory::~PrinterEventTrackerFactory() = default;
 
 void PrinterEventTrackerFactory::SetLogging(bool enabled) {
@@ -53,10 +48,9 @@ void PrinterEventTrackerFactory::SetLogging(bool enabled) {
 }
 
 // BrowserContextKeyedServiceFactory:
-std::unique_ptr<KeyedService>
-PrinterEventTrackerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PrinterEventTrackerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  std::unique_ptr<PrinterEventTracker> tracker = std::make_unique<PrinterEventTracker>();
+  PrinterEventTracker* tracker = new PrinterEventTracker();
   tracker->set_logging(logging_enabled_);
   return tracker;
 }

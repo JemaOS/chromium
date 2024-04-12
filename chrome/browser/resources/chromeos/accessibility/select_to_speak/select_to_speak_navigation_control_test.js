@@ -29,6 +29,13 @@ SelectToSpeakNavigationControlTest = class extends SelectToSpeakE2ETest {
     chrome.accessibilityPrivate.updateSelectToSpeakPanel =
         this.updateSelectToSpeakPanel;
 
+    await importModule(
+        'selectToSpeak', '/select_to_speak/select_to_speak_main.js');
+    await importModule(
+        'SelectToSpeakConstants',
+        '/select_to_speak/select_to_speak_constants.js');
+    await importModule('AutomationUtil', '/common/automation_util.js');
+    await importModule('PrefsManager', '/select_to_speak/prefs_manager.js');
     await new Promise(resolve => {
       chrome.settingsPrivate.setPref(
           PrefsManager.ENHANCED_VOICES_DIALOG_SHOWN_KEY, true,
@@ -682,7 +689,9 @@ AX_TEST_F(
 AX_TEST_F(
     'SelectToSpeakNavigationControlTest', 'ChangeSpeedWhilePlaying',
     async function() {
-      chrome.settingsPrivate.setPref('settings.tts.speech_rate', 1.2);
+      chrome.settingsPrivate.setPref(
+          'settings.tts.speech_rate', 1.2,
+          '' /* unused, see crbug.com/866161 */, () => {});
       const bodyHtml = `
       <p id="p1">Paragraph 1</p>'
     `;
@@ -722,7 +731,9 @@ AX_TEST_F(
 AX_TEST_F(
     'SelectToSpeakNavigationControlTest', 'RetainsSpeedChange',
     async function() {
-      chrome.settingsPrivate.setPref('settings.tts.speech_rate', 1.0);
+      chrome.settingsPrivate.setPref(
+          'settings.tts.speech_rate', 1.0,
+          '' /* unused, see crbug.com/866161 */, () => {});
       const bodyHtml = `
     <p id="p1">Paragraph 1</p>'
   `;
@@ -745,7 +756,9 @@ AX_TEST_F(
 AX_TEST_F(
     'SelectToSpeakNavigationControlTest', 'ChangeSpeedWhilePaused',
     async function() {
-      chrome.settingsPrivate.setPref('settings.tts.speech_rate', 1.2);
+      chrome.settingsPrivate.setPref(
+          'settings.tts.speech_rate', 1.2,
+          '' /* unused, see crbug.com/866161 */, () => {});
       const bodyHtml = `
       <p id="p1">Paragraph 1</p>'
     `;

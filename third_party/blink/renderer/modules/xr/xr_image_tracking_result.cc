@@ -28,9 +28,9 @@ XRImageTrackingResult::XRImageTrackingResult(
   }
 }
 
-std::optional<gfx::Transform> XRImageTrackingResult::MojoFromObject() const {
+absl::optional<gfx::Transform> XRImageTrackingResult::MojoFromObject() const {
   if (!mojo_from_this_) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return mojo_from_this_->ToTransform();
@@ -42,7 +42,7 @@ XRSpace* XRImageTrackingResult::imageSpace() const {
         session_, this);
   }
 
-  return image_space_.Get();
+  return image_space_;
 }
 
 device::mojom::blink::XRNativeOriginInformationPtr

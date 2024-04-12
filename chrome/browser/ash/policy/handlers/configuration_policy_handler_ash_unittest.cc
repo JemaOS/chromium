@@ -68,9 +68,8 @@ void LoginScreenPowerManagementPolicyHandlerTest::SetUp() {
 
 base::Value GetPref(PrefValueMap* prefs, const std::string& name) {
   base::Value* pref_value = nullptr;
-  if (prefs->GetValue(name, &pref_value)) {
+  if (prefs->GetValue(name, &pref_value))
     return pref_value->Clone();
-  }
   return base::Value("Pref was not found");
 }
 
@@ -115,8 +114,8 @@ TEST(ExternalDataPolicyHandlerTest, WrongType) {
 }
 
 TEST(ExternalDataPolicyHandlerTest, MissingURL) {
-  auto dict = base::Value::Dict().Set(
-      "hash", "1234567890123456789012345678901234567890");
+  base::Value::Dict dict;
+  dict.Set("hash", "1234567890123456789012345678901234567890");
   PolicyMap policy_map;
   policy_map.Set(key::kUserAvatarImage, POLICY_LEVEL_MANDATORY,
                  POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD,
@@ -128,9 +127,9 @@ TEST(ExternalDataPolicyHandlerTest, MissingURL) {
 }
 
 TEST(ExternalDataPolicyHandlerTest, InvalidURL) {
-  auto dict = base::Value::Dict()
-                  .Set("url", "http://")
-                  .Set("hash", "1234567890123456789012345678901234567890");
+  base::Value::Dict dict;
+  dict.Set("url", "http://");
+  dict.Set("hash", "1234567890123456789012345678901234567890");
   PolicyMap policy_map;
   policy_map.Set(key::kUserAvatarImage, POLICY_LEVEL_MANDATORY,
                  POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD,
@@ -142,7 +141,8 @@ TEST(ExternalDataPolicyHandlerTest, InvalidURL) {
 }
 
 TEST(ExternalDataPolicyHandlerTest, MissingHash) {
-  auto dict = base::Value::Dict().Set("url", "http://localhost/");
+  base::Value::Dict dict;
+  dict.Set("url", "http://localhost/");
   PolicyMap policy_map;
   policy_map.Set(key::kUserAvatarImage, POLICY_LEVEL_MANDATORY,
                  POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD,
@@ -154,8 +154,9 @@ TEST(ExternalDataPolicyHandlerTest, MissingHash) {
 }
 
 TEST(ExternalDataPolicyHandlerTest, InvalidHash) {
-  auto dict =
-      base::Value::Dict().Set("url", "http://localhost/").Set("hash", "1234");
+  base::Value::Dict dict;
+  dict.Set("url", "http://localhost/");
+  dict.Set("hash", "1234");
   PolicyMap policy_map;
   policy_map.Set(key::kUserAvatarImage, POLICY_LEVEL_MANDATORY,
                  POLICY_SCOPE_USER, POLICY_SOURCE_CLOUD,
@@ -167,11 +168,10 @@ TEST(ExternalDataPolicyHandlerTest, InvalidHash) {
 }
 
 TEST(ExternalDataPolicyHandlerTest, Valid) {
-  auto dict = base::Value::Dict()
-                  .Set("url", "http://localhost/")
-                  .Set("hash",
-                       "1234567890123456789012345678901234567890123456789012345"
-                       "678901234");
+  base::Value::Dict dict;
+  dict.Set("url", "http://localhost/");
+  dict.Set("hash",
+           "1234567890123456789012345678901234567890123456789012345678901234");
   PolicyMap policy_map;
   MockCloudExternalDataManager external_data_manager;
 

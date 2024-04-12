@@ -7,7 +7,8 @@
 
 #include "base/functional/callback.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 // Handles notifications related to provided the file system.
 class NotificationManagerInterface {
@@ -18,13 +19,13 @@ class NotificationManagerInterface {
   // Callback for handling result of a notification.
   typedef base::OnceCallback<void(NotificationResult)> NotificationCallback;
 
-  NotificationManagerInterface() = default;
+  NotificationManagerInterface() {}
 
   NotificationManagerInterface(const NotificationManagerInterface&) = delete;
   NotificationManagerInterface& operator=(const NotificationManagerInterface&) =
       delete;
 
-  virtual ~NotificationManagerInterface() = default;
+  virtual ~NotificationManagerInterface() {}
 
   // Shows a notification about the request being unresponsive. The |callback|
   // is called when the notification is closed.
@@ -35,6 +36,7 @@ class NotificationManagerInterface {
   virtual void HideUnresponsiveNotification(int id) = 0;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_NOTIFICATION_MANAGER_INTERFACE_H_

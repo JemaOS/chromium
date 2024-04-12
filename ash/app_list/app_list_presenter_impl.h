@@ -46,9 +46,8 @@ class ASH_EXPORT AppListPresenterImpl
       public display::DisplayObserver,
       public ShelfObserver {
  public:
-  static constexpr std::array<int, 8> kIdsOfContainersThatWontHideAppList = {
+  static constexpr std::array<int, 7> kIdsOfContainersThatWontHideAppList = {
       kShellWindowId_AppListContainer,
-      kShellWindowId_HelpBubbleContainer,
       kShellWindowId_HomeScreenContainer,
       kShellWindowId_MenuContainer,
       kShellWindowId_PowerMenuContainer,
@@ -83,7 +82,7 @@ class ASH_EXPORT AppListPresenterImpl
   void Show(AppListViewState preferred_state,
             int64_t display_id,
             base::TimeTicks event_time_stamp,
-            std::optional<AppListShowSource> show_source);
+            absl::optional<AppListShowSource> show_source);
 
   // Hide the open app list window. This may leave the view open but hidden.
   // If |event_time_stamp| is not 0, it means |Dismiss()| was triggered by
@@ -101,7 +100,7 @@ class ASH_EXPORT AppListPresenterImpl
   // Handles `AppListController::UpdateAppListWithNewSortingOrder()` for the
   // app list presenter.
   void UpdateForNewSortingOrder(
-      const std::optional<AppListSortOrder>& new_order,
+      const absl::optional<AppListSortOrder>& new_order,
       bool animate,
       base::OnceClosure update_position_closure);
 
@@ -130,7 +129,7 @@ class ASH_EXPORT AppListPresenterImpl
   void UpdateScaleAndOpacityForHomeLauncher(
       float scale,
       float opacity,
-      std::optional<TabletModeAnimationTransition> transition,
+      absl::optional<TabletModeAnimationTransition> transition,
       UpdateHomeLauncherAnimationSettingsCallback callback);
 
   // Shows or hides the Assistant page.
@@ -191,7 +190,7 @@ class ASH_EXPORT AppListPresenterImpl
                                                   bool aborted);
 
   // Owns |this|.
-  const raw_ptr<AppListControllerImpl> controller_;
+  const raw_ptr<AppListControllerImpl, ExperimentalAsh> controller_;
 
   // Closes the app list when the user clicks outside its bounds.
   std::unique_ptr<AppListPresenterEventFilter> event_filter_;
@@ -207,7 +206,7 @@ class ASH_EXPORT AppListPresenterImpl
   bool is_target_visibility_show_ = false;
 
   // The AppListView this class manages, owned by its widget.
-  raw_ptr<AppListView> view_ = nullptr;
+  raw_ptr<AppListView, ExperimentalAsh> view_ = nullptr;
 
   // Whether the presenter is currently changing app list view state to shown.
   // TODO(https://crbug.com/1307871): Remove this when the linked crash gets

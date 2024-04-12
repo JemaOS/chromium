@@ -26,7 +26,6 @@ void CreateSimpleAlertInfoBar(
     const gfx::VectorIcon* vector_icon,
     const std::u16string& message,
     bool auto_expire = true,
-    bool should_animate = true,
-    bool closeable = true);
+    bool should_animate = true);
 
 #endif  // CHROME_BROWSER_INFOBARS_SIMPLE_ALERT_INFOBAR_CREATOR_H_

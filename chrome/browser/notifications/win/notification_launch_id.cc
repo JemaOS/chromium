@@ -51,13 +51,11 @@ NotificationLaunchId::NotificationLaunchId(
     NotificationHandler::Type notification_type,
     const std::string& notification_id,
     const std::string& profile_id,
-    const std::wstring& app_user_model_id,
     bool incognito,
     const GURL& origin_url)
     : notification_type_(notification_type),
       notification_id_(notification_id),
       profile_id_(profile_id),
-      app_user_model_id_(app_user_model_id),
       incognito_(incognito),
       origin_url_(origin_url),
       is_valid_(true) {}
@@ -84,25 +82,21 @@ NotificationLaunchId::NotificationLaunchId(const std::string& input) {
   size_t min_num_tokens;
   switch (components) {
     case NORMAL:
-      // type|notification_type|profile_id|app_user_model_id|incognito|origin|
-      // notification_id
-      min_num_tokens = 7;
+      // type|notification_type|profile_id|incognito|origin|notification_id
+      min_num_tokens = 6;
       break;
     case BUTTON_INDEX:
-      // type|button_index|notification_type|profile_id|app_user_model_id|
-      // incognito|origin|notification_id
-      min_num_tokens = 8;
+      // type|button_index|notification_type|profile_id|incognito|origin|notification_id
+      min_num_tokens = 7;
       break;
     case CONTEXT_MENU:
-      // type|notification_type|profile_id|app_user_model_id|incognito|origin|
-      // notification_id
-      min_num_tokens = 7;
+      // type|notification_type|profile_id|incognito|origin|notification_id
+      min_num_tokens = 6;
       is_for_context_menu_ = true;
       break;
     case DISMISS_BUTTON:
-      // type|notification_type|profile_id|app_user_model_id|incognito|origin|
-      // notification_id
-      min_num_tokens = 7;
+      // type|notification_type|profile_id|incognito|origin|notification_id
+      min_num_tokens = 6;
       is_for_dismiss_button_ = true;
       break;
     default:
@@ -136,13 +130,12 @@ NotificationLaunchId::NotificationLaunchId(const std::string& input) {
   notification_type_ = static_cast<NotificationHandler::Type>(type);
 
   profile_id_ = tokens[2];
-  app_user_model_id_ = base::UTF8ToWide(tokens[3]);
-  incognito_ = tokens[4] == "1" ? true : false;
-  origin_url_ = GURL(tokens[5]);
+  incognito_ = tokens[3] == "1" ? true : false;
+  origin_url_ = GURL(tokens[4]);
 
   notification_id_.clear();
   // Notification IDs is the rest of the string (delimiters not stripped off).
-  const size_t kMinVectorSize = 6;
+  const size_t kMinVectorSize = 5;
   for (size_t i = kMinVectorSize; i < tokens.size(); ++i) {
     if (i > kMinVectorSize)
       notification_id_ += kDelimiter;
@@ -152,8 +145,6 @@ NotificationLaunchId::NotificationLaunchId(const std::string& input) {
   is_valid_ = true;
   LogLaunchIdDecodeStatus(LaunchIdDecodeStatus::kSuccess);
 }
-
-NotificationLaunchId::~NotificationLaunchId() = default;
 
 std::string NotificationLaunchId::Serialize() const {
   // The pipe was chosen as delimiter because it is invalid for directory paths
@@ -173,9 +164,8 @@ std::string NotificationLaunchId::Serialize() const {
   if (button_index_ > -1)
     prefix = base::StringPrintf("|%d", button_index_);
   return base::StringPrintf(
-      "%d%s|%d|%s|%s|%d|%s|%s", type, prefix.c_str(),
-      static_cast<int>(notification_type_), profile_id_.c_str(),
-      base::WideToUTF8(app_user_model_id_).c_str(), incognito_,
+      "%d%s|%d|%s|%d|%s|%s", type, prefix.c_str(),
+      static_cast<int>(notification_type_), profile_id_.c_str(), incognito_,
       origin_url_.spec().c_str(), notification_id_.c_str());
 }
 

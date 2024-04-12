@@ -9,13 +9,9 @@
 #include <stddef.h>
 
 #include "base/android/scoped_java_ref.h"
-#include "base/memory/weak_ptr.h"
-#include "components/autofill/core/browser/ui/payments/autofill_error_dialog_controller.h"
-#include "components/autofill/core/browser/ui/payments/autofill_error_dialog_view.h"
-
-namespace content {
-class WebContents;
-}  // namespace content
+#include "base/memory/raw_ptr.h"
+#include "chrome/browser/ui/autofill/payments/autofill_error_dialog_controller.h"
+#include "chrome/browser/ui/autofill/payments/autofill_error_dialog_view.h"
 
 namespace autofill {
 
@@ -30,21 +26,17 @@ class AutofillErrorDialogViewAndroid : public AutofillErrorDialogView {
 
   // AutofillErrorDialogView.
   void Dismiss() override;
-  base::WeakPtr<AutofillErrorDialogView> GetWeakPtr() override;
 
   // Called by the Java code when the error dialog is dismissed.
   void OnDismissed(JNIEnv* env);
 
   // Show the dialog view.
-  void Show(content::WebContents* web_contents);
+  void Show();
 
  private:
-  base::WeakPtr<AutofillErrorDialogController> controller_;
-
+  raw_ptr<AutofillErrorDialogController> controller_;
   // The corresponding java object.
   base::android::ScopedJavaGlobalRef<jobject> java_object_;
-
-  base::WeakPtrFactory<AutofillErrorDialogViewAndroid> weak_ptr_factory_{this};
 };
 
 }  // namespace autofill

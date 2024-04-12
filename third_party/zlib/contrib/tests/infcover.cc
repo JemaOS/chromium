@@ -395,7 +395,9 @@ void cover_support(void)
     mem_setup(&strm);
     strm.avail_in = 0;
     strm.next_in = Z_NULL;
-    ret = inflateInit_(&strm, "!", (int)sizeof(z_stream));
+    char versioncpy[] = ZLIB_VERSION;
+    versioncpy[0] -= 1;
+    ret = inflateInit_(&strm, versioncpy, (int)sizeof(z_stream));
                                                 assert(ret == Z_VERSION_ERROR);
     mem_done(&strm, "wrong version");
 
@@ -484,8 +486,7 @@ local unsigned pull(void *desc, unsigned char **buf)
 
 local int push(void *desc, unsigned char *buf, unsigned len)
 {
-    (void)buf;
-    (void)len;
+    buf += len;
     return desc != Z_NULL;      /* force error if desc not null */
 }
 

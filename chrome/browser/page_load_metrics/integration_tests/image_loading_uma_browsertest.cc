@@ -12,7 +12,6 @@
 #include "components/page_load_metrics/browser/page_load_metrics_test_waiter.h"
 #include "content/public/common/content_paths.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "net/test/embedded_test_server/controllable_http_response.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 
@@ -255,16 +254,8 @@ IN_PROC_BROWSER_TEST_F(ImageLoadingUMATest, ImageWithIncorrectSizesAttribute) {
                                         true, 1);
 }
 
-// TODO(crbug.com/40916617): Fix this test on Mac.
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_PictureWithIncorrectSizesAttribute \
-  DISABLED_PictureWithIncorrectSizesAttribute
-#else
-#define MAYBE_PictureWithIncorrectSizesAttribute \
-  PictureWithIncorrectSizesAttribute
-#endif
 IN_PROC_BROWSER_TEST_F(ImageLoadingUMATest,
-                       MAYBE_PictureWithIncorrectSizesAttribute) {
+                       PictureWithIncorrectSizesAttribute) {
   run_test(R"HTML(
     <!doctype html>
     <html>

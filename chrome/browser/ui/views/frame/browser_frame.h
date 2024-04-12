@@ -9,12 +9,15 @@
 #include "build/build_config.h"
 #include "content/public/browser/keyboard_event_processing_result.h"
 #include "ui/base/pointer/touch_ui_controller.h"
-#include "ui/base/ui_base_types.h"
 #include "ui/views/context_menu_controller.h"
 #include "ui/views/widget/widget.h"
 
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+#include "ui/base/ui_base_types.h"
+#endif
+
 #if BUILDFLAG(IS_CHROMEOS)
-#include <optional>
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #endif
 
 class BrowserNonClientFrameView;
@@ -22,6 +25,7 @@ class BrowserRootView;
 enum class BrowserThemeChangeType;
 class BrowserView;
 class NativeBrowserFrame;
+class NonClientFrameView;
 class SystemMenuModelBuilder;
 
 namespace content {
@@ -39,9 +43,8 @@ class MenuModel;
 namespace views {
 class Label;
 class MenuRunner;
-class NonClientFrameView;
 class View;
-}  // namespace views
+}
 
 enum class TabDragKind {
   // No drag is active.
@@ -65,10 +68,12 @@ class BrowserFrame : public views::Widget, public views::ContextMenuController {
 
   ~BrowserFrame() override;
 
-#if BUILDFLAG(IS_LINUX)
-  // Returns whether the frame is in a tiled state.
-  bool tiled() const { return tiled_; }
-  void set_tiled(bool tiled) { tiled_ = tiled; }
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+  // Returns which edges of the frame are tiled.
+  const ui::WindowTiledEdges& tiled_edges() const { return tiled_edges_; }
+  void set_tiled_edges(ui::WindowTiledEdges tiled_edges) {
+    tiled_edges_ = tiled_edges;
+  }
 #endif
 
   // Initialize the frame (creates the underlying native window).
@@ -100,6 +105,9 @@ class BrowserFrame : public views::Widget, public views::ContextMenuController {
   // topmost view is the tab strip for tabbed browser windows, the toolbar for
   // popups, the web contents for app windows and varies for fullscreen windows.
   int GetTopInset() const;
+
+  // Returns the amount that the theme background should be inset.
+  int GetThemeBackgroundXInset() const;
 
   // Tells the frame to update the throbber.
   void UpdateThrobber(bool running);
@@ -146,7 +154,7 @@ class BrowserFrame : public views::Widget, public views::ContextMenuController {
   bool GetAccelerator(int command_id,
                       ui::Accelerator* accelerator) const override;
   const ui::ThemeProvider* GetThemeProvider() const override;
-  ui::ColorProviderKey::ThemeInitializerSupplier* GetCustomTheme()
+  ui::ColorProviderManager::ThemeInitializerSupplier* GetCustomTheme()
       const override;
   void OnNativeWidgetWorkspaceChanged() override;
 
@@ -172,8 +180,8 @@ class BrowserFrame : public views::Widget, public views::ContextMenuController {
 
  protected:
   // views::Widget:
-  void OnNativeThemeUpdated(ui::NativeTheme* observed_theme) override;
-  ui::ColorProviderKey GetColorProviderKey() const override;
+  ui::ColorProviderManager::Key GetColorProviderKey() const override;
+  absl::optional<SkColor> GetUserColor() const override;
 
  private:
   void OnTouchUiChanged();
@@ -181,17 +189,16 @@ class BrowserFrame : public views::Widget, public views::ContextMenuController {
   // Callback for MenuRunner.
   void OnMenuClosed();
 
-  // Select a native theme that is appropriate for the current context. This is
-  // currently only needed for Linux to switch between the regular NativeTheme
-  // and the GTK NativeTheme instance.
+  // Select a native theme that is appropriate for the current context.
   void SelectNativeTheme();
 
   // Regenerate the frame on theme change if necessary. Returns true if
   // regenerated.
   bool RegenerateFrameOnThemeChange(BrowserThemeChangeType theme_change_type);
 
-  // Returns true if the browser instance belongs to an incognito profile.
-  bool IsIncognitoBrowser() const;
+  // Returns whether the browser should always use the dark theme no matter user
+  // makes any selection.
+  bool ShouldUseDarkTheme() const;
 
   raw_ptr<NativeBrowserFrame> native_browser_frame_;
 
@@ -225,16 +232,16 @@ class BrowserFrame : public views::Widget, public views::ContextMenuController {
   // contents for smoother dragging.
   TabDragKind tab_drag_kind_ = TabDragKind::kNone;
 
-#if BUILDFLAG(IS_LINUX)
-  bool tiled_ = false;
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+  ui::WindowTiledEdges tiled_edges_;
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS)
   // Store the number of virtual desks that currently exist and if the window
   // state is float state type. Used to determine  whether the system menu
   // should be reset.
-  std::optional<int> num_desks_;
-  std::optional<bool> is_float_state_type_;
+  absl::optional<int> num_desks_;
+  absl::optional<bool> is_float_state_type_;
 #endif
 };
 

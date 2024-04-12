@@ -17,7 +17,9 @@ import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 
-/** Unit tests for the EventOffsetHandler. */
+/**
+ * Unit tests for the EventOffsetHandler.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class EventOffsetHandlerTest {

@@ -5,10 +5,8 @@
 #include "chrome/browser/ash/crosapi/browser_data_back_migrator.h"
 
 #include <errno.h>
-
 #include <memory>
 #include <string>
-#include <string_view>
 
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_switches.h"
@@ -25,14 +23,12 @@
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/path_service.h"
-#include "base/strings/string_util.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "base/timer/elapsed_timer.h"
 #include "chrome/browser/ash/crosapi/browser_data_back_migrator_metrics.h"
 #include "chrome/browser/ash/crosapi/browser_data_migrator_util.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
-#include "chrome/browser/extensions/extension_keeplist_chromeos.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_paths.h"
@@ -113,9 +109,6 @@ void BrowserDataBackMigrator::Migrate(
           local_state_, user_id_hash_);
   browser_data_back_migrator_metrics::RecordBackwardMigrationTimeDelta(
       forward_migration_completion_time);
-  browser_data_back_migrator_metrics::
-      RecordBackwardMigrationPrecededByForwardMigration(
-          forward_migration_completion_time);
   crosapi::browser_util::ClearProfileMigrationCompletionTimeForUser(
       local_state_, user_id_hash_);
 
@@ -259,10 +252,10 @@ BrowserDataBackMigrator::TaskResult BrowserDataBackMigrator::MergeSplitItems(
   }
 
   // Merge IndexedDB.
-  for (const auto& extension_id :
-       extensions::GetExtensionsAndAppsRunInOSAndStandaloneBrowser()) {
+  for (const char* extension_id :
+       browser_data_migrator_util::kExtensionsBothChromes) {
     if (!MergeCommonIndexedDB(ash_profile_dir, lacros_default_profile_dir,
-                              extension_id.data())) {
+                              extension_id)) {
       return {TaskStatus::kMergeSplitItemsMergeIndexedDBFailed, errno};
     }
   }
@@ -755,8 +748,8 @@ bool BrowserDataBackMigrator::MergeCommonExtensionsDataFiles(
       return false;
     }
 
-    for (const auto& extension_id :
-         extensions::GetExtensionsAndAppsRunInOSAndStandaloneBrowser()) {
+    for (const char* extension_id :
+         browser_data_migrator_util::kExtensionsBothChromes) {
       base::FilePath lacros_target_path =
           lacros_target_dir.Append(extension_id);
 
@@ -785,8 +778,8 @@ bool BrowserDataBackMigrator::RemoveAshCommonExtensionsDataFiles(
   const base::FilePath ash_target_dir = ash_profile_dir.Append(target_dir);
 
   if (base::PathExists(ash_target_dir)) {
-    for (const auto& extension_id :
-         extensions::GetExtensionsAndAppsRunInOSAndStandaloneBrowser()) {
+    for (const char* extension_id :
+         browser_data_migrator_util::kExtensionsBothChromes) {
       base::FilePath ash_target_path = ash_target_dir.Append(extension_id);
 
       if (!base::DeletePathRecursively(ash_target_path)) {
@@ -868,7 +861,7 @@ bool BrowserDataBackMigrator::MergePreferences(
   }
 
   // Parse the Ash JSON file.
-  std::optional<base::Value> ash_root = base::JSONReader::Read(ash_contents);
+  absl::optional<base::Value> ash_root = base::JSONReader::Read(ash_contents);
   if (!ash_root) {
     PLOG(ERROR) << "Failure while parsing Ash's Preferences";
     return false;
@@ -888,7 +881,7 @@ bool BrowserDataBackMigrator::MergePreferences(
   }
 
   // Parse the Lacros JSON file.
-  std::optional<base::Value> lacros_root =
+  absl::optional<base::Value> lacros_root =
       base::JSONReader::Read(lacros_contents);
   if (!lacros_root) {
     PLOG(ERROR) << "Failure while parsing Lacros's Preferences";
@@ -900,7 +893,8 @@ bool BrowserDataBackMigrator::MergePreferences(
     return false;
   }
 
-  MergeLacrosPreferences(*ash_root_dict, {}, lacros_root.value());
+  std::string current_path;
+  MergeLacrosPreferences(*ash_root_dict, current_path, lacros_root.value(), 0u);
 
   // Preferences that were split between Ash and Lacros relate to extensions.
   // Here we need to take the preferences from Lacros that were removed from
@@ -919,7 +913,7 @@ bool BrowserDataBackMigrator::MergePreferences(
     } else {
       if (lacros_value->is_dict() && ash_value->is_dict()) {
         for (const auto entry : lacros_value->GetDict()) {
-          const std::string_view extension_id = entry.first;
+          const base::StringPiece extension_id = entry.first;
           if (IsLacrosOnlyExtension(extension_id)) {
             ash_value->GetDict().Set(extension_id, entry.second.Clone());
           }
@@ -929,7 +923,7 @@ bool BrowserDataBackMigrator::MergePreferences(
           if (!item.is_string())
             return false;
 
-          const std::string_view extension_id = item.GetString();
+          const base::StringPiece extension_id = item.GetString();
           return IsLacrosOnlyExtension(extension_id);
         });
 
@@ -964,61 +958,48 @@ bool BrowserDataBackMigrator::MergePreferences(
 // static
 bool BrowserDataBackMigrator::MergeLacrosPreferences(
     base::Value::Dict& ash_root_dict,
-    const std::vector<std::string>& path,
-    const base::Value& current_value) {
-  if (path.size() >= kMaxRecursionDepth) {
+    std::string& current_dotted_path,
+    const base::Value& current_value,
+    unsigned int recursion_depth) {
+  if (recursion_depth >= kMaxRecursionDepth) {
     LOG(WARNING) << "We have reached maximum recursion depth "
                  << kMaxRecursionDepth
                  << " and we are stopping MergeLacrosPreferences()";
     return false;
   }
 
-  // If the |path| was split or ash-only, then ignore it.
-  // For predefined path, each component should not contain '.' so filter
-  // them out to avoid finding wrong paths.
-  if (base::ranges::all_of(path, [](const std::string& component) {
-        return component.find('.') == std::string::npos;
-      })) {
-    const std::string dotted_path = base::JoinString(path, ".");
-    if (base::Contains(browser_data_migrator_util::kSplitPreferencesKeys,
-                       dotted_path) ||
-        base::Contains(browser_data_migrator_util::kAshOnlyPreferencesKeys,
-                       dotted_path)) {
-      return true;
-    }
+  // If the |current_dotted_path| was split or ash-only, then ignore it.
+  if (base::Contains(browser_data_migrator_util::kSplitPreferencesKeys,
+                     current_dotted_path) ||
+      base::Contains(browser_data_migrator_util::kAshOnlyPreferencesKeys,
+                     current_dotted_path)) {
+    return true;
   }
 
   // If current value is not a dictionary, then it is a final pref.
   // Merge it into the |ash_root_dict|.
   if (!current_value.is_dict()) {
-    // Guaranteed by the caller, that first value is a dict.
-    DCHECK(!path.empty());
+    ash_root_dict.SetByDottedPath(current_dotted_path, current_value.Clone());
 
-    base::Value::Dict* dict = &ash_root_dict;
-    for (const auto& key :
-         base::span<const std::string>(path.begin(), path.size() - 1)) {
-      base::Value* child = dict->Find(key);
-      dict = child ? child->GetIfDict() : dict->EnsureDict(key);
-      if (!dict) {
-        // There's an non-dict entry at non-last component of the path.
-        // Fail here. This behavior is to be compatible with SetDottedPath(),
-        // which is used in the orignal code not to change the detailed
-        // behavior for urgent fix.
-        return false;
-      }
-    }
-    dict->Set(path.back(), current_value.Clone());
     return true;
   }
-
   // Otherwise, traverse all child elements of the current dictionary.
-  std::vector<std::string> child_path = path;
-  for (const auto [child_key, child_value] : current_value.GetDict()) {
-    child_path.push_back(child_key);
-    if (!MergeLacrosPreferences(ash_root_dict, child_path, child_value)) {
+  for (const auto child_entry : current_value.GetDict()) {
+    const std::string& child_entry_key = child_entry.first;
+    const base::Value* child_entry_value = &child_entry.second;
+
+    std::string child_dotted_path;
+    // Can be empty if it is a root dictionary.
+    if (current_dotted_path.empty()) {
+      child_dotted_path = child_entry_key;
+    } else {
+      child_dotted_path = current_dotted_path + "." + child_entry_key;
+    }
+
+    if (!MergeLacrosPreferences(ash_root_dict, child_dotted_path,
+                                *child_entry_value, recursion_depth + 1u)) {
       return false;
     }
-    child_path.pop_back();
   }
 
   return true;
@@ -1026,12 +1007,11 @@ bool BrowserDataBackMigrator::MergeLacrosPreferences(
 
 // static
 bool BrowserDataBackMigrator::IsLacrosOnlyExtension(
-    const std::string_view extension_id) {
+    const base::StringPiece extension_id) {
   return !base::Contains(browser_data_migrator_util::kExtensionsAshOnly,
                          extension_id) &&
-         !base::Contains(
-             extensions::GetExtensionsAndAppsRunInOSAndStandaloneBrowser(),
-             extension_id);
+         !base::Contains(browser_data_migrator_util::kExtensionsBothChromes,
+                         extension_id);
 }
 
 // static
@@ -1278,8 +1258,8 @@ bool BrowserDataBackMigrator::IsBackMigrationEnabled(
       crosapi::browser_util::LacrosDataBackwardMigrationMode::kNone;
   if (policy_init_state ==
       crosapi::browser_util::PolicyInitState::kBeforeInit) {
-    std::optional<crosapi::browser_util::LacrosDataBackwardMigrationMode>
-        parsed = std::nullopt;
+    absl::optional<crosapi::browser_util::LacrosDataBackwardMigrationMode>
+        parsed = absl::nullopt;
 
     if (base::CommandLine::ForCurrentProcess()->HasSwitch(
             crosapi::browser_util::
@@ -1317,10 +1297,10 @@ bool BrowserDataBackMigrator::IsBackMigrationEnabled(
     return false;
   }
 
-  bool is_feature_enabled = base::FeatureList::IsEnabled(
+  bool isFeatureEnabled = base::FeatureList::IsEnabled(
       ash::features::kLacrosProfileBackwardMigration);
-  VLOG(1) << "Lacros backward migration feature flag is " << is_feature_enabled;
-  return is_feature_enabled;
+  VLOG(1) << "Lacros backward migration feature flag is " << isFeatureEnabled;
+  return isFeatureEnabled;
 }
 
 // static
@@ -1343,20 +1323,6 @@ bool BrowserDataBackMigrator::ShouldMigrateBack(
 
     if (!user) {
       VLOG(1) << "Failed to find user, not triggering backward migration";
-      return false;
-    }
-
-    // Backward migration should not run for secondary users.
-    const auto* primary_user =
-        user_manager::UserManager::Get()->GetPrimaryUser();
-    // `ShouldMigrateBack()` is called from `MaybeRestartToMigrateBack()`, which
-    // is called either before or after profile initialization. In the former
-    // case it is called from `PreProfileInit()` and this is only called for the
-    // primary profile so we can assume that the user is the primary user if
-    // `primary_user == nullptr`. If primary_user is not null then we check if
-    // `user != primary_user`.
-    if (primary_user && (user != primary_user)) {
-      VLOG(1) << "Skip backward migration for secondary users.";
       return false;
     }
 

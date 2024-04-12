@@ -4,16 +4,16 @@
 
 package org.chromium.chrome.browser.browsing_data;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
-import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.NativeMethods;
 
 /**
  * Communicates between BrowsingDataCounter (C++ backend) and ClearBrowsingDataFragment (Java UI).
  */
 public class BrowsingDataCounterBridge {
-    /** Can receive a callback from a BrowsingDataCounter. */
+    /**
+     * Can receive a callback from a BrowsingDataCounter.
+     */
     public interface BrowsingDataCounterCallback {
         /**
          * The callback to be called when a BrowsingDataCounter is finished.
@@ -28,26 +28,25 @@ public class BrowsingDataCounterBridge {
 
     /**
      * Initializes BrowsingDataCounterBridge.
-     *
-     * @param profile The {@link Profile} owning the browsing data.
      * @param callback A callback to call with the result when the counter finishes.
      * @param dataType The browsing data type to be counted (from the shared enum
      * @param prefType The type of preference that should be handled (Default, Basic or Advanced
      *     from {@link org.chromium.chrome.browser.browsing_data.ClearBrowsingDataTab}).
      */
     public BrowsingDataCounterBridge(
-            Profile profile, BrowsingDataCounterCallback callback, int dataType, int prefType) {
+            BrowsingDataCounterCallback callback, int dataType, int prefType) {
         mCallback = callback;
-        mNativeBrowsingDataCounterBridge =
-                BrowsingDataCounterBridgeJni.get()
-                        .init(BrowsingDataCounterBridge.this, profile, dataType, prefType);
+        mNativeBrowsingDataCounterBridge = BrowsingDataCounterBridgeJni.get().init(
+                BrowsingDataCounterBridge.this, dataType, prefType);
     }
 
-    /** Destroys the native counterpart of this class. */
+    /**
+     * Destroys the native counterpart of this class.
+     */
     public void destroy() {
         if (mNativeBrowsingDataCounterBridge != 0) {
-            BrowsingDataCounterBridgeJni.get()
-                    .destroy(mNativeBrowsingDataCounterBridge, BrowsingDataCounterBridge.this);
+            BrowsingDataCounterBridgeJni.get().destroy(
+                    mNativeBrowsingDataCounterBridge, BrowsingDataCounterBridge.this);
             mNativeBrowsingDataCounterBridge = 0;
         }
     }
@@ -59,8 +58,7 @@ public class BrowsingDataCounterBridge {
 
     @NativeMethods
     interface Natives {
-        long init(BrowsingDataCounterBridge caller, Profile profile, int dataType, int prefType);
-
+        long init(BrowsingDataCounterBridge caller, int dataType, int prefType);
         void destroy(long nativeBrowsingDataCounterBridge, BrowsingDataCounterBridge caller);
     }
 }

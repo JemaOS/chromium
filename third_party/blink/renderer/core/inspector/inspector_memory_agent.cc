@@ -77,9 +77,8 @@ protocol::Response InspectorMemoryAgent::forciblyPurgeJavaScriptMemory() {
       local_frame->ForciblyPurgeV8Memory();
     }
   }
-  v8::Isolate* isolate =
-      frames_->Root()->GetPage()->GetAgentGroupScheduler().Isolate();
-  isolate->MemoryPressureNotification(v8::MemoryPressureLevel::kCritical);
+  V8PerIsolateData::MainThreadIsolate()->MemoryPressureNotification(
+      v8::MemoryPressureLevel::kCritical);
   return protocol::Response::Success();
 }
 
@@ -98,12 +97,12 @@ protocol::Response InspectorMemoryAgent::startSampling(
     protocol::Maybe<int> in_sampling_interval,
     protocol::Maybe<bool> in_suppressRandomness) {
   int interval =
-      in_sampling_interval.value_or(kDefaultNativeMemorySamplingInterval);
+      in_sampling_interval.fromMaybe(kDefaultNativeMemorySamplingInterval);
   if (interval <= 0)
     return protocol::Response::ServerError("Invalid sampling rate.");
   base::SamplingHeapProfiler::Get()->SetSamplingInterval(interval);
   sampling_profile_interval_.Set(interval);
-  if (in_suppressRandomness.value_or(false)) {
+  if (in_suppressRandomness.fromMaybe(false)) {
     randomness_suppressor_ = std::make_unique<
         base::PoissonAllocationSampler::ScopedSuppressRandomnessForTesting>();
   }
@@ -159,9 +158,7 @@ InspectorMemoryAgent::GetSamplingProfileById(uint32_t id) {
   // TODO(alph): Add workers' heap sizes.
   if (!id) {
     v8::HeapStatistics heap_stats;
-    v8::Isolate* isolate =
-        frames_->Root()->GetPage()->GetAgentGroupScheduler().Isolate();
-    isolate->GetHeapStatistics(&heap_stats);
+    v8::Isolate::GetCurrent()->GetHeapStatistics(&heap_stats);
     size_t total_bytes = heap_stats.total_heap_size();
     auto stack = std::make_unique<protocol::Array<protocol::String>>();
     stack->emplace_back("<V8 Heap>");
@@ -191,14 +188,14 @@ InspectorMemoryAgent::GetSamplingProfileById(uint32_t id) {
 }
 
 Vector<String> InspectorMemoryAgent::Symbolize(
-    const WebVector<const void*>& addresses) {
+    const WebVector<void*>& addresses) {
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
   // TODO(alph): Move symbolization to the client.
-  Vector<const void*> addresses_to_symbolize;
-  for (const void* address : addresses) {
-    if (!symbols_cache_.Contains(address)) {
+  Vector<void*> addresses_to_symbolize;
+  for (size_t i = 0; i < addresses.size(); i++) {
+    void* address = addresses[i];
+    if (!symbols_cache_.Contains(address))
       addresses_to_symbolize.push_back(address);
-    }
   }
 
   String text(base::debug::StackTrace(addresses_to_symbolize.data(),
@@ -219,7 +216,7 @@ Vector<String> InspectorMemoryAgent::Symbolize(
 #endif
 
   Vector<String> result;
-  for (const void* address : addresses) {
+  for (void* address : addresses) {
     char buffer[20];
     std::snprintf(buffer, sizeof(buffer), "0x%" PRIxPTR,
                   reinterpret_cast<uintptr_t>(address));

@@ -39,9 +39,8 @@ void ForceCloseWatcher::OnCloseRequested() {
     return;
   }
 
-  if (show_dialog_timer_->Elapsed() < force_close_delay_) {
+  if (show_dialog_timer_->Elapsed() < force_close_delay_)
     return;
-  }
 
   delegate_->Prompt();
 }
@@ -105,9 +104,8 @@ void ShellSurfaceForceCloseDelegate::Watched(ForceCloseWatcher* watcher) {
 }
 
 void ShellSurfaceForceCloseDelegate::Prompt() {
-  if (current_dialog_) {
+  if (current_dialog_)
     Hide();
-  }
 
   DCHECK(!current_dialog_);
   current_dialog_ = ShowCrostiniForceCloseDialog(

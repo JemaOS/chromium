@@ -3,43 +3,20 @@
 // found in the LICENSE file.
 
 module.exports = {
-  // Disable clang-format because it produces odd formatting for these rules.
-  // clang-format off
   'rules' : {
-    'no-fallthrough' : 'error',
-    'eqeqeq' : ['error', 'always', {'null' : 'ignore'}],
     'no-console' : 'off',
-
-    /**
-     * https://google.github.io/styleguide/tsguide.html#function-expressions
-     */
-    'prefer-arrow-callback': 'error',
   },
 
   'overrides': [{
     'files': ['**/*.ts'],
-    'parser': '../../third_party/node/node_modules/@typescript-eslint/parser/dist/index.js',
+    'parser': '../../third_party/node/node_modules/@typescript-eslint/parser',
     'plugins': [
       '@typescript-eslint',
     ],
     'rules': {
-      /**
-       * https://google.github.io/styleguide/tsguide.html#type-inference
-       */
-      '@typescript-eslint/no-inferrable-types': [
-        'error',
-        {
-          // Function parameters may have explicit types for clearer APIs.
-          ignoreParameters: true,
-          // Class properties may have explicit types for clearer APIs.
-          ignoreProperties: true,
-        },
-      ],
-
-      // Turn off until all TS violations under this folder are fixed. This was
-      // done for other parts of the codebase in http://crbug.com/1521107
-      'no-restricted-syntax': 'off',
+      // TODO(b/265863256): Re-enable when TypeScript annotations complication
+      // has been fixed.
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   }],
-  // clang-format on
 };

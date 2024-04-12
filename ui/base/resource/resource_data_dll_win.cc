@@ -9,7 +9,6 @@
 #include "base/check.h"
 #include "base/memory/ref_counted_memory.h"
 #include "base/win/resource_util.h"
-#include "ui/base/resource/resource_scale_factor.h"
 
 namespace ui {
 
@@ -29,17 +28,19 @@ bool ResourceDataDLL::HasResource(uint16_t resource_id) const {
                                               &data_size);
 }
 
-std::optional<base::StringPiece> ResourceDataDLL::GetStringPiece(
-    uint16_t resource_id) const {
+bool ResourceDataDLL::GetStringPiece(uint16_t resource_id,
+                                     base::StringPiece* data) const {
+  DCHECK(data);
   void* data_ptr;
   size_t data_size;
   if (base::win::GetDataResourceFromModule(module_,
                                            resource_id,
                                            &data_ptr,
                                            &data_size)) {
-    return base::StringPiece(static_cast<const char*>(data_ptr), data_size);
+    *data = base::StringPiece(static_cast<const char*>(data_ptr), data_size);
+    return true;
   }
-  return std::nullopt;
+  return false;
 }
 
 base::RefCountedStaticMemory* ResourceDataDLL::GetStaticMemory(

@@ -10,7 +10,7 @@ import '../controls/settings_toggle_button.js';
 import {focusWithoutInk} from 'chrome://resources/js/focus_without_ink.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
+import {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
 import {MetricsBrowserProxyImpl, PrivacyElementInteractions} from '../metrics_browser_proxy.js';
 
 import {getTemplate} from './do_not_track_toggle.html.js';
@@ -79,14 +79,14 @@ export class SettingsDoNotTrackToggleElement extends PolymerElement {
   }
 
   private onDialogClosed_() {
-    focusWithoutInk(this.toggle_);
+    focusWithoutInk(this.$.toggle);
   }
 
   /**
    * Handles the shared proxy confirmation dialog 'Confirm' button.
    */
   private onDialogConfirm_() {
-    this.toggle_.sendPrefChange();
+    this.$.toggle.sendPrefChange();
     this.closeDialog_();
   }
 
@@ -95,13 +95,8 @@ export class SettingsDoNotTrackToggleElement extends PolymerElement {
    * event.
    */
   private onDialogCancel_() {
-    this.toggle_.resetToPrefValue();
+    this.$.toggle.resetToPrefValue();
     this.closeDialog_();
-  }
-
-  private get toggle_(): SettingsToggleButtonElement {
-    return this.shadowRoot!.querySelector<SettingsToggleButtonElement>(
-        '#toggle')!;
   }
 }
 

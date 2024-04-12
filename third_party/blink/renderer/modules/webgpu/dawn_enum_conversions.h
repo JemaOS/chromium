@@ -11,6 +11,7 @@ class V8GPUTextureSampleType;
 class V8GPUStorageTextureAccess;
 class V8GPUCompareFunction;
 class V8GPUQueryType;
+class V8GPUPipelineStatisticName;
 class V8GPUTextureFormat;
 class V8GPUTextureDimension;
 class V8GPUTextureViewDimension;
@@ -25,13 +26,13 @@ class V8GPUBlendOperation;
 class V8GPUVertexStepMode;
 class V8GPUVertexFormat;
 class V8GPUAddressMode;
-class V8GPUMipmapFilterMode;
 class V8GPUFilterMode;
 class V8GPUCullMode;
 class V8GPUFrontFace;
 class V8GPUTextureAspect;
 class V8GPUErrorFilter;
-class V8WGSLFeatureName;
+class V8GPUComputePassTimestampLocation;
+class V8GPURenderPassTimestampLocation;
 enum class PredefinedColorSpace;
 
 // Convert WebGPU bitfield values to Dawn enums. These have the same value.
@@ -48,6 +49,8 @@ WGPUStorageTextureAccess AsDawnEnum(
     const V8GPUStorageTextureAccess& webgpu_enum);
 WGPUCompareFunction AsDawnEnum(const V8GPUCompareFunction& webgpu_enum);
 WGPUQueryType AsDawnEnum(const V8GPUQueryType& webgpu_enum);
+WGPUPipelineStatisticName AsDawnEnum(
+    const V8GPUPipelineStatisticName& webgpu_enum);
 WGPUTextureFormat AsDawnEnum(const V8GPUTextureFormat& webgpu_enum);
 WGPUTextureDimension AsDawnEnum(const V8GPUTextureDimension& webgpu_enum);
 WGPUTextureViewDimension AsDawnEnum(
@@ -64,21 +67,20 @@ WGPUVertexStepMode AsDawnEnum(const V8GPUVertexStepMode& webgpu_enum);
 WGPUVertexFormat AsDawnEnum(const V8GPUVertexFormat& webgpu_enum);
 WGPUAddressMode AsDawnEnum(const V8GPUAddressMode& webgpu_enum);
 WGPUFilterMode AsDawnEnum(const V8GPUFilterMode& webgpu_enum);
-WGPUMipmapFilterMode AsDawnEnum(const V8GPUMipmapFilterMode& webgpu_enum);
 WGPUCullMode AsDawnEnum(const V8GPUCullMode& webgpu_enum);
 WGPUFrontFace AsDawnEnum(const V8GPUFrontFace& webgpu_enum);
 WGPUTextureAspect AsDawnEnum(const V8GPUTextureAspect& webgpu_enum);
 WGPUErrorFilter AsDawnEnum(const V8GPUErrorFilter& webgpu_enum);
+WGPUComputePassTimestampLocation AsDawnEnum(
+    const V8GPUComputePassTimestampLocation& webgpu_enum);
+WGPURenderPassTimestampLocation AsDawnEnum(
+    const V8GPURenderPassTimestampLocation& webgpu_enum);
 
 // Convert Dawn enums to WebGPU IDL enums.
 const char* FromDawnEnum(WGPUQueryType dawn_enum);
 const char* FromDawnEnum(WGPUTextureDimension dawn_enum);
 const char* FromDawnEnum(WGPUTextureFormat dawn_enum);
 const char* FromDawnEnum(WGPUBufferMapState dawn_enum);
-const char* FromDawnEnum(WGPUBackendType dawn_enum);
-const char* FromDawnEnum(WGPUAdapterType dawn_enum);
-[[nodiscard]] bool FromDawnEnum(WGPUWGSLFeatureName dawn_enum,
-                                V8WGSLFeatureName* result);
 
 }  // namespace blink
 

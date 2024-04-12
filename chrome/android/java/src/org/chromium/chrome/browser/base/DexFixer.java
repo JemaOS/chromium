@@ -15,23 +15,25 @@ import androidx.annotation.WorkerThread;
 
 import dalvik.system.DexFile;
 
+import org.chromium.base.BuildInfo;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 import org.chromium.base.compat.ApiHelperForM;
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
-import org.chromium.base.version_info.VersionInfo;
 import org.chromium.build.BuildConfig;
 import org.chromium.build.NativeLibraries;
 import org.chromium.chrome.browser.DeferredStartupHandler;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
+import org.chromium.components.version_info.VersionInfo;
 
 import java.io.File;
 import java.io.IOException;
 
-/** Performs work-arounds for Android bugs which result in invalid or unreadable dex. */
+/**
+ * Performs work-arounds for Android bugs which result in invalid or unreadable dex.
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 public class DexFixer {
     private static final String TAG = "DexFixer";
@@ -57,25 +59,21 @@ public class DexFixer {
 
         // Wait until startup completes so this doesn't slow down early startup or mess with
         // compiled dex files before they get loaded initially.
-        DeferredStartupHandler.getInstance()
-                .addDeferredTask(
-                        () -> {
-                            // BEST_EFFORT will only affect when the task runs, the dexopt will run
-                            // with normal priority (but in a separate process, due to using
-                            // Runtime.exec()).
-                            PostTask.postTask(
-                                    TaskTraits.BEST_EFFORT_MAY_BLOCK,
-                                    () -> {
-                                        fixDexIfNecessary(Runtime.getRuntime());
-                                    });
-                        });
+        DeferredStartupHandler.getInstance().addDeferredTask(() -> {
+            // BEST_EFFORT will only affect when the task runs, the dexopt will run with
+            // normal priority (but in a separate process, due to using Runtime.exec()).
+            PostTask.postTask(TaskTraits.BEST_EFFORT_MAY_BLOCK,
+                    () -> { fixDexIfNecessary(Runtime.getRuntime()); });
+        });
     }
 
     @WorkerThread
     @VisibleForTesting
-    static @DexFixerReason int fixDexIfNecessary(Runtime runtime) {
+    @DexFixerReason
+    static int fixDexIfNecessary(Runtime runtime) {
         ApplicationInfo appInfo = ContextUtils.getApplicationContext().getApplicationInfo();
-        @DexFixerReason int reason = needsDexCompile(appInfo);
+        @DexFixerReason
+        int reason = needsDexCompile(appInfo);
         if (reason > DexFixerReason.NOT_NEEDED) {
             Log.w(TAG, "Triggering dex compile. Reason=%d", reason);
             try {
@@ -138,13 +136,12 @@ public class DexFixer {
             // bg-dexopt-job runs it will break the optimized dex for splits. If we force compile
             // now, then bg-dexopt-job won't mess up the splits, and we save the user a slow
             // startup.
-            SharedPreferencesManager prefManager = ChromeSharedPreferences.getInstance();
-            long versionCode = BuildConfig.VERSION_CODE;
+            SharedPreferencesManager prefManager = SharedPreferencesManager.getInstance();
+            long versionCode = BuildInfo.getInstance().versionCode;
             // The default value is always lesser than any non-negative versionCode. This prevents
             // some tests from failing when application's versionCode is stuck at 0.
             if (prefManager.readLong(
-                            ChromePreferenceKeys.ISOLATED_SPLITS_DEX_COMPILE_VERSION,
-                            versionCode - 1)
+                        ChromePreferenceKeys.ISOLATED_SPLITS_DEX_COMPILE_VERSION, versionCode - 1)
                     != versionCode) {
                 // Compiling the dex is an asynchronous operation anyways, so update the pref here
                 // rather than attempting to wait.

@@ -21,8 +21,6 @@
 #include "base/values.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profiles_state.h"
 #include "chrome/browser/spellchecker/spellcheck_factory.h"
 #include "chrome/browser/spellchecker/spellcheck_hunspell_dictionary.h"
 #include "components/language/core/browser/pref_names.h"
@@ -40,6 +38,8 @@
 #include "components/user_prefs/user_prefs.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/storage_partition.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -62,12 +62,6 @@ namespace {
 SpellcheckService::SpellCheckerBinder& GetSpellCheckerBinderOverride() {
   static base::NoDestructor<SpellcheckService::SpellCheckerBinder> binder;
   return *binder;
-}
-
-// Only record spelling-configuration metrics for profiles in which the user
-// can configure spelling.
-bool RecordSpellingConfigurationMetrics(content::BrowserContext* context) {
-  return profiles::IsRegularUserProfile(Profile::FromBrowserContext(context));
 }
 
 }  // namespace
@@ -163,6 +157,9 @@ SpellcheckService::SpellcheckService(content::BrowserContext* context)
       std::make_unique<SpellcheckCustomDictionary>(context_->GetPath());
   custom_dictionary_->AddObserver(this);
   custom_dictionary_->Load();
+
+  registrar_.Add(this, content::NOTIFICATION_RENDERER_PROCESS_CREATED,
+                 content::NotificationService::AllSources());
 
 #if BUILDFLAG(IS_WIN)
   if (spellcheck::UseBrowserSpellChecker() &&
@@ -374,19 +371,12 @@ void SpellcheckService::EnableFirstUserLanguageForSpellcheck(
 
 void SpellcheckService::StartRecordingMetrics(bool spellcheck_enabled) {
   metrics_ = std::make_unique<SpellCheckHostMetrics>();
-  auto record_configuration_metrics =
-      RecordSpellingConfigurationMetrics(context_);
-  if (record_configuration_metrics) {
-    metrics_->RecordEnabledStats(spellcheck_enabled);
-  }
-
+  metrics_->RecordEnabledStats(spellcheck_enabled);
   OnUseSpellingServiceChanged();
 
 #if BUILDFLAG(IS_WIN)
-  if (record_configuration_metrics) {
-    RecordChromeLocalesStats();
-    RecordSpellcheckLocalesStats();
-  }
+  RecordChromeLocalesStats();
+  RecordSpellcheckLocalesStats();
 #endif  // BUILDFLAG(IS_WIN)
 }
 
@@ -482,9 +472,7 @@ void SpellcheckService::LoadDictionaries() {
   }
 
 #if BUILDFLAG(IS_WIN)
-  if (RecordSpellingConfigurationMetrics(context_)) {
-    RecordSpellcheckLocalesStats();
-  }
+  RecordSpellcheckLocalesStats();
 
 #if BUILDFLAG(USE_BROWSER_SPELLCHECKER)
   if (base::FeatureList::IsEnabled(
@@ -532,9 +520,11 @@ bool SpellcheckService::IsSpellcheckEnabled() const {
          (!hunspell_dictionaries_.empty() || enable_if_uninitialized);
 }
 
-void SpellcheckService::OnRenderProcessHostCreated(
-    content::RenderProcessHost* host) {
-  InitForRenderer(host);
+void SpellcheckService::Observe(int type,
+                                const content::NotificationSource& source,
+                                const content::NotificationDetails& details) {
+  DCHECK_EQ(content::NOTIFICATION_RENDERER_PROCESS_CREATED, type);
+  InitForRenderer(content::Source<content::RenderProcessHost>(source).ptr());
 }
 
 void SpellcheckService::OnCustomDictionaryLoaded() {
@@ -851,9 +841,8 @@ void SpellcheckService::OnSpellCheckDictionariesChanged() {
 void SpellcheckService::OnUseSpellingServiceChanged() {
   bool enabled = pref_change_registrar_.prefs()->GetBoolean(
       spellcheck::prefs::kSpellCheckUseSpellingService);
-  if (metrics_ && RecordSpellingConfigurationMetrics(context_)) {
+  if (metrics_)
     metrics_->RecordSpellingServiceStats(enabled);
-  }
 }
 
 void SpellcheckService::OnAcceptLanguagesChanged() {
@@ -876,9 +865,7 @@ void SpellcheckService::OnAcceptLanguagesChanged() {
   dictionaries_pref.SetValue(filtered_dictionaries);
 
 #if BUILDFLAG(IS_WIN)
-  if (RecordSpellingConfigurationMetrics(context_)) {
-    RecordChromeLocalesStats();
-  }
+  RecordChromeLocalesStats();
 #endif  // BUILDFLAG(IS_WIN)
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
 }

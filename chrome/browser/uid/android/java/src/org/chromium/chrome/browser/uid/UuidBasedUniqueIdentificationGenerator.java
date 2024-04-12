@@ -9,12 +9,13 @@ import android.content.Context;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.shared_preferences.SharedPreferencesManager;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 
 import java.util.UUID;
 
-/** Generates unique IDs that are {@link UUID} strings. */
+/**
+ * Generates unique IDs that are {@link UUID} strings.
+ */
 public class UuidBasedUniqueIdentificationGenerator implements UniqueIdentificationGenerator {
     public static final String GENERATOR_ID = "UUID";
     private final Context mContext;
@@ -27,7 +28,7 @@ public class UuidBasedUniqueIdentificationGenerator implements UniqueIdentificat
 
     @Override
     public String getUniqueId(@Nullable String salt) {
-        SharedPreferencesManager preferences = ChromeSharedPreferences.getInstance();
+        SharedPreferencesManager preferences = SharedPreferencesManager.getInstance();
         String storedUniqueId = preferences.readString(mPreferenceKey, null);
         if (storedUniqueId != null) {
             return storedUniqueId;

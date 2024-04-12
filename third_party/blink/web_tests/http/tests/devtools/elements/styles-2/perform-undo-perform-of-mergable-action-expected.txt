@@ -11,7 +11,6 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 After changing property
 [expanded] 
@@ -24,7 +23,6 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 After undo
 [expanded] 
@@ -37,7 +35,6 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 After perform
 [expanded] 
@@ -50,6 +47,5 @@ element.style { ()
 [expanded] 
 div { (user agent stylesheet)
     display: block;
-    unicode-bidi: isolate;
 
 

@@ -12,6 +12,7 @@ for the rules we're checking against here.
 
 import os
 
+USE_PYTHON3 = True
 
 
 def GetPathsToPrepend(input_api):

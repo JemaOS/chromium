@@ -45,8 +45,7 @@ AccountManagerPolicyControllerFactory::AccountManagerPolicyControllerFactory()
 AccountManagerPolicyControllerFactory::
     ~AccountManagerPolicyControllerFactory() = default;
 
-std::unique_ptr<KeyedService>
-AccountManagerPolicyControllerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AccountManagerPolicyControllerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* const profile = Profile::FromBrowserContext(context);
   auto* factory =
@@ -68,10 +67,10 @@ AccountManagerPolicyControllerFactory::BuildServiceInstanceForBrowserContext(
   if (!user)
     return nullptr;
 
-  std::unique_ptr<AccountManagerPolicyController> service =
-      std::make_unique<AccountManagerPolicyController>(profile, account_manager,
-                                                       account_manager_facade,
-                                                       user->GetAccountId());
+  AccountManagerPolicyController* const service =
+      new AccountManagerPolicyController(profile, account_manager,
+                                         account_manager_facade,
+                                         user->GetAccountId());
   // Auto-start the Service.
   service->Start();
 

@@ -8,43 +8,33 @@
 
 #include "base/check.h"
 #include "base/containers/extend.h"
-#include "base/files/file_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/apps/app_service/app_icon/app_icon_factory.h"
 #include "chrome/browser/apps/app_service/extension_apps_utils.h"
 #include "chrome/browser/apps/app_service/intent_util.h"
 #include "chrome/browser/browser_process.h"
-#include "chrome/browser/chromeos/extensions/web_file_handlers/intent_util.h"
 #include "chrome/browser/extensions/extension_ui_util.h"
 #include "chrome/browser/extensions/launch_util.h"
 #include "chrome/browser/lacros/lacros_extensions_util.h"
-#include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/lacros/window_utility.h"
-#include "chrome/browser/web_applications/web_app_tab_helper.h"
 #include "chromeos/crosapi/mojom/app_window_tracker.mojom.h"
 #include "chromeos/lacros/lacros_service.h"
-#include "components/app_constants/constants.h"
-#include "components/services/app_service/public/cpp/app_capability_access_cache.h"
 #include "components/services/app_service/public/cpp/app_types.h"
 #include "components/services/app_service/public/cpp/icon_types.h"
 #include "components/services/app_service/public/cpp/intent_filter.h"
-#include "content/public/browser/web_contents.h"
 #include "extensions/browser/app_window/app_window.h"
 #include "extensions/browser/app_window/app_window_registry.h"
-#include "extensions/browser/extension_file_task_runner.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_prefs_observer.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_registry_observer.h"
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/management_policy.h"
-#include "extensions/browser/path_util.h"
 #include "extensions/browser/unloaded_extension_reason.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/manifest_handlers/app_display_info.h"
-#include "extensions/common/manifest_handlers/web_file_handlers_info.h"
 
 namespace {
 
@@ -221,11 +211,13 @@ class LacrosExtensionAppsPublisher::ProfileTracker
     // The extension also has to match.
     if (!which_type_.Matches(app_window->GetExtension()))
       return;
+    std::string muxed_id =
+        lacros_extensions_util::MuxId(profile_, app_window->GetExtension());
     std::string window_id = lacros_window_utility::GetRootWindowUniqueId(
         app_window->GetNativeWindow());
     app_window_id_cache_[app_window] = window_id;
 
-    publisher_->OnAppWindowAdded(app_window->GetExtension()->id(), window_id);
+    publisher_->OnAppWindowAdded(muxed_id, window_id);
   }
 
   void OnAppWindowRemoved(extensions::AppWindow* app_window) override {
@@ -239,8 +231,9 @@ class LacrosExtensionAppsPublisher::ProfileTracker
     if (it == app_window_id_cache_.end())
       return;
 
+    std::string muxed_id = apps::MuxId(profile_, app_window->extension_id());
     std::string window_id = it->second;
-    publisher_->OnAppWindowRemoved(app_window->extension_id(), window_id);
+    publisher_->OnAppWindowRemoved(muxed_id, window_id);
 
     app_window_id_cache_.erase(app_window);
   }
@@ -283,7 +276,8 @@ class LacrosExtensionAppsPublisher::ProfileTracker
     apps::AppType app_type = which_type_.ChooseForChromeAppOrExtension(
         apps::AppType::kStandaloneBrowserChromeApp,
         apps::AppType::kStandaloneBrowserExtension);
-    auto app = std::make_unique<apps::App>(app_type, extension->id());
+    auto app = std::make_unique<apps::App>(
+        app_type, lacros_extensions_util::MuxId(profile_, extension));
     app->readiness = readiness;
     app->name = extension->name();
     app->short_name = extension->short_name();
@@ -298,7 +292,9 @@ class LacrosExtensionAppsPublisher::ProfileTracker
     // This bug is tracked at https://crbug.com/1248499, but given that Chrome
     // Apps is deprecated, it's unclear if we'll ever get around to implementing
     // this functionality.
-    app->icon_key = apps::IconKey(apps::IconEffects::kCrOsStandardIcon);
+    app->icon_key =
+        apps::IconKey(/*timeline=*/0, apps::IconKey::kInvalidResourceId,
+                      apps::IconEffects::kCrOsStandardIcon);
 
     auto* prefs = extensions::ExtensionPrefs::Get(profile_);
     if (prefs) {
@@ -340,14 +336,11 @@ class LacrosExtensionAppsPublisher::ProfileTracker
     app->allow_uninstall = (policy->UserMayModifySettings(extension, nullptr) &&
                             !policy->MustRemainInstalled(extension, nullptr));
 
-    app->allow_close = true;
-
-    // Add file_handlers for either of the following:
-    //   a) Chrome Apps and quickoffice.
-    //   b) Web File Handlers or file_browser_handler for Extensions.
+    // Add file_handlers for Chrome Apps and quickoffice, or
+    // file_browser_handler for Extensions.
     base::Extend(app->intent_filters,
                  which_type_.ChooseIntentFilter(
-                     extensions::IsLegacyQuickOfficeExtension(*extension),
+                     extension_misc::IsQuickOfficeExtension(extension->id()),
                      apps_util::CreateIntentFiltersForChromeApp,
                      apps_util::CreateIntentFiltersForExtension)(extension));
     return app;
@@ -414,19 +407,12 @@ void LacrosExtensionAppsPublisher::Initialize() {
     profile_trackers_[profile] =
         std::make_unique<ProfileTracker>(profile, this, which_type_);
   }
-
-  // Only track the media usage for the chrome apps.
-  if (which_type_.IsChromeApps()) {
-    media_dispatcher_.Observe(MediaCaptureDevicesDispatcher::GetInstance()
-                                  ->GetMediaStreamCaptureIndicator()
-                                  .get());
-  }
 }
 
 bool LacrosExtensionAppsPublisher::InitializeCrosapi() {
   // Ash is too old to support the chrome app publisher interface.
-  int crosapiVersion = chromeos::LacrosService::Get()
-                           ->GetInterfaceVersion<crosapi::mojom::Crosapi>();
+  int crosapiVersion = chromeos::LacrosService::Get()->GetInterfaceVersion(
+      crosapi::mojom::Crosapi::Uuid_);
   int minRequiredVersion =
       static_cast<int>(which_type_.ChooseForChromeAppOrExtension(
           crosapi::mojom::Crosapi::kBindChromeAppPublisherMinVersion,
@@ -458,11 +444,6 @@ bool LacrosExtensionAppsPublisher::InitializeCrosapi() {
 
 void LacrosExtensionAppsPublisher::Publish(std::vector<apps::AppPtr> apps) {
   publisher_->OnApps(std::move(apps));
-}
-
-void LacrosExtensionAppsPublisher::PublishCapabilityAccesses(
-    std::vector<apps::CapabilityAccessPtr> accesses) {
-  publisher_->OnCapabilityAccesses(std::move(accesses));
 }
 
 void LacrosExtensionAppsPublisher::OnAppWindowAdded(
@@ -506,8 +487,7 @@ void LacrosExtensionAppsPublisher::UpdateAppWindowMode(
     apps::WindowMode window_mode) {
   Profile* profile = nullptr;
   const extensions::Extension* extension = nullptr;
-  bool success = lacros_extensions_util::GetProfileAndExtension(
-      app_id, &profile, &extension);
+  bool success = lacros_extensions_util::DemuxId(app_id, &profile, &extension);
   if (!success)
     return;
 
@@ -523,91 +503,4 @@ void LacrosExtensionAppsPublisher::UpdateAppWindowMode(
   auto matched = profile_trackers_.find(profile);
   DCHECK(matched != profile_trackers_.end());
   matched->second->Publish(extension, apps::Readiness::kReady);
-}
-
-void LacrosExtensionAppsPublisher::UpdateAppSize(const std::string& app_id) {
-  Profile* profile = nullptr;
-  const extensions::Extension* extension = nullptr;
-  bool success = lacros_extensions_util::GetProfileAndExtension(
-      app_id, &profile, &extension);
-  if (!success) {
-    return;
-  }
-
-  extensions::path_util::CalculateExtensionDirectorySize(
-      extension->path(),
-      base::BindOnce(&LacrosExtensionAppsPublisher::OnSizeCalculated,
-                     weak_ptr_factory_.GetWeakPtr(), extension->id()));
-}
-
-void LacrosExtensionAppsPublisher::OnIsCapturingVideoChanged(
-    content::WebContents* web_contents,
-    bool is_capturing_video) {
-  auto app_id = MaybeGetAppId(web_contents);
-  if (!app_id.has_value()) {
-    return;
-  }
-
-  auto result = media_requests_.UpdateCameraState(app_id.value(), web_contents,
-                                                  is_capturing_video);
-  ModifyCapabilityAccess(app_id.value(), result.camera, result.microphone);
-}
-
-void LacrosExtensionAppsPublisher::OnIsCapturingAudioChanged(
-    content::WebContents* web_contents,
-    bool is_capturing_audio) {
-  auto app_id = MaybeGetAppId(web_contents);
-  if (!app_id.has_value()) {
-    return;
-  }
-
-  auto result = media_requests_.UpdateMicrophoneState(
-      app_id.value(), web_contents, is_capturing_audio);
-  ModifyCapabilityAccess(app_id.value(), result.camera, result.microphone);
-}
-
-void LacrosExtensionAppsPublisher::OnSizeCalculated(const std::string& app_id,
-                                                    int64_t size) {
-  std::vector<apps::AppPtr> apps;
-  apps::AppType app_type = which_type_.ChooseForChromeAppOrExtension(
-      apps::AppType::kStandaloneBrowserChromeApp,
-      apps::AppType::kStandaloneBrowserExtension);
-  auto app = std::make_unique<apps::App>(app_type, app_id);
-  app->app_size_in_bytes = size;
-  apps.push_back(std::move(app));
-  Publish(std::move(apps));
-}
-
-std::optional<std::string> LacrosExtensionAppsPublisher::MaybeGetAppId(
-    content::WebContents* web_contents) {
-  // The web app publisher is responsible to handle `web_contents` for web
-  // apps.
-  const webapps::AppId* web_app_id =
-      web_app::WebAppTabHelper::GetAppId(web_contents);
-  if (web_app_id) {
-    return std::nullopt;
-  }
-
-  const auto* extension =
-      lacros_extensions_util::MaybeGetExtension(web_contents);
-  return (extension && which_type_.Matches(extension))
-             ? std::make_optional<std::string>(extension->id())
-             : std::nullopt;
-}
-
-void LacrosExtensionAppsPublisher::ModifyCapabilityAccess(
-    const std::string& app_id,
-    std::optional<bool> accessing_camera,
-    std::optional<bool> accessing_microphone) {
-  if (!accessing_camera.has_value() && !accessing_microphone.has_value()) {
-    return;
-  }
-
-  std::vector<apps::CapabilityAccessPtr> capability_accesses;
-  auto capability_access = std::make_unique<apps::CapabilityAccess>(app_id);
-  capability_access->camera = accessing_camera;
-  capability_access->microphone = accessing_microphone;
-  capability_accesses.push_back(std::move(capability_access));
-
-  PublishCapabilityAccesses(std::move(capability_accesses));
 }

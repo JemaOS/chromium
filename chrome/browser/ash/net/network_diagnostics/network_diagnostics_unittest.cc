@@ -44,7 +44,7 @@ class TestDebugDaemonClient : public FakeDebugDaemonClient {
   void TestICMP(const std::string& ip_address,
                 TestICMPCallback callback) override {
     // Invoke the test callback with fake output.
-    std::move(callback).Run(std::optional<std::string>{icmp_output_});
+    std::move(callback).Run(absl::optional<std::string>{icmp_output_});
   }
 
   void set_icmp_output(const std::string& icmp_output) {
@@ -103,8 +103,9 @@ class NetworkDiagnosticsTest : public NetworkDiagnosticsTestHelper {
     }
 
     // Set up the IP v4 config
-    auto ip_config_v4_properties = base::Value::Dict().Set(
-        shill::kNameServersProperty, std::move(dns_servers));
+    base::Value::Dict ip_config_v4_properties;
+    ip_config_v4_properties.Set(shill::kNameServersProperty,
+                                std::move(dns_servers));
     helper()->ip_config_test()->AddIPConfig(kIPv4ConfigPath,
                                             ip_config_v4_properties.Clone());
     std::string wifi_device_path =
@@ -143,7 +144,6 @@ TEST_F(NetworkDiagnosticsTest, RunLanConnectivityReachability) {
   base::RunLoop run_loop;
   mojom::RoutineResultPtr result;
   network_diagnostics()->RunLanConnectivity(
-      mojom::RoutineCallSource::kDiagnosticsUI,
       base::BindLambdaForTesting([&](mojom::RoutineResultPtr response) {
         result = std::move(response);
         run_loop.Quit();
@@ -152,7 +152,6 @@ TEST_F(NetworkDiagnosticsTest, RunLanConnectivityReachability) {
   EXPECT_EQ(result->verdict, mojom::RoutineVerdict::kNoProblem);
   std::vector<mojom::LanConnectivityProblem> no_problems;
   EXPECT_EQ(result->problems->get_lan_connectivity_problems(), no_problems);
-  EXPECT_EQ(result->source, mojom::RoutineCallSource::kDiagnosticsUI);
 }
 
 // Test whether NetworkDiagnostics can successfully invoke the
@@ -161,7 +160,6 @@ TEST_F(NetworkDiagnosticsTest, RunSignalStrengthReachability) {
   base::RunLoop run_loop;
   mojom::RoutineResultPtr result;
   network_diagnostics()->RunSignalStrength(
-      mojom::RoutineCallSource::kDiagnosticsUI,
       base::BindLambdaForTesting([&](mojom::RoutineResultPtr response) {
         result = std::move(response);
         run_loop.Quit();
@@ -170,7 +168,6 @@ TEST_F(NetworkDiagnosticsTest, RunSignalStrengthReachability) {
   EXPECT_EQ(result->verdict, mojom::RoutineVerdict::kNoProblem);
   std::vector<mojom::SignalStrengthProblem> no_problems;
   EXPECT_EQ(result->problems->get_signal_strength_problems(), no_problems);
-  EXPECT_EQ(result->source, mojom::RoutineCallSource::kDiagnosticsUI);
 }
 
 // Test whether NetworkDiagnostics can successfully invoke the
@@ -180,7 +177,6 @@ TEST_F(NetworkDiagnosticsTest, RunGatewayCanBePingedReachability) {
   base::RunLoop run_loop;
   mojom::RoutineResultPtr result;
   network_diagnostics()->RunGatewayCanBePinged(
-      mojom::RoutineCallSource::kDiagnosticsUI,
       base::BindLambdaForTesting([&](mojom::RoutineResultPtr response) {
         result = std::move(response);
         run_loop.Quit();
@@ -190,7 +186,6 @@ TEST_F(NetworkDiagnosticsTest, RunGatewayCanBePingedReachability) {
   std::vector<mojom::GatewayCanBePingedProblem> no_problems;
   EXPECT_EQ(result->problems->get_gateway_can_be_pinged_problems(),
             no_problems);
-  EXPECT_EQ(result->source, mojom::RoutineCallSource::kDiagnosticsUI);
 }
 
 // Test whether NetworkDiagnostics can successfully invoke the
@@ -199,7 +194,6 @@ TEST_F(NetworkDiagnosticsTest, RunHasSecureWiFiConnectionReachability) {
   base::RunLoop run_loop;
   mojom::RoutineResultPtr result;
   network_diagnostics()->RunHasSecureWiFiConnection(
-      mojom::RoutineCallSource::kDiagnosticsUI,
       base::BindLambdaForTesting([&](mojom::RoutineResultPtr response) {
         result = std::move(response);
         run_loop.Quit();
@@ -209,7 +203,6 @@ TEST_F(NetworkDiagnosticsTest, RunHasSecureWiFiConnectionReachability) {
   std::vector<mojom::HasSecureWiFiConnectionProblem> no_problems;
   EXPECT_EQ(result->problems->get_has_secure_wifi_connection_problems(),
             no_problems);
-  EXPECT_EQ(result->source, mojom::RoutineCallSource::kDiagnosticsUI);
 }
 
 // Test whether NetworkDiagnostics can successfully invoke the
@@ -221,7 +214,6 @@ TEST_F(NetworkDiagnosticsTest, RunDnsResolverPresentReachability) {
   base::RunLoop run_loop;
   mojom::RoutineResultPtr result;
   network_diagnostics()->RunDnsResolverPresent(
-      mojom::RoutineCallSource::kDiagnosticsUI,
       base::BindLambdaForTesting([&](mojom::RoutineResultPtr response) {
         result = std::move(response);
         run_loop.Quit();

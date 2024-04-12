@@ -127,7 +127,7 @@ void AmbientShieldView::InitLayout() {
       GradientBackground::Orientation::kVertical, colors));
 }
 
-BEGIN_METADATA(AmbientShieldView)
+BEGIN_METADATA(AmbientShieldView, views::View)
 END_METADATA
 
 }  // namespace ash

@@ -64,6 +64,7 @@ typedef (Blob or BufferSource or FormData or URLSearchParams or USVString) XMLHt
     [RaisesException, RuntimeEnabled=AttributionReportingInterface, SecureContext] void setAttributionReporting(AttributionReportingRequestOptions attributionReporting);
     [RaisesException=Setter] attribute unsigned long timeout;
     [RaisesException=Setter] attribute boolean withCredentials;
+    [RuntimeEnabled=TopicsXHR, SecureContext, Exposed=Window] attribute boolean deprecatedBrowsingTopics;
     readonly attribute XMLHttpRequestUpload upload;
     [RaisesException] void send(optional (Document or XMLHttpRequestBodyInit)? body = null);
     void abort();
@@ -76,8 +77,9 @@ typedef (Blob or BufferSource or FormData or URLSearchParams or USVString) XMLHt
     ByteString getAllResponseHeaders();
     [RaisesException] void overrideMimeType(DOMString mime);
     [RaisesException=Setter] attribute XMLHttpRequestResponseType responseType;
-    [CallWith=ScriptState, RaisesException=Getter] readonly attribute any response;
-    [RaisesException=Getter] readonly attribute USVString responseText;
+    [Custom=Getter, RaisesException=Getter] readonly attribute any response;
+    [Custom=Getter, RaisesException=Getter] readonly attribute USVString responseText;
     // TODO(foolip): responseXML should be [Exposed=Window].
     [MeasureAs=XMLHttpRequestResponseXML, RaisesException=Getter] readonly attribute Document? responseXML;
+    [RuntimeEnabled=PrivateStateTokens, SecureContext] readonly attribute DOMException privateTokenOperationError;
 };

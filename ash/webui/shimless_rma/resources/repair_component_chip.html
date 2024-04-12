@@ -81,9 +81,9 @@
 
 <div id="componentButtonWrapper">
   <cr-button id="componentButton" disabled="[[disabled]]"
-      on-click="onComponentButtonClicked"
+      on-click="onComponentButtonClicked_"
       aria-labelledby="componentName componentIdentifier"
-      aria-pressed$="[[isAriaPressed(checked)]]">
+      aria-pressed$="[[isAriaPressed_(checked)]]">
     <div id="labelDiv" aria-hidden="true">
       <span id="componentName">[[componentName]]</span>
       <div id="componentIdentifier">[[componentIdentifier]]</div>

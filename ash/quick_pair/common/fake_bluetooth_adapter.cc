@@ -12,14 +12,17 @@ const std::vector<uint8_t>& kTestWriteResponse{0x01, 0x03, 0x02, 0x01, 0x02};
 
 namespace ash::quick_pair {
 
+void FakeBluetoothAdapter::NotifyPoweredChanged(bool powered) {
+  device::BluetoothAdapter::NotifyAdapterPoweredChanged(powered);
+}
+
 void FakeBluetoothAdapter::SetBluetoothIsPowered(bool powered) {
   is_bluetooth_powered_ = powered;
-  device::BluetoothAdapter::NotifyAdapterPoweredChanged(powered);
+  NotifyPoweredChanged(powered);
 }
 
 void FakeBluetoothAdapter::SetBluetoothIsPresent(bool present) {
   is_bluetooth_present_ = present;
-  device::BluetoothAdapter::NotifyAdapterPresentChanged(present);
 }
 
 void FakeBluetoothAdapter::SetHardwareOffloadingStatus(
@@ -123,7 +126,7 @@ void FakeBluetoothAdapter::AddPairingDelegate(
 
 void FakeBluetoothAdapter::ConnectDevice(
     const std::string& address,
-    const std::optional<device::BluetoothDevice::AddressType>& address_type,
+    const absl::optional<device::BluetoothDevice::AddressType>& address_type,
     base::OnceCallback<void(device::BluetoothDevice*)> callback,
     base::OnceCallback<void(const std::string&)> error_callback) {
   if (connect_device_failure_) {

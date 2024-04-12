@@ -11,7 +11,7 @@
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/types/pass_key.h"
-#include "components/webapps/common/web_app_id.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 
 namespace web_app {
 
@@ -30,7 +30,7 @@ struct RegistryUpdateData {
   Apps apps_to_create;
   Apps apps_to_update;
 
-  std::vector<webapps::AppId> apps_to_delete;
+  std::vector<AppId> apps_to_delete;
 
   bool IsEmpty() const;
 
@@ -50,27 +50,25 @@ class WebAppRegistryUpdate {
   // Register a new app.
   void CreateApp(std::unique_ptr<WebApp> web_app);
   // Delete registered app.
-  void DeleteApp(const webapps::AppId& app_id);
+  void DeleteApp(const AppId& app_id);
   // Acquire a mutable existing app to set new field values.
-  WebApp* UpdateApp(const webapps::AppId& app_id);
+  WebApp* UpdateApp(const AppId& app_id);
 
-  std::unique_ptr<RegistryUpdateData> TakeUpdateData(
-      base::PassKey<WebAppSyncBridge> pass_key);
+  const RegistryUpdateData& update_data() const { return *update_data_; }
+  std::unique_ptr<RegistryUpdateData> TakeUpdateData();
 
  private:
   std::unique_ptr<RegistryUpdateData> update_data_;
   const raw_ptr<const WebAppRegistrar> registrar_;
 };
 
-// A convenience utility class to use RAII for `WebAppSyncBridge::BeginUpdate`
-// and `WebAppSyncBridge::CommitUpdate` calls.
-class [[nodiscard]] ScopedRegistryUpdate {
+// A convenience utility class to use RAII for WebAppSyncBridge::BeginUpdate and
+// WebAppSyncBridge::CommitUpdate calls.
+class ScopedRegistryUpdate {
  public:
-  ScopedRegistryUpdate(
-      base::PassKey<WebAppSyncBridge>,
-      std::unique_ptr<WebAppRegistryUpdate> update,
-      base::OnceCallback<void(std::unique_ptr<WebAppRegistryUpdate>)>
-          commit_update);
+  explicit ScopedRegistryUpdate(WebAppSyncBridge* sync_bridge);
+  ScopedRegistryUpdate(WebAppSyncBridge* sync_bridge,
+                       base::OnceCallback<void(bool success)> commit_complete);
   ScopedRegistryUpdate(ScopedRegistryUpdate&&) noexcept;
   ScopedRegistryUpdate(const ScopedRegistryUpdate&) = delete;
   ScopedRegistryUpdate& operator=(const ScopedRegistryUpdate&) = delete;
@@ -80,8 +78,8 @@ class [[nodiscard]] ScopedRegistryUpdate {
 
  private:
   std::unique_ptr<WebAppRegistryUpdate> update_;
-  base::OnceCallback<void(std::unique_ptr<WebAppRegistryUpdate>)>
-      commit_update_;
+  const raw_ptr<WebAppSyncBridge> sync_bridge_;
+  base::OnceCallback<void(bool success)> commit_complete_;
 };
 
 }  // namespace web_app

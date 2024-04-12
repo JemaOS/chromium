@@ -43,7 +43,7 @@ class CookieControlsServiceObserver : public CookieControlsService::Observer {
   }
 
  private:
-  raw_ptr<CookieControlsService, DanglingUntriaged> service_;
+  raw_ptr<CookieControlsService> service_;
   bool checked_;
 };
 

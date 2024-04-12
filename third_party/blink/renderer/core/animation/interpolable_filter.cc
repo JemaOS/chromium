@@ -38,19 +38,17 @@ double ClampParameter(double value, FilterOperation::OperationType type) {
 }  // namespace
 
 // static
-InterpolableFilter* InterpolableFilter::MaybeCreate(
+std::unique_ptr<InterpolableFilter> InterpolableFilter::MaybeCreate(
     const FilterOperation& filter,
-    double zoom,
-    mojom::blink::ColorScheme color_scheme,
-    const ui::ColorProvider* color_provider) {
-  InterpolableValue* value = nullptr;
+    double zoom) {
+  std::unique_ptr<InterpolableValue> value;
   FilterOperation::OperationType type = filter.GetType();
   switch (type) {
     case FilterOperation::OperationType::kGrayscale:
     case FilterOperation::OperationType::kHueRotate:
     case FilterOperation::OperationType::kSaturate:
     case FilterOperation::OperationType::kSepia:
-      value = MakeGarbageCollected<InterpolableNumber>(
+      value = std::make_unique<InterpolableNumber>(
           To<BasicColorMatrixFilterOperation>(filter).Amount());
       break;
 
@@ -58,7 +56,7 @@ InterpolableFilter* InterpolableFilter::MaybeCreate(
     case FilterOperation::OperationType::kContrast:
     case FilterOperation::OperationType::kInvert:
     case FilterOperation::OperationType::kOpacity:
-      value = MakeGarbageCollected<InterpolableNumber>(
+      value = std::make_unique<InterpolableNumber>(
           To<BasicComponentTransferFilterOperation>(filter).Amount());
       break;
 
@@ -69,8 +67,7 @@ InterpolableFilter* InterpolableFilter::MaybeCreate(
 
     case FilterOperation::OperationType::kDropShadow:
       value = InterpolableShadow::Create(
-          To<DropShadowFilterOperation>(filter).Shadow(), zoom, color_scheme,
-          color_provider);
+          To<DropShadowFilterOperation>(filter).Shadow(), zoom);
       break;
 
     case FilterOperation::OperationType::kReference:
@@ -83,21 +80,19 @@ InterpolableFilter* InterpolableFilter::MaybeCreate(
 
   if (!value)
     return nullptr;
-  return MakeGarbageCollected<InterpolableFilter>(std::move(value), type);
+  return std::make_unique<InterpolableFilter>(std::move(value), type);
 }
 
 // static
-InterpolableFilter* InterpolableFilter::MaybeConvertCSSValue(
-    const CSSValue& css_value,
-    mojom::blink::ColorScheme color_scheme,
-    const ui::ColorProvider* color_provider) {
+std::unique_ptr<InterpolableFilter> InterpolableFilter::MaybeConvertCSSValue(
+    const CSSValue& css_value) {
   if (css_value.IsURIValue())
     return nullptr;
 
   const auto& filter = To<CSSFunctionValue>(css_value);
   DCHECK_LE(filter.length(), 1u);
 
-  InterpolableValue* value = nullptr;
+  std::unique_ptr<InterpolableValue> value;
   FilterOperation::OperationType type =
       FilterOperationResolver::FilterOperationForType(filter.FunctionType());
   switch (type) {
@@ -109,7 +104,7 @@ InterpolableFilter* InterpolableFilter::MaybeConvertCSSValue(
     case FilterOperation::OperationType::kSaturate:
     case FilterOperation::OperationType::kSepia:
     case FilterOperation::OperationType::kHueRotate:
-      value = MakeGarbageCollected<InterpolableNumber>(
+      value = std::make_unique<InterpolableNumber>(
           FilterOperationResolver::ResolveNumericArgumentForFunction(filter));
       break;
 
@@ -120,8 +115,7 @@ InterpolableFilter* InterpolableFilter::MaybeConvertCSSValue(
       break;
 
     case FilterOperation::OperationType::kDropShadow:
-      value = InterpolableShadow::MaybeConvertCSSValue(
-          filter.Item(0), color_scheme, color_provider);
+      value = InterpolableShadow::MaybeConvertCSSValue(filter.Item(0));
       break;
 
     default:
@@ -131,28 +125,28 @@ InterpolableFilter* InterpolableFilter::MaybeConvertCSSValue(
 
   if (!value)
     return nullptr;
-  return MakeGarbageCollected<InterpolableFilter>(value, type);
+  return std::make_unique<InterpolableFilter>(std::move(value), type);
 }
 
 // static
-InterpolableFilter* InterpolableFilter::CreateInitialValue(
+std::unique_ptr<InterpolableFilter> InterpolableFilter::CreateInitialValue(
     FilterOperation::OperationType type) {
   // See https://drafts.fxtf.org/filter-effects-1/#filter-functions for the
   // mapping of OperationType to initial value.
-  InterpolableValue* value = nullptr;
+  std::unique_ptr<InterpolableValue> value;
   switch (type) {
     case FilterOperation::OperationType::kGrayscale:
     case FilterOperation::OperationType::kInvert:
     case FilterOperation::OperationType::kSepia:
     case FilterOperation::OperationType::kHueRotate:
-      value = MakeGarbageCollected<InterpolableNumber>(0);
+      value = std::make_unique<InterpolableNumber>(0);
       break;
 
     case FilterOperation::OperationType::kBrightness:
     case FilterOperation::OperationType::kContrast:
     case FilterOperation::OperationType::kOpacity:
     case FilterOperation::OperationType::kSaturate:
-      value = MakeGarbageCollected<InterpolableNumber>(1);
+      value = std::make_unique<InterpolableNumber>(1);
       break;
 
     case FilterOperation::OperationType::kBlur:
@@ -168,7 +162,7 @@ InterpolableFilter* InterpolableFilter::CreateInitialValue(
       return nullptr;
   }
 
-  return MakeGarbageCollected<InterpolableFilter>(value, type);
+  return std::make_unique<InterpolableFilter>(std::move(value), type);
 }
 
 FilterOperation* InterpolableFilter::CreateFilterOperation(
@@ -203,6 +197,8 @@ FilterOperation* InterpolableFilter::CreateFilterOperation(
     case FilterOperation::OperationType::kDropShadow: {
       ShadowData shadow_data =
           To<InterpolableShadow>(*value_).CreateShadowData(state);
+      if (shadow_data.GetColor().IsCurrentColor())
+        shadow_data.OverrideColor(Color::kBlack);
       return MakeGarbageCollected<DropShadowFilterOperation>(shadow_data);
     }
 
@@ -224,7 +220,7 @@ void InterpolableFilter::Add(const InterpolableValue& other) {
     case FilterOperation::OperationType::kOpacity:
     case FilterOperation::OperationType::kSaturate:
     case FilterOperation::OperationType::kSepia:
-      value_->Add(*MakeGarbageCollected<InterpolableNumber>(-1));
+      value_->Add(*std::make_unique<InterpolableNumber>(-1));
       break;
     default:
       break;

@@ -10,12 +10,7 @@
 FontPrefChangeNotifierFactory::FontPrefChangeNotifierFactory()
     : ProfileKeyedServiceFactory(
           "FontPrefChangeNotifier",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
 FontPrefChangeNotifierFactory::~FontPrefChangeNotifierFactory() = default;
 
@@ -28,13 +23,11 @@ FontPrefChangeNotifier* FontPrefChangeNotifierFactory::GetForProfile(
 
 // static
 FontPrefChangeNotifierFactory* FontPrefChangeNotifierFactory::GetInstance() {
-  static base::NoDestructor<FontPrefChangeNotifierFactory> instance;
-  return instance.get();
+  return base::Singleton<FontPrefChangeNotifierFactory>::get();
 }
 
-std::unique_ptr<KeyedService>
-FontPrefChangeNotifierFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* FontPrefChangeNotifierFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<FontPrefChangeNotifier>(
+  return new FontPrefChangeNotifier(
       Profile::FromBrowserContext(context)->GetPrefs());
 }

@@ -175,6 +175,8 @@ static const UChar32 kIsHangulRanges[] = {
     0xFFA0, 0xFFDC,
 };
 
+static const UChar32 kIsHangulArray[] = {};
+
 // Freezed trie tree, see character_property_data_generator.cc.
 extern const int32_t kSerializedCharacterDataSize;
 extern const uint8_t kSerializedCharacterData[];

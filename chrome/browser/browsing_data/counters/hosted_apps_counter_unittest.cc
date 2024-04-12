@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -22,9 +21,14 @@
 #include "content/public/test/browser_task_environment.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/extension_builder.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
+
+using extensions::DictionaryBuilder;
+using extensions::ListBuilder;
 
 class HostedAppsCounterTest : public testing::Test {
  public:
@@ -40,14 +44,16 @@ class HostedAppsCounterTest : public testing::Test {
 
   std::string AddExtension() {
     return AddItem(base::Uuid::GenerateRandomV4().AsLowercaseString(),
-                   /*app_manifest=*/std::nullopt);
+                   /*app_manifest=*/absl::nullopt);
   }
 
   std::string AddPackagedApp() {
     return AddItem(
         base::Uuid::GenerateRandomV4().AsLowercaseString(),
-        base::Value::Dict().Set(
-            "launch", base::Value::Dict().Set("local_path", "index.html")));
+        DictionaryBuilder()
+            .Set("launch",
+                 DictionaryBuilder().Set("local_path", "index.html").Build())
+            .Build());
   }
 
   std::string AddHostedApp() {
@@ -58,18 +64,21 @@ class HostedAppsCounterTest : public testing::Test {
   std::string AddHostedAppWithName(const std::string& name) {
     return AddItem(
         name,
-        base::Value::Dict()
-            .Set("urls", base::Value::List().Append("https://example.com"))
+        DictionaryBuilder()
+            .Set("urls", ListBuilder().Append("https://example.com").Build())
             .Set("launch",
-                 base::Value::Dict().Set("web_url", "https://example.com")));
+                 DictionaryBuilder().Set(
+                     "web_url", "https://example.com").Build())
+            .Build());
   }
 
   std::string AddItem(const std::string& name,
-                      std::optional<base::Value::Dict> app_manifest) {
-    auto manifest_builder = base::Value::Dict()
-                                .Set("manifest_version", 2)
-                                .Set("name", name)
-                                .Set("version", "1");
+                      absl::optional<base::Value::Dict> app_manifest) {
+    DictionaryBuilder manifest_builder;
+    manifest_builder
+        .Set("manifest_version", 2)
+        .Set("name", name)
+        .Set("version", "1");
 
     if (app_manifest) {
       manifest_builder.Set("app", std::move(*app_manifest));
@@ -77,7 +86,7 @@ class HostedAppsCounterTest : public testing::Test {
 
     scoped_refptr<const extensions::Extension> item =
         extensions::ExtensionBuilder()
-            .SetManifest(std::move(manifest_builder))
+            .SetManifest(manifest_builder.Build())
             .SetID(crx_file::id_util::GenerateId(name))
             .Build();
 

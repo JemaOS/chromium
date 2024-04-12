@@ -157,7 +157,6 @@ void OffscreenTab::Start(const GURL& start_url,
     params.starting_sandbox_flags = content::kPresentationReceiverSandboxFlags;
 
   offscreen_tab_web_contents_ = WebContents::Create(params);
-  offscreen_tab_web_contents_->SetOwnerLocationForDebug(FROM_HERE);
   offscreen_tab_web_contents_->SetDelegate(this);
   WebContentsObserver::Observe(offscreen_tab_web_contents_.get());
 
@@ -235,7 +234,7 @@ bool OffscreenTab::ShouldFocusLocationBarByDefault(WebContents* source) {
   return true;
 }
 
-bool OffscreenTab::ShouldFocusPageAfterCrash(content::WebContents* source) {
+bool OffscreenTab::ShouldFocusPageAfterCrash() {
   // Never focus the page.  Not even after a crash.
   return false;
 }
@@ -342,7 +341,7 @@ void OffscreenTab::RequestMediaAccessPermission(
 
 bool OffscreenTab::CheckMediaAccessPermission(
     content::RenderFrameHost* render_frame_host,
-    const url::Origin& security_origin,
+    const GURL& security_origin,
     blink::mojom::MediaStreamType type) {
   return false;
 }

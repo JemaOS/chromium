@@ -6,7 +6,6 @@
 
 #include <array>
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/files/file_path.h"
@@ -25,6 +24,7 @@
 #include "components/device_signals/core/system_signals/win/wsc_client.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using device_signals::MockFileSystemService;
 using device_signals::MockWmiClient;
@@ -59,14 +59,12 @@ class WinSystemSignalsServiceTest : public testing::Test {
 
   base::test::TaskEnvironment task_environment_;
   base::HistogramTester histogram_tester_;
-  std::optional<base::test::ScopedOSInfoOverride> os_info_override_;
+  absl::optional<base::test::ScopedOSInfoOverride> os_info_override_;
 
-  std::unique_ptr<WinSystemSignalsService> win_system_signals_service_;
-
-  // Owned by win_system_signals_service_.
   raw_ptr<MockFileSystemService> file_system_service_;
   raw_ptr<MockWmiClient> wmi_client_;
   raw_ptr<MockWscClient> wsc_client_;
+  std::unique_ptr<WinSystemSignalsService> win_system_signals_service_;
 };
 
 // Tests that GetFileSystemSignals forwards the signal collection to

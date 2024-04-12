@@ -27,10 +27,6 @@ struct PolicyContainerPolicies {
   network.mojom.IPAddressSpace ip_address_space =
       network.mojom.IPAddressSpace.kUnknown;
   bool can_navigate_top_without_user_gesture = true;
-  // An extra bit ensuring that the document cannot be cross-origin-isolated
-  // when it's false. Note that it is a necessary condition but not a sufficient
-  // condition on its own.
-  bool allow_cross_origin_isolation = false;
 };
 
 // This interface is implemented in the browser process. It defines methods to
@@ -43,6 +39,15 @@ interface PolicyContainerHost {
 
   // Append these content security policies.
   AddContentSecurityPolicies(array<network.mojom.ContentSecurityPolicy> content_security_policies);
+
+  // Register the remote corresponding to |receiver| as a keep alive handle for
+  // this PolicyContainerHost.
+  IssueKeepAliveHandle(pending_receiver<PolicyContainerHostKeepAliveHandle> receiver);
+};
+
+// This is a dummy interface used only to keep alive a PolicyContainerHost via
+// the mojo disconnect handler mechanism.
+interface PolicyContainerHostKeepAliveHandle {
 };
 
 // Struct containing Blink's copy of the policy container together with a remote

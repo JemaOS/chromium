@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/functional/callback.h"
@@ -16,6 +15,7 @@
 #include "base/time/time.h"
 #include "chrome/browser/media/webrtc/webrtc_log_uploader.h"
 #include "net/base/network_interfaces.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace chrome {
 namespace mojom {
@@ -71,7 +71,8 @@ class WebRtcTextLogHandler {
 
   // Opens a log and starts logging if allowed by the LogUploader.
   // Returns false if logging could not be started.
-  bool StartLogging(GenericDoneCallback callback);
+  bool StartLogging(WebRtcLogUploader* log_uploader,
+                    GenericDoneCallback callback);
 
   // Stops logging. Log will remain open until UploadLog or DiscardLog is
   // called.
@@ -118,10 +119,10 @@ class WebRtcTextLogHandler {
 
   void OnGetNetworkInterfaceList(
       GenericDoneCallback callback,
-      const std::optional<net::NetworkInterfaceList>& networks);
+      const absl::optional<net::NetworkInterfaceList>& networks);
   void OnGetNetworkInterfaceListFinish(
       GenericDoneCallback callback,
-      const std::optional<net::NetworkInterfaceList>& networks,
+      const absl::optional<net::NetworkInterfaceList>& networks,
       const std::string& linux_distro);
 
   SEQUENCE_CHECKER(sequence_checker_);

@@ -11,8 +11,6 @@
 #include "ash/shell.h"
 #include "base/memory/ptr_util.h"
 #include "ui/aura/window.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
@@ -127,8 +125,6 @@ void AnimateLayerToPosition(views::View* view,
 // element.
 class CircularThrobberView : public views::View,
                              public views::AnimationDelegateViews {
-  METADATA_HEADER(CircularThrobberView, views::View)
-
  public:
   CircularThrobberView(int width,
                        const SkColor& inner_circle_color,
@@ -209,12 +205,7 @@ void CircularThrobberView::AnimationProgressed(
   SchedulePaint();
 }
 
-BEGIN_METADATA(CircularThrobberView)
-END_METADATA
-
 class TouchTargetThrobberView : public CircularThrobberView {
-  METADATA_HEADER(TouchTargetThrobberView, CircularThrobberView)
-
  public:
   TouchTargetThrobberView(const gfx::Rect& bounds,
                           const SkColor& inner_circle_color,
@@ -260,9 +251,6 @@ void TouchTargetThrobberView::OnPaint(gfx::Canvas* canvas) {
   canvas->DrawImageInt(hand_icon_, horizontal_offset_, icon_width_);
 }
 
-BEGIN_METADATA(TouchTargetThrobberView)
-END_METADATA
-
 //   Circular      _________________________________
 //   Throbber     |                                 |
 //     View       |                                 |
@@ -280,8 +268,6 @@ END_METADATA
 // align. The hint box has a label text and a sublabel text to assist the
 // user by informing them about the next step in the calibration process.
 class HintBox : public views::View {
-  METADATA_HEADER(HintBox, views::View)
-
  public:
   HintBox(const gfx::Rect& bounds, int border_radius);
   HintBox(const HintBox&) = delete;
@@ -419,12 +405,7 @@ void HintBox::OnPaint(gfx::Canvas* canvas) {
                                   gfx::Canvas::NO_ELLIPSIS);
 }
 
-BEGIN_METADATA(HintBox)
-END_METADATA
-
 class CompletionMessageView : public views::View {
-  METADATA_HEADER(CompletionMessageView, views::View)
-
  public:
   CompletionMessageView(const gfx::Rect& bounds, const std::u16string& message);
   CompletionMessageView(const CompletionMessageView&) = delete;
@@ -476,9 +457,6 @@ void CompletionMessageView::OnPaint(gfx::Canvas* canvas) {
       message_, font_list_, flags_.getColor(), text_bounds_,
       gfx::Canvas::TEXT_ALIGN_LEFT | gfx::Canvas::NO_SUBPIXEL_RENDERING);
 }
-
-BEGIN_METADATA(CompletionMessageView)
-END_METADATA
 
 // static
 views::UniqueWidgetPtr TouchCalibratorView::Create(
@@ -833,8 +811,5 @@ void TouchCalibratorView::SkipCurrentAnimation() {
     touch_point_view_->layer()->GetAnimator()->StopAnimating();
   }
 }
-
-BEGIN_METADATA(TouchCalibratorView)
-END_METADATA
 
 }  // namespace ash

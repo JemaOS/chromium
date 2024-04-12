@@ -154,9 +154,6 @@ class BackgroundModeManager : public BrowserListObserver,
                            DeleteBackgroundProfile);
   FRIEND_TEST_ALL_PREFIXES(BackgroundModeManagerTest,
                            ForceInstalledExtensionsKeepAlive);
-  FRIEND_TEST_ALL_PREFIXES(
-      BackgroundModeManagerTest,
-      ForceInstalledExtensionsKeepAliveReleasedOnAppTerminating);
   FRIEND_TEST_ALL_PREFIXES(BackgroundModeManagerWithExtensionsTest,
                            BackgroundMenuGeneration);
   FRIEND_TEST_ALL_PREFIXES(BackgroundModeManagerWithExtensionsTest,
@@ -416,8 +413,7 @@ class BackgroundModeManager : public BrowserListObserver,
 
   // Reference to the ProfileAttributesStorage. It is used to update the
   // background app status of profiles when they open/close background apps.
-  raw_ptr<ProfileAttributesStorage, AcrossTasksDanglingUntriaged>
-      profile_storage_;
+  raw_ptr<ProfileAttributesStorage, DanglingUntriaged> profile_storage_;
 
   // Registrars for managing our change observers.
   base::CallbackListSubscription on_app_terminating_subscription_;
@@ -478,7 +474,7 @@ class BackgroundModeManager : public BrowserListObserver,
   // Set to true when background mode is suspended.
   bool background_mode_suspended_ = false;
 
-  std::optional<bool> launch_on_startup_enabled_;
+  absl::optional<bool> launch_on_startup_enabled_;
 
   // Task runner for making startup/login configuration changes that may
   // require file system or registry access.

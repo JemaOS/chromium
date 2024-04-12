@@ -73,8 +73,6 @@
 
 namespace blink {
 
-using mojom::blink::FormControlType;
-
 // --- ReplacementFragment helper class
 
 class ReplacementFragment final {
@@ -593,7 +591,7 @@ void ReplaceSelectionCommand::RemoveRedundantStylesAndKeepStyleSpanInline(
         }
       }
 
-      Element* context = element->parentElement();
+      ContainerNode* context = element->parentNode();
 
       // If Mail wraps the fragment with a Paste as Quotation blockquote, or if
       // you're pasting into a quoted region, styles from blockquoteNode are
@@ -895,9 +893,8 @@ static bool FollowBlockElementStyle(const Node* node) {
 
 // Remove style spans before insertion if they are unnecessary.  It's faster
 // because we'll avoid doing a layout.
-void ReplaceSelectionCommand::HandleStyleSpansBeforeInsertion(
-    ReplacementFragment& fragment,
-    const Position& insertion_pos) {
+static void HandleStyleSpansBeforeInsertion(ReplacementFragment& fragment,
+                                            const Position& insertion_pos) {
   Node* top_node = fragment.FirstChild();
   if (!IsA<HTMLSpanElement>(top_node))
     return;
@@ -918,14 +915,13 @@ void ReplaceSelectionCommand::HandleStyleSpansBeforeInsertion(
   // |node| can be an inline element like <br> under <li>
   // e.g.) editing/execCommand/switch-list-type.html
   //       editing/deleting/backspace-merge-into-block.html
-  if (IsInlineElement(node)) {
+  if (IsInline(node)) {
     node = EnclosingBlock(insertion_pos.AnchorNode());
     if (!node)
       return;
   }
 
-  if (GetInputType() != InputEvent::InputType::kInsertFromPaste &&
-      FollowBlockElementStyle(node)) {
+  if (FollowBlockElementStyle(node)) {
     fragment.RemoveNodePreservingChildren(wrapping_style_span);
     return;
   }
@@ -1094,8 +1090,7 @@ void ReplaceSelectionCommand::InsertParagraphSeparatorIfNeeds(
 
   const bool start_is_inside_mail_blockquote = EnclosingNodeOfType(
       selection.Start(), IsMailHTMLBlockquoteElement, kCanCrossEditingBoundary);
-  const bool selection_is_plain_text =
-      !IsRichlyEditablePosition(selection.Anchor());
+  const bool selection_is_plain_text = !IsRichlyEditablePosition(selection.Base());
   Element* const current_root = selection.RootEditableElement();
 
   if ((selection_start_was_start_of_paragraph &&
@@ -1220,7 +1215,7 @@ void ReplaceSelectionCommand::DoApply(EditingState* editing_state) {
   const bool start_is_inside_mail_blockquote = EnclosingNodeOfType(
       selection.Start(), IsMailHTMLBlockquoteElement, kCanCrossEditingBoundary);
   const bool selection_is_plain_text =
-      !IsRichlyEditablePosition(selection.Anchor());
+      !IsRichlyEditablePosition(selection.Base());
   const bool selection_end_was_end_of_paragraph =
       IsEndOfParagraph(selection.VisibleEnd());
   const bool selection_start_was_start_of_paragraph =
@@ -1725,10 +1720,9 @@ bool ReplaceSelectionCommand::ShouldPerformSmartReplace() const {
   TextControlElement* text_control =
       EnclosingTextControl(PositionAtStartOfInsertedContent().DeepEquivalent());
   auto* html_input_element = DynamicTo<HTMLInputElement>(text_control);
-  if (html_input_element && html_input_element->FormControlType() ==
-                                FormControlType::kInputPassword) {
+  if (html_input_element &&
+      html_input_element->type() == input_type_names::kPassword)
     return false;  // Disable smart replace for password fields.
-  }
 
   return true;
 }

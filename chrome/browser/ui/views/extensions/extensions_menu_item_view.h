@@ -30,9 +30,9 @@ class ToggleButton;
 // information about the extension, a button to pin the extension to the toolbar
 // and a button for accessing the associated context menu.
 class ExtensionMenuItemView : public views::FlexLayoutView {
-  METADATA_HEADER(ExtensionMenuItemView, views::FlexLayoutView)
-
  public:
+  METADATA_HEADER(ExtensionMenuItemView);
+
   enum class SiteAccessToggleState {
     // Button is not visible.
     kHidden,
@@ -51,18 +51,6 @@ class ExtensionMenuItemView : public views::FlexLayoutView {
     kEnabled,
   };
 
-  // Extension site access displayed in the site permissions button.
-  enum class SitePermissionsButtonAccess {
-    // Extension has no site access.
-    kNone,
-    // Extension has site access when clicked.
-    kOnClick,
-    // Extension has site access to this site.
-    kOnSite,
-    // Extension has site access to all sites.
-    kOnAllSites
-  };
-
   ExtensionMenuItemView(Browser* browser,
                         std::unique_ptr<ToolbarActionViewController> controller,
                         bool allow_pinning);
@@ -70,10 +58,11 @@ class ExtensionMenuItemView : public views::FlexLayoutView {
   // Constructor for the kExtensionsMenuAccessControl feature.
   ExtensionMenuItemView(
       Browser* browser,
-      bool is_enterprise,
       std::unique_ptr<ToolbarActionViewController> controller,
-      base::RepeatingCallback<void(bool)> site_access_toggle_callback,
-      views::Button::PressedCallback site_permissions_button_callback);
+      views::Button::PressedCallback site_access_toggle_callback =
+          base::RepeatingClosure(base::NullCallback()),
+      views::Button::PressedCallback site_permissions_button_callback =
+          base::RepeatingClosure(base::NullCallback()));
   ExtensionMenuItemView(const ExtensionMenuItemView&) = delete;
   ExtensionMenuItemView& operator=(const ExtensionMenuItemView&) = delete;
   ~ExtensionMenuItemView() override;
@@ -83,8 +72,7 @@ class ExtensionMenuItemView : public views::FlexLayoutView {
 
   // Updates the controller and child views to be on sync with the parent views.
   void Update(SiteAccessToggleState site_access_toggle_state,
-              SitePermissionsButtonState site_permissions_button_state,
-              SitePermissionsButtonAccess site_permissions_button_access);
+              SitePermissionsButtonState site_permissions_button_state);
 
   // Updates the pin button.
   void UpdatePinButton(bool is_force_pinned, bool is_pinned);
@@ -138,8 +126,6 @@ class ExtensionMenuItemView : public views::FlexLayoutView {
 
   raw_ptr<views::ToggleButton> site_access_toggle_ = nullptr;
 
-  // Button that displays the extension site access and opens its site
-  // permissions page.
   raw_ptr<HoverButton> site_permissions_button_ = nullptr;
 
   raw_ptr<HoverButton> pin_button_ = nullptr;

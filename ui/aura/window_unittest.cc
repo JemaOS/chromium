@@ -290,7 +290,6 @@ class DestroyOrphanDelegate : public TestWindowDelegate {
 
   void OnWindowDestroyed(Window* window) override {
     EXPECT_FALSE(window_->parent());
-    window_ = nullptr;
   }
 
  private:
@@ -625,9 +624,8 @@ TEST_F(WindowTest, WindowEmbeddingClientHasValidLocalSurfaceId) {
 TEST_F(WindowTest, MoveCursorToWithTransformRootWindow) {
   gfx::Transform transform;
   transform.Translate(100.0, 100.0);
-  transform =
-      transform * OverlayTransformToTransform(
-                      gfx::OVERLAY_TRANSFORM_ROTATE_CLOCKWISE_90, gfx::SizeF());
+  transform = transform * OverlayTransformToTransform(
+                              gfx::OVERLAY_TRANSFORM_ROTATE_90, gfx::SizeF());
   transform.Scale(2.0, 5.0);
   host()->SetRootTransform(transform);
   host()->MoveCursorToLocationInDIP(gfx::Point(10, 10));
@@ -659,9 +657,8 @@ TEST_F(WindowTest, MoveCursorToWithTransformWindow) {
             display::Screen::GetScreen()->GetCursorScreenPoint().ToString());
 
   gfx::Transform transform3;
-  transform3 = transform3 *
-               OverlayTransformToTransform(
-                   gfx::OVERLAY_TRANSFORM_ROTATE_CLOCKWISE_90, gfx::SizeF());
+  transform3 = transform3 * OverlayTransformToTransform(
+                                gfx::OVERLAY_TRANSFORM_ROTATE_90, gfx::SizeF());
   w1->SetTransform(transform3);
   w1->MoveCursorTo(gfx::Point(5, 5));
   EXPECT_EQ("5,15",
@@ -669,9 +666,8 @@ TEST_F(WindowTest, MoveCursorToWithTransformWindow) {
 
   gfx::Transform transform4;
   transform4.Translate(100.0, 100.0);
-  transform4 = transform4 *
-               OverlayTransformToTransform(
-                   gfx::OVERLAY_TRANSFORM_ROTATE_CLOCKWISE_90, gfx::SizeF());
+  transform4 = transform4 * OverlayTransformToTransform(
+                                gfx::OVERLAY_TRANSFORM_ROTATE_90, gfx::SizeF());
   transform4.Scale(2.0, 5.0);
   w1->SetTransform(transform4);
   w1->MoveCursorTo(gfx::Point(10, 10));
@@ -696,9 +692,8 @@ TEST_F(WindowTest, MoveCursorToWithComplexTransform) {
   gfx::Transform root_transform;
   root_transform.Translate(60.0, 70.0);
   root_transform =
-      root_transform *
-      OverlayTransformToTransform(gfx::OVERLAY_TRANSFORM_ROTATE_CLOCKWISE_270,
-                                  gfx::SizeF());
+      root_transform * OverlayTransformToTransform(
+                           gfx::OVERLAY_TRANSFORM_ROTATE_270, gfx::SizeF());
   root_transform.Translate(-50.0, -50.0);
   root_transform.Scale(2.0, 3.0);
 
@@ -1839,7 +1834,7 @@ TEST_F(WindowTest, Transform) {
 
   // Rotate it clock-wise 90 degrees.
   host()->SetRootTransform(OverlayTransformToTransform(
-      gfx::OVERLAY_TRANSFORM_ROTATE_CLOCKWISE_90, gfx::SizeF(size)));
+      gfx::OVERLAY_TRANSFORM_ROTATE_90, gfx::SizeF(size)));
 
   // The size should be the transformed size.
   gfx::Size transformed_size(size.height(), size.width());
@@ -1865,7 +1860,7 @@ TEST_F(WindowTest, TransformGesture) {
 
   // Rotate the root-window clock-wise 90 degrees.
   host()->SetRootTransform(OverlayTransformToTransform(
-      gfx::OVERLAY_TRANSFORM_ROTATE_CLOCKWISE_90, gfx::SizeF(size)));
+      gfx::OVERLAY_TRANSFORM_ROTATE_90, gfx::SizeF(size)));
 
   ui::TouchEvent press(ui::ET_TOUCH_PRESSED, gfx::Point(size.height() - 10, 10),
                        getTime(),
@@ -2097,14 +2092,6 @@ class WindowObserverTest : public WindowTest,
   void OnWindowDestroyed(Window* window) override {
     EXPECT_FALSE(window->parent());
     destroyed_count_++;
-
-    // Reset notification data to avoid dangling pointers to the Window.
-    window_bounds_info_ = {};
-    window_opacity_info_ = {};
-    window_target_transform_changing_info_ = {};
-    window_transformed_info_ = {};
-    alpha_shape_info_ = {};
-    layer_recreated_info_ = {};
   }
 
   void OnWindowPropertyChanged(Window* window,
@@ -2577,7 +2564,7 @@ TEST_F(WindowTest, RecreateLayerZOrder) {
       SK_ColorWHITE, 1, gfx::Rect(0, 0, 100, 100), root_window()));
   std::unique_ptr<ui::Layer> old_layer(w->RecreateLayer());
 
-  const std::vector<raw_ptr<ui::Layer, VectorExperimental>>& child_layers =
+  const std::vector<ui::Layer*>& child_layers =
       root_window()->layer()->children();
   ASSERT_EQ(2u, child_layers.size());
   EXPECT_EQ(w->layer(), child_layers[0]);
@@ -3014,10 +3001,8 @@ class DeleteOnVisibilityChangedObserver : public WindowObserver {
   // WindowObserver:
   void OnWindowVisibilityChanged(Window* window, bool visible) override {
     to_observe_->RemoveObserver(this);
-    to_observe_ = nullptr;
-    Window* to_delete = to_delete_;
+    delete to_delete_;
     to_delete_ = nullptr;
-    delete to_delete;
   }
 
  private:

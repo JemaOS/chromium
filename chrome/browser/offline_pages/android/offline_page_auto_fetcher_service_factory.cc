@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/offline_pages/android/auto_fetch_notifier.h"
 #include "chrome/browser/offline_pages/android/offline_page_auto_fetcher_service.h"
 #include "chrome/browser/offline_pages/offline_page_model_factory.h"
@@ -29,8 +29,7 @@ class OfflinePageAutoFetcherServiceFactory::ServiceDelegate final
 // static
 OfflinePageAutoFetcherServiceFactory*
 OfflinePageAutoFetcherServiceFactory::GetInstance() {
-  static base::NoDestructor<OfflinePageAutoFetcherServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<OfflinePageAutoFetcherServiceFactory>::get();
 }
 
 // static
@@ -60,18 +59,16 @@ OfflinePageAutoFetcherServiceFactory::OfflinePageAutoFetcherServiceFactory()
   // Depends on OfflinePageModelFactory in SimpleDependencyManager.
 }
 
-OfflinePageAutoFetcherServiceFactory::~OfflinePageAutoFetcherServiceFactory() =
-    default;
+OfflinePageAutoFetcherServiceFactory::~OfflinePageAutoFetcherServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-OfflinePageAutoFetcherServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* OfflinePageAutoFetcherServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   RequestCoordinator* coordinator =
       RequestCoordinatorFactory::GetForBrowserContext(context);
   OfflinePageModel* model =
       OfflinePageModelFactory::GetForBrowserContext(context);
-  return std::make_unique<OfflinePageAutoFetcherService>(
-      coordinator, model, service_delegate_.get());
+  return new OfflinePageAutoFetcherService(coordinator, model,
+                                           service_delegate_.get());
 }
 
 }  // namespace offline_pages

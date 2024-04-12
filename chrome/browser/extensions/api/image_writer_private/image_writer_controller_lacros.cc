@@ -13,7 +13,6 @@
 #include "chromeos/lacros/lacros_service.h"
 #include "content/public/browser/browser_context.h"
 #include "extensions/browser/event_router.h"
-#include "extensions/common/extension_id.h"
 
 namespace image_writer_api = extensions::api::image_writer_private;
 
@@ -28,19 +27,19 @@ const char kUnsupportedAshVersion[] = "UNSUPPORTED_ASH_VERSION";
 image_writer_api::Stage FromMojo(crosapi::mojom::Stage mojo_stage) {
   switch (mojo_stage) {
     case crosapi::mojom::Stage::kConfirmation:
-      return image_writer_api::Stage::kConfirmation;
+      return image_writer_api::Stage::STAGE_CONFIRMATION;
     case crosapi::mojom::Stage::kDownload:
-      return image_writer_api::Stage::kDownload;
+      return image_writer_api::Stage::STAGE_DOWNLOAD;
     case crosapi::mojom::Stage::kVerifyDownload:
-      return image_writer_api::Stage::kVerifyDownload;
+      return image_writer_api::Stage::STAGE_VERIFYDOWNLOAD;
     case crosapi::mojom::Stage::kUnzip:
-      return image_writer_api::Stage::kUnzip;
+      return image_writer_api::Stage::STAGE_UNZIP;
     case crosapi::mojom::Stage::kWrite:
-      return image_writer_api::Stage::kWrite;
+      return image_writer_api::Stage::STAGE_WRITE;
     case crosapi::mojom::Stage::kVerifyWrite:
-      return image_writer_api::Stage::kVerifyWrite;
+      return image_writer_api::Stage::STAGE_VERIFYWRITE;
     case crosapi::mojom::Stage::kUnknown:
-      return image_writer_api::Stage::kUnknown;
+      return image_writer_api::Stage::STAGE_UNKNOWN;
   }
 }
 
@@ -54,7 +53,7 @@ class ImageWriterControllerLacros::ImageWriterClientLacros
  public:
   ImageWriterClientLacros(
       content::BrowserContext* browser_context,
-      const ExtensionId& extension_id,
+      const std::string& extension_id,
       extensions::image_writer::ImageWriterControllerLacros* controller)
       : extension_id_(extension_id),
         browser_context_(browser_context),
@@ -114,7 +113,7 @@ class ImageWriterControllerLacros::ImageWriterClientLacros
     // Note: |this| is deleted at this point.
   }
 
-  const ExtensionId extension_id_;
+  const std::string extension_id_;
   // Both pointers of |browser_context_| and |controller_| are guaranteed
   // to be valid for the lifetime of this class, as destruction of either
   // BrowserContext or ImageWriterControllerLacros will result in synchronous
@@ -144,12 +143,12 @@ void ImageWriterControllerLacros::ListRemovableStorageDevices(
     service->GetRemote<crosapi::mojom::ImageWriter>()
         ->ListRemovableStorageDevices(std::move(callback));
   } else {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
   }
 }
 
 void ImageWriterControllerLacros::DestroyPartitions(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const std::string& storage_unit_id,
     WriteOperationCallback callback) {
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
@@ -172,14 +171,14 @@ void ImageWriterControllerLacros::DestroyPartitions(
 }
 
 void ImageWriterControllerLacros::WriteFromUrl(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const std::string& storage_unit_id,
     const GURL& image_url,
-    const std::optional<std::string>& image_hash,
+    const absl::optional<std::string>& image_hash,
     WriteOperationCallback callback) {
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
   if (!service->IsAvailable<crosapi::mojom::ImageWriter>() ||
-      service->GetInterfaceVersion<crosapi::mojom::ImageWriter>() < 1) {
+      service->GetInterfaceVersion(crosapi::mojom::ImageWriter::Uuid_) < 1) {
     std::move(callback).Run(kUnsupportedAshVersion);
     return;
   }
@@ -198,13 +197,13 @@ void ImageWriterControllerLacros::WriteFromUrl(
 }
 
 void ImageWriterControllerLacros::WriteFromFile(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const std::string& storage_unit_id,
     const base::FilePath& image_path,
     WriteOperationCallback callback) {
   chromeos::LacrosService* service = chromeos::LacrosService::Get();
   if (!service->IsAvailable<crosapi::mojom::ImageWriter>() ||
-      service->GetInterfaceVersion<crosapi::mojom::ImageWriter>() < 1) {
+      service->GetInterfaceVersion(crosapi::mojom::ImageWriter::Uuid_) < 1) {
     std::move(callback).Run(kUnsupportedAshVersion);
     return;
   }
@@ -222,7 +221,7 @@ void ImageWriterControllerLacros::WriteFromFile(
   pending_clients_.emplace(extension_id, std::move(pending_client));
 }
 
-void ImageWriterControllerLacros::CancelWrite(const ExtensionId& extension_id,
+void ImageWriterControllerLacros::CancelWrite(const std::string& extension_id,
                                               WriteOperationCallback callback) {
   if (!base::Contains(pending_clients_, extension_id)) {
     std::move(callback).Run(error::kNoOperationInProgress);
@@ -232,16 +231,16 @@ void ImageWriterControllerLacros::CancelWrite(const ExtensionId& extension_id,
   // Deleting pending client will trigger its disconnect handler in ash,
   // which will cancel its pending write operation if there is any.
   DeletePendingClient(extension_id);
-  std::move(callback).Run(std::nullopt);
+  std::move(callback).Run(absl::nullopt);
 }
 
 void ImageWriterControllerLacros::OnPendingClientWriteCompleted(
-    const ExtensionId& extension_id) {
+    const std::string& extension_id) {
   DeletePendingClient(extension_id);
 }
 
 void ImageWriterControllerLacros::OnPendingClientWriteError(
-    const ExtensionId& extension_id) {
+    const std::string& extension_id) {
   DeletePendingClient(extension_id);
 }
 
@@ -261,7 +260,7 @@ void ImageWriterControllerLacros::OnShutdown(
 }
 
 void ImageWriterControllerLacros::OnBackgroundHostClose(
-    const ExtensionId& extension_id) {
+    const std::string& extension_id) {
   DeletePendingClient(extension_id);
 }
 
@@ -278,7 +277,7 @@ void ImageWriterControllerLacros::OnExtensionProcessTerminated(
 }
 
 void ImageWriterControllerLacros::DeletePendingClient(
-    const ExtensionId& extension_id) {
+    const std::string& extension_id) {
   pending_clients_.erase(extension_id);
 }
 

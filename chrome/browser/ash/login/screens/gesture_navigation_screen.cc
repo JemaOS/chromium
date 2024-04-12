@@ -7,6 +7,7 @@
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
+#include "ash/public/cpp/tablet_mode.h"
 #include "base/check_op.h"
 #include "base/metrics/histogram_functions.h"
 #include "chrome/browser/ash/accessibility/accessibility_manager.h"
@@ -15,7 +16,6 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/webui/ash/login/gesture_navigation_screen_handler.h"
 #include "components/prefs/pref_service.h"
-#include "ui/display/screen.h"
 
 namespace ash {
 namespace {
@@ -65,7 +65,7 @@ void GestureNavigationScreen::GesturePageChange(const std::string& new_page) {
 bool GestureNavigationScreen::MaybeSkip(WizardContext& context) {
   AccessibilityManager* accessibility_manager = AccessibilityManager::Get();
   if (context.skip_post_login_screens_for_tests ||
-      chrome_user_manager_util::IsManagedGuestSessionOrEphemeralLogin() ||
+      chrome_user_manager_util::IsPublicSessionOrEphemeralLogin() ||
       !features::IsHideShelfControlsInTabletModeEnabled() ||
       ProfileManager::GetActiveUserProfile()->GetPrefs()->GetBoolean(
           prefs::kAccessibilityTabletModeShelfNavigationButtonsEnabled) ||
@@ -78,7 +78,7 @@ bool GestureNavigationScreen::MaybeSkip(WizardContext& context) {
 
   // Skip the screen if the device is not in tablet mode, unless tablet mode
   // first user run is forced on the device.
-  if (!display::Screen::GetScreen()->InTabletMode() &&
+  if (!TabletMode::Get()->InTabletMode() &&
       !switches::ShouldOobeUseTabletModeFirstRun()) {
     exit_callback_.Run(Result::NOT_APPLICABLE);
     return true;
@@ -102,6 +102,11 @@ void GestureNavigationScreen::HideImpl() {}
 void GestureNavigationScreen::OnUserAction(const base::Value::List& args) {
   const std::string& action_id = args[0].GetString();
   if (action_id == kUserActionExitPressed) {
+    // Make sure the user does not see a notification about the new gestures
+    // since they have already gone through this gesture education screen.
+    ProfileManager::GetActiveUserProfile()->GetPrefs()->SetBoolean(
+        prefs::kGestureEducationNotificationShown, true);
+
     RecordPageShownTimeMetrics();
     exit_callback_.Run(Result::NEXT);
     return;

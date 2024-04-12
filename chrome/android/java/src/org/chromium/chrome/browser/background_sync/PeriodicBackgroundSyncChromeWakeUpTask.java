@@ -6,8 +6,7 @@ package org.chromium.chrome.browser.background_sync;
 
 import android.content.Context;
 
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.chrome.browser.device.DeviceConditions;
 import org.chromium.components.background_task_scheduler.NativeBackgroundTask;
@@ -15,7 +14,9 @@ import org.chromium.components.background_task_scheduler.TaskIds;
 import org.chromium.components.background_task_scheduler.TaskParameters;
 import org.chromium.net.ConnectionType;
 
-/** Handles servicing of Periodic Background Sync tasks to wake up Chrome. */
+/**
+ * Handles servicing of Periodic Background Sync tasks to wake up Chrome.
+ */
 public class PeriodicBackgroundSyncChromeWakeUpTask extends NativeBackgroundTask {
     @Override
     public @StartBeforeNativeResult int onStartTaskBeforeNativeLoaded(
@@ -37,23 +38,16 @@ public class PeriodicBackgroundSyncChromeWakeUpTask extends NativeBackgroundTask
     protected void onStartTaskWithNative(
             Context context, TaskParameters taskParameters, TaskFinishedCallback callback) {
         // Record the delay from soonest expected wakeup time.
-        long delayFromExpectedMs =
-                System.currentTimeMillis()
-                        - taskParameters
-                                .getExtras()
-                                .getLong(
-                                        BackgroundSyncBackgroundTaskScheduler
-                                                .SOONEST_EXPECTED_WAKETIME);
+        long delayFromExpectedMs = System.currentTimeMillis()
+                - taskParameters.getExtras().getLong(
+                        BackgroundSyncBackgroundTaskScheduler.SOONEST_EXPECTED_WAKETIME);
         RecordHistogram.recordLongTimesHistogram(
                 "BackgroundSync.Periodic.Wakeup.DelayTime", delayFromExpectedMs);
 
         // Call into native code to fire any ready background sync events, and
         // wait for it to finish doing so.
-        PeriodicBackgroundSyncChromeWakeUpTaskJni.get()
-                .firePeriodicBackgroundSyncEvents(
-                        () -> {
-                            callback.taskFinished(/* needsReschedule= */ false);
-                        });
+        PeriodicBackgroundSyncChromeWakeUpTaskJni.get().firePeriodicBackgroundSyncEvents(
+                () -> { callback.taskFinished(/* needsReschedule= */ false); });
     }
 
     @Override

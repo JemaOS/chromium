@@ -24,10 +24,10 @@ class MenuInsertionDelegateWin;
 // A wrapper around a native Windows menu.
 class VIEWS_EXPORT NativeMenuWin {
  public:
-  // Construct a NativeMenuWin, with a model and delegate. If |sysmenu_hwnd|
-  // is non-null, the NativeMenuWin wraps the system menu for that window.
+  // Construct a NativeMenuWin, with a model and delegate. If |system_menu_for|
+  // is non-NULL, the NativeMenuWin wraps the system menu for that window.
   // The caller owns the model and the delegate.
-  NativeMenuWin(ui::MenuModel* model, HWND sysmenu_hwnd);
+  NativeMenuWin(ui::MenuModel* model, HWND system_menu_for);
 
   NativeMenuWin(const NativeMenuWin&) = delete;
   NativeMenuWin& operator=(const NativeMenuWin&) = delete;
@@ -83,22 +83,26 @@ class VIEWS_EXPORT NativeMenuWin {
   // Our attached model and delegate.
   raw_ptr<ui::MenuModel> model_;
 
-  HMENU menu_ = nullptr;
+  HMENU menu_;
+
+  // True if the contents of menu items in this menu are drawn by the menu host
+  // window, rather than Windows.
+  bool owner_draw_;
 
   // An object that collects all of the data associated with an individual menu
   // item.
   struct ItemData;
   std::vector<std::unique_ptr<ItemData>> items_;
 
-  // The HWND this menu is the system menu for, or null if the menu is not a
+  // The HWND this menu is the system menu for, or NULL if the menu is not a
   // system menu.
-  HWND sysmenu_hwnd_;
+  HWND system_menu_for_;
 
   // The index of the first item in the model in the menu.
-  size_t first_item_index_ = 0;
+  size_t first_item_index_;
 
   // If we're a submenu, this is our parent.
-  raw_ptr<NativeMenuWin> parent_ = nullptr;
+  raw_ptr<NativeMenuWin> parent_;
 };
 
 }  // namespace views

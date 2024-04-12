@@ -5,13 +5,10 @@
 #ifndef CHROME_BROWSER_ASH_INPUT_METHOD_AUTOCORRECT_MANAGER_H_
 #define CHROME_BROWSER_ASH_INPUT_METHOD_AUTOCORRECT_MANAGER_H_
 
-#include <optional>
 #include <string>
 
-#include "ash/system/federated/federated_client_manager.h"
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
-#include "chrome/browser/ash/input_method/assistive_input_denylist.h"
 #include "chrome/browser/ash/input_method/assistive_window_controller.h"
 #include "chrome/browser/ash/input_method/autocorrect_enums.h"
 #include "chrome/browser/ash/input_method/diacritics_insensitive_string_comparator.h"
@@ -19,6 +16,7 @@
 #include "chrome/browser/ash/input_method/suggestion_handler_interface.h"
 #include "chrome/browser/ash/input_method/text_field_contextual_info_fetcher.h"
 #include "chromeos/ash/services/ime/public/cpp/autocorrect.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace input_method {
@@ -88,11 +86,6 @@ class AutocorrectManager {
   // example of an invalid experiment context could be a provider or decoder
   // parameter set that is not allowed with the currently enabled experiments.
   bool DisabledByInvalidExperimentContext();
-
-  const federated::FederatedClientManager& GetFederatedClientManagerForTest()
-      const {
-    return federated_manager_;
-  }
 
  private:
   void LogAssistiveAutocorrectAction(AutocorrectActions action);
@@ -198,7 +191,7 @@ class AutocorrectManager {
 
     // Records the most recent keypress and if control was down for use in
     // metrics.
-    std::optional<ui::KeyEvent> last_key_event;
+    absl::optional<ui::KeyEvent> last_key_event;
 
     // The range of the current pending autocorrect.
     gfx::Range last_autocorrect_range = gfx::Range();
@@ -225,7 +218,7 @@ class AutocorrectManager {
   // State variable for pending autocorrect, nullopt means no autocorrect
   // suggestion is pending. The state is kept to avoid issue where
   // InputContext returns stale autocorrect range.
-  std::optional<PendingAutocorrectState> pending_autocorrect_;
+  absl::optional<PendingAutocorrectState> pending_autocorrect_;
 
   // Specifies if the last try for hiding undo window failed. This means
   // undo window is possibly visible while it must not be.
@@ -238,38 +231,33 @@ class AutocorrectManager {
   // Holds the currently active engine_id. There are cases where this could be
   // a nullopt, for example, when the object has been constructed and the
   // OnActivate method has not been invoked.
-  std::optional<std::string> active_engine_id_;
+  absl::optional<std::string> active_engine_id_;
 
   // Holds a pending physical keyboard user preference metric ready to be
   // recorded. This metric should be recorded once per input focused, and only
   // if the user is currently using the physical keyboard.
-  std::optional<PendingPhysicalKeyboardUserPrefMetric>
+  absl::optional<PendingPhysicalKeyboardUserPrefMetric>
       pending_user_pref_metric_;
 
   // Holds a pending suggestion provider metric. This metric should be recorded
   // only once per input, and only if the user is currently using the physical
   // keyboard.
-  std::optional<PendingSuggestionProviderMetric>
+  absl::optional<PendingSuggestionProviderMetric>
       pending_suggestion_provider_metric_;
 
   // Holds the suggestion provider enabled for the current input method.
-  std::optional<ime::AutocorrectSuggestionProvider> suggestion_provider_;
-
-  // Used to determine if autocorrect should be enabled for a particular input.
-  AssistiveInputDenylist denylist_;
+  absl::optional<ime::AutocorrectSuggestionProvider> suggestion_provider_;
 
   // Holds the identifier of the currently focused input field.
   int context_id_ = 0;
 
   // Not owned by this class.
-  raw_ptr<SuggestionHandlerInterface> suggestion_handler_;
-  raw_ptr<Profile> profile_;
-
-  // For logging examples to the CrOS Federated Service.
-  federated::FederatedClientManager federated_manager_;
+  raw_ptr<SuggestionHandlerInterface, ExperimentalAsh> suggestion_handler_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
 
   DiacriticsInsensitiveStringComparator
       diacritics_insensitive_string_comparator_;
+  bool in_diacritical_autocorrect_session_ = false;
 
   ui::ime::AssistiveWindowButton undo_button_;
   ui::ime::AssistiveWindowButton learn_more_button_;

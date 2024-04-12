@@ -28,15 +28,14 @@ PrintJobHistoryService* PrintJobHistoryServiceFactory::GetForBrowserContext(
 
 // static
 PrintJobHistoryServiceFactory* PrintJobHistoryServiceFactory::GetInstance() {
-  static base::NoDestructor<PrintJobHistoryServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<PrintJobHistoryServiceFactory>::get();
 }
 
 PrintJobHistoryServiceFactory::PrintJobHistoryServiceFactory()
     : ProfileKeyedServiceFactory(
           "PrintJobHistoryService",
           ProfileSelections::Builder()
-              .WithGuest(ProfileSelection::kOriginalOnly)
+              .WithGuest(ProfileSelections::kRegularProfileDefault)
               // We do not want an instance of PrintJobHistory on the lock
               // screen.  The result is multiple print job notifications.
               // https://crbug.com/1011532
@@ -46,10 +45,9 @@ PrintJobHistoryServiceFactory::PrintJobHistoryServiceFactory()
   DependsOn(PrintJobReportingServiceFactory::GetInstance());
 }
 
-PrintJobHistoryServiceFactory::~PrintJobHistoryServiceFactory() = default;
+PrintJobHistoryServiceFactory::~PrintJobHistoryServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-PrintJobHistoryServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PrintJobHistoryServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   leveldb_proto::ProtoDatabaseProvider* database_provider =
@@ -62,8 +60,7 @@ PrintJobHistoryServiceFactory::BuildServiceInstanceForBrowserContext(
   PrintJobReportingService* print_job_reporting_service =
       PrintJobReportingServiceFactory::GetForBrowserContext(profile);
 
-  std::unique_ptr<PrintJobHistoryServiceImpl> history_service = 
-    std::make_unique<PrintJobHistoryServiceImpl>(
+  auto* history_service = new PrintJobHistoryServiceImpl(
       std::move(print_job_database), print_job_manager, profile->GetPrefs());
   // Service is null in tests.
   if (print_job_reporting_service) {

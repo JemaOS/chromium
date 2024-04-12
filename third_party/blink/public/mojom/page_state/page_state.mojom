@@ -89,7 +89,7 @@ struct HttpBody {
 
 [Stable, Extensible, RenamedFrom="content.history.mojom.ScrollRestorationType"]
 enum ScrollRestorationType {
-  [Default] kAuto = 0,
+  kAuto = 0,
   kManual = 1
 };
 

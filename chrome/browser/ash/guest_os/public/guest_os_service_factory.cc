@@ -12,8 +12,14 @@ namespace guest_os {
 // static
 GuestOsService* guest_os::GuestOsServiceFactory::GetForProfile(
     Profile* profile) {
+  // There's only the one service instance per login, instead of a new one for
+  // off-the-record. This is because users expect their Guest OSs to still work
+  // even when off-the-record, and to work with their existing VM instances. For
+  // example, when downloading files in Chrome they can still save their files
+  // to a Guest OS mount.
   return static_cast<GuestOsService*>(
-      GetInstance()->GetServiceForBrowserContext(profile, true));
+      GetInstance()->GetServiceForBrowserContext(profile->GetOriginalProfile(),
+                                                 true));
 }
 
 // static
@@ -26,27 +32,20 @@ GuestOsServiceFactory::GuestOsServiceFactory()
     : ProfileKeyedServiceFactory(
           "GuestOsService",
           ProfileSelections::Builder()
-              // There's only the one service instance per login, instead of a
-              // new one for off-the-record. This is because users expect their
-              // Guest OSs to still work even when off-the-record, and to work
-              // with their existing VM instances. For example, when downloading
-              // files in Chrome they can still save their files to a Guest OS
-              // mount.
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              .WithGuest(ProfileSelection::kNone)
-              .WithAshInternals(ProfileSelection::kNone)
-              .WithSystem(ProfileSelection::kNone)
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
 GuestOsServiceFactory::~GuestOsServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-GuestOsServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* GuestOsServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   if (!profile)
     return nullptr;
-  return std::make_unique<GuestOsService>(profile);
+  return new GuestOsService(profile);
 }
 
 }  // namespace guest_os

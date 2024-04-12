@@ -75,7 +75,7 @@ ConvolverHandler& ConvolverNode::GetConvolverHandler() const {
 }
 
 AudioBuffer* ConvolverNode::buffer() const {
-  return buffer_.Get();
+  return buffer_;
 }
 
 void ConvolverNode::setBuffer(AudioBuffer* new_buffer,

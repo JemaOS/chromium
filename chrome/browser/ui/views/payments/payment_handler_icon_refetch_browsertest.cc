@@ -11,24 +11,16 @@
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "net/dns/mock_host_resolver.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace payments {
 
-// Test the icon-refetch logic for service worker payment apps that have missing
-// icons.
-//
-// Tested both with and without the kPaymentHandlerAlwaysRefreshIcon feature;
-// the behavior should not change either way for missing icon refetches.
-class PaymentHandlerIconRefetchTest : public PaymentRequestBrowserTestBase,
-                                      public testing::WithParamInterface<bool> {
+class PaymentHandlerIconRefetchTest : public PaymentRequestBrowserTestBase {
  protected:
   PaymentHandlerIconRefetchTest() {
-    scoped_feature_list_.InitWithFeatureStates(
-        {{features::kAllowJITInstallationWhenAppIconIsMissing, true},
-         {features::kPaymentHandlerAlwaysRefreshIcon, GetParam()}});
+    scoped_feature_list_.InitAndEnableFeature(
+        features::kAllowJITInstallationWhenAppIconIsMissing);
   }
 
   ~PaymentHandlerIconRefetchTest() override = default;
@@ -66,7 +58,7 @@ class PaymentHandlerIconRefetchTest : public PaymentRequestBrowserTestBase,
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_P(PaymentHandlerIconRefetchTest, RefetchMissingIcon) {
+IN_PROC_BROWSER_TEST_F(PaymentHandlerIconRefetchTest, RefetchMissingIcon) {
   // Navigate to a page with strict CSP so that Kylepay's icon fetch fails.
   NavigateTo("/csp_prevent_icon_download.html");
   SetDownloaderAndIgnorePortInOriginComparisonForTesting();
@@ -132,7 +124,4 @@ IN_PROC_BROWSER_TEST_P(PaymentHandlerIconRefetchTest, RefetchMissingIcon) {
   ASSERT_TRUE(WaitForObservedEvent());
   ExpectBodyContains({"kylepay.test/webpay"});
 }
-
-INSTANTIATE_TEST_SUITE_P(All, PaymentHandlerIconRefetchTest, testing::Bool());
-
 }  // namespace payments

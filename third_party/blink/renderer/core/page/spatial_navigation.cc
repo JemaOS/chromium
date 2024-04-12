@@ -335,9 +335,8 @@ bool IsScrollableNode(const Node* node) {
   if (node->IsDocumentNode())
     return true;
 
-  if (auto* box = DynamicTo<LayoutBox>(node->GetLayoutObject())) {
-    return box->IsUserScrollable();
-  }
+  if (auto* box = DynamicTo<LayoutBox>(node->GetLayoutObject()))
+    return box->CanBeScrolledAndHasScrollableArea();
   return false;
 }
 
@@ -430,19 +429,19 @@ bool CanScrollInDirection(const LocalFrame* frame,
       mojom::blink::ScrollbarMode::kAlwaysOff == vertical_mode)
     return false;
   ScrollableArea* scrollable_area = frame->View()->GetScrollableArea();
-  gfx::Size size = scrollable_area->ContentsSize();
-  gfx::Vector2d offset = scrollable_area->ScrollOffsetInt();
+  LayoutSize size(scrollable_area->ContentsSize());
+  LayoutSize offset(scrollable_area->ScrollOffsetInt());
   PhysicalRect rect(scrollable_area->VisibleContentRect(kIncludeScrollbars));
 
   switch (direction) {
     case SpatialNavigationDirection::kLeft:
-      return offset.x() > 0;
+      return offset.Width() > 0;
     case SpatialNavigationDirection::kUp:
-      return offset.y() > 0;
+      return offset.Height() > 0;
     case SpatialNavigationDirection::kRight:
-      return rect.Width() + offset.x() < size.width();
+      return rect.Width() + offset.Width() < size.Width();
     case SpatialNavigationDirection::kDown:
-      return rect.Height() + offset.y() < size.height();
+      return rect.Height() + offset.Height() < size.Height();
     default:
       NOTREACHED();
       return false;

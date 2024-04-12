@@ -8,14 +8,10 @@
 #include <windows.h>
 #include <wrl/implements.h>
 
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "base/containers/flat_map.h"
 #include "base/files/file_path.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/path_service.h"
@@ -36,49 +32,22 @@
 
 namespace updater {
 
-namespace {
-
-template <typename TDualInterface, typename... TInterfaces>
-using WrlRuntimeDispatchClass = Microsoft::WRL::RuntimeClass<
-    Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
-    IDispatch,
-    TDualInterface,
-    TInterfaces...>;
-
-}  // namespace
-
-// The `IDispatchImpl` class implements `IDispatch` for interface
-// `TDualInterface`, where `TDualInterface` is a dual interface. The IDispatch
-// implementation relies on the typelib/typeinfo for interface `TDualInterface`.
+// Implements `IDispatch` for interface `T`, where `T` is a dual interface. The
+// IDispatch implementation relies on the typelib/typeinfo for interface `T`.
 //
-// If the class supports more interfaces other than `TDualInterface`, these
-// interfaces can be passed in via `TInterfaces...`.
-//
-// The `user_iid_map` and `system_iid_map` passed to the constructor are to
-// allow for distinct TypeLibs to be registered and marshaled for user/system.
-// See the code below for examples.
-//
-// Note that the `IDispatchImpl` class only implements the `IDispatch` methods
-// for the `TDualInterface` interface.
-template <typename TDualInterface, typename... TInterfaces>
+// Usage: derive your COM class that implements interface `T` from
+// `IDispatchImpl<T>`.
+template <typename T>
 class IDispatchImpl
-    : public WrlRuntimeDispatchClass<TDualInterface, TInterfaces...> {
+    : public Microsoft::WRL::RuntimeClass<
+          Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
+          T,
+          IDispatch> {
  public:
-  IDispatchImpl(const base::flat_map<IID, IID, IidComparator>& user_iid_map,
-                const base::flat_map<IID, IID, IidComparator>& system_iid_map)
-      : iid_map_(IsSystemInstall() ? system_iid_map : user_iid_map),
-        hr_load_typelib_(InitializeTypeInfo()) {}
-  IDispatchImpl(const IDispatchImpl&) = default;
-  IDispatchImpl& operator=(const IDispatchImpl&) = default;
+  IDispatchImpl() : hr_load_typelib_(InitializeTypeInfo()) {}
+  IDispatchImpl(const IDispatchImpl&) = delete;
+  IDispatchImpl& operator=(const IDispatchImpl&) = delete;
   ~IDispatchImpl() override = default;
-
-  // IUnknown override.
-  IFACEMETHODIMP QueryInterface(REFIID riid, void** object) override {
-    const auto find_iid = iid_map_.find(riid);
-    return WrlRuntimeDispatchClass<TDualInterface, TInterfaces...>::
-        QueryInterface(find_iid != iid_map_.end() ? find_iid->second : riid,
-                       object);
-  }
 
   // Overrides for IDispatch.
   IFACEMETHODIMP GetTypeInfoCount(UINT* type_info_count) override {
@@ -125,41 +94,39 @@ class IDispatchImpl
       return hr_load_typelib_;
     }
 
-    HRESULT hr = type_info_->Invoke(
-        Microsoft::WRL::ComPtr<TDualInterface>(this).Get(), dispatch_id, flags,
-        dispatch_parameters, result, exception_info, arg_error_index);
+    HRESULT hr = type_info_->Invoke(Microsoft::WRL::ComPtr<T>(this).Get(),
+                                    dispatch_id, flags, dispatch_parameters,
+                                    result, exception_info, arg_error_index);
 
     LOG_IF(ERROR, FAILED(hr)) << __func__ << " type_info_->Invoke failed, "
                               << dispatch_id << ", " << std::hex << hr;
     return hr;
   }
 
-  // Loads the typelib and typeinfo for interface `TDualInterface`.
+  // Loads the typelib and typeinfo for interface `T`.
   HRESULT InitializeTypeInfo() {
     base::FilePath typelib_path;
     if (!base::PathService::Get(base::DIR_EXE, &typelib_path)) {
       return E_UNEXPECTED;
     }
 
-    typelib_path =
-        typelib_path.Append(GetExecutableRelativePath())
-            .Append(GetComTypeLibResourceIndex(__uuidof(TDualInterface)));
+    typelib_path = typelib_path.Append(GetExecutableRelativePath())
+                       .Append(GetComTypeLibResourceIndex(__uuidof(T)));
 
     Microsoft::WRL::ComPtr<ITypeLib> type_lib;
     if (HRESULT hr = ::LoadTypeLib(typelib_path.value().c_str(), &type_lib);
         FAILED(hr)) {
       LOG(ERROR) << __func__ << " ::LoadTypeLib failed, " << typelib_path
-                 << ", " << std::hex << hr << ", IID: "
-                 << base::win::WStringFromGUID(__uuidof(TDualInterface));
+                 << ", " << std::hex << hr
+                 << ", IID: " << base::win::WStringFromGUID(__uuidof(T));
       return hr;
     }
 
-    if (HRESULT hr =
-            type_lib->GetTypeInfoOfGuid(__uuidof(TDualInterface), &type_info_);
+    if (HRESULT hr = type_lib->GetTypeInfoOfGuid(__uuidof(T), &type_info_);
         FAILED(hr)) {
-      LOG(ERROR) << __func__ << " ::GetTypeInfoOfGuid failed" << ", "
-                 << std::hex << hr << ", IID: "
-                 << base::win::WStringFromGUID(__uuidof(TDualInterface));
+      LOG(ERROR) << __func__ << " ::GetTypeInfoOfGuid failed"
+                 << ", " << std::hex << hr
+                 << ", IID: " << base::win::WStringFromGUID(__uuidof(T));
       return hr;
     }
 
@@ -167,7 +134,6 @@ class IDispatchImpl
   }
 
  private:
-  const base::flat_map<IID, IID, IidComparator> iid_map_;
   Microsoft::WRL::ComPtr<ITypeInfo> type_info_;
   const HRESULT hr_load_typelib_;
 };
@@ -193,9 +159,7 @@ class LegacyProcessLauncherImpl
     : public Microsoft::WRL::RuntimeClass<
           Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
           IProcessLauncher,
-          IProcessLauncherSystem,
-          IProcessLauncher2,
-          IProcessLauncher2System> {
+          IProcessLauncher2> {
  public:
   LegacyProcessLauncherImpl();
   LegacyProcessLauncherImpl(const LegacyProcessLauncherImpl&) = delete;
@@ -256,29 +220,17 @@ class LegacyProcessLauncherImpl
 // back-slash, double-quotes, space, and tab is applied if necessary.
 class LegacyAppCommandWebImpl : public IDispatchImpl<IAppCommandWeb> {
  public:
-  struct ErrorParams {
-    int error_code = 0;
-    int extra_code1 = 0;
-  };
-
-  using PingSender = base::RepeatingCallback<void(UpdaterScope scope,
-                                                  const std::string& app_id,
-                                                  const std::string& command_id,
-                                                  ErrorParams error_params)>;
   LegacyAppCommandWebImpl();
   LegacyAppCommandWebImpl(const LegacyAppCommandWebImpl&) = delete;
   LegacyAppCommandWebImpl& operator=(const LegacyAppCommandWebImpl&) = delete;
 
   // Initializes an instance of `IAppCommandWeb` for the given `scope`,
-  // `app_id`, `command_id`, and a `ping_sender`. Returns an error if the
-  // command format does not exist in the registry, or if the command format in
-  // the registry has an invalid formatting, or if the type information could
-  // not be initialized.
+  // `app_id`, and `command_id`. Returns an error if the command format does not
+  // exist in the registry, or if the command format in the registry has an
+  // invalid formatting, or if the type information could not be initialized.
   HRESULT RuntimeClassInitialize(UpdaterScope scope,
                                  const std::wstring& app_id,
-                                 const std::wstring& command_id,
-                                 PingSender ping_sender = base::BindRepeating(
-                                     &LegacyAppCommandWebImpl::SendPing));
+                                 const std::wstring& command_id);
 
   // Overrides for IAppCommandWeb.
   IFACEMETHODIMP get_status(UINT* status) override;
@@ -303,33 +255,27 @@ class LegacyAppCommandWebImpl : public IDispatchImpl<IAppCommandWeb> {
                          VARIANT substitution8,
                          VARIANT substitution9) override;
 
-  const base::Process& process() const { return process_; }
-
  private:
-  friend class LegacyAppCommandWebImplTest;
-
-  static void SendPing(UpdaterScope scope,
-                       const std::string& app_id,
-                       const std::string& command_id,
-                       ErrorParams error_params);
-
   ~LegacyAppCommandWebImpl() override;
 
   base::Process process_;
   HResultOr<AppCommandRunner> app_command_runner_;
-  UpdaterScope scope_ = UpdaterScope::kSystem;
-  std::string app_id_;
-  std::string command_id_;
-  PingSender ping_sender_ = base::DoNothing();
+
+  friend class LegacyAppCommandWebImplTest;
 };
 
-// This class implements the legacy Omaha3 IPolicyStatus* interfaces, which
-// return the current updater policies for external constants, group policy,
+// This class implements the legacy Omaha3 IPolicyStatus interface, which
+// returns the current updater policies for external constants, group policy,
 // and device management.
 //
 // This class is used by chrome://policy to show the current updater policies.
 class PolicyStatusImpl
-    : public IDispatchImpl<IPolicyStatus3, IPolicyStatus2, IPolicyStatus> {
+    : public Microsoft::WRL::RuntimeClass<
+          Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
+          IPolicyStatus,
+          IPolicyStatus2,
+          IPolicyStatus3,
+          IDispatch> {
  public:
   PolicyStatusImpl();
   PolicyStatusImpl(const PolicyStatusImpl&) = delete;
@@ -389,6 +335,25 @@ class PolicyStatusImpl
   IFACEMETHODIMP get_forceInstallApps(VARIANT_BOOL is_machine,
                                       IPolicyStatusValue** value) override;
 
+  // Overrides for IDispatch.
+  IFACEMETHODIMP GetTypeInfoCount(UINT* type_info_count) override;
+  IFACEMETHODIMP GetTypeInfo(UINT type_info_index,
+                             LCID locale_id,
+                             ITypeInfo** type_info) override;
+  IFACEMETHODIMP GetIDsOfNames(REFIID iid,
+                               LPOLESTR* names_to_be_mapped,
+                               UINT count_of_names_to_be_mapped,
+                               LCID locale_id,
+                               DISPID* dispatch_ids) override;
+  IFACEMETHODIMP Invoke(DISPID dispatch_id,
+                        REFIID iid,
+                        LCID locale_id,
+                        WORD flags,
+                        DISPPARAMS* dispatch_parameters,
+                        VARIANT* result,
+                        EXCEPINFO* exception_info,
+                        UINT* arg_error_index) override;
+
  private:
   ~PolicyStatusImpl() override;
 
@@ -398,7 +363,11 @@ class PolicyStatusImpl
 // This class implements the legacy Omaha3 IPolicyStatusValue interface. Each
 // instance stores a single updater policy returned by the properties in
 // IPolicyStatus2 and IPolicyStatus3.
-class PolicyStatusValueImpl : public IDispatchImpl<IPolicyStatusValue> {
+class PolicyStatusValueImpl
+    : public Microsoft::WRL::RuntimeClass<
+          Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
+          IPolicyStatusValue,
+          IDispatch> {
  public:
   PolicyStatusValueImpl();
   PolicyStatusValueImpl(const PolicyStatusValueImpl&) = delete;
@@ -421,6 +390,25 @@ class PolicyStatusValueImpl : public IDispatchImpl<IPolicyStatusValue> {
   IFACEMETHODIMP get_hasConflict(VARIANT_BOOL* has_conflict) override;
   IFACEMETHODIMP get_conflictSource(BSTR* conflict_source) override;
   IFACEMETHODIMP get_conflictValue(BSTR* conflict_value) override;
+
+  // Overrides for IDispatch.
+  IFACEMETHODIMP GetTypeInfoCount(UINT* type_info_count) override;
+  IFACEMETHODIMP GetTypeInfo(UINT type_info_index,
+                             LCID locale_id,
+                             ITypeInfo** type_info) override;
+  IFACEMETHODIMP GetIDsOfNames(REFIID iid,
+                               LPOLESTR* names_to_be_mapped,
+                               UINT count_of_names_to_be_mapped,
+                               LCID locale_id,
+                               DISPID* dispatch_ids) override;
+  IFACEMETHODIMP Invoke(DISPID dispatch_id,
+                        REFIID iid,
+                        LCID locale_id,
+                        WORD flags,
+                        DISPPARAMS* dispatch_parameters,
+                        VARIANT* result,
+                        EXCEPINFO* exception_info,
+                        UINT* arg_error_index) override;
 
  private:
   ~PolicyStatusValueImpl() override;

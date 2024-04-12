@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ui/webui/settings/recent_site_settings_helper.h"
 
-#include <vector>
-
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/permissions/permission_decision_auto_blocker_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -62,7 +60,7 @@ std::map<GURL, std::vector<TimestampedSetting>> GetAllSettingsForProfile(
         site_settings::GetSingleOriginExceptionsForContentType(
             content_settings_map, content_type);
     for (const auto& e : exceptions_for_type) {
-      auto last_modified = e.metadata.last_modified();
+      auto last_modified = e.metadata.last_modified;
       if (last_modified.is_null()) {
         continue;
       }
@@ -248,10 +246,13 @@ std::vector<RecentSitePermissions> GetRecentSitePermissions(
                              all_site_permissions.end());
 
   for (auto& site_permissions : all_site_permissions) {
-    std::erase_if(site_permissions.settings,
-                  [min_timestamp](const TimestampedSetting& x) {
-                    return x.timestamp < min_timestamp;
-                  });
+    site_permissions.settings.erase(
+        std::remove_if(site_permissions.settings.begin(),
+                       site_permissions.settings.end(),
+                       [min_timestamp](const TimestampedSetting& x) {
+                         return x.timestamp < min_timestamp;
+                       }),
+        site_permissions.settings.end());
   }
   return all_site_permissions;
 }

@@ -9,9 +9,9 @@
 #include "base/scoped_observation.h"
 #include "chrome/browser/extensions/api/braille_display_private/braille_controller.h"
 #include "chrome/common/extensions/api/braille_display_private.h"
+#include "extensions/browser/api/async_api_function.h"
 #include "extensions/browser/browser_context_keyed_api_factory.h"
 #include "extensions/browser/event_router.h"
-#include "extensions/browser/extension_function.h"
 
 class Profile;
 
@@ -82,17 +82,17 @@ class BrailleDisplayPrivateAPI : public BrowserContextKeyedAPI,
 
 namespace api {
 
-class BrailleDisplayPrivateGetDisplayStateFunction : public ExtensionFunction {
+class BrailleDisplayPrivateGetDisplayStateFunction : public AsyncApiFunction {
   DECLARE_EXTENSION_FUNCTION("brailleDisplayPrivate.getDisplayState",
                              BRAILLEDISPLAYPRIVATE_GETDISPLAYSTATE)
  protected:
   ~BrailleDisplayPrivateGetDisplayStateFunction() override {}
-  ResponseAction Run() override;
-
-  void ReplyWithState(base::Value::Dict state);
+  bool Prepare() override;
+  void Work() override;
+  bool Respond() override;
 };
 
-class BrailleDisplayPrivateWriteDotsFunction : public ExtensionFunction {
+class BrailleDisplayPrivateWriteDotsFunction : public AsyncApiFunction {
   DECLARE_EXTENSION_FUNCTION("brailleDisplayPrivate.writeDots",
                              BRAILLEDISPLAYPRIVATE_WRITEDOTS)
  public:
@@ -100,12 +100,12 @@ class BrailleDisplayPrivateWriteDotsFunction : public ExtensionFunction {
 
  protected:
   ~BrailleDisplayPrivateWriteDotsFunction() override;
-  ResponseAction Run() override;
-
-  void WriteDotsOnIO();
+  bool Prepare() override;
+  void Work() override;
+  bool Respond() override;
 
  private:
-  std::optional<braille_display_private::WriteDots::Params> params_;
+  absl::optional<braille_display_private::WriteDots::Params> params_;
 };
 
 class BrailleDisplayPrivateUpdateBluetoothBrailleDisplayAddressFunction

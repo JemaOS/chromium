@@ -35,9 +35,8 @@ BatterySaverButton::BatterySaverButton(BrowserView* browser_view)
   SetAccessibleName(
       l10n_util::GetStringUTF16(IDS_BATTERY_SAVER_BUTTON_ACCNAME));
   SetTooltipText(l10n_util::GetStringUTF16(IDS_BATTERY_SAVER_BUTTON_TOOLTIP));
-  GetViewAccessibility().SetHasPopup(ax::mojom::HasPopup::kDialog);
-  SetProperty(views::kElementIdentifierKey,
-              kToolbarBatterySaverButtonElementId);
+  GetViewAccessibility().OverrideHasPopup(ax::mojom::HasPopup::kDialog);
+  SetProperty(views::kElementIdentifierKey, kBatterySaverButtonElementId);
 
   // We start hidden and only show once |controller_| tells us to.
   SetVisible(false);
@@ -67,7 +66,7 @@ void BatterySaverButton::Show() {
 }
 
 void BatterySaverButton::Hide() {
-  CloseFeaturePromo(user_education::EndFeaturePromoReason::kAbortPromo);
+  CloseFeaturePromo();
 
   if (IsBubbleShowing()) {
     // The bubble is closed sync and will be cleared in OnBubbleHidden
@@ -101,7 +100,7 @@ void BatterySaverButton::OnClicked() {
     // The bubble is closed sync and will be cleared in OnBubbleHidden
     BatterySaverBubbleView::CloseBubble(bubble_);
   } else {
-    CloseFeaturePromo(user_education::EndFeaturePromoReason::kFeatureEngaged);
+    CloseFeaturePromo();
 
     browser_view_->NotifyFeatureEngagementEvent(
         feature_engagement::events::kBatterySaverDialogShown);
@@ -117,14 +116,13 @@ void BatterySaverButton::MaybeShowFeaturePromo() {
       feature_engagement::kIPHBatterySaverModeFeature);
 }
 
-void BatterySaverButton::CloseFeaturePromo(
-    user_education::EndFeaturePromoReason close_reason) {
+void BatterySaverButton::CloseFeaturePromo() {
   // CloseFeaturePromo checks if the promo is active for the feature before
   // attempting to close the promo bubble
   pending_promo_ = false;
   browser_view_->CloseFeaturePromo(
-      feature_engagement::kIPHBatterySaverModeFeature, close_reason);
+      feature_engagement::kIPHBatterySaverModeFeature);
 }
 
-BEGIN_METADATA(BatterySaverButton)
+BEGIN_METADATA(BatterySaverButton, ToolbarButton)
 END_METADATA

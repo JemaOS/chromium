@@ -21,22 +21,19 @@ class BrowserLauncher : public base::SupportsUserData::Data {
   // Creates the BrowserLauncher instance if it does not already exist.
   static BrowserLauncher* GetForProfile(Profile* profile);
 
-  // Launches lacros-chrome for the last opened profiles. Returns true if
-  // BrowserLauncher was able to perform the launch action successfully.
-  // `restore_tabbed_browser` should only be flipped false by Ash full
-  // restore code path, suppressing restoring a normal browser when there were
-  // only PWAs open in previous session. See crbug.com/1463906.
-  bool LaunchForLastOpenedProfiles(bool skip_crash_restore,
-                                   bool restore_tabbed_browser);
+  // Launches lacros-chrome for full restore. This method should be called
+  // before any lacros browser windows have been created while the process is in
+  // the background / windowless state.
+  void LaunchForFullRestore(bool skip_crash_restore);
 
-  bool is_launching_for_last_opened_profiles() const {
-    return is_launching_for_last_opened_profiles_;
+  bool is_launching_for_full_restore() const {
+    return is_launching_for_full_restore_;
   }
 
  private:
-  // Tracks whether the BrowserLauncher is in the process of launching
-  // lacros-chrome for the last opened profiles.
-  bool is_launching_for_last_opened_profiles_ = false;
+  // Tracks whether the BrowserLauncher is in the process of performing a Full
+  // Restore launch of lacros-chrome.
+  bool is_launching_for_full_restore_ = false;
 
   const raw_ptr<Profile> profile_;
 };

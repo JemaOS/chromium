@@ -99,8 +99,6 @@ struct SpecifiedFlagsCompare {
 ABSL_NAMESPACE_END
 }  // namespace absl
 
-// These flags influence how command line flags are parsed and are only intended
-// to be set on the command line.  Avoid reading or setting them from C++ code.
 ABSL_FLAG(std::vector<std::string>, flagfile, {},
           "comma-separated list of files to load flags from")
     .OnUpdate([]() {
@@ -150,8 +148,6 @@ ABSL_FLAG(std::vector<std::string>, tryfromenv, {},
       absl::flags_internal::tryfromenv_needs_processing = true;
     });
 
-// Rather than reading or setting --undefok from C++ code, please consider using
-// ABSL_RETIRED_FLAG instead.
 ABSL_FLAG(std::vector<std::string>, undefok, {},
           "comma-separated list of flag names that it is okay to specify "
           "on the command line even if the program does not define a flag "
@@ -421,7 +417,7 @@ bool HandleGeneratorFlags(std::vector<ArgsList>& input_args,
   // programmatically before invoking ParseCommandLine. Note that we do not
   // actually process arguments specified in the flagfile, but instead
   // create a secondary arguments list to be processed along with the rest
-  // of the command line arguments. Since we always the process most recently
+  // of the comamnd line arguments. Since we always the process most recently
   // created list of arguments first, this will result in flagfile argument
   // being processed before any other argument in the command line. If
   // FLAGS_flagfile contains more than one file name we create multiple new
@@ -637,7 +633,7 @@ void ReportUnrecognizedFlags(
 // --------------------------------------------------------------------
 
 bool WasPresentOnCommandLine(absl::string_view flag_name) {
-  absl::ReaderMutexLock l(&specified_flags_guard);
+  absl::MutexLock l(&specified_flags_guard);
   ABSL_INTERNAL_CHECK(specified_flags != nullptr,
                       "ParseCommandLine is not invoked yet");
 

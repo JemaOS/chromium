@@ -50,8 +50,6 @@ OzonePlatform::PlatformRuntimeProperties::SupportsSsdForTest
 OzonePlatform::PlatformProperties::PlatformProperties() = default;
 OzonePlatform::PlatformProperties::~PlatformProperties() = default;
 
-OzonePlatform::PlatformRuntimeProperties::PlatformRuntimeProperties() = default;
-
 OzonePlatform::OzonePlatform() {
   DCHECK(!g_instance) << "There should only be a single OzonePlatform.";
   g_instance = this;
@@ -135,7 +133,7 @@ OzonePlatform::GetPlatformGlobalShortcutListener(
 std::unique_ptr<PlatformKeyboardHook> OzonePlatform::CreateKeyboardHook(
     PlatformKeyboardHookTypes type,
     base::RepeatingCallback<void(KeyEvent* event)> callback,
-    std::optional<base::flat_set<DomCode>> dom_codes,
+    absl::optional<base::flat_set<DomCode>> dom_codes,
     gfx::AcceleratedWidget accelerated_widget) {
   return nullptr;
 }

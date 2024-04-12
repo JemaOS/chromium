@@ -42,6 +42,7 @@ class COMPONENT_EXPORT(UI_BASE_IME) InputMethodBase
   void SetImeKeyEventDispatcher(
       ImeKeyEventDispatcher* ime_key_event_dispatcher) override;
   void OnFocus() override;
+  void OnTouch(ui::EventPointerType pointerType) override;
   void OnBlur() override;
 
   void SetFocusedTextInputClient(TextInputClient* client) override;

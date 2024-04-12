@@ -7,10 +7,10 @@
 
 #include <stddef.h>
 
-#include <optional>
 #include <string>
 #include <vector>
 
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/gfx/image/image.h"
 #include "ui/message_center/public/cpp/message_center_public_export.h"
 #include "url/gurl.h"
@@ -21,8 +21,8 @@
 
 namespace message_center {
 
-// This enum is being used for histogram reporting and the elements should not
-// be re-ordered.
+  // This enum is being used for histogram reporting and the elements should not
+  // be re-ordered.
 enum class NotifierType : int {
   APPLICATION = 0,
   ARC_APPLICATION = 1,
@@ -56,9 +56,7 @@ struct MESSAGE_CENTER_PUBLIC_EXPORT NotifierId {
   // Constructor for WEB_PAGE type. The |title| must only be populated when a
   // trust relationship has been established, and it is appropriate to display
   // this instead of the |url|'s origin for attribution.
-  NotifierId(const GURL& url,
-             std::optional<std::u16string> title,
-             std::optional<std::string> web_app_id);
+  NotifierId(const GURL& url, absl::optional<std::u16string> title);
 
   NotifierId(const NotifierId& other);
   ~NotifierId();
@@ -68,9 +66,6 @@ struct MESSAGE_CENTER_PUBLIC_EXPORT NotifierId {
   bool operator<(const NotifierId& other) const;
 
   NotifierType type;
-
-  // Identifier in ARC notifications to assign notification groups.
-  std::optional<std::string> group_key;
 
   // The identifier of the app notifier. Empty if it's WEB_PAGE.
   std::string id;
@@ -85,10 +80,7 @@ struct MESSAGE_CENTER_PUBLIC_EXPORT NotifierId {
 
   // The title provided by the app identifier. This is used by desktop web
   // applications.
-  std::optional<std::u16string> title;
-
-  // Optional web app identifier for type WEB_PAGE.
-  std::optional<std::string> web_app_id;
+  absl::optional<std::u16string> title;
 
   // The identifier of the profile where the notification is created. This is
   // used for ChromeOS multi-profile support and can be empty.

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_BROWSER_SWITCHER_BROWSER_SWITCHER_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_BROWSER_SWITCHER_BROWSER_SWITCHER_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -28,13 +28,13 @@ class BrowserSwitcherServiceFactory : public ProfileKeyedServiceFactory {
       const BrowserSwitcherServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<BrowserSwitcherServiceFactory>;
+  friend struct base::DefaultSingletonTraits<BrowserSwitcherServiceFactory>;
 
   BrowserSwitcherServiceFactory();
   ~BrowserSwitcherServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

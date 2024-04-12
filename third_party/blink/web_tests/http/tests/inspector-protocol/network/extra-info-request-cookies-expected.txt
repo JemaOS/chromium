@@ -20,7 +20,6 @@ requestWillBeSentExtraInfo request cookies on same domain:[
             sourceScheme : Secure
             value : value1
         }
-        exemptionReason : None
     }
     [1] : {
         blockedReasons : [
@@ -40,7 +39,6 @@ requestWillBeSentExtraInfo request cookies on same domain:[
             sourceScheme : Secure
             value : value2
         }
-        exemptionReason : None
     }
 ]
 requestWillBeSentExtraInfo request cookies on subdomain[
@@ -63,7 +61,6 @@ requestWillBeSentExtraInfo request cookies on subdomain[
             sourceScheme : Secure
             value : value2
         }
-        exemptionReason : None
     }
     [1] : {
         blockedReasons : [
@@ -84,7 +81,6 @@ requestWillBeSentExtraInfo request cookies on subdomain[
             sourceScheme : Secure
             value : value1
         }
-        exemptionReason : None
     }
 ]
 

@@ -46,10 +46,10 @@ class UnifiedKeyboardBrightnessView : public UnifiedSliderView,
       : UnifiedSliderView(views::Button::PressedCallback(),
                           controller,
                           kUnifiedMenuKeyboardBrightnessIcon,
-                          IDS_ASH_STATUS_TRAY_BRIGHTNESS,
-                          /*is_togglable=*/false),
+                          IDS_ASH_STATUS_TRAY_BRIGHTNESS),
         model_(model) {
-    if (Shell::Get()->rgb_keyboard_manager()->IsRgbKeyboardSupported()) {
+    if (features::IsRgbKeyboardEnabled() &&
+        Shell::Get()->rgb_keyboard_manager()->IsRgbKeyboardSupported()) {
       if (button()) {
         button()->SetBackgroundColor(keyboardBrightnessIconBackgroundColor);
       }
@@ -118,7 +118,7 @@ class UnifiedKeyboardBrightnessView : public UnifiedSliderView,
     return;
   }
 
-  const raw_ptr<UnifiedSystemTrayModel> model_;
+  const raw_ptr<UnifiedSystemTrayModel, ExperimentalAsh> model_;
 
   base::WeakPtrFactory<UnifiedKeyboardBrightnessView> weak_factory_{this};
 };

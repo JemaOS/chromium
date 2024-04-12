@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2009-2021 Erik Doernenburg and contributors
+ *  Copyright (c) 2009-2015 Erik Doernenburg and contributors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may
  *  not use these files except in compliance with the License. You may obtain
@@ -15,25 +15,21 @@
  */
 
 #import "OCMBoxedReturnValueProvider.h"
+#import "OCMFunctions.h"
 #import "NSValue+OCMAdditions.h"
-#import "OCMFunctionsPrivate.h"
-
 
 @implementation OCMBoxedReturnValueProvider
 
 - (void)handleInvocation:(NSInvocation *)anInvocation
 {
-    NSUInteger valueSize = 0;
+	const char *returnType = [[anInvocation methodSignature] methodReturnType];
+    NSUInteger returnTypeSize = [[anInvocation methodSignature] methodReturnLength];
+    char valueBuffer[returnTypeSize];
     NSValue *returnValueAsNSValue = (NSValue *)returnValue;
-    NSGetSizeAndAlignment([returnValueAsNSValue objCType], &valueSize, NULL);
-    char valueBuffer[valueSize];
-    [returnValueAsNSValue getValue:valueBuffer];
 
-    const char *returnType = [[anInvocation methodSignature] methodReturnType];
-
-    if([self isMethodReturnType:returnType compatibleWithValueType:[returnValueAsNSValue objCType]
-                value:valueBuffer valueSize:valueSize])
+    if([self isMethodReturnType:returnType compatibleWithValueType:[returnValueAsNSValue objCType]])
     {
+        [returnValueAsNSValue getValue:valueBuffer];
         [anInvocation setReturnValue:valueBuffer];
     }
     else if([returnValueAsNSValue getBytes:valueBuffer objCType:returnType])
@@ -47,17 +43,19 @@
     }
 }
 
-- (BOOL)isMethodReturnType:(const char *)returnType compatibleWithValueType:(const char *)valueType value:(const void *)value valueSize:(size_t)valueSize
+
+- (BOOL)isMethodReturnType:(const char *)returnType compatibleWithValueType:(const char *)valueType
 {
     /* Same types are obviously compatible */
     if(strcmp(returnType, valueType) == 0)
         return YES;
 
-    /* Special treatment for nil and Nil */
-    if(strcmp(returnType, @encode(id)) == 0 || strcmp(returnType, @encode(Class)) == 0)
-        return OCMIsNilValue(valueType, value, valueSize);
+    /* Allow void* for methods that return id, mainly to be able to handle nil */
+    if(strcmp(returnType, @encode(id)) == 0 && strcmp(valueType, @encode(void *)) == 0)
+        return YES;
 
     return OCMEqualTypesAllowingOpaqueStructs(returnType, valueType);
 }
+
 
 @end

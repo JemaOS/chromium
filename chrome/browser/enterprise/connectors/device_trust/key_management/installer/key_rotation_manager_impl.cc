@@ -54,8 +54,7 @@ void KeyRotationManagerImpl::Rotate(
   // If an old key exists, then the `nonce` becomes a required parameter as
   // we're effectively going through a key rotation flow instead of key
   // creation.
-  auto old_key_pair =
-      persistence_delegate_->LoadKeyPair(KeyStorageType::kPermanent, nullptr);
+  auto old_key_pair = persistence_delegate_->LoadKeyPair();
   const bool is_rotation = IsValidKey(old_key_pair.get());
   if (is_rotation && nonce.empty()) {
     RecordRotationStatus(/*is_rotation=*/true,
@@ -103,7 +102,7 @@ void KeyRotationManagerImpl::Rotate(
 
   // Create a rotation or creation upload request based on the current
   // parameters.
-  std::optional<const KeyUploadRequest> upload_request =
+  absl::optional<const KeyUploadRequest> upload_request =
       is_rotation
           ? KeyUploadRequest::Create(dm_server_url, dm_token, *new_key_pair,
                                      *old_key_pair, nonce)
@@ -137,7 +136,7 @@ void KeyRotationManagerImpl::Rotate(
 }
 
 void KeyRotationManagerImpl::OnDmServerResponse(
-    scoped_refptr<SigningKeyPair> old_key_pair,
+    std::unique_ptr<SigningKeyPair> old_key_pair,
     base::OnceCallback<void(KeyRotationResult)> result_callback,
     KeyNetworkDelegate::HttpResponseCode response_code) {
   const bool is_rotation = IsValidKey(old_key_pair.get());

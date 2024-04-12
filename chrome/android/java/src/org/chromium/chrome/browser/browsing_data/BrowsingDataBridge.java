@@ -4,35 +4,31 @@
 
 package org.chromium.chrome.browser.browsing_data;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
+import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.Callback;
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.profiles.ProfileKeyedMap;
-import org.chromium.components.browser_ui.site_settings.BrowsingDataInfo;
-import org.chromium.url.Origin;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Communicates between ClearBrowsingData, ImportantSitesUtils (C++) and ClearBrowsingDataFragment
- * (Java UI).
+ * Communicates between ClearBrowsingData, ImportantSitesUtils (C++) and
+ * ClearBrowsingDataFragment (Java UI).
  */
 public final class BrowsingDataBridge {
-    private static ProfileKeyedMap<BrowsingDataBridge> sProfileMap;
+    private static BrowsingDataBridge sInstance;
 
-    private final Profile mProfile;
+    // Object to notify when "clear browsing data" completes.
+    private OnClearBrowsingDataListener mClearBrowsingDataListener;
 
-    /** Interface for a class that is listening to clear browser data events. */
-    public interface OnClearBrowsingDataListener {
-        @CalledByNative("OnClearBrowsingDataListener")
-        void onBrowsingDataCleared();
-    }
+    /**
+     * Interface for a class that is listening to clear browser data events.
+     */
+    public interface OnClearBrowsingDataListener { void onBrowsingDataCleared(); }
 
-    /** Interface for a class that is fetching important site information. */
+    /**
+     * Interface for a class that is fetching important site information.
+     */
     public interface ImportantSitesCallback {
         /**
          * Called when the list of important registerable domains has been fetched from cpp.
@@ -47,11 +43,8 @@ public final class BrowsingDataBridge {
          *                       not be shown.
          */
         @CalledByNative("ImportantSitesCallback")
-        void onImportantRegisterableDomainsReady(
-                String[] domains,
-                String[] exampleOrigins,
-                int[] importantReasons,
-                boolean dialogDisabled);
+        void onImportantRegisterableDomainsReady(String[] domains, String[] exampleOrigins,
+                int[] importantReasons, boolean dialogDisabled);
     }
 
     /**
@@ -67,17 +60,24 @@ public final class BrowsingDataBridge {
         void enableDialogAboutOtherFormsOfBrowsingHistory();
     }
 
-    private BrowsingDataBridge(Profile profile) {
-        mProfile = profile;
+    private BrowsingDataBridge() {}
+
+    /**
+     * @return The singleton bridge object.
+     */
+    public static BrowsingDataBridge getInstance() {
+        ThreadUtils.assertOnUiThread();
+        if (sInstance == null) sInstance = new BrowsingDataBridge();
+        return sInstance;
     }
 
-    /** Return the {@link BrowsingDataBridge} associated with the given {@link Profile}. */
-    public static BrowsingDataBridge getForProfile(Profile profile) {
-        ThreadUtils.assertOnUiThread();
-        if (sProfileMap == null) {
-            sProfileMap = new ProfileKeyedMap<>(ProfileKeyedMap.NO_REQUIRED_CLEANUP_ACTION);
+    @CalledByNative
+    @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+    void browsingDataCleared() {
+        if (mClearBrowsingDataListener != null) {
+            mClearBrowsingDataListener.onBrowsingDataCleared();
+            mClearBrowsingDataListener = null;
         }
-        return sProfileMap.getForProfile(profile, () -> new BrowsingDataBridge(profile));
     }
 
     /**
@@ -92,14 +92,8 @@ public final class BrowsingDataBridge {
      */
     public void clearBrowsingData(
             OnClearBrowsingDataListener listener, int[] dataTypes, @TimePeriod int timePeriod) {
-        clearBrowsingDataExcludingDomains(
-                listener,
-                dataTypes,
-                timePeriod,
-                new String[0],
-                new int[0],
-                new String[0],
-                new int[0]);
+        clearBrowsingDataExcludingDomains(listener, dataTypes, timePeriod, new String[0],
+                new int[0], new String[0], new int[0]);
     }
 
     /**
@@ -117,25 +111,14 @@ public final class BrowsingDataBridge {
      *                       these to remove important site entries if the user ignores them enough.
      * @param ignoredDomainReasons A list of reason metadata for the ignored domains.
      */
-    public void clearBrowsingDataExcludingDomains(
-            OnClearBrowsingDataListener listener,
-            int[] dataTypes,
-            @TimePeriod int timePeriod,
-            String[] excludedDomains,
-            int[] excludedDomainReasons,
-            String[] ignoredDomains,
-            int[] ignoredDomainReasons) {
-        BrowsingDataBridgeJni.get()
-                .clearBrowsingData(
-                        BrowsingDataBridge.this,
-                        mProfile,
-                        listener,
-                        dataTypes,
-                        timePeriod,
-                        excludedDomains,
-                        excludedDomainReasons,
-                        ignoredDomains,
-                        ignoredDomainReasons);
+    public void clearBrowsingDataExcludingDomains(OnClearBrowsingDataListener listener,
+            int[] dataTypes, @TimePeriod int timePeriod, String[] excludedDomains,
+            int[] excludedDomainReasons, String[] ignoredDomains, int[] ignoredDomainReasons) {
+        assert mClearBrowsingDataListener == null;
+        mClearBrowsingDataListener = listener;
+        BrowsingDataBridgeJni.get().clearBrowsingData(BrowsingDataBridge.this, getProfile(),
+                dataTypes, timePeriod, excludedDomains, excludedDomainReasons, ignoredDomains,
+                ignoredDomainReasons);
     }
 
     /**
@@ -146,31 +129,24 @@ public final class BrowsingDataBridge {
      */
     public void clearBrowsingDataIncognitoForTesting(
             OnClearBrowsingDataListener listener, int[] dataTypes, @TimePeriod int timePeriod) {
-        BrowsingDataBridgeJni.get()
-                .clearBrowsingData(
-                        BrowsingDataBridge.this,
-                        mProfile.getPrimaryOTRProfile(/* createIfNeeded= */ true),
-                        listener,
-                        dataTypes,
-                        timePeriod,
-                        new String[0],
-                        new int[0],
-                        new String[0],
-                        new int[0]);
+        assert mClearBrowsingDataListener == null;
+        mClearBrowsingDataListener = listener;
+        BrowsingDataBridgeJni.get().clearBrowsingData(BrowsingDataBridge.this,
+                getProfile().getPrimaryOTRProfile(/*createIfNeeded=*/true), dataTypes, timePeriod,
+                new String[0], new int[0], new String[0], new int[0]);
     }
 
     /**
      * This fetches sites (registerable domains) that we consider important. This combines many
-     * pieces of information, including site engagement and permissions. The callback is called with
-     * the list of important registerable domains.
+     * pieces of information, including site engagement and permissions. The callback is called
+     * with the list of important registerable domains.
      *
-     * <p>See net/base/registry_controlled_domains/registry_controlled_domain.h for more details on
+     * See net/base/registry_controlled_domains/registry_controlled_domain.h for more details on
      * registrable domains and the current list of effective eTLDs.
-     *
      * @param callback The callback that will be used to set the list of important sites.
      */
-    public void fetchImportantSites(ImportantSitesCallback callback) {
-        BrowsingDataBridgeJni.get().fetchImportantSites(mProfile, callback);
+    public static void fetchImportantSites(ImportantSitesCallback callback) {
+        BrowsingDataBridgeJni.get().fetchImportantSites(getProfile(), callback);
     }
 
     /**
@@ -182,8 +158,9 @@ public final class BrowsingDataBridge {
     }
 
     /** This lets us mark an origin as important for testing. */
-    public void markOriginAsImportantForTesting(String origin) {
-        BrowsingDataBridgeJni.get().markOriginAsImportantForTesting(mProfile, origin);
+    @VisibleForTesting
+    public static void markOriginAsImportantForTesting(String origin) {
+        BrowsingDataBridgeJni.get().markOriginAsImportantForTesting(getProfile(), origin);
     }
 
     /**
@@ -193,9 +170,16 @@ public final class BrowsingDataBridge {
      */
     public void requestInfoAboutOtherFormsOfBrowsingHistory(
             OtherFormsOfBrowsingHistoryListener listener) {
-        BrowsingDataBridgeJni.get()
-                .requestInfoAboutOtherFormsOfBrowsingHistory(
-                        BrowsingDataBridge.this, mProfile, listener);
+        BrowsingDataBridgeJni.get().requestInfoAboutOtherFormsOfBrowsingHistory(
+                BrowsingDataBridge.this, getProfile(), listener);
+    }
+
+    /**
+     * @returns The profile on which all UI-based browsing data operations should be performed,
+     *         which is the currently active regular profile.
+     */
+    private static Profile getProfile() {
+        return Profile.getLastUsedRegularProfile();
     }
 
     /**
@@ -207,9 +191,8 @@ public final class BrowsingDataBridge {
      * @return The state of the corresponding deletion preference.
      */
     public boolean getBrowsingDataDeletionPreference(int dataType, int clearBrowsingDataTab) {
-        return BrowsingDataBridgeJni.get()
-                .getBrowsingDataDeletionPreference(
-                        BrowsingDataBridge.this, mProfile, dataType, clearBrowsingDataTab);
+        return BrowsingDataBridgeJni.get().getBrowsingDataDeletionPreference(
+                BrowsingDataBridge.this, dataType, clearBrowsingDataTab);
     }
 
     /**
@@ -222,9 +205,8 @@ public final class BrowsingDataBridge {
      */
     public void setBrowsingDataDeletionPreference(
             int dataType, int clearBrowsingDataTab, boolean value) {
-        BrowsingDataBridgeJni.get()
-                .setBrowsingDataDeletionPreference(
-                        BrowsingDataBridge.this, mProfile, dataType, clearBrowsingDataTab, value);
+        BrowsingDataBridgeJni.get().setBrowsingDataDeletionPreference(
+                BrowsingDataBridge.this, dataType, clearBrowsingDataTab, value);
     }
 
     /**
@@ -234,9 +216,8 @@ public final class BrowsingDataBridge {
      * @return The currently selected browsing data deletion time period.
      */
     public @TimePeriod int getBrowsingDataDeletionTimePeriod(int clearBrowsingDataTab) {
-        return BrowsingDataBridgeJni.get()
-                .getBrowsingDataDeletionTimePeriod(
-                        BrowsingDataBridge.this, mProfile, clearBrowsingDataTab);
+        return BrowsingDataBridgeJni.get().getBrowsingDataDeletionTimePeriod(
+                BrowsingDataBridge.this, clearBrowsingDataTab);
     }
 
     /**
@@ -247,9 +228,8 @@ public final class BrowsingDataBridge {
      */
     public void setBrowsingDataDeletionTimePeriod(
             int clearBrowsingDataTab, @TimePeriod int timePeriod) {
-        BrowsingDataBridgeJni.get()
-                .setBrowsingDataDeletionTimePeriod(
-                        BrowsingDataBridge.this, mProfile, clearBrowsingDataTab, timePeriod);
+        BrowsingDataBridgeJni.get().setBrowsingDataDeletionTimePeriod(
+                BrowsingDataBridge.this, clearBrowsingDataTab, timePeriod);
     }
 
     /**
@@ -257,8 +237,7 @@ public final class BrowsingDataBridge {
      *         Index 0 is for the basic tab, 1 is the advanced tab.
      */
     public int getLastSelectedClearBrowsingDataTab() {
-        return BrowsingDataBridgeJni.get()
-                .getLastClearBrowsingDataTab(BrowsingDataBridge.this, mProfile);
+        return BrowsingDataBridgeJni.get().getLastClearBrowsingDataTab(BrowsingDataBridge.this);
     }
 
     /**
@@ -266,73 +245,27 @@ public final class BrowsingDataBridge {
      * @param tabIndex The last visited tab index, 0 for basic, 1 for advanced.
      */
     public void setLastSelectedClearBrowsingDataTab(int tabIndex) {
-        BrowsingDataBridgeJni.get()
-                .setLastClearBrowsingDataTab(BrowsingDataBridge.this, mProfile, tabIndex);
-    }
-
-    @CalledByNative
-    private static Object createBrowsingDataInfoMap() {
-        return new HashMap<Origin, BrowsingDataInfo>();
-    }
-
-    @CalledByNative
-    private static void insertBrowsingDataInfoIntoMap(
-            Map<Origin, BrowsingDataInfo> map, Origin origin, int cookieCount, long storageSize) {
-        map.put(origin, new BrowsingDataInfo(origin, cookieCount, storageSize));
-    }
-
-    public void fetchBrowsingDataInfo(Callback<Map<Origin, BrowsingDataInfo>> callback) {
-        BrowsingDataBridgeJni.get().fetchBrowsingDataInfo(mProfile, callback);
+        BrowsingDataBridgeJni.get().setLastClearBrowsingDataTab(BrowsingDataBridge.this, tabIndex);
     }
 
     @NativeMethods
-    public interface Natives {
-        void clearBrowsingData(
-                BrowsingDataBridge caller,
-                Profile profile,
-                OnClearBrowsingDataListener callback,
-                int[] dataTypes,
-                int timePeriod,
-                String[] excludedDomains,
-                int[] excludedDomainReasons,
-                String[] ignoredDomains,
-                int[] ignoredDomainReasons);
-
-        void requestInfoAboutOtherFormsOfBrowsingHistory(
-                BrowsingDataBridge caller,
-                Profile profile,
+    interface Natives {
+        void clearBrowsingData(BrowsingDataBridge caller, Profile profile, int[] dataTypes,
+                int timePeriod, String[] excludedDomains, int[] excludedDomainReasons,
+                String[] ignoredDomains, int[] ignoredDomainReasons);
+        void requestInfoAboutOtherFormsOfBrowsingHistory(BrowsingDataBridge caller, Profile profile,
                 OtherFormsOfBrowsingHistoryListener listener);
-
         void fetchImportantSites(Profile profile, ImportantSitesCallback callback);
-
         int getMaxImportantSites();
-
         void markOriginAsImportantForTesting(Profile profile, String origin);
-
         boolean getBrowsingDataDeletionPreference(
-                BrowsingDataBridge caller, Profile profile, int dataType, int clearBrowsingDataTab);
-
+                BrowsingDataBridge caller, int dataType, int clearBrowsingDataTab);
         void setBrowsingDataDeletionPreference(
-                BrowsingDataBridge caller,
-                Profile profile,
-                int dataType,
-                int clearBrowsingDataTab,
-                boolean value);
-
-        int getBrowsingDataDeletionTimePeriod(
-                BrowsingDataBridge caller, Profile profile, int clearBrowsingDataTab);
-
+                BrowsingDataBridge caller, int dataType, int clearBrowsingDataTab, boolean value);
+        int getBrowsingDataDeletionTimePeriod(BrowsingDataBridge caller, int clearBrowsingDataTab);
         void setBrowsingDataDeletionTimePeriod(
-                BrowsingDataBridge caller,
-                Profile profile,
-                int clearBrowsingDataTab,
-                int timePeriod);
-
-        int getLastClearBrowsingDataTab(BrowsingDataBridge caller, Profile profile);
-
-        void setLastClearBrowsingDataTab(BrowsingDataBridge caller, Profile profile, int lastTab);
-
-        void fetchBrowsingDataInfo(
-                Profile profile, Callback<Map<Origin, BrowsingDataInfo>> callback);
+                BrowsingDataBridge caller, int clearBrowsingDataTab, int timePeriod);
+        int getLastClearBrowsingDataTab(BrowsingDataBridge caller);
+        void setLastClearBrowsingDataTab(BrowsingDataBridge caller, int lastTab);
     }
 }

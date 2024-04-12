@@ -18,7 +18,6 @@ ABSL_GCC_FLAGS = [
     "-Wconversion-null",
     "-Wformat-security",
     "-Wmissing-declarations",
-    "-Wnon-virtual-dtor",
     "-Woverlength-strings",
     "-Wpointer-arith",
     "-Wundef",
@@ -44,10 +43,8 @@ ABSL_GCC_TEST_ADDITIONAL_FLAGS = [
 ABSL_LLVM_FLAGS = [
     "-Wall",
     "-Wextra",
-    "-Wc++98-compat-extra-semi",
     "-Wcast-qual",
     "-Wconversion",
-    "-Wdead-code-aggressive",
     "-Wfloat-overflow-conversion",
     "-Wfloat-zero-conversion",
     "-Wfor-loop-analysis",

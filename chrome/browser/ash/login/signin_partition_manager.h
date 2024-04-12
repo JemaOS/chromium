@@ -12,13 +12,18 @@
 #include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "components/keyed_service/core/keyed_service.h"
-#include "services/network/public/cpp/network_context_getter.h"
 
 namespace content {
 class BrowserContext;
 class StoragePartition;
 class WebContents;
 }  // namespace content
+
+namespace network {
+namespace mojom {
+class NetworkContext;
+}  // namespace mojom
+}  // namespace network
 
 namespace ash {
 namespace login {
@@ -30,6 +35,9 @@ class SigninPartitionManager : public KeyedService {
   using ClearStoragePartitionTask =
       base::RepeatingCallback<void(content::StoragePartition* storage_partition,
                                    base::OnceClosure data_cleared)>;
+
+  using GetSystemNetworkContextTask =
+      base::RepeatingCallback<network::mojom::NetworkContext*()>;
 
   using OnCreateNewStoragePartition =
       base::RepeatingCallback<void(content::StoragePartition*)>;
@@ -82,7 +90,7 @@ class SigninPartitionManager : public KeyedService {
   void SetClearStoragePartitionTaskForTesting(
       ClearStoragePartitionTask clear_storage_partition_task);
   void SetGetSystemNetworkContextForTesting(
-      network::NetworkContextGetter get_system_network_context_task);
+      GetSystemNetworkContextTask get_system_network_context_task);
   void SetOnCreateNewStoragePartitionForTesting(
       OnCreateNewStoragePartition on_create_new_storage_partition);
 
@@ -103,15 +111,15 @@ class SigninPartitionManager : public KeyedService {
     ~Factory() override;
 
     // BrowserContextKeyedServiceFactory:
-    std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+    KeyedService* BuildServiceInstanceFor(
         content::BrowserContext* context) const override;
   };
 
  private:
-  const raw_ptr<content::BrowserContext> browser_context_;
+  const raw_ptr<content::BrowserContext, ExperimentalAsh> browser_context_;
 
   ClearStoragePartitionTask clear_storage_partition_task_;
-  network::NetworkContextGetter get_system_network_context_task_;
+  GetSystemNetworkContextTask get_system_network_context_task_;
   OnCreateNewStoragePartition on_create_new_storage_partition_;
 
   // GuestView StoragePartitions use the host of the embedder site's URL as the
@@ -122,7 +130,8 @@ class SigninPartitionManager : public KeyedService {
   std::string current_storage_partition_name_;
   // The StoragePartition identified by `storage_partition_domain_` and
   // `current_storage_partition_name_`.
-  raw_ptr<content::StoragePartition> current_storage_partition_ = nullptr;
+  raw_ptr<content::StoragePartition, ExperimentalAsh>
+      current_storage_partition_ = nullptr;
 };
 
 }  // namespace login

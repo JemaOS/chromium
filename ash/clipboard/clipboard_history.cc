@@ -50,7 +50,6 @@ std::list<ClipboardHistoryItem>& ClipboardHistory::GetItems() {
 
 void ClipboardHistory::Clear() {
   history_list_ = std::list<ClipboardHistoryItem>();
-  SyncClipboardToClipboardHistory();
   for (auto& observer : observers_)
     observer.OnClipboardHistoryCleared();
 }

@@ -35,21 +35,13 @@ CastMediaNotificationProducerKeyedServiceFactory::GetInstance() {
   return factory.get();
 }
 
-// static
-CastMediaNotificationProducerKeyedService*
-CastMediaNotificationProducerKeyedServiceFactory::GetForProfile(
-    Profile* profile) {
-  return static_cast<CastMediaNotificationProducerKeyedService*>(
-      GetInstance()->GetServiceForBrowserContext(profile, true));
-}
-
-std::unique_ptr<KeyedService> CastMediaNotificationProducerKeyedServiceFactory::
-    BuildServiceInstanceForBrowserContext(
-        content::BrowserContext* context) const {
+KeyedService*
+CastMediaNotificationProducerKeyedServiceFactory::BuildServiceInstanceFor(
+    content::BrowserContext* context) const {
   if (!media_router::MediaRouterEnabled(context)) {
     return nullptr;
   }
-  return std::make_unique<CastMediaNotificationProducerKeyedService>(
+  return new CastMediaNotificationProducerKeyedService(
       Profile::FromBrowserContext(context));
 }
 

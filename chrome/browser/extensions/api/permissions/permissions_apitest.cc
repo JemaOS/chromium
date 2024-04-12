@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "base/files/file_util.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/extensions/api/permissions/permissions_api.h"
@@ -107,7 +108,10 @@ IN_PROC_BROWSER_TEST_P(PermissionsApiTestWithContextType,
 #define MAYBE_FaviconPermission FaviconPermission
 #endif
 IN_PROC_BROWSER_TEST_F(PermissionsApiTest, MAYBE_FaviconPermission) {
+  base::HistogramTester tester;
   ASSERT_TRUE(RunExtensionTest("permissions/favicon")) << message_;
+  tester.ExpectBucketCount("Extensions.FaviconResourceRequested",
+                           Manifest::TYPE_EXTENSION, 1);
 }
 
 // Test functions and APIs that are always allowed (even if you ask for no
@@ -141,9 +145,7 @@ IN_PROC_BROWSER_TEST_P(PermissionsApiTestWithContextType,
                        OptionalPermissionsAutoConfirm) {
   // Rather than setting the granted permissions, set the UI autoconfirm flag
   // and run the same tests.
-  auto dialog_action_reset =
-      PermissionsRequestFunction::SetDialogActionForTests(
-          PermissionsRequestFunction::DialogAction::kAutoConfirm);
+  PermissionsRequestFunction::SetAutoConfirmForTests(true);
   PermissionsRequestFunction::SetIgnoreUserGestureForTests(true);
   ASSERT_TRUE(StartEmbeddedTestServer());
   EXPECT_TRUE(RunExtensionTest("permissions/optional")) << message_;
@@ -162,9 +164,7 @@ IN_PROC_BROWSER_TEST_F(PermissionsApiTest, OptionalPermissionsDeny) {
       PermissionSet(std::move(apis), ManifestPermissionSet(), URLPatternSet(),
                     URLPatternSet()));
 
-  auto dialog_action_reset =
-      PermissionsRequestFunction::SetDialogActionForTests(
-          PermissionsRequestFunction::DialogAction::kAutoReject);
+  PermissionsRequestFunction::SetAutoConfirmForTests(false);
   PermissionsRequestFunction::SetIgnoreUserGestureForTests(true);
   ASSERT_TRUE(StartEmbeddedTestServer());
   EXPECT_TRUE(RunExtensionTest("permissions/optional_deny")) << message_;
@@ -182,9 +182,7 @@ IN_PROC_BROWSER_TEST_P(PermissionsApiTestWithContextType,
 // Tests that the user gesture is retained in the permissions.request function
 // callback.
 IN_PROC_BROWSER_TEST_F(PermissionsApiTest, OptionalPermissionsRetainGesture) {
-  auto dialog_action_reset =
-      PermissionsRequestFunction::SetDialogActionForTests(
-          PermissionsRequestFunction::DialogAction::kAutoConfirm);
+  PermissionsRequestFunction::SetAutoConfirmForTests(true);
   PermissionsRequestFunction::SetIgnoreUserGestureForTests(false);
   ASSERT_TRUE(StartEmbeddedTestServer());
   EXPECT_TRUE(RunExtensionTest("permissions/optional_retain_gesture"))
@@ -201,9 +199,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTestWithManagementPolicy,
     pref.AddBlockedPermission("*", "management");
   }
   // Set auto confirm UI flag.
-  auto dialog_action_reset =
-      PermissionsRequestFunction::SetDialogActionForTests(
-          PermissionsRequestFunction::DialogAction::kAutoConfirm);
+  PermissionsRequestFunction::SetAutoConfirmForTests(true);
   PermissionsRequestFunction::SetIgnoreUserGestureForTests(true);
   EXPECT_TRUE(RunExtensionTest("permissions/optional_policy_blocked"))
       << message_;
@@ -213,9 +209,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionApiTestWithManagementPolicy,
 // entry in prefs. There shouldn't be a warning either.
 IN_PROC_BROWSER_TEST_F(PermissionsApiTest, OptionalPermissionsFileAccess) {
   // There shouldn't be a warning, so we shouldn't need to autoconfirm.
-  auto dialog_action_reset =
-      PermissionsRequestFunction::SetDialogActionForTests(
-          PermissionsRequestFunction::DialogAction::kAutoReject);
+  PermissionsRequestFunction::SetAutoConfirmForTests(false);
   PermissionsRequestFunction::SetIgnoreUserGestureForTests(true);
 
   ExtensionPrefs* prefs = ExtensionPrefs::Get(browser()->profile());
@@ -256,9 +250,7 @@ IN_PROC_BROWSER_TEST_F(PermissionsApiTest, FileLoad) {
 // Test requesting, querying, and removing host permissions for host
 // permissions that are a subset of the optional permissions.
 IN_PROC_BROWSER_TEST_P(PermissionsApiTestWithContextType, HostSubsets) {
-  auto dialog_action_reset =
-      PermissionsRequestFunction::SetDialogActionForTests(
-          PermissionsRequestFunction::DialogAction::kAutoConfirm);
+  PermissionsRequestFunction::SetAutoConfirmForTests(true);
   PermissionsRequestFunction::SetIgnoreUserGestureForTests(true);
   EXPECT_TRUE(RunExtensionTest("permissions/host_subsets")) << message_;
 }

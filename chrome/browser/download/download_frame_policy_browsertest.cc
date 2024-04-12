@@ -132,21 +132,11 @@ class DownloadFramePolicyBrowserTest
  public:
   ~DownloadFramePolicyBrowserTest() override {}
 
-  // Override embedded_test_server() with a variant that uses HTTPS to avoid
-  // insecure download warnings.
-  net::EmbeddedTestServer* embedded_test_server() {
-    return https_test_server_.get();
-  }
-
   void SetUpOnMainThread() override {
     host_resolver()->AddRule("*", "127.0.0.1");
     SetRulesetWithRules(
         {subresource_filter::testing::CreateSuffixRule("ad_script.js"),
          subresource_filter::testing::CreateSuffixRule("disallow.zip")});
-    https_test_server_ = std::make_unique<net::EmbeddedTestServer>(
-        net::EmbeddedTestServer::TYPE_HTTPS);
-    embedded_test_server()->SetSSLConfig(
-        net::EmbeddedTestServer::CERT_TEST_NAMES);
     embedded_test_server()->ServeFilesFromSourceDirectory(
         "components/test/data/ad_tagging");
     content::SetupCrossSiteRedirector(embedded_test_server());
@@ -158,25 +148,24 @@ class DownloadFramePolicyBrowserTest
                                 DownloadSource source,
                                 bool initiate_with_gesture,
                                 std::string file_name = "allow.zip") {
-    static constexpr char kADownloadScript[] = R"(
+    const char kADownloadScript[] = R"(
       var a = document.createElement('a');
       a.setAttribute('href', '%s');
       a.download = '';
       document.body.appendChild(a);
       a.click();
     )";
-    static constexpr char kNavDownloadScript[] = "window.location = '%s'";
+    const char kNavDownloadScript[] = "window.location = '%s'";
 
-    std::string script =
-        source == DownloadSource::kAnchorAttribute
-            ? base::StringPrintf(kADownloadScript, file_name.c_str())
-            : base::StringPrintf(kNavDownloadScript, file_name.c_str());
+    std::string script = base::StringPrintf(
+        source == DownloadSource::kAnchorAttribute ? kADownloadScript
+                                                   : kNavDownloadScript,
+        file_name.c_str());
 
     if (initiate_with_gesture) {
       EXPECT_TRUE(ExecJs(adapter, script));
     } else {
-      EXPECT_TRUE(
-          ExecJs(adapter, script, content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+      EXPECT_TRUE(ExecuteScriptWithoutUserGesture(adapter, script));
     }
   }
 
@@ -185,14 +174,14 @@ class DownloadFramePolicyBrowserTest
   void InitializeOneSubframeSetup(SandboxOption sandbox_option,
                                   bool is_ad_frame,
                                   bool is_cross_origin) {
-    std::string host_name = "a.test";
+    std::string host_name = "foo.com";
     GURL top_frame_url =
         embedded_test_server()->GetURL(host_name, "/frame_factory.html");
     ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), top_frame_url));
 
     const char* method = is_ad_frame ? "createAdFrame" : "createFrame";
     GURL subframe_url = embedded_test_server()->GetURL(
-        is_cross_origin ? "b.test" : host_name, "/frame_factory.html");
+        is_cross_origin ? "bar.com" : host_name, "/frame_factory.html");
 
     std::string script;
     if (sandbox_option == SandboxOption::kNotSandboxed) {
@@ -225,7 +214,7 @@ class DownloadFramePolicyBrowserTest
   void InitializeOneTopFrameSetup(SandboxOption sandbox_option) {
     InitializeOneSubframeSetup(sandbox_option, false /* is_ad_frame */,
                                false /* is_cross_origin */);
-    std::string host_name = "a.test";
+    std::string host_name = "foo.com";
     GURL main_url =
         embedded_test_server()->GetURL(host_name, "/frame_factory.html");
     web_feature_waiter_.reset();
@@ -234,8 +223,8 @@ class DownloadFramePolicyBrowserTest
             browser()->tab_strip_model(), &web_feature_waiter_);
     content::TestNavigationObserver popup_observer(main_url);
     popup_observer.StartWatchingNewWebContents();
-    EXPECT_TRUE(
-        ExecJs(GetSubframeRfh(), "window.open(\"" + main_url.spec() + "\");"));
+    EXPECT_TRUE(ExecuteScript(GetSubframeRfh(),
+                              "window.open(\"" + main_url.spec() + "\");"));
     popup_observer.Wait();
     ASSERT_EQ(2, browser()->tab_strip_model()->count());
     ASSERT_TRUE(browser()->tab_strip_model()->IsTabSelected(1));
@@ -256,8 +245,7 @@ class DownloadFramePolicyBrowserTest
   void CheckNumDownloadsExpectation() {
     if (download_observer_)
       download_observer_->WaitForFinished();
-    std::vector<raw_ptr<download::DownloadItem, VectorExperimental>>
-        download_items;
+    std::vector<download::DownloadItem*> download_items;
     content::DownloadManager* manager =
         browser()->profile()->GetDownloadManager();
     manager->GetAllDownloads(&download_items);
@@ -288,12 +276,8 @@ class DownloadFramePolicyBrowserTest
   std::unique_ptr<content::DownloadTestObserver> download_observer_;
   std::unique_ptr<page_load_metrics::PageLoadMetricsTestWaiter>
       web_feature_waiter_;
-  raw_ptr<content::RenderFrameHost, AcrossTasksDanglingUntriaged>
-      subframe_rfh_ = nullptr;
+  raw_ptr<content::RenderFrameHost, DanglingUntriaged> subframe_rfh_ = nullptr;
   size_t expected_num_downloads_ = 0;
-  // By default, the embedded test server uses HTTP. Keep an HTTPS server
-  // instead so that we don't encounter unexpected insecure download warnings.
-  std::unique_ptr<net::EmbeddedTestServer> https_test_server_;
 };
 
 class SubframeSameFrameDownloadBrowserTest_Sandbox
@@ -564,8 +548,7 @@ IN_PROC_BROWSER_TEST_P(OtherFrameNavigationDownloadBrowserTest_AdFrame,
     if (initiate_with_gesture) {
       EXPECT_TRUE(ExecJs(web_contents(), script));
     } else {
-      EXPECT_TRUE(ExecJs(web_contents(), script,
-                         content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+      EXPECT_TRUE(ExecuteScriptWithoutUserGesture(web_contents(), script));
     }
   }
 
@@ -668,7 +651,7 @@ IN_PROC_BROWSER_TEST_P(
              content::JsReplace("document.querySelector('iframe').sandbox = $1",
                                 update_to_token)));
 
-  GURL download_url = embedded_test_server()->GetURL("b.test", "/allow.zip");
+  GURL download_url = embedded_test_server()->GetURL("bar.com", "/allow.zip");
   content::TestNavigationManager navigation_observer(web_contents(),
                                                      download_url);
   EXPECT_TRUE(
@@ -711,7 +694,7 @@ IN_PROC_BROWSER_TEST_P(DownloadFramePolicyBrowserTest_UpdateIframeSandboxFlags,
              content::JsReplace("document.querySelector('iframe').sandbox = $1",
                                 update_to_token)));
 
-  GURL download_url = embedded_test_server()->GetURL("b.test", "/allow.zip");
+  GURL download_url = embedded_test_server()->GetURL("bar.com", "/allow.zip");
   content::TestNavigationManager navigation_observer(web_contents(),
                                                      download_url);
   EXPECT_TRUE(ExecJs(GetSubframeRfh(),

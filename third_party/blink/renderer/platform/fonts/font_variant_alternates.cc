@@ -63,7 +63,7 @@ scoped_refptr<FontVariantAlternates> FontVariantAlternates::Clone(
   return new_object;
 }
 
-bool FontVariantAlternates::IsNormal() const {
+bool FontVariantAlternates::IsNormal() {
   return !stylistic_ && !historical_forms_ && !swash_ && !ornaments_ &&
          !annotation_ && styleset_.empty() && character_variant_.empty();
 }

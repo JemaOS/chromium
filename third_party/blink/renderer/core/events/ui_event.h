@@ -76,10 +76,10 @@ class CORE_EXPORT UIEvent : public Event {
                            int detail,
                            InputDeviceCapabilities* source_capabilities);
 
-  AbstractView* view() const { return view_.Get(); }
+  AbstractView* view() const { return view_; }
   int detail() const { return detail_; }
   InputDeviceCapabilities* sourceCapabilities() const {
-    return source_capabilities_.Get();
+    return source_capabilities_;
   }
 
   const AtomicString& InterfaceName() const override;

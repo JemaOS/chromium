@@ -35,7 +35,7 @@ class BreadcrumbManagerKeyedServiceFactory : public ProfileKeyedServiceFactory {
   ~BreadcrumbManagerKeyedServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

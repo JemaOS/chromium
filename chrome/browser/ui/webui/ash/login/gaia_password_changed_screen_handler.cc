@@ -7,9 +7,9 @@
 #include "ash/constants/ash_features.h"
 #include "base/values.h"
 #include "chrome/browser/ash/login/oobe_screen.h"
-#include "chrome/browser/ash/login/screens/osauth/gaia_password_changed_screen.h"
+#include "chrome/browser/ash/login/screens/gaia_password_changed_screen.h"
 #include "chrome/browser/ash/login/ui/login_display_host.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/login/localized_values_builder.h"
 #include "ui/chromeos/devicetype_utils.h"
@@ -27,6 +27,8 @@ void GaiaPasswordChangedScreenHandler::DeclareLocalizedValues(
   builder->Add("oldPasswordHint", IDS_LOGIN_PASSWORD_CHANGED_OLD_PASSWORD_HINT);
   builder->Add("oldPasswordIncorrect",
                IDS_LOGIN_PASSWORD_CHANGED_INCORRECT_OLD_PASSWORD);
+  builder->Add("proceedAnywayButton",
+               IDS_LOGIN_PASSWORD_CHANGED_PROCEED_ANYWAY_BUTTON);
   builder->Add("forgotOldPasswordButtonText",
                IDS_LOGIN_PASSWORD_CHANGED_FORGOT_PASSWORD);
   builder->AddF("passwordChangedTitle", IDS_LOGIN_PASSWORD_CHANGED_TITLE,
@@ -56,6 +58,13 @@ void GaiaPasswordChangedScreenHandler::DeclareLocalizedValues(
                IDS_LOGIN_PASSWORD_CHANGED_RECOVERY_ENABLE_BUTTON);
 }
 
+void GaiaPasswordChangedScreenHandler::GetAdditionalParameters(
+    base::Value::Dict* dict) {
+  dict->Set("isCryptohomeRecoveryUIFlowEnabled",
+            features::IsCryptohomeRecoveryEnabled());
+  BaseScreenHandler::GetAdditionalParameters(dict);
+}
+
 void GaiaPasswordChangedScreenHandler::Show(const std::string& email,
                                             bool has_error) {
   base::Value::Dict data;
@@ -77,11 +86,6 @@ void GaiaPasswordChangedScreenHandler::ShowWrongPasswordError() {
 
 void GaiaPasswordChangedScreenHandler::SuggestRecovery() {
   CallExternalAPI("suggestRecovery");
-}
-
-base::WeakPtr<GaiaPasswordChangedView>
-GaiaPasswordChangedScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
 }
 
 }  // namespace ash

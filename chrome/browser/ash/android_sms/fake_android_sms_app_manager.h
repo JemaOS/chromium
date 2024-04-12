@@ -5,10 +5,9 @@
 #ifndef CHROME_BROWSER_ASH_ANDROID_SMS_FAKE_ANDROID_SMS_APP_MANAGER_H_
 #define CHROME_BROWSER_ASH_ANDROID_SMS_FAKE_ANDROID_SMS_APP_MANAGER_H_
 
-#include <optional>
-
 #include "chrome/browser/ash/android_sms/android_sms_app_manager.h"
 #include "chromeos/ash/services/multidevice_setup/public/cpp/fake_android_sms_app_helper_delegate.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace ash {
@@ -30,13 +29,13 @@ class FakeAndroidSmsAppManager
 
   ~FakeAndroidSmsAppManager() override;
 
-  void SetInstalledAppUrl(const std::optional<GURL>& url);
+  void SetInstalledAppUrl(const absl::optional<GURL>& url);
 
  private:
   // AndroidSmsAppManager:
-  std::optional<GURL> GetCurrentAppUrl() override;
+  absl::optional<GURL> GetCurrentAppUrl() override;
 
-  std::optional<GURL> url_;
+  absl::optional<GURL> url_;
 };
 
 }  // namespace android_sms

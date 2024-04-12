@@ -31,7 +31,7 @@ MediaStreamComponent* CreateMediaStreamComponent(
 }
 
 FakeRTCRtpSenderImpl::FakeRTCRtpSenderImpl(
-    std::optional<String> track_id,
+    absl::optional<String> track_id,
     Vector<String> stream_ids,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
     : track_id_(std::move(track_id)),
@@ -97,12 +97,15 @@ std::unique_ptr<webrtc::RtpParameters> FakeRTCRtpSenderImpl::GetParameters()
 
 void FakeRTCRtpSenderImpl::SetParameters(
     Vector<webrtc::RtpEncodingParameters>,
-    std::optional<webrtc::DegradationPreference>,
+    absl::optional<webrtc::DegradationPreference>,
     blink::RTCVoidRequest*) {
   NOTIMPLEMENTED();
 }
 
-void FakeRTCRtpSenderImpl::GetStats(RTCStatsReportCallback) {
+void FakeRTCRtpSenderImpl::GetStats(
+    RTCStatsReportCallback,
+    const Vector<webrtc::NonStandardGroupId>&,
+    bool is_track_stats_deprecation_trial_enabled) {
   NOTIMPLEMENTED();
 }
 
@@ -162,7 +165,10 @@ Vector<std::unique_ptr<RTCRtpSource>> FakeRTCRtpReceiverImpl::GetSources() {
   return {};
 }
 
-void FakeRTCRtpReceiverImpl::GetStats(RTCStatsReportCallback) {
+void FakeRTCRtpReceiverImpl::GetStats(
+    RTCStatsReportCallback,
+    const Vector<webrtc::NonStandardGroupId>&,
+    bool is_track_stats_deprecation_trial_enabled) {
   NOTIMPLEMENTED();
 }
 
@@ -173,7 +179,7 @@ std::unique_ptr<webrtc::RtpParameters> FakeRTCRtpReceiverImpl::GetParameters()
 }
 
 void FakeRTCRtpReceiverImpl::SetJitterBufferMinimumDelay(
-    std::optional<double> delay_seconds) {
+    absl::optional<double> delay_seconds) {
   NOTIMPLEMENTED();
 }
 
@@ -182,7 +188,7 @@ FakeRTCRtpTransceiverImpl::FakeRTCRtpTransceiverImpl(
     FakeRTCRtpSenderImpl sender,
     FakeRTCRtpReceiverImpl receiver,
     webrtc::RtpTransceiverDirection direction,
-    std::optional<webrtc::RtpTransceiverDirection> current_direction)
+    absl::optional<webrtc::RtpTransceiverDirection> current_direction)
     : mid_(mid),
       sender_(std::move(sender)),
       receiver_(std::move(receiver)),
@@ -220,15 +226,15 @@ webrtc::RTCError FakeRTCRtpTransceiverImpl::SetDirection(
   return webrtc::RTCError::OK();
 }
 
-std::optional<webrtc::RtpTransceiverDirection>
+absl::optional<webrtc::RtpTransceiverDirection>
 FakeRTCRtpTransceiverImpl::CurrentDirection() const {
   return current_direction_;
 }
 
-std::optional<webrtc::RtpTransceiverDirection>
+absl::optional<webrtc::RtpTransceiverDirection>
 FakeRTCRtpTransceiverImpl::FiredDirection() const {
   NOTIMPLEMENTED();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 webrtc::RTCError FakeRTCRtpTransceiverImpl::Stop() {

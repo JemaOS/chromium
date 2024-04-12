@@ -31,13 +31,10 @@
 
 #include "third_party/blink/renderer/core/html/forms/html_data_list_element.h"
 
-#include "third_party/blink/renderer/core/dom/focus_params.h"
 #include "third_party/blink/renderer/core/dom/id_target_observer_registry.h"
 #include "third_party/blink/renderer/core/dom/node_lists_node_data.h"
-#include "third_party/blink/renderer/core/dom/popover_data.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html/forms/html_data_list_options_collection.h"
-#include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 
@@ -46,7 +43,6 @@ namespace blink {
 HTMLDataListElement::HTMLDataListElement(Document& document)
     : HTMLElement(html_names::kDatalistTag, document) {
   UseCounter::Count(document, WebFeature::kDataListElement);
-  document.IncrementDataListCount();
 }
 
 HTMLDataListOptionsCollection* HTMLDataListElement::options() {
@@ -71,68 +67,6 @@ void HTMLDataListElement::FinishParsingChildren() {
 void HTMLDataListElement::OptionElementChildrenChanged() {
   GetTreeScope().GetIdTargetObserverRegistry().NotifyObservers(
       GetIdAttribute());
-}
-
-void HTMLDataListElement::DidMoveToNewDocument(Document& old_doc) {
-  HTMLElement::DidMoveToNewDocument(old_doc);
-  old_doc.DecrementDataListCount();
-  GetDocument().IncrementDataListCount();
-}
-
-void HTMLDataListElement::Prefinalize() {
-  GetDocument().DecrementDataListCount();
-}
-
-HTMLSelectElement* HTMLDataListElement::ParentSelect() const {
-  if (!RuntimeEnabledFeatures::StylableSelectEnabled()) {
-    return nullptr;
-  }
-  return DynamicTo<HTMLSelectElement>(parentNode());
-}
-
-Node::InsertionNotificationRequest HTMLDataListElement::InsertedInto(
-    ContainerNode& insertion_point) {
-  if (auto* select = ParentSelect()) {
-    if (select == insertion_point) {
-      CHECK(RuntimeEnabledFeatures::StylableSelectEnabled());
-      EnsurePopoverData()->setType(PopoverValueType::kAuto);
-      select->IncrementImplicitlyAnchoredElementCount();
-    }
-  }
-  return HTMLElement::InsertedInto(insertion_point);
-}
-
-void HTMLDataListElement::RemovedFrom(ContainerNode& insertion_point) {
-  HTMLElement::RemovedFrom(insertion_point);
-
-  if (!parentNode() && RuntimeEnabledFeatures::StylableSelectEnabled()) {
-    if (auto* select = DynamicTo<HTMLSelectElement>(insertion_point)) {
-      // Clean up the popover data we set in InsertedInto. If this datalist is
-      // still considered select-associated, then UpdatePopoverAttribute will
-      // early out.
-      UpdatePopoverAttribute(FastGetAttribute(html_names::kPopoverAttr));
-      select->DecrementImplicitlyAnchoredElementCount();
-    }
-  }
-}
-
-void HTMLDataListElement::ShowPopoverInternal(Element* invoker,
-                                              ExceptionState* exception_state) {
-  HTMLElement::ShowPopoverInternal(invoker, exception_state);
-  if (exception_state && exception_state->HadException()) {
-    return;
-  }
-
-  if (auto* select = ParentSelect()) {
-    if (select->IsAppearanceBikeshed()) {
-      CHECK(RuntimeEnabledFeatures::StylableSelectEnabled());
-      // This is a StylableSelect popup. When it is shown, we should focus the
-      // selected option.
-      if (auto* option = select->SelectedOption()) {
-        option->Focus(FocusParams(FocusTrigger::kScript));
-      }
-    }
-  }
 }
 
 }  // namespace blink

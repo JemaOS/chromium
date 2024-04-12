@@ -37,7 +37,7 @@ class TextfieldTestApi {
     return textfield_->context_menu_contents_.get();
   }
 
-  TouchSelectionController* touch_selection_controller() const {
+  ui::TouchEditingControllerDeprecated* touch_selection_controller() const {
     return textfield_->touch_selection_controller_.get();
   }
 
@@ -74,7 +74,7 @@ class TextfieldTestApi {
   void SetDisplayOffsetX(int x) const;
 
  private:
-  const raw_ptr<Textfield> textfield_;
+  raw_ptr<Textfield> textfield_;
 };
 
 }  // namespace views

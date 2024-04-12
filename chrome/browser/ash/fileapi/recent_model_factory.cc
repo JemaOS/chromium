@@ -4,6 +4,11 @@
 
 #include "chrome/browser/ash/fileapi/recent_model_factory.h"
 
+#include <algorithm>
+#include <iterator>
+#include <string>
+#include <utility>
+
 #include "chrome/browser/ash/arc/fileapi/arc_documents_provider_root_map_factory.h"
 #include "chrome/browser/ash/fileapi/recent_model.h"
 #include "chrome/browser/profiles/profile.h"
@@ -13,16 +18,13 @@ namespace ash {
 // static
 RecentModel* RecentModelFactory::GetForProfile(Profile* profile) {
   return static_cast<RecentModel*>(
-      GetInstance()->GetServiceForBrowserContext(profile, /*create=*/true));
+      GetInstance()->GetServiceForBrowserContext(profile, true));
 }
 
 RecentModelFactory::RecentModelFactory()
     : ProfileKeyedServiceFactory(
           "RecentModel",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(arc::ArcDocumentsProviderRootMapFactory::GetInstance());
 }
 
@@ -30,15 +32,13 @@ RecentModelFactory::~RecentModelFactory() = default;
 
 // static
 RecentModelFactory* RecentModelFactory::GetInstance() {
-  static base::NoDestructor<RecentModelFactory> instance;
-  return instance.get();
+  return base::Singleton<RecentModelFactory>::get();
 }
 
-std::unique_ptr<KeyedService>
-RecentModelFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* RecentModelFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<RecentModel>(profile);
+  return new RecentModel(profile);
 }
 
 }  // namespace ash

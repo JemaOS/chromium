@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/**
+ * @fileoverview Base class for Text-to-Speech engines that actually transform
+ * text to speech.
+ */
+
 import {Msgs} from '../common/msgs.js';
 import {SettingsManager} from '../common/settings_manager.js';
 import * as ttsTypes from '../common/tts_types.js';
@@ -18,8 +23,7 @@ import {TtsInterface} from './tts_interface.js';
 let PropertyValues;
 
 /**
- * Base class for Text-to-Speech engines that actually transform
- * text to speech (as opposed to logging or other behaviors).
+ * Creates a new instance.
  * @implements {TtsInterface}
  */
 export class AbstractTts {
@@ -232,7 +236,7 @@ export class AbstractTts {
   preprocess(text, properties) {
     if (text.length === 1 && text.toLowerCase() !== text) {
       // Describe capital letters according to user's setting.
-      if (SettingsManager.getString('capitalStrategy') === 'increasePitch') {
+      if (SettingsManager.get('capitalStrategy') === 'increasePitch') {
         // Closure doesn't allow the use of for..in or [] with structs, so
         // convert to a pure JSON object.
         const CAPITAL = ttsTypes.Personality.CAPITAL.toJSON();
@@ -242,12 +246,12 @@ export class AbstractTts {
           }
         }
       } else if (
-          SettingsManager.getString('capitalStrategy') === 'announceCapitals') {
+          SettingsManager.get('capitalStrategy') === 'announceCapitals') {
         text = Msgs.getMsg('announce_capital_letter', [text]);
       }
     }
 
-    if (!SettingsManager.getBoolean('usePitchChanges')) {
+    if (!SettingsManager.get('usePitchChanges')) {
       delete properties.relativePitch;
     }
 
@@ -273,7 +277,9 @@ export class AbstractTts {
     // Handle single characters that we want to make sure we pronounce.
     if (text.length === 1) {
       return ttsTypes.CharacterDictionary[text] ?
-          Msgs.getMsgWithCount(ttsTypes.CharacterDictionary[text], 1) :
+          (new goog.i18n.MessageFormat(
+               Msgs.getMsg(ttsTypes.CharacterDictionary[text])))
+              .format({'COUNT': 1}) :
           text.toUpperCase();
     }
 
@@ -294,7 +300,9 @@ export class AbstractTts {
   static repetitionReplace_(match) {
     const count = match.length;
     return ' ' +
-        Msgs.getMsgWithCount(ttsTypes.CharacterDictionary[match[0]], count) +
+        (new goog.i18n.MessageFormat(
+             Msgs.getMsg(ttsTypes.CharacterDictionary[match[0]])))
+            .format({'COUNT': count}) +
         ' ';
   }
 

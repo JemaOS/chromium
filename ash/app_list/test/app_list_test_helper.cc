@@ -14,7 +14,6 @@
 #include "ash/app_list/model/app_list_item.h"
 #include "ash/app_list/model/app_list_test_model.h"
 #include "ash/app_list/model/search/test_search_result.h"
-#include "ash/app_list/views/app_list_bubble_apps_collections_page.h"
 #include "ash/app_list/views/app_list_bubble_apps_page.h"
 #include "ash/app_list/views/app_list_bubble_search_page.h"
 #include "ash/app_list/views/app_list_bubble_view.h"
@@ -140,7 +139,7 @@ void AppListTestHelper::StartSlideAnimationOnBubbleAppsPage(
 
 void AppListTestHelper::CheckVisibility(bool visible) {
   EXPECT_EQ(visible, app_list_controller_->IsVisible());
-  EXPECT_EQ(visible, app_list_controller_->GetTargetVisibility(std::nullopt));
+  EXPECT_EQ(visible, app_list_controller_->GetTargetVisibility(absl::nullopt));
 }
 
 void AppListTestHelper::CheckState(AppListViewState state) {
@@ -161,7 +160,7 @@ void AppListTestHelper::AddAppItemsWithColorAndName(int num_apps,
     const std::string id(
         test::AppListTestModel::GetItemName(i + num_apps_already_added));
     auto item = std::make_unique<AppListItem>(id);
-    std::optional<SkColor> solid_color;
+    absl::optional<SkColor> solid_color;
     switch (color_type) {
       case IconColorType::kDefaultColor:
         solid_color = icon_color_generator_.default_color();
@@ -177,8 +176,7 @@ void AppListTestHelper::AddAppItemsWithColorAndName(int num_apps,
       // Skip the calculation of the icon color from the generated solid-colored
       // icon to save some time.
       item->SetDefaultIconAndColor(
-          CreateSolidColorTestImage(kIconImageSize, *solid_color), IconColor(),
-          /*is_placeholder_icon=*/false);
+          CreateSolidColorTestImage(kIconImageSize, *solid_color), IconColor());
     }
 
     auto* item_ptr = item.get();
@@ -207,22 +205,6 @@ void AppListTestHelper::AddRecentApps(int num_apps) {
     result->set_result_type(AppListSearchResultType::kInstalledApp);
     result->set_display_type(SearchResultDisplayType::kRecentApps);
     GetSearchResults()->Add(std::move(result));
-  }
-}
-
-void AppListTestHelper::AddAppListItemsWithCollection(
-    AppCollection collection_id,
-    int num_apps) {
-  AppListModel* model = AppListModelProvider::Get()->model();
-  for (int i = 0; i < num_apps; i++) {
-    const std::string id(test::AppListTestModel::GetItemName(i));
-    auto item = std::make_unique<AppListItem>(id);
-    item->SetAppCollectionId(collection_id);
-    AppListItem* item_ptr = model->AddItem(std::move(item));
-
-    // Give each item a name so that the accessibility paint checks pass.
-    // (Focusable items should have accessible names.)
-    model->SetItemName(item_ptr, item_ptr->id());
   }
 }
 
@@ -332,13 +314,6 @@ AppListBubbleAppsPage* AppListTestHelper::GetBubbleAppsPage() {
       ->apps_page_;
 }
 
-AppListBubbleAppsCollectionsPage*
-AppListTestHelper::GetBubbleAppsCollectionsPage() {
-  return app_list_controller_->bubble_presenter_for_test()
-      ->bubble_view_for_test()
-      ->apps_collections_page_;
-}
-
 ContinueSectionView* AppListTestHelper::GetBubbleContinueSectionView() {
   return GetBubbleAppsPage()->continue_section_;
 }
@@ -349,10 +324,6 @@ RecentAppsView* AppListTestHelper::GetBubbleRecentAppsView() {
 
 ScrollableAppsGridView* AppListTestHelper::GetScrollableAppsGridView() {
   return GetBubbleAppsPage()->scrollable_apps_grid_view_;
-}
-
-views::View* AppListTestHelper::GetAppCollectionsSectionsContainer() {
-  return GetBubbleAppsCollectionsPage()->sections_container_;
 }
 
 AppListBubbleSearchPage* AppListTestHelper::GetBubbleSearchPage() {
@@ -366,7 +337,7 @@ SearchResultPageAnchoredDialog* AppListTestHelper::GetBubbleSearchPageDialog() {
       ->bubble_view_for_test()
       ->search_page_dialog_controller_->dialog();
 }
-AppListBubbleAssistantPage* AppListTestHelper::GetBubbleAssistantPage() {
+JemaAssistantPage* AppListTestHelper::GetBubbleAssistantPage() {
   return app_list_controller_->bubble_presenter_for_test()
       ->bubble_view_for_test()
       ->assistant_page_;

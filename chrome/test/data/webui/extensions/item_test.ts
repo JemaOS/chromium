@@ -4,9 +4,7 @@
 
 /** @fileoverview Suite of tests for extension-item. */
 
-import type {ExtensionsItemElement, IronIconElement} from 'chrome://extensions/extensions.js';
-import {navigation, Page} from 'chrome://extensions/extensions.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {ExtensionsItemElement, IronIconElement, navigation, Page} from 'chrome://extensions/extensions.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {isChildVisible} from 'chrome://webui-test/test_util.js';
@@ -68,7 +66,27 @@ function testDeveloperElementsAreHidden(item: HTMLElement): void {
   testElementsVisibility(item, devElements, false);
 }
 
-suite('ExtensionItemTest', function() {
+const extension_item_tests = {
+  suiteName: 'ExtensionItemTest',
+  TestNames: {
+    ElementVisibilityNormalState: 'element visibility: normal state',
+    ElementVisibilityDeveloperState:
+        'element visibility: after enabling developer mode',
+    ClickableItems: 'clickable items',
+    FailedReloadFiresLoadError: 'failed reload fires load error',
+    Warnings: 'warnings',
+    SourceIndicator: 'source indicator',
+    EnableToggle: 'Enable toggle is disabled when necessary',
+    RemoveButton: 'remove button hidden when necessary',
+    HtmlInName: 'html in extension name',
+    RepairButton: 'Repair button visibility',
+    InspectableViewSortOrder: 'inspectable view sort order',
+  },
+};
+
+Object.assign(window, {extension_item_tests: extension_item_tests});
+
+suite(extension_item_tests.suiteName, function() {
   /**
    * Extension item created before each test.
    */
@@ -88,7 +106,7 @@ suite('ExtensionItemTest', function() {
     document.body.appendChild(toastManager);
   });
 
-  test('ElementVisibilityNormalState', function() {
+  test(extension_item_tests.TestNames.ElementVisibilityNormalState, function() {
     testNormalElementsAreVisible(item);
     testDeveloperElementsAreHidden(item);
 
@@ -99,45 +117,48 @@ suite('ExtensionItemTest', function() {
     assertFalse(item.$.enableToggle.checked);
   });
 
-  test('ElementVisibilityDeveloperState', function() {
-    item.set('inDevMode', true);
+  test(
+      extension_item_tests.TestNames.ElementVisibilityDeveloperState,
+      function() {
+        item.set('inDevMode', true);
 
-    testNormalElementsAreVisible(item);
-    testDeveloperElementsAreVisible(item);
+        testNormalElementsAreVisible(item);
+        testDeveloperElementsAreVisible(item);
 
-    // Developer reload button should be visible only for enabled unpacked
-    // extensions.
-    testVisible(item, '#dev-reload-button', false);
+        // Developer reload button should be visible only for enabled unpacked
+        // extensions.
+        testVisible(item, '#dev-reload-button', false);
 
-    item.set('data.location', chrome.developerPrivate.Location.UNPACKED);
-    flush();
-    testVisible(item, '#dev-reload-button', true);
+        item.set('data.location', chrome.developerPrivate.Location.UNPACKED);
+        flush();
+        testVisible(item, '#dev-reload-button', true);
 
-    item.set('data.state', chrome.developerPrivate.ExtensionState.DISABLED);
-    flush();
-    testVisible(item, '#dev-reload-button', false);
+        item.set('data.state', chrome.developerPrivate.ExtensionState.DISABLED);
+        flush();
+        testVisible(item, '#dev-reload-button', false);
 
-    item.set('data.disableReasons.reloading', true);
-    flush();
-    testVisible(item, '#dev-reload-button', true);
+        item.set('data.disableReasons.reloading', true);
+        flush();
+        testVisible(item, '#dev-reload-button', true);
 
-    item.set('data.disableReasons.reloading', false);
-    flush();
-    item.set('data.state', chrome.developerPrivate.ExtensionState.TERMINATED);
-    flush();
-    testVisible(item, '#dev-reload-button', false);
-    testVisible(item, '#enableToggle', false);
-  });
+        item.set('data.disableReasons.reloading', false);
+        flush();
+        item.set(
+            'data.state', chrome.developerPrivate.ExtensionState.TERMINATED);
+        flush();
+        testVisible(item, '#dev-reload-button', false);
+        testVisible(item, '#enableToggle', false);
+      });
 
   /** Tests that the delegate methods are correctly called. */
-  test('ClickableItems', async function() {
+  test(extension_item_tests.TestNames.ClickableItems, function() {
     item.set('inDevMode', true);
 
-    await mockDelegate.testClickingCalls(
+    mockDelegate.testClickingCalls(
         item.$.removeButton, 'deleteItem', [item.data.id]);
-    await mockDelegate.testClickingCalls(
+    mockDelegate.testClickingCalls(
         item.$.enableToggle, 'setItemEnabled', [item.data.id, false]);
-    await mockDelegate.testClickingCalls(
+    mockDelegate.testClickingCalls(
         item.shadowRoot!.querySelector<HTMLElement>(
             '#inspect-views a[is="action-link"]')!,
         'inspectItemView', [item.data.id, item.data.views[0]]);
@@ -163,7 +184,7 @@ suite('ExtensionItemTest', function() {
 
     item.set('data.disableReasons.corruptInstall', true);
     flush();
-    await mockDelegate.testClickingCalls(
+    mockDelegate.testClickingCalls(
         item.shadowRoot!.querySelector<HTMLElement>('#repair-button')!,
         'repairItem', [item.data.id]);
     testVisible(item, '#enableToggle', false);
@@ -172,7 +193,7 @@ suite('ExtensionItemTest', function() {
 
     item.set('data.state', chrome.developerPrivate.ExtensionState.TERMINATED);
     flush();
-    await mockDelegate.testClickingCalls(
+    mockDelegate.testClickingCalls(
         item.shadowRoot!.querySelector<HTMLElement>(
             '#terminated-reload-button')!,
         'reloadItem', [item.data.id], Promise.resolve());
@@ -184,7 +205,8 @@ suite('ExtensionItemTest', function() {
 
   /** Tests that the reload button properly fires the load-error event. */
   test(
-      'FailedReloadFiresLoadError', async function() {
+      extension_item_tests.TestNames.FailedReloadFiresLoadError,
+      async function() {
         item.set('inDevMode', true);
         item.set('data.location', chrome.developerPrivate.Location.UNPACKED);
         flush();
@@ -227,7 +249,7 @@ suite('ExtensionItemTest', function() {
         return verifyEventPromise(true);
       });
 
-  test('Warnings', function() {
+  test(extension_item_tests.TestNames.Warnings, function() {
     const kCorrupt = 1 << 0;
     const kSuspicious = 1 << 1;
     const kBlacklisted = 1 << 2;
@@ -288,7 +310,7 @@ suite('ExtensionItemTest', function() {
     assertWarnings(kSuspicious);
   });
 
-  test('SourceIndicator', function() {
+  test(extension_item_tests.TestNames.SourceIndicator, function() {
     assertFalse(isChildVisible(item, '#source-indicator'));
     item.set('data.location', 'UNPACKED');
     flush();
@@ -323,7 +345,7 @@ suite('ExtensionItemTest', function() {
     assertFalse(isChildVisible(item, '#source-indicator'));
   });
 
-  test('EnableToggle', function() {
+  test(extension_item_tests.TestNames.EnableToggle, function() {
     assertFalse(item.$.enableToggle.disabled);
 
     // Test case where user does not have permission.
@@ -352,13 +374,6 @@ suite('ExtensionItemTest', function() {
     item.set('data.disableReasons.blockedByPolicy', false);
     flush();
 
-    item.set('data.disableReasons.publishedInStoreRequired', true);
-    flush();
-    testVisible(item, '#enableToggle', true);
-    assertTrue(item.$.enableToggle.disabled);
-    item.set('data.disableReasons.publishedInStoreRequired', false);
-    flush();
-
     testVisible(item, '#parentDisabledPermissionsToolTip', false);
     item.set('data.disableReasons.parentDisabledPermissions', true);
     flush();
@@ -376,14 +391,14 @@ suite('ExtensionItemTest', function() {
     flush();
   });
 
-  test('RemoveButton', function() {
+  test(extension_item_tests.TestNames.RemoveButton, function() {
     assertFalse(item.$.removeButton.hidden);
     item.set('data.mustRemainInstalled', true);
     flush();
     assertTrue(item.$.removeButton.hidden);
   });
 
-  test('HtmlInName', function() {
+  test(extension_item_tests.TestNames.HtmlInName, function() {
     const name = '<HTML> in the name!';
     item.set('data.name', name);
     flush();
@@ -393,7 +408,7 @@ suite('ExtensionItemTest', function() {
         `Related to ${name}`, item.$.a11yAssociation.textContent!.trim());
   });
 
-  test('RepairButton', function() {
+  test(extension_item_tests.TestNames.RepairButton, function() {
     // For most extensions, the "repair" button should be displayed if the
     // extension is detected as corrupted.
     testVisible(item, '#repair-button', false);
@@ -413,7 +428,7 @@ suite('ExtensionItemTest', function() {
   });
 
   test(
-      'InspectableViewSortOrder', function() {
+      extension_item_tests.TestNames.InspectableViewSortOrder, function() {
         function getUrl(path: string) {
           return `chrome-extension://${extensionData.id}/${path}`;
         }
@@ -443,35 +458,4 @@ suite('ExtensionItemTest', function() {
                 .querySelector<HTMLElement>(
                     '#inspect-views a:first-of-type')!.textContent!.trim());
       });
-
-  // Test that the correct tooltip text is shown when the enable toggle is
-  // hovered over, depending on if the extension is enabled/disabled and its
-  // permissions.
-  test('EnableExtensionToggleTooltips', function() {
-    const paperTooltip =
-        item.shadowRoot!.querySelector<HTMLElement>('#enable-toggle-tooltip')!;
-    testVisible(item, '#enable-toggle-tooltip', false);
-
-    item.$.enableToggle.dispatchEvent(
-        new MouseEvent('mouseenter', {bubbles: true, composed: true}));
-    flush();
-    testVisible(item, '#enable-toggle-tooltip', true);
-    assertEquals(
-        loadTimeData.getString('enableToggleTooltipEnabled'),
-        paperTooltip.textContent!.trim());
-
-    item.set(
-        'data.permissions',
-        {simplePermissions: ['activeTab'], canAccessSiteData: true});
-    flush();
-    assertEquals(
-        loadTimeData.getString('enableToggleTooltipEnabledWithSiteAccess'),
-        paperTooltip.textContent!.trim());
-
-    item.set('data.state', 'DISABLED');
-    flush();
-    assertEquals(
-        loadTimeData.getString('enableToggleTooltipDisabled'),
-        paperTooltip.textContent!.trim());
-  });
 });

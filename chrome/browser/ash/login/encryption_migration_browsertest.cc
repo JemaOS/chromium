@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
 #include <string>
 
 #include "ash/constants/ash_switches.h"
@@ -19,7 +18,6 @@
 #include "chrome/browser/ash/login/test/oobe_base_test.h"
 #include "chrome/browser/ash/login/test/oobe_screen_waiter.h"
 #include "chrome/browser/ash/login/test/oobe_screens_utils.h"
-#include "chrome/browser/ash/login/test/user_auth_config.h"
 #include "chrome/browser/ash/login/test/user_policy_mixin.h"
 #include "chrome/browser/ash/login/ui/login_display_host.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
@@ -36,6 +34,7 @@
 #include "components/account_id/account_id.h"
 #include "components/user_manager/known_user.h"
 #include "content/public/test/browser_test.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/cros_system_api/dbus/cryptohome/dbus-constants.h"
 
 namespace ash {
@@ -194,7 +193,7 @@ class EncryptionMigrationTestBase
 
   // Updates the battery percent info reported by the power manager client.
   void SetBatteryPercent(int battery_percent) {
-    std::optional<power_manager::PowerSupplyProperties> properties =
+    absl::optional<power_manager::PowerSupplyProperties> properties =
         chromeos::FakePowerManagerClient::Get()->GetLastStatus();
     ASSERT_TRUE(properties.has_value());
     properties->set_battery_percent(battery_percent);
@@ -240,7 +239,7 @@ class EncryptionMigrationChildUserTest : public EncryptionMigrationTestBase {
   EncryptionMigrationChildUserTest()
       : EncryptionMigrationTestBase(LoginManagerMixin::TestUserInfo{
             AccountId::FromUserEmailGaiaId("userchild@gmail.com", "userchild"),
-            test::kDefaultAuthSetup, user_manager::UserType::kChild}) {}
+            user_manager::USER_TYPE_CHILD}) {}
   ~EncryptionMigrationChildUserTest() override = default;
 
   EncryptionMigrationChildUserTest(

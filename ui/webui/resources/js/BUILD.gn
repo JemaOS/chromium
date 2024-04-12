@@ -12,7 +12,7 @@ build_webui("build") {
 
   non_web_component_files = [
     "action_link.ts",
-    "assert.ts",
+    "assert_ts.ts",
     "color_utils.ts",
     "cr.ts",
     "custom_element.ts",
@@ -27,7 +27,6 @@ build_webui("build") {
     "load_time_data.ts",
     "metrics_reporter/browser_proxy.ts",
     "metrics_reporter/metrics_reporter.ts",
-    "mojo_type_util.ts",
     "open_window_proxy.ts",
     "parse_html_subset.ts",
     "platform.ts",
@@ -35,10 +34,10 @@ build_webui("build") {
     "promise_resolver.ts",
     "search_highlight_utils.ts",
     "static_types.ts",
-    "store.ts",
+    "store_ts.ts",
     "test_loader.ts",
     "test_loader_util.ts",
-    "util.ts",
+    "util_ts.ts",
   ]
 
   if (is_chromeos) {
@@ -79,7 +78,6 @@ build_webui("build") {
     "//tools/typescript/definitions/chrome_send.d.ts",
     "//tools/typescript/definitions/chrome_timeticks.d.ts",
   ]
-  webui_context_type = "relative"
   generate_grdp = true
   grd_resource_path_prefix = rebase_path(".", "//ui/webui/resources")
 }

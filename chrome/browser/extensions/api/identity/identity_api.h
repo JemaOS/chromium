@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_API_IDENTITY_IDENTITY_API_H_
 #define CHROME_BROWSER_EXTENSIONS_API_IDENTITY_IDENTITY_API_H_
 
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -28,6 +27,7 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "extensions/browser/browser_context_keyed_api_factory.h"
 #include "extensions/browser/event_router.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace content {
 class BrowserContext;
@@ -40,6 +40,9 @@ namespace extensions {
 class IdentityAPI : public BrowserContextKeyedAPI,
                     public signin::IdentityManager::Observer {
  public:
+  using OnSetConsentResultSignature = void(const std::string&,
+                                           const std::string&);
+
   explicit IdentityAPI(content::BrowserContext* context);
   ~IdentityAPI() override;
 
@@ -51,14 +54,20 @@ class IdentityAPI : public BrowserContextKeyedAPI,
   // GAIA id cache.
   void SetGaiaIdForExtension(const std::string& extension_id,
                              const std::string& gaia_id);
-  // Returns |std::nullopt| if no GAIA id is saved for |extension_id|.
+  // Returns |absl::nullopt| if no GAIA id is saved for |extension_id|.
   // Otherwise, returns GAIA id previously saved via SetGaiaIdForExtension().
-  std::optional<std::string> GetGaiaIdForExtension(
+  absl::optional<std::string> GetGaiaIdForExtension(
       const std::string& extension_id);
   void EraseGaiaIdForExtension(const std::string& extension_id);
   // If refresh tokens have been loaded, erases GAIA ids of accounts that are no
   // longer signed in to Chrome for all extensions.
   void EraseStaleGaiaIdsForAllExtensions();
+
+  // Consent result.
+  void SetConsentResult(const std::string& result,
+                        const std::string& window_id);
+  base::CallbackListSubscription RegisterOnSetConsentResultCallback(
+      const base::RepeatingCallback<OnSetConsentResultSignature>& callback);
 
   // BrowserContextKeyedAPI:
   void Shutdown() override;
@@ -117,6 +126,8 @@ class IdentityAPI : public BrowserContextKeyedAPI,
 
   OnSignInChangedCallback on_signin_changed_callback_for_testing_;
 
+  base::RepeatingCallbackList<OnSetConsentResultSignature>
+      on_set_consent_result_callback_list_;
   base::OnceCallbackList<void()> on_shutdown_callback_list_;
 };
 

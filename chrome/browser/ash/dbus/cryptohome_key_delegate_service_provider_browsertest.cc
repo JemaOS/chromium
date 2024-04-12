@@ -179,10 +179,11 @@ class CryptohomeKeyDelegateServiceProviderTest
     const std::string spki =
         certificate_provider_extension()->GetCertificateSpki();
     crypto::SignatureVerifier verifier;
-    if (!verifier.VerifyInit(algorithm, signature, base::as_byte_span(spki))) {
+    if (!verifier.VerifyInit(algorithm, signature,
+                             base::as_bytes(base::make_span(spki)))) {
       return false;
     }
-    verifier.VerifyUpdate(base::as_byte_span(kDataToSign));
+    verifier.VerifyUpdate(base::as_bytes(base::make_span(kDataToSign)));
     return verifier.VerifyFinal();
   }
 

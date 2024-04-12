@@ -2,18 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
 import 'chrome://resources/cr_components/help_bubble/help_bubble.js';
 
-import type {IronIconElement} from '//resources/polymer/v3_0/iron-icon/iron-icon.js';
-import type {HelpBubbleElement} from 'chrome://resources/cr_components/help_bubble/help_bubble.js';
-import type {HelpBubbleClientRemote, HelpBubbleHandlerInterface, HelpBubbleParams} from 'chrome://resources/cr_components/help_bubble/help_bubble.mojom-webui.js';
-import {HelpBubbleArrowPosition, HelpBubbleClientCallbackRouter, HelpBubbleClosedReason} from 'chrome://resources/cr_components/help_bubble/help_bubble.mojom-webui.js';
-import type {HelpBubbleController} from 'chrome://resources/cr_components/help_bubble/help_bubble_controller.js';
-import {ANCHOR_HIGHLIGHT_CLASS} from 'chrome://resources/cr_components/help_bubble/help_bubble_controller.js';
-import type {HelpBubbleMixinInterface} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
-import {HelpBubbleMixin} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
-import type {HelpBubbleProxy} from 'chrome://resources/cr_components/help_bubble/help_bubble_proxy.js';
-import {HelpBubbleProxyImpl} from 'chrome://resources/cr_components/help_bubble/help_bubble_proxy.js';
+import {IronIconElement} from '//resources/polymer/v3_0/iron-icon/iron-icon.js';
+import {HelpBubbleElement} from 'chrome://resources/cr_components/help_bubble/help_bubble.js';
+import {HelpBubbleArrowPosition, HelpBubbleClientCallbackRouter, HelpBubbleClientRemote, HelpBubbleClosedReason, HelpBubbleHandlerInterface, HelpBubbleParams} from 'chrome://resources/cr_components/help_bubble/help_bubble.mojom-webui.js';
+import {ANCHOR_HIGHLIGHT_CLASS, HelpBubbleController} from 'chrome://resources/cr_components/help_bubble/help_bubble_controller.js';
+import {HelpBubbleMixin, HelpBubbleMixinInterface} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin.js';
+import {HelpBubbleProxy, HelpBubbleProxyImpl} from 'chrome://resources/cr_components/help_bubble/help_bubble_proxy.js';
 import {html, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertThrows, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
@@ -118,12 +115,6 @@ declare global {
 
 class TestHelpBubbleHandler extends TestBrowserProxy implements
     HelpBubbleHandlerInterface {
-  // Records the current visibility of all known elements.
-  // Simply looking at the call logs can produce extraneous results, as
-  // visible=true may be generated multiple times if an element e.g. changes
-  // position on the page.
-  visibility: Map<string, boolean> = new Map();
-
   constructor() {
     super([
       'helpBubbleAnchorVisibilityChanged',
@@ -136,7 +127,6 @@ class TestHelpBubbleHandler extends TestBrowserProxy implements
 
   helpBubbleAnchorVisibilityChanged(
       nativeIdentifier: string, visible: boolean) {
-    this.visibility.set(nativeIdentifier, visible);
     this.methodCalled(
         'helpBubbleAnchorVisibilityChanged', nativeIdentifier, visible);
   }
@@ -277,10 +267,6 @@ suite('CrComponentsHelpBubbleMixinTest', () => {
     bodyIconName: 'lightbulb_outline',
     bodyIconAltText: BODY_ICON_ALT_TEXT,
     buttons: [],
-    focusOnShowHint: null,
-    titleText: null,
-    progress: null,
-    timeout: null,
   };
 
   test('help bubble mixin shows bubble when called directly', () => {
@@ -410,7 +396,7 @@ suite('CrComponentsHelpBubbleMixinTest', () => {
 
   test(
       'help bubble mixin does not use body icon when not defined', async () => {
-        const noIconParams = {...defaultParams, bodyIconName: null};
+        const noIconParams = {...defaultParams, bodyIconName: undefined};
         testProxy.getCallbackRouterRemote().showHelpBubble(noIconParams);
         await waitAfterNextRender(container);
         assertTrue(container.isHelpBubbleShowing());
@@ -467,11 +453,6 @@ suite('CrComponentsHelpBubbleMixinTest', () => {
           position: HelpBubbleArrowPosition.BOTTOM_CENTER,
           bodyText: 'This is a help bubble.',
           buttons: [],
-          bodyIconName: null,
-          focusOnShowHint: null,
-          progress: null,
-          timeout: null,
-          titleText: null,
         };
 
         testProxy.getCallbackRouterRemote().showHelpBubble(params);
@@ -501,30 +482,43 @@ suite('CrComponentsHelpBubbleMixinTest', () => {
 
   test('help bubble mixin sends events on initially visible', async () => {
     await waitAfterNextRender(container);
+    // Since we're watching four elements, we get events for all four.
+    assertEquals(
+        5,
+        testProxy.getHandler().getCallCount(
+            'helpBubbleAnchorVisibilityChanged'));
     assertDeepEquals(
-        new Map<string, boolean>([
+        [
           [TITLE_NATIVE_ID, true],
           [PARAGRAPH_NATIVE_ID, true],
           [LIST_NATIVE_ID, true],
           [SPAN_NATIVE_ID, true],
           [NESTED_CHILD_NATIVE_ID, true],
-        ]),
-        testProxy.getHandler().visibility);
+        ],
+        testProxy.getHandler().getArgs('helpBubbleAnchorVisibilityChanged'));
   });
 
   test('help bubble mixin sends event on lost visibility', async () => {
-    await waitAfterNextRender(container);
     container.style.display = 'none';
     await waitForVisibilityEvents();
+    assertEquals(
+        10,
+        testProxy.getHandler().getCallCount(
+            'helpBubbleAnchorVisibilityChanged'));
     assertDeepEquals(
-        new Map<string, boolean>([
+        [
+          [TITLE_NATIVE_ID, true],
+          [PARAGRAPH_NATIVE_ID, true],
+          [LIST_NATIVE_ID, true],
+          [SPAN_NATIVE_ID, true],
+          [NESTED_CHILD_NATIVE_ID, true],
           [TITLE_NATIVE_ID, false],
           [PARAGRAPH_NATIVE_ID, false],
           [LIST_NATIVE_ID, false],
           [SPAN_NATIVE_ID, false],
           [NESTED_CHILD_NATIVE_ID, false],
-        ]),
-        testProxy.getHandler().visibility);
+        ],
+        testProxy.getHandler().getArgs('helpBubbleAnchorVisibilityChanged'));
   });
 
   test('help bubble mixin sends event on element activated', async () => {
@@ -630,10 +624,6 @@ suite('CrComponentsHelpBubbleMixinTest', () => {
     bodyText: 'This is another help bubble.',
     titleText: 'This is a title',
     buttons: [],
-    bodyIconName: null,
-    focusOnShowHint: null,
-    progress: null,
-    timeout: null,
   };
 
   test('help bubble mixin shows multiple bubbles', async () => {
@@ -675,10 +665,6 @@ suite('CrComponentsHelpBubbleMixinTest', () => {
     bodyText: 'This is another help bubble.',
     progress: {current: 1, total: 3},
     buttons: [],
-    bodyIconName: null,
-    focusOnShowHint: null,
-    timeout: null,
-    titleText: null,
   };
 
   test(
@@ -738,7 +724,6 @@ suite('CrComponentsHelpBubbleMixinTest', () => {
     closeButtonAltText: CLOSE_BUTTON_ALT_TEXT,
     bodyIconAltText: BODY_ICON_ALT_TEXT,
     position: HelpBubbleArrowPosition.TOP_CENTER,
-    bodyIconName: null,
     bodyText: 'This is another help bubble.',
     titleText: 'This is a title',
     buttons: [
@@ -751,9 +736,6 @@ suite('CrComponentsHelpBubbleMixinTest', () => {
         isDefault: true,
       },
     ],
-    focusOnShowHint: null,
-    progress: null,
-    timeout: null,
   };
 
   test('help bubble mixin sends action button clicked event', async () => {
@@ -778,15 +760,11 @@ suite('CrComponentsHelpBubbleMixinTest', () => {
   const timeoutParams: HelpBubbleParams = {
     nativeIdentifier: PARAGRAPH_NATIVE_ID,
     closeButtonAltText: CLOSE_BUTTON_ALT_TEXT,
-    bodyIconName: null,
     bodyIconAltText: BODY_ICON_ALT_TEXT,
     position: HelpBubbleArrowPosition.TOP_CENTER,
     bodyText: 'This is another help bubble.',
     titleText: 'This is a title',
     buttons: [],
-    focusOnShowHint: null,
-    progress: null,
-    timeout: null,
   };
 
   // It is hard to guarantee the correct timing on various test systems,

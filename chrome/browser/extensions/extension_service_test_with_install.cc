@@ -15,8 +15,10 @@
 #include "chrome/browser/extensions/extension_service_test_base.h"
 #include "chrome/browser/extensions/load_error_reporter.h"
 #include "chrome/browser/profiles/profile.h"
+#include "content/public/browser/notification_service.h"
 #include "content/public/test/browser_task_environment.h"
 #include "extensions/browser/extension_creator.h"
+#include "extensions/browser/notification_types.h"
 #include "extensions/common/verifier_formats.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -226,7 +228,8 @@ const Extension* ExtensionServiceTestWithInstall::VerifyCrxInstall(
       EXPECT_EQ(expected_extensions_count_, actual_extension_count) <<
           path.value();
       extension = loaded_extensions_[0].get();
-      EXPECT_TRUE(registry()->enabled_extensions().GetByID(extension->id()))
+      EXPECT_TRUE(registry()->GetExtensionById(extension->id(),
+                                               ExtensionRegistry::ENABLED))
           << path.value();
     }
 
@@ -286,7 +289,7 @@ void ExtensionServiceTestWithInstall::UpdateExtension(
   if (installer) {
     base::RunLoop run_loop;
     installer->AddInstallerCallback(base::BindLambdaForTesting(
-        [&run_loop](const std::optional<CrxInstallError>& error) {
+        [&run_loop](const absl::optional<CrxInstallError>& error) {
           run_loop.Quit();
         }));
     installer->InstallCrxFile(crx_info);
@@ -327,13 +330,10 @@ void ExtensionServiceTestWithInstall::UpdateExtension(
 }
 
 void ExtensionServiceTestWithInstall::UninstallExtension(
-    const std::string& id,
-    UninstallExtensionFileDeleteType delete_type) {
+    const std::string& id) {
   // Verify that the extension is installed.
-  const Extension* extension =
-      registry()->GetExtensionById(id, ExtensionRegistry::EVERYTHING);
-  ASSERT_TRUE(extension);
-  base::FilePath extension_path = base::FilePath(extension->path());
+  ASSERT_TRUE(registry()->GetExtensionById(id, ExtensionRegistry::EVERYTHING));
+  base::FilePath extension_path = extensions_install_dir().AppendASCII(id);
   EXPECT_TRUE(base::PathExists(extension_path));
   ExtensionPrefs* prefs = ExtensionPrefs::Get(profile());
   EXPECT_TRUE(prefs->GetInstalledExtensionInfo(id));
@@ -353,19 +353,10 @@ void ExtensionServiceTestWithInstall::UninstallExtension(
   // The extension should not be in the service anymore.
   EXPECT_FALSE(registry()->GetInstalledExtension(extension_id));
   EXPECT_FALSE(prefs->GetInstalledExtensionInfo(extension_id));
-  task_environment()->RunUntilIdle();
+  content::RunAllTasksUntilIdle();
 
-  switch (delete_type) {
-    case kDeleteAllVersions:
-      EXPECT_FALSE(base::PathExists(extension_path.DirName()));
-      break;
-    case kDeletePath:
-      EXPECT_FALSE(base::PathExists(extension_path));
-      break;
-    case kDoNotDelete:
-      EXPECT_TRUE(base::PathExists(extension_path));
-      break;
-  }
+  // The directory should be gone.
+  EXPECT_FALSE(base::PathExists(extension_path));
 }
 
 void ExtensionServiceTestWithInstall::TerminateExtension(

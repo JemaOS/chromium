@@ -68,9 +68,9 @@ class AffiliatedCloudPolicyInvalidator
 
   const PolicyInvalidationScope scope_;
   const std::string device_local_account_id_;
-  const raw_ptr<CloudPolicyCore> core_;
+  const raw_ptr<CloudPolicyCore, ExperimentalAsh> core_;
 
-  const raw_ptr<AffiliatedInvalidationServiceProvider>
+  const raw_ptr<AffiliatedInvalidationServiceProvider, ExperimentalAsh>
       invalidation_service_provider_;
 
   // The highest invalidation version that was handled already.

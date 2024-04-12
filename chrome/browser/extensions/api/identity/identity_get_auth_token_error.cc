@@ -4,22 +4,21 @@
 
 #include "chrome/browser/extensions/api/identity/identity_get_auth_token_error.h"
 
-#include <string_view>
-
+#include "base/strings/string_piece.h"
 #include "chrome/browser/extensions/api/identity/identity_constants.h"
 
 namespace extensions {
 
 // static
 IdentityGetAuthTokenError IdentityGetAuthTokenError::FromMintTokenAuthError(
-    std::string_view error_message) {
+    base::StringPiece error_message) {
   return IdentityGetAuthTokenError(State::kMintTokenAuthFailure, error_message);
 }
 
 // static
 IdentityGetAuthTokenError
 IdentityGetAuthTokenError::FromGetAccessTokenAuthError(
-    std::string_view error_message) {
+    base::StringPiece error_message) {
   return IdentityGetAuthTokenError(State::kGetAccessTokenAuthFailure,
                                    error_message);
 }
@@ -28,7 +27,7 @@ IdentityGetAuthTokenError::IdentityGetAuthTokenError()
     : IdentityGetAuthTokenError(State::kNone) {}
 
 IdentityGetAuthTokenError::IdentityGetAuthTokenError(State state)
-    : IdentityGetAuthTokenError(state, std::string_view()) {}
+    : IdentityGetAuthTokenError(state, base::StringPiece()) {}
 
 IdentityGetAuthTokenError::State IdentityGetAuthTokenError::state() const {
   return state_;
@@ -65,19 +64,19 @@ std::string IdentityGetAuthTokenError::ToString() const {
       return identity_constants::kOffTheRecord;
     case State::kRemoteConsentPageLoadFailure:
       return identity_constants::kPageLoadFailure;
+    case State::kSetAccountsInCookieFailure:
+      return identity_constants::kSetAccountsInCookieFailure;
     case State::kInvalidConsentResult:
       return identity_constants::kInvalidConsentResult;
     case State::kCanceled:
       return identity_constants::kCanceled;
     case State::kInteractivityDenied:
       return identity_constants::kGetAuthTokenInteractivityDeniedError;
-    case State::kCannotCreateWindow:
-      return identity_constants::kCannotCreateWindow;
   }
 }
 
 IdentityGetAuthTokenError::IdentityGetAuthTokenError(State state,
-                                                     std::string_view error)
+                                                     base::StringPiece error)
     : state_(state), error_message_(error) {}
 
 }  // namespace extensions

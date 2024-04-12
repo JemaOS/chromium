@@ -8,21 +8,20 @@ import android.view.View;
 
 import org.chromium.ui.base.WindowAndroid;
 
-/** Common interface for all the tab components in QrCodeDialog. */
+/**
+ * Common interface for all the tab components in QrCodeDialog.
+ */
 public interface QrCodeDialogTab {
     public View getView();
 
     /**
-     * @return whether the tab is currently enabled.
+     *  Called when the entire dialog is resumed.
      */
-    default boolean isEnabled() {
-        return true;
-    }
-
-    /** Called when the entire dialog is resumed. */
     public void onResume();
 
-    /** Called when the entire dialog is paused. */
+    /**
+     *  Called when the entire dialog is paused.
+     */
     public void onPause();
 
     /**
@@ -31,6 +30,8 @@ public interface QrCodeDialogTab {
      */
     public void onDestroy();
 
-    /** Called when the permissions delegate is reset. */
+    /**
+     * Called when the permissions delegate is reset.
+     */
     public void updatePermissions(WindowAndroid windowAndroid);
 }

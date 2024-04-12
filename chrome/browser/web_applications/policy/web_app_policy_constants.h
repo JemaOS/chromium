@@ -29,7 +29,6 @@ extern const char kAllowed[];
 extern const char kBlocked[];
 extern const char kRunWindowed[];
 extern const char kPreventClose[];
-extern const char kForceUnregisterOsIntegration[];
 
 }  // namespace web_app
 

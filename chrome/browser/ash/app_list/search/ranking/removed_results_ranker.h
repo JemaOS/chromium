@@ -5,14 +5,13 @@
 #ifndef CHROME_BROWSER_ASH_APP_LIST_SEARCH_RANKING_REMOVED_RESULTS_RANKER_H_
 #define CHROME_BROWSER_ASH_APP_LIST_SEARCH_RANKING_REMOVED_RESULTS_RANKER_H_
 
-#include "ash/utility/persistent_proto.h"
-#include "base/callback_list.h"
 #include "base/files/file_path.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/app_list/search/ranking/ranker.h"
 #include "chrome/browser/ash/app_list/search/ranking/removed_results.pb.h"
+#include "chrome/browser/ash/app_list/search/util/persistent_proto.h"
 
 class Profile;
 
@@ -44,8 +43,9 @@ class RemovedResultsRanker : public Ranker {
  private:
   friend class RemovedResultsRankerTest;
 
-  // Called when `proto_` finishes init. Note: `proto_` is initialized asyncly.
-  void OnRemovedResultsProtoInit();
+  // Called when `proto_` finishes initialization. Note: `proto_` is initialized
+  // asyncly.
+  void OnRemovedResultsProtoReady(app_list::ReadStatus read_status);
 
   ash::FileSuggestKeyedService* GetFileSuggestKeyedService();
 
@@ -55,13 +55,11 @@ class RemovedResultsRanker : public Ranker {
   // How long to wait until writing any |proto_| updates to disk.
   base::TimeDelta write_delay_;
 
-  const raw_ptr<Profile> profile_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
 
   // TODO(https://crbug.com/1368833): after this issue gets fixed, the ranker
   // should own a proto that contains only non-file result ids.
-  const raw_ptr<ash::PersistentProto<RemovedResultsProto>> proto_;
-
-  base::CallbackListSubscription on_init_subscription_;
+  const raw_ptr<PersistentProto<RemovedResultsProto>, ExperimentalAsh> proto_;
 
   base::WeakPtrFactory<RemovedResultsRanker> weak_ptr_factory_{this};
 };

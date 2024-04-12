@@ -54,7 +54,9 @@ SVGAElement::SVGAElement(Document& document)
       SVGURIReference(this),
       svg_target_(
           MakeGarbageCollected<SVGAnimatedString>(this,
-                                                  svg_names::kTargetAttr)) {}
+                                                  svg_names::kTargetAttr)) {
+  AddToPropertyMap(svg_target_);
+}
 
 void SVGAElement::Trace(Visitor* visitor) const {
   visitor->Trace(svg_target_);
@@ -124,29 +126,20 @@ void SVGAElement::DefaultEventHandler(Event& event) {
         }
       }
 
+      AtomicString target(svg_target_->CurrentValue()->Value());
+      if (target.empty() && FastGetAttribute(xlink_names::kShowAttr) == "new")
+        target = AtomicString("_blank");
+      event.SetDefaultHandled();
+
       if (!GetDocument().GetFrame())
         return;
 
       FrameLoadRequest frame_request(
           GetDocument().domWindow(),
           ResourceRequest(GetDocument().CompleteURL(url)));
-
-      AtomicString target = frame_request.CleanNavigationTarget(
-          AtomicString(svg_target_->CurrentValue()->Value()));
-      if (target.empty() && FastGetAttribute(xlink_names::kShowAttr) == "new") {
-        target = AtomicString("_blank");
-      }
-      event.SetDefaultHandled();
-
-      NavigationPolicy navigation_policy = NavigationPolicyFromEvent(&event);
-      if (navigation_policy == kNavigationPolicyLinkPreview) {
-        // TODO(b:302649777): Support LinkPreview for SVG <a> element.
-        return;
-      }
-      frame_request.SetNavigationPolicy(navigation_policy);
+      frame_request.SetNavigationPolicy(NavigationPolicyFromEvent(&event));
       frame_request.SetClientRedirectReason(
           ClientNavigationReason::kAnchorClick);
-      frame_request.SetSourceElement(this);
       frame_request.SetTriggeringEventInfo(
           event.isTrusted()
               ? mojom::blink::TriggeringEventInfo::kFromTrustedEvent
@@ -177,18 +170,17 @@ int SVGAElement::DefaultTabIndex() const {
   return 0;
 }
 
-bool SVGAElement::SupportsFocus(UpdateBehavior update_behavior) const {
-  if (IsEditable(*this)) {
-    return SVGGraphicsElement::SupportsFocus(update_behavior);
-  }
+bool SVGAElement::SupportsFocus() const {
+  if (IsEditable(*this))
+    return SVGGraphicsElement::SupportsFocus();
   // If not a link we should still be able to focus the element if it has
   // tabIndex.
-  return IsLink() || SVGGraphicsElement::SupportsFocus(update_behavior);
+  return IsLink() || SVGGraphicsElement::SupportsFocus();
 }
 
 bool SVGAElement::ShouldHaveFocusAppearance() const {
   return (GetDocument().LastFocusType() != mojom::blink::FocusType::kMouse) ||
-         SVGGraphicsElement::SupportsFocus(UpdateBehavior::kNoneForIsFocused);
+         SVGGraphicsElement::SupportsFocus();
 }
 
 bool SVGAElement::IsURLAttribute(const Attribute& attribute) const {
@@ -196,11 +188,19 @@ bool SVGAElement::IsURLAttribute(const Attribute& attribute) const {
          SVGGraphicsElement::IsURLAttribute(attribute);
 }
 
-bool SVGAElement::IsKeyboardFocusable(UpdateBehavior update_behavior) const {
-  if (IsLink() && !GetDocument().GetPage()->GetChromeClient().TabsToLinks()) {
+bool SVGAElement::IsMouseFocusable() const {
+  if (IsLink())
+    return SupportsFocus();
+
+  return SVGElement::IsMouseFocusable();
+}
+
+bool SVGAElement::IsKeyboardFocusable() const {
+  if (IsBaseElementFocusable() && Element::SupportsFocus())
+    return SVGElement::IsKeyboardFocusable();
+  if (IsLink() && !GetDocument().GetPage()->GetChromeClient().TabsToLinks())
     return false;
-  }
-  return SVGElement::IsKeyboardFocusable(update_behavior);
+  return SVGElement::IsKeyboardFocusable();
 }
 
 bool SVGAElement::CanStartSelection() const {
@@ -211,28 +211,6 @@ bool SVGAElement::CanStartSelection() const {
 
 bool SVGAElement::WillRespondToMouseClickEvents() {
   return IsLink() || SVGGraphicsElement::WillRespondToMouseClickEvents();
-}
-
-SVGAnimatedPropertyBase* SVGAElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kTargetAttr) {
-    return svg_target_.Get();
-  } else {
-    SVGAnimatedPropertyBase* ret =
-        SVGURIReference::PropertyFromAttribute(attribute_name);
-    if (ret) {
-      return ret;
-    } else {
-      return SVGGraphicsElement::PropertyFromAttribute(attribute_name);
-    }
-  }
-}
-
-void SVGAElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{svg_target_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGURIReference::SynchronizeAllSVGAttributes();
-  SVGGraphicsElement::SynchronizeAllSVGAttributes();
 }
 
 }  // namespace blink

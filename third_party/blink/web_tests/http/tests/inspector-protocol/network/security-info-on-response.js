@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startURL(
       'resources/cookie.pl',
       `Tests that security details are reported, even in the case of site isolation.`);

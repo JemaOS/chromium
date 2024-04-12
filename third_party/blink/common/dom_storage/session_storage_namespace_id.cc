@@ -7,12 +7,12 @@
 #include <algorithm>
 
 #include "base/check_op.h"
-#include "base/uuid.h"
+#include "base/guid.h"
 
 namespace blink {
 
 SessionStorageNamespaceId AllocateSessionStorageNamespaceId() {
-  std::string guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  std::string guid = base::GenerateGUID();
   std::replace(guid.begin(), guid.end(), '-', '_');
   // The database deserialization code makes assumptions based on this length.
   DCHECK_EQ(guid.size(), kSessionStorageNamespaceIdLength);

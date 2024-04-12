@@ -5,9 +5,10 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<org.chromium.ui.listmenu.ListMenuButton
+<org.chromium.components.browser_ui.widget.listmenu.ListMenuButton
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    style="@style/ToolbarHoverableButton"
+    style="@style/ToolbarButton"
     android:layout_gravity="top"
+    android:paddingStart="@dimen/toolbar_tablet_optional_button_padding"
     tools:ignore="ContentDescription"/>

@@ -11,7 +11,9 @@ package org.chromium.chrome.browser.password_manager;
 public class FakeCredentialManagerLauncherFactoryImpl extends CredentialManagerLauncherFactory {
     private CredentialManagerLauncher mLauncher;
 
-    /** Returns the fake implementation of {@link CredentialManagerLauncher} used for tests. */
+    /**
+     * Returns the fake implementation of {@link CredentialManagerLauncher} used for tests.
+     */
     @Override
     public CredentialManagerLauncher createLauncher() {
         if (mLauncher == null) {

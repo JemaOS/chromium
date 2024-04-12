@@ -26,8 +26,6 @@ const PNG_FILE = new File([PNG_DATA], 'readonly.png', {type: 'image/png'});
 
 const TXT_FILE = new File(['txt_data'], 'readonly.txt', {type: 'text/plain'});
 
-const PROVIDER_NAME = "provided-file-system-provider";
-
 const GIF_ENTRY = Object.freeze({
   isDirectory: false,
   name: GIF_FILE.name,
@@ -36,10 +34,6 @@ const GIF_ENTRY = Object.freeze({
   mimeType: GIF_FILE.type,
   file: GIF_FILE,
   writable: true,
-  cloudIdentifier: {
-    providerName: PROVIDER_NAME,
-    id: "readwrite-gif-id"
-  }
 });
 const PNG_ENTRY = Object.freeze({
   isDirectory: false,
@@ -49,7 +43,6 @@ const PNG_ENTRY = Object.freeze({
   mimeType: PNG_FILE.type,
   file: PNG_FILE,
   writable: false
-  // does not have `cloudIdentifier` on purpose
 });
 const TXT_ENTRY = Object.freeze({
   isDirectory: false,
@@ -58,11 +51,7 @@ const TXT_ENTRY = Object.freeze({
   modificationTime: new Date(),
   mimeType: TXT_FILE.type,
   file: TXT_FILE,
-  writable: false,
-  cloudIdentifier: {
-    providerName: PROVIDER_NAME,
-    id: "readonly-txt-id"
-  }
+  writable: false
 });
 const ROOT_ENTRY = Object.freeze({
   isDirectory: true,
@@ -70,10 +59,6 @@ const ROOT_ENTRY = Object.freeze({
   size: 0,
   modificationTime: new Date(),
   mimeType: 'text/directory',
-  cloudIdentifier: {
-    providerName: PROVIDER_NAME,
-    id: "root-id"
-  }
 });
 
 const ENTRY_PATHS = {
@@ -82,15 +67,6 @@ const ENTRY_PATHS = {
   [`/${PNG_ENTRY.name}`]: PNG_ENTRY,
   [`/${TXT_ENTRY.name}`]: TXT_ENTRY,
 };
-
-const METADATA_FIELD_NAMES = [
-  'name',
-  'mimeType',
-  'modificationTime',
-  'isDirectory',
-  'size',
-  'cloudIdentifier'
-];
 
 // A mapping from |requestId| to file entry. Used to respond to subsequent file
 // read requests.
@@ -110,7 +86,8 @@ function mountFileSystem() {
 /** Copies and adjusts `entryTemplate` to suit the request in `options`. */
 function makeEntry(entryTemplate, options) {
   const entry = {};
-  for (const prop of METADATA_FIELD_NAMES) {
+  for (const prop
+           of ['name', 'mimeType', 'modificationTime', 'isDirectory', 'size']) {
     if (options[prop]) {
       entry[prop] = entryTemplate[prop]
     }
@@ -120,7 +97,7 @@ function makeEntry(entryTemplate, options) {
 
 /** Find an entry. Invokes `onError('NOT_FOUND')` if `entry` is unknown. */
 function findEntry(entryPath, onError, options, operation) {
-  trace(operation, entryPath, JSON.stringify(options));
+  trace(operation, entryPath, options);
   const entry = ENTRY_PATHS[entryPath];
   if (!entry) {
     console.log(

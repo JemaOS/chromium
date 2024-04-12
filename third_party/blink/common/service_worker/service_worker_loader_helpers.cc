@@ -123,13 +123,13 @@ void ServiceWorkerLoaderHelpers::SaveResponseInfo(
 }
 
 // static
-std::optional<net::RedirectInfo>
+absl::optional<net::RedirectInfo>
 ServiceWorkerLoaderHelpers::ComputeRedirectInfo(
     const network::ResourceRequest& original_request,
     const network::mojom::URLResponseHead& response_head) {
   std::string new_location;
   if (!response_head.headers->IsRedirect(&new_location))
-    return std::nullopt;
+    return absl::nullopt;
 
   // If the request is a MAIN_FRAME request, the first-party URL gets
   // updated on redirects.

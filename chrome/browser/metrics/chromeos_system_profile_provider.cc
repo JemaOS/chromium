@@ -1,24 +1,23 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/metrics/chromeos_system_profile_provider.h"
 
-#include <string_view>
-
+#include "ash/constants/ash_pref_names.h"
 #include "base/barrier_closure.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/task/thread_pool.h"
-#include "base/version.h"
-#include "chrome/browser/ash/login/demo_mode/demo_mode_dimensions.h"
 #include "chrome/browser/ash/login/demo_mode/demo_session.h"
 #include "chrome/browser/ash/login/users/chrome_user_manager_util.h"
 #include "chrome/browser/ash/multidevice_setup/multidevice_setup_client_factory.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/common/pref_names.h"
 #include "chromeos/ash/components/system/statistics_provider.h"
 #include "chromeos/ash/services/multidevice_setup/public/cpp/multidevice_setup_client.h"
+#include "chromeos/constants/chromeos_features.h"
 #include "chromeos/dbus/tpm_manager/tpm_manager_client.h"
 #include "components/metrics/structured/recorder.h"
 #include "components/prefs/pref_service.h"
@@ -92,8 +91,8 @@ void ChromeOSSystemProfileProvider::ProvideSystemProfileMetrics(
   else if (has_touch == display::Display::TouchSupport::UNAVAILABLE)
     hardware->set_internal_display_supports_touch(false);
 
-  if (tpm_rw_firmware_version_.has_value()) {
-    hardware->set_tpm_rw_firmware_version(*tpm_rw_firmware_version_);
+  if (tpm_firmware_version_.has_value()) {
+    hardware->set_tpm_firmware_version(*tpm_firmware_version_);
   }
 
   hardware->set_cellular_device_variant(cellular_device_variant_);
@@ -135,6 +134,8 @@ void ChromeOSSystemProfileProvider::WriteLinkedAndroidPhoneProto(
   linked_android_phone_data->set_is_instant_tethering_enabled(IsFeatureEnabled(
       feature_states_map,
       ash::multidevice_setup::mojom::Feature::kInstantTethering));
+  linked_android_phone_data->set_is_messages_enabled(IsFeatureEnabled(
+      feature_states_map, ash::multidevice_setup::mojom::Feature::kMessages));
 }
 
 void ChromeOSSystemProfileProvider::UpdateMultiProfileUserCount(
@@ -160,28 +161,20 @@ void ChromeOSSystemProfileProvider::WriteDemoModeDimensionMetrics(
   }
   metrics::SystemProfileProto::DemoModeDimensions* demo_mode_dimensions =
       system_profile_proto->mutable_demo_mode_dimensions();
-  demo_mode_dimensions->set_country(ash::demo_mode::Country());
+  PrefService* pref = g_browser_process->local_state();
+  std::string demo_country = pref->GetString(prefs::kDemoModeCountry);
+  demo_mode_dimensions->set_country(demo_country);
 
   metrics::SystemProfileProto_DemoModeDimensions_Retailer* retailer =
       demo_mode_dimensions->mutable_retailer();
-  retailer->set_retailer_id(ash::demo_mode::RetailerName());
-  retailer->set_store_id(ash::demo_mode::StoreNumber());
+  retailer->set_retailer_id(pref->GetString(prefs::kDemoModeRetailerId));
+  retailer->set_store_id(pref->GetString(prefs::kDemoModeStoreId));
 
-  if (ash::demo_mode::IsCloudGamingDevice()) {
+  if (chromeos::features::IsCloudGamingDeviceEnabled()) {
     demo_mode_dimensions->add_customization_facet(
         metrics::
             SystemProfileProto_DemoModeDimensions_CustomizationFacet_CLOUD_GAMING_DEVICE);
   }
-  if (ash::demo_mode::IsFeatureAwareDevice()) {
-    demo_mode_dimensions->add_customization_facet(
-        metrics::
-            SystemProfileProto_DemoModeDimensions_CustomizationFacet_FEATURE_AWARE_DEVICE);
-  }
-
-  demo_mode_dimensions->set_app_version(
-      ash::demo_mode::AppVersion().GetString());
-  demo_mode_dimensions->set_resources_version(
-      ash::demo_mode::ResourcesVersion().GetString());
 }
 
 void ChromeOSSystemProfileProvider::InitTaskGetFullHardwareClass(
@@ -203,9 +196,8 @@ void ChromeOSSystemProfileProvider::InitTaskGetTpmFirmwareVersion(
     base::OnceClosure callback) {
   chromeos::TpmManagerClient::Get()->GetVersionInfo(
       tpm_manager::GetVersionInfoRequest(),
-      base::BindOnce(
-          &ChromeOSSystemProfileProvider::OnTpmManagerGetRwVersionInfo,
-          weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+      base::BindOnce(&ChromeOSSystemProfileProvider::OnTpmManagerGetVersionInfo,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void ChromeOSSystemProfileProvider::InitTaskGetCellularDeviceVariant(
@@ -224,7 +216,7 @@ void ChromeOSSystemProfileProvider::InitTaskGetCellularDeviceVariant(
 
 void ChromeOSSystemProfileProvider::OnMachineStatisticsLoaded(
     base::OnceClosure callback) {
-  if (const std::optional<std::string_view> full_hardware_class =
+  if (const absl::optional<base::StringPiece> full_hardware_class =
           ash::system::StatisticsProvider::GetInstance()->GetMachineStatistic(
               "hardware_class")) {
     full_hardware_class_ = std::string(full_hardware_class.value());
@@ -234,22 +226,22 @@ void ChromeOSSystemProfileProvider::OnMachineStatisticsLoaded(
 
 void ChromeOSSystemProfileProvider::OnArcFeaturesParsed(
     base::OnceClosure callback,
-    std::optional<arc::ArcFeatures> features) {
+    absl::optional<arc::ArcFeatures> features) {
   base::ScopedClosureRunner runner(std::move(callback));
   if (!features) {
     LOG(WARNING) << "ArcFeatures not available on this build";
     return;
   }
-  arc_release_ = features->build_props.release_version;
+  arc_release_ = features->build_props.at("ro.build.version.release");
 }
 
-void ChromeOSSystemProfileProvider::OnTpmManagerGetRwVersionInfo(
+void ChromeOSSystemProfileProvider::OnTpmManagerGetVersionInfo(
     base::OnceClosure callback,
     const tpm_manager::GetVersionInfoReply& reply) {
   if (reply.status() == tpm_manager::STATUS_SUCCESS) {
-    tpm_rw_firmware_version_ = reply.rw_version();
+    tpm_firmware_version_ = reply.firmware_version();
   } else {
-    LOG(ERROR) << "Failed to get TPM RW version info.";
+    LOG(ERROR) << "Failed to get TPM version info.";
   }
   std::move(callback).Run();
 }

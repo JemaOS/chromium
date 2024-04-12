@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_UI_TABS_PINNED_TAB_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_UI_TABS_PINNED_TAB_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class PinnedTabService;
@@ -22,7 +22,7 @@ class PinnedTabServiceFactory : public ProfileKeyedServiceFactory {
   static PinnedTabServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<PinnedTabServiceFactory>;
+  friend struct base::DefaultSingletonTraits<PinnedTabServiceFactory>;
 
   PinnedTabServiceFactory();
   ~PinnedTabServiceFactory() override;

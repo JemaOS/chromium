@@ -32,6 +32,4 @@ dictionary VideoDecoderConfig {
 
   // Hint that decoders should be configured for latency versus throughput.
   boolean optimizeForLatency;
-
-  [RuntimeEnabled=MediaSourceExtensionsForWebCodecs] DOMString encryptionScheme;
 };

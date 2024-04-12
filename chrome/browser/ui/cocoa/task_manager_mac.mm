@@ -9,9 +9,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "base/apple/bundle_locations.h"
 #include "base/feature_list.h"
-#include "base/memory/raw_ptr.h"
+#include "base/mac/bundle_locations.h"
 #include "base/strings/sys_string_conversions.h"
 #include "build/buildflag.h"
 #include "chrome/browser/browser_process.h"
@@ -24,7 +23,7 @@
 #include "chrome/browser/ui/task_manager/task_manager_columns.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/pref_names.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/prefs/pref_service.h"
 #include "third_party/skia/include/core/SkBitmap.h"
@@ -41,72 +40,42 @@ NSString* ColumnIdentifier(int id) {
 
 }  // namespace
 
-@interface TaskManagerWindowController ()
-
-@property(readonly) std::vector<size_t> modelSelection;
-
-- (void)sortShuffleArray;
-- (void)reloadDataWithModelSelection:(std::vector<size_t>)modelSelection;
-- (void)reloadDataWithRowsAdded:(size_t)addedRows
-                   addedAtIndex:(size_t)addedRowIndex;
-- (void)reloadDataWithRowsRemoved:(size_t)removedRows
-                   removedAtIndex:(size_t)removedRowIndex;
-- (NSWindow*)createAndLayOutWindow;
+@interface TaskManagerWindowController (Private)
+- (base::scoped_nsobject<NSWindow>)createAndLayOutWindow;
 - (NSTableColumn*)addColumnWithData:
     (const task_manager::TableColumnData&)columnData;
 - (void)setUpTableColumns;
 - (void)setUpTableHeaderContextMenu;
-- (void)toggleColumn:(NSMenuItem*)item;
+- (void)toggleColumn:(id)sender;
 - (void)adjustSelectionAndEndProcessButton;
 - (void)deselectRows;
-
 @end
 
 ////////////////////////////////////////////////////////////////////////////////
 // TaskManagerWindowController implementation:
 
-@implementation TaskManagerWindowController {
-  NSTableView* __strong _tableView;
-  NSButton* __strong _endProcessButton;
-  raw_ptr<task_manager::TaskManagerMac, DanglingUntriaged>
-      _taskManagerMac;  // weak
-  raw_ptr<task_manager::TaskManagerTableModel, DanglingUntriaged>
-      _tableModel;  // weak
-
-  WindowSizeAutosaver* __strong _size_saver;
-
-  // These contain a permutation of [0..|tableModel_->RowCount() - 1|]. Used to
-  // implement sorting.
-  std::vector<size_t> _viewToModelMap;
-  std::vector<size_t> _modelToViewMap;
-
-  // Descriptor of the current sort column.
-  task_manager::TableSortDescriptor _currentSortDescriptor;
-
-  // Re-entrancy flag to allow meddling with the sort descriptor.
-  BOOL _withinSortDescriptorsDidChange;
-}
+@implementation TaskManagerWindowController
 
 - (instancetype)
     initWithTaskManagerMac:(task_manager::TaskManagerMac*)taskManagerMac
                 tableModel:(task_manager::TaskManagerTableModel*)tableModel {
-  NSWindow* window = [self createAndLayOutWindow];
+  base::scoped_nsobject<NSWindow> window = [self createAndLayOutWindow];
   if ((self = [super initWithWindow:window])) {
     _taskManagerMac = taskManagerMac;
     _tableModel = tableModel;
 
-    window.delegate = self;
+    [window setDelegate:self];
 
-    _tableView.delegate = self;
-    _tableView.dataSource = self;
+    [_tableView setDelegate:self];
+    [_tableView setDataSource:self];
 
     if (g_browser_process && g_browser_process->local_state()) {
-      _size_saver = [[WindowSizeAutosaver alloc]
-          initWithWindow:self.window
+      _size_saver.reset([[WindowSizeAutosaver alloc]
+          initWithWindow:[self window]
              prefService:g_browser_process->local_state()
-                    path:prefs::kTaskManagerWindowPlacement];
+                    path:prefs::kTaskManagerWindowPlacement]);
     }
-    self.window.excludedFromWindowsMenu = YES;
+    [[self window] setExcludedFromWindowsMenu:YES];
 
     [self setUpTableColumns];
     [self setUpTableHeaderContextMenu];
@@ -161,10 +130,11 @@ NSString* ColumnIdentifier(int id) {
   [self reloadDataWithRowsAdded:0 addedAtIndex:0];
 }
 
-- (std::vector<size_t>)modelSelection {
-  NSIndexSet* viewSelection = _tableView.selectedRowIndexes;
+- (std::vector<size_t>)getModelSelection {
+  NSIndexSet* viewSelection = [_tableView selectedRowIndexes];
   std::vector<size_t> modelSelection;
-  for (NSUInteger i = viewSelection.lastIndex; i != NSNotFound;
+  for (NSUInteger i = [viewSelection lastIndex];
+       i != NSNotFound;
        i = [viewSelection indexLessThanIndex:i]) {
     modelSelection.push_back(_viewToModelMap[i]);
   }
@@ -189,7 +159,7 @@ NSString* ColumnIdentifier(int id) {
 
 - (void)reloadDataWithRowsAdded:(size_t)addedRows
                    addedAtIndex:(size_t)addedRowIndex {
-  std::vector<size_t> modelSelection = self.modelSelection;
+  std::vector<size_t> modelSelection = [self getModelSelection];
 
   // Adjust for any added rows.
   for (size_t& selectedItem : modelSelection) {
@@ -202,7 +172,7 @@ NSString* ColumnIdentifier(int id) {
 
 - (void)reloadDataWithRowsRemoved:(size_t)removedRows
                    removedAtIndex:(size_t)removedRowIndex {
-  std::vector<size_t> modelSelection = self.modelSelection;
+  std::vector<size_t> modelSelection = [self getModelSelection];
 
   // Adjust for any removed rows.
   std::vector<size_t> newModelSelection;
@@ -220,38 +190,41 @@ NSString* ColumnIdentifier(int id) {
   return _currentSortDescriptor;
 }
 
-- (void)setSortDescriptor:(task_manager::TableSortDescriptor)sortDescriptor {
-  NSSortDescriptor* nsSortDescriptor = [[NSSortDescriptor alloc]
-      initWithKey:ColumnIdentifier(sortDescriptor.sorted_column_id)
-        ascending:sortDescriptor.is_ascending];
+- (void)setSortDescriptor:
+    (const task_manager::TableSortDescriptor&)sortDescriptor {
+  base::scoped_nsobject<NSSortDescriptor> nsSortDescriptor(
+      [[NSSortDescriptor alloc]
+          initWithKey:ColumnIdentifier(sortDescriptor.sorted_column_id)
+            ascending:sortDescriptor.is_ascending]);
   [_tableView setSortDescriptors:@[ nsSortDescriptor ]];
 }
 
 - (BOOL)visibilityOfColumnWithId:(int)columnId {
   NSTableColumn* column =
       [_tableView tableColumnWithIdentifier:ColumnIdentifier(columnId)];
-  return column ? !column.hidden : NO;
+  return column ? ![column isHidden] : NO;
 }
 
-- (void)setVisibility:(BOOL)visibility ofColumnWithId:(int)columnId {
+- (void)setColumnWithId:(int)columnId toVisibility:(BOOL)visibility {
   NSTableColumn* column =
       [_tableView tableColumnWithIdentifier:ColumnIdentifier(columnId)];
-  column.hidden = !visibility;
+  [column setHidden:!visibility];
 
   [_tableView sizeToFit];
   [_tableView setNeedsDisplay:YES];
 }
 
 - (IBAction)killSelectedProcesses:(id)sender {
-  NSIndexSet* selection = _tableView.selectedRowIndexes;
-  for (NSUInteger i = selection.lastIndex; i != NSNotFound;
+  NSIndexSet* selection = [_tableView selectedRowIndexes];
+  for (NSUInteger i = [selection lastIndex];
+       i != NSNotFound;
        i = [selection indexLessThanIndex:i]) {
     _tableModel->KillTask(_viewToModelMap[i]);
   }
 }
 
 - (void)tableWasDoubleClicked:(id)sender {
-  NSInteger row = _tableView.clickedRow;
+  NSInteger row = [_tableView clickedRow];
   if (row < 0)
     return;  // Happens e.g. if the table header is double-clicked.
   _tableModel->ActivateTask(_viewToModelMap[row]);
@@ -260,80 +233,83 @@ NSString* ColumnIdentifier(int id) {
 - (void)dealloc {
   // Paranoia. These should have been nilled out in -windowWillClose: but let's
   // make sure we have no dangling references.
-  _tableView.delegate = nil;
-  _tableView.dataSource = nil;
+  [_tableView setDelegate:nil];
+  [_tableView setDataSource:nil];
+  [super dealloc];
 }
 
 // Creates a NSWindow for the task manager and lays out the views inside the
 // content view.
-- (NSWindow*)createAndLayOutWindow {
+- (base::scoped_nsobject<NSWindow>)createAndLayOutWindow {
   static constexpr CGFloat kWindowWidth = 480;
   static constexpr CGFloat kMargin = 20;
 
-  NSWindow* window = [[NSWindow alloc]
+  base::scoped_nsobject<NSWindow> window([[NSWindow alloc]
       initWithContentRect:NSMakeRect(195, 240, kWindowWidth, 270)
                 styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
                           NSWindowStyleMaskMiniaturizable |
                           NSWindowStyleMaskResizable
                   backing:NSBackingStoreBuffered
-                    defer:YES];
-  window.minSize = NSMakeSize(300, 200);
-  window.title = l10n_util::GetNSString(IDS_TASK_MANAGER_TITLE);
+                    defer:YES]);
+  [window setMinSize:NSMakeSize(300, 200)];
+  [window setTitle:l10n_util::GetNSString(IDS_TASK_MANAGER_TITLE)];
 
-  NSView* contentView = window.contentView;
+  NSView* contentView = [window contentView];
 
   // Create the button that terminates the selected process in the table.
   _endProcessButton =
       [NSButton buttonWithTitle:l10n_util::GetNSString(IDS_TASK_MANAGER_KILL)
                          target:self
                          action:@selector(killSelectedProcesses:)];
-  _endProcessButton.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
+  [_endProcessButton setAutoresizingMask:NSViewMinXMargin | NSViewMaxYMargin];
   [_endProcessButton sizeToFit];
-  NSRect buttonFrame = _endProcessButton.frame;
+  NSRect buttonFrame = [_endProcessButton frame];
   buttonFrame.size.width += kMargin;
   // Adjust the button's origin so that it is flush with the right-hand side of
   // the table.
   buttonFrame.origin.x =
-      NSWidth(contentView.frame) - NSWidth(buttonFrame) - kMargin + 6;
+      NSWidth([contentView frame]) - NSWidth(buttonFrame) - kMargin + 6;
   // Use only half the margin, since the full margin is too much whitespace.
   buttonFrame.origin.y = kMargin / 2;
-  _endProcessButton.frame = buttonFrame;
-  _endProcessButton.keyEquivalent = @"\r";
+  [_endProcessButton setFrame:buttonFrame];
+  [_endProcessButton setKeyEquivalent:@"\r"];
   [contentView addSubview:_endProcessButton];
 
   // Create a scroll view to house the table view.
   CGFloat scrollViewY = NSMaxY(buttonFrame) + kMargin / 2;
   NSRect scrollViewFrame =
       NSMakeRect(kMargin, scrollViewY, kWindowWidth - 2 * kMargin,
-                 NSHeight(window.frame) - 2 * kMargin - scrollViewY);
-  NSScrollView* scrollView =
-      [[NSScrollView alloc] initWithFrame:scrollViewFrame];
-  scrollView.autoresizesSubviews = YES;
-  scrollView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-  scrollView.borderType = NSBezelBorder;
-  scrollView.focusRingType = NSFocusRingTypeNone;
-  scrollView.hasVerticalScroller = YES;
-  scrollView.verticalScroller.controlSize = NSControlSizeSmall;
+                 NSHeight([window frame]) - 2 * kMargin - scrollViewY);
+  base::scoped_nsobject<NSScrollView> scrollView(
+      [[NSScrollView alloc] initWithFrame:scrollViewFrame]);
+  [scrollView setAutoresizesSubviews:YES];
+  [scrollView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+  [scrollView setBorderType:NSBezelBorder];
+  [scrollView setFocusRingType:NSFocusRingTypeNone];
+  [scrollView setHasVerticalScroller:YES];
+  [[scrollView verticalScroller] setControlSize:NSControlSizeSmall];
   [contentView addSubview:scrollView];
 
   // Create the table view. The data source and delegate are connected in
   // the designated initializer.
-  TaskManagerMacTableView* tableView = [[TaskManagerMacTableView alloc]
-      initWithFrame:NSMakeRect(0, 0, 400, 200)];
-  tableView.allowsColumnReordering = NO;
-  tableView.allowsMultipleSelection = YES;
+  base::scoped_nsobject<TaskManagerMacTableView> tableView(
+      [[TaskManagerMacTableView alloc]
+          initWithFrame:NSMakeRect(0, 0, 400, 200)]);
+  [tableView setAllowsColumnReordering:NO];
+  [tableView setAllowsMultipleSelection:YES];
   // No autosaving, since column identifiers are IDS_ values which are not
   // stable. TODO(avi): Would it be worth it to find stable identifiers so that
   // we could use autosaving?
-  tableView.autosaveTableColumns = NO;
-  tableView.columnAutoresizingStyle = NSTableViewUniformColumnAutoresizingStyle;
-  tableView.doubleAction = @selector(tableWasDoubleClicked:);
-  tableView.focusRingType = NSFocusRingTypeNone;
-  tableView.intercellSpacing = NSMakeSize(0, 0);
-  tableView.usesAlternatingRowBackgroundColors = YES;
-  _tableView = tableView;
+  [tableView setAutosaveTableColumns:NO];
+  [tableView
+      setColumnAutoresizingStyle:NSTableViewUniformColumnAutoresizingStyle];
+  [tableView setDoubleAction:@selector(tableWasDoubleClicked:)];
+  [tableView setFocusRingType:NSFocusRingTypeNone];
+  [tableView setIntercellSpacing:NSMakeSize(0, 0)];
+  [tableView setUsesAlternatingRowBackgroundColors:YES];
+  _tableView = tableView.get();
 
-  scrollView.documentView = tableView;
+  [scrollView setDocumentView:tableView];
 
   return window;
 }
@@ -342,16 +318,16 @@ NSString* ColumnIdentifier(int id) {
 // if the column is initially visible.
 - (NSTableColumn*)addColumnWithData:
     (const task_manager::TableColumnData&)columnData {
-  NSTableColumn* column = [[NSTableColumn alloc]
-      initWithIdentifier:ColumnIdentifier(columnData.id)];
+  base::scoped_nsobject<NSTableColumn> column([[NSTableColumn alloc]
+      initWithIdentifier:ColumnIdentifier(columnData.id)]);
 
-  NSTableHeaderCell* headerCell = column.headerCell;
-  NSCell* dataCell = column.dataCell;
+  NSTableHeaderCell* headerCell = [column.get() headerCell];
+  id dataCell = [column.get() dataCell];
 
   NSTextAlignment textAlignment;
   // There are no "leading" and "trailing" constants in `NSTextAlignment` so do
   // it manually.
-  if (NSApp.userInterfaceLayoutDirection ==
+  if ([NSApp userInterfaceLayoutDirection] ==
       NSUserInterfaceLayoutDirectionRightToLeft) {
     textAlignment = (columnData.align == ui::TableColumn::LEFT)
                         ? NSTextAlignmentRight
@@ -361,51 +337,52 @@ NSString* ColumnIdentifier(int id) {
                         ? NSTextAlignmentLeft
                         : NSTextAlignmentRight;
   }
-  headerCell.alignment = textAlignment;
-  dataCell.alignment = textAlignment;
 
-  headerCell.stringValue = l10n_util::GetNSStringWithFixup(columnData.id);
+  NSString* columnTitle = l10n_util::GetNSStringWithFixup(columnData.id);
+  [headerCell setStringValue:columnTitle];
+  [headerCell setAlignment:textAlignment];
+  [dataCell setAlignment:textAlignment];
 
-  dataCell.font =
-      [NSFont monospacedDigitSystemFontOfSize:NSFont.smallSystemFontSize
-                                       weight:NSFontWeightRegular];
+  const CGFloat smallSystemFontSize = [NSFont smallSystemFontSize];
+  NSFont* font = [NSFont monospacedDigitSystemFontOfSize:smallSystemFontSize
+                                                  weight:NSFontWeightRegular];
+  [dataCell setFont:font];
 
-  column.hidden = !columnData.default_visibility;
-  column.editable = NO;
+  [column.get() setHidden:!columnData.default_visibility];
+  [column.get() setEditable:NO];
 
-  NSSortDescriptor* sortDescriptor = [[NSSortDescriptor alloc]
-      initWithKey:ColumnIdentifier(columnData.id)
-        ascending:columnData.initial_sort_is_ascending];
-  [column setSortDescriptorPrototype:sortDescriptor];
+  base::scoped_nsobject<NSSortDescriptor> sortDescriptor(
+      [[NSSortDescriptor alloc]
+          initWithKey:ColumnIdentifier(columnData.id)
+            ascending:columnData.initial_sort_is_ascending]);
+  [column.get() setSortDescriptorPrototype:sortDescriptor.get()];
 
-  column.minWidth = columnData.min_width;
+  [column.get() setMinWidth:columnData.min_width];
   // If there is no specified max width, use a reasonable value of 1.5x the min
   // width, but make sure that the max width is big enough to actually show the
   // entire column title.
   const int kTitleMargin = 40;  // Space for the arrow, etc.
   int maxWidth = columnData.max_width;
-  if (maxWidth <= 0) {
+  if (maxWidth <= 0)
     maxWidth = 3 * columnData.min_width / 2;
-  }
   int columnTitleWidth =
-      [headerCell.stringValue
-          sizeWithAttributes:@{NSFontAttributeName : headerCell.font}]
+      [columnTitle
+          sizeWithAttributes:@{NSFontAttributeName : [headerCell font]}]
           .width +
       kTitleMargin;
   maxWidth = std::max(maxWidth, columnTitleWidth);
-  column.maxWidth = maxWidth;
-  column.resizingMask =
-      NSTableColumnAutoresizingMask | NSTableColumnUserResizingMask;
+  [column.get() setMaxWidth:maxWidth];
+  [column.get() setResizingMask:NSTableColumnAutoresizingMask |
+                                NSTableColumnUserResizingMask];
 
-  [_tableView addTableColumn:column];
-  return column;
+  [_tableView addTableColumn:column.get()];
+  return column.get();  // Now retained by |tableView_|.
 }
 
 // Adds all the task manager's columns to the table.
 - (void)setUpTableColumns {
-  for (NSTableColumn* column in _tableView.tableColumns) {
+  for (NSTableColumn* column in [_tableView tableColumns])
     [_tableView removeTableColumn:column];
-  }
 
   for (size_t i = 0; i < task_manager::kColumnsSize; ++i) {
     const auto& columnData = task_manager::kColumns[i];
@@ -414,13 +391,13 @@ NSString* ColumnIdentifier(int id) {
     if (columnData.id == IDS_TASK_MANAGER_TASK_COLUMN) {
       // The task column displays an icon for every row, done by an
       // NSButtonCell.
-      NSCell* currentCell = column.dataCell;
-      NSButtonCell* nameCell = [[NSButtonCell alloc] initTextCell:@""];
-      nameCell.imagePosition = NSImageLeft;
-      nameCell.buttonType = NSButtonTypeSwitch;
-      nameCell.alignment = currentCell.alignment;
-      nameCell.font = currentCell.font;
-      column.dataCell = nameCell;
+      base::scoped_nsobject<NSButtonCell> nameCell(
+          [[NSButtonCell alloc] initTextCell:@""]);
+      [nameCell.get() setImagePosition:NSImageLeft];
+      [nameCell.get() setButtonType:NSButtonTypeSwitch];
+      [nameCell.get() setAlignment:[[column dataCell] alignment]];
+      [nameCell.get() setFont:[[column dataCell] font]];
+      [column setDataCell:nameCell.get()];
     }
   }
 }
@@ -429,36 +406,37 @@ NSString* ColumnIdentifier(int id) {
 // which columns should be shown and which should be hidden (like the Activity
 // Monitor.app's table header context menu).
 - (void)setUpTableHeaderContextMenu {
-  NSMenu* contextMenu =
-      [[NSMenu alloc] initWithTitle:@"Task Manager context menu"];
-  contextMenu.delegate = self;
-  _tableView.headerView.menu = contextMenu;
+  base::scoped_nsobject<NSMenu> contextMenu(
+      [[NSMenu alloc] initWithTitle:@"Task Manager context menu"]);
+  [contextMenu setDelegate:self];
+  [[_tableView headerView] setMenu:contextMenu.get()];
 }
 
 - (void)menuNeedsUpdate:(NSMenu*)menu {
   [menu removeAllItems];
 
-  for (NSTableColumn* column in _tableView.tableColumns) {
-    NSMenuItem* item = [menu addItemWithTitle:column.headerCell.stringValue
+  for (NSTableColumn* column in [_tableView tableColumns]) {
+    NSMenuItem* item = [menu addItemWithTitle:[[column headerCell] stringValue]
                                        action:@selector(toggleColumn:)
                                 keyEquivalent:@""];
-    item.target = self;
-    item.representedObject = column;
-    item.state = column.hidden ? NSControlStateValueOff : NSControlStateValueOn;
+    [item setTarget:self];
+    [item setRepresentedObject:column];
+    [item setState:[column isHidden] ? NSControlStateValueOff
+                                     : NSControlStateValueOn];
   }
 }
 
 // Callback for the table header context menu. Toggles visibility of the table
 // column associated with the clicked menu item.
 - (void)toggleColumn:(NSMenuItem*)item {
-  CHECK([item isKindOfClass:[NSMenuItem class]]);
+  DCHECK([item isKindOfClass:[NSMenuItem class]]);
   if (![item isKindOfClass:[NSMenuItem class]])
     return;
 
-  NSTableColumn* column = item.representedObject;
-  int columnId = column.identifier.intValue;
-  CHECK(column);
-  NSInteger oldState = item.state;
+  NSTableColumn* column = [item representedObject];
+  int columnId = [[column identifier] intValue];
+  DCHECK(column);
+  NSInteger oldState = [item state];
   NSInteger newState = oldState == NSControlStateValueOn
                            ? NSControlStateValueOff
                            : NSControlStateValueOn;
@@ -468,8 +446,8 @@ NSString* ColumnIdentifier(int id) {
     // Find the first column that will be visible after hiding |column|.
     NSTableColumn* firstRemainingVisibleColumn = nil;
 
-    for (NSTableColumn* nextColumn in _tableView.tableColumns) {
-      if (nextColumn != column && !nextColumn.hidden) {
+    for (NSTableColumn* nextColumn in [_tableView tableColumns]) {
+      if (nextColumn != column && ![nextColumn isHidden]) {
         firstRemainingVisibleColumn = nextColumn;
         break;
       }
@@ -513,8 +491,9 @@ NSString* ColumnIdentifier(int id) {
   bool allSelectionRowsAreKillableTasks = true;
   NSMutableIndexSet* groupIndexes = [NSMutableIndexSet indexSet];
 
-  NSIndexSet* selection = _tableView.selectedRowIndexes;
-  for (NSUInteger i = selection.lastIndex; i != NSNotFound;
+  NSIndexSet* selection = [_tableView selectedRowIndexes];
+  for (NSUInteger i = [selection lastIndex];
+       i != NSNotFound;
        i = [selection indexLessThanIndex:i]) {
     int modelIndex = _viewToModelMap[i];
 
@@ -529,7 +508,7 @@ NSString* ColumnIdentifier(int id) {
 
   [_tableView selectRowIndexes:groupIndexes byExtendingSelection:YES];
 
-  bool enabled = selection.count > 0 && allSelectionRowsAreKillableTasks &&
+  bool enabled = [selection count] > 0 && allSelectionRowsAreKillableTasks &&
                  task_manager::TaskManagerInterface::IsEndProcessEnabled();
   [_endProcessButton setEnabled:enabled];
 }
@@ -553,21 +532,17 @@ NSString* ColumnIdentifier(int id) {
 - (void)windowWillClose:(NSNotification*)notification {
   if (_taskManagerMac) {
     _tableModel->StoreColumnsSettings();
+    _taskManagerMac->WindowWasClosed();
+    _taskManagerMac = nullptr;
     _tableModel = nullptr;
 
     // Now that there is no model, ensure that this object gets no data requests
-    // in the window of time between the release and the actual dealloc.
+    // in the window of time between the autorelease and the actual dealloc.
     // https://crbug.com/763367
-    _tableView.delegate = nil;
-    _tableView.dataSource = nil;
-
-    // The _taskManagerMac holds the owning reference to this object, so notify
-    // it about the closure last.
-    auto localTaskManagerMac = _taskManagerMac;
-    _taskManagerMac = nullptr;
-    localTaskManagerMac->WindowWasClosed();
-    // Do nothing else after this.
+    [_tableView setDelegate:nil];
+    [_tableView setDataSource:nil];
   }
+  [self autorelease];
 }
 
 @end
@@ -594,11 +569,12 @@ NSString* ColumnIdentifier(int id) {
                           row:(NSInteger)rowIndex {
   // NSButtonCells expect an on/off state as objectValue. Their title is set
   // in |tableView:dataCellForTableColumn:row:| below.
-  if (tableColumn.identifier.intValue == IDS_TASK_MANAGER_TASK_COLUMN) {
+  if ([[tableColumn identifier] intValue] == IDS_TASK_MANAGER_TASK_COLUMN) {
     return [NSNumber numberWithInt:NSControlStateValueOff];
   }
 
-  return [self modelTextForRow:rowIndex column:tableColumn.identifier.intValue];
+  return [self modelTextForRow:rowIndex
+                        column:[[tableColumn identifier] intValue]];
 }
 
 - (NSCell*)tableView:(NSTableView*)tableView
@@ -607,21 +583,21 @@ NSString* ColumnIdentifier(int id) {
   NSCell* cell = [tableColumn dataCellForRow:rowIndex];
 
   // Set the favicon and title for the task in the name column.
-  if (tableColumn.identifier.intValue == IDS_TASK_MANAGER_TASK_COLUMN) {
+  if ([[tableColumn identifier] intValue] == IDS_TASK_MANAGER_TASK_COLUMN) {
     DCHECK([cell isKindOfClass:[NSButtonCell class]]);
     NSButtonCell* buttonCell = static_cast<NSButtonCell*>(cell);
 
     NSString* title = [self modelTextForRow:rowIndex
-                                     column:tableColumn.identifier.intValue];
+                                    column:[[tableColumn identifier] intValue]];
     NSColor* textColor = [tableView isRowSelected:rowIndex]
-                             ? NSColor.alternateSelectedControlTextColor
-                             : NSColor.labelColor;
-    NSAttributedString* attributedTitle = [[NSAttributedString alloc]
+                             ? [NSColor alternateSelectedControlTextColor]
+                             : [NSColor labelColor];
+    NSAttributedString* attributedTitle = [[[NSAttributedString alloc]
         initWithString:title
             attributes:@{
               NSForegroundColorAttributeName : textColor,
               NSFontAttributeName : cell.font
-            }];
+            }] autorelease];
     buttonCell.attributedTitle = attributedTitle;
 
     buttonCell.image =
@@ -638,19 +614,20 @@ NSString* ColumnIdentifier(int id) {
   if (_withinSortDescriptorsDidChange)
     return;
 
-  NSSortDescriptor* oldDescriptor = oldDescriptors.firstObject;
-  NSSortDescriptor* newDescriptor = tableView.sortDescriptors.firstObject;
+  NSSortDescriptor* oldDescriptor = [oldDescriptors firstObject];
+  NSSortDescriptor* newDescriptor = [[tableView sortDescriptors] firstObject];
 
   // Implement three-way sorting, toggling "unsorted" as a third option.
   if (oldDescriptor && newDescriptor &&
-      [oldDescriptor.key isEqual:newDescriptor.key]) {
+      [[oldDescriptor key] isEqual:[newDescriptor key]]) {
     // The user clicked to change the sort on the previously sorted column.
     // AppKit toggled the sort order. However, if the sort was toggled to become
     // the initial sorting direction, clear it instead.
     NSTableColumn* column = [tableView
-        tableColumnWithIdentifier:ColumnIdentifier(newDescriptor.key.intValue)];
+        tableColumnWithIdentifier:ColumnIdentifier(
+                                      [[newDescriptor key] intValue])];
     NSSortDescriptor* initialDescriptor = [column sortDescriptorPrototype];
-    if (newDescriptor.ascending == initialDescriptor.ascending) {
+    if ([newDescriptor ascending] == [initialDescriptor ascending]) {
       _withinSortDescriptorsDidChange = YES;
       [_tableView setSortDescriptors:@[]];
       newDescriptor = nil;
@@ -659,8 +636,8 @@ NSString* ColumnIdentifier(int id) {
   }
 
   if (newDescriptor) {
-    _currentSortDescriptor.sorted_column_id = newDescriptor.key.intValue;
-    _currentSortDescriptor.is_ascending = newDescriptor.ascending;
+    _currentSortDescriptor.sorted_column_id = [[newDescriptor key] intValue];
+    _currentSortDescriptor.is_ascending = [newDescriptor ascending];
   } else {
     _currentSortDescriptor.sorted_column_id = -1;
   }
@@ -734,24 +711,21 @@ bool TaskManagerMac::IsColumnVisible(int column_id) const {
   return [window_controller_ visibilityOfColumnWithId:column_id];
 }
 
-bool TaskManagerMac::SetColumnVisibility(int column_id, bool new_visibility) {
-  [window_controller_ setVisibility:new_visibility ofColumnWithId:column_id];
-  return true;
+void TaskManagerMac::SetColumnVisibility(int column_id, bool new_visibility) {
+  [window_controller_ setColumnWithId:column_id toVisibility:new_visibility];
 }
 
 bool TaskManagerMac::IsTableSorted() const {
-  return window_controller_.sortDescriptor.sorted_column_id != -1;
+  return [window_controller_ sortDescriptor].sorted_column_id != -1;
 }
 
 TableSortDescriptor TaskManagerMac::GetSortDescriptor() const {
-  return window_controller_.sortDescriptor;
+  return [window_controller_ sortDescriptor];
 }
 
 void TaskManagerMac::SetSortDescriptor(const TableSortDescriptor& descriptor) {
-  window_controller_.sortDescriptor = descriptor;
+  [window_controller_ setSortDescriptor:descriptor];
 }
-
-void TaskManagerMac::MaybeHighlightActiveTask() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Called by the TaskManagerWindowController:
@@ -765,11 +739,10 @@ NSImage* TaskManagerMac::GetImageForRow(int row) {
   const NSSize kImageSize = NSMakeSize(16.0, 16.0);
   NSImage* image =
       gfx::NSImageFromImageSkia(table_model_.GetIcon(row).Rasterize(nullptr));
-  if (image) {
+  if (image)
     image.size = kImageSize;
-  } else {
-    image = [[NSImage alloc] initWithSize:kImageSize];
-  }
+  else
+    image = [[[NSImage alloc] initWithSize:kImageSize] autorelease];
 
   return image;
 }
@@ -781,7 +754,7 @@ void TaskManagerMac::OnAppTerminating() {
 // static
 TaskManagerTableModel* TaskManagerMac::Show() {
   if (instance_) {
-    [instance_->window_controller_.window
+    [[instance_->window_controller_ window]
         makeKeyAndOrderFront:instance_->window_controller_];
   } else {
     instance_ = new TaskManagerMac();

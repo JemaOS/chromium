@@ -22,9 +22,8 @@ class CredentialManagerDialogController;
 
 class AccountChooserDialogView : public views::BubbleDialogDelegateView,
                                  public AccountChooserPrompt {
-  METADATA_HEADER(AccountChooserDialogView, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(AccountChooserDialogView);
   AccountChooserDialogView(CredentialManagerDialogController* controller,
                            content::WebContents* web_contents);
   AccountChooserDialogView(const AccountChooserDialogView&) = delete;
@@ -50,9 +49,8 @@ class AccountChooserDialogView : public views::BubbleDialogDelegateView,
   void CredentialsItemPressed(const password_manager::PasswordForm* form);
 
   // A weak pointer to the controller.
-  raw_ptr<CredentialManagerDialogController, AcrossTasksDanglingUntriaged>
-      controller_;
-  raw_ptr<content::WebContents, AcrossTasksDanglingUntriaged> web_contents_;
+  raw_ptr<CredentialManagerDialogController, DanglingUntriaged> controller_;
+  raw_ptr<content::WebContents, DanglingUntriaged> web_contents_;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_PASSWORDS_ACCOUNT_CHOOSER_DIALOG_VIEW_H_

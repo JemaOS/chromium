@@ -27,7 +27,7 @@ BOOL ShouldIgnoreNotification(NSNotification* notification) {
     case MacNotificationFilter::DontIgnoreNotifications:
       return NO;
     case MacNotificationFilter::IgnoreWorkspaceNotifications:
-      return [notification.name
+      return [[notification name]
           isEqualToString:NSWorkspaceDidActivateApplicationNotification];
     case MacNotificationFilter::IgnoreAllNotifications:
       return YES;
@@ -39,15 +39,15 @@ BOOL ShouldIgnoreNotification(NSNotification* notification) {
 
 struct MenuCocoaWatcherMac::ObjCStorage {
   // Tokens representing the notification observers.
-  id __strong observer_token_other_menu;
-  id __strong observer_token_new_window_focus;
-  id __strong observer_token_app_change;
+  id observer_token_other_menu_ = nil;
+  id observer_token_new_window_focus_ = nil;
+  id observer_token_app_change_ = nil;
 };
 
 MenuCocoaWatcherMac::MenuCocoaWatcherMac(base::OnceClosure callback)
     : callback_(std::move(callback)),
       objc_storage_(std::make_unique<ObjCStorage>()) {
-  objc_storage_->observer_token_other_menu =
+  objc_storage_->observer_token_other_menu_ =
       [[NSNotificationCenter defaultCenter]
           addObserverForName:NSMenuDidBeginTrackingNotification
                       object:nil
@@ -59,7 +59,7 @@ MenuCocoaWatcherMac::MenuCocoaWatcherMac(base::OnceClosure callback)
 
                     ExecuteCallback();
                   }];
-  objc_storage_->observer_token_new_window_focus =
+  objc_storage_->observer_token_new_window_focus_ =
       [[NSNotificationCenter defaultCenter]
           addObserverForName:NSWindowDidBecomeKeyNotification
                       object:nil
@@ -71,7 +71,7 @@ MenuCocoaWatcherMac::MenuCocoaWatcherMac(base::OnceClosure callback)
 
                     ExecuteCallback();
                   }];
-  objc_storage_->observer_token_app_change =
+  objc_storage_->observer_token_app_change_ =
       [[[NSWorkspace sharedWorkspace] notificationCenter]
           addObserverForName:NSWorkspaceDidActivateApplicationNotification
                       object:nil
@@ -91,12 +91,12 @@ MenuCocoaWatcherMac::MenuCocoaWatcherMac(base::OnceClosure callback)
 }
 
 MenuCocoaWatcherMac::~MenuCocoaWatcherMac() {
-  [NSNotificationCenter.defaultCenter
-      removeObserver:objc_storage_->observer_token_other_menu];
-  [NSNotificationCenter.defaultCenter
-      removeObserver:objc_storage_->observer_token_new_window_focus];
-  [NSWorkspace.sharedWorkspace.notificationCenter
-      removeObserver:objc_storage_->observer_token_app_change];
+  [[NSNotificationCenter defaultCenter]
+      removeObserver:objc_storage_->observer_token_other_menu_];
+  [[NSNotificationCenter defaultCenter]
+      removeObserver:objc_storage_->observer_token_new_window_focus_];
+  [[[NSWorkspace sharedWorkspace] notificationCenter]
+      removeObserver:objc_storage_->observer_token_app_change_];
 }
 
 void MenuCocoaWatcherMac::SetNotificationFilterForTesting(

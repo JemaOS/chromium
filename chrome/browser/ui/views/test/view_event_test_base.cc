@@ -114,7 +114,7 @@ ViewEventTestBase::~ViewEventTestBase() {
   TestingBrowserProcess::DeleteInstance();
 }
 
-void ViewEventTestBase::SetUpTestSuite() {
+void ViewEventTestBase::SetUpTestCase() {
   ChromeUnitTestSuite::InitializeProviders();
   ChromeUnitTestSuite::InitializeResourceBundle();
 }
@@ -170,13 +170,6 @@ void ViewEventTestBase::StartMessageLoopAndRunTest() {
   run_loop_.Run();
 }
 
-void ViewEventTestBase::RunTestMethod(base::OnceClosure task) {
-  std::move(task).Run();
-  if (HasFatalFailure()) {
-    Done();
-  }
-}
-
 scoped_refptr<base::SingleThreadTaskRunner>
 ViewEventTestBase::GetDragTaskRunner() {
 #if BUILDFLAG(IS_WIN)
@@ -195,4 +188,10 @@ ViewEventTestBase::GetDragTaskRunner() {
   // tasks will run.
   return base::SingleThreadTaskRunner::GetCurrentDefault();
 #endif
+}
+
+void ViewEventTestBase::RunTestMethod(base::OnceClosure task) {
+  std::move(task).Run();
+  if (HasFatalFailure())
+    Done();
 }

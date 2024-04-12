@@ -34,8 +34,4 @@ GuestOsWaylandServer* GuestOsService::WaylandServer() {
   return wayland_server_.get();
 }
 
-GuestOsSkForwarder* GuestOsService::SkForwarder() {
-  return &guest_os_sk_forwarder_;
-}
-
 }  // namespace guest_os

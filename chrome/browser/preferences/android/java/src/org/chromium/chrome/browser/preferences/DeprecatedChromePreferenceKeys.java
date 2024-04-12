@@ -4,7 +4,6 @@
 
 package org.chromium.chrome.browser.preferences;
 
-import org.chromium.base.shared_preferences.KeyPrefix;
 import org.chromium.build.annotations.CheckDiscard;
 
 import java.util.Arrays;
@@ -14,13 +13,11 @@ import java.util.List;
 /**
  * These values have been used as SharedPreferences keys in the past and should not be reused.
  * Do not remove values from this list.
- *
- * TODO(crbug.com/1483469): Rename this to reflect that deprecated keys from all registries should
- * rest here, not just Chrome-layer keys.
  */
 @CheckDiscard("Validation is performed in tests and in debug builds.")
 public class DeprecatedChromePreferenceKeys {
     static List<String> getKeysForTesting() {
+        // clang-format off
         return Arrays.asList(
                 "AUTOFILL_ASSISTANT_SKIP_INIT_SCREEN",
                 "BANDWIDTH_REDUCTION_PROXY_ENABLED",
@@ -29,14 +26,11 @@ public class DeprecatedChromePreferenceKeys {
                 "Chrome.Assistant.Enabled",
                 "Chrome.AssistantVoiceConsentTapsCounter.ConsentTapsCount",
                 "Chrome.AutofillAssistant.NumberOfLiteScriptsCanceled",
-                "Chrome.Cryptid.LastRenderTimestamp",
                 "Chrome.FirstRun.FieldTrialEnabled",
-                "Chrome.FirstRun.VariationFieldTrialGroup",
                 "Chrome.Flags.PaintPreviewTestEnabled",
                 "Chrome.Flags.SafeBool.*",
                 "Chrome.Flags.SafeDouble.*",
                 "Chrome.Flags.SafeInt.*",
-                "Chrome.Flags.SafeModeEnabled",
                 "Chrome.Flags.SafeString.*",
                 "Chrome.Flags.SafeValuesVersion",
                 "Chrome.OfflineMeasurements.HttpProbeResultsList",
@@ -45,25 +39,9 @@ public class DeprecatedChromePreferenceKeys {
                 "Chrome.OfflineMeasurements.TimeBetweenChecksMillisList",
                 "Chrome.OfflineMeasurements.UserStateList",
                 "Chrome.PriceTracking.PriceDropAlerts",
-                "Chrome.Querytiles.RecentMvClicks",
-                "Chrome.Querytiles.RecentQueryTileClicks",
-                "Chrome.Querytiles.NextDecisionTime",
-                "Chrome.Querytiles.ShowOnNTP",
-                "Chrome.Querytiles.ShowSegmentationResult",
-                "Chrome.QueryTiles.ShownOnStartSurface",
-                "Chrome.RequestDesktopSiteExceptionsDowngrade.GlobalSettingEnabled",
-                "Chrome.RequestDesktopSiteExceptionsDowngrade.TabSettingSet",
-                "Chrome.RequestDesktopSiteGlobalSetting.DefaultEnabledCohort",
                 "Chrome.RequestDesktopSiteGlobalSetting.DefaultEnabledShowMessage",
-                "Chrome.RequestDesktopSiteGlobalSetting.DefaultOnCohortDisplaySpec",
-                "Chrome.RequestDesktopSiteGlobalSetting.OptInMessageCohort",
                 "Chrome.RequestDesktopSiteGlobalSetting.OptInMessageShown",
-                "Chrome.Segmentation.ShowQueryTiles",
                 "Chrome.SigninPromo.NTPImpressions",
-                "Chrome.UMA.OnPreCreateCounter",
-                "Chrome.UMA.OnResumeCounter",
-                "Chrome.VideoTutorials.ShareUrls",
-                "LocaleManager_USR_TYPE",
                 "PersistedNotificationId",
                 "PhysicalWeb.ActivityReferral",
                 "PhysicalWeb.HasDeferredMetrics",
@@ -82,8 +60,6 @@ public class DeprecatedChromePreferenceKeys {
                 "PhysicalWeb.UrlSelected",
                 "PrefMigrationVersion",
                 "ServiceManagerFeatures",
-                "accessibility_tab_switcher",
-                "adaptive_toolbar_enabled",
                 "allow_low_end_device_ui",
                 "allow_prefetch",
                 "allow_starting_service_manager_only",
@@ -99,7 +75,6 @@ public class DeprecatedChromePreferenceKeys {
                 "chrome_modern_design_enabled",
                 "chromium.invalidations.uuid",
                 "click_to_call_open_dialer_directly",
-                "command_line_on_non_rooted_enabled",
                 "contextual_search_all_time_open_count",
                 "contextual_search_all_time_tap_count",
                 "contextual_search_all_time_tap_quick_answer_count",
@@ -129,9 +104,7 @@ public class DeprecatedChromePreferenceKeys {
                 "displayed_data_reduction_promo_version",
                 "displayed_data_reduction_snackbar_promo_saved_bytes",
                 "darken_websites_enabled",
-                "first_run_signin_complete",
                 "fre_promo_opt_out",
-                "grid_tab_switcher_enabled",
                 "home_page_button_force_enabled",
                 "homepage_tile_enabled",
                 "inflate_toolbar_on_background_thread",
@@ -139,7 +112,6 @@ public class DeprecatedChromePreferenceKeys {
                 "labeled_bottom_toolbar_enabled",
                 "last_shared_class_name",
                 "last_shared_package_name",
-                "network_service_warm_up_enabled",
                 "night_mode_available",
                 "night_mode_cct_available",
                 "night_mode_default_to_light",
@@ -155,21 +127,17 @@ public class DeprecatedChromePreferenceKeys {
                 "prefetch_notification_offline_counter",
                 "prefetch_notification_shown_time",
                 "prioritize_bootstrap_tasks",
-                "reached_code_profiler_enabled",
-                "reached_code_profiler_group",
-                "reached_code_sampling_interval",
                 "service_manager_for_background_prefetch",
                 "service_manager_for_download_resumption",
                 "signin_promo_impressions_count_bookmarks",
                 "signin_promo_impressions_count_settings",
                 "sole_integration_enabled",
-                "start_surface_enabled",
                 "start_surface_single_pane_enabled",
-                "swap_pixel_format_to_fix_convert_from_translucent",
-                "tab_group_android_enabled",
                 "tab_persistent_store_task_runner_enabled",
                 "webapk_number_of_uninstalls",
-                "website_settings_filter");
+                "website_settings_filter"
+        );
+        // clang-format on
     }
 
     static List<KeyPrefix> getPrefixesForTesting() {

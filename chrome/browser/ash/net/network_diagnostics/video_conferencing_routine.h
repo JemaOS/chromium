@@ -18,7 +18,6 @@
 #include "chrome/browser/ash/net/network_diagnostics/udp_prober.h"
 #include "net/base/net_errors.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
-#include "services/network/public/cpp/network_context_getter.h"
 #include "url/gurl.h"
 
 namespace ash {
@@ -34,7 +33,7 @@ class VideoConferencingRoutine : public NetworkDiagnosticsRoutine {
  public:
   using UdpProberGetterCallback =
       base::RepeatingCallback<std::unique_ptr<UdpProber>(
-          network::NetworkContextGetter network_context_getter,
+          UdpProber::NetworkContextGetter network_context_getter,
           net::HostPortPair host_port_pair,
           base::span<const uint8_t> data,
           net::NetworkTrafficAnnotationTag tag,
@@ -42,18 +41,15 @@ class VideoConferencingRoutine : public NetworkDiagnosticsRoutine {
           UdpProber::UdpProbeCompleteCallback callback)>;
   using TlsProberGetterCallback =
       base::RepeatingCallback<std::unique_ptr<TlsProber>(
-          network::NetworkContextGetter network_context_getter,
+          TlsProber::NetworkContextGetter network_context_getter,
           net::HostPortPair host_port_pair,
           bool negotiate_tls,
           TlsProber::TlsProbeCompleteCallback callback)>;
 
   // Creates a routine using a default STUN server.
-  explicit VideoConferencingRoutine(
-      chromeos::network_diagnostics::mojom::RoutineCallSource source);
+  VideoConferencingRoutine();
   // Creates a routine using a custom STUN server.
-  VideoConferencingRoutine(
-      chromeos::network_diagnostics::mojom::RoutineCallSource source,
-      const std::string& stun_server_hostname);
+  explicit VideoConferencingRoutine(const std::string& stun_server_hostname);
   VideoConferencingRoutine(const VideoConferencingRoutine&) = delete;
   VideoConferencingRoutine& operator=(const VideoConferencingRoutine&) = delete;
   ~VideoConferencingRoutine() override;
@@ -90,7 +86,7 @@ class VideoConferencingRoutine : public NetworkDiagnosticsRoutine {
 
   // Creates and instance of UdpProber.
   static std::unique_ptr<UdpProber> CreateAndExecuteUdpProber(
-      network::NetworkContextGetter network_context_getter,
+      UdpProber::NetworkContextGetter network_context_getter,
       net::HostPortPair host_port_pair,
       base::span<const uint8_t> data,
       net::NetworkTrafficAnnotationTag tag,
@@ -99,7 +95,7 @@ class VideoConferencingRoutine : public NetworkDiagnosticsRoutine {
 
   // Creates an instance of TlsProber.
   static std::unique_ptr<TlsProber> CreateAndExecuteTlsProber(
-      network::NetworkContextGetter network_context_getter,
+      TlsProber::NetworkContextGetter network_context_getter,
       net::HostPortPair host_port_pair,
       bool negotiate_tls,
       TlsProber::TlsProbeCompleteCallback callback);

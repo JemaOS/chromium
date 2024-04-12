@@ -20,7 +20,7 @@ constexpr SkAlpha kWebUiTabStripTabSeparatorAlpha = 0.16 * 255;
 }  // namespace
 
 void AddMaterialTabStripColorMixer(ui::ColorProvider* provider,
-                                   const ui::ColorProviderKey& key) {
+                                   const ui::ColorProviderManager::Key& key) {
   if (!ShouldApplyChromeMaterialOverrides(key)) {
     return;
   }
@@ -30,42 +30,21 @@ void AddMaterialTabStripColorMixer(ui::ColorProvider* provider,
   mixer[kColorTabBackgroundActiveFrameActive] = {ui::kColorSysBase};
   mixer[kColorTabBackgroundActiveFrameInactive] = {
       kColorTabBackgroundActiveFrameActive};
-
   mixer[kColorTabBackgroundInactiveFrameActive] = {ui::kColorSysHeader};
   mixer[kColorTabBackgroundInactiveFrameInactive] = {
       ui::kColorSysHeaderInactive};
-  mixer[kColorTabBackgroundInactiveHoverFrameActive] = {
-      ui::kColorSysStateHeaderHover};
-  mixer[kColorTabStripControlButtonInkDrop] = {ui::kColorSysStateHeaderHover};
-  mixer[kColorTabStripControlButtonInkDropRipple] = {
-      ui::kColorSysStateRippleNeutralOnSubtle};
 
-  // TODO(tbergquist): Use kColorSysStateHeaderHoverInactive, once it exists.
-  mixer[kColorTabBackgroundInactiveHoverFrameInactive] = {
-      ui::kColorSysStateHeaderHoverInactive};
-
-  mixer[kColorTabBackgroundSelectedFrameActive] = {ui::GetResultingPaintColor(
-      ui::kColorSysStateHeaderSelect, kColorTabBackgroundInactiveFrameActive)};
-  mixer[kColorTabBackgroundSelectedFrameInactive] = {
-      ui::GetResultingPaintColor(ui::kColorSysStateHeaderSelect,
-                                 kColorTabBackgroundInactiveFrameInactive)};
-  mixer[kColorTabBackgroundSelectedHoverFrameActive] = {
-      ui::GetResultingPaintColor(ui::kColorSysStateHoverDimBlendProtection,
-                                 kColorTabBackgroundSelectedFrameActive)};
-  mixer[kColorTabBackgroundSelectedHoverFrameInactive] = {
-      ui::GetResultingPaintColor(ui::kColorSysStateHoverDimBlendProtection,
-                                 kColorTabBackgroundSelectedFrameInactive)};
-  mixer[kColorTabDiscardRingFrameActive] = {ui::kColorSysOutline};
-  mixer[kColorTabDiscardRingFrameInactive] = {kColorTabDiscardRingFrameActive};
   mixer[kColorTabForegroundActiveFrameActive] = {ui::kColorSysOnSurface};
   mixer[kColorTabForegroundActiveFrameInactive] = {
       kColorTabForegroundActiveFrameActive};
-  mixer[kColorTabForegroundInactiveFrameActive] =
-      ui::BlendForMinContrast({ui::kColorSysOnSurfaceSecondary},
-                              {kColorTabBackgroundInactiveFrameActive});
-  mixer[kColorTabForegroundInactiveFrameInactive] =
-      ui::BlendForMinContrast({kColorTabForegroundInactiveFrameActive},
-                              {kColorTabBackgroundInactiveFrameInactive});
+  mixer[kColorTabForegroundInactiveFrameActive] = {
+      ui::kColorSysOnSurfaceSecondary};
+  mixer[kColorTabForegroundInactiveFrameInactive] = {
+      kColorTabForegroundInactiveFrameActive};
+
+  mixer[kColorTabBackgroundHoverFrameActive] = {ui::kColorSysStateHeaderHover};
+  mixer[kColorTabBackgroundHoverFrameInactive] = {
+      ui::kColorSysStateHoverOnSubtle};
 
   /* WebUI Tab Strip colors. */
   mixer[kColorWebUiTabStripBackground] = {ui::kColorSysHeader};
@@ -84,18 +63,14 @@ void AddMaterialTabStripColorMixer(ui::ColorProvider* provider,
   mixer[kColorTabDividerFrameActive] = {ui::kColorSysOnHeaderDivider};
   mixer[kColorTabDividerFrameInactive] = {ui::kColorSysOnHeaderDividerInactive};
 
-  // Tabstrip Control Button colors.
+  // Tabstrip Button colors.
   mixer[kColorNewTabButtonCRForegroundFrameActive] = {
-      ui::kColorSysOnSurfaceSubtle};
+      ui::kColorSysOnSurfacePrimary};
   mixer[kColorNewTabButtonCRForegroundFrameInactive] = {
-      ui::kColorSysOnSurfaceSubtle};
+      ui::kColorSysOnSurfacePrimaryInactive};
   mixer[kColorNewTabButtonCRBackgroundFrameActive] = {
       ui::kColorSysHeaderContainer};
   mixer[kColorNewTabButtonCRBackgroundFrameInactive] = {
       ui::kColorSysHeaderContainerInactive};
-
-  mixer[kColorTabSearchButtonCRForegroundFrameActive] = {
-      ui::kColorSysOnSurfacePrimary};
-  mixer[kColorTabSearchButtonCRForegroundFrameInactive] = {
-      ui::kColorSysOnSurfacePrimaryInactive};
+  // MISSING 2
 }

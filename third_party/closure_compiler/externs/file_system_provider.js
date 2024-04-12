@@ -1,4 +1,4 @@
-// Copyright 2024 The Chromium Authors
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -71,31 +71,12 @@ chrome.fileSystemProvider.CommonActionId = {
 
 /**
  * @typedef {{
- *   providerName: string,
- *   id: string
- * }}
- * @see https://developer.chrome.com/extensions/fileSystemProvider#type-CloudIdentifier
- */
-chrome.fileSystemProvider.CloudIdentifier;
-
-/**
- * @typedef {{
- *   versionTag: (string|undefined)
- * }}
- * @see https://developer.chrome.com/extensions/fileSystemProvider#type-CloudFileInfo
- */
-chrome.fileSystemProvider.CloudFileInfo;
-
-/**
- * @typedef {{
  *   isDirectory: (boolean|undefined),
  *   name: (string|undefined),
  *   size: (number|undefined),
  *   modificationTime: (Date|undefined),
  *   mimeType: (string|undefined),
- *   thumbnail: (string|undefined),
- *   cloudIdentifier: (!chrome.fileSystemProvider.CloudIdentifier|undefined),
- *   cloudFileInfo: (!chrome.fileSystemProvider.CloudFileInfo|undefined)
+ *   thumbnail: (string|undefined)
  * }}
  * @see https://developer.chrome.com/extensions/fileSystemProvider#type-EntryMetadata
  */
@@ -175,8 +156,7 @@ chrome.fileSystemProvider.UnmountRequestedOptions;
  *   size: boolean,
  *   modificationTime: boolean,
  *   mimeType: boolean,
- *   thumbnail: boolean,
- *   cloudIdentifier: boolean
+ *   thumbnail: boolean
  * }}
  * @see https://developer.chrome.com/extensions/fileSystemProvider#type-GetMetadataRequestedOptions
  */
@@ -373,8 +353,7 @@ chrome.fileSystemProvider.ExecuteActionRequestedOptions;
 /**
  * @typedef {{
  *   entryPath: string,
- *   changeType: !chrome.fileSystemProvider.ChangeType,
- *   cloudFileInfo: (!chrome.fileSystemProvider.CloudFileInfo|undefined)
+ *   changeType: !chrome.fileSystemProvider.ChangeType
  * }}
  * @see https://developer.chrome.com/extensions/fileSystemProvider#type-Change
  */
@@ -453,7 +432,7 @@ chrome.fileSystemProvider.get = function(fileSystemId, callback) {};
 /**
  * <p>Notifies about changes in the watched directory at
  * <code>observedPath</code> in <code>recursive</code> mode. If the file system
- * is mounted with <code>supportsNotifyTag</code>, then <code>tag</code> must be
+ * is mounted with <code>supportsNofityTag</code>, then <code>tag</code> must be
  * provided, and all changes since the last notification always reported, even
  * if the system was shutdown. The last tag can be obtained with
  * $(ref:getAll).</p><p>To use, the <code>file_system_provider.notify</code>

@@ -4,8 +4,6 @@
 
 #include "chrome/browser/apps/digital_goods/util.h"
 
-#include <optional>
-
 #include "chrome/browser/ash/apps/apk_web_app_service.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_finder.h"
@@ -14,6 +12,7 @@
 #include "chrome/browser/web_applications/web_app_registrar.h"
 #include "content/public/browser/document_user_data.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace apps {
 
@@ -23,7 +22,7 @@ std::string GetTwaPackageName(content::RenderFrameHost* render_frame_host) {
   if (!web_contents)
     return std::string();
 
-  Browser* browser = chrome::FindBrowserWithTab(web_contents);
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents);
   if (!web_app::AppBrowserController::IsWebApp(browser)) {
     return std::string();
   }
@@ -39,7 +38,7 @@ std::string GetTwaPackageName(content::RenderFrameHost* render_frame_host) {
     return std::string();
   }
 
-  std::optional<std::string> twa_package_name =
+  absl::optional<std::string> twa_package_name =
       apk_web_app_service->GetPackageNameForWebApp(
           render_frame_host->GetMainFrame()->GetLastCommittedURL());
 
@@ -54,7 +53,7 @@ std::string GetScope(content::RenderFrameHost* render_frame_host) {
   }
 
   const web_app::WebAppRegistrar& registrar = provider->registrar_unsafe();
-  std::optional<webapps::AppId> app_id = registrar.FindAppWithUrlInScope(
+  absl::optional<web_app::AppId> app_id = registrar.FindAppWithUrlInScope(
       render_frame_host->GetMainFrame()->GetLastCommittedURL());
   if (!app_id) {
     return std::string();

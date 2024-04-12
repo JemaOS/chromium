@@ -4,20 +4,25 @@
 
 import * as dom from '../../dom.js';
 import {I18nString} from '../../i18n_string.js';
-import {RecordTimeChip} from '../../lit/components/record-time-chip.js';
-import {getI18nMessage} from '../../models/load_time_data.js';
+import * as loadTimeData from '../../models/load_time_data.js';
 import {speak} from '../../spoken_msg.js';
 
 /**
- * Time between updates in milliseconds.
+ * Maximal recording time in milliseconds and the function executed to notify
+ * caller the tick reaches maximal time.
  */
-const UPDATE_INTERVAL_MS = 100;
+export interface MaxTimeOption {
+  maxTime: number;
+  onMaxTimeout: () => void;
+}
 
 /**
- * Controller for the record-time-chip of Camera view.
+ * Controller for the record-time of Camera view.
  */
-export class RecordTime {
-  private readonly recordTime = dom.get('record-time-chip', RecordTimeChip);
+abstract class RecordTimeBase {
+  private readonly recordTime = dom.get('#record-time', HTMLElement);
+
+  protected readonly maxTimeOption: MaxTimeOption|null = null;
 
   /**
    * Timeout to count every tick of elapsed recording time.
@@ -40,112 +45,80 @@ export class RecordTime {
   private totalDuration = 0;
 
   /**
-   * Maximal recording time in milliseconds.
+   * @return Time interval to update ticks in milliseconds.
    */
-  private maxTimeMs: number|null = null;
-
-  constructor(private readonly onMaxTimeout: () => void) {}
-
-  private getTimeMessage(timeMs: number, maxTimeMs: number|null) {
-    const seconds = timeMs / 1000;
-    if (maxTimeMs === null) {
-      // Normal recording. Format time into HH:MM:SS or MM:SS.
-      const parts: number[] = [];
-      if (seconds >= 3600) {
-        parts.push(Math.floor(seconds / 3600));  // HH
-      }
-      parts.push(Math.floor(seconds / 60) % 60);  // MM
-      parts.push(Math.floor(seconds % 60));       // SS
-      return parts.map((n) => n.toString().padStart(2, '0')).join(':');
-    } else {
-      // GIF recording. Formats seconds with only first digit shown after
-      // floating point.
-      return getI18nMessage(
-          I18nString.LABEL_CURRENT_AND_MAXIMAL_RECORD_TIME, seconds.toFixed(1),
-          (maxTimeMs / 1000).toFixed(1));
-    }
-  }
+  protected abstract getTimeInterval(): number;
 
   /**
-   * Starts to count and show the elapsed recording time.
+   * @param ticks Aggregated time ticks during the record time.
+   * @return Message showing on record time area. Should already be translated
+   *     by i18n if necessary.
    */
-  start(maxTimeMs: number|null = null): void {
-    this.ticks = 0;
-    this.totalDuration = 0;
-    this.maxTimeMs = maxTimeMs;
-    this.resume();
-  }
+  protected abstract getTimeMessage(ticks: number): string;
 
   /**
    * Updates UI by the elapsed recording time.
    */
   private update() {
-    this.recordTime.textContent =
-        this.getTimeMessage(this.ticks * UPDATE_INTERVAL_MS, this.maxTimeMs);
+    dom.get('#record-time-msg', HTMLElement).textContent =
+        this.getTimeMessage(this.ticks);
   }
 
   /**
-   * Resumes to count and show the elapsed recording time.
+   * Starts to count and show the elapsed recording time.
+   *
+   * @param params Start parameters.
+   * @param params.resume If the time count is resumed from paused state.
    */
-  resume(): void {
+  start({resume}: {resume: boolean}): void {
+    if (!resume) {
+      this.ticks = 0;
+      this.totalDuration = 0;
+    }
     this.update();
     this.recordTime.hidden = false;
 
     this.tickTimeout = setInterval(() => {
-      if (this.maxTimeMs === null ||
-          (this.ticks + 1) * UPDATE_INTERVAL_MS <= this.maxTimeMs) {
+      if (this.maxTimeOption === null ||
+          (this.ticks + 1) * this.getTimeInterval() <=
+              this.maxTimeOption.maxTime) {
         this.ticks++;
       } else {
-        this.onMaxTimeout();
+        this.maxTimeOption.onMaxTimeout();
         if (this.tickTimeout !== null) {
           clearInterval(this.tickTimeout);
           this.tickTimeout = null;
         }
       }
       this.update();
-    }, UPDATE_INTERVAL_MS);
+    }, this.getTimeInterval());
 
     this.startTimestamp = performance.now();
   }
 
   /**
-   * Calculates total duration after stop recoding.
-   */
-  private calculateDuration(): void {
-    this.totalDuration += performance.now() - this.startTimestamp;
-    if (this.maxTimeMs !== null) {
-      this.totalDuration = Math.min(this.totalDuration, this.maxTimeMs);
-    }
-  }
-
-  /**
    * Stops counting and showing the elapsed recording time.
+   *
+   * @param params Stop parameters.
+   * @param params.pause If the time count is paused temporarily.
    */
-  stop(): void {
+  stop({pause}: {pause: boolean}): void {
     speak(I18nString.STATUS_MSG_RECORDING_STOPPED);
-    if (this.tickTimeout !== null) {
+    if (this.tickTimeout) {
       clearInterval(this.tickTimeout);
       this.tickTimeout = null;
     }
-
-    this.ticks = 0;
-    this.recordTime.hidden = true;
-    this.update();
-
-    this.calculateDuration();
-  }
-
-  /**
-   * Pauses counting and showing the elapsed recording time.
-   */
-  pause(): void {
-    speak(I18nString.STATUS_MSG_RECORDING_STOPPED);
-    if (this.tickTimeout !== null) {
-      clearInterval(this.tickTimeout);
-      this.tickTimeout = null;
+    if (!pause) {
+      this.ticks = 0;
+      this.recordTime.hidden = true;
+      this.update();
     }
 
-    this.calculateDuration();
+    this.totalDuration += performance.now() - this.startTimestamp;
+    if (this.maxTimeOption !== null) {
+      this.totalDuration =
+          Math.min(this.totalDuration, this.maxTimeOption.maxTime);
+    }
   }
 
   /**
@@ -153,5 +126,56 @@ export class RecordTime {
    */
   inMilliseconds(): number {
     return Math.round(this.totalDuration);
+  }
+}
+
+/**
+ * Record time for normal record type.
+ */
+export class RecordTime extends RecordTimeBase {
+  getTimeInterval(): number {
+    return 1000;
+  }
+
+  getTimeMessage(ticks: number): string {
+    // Format time into HH:MM:SS or MM:SS.
+    function pad(n: number) {
+      return (n < 10 ? '0' : '') + n;
+    }
+    let hh = '';
+    if (ticks >= 3600) {
+      hh = pad(Math.floor(ticks / 3600)) + ':';
+    }
+    const mm = pad(Math.floor(ticks / 60) % 60) + ':';
+    return hh + mm + pad(ticks % 60);
+  }
+}
+
+/**
+ * Record time for gif record type.
+ */
+export class GifRecordTime extends RecordTimeBase {
+  declare protected readonly maxTimeOption: MaxTimeOption;
+
+  constructor(maxTimeOption: MaxTimeOption) {
+    super();
+    this.maxTimeOption = maxTimeOption;
+  }
+
+  getTimeInterval(): number {
+    return 100;
+  }
+
+  getTimeMessage(ticks: number): string {
+    const maxTicks = this.maxTimeOption.maxTime / this.getTimeInterval();
+    /**
+     * Formats ticks to seconds with only first digit shown after floating
+     * point.
+     */
+    const formatTick = (ticks: number): string =>
+        (ticks / (1000 / this.getTimeInterval())).toFixed(1);
+    return loadTimeData.getI18nMessage(
+        I18nString.LABEL_CURRENT_AND_MAXIMAL_RECORD_TIME, formatTick(ticks),
+        formatTick(maxTicks));
   }
 }

@@ -23,8 +23,8 @@
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_user_settings.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/test/browser_test.h"
 #include "extensions/browser/api_test_utils.h"
@@ -75,7 +75,7 @@ bool SetGaiaCookieForProfile(Profile* profile) {
       "SAPISID", std::string(), "." + google_url.host(), "/", base::Time(),
       base::Time(), base::Time(), base::Time(),
       /*secure=*/true, false, net::CookieSameSite::NO_RESTRICTION,
-      net::COOKIE_PRIORITY_DEFAULT);
+      net::COOKIE_PRIORITY_DEFAULT, false);
 
   base::test::TestFuture<net::CookieAccessResult> set_cookie_future;
   network::mojom::CookieManager* cookie_manager =
@@ -114,7 +114,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionBrowsingDataTest, Syncing) {
   syncer::SyncService* sync_service =
       SyncServiceFactory::GetForProfile(profile);
   sync_service->SetSyncFeatureRequested();
-  sync_service->GetUserSettings()->SetInitialSyncFeatureSetupComplete(
+  sync_service->GetUserSettings()->SetFirstSetupComplete(
       syncer::SyncFirstSetupCompleteSource::BASIC_FLOW);
 
   ASSERT_EQ(SyncStatusMessageType::kSynced, GetSyncStatusMessageType(profile));
@@ -196,7 +196,7 @@ void CreateLocalStorageForKey(Profile* profile, const blink::StorageKey& key) {
                                          area.BindNewPipeAndPassReceiver());
   {
     base::test::TestFuture<bool> put_future;
-    area->Put({'k', 'e', 'y'}, {'v', 'a', 'l', 'u', 'e'}, std::nullopt,
+    area->Put({'k', 'e', 'y'}, {'v', 'a', 'l', 'u', 'e'}, absl::nullopt,
               "source", put_future.GetCallback());
     ASSERT_TRUE(put_future.Get());
   }

@@ -4,10 +4,9 @@
 
 #include "chrome/browser/ash/policy/handlers/device_name_policy_handler_impl.h"
 
-#include <string_view>
-
 #include "ash/constants/ash_features.h"
 #include "base/functional/bind.h"
+#include "base/strings/string_piece.h"
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
 #include "chrome/browser/ash/policy/handlers/device_name_policy_handler_name_generator.h"
 #include "chrome/browser/browser_process.h"
@@ -79,12 +78,12 @@ DeviceNamePolicyHandlerImpl::GetDeviceNamePolicy() const {
   return device_name_policy_;
 }
 
-std::optional<std::string>
+absl::optional<std::string>
 DeviceNamePolicyHandlerImpl::GetHostnameChosenByAdministrator() const {
   if (GetDeviceNamePolicy() == DeviceNamePolicy::kPolicyHostnameChosenByAdmin) {
     return hostname_;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void DeviceNamePolicyHandlerImpl::DefaultNetworkChanged(
@@ -154,8 +153,8 @@ DeviceNamePolicyHandlerImpl::ComputePolicy(std::string* hostname_template_out) {
 
 std::string DeviceNamePolicyHandlerImpl::GenerateHostname(
     const std::string& hostname_template) const {
-  const std::string_view serial =
-      statistics_provider_->GetMachineID().value_or(std::string_view());
+  const base::StringPiece serial =
+      statistics_provider_->GetMachineID().value_or(base::StringPiece());
 
   const std::string asset_id = g_browser_process->platform_part()
                                    ->browser_policy_connector_ash()

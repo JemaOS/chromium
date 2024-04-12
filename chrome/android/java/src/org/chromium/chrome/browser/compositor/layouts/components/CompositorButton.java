@@ -10,15 +10,16 @@ import android.graphics.RectF;
 import android.util.FloatProperty;
 
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutView;
+import org.chromium.chrome.browser.layouts.components.VirtualView;
 
 /**
- * {@link CompositorButton} keeps track of state for buttons that are rendered in the compositor.
+ * {@link CompositorButton} keeps track of state for buttons that are rendered
+ * in the compositor.
  */
-public class CompositorButton extends StripLayoutView {
+public class CompositorButton implements VirtualView {
     /**
-     * A property that can be used with a {@link
-     * org.chromium.chrome.browser.layouts.animation.CompositorAnimator}.
+     * A property that can be used with a
+     * {@link org.chromium.chrome.browser.compositor.animation.CompositorAnimator}.
      */
     public static final FloatProperty<CompositorButton> OPACITY =
             new FloatProperty<CompositorButton>("opacity") {
@@ -38,12 +39,12 @@ public class CompositorButton extends StripLayoutView {
             new FloatProperty<CompositorButton>("drawX") {
                 @Override
                 public void setValue(CompositorButton object, float value) {
-                    object.setDrawX(value);
+                    object.setX(value);
                 }
 
                 @Override
                 public Float get(CompositorButton object) {
-                    return object.getDrawX();
+                    return object.getX();
                 }
             };
 
@@ -72,12 +73,11 @@ public class CompositorButton extends StripLayoutView {
     private float mOpacity;
     private float mClickSlop;
     private boolean mIsPressed;
-    private boolean mIsPressedFromMouse;
-    private boolean mIsHovered;
+    private boolean mIsVisible;
     private boolean mIsIncognito;
     private boolean mIsEnabled;
-    private String mAccessibilityDescription = "";
-    private String mAccessibilityDescriptionIncognito = "";
+    private String mAccessibilityDescription;
+    private String mAccessibilityDescriptionIncognito;
 
     /**
      * Default constructor for {@link CompositorButton}
@@ -92,9 +92,9 @@ public class CompositorButton extends StripLayoutView {
 
         mOpacity = 1.f;
         mIsPressed = false;
+        mIsVisible = true;
         mIsIncognito = false;
         mIsEnabled = true;
-        setVisible(true);
 
         Resources res = context.getResources();
         float sPxToDp = 1.0f / res.getDisplayMetrics().density;
@@ -110,10 +110,7 @@ public class CompositorButton extends StripLayoutView {
      * @param incognitoResource         The incognito Android resource.
      * @param incognitoPressedResource  The incognito pressed resource.
      */
-    public void setResources(
-            int resource,
-            int pressedResource,
-            int incognitoResource,
+    public void setResources(int resource, int pressedResource, int incognitoResource,
             int incognitoPressedResource) {
         mResource = resource;
         mPressedResource = pressedResource;
@@ -129,7 +126,6 @@ public class CompositorButton extends StripLayoutView {
         mAccessibilityDescriptionIncognito = incognitoDescription;
     }
 
-    /** {@link org.chromium.chrome.browser.layouts.components.VirtualView} Implementation */
     @Override
     public String getAccessibilityDescription() {
         return mIsIncognito ? mAccessibilityDescriptionIncognito : mAccessibilityDescription;
@@ -143,63 +139,59 @@ public class CompositorButton extends StripLayoutView {
     }
 
     /**
-     * @param x The x offset of the click.
-     * @param y The y offset of the click.
-     * @return Whether or not that click occurred inside of the button + slop area.
+     * @return The x offset of the button.
      */
-    @Override
-    public boolean checkClickedOrHovered(float x, float y) {
-        if (mOpacity < 1.f || !isVisible() || !mIsEnabled) return false;
-
-        mCacheBounds.set(mBounds);
-        mCacheBounds.inset(-mClickSlop, -mClickSlop);
-        return mCacheBounds.contains(x, y);
-    }
-
-    @Override
-    public void handleClick(long time) {
-        mClickHandler.onClick(time);
-    }
-
-    /** {@link StripLayoutView} Implementation */
-    @Override
-    public float getDrawX() {
+    public float getX() {
         return mBounds.left;
     }
 
-    @Override
-    public void setDrawX(float x) {
+    /**
+     * @param x The x offset of the button.
+     */
+    public void setX(float x) {
         mBounds.right = x + mBounds.width();
         mBounds.left = x;
     }
 
-    @Override
-    public float getDrawY() {
+    /**
+     * @return The y offset of the button.
+     */
+    public float getY() {
         return mBounds.top;
     }
 
-    @Override
-    public void setDrawY(float y) {
+    /**
+     * @param y The y offset of the button.
+     */
+    public void setY(float y) {
         mBounds.bottom = y + mBounds.height();
         mBounds.top = y;
     }
 
-    @Override
+    /**
+     * @return The width of the button.
+     */
     public float getWidth() {
         return mBounds.width();
     }
 
-    @Override
+    /**
+     * @param width The width of the button.
+     */
     public void setWidth(float width) {
         mBounds.right = mBounds.left + width;
     }
 
-    @Override
+    /**
+     * @return The height of the button.
+     */
     public float getHeight() {
         return mBounds.height();
     }
 
-    @Override
+    /**
+     * @param height The height of the button.
+     */
     public void setHeight(float height) {
         mBounds.bottom = mBounds.top + height;
     }
@@ -237,20 +229,20 @@ public class CompositorButton extends StripLayoutView {
      */
     public void setPressed(boolean state) {
         mIsPressed = state;
-
-        // clear isPressedFromMouse state.
-        if (!state) {
-            setPressedFromMouse(false);
-        }
     }
 
     /**
-     * @param state The pressed state of the button.
-     * @param fromMouse Whether the event originates from a mouse.
+     * @return The visiblity of the button.
      */
-    public void setPressed(boolean state, boolean fromMouse) {
-        mIsPressed = state;
-        mIsPressedFromMouse = fromMouse;
+    public boolean isVisible() {
+        return mIsVisible;
+    }
+
+    /**
+     * @param state The visibility of the button.
+     */
+    public void setVisible(boolean state) {
+        mIsVisible = state;
     }
 
     /**
@@ -300,13 +292,32 @@ public class CompositorButton extends StripLayoutView {
     }
 
     /**
+     * @param x The x offset of the click.
+     * @param y The y offset of the click.
+     * @return Whether or not that click occurred inside of the button + slop area.
+     */
+    @Override
+    public boolean checkClicked(float x, float y) {
+        if (mOpacity < 1.f || !mIsVisible || !mIsEnabled) return false;
+
+        mCacheBounds.set(mBounds);
+        mCacheBounds.inset(-mClickSlop, -mClickSlop);
+        return mCacheBounds.contains(x, y);
+    }
+
+    @Override
+    public void handleClick(long time) {
+        mClickHandler.onClick(time);
+    }
+
+    /**
      * Set state for a drag event.
      * @param x     The x offset of the event.
      * @param y     The y offset of the event.
      * @return      Whether or not the button is selected after the event.
      */
     public boolean drag(float x, float y) {
-        if (!checkClickedOrHovered(x, y)) {
+        if (!checkClicked(x, y)) {
             setPressed(false);
             return false;
         }
@@ -315,15 +326,13 @@ public class CompositorButton extends StripLayoutView {
 
     /**
      * Set state for an onDown event.
-     *
-     * @param x The x offset of the event.
-     * @param y The y offset of the event.
-     * @param fromMouse Whether the event originates from a mouse.
-     * @return Whether or not the close button was selected.
+     * @param x     The x offset of the event.
+     * @param y     The y offset of the event.
+     * @return      Whether or not the close button was selected.
      */
-    public boolean onDown(float x, float y, boolean fromMouse) {
-        if (checkClickedOrHovered(x, y)) {
-            setPressed(true, fromMouse);
+    public boolean onDown(float x, float y) {
+        if (checkClicked(x, y)) {
+            setPressed(true);
             return true;
         }
         return false;
@@ -335,8 +344,8 @@ public class CompositorButton extends StripLayoutView {
      * @return      If the button was clicked or not.
      */
     public boolean click(float x, float y) {
-        if (checkClickedOrHovered(x, y)) {
-            setPressed(false, false);
+        if (checkClicked(x, y)) {
+            setPressed(false);
             return true;
         }
         return false;
@@ -348,46 +357,7 @@ public class CompositorButton extends StripLayoutView {
      */
     public boolean onUpOrCancel() {
         boolean state = isPressed();
-        setPressed(false, false);
+        setPressed(false);
         return state;
-    }
-
-    /**
-     * Set whether button is hovered on.
-     *
-     * @param isHovered Whether the button is hovered on.
-     */
-    public void setHovered(boolean isHovered) {
-        mIsHovered = isHovered;
-    }
-
-    /**
-     * @return Whether the button is hovered on.
-     */
-    public boolean isHovered() {
-        return mIsHovered;
-    }
-
-    /**
-     * Set whether the button is pressed from mouse.
-     *
-     * @param isPressedFromMouse Whether the button is pressed from mouse.
-     */
-    private void setPressedFromMouse(boolean isPressedFromMouse) {
-        mIsPressedFromMouse = isPressedFromMouse;
-    }
-
-    /**
-     * @return Whether the button is pressed from mouse.
-     */
-    public boolean isPressedFromMouse() {
-        return mIsPressed && mIsPressedFromMouse;
-    }
-
-    /**
-     * @return Whether hover background should be applied to the button.
-     */
-    public boolean getShouldApplyHoverBackground() {
-        return isHovered() || isPressedFromMouse();
     }
 }

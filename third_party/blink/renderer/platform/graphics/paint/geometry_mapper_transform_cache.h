@@ -5,11 +5,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_PAINT_GEOMETRY_MAPPER_TRANSFORM_CACHE_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_PAINT_GEOMETRY_MAPPER_TRANSFORM_CACHE_H_
 
-#include <optional>
-
 #include "base/check_op.h"
 #include "base/dcheck_is_on.h"
-#include "base/memory/raw_ptr_exclusion.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "ui/gfx/geometry/transform.h"
@@ -117,8 +115,8 @@ class PLATFORM_EXPORT GeometryMapperTransformCache {
            plane_root_transform_->has_animation;
   }
 
-  bool has_sticky_or_anchor_position() const {
-    return has_sticky_or_anchor_position_;
+  bool has_sticky_or_anchor_scroll() const {
+    return has_sticky_or_anchor_scroll_;
   }
 
   bool is_backface_hidden() const { return is_backface_hidden_; }
@@ -126,10 +124,6 @@ class PLATFORM_EXPORT GeometryMapperTransformCache {
   const TransformPaintPropertyNode& nearest_scroll_translation() const {
     DCHECK(nearest_scroll_translation_);
     return *nearest_scroll_translation_;
-  }
-  const TransformPaintPropertyNode& scroll_translation_state() const {
-    DCHECK(scroll_translation_state_);
-    return *scroll_translation_state_;
   }
 
   const TransformPaintPropertyNode* nearest_directly_composited_ancestor()
@@ -150,10 +144,7 @@ class PLATFORM_EXPORT GeometryMapperTransformCache {
   // The parent of the root of consecutive identity or 2d translations from the
   // transform node, or the root of the tree if the whole path from the
   // transform node to the root contains identity or 2d translations only.
-  //
-  // Excluded from being a `raw_ptr` for visible regression in
-  // MotionMark (crbug.com/1495275#c116).
-  RAW_PTR_EXCLUSION const TransformPaintPropertyNode* root_of_2d_translation_;
+  const TransformPaintPropertyNode* root_of_2d_translation_;
 
   // The cached values here can be categorized in two logical groups:
   //
@@ -218,7 +209,7 @@ class PLATFORM_EXPORT GeometryMapperTransformCache {
     bool has_animation = false;
     USING_FAST_MALLOC(PlaneRootTransform);
   };
-  std::optional<PlaneRootTransform> plane_root_transform_;
+  absl::optional<PlaneRootTransform> plane_root_transform_;
 
   struct ScreenTransform {
     gfx::Transform to_screen;
@@ -227,16 +218,14 @@ class PLATFORM_EXPORT GeometryMapperTransformCache {
     bool has_animation = false;
     USING_FAST_MALLOC(ScreenTransform);
   };
-  std::optional<ScreenTransform> screen_transform_;
+  absl::optional<ScreenTransform> screen_transform_;
 
   const TransformPaintPropertyNode* nearest_scroll_translation_ = nullptr;
-  const TransformPaintPropertyNode* scroll_translation_state_ = nullptr;
   const TransformPaintPropertyNode* nearest_directly_composited_ancestor_ =
       nullptr;
 
-  // Whether or not there is a sticky or anchor position scroll translation to
-  // the root.
-  bool has_sticky_or_anchor_position_ = false;
+  // Whether or not there is a sticky or anchor-scroll translation to the root.
+  bool has_sticky_or_anchor_scroll_ = false;
 
   bool is_backface_hidden_ = false;
 

@@ -33,10 +33,9 @@ CouponServiceFactory::CouponServiceFactory()
 
 CouponServiceFactory::~CouponServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-CouponServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* CouponServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   DCHECK(!context->IsOffTheRecord());
 
-  return std::make_unique<CouponService>(std::make_unique<CouponDB>(context));
+  return new CouponService(std::make_unique<CouponDB>(context));
 }

@@ -16,9 +16,6 @@
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
 namespace blink {
-
-using mojom::blink::FormControlType;
-
 namespace {
 
 // Returns |true| if |frame| contains (or should be assumed to contain)
@@ -106,7 +103,7 @@ bool SavableResources::GetSavableResourceLinksForFrame(
   DCHECK(current_document);
 
   // Go through all descent nodes.
-  HTMLCollection* collection = current_document->all();
+  HTMLAllCollection* collection = current_document->all();
 
   // Go through all elements in this frame.
   for (unsigned i = 0; i < collection->length(); ++i) {
@@ -119,44 +116,44 @@ bool SavableResources::GetSavableResourceLinksForFrame(
 
 // static
 String SavableResources::GetSubResourceLinkFromElement(Element* element) {
-  const QualifiedName* attribute_name = nullptr;
+  const char* attribute_name = nullptr;
   if (element->HasTagName(html_names::kImgTag) ||
       element->HasTagName(html_names::kFrameTag) ||
       element->HasTagName(html_names::kIFrameTag) ||
       element->HasTagName(html_names::kScriptTag)) {
-    attribute_name = &html_names::kSrcAttr;
+    attribute_name = "src";
   } else if (element->HasTagName(html_names::kInputTag)) {
     HTMLInputElement* input = To<HTMLInputElement>(element);
-    if (input->FormControlType() == FormControlType::kInputImage) {
-      attribute_name = &html_names::kSrcAttr;
+    if (input->type() == input_type_names::kImage) {
+      attribute_name = "src";
     }
   } else if (element->HasTagName(html_names::kBodyTag) ||
              element->HasTagName(html_names::kTableTag) ||
              element->HasTagName(html_names::kTrTag) ||
              element->HasTagName(html_names::kTdTag)) {
-    attribute_name = &html_names::kBackgroundAttr;
+    attribute_name = "background";
   } else if (element->HasTagName(html_names::kBlockquoteTag) ||
              element->HasTagName(html_names::kQTag) ||
              element->HasTagName(html_names::kDelTag) ||
              element->HasTagName(html_names::kInsTag)) {
-    attribute_name = &html_names::kCiteAttr;
+    attribute_name = "cite";
   } else if (element->HasTagName(html_names::kObjectTag)) {
-    attribute_name = &html_names::kDataAttr;
+    attribute_name = "data";
   } else if (element->HasTagName(html_names::kLinkTag)) {
     // If the link element is not linked to css, ignore it.
-    String type = element->getAttribute(html_names::kTypeAttr);
-    String rel = element->getAttribute(html_names::kRelAttr);
+    String type = element->getAttribute("type");
+    String rel = element->getAttribute("rel");
     if ((type.ContainsOnlyASCIIOrEmpty() && type.LowerASCII() == "text/css") ||
         (rel.ContainsOnlyASCIIOrEmpty() && rel.LowerASCII() == "stylesheet")) {
       // TODO(jnd): Add support for extracting links of sub-resources which
       // are inside style-sheet such as @import, url(), etc.
       // See bug: http://b/issue?id=1111667.
-      attribute_name = &html_names::kHrefAttr;
+      attribute_name = "href";
     }
   }
   if (!attribute_name)
     return String();
-  String value = element->getAttribute(*attribute_name);
+  String value = element->getAttribute(attribute_name);
   // If value has content and not start with "javascript:" then return it,
   // otherwise return an empty string.
   if (!value.IsNull() && !value.empty() &&

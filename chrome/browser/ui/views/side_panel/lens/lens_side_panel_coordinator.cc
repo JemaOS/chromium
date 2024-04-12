@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/views/side_panel/lens/lens_side_panel_coordinator.h"
 #include <iostream>
 
-#include "base/check_op.h"
 #include "base/functional/callback.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
@@ -16,7 +15,6 @@
 #include "chrome/browser/search/search.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/ui_features.h"
-#include "chrome/browser/ui/views/frame/browser_actions.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/side_panel/lens/lens_unified_side_panel_view.h"
 #include "chrome/browser/ui/views/side_panel/side_panel.h"
@@ -31,18 +29,16 @@
 #include "components/search_engines/template_url_service.h"
 #include "components/search_engines/util.h"
 #include "components/vector_icons/vector_icons.h"
-#include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/models/image_model.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/gfx/image/image.h"
 #include "ui/views/vector_icons.h"
 
 LensSidePanelCoordinator::LensSidePanelCoordinator(Browser* browser)
     : BrowserUserData(*browser) {
-  GetSidePanelCoordinator()->AddSidePanelViewStateObserver(this);
+  GetBrowserView()->side_panel_coordinator()->AddSidePanelViewStateObserver(
+      this);
   lens_side_panel_view_ = nullptr;
-  auto* profile = browser->profile();
+  auto* profile = GetBrowserView()->GetProfile();
   favicon_cache_ = std::make_unique<FaviconCache>(
       FaviconServiceFactory::GetForProfile(profile,
                                            ServiceAccessType::EXPLICIT_ACCESS),
@@ -52,38 +48,17 @@ LensSidePanelCoordinator::LensSidePanelCoordinator(Browser* browser)
   current_default_search_provider_ =
       template_url_service_->GetDefaultSearchProvider();
   template_url_service_->AddObserver(this);
-
-  UpdateActionItem();
 }
 
 BrowserView* LensSidePanelCoordinator::GetBrowserView() {
   return BrowserView::GetBrowserViewForBrowser(&GetBrowser());
 }
 
-actions::ActionItem* LensSidePanelCoordinator::GetActionItem() {
-  CHECK(features::IsSidePanelPinningEnabled());
-  BrowserActions* browser_actions = BrowserActions::FromBrowser(&GetBrowser());
-  return actions::ActionManager::Get().FindAction(
-      kActionSidePanelShowLens, browser_actions->root_action_item());
-}
-
-void LensSidePanelCoordinator::UpdateActionItem() {
-  if (features::IsSidePanelPinningEnabled()) {
-    actions::ActionItem* action_item = GetActionItem();
-    action_item->SetText(GetComboboxLabel());
-    action_item->SetTooltipText(GetComboboxLabel());
-    action_item->SetImage(GetFaviconImage());
-  }
-}
-
-SidePanelCoordinator* LensSidePanelCoordinator::GetSidePanelCoordinator() {
-  return SidePanelUtil::GetSidePanelCoordinatorForBrowser(&GetBrowser());
-}
-
 LensSidePanelCoordinator::~LensSidePanelCoordinator() {
-  if (SidePanelCoordinator* side_panel_coordinator =
-          GetSidePanelCoordinator()) {
-    side_panel_coordinator->RemoveSidePanelViewStateObserver(this);
+  if (GetBrowserView() && GetBrowserView()->side_panel_coordinator()) {
+    GetBrowserView()
+        ->side_panel_coordinator()
+        ->RemoveSidePanelViewStateObserver(this);
   }
 
   if (template_url_service_ != nullptr)
@@ -92,12 +67,8 @@ LensSidePanelCoordinator::~LensSidePanelCoordinator() {
 
 void LensSidePanelCoordinator::DeregisterLensFromSidePanel() {
   lens_side_panel_view_ = nullptr;
-  // Remove entry from side panel entry if it exists.
-  auto* registry =
-      SidePanelCoordinator::GetGlobalSidePanelRegistry(&GetBrowser());
-  if (registry) {
-    registry->Deregister(SidePanelEntry::Key(SidePanelEntry::Id::kLens));
-  }
+  SidePanelCoordinator::GetGlobalSidePanelRegistry(&GetBrowser())
+      ->Deregister(SidePanelEntry::Key(SidePanelEntry::Id::kLens));
 }
 
 void LensSidePanelCoordinator::OnSidePanelDidClose() {
@@ -107,18 +78,13 @@ void LensSidePanelCoordinator::OnSidePanelDidClose() {
 }
 
 void LensSidePanelCoordinator::OnFaviconFetched(const gfx::Image& favicon) {
-  // Update the action item with the new favicon.
-  if (features::IsSidePanelPinningEnabled()) {
-    GetActionItem()->SetImage(ui::ImageModel::FromImage(favicon));
-  }
-  auto* registry =
+  auto* global_registry =
       SidePanelCoordinator::GetGlobalSidePanelRegistry(&GetBrowser());
-  if (registry == nullptr) {
+  if (global_registry == nullptr)
     return;
-  }
 
-  auto* lens_side_panel_entry =
-      registry->GetEntryForKey(SidePanelEntry::Key(SidePanelEntry::Id::kLens));
+  auto* lens_side_panel_entry = global_registry->GetEntryForKey(
+      SidePanelEntry::Key(SidePanelEntry::Id::kLens));
   if (lens_side_panel_entry == nullptr)
     return;
 
@@ -136,8 +102,6 @@ void LensSidePanelCoordinator::OnTemplateURLServiceChanged() {
     return;
 
   current_default_search_provider_ = default_search_provider;
-
-  UpdateActionItem();
   DeregisterLensFromSidePanel();
 
   base::RecordAction(base::UserMetricsAction(
@@ -160,7 +124,8 @@ bool LensSidePanelCoordinator::IsLaunchButtonEnabledForTesting() {
 }
 
 bool LensSidePanelCoordinator::IsDefaultSearchProviderGoogle() {
-  return search::DefaultSearchProviderIsGoogle(GetBrowser().profile());
+  auto* profile = GetBrowserView()->GetProfile();
+  return search::DefaultSearchProviderIsGoogle(profile);
 }
 
 std::u16string LensSidePanelCoordinator::GetComboboxLabel() {
@@ -206,11 +171,11 @@ const ui::ImageModel LensSidePanelCoordinator::GetFaviconImage() {
 void LensSidePanelCoordinator::RegisterEntryAndShow(
     const content::OpenURLParams& params) {
   base::RecordAction(base::UserMetricsAction("LensUnifiedSidePanel.LensQuery"));
-  auto* registry =
+  auto* global_registry =
       SidePanelCoordinator::GetGlobalSidePanelRegistry(&GetBrowser());
 
   // check if the view is already registered
-  if (registry->GetEntryForKey(
+  if (global_registry->GetEntryForKey(
           SidePanelEntry::Key(SidePanelEntry::Id::kLens)) != nullptr &&
       lens_side_panel_view_ != nullptr) {
     // The user issued a follow-up Lens query.
@@ -220,17 +185,17 @@ void LensSidePanelCoordinator::RegisterEntryAndShow(
   } else {
     base::RecordAction(
         base::UserMetricsAction("LensUnifiedSidePanel.LensQuery_New"));
-      auto entry = std::make_unique<SidePanelEntry>(
-          SidePanelEntry::Id::kLens, GetComboboxLabel(), GetFaviconImage(),
-          base::BindRepeating(&LensSidePanelCoordinator::CreateLensWebView,
-                              base::Unretained(this), params),
-          base::BindRepeating(&LensSidePanelCoordinator::GetOpenInNewTabURL,
-                              base::Unretained(this)));
-      entry->AddObserver(this);
-      registry->Register(std::move(entry));
+    auto entry = std::make_unique<SidePanelEntry>(
+        SidePanelEntry::Id::kLens, GetComboboxLabel(), GetFaviconImage(),
+        base::BindRepeating(&LensSidePanelCoordinator::CreateLensWebView,
+                            base::Unretained(this), params),
+        base::BindRepeating(&LensSidePanelCoordinator::GetOpenInNewTabURL,
+                            base::Unretained(this)));
+    entry->AddObserver(this);
+    global_registry->Register(std::move(entry));
   }
 
-  auto* side_panel_coordinator = GetSidePanelCoordinator();
+  auto* side_panel_coordinator = GetBrowserView()->side_panel_coordinator();
   if (side_panel_coordinator->GetCurrentEntryId() !=
       SidePanelEntry::Id::kLens) {
     if (!side_panel_coordinator->IsSidePanelShowing()) {
@@ -240,8 +205,8 @@ void LensSidePanelCoordinator::RegisterEntryAndShow(
       base::RecordAction(base::UserMetricsAction(
           "LensUnifiedSidePanel.LensQuery_SidePanelOpenNonLens"));
     }
-    side_panel_coordinator->Show(SidePanelEntry::Id::kLens,
-                                 SidePanelOpenTrigger::kLensContextMenu);
+
+    side_panel_coordinator->Show(SidePanelEntry::Id::kLens);
   } else {
     base::RecordAction(base::UserMetricsAction(
         "LensUnifiedSidePanel.LensQuery_SidePanelOpenLens"));
@@ -281,10 +246,8 @@ GURL LensSidePanelCoordinator::GetOpenInNewTabURL() const {
 }
 
 void LensSidePanelCoordinator::UpdateNewTabButtonState() {
-  if (SidePanelCoordinator* side_panel_coordinator =
-          GetSidePanelCoordinator()) {
-    side_panel_coordinator->UpdateNewTabButtonState();
-  }
+  if (GetBrowserView())
+    GetBrowserView()->side_panel_coordinator()->UpdateNewTabButtonState();
 }
 
-BROWSER_USER_DATA_KEY_IMPL(LensSidePanelCoordinator);
+WEB_CONTENTS_USER_DATA_KEY_IMPL(LensSidePanelCoordinator);

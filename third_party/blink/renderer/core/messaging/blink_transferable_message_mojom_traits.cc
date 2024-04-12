@@ -16,22 +16,22 @@ namespace mojo {
 
 namespace {
 
-std::optional<SkBitmap> ToSkBitmapN32(
+absl::optional<SkBitmap> ToSkBitmapN32(
     const scoped_refptr<blink::StaticBitmapImage>& static_bitmap_image) {
   const sk_sp<SkImage> image =
       static_bitmap_image->PaintImageForCurrentFrame().GetSwSkImage();
   if (!image)
-    return std::nullopt;
+    return absl::nullopt;
 
   SkBitmap sk_bitmap;
   if (!image->asLegacyBitmap(&sk_bitmap,
                              SkImage::LegacyBitmapMode::kRO_LegacyBitmapMode)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   SkBitmap sk_bitmap_n32;
   if (!skia::SkBitmapToN32OpaqueOrPremul(sk_bitmap, &sk_bitmap_n32)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return sk_bitmap_n32;
@@ -159,7 +159,7 @@ bool StructTraits<blink::mojom::blink::SerializedArrayBufferContents::DataView,
     return false;
   auto contents_data = contents_view.data();
 
-  std::optional<size_t> max_data_size;
+  absl::optional<size_t> max_data_size;
   if (data.is_resizable_by_user_javascript()) {
     max_data_size = base::checked_cast<size_t>(data.max_byte_length());
   }

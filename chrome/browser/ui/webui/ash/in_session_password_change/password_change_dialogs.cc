@@ -159,7 +159,7 @@ gfx::Size ConfirmPasswordChangeDialog::GetSize(
 }
 
 void ConfirmPasswordChangeDialog::GetWebUIMessageHandlers(
-    std::vector<content::WebUIMessageHandler*>* handlers) {
+    std::vector<content::WebUIMessageHandler*>* handlers) const {
   handlers->push_back(new ConfirmPasswordChangeHandler(
       scraped_old_password_, scraped_new_password_, show_spinner_initially_));
 }

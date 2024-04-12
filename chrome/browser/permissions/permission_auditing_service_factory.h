@@ -11,7 +11,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace permissions {
@@ -38,7 +38,7 @@ class PermissionAuditingServiceFactory : public ProfileKeyedServiceFactory {
       PermissionAuditingServiceFactory&&) = delete;
 
  private:
-  friend base::NoDestructor<PermissionAuditingServiceFactory>;
+  friend struct base::DefaultSingletonTraits<PermissionAuditingServiceFactory>;
 
   PermissionAuditingServiceFactory();
   ~PermissionAuditingServiceFactory() override;
@@ -46,7 +46,7 @@ class PermissionAuditingServiceFactory : public ProfileKeyedServiceFactory {
   // BrowserContextKeyedServiceFactory:
   bool ServiceIsCreatedWithBrowserContext() const override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

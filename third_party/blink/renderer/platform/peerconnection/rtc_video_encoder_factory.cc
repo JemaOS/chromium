@@ -11,7 +11,6 @@
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
 #include "media/media_buildflags.h"
-#include "media/mojo/clients/mojo_video_encoder_metrics_provider.h"
 #include "media/video/gpu_video_accelerator_factories.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/platform/allow_discouraged_type.h"
@@ -43,7 +42,7 @@ BASE_FEATURE(kMediaFoundationVP9Encoding,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
-std::optional<media::VideoCodecProfile> WebRTCFormatToCodecProfile(
+absl::optional<media::VideoCodecProfile> WebRTCFormatToCodecProfile(
     const webrtc::SdpVideoFormat& sdp) {
   if (sdp.name == "H264") {
 #if !BUILDFLAG(IS_ANDROID)
@@ -56,7 +55,7 @@ std::optional<media::VideoCodecProfile> WebRTCFormatToCodecProfile(
         blink::features::kWebRtcH264WithOpenH264FFmpeg);
 #endif  // BUILDFLAG(RTC_USE_H264) && BUILDFLAG(ENABLE_FFMPEG_VIDEO_DECODERS)
     if (!webrtc_h264_sw_enabled)
-      return std::nullopt;
+      return absl::nullopt;
 #endif
 
     return media::VideoCodecProfile::H264PROFILE_MIN;
@@ -67,12 +66,12 @@ std::optional<media::VideoCodecProfile> WebRTCFormatToCodecProfile(
   } else if (sdp.name == "AV1") {
     return media::VideoCodecProfile::AV1PROFILE_MIN;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 // Translate from media::VideoEncodeAccelerator::SupportedProfile to
 // webrtc::SdpVideoFormat, or return nothing if the profile isn't supported.
-std::optional<webrtc::SdpVideoFormat> VEAToWebRTCFormat(
+absl::optional<webrtc::SdpVideoFormat> VEAToWebRTCFormat(
     const media::VideoEncodeAccelerator::SupportedProfile& profile) {
   DCHECK_EQ(profile.max_framerate_denominator, 1U);
 
@@ -92,7 +91,7 @@ std::optional<webrtc::SdpVideoFormat> VEAToWebRTCFormat(
         blink::features::kWebRtcH264WithOpenH264FFmpeg);
 #endif  // BUILDFLAG(RTC_USE_H264) && BUILDFLAG(ENABLE_FFMPEG_VIDEO_DECODERS)
     if (!webrtc_h264_sw_enabled)
-      return std::nullopt;
+      return absl::nullopt;
 #endif
 
     webrtc::H264Profile h264_profile;
@@ -116,7 +115,7 @@ std::optional<webrtc::SdpVideoFormat> VEAToWebRTCFormat(
         break;
       default:
         // Unsupported H264 profile in WebRTC.
-        return std::nullopt;
+        return absl::nullopt;
     }
 
     const int width = profile.max_resolution.width();
@@ -124,7 +123,7 @@ std::optional<webrtc::SdpVideoFormat> VEAToWebRTCFormat(
     const int fps = profile.max_framerate_numerator;
     DCHECK_EQ(1u, profile.max_framerate_denominator);
 
-    const std::optional<webrtc::H264Level> h264_level =
+    const absl::optional<webrtc::H264Level> h264_level =
         webrtc::H264SupportedLevel(width * height, fps);
     const webrtc::H264ProfileLevelId profile_level_id(
         h264_profile, h264_level.value_or(webrtc::H264Level::kLevel1));
@@ -150,7 +149,7 @@ std::optional<webrtc::SdpVideoFormat> VEAToWebRTCFormat(
         break;
       default:
         // Unsupported VP9 profiles (profile1 & profile3) in WebRTC.
-        return std::nullopt;
+        return absl::nullopt;
     }
     webrtc::SdpVideoFormat format("VP9");
     format.parameters = {
@@ -164,7 +163,7 @@ std::optional<webrtc::SdpVideoFormat> VEAToWebRTCFormat(
     return webrtc::SdpVideoFormat("AV1");
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }  // namespace
 
 struct SupportedFormats {
@@ -192,12 +191,8 @@ SupportedFormats GetSupportedFormatsInternal(
     if (base::Contains(disabled_profiles, profile.profile))
       continue;
 
-    std::optional<webrtc::SdpVideoFormat> format = VEAToWebRTCFormat(profile);
+    absl::optional<webrtc::SdpVideoFormat> format = VEAToWebRTCFormat(profile);
     if (format) {
-      if (format->IsCodecInList(supported_formats.sdp_formats)) {
-        continue;
-      }
-
       supported_formats.profiles.push_back(profile.profile);
       supported_formats.scalability_modes.push_back(profile.scalability_modes);
       supported_formats.sdp_formats.push_back(std::move(*format));
@@ -222,11 +217,6 @@ SupportedFormats GetSupportedFormatsInternal(
     }
   }
 
-  DCHECK_EQ(supported_formats.profiles.size(),
-            supported_formats.sdp_formats.size());
-  DCHECK_EQ(supported_formats.profiles.size(),
-            supported_formats.scalability_modes.size());
-
   return supported_formats;
 }
 
@@ -234,7 +224,7 @@ bool IsConstrainedH264(const webrtc::SdpVideoFormat& format) {
   bool is_constrained_h264 = false;
 
   if (format.name == cricket::kH264CodecName) {
-    const std::optional<webrtc::H264ProfileLevelId> profile_level_id =
+    const absl::optional<webrtc::H264ProfileLevelId> profile_level_id =
         webrtc::ParseSdpForH264ProfileLevelId(format.parameters);
     if (profile_level_id &&
         profile_level_id->profile ==
@@ -261,13 +251,8 @@ bool IsScalabiltiyModeSupported(
 }  // anonymous namespace
 
 RTCVideoEncoderFactory::RTCVideoEncoderFactory(
-    media::GpuVideoAcceleratorFactories* gpu_factories,
-    scoped_refptr<media::MojoVideoEncoderMetricsProviderFactory>
-        encoder_metrics_provider_factory)
-    : gpu_factories_(gpu_factories),
-      encoder_metrics_provider_factory_(
-          std::move(encoder_metrics_provider_factory)),
-      gpu_codec_support_waiter_(gpu_factories) {
+    media::GpuVideoAcceleratorFactories* gpu_factories)
+    : gpu_factories_(gpu_factories), gpu_codec_support_waiter_(gpu_factories) {
 #if BUILDFLAG(IS_WIN)
   if (!base::FeatureList::IsEnabled(kMediaFoundationVP9Encoding)) {
     disabled_profiles_.emplace_back(media::VP9PROFILE_PROFILE0);
@@ -283,13 +268,7 @@ RTCVideoEncoderFactory::RTCVideoEncoderFactory(
 #endif
 }
 
-RTCVideoEncoderFactory::~RTCVideoEncoderFactory() {
-  // |encoder_metrics_provider_factory_| needs to be destroyed on the same
-  // sequence as one that destroys the VideoEncoderMetricsProviders created by
-  // it. It is gpu task runner in this case.
-  gpu_factories_->GetTaskRunner()->ReleaseSoon(
-      FROM_HERE, std::move(encoder_metrics_provider_factory_));
-}
+RTCVideoEncoderFactory::~RTCVideoEncoderFactory() {}
 
 void RTCVideoEncoderFactory::CheckAndWaitEncoderSupportStatusIfNeeded() const {
   if (!gpu_codec_support_waiter_.IsEncoderSupportKnown()) {
@@ -301,8 +280,8 @@ void RTCVideoEncoderFactory::CheckAndWaitEncoderSupportStatusIfNeeded() const {
   }
 }
 
-std::unique_ptr<webrtc::VideoEncoder> RTCVideoEncoderFactory::Create(
-    const webrtc::Environment& env,
+std::unique_ptr<webrtc::VideoEncoder>
+RTCVideoEncoderFactory::CreateVideoEncoder(
     const webrtc::SdpVideoFormat& format) {
   CheckAndWaitEncoderSupportStatusIfNeeded();
 
@@ -314,17 +293,15 @@ std::unique_ptr<webrtc::VideoEncoder> RTCVideoEncoderFactory::Create(
     for (size_t i = 0; i < supported_formats.sdp_formats.size(); ++i) {
       if (format.IsSameCodec(supported_formats.sdp_formats[i])) {
         encoder = std::make_unique<RTCVideoEncoder>(
-            supported_formats.profiles[i], is_constrained_h264, gpu_factories_,
-            encoder_metrics_provider_factory_);
+            supported_formats.profiles[i], is_constrained_h264, gpu_factories_);
         break;
       }
     }
   } else {
     auto profile = WebRTCFormatToCodecProfile(format);
     if (profile) {
-      encoder = std::make_unique<RTCVideoEncoder>(
-          *profile, is_constrained_h264, gpu_factories_,
-          encoder_metrics_provider_factory_);
+      encoder = std::make_unique<RTCVideoEncoder>(*profile, is_constrained_h264,
+                                                  gpu_factories_);
     }
   }
 
@@ -342,7 +319,7 @@ RTCVideoEncoderFactory::GetSupportedFormats() const {
 webrtc::VideoEncoderFactory::CodecSupport
 RTCVideoEncoderFactory::QueryCodecSupport(
     const webrtc::SdpVideoFormat& format,
-    std::optional<std::string> scalability_mode) const {
+    absl::optional<std::string> scalability_mode) const {
   CheckAndWaitEncoderSupportStatusIfNeeded();
   SupportedFormats supported_formats =
       GetSupportedFormatsInternal(gpu_factories_, disabled_profiles_);

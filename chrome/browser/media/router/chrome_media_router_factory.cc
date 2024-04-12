@@ -6,8 +6,7 @@
 
 #include "build/build_config.h"
 #include "chrome/browser/media/router/media_router_feature.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/profiles/profile_selections.h"
+#include "chrome/browser/profiles/incognito_helpers.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/media_router/browser/media_router_dialog_controller.h"
 #include "content/public/browser/browser_context.h"
@@ -62,25 +61,22 @@ ChromeMediaRouterFactory::~ChromeMediaRouterFactory() = default;
 
 content::BrowserContext* ChromeMediaRouterFactory::GetBrowserContextToUse(
     content::BrowserContext* context) const {
-  ProfileSelections profile_selections =
-      ProfileSelections::Builder()
-          .WithRegular(ProfileSelection::kOwnInstance)
-          .WithGuest(ProfileSelection::kOwnInstance)
-          .WithSystem(ProfileSelection::kNone)
-          .Build();
-  return profile_selections.ApplyProfileSelection(
-      Profile::FromBrowserContext(context));
+  return base::FeatureList::IsEnabled(kMediaRouterOTRInstance)
+             ? context
+             : chrome::GetBrowserContextRedirectedInIncognito(context);
 }
 
-std::unique_ptr<KeyedService>
-ChromeMediaRouterFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ChromeMediaRouterFactory::BuildServiceInstanceFor(
     BrowserContext* context) const {
-  CHECK(MediaRouterEnabled(context));
-  std::unique_ptr<MediaRouterBase> media_router = nullptr;
+  if (!MediaRouterEnabled(context)) {
+    NOTREACHED();
+    return nullptr;
+  }
+  MediaRouterBase* media_router = nullptr;
 #if BUILDFLAG(IS_ANDROID)
-  media_router = std::make_unique<MediaRouterAndroid>();
+  media_router = new MediaRouterAndroid();
 #else
-  media_router = std::make_unique<MediaRouterDesktop>(context);
+  media_router = new MediaRouterDesktop(context);
 #endif  // BUILDFLAG(IS_ANDROID)
   media_router->Initialize();
   return media_router;

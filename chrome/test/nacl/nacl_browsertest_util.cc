@@ -14,7 +14,6 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "build/build_config.h"
-#include "chrome/browser/chrome_browser_main_extra_parts_nacl_deprecation.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_paths.h"
@@ -98,7 +97,7 @@ MessageResponse LoadTestMessageHandler::HandleStructuredMessage(
     if (!message) {
       return MissingField(type, "message");
     }
-    std::optional<bool> passed = msg.FindBool("passed");
+    absl::optional<bool> passed = msg.FindBool("passed");
     if (!passed) {
       return MissingField(type, "passed");
     }
@@ -161,7 +160,7 @@ MessageResponse NaClIntegrationMessageHandler::HandleStructuredMessage(
     if (!message) {
       return MissingField(type, "message");
     }
-    std::optional<bool> passed = msg.FindBool("passed");
+    absl::optional<bool> passed = msg.FindBool("passed");
     if (!passed) {
       return MissingField(type, "passed");
     }
@@ -209,7 +208,6 @@ static void AddPnaclParm(const base::FilePath::StringType& url,
 }
 
 NaClBrowserTestBase::NaClBrowserTestBase() {
-  feature_list_.InitAndEnableFeature(kNaclAllow);
 }
 
 NaClBrowserTestBase::~NaClBrowserTestBase() {
@@ -272,7 +270,11 @@ void NaClBrowserTestBase::RunNaClIntegrationTest(
 
   GURL url;
   if (full_url) {
+#if BUILDFLAG(IS_WIN)
+    url = GURL(base::WideToUTF16(url_fragment_with_both));
+#else
     url = GURL(url_fragment_with_both);
+#endif
   } else {
     url = TestURL(url_fragment_with_both);
   }
@@ -307,10 +309,6 @@ bool NaClBrowserTestPnacl::IsAPnaclTest() {
   return true;
 }
 
-base::FilePath::StringType NaClBrowserTestIrt::Variant() {
-  return FILE_PATH_LITERAL("test_irt");
-}
-
 void NaClBrowserTestPnaclSubzero::SetUpCommandLine(
     base::CommandLine* command_line) {
   NaClBrowserTestPnacl::SetUpCommandLine(command_line);
@@ -330,7 +328,7 @@ void NaClBrowserTestNewlibExtension::SetUpCommandLine(
     base::CommandLine* command_line) {
   NaClBrowserTestBase::SetUpCommandLine(command_line);
   base::FilePath src_root;
-  ASSERT_TRUE(base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &src_root));
+  ASSERT_TRUE(base::PathService::Get(base::DIR_SOURCE_ROOT, &src_root));
 
   // Extension-based tests should specialize the GetDocumentRoot() / Variant()
   // to point at the isolated the test extension directory.
@@ -348,7 +346,7 @@ void NaClBrowserTestGLibcExtension::SetUpCommandLine(
     base::CommandLine* command_line) {
   NaClBrowserTestBase::SetUpCommandLine(command_line);
   base::FilePath src_root;
-  ASSERT_TRUE(base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &src_root));
+  ASSERT_TRUE(base::PathService::Get(base::DIR_SOURCE_ROOT, &src_root));
 
   // Extension-based tests should specialize the GetDocumentRoot() / Variant()
   // to point at the isolated the test extension directory.

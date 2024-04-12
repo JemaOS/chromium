@@ -8,7 +8,6 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -16,6 +15,7 @@
 #include "base/containers/flat_set.h"
 #include "base/feature_list.h"
 #include "base/ranges/algorithm.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -136,7 +136,7 @@ std::vector<std::string> GetSortedThirdPartyIMEs(
   std::vector<std::string> ime_list;
   std::string preferred_languages =
       prefs->GetString(language::prefs::kPreferredLanguages);
-  std::vector<std::string_view> enabled_languages =
+  std::vector<base::StringPiece> enabled_languages =
       base::SplitStringPiece(preferred_languages, ",", base::TRIM_WHITESPACE,
                              base::SPLIT_WANT_NONEMPTY);
 
@@ -148,10 +148,13 @@ std::vector<std::string> GetSortedThirdPartyIMEs(
   ime_state->GetInputMethodExtensions(&descriptors);
 
   // Filter out the IMEs not in |third_party_ime_set|.
-  std::erase_if(descriptors, [&third_party_ime_set](
-                                 const InputMethodDescriptor& descriptor) {
-    return !third_party_ime_set.contains(descriptor.id());
-  });
+  descriptors.erase(
+      std::remove_if(
+          descriptors.begin(), descriptors.end(),
+          [&third_party_ime_set](const InputMethodDescriptor& descriptor) {
+            return !third_party_ime_set.contains(descriptor.id());
+          }),
+      descriptors.end());
 
   // A set of the elements of |ime_list|.
   std::set<std::string> ime_set;
@@ -338,6 +341,11 @@ LanguageSettingsPrivateEnableLanguageFunction::Run() {
   std::string chrome_language = language_code;
   language::ToChromeLanguageSynonym(&chrome_language);
 
+  if (base::Contains(languages, chrome_language)) {
+    LOG(ERROR) << "Language " << chrome_language << " already enabled";
+    return RespondNow(NoArguments());
+  }
+
   translate_prefs->AddToLanguageList(language_code, /*force_blocked=*/false);
 
   return RespondNow(NoArguments());
@@ -364,7 +372,15 @@ LanguageSettingsPrivateDisableLanguageFunction::Run() {
   std::string chrome_language = language_code;
   language::ToChromeLanguageSynonym(&chrome_language);
 
+  if (!base::Contains(languages, chrome_language)) {
+    LOG(ERROR) << "Language " << chrome_language << " not enabled";
+    return RespondNow(NoArguments());
+  }
+
   translate_prefs->RemoveFromLanguageList(language_code);
+  if (language_code == translate_prefs->GetRecentTargetLanguage()) {
+    translate_prefs->ResetRecentTargetLanguage();
+  }
 
   return RespondNow(NoArguments());
 }
@@ -485,20 +501,20 @@ LanguageSettingsPrivateMoveLanguageFunction::Run() {
   translate::TranslatePrefs::RearrangeSpecifier where =
       translate::TranslatePrefs::kNone;
   switch (move_type) {
-    case language_settings_private::MoveType::kTop:
+    case language_settings_private::MOVE_TYPE_TOP:
       where = translate::TranslatePrefs::kTop;
       break;
 
-    case language_settings_private::MoveType::kUp:
+    case language_settings_private::MOVE_TYPE_UP:
       where = translate::TranslatePrefs::kUp;
       break;
 
-    case language_settings_private::MoveType::kDown:
+    case language_settings_private::MOVE_TYPE_DOWN:
       where = translate::TranslatePrefs::kDown;
       break;
 
-    case language_settings_private::MoveType::kNone:
-    case language_settings_private::MoveType::kMaxValue:
+    case language_settings_private::MOVE_TYPE_NONE:
+    case language_settings_private::MOVE_TYPE_LAST:
       NOTREACHED();
   }
 

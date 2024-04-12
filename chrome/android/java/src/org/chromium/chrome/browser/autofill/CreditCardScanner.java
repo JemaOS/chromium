@@ -38,7 +38,9 @@ public class CreditCardScanner {
 
     /** The delegate for credit card scanning. */
     public interface Delegate {
-        /** Notifies the delegate that scanning was cancelled. */
+        /**
+         * Notifies the delegate that scanning was cancelled.
+         */
         void onScanCancelled();
 
         /**
@@ -70,9 +72,8 @@ public class CreditCardScanner {
      * @return An object that can scan a credit card.
      */
     public static CreditCardScanner create(WebContents webContents, Delegate delegate) {
-        return sFactory != null
-                ? sFactory.create(webContents, delegate)
-                : new CreditCardScanner(webContents, delegate);
+        return sFactory != null ? sFactory.create(webContents, delegate)
+                                : new CreditCardScanner(webContents, delegate);
     }
 
     /**
@@ -94,7 +95,9 @@ public class CreditCardScanner {
         return false;
     }
 
-    /** Scans a credit card. Will invoke a delegate callback with the result. */
+    /**
+     * Scans a credit card. Will invoke a delegate callback with the result.
+     */
     public void scan() {
         mDelegate.onScanCancelled();
     }

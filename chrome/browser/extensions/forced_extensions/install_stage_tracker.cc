@@ -25,7 +25,7 @@ namespace {
 // Returns true if the `current_stage` should be overridden by the
 // `new_stage`.
 bool ShouldOverrideCurrentStage(
-    std::optional<InstallStageTracker::Stage> current_stage,
+    absl::optional<InstallStageTracker::Stage> current_stage,
     InstallStageTracker::Stage new_stage) {
   if (!current_stage)
     return true;
@@ -324,7 +324,7 @@ void InstallStageTracker::ReportCrxInstallError(
 void InstallStageTracker::ReportSandboxedUnpackerFailureReason(
     const ExtensionId& id,
     const CrxInstallError& crx_install_error) {
-  std::optional<SandboxedUnpackerFailureReason> unpacker_failure_reason =
+  absl::optional<SandboxedUnpackerFailureReason> unpacker_failure_reason =
       crx_install_error.sandbox_failure_detail();
   DCHECK(unpacker_failure_reason);
   InstallationData& data = installation_data_map_[id];

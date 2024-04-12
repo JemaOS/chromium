@@ -99,29 +99,19 @@ void StatusAreaOverflowButtonTray::IconView::UpdateRotation() {
   SetTransform(transform);
 }
 
-BEGIN_METADATA(StatusAreaOverflowButtonTray, IconView)
-END_METADATA
-
 StatusAreaOverflowButtonTray::StatusAreaOverflowButtonTray(Shelf* shelf)
     : TrayBackgroundView(
           shelf,
           TrayBackgroundViewCatalogName::kStatusAreaOverflowButton),
       icon_(tray_container()->AddChildView(std::make_unique<IconView>())) {
-  SetCallback(base::BindRepeating(
+  SetPressedCallback(base::BindRepeating(
       &StatusAreaOverflowButtonTray::OnButtonPressed, base::Unretained(this)));
-
   set_use_bounce_in_animation(false);
-  // https://b/293650341 `TrayBackgroundView` sets the layer opacity to 0.0 when
-  // they're not visible so it can animate the opacity when the visibility
-  // changes. Since this view bypasses that logic we need to work around this by
-  // setting the opacity ourselves.
-  layer()->SetOpacity(1.0);
 }
 
 StatusAreaOverflowButtonTray::~StatusAreaOverflowButtonTray() {}
 
-void StatusAreaOverflowButtonTray::ClickedOutsideBubble(
-    const ui::LocatedEvent& event) {}
+void StatusAreaOverflowButtonTray::ClickedOutsideBubble() {}
 
 std::u16string StatusAreaOverflowButtonTray::GetAccessibleNameForTray() {
   return l10n_util::GetStringUTF16(
@@ -134,9 +124,6 @@ void StatusAreaOverflowButtonTray::HandleLocaleChange() {}
 void StatusAreaOverflowButtonTray::HideBubbleWithView(
     const TrayBubbleView* bubble_view) {}
 
-void StatusAreaOverflowButtonTray::HideBubble(
-    const TrayBubbleView* bubble_view) {}
-
 void StatusAreaOverflowButtonTray::Initialize() {
   TrayBackgroundView::Initialize();
   SetVisiblePreferred(false);
@@ -147,7 +134,6 @@ void StatusAreaOverflowButtonTray::SetVisiblePreferred(bool visible_preferred) {
   // `StatusAreaWidget`, so we bypass all default visibility logic from
   // `TrayBackgroundView`.
   views::View::SetVisible(visible_preferred);
-  TrackVisibilityUMA(visible_preferred);
 }
 
 void StatusAreaOverflowButtonTray::UpdateAfterStatusAreaCollapseChange() {
@@ -167,7 +153,7 @@ void StatusAreaOverflowButtonTray::ResetStateToCollapsed() {
   icon_->ToggleState(state_);
 }
 
-BEGIN_METADATA(StatusAreaOverflowButtonTray);
+BEGIN_METADATA(StatusAreaOverflowButtonTray, TrayBackgroundView);
 END_METADATA
 
 }  // namespace ash

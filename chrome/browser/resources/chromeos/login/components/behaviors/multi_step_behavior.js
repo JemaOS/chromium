@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {dom} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+// clang-format off
+import {dom, Polymer} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {invokePolymerMethod} from '../../display_manager.js';
+// clang-format on
 
 /**
  * @fileoverview
@@ -37,7 +39,7 @@ import {invokePolymerMethod} from '../../display_manager.js';
  */
 
 /** @polymerBehavior */
-export const MultiStepBehavior = {
+export var MultiStepBehavior = {
   properties: {
     uiStep: {
       type: String,
@@ -133,13 +135,12 @@ export const MultiStepBehavior = {
 
   setUIStep(step) {
     if (this.uiStep) {
-      if (this.uiStep === step) {
+      if (this.uiStep == step) {
         return;
       }
       this.hideUIStep_(this.uiStep);
     }
     this.uiStep = step;
-    this.shadowRoot.host.setAttribute('multistep', step);
     this.showUIStep_(this.uiStep);
   },
 
@@ -172,7 +173,7 @@ export const MultiStepBehavior = {
    */
   refreshStepBindings_() {
     this.stepElements_ = {};
-    const matches = dom(this.root).querySelectorAll('[for-step]');
+    var matches = dom(this.root).querySelectorAll('[for-step]');
     for (const child of matches) {
       const stepsList = child.getAttribute('for-step');
       for (const stepChunk of stepsList.split(',')) {
@@ -187,13 +188,22 @@ export const MultiStepBehavior = {
 
 };
 
+/**
+ * TODO(b/24294625): Replace with an interface.
+ * @typedef {{
+ *   setUIStep: function(string),
+ *   onBeforeShow: function(),
+ *   onBeforeHide: function(),
+ * }}
+ */
+MultiStepBehavior.Proto;
+
 /** @interface */
 export class MultiStepBehaviorInterface {
-  /** @return {Object} */
-  get UI_STEPS() {}
   setUIStep(step) {}
   /** @return {string} */
   defaultUIStep() {}
+
   /** @return {string} */
   get uiStep() {}
 }

@@ -32,8 +32,6 @@
 
 #include "third_party/blink/renderer/core/dom/events/event_listener_map.h"
 
-#include "base/bits.h"
-#include "base/debug/crash_logging.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_event_listener_options.h"
 #include "third_party/blink/renderer/core/dom/events/add_event_listener_options_resolved.h"
 #include "third_party/blink/renderer/core/dom/events/event_listener.h"
@@ -47,6 +45,18 @@
 #endif
 
 namespace blink {
+
+#if DCHECK_IS_ON()
+static base::Lock& ActiveIteratorCountLock() {
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(base::Lock, lock, ());
+  return lock;
+}
+
+void EventListenerMap::CheckNoActiveIterators() {
+  base::AutoLock locker(ActiveIteratorCountLock());
+  DCHECK(!active_iterator_count_);
+}
+#endif
 
 EventListenerMap::EventListenerMap() = default;
 
@@ -62,9 +72,8 @@ bool EventListenerMap::ContainsCapturing(const AtomicString& event_type) const {
   for (const auto& entry : entries_) {
     if (entry.first == event_type) {
       for (const auto& event_listener : *entry.second) {
-        if (event_listener->Capture()) {
+        if (event_listener.Capture())
           return true;
-        }
       }
       return false;
     }
@@ -77,7 +86,7 @@ bool EventListenerMap::ContainsJSBasedEventListeners(
   for (const auto& entry : entries_) {
     if (entry.first == event_type) {
       for (const auto& event_listener : *entry.second) {
-        const EventListener* callback = event_listener->Callback();
+        const EventListener* callback = event_listener.Callback();
         if (callback && callback->IsJSBasedEventListener())
           return true;
       }
@@ -88,11 +97,8 @@ bool EventListenerMap::ContainsJSBasedEventListeners(
 }
 
 void EventListenerMap::Clear() {
-  for (const auto& entry : entries_) {
-    for (const auto& registered_listener : *entry.second) {
-      registered_listener->SetRemoved();
-    }
-  }
+  CheckNoActiveIterators();
+
   entries_.clear();
 }
 
@@ -106,43 +112,29 @@ Vector<AtomicString> EventListenerMap::EventTypes() const {
   return types;
 }
 
-static bool AddListenerToVector(EventListenerVector* listener_vector,
+static bool AddListenerToVector(EventListenerVector* vector,
                                 EventListener* listener,
                                 const AddEventListenerOptionsResolved* options,
-                                RegisteredEventListener** registered_listener) {
-  auto* end = listener_vector->end();
-  for (auto* iter = listener_vector->begin(); iter != end; ++iter) {
-    if ((*iter)->Matches(listener, options)) {
-      // Duplicate listener.
-      return false;
-    }
-  }
+                                RegisteredEventListener* registered_listener) {
+  *registered_listener = RegisteredEventListener(listener, options);
 
-  *registered_listener =
-      MakeGarbageCollected<RegisteredEventListener>(listener, options);
-  listener_vector->push_back(*registered_listener);
+  if (vector->Find(*registered_listener) != kNotFound)
+    return false;  // Duplicate listener.
+
+  vector->push_back(*registered_listener);
   return true;
 }
 
 bool EventListenerMap::Add(const AtomicString& event_type,
                            EventListener* listener,
                            const AddEventListenerOptionsResolved* options,
-                           RegisteredEventListener** registered_listener) {
+                           RegisteredEventListener* registered_listener) {
+  CheckNoActiveIterators();
+
   for (const auto& entry : entries_) {
-    if (entry.first == event_type) {
-      // Report the size of event listener vector in case of hang-crash to see
-      // if http://crbug.com/1420890 is induced by event listener count runaway.
-      // Only do this when we have a non-trivial number of listeners already.
-      static constexpr wtf_size_t kMinNumberOfListenersToReport = 8;
-      if (entry.second->size() < kMinNumberOfListenersToReport) {
-        return AddListenerToVector(entry.second.Get(), listener, options,
-                                   registered_listener);
-      }
-      SCOPED_CRASH_KEY_NUMBER("events", "listener_count_log2",
-                              base::bits::Log2Floor(entry.second->size()));
+    if (entry.first == event_type)
       return AddListenerToVector(entry.second.Get(), listener, options,
                                  registered_listener);
-    }
   }
 
   entries_.push_back(
@@ -155,28 +147,41 @@ static bool RemoveListenerFromVector(
     EventListenerVector* listener_vector,
     const EventListener* listener,
     const EventListenerOptions* options,
-    RegisteredEventListener** registered_listener) {
-  EventListenerVector::iterator end = listener_vector->end();
-  for (EventListenerVector::iterator iter = listener_vector->begin();
-       iter != end; ++iter) {
-    if ((*iter)->Matches(listener, options)) {
-      (*iter)->SetRemoved();
-      *registered_listener = *iter;
-      listener_vector->erase(iter);
-      return true;
-    }
+    wtf_size_t* index_of_removed_listener,
+    RegisteredEventListener* registered_listener) {
+  auto* const begin = listener_vector->data();
+  auto* const end = begin + listener_vector->size();
+
+  // Do a manual search for the matching RegisteredEventListener. It is not
+  // possible to create a RegisteredEventListener on the stack because of the
+  // const on |listener|.
+  auto* const it = std::find_if(
+      begin, end,
+      [listener, options](const RegisteredEventListener& event_listener)
+          -> bool { return event_listener.Matches(listener, options); });
+
+  if (it == end) {
+    *index_of_removed_listener = kNotFound;
+    return false;
   }
-  return false;
+  *registered_listener = *it;
+  *index_of_removed_listener = static_cast<wtf_size_t>(it - begin);
+  listener_vector->EraseAt(*index_of_removed_listener);
+  return true;
 }
 
 bool EventListenerMap::Remove(const AtomicString& event_type,
                               const EventListener* listener,
                               const EventListenerOptions* options,
-                              RegisteredEventListener** registered_listener) {
+                              wtf_size_t* index_of_removed_listener,
+                              RegisteredEventListener* registered_listener) {
+  CheckNoActiveIterators();
+
   for (unsigned i = 0; i < entries_.size(); ++i) {
     if (entries_[i].first == event_type) {
       bool was_removed = RemoveListenerFromVector(
-          entries_[i].second.Get(), listener, options, registered_listener);
+          entries_[i].second.Get(), listener, options,
+          index_of_removed_listener, registered_listener);
       if (entries_[i].second->empty())
         entries_.EraseAt(i);
       return was_removed;
@@ -187,6 +192,8 @@ bool EventListenerMap::Remove(const AtomicString& event_type,
 }
 
 EventListenerVector* EventListenerMap::Find(const AtomicString& event_type) {
+  CheckNoActiveIterators();
+
   for (const auto& entry : entries_) {
     if (entry.first == event_type)
       return entry.second.Get();
@@ -200,16 +207,17 @@ static void CopyListenersNotCreatedFromMarkupToTarget(
     EventListenerVector* listener_vector,
     EventTarget* target) {
   for (auto& event_listener : *listener_vector) {
-    if (event_listener->Callback()->IsEventHandlerForContentAttribute()) {
+    if (event_listener.Callback()->IsEventHandlerForContentAttribute())
       continue;
-    }
-    AddEventListenerOptionsResolved* options = event_listener->Options();
-    target->addEventListener(event_type, event_listener->Callback(), options);
+    AddEventListenerOptionsResolved* options = event_listener.Options();
+    target->addEventListener(event_type, event_listener.Callback(), options);
   }
 }
 
 void EventListenerMap::CopyEventListenersNotCreatedFromMarkupToTarget(
     EventTarget* target) {
+  CheckNoActiveIterators();
+
   for (const auto& event_listener : entries_) {
     CopyListenersNotCreatedFromMarkupToTarget(
         event_listener.first, event_listener.second.Get(), target);

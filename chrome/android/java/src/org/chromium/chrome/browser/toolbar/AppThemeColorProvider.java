@@ -7,11 +7,8 @@ package org.chromium.chrome.browser.toolbar;
 import android.content.Context;
 import android.content.res.ColorStateList;
 
-import androidx.annotation.Nullable;
-
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutType;
-import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider.IncognitoStateObserver;
 import org.chromium.chrome.browser.theme.ThemeColorProvider;
@@ -39,33 +36,37 @@ public class AppThemeColorProvider extends ThemeColorProvider implements Incogni
     /** Whether app is in incognito mode. */
     private boolean mIsIncognito;
 
+    /** Whether app is in overview mode. */
+    private boolean mIsOverviewVisible;
+
     /** The activity {@link Context}. */
     private final Context mActivityContext;
 
-    AppThemeColorProvider(
-            Context context, @Nullable ActivityLifecycleDispatcher activityLifecycleDispatcher) {
-        super(context, activityLifecycleDispatcher);
+    AppThemeColorProvider(Context context) {
+        super(context);
 
         mActivityContext = context;
         mStandardPrimaryColor = ChromeColors.getDefaultThemeColor(context, false);
         mIncognitoPrimaryColor = ChromeColors.getDefaultThemeColor(context, true);
 
-        mLayoutStateObserver =
-                new LayoutStateProvider.LayoutStateObserver() {
-                    @Override
-                    public void onStartedShowing(@LayoutType int layoutType) {
-                        if (layoutType == LayoutType.TAB_SWITCHER) {
-                            updateTheme();
-                        }
-                    }
+        mLayoutStateObserver = new LayoutStateProvider.LayoutStateObserver() {
+            @Override
+            public void onStartedShowing(@LayoutType int layoutType, boolean showToolbar) {
+                if (layoutType == LayoutType.TAB_SWITCHER) {
+                    mIsOverviewVisible = true;
+                    updateTheme();
+                }
+            }
 
-                    @Override
-                    public void onStartedHiding(@LayoutType int layoutType) {
-                        if (layoutType == LayoutType.TAB_SWITCHER) {
-                            updateTheme();
-                        }
-                    }
-                };
+            @Override
+            public void onStartedHiding(
+                    @LayoutType int layoutType, boolean showToolbar, boolean delayAnimation) {
+                if (layoutType == LayoutType.TAB_SWITCHER) {
+                    mIsOverviewVisible = false;
+                    updateTheme();
+                }
+            }
+        };
     }
 
     void setIncognitoStateProvider(IncognitoStateProvider provider) {
@@ -85,15 +86,20 @@ public class AppThemeColorProvider extends ThemeColorProvider implements Incogni
     }
 
     private void updateTheme() {
-        updatePrimaryColor(mIsIncognito ? mIncognitoPrimaryColor : mStandardPrimaryColor, false);
-        final @BrandedColorScheme int brandedColorScheme =
-                mIsIncognito ? BrandedColorScheme.INCOGNITO : BrandedColorScheme.APP_DEFAULT;
+        final boolean shouldUseIncognitoBackground = mIsIncognito
+                && (!mIsOverviewVisible
+                        || ToolbarColors.canUseIncognitoToolbarThemeColorInOverview(
+                                mActivityContext));
+
+        updatePrimaryColor(
+                shouldUseIncognitoBackground ? mIncognitoPrimaryColor : mStandardPrimaryColor,
+                false);
+        final @BrandedColorScheme int brandedColorScheme = shouldUseIncognitoBackground
+                ? BrandedColorScheme.INCOGNITO
+                : BrandedColorScheme.APP_DEFAULT;
         final ColorStateList iconTint =
                 ThemeUtils.getThemedToolbarIconTint(mActivityContext, brandedColorScheme);
-
-        final ColorStateList activityFocusTint =
-                calculateActivityFocusTint(mActivityContext, brandedColorScheme);
-        updateTint(iconTint, activityFocusTint, brandedColorScheme);
+        updateTint(iconTint, brandedColorScheme);
     }
 
     @Override
@@ -107,11 +113,5 @@ public class AppThemeColorProvider extends ThemeColorProvider implements Incogni
             mLayoutStateProvider.removeObserver(mLayoutStateObserver);
             mLayoutStateProvider = null;
         }
-    }
-
-    @Override
-    public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
-        super.onTopResumedActivityChanged(isTopResumedActivity);
-        updateTheme();
     }
 }

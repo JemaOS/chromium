@@ -14,7 +14,9 @@
 #include "chrome/common/extensions/api/file_system_provider_internal.h"
 #include "components/services/filesystem/public/mojom/types.mojom.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 namespace {
 
 // Convert |input| into |output|. If parsing fails, then returns false.
@@ -57,7 +59,8 @@ ReadDirectory::ReadDirectory(
       directory_path_(directory_path),
       callback_(std::move(callback)) {}
 
-ReadDirectory::~ReadDirectory() = default;
+ReadDirectory::~ReadDirectory() {
+}
 
 bool ReadDirectory::Execute(int request_id) {
   using extensions::api::file_system_provider::ReadDirectoryRequestedOptions;
@@ -106,4 +109,6 @@ void ReadDirectory::OnError(int /* request_id */,
       error, storage::AsyncFileUtil::EntryList(), false /* has_more */);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

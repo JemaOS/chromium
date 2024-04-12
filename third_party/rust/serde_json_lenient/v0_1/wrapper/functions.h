@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-#include "third_party/rust/cxx/v1/cxx.h"
+#include "third_party/rust/cxx/v1/crate/include/cxx.h"
 
 namespace serde_json_lenient {
 

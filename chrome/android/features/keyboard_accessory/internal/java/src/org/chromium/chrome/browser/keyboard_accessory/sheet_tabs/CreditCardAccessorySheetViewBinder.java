@@ -4,7 +4,8 @@
 
 package org.chromium.chrome.browser.keyboard_accessory.sheet_tabs;
 
-import android.graphics.drawable.Drawable;
+import static org.chromium.chrome.browser.autofill.AutofillUiUtils.getCardIcon;
+
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -22,29 +23,15 @@ import org.chromium.components.browser_ui.widget.chips.ChipView;
 import org.chromium.ui.modelutil.RecyclerViewAdapter;
 import org.chromium.ui.modelutil.SimpleRecyclerViewMcp;
 
-import java.util.function.Function;
-
 class CreditCardAccessorySheetViewBinder {
-    /** Generic UI Configurations that help to transform specific model data. */
-    static class UiConfiguration {
-        /**
-         * Converts an {@link KeyboardAccessoryData.UserInfo} associated with a credit card to the
-         * appropriate drawable.
-         */
-        public Function<KeyboardAccessoryData.UserInfo, Drawable> cardDrawableFunction;
-    }
-
-    static ElementViewHolder create(
-            UiConfiguration uiConfiguration,
-            ViewGroup parent,
-            @AccessorySheetDataPiece.Type int viewType) {
+    static ElementViewHolder create(ViewGroup parent, @AccessorySheetDataPiece.Type int viewType) {
         switch (viewType) {
             case AccessorySheetDataPiece.Type.WARNING: // Fallthrough to reuse title container.
             case AccessorySheetDataPiece.Type.TITLE:
                 return new AccessorySheetTabViewBinder.TitleViewHolder(
                         parent, R.layout.keyboard_accessory_sheet_tab_title);
             case AccessorySheetDataPiece.Type.CREDIT_CARD_INFO:
-                return new CreditCardInfoViewHolder(parent, uiConfiguration.cardDrawableFunction);
+                return new CreditCardInfoViewHolder(parent);
             case AccessorySheetDataPiece.Type.PROMO_CODE_INFO:
                 return new PromoCodeInfoViewHolder(parent);
             case AccessorySheetDataPiece.Type.FOOTER_COMMAND:
@@ -67,16 +54,13 @@ class CreditCardAccessorySheetViewBinder {
         }
     }
 
-    /** View which represents a single credit card and its selectable fields. */
+    /**
+     * View which represents a single credit card and its selectable fields.
+     */
     static class CreditCardInfoViewHolder
             extends ElementViewHolder<KeyboardAccessoryData.UserInfo, CreditCardAccessoryInfoView> {
-        private final Function<KeyboardAccessoryData.UserInfo, Drawable> mCardDrawableFunction;
-
-        CreditCardInfoViewHolder(
-                ViewGroup parent,
-                Function<KeyboardAccessoryData.UserInfo, Drawable> cardDrawableFunction) {
+        CreditCardInfoViewHolder(ViewGroup parent) {
             super(parent, R.layout.keyboard_accessory_sheet_tab_credit_card_info);
-            mCardDrawableFunction = cardDrawableFunction;
         }
 
         @Override
@@ -87,20 +71,55 @@ class CreditCardAccessorySheetViewBinder {
             bindChipView(view.getCardholder(), info.getFields().get(3));
             bindChipView(view.getCvc(), info.getFields().get(4));
 
-            view.getExpiryGroup()
-                    .setVisibility(
-                            view.getExpYear().getVisibility() == View.VISIBLE
-                                            || view.getExpMonth().getVisibility() == View.VISIBLE
-                                    ? View.VISIBLE
-                                    : View.GONE);
-            view.setIcon(mCardDrawableFunction.apply(info));
+            view.getExpiryGroup().setVisibility(view.getExpYear().getVisibility() == View.VISIBLE
+                                    || view.getExpMonth().getVisibility() == View.VISIBLE
+                            ? View.VISIBLE
+                            : View.GONE);
+            view.setIcon(getCardIcon(view.getContext(), info.getIconUrl(),
+                    getDrawableForOrigin(info.getOrigin()),
+                    R.dimen.keyboard_accessory_bar_item_cc_icon_width,
+                    R.dimen.keyboard_accessory_suggestion_icon_size, R.dimen.card_art_corner_radius,
+                    /* showCustomIcon= */ true));
+        }
+
+        private static @DrawableRes int getDrawableForOrigin(String origin) {
+            boolean use_new_data = ChromeFeatureList.isEnabled(
+                    ChromeFeatureList.AUTOFILL_ENABLE_NEW_CARD_ART_AND_NETWORK_IMAGES);
+
+            switch (origin) {
+                case "americanExpressCC":
+                    return use_new_data ? R.drawable.amex_metadata_card : R.drawable.amex_card;
+                case "dinersCC":
+                    return use_new_data ? R.drawable.diners_metadata_card : R.drawable.diners_card;
+                case "discoverCC":
+                    return use_new_data ? R.drawable.discover_metadata_card
+                                        : R.drawable.discover_card;
+                case "eloCC":
+                    return use_new_data ? R.drawable.elo_metadata_card : R.drawable.elo_card;
+                case "jcbCC":
+                    return use_new_data ? R.drawable.jcb_metadata_card : R.drawable.jcb_card;
+                case "masterCardCC":
+                    return use_new_data ? R.drawable.mc_metadata_card : R.drawable.mc_card;
+                case "mirCC":
+                    return use_new_data ? R.drawable.mir_metadata_card : R.drawable.mir_card;
+                case "troyCC":
+                    return use_new_data ? R.drawable.troy_metadata_card : R.drawable.troy_card;
+                case "unionPayCC":
+                    return use_new_data ? R.drawable.unionpay_metadata_card
+                                        : R.drawable.unionpay_card;
+                case "visaCC":
+                    return use_new_data ? R.drawable.visa_metadata_card : R.drawable.visa_card;
+            }
+            return R.drawable.infobar_autofill_cc;
         }
     }
 
-    /** View which represents a single Promo Code Offer and its fields. */
+    /**
+     * View which represents a single Promo Code Offer and its fields.
+     */
     static class PromoCodeInfoViewHolder
-            extends ElementViewHolder<
-                    KeyboardAccessoryData.PromoCodeInfo, PromoCodeAccessoryInfoView> {
+            extends ElementViewHolder<KeyboardAccessoryData.PromoCodeInfo,
+                    PromoCodeAccessoryInfoView> {
         PromoCodeInfoViewHolder(ViewGroup parent) {
             super(parent, R.layout.keyboard_accessory_sheet_tab_promo_code_info);
         }
@@ -110,55 +129,20 @@ class CreditCardAccessorySheetViewBinder {
                 KeyboardAccessoryData.PromoCodeInfo info, PromoCodeAccessoryInfoView view) {
             bindChipView(view.getPromoCode(), info.getPromoCode());
             view.getDetailsText().setText(info.getDetailsText());
-            view.getDetailsText()
-                    .setVisibility(info.getDetailsText().isEmpty() ? View.GONE : View.VISIBLE);
+            view.getDetailsText().setVisibility(
+                    info.getDetailsText().isEmpty() ? View.GONE : View.VISIBLE);
 
-            view.setIcon(
-                    AppCompatResources.getDrawable(
-                            view.getContext(), R.drawable.ic_logo_googleg_24dp));
+            view.setIcon(AppCompatResources.getDrawable(
+                    view.getContext(), R.drawable.ic_logo_googleg_24dp));
         }
     }
 
-    static void initializeView(
-            RecyclerView view, UiConfiguration uiConfiguration, AccessorySheetTabItemsModel model) {
-        view.setAdapter(
-                new RecyclerViewAdapter<>(
-                        new SimpleRecyclerViewMcp<>(
-                                model,
-                                AccessorySheetDataPiece::getType,
-                                AccessorySheetTabViewBinder.ElementViewHolder::bind),
-                        (parent, viewType) -> create(uiConfiguration, parent, viewType)));
+    static void initializeView(RecyclerView view, AccessorySheetTabItemsModel model) {
+        view.setAdapter(new RecyclerViewAdapter<>(
+                new SimpleRecyclerViewMcp<>(model, AccessorySheetDataPiece::getType,
+                        AccessorySheetTabViewBinder.ElementViewHolder::bind),
+                CreditCardAccessorySheetViewBinder::create));
         view.addItemDecoration(new DynamicInfoViewBottomSpacer(CreditCardAccessoryInfoView.class));
         view.addItemDecoration(new DynamicInfoViewBottomSpacer(PromoCodeAccessoryInfoView.class));
-    }
-
-    static @DrawableRes int getDrawableForOrigin(String origin) {
-        boolean use_new_data =
-                ChromeFeatureList.isEnabled(
-                        ChromeFeatureList.AUTOFILL_ENABLE_NEW_CARD_ART_AND_NETWORK_IMAGES);
-
-        switch (origin) {
-            case "americanExpressCC":
-                return use_new_data ? R.drawable.amex_metadata_card : R.drawable.amex_card;
-            case "dinersCC":
-                return use_new_data ? R.drawable.diners_metadata_card : R.drawable.diners_card;
-            case "discoverCC":
-                return use_new_data ? R.drawable.discover_metadata_card : R.drawable.discover_card;
-            case "eloCC":
-                return use_new_data ? R.drawable.elo_metadata_card : R.drawable.elo_card;
-            case "jcbCC":
-                return use_new_data ? R.drawable.jcb_metadata_card : R.drawable.jcb_card;
-            case "masterCardCC":
-                return use_new_data ? R.drawable.mc_metadata_card : R.drawable.mc_card;
-            case "mirCC":
-                return use_new_data ? R.drawable.mir_metadata_card : R.drawable.mir_card;
-            case "troyCC":
-                return use_new_data ? R.drawable.troy_metadata_card : R.drawable.troy_card;
-            case "unionPayCC":
-                return use_new_data ? R.drawable.unionpay_metadata_card : R.drawable.unionpay_card;
-            case "visaCC":
-                return use_new_data ? R.drawable.visa_metadata_card : R.drawable.visa_card;
-        }
-        return R.drawable.infobar_autofill_cc;
     }
 }

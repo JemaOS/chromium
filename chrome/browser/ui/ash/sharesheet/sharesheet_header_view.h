@@ -26,10 +26,12 @@ namespace sharesheet {
 // The SharesheetHeaderView class is the view for the image
 // previews feature.
 class SharesheetHeaderView : public views::View {
-  METADATA_HEADER(SharesheetHeaderView, views::View)
-
  public:
-  explicit SharesheetHeaderView(apps::IntentPtr intent, Profile* profile);
+  METADATA_HEADER(SharesheetHeaderView);
+
+  explicit SharesheetHeaderView(apps::IntentPtr intent,
+                                Profile* profile,
+                                bool show_content_previews);
   ~SharesheetHeaderView() override;
   SharesheetHeaderView(const SharesheetHeaderView&) = delete;
   SharesheetHeaderView& operator=(const SharesheetHeaderView&) = delete;

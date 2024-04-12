@@ -30,6 +30,7 @@
 
 namespace blink {
 
+class ContainerNode;
 class Element;
 class ComputedStyle;
 
@@ -42,23 +43,26 @@ class CORE_EXPORT ElementResolveContext {
   explicit ElementResolveContext(Element&);
 
   Element& GetElement() const { return *element_; }
-  const Element* ParentElement() const { return parent_element_; }
-  const Element* LayoutParentElement() const { return layout_parent_; }
-  const ComputedStyle* RootElementStyle() const { return root_element_style_; }
+  const ContainerNode* ParentNode() const { return parent_node_; }
+  const ContainerNode* LayoutParent() const { return layout_parent_; }
+  const ComputedStyle* RootElementStyle() const {
+    return root_element_style_.get();
+  }
   const ComputedStyle* ParentStyle() const {
-    return ParentElement() ? ParentElement()->GetComputedStyle() : nullptr;
+    return ParentNode() && ParentNode()->IsElementNode()
+               ? ParentNode()->GetComputedStyle()
+               : nullptr;
   }
   const ComputedStyle* LayoutParentStyle() const {
-    return LayoutParentElement() ? LayoutParentElement()->GetComputedStyle()
-                                 : nullptr;
+    return LayoutParent() ? LayoutParent()->GetComputedStyle() : nullptr;
   }
   EInsideLink ElementLinkState() const { return element_link_state_; }
 
  private:
   Element* element_;
-  Element* parent_element_{nullptr};
-  Element* layout_parent_{nullptr};
-  const ComputedStyle* root_element_style_{nullptr};
+  ContainerNode* parent_node_;
+  ContainerNode* layout_parent_;
+  scoped_refptr<const ComputedStyle> root_element_style_;
   EInsideLink element_link_state_;
 };
 

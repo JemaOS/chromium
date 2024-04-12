@@ -26,19 +26,13 @@ BreadcrumbManagerKeyedServiceFactory::GetForBrowserContext(
 BreadcrumbManagerKeyedServiceFactory::BreadcrumbManagerKeyedServiceFactory()
     : ProfileKeyedServiceFactory(
           "BreadcrumbManagerService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 BreadcrumbManagerKeyedServiceFactory::~BreadcrumbManagerKeyedServiceFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-  BreadcrumbManagerKeyedServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* BreadcrumbManagerKeyedServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<breadcrumbs::BreadcrumbManagerKeyedService>(
+  return new breadcrumbs::BreadcrumbManagerKeyedService(
       context->IsOffTheRecord());
 }

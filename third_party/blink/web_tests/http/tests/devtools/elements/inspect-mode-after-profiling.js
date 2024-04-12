@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
-import * as ElementsModule from 'devtools/panels/elements/elements.js';
-
 (async function() {
   TestRunner.addResult(`Tests that inspect mode works after profiling start/stop.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <div id="inspected" style="width:100px;height:100px;"></div>
@@ -31,13 +27,13 @@ import * as ElementsModule from 'devtools/panels/elements/elements.js';
 
   function clickAtInspected() {
     ElementsTestRunner.firstElementsTreeOutline().addEventListener(
-        ElementsModule.ElementsTreeOutline.ElementsTreeOutline.Events.SelectedNodeChanged, dumpAndFinish);
+        Elements.ElementsTreeOutline.Events.SelectedNodeChanged, dumpAndFinish);
     TestRunner.evaluateInPage('click()');
   }
 
   function dumpAndFinish() {
     ElementsTestRunner.firstElementsTreeOutline().removeEventListener(
-        ElementsModule.ElementsTreeOutline.ElementsTreeOutline.Events.SelectedNodeChanged, dumpAndFinish);
+        Elements.ElementsTreeOutline.Events.SelectedNodeChanged, dumpAndFinish);
     var selectedElement = ElementsTestRunner.firstElementsTreeOutline().selectedTreeElement;
     TestRunner.addResult('Node selected: ' + selectedElement.node().getAttribute('id'));
     TestRunner.completeTest();

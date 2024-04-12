@@ -10,12 +10,8 @@
 #include "base/strings/string_piece.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
-#include "chrome/browser/tracing/background_tracing_field_trial.h"
-#include "chrome/common/channel_info.h"
 #include "components/metrics/field_trials_provider.h"
-#include "components/metrics/metrics_log.h"
 #include "components/metrics/metrics_service.h"
-#include "components/metrics/version_utils.h"
 
 #if BUILDFLAG(IS_WIN)
 #include "chrome/browser/metrics/antivirus_metrics_provider_win.h"
@@ -36,8 +32,9 @@ ChromeBackgroundTracingMetricsProvider::ChromeBackgroundTracingMetricsProvider(
 ChromeBackgroundTracingMetricsProvider::
     ~ChromeBackgroundTracingMetricsProvider() = default;
 
-void ChromeBackgroundTracingMetricsProvider::DoInit() {
-  MaybeSetupBackgroundTracingFromFieldTrial();
+void ChromeBackgroundTracingMetricsProvider::Init() {
+  BackgroundTracingMetricsProvider::Init();
+  // TODO(ssid): SetupBackgroundTracingFieldTrial() should be called here.
 
 #if BUILDFLAG(IS_WIN)
   // AV metrics provider is initialized asynchronously. It might not be
@@ -74,16 +71,6 @@ void ChromeBackgroundTracingMetricsProvider::AsyncInit(
 #else
   std::move(done_callback).Run();
 #endif
-}
-
-void ChromeBackgroundTracingMetricsProvider::RecordCoreSystemProfileMetrics(
-    metrics::SystemProfileProto* system_profile_proto) {
-  metrics::MetricsLog::RecordCoreSystemProfile(
-      metrics::GetVersionString(),
-      metrics::AsProtobufChannel(chrome::GetChannel()),
-      chrome::IsExtendedStableChannel(),
-      g_browser_process->GetApplicationLocale(), metrics::GetAppPackageName(),
-      system_profile_proto);
 }
 
 }  // namespace tracing

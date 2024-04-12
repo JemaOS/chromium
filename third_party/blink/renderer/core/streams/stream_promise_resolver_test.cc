@@ -11,14 +11,12 @@
 #include "third_party/blink/renderer/platform/bindings/v8_binding.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/visitor.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
 namespace {
 
 TEST(StreamPromiseResolverTest, Construct) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* promise =
       MakeGarbageCollected<StreamPromiseResolver>(scope.GetScriptState());
@@ -27,7 +25,6 @@ TEST(StreamPromiseResolverTest, Construct) {
 }
 
 TEST(StreamPromiseResolverTest, Resolve) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* isolate = scope.GetIsolate();
   auto* promise =
@@ -39,7 +36,6 @@ TEST(StreamPromiseResolverTest, Resolve) {
 }
 
 TEST(StreamPromiseResolverTest, ResolveWithUndefined) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* isolate = scope.GetIsolate();
   auto* promise =
@@ -51,7 +47,6 @@ TEST(StreamPromiseResolverTest, ResolveWithUndefined) {
 }
 
 TEST(StreamPromiseResolverTest, Reject) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* isolate = scope.GetIsolate();
   auto* promise =
@@ -65,7 +60,6 @@ TEST(StreamPromiseResolverTest, Reject) {
 }
 
 TEST(StreamPromiseResolverTest, RejectDoesNothingAfterResolve) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* isolate = scope.GetIsolate();
   auto* promise =
@@ -77,7 +71,6 @@ TEST(StreamPromiseResolverTest, RejectDoesNothingAfterResolve) {
 }
 
 TEST(StreamPromiseResolverTest, ResolveDoesNothingAfterReject) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* isolate = scope.GetIsolate();
   auto* promise =
@@ -89,7 +82,6 @@ TEST(StreamPromiseResolverTest, ResolveDoesNothingAfterReject) {
 }
 
 TEST(StreamPromiseResolverTest, ResolveDoesNothingInsideResolve) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* isolate = scope.GetIsolate();
   auto* promise =
@@ -140,7 +132,6 @@ TEST(StreamPromiseResolverTest, ResolveDoesNothingInsideResolve) {
 }
 
 TEST(StreamPromiseResolverTest, GetScriptPromise) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* promise =
       MakeGarbageCollected<StreamPromiseResolver>(scope.GetScriptState());
@@ -150,7 +141,6 @@ TEST(StreamPromiseResolverTest, GetScriptPromise) {
 }
 
 TEST(StreamPromiseResolverTest, MarkAsHandled) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* promise =
       MakeGarbageCollected<StreamPromiseResolver>(scope.GetScriptState());
@@ -160,7 +150,6 @@ TEST(StreamPromiseResolverTest, MarkAsHandled) {
 }
 
 TEST(StreamPromiseResolverTest, CreateResolved) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* isolate = scope.GetIsolate();
   auto* promise = StreamPromiseResolver::CreateResolved(scope.GetScriptState(),
@@ -171,7 +160,6 @@ TEST(StreamPromiseResolverTest, CreateResolved) {
 }
 
 TEST(StreamPromiseResolverTest, CreateResolvedWithUndefined) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* isolate = scope.GetIsolate();
   auto* promise = StreamPromiseResolver::CreateResolvedWithUndefined(
@@ -182,7 +170,6 @@ TEST(StreamPromiseResolverTest, CreateResolvedWithUndefined) {
 }
 
 TEST(StreamPromiseResolverTest, CreateRejected) {
-  test::TaskEnvironment task_environment;
   V8TestingScope scope;
   auto* isolate = scope.GetIsolate();
   auto* promise = StreamPromiseResolver::CreateRejected(scope.GetScriptState(),

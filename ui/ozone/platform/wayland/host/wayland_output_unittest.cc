@@ -144,8 +144,7 @@ class WaylandOutputWithAuraOutputManagerTest : public WaylandTestSimple {
   WaylandOutputWithAuraOutputManagerTest()
       : WaylandTestSimple(wl::ServerConfig{
             .enable_aura_shell = wl::EnableAuraShellProtocol::kEnabled,
-            .aura_output_manager_protocol =
-                wl::AuraOutputManagerProtocol::kEnabledV1}) {}
+            .use_aura_output_manager = true}) {}
 
   WaylandOutputManager* wayland_output_manager() {
     auto* wayland_output_manager = connection_->wayland_output_manager();
@@ -207,8 +206,6 @@ TEST_F(WaylandOutputWithAuraOutputManagerTest,
   PostToServerAndWait([](wl::TestWaylandServerThread* server) {
     wl_output_send_done(server->output()->resource());
   });
-
-  primary_output()->set_delegate_for_testing(nullptr);
 }
 
 }  // namespace ui

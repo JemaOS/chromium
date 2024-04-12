@@ -5,7 +5,6 @@
 #include "ui/compositor/animation_throughput_reporter.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/check.h"
@@ -13,8 +12,8 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
-#include "base/time/time.h"
 #include "cc/animation/animation.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/compositor/callback_layer_animation_observer.h"
 #include "ui/compositor/compositor.h"
 #include "ui/compositor/layer.h"
@@ -77,11 +76,7 @@ class AnimationThroughputReporter::AnimationTracker
   void OnLayerAnimationStarted(LayerAnimationSequence* sequence) override {
     CallbackLayerAnimationObserver::OnLayerAnimationStarted(sequence);
 
-    // Start tracking on the first animation. Do not start tracking if the
-    // animation is finished when started, which happens when an animation
-    // is created either with 0 duration, or in its final state.
-    if (!first_animation_group_id_.has_value() &&
-        !sequence->IsFinished(base::TimeTicks::Now())) {
+    if (!first_animation_group_id_.has_value()) {
       first_animation_group_id_ = sequence->animation_group_id();
       MaybeStartTracking();
     }
@@ -129,12 +124,6 @@ class AnimationThroughputReporter::AnimationTracker
         throughput_tracker_->Cancel();
       else
         throughput_tracker_->Stop();
-
-      // `OnAnimationEnded` could be called multiple times when scheduling
-      // animations. Destroy the tracker so that it is not stopped/canceled
-      // more than once. New tracker will be created when new animation sequence
-      // is started.
-      throughput_tracker_.reset();
     }
 
     first_animation_group_id_.reset();
@@ -145,11 +134,11 @@ class AnimationThroughputReporter::AnimationTracker
   // Whether this class should delete itself on animation ended.
   bool should_delete_ = false;
 
-  const raw_ptr<LayerAnimator, DanglingUntriaged> animator_;
+  const raw_ptr<LayerAnimator> animator_;
 
-  std::optional<ThroughputTracker> throughput_tracker_;
+  absl::optional<ThroughputTracker> throughput_tracker_;
 
-  std::optional<int> first_animation_group_id_;
+  absl::optional<int> first_animation_group_id_;
   bool started_animations_aborted_ = false;
 
   AnimationThroughputReporter::ReportCallback report_callback_;

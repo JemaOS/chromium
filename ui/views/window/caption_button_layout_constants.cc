@@ -14,40 +14,30 @@
 
 namespace views {
 
-int GetCaptionButtonWidth() {
-#if BUILDFLAG(IS_CHROMEOS)
-  if (chromeos::features::IsRoundedWindowsEnabled()) {
-    return 36;
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS)
-  return 32;
-}
-
 gfx::Size GetCaptionButtonLayoutSize(CaptionButtonLayoutSize size) {
-  const int button_width = GetCaptionButtonWidth();
 #if BUILDFLAG(IS_CHROMEOS)
-  if (chromeos::features::IsRoundedWindowsEnabled()) {
+  if (chromeos::features::IsJellyrollEnabled()) {
     return gfx::Size(
-        button_width,
+        36,
         size == CaptionButtonLayoutSize::kBrowserCaptionMaximized ? 34 : 40);
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   if (size == CaptionButtonLayoutSize::kNonBrowserCaption) {
-    return gfx::Size(button_width, 32);
+    return gfx::Size(32, 32);
   }
 
   // |kBrowserMaximizedCaptionButtonHeight| should be kept in sync with those
   // for TAB_HEIGHT in // chrome/browser/ui/layout_constants.cc.
   // TODO(pkasting): Ideally these values should be obtained from a common
-  // location like layout_constants.cc.
+  // location.
   int height = ui::TouchUiController::Get()->touch_ui() ? 41 : 34;
   if (size == CaptionButtonLayoutSize::kBrowserCaptionRestored) {
     // Restored window titlebars are 8 DIP taller than maximized.
     height += 8;
   }
 
-  return gfx::Size(button_width, height);
+  return gfx::Size(32, height);
 }
 
 }  // namespace views

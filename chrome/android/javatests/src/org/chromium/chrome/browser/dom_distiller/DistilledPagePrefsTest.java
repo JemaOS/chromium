@@ -4,7 +4,6 @@
 
 package org.chromium.chrome.browser.dom_distiller;
 
-import androidx.test.annotation.UiThreadTest;
 import androidx.test.filters.SmallTest;
 
 import com.google.common.util.concurrent.AtomicDouble;
@@ -17,9 +16,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.chromium.base.test.BaseJUnit4ClassRunner;
+import org.chromium.base.test.UiThreadTest;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Feature;
-import org.chromium.chrome.browser.profiles.ProfileManager;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.test.ChromeBrowserTestRule;
 import org.chromium.components.dom_distiller.core.DistilledPagePrefs;
 import org.chromium.components.dom_distiller.core.DomDistillerService;
@@ -32,7 +32,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Test class for {@link DistilledPagePrefs}. */
+/**
+ * Test class for {@link DistilledPagePrefs}.
+ */
 @RunWith(BaseJUnit4ClassRunner.class)
 @Batch(Batch.PER_CLASS)
 public class DistilledPagePrefsTest {
@@ -58,14 +60,12 @@ public class DistilledPagePrefsTest {
     }
 
     private void getDistilledPagePrefs() {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    // TODO (https://crbug.com/1063807):  Add incognito mode tests.
-                    DomDistillerService domDistillerService =
-                            DomDistillerServiceFactory.getForProfile(
-                                    ProfileManager.getLastUsedRegularProfile());
-                    mDistilledPagePrefs = domDistillerService.getDistilledPagePrefs();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            // TODO (https://crbug.com/1063807):  Add incognito mode tests.
+            DomDistillerService domDistillerService =
+                    DomDistillerServiceFactory.getForProfile(Profile.getLastUsedRegularProfile());
+            mDistilledPagePrefs = domDistillerService.getDistilledPagePrefs();
+        });
     }
 
     @Test
@@ -257,8 +257,7 @@ public class DistilledPagePrefsTest {
         }
 
         public int getFontFamilyAfterWaiting() throws InterruptedException {
-            Assert.assertTrue(
-                    "Did not receive an update for font family",
+            Assert.assertTrue("Did not receive an update for font family",
                     mFontFamilySemaphore.tryAcquire(
                             SEMAPHORE_TIMEOUT_VALUE, SEMAPHORE_TIMEOUT_UNIT));
             return getFontFamily();
@@ -275,8 +274,7 @@ public class DistilledPagePrefsTest {
         }
 
         public int getThemeAfterWaiting() throws InterruptedException {
-            Assert.assertTrue(
-                    "Did not receive an update for theme",
+            Assert.assertTrue("Did not receive an update for theme",
                     mThemeSemaphore.tryAcquire(SEMAPHORE_TIMEOUT_VALUE, SEMAPHORE_TIMEOUT_UNIT));
             return getTheme();
         }
@@ -292,8 +290,7 @@ public class DistilledPagePrefsTest {
         }
 
         public float getFontScalingAfterWaiting() throws InterruptedException {
-            Assert.assertTrue(
-                    "Did not receive an update for font scaling",
+            Assert.assertTrue("Did not receive an update for font scaling",
                     mFontScalingSemaphore.tryAcquire(
                             SEMAPHORE_TIMEOUT_VALUE, SEMAPHORE_TIMEOUT_UNIT));
             return getFontScaling();

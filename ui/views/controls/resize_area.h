@@ -14,9 +14,9 @@ class ResizeAreaDelegate;
 
 // An invisible area that acts like a horizontal resizer.
 class VIEWS_EXPORT ResizeArea : public View {
-  METADATA_HEADER(ResizeArea, View)
-
  public:
+  METADATA_HEADER(ResizeArea);
+
   explicit ResizeArea(ResizeAreaDelegate* delegate);
 
   ResizeArea(const ResizeArea&) = delete;

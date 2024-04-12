@@ -10,7 +10,8 @@
 
 #include "base/logging.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 // Parse a user principal name into the user name and domain.
 // The format is "user@domain.com", following RFC-822.
@@ -37,6 +38,7 @@ bool ParseUserName(const std::string& name,
                    std::string* user_name,
                    std::string* workgroup);
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_SMB_CLIENT_SMB_SERVICE_HELPER_H_

@@ -70,6 +70,11 @@ void AddViewToWidgetAndResize(views::Widget* widget, views::View* view) {
                               contents_view_bounds.size()));
 }
 
+TooltipController* GetController() {
+  return static_cast<TooltipController*>(
+      ::wm::GetTooltipClient(Shell::GetPrimaryRootWindow()));
+}
+
 }  // namespace
 
 class TooltipControllerTest : public AshTestBase {
@@ -83,8 +88,7 @@ class TooltipControllerTest : public AshTestBase {
 
   void SetUp() override {
     AshTestBase::SetUp();
-    helper_ = std::make_unique<TooltipControllerTestHelper>(
-        Shell::GetPrimaryRootWindow());
+    helper_ = std::make_unique<TooltipControllerTestHelper>(GetController());
   }
 
  protected:

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_MULTIDEVICE_SETUP_MULTIDEVICE_SETUP_CLIENT_FACTORY_H_
 #define CHROME_BROWSER_ASH_MULTIDEVICE_SETUP_MULTIDEVICE_SETUP_CLIENT_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class ChromeOSSystemProfileProviderTest;
@@ -31,7 +31,7 @@ class MultiDeviceSetupClientFactory : public ProfileKeyedServiceFactory {
       const MultiDeviceSetupClientFactory&) = delete;
 
  private:
-  friend base::NoDestructor<MultiDeviceSetupClientFactory>;
+  friend struct base::DefaultSingletonTraits<MultiDeviceSetupClientFactory>;
   friend class ::ChromeOSSystemProfileProviderTest;
   friend class ::ChromeMetricsServiceClientTestIgnoredForAppMetrics;
   friend class ::ChromeMetricsServiceClientTest;
@@ -45,7 +45,7 @@ class MultiDeviceSetupClientFactory : public ProfileKeyedServiceFactory {
   }
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsNULLWhileTesting() const override;
   bool service_is_null_while_testing_ = true;

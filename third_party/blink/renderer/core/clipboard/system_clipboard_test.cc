@@ -12,7 +12,6 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
@@ -61,8 +60,6 @@ class SystemClipboardTest : public testing::Test {
   void RunUntilIdle() { test::RunPendingTasks(); }
 
  private:
-  test::TaskEnvironment task_environment;
-
   std::unique_ptr<DummyPageHolder> page_holder_;
   std::unique_ptr<PageTestBase::MockClipboardHostProvider> clipboard_provider_;
 };

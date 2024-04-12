@@ -5,12 +5,10 @@
 #include "third_party/blink/renderer/modules/file_system_access/file_system_file_handle.h"
 
 #include "mojo/public/cpp/bindings/pending_remote.h"
-#include "third_party/blink/public/mojom/file_system_access/file_system_access_cloud_identifier.mojom-blink.h"
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_error.mojom-blink.h"
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_file_writer.mojom-blink.h"
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_transfer_token.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_file_system_create_sync_access_handle_options.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_file_system_create_writable_options.h"
 #include "third_party/blink/renderer/core/fileapi/file.h"
 #include "third_party/blink/renderer/modules/file_system_access/file_system_access_error.h"
@@ -37,76 +35,57 @@ FileSystemFileHandle::FileSystemFileHandle(
   DCHECK(mojo_ptr_.is_bound());
 }
 
-ScriptPromiseTyped<FileSystemWritableFileStream>
-FileSystemFileHandle::createWritable(
+ScriptPromise FileSystemFileHandle::createWritable(
     ScriptState* script_state,
     const FileSystemCreateWritableOptions* options,
     ExceptionState& exception_state) {
   if (!mojo_ptr_.is_bound()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError, "");
-    return ScriptPromiseTyped<FileSystemWritableFileStream>();
+    return ScriptPromise();
   }
 
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<FileSystemWritableFileStream>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto result = resolver->Promise();
-
-  mojom::blink::FileSystemAccessWritableFileStreamLockMode lock_mode;
-
-  switch (options->mode().AsEnum()) {
-    case V8FileSystemWritableFileStreamMode::Enum::kExclusive:
-      lock_mode =
-          mojom::blink::FileSystemAccessWritableFileStreamLockMode::kExclusive;
-      break;
-    case V8FileSystemWritableFileStreamMode::Enum::kSiloed:
-      lock_mode =
-          mojom::blink::FileSystemAccessWritableFileStreamLockMode::kSiloed;
-      break;
-  }
+  ScriptPromise result = resolver->Promise();
 
   mojo_ptr_->CreateFileWriter(
-      options->keepExistingData(), options->autoClose(), lock_mode,
+      options->keepExistingData(), options->autoClose(),
       WTF::BindOnce(
-          [](FileSystemFileHandle*,
-             ScriptPromiseResolverTyped<FileSystemWritableFileStream>* resolver,
-             V8FileSystemWritableFileStreamMode lock_mode,
+          [](FileSystemFileHandle*, ScriptPromiseResolver* resolver,
              mojom::blink::FileSystemAccessErrorPtr result,
              mojo::PendingRemote<mojom::blink::FileSystemAccessFileWriter>
                  writer) {
             // Keep `this` alive so the handle will not be garbage-collected
             // before the promise is resolved.
             ScriptState* script_state = resolver->GetScriptState();
-            if (!script_state) {
+            if (!script_state)
               return;
-            }
             if (result->status != mojom::blink::FileSystemAccessStatus::kOk) {
               file_system_access_error::Reject(resolver, *result);
               return;
             }
 
             resolver->Resolve(FileSystemWritableFileStream::Create(
-                script_state, std::move(writer), lock_mode));
+                script_state, std::move(writer)));
           },
-          WrapPersistent(this), WrapPersistent(resolver), options->mode()));
+          WrapPersistent(this), WrapPersistent(resolver)));
 
   return result;
 }
 
-ScriptPromiseTyped<File> FileSystemFileHandle::getFile(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise FileSystemFileHandle::getFile(ScriptState* script_state,
+                                            ExceptionState& exception_state) {
   if (!mojo_ptr_.is_bound()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError, "");
-    return ScriptPromiseTyped<File>();
+    return ScriptPromise();
   }
 
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<File>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto result = resolver->Promise();
+  ScriptPromise result = resolver->Promise();
 
   mojo_ptr_->AsBlob(WTF::BindOnce(
-      [](FileSystemFileHandle*, ScriptPromiseResolverTyped<File>* resolver,
+      [](FileSystemFileHandle*, ScriptPromiseResolver* resolver,
          const String& name, FileSystemAccessErrorPtr result,
          const base::File::Info& info,
          const scoped_refptr<BlobDataHandle>& blob) {
@@ -124,114 +103,62 @@ ScriptPromiseTyped<File> FileSystemFileHandle::getFile(
   return result;
 }
 
-ScriptPromiseTyped<FileSystemSyncAccessHandle>
-FileSystemFileHandle::createSyncAccessHandle(ScriptState* script_state,
-                                             ExceptionState& exception_state) {
-  return createSyncAccessHandle(
-      script_state, FileSystemCreateSyncAccessHandleOptions::Create(),
-      exception_state);
-}
-
-ScriptPromiseTyped<FileSystemSyncAccessHandle>
-FileSystemFileHandle::createSyncAccessHandle(
+ScriptPromise FileSystemFileHandle::createSyncAccessHandle(
     ScriptState* script_state,
-    const FileSystemCreateSyncAccessHandleOptions* options,
     ExceptionState& exception_state) {
   // TODO(fivedots): Check if storage access is allowed.
   if (!mojo_ptr_.is_bound()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError, "");
-    return ScriptPromiseTyped<FileSystemSyncAccessHandle>();
+    return ScriptPromise();
   }
 
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<FileSystemSyncAccessHandle>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto result = resolver->Promise();
+  ScriptPromise result = resolver->Promise();
 
-  mojom::blink::FileSystemAccessAccessHandleLockMode lock_mode;
+  mojo_ptr_->OpenAccessHandle(WTF::BindOnce(
+      [](FileSystemFileHandle*, ScriptPromiseResolver* resolver,
+         FileSystemAccessErrorPtr result,
+         mojom::blink::FileSystemAccessAccessHandleFilePtr file,
+         mojo::PendingRemote<mojom::blink::FileSystemAccessAccessHandleHost>
+             access_handle_remote) {
+        // Keep `this` alive so the handle will not be garbage-collected
+        // before the promise is resolved.
+        if (result->status != mojom::blink::FileSystemAccessStatus::kOk) {
+          file_system_access_error::Reject(resolver, *result);
+          return;
+        }
+        DCHECK(!file.is_null());
+        DCHECK(access_handle_remote.is_valid());
 
-  // This assertion protects against the IDL enum changing without updating the
-  // corresponding mojom interface, or vice versa.
-  //
-  static_assert(
-      V8FileSystemSyncAccessHandleMode::kEnumSize ==
-          static_cast<size_t>(
-              mojom::blink::FileSystemAccessAccessHandleLockMode::kMaxValue)
-              // This offset of 1 accounts for the zero-indexing of the mojom
-              // enum values.
-              + 1
-              // TODO(crbug/1513463): This offset of 1 accounts for the
-              // "in-place" option. This should be removed.
-              + 1,
-      "the number of values in the FileSystemAccessAccessHandleLockMode mojom "
-      "enum must match the number of values in the "
-      "FileSystemSyncAccessHandleMode blink enum");
+        ExecutionContext* context = resolver->GetExecutionContext();
+        if (!context)
+          return;
 
-  switch (options->mode().AsEnum()) {
-    // TODO(crbug/1513463): "in-place" acts as an alternative to "readwrite".
-    // This is for backwards compatibility and should be removed.
-    case V8FileSystemSyncAccessHandleMode::Enum::kInPlace:
-    case V8FileSystemSyncAccessHandleMode::Enum::kReadwrite:
-      lock_mode =
-          mojom::blink::FileSystemAccessAccessHandleLockMode::kReadwrite;
-      break;
-    case V8FileSystemSyncAccessHandleMode::Enum::kReadOnly:
-      lock_mode = mojom::blink::FileSystemAccessAccessHandleLockMode::kReadOnly;
-      break;
-    case V8FileSystemSyncAccessHandleMode::Enum::kReadwriteUnsafe:
-      lock_mode =
-          mojom::blink::FileSystemAccessAccessHandleLockMode::kReadwriteUnsafe;
-      break;
-  }
+        FileSystemAccessFileDelegate* file_delegate = nullptr;
+        if (file->is_regular_file()) {
+          mojom::blink::FileSystemAccessRegularFilePtr regular_file =
+              std::move(file->get_regular_file());
+          file_delegate = FileSystemAccessFileDelegate::Create(
+              context, std::move(regular_file));
+        } else if (file->is_incognito_file_delegate()) {
+          file_delegate = FileSystemAccessFileDelegate::CreateForIncognito(
+              context, std::move(file->get_incognito_file_delegate()));
+        }
 
-  mojo_ptr_->OpenAccessHandle(
-      lock_mode,
-      WTF::BindOnce(
-          [](FileSystemFileHandle*,
-             ScriptPromiseResolverTyped<FileSystemSyncAccessHandle>* resolver,
-             V8FileSystemSyncAccessHandleMode lock_mode,
-             FileSystemAccessErrorPtr result,
-             mojom::blink::FileSystemAccessAccessHandleFilePtr file,
-             mojo::PendingRemote<mojom::blink::FileSystemAccessAccessHandleHost>
-                 access_handle_remote) {
-            // Keep `this` alive so the handle will not be garbage-collected
-            // before the promise is resolved.
-            if (result->status != mojom::blink::FileSystemAccessStatus::kOk) {
-              file_system_access_error::Reject(resolver, *result);
-              return;
-            }
-            DCHECK(!file.is_null());
-            DCHECK(access_handle_remote.is_valid());
-
-            ExecutionContext* context = resolver->GetExecutionContext();
-            if (!context) {
-              return;
-            }
-
-            FileSystemAccessFileDelegate* file_delegate = nullptr;
-            if (file->is_regular_file()) {
-              mojom::blink::FileSystemAccessRegularFilePtr regular_file =
-                  std::move(file->get_regular_file());
-              file_delegate = FileSystemAccessFileDelegate::Create(
-                  context, std::move(regular_file));
-            } else if (file->is_incognito_file_delegate()) {
-              file_delegate = FileSystemAccessFileDelegate::CreateForIncognito(
-                  context, std::move(file->get_incognito_file_delegate()));
-            }
-
-            if (!file_delegate || !file_delegate->IsValid()) {
-              file_system_access_error::Reject(
-                  resolver,
-                  *mojom::blink::FileSystemAccessError::New(
-                      mojom::blink::FileSystemAccessStatus::kFileError,
-                      base::File::Error::FILE_ERROR_FAILED, "File not valid"));
-              return;
-            }
-            resolver->Resolve(MakeGarbageCollected<FileSystemSyncAccessHandle>(
-                context, std::move(file_delegate),
-                std::move(access_handle_remote), std::move(lock_mode)));
-          },
-          WrapPersistent(this), WrapPersistent(resolver), options->mode()));
+        if (!file_delegate || !file_delegate->IsValid()) {
+          file_system_access_error::Reject(
+              resolver,
+              *mojom::blink::FileSystemAccessError::New(
+                  mojom::blink::FileSystemAccessStatus::kFileError,
+                  base::File::Error::FILE_ERROR_FAILED, "File not valid"));
+          return;
+        }
+        resolver->Resolve(MakeGarbageCollected<FileSystemSyncAccessHandle>(
+            context, std::move(file_delegate),
+            std::move(access_handle_remote)));
+      },
+      WrapPersistent(this), WrapPersistent(resolver)));
 
   return result;
 }
@@ -239,9 +166,8 @@ FileSystemFileHandle::createSyncAccessHandle(
 mojo::PendingRemote<mojom::blink::FileSystemAccessTransferToken>
 FileSystemFileHandle::Transfer() {
   mojo::PendingRemote<mojom::blink::FileSystemAccessTransferToken> result;
-  if (mojo_ptr_.is_bound()) {
+  if (mojo_ptr_.is_bound())
     mojo_ptr_->Transfer(result.InitWithNewPipeAndPassReceiver());
-  }
   return result;
 }
 
@@ -324,32 +250,14 @@ void FileSystemFileHandle::IsSameEntryImpl(
 }
 
 void FileSystemFileHandle::GetUniqueIdImpl(
-    base::OnceCallback<void(mojom::blink::FileSystemAccessErrorPtr,
-                            const WTF::String&)> callback) {
+    base::OnceCallback<void(const WTF::String&)> callback) {
   if (!mojo_ptr_.is_bound()) {
-    std::move(callback).Run(
-        mojom::blink::FileSystemAccessError::New(
-            mojom::blink::FileSystemAccessStatus::kInvalidState,
-            base::File::Error::FILE_ERROR_FAILED, "Context Destroyed"),
-        "");
+    // TODO(crbug.com/1413551): Consider throwing a kInvalidState exception here
+    // rather than returning an empty string.
+    std::move(callback).Run("");
     return;
   }
   mojo_ptr_->GetUniqueId(std::move(callback));
-}
-
-void FileSystemFileHandle::GetCloudIdentifiersImpl(
-    base::OnceCallback<void(
-        mojom::blink::FileSystemAccessErrorPtr,
-        Vector<mojom::blink::FileSystemAccessCloudIdentifierPtr>)> callback) {
-  if (!mojo_ptr_.is_bound()) {
-    std::move(callback).Run(
-        mojom::blink::FileSystemAccessError::New(
-            mojom::blink::FileSystemAccessStatus::kInvalidState,
-            base::File::Error::FILE_ERROR_FAILED, "Context Destroyed"),
-        {});
-    return;
-  }
-  mojo_ptr_->GetCloudIdentifiers(std::move(callback));
 }
 
 }  // namespace blink

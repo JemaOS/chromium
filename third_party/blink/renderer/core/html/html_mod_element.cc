@@ -40,4 +40,8 @@ bool HTMLModElement::HasLegalLinkAttribute(const QualifiedName& name) const {
          HTMLElement::HasLegalLinkAttribute(name);
 }
 
+const QualifiedName& HTMLModElement::SubResourceAttributeName() const {
+  return html_names::kCiteAttr;
+}
+
 }  // namespace blink

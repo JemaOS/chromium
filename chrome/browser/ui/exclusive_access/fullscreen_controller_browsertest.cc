@@ -19,13 +19,12 @@
 #include "chrome/browser/ui/exclusive_access/exclusive_access_test.h"
 #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/prefs/pref_service.h"
+#include "content/public/browser/native_web_keyboard_event.h"
 #include "content/public/browser/web_contents.h"
-#include "content/public/common/input/native_web_keyboard_event.h"
 #include "content/public/common/url_constants.h"
 #include "content/public/test/browser_test.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
@@ -36,28 +35,6 @@
 using content::WebContents;
 using ui::PAGE_TRANSITION_TYPED;
 using FullscreenControllerTest = ExclusiveAccessTest;
-
-namespace {
-
-// In some environments (Lacros, Linux, Mac) the operation is finished
-// asynchronously and we have to wait until the state change has occurred.
-void WaitForDisplayed(Browser* browser) {
-  base::RunLoop outer_loop;
-  auto wait_for_state = base::BindRepeating(
-      [](base::RunLoop* outer_loop, Browser* browser) {
-        ExclusiveAccessManager* manager = browser->exclusive_access_manager();
-        if (manager->context()->IsExclusiveAccessBubbleDisplayed()) {
-          outer_loop->Quit();
-        }
-      },
-      &outer_loop, browser);
-
-  base::RepeatingTimer timer;
-  timer.Start(FROM_HERE, base::Milliseconds(1), std::move(wait_for_state));
-  outer_loop.Run();
-}
-
-}  // namespace
 
 //
 // Fullscreen tests.
@@ -74,9 +51,6 @@ IN_PROC_BROWSER_TEST_F(FullscreenControllerTest, FullscreenOnFileURL) {
           ->tab_strip_model()
           ->GetActiveWebContents()
           ->GetPrimaryMainFrame());
-
-  WaitForDisplayed(browser());
-
   ASSERT_TRUE(IsExclusiveAccessBubbleDisplayed());
 }
 
@@ -220,6 +194,7 @@ IN_PROC_BROWSER_TEST_F(FullscreenControllerTest,
 
 IN_PROC_BROWSER_TEST_F(FullscreenControllerTest, FastKeyboardLockUnlockRelock) {
   EnterActiveTabFullscreen();
+  // TODO(crbug.com/708584): Replace with TaskEnvironment using MOCK_TIME.
   auto task_runner = base::MakeRefCounted<base::TestMockTimeTaskRunner>();
   base::TestMockTimeTaskRunner::ScopedContext scoped_context(task_runner.get());
 
@@ -237,6 +212,7 @@ IN_PROC_BROWSER_TEST_F(FullscreenControllerTest, FastKeyboardLockUnlockRelock) {
 
 IN_PROC_BROWSER_TEST_F(FullscreenControllerTest, SlowKeyboardLockUnlockRelock) {
   EnterActiveTabFullscreen();
+  // TODO(crbug.com/708584): Replace with TaskEnvironment using MOCK_TIME.
   auto task_runner = base::MakeRefCounted<base::TestMockTimeTaskRunner>();
   base::TestMockTimeTaskRunner::ScopedContext scoped_context(task_runner.get());
 
@@ -350,36 +326,31 @@ IN_PROC_BROWSER_TEST_F(FullscreenControllerTest,
   ASSERT_FALSE(esc_threshold_reached);
 }
 
-IN_PROC_BROWSER_TEST_F(FullscreenControllerTest, KeyboardLockAfterPointerLock) {
+IN_PROC_BROWSER_TEST_F(FullscreenControllerTest, KeyboardLockAfterMouseLock) {
   EnterActiveTabFullscreen();
-  RequestToLockPointer(/*user_gesture=*/true,
-                       /*last_unlocked_by_target=*/false);
+  RequestToLockMouse(/*user_gesture=*/true, /*last_unlocked_by_target=*/false);
   ASSERT_TRUE(IsExclusiveAccessBubbleDisplayed());
-  ASSERT_TRUE(GetExclusiveAccessManager()
-                  ->pointer_lock_controller()
-                  ->IsPointerLocked());
+  ASSERT_TRUE(
+      GetExclusiveAccessManager()->mouse_lock_controller()->IsMouseLocked());
 
   ASSERT_TRUE(RequestKeyboardLock(/*esc_key_locked=*/false));
   ASSERT_TRUE(GetExclusiveAccessManager()
                   ->keyboard_lock_controller()
                   ->IsKeyboardLockActive());
-  ASSERT_TRUE(GetExclusiveAccessManager()
-                  ->pointer_lock_controller()
-                  ->IsPointerLocked());
+  ASSERT_TRUE(
+      GetExclusiveAccessManager()->mouse_lock_controller()->IsMouseLocked());
   ASSERT_TRUE(IsExclusiveAccessBubbleDisplayed());
   ASSERT_NE(EXCLUSIVE_ACCESS_BUBBLE_TYPE_KEYBOARD_LOCK_EXIT_INSTRUCTION,
             GetExclusiveAccessBubbleType());
 }
 
 IN_PROC_BROWSER_TEST_F(FullscreenControllerTest,
-                       KeyboardLockAfterPointerLockWithEscLocked) {
+                       KeyboardLockAfterMouseLockWithEscLocked) {
   EnterActiveTabFullscreen();
-  RequestToLockPointer(/*user_gesture=*/true,
-                       /*last_unlocked_by_target=*/false);
+  RequestToLockMouse(/*user_gesture=*/true, /*last_unlocked_by_target=*/false);
   ASSERT_TRUE(IsExclusiveAccessBubbleDisplayed());
-  ASSERT_TRUE(GetExclusiveAccessManager()
-                  ->pointer_lock_controller()
-                  ->IsPointerLocked());
+  ASSERT_TRUE(
+      GetExclusiveAccessManager()->mouse_lock_controller()->IsMouseLocked());
   ASSERT_TRUE(RequestKeyboardLock(/*esc_key_locked=*/true));
   ASSERT_TRUE(GetExclusiveAccessManager()
                   ->keyboard_lock_controller()
@@ -465,7 +436,7 @@ IN_PROC_BROWSER_TEST_F(FullscreenControllerTest, DISABLED_TopViewStatusChange) {
   EXPECT_TRUE(browser()->window()->IsToolbarVisible());
 
   // Test Normal state <--> Browser fullscreen mode <--> Tab fullscreen mode.
-  ui_test_utils::ToggleFullscreenModeAndWait(browser());
+  ToggleBrowserFullscreen();
   EXPECT_TRUE(context->IsFullscreen());
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS_ASH)
   bool should_show_top_ui = true;
@@ -486,7 +457,7 @@ IN_PROC_BROWSER_TEST_F(FullscreenControllerTest, DISABLED_TopViewStatusChange) {
   EXPECT_TRUE(context->IsFullscreen());
   EXPECT_EQ(should_show_top_ui, browser()->window()->IsToolbarVisible());
 
-  ui_test_utils::ToggleFullscreenModeAndWait(browser());
+  ToggleBrowserFullscreen();
   EXPECT_FALSE(context->IsFullscreen());
   EXPECT_TRUE(browser()->window()->IsToolbarVisible());
 
@@ -499,11 +470,11 @@ IN_PROC_BROWSER_TEST_F(FullscreenControllerTest, DISABLED_TopViewStatusChange) {
   EXPECT_TRUE(context->IsFullscreen());
   EXPECT_FALSE(browser()->window()->IsToolbarVisible());
 
-  ui_test_utils::ToggleFullscreenModeAndWait(browser());
+  ToggleBrowserFullscreen();
   EXPECT_FALSE(context->IsFullscreen());
   EXPECT_TRUE(browser()->window()->IsToolbarVisible());
 
-  ui_test_utils::ToggleFullscreenModeAndWait(browser());
+  ToggleBrowserFullscreen();
   EXPECT_TRUE(context->IsFullscreen());
   EXPECT_EQ(should_show_top_ui, browser()->window()->IsToolbarVisible());
 }
@@ -522,107 +493,4 @@ IN_PROC_BROWSER_TEST_F(FullscreenControllerTest,
           ->tab_strip_model()
           ->GetActiveWebContents()
           ->GetPrimaryMainFrame()));
-}
-
-class FullscreenControllerPressAndHoldEscTest
-    : public FullscreenControllerTest {
- public:
-  FullscreenControllerPressAndHoldEscTest() {
-    task_runner_ = base::MakeRefCounted<base::TestMockTimeTaskRunner>();
-  }
-
-  base::TestMockTimeTaskRunner* task_runner() { return task_runner_.get(); }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_{
-      features::kPressAndHoldEscToExitBrowserFullscreen};
-  scoped_refptr<base::TestMockTimeTaskRunner> task_runner_;
-};
-
-IN_PROC_BROWSER_TEST_F(FullscreenControllerPressAndHoldEscTest,
-                       ExitBrowserFullscreenOnPressAndHoldEsc) {
-  // Enter browser fullscreen.
-  ui_test_utils::ToggleFullscreenModeAndWait(browser());
-  ASSERT_FALSE(IsWindowFullscreenForTabOrPending());
-
-  // Short-press Esc key won't exit browser fullscreen.
-  SendEscapeToExclusiveAccessManager(/*is_key_down=*/true);
-  SendEscapeToExclusiveAccessManager(/*is_key_down=*/false);
-  EXPECT_TRUE(IsFullscreenForBrowser());
-
-  // Press-and-hold Esc will exit browser fullscreen.
-  {
-    base::TestMockTimeTaskRunner::ScopedContext scoped_context(task_runner());
-    SendEscapeToExclusiveAccessManager(/*is_key_down=*/true);
-    task_runner()->FastForwardBy(base::Seconds(2));
-  }
-  WaitAndVerifyFullscreenState(/*browser_fullscreen=*/false,
-                               /*tab_fullscreen=*/false);
-}
-
-IN_PROC_BROWSER_TEST_F(FullscreenControllerPressAndHoldEscTest,
-                       ExitBrowserAndTabFullscreenOnPressAndHoldEsc) {
-  // Enter tab fullscreen and browser fullscreen.
-  GetFullscreenController()->ToggleBrowserFullscreenMode();
-  GetFullscreenController()->EnterFullscreenModeForTab(
-      browser()
-          ->tab_strip_model()
-          ->GetActiveWebContents()
-          ->GetPrimaryMainFrame(),
-      {});
-  WaitAndVerifyFullscreenState(/*browser_fullscreen=*/true,
-                               /*tab_fullscreen=*/true);
-
-  // The first Esc key down event will exit tab fullscreen, but not browser
-  // fullscreen. Note that the key hasn't been released yet.
-  SendEscapeToExclusiveAccessManager(/*is_key_down=*/true);
-  WaitAndVerifyFullscreenState(/*browser_fullscreen=*/true,
-                               /*tab_fullscreen=*/false);
-
-  // Press-and-hold Esc will exit browser fullscreen.
-  {
-    base::TestMockTimeTaskRunner::ScopedContext scoped_context(task_runner());
-    SendEscapeToExclusiveAccessManager(/*is_key_down=*/true);
-    task_runner()->FastForwardBy(base::Seconds(2));
-  }
-  WaitAndVerifyFullscreenState(/*browser_fullscreen=*/false,
-                               /*tab_fullscreen=*/false);
-}
-
-IN_PROC_BROWSER_TEST_F(
-    FullscreenControllerPressAndHoldEscTest,
-    ExitBrowserFullscreenAndUnlockKeyboardOnPressAndHoldEsc) {
-  // Enter tab fullscreen and browser fullscreen. Then request keyboard lock
-  // with Esc locked.
-  GetFullscreenController()->ToggleBrowserFullscreenMode();
-  GetFullscreenController()->EnterFullscreenModeForTab(
-      browser()
-          ->tab_strip_model()
-          ->GetActiveWebContents()
-          ->GetPrimaryMainFrame(),
-      {});
-  WaitAndVerifyFullscreenState(/*browser_fullscreen=*/true,
-                               /*tab_fullscreen=*/true);
-  ASSERT_TRUE(RequestKeyboardLock(/*esc_key_locked=*/true));
-
-  // Short-press Esc key will not do anything.
-  SendEscapeToExclusiveAccessManager(/*is_key_down=*/true);
-  SendEscapeToExclusiveAccessManager(/*is_key_down=*/false);
-  EXPECT_TRUE(IsWindowFullscreenForTabOrPending());
-  EXPECT_TRUE(IsFullscreenForBrowser());
-  ASSERT_TRUE(GetExclusiveAccessManager()
-                  ->keyboard_lock_controller()
-                  ->IsKeyboardLockActive());
-
-  // Press-and-hold Esc key will exit fullscreen and unlock the keyboard.
-  {
-    base::TestMockTimeTaskRunner::ScopedContext scoped_context(task_runner());
-    SendEscapeToExclusiveAccessManager(/*is_key_down=*/true);
-    task_runner()->FastForwardBy(base::Seconds(2));
-  }
-  WaitAndVerifyFullscreenState(/*browser_fullscreen=*/false,
-                               /*tab_fullscreen=*/false);
-  EXPECT_FALSE(GetExclusiveAccessManager()
-                   ->keyboard_lock_controller()
-                   ->IsKeyboardLockActive());
 }

@@ -84,9 +84,6 @@ QualifiedName::QualifiedName(const AtomicString& p,
     impl_->Release();
 }
 
-QualifiedName::QualifiedName(const AtomicString& local_name)
-    : QualifiedName(g_null_atom, local_name, g_null_atom) {}
-
 QualifiedName::QualifiedName(const AtomicString& p,
                              const AtomicString& l,
                              const AtomicString& n,

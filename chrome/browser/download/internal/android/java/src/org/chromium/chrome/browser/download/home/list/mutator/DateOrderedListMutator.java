@@ -103,8 +103,7 @@ public class DateOrderedListMutator implements OfflineItemFilterObserver {
 
         // If the update changed the creation time or filter type, remove and add the element to get
         // it positioned.
-        if (oldItem.creationTimeMs != item.creationTimeMs
-                || oldItem.filter != item.filter
+        if (oldItem.creationTimeMs != item.creationTimeMs || oldItem.filter != item.filter
                 || mJustNowProvider.isJustNowItem(oldItem)
                         != mJustNowProvider.isJustNowItem(item)) {
             // TODO(shaktisahu): Collect UMA when this happens.

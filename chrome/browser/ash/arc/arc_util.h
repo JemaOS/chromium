@@ -59,10 +59,6 @@ enum FileSystemCompatibilityState : int32_t {
   // "compatible" state. Be careful in the case adding a new enum value.
 };
 
-// Records ARC status i.e if ARC allowed or disallowed based on
-// UnaffiliatedDeviceArcAllowed policy value.
-void RecordArcStatusBasedOnDeviceAffiliationUMA(Profile* profile);
-
 // Returns false if |profile| is not a real user profile but some internal
 // profile for service purposes, which should be ignored for ARC and metrics
 // recording. Also returns false if |profile| is null.
@@ -141,8 +137,13 @@ bool IsArcPlayStoreEnabledPreferenceManagedForProfile(const Profile* profile);
 bool SetArcPlayStoreEnabledForProfile(Profile* profile, bool enabled);
 
 // Returns whether all ARC related OptIn preferences (i.e.
-// ArcBackupRestoreEnabled and ArcLocationServiceEnabled) are managed.
+// ArcBackupRestoreEnabled and ArcLocationServiceEnabled) are managed or
+// unused (e.g. for Active Directory users).
 bool AreArcAllOptInPreferencesIgnorableForProfile(const Profile* profile);
+
+// Returns true iff there is a user associated with |profile|, and it is an
+// Active Directory user.
+bool IsActiveDirectoryUserForProfile(const Profile* profile);
 
 // Returns true if ChromeOS OOBE opt-in window is currently showing.
 bool IsArcOobeOptInActive();
@@ -183,7 +184,7 @@ bool IsPlayStoreAvailable();
 // user.
 bool IsSecondaryAccountForChildEnabled();
 
-// Skip to show OOBE/in session UI asking users to set up ARC OptIn
+// Skip to show OOBE/in sesion UI asking users to set up ARC OptIn
 // preferences, iff all of them are managed by the admin policy. Skips in
 // session play terms of service for managed user and starts ARC directly.
 // Leaves B&R/GLS off if not set by admin since users don't see the Tos page.

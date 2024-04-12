@@ -14,7 +14,6 @@
 #include "ash/components/arc/session/arc_vm_data_migration_status.h"
 #include "ash/components/arc/test/arc_util_test_support.h"
 #include "ash/constants/app_types.h"
-#include "ash/constants/ash_switches.h"
 #include "ash/test/ash_test_base.h"
 #include "base/base_switches.h"
 #include "base/command_line.h"
@@ -23,9 +22,7 @@
 #include "base/memory/ptr_util.h"
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/test/test_future.h"
 #include "base/time/time.h"
-#include "chromeos/ash/components/dbus/concierge/fake_concierge_client.h"
 #include "chromeos/ash/components/dbus/upstart/fake_upstart_client.h"
 #include "components/account_id/account_id.h"
 #include "components/exo/shell_surface_util.h"
@@ -68,8 +65,20 @@ class ScopedArcFeature {
 class ScopedRtVcpuFeature {
  public:
   ScopedRtVcpuFeature(bool dual_core_enabled, bool quad_core_enabled) {
-    feature_list.InitWithFeatureStates({{kRtVcpuDualCore, dual_core_enabled},
-                                        {kRtVcpuQuadCore, quad_core_enabled}});
+    std::vector<base::test::FeatureRef> enabled_features;
+    std::vector<base::test::FeatureRef> disabled_features;
+
+    if (dual_core_enabled)
+      enabled_features.push_back(kRtVcpuDualCore);
+    else
+      disabled_features.push_back(kRtVcpuDualCore);
+
+    if (quad_core_enabled)
+      enabled_features.push_back(kRtVcpuQuadCore);
+    else
+      disabled_features.push_back(kRtVcpuQuadCore);
+
+    feature_list.InitWithFeatures(enabled_features, disabled_features);
   }
   ~ScopedRtVcpuFeature() = default;
   ScopedRtVcpuFeature(const ScopedRtVcpuFeature&) = delete;
@@ -79,22 +88,36 @@ class ScopedRtVcpuFeature {
   base::test::ScopedFeatureList feature_list;
 };
 
+// Fake user that can be created with a specified type.
+class FakeUser : public user_manager::User {
+ public:
+  explicit FakeUser(user_manager::UserType user_type)
+      : User(AccountId::FromUserEmailGaiaId("user@test.com", "1234567890")),
+        user_type_(user_type) {}
+
+  FakeUser(const FakeUser&) = delete;
+  FakeUser& operator=(const FakeUser&) = delete;
+
+  ~FakeUser() override = default;
+
+  // user_manager::User:
+  user_manager::UserType GetType() const override { return user_type_; }
+
+ private:
+  const user_manager::UserType user_type_;
+};
+
 class ArcUtilTest : public ash::AshTestBase {
  public:
-  ArcUtilTest() {
-    ash::ConciergeClient::InitializeFake();
-    ash::UpstartClient::InitializeFake();
-  }
+  ArcUtilTest() { ash::UpstartClient::InitializeFake(); }
   ArcUtilTest(const ArcUtilTest&) = delete;
   ArcUtilTest& operator=(const ArcUtilTest&) = delete;
-  ~ArcUtilTest() override {
-    ash::UpstartClient::Shutdown();
-    ash::ConciergeClient::Shutdown();
-  }
+  ~ArcUtilTest() override = default;
 
   void SetUp() override {
     ash::AshTestBase::SetUp();
     prefs::RegisterProfilePrefs(profile_prefs_.registry());
+    RemoveUpstartStartStopJobFailures();
   }
 
   void TearDown() override { ash::AshTestBase::TearDown(); }
@@ -106,8 +129,7 @@ class ArcUtilTest : public ash::AshTestBase {
         [job_name_to_fail](const std::string& job_name,
                            const std::vector<std::string>& env) {
           // Return success unless |job_name| is |job_name_to_fail|.
-          return ash::FakeUpstartClient::StartJobResult(job_name !=
-                                                        job_name_to_fail);
+          return job_name != job_name_to_fail;
         }));
   }
 
@@ -121,10 +143,42 @@ class ArcUtilTest : public ash::AshTestBase {
         }));
   }
 
+  void StartRecordingUpstartOperations() {
+    auto* upstart_client = ash::FakeUpstartClient::Get();
+    upstart_client->set_start_job_cb(
+        base::BindLambdaForTesting([this](const std::string& job_name,
+                                          const std::vector<std::string>& env) {
+          upstart_operations_.emplace_back(job_name, true);
+          return true;
+        }));
+    upstart_client->set_stop_job_cb(
+        base::BindLambdaForTesting([this](const std::string& job_name,
+                                          const std::vector<std::string>& env) {
+          upstart_operations_.emplace_back(job_name, false);
+          return true;
+        }));
+  }
+
+  const std::vector<std::pair<std::string, bool>>& upstart_operations() const {
+    return upstart_operations_;
+  }
+
   PrefService* profile_prefs() { return &profile_prefs_; }
 
  private:
+  void RemoveUpstartStartStopJobFailures() {
+    auto* upstart_client = ash::FakeUpstartClient::Get();
+    upstart_client->set_start_job_cb(
+        ash::FakeUpstartClient::StartStopJobCallback());
+    upstart_client->set_stop_job_cb(
+        ash::FakeUpstartClient::StartStopJobCallback());
+  }
+
   TestingPrefServiceSimple profile_prefs_;
+
+  // List of upstart operations recorded. When it's "start" the boolean is set
+  // to true.
+  std::vector<std::pair<std::string, bool>> upstart_operations_;
 };
 
 TEST_F(ArcUtilTest, IsArcAvailable_None) {
@@ -276,48 +330,49 @@ TEST_F(ArcUtilTest, IsArcVmDevConfIgnored) {
   EXPECT_TRUE(IsArcVmDevConfIgnored());
 }
 
-TEST_F(ArcUtilTest, GetArcUreadaheadModeVmSwitch) {
+TEST_F(ArcUtilTest, GetArcVmUreadaheadMode) {
   auto* command_line = base::CommandLine::ForCurrentProcess();
-  const char* mode = ash::switches::kArcVmUreadaheadMode;
 
   command_line->InitFromArgv({""});
-  EXPECT_EQ(ArcUreadaheadMode::READAHEAD, GetArcUreadaheadMode(mode));
+  EXPECT_EQ(ArcVmUreadaheadMode::READAHEAD, GetArcVmUreadaheadMode());
+
+  command_line->InitFromArgv({"", "--arc-disable-ureadahead"});
+  EXPECT_EQ(ArcVmUreadaheadMode::DISABLED, GetArcVmUreadaheadMode());
+
+  command_line->InitFromArgv(
+      {"", "--arc-disable-ureadahead", "--arcvm-ureadahead-mode=readahead"});
+  EXPECT_EQ(ArcVmUreadaheadMode::READAHEAD, GetArcVmUreadaheadMode());
 
   command_line->InitFromArgv({"", "--arcvm-ureadahead-mode=readahead"});
-  EXPECT_EQ(ArcUreadaheadMode::READAHEAD, GetArcUreadaheadMode(mode));
+  EXPECT_EQ(ArcVmUreadaheadMode::READAHEAD, GetArcVmUreadaheadMode());
 
   command_line->InitFromArgv({"", "--arcvm-ureadahead-mode=generate"});
-  EXPECT_EQ(ArcUreadaheadMode::GENERATE, GetArcUreadaheadMode(mode));
+  EXPECT_EQ(ArcVmUreadaheadMode::GENERATE, GetArcVmUreadaheadMode());
 
   command_line->InitFromArgv({"", "--arcvm-ureadahead-mode=disabled"});
-  EXPECT_EQ(ArcUreadaheadMode::DISABLED, GetArcUreadaheadMode(mode));
+  EXPECT_EQ(ArcVmUreadaheadMode::DISABLED, GetArcVmUreadaheadMode());
 }
 
-TEST_F(ArcUtilTest, GetArcUreadaheadModeContainerSwitch) {
+TEST_F(ArcUtilTest, UreadaheadDefault) {
+  EXPECT_FALSE(IsUreadaheadDisabled());
+}
+
+TEST_F(ArcUtilTest, UreadaheadDisabled) {
   auto* command_line = base::CommandLine::ForCurrentProcess();
-  const char* mode = ash::switches::kArcHostUreadaheadMode;
-
-  command_line->InitFromArgv({""});
-  EXPECT_EQ(ArcUreadaheadMode::READAHEAD, GetArcUreadaheadMode(mode));
-
-  command_line->InitFromArgv({"", "--arc-host-ureadahead-mode=readahead"});
-  EXPECT_EQ(ArcUreadaheadMode::READAHEAD, GetArcUreadaheadMode(mode));
-
-  command_line->InitFromArgv({"", "--arc-host-ureadahead-mode=generate"});
-  EXPECT_EQ(ArcUreadaheadMode::GENERATE, GetArcUreadaheadMode(mode));
-
-  command_line->InitFromArgv({"", "--arc-host-ureadahead-mode=disabled"});
-  EXPECT_EQ(ArcUreadaheadMode::DISABLED, GetArcUreadaheadMode(mode));
+  command_line->InitFromArgv({"", "--arc-disable-ureadahead"});
+  EXPECT_TRUE(IsUreadaheadDisabled());
 }
 
-TEST_F(ArcUtilTest, UseDevCachesDefault) {
-  EXPECT_FALSE(IsArcUseDevCaches());
+TEST_F(ArcUtilTest, HostUreadaheadGenerationDefault) {
+  EXPECT_FALSE(IsHostUreadaheadGeneration());
+  EXPECT_FALSE(IsUreadaheadDisabled());
 }
 
-TEST_F(ArcUtilTest, UseDevCachesSet) {
+TEST_F(ArcUtilTest, HostUreadaheadGenerationSet) {
   auto* command_line = base::CommandLine::ForCurrentProcess();
-  command_line->InitFromArgv({"", "--arc-use-dev-caches"});
-  EXPECT_TRUE(IsArcUseDevCaches());
+  command_line->InitFromArgv({"", "--arc-host-ureadahead-generation"});
+  EXPECT_TRUE(IsHostUreadaheadGeneration());
+  EXPECT_FALSE(IsUreadaheadDisabled());
 }
 
 // TODO(hidehiko): Add test for IsArcKioskMode().
@@ -335,21 +390,28 @@ TEST_F(ArcUtilTest, IsArcOptInVerificationDisabled) {
 
 TEST_F(ArcUtilTest, IsArcAllowedForUser) {
   TestingPrefServiceSimple local_state;
-  user_manager::TypedScopedUserManager fake_user_manager(
-      std::make_unique<user_manager::FakeUserManager>(&local_state));
+  user_manager::FakeUserManager* fake_user_manager =
+      new user_manager::FakeUserManager(&local_state);
+  user_manager::ScopedUserManager scoped_user_manager(
+      base::WrapUnique(fake_user_manager));
 
-  EXPECT_TRUE(IsArcAllowedForUser(fake_user_manager->AddUser(
-      AccountId::FromUserEmailGaiaId("user1@test.com", "1234567890-1"))));
-  EXPECT_FALSE(IsArcAllowedForUser(fake_user_manager->AddGuestUser(
-      AccountId::FromUserEmailGaiaId("user2@test.com", "1234567890-2"))));
-  EXPECT_TRUE(IsArcAllowedForUser(fake_user_manager->AddPublicAccountUser(
-      AccountId::FromUserEmailGaiaId("user3@test.com", "1234567890-3"))));
-  EXPECT_FALSE(IsArcAllowedForUser(fake_user_manager->AddKioskAppUser(
-      AccountId::FromUserEmailGaiaId("user4@test.com", "1234567890-4"))));
-  EXPECT_TRUE(IsArcAllowedForUser(fake_user_manager->AddChildUser(
-      AccountId::FromUserEmailGaiaId("user5@test.com", "1234567890-5"))));
-  EXPECT_TRUE(IsArcAllowedForUser(fake_user_manager->AddArcKioskAppUser(
-      AccountId::FromUserEmailGaiaId("user6@test.com", "1234567890-6"))));
+  struct {
+    user_manager::UserType user_type;
+    bool expected_allowed;
+  } const kTestCases[] = {
+      {user_manager::USER_TYPE_REGULAR, true},
+      {user_manager::USER_TYPE_GUEST, false},
+      {user_manager::USER_TYPE_PUBLIC_ACCOUNT, true},
+      {user_manager::USER_TYPE_KIOSK_APP, false},
+      {user_manager::USER_TYPE_CHILD, true},
+      {user_manager::USER_TYPE_ARC_KIOSK_APP, true},
+      {user_manager::USER_TYPE_ACTIVE_DIRECTORY, true},
+  };
+  for (const auto& test_case : kTestCases) {
+    const FakeUser user(test_case.user_type);
+    EXPECT_EQ(test_case.expected_allowed, IsArcAllowedForUser(&user))
+        << "User type=" << test_case.user_type;
+  }
 
   // An ephemeral user is a logged in user but unknown to UserManager when
   // ephemeral policy is set.
@@ -436,7 +498,7 @@ TEST_F(ArcUtilTest, ConfigureUpstartJobs_Success) {
       JobDesc{"Job_2dC", UpstartOperation::JOB_START, {}},
   };
   bool result = false;
-  ash::FakeUpstartClient::Get()->StartRecordingUpstartOperations();
+  StartRecordingUpstartOperations();
   ConfigureUpstartJobs(
       jobs,
       base::BindLambdaForTesting(
@@ -447,16 +509,16 @@ TEST_F(ArcUtilTest, ConfigureUpstartJobs_Success) {
   task_environment()->RunUntilQuit();
   EXPECT_TRUE(result);
 
-  auto ops = ash::FakeUpstartClient::Get()->upstart_operations();
+  auto ops = upstart_operations();
   ASSERT_EQ(4u, ops.size());
-  EXPECT_EQ(ops[0].name, "Job_2dA");
-  EXPECT_EQ(ops[0].type, ash::FakeUpstartClient::UpstartOperationType::STOP);
-  EXPECT_EQ(ops[1].name, "Job_2dB");
-  EXPECT_EQ(ops[1].type, ash::FakeUpstartClient::UpstartOperationType::STOP);
-  EXPECT_EQ(ops[2].name, "Job_2dB");
-  EXPECT_EQ(ops[2].type, ash::FakeUpstartClient::UpstartOperationType::START);
-  EXPECT_EQ(ops[3].name, "Job_2dC");
-  EXPECT_EQ(ops[3].type, ash::FakeUpstartClient::UpstartOperationType::START);
+  EXPECT_EQ(ops[0].first, "Job_2dA");
+  EXPECT_FALSE(ops[0].second);
+  EXPECT_EQ(ops[1].first, "Job_2dB");
+  EXPECT_FALSE(ops[1].second);
+  EXPECT_EQ(ops[2].first, "Job_2dB");
+  EXPECT_TRUE(ops[2].second);
+  EXPECT_EQ(ops[3].first, "Job_2dC");
+  EXPECT_TRUE(ops[3].second);
 }
 
 TEST_F(ArcUtilTest, ConfigureUpstartJobs_StopFail) {
@@ -730,158 +792,18 @@ TEST_F(ArcUtilTest, GetDesiredDiskImageSizeForArcVmDataMigrationInBytes) {
 }
 
 TEST_F(ArcUtilTest, GetRequiredFreeDiskSpaceForArcVmDataMigrationInBytes) {
-  EXPECT_EQ(GetRequiredFreeDiskSpaceForArcVmDataMigrationInBytes(0, 0, 0),
+  EXPECT_EQ(GetRequiredFreeDiskSpaceForArcVmDataMigrationInBytes(0, 0),
             1ULL << 30 /* kMinimumRequiredFreeDiskSpaceInBytes = 1 GB */);
 
   EXPECT_EQ(GetRequiredFreeDiskSpaceForArcVmDataMigrationInBytes(
-                4ULL << 30 /* android_data_size_src_in_bytes = 4 GB */,
-                4ULL << 30 /* android_data_size_dest_in_bytes = 4 GB */,
+                4ULL << 30 /* android_data_size_in_bytes = 4 GB */,
                 32ULL << 30 /* free_disk_space_in_bytes = 32 GB */),
             3ULL * (512ULL << 20) /* 1.5 GB */);
 
   EXPECT_EQ(GetRequiredFreeDiskSpaceForArcVmDataMigrationInBytes(
-                32ULL << 30 /* android_data_size_src_in_bytes = 32 GB */,
-                32ULL << 30 /* android_data_size_dest_in_bytes = 32 GB */,
+                32ULL << 30 /* android_data_size_in_bytes = 32 GB */,
                 4ULL << 30 /* free_disk_space_in_bytes = 4 GB */),
             4ULL << 30 /* 4 GB */);
-
-  EXPECT_EQ(GetRequiredFreeDiskSpaceForArcVmDataMigrationInBytes(
-                33ULL << 30 /* android_data_size_src_in_bytes = 33 GB */,
-                32ULL << 30 /* android_data_size_dest_in_bytes = 32 GB */,
-                4ULL << 30 /* free_disk_space_in_bytes = 4 GB */),
-            4ULL << 30 /* 4 GB */);
-
-  EXPECT_EQ(GetRequiredFreeDiskSpaceForArcVmDataMigrationInBytes(
-                16ULL << 30 /* android_data_size_src_in_bytes = 16 GB */,
-                32ULL << 30 /* android_data_size_dest_in_bytes = 32 GB */,
-                4ULL << 30 /* free_disk_space_in_bytes = 4 GB */),
-            20ULL << 30 /* 20 GB */);
-}
-
-// Checks that the callback is invoked with false when ARCVM is not stopped.
-TEST_F(ArcUtilTest, EnsureStaleArcVmAndArcVmUpstartJobsStopped_StopVmFailure) {
-  ash::FakeConciergeClient::Get()->set_stop_vm_response(std::nullopt);
-  base::test::TestFuture<bool> future_no_response;
-  EnsureStaleArcVmAndArcVmUpstartJobsStopped("0123456789abcdef",
-                                             future_no_response.GetCallback());
-  EXPECT_FALSE(future_no_response.Get());
-
-  vm_tools::concierge::StopVmResponse stop_vm_response;
-  stop_vm_response.set_success(false);
-  ash::FakeConciergeClient::Get()->set_stop_vm_response(stop_vm_response);
-  base::test::TestFuture<bool> future_failure;
-  EnsureStaleArcVmAndArcVmUpstartJobsStopped("0123456789abcdef",
-                                             future_failure.GetCallback());
-  EXPECT_FALSE(future_failure.Get());
-}
-
-// Checks that the callback is invoked with true when ARCVM is stopped, and
-// StopJob() is called for each of `kArcVmUpstartJobsToBeStoppedOnRestart`.
-// Note that StopJob() failures are not treated as fatal; see the comment on
-// ConfigureUpstartJobs().
-TEST_F(ArcUtilTest, EnsureStaleArcVmAndArcVmUpstartJobsStopped_Success) {
-  std::set<std::string> jobs_to_be_stopped(
-      std::begin(kArcVmUpstartJobsToBeStoppedOnRestart),
-      std::end(kArcVmUpstartJobsToBeStoppedOnRestart));
-  ash::FakeUpstartClient::Get()->set_stop_job_cb(base::BindLambdaForTesting(
-      [&jobs_to_be_stopped](const std::string& job_name,
-                            const std::vector<std::string>& env) {
-        jobs_to_be_stopped.erase(job_name);
-        // Let StopJob() fail for some of the calls.
-        return (jobs_to_be_stopped.size() % 2) == 0;
-      }));
-
-  vm_tools::concierge::StopVmResponse stop_vm_response;
-  stop_vm_response.set_success(true);
-  ash::FakeConciergeClient::Get()->set_stop_vm_response(stop_vm_response);
-
-  EXPECT_EQ(ash::FakeConciergeClient::Get()->stop_vm_call_count(), 0);
-
-  base::test::TestFuture<bool> future;
-  EnsureStaleArcVmAndArcVmUpstartJobsStopped("0123456789abcdef",
-                                             future.GetCallback());
-  EXPECT_TRUE(future.Get());
-  task_environment()->RunUntilIdle();
-  EXPECT_TRUE(jobs_to_be_stopped.empty());
-  EXPECT_EQ(ash::FakeConciergeClient::Get()->stop_vm_call_count(), 1);
-}
-
-TEST_F(ArcUtilTest,
-       ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletionDisabled) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      kDeferArcActivationUntilUserSessionStartUpTaskCompletion);
-
-  EXPECT_FALSE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-      profile_prefs()));
-
-  RecordFirstActivationDuringUserSessionStartUp(profile_prefs(), true);
-  EXPECT_FALSE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-      profile_prefs()));
-
-  RecordFirstActivationDuringUserSessionStartUp(profile_prefs(), false);
-  EXPECT_FALSE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-      profile_prefs()));
-}
-
-TEST_F(ArcUtilTest,
-       ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletionAlways) {
-  std::map<std::string, std::string> params = {
-      {"history_window", "0"},
-      {"history_threshold", "1"},
-  };
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      kDeferArcActivationUntilUserSessionStartUpTaskCompletion, params);
-
-  // ARC should be deferred always.
-  EXPECT_TRUE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-      profile_prefs()));
-
-  RecordFirstActivationDuringUserSessionStartUp(profile_prefs(), true);
-  EXPECT_TRUE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-      profile_prefs()));
-
-  RecordFirstActivationDuringUserSessionStartUp(profile_prefs(), false);
-  EXPECT_TRUE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-      profile_prefs()));
-}
-
-TEST_F(ArcUtilTest,
-       ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletionEnabled) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(
-      kDeferArcActivationUntilUserSessionStartUpTaskCompletion);
-  constexpr int kProductionWindowSize = 5;
-  constexpr int kProductionThreshold = 3;
-
-  // First, we should wait for the session start.
-  EXPECT_TRUE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-      profile_prefs()));
-  for (int i = 0; i < kProductionThreshold - 1; ++i) {
-    RecordFirstActivationDuringUserSessionStartUp(profile_prefs(), true);
-    EXPECT_TRUE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-        profile_prefs()));
-  }
-
-  // Try to cross the threshold.
-  for (int i = 0; i < kProductionWindowSize - kProductionThreshold + 1; ++i) {
-    RecordFirstActivationDuringUserSessionStartUp(profile_prefs(), true);
-    EXPECT_FALSE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-        profile_prefs()));
-  }
-
-  // Emulate ARC app is not launched in session start up.
-  for (int i = 0; i < kProductionWindowSize - kProductionThreshold; ++i) {
-    RecordFirstActivationDuringUserSessionStartUp(profile_prefs(), false);
-    EXPECT_FALSE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-        profile_prefs()));
-  }
-
-  // Cross the threshold.
-  RecordFirstActivationDuringUserSessionStartUp(profile_prefs(), false);
-  EXPECT_TRUE(ShouldDeferArcActivationUntilUserSessionStartUpTaskCompletion(
-      profile_prefs()));
 }
 
 }  // namespace

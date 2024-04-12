@@ -7,7 +7,7 @@
       "backgroundColor": "#FFFFFF"
     },
     {
-      "name": "LayoutNGBlockFlow (children-inline) DIV id='t'",
+      "name": "LayoutNGBlockFlow DIV id='t'",
       "bounds": [65, 69],
       "drawsContent": false,
       "transform": 1
@@ -20,10 +20,11 @@
       "transform": 1
     },
     {
-      "name": "LayoutNGBlockFlow (children-inline) DIV id='t'",
-      "bounds": [65, 198],
+      "name": "LayoutNGBlockFlow DIV id='t'",
+      "position": [0, 162],
+      "bounds": [44, 36],
       "invalidations": [
-        [0, 162, 44, 36]
+        [0, 0, 44, 36]
       ],
       "transform": 2
     }

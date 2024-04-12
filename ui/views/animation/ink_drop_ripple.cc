@@ -52,7 +52,7 @@ void InkDropRipple::AnimateToState(InkDropState ink_drop_state) {
 void InkDropRipple::SnapToState(InkDropState ink_drop_state) {
   AbortAllAnimations();
   if (ink_drop_state == InkDropState::ACTIVATED)
-    SetStateToActivated();
+    GetRootLayer()->SetVisible(true);
   else if (ink_drop_state == InkDropState::HIDDEN)
     SetStateToHidden();
   target_ink_drop_state_ = ink_drop_state;

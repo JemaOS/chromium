@@ -17,6 +17,8 @@ class GURL;
 
 namespace media_router {
 
+class DataDecoder;
+
 // SafeDialDeviceDescriptionParser parses the given device description XML file
 // safely via a utility process.
 // Spec for DIAL device description:

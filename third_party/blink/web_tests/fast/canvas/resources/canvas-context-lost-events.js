@@ -8,7 +8,7 @@ function verifyContextLost(shouldBeLost, ctx) {
     // Verify context loss experimentally as well as contextLost
     ctx.fillStyle = '#0f0';
     ctx.fillRect(0, 0, 1, 1);
-    const contextLostTest = ctx.getImageData(0, 0, 1, 1).data[1] == 0;
+    contextLostTest = ctx.getImageData(0, 0, 1, 1).data[1] == 0;
     if (shouldBeLost) {
         assert_true(contextLostTest);
         assert_true(ctx.isContextLost());
@@ -18,15 +18,13 @@ function verifyContextLost(shouldBeLost, ctx) {
     }
 }
 
-var lostEventHasFired = false;
-
-function contextLost(ctx) {
+function contextLost(lostEventHasFired, ctx) {
     assert_false(lostEventHasFired, 'Graphics context lost event dispatched more than once.');
     lostEventHasFired = true;
     verifyContextLost(true, ctx);
 }
 
-function contextRestored(ctx) {
+function contextRestoredlostEventHasFired(lostEventHasFired, ctx) {
     assert_true(lostEventHasFired, 'Context restored event dispatched after context lost.');
     verifyContextLost(false, ctx);
 }

@@ -217,7 +217,7 @@ void NetworkSpeechRecognizer::EventListener::OnRecognitionResults(
       FROM_HERE,
       base::BindOnce(&SpeechRecognizerDelegate::OnSpeechResult, delegate_,
                      result_str, final_count == results.size(),
-                     /* full_result = */ std::nullopt));
+                     /* full_result = */ absl::nullopt));
 
   last_result_str_ = result_str;
 }

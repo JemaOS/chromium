@@ -23,8 +23,7 @@ class BookmarkContextMenuObserver {
  public:
   // Invoked before the specified items are removed from the bookmark model.
   virtual void WillRemoveBookmarks(
-      const std::vector<raw_ptr<const bookmarks::BookmarkNode,
-                                VectorExperimental>>& bookmarks) = 0;
+      const std::vector<const bookmarks::BookmarkNode*>& bookmarks) = 0;
 
   // Invoked after the items have been removed from the model.
   virtual void DidRemoveBookmarks() = 0;
@@ -41,14 +40,14 @@ class BookmarkContextMenu : public BookmarkContextMenuControllerDelegate,
  public:
   // |browser| is used to open bookmarks as well as the bookmark manager, and
   // is NULL in tests.
-  BookmarkContextMenu(views::Widget* parent_widget,
-                      Browser* browser,
-                      Profile* profile,
-                      BookmarkLaunchLocation opened_from,
-                      const bookmarks::BookmarkNode* parent,
-                      const std::vector<raw_ptr<const bookmarks::BookmarkNode,
-                                                VectorExperimental>>& selection,
-                      bool close_on_remove);
+  BookmarkContextMenu(
+      views::Widget* parent_widget,
+      Browser* browser,
+      Profile* profile,
+      BookmarkLaunchLocation opened_from,
+      const bookmarks::BookmarkNode* parent,
+      const std::vector<const bookmarks::BookmarkNode*>& selection,
+      bool close_on_remove);
 
   BookmarkContextMenu(const BookmarkContextMenu&) = delete;
   BookmarkContextMenu& operator=(const BookmarkContextMenu&) = delete;
@@ -82,23 +81,22 @@ class BookmarkContextMenu : public BookmarkContextMenuControllerDelegate,
   void CloseMenu() override;
   void WillExecuteCommand(
       int command_id,
-      const std::vector<raw_ptr<const bookmarks::BookmarkNode,
-                                VectorExperimental>>& bookmarks) override;
+      const std::vector<const bookmarks::BookmarkNode*>& bookmarks) override;
   void DidExecuteCommand(int command_id) override;
 
  private:
   std::unique_ptr<BookmarkContextMenuController> controller_;
 
   // The parent of dialog boxes opened from the context menu.
-  const raw_ptr<views::Widget> parent_widget_;
+  raw_ptr<views::Widget> parent_widget_;
+
+  // The menu itself. This is owned by |menu_runner_|.
+  raw_ptr<views::MenuItemView> menu_;
 
   // Responsible for running the menu.
   std::unique_ptr<views::MenuRunner> menu_runner_;
 
-  // The menu itself. This is owned by `menu_runner_`.
-  const raw_ptr<views::MenuItemView> menu_;
-
-  raw_ptr<BookmarkContextMenuObserver> observer_ = nullptr;
+  raw_ptr<BookmarkContextMenuObserver> observer_;
 
   // Should the menu close when a node is removed.
   bool close_on_remove_;

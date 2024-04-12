@@ -11,7 +11,9 @@ import org.chromium.components.embedder_support.util.UrlUtilities;
 
 import javax.inject.Inject;
 
-/** Provides WebAPK specific behaviour for the {@link CurrentPageVerifier}. */
+/**
+ * Provides WebAPK specific behaviour for the {@link CurrentPageVerifier}.
+ */
 @ActivityScope
 public class WebApkVerifier extends WebappVerifier {
     private final WebappExtras mWebappExtras;

@@ -27,8 +27,9 @@
 #include "third_party/blink/renderer/core/fileapi/public_url_manager.h"
 
 #include "base/feature_list.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
-#include "base/types/pass_key.h"
+#include "base/strings/strcat.h"
 #include "base/unguessable_token.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "net/base/features.h"
@@ -65,6 +66,16 @@ static void RemoveFromNullOriginMapIfNecessary(const KURL& blob_url) {
 
 }  // namespace
 
+// Execution context names corresponding to the entries from
+// `ExecutionContextIdForHistogram` in public_url_manager.h.
+const char* const kExecutionContextNamesForHistograms[]{
+    "Frame",
+    "Worker",
+};
+static_assert(std::size(kExecutionContextNamesForHistograms) ==
+              static_cast<size_t>(ExecutionContextIdForHistogram::kMaxValue) +
+                  1);
+
 PublicURLManager::PublicURLManager(ExecutionContext* execution_context)
     : ExecutionContextLifecycleObserver(execution_context),
       frame_url_store_(execution_context),
@@ -77,6 +88,7 @@ PublicURLManager::PublicURLManager(ExecutionContext* execution_context)
         return;
       }
 
+      execution_context_type_ = ExecutionContextIdForHistogram::kFrame;
       frame->GetRemoteNavigationAssociatedInterfaces()->GetInterface(
           frame_url_store_.BindNewEndpointAndPassReceiver(
               execution_context->GetTaskRunner(TaskType::kFileReading)));
@@ -88,6 +100,7 @@ PublicURLManager::PublicURLManager(ExecutionContext* execution_context)
         return;
       }
 
+      execution_context_type_ = ExecutionContextIdForHistogram::kWorker;
       worker_global_scope->GetBrowserInterfaceBroker().GetInterface(
           worker_url_store_.BindNewPipeAndPassReceiver(
               execution_context->GetTaskRunner(TaskType::kFileReading)));
@@ -131,19 +144,6 @@ PublicURLManager::PublicURLManager(ExecutionContext* execution_context)
   }
 }
 
-PublicURLManager::PublicURLManager(
-    base::PassKey<StorageAccessHandle>,
-    ExecutionContext* execution_context,
-    mojo::PendingAssociatedRemote<mojom::blink::BlobURLStore>
-        frame_url_store_remote)
-    : ExecutionContextLifecycleObserver(execution_context),
-      frame_url_store_(execution_context),
-      worker_url_store_(execution_context) {
-  frame_url_store_.Bind(
-      std::move(frame_url_store_remote),
-      execution_context->GetTaskRunner(TaskType::kFileReading));
-}
-
 mojom::blink::BlobURLStore& PublicURLManager::GetBlobURLStore() {
   DCHECK_NE(frame_url_store_.is_bound(), worker_url_store_.is_bound());
   if (frame_url_store_.is_bound()) {
@@ -172,7 +172,7 @@ String PublicURLManager::RegisterURL(URLRegistrable* registrable) {
     // Determining the top-level site for workers is non-trivial. We assume
     // usage of blob URLs in workers is much lower than in windows, so we
     // should still get useful metrics even while ignoring workers.
-    std::optional<BlinkSchemefulSite> top_level_site;
+    absl::optional<BlinkSchemefulSite> top_level_site;
     if (GetExecutionContext()->IsWindow()) {
       auto* window = To<LocalDOMWindow>(GetExecutionContext());
       if (window->top() && window->top()->GetFrame()) {
@@ -183,9 +183,31 @@ String PublicURLManager::RegisterURL(URLRegistrable* registrable) {
       }
     }
 
+    base::ElapsedTimer register_timer;
     GetBlobURLStore().Register(std::move(blob_remote), url,
                                GetExecutionContext()->GetAgentClusterID(),
                                top_level_site);
+    const base::TimeDelta register_url_time = register_timer.Elapsed();
+
+    if (base::FeatureList::IsEnabled(
+            net::features::kSupportPartitionedBlobUrl)) {
+      // This holds because `execution_context_type_` will always be set for
+      // Window, SharedWorker, and DedicatedWorker contexts, which are the only
+      // ones where URL.CreateObjectURL is exposed (per the IDL).
+      CHECK(execution_context_type_.has_value());
+
+      const char* context_type_ =
+          kExecutionContextNamesForHistograms[static_cast<int>(
+              *execution_context_type_)];
+      base::UmaHistogramCustomTimes(
+          base::StrCat({"Storage.Blob.RegisterURLTimeWithPartitioningSupport.",
+                        context_type_}),
+          register_url_time, base::Milliseconds(1), base::Seconds(60), 50);
+    } else {
+      base::UmaHistogramCustomTimes(
+          "Storage.Blob.RegisterURLTimeWithoutPartitioningSupport",
+          register_url_time, base::Milliseconds(1), base::Seconds(60), 50);
+    }
 
     mojo_urls_.insert(url_string);
     registrable->CloneMojoBlob(std::move(blob_receiver));
@@ -236,9 +258,9 @@ void PublicURLManager::Resolve(
   DCHECK(url.ProtocolIs("blob"));
 
   auto metrics_callback = [](ExecutionContext* execution_context,
-                             const std::optional<base::UnguessableToken>&
+                             const absl::optional<base::UnguessableToken>&
                                  unsafe_agent_cluster_id,
-                             const std::optional<BlinkSchemefulSite>&
+                             const absl::optional<BlinkSchemefulSite>&
                                  unsafe_top_level_site) {
     if (execution_context->GetAgentClusterID() != unsafe_agent_cluster_id) {
       execution_context->CountUse(
@@ -249,7 +271,7 @@ void PublicURLManager::Resolve(
     // used to calculate metrics it should be okay to not track top-level site
     // in that case, as long as the count for unknown top-level sites ends up
     // low enough compared to overall usage.
-    std::optional<BlinkSchemefulSite> top_level_site;
+    absl::optional<BlinkSchemefulSite> top_level_site;
     if (execution_context->IsWindow()) {
       auto* window = To<LocalDOMWindow>(execution_context);
       if (window->top() && window->top()->GetFrame()) {
@@ -290,7 +312,7 @@ void PublicURLManager::Resolve(
   DCHECK(url.ProtocolIs("blob"));
 
   auto metrics_callback = [](ExecutionContext* execution_context,
-                             const std::optional<base::UnguessableToken>&
+                             const absl::optional<base::UnguessableToken>&
                                  unsafe_agent_cluster_id) {
     if (execution_context->GetAgentClusterID() != unsafe_agent_cluster_id) {
       execution_context->CountUse(

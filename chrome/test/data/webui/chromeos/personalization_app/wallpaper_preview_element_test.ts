@@ -5,8 +5,9 @@
 /** @fileoverview Test suite for wallpaper-preview component.  */
 
 import 'chrome://personalization/strings.m.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
-import {WallpaperPreviewElement, WallpaperType} from 'chrome://personalization/js/personalization_app.js';
+import {WallpaperPreview, WallpaperType} from 'chrome://personalization/js/personalization_app.js';
 import {assertEquals, assertNotEquals, assertStringContains, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {flushTasks, waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
 
@@ -14,8 +15,8 @@ import {baseSetup, initElement} from './personalization_app_test_utils.js';
 import {TestPersonalizationStore} from './test_personalization_store.js';
 import {TestWallpaperProvider} from './test_wallpaper_interface_provider.js';
 
-suite('WallpaperPreviewElementTest', function() {
-  let wallpaperPreviewElement: WallpaperPreviewElement|null;
+suite('WallpaperPreviewTest', function() {
+  let wallpaperPreviewElement: WallpaperPreview|null;
   let wallpaperProvider: TestWallpaperProvider;
   let personalizationStore: TestPersonalizationStore;
 
@@ -38,10 +39,10 @@ suite('WallpaperPreviewElementTest', function() {
       async () => {
         personalizationStore.data.wallpaper.loading = {
           ...personalizationStore.data.wallpaper.loading,
-          selected: {attribution: true, image: true},
+          selected: true,
           setImage: 0,
         };
-        wallpaperPreviewElement = initElement(WallpaperPreviewElement);
+        wallpaperPreviewElement = initElement(WallpaperPreview);
 
         assertEquals(
             null, wallpaperPreviewElement.shadowRoot!.querySelector('img'));
@@ -54,7 +55,7 @@ suite('WallpaperPreviewElementTest', function() {
         // Loading placeholder should be hidden.
         personalizationStore.data.wallpaper.loading = {
           ...personalizationStore.data.wallpaper.loading,
-          selected: {attribution: false, image: false},
+          selected: false,
           setImage: 0,
         };
         personalizationStore.data.wallpaper.currentSelected =
@@ -68,7 +69,7 @@ suite('WallpaperPreviewElementTest', function() {
         // come back.
         personalizationStore.data.wallpaper.loading = {
           ...personalizationStore.data.wallpaper.loading,
-          selected: {attribution: false, image: false},
+          selected: false,
           setImage: 1,
         };
         personalizationStore.notifyObservers();
@@ -81,7 +82,7 @@ suite('WallpaperPreviewElementTest', function() {
     personalizationStore.data.wallpaper.currentSelected =
         wallpaperProvider.currentWallpaper;
 
-    wallpaperPreviewElement = initElement(WallpaperPreviewElement);
+    wallpaperPreviewElement = initElement(WallpaperPreview);
     await waitAfterNextRender(wallpaperPreviewElement);
 
     const img = wallpaperPreviewElement.shadowRoot!.querySelector('img');
@@ -92,12 +93,11 @@ suite('WallpaperPreviewElementTest', function() {
   });
 
   test('shows placeholders when image fails to load', async () => {
-    wallpaperPreviewElement = initElement(WallpaperPreviewElement);
+    wallpaperPreviewElement = initElement(WallpaperPreview);
     await waitAfterNextRender(wallpaperPreviewElement);
 
     // Still loading.
-    personalizationStore.data.wallpaper.loading.selected.image = true;
-    personalizationStore.data.wallpaper.loading.selected.attribution = true;
+    personalizationStore.data.wallpaper.loading.selected = true;
     personalizationStore.data.wallpaper.currentSelected = null;
     personalizationStore.notifyObservers();
     await waitAfterNextRender(wallpaperPreviewElement);
@@ -107,8 +107,7 @@ suite('WallpaperPreviewElementTest', function() {
     assertTrue(!!placeholder);
 
     // Loading finished and still no current wallpaper.
-    personalizationStore.data.wallpaper.loading.selected.image = false;
-    personalizationStore.data.wallpaper.loading.selected.attribution = false;
+    personalizationStore.data.wallpaper.loading.selected = false;
     personalizationStore.notifyObservers();
     await waitAfterNextRender(wallpaperPreviewElement);
 
@@ -124,12 +123,12 @@ suite('WallpaperPreviewElementTest', function() {
     personalizationStore.data.wallpaper.currentSelected =
         wallpaperProvider.currentWallpaper;
 
-    wallpaperPreviewElement = initElement(WallpaperPreviewElement);
+    wallpaperPreviewElement = initElement(WallpaperPreview);
     await waitAfterNextRender(wallpaperPreviewElement);
 
     function getManagedIcon(): HTMLElement|null {
       return wallpaperPreviewElement!.shadowRoot!.querySelector(
-          `iron-icon[icon^='personalization:managed']`);
+          `iron-icon[icon='personalization:managed']`);
     }
 
     assertEquals(null, getManagedIcon(), 'no managed icon visible');

@@ -34,8 +34,8 @@ namespace views {
 
 ScrollBar::~ScrollBar() = default;
 
-ScrollBar::Orientation ScrollBar::GetOrientation() const {
-  return orientation_;
+bool ScrollBar::IsHorizontal() const {
+  return is_horiz_;
 }
 
 void ScrollBar::SetThumb(BaseScrollBarThumb* thumb) {
@@ -170,7 +170,7 @@ void ScrollBar::OnGestureEvent(ui::GestureEvent* event) {
 
     float scroll_amount_f;
     int scroll_amount;
-    if (GetOrientation() == Orientation::kHorizontal) {
+    if (IsHorizontal()) {
       scroll_amount_f = event->details().scroll_x() - roundoff_error_.x();
       scroll_amount = base::ClampRound(scroll_amount_f);
       roundoff_error_.set_x(scroll_amount - scroll_amount_f);
@@ -187,12 +187,8 @@ void ScrollBar::OnGestureEvent(ui::GestureEvent* event) {
   if (event->type() == ui::ET_SCROLL_FLING_START) {
     scroll_status_ = ScrollStatus::kScrollInEnding;
     GetOrCreateScrollAnimator()->Start(
-        GetOrientation() == Orientation::kHorizontal
-            ? event->details().velocity_x()
-            : 0.f,
-        GetOrientation() == Orientation::kHorizontal
-            ? 0.f
-            : event->details().velocity_y());
+        IsHorizontal() ? event->details().velocity_x() : 0.f,
+        IsHorizontal() ? 0.f : event->details().velocity_y());
     event->SetHandled();
   }
 }
@@ -201,8 +197,8 @@ void ScrollBar::OnGestureEvent(ui::GestureEvent* event) {
 // ScrollBar, ScrollDelegate implementation:
 
 bool ScrollBar::OnScroll(float dx, float dy) {
-  return ScrollByContentsOffset(
-      GetOrientation() == Orientation::kHorizontal ? dx : dy);
+  return IsHorizontal() ? ScrollByContentsOffset(dx)
+                        : ScrollByContentsOffset(dy);
 }
 
 void ScrollBar::OnFlingScrollEnded() {
@@ -230,8 +226,7 @@ void ScrollBar::ShowContextMenuForViewImpl(View* source,
   gfx::Rect widget_bounds = widget->GetWindowBoundsInScreen();
   gfx::Point temp_pt(p.x() - widget_bounds.x(), p.y() - widget_bounds.y());
   View::ConvertPointFromWidget(this, &temp_pt);
-  context_menu_mouse_position_ =
-      GetOrientation() == Orientation::kHorizontal ? temp_pt.x() : temp_pt.y();
+  context_menu_mouse_position_ = IsHorizontal() ? temp_pt.x() : temp_pt.y();
 
   if (!menu_model_) {
     menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
@@ -240,30 +235,26 @@ void ScrollBar::ShowContextMenuForViewImpl(View* source,
     menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
     menu_model_->AddItemWithStringId(
         ScrollBarContextMenuCommand_ScrollStart,
-        GetOrientation() == Orientation::kHorizontal
-            ? IDS_APP_SCROLLBAR_CXMENU_SCROLLLEFTEDGE
-            : IDS_APP_SCROLLBAR_CXMENU_SCROLLHOME);
+        IsHorizontal() ? IDS_APP_SCROLLBAR_CXMENU_SCROLLLEFTEDGE
+                       : IDS_APP_SCROLLBAR_CXMENU_SCROLLHOME);
     menu_model_->AddItemWithStringId(
         ScrollBarContextMenuCommand_ScrollEnd,
-        GetOrientation() == Orientation::kHorizontal
-            ? IDS_APP_SCROLLBAR_CXMENU_SCROLLRIGHTEDGE
-            : IDS_APP_SCROLLBAR_CXMENU_SCROLLEND);
+        IsHorizontal() ? IDS_APP_SCROLLBAR_CXMENU_SCROLLRIGHTEDGE
+                       : IDS_APP_SCROLLBAR_CXMENU_SCROLLEND);
     menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
     menu_model_->AddItemWithStringId(ScrollBarContextMenuCommand_ScrollPageUp,
                                      IDS_APP_SCROLLBAR_CXMENU_SCROLLPAGEUP);
     menu_model_->AddItemWithStringId(ScrollBarContextMenuCommand_ScrollPageDown,
                                      IDS_APP_SCROLLBAR_CXMENU_SCROLLPAGEDOWN);
     menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
-    menu_model_->AddItemWithStringId(
-        ScrollBarContextMenuCommand_ScrollPrev,
-        GetOrientation() == Orientation::kHorizontal
-            ? IDS_APP_SCROLLBAR_CXMENU_SCROLLLEFT
-            : IDS_APP_SCROLLBAR_CXMENU_SCROLLUP);
-    menu_model_->AddItemWithStringId(
-        ScrollBarContextMenuCommand_ScrollNext,
-        GetOrientation() == Orientation::kHorizontal
-            ? IDS_APP_SCROLLBAR_CXMENU_SCROLLRIGHT
-            : IDS_APP_SCROLLBAR_CXMENU_SCROLLDOWN);
+    menu_model_->AddItemWithStringId(ScrollBarContextMenuCommand_ScrollPrev,
+                                     IsHorizontal()
+                                         ? IDS_APP_SCROLLBAR_CXMENU_SCROLLLEFT
+                                         : IDS_APP_SCROLLBAR_CXMENU_SCROLLUP);
+    menu_model_->AddItemWithStringId(ScrollBarContextMenuCommand_ScrollNext,
+                                     IsHorizontal()
+                                         ? IDS_APP_SCROLLBAR_CXMENU_SCROLLRIGHT
+                                         : IDS_APP_SCROLLBAR_CXMENU_SCROLLDOWN);
   }
   menu_runner_ = std::make_unique<MenuRunner>(
       menu_model_.get(),
@@ -279,7 +270,7 @@ bool ScrollBar::IsCommandIdEnabled(int id) const {
   switch (id) {
     case ScrollBarContextMenuCommand_ScrollPageUp:
     case ScrollBarContextMenuCommand_ScrollPageDown:
-      return GetOrientation() == Orientation::kVertical;
+      return !IsHorizontal();
   }
   return true;
 }
@@ -399,8 +390,8 @@ void ScrollBar::SetFlingMultiplier(float fling_multiplier) {
   GetOrCreateScrollAnimator()->set_velocity_multiplier(fling_multiplier_);
 }
 
-ScrollBar::ScrollBar(Orientation orientation)
-    : orientation_(orientation),
+ScrollBar::ScrollBar(bool is_horiz)
+    : is_horiz_(is_horiz),
       repeater_(base::BindRepeating(&ScrollBar::TrackClicked,
                                     base::Unretained(this))) {
   set_context_menu_controller(this);
@@ -424,7 +415,7 @@ int ScrollBar::GetThumbLengthForTesting() {
 
 void ScrollBar::ProcessPressEvent(const ui::LocatedEvent& event) {
   gfx::Rect thumb_bounds = thumb_->bounds();
-  if (GetOrientation() == Orientation::kHorizontal) {
+  if (IsHorizontal()) {
     if (GetMirroredXInView(event.x()) < thumb_bounds.x()) {
       last_scroll_amount_ = ScrollAmount::kPrevPage;
     } else if (GetMirroredXInView(event.x()) > thumb_bounds.right()) {
@@ -452,8 +443,7 @@ void ScrollBar::ScrollContentsToOffset() {
 
 int ScrollBar::GetTrackSize() const {
   gfx::Rect track_bounds = GetTrackBounds();
-  return GetOrientation() == Orientation::kHorizontal ? track_bounds.width()
-                                                      : track_bounds.height();
+  return IsHorizontal() ? track_bounds.width() : track_bounds.height();
 }
 
 int ScrollBar::CalculateThumbPosition(int contents_scroll_offset) const {
@@ -461,14 +451,8 @@ int ScrollBar::CalculateThumbPosition(int contents_scroll_offset) const {
   // simple division can be rounded and there could be 1 pixel gap even when the
   // contents scroll down to the bottom. See crbug.com/244671.
   int thumb_max = GetTrackSize() - thumb_->GetLength();
-  if (contents_scroll_offset + viewport_size_ == contents_size_) {
+  if (contents_scroll_offset + viewport_size_ == contents_size_)
     return thumb_max;
-  }
-  // Avoid dividing by zero if contents and viewport are the same size. See
-  // crbug.com/1447967.
-  if (viewport_size_ == contents_size_) {
-    return 0;
-  }
   return (contents_scroll_offset * thumb_max) /
          (contents_size_ - viewport_size_);
 }
@@ -494,11 +478,9 @@ void ScrollBar::SetContentsScrollOffset(int contents_scroll_offset) {
 ScrollBar::ScrollAmount ScrollBar::DetermineScrollAmountByKeyCode(
     const ui::KeyboardCode& keycode) const {
   // Reject arrows that don't match the scrollbar orientation.
-  if (GetOrientation() == Orientation::kHorizontal
-          ? (keycode == ui::VKEY_UP || keycode == ui::VKEY_DOWN)
-          : (keycode == ui::VKEY_LEFT || keycode == ui::VKEY_RIGHT)) {
+  if (IsHorizontal() ? (keycode == ui::VKEY_UP || keycode == ui::VKEY_DOWN)
+                     : (keycode == ui::VKEY_LEFT || keycode == ui::VKEY_RIGHT))
     return ScrollAmount::kNone;
-  }
 
   static const base::NoDestructor<
       base::flat_map<ui::KeyboardCode, ScrollAmount>>
@@ -517,7 +499,7 @@ ScrollBar::ScrollAmount ScrollBar::DetermineScrollAmountByKeyCode(
   return (i == kMap->end()) ? ScrollAmount::kNone : i->second;
 }
 
-std::optional<int> ScrollBar::GetDesiredScrollOffset(ScrollAmount amount) {
+absl::optional<int> ScrollBar::GetDesiredScrollOffset(ScrollAmount amount) {
   switch (amount) {
     case ScrollAmount::kStart:
       return GetMinPosition();
@@ -532,11 +514,11 @@ std::optional<int> ScrollBar::GetDesiredScrollOffset(ScrollAmount amount) {
     case ScrollAmount::kNextPage:
       return contents_scroll_offset_ + GetScrollIncrement(true, true);
     default:
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
-BEGIN_METADATA(ScrollBar)
+BEGIN_METADATA(ScrollBar, View)
 ADD_READONLY_PROPERTY_METADATA(int, MaxPosition)
 ADD_READONLY_PROPERTY_METADATA(int, MinPosition)
 ADD_READONLY_PROPERTY_METADATA(int, Position)

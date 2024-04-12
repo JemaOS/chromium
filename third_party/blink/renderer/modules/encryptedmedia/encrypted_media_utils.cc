@@ -6,9 +6,6 @@
 
 #include "base/notreached.h"
 #include "media/base/eme_constants.h"
-#include "third_party/blink/public/web/web_local_frame_client.h"
-#include "third_party/blink/renderer/core/frame/local_dom_window.h"
-#include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 
 namespace blink {
 
@@ -106,27 +103,6 @@ String EncryptedMediaUtils::ConvertKeyStatusToString(
 }
 
 // static
-V8MediaKeyStatus EncryptedMediaUtils::ConvertKeyStatusToEnum(
-    const WebEncryptedMediaKeyInformation::KeyStatus status) {
-  switch (status) {
-    case WebEncryptedMediaKeyInformation::KeyStatus::kUsable:
-      return V8MediaKeyStatus(V8MediaKeyStatus::Enum::kUsable);
-    case WebEncryptedMediaKeyInformation::KeyStatus::kExpired:
-      return V8MediaKeyStatus(V8MediaKeyStatus::Enum::kExpired);
-    case WebEncryptedMediaKeyInformation::KeyStatus::kReleased:
-      return V8MediaKeyStatus(V8MediaKeyStatus::Enum::kReleased);
-    case WebEncryptedMediaKeyInformation::KeyStatus::kOutputRestricted:
-      return V8MediaKeyStatus(V8MediaKeyStatus::Enum::kOutputRestricted);
-    case WebEncryptedMediaKeyInformation::KeyStatus::kOutputDownscaled:
-      return V8MediaKeyStatus(V8MediaKeyStatus::Enum::kOutputDownscaled);
-    case WebEncryptedMediaKeyInformation::KeyStatus::kStatusPending:
-      return V8MediaKeyStatus(V8MediaKeyStatus::Enum::kStatusPending);
-    case WebEncryptedMediaKeyInformation::KeyStatus::kInternalError:
-      return V8MediaKeyStatus(V8MediaKeyStatus::Enum::kInternalError);
-  }
-}
-
-// static
 WebMediaKeySystemConfiguration::Requirement
 EncryptedMediaUtils::ConvertToMediaKeysRequirement(const String& requirement) {
   if (requirement == "required")
@@ -193,14 +169,6 @@ const char* EncryptedMediaUtils::GetPropertyName(EmeApiType type) {
     case EmeApiType::kRemove:
       return "remove";
   }
-}
-
-WebEncryptedMediaClient*
-EncryptedMediaUtils::GetEncryptedMediaClientFromLocalDOMWindow(
-    LocalDOMWindow* window) {
-  WebLocalFrameImpl* web_frame =
-      WebLocalFrameImpl::FromFrame(window->GetFrame());
-  return web_frame->Client()->EncryptedMediaClient();
 }
 
 }  // namespace blink

@@ -4,10 +4,9 @@
 
 #include "ash/shelf/drag_handle.h"
 
-#include <optional>
 #include <string>
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/constants/ash_features.h"
 #include "ash/controls/contextual_tooltip.h"
 #include "ash/public/cpp/shelf_config.h"
@@ -25,11 +24,9 @@
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/timer/timer.h"
-#include "chromeos/constants/chromeos_features.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
 #include "ui/views/accessibility/view_accessibility.h"
@@ -91,7 +88,7 @@ class HideNudgeObserver : public ui::ImplicitAnimationObserver {
   }
 
  private:
-  const raw_ptr<ContextualNudge> drag_handle_nudge_;
+  const raw_ptr<ContextualNudge, ExperimentalAsh> drag_handle_nudge_;
 };
 
 }  // namespace
@@ -136,9 +133,8 @@ bool DragHandle::MaybeShowDragHandleNudge() {
   if (!show_drag_handle_nudge_timer_.IsRunning())
     overview_observation_.Reset();
 
-  if (!features::IsHideShelfControlsInTabletModeEnabled()) {
+  if (!features::AreContextualNudgesEnabled())
     return false;
-  }
 
   // Do not show drag handle nudge if it is already shown or drag handle is not
   // visible.
@@ -244,16 +240,11 @@ void DragHandle::SetWindowDragFromShelfInProgress(bool gesture_in_progress) {
 }
 
 void DragHandle::UpdateColor() {
-  if (chromeos::features::IsJellyEnabled()) {
-    layer()->SetColor(
-        GetColorProvider()->GetColor(cros_tokens::kCrosSysOnSurface));
-  } else {
-    layer()->SetColor(GetColorProvider()->GetColor(kColorAshShelfHandleColor));
-  }
+  layer()->SetColor(GetColorProvider()->GetColor(kColorAshShelfHandleColor));
 }
 
 void DragHandle::OnGestureEvent(ui::GestureEvent* event) {
-  if (!features::IsHideShelfControlsInTabletModeEnabled() ||
+  if (!features::AreContextualNudgesEnabled() ||
       !gesture_nudge_target_visibility_) {
     return;
   }
@@ -290,7 +281,7 @@ gfx::Rect DragHandle::GetAnchorBoundsInScreen() const {
 void DragHandle::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   // TODO(b/262424972): Remove unwanted ", window" string from the announcement.
   Button::GetAccessibleNodeData(node_data);
-  GetViewAccessibility().SetRole(ax::mojom::Role::kPopUpButton);
+  GetViewAccessibility().OverrideRole(ax::mojom::Role::kPopUpButton);
 
   std::u16string accessible_name = std::u16string();
   switch (shelf_->shelf_layout_manager()->hotseat_state()) {
@@ -306,8 +297,8 @@ void DragHandle::GetAccessibleNodeData(ui::AXNodeData* node_data) {
       // When the hotseat is kHidden, the focus traversal should go to the
       // status area as the next focus and the navigation area as the previous
       // focus.
-      GetViewAccessibility().SetNextFocus(shelf_->GetStatusAreaWidget());
-      GetViewAccessibility().SetPreviousFocus(
+      GetViewAccessibility().OverrideNextFocus(shelf_->GetStatusAreaWidget());
+      GetViewAccessibility().OverridePreviousFocus(
           shelf_->shelf_widget()->navigation_widget());
       break;
     case HotseatState::kExtended:
@@ -315,8 +306,8 @@ void DragHandle::GetAccessibleNodeData(ui::AXNodeData* node_data) {
 
       // When the hotseat is kExtended, the focus traversal should go to the
       // hotseat as both the next and previous focus.
-      GetViewAccessibility().SetNextFocus(shelf_->hotseat_widget());
-      GetViewAccessibility().SetPreviousFocus(shelf_->hotseat_widget());
+      GetViewAccessibility().OverrideNextFocus(shelf_->hotseat_widget());
+      GetViewAccessibility().OverridePreviousFocus(shelf_->hotseat_widget());
 
       // The name should be empty when the hotseat is extended but we cannot
       // hide it.
@@ -527,8 +518,5 @@ void DragHandle::StopDragHandleNudgeShowTimer() {
   show_drag_handle_nudge_timer_.Stop();
   overview_observation_.Reset();
 }
-
-BEGIN_METADATA(DragHandle)
-END_METADATA
 
 }  // namespace ash

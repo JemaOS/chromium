@@ -5,9 +5,8 @@
 #ifndef CHROME_BROWSER_FEED_FEED_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_FEED_FEED_SERVICE_FACTORY_H_
 
-#include <string_view>
-
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
+#include "base/strings/string_piece_forward.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -16,7 +15,7 @@ class BrowserContext;
 
 namespace feed {
 namespace internal {
-const std::string_view GetFollowingFeedFollowCountGroupName(
+const base::StringPiece GetFollowingFeedFollowCountGroupName(
     size_t follow_count);
 }
 
@@ -33,13 +32,13 @@ class FeedServiceFactory : public ProfileKeyedServiceFactory {
   static FeedServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<FeedServiceFactory>;
+  friend struct base::DefaultSingletonTraits<FeedServiceFactory>;
 
   FeedServiceFactory();
   ~FeedServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsNULLWhileTesting() const override;
 };

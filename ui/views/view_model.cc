@@ -53,11 +53,11 @@ void ViewModelBase::Clear() {
     delete entry.view;
 }
 
-std::optional<size_t> ViewModelBase::GetIndexOfView(const View* view) const {
+absl::optional<size_t> ViewModelBase::GetIndexOfView(const View* view) const {
   const auto i = base::ranges::find(entries_, view, &Entry::view);
   return (i == entries_.cend())
-             ? std::nullopt
-             : std::make_optional(static_cast<size_t>(i - entries_.cbegin()));
+             ? absl::nullopt
+             : absl::make_optional(static_cast<size_t>(i - entries_.cbegin()));
 }
 
 ViewModelBase::ViewModelBase() = default;

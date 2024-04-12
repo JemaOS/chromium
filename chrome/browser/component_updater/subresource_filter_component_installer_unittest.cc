@@ -35,7 +35,7 @@
 
 namespace {
 
-constexpr char kTestRulesetVersion[] = "1.2.3.4";
+static const char kTestRulesetVersion[] = "1.2.3.4";
 
 class TestRulesetService : public subresource_filter::RulesetService {
  public:
@@ -115,7 +115,7 @@ class SubresourceFilterComponentInstallerTest : public PlatformTest {
     ASSERT_TRUE(component_install_dir_.CreateUniqueTempDir());
     ASSERT_TRUE(ruleset_service_dir_.CreateUniqueTempDir());
     subresource_filter::IndexedRulesetVersion::RegisterPrefs(
-        pref_service_.registry(), subresource_filter::kSafeBrowsingFilterTag);
+        pref_service_.registry());
 
     auto test_ruleset_service = std::make_unique<TestRulesetService>(
         &pref_service_, base::SingleThreadTaskRunner::GetCurrentDefault(),
@@ -186,8 +186,7 @@ class SubresourceFilterComponentInstallerTest : public PlatformTest {
   std::unique_ptr<SubresourceFilterComponentInstallerPolicy> policy_;
   TestingPrefServiceSimple pref_service_;
 
-  raw_ptr<TestRulesetService, DanglingUntriaged> test_ruleset_service_ =
-      nullptr;
+  raw_ptr<TestRulesetService> test_ruleset_service_ = nullptr;
 };
 
 TEST_F(SubresourceFilterComponentInstallerTest,
@@ -289,9 +288,8 @@ TEST_F(SubresourceFilterComponentInstallerTest, InstallerTag) {
                  << ::testing::PrintToString(test_case.ruleset_flavors));
 
     std::vector<subresource_filter::Configuration> configs;
-    for (const auto& ruleset_flavor : test_case.ruleset_flavors) {
+    for (const auto& ruleset_flavor : test_case.ruleset_flavors)
       configs.push_back(CreateConfigUsingRulesetFlavor(ruleset_flavor));
-    }
     subresource_filter::testing::ScopedSubresourceFilterConfigurator
         scoped_configuration(std::move(configs));
 

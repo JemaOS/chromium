@@ -18,10 +18,11 @@ import '../components/dialogs/oobe_content_dialog.js';
 import './assistant_icons.html.js';
 import './assistant_common_styles.css.js';
 
-import {afterNextRender, html, mixinBehaviors, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {afterNextRender, html, mixinBehaviors, Polymer, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {MultiStepBehavior} from '../components/behaviors/multi_step_behavior.js';
-import {OobeI18nMixin} from '../components/mixins/oobe_i18n_mixin.js';
+import {MultiStepBehavior, MultiStepBehaviorInterface} from '../components/behaviors/multi_step_behavior.js';
+import {OobeDialogHostBehavior} from '../components/behaviors/oobe_dialog_host_behavior.js';
+import {OobeI18nBehavior, OobeI18nBehaviorInterface} from '../components/behaviors/oobe_i18n_behavior.js';
 
 import {BrowserProxyImpl} from './browser_proxy.js';
 
@@ -37,7 +38,7 @@ const AssistantLoadingUIState = {
  * @extends {PolymerElement}
  */
 const AssistantLoadingBase =
-    mixinBehaviors([MultiStepBehavior], OobeI18nMixin(PolymerElement));
+    mixinBehaviors([OobeI18nBehavior, MultiStepBehavior], PolymerElement);
 
 /**
  * @polymer

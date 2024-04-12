@@ -12,29 +12,29 @@
 
 namespace web_app {
 
-std::optional<webapps::AppId> GetAppIdForSystemApp(
+absl::optional<AppId> GetAppIdForSystemApp(
     const WebAppRegistrar& registrar,
     const ash::SystemWebAppDelegateMap& delegates,
     ash::SystemWebAppType type) {
   const ash::SystemWebAppDelegate* delegate =
       ash::GetSystemWebApp(delegates, type);
   if (!delegate)
-    return std::nullopt;
+    return absl::nullopt;
 
-  std::optional<GURL> app_install_url = delegate->GetInstallUrl();
+  absl::optional<GURL> app_install_url = delegate->GetInstallUrl();
   if (!app_install_url.has_value())
-    return std::nullopt;
+    return absl::nullopt;
 
   return registrar.LookupExternalAppId(app_install_url.value());
 }
 
-std::optional<ash::SystemWebAppType> GetSystemAppTypeForAppId(
+absl::optional<ash::SystemWebAppType> GetSystemAppTypeForAppId(
     const WebAppRegistrar& registrar,
     const ash::SystemWebAppDelegateMap& delegates,
-    const webapps::AppId& app_id) {
+    const AppId& app_id) {
   const WebApp* web_app = registrar.GetAppById(app_id);
   if (!web_app || !web_app->client_data().system_web_app_data.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // The registered system apps can change from previous runs (e.g. flipping a
@@ -49,12 +49,12 @@ std::optional<ash::SystemWebAppType> GetSystemAppTypeForAppId(
     return proto_type;
   }
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 bool IsSystemWebApp(const WebAppRegistrar& registrar,
                     const ash::SystemWebAppDelegateMap& delegates,
-                    const webapps::AppId& app_id) {
+                    const AppId& app_id) {
   return GetSystemAppTypeForAppId(registrar, delegates, app_id).has_value();
 }
 

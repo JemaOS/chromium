@@ -13,7 +13,7 @@ source_set("resources") {
     "resources_en.rc",
   ]
 
-  public_deps = [ ":strings" ]
+  deps = [ ":strings" ]
 }
 
 generate_embedded_i18n("generate_strings") {

@@ -50,10 +50,6 @@ class ASH_EXPORT TouchpadPrefHandler {
       PrefService* local_state,
       const AccountId& account_id,
       const mojom::Touchpad& touchpad) = 0;
-
-  virtual void UpdateDefaultTouchpadSettings(
-      PrefService* pref_service,
-      const mojom::Touchpad& touchpad) = 0;
 };
 
 }  // namespace ash

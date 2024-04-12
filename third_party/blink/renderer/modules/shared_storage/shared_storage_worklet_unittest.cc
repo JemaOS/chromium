@@ -3,18 +3,14 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "base/barrier_closure.h"
 #include "base/check_op.h"
-#include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/run_loop.h"
 #include "base/strings/strcat.h"
-#include "base/strings/string_util.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -27,27 +23,18 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
-#include "mojo/public/cpp/bindings/receiver_set.h"
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/abseil-cpp/absl/numeric/int128.h"
-#include "third_party/blink/public/common/messaging/cloneable_message_mojom_traits.h"
 #include "third_party/blink/public/common/shared_storage/shared_storage_utils.h"
-#include "third_party/blink/public/mojom/blob/blob.mojom-blink.h"
-#include "third_party/blink/public/mojom/blob/blob.mojom.h"
 #include "third_party/blink/public/mojom/private_aggregation/aggregatable_report.mojom-blink.h"
 #include "third_party/blink/public/mojom/private_aggregation/private_aggregation_host.mojom-blink.h"
 #include "third_party/blink/public/mojom/shared_storage/shared_storage_worklet_service.mojom.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
-#include "third_party/blink/public/mojom/worker/worklet_global_scope_creation_params.mojom-blink.h"
 #include "third_party/blink/public/platform/web_runtime_features.h"
-#include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
-#include "third_party/blink/renderer/core/messaging/blink_cloneable_message_mojom_traits.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
-#include "third_party/blink/renderer/core/workers/worker_thread_test_helper.h"
 #include "third_party/blink/renderer/modules/shared_storage/shared_storage_worklet_messaging_proxy.h"
-#include "third_party/blink/renderer/modules/shared_storage/shared_storage_worklet_thread.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "v8/include/v8-isolate.h"
 
@@ -56,7 +43,6 @@ namespace blink {
 namespace {
 
 constexpr char kModuleScriptSource[] = "https://foo.com/module_script.js";
-constexpr char kMaxChar16StringLengthPlusOneLiteral[] = "2621441";
 
 struct VoidOperationResult {
   bool success = true;
@@ -106,6 +92,55 @@ struct AppendParams {
   std::u16string value;
 };
 
+std::vector<uint8_t> CreateSerializedDict(
+    const std::map<std::string, std::string>& dict) {
+#if defined(V8_USE_EXTERNAL_STARTUP_DATA)
+  gin::V8Initializer::LoadV8Snapshot();
+#endif
+
+  gin::IsolateHolder::Initialize(gin::IsolateHolder::kNonStrictMode,
+                                 gin::ArrayBufferAllocator::SharedInstance());
+
+  std::unique_ptr<gin::IsolateHolder> isolate_holder =
+      std::make_unique<gin::IsolateHolder>(
+          base::SingleThreadTaskRunner::GetCurrentDefault(),
+          gin::IsolateHolder::kSingleThread,
+          gin::IsolateHolder::IsolateType::kBlinkMainThread);
+
+  v8::Isolate* isolate = isolate_holder->isolate();
+
+  v8::Isolate::Scope isolate_scope(isolate);
+  v8::HandleScope handle_scope(isolate);
+
+  v8::Global<v8::Context> global_context =
+      v8::Global<v8::Context>(isolate, v8::Context::New(isolate));
+  v8::Local<v8::Context> context = global_context.Get(isolate);
+  v8::Context::Scope context_scope(context);
+
+  v8::Local<v8::Object> v8_value = v8::Object::New(isolate);
+  gin::Dictionary gin_dict(isolate, v8_value);
+  for (auto const& [key, val] : dict) {
+    gin_dict.Set<std::string>(key, val);
+  }
+
+  v8::ValueSerializer serializer(isolate);
+
+  bool wrote_value;
+  CHECK(serializer.WriteValue(context, v8_value).To(&wrote_value));
+  CHECK(wrote_value);
+
+  std::pair<uint8_t*, size_t> buffer = serializer.Release();
+
+  std::vector<uint8_t> serialized_data(buffer.first,
+                                       buffer.first + buffer.second);
+
+  DCHECK_EQ(serialized_data.size(), buffer.second);
+
+  free(buffer.first);
+
+  return serialized_data;
+}
+
 std::vector<blink::mojom::SharedStorageKeyAndOrValuePtr> CreateBatchResult(
     std::vector<std::pair<std::u16string, std::u16string>> input) {
   std::vector<blink::mojom::SharedStorageKeyAndOrValuePtr> result;
@@ -116,30 +151,6 @@ std::vector<blink::mojom::SharedStorageKeyAndOrValuePtr> CreateBatchResult(
   }
   return result;
 }
-
-class TestWorkletDevToolsHost : public mojom::blink::WorkletDevToolsHost {
- public:
-  explicit TestWorkletDevToolsHost(
-      mojo::PendingReceiver<mojom::blink::WorkletDevToolsHost> receiver)
-      : receiver_(this, std::move(receiver)) {}
-
-  void OnReadyForInspection(
-      mojo::PendingRemote<mojom::blink::DevToolsAgent> agent,
-      mojo::PendingReceiver<mojom::blink::DevToolsAgentHost> agent_host)
-      override {
-    EXPECT_FALSE(ready_for_inspection_);
-    ready_for_inspection_ = true;
-  }
-
-  void FlushForTesting() { receiver_.FlushForTesting(); }
-
-  bool ready_for_inspection() const { return ready_for_inspection_; }
-
- private:
-  bool ready_for_inspection_ = false;
-
-  mojo::Receiver<mojom::blink::WorkletDevToolsHost> receiver_{this};
-};
 
 class TestClient : public blink::mojom::SharedStorageWorkletServiceClient {
  public:
@@ -209,8 +220,7 @@ class TestClient : public blink::mojom::SharedStorageWorkletServiceClient {
                             remaining_budget_result_.bits);
   }
 
-  void DidAddMessageToConsole(blink::mojom::ConsoleMessageLevel level,
-                              const std::string& message) override {
+  void ConsoleLog(const std::string& message) override {
     observed_console_log_messages_.push_back(message);
   }
 
@@ -287,60 +297,25 @@ class MockMojomPrivateAggregationHost
   // blink::mojom::blink::PrivateAggregationHost:
   MOCK_METHOD(
       void,
-      ContributeToHistogram,
-      (Vector<blink::mojom::blink::AggregatableReportHistogramContributionPtr>),
+      SendHistogramReport,
+      (Vector<blink::mojom::blink::AggregatableReportHistogramContributionPtr>,
+       blink::mojom::blink::AggregationServiceMode,
+       blink::mojom::blink::DebugModeDetailsPtr),
       (override));
   MOCK_METHOD(void,
-              EnableDebugMode,
-              (blink::mojom::blink::DebugKeyPtr),
+              SetDebugModeDetailsOnNullReport,
+              (blink::mojom::blink::DebugModeDetailsPtr),
               (override));
 
  private:
   mojo::ReceiverSet<blink::mojom::blink::PrivateAggregationHost> receiver_set_;
 };
 
-std::unique_ptr<GlobalScopeCreationParams> MakeTestGlobalScopeCreationParams() {
-  return std::make_unique<GlobalScopeCreationParams>(
-      KURL("https://foo.com"),
-      /*script_type=*/mojom::blink::ScriptType::kModule, "SharedStorageWorklet",
-      /*user_agent=*/String(),
-      /*ua_metadata=*/std::optional<UserAgentMetadata>(),
-      /*web_worker_fetch_context=*/nullptr,
-      /*outside_content_security_policies=*/
-      Vector<network::mojom::blink::ContentSecurityPolicyPtr>(),
-      /*response_content_security_policies=*/
-      Vector<network::mojom::blink::ContentSecurityPolicyPtr>(),
-      /*referrer_policy=*/network::mojom::ReferrerPolicy::kDefault,
-      /*starter_origin=*/nullptr,
-      /*starter_secure_context=*/false,
-      /*starter_https_state=*/HttpsState::kNone,
-      /*worker_clients=*/nullptr,
-      /*content_settings_client=*/nullptr,
-      /*inherited_trial_features=*/nullptr,
-      /*parent_devtools_token=*/base::UnguessableToken::Create(),
-      /*worker_settings=*/nullptr,
-      /*v8_cache_options=*/mojom::blink::V8CacheOptions::kDefault,
-      /*module_responses_map=*/nullptr);
-}
-
 }  // namespace
 
-class SharedStorageWorkletTest : public PageTestBase {
+class SharedStorageWorkletTest : public testing::Test {
  public:
   SharedStorageWorkletTest() = default;
-
-  void TearDown() override {
-    // Shut down the worklet gracefully. Otherwise, there could the a data race
-    // on accessing the base::FeatureList: the worklet thread may access the
-    // feature during SharedStorageWorkletGlobalScope::FinishOperation() or
-    // SharedStorageWorkletGlobalScope::NotifyContextDestroyed(), which can
-    // occur after the (maybe implicit) ScopedFeatureList is destroyed in the
-    // main thread.
-    shared_storage_worklet_service_.reset();
-    EXPECT_TRUE(worklet_terminated_future_.Wait());
-
-    PageTestBase::TearDown();
-  }
 
   AddModuleResult AddModule(const std::string& script_content,
                             std::string mime_type = "application/javascript") {
@@ -369,25 +344,25 @@ class SharedStorageWorkletTest : public PageTestBase {
 
   SelectURLResult SelectURL(const std::string& name,
                             const std::vector<GURL>& urls,
-                            blink::CloneableMessage serialized_data) {
+                            const std::vector<uint8_t>& serialized_data) {
     InitializeWorkletServiceOnce();
 
     base::test::TestFuture<bool, const std::string&, uint32_t> future;
     shared_storage_worklet_service_->RunURLSelectionOperation(
-        name, urls, std::move(serialized_data), MaybeInitNewRemotePAHost(),
+        name, urls, serialized_data, MaybeInitNewRemotePAHost(),
         future.GetCallback());
 
     return {future.Get<0>(), future.Get<1>(), future.Get<2>()};
   }
 
   RunResult Run(const std::string& name,
-                blink::CloneableMessage serialized_data) {
+                const std::vector<uint8_t>& serialized_data) {
     InitializeWorkletServiceOnce();
 
     base::test::TestFuture<bool, const std::string&> future;
-    shared_storage_worklet_service_->RunOperation(
-        name, std::move(serialized_data), MaybeInitNewRemotePAHost(),
-        future.GetCallback());
+    shared_storage_worklet_service_->RunOperation(name, serialized_data,
+                                                  MaybeInitNewRemotePAHost(),
+                                                  future.GetCallback());
 
     return {future.Get<0>(), future.Get<1>()};
   }
@@ -415,28 +390,18 @@ class SharedStorageWorkletTest : public PageTestBase {
         std::move(pending_pa_host_remote));
   }
 
-  CloneableMessage CreateSerializedUndefined() {
-    return CreateSerializedDictOrUndefined(nullptr);
-  }
-
-  CloneableMessage CreateSerializedDict(
-      const std::map<std::string, std::string>& dict) {
-    return CreateSerializedDictOrUndefined(&dict);
-  }
-
  protected:
   mojo::Remote<mojom::SharedStorageWorkletService>
       shared_storage_worklet_service_;
 
   Persistent<SharedStorageWorkletMessagingProxy> messaging_proxy_;
 
-  std::optional<std::u16string> embedder_context_;
+  absl::optional<std::u16string> embedder_context_;
   bool private_aggregation_permissions_policy_allowed_ = true;
 
   base::test::TestFuture<void> worklet_terminated_future_;
 
   std::unique_ptr<TestClient> test_client_;
-  std::unique_ptr<TestWorkletDevToolsHost> test_worklet_devtools_host_;
   std::unique_ptr<MockMojomPrivateAggregationHost>
       mock_private_aggregation_host_;
 
@@ -445,45 +410,6 @@ class SharedStorageWorkletTest : public PageTestBase {
   bool worklet_service_initialized_ = false;
 
  private:
-  CloneableMessage CreateSerializedDictOrUndefined(
-      const std::map<std::string, std::string>* dict) {
-    ScriptState* script_state = ToScriptStateForMainWorld(&GetFrame());
-    ScriptState::Scope scope(script_state);
-    v8::MicrotasksScope microtasksScope(script_state->GetContext(),
-                                        v8::MicrotasksScope::kRunMicrotasks);
-
-    v8::Isolate* isolate = script_state->GetIsolate();
-
-    scoped_refptr<SerializedScriptValue> serialized_value;
-    if (dict) {
-      v8::Local<v8::Object> v8_value = v8::Object::New(isolate);
-      gin::Dictionary gin_dict(isolate, v8_value);
-      for (auto const& [key, val] : *dict) {
-        gin_dict.Set<std::string>(key, val);
-      }
-
-      serialized_value = SerializedScriptValue::SerializeAndSwallowExceptions(
-          isolate, v8_value);
-    } else {
-      serialized_value = SerializedScriptValue::UndefinedValue();
-    }
-
-    BlinkCloneableMessage original;
-    original.message = std::move(serialized_value);
-    original.sender_agent_cluster_id = base::UnguessableToken::Create();
-
-    mojo::Message message =
-        mojom::CloneableMessage::SerializeAsMessage(&original);
-    mojo::ScopedMessageHandle handle = message.TakeMojoMessage();
-    message = mojo::Message::CreateFromMessageHandle(&handle);
-    DCHECK(!message.IsNull());
-
-    CloneableMessage converted;
-    mojom::CloneableMessage::DeserializeFromMessage(std::move(message),
-                                                    &converted);
-    return converted;
-  }
-
   void InitializeWorkletServiceOnce() {
     if (worklet_service_initialized_) {
       return;
@@ -492,27 +418,11 @@ class SharedStorageWorkletTest : public PageTestBase {
     mojo::PendingReceiver<mojom::SharedStorageWorkletService> receiver =
         shared_storage_worklet_service_.BindNewPipeAndPassReceiver();
 
-    mojo::PendingRemote<mojom::blink::WorkletDevToolsHost>
-        pending_devtools_host_remote;
-    mojo::PendingReceiver<mojom::blink::WorkletDevToolsHost>
-        pending_devtools_host_receiver =
-            pending_devtools_host_remote.InitWithNewPipeAndPassReceiver();
-    test_worklet_devtools_host_ = std::make_unique<TestWorkletDevToolsHost>(
-        std::move(pending_devtools_host_receiver));
-
     messaging_proxy_ = MakeGarbageCollected<SharedStorageWorkletMessagingProxy>(
         base::SingleThreadTaskRunner::GetCurrentDefault(),
         CrossVariantMojoReceiver<
             mojom::blink::SharedStorageWorkletServiceInterfaceBase>(
             std::move(receiver)),
-        mojom::blink::WorkletGlobalScopeCreationParams::New(
-            KURL(kModuleScriptSource),
-            /*starter_origin=*/
-            SecurityOrigin::Create(KURL(kModuleScriptSource)),
-            Vector({mojom::blink::OriginTrialFeature::kSharedStorageAPI}),
-            /*devtools_worker_token=*/base::UnguessableToken(),
-            std::move(pending_devtools_host_remote),
-            /*wait_for_debugger=*/false),
         worklet_terminated_future_.GetCallback());
 
     mojo::PendingAssociatedRemote<mojom::SharedStorageWorkletServiceClient>
@@ -548,9 +458,6 @@ TEST_F(SharedStorageWorkletTest, AddModule_SimpleScriptSuccess) {
   AddModuleResult result = AddModule(/*script_content=*/"let a = 1;");
   EXPECT_TRUE(result.success);
   EXPECT_TRUE(result.error_message.empty());
-
-  test_worklet_devtools_host_->FlushForTesting();
-  EXPECT_TRUE(test_worklet_devtools_host_->ready_for_inspection());
 }
 
 TEST_F(SharedStorageWorkletTest, AddModule_SimpleScriptError) {
@@ -558,9 +465,6 @@ TEST_F(SharedStorageWorkletTest, AddModule_SimpleScriptError) {
   EXPECT_FALSE(result.success);
   EXPECT_THAT(result.error_message,
               testing::HasSubstr("ReferenceError: a is not defined"));
-
-  test_worklet_devtools_host_->FlushForTesting();
-  EXPECT_TRUE(test_worklet_devtools_host_->ready_for_inspection());
 }
 
 TEST_F(SharedStorageWorkletTest, AddModule_ScriptDownloadError) {
@@ -613,7 +517,12 @@ TEST_F(SharedStorageWorkletTest,
       "console.log"
     ];
 
-    var expectedUndefinedVariables = [];
+    var expectedUndefinedVariables = [
+      // PrivateAggregation related variables are undefined because the
+      // corresponding base::Feature(s) are not enabled.
+      "privateAggregation",
+      "PrivateAggregation"
+    ];
 
     for (let expectedObject of expectedObjects) {
       if (eval("typeof " + expectedObject) !== "object") {
@@ -760,7 +669,7 @@ TEST_F(SharedStorageWorkletTest, RegisterOperation_AlreadyRegistered) {
 
 TEST_F(SharedStorageWorkletTest, SelectURL_BeforeAddModuleFinish) {
   SelectURLResult select_url_result =
-      SelectURL("test-operation", /*urls=*/{}, CreateSerializedUndefined());
+      SelectURL("test-operation", /*urls=*/{}, /*serialized_data=*/{});
 
   EXPECT_FALSE(select_url_result.success);
   EXPECT_THAT(select_url_result.error_message,
@@ -779,8 +688,8 @@ TEST_F(SharedStorageWorkletTest, SelectURL_OperationNameNotRegistered) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  SelectURLResult select_url_result = SelectURL(
-      "unregistered-operation", /*urls=*/{}, CreateSerializedUndefined());
+  SelectURLResult select_url_result =
+      SelectURL("unregistered-operation", /*urls=*/{}, /*serialized_data=*/{});
 
   EXPECT_FALSE(select_url_result.success);
   EXPECT_THAT(select_url_result.error_message,
@@ -802,7 +711,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_FunctionError) {
   EXPECT_TRUE(add_module_result.success);
 
   SelectURLResult select_url_result =
-      SelectURL("test-operation", /*urls=*/{}, CreateSerializedUndefined());
+      SelectURL("test-operation", /*urls=*/{}, /*serialized_data=*/{});
 
   EXPECT_FALSE(select_url_result.success);
   EXPECT_THAT(select_url_result.error_message,
@@ -826,7 +735,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_FulfilledSynchronously) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_TRUE(select_url_result.success);
   EXPECT_TRUE(select_url_result.error_message.empty());
@@ -852,7 +761,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_RejectedAsynchronously) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_FALSE(select_url_result.success);
   EXPECT_THAT(select_url_result.error_message, testing::HasSubstr("error 123"));
@@ -878,7 +787,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_FulfilledAsynchronously) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_TRUE(select_url_result.success);
   EXPECT_TRUE(select_url_result.error_message.empty());
@@ -901,7 +810,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_StringConvertedToUint32) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_TRUE(select_url_result.success);
   EXPECT_TRUE(select_url_result.error_message.empty());
@@ -924,7 +833,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_NumberOverflow) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_TRUE(select_url_result.success);
   EXPECT_TRUE(select_url_result.error_message.empty());
@@ -947,7 +856,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_NonNumericStringConvertedTo0) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_TRUE(select_url_result.success);
   EXPECT_TRUE(select_url_result.error_message.empty());
@@ -968,7 +877,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_DefaultUndefinedResultConvertedTo0) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_TRUE(select_url_result.success);
   EXPECT_TRUE(select_url_result.error_message.empty());
@@ -993,7 +902,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_NoExplicitAsync) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_TRUE(select_url_result.success);
   EXPECT_TRUE(select_url_result.error_message.empty());
@@ -1016,7 +925,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_ReturnValueOutOfRange) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_FALSE(select_url_result.success);
   EXPECT_THAT(
@@ -1046,7 +955,7 @@ TEST_F(SharedStorageWorkletTest, SelectURL_ReturnValueToUint32Error) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_FALSE(select_url_result.success);
   EXPECT_THAT(
@@ -1075,6 +984,7 @@ TEST_F(SharedStorageWorkletTest,
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
+                /*serialized_data=*/
                 CreateSerializedDict({{"customField", "customValue"}}));
 
   EXPECT_TRUE(select_url_result.success);
@@ -1089,7 +999,7 @@ TEST_F(SharedStorageWorkletTest,
 }
 
 TEST_F(SharedStorageWorkletTest, Run_BeforeAddModuleFinish) {
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message,
@@ -1107,8 +1017,7 @@ TEST_F(SharedStorageWorkletTest, Run_OperationNameNotRegistered) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result =
-      Run("unregistered-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("unregistered-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message,
@@ -1128,7 +1037,7 @@ TEST_F(SharedStorageWorkletTest, Run_FunctionError) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message,
@@ -1146,7 +1055,7 @@ TEST_F(SharedStorageWorkletTest, Run_FulfilledSynchronously) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -1168,7 +1077,7 @@ TEST_F(SharedStorageWorkletTest, Run_RejectedAsynchronously) {
   test_client_->clear_result_ =
       ClearResult{.success = false, .error_message = "error 123"};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message, testing::HasSubstr("error 123"));
@@ -1187,7 +1096,7 @@ TEST_F(SharedStorageWorkletTest, Run_FulfilledAsynchronously) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -1207,7 +1116,7 @@ TEST_F(SharedStorageWorkletTest, Run_Microtask) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -1228,8 +1137,10 @@ TEST_F(SharedStorageWorkletTest, Run_ValidateDataParamViaConsoleLog) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run(
-      "test-operation", CreateSerializedDict({{"customField", "customValue"}}));
+  RunResult run_result =
+      Run("test-operation",
+          /*serialized_data=*/
+          CreateSerializedDict({{"customField", "customValue"}}));
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -1255,13 +1166,14 @@ TEST_F(SharedStorageWorkletTest, SelectURLAndRunOnSameRegisteredOperation) {
   SelectURLResult select_url_result =
       SelectURL("test-operation",
                 /*urls=*/{GURL("https://foo0.com"), GURL("https://foo1.com")},
-                CreateSerializedUndefined());
+                /*serialized_data=*/{});
 
   EXPECT_TRUE(select_url_result.success);
   EXPECT_TRUE(select_url_result.error_message.empty());
   EXPECT_EQ(select_url_result.index, 1u);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation",
+                             /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -1303,6 +1215,11 @@ TEST_F(SharedStorageWorkletTest,
             "sharedStorage.run",
             "sharedStorage.worklet",
             "sharedStorage.context",
+
+            // PrivateAggregation related variables are undefined because the
+            // corresponding base::Feature(s) are not enabled.
+            "privateAggregation",
+            "PrivateAggregation"
           ];
 
           for (let expectedObject of expectedObjects) {
@@ -1330,7 +1247,7 @@ TEST_F(SharedStorageWorkletTest,
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_EQ(run_result.error_message, "");
@@ -1372,6 +1289,11 @@ TEST_F(SharedStorageWorkletTest,
             "sharedStorage.run",
             "sharedStorage.worklet",
             "sharedStorage.context",
+
+            // PrivateAggregation related variables are undefined because the
+            // corresponding base::Feature(s) are not enabled.
+            "privateAggregation",
+            "PrivateAggregation"
           ];
 
           for (let expectedObject of expectedObjects) {
@@ -1404,7 +1326,7 @@ TEST_F(SharedStorageWorkletTest,
   EXPECT_THAT(add_module_result.error_message,
               testing::HasSubstr("ReferenceError: a is not defined"));
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_EQ(run_result.error_message, "");
@@ -1423,7 +1345,7 @@ TEST_F(SharedStorageWorkletTest, Set_MissingKey) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message,
@@ -1445,7 +1367,7 @@ TEST_F(SharedStorageWorkletTest, Set_InvalidKey_Empty) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -1456,23 +1378,19 @@ TEST_F(SharedStorageWorkletTest, Set_InvalidKey_Empty) {
 }
 
 TEST_F(SharedStorageWorkletTest, Set_InvalidKey_TooLong) {
-  AddModuleResult add_module_result = AddModule(
-      /*script_content=*/base::ReplaceStringPlaceholders(
-          R"(
+  AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
       class TestClass {
         async run() {
-          await sharedStorage.set("a".repeat($1), "value");
+          await sharedStorage.set("a".repeat(1025), "value");
         }
       }
 
       register("test-operation", TestClass);
-  )",
-          {kMaxChar16StringLengthPlusOneLiteral},
-          /*offsets=*/nullptr));
+  )");
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -1495,7 +1413,7 @@ TEST_F(SharedStorageWorkletTest, Set_MissingValue) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message,
@@ -1505,23 +1423,19 @@ TEST_F(SharedStorageWorkletTest, Set_MissingValue) {
 }
 
 TEST_F(SharedStorageWorkletTest, Set_InvalidValue_TooLong) {
-  AddModuleResult add_module_result = AddModule(
-      /*script_content=*/base::ReplaceStringPlaceholders(
-          R"(
+  AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
       class TestClass {
         async run() {
-          await sharedStorage.set("key", "a".repeat($1));
+          await sharedStorage.set("key", "a".repeat(1025));
         }
       }
 
       register("test-operation", TestClass);
-  )",
-          {kMaxChar16StringLengthPlusOneLiteral},
-          /*offsets=*/nullptr));
+  )");
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -1544,7 +1458,7 @@ TEST_F(SharedStorageWorkletTest, Set_InvalidOptions) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -1571,7 +1485,7 @@ TEST_F(SharedStorageWorkletTest, Set_ClientError) {
   test_client_->set_result_ =
       SetResult{.success = false, .error_message = "error 123"};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message, testing::HasSubstr("error 123"));
@@ -1594,7 +1508,7 @@ TEST_F(SharedStorageWorkletTest, Set_Success) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -1623,7 +1537,7 @@ TEST_F(SharedStorageWorkletTest, Set_IgnoreIfPresent_True) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -1651,7 +1565,7 @@ TEST_F(SharedStorageWorkletTest, Set_IgnoreIfPresent_False) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -1680,7 +1594,7 @@ TEST_F(SharedStorageWorkletTest, Set_KeyAndValueConvertedToString) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -1713,7 +1627,7 @@ TEST_F(SharedStorageWorkletTest, Set_ParamConvertedToStringError) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message, testing::HasSubstr("error 123"));
@@ -1734,7 +1648,7 @@ TEST_F(SharedStorageWorkletTest, Append_MissingKey) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message,
@@ -1756,7 +1670,7 @@ TEST_F(SharedStorageWorkletTest, Append_InvalidKey_Empty) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -1767,23 +1681,19 @@ TEST_F(SharedStorageWorkletTest, Append_InvalidKey_Empty) {
 }
 
 TEST_F(SharedStorageWorkletTest, Append_InvalidKey_TooLong) {
-  AddModuleResult add_module_result = AddModule(
-      /*script_content=*/base::ReplaceStringPlaceholders(
-          R"(
+  AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
       class TestClass {
         async run() {
-          await sharedStorage.append("a".repeat($1), "value");
+          await sharedStorage.append("a".repeat(1025), "value");
         }
       }
 
       register("test-operation", TestClass);
-  )",
-          {kMaxChar16StringLengthPlusOneLiteral},
-          /*offsets=*/nullptr));
+  )");
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -1806,7 +1716,7 @@ TEST_F(SharedStorageWorkletTest, Append_MissingValue) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message,
@@ -1816,23 +1726,19 @@ TEST_F(SharedStorageWorkletTest, Append_MissingValue) {
 }
 
 TEST_F(SharedStorageWorkletTest, Append_InvalidValue_TooLong) {
-  AddModuleResult add_module_result = AddModule(
-      /*script_content=*/base::ReplaceStringPlaceholders(
-          R"(
+  AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
       class TestClass {
         async run() {
-          await sharedStorage.append("key", "a".repeat($1));
+          await sharedStorage.append("key", "a".repeat(1025));
         }
       }
 
       register("test-operation", TestClass);
-  )",
-          {kMaxChar16StringLengthPlusOneLiteral},
-          /*offsets=*/nullptr));
+  )");
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -1858,7 +1764,7 @@ TEST_F(SharedStorageWorkletTest, Append_ClientError) {
   test_client_->append_result_ =
       AppendResult{.success = false, .error_message = "error 123"};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message, testing::HasSubstr("error 123"));
@@ -1881,7 +1787,7 @@ TEST_F(SharedStorageWorkletTest, Append_Success) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -1904,7 +1810,7 @@ TEST_F(SharedStorageWorkletTest, Delete_MissingKey) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message,
@@ -1926,7 +1832,7 @@ TEST_F(SharedStorageWorkletTest, Delete_InvalidKey_Empty) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -1937,23 +1843,19 @@ TEST_F(SharedStorageWorkletTest, Delete_InvalidKey_Empty) {
 }
 
 TEST_F(SharedStorageWorkletTest, Delete_InvalidKey_TooLong) {
-  AddModuleResult add_module_result = AddModule(
-      /*script_content=*/base::ReplaceStringPlaceholders(
-          R"(
+  AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
       class TestClass {
         async run() {
-          await sharedStorage.delete("a".repeat($1), "value");
+          await sharedStorage.delete("a".repeat(1025), "value");
         }
       }
 
       register("test-operation", TestClass);
-  )",
-          {kMaxChar16StringLengthPlusOneLiteral},
-          /*offsets=*/nullptr));
+  )");
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -1979,7 +1881,7 @@ TEST_F(SharedStorageWorkletTest, Delete_ClientError) {
   test_client_->delete_result_ =
       DeleteResult{.success = false, .error_message = "error 123"};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message, testing::HasSubstr("error 123"));
@@ -2001,7 +1903,7 @@ TEST_F(SharedStorageWorkletTest, Delete_Success) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -2026,7 +1928,7 @@ TEST_F(SharedStorageWorkletTest, Clear_ClientError) {
   test_client_->clear_result_ =
       ClearResult{.success = false, .error_message = "error 123"};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message, testing::HasSubstr("error 123"));
@@ -2047,7 +1949,7 @@ TEST_F(SharedStorageWorkletTest, Clear_Success) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -2068,7 +1970,7 @@ TEST_F(SharedStorageWorkletTest, Get_MissingKey) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message,
@@ -2090,7 +1992,7 @@ TEST_F(SharedStorageWorkletTest, Get_InvalidKey_Empty) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -2101,23 +2003,19 @@ TEST_F(SharedStorageWorkletTest, Get_InvalidKey_Empty) {
 }
 
 TEST_F(SharedStorageWorkletTest, Get_InvalidKey_TooLong) {
-  AddModuleResult add_module_result = AddModule(
-      /*script_content=*/base::ReplaceStringPlaceholders(
-          R"(
+  AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
       class TestClass {
         async run() {
-          await sharedStorage.get("a".repeat($1), "value");
+          await sharedStorage.get("a".repeat(1025), "value");
         }
       }
 
       register("test-operation", TestClass);
-  )",
-          {kMaxChar16StringLengthPlusOneLiteral},
-          /*offsets=*/nullptr));
+  )");
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(
@@ -2146,7 +2044,7 @@ TEST_F(SharedStorageWorkletTest, Get_ClientError) {
                 .error_message = "error 123",
                 .value = std::u16string()};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message, testing::HasSubstr("error 123"));
@@ -2176,7 +2074,7 @@ TEST_F(SharedStorageWorkletTest, Get_NotFound) {
                 .error_message = std::string(),
                 .value = std::u16string()};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -2207,7 +2105,7 @@ TEST_F(SharedStorageWorkletTest, Get_Success) {
                 .error_message = std::string(),
                 .value = u"value0"};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -2236,7 +2134,7 @@ TEST_F(SharedStorageWorkletTest, Length_ClientError) {
   test_client_->length_result_ =
       LengthResult{.success = false, .error_message = "error 123", .length = 0};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message, testing::HasSubstr("error 123"));
@@ -2263,7 +2161,7 @@ TEST_F(SharedStorageWorkletTest, Length_Success) {
   test_client_->length_result_ = LengthResult{
       .success = true, .error_message = std::string(), .length = 123};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -2289,7 +2187,7 @@ TEST_F(SharedStorageWorkletTest, Entries_OneEmptyBatch_Success) {
 
   base::test::TestFuture<bool, const std::string&> run_future;
   shared_storage_worklet_service_->RunOperation(
-      "test-operation", CreateSerializedUndefined(), MaybeInitNewRemotePAHost(),
+      "test-operation", /*serialized_data=*/{}, MaybeInitNewRemotePAHost(),
       run_future.GetCallback());
   shared_storage_worklet_service_.FlushForTesting();
 
@@ -2323,7 +2221,7 @@ TEST_F(SharedStorageWorkletTest, Entries_FirstBatchError_Failure) {
 
   base::test::TestFuture<bool, const std::string&> run_future;
   shared_storage_worklet_service_->RunOperation(
-      "test-operation", CreateSerializedUndefined(), MaybeInitNewRemotePAHost(),
+      "test-operation", /*serialized_data=*/{}, MaybeInitNewRemotePAHost(),
       run_future.GetCallback());
   shared_storage_worklet_service_.FlushForTesting();
 
@@ -2359,7 +2257,7 @@ TEST_F(SharedStorageWorkletTest, Entries_TwoBatches_Success) {
 
   base::test::TestFuture<bool, const std::string&> run_future;
   shared_storage_worklet_service_->RunOperation(
-      "test-operation", CreateSerializedUndefined(), MaybeInitNewRemotePAHost(),
+      "test-operation", /*serialized_data=*/{}, MaybeInitNewRemotePAHost(),
       run_future.GetCallback());
   shared_storage_worklet_service_.FlushForTesting();
 
@@ -2406,7 +2304,7 @@ TEST_F(SharedStorageWorkletTest, Entries_SecondBatchError_Failure) {
 
   base::test::TestFuture<bool, const std::string&> run_future;
   shared_storage_worklet_service_->RunOperation(
-      "test-operation", CreateSerializedUndefined(), MaybeInitNewRemotePAHost(),
+      "test-operation", /*serialized_data=*/{}, MaybeInitNewRemotePAHost(),
       run_future.GetCallback());
   shared_storage_worklet_service_.FlushForTesting();
 
@@ -2452,7 +2350,7 @@ TEST_F(SharedStorageWorkletTest, Keys_OneBatch_Success) {
 
   base::test::TestFuture<bool, const std::string&> run_future;
   shared_storage_worklet_service_->RunOperation(
-      "test-operation", CreateSerializedUndefined(), MaybeInitNewRemotePAHost(),
+      "test-operation", /*serialized_data=*/{}, MaybeInitNewRemotePAHost(),
       run_future.GetCallback());
   shared_storage_worklet_service_.FlushForTesting();
 
@@ -2484,16 +2382,16 @@ TEST_F(SharedStorageWorkletTest, Keys_ManuallyCallNext) {
           keys_iterator.next(); // result1 skipped
 
           const result2 = await keys_iterator.next();
-          console.log(JSON.stringify(result2));
+          console.log(JSON.stringify(result2, Object.keys(result2).sort()));
 
           const result3 = await keys_iterator.next();
-          console.log(JSON.stringify(result3));
+          console.log(JSON.stringify(result3, Object.keys(result3).sort()));
 
           const result4 = await keys_iterator.next();
-          console.log(JSON.stringify(result4));
+          console.log(JSON.stringify(result4, Object.keys(result4).sort()));
 
           const result5 = await keys_iterator.next();
-          console.log(JSON.stringify(result5));
+          console.log(JSON.stringify(result5, Object.keys(result5).sort()));
         }
       }
 
@@ -2502,7 +2400,7 @@ TEST_F(SharedStorageWorkletTest, Keys_ManuallyCallNext) {
 
   base::test::TestFuture<bool, const std::string&> run_future;
   shared_storage_worklet_service_->RunOperation(
-      "test-operation", CreateSerializedUndefined(), MaybeInitNewRemotePAHost(),
+      "test-operation", /*serialized_data=*/{}, MaybeInitNewRemotePAHost(),
       run_future.GetCallback());
   shared_storage_worklet_service_.FlushForTesting();
 
@@ -2546,79 +2444,6 @@ TEST_F(SharedStorageWorkletTest, Keys_ManuallyCallNext) {
   EXPECT_EQ(test_client_->observed_console_log_messages_[3], "{\"done\":true}");
 }
 
-TEST_F(SharedStorageWorkletTest, Values_ManuallyCallNext) {
-  AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
-      class TestClass {
-        async run() {
-          const values_iterator = (
-            sharedStorage.values()[Symbol.asyncIterator]());
-
-          values_iterator.next(); // result0 skipped
-          values_iterator.next(); // result1 skipped
-
-          const result2 = await values_iterator.next();
-          console.log(JSON.stringify(result2));
-
-          const result3 = await values_iterator.next();
-          console.log(JSON.stringify(result3));
-
-          const result4 = await values_iterator.next();
-          console.log(JSON.stringify(result4));
-
-          const result5 = await values_iterator.next();
-          console.log(JSON.stringify(result5));
-        }
-      }
-
-      register("test-operation", TestClass);
-  )");
-
-  base::test::TestFuture<bool, const std::string&> run_future;
-  shared_storage_worklet_service_->RunOperation(
-      "test-operation", CreateSerializedUndefined(), MaybeInitNewRemotePAHost(),
-      run_future.GetCallback());
-  shared_storage_worklet_service_.FlushForTesting();
-
-  EXPECT_FALSE(run_future.IsReady());
-  EXPECT_EQ(test_client_->pending_entries_listeners_.size(), 1u);
-
-  mojo::Remote<blink::mojom::SharedStorageEntriesListener> listener =
-      test_client_->TakeEntriesListenerAtFront();
-  listener->DidReadEntries(
-      /*success=*/true, /*error_message=*/{},
-      CreateBatchResult({{u"key0", u"value0"}}),
-      /*has_more_entries=*/true, /*total_queued_to_send=*/4);
-  shared_storage_worklet_service_.FlushForTesting();
-
-  EXPECT_FALSE(run_future.IsReady());
-  EXPECT_EQ(test_client_->observed_console_log_messages_.size(), 0u);
-
-  listener->DidReadEntries(
-      /*success=*/true, /*error_message=*/{},
-      CreateBatchResult({{u"key1", u"value1"}, {u"key2", u"value2"}}),
-      /*has_more_entries=*/true, /*total_queued_to_send=*/4);
-  shared_storage_worklet_service_.FlushForTesting();
-
-  EXPECT_FALSE(run_future.IsReady());
-  EXPECT_EQ(test_client_->observed_console_log_messages_.size(), 1u);
-  EXPECT_EQ(test_client_->observed_console_log_messages_[0],
-            "{\"done\":false,\"value\":\"value2\"}");
-
-  listener->DidReadEntries(
-      /*success=*/true, /*error_message=*/{},
-      CreateBatchResult({{u"key3", u"value3"}}),
-      /*has_more_entries=*/false, /*total_queued_to_send=*/4);
-
-  RunResult run_result{run_future.Get<0>(), run_future.Get<1>()};
-  EXPECT_TRUE(run_result.success);
-
-  EXPECT_EQ(test_client_->observed_console_log_messages_.size(), 4u);
-  EXPECT_EQ(test_client_->observed_console_log_messages_[1],
-            "{\"done\":false,\"value\":\"value3\"}");
-  EXPECT_EQ(test_client_->observed_console_log_messages_[2], "{\"done\":true}");
-  EXPECT_EQ(test_client_->observed_console_log_messages_[3], "{\"done\":true}");
-}
-
 TEST_F(SharedStorageWorkletTest, RemainingBudget_ClientError) {
   AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
       class TestClass {
@@ -2636,7 +2461,7 @@ TEST_F(SharedStorageWorkletTest, RemainingBudget_ClientError) {
   test_client_->remaining_budget_result_ = RemainingBudgetResult{
       .success = false, .error_message = "error 123", .bits = 0};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_FALSE(run_result.success);
   EXPECT_THAT(run_result.error_message, testing::HasSubstr("error 123"));
@@ -2663,7 +2488,7 @@ TEST_F(SharedStorageWorkletTest, RemainingBudget_Success) {
   test_client_->remaining_budget_result_ = RemainingBudgetResult{
       .success = true, .error_message = std::string(), .bits = 2.0};
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -2687,7 +2512,7 @@ TEST_F(SharedStorageWorkletTest, ContextAttribute_Undefined) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -2715,7 +2540,7 @@ TEST_F(SharedStorageWorkletTest, ContextAttribute_String) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -2748,7 +2573,7 @@ TEST_F(SharedStorageWorkletTest,
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_TRUE(run_result.error_message.empty());
@@ -2770,7 +2595,7 @@ TEST_F(SharedStorageWorkletTest, Crypto_GetRandomValues) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
 
@@ -2794,7 +2619,7 @@ TEST_F(SharedStorageWorkletTest, Crypto_RandomUUID) {
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
 
@@ -2842,242 +2667,12 @@ TEST_F(SharedStorageWorkletTest,
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
 
   EXPECT_EQ(test_client_->observed_console_log_messages_.size(), 1u);
   EXPECT_EQ(test_client_->observed_console_log_messages_[0], "123abc");
-}
-
-// TODO(crbug.com/1316659): When the Private Aggregation feature is removed
-// (after being default enabled for a few milestones), removes these tests and
-// integrate the feature-enabled tests into the broader tests.
-class SharedStoragePrivateAggregationDisabledTest
-    : public SharedStorageWorkletTest {
- public:
-  SharedStoragePrivateAggregationDisabledTest() {
-    private_aggregation_feature_.InitAndDisableFeature(
-        blink::features::kPrivateAggregationApi);
-  }
-
- private:
-  base::test::ScopedFeatureList private_aggregation_feature_;
-};
-
-TEST_F(SharedStoragePrivateAggregationDisabledTest,
-       GlobalScopeObjectsAndFunctions_DuringAddModule) {
-  AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
-    var expectedObjects = [
-      "console",
-      "crypto"
-    ];
-
-    var expectedFunctions = [
-      "SharedStorage",
-      "Crypto",
-      "CryptoKey",
-      "SubtleCrypto",
-      "TextEncoder",
-      "TextDecoder",
-      "register",
-      "console.log"
-    ];
-
-    var expectedUndefinedVariables = [
-      // PrivateAggregation related variables are undefined because the
-      // corresponding base::Feature(s) are not enabled.
-      "privateAggregation",
-      "PrivateAggregation"
-    ];
-
-    for (let expectedObject of expectedObjects) {
-      if (eval("typeof " + expectedObject) !== "object") {
-        throw Error(expectedObject + " is not object type.")
-      }
-    }
-
-    for (let expectedFunction of expectedFunctions) {
-      if (eval("typeof " + expectedFunction) !== "function") {
-        throw Error(expectedFunction + " is not function type.")
-      }
-    }
-
-    for (let expectedUndefined of expectedUndefinedVariables) {
-      if (eval("typeof " + expectedUndefined) !== "undefined") {
-        throw Error(expectedUndefined + " is not undefined.")
-      }
-    }
-
-    // Verify that trying to access `sharedStorage` would throw a custom error.
-    try {
-      sharedStorage;
-    } catch (e) {
-      console.log("Expected error:", e.message);
-    }
-  )");
-
-  EXPECT_TRUE(add_module_result.success);
-  EXPECT_EQ(add_module_result.error_message, "");
-
-  EXPECT_EQ(test_client_->observed_console_log_messages_.size(), 1u);
-  EXPECT_EQ(test_client_->observed_console_log_messages_[0],
-            "Expected error: Failed to read the 'sharedStorage' property from "
-            "'SharedStorageWorkletGlobalScope': sharedStorage cannot be "
-            "accessed during addModule().");
-}
-
-TEST_F(SharedStoragePrivateAggregationDisabledTest,
-       GlobalScopeObjectsAndFunctions_AfterAddModuleSuccess) {
-  AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
-      class TestClass {
-        async run() {
-          var expectedObjects = [
-            "console",
-            "sharedStorage",
-            "crypto"
-          ];
-
-          var expectedFunctions = [
-            "SharedStorage",
-            "Crypto",
-            "CryptoKey",
-            "SubtleCrypto",
-            "TextEncoder",
-            "TextDecoder",
-            "register",
-            "sharedStorage.set",
-            "sharedStorage.append",
-            "sharedStorage.delete",
-            "sharedStorage.clear",
-            "sharedStorage.get",
-            "sharedStorage.length",
-            "sharedStorage.keys",
-            "sharedStorage.entries",
-            "sharedStorage.remainingBudget"
-          ];
-
-          // Those are either not implemented yet, or should stay undefined.
-          var expectedUndefinedVariables = [
-            "sharedStorage.selectURL",
-            "sharedStorage.run",
-            "sharedStorage.worklet",
-            "sharedStorage.context",
-
-            // PrivateAggregation related variables are undefined because the
-            // corresponding base::Feature(s) are not enabled.
-            "privateAggregation",
-            "PrivateAggregation"
-          ];
-
-          for (let expectedObject of expectedObjects) {
-            if (eval("typeof " + expectedObject) !== "object") {
-              throw Error(expectedObject + " is not object type.")
-            }
-          }
-
-          for (let expectedFunction of expectedFunctions) {
-            if (eval("typeof " + expectedFunction) !== "function") {
-              throw Error(expectedFunction + " is not function type.")
-            }
-          }
-
-          for (let expectedUndefined of expectedUndefinedVariables) {
-            if (eval("typeof " + expectedUndefined) !== "undefined") {
-              throw Error(expectedUndefined + " is not undefined.")
-            }
-          }
-        }
-      }
-
-      register("test-operation", TestClass);
-  )");
-
-  EXPECT_TRUE(add_module_result.success);
-
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
-
-  EXPECT_TRUE(run_result.success);
-  EXPECT_EQ(run_result.error_message, "");
-}
-
-TEST_F(SharedStoragePrivateAggregationDisabledTest,
-       GlobalScopeObjectsAndFunctions_AfterAddModuleFailure) {
-  AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
-      class TestClass {
-        async run() {
-          var expectedObjects = [
-            "console",
-            "sharedStorage",
-            "crypto"
-          ];
-
-          var expectedFunctions = [
-            "SharedStorage",
-            "Crypto",
-            "CryptoKey",
-            "SubtleCrypto",
-            "TextEncoder",
-            "TextDecoder",
-            "register",
-            "sharedStorage.set",
-            "sharedStorage.append",
-            "sharedStorage.delete",
-            "sharedStorage.clear",
-            "sharedStorage.get",
-            "sharedStorage.length",
-            "sharedStorage.keys",
-            "sharedStorage.entries",
-            "sharedStorage.remainingBudget"
-          ];
-
-          // Those are either not implemented yet, or should stay undefined.
-          var expectedUndefinedVariables = [
-            "sharedStorage.selectURL",
-            "sharedStorage.run",
-            "sharedStorage.worklet",
-            "sharedStorage.context",
-
-            // PrivateAggregation related variables are undefined because the
-            // corresponding base::Feature(s) are not enabled.
-            "privateAggregation",
-            "PrivateAggregation"
-          ];
-
-          for (let expectedObject of expectedObjects) {
-            if (eval("typeof " + expectedObject) !== "object") {
-              throw Error(expectedObject + " is not object type.")
-            }
-          }
-
-          for (let expectedFunction of expectedFunctions) {
-            if (eval("typeof " + expectedFunction) !== "function") {
-              throw Error(expectedFunction + " is not function type.")
-            }
-          }
-
-          for (let expectedUndefined of expectedUndefinedVariables) {
-            if (eval("typeof " + expectedUndefined) !== "undefined") {
-              throw Error(expectedUndefined + " is not undefined.")
-            }
-          }
-        }
-      }
-
-      register("test-operation", TestClass);
-
-      // This should fail the addModule()
-      a;
-  )");
-
-  EXPECT_FALSE(add_module_result.success);
-  EXPECT_THAT(add_module_result.error_message,
-              testing::HasSubstr("ReferenceError: a is not defined"));
-
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
-
-  EXPECT_TRUE(run_result.success);
-  EXPECT_EQ(run_result.error_message, "");
 }
 
 class SharedStoragePrivateAggregationTest : public SharedStorageWorkletTest {
@@ -3088,6 +2683,15 @@ class SharedStoragePrivateAggregationTest : public SharedStorageWorkletTest {
         {{blink::features::kPrivateAggregationApi,
           {{"enabled_in_shared_storage", "true"}}}},
         /*disabled_features=*/{});
+  }
+
+  void TearDown() override {
+    // Shut down the worklet gracefully. Otherwise, the
+    // `private_aggregation_feature_` may be destroyed before the worklet thread
+    // (e.g. SharedStorageWorkletGlobalScope::NotifyContextDestroyed()) and some
+    // feature state assertions could fail.
+    shared_storage_worklet_service_.reset();
+    EXPECT_TRUE(worklet_terminated_future_.Wait());
   }
 
   // `error_message` being `nullptr` indicates no error is expected.
@@ -3103,23 +2707,22 @@ class SharedStoragePrivateAggregationTest : public SharedStorageWorkletTest {
             {"class TestClass { async run() {", script_body,
              "}}; register(\"test-operation\", TestClass);"}));
 
-    EXPECT_CALL(*mock_private_aggregation_host_, ContributeToHistogram)
+    EXPECT_CALL(*mock_private_aggregation_host_, SendHistogramReport)
         .WillOnce(testing::Invoke(
-            [&](Vector<
-                blink::mojom::blink::AggregatableReportHistogramContributionPtr>
-                    contributions) {
+            [&](Vector<blink::mojom::blink::
+                           AggregatableReportHistogramContributionPtr>
+                    contributions,
+                blink::mojom::blink::AggregationServiceMode aggregation_mode,
+                mojom::blink::DebugModeDetailsPtr debug_mode_details) {
               ASSERT_EQ(contributions.size(), 1u);
               EXPECT_EQ(contributions[0]->bucket, expected_bucket);
               EXPECT_EQ(contributions[0]->value, expected_value);
+              EXPECT_EQ(aggregation_mode,
+                        blink::mojom::blink::AggregationServiceMode::kDefault);
+              EXPECT_TRUE(debug_mode_details == expected_debug_mode_details);
             }));
-    if (expected_debug_mode_details->is_enabled) {
-      EXPECT_CALL(*mock_private_aggregation_host_, EnableDebugMode)
-          .WillOnce(testing::Invoke([&](mojom::blink::DebugKeyPtr debug_key) {
-            EXPECT_TRUE(debug_key == expected_debug_mode_details->debug_key);
-          }));
-    }
 
-    RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+    RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
     EXPECT_EQ(run_result.success, (error_message == nullptr));
 
@@ -3128,24 +2731,12 @@ class SharedStoragePrivateAggregationTest : public SharedStorageWorkletTest {
     }
 
     // Use counters are recorded.
-    if (expected_debug_mode_details->is_enabled) {
-      EXPECT_THAT(test_client_->observed_use_counters_,
-                  testing::UnorderedElementsAre(
-                      testing::UnorderedElementsAre(
-                          blink::mojom::WebFeature::kPrivateAggregationApiAll,
-                          blink::mojom::WebFeature::
-                              kPrivateAggregationApiSharedStorage),
-                      testing::UnorderedElementsAre(
-                          blink::mojom::WebFeature::
-                              kPrivateAggregationApiEnableDebugMode)));
-    } else {
-      EXPECT_EQ(test_client_->observed_use_counters_.size(), 1u);
-      EXPECT_THAT(
-          test_client_->observed_use_counters_[0],
-          testing::UnorderedElementsAre(
-              blink::mojom::WebFeature::kPrivateAggregationApiAll,
-              blink::mojom::WebFeature::kPrivateAggregationApiSharedStorage));
-    }
+    EXPECT_EQ(test_client_->observed_use_counters_.size(), 1u);
+    EXPECT_THAT(
+        test_client_->observed_use_counters_[0],
+        testing::UnorderedElementsAre(
+            blink::mojom::WebFeature::kPrivateAggregationApiAll,
+            blink::mojom::WebFeature::kPrivateAggregationApiSharedStorage));
 
     mock_private_aggregation_host_->FlushForTesting();
   }
@@ -3161,12 +2752,11 @@ class SharedStoragePrivateAggregationTest : public SharedStorageWorkletTest {
              !!mock_private_aggregation_host_);
 
     if (mock_private_aggregation_host_) {
-      EXPECT_CALL(*mock_private_aggregation_host_, ContributeToHistogram)
+      EXPECT_CALL(*mock_private_aggregation_host_, SendHistogramReport)
           .Times(0);
-      EXPECT_CALL(*mock_private_aggregation_host_, EnableDebugMode).Times(0);
     }
 
-    RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+    RunResult run_result = Run("test-operation", /*serialized_data=*/{});
     EXPECT_FALSE(run_result.success);
 
     if (expect_use_counter) {
@@ -3222,7 +2812,7 @@ TEST_F(SharedStoragePrivateAggregationTest,
 
   EXPECT_TRUE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_EQ(run_result.error_message, "");
@@ -3246,7 +2836,7 @@ TEST_F(SharedStoragePrivateAggregationTest,
 
   EXPECT_FALSE(add_module_result.success);
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
 
   EXPECT_TRUE(run_result.success);
   EXPECT_EQ(run_result.error_message, "");
@@ -3254,40 +2844,40 @@ TEST_F(SharedStoragePrivateAggregationTest,
 
 TEST_F(SharedStoragePrivateAggregationTest, BasicTest) {
   ExecuteScriptAndValidateContribution(
-      "privateAggregation.contributeToHistogram({bucket: 1n, value: 2});",
+      "privateAggregation.sendHistogramReport({bucket: 1n, value: 2});",
       /*expected_bucket=*/1, /*expected_value=*/2);
 }
 
 TEST_F(SharedStoragePrivateAggregationTest, ZeroBucket) {
   ExecuteScriptAndValidateContribution(
-      "privateAggregation.contributeToHistogram({bucket: 0n, value: 2});",
+      "privateAggregation.sendHistogramReport({bucket: 0n, value: 2});",
       /*expected_bucket=*/0, /*expected_value=*/2);
 }
 
 TEST_F(SharedStoragePrivateAggregationTest, ZeroValue) {
   ExecuteScriptAndValidateContribution(
-      "privateAggregation.contributeToHistogram({bucket: 1n, value: 0});",
+      "privateAggregation.sendHistogramReport({bucket: 1n, value: 0});",
       /*expected_bucket=*/1, /*expected_value=*/0);
 }
 
 TEST_F(SharedStoragePrivateAggregationTest, LargeBucket) {
   ExecuteScriptAndValidateContribution(
-      "privateAggregation.contributeToHistogram("
-      "{bucket: 18446744073709551616n, value: 2});",
+      "privateAggregation.sendHistogramReport({bucket: 18446744073709551616n, "
+      "value: 2});",
       /*expected_bucket=*/absl::MakeUint128(/*high=*/1, /*low=*/0),
       /*expected_value=*/2);
 }
 
 TEST_F(SharedStoragePrivateAggregationTest, MaxBucket) {
   ExecuteScriptAndValidateContribution(
-      "privateAggregation.contributeToHistogram("
-      "{bucket: 340282366920938463463374607431768211455n, value: 2});",
+      "privateAggregation.sendHistogramReport({bucket: "
+      "340282366920938463463374607431768211455n, value: 2});",
       /*expected_bucket=*/absl::Uint128Max(), /*expected_value=*/2);
 }
 
 TEST_F(SharedStoragePrivateAggregationTest, NonIntegerValue) {
   ExecuteScriptAndValidateContribution(
-      "privateAggregation.contributeToHistogram({bucket: 1n, value: 2.3});",
+      "privateAggregation.sendHistogramReport({bucket: 1n, value: 2.3});",
       /*expected_bucket=*/1, /*expected_value=*/2);
 }
 
@@ -3296,7 +2886,7 @@ TEST_F(SharedStoragePrivateAggregationTest,
   private_aggregation_permissions_policy_allowed_ = false;
 
   std::string error_str = ExecuteScriptReturningError(
-      "privateAggregation.contributeToHistogram({bucket: 1n, value: 2});",
+      "privateAggregation.sendHistogramReport({bucket: 1n, value: 2});",
       /*expect_use_counter=*/true);
 
   EXPECT_THAT(error_str, testing::HasSubstr(
@@ -3306,7 +2896,7 @@ TEST_F(SharedStoragePrivateAggregationTest,
 
 TEST_F(SharedStoragePrivateAggregationTest, TooLargeBucket_Rejected) {
   std::string error_str = ExecuteScriptReturningError(
-      "privateAggregation.contributeToHistogram({bucket: "
+      "privateAggregation.sendHistogramReport({bucket: "
       "340282366920938463463374607431768211456n, value: 2});",
       /*expect_use_counter=*/true);
 
@@ -3318,7 +2908,8 @@ TEST_F(SharedStoragePrivateAggregationTest, TooLargeBucket_Rejected) {
 
 TEST_F(SharedStoragePrivateAggregationTest, NegativeBucket_Rejected) {
   std::string error_str = ExecuteScriptReturningError(
-      "privateAggregation.contributeToHistogram({bucket: -1n, value: 2});",
+      "privateAggregation.sendHistogramReport({bucket: "
+      "-1n, value: 2});",
       /*expect_use_counter=*/true);
 
   EXPECT_THAT(
@@ -3329,15 +2920,16 @@ TEST_F(SharedStoragePrivateAggregationTest, NegativeBucket_Rejected) {
 
 TEST_F(SharedStoragePrivateAggregationTest, NonBigIntBucket_Rejected) {
   std::string error_str = ExecuteScriptReturningError(
-      "privateAggregation.contributeToHistogram({bucket: 1, value: 2});",
+      "privateAggregation.sendHistogramReport({bucket: 1, value: 2});",
       /*expect_use_counter=*/false);
 
-  EXPECT_THAT(error_str, testing::HasSubstr("Cannot convert 1 to a BigInt"));
+  EXPECT_THAT(error_str,
+              testing::HasSubstr("The provided value is not a BigInt"));
 }
 
 TEST_F(SharedStoragePrivateAggregationTest, NegativeValue_Rejected) {
   std::string error_str = ExecuteScriptReturningError(
-      "privateAggregation.contributeToHistogram({bucket: 1n, value: -1});",
+      "privateAggregation.sendHistogramReport({bucket: 1n, value: -1});",
       /*expect_use_counter=*/true);
 
   EXPECT_THAT(error_str,
@@ -3366,12 +2958,12 @@ TEST_F(SharedStoragePrivateAggregationTest,
       R"(
         let error;
         try {
-          privateAggregation.enableDebugMode({debugKey: 1234n});
+          privateAggregation.enableDebugMode({debug_key: 1234n});
           privateAggregation.enableDebugMode();
         } catch (e) {
           error = e;
         }
-        privateAggregation.contributeToHistogram({bucket: 1n, value: 2});
+        privateAggregation.sendHistogramReport({bucket: 1n, value: 2});
         throw error;
       )",
       /*expected_bucket=*/1,
@@ -3390,107 +2982,81 @@ TEST_F(SharedStoragePrivateAggregationTest,
 TEST_F(SharedStoragePrivateAggregationTest,
        EnableDebugModeCalledAfterRequest_DoesntApply) {
   AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
-      class ContributeToHistogram {
+      class SendHistogramReport {
         async run() {
-          privateAggregation.contributeToHistogram({bucket: 1n, value: 2});
+          privateAggregation.sendHistogramReport({bucket: 1n, value: 2});
         }
       }
 
       class EnableDebugMode {
         async run() {
-          privateAggregation.enableDebugMode({debugKey: 1234n});
+          privateAggregation.enableDebugMode({debug_key: 1234n});
         }
       }
 
-      register("contribute-to-histogram", ContributeToHistogram);
+      register("send-histogram-report", SendHistogramReport);
       register("enable-debug-mode", EnableDebugMode);
   )");
 
-  std::optional<mojo::ReceiverId> contribute_to_histogram_pipe_id;
-  std::optional<mojo::ReceiverId> enable_debug_mode_pipe_id;
-  base::RunLoop run_loop;
-  base::RepeatingClosure closure =
-      base::BarrierClosure(2, run_loop.QuitClosure());
-
-  EXPECT_CALL(*mock_private_aggregation_host_, ContributeToHistogram)
+  EXPECT_CALL(*mock_private_aggregation_host_, SendHistogramReport)
       .WillOnce(testing::Invoke(
-          [&](Vector<
-              blink::mojom::blink::AggregatableReportHistogramContributionPtr>
-                  contributions) {
+          [&](Vector<blink::mojom::blink::
+                         AggregatableReportHistogramContributionPtr>
+                  contributions,
+              blink::mojom::blink::AggregationServiceMode aggregation_mode,
+              mojom::blink::DebugModeDetailsPtr debug_mode_details) {
             ASSERT_EQ(contributions.size(), 1u);
             EXPECT_EQ(contributions[0]->bucket, 1);
             EXPECT_EQ(contributions[0]->value, 2);
-
-            contribute_to_histogram_pipe_id =
-                mock_private_aggregation_host_->receiver_set()
-                    .current_receiver();
-            closure.Run();
-          }));
-  EXPECT_CALL(*mock_private_aggregation_host_, EnableDebugMode)
-      .WillOnce(
-          testing::Invoke([&](blink::mojom::blink::DebugKeyPtr debug_key) {
-            ASSERT_FALSE(debug_key.is_null());
-            EXPECT_EQ(debug_key->value, 1234u);
-
-            enable_debug_mode_pipe_id =
-                mock_private_aggregation_host_->receiver_set()
-                    .current_receiver();
-            closure.Run();
+            EXPECT_EQ(aggregation_mode,
+                      blink::mojom::blink::AggregationServiceMode::kDefault);
+            EXPECT_TRUE(debug_mode_details ==
+                        mojom::blink::DebugModeDetails::New());
           }));
 
-  RunResult run_result =
-      Run("contribute-to-histogram", CreateSerializedUndefined());
+  RunResult run_result = Run("send-histogram-report", /*serialized_data=*/{});
   EXPECT_TRUE(run_result.success);
 
-  RunResult run_result2 = Run("enable-debug-mode", CreateSerializedUndefined());
+  RunResult run_result2 = Run("enable-debug-mode", /*serialized_data=*/{});
   EXPECT_TRUE(run_result2.success);
 
   mock_private_aggregation_host_->FlushForTesting();
-  run_loop.Run();
-
-  // The calls should've come on two different pipes.
-  EXPECT_TRUE(contribute_to_histogram_pipe_id.has_value());
-  EXPECT_TRUE(enable_debug_mode_pipe_id.has_value());
-  EXPECT_NE(contribute_to_histogram_pipe_id, enable_debug_mode_pipe_id);
 }
 
 TEST_F(SharedStoragePrivateAggregationTest, MultipleDebugModeRequests) {
   AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
       class TestClass {
         async run() {
-          privateAggregation.enableDebugMode({debugKey: 1234n});
-          privateAggregation.contributeToHistogram({bucket: 1n, value: 2});
-          privateAggregation.contributeToHistogram({bucket: 3n, value: 4});
+          privateAggregation.enableDebugMode({debug_key: 1234n});
+          privateAggregation.sendHistogramReport({bucket: 1n, value: 2});
+          privateAggregation.sendHistogramReport({bucket: 3n, value: 4});
         }
       }
 
       register("test-operation", TestClass);
   )");
 
-  EXPECT_CALL(*mock_private_aggregation_host_, EnableDebugMode)
-      .WillOnce(testing::Invoke([](mojom::blink::DebugKeyPtr debug_key) {
-        EXPECT_EQ(debug_key, mojom::blink::DebugKey::New(1234u));
-      }));
-
-  EXPECT_CALL(*mock_private_aggregation_host_, ContributeToHistogram)
+  EXPECT_CALL(*mock_private_aggregation_host_, SendHistogramReport)
       .WillOnce(testing::Invoke(
-          [](Vector<
-              blink::mojom::blink::AggregatableReportHistogramContributionPtr>
-                 contributions) {
-            ASSERT_EQ(contributions.size(), 1u);
+          [](Vector<blink::mojom::blink::
+                        AggregatableReportHistogramContributionPtr>
+                 contributions,
+             blink::mojom::blink::AggregationServiceMode aggregation_mode,
+             mojom::blink::DebugModeDetailsPtr debug_mode_details) {
+            ASSERT_EQ(contributions.size(), 2u);
             EXPECT_EQ(contributions[0]->bucket, 1);
             EXPECT_EQ(contributions[0]->value, 2);
-          }))
-      .WillOnce(testing::Invoke(
-          [](Vector<
-              blink::mojom::blink::AggregatableReportHistogramContributionPtr>
-                 contributions) {
-            ASSERT_EQ(contributions.size(), 1u);
-            EXPECT_EQ(contributions[0]->bucket, 3);
-            EXPECT_EQ(contributions[0]->value, 4);
+            EXPECT_EQ(contributions[1]->bucket, 3);
+            EXPECT_EQ(contributions[1]->value, 4);
+            EXPECT_EQ(aggregation_mode,
+                      blink::mojom::blink::AggregationServiceMode::kDefault);
+            EXPECT_EQ(debug_mode_details,
+                      mojom::blink::DebugModeDetails::New(
+                          /*is_enabled=*/true,
+                          /*debug_key=*/mojom::blink::DebugKey::New(1234u)));
           }));
 
-  RunResult run_result = Run("test-operation", CreateSerializedUndefined());
+  RunResult run_result = Run("test-operation", /*serialized_data=*/{});
   EXPECT_TRUE(run_result.success);
 
   mock_private_aggregation_host_->FlushForTesting();
@@ -3502,7 +3068,7 @@ TEST_F(SharedStoragePrivateAggregationTest,
   AddModuleResult add_module_result = AddModule(/*script_content=*/R"(
       class TestClass {
         async run() {
-          privateAggregation.contributeToHistogram({bucket: 1n, value: 2});
+          privateAggregation.sendHistogramReport({bucket: 1n, value: 2});
           await new Promise(() => {});
         }
       }
@@ -3512,21 +3078,25 @@ TEST_F(SharedStoragePrivateAggregationTest,
 
   base::RunLoop run_loop;
 
-  EXPECT_CALL(*mock_private_aggregation_host_, EnableDebugMode).Times(0);
-  EXPECT_CALL(*mock_private_aggregation_host_, ContributeToHistogram)
+  EXPECT_CALL(*mock_private_aggregation_host_, SendHistogramReport)
       .WillOnce(testing::Invoke(
-          [&](Vector<
-              blink::mojom::blink::AggregatableReportHistogramContributionPtr>
-                  contributions) {
+          [&](Vector<blink::mojom::blink::
+                         AggregatableReportHistogramContributionPtr>
+                  contributions,
+              blink::mojom::blink::AggregationServiceMode aggregation_mode,
+              mojom::blink::DebugModeDetailsPtr debug_mode_details) {
             ASSERT_EQ(contributions.size(), 1u);
             EXPECT_EQ(contributions[0]->bucket, 1);
             EXPECT_EQ(contributions[0]->value, 2);
+            EXPECT_EQ(aggregation_mode,
+                      blink::mojom::blink::AggregationServiceMode::kDefault);
+            EXPECT_FALSE(debug_mode_details->is_enabled);
 
             run_loop.Quit();
           }));
 
   shared_storage_worklet_service_->RunOperation(
-      "test-operation", CreateSerializedUndefined(), MaybeInitNewRemotePAHost(),
+      "test-operation", /*serialized_data=*/{}, MaybeInitNewRemotePAHost(),
       base::DoNothing());
 
   // Trigger the disconnect handler.
@@ -3536,77 +3106,6 @@ TEST_F(SharedStoragePrivateAggregationTest,
   EXPECT_TRUE(worklet_terminated_future_.Wait());
 
   run_loop.Run();
-}
-
-class SharedStorageWorkletThreadTest : public testing::Test {};
-
-// Assert that each `SharedStorageWorkletThread` owns a dedicated
-// `WorkerBackingThread`.
-TEST_F(SharedStorageWorkletThreadTest, DedicatedBackingThread) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      blink::features::kSharedStorageWorkletSharedBackingThreadImplementation);
-
-  test::TaskEnvironment task_environment;
-
-  MockWorkerReportingProxy reporting_proxy1;
-  MockWorkerReportingProxy reporting_proxy2;
-  auto thread1 = SharedStorageWorkletThread::Create(reporting_proxy1);
-  auto thread2 = SharedStorageWorkletThread::Create(reporting_proxy2);
-  EXPECT_NE(&thread1->GetWorkerBackingThread(),
-            &thread2->GetWorkerBackingThread());
-
-  // Start and terminate the threads, so that the test can terminate gracefully.
-  auto thread_startup_data = WorkerBackingThreadStartupData::CreateDefault();
-  thread_startup_data.atomics_wait_mode =
-      WorkerBackingThreadStartupData::AtomicsWaitMode::kAllow;
-
-  thread1->Start(MakeTestGlobalScopeCreationParams(), thread_startup_data,
-                 std::make_unique<WorkerDevToolsParams>());
-  thread2->Start(MakeTestGlobalScopeCreationParams(), thread_startup_data,
-                 std::make_unique<WorkerDevToolsParams>());
-
-  thread1->TerminateForTesting();
-  thread1->WaitForShutdownForTesting();
-  thread2->TerminateForTesting();
-  thread2->WaitForShutdownForTesting();
-}
-
-// Assert that multiple `SharedStorageWorkletThread`s share a
-// `WorkerBackingThread`.
-//
-// Note: Currently, this would trigger a crash due to a failure in installing
-// the `v8/expose_gc` extension. Even though `--expose-gc` isn't set by default
-// in production, we should still fix this.
-//
-// TODO(yaoxia): We're temporarily leaving this issue unfixed to facilitate our
-// investigation into a crash that occurs in the wild (crbug.com/1501387). We'll
-// re-enable this after investigation.
-TEST_F(SharedStorageWorkletThreadTest, DISABLED_SharedBackingThread) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(
-      blink::features::kSharedStorageWorkletSharedBackingThreadImplementation);
-
-  test::TaskEnvironment task_environment;
-  MockWorkerReportingProxy reporting_proxy1;
-  MockWorkerReportingProxy reporting_proxy2;
-  auto thread1 = SharedStorageWorkletThread::Create(reporting_proxy1);
-  auto thread2 = SharedStorageWorkletThread::Create(reporting_proxy2);
-  EXPECT_EQ(&thread1->GetWorkerBackingThread(),
-            &thread2->GetWorkerBackingThread());
-
-  // Start and terminate the threads, so that the test can terminate gracefully.
-  thread1->Start(MakeTestGlobalScopeCreationParams(),
-                 /*thread_startup_data=*/std::nullopt,
-                 std::make_unique<WorkerDevToolsParams>());
-  thread2->Start(MakeTestGlobalScopeCreationParams(),
-                 /*thread_startup_data=*/std::nullopt,
-                 std::make_unique<WorkerDevToolsParams>());
-
-  thread1->TerminateForTesting();
-  thread1->WaitForShutdownForTesting();
-  thread2->TerminateForTesting();
-  thread2->WaitForShutdownForTesting();
 }
 
 }  // namespace blink

@@ -34,6 +34,10 @@ class ReleaseNotesNotificationTest : public BrowserWithTestWindowTest {
   ~ReleaseNotesNotificationTest() override = default;
 
   // BrowserWithTestWindowTest:
+  TestingProfile* CreateProfile() override {
+    return profile_manager()->CreateTestingProfile("googler@google.com");
+  }
+
   void SetUp() override {
     BrowserWithTestWindowTest::SetUp();
     TestingBrowserProcess::GetGlobal()->SetSystemNotificationHelper(
@@ -53,12 +57,6 @@ class ReleaseNotesNotificationTest : public BrowserWithTestWindowTest {
     release_notes_notification_.reset();
     tester_.reset();
     BrowserWithTestWindowTest::TearDown();
-  }
-
-  std::string GetDefaultProfileName() override {
-    // TODO(crbug.com/1494005): Use google.com domain to forcibly enable
-    // release note notification. Will merge into BrowserWithTestWindowTest.
-    return "primary_profile@google.com";
   }
 
   void OnNotificationAdded() { notification_count_++; }
@@ -97,9 +95,7 @@ TEST_F(ReleaseNotesNotificationTest, ShowReleaseNotesNotification) {
       std::make_unique<ReleaseNotesStorage>(profile());
   profile()->GetPrefs()->SetInteger(
       prefs::kHelpAppNotificationLastShownMilestone, 20);
-
   release_notes_notification_->MaybeShowReleaseNotes();
-
   EXPECT_EQ(true, HasReleaseNotesNotification());
   EXPECT_EQ(ui::SubstituteChromeOSDeviceType(
                 IDS_RELEASE_NOTES_DEVICE_SPECIFIC_NOTIFICATION_TITLE),
@@ -107,10 +103,6 @@ TEST_F(ReleaseNotesNotificationTest, ShowReleaseNotesNotification) {
   EXPECT_EQ("Get highlights from the latest update",
             base::UTF16ToASCII(GetReleaseNotesNotification().message()));
   EXPECT_EQ(1, notification_count_);
-  // And it show the release notes suggestion chip.
-  EXPECT_EQ(3, profile()->GetPrefs()->GetInteger(
-                   prefs::kReleaseNotesSuggestionChipTimesLeftToShow));
-  EXPECT_EQ(true, release_notes_storage->ShouldShowSuggestionChip());
 }
 
 }  // namespace ash

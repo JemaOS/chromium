@@ -5,8 +5,6 @@
 // TODO(cambickel): Move this code into a shared location, and update Settings
 // search code to use it.
 
-import {sanitizeInnerHtml} from 'chrome://resources/js/parse_html_subset.js';
-
 /**
  * Returns the HTML for the given description based on the query text.
  * <b> tags are wrapped around matching sections of the description.
@@ -14,11 +12,11 @@ import {sanitizeInnerHtml} from 'chrome://resources/js/parse_html_subset.js';
  * "<b>Open</b> new <b>tab</b>".
  * @param description Search result description to apply bolding to.
  * @param query The text that the user searched for to generate this result.
- * @return A TrustedHTML of |description| with any character that is in
- *     |query| bolded.
+ * @return An innerHTML string of |description| with any
+ *     character that is in |query| bolded.
  */
 export function getBoldedDescription(
-    description: string, query: string): TrustedHTML {
+    description: string, query: string): string {
   if (description.match(/\s/) ||
       description.toLocaleLowerCase() !== description.toLocaleUpperCase()) {
     // If the result text includes blankspaces (as they commonly will in
@@ -49,10 +47,10 @@ export function getBoldedDescription(
  * "Turn on Wi-Fi" should have "Wi-Fi" bolded.
  * @param description Search result description to apply bolding to.
  * @param query The text that the user searched for to generate this result.
- * @return Result TrustedHTML with <b> tags around query sub string.
+ * @return Result string with <b> tags around query sub string.
  */
 function getTokenizeMatchedBoldTagged(
-    description: string, query: string): TrustedHTML {
+    description: string, query: string): string {
   // Lowercase, remove hyphens, and remove accents from the query.
   const normalizedQuery = normalizeString(query);
 
@@ -68,7 +66,7 @@ function getTokenizeMatchedBoldTagged(
 
   if (!blankspaces) {
     // No blankspaces, return |innterHtmlTokensWithBoldTags| as a string.
-    return sanitizeInnerHtml(innerHtmlTokensWithBoldTags.join(''));
+    return innerHtmlTokensWithBoldTags.join('');
   }
 
   // Add blankspaces make to where they were located in the string, and
@@ -76,13 +74,11 @@ function getTokenizeMatchedBoldTagged(
   // e.g |blankspaces| = [' ', '\xa0']
   //     |innerHtmlTokensWithBoldTags| = ['a', '<b>b</b>', 'c']
   // returns 'a <b>b</b>&nbps;c'
-  return sanitizeInnerHtml(innerHtmlTokensWithBoldTags
-                               .map((token, idx) => {
-                                 return idx !== blankspaces.length ?
-                                     token + blankspaces[idx] :
-                                     token;
-                               })
-                               .join(''));
+  return innerHtmlTokensWithBoldTags
+      .map((token, idx) => {
+        return idx !== blankspaces.length ? token + blankspaces[idx] : token;
+      })
+      .join('');
 }
 
 /**
@@ -95,14 +91,14 @@ function getTokenizeMatchedBoldTagged(
  *         returns "<b>一</b>二<b>三</b>四"
  * @param description Search result description to apply bolding to.
  * @param query The text that the user searched for to generate this result.
- * @return A TrustedHTML string of |description| with any character that is in
- *     |query| bolded.
+ * @return An innerHTML string of |description| with any
+ *     character that is in |query| bolded.
  */
 function getMatchingIndividualCharsBolded(
-    description: string, query: string): TrustedHTML {
-  return sanitizeInnerHtml(boldSubStrings(
+    description: string, query: string): string {
+  return boldSubStrings(
       /*sourceString=*/ description,
-      /*substringsToBold=*/ query.split('')));
+      /*substringsToBold=*/ query.split(''));
 }
 
 /**

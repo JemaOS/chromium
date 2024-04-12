@@ -200,7 +200,7 @@ class NetworkConfigurationUpdaterTest : public testing::Test {
     EXPECT_CALL(provider_, IsFirstPolicyLoadComplete(_))
         .WillRepeatedly(Return(true));
     provider_.SetAutoRefresh();
-    provider_.RefreshPolicies(PolicyFetchReason::kTest);
+    provider_.RefreshPolicies();
     base::RunLoop().RunUntilIdle();
   }
 

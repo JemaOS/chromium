@@ -68,7 +68,6 @@ class UnifiedSideSearchController
  private:
   BrowserView* GetBrowserView() const;
   Profile* GetProfile() const;
-  SidePanelUI* GetSidePanelUI();
 
   // Create a WebView to host the side search WebContents.
   std::unique_ptr<views::View> GetSideSearchView();

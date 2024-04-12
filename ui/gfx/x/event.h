@@ -6,10 +6,8 @@
 #define UI_GFX_X_EVENT_H_
 
 #include <cstdint>
-#include <type_traits>
 #include <utility>
 
-#include "base/check_op.h"
 #include "base/component_export.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted_memory.h"
@@ -22,16 +20,16 @@ class Connection;
 class Event;
 struct ReadBuffer;
 
-template <typename T>
-void ReadEvent(T* event, ReadBuffer* buf);
+COMPONENT_EXPORT(X11)
+void ReadEvent(Event* event, Connection* connection, ReadBuffer* buffer);
 
 class COMPONENT_EXPORT(X11) Event {
  public:
   template <typename T>
   Event(bool send_event, T&& xproto_event) {
     using DecayT = std::decay_t<T>;
-    fabricated_ = true;
     send_event_ = send_event;
+    sequence_ = xproto_event.sequence;
     type_id_ = DecayT::type_id;
     auto* event = new DecayT(std::forward<T>(xproto_event));
     event_ = {event, [](void* e) {
@@ -39,6 +37,7 @@ class COMPONENT_EXPORT(X11) Event {
                   delete reinterpret_cast<DecayT*>(e);
                 }
               }};
+    window_ = event->GetWindow();
   }
 
   Event();
@@ -58,20 +57,9 @@ class COMPONENT_EXPORT(X11) Event {
 
   template <typename T>
   T* As() {
-    if (type_id_ != T::type_id) {
-      return nullptr;
-    }
-    if (!event_) {
-      T* event = new T;
-      Parse(
-          event,
-          [](void* e, ReadBuffer* r) { ReadEvent<T>(static_cast<T*>(e), r); },
-          [](void* e) { delete static_cast<T*>(e); });
-      if constexpr (std::is_member_pointer<decltype(&T::opcode)>()) {
-        event->opcode = static_cast<decltype(event->opcode)>(opcode_);
-      }
-    }
-    return static_cast<T*>(event_.get());
+    if (type_id_ == T::type_id)
+      return reinterpret_cast<T*>(event_.get());
+    return nullptr;
   }
 
   template <typename T>
@@ -81,39 +69,33 @@ class COMPONENT_EXPORT(X11) Event {
 
   bool send_event() const { return send_event_; }
 
-  uint32_t sequence() const {
-    CHECK(!fabricated_);
-    return sequence_;
+  uint32_t sequence() const { return sequence_; }
+
+  Window window() const { return window_ ? *window_ : Window::None; }
+  void set_window(Window window) {
+    if (window_)
+      *window_ = window;
   }
 
-  bool Initialized() const { return type_id_; }
+  bool Initialized() const { return !!event_; }
 
  private:
-  using Parser = void (*)(void*, ReadBuffer*);
-  using Deleter = void (*)(void*);
+  friend void ReadEvent(Event* event,
+                        Connection* connection,
+                        ReadBuffer* buffer);
 
-  void Parse(void* event, Parser parser, Deleter deleter);
-
-  // Indicates this event was sent from another client instead of the server.
+  // True if this event was sent from another X client.  False if this event
+  // was sent by the X server.
   bool send_event_ = false;
+  uint16_t sequence_ = 0;
 
-  // Indicates this event was created, not sent by the server or a client.
-  bool fabricated_ = false;
+  // XProto event state.
+  int type_id_ = 0;
+  std::unique_ptr<void, void (*)(void*)> event_ = {nullptr, nullptr};
 
-  // The value of the underlying event's `T::type_id`.
-  uint8_t type_id_ = 0;
-
-  // The value of the underlying event's `t->opcode`.
-  uint8_t opcode_ = 0;
-
-  // The (extended) event sequence provided by XCB.
-  uint32_t sequence_ = 0;
-
-  // The unparsed event, or nullptr if it's already parsed.
-  scoped_refptr<base::RefCountedMemory> raw_event_;
-
-  // The type-erased parsed event, or nullptr if it hasn't been parsed yet.
-  std::unique_ptr<void, Deleter> event_ = {nullptr, nullptr};
+  // This member points to a field in |event_|, or may be nullptr if there's no
+  // associated window for the event.  It's owned by |event_|, not us.
+  raw_ptr<Window> window_ = nullptr;
 };
 
 }  // namespace x11

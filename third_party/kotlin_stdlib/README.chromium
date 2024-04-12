@@ -2,9 +2,8 @@ Name: Kotlin Standard Library
 Short Name: Kotlin stdlib
 Version: unknown
 License: Apache Version 2.0
-License File: LICENSE
+License File: NOT_SHIPPED
 Security Critical: No
-Shipped: no
 URL: https://kotlinlang.org/api/latest/jvm/stdlib/
 
 Description:

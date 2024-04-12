@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_PAINT_PREVIEW_SERVICES_PAINT_PREVIEW_TAB_SERVICE_FILE_MIXIN_H_
 #define CHROME_BROWSER_PAINT_PREVIEW_SERVICES_PAINT_PREVIEW_TAB_SERVICE_FILE_MIXIN_H_
 
-#include <string_view>
-
 #include "components/paint_preview/browser/paint_preview_file_mixin.h"
 
 namespace paint_preview {
@@ -14,7 +12,7 @@ namespace paint_preview {
 class PaintPreviewTabServiceFileMixin : public PaintPreviewFileMixin {
  public:
   PaintPreviewTabServiceFileMixin(const base::FilePath& profile_dir,
-                                  std::string_view ascii_feature_name);
+                                  base::StringPiece ascii_feature_name);
   PaintPreviewTabServiceFileMixin(const PaintPreviewTabServiceFileMixin&) =
       delete;
   PaintPreviewTabServiceFileMixin& operator=(
@@ -25,7 +23,7 @@ class PaintPreviewTabServiceFileMixin : public PaintPreviewFileMixin {
   // hrs if not specified.
   void GetCapturedPaintPreviewProto(
       const DirectoryKey& key,
-      std::optional<base::TimeDelta> expiry_horizon,
+      absl::optional<base::TimeDelta> expiry_horizon,
       OnReadProtoCallback on_read_proto_callback) override;
 
   // The time horizon after which unused paint previews will be deleted.

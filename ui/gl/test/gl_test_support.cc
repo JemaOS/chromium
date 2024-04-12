@@ -36,7 +36,7 @@ void rgb_to_yuv(uint8_t r, uint8_t g, uint8_t b, T* y, T* u, T* v) {
 
 // static
 GLDisplay* GLTestSupport::InitializeGL(
-    std::optional<GLImplementationParts> prefered_impl) {
+    absl::optional<GLImplementationParts> prefered_impl) {
 #if BUILDFLAG(IS_OZONE)
   ui::OzonePlatform::InitParams params;
   params.single_process = true;
@@ -115,8 +115,8 @@ void GLTestSupport::SetBufferDataToColor(int width,
       for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
           *reinterpret_cast<uint16_t*>(&data[y * stride + x * 2]) =
-              ((color[0] >> 3) << 11) | ((color[1] >> 2) << 5) |
-              (color[2] >> 3);
+              ((color[2] >> 3) << 11) | ((color[1] >> 2) << 5) |
+              (color[0] >> 3);
         }
       }
       return;

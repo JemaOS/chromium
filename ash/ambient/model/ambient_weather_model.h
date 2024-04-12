@@ -25,14 +25,11 @@ class ASH_EXPORT AmbientWeatherModel {
   void AddObserver(AmbientWeatherModelObserver* observer);
   void RemoveObserver(AmbientWeatherModelObserver* observer);
 
-  // Updates the weather information and notifies observers.
+  // Updates the weather information and notifies observers if the icon image is
+  // not null.
   void UpdateWeatherInfo(const gfx::ImageSkia& weather_condition_icon,
                          float temperature_fahrenheit,
                          bool show_celsius);
-
-  // Checks if the model has not been fully updated. Currently there's no way to
-  // check if the temperature field is a valid value or not.
-  bool IsIncomplete() const { return weather_condition_icon_.isNull(); }
 
   // Returns the cached condition icon. Will return a null image if it has not
   // been set yet.

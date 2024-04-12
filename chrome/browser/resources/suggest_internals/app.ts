@@ -14,15 +14,14 @@ import '//resources/cr_elements/cr_dialog/cr_dialog.js';
 import '//resources/cr_elements/cr_toolbar/cr_toolbar.js';
 import '//resources/cr_elements/cr_drawer/cr_drawer.js';
 
-import type {CrDialogElement} from '//resources/cr_elements/cr_dialog/cr_dialog.js';
-import type {CrDrawerElement} from '//resources/cr_elements/cr_drawer/cr_drawer.js';
-import type {CrToastElement} from '//resources/cr_elements/cr_toast/cr_toast.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {CrDialogElement} from '//resources/cr_elements/cr_dialog/cr_dialog.js';
+import {CrDrawerElement} from '//resources/cr_elements/cr_drawer/cr_drawer.js';
+import {CrToastElement} from '//resources/cr_elements/cr_toast/cr_toast.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './app.html.js';
-import type {PageHandlerInterface} from './suggest_internals.mojom-webui.js';
-import {PageCallbackRouter, PageHandler, Request} from './suggest_internals.mojom-webui.js';
+import {PageCallbackRouter, PageHandler, PageHandlerInterface, Request} from './suggest_internals.mojom-webui.js';
 
 interface SuggestInternalsAppElement {
   $: {
@@ -65,9 +64,7 @@ class SuggestInternalsAppElement extends PolymerElement {
   private callbackRouter_: PageCallbackRouter;
   private pageHandler_: PageHandlerInterface;
   private suggestionsRequestCompletedListenerId_: number|null = null;
-  private suggestionsRequestCreatedListenerId_: number|null = null;
   private suggestionsRequestStartedListenerId_: number|null = null;
-
 
   constructor() {
     super();
@@ -79,12 +76,9 @@ class SuggestInternalsAppElement extends PolymerElement {
 
   override connectedCallback() {
     super.connectedCallback();
-    this.suggestionsRequestCreatedListenerId_ =
-        this.callbackRouter_.onSuggestRequestCreated.addListener(
-            this.onSuggestRequestCreated_.bind(this));
     this.suggestionsRequestStartedListenerId_ =
-        this.callbackRouter_.onSuggestRequestStarted.addListener(
-            this.onSuggestRequestStarted_.bind(this));
+        this.callbackRouter_.onSuggestRequestStarting.addListener(
+            this.onSuggestRequestStarting_.bind(this));
     this.suggestionsRequestCompletedListenerId_ =
         this.callbackRouter_.onSuggestRequestCompleted.addListener(
             this.onSuggestRequestCompleted_.bind(this));
@@ -92,9 +86,6 @@ class SuggestInternalsAppElement extends PolymerElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    assert(this.suggestionsRequestCreatedListenerId_);
-    this.callbackRouter_.removeListener(
-        this.suggestionsRequestCreatedListenerId_);
     assert(this.suggestionsRequestStartedListenerId_);
     this.callbackRouter_.removeListener(
         this.suggestionsRequestStartedListenerId_);
@@ -190,24 +181,9 @@ class SuggestInternalsAppElement extends PolymerElement {
     this.$.toast.show();
   }
 
-  private onSuggestRequestCreated_(request: Request) {
+  private onSuggestRequestStarting_(request: Request) {
     // Add the request to the start of the list of known requests.
     this.unshift('requests_', request);
-  }
-
-  private onSuggestRequestStarted_(request: Request) {
-    const index = this.requests_.findIndex((element: Request) => {
-      return request.id.high === element.id.high &&
-          request.id.low === element.id.low;
-    });
-    // If the request is known, update it with the additional information.
-    if (index !== -1) {
-      this.set(`requests_.${index}.status`, request.status);
-      this.set(
-          `requests_.${index}.data`,
-          Object.assign({}, this.requests_[index].data, request.data));
-      this.set(`requests_.${index}.startTime`, request.startTime);
-    }
   }
 
   private onSuggestRequestCompleted_(request: Request) {
@@ -218,9 +194,6 @@ class SuggestInternalsAppElement extends PolymerElement {
     // If the request is known, update it with the additional information.
     if (index !== -1) {
       this.set(`requests_.${index}.status`, request.status);
-      this.set(
-          `requests_.${index}.data`,
-          Object.assign({}, this.requests_[index].data, request.data));
       this.set(`requests_.${index}.endTime`, request.endTime);
       this.set(`requests_.${index}.response`, request.response);
     }

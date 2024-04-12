@@ -32,7 +32,7 @@ class InflateTransformer final : public TransformStreamTransformer {
   ScriptPromise Flush(TransformStreamDefaultController*,
                       ExceptionState&) override;
 
-  ScriptState* GetScriptState() override { return script_state_.Get(); }
+  ScriptState* GetScriptState() override { return script_state_; }
 
   void Trace(Visitor*) const override;
 

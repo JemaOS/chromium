@@ -38,7 +38,7 @@ class UserEventEqualityChecker : public SingleClientStatusChangeChecker {
   bool IsExitConditionSatisfied(std::ostream* os) override;
 
  private:
-  const raw_ptr<fake_server::FakeServer> fake_server_;
+  raw_ptr<fake_server::FakeServer> fake_server_;
   const std::vector<sync_pb::UserEventSpecifics> expected_specifics_;
 };
 

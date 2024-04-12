@@ -24,7 +24,7 @@ MediaControlOverflowMenuButtonElement::MediaControlOverflowMenuButtonElement(
   setAttribute(html_names::kTitleAttr,
                WTF::AtomicString(
                    GetLocale().QueryString(IDS_AX_MEDIA_OVERFLOW_BUTTON_HELP)));
-  setAttribute(html_names::kAriaHaspopupAttr, AtomicString("menu"));
+  setAttribute(html_names::kAriaHaspopupAttr, "menu");
   SetShadowPseudoId(AtomicString("-internal-media-controls-overflow-button"));
   SetIsWanted(false);
 }

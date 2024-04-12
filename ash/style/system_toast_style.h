@@ -28,9 +28,9 @@ class SystemShadow;
 // is provided. The spacing surrounding the elements may change if the text has
 // one or two lines.
 class ASH_EXPORT SystemToastStyle : public views::View {
-  METADATA_HEADER(SystemToastStyle, views::View)
-
  public:
+  METADATA_HEADER(SystemToastStyle);
+
   SystemToastStyle(base::RepeatingClosure dismiss_callback,
                    const std::u16string& text,
                    const std::u16string& dismiss_text,
@@ -50,24 +50,21 @@ class ASH_EXPORT SystemToastStyle : public views::View {
   // Updates the toast label text.
   void SetText(const std::u16string& text);
 
-  views::LabelButton* dismiss_button() const { return dismiss_button_; }
-  views::Label* label() const { return label_; }
+  views::LabelButton* button() const { return button_; }
 
  private:
   friend class ToastManagerImplTest;
 
   // views::View:
   void AddedToWidget() override;
+  void OnThemeChanged() override;
 
-  // Updates the layout's inside border insets based on the views contents.
-  void UpdateInsideBorderInsets();
-
-  const raw_ptr<const gfx::VectorIcon> leading_icon_ = nullptr;
+  const raw_ptr<const gfx::VectorIcon, ExperimentalAsh> leading_icon_ = nullptr;
 
   // Owned by views hierarchy.
-  raw_ptr<views::Label> label_ = nullptr;
-  raw_ptr<views::LabelButton> dismiss_button_ = nullptr;
-  raw_ptr<views::ImageView> leading_icon_view_ = nullptr;
+  raw_ptr<views::Label, ExperimentalAsh> label_ = nullptr;
+  raw_ptr<views::LabelButton, ExperimentalAsh> button_ = nullptr;
+  raw_ptr<views::ImageView, ExperimentalAsh> leading_icon_view_ = nullptr;
 
   // Tells the toast if the dismiss button is already highlighted if one exists.
   bool is_dismiss_button_highlighted_ = false;

@@ -31,7 +31,6 @@
 #include "chrome/credential_provider/gaiacp/gaia_credential_provider_module.h"
 #include "chrome/credential_provider/gaiacp/gcp_utils.h"
 #include "chrome/credential_provider/gaiacp/logging.h"
-#include "chrome/credential_provider/gaiacp/os_gaia_user_manager.h"
 #include "chrome/credential_provider/gaiacp/os_process_manager.h"
 #include "chrome/credential_provider/gaiacp/os_user_manager.h"
 #include "chrome/credential_provider/gaiacp/reauth_credential.h"
@@ -82,12 +81,6 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv) {
   HRESULT hr = _AtlModule.DllGetClassObject(rclsid, riid, ppv);
 
   if (SUCCEEDED(hr)) {
-    hr = credential_provider::OSGaiaUserManager::Get()
-             ->ChangeGaiaUserPasswordIfNeeded();
-    if (FAILED(hr)) {
-      LOGFN(ERROR) << "ChangeGaiaUserPasswordIfNeeded failed. hr=" << putHR(hr);
-    }
-
     // Start refreshing token handle validity as soon as possible so that when
     // their validity is requested later on by the credential providers they may
     // already be available and no wait is needed.
@@ -204,12 +197,12 @@ void CALLBACK PerformPostSigninActionsW(HWND /*hwnd*/,
   // Don't log |buffer| since it contains sensitive info like password.
 
   HRESULT hr = S_OK;
-  std::optional<base::Value::Dict> properties = base::JSONReader::ReadDict(
-      buffer.data(), base::JSON_ALLOW_TRAILING_COMMAS);
+  absl::optional<base::Value> properties =
+      base::JSONReader::Read(buffer.data(), base::JSON_ALLOW_TRAILING_COMMAS);
 
   credential_provider::SecurelyClearBuffer(buffer.data(), buffer.size());
 
-  if (!properties) {
+  if (!properties || !properties->is_dict()) {
     LOGFN(ERROR) << "base::JSONReader::Read failed length=" << buffer.size();
     return;
   }
@@ -228,7 +221,7 @@ void CALLBACK PerformPostSigninActionsW(HWND /*hwnd*/,
   if (FAILED(hr))
     LOGFN(ERROR) << "PerformPostSigninActions hr=" << putHR(hr);
 
-  credential_provider::SecurelyClearDictionaryValue(properties);
+  credential_provider::SecurelyClearDictionaryValue(&properties);
 
   // Clear the sentinel when it's clear that the user has successfully logged
   // in. This is done to catch edge cases where existing sentinel deletion might

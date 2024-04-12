@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include <stddef.h>
-
-#include <optional>
 #include <string>
 
 #include "base/command_line.h"
@@ -30,7 +28,6 @@
 #include "components/content_settings/core/common/pref_names.h"
 #include "components/permissions/features.h"
 #include "components/permissions/permission_actions_history.h"
-#include "components/permissions/permission_decision_auto_blocker.h"
 #include "components/permissions/permission_request.h"
 #include "components/permissions/permission_request_manager.h"
 #include "components/permissions/permission_ui_selector.h"
@@ -47,6 +44,7 @@
 #include "components/ukm/test_ukm_recorder.h"
 #include "components/user_manager/scoped_user_manager.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/app_mode/web_app/web_kiosk_app_manager.h"
@@ -96,11 +94,6 @@ class ChromePermissionRequestManagerTest
 
   void Accept() {
     manager_->Accept();
-    base::RunLoop().RunUntilIdle();
-  }
-
-  void AcceptThisTime() {
-    manager_->AcceptThisTime();
     base::RunLoop().RunUntilIdle();
   }
 
@@ -156,7 +149,7 @@ class ChromePermissionRequestManagerTest
   permissions::MockPermissionRequest request2_;
   permissions::MockPermissionRequest request_mic_;
   permissions::MockPermissionRequest request_camera_;
-  raw_ptr<permissions::PermissionRequestManager, DanglingUntriaged> manager_;
+  raw_ptr<permissions::PermissionRequestManager> manager_;
   std::unique_ptr<permissions::MockPermissionPromptFactory> prompt_factory_;
 };
 
@@ -332,11 +325,11 @@ TEST_F(ChromePermissionRequestManagerTest,
           "true"},
          {QuietNotificationPermissionUiConfig::kEnableAdaptiveActivationDryRun,
           "true"}}}},
-      {});
+      {features::kPermissionPredictions});
 
   ASSERT_TRUE(
       QuietNotificationPermissionUiConfig::IsAdaptiveActivationDryRunEnabled());
-  std::optional<bool> has_three_consecutive_denies =
+  absl::optional<bool> has_three_consecutive_denies =
       permissions::PermissionsClient::Get()
           ->HadThreeConsecutiveNotificationPermissionDenies(profile());
   ASSERT_TRUE(has_three_consecutive_denies.has_value());
@@ -379,7 +372,7 @@ TEST_F(ChromePermissionRequestManagerTest,
   }
   auto entries = ukm_recorder.GetEntriesByName("Permission");
   ASSERT_EQ(4u, entries.size());
-  auto* entry = entries.back().get();
+  auto* entry = entries.back();
   EXPECT_EQ(*ukm_recorder.GetEntryMetric(entry, "SatisfiedAdaptiveTriggers"),
             1);
 
@@ -417,7 +410,7 @@ TEST_F(ChromePermissionRequestManagerTest,
          {QuietNotificationPermissionUiConfig::
               kAdaptiveActivationActionWindowSizeInDays,
           "7"}}}},
-      {});
+      {features::kPermissionPredictions});
 
   ASSERT_EQ(
       base::Days(7),
@@ -463,7 +456,8 @@ TEST_F(ChromePermissionRequestManagerTest,
       {{features::kQuietNotificationPrompts,
         {{QuietNotificationPermissionUiConfig::kEnableAdaptiveActivation,
           "true"}}}},
-      {permissions::features::kBlockRepeatedNotificationPermissionPrompts});
+      {permissions::features::kBlockRepeatedNotificationPermissionPrompts,
+       features::kPermissionPredictions});
 
   EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
       prefs::kEnableQuietNotificationPermissionUi));
@@ -627,52 +621,6 @@ TEST_F(ChromePermissionRequestManagerTest,
             recorded_time);
 }
 
-TEST_F(ChromePermissionRequestManagerTest,
-       TestEmbargoForEmbeddedPermissionRequest) {
-  GURL url(permissions::MockPermissionRequest::kDefaultOrigin);
-  permissions::RequestType request_type =
-      permissions::RequestType::kCameraStream;
-  permissions::PermissionDecisionAutoBlocker* autoblocker =
-      permissions::PermissionsClient::Get()->GetPermissionDecisionAutoBlocker(
-          browser_context());
-
-  // Do not count permission element requests towards embargo
-  {
-    permissions::MockPermissionRequest request(
-        request_type, /* embedded_permission_element_initiated= */ true);
-    manager_->AddRequest(web_contents()->GetPrimaryMainFrame(), &request);
-    WaitForBubbleToBeShown();
-    Closing();
-
-    EXPECT_EQ(
-        autoblocker->GetDismissCount(url, request.GetContentSettingsType()), 0);
-  }
-
-  // Count normal permission towards embargo (used in next step)
-  {
-    permissions::MockPermissionRequest request(
-        request_type, /* embedded_permission_element_initiated= */ false);
-    manager_->AddRequest(web_contents()->GetPrimaryMainFrame(), &request);
-    WaitForBubbleToBeShown();
-    Closing();
-
-    EXPECT_EQ(
-        autoblocker->GetDismissCount(url, request.GetContentSettingsType()), 1);
-  }
-
-  // Reset embargo counter when accepting this time and using permission element
-  {
-    permissions::MockPermissionRequest request(
-        request_type, /* embedded_permission_element_initiated= */ true);
-    manager_->AddRequest(web_contents()->GetPrimaryMainFrame(), &request);
-    WaitForBubbleToBeShown();
-    AcceptThisTime();
-
-    EXPECT_EQ(
-        autoblocker->GetDismissCount(url, request.GetContentSettingsType()), 0);
-  }
-}
-
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 TEST_F(ChromePermissionRequestManagerTest, TestWebKioskModeSameOrigin) {
   auto request =
@@ -704,7 +652,7 @@ class ChromePermissionRequestManagerAdaptiveQuietUiActivationTest
         {{features::kQuietNotificationPrompts,
           {{QuietNotificationPermissionUiConfig::kEnableAdaptiveActivation,
             "true"}}}},
-        {});
+        {features::kPermissionPredictions});
   }
 
  protected:

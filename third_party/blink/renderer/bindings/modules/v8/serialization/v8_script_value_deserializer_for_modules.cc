@@ -26,7 +26,6 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_file_system_file_handle.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_media_source_handle.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_media_stream_track.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_restriction_target.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_rtc_certificate.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_rtc_encoded_audio_frame.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_rtc_encoded_video_frame.h"
@@ -42,7 +41,6 @@
 #include "third_party/blink/renderer/modules/mediasource/media_source_handle_impl.h"
 #include "third_party/blink/renderer/modules/mediastream/crop_target.h"
 #include "third_party/blink/renderer/modules/mediastream/media_stream_track.h"
-#include "third_party/blink/renderer/modules/mediastream/restriction_target.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtc_certificate.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtc_certificate_generator.h"
 #include "third_party/blink/renderer/modules/peerconnection/rtc_encoded_audio_frame.h"
@@ -123,8 +121,6 @@ ScriptWrappable* V8ScriptValueDeserializerForModules::ReadDOMObject(
       return ReadMediaStreamTrack();
     case kCropTargetTag:
       return ReadCropTarget();
-    case kRestrictionTargetTag:
-      return ReadRestrictionTarget();
     case kMediaSourceHandleTag:
       return ReadMediaSourceHandle();
     default:
@@ -491,6 +487,11 @@ V8ScriptValueDeserializerForModules::ReadRTCEncodedVideoFrame() {
 }
 
 AudioData* V8ScriptValueDeserializerForModules::ReadAudioData() {
+  if (!RuntimeEnabledFeatures::WebCodecsEnabled(
+          ExecutionContext::From(GetScriptState()))) {
+    return nullptr;
+  }
+
   uint32_t index;
   if (!ReadUint32(&index))
     return nullptr;
@@ -508,6 +509,11 @@ AudioData* V8ScriptValueDeserializerForModules::ReadAudioData() {
 }
 
 VideoFrame* V8ScriptValueDeserializerForModules::ReadVideoFrame() {
+  if (!RuntimeEnabledFeatures::WebCodecsEnabled(
+          ExecutionContext::From(GetScriptState()))) {
+    return nullptr;
+  }
+
   uint32_t index;
   if (!ReadUint32(&index))
     return nullptr;
@@ -526,6 +532,11 @@ VideoFrame* V8ScriptValueDeserializerForModules::ReadVideoFrame() {
 
 EncodedAudioChunk*
 V8ScriptValueDeserializerForModules::ReadEncodedAudioChunk() {
+  if (!RuntimeEnabledFeatures::WebCodecsEnabled(
+          ExecutionContext::From(GetScriptState()))) {
+    return nullptr;
+  }
+
   uint32_t index;
   if (!ReadUint32(&index))
     return nullptr;
@@ -545,6 +556,11 @@ V8ScriptValueDeserializerForModules::ReadEncodedAudioChunk() {
 
 EncodedVideoChunk*
 V8ScriptValueDeserializerForModules::ReadEncodedVideoChunk() {
+  if (!RuntimeEnabledFeatures::WebCodecsEnabled(
+          ExecutionContext::From(GetScriptState()))) {
+    return nullptr;
+  }
+
   uint32_t index;
   if (!ReadUint32(&index))
     return nullptr;
@@ -585,7 +601,7 @@ MediaStreamTrack* V8ScriptValueDeserializerForModules::ReadMediaStreamTrack() {
     return nullptr;
   }
 
-  std::optional<uint32_t> sub_capture_target_version;
+  absl::optional<uint32_t> crop_version;
   // Using `switch` to ensure new enum values are handled.
   switch (track_impl_subtype) {
     case SerializedTrackImplSubtype::kTrackImplSubtypeBase:
@@ -596,11 +612,11 @@ MediaStreamTrack* V8ScriptValueDeserializerForModules::ReadMediaStreamTrack() {
       NOTREACHED();
       return nullptr;
     case SerializedTrackImplSubtype::kTrackImplSubtypeBrowserCapture:
-      uint32_t read_sub_capture_target_version;
-      if (!ReadUint32(&read_sub_capture_target_version)) {
+      uint32_t read_crop_version;
+      if (!ReadUint32(&read_crop_version)) {
         return nullptr;
       }
-      sub_capture_target_version = read_sub_capture_target_version;
+      crop_version = read_crop_version;
       break;
   }
 
@@ -617,7 +633,7 @@ MediaStreamTrack* V8ScriptValueDeserializerForModules::ReadMediaStreamTrack() {
           .muted = static_cast<bool>(muted),
           .content_hint = DeserializeContentHint(contentHint),
           .ready_state = DeserializeReadyState(readyState),
-          .sub_capture_target_version = sub_capture_target_version});
+          .crop_version = crop_version});
 }
 
 CropTarget* V8ScriptValueDeserializerForModules::ReadCropTarget() {
@@ -627,26 +643,11 @@ CropTarget* V8ScriptValueDeserializerForModules::ReadCropTarget() {
   }
 
   String crop_id;
-  if (!ReadUTF8String(&crop_id) || crop_id.empty()) {
+  if (!ReadUTF8String(&crop_id)) {
     return nullptr;
   }
 
   return MakeGarbageCollected<CropTarget>(crop_id);
-}
-
-RestrictionTarget*
-V8ScriptValueDeserializerForModules::ReadRestrictionTarget() {
-  if (!RuntimeEnabledFeatures::ElementCaptureEnabled(
-          ExecutionContext::From(GetScriptState()))) {
-    return nullptr;
-  }
-
-  String restriction_id;
-  if (!ReadUTF8String(&restriction_id) || restriction_id.empty()) {
-    return nullptr;
-  }
-
-  return MakeGarbageCollected<RestrictionTarget>(restriction_id);
 }
 
 MediaSourceHandleImpl*
@@ -720,8 +721,6 @@ bool V8ScriptValueDeserializerForModules::ExecutionContextExposesInterface(
       return V8MediaStreamTrack::IsExposed(execution_context);
     case kCropTargetTag:
       return V8CropTarget::IsExposed(execution_context);
-    case kRestrictionTargetTag:
-      return V8RestrictionTarget::IsExposed(execution_context);
     case kMediaSourceHandleTag:
       return V8MediaSourceHandle::IsExposed(execution_context);
     default:

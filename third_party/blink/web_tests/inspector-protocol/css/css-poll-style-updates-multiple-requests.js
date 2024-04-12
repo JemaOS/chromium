@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function (testRunner) {
   const { page, session, dp } = await testRunner.startURL(
     'resources/css-poll-style-updates.html',
     'Test multiple CSS.takeComputedStyleUpdates commands at the same time.');

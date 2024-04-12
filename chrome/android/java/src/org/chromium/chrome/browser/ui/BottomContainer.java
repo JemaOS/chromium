@@ -20,8 +20,8 @@ import org.chromium.ui.base.ViewportInsets;
  * The container that holds both infobars and snackbars. It will be translated up and down when the
  * bottom controls' offset changes.
  */
-public class BottomContainer extends FrameLayout
-        implements Destroyable, BrowserControlsStateProvider.Observer {
+public class BottomContainer
+        extends FrameLayout implements Destroyable, BrowserControlsStateProvider.Observer {
     /** An observer of the viewport insets to change this container's position. */
     private final Callback<ViewportInsets> mInsetObserver;
 
@@ -41,8 +41,7 @@ public class BottomContainer extends FrameLayout
     }
 
     /** Initializes this container. */
-    public void initialize(
-            BrowserControlsStateProvider browserControlsStateProvider,
+    public void initialize(BrowserControlsStateProvider browserControlsStateProvider,
             ApplicationViewportInsetSupplier viewportInsetSupplier) {
         mBrowserControlsStateProvider = browserControlsStateProvider;
         mBrowserControlsStateProvider.addObserver(this);
@@ -53,12 +52,8 @@ public class BottomContainer extends FrameLayout
 
     // BrowserControlsStateProvidder.Observer methods
     @Override
-    public void onControlsOffsetChanged(
-            int topOffset,
-            int topControlsMinHeightOffset,
-            int bottomOffset,
-            int bottomControlsMinHeightOffset,
-            boolean needsAnimate) {
+    public void onControlsOffsetChanged(int topOffset, int topControlsMinHeightOffset,
+            int bottomOffset, int bottomControlsMinHeightOffset, boolean needsAnimate) {
         setTranslationY(mBaseYOffset);
     }
 
@@ -66,9 +61,8 @@ public class BottomContainer extends FrameLayout
     public void setTranslationY(float y) {
         mBaseYOffset = y;
 
-        float offsetFromControls =
-                mBrowserControlsStateProvider.getBottomControlOffset()
-                        - mBrowserControlsStateProvider.getBottomControlsHeight();
+        float offsetFromControls = mBrowserControlsStateProvider.getBottomControlOffset()
+                - mBrowserControlsStateProvider.getBottomControlsHeight();
         offsetFromControls -= mViewportInsetSupplier.get().viewVisibleHeightInset;
 
         // Sit on top of either the bottom sheet or the bottom toolbar depending on which is larger

@@ -6,15 +6,12 @@
 
 #include <algorithm>
 #include <limits>
-
-#include "base/time/time.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_metric_builder.h"
 #include "third_party/blink/public/common/privacy_budget/identifiability_study_settings.h"
 #include "third_party/blink/public/common/privacy_budget/identifiable_surface.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/dictionary.h"
-#include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_error_event_init.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
@@ -26,7 +23,6 @@
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/modules/event_target_modules.h"
 #include "third_party/blink/renderer/modules/mediarecorder/blob_event.h"
-#include "third_party/blink/renderer/modules/mediarecorder/video_track_recorder.h"
 #include "third_party/blink/renderer/platform/blob/blob_data.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_descriptor.h"
@@ -40,9 +36,9 @@ namespace blink {
 namespace {
 
 struct MediaRecorderBitrates {
-  const std::optional<uint32_t> audio_bps;
-  const std::optional<uint32_t> video_bps;
-  const std::optional<uint32_t> overall_bps;
+  const absl::optional<uint32_t> audio_bps;
+  const absl::optional<uint32_t> video_bps;
+  const absl::optional<uint32_t> overall_bps;
 };
 
 // Boundaries of Opus SILK bitrate from https://www.opus-codec.org/.
@@ -150,15 +146,15 @@ MediaRecorderBitrates GetBitratesFromOptions(
   // or double, see https://github.com/w3c/mediacapture-record/issues/48.
   constexpr uint32_t kMaxIntAsUnsigned = std::numeric_limits<int>::max();
 
-  std::optional<uint32_t> audio_bps;
+  absl::optional<uint32_t> audio_bps;
   if (options->hasAudioBitsPerSecond()) {
     audio_bps = std::min(options->audioBitsPerSecond(), kMaxIntAsUnsigned);
   }
-  std::optional<uint32_t> video_bps;
+  absl::optional<uint32_t> video_bps;
   if (options->hasVideoBitsPerSecond()) {
     video_bps = std::min(options->videoBitsPerSecond(), kMaxIntAsUnsigned);
   }
-  std::optional<uint32_t> overall_bps;
+  absl::optional<uint32_t> overall_bps;
   if (options->hasBitsPerSecond()) {
     overall_bps = std::min(options->bitsPerSecond(), kMaxIntAsUnsigned);
     audio_bps = ClampAudioBitRate(context, overall_bps.value() / 10);
@@ -201,24 +197,8 @@ MediaRecorder::MediaRecorder(ExecutionContext* context,
                                       "Execution context is detached.");
     return;
   }
-  if (options->hasVideoKeyFrameIntervalDuration() &&
-      options->hasVideoKeyFrameIntervalCount()) {
-    exception_state.ThrowDOMException(
-        DOMExceptionCode::kNotSupportedError,
-        "Both videoKeyFrameIntervalDuration and videoKeyFrameIntervalCount "
-        "can't be specified.");
-    return;
-  }
-  KeyFrameRequestProcessor::Configuration key_frame_config;
-  if (options->hasVideoKeyFrameIntervalDuration()) {
-    key_frame_config =
-        base::Milliseconds(options->videoKeyFrameIntervalDuration());
-  } else if (options->hasVideoKeyFrameIntervalCount()) {
-    key_frame_config = options->videoKeyFrameIntervalCount();
-  }
   recorder_handler_ = MakeGarbageCollected<MediaRecorderHandler>(
-      context->GetTaskRunner(TaskType::kInternalMediaRealTime),
-      key_frame_config);
+      context->GetTaskRunner(TaskType::kInternalMediaRealTime));
   if (!recorder_handler_) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kNotSupportedError,
@@ -381,15 +361,13 @@ void MediaRecorder::requestData(ExceptionState& exception_state) {
     return;
   }
   WriteData(/*data=*/nullptr, /*length=*/0, /*last_in_slice=*/true,
-            base::Time::Now().InMillisecondsFSinceUnixEpoch(),
-            /*error_event=*/nullptr);
+            base::Time::Now().ToDoubleT() * 1000.0, /*error_event=*/nullptr);
 }
 
 bool MediaRecorder::isTypeSupported(ExecutionContext* context,
                                     const String& type) {
   MediaRecorderHandler* handler = MakeGarbageCollected<MediaRecorderHandler>(
-      context->GetTaskRunner(TaskType::kInternalMediaRealTime),
-      KeyFrameRequestProcessor::Configuration());
+      context->GetTaskRunner(TaskType::kInternalMediaRealTime));
   if (!handler)
     return false;
 
@@ -429,15 +407,13 @@ void MediaRecorder::ContextDestroyed() {
     const uint64_t blob_data_length = blob_data_->length();
     CreateBlobEvent(MakeGarbageCollected<Blob>(BlobDataHandle::Create(
                         std::move(blob_data_), blob_data_length)),
-                    base::Time::Now().InMillisecondsFSinceUnixEpoch());
+                    base::Time::Now().ToDoubleT() * 1000.0);
   }
 
   state_ = State::kInactive;
   stream_.Clear();
-  if (recorder_handler_) {
-    recorder_handler_->Stop();
-    recorder_handler_ = nullptr;
-  }
+  recorder_handler_->Stop();
+  recorder_handler_ = nullptr;
 }
 
 void MediaRecorder::WriteData(const void* data,
@@ -521,7 +497,7 @@ void MediaRecorder::StopRecording(ErrorEvent* error_event) {
 
   recorder_handler_->Stop();
   WriteData(/*data=*/nullptr, /*length=*/0, /*last_in_slice=*/true,
-            base::Time::Now().InMillisecondsFSinceUnixEpoch(), error_event);
+            base::Time::Now().ToDoubleT() * 1000.0, error_event);
   ScheduleDispatchEvent(Event::Create(event_type_names::kStop));
   first_write_received_ = false;
 }
@@ -553,12 +529,8 @@ void MediaRecorder::Trace(Visitor* visitor) const {
   visitor->Trace(stream_);
   visitor->Trace(recorder_handler_);
   visitor->Trace(scheduled_events_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
-}
-
-void MediaRecorder::UpdateAudioBitrate(uint32_t bits_per_second) {
-  audio_bits_per_second_ = bits_per_second;
 }
 
 }  // namespace blink

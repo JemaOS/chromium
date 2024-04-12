@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_PHONEHUB_PHONE_HUB_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_ASH_PHONEHUB_PHONE_HUB_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -25,7 +25,7 @@ class PhoneHubManagerFactory : public ProfileKeyedServiceFactory {
   static PhoneHubManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<PhoneHubManagerFactory>;
+  friend struct base::DefaultSingletonTraits<PhoneHubManagerFactory>;
 
   PhoneHubManagerFactory();
   PhoneHubManagerFactory(const PhoneHubManagerFactory&) = delete;
@@ -33,7 +33,7 @@ class PhoneHubManagerFactory : public ProfileKeyedServiceFactory {
   ~PhoneHubManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsNULLWhileTesting() const override;
   bool ServiceIsCreatedWithBrowserContext() const override;

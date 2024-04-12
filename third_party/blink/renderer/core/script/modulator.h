@@ -13,7 +13,6 @@
 #include "third_party/blink/renderer/bindings/core/v8/module_record.h"
 #include "third_party/blink/renderer/bindings/core/v8/module_request.h"
 #include "third_party/blink/renderer/bindings/core/v8/sanitize_script_errors.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_code_cache.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/script/import_map_error.h"
@@ -23,7 +22,6 @@
 #include "third_party/blink/renderer/platform/bindings/v8_per_context_data.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
-#include "third_party/blink/renderer/platform/weborigin/referrer.h"
 #include "third_party/blink/renderer/platform/wtf/text/text_position.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
@@ -38,6 +36,7 @@ class ReferrerScriptInfo;
 class ResourceFetcher;
 class ModuleRecordResolver;
 class ScriptFetchOptions;
+class ScriptPromiseResolver;
 class ScriptState;
 enum class ModuleType;
 
@@ -128,16 +127,14 @@ class CORE_EXPORT Modulator : public GarbageCollected<Modulator>,
   // Note that |this| is the "module map settings object" and
   // ResourceFetcher represents "fetch client settings object"
   // used in the "fetch a module worker script graph" algorithm.
-  virtual void FetchTree(
-      const KURL&,
-      ModuleType,
-      ResourceFetcher* fetch_client_settings_object_fetcher,
-      mojom::blink::RequestContextType context_type,
-      network::mojom::RequestDestination destination,
-      const ScriptFetchOptions&,
-      ModuleScriptCustomFetchType,
-      ModuleTreeClient*,
-      String referrer = Referrer::ClientReferrerString()) = 0;
+  virtual void FetchTree(const KURL&,
+                         ModuleType,
+                         ResourceFetcher* fetch_client_settings_object_fetcher,
+                         mojom::blink::RequestContextType context_type,
+                         network::mojom::RequestDestination destination,
+                         const ScriptFetchOptions&,
+                         ModuleScriptCustomFetchType,
+                         ModuleTreeClient*) = 0;
 
   // Asynchronously retrieve a module script from the module map, or fetch it
   // and put it in the map if it's not there already.
@@ -178,7 +175,7 @@ class CORE_EXPORT Modulator : public GarbageCollected<Modulator>,
   // https://tc39.github.io/proposal-dynamic-import/#sec-hostimportmoduledynamically
   virtual void ResolveDynamically(const ModuleRequest& module_request,
                                   const ReferrerScriptInfo&,
-                                  ScriptPromiseResolverTyped<IDLAny>*) = 0;
+                                  ScriptPromiseResolver*) = 0;
 
   // Import maps. https://github.com/WICG/import-maps
 
@@ -188,7 +185,7 @@ class CORE_EXPORT Modulator : public GarbageCollected<Modulator>,
     DCHECK(!import_map_);
     import_map_ = import_map;
   }
-  const ImportMap* GetImportMapForTest() const { return import_map_.Get(); }
+  const ImportMap* GetImportMapForTest() const { return import_map_; }
 
   // https://wicg.github.io/import-maps/#document-acquiring-import-maps
   enum class AcquiringImportMapsState {

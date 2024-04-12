@@ -94,7 +94,7 @@ AudioNode* AudioHandler::GetNode() const {
 }
 
 BaseAudioContext* AudioHandler::Context() const {
-  return context_.Get();
+  return context_;
 }
 
 String AudioHandler::NodeTypeName() const {
@@ -207,7 +207,7 @@ void AudioHandler::SetInternalChannelInterpretation(
 void AudioHandler::SetChannelCount(unsigned channel_count,
                                    ExceptionState& exception_state) {
   DCHECK(IsMainThread());
-  DeferredTaskHandler::GraphAutoLocker locker(Context());
+  BaseAudioContext::GraphAutoLocker locker(Context());
 
   if (channel_count > 0 &&
       channel_count <= BaseAudioContext::MaxNumberOfChannels()) {
@@ -247,7 +247,7 @@ String AudioHandler::GetChannelCountMode() {
 void AudioHandler::SetChannelCountMode(const String& mode,
                                        ExceptionState& exception_state) {
   DCHECK(IsMainThread());
-  DeferredTaskHandler::GraphAutoLocker locker(Context());
+  BaseAudioContext::GraphAutoLocker locker(Context());
 
   ChannelCountMode old_mode = channel_count_mode_;
 
@@ -283,7 +283,7 @@ String AudioHandler::ChannelInterpretation() {
 void AudioHandler::SetChannelInterpretation(const String& interpretation,
                                             ExceptionState& exception_state) {
   DCHECK(IsMainThread());
-  DeferredTaskHandler::GraphAutoLocker locker(Context());
+  BaseAudioContext::GraphAutoLocker locker(Context());
 
   AudioBus::ChannelInterpretation old_mode = channel_interpretation_;
 
@@ -315,8 +315,7 @@ void AudioHandler::ProcessIfNecessary(uint32_t frames_to_process) {
 
   TRACE_EVENT2(TRACE_DISABLED_BY_DEFAULT("webaudio.audionode"),
                "AudioHandler::ProcessIfNecessary", "this",
-               reinterpret_cast<void*>(this), "node type",
-               NodeTypeName().Ascii());
+               static_cast<void*>(this), "node type", NodeTypeName().Ascii());
 
   // Ensure that we only process once per rendering quantum.
   // This handles the "fanout" problem where an output is connected to multiple

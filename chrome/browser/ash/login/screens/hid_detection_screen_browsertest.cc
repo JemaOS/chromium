@@ -140,11 +140,11 @@ class HIDDetectionScreenChromeboxTest
     // Simulate the user's click on "Continue" button.
     test::OobeJS().CreateVisibilityWaiter(true, kHidContinueButton)->Wait();
     test::OobeJS().TapOnPath(kHidContinueButton);
-    test::WaitForWelcomeScreen();
+    OobeScreenWaiter(WelcomeView::kScreenId).Wait();
   }
 
  protected:
-  const std::optional<HIDDetectionScreen::Result>& GetExitResult() {
+  const absl::optional<HIDDetectionScreen::Result>& GetExitResult() {
     return WizardController::default_controller()
         ->GetScreen<HIDDetectionScreen>()
         ->get_exit_result_for_testing();
@@ -196,7 +196,7 @@ class HIDDetectionScreenChromeboxTest
 
   void InvokePendingConnectCallback(bool success) {
     if (success) {
-      std::move(connect_callback_).Run(std::nullopt);
+      std::move(connect_callback_).Run(absl::nullopt);
     } else {
       std::move(connect_callback_)
           .Run(device::BluetoothDevice::ConnectErrorCode::ERROR_FAILED);
@@ -288,7 +288,7 @@ class HIDDetectionScreenChromeboxTest
       return;
 
     fake_hid_detection_manager_->SetPairingState(
-        /*pairing_state=*/std::nullopt);
+        /*pairing_state=*/absl::nullopt);
   }
 
   // HID detection must be stopped before HidDetectionManager is destroyed. This
@@ -324,10 +324,10 @@ class HIDDetectionScreenChromeboxTest
   device::BluetoothDevice::ConnectCallback connect_callback_;
 
  private:
-  raw_ptr<HIDDetectionScreen, DanglingUntriaged> hid_detection_screen_;
+  raw_ptr<HIDDetectionScreen, ExperimentalAsh> hid_detection_screen_;
 
   test::HIDControllerMixin hid_controller_{&mixin_host_};
-  raw_ptr<hid_detection::FakeHidDetectionManager, DanglingUntriaged>
+  raw_ptr<hid_detection::FakeHidDetectionManager, ExperimentalAsh>
       fake_hid_detection_manager_;
 
   // HID detection screen only appears for Chromebases, Chromebits, and
@@ -681,7 +681,7 @@ IN_PROC_BROWSER_TEST_P(HIDDetectionScreenChromeboxTest, PRE_ResumableScreen) {
   test::OobeJS().TapOnPath(kHidContinueButton);
   EXPECT_EQ(GetExitResult(), HIDDetectionScreen::Result::NEXT);
 
-  test::WaitForWelcomeScreen();
+  OobeScreenWaiter(WelcomeView::kScreenId).Wait();
   test::TapWelcomeNext();
   OobeScreenWaiter(NetworkScreenView::kScreenId).Wait();
 }
@@ -729,7 +729,7 @@ class HIDDetectionSkipTest : public HIDDetectionScreenChromeboxTest {
 INSTANTIATE_TEST_SUITE_P(All, HIDDetectionSkipTest, testing::Bool());
 
 IN_PROC_BROWSER_TEST_P(HIDDetectionSkipTest, BothDevicesPreConnected) {
-  test::WaitForWelcomeScreen();
+  OobeScreenWaiter(WelcomeView::kScreenId).Wait();
   AssertInitialHidsMissingCount(HidsMissing::kNone, /*count=*/1);
   EXPECT_FALSE(GetExitResult().has_value());
   histogram_tester.ExpectTotalCount("OOBE.HidDetectionScreen.HidConnected", 0);
@@ -795,7 +795,7 @@ INSTANTIATE_TEST_SUITE_P(All,
 
 IN_PROC_BROWSER_TEST_P(HIDDetectionScreenDisabledAfterRestartTest,
                        PRE_SkipToUpdate) {
-  test::WaitForWelcomeScreen();
+  OobeScreenWaiter(WelcomeView::kScreenId).Wait();
 
   EXPECT_TRUE(StartupUtils::IsHIDDetectionScreenDisabledForTests());
   EXPECT_FALSE(WizardController::default_controller()->HasScreen(
@@ -804,7 +804,7 @@ IN_PROC_BROWSER_TEST_P(HIDDetectionScreenDisabledAfterRestartTest,
 
 IN_PROC_BROWSER_TEST_P(HIDDetectionScreenDisabledAfterRestartTest,
                        SkipToUpdate) {
-  test::WaitForWelcomeScreen();
+  OobeScreenWaiter(WelcomeView::kScreenId).Wait();
   // The pref should persist restart.
   EXPECT_TRUE(StartupUtils::IsHIDDetectionScreenDisabledForTests());
   EXPECT_FALSE(WizardController::default_controller()->HasScreen(
@@ -820,7 +820,7 @@ class HIDDetectionScreenChromebookTest : public OobeBaseTest {
 
 IN_PROC_BROWSER_TEST_F(HIDDetectionScreenChromebookTest,
                        HIDDetectionScreenNotAllowed) {
-  test::WaitForWelcomeScreen();
+  OobeScreenWaiter(WelcomeView::kScreenId).Wait();
   ASSERT_TRUE(WizardController::default_controller());
 
   EXPECT_FALSE(WizardController::default_controller()->HasScreen(
@@ -903,7 +903,7 @@ class HIDDetectionScreenChromebaseTest
 
  private:
   test::HIDControllerMixin hid_controller_{&mixin_host_};
-  raw_ptr<hid_detection::FakeHidDetectionManager, DanglingUntriaged>
+  raw_ptr<hid_detection::FakeHidDetectionManager, ExperimentalAsh>
       fake_hid_detection_manager_;
 
   // Set device type to a Chromebase with a touch screen.

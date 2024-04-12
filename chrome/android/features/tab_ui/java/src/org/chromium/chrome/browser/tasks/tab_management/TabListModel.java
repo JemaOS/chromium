@@ -19,6 +19,7 @@ import androidx.annotation.IntDef;
 
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModel;
+import org.chromium.chrome.browser.tasks.pseudotab.PseudoTab;
 import org.chromium.ui.modelutil.MVCListAdapter;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyListModel;
@@ -35,7 +36,9 @@ import java.util.List;
  * {@link org.chromium.chrome.browser.tab.Tab}s.
  */
 class TabListModel extends ModelList {
-    /** Required properties for each {@link PropertyModel} managed by this {@link ModelList}. */
+    /**
+     * Required properties for each {@link PropertyModel} managed by this {@link ModelList}.
+     */
     static class CardProperties {
         /** Supported Model type within this ModelList. */
         @IntDef({TAB, MESSAGE, NEW_TAB_TILE_DEPRECATED, OTHERS})
@@ -129,8 +132,28 @@ class TabListModel extends ModelList {
     }
 
     /**
+     * Gets the new position of the Tab with {@link tabId} from a sorted list with MRU order.
+     * @param tabId The id of the Tab to insert into the list.
+     */
+    public int getNewPositionInMruOrderList(int tabId) {
+        long timestamp = PseudoTab.fromTabId(tabId).getTimestampMillis();
+        int pos = 0;
+        while (pos < size()) {
+            PropertyModel model = get(pos).model;
+            if (model.get(CARD_TYPE) != TAB
+                    || (PseudoTab.fromTabId(model.get(TabProperties.TAB_ID)).getTimestampMillis()
+                                    - timestamp
+                            >= 0)) {
+                pos++;
+            } else {
+                break;
+            }
+        }
+        return pos;
+    }
+
+    /**
      * Get the index that matches a message item that has the given message type.
-     *
      * @param messageType The message type to match.
      * @return The index within the model.
      */
@@ -144,7 +167,9 @@ class TabListModel extends ModelList {
         return TabModel.INVALID_TAB_INDEX;
     }
 
-    /** Get the last index of a message item. */
+    /**
+     * Get the last index of a message item.
+     */
     public int lastIndexForMessageItem() {
         for (int i = size() - 1; i >= 0; i--) {
             PropertyModel model = get(i).model;
@@ -237,10 +262,8 @@ class TabListModel extends ModelList {
 
         assert get(index).model.get(CARD_TYPE) == TAB;
 
-        int status =
-                isSelected
-                        ? ClosableTabGridView.AnimationStatus.SELECTED_CARD_ZOOM_IN
-                        : ClosableTabGridView.AnimationStatus.SELECTED_CARD_ZOOM_OUT;
+        int status = isSelected ? ClosableTabGridView.AnimationStatus.SELECTED_CARD_ZOOM_IN
+                                : ClosableTabGridView.AnimationStatus.SELECTED_CARD_ZOOM_OUT;
         if (get(index).model.get(TabProperties.CARD_ANIMATION_STATUS) == status) return;
 
         get(index).model.set(TabProperties.CARD_ANIMATION_STATUS, status);
@@ -260,10 +283,8 @@ class TabListModel extends ModelList {
 
         assert get(index).model.get(CARD_TYPE) == TAB;
 
-        int status =
-                isHovered
-                        ? ClosableTabGridView.AnimationStatus.HOVERED_CARD_ZOOM_IN
-                        : ClosableTabGridView.AnimationStatus.HOVERED_CARD_ZOOM_OUT;
+        int status = isHovered ? ClosableTabGridView.AnimationStatus.HOVERED_CARD_ZOOM_IN
+                               : ClosableTabGridView.AnimationStatus.HOVERED_CARD_ZOOM_OUT;
         if (get(index).model.get(TabProperties.CARD_ANIMATION_STATUS) == status) return;
 
         get(index).model.set(TabProperties.CARD_ANIMATION_STATUS, status);

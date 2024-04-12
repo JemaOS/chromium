@@ -11,6 +11,8 @@
 
 namespace blink {
 
+class FontSelectionValue;
+
 namespace cssvalue {
 
 // The 'font' shorthand accepts some special system font values, like 'caption'
@@ -34,6 +36,8 @@ class CSSPendingSystemFontValue : public CSSValue {
 
   CSSValueID SystemFontId() const { return system_font_id_; }
 
+  const FontSelectionValue& ResolveFontStyle() const;
+  const FontSelectionValue& ResolveFontWeight() const;
   const AtomicString& ResolveFontFamily() const;
   float ResolveFontSize(const Document*) const;
 

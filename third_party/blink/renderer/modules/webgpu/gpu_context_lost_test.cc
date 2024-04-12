@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/test/mock_callback.h"
 #include "gpu/command_buffer/client/webgpu_interface_stub.h"
@@ -17,7 +16,6 @@
 #include "third_party/blink/renderer/modules/webgpu/gpu.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/dawn_control_client_holder.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/drawing_buffer_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -53,7 +51,7 @@ class WebGPUContextProviderForTest
   void CallLostContextCallback() { lost_context_callback_.Run(); }
 
  private:
-  raw_ptr<base::MockCallback<base::OnceClosure>> destruction_callback_;
+  base::MockCallback<base::OnceClosure>* destruction_callback_;
   base::RepeatingClosure lost_context_callback_;
 };
 
@@ -70,7 +68,6 @@ class WebGPUContextLostTest : public testing::Test {
     return std::make_tuple(execution_context, gpu);
   }
 
-  test::TaskEnvironment task_environment_;
   std::unique_ptr<DummyPageHolder> page_;
 };
 

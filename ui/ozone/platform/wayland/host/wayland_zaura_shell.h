@@ -5,26 +5,14 @@
 #ifndef UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_ZAURA_SHELL_H_
 #define UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_ZAURA_SHELL_H_
 
-#include <optional>
-#include <vector>
-
+#include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
-#include "base/version.h"
-#include "build/chromeos_buildflags.h"
 #include "ui/display/tablet_state.h"
-#include "ui/gfx/geometry/rounded_corners_f.h"
 #include "ui/ozone/platform/wayland/common/wayland_object.h"
 
 namespace ui {
 
 class WaylandConnection;
-
-constexpr bool kDefaultScreenCoordinateEnabled =
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-    true;
-#else
-    false;
-#endif
 
 // Wraps the zaura_shell object.
 class WaylandZAuraShell : public wl::GlobalObjectRegistrar<WaylandZAuraShell> {
@@ -43,24 +31,18 @@ class WaylandZAuraShell : public wl::GlobalObjectRegistrar<WaylandZAuraShell> {
   ~WaylandZAuraShell();
 
   zaura_shell* wl_object() const { return obj_.get(); }
-
-  // Returns the Wayland server version. If the bound zaura_shell is not
-  // recent enough (ie: < v58), this returns std::nullopt. This can be used in
-  // conjunction with ozone platform's RuntimeProperties in order to determine
-  // if Exo supports a given feature.
-  // See https://crbug.com/1457008.
-  const std::optional<base::Version>& server_version() const {
-    return server_version_;
-  }
-
+  // Due to version skew between Lacros and Ash, there may be certain bug
+  // fixes in one but not in the other (crbug.com/1151508). Lacros can use
+  // |HasBugFix| to provide a temporary workaround to an exo bug until Ash
+  // uprevs and starts reporting that a given bug ID has been fixed.
+  bool HasBugFix(uint32_t id);
   std::string GetDeskName(int index) const;
   int GetNumberOfDesks();
   int GetActiveDeskIndex() const;
   display::TabletState GetTabletState() const;
-  gfx::RoundedCornersF GetWindowCornersRadii() const;
 
  private:
-  // zaura_shell_listener callbacks:
+  // zaura_shell_listeners
   static void OnLayoutMode(void* data,
                            struct zaura_shell* zaura_shell,
                            uint32_t layout_mode);
@@ -78,27 +60,11 @@ class WaylandZAuraShell : public wl::GlobalObjectRegistrar<WaylandZAuraShell> {
                           struct wl_surface* gained_active,
                           struct wl_surface* lost_active);
 
-  // TODO(sammiequon): Remove these two deprecated functions.
-  static void OnSetOverviewMode(void* data, struct zaura_shell* zaura_shell);
-  static void OnUnsetOverviewMode(void* data, struct zaura_shell* zaura_shell);
-
-  static void OnCompositorVersion(void* data,
-                                  struct zaura_shell* zaura_shell,
-                                  const char* version_label);
-  static void OnAllBugFixesSent(void* data, struct zaura_shell* zaura_shell);
-  static void OnSetWindowCornersRadii(void* data,
-                                      struct zaura_shell* zaura_shell,
-                                      uint32_t upper_left_radius,
-                                      uint32_t upper_right_radius,
-                                      uint32_t lower_right_radius,
-                                      uint32_t lower_left_radius);
-
   wl::Object<zaura_shell> obj_;
   const raw_ptr<WaylandConnection> connection_;
-  std::optional<base::Version> server_version_;
+  base::flat_set<uint32_t> bug_fix_ids_;
   std::vector<std::string> desks_;
   int active_desk_index_ = 0;
-  gfx::RoundedCornersF window_corners_radii_;
 };
 
 }  // namespace ui

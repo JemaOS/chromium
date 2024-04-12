@@ -13,10 +13,8 @@ class AuthFailure;
 
 class KioskAppLaunchError {
  public:
-  // Enum used for UMA. Do NOT reorder or remove entries.
-  //
-  // When adding new entries remember to update `kMaxValue` and
-  // `KioskLaunchError` in tools/metrics/histograms/enums.xml.
+  // Enum used for UMA. Do NOT reorder or remove entry. Don't forget to
+  // update histograms.xml when adding new entries.
   enum class Error {
     kNone = 0,                    // No error.
     kHasPendingLaunch = 1,        // There is a pending launch already.
@@ -31,16 +29,15 @@ class KioskAppLaunchError {
     kPolicyLoadFailed = 10,       // Failed to load policy for kiosk account.
     kUnableToDownload = 11,       // Unable to download app's crx file.
     kUnableToLaunch = 12,         // Unable to launch app.
-    kArcAuthFailed = 13,          // Failed to authorise ARC session.
-    kExtensionsLoadTimeout = 14,  // Timeout is triggered during loading.
+    kArcAuthFailed = 13,          // Failed to authorise ARC session
+    kExtensionsLoadTimeout = 14,  // Timeout is triggered during loading
                                   // force-installed extensions.
     kExtensionsPolicyInvalid =
         15,  // The policy value of ExtensionInstallForcelist is invalid.
-    kUserNotAllowlisted = 16,         // LoginPerformer disallowed this user.
-    kMaxValue = kUserNotAllowlisted,  // Max value of errors.
+    kMaxValue = kExtensionsPolicyInvalid,  // Max value of errors.
   };
 
-  // Returns a message for given `error`.
+  // Returns a message for given |error|.
   static std::string GetErrorMessage(Error error);
 
   // Saves a launch error. The error is used on the next Chrome run to report

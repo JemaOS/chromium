@@ -4,18 +4,10 @@
 
 #include "third_party/blink/renderer/platform/bindings/no_alloc_direct_call_exception_state.h"
 
-#include "base/notreached.h"
-
 namespace blink {
 
-void NoAllocDirectCallExceptionState::ClearException() {
-  ExceptionState::ClearException();
-  deferred_exception_.Reset();
-}
-
-void NoAllocDirectCallExceptionState::DoThrowDOMException(
-    DOMExceptionCode code,
-    const String& message) {
+void NoAllocDirectCallExceptionState::ThrowDOMException(DOMExceptionCode code,
+                                                        const String& message) {
   deferred_exception_ = WTF::BindOnce(
       [](v8::Isolate* isolate, ExceptionContext&& exception_context,
          DOMExceptionCode code, const String& message) {
@@ -26,7 +18,7 @@ void NoAllocDirectCallExceptionState::DoThrowDOMException(
   SetExceptionCode(ToExceptionCode(code));
 }
 
-void NoAllocDirectCallExceptionState::DoThrowTypeError(const String& message) {
+void NoAllocDirectCallExceptionState::ThrowTypeError(const String& message) {
   deferred_exception_ = WTF::BindOnce(
       [](v8::Isolate* isolate, ExceptionContext&& exception_context,
          const String& message) {
@@ -37,7 +29,7 @@ void NoAllocDirectCallExceptionState::DoThrowTypeError(const String& message) {
   SetExceptionCode(ToExceptionCode(ESErrorType::kTypeError));
 }
 
-void NoAllocDirectCallExceptionState::DoThrowSecurityError(
+void NoAllocDirectCallExceptionState::ThrowSecurityError(
     const String& sanitized_message,
     const String& unsanitized_message) {
   deferred_exception_ = WTF::BindOnce(
@@ -52,7 +44,7 @@ void NoAllocDirectCallExceptionState::DoThrowSecurityError(
   SetExceptionCode(ToExceptionCode(DOMExceptionCode::kSecurityError));
 }
 
-void NoAllocDirectCallExceptionState::DoThrowRangeError(const String& message) {
+void NoAllocDirectCallExceptionState::ThrowRangeError(const String& message) {
   deferred_exception_ = WTF::BindOnce(
       [](v8::Isolate* isolate, ExceptionContext&& exception_context,
          const String& message) {
@@ -63,14 +55,9 @@ void NoAllocDirectCallExceptionState::DoThrowRangeError(const String& message) {
   SetExceptionCode(ToExceptionCode(ESErrorType::kRangeError));
 }
 
-void NoAllocDirectCallExceptionState::DoThrowWasmCompileError(
-    const String& message) {
-  NOTREACHED_NORETURN();
-}
-
-void NoAllocDirectCallExceptionState::DoRethrowV8Exception(
-    v8::Local<v8::Value>) {
-  NOTREACHED_NORETURN();
+void NoAllocDirectCallExceptionState::ClearException() {
+  ExceptionState::ClearException();
+  deferred_exception_.Reset();
 }
 
 }  // namespace blink

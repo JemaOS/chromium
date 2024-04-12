@@ -5,10 +5,9 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_JAR_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_COOKIE_JAR_H_
 
-#include <optional>
-
-#include "mojo/public/cpp/base/shared_memory_version.h"
 #include "services/network/public/mojom/restricted_cookie_manager.mojom-blink.h"
+
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
@@ -30,22 +29,8 @@ class CookieJar : public GarbageCollected<CookieJar> {
       mojo::PendingRemote<network::mojom::blink::RestrictedCookieManager>
           cookie_manager);
 
-  // Invalidate cached string. To be called explicitly from Document. This is
-  // used in cases where a Document action could change the ability for
-  // CookieJar to return values to JS without changing the value of the cookies
-  // themselves. For example changing storage access can stop the JS from being
-  // able to access the document's Cookie without the value ever changing. In
-  // that case it's faulty to treat a subsequent request as a cache hit so we
-  // invalidate.
-  void InvalidateCache();
-
  private:
-  void RequestRestrictedCookieManagerIfNeeded();
-  void OnBackendDisconnect();
-
-  // Returns true if last_cookies_ is not guaranteed to be up to date and an IPC
-  // is needed to get the current cookie string.
-  bool IPCNeeded();
+  bool RequestRestrictedCookieManagerIfNeeded();
 
   // Updates the fake cookie cache after a
   // RestrictedCookieManager::GetCookiesString request returns.
@@ -55,8 +40,7 @@ class CookieJar : public GarbageCollected<CookieJar> {
   // to determine if the current request could have been served from a real
   // cache.
   void UpdateCacheAfterGetRequest(const KURL& cookie_url,
-                                  const String& cookie_string,
-                                  uint64_t new_version);
+                                  const String& cookie_string);
 
   HeapMojoRemote<network::mojom::blink::RestrictedCookieManager> backend_;
   Member<blink::Document> document_;
@@ -71,18 +55,11 @@ class CookieJar : public GarbageCollected<CookieJar> {
   // ATTENTION: Just use hashes for now to keep space overhead low, but more
   // importantly, because keeping cookies around is tricky from a security
   // perspective.
-  std::optional<unsigned> last_cookies_hash_;
+  absl::optional<unsigned> last_cookies_hash_;
   // Whether the last operation performed on this jar was a set or get. Used
   // along with `last_cookies_hash_` when updating the histogram that tracks
   // cookie access results.
   bool last_operation_was_set_{false};
-
-  std::optional<mojo::SharedMemoryVersionClient> shared_memory_version_client_;
-  uint64_t last_version_ = mojo::shared_memory_version::kInvalidVersion;
-
-  // Last received cookie string. Null if there is no last cached-version. Can
-  // be empty since that is a valid cookie string.
-  String last_cookies_;
 };
 
 }  // namespace blink

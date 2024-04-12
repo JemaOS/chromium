@@ -68,8 +68,8 @@ class CSSCustomListInterpolationType : public CSSInterpolationType {
     return nullptr;
   }
 
-  static bool NonInterpolableValuesAreCompatible(const NonInterpolableValue*,
-                                                 const NonInterpolableValue*);
+  ListInterpolationFunctions::NonInterpolableValuesAreCompatibleCallback
+  GetNonInterpolableValuesAreCompatibleCallback() const;
 
   // This InterpolationType represents the interpolation of elements inside
   // the list.

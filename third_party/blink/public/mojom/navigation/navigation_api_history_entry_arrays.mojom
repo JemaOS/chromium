@@ -26,5 +26,4 @@ struct NavigationApiHistoryEntry {
 struct NavigationApiHistoryEntryArrays {
   array<NavigationApiHistoryEntry> back_entries;
   array<NavigationApiHistoryEntry> forward_entries;
-  NavigationApiHistoryEntry? previous_entry;
 };

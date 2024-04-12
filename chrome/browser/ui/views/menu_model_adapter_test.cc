@@ -46,7 +46,9 @@ class CommonMenuModel : public ui::MenuModel {
   ~CommonMenuModel() override {}
 
  protected:
-  // ui::MenuModel:
+  // ui::MenuModel implementation.
+  bool HasIcons() const override { return false; }
+
   bool IsItemDynamicAt(size_t index) const override { return false; }
 
   bool GetAcceleratorAt(size_t index,
@@ -159,18 +161,14 @@ class MenuModelAdapterTest : public ViewEventTestBase {
   void SetUp() override {
     ViewEventTestBase::SetUp();
 
-    std::unique_ptr<views::MenuItemView> menu =
-        menu_model_adapter_.CreateMenu();
-    menu_ = menu.get();
+    menu_ = menu_model_adapter_.CreateMenu();
     menu_runner_ = std::make_unique<views::MenuRunner>(
-        std::move(menu), views::MenuRunner::HAS_MNEMONICS);
+        menu_, views::MenuRunner::HAS_MNEMONICS);
   }
 
   void TearDown() override {
-    menu_ = nullptr;
     menu_runner_.reset();
 
-    button_ = nullptr;
     ViewEventTestBase::TearDown();
   }
 
@@ -261,8 +259,8 @@ class MenuModelAdapterTest : public ViewEventTestBase {
   raw_ptr<views::MenuButton> button_ = nullptr;
   TopMenuModel top_menu_model_;
   views::MenuModelAdapter menu_model_adapter_{&top_menu_model_};
-  std::unique_ptr<views::MenuRunner> menu_runner_;
   raw_ptr<views::MenuItemView> menu_ = nullptr;
+  std::unique_ptr<views::MenuRunner> menu_runner_;
 };
 
 // If this flakes, disable and log details in http://crbug.com/523255.

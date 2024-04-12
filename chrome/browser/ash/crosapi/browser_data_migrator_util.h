@@ -7,15 +7,14 @@
 
 #include <atomic>
 #include <map>
-#include <optional>
 #include <string>
-#include <string_view>
 
 #include "base/files/file_path.h"
 #include "base/synchronization/atomic_flag.h"
 #include "base/values.h"
 #include "chrome/browser/ash/crosapi/migration_progress_tracker.h"
 #include "components/sync/base/model_type.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/leveldatabase/env_chromium.h"
 
 namespace base {
@@ -43,6 +42,11 @@ constexpr char kMoveTmpDir[] = "move_migrator";
 // first, then moves it to the correct location as its final step.
 constexpr char kSplitTmpDir[] = "move_migrator_split";
 
+// Directory for `MoveMigrator` to move hard links for lacros file/dirs in ash
+// directory so that they become inaccessible from ash. This directory should be
+// cleaned up after the migraton.
+constexpr char kRemoveDir[] = "move_migrator_trash";
+
 // The following UMAs are recorded from
 // `DryRunToCollectUMA()`.
 constexpr char kDryRunNoCopyDataSize[] =
@@ -53,25 +57,23 @@ constexpr char kDryRunLacrosDataSize[] =
     "Ash.BrowserDataMigrator.DryRunLacrosDataSizeMB";
 constexpr char kDryRunCommonDataSize[] =
     "Ash.BrowserDataMigrator.DryRunCommonDataSizeMB";
+constexpr char kDryRunCopyMigrationTotalCopySize[] =
+    "Ash.BrowserDataMigrator.DryRunTotalCopySizeMB.Copy";
+constexpr char kDryRunMoveMigrationTotalCopySize[] =
+    "Ash.BrowserDataMigrator.DryRunTotalCopySizeMB.Move";
+constexpr char kDryRunMoveMigrationExtraSpaceReserved[] =
+    "Ash.BrowserDataMigrator.DryRunExtraSizeReservedMB.Move";
+constexpr char kDryRunMoveMigrationExtraSpaceRequired[] =
+    "Ash.BrowserDataMigrator.DryRunExtraSizeRequiredMB.Move";
 
-constexpr char kDryRunExtraDiskSpaceOccupiedByMove[] =
-    "Ash.BrowserDataMigrator.DryRunExtraDiskSpaceOccupiedByMove";
-constexpr char kDryRunFreeDiskSpaceAfterDelete[] =
-    "Ash.BrowserDataMigrator.DryRunFreeDiskSpaceAfterDelete";
-constexpr char kDryRunFreeDiskSpaceAfterMigration[] =
-    "Ash.BrowserDataMigrator.DryRunFreeDiskSpaceAfterMigration";
-
-// Collect extra info for users with low disk space.
-constexpr char kDryRunExtraDiskSpaceOccupiedByMoveLowDiskUser2[] =
-    "Ash.BrowserDataMigrator.DryRunExtraDiskSpaceOccupiedByMove.LowDiskUser2";
-constexpr char kDryRunFreeDiskSpaceLowDiskUser2[] =
-    "Ash.BrowserDataMigrator.DryRunFreeDiskSpace.LowDiskUser2";
-constexpr char kDryRunFreeDiskSpaceAfterDeleteLowDiskUser2[] =
-    "Ash.BrowserDataMigrator.DryRunFreeDiskSpaceAfterDelete.LowDiskUser2";
-constexpr char kDryRunProfileDirSizeLowDiskUser2[] =
-    "Ash.BrowserDataMigrator.DryRunProfileDirSize.LowDiskUser2";
-constexpr char kDryRunMyFilesDirSizeLowDiskUser2[] =
-    "Ash.BrowserDataMigrator.DryRunMyFilesDirSize.LowDiskUser2";
+constexpr char kDryRunCopyMigrationHasEnoughDiskSpace[] =
+    "Ash.BrowserDataMigrator.DryRunHasEnoughDiskSpace.Copy";
+constexpr char kDryRunMoveMigrationHasEnoughDiskSpace[] =
+    "Ash.BrowserDataMigrator.DryRunHasEnoughDiskSpace.Move";
+constexpr char kDryRunDeleteAndCopyMigrationHasEnoughDiskSpace[] =
+    "Ash.BrowserDataMigrator.DryRunHasEnoughDiskSpace.DeleteAndCopy";
+constexpr char kDryRunDeleteAndMoveMigrationHasEnoughDiskSpace[] =
+    "Ash.BrowserDataMigrator.DryRunHasEnoughDiskSpace.DeleteAndMove";
 
 // The base names of files/dirs directly under the original profile
 // data directory that can be deleted if needed because they are temporary
@@ -194,6 +196,7 @@ constexpr const char* const kNeedCopyForCopyDataPaths[]{
     "shared_proto_db"};
 
 // List of extension ids to be kept in Ash.
+// TODO(crbug.com/1302613): make sure this is the complete list.
 constexpr const char* const kExtensionsAshOnly[] = {
     "gjjabgpgjpampikjhjpfhneeoapjbjaf",  // Google Speech Synthesis Ext. (patts)
     "dakbfdmgjiabojdgbiljlhgjbokobjpg",  // ESpeak Speech Synthesis Extension
@@ -209,6 +212,13 @@ constexpr const char* const kExtensionsAshOnly[] = {
     "honijodknafkokifofgiaalefdiedpko",  // Help App
     "pmfjbimdmchhbnneeidfognadeopoehp",  // Image Loader Extension
     "cnbgggchhmkkdmeppjobngjoejnihlei",  // Arc Support (Play Store)
+};
+
+// List of extension ids to be kept in both Ash and Lacros.
+constexpr const char* const kExtensionsBothChromes[] = {
+    "cfmgaohenjcikllcgjpepfadgbflcjof",  // GCSE (Google Corp SSH Extension)
+    "lfboplenmmjcmpbkeemecobbadnmpfhi",  // gnubbyd-v3 (new Gnubby extension)
+    "beknehfpfkghjoafdifaflglpjkojoco",  // gnubbyd
 };
 
 // Extensions path.
@@ -238,15 +248,8 @@ constexpr char kStorageFilePath[] = "Storage";
 constexpr char kStorageExtFilePath[] = "ext";
 
 // Values used for the kBrowserDataMigrationMode flag.
-constexpr char kCopySwitchValue[] =
-    "copy";  // Corresponds to kCopy. No longer in use.
+constexpr char kCopySwitchValue[] = "copy";  // Corresponds to kCopy.
 constexpr char kMoveSwitchValue[] = "move";  // Corresponds to KMove.
-
-// Preference that indicates that sync setup has been completed at least once.
-// Doesn't exist in Ash and need to be set explicitly during the migration.
-// Exposed for testing.
-constexpr char kSyncInitialSyncFeatureSetupCompletePrefName[] =
-    "sync.has_setup_completed";
 
 // The type of LevelDB schema.
 enum class LevelDBType {
@@ -297,7 +300,7 @@ constexpr const char* kLacrosOnlyPreferencesKeys[] = {
 };
 
 // List of data types in Sync Data that have to stay in Ash and Ash only.
-static_assert(52 == syncer::GetNumModelTypes(),
+static_assert(46 == syncer::GetNumModelTypes(),
               "If adding a new sync data type, update the lists below if"
               " you want to keep the new data type in Ash only.");
 constexpr syncer::ModelType kAshOnlySyncDataTypes[] = {
@@ -322,14 +325,12 @@ constexpr char kUserDataStatsRecorderDataSize[] =
 // Files/dirs that is not assigned a unique uma name is given this name.
 constexpr char kUnknownUMAName[] = "Unknown";
 
-// The size of disk space that should be kept free after migration.
-// We currently set this to 100MB. Note that this is smaller than the threshold
-// of 768MB for aggressive disk cleanup by cryptohome thus migration can cause
-// the threshold to be reached triggering aggressive disk cleanup. We allow this
-// because 1. migration does not create much extra data (< 50MB for 99.99% of
-// users) and 2. migration is not unique in that any other Chrome feature can
-// write files to disk resulting in lower disk space.
-constexpr uint64_t kBuffer = 100LL * 1024 * 1024;
+constexpr int64_t kBytesInOneMB = 1024 * 1024;
+
+// The size of disk space that should be kept free after migration. This is
+// important since crypotohome conducts an aggressive disk cleanup if free disk
+// space becomes less than 768MB. The buffer is rounded up to 1GB.
+constexpr uint64_t kBuffer = 1024LL * 1024 * 1024;
 
 // CancelFlag
 class CancelFlag : public base::RefCountedThreadSafe<CancelFlag> {
@@ -391,6 +392,11 @@ enum class ItemType {
 TargetItems GetTargetItems(const base::FilePath& original_profile_dir,
                            ItemType type);
 
+// Checks if there is enough disk space to migration to be carried out safely.
+// that needs to be copied.
+bool HasEnoughDiskSpace(int64_t total_copy_size,
+                        const base::FilePath& original_profile_dir);
+
 // Returns extra bytes that has to be freed for the migration to be carried out
 // if there are `total_copy_size` bytes of copying to be done. Returns 0 if no
 // extra space needs to be freed.
@@ -431,6 +437,25 @@ bool CopyDirectory(const base::FilePath& from_path,
                    CancelFlag* cancel_flag,
                    MigrationProgressTracker* progress_tracker);
 
+// Creates a hard link from `from_file` to `to_file`. Use it on a file and not a
+// directory. Any parent directory of `to_file` should already exist. This will
+// fail if `to_dir` already exists.
+bool CreateHardLink(const base::FilePath& from_file,
+                    const base::FilePath& to_file);
+
+// Copies the content of `from_dir` to `to_dir` recursively similar to
+// `CopyDirectory` while skipping symlinks. Unlike `CopyDirectory` it creates
+// hard links for the files from `from_dir` to `to_dir`. If `to_dir`
+// already exists, then this will fail.
+bool CopyDirectoryByHardLinks(const base::FilePath& from_dir,
+                              const base::FilePath& to_dir);
+
+// Copies `items` to `to_dir` by calling `CreateHardLink()` for files and
+// `CopyDirectoryBeHardLinks()` for directories.
+bool CopyTargetItemsByHardLinks(const base::FilePath& to_dir,
+                                const TargetItems& items,
+                                CancelFlag* cancel_flag);
+
 // Records the sizes of `TargetItem`s.
 void RecordTargetItemSizes(const std::vector<TargetItem>& items);
 
@@ -461,7 +486,7 @@ void RecordTotalSize(int64_t size);
 
 // Given a key in Sync Data's leveldb, returns true if (based on its prefix) its
 // data type has to stay in Ash and Ash only, false otherwise.
-bool IsAshOnlySyncDataType(std::string_view key);
+bool IsAshOnlySyncDataType(base::StringPiece key);
 
 // Given an extension id, return the paths of the associated blob
 // and leveldb directories inside IndexedDB.
@@ -497,13 +522,13 @@ bool MigrateSyncDataLevelDB(const base::FilePath& original_path,
 // If the entry is a list in any other format, if it doesn't exist,
 // or if it's not container type, no changes will be performed.
 void UpdatePreferencesKeyByType(base::Value::Dict* root_dict,
-                                const std::string_view key,
+                                const base::StringPiece key,
                                 ChromeType chrome_type);
 
 // Given a `original_contents` string containing the original Preferences
 // file, return the migrated Ash and Lacros versions of Preferences.
-std::optional<PreferencesContents> MigratePreferencesContents(
-    const std::string_view original_contents);
+absl::optional<PreferencesContents> MigratePreferencesContents(
+    const base::StringPiece original_contents);
 
 // Migrate Preferences to Ash and Lacros.
 bool MigratePreferences(const base::FilePath& original_path,

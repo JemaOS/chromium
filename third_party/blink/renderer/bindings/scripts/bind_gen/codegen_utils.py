@@ -83,7 +83,6 @@ def collect_forward_decls_and_include_headers(idl_types):
 
     header_forward_decls = set()
     header_include_headers = set()
-    header_stdcpp_include_headers = set()
     source_forward_decls = set()
     source_include_headers = set()
 
@@ -110,7 +109,7 @@ def collect_forward_decls_and_include_headers(idl_types):
             ])
         elif idl_type.is_nullable:
             if not blink_type_info(idl_type.inner_type).has_null_value:
-                header_stdcpp_include_headers.add("optional")
+                header_include_headers.add("third_party/abseil-cpp/absl/types/optional.h")
         elif idl_type.is_promise:
             header_include_headers.add(
                 "third_party/blink/renderer/bindings/core/v8/script_promise.h")
@@ -124,7 +123,7 @@ def collect_forward_decls_and_include_headers(idl_types):
                 "third_party/blink/renderer/platform/wtf/text/wtf_string.h")
         elif idl_type.is_typedef:
             pass
-        elif idl_type.is_undefined:
+        elif idl_type.is_void:
             pass
         elif idl_type.type_definition_object:
             type_def_obj = idl_type.type_definition_object
@@ -156,13 +155,8 @@ def collect_forward_decls_and_include_headers(idl_types):
     for idl_type in idl_types:
         idl_type.apply_to_all_composing_elements(collect)
 
-    return (
-        header_forward_decls,
-        header_include_headers,
-        header_stdcpp_include_headers,
-        source_forward_decls,
-        source_include_headers,
-    )
+    return (header_forward_decls, header_include_headers, source_forward_decls,
+            source_include_headers)
 
 
 def component_export(component, for_testing):
@@ -186,8 +180,6 @@ def component_export_header(component, for_testing):
         return "third_party/blink/renderer/modules/modules_export.h"
     elif component == "extensions_chromeos":
         return "third_party/blink/renderer/extensions/chromeos/extensions_chromeos_export.h"
-    elif component == "extensions_webview":
-        return "third_party/blink/renderer/extensions/webview/extensions_webview_export.h"
     else:
         assert False
 

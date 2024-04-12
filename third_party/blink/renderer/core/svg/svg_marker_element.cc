@@ -74,7 +74,14 @@ SVGMarkerElement::SVGMarkerElement(Document& document)
           MakeGarbageCollected<SVGAnimatedEnumeration<SVGMarkerUnitsType>>(
               this,
               svg_names::kMarkerUnitsAttr,
-              kSVGMarkerUnitsStrokeWidth)) {}
+              kSVGMarkerUnitsStrokeWidth)) {
+  AddToPropertyMap(ref_x_);
+  AddToPropertyMap(ref_y_);
+  AddToPropertyMap(marker_width_);
+  AddToPropertyMap(marker_height_);
+  AddToPropertyMap(orient_angle_);
+  AddToPropertyMap(marker_units_);
+}
 
 SVGAnimatedEnumeration<SVGMarkerOrientType>* SVGMarkerElement::orientType() {
   return orient_angle_->OrientType();
@@ -116,16 +123,13 @@ void SVGMarkerElement::SvgAttributeChanged(
     auto* resource_container =
         To<LayoutSVGResourceContainer>(GetLayoutObject());
     if (resource_container) {
-      resource_container->InvalidateCache();
-
       // The marker transform depends on both viewbox attributes, and the marker
       // size attributes (width, height).
-      if (viewbox_attribute_changed || length_attribute_changed) {
+      if (viewbox_attribute_changed || length_attribute_changed)
         resource_container->SetNeedsTransformUpdate();
-        resource_container->SetNeedsLayoutAndFullPaintInvalidation(
-            layout_invalidation_reason::kSvgResourceInvalidated);
-      }
+      resource_container->InvalidateCacheAndMarkForLayout();
     }
+
     return;
   }
 
@@ -138,14 +142,14 @@ void SVGMarkerElement::ChildrenChanged(const ChildrenChange& change) {
   if (change.ByParser())
     return;
 
-  auto* resource_container = To<LayoutSVGResourceContainer>(GetLayoutObject());
-  if (resource_container) {
-    resource_container->InvalidateCache();
+  if (LayoutObject* object = GetLayoutObject()) {
+    object->SetNeedsLayoutAndFullPaintInvalidation(
+        layout_invalidation_reason::kChildChanged);
   }
 }
 
 void SVGMarkerElement::setOrientToAuto() {
-  setAttribute(svg_names::kOrientAttr, keywords::kAuto);
+  setAttribute(svg_names::kOrientAttr, "auto");
 }
 
 void SVGMarkerElement::setOrientToAngle(SVGAngleTearOff* angle) {
@@ -167,40 +171,6 @@ bool SVGMarkerElement::SelfHasRelativeLengths() const {
 
 bool SVGMarkerElement::LayoutObjectIsNeeded(const DisplayStyle&) const {
   return IsValid() && HasSVGParent();
-}
-
-SVGAnimatedPropertyBase* SVGMarkerElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kRefXAttr) {
-    return ref_x_.Get();
-  } else if (attribute_name == svg_names::kRefYAttr) {
-    return ref_y_.Get();
-  } else if (attribute_name == svg_names::kMarkerWidthAttr) {
-    return marker_width_.Get();
-  } else if (attribute_name == svg_names::kMarkerHeightAttr) {
-    return marker_height_.Get();
-  } else if (attribute_name == orient_angle_->AttributeName()) {
-    return orient_angle_.Get();
-  } else if (attribute_name == svg_names::kMarkerUnitsAttr) {
-    return marker_units_.Get();
-  } else {
-    SVGAnimatedPropertyBase* ret =
-        SVGFitToViewBox::PropertyFromAttribute(attribute_name);
-    if (ret) {
-      return ret;
-    } else {
-      return SVGElement::PropertyFromAttribute(attribute_name);
-    }
-  }
-}
-
-void SVGMarkerElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{ref_x_.Get(),        ref_y_.Get(),
-                                   marker_width_.Get(), marker_height_.Get(),
-                                   orient_angle_.Get(), marker_units_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGFitToViewBox::SynchronizeAllSVGAttributes();
-  SVGElement::SynchronizeAllSVGAttributes();
 }
 
 }  // namespace blink

@@ -22,9 +22,8 @@
 #include "ui/gfx/test/sk_color_eq.h"
 
 #if BUILDFLAG(IS_IOS)
-#include "base/apple/scoped_cftyperef.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "skia/ext/skia_utils_ios.h"
-#include "ui/base/resource/resource_scale_factor.h"
 #elif BUILDFLAG(IS_MAC)
 #include "base/mac/mac_util.h"
 #include "skia/ext/skia_utils_mac.h"
@@ -39,43 +38,41 @@ namespace {
 // converting a gfx::Image between colorspaces. Color shifts occur when
 // converting between NSImage & UIImage to ImageSkia. Determined by trial and
 // error.
-constexpr int kMaxColorSpaceConversionColorShift = 40;
+const int kMaxColorSpaceConversionColorShift = 40;
 
 }  // namespace
 
-const SkBitmap CreateBitmap(int size, SkColor color) {
-  return CreateBitmap(size, size, color);
+std::vector<float> Get1xAnd2xScales() {
+  std::vector<float> scales;
+  scales.push_back(1.0f);
+  scales.push_back(2.0f);
+  return scales;
 }
 
-const SkBitmap CreateBitmap(int width, int height, SkColor color) {
+const SkBitmap CreateBitmap(int width, int height) {
   SkBitmap bitmap;
   bitmap.allocN32Pixels(width, height);
-  bitmap.eraseColor(color);
+  bitmap.eraseARGB(255, 0, 255, 0);
   return bitmap;
 }
 
-gfx::ImageSkia CreateImageSkia(int size, SkColor color) {
-  return CreateImageSkia(size, size, color);
+gfx::ImageSkia CreateImageSkia(int width, int height) {
+  return gfx::ImageSkia::CreateFrom1xBitmap(CreateBitmap(width, height));
 }
 
-gfx::ImageSkia CreateImageSkia(int width, int height, SkColor color) {
-  return gfx::ImageSkia::CreateFrom1xBitmap(CreateBitmap(width, height, color));
-}
-
-scoped_refptr<base::RefCountedMemory> CreatePNGBytes(int edge_size,
-                                                     SkColor color) {
-  SkBitmap bitmap = CreateBitmap(edge_size, edge_size, color);
+scoped_refptr<base::RefCountedMemory> CreatePNGBytes(int edge_size) {
+  SkBitmap bitmap = CreateBitmap(edge_size, edge_size);
   scoped_refptr<base::RefCountedBytes> bytes(new base::RefCountedBytes());
   PNGCodec::EncodeBGRASkBitmap(bitmap, false, &bytes->data());
   return bytes;
 }
 
-gfx::Image CreateImage(int size, SkColor color) {
-  return CreateImage(size, size, color);
+gfx::Image CreateImage() {
+  return CreateImage(100, 50);
 }
 
-gfx::Image CreateImage(int width, int height, SkColor color) {
-  return gfx::Image::CreateFrom1xBitmap(CreateBitmap(width, height, color));
+gfx::Image CreateImage(int width, int height) {
+  return gfx::Image::CreateFrom1xBitmap(CreateBitmap(width, height));
 }
 
 bool AreImagesEqual(const gfx::Image& img1, const gfx::Image& img2) {
@@ -192,21 +189,22 @@ bool IsEmpty(const gfx::Image& image) {
 PlatformImage CreatePlatformImage() {
   SkBitmap bitmap(CreateBitmap(25, 25));
 #if BUILDFLAG(IS_IOS)
-  const float scale = ui::GetScaleForMaxSupportedResourceScaleFactor();
+  float scale = ImageSkia::GetMaxSupportedScale();
 
   if (scale > 1.0) {
     // Always create a 25pt x 25pt image.
-    const int size = static_cast<int>(25 * scale);
+    int size = static_cast<int>(25 * scale);
     bitmap = CreateBitmap(size, size);
   }
 
-  base::apple::ScopedCFTypeRef<CGColorSpaceRef> color_space(
+  base::ScopedCFTypeRef<CGColorSpaceRef> color_space(
       CGColorSpaceCreateDeviceRGB());
   UIImage* image =
-      skia::SkBitmapToUIImageWithColorSpace(bitmap, scale, color_space.get());
+      skia::SkBitmapToUIImageWithColorSpace(bitmap, scale, color_space);
   return image;
 #elif BUILDFLAG(IS_MAC)
-  NSImage* image = skia::SkBitmapToNSImage(bitmap);
+  NSImage* image = skia::SkBitmapToNSImageWithColorSpace(
+      bitmap, base::mac::GetGenericRGBColorSpace());
   return image;
 #else
   return gfx::ImageSkia::CreateFrom1xBitmap(bitmap);

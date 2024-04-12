@@ -134,11 +134,11 @@ void FilteringNetworkManager::CheckPermission() {
   VLOG(1) << "FilteringNetworkManager checking permission status.";
   // Request for media permission asynchronously.
   media_permission_->HasPermission(
-      media::MediaPermission::Type::kAudioCapture,
+      media::MediaPermission::AUDIO_CAPTURE,
       WTF::BindOnce(&FilteringNetworkManager::OnPermissionStatus,
                     GetWeakPtr()));
   media_permission_->HasPermission(
-      media::MediaPermission::Type::kVideoCapture,
+      media::MediaPermission::VIDEO_CAPTURE,
       WTF::BindOnce(&FilteringNetworkManager::OnPermissionStatus,
                     GetWeakPtr()));
 }

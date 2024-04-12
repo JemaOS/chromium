@@ -23,9 +23,9 @@ class HIDInputReportEvent final : public Event {
                       const Vector<uint8_t>& data);
   ~HIDInputReportEvent() override;
 
-  HIDDevice* device() const { return device_.Get(); }
+  HIDDevice* device() const { return device_; }
   uint8_t reportId() const { return report_id_; }
-  DOMDataView* data() const { return data_.Get(); }
+  DOMDataView* data() const { return data_; }
 
   // Event:
   const AtomicString& InterfaceName() const override;

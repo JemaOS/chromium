@@ -35,9 +35,7 @@ class BertCluAnnotatorOptions:
       Annotator task.
   """
   base_options: _BaseOptions
-  bert_clu_annotation_options: _BertCluAnnotationOptions = dataclasses.field(
-      default_factory=_BertCluAnnotationOptions
-  )
+  bert_clu_annotation_options: _BertCluAnnotationOptions = _BertCluAnnotationOptions()  # pylint: disable=line-too-long
 
 
 class BertCluAnnotator(object):

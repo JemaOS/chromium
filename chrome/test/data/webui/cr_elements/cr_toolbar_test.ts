@@ -7,7 +7,8 @@
 // clang-format off
 import 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar.js';
 
-import type {CrToolbarElement} from 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar.js';
+import {CrToolbarElement} from 'chrome://resources/cr_elements/cr_toolbar/cr_toolbar.js';
+import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {getTrustedHtml} from 'chrome://webui-test/trusted_html.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {isVisible} from 'chrome://webui-test/test_util.js';
@@ -20,16 +21,14 @@ suite('cr-toolbar', function() {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
   });
 
-  test('AlwaysShowLogo', async function() {
+  test('AlwaysShowLogo', function() {
     toolbar = document.createElement('cr-toolbar');
     document.body.appendChild(toolbar);
 
     toolbar.narrow = true;
-    await toolbar.updateComplete;
     assertFalse(isVisible(toolbar.shadowRoot!.querySelector('picture')));
 
     toolbar.alwaysShowLogo = true;
-    await toolbar.updateComplete;
     assertTrue(isVisible(toolbar.shadowRoot!.querySelector('picture')));
   });
 
@@ -39,6 +38,7 @@ suite('cr-toolbar', function() {
         <div id="logo" slot="product-logo">New logo</div>
       </cr-toolbar>
     `);
+    flush();
 
     const toolbar = document.body.querySelector('cr-toolbar');
     assertTrue(!!toolbar);

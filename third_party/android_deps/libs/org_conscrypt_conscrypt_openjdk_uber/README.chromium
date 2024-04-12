@@ -3,10 +3,9 @@ Short Name: conscrypt-openjdk-uber
 URL: https://conscrypt.org/
 Version: 2.5.2
 License: Apache 2.0
-License File: LICENSE
+License File: NOT_SHIPPED
 CPEPrefix: unknown
 Security Critical: no
-Shipped: no
 
 Description:
 Conscrypt: OpenJdk UberJAR

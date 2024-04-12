@@ -60,8 +60,8 @@
 
 namespace blink {
 
-// Though absl::ascii_isspace() considers \t and \v to be whitespace, Win IE
-// doesn't when parsing window features.
+// Though isspace() considers \t and \v to be whitespace, Win IE doesn't when
+// parsing window features.
 static bool IsWindowFeaturesSeparator(UChar c) {
   return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '=' ||
          c == ',' || c == '\f';
@@ -209,8 +209,7 @@ WebWindowFeatures GetWindowFeaturesFromString(const String& feature_string,
     } else if (key_string == "persistent") {
       window_features.persistent = true;
     } else if (key_string == "fullscreen" &&
-               RuntimeEnabledFeatures::FullscreenPopupWindowsEnabled(
-                   dom_window)) {
+               RuntimeEnabledFeatures::FullscreenPopupWindowsEnabled()) {
       // TODO(crbug.com/1142516): Add permission check to give earlier
       // feedback / console warning if permission isn't granted, and/or just
       // silently drop the flag. Currently the browser will block the popup
@@ -296,7 +295,7 @@ Frame* CreateNewWindow(LocalFrame& opener_frame,
   const KURL& url = request.GetResourceRequest().Url();
   if (url.ProtocolIsJavaScript()) {
     if (opener_window
-            .CheckAndGetJavascriptUrl(request.JavascriptWorld(), url,
+            .CheckAndGetJavascriptUrl(request.JavascriptWorld().get(), url,
                                       nullptr /* element */)
             .empty()) {
       return nullptr;

@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -15,7 +14,7 @@
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "base/values.h"
 #include "chrome/browser/certificate_provider/certificate_provider_service.h"
 #include "chrome/common/extensions/api/certificate_provider.h"
@@ -113,32 +112,32 @@ std::unique_ptr<extensions::Event> BuildOnSignatureRequestedEvent(
   request.sign_request_id = request_id;
   switch (algorithm) {
     case SSL_SIGN_RSA_PKCS1_SHA1:
-      request.algorithm = api_cp::Algorithm::kRsassaPkcs1V1_5Sha1;
+      request.algorithm = api_cp::ALGORITHM_RSASSA_PKCS1_V1_5_SHA1;
       break;
     case SSL_SIGN_RSA_PKCS1_SHA256:
-      request.algorithm = api_cp::Algorithm::kRsassaPkcs1V1_5Sha256;
+      request.algorithm = api_cp::ALGORITHM_RSASSA_PKCS1_V1_5_SHA256;
       break;
     case SSL_SIGN_RSA_PKCS1_SHA384:
-      request.algorithm = api_cp::Algorithm::kRsassaPkcs1V1_5Sha384;
+      request.algorithm = api_cp::ALGORITHM_RSASSA_PKCS1_V1_5_SHA384;
       break;
     case SSL_SIGN_RSA_PKCS1_SHA512:
-      request.algorithm = api_cp::Algorithm::kRsassaPkcs1V1_5Sha512;
+      request.algorithm = api_cp::ALGORITHM_RSASSA_PKCS1_V1_5_SHA512;
       break;
     case SSL_SIGN_RSA_PSS_RSAE_SHA256:
-      request.algorithm = api_cp::Algorithm::kRsassaPssSha256;
+      request.algorithm = api_cp::ALGORITHM_RSASSA_PSS_SHA256;
       break;
     case SSL_SIGN_RSA_PSS_RSAE_SHA384:
-      request.algorithm = api_cp::Algorithm::kRsassaPssSha384;
+      request.algorithm = api_cp::ALGORITHM_RSASSA_PSS_SHA384;
       break;
     case SSL_SIGN_RSA_PSS_RSAE_SHA512:
-      request.algorithm = api_cp::Algorithm::kRsassaPssSha512;
+      request.algorithm = api_cp::ALGORITHM_RSASSA_PSS_SHA512;
       break;
     default:
       LOG(ERROR) << "Unknown signature algorithm";
       return nullptr;
   }
   request.input.assign(input.begin(), input.end());
-  std::string_view cert_der =
+  base::StringPiece cert_der =
       net::x509_util::CryptoBufferAsStringPiece(certificate.cert_buffer());
   request.certificate.assign(cert_der.begin(), cert_der.end());
 
@@ -161,22 +160,22 @@ std::unique_ptr<extensions::Event> BuildOnSignDigestRequestedEvent(
   request.sign_request_id = request_id;
   switch (algorithm) {
     case SSL_SIGN_RSA_PKCS1_SHA1:
-      request.hash = api_cp::Hash::kSha1;
+      request.hash = api_cp::HASH_SHA1;
       break;
     case SSL_SIGN_RSA_PKCS1_SHA256:
-      request.hash = api_cp::Hash::kSha256;
+      request.hash = api_cp::HASH_SHA256;
       break;
     case SSL_SIGN_RSA_PKCS1_SHA384:
-      request.hash = api_cp::Hash::kSha384;
+      request.hash = api_cp::HASH_SHA384;
       break;
     case SSL_SIGN_RSA_PKCS1_SHA512:
-      request.hash = api_cp::Hash::kSha512;
+      request.hash = api_cp::HASH_SHA512;
       break;
     default:
       LOG(ERROR) << "Unknown signature algorithm";
       return nullptr;
   }
-  std::string_view cert_der =
+  base::StringPiece cert_der =
       net::x509_util::CryptoBufferAsStringPiece(certificate.cert_buffer());
   request.certificate.assign(cert_der.begin(), cert_der.end());
 
@@ -311,19 +310,13 @@ CertificateProviderServiceFactory::GetForBrowserContext(
 // static
 CertificateProviderServiceFactory*
 CertificateProviderServiceFactory::GetInstance() {
-  static base::NoDestructor<CertificateProviderServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<CertificateProviderServiceFactory>::get();
 }
 
 CertificateProviderServiceFactory::CertificateProviderServiceFactory()
     : ProfileKeyedServiceFactory(
           "CertificateProviderService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(extensions::EventRouterFactory::GetInstance());
   DependsOn(extensions::ExtensionRegistryFactory::GetInstance());
 }

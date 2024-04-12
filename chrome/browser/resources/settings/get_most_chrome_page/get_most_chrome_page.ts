@@ -15,16 +15,9 @@ import 'chrome://resources/polymer/v3_0/iron-collapse/iron-collapse.js';
 
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {HatsBrowserProxyImpl, TrustSafetyInteraction} from '../hats_browser_proxy.js';
-import type {Route} from '../router.js';
-import {RouteObserverMixin, Router} from '../router.js';
-
 import {getTemplate} from './get_most_chrome_page.html.js';
 
-const SettingsGetMostChromePageElementBase = RouteObserverMixin(PolymerElement);
-
-export class SettingsGetMostChromePageElement extends
-    SettingsGetMostChromePageElementBase {
+export class SettingsGetMostChromePageElement extends PolymerElement {
   static get is() {
     return 'settings-get-most-chrome-page';
   }
@@ -44,13 +37,6 @@ export class SettingsGetMostChromePageElement extends
   private expandedMoreThanABrowser_: boolean;
   private expandedYourDataInChrome_: boolean;
   private expandedBeyondCookies_: boolean;
-
-  override currentRouteChanged(newRoute: Route) {
-    if (newRoute === Router.getInstance().getRoutes().GET_MOST_CHROME) {
-      HatsBrowserProxyImpl.getInstance().trustSafetyInteractionOccurred(
-          TrustSafetyInteraction.OPENED_GET_MOST_CHROME);
-    }
-  }
 }
 
 declare global {

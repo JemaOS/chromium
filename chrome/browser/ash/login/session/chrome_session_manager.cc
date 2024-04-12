@@ -13,20 +13,16 @@
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_switches.h"
 #include "ash/webui/shimless_rma/shimless_rma.h"
-#include "base/check_deref.h"
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/logging.h"
 #include "base/task/single_thread_task_runner.h"
-#include "chrome/browser/app_mode/app_mode_utils.h"
 #include "chrome/browser/ash/account_manager/account_manager_util.h"
 #include "chrome/browser/ash/app_list/app_list_client_impl.h"
 #include "chrome/browser/ash/app_mode/app_launch_utils.h"
-#include "chrome/browser/ash/app_mode/kiosk_controller.h"
 #include "chrome/browser/ash/app_mode/kiosk_cryptohome_remover.h"
 #include "chrome/browser/ash/boot_times_recorder.h"
-#include "chrome/browser/ash/crosapi/browser_data_migrator.h"
 #include "chrome/browser/ash/login/chrome_restart_request.h"
 #include "chrome/browser/ash/login/demo_mode/demo_components.h"
 #include "chrome/browser/ash/login/demo_mode/demo_session.h"
@@ -34,7 +30,6 @@
 #include "chrome/browser/ash/login/login_wizard.h"
 #include "chrome/browser/ash/login/session/user_session_initializer.h"
 #include "chrome/browser/ash/login/session/user_session_manager.h"
-#include "chrome/browser/ash/login/ui/login_display_host_webui.h"
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
 #include "chrome/browser/ash/profiles/signin_profile_handler.h"
 #include "chrome/browser/browser_process.h"
@@ -63,37 +58,23 @@
 #include "components/user_manager/common_types.h"
 #include "components/user_manager/known_user.h"
 #include "components/user_manager/user_manager.h"
-#include "components/user_manager/user_names.h"
 #include "content/public/common/content_switches.h"
 
 namespace ash {
 
 namespace {
 
-// Starts kiosk app launch and shows the splash screen.
-void StartKioskSession(KioskAppId app, bool is_auto_launch = false) {
+// Starts kiosk app auto launch and shows the splash screen.
+void StartKioskSession() {
   // Kiosk app launcher starts with login state.
-  CHECK_DEREF(session_manager::SessionManager::Get())
-      .SetSessionState(session_manager::SessionState::LOGIN_PRIMARY);
+  session_manager::SessionManager::Get()->SetSessionState(
+      session_manager::SessionState::LOGIN_PRIMARY);
 
-  CHECK_DEREF(input_method::InputMethodManager::Get())
-      .GetActiveIMEState()
-      ->SetInputMethodLoginDefault();
-
-  // Manages its own lifetime. See ShutdownDisplayHost().
-  auto* display_host = new LoginDisplayHostWebUI();
-  display_host->StartKiosk(app, is_auto_launch);
+  ShowLoginWizard(AppLaunchSplashScreenView::kScreenId);
 
   // Login screen is skipped but 'login-prompt-visible' signal is still needed.
   VLOG(1) << "Kiosk app auto launch >> login-prompt-visible";
   SessionManagerClient::Get()->EmitLoginPromptVisible();
-}
-
-void StartAutoLaunchKioskSession() {
-  auto app = KioskController::Get().GetAutoLaunchApp();
-  CHECK(app.has_value());
-
-  StartKioskSession(app.value().id(), /*is_auto_launch=*/true);
 }
 
 // Starts the login/oobe screen.
@@ -199,7 +180,7 @@ void StartUserSession(Profile* user_profile, const std::string& login_user_id) {
     SigninProfileHandler::Get()->ProfileStartUp(user_profile);
 
     if (!is_running_test &&
-        user->GetAccountId() == user_manager::StubAccountId()) {
+        user_manager->IsStubAccountId(user->GetAccountId())) {
       // Add stub user to Account Manager. (But not when running tests: this
       // allows tests to setup appropriate environment)
       InitializeAccountManager(
@@ -208,7 +189,7 @@ void StartUserSession(Profile* user_profile, const std::string& login_user_id) {
               &UpsertStubUserToAccountManager, user_profile, user));
     }
 
-    user_session_mgr->OnUserProfileLoaded(user_profile, user);
+    user_session_mgr->NotifyUserProfileLoaded(user_profile, user);
 
     // This call will set session state to SESSION_STATE_ACTIVE (same one).
     session_manager::SessionManager::Get()->SessionStarted();
@@ -233,13 +214,11 @@ void StartUserSession(Profile* user_profile, const std::string& login_user_id) {
   }
 
   if (base::FeatureList::IsEnabled(features::kEolWarningNotifications) &&
-      !user_profile->GetProfilePolicyConnector()->IsManaged()) {
+      !user_profile->GetProfilePolicyConnector()->IsManaged())
     UserSessionManager::GetInstance()->CheckEolInfo(user_profile);
-  }
 
   UserSessionManager::GetInstance()->ShowNotificationsIfNeeded(user_profile);
-  UserSessionManager::GetInstance()->PerformPostBrowserLaunchOOBEActions(
-      user_profile);
+  UserSessionManager::GetInstance()->MaybeLaunchSettings(user_profile);
 }
 
 void LaunchShimlessRma() {
@@ -323,12 +302,11 @@ void ChromeSessionManager::Initialize(
     const base::CommandLine& parsed_command_line,
     Profile* profile,
     bool is_running_test) {
-  auto& local_state = CHECK_DEREF(g_browser_process->local_state());
   // If a forced powerwash was triggered and no confirmation from the user is
   // necessary, we trigger the device wipe here before the user can log in again
   // and return immediately because there is no need to show the login screen.
-  if (local_state.GetBoolean(prefs::kForceFactoryReset)) {
-    SessionManagerClient::Get()->StartDeviceWipe(base::DoNothing());
+  if (g_browser_process->local_state()->GetBoolean(prefs::kForceFactoryReset)) {
+    SessionManagerClient::Get()->StartDeviceWipe();
     return;
   }
 
@@ -380,30 +358,30 @@ void ChromeSessionManager::Initialize(
 
   const user_manager::CryptohomeId cryptohome_id(
       parsed_command_line.GetSwitchValueASCII(switches::kLoginUser));
-  user_manager::KnownUser known_user(&local_state);
+  user_manager::KnownUser known_user(g_browser_process->local_state());
   const AccountId login_account_id(
       known_user.GetAccountIdByCryptohomeId(cryptohome_id));
 
   KioskCryptohomeRemover::RemoveObsoleteCryptohomes();
 
-  if (ShouldOneTimeAutoLaunchKioskApp(parsed_command_line, local_state)) {
-    VLOG(1) << "One time auto launching kiosk app";
-    KioskAppId app_id = ExtractOneTimeAutoLaunchKioskAppId(local_state);
-    StartKioskSession(app_id);
-  } else if (ShouldAutoLaunchKioskApp(parsed_command_line, local_state)) {
+  if (ShouldAutoLaunchKioskApp(parsed_command_line,
+                               g_browser_process->local_state())) {
     VLOG(1) << "Starting Chrome with kiosk auto launch.";
-    StartAutoLaunchKioskSession();
-  } else if (parsed_command_line.HasSwitch(switches::kLoginManager)) {
+    StartKioskSession();
+    return;
+  }
+
+  if (parsed_command_line.HasSwitch(switches::kLoginManager)) {
     oobe_configuration_->CheckConfiguration();
-    if (is_running_test && !force_login_screen_in_test) {
+    if (is_running_test && !force_login_screen_in_test)
       return;
-    }
     VLOG(1) << "Starting Chrome with login/oobe screen.";
     StartLoginOobeSession();
-  } else {
-    VLOG(1) << "Starting Chrome with a user session.";
-    StartUserSession(profile, login_account_id.GetUserEmail());
+    return;
   }
+
+  VLOG(1) << "Starting Chrome with a user session.";
+  StartUserSession(profile, login_account_id.GetUserEmail());
 }
 
 void ChromeSessionManager::SessionStarted() {
@@ -412,9 +390,8 @@ void ChromeSessionManager::SessionStarted() {
 
   // Notifies UserManager so that it can update login state.
   user_manager::UserManager* user_manager = user_manager::UserManager::Get();
-  if (user_manager) {
+  if (user_manager)
     user_manager->OnSessionStarted();
-  }
 }
 
 void ChromeSessionManager::NotifyUserLoggedIn(const AccountId& user_account_id,

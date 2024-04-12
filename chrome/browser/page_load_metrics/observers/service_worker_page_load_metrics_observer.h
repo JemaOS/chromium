@@ -92,7 +92,6 @@ class ServiceWorkerPageLoadMetricsObserver
   void RecordTimingHistograms();
   bool IsServiceWorkerControlled();
   bool IsServiceWorkerFetchHandlerSkippable();
-  bool IsServiceWorkerEligibleForRaceNetworkRequest();
   void RecordSubresourceLoad();
 
   ui::PageTransition transition_ = ui::PAGE_TRANSITION_LINK;

@@ -31,7 +31,6 @@
 #include "chrome/browser/net/key_pinning.pb.h"
 #include "content/public/browser/network_service_instance.h"
 #include "net/net_buildflags.h"
-#include "services/cert_verifier/public/mojom/cert_verifier_service_factory.mojom.h"
 #include "services/network/public/cpp/network_service_buildflags.h"
 #include "services/network/public/mojom/key_pinning.mojom.h"
 #include "services/network/public/mojom/network_service.mojom.h"
@@ -39,11 +38,13 @@
 #if BUILDFLAG(IS_CT_SUPPORTED)
 #include "components/certificate_transparency/certificate_transparency.pb.h"
 #include "components/certificate_transparency/certificate_transparency_config.pb.h"
+#include "components/certificate_transparency/ct_features.h"
 #include "services/network/public/mojom/ct_log_info.mojom.h"
 #endif
 
 #if BUILDFLAG(CHROME_ROOT_STORE_SUPPORTED)
 #include "mojo/public/cpp/base/big_buffer.h"
+#include "services/cert_verifier/public/mojom/cert_verifier_service_factory.mojom.h"
 #endif
 
 using component_updater::ComponentUpdateService;
@@ -65,6 +66,8 @@ const uint64_t kMaxSupportedCTCompatibilityVersion = 2;
 // Chrome is compatible with the version it is being incremented to.
 const uint64_t kMaxSupportedKPCompatibilityVersion = 1;
 
+const char kGoogleOperatorName[] = "Google";
+
 // The SHA256 of the SubjectPublicKeyInfo used to sign the extension.
 // The extension id is: efniojlnjndmcbiieegkicadnoecjjef
 const uint8_t kPKIMetadataPublicKeySHA256[32] = {
@@ -85,9 +88,8 @@ const base::FilePath::CharType kCRSProtoFileName[] =
 
 std::string LoadBinaryProtoFromDisk(const base::FilePath& pb_path) {
   std::string result;
-  if (pb_path.empty()) {
+  if (pb_path.empty())
     return result;
-  }
 
   base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
                                                 base::BlockingType::WILL_BLOCK);
@@ -163,7 +165,8 @@ void PKIMetadataComponentInstallerService::ReconfigureAfterNetworkRestart() {
     return;
   }
   if (base::FeatureList::IsEnabled(
-          features::kCertificateTransparencyAskBeforeEnabling)) {
+          certificate_transparency::features::
+              kCertificateTransparencyComponentUpdater)) {
     base::ThreadPool::PostTaskAndReplyWithResult(
         FROM_HERE, {base::TaskPriority::BEST_EFFORT, base::MayBlock()},
         base::BindOnce(&LoadBinaryProtoFromDisk,
@@ -213,16 +216,6 @@ void PKIMetadataComponentInstallerService::UpdateNetworkServiceCTListOnUI(
     const std::string& ct_config_bytes) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 #if BUILDFLAG(IS_CT_SUPPORTED)
-  if (ct_config_bytes.empty()) {
-    // LoadBinaryProtoFromDisk returns an empty string if it fails to find
-    // the file on disk or fails to read. An empty string is valid proto,
-    // continuing to process such an empty string will result in stomping
-    // on the default disqualified certs in the CT list allowing
-    // disqualified certs to be trusted. Treat empty string as invalid proto
-    // instead.
-    return;
-  }
-
   auto proto =
       std::make_unique<chrome_browser_certificate_transparency::CTConfig>();
   if (!proto->ParseFromString(ct_config_bytes)) {
@@ -233,9 +226,6 @@ void PKIMetadataComponentInstallerService::UpdateNetworkServiceCTListOnUI(
       content::GetNetworkService();
 
   if (proto->disable_ct_enforcement()) {
-    // TODO(https://crbug.com/848277): when CT enforcement is moved to the cert
-    // verifier service, the killswitch also needs to be moved to the cert
-    // verifier service.
     network_service->SetCtEnforcementEnabled(
         false,
         base::BindOnce(
@@ -249,11 +239,7 @@ void PKIMetadataComponentInstallerService::UpdateNetworkServiceCTListOnUI(
     return;
   }
 
-  // TODO(https://crbug.com/848277): Log info needs to be sent to both network
-  // service and cert verifier service. Finish refactoring so that it is only
-  // sent to cert verifier service.
   std::vector<network::mojom::CTLogInfoPtr> log_list_mojo;
-  std::vector<network::mojom::CTLogInfoPtr> log_list_mojo_clone_network_service;
 
   // The log list shipped via component updater is a single message of CTLogList
   // type, as defined in
@@ -277,6 +263,9 @@ void PKIMetadataComponentInstallerService::UpdateNetworkServiceCTListOnUI(
     // Operator history is ordered in inverse chronological order, so the 0th
     // element will be the current operator.
     if (!log.operator_history().empty()) {
+      if (log.operator_history().Get(0).name() == kGoogleOperatorName) {
+        log_ptr->operated_by_google = true;
+      }
       log_ptr->current_operator = log.operator_history().Get(0).name();
       if (log.operator_history().size() > 1) {
         // The protobuffer includes operator history in reverse chronological
@@ -318,14 +307,13 @@ void PKIMetadataComponentInstallerService::UpdateNetworkServiceCTListOnUI(
     }
 
     log_ptr->mmd = base::Seconds(log.mmd_secs());
-    log_list_mojo_clone_network_service.push_back(log_ptr.Clone());
     log_list_mojo.push_back(std::move(log_ptr));
   }
 
-  // We need to wait for both CT log list updates and the popular SCT list
+  // We need to wait for both the CT log list update and the popular SCT list
   // update.
   base::RepeatingClosure done_callback = BarrierClosure(
-      /*num_closures=*/3,
+      /*num_closures=*/2,
       base::BindOnce(
           &PKIMetadataComponentInstallerService::NotifyCTLogListConfigured,
           weak_factory_.GetWeakPtr()));
@@ -333,10 +321,8 @@ void PKIMetadataComponentInstallerService::UpdateNetworkServiceCTListOnUI(
       base::Time::UnixEpoch() +
       base::Seconds(proto->log_list().timestamp().seconds()) +
       base::Nanoseconds(proto->log_list().timestamp().nanos());
-  content::GetCertVerifierServiceFactory()->UpdateCtLogList(
-      std::move(log_list_mojo), update_time, done_callback);
-  network_service->UpdateCtLogList(
-      std::move(log_list_mojo_clone_network_service), done_callback);
+  network_service->UpdateCtLogList(std::move(log_list_mojo), update_time,
+                                   done_callback);
 
   // Send the updated popular SCTs list to the network service, if available.
   std::vector<std::vector<uint8_t>> popular_scts =
@@ -485,7 +471,8 @@ void MaybeRegisterPKIMetadataComponent(ComponentUpdateService* cus) {
 
 #if BUILDFLAG(IS_CT_SUPPORTED)
   should_install |= base::FeatureList::IsEnabled(
-      features::kCertificateTransparencyAskBeforeEnabling);
+      certificate_transparency::features::
+          kCertificateTransparencyComponentUpdater);
 #endif  // BUILDFLAG(IS_CT_SUPPORTED)
 
 #if BUILDFLAG(CHROME_ROOT_STORE_SUPPORTED)
@@ -504,9 +491,8 @@ void MaybeRegisterPKIMetadataComponent(ComponentUpdateService* cus) {
   should_install = true;
 #endif
 
-  if (!should_install) {
+  if (!should_install)
     return;
-  }
 
   auto installer = base::MakeRefCounted<ComponentInstaller>(
       std::make_unique<PKIMetadataComponentInstallerPolicy>());

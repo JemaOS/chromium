@@ -16,9 +16,7 @@ WaylandDataOffer::WaylandDataOffer(wl_data_offer* data_offer)
       source_actions_(WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE),
       dnd_action_(WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE) {
   static constexpr wl_data_offer_listener kDataOfferListener = {
-      .offer = &OnOffer,
-      .source_actions = &OnSourceActions,
-      .action = &OnAction};
+      &OnOffer, &OnSourceAction, &OnAction};
   wl_data_offer_add_listener(data_offer, &kDataOfferListener, this);
 }
 
@@ -27,12 +25,10 @@ WaylandDataOffer::~WaylandDataOffer() {
 }
 
 void WaylandDataOffer::Accept(uint32_t serial, const std::string& mime_type) {
-  mime_type_accepted_ = true;
   wl_data_offer_accept(data_offer_.get(), serial, mime_type.c_str());
 }
 
 void WaylandDataOffer::Reject(uint32_t serial) {
-  mime_type_accepted_ = false;
   // Passing a null MIME type means "reject."
   wl_data_offer_accept(data_offer_.get(), serial, nullptr);
 }
@@ -60,11 +56,7 @@ base::ScopedFD WaylandDataOffer::Receive(const std::string& mime_type) {
 void WaylandDataOffer::FinishOffer() {
   if (wl::get_version_of_object(data_offer_.get()) >=
       WL_DATA_OFFER_FINISH_SINCE_VERSION) {
-    // As per the spec it is illegal to call finish if no mimetype was accepted
-    // or no action was received.
-    if (mime_type_accepted_ && dnd_action_) {
-      wl_data_offer_finish(data_offer_.get());
-    }
+    wl_data_offer_finish(data_offer_.get());
   }
 }
 
@@ -93,9 +85,9 @@ void WaylandDataOffer::OnOffer(void* data,
   self->AddMimeType(mime_type);
 }
 
-void WaylandDataOffer::OnSourceActions(void* data,
-                                       wl_data_offer* offer,
-                                       uint32_t source_actions) {
+void WaylandDataOffer::OnSourceAction(void* data,
+                                      wl_data_offer* offer,
+                                      uint32_t source_actions) {
   auto* self = static_cast<WaylandDataOffer*>(data);
   self->source_actions_ = source_actions;
 }

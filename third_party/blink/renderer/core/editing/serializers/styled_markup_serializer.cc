@@ -250,10 +250,10 @@ String StyledMarkupSerializer<Strategy>::CreateMarkup() {
                 html_names::kBackgroundAttr)) {
           fully_selected_root_style->Style()->ParseAndSetProperty(
               CSSPropertyID::kBackgroundImage,
-              String("url('" +
-                     fully_selected_root->getAttribute(
-                         html_names::kBackgroundAttr) +
-                     "')"),
+              "url('" +
+                  fully_selected_root->getAttribute(
+                      html_names::kBackgroundAttr) +
+                  "')",
               /* important */ false,
               fully_selected_root->GetExecutionContext()
                   ->GetSecureContextMode());
@@ -325,7 +325,7 @@ StyledMarkupTraverser<Strategy>::StyledMarkupTraverser(
   }
   if (!last_closed_)
     return;
-  Element* parent = DynamicTo<Element>(Strategy::Parent(*last_closed_));
+  ContainerNode* parent = Strategy::Parent(*last_closed_);
   if (!parent)
     return;
   if (ShouldAnnotate()) {

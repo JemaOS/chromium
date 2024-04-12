@@ -4,18 +4,12 @@
 
 #include "chrome/browser/password_manager/web_app_profile_switcher.h"
 
-#include <optional>
-
-#include "base/command_line.h"
-#include "base/files/file_path.h"
-#include "base/functional/callback_helpers.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/web_applications/locks/app_lock.h"
-#include "chrome/browser/web_applications/mojom/user_display_mode.mojom-shared.h"
 #include "chrome/browser/web_applications/web_app.h"
 #include "chrome/browser/web_applications/web_app_command_scheduler.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
@@ -30,9 +24,8 @@
 
 namespace {
 
-web_app::WebAppInstallInfo MakeInstallInfoFromApp(
-    const web_app::WebApp* web_app) {
-  web_app::WebAppInstallInfo install_info;
+WebAppInstallInfo MakeInstallInfoFromApp(const web_app::WebApp* web_app) {
+  WebAppInstallInfo install_info;
   install_info.title = base::UTF8ToUTF16(web_app->untranslated_name());
   install_info.description =
       base::UTF8ToUTF16(web_app->untranslated_description());
@@ -47,7 +40,7 @@ web_app::WebAppInstallInfo MakeInstallInfoFromApp(
 
 }  // namespace
 
-WebAppProfileSwitcher::WebAppProfileSwitcher(const webapps::AppId& app_id,
+WebAppProfileSwitcher::WebAppProfileSwitcher(const web_app::AppId& app_id,
                                              Profile& active_profile,
                                              base::OnceClosure on_completion)
     : app_id_(app_id),
@@ -89,24 +82,21 @@ void WebAppProfileSwitcher::QueryProfileWebAppRegistryToOpenWebApp(
 
   auto* provider = web_app::WebAppProvider::GetForWebApps(new_profile);
   CHECK(provider);
-  provider->scheduler().ScheduleCallback(
+  provider->scheduler().ScheduleCallbackWithLock<web_app::AppLock>(
       "QueryProfileWebAppRegistryToOpenWebApp",
-      web_app::AppLockDescription(app_id_),
+      std::make_unique<web_app::AppLockDescription>(app_id_),
       base::BindOnce(
           &WebAppProfileSwitcher::InstallOrOpenWebAppWindowForProfile,
-          weak_factory_.GetWeakPtr()),
-      /*on_complete=*/base::DoNothing());
+          weak_factory_.GetWeakPtr()));
 }
 
 void WebAppProfileSwitcher::InstallOrOpenWebAppWindowForProfile(
-    web_app::AppLock& new_profile_lock,
-    base::Value::Dict& debug_value) {
+    web_app::AppLock& new_profile_lock) {
   if (new_profile_lock.registrar().IsInstalled(app_id_)) {
     // The web app is already installed and can be launched, or foregrounded,
     // if it's already launched.
     Browser* launched_app =
         web_app::AppBrowserController::FindForWebApp(*new_profile_, app_id_);
-    debug_value.Set("launched_app", launched_app ? true : false);
     if (launched_app) {
       launched_app->window()->Activate();
       RunCompletionCallback();
@@ -126,8 +116,7 @@ void WebAppProfileSwitcher::InstallOrOpenWebAppWindowForProfile(
                                  weak_factory_.GetWeakPtr()));
 }
 
-void WebAppProfileSwitcher::InstallAndLaunchWebApp(
-    web_app::IconBitmaps icon_bitmaps) {
+void WebAppProfileSwitcher::InstallAndLaunchWebApp(IconBitmaps icon_bitmaps) {
   web_app::WebAppProvider* active_profile_provider =
       web_app::WebAppProvider::GetForWebApps(&active_profile_.get());
   if (!active_profile_provider->registrar_unsafe().IsInstalled(app_id_)) {
@@ -138,16 +127,14 @@ void WebAppProfileSwitcher::InstallAndLaunchWebApp(
   const web_app::WebApp* web_app =
       active_profile_provider->registrar_unsafe().GetAppById(app_id_);
   DCHECK(web_app);
-  auto install_info = std::make_unique<web_app::WebAppInstallInfo>(
-      MakeInstallInfoFromApp(web_app));
+  auto install_info =
+      std::make_unique<WebAppInstallInfo>(MakeInstallInfoFromApp(web_app));
   install_info->icon_bitmaps = std::move(icon_bitmaps);
 
   web_app::WebAppInstallParams install_params;
   install_params.add_to_desktop = true;
   install_params.add_to_quick_launch_bar = true;
   install_params.add_to_applications_menu = true;
-  install_params.user_display_mode =
-      web_app::mojom::UserDisplayMode::kStandalone;
 
   auto* provider = web_app::WebAppProvider::GetForWebApps(new_profile_);
   CHECK(provider);
@@ -161,7 +148,7 @@ void WebAppProfileSwitcher::InstallAndLaunchWebApp(
 }
 
 void WebAppProfileSwitcher::LaunchAppWithId(
-    const webapps::AppId& app_id,
+    const web_app::AppId& app_id,
     webapps::InstallResultCode install_result) {
   // TODO(crbug/1414331): Record metrics for installation failures.
   if (!IsSuccess(install_result)) {
@@ -169,18 +156,18 @@ void WebAppProfileSwitcher::LaunchAppWithId(
     return;
   }
 
-  web_app::WebAppProvider::GetForWebApps(new_profile_)
+  apps::AppLaunchParams params(
+      app_id, apps::LaunchContainer::kLaunchContainerWindow,
+      WindowOpenDisposition::NEW_WINDOW, apps::LaunchSource::kFromProfileMenu);
+  web_app::WebAppProvider::GetForLocalAppsUnchecked(new_profile_)
       ->scheduler()
-      .LaunchApp(app_id, *base::CommandLine::ForCurrentProcess(),
-                 /*current_directory=*/base::FilePath(),
-                 /*url_handler_launch_url=*/std::nullopt,
-                 /*protocol_handler_launch_url=*/std::nullopt,
-                 /*file_launch_url=*/std::nullopt, /*launch_files=*/{},
-                 base::IgnoreArgs<base::WeakPtr<Browser>,
-                                  base::WeakPtr<content::WebContents>,
-                                  apps::LaunchContainer>(base::BindOnce(
-                     &WebAppProfileSwitcher::RunCompletionCallback,
-                     weak_factory_.GetWeakPtr())));
+      .LaunchAppWithCustomParams(
+          std::move(params),
+          base::IgnoreArgs<base::WeakPtr<Browser>,
+                           base::WeakPtr<content::WebContents>,
+                           apps::LaunchContainer>(
+              base::BindOnce(&WebAppProfileSwitcher::RunCompletionCallback,
+                             weak_factory_.GetWeakPtr())));
 }
 
 void WebAppProfileSwitcher::RunCompletionCallback() {

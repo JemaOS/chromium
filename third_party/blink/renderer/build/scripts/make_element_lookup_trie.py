@@ -27,7 +27,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from name_utilities import tag_symbol_for_entry
+from blinkbuild.name_style_converter import NameStyleConverter
 import json5_generator
 import trie_builder
 import template_expander
@@ -43,7 +43,6 @@ class ElementLookupTrieWriter(json5_generator.Writer):
         'noConstructor': {},
         'noTypeHelpers': {},
         'runtimeEnabled': {},
-        'runtimeFlagHasOriginTrial': {},
     }
     default_metadata = {
         'attrsNullNamespace': None,
@@ -54,21 +53,17 @@ class ElementLookupTrieWriter(json5_generator.Writer):
         'namespacePrefix': '',
         'namespaceURI': '',
     }
+    filters = {
+        'symbol':
+        lambda symbol: 'k' + NameStyleConverter(symbol).to_upper_camel_case()
+    }
 
     def __init__(self, json5_file_paths, output_dir):
         super(ElementLookupTrieWriter, self).__init__(json5_file_paths,
                                                       output_dir)
         self._tags = {}
-        self._tag_symbols = {}
-        self._runtimeEnabledWithoutOriginTrial = {}
         for entry in self.json5_file.name_dictionaries:
-            tagname = entry['name'].original
-            self._tags[tagname] = tagname
-            self._tag_symbols[tagname] = tag_symbol_for_entry(entry)
-            if 'runtimeEnabled' in entry and not entry.get(
-                    'runtimeFlagHasOriginTrial', False):
-                self._runtimeEnabledWithoutOriginTrial[tagname] = entry[
-                    'runtimeEnabled']
+            self._tags[entry['name'].original] = entry['name'].original
         self._namespace = self.json5_file.metadata['namespace'].strip('"')
         basename = self._namespace.lower() + '_element_lookup_trie'
         self._outputs = {
@@ -83,15 +78,13 @@ class ElementLookupTrieWriter(json5_generator.Writer):
             'namespace': self._namespace,
         }
 
-    @template_expander.use_jinja('templates/element_lookup_trie.cc.tmpl')
+    @template_expander.use_jinja(
+        'templates/element_lookup_trie.cc.tmpl', filters=filters)
     def generate_implementation(self):
         return {
             'input_files': self._input_files,
             'namespace': self._namespace,
-            'length_tries': trie_builder.trie_list_by_str_length(self._tags),
-            'runtimeEnabledWithoutOriginTrial':
-            self._runtimeEnabledWithoutOriginTrial,
-            'tag_symbols': self._tag_symbols,
+            'length_tries': trie_builder.trie_list_by_str_length(self._tags)
         }
 
 

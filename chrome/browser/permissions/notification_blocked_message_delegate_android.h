@@ -44,7 +44,7 @@ class NotificationBlockedMessageDelegate
     virtual void SetManageClicked();
     virtual void SetLearnMoreClicked();
     virtual bool ShouldUseQuietUI();
-    virtual std::optional<permissions::PermissionUiSelector::QuietUiReason>
+    virtual absl::optional<permissions::PermissionUiSelector::QuietUiReason>
     ReasonForUsingQuietUi();
 
    private:

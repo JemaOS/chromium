@@ -61,7 +61,7 @@ class SecurityOriginTest : public testing::Test {
  protected:
   void TearDown() override { SecurityPolicy::ClearOriginAccessList(); }
 
-  const std::optional<url::Origin::Nonce>& GetNonceForOrigin(
+  const absl::optional<url::Origin::Nonce>& GetNonceForOrigin(
       const SecurityOrigin& origin) {
     return origin.nonce_if_opaque_;
   }
@@ -478,7 +478,7 @@ TEST_F(SecurityOriginTest, CanonicalizeHost) {
       {"example.test", "example.test", true},
       {"EXAMPLE.TEST", "example.test", true},
       {"eXaMpLe.TeSt/path", "example.test%2Fpath", false},
-      {",", ",", true},
+      {",", "%2C", true},
       {"💩", "xn--ls8h", true},
       {"[]", "[]", false},
       {"%yo", "%25yo", false},
@@ -1099,11 +1099,11 @@ TEST_F(SecurityOriginTest, IsSameSiteWithWithLocalScheme) {
 TEST_F(SecurityOriginTest, PercentEncodesHost) {
   EXPECT_EQ(
       SecurityOrigin::CreateFromString("http://foo,.example.test/")->Host(),
-      "foo,.example.test");
+      "foo%2C.example.test");
 
   EXPECT_EQ(
       SecurityOrigin::CreateFromString("http://foo%2C.example.test/")->Host(),
-      "foo,.example.test");
+      "foo%2C.example.test");
 }
 
 TEST_F(SecurityOriginTest, NewOpaqueOriginLazyInitsNonce) {

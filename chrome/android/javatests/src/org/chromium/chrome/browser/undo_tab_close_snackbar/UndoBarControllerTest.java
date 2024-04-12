@@ -6,8 +6,8 @@ package org.chromium.chrome.browser.undo_tab_close_snackbar;
 
 import android.widget.TextView;
 
+import androidx.test.InstrumentationRegistry;
 import androidx.test.filters.SmallTest;
-import androidx.test.platform.app.InstrumentationRegistry;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -16,7 +16,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.chromium.base.test.util.CommandLineFlags;
-import org.chromium.base.test.util.Restriction;
+import org.chromium.base.test.util.DisableIf;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
@@ -26,13 +27,17 @@ import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.ChromeTabbedActivityTestRule;
 import org.chromium.chrome.test.R;
 import org.chromium.chrome.test.util.ChromeTabUtils;
+import org.chromium.chrome.test.util.browser.Features;
+import org.chromium.chrome.test.util.browser.Features.EnableFeatures;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
-import org.chromium.ui.test.util.UiRestriction;
+import org.chromium.ui.test.util.UiDisableIf;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
-/** Tests for the UndoBarController. */
+/**
+ * Tests for the UndoBarController.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 public class UndoBarControllerTest {
@@ -137,7 +142,19 @@ public class UndoBarControllerTest {
 
     @Test
     @SmallTest
-    public void testUndoSnackbarDisabled_AccessibilityEnabled() throws Exception {
+    // When both START_SURFACE_ANDROID and TAB_GROUPS_CONTINUATION_ANDROID are enabled, changing
+    // accessibility status won't recreate ChromeTabbedActivity.
+    @EnableFeatures({ChromeFeatureList.START_SURFACE_ANDROID,
+            ChromeFeatureList.START_SURFACE_WITH_ACCESSIBILITY})
+    // clang-format off
+    @CommandLineFlags.Add({
+            "enable-features=" + ChromeFeatureList.TAB_GROUPS_CONTINUATION_ANDROID + "<Study",
+            "force-fieldtrials=Study/Group",
+            "force-fieldtrial-params=Study.Group:gts-low-end-support/true" +
+                                               "/gts-accessibility-support/true"})
+    // clang-format on
+    public void
+    testUndoSnackbarDisabled_AccessibilityEnabled() throws Exception {
         TestThreadUtils.runOnUiThreadBlocking(
                 () -> ChromeAccessibilityUtil.get().setAccessibilityEnabledForTesting(true));
         ChromeTabUtils.newTabFromMenu(
@@ -155,8 +172,18 @@ public class UndoBarControllerTest {
 
     @Test
     @SmallTest
-    @Restriction(UiRestriction.RESTRICTION_TYPE_PHONE)
-    public void testUndoSnackbarEnabled_AccessibilityEnabled() throws Exception {
+    @DisableIf.Device(type = {UiDisableIf.TABLET}) // crbug/1199248
+    @Features.EnableFeatures({ChromeFeatureList.START_SURFACE_WITH_ACCESSIBILITY})
+    // clang-format off
+    @CommandLineFlags.Add({
+            "enable-features=" + ChromeFeatureList.TAB_GROUPS_CONTINUATION_ANDROID + "<Study",
+            "force-fieldtrials=Study/Group",
+            "force-fieldtrial-params=Study.Group:gts-low-end-support/true" +
+                                               "/gts-accessibility-support/true"})
+    // clang-format on
+    public void
+    testUndoSnackbarEnabled_AccessibilityEnabledWithGroupM5() throws Exception {
+        // clang-format on
         TestThreadUtils.runOnUiThreadBlocking(
                 () -> ChromeAccessibilityUtil.get().setAccessibilityEnabledForTesting(true));
 
@@ -168,8 +195,7 @@ public class UndoBarControllerTest {
 
         Snackbar currentSnackbar = getCurrentSnackbar();
         Assert.assertEquals("Incorrect snackbar text", "Closed about:blank", getSnackbarText());
-        Assert.assertTrue(
-                "Incorrect SnackbarController type",
+        Assert.assertTrue("Incorrect SnackbarController type",
                 currentSnackbar.getController() instanceof UndoBarController);
         Assert.assertEquals(
                 "Tab Model should contain 0 tab after tab closed", 0, mTabModel.getCount());
@@ -177,17 +203,15 @@ public class UndoBarControllerTest {
 
     private void clickSnackbar() {
         TestThreadUtils.runOnUiThreadBlocking(
-                () ->
-                        mSnackbarManager.onClick(
-                                mActivityTestRule
-                                        .getActivity()
-                                        .findViewById(R.id.snackbar_button)));
+                ()
+                        -> mSnackbarManager.onClick(mActivityTestRule.getActivity().findViewById(
+                                R.id.snackbar_button)));
     }
 
     private void dismissSnackbars() {
         TestThreadUtils.runOnUiThreadBlocking(
-                () ->
-                        mSnackbarManager.dismissSnackbars(
+                ()
+                        -> mSnackbarManager.dismissSnackbars(
                                 mSnackbarManager.getCurrentSnackbarForTesting().getController()));
     }
 
@@ -198,12 +222,11 @@ public class UndoBarControllerTest {
     }
 
     private Snackbar getCurrentSnackbar() throws ExecutionException {
-        return TestThreadUtils.runOnUiThreadBlocking(
-                new Callable<Snackbar>() {
-                    @Override
-                    public Snackbar call() {
-                        return mSnackbarManager.getCurrentSnackbarForTesting();
-                    }
-                });
+        return TestThreadUtils.runOnUiThreadBlocking(new Callable<Snackbar>() {
+            @Override
+            public Snackbar call() {
+                return mSnackbarManager.getCurrentSnackbarForTesting();
+            }
+        });
     }
 }

@@ -20,8 +20,7 @@ namespace policy {
 // static
 UserCloudPolicyInvalidatorFactory*
     UserCloudPolicyInvalidatorFactory::GetInstance() {
-  static base::NoDestructor<UserCloudPolicyInvalidatorFactory> instance;
-  return instance.get();
+  return base::Singleton<UserCloudPolicyInvalidatorFactory>::get();
 }
 
 UserCloudPolicyInvalidatorFactory::UserCloudPolicyInvalidatorFactory()
@@ -36,11 +35,9 @@ UserCloudPolicyInvalidatorFactory::UserCloudPolicyInvalidatorFactory()
   DependsOn(invalidation::ProfileInvalidationProviderFactory::GetInstance());
 }
 
-UserCloudPolicyInvalidatorFactory::~UserCloudPolicyInvalidatorFactory() =
-    default;
+UserCloudPolicyInvalidatorFactory::~UserCloudPolicyInvalidatorFactory() {}
 
-std::unique_ptr<KeyedService>
-UserCloudPolicyInvalidatorFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* UserCloudPolicyInvalidatorFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = static_cast<Profile*>(context);
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -51,7 +48,7 @@ UserCloudPolicyInvalidatorFactory::BuildServiceInstanceForBrowserContext(
   if (!policy_manager)
     return nullptr;
 
-  return std::make_unique<UserCloudPolicyInvalidator>(profile, policy_manager);
+  return new UserCloudPolicyInvalidator(profile, policy_manager);
 }
 
 bool UserCloudPolicyInvalidatorFactory::

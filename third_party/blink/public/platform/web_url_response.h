@@ -32,24 +32,21 @@
 #define THIRD_PARTY_BLINK_PUBLIC_PLATFORM_WEB_URL_RESPONSE_H_
 
 #include <memory>
-#include <optional>
-#include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
 #include "base/unguessable_token.h"
-#include "net/base/auth.h"
 #include "net/base/ip_endpoint.h"
 #include "net/cert/ct_policy_status.h"
-#include "net/http/alternate_protocol_usage.h"
-#include "net/http/http_connection_info.h"
+#include "net/http/http_response_info.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/security/security_style.h"
 #include "third_party/blink/public/platform/web_common.h"
 #include "third_party/blink/public/platform/web_string.h"
 #include "third_party/blink/public/platform/web_vector.h"
 
 namespace network {
-class TriggerVerification;
+class TriggerAttestation;
 namespace mojom {
 enum class AlternateProtocolUsage;
 enum class FetchResponseSource;
@@ -58,7 +55,6 @@ enum class IPAddressSpace : int32_t;
 enum class PrivateNetworkAccessPreflightResult;
 class URLResponseHead;
 class LoadTimingInfo;
-class ServiceWorkerRouterInfo;
 }  // namespace mojom
 }  // namespace network
 
@@ -116,8 +112,8 @@ class BLINK_PLATFORM_EXPORT WebURLResponse {
 
   void SetConnectionReused(bool);
 
-  void SetTriggerVerifications(
-      const std::vector<network::TriggerVerification>&);
+  void SetTriggerAttestation(
+      const absl::optional<network::TriggerAttestation>&);
 
   void SetLoadTiming(const network::mojom::LoadTimingInfo&);
 
@@ -187,13 +183,6 @@ class BLINK_PLATFORM_EXPORT WebURLResponse {
   network::mojom::FetchResponseSource GetServiceWorkerResponseSource() const;
   void SetServiceWorkerResponseSource(network::mojom::FetchResponseSource);
 
-  // See network.mojom.URLResponseHead.static_routing_info.
-  void SetServiceWorkerRouterInfo(
-      const network::mojom::ServiceWorkerRouterInfo&);
-
-  // Flag whether a shared dictionary was used to decompress the response body.
-  void SetDidUseSharedDictionary(bool);
-
   // https://fetch.spec.whatwg.org/#concept-response-type
   void SetType(network::mojom::FetchResponseType);
   network::mojom::FetchResponseType GetType() const;
@@ -258,8 +247,8 @@ class BLINK_PLATFORM_EXPORT WebURLResponse {
   void SetWasAlternateProtocolAvailable(bool);
 
   // Information about the type of connection used to fetch this resource.
-  net::HttpConnectionInfo ConnectionInfo() const;
-  void SetConnectionInfo(net::HttpConnectionInfo);
+  net::HttpResponseInfo::ConnectionInfo ConnectionInfo() const;
+  void SetConnectionInfo(net::HttpResponseInfo::ConnectionInfo);
 
   // Whether the response was cached and validated over the network.
   void SetIsValidated(bool);
@@ -272,10 +261,9 @@ class BLINK_PLATFORM_EXPORT WebURLResponse {
   void SetEncodedBodyLength(uint64_t);
 
   void SetIsSignedExchangeInnerResponse(bool);
-  void SetIsWebBundleInnerResponse(bool);
   void SetWasInPrefetchCache(bool);
   void SetWasCookieInRequest(bool);
-  void SetRecursivePrefetchToken(const std::optional<base::UnguessableToken>&);
+  void SetRecursivePrefetchToken(const absl::optional<base::UnguessableToken>&);
 
   // Whether this resource is from a MHTML archive.
   bool FromArchive() const;
@@ -285,8 +273,11 @@ class BLINK_PLATFORM_EXPORT WebURLResponse {
   // through to query name.
   void SetDnsAliases(const WebVector<WebString>&);
 
-  void SetAuthChallengeInfo(const std::optional<net::AuthChallengeInfo>&);
-  const std::optional<net::AuthChallengeInfo>& AuthChallengeInfo() const;
+  WebURL WebBundleURL() const;
+  void SetWebBundleURL(const WebURL&);
+
+  void SetAuthChallengeInfo(const absl::optional<net::AuthChallengeInfo>&);
+  const absl::optional<net::AuthChallengeInfo>& AuthChallengeInfo() const;
 
   // The request's |includeCredentials| value from the "HTTP-network fetch"
   // algorithm.
@@ -294,10 +285,8 @@ class BLINK_PLATFORM_EXPORT WebURLResponse {
   void SetRequestIncludeCredentials(bool);
   bool RequestIncludeCredentials() const;
 
-  void SetShouldUseSourceHashForJSCodeCache(bool);
-  bool ShouldUseSourceHashForJSCodeCache() const;
-
   void SetWasFetchedViaCache(bool);
+  void SetArrivalTimeAtRenderer(base::TimeTicks arrival);
 
 #if INSIDE_BLINK
  protected:

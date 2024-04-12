@@ -235,13 +235,13 @@ void AddGooglePhotosPhotoIfValid(
   // A photo from Google Photos may or may not have a location set.
   parsed_response->photos->push_back(
       ash::personalization_app::mojom::GooglePhotosPhoto::New(
-          *id, dedup_key ? std::make_optional(*dedup_key) : std::nullopt, name,
-          date, GURL(*url),
-          location ? std::make_optional(*location) : std::nullopt));
+          *id, dedup_key ? absl::make_optional(*dedup_key) : absl::nullopt,
+          name, date, GURL(*url),
+          location ? absl::make_optional(*location) : absl::nullopt));
 }
 
 // Returns the `GooglePhotosApi` associated with the specified `url`.
-std::optional<GooglePhotosApi> ToGooglePhotosApi(const GURL& url) {
+absl::optional<GooglePhotosApi> ToGooglePhotosApi(const GURL& url) {
   const std::string& spec = url.spec();
   if (base::StartsWith(spec, kGooglePhotosEnabledUrl)) {
     return GooglePhotosApi::kGetEnabled;
@@ -261,7 +261,7 @@ std::optional<GooglePhotosApi> ToGooglePhotosApi(const GURL& url) {
   if (base::StartsWith(spec, kGooglePhotosPhotosUrl)) {
     return GooglePhotosApi::kGetPhotos;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace
@@ -617,9 +617,9 @@ void GooglePhotosFetcher<T>::AddRequestAndStartIfNecessary(
 }
 
 template <typename T>
-std::optional<base::Value> GooglePhotosFetcher<T>::CreateErrorResponse(
+absl::optional<base::Value> GooglePhotosFetcher<T>::CreateErrorResponse(
     int error_code) {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 template <typename T>
@@ -632,7 +632,7 @@ void GooglePhotosFetcher<T>::OnTokenReceived(
   if (error.state() != GoogleServiceAuthError::NONE) {
     LOG(ERROR) << "Failed to authenticate Google Photos API request to "
                << service_url.spec() << ". Error message: " << error.ToString();
-    OnResponseReady(service_url, start_time, std::nullopt);
+    OnResponseReady(service_url, start_time, absl::nullopt);
     return;
   }
 
@@ -682,7 +682,7 @@ void GooglePhotosFetcher<T>::OnJsonReceived(
     LOG(ERROR) << "Google Photos API request to " << service_url.spec()
                << " failed.";
     auto* response_info = loader->ResponseInfo();
-    std::optional<base::Value> error_response;
+    absl::optional<base::Value> error_response;
     if (response_info && response_info->headers) {
       LOG(ERROR) << "HTTP response code: "
                  << response_info->headers->response_code();
@@ -698,13 +698,13 @@ void GooglePhotosFetcher<T>::OnJsonReceived(
       base::BindOnce(
           [](const GURL& service_url,
              data_decoder::DataDecoder::ValueOrError result)
-              -> std::optional<base::Value> {
+              -> absl::optional<base::Value> {
             if (!result.has_value()) {
               LOG(ERROR) << "Failed to parse JSON response from Google Photos "
                             "API request to "
                          << service_url.spec()
                          << ". Error message: " << result.error();
-              return std::nullopt;
+              return absl::nullopt;
             }
             return std::move(*result);
           },
@@ -718,7 +718,7 @@ template <typename T>
 void GooglePhotosFetcher<T>::OnResponseReady(
     const GURL& service_url,
     base::TimeTicks start_time,
-    std::optional<base::Value> response) {
+    absl::optional<base::Value> response) {
   auto result =
       ParseResponse(response.has_value() ? response->GetIfDict() : nullptr);
 
@@ -757,7 +757,7 @@ GooglePhotosAlbumsFetcher::~GooglePhotosAlbumsFetcher() {
 }
 
 void GooglePhotosAlbumsFetcher::AddRequestAndStartIfNecessary(
-    const std::optional<std::string>& resume_token,
+    const absl::optional<std::string>& resume_token,
     base::OnceCallback<void(GooglePhotosAlbumsCbkArgs)> callback) {
   GURL service_url = GURL(kGooglePhotosAlbumsUrl);
   if (resume_token.has_value()) {
@@ -821,10 +821,10 @@ GooglePhotosAlbumsCbkArgs GooglePhotosAlbumsFetcher::ParseResponse(
   return parsed_response;
 }
 
-std::optional<size_t> GooglePhotosAlbumsFetcher::GetResultCount(
+absl::optional<size_t> GooglePhotosAlbumsFetcher::GetResultCount(
     const GooglePhotosAlbumsCbkArgs& result) {
-  return result && result->albums ? std::make_optional(result->albums->size())
-                                  : std::nullopt;
+  return result && result->albums ? absl::make_optional(result->albums->size())
+                                  : absl::nullopt;
 }
 
 GooglePhotosSharedAlbumsFetcher::GooglePhotosSharedAlbumsFetcher(
@@ -841,7 +841,7 @@ GooglePhotosSharedAlbumsFetcher::~GooglePhotosSharedAlbumsFetcher() {
 }
 
 void GooglePhotosSharedAlbumsFetcher::AddRequestAndStartIfNecessary(
-    const std::optional<std::string>& resume_token,
+    const absl::optional<std::string>& resume_token,
     base::OnceCallback<void(GooglePhotosAlbumsCbkArgs)> callback) {
   if (!IsGooglePhotosIntegrationPolicyEnabled()) {
     DVLOG(1) << __FUNCTION__
@@ -912,10 +912,10 @@ GooglePhotosAlbumsCbkArgs GooglePhotosSharedAlbumsFetcher::ParseResponse(
   return parsed_response;
 }
 
-std::optional<size_t> GooglePhotosSharedAlbumsFetcher::GetResultCount(
+absl::optional<size_t> GooglePhotosSharedAlbumsFetcher::GetResultCount(
     const GooglePhotosAlbumsCbkArgs& result) {
-  return result && result->albums ? std::make_optional(result->albums->size())
-                                  : std::nullopt;
+  return result && result->albums ? absl::make_optional(result->albums->size())
+                                  : absl::nullopt;
 }
 
 GooglePhotosEnabledFetcher::GooglePhotosEnabledFetcher(Profile* profile)
@@ -959,10 +959,10 @@ GooglePhotosEnablementState GooglePhotosEnabledFetcher::ParseResponse(
                    : GooglePhotosEnablementState::kError;
 }
 
-std::optional<size_t> GooglePhotosEnabledFetcher::GetResultCount(
+absl::optional<size_t> GooglePhotosEnabledFetcher::GetResultCount(
     const GooglePhotosEnablementState& result) {
-  return result != GooglePhotosEnablementState::kError ? std::make_optional(1u)
-                                                       : std::nullopt;
+  return result != GooglePhotosEnablementState::kError ? absl::make_optional(1u)
+                                                       : absl::nullopt;
 }
 
 GooglePhotosPhotosFetcher::GooglePhotosPhotosFetcher(Profile* profile)
@@ -977,9 +977,9 @@ GooglePhotosPhotosFetcher::~GooglePhotosPhotosFetcher() {
                                     photos_api_refresh_counter_);
 }
 void GooglePhotosPhotosFetcher::AddRequestAndStartIfNecessary(
-    const std::optional<std::string>& item_id,
-    const std::optional<std::string>& album_id,
-    const std::optional<std::string>& resume_token,
+    const absl::optional<std::string>& item_id,
+    const absl::optional<std::string>& album_id,
+    const absl::optional<std::string>& resume_token,
     bool shuffle,
     base::OnceCallback<void(GooglePhotosPhotosCbkArgs)> callback) {
   if (!IsGooglePhotosIntegrationPolicyEnabled()) {
@@ -1022,17 +1022,17 @@ void GooglePhotosPhotosFetcher::AddRequestAndStartIfNecessary(
                                                      std::move(callback));
 }
 
-std::optional<base::Value> GooglePhotosPhotosFetcher::CreateErrorResponse(
+absl::optional<base::Value> GooglePhotosPhotosFetcher::CreateErrorResponse(
     int error_code) {
   // If the server gives us 404, that means the request succeeded, but no
   // photos with the given attributes exist. We return an empty list of photos
   // to communicate this back to the caller.
   if (error_code == net::HTTP_NOT_FOUND) {
-    auto empty_list_response =
-        base::Value::Dict().Set("item", base::Value::List());
-    return base::Value(std::move(empty_list_response));
+    absl::optional<base::Value> empty_list(base::Value::Type::DICT);
+    empty_list->SetKey("item", base::Value(base::Value::Type::LIST));
+    return empty_list;
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 GooglePhotosPhotosCbkArgs GooglePhotosPhotosFetcher::ParseResponse(
@@ -1066,10 +1066,10 @@ GooglePhotosPhotosCbkArgs GooglePhotosPhotosFetcher::ParseResponse(
   return parsed_response;
 }
 
-std::optional<size_t> GooglePhotosPhotosFetcher::GetResultCount(
+absl::optional<size_t> GooglePhotosPhotosFetcher::GetResultCount(
     const GooglePhotosPhotosCbkArgs& result) {
-  return result && result->photos ? std::make_optional(result->photos->size())
-                                  : std::nullopt;
+  return result && result->photos ? absl::make_optional(result->photos->size())
+                                  : absl::nullopt;
 }
 
 }  // namespace wallpaper_handlers

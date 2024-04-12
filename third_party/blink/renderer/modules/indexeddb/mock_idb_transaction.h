@@ -14,7 +14,6 @@
 
 namespace blink {
 
-// Mock for the **remote** (i.e. the browser side of the Mojo connection).
 class MockIDBTransaction
     : public testing::StrictMock<mojom::blink::IDBTransaction> {
  public:

@@ -20,10 +20,6 @@ namespace base {
 class CancelableTaskTracker;
 }  // namespace base
 
-namespace desks_storage {
-class DeskModel;
-}  // namespace desks_storage
-
 namespace gfx {
 class ImageSkia;
 }  // namespace gfx
@@ -40,14 +36,12 @@ class ChromeSavedDeskDelegate : public ash::SavedDeskDelegate {
       aura::Window* window,
       GetAppLaunchDataCallback callback) const override;
   desks_storage::DeskModel* GetDeskModel() override;
-  desks_storage::AdminTemplateService* GetAdminTemplateService() override;
-  bool IsWindowPersistable(aura::Window* window) const override;
-  std::optional<gfx::ImageSkia> MaybeRetrieveIconForSpecialIdentifier(
+  bool IsIncognitoWindow(aura::Window* window) const override;
+  absl::optional<gfx::ImageSkia> MaybeRetrieveIconForSpecialIdentifier(
       const std::string& identifier,
       const ui::ColorProvider* color_provider) const override;
   void GetFaviconForUrl(
       const std::string& page_url,
-      uint64_t lacros_profile_id,
       base::OnceCallback<void(const gfx::ImageSkia&)> callback,
       base::CancelableTaskTracker* tracker) const override;
   void GetIconForAppId(
@@ -73,9 +67,9 @@ class ChromeSavedDeskDelegate : public ash::SavedDeskDelegate {
   void GetLacrosChromeInfo(
       GetAppLaunchDataCallback callback,
       const std::string& window_unique_id,
-      std::unique_ptr<app_restore::AppLaunchInfo> app_launch_info) const;
+      std::unique_ptr<app_restore::AppLaunchInfo> app_launch_info);
 
-  mutable base::WeakPtrFactory<ChromeSavedDeskDelegate> weak_factory_{this};
+  base::WeakPtrFactory<ChromeSavedDeskDelegate> weak_factory_{this};
 };
 
 #endif  // CHROME_BROWSER_UI_ASH_DESKS_CHROME_SAVED_DESK_DELEGATE_H_

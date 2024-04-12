@@ -10,6 +10,8 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityManager;
+import android.view.accessibility.AccessibilityManager.AccessibilityStateChangeListener;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -23,18 +25,21 @@ import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 import org.chromium.chrome.browser.language.R;
 import org.chromium.components.browser_ui.widget.dragreorder.DragReorderableListAdapter;
 import org.chromium.components.browser_ui.widget.dragreorder.DragStateDelegate;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuButton;
+import org.chromium.components.browser_ui.widget.listmenu.ListMenuButtonDelegate;
 import org.chromium.components.browser_ui.widget.selectable_list.SelectableListUtils;
-import org.chromium.ui.accessibility.AccessibilityState;
-import org.chromium.ui.listmenu.ListMenuButton;
-import org.chromium.ui.listmenu.ListMenuButtonDelegate;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-/** BaseAdapter for {@link RecyclerView}. It manages languages to list there. */
+/**
+ * BaseAdapter for {@link RecyclerView}. It manages languages to list there.
+ */
 public class LanguageListBaseAdapter extends DragReorderableListAdapter<LanguageItem> {
-    /** Listener used to respond to click event on a language item. */
+    /**
+     * Listener used to respond to click event on a language item.
+     */
     interface ItemClickListener {
         /**
          * @param item The clicked LanguageItem.
@@ -74,9 +79,7 @@ public class LanguageListBaseAdapter extends DragReorderableListAdapter<Language
                 mDescription.setText(item.getNativeDisplayName());
             }
 
-            SelectableListUtils.setContentDescriptionContext(
-                    mMoreButton.getContext(),
-                    mMoreButton,
+            SelectableListUtils.setContentDescriptionContext(mMoreButton.getContext(), mMoreButton,
                     item.getDisplayName(),
                     SelectableListUtils.ContentDescriptionSource.MENU_BUTTON);
 
@@ -102,12 +105,8 @@ public class LanguageListBaseAdapter extends DragReorderableListAdapter<Language
             mMoreButton.setVisibility(View.VISIBLE);
             mMoreButton.setDelegate(delegate);
             // Set item row end padding 0 when MenuButton is visible.
-            ViewCompat.setPaddingRelative(
-                    itemView,
-                    ViewCompat.getPaddingStart(itemView),
-                    itemView.getPaddingTop(),
-                    0,
-                    itemView.getPaddingBottom());
+            ViewCompat.setPaddingRelative(itemView, ViewCompat.getPaddingStart(itemView),
+                    itemView.getPaddingTop(), 0, itemView.getPaddingBottom());
         }
 
         /**
@@ -120,17 +119,29 @@ public class LanguageListBaseAdapter extends DragReorderableListAdapter<Language
         }
     }
 
-    /** Keeps track of whether drag is enabled / active for language preference lists. */
-    private class LanguageDragStateDelegate
-            implements DragStateDelegate, AccessibilityState.Listener {
+    /**
+     * Keeps track of whether drag is enabled / active for language preference lists.
+     */
+    private class LanguageDragStateDelegate implements DragStateDelegate {
+        private AccessibilityManager mA11yManager;
+        private AccessibilityStateChangeListener mA11yListener;
+        private boolean mA11yEnabled;
+
         public LanguageDragStateDelegate() {
-            AccessibilityState.addListener(this);
+            mA11yManager =
+                    (AccessibilityManager) mContext.getSystemService(Context.ACCESSIBILITY_SERVICE);
+            mA11yEnabled = mA11yManager.isEnabled();
+            mA11yListener = enabled -> {
+                mA11yEnabled = enabled;
+                notifyDataSetChanged();
+            };
+            mA11yManager.addAccessibilityStateChangeListener(mA11yListener);
         }
 
         // DragStateDelegate implementation
         @Override
         public boolean getDragEnabled() {
-            return !AccessibilityState.isPerformGesturesEnabled();
+            return !mA11yEnabled;
         }
 
         @Override
@@ -139,10 +150,11 @@ public class LanguageListBaseAdapter extends DragReorderableListAdapter<Language
         }
 
         @Override
-        public void onAccessibilityStateChanged(
-                AccessibilityState.State oldAccessibilityState,
-                AccessibilityState.State newAccessibilityState) {
-            notifyDataSetChanged();
+        public void setA11yStateForTesting(boolean a11yEnabled) {
+            mA11yManager.removeAccessibilityStateChangeListener(mA11yListener);
+            mA11yListener = null;
+            mA11yManager = null;
+            mA11yEnabled = a11yEnabled;
         }
     }
 
@@ -161,21 +173,19 @@ public class LanguageListBaseAdapter extends DragReorderableListAdapter<Language
         if (getItemCount() <= 1 || !mDragStateDelegate.getDragEnabled()) return;
 
         assert mItemTouchHelper != null;
-        holder.setStartIcon(R.drawable.ic_drag_handle_24dp);
-        holder.mStartIcon.setOnTouchListener(
-                (v, event) -> {
-                    if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                        mItemTouchHelper.startDrag(holder);
-                    }
-                    return false;
-                });
+        holder.setStartIcon(R.drawable.ic_drag_handle_grey600_24dp);
+        holder.mStartIcon.setOnTouchListener((v, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                mItemTouchHelper.startDrag(holder);
+            }
+            return false;
+        });
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
-        View row =
-                LayoutInflater.from(viewGroup.getContext())
-                        .inflate(R.layout.accept_languages_item, viewGroup, false);
+        View row = LayoutInflater.from(viewGroup.getContext())
+                           .inflate(R.layout.accept_languages_item, viewGroup, false);
         return new LanguageRowViewHolder(row);
     }
 

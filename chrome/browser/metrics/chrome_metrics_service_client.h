@@ -10,7 +10,6 @@
 #include <memory>
 #include <queue>
 #include <string>
-#include <string_view>
 
 #include "base/callback_list.h"
 #include "base/functional/callback.h"
@@ -41,6 +40,10 @@
 #include "ppapi/buildflags/buildflags.h"
 #include "third_party/metrics_proto/system_profile.pb.h"
 
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+#include "chrome/browser/metrics/per_user_state_manager_chromeos.h"
+#endif
+
 class BrowserActivityWatcher;
 class Profile;
 class ProfileManager;
@@ -53,10 +56,6 @@ class NetworkTimeTracker;
 namespace metrics {
 class MetricsService;
 class MetricsStateManager;
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-class PerUserStateManagerChromeOS;
-#endif
 }  // namespace metrics
 
 // ChromeMetricsServiceClient provides an implementation of MetricsServiceClient
@@ -77,8 +76,7 @@ class ChromeMetricsServiceClient
 
   // Factory function.
   static std::unique_ptr<ChromeMetricsServiceClient> Create(
-      metrics::MetricsStateManager* state_manager,
-      variations::SyntheticTrialRegistry* synthetic_trial_registry);
+      metrics::MetricsStateManager* state_manager);
 
   // Registers local state prefs used by this class.
   static void RegisterPrefs(PrefRegistrySimple* registry);
@@ -92,9 +90,6 @@ class ChromeMetricsServiceClient
   variations::SyntheticTrialRegistry* GetSyntheticTrialRegistry() override;
   metrics::MetricsService* GetMetricsService() override;
   ukm::UkmService* GetUkmService() override;
-  IdentifiabilityStudyState* GetIdentifiabilityStudyState() override;
-  metrics::structured::StructuredMetricsService* GetStructuredMetricsService()
-      override;
   void SetMetricsClientId(const std::string& client_id) override;
   int32_t GetProduct() override;
   std::string GetApplicationLocale() override;
@@ -104,12 +99,11 @@ class ChromeMetricsServiceClient
   bool IsExtendedStableChannel() override;
   std::string GetVersionString() override;
   void OnEnvironmentUpdate(std::string* serialized_environment) override;
-  void MergeSubprocessHistograms() override;
   void CollectFinalMetricsForLog(base::OnceClosure done_callback) override;
   std::unique_ptr<metrics::MetricsLogUploader> CreateUploader(
       const GURL& server_url,
       const GURL& insecure_server_url,
-      std::string_view mime_type,
+      base::StringPiece mime_type,
       metrics::MetricsLogUploader::MetricServiceType service_type,
       const metrics::MetricsLogUploader::UploadCallback& on_upload_complete)
       override;
@@ -131,8 +125,8 @@ class ChromeMetricsServiceClient
   bool ShouldUploadMetricsForUserId(const uint64_t user_id) override;
   void InitPerUserMetrics() override;
   void UpdateCurrentUserMetricsConsent(bool user_metrics_consent) override;
-  std::optional<bool> GetCurrentUserMetricsConsent() const override;
-  std::optional<std::string> GetCurrentUserId() const override;
+  absl::optional<bool> GetCurrentUserMetricsConsent() const override;
+  absl::optional<std::string> GetCurrentUserId() const override;
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
   // ukm::HistoryDeleteObserver:
@@ -164,8 +158,7 @@ class ChromeMetricsServiceClient
 
  protected:
   explicit ChromeMetricsServiceClient(
-      metrics::MetricsStateManager* state_manager,
-      variations::SyntheticTrialRegistry* synthetic_trial_registry);
+      metrics::MetricsStateManager* state_manager);
 
   // Completes the two-phase initialization of ChromeMetricsServiceClient.
   void Initialize();
@@ -215,15 +208,13 @@ class ChromeMetricsServiceClient
 #endif
 
   // Check if an extension is installed via the Web Store.
-  static bool IsWebstoreExtension(std::string_view id);
+  static bool IsWebstoreExtension(base::StringPiece id);
 
   // Resets client state (i.e. client id) if MSBB or App-sync consent
-  // is changed from on to off. For non-ChromeOS platforms, this will no-op.
+  // is changed from on to off. NOOP when kAppMetricsOnlyRelyOnAppSync is
+  // disabled.
   void ResetClientStateWhenMsbbOrAppConsentIsRevoked(
       ukm::UkmConsentState previous_consent_state);
-
-  // Creates the Structured Metrics Service based on the platform.
-  void CreateStructuredMetricsService();
 
   SEQUENCE_CHECKER(sequence_checker_);
 
@@ -234,7 +225,7 @@ class ChromeMetricsServiceClient
   const raw_ptr<metrics::MetricsStateManager> metrics_state_manager_;
 
   // The synthetic trial registry shared by metrics_service_ and ukm_service_.
-  const raw_ptr<variations::SyntheticTrialRegistry> synthetic_trial_registry_;
+  std::unique_ptr<variations::SyntheticTrialRegistry> synthetic_trial_registry_;
 
   // Metrics service observer for synthetic trials.
   metrics::PersistentSyntheticTrialObserver synthetic_trial_observer_;
@@ -247,10 +238,6 @@ class ChromeMetricsServiceClient
   // and it must be destroyed after they are. Manages SystemProfile information
   // needed by other metrics providers.
   std::unique_ptr<metrics::MetricsProvider> cros_system_profile_provider_;
-
-  // The StructuredMetricsService that |this| is a client of.
-  std::unique_ptr<metrics::structured::StructuredMetricsService>
-      structured_metrics_service_;
 
   // The MetricsService that |this| is a client of.
   std::unique_ptr<metrics::MetricsService> metrics_service_;

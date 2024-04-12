@@ -7,7 +7,9 @@
 #include "chrome/common/extensions/api/file_system_provider.h"
 #include "chrome/common/extensions/api/file_system_provider_internal.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 OpenFile::OpenFile(RequestDispatcher* dispatcher,
                    const ProvidedFileSystemInfo& file_system_info,
@@ -19,7 +21,8 @@ OpenFile::OpenFile(RequestDispatcher* dispatcher,
       mode_(mode),
       callback_(std::move(callback)) {}
 
-OpenFile::~OpenFile() = default;
+OpenFile::~OpenFile() {
+}
 
 bool OpenFile::Execute(int request_id) {
   using extensions::api::file_system_provider::OpenFileRequestedOptions;
@@ -35,11 +38,11 @@ bool OpenFile::Execute(int request_id) {
 
   switch (mode_) {
     case OPEN_FILE_MODE_READ:
-      options.mode = extensions::api::file_system_provider::OpenFileMode::kRead;
+      options.mode = extensions::api::file_system_provider::OPEN_FILE_MODE_READ;
       break;
     case OPEN_FILE_MODE_WRITE:
       options.mode =
-          extensions::api::file_system_provider::OpenFileMode::kWrite;
+          extensions::api::file_system_provider::OPEN_FILE_MODE_WRITE;
       break;
   }
 
@@ -55,9 +58,6 @@ void OpenFile::OnSuccess(int request_id,
                          const RequestValue& result,
                          bool has_more) {
   // File handle is the same as request id of the OpenFile operation.
-  // TODO(b/330089398): Handle the `result` value when it gets returned with
-  // `EntryMetadata`. This is introduced as an optional field so not handling it
-  // here does not change the existing behaviour.
   DCHECK(callback_);
   std::move(callback_).Run(request_id, base::File::FILE_OK);
 }
@@ -69,4 +69,6 @@ void OpenFile::OnError(int /* request_id */,
   std::move(callback_).Run(0 /* file_handle */, error);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

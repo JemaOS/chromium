@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {BrowserService, ForeignSession, QueryResult, RemoveVisitsRequest} from 'chrome://history/history.js';
+import {BrowserService, ForeignSession, QueryResult, RemoveVisitsRequest} from 'chrome://history/history.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
 import {assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
@@ -32,7 +32,6 @@ export class TestBrowserService extends TestBrowserProxy implements
       'recordHistogram',
       'recordLongTime',
       'removeVisits',
-      'setLastSelectedTab',
       'startTurnOnSyncFlow',
     ]);
 
@@ -75,10 +74,6 @@ export class TestBrowserService extends TestBrowserProxy implements
       return this.delayedRemove_.promise;
     }
     return Promise.resolve();
-  }
-
-  setLastSelectedTab(lastSelectedTab: number) {
-    this.methodCalled('setLastSelectedTab', lastSelectedTab);
   }
 
   // Resolves the removeVisits promise. delayRemove() must be called first.

@@ -55,7 +55,7 @@ class EventMonitorTest : public WidgetTest {
     generator_->set_target(ui::test::EventGenerator::Target::APPLICATION);
   }
   void TearDown() override {
-    widget_.ExtractAsDangling()->CloseNow();
+    widget_->CloseNow();
     WidgetTest::TearDown();
   }
 

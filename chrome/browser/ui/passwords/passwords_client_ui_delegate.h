@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "base/functional/callback.h"
-#include "base/memory/raw_ptr.h"
 #include "components/password_manager/core/browser/leak_detection_dialog_utils.h"
 #include "components/password_manager/core/browser/password_form.h"
 #include "components/prefs/pref_service.h"
@@ -83,8 +82,8 @@ class PasswordsClientUIDelegate {
   // Called when the password will be saved automatically, but we still wish to
   // visually inform the user that the save has occured.
   virtual void OnAutomaticPasswordSave(
-      std::unique_ptr<password_manager::PasswordFormManagerForUI> form_manager,
-      bool is_update_confirmation) = 0;
+      std::unique_ptr<password_manager::PasswordFormManagerForUI>
+          form_manager) = 0;
 
   // Called when a form is autofilled with login information, so we can manage
   // password credentials for the current site which are stored in
@@ -92,10 +91,10 @@ class PasswordsClientUIDelegate {
   // the manage password icon. |federated_matches| contain the matching stored
   // federated credentials to display in the UI.
   virtual void OnPasswordAutofilled(
-      base::span<const password_manager::PasswordForm> password_forms,
+      const std::vector<const password_manager::PasswordForm*>& password_forms,
       const url::Origin& origin,
-      const std::vector<raw_ptr<const password_manager::PasswordForm,
-                                VectorExperimental>>* federated_matches) = 0;
+      const std::vector<const password_manager::PasswordForm*>*
+          federated_matches) = 0;
 
   // Called when user credentials were leaked. This triggers the UI to prompt
   // the user whether they would like to check their passwords.
@@ -113,10 +112,6 @@ class PasswordsClientUIDelegate {
   // bubble promp.
   virtual void OnBiometricAuthenticationForFilling(
       PrefService* pref_service) = 0;
-
-  // Called when trying to access saved passwords when keychain is not
-  // available.
-  virtual void OnKeychainError() = 0;
 
  protected:
   virtual ~PasswordsClientUIDelegate() = default;

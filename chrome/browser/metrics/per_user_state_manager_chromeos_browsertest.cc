@@ -8,15 +8,16 @@
 #include "base/run_loop.h"
 #include "chrome/browser/ash/login/login_manager_test.h"
 #include "chrome/browser/ash/login/test/device_state_mixin.h"
+#include "chrome/browser/ash/login/test/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/login/test/guest_session_mixin.h"
 #include "chrome/browser/ash/login/test/login_manager_mixin.h"
 #include "chrome/browser/ash/login/test/scoped_policy_update.h"
 #include "chrome/browser/ash/login/test/user_policy_mixin.h"
+#include "chrome/browser/ash/login/users/chrome_user_manager.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/ash/ownership/owner_settings_service_ash_factory.h"
 #include "chrome/browser/ash/policy/core/device_policy_builder.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
-#include "chrome/browser/ash/policy/test_support/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ash/settings/scoped_testing_cros_settings.h"
 #include "chrome/browser/ash/settings/stats_reporting_controller.h"
@@ -224,7 +225,7 @@ IN_PROC_BROWSER_TEST_P(ChromeOSPerUserGuestUserWithNoOwnerTest,
   EXPECT_TRUE(log_store->has_alternate_ongoing_log_store());
 
   // Guests do not have a user id.
-  EXPECT_THAT(metrics_service->GetCurrentUserId(), Eq(std::nullopt));
+  EXPECT_THAT(metrics_service->GetCurrentUserId(), Eq(absl::nullopt));
 
   // Device settings consent should remain disabled since this is a guest
   // session.
@@ -274,9 +275,9 @@ IN_PROC_BROWSER_TEST_P(ChromeOSPerUserGuestTestWithDeviceOwner,
   bool owner_consent = GetParam();
 
   EXPECT_THAT(user_manager::UserManager::Get()->GetActiveUser()->GetType(),
-              Eq(user_manager::UserType::kGuest));
+              Eq(user_manager::USER_TYPE_GUEST));
   EXPECT_THAT(ash::DeviceSettingsService::Get()->GetOwnershipStatus(),
-              Eq(ash::DeviceSettingsService::OwnershipStatus::kOwnershipTaken));
+              Eq(ash::DeviceSettingsService::OWNERSHIP_TAKEN));
 
   // Ensure that guest session is using owner consent.
   EXPECT_THAT(ash::StatsReportingController::Get()->IsEnabled(),
@@ -292,7 +293,7 @@ IN_PROC_BROWSER_TEST_P(ChromeOSPerUserGuestTestWithDeviceOwner,
   EXPECT_THAT(log_store->has_alternate_ongoing_log_store(), Ne(owner_consent));
 
   // Guests do not have a user id.
-  EXPECT_THAT(metrics_service->GetCurrentUserId(), Eq(std::nullopt));
+  EXPECT_THAT(metrics_service->GetCurrentUserId(), Eq(absl::nullopt));
 }
 
 INSTANTIATE_TEST_SUITE_P(MetricsConsentForGuestWithOwner,
@@ -369,7 +370,7 @@ IN_PROC_BROWSER_TEST_P(ChromeOSPerUserManagedDeviceTest,
 
   // Post-login state.
   EXPECT_THAT(user_manager::UserManager::Get()->GetActiveUser()->GetType(),
-              Eq(user_manager::UserType::kRegular));
+              Eq(user_manager::USER_TYPE_REGULAR));
   EXPECT_TRUE(log_store->has_alternate_ongoing_log_store());
 
   // Should still follow policy_consent.
@@ -377,7 +378,7 @@ IN_PROC_BROWSER_TEST_P(ChromeOSPerUserManagedDeviceTest,
 
   // Users should not have a user id since they do not have control over the
   // metrics consent.
-  EXPECT_THAT(metrics_service->GetCurrentUserId(), Eq(std::nullopt));
+  EXPECT_THAT(metrics_service->GetCurrentUserId(), Eq(absl::nullopt));
 
   // Try to change the user consent.
   metrics_service->UpdateCurrentUserMetricsConsent(!policy_consent);

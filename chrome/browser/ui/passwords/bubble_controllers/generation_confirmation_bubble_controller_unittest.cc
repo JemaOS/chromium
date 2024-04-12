@@ -61,7 +61,7 @@ TEST_F(GenerationConfirmationBubbleControllerTest,
        NavigateToDashboardWithBubbleClosing) {
   Init();
 
-  controller()->OnGooglePasswordManagerLinkClicked(
+  controller()->OnNavigateToPasswordManagerAccountDashboardLinkClicked(
       password_manager::ManagePasswordsReferrer::kManagePasswordsBubble);
 
   base::HistogramTester histogram_tester;
@@ -80,7 +80,7 @@ TEST_F(GenerationConfirmationBubbleControllerTest,
        NavigateToDashboardWithoutBubbleClosing) {
   Init();
 
-  controller()->OnGooglePasswordManagerLinkClicked(
+  controller()->OnNavigateToPasswordManagerAccountDashboardLinkClicked(
       password_manager::ManagePasswordsReferrer::kManagePasswordsBubble);
 
   base::HistogramTester histogram_tester;

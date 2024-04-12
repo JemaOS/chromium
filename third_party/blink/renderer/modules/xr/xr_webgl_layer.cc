@@ -193,10 +193,7 @@ bool XRWebGLLayer::antialias() const {
   if (drawing_buffer_) {
     return drawing_buffer_->antialias();
   }
-  if (!webgl_context_->isContextLost()) {
-    return webgl_context_->GetDrawingBuffer()->Multisample();
-  }
-  return false;
+  return webgl_context_->GetDrawingBuffer()->Multisample();
 }
 
 XRViewport* XRWebGLLayer::getViewport(XRView* view) {
@@ -234,10 +231,10 @@ XRViewport* XRWebGLLayer::GetViewportForEye(device::mojom::blink::XREye eye) {
     UpdateViewports();
 
   if (eye == device::mojom::blink::XREye::kRight)
-    return right_viewport_.Get();
+    return right_viewport_;
 
   // This code path also handles an eye of "none".
-  return left_viewport_.Get();
+  return left_viewport_;
 }
 
 double XRWebGLLayer::getNativeFramebufferScaleFactor(XRSession* session) {
@@ -247,12 +244,9 @@ double XRWebGLLayer::getNativeFramebufferScaleFactor(XRSession* session) {
 void XRWebGLLayer::UpdateViewports() {
   uint32_t framebuffer_width = framebufferWidth();
   uint32_t framebuffer_height = framebufferHeight();
-  if (framebuffer_width == 0U || framebuffer_height == 0U) {
-    LOG_IF(ERROR, !webgl_context_->isContextLost())
-        << __func__ << " Received width=" << framebuffer_width
-        << " height=" << framebuffer_height << " without having lost context";
-    return;
-  }
+  // Framebuffer width and height are assumed to be nonzero.
+  DCHECK_NE(framebuffer_width, 0U);
+  DCHECK_NE(framebuffer_height, 0U);
 
   viewports_dirty_ = false;
 
@@ -314,7 +308,7 @@ WebGLTexture* XRWebGLLayer::GetCameraTexture() {
 
   // We already have a WebGL texture for the camera image - return it:
   if (camera_image_texture_) {
-    return camera_image_texture_.Get();
+    return camera_image_texture_;
   }
 
   // We don't have a WebGL texture, and we cannot create it - return null:
@@ -327,12 +321,12 @@ WebGLTexture* XRWebGLLayer::GetCameraTexture() {
   camera_image_texture_ = MakeGarbageCollected<WebGLUnownedTexture>(
       webgl_context_, camera_image_texture_id_, GL_TEXTURE_2D);
 
-  return camera_image_texture_.Get();
+  return camera_image_texture_;
 }
 
 void XRWebGLLayer::OnFrameStart(
-    const std::optional<gpu::MailboxHolder>& buffer_mailbox_holder,
-    const std::optional<gpu::MailboxHolder>& camera_image_mailbox_holder) {
+    const absl::optional<gpu::MailboxHolder>& buffer_mailbox_holder,
+    const absl::optional<gpu::MailboxHolder>& camera_image_mailbox_holder) {
   if (framebuffer_) {
     framebuffer_->MarkOpaqueBufferComplete(true);
     framebuffer_->SetContentsChanged(false);
@@ -359,7 +353,7 @@ void XRWebGLLayer::OnFrameStart(
 }
 
 uint32_t XRWebGLLayer::GetBufferTextureId(
-    const std::optional<gpu::MailboxHolder>& buffer_mailbox_holder) {
+    const absl::optional<gpu::MailboxHolder>& buffer_mailbox_holder) {
   gpu::gles2::GLES2Interface* gl = drawing_buffer_->ContextGL();
   gl->WaitSyncTokenCHROMIUM(buffer_mailbox_holder->sync_token.GetConstData());
   DVLOG(3) << __func__ << ": buffer_mailbox_holder->sync_token="
@@ -371,7 +365,7 @@ uint32_t XRWebGLLayer::GetBufferTextureId(
 }
 
 void XRWebGLLayer::BindCameraBufferTexture(
-    const std::optional<gpu::MailboxHolder>& buffer_mailbox_holder) {
+    const absl::optional<gpu::MailboxHolder>& buffer_mailbox_holder) {
   gpu::gles2::GLES2Interface* gl = drawing_buffer_->ContextGL();
 
   if (buffer_mailbox_holder) {
@@ -440,7 +434,7 @@ void XRWebGLLayer::OnFrameEnd() {
         }
 
         camera_image_texture_id_ = 0;
-        camera_image_mailbox_holder_ = std::nullopt;
+        camera_image_mailbox_holder_ = absl::nullopt;
       }
     }
   }

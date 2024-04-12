@@ -5,7 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_COMPOSITING_PROPERTY_TREE_MANAGER_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_COMPOSITING_PROPERTY_TREE_MANAGER_H_
 
-#include "base/memory/raw_ptr_exclusion.h"
 #include "cc/layers/layer_collections.h"
 #include "third_party/blink/renderer/platform/graphics/compositor_element_id.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
@@ -54,7 +53,7 @@ class PropertyTreeManagerClient {
 // Mutates a cc property tree to reflect Blink paint property tree
 // state. Intended for use by PaintArtifactCompositor.
 class PropertyTreeManager {
-  STACK_ALLOCATED();
+  DISALLOW_NEW();
 
  public:
   PropertyTreeManager(PropertyTreeManagerClient&,
@@ -101,27 +100,18 @@ class PropertyTreeManager {
   // Returns the compositor transform node id. If a compositor transform node
   // does not exist, it is created. Any transforms that are for scroll offset
   // translation will ensure the associated scroll node exists.
-  // TODO(ScrollUnification): Remove the code that ensures the scroll node.
   int EnsureCompositorTransformNode(const TransformPaintPropertyNode&);
   int EnsureCompositorClipNode(const ClipPaintPropertyNode&);
-
-  // Ensure the compositor scroll and transform nodes for a scroll translation
-  // transform node. Returns the id of the scroll node.
+  // Ensure the compositor scroll node using the associated scroll offset
+  // translation.
   int EnsureCompositorScrollAndTransformNode(
       const TransformPaintPropertyNode& scroll_offset_translation);
 
   // Same as above but marks the scroll nodes as being the viewport.
-  int EnsureCompositorInnerScrollAndTransformNode(
+  int EnsureCompositorInnerScrollNode(
       const TransformPaintPropertyNode& scroll_offset_translation);
-  int EnsureCompositorOuterScrollAndTransformNode(
+  int EnsureCompositorOuterScrollNode(
       const TransformPaintPropertyNode& scroll_offset_translation);
-
-  // Ensures a cc::ScrollNode for a scroll translation node.
-  // transform_id of the cc::ScrollNode is set to kInvalidPropertyNodeId.
-  // To associate the cc::ScrollNode to a cc::TransformNode, use
-  // EnsureCompositorScrollAndTransformNode() instead of this function or after
-  // this function.
-  int EnsureCompositorScrollNode(const TransformPaintPropertyNode&);
 
   int EnsureCompositorPageScaleTransformNode(const TransformPaintPropertyNode&);
 
@@ -168,6 +158,10 @@ class PropertyTreeManager {
   static bool UsesCompositedScrolling(const cc::LayerTreeHost&,
                                       const ScrollPaintPropertyNode&);
 
+  // Ensures a cc::ScrollNode for a scroll translation transform node.
+  void EnsureCompositorScrollNode(const ScrollPaintPropertyNode&,
+                                  const TransformPaintPropertyNode&);
+
   // Updates conditional render surface reasons for all effect nodes in
   // |GetEffectTree|. Every effect is supposed to have render surface enabled
   // for grouping, but we can omit a conditional render surface if it controls
@@ -185,8 +179,6 @@ class PropertyTreeManager {
   void SetupRootClipNode();
   void SetupRootEffectNode();
   void SetupRootScrollNode();
-
-  int EnsureCompositorScrollNodeInternal(const ScrollPaintPropertyNode&);
 
   // The type of operation the current cc effect node applies.
   enum CcEffectType {
@@ -224,23 +216,20 @@ class PropertyTreeManager {
     CcEffectType effect_type;
 
     // The effect state of the cc effect node. It's never nullptr.
-    // RAW_PTR_EXCLUSION: The struct is performance critical and stack scoped.
-    RAW_PTR_EXCLUSION const EffectPaintPropertyNode* effect;
+    const EffectPaintPropertyNode* effect;
 
     // The clip state of the cc effect node. This value may be shallower than
     // the one passed into SwitchToEffectNodeWithSynthesizedClip because not
     // every clip needs to be synthesized as cc effect. Is set to output clip of
     // the effect if the type is kEffect, or set to the synthesized clip node.
     // It's never nullptr.
-    // RAW_PTR_EXCLUSION: The struct is performance critical and stack scoped.
-    RAW_PTR_EXCLUSION const ClipPaintPropertyNode* clip;
+    const ClipPaintPropertyNode* clip;
 
     // The transform space of this state. It's |&effect->LocalTransformSpace()|
     // if this state is of kEffect type or synthetic with backdrop filters
     // moved up from the original effect.
     // Otherwise it's |&clip->LocalTransformSpace()|.
-    // RAW_PTR_EXCLUSION: The struct is performance critical and stack scoped.
-    RAW_PTR_EXCLUSION const TransformPaintPropertyNode* transform;
+    const TransformPaintPropertyNode* transform;
 
     // Whether the transform space of this state may be 2d axis misaligned to
     // the containing render surface. As there may be new render surfaces
@@ -312,6 +301,8 @@ class PropertyTreeManager {
   PropertyTreeManagerClient& client_;
 
   // Property trees which should be updated by the manager.
+  cc::PropertyTrees& property_trees_;
+
   // See comment above EffectState about holding direct references to data
   // owned by PropertyTrees.
   cc::ClipTree& clip_tree_;

@@ -16,6 +16,7 @@
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_member.h"
 #include "components/signin/public/base/signin_buildflags.h"
+#include "components/signin/public/identity_manager/identity_manager.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
 
@@ -34,12 +35,11 @@ class RenderProcessHost;
 }
 
 // The RendererUpdater is responsible for updating renderers about state change.
-class RendererUpdater : public KeyedService
+class RendererUpdater : public KeyedService,
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-    ,
-                        public ash::OAuth2LoginManager::Observer
+                        public ash::OAuth2LoginManager::Observer,
 #endif
-{
+                        public signin::IdentityManager::Observer {
  public:
   explicit RendererUpdater(Profile* profile);
   RendererUpdater(const RendererUpdater&) = delete;
@@ -70,14 +70,17 @@ class RendererUpdater : public KeyedService
       ash::OAuth2LoginManager::SessionRestoreState state) override;
 #endif
 
+  // IdentityManager::Observer:
+  void OnPrimaryAccountChanged(
+      const signin::PrimaryAccountChangeEvent& event) override;
+
   // Update all renderers due to a configuration change.
   void UpdateAllRenderers();
 
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-  // Creates bound session throttler parameters that are subset of the dynamic
+  // Creates bound session parameters that are subset of the dynamic
   // renderer parameters.
-  chrome::mojom::BoundSessionThrottlerParamsPtr GetBoundSessionThrottlerParams()
-      const;
+  chrome::mojom::BoundSessionParamsPtr GetBoundSessionParams() const;
 #endif
 
   // Create renderer configuration that changes at runtime.
@@ -87,8 +90,11 @@ class RendererUpdater : public KeyedService
   const bool is_off_the_record_;
   const raw_ptr<Profile> original_profile_;
 
+  base::ScopedObservation<signin::IdentityManager,
+                          signin::IdentityManager::Observer>
+      identity_manager_observation_{this};
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  raw_ptr<ash::OAuth2LoginManager> oauth2_login_manager_;
+  raw_ptr<ash::OAuth2LoginManager, ExperimentalAsh> oauth2_login_manager_;
   bool merge_session_running_;
   std::vector<mojo::Remote<chrome::mojom::ChromeOSListener>>
       chromeos_listeners_;

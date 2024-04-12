@@ -14,8 +14,8 @@ namespace {
 // Helpers ---------------------------------------------------------------------
 
 // Returns whether or not the specified byte counts indicate completion.
-bool CalculateComplete(const std::optional<int64_t>& current_bytes,
-                       const std::optional<int64_t>& total_bytes) {
+bool CalculateComplete(const absl::optional<int64_t>& current_bytes,
+                       const absl::optional<int64_t>& total_bytes) {
   return current_bytes.has_value() && current_bytes == total_bytes;
 }
 
@@ -28,25 +28,25 @@ HoldingSpaceProgress::HoldingSpaceProgress()
                            /*total_bytes=*/0) {}
 
 HoldingSpaceProgress::HoldingSpaceProgress(
-    const std::optional<int64_t>& current_bytes,
-    const std::optional<int64_t>& total_bytes)
+    const absl::optional<int64_t>& current_bytes,
+    const absl::optional<int64_t>& total_bytes)
     : HoldingSpaceProgress(current_bytes,
                            total_bytes,
-                           /*complete=*/std::nullopt) {}
+                           /*complete=*/absl::nullopt) {}
 
 HoldingSpaceProgress::HoldingSpaceProgress(
-    const std::optional<int64_t>& current_bytes,
-    const std::optional<int64_t>& total_bytes,
-    const std::optional<bool>& complete)
+    const absl::optional<int64_t>& current_bytes,
+    const absl::optional<int64_t>& total_bytes,
+    const absl::optional<bool>& complete)
     : HoldingSpaceProgress(current_bytes,
                            total_bytes,
                            complete,
                            /*hidden=*/false) {}
 
 HoldingSpaceProgress::HoldingSpaceProgress(
-    const std::optional<int64_t>& current_bytes,
-    const std::optional<int64_t>& total_bytes,
-    const std::optional<bool>& complete,
+    const absl::optional<int64_t>& current_bytes,
+    const absl::optional<int64_t>& total_bytes,
+    const absl::optional<bool>& complete,
     bool hidden)
     : current_bytes_(current_bytes),
       total_bytes_(total_bytes),
@@ -107,22 +107,22 @@ HoldingSpaceProgress HoldingSpaceProgress::operator+(
 
   // The number of `current_bytes` should only be present if present for both
   // the lhs and `rhs` instances. Otherwise `current_bytes` is indeterminate.
-  std::optional<int64_t> current_bytes(current_bytes_);
+  absl::optional<int64_t> current_bytes(current_bytes_);
   if (current_bytes.has_value()) {
     current_bytes = rhs.current_bytes_.has_value()
-                        ? std::make_optional(current_bytes.value() +
-                                             rhs.current_bytes_.value())
-                        : std::nullopt;
+                        ? absl::make_optional(current_bytes.value() +
+                                              rhs.current_bytes_.value())
+                        : absl::nullopt;
   }
 
   // The number of `total_bytes` should only be present if present for both the
   // lhs and `rhs` instances. Otherwise `total_bytes` is indeterminate.
-  std::optional<int64_t> total_bytes(total_bytes_);
+  absl::optional<int64_t> total_bytes(total_bytes_);
   if (total_bytes.has_value()) {
-    total_bytes =
-        rhs.total_bytes_.has_value()
-            ? std::make_optional(total_bytes.value() + rhs.total_bytes_.value())
-            : std::nullopt;
+    total_bytes = rhs.total_bytes_.has_value()
+                      ? absl::make_optional(total_bytes.value() +
+                                            rhs.total_bytes_.value())
+                      : absl::nullopt;
   }
 
   // The result of summing lhs and `rhs` instances is `complete` if and only if
@@ -132,12 +132,12 @@ HoldingSpaceProgress HoldingSpaceProgress::operator+(
   return HoldingSpaceProgress(current_bytes, total_bytes, complete);
 }
 
-std::optional<float> HoldingSpaceProgress::GetValue() const {
+absl::optional<float> HoldingSpaceProgress::GetValue() const {
   if (IsComplete())
     return 1.f;
 
   if (IsIndeterminate())
-    return std::nullopt;
+    return absl::nullopt;
 
   // If `current_bytes_` == `total_bytes_` but progress is not complete,
   // return a value that is extremely close but not equal to `1.f`.

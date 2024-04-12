@@ -16,7 +16,8 @@
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 namespace {
 
 constexpr char kDelimiter[] = "@@";
@@ -35,11 +36,11 @@ std::vector<std::string> GetComponents(const std::string& file_system_id) {
 }
 
 std::string GenerateRandomId() {
-  uint8_t rand_bytes[kRandomIdBytes];
-  base::RandBytes(rand_bytes);
+  char rand_bytes[kRandomIdBytes];
+  base::RandBytes(rand_bytes, sizeof(rand_bytes));
   // Encoding to hex ensure that there are no non-alpha characters in the id
   // (i.e. no @ delimiters).
-  return base::HexEncode(rand_bytes);
+  return base::HexEncode(rand_bytes, sizeof(rand_bytes));
 }
 
 }  // namespace.
@@ -79,7 +80,7 @@ bool IsKerberosChromadFileSystemId(const std::string& file_system_id) {
   return components.size() >= 3 && components[2] == kKerberosSymbol;
 }
 
-std::optional<std::string> GetUserFromFileSystemId(
+absl::optional<std::string> GetUserFromFileSystemId(
     const std::string& file_system_id) {
   const std::vector<std::string> components = GetComponents(file_system_id);
   if (components.size() < 3 ||
@@ -90,4 +91,5 @@ std::optional<std::string> GetUserFromFileSystemId(
   return components[2].substr(strlen(kUserPrefix));
 }
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

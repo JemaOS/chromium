@@ -7,9 +7,8 @@
 
 #include <stdint.h>
 
-#include <optional>
-
 #include "services/device/public/mojom/nfc.mojom-blink-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
@@ -81,7 +80,7 @@ class MODULES_EXPORT NDEFRecord final : public ScriptWrappable {
   const String& encoding() const { return encoding_; }
   const String& lang() const { return lang_; }
   DOMDataView* data() const;
-  std::optional<HeapVector<Member<NDEFRecord>>> toRecords(
+  absl::optional<HeapVector<Member<NDEFRecord>>> toRecords(
       ExceptionState& exception_state) const;
 
   device::mojom::NDEFRecordTypeCategory category() const { return category_; }

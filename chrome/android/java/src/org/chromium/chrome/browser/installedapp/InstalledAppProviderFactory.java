@@ -24,7 +24,6 @@ public class InstalledAppProviderFactory implements InterfaceFactory<InstalledAp
     public InstalledAppProvider createImpl() {
         return new InstalledAppProviderImpl(
                 Profile.fromWebContents(WebContentsStatics.fromRenderFrameHost(mRenderFrameHost)),
-                mRenderFrameHost,
-                InstantAppsHandler.getInstance()::isInstantAppAvailable);
+                mRenderFrameHost, InstantAppsHandler.getInstance()::isInstantAppAvailable);
     }
 }

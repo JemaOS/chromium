@@ -5,7 +5,6 @@
 #include <stddef.h>
 
 #include "base/files/file_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/test_future.h"
 #include "build/build_config.h"
@@ -52,13 +51,13 @@ class ExtensionFunctionalTest : public ExtensionBrowserTest {
     installer->set_off_store_install_allow_reason(
         CrxInstaller::OffStoreInstallAllowedInTest);
 
-    TestFuture<std::optional<CrxInstallError>> installer_done_future;
+    TestFuture<absl::optional<CrxInstallError>> installer_done_future;
     installer->AddInstallerCallback(
         installer_done_future
-            .GetCallback<const std::optional<CrxInstallError>&>());
+            .GetCallback<const absl::optional<CrxInstallError>&>());
     installer->InstallCrx(path);
 
-    const std::optional<CrxInstallError>& error = installer_done_future.Get();
+    const absl::optional<CrxInstallError>& error = installer_done_future.Get();
     EXPECT_FALSE(error);
 
     size_t num_after = registry->enabled_extensions().size();
@@ -122,8 +121,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionFunctionalTest,
       tab1->GetSiteInstance()->IsRelatedSiteInstance(tab2->GetSiteInstance()));
 
   // Name the 2 frames.
-  EXPECT_TRUE(content::ExecJs(tab1, "window.name = 'tab1';"));
-  EXPECT_TRUE(content::ExecJs(tab2, "window.name = 'tab2';"));
+  EXPECT_TRUE(content::ExecuteScript(tab1, "window.name = 'tab1';"));
+  EXPECT_TRUE(content::ExecuteScript(tab2, "window.name = 'tab2';"));
 
   // Open a new window from tab1 and store it in tab1_popup.
   content::RenderFrameHost* tab1_popup = nullptr;
@@ -154,8 +153,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionFunctionalTest, DownloadExtensionResource) {
   ASSERT_TRUE(LoadExtension(test_data_dir_.AppendASCII("download")));
   download_observer.WaitForFinished();
 
-  std::vector<raw_ptr<download::DownloadItem, VectorExperimental>>
-      download_items;
+  std::vector<download::DownloadItem*> download_items;
   download_manager->GetAllDownloads(&download_items);
 
   base::ScopedAllowBlockingForTesting allow_blocking;

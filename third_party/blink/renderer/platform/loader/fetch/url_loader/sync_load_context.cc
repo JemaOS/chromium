@@ -4,14 +4,11 @@
 
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/sync_load_context.h"
 
-#include <optional>
 #include <string>
 
 #include "base/check_op.h"
-#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
@@ -21,8 +18,8 @@
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/url_loader_completion_status.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/client_hints/client_hints.h"
-#include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "third_party/blink/public/platform/resource_load_info_notifier_wrapper.h"
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/sync_load_response.h"
@@ -84,16 +81,16 @@ class SyncLoadContext::SignalHelper final {
     }
     if (timeout_timer_) {
       DCHECK_NE(base::TimeDelta::Max(), timeout);
-      timeout_timer_->Start(FROM_HERE, timeout, context_.get(),
+      timeout_timer_->Start(FROM_HERE, timeout, context_,
                             &SyncLoadContext::OnTimeout);
     }
   }
 
-  raw_ptr<SyncLoadContext> context_;
-  raw_ptr<base::WaitableEvent> redirect_or_response_event_;
-  raw_ptr<base::WaitableEvent> abort_event_;
+  SyncLoadContext* context_;
+  base::WaitableEvent* redirect_or_response_event_;
+  base::WaitableEvent* abort_event_;
   base::WaitableEventWatcher abort_watcher_;
-  std::optional<base::OneShotTimer> timeout_timer_;
+  absl::optional<base::OneShotTimer> timeout_timer_;
 };
 
 // static
@@ -123,11 +120,7 @@ void SyncLoadContext::StartAsyncWithWaitableEvent(
       loader_options, cors_exempt_header_list, context,
       context->url_loader_factory_, std::move(throttles),
       std::move(resource_load_info_notifier_wrapper),
-      /*code_cache_host=*/nullptr,
-      /*evict_from_bfcache_callback=*/
-      base::OnceCallback<void(mojom::blink::RendererEvictionReason)>(),
-      /*did_buffer_load_while_in_bfcache_callback=*/
-      base::RepeatingCallback<void(size_t)>());
+      /*back_forward_cache_loader_helper=*/nullptr);
 }
 
 SyncLoadContext::SyncLoadContext(
@@ -170,10 +163,10 @@ SyncLoadContext::~SyncLoadContext() {}
 
 void SyncLoadContext::OnUploadProgress(uint64_t position, uint64_t size) {}
 
-void SyncLoadContext::OnReceivedRedirect(
+bool SyncLoadContext::OnReceivedRedirect(
     const net::RedirectInfo& redirect_info,
     network::mojom::URLResponseHeadPtr head,
-    FollowRedirectCallback follow_redirect_callback) {
+    std::vector<std::string>* removed_headers) {
   DCHECK(!Completed());
 
   if (has_authorization_header_ &&
@@ -181,18 +174,23 @@ void SyncLoadContext::OnReceivedRedirect(
     response_->has_authorization_header_between_cross_origin_redirect_ = true;
   }
 
+  if (removed_headers) {
+    // TODO(yoav): Get the actual PermissionsPolicy here to support selective
+    // removal for sync XHR.
+    FindClientHintsToRemove(nullptr /* permissions_policy */,
+                            redirect_info.new_url, removed_headers);
+  }
+
   response_->url = redirect_info.new_url;
   response_->head = std::move(head);
   response_->redirect_info = redirect_info;
   *context_for_redirect_ = this;
-
-  follow_redirect_callback_ = std::move(follow_redirect_callback);
+  resource_request_sender_->Freeze(LoaderFreezeMode::kStrict);
   signals_->SignalRedirectOrResponseComplete();
+  return true;
 }
 
-void SyncLoadContext::FollowRedirect(std::vector<std::string> removed_headers,
-                                     net::HttpRequestHeaders modified_headers) {
-  CHECK(follow_redirect_callback_);
+void SyncLoadContext::FollowRedirect() {
   if (!signals_->RestartAfterRedirect()) {
     CancelRedirect();
     return;
@@ -200,8 +198,8 @@ void SyncLoadContext::FollowRedirect(std::vector<std::string> removed_headers,
 
   response_->redirect_info = net::RedirectInfo();
   *context_for_redirect_ = nullptr;
-  std::move(follow_redirect_callback_)
-      .Run(std::move(removed_headers), std::move(modified_headers));
+
+  resource_request_sender_->Freeze(LoaderFreezeMode::kNone);
 }
 
 void SyncLoadContext::CancelRedirect() {
@@ -214,15 +212,13 @@ void SyncLoadContext::CancelRedirect() {
 
 void SyncLoadContext::OnReceivedResponse(
     network::mojom::URLResponseHeadPtr head,
-    mojo::ScopedDataPipeConsumerHandle body,
-    std::optional<mojo_base::BigBuffer> cached_metadata) {
+    base::TimeTicks response_arrival_at_renderer) {
   DCHECK(!Completed());
   response_->head = std::move(head);
+}
 
-  if (!body) {
-    return;
-  }
-
+void SyncLoadContext::OnStartLoadingResponseBody(
+    mojo::ScopedDataPipeConsumerHandle body) {
   if (mode_ == Mode::kBlob) {
     DCHECK(download_to_blob_registry_);
     DCHECK(!blob_response_started_);

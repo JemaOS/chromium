@@ -12,7 +12,7 @@
 #include "extensions/browser/lazy_context_id.h"
 #include "extensions/browser/lazy_context_task_queue.h"
 #include "extensions/browser/process_manager.h"
-#include "extensions/browser/service_worker/service_worker_task_queue.h"
+#include "extensions/browser/service_worker_task_queue.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest_handlers/background_info.h"
 
@@ -23,14 +23,12 @@ namespace {
 
 // Helper to inspect an ExtensionHost after it has been loaded.
 void InspectExtensionHost(
-    DevToolsOpenedByAction opened_by,
     std::unique_ptr<LazyContextTaskQueue::ContextInfo> context_info) {
   if (context_info != nullptr)
-    DevToolsWindow::OpenDevToolsWindow(context_info->web_contents, opened_by);
+    DevToolsWindow::OpenDevToolsWindow(context_info->web_contents);
 }
 
 void InspectServiceWorkerBackgroundHelper(
-    DevToolsOpenedByAction opened_by,
     std::unique_ptr<LazyContextTaskQueue::ContextInfo> context_info) {
   if (!context_info)
     return;
@@ -44,15 +42,14 @@ void InspectServiceWorkerBackgroundHelper(
   // A non-null context info does not guarantee that the extension is enabled,
   // due to thread/process asynchrony.
   if (extension)
-    InspectServiceWorkerBackground(extension, profile, opened_by);
+    InspectServiceWorkerBackground(extension, profile);
 }
 
 }  // namespace
 
 // Helper to inspect a service worker after it has been started.
 void InspectServiceWorkerBackground(const Extension* extension,
-                                    Profile* profile,
-                                    DevToolsOpenedByAction opened_by) {
+                                    Profile* profile) {
   DCHECK(BackgroundInfo::IsServiceWorkerBased(extension));
   content::DevToolsAgentHost::List targets =
       content::DevToolsAgentHost::GetOrCreateAll();
@@ -62,36 +59,34 @@ void InspectServiceWorkerBackground(const Extension* extension,
             extension->GetResourceURL(
                 BackgroundInfo::GetBackgroundServiceWorkerScript(extension)) &&
         host->GetBrowserContext() == profile) {
-      DevToolsWindow::OpenDevToolsWindow(host, profile, opened_by);
+      DevToolsWindow::OpenDevToolsWindow(host, profile);
       break;
     }
   }
 }
 
 void InspectInactiveServiceWorkerBackground(const Extension* extension,
-                                            Profile* profile,
-                                            DevToolsOpenedByAction opened_by) {
+                                            Profile* profile) {
   DCHECK(extension);
   DCHECK(BackgroundInfo::IsServiceWorkerBased(extension));
-  const auto context_id = LazyContextId::ForExtension(profile, extension);
+  LazyContextId context_id(
+      profile, extension->id(),
+      Extension::GetBaseURLFromExtensionId(extension->id()));
   context_id.GetTaskQueue()->AddPendingTask(
-      context_id,
-      base::BindOnce(&InspectServiceWorkerBackgroundHelper, opened_by));
+      context_id, base::BindOnce(&InspectServiceWorkerBackgroundHelper));
 }
 
-void InspectBackgroundPage(const Extension* extension,
-                           Profile* profile,
-                           DevToolsOpenedByAction opened_by) {
+void InspectBackgroundPage(const Extension* extension, Profile* profile) {
   DCHECK(extension);
   ExtensionHost* host = ProcessManager::Get(profile)
                             ->GetBackgroundHostForExtension(extension->id());
   if (host) {
     InspectExtensionHost(
-        opened_by, std::make_unique<LazyContextTaskQueue::ContextInfo>(host));
+        std::make_unique<LazyContextTaskQueue::ContextInfo>(host));
   } else {
-    const auto context_id = LazyContextId::ForExtension(profile, extension);
+    const LazyContextId context_id(profile, extension->id());
     context_id.GetTaskQueue()->AddPendingTask(
-        context_id, base::BindOnce(&InspectExtensionHost, opened_by));
+        context_id, base::BindOnce(&InspectExtensionHost));
   }
 }
 

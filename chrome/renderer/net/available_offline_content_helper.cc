@@ -11,6 +11,7 @@
 #include "base/json/json_reader.h"
 #include "base/json/json_value_converter.h"
 #include "base/json/json_writer.h"
+#include "base/metrics/histogram_macros.h"
 #include "base/no_destructor.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/utf_string_conversions.h"
@@ -39,33 +40,50 @@ std::string ConvertToUTF16Base64(const std::string& text) {
     utf16_bytes.push_back(static_cast<char>(c >> 8));
     utf16_bytes.push_back(static_cast<char>(c & 0xff));
   }
-  return base::Base64Encode(utf16_bytes);
+  std::string encoded;
+  base::Base64Encode(utf16_bytes, &encoded);
+  return encoded;
 }
 
-base::Value::Dict AvailableContentToValue(
-    const AvailableOfflineContentPtr& content) {
+base::Value AvailableContentToValue(const AvailableOfflineContentPtr& content) {
   // All pieces of text content downloaded from the web will be base64 encoded
   // to lessen security risks when this dictionary is passed as a string to
   // |ExecuteJavaScript|.
-  return base::Value::Dict()
-      .Set("ID", content->id)
-      .Set("name_space", content->name_space)
-      .Set("title_base64", ConvertToUTF16Base64(content->title))
-      .Set("snippet_base64", ConvertToUTF16Base64(content->snippet))
-      .Set("date_modified", content->date_modified)
-      .Set("attribution_base64", ConvertToUTF16Base64(content->attribution))
-      .Set("thumbnail_data_uri", content->thumbnail_data_uri.spec())
-      .Set("favicon_data_uri", content->favicon_data_uri.spec())
-      .Set("content_type", static_cast<int>(content->content_type));
+  std::string base64_encoded;
+  base::Value value(base::Value::Type::DICT);
+  value.SetKey("ID", base::Value(content->id));
+  value.SetKey("name_space", base::Value(content->name_space));
+  value.SetKey("title_base64",
+               base::Value(ConvertToUTF16Base64(content->title)));
+  value.SetKey("snippet_base64",
+               base::Value(ConvertToUTF16Base64(content->snippet)));
+  value.SetKey("date_modified", base::Value(content->date_modified));
+  value.SetKey("attribution_base64",
+               base::Value(ConvertToUTF16Base64(content->attribution)));
+  value.SetKey("thumbnail_data_uri",
+               base::Value(content->thumbnail_data_uri.spec()));
+  value.SetKey("favicon_data_uri",
+               base::Value(content->favicon_data_uri.spec()));
+  value.SetKey("content_type",
+               base::Value(static_cast<int>(content->content_type)));
+  return value;
 }
 
-base::Value::List AvailableContentListToValue(
+base::Value AvailableContentListToValue(
     const std::vector<AvailableOfflineContentPtr>& content_list) {
   base::Value::List value;
   for (const auto& content : content_list) {
     value.Append(AvailableContentToValue(content));
   }
-  return value;
+  return base::Value(std::move(value));
+}
+
+void RecordSuggestionPresented(
+    const std::vector<AvailableOfflineContentPtr>& suggestions) {
+  for (const AvailableOfflineContentPtr& item : suggestions) {
+    UMA_HISTOGRAM_ENUMERATION("Net.ErrorPageCounts.SuggestionPresented",
+                              item->content_type);
+  }
 }
 
 AvailableOfflineContentHelper::Binder& GetBinderOverride() {
@@ -121,6 +139,8 @@ void AvailableOfflineContentHelper::LaunchItem(const std::string& id,
 
   for (const AvailableOfflineContentPtr& item : fetched_content_) {
     if (item->id == id && item->name_space == name_space) {
+      UMA_HISTOGRAM_ENUMERATION("Net.ErrorPageCounts.SuggestionClicked",
+                                item->content_type);
       RecordEvent(error_page::NETWORK_ERROR_PAGE_OFFLINE_SUGGESTION_CLICKED);
       provider_->LaunchItem(id, name_space);
       return;
@@ -156,6 +176,7 @@ void AvailableOfflineContentHelper::AvailableContentReceived(
     has_prefetched_content_ = fetched_content_.front()->content_type ==
                               AvailableContentType::kPrefetchedPage;
 
+    RecordSuggestionPresented(fetched_content_);
     if (list_visible_by_prefs)
       RecordEvent(error_page::NETWORK_ERROR_PAGE_OFFLINE_SUGGESTIONS_SHOWN);
     else

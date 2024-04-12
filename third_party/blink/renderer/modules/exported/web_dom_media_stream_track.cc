@@ -39,10 +39,12 @@ WebDOMMediaStreamTrack::WebDOMMediaStreamTrack(MediaStreamTrack* track)
     : private_(track) {}
 
 WebDOMMediaStreamTrack WebDOMMediaStreamTrack::FromV8Value(
-    v8::Isolate* isolate,
     v8::Local<v8::Value> value) {
-  return WebDOMMediaStreamTrack(
-      V8MediaStreamTrack::ToWrappable(isolate, value));
+  if (V8MediaStreamTrack::HasInstance(value, v8::Isolate::GetCurrent())) {
+    v8::Local<v8::Object> object = v8::Local<v8::Object>::Cast(value);
+    return WebDOMMediaStreamTrack(V8MediaStreamTrack::ToImpl(object));
+  }
+  return WebDOMMediaStreamTrack(nullptr);
 }
 
 void WebDOMMediaStreamTrack::Reset() {

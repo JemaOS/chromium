@@ -9,20 +9,13 @@ namespace ash {
 DemoModeUntrustedPageHandler::DemoModeUntrustedPageHandler(
     mojo::PendingReceiver<mojom::demo_mode::UntrustedPageHandler>
         pending_receiver,
-    views::Widget* widget,
-    DemoModeAppUntrustedUI* demo_mode_app_untrusted_ui)
-    : receiver_(this, std::move(pending_receiver)),
-      widget_(widget),
-      demo_mode_app_untrusted_ui_(demo_mode_app_untrusted_ui) {}
+    views::Widget* widget)
+    : receiver_(this, std::move(pending_receiver)), widget_(widget) {}
 
 DemoModeUntrustedPageHandler::~DemoModeUntrustedPageHandler() = default;
 
 void DemoModeUntrustedPageHandler::ToggleFullscreen() {
   widget_->SetFullscreen(!widget_->IsFullscreen());
-}
-
-void DemoModeUntrustedPageHandler::LaunchApp(const std::string& app_id) {
-  demo_mode_app_untrusted_ui_->delegate().LaunchApp(app_id);
 }
 
 }  // namespace ash

@@ -89,7 +89,7 @@ String V8ValueToString(v8::Local<v8::Context> current_context,
     return String("");
   }
 
-  return ToBlinkString<String>(isolate, v8_string, kDoNotExternalize);
+  return ToBlinkString<String>(v8_string, kDoNotExternalize);
 }
 
 FontLookupType ToTypeProto(Dactyloscoper::FontLookupType lookup_type) {
@@ -121,6 +121,8 @@ void Dactyloscoper::RecordDirectSurface(ExecutionContext* context,
                                         const String& str) {
   if (!context || !ShouldSample(feature))
     return;
+  if (str.empty())
+    return;
   Dactyloscoper::RecordDirectSurface(context, feature,
                                      IdentifiabilitySensitiveStringToken(str));
 }
@@ -130,6 +132,8 @@ void Dactyloscoper::RecordDirectSurface(ExecutionContext* context,
                                         WebFeature feature,
                                         const Vector<String>& strs) {
   if (!context || !ShouldSample(feature))
+    return;
+  if (strs.empty())
     return;
   IdentifiableTokenBuilder builder;
   for (const auto& str : strs) {
@@ -144,11 +148,10 @@ void Dactyloscoper::RecordDirectSurface(ExecutionContext* context,
                                         const DOMArrayBufferView* buffer) {
   if (!context || !ShouldSample(feature))
     return;
-  IdentifiableTokenBuilder builder;
-  if (buffer && buffer->byteLength() > 0) {
-    builder.AddBytes(base::make_span(
-        static_cast<uint8_t*>(buffer->BaseAddress()), buffer->byteLength()));
-  }
+  if (!buffer || buffer->byteLength() == 0)
+    return;
+  IdentifiableTokenBuilder builder(base::make_span(
+      static_cast<uint8_t*>(buffer->BaseAddress()), buffer->byteLength()));
   Dactyloscoper::RecordDirectSurface(context, feature, builder.GetToken());
 }
 
@@ -218,6 +221,12 @@ Dactyloscoper::HighEntropyTracer::HighEntropyTracer(
         CalledJsApi& called_api = *(high_entropy_api.set_called_api());
         called_api.set_identifier(called_api_name);
 
+        SourceLocationProto* proto_source_location_deprecated =
+            called_api.set_source_location();
+        std::unique_ptr<SourceLocation> source_location =
+            CaptureSourceLocation(execution_context);
+        source_location->WriteIntoTrace(
+            ctx.Wrap(proto_source_location_deprecated));
         for (int i = 0; i < info.Length(); ++i) {
           JSFunctionArgument& arg = *(called_api.add_func_arguments());
           arg.set_type(GetArgumentType(info[i]));
@@ -225,8 +234,6 @@ Dactyloscoper::HighEntropyTracer::HighEntropyTracer(
               V8ValueToString(current_context, isolate, info[i]).Utf8());
         }
 
-        std::unique_ptr<SourceLocation> source_location =
-            CaptureSourceLocation(execution_context);
         SourceLocationProto* proto_source_location =
             high_entropy_api.set_source_location();
         source_location->WriteIntoTrace(ctx.Wrap(proto_source_location));

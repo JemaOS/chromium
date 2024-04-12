@@ -6,26 +6,37 @@
 
 #include <string>
 
-#include "base/apple/bundle_locations.h"
-#include "base/apple/foundation_util.h"
+#include "base/mac/bundle_locations.h"
+#include "base/mac/foundation_util.h"
+#include "base/strings/strcat.h"
 #include "chrome/browser/google/google_brand.h"
 #include "chrome/browser/updater/browser_updater_client_util.h"
 #include "chrome/common/channel_info.h"
 #include "components/version_info/version_info.h"
 
+namespace {
+
+std::string GetTag() {
+  std::string contents;
+  base::ReadFileToString(
+      base::mac::OuterBundlePath().Append(".want_full_installer"), &contents);
+  return base::StrCat(
+      {chrome::GetChannelName(chrome::WithExtendedStable(true)),
+       contents == version_info::GetVersionNumber() ? "-full" : ""});
+}
+
+}  // namespace
+
 std::string BrowserUpdaterClient::GetAppId() {
-  return base::apple::BaseBundleID();
+  return base::mac::BaseBundleID();
 }
 
 updater::RegistrationRequest BrowserUpdaterClient::GetRegistrationRequest() {
-  base::FilePath bundle = base::apple::OuterBundlePath();
   updater::RegistrationRequest req;
   req.app_id = GetAppId();
   google_brand::GetBrand(&req.brand_code);
   req.version = base::Version(version_info::GetVersionNumber());
-  req.version_path = bundle.AppendASCII("Contents").AppendASCII("Info.plist");
-  req.version_key = "KSVersion";
-  req.ap = chrome::GetChannelName(chrome::WithExtendedStable(true));
-  req.existence_checker_path = bundle;
+  req.ap = GetTag();
+  req.existence_checker_path = base::mac::OuterBundlePath();
   return req;
 }

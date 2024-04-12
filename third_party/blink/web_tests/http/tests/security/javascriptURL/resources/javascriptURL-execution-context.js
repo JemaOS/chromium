@@ -1,6 +1,5 @@
 if (window.testRunner) {
     testRunner.dumpAsText();
-    testRunner.setDumpConsoleMessages(false);
     testRunner.dumpChildFrames();
     testRunner.waitUntilDone();
 }

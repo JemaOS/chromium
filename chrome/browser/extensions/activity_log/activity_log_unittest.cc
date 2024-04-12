@@ -238,7 +238,7 @@ class ActivityLogTest : public ChromeRenderViewHostTestHarness {
     // so just test once.
     ASSERT_TRUE(action->other());
     const base::Value::Dict& other = *action->other();
-    std::optional<int> dom_verb =
+    absl::optional<int> dom_verb =
         other.FindInt(activity_log_constants::kActionDomVerb);
     ASSERT_EQ(DomActionType::XHR, dom_verb);
 
@@ -276,13 +276,13 @@ class ActivityLogTest : public ChromeRenderViewHostTestHarness {
       ASSERT_EQ("http://www.google.co.uk/", action->arg_url().spec());
       ASSERT_TRUE(action->other());
       const base::Value::Dict& other = *action->other();
-      std::optional<int> dom_verb =
+      absl::optional<int> dom_verb =
           other.FindInt(activity_log_constants::kActionDomVerb);
       ASSERT_EQ(DomActionType::SETTER, dom_verb);
     }
   }
 
-  raw_ptr<ExtensionService, DanglingUntriaged> extension_service_;
+  raw_ptr<ExtensionService> extension_service_;
 };
 
 TEST_F(ActivityLogTest, Construct) {
@@ -315,10 +315,11 @@ TEST_F(ActivityLogTest, LogAndFetchActions) {
 TEST_F(ActivityLogTest, LogPrerender) {
   scoped_refptr<const Extension> extension =
       ExtensionBuilder()
-          .SetManifest(base::Value::Dict()
+          .SetManifest(DictionaryBuilder()
                            .Set("name", "Test extension")
                            .Set("version", "1.0.0")
-                           .Set("manifest_version", 2))
+                           .Set("manifest_version", 2)
+                           .Build())
           .Build();
   extension_service_->AddExtension(extension.get());
   ActivityLog* activity_log = ActivityLog::GetInstance(profile());
@@ -395,7 +396,8 @@ TEST_F(ActivityLogTest, ArgUrlExtraction) {
   action = new Action(kExtensionId, now - base::Seconds(3),
                       Action::ACTION_API_CALL, "windows.create");
   base::Value::List list;
-  auto item = base::Value::Dict().Set("url", "http://www.google.co.uk");
+  base::Value::Dict item;
+  item.Set("url", "http://www.google.co.uk");
   list.Append(std::move(item));
   action->set_args(std::move(list));
   activity_log->LogAction(action);
@@ -408,10 +410,11 @@ TEST_F(ActivityLogTest, ArgUrlExtraction) {
 TEST_F(ActivityLogTest, UninstalledExtension) {
   scoped_refptr<const Extension> extension =
       ExtensionBuilder()
-          .SetManifest(base::Value::Dict()
+          .SetManifest(DictionaryBuilder()
                            .Set("name", "Test extension")
                            .Set("version", "1.0.0")
-                           .Set("manifest_version", 2))
+                           .Set("manifest_version", 2)
+                           .Build())
           .Build();
 
   ActivityLog* activity_log = ActivityLog::GetInstance(profile());

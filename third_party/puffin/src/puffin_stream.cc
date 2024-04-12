@@ -5,7 +5,6 @@
 #include "puffin/src/puffin_stream.h"
 
 #include <algorithm>
-#include <cstring>
 #include <memory>
 #include <string>
 #include <utility>

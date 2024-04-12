@@ -5,12 +5,12 @@
 #include "third_party/blink/renderer/core/fetch/fetch_data_loader.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/numerics/safe_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "mojo/public/cpp/system/simple_watcher.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/blob/blob_registry.mojom-blink.h"
 #include "third_party/blink/renderer/core/fetch/multipart_parser.h"
 #include "third_party/blink/renderer/core/fileapi/file.h"
@@ -408,8 +408,8 @@ class FetchDataLoaderAsFormData final : public FetchDataLoader,
         blob_data_ = std::make_unique<BlobData>();
         const AtomicString& content_type =
             header_fields.Get(http_names::kContentType);
-        blob_data_->SetContentType(
-            content_type.IsNull() ? AtomicString("text/plain") : content_type);
+        blob_data_->SetContentType(content_type.IsNull() ? "text/plain"
+                                                         : content_type);
       } else {
         if (!string_decoder_) {
           string_decoder_ = std::make_unique<TextResourceDecoder>(
@@ -436,7 +436,7 @@ class FetchDataLoaderAsFormData final : public FetchDataLoader,
         DCHECK(!string_builder_);
         const auto size = blob_data_->length();
         auto* file = MakeGarbageCollected<File>(
-            filename_, std::nullopt,
+            filename_, absl::nullopt,
             BlobDataHandle::Create(std::move(blob_data_), size));
         form_data->append(name_, file, filename_);
         return true;

@@ -16,7 +16,6 @@
 #include "chrome/grit/generated_resources.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/image_model.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/views/vector_icons.h"
 
 ReadingListSidePanelCoordinator::ReadingListSidePanelCoordinator(
@@ -30,9 +29,7 @@ void ReadingListSidePanelCoordinator::CreateAndRegisterEntry(
   global_registry->Register(std::make_unique<SidePanelEntry>(
       SidePanelEntry::Id::kReadingList,
       l10n_util::GetStringUTF16(IDS_READ_LATER_TITLE),
-      ui::ImageModel::FromVectorIcon(
-          features::IsChromeRefresh2023() ? kReadingListIcon : kReadLaterIcon,
-          ui::kColorIcon),
+      ui::ImageModel::FromVectorIcon(kReadLaterIcon, ui::kColorIcon),
       base::BindRepeating(
           &ReadingListSidePanelCoordinator::CreateReadingListWebView,
           base::Unretained(this))));
@@ -44,4 +41,4 @@ ReadingListSidePanelCoordinator::CreateReadingListWebView() {
                                                      base::RepeatingClosure());
 }
 
-BROWSER_USER_DATA_KEY_IMPL(ReadingListSidePanelCoordinator);
+WEB_CONTENTS_USER_DATA_KEY_IMPL(ReadingListSidePanelCoordinator);

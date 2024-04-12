@@ -35,6 +35,12 @@ std::string DeviceAttributesImpl::GetSSOProfile() const {
       ->GetSSOProfile();
 }
 
+std::string DeviceAttributesImpl::GetRealm() const {
+  return g_browser_process->platform_part()
+      ->browser_policy_connector_ash()
+      ->GetRealm();
+}
+
 std::string DeviceAttributesImpl::GetDeviceAssetID() const {
   return g_browser_process->platform_part()
       ->browser_policy_connector_ash()
@@ -59,7 +65,7 @@ std::string DeviceAttributesImpl::GetDeviceAnnotatedLocation() const {
       ->GetDeviceAnnotatedLocation();
 }
 
-std::optional<std::string> DeviceAttributesImpl::GetDeviceHostname() const {
+absl::optional<std::string> DeviceAttributesImpl::GetDeviceHostname() const {
   return g_browser_process->platform_part()
       ->browser_policy_connector_ash()
       ->GetDeviceNamePolicyHandler()

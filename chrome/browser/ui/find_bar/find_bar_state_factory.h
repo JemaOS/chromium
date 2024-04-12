@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_UI_FIND_BAR_FIND_BAR_STATE_FACTORY_H_
 #define CHROME_BROWSER_UI_FIND_BAR_FIND_BAR_STATE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class FindBarState;
@@ -20,13 +20,13 @@ class FindBarStateFactory : public ProfileKeyedServiceFactory {
   static FindBarStateFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<FindBarStateFactory>;
+  friend struct base::DefaultSingletonTraits<FindBarStateFactory>;
 
   FindBarStateFactory();
   ~FindBarStateFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

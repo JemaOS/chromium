@@ -4,25 +4,17 @@
 
 #include "ash/login/ui/login_pin_input_view.h"
 
-#include <optional>
-
 #include "ash/constants/ash_features.h"
-#include "ash/login/login_screen_controller.h"
 #include "ash/login/ui/access_code_input.h"
-#include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
 #include "ash/style/ash_color_id.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
-#include "base/logging.h"
 #include "base/strings/utf_string_conversions.h"
-#include "chromeos/ash/components/login/auth/auth_events_recorder.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/accessibility/ax_enums.mojom-shared.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/compositor/layer_animation_observer.h"
 #include "ui/compositor/layer_type.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/views/layout/fill_layout.h"
@@ -39,13 +31,12 @@ constexpr const int kPinInputTotalHeightDp = 37;
 constexpr const int kPinAutosubmitMinLength = 6;
 constexpr const int kPinAutosubmitMaxLength = 12;
 
+constexpr const char kLoginPinInputViewClassName[] = "LoginPinInputView";
 }  // namespace
 
 // A FixedLengthCodeInput that is always obscured and
 // has some special focus handling.
 class LoginPinInput : public FixedLengthCodeInput {
-  METADATA_HEADER(LoginPinInput, FixedLengthCodeInput)
-
  public:
   LoginPinInput(int length,
                 LoginPinInputView::OnPinSubmit on_submit,
@@ -97,10 +88,9 @@ void LoginPinInput::OnModified(bool last_field_active, bool complete) {
 
   // Submit the input if its the last field, and complete.
   if (last_field_active && complete) {
-    std::optional<std::string> user_input = GetCode();
+    absl::optional<std::string> user_input = GetCode();
     DCHECK(on_submit_);
     LOG(WARNING) << "crbug.com/1339004 : Submitting PIN " << IsReadOnly();
-    AuthEventsRecorder::Get()->OnPinSubmit();
     SetReadOnly(true);
     on_submit_.Run(base::UTF8ToUTF16(user_input.value_or(std::string())));
   }
@@ -150,9 +140,6 @@ void LoginPinInput::GetAccessibleNodeData(ui::AXNodeData* node_data) {
       IDS_ASH_LOGIN_POD_PASSWORD_PIN_INPUT_ACCESSIBLE_NAME));
 }
 
-BEGIN_METADATA(LoginPinInput)
-END_METADATA
-
 const int LoginPinInputView::kDefaultLength = 6;
 
 LoginPinInputView::TestApi::TestApi(LoginPinInputView* view) : view_(view) {
@@ -165,7 +152,7 @@ views::View* LoginPinInputView::TestApi::code_input() {
   return view_->code_input_;
 }
 
-std::optional<std::string> LoginPinInputView::TestApi::GetCode() {
+absl::optional<std::string> LoginPinInputView::TestApi::GetCode() {
   return view_->code_input_->GetCode();
 }
 
@@ -182,16 +169,10 @@ LoginPinInputView::LoginPinInputView() : length_(kDefaultLength) {
                           base::Unretained(this)),
       base::BindRepeating(&LoginPinInputView::OnChanged,
                           base::Unretained(this))));
-  DeprecatedLayoutImmediately();
+  Layout();
 }
 
 LoginPinInputView::~LoginPinInputView() = default;
-
-void LoginPinInputView::OnImplicitAnimationsCompleted() {
-  Reset();
-  SetVisible(false);
-  StopObservingImplicitAnimations();
-}
 
 bool LoginPinInputView::IsAutosubmitSupported(int length) {
   return features::IsPinAutosubmitFeatureEnabled() &&
@@ -236,7 +217,7 @@ void LoginPinInputView::UpdateLength(const size_t pin_length) {
                           base::Unretained(this))));
 
   SetReadOnly(was_readonly);
-  DeprecatedLayoutImmediately();
+  Layout();
   SetVisible(was_visible);
 }
 
@@ -262,13 +243,6 @@ void LoginPinInputView::InsertDigit(int digit) {
 }
 
 void LoginPinInputView::SetReadOnly(bool read_only) {
-  if (!read_only &&
-      Shell::Get()->login_screen_controller()->IsAuthenticating()) {
-    // TODO(b/276246832): We shouldn't enable the LoginPinInputView during
-    // Authentication.
-    LOG(WARNING) << "LoginPinInputView::SetReadOnly called with false during "
-                    "Authentication.";
-  }
   is_read_only_ = read_only;
   code_input_->SetReadOnly(read_only);
 }
@@ -302,13 +276,14 @@ bool LoginPinInputView::OnKeyPressed(const ui::KeyEvent& event) {
   return false;
 }
 
+const char* LoginPinInputView::GetClassName() const {
+  return kLoginPinInputViewClassName;
+}
+
 void LoginPinInputView::OnChanged(bool is_empty) {
   if (on_changed_) {
     on_changed_.Run(is_empty);
   }
 }
-
-BEGIN_METADATA(LoginPinInputView)
-END_METADATA
 
 }  // namespace ash

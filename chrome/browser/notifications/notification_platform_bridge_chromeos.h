@@ -36,10 +36,6 @@ class NotificationPlatformBridgeChromeOs
   void Close(Profile* profile, const std::string& notification_id) override;
   void GetDisplayed(Profile* profile,
                     GetDisplayedNotificationsCallback callback) const override;
-  void GetDisplayedForOrigin(
-      Profile* profile,
-      const GURL& origin,
-      GetDisplayedNotificationsCallback callback) const override;
   void SetReadyCallback(NotificationBridgeReadyCallback callback) override;
   void DisplayServiceShutDown(Profile* profile) override;
 
@@ -49,7 +45,7 @@ class NotificationPlatformBridgeChromeOs
   void HandleNotificationButtonClicked(
       const std::string& id,
       int button_index,
-      const std::optional<std::u16string>& reply) override;
+      const absl::optional<std::u16string>& reply) override;
   void HandleNotificationSettingsButtonClicked(const std::string& id) override;
   void DisableNotification(const std::string& id) override;
 

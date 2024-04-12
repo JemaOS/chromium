@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_HEADLESS_HEADLESS_COMMAND_PROCESSOR_H_
 
 #include "base/functional/callback.h"
-#include "components/headless/command_handler/headless_command_handler.h"
 #include "url/gurl.h"
 
 namespace content {
@@ -20,10 +19,9 @@ namespace headless {
 bool ShouldProcessHeadlessCommands();
 
 // Runs headless commands against the specified target url.
-void ProcessHeadlessCommands(
-    content::BrowserContext* browser_context,
-    const GURL& target_url,
-    HeadlessCommandHandler::DoneCallback done_callback);
+void ProcessHeadlessCommands(content::BrowserContext* browser_context,
+                             GURL target_url,
+                             base::OnceClosure done_callback);
 
 }  // namespace headless
 

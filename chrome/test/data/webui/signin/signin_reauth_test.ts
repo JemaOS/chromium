@@ -5,9 +5,8 @@
 import 'chrome://signin-reauth/signin_reauth_app.js';
 
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {SigninReauthAppElement} from 'chrome://signin-reauth/signin_reauth_app.js';
+import {SigninReauthAppElement} from 'chrome://signin-reauth/signin_reauth_app.js';
 import {SigninReauthBrowserProxyImpl} from 'chrome://signin-reauth/signin_reauth_browser_proxy.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {isVisible} from 'chrome://webui-test/test_util.js';
@@ -38,7 +37,7 @@ suite('SigninReauthTest', function() {
   test('LoadPage', function() {
     assertDefaultLocale();
     assertEquals(
-        loadTimeData.getString('signinReauthTitle'),
+        'Use your Google Account to save and fill passwords?',
         app.$.signinReauthTitle.textContent!.trim());
   });
 

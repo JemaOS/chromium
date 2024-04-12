@@ -53,7 +53,6 @@ static const base::TimeDelta kCUnloadPageResourceSaveTime = base::Minutes(5);
 
 static constexpr char kPageSavedResourceStrongReferenceSize[] =
     "Blink.MemoryCache.PageSavedResourceStrongReferenceSize";
-
 // Percentage of capacity toward which we prune, to avoid immediately pruning
 // again.
 static const float kCTargetPrunePercentage = .95f;
@@ -93,7 +92,7 @@ MemoryCache::MemoryCache(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
     : capacity_(kCDefaultCacheCapacity),
       delay_before_live_decoded_prune_(kCMinDelayBeforeLiveDecodedPrune),
-      strong_references_prune_duration_(kCUnloadPageResourceSaveTime),
+      size_(0),
       task_runner_(std::move(task_runner)) {
   MemoryCacheDumpProvider::Instance()->SetMemoryCache(this);
   MemoryPressureListenerRegistry::Instance().RegisterClient(this);
@@ -103,7 +102,7 @@ MemoryCache::~MemoryCache() = default;
 
 void MemoryCache::Trace(Visitor* visitor) const {
   visitor->Trace(resource_maps_);
-  visitor->Trace(strong_references_);
+  visitor->Trace(saved_page_resources_);
   MemoryCacheDumpClient::Trace(visitor);
   MemoryPressureListener::Trace(visitor);
 }
@@ -160,7 +159,6 @@ void MemoryCache::AddInternal(ResourceMap* resource_map,
     Resource* old_resource = it->value->GetResource();
     CHECK_NE(old_resource, resource);
     Update(old_resource, old_resource->size(), 0);
-    strong_references_.erase(old_resource);
   }
   resource_map->Set(url, entry);
   Update(resource, 0, resource->size());
@@ -203,7 +201,6 @@ void MemoryCache::RemoveInternal(ResourceMap* resource_map,
 
   Update(resource, resource->size(), 0);
   resource_map->erase(it);
-  strong_references_.erase(resource);
 }
 
 bool MemoryCache::Contains(const Resource* resource) const {
@@ -235,16 +232,14 @@ Resource* MemoryCache::ResourceForURL(const KURL& resource_url,
   DCHECK(!cache_identifier.IsNull());
 
   const auto resource_maps_it = resource_maps_.find(cache_identifier);
-  if (resource_maps_it == resource_maps_.end()) {
+  if (resource_maps_it == resource_maps_.end())
     return nullptr;
-  }
   const ResourceMap* resources = resource_maps_it->value.Get();
 
   KURL url = RemoveFragmentIdentifierIfNeeded(resource_url);
   const auto resources_it = resources->find(url);
-  if (resources_it == resources->end()) {
+  if (resources_it == resources->end())
     return nullptr;
-  }
   return resources_it->value->GetResource();
 }
 
@@ -278,7 +273,7 @@ void MemoryCache::PruneResources(PruneStrategy strategy) {
   // TODO(crbug.com/1409349): Filter page loading metrics when prune happens.
   if (base::FeatureList::IsEnabled(
           blink::features::kMemoryCacheStrongReference)) {
-    ClearStrongReferences();
+    saved_page_resources_.clear();
   }
   for (const auto& resource_map_iter : resource_maps_) {
     for (const auto& resource_iter : *resource_map_iter.value) {
@@ -306,14 +301,11 @@ void MemoryCache::SetCapacity(size_t total_bytes) {
 }
 
 void MemoryCache::Update(Resource* resource, size_t old_size, size_t new_size) {
+  if (!Contains(resource))
+    return;
   ptrdiff_t delta = new_size - old_size;
-  if (Contains(resource)) {
-    DCHECK(delta >= 0 || size_ >= static_cast<size_t>(-delta));
-    size_ += delta;
-  }
-  if (strong_references_.Contains(resource)) {
-    PruneStrongReferences();
-  }
+  DCHECK(delta >= 0 || size_ >= static_cast<size_t>(-delta));
+  size_ += delta;
 }
 
 void MemoryCache::RemoveURLFromCache(const KURL& url) {
@@ -381,7 +373,6 @@ void MemoryCache::EvictResources() {
     resource_maps_.erase(resource_map_iter);
     resource_map_iter = resource_maps_.begin();
   }
-  ClearStrongReferences();
 }
 
 void MemoryCache::Prune() {
@@ -486,7 +477,7 @@ bool MemoryCache::OnMemoryDump(WebMemoryDumpLevelOfDetail level_of_detail,
 
 void MemoryCache::OnMemoryPressure(
     base::MemoryPressureListener::MemoryPressureLevel level) {
-  ClearStrongReferences();
+  saved_page_resources_.clear();
   if (MemoryPressureListenerRegistry::
           IsLowEndDeviceOrPartialLowEndModeEnabled()) {
     PruneAll();
@@ -496,67 +487,28 @@ void MemoryCache::OnMemoryPressure(
 void MemoryCache::SavePageResourceStrongReferences(
     HeapVector<Member<Resource>> resources) {
   DCHECK(base::FeatureList::IsEnabled(features::kMemoryCacheStrongReference));
+  if (base::FeatureList::IsEnabled(
+          features::kMemoryCacheStrongReferenceSingleUnload)) {
+    saved_page_resources_.clear();
+  }
   base::UmaHistogramCustomCounts(kPageSavedResourceStrongReferenceSize,
                                  resources.size(), 0, 200, 50);
-  for (Resource* resource : resources) {
-    resource->UpdateMemoryCacheLastAccessedTime();
-    strong_references_.AppendOrMoveToLast(resource);
-  }
-  PruneStrongReferences();
+  base::UnguessableToken saved_page_token = base::UnguessableToken::Create();
+  saved_page_resources_.insert(
+      String(saved_page_token.ToString()),
+      MakeGarbageCollected<HeapVector<Member<Resource>>>(std::move(resources)));
+  task_runner_->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&MemoryCache::RemovePageResourceStrongReference,
+                     WrapWeakPersistent(this), saved_page_token),
+      kCUnloadPageResourceSaveTime);
 }
 
-void MemoryCache::SaveStrongReference(Resource* resource) {
-  resource->UpdateMemoryCacheLastAccessedTime();
-  strong_references_.AppendOrMoveToLast(resource);
-  PruneStrongReferences();
-}
-
-void MemoryCache::PruneStrongReferences() {
+void MemoryCache::RemovePageResourceStrongReference(
+    const base::UnguessableToken& saved_page_token) {
   DCHECK(base::FeatureList::IsEnabled(features::kMemoryCacheStrongReference));
-  static const size_t max_threshold = static_cast<size_t>(
-      features::kMemoryCacheStrongReferenceTotalSizeThresholdParam.Get());
 
-  base::TimeTicks last_ticks;
-  size_t strong_reference_total_size = 0;
-  for (Resource* resource : strong_references_) {
-    // Sanity check on data structure.
-    CHECK(resource->MemoryCacheLastAccessed() >= last_ticks);
-    last_ticks = resource->MemoryCacheLastAccessed();
-    strong_reference_total_size += resource->size();
-  }
-
-  while (strong_reference_total_size > max_threshold) {
-    CHECK(!strong_references_.empty());
-    Resource* front_resource = strong_references_.front();
-    strong_references_.erase(strong_references_.begin());
-    size_t resource_size = front_resource->size();
-    CHECK_GE(strong_reference_total_size, resource_size);
-    strong_reference_total_size -= resource_size;
-  }
-
-  base::TimeTicks now = base::TimeTicks::Now();
-  while (!strong_references_.empty()) {
-    Resource* front_resource = strong_references_.front();
-    base::TimeTicks next_expiry = front_resource->MemoryCacheLastAccessed() +
-                                  strong_references_prune_duration_;
-    if (next_expiry > now) {
-      if (strong_references_prune_time_ < now ||
-          strong_references_prune_time_ > next_expiry) {
-        task_runner_->PostDelayedTask(
-            FROM_HERE,
-            base::BindOnce(&MemoryCache::PruneStrongReferences,
-                           WrapWeakPersistent(this)),
-            next_expiry - now);
-        strong_references_prune_time_ = next_expiry;
-      }
-      break;
-    }
-    strong_references_.erase(strong_references_.begin());
-  }
-}
-
-void MemoryCache::ClearStrongReferences() {
-  strong_references_.clear();
+  saved_page_resources_.erase(String(saved_page_token.ToString()));
 }
 
 }  // namespace blink

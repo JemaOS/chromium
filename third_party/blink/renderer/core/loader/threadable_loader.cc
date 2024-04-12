@@ -33,10 +33,8 @@
 
 #include <memory>
 
-#include "base/metrics/histogram_functions.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/task/single_thread_task_runner.h"
-#include "base/time/time.h"
 #include "services/network/public/cpp/cors/cors_error_status.h"
 #include "services/network/public/mojom/cors.mojom-blink.h"
 #include "services/network/public/mojom/fetch_api.mojom-blink.h"
@@ -71,20 +69,16 @@ namespace {
 class DetachedClient final : public GarbageCollected<DetachedClient>,
                              public ThreadableLoaderClient {
  public:
-  explicit DetachedClient(ThreadableLoader* loader)
-      : loader_(loader), detached_time_(base::TimeTicks::Now()) {}
+  explicit DetachedClient(ThreadableLoader* loader) : loader_(loader) {}
   ~DetachedClient() override = default;
 
   void DidFinishLoading(uint64_t identifier) override {
-    LogKeepAliveDuration();
     self_keep_alive_.Clear();
   }
   void DidFail(uint64_t identifier, const ResourceError&) override {
-    LogKeepAliveDuration();
     self_keep_alive_.Clear();
   }
   void DidFailRedirectCheck(uint64_t identifier) override {
-    LogKeepAliveDuration();
     self_keep_alive_.Clear();
   }
   void Trace(Visitor* visitor) const override {
@@ -93,18 +87,9 @@ class DetachedClient final : public GarbageCollected<DetachedClient>,
   }
 
  private:
-  void LogKeepAliveDuration() {
-    base::TimeDelta duration_after_detached =
-        base::TimeTicks::Now() - detached_time_;
-    // kKeepaliveLoadersTimeout > 10 sec, so UmaHistogramTimes can't be used.
-    base::UmaHistogramMediumTimes("FetchKeepAlive.RequestOutliveDuration",
-                                  duration_after_detached);
-  }
-
   SelfKeepAlive<DetachedClient> self_keep_alive_{this};
   // Keep it alive.
   const Member<ThreadableLoader> loader_;
-  base::TimeTicks detached_time_;
 };
 
 }  // namespace
@@ -129,6 +114,13 @@ ThreadableLoader::ThreadableLoader(
 }
 
 void ThreadableLoader::Start(ResourceRequest request) {
+  // Back/forward-cache is interested in use of the "Authorization" header.
+  if (request.HttpHeaderField("Authorization")) {
+    execution_context_->GetScheduler()->RegisterStickyFeature(
+        SchedulingPolicy::Feature::kAuthorizationHeader,
+        {SchedulingPolicy::DisableBackForwardCache()});
+  }
+
   const auto request_context = request.GetRequestContext();
   if (request.GetMode() == network::mojom::RequestMode::kNoCors) {
     SECURITY_CHECK(cors::IsNoCorsAllowedContext(request_context));
@@ -308,16 +300,6 @@ void ThreadableLoader::ResponseReceived(Resource* resource,
 
   checker_.ResponseReceived();
 
-  // If "Cache-Control: no-store" header exists in the XHR response,
-  // Back/Forward cache will be disabled for the page if the main resource has
-  // "Cache-Control: no-store" as well.
-  if (response.CacheControlContainsNoStore()) {
-    execution_context_->GetScheduler()->RegisterStickyFeature(
-        SchedulingPolicy::Feature::
-            kJsNetworkRequestReceivedCacheControlNoStoreResource,
-        {SchedulingPolicy::DisableBackForwardCache()});
-  }
-
   client_->DidReceiveResponse(resource->InspectorId(), response);
 }
 
@@ -342,13 +324,16 @@ void ThreadableLoader::CachedMetadataReceived(
 }
 
 void ThreadableLoader::DataReceived(Resource* resource,
-                                    base::span<const char> data) {
+                                    const char* data,
+                                    size_t data_length) {
   DCHECK(client_);
   DCHECK_EQ(resource, GetResource());
 
   checker_.DataReceived();
 
-  client_->DidReceiveData(data);
+  // TODO(junov): Fix the ThreadableLoader ecosystem to use size_t. Until then,
+  // we use safeCast to trap potential overflows.
+  client_->DidReceiveData(data, base::checked_cast<unsigned>(data_length));
 }
 
 void ThreadableLoader::NotifyFinished(Resource* resource) {
@@ -400,7 +385,6 @@ void ThreadableLoader::Trace(Visitor* visitor) const {
   visitor->Trace(client_);
   visitor->Trace(resource_fetcher_);
   visitor->Trace(timeout_timer_);
-  visitor->Trace(resource_loader_options_);
   RawResourceClient::Trace(visitor);
 }
 

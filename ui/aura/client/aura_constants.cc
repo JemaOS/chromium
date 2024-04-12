@@ -11,6 +11,7 @@
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/image/image_skia.h"
 
+DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, bool)
 DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, base::TimeDelta)
 DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, base::UnguessableToken*)
 DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, std::u16string*)
@@ -28,10 +29,10 @@ DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, void*)
 DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, SkColor)
 DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, int32_t)
 DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, int64_t)
-DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, uint64_t)
 DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, aura::client::FocusClient*)
 DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, aura::Window*)
 DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, std::vector<aura::Window*>*)
+DEFINE_EXPORTED_UI_CLASS_PROPERTY_TYPE(AURA_EXPORT, ui::MenuType)
 
 namespace aura {
 namespace client {
@@ -56,6 +57,9 @@ DEFINE_UI_CLASS_PROPERTY_KEY(bool, kDrawAttentionKey, false)
 DEFINE_UI_CLASS_PROPERTY_KEY(FocusClient*, kFocusClientKey, nullptr)
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(gfx::Rect, kHeadlessBoundsKey, nullptr)
 DEFINE_UI_CLASS_PROPERTY_KEY(Window*, kHostWindowKey, nullptr)
+DEFINE_UI_CLASS_PROPERTY_KEY(ui::MenuType,
+                             kMenuType,
+                             ui::MenuType::kRootContextMenu)
 DEFINE_UI_CLASS_PROPERTY_KEY(Window*, kChildModalParentKey, nullptr)
 DEFINE_UI_CLASS_PROPERTY_KEY(ui::ModalType, kModalKey, ui::MODAL_TYPE_NONE)
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(std::string, kNameKey, nullptr)
@@ -90,7 +94,6 @@ DEFINE_UI_CLASS_PROPERTY_KEY(int, kWindowCornerRadiusKey, -1)
 DEFINE_UI_CLASS_PROPERTY_KEY(int,
                              kWindowWorkspaceKey,
                              kWindowWorkspaceUnassignedWorkspace)
-DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(std::string, kDeskUuidKey, nullptr)
 DEFINE_UI_CLASS_PROPERTY_KEY(ui::ZOrderLevel,
                              kZOrderingKey,
                              ui::ZOrderLevel::kNormal)

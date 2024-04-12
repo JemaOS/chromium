@@ -4,13 +4,15 @@
 
 package org.chromium.chrome.browser.omnibox.suggestions;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNotNull;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import android.content.Context;
 import android.os.Handler;
@@ -32,22 +34,26 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Features;
-import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
-import org.chromium.components.omnibox.suggestions.OmniboxSuggestionUiType;
+import org.chromium.chrome.test.util.browser.Features;
+import org.chromium.chrome.test.util.browser.Features.DisableFeatures;
+import org.chromium.chrome.test.util.browser.Features.EnableFeatures;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 
 import java.util.Arrays;
 
-/** Unit tests for {@link PreWarmingRecycledViewPool}. */
+/**
+ * Unit tests for {@link PreWarmingRecycledViewPool}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 public class PreWarmingRecycledViewPoolTest {
     public @Rule TestRule mProcessor = new Features.JUnitProcessor();
     public @Rule MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    @Mock private Handler mHandler;
-    @Mock private View mView;
+    @Mock
+    private Handler mHandler;
+    @Mock
+    private View mView;
 
     private Context mContext;
     private OmniboxSuggestionsDropdownAdapter mAdapter;
@@ -56,31 +62,28 @@ public class PreWarmingRecycledViewPoolTest {
     @Before
     public void setUp() {
         mContext = ApplicationProvider.getApplicationContext();
-        mAdapter =
-                Mockito.spy(
-                        new OmniboxSuggestionsDropdownAdapter(new ModelList()) {
-                            @Override
-                            protected View createView(ViewGroup parent, int viewType) {
-                                return mView;
-                            }
+        mAdapter = Mockito.spy(new OmniboxSuggestionsDropdownAdapter(new ModelList()) {
+            @Override
+            protected View createView(ViewGroup parent, int viewType) {
+                return mView;
+            }
 
-                            @Override
-                            public @NonNull ViewHolder onCreateViewHolder(
-                                    @NonNull ViewGroup parent, int viewType) {
-                                return new ViewHolder(mView, null);
-                            }
-                        });
+            @Override
+            @NonNull
+            public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+                return new ViewHolder(mView, null);
+            }
+        });
         mPool = new PreWarmingRecycledViewPool(mAdapter, mContext, mHandler);
     }
 
-    @EnableFeatures(ChromeFeatureList.OMNIBOX_WARM_RECYCLED_VIEW_POOL)
+    @EnableFeatures({ChromeFeatureList.OMNIBOX_WARM_RECYCLED_VIEW_POOL})
     @Test
     public void testCreateViews() {
-        doAnswer(
-                        (invocation -> {
-                            ((Runnable) invocation.getArgument(0)).run();
-                            return null;
-                        }))
+        doAnswer((invocation -> {
+            ((Runnable) invocation.getArgument(0)).run();
+            return null;
+        }))
                 .when(mHandler)
                 .postDelayed(any(Runnable.class), anyLong());
         mPool.onNativeInitialized();
@@ -96,21 +99,32 @@ public class PreWarmingRecycledViewPoolTest {
         View expectedView = mView;
         // null out mView so that newly-created ViewHolders will be distinct from pre-warmed ones.
         mView = null;
-        for (var uiType :
-                Arrays.asList(
-                        OmniboxSuggestionUiType.EDIT_URL_SUGGESTION,
-                        OmniboxSuggestionUiType.TILE_NAVSUGGEST,
-                        OmniboxSuggestionUiType.HEADER,
-                        OmniboxSuggestionUiType.CLIPBOARD_SUGGESTION,
-                        OmniboxSuggestionUiType.DEFAULT,
-                        OmniboxSuggestionUiType.ENTITY_SUGGESTION)) {
+        for (var uiType : Arrays.asList(OmniboxSuggestionUiType.EDIT_URL_SUGGESTION,
+                     OmniboxSuggestionUiType.TILE_NAVSUGGEST, OmniboxSuggestionUiType.HEADER,
+                     OmniboxSuggestionUiType.CLIPBOARD_SUGGESTION, OmniboxSuggestionUiType.DEFAULT,
+                     OmniboxSuggestionUiType.ENTITY_SUGGESTION)) {
             ViewHolder viewHolder = mPool.getRecycledView(uiType);
             assertNotNull(viewHolder);
             assertEquals(expectedView, viewHolder.itemView);
         }
     }
 
-    @EnableFeatures(ChromeFeatureList.OMNIBOX_WARM_RECYCLED_VIEW_POOL)
+    @DisableFeatures({ChromeFeatureList.OMNIBOX_WARM_RECYCLED_VIEW_POOL})
+    @Test
+    public void testCreateViews_featureDisabled() {
+        doAnswer((invocation -> {
+            ((Runnable) invocation.getArgument(0)).run();
+            return null;
+        }))
+                .when(mHandler)
+                .postDelayed(any(Runnable.class), anyLong());
+        mPool.onNativeInitialized();
+
+        verifyNoMoreInteractions(mAdapter);
+        verifyNoMoreInteractions(mHandler);
+    }
+
+    @EnableFeatures({ChromeFeatureList.OMNIBOX_WARM_RECYCLED_VIEW_POOL})
     @Test
     public void testStopCreating() {
         mPool.onNativeInitialized();

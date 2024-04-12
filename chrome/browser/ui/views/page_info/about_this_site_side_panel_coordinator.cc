@@ -8,11 +8,11 @@
 #include "chrome/browser/page_info/page_info_features.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/page_info/about_this_site_side_panel.h"
-#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/page_info/about_this_site_side_panel_view.h"
 #include "chrome/browser/ui/views/page_info/page_info_view_factory.h"
+#include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_entry.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_registry.h"
 #include "components/page_info/core/about_this_site_service.h"
@@ -63,10 +63,9 @@ AboutThisSideSidePanelCoordinator::~AboutThisSideSidePanelCoordinator() =
 
 void AboutThisSideSidePanelCoordinator::RegisterEntry(
     const GURL& more_about_url) {
-  SidePanelUI* side_panel_ui = GetSidePanelUI();
-  if (!side_panel_ui) {
+  auto* browser_view = GetBrowserView();
+  if (!browser_view)
     return;
-  }
 
   auto* registry = SidePanelRegistry::Get(web_contents());
   last_url_info_ = {web_contents()->GetLastCommittedURL(), more_about_url,
@@ -96,10 +95,9 @@ void AboutThisSideSidePanelCoordinator::RegisterEntry(
 
 void AboutThisSideSidePanelCoordinator::RegisterEntryAndShow(
     const GURL& more_about_url) {
-  SidePanelUI* side_panel_ui = GetSidePanelUI();
-  if (!side_panel_ui) {
+  auto* browser_view = GetBrowserView();
+  if (!browser_view)
     return;
-  }
 
   RegisterEntry(more_about_url);
   registered_but_not_shown_ = false;
@@ -109,9 +107,10 @@ void AboutThisSideSidePanelCoordinator::RegisterEntryAndShow(
     about_this_site_side_panel_view_->OpenUrl(last_url_info_->url_params);
   }
 
-  if (side_panel_ui->GetCurrentEntryId() !=
+  auto* side_panel_coordinator = browser_view->side_panel_coordinator();
+  if (side_panel_coordinator->GetCurrentEntryId() !=
       SidePanelEntry::Id::kAboutThisSite) {
-    side_panel_ui->Show(SidePanelEntry::Id::kAboutThisSite);
+    side_panel_coordinator->Show(SidePanelEntry::Id::kAboutThisSite);
   }
 }
 
@@ -122,24 +121,48 @@ void AboutThisSideSidePanelCoordinator::DidFinishNavigation(
     return;
   }
 
-  if (navigation_handle->IsSameDocument() &&
+  if (!page_info::IsKeepSidePanelOnSameTabNavsFeatureEnabled() &&
+      navigation_handle->IsSameDocument()) {
+    return;
+  }
+
+  if (page_info::IsKeepSidePanelOnSameTabNavsFeatureEnabled() &&
+      navigation_handle->IsSameDocument() &&
       web_contents()->GetLastCommittedURL().GetWithoutRef() ==
           last_url_info_->context_url.GetWithoutRef()) {
     return;
   }
 
-  SidePanelUI* side_panel_ui = GetSidePanelUI();
-  if (!side_panel_ui) {
+  auto* browser_view = GetBrowserView();
+  if (!browser_view)
     return;
+
+  // If the side panel is open and shows the AboutThisSide panel, close it.
+  auto* side_panel_coordinator = browser_view->side_panel_coordinator();
+  if (!page_info::IsKeepSidePanelOnSameTabNavsFeatureEnabled() &&
+      about_this_site_side_panel_view_ &&
+      side_panel_coordinator->GetCurrentEntryId() ==
+          SidePanelEntry::Id::kAboutThisSite) {
+    side_panel_coordinator->Close();
   }
 
   auto* registry = SidePanelRegistry::Get(web_contents());
   SidePanelEntry::Key key(SidePanelEntry::Id::kAboutThisSite);
+  // If the user navigates to a different page than the one we have data for
+  // we need to remove the SidePanel registration. We might already have
+  // data from cacao for the current pageload if it was locally cached.
+  if (!page_info::IsKeepSidePanelOnSameTabNavsFeatureEnabled() &&
+      registry->GetEntryForKey(key) &&
+      web_contents()->GetLastCommittedURL() != last_url_info_->context_url) {
+    registry->Deregister(key);
+    last_url_info_.reset();
+  }
 
   // Update the SidePanel when a user navigates to another url with the
   // correct Diner URL.
-  if (about_this_site_side_panel_view_ &&
-      side_panel_ui->GetCurrentEntryId() ==
+  if (page_info::IsKeepSidePanelOnSameTabNavsFeatureEnabled() &&
+      about_this_site_side_panel_view_ &&
+      side_panel_coordinator->GetCurrentEntryId() ==
           SidePanelEntry::Id::kAboutThisSite) {
     page_info::AboutThisSiteService::OnSameTabNavigation();
     RegisterEntryAndShow(
@@ -149,7 +172,7 @@ void AboutThisSideSidePanelCoordinator::DidFinishNavigation(
 
   // If the about this site side panel is no longer being shown and the view is
   // cached, then we will remove the cached view since it shows the wrong page.
-  if (side_panel_ui->GetCurrentEntryId() !=
+  if (side_panel_coordinator->GetCurrentEntryId() !=
           SidePanelEntry::Id::kAboutThisSite &&
       about_this_site_side_panel_view_) {
     auto* entry = registry->GetEntryForKey(
@@ -169,20 +192,15 @@ AboutThisSideSidePanelCoordinator::CreateAboutThisSiteWebView() {
   }
 
   auto side_panel_view_ =
-      std::make_unique<AboutThisSiteSidePanelView>(web_contents());
+      std::make_unique<AboutThisSiteSidePanelView>(GetBrowserView());
   side_panel_view_->OpenUrl(last_url_info_->url_params);
   about_this_site_side_panel_view_ = side_panel_view_->AsWeakPtr();
   return side_panel_view_;
 }
 
 BrowserView* AboutThisSideSidePanelCoordinator::GetBrowserView() const {
-  auto* browser = chrome::FindBrowserWithTab(web_contents());
+  auto* browser = chrome::FindBrowserWithWebContents(web_contents());
   return browser ? BrowserView::GetBrowserViewForBrowser(browser) : nullptr;
-}
-
-SidePanelUI* AboutThisSideSidePanelCoordinator::GetSidePanelUI() {
-  auto* browser = chrome::FindBrowserWithTab(web_contents());
-  return browser ? SidePanelUI::GetSidePanelUIForBrowser(browser) : nullptr;
 }
 
 GURL AboutThisSideSidePanelCoordinator::GetOpenInNewTabUrl() {

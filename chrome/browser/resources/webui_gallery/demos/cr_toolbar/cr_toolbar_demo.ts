@@ -5,7 +5,6 @@
 import '//resources/cr_elements/cr_checkbox/cr_checkbox.js';
 import '//resources/cr_elements/cr_input/cr_input.js';
 import '//resources/cr_elements/cr_toolbar/cr_toolbar.js';
-import '../demo.css.js';
 
 import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
@@ -48,7 +47,7 @@ class CrToolbarDemoElement extends PolymerElement {
   private showSearch_: boolean = true;
   private showSlottedContent_: boolean = false;
 
-  private onMenuClick_() {
+  private onMenuTap_() {
     this.push('log_', 'Menu tapped.');
   }
 
@@ -60,7 +59,5 @@ class CrToolbarDemoElement extends PolymerElement {
     }
   }
 }
-
-export const tagName = CrToolbarDemoElement.is;
 
 customElements.define(CrToolbarDemoElement.is, CrToolbarDemoElement);

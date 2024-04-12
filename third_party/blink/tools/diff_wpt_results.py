@@ -47,15 +47,13 @@ _log = logging.getLogger(os.path.basename(__file__))
 # Extend this script to compare the results between wptrunner/Chrome
 # and rwt/content_shell on Linux
 PRODUCTS = PRODUCTS + [
-    'android_webview', 'chrome_android', 'chrome_linux', 'content_shell',
-    'wpt_content_shell_linux', 'wpt_content_shell_win10',
-    'wpt_content_shell_win11', 'wpt_content_shell_mac11',
-    'wpt_content_shell_mac12', 'wpt_content_shell_mac12_arm64',
-    'wpt_content_shell_mac13', 'wpt_content_shell_mac13_arm64'
+    'chrome_linux', 'content_shell', 'wpt_content_shell_linux',
+    'wpt_content_shell_win10', 'wpt_content_shell_win11',
+    'wpt_content_shell_mac11', 'wpt_content_shell_mac12',
+    'wpt_content_shell_mac12_arm64', 'wpt_content_shell_mac13',
+    'wpt_content_shell_mac13_arm64'
 ]
 PRODUCTS_TO_STEPNAMES.update({
-    'android_webview': 'system_webview_wpt',
-    'chrome_android': 'chrome_public_wpt',
     'chrome_linux': 'wpt_tests_suite',
     'wpt_content_shell_linux': 'wpt_tests_suite_linux',
     'wpt_content_shell_win10': 'wpt_tests_suite_win10',
@@ -70,7 +68,7 @@ PRODUCTS_TO_STEPNAMES.update({
 PRODUCTS_TO_BUILDER_NAME = {
     'android_webview': 'android-webview-pie-x86-wpt-fyi-rel',
     'chrome_android': 'android-chrome-pie-x86-wpt-fyi-rel',
-    'chrome_linux': 'linux-wpt-chromium-rel',
+    'chrome_linux': 'linux-wpt-fyi-rel',
     'wpt_content_shell_linux': 'linux-wpt-content-shell-fyi-rel',
     'wpt_content_shell_win10': 'win10-wpt-content-shell-fyi-rel',
     'wpt_content_shell_win11': 'win11-wpt-content-shell-fyi-rel',

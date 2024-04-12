@@ -31,9 +31,9 @@ class SpeechRecognitionPrivateDelegate;
 class SpeechRecognitionPrivateRecognizer : public SpeechRecognizerDelegate {
   using OnStartCallback =
       base::OnceCallback<void(speech::SpeechRecognitionType type,
-                              std::optional<std::string> error)>;
+                              absl::optional<std::string> error)>;
   using OnStopCallback =
-      base::OnceCallback<void(std::optional<std::string> error)>;
+      base::OnceCallback<void(absl::optional<std::string> error)>;
 
  public:
   SpeechRecognitionPrivateRecognizer(SpeechRecognitionPrivateDelegate* delegate,
@@ -44,7 +44,7 @@ class SpeechRecognitionPrivateRecognizer : public SpeechRecognizerDelegate {
   // SpeechRecognizerDelegate:
   void OnSpeechResult(const std::u16string& text,
                       bool is_final,
-                      const std::optional<media::SpeechRecognitionResult>&
+                      const absl::optional<media::SpeechRecognitionResult>&
                           full_result) override;
   void OnSpeechSoundLevelChanged(int16_t level) override {}
   void OnSpeechRecognitionStateChanged(
@@ -52,8 +52,8 @@ class SpeechRecognitionPrivateRecognizer : public SpeechRecognizerDelegate {
   void OnSpeechRecognitionStopped() override {}
 
   // Handles a call to start speech recognition.
-  void HandleStart(std::optional<std::string> locale,
-                   std::optional<bool> interim_results,
+  void HandleStart(absl::optional<std::string> locale,
+                   absl::optional<bool> interim_results,
                    OnStartCallback callback);
   // Handles a call to stop speech recognition. The callback accepts an
   // optional string specifying an error message, if any.
@@ -70,8 +70,8 @@ class SpeechRecognitionPrivateRecognizer : public SpeechRecognizerDelegate {
   void RecognizerOff();
 
   // Updates properties used for speech recognition.
-  void MaybeUpdateProperties(std::optional<std::string> locale,
-                             std::optional<bool> interim_results,
+  void MaybeUpdateProperties(absl::optional<std::string> locale,
+                             absl::optional<bool> interim_results,
                              OnStartCallback callback);
 
   base::WeakPtr<SpeechRecognitionPrivateRecognizer> GetWeakPtr() {
@@ -90,9 +90,9 @@ class SpeechRecognitionPrivateRecognizer : public SpeechRecognizerDelegate {
   OnStartCallback on_start_callback_;
   // Delegate that helps handle speech recognition events. `delegate_` is
   // required to outlive this object.
-  const raw_ptr<SpeechRecognitionPrivateDelegate> delegate_;
+  const raw_ptr<SpeechRecognitionPrivateDelegate, ExperimentalAsh> delegate_;
   // The associated BrowserContext.
-  const raw_ptr<content::BrowserContext> context_;
+  const raw_ptr<content::BrowserContext, ExperimentalAsh> context_;
   // A unique ID for this speech recognizer.
   const std::string id_;
   std::unique_ptr<SpeechRecognizer> speech_recognizer_;

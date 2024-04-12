@@ -12,7 +12,7 @@ dictionary CookieListItem {
   DOMHighResTimeStamp? expires;
   boolean secure;
   CookieSameSite sameSite;
-  boolean partitioned;
+  [RuntimeEnabled=PartitionedCookies] boolean partitioned;
 };
 
 typedef sequence<CookieListItem> CookieList;

@@ -43,10 +43,8 @@ public class LogcatExtractionRunnable implements Runnable {
 
     @Override
     public void run() {
-        File fileToUpload =
-                mLogcatExtractor.attachLogcatToMinidump(
-                        mMinidumpFile,
-                        new CrashFileManager(ContextUtils.getApplicationContext().getCacheDir()));
+        File fileToUpload = mLogcatExtractor.attachLogcatToMinidump(mMinidumpFile,
+                new CrashFileManager(ContextUtils.getApplicationContext().getCacheDir()));
         uploadMinidump(fileToUpload, false);
     }
 

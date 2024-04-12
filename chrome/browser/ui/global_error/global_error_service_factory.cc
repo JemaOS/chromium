@@ -15,19 +15,13 @@ GlobalErrorService* GlobalErrorServiceFactory::GetForProfile(Profile* profile) {
 
 // static
 GlobalErrorServiceFactory* GlobalErrorServiceFactory::GetInstance() {
-  static base::NoDestructor<GlobalErrorServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<GlobalErrorServiceFactory>::get();
 }
 
 GlobalErrorServiceFactory::GlobalErrorServiceFactory()
     : ProfileKeyedServiceFactory(
           "GlobalErrorService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
 GlobalErrorServiceFactory::~GlobalErrorServiceFactory() = default;
 

@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.ui.appmenu;
 
 /** A UI coordinator the app menu. */
 public interface AppMenuCoordinator {
-    /** Called when the containing activity is being destroyed. */
+    /**
+     * Called when the containing activity is being destroyed.
+     */
     void destroy();
 
     /**

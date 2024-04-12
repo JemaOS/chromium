@@ -22,8 +22,7 @@ ArcUsbHostPermissionManagerFactory::GetForBrowserContext(
 // static
 ArcUsbHostPermissionManagerFactory*
 ArcUsbHostPermissionManagerFactory::GetInstance() {
-  static base::NoDestructor<ArcUsbHostPermissionManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<ArcUsbHostPermissionManagerFactory>::get();
 }
 
 ArcUsbHostPermissionManagerFactory::ArcUsbHostPermissionManagerFactory()
@@ -31,21 +30,14 @@ ArcUsbHostPermissionManagerFactory::ArcUsbHostPermissionManagerFactory()
           "ArcUsbHostPermissionManager",
           // This matches the logic in ExtensionSyncServiceFactory, which uses
           // the original browser context.
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(ArcAppListPrefsFactory::GetInstance());
   DependsOn(ArcUsbHostBridge::GetFactory());
 }
 
-ArcUsbHostPermissionManagerFactory::~ArcUsbHostPermissionManagerFactory() =
-    default;
+ArcUsbHostPermissionManagerFactory::~ArcUsbHostPermissionManagerFactory() {}
 
-std::unique_ptr<KeyedService>
-ArcUsbHostPermissionManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ArcUsbHostPermissionManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   return ArcUsbHostPermissionManager::Create(context);
 }

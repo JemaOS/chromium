@@ -11,19 +11,15 @@
 
 namespace blink {
 
-class PLATFORM_EXPORT WebThemeEngineHelper {
+class WebThemeEngineHelper {
  public:
-  static WebThemeEngine* GetNativeThemeEngine();
-  static void DidUpdateRendererPreferences(
+  PLATFORM_EXPORT static WebThemeEngine* GetNativeThemeEngine();
+  PLATFORM_EXPORT static void DidUpdateRendererPreferences(
       const blink::RendererPreferences& renderer_prefs);
 
   // Swaps the current theme engine out returning the old one.
-  static std::unique_ptr<WebThemeEngine> SwapNativeThemeEngineForTesting(
-      std::unique_ptr<WebThemeEngine> new_theme);
-
-  // This is here instead of WebThemeEngineAndroid because we also need it for
-  // DevTools device emulation.
-  static const WebThemeEngine::ScrollbarStyle& AndroidScrollbarStyle();
+  PLATFORM_EXPORT static std::unique_ptr<WebThemeEngine>
+  SwapNativeThemeEngineForTesting(std::unique_ptr<WebThemeEngine> new_theme);
 };
 
 }  // namespace blink

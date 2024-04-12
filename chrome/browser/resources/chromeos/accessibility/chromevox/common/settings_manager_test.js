@@ -9,6 +9,17 @@ GEN_INCLUDE(['../testing/chromevox_e2e_test_base.js']);
  * Test fixture for SettingsManager.
  */
 ChromeVoxSettingsManagerTest = class extends ChromeVoxE2ETest {
+  /** @override */
+  async setUpDeferred() {
+    await super.setUpDeferred();
+
+    // Alphabetical based on file path.
+    await importModule('LocalStorage', '/common/local_storage.js');
+    await importModule(
+        'SettingsManager', '/chromevox/common/settings_manager.js');
+    await importModule('Settings', '/common/settings.js');
+  }
+
   async getStoragePrefs(prefNames) {
     const prefs = {};
     for (const prefName of prefNames) {
@@ -209,10 +220,7 @@ AX_TEST_F(
       const eventStreamFilters = {
         activedescendantchanged: true,
         alert: true,
-        // TODO(crbug.com/1464633) Fully remove ariaAttributeChangedDeprecated
-        // starting in 122, because although it was removed in 118, it is still
-        // present in earlier versions of LaCros.
-        ariaAttributeChangedDeprecated: true,
+        ariaAttributeChanged: true,
         autocorrectionOccured: false,
         blur: true,
         checkedStateChanged: false,

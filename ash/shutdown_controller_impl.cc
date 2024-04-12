@@ -50,7 +50,9 @@ void ShutdownControllerImpl::ShutDownOrReboot(ShutdownReason reason) {
   // On real Chrome OS hardware the power manager handles shutdown.
   std::string description = base::StringPrintf("UI request from ash: %s",
                                                ShutdownReasonToString(reason));
-  if (reboot_on_shutdown_) {
+  // ---***JEMAOS BEGIN***---
+  if (reboot_on_shutdown_ || reason == ShutdownReason::TRAY_REBOOT_BUTTON) {
+  // ---***JEMAOS END***---
     chromeos::PowerManagerClient::Get()->RequestRestart(
         power_manager::REQUEST_RESTART_FOR_USER, description);
   } else {

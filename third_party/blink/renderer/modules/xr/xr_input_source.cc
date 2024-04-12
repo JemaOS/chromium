@@ -6,7 +6,6 @@
 
 #include "base/time/time.h"
 #include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom-blink.h"
-#include "third_party/blink/renderer/bindings/core/v8/frozen_array.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/events/event_dispatcher.h"
 #include "third_party/blink/renderer/core/dom/events/event_path.h"
@@ -29,7 +28,7 @@ namespace blink {
 
 namespace {
 std::unique_ptr<gfx::Transform> TryGetTransform(
-    const std::optional<gfx::Transform>& transform) {
+    const absl::optional<gfx::Transform>& transform) {
   if (transform) {
     return std::make_unique<gfx::Transform>(*transform);
   }
@@ -59,7 +58,6 @@ XRInputSource::InternalState::InternalState(const InternalState& other) =
 
 XRInputSource::InternalState::~InternalState() = default;
 
-// static
 XRInputSource* XRInputSource::CreateOrUpdateFrom(
     XRInputSource* other,
     XRSession* session,
@@ -97,8 +95,10 @@ XRInputSource* XRInputSource::CreateOrUpdateFrom(
           TryGetTransform(desc->input_from_pointer);
     }
 
-    updated_source->profiles_ = MakeGarbageCollected<FrozenArray<IDLString>>(
-        state->description->profiles);
+    updated_source->state_.profiles.clear();
+    for (const auto& name : state->description->profiles) {
+      updated_source->state_.profiles.push_back(name);
+    }
   }
 
   if (updated_source->state_.is_visible) {
@@ -120,8 +120,7 @@ XRInputSource::XRInputSource(XRSession* session,
     : state_(source_id, target_ray_mode, session->xr()->NavigationStart()),
       session_(session),
       target_ray_space_(MakeGarbageCollected<XRTargetRaySpace>(session, this)),
-      grip_space_(MakeGarbageCollected<XRGripSpace>(session, this)),
-      profiles_(MakeGarbageCollected<FrozenArray<IDLString>>()) {}
+      grip_space_(MakeGarbageCollected<XRGripSpace>(session, this)) {}
 
 // Must make new target_ray_space_ and grip_space_ to ensure that they point to
 // the correct XRInputSource object. Otherwise, the controller position gets
@@ -135,8 +134,6 @@ XRInputSource::XRInputSource(const XRInputSource& other)
       grip_space_(MakeGarbageCollected<XRGripSpace>(other.session_, this)),
       gamepad_(other.gamepad_),
       hand_(other.hand_),
-      profiles_(MakeGarbageCollected<FrozenArray<IDLString>>(
-          other.profiles_->AsVector())),
       mojo_from_input_(TryGetTransform(other.mojo_from_input_.get())),
       input_from_pointer_(TryGetTransform(other.input_from_pointer_.get())) {}
 
@@ -167,7 +164,7 @@ const String XRInputSource::targetRayMode() const {
 }
 
 XRSpace* XRInputSource::targetRaySpace() const {
-  return target_ray_space_.Get();
+  return target_ray_space_;
 }
 
 XRSpace* XRInputSource::gripSpace() const {
@@ -175,7 +172,7 @@ XRSpace* XRInputSource::gripSpace() const {
     return nullptr;
 
   if (state_.target_ray_mode == device::mojom::XRTargetRayMode::POINTING) {
-    return grip_space_.Get();
+    return grip_space_;
   }
 
   return nullptr;
@@ -196,12 +193,12 @@ bool XRInputSource::InvalidatesSameObject(
       return true;
     }
 
-    if (state->description->profiles.size() != profiles_->size()) {
+    if (state->description->profiles.size() != state_.profiles.size()) {
       return true;
     }
 
-    for (wtf_size_t i = 0; i < profiles_->size(); ++i) {
-      if (state->description->profiles[i] != (*profiles_)[i]) {
+    for (wtf_size_t i = 0; i < state_.profiles.size(); ++i) {
+      if (state->description->profiles[i] != state_.profiles[i]) {
         return true;
       }
     }
@@ -228,7 +225,7 @@ void XRInputSource::SetGamepadConnected(bool state) {
 }
 
 void XRInputSource::UpdateGamepad(
-    const std::optional<device::Gamepad>& gamepad) {
+    const absl::optional<device::Gamepad>& gamepad) {
   if (gamepad) {
     if (!gamepad_) {
       gamepad_ = MakeGarbageCollected<Gamepad>(this, -1, state_.base_timestamp,
@@ -257,16 +254,16 @@ void XRInputSource::UpdateHand(
   }
 }
 
-std::optional<gfx::Transform> XRInputSource::MojoFromInput() const {
+absl::optional<gfx::Transform> XRInputSource::MojoFromInput() const {
   if (!mojo_from_input_.get()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return *(mojo_from_input_.get());
 }
 
-std::optional<gfx::Transform> XRInputSource::InputFromPointer() const {
+absl::optional<gfx::Transform> XRInputSource::InputFromPointer() const {
   if (!input_from_pointer_.get()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return *(input_from_pointer_.get());
 }
@@ -637,7 +634,6 @@ void XRInputSource::Trace(Visitor* visitor) const {
   visitor->Trace(grip_space_);
   visitor->Trace(gamepad_);
   visitor->Trace(hand_);
-  visitor->Trace(profiles_);
   ScriptWrappable::Trace(visitor);
 }
 

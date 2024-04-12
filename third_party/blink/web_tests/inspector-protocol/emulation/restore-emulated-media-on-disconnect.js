@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session: initialSession, dp} = await testRunner.startBlank(
       'Tests that disconnecting from the session clears the media query emulations');
 
@@ -14,10 +14,6 @@
     },
     {
       name: 'prefers-reduced-data',
-      value: 'reduce',
-    },
-    {
-      name: 'prefers-reduced-transparency',
       value: 'reduce',
     },
     {

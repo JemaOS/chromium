@@ -14,12 +14,13 @@
   // Element names:
   const elems_valid = [
     "p", "template", "span", "custom-elements", "potato",
+
     // Arguments will be stringified, so anything that stringifies to a valid
-    // name is also valid.
-    123
+    // name is also valid. (E.g. null => "null")
+    null, undefined, 123
   ];
   const elems_invalid = [
-    "", {name: ""},
+    "", [], ["*"], ["p"]
   ];
 
   // Attribute names:
@@ -31,16 +32,17 @@
 
   const all_elems = elems_valid.concat(elems_invalid);
   const all_attrs = attrs_valid.concat(attrs_invalid);
-  for (const item of ["elements", "removeElements", "replaceWithChildrenElements"]) {
+  for (const item of ["allowElements", "dropElements", "blockElements"]) {
     test(t => {
       const sanitizer = new Sanitizer({[item]: all_elems});
       assert_array_same(sanitizer.getConfiguration()[item],
                           elems_valid.map(x => "" + x));
     }, `Element names in config item: ${item}`);
   }
-  for (const item of ["attributes", "removeAttributes"]) {
+  for (const item of ["allowAttributes", "dropAttributes"]) {
     test(t => {
-      const sanitizer = new Sanitizer({[item]: all_attrs});
+      const sanitizer = new Sanitizer(
+          {[item]: Object.fromEntries(all_attrs.map(x => [x, ["*"]]))});
       assert_array_same(Object.keys(sanitizer.getConfiguration()[item]),
                         attrs_valid.map(x => "" + x));
     }, `Attribute names in config item: ${item}`);
@@ -62,50 +64,46 @@
     [ { name: "math", namespace: MATHML_NS }, "<math>Hello</math>" ],
   ].forEach(([elem, probe, expected], index) => {
     test(t => {
-      const options = { elements: [elem],
+      const sanitizer = new Sanitizer({allowElements: [elem],
         // TODO(https://github.com/WICG/sanitizer-api/issues/167)
-        unknownMarkup: true};
+        allowUnknownMarkup: true});
       const template = document.createElement("template");
-      template.setHTML(probe, {sanitizer: options});
+      template.setHTML(probe, {sanitizer});
       assert_equals(template.innerHTML, expected ?? probe);
-    }, `Namespaced elements #${index}: elements: [${JSON.stringify(elem)}]`);
+    }, `Namespaced elements #${index}: allowElements: [${JSON.stringify(elem)}]`);
   });
 
   // Same for attributes:
   const XLINK_NS = "http://www.w3.org/1999/xlink";
   [
-    [ { name: "style"}, "<p style=\"bla\"></p>" ],
-    [ { name: "href"}, "<p href=\"bla\"></p>" ],
-    [ { name: "xlink:href"}, "<p xlink:href=\"bla\"></p>" ],
-    [ { name: "href", namespace: XLINK_NS}, "<p xlink:href=\"bla\"></p>", "<p></p>" ],
-    [ { name: "href", namespace: XLINK_NS}, "<p href='bla'></p>", "<p></p>" ],
-    [ { name: "href"}, "<p xlink:href='bla'></p>", "<p></p>" ],
+    [ { name: "style", elements: "*" }, "<p style=\"bla\"></p>" ],
+    [ { name: "href", elements: "*" }, "<p href=\"bla\"></p>" ],
+    [ { name: "xlink:href", elements: "*" }, "<p xlink:href=\"bla\"></p>" ],
+    [ { name: "href", namespace: XLINK_NS, elements: "*" }, "<p xlink:href=\"bla\"></p>", "<p></p>" ],
+    [ { name: "href", namespace: XLINK_NS, elements: "*" }, "<p href='bla'></p>", "<p></p>" ],
+    [ { name: "href", elements: "*" }, "<p xlink:href='bla'></p>", "<p></p>" ],
   ].forEach(([attr, probe, expected], index) => {
     test(t => {
-      const options = {attributes: [attr],
+      const sanitizer = new Sanitizer({allowAttributes: [attr],
         // TODO(https://github.com/WICG/sanitizer-api/issues/167)
-        unknownMarkup: true};
+        allowUnknownMarkup: true});
       const template = document.createElement("template");
-      template.setHTML(probe, {sanitizer: options});
+      template.setHTML(probe, {sanitizer});
       assert_equals(template.innerHTML, expected ?? probe);
-    }, `Namespaced attributes #${index}: attributes: [${JSON.stringify(attr)}]`);
+    }, `Namespaced attributes #${index}: allowAttributes: [${JSON.stringify(attr)}]`);
   });
 
   // Test for namespaced attribute inside namespace element
   test(t => {
     const probe = `<svg><a xlink:href="bla"></a></svg>`;
 
-    const options = {
-      elements: [
-        {name: "svg", namespace: SVG_NS},
-        {name: "a", namespace: SVG_NS, attributes: [
-          { name: "href", namespace: XLINK_NS }
-        ]}
-      ],
+    const sanitizer = new Sanitizer({
+      allowAttributes: [{ name: "href", namespace: XLINK_NS, elements: "*" }],
+      allowElements: [{ name: "svg", namespace: SVG_NS }, { name: "a", namespace: SVG_NS }],
       // TODO(https://github.com/WICG/sanitizer-api/issues/167)
-      unknownMarkup: true};
+      allowUnknownMarkup: true});
     const template = document.createElement("template");
-    template.setHTML(probe, {sanitizer: options});
+    template.setHTML(probe, {sanitizer});
     assert_equals(template.innerHTML, probe);
   }, "Namespaced attribute xlink:href inside SVG tree");
 
@@ -117,14 +115,14 @@
     [ "textPath", "<textPath></textPath>" ],
   ].forEach(([elem, probe], index) => {
     const sanitize = (elem, probe) => {
-      const options = {elements: [
+      const sanitizer = new Sanitizer({allowElements: [
           { name: "svg", namespace: SVG_NS },
           { name: elem, namespace: SVG_NS }
         ],
         // TODO(https://github.com/WICG/sanitizer-api/issues/167)
-        unknownMarkup: true};
+        allowUnknownMarkup: true});
       const template = document.createElement("template");
-      template.setHTML(`<svg>${probe}</svg>`, {sanitizer: options});
+      template.setHTML(`<svg>${probe}</svg>`, {sanitizer});
       return template.content.firstElementChild.innerHTML;
     };
     test(t => {
@@ -140,7 +138,7 @@
     test(t => {
       const elems = ["svg:" + elem];
       assert_array_equals(
-        new Sanitizer({elements: elems}).getConfiguration().allowElements,
+        new Sanitizer({allowElements: elems}).getConfiguration().allowElements,
         elems);
     }, `Mixed case element names #${index}: "${elem}" is preserved in config.`);
   });

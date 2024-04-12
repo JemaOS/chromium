@@ -4,8 +4,8 @@
 
 #include "third_party/blink/renderer/modules/mediastream/browser_capture_media_stream_track.h"
 
+#include "base/guid.h"
 #include "base/test/metrics/histogram_tester.h"
-#include "base/uuid.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/web/web_heap.h"
@@ -17,11 +17,9 @@
 #include "third_party/blink/renderer/modules/mediastream/crop_target.h"
 #include "third_party/blink/renderer/modules/mediastream/media_stream_video_track.h"
 #include "third_party/blink/renderer/modules/mediastream/mock_media_stream_video_source.h"
-#include "third_party/blink/renderer/modules/mediastream/sub_capture_target.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_component_impl.h"
 #include "third_party/blink/renderer/platform/region_capture_crop_id.h"
 #include "third_party/blink/renderer/platform/testing/io_task_runner_testing_platform_support.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -34,9 +32,7 @@ using ::testing::Mock;
 using ::testing::Return;
 
 std::unique_ptr<MockMediaStreamVideoSource> MakeMockMediaStreamVideoSource() {
-  // TODO(crbug.com/1488083): Remove the NiceMock and explicitly expect
-  // only truly expected calls.
-  return base::WrapUnique(new ::testing::NiceMock<MockMediaStreamVideoSource>(
+  return base::WrapUnique(new MockMediaStreamVideoSource(
       media::VideoCaptureFormat(gfx::Size(640, 480), 30.0,
                                 media::PIXEL_FORMAT_I420),
       true));
@@ -65,221 +61,175 @@ BrowserCaptureMediaStreamTrack* MakeTrack(
 
 }  // namespace
 
-class BrowserCaptureMediaStreamTrackTest
-    : public testing::Test,
-      public testing::WithParamInterface<SubCaptureTarget::Type> {
+class BrowserCaptureMediaStreamTrackTest : public testing::Test {
  public:
-  BrowserCaptureMediaStreamTrackTest() : type_(GetParam()) {}
   ~BrowserCaptureMediaStreamTrackTest() override = default;
-
-  ScriptPromise ApplySubCaptureTarget(V8TestingScope& v8_scope,
-                                      BrowserCaptureMediaStreamTrack& track,
-                                      WTF::String id_string) {
-    switch (type_) {
-      case SubCaptureTarget::Type::kCropTarget:
-        return track.cropTo(
-            v8_scope.GetScriptState(),
-            MakeGarbageCollected<CropTarget>(std::move(id_string)),
-            v8_scope.GetExceptionState());
-      case SubCaptureTarget::Type::kRestrictionTarget:
-        return track.restrictTo(
-            v8_scope.GetScriptState(),
-            MakeGarbageCollected<RestrictionTarget>(std::move(id_string)),
-            v8_scope.GetExceptionState());
-    }
-    NOTREACHED_NORETURN();
-  }
 
   void CheckHistograms(
       int expected_count,
-      BrowserCaptureMediaStreamTrack::ApplySubCaptureTargetResult
-          expected_result) {
-    std::string uma_latency_name;
-    std::string uma_result_name;
-    switch (type_) {
-      case SubCaptureTarget::Type::kCropTarget:
-        uma_latency_name = "Media.RegionCapture.CropTo.Latency";
-        uma_result_name = "Media.RegionCapture.CropTo.Result2";
-        break;
-      case SubCaptureTarget::Type::kRestrictionTarget:
-        uma_latency_name = "Media.ElementCapture.RestrictTo.Latency";
-        uma_result_name = "Media.ElementCapture.RestrictTo.Result";
-        break;
-    }
-
-    histogram_tester_.ExpectTotalCount(uma_result_name, expected_count);
-    histogram_tester_.ExpectUniqueSample(uma_result_name, expected_result,
-                                         expected_count);
-    histogram_tester_.ExpectTotalCount(uma_latency_name, expected_count);
+      BrowserCaptureMediaStreamTrack::CropToResult expected_result) {
+    histogram_tester_.ExpectTotalCount("Media.RegionCapture.CropTo.Result",
+                                       expected_count);
+    histogram_tester_.ExpectUniqueSample("Media.RegionCapture.CropTo.Result",
+                                         expected_result, expected_count);
+    histogram_tester_.ExpectTotalCount("Media.RegionCapture.CropTo.Latency",
+                                       expected_count);
   }
 
   void TearDown() override { WebHeap::CollectAllGarbageForTesting(); }
 
  protected:
-  test::TaskEnvironment task_environment_;
-  const SubCaptureTarget::Type type_;
   base::HistogramTester histogram_tester_;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform_;
 };
 
-INSTANTIATE_TEST_SUITE_P(
-    _,
-    BrowserCaptureMediaStreamTrackTest,
-    testing::Values(SubCaptureTarget::Type::kCropTarget,
-                    SubCaptureTarget::Type::kRestrictionTarget));
-
 #if !BUILDFLAG(IS_ANDROID)
-TEST_P(BrowserCaptureMediaStreamTrackTest,
-       ApplySubCaptureTargetOnValidIdResultFirst) {
+TEST_F(BrowserCaptureMediaStreamTrackTest, CropToOnValidIdResultFirst) {
   V8TestingScope v8_scope;
 
-  const base::Uuid valid_id = base::Uuid::GenerateRandomV4();
+  const base::GUID valid_id = base::GUID::GenerateRandomV4();
 
   std::unique_ptr<MockMediaStreamVideoSource> media_stream_video_source =
       MakeMockMediaStreamVideoSource();
 
-  EXPECT_CALL(*media_stream_video_source, GetNextSubCaptureTargetVersion)
+  EXPECT_CALL(*media_stream_video_source, GetNextCropVersion)
       .Times(1)
-      .WillOnce(Return(std::optional<uint32_t>(1)));
+      .WillOnce(Return(absl::optional<uint32_t>(1)));
 
-  EXPECT_CALL(*media_stream_video_source,
-              ApplySubCaptureTarget(type_, GUIDToToken(valid_id), _, _))
+  EXPECT_CALL(*media_stream_video_source, Crop(GUIDToToken(valid_id), _, _))
       .Times(1)
-      .WillOnce(::testing::WithArg<3>(::testing::Invoke(
-          [](base::OnceCallback<void(media::mojom::ApplySubCaptureTargetResult)>
-                 cb) {
-            std::move(cb).Run(
-                media::mojom::ApplySubCaptureTargetResult::kSuccess);
+      .WillOnce(::testing::WithArg<2>(::testing::Invoke(
+          [](base::OnceCallback<void(media::mojom::CropRequestResult)> cb) {
+            std::move(cb).Run(media::mojom::CropRequestResult::kSuccess);
           })));
 
   BrowserCaptureMediaStreamTrack* const track =
       MakeTrack(v8_scope, std::move(media_stream_video_source));
 
-  const ScriptPromise promise = ApplySubCaptureTarget(
-      v8_scope, *track, WTF::String(valid_id.AsLowercaseString()));
+  const ScriptPromise promise =
+      track->cropTo(v8_scope.GetScriptState(),
+                    MakeGarbageCollected<CropTarget>(
+                        WTF::String(valid_id.AsLowercaseString())),
+                    v8_scope.GetExceptionState());
 
-  track->OnSubCaptureTargetVersionObservedForTesting(
-      /*sub_capture_target_version=*/1);
+  track->OnCropVersionObservedForTesting(/*crop_version=*/1);
 
   ScriptPromiseTester script_promise_tester(v8_scope.GetScriptState(), promise);
   script_promise_tester.WaitUntilSettled();
   EXPECT_TRUE(script_promise_tester.IsFulfilled());
   CheckHistograms(
-      /*expected_count=*/1,
-      BrowserCaptureMediaStreamTrack::ApplySubCaptureTargetResult::kOk);
+      /*expected_count=*/1, BrowserCaptureMediaStreamTrack::CropToResult::kOk);
 }
 
-TEST_P(BrowserCaptureMediaStreamTrackTest,
-       ApplySubCaptureTargetRejectsIfResultFromBrowserProcessIsNotSuccess) {
+TEST_F(BrowserCaptureMediaStreamTrackTest,
+       CropToRejectsIfResultFromBrowserProcessIsNotSuccess) {
   V8TestingScope v8_scope;
 
-  const base::Uuid valid_id = base::Uuid::GenerateRandomV4();
+  const base::GUID valid_id = base::GUID::GenerateRandomV4();
 
   std::unique_ptr<MockMediaStreamVideoSource> media_stream_video_source =
       MakeMockMediaStreamVideoSource();
 
-  EXPECT_CALL(*media_stream_video_source, GetNextSubCaptureTargetVersion)
+  EXPECT_CALL(*media_stream_video_source, GetNextCropVersion)
       .Times(1)
-      .WillOnce(Return(std::optional<uint32_t>(1)));
+      .WillOnce(Return(absl::optional<uint32_t>(1)));
 
-  EXPECT_CALL(*media_stream_video_source,
-              ApplySubCaptureTarget(type_, GUIDToToken(valid_id), _, _))
+  EXPECT_CALL(*media_stream_video_source, Crop(GUIDToToken(valid_id), _, _))
       .Times(1)
-      .WillOnce(::testing::WithArg<3>(::testing::Invoke(
-          [](base::OnceCallback<void(media::mojom::ApplySubCaptureTargetResult)>
-                 cb) {
-            std::move(cb).Run(
-                media::mojom::ApplySubCaptureTargetResult::kErrorGeneric);
+      .WillOnce(::testing::WithArg<2>(::testing::Invoke(
+          [](base::OnceCallback<void(media::mojom::CropRequestResult)> cb) {
+            std::move(cb).Run(media::mojom::CropRequestResult::kErrorGeneric);
           })));
 
   BrowserCaptureMediaStreamTrack* const track =
       MakeTrack(v8_scope, std::move(media_stream_video_source));
 
-  const ScriptPromise promise = ApplySubCaptureTarget(
-      v8_scope, *track, WTF::String(valid_id.AsLowercaseString()));
+  const ScriptPromise promise =
+      track->cropTo(v8_scope.GetScriptState(),
+                    MakeGarbageCollected<CropTarget>(
+                        WTF::String(valid_id.AsLowercaseString())),
+                    v8_scope.GetExceptionState());
 
-  track->OnSubCaptureTargetVersionObservedForTesting(
-      /*sub_capture_target_version=*/1);
+  track->OnCropVersionObservedForTesting(/*crop_version=*/1);
 
   ScriptPromiseTester script_promise_tester(v8_scope.GetScriptState(), promise);
   script_promise_tester.WaitUntilSettled();
   EXPECT_TRUE(script_promise_tester.IsRejected());
   CheckHistograms(
       /*expected_count=*/1,
-      BrowserCaptureMediaStreamTrack::ApplySubCaptureTargetResult::
-          kRejectedWithErrorGeneric);
+      BrowserCaptureMediaStreamTrack::CropToResult::kRejectedWithErrorGeneric);
 }
 
-TEST_P(
-    BrowserCaptureMediaStreamTrackTest,
-    ApplySubCaptureTargetRejectsIfSourceReturnsNulloptForNextSubCaptureTargetVersion) {
+TEST_F(BrowserCaptureMediaStreamTrackTest,
+       CropToRejectsIfSourceReturnsNulloptForNextCropVersion) {
   V8TestingScope v8_scope;
 
-  const base::Uuid valid_id = base::Uuid::GenerateRandomV4();
+  const base::GUID valid_id = base::GUID::GenerateRandomV4();
 
   std::unique_ptr<MockMediaStreamVideoSource> media_stream_video_source =
       MakeMockMediaStreamVideoSource();
 
-  EXPECT_CALL(*media_stream_video_source, GetNextSubCaptureTargetVersion)
+  EXPECT_CALL(*media_stream_video_source, GetNextCropVersion)
       .Times(1)
-      .WillOnce(Return(std::nullopt));
+      .WillOnce(Return(absl::nullopt));
 
-  EXPECT_CALL(*media_stream_video_source,
-              ApplySubCaptureTarget(type_, GUIDToToken(valid_id), _, _))
+  EXPECT_CALL(*media_stream_video_source, Crop(GUIDToToken(valid_id), _, _))
       .Times(0);
 
   BrowserCaptureMediaStreamTrack* const track =
       MakeTrack(v8_scope, std::move(media_stream_video_source));
 
-  const ScriptPromise promise = ApplySubCaptureTarget(
-      v8_scope, *track, WTF::String(valid_id.AsLowercaseString()));
+  const ScriptPromise promise =
+      track->cropTo(v8_scope.GetScriptState(),
+                    MakeGarbageCollected<CropTarget>(
+                        WTF::String(valid_id.AsLowercaseString())),
+                    v8_scope.GetExceptionState());
 
   ScriptPromiseTester script_promise_tester(v8_scope.GetScriptState(), promise);
   script_promise_tester.WaitUntilSettled();
   EXPECT_TRUE(script_promise_tester.IsRejected());
   CheckHistograms(
-      /*expected_count=*/1, BrowserCaptureMediaStreamTrack::
-                                ApplySubCaptureTargetResult::kInvalidTarget);
+      /*expected_count=*/1,
+      BrowserCaptureMediaStreamTrack::CropToResult::kInvalidCropTarget);
 }
 
 #else
 
-TEST_P(BrowserCaptureMediaStreamTrackTest,
-       ApplySubCaptureTargetFailsOnAndroid) {
+TEST_F(BrowserCaptureMediaStreamTrackTest, CropToFailsOnAndroid) {
   V8TestingScope v8_scope;
 
-  const base::Uuid valid_id = base::Uuid::GenerateRandomV4();
+  const base::GUID valid_id = base::GUID::GenerateRandomV4();
 
   std::unique_ptr<MockMediaStreamVideoSource> media_stream_video_source =
       MakeMockMediaStreamVideoSource();
 
-  EXPECT_CALL(*media_stream_video_source, ApplySubCaptureTarget(type_, _, _, _))
-      .Times(0);
+  EXPECT_CALL(*media_stream_video_source, Crop(_, _, _)).Times(0);
 
   BrowserCaptureMediaStreamTrack* const track =
       MakeTrack(v8_scope, std::move(media_stream_video_source));
 
-  const ScriptPromise promise = ApplySubCaptureTarget(
-      v8_scope, *track, WTF::String(valid_id.AsLowercaseString()));
+  const ScriptPromise promise =
+      track->cropTo(v8_scope.GetScriptState(),
+                    MakeGarbageCollected<CropTarget>(
+                        WTF::String(valid_id.AsLowercaseString())),
+                    v8_scope.GetExceptionState());
 
   ScriptPromiseTester script_promise_tester(v8_scope.GetScriptState(), promise);
   script_promise_tester.WaitUntilSettled();
   EXPECT_TRUE(script_promise_tester.IsRejected());
   CheckHistograms(
       /*expected_count=*/1,
-      BrowserCaptureMediaStreamTrack::ApplySubCaptureTargetResult::
-          kUnsupportedPlatform);
+      BrowserCaptureMediaStreamTrack::CropToResult::kUnsupportedPlatform);
 }
 #endif
 
-TEST_P(BrowserCaptureMediaStreamTrackTest, CloningPreservesConstraints) {
+TEST_F(BrowserCaptureMediaStreamTrackTest, CloningPreservesConstraints) {
   V8TestingScope v8_scope;
 
   std::unique_ptr<MockMediaStreamVideoSource> media_stream_video_source =
       MakeMockMediaStreamVideoSource();
 
-  EXPECT_CALL(*media_stream_video_source, ApplySubCaptureTarget(type_, _, _, _))
-      .Times(0);
+  EXPECT_CALL(*media_stream_video_source, Crop(_, _, _)).Times(0);
 
   BrowserCaptureMediaStreamTrack* const track =
       MakeTrack(v8_scope, std::move(media_stream_video_source));

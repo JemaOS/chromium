@@ -13,7 +13,6 @@
 #include "ui/aura/client/transient_window_client_observer.h"
 #include "ui/aura/window.h"
 #include "ui/aura/window_observer.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/view.h"
 
 namespace ash {
@@ -24,10 +23,8 @@ class ASH_EXPORT WindowPreviewView
     : public views::View,
       public aura::client::TransientWindowClientObserver,
       public aura::WindowObserver {
-  METADATA_HEADER(WindowPreviewView, views::View)
-
  public:
-  explicit WindowPreviewView(aura::Window* window);
+  WindowPreviewView(aura::Window* window, bool trilinear_filtering_on_init);
 
   WindowPreviewView(const WindowPreviewView&) = delete;
   WindowPreviewView& operator=(const WindowPreviewView&) = delete;
@@ -40,7 +37,7 @@ class ASH_EXPORT WindowPreviewView
 
   // views::View:
   gfx::Size CalculatePreferredSize() const override;
-  void Layout(PassKey) override;
+  void Layout() override;
 
   // aura::client::TransientWindowClientObserver:
   void OnTransientChildWindowAdded(aura::Window* parent,
@@ -65,7 +62,8 @@ class ASH_EXPORT WindowPreviewView
   // |mirror_views_|.
   gfx::RectF GetUnionRect() const;
 
-  raw_ptr<aura::Window> window_;
+  raw_ptr<aura::Window, ExperimentalAsh> window_;
+  bool trilinear_filtering_on_init_;
 
   base::flat_map<aura::Window*, WindowMirrorView*> mirror_views_;
 
@@ -73,8 +71,7 @@ class ASH_EXPORT WindowPreviewView
   // actually parented; i.e. `OnTransientChildWindowAdded()` is called before
   // `transient_child->parent()` is set. We track those here so that we can add
   // them to the view once they're parented.
-  base::flat_set<raw_ptr<aura::Window, CtnExperimental>>
-      unparented_transient_children_;
+  base::flat_set<aura::Window*> unparented_transient_children_;
 };
 
 }  // namespace ash

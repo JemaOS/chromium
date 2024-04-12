@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
+#include "chrome/browser/extensions/extension_apitest.h"
+
 #include <vector>
 
 #include "ash/constants/ash_switches.h"
@@ -10,9 +11,6 @@
 #include "base/memory/ref_counted.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/ash/extensions/input_method_event_router.h"
-#include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/prefs/pref_service.h"
@@ -46,8 +44,7 @@ const InputMethodDescriptor CreateInputMethodDescriptor(
     const std::vector<std::string>& language_codes) {
   return InputMethodDescriptor(GetInputMethodIDByEngineID(engineId), "",
                                indicator, {layout}, language_codes, true,
-                               GURL(), GURL(),
-                               /*handwriting_language=*/std::nullopt);
+                               GURL(), GURL());
 }
 
 class ExtensionInputMethodApiTest : public extensions::ExtensionApiTest {
@@ -109,7 +106,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionInputMethodApiTest, DISABLED_Typing) {
   std::vector<std::string> extension_ime_ids = {
       "_ext_ime_ilanclmaeigfpnmdlgelmhkpkegdioiptest"};
   InputMethodManager::Get()->GetActiveIMEState()->SetEnabledExtensionImes(
-      extension_ime_ids);
+      &extension_ime_ids);
 
   GURL test_url = ui_test_utils::GetTestUrl(
       base::FilePath("extensions/api_test/input_method/typing/"),
@@ -153,7 +150,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionInputMethodApiTest, ImeMenuAPITest) {
   extension_ime_ids.push_back(kTestIMEID);
   extension_ime_ids.push_back(kTestIMEID2);
   InputMethodManager::Get()->GetActiveIMEState()->SetEnabledExtensionImes(
-      extension_ime_ids);
+      &extension_ime_ids);
   ash::input_method::InputMethodDescriptors extension_imes;
   InputMethodManager::Get()->GetActiveIMEState()->GetInputMethodExtensions(
       &extension_imes);

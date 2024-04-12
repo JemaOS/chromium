@@ -9,7 +9,9 @@
 #include "chrome/common/extensions/api/file_system_provider.h"
 #include "chrome/common/extensions/api/file_system_provider_internal.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 AddWatcher::AddWatcher(RequestDispatcher* dispatcher,
                        const ProvidedFileSystemInfo& file_system_info,
@@ -21,7 +23,8 @@ AddWatcher::AddWatcher(RequestDispatcher* dispatcher,
       recursive_(recursive),
       callback_(std::move(callback)) {}
 
-AddWatcher::~AddWatcher() = default;
+AddWatcher::~AddWatcher() {
+}
 
 bool AddWatcher::Execute(int request_id) {
   using extensions::api::file_system_provider::AddWatcherRequestedOptions;
@@ -54,4 +57,6 @@ void AddWatcher::OnError(int /* request_id */,
   std::move(callback_).Run(error);
 }
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash

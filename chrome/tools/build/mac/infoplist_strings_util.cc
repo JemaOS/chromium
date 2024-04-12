@@ -22,7 +22,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
-#include "chrome/grit/branded_strings.h"
+#include "chrome/grit/chromium_strings.h"
 #include "ui/base/resource/data_pack.h"
 
 namespace {
@@ -44,21 +44,22 @@ std::string LoadStringFromDataPack(ui::DataPack* data_pack,
                                    const std::string& data_pack_lang,
                                    uint32_t resource_id,
                                    const char* resource_id_str) {
-  std::optional<base::StringPiece> data =
-      data_pack->GetStringPiece(resource_id);
-  CHECK(data.has_value()) << "failed to load string " << resource_id_str
-                          << " for lang " << data_pack_lang;
+  base::StringPiece data;
+  CHECK(data_pack->GetStringPiece(resource_id, &data))
+      << "failed to load string " << resource_id_str << " for lang "
+      << data_pack_lang;
 
   // Data pack encodes strings as either UTF8 or UTF16.
   if (data_pack->GetTextEncodingType() == ui::DataPack::UTF8)
-    return std::string(data.value());
+    return (std::string)data;
   if (data_pack->GetTextEncodingType() == ui::DataPack::UTF16) {
     return base::UTF16ToUTF8(std::u16string(
-        reinterpret_cast<const char16_t*>(data->data()), data->length() / 2));
+        reinterpret_cast<const char16_t*>(data.data()), data.length() / 2));
   }
 
   LOG(FATAL) << "requested string " << resource_id_str
              << " from binary data pack";
+  return std::string();  // Unreachable.
 }
 
 // Escape quotes, newlines, etc so there are no errors when the strings file
@@ -113,6 +114,7 @@ int main(int argc, char* const argv[]) {
         break;
       default:
         LOG(FATAL) << "bad command line arg";
+        break;
     }
   }
   argc -= optind;
@@ -179,7 +181,6 @@ int main(int argc, char* const argv[]) {
         {"NSCameraUsageDescription", permission_reason},
         {"NSLocationUsageDescription", permission_reason},
         {"NSMicrophoneUsageDescription", permission_reason},
-        {"NSWebBrowserPublicKeyCredentialUsageDescription", permission_reason},
     };
     std::string strings_file_contents_string;
     for (const auto& kv : infoplist_strings) {

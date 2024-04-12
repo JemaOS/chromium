@@ -21,9 +21,8 @@
 // cleans itself up when it finishes animating.
 class DownloadStartedAnimationViews : public gfx::LinearAnimation,
                                       public views::ImageView {
-  METADATA_HEADER(DownloadStartedAnimationViews, views::ImageView)
-
  public:
+  METADATA_HEADER(DownloadStartedAnimationViews);
   DownloadStartedAnimationViews(content::WebContents* web_contents,
                                 base::TimeDelta duration,
                                 const ui::ImageModel& image);

@@ -6,9 +6,9 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_PAINT_CULL_RECT_H_
 
 #include <limits>
-#include <optional>
 
-#include "third_party/blink/renderer/platform/geometry/infinite_int_rect.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "third_party/blink/renderer/platform/geometry/layout_rect.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "ui/gfx/geometry/rect.h"
@@ -20,6 +20,7 @@ class RectF;
 namespace blink {
 
 class AffineTransform;
+class LayoutRect;
 class LayoutUnit;
 class PropertyTreeState;
 class TransformPaintPropertyNode;
@@ -31,9 +32,9 @@ class PLATFORM_EXPORT CullRect {
   CullRect() = default;
   explicit CullRect(const gfx::Rect& rect) : rect_(rect) {}
 
-  static CullRect Infinite() { return CullRect(InfiniteIntRect()); }
+  static CullRect Infinite() { return CullRect(LayoutRect::InfiniteIntRect()); }
 
-  bool IsInfinite() const { return rect_ == InfiniteIntRect(); }
+  bool IsInfinite() const { return rect_ == LayoutRect::InfiniteIntRect(); }
 
   bool Intersects(const gfx::Rect&) const;
   bool IntersectsTransformed(const AffineTransform&, const gfx::RectF&) const;
@@ -54,7 +55,7 @@ class PLATFORM_EXPORT CullRect {
   bool ApplyPaintProperties(const PropertyTreeState& root,
                             const PropertyTreeState& source,
                             const PropertyTreeState& destination,
-                            const std::optional<CullRect>& old_cull_rect,
+                            const absl::optional<CullRect>& old_cull_rect,
                             bool disable_expansion);
 
   const gfx::Rect& Rect() const { return rect_; }
@@ -67,8 +68,8 @@ class PLATFORM_EXPORT CullRect {
  private:
   friend class CullRectTest;
 
-  // Returns whether the cull rect is expanded along x and y axes.
-  std::pair<bool, bool> ApplyScrollTranslation(
+  // Returns whether the cull rect is expanded.
+  bool ApplyScrollTranslation(
       const TransformPaintPropertyNode& root_transform,
       const TransformPaintPropertyNode& scroll_translation,
       bool disable_expansion);
@@ -80,9 +81,8 @@ class PLATFORM_EXPORT CullRect {
       const PropertyTreeState& source,
       const PropertyTreeState& destination);
 
-  bool ChangedEnough(const std::pair<bool, bool>& expanded,
-                     const CullRect& old_cull_rect,
-                     const std::optional<gfx::Rect>& expansion_bounds) const;
+  bool ChangedEnough(const CullRect& old_cull_rect,
+                     const absl::optional<gfx::Rect>& expansion_bounds) const;
 
   gfx::Rect rect_;
 };

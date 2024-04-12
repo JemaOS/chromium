@@ -4,11 +4,11 @@
 
 import './history_clusters_shared_style.css.js';
 
-import {PaperRippleMixin} from '//resources/polymer/v3_0/paper-behaviors/paper-ripple-mixin.js';
-import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {PaperRippleBehavior} from 'chrome://resources/polymer/v3_0/paper-behaviors/paper-ripple-behavior.js';
+import {mixinBehaviors, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {BrowserProxyImpl} from './browser_proxy.js';
-import type {SearchQuery} from './history_cluster_types.mojom-webui.js';
+import {SearchQuery} from './history_cluster_types.mojom-webui.js';
 import {RelatedSearchAction} from './history_clusters.mojom-webui.js';
 import {MetricsProxyImpl} from './metrics_proxy.js';
 import {getTemplate} from './search_query.html.js';
@@ -29,7 +29,10 @@ declare global {
   }
 }
 
-const SearchQueryElementBase = PaperRippleMixin(PolymerElement);
+const SearchQueryElementBase =
+    mixinBehaviors([PaperRippleBehavior], PolymerElement) as {
+      new (): PolymerElement & PaperRippleBehavior,
+    };
 
 class SearchQueryElement extends SearchQueryElementBase {
   static get is() {
@@ -139,7 +142,7 @@ class SearchQueryElement extends SearchQueryElementBase {
         });
   }
 
-  // Overridden from PaperRippleMixin
+  // Overridden from PaperRippleBehavior
   /* eslint-disable-next-line @typescript-eslint/naming-convention */
   override _createRipple() {
     this._rippleContainer = this.$.searchQueryLink;

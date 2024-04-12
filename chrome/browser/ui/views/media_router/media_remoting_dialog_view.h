@@ -49,9 +49,9 @@ class MediaRemotingDialogCoordinatorViews
 // media stream directly to the remote device instead of playing it locally and
 // then mirroring it remotely.
 class MediaRemotingDialogView : public views::BubbleDialogDelegateView {
-  METADATA_HEADER(MediaRemotingDialogView, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(MediaRemotingDialogView);
+
   MediaRemotingDialogView(
       views::View* anchor_view,
       PrefService* pref_service,

@@ -7,11 +7,9 @@
 #import <AppKit/AppKit.h>
 #include <stdint.h>
 
-#include <algorithm>
-
-#include "base/apple/scoped_cftyperef.h"
 #include "base/check.h"
 #include "base/mac/mac_util.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "base/notreached.h"
 #include "skia/ext/skia_utils_mac.h"
 #include "ui/base/cursor/cursor.h"
@@ -83,10 +81,10 @@ using CrCoreCursorType = int64_t;
 
 + (id)cursorWithType:(CrCoreCursorType)type {
   NSCursor* cursor = [[CrCoreCursor alloc] initWithType:type];
-  if (cursor.image) {
-    return cursor;
-  }
+  if ([cursor image])
+    return [cursor autorelease];
 
+  [cursor release];
   return nil;
 }
 
@@ -109,8 +107,9 @@ NSCursor* LoadCursor(int resource_id, int hotspot_x, int hotspot_y) {
   const gfx::Image& cursor_image =
       ui::ResourceBundle::GetSharedInstance().GetNativeImageNamed(resource_id);
   DCHECK(!cursor_image.IsEmpty());
-  return [[NSCursor alloc] initWithImage:cursor_image.ToNSImage()
-                                 hotSpot:NSMakePoint(hotspot_x, hotspot_y)];
+  return [[[NSCursor alloc] initWithImage:cursor_image.ToNSImage()
+                                  hotSpot:NSMakePoint(hotspot_x, hotspot_y)]
+      autorelease];
 }
 
 // Gets a specified cursor from CoreCursor, falling back to loading it from the
@@ -143,11 +142,15 @@ NSCursor* CreateCustomCursor(const ui::Cursor& cursor) {
   // Both the image and its representation need to have the same size for
   // cursors to appear in high resolution on retina displays. Note that the
   // size of a representation is not the same as pixelsWide or pixelsHigh.
-  NSImage* cursor_image = skia::SkBitmapToNSImage(cursor.custom_bitmap());
+  NSImage* cursor_image = skia::SkBitmapToNSImageWithColorSpace(
+      cursor.custom_bitmap(), base::mac::GetSRGBColorSpace());
   [cursor_image setSize:dip_size];
   [[[cursor_image representations] objectAtIndex:0] setSize:dip_size];
 
-  return [[NSCursor alloc] initWithImage:cursor_image hotSpot:dip_hotspot];
+  NSCursor* nscursor = [[NSCursor alloc] initWithImage:cursor_image
+                                               hotSpot:dip_hotspot];
+
+  return [nscursor autorelease];
 }
 
 }  // namespace
@@ -270,18 +273,6 @@ NSCursor* GetNativeCursor(const ui::Cursor& cursor) {
   }
   NOTREACHED();
   return nil;
-}
-
-float GetCursorAccessibilityScaleFactor(bool force_update) {
-  static std::optional<float> scale;
-  if (!scale.has_value() || force_update) {
-    NSUserDefaults* defaults =
-        [[NSUserDefaults alloc] initWithSuiteName:@"com.apple.universalaccess"];
-    // This may be 0 in tests, but the expected production range is [1.0, 4.0].
-    scale =
-        std::clamp([defaults floatForKey:@"mouseDriverCursorSize"], 1.f, 4.f);
-  }
-  return scale.value();
 }
 
 }  // namespace ui

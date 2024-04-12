@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as SourcesModule from 'devtools/panels/sources/sources.js';
-
 (async function() {
   TestRunner.addResult(`Tests inline values rendering in the sources panel.\n`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.evaluateInPagePromise(`
       function testFunction()
@@ -31,7 +27,7 @@ import * as SourcesModule from 'devtools/panels/sources/sources.js';
 
   function runTestFunction() {
     TestRunner.addSniffer(
-        SourcesModule.DebuggerPlugin.DebuggerPlugin.prototype, 'executionLineChanged',
+        Sources.DebuggerPlugin.prototype, 'executionLineChanged',
         onSetExecutionLocation);
     TestRunner.evaluateInPage('setTimeout(testFunction, 0)');
   }
@@ -53,7 +49,7 @@ import * as SourcesModule from 'devtools/panels/sources/sources.js';
     }
 
     TestRunner.addSniffer(
-        SourcesModule.DebuggerPlugin.DebuggerPlugin.prototype, 'executionLineChanged',
+        Sources.DebuggerPlugin.prototype, 'executionLineChanged',
         onSetExecutionLocation);
     if (++stepCount < 10)
       SourcesTestRunner.stepOver();

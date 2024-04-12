@@ -44,15 +44,16 @@ int GetSecurePaymentConfirmationHeaderWidth() {
       views::DISTANCE_MODAL_DIALOG_PREFERRED_WIDTH);
 }
 
-ui::ImageModel GetHeaderImageSkia(bool dark_mode) {
-  return ui::ImageModel::FromResourceId(dark_mode ? IDR_SAVE_CARD_DARK
-                                                  : IDR_SAVE_CARD);
+const gfx::ImageSkia GetHeaderImageSkia(bool dark_mode) {
+  return ui::ResourceBundle::GetSharedInstance()
+      .GetImageNamed(dark_mode ? IDR_SAVE_CARD_DARK : IDR_SAVE_CARD)
+      .AsImageSkia();
 }
 
 class SecurePaymentConfirmationIconView : public NonAccessibleImageView {
-  METADATA_HEADER(SecurePaymentConfirmationIconView, NonAccessibleImageView)
-
  public:
+  METADATA_HEADER(SecurePaymentConfirmationIconView);
+
   explicit SecurePaymentConfirmationIconView(bool use_cart_image = false)
       : use_cart_image_{use_cart_image} {
     const gfx::Size header_size(
@@ -69,26 +70,23 @@ class SecurePaymentConfirmationIconView : public NonAccessibleImageView {
     NonAccessibleImageView::OnThemeChanged();
     SetImage(use_cart_image_
                  ? GetHeaderImageSkia(GetNativeTheme()->ShouldUseDarkColors())
-                 : ui::ImageModel::FromVectorIcon(
-                       GetPlatformVectorIcon(
-                           GetNativeTheme()->ShouldUseDarkColors()),
-                       gfx::kPlaceholderColor));
+                 : gfx::CreateVectorIcon(GetPlatformVectorIcon(
+                       GetNativeTheme()->ShouldUseDarkColors())));
   }
 
  private:
   bool use_cart_image_;
 };
 
-BEGIN_METADATA(SecurePaymentConfirmationIconView)
+BEGIN_METADATA(SecurePaymentConfirmationIconView, NonAccessibleImageView)
 END_METADATA
 
 }  // namespace
 
 std::unique_ptr<views::ProgressBar>
 CreateSecurePaymentConfirmationProgressBarView() {
-  auto progress_bar = std::make_unique<views::ProgressBar>();
-  progress_bar->SetPreferredHeight(kProgressBarHeight);
-  progress_bar->SetPreferredCornerRadii(std::nullopt);
+  auto progress_bar = std::make_unique<views::ProgressBar>(
+      kProgressBarHeight, /*allow_round_corner=*/false);
   progress_bar->SetValue(-1);  // infinite animation.
   progress_bar->SetBackgroundColor(SK_ColorTRANSPARENT);
   progress_bar->SetPreferredSize(
@@ -139,7 +137,7 @@ std::unique_ptr<views::ImageView>
 CreateSecurePaymentConfirmationInstrumentIconView(const gfx::ImageSkia& image) {
   std::unique_ptr<views::ImageView> icon_view =
       std::make_unique<views::ImageView>();
-  icon_view->SetImage(ui::ImageModel::FromImageSkia(image));
+  icon_view->SetImage(image);
 
   gfx::Size image_size = image.size();
   // Resize to a constant height, with a variable width in the acceptable range
@@ -161,8 +159,8 @@ CreateSecurePaymentConfirmationInstrumentIconView(const gfx::ImageSkia& image) {
 }
 
 std::u16string FormatMerchantLabel(
-    const std::optional<std::u16string>& merchant_name,
-    const std::optional<std::u16string>& merchant_origin) {
+    const absl::optional<std::u16string>& merchant_name,
+    const absl::optional<std::u16string>& merchant_origin) {
   DCHECK(merchant_name.has_value() || merchant_origin.has_value());
 
   if (merchant_name.has_value() && merchant_origin.has_value()) {

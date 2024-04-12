@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const test = await testRunner.loadScript(
       'resources/service-workers/service-worker-test.js');
   await test(testRunner, {

@@ -27,13 +27,11 @@
 #include "ui/events/devices/device_hotplug_event_observer.h"
 #include "ui/events/devices/device_util_linux.h"
 #include "ui/events/devices/input_device.h"
-#include "ui/events/devices/keyboard_device.h"
-#include "ui/events/devices/touchpad_device.h"
 #include "ui/events/devices/touchscreen_device.h"
-#include "ui/gfx/x/atom_cache.h"
 #include "ui/gfx/x/connection.h"
 #include "ui/gfx/x/extension_manager.h"
 #include "ui/gfx/x/future.h"
+#include "ui/gfx/x/x11_atom_cache.h"
 
 namespace ui {
 
@@ -55,10 +53,7 @@ enum DeviceType {
 };
 
 using KeyboardDeviceCallback =
-    base::OnceCallback<void(const std::vector<KeyboardDevice>&)>;
-
-using TouchpadDeviceCallback =
-    base::OnceCallback<void(const std::vector<TouchpadDevice>&)>;
+    base::OnceCallback<void(const std::vector<InputDevice>&)>;
 
 using TouchscreenDeviceCallback =
     base::OnceCallback<void(const std::vector<TouchscreenDevice>&)>;
@@ -72,7 +67,7 @@ struct UiCallbacks {
   KeyboardDeviceCallback keyboard_callback;
   TouchscreenDeviceCallback touchscreen_callback;
   InputDeviceCallback mouse_callback;
-  TouchpadDeviceCallback touchpad_callback;
+  InputDeviceCallback touchpad_callback;
   base::OnceClosure hotplug_finished_callback;
 };
 
@@ -226,7 +221,7 @@ base::FilePath GetDevicePath(x11::Connection* connection,
 void HandleKeyboardDevicesInWorker(const std::vector<DeviceInfo>& device_infos,
                                    scoped_refptr<base::TaskRunner> reply_runner,
                                    KeyboardDeviceCallback callback) {
-  std::vector<KeyboardDevice> devices;
+  std::vector<InputDevice> devices;
 
   for (const DeviceInfo& device_info : device_infos) {
     if (device_info.type != DEVICE_TYPE_KEYBOARD)
@@ -269,8 +264,8 @@ void HandleMouseDevicesInWorker(const std::vector<DeviceInfo>& device_infos,
 // |reply_runner| and |callback| to update the state on the UI thread.
 void HandleTouchpadDevicesInWorker(const std::vector<DeviceInfo>& device_infos,
                                    scoped_refptr<base::TaskRunner> reply_runner,
-                                   TouchpadDeviceCallback callback) {
-  std::vector<TouchpadDevice> devices;
+                                   InputDeviceCallback callback) {
+  std::vector<InputDevice> devices;
   for (const DeviceInfo& device_info : device_infos) {
     if (device_info.type != DEVICE_TYPE_TOUCHPAD ||
         device_info.use != x11::Input::DeviceType::SlavePointer) {
@@ -369,7 +364,7 @@ DeviceHotplugEventObserver* GetHotplugEventObserver() {
   return DeviceDataManager::GetInstance();
 }
 
-void OnKeyboardDevices(const std::vector<KeyboardDevice>& devices) {
+void OnKeyboardDevices(const std::vector<InputDevice>& devices) {
   GetHotplugEventObserver()->OnKeyboardDevicesUpdated(devices);
 }
 
@@ -381,7 +376,7 @@ void OnMouseDevices(const std::vector<InputDevice>& devices) {
   GetHotplugEventObserver()->OnMouseDevicesUpdated(devices);
 }
 
-void OnTouchpadDevices(const std::vector<TouchpadDevice>& devices) {
+void OnTouchpadDevices(const std::vector<InputDevice>& devices) {
   GetHotplugEventObserver()->OnTouchpadDevicesUpdated(devices);
 }
 

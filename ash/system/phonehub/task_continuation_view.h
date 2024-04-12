@@ -9,7 +9,6 @@
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "chromeos/ash/components/phonehub/phone_model.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/view.h"
 #include "ui/views/view_model.h"
 
@@ -23,8 +22,6 @@ class UserActionRecorder;
 // off from their phone, currently only support web browsing.
 class ASH_EXPORT TaskContinuationView : public views::View,
                                         public phonehub::PhoneModel::Observer {
-  METADATA_HEADER(TaskContinuationView, views::View)
-
  public:
   TaskContinuationView(phonehub::PhoneModel* phone_model,
                        phonehub::UserActionRecorder* user_action_recorder);
@@ -35,12 +32,13 @@ class ASH_EXPORT TaskContinuationView : public views::View,
   // phonehub::PhoneHubModel::Observer:
   void OnModelChanged() override;
 
+  // views::View:
+  const char* GetClassName() const override;
+
  private:
   FRIEND_TEST_ALL_PREFIXES(TaskContinuationViewTest, TaskChipsView);
 
   class TaskChipsView : public views::View {
-    METADATA_HEADER(TaskChipsView, views::View)
-
    public:
     TaskChipsView();
     ~TaskChipsView() override;
@@ -51,7 +49,8 @@ class ASH_EXPORT TaskContinuationView : public views::View,
 
     // views::View:
     gfx::Size CalculatePreferredSize() const override;
-    void Layout(PassKey) override;
+    void Layout() override;
+    const char* GetClassName() const override;
 
     // Clear all existing tasks in the view and in |task_chips_|.
     void Reset();
@@ -66,9 +65,10 @@ class ASH_EXPORT TaskContinuationView : public views::View,
   // Update the chips to display current phone status.
   void Update();
 
-  raw_ptr<phonehub::PhoneModel> phone_model_ = nullptr;
-  raw_ptr<phonehub::UserActionRecorder> user_action_recorder_ = nullptr;
-  raw_ptr<TaskChipsView> chips_view_ = nullptr;
+  raw_ptr<phonehub::PhoneModel, ExperimentalAsh> phone_model_ = nullptr;
+  raw_ptr<phonehub::UserActionRecorder, ExperimentalAsh> user_action_recorder_ =
+      nullptr;
+  raw_ptr<TaskChipsView, ExperimentalAsh> chips_view_ = nullptr;
 };
 
 }  // namespace ash

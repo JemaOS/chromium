@@ -34,10 +34,8 @@ bool HandleMessage(int severity,
                    int line,
                    size_t message_start,
                    const std::string& str) {
-  if (severity == logging::LOGGING_ERROR && file &&
-      file == std::string("CONSOLE")) {
+  if (severity == logging::LOG_ERROR && file && file == std::string("CONSOLE"))
     had_console_errors = true;
-  }
   return false;
 }
 

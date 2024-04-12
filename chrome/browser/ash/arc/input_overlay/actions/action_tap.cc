@@ -9,10 +9,7 @@
 #include "chrome/browser/ash/arc/input_overlay/actions/input_element.h"
 #include "chrome/browser/ash/arc/input_overlay/constants.h"
 #include "chrome/browser/ash/arc/input_overlay/touch_id_manager.h"
-#include "chrome/browser/ash/arc/input_overlay/touch_injector.h"
 #include "chrome/browser/ash/arc/input_overlay/ui/action_label.h"
-#include "chrome/browser/ash/arc/input_overlay/ui/touch_point.h"
-#include "chrome/browser/ash/arc/input_overlay/ui/ui_utils.h"
 #include "chrome/browser/ash/arc/input_overlay/util.h"
 #include "ui/aura/window.h"
 #include "ui/events/base_event_utils.h"
@@ -27,7 +24,7 @@ namespace {
 gfx::Size GetBoundingBoxOfChildren(views::View* view) {
   int x = 0;
   int y = 0;
-  for (views::View* child : view->children()) {
+  for (auto* child : view->children()) {
     x = std::max(x, child->bounds().right());
     y = std::max(y, child->bounds().bottom());
   }
@@ -61,7 +58,6 @@ class ActionTap::ActionTapView : public ActionView {
   ~ActionTapView() override = default;
 
   void SetViewContent(BindingOption binding_option) override {
-    DCHECK(!action_->IsDeleted());
     InputElement* input_binding =
         GetInputBindingByBindingOption(action_, binding_option);
     if (!input_binding) {
@@ -70,13 +66,23 @@ class ActionTap::ActionTapView : public ActionView {
 
     if (labels_.empty()) {
       // Create new action label when initializing.
+      TapLabelPosition position = allow_reposition_
+                                      ? TapLabelPosition::kNone
+                                      : (action_->on_left_or_middle_side()
+                                             ? TapLabelPosition::kBottomRight
+                                             : TapLabelPosition::kBottomLeft);
       labels_ = ActionLabel::Show(this, ActionType::TAP, *input_binding,
-                                  TapLabelPosition::kNone);
+                                  action_->GetUIRadius(), allow_reposition_,
+                                  position);
+    } else if (!IsInputBound(*input_binding)) {
+      // Action label exists but without any bindings.
+      labels_[0]->SetTextActionLabel(
+          std::move(GetDisplayText(ui::DomCode::NONE)));
     } else if (IsKeyboardBound(*input_binding)) {
       // Action label is bound to keyboard key.
       labels_[0]->SetTextActionLabel(
           std::move(GetDisplayText(input_binding->keys()[0])));
-    } else if (IsMouseBound(*input_binding)) {
+    } else {
       // Action label is bound to mouse.
       labels_[0]->SetImageActionLabel(input_binding->mouse_action());
     }
@@ -94,12 +100,13 @@ class ActionTap::ActionTapView : public ActionView {
   }
 
   void OnBindingToKeyboard() override {
-    if (!IsMouseBound(action_->GetCurrentDisplayedInput())) {
+    const auto& input_binding = action_->GetCurrentDisplayedInput();
+    if (!IsMouseBound(input_binding)) {
       return;
     }
 
-    action_->set_pending_input(
-        InputElement::CreateActionTapKeyElement(ui::DomCode::NONE));
+    auto input_element = std::make_unique<InputElement>();
+    action_->set_pending_input(std::move(input_element));
     SetViewContent(BindingOption::kPending);
   }
 
@@ -108,8 +115,8 @@ class ActionTap::ActionTapView : public ActionView {
     if (mouse_action != kPrimaryClick && mouse_action != kSecondaryClick) {
       return;
     }
-    if (const auto& input_binding = action_->GetCurrentDisplayedInput();
-        IsMouseBound(input_binding) &&
+    const auto& input_binding = action_->GetCurrentDisplayedInput();
+    if (IsMouseBound(input_binding) &&
         input_binding.mouse_action() ==
             ConvertToMouseActionEnum(mouse_action)) {
       return;
@@ -119,6 +126,15 @@ class ActionTap::ActionTapView : public ActionView {
         InputElement::CreateActionTapMouseElement(mouse_action);
     ChangeInputBinding(action_, /*action_label=*/nullptr,
                        std::move(input_element));
+  }
+
+  void OnMenuEntryPressed() override {
+    display_overlay_controller_->AddActionEditMenu(this, ActionType::TAP);
+    DCHECK(menu_entry_);
+    if (!menu_entry_) {
+      return;
+    }
+    menu_entry_->RequestFocus();
   }
 
   void AddTouchPoint() override {
@@ -138,7 +154,13 @@ class ActionTap::ActionTapView : public ActionView {
 
   void ChildPreferredSizeChanged(View* child) override {
     DCHECK_EQ(1u, labels_.size());
-    MayUpdateLabelPosition(false);
+    if (allow_reposition_) {
+      MayUpdateLabelPosition(false);
+    } else {
+      int radius = action_->GetUIRadius();
+      int width = std::max(radius * 2, GetBoundingBoxOfChildren(this).width());
+      SetSize(gfx::Size(width, radius * 2));
+    }
     SetPositionFromCenterPosition(action_->GetUICenterPosition());
   }
 
@@ -177,7 +199,7 @@ class ActionTap::ActionTapView : public ActionView {
 ActionTap::ActionTap(TouchInjector* touch_injector) : Action(touch_injector) {}
 ActionTap::~ActionTap() = default;
 
-bool ActionTap::ParseFromJson(const base::Value::Dict& value) {
+bool ActionTap::ParseFromJson(const base::Value& value) {
   Action::ParseFromJson(value);
   if (original_positions_.empty()) {
     LOG(ERROR) << "Require at least one location for tap action {" << name_
@@ -189,8 +211,8 @@ bool ActionTap::ParseFromJson(const base::Value::Dict& value) {
              : ParseJsonFromMouse(value);
 }
 
-bool ActionTap::InitByAddingNewAction(const gfx::Point& target_pos) {
-  if (!Action::InitByAddingNewAction(target_pos)) {
+bool ActionTap::InitFromEditor() {
+  if (!Action::InitFromEditor()) {
     return false;
   }
 
@@ -199,13 +221,7 @@ bool ActionTap::InitByAddingNewAction(const gfx::Point& target_pos) {
   return true;
 }
 
-void ActionTap::InitByChangingActionType(Action* action) {
-  Action::InitByChangingActionType(action);
-  auto dom_code = action->current_input()->keys()[0];
-  current_input_ = InputElement::CreateActionTapKeyElement(dom_code);
-}
-
-bool ActionTap::ParseJsonFromKeyboard(const base::Value::Dict& value) {
+bool ActionTap::ParseJsonFromKeyboard(const base::Value& value) {
   auto key = ParseKeyboardKey(value, name_);
   if (!key) {
     LOG(ERROR) << "No/invalid key code for key tap action {" << name_ << "}.";
@@ -219,8 +235,8 @@ bool ActionTap::ParseJsonFromKeyboard(const base::Value::Dict& value) {
   return true;
 }
 
-bool ActionTap::ParseJsonFromMouse(const base::Value::Dict& value) {
-  const std::string* mouse_action = value.FindString(kMouseAction);
+bool ActionTap::ParseJsonFromMouse(const base::Value& value) {
+  const std::string* mouse_action = value.FindStringKey(kMouseAction);
   if (!mouse_action) {
     LOG(ERROR) << "Must include mouse action for mouse move action.";
     return false;
@@ -240,7 +256,7 @@ bool ActionTap::RewriteEvent(const ui::Event& origin,
                              const gfx::Transform* rotation_transform,
                              std::list<ui::TouchEvent>& touch_events,
                              bool& keep_original_event) {
-  if (!IsInputBound(*current_input_) ||
+  if (deleted() || !IsInputBound(*current_input_) ||
       (IsKeyboardBound(*current_input_) && !origin.IsKeyEvent()) ||
       (IsMouseBound(*current_input_) && !origin.IsMouseEvent())) {
     return false;
@@ -248,10 +264,10 @@ bool ActionTap::RewriteEvent(const ui::Event& origin,
   DCHECK_NE(IsKeyboardBound(*current_input_), IsMouseBound(*current_input_));
   LogEvent(origin);
   // Rewrite for key event.
-  const auto content_bounds = touch_injector_->content_bounds_f();
+  auto content_bounds = touch_injector_->content_bounds();
   if (IsKeyboardBound(*current_input())) {
     auto* key_event = origin.AsKeyEvent();
-    const bool rewritten =
+    bool rewritten =
         RewriteKeyEvent(key_event, content_bounds, rotation_transform,
                         touch_events, keep_original_event);
     LogTouchEvents(touch_events);
@@ -262,20 +278,21 @@ bool ActionTap::RewriteEvent(const ui::Event& origin,
     return false;
   }
   auto* mouse_event = origin.AsMouseEvent();
-  const bool rewritten = RewriteMouseEvent(mouse_event, content_bounds,
-                                           rotation_transform, touch_events);
+  bool rewritten = RewriteMouseEvent(mouse_event, content_bounds,
+                                     rotation_transform, touch_events);
   LogTouchEvents(touch_events);
   return rewritten;
 }
 
 gfx::PointF ActionTap::GetUICenterPosition() {
   return GetCurrentDisplayedPosition().CalculatePosition(
-      touch_injector_->content_bounds_f());
+      touch_injector_->content_bounds());
 }
 
 std::unique_ptr<ActionView> ActionTap::CreateView(
     DisplayOverlayController* display_overlay_controller) {
   auto view = std::make_unique<ActionTapView>(this, display_overlay_controller);
+  view->set_editable(true);
   action_view_ = view.get();
   return view;
 }
@@ -284,15 +301,11 @@ void ActionTap::UnbindInput(const InputElement& input_element) {
   if (pending_input_) {
     pending_input_.reset();
   }
-  pending_input_ = InputElement::CreateActionTapKeyElement(ui::DomCode::NONE);
-  if (!IsBeta() && action_view_) {
+  pending_input_ = std::make_unique<InputElement>();
+  if (action_view_) {
     action_view_->set_unbind_label_index(0);
   }
   PostUnbindInputProcess();
-}
-
-ActionType ActionTap::GetType() const {
-  return ActionType::TAP;
 }
 
 bool ActionTap::RewriteKeyEvent(const ui::KeyEvent* key_event,
@@ -312,12 +325,9 @@ bool ActionTap::RewriteKeyEvent(const ui::KeyEvent* key_event,
 
   if (key_event->type() == ui::ET_KEY_PRESSED) {
     DCHECK_LT(current_position_idx_, touch_down_positions_.size());
-    // TODO(b/308486017): "Modifier key + regular key" support is TBD. Currently
-    // it is not supported.
-    if (ContainShortcutEventFlags(key_event)) {
+    if (current_position_idx_ >= touch_down_positions_.size()) {
       return false;
     }
-
     last_touch_root_location_ = touch_down_positions_[current_position_idx_];
     if (!CreateTouchPressedEvent(key_event->time_stamp(), rewritten_events)) {
       return false;
@@ -350,7 +360,7 @@ bool ActionTap::RewriteMouseEvent(const ui::MouseEvent* mouse_event,
                                   std::list<ui::TouchEvent>& rewritten_events) {
   DCHECK(mouse_event);
 
-  const auto type = mouse_event->type();
+  auto type = mouse_event->type();
   if (!current_input_->mouse_types().contains(type) ||
       (current_input_->mouse_flags() & mouse_event->changed_button_flags()) ==
           0) {
@@ -384,12 +394,13 @@ bool ActionTap::RewriteMouseEvent(const ui::MouseEvent* mouse_event,
 }
 
 std::unique_ptr<ActionProto> ActionTap::ConvertToProtoIfCustomized() const {
-  if (auto action_proto = Action::ConvertToProtoIfCustomized()) {
-    action_proto->set_action_type(ActionType::TAP);
-    return action_proto;
+  auto action_proto = Action::ConvertToProtoIfCustomized();
+  if (!action_proto) {
+    return nullptr;
   }
 
-  return nullptr;
+  action_proto->set_action_type(ActionType::TAP);
+  return action_proto;
 }
 
 }  // namespace arc::input_overlay

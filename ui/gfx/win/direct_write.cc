@@ -12,7 +12,7 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/trace_event.h"
-#include "skia/ext/font_utils.h"
+#include "skia/ext/fontmgr_default.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 #include "third_party/skia/include/ports/SkTypeface_win.h"
 
@@ -53,6 +53,7 @@ void InitializeDirectWrite() {
   tried_dwrite_initialize = true;
 
   TRACE_EVENT0("fonts", "gfx::InitializeDirectWrite");
+  SCOPED_UMA_HISTOGRAM_LONG_TIMER("DirectWrite.Fonts.Gfx.InitializeTime");
 
   Microsoft::WRL::ComPtr<IDWriteFactory> factory;
   CreateDWriteFactory(&factory);
@@ -61,11 +62,13 @@ void InitializeDirectWrite() {
 
   sk_sp<SkFontMgr> direct_write_font_mgr =
       SkFontMgr_New_DirectWrite(factory.Get());
-  CHECK(!!direct_write_font_mgr);
+  if (!direct_write_font_mgr) {
+    direct_write_font_mgr = SkFontMgr_New_GDI();
+  }
 
   // Override the default skia font manager. This must be called before any
   // use of the skia font manager is done (e.g. before any call to
-  // skia::DefaultFontMgr()).
+  // SkFontMgr::RefDefault()).
   skia::OverrideDefaultSkFontMgr(std::move(direct_write_font_mgr));
 }
 
@@ -78,7 +81,7 @@ IDWriteFactory* GetDirectWriteFactory() {
   return g_direct_write_factory;
 }
 
-std::optional<std::string> RetrieveLocalizedString(
+absl::optional<std::string> RetrieveLocalizedString(
     IDWriteLocalizedStrings* names,
     const std::string& locale) {
   std::wstring locale_wide = base::UTF8ToWide(locale);
@@ -90,20 +93,20 @@ std::optional<std::string> RetrieveLocalizedString(
   if (!locale.empty() &&
       (FAILED(names->FindLocaleName(locale_wide.c_str(), &index, &exists)) ||
        !exists)) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   // Get the string length.
   UINT32 length = 0;
   if (FAILED(names->GetStringLength(index, &length)))
-    return std::nullopt;
+    return absl::nullopt;
 
   // The output buffer length needs to be one larger to receive the NUL
   // character.
   std::wstring buffer;
   buffer.resize(length + 1);
   if (FAILED(names->GetString(index, &buffer[0], buffer.size())))
-    return std::nullopt;
+    return absl::nullopt;
 
   // Shrink the string to fit the actual length.
   buffer.resize(length);
@@ -111,7 +114,7 @@ std::optional<std::string> RetrieveLocalizedString(
   return base::WideToUTF8(buffer);
 }
 
-std::optional<std::string> RetrieveLocalizedFontName(
+absl::optional<std::string> RetrieveLocalizedFontName(
     base::StringPiece font_name,
     const std::string& locale) {
   Microsoft::WRL::ComPtr<IDWriteFactory> factory;
@@ -119,7 +122,7 @@ std::optional<std::string> RetrieveLocalizedFontName(
 
   Microsoft::WRL::ComPtr<IDWriteFontCollection> font_collection;
   if (FAILED(factory->GetSystemFontCollection(&font_collection))) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   UINT32 index = 0;
@@ -128,14 +131,14 @@ std::optional<std::string> RetrieveLocalizedFontName(
   if (FAILED(font_collection->FindFamilyName(font_name_wide.c_str(), &index,
                                              &exists)) ||
       !exists) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   Microsoft::WRL::ComPtr<IDWriteFontFamily> font_family;
   Microsoft::WRL::ComPtr<IDWriteLocalizedStrings> family_names;
   if (FAILED(font_collection->GetFontFamily(index, &font_family)) ||
       FAILED(font_family->GetFamilyNames(&family_names))) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return RetrieveLocalizedString(family_names.Get(), locale);

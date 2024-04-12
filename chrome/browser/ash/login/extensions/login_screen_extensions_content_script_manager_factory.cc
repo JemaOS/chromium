@@ -43,9 +43,9 @@ LoginScreenExtensionsContentScriptManagerFactory::
 LoginScreenExtensionsContentScriptManagerFactory::
     ~LoginScreenExtensionsContentScriptManagerFactory() = default;
 
-std::unique_ptr<KeyedService> LoginScreenExtensionsContentScriptManagerFactory::
-    BuildServiceInstanceForBrowserContext(
-        content::BrowserContext* context) const {
+KeyedService*
+LoginScreenExtensionsContentScriptManagerFactory::BuildServiceInstanceFor(
+    content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   if (!profile)
     return nullptr;
@@ -53,7 +53,7 @@ std::unique_ptr<KeyedService> LoginScreenExtensionsContentScriptManagerFactory::
     // The manager should only be created for the sign-in profile.
     return nullptr;
   }
-  return std::make_unique<LoginScreenExtensionsContentScriptManager>(profile);
+  return new LoginScreenExtensionsContentScriptManager(profile);
 }
 
 bool LoginScreenExtensionsContentScriptManagerFactory::

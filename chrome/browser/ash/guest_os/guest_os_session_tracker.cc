@@ -10,8 +10,6 @@
 #include "base/containers/flat_tree.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
-#include "base/system/sys_info.h"
-#include "chrome/browser/ash/bruschetta/bruschetta_util.h"
 #include "chrome/browser/ash/guest_os/guest_id.h"
 #include "chrome/browser/ash/guest_os/guest_os_session_tracker_factory.h"
 #include "chrome/browser/ash/guest_os/public/types.h"
@@ -68,12 +66,10 @@ GuestOsSessionTracker::~GuestOsSessionTracker() {
 }
 
 void GuestOsSessionTracker::OnListVms(
-    std::optional<vm_tools::concierge::ListVmsResponse> response) {
+    absl::optional<vm_tools::concierge::ListVmsResponse> response) {
   if (!response) {
-    if (base::SysInfo::IsRunningOnChromeOS()) {
-      LOG(ERROR)
-          << "Failed to list VMs, assuming there aren't any already running";
-    }
+    LOG(ERROR)
+        << "Failed to list VMs, assuming there aren't any already running";
     return;
   }
   for (const auto& vm : response->vms()) {
@@ -87,7 +83,8 @@ void GuestOsSessionTracker::OnListVms(
 }
 
 void GuestOsSessionTracker::OnListRunningContainers(
-    std::optional<vm_tools::cicerone::ListRunningContainersResponse> response) {
+    absl::optional<vm_tools::cicerone::ListRunningContainersResponse>
+        response) {
   if (!response) {
     LOG(ERROR) << "Failed to list containers, assuming there aren't any "
                   "already running";
@@ -112,7 +109,7 @@ void GuestOsSessionTracker::OnGetGarconSessionInfo(
     std::string vm_name,
     std::string container_name,
     std::string container_token,
-    std::optional<vm_tools::cicerone::GetGarconSessionInfoResponse> response) {
+    absl::optional<vm_tools::cicerone::GetGarconSessionInfoResponse> response) {
   if (!response ||
       response->status() !=
           vm_tools::cicerone::GetGarconSessionInfoResponse::SUCCEEDED) {
@@ -128,32 +125,32 @@ void GuestOsSessionTracker::OnGetGarconSessionInfo(
 
 // Returns information about a running guest. Returns nullopt if the guest
 // isn't recognised e.g. it's not running.
-std::optional<GuestInfo> GuestOsSessionTracker::GetInfo(const GuestId& id) {
+absl::optional<GuestInfo> GuestOsSessionTracker::GetInfo(const GuestId& id) {
   auto iter = guests_.find(id);
   if (iter == guests_.end()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return iter->second;
 }
 
-std::optional<vm_tools::concierge::VmInfo> GuestOsSessionTracker::GetVmInfo(
+absl::optional<vm_tools::concierge::VmInfo> GuestOsSessionTracker::GetVmInfo(
     const std::string& vm_name) {
   auto iter = vms_.find(vm_name);
   if (iter == vms_.end()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return iter->second;
 }
 
-std::optional<GuestId> GuestOsSessionTracker::GetGuestIdForToken(
+absl::optional<GuestId> GuestOsSessionTracker::GetGuestIdForToken(
     const std::string& container_token) {
   if (container_token.empty()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   auto iter = tokens_to_guests_.find(container_token);
   if (iter == tokens_to_guests_.end()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return iter->second;
 }
@@ -227,13 +224,7 @@ void GuestOsSessionTracker::HandleNewGuest(const std::string& vm_name,
         << "Received ContainerStarted signal for an unexpected VM, ignoring.";
     return;
   }
-  vm_tools::apps::VmType vm_type = ToVmType(iter->second.vm_type());
-  // TODO(b/294316866): Special-case Bruschetta VMs until cicerone is updated to
-  // use the correct vm_type.
-  if (vm_name == bruschetta::kBruschettaVmName) {
-    vm_type = vm_tools::apps::VmType::BRUSCHETTA;
-  }
-  GuestId id{vm_type, vm_name, container_name};
+  GuestId id{VmType::UNKNOWN, vm_name, container_name};
   GuestInfo info{id,           iter->second.cid(),
                  username,     base::FilePath(homedir),
                  ipv4_address, sftp_vsock_port};

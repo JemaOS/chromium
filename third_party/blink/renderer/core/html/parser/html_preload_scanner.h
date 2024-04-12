@@ -28,14 +28,13 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_PARSER_HTML_PRELOAD_SCANNER_H_
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/memory/ptr_util.h"
 #include "base/memory/weak_ptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "services/network/public/cpp/client_hints.h"
-#include "third_party/blink/public/common/features.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/media_values_cached.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -43,12 +42,12 @@
 #include "third_party/blink/renderer/core/html/parser/css_preload_scanner.h"
 #include "third_party/blink/renderer/core/html/parser/html_token.h"
 #include "third_party/blink/renderer/core/html/parser/preload_request.h"
-#include "third_party/blink/renderer/core/lcp_critical_path_predictor/element_locator.h"
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/text/segmented_string.h"
 #include "third_party/blink/renderer/platform/wtf/sequence_bound.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
+
 namespace blink {
 
 class HTMLDocumentParser;
@@ -72,9 +71,8 @@ using MetaCHValues = Vector<MetaCHValue>;
 // the main thread.
 struct PendingPreloadData {
   MetaCHValues meta_ch_values;
-  std::optional<ViewportDescription> viewport;
+  absl::optional<ViewportDescription> viewport;
   bool has_csp_meta_tag = false;
-  bool has_located_potential_lcp_element = false;
   PreloadRequestStream requests;
 };
 
@@ -95,10 +93,6 @@ struct CORE_EXPORT CachedDocumentParameters {
   network::mojom::ReferrerPolicy referrer_policy;
   SubresourceIntegrity::IntegrityFeatures integrity_features;
   LocalFrame::LazyLoadImageSetting lazy_load_image_setting;
-  // Work with the element locators. If the LCP candidate image is found and
-  // that has a lazy loading indicator, ignore it and create preload request.
-  // This will override |lazy_load_image_setting| behavior.
-  features::LcppPreloadLazyLoadImageType preload_lazy_load_image_type;
   HashSet<String> disabled_image_types;
 };
 
@@ -110,9 +104,9 @@ class TokenPreloadScanner {
 
   TokenPreloadScanner(const KURL& document_url,
                       std::unique_ptr<CachedDocumentParameters>,
-                      std::unique_ptr<MediaValuesCached::MediaValuesCachedData>,
+                      const MediaValuesCached::MediaValuesCachedData&,
                       const ScannerType,
-                      Vector<ElementLocator>);
+                      bool priority_hints_origin_trial_enabled);
   TokenPreloadScanner(const TokenPreloadScanner&) = delete;
   TokenPreloadScanner& operator=(const TokenPreloadScanner&) = delete;
   ~TokenPreloadScanner();
@@ -121,38 +115,28 @@ class TokenPreloadScanner {
             const SegmentedString&,
             PreloadRequestStream& requests,
             MetaCHValues& meta_ch_values,
-            std::optional<ViewportDescription>*,
+            absl::optional<ViewportDescription>*,
             bool* is_csp_meta_tag);
 
   void SetPredictedBaseElementURL(const KURL& url) {
     predicted_base_element_url_ = url;
   }
 
-  bool HasLocatedPotentialLcpElement() { return seen_potential_lcp_element_; }
-
  private:
   class StartTagScanner;
 
   void HandleMetaNameAttribute(const HTMLToken& token,
                                MetaCHValues& meta_ch_values,
-                               std::optional<ViewportDescription>* viewport);
+                               absl::optional<ViewportDescription>* viewport);
 
   inline void ScanCommon(const HTMLToken&,
                          const SegmentedString&,
                          PreloadRequestStream& requests,
                          MetaCHValues& meta_ch_values,
-                         std::optional<ViewportDescription>*,
+                         absl::optional<ViewportDescription>*,
                          bool* is_csp_meta_tag);
 
   void UpdatePredictedBaseURL(const HTMLToken&);
-
-  MediaValuesCached* EnsureMediaValues() {
-    if (!media_values_) {
-      media_values_ =
-          MakeGarbageCollected<MediaValuesCached>(*media_values_cached_data_);
-    }
-    return media_values_.Get();
-  }
 
   struct PictureData {
     PictureData() : source_size(0.0), source_size_set(false), picked(false) {}
@@ -172,15 +156,17 @@ class TokenPreloadScanner {
   bool in_script_web_bundle_;
   bool seen_body_;
   bool seen_img_;
-  bool seen_potential_lcp_element_ = false;
   PictureData picture_data_;
   size_t template_count_;
   std::unique_ptr<CachedDocumentParameters> document_parameters_;
-  std::unique_ptr<MediaValuesCached::MediaValuesCachedData>
-      media_values_cached_data_;
-  Persistent<MediaValuesCached> media_values_;
+  CrossThreadPersistent<MediaValuesCached> media_values_;
   ScannerType scanner_type_;
-  element_locator::TokenStreamMatcher lcp_element_matcher_;
+  // TODO(domfarolino): Remove this once Priority Hints is no longer in Origin
+  // Trial (see https://crbug.com/821464). This member exists because
+  // HTMLPreloadScanner has no access to an ExecutionContext*, and therefore
+  // cannot determine an Origin Trial's status, so we accept this information in
+  // the constructor and set this flag accordingly.
+  bool priority_hints_origin_trial_enabled_;
 };
 
 class CORE_EXPORT HTMLPreloadScanner
@@ -213,14 +199,14 @@ class CORE_EXPORT HTMLPreloadScanner
       TakePreloadFn take_preload);
 
   HTMLPreloadScanner(std::unique_ptr<HTMLTokenizer>,
+                     bool priority_hints_origin_trial_enabled,
                      const KURL& document_url,
                      std::unique_ptr<CachedDocumentParameters>,
-                     std::unique_ptr<MediaValuesCached::MediaValuesCachedData>,
+                     const MediaValuesCached::MediaValuesCachedData&,
                      const TokenPreloadScanner::ScannerType,
                      std::unique_ptr<BackgroundHTMLScanner::ScriptTokenScanner>
                          script_token_scanner,
-                     TakePreloadFn take_preload = TakePreloadFn(),
-                     Vector<ElementLocator> locators = {});
+                     TakePreloadFn take_preload = TakePreloadFn());
   HTMLPreloadScanner(const HTMLPreloadScanner&) = delete;
   HTMLPreloadScanner& operator=(const HTMLPreloadScanner&) = delete;
   ~HTMLPreloadScanner();

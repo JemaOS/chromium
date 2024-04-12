@@ -8,11 +8,12 @@
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
-#include "base/supports_user_data.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profile_observer.h"
 #include "chrome/browser/themes/theme_syncable_service.h"
-#include "chrome/browser/ui/profiles/profile_customization_synced_theme_waiter.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_service_observer.h"
+#include "chrome/browser/ui/signin/profile_customization_synced_theme_waiter.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_service_observer.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/views/view.h"
 #include "ui/views/view_observer.h"
@@ -25,10 +26,9 @@ class Browser;
 class Profile;
 
 // Helper class for logic to show / delay showing the profile customization
-// bubble. Owned by a Browser.
-class ProfileCustomizationBubbleSyncController
-    : public views::ViewObserver,
-      public base::SupportsUserData::Data {
+// bubble. Owns itself.
+class ProfileCustomizationBubbleSyncController : public ProfileObserver,
+                                                 public views::ViewObserver {
  public:
   enum class Outcome {
     kShowBubble,
@@ -60,7 +60,7 @@ class ProfileCustomizationBubbleSyncController
   // A version of ApplyColorAndShowBubbleWhenNoValueSynced() that allows simpler
   // mocking.
   static void ApplyColorAndShowBubbleWhenNoValueSyncedForTesting(
-      Browser* browser,
+      Profile* profile,
       views::View* anchor_view,
       syncer::SyncService* sync_service,
       ThemeService* theme_service,
@@ -72,16 +72,16 @@ class ProfileCustomizationBubbleSyncController
   static bool CanThemeSyncStart(Profile* profile);
 
  private:
-  static void SetCurrentControllerAndInit(
-      std::unique_ptr<ProfileCustomizationBubbleSyncController> controller);
-
   ProfileCustomizationBubbleSyncController(
-      Browser* browser,
+      Profile* profile,
       views::View* anchor_view,
       syncer::SyncService* sync_service,
       ThemeService* theme_service,
       ShowBubbleCallback show_bubble_callback,
       SkColor suggested_profile_color);
+
+  // ProfileObserver:
+  void OnProfileWillBeDestroyed(Profile* profile) override;
 
   // views::ViewObserver:
   void OnViewIsDeleting(views::View* observed_view) override;
@@ -95,14 +95,15 @@ class ProfileCustomizationBubbleSyncController
   // Functions that finalize the control logic by either showing or skipping the
   // bubble (or aborting completely) and deleting itself.
   void ApplyDefaultColorAndShowBubble();
-  void InvokeCallbackAndDeleteItself(Outcome outcome);
+  void SkipBubble();
+  void Abort();
 
-  const raw_ptr<Browser> browser_;
   const raw_ptr<ThemeService> theme_service_;
   std::unique_ptr<ProfileCustomizationSyncedThemeWaiter> theme_waiter_;
   ShowBubbleCallback show_bubble_callback_;
   SkColor const suggested_profile_color_;
 
+  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
   base::ScopedObservation<views::View, views::ViewObserver> view_observation_{
       this};
 };

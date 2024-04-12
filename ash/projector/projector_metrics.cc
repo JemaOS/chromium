@@ -34,6 +34,9 @@ constexpr char kProjectorPendingScreencastBatchIOTaskDurationHistogramName[] =
 constexpr char kProjectorPendingScreencastChangeIntervalHistogramName[] =
     "Ash.Projector.PendingScreencastChangeInterval";
 
+constexpr char kProjectorPolicyChangeHandlingErrorHistogramName[] =
+    "Ash.Projector.PolicyChangeHandlingError";
+
 constexpr char
     kProjectorOnDeviceToServerSpeechRecognitionFallbackReasonHistogramName[] =
         "Ash.Projector.OnDeviceToServerSpeechRecognitionFallbackReason";
@@ -99,6 +102,13 @@ void RecordCreationFlowError(int message_id) {
   }
   base::UmaHistogramEnumeration(
       GetHistogramName(kProjectorCreationFlowErrorHistogramName), error);
+}
+
+ASH_EXPORT void RecordPolicyChangeHandlingError(
+    ProjectorPolicyChangeHandlingError error) {
+  base::UmaHistogramEnumeration(
+      GetHistogramName(kProjectorPolicyChangeHandlingErrorHistogramName),
+      error);
 }
 
 ASH_EXPORT void RecordPendingScreencastBatchIOTaskDuration(

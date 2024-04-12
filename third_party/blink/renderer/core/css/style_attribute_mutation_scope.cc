@@ -99,15 +99,16 @@ StyleAttributeMutationScope::~StyleAttributeMutationScope() {
     if (mutation_) {
       mutation_recipients_->EnqueueMutationRecord(mutation_);
     }
-    should_deliver_ = false;
-  }
 
-  Element* element = current_decl_->ParentElement();
-  if (CustomElementDefinition* definition =
-          DefinitionIfStyleChangedCallback(element)) {
-    definition->EnqueueAttributeChangedCallback(
-        *element, html_names::kStyleAttr, old_value_,
-        element->getAttribute(html_names::kStyleAttr));
+    Element* element = current_decl_->ParentElement();
+    if (CustomElementDefinition* definition =
+            DefinitionIfStyleChangedCallback(element)) {
+      definition->EnqueueAttributeChangedCallback(
+          *element, html_names::kStyleAttr, old_value_,
+          element->getAttribute(html_names::kStyleAttr));
+    }
+
+    should_deliver_ = false;
   }
 
   // We have to clear internal state before calling Inspector's code.

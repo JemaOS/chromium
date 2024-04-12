@@ -2,14 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Tests that the sampling heap profiler works and supports nesting.\n`);
+  await TestRunner.loadLegacyModule('profiler');
 
-  const profiler = SDK.TargetManager.TargetManager.instance().primaryPageTarget().model(SDK.HeapProfilerModel.HeapProfilerModel);
+  const profiler = SDK.targetManager.primaryPageTarget().model(SDK.HeapProfilerModel);
   await profiler.startSampling();
   await profiler.startSampling();
   await TestRunner.evaluateInPagePromise(`let dump = new Array(5e4).fill(42.42)`);

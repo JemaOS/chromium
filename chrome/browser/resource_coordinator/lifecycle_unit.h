@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "base/containers/flat_set.h"
-#include "base/memory/raw_ptr.h"
 #include "base/process/process_handle.h"
 #include "base/time/time.h"
 #include "chrome/browser/resource_coordinator/decision_details.h"
@@ -160,10 +159,8 @@ class LifecycleUnit {
   virtual ukm::SourceId GetUkmSourceId() const = 0;
 };
 
-using LifecycleUnitSet =
-    base::flat_set<raw_ptr<LifecycleUnit, CtnExperimental>>;
-using LifecycleUnitVector =
-    std::vector<raw_ptr<LifecycleUnit, VectorExperimental>>;
+using LifecycleUnitSet = base::flat_set<LifecycleUnit*>;
+using LifecycleUnitVector = std::vector<LifecycleUnit*>;
 
 }  // namespace resource_coordinator
 

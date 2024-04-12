@@ -20,7 +20,7 @@ BackgroundFetchEvent::BackgroundFetchEvent(
 BackgroundFetchEvent::~BackgroundFetchEvent() = default;
 
 BackgroundFetchRegistration* BackgroundFetchEvent::registration() const {
-  return registration_.Get();
+  return registration_;
 }
 
 const AtomicString& BackgroundFetchEvent::InterfaceName() const {

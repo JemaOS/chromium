@@ -5,8 +5,6 @@
 #include "chrome/browser/ash/chromebox_for_meetings/device_info/device_info_service.h"
 
 #include <cstdint>
-#include <optional>
-#include <string_view>
 
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
@@ -20,6 +18,7 @@
 #include "chromeos/ash/components/system/statistics_provider.h"
 #include "components/version_info/version_info.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash::cfm {
 
@@ -247,7 +246,7 @@ void DeviceInfoService::GetMachineStatisticsInfo(
 
   auto stat_info = mojom::MachineStatisticsInfo::New();
 
-  if (const std::optional<std::string_view> hwid =
+  if (const absl::optional<base::StringPiece> hwid =
           system::StatisticsProvider::GetInstance()->GetMachineStatistic(
               system::kHardwareClassKey)) {
     stat_info->hwid = std::string(hwid.value());

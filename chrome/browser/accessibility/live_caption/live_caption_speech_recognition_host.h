@@ -6,8 +6,6 @@
 #define CHROME_BROWSER_ACCESSIBILITY_LIVE_CAPTION_LIVE_CAPTION_SPEECH_RECOGNITION_HOST_H_
 
 #include <memory>
-#include <string>
-#include <unordered_map>
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -26,7 +24,6 @@ class RenderFrameHost;
 namespace captions {
 
 class CaptionBubbleContextBrowser;
-class GreedyTextStabilizer;
 class LiveCaptionController;
 class LiveTranslateController;
 
@@ -76,12 +73,7 @@ class LiveCaptionSpeechRecognitionHost
       mojo::PendingReceiver<media::mojom::SpeechRecognitionRecognizerClient>
           pending_receiver);
   ~LiveCaptionSpeechRecognitionHost() override;
-  void OnTranslationCallback(const std::string& cached_translation,
-                             const std::string& original_transcription,
-                             const std::string& source_language,
-                             const std::string& target_language,
-                             bool is_final,
-                             const std::string& result);
+  void OnTranslationCallback(media::SpeechRecognitionResult result);
 
   // Returns the WebContents if it exists. If it does not exist, sets the
   // RenderFrameHost reference to nullptr and returns nullptr.
@@ -95,46 +87,14 @@ class LiveCaptionSpeechRecognitionHost
   // does not exist. Lifetime is tied to the BrowserContext.
   LiveTranslateController* GetLiveTranslateController();
 
-  // Processes and returns the text to be dispatched.
-  std::string GetTextForDispatch(const std::string& text, bool is_final);
-
   std::unique_ptr<CaptionBubbleContextBrowser> context_;
 
   // A flag used by the Live Translate feature indicating whether transcriptions
   // should stop.
   bool stop_transcriptions_ = false;
 
-  // Used to cache translations to avoid retranslating the same string. The key
-  // is the source and target language codes followed by a `|` separator
-  // character and the original text. The value is the translated text. This
-  // cache is cleared upon receiving a final recognition event. The size of this
-  // cache depends on the frequency of partial and final recognition events, but
-  // is typically under ~10.
-  std::unordered_map<std::string, std::string> translation_cache_;
-
-  // The source language code of the audio stream.
-  std::string source_language_;
-
   // The user preferences containing the target and source language codes.
   raw_ptr<PrefService> prefs_;
-
-  // The number of characters sent to the translation service.
-  int characters_translated_ = 0;
-
-  // The number of characters omitted from the translation by the text
-  // stabilization policy. Used by metrics only.
-  int translation_characters_erased_ = 0;
-
-  // The number of requests to the translation service. Used by metrics only.
-  int partial_result_count_ = 0;
-
-  // The automatically detected language of the audio stream.
-  std::string auto_detected_language_;
-
-  // The number of consecutive highly confident language identification events.
-  int language_identification_event_count_ = 0;
-
-  std::unique_ptr<captions::GreedyTextStabilizer> greedy_text_stabilizer_;
 
   base::WeakPtrFactory<LiveCaptionSpeechRecognitionHost> weak_factory_{this};
 };

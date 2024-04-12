@@ -4,17 +4,15 @@
 
 #include "ash/quick_pair/companion_app/companion_app_parser.h"
 
-#include <optional>
-#include <string_view>
-
 #include "ash/quick_pair/common/device.h"
+#include "ash/quick_pair/common/logging.h"
 #include "ash/quick_pair/repository/fast_pair/device_metadata.h"
 #include "ash/quick_pair/repository/fast_pair_repository.h"
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
-#include "components/cross_device/logging/logging.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 constexpr char kIntentKeyPrefix[] = "intent:";
@@ -32,7 +30,7 @@ CompanionAppParser::~CompanionAppParser() = default;
 
 void CompanionAppParser::GetAppPackageName(
     scoped_refptr<Device> device,
-    base::OnceCallback<void(std::optional<std::string>)>
+    base::OnceCallback<void(absl::optional<std::string>)>
         on_companion_app_parsed) {
   const auto metadata_id = device->metadata_id();
   FastPairRepository::Get()->GetDeviceMetadata(
@@ -44,7 +42,7 @@ void CompanionAppParser::GetAppPackageName(
 
 void CompanionAppParser::OnDeviceMetadataRetrieved(
     scoped_refptr<Device> device,
-    base::OnceCallback<void(std::optional<std::string>)> callback,
+    base::OnceCallback<void(absl::optional<std::string>)> callback,
     DeviceMetadata* device_metadata,
     bool retryable_err) {
   if (!device_metadata)
@@ -53,16 +51,16 @@ void CompanionAppParser::OnDeviceMetadataRetrieved(
   const std::string intent_uri_from_metadata =
       device_metadata->GetDetails().intent_uri();
   if (intent_uri_from_metadata.find(kIntentKeyPrefix) != 0) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
-  std::optional<std::string> result = GetCompanionAppExtra(
+  absl::optional<std::string> result = GetCompanionAppExtra(
       intent_uri_from_metadata.substr(strlen(kIntentKeyPrefix)));
   std::move(callback).Run(result);
 }
 
-std::optional<std::string> CompanionAppParser::GetCompanionAppExtra(
+absl::optional<std::string> CompanionAppParser::GetCompanionAppExtra(
     const std::string& intent_as_string) {
   // Here is an an example of what Intents look like
   //
@@ -73,13 +71,12 @@ std::optional<std::string> CompanionAppParser::GetCompanionAppExtra(
   //
   // They must always begin with "#Intent", have components be separated by ";"
   // and end with "end"
-  const std::vector<std::string_view> parts = base::SplitStringPiece(
+  const std::vector<base::StringPiece> parts = base::SplitStringPiece(
       intent_as_string, ";", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (parts.size() < 2 || parts.front() != kIntentPrefix ||
       parts.back() != kEndSuffix) {
-    CD_LOG(WARNING, Feature::FP)
-        << "Failed to split intent " << intent_as_string << ".";
-    return std::nullopt;
+    QP_LOG(WARNING) << "Failed to split intent " << intent_as_string << ".";
+    return absl::nullopt;
   }
 
   for (size_t i = 1; i < parts.size() - 1; ++i) {
@@ -89,9 +86,8 @@ std::optional<std::string> CompanionAppParser::GetCompanionAppExtra(
         // Intent should not have empty param. The empty param would appear in
         // intent string as ';;'. In the last case it would cause error in
         // Android framework. Such intents must not appear in the system.
-        CD_LOG(WARNING, Feature::FP)
-            << "Found empty param in " << intent_as_string << ".";
-        return std::nullopt;
+        QP_LOG(WARNING) << "Found empty param in " << intent_as_string << ".";
+        return absl::nullopt;
       }
       continue;
     }
@@ -101,7 +97,7 @@ std::optional<std::string> CompanionAppParser::GetCompanionAppExtra(
   // "EXTRA_COMPANION_APP", with the name of that app stored as the value
   size_t companionAppIndex = intent_as_string.find(companionAppKey);
   if (companionAppIndex == std::string::npos) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   std::string companionAppId =

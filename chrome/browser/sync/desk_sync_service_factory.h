@@ -11,7 +11,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace desks_storage {
@@ -25,7 +25,7 @@ class DeskSyncServiceFactory : public ProfileKeyedServiceFactory {
   static DeskSyncServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<DeskSyncServiceFactory>;
+  friend struct base::DefaultSingletonTraits<DeskSyncServiceFactory>;
 
   DeskSyncServiceFactory();
   DeskSyncServiceFactory(const DeskSyncServiceFactory&) = delete;
@@ -33,7 +33,7 @@ class DeskSyncServiceFactory : public ProfileKeyedServiceFactory {
   ~DeskSyncServiceFactory() override = default;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

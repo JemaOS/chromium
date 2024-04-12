@@ -11,7 +11,6 @@
 #include "third_party/blink/renderer/core/animation/interpolation_value.h"
 #include "third_party/blink/renderer/core/animation/underlying_value.h"
 #include "third_party/blink/renderer/core/css/properties/longhands.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
 namespace blink {
@@ -57,7 +56,8 @@ class TestUnderlyingValue : public UnderlyingValue {
     return *interpolation_value_.interpolable_value;
   }
 
-  void SetInterpolableValue(InterpolableValue* interpolable_value) final {
+  void SetInterpolableValue(
+      std::unique_ptr<InterpolableValue> interpolable_value) final {
     interpolation_value_.interpolable_value = std::move(interpolable_value);
   }
 
@@ -81,7 +81,7 @@ InterpolationValue CreateInterpolableList(
   return ListInterpolationFunctions::CreateList(
       values.size(), [&values](wtf_size_t i) {
         return InterpolationValue(
-            MakeGarbageCollected<InterpolableNumber>(values[i].first),
+            std::make_unique<InterpolableNumber>(values[i].first),
             TestNonInterpolableValue::Create(values[i].second));
       });
 }
@@ -92,7 +92,7 @@ InterpolationValue CreateInterpolableList(const Vector<double>& values) {
   return ListInterpolationFunctions::CreateList(
       values.size(), [&values](wtf_size_t i) {
         return InterpolationValue(
-            MakeGarbageCollected<InterpolableNumber>(values[i]), nullptr);
+            std::make_unique<InterpolableNumber>(values[i]), nullptr);
       });
 }
 
@@ -101,7 +101,7 @@ InterpolationValue CreateInterpolableList(const Vector<double>& values) {
 InterpolationValue CreateNonInterpolableList(const Vector<int>& values) {
   return ListInterpolationFunctions::CreateList(
       values.size(), [&values](wtf_size_t i) {
-        return InterpolationValue(MakeGarbageCollected<InterpolableNumber>(0),
+        return InterpolationValue(std::make_unique<InterpolableNumber>(0),
                                   TestNonInterpolableValue::Create(values[i]));
       });
 }
@@ -156,59 +156,54 @@ void Composite(UnderlyingValue& underlying_value,
 }  // namespace
 
 TEST(ListInterpolationFunctionsTest, EqualMergeSinglesSameLengths) {
-  test::TaskEnvironment task_environment;
   auto list1 = CreateInterpolableList({{1.0, 1}, {2.0, 2}, {3.0, 3}});
   auto list2 = CreateInterpolableList({{1.0, 1}, {2.0, 2}, {3.0, 3}});
 
   auto pairwise = ListInterpolationFunctions::MaybeMergeSingles(
       std::move(list1), std::move(list2),
       ListInterpolationFunctions::LengthMatchingStrategy::kEqual,
-      MaybeMergeSingles);
+      WTF::BindRepeating(MaybeMergeSingles));
 
   EXPECT_TRUE(pairwise);
 }
 
 TEST(ListInterpolationFunctionsTest, EqualMergeSinglesDifferentLengths) {
-  test::TaskEnvironment task_environment;
   auto list1 = CreateInterpolableList({1.0, 2.0, 3.0});
   auto list2 = CreateInterpolableList({1.0, 3.0});
 
   auto pairwise = ListInterpolationFunctions::MaybeMergeSingles(
       std::move(list1), std::move(list2),
       ListInterpolationFunctions::LengthMatchingStrategy::kEqual,
-      MaybeMergeSingles);
+      WTF::BindRepeating(MaybeMergeSingles));
 
   EXPECT_FALSE(pairwise);
 }
 
 TEST(ListInterpolationFunctionsTest, EqualMergeSinglesIncompatibleValues) {
-  test::TaskEnvironment task_environment;
   auto list1 = CreateInterpolableList({{1.0, 1}, {2.0, 2}, {3.0, 3}});
   auto list2 = CreateInterpolableList({{1.0, 1}, {2.0, 4}, {3.0, 3}});
 
   auto pairwise = ListInterpolationFunctions::MaybeMergeSingles(
       std::move(list1), std::move(list2),
       ListInterpolationFunctions::LengthMatchingStrategy::kEqual,
-      MaybeMergeSingles);
+      WTF::BindRepeating(MaybeMergeSingles));
 
   EXPECT_FALSE(pairwise);
 }
 
 TEST(ListInterpolationFunctionsTest, EqualMergeSinglesIncompatibleNullptrs) {
-  test::TaskEnvironment task_environment;
   auto list1 = CreateInterpolableList({{1.0, 1}, {2.0, 2}, {3.0, 3}});
   auto list2 = CreateInterpolableList({1, 2, 3});
 
   auto pairwise = ListInterpolationFunctions::MaybeMergeSingles(
       std::move(list1), std::move(list2),
       ListInterpolationFunctions::LengthMatchingStrategy::kEqual,
-      MaybeMergeSingles);
+      WTF::BindRepeating(MaybeMergeSingles));
 
   EXPECT_FALSE(pairwise);
 }
 
 TEST(ListInterpolationFunctionsTest, EqualCompositeSameLengths) {
-  test::TaskEnvironment task_environment;
   auto list1 = CreateInterpolableList({{1.0, 1}, {2.0, 2}, {3.0, 3}});
   auto list2 = CreateInterpolableList({{1.0, 1}, {2.0, 2}, {3.0, 3}});
 
@@ -220,22 +215,22 @@ TEST(ListInterpolationFunctionsTest, EqualCompositeSameLengths) {
   ListInterpolationFunctions::Composite(
       owner, 1.0, interpolation_type, list2,
       ListInterpolationFunctions::LengthMatchingStrategy::kEqual,
-      ListInterpolationFunctions::InterpolableValuesKnownCompatible,
-      NonInterpolableValuesAreCompatible, Composite);
+      WTF::BindRepeating(
+          ListInterpolationFunctions::InterpolableValuesKnownCompatible),
+      WTF::BindRepeating(NonInterpolableValuesAreCompatible),
+      WTF::BindRepeating(Composite));
 
   const auto& result = To<InterpolableList>(*owner.Value().interpolable_value);
 
-  CSSToLengthConversionData length_resolver;
   ASSERT_EQ(result.length(), 3u);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(0))->Value(length_resolver), 2.0);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(1))->Value(length_resolver), 4.0);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(2))->Value(length_resolver), 6.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(0))->Value(), 2.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(1))->Value(), 4.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(2))->Value(), 6.0);
 }
 
 // Two lists of different lengths are not interpolable, so we expect the
 // underlying value to be replaced.
 TEST(ListInterpolationFunctionsTest, EqualCompositeDifferentLengths) {
-  test::TaskEnvironment task_environment;
   auto list1 = CreateInterpolableList({1.0, 2.0, 3.0});
   auto list2 = CreateInterpolableList({4.0, 5.0});
 
@@ -247,15 +242,16 @@ TEST(ListInterpolationFunctionsTest, EqualCompositeDifferentLengths) {
   ListInterpolationFunctions::Composite(
       owner, 1.0, interpolation_type, list2,
       ListInterpolationFunctions::LengthMatchingStrategy::kEqual,
-      ListInterpolationFunctions::InterpolableValuesKnownCompatible,
-      NonInterpolableValuesAreCompatible, Composite);
+      WTF::BindRepeating(
+          ListInterpolationFunctions::InterpolableValuesKnownCompatible),
+      WTF::BindRepeating(NonInterpolableValuesAreCompatible),
+      WTF::BindRepeating(Composite));
 
   const auto& result = To<InterpolableList>(*owner.Value().interpolable_value);
 
-  CSSToLengthConversionData length_resolver;
   ASSERT_EQ(result.length(), 2u);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(0))->Value(length_resolver), 4.0);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(1))->Value(length_resolver), 5.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(0))->Value(), 4.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(1))->Value(), 5.0);
 }
 
 // If one (or more) of the element pairs are incompatible, the list as a whole
@@ -276,19 +272,17 @@ TEST(ListInterpolationFunctionsTest,
   ListInterpolationFunctions::Composite(
       owner, 1.0, interpolation_type, list2,
       ListInterpolationFunctions::LengthMatchingStrategy::kEqual,
-      [&compatibility_helper](const InterpolableValue* a,
-                              const InterpolableValue* b) {
-        return compatibility_helper.AreCompatible(a, b);
-      },
-      NonInterpolableValuesAreCompatible, Composite);
+      WTF::BindRepeating(&InterpolableValuesCompatibilityHelper::AreCompatible,
+                         WTF::Unretained(&compatibility_helper)),
+      WTF::BindRepeating(NonInterpolableValuesAreCompatible),
+      WTF::BindRepeating(Composite));
 
   const auto& result = To<InterpolableList>(*owner.Value().interpolable_value);
 
-  CSSToLengthConversionData length_resolver;
   ASSERT_EQ(result.length(), 3u);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(0))->Value(length_resolver), 4.0);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(1))->Value(length_resolver), 5.0);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(2))->Value(length_resolver), 6.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(0))->Value(), 4.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(1))->Value(), 5.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(2))->Value(), 6.0);
 }
 
 // If one (or more) of the element pairs are incompatible, the list as a whole
@@ -306,20 +300,20 @@ TEST(ListInterpolationFunctionsTest,
   ListInterpolationFunctions::Composite(
       owner, 1.0, interpolation_type, list2,
       ListInterpolationFunctions::LengthMatchingStrategy::kEqual,
-      ListInterpolationFunctions::InterpolableValuesKnownCompatible,
-      NonInterpolableValuesAreCompatible, Composite);
+      WTF::BindRepeating(
+          ListInterpolationFunctions::InterpolableValuesKnownCompatible),
+      WTF::BindRepeating(NonInterpolableValuesAreCompatible),
+      WTF::BindRepeating(Composite));
 
   const auto& result = To<InterpolableList>(*owner.Value().interpolable_value);
 
-  CSSToLengthConversionData length_resolver;
   ASSERT_EQ(result.length(), 3u);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(0))->Value(length_resolver), 4.0);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(1))->Value(length_resolver), 5.0);
-  EXPECT_EQ(To<InterpolableNumber>(result.Get(2))->Value(length_resolver), 6.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(0))->Value(), 4.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(1))->Value(), 5.0);
+  EXPECT_EQ(To<InterpolableNumber>(result.Get(2))->Value(), 6.0);
 }
 
 TEST(ListInterpolationFunctionsTest, BuilderNoModify) {
-  test::TaskEnvironment task_environment;
   auto list = CreateNonInterpolableList({1, 2, 3});
   auto& before = To<NonInterpolableList>(*list.non_interpolable_value);
 
@@ -338,7 +332,6 @@ TEST(ListInterpolationFunctionsTest, BuilderNoModify) {
 }
 
 TEST(ListInterpolationFunctionsTest, BuilderModifyFirst) {
-  test::TaskEnvironment task_environment;
   auto list = CreateNonInterpolableList({1, 2, 3});
   auto& before = To<NonInterpolableList>(*list.non_interpolable_value);
 
@@ -358,7 +351,6 @@ TEST(ListInterpolationFunctionsTest, BuilderModifyFirst) {
 }
 
 TEST(ListInterpolationFunctionsTest, BuilderModifyMiddle) {
-  test::TaskEnvironment task_environment;
   auto list = CreateNonInterpolableList({1, 2, 3});
   auto& before = To<NonInterpolableList>(*list.non_interpolable_value);
 
@@ -378,7 +370,6 @@ TEST(ListInterpolationFunctionsTest, BuilderModifyMiddle) {
 }
 
 TEST(ListInterpolationFunctionsTest, BuilderModifyLast) {
-  test::TaskEnvironment task_environment;
   auto list = CreateNonInterpolableList({1, 2, 3});
   auto& before = To<NonInterpolableList>(*list.non_interpolable_value);
 
@@ -398,7 +389,6 @@ TEST(ListInterpolationFunctionsTest, BuilderModifyLast) {
 }
 
 TEST(ListInterpolationFunctionsTest, BuilderModifyAll) {
-  test::TaskEnvironment task_environment;
   auto list = CreateNonInterpolableList({1, 2, 3});
   auto& before = To<NonInterpolableList>(*list.non_interpolable_value);
 
@@ -420,7 +410,6 @@ TEST(ListInterpolationFunctionsTest, BuilderModifyAll) {
 }
 
 TEST(ListInterpolationFunctionsTest, BuilderModifyReverse) {
-  test::TaskEnvironment task_environment;
   auto list = CreateNonInterpolableList({1, 2, 3, 4, 5});
   auto& before = To<NonInterpolableList>(*list.non_interpolable_value);
 
@@ -443,7 +432,6 @@ TEST(ListInterpolationFunctionsTest, BuilderModifyReverse) {
 }
 
 TEST(ListInterpolationFunctionsTest, BuilderModifyListWithOneItem) {
-  test::TaskEnvironment task_environment;
   auto list = CreateNonInterpolableList({1});
   auto& before = To<NonInterpolableList>(*list.non_interpolable_value);
 

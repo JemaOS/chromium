@@ -73,20 +73,21 @@ InputMethodContextImplGtk::InputMethodContextImplGtk(
   gtk_context_ = gtk_im_multicontext_new();
   gtk_simple_context_ = gtk_im_context_simple_new();
 
-  auto connect = [&](const char* detailed_signal, auto receiver) {
-    for (auto context : {gtk_context_, gtk_simple_context_}) {
-      // Unretained() is safe since InputMethodContextImplGtk will own the
-      // ScopedGSignal.
-      signals_.emplace_back(
-          context, detailed_signal,
-          base::BindRepeating(receiver, base::Unretained(this)));
-    }
-  };
-
-  connect("commit", &InputMethodContextImplGtk::OnCommit);
-  connect("preedit-changed", &InputMethodContextImplGtk::OnPreeditChanged);
-  connect("preedit-end", &InputMethodContextImplGtk::OnPreeditEnd);
-  connect("preedit-start", &InputMethodContextImplGtk::OnPreeditStart);
+  g_signal_connect(gtk_context_, "commit", G_CALLBACK(OnCommitThunk), this);
+  g_signal_connect(gtk_simple_context_, "commit", G_CALLBACK(OnCommitThunk),
+                   this);
+  g_signal_connect(gtk_context_, "preedit-changed",
+                   G_CALLBACK(OnPreeditChangedThunk), this);
+  g_signal_connect(gtk_simple_context_, "preedit-changed",
+                   G_CALLBACK(OnPreeditChangedThunk), this);
+  g_signal_connect(gtk_context_, "preedit-end", G_CALLBACK(OnPreeditEndThunk),
+                   this);
+  g_signal_connect(gtk_simple_context_, "preedit-end",
+                   G_CALLBACK(OnPreeditEndThunk), this);
+  g_signal_connect(gtk_context_, "preedit-start",
+                   G_CALLBACK(OnPreeditStartThunk), this);
+  g_signal_connect(gtk_simple_context_, "preedit-start",
+                   G_CALLBACK(OnPreeditStartThunk), this);
   // TODO(shuchen): Handle operations on surrounding text.
   // "delete-surrounding" and "retrieve-surrounding" signals should be
   // handled.
@@ -99,10 +100,12 @@ InputMethodContextImplGtk::InputMethodContextImplGtk(
 
 InputMethodContextImplGtk::~InputMethodContextImplGtk() {
   if (gtk_context_) {
-    g_object_unref(gtk_context_.ExtractAsDangling());
+    g_object_unref(gtk_context_);
+    gtk_context_ = nullptr;
   }
   if (gtk_simple_context_) {
-    g_object_unref(gtk_simple_context_.ExtractAsDangling());
+    g_object_unref(gtk_simple_context_);
+    gtk_simple_context_ = nullptr;
   }
 }
 
@@ -192,16 +195,15 @@ void InputMethodContextImplGtk::Reset() {
 void InputMethodContextImplGtk::UpdateFocus(
     bool has_client,
     ui::TextInputType old_type,
-    const TextInputClientAttributes& new_client_attributes,
+    ui::TextInputType new_type,
     ui::TextInputClient::FocusReason reason) {
-  type_ = new_client_attributes.input_type;
+  type_ = new_type;
 
   // We only focus when the focus is in a textfield.
   if (old_type != ui::TEXT_INPUT_TYPE_NONE)
     gtk_im_context_focus_out(gtk_context_);
-  if (new_client_attributes.input_type != ui::TEXT_INPUT_TYPE_NONE) {
+  if (new_type != ui::TEXT_INPUT_TYPE_NONE)
     gtk_im_context_focus_in(gtk_context_);
-  }
 
   // simple context can be used in any textfield, including password box, and
   // even if the focused text input client's text input type is
@@ -210,13 +212,6 @@ void InputMethodContextImplGtk::UpdateFocus(
     gtk_im_context_focus_in(gtk_simple_context_);
   else
     gtk_im_context_focus_out(gtk_simple_context_);
-
-  if (new_client_attributes.flags & ui::TEXT_INPUT_FLAG_VERTICAL) {
-    g_object_set(gtk_context_, "input-hints", GTK_INPUT_HINT_VERTICAL_WRITING,
-                 nullptr);
-    g_object_set(gtk_simple_context_, "input-hints",
-                 GTK_INPUT_HINT_VERTICAL_WRITING, nullptr);
-  }
 }
 
 void InputMethodContextImplGtk::SetCursorLocation(const gfx::Rect& rect) {
@@ -232,8 +227,8 @@ void InputMethodContextImplGtk::SetSurroundingText(
     const std::u16string& text,
     const gfx::Range& text_range,
     const gfx::Range& selection_range,
-    const std::optional<ui::GrammarFragment>& fragment,
-    const std::optional<ui::AutocorrectInfo>& autocorrect) {}
+    const absl::optional<ui::GrammarFragment>& fragment,
+    const absl::optional<ui::AutocorrectInfo>& autocorrect) {}
 
 // private:
 
@@ -294,6 +289,19 @@ void InputMethodContextImplGtk::SetContextClientWindow(
   if (gdk_last_set_client_window)
     g_object_unref(gdk_last_set_client_window);
   gdk_last_set_client_window = window;
+}
+
+void InputMethodContextImplGtk::SetContentType(ui::TextInputType type,
+                                               ui::TextInputMode mode,
+                                               uint32_t flags,
+                                               bool should_do_learning,
+                                               bool can_compose_inline) {
+  if (flags & ui::TEXT_INPUT_FLAG_VERTICAL) {
+    g_object_set(gtk_context_, "input-hints", GTK_INPUT_HINT_VERTICAL_WRITING,
+                 nullptr);
+    g_object_set(gtk_simple_context_, "input-hints",
+                 GTK_INPUT_HINT_VERTICAL_WRITING, nullptr);
+  }
 }
 
 ui::VirtualKeyboardController*

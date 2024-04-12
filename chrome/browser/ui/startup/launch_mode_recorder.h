@@ -5,9 +5,8 @@
 #ifndef CHROME_BROWSER_UI_STARTUP_LAUNCH_MODE_RECORDER_H_
 #define CHROME_BROWSER_UI_STARTUP_LAUNCH_MODE_RECORDER_H_
 
-#include <optional>
-
 #include "base/functional/callback_forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class CommandLine;
@@ -37,9 +36,8 @@ enum class OldLaunchMode {
   //                            See kShortcutTaskbar instead.
   kShortcutDesktop = 7,  // Launched from a desktop shortcut.
   kShortcutTaskbar = 8,  // Launched from the Windows taskbar.
-  // kUserExperiment = 9,  Launched after acceptance of a user experiment.
-  //                       Deprecated.
-  kOtherOS = 10,                // Result bucket for OSes with no coverage here.
+  kUserExperiment = 9,   // Launched after acceptance of a user experiment.
+  kOtherOS = 10,         // Result bucket for OSes with no coverage here.
   kMacUndockedDiskLaunch = 11,  // Undocked launch from disk.
   kMacDockedDiskLaunch = 12,    // Docked launch from disk.
   kMacUndockedDMGLaunch = 13,   // Undocked launch from a dmg.
@@ -73,7 +71,7 @@ class OldLaunchModeRecorder {
   void SetLaunchMode(OldLaunchMode mode);
 
  private:
-  std::optional<OldLaunchMode> mode_;
+  absl::optional<OldLaunchMode> mode_;
 };
 
 // These enums describe how Chrome was launched. They are determined from the
@@ -85,8 +83,8 @@ class OldLaunchModeRecorder {
 enum class LaunchMode {
   kNone = 0,   // Don't record this launch.
   kOther = 1,  // Catch-all launch for Windows
-  // kUserExperiment = 2,  Launched after acceptance of a user experiment.
-  //                       Deprecated.
+  // Launched after acceptance of a user experiment.
+  kUserExperiment = 2,
   kOtherOS = 3,          // Result bucket for OSes with no coverage here.
   kProtocolHandler = 4,  // Chrome launched as registered protocol handler.
   kFileTypeHandler = 5,  // Chrome launched as registered file handler.
@@ -143,11 +141,11 @@ void ComputeAndRecordLaunchMode(const base::CommandLine& command_line);
 // This is exposed for testing.
 void ComputeLaunchMode(
     const base::CommandLine& command_line,
-    base::OnceCallback<void(std::optional<LaunchMode>)> result_callback);
+    base::OnceCallback<void(absl::optional<LaunchMode>)> result_callback);
 
 // Returns the callback used to record launch modes. This is used by unit tests
 // to verify its behavior.
-base::OnceCallback<void(std::optional<LaunchMode>)>
+base::OnceCallback<void(absl::optional<LaunchMode>)>
 GetRecordLaunchModeForTesting();
 
 #endif  // CHROME_BROWSER_UI_STARTUP_LAUNCH_MODE_RECORDER_H_

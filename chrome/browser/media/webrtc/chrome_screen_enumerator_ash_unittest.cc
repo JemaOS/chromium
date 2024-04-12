@@ -30,15 +30,14 @@ class ChromeScreenEnumeratorTest : public ChromeAshTestBase {
     enumerator_ = std::make_unique<ChromeScreenEnumerator>();
     scoped_feature_list_.InitFromCommandLine(
         /*enable_features=*/
-        "GetAllScreensMedia",
+        "GetDisplayMediaSet,GetDisplayMediaSetAutoSelectAllScreens",
         /*disable_features=*/"");
   }
 
-  std::vector<raw_ptr<aura::Window, VectorExperimental>> GenerateScreensList(
-      size_t number_of_screens) {
+  std::vector<aura::Window*> GenerateScreensList(size_t number_of_screens) {
     screens_.clear();
     window_delegates_.clear();
-    std::vector<raw_ptr<aura::Window, VectorExperimental>> screens;
+    std::vector<aura::Window*> screens;
     for (size_t i = 0; i < number_of_screens; ++i) {
       auto window_delegate = std::make_unique<aura::test::TestWindowDelegate>();
       auto screen = std::make_unique<aura::Window>(window_delegate.get());

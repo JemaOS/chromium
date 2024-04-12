@@ -18,7 +18,6 @@
 #include "chrome/browser/ash/arc/tracing/arc_tracing_graphics_model.h"
 #include "chrome/browser/ash/arc/tracing/arc_tracing_model.h"
 #include "chrome/browser/ash/arc/tracing/arc_value_event_trimmer.h"
-#include "chrome/browser/ash/arc/tracing/present_frames_tracer.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 
@@ -37,7 +36,6 @@ constexpr char kThrottlingForce[] = "force";
 // Names of wakenessfull mode.
 constexpr char kWakenessfullWakeUp[] = "wakeup";
 constexpr char kWakenessfullDoze[] = "doze";
-constexpr char kWakenessfullForceDoze[] = "force-doze";
 constexpr char kWakenessfullSleep[] = "sleep";
 
 // To read developer mode.
@@ -103,7 +101,7 @@ base::Value BuildTracingModel(
   graphics_model.set_skip_structure_validation();
   graphics_model.set_platform(base::GetLinuxDistro());
   graphics_model.set_timestamp(timestamp);
-  graphics_model.Build(common_model, arc::PresentFramesTracer() /* commits */);
+  graphics_model.Build(common_model);
 
   return base::Value(graphics_model.Serialize());
 }
@@ -224,21 +222,15 @@ void ArcPowerControlHandler::HandleSetWakefulnessMode(
         power_instance->Resume();
     } else {
       arc::mojom::PowerInstance* const power_instance =
-          ARC_GET_INSTANCE_FOR_METHOD(power, SetIdleState);
+          ARC_GET_INSTANCE_FOR_METHOD(power, SetInteractive);
       if (power_instance)
-        power_instance->SetIdleState(arc::mojom::IdleState::ACTIVE);
+        power_instance->SetInteractive(true);
     }
   } else if (mode == kWakenessfullDoze) {
     arc::mojom::PowerInstance* const power_instance =
-        ARC_GET_INSTANCE_FOR_METHOD(power, SetIdleState);
+        ARC_GET_INSTANCE_FOR_METHOD(power, SetInteractive);
     if (power_instance)
-      power_instance->SetIdleState(arc::mojom::IdleState::INACTIVE);
-  } else if (mode == kWakenessfullForceDoze) {
-    arc::mojom::PowerInstance* const power_instance =
-        ARC_GET_INSTANCE_FOR_METHOD(power, SetIdleState);
-    if (power_instance) {
-      power_instance->SetIdleState(arc::mojom::IdleState::FORCE_INACTIVE);
-    }
+      power_instance->SetInteractive(false);
   } else if (mode == kWakenessfullSleep) {
     arc::mojom::PowerInstance* const power_instance =
         ARC_GET_INSTANCE_FOR_METHOD(power, Suspend);

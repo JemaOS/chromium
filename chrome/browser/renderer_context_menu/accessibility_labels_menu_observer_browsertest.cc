@@ -20,7 +20,7 @@
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/ash/accessibility/accessibility_manager.h"
 #else
-#include "content/public/test/scoped_accessibility_mode_override.h"
+#include "content/public/browser/browser_accessibility_state.h"
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
 namespace {
@@ -91,7 +91,7 @@ IN_PROC_BROWSER_TEST_F(AccessibilityLabelsMenuObserverTest,
   ash::AccessibilityManager::Get()->EnableSpokenFeedback(true);
 #else
   // Spoof a screen reader.
-  content::ScopedAccessibilityModeOverride scoped_accessibility_mode(
+  content::testing::ScopedContentAXModeSetter scoped_accessibility_mode(
       ui::AXMode::kScreenReader);
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
   menu()->GetPrefs()->SetBoolean(prefs::kAccessibilityImageLabelsEnabled,

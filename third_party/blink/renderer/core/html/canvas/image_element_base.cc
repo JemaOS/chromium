@@ -57,12 +57,12 @@ bool ImageElementBase::IsImageElement() const {
 }
 
 scoped_refptr<Image> ImageElementBase::GetSourceImageForCanvas(
-    FlushReason,
+    CanvasResourceProvider::FlushReason,
     SourceImageStatus* status,
     const gfx::SizeF& default_object_size,
     const AlphaDisposition alpha_disposition) {
   // UnpremultiplyAlpha is not implemented yet.
-  DCHECK_NE(alpha_disposition, kUnpremultiplyAlpha);
+  DCHECK_EQ(alpha_disposition, kPremultiplyAlpha);
 
   ImageResourceContent* image_content = CachedImage();
   if (!GetImageLoader().ImageComplete() || !image_content) {
@@ -148,7 +148,7 @@ gfx::Size ImageElementBase::BitmapSourceSize() const {
 }
 
 static bool HasDimensionsForImage(SVGImage* svg_image,
-                                  std::optional<gfx::Rect> crop_rect,
+                                  absl::optional<gfx::Rect> crop_rect,
                                   const ImageBitmapOptions* options) {
   if (!svg_image->ConcreteObjectSize(gfx::SizeF()).IsEmpty())
     return true;
@@ -159,9 +159,9 @@ static bool HasDimensionsForImage(SVGImage* svg_image,
   return false;
 }
 
-ScriptPromiseTyped<ImageBitmap> ImageElementBase::CreateImageBitmap(
+ScriptPromise ImageElementBase::CreateImageBitmap(
     ScriptState* script_state,
-    std::optional<gfx::Rect> crop_rect,
+    absl::optional<gfx::Rect> crop_rect,
     const ImageBitmapOptions* options,
     ExceptionState& exception_state) {
   ImageResourceContent* image_content = CachedImage();
@@ -169,19 +169,19 @@ ScriptPromiseTyped<ImageBitmap> ImageElementBase::CreateImageBitmap(
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "No image can be retrieved from the provided element.");
-    return ScriptPromiseTyped<ImageBitmap>();
+    return ScriptPromise();
   }
   if (options->hasResizeWidth() && options->resizeWidth() == 0) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "The resize width dimension is equal to 0.");
-    return ScriptPromiseTyped<ImageBitmap>();
+    return ScriptPromise();
   }
   if (options->hasResizeHeight() && options->resizeHeight() == 0) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "The resize width dimension is equal to 0.");
-    return ScriptPromiseTyped<ImageBitmap>();
+    return ScriptPromise();
   }
   if (auto* svg_image = DynamicTo<SVGImage>(image_content->GetImage())) {
     if (!HasDimensionsForImage(svg_image, crop_rect, options)) {
@@ -190,7 +190,7 @@ ScriptPromiseTyped<ImageBitmap> ImageElementBase::CreateImageBitmap(
           "The image element contains an SVG image without intrinsic "
           "dimensions, and no resize options or crop region are "
           "specified.");
-      return ScriptPromiseTyped<ImageBitmap>();
+      return ScriptPromise();
     }
     // The following function only works on SVGImages (as checked above).
     return ImageBitmap::CreateAsync(

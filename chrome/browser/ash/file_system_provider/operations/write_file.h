@@ -16,7 +16,9 @@
 #include "net/base/io_buffer.h"
 #include "storage/browser/file_system/async_file_util.h"
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 // Bridge between fileapi write file and providing extension's write file
 // request.
@@ -53,6 +55,8 @@ class WriteFile : public Operation {
   storage::AsyncFileUtil::StatusCallback callback_;
 };
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_OPERATIONS_WRITE_FILE_H_

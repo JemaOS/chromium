@@ -23,7 +23,7 @@ namespace {
 
 ScreenDetailed* FindScreenDetailedByDisplayId(
     ScreenDetails* screen_details,
-    std::optional<int64_t> display_id) {
+    absl::optional<int64_t> display_id) {
   if (display_id == display::kInvalidDisplayId) {
     return nullptr;
   }
@@ -61,8 +61,8 @@ MediaStreamSet::MediaStreamSet(
       media_streams_initialized_callback_(std::move(callback)) {
   DCHECK(IsMainThread());
 
-  if (request_type == UserMediaRequestType::kAllScreensMedia) {
-    InitializeGetAllScreensMediaStreams(context, stream_descriptors);
+  if (request_type == UserMediaRequestType::kDisplayMediaSet) {
+    InitializeGetDisplayMediaSetStreams(context, stream_descriptors);
     return;
   }
 
@@ -93,7 +93,7 @@ void MediaStreamSet::Trace(Visitor* visitor) const {
   ExecutionContextClient::Trace(visitor);
 }
 
-void MediaStreamSet::InitializeGetAllScreensMediaStreams(
+void MediaStreamSet::InitializeGetDisplayMediaSetStreams(
     ExecutionContext* context,
     const MediaStreamDescriptorVector& stream_descriptors) {
   DCHECK(IsMainThread());
@@ -103,7 +103,7 @@ void MediaStreamSet::InitializeGetAllScreensMediaStreams(
 
   // TODO(crbug.com/1358949): Move the generation of the |ScreenDetails| object
   // next to the generation of the descriptors and store them as members to
-  // avoid race conditions. Further, match the getAllScreensMedia API and the
+  // avoid race conditions. Further, match the getDisplayMediaSet API and the
   // window placement API by unique IDs instead of assuming the same order.
   ScreenDetails* const screen_details =
       MakeGarbageCollected<ScreenDetails>(window);
@@ -140,7 +140,7 @@ void MediaStreamSet::OnMediaStreamSetInitialized() {
 }
 
 // TODO(crbug.com/1300883): Clean up other streams if one stream capture
-// results in an error. This is only required for getAllScreensMedia.
+// results in an error. This is only required for getDisplayMediaSet.
 // Currently existing functionality generates only one stream which is not
 // affected by this change.
 void MediaStreamSet::OnMediaStreamInitialized(

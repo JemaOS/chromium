@@ -2,16 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as Bindings from 'devtools/models/bindings/bindings.js';
-import * as Platform from 'devtools/core/platform/platform.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Verifies Bindings.cssWorkspaceBinding.propertyUILocation functionality\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.showPanel('elements');
   await TestRunner.navigatePromise('resources/property-ui-location.html');
@@ -34,12 +28,12 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
       for (var property of properties) {
         if (!property.range)
           continue;
-        var uiLocation = Bindings.CSSWorkspaceBinding.CSSWorkspaceBinding.instance().propertyUILocation(property, true);
-        TestRunner.addResult(Platform.StringUtilities.sprintf(
+        var uiLocation = Bindings.cssWorkspaceBinding.propertyUILocation(property, true);
+        TestRunner.addResult(String.sprintf(
             '%s -> %s:%d:%d', property.name, uiLocation.uiSourceCode.name(), uiLocation.lineNumber,
             uiLocation.columnNumber));
-        var uiLocation = Bindings.CSSWorkspaceBinding.CSSWorkspaceBinding.instance().propertyUILocation(property, false);
-        TestRunner.addResult(Platform.StringUtilities.sprintf(
+        var uiLocation = Bindings.cssWorkspaceBinding.propertyUILocation(property, false);
+        TestRunner.addResult(String.sprintf(
             '%s -> %s:%d:%d', property.value, uiLocation.uiSourceCode.name(), uiLocation.lineNumber,
             uiLocation.columnNumber));
       }

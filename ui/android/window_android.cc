@@ -126,10 +126,10 @@ void WindowAndroid::AttachCompositor(WindowAndroidCompositor* compositor) {
 }
 
 void WindowAndroid::DetachCompositor() {
+  compositor_ = nullptr;
   for (WindowAndroidObserver& observer : observer_list_)
     observer.OnDetachCompositor();
   observer_list_.Clear();
-  compositor_ = nullptr;
 }
 
 float WindowAndroid::GetRefreshRate() {
@@ -235,15 +235,6 @@ void WindowAndroid::OnOverlayTransformUpdated(
     compositor_->OnUpdateOverlayTransform();
 }
 
-void WindowAndroid::SendUnfoldLatencyBeginTimestamp(JNIEnv* env,
-                                                    jlong begin_time) {
-  base::TimeTicks begin_timestamp =
-      base::TimeTicks::FromUptimeMillis(begin_time);
-  for (WindowAndroidObserver& observer : observer_list_) {
-    observer.OnUnfoldStarted(begin_timestamp);
-  }
-}
-
 void WindowAndroid::SetWideColorEnabled(bool enabled) {
   JNIEnv* env = AttachCurrentThread();
   Java_WindowAndroid_setWideColorEnabled(env, GetJavaObject(), enabled);
@@ -274,9 +265,9 @@ display::Display WindowAndroid::GetDisplayWithWindowColorSpace() {
   DisplayAndroidManager::DoUpdateDisplay(
       &display, display.GetSizeInPixel(), display.device_scale_factor(),
       display.RotationAsDegree(), display.color_depth(),
-      display.depth_per_component(), window_is_wide_color_gamut_,
-      display.GetColorSpaces().SupportsHDR(),
-      display.GetColorSpaces().GetHDRMaxLuminanceRelative());
+      display.depth_per_component(),
+      display.color_spaces().GetHDRMaxLuminanceRelative(),
+      window_is_wide_color_gamut_);
   return display;
 }
 

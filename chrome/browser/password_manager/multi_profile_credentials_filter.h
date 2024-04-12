@@ -19,6 +19,7 @@ class MultiProfileCredentialsFilter
   // interception.
   MultiProfileCredentialsFilter(
       password_manager::PasswordManagerClient* client,
+      SyncServiceFactoryFunction sync_service_factory_function,
       DiceWebSigninInterceptor* dice_web_signin_interceptor);
 
   MultiProfileCredentialsFilter(const MultiProfileCredentialsFilter&) = delete;

@@ -22,13 +22,12 @@
 #include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
-#include "base/time/time.h"
 #include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/ash/drive/file_system_util.h"
+#include "chrome/browser/ash/file_manager/file_tasks.h"
 #include "chrome/browser/ash/file_manager/fileapi_util.h"
 #include "chrome/browser/ash/file_manager/filesystem_api_util.h"
 #include "chrome/browser/ash/file_manager/io_task.h"
-#include "chrome/browser/ash/file_manager/office_file_tasks.h"
 #include "chrome/browser/ash/fileapi/file_system_backend.h"
 #include "chrome/browser/file_util_service.h"
 #include "chrome/services/file_util/public/cpp/zip_file_creator.h"
@@ -78,7 +77,7 @@ ZipIOTask::ZipIOTask(
   progress_.total_bytes = 0;
 
   for (auto& url : source_urls) {
-    progress_.sources.emplace_back(std::move(url), std::nullopt);
+    progress_.sources.emplace_back(std::move(url), absl::nullopt);
   }
 }
 
@@ -203,7 +202,7 @@ void ZipIOTask::ZipItems(
     Complete(State::kError);
     return;
   }
-  progress_.outputs.emplace_back(destination_result.value(), std::nullopt);
+  progress_.outputs.emplace_back(destination_result.value(), absl::nullopt);
   progress_callback_.Run(progress_);
 
   zip_file_creator_ = base::MakeRefCounted<ZipFileCreator>(
@@ -220,14 +219,13 @@ void ZipIOTask::ZipItems(
 void ZipIOTask::OnZipProgress() {
   DCHECK(zip_file_creator_);
   progress_.bytes_transferred = zip_file_creator_->GetProgress().bytes;
-  if (speedometer_.Update(progress_.bytes_transferred)) {
-    const base::TimeDelta remaining_time = speedometer_.GetRemainingTime();
+  speedometer_.Update(progress_.bytes_transferred);
+  const double remaining_seconds = speedometer_.GetRemainingSeconds();
 
-    // Speedometer can produce infinite result which can't be serialized to JSON
-    // when sending the status via private API.
-    if (!remaining_time.is_inf()) {
-      progress_.remaining_seconds = remaining_time.InSecondsF();
-    }
+  // Speedometer can produce infinite result which can't be serialized to JSON
+  // when sending the status via private API.
+  if (std::isfinite(remaining_seconds)) {
+    progress_.remaining_seconds = remaining_seconds;
   }
 
   progress_callback_.Run(progress_);

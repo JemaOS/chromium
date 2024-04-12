@@ -4,7 +4,9 @@
 
 package org.chromium.chrome.browser.privacy_guide;
 
-/** Utilities to determine whether a privacy guide step will be displayed or not. */
+/**
+ * Utilities to determine whether a privacy guide step will be displayed or not.
+ */
 public interface StepDisplayHandler {
     /**
      * @return Whether the Privacy Guide History Sync page should be displayed.
@@ -20,9 +22,4 @@ public interface StepDisplayHandler {
      * @return Whether the Privacy Guide Cookies page should be displayed.
      */
     boolean shouldDisplayCookies();
-
-    /**
-     * @return Whether the Privacy Guide Preload page should be displayed.
-     */
-    boolean shouldDisplayPreload();
 }

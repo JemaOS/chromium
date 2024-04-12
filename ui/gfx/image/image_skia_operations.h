@@ -18,7 +18,6 @@ namespace gfx {
 class ImageSkia;
 class Rect;
 class Size;
-class SizeF;
 
 class GFX_EXPORT ImageSkiaOperations {
  public:
@@ -124,7 +123,7 @@ class GFX_EXPORT ImageSkiaOperations {
 
   // Creates an image with a rounded rect background of the specified `size`,
   // `color`, and `radius`.
-  static ImageSkia CreateImageWithRoundRectBackground(const SizeF& size,
+  static ImageSkia CreateImageWithRoundRectBackground(float size,
                                                       int radius,
                                                       SkColor color,
                                                       const ImageSkia& image);

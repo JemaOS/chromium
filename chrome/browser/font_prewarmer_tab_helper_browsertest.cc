@@ -54,14 +54,16 @@ class FontPrewarmerTabHelperTest : public InProcessBrowserTest {
   }
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
-    // Configure the test server to generate a certificate valid for
-    // www.google.com.
-    net::EmbeddedTestServer::ServerCertificateConfig https_server_cert_config;
-    https_server_cert_config.dns_names = {"www.google.com"};
-    https_server_.SetSSLConfig(https_server_cert_config);
+    // mock_cert_verifier_.mock_cert_verifier()->set_default_result(net::OK);
+    https_server_.SetSSLConfig(net::EmbeddedTestServer::CERT_OK);
     https_server_.RegisterRequestHandler(base::BindRepeating(
         &FontPrewarmerTabHelperTest::OnHandleRequest, base::Unretained(this)));
 
+    // net::test_server::RegisterDefaultHandlers(&https_server_);
+    // HTTPS server only serves a valid cert for localhost, so this is needed to
+    // load pages from "www.google.com" without an interstitial.
+    command_line->AppendSwitch("ignore-certificate-errors");
+    command_line->AppendSwitchASCII("host-rules", "MAP * 127.0.0.1");
     // Needed for explicit ports to work (which embedded test uses).
     command_line->AppendSwitch(switches::kIgnoreGooglePortNumbers);
     ASSERT_TRUE(https_server_.Start());
@@ -74,12 +76,12 @@ class FontPrewarmerTabHelperTest : public InProcessBrowserTest {
   }
 
  protected:
-  std::string GetSearchResultsPageFontsPref() {
-    return FontPrewarmerTabHelper::GetSearchResultsPageFontsPref();
+  std::string GetSearchResultsPagePrimaryFontsPref() {
+    return FontPrewarmerTabHelper::GetSearchResultsPagePrimaryFontsPref();
   }
 
-  std::vector<std::string> GetFontNames() {
-    return FontPrewarmerTabHelper::GetFontNames(browser()->profile());
+  std::vector<std::string> GetPrimaryFontNames() {
+    return FontPrewarmerTabHelper::GetPrimaryFontNames(browser()->profile());
   }
 
   std::unique_ptr<net::test_server::HttpResponse> OnHandleRequest(
@@ -107,11 +109,11 @@ IN_PROC_BROWSER_TEST_F(FontPrewarmerTabHelperTest, Basic) {
   base::RunLoop run_loop;
   PrefChangeRegistrar prefs_registrar;
   prefs_registrar.Init(browser()->profile()->GetPrefs());
-  prefs_registrar.Add(GetSearchResultsPageFontsPref(),
+  prefs_registrar.Add(GetSearchResultsPagePrimaryFontsPref(),
                       base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
   Navigate(&params);
   run_loop.Run();
-  auto font_names = GetFontNames();
+  auto font_names = GetPrimaryFontNames();
   std::vector<std::string> expected = {"Arial"};
   EXPECT_EQ(expected, font_names);
 }

@@ -21,8 +21,7 @@ SystemIndicatorManager* SystemIndicatorManagerFactory::GetForContext(
 
 // static
 SystemIndicatorManagerFactory* SystemIndicatorManagerFactory::GetInstance() {
-  static base::NoDestructor<SystemIndicatorManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<SystemIndicatorManagerFactory>::get();
 }
 
 SystemIndicatorManagerFactory::SystemIndicatorManagerFactory()
@@ -37,17 +36,16 @@ SystemIndicatorManagerFactory::SystemIndicatorManagerFactory()
   DependsOn(ExtensionsBrowserClient::Get()->GetExtensionSystemFactory());
 }
 
-SystemIndicatorManagerFactory::~SystemIndicatorManagerFactory() = default;
+SystemIndicatorManagerFactory::~SystemIndicatorManagerFactory() {}
 
-std::unique_ptr<KeyedService>
-SystemIndicatorManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SystemIndicatorManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
   StatusTray* status_tray = g_browser_process->status_tray();
   if (status_tray == NULL)
     return NULL;
 
-  return std::make_unique<SystemIndicatorManager>(
-      static_cast<Profile*>(profile), status_tray);
+  return new SystemIndicatorManager(static_cast<Profile*>(profile),
+                                    status_tray);
 }
 
 bool SystemIndicatorManagerFactory::ServiceIsCreatedWithBrowserContext() const {

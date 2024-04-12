@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_MEMORY_OOM_KILLS_MONITOR_H_
 #define CHROME_BROWSER_MEMORY_OOM_KILLS_MONITOR_H_
 
-#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/no_destructor.h"
 #include "base/synchronization/atomic_flag.h"
@@ -102,7 +101,7 @@ class OOMKillsMonitor {
   static const char kDailyEventHistogramName[];
 
   // A raw pointer to the PrefService used to read and write the statistics.
-  raw_ptr<PrefService, LeakedDanglingUntriaged> pref_service_;
+  raw_ptr<PrefService> pref_service_;
 };
 
 }  // namespace memory

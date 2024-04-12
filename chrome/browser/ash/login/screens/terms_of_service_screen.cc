@@ -57,12 +57,12 @@ void SaveTosToFile(const std::string& tos, const base::FilePath& tos_path) {
   }
 }
 
-std::optional<std::string> ReadFileToOptionalString(
+absl::optional<std::string> ReadFileToOptionalString(
     const base::FilePath& file_path) {
   std::string content;
   if (base::ReadFileToString(file_path, &content))
-    return std::make_optional<std::string>(content);
-  return std::nullopt;
+    return absl::make_optional<std::string>(content);
+  return absl::nullopt;
 }
 
 }  // namespace
@@ -129,9 +129,8 @@ bool TermsOfServiceScreen::MaybeSkip(WizardContext& context) {
     exit_callback_.Run(Result::NOT_APPLICABLE);
     return true;
   }
-  if (user_manager::UserManager::Get()->IsLoggedInAsManagedGuestSession()) {
+  if (user_manager::UserManager::Get()->IsLoggedInAsPublicAccount())
     return false;
-  }
 
   return false;
 }
@@ -272,7 +271,8 @@ void TermsOfServiceScreen::LoadFromFileOrShowError() {
                      weak_factory_.GetWeakPtr()));
 }
 
-void TermsOfServiceScreen::OnTosLoadedFromFile(std::optional<std::string> tos) {
+void TermsOfServiceScreen::OnTosLoadedFromFile(
+    absl::optional<std::string> tos) {
   if (!view_)
     return;
   if (!tos.has_value()) {

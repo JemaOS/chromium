@@ -18,9 +18,11 @@ static void TestBitmapGlyphsBlockListed(AtomicString windows_family_name,
                                         bool block_listed_expected) {
   FontCache& font_cache = FontCache::Get();
   FontDescription font_description;
-  font_description.SetFamily(FontFamily(
-      windows_family_name, FontFamily::InferredTypeFor(windows_family_name)));
-  const SimpleFontData* simple_font_data =
+  FontFamily font_family;
+  font_family.SetFamily(windows_family_name,
+                        FontFamily::InferredTypeFor(windows_family_name));
+  font_description.SetFamily(font_family);
+  scoped_refptr<SimpleFontData> simple_font_data =
       font_cache.GetFontData(font_description, windows_family_name);
   ASSERT_TRUE(simple_font_data);
   const FontPlatformData& font_platform_data = simple_font_data->PlatformData();
@@ -31,15 +33,15 @@ static void TestBitmapGlyphsBlockListed(AtomicString windows_family_name,
 }
 
 TEST_F(BlockListBitmapGlyphsTest, Simsun) {
-  TestBitmapGlyphsBlockListed(AtomicString("Simsun"), false);
+  TestBitmapGlyphsBlockListed("Simsun", false);
 }
 
 TEST_F(BlockListBitmapGlyphsTest, Arial) {
-  TestBitmapGlyphsBlockListed(AtomicString("Arial"), false);
+  TestBitmapGlyphsBlockListed("Arial", false);
 }
 
 TEST_F(BlockListBitmapGlyphsTest, Calibri) {
-  TestBitmapGlyphsBlockListed(AtomicString("Calibri"), true);
+  TestBitmapGlyphsBlockListed("Calibri", true);
 }
 
 #endif

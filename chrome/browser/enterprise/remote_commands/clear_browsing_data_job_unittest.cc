@@ -50,28 +50,14 @@ enterprise_management::RemoteCommand CreateCommandProto(
   return command_proto;
 }
 
-void InitJob(ClearBrowsingDataJob* job,
-             const enterprise_management::RemoteCommand& command_proto) {
+std::unique_ptr<ClearBrowsingDataJob> CreateJob(
+    enterprise_management::RemoteCommand command_proto,
+    ProfileManager* profile_manager) {
+  auto job = std::make_unique<ClearBrowsingDataJob>(profile_manager);
   EXPECT_TRUE(job->Init(base::TimeTicks::Now(), command_proto,
                         enterprise_management::SignedData{}));
   EXPECT_EQ(kUniqueID, job->unique_id());
   EXPECT_EQ(policy::RemoteCommandJob::NOT_STARTED, job->status());
-}
-
-std::unique_ptr<ClearBrowsingDataJob> CreateJob(
-    const enterprise_management::RemoteCommand& command_proto,
-    ProfileManager* profile_manager) {
-  auto job = std::make_unique<ClearBrowsingDataJob>(profile_manager);
-  InitJob(job.get(), command_proto);
-
-  return job;
-}
-
-std::unique_ptr<ClearBrowsingDataJob> CreateJob(
-    const enterprise_management::RemoteCommand& command_proto,
-    Profile* profile) {
-  auto job = std::make_unique<ClearBrowsingDataJob>(profile);
-  InitJob(job.get(), command_proto);
 
   return job;
 }
@@ -102,7 +88,7 @@ class ClearBrowsingDataJobTest : public ::testing::Test {
 
 #if BUILDFLAG(ENABLE_NACL)
     // Clearing Cache will clear PNACL cache, which needs this delegate set.
-    nacl::NaClBrowser::ClearAndDeleteDelegate();
+    nacl::NaClBrowser::ClearAndDeleteDelegateForTest();
 #endif
 
     ::testing::Test::TearDown();
@@ -114,8 +100,8 @@ class ClearBrowsingDataJobTest : public ::testing::Test {
 
   void RunUntilIdle() { task_environment_->RunUntilIdle(); }
 
-  TestingProfile* AddTestingProfile() {
-    return profile_manager_->CreateTestingProfile(kProfileName);
+  void AddTestingProfile() {
+    profile_manager_->CreateTestingProfile(kProfileName);
   }
 
   base::FilePath GetTestProfilePath() {
@@ -288,28 +274,6 @@ TEST_F(ClearBrowsingDataJobTest, SuccessClearNeither) {
                                           /* clear_cookies= */ false),
                        profile_manager());
 
-  bool done = false;
-  // Run should return true because the command will be successfully posted,
-  // but status of the command will be |FAILED| when |finished_callback| is
-  // invoked.
-  EXPECT_TRUE(job->Run(base::Time::Now(), base::TimeTicks::Now(),
-                       base::BindLambdaForTesting([&] {
-                         EXPECT_EQ(policy::RemoteCommandJob::SUCCEEDED,
-                                   job->status());
-                         done = true;
-                         run_loop.Quit();
-                       })));
-  run_loop.Run();
-  EXPECT_TRUE(done);
-}
-
-TEST_F(ClearBrowsingDataJobTest, SucessClearWithProfile) {
-  base::RunLoop run_loop;
-  TestingProfile* profile = AddTestingProfile();
-  auto job = CreateJob(CreateCommandProto(GetTestProfilePath().AsUTF8Unsafe(),
-                                          /* clear_cache= */ true,
-                                          /* clear_cookies= */ false),
-                       profile);
   bool done = false;
   // Run should return true because the command will be successfully posted,
   // but status of the command will be |FAILED| when |finished_callback| is

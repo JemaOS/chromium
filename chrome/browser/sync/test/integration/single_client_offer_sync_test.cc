@@ -13,10 +13,9 @@
 #include "components/autofill/core/browser/data_model/autofill_offer_data.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
 #include "components/autofill/core/browser/personal_data_manager_observer.h"
-#include "components/autofill/core/browser/personal_data_manager_test_utils.h"
 #include "components/sync/base/model_type.h"
+#include "components/sync/driver/sync_service.h"
 #include "components/sync/protocol/model_type_state.pb.h"
-#include "components/sync/service/sync_service.h"
 #include "components/sync/test/fake_server.h"
 #include "content/public/test/browser_test.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -35,6 +34,9 @@ ACTION_P(QuitMessageLoop, loop) {
   loop->Quit();
 }
 
+const syncer::SyncFirstSetupCompleteSource kSetSourceFromTest =
+    syncer::SyncFirstSetupCompleteSource::BASIC_FLOW;
+
 }  // namespace
 
 class SingleClientOfferSyncTest : public SyncTest {
@@ -49,8 +51,7 @@ class SingleClientOfferSyncTest : public SyncTest {
 
  protected:
   void WaitForOnPersonalDataChanged(autofill::PersonalDataManager* pdm) {
-    testing::NiceMock<autofill::PersonalDataLoadedObserverMock>
-        personal_data_observer;
+    testing::NiceMock<PersonalDataLoadedObserverMock> personal_data_observer;
     pdm->AddObserver(&personal_data_observer);
     base::RunLoop run_loop;
     EXPECT_CALL(personal_data_observer, OnPersonalDataChanged())
@@ -62,7 +63,7 @@ class SingleClientOfferSyncTest : public SyncTest {
   void WaitForNumberOfOffers(size_t expected_count,
                              autofill::PersonalDataManager* pdm) {
     while (pdm->GetAutofillOffers().size() != expected_count ||
-           pdm->HasPendingPaymentQueriesForTesting()) {
+           pdm->HasPendingQueriesForTesting()) {
       WaitForOnPersonalDataChanged(pdm);
     }
   }
@@ -70,7 +71,8 @@ class SingleClientOfferSyncTest : public SyncTest {
   bool TriggerGetUpdatesAndWait() {
     const base::Time now = base::Time::Now();
     // Trigger a sync and wait for the new data to arrive.
-    TriggerSyncForModelTypes(0, {syncer::AUTOFILL_WALLET_OFFER});
+    TriggerSyncForModelTypes(
+        0, syncer::ModelTypeSet(syncer::AUTOFILL_WALLET_OFFER));
     return FullUpdateTypeProgressMarkerChecker(now, GetSyncService(0),
                                                syncer::AUTOFILL_WALLET_OFFER)
         .Wait();
@@ -82,6 +84,32 @@ IN_PROC_BROWSER_TEST_F(SingleClientOfferSyncTest, EnabledByDefault) {
   ASSERT_TRUE(SetupSync());
   ASSERT_TRUE(GetClient(0)->service()->GetActiveDataTypes().Has(
       syncer::AUTOFILL_WALLET_OFFER));
+}
+
+// Ensures that offer data should get cleared from the database when sync is
+// disabled.
+IN_PROC_BROWSER_TEST_F(SingleClientOfferSyncTest, ClearOnDisableSync) {
+  GetFakeServer()->SetOfferData({CreateDefaultSyncCardLinkedOffer()});
+  ASSERT_TRUE(SetupSync());
+  autofill::PersonalDataManager* pdm = GetPersonalDataManager(0);
+  ASSERT_NE(nullptr, pdm);
+  // Make sure the offer data is in the DB.
+  ASSERT_EQ(1uL, pdm->GetAutofillOffers().size());
+
+  // Disable sync, the offer data should be gone.
+  GetSyncService(0)->StopAndClear();
+  WaitForNumberOfOffers(0, pdm);
+  EXPECT_EQ(0uL, pdm->GetAutofillOffers().size());
+
+  // Turn sync on again, the data should come back.
+  GetSyncService(0)->SetSyncFeatureRequested();
+  // StopAndClear() also clears the "first setup complete" flag, so set it
+  // again.
+  GetSyncService(0)->GetUserSettings()->SetFirstSetupComplete(
+      kSetSourceFromTest);
+  // Wait until Sync restores the card and it arrives at PDM.
+  WaitForNumberOfOffers(1, pdm);
+  EXPECT_EQ(1uL, pdm->GetAutofillOffers().size());
 }
 
 // Ensures that offer data should get cleared from the database when sync is
@@ -187,7 +215,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientOfferSyncTest, EmptyUpdatesAreIgnored) {
   // changes from sync in the DB propagate into pdm. As we don't expect anything
   // to change, we have no better specific condition to wait for.
   pdm->Refresh();
-  while (pdm->HasPendingPaymentQueriesForTesting()) {
+  while (pdm->HasPendingQueriesForTesting()) {
     WaitForOnPersonalDataChanged(pdm);
   }
 
@@ -238,9 +266,9 @@ IN_PROC_BROWSER_TEST_F(SingleClientOfferSyncTest, ClearOnDisableWalletSync) {
   // Make sure the data is in the DB.
   ASSERT_EQ(1uL, pdm->GetAutofillOffers().size());
 
-  // Turn off payments sync, the data should be gone.
+  // Turn off autofill sync, the data should be gone.
   ASSERT_TRUE(
-      GetClient(0)->DisableSyncForType(syncer::UserSelectableType::kPayments));
+      GetClient(0)->DisableSyncForType(syncer::UserSelectableType::kAutofill));
   WaitForNumberOfOffers(0, pdm);
   EXPECT_EQ(0uL, pdm->GetAutofillOffers().size());
 }

@@ -8,8 +8,9 @@
 #include <stddef.h>
 
 #include <map>
-#include <optional>
 #include <string>
+
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace arc {
 
@@ -34,7 +35,7 @@ class ArcTracingEventMatcher {
   // Returns true in case |event| matches criteria set.
   bool Match(const ArcTracingEvent& event) const;
 
-  std::optional<int64_t> ReadAndroidEventInt64(
+  absl::optional<int64_t> ReadAndroidEventInt64(
       const ArcTracingEvent& event) const;
 
   // Sets the expected phase. Tested event does not match if its phase does not

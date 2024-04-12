@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 class Profile;
@@ -30,7 +30,7 @@ class MerchantPromoCodeManagerFactory : public ProfileKeyedServiceFactory {
   static MerchantPromoCodeManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<MerchantPromoCodeManagerFactory>;
+  friend struct base::DefaultSingletonTraits<MerchantPromoCodeManagerFactory>;
 
   MerchantPromoCodeManagerFactory();
   ~MerchantPromoCodeManagerFactory() override;

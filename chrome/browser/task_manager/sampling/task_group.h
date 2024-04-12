@@ -9,7 +9,6 @@
 #include <stdint.h>
 
 #include <map>
-#include <optional>
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
@@ -24,6 +23,7 @@
 #include "chrome/browser/task_manager/sampling/task_group_sampler.h"
 #include "chrome/browser/task_manager/task_manager_observer.h"
 #include "components/nacl/common/buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "chrome/browser/task_manager/sampling/arc_shared_sampler.h"
@@ -96,9 +96,7 @@ class TaskGroup {
   const base::ProcessHandle& process_handle() const { return process_handle_; }
   const base::ProcessId& process_id() const { return process_id_; }
 
-  const std::vector<raw_ptr<Task, VectorExperimental>>& tasks() const {
-    return tasks_;
-  }
+  const std::vector<Task*>& tasks() const { return tasks_; }
   size_t num_tasks() const { return tasks().size(); }
   bool empty() const { return tasks().empty(); }
 
@@ -178,15 +176,15 @@ class TaskGroup {
 
   void OnCpuRefreshDone(double cpu_usage);
   void OnSwappedMemRefreshDone(int64_t swapped_mem_bytes);
-  void OnProcessPriorityDone(base::Process::Priority priority);
+  void OnProcessPriorityDone(bool is_backgrounded);
   void OnIdleWakeupsRefreshDone(int idle_wakeups_per_second);
 
   void OnSamplerRefreshDone(
-      std::optional<SharedSampler::SamplingResult> results);
+      absl::optional<SharedSampler::SamplingResult> results);
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   void OnArcSamplerRefreshDone(
-      std::optional<ArcSharedSampler::MemoryFootprintBytes> results);
+      absl::optional<ArcSharedSampler::MemoryFootprintBytes> results);
 #endif  // BUILDFLAG(IS_CHROMEOS_ASH)
 
   void OnBackgroundRefreshTypeFinished(int64_t finished_refresh_type);
@@ -205,13 +203,14 @@ class TaskGroup {
   scoped_refptr<SharedSampler> shared_sampler_;
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // Shared sampler that retrieves memory footprint for all ARC processes.
-  raw_ptr<ArcSharedSampler> arc_shared_sampler_;           // Not owned
-  raw_ptr<CrosapiTaskProviderAsh> crosapi_task_provider_;  // Not owned
+  raw_ptr<ArcSharedSampler, ExperimentalAsh> arc_shared_sampler_;  // Not owned
+  raw_ptr<CrosapiTaskProviderAsh, ExperimentalAsh>
+      crosapi_task_provider_;                      // Not owned
 #endif                                             // BUILDFLAG(IS_CHROMEOS_ASH)
 
   // Lists the Tasks in this TaskGroup.
   // Tasks are not owned by the TaskGroup. They're owned by the TaskProviders.
-  std::vector<raw_ptr<Task, VectorExperimental>> tasks_;
+  std::vector<Task*> tasks_;
 
   // Flags will be used to determine when the background calculations has
   // completed for the enabled refresh types for this TaskGroup.

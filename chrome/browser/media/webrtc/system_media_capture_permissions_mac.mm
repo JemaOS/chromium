@@ -6,13 +6,13 @@
 
 #import <AVFoundation/AVFoundation.h>
 
-#include "base/apple/foundation_util.h"
-#include "base/apple/scoped_cftyperef.h"
 #include "base/check.h"
 #include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
+#include "base/mac/foundation_util.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "base/no_destructor.h"
 #import "base/task/sequenced_task_runner.h"
 #include "base/task/sequenced_task_runner.h"
@@ -45,21 +45,29 @@ class MediaAuthorizationWrapperImpl final : public MediaAuthorizationWrapper {
 
   ~MediaAuthorizationWrapperImpl() override = default;
 
-  AVAuthorizationStatus AuthorizationStatusForMediaType(
-      AVMediaType media_type) override {
-    return [AVCaptureDevice authorizationStatusForMediaType:media_type];
+  NSInteger AuthorizationStatusForMediaType(AVMediaType media_type) override {
+    if (@available(macOS 10.14, *)) {
+      return [AVCaptureDevice authorizationStatusForMediaType:media_type];
+    } else {
+      CHECK(false);
+      return 0;
+    }
   }
 
   void RequestAccessForMediaType(AVMediaType media_type,
                                  base::OnceClosure callback) override {
-    __block base::OnceClosure block_callback = std::move(callback);
-    __block scoped_refptr<base::SequencedTaskRunner> requesting_thread =
-        base::SequencedTaskRunner::GetCurrentDefault();
-    [AVCaptureDevice requestAccessForMediaType:media_type
-                             completionHandler:^(BOOL granted) {
-                               requesting_thread->PostTask(
-                                   FROM_HERE, std::move(block_callback));
-                             }];
+    if (@available(macOS 10.14, *)) {
+      __block base::OnceClosure block_callback = std::move(callback);
+      __block scoped_refptr<base::SequencedTaskRunner> requesting_thread =
+          base::SequencedTaskRunner::GetCurrentDefault();
+      [AVCaptureDevice requestAccessForMediaType:media_type
+                               completionHandler:^(BOOL granted) {
+                                 requesting_thread->PostTask(
+                                     FROM_HERE, std::move(block_callback));
+                               }];
+    } else {
+      CHECK(false);
+    }
   }
 };
 
@@ -72,29 +80,39 @@ MediaAuthorizationWrapper& GetMediaAuthorizationWrapper() {
   return *media_authorization_wrapper;
 }
 
-AVAuthorizationStatus MediaAuthorizationStatus(AVMediaType media_type) {
-  return GetMediaAuthorizationWrapper().AuthorizationStatusForMediaType(
-      media_type);
+NSInteger MediaAuthorizationStatus(AVMediaType media_type) {
+  if (@available(macOS 10.14, *)) {
+    return GetMediaAuthorizationWrapper().AuthorizationStatusForMediaType(
+        media_type);
+  }
+
+  CHECK(false);
+  return 0;
 }
 
 SystemPermission CheckSystemMediaCapturePermission(AVMediaType media_type) {
-  if (UsingFakeMediaDevices()) {
+  if (UsingFakeMediaDevices())
     return SystemPermission::kAllowed;
+
+  if (@available(macOS 10.14, *)) {
+    NSInteger auth_status = MediaAuthorizationStatus(media_type);
+    switch (auth_status) {
+      case AVAuthorizationStatusNotDetermined:
+        return SystemPermission::kNotDetermined;
+      case AVAuthorizationStatusRestricted:
+        return SystemPermission::kRestricted;
+      case AVAuthorizationStatusDenied:
+        return SystemPermission::kDenied;
+      case AVAuthorizationStatusAuthorized:
+        return SystemPermission::kAllowed;
+      default:
+        NOTREACHED();
+        return SystemPermission::kAllowed;
+    }
   }
 
-  AVAuthorizationStatus auth_status = MediaAuthorizationStatus(media_type);
-  switch (auth_status) {
-    case AVAuthorizationStatusNotDetermined:
-      return SystemPermission::kNotDetermined;
-    case AVAuthorizationStatusRestricted:
-      return SystemPermission::kRestricted;
-    case AVAuthorizationStatusDenied:
-      return SystemPermission::kDenied;
-    case AVAuthorizationStatusAuthorized:
-      return SystemPermission::kAllowed;
-    default:
-      NOTREACHED_NORETURN();
-  }
+  // On pre-10.14, there are no system permissions, so we return allowed.
+  return SystemPermission::kAllowed;
 }
 
 void RequestSystemMediaCapturePermission(AVMediaType media_type,
@@ -105,14 +123,20 @@ void RequestSystemMediaCapturePermission(AVMediaType media_type,
     return;
   }
 
-  GetMediaAuthorizationWrapper().RequestAccessForMediaType(media_type,
-                                                           std::move(callback));
+  if (@available(macOS 10.14, *)) {
+    GetMediaAuthorizationWrapper().RequestAccessForMediaType(
+        media_type, std::move(callback));
+  } else {
+    CHECK(false);
+  }
 }
 
 bool IsScreenCaptureAllowed() {
-  if (!base::FeatureList::IsEnabled(
-          features::kMacSystemScreenCapturePermissionCheck)) {
-    return true;
+  if (@available(macOS 10.15, *)) {
+    if (!base::FeatureList::IsEnabled(
+            features::kMacSystemScreenCapturePermissionCheck)) {
+      return true;
+    }
   }
 
   bool allowed = ui::IsScreenCaptureAllowed();
@@ -135,11 +159,11 @@ SystemPermission CheckSystemScreenCapturePermission() {
                                   : SystemPermission::kDenied;
 }
 
-void RequestSystemAudioCapturePermission(base::OnceClosure callback) {
+void RequestSystemAudioCapturePermisson(base::OnceClosure callback) {
   RequestSystemMediaCapturePermission(AVMediaTypeAudio, std::move(callback));
 }
 
-void RequestSystemVideoCapturePermission(base::OnceClosure callback) {
+void RequestSystemVideoCapturePermisson(base::OnceClosure callback) {
   RequestSystemMediaCapturePermission(AVMediaTypeVideo, std::move(callback));
 }
 

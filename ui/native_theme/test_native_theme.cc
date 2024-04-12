@@ -22,8 +22,8 @@ void TestNativeTheme::Paint(cc::PaintCanvas* canvas,
                             const gfx::Rect& rect,
                             const ExtraParams& extra,
                             ColorScheme color_scheme,
-                            bool in_forced_colors,
-                            const std::optional<SkColor>& accent_color) const {}
+                            const absl::optional<SkColor>& accent_color) const {
+}
 
 bool TestNativeTheme::SupportsNinePatch(Part part) const {
   return false;

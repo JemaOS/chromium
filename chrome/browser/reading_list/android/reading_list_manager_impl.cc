@@ -49,16 +49,14 @@ bool SyncToBookmark(const ReadingListEntry& entry, BookmarkNode* bookmark) {
 }  // namespace
 
 ReadingListManagerImpl::ReadingListManagerImpl(
-    ReadingListModel* reading_list_model,
-    const IdGenerationFunction& id_gen_func)
+    ReadingListModel* reading_list_model)
     : reading_list_model_(reading_list_model),
-      id_gen_func_(id_gen_func),
+      maximum_id_(0L),
       loaded_(false),
-      performing_batch_update_(false),
-      changes_applied_during_batch_(false) {
+      performing_batch_update_(false) {
   DCHECK(reading_list_model_);
   root_ = std::make_unique<BookmarkNode>(
-      id_gen_func_.Run(), base::Uuid::GenerateRandomV4(), GURL());
+      maximum_id_++, base::Uuid::GenerateRandomV4(), GURL());
   root_->SetTitle(l10n_util::GetStringUTF16(IDS_READ_LATER_TITLE));
   DCHECK(root_->is_folder());
   reading_list_model_->AddObserver(this);
@@ -118,30 +116,23 @@ void ReadingListManagerImpl::ReadingListDidUpdateEntry(
 void ReadingListManagerImpl::ReadingListDidApplyChanges(
     ReadingListModel* model) {
   // Ignores ReadingListDidApplyChanges() invocations during batch update.
-  if (performing_batch_update_) {
-    changes_applied_during_batch_ = true;
+  if (performing_batch_update_)
     return;
-  }
 
   NotifyReadingListChanged();
 }
 
 void ReadingListManagerImpl::ReadingListModelBeganBatchUpdates(
     const ReadingListModel* model) {
-  DCHECK(!changes_applied_during_batch_);
   performing_batch_update_ = true;
 }
 
 void ReadingListManagerImpl::ReadingListModelCompletedBatchUpdates(
     const ReadingListModel* model) {
-  // Batch update is done -- notify the observers only once, but only if there
-  // were actual changes.
-  if (changes_applied_during_batch_) {
-    NotifyReadingListChanged();
-  }
-
   performing_batch_update_ = false;
-  changes_applied_during_batch_ = false;
+
+  // Batch update is done, notify the observer only once.
+  NotifyReadingListChanged();
 }
 
 void ReadingListManagerImpl::AddObserver(Observer* observer) {
@@ -216,11 +207,6 @@ bool ReadingListManagerImpl::IsReadingListBookmark(
 void ReadingListManagerImpl::Delete(const GURL& url) {
   DCHECK(reading_list_model_->loaded());
   reading_list_model_->RemoveEntryByURL(url);
-}
-
-void ReadingListManagerImpl::DeleteAll() {
-  DCHECK(reading_list_model_->loaded());
-  reading_list_model_->DeleteAllEntries();
 }
 
 const BookmarkNode* ReadingListManagerImpl::GetRoot() const {
@@ -322,7 +308,7 @@ const BookmarkNode* ReadingListManagerImpl::AddOrUpdateBookmark(
 
   // Add a new node.
   auto new_node = std::make_unique<BookmarkNode>(
-      id_gen_func_.Run(), base::Uuid::GenerateRandomV4(), entry->URL());
+      maximum_id_++, base::Uuid::GenerateRandomV4(), entry->URL());
   bool success = SyncToBookmark(*entry, new_node.get());
   return success ? root_->Add(std::move(new_node)) : nullptr;
 }

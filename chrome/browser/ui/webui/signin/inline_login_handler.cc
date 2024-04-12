@@ -23,7 +23,7 @@
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
-#include "chrome/browser/ui/profiles/profile_picker.h"
+#include "chrome/browser/ui/profile_picker.h"
 #include "chrome/browser/ui/webui/signin/signin_utils.h"
 #include "chrome/common/pref_names.h"
 #include "components/metrics/metrics_pref_names.h"
@@ -61,8 +61,8 @@ void InlineLoginHandler::RegisterMessages() {
       base::BindRepeating(&InlineLoginHandler::HandleInitializeMessage,
                           base::Unretained(this)));
   web_ui()->RegisterMessageCallback(
-      "authenticatorReady",
-      base::BindRepeating(&InlineLoginHandler::HandleAuthenticatorReadyMessage,
+      "authExtensionReady",
+      base::BindRepeating(&InlineLoginHandler::HandleAuthExtensionReadyMessage,
                           base::Unretained(this)));
   web_ui()->RegisterMessageCallback(
       "completeLogin",
@@ -139,8 +139,8 @@ void InlineLoginHandler::ContinueHandleInitializeMessage() {
   std::string default_email;
   if (reason == signin_metrics::Reason::kSigninPrimaryAccount ||
       reason == signin_metrics::Reason::kForcedSigninPrimaryAccount) {
-    default_email = profile->GetPrefs()->GetString(
-        prefs::kGoogleServicesLastSyncingUsername);
+    default_email =
+        profile->GetPrefs()->GetString(prefs::kGoogleServicesLastUsername);
   } else {
     if (!net::GetValueForKeyInQuery(current_url, "email", &default_email))
       default_email.clear();
@@ -159,7 +159,7 @@ void InlineLoginHandler::ContinueHandleInitializeMessage() {
   params.Set("readOnlyEmail", !read_only_email.empty());
 
   SetExtraInitParams(params);
-  FireWebUIListener("load-authenticator", params);
+  FireWebUIListener("load-auth-extension", params);
 }
 
 void InlineLoginHandler::HandleCompleteLoginMessage(
@@ -197,10 +197,12 @@ void InlineLoginHandler::HandleCompleteLoginMessageWithCookies(
   }
 
   params.skip_for_now = dict.FindBool("skipForNow").value_or(false);
-  std::optional<bool> trusted = dict.FindBool("trusted");
+  absl::optional<bool> trusted = dict.FindBool("trusted");
   params.trusted_value = trusted.value_or(false);
   params.trusted_found = trusted.has_value();
 
+  params.choose_what_to_sync =
+      dict.FindBool("chooseWhatToSync").value_or(false);
   params.is_available_in_arc =
       dict.FindBool("isAvailableInArc").value_or(false);
 
@@ -209,7 +211,8 @@ void InlineLoginHandler::HandleCompleteLoginMessageWithCookies(
 
 void InlineLoginHandler::HandleSwitchToFullTabMessage(
     const base::Value::List& args) {
-  Browser* browser = chrome::FindBrowserWithTab(web_ui()->GetWebContents());
+  Browser* browser =
+      chrome::FindBrowserWithWebContents(web_ui()->GetWebContents());
   if (browser) {
     // |web_ui| is already presented in a full tab. Ignore this call.
     return;

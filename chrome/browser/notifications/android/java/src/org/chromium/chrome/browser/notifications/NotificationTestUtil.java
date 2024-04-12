@@ -11,7 +11,9 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Icon;
 import android.os.Bundle;
 
-/** Utils for Android notification tests. */
+/**
+ * Utils for Android notification tests.
+ */
 public class NotificationTestUtil {
     @SuppressWarnings("deprecation") // for Notification.icon
     public static Bitmap getSmallIconFromNotification(Context context, Notification notification) {

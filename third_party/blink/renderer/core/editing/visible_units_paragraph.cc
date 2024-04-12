@@ -126,12 +126,12 @@ PositionTemplate<Strategy> StartOfParagraphAlgorithm(
     if (layout_object->IsText() &&
         To<LayoutText>(layout_object)->ResolvedTextLength()) {
       if (style.ShouldPreserveBreaks()) {
-        const String& text = To<LayoutText>(layout_object)->TransformedText();
-        int index = text.length();
+        auto* text = To<LayoutText>(layout_object);
+        int index = text->TextLength();
         if (previous_node_iterator == start_node && candidate_offset < index)
           index = max(0, candidate_offset);
         while (--index >= 0) {
-          if (text[index] == '\n') {
+          if ((*text)[index] == '\n') {
             return PositionTemplate<Strategy>(To<Text>(previous_node_iterator),
                                               index + 1);
           }
@@ -239,24 +239,21 @@ PositionTemplate<Strategy> EndOfParagraphAlgorithm(
     // can't accept the caret.
     if (layout_object->IsText() &&
         To<LayoutText>(layout_object)->ResolvedTextLength()) {
-      auto* const layout_text = To<LayoutText>(layout_object);
+      auto* const text = To<LayoutText>(layout_object);
       if (style.ShouldPreserveBreaks()) {
-        const String& text = layout_text->TransformedText();
-        const int length = text.length();
+        const int length = text->TextLength();
         for (int i = (next_node_iterator == start_node ? candidate_offset : 0);
              i < length; ++i) {
-          if (text[i] == '\n') {
-            return PositionTemplate<Strategy>(
-                To<Text>(next_node_iterator),
-                i + layout_text->TextStartOffset());
+          if ((*text)[i] == '\n') {
+            return PositionTemplate<Strategy>(To<Text>(next_node_iterator),
+                                              i + text->TextStartOffset());
           }
         }
       }
 
       candidate_node = next_node_iterator;
       candidate_type = PositionAnchorType::kOffsetInAnchor;
-      candidate_offset =
-          layout_text->CaretMaxOffset() + layout_text->TextStartOffset();
+      candidate_offset = text->CaretMaxOffset() + text->TextStartOffset();
       next_node_iterator = nextNode();
     } else if (EditingIgnoresContent(*next_node_iterator) ||
                IsDisplayInsideTable(next_node_iterator)) {

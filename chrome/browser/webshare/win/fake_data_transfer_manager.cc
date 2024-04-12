@@ -142,8 +142,7 @@ class FakeDataPackagePropertySet final
   IFACEMETHODIMP put_EnterpriseId(HSTRING value) final { return S_OK; }
 
  private:
-  const raw_ref<FakeDataTransferManager::DataRequestedContent,
-                DanglingUntriaged>
+  const raw_ref<FakeDataTransferManager::DataRequestedContent>
       data_requested_content_;
   ComPtr<base::win::Vector<HSTRING>> file_types_;
 };
@@ -286,8 +285,7 @@ class FakeDataPackage final
   }
 
  private:
-  const raw_ref<FakeDataTransferManager::DataRequestedContent,
-                DanglingUntriaged>
+  const raw_ref<FakeDataTransferManager::DataRequestedContent>
       data_requested_content_;
   ComPtr<IDataPackagePropertySet> properties_;
 };

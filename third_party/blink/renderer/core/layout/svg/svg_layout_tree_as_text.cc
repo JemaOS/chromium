@@ -58,8 +58,6 @@
 #include "third_party/blink/renderer/core/svg/svg_ellipse_element.h"
 #include "third_party/blink/renderer/core/svg/svg_enumeration_map.h"
 #include "third_party/blink/renderer/core/svg/svg_filter_element.h"
-#include "third_party/blink/renderer/core/svg/svg_length_context.h"
-#include "third_party/blink/renderer/core/svg/svg_length_functions.h"
 #include "third_party/blink/renderer/core/svg/svg_line_element.h"
 #include "third_party/blink/renderer/core/svg/svg_linear_gradient_element.h"
 #include "third_party/blink/renderer/core/svg/svg_path_element.h"
@@ -264,16 +262,6 @@ static bool WriteSVGPaint(WTF::TextStream& ts,
     ts << "[type=SOLID] [color=" << color << "]";
     return true;
   }
-  if (paint.type == SVGPaintType::kContextFill) {
-    ts << " [" << paint_name << "={" << s;
-    ts << "[type=CONTEXT-FILL]";
-    return true;
-  }
-  if (paint.type == SVGPaintType::kContextStroke) {
-    ts << " [" << paint_name << "={" << s;
-    ts << "[type=CONTEXT-STROKE]";
-    return true;
-  }
   return false;
 }
 
@@ -290,13 +278,14 @@ static void WriteStyle(WTF::TextStream& ts, const LayoutObject& object) {
   if (object.IsSVGShape()) {
     if (WriteSVGPaint(ts, object, style.StrokePaint(), GetCSSPropertyStroke(),
                       "stroke")) {
-      const SVGViewportResolver viewport_resolver(object);
+      const LayoutSVGShape& shape = static_cast<const LayoutSVGShape&>(object);
+      DCHECK(shape.GetElement());
+      SVGLengthContext length_context(shape.GetElement());
       double dash_offset =
-          ValueForLength(style.StrokeDashOffset(), viewport_resolver, style);
-      double stroke_width =
-          ValueForLength(style.StrokeWidth(), viewport_resolver);
+          length_context.ValueForLength(style.StrokeDashOffset(), style);
+      double stroke_width = length_context.ValueForLength(style.StrokeWidth());
       DashArray dash_array = SVGLayoutSupport::ResolveSVGDashArray(
-          *style.StrokeDashArray(), style, viewport_resolver);
+          *style.StrokeDashArray(), style, length_context);
 
       WriteIfNotDefault(ts, "opacity", style.StrokeOpacity(), 1.0f);
       WriteIfNotDefault(ts, "stroke width", stroke_width, 1.0);
@@ -341,24 +330,23 @@ static WTF::TextStream& operator<<(WTF::TextStream& ts,
 
   SVGElement* svg_element = shape.GetElement();
   DCHECK(svg_element);
-  const SVGViewportResolver viewport_resolver(shape);
+  SVGLengthContext length_context(svg_element);
   const ComputedStyle& style = shape.StyleRef();
 
   if (IsA<SVGRectElement>(*svg_element)) {
-    WriteNameValuePair(ts, "x",
-                       ValueForLength(style.X(), viewport_resolver, style,
-                                      SVGLengthMode::kWidth));
+    WriteNameValuePair(
+        ts, "x",
+        length_context.ValueForLength(style.X(), style, SVGLengthMode::kWidth));
     WriteNameValuePair(ts, "y",
-                       ValueForLength(style.Y(), viewport_resolver, style,
-                                      SVGLengthMode::kHeight));
+                       length_context.ValueForLength(style.Y(), style,
+                                                     SVGLengthMode::kHeight));
     WriteNameValuePair(ts, "width",
-                       ValueForLength(style.Width(), viewport_resolver, style,
-                                      SVGLengthMode::kWidth));
+                       length_context.ValueForLength(style.UsedWidth(), style,
+                                                     SVGLengthMode::kWidth));
     WriteNameValuePair(ts, "height",
-                       ValueForLength(style.Height(), viewport_resolver, style,
-                                      SVGLengthMode::kHeight));
+                       length_context.ValueForLength(style.UsedHeight(), style,
+                                                     SVGLengthMode::kHeight));
   } else if (auto* element = DynamicTo<SVGLineElement>(*svg_element)) {
-    const SVGLengthContext length_context(svg_element);
     WriteNameValuePair(ts, "x1",
                        element->x1()->CurrentValue()->Value(length_context));
     WriteNameValuePair(ts, "y1",
@@ -369,27 +357,27 @@ static WTF::TextStream& operator<<(WTF::TextStream& ts,
                        element->y2()->CurrentValue()->Value(length_context));
   } else if (IsA<SVGEllipseElement>(*svg_element)) {
     WriteNameValuePair(ts, "cx",
-                       ValueForLength(style.Cx(), viewport_resolver, style,
-                                      SVGLengthMode::kWidth));
+                       length_context.ValueForLength(style.Cx(), style,
+                                                     SVGLengthMode::kWidth));
     WriteNameValuePair(ts, "cy",
-                       ValueForLength(style.Cy(), viewport_resolver, style,
-                                      SVGLengthMode::kHeight));
+                       length_context.ValueForLength(style.Cy(), style,
+                                                     SVGLengthMode::kHeight));
     WriteNameValuePair(ts, "rx",
-                       ValueForLength(style.Rx(), viewport_resolver, style,
-                                      SVGLengthMode::kWidth));
+                       length_context.ValueForLength(style.Rx(), style,
+                                                     SVGLengthMode::kWidth));
     WriteNameValuePair(ts, "ry",
-                       ValueForLength(style.Ry(), viewport_resolver, style,
-                                      SVGLengthMode::kHeight));
+                       length_context.ValueForLength(style.Ry(), style,
+                                                     SVGLengthMode::kHeight));
   } else if (IsA<SVGCircleElement>(*svg_element)) {
     WriteNameValuePair(ts, "cx",
-                       ValueForLength(style.Cx(), viewport_resolver, style,
-                                      SVGLengthMode::kWidth));
+                       length_context.ValueForLength(style.Cx(), style,
+                                                     SVGLengthMode::kWidth));
     WriteNameValuePair(ts, "cy",
-                       ValueForLength(style.Cy(), viewport_resolver, style,
-                                      SVGLengthMode::kHeight));
-    WriteNameValuePair(ts, "r",
-                       ValueForLength(style.R(), viewport_resolver, style,
-                                      SVGLengthMode::kOther));
+                       length_context.ValueForLength(style.Cy(), style,
+                                                     SVGLengthMode::kHeight));
+    WriteNameValuePair(
+        ts, "r",
+        length_context.ValueForLength(style.R(), style, SVGLengthMode::kOther));
   } else if (auto* svg_poly_element = DynamicTo<SVGPolyElement>(svg_element)) {
     WriteNameAndQuotedValue(
         ts, "points",
@@ -407,7 +395,7 @@ static WTF::TextStream& operator<<(WTF::TextStream& ts,
 
 static WTF::TextStream& operator<<(WTF::TextStream& ts,
                                    const LayoutSVGRoot& root) {
-  ts << " " << PhysicalRect(root.PhysicalLocation(), root.Size());
+  ts << " " << root.FrameRect();
   WriteStyle(ts, root);
   return ts;
 }

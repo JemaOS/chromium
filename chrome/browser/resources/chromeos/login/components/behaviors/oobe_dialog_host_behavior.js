@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {dom} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+// clang-format off
+import {dom, Polymer} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
+import { traceFirstScreenShown } from '../../oobe_trace.js';
 import {invokePolymerMethod} from '../../display_manager.js';
-import {traceFirstScreenShown} from '../../oobe_trace.js';
+// clang-format on
 
 /**
  * @fileoverview
@@ -14,7 +16,9 @@ import {traceFirstScreenShown} from '../../oobe_trace.js';
  */
 
 /** @polymerBehavior */
-export const OobeDialogHostBehavior = {
+export var OobeDialogHostBehavior = {
+  properties: {},
+
   /**
    * Triggers onBeforeShow for descendants.
    * @suppress {missingProperties} invokePolymerMethod
@@ -41,8 +45,8 @@ export const OobeDialogHostBehavior = {
    * @param {string} selector CSS selector (optional).
    */
   propagateUpdateLocalizedContent(selector) {
-    const screens = dom(this.root).querySelectorAll(selector);
-    for (let i = 0; i < screens.length; ++i) {
+    var screens = dom(this.root).querySelectorAll(selector);
+    for (var i = 0; i < screens.length; ++i) {
       /** @type {{updateLocalizedContent: function()}}}*/ (screens[i])
           .updateLocalizedContent();
     }
@@ -50,8 +54,10 @@ export const OobeDialogHostBehavior = {
 
 };
 
-/** @interface */
-export class OobeDialogHostBehaviorInterface {
-  /** @param {...Object} data  */
-  onBeforeShow(...data) {}
-}
+/**
+ * TODO(alemate): Replace with an interface. b/24294625
+ * @typedef {{
+ *   onBeforeShow: function()
+ * }}
+ */
+OobeDialogHostBehavior.Proto;

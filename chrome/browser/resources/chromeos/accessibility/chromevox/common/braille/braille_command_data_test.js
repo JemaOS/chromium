@@ -8,7 +8,17 @@ GEN_INCLUDE(['../../testing/chromevox_e2e_test_base.js']);
 /**
  * Test fixture for braille_command_data.js.
  */
-ChromeVoxBrailleCommandDataTest = class extends ChromeVoxE2ETest {};
+ChromeVoxBrailleCommandDataTest = class extends ChromeVoxE2ETest {
+  /** @override */
+  async setUpDeferred() {
+    await super.setUpDeferred();
+
+    // Alphabetical based on file path.
+    await importModule(
+        'BrailleCommandData',
+        '/chromevox/common/braille/braille_command_data.js');
+  }
+};
 
 
 AX_TEST_F('ChromeVoxBrailleCommandDataTest', 'Duplicates', function() {

@@ -28,22 +28,21 @@ class AdbClientSocketTest : public InProcessBrowserTest,
                             public DevToolsAndroidBridge::DeviceListListener {
 
  public:
-  void StartTest(base::RunLoop* loop) {
+  void StartTest() {
     Profile* profile = browser()->profile();
     android_bridge_ = DevToolsAndroidBridge::Factory::GetForProfile(profile);
     AndroidDeviceManager::DeviceProviders device_providers;
     device_providers.push_back(new AdbDeviceProvider());
     android_bridge_->set_device_providers_for_test(device_providers);
     android_bridge_->AddDeviceListListener(this);
-    loop_ = loop;
-    loop_->Run();
+    content::RunMessageLoop();
   }
 
   void DeviceListChanged(
       const DevToolsAndroidBridge::RemoteDevices& devices) override {
     devices_ = devices;
     android_bridge_->RemoveDeviceListListener(this);
-    loop_->QuitWhenIdle();
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
   }
 
   void CheckDevices() {
@@ -144,8 +143,6 @@ class AdbClientSocketTest : public InProcessBrowserTest,
  private:
   DevToolsAndroidBridge* android_bridge_;
   DevToolsAndroidBridge::RemoteDevices devices_;
-  // base::RunLoop used to require kNestableTaskAllowed
-  base::RunLoop* loop_;
 };
 
 // Combine all tests into one. Splitting up into multiple tests can be flaky
@@ -157,19 +154,18 @@ class AdbClientSocketTest : public InProcessBrowserTest,
 #define MAYBE_TestCombined DISABLED_TestCombined
 #endif
 IN_PROC_BROWSER_TEST_F(AdbClientSocketTest, MAYBE_TestCombined) {
-  base::RunLoop loop1, loop2, loop3;
   StartMockAdbServer(FlushWithoutSize);
-  StartTest(&loop1);
+  StartTest();
   CheckDevices();
   StopMockAdbServer();
 
   StartMockAdbServer(FlushWithSize);
-  StartTest(&loop2);
+  StartTest();
   CheckDevices();
   StopMockAdbServer();
 
   StartMockAdbServer(FlushWithData);
-  StartTest(&loop3);
+  StartTest();
   CheckDevices();
   StopMockAdbServer();
 }

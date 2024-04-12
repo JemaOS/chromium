@@ -471,7 +471,7 @@ void OfflinePageRequestHandler::Redirect(const GURL& redirected_url) {
       "Non-Authoritative-Reason: offline redirects",
       // 302 is used to remove response bodies in order to
       // avoid leak when going online.
-      static_cast<int>(net::RedirectUtil::ResponseCode::REDIRECT_302_FOUND),
+      net::RedirectUtil::ResponseCode::REDIRECT_302_FOUND,
       redirected_url.spec().c_str());
 
   fake_headers_for_redirect_ = base::MakeRefCounted<net::HttpResponseHeaders>(
@@ -505,11 +505,8 @@ void OfflinePageRequestHandler::OpenFile(
   if (!stream_)
     stream_ = std::make_unique<net::FileStream>(file_task_runner_);
 
-  int flags =
-      base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_ASYNC;
-#if BUILDFLAG(IS_WIN)
-  flags |= base::File::FLAG_WIN_EXCLUSIVE_READ;
-#endif  // BUILDFLAG(IS_WIN)
+  int flags = base::File::FLAG_OPEN | base::File::FLAG_READ |
+              base::File::FLAG_ASYNC | base::File::FLAG_WIN_EXCLUSIVE_READ;
   int result = stream_->Open(file_path, flags, callback);
   if (result != net::ERR_IO_PENDING)
     callback.Run(result);
@@ -611,8 +608,7 @@ void OfflinePageRequestHandler::DidOpenForValidation(int result) {
   }
 
   if (!buffer_)
-    buffer_ = base::MakeRefCounted<net::IOBufferWithSize>(
-        kMaxBufferSizeForValidation);
+    buffer_ = base::MakeRefCounted<net::IOBuffer>(kMaxBufferSizeForValidation);
 
   ReadForValidation();
 }

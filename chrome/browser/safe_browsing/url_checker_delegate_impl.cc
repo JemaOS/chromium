@@ -8,6 +8,7 @@
 #include "base/functional/bind.h"
 #include "base/ranges/algorithm.h"
 #include "build/build_config.h"
+#include "chrome/browser/android/customtabs/client_data_header_web_contents_observer.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/preloading/prefetch/no_state_prefetch/chrome_no_state_prefetch_contents_delegate.h"
 #include "chrome/browser/profiles/profile.h"
@@ -18,11 +19,11 @@
 #include "components/safe_browsing/buildflags.h"
 #include "components/safe_browsing/content/browser/triggers/suspicious_site_trigger.h"
 #include "components/safe_browsing/content/browser/ui_manager.h"
-#include "components/safe_browsing/content/browser/unsafe_resource_util.h"
 #include "components/safe_browsing/core/browser/db/database_manager.h"
 #include "components/safe_browsing/core/browser/db/v4_protocol_manager_util.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
+#include "components/security_interstitials/content/unsafe_resource_util.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/navigation_entry.h"
@@ -30,7 +31,6 @@
 #include "services/network/public/cpp/features.h"
 
 #if BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/android/customtabs/client_data_header_web_contents_observer.h"
 #include "chrome/browser/android/tab_android.h"
 #endif
 
@@ -58,11 +58,12 @@ void CreateSafeBrowsingUserInteractionObserver(
     bool is_main_frame,
     scoped_refptr<SafeBrowsingUIManager> ui_manager) {
   content::WebContents* web_contents =
-      unsafe_resource_util::GetWebContentsForResource(resource);
-  // Don't delay the interstitial for prerender pages.
+      security_interstitials::GetWebContentsForResource(resource);
+  // Don't delay the interstitial for prerender pages and portals.
   if (!web_contents ||
       prerender::ChromeNoStatePrefetchContentsDelegate::FromWebContents(
-          web_contents)) {
+          web_contents) ||
+      web_contents->IsPortal()) {
     ui_manager->StartDisplayingBlockingPage(resource);
     return;
   }
@@ -88,12 +89,13 @@ UrlCheckerDelegateImpl::UrlCheckerDelegateImpl(
       threat_types_(CreateSBThreatTypeSet({
 // TODO(crbug.com/835961): Enable on Android when list is available.
 #if BUILDFLAG(SAFE_BROWSING_DB_LOCAL)
-          safe_browsing::SBThreatType::SB_THREAT_TYPE_SUSPICIOUS_SITE,
+        safe_browsing::SB_THREAT_TYPE_SUSPICIOUS_SITE,
 #endif
-          safe_browsing::SBThreatType::SB_THREAT_TYPE_URL_MALWARE,
-          safe_browsing::SBThreatType::SB_THREAT_TYPE_URL_PHISHING,
-          safe_browsing::SBThreatType::SB_THREAT_TYPE_URL_UNWANTED,
-          safe_browsing::SBThreatType::SB_THREAT_TYPE_BILLING})) {
+            safe_browsing::SB_THREAT_TYPE_URL_MALWARE,
+            safe_browsing::SB_THREAT_TYPE_URL_PHISHING,
+            safe_browsing::SB_THREAT_TYPE_URL_UNWANTED,
+            safe_browsing::SB_THREAT_TYPE_BILLING
+      })) {
 }
 
 UrlCheckerDelegateImpl::~UrlCheckerDelegateImpl() = default;
@@ -147,7 +149,7 @@ bool UrlCheckerDelegateImpl::ShouldSkipRequestCheck(
     const GURL& original_url,
     int frame_tree_node_id,
     int render_process_id,
-    base::optional_ref<const base::UnguessableToken> render_frame_token,
+    int render_frame_id,
     bool originated_from_service_worker) {
   // Check for whether the URL matches the Safe Browsing allowlist domains
   // (a.k. a prefs::kSafeBrowsingAllowlistDomains).
@@ -177,6 +179,33 @@ SafeBrowsingDatabaseManager* UrlCheckerDelegateImpl::GetDatabaseManager() {
 
 BaseUIManager* UrlCheckerDelegateImpl::GetUIManager() {
   return ui_manager_.get();
+}
+
+void UrlCheckerDelegateImpl::CheckLookupMechanismExperimentEligibility(
+    const security_interstitials::UnsafeResource& resource,
+    base::OnceCallback<void(bool)> callback,
+    scoped_refptr<base::SequencedTaskRunner> callback_task_runner) {
+  // Keep a post task here to avoid possible reentrancy into safe browsing
+  // code if it is running on the UI thread.
+  content::GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &SafeBrowsingUIManager::CheckLookupMechanismExperimentEligibility,
+          ui_manager_, resource, std::move(callback), callback_task_runner));
+}
+
+void UrlCheckerDelegateImpl::CheckExperimentEligibilityAndStartBlockingPage(
+    const security_interstitials::UnsafeResource& resource,
+    base::OnceCallback<void(bool)> callback,
+    scoped_refptr<base::SequencedTaskRunner> callback_task_runner) {
+  // Keep a post task here to avoid possible reentrancy into safe browsing
+  // code if it is running on the UI thread.
+  content::GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SafeBrowsingUIManager::
+                         CheckExperimentEligibilityAndStartBlockingPage,
+                     ui_manager_, resource, std::move(callback),
+                     callback_task_runner));
 }
 
 }  // namespace safe_browsing

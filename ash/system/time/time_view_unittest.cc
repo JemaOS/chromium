@@ -43,21 +43,15 @@ class TimeViewTest : public AshTestBase {
   TimeView* time_view() { return time_view_; }
 
   // Access to private fields of |time_view_|.
-  views::View* horizontal_time_label_container() {
-    return time_view_->horizontal_time_label_container_.get();
+  views::View* horizontal_view() { return time_view_->horizontal_view_.get(); }
+  views::View* vertical_view() { return time_view_->vertical_view_.get(); }
+  views::View* horizontal_date_view() {
+    return time_view_->horizontal_date_view_.get();
   }
-  views::View* vertical_time_label_container() {
-    return time_view_->vertical_time_label_container_.get();
+  views::View* vertical_date_view() {
+    return time_view_->vertical_date_view_.get();
   }
-  views::View* horizontal_date_label_container() {
-    return time_view_->horizontal_date_label_container_.get();
-  }
-  views::View* vertical_date_view_container() {
-    return time_view_->vertical_date_view_container_.get();
-  }
-  views::Label* horizontal_time_label_() {
-    return time_view_->horizontal_time_label_;
-  }
+  views::Label* horizontal_label() { return time_view_->horizontal_label_; }
   views::Label* vertical_label_hours() {
     return time_view_->vertical_label_hours_;
   }
@@ -66,14 +60,13 @@ class TimeViewTest : public AshTestBase {
     return time_view_->vertical_label_minutes_;
   }
   views::Label* horizontal_date_label() {
-    return time_view_->horizontal_date_label_;
+    return time_view_->horizontal_label_date_;
   }
-  VerticalDateView* vertical_date() { return time_view_->vertical_date_view_; }
+  VerticalDateView* vertical_date() { return time_view_->date_view_; }
 
   views::Label* vertical_date_label() {
-    return time_view_->vertical_date_view_
-               ? time_view_->vertical_date_view_->text_label_.get()
-               : nullptr;
+    return time_view_->date_view_ ? time_view_->date_view_->text_label_.get()
+                                  : nullptr;
   }
 
   void UpdateText() { time_view_->UpdateText(); }
@@ -88,7 +81,7 @@ class TimeViewTest : public AshTestBase {
  private:
   std::unique_ptr<views::Widget> widget_;
   // Owned by `widget_`.
-  raw_ptr<TimeView, DanglingUntriaged> time_view_;
+  raw_ptr<TimeView, ExperimentalAsh> time_view_;
   base::WeakPtrFactory<TimeViewTest> weak_factory_{this};
 };
 
@@ -123,18 +116,29 @@ class TimeViewObserver : public views::ViewObserver {
 TEST_F(TimeViewTest, Basics) {
   // A newly created horizontal clock only has the horizontal label.
   CreateTimeView(TimeView::ClockLayout::HORIZONTAL_CLOCK);
-  EXPECT_TRUE(horizontal_time_label_container()->GetVisible());
-  ASSERT_FALSE(vertical_time_label_container()->GetVisible());
+  ASSERT_TRUE(horizontal_label()->parent());
+  EXPECT_EQ(time_view(), horizontal_label()->parent()->parent());
+  EXPECT_FALSE(horizontal_view());
+  ASSERT_TRUE(vertical_view());
+  EXPECT_FALSE(vertical_view()->parent());
 
   // Switching the clock to vertical updates the labels.
   time_view()->UpdateClockLayout(TimeView::ClockLayout::VERTICAL_CLOCK);
-  ASSERT_FALSE(horizontal_time_label_container()->GetVisible());
-  EXPECT_TRUE(vertical_time_label_container()->GetVisible());
+  ASSERT_TRUE(horizontal_view());
+  EXPECT_FALSE(horizontal_view()->parent());
+  EXPECT_FALSE(vertical_view());
+  ASSERT_TRUE(vertical_label_hours()->parent());
+  ASSERT_TRUE(vertical_label_minutes()->parent());
+  EXPECT_EQ(time_view(), vertical_label_hours()->parent()->parent());
+  EXPECT_EQ(time_view(), vertical_label_minutes()->parent()->parent());
 
   // Switching back to horizontal updates the labels again.
   time_view()->UpdateClockLayout(TimeView::ClockLayout::HORIZONTAL_CLOCK);
-  EXPECT_TRUE(horizontal_time_label_container()->GetVisible());
-  ASSERT_FALSE(vertical_time_label_container()->GetVisible());
+  ASSERT_TRUE(horizontal_label()->parent());
+  EXPECT_EQ(time_view(), horizontal_label()->parent()->parent());
+  EXPECT_FALSE(horizontal_view());
+  ASSERT_TRUE(vertical_view());
+  EXPECT_FALSE(vertical_view()->parent());
 }
 
 // Test accessibility events emitted by the time view's labels during updates.
@@ -151,8 +155,8 @@ TEST_F(TimeViewTest, TimeViewFiresAccessibilityEvents) {
                                 horizontal_date_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_date_label()));
-  EXPECT_EQ(1, counter.GetCount(ax::mojom::Event::kTextChanged,
-                                horizontal_time_label_()));
+  EXPECT_EQ(
+      1, counter.GetCount(ax::mojom::Event::kTextChanged, horizontal_label()));
   EXPECT_EQ(1, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_label_hours()));
   EXPECT_EQ(1, counter.GetCount(ax::mojom::Event::kTextChanged,
@@ -167,8 +171,8 @@ TEST_F(TimeViewTest, TimeViewFiresAccessibilityEvents) {
                                 horizontal_date_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_date_label()));
-  EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
-                                horizontal_time_label_()));
+  EXPECT_EQ(
+      0, counter.GetCount(ax::mojom::Event::kTextChanged, horizontal_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_label_hours()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
@@ -183,8 +187,8 @@ TEST_F(TimeViewTest, TimeViewFiresAccessibilityEvents) {
                                 horizontal_date_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_date_label()));
-  EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
-                                horizontal_time_label_()));
+  EXPECT_EQ(
+      0, counter.GetCount(ax::mojom::Event::kTextChanged, horizontal_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_label_hours()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
@@ -202,8 +206,8 @@ TEST_F(TimeViewTest, TimeViewFiresAccessibilityEvents) {
                                 horizontal_date_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_date_label()));
-  EXPECT_EQ(1, counter.GetCount(ax::mojom::Event::kTextChanged,
-                                horizontal_time_label_()));
+  EXPECT_EQ(
+      1, counter.GetCount(ax::mojom::Event::kTextChanged, horizontal_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_label_hours()));
   EXPECT_EQ(1, counter.GetCount(ax::mojom::Event::kTextChanged,
@@ -238,18 +242,27 @@ TEST_F(TimeViewTest, UpdateSize) {
 TEST_F(TimeViewTest, DateView) {
   // A newly created horizontal Date only has the horizontal date view.
   CreateTimeView(TimeView::ClockLayout::HORIZONTAL_CLOCK, TimeView::kDate);
-  EXPECT_TRUE(horizontal_date_label_container()->GetVisible());
-  EXPECT_FALSE(vertical_date_view_container()->GetVisible());
+  ASSERT_TRUE(horizontal_date_label()->parent());
+  EXPECT_EQ(time_view(), horizontal_date_label()->parent()->parent());
+  EXPECT_FALSE(horizontal_date_view());
+  ASSERT_TRUE(vertical_date_view());
+  EXPECT_FALSE(vertical_date_view()->parent());
 
   // Switching the date to vertical updates the views.
   time_view()->UpdateClockLayout(TimeView::ClockLayout::VERTICAL_CLOCK);
-  EXPECT_FALSE(horizontal_date_label_container()->GetVisible());
-  EXPECT_TRUE(vertical_date_view_container()->GetVisible());
+  ASSERT_TRUE(horizontal_date_view());
+  EXPECT_FALSE(horizontal_date_view()->parent());
+  EXPECT_FALSE(vertical_date_view());
+  ASSERT_TRUE(vertical_date()->parent());
+  EXPECT_EQ(time_view(), vertical_date()->parent()->parent());
 
   // Switching back to horizontal updates the views again.
   time_view()->UpdateClockLayout(TimeView::ClockLayout::HORIZONTAL_CLOCK);
-  EXPECT_TRUE(horizontal_date_label_container()->GetVisible());
-  EXPECT_FALSE(vertical_date_view_container()->GetVisible());
+  ASSERT_TRUE(horizontal_date_label()->parent());
+  EXPECT_EQ(time_view(), horizontal_date_label()->parent()->parent());
+  EXPECT_FALSE(horizontal_date_view());
+  ASSERT_TRUE(vertical_date_view());
+  EXPECT_FALSE(vertical_date_view()->parent());
 }
 
 // Test accessibility events emitted by the date view's labels during updates.
@@ -263,8 +276,8 @@ TEST_F(TimeViewTest, DateViewFiresAccessibilityEvents) {
                                    base::Hours(32) - base::Time::Now());
   CreateTimeView(TimeView::ClockLayout::HORIZONTAL_CLOCK, TimeView::kDate);
 
-  EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
-                                horizontal_time_label_()));
+  EXPECT_EQ(
+      0, counter.GetCount(ax::mojom::Event::kTextChanged, horizontal_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_label_hours()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
@@ -284,8 +297,8 @@ TEST_F(TimeViewTest, DateViewFiresAccessibilityEvents) {
                                 horizontal_date_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_date_label()));
-  EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
-                                horizontal_time_label_()));
+  EXPECT_EQ(
+      0, counter.GetCount(ax::mojom::Event::kTextChanged, horizontal_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_label_hours()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
@@ -295,8 +308,8 @@ TEST_F(TimeViewTest, DateViewFiresAccessibilityEvents) {
   // changed, the text has not changed. Hence no text-changed events are fired.
   counter.ResetAllCounts();
   UpdateText();
-  EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
-                                horizontal_time_label_()));
+  EXPECT_EQ(
+      0, counter.GetCount(ax::mojom::Event::kTextChanged, horizontal_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_label_hours()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
@@ -315,8 +328,8 @@ TEST_F(TimeViewTest, DateViewFiresAccessibilityEvents) {
   counter.ResetAllCounts();
   task_environment()->FastForwardBy(base::Minutes(1));
   UpdateText();
-  EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
-                                horizontal_time_label_()));
+  EXPECT_EQ(
+      0, counter.GetCount(ax::mojom::Event::kTextChanged, horizontal_label()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,
                                 vertical_label_hours()));
   EXPECT_EQ(0, counter.GetCount(ax::mojom::Event::kTextChanged,

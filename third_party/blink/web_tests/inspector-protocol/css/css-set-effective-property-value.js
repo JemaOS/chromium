@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startHTML(`
 <link rel='stylesheet' href='${testRunner.url('resources/set-active-property-value.css')}'/>
 <div id='inspected' style='padding-top: 55px; margin-top: 33px !important; --x:foo'></div>

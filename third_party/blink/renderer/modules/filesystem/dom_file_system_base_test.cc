@@ -9,7 +9,6 @@
 #include "third_party/blink/renderer/core/fileapi/file.h"
 #include "third_party/blink/renderer/core/testing/null_execution_context.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
@@ -25,7 +24,6 @@ class DOMFileSystemBaseTest : public testing::Test {
   ~DOMFileSystemBaseTest() override { context_->NotifyContextDestroyed(); }
 
  protected:
-  test::TaskEnvironment task_environment_;
   Persistent<ExecutionContext> context_ =
       MakeGarbageCollected<NullExecutionContext>();
   String file_path_;
@@ -37,7 +35,7 @@ TEST_F(DOMFileSystemBaseTest, externalFilesystemFilesAreUserVisible) {
       "http://chromium.org/", mojom::blink::FileSystemType::kExternal);
 
   File* file = DOMFileSystemBase::CreateFile(
-      context_, file_metadata_, root_url,
+      nullptr, file_metadata_, root_url,
       mojom::blink::FileSystemType::kExternal, "dom_file_system_base_test.cc");
   EXPECT_TRUE(file);
   EXPECT_TRUE(file->HasBackingFile());
@@ -51,7 +49,7 @@ TEST_F(DOMFileSystemBaseTest, temporaryFilesystemFilesAreNotUserVisible) {
       "http://chromium.org/", mojom::blink::FileSystemType::kTemporary);
 
   File* file = DOMFileSystemBase::CreateFile(
-      context_, file_metadata_, root_url,
+      nullptr, file_metadata_, root_url,
       mojom::blink::FileSystemType::kTemporary, "UserVisibleName.txt");
   EXPECT_TRUE(file);
   EXPECT_TRUE(file->HasBackingFile());
@@ -65,7 +63,7 @@ TEST_F(DOMFileSystemBaseTest, persistentFilesystemFilesAreNotUserVisible) {
       "http://chromium.org/", mojom::blink::FileSystemType::kPersistent);
 
   File* file = DOMFileSystemBase::CreateFile(
-      context_, file_metadata_, root_url,
+      nullptr, file_metadata_, root_url,
       mojom::blink::FileSystemType::kPersistent, "UserVisibleName.txt");
   EXPECT_TRUE(file);
   EXPECT_TRUE(file->HasBackingFile());

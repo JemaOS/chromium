@@ -38,9 +38,6 @@ class InstalledWebappGeolocationBridge : public device::mojom::Geolocation {
   void SetOverride(device::mojom::GeopositionResultPtr result);
   void ClearOverride();
 
-  // Handles permission revocations during active use.
-  void OnPermissionRevoked();
-
   // Called by JNI on its thread looper.
   void OnNewLocationAvailable(JNIEnv* env,
                               jdouble latitude,
@@ -55,8 +52,6 @@ class InstalledWebappGeolocationBridge : public device::mojom::Geolocation {
                               jboolean has_speed,
                               jdouble speed);
   void OnNewErrorAvailable(JNIEnv* env, jstring message);
-
-  const GURL& url() { return url_; }
 
  private:
   // device::mojom::Geolocation:

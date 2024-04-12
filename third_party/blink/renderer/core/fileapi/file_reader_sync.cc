@@ -50,7 +50,7 @@ DOMArrayBuffer* FileReaderSync::readAsArrayBuffer(
     ExceptionState& exception_state) {
   DCHECK(blob);
 
-  std::optional<FileReaderData> res = Load(*blob, exception_state);
+  absl::optional<FileReaderData> res = Load(*blob, exception_state);
   return !res ? nullptr : std::move(res).value().AsDOMArrayBuffer();
 }
 
@@ -58,7 +58,7 @@ String FileReaderSync::readAsBinaryString(Blob* blob,
                                           ExceptionState& exception_state) {
   DCHECK(blob);
 
-  std::optional<FileReaderData> res = Load(*blob, exception_state);
+  absl::optional<FileReaderData> res = Load(*blob, exception_state);
   if (!res) {
     return "";
   }
@@ -70,7 +70,7 @@ String FileReaderSync::readAsText(Blob* blob,
                                   ExceptionState& exception_state) {
   DCHECK(blob);
 
-  std::optional<FileReaderData> res = Load(*blob, exception_state);
+  absl::optional<FileReaderData> res = Load(*blob, exception_state);
   if (!res) {
     return "";
   }
@@ -81,21 +81,21 @@ String FileReaderSync::readAsDataURL(Blob* blob,
                                      ExceptionState& exception_state) {
   DCHECK(blob);
 
-  std::optional<FileReaderData> res = Load(*blob, exception_state);
+  absl::optional<FileReaderData> res = Load(*blob, exception_state);
   if (!res) {
     return "";
   }
   return std::move(res).value().AsDataURL(blob->type());
 }
 
-std::optional<FileReaderData> FileReaderSync::Load(
+absl::optional<FileReaderData> FileReaderSync::Load(
     const Blob& blob,
     ExceptionState& exception_state) {
   auto res =
       SyncedFileReaderAccumulator::Load(blob.GetBlobDataHandle(), task_runner_);
   if (res.first != FileErrorCode::kOK) {
     file_error::ThrowDOMException(exception_state, res.first);
-    return std::nullopt;
+    return absl::nullopt;
   }
   return std::move(res.second);
 }

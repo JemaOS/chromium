@@ -6,7 +6,8 @@
 #define CHROME_BROWSER_EXTENSIONS_API_IDENTITY_IDENTITY_GET_AUTH_TOKEN_ERROR_H_
 
 #include <string>
-#include <string_view>
+
+#include "base/strings/string_piece_forward.h"
 
 namespace extensions {
 
@@ -40,23 +41,22 @@ class IdentityGetAuthTokenError {
     kOffTheRecord = 22,
     // kPageLoadFailure = 23,  // Deprecated
     kRemoteConsentPageLoadFailure = 24,
-    // kSetAccountsInCookieFailure = 25, // Deprecated
+    kSetAccountsInCookieFailure = 25,
     kInvalidConsentResult = 26,
     kCanceled = 27,
     kInteractivityDenied = 28,
-    kCannotCreateWindow = 29,
-    kMaxValue = kCannotCreateWindow,
+    kMaxValue = kInteractivityDenied,
   };
 
   // Constructs a |State::kMintTokenAuthFailure| error with an
   // |error_message|.
   static IdentityGetAuthTokenError FromMintTokenAuthError(
-      std::string_view error_message);
+      base::StringPiece error_message);
 
   // Constructs a |State::kGetAccessTokenAuthFailure| error with an
   // |error_message|.
   static IdentityGetAuthTokenError FromGetAccessTokenAuthError(
-      std::string_view error_message);
+      base::StringPiece error_message);
 
   // Constructs a |State::kNone| error.
   IdentityGetAuthTokenError();
@@ -72,7 +72,7 @@ class IdentityGetAuthTokenError {
   std::string ToString() const;
 
  private:
-  IdentityGetAuthTokenError(State state, std::string_view error);
+  IdentityGetAuthTokenError(State state, base::StringPiece error);
 
   State state_;
   std::string error_message_;

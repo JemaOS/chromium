@@ -22,9 +22,9 @@ class Size;
 
 // SelectedKeywordView displays the tab-to-search UI in the location bar view.
 class SelectedKeywordView : public IconLabelBubbleView {
-  METADATA_HEADER(SelectedKeywordView, IconLabelBubbleView)
-
  public:
+  METADATA_HEADER(SelectedKeywordView);
+
   struct KeywordLabelNames {
     std::u16string short_name;
     std::u16string full_name;

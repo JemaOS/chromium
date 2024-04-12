@@ -34,7 +34,7 @@ void GetDataSnapshotOnThreadPool(DataSource* data_source,
 ////////////////////////////////////////////////////////////////////////////////
 // GraphsContainerView, public:
 
-BEGIN_METADATA(GraphsContainerView)
+BEGIN_METADATA(GraphsContainerView, views::View)
 END_METADATA
 
 GraphsContainerView::GraphsContainerView()
@@ -89,7 +89,7 @@ void GraphsContainerView::UpdateData(
           : 1;
   data_update_count_ += intervals;
 
-  for (views::View* child : children()) {
+  for (auto* child : children()) {
     // Insert missing points.
     for (unsigned j = 0; j < intervals; ++j)
       static_cast<GraphPageViewBase*>(child)->UpdateData(*snapshot);
@@ -117,9 +117,8 @@ void GraphsContainerView::SetMode(HUDDisplayMode mode) {
     DCHECK(selected);
     return;
   }
-  for (views::View* child : children()) {
+  for (auto* child : children())
     child->SetVisible(false);
-  }
 
   selected->SetVisible(true);
 }

@@ -30,7 +30,7 @@ HWND DesktopScreenWin::GetHWNDFromNativeWindow(gfx::NativeWindow window) const {
 gfx::NativeWindow DesktopScreenWin::GetNativeWindowFromHWND(HWND hwnd) const {
   return ::IsWindow(hwnd)
              ? DesktopWindowTreeHostWin::GetContentWindowForHWND(hwnd)
-             : gfx::NativeWindow();
+             : gfx::kNullNativeWindow;
 }
 
 bool DesktopScreenWin::IsNativeWindowOccluded(gfx::NativeWindow window) const {
@@ -38,7 +38,7 @@ bool DesktopScreenWin::IsNativeWindowOccluded(gfx::NativeWindow window) const {
          aura::Window::OcclusionState::OCCLUDED;
 }
 
-std::optional<bool> DesktopScreenWin::IsWindowOnCurrentVirtualDesktop(
+absl::optional<bool> DesktopScreenWin::IsWindowOnCurrentVirtualDesktop(
     gfx::NativeWindow window) const {
   DCHECK(window);
   return window->GetHost()->on_current_workspace();

@@ -16,17 +16,16 @@
 
 import '//resources/polymer/v3_0/iron-pages/iron-pages.js';
 
-import {assert} from '//resources/js/assert.js';
+import {assert} from '//resources/js/assert_ts.js';
 import {focusWithoutInk} from '//resources/js/focus_without_ink.js';
-import type {IronPagesElement} from '//resources/polymer/v3_0/iron-pages/iron-pages.js';
+import {IronPagesElement} from '//resources/polymer/v3_0/iron-pages/iron-pages.js';
 import {DomIf, FlattenedNodesObserver, microTask, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {FocusConfig} from '../focus_config.js';
-import type {Route} from '../router.js';
-import {RouteObserverMixin, Router} from '../router.js';
+import {FocusConfig} from '../focus_config.js';
+import {Route, RouteObserverMixin, Router} from '../router.js';
 
 import {getTemplate} from './settings_animated_pages.html.js';
-import type {SettingsSubpageElement} from './settings_subpage.js';
+import {SettingsSubpageElement} from './settings_subpage.js';
 
 interface SettingsAnimatedPagesElement {
   $: {

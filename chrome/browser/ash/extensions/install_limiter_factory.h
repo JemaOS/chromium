@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_EXTENSIONS_INSTALL_LIMITER_FACTORY_H_
 #define CHROME_BROWSER_ASH_EXTENSIONS_INSTALL_LIMITER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -25,13 +25,13 @@ class InstallLimiterFactory : public ProfileKeyedServiceFactory {
   InstallLimiterFactory& operator=(const InstallLimiterFactory&) = delete;
 
  private:
-  friend base::NoDestructor<InstallLimiterFactory>;
+  friend struct base::DefaultSingletonTraits<InstallLimiterFactory>;
 
   InstallLimiterFactory();
   ~InstallLimiterFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

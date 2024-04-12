@@ -27,10 +27,7 @@
     // public/common/permissions_policy/permissions_policy_features.h
     feature_default: {
       default: "EnableForSelf",
-      valid_values: [
-        "EnableForAll",
-        "EnableForSelf",
-       ]
+      valid_values: ["EnableForAll", "EnableForSelf"]
     },
 
     // "default_value_behind_flag" specifies default_value override values
@@ -97,11 +94,6 @@
       permissions_policy_name: "camera",
     },
     {
-      name: "CapturedSurfaceControl",
-      permissions_policy_name: "captured-surface-control",
-      depends_on: ["CapturedSurfaceControl"],
-    },
-    {
       name: "ClientHintDPR",
       permissions_policy_name: "ch-dpr",
     },
@@ -126,10 +118,6 @@
       permissions_policy_name: "ch-prefers-reduced-motion",
     },
     {
-      name: "ClientHintPrefersReducedTransparency",
-      permissions_policy_name: "ch-prefers-reduced-transparency",
-    },
-    {
       name: "ClientHintRTT",
       permissions_policy_name: "ch-rtt",
     },
@@ -152,10 +140,6 @@
       permissions_policy_name: "ch-ua-bitness",
     },
     {
-      name: "ClientHintUAFormFactors",
-      permissions_policy_name: "ch-ua-form-factors",
-    },
-    {
       name: "ClientHintUAPlatform",
       permissions_policy_name: "ch-ua-platform",
       feature_default: "EnableForAll",
@@ -168,6 +152,11 @@
       name: "ClientHintUAMobile",
       permissions_policy_name: "ch-ua-mobile",
       feature_default: "EnableForAll",
+    },
+    {
+      name: "ClientHintUAFull",
+      permissions_policy_name: "ch-ua-full",
+      depends_on: ["SendFullUserAgentAfterReduction"],
     },
     {
       name: "ClientHintUAFullVersion",
@@ -184,6 +173,11 @@
     {
       name: "ClientHintUAWoW64",
       permissions_policy_name: "ch-ua-wow64",
+    },
+    {
+      name: "ClientHintUAReduced",
+      permissions_policy_name: "ch-ua-reduced",
+      depends_on: ["UserAgentReduction"],
     },
     {
       name: "ClientHintViewportHeight",
@@ -276,10 +270,12 @@
     {
       name: "IdentityCredentialsGet",
       permissions_policy_name: "identity-credentials-get",
+      depends_on: ["FedCmIframeSupport"],
     },
     {
       name: "IdleDetection",
       permissions_policy_name: "idle-detection",
+      depends_on: ["IdleDetection"],
     },
     {
       name: "JoinAdInterestGroup",
@@ -338,10 +334,6 @@
       depends_on: ["PrivateStateTokens"],
     },
     {
-      name: "PublicKeyCredentialsCreate",
-      permissions_policy_name: "publickey-credentials-create",
-    },
-    {
       name: "PublicKeyCredentialsGet",
       permissions_policy_name: "publickey-credentials-get",
     },
@@ -387,19 +379,10 @@
       depends_on: ["SmartCard"],
     },
     {
-      name: "SpeakerSelection",
-      permissions_policy_name: "speaker-selection",
-      depends_on: ["SpeakerSelection"],
-    },
-    {
       name: "StorageAccessAPI",
       feature_default: "EnableForAll",
       permissions_policy_name: "storage-access",
-    },
-    {
-      name: "SubApps",
-      permissions_policy_name: "sub-apps",
-      depends_on: ["DesktopPWAsSubApps"],
+      depends_on: ["StorageAccessAPI"],
     },
     {
       name: "SyncXHR",
@@ -417,27 +400,16 @@
       depends_on: ["WebUSB"],
     },
     {
-      name: "UsbUnrestricted",
-      permissions_policy_name: "usb-unrestricted",
-      depends_on: ["UnrestrictedUsb"],
-    },
-    {
-      // Unload is special and can default to being disabled by default based
-      // on the DeprecateUnload flag.
       name: "Unload",
       permissions_policy_name: "unload",
       feature_default: "EnableForAll",
+      depends_on: ["PermissionsPolicyUnload"],
     },
     {
       name: "VerticalScroll",
       permissions_policy_name: "vertical-scroll",
       feature_default: "EnableForAll",
       depends_on: ["ExperimentalPolicies"],
-    },
-    {
-      name: "WebPrinting",
-      permissions_policy_name: "web-printing",
-      depends_on: ["WebPrinting"],
     },
     {
       name: "WebShare",
@@ -451,8 +423,8 @@
     },
     {
       name: "WindowManagement",
-      // Parser also accepts "window-placement" alias (crbug.com/1328581).
-      permissions_policy_name: "window-management",
+      // Parser also accepts "window-management" alias (crbug.com/1328581).
+      permissions_policy_name: "window-placement",
     },
   ],
 }

@@ -8,6 +8,7 @@
 
 #include "base/functional/bind.h"
 #include "base/run_loop.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/values.h"
 #include "chrome/browser/ash/login/test/cryptohome_mixin.h"
 #include "chrome/browser/ash/policy/affiliation/affiliation_mixin.h"
@@ -129,6 +130,7 @@ class NetworkEventsBrowserTest : public ::policy::DevicePolicyCrosBrowserTest {
   ::policy::AffiliationMixin affiliation_mixin_{&mixin_host_, &test_helper_};
   ash::CryptohomeMixin crypto_home_mixin_{&mixin_host_};
   ash::ScopedTestingCrosSettings scoped_testing_cros_settings_;
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(NetworkEventsBrowserTest,
@@ -147,8 +149,6 @@ IN_PROC_BROWSER_TEST_F(NetworkEventsBrowserTest,
 
   const Record& record =
       GetNextRecord(&missive_event_observer, Priority::SLOW_BATCH);
-  ASSERT_TRUE(record.has_source_info());
-  EXPECT_THAT(record.source_info().source(), Eq(SourceInfo::ASH));
   MetricData record_data;
 
   ASSERT_TRUE(record_data.ParseFromString(record.data()));
@@ -180,8 +180,6 @@ IN_PROC_BROWSER_TEST_F(NetworkEventsBrowserTest,
       base::Value(kSignalStrength));
 
   Record record = GetNextRecord(&missive_event_observer, Priority::SLOW_BATCH);
-  ASSERT_TRUE(record.has_source_info());
-  EXPECT_THAT(record.source_info().source(), Eq(SourceInfo::ASH));
   MetricData event_record_data;
 
   ASSERT_TRUE(event_record_data.ParseFromString(record.data()));
@@ -189,8 +187,6 @@ IN_PROC_BROWSER_TEST_F(NetworkEventsBrowserTest,
               Eq(MetricEventType::WIFI_SIGNAL_STRENGTH_LOW));
 
   record = GetNextRecord(&missive_telemetry_observer, Priority::MANUAL_BATCH);
-  ASSERT_TRUE(record.has_source_info());
-  EXPECT_THAT(record.source_info().source(), Eq(SourceInfo::ASH));
   MetricData telemetry_record_data;
 
   ASSERT_TRUE(telemetry_record_data.ParseFromString(record.data()));

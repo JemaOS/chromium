@@ -7,7 +7,7 @@ exit_clean = object()
 
 
 class Step:
-    provides: ClassVar[List[str]] = []
+    provides = []  # type: ClassVar[List[str]]
 
     def __init__(self, logger):
         self.logger = logger
@@ -49,7 +49,7 @@ class Step:
 
 
 class StepRunner:
-    steps: ClassVar[List[Type[Step]]] = []
+    steps = []  # type: ClassVar[List[Type[Step]]]
 
     def __init__(self, logger, state):
         """Class that runs a specified series of Steps with a common State"""

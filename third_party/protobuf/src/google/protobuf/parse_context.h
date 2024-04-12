@@ -236,9 +236,7 @@ class PROTOBUF_EXPORT EpsCopyInputStream {
       if (aliasing_ == kOnPatch) aliasing_ = kNoDelta;
       return flat.data();
     } else {
-      if (!flat.empty()) {
-        std::memcpy(buffer_, flat.data(), flat.size());
-      }
+      std::memcpy(buffer_, flat.data(), flat.size());
       limit_ = 0;
       limit_end_ = buffer_end_ = buffer_ + flat.size();
       next_chunk_ = nullptr;

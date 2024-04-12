@@ -35,18 +35,14 @@ pub enum DeserializationTarget<'c> {
 /// Normally serde deserialization instantiates a new object, but this visitor
 /// is designed to call back into C++ for creating the deserialized objects. To
 /// achieve this we use a feature of serde called "stateful deserialization" (https://docs.serde.rs/serde/de/trait.DeserializeSeed.html).
-pub struct ValueVisitor<'c> {
-    fns: &'static Functions,
+pub struct ValueVisitor<'f, 'c> {
+    fns: &'f Functions,
     aggregate: DeserializationTarget<'c>,
     recursion_depth_check: RecursionDepthCheck,
 }
 
-impl<'c> ValueVisitor<'c> {
-    pub fn new(
-        fns: &'static Functions,
-        target: DeserializationTarget<'c>,
-        max_depth: usize,
-    ) -> Self {
+impl<'f, 'c> ValueVisitor<'f, 'c> {
+    pub fn new(fns: &'f Functions, target: DeserializationTarget<'c>, max_depth: usize) -> Self {
         Self {
             fns,
             aggregate: target,
@@ -57,7 +53,7 @@ impl<'c> ValueVisitor<'c> {
     }
 }
 
-impl<'de, 'c> Visitor<'de> for ValueVisitor<'c> {
+impl<'de, 'f, 'c> Visitor<'de> for ValueVisitor<'f, 'c> {
     // We call out to C++ to construct the deserialized type, so no output from the
     // visitor.
     type Value = ();
@@ -185,7 +181,7 @@ impl<'de, 'c> Visitor<'de> for ValueVisitor<'c> {
     }
 }
 
-impl<'de, 'c> DeserializeSeed<'de> for ValueVisitor<'c> {
+impl<'de, 'f, 'c> DeserializeSeed<'de> for ValueVisitor<'f, 'c> {
     // We call out to C++ to construct the deserialized type, so no output from
     // here.
     type Value = ();

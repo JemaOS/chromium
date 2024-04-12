@@ -6,28 +6,25 @@ import("//build/config/android/rules.gni")
 import("//build/config/python.gni")
 
 template("mustache_pass") {
-  action_foreach(target_name) {
+  action(target_name) {
     forward_variables_from(invoker, TESTONLY_AND_VISIBILITY + [ "deps" ])
-    sources = invoker.inputs
-
-    # The script reads the config file each time, so list is as a dependency.
-    inputs = []
+    sources = [ invoker.input ]
     if (defined(invoker.config_file)) {
-      inputs += [ invoker.config_file ]
+      sources += [ invoker.config_file ]
     }
     if (defined(invoker.delta_config_file)) {
-      inputs += [ invoker.delta_config_file ]
+      sources += [ invoker.delta_config_file ]
     }
 
     script = "//chrome/android/webapk/shell_apk/mustache_pass.py"
 
-    outputs = [ "${invoker.output_dir}/{{source_file_part}}" ]
+    outputs = [ invoker.output ]
 
     args = [
       "--template",
-      "{{source}}",
+      rebase_path(invoker.input, root_build_dir),
       "--output",
-      rebase_path("${invoker.output_dir}/{{source_file_part}}", root_build_dir),
+      rebase_path(invoker.output, root_build_dir),
     ]
     if (defined(invoker.config_file)) {
       args += [

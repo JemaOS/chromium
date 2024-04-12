@@ -7,8 +7,8 @@
  * voice match screen.
  */
 
-import '//resources/ash/common/cr_elements/cr_lottie/cr_lottie.js';
-import '//resources/ash/common/cr_elements/icons.html.js';
+import '//resources/cr_elements/cr_lottie/cr_lottie.js';
+import '//resources/cr_elements/icons.html.js';
 import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
 import '../components/buttons/oobe_next_button.js';
 import '../components/buttons/oobe_text_button.js';
@@ -24,7 +24,8 @@ import {announceAccessibleMessage} from '//resources/ash/common/util.js';
 import {afterNextRender, html, mixinBehaviors, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {MultiStepBehavior, MultiStepBehaviorInterface} from '../components/behaviors/multi_step_behavior.js';
-import {OobeI18nMixin} from '../components/mixins/oobe_i18n_mixin.js';
+import {OobeDialogHostBehavior} from '../components/behaviors/oobe_dialog_host_behavior.js';
+import {OobeI18nBehavior, OobeI18nBehaviorInterface} from '../components/behaviors/oobe_i18n_behavior.js';
 
 import {BrowserProxyImpl} from './browser_proxy.js';
 
@@ -51,7 +52,7 @@ const VoiceMatchUIState = {
  * @implements {MultiStepBehaviorInterface}
  */
 const AssistantVoiceMatchBase =
-    mixinBehaviors([MultiStepBehavior], OobeI18nMixin(PolymerElement));
+    mixinBehaviors([OobeI18nBehavior, MultiStepBehavior], PolymerElement);
 
 /**
  * @polymer
@@ -82,6 +83,15 @@ class AssistantVoiceMatch extends AssistantVoiceMatchBase {
       childName_: {
         type: String,
         value: '',
+      },
+
+      /**
+       * Whether the {prefers-color-scheme: dark}
+       * @private {boolean}
+       */
+      isDarkModeActive_: {
+        type: Boolean,
+        value: false,
       },
 
       /**
@@ -203,7 +213,7 @@ class AssistantVoiceMatch extends AssistantVoiceMatchBase {
    * Called when the server is ready to listening for hotword.
    */
   listenForHotword() {
-    if (this.currentIndex_ === 0) {
+    if (this.currentIndex_ == 0) {
       this.dispatchEvent(
           new CustomEvent('loaded', {bubbles: true, composed: true}));
       announceAccessibleMessage(
@@ -223,7 +233,7 @@ class AssistantVoiceMatch extends AssistantVoiceMatchBase {
     currentEntry.removeAttribute('active');
     currentEntry.setAttribute('completed', true);
     this.currentIndex_++;
-    if (this.currentIndex_ === MAX_INDEX) {
+    if (this.currentIndex_ == MAX_INDEX) {
       this.$['voice-match-entries'].hidden = true;
       this.$['later-button'].hidden = true;
       this.$['loading-animation'].hidden = false;
@@ -240,7 +250,7 @@ class AssistantVoiceMatch extends AssistantVoiceMatchBase {
         new CustomEvent('loaded', {bubbles: true, composed: true}));
     announceAccessibleMessage(
         loadTimeData.getString('assistantVoiceMatchCompleted'));
-    if (this.currentIndex_ !== MAX_INDEX) {
+    if (this.currentIndex_ != MAX_INDEX) {
       // Existing voice model found on cloud. No need to train.
       this.$['later-button'].hidden = true;
       this.setUIStep(VoiceMatchUIState.ALREADY_SETUP);
@@ -278,7 +288,7 @@ class AssistantVoiceMatch extends AssistantVoiceMatchBase {
    * Returns the text for dialog title.
    */
   getDialogTitle_(locale, uiStep, childName) {
-    if (uiStep === VoiceMatchUIState.INTRO) {
+    if (uiStep == VoiceMatchUIState.INTRO) {
       return childName ?
           this.i18n('assistantVoiceMatchTitleForChild', childName) :
           this.i18n('assistantVoiceMatchTitle');
@@ -289,14 +299,13 @@ class AssistantVoiceMatch extends AssistantVoiceMatchBase {
     } else if (uiStep === VoiceMatchUIState.COMPLETED) {
       return this.i18n('assistantVoiceMatchCompleted');
     }
-    return trustedTypes.emptyHTML;
   }
 
   /**
    * Returns the text for subtitle.
    */
   getSubtitleMessage_(locale, uiStep, childName) {
-    if (uiStep === VoiceMatchUIState.INTRO) {
+    if (uiStep == VoiceMatchUIState.INTRO) {
       return childName ? this.i18nAdvanced(
                              'assistantVoiceMatchMessageForChild',
                              {substitutions: [childName]}) :
@@ -307,12 +316,16 @@ class AssistantVoiceMatch extends AssistantVoiceMatchBase {
       return this.i18nAdvanced(
           'assistantVoiceMatchFooterForChild', {substitutions: [childName]});
     }
-    return trustedTypes.emptyHTML;
   }
 
-  getVoiceMatchAnimationUrl_(isTabletMode) {
-    return './assistant_optin/voice_' + (isTabletMode ? 'tablet' : 'laptop') +
+  getReadyImgUrl_(isDarkMode) {
+    return './assistant_optin/assistant_ready_' + (isDarkMode ? 'dm' : 'lm') +
         '.json';
+  }
+
+  getVoiceMatchAnimationUrl_(isDarkMode, isTabletMode) {
+    return './assistant_optin/voice_' + (isTabletMode ? 'tablet' : 'laptop') +
+        '_' + (isDarkMode ? 'dm' : 'lm') + '.json';
   }
 }
 

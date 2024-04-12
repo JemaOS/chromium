@@ -11,15 +11,13 @@
 #include "base/time/time.h"
 #include "chrome/browser/ash/attestation/soft_bind_attestation_flow.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chromeos/ash/components/network/network_state_handler_observer.h"
 #include "chromeos/ash/components/phonehub/public/cpp/attestation_certificate_generator.h"
 #include "chromeos/ash/services/device_sync/cryptauth_key_registry.h"
 
 namespace ash::phonehub {
 
 class AttestationCertificateGeneratorImpl
-    : public AttestationCertificateGenerator,
-      public NetworkStateHandlerObserver {
+    : public AttestationCertificateGenerator {
  public:
   AttestationCertificateGeneratorImpl(
       Profile* profile,
@@ -29,18 +27,12 @@ class AttestationCertificateGeneratorImpl
   ~AttestationCertificateGeneratorImpl() override;
 
   // AttestationCertificateGenerator:
-  void RetrieveCertificate() override;
-
-  // NetworkStateHandlerObserver:
-  void DefaultNetworkChanged(const NetworkState* network) override;
+  void RetrieveCertificate(OnCertificateRetrievedCallback callback) override;
 
  private:
   FRIEND_TEST_ALL_PREFIXES(AttestationCertificateGeneratorImplTest,
-                           RegenerateAfterExpiration);
-  FRIEND_TEST_ALL_PREFIXES(AttestationCertificateGeneratorImplTest,
                            RetrieveCertificateWithoutCache);
 
-  bool ShouldRegenerateAttestationCertificate();
   void GenerateCertificate();
   void OnAttestationCertificateGenerated(
       const std::vector<std::string>& attestation_certs,
@@ -49,11 +41,11 @@ class AttestationCertificateGeneratorImpl
   std::unique_ptr<attestation::SoftBindAttestationFlow>
       soft_bind_attestation_flow_;
   std::unique_ptr<device_sync::CryptAuthKeyRegistry> key_registry_;
-  raw_ptr<Profile, DanglingUntriaged> profile_;
-  bool is_valid_ = false;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
+  bool is_valid_;
   std::vector<std::string> attestation_certs_;
-  base::Time last_attestation_completed_time_;
-  base::Time last_attestation_attempt_from_network_change_time_;
+  base::Time last_attestation_certificate_generated_time_;
+  OnCertificateRetrievedCallback callback_;
   base::WeakPtrFactory<AttestationCertificateGeneratorImpl> weak_ptr_factory_{
       this};
 };

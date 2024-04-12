@@ -7,11 +7,10 @@
 
 #include <stdint.h>
 
-#include "base/unguessable_token.h"
+#include "base/compiler_specific.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "third_party/blink/renderer/platform/heap/cross_thread_persistent.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
-#include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/webrtc/api/packet_socket_factory.h"
 
 namespace blink {
@@ -24,16 +23,11 @@ class P2PSocketDispatcher;
 // rtc::Thread) and also has associated base::MessageLoop. Each
 // socket created by the factory must be used on the thread it was
 // created on.
-// The class needs to be destroyed on the libjingle network thread.
 class IpcPacketSocketFactory : public rtc::PacketSocketFactory {
  public:
   PLATFORM_EXPORT explicit IpcPacketSocketFactory(
-      WTF::CrossThreadFunction<
-          void(base::OnceCallback<void(std::optional<base::UnguessableToken>)>)>
-          devtools_token_getter,
       P2PSocketDispatcher* socket_dispatcher,
-      const net::NetworkTrafficAnnotationTag& traffic_annotation,
-      bool batch_udp_packets);
+      const net::NetworkTrafficAnnotationTag& traffic_annotation);
   IpcPacketSocketFactory(const IpcPacketSocketFactory&) = delete;
   IpcPacketSocketFactory& operator=(const IpcPacketSocketFactory&) = delete;
   ~IpcPacketSocketFactory() override;
@@ -53,15 +47,9 @@ class IpcPacketSocketFactory : public rtc::PacketSocketFactory {
       const rtc::ProxyInfo& proxy_info,
       const std::string& user_agent,
       const rtc::PacketSocketTcpOptions& opts) override;
-  std::unique_ptr<webrtc::AsyncDnsResolverInterface> CreateAsyncDnsResolver()
-      override;
+  rtc::AsyncResolverInterface* CreateAsyncResolver() override;
 
  private:
-  WTF::CrossThreadFunction<void(
-      base::OnceCallback<void(std::optional<base::UnguessableToken>)>)>
-      devtools_token_getter_;
-  const bool batch_udp_packets_;
-
   // `P2PSocketDispatcher` is owned by the main thread, and must be accessed in
   // a thread-safe way. `this` is indirectly owned by
   // `PeerConnectionDependencyFactory`, which holds a hard reference to the

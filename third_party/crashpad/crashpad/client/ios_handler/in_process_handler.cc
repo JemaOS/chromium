@@ -19,6 +19,7 @@
 
 #include <algorithm>
 
+#include "base/cxx17_backports.h"
 #include "base/logging.h"
 #include "client/ios_handler/in_process_intermediate_dump_handler.h"
 #include "client/prune_crash_reports.h"
@@ -468,12 +469,9 @@ InProcessHandler::ScopedReport::ScopedReport(
       num_frames_(num_frames),
       rootMap_(writer) {
   DCHECK(writer);
-  // Grab the report creation time before writing the report.
-  uint64_t report_time_nanos = ClockMonotonicNanoseconds();
   InProcessIntermediateDumpHandler::WriteHeader(writer);
   InProcessIntermediateDumpHandler::WriteProcessInfo(writer, annotations);
-  InProcessIntermediateDumpHandler::WriteSystemInfo(
-      writer, system_data, report_time_nanos);
+  InProcessIntermediateDumpHandler::WriteSystemInfo(writer, system_data);
 }
 
 InProcessHandler::ScopedReport::~ScopedReport() {

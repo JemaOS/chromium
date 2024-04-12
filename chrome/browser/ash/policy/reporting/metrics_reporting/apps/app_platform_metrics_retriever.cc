@@ -30,12 +30,12 @@ void AppPlatformMetricsRetriever::GetAppPlatformMetrics(
     std::move(callback).Run(nullptr);
     return;
   }
-  CHECK(::apps::AppServiceProxyFactory::IsAppServiceAvailableForProfile(
+  DCHECK(::apps::AppServiceProxyFactory::IsAppServiceAvailableForProfile(
       profile_.get()))
       << "App service unavailable for profile";
   auto* const app_service_proxy =
       ::apps::AppServiceProxyFactory::GetForProfile(profile_.get());
-  CHECK(app_service_proxy) << "App service proxy unavailable";
+  DCHECK(app_service_proxy) << "App service proxy unavailable";
   if (app_service_proxy->AppPlatformMetrics()) {
     // `AppPlatformMetrics` component already initialized, so we return the
     // initialized component.

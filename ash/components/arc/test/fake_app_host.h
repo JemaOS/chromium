@@ -35,8 +35,8 @@ class FakeAppHost : public mojom::AppHost {
   void OnTaskCreated(int32_t task_id,
                      const std::string& package_name,
                      const std::string& activity,
-                     const std::optional<std::string>& name,
-                     const std::optional<std::string>& intent,
+                     const absl::optional<std::string>& name,
+                     const absl::optional<std::string>& intent,
                      int32_t session_id) override;
   void OnTaskDescriptionUpdated(
       int32_t task_id,
@@ -56,17 +56,14 @@ class FakeAppHost : public mojom::AppHost {
   void OnPackageListRefreshed(
       std::vector<arc::mojom::ArcPackageInfoPtr> packages) override;
   void OnInstallationStarted(
-      const std::optional<std::string>& package_name) override;
+      const absl::optional<std::string>& package_name) override;
   void OnInstallationFinished(
       arc::mojom::InstallationResultPtr result) override;
-  void OnInstallationProgressChanged(const std::string& package_name,
-                                     float progress) override;
-  void OnInstallationActiveChanged(const std::string& package_name,
-                                   bool active) override;
 
  private:
   // The connection holder must outlive |this| object.
-  const raw_ptr<ConnectionHolder<arc::mojom::AppInstance, arc::mojom::AppHost>>
+  const raw_ptr<ConnectionHolder<arc::mojom::AppInstance, arc::mojom::AppHost>,
+                ExperimentalAsh>
       app_connection_holder_;
 };
 

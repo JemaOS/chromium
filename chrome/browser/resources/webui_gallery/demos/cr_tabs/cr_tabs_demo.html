@@ -1,4 +1,5 @@
-<style include="demo">
+<link rel="stylesheet" href="../demo.css">
+<style>
   cr-tabs,
   iron-pages {
     width: 100%;
@@ -14,8 +15,7 @@
 
 <h1>cr-tabs</h1>
 <div class="demos">
-  <cr-tabs id="tabs" tab-names="[[tabNames_]]" selected="{{selectedTabIndex_}}">
-  </cr-tabs>
+  <cr-tabs tab-names="[[tabNames_]]" selected="{{selectedTabIndex_}}"></cr-tabs>
   <iron-pages selected="[[selectedTabIndex_]]">
     <template is="dom-repeat" items="[[tabNames_]]" as="tabName">
       <div class="tab-contents">

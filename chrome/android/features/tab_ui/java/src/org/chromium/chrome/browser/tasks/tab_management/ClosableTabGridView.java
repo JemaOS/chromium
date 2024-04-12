@@ -11,16 +11,13 @@ import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import androidx.annotation.IntDef;
-import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
-import org.chromium.chrome.browser.quick_delete.QuickDeleteAnimationGradientDrawable;
 import org.chromium.chrome.tab_ui.R;
 import org.chromium.ui.widget.ViewLookupCachingFrameLayout;
 
@@ -35,14 +32,9 @@ import java.lang.ref.WeakReference;
 public class ClosableTabGridView extends ViewLookupCachingFrameLayout {
     private static final long RESTORE_ANIMATION_DURATION_MS = 50;
     private static final float ZOOM_IN_SCALE = 0.8f;
-
-    @IntDef({
-        AnimationStatus.SELECTED_CARD_ZOOM_IN,
-        AnimationStatus.SELECTED_CARD_ZOOM_OUT,
-        AnimationStatus.HOVERED_CARD_ZOOM_IN,
-        AnimationStatus.HOVERED_CARD_ZOOM_OUT,
-        AnimationStatus.CARD_RESTORE
-    })
+    @IntDef({AnimationStatus.SELECTED_CARD_ZOOM_IN, AnimationStatus.SELECTED_CARD_ZOOM_OUT,
+            AnimationStatus.HOVERED_CARD_ZOOM_IN, AnimationStatus.HOVERED_CARD_ZOOM_OUT,
+            AnimationStatus.CARD_RESTORE})
     @Retention(RetentionPolicy.SOURCE)
     public @interface AnimationStatus {
         int CARD_RESTORE = 0;
@@ -53,23 +45,8 @@ public class ClosableTabGridView extends ViewLookupCachingFrameLayout {
         int NUM_ENTRIES = 5;
     }
 
-    @IntDef({
-        QuickDeleteAnimationStatus.TAB_HIDE,
-        QuickDeleteAnimationStatus.TAB_PREPARE,
-        QuickDeleteAnimationStatus.TAB_RESTORE
-    })
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface QuickDeleteAnimationStatus {
-        int TAB_RESTORE = 0;
-        int TAB_PREPARE = 1;
-        int TAB_HIDE = 2;
-        int NUM_ENTRIES = 3;
-    }
-
     private static WeakReference<Bitmap> sCloseButtonBitmapWeakRef;
     private boolean mIsAnimating;
-    private @Nullable ObjectAnimator mQuickDeleteAnimation;
-    private @Nullable QuickDeleteAnimationGradientDrawable mQuickDeleteAnimationDrawable;
 
     /** Default XML constructor. */
     public ClosableTabGridView(Context context, AttributeSet atts) {
@@ -86,10 +63,8 @@ public class ClosableTabGridView extends ViewLookupCachingFrameLayout {
             int closeButtonSize =
                     (int) getResources().getDimension(R.dimen.tab_grid_close_button_size);
             Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.btn_close);
-            sCloseButtonBitmapWeakRef =
-                    new WeakReference<>(
-                            Bitmap.createScaledBitmap(
-                                    bitmap, closeButtonSize, closeButtonSize, true));
+            sCloseButtonBitmapWeakRef = new WeakReference<>(
+                    Bitmap.createScaledBitmap(bitmap, closeButtonSize, closeButtonSize, true));
             bitmap.recycle();
         }
         actionButton.setImageBitmap(sCloseButtonBitmapWeakRef.get());
@@ -104,17 +79,13 @@ public class ClosableTabGridView extends ViewLookupCachingFrameLayout {
 
         final View backgroundView = fastFindViewById(R.id.background_view);
         final View contentView = fastFindViewById(R.id.content_view);
-        boolean isZoomIn =
-                status == AnimationStatus.SELECTED_CARD_ZOOM_IN
-                        || status == AnimationStatus.HOVERED_CARD_ZOOM_IN;
-        boolean isHovered =
-                status == AnimationStatus.HOVERED_CARD_ZOOM_IN
-                        || status == AnimationStatus.HOVERED_CARD_ZOOM_OUT;
+        boolean isZoomIn = status == AnimationStatus.SELECTED_CARD_ZOOM_IN
+                || status == AnimationStatus.HOVERED_CARD_ZOOM_IN;
+        boolean isHovered = status == AnimationStatus.HOVERED_CARD_ZOOM_IN
+                || status == AnimationStatus.HOVERED_CARD_ZOOM_OUT;
         boolean isRestore = status == AnimationStatus.CARD_RESTORE;
-        long duration =
-                isRestore
-                        ? RESTORE_ANIMATION_DURATION_MS
-                        : TabListRecyclerView.BASE_ANIMATION_DURATION_MS;
+        long duration = isRestore ? RESTORE_ANIMATION_DURATION_MS
+                                  : TabListRecyclerView.BASE_ANIMATION_DURATION_MS;
         float scale = isZoomIn ? ZOOM_IN_SCALE : 1f;
         View animateView = isHovered ? contentView : this;
 
@@ -123,16 +94,15 @@ public class ClosableTabGridView extends ViewLookupCachingFrameLayout {
         }
 
         AnimatorSet scaleAnimator = new AnimatorSet();
-        scaleAnimator.addListener(
-                new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        if (!isZoomIn) {
-                            backgroundView.setVisibility(View.GONE);
-                        }
-                        mIsAnimating = false;
-                    }
-                });
+        scaleAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (!isZoomIn) {
+                    backgroundView.setVisibility(View.GONE);
+                }
+                mIsAnimating = false;
+            }
+        });
 
         ObjectAnimator scaleX = ObjectAnimator.ofFloat(animateView, View.SCALE_X, scale);
         ObjectAnimator scaleY = ObjectAnimator.ofFloat(animateView, View.SCALE_Y, scale);
@@ -143,41 +113,7 @@ public class ClosableTabGridView extends ViewLookupCachingFrameLayout {
         scaleAnimator.start();
     }
 
-    void hideTabGridCardViewForQuickDelete(@QuickDeleteAnimationStatus int status) {
-        assert status < QuickDeleteAnimationStatus.NUM_ENTRIES;
-
-        final ViewGroup contentView = (ViewGroup) fastFindViewById(R.id.content_view);
-        if (contentView == null) return;
-
-        if (status == QuickDeleteAnimationStatus.TAB_HIDE) {
-            assert mQuickDeleteAnimation != null && mQuickDeleteAnimationDrawable != null;
-
-            contentView.setForeground(mQuickDeleteAnimationDrawable);
-            mQuickDeleteAnimation.start();
-        } else if (status == QuickDeleteAnimationStatus.TAB_PREPARE) {
-            Drawable originalForeground = contentView.getForeground();
-            int tabHeight = contentView.getHeight();
-            mQuickDeleteAnimationDrawable =
-                    QuickDeleteAnimationGradientDrawable.createQuickDeleteFadeAnimationDrawable(
-                            getContext(), tabHeight);
-            mQuickDeleteAnimation = mQuickDeleteAnimationDrawable.createFadeAnimator(tabHeight);
-
-            mQuickDeleteAnimation.addListener(
-                    new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
-                            contentView.setVisibility(GONE);
-                            contentView.setForeground(originalForeground);
-                        }
-                    });
-        } else if (status == QuickDeleteAnimationStatus.TAB_RESTORE) {
-            // Reset to original values to allow the tab to be recycled correctly.
-            mQuickDeleteAnimation = null;
-            mQuickDeleteAnimationDrawable = null;
-            contentView.setVisibility(VISIBLE);
-        }
-    }
-
+    @VisibleForTesting
     boolean getIsAnimatingForTesting() {
         return mIsAnimating;
     }

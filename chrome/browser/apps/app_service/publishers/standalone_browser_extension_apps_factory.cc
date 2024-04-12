@@ -25,9 +25,7 @@ StandaloneBrowserExtensionAppsFactoryForApp::GetForProfile(Profile* profile) {
 // static
 StandaloneBrowserExtensionAppsFactoryForApp*
 StandaloneBrowserExtensionAppsFactoryForApp::GetInstance() {
-  static base::NoDestructor<StandaloneBrowserExtensionAppsFactoryForApp>
-      instance;
-  return instance.get();
+  return base::Singleton<StandaloneBrowserExtensionAppsFactoryForApp>::get();
 }
 
 // static
@@ -48,10 +46,10 @@ StandaloneBrowserExtensionAppsFactoryForApp::
   DependsOn(AppServiceProxyFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService> StandaloneBrowserExtensionAppsFactoryForApp::
-    BuildServiceInstanceForBrowserContext(
-        content::BrowserContext* context) const {
-  return std::make_unique<StandaloneBrowserExtensionApps>(
+KeyedService*
+StandaloneBrowserExtensionAppsFactoryForApp::BuildServiceInstanceFor(
+    content::BrowserContext* context) const {
+  return new StandaloneBrowserExtensionApps(
       AppServiceProxyFactory::GetForProfile(
           Profile::FromBrowserContext(context)),
       AppType::kStandaloneBrowserChromeApp);
@@ -71,9 +69,8 @@ StandaloneBrowserExtensionAppsFactoryForExtension::GetForProfile(
 // static
 StandaloneBrowserExtensionAppsFactoryForExtension*
 StandaloneBrowserExtensionAppsFactoryForExtension::GetInstance() {
-  static base::NoDestructor<StandaloneBrowserExtensionAppsFactoryForExtension>
-      instance;
-  return instance.get();
+  return base::Singleton<
+      StandaloneBrowserExtensionAppsFactoryForExtension>::get();
 }
 
 // static

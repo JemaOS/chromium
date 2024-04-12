@@ -6,8 +6,7 @@ import './strings.m.js';
 
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 
-import type {PageHandlerInterface} from './access_code_cast.mojom-webui.js';
-import {PageCallbackRouter, PageHandlerFactory, PageHandlerRemote} from './access_code_cast.mojom-webui.js';
+import {PageCallbackRouter, PageHandlerFactory, PageHandlerInterface, PageHandlerRemote} from './access_code_cast.mojom-webui.js';
 
 declare const chrome: {
   send(message: string, params?: any[]): void,

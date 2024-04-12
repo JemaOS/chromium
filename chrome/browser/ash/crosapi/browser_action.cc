@@ -4,172 +4,106 @@
 
 #include "chrome/browser/ash/crosapi/browser_action.h"
 
-#include <optional>
-#include <string_view>
-
-#include "base/memory/weak_ptr.h"
 #include "chrome/browser/ash/app_restore/full_restore_service.h"
 #include "chrome/browser/ash/crosapi/crosapi_ash.h"
 #include "chrome/browser/ash/crosapi/crosapi_manager.h"
 #include "chrome/browser/ash/crosapi/desk_template_ash.h"
-#include "chrome/browser/ash/floating_workspace/floating_workspace_util.h"
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
 #include "chrome/browser/profiles/profile_manager.h"
-#include "chromeos/components/kiosk/kiosk_utils.h"
+#include "chrome/browser/profiles/profiles_state.h"
 #include "components/user_manager/user_manager.h"
 
 namespace crosapi {
-
-void BrowserAction::Cancel(crosapi::mojom::CreationResult reason) {
-  DCHECK_NE(reason, mojom::CreationResult::kSuccess);
-}
-
-void BrowserAction::OnPerformed(BrowserManagerCallback on_performed,
-                                mojom::CreationResult result) {
-  const bool retry = result == mojom::CreationResult::kBrowserShutdown;
-  std::move(on_performed).Run(retry);
-}
 
 // No-op action, used to start the browser without opening a window.
 class NoOpAction final : public BrowserAction {
  public:
   NoOpAction() : BrowserAction(true) {}
-
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {}
+  void Perform(const VersionedBrowserService& service) override {}
 };
 
 class NewWindowAction final : public BrowserAction {
  public:
   NewWindowAction(bool incognito,
                   bool should_trigger_session_restore,
-                  int64_t target_display_id,
-                  std::optional<uint64_t> profile_id = std::nullopt)
+                  int64_t target_display_id)
       : BrowserAction(true),
         incognito_(incognito),
         should_trigger_session_restore_(should_trigger_session_restore),
-        target_display_id_(target_display_id),
-        profile_id_(profile_id),
-        weak_ptr_factory_(this) {}
+        target_display_id_(target_display_id) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
+  void Perform(const VersionedBrowserService& service) override {
     if (incognito_) {
       Profile* profile = ProfileManager::GetPrimaryUserProfile();
       if (!profile || !IncognitoModePrefs::IsIncognitoAllowed(profile))
         return;
     }
     service.service->NewWindow(incognito_, should_trigger_session_restore_,
-                               target_display_id_, profile_id_,
-                               base::BindOnce(&NewWindowAction::OnPerformed,
-                                              weak_ptr_factory_.GetWeakPtr(),
-                                              std::move(on_performed)));
+                               target_display_id_, base::DoNothing());
   }
 
  private:
   const bool incognito_;
   const bool should_trigger_session_restore_;
   const int64_t target_display_id_;
-  const std::optional<uint64_t> profile_id_;
-  base::WeakPtrFactory<NewWindowAction> weak_ptr_factory_;
 };
 
 class NewWindowForDetachingTabAction final : public BrowserAction {
  public:
-  NewWindowForDetachingTabAction(std::u16string_view tab_id_str,
-                                 std::u16string_view group_id_str,
+  NewWindowForDetachingTabAction(base::StringPiece16 tab_id_str,
+                                 base::StringPiece16 group_id_str,
                                  NewWindowForDetachingTabCallback callback)
       : BrowserAction(false),
         tab_id_str_(tab_id_str),
         group_id_str_(group_id_str),
-        callback_(std::move(callback)),
-        weak_ptr_factory_(this) {}
+        callback_(std::move(callback)) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
+  void Perform(const VersionedBrowserService& service) override {
     if (service.interface_version <
         mojom::BrowserService::kNewWindowForDetachingTabMinVersion) {
       Cancel(crosapi::mojom::CreationResult::kUnsupported);
       return;
     }
-
-    service.service->NewWindowForDetachingTab(
-        tab_id_str_, group_id_str_,
-        base::BindOnce(&NewWindowForDetachingTabAction::OnPerformed,
-                       weak_ptr_factory_.GetWeakPtr(),
-                       std::move(on_performed)));
+    service.service->NewWindowForDetachingTab(tab_id_str_, group_id_str_,
+                                              std::move(callback_));
   }
 
   void Cancel(crosapi::mojom::CreationResult reason) override {
-    DCHECK_NE(reason, mojom::CreationResult::kSuccess);
-    std::move(callback_).Run(reason, {});
+    std::move(callback_).Run(reason, std::string() /*new_window*/);
   }
 
  private:
   const std::u16string tab_id_str_;
   const std::u16string group_id_str_;
   NewWindowForDetachingTabCallback callback_;
-  base::WeakPtrFactory<NewWindowForDetachingTabAction> weak_ptr_factory_;
-
-  void OnPerformed(BrowserManagerCallback on_performed,
-                   mojom::CreationResult result,
-                   const std::string& new_window) {
-    const bool retry = result == mojom::CreationResult::kBrowserShutdown;
-    if (!retry) {
-      std::move(callback_).Run(result, new_window);
-    }
-    std::move(on_performed).Run(retry);
-  }
 };
 
 class NewTabAction final : public BrowserAction {
  public:
-  explicit NewTabAction(std::optional<uint64_t> profile_id = std::nullopt)
-      : BrowserAction(true), profile_id_(profile_id), weak_ptr_factory_(this) {}
+  NewTabAction() : BrowserAction(true) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
-    service.service->NewTab(profile_id_,
-                            base::BindOnce(&NewTabAction::OnPerformed,
-                                           weak_ptr_factory_.GetWeakPtr(),
-                                           std::move(on_performed)));
+  void Perform(const VersionedBrowserService& service) override {
+    service.service->NewTab(base::DoNothing());
   }
-
- private:
-  std::optional<uint64_t> profile_id_;
-  base::WeakPtrFactory<NewTabAction> weak_ptr_factory_;
 };
 
 class LaunchAction final : public BrowserAction {
  public:
-  explicit LaunchAction(int64_t target_display_id,
-                        std::optional<uint64_t> profile_id = std::nullopt)
-      : BrowserAction(true),
-        target_display_id_(target_display_id),
-        profile_id_(profile_id),
-        weak_ptr_factory_(this) {}
+  explicit LaunchAction(int64_t target_display_id)
+      : BrowserAction(true), target_display_id_(target_display_id) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
+  void Perform(const VersionedBrowserService& service) override {
     if (service.interface_version < mojom::BrowserService::kLaunchMinVersion) {
       LOG(WARNING)
           << "Lacros too old for Launch action - falling back to NewTab";
-      service.service->NewTab(std::nullopt,
-                              base::BindOnce(&LaunchAction::OnPerformed,
-                                             weak_ptr_factory_.GetWeakPtr(),
-                                             std::move(on_performed)));
+      service.service->NewTab(base::DoNothing());
       return;
     }
-    service.service->Launch(target_display_id_, profile_id_,
-                            base::BindOnce(&LaunchAction::OnPerformed,
-                                           weak_ptr_factory_.GetWeakPtr(),
-                                           std::move(on_performed)));
+    service.service->Launch(target_display_id_, base::DoNothing());
   }
 
  private:
   int64_t target_display_id_;
-  std::optional<uint64_t> profile_id_;
-  base::WeakPtrFactory<LaunchAction> weak_ptr_factory_;
 };
 
 namespace {
@@ -195,11 +129,9 @@ class OpenUrlAction final : public BrowserAction {
         url_(url),
         disposition_(disposition),
         from_(from),
-        path_behavior_(path_behavior),
-        weak_ptr_factory_(this) {}
+        path_behavior_(path_behavior) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
+  void Perform(const VersionedBrowserService& service) override {
     if (service.interface_version < mojom::BrowserService::kOpenUrlMinVersion) {
       LOG(ERROR) << "BrowserService does not support OpenUrl";
       return;
@@ -208,10 +140,7 @@ class OpenUrlAction final : public BrowserAction {
     params->disposition = disposition_;
     params->from = from_;
     params->path_behavior = ConvertPathBehavior(path_behavior_);
-    service.service->OpenUrl(url_, std::move(params),
-                             base::BindOnce(&OpenUrlAction::OnPerformed,
-                                            weak_ptr_factory_.GetWeakPtr(),
-                                            std::move(on_performed)));
+    service.service->OpenUrl(url_, std::move(params), base::DoNothing());
   }
 
  private:
@@ -219,54 +148,23 @@ class OpenUrlAction final : public BrowserAction {
   const crosapi::mojom::OpenUrlParams::WindowOpenDisposition disposition_;
   const crosapi::mojom::OpenUrlFrom from_;
   const NavigateParams::PathBehavior path_behavior_;
-  base::WeakPtrFactory<OpenUrlAction> weak_ptr_factory_;
-};
-
-class OpenCaptivePortalSigninAction final : public BrowserAction {
- public:
-  explicit OpenCaptivePortalSigninAction(const GURL& url)
-      : BrowserAction(true), url_(url), weak_ptr_factory_(this) {}
-
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
-    if (service.interface_version <
-        mojom::BrowserService::kOpenCaptivePortalSigninMinVersion) {
-      LOG(ERROR) << "BrowserService does not support OpenCaptivePortalSignin";
-      return;
-    }
-    service.service->OpenCaptivePortalSignin(
-        url_, base::BindOnce(&OpenCaptivePortalSigninAction::OnPerformed,
-                             weak_ptr_factory_.GetWeakPtr(),
-                             std::move(on_performed)));
-  }
-
- private:
-  const GURL url_;
-  base::WeakPtrFactory<OpenCaptivePortalSigninAction> weak_ptr_factory_;
 };
 
 class NewGuestWindowAction final : public BrowserAction {
  public:
   explicit NewGuestWindowAction(int64_t target_display_id)
-      : BrowserAction(true),
-        target_display_id_(target_display_id),
-        weak_ptr_factory_(this) {}
+      : BrowserAction(true), target_display_id_(target_display_id) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
+  void Perform(const VersionedBrowserService& service) override {
     if (service.interface_version <
         crosapi::mojom::BrowserService::kNewGuestWindowMinVersion) {
       return;
     }
-    service.service->NewGuestWindow(
-        target_display_id_, base::BindOnce(&NewGuestWindowAction::OnPerformed,
-                                           weak_ptr_factory_.GetWeakPtr(),
-                                           std::move(on_performed)));
+    service.service->NewGuestWindow(target_display_id_, base::DoNothing());
   }
 
  private:
   const int64_t target_display_id_;
-  base::WeakPtrFactory<NewGuestWindowAction> weak_ptr_factory_;
 };
 
 class HandleTabScrubbingAction final : public BrowserAction {
@@ -276,8 +174,7 @@ class HandleTabScrubbingAction final : public BrowserAction {
         x_offset_(x_offset),
         is_fling_scroll_event_(is_fling_scroll_event) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
+  void Perform(const VersionedBrowserService& service) override {
     if (service.interface_version <
         crosapi::mojom::BrowserService::kHandleTabScrubbingMinVersion) {
       return;
@@ -298,25 +195,19 @@ class NewFullscreenWindowAction final : public BrowserAction {
       : BrowserAction(true),
         url_(url),
         target_display_id_(target_display_id),
-        callback_(std::move(callback)),
-        weak_ptr_factory_(this) {}
+        callback_(std::move(callback)) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
+  void Perform(const VersionedBrowserService& service) override {
     if (service.interface_version <
         crosapi::mojom::BrowserService::kNewFullscreenWindowMinVersion) {
       Cancel(crosapi::mojom::CreationResult::kUnsupported);
       return;
     }
-    service.service->NewFullscreenWindow(
-        url_, target_display_id_,
-        base::BindOnce(&NewFullscreenWindowAction::OnPerformed,
-                       weak_ptr_factory_.GetWeakPtr(),
-                       std::move(on_performed)));
+    service.service->NewFullscreenWindow(url_, target_display_id_,
+                                         std::move(callback_));
   }
 
   void Cancel(crosapi::mojom::CreationResult reason) override {
-    DCHECK_NE(reason, mojom::CreationResult::kSuccess);
     std::move(callback_).Run(reason);
   }
 
@@ -324,31 +215,15 @@ class NewFullscreenWindowAction final : public BrowserAction {
   const GURL url_;
   const int64_t target_display_id_;
   NewFullscreenWindowCallback callback_;
-  base::WeakPtrFactory<NewFullscreenWindowAction> weak_ptr_factory_;
-
-  void OnPerformed(BrowserManagerCallback on_performed,
-                   mojom::CreationResult result) {
-    const bool retry = result == mojom::CreationResult::kBrowserShutdown;
-    if (!retry) {
-      std::move(callback_).Run(result);
-    }
-    std::move(on_performed).Run(retry);
-  }
 };
 
 class RestoreTabAction final : public BrowserAction {
  public:
-  RestoreTabAction() : BrowserAction(true), weak_ptr_factory_(this) {}
+  RestoreTabAction() : BrowserAction(true) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
-    service.service->RestoreTab(base::BindOnce(&RestoreTabAction::OnPerformed,
-                                               weak_ptr_factory_.GetWeakPtr(),
-                                               std::move(on_performed)));
+  void Perform(const VersionedBrowserService& service) override {
+    service.service->RestoreTab(base::DoNothing());
   }
-
- private:
-  base::WeakPtrFactory<RestoreTabAction> weak_ptr_factory_;
 };
 
 class OpenForFullRestoreAction final : public BrowserAction {
@@ -356,14 +231,35 @@ class OpenForFullRestoreAction final : public BrowserAction {
   explicit OpenForFullRestoreAction(bool skip_crash_restore)
       : BrowserAction(true), skip_crash_restore_(skip_crash_restore) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
+  void Perform(const VersionedBrowserService& service) override {
     service.service->OpenForFullRestore(skip_crash_restore_);
   }
 
  private:
   const bool skip_crash_restore_;
 };
+
+namespace {
+ui::mojom::WindowShowState ConvertWindowShowState(ui::WindowShowState state) {
+  switch (state) {
+    case ui::SHOW_STATE_DEFAULT:
+      return ui::mojom::WindowShowState::SHOW_STATE_DEFAULT;
+    case ui::SHOW_STATE_NORMAL:
+      return ui::mojom::WindowShowState::SHOW_STATE_NORMAL;
+    case ui::SHOW_STATE_MINIMIZED:
+      return ui::mojom::WindowShowState::SHOW_STATE_MINIMIZED;
+    case ui::SHOW_STATE_MAXIMIZED:
+      return ui::mojom::WindowShowState::SHOW_STATE_MAXIMIZED;
+    case ui::SHOW_STATE_INACTIVE:
+      return ui::mojom::WindowShowState::SHOW_STATE_INACTIVE;
+    case ui::SHOW_STATE_FULLSCREEN:
+      return ui::mojom::WindowShowState::SHOW_STATE_FULLSCREEN;
+    case ui::SHOW_STATE_END:
+      NOTREACHED();
+      return ui::mojom::WindowShowState::SHOW_STATE_DEFAULT;
+  }
+}
+}  // namespace
 
 class CreateBrowserWithRestoredDataAction final : public BrowserAction {
  public:
@@ -374,9 +270,8 @@ class CreateBrowserWithRestoredDataAction final : public BrowserAction {
       ui::WindowShowState show_state,
       int32_t active_tab_index,
       int32_t first_non_pinned_tab_index,
-      std::string_view app_name,
-      int32_t restore_window_id,
-      uint64_t lacros_profile_id)
+      base::StringPiece app_name,
+      int32_t restore_window_id)
       : BrowserAction(true),
         urls_(urls),
         bounds_(bounds),
@@ -385,19 +280,18 @@ class CreateBrowserWithRestoredDataAction final : public BrowserAction {
         active_tab_index_(active_tab_index),
         first_non_pinned_tab_index_(first_non_pinned_tab_index),
         app_name_(app_name),
-        restore_window_id_(restore_window_id),
-        lacros_profile_id_(lacros_profile_id) {}
+        restore_window_id_(restore_window_id) {}
 
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
+  void Perform(const VersionedBrowserService& service) override {
     crosapi::mojom::DeskTemplateStatePtr additional_state =
         crosapi::mojom::DeskTemplateState::New(
             urls_, active_tab_index_, app_name_, restore_window_id_,
-            first_non_pinned_tab_index_, tab_group_infos_, lacros_profile_id_);
+            first_non_pinned_tab_index_, tab_group_infos_);
     crosapi::CrosapiManager::Get()
         ->crosapi_ash()
         ->desk_template_ash()
-        ->CreateBrowserWithRestoredData(bounds_, show_state_,
+        ->CreateBrowserWithRestoredData(bounds_,
+                                        ConvertWindowShowState(show_state_),
                                         std::move(additional_state));
   }
 
@@ -410,46 +304,32 @@ class CreateBrowserWithRestoredDataAction final : public BrowserAction {
   const int32_t first_non_pinned_tab_index_;
   const std::string app_name_;
   const int32_t restore_window_id_;
-  const uint64_t lacros_profile_id_;
-};
-
-class OpenProfileManagerAction final : public BrowserAction {
- public:
-  OpenProfileManagerAction() : BrowserAction(true) {}
-
-  void Perform(const VersionedBrowserService& service,
-               BrowserManagerCallback on_performed) override {
-    service.service->OpenProfileManager();
-  }
 };
 
 // static
 std::unique_ptr<BrowserAction> BrowserAction::NewWindow(
     bool incognito,
     bool should_trigger_session_restore,
-    int64_t target_display_id,
-    std::optional<uint64_t> profile_id) {
+    int64_t target_display_id) {
   return std::make_unique<NewWindowAction>(
-      incognito, should_trigger_session_restore, target_display_id, profile_id);
+      incognito, should_trigger_session_restore, target_display_id);
 }
 
 // static
-std::unique_ptr<BrowserAction> BrowserAction::NewTab(
-    std::optional<uint64_t> profile_id) {
-  return std::make_unique<NewTabAction>(profile_id);
+std::unique_ptr<BrowserAction> BrowserAction::NewTab() {
+  return std::make_unique<NewTabAction>();
 }
 
 // static
 std::unique_ptr<BrowserAction> BrowserAction::Launch(
-    int64_t target_display_id,
-    std::optional<uint64_t> profile_id) {
-  return std::make_unique<LaunchAction>(target_display_id, profile_id);
+    int64_t target_display_id) {
+  return std::make_unique<LaunchAction>(target_display_id);
 }
 
 // static
 std::unique_ptr<BrowserAction> BrowserAction::NewWindowForDetachingTab(
-    std::u16string_view tab_id_str,
-    std::u16string_view group_id_str,
+    base::StringPiece16 tab_id_str,
+    base::StringPiece16 group_id_str,
     NewWindowForDetachingTabCallback callback) {
   return std::make_unique<NewWindowForDetachingTabAction>(
       tab_id_str, group_id_str, std::move(callback));
@@ -480,12 +360,6 @@ std::unique_ptr<BrowserAction> BrowserAction::OpenUrl(
 }
 
 // static
-std::unique_ptr<BrowserAction> BrowserAction::OpenCaptivePortalSignin(
-    const GURL& url) {
-  return std::make_unique<OpenCaptivePortalSigninAction>(url);
-}
-
-// static
 std::unique_ptr<BrowserAction> BrowserAction::OpenForFullRestore(
     bool skip_crash_restore) {
   return std::make_unique<OpenForFullRestoreAction>(skip_crash_restore);
@@ -512,32 +386,23 @@ std::unique_ptr<BrowserAction> BrowserAction::CreateBrowserWithRestoredData(
     ui::WindowShowState show_state,
     int32_t active_tab_index,
     int32_t first_non_pinned_tab_index,
-    std::string_view app_name,
-    int32_t restore_window_id,
-    uint64_t lacros_profile_id) {
+    base::StringPiece app_name,
+    int32_t restore_window_id) {
   return std::make_unique<CreateBrowserWithRestoredDataAction>(
       urls, bounds, tab_groups, show_state, active_tab_index,
-      first_non_pinned_tab_index, app_name, restore_window_id,
-      lacros_profile_id);
-}
-
-// static
-std::unique_ptr<BrowserAction> BrowserAction::OpenProfileManager() {
-  return std::make_unique<OpenProfileManagerAction>();
+      first_non_pinned_tab_index, app_name, restore_window_id);
 }
 
 // No window will be opened in the following circumstances:
-// 1. Lacros-chrome is initialized in the Kiosk session.
+// 1. Lacros-chrome is initialized in the Kiosk session
 // 2. Full restore is responsible for restoring/launching Lacros.
-// 3. Floating Workspace Service is responsible for restoring/launching lacros.
 // static
 std::unique_ptr<BrowserAction> BrowserAction::GetActionForSessionStart() {
   if (user_manager::UserManager::Get()->IsLoggedInAsGuest()) {
     return std::make_unique<NewWindowAction>(
         /*incognito=*/false, /*should_trigger_session_restore=*/false, -1);
   }
-  if (chromeos::IsKioskSession() ||
-      ash::floating_workspace_util::ShouldHandleRestartRestore() ||
+  if (profiles::IsKioskSession() ||
       ash::full_restore::MaybeCreateFullRestoreServiceForLacros()) {
     return std::make_unique<NoOpAction>();
   }
@@ -545,5 +410,37 @@ std::unique_ptr<BrowserAction> BrowserAction::GetActionForSessionStart() {
       /*incognito=*/false, /*should_trigger_session_restore=*/true, -1);
 }
 
+BrowserActionQueue::BrowserActionQueue() = default;
+BrowserActionQueue::~BrowserActionQueue() = default;
+
+bool BrowserActionQueue::IsEmpty() const {
+  return actions_.empty();
+}
+
+void BrowserActionQueue::PushOrCancel(std::unique_ptr<BrowserAction> action) {
+  if (action->IsQueueable()) {
+    actions_.push(std::move(action));
+  } else {
+    action->Cancel(mojom::CreationResult::kBrowserNotRunning);
+  }
+}
+
+void BrowserActionQueue::Push(std::unique_ptr<BrowserAction> action) {
+  DCHECK(action->IsQueueable());
+  actions_.push(std::move(action));
+}
+
+std::unique_ptr<BrowserAction> BrowserActionQueue::Pop() {
+  DCHECK(!IsEmpty());
+  std::unique_ptr<BrowserAction> action = std::move(actions_.front());
+  actions_.pop();
+  return action;
+}
+
+void BrowserActionQueue::Clear() {
+  base::queue<std::unique_ptr<BrowserAction>> empty;
+  actions_.swap(empty);
+  DCHECK(IsEmpty());
+}
 
 }  // namespace crosapi

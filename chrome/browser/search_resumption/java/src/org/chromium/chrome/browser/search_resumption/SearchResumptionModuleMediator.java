@@ -13,8 +13,9 @@ import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteController;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteController.OnSuggestionsReceivedListener;
+import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteControllerProvider;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.search_resumption.SearchResumptionModuleUtils.ModuleNotShownReason;
@@ -22,30 +23,31 @@ import org.chromium.chrome.browser.search_resumption.SearchResumptionUserData.Su
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.SigninManager;
 import org.chromium.chrome.browser.signin.services.SigninManager.SignInStateObserver;
-import org.chromium.chrome.browser.sync.SyncServiceFactory;
+import org.chromium.chrome.browser.sync.SyncService;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
 import org.chromium.components.omnibox.AutocompleteMatch;
 import org.chromium.components.omnibox.AutocompleteResult;
 import org.chromium.components.search_engines.TemplateUrlService;
-import org.chromium.components.sync.SyncService;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 import org.chromium.url.GURL;
 
 import java.util.List;
 
-/** This class holds querying search suggestions related business logic. */
-public class SearchResumptionModuleMediator
-        implements OnSuggestionsReceivedListener,
-                SignInStateObserver,
-                SyncService.SyncStateChangedListener {
+/**
+ * This class holds querying search suggestions related business logic.
+ */
+public class SearchResumptionModuleMediator implements OnSuggestionsReceivedListener,
+                                                       SignInStateObserver,
+                                                       SyncService.SyncStateChangedListener {
     private final ViewStub mStub;
     private final Tab mTabToTrackSuggestion;
     private final Tab mCurrentTab;
     private final SearchResumptionTileBuilder mTileBuilder;
     private final SigninManager mSignInManager;
     private final SyncService mSyncService;
+    private final AutocompleteControllerProvider mAutocompleteProvider;
     private final TemplateUrlService mTemplateUrlService;
     private AutocompleteController mAutoComplete;
     private PropertyModel mModel;
@@ -59,22 +61,18 @@ public class SearchResumptionModuleMediator
     private @Nullable SearchResumptionModuleView mModuleLayoutView;
     private @Nullable SearchResumptionModuleBridge mSearchResumptionModuleBridge;
 
-    SearchResumptionModuleMediator(
-            ViewStub moduleStub,
-            Tab tabToTrack,
-            Tab currentTab,
-            Profile profile,
-            SearchResumptionTileBuilder tileBuilder,
+    SearchResumptionModuleMediator(ViewStub moduleStub,
+            AutocompleteControllerProvider autocompleteProvider, Tab tabToTrack, Tab currentTab,
+            Profile profile, SearchResumptionTileBuilder tileBuilder,
             SuggestionResult cachedSuggestions) {
         mStub = moduleStub;
         mTabToTrackSuggestion = tabToTrack;
         mCurrentTab = currentTab;
         mTileBuilder = tileBuilder;
-        mUseNewServiceEnabled =
-                ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
-                        ChromeFeatureList.SEARCH_RESUMPTION_MODULE_ANDROID,
-                        SearchResumptionModuleUtils.USE_NEW_SERVICE_PARAM,
-                        false);
+        mUseNewServiceEnabled = ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
+                ChromeFeatureList.SEARCH_RESUMPTION_MODULE_ANDROID,
+                SearchResumptionModuleUtils.USE_NEW_SERVICE_PARAM, false);
+        mAutocompleteProvider = autocompleteProvider;
         mTemplateUrlService = TemplateUrlServiceFactory.getForProfile(profile);
         mTemplateUrlService.addObserver(this::onTemplateURLServiceChanged);
 
@@ -85,7 +83,7 @@ public class SearchResumptionModuleMediator
         }
         mSignInManager = IdentityServicesProvider.get().getSigninManager(profile);
         mSignInManager.addSignInStateObserver(this);
-        mSyncService = SyncServiceFactory.getForProfile(profile);
+        mSyncService = SyncService.get();
         mSyncService.addSyncStateChangedListener(this);
     }
 
@@ -101,10 +99,12 @@ public class SearchResumptionModuleMediator
         }
 
         showSearchSuggestionModule(
-                autocompleteResult.getSuggestionsList(), /* useCachedResults= */ false);
+                autocompleteResult.getSuggestionsList(), false /* useCachedResults */);
     }
 
-    /** SyncService.SyncStateChangedListener implementation, listens to sync state changes. */
+    /**
+     * SyncService.SyncStateChangedListener implementation, listens to sync state changes.
+     */
     @Override
     public void syncStateChanged() {
         mHasKeepEverythingSynced = mSyncService.hasKeepEverythingSynced();
@@ -137,7 +137,7 @@ public class SearchResumptionModuleMediator
             return;
         }
 
-        showSearchSuggestionModule(suggestionTexts, suggestionUrls, /* useCachedResults= */ false);
+        showSearchSuggestionModule(suggestionTexts, suggestionUrls, false /* useCachedResults */);
     }
 
     /**
@@ -148,29 +148,27 @@ public class SearchResumptionModuleMediator
             List<AutocompleteMatch> autocompleteMatches, boolean useCachedResults) {
         if (!initializeModule()) return;
 
-        mTileBuilder.buildSuggestionTile(
-                autocompleteMatches,
+        mTileBuilder.buildSuggestionTile(autocompleteMatches,
                 mModuleLayoutView.findViewById(R.id.search_resumption_module_tiles_container));
         SearchResumptionModuleUtils.recordModuleShown(useCachedResults);
         if (!useCachedResults) {
-            SearchResumptionUserData.getInstance()
-                    .cacheSuggestions(
-                            mCurrentTab, mTabToTrackSuggestion.getUrl(), autocompleteMatches);
+            SearchResumptionUserData.getInstance().cacheSuggestions(
+                    mCurrentTab, mTabToTrackSuggestion.getUrl(), autocompleteMatches);
         }
     }
 
-    /** Inflates the search_resumption_layout and shows the suggestions on the module. */
+    /**
+     * Inflates the search_resumption_layout and shows the suggestions on the module.
+     */
     void showSearchSuggestionModule(String[] texts, GURL[] urls, boolean useCachedResults) {
         if (!initializeModule()) return;
 
-        mTileBuilder.buildSuggestionTile(
-                texts,
-                urls,
+        mTileBuilder.buildSuggestionTile(texts, urls,
                 mModuleLayoutView.findViewById(R.id.search_resumption_module_tiles_container));
         SearchResumptionModuleUtils.recordModuleShown(useCachedResults);
         if (!useCachedResults) {
-            SearchResumptionUserData.getInstance()
-                    .cacheSuggestions(mCurrentTab, mTabToTrackSuggestion.getUrl(), texts, urls);
+            SearchResumptionUserData.getInstance().cacheSuggestions(
+                    mCurrentTab, mTabToTrackSuggestion.getUrl(), texts, urls);
         }
     }
 
@@ -189,17 +187,16 @@ public class SearchResumptionModuleMediator
         mSyncService.removeSyncStateChangedListener(this);
     }
 
-    /** Starts the querying the search suggestions based on the Tab to track. */
+    /**
+     * Starts the querying the search suggestions based on the Tab to track.
+     */
     private void start(Profile profile) {
         if (!mUseNewServiceEnabled) {
-            mAutoComplete = AutocompleteController.getForProfile(profile);
+            mAutoComplete = mAutocompleteProvider.get(profile);
             mAutoComplete.addOnSuggestionsReceivedListener(this);
             int pageClassification = getPageClassification();
-            mAutoComplete.startZeroSuggest(
-                    "",
-                    mTabToTrackSuggestion.getUrl(),
-                    pageClassification,
-                    mTabToTrackSuggestion.getTitle());
+            mAutoComplete.startZeroSuggest("", mTabToTrackSuggestion.getUrl().getSpec(),
+                    pageClassification, mTabToTrackSuggestion.getTitle());
         } else {
             mSearchResumptionModuleBridge = new SearchResumptionModuleBridge(profile);
             mSearchResumptionModuleBridge.fetchSuggestions(
@@ -209,13 +206,11 @@ public class SearchResumptionModuleMediator
 
     private void showCachedSuggestions(SuggestionResult cachedSuggestions) {
         if (mUseNewServiceEnabled) {
-            showSearchSuggestionModule(
-                    cachedSuggestions.getSuggestionTexts(),
-                    cachedSuggestions.getSuggestionUrls(),
-                    /* useCachedResults= */ true);
+            showSearchSuggestionModule(cachedSuggestions.getSuggestionTexts(),
+                    cachedSuggestions.getSuggestionUrls(), true /* useCachedResults */);
         } else {
             showSearchSuggestionModule(
-                    cachedSuggestions.getSuggestions(), /* useCachedResults= */ true);
+                    cachedSuggestions.getSuggestions(), true /* useCachedResults */);
         }
     }
 
@@ -225,7 +220,7 @@ public class SearchResumptionModuleMediator
      */
     private int getPageClassification() {
         if (mTemplateUrlService.isSearchResultsPageFromDefaultSearchProvider(
-                mTabToTrackSuggestion.getUrl())) {
+                    mTabToTrackSuggestion.getUrl())) {
             return PageClassification.SEARCH_RESULT_PAGE_NO_SEARCH_TERM_REPLACEMENT_VALUE;
         } else {
             return PageClassification.OTHER_VALUE;
@@ -284,16 +279,14 @@ public class SearchResumptionModuleMediator
         mModel = new PropertyModel(SearchResumptionModuleProperties.ALL_KEYS);
         PropertyModelChangeProcessor.create(
                 mModel, mModuleLayoutView, new SearchResumptionModuleViewBinder());
-        mModel.set(
-                SearchResumptionModuleProperties.EXPAND_COLLAPSE_CLICK_CALLBACK,
+        mModel.set(SearchResumptionModuleProperties.EXPAND_COLLAPSE_CLICK_CALLBACK,
                 this::onExpandedOrCollapsed);
         return true;
     }
 
     private void updateVisibility() {
         if (mModel != null) {
-            mModel.set(
-                    SearchResumptionModuleProperties.IS_VISIBLE,
+            mModel.set(SearchResumptionModuleProperties.IS_VISIBLE,
                     mIsDefaultSearchEngineGoogle && mIsSignedIn && mHasKeepEverythingSynced);
         }
     }
@@ -303,13 +296,10 @@ public class SearchResumptionModuleMediator
      */
     @VisibleForTesting
     void onExpandedOrCollapsed(Boolean expanded) {
-        ChromeSharedPreferences.getInstance()
-                .writeBoolean(
-                        ChromePreferenceKeys.SEARCH_RESUMPTION_MODULE_COLLAPSE_ON_NTP, !expanded);
-        RecordUserAction.record(
-                expanded
-                        ? SearchResumptionModuleUtils.ACTION_EXPAND
-                        : SearchResumptionModuleUtils.ACTION_COLLAPSE);
+        SharedPreferencesManager.getInstance().writeBoolean(
+                ChromePreferenceKeys.SEARCH_RESUMPTION_MODULE_COLLAPSE_ON_NTP, !expanded);
+        RecordUserAction.record(expanded ? SearchResumptionModuleUtils.ACTION_EXPAND
+                                         : SearchResumptionModuleUtils.ACTION_COLLAPSE);
     }
 
     @VisibleForTesting

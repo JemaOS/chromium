@@ -4,9 +4,6 @@
 
 #include "chrome/browser/commerce/merchant_viewer/merchant_viewer_data_manager.h"
 
-#include <optional>
-
-#include "base/containers/to_vector.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_macros.h"
@@ -23,6 +20,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest-spi.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 using std::string;
@@ -34,8 +32,7 @@ merchant_signal_db::MerchantSignalContentProto BuildProto(
     base::Time time_created) {
   merchant_signal_db::MerchantSignalContentProto proto;
   proto.set_key(hostname);
-  proto.set_trust_signals_message_displayed_timestamp(
-      time_created.InSecondsFSinceUnixEpoch());
+  proto.set_trust_signals_message_displayed_timestamp(time_created.ToDoubleT());
   return proto;
 }
 }  // namespace
@@ -67,12 +64,15 @@ class MerchantViewerDataManagerTest : public testing::Test {
                              vector<string> expected_hostnames,
                              bool success,
                              MerchantViewerDataManager::MerchantSignals found) {
-    EXPECT_TRUE(success);
+    EXPECT_EQ(true, success);
+    vector<string> found_hostnames;
+    base::ranges::transform(found, std::back_inserter(found_hostnames),
+                            [](const auto& item) { return item.second.key(); });
 
-    EXPECT_THAT(base::ToVector(
-                    found, [](const auto& item) { return item.second.key(); }),
-                testing::UnorderedElementsAreArray(expected_hostnames));
+    std::sort(found_hostnames.begin(), found_hostnames.end());
+    std::sort(expected_hostnames.begin(), expected_hostnames.end());
 
+    EXPECT_EQ(expected_hostnames, found_hostnames);
     std::move(closure).Run();
   }
 

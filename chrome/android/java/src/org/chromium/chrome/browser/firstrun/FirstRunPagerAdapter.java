@@ -11,7 +11,9 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Adapter used to provide First Run pages to the FirstRunActivity ViewPager. */
+/**
+ * Adapter used to provide First Run pages to the FirstRunActivity ViewPager.
+ */
 class FirstRunPagerAdapter extends FragmentStateAdapter {
     private final List<FirstRunPage> mPages;
 

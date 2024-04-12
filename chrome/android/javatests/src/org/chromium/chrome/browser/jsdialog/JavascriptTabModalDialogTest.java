@@ -55,7 +55,9 @@ import org.chromium.ui.test.util.UiRestriction;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-/** Test suite for displaying and functioning of tab modal JavaScript alert, confirm and prompt. */
+/**
+ * Test suite for displaying and functioning of tab modal JavaScript alert, confirm and prompt.
+ */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @Batch(JavascriptAppModalDialogTest.JAVASCRIPT_DIALOG_BATCH_NAME)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
@@ -68,13 +70,10 @@ public class JavascriptTabModalDialogTest {
     public BlankCTATabInitialStateRule mBlankCTATabInitialStateRule =
             new BlankCTATabInitialStateRule(sActivityTestRule, true);
 
-    private static final String EMPTY_PAGE =
-            UrlUtils.encodeHtmlDataUri(
-                    "<html><title>Modal Dialog Test</title><p>Testcase.</p></title></html>");
-    private static final String OTHER_PAGE =
-            UrlUtils.encodeHtmlDataUri(
-                    "<html><title>Modal Dialog Test</title><p>Testcase. Other"
-                            + " tab.</p></title></html>");
+    private static final String EMPTY_PAGE = UrlUtils.encodeHtmlDataUri(
+            "<html><title>Modal Dialog Test</title><p>Testcase.</p></title></html>");
+    private static final String OTHER_PAGE = UrlUtils.encodeHtmlDataUri(
+            "<html><title>Modal Dialog Test</title><p>Testcase. Other tab.</p></title></html>");
 
     private ChromeTabbedActivity mActivity;
 
@@ -85,8 +84,8 @@ public class JavascriptTabModalDialogTest {
     }
 
     /**
-     * Verifies modal alert-dialog appearance and that JavaScript execution is able to continue
-     * after dismissal.
+     * Verifies modal alert-dialog appearance and that JavaScript execution is
+     * able to continue after dismissal.
      */
     @Test
     @MediumTest
@@ -99,12 +98,13 @@ public class JavascriptTabModalDialogTest {
         Assert.assertNotNull("No dialog showing.", jsDialog);
 
         onView(withText(R.string.ok)).perform(click());
-        Assert.assertTrue(
-                "JavaScript execution should continue after closing prompt.",
+        Assert.assertTrue("JavaScript execution should continue after closing prompt.",
                 scriptEvent.waitUntilHasValue());
     }
 
-    /** Verifies that clicking on a button twice doesn't crash. */
+    /**
+     * Verifies that clicking on a button twice doesn't crash.
+     */
     @Test
     @MediumTest
     @Feature({"Browser", "Main"})
@@ -114,22 +114,19 @@ public class JavascriptTabModalDialogTest {
         JavascriptTabModalDialog jsDialog = getCurrentDialog();
         Assert.assertNotNull("No dialog showing.", jsDialog);
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    PropertyModel model =
-                            mActivity.getModalDialogManager().getCurrentDialogForTest();
-                    jsDialog.onClick(model, ModalDialogProperties.ButtonType.POSITIVE);
-                    jsDialog.onClick(model, ModalDialogProperties.ButtonType.POSITIVE);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            PropertyModel model = mActivity.getModalDialogManager().getCurrentDialogForTest();
+            jsDialog.onClick(model, ModalDialogProperties.ButtonType.POSITIVE);
+            jsDialog.onClick(model, ModalDialogProperties.ButtonType.POSITIVE);
+        });
 
-        Assert.assertTrue(
-                "JavaScript execution should continue after closing prompt.",
+        Assert.assertTrue("JavaScript execution should continue after closing prompt.",
                 scriptEvent.waitUntilHasValue());
     }
 
     /**
-     * Verifies that modal confirm-dialogs display, two buttons are visible and the return value of
-     * [Ok] equals true, [Cancel] equals false.
+     * Verifies that modal confirm-dialogs display, two buttons are visible and
+     * the return value of [Ok] equals true, [Cancel] equals false.
      */
     @Test
     @MediumTest
@@ -145,8 +142,7 @@ public class JavascriptTabModalDialogTest {
         onView(withText(R.string.cancel)).check(matches(isDisplayed()));
 
         onView(withText(R.string.ok)).perform(click());
-        Assert.assertTrue(
-                "JavaScript execution should continue after closing dialog.",
+        Assert.assertTrue("JavaScript execution should continue after closing dialog.",
                 scriptEvent.waitUntilHasValue());
 
         String resultString = scriptEvent.getJsonResultAndClear();
@@ -158,15 +154,16 @@ public class JavascriptTabModalDialogTest {
         Assert.assertNotNull("No dialog showing.", jsDialog);
 
         onView(withText(R.string.cancel)).perform(click());
-        Assert.assertTrue(
-                "JavaScript execution should continue after closing dialog.",
+        Assert.assertTrue("JavaScript execution should continue after closing dialog.",
                 scriptEvent.waitUntilHasValue());
 
         resultString = scriptEvent.getJsonResultAndClear();
         Assert.assertEquals("Invalid return value.", "false", resultString);
     }
 
-    /** Verifies that modal prompt-dialogs display and the result is returned. */
+    /**
+     * Verifies that modal prompt-dialogs display and the result is returned.
+     */
     @Test
     @MediumTest
     @Feature({"Browser", "Main"})
@@ -182,8 +179,7 @@ public class JavascriptTabModalDialogTest {
         onView(withId(R.id.js_modal_dialog_prompt)).perform(replaceText(promptText));
 
         onView(withText(R.string.ok)).perform(click());
-        Assert.assertTrue(
-                "JavaScript execution should continue after closing prompt.",
+        Assert.assertTrue("JavaScript execution should continue after closing prompt.",
                 scriptEvent.waitUntilHasValue());
 
         String resultString = scriptEvent.getJsonResultAndClear();
@@ -210,27 +206,26 @@ public class JavascriptTabModalDialogTest {
         mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
     }
 
-    private void assertScrollViewFocusabilityInAlertDialog(
-            final String jsAlertScript, final boolean expectedFocusability)
-            throws TimeoutException, ExecutionException {
+    private void assertScrollViewFocusabilityInAlertDialog(final String jsAlertScript,
+            final boolean expectedFocusability) throws TimeoutException, ExecutionException {
         final OnEvaluateJavaScriptResultHelper scriptEvent =
                 executeJavaScriptAndWaitForDialog(jsAlertScript);
 
         final JavascriptTabModalDialog jsDialog = getCurrentDialog();
         Assert.assertNotNull("No dialog showing.", jsDialog);
 
-        onView(withId(R.id.modal_dialog_title_scroll_view))
+        onView(withId(R.id.modal_dialog_scroll_view))
                 .check(matches(expectedFocusability ? isFocusable() : not(isFocusable())));
 
         onView(withText(R.string.ok)).perform(click());
-        Assert.assertTrue(
-                "JavaScript execution should continue after closing prompt.",
+        Assert.assertTrue("JavaScript execution should continue after closing prompt.",
                 scriptEvent.waitUntilHasValue());
     }
 
     /**
-     * Displays a dialog and closes the tab in the background before attempting to accept the
-     * dialog. Verifies that the dialog is dismissed when the tab is closed.
+     * Displays a dialog and closes the tab in the background before attempting
+     * to accept the dialog. Verifies that the dialog is dismissed when the tab
+     * is closed.
      */
     @Test
     @MediumTest
@@ -239,9 +234,7 @@ public class JavascriptTabModalDialogTest {
         executeJavaScriptAndWaitForDialog("alert('Android')");
 
         TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mActivity.getCurrentTabModel().closeTab(mActivity.getActivityTab());
-                });
+                () -> { mActivity.getCurrentTabModel().closeTab(mActivity.getActivityTab()); });
 
         // Closing the tab should have dismissed the dialog.
         checkDialogShowing("The dialog should have been dismissed when its tab was closed.", false);
@@ -266,8 +259,8 @@ public class JavascriptTabModalDialogTest {
     }
 
     /**
-     * Displays a dialog and loads a new URL before attempting to accept or cancel the dialog.
-     * Verifies that the dialog is dismissed.
+     * Displays a dialog and loads a new URL before attempting to accept or cancel the
+     * dialog. Verifies that the dialog is dismissed.
      */
     @Test
     @MediumTest
@@ -275,12 +268,9 @@ public class JavascriptTabModalDialogTest {
     public void testDialogDismissedAfterUrlUpdated() {
         executeJavaScriptAndWaitForDialog("alert('Android')");
 
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mActivity
-                            .getActivityTab()
-                            .loadUrl(new LoadUrlParams(OTHER_PAGE, PageTransition.LINK));
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mActivity.getActivityTab().loadUrl(new LoadUrlParams(OTHER_PAGE, PageTransition.LINK));
+        });
 
         // Loading a different URL should have dismissed the dialog.
         checkDialogShowing(
@@ -288,8 +278,8 @@ public class JavascriptTabModalDialogTest {
     }
 
     /**
-     * Displays a dialog and performs back press before attempting to accept or cancel the dialog.
-     * Verifies that the dialog is dismissed.
+     * Displays a dialog and performs back press before attempting to accept or cancel the
+     * dialog. Verifies that the dialog is dismissed.
      */
     @Test
     @MediumTest
@@ -304,16 +294,16 @@ public class JavascriptTabModalDialogTest {
     }
 
     /**
-     * Asynchronously executes the given code for spawning a dialog and waits for the dialog to be
-     * visible.
+     * Asynchronously executes the given code for spawning a dialog and waits
+     * for the dialog to be visible.
      */
     private OnEvaluateJavaScriptResultHelper executeJavaScriptAndWaitForDialog(String script) {
         return executeJavaScriptAndWaitForDialog(new OnEvaluateJavaScriptResultHelper(), script);
     }
 
     /**
-     * Given a JavaScript evaluation helper, asynchronously executes the given code for spawning a
-     * dialog and waits for the dialog to be visible.
+     * Given a JavaScript evaluation helper, asynchronously executes the given
+     * code for spawning a dialog and waits for the dialog to be visible.
      */
     private OnEvaluateJavaScriptResultHelper executeJavaScriptAndWaitForDialog(
             final OnEvaluateJavaScriptResultHelper helper, String script) {
@@ -327,23 +317,19 @@ public class JavascriptTabModalDialogTest {
      * showing.
      */
     private JavascriptTabModalDialog getCurrentDialog() throws ExecutionException {
-        return (JavascriptTabModalDialog)
-                TestThreadUtils.runOnUiThreadBlocking(
-                        () -> {
-                            PropertyModel model =
-                                    mActivity.getModalDialogManager().getCurrentDialogForTest();
-                            return model != null
-                                    ? model.get(ModalDialogProperties.CONTROLLER)
-                                    : null;
-                        });
+        return (JavascriptTabModalDialog) TestThreadUtils.runOnUiThreadBlocking(() -> {
+            PropertyModel model = mActivity.getModalDialogManager().getCurrentDialogForTest();
+            return model != null ? model.get(ModalDialogProperties.CONTROLLER) : null;
+        });
     }
 
-    /** Check whether dialog is showing as expected. */
+    /**
+     * Check whether dialog is showing as expected.
+     */
     private void checkDialogShowing(final String errorMessage, final boolean shouldBeShown) {
-        CriteriaHelper.pollUiThread(
-                () -> {
-                    final boolean isShown = mActivity.getModalDialogManager().isShowing();
-                    Criteria.checkThat(errorMessage, isShown, is(shouldBeShown));
-                });
+        CriteriaHelper.pollUiThread(() -> {
+            final boolean isShown = mActivity.getModalDialogManager().isShowing();
+            Criteria.checkThat(errorMessage, isShown, is(shouldBeShown));
+        });
     }
 }

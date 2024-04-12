@@ -11,30 +11,9 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/layout/layout_shift_tracker.h"
-#include "third_party/blink/renderer/core/timing/dom_window_performance.h"
-#include "third_party/blink/renderer/core/timing/window_performance.h"
 #include "ui/gfx/geometry/point_conversions.h"
 
 namespace blink {
-
-namespace {
-// The list of eligible event types should match with
-// the corresponding blink event types in IsEventTypeForInteractionId
-// (window_performance.cc) and EventTiming::IsEventTypeForEventTiming
-// (event_timing.cc)
-bool IsWebInteractionEvent(WebInputEvent::Type event_type) {
-  return event_type == WebInputEvent::Type::kMouseDown ||
-         event_type == WebInputEvent::Type::kMouseUp ||
-         event_type == WebInputEvent::Type::kKeyDown ||
-         event_type == WebInputEvent::Type::kRawKeyDown ||
-         event_type == WebInputEvent::Type::kKeyUp ||
-         event_type == WebInputEvent::Type::kChar ||
-         event_type == WebInputEvent::Type::kGestureTapDown ||
-         event_type == WebInputEvent::Type::kGestureTap ||
-         event_type == WebInputEvent::Type::kPointerDown ||
-         event_type == WebInputEvent::Type::kPointerUp;
-}
-}  // namespace
 
 WebInputEventResult WidgetEventHandler::HandleInputEvent(
     const WebCoalescedInputEvent& coalesced_event,
@@ -45,12 +24,6 @@ WebInputEventResult WidgetEventHandler::HandleInputEvent(
     DCHECK(document);
     if (LocalFrameView* view = document->View())
       view->GetLayoutShiftTracker().NotifyInput(event);
-    if (IsWebInteractionEvent(event.GetType())) {
-      WindowPerformance* performance =
-          DOMWindowPerformance::performance(*root->DomWindow());
-      performance->GetResponsivenessMetrics()
-          .SetCurrentInteractionEventQueuedTimestamp(event.QueuedTimeStamp());
-    }
   }
 
   if (event.GetModifiers() & WebInputEvent::kIsTouchAccessibility &&
@@ -62,7 +35,7 @@ WebInputEventResult WidgetEventHandler::HandleInputEvent(
         gfx::ToFlooredPoint(mouse_event.PositionInRootFrame())));
     HitTestResult result = root->GetEventHandler().HitTestResultAtLocation(
         location, HitTestRequest::kReadOnly | HitTestRequest::kActive);
-    result.SetToShadowHostIfInUAShadowRoot();
+    result.SetToShadowHostIfInRestrictedShadowRoot();
     if (result.InnerNodeFrame()) {
       Document* document = result.InnerNodeFrame()->GetDocument();
       if (document) {
@@ -185,25 +158,8 @@ void WidgetEventHandler::HandleMouseLeave(LocalFrame& local_root,
   local_root.GetEventHandler().HandleMouseLeaveEvent(transformed_event);
 }
 
-namespace {
-
-bool IsDoubleAltClick(const blink::WebMouseEvent& mouse_event) {
-  bool is_alt_pressed =
-      mouse_event.GetModifiers() & blink::WebInputEvent::kAltKey;
-  if (!is_alt_pressed) {
-    return false;
-  }
-  return mouse_event.click_count == 2;
-}
-
-}  // namespace
-
 void WidgetEventHandler::HandleMouseDown(LocalFrame& local_root,
                                          const WebMouseEvent& event) {
-  if (IsDoubleAltClick(event)) {
-    local_root.GetEventHandler().GetDelayedNavigationTaskHandle().Cancel();
-  }
-
   WebMouseEvent transformed_event =
       TransformWebMouseEvent(local_root.View(), event);
   local_root.GetEventHandler().HandleMousePressEvent(transformed_event);

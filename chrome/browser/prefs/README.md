@@ -19,8 +19,8 @@ Prefs are not for:
 ## Adding a new pref
 1. Pick a name that resembles / shares a pref namespace with existing related
    prefs if possible.
-1. Define a new unique name in a pref_names.cc or pref_names.h file. Either in:
-   * chrome/common/pref_names.h -- being careful to put it in the right
+1. Define a new unique name in a pref_names.cc file. Either in:
+   * chrome/common/pref_names.cc -- being careful to put it in the right
      section (LOCAL STATE versus PROFILE PREFS) and alongside similar prefs
       (existing ifdefs and/or pref namespaces); or, ideally in:
    * a pref_names.cc local to your component (typically inside a prefs:: C++
@@ -30,7 +30,7 @@ Prefs are not for:
    `RegisterProfilePrefs()` as appropriate.
 1. If your pref should be synced (only an option for profile prefs), add one of
    the `SYNCABLE_PREF` flags when registering it and add it to the syncable
-   prefs database (see components/sync_preferences/README.md for details):
+   prefs database:
    * iOS-specific syncable prefs should be added to
      ios/chrome/browser/sync/prefs/ios_chrome_syncable_prefs_database.cc.
    * Syncable prefs which are not valid for iOS should be added to
@@ -58,10 +58,6 @@ store). As such, if a value is already set in a PrefStore with precedence over
 User Prefs, re-reading the value might not return the value you just set.
 Visually such settings are typically grayed out to prevent confusing the user
 but nothing prevents C++ from setting a user pref that doesn't take effect.
-
-To add a new `PrefStore` in the precedence order, see
-[PrefStoreType](https://source.chromium.org/chromium/chromium/src/+/main:components/prefs/pref_value_store.h?q=%22enum%20PrefStoreType%22&ss=chromium)
-in `PrefValueStore`.
 
 ## Deleting an old pref
 _Most_ deleted prefs should be left in a delete-self state for 1 year to help

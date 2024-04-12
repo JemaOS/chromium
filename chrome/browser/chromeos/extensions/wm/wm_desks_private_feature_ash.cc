@@ -6,7 +6,6 @@
 
 #include "ash/public/cpp/desk_template.h"
 #include "ash/wm/desks/desk.h"
-#include "ash/wm/desks/desks_controller.h"
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/uuid.h"
@@ -42,14 +41,15 @@ api::wm_desks_private::SavedDeskType GetSavedDeskTypeFromDeskTemplateType(
     const ash::DeskTemplateType type) {
   switch (type) {
     case ash::DeskTemplateType::kTemplate:
-      return api::wm_desks_private::SavedDeskType::kTemplate;
+      return api::wm_desks_private::SavedDeskType::SAVED_DESK_TYPE_KTEMPLATE;
     case ash::DeskTemplateType::kSaveAndRecall:
-      return api::wm_desks_private::SavedDeskType::kSaveAndRecall;
+      return api::wm_desks_private::SavedDeskType::
+          SAVED_DESK_TYPE_KSAVEANDRECALL;
     case ash::DeskTemplateType::kFloatingWorkspace:
       // Desk API does not save/restore Floating Workspace.
-      return api::wm_desks_private::SavedDeskType::kUnknown;
+      return api::wm_desks_private::SavedDeskType::SAVED_DESK_TYPE_KUNKNOWN;
     case ash::DeskTemplateType::kUnknown:
-      return api::wm_desks_private::SavedDeskType::kUnknown;
+      return api::wm_desks_private::SavedDeskType::SAVED_DESK_TYPE_KUNKNOWN;
   }
 }
 
@@ -85,7 +85,7 @@ void WMDesksPrivateFeatureAsh::GetDeskTemplateJson(
       template_uuid, profile,
       base::BindOnce(
           [](GetDeskTemplateJsonCallback callback,
-             std::optional<DesksClient::DeskActionError> error,
+             absl::optional<DesksClient::DeskActionError> error,
              const base::Value& template_json) {
             if (error) {
               std::move(callback).Run(GetStringError(error.value()), {});
@@ -109,13 +109,8 @@ void WMDesksPrivateFeatureAsh::LaunchDesk(std::string desk_name,
 
 void WMDesksPrivateFeatureAsh::RemoveDesk(const base::Uuid& desk_uuid,
                                           bool combine_desk,
-                                          bool allow_undo,
                                           RemoveDeskCallback callback) {
-  ash::DeskCloseType close_type =
-      combine_desk ? ash::DeskCloseType::kCombineDesks
-                   : (allow_undo ? ash::DeskCloseType::kCloseAllWindowsAndWait
-                                 : ash::DeskCloseType::kCloseAllWindows);
-  auto error = DesksClient::Get()->RemoveDesk(desk_uuid, close_type);
+  auto error = DesksClient::Get()->RemoveDesk(desk_uuid, combine_desk);
   std::move(callback).Run(error ? GetStringError(error.value()) : "");
 }
 
@@ -145,7 +140,7 @@ void WMDesksPrivateFeatureAsh::SaveActiveDesk(SaveActiveDeskCallback callback) {
   DesksClient::Get()->CaptureActiveDeskAndSaveTemplate(
       base::BindOnce(
           [](SaveActiveDeskCallback callback,
-             std::optional<DesksClient::DeskActionError> error,
+             absl::optional<DesksClient::DeskActionError> error,
              std::unique_ptr<ash::DeskTemplate> desk_template) {
             // Note that we want to phase out the concept of `template` in
             // external interface. Use `saved_desk` model instead of template.
@@ -168,7 +163,7 @@ void WMDesksPrivateFeatureAsh::DeleteSavedDesk(
       desk_uuid,
       base::BindOnce(
           [](DeleteSavedDeskCallback callback,
-             std::optional<DesksClient::DeskActionError> error) {
+             absl::optional<DesksClient::DeskActionError> error) {
             std::move(callback).Run(error ? GetStringError(error.value()) : "");
           },
           std::move(callback)));
@@ -180,7 +175,7 @@ void WMDesksPrivateFeatureAsh::RecallSavedDesk(
   DesksClient::Get()->LaunchDeskTemplate(
       desk_uuid, base::BindOnce(
                      [](RecallSavedDeskCallback callback,
-                        std::optional<DesksClient::DeskActionError> error,
+                        absl::optional<DesksClient::DeskActionError> error,
                         const base::Uuid& desk_Id) {
                        if (error) {
                          std::move(callback).Run(GetStringError(error.value()),
@@ -195,14 +190,13 @@ void WMDesksPrivateFeatureAsh::RecallSavedDesk(
 void WMDesksPrivateFeatureAsh::GetSavedDesks(GetSavedDesksCallback callback) {
   DesksClient::Get()->GetDeskTemplates(base::BindOnce(
       [](GetSavedDesksCallback callback,
-         std::optional<DesksClient::DeskActionError> error,
-         const std::vector<raw_ptr<const ash::DeskTemplate,
-                                   VectorExperimental>>& desk_templates) {
+         absl::optional<DesksClient::DeskActionError> error,
+         const std::vector<const ash::DeskTemplate*>& desk_templates) {
         if (error) {
           std::move(callback).Run(GetStringError(error.value()), {});
         } else {
           std::vector<api::wm_desks_private::SavedDesk> api_templates;
-          for (const ash::DeskTemplate* desk_template : desk_templates) {
+          for (auto* desk_template : desk_templates) {
             api::wm_desks_private::SavedDesk saved_desk =
                 GetSavedDeskFromAshDeskTemplate(*desk_template);
             api_templates.push_back(std::move(saved_desk));

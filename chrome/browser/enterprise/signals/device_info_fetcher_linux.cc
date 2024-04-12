@@ -171,11 +171,6 @@ std::vector<std::string> GetMacAddresses() {
 
 }  // namespace
 
-// static
-std::unique_ptr<DeviceInfoFetcher> DeviceInfoFetcher::CreateInstanceInternal() {
-  return std::make_unique<DeviceInfoFetcherLinux>();
-}
-
 DeviceInfoFetcherLinux::DeviceInfoFetcherLinux() = default;
 
 DeviceInfoFetcherLinux::~DeviceInfoFetcherLinux() = default;

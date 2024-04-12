@@ -18,4 +18,4 @@ const allTests = [function testAccessibilityFocus() {
   });
 }];
 
-setUpAndRunTabsTests(allTests, 'accessibility_focus.html');
+setUpAndRunTests(allTests, 'accessibility_focus.html');

@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "base/check_op.h"
-#include "base/memory/raw_ptr.h"
 #include "base/trace_event/trace_event.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "content/public/browser/web_contents.h"
@@ -15,10 +14,11 @@
 
 using content::WebContents;
 
-TabStripModelChange::RemovedTab::RemovedTab(content::WebContents* contents,
-                                            int index,
-                                            RemoveReason remove_reason,
-                                            std::optional<SessionID> session_id)
+TabStripModelChange::RemovedTab::RemovedTab(
+    content::WebContents* contents,
+    int index,
+    RemoveReason remove_reason,
+    absl::optional<SessionID> session_id)
     : contents(contents),
       index(index),
       remove_reason(remove_reason),
@@ -184,9 +184,9 @@ TabGroupChange::TabGroupChange(TabStripModel* model,
 TabStripModelObserver::TabStripModelObserver() {}
 
 TabStripModelObserver::~TabStripModelObserver() {
-  std::set<raw_ptr<TabStripModel, SetExperimental>> models(
-      observed_models_.begin(), observed_models_.end());
-  for (TabStripModel* model : models) {
+  std::set<TabStripModel*> models(observed_models_.begin(),
+                                  observed_models_.end());
+  for (auto* model : models) {
     model->RemoveObserver(this);
   }
 }
@@ -219,15 +219,12 @@ void TabStripModelObserver::TabBlockedStateChanged(WebContents* contents,
 }
 
 void TabStripModelObserver::TabGroupedStateChanged(
-    std::optional<tab_groups::TabGroupId> group,
+    absl::optional<tab_groups::TabGroupId> group,
     content::WebContents* contents,
     int index) {}
 
 void TabStripModelObserver::TabStripEmpty() {
 }
-
-void TabStripModelObserver::TabCloseCancelled(
-    const content::WebContents* contents) {}
 
 void TabStripModelObserver::WillCloseAllTabs(TabStripModel* tab_strip_model) {}
 

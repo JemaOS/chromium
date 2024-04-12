@@ -4,9 +4,6 @@
 
 #include "chrome/browser/signin/dice_response_handler.h"
 
-#include <string_view>
-
-#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/location.h"
@@ -23,7 +20,6 @@
 #include "chrome/browser/signin/account_reconcilor_factory.h"
 #include "chrome/browser/signin/chrome_signin_client_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/signin/signin_features.h"
 #include "components/signin/core/browser/about_signin_internals.h"
 #include "components/signin/core/browser/signin_header_helper.h"
 #include "components/signin/public/base/consent_level.h"
@@ -37,14 +33,12 @@
 #include "google_apis/gaia/google_service_auth_error.h"
 
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-#include <optional>
-
 #include "chrome/browser/signin/bound_session_credentials/registration_token_helper.h"  // nogncheck
 #include "chrome/browser/signin/bound_session_credentials/unexportable_key_service_factory.h"  // nogncheck
-#include "components/signin/public/base/signin_switches.h"
 #include "components/unexportable_keys/unexportable_key_id.h"       // nogncheck
 #include "components/unexportable_keys/unexportable_key_service.h"  // nogncheck
 #include "google_apis/gaia/gaia_urls.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 
 const int kDiceTokenFetchTimeoutSeconds = 10;
@@ -90,25 +84,20 @@ enum DiceTokenFetchResult {
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 std::unique_ptr<RegistrationTokenHelper> BuildRegistrationTokenHelper(
     unexportable_keys::UnexportableKeyService& unexportable_key_service,
-    std::string_view client_id,
-    std::string_view auth_code,
+    base::StringPiece client_id,
+    base::StringPiece auth_code,
     const GURL& registration_url,
-    base::OnceCallback<void(std::optional<RegistrationTokenHelper::Result>)>
+    base::OnceCallback<void(absl::optional<RegistrationTokenHelper::Result>)>
         callback) {
-  return RegistrationTokenHelper::CreateForTokenBinding(
+  return std::make_unique<RegistrationTokenHelper>(
       unexportable_key_service, client_id, auth_code, registration_url,
       std::move(callback));
 }
 
 DiceResponseHandler::RegistrationTokenHelperFactory
 CreateRegistrationTokenHelperFactory(
-    const PrefService* profile_prefs,
     unexportable_keys::UnexportableKeyService* unexportable_key_service) {
   if (!unexportable_key_service) {
-    return {};
-  }
-
-  if (!switches::IsChromeRefreshTokenBindingEnabled(profile_prefs)) {
     return {};
   }
 
@@ -134,7 +123,14 @@ class DiceResponseHandlerFactory : public ProfileKeyedServiceFactory {
   friend struct base::DefaultSingletonTraits<DiceResponseHandlerFactory>;
 
   DiceResponseHandlerFactory()
-      : ProfileKeyedServiceFactory("DiceResponseHandler") {
+      : ProfileKeyedServiceFactory(
+            "DiceResponseHandler",
+            ProfileSelections::Builder()
+                .WithRegular(ProfileSelection::kOriginalOnly)
+                // TODO(crbug.com/1418376): Check if this service is needed in
+                // Guest mode.
+                .WithGuest(ProfileSelection::kOriginalOnly)
+                .Build()) {
     DependsOn(AboutSigninInternalsFactory::GetInstance());
     DependsOn(AccountReconcilorFactory::GetInstance());
     DependsOn(ChromeSigninClientFactory::GetInstance());
@@ -154,7 +150,6 @@ class DiceResponseHandlerFactory : public ProfileKeyedServiceFactory {
         registration_token_helper_factory;
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
     registration_token_helper_factory = CreateRegistrationTokenHelperFactory(
-        profile->GetPrefs(),
         UnexportableKeyServiceFactory::GetForProfile(profile));
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
     return new DiceResponseHandler(
@@ -209,8 +204,6 @@ DiceResponseHandler::DiceTokenFetcher::DiceTokenFetcher(
       std::make_unique<AccountReconcilor::Lock>(account_reconcilor);
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
   if (!registration_token_helper_factory.is_null()) {
-    CHECK(switches::IsChromeRefreshTokenBindingEnabled(
-        signin_client_->GetPrefs()));
     StartBindingKeyGeneration(registration_token_helper_factory);
     // Wait until the binding key is generated before fetching a token.
     return;
@@ -236,19 +229,16 @@ void DiceResponseHandler::DiceTokenFetcher::OnClientOAuthSuccess(
   gaia_auth_fetcher_.reset();
   timeout_closure_.Cancel();
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-  if (!switches::IsChromeRefreshTokenBindingEnabled(
-          signin_client_->GetPrefs()) ||
-      !result.is_bound_to_key) {
-    // Pass an empty binding key if conditions don't apply. This key won't be
-    // needed for anything else, so we can just clear it in place.
-    wrapped_binding_key_.clear();
+  absl::optional<unexportable_keys::UnexportableKeyId> binding_key_id;
+  if (result.is_bound_to_key) {
+    binding_key_id = binding_key_id_;
   }
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
   dice_response_handler_->OnTokenExchangeSuccess(
       this, result.refresh_token, result.is_under_advanced_protection
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
       ,
-      wrapped_binding_key_
+      binding_key_id
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
   );
   // |this| may be deleted at this point.
@@ -283,8 +273,6 @@ void DiceResponseHandler::DiceTokenFetcher::StartTokenFetch() {
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 void DiceResponseHandler::DiceTokenFetcher::StartBindingKeyGeneration(
     const RegistrationTokenHelperFactory& registration_token_helper_factory) {
-  CHECK(
-      switches::IsChromeRefreshTokenBindingEnabled(signin_client_->GetPrefs()));
   // `base::Unretained()` is safe because `this` owns
   // `registration_token_helper_`.
   registration_token_helper_ = registration_token_helper_factory.Run(
@@ -296,12 +284,10 @@ void DiceResponseHandler::DiceTokenFetcher::StartBindingKeyGeneration(
 }
 
 void DiceResponseHandler::DiceTokenFetcher::OnRegistrationTokenGenerated(
-    std::optional<RegistrationTokenHelper::Result> result) {
-  CHECK(
-      switches::IsChromeRefreshTokenBindingEnabled(signin_client_->GetPrefs()));
+    absl::optional<RegistrationTokenHelper::Result> result) {
   if (result.has_value()) {
+    binding_key_id_ = result->binding_key_id;
     binding_registration_token_ = std::move(result->registration_token);
-    wrapped_binding_key_ = std::move(result->wrapped_binding_key);
   }
   registration_token_helper_.reset();
   StartTokenFetch();
@@ -383,8 +369,6 @@ void DiceResponseHandler::SetTaskRunner(
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 void DiceResponseHandler::SetRegistrationTokenHelperFactoryForTesting(
     RegistrationTokenHelperFactory factory) {
-  CHECK(
-      switches::IsChromeRefreshTokenBindingEnabled(signin_client_->GetPrefs()));
   registration_token_helper_factory_ = std::move(factory);
 }
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
@@ -419,8 +403,6 @@ void DiceResponseHandler::ProcessDiceSigninHeader(
   VLOG(1) << "Start processing Dice signin response";
   RecordDiceResponseHeader(kSignin);
 
-  delegate->OnDiceSigninHeaderReceived();
-
   for (auto it = token_fetchers_.begin(); it != token_fetchers_.end(); ++it) {
     if ((it->get()->gaia_id() == gaia_id) && (it->get()->email() == email) &&
         (it->get()->authorization_code() == authorization_code)) {
@@ -428,7 +410,6 @@ void DiceResponseHandler::ProcessDiceSigninHeader(
       return;  // There is already a request in flight with the same parameters.
     }
   }
-
   token_fetchers_.push_back(std::make_unique<DiceTokenFetcher>(
       gaia_id, email, authorization_code, signin_client_, account_reconcilor_,
       std::move(delegate), registration_token_helper_factory_, this));
@@ -451,36 +432,32 @@ void DiceResponseHandler::ProcessEnableSyncHeader(
       return;  // There is already a request in flight with the same parameters.
     }
   }
-  delegate->EnableSync(
-      identity_manager_->FindExtendedAccountInfoByGaiaId(gaia_id));
+  CoreAccountId account_id =
+      identity_manager_->PickAccountIdForAccount(gaia_id, email);
+  delegate->EnableSync(account_id);
 }
 
 void DiceResponseHandler::ProcessDiceSignoutHeader(
     const std::vector<signin::DiceResponseParams::AccountInfo>& account_infos) {
   VLOG(1) << "Start processing Dice signout response";
 
-  // In some cases, the primary account can only be invalidated:
-  // - There is a sync primary account
-  // - Browser explicit sign in is enabled, setting/clearing the primary account
-  //   requires explicit user action through chrome UI.
-  // - If there is a policy restriction on removing the primary account.
-  bool invalidate_only_primary_account =
-      identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSync) ||
-      switches::IsExplicitBrowserSigninUIOnDesktopEnabled(
-          switches::ExplicitBrowserSigninPhase::kFull) ||
-      !signin_client_->IsClearPrimaryAccountAllowed(
-          /*has_sync_account=*/false);
+  // If there is a restriction on removing the primary account. Do not remove
+  // the account regardless of the consent level. Else, the sync account can
+  // only be invalidated.
+  signin::ConsentLevel level =
+      signin_client_->IsClearPrimaryAccountAllowed(
+          identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSync))
+          ? signin::ConsentLevel::kSync
+          : signin::ConsentLevel::kSignin;
 
-  CoreAccountId primary_account =
-      identity_manager_->GetPrimaryAccountId(signin::ConsentLevel::kSignin);
+  CoreAccountId primary_account = identity_manager_->GetPrimaryAccountId(level);
   bool primary_account_signed_out = false;
   auto* accounts_mutator = identity_manager_->GetAccountsMutator();
   for (const auto& account_info : account_infos) {
     CoreAccountId signed_out_account =
         identity_manager_->PickAccountIdForAccount(account_info.gaia_id,
                                                    account_info.email);
-    if (invalidate_only_primary_account &&
-        signed_out_account == primary_account) {
+    if (signed_out_account == primary_account) {
       primary_account_signed_out = true;
       RecordDiceResponseHeader(kSignoutPrimary);
 
@@ -506,9 +483,8 @@ void DiceResponseHandler::ProcessDiceSignoutHeader(
     }
   }
 
-  if (!primary_account_signed_out) {
+  if (!primary_account_signed_out)
     RecordDiceResponseHeader(kSignoutSecondary);
-  }
 }
 
 void DiceResponseHandler::DeleteTokenFetcher(DiceTokenFetcher* token_fetcher) {
@@ -527,7 +503,7 @@ void DiceResponseHandler::OnTokenExchangeSuccess(
     bool is_under_advanced_protection
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
     ,
-    const std::vector<uint8_t>& wrapped_binding_key
+    absl::optional<unexportable_keys::UnexportableKeyId> binding_key_id
 #endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 ) {
   const std::string& email = token_fetcher->email();
@@ -538,26 +514,17 @@ void DiceResponseHandler::OnTokenExchangeSuccess(
       identity_manager_->PickAccountIdForAccount(gaia_id, email);
   bool is_new_account =
       !identity_manager_->HasAccountWithRefreshToken(account_id);
-  // If this is a reauth, do not update the access point.
+  // TODO(http://b/274463812): propagate binding key to `IdentityManager`.
   identity_manager_->GetAccountsMutator()->AddOrUpdateAccount(
       gaia_id, email, refresh_token, is_under_advanced_protection,
-      is_new_account ? token_fetcher->delegate()->GetAccessPoint()
-                     : signin_metrics::AccessPoint::ACCESS_POINT_UNKNOWN,
       signin_metrics::SourceForRefreshTokenOperation::
-          kDiceResponseHandler_Signin
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-      ,
-      wrapped_binding_key
-#endif  // BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-  );
+          kDiceResponseHandler_Signin);
   about_signin_internals_->OnRefreshTokenReceived(
       base::StringPrintf("Successful (%s)", account_id.ToString().c_str()));
   token_fetcher->delegate()->HandleTokenExchangeSuccess(account_id,
                                                         is_new_account);
-  if (should_enable_sync) {
-    token_fetcher->delegate()->EnableSync(
-        identity_manager_->FindExtendedAccountInfoByAccountId(account_id));
-  }
+  if (should_enable_sync)
+    token_fetcher->delegate()->EnableSync(account_id);
 
   DeleteTokenFetcher(token_fetcher);
 }

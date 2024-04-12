@@ -62,7 +62,7 @@ class ExtensionRequestReportGeneratorTest : public ::testing::Test {
 
   void SetExtensionSettings(const std::string& settings_string,
                             TestingProfile* profile) {
-    std::optional<base::Value> settings =
+    absl::optional<base::Value> settings =
         base::JSONReader::Read(settings_string);
     ASSERT_TRUE(settings.has_value());
     profile->GetTestingPrefService()->SetManagedPref(
@@ -109,16 +109,16 @@ class ExtensionRequestReportGeneratorTest : public ::testing::Test {
                        const std::string& pref_name,
                        const std::string& timestamp_name,
                        TestingProfile* profile) {
-    base::Value::Dict id_values;
+    std::unique_ptr<base::Value> id_values =
+        std::make_unique<base::Value>(base::Value::Type::DICT);
     for (const auto& id : ids) {
-      id_values.Set(
-          id,
-          base::Value::Dict()
-              .Set(timestamp_name,
-                   ::base::TimeToValue(
-                       base::Time::FromMillisecondsSinceUnixEpoch(kTimeStamp)))
-              .Set(extension_misc::kExtensionWorkflowJustification,
-                   base::Value(kJustification)));
+      base::Value request_data(base::Value::Type::DICT);
+      request_data.SetKey(
+          timestamp_name,
+          ::base::TimeToValue(base::Time::FromJavaTime(kTimeStamp)));
+      request_data.SetKey(extension_misc::kExtensionWorkflowJustification,
+                          base::Value(kJustification));
+      id_values->SetKey(id, std::move(request_data));
     }
 
     profile->GetTestingPrefService()->SetUserPref(pref_name,

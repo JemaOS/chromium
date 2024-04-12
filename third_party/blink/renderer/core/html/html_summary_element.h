@@ -40,8 +40,7 @@ class HTMLSummaryElement final : public HTMLElement {
   bool HasActivationBehavior() const override;
   HTMLDetailsElement* DetailsElement() const;
 
-  bool SupportsFocus(UpdateBehavior update_behavior =
-                         UpdateBehavior::kStyleAndLayout) const override;
+  bool SupportsFocus() const override;
   int DefaultTabIndex() const override;
 };
 

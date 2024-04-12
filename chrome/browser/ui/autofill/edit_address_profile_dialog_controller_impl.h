@@ -23,11 +23,6 @@ class EditAddressProfileDialogControllerImpl
       public content::WebContentsUserData<
           EditAddressProfileDialogControllerImpl> {
  public:
-  using EditAddressProfileViewTestingFactory =
-      base::RepeatingCallback<AutofillBubbleBase*(
-          content::WebContents*,
-          EditAddressProfileDialogController*)>;
-
   EditAddressProfileDialogControllerImpl(
       const EditAddressProfileDialogControllerImpl&) = delete;
   EditAddressProfileDialogControllerImpl& operator=(
@@ -35,16 +30,17 @@ class EditAddressProfileDialogControllerImpl
   ~EditAddressProfileDialogControllerImpl() override;
 
   // Sets up the controller and offers to edit the `profile` before saving it.
-  // The `on_user_decision_callback` will be called when user closes the dialog.
-  // `is_editing_existing_address` is used for adapting the UI, e.g. "Save" or
-  // "Update" for the action button. `is_migration_to_account` is used
-  // to determine if a subset of editor fields should be made required.
+  // If `original_profile` is not nullptr, this indicates that this dialog is
+  // opened from an update prompt. The originating prompt (save or update) will
+  // be re-opened once the user makes a decision with respect to the
+  // offer-to-edit prompt. The `is_migration_to_account` argument is used to
+  // re-open the original prompt in a correct state.
   void OfferEdit(const AutofillProfile& profile,
+                 const AutofillProfile* original_profile,
                  const std::u16string& footer_message,
-                 bool is_editing_existing_address,
-                 bool is_migration_to_account,
                  AutofillClient::AddressProfileSavePromptCallback
-                     on_user_decision_callback);
+                     address_profile_save_prompt_callback,
+                 bool is_migration_to_account);
 
   // EditAddressProfileDialogController:
   std::u16string GetWindowTitle() const override;
@@ -52,14 +48,13 @@ class EditAddressProfileDialogControllerImpl
   std::u16string GetOkButtonLabel() const override;
   const AutofillProfile& GetProfileToEdit() const override;
   bool GetIsValidatable() const override;
-  void OnDialogClosed(
-      AutofillClient::AddressPromptUserDecision decision,
-      base::optional_ref<const AutofillProfile> profile_with_edits) override;
+  void OnUserDecision(
+      AutofillClient::SaveAddressProfileOfferUserDecision decision,
+      const AutofillProfile& profile_with_edits) override;
+  void OnDialogClosed() override;
 
   // content::WebContentsObserver:
   void WebContentsDestroyed() override;
-
-  void SetViewFactoryForTest(EditAddressProfileViewTestingFactory factory);
 
  private:
   explicit EditAddressProfileDialogControllerImpl(
@@ -78,22 +73,21 @@ class EditAddressProfileDialogControllerImpl
 
   // Callback to run once the user makes a decision with respect to saving the
   // address profile currently being edited.
-  AutofillClient::AddressProfileSavePromptCallback on_user_decision_callback_;
+  AutofillClient::AddressProfileSavePromptCallback
+      address_profile_save_prompt_callback_;
 
   // Contains the details of the address profile that the user requested to edit
   // before saving.
-  std::optional<AutofillProfile> address_profile_to_edit_;
+  AutofillProfile address_profile_to_edit_;
 
-  // Whether the address to edit existed and being updated in the editor or
-  // the editor is used for creating a new one.
-  bool is_editing_existing_address_;
+  // If not nullptr, this dialog was opened from an update prompt. Contains the
+  // details of the address profile that will be updated if the user accepts
+  // that update prompt from which this edit dialog was opened..
+  absl::optional<AutofillProfile> original_profile_;
 
   // Whether the editor is used in the profile migration case. It is required
   // to restore the original prompt state (save or update) if it is reopened.
   bool is_migration_to_account_ = false;
-
-  // Factory used to inject the view instance into this controller in tests.
-  EditAddressProfileViewTestingFactory view_factory_for_test_;
 
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };

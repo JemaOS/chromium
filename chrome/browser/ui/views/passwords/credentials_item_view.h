@@ -34,9 +34,9 @@ class Label;
 // bubble.
 class CredentialsItemView : public AccountAvatarFetcherDelegate,
                             public views::Button {
-  METADATA_HEADER(CredentialsItemView, views::Button)
-
  public:
+  METADATA_HEADER(CredentialsItemView);
+
   CredentialsItemView(PressedCallback callback,
                       const std::u16string& upper_text,
                       const std::u16string& lower_text,

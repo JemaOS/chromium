@@ -24,10 +24,7 @@ public class EmptyByteBufferPersistedTabDataStorage implements PersistedTabDataS
     }
 
     @Override
-    public void save(
-            int tabId,
-            String tabDataId,
-            Serializer<ByteBuffer> serializer,
+    public void save(int tabId, String tabDataId, Serializer<ByteBuffer> serializer,
             Callback<Integer> callback) {
         assert false : "save is currently unused in EmptyByteBufferPersistedTabDataStorage";
     }
@@ -35,10 +32,7 @@ public class EmptyByteBufferPersistedTabDataStorage implements PersistedTabDataS
     @Override
     public void restore(int tabId, String tabDataId, Callback<ByteBuffer> callback) {
         PostTask.runOrPostTask(
-                TaskTraits.UI_DEFAULT,
-                () -> {
-                    callback.onResult(ByteBuffer.allocateDirect(0));
-                });
+                TaskTraits.UI_DEFAULT, () -> { callback.onResult(ByteBuffer.allocateDirect(0)); });
     }
 
     // Unused

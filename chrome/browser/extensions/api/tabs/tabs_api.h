@@ -127,7 +127,7 @@ class TabsHighlightFunction : public ExtensionFunction {
   ResponseAction Run() override;
   bool HighlightTab(TabStripModel* tabstrip,
                     ui::ListSelectionModel* selection,
-                    std::optional<size_t>* active_index,
+                    absl::optional<size_t>* active_index,
                     int index,
                     std::string* error);
   DECLARE_EXTENSION_FUNCTION("tabs.highlight", TABS_HIGHLIGHT)
@@ -143,7 +143,7 @@ class TabsUpdateFunction : public ExtensionFunction {
                  std::string* error);
   ResponseValue GetResult();
 
-  raw_ptr<content::WebContents, DanglingUntriaged> web_contents_;
+  raw_ptr<content::WebContents> web_contents_;
 
  private:
   ResponseAction Run() override;
@@ -156,7 +156,7 @@ class TabsMoveFunction : public ExtensionFunction {
   bool MoveTab(int tab_id,
                int* new_index,
                base::Value::List& tab_values,
-               const std::optional<int>& window_id,
+               const absl::optional<int>& window_id,
                std::string* error);
   DECLARE_EXTENSION_FUNCTION("tabs.move", TABS_MOVE)
 };

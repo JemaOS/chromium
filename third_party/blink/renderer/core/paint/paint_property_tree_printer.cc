@@ -4,9 +4,6 @@
 
 #include "third_party/blink/renderer/core/paint/paint_property_tree_printer.h"
 
-#include <iomanip>
-#include <sstream>
-
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
@@ -15,43 +12,35 @@
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/page/page.h"
-#include "third_party/blink/renderer/core/paint/fragment_data_iterator.h"
 #include "third_party/blink/renderer/core/paint/object_paint_properties.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
+
+#include <iomanip>
+#include <sstream>
 
 #if DCHECK_IS_ON()
 
 namespace blink {
 namespace {
 
-class NodeCollector {
+template <typename PropertyTreeNode>
+class PropertyTreePrinterTraits;
+
+template <typename PropertyTreeNode>
+class FrameViewPropertyTreePrinter
+    : public PropertyTreePrinter<PropertyTreeNode> {
  public:
-  virtual ~NodeCollector() = default;
-
-  virtual void AddVisualViewportProperties(const VisualViewport&,
-                                           PropertyTreePrinter&) const {}
-  virtual void AddOtherProperties(const LocalFrameView&,
-                                  PropertyTreePrinter&) const {}
-  virtual void AddViewTransitionProperties(const LayoutObject&,
-                                           PropertyTreePrinter&) const {}
-  virtual void AddObjectPaintProperties(const ObjectPaintProperties&,
-                                        PropertyTreePrinter&) const {}
-};
-
-class FrameViewPropertyTreePrinter : public PropertyTreePrinter {
- public:
-  explicit FrameViewPropertyTreePrinter(const NodeCollector& collector)
-      : collector_(collector) {}
-
   String TreeAsString(const LocalFrameView& frame_view) {
     CollectNodes(frame_view);
-    return PropertyTreePrinter::NodesAsTreeString();
+    return PropertyTreePrinter<PropertyTreeNode>::NodesAsTreeString();
   }
 
  private:
+  using Traits = PropertyTreePrinterTraits<PropertyTreeNode>;
+
   void CollectNodes(const LocalFrameView& frame_view) {
-    collector_.AddVisualViewportProperties(
+    Traits::AddVisualViewportProperties(
         frame_view.GetPage()->GetVisualViewport(), *this);
     if (LayoutView* layout_view = frame_view.GetLayoutView())
       CollectNodes(*layout_view);
@@ -63,61 +52,112 @@ class FrameViewPropertyTreePrinter : public PropertyTreePrinter {
       if (LocalFrameView* child_view = child_local_frame->View())
         CollectNodes(*child_view);
     }
-    collector_.AddOtherProperties(frame_view, *this);
+    Traits::AddOtherProperties(frame_view, *this);
   }
 
   void CollectNodes(const LayoutObject& object) {
-    collector_.AddViewTransitionProperties(object, *this);
+    Traits::AddViewTransitionProperties(object, *this);
 
-    for (const FragmentData& fragment : FragmentDataIterator(object)) {
-      if (const auto* properties = fragment.PaintProperties()) {
-        collector_.AddObjectPaintProperties(*properties, *this);
-      }
+    for (const auto* fragment = &object.FirstFragment(); fragment;
+         fragment = fragment->NextFragment()) {
+      if (const auto* properties = fragment->PaintProperties())
+        Traits::AddObjectPaintProperties(*properties, *this);
     }
     for (const auto* child = object.SlowFirstChild(); child;
          child = child->NextSibling()) {
       CollectNodes(*child);
     }
   }
-
-  const NodeCollector& collector_;
 };
 
-class TransformNodeCollector : public NodeCollector {
+template <>
+class PropertyTreePrinterTraits<TransformPaintPropertyNodeOrAlias> {
  public:
-  void AddVisualViewportProperties(
+  static void AddVisualViewportProperties(
       const VisualViewport& visual_viewport,
-      PropertyTreePrinter& printer) const override {
+      PropertyTreePrinter<TransformPaintPropertyNodeOrAlias>& printer) {
     printer.AddNode(visual_viewport.GetDeviceEmulationTransformNode());
     printer.AddNode(visual_viewport.GetOverscrollElasticityTransformNode());
     printer.AddNode(visual_viewport.GetPageScaleNode());
     printer.AddNode(visual_viewport.GetScrollTranslationNode());
   }
-  void AddObjectPaintProperties(const ObjectPaintProperties& properties,
-                                PropertyTreePrinter& printer) const override {
-    properties.AddTransformNodesToPrinter(printer);
+  static void AddObjectPaintProperties(
+      const ObjectPaintProperties& properties,
+      PropertyTreePrinter<TransformPaintPropertyNodeOrAlias>& printer) {
+    printer.AddNode(properties.PaintOffsetTranslation());
+    printer.AddNode(properties.StickyTranslation());
+    printer.AddNode(properties.AnchorScrollTranslation());
+    printer.AddNode(properties.Translate());
+    printer.AddNode(properties.Rotate());
+    printer.AddNode(properties.Scale());
+    printer.AddNode(properties.Offset());
+    printer.AddNode(properties.Transform());
+    printer.AddNode(properties.Perspective());
+    printer.AddNode(properties.ReplacedContentTransform());
+    printer.AddNode(properties.ScrollTranslation());
+    printer.AddNode(properties.TransformIsolationNode());
   }
-};
-
-class ClipNodeCollector : public NodeCollector {
- public:
-  void AddObjectPaintProperties(const ObjectPaintProperties& properties,
-                                PropertyTreePrinter& printer) const override {
-    properties.AddClipNodesToPrinter(printer);
-  }
-};
-
-class EffectNodeCollector : public NodeCollector {
- public:
-  void AddObjectPaintProperties(const ObjectPaintProperties& properties,
-                                PropertyTreePrinter& printer) const override {
-    properties.AddEffectNodesToPrinter(printer);
-  }
-
-  void AddViewTransitionProperties(
+  static void AddViewTransitionProperties(
       const LayoutObject& object,
-      PropertyTreePrinter& printer) const override {
-    auto* transition = ViewTransitionUtils::GetTransition(object.GetDocument());
+      PropertyTreePrinter<TransformPaintPropertyNodeOrAlias>& printer) {}
+  static void AddOtherProperties(
+      const FrameView& frame_view,
+      PropertyTreePrinter<TransformPaintPropertyNodeOrAlias>& printer) {}
+};
+
+template <>
+class PropertyTreePrinterTraits<ClipPaintPropertyNodeOrAlias> {
+ public:
+  static void AddVisualViewportProperties(
+      const VisualViewport& visual_viewport,
+      PropertyTreePrinter<ClipPaintPropertyNodeOrAlias>& printer) {}
+  static void AddObjectPaintProperties(
+      const ObjectPaintProperties& properties,
+      PropertyTreePrinter<ClipPaintPropertyNodeOrAlias>& printer) {
+    printer.AddNode(properties.ClipPathClip());
+    printer.AddNode(properties.MaskClip());
+    printer.AddNode(properties.CssClip());
+    printer.AddNode(properties.CssClipFixedPosition());
+    printer.AddNode(properties.PixelMovingFilterClipExpander());
+    printer.AddNode(properties.OverflowControlsClip());
+    printer.AddNode(properties.BackgroundClip());
+    printer.AddNode(properties.InnerBorderRadiusClip());
+    printer.AddNode(properties.OverflowClip());
+    printer.AddNode(properties.ClipIsolationNode());
+  }
+  static void AddViewTransitionProperties(
+      const LayoutObject& object,
+      PropertyTreePrinter<ClipPaintPropertyNodeOrAlias>& printer) {}
+  static void AddOtherProperties(
+      const LocalFrameView& frame_view,
+      PropertyTreePrinter<ClipPaintPropertyNodeOrAlias>& printer) {}
+};
+
+template <>
+class PropertyTreePrinterTraits<EffectPaintPropertyNodeOrAlias> {
+ public:
+  static void AddVisualViewportProperties(
+      const VisualViewport& visual_viewport,
+      PropertyTreePrinter<EffectPaintPropertyNodeOrAlias>& printer) {}
+
+  static void AddObjectPaintProperties(
+      const ObjectPaintProperties& properties,
+      PropertyTreePrinter<EffectPaintPropertyNodeOrAlias>& printer) {
+    printer.AddNode(properties.Effect());
+    printer.AddNode(properties.Filter());
+    printer.AddNode(properties.VerticalScrollbarEffect());
+    printer.AddNode(properties.HorizontalScrollbarEffect());
+    printer.AddNode(properties.ScrollCornerEffect());
+    printer.AddNode(properties.Mask());
+    printer.AddNode(properties.ClipPathMask());
+    printer.AddNode(properties.EffectIsolationNode());
+  }
+
+  static void AddViewTransitionProperties(
+      const LayoutObject& object,
+      PropertyTreePrinter<EffectPaintPropertyNodeOrAlias>& printer) {
+    auto* transition =
+        ViewTransitionUtils::GetActiveTransition(object.GetDocument());
     // `NeedsViewTransitionEffectNode` is an indirect way to see if the object
     // is participating in the transition.
     if (!transition || !transition->NeedsViewTransitionEffectNode(object)) {
@@ -127,38 +167,48 @@ class EffectNodeCollector : public NodeCollector {
     printer.AddNode(transition->GetEffect(object));
   }
 
-  void AddOtherProperties(const LocalFrameView& frame_view,
-                          PropertyTreePrinter& printer) const override {
+  static void AddOtherProperties(
+      const LocalFrameView& frame_view,
+      PropertyTreePrinter<EffectPaintPropertyNodeOrAlias>& printer) {
     printer.AddNode(&frame_view.GetFrame().Selection().CaretEffectNode());
   }
 };
 
-class ScrollNodeCollector : public NodeCollector {
+template <>
+class PropertyTreePrinterTraits<ScrollPaintPropertyNode> {
  public:
-  void AddVisualViewportProperties(
+  static void AddVisualViewportProperties(
       const VisualViewport& visual_viewport,
-      PropertyTreePrinter& printer) const override {
+      PropertyTreePrinter<ScrollPaintPropertyNode>& printer) {
     printer.AddNode(visual_viewport.GetScrollNode());
   }
 
-  void AddObjectPaintProperties(const ObjectPaintProperties& properties,
-                                PropertyTreePrinter& printer) const override {
-    properties.AddScrollNodesToPrinter(printer);
+  static void AddObjectPaintProperties(
+      const ObjectPaintProperties& properties,
+      PropertyTreePrinter<ScrollPaintPropertyNode>& printer) {
+    printer.AddNode(properties.Scroll());
   }
+
+  static void AddViewTransitionProperties(
+      const LayoutObject& object,
+      PropertyTreePrinter<ScrollPaintPropertyNode>& printer) {}
+  static void AddOtherProperties(
+      const LocalFrameView& frame_view,
+      PropertyTreePrinter<ScrollPaintPropertyNode>& printer) {}
 };
 
-void SetDebugName(const PaintPropertyNode* node, const String& debug_name) {
-  if (node) {
-    const_cast<PaintPropertyNode*>(node)->SetDebugName(debug_name);
-  }
+template <typename PropertyTreeNode>
+void SetDebugName(const PropertyTreeNode* node, const String& debug_name) {
+  if (node)
+    const_cast<PropertyTreeNode*>(node)->SetDebugName(debug_name);
 }
 
-void SetDebugName(const PaintPropertyNode* node,
+template <typename PropertyTreeNode>
+void SetDebugName(const PropertyTreeNode* node,
                   const String& name,
                   const LayoutObject& object) {
-  if (node) {
+  if (node)
     SetDebugName(node, name + " (" + object.DebugName() + ")");
-  }
 }
 
 }  // namespace
@@ -181,8 +231,8 @@ void UpdateDebugNames(const LayoutObject& object,
   SetDebugName(properties.PaintOffsetTranslation(), "PaintOffsetTranslation",
                object);
   SetDebugName(properties.StickyTranslation(), "StickyTranslation", object);
-  SetDebugName(properties.AnchorPositionScrollTranslation(),
-               "AnchorPositionScrollTranslation", object);
+  SetDebugName(properties.AnchorScrollTranslation(), "AnchorScrollTranslation",
+               object);
   SetDebugName(properties.Translate(), "Translate", object);
   SetDebugName(properties.Rotate(), "Rotate", object);
   SetDebugName(properties.Scale(), "Scale", object);
@@ -219,8 +269,6 @@ void UpdateDebugNames(const LayoutObject& object,
   SetDebugName(properties.ScrollCornerEffect(), "ScrollCornerEffect", object);
   SetDebugName(properties.Mask(), "Mask", object);
   SetDebugName(properties.ClipPathMask(), "ClipPathMask", object);
-  SetDebugName(properties.ElementCaptureEffect(), "ElementCaptureEffect",
-               object);
   SetDebugName(properties.EffectIsolationNode(), "EffectIsolationNode", object);
 
   SetDebugName(properties.Scroll(), "Scroll", object);
@@ -255,22 +303,25 @@ void ShowScrollPropertyTree(const blink::LocalFrameView& rootFrame) {
 }
 
 String TransformPropertyTreeAsString(const blink::LocalFrameView& rootFrame) {
-  return blink::FrameViewPropertyTreePrinter(blink::TransformNodeCollector())
+  return blink::FrameViewPropertyTreePrinter<
+             blink::TransformPaintPropertyNodeOrAlias>()
       .TreeAsString(rootFrame);
 }
 
 String ClipPropertyTreeAsString(const blink::LocalFrameView& rootFrame) {
-  return blink::FrameViewPropertyTreePrinter(blink::ClipNodeCollector())
+  return blink::FrameViewPropertyTreePrinter<
+             blink::ClipPaintPropertyNodeOrAlias>()
       .TreeAsString(rootFrame);
 }
 
 String EffectPropertyTreeAsString(const blink::LocalFrameView& rootFrame) {
-  return blink::FrameViewPropertyTreePrinter(blink::EffectNodeCollector())
+  return blink::FrameViewPropertyTreePrinter<
+             blink::EffectPaintPropertyNodeOrAlias>()
       .TreeAsString(rootFrame);
 }
 
 String ScrollPropertyTreeAsString(const blink::LocalFrameView& rootFrame) {
-  return blink::FrameViewPropertyTreePrinter(blink::ScrollNodeCollector())
+  return blink::FrameViewPropertyTreePrinter<blink::ScrollPaintPropertyNode>()
       .TreeAsString(rootFrame);
 }
 

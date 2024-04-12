@@ -48,54 +48,39 @@ class DateOrderedListView {
     private final RecyclerView mView;
     private final GridLayoutManager mGridLayoutManager;
     private final UiConfig mUiConfig;
-    private Runnable mOnConfigurationChangedCallback;
 
     /** Creates an instance of a {@link DateOrderedListView} representing {@code model}. */
-    public DateOrderedListView(
-            Context context,
-            DownloadManagerUiConfig config,
-            DecoratedListItemModel model,
-            DateOrderedListObserver dateOrderedListObserver,
-            Runnable onConfigurationChangedCallback) {
+    public DateOrderedListView(Context context, DownloadManagerUiConfig config,
+            DecoratedListItemModel model, DateOrderedListObserver dateOrderedListObserver) {
         mConfig = config;
         mModel = model;
 
-        mIdealImageWidthPx =
-                context.getResources()
-                        .getDimensionPixelSize(R.dimen.download_manager_ideal_image_width);
-        mInterImagePaddingPx =
-                context.getResources()
-                        .getDimensionPixelOffset(R.dimen.download_manager_image_padding);
-        mHorizontalPaddingPx =
-                context.getResources()
-                        .getDimensionPixelSize(R.dimen.download_manager_horizontal_margin);
-        mPrefetchVerticalPaddingPx =
-                context.getResources()
-                        .getDimensionPixelSize(R.dimen.download_manager_prefetch_vertical_margin);
-        mVerticalPaddingPx =
-                context.getResources()
-                        .getDimensionPixelSize(
-                                R.dimen.download_manager_vertical_margin_between_download_types);
-        mMaxWidthImageItemPx =
-                context.getResources()
-                        .getDimensionPixelSize(
-                                R.dimen.download_manager_max_image_item_width_wide_screen);
+        mIdealImageWidthPx = context.getResources().getDimensionPixelSize(
+                R.dimen.download_manager_ideal_image_width);
+        mInterImagePaddingPx = context.getResources().getDimensionPixelOffset(
+                R.dimen.download_manager_image_padding);
+        mHorizontalPaddingPx = context.getResources().getDimensionPixelSize(
+                R.dimen.download_manager_horizontal_margin);
+        mPrefetchVerticalPaddingPx = context.getResources().getDimensionPixelSize(
+                R.dimen.download_manager_prefetch_vertical_margin);
+        mVerticalPaddingPx = context.getResources().getDimensionPixelSize(
+                R.dimen.download_manager_vertical_margin_between_download_types);
+        mMaxWidthImageItemPx = context.getResources().getDimensionPixelSize(
+                R.dimen.download_manager_max_image_item_width_wide_screen);
 
-        mView =
-                new RecyclerView(context) {
-                    private int mScreenOrientation = Configuration.ORIENTATION_UNDEFINED;
+        mView = new RecyclerView(context) {
+            private int mScreenOrientation = Configuration.ORIENTATION_UNDEFINED;
 
-                    @Override
-                    protected void onConfigurationChanged(Configuration newConfig) {
-                        super.onConfigurationChanged(newConfig);
-                        mUiConfig.updateDisplayStyle();
-                        if (newConfig.orientation == mScreenOrientation) return;
+            @Override
+            protected void onConfigurationChanged(Configuration newConfig) {
+                super.onConfigurationChanged(newConfig);
+                mUiConfig.updateDisplayStyle();
+                if (newConfig.orientation == mScreenOrientation) return;
 
-                        mScreenOrientation = newConfig.orientation;
-                        mView.invalidateItemDecorations();
-                        mOnConfigurationChangedCallback.run();
-                    }
-                };
+                mScreenOrientation = newConfig.orientation;
+                mView.invalidateItemDecorations();
+            }
+        };
         mView.setId(R.id.download_home_recycler_view);
         mView.setHasFixedSize(true);
         ((DefaultItemAnimator) mView.getItemAnimator()).setSupportsChangeAnimations(false);
@@ -110,32 +95,23 @@ class DateOrderedListView {
                 mModel.getProperties(), mView, new ListPropertyViewBinder());
 
         // Do the final hook up to the underlying data adapter.
-        DateOrderedListViewAdapter adapter =
-                new DateOrderedListViewAdapter(
-                        mModel, new ModelChangeProcessor(mModel), ListItemViewHolder::create);
+        DateOrderedListViewAdapter adapter = new DateOrderedListViewAdapter(
+                mModel, new ModelChangeProcessor(mModel), ListItemViewHolder::create);
         mView.setAdapter(adapter);
         mView.post(adapter::notifyDataSetChanged);
-        mView.addOnScrollListener(
-                new RecyclerView.OnScrollListener() {
-                    @Override
-                    public void onScrolled(RecyclerView view, int dx, int dy) {
-                        dateOrderedListObserver.onListScroll(mView.canScrollVertically(-1));
-                    }
-                });
+        mView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView view, int dx, int dy) {
+                dateOrderedListObserver.onListScroll(mView.canScrollVertically(-1));
+            }
+        });
 
         mUiConfig = new UiConfig(mView);
-        mUiConfig.addObserver(
-                (newDisplayStyle) -> {
-                    int padding =
-                            getPaddingForDisplayStyle(newDisplayStyle, context.getResources());
-                    ViewCompat.setPaddingRelative(
-                            mView,
-                            padding,
-                            mView.getPaddingTop(),
-                            padding,
-                            mView.getPaddingBottom());
-                });
-        mOnConfigurationChangedCallback = onConfigurationChangedCallback;
+        mUiConfig.addObserver((newDisplayStyle) -> {
+            int padding = getPaddingForDisplayStyle(newDisplayStyle, context.getResources());
+            ViewCompat.setPaddingRelative(
+                    mView, padding, mView.getPaddingTop(), padding, mView.getPaddingBottom());
+        });
     }
 
     /** @return The Android {@link View} representing this widget. */
@@ -151,32 +127,26 @@ class DateOrderedListView {
         int padding = 0;
         if (displayStyle.horizontal == HorizontalDisplayStyle.WIDE) {
             int screenWidthDp = resources.getConfiguration().screenWidthDp;
-            padding =
-                    (int)
-                            (((screenWidthDp - UiConfig.WIDE_DISPLAY_STYLE_MIN_WIDTH_DP) / 2.f)
-                                    * resources.getDisplayMetrics().density);
-            padding =
-                    (int)
-                            Math.max(
-                                    resources.getDimensionPixelSize(
-                                            R.dimen
-                                                    .download_manager_recycler_view_min_padding_wide_screen),
-                                    padding);
+            padding = (int) (((screenWidthDp - UiConfig.WIDE_DISPLAY_STYLE_MIN_WIDTH_DP) / 2.f)
+                    * resources.getDisplayMetrics().density);
+            padding = (int) Math.max(
+                    resources.getDimensionPixelSize(
+                            R.dimen.download_manager_recycler_view_min_padding_wide_screen),
+                    padding);
         }
         return padding;
     }
 
     /** @return The view width available after start and end padding. */
     private int getAvailableViewWidth() {
-        return mView.getWidth()
-                - ViewCompat.getPaddingStart(mView)
+        return mView.getWidth() - ViewCompat.getPaddingStart(mView)
                 - ViewCompat.getPaddingEnd(mView);
     }
 
     private class GridLayoutManagerImpl extends GridLayoutManager {
         /** Creates an instance of a {@link GridLayoutManagerImpl}. */
         public GridLayoutManagerImpl(Context context) {
-            super(context, /* spanCount= */ 1, VERTICAL, /* reverseLayout= */ false);
+            super(context, 1 /* spanCount */, VERTICAL, false /* reverseLayout */);
             setSpanSizeLookup(new SpanSizeLookupImpl());
         }
 
@@ -286,8 +256,7 @@ class DateOrderedListView {
 
             // If the previous item was a grid item, and current one is not, add padding above to
             // differentiate between sections.
-            if (position > 0
-                    && isLastOfDownloadTypeInSection(position - 1)
+            if (position > 0 && isLastOfDownloadTypeInSection(position - 1)
                     && isGridItem(position - 1)) {
                 outRect.top += mVerticalPaddingPx;
             }
@@ -298,13 +267,8 @@ class DateOrderedListView {
             int spanCount = mGridLayoutManager.getSpanCount();
             int columnIndex = spanLookup.getSpanIndex(position, spanCount);
 
-            horizontallyRepositionGridItem(
-                    columnIndex,
-                    spanCount,
-                    mHorizontalPaddingPx,
-                    mHorizontalPaddingPx,
-                    mInterImagePaddingPx,
-                    outRect);
+            horizontallyRepositionGridItem(columnIndex, spanCount, mHorizontalPaddingPx,
+                    mHorizontalPaddingPx, mInterImagePaddingPx, outRect);
         }
     }
 
@@ -318,13 +282,8 @@ class DateOrderedListView {
      * @param padding Spacing between two items
      * @param outRect The output rect that contains the computed offsets
      */
-    private static void horizontallyRepositionGridItem(
-            int columnIndex,
-            int spanCount,
-            int leftMargin,
-            int rightMargin,
-            int padding,
-            Rect outRect) {
+    private static void horizontallyRepositionGridItem(int columnIndex, int spanCount,
+            int leftMargin, int rightMargin, int padding, Rect outRect) {
         assert spanCount > 1;
 
         // Margin here refers to the leftmost or rightmost margin in the row, and padding here
@@ -365,9 +324,8 @@ class DateOrderedListView {
 
         // If both items are OfflineItemListItems, but are of different type, then the current item
         // is the last of its type.
-        boolean nextItemIsDifferentType =
-                ((OfflineItemListItem) currentItem).item.filter
-                        != ((OfflineItemListItem) nextItem).item.filter;
+        boolean nextItemIsDifferentType = ((OfflineItemListItem) currentItem).item.filter
+                != ((OfflineItemListItem) nextItem).item.filter;
         if (nextItemIsDifferentType) return true;
 
         // If this point is reached, both items are OfflineListItems and the same type, meaning the

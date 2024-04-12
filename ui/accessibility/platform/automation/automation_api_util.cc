@@ -20,10 +20,7 @@ bool ShouldIgnoreAXEventForAutomation(ax::mojom::Event event_type) {
     // from the intersection of AXEventGenerator::Event and
     // ax::mojom::Event.
     case ax::mojom::Event::kActiveDescendantChanged:
-    // TODO(crbug.com/1464633) Fully remove kAriaAttributeChangedDeprecated
-    // starting in 122, because although it was removed in 118, it is still
-    // present in earlier versions of LaCros.
-    case ax::mojom::Event::kAriaAttributeChangedDeprecated:
+    case ax::mojom::Event::kAriaAttributeChanged:
     case ax::mojom::Event::kCheckedStateChanged:
     case ax::mojom::Event::kChildrenChanged:
     case ax::mojom::Event::kDocumentSelectionChanged:
@@ -104,7 +101,6 @@ bool ShouldIgnoreGeneratedEventForAutomation(
     case AXEventGenerator::Event::ACTIVE_DESCENDANT_CHANGED:
     case AXEventGenerator::Event::ALERT:
     case AXEventGenerator::Event::ARIA_CURRENT_CHANGED:
-    case AXEventGenerator::Event::ARIA_NOTIFICATIONS_POSTED:
     case AXEventGenerator::Event::ATOMIC_CHANGED:
     case AXEventGenerator::Event::AUTO_COMPLETE_CHANGED:
     case AXEventGenerator::Event::AUTOFILL_AVAILABILITY_CHANGED:
@@ -113,6 +109,7 @@ bool ShouldIgnoreGeneratedEventForAutomation(
     case AXEventGenerator::Event::CHECKED_STATE_CHANGED:
     case AXEventGenerator::Event::CHECKED_STATE_DESCRIPTION_CHANGED:
     case AXEventGenerator::Event::CHILDREN_CHANGED:
+    case AXEventGenerator::Event::CLASS_NAME_CHANGED:
     case AXEventGenerator::Event::COLLAPSED:
     case AXEventGenerator::Event::CONTROLS_CHANGED:
     case AXEventGenerator::Event::DETAILS_CHANGED:
@@ -149,7 +146,7 @@ bool ShouldIgnoreGeneratedEventForAutomation(
     case AXEventGenerator::Event::MULTISELECTABLE_STATE_CHANGED:
     case AXEventGenerator::Event::NAME_CHANGED:
     case AXEventGenerator::Event::OBJECT_ATTRIBUTE_CHANGED:
-    case AXEventGenerator::Event::ORIENTATION_CHANGED:
+    case AXEventGenerator::Event::OTHER_ATTRIBUTE_CHANGED:
     case AXEventGenerator::Event::PARENT_CHANGED:
     case AXEventGenerator::Event::PLACEHOLDER_CHANGED:
     case AXEventGenerator::Event::PORTAL_ACTIVATED:
@@ -225,10 +222,10 @@ AutomationEventTypeToAXEventTuple(const char* event_type_string) {
   }
 
   // Otherwise use the AX event type.
-  auto ax_event = MaybeParseAXEnum<ax::mojom::Event>(event_type_string);
+  ax::mojom::Event ax_event = ax::mojom::Event::kNone;
+  MaybeParseAXEnum<ax::mojom::Event>(event_type_string, &ax_event);
   return std::tuple<ax::mojom::Event, AXEventGenerator::Event>(
-      ax_event.value_or(ax::mojom::Event::kNone),
-      AXEventGenerator::Event::NONE);
+      ax_event, AXEventGenerator::Event::NONE);
 }
 
 AXPositionKind StringToAXPositionKind(const std::string& type) {

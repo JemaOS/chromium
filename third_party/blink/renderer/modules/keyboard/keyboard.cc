@@ -18,10 +18,9 @@ Keyboard::Keyboard(ExecutionContext* context)
 
 Keyboard::~Keyboard() = default;
 
-ScriptPromiseTyped<IDLUndefined> Keyboard::lock(
-    ScriptState* state,
-    const Vector<String>& keycodes,
-    ExceptionState& exception_state) {
+ScriptPromise Keyboard::lock(ScriptState* state,
+                             const Vector<String>& keycodes,
+                             ExceptionState& exception_state) {
   return keyboard_lock_->lock(state, keycodes, exception_state);
 }
 
@@ -29,9 +28,8 @@ void Keyboard::unlock(ScriptState* state) {
   keyboard_lock_->unlock(state);
 }
 
-ScriptPromiseTyped<KeyboardLayoutMap> Keyboard::getLayoutMap(
-    ScriptState* state,
-    ExceptionState& exception_state) {
+ScriptPromise Keyboard::getLayoutMap(ScriptState* state,
+                                     ExceptionState& exception_state) {
   return keyboard_layout_->GetKeyboardLayoutMap(state, exception_state);
 }
 

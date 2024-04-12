@@ -15,7 +15,7 @@
 
 namespace ui {
 
-enum class DomCode : uint32_t;
+enum class DomCode;
 
 // Class for a single keyboard layout (if there is only one group) or single
 // layout group within a keyboard layout.

@@ -5,9 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_INTERSECTION_OBSERVER_INTERSECTION_OBSERVATION_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_INTERSECTION_OBSERVER_INTERSECTION_OBSERVATION_H_
 
-#include <optional>
-
-#include "base/functional/function_ref.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/dom_high_res_time_stamp.h"
 #include "third_party/blink/renderer/core/intersection_observer/intersection_geometry.h"
@@ -56,54 +54,56 @@ class CORE_EXPORT IntersectionObservation final
     // If this bit is set, we only process intersection observations that
     // require post-layout delivery.
     kPostLayoutDeliveryOnly = 1 << 6,
-    // Corresponding to LocalFrameView::kScrollAndVisibilityOnly.
-    kScrollAndVisibilityOnly = 1 << 7,
+    // If this is set, the overflow clip edge is used.
+    kUseOverflowClipEdge = 1 << 7,
   };
 
   IntersectionObservation(IntersectionObserver&, Element&);
 
   IntersectionObserver* Observer() const { return observer_.Get(); }
-  Element* Target() const { return target_.Get(); }
+  Element* Target() const { return target_; }
+  unsigned LastThresholdIndex() const { return last_threshold_index_; }
   // Returns 1 if the geometry was recalculated, otherwise 0. This could be a
   // bool, but int64_t matches IntersectionObserver::ComputeIntersections().
+  int64_t ComputeIntersection(unsigned flags,
+                              absl::optional<base::TimeTicks>& monotonic_time);
   int64_t ComputeIntersection(
+      const IntersectionGeometry::RootGeometry& root_geometry,
       unsigned flags,
-      gfx::Vector2dF accumulated_scroll_delta_since_last_update,
-      std::optional<base::TimeTicks>& monotonic_time,
-      std::optional<IntersectionGeometry::RootGeometry>& root_geometry);
-  gfx::Vector2dF MinScrollDeltaToUpdate() const;
+      absl::optional<base::TimeTicks>& monotonic_time);
   void TakeRecords(HeapVector<Member<IntersectionObserverEntry>>&);
   void Disconnect();
-  void InvalidateCachedRects() { cached_rects_.valid = false; }
+  void InvalidateCachedRects();
 
   void Trace(Visitor*) const;
 
-  bool CanUseCachedRectsForTesting() const;
+  bool CanUseCachedRectsForTesting() const { return CanUseCachedRects(); }
 
  private:
   bool ShouldCompute(unsigned flags) const;
   bool MaybeDelayAndReschedule(unsigned flags, DOMHighResTimeStamp timestamp);
+  bool CanUseCachedRects() const;
   unsigned GetIntersectionGeometryFlags(unsigned compute_flags) const;
   // Inspect the geometry to see if there has been a transition event; if so,
   // generate a notification and schedule it for delivery.
   void ProcessIntersectionGeometry(const IntersectionGeometry& geometry,
                                    DOMHighResTimeStamp timestamp);
+  void SetLastThresholdIndex(unsigned index) { last_threshold_index_ = index; }
+  void SetWasVisible(bool last_is_visible) {
+    last_is_visible_ = last_is_visible ? 1 : 0;
+  }
 
   Member<IntersectionObserver> observer_;
   WeakMember<Element> target_;
   HeapVector<Member<IntersectionObserverEntry>> entries_;
   DOMHighResTimeStamp last_run_time_;
 
-  IntersectionGeometry::CachedRects cached_rects_;
+  std::unique_ptr<IntersectionGeometry::CachedRects> cached_rects_;
 
-  wtf_size_t last_threshold_index_ = kNotFound;
-  bool last_is_visible_ = false;
-
-  // Ensures update even if kExplicitRootObserversNeedUpdate or
-  // kImplicitRootObserversNeedUpdate is not specified in flags.
-  // It ensures the initial update, and if a needed update is skipped for some
-  // reason, the flag will be true until the update is done.
-  bool needs_update_ = true;
+  unsigned last_is_visible_ : 1;
+  unsigned needs_update_ : 1;
+  unsigned last_threshold_index_ : 30;
+  static const unsigned kMaxThresholdIndex = static_cast<unsigned>(0x40000000);
 };
 
 }  // namespace blink

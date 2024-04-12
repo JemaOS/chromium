@@ -12,13 +12,15 @@ import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.chrome.browser.feed.FeedListContentManager.FeedContent;
 import org.chromium.chrome.browser.xsurface.HybridListRenderer;
-import org.chromium.chrome.browser.xsurface.feed.FeedSurfaceScope;
+import org.chromium.chrome.browser.xsurface.SurfaceScope;
 
 import java.util.List;
 
 /** Interface used for interacting with the Stream library in order to render a stream of cards. */
 public interface Stream {
-    /** The mediator of multiple Streams. */
+    /**
+     * The mediator of multiple Streams.
+     */
     public interface StreamsMediator {
         /**
          * Allows the switching to another Stream.
@@ -26,13 +28,16 @@ public interface Stream {
          */
         default void switchToStreamKind(@StreamKind int streamKind) {}
 
-        /** Request the immediate refresh of the contents of the active stream. */
+        /**
+         * Request the immediate refresh of the contents of the active stream.
+         */
         default void refreshStream() {}
 
-        /** Disable the follow button, used in case of an error scenario. */
+        /**
+         * Disable the follow button, used in case of an error scenario.
+         */
         default void disableFollowButton() {}
     }
-
     /** Called when the Stream is no longer needed. */
     default void destroy() {}
 
@@ -77,7 +82,9 @@ public interface Stream {
      */
     boolean isPlaceholderShown();
 
-    /** Called when the placeholder is shown and the first batch of articles are about to show. */
+    /**
+     * Called when the placeholder is shown and the first batch of articles are about to show.
+     */
     void hidePlaceholder();
 
     /** Whether activity logging is enabled for this feed. */
@@ -105,30 +112,26 @@ public interface Stream {
      * @param manager The {@link FeedListContentManager} to which we should make updates to.
      * @param savedInstanceState A previously saved instance state to restore to after loading
      *         content.
-     * @param surfaceScope The {@link FeedSurfaceScope} that is hosting the renderer.
+     * @param surfaceScope The {@link SurfaceScope} that is hosting the renderer.
      * @param renderer The {@link HybridListRenderer} that is rendering the feed.
      * @param reliabilityLogger Logger for feed reliability.
      * @param headerCount The number of headers in the RecyclerView that the feed shouldn't touch.
      */
-    void bind(
-            RecyclerView view,
-            FeedListContentManager manager,
-            FeedScrollState savedInstanceState,
-            FeedSurfaceScope surfaceScope,
-            HybridListRenderer renderer,
-            @Nullable FeedReliabilityLogger reliabilityLogger,
-            int headerCount);
+    void bind(RecyclerView view, FeedListContentManager manager, FeedScrollState savedInstanceState,
+            SurfaceScope surfaceScope, HybridListRenderer renderer,
+            @Nullable FeedReliabilityLogger reliabilityLogger, int headerCount);
 
     /**
      * Unbinds the feed. Stops this feed from updating the RecyclerView.
      *
      * @param shouldPlaceSpacer Whether this feed should place a spacer at the end to
      *     prevent abrupt scroll jumps.
-     * @param switchingStream Whether another feed is going to be bound right after this.
      */
-    void unbind(boolean shouldPlaceSpacer, boolean switchingStream);
+    void unbind(boolean shouldPlaceSpacer);
 
-    /** Whether this stream supports alternate sort options. */
+    /**
+     * Whether this stream supports alternate sort options.
+     */
     default boolean supportsOptions() {
         return false;
     }

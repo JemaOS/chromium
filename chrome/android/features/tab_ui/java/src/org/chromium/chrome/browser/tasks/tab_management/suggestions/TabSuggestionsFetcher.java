@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.tasks.tab_management.suggestions;
 
 import org.chromium.base.Callback;
 
-/** Defines the interface for suggestion fetchers. */
+/**
+ * Defines the interface for suggestion fetchers.
+ */
 public interface TabSuggestionsFetcher {
     /**
      * Acquires suggestions for closing tabs based on client side heuristics
@@ -16,6 +18,8 @@ public interface TabSuggestionsFetcher {
      */
     void fetch(TabContext tabContext, Callback<TabSuggestionsFetcherResults> callback);
 
-    /** Returns true if the Fetcher is enabled. */
+    /**
+     * Returns true if the Fetcher is enabled.
+     */
     boolean isEnabled();
 }

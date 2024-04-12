@@ -13,13 +13,11 @@
 #include "base/time/default_clock.h"
 #include "base/time/default_tick_clock.h"
 #include "base/time/tick_clock.h"
-#include "chrome/browser/ash/app_list/search/essential_search/essential_search_manager.h"
 #include "chrome/browser/ash/crosapi/browser_manager.h"
 #include "chrome/browser/ash/login/saml/in_session_password_change_manager.h"
 #include "chrome/browser/ash/login/session/chrome_session_manager.h"
-#include "chrome/browser/ash/login/users/avatar/user_image_manager_registry.h"
 #include "chrome/browser/ash/login/users/chrome_user_manager_impl.h"
-#include "chrome/browser/ash/net/ash_proxy_monitor.h"
+#include "chrome/browser/ash/net/delay_network_call.h"
 #include "chrome/browser/ash/net/system_proxy_manager.h"
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
@@ -100,37 +98,26 @@ void BrowserProcessPlatformPart::ShutdownAutomaticRebootManager() {
   automatic_reboot_manager_.reset();
 }
 
-void BrowserProcessPlatformPart::InitializeUserManager() {
-  DCHECK(!user_manager_);
-  user_manager_ = ash::ChromeUserManagerImpl::CreateChromeUserManager();
-  user_image_manager_registry_ =
-      std::make_unique<ash::UserImageManagerRegistry>(user_manager_.get());
-  // LoginState and DeviceCloudPolicyManager outlives UserManager, so on
-  // their initialization, there's no way to start observing UserManager.
-  // This is the earliest timing to do so.
-  if (auto* login_state = ash::LoginState::Get()) {
-    login_state->OnUserManagerCreated(user_manager_.get());
-  }
+void BrowserProcessPlatformPart::InitializeChromeUserManager() {
+  DCHECK(!chrome_user_manager_);
+  chrome_user_manager_ = ash::ChromeUserManagerImpl::CreateChromeUserManager();
+  // DeviceCloudPolicyManager outlives UserManager, so on its initialization,
+  // there's no way to start observing UserManager. This is the earliest timing
+  // to do so.
   if (auto* policy_manager =
           browser_policy_connector_ash()->GetDeviceCloudPolicyManager()) {
-    policy_manager->OnUserManagerCreated(user_manager_.get());
+    policy_manager->OnUserManagerCreated(chrome_user_manager_.get());
   }
-
-  user_manager_->Initialize();
+  chrome_user_manager_->Initialize();
 }
 
-void BrowserProcessPlatformPart::DestroyUserManager() {
-  user_manager_->Destroy();
+void BrowserProcessPlatformPart::DestroyChromeUserManager() {
+  chrome_user_manager_->Destroy();
   if (auto* policy_manager =
           browser_policy_connector_ash()->GetDeviceCloudPolicyManager()) {
-    policy_manager->OnUserManagerWillBeDestroyed(user_manager_.get());
+    policy_manager->OnUserManagerWillBeDestroyed(chrome_user_manager_.get());
   }
-  if (auto* login_state = ash::LoginState::Get()) {
-    login_state->OnUserManagerWillBeDestroyed(user_manager_.get());
-  }
-
-  user_image_manager_registry_.reset();
-  user_manager_.reset();
+  chrome_user_manager_.reset();
 }
 
 void BrowserProcessPlatformPart::InitializeDeviceDisablingManager() {
@@ -192,23 +179,9 @@ void BrowserProcessPlatformPart::ShutdownSchedulerConfigurationManager() {
   scheduler_configuration_manager_.reset();
 }
 
-void BrowserProcessPlatformPart::InitializeAshProxyMonitor() {
-  DCHECK(!ash_proxy_monitor_);
-  ash_proxy_monitor_ = std::make_unique<ash::AshProxyMonitor>(
-      g_browser_process->local_state(), g_browser_process->profile_manager());
-}
-
-void BrowserProcessPlatformPart::ShutdownAshProxyMonitor() {
-  ash_proxy_monitor_.reset();
-}
-
 void BrowserProcessPlatformPart::InitializePrimaryProfileServices(
     Profile* primary_profile) {
   DCHECK(primary_profile);
-
-  DCHECK(!essential_search_manager_);
-  essential_search_manager_ =
-      app_list::EssentialSearchManager::Create(primary_profile);
 
   DCHECK(!in_session_password_change_manager_);
   in_session_password_change_manager_ =
@@ -230,7 +203,6 @@ void BrowserProcessPlatformPart::InitializePrimaryProfileServices(
 void BrowserProcessPlatformPart::ShutdownPrimaryProfileServices() {
   if (ash::SystemProxyManager::Get())
     ash::SystemProxyManager::Get()->StopObservingPrimaryProfilePrefs();
-  essential_search_manager_.reset();
   in_session_password_change_manager_.reset();
 }
 
@@ -262,17 +234,28 @@ ash::system::TimeZoneResolverManager*
 BrowserProcessPlatformPart::GetTimezoneResolverManager() {
   if (!timezone_resolver_manager_.get()) {
     timezone_resolver_manager_ =
-        std::make_unique<ash::system::TimeZoneResolverManager>(
-            ash::SimpleGeolocationProvider::GetInstance(),
-            session_manager::SessionManager::Get());
+        std::make_unique<ash::system::TimeZoneResolverManager>();
   }
   return timezone_resolver_manager_.get();
 }
 
+ash::TimeZoneResolver* BrowserProcessPlatformPart::GetTimezoneResolver() {
+  if (!timezone_resolver_.get()) {
+    timezone_resolver_ = std::make_unique<ash::TimeZoneResolver>(
+        GetTimezoneResolverManager(),
+        g_browser_process->shared_url_loader_factory(),
+        ash::SimpleGeolocationProvider::DefaultGeolocationProviderURL(),
+        base::BindRepeating(&ash::system::ApplyTimeZone),
+        base::BindRepeating(&ash::DelayNetworkCall),
+        g_browser_process->local_state());
+  }
+  return timezone_resolver_.get();
+}
+
 void BrowserProcessPlatformPart::StartTearDown() {
-  // Some tests check for memory leaks before this object is
-  // destroyed.  So we need to destroy |timezone_resolver_manager_| here.
-  timezone_resolver_manager_.reset();
+  // interactive_ui_tests check for memory leaks before this object is
+  // destroyed.  So we need to destroy |timezone_resolver_| here.
+  timezone_resolver_.reset();
   profile_helper_.reset();
   browser_context_flusher_.reset();
 }

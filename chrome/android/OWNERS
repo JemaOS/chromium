@@ -1,6 +1,5 @@
 agrieve@chromium.org
 bsazonov@chromium.org
-ckitagawa@chromium.org
 dtrainor@chromium.org
 mthiesse@chromium.org
 nyquist@chromium.org
@@ -15,14 +14,12 @@ per-file chrome_java_sources.gni=*
 per-file chrome_java_resources.gni=*
 per-file chrome_test_java_sources.gni=*
 per-file chrome_junit_test_java_sources.gni=*
-per-file BUILD.gn=*
+
+# For VR Javatest changes.
+per-file BUILD.gn=bsheedy@chromium.org
 
 # Build-related files.
 per-file *.gn*=file://build/android/OWNERS
 
 # Translation artifacts:
 per-file ....xtb=file://tools/translation/TRANSLATION_OWNERS
-
-# Incognito
-per-file ...incognito*=file://chrome/browser/incognito/OWNERS
-per-file ...*Incognito*=file://chrome/browser/incognito/OWNERS

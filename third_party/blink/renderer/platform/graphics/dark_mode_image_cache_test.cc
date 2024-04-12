@@ -4,7 +4,6 @@
 
 #include "third_party/blink/renderer/platform/graphics/dark_mode_image_cache.h"
 
-#include "cc/paint/color_filter.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/effects/SkHighContrastFilter.h"
 
@@ -17,7 +16,7 @@ TEST_F(DarkModeImageCacheTest, Caching) {
 
   SkHighContrastConfig config;
   config.fInvertStyle = SkHighContrastConfig::InvertStyle::kInvertLightness;
-  sk_sp<cc::ColorFilter> filter = cc::ColorFilter::MakeHighContrast(config);
+  sk_sp<SkColorFilter> filter = SkHighContrastFilter::Make(config);
 
   SkIRect src1 = SkIRect::MakeXYWH(0, 0, 50, 50);
   SkIRect src2 = SkIRect::MakeXYWH(5, 20, 100, 100);

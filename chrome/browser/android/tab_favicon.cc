@@ -50,9 +50,8 @@ ScopedJavaLocalRef<jobject> TabFavicon::GetFavicon(
     const JavaParamRef<jobject>& obj) {
   ScopedJavaLocalRef<jobject> bitmap;
 
-  if (!favicon_driver_ || !favicon_driver_->FaviconIsValid()) {
+  if (!favicon_driver_)
     return bitmap;
-  }
 
   // Always return the default favicon in Android.
   SkBitmap favicon = favicon_driver_->GetFavicon().AsBitmap();

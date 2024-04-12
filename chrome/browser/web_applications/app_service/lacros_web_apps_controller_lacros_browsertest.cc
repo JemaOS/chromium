@@ -5,8 +5,6 @@
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/test/bind.h"
-#include "base/test/test_future.h"
-#include "chrome/browser/apps/app_service/app_registry_cache_waiter.h"
 #include "chrome/browser/lacros/browser_test_util.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_list.h"
@@ -16,10 +14,12 @@
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
 #include "chrome/browser/ui/web_applications/test/web_app_navigation_browsertest.h"
 #include "chrome/browser/web_applications/app_service/lacros_web_apps_controller.h"
+#include "chrome/browser/web_applications/test/app_registry_cache_waiter.h"
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chromeos/crosapi/mojom/app_service_types.mojom.h"
+#include "chromeos/crosapi/mojom/test_controller.mojom-test-utils.h"
 #include "chromeos/crosapi/mojom/test_controller.mojom.h"
 #include "chromeos/lacros/lacros_service.h"
 #include "content/public/test/browser_test.h"
@@ -33,7 +33,7 @@ using LacrosWebAppsControllerBrowserTest = WebAppNavigationBrowserTest;
 // Test that the default context menu for a web app has the correct items.
 IN_PROC_BROWSER_TEST_F(LacrosWebAppsControllerBrowserTest, DefaultContextMenu) {
   InstallTestWebApp();
-  const webapps::AppId app_id = test_web_app_id();
+  const AppId app_id = test_web_app_id();
 
   // No item should exist in the shelf before the web app is launched.
   ASSERT_TRUE(browser_test_util::WaitForShelfItem(app_id, /*exists=*/false));
@@ -44,12 +44,12 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppsControllerBrowserTest, DefaultContextMenu) {
   ASSERT_TRUE(browser_test_util::WaitForShelfItem(app_id, /*exists=*/true));
 
   // Get the context menu.
-  base::test::TestFuture<const std::vector<std::string>&> items_future;
-  chromeos::LacrosService::Get()
-      ->GetRemote<crosapi::mojom::TestController>()
-      ->GetContextMenuForShelfItem(app_id, items_future.GetCallback());
-
-  auto items = items_future.Take();
+  crosapi::mojom::TestControllerAsyncWaiter waiter(
+      chromeos::LacrosService::Get()
+          ->GetRemote<crosapi::mojom::TestController>()
+          .get());
+  std::vector<std::string> items;
+  waiter.GetContextMenuForShelfItem(app_id, &items);
   ASSERT_EQ(5u, items.size());
   EXPECT_EQ(items[0], "New window");
   EXPECT_EQ(items[1], "Pin");
@@ -58,7 +58,7 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppsControllerBrowserTest, DefaultContextMenu) {
   EXPECT_EQ(items[4], "App info");
 
   // Close app window.
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     if (browser->is_type_app())
       browser->window()->Close();
   }
@@ -70,8 +70,8 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppsControllerBrowserTest, DefaultContextMenu) {
 // Test that ShowSiteSettings() launches the Settings SWA.
 IN_PROC_BROWSER_TEST_F(LacrosWebAppsControllerBrowserTest, AppManagement) {
   InstallTestWebApp();
-  const webapps::AppId app_id = test_web_app_id();
-  apps::AppReadinessWaiter(profile(), kOsSettingsAppId).Await();
+  const AppId app_id = test_web_app_id();
+  AppReadinessWaiter(profile(), kOsSettingsAppId).Await();
 
   Browser* browser = OpenTestWebApp();
   content::WebContents* web_contents =
@@ -91,11 +91,15 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppsControllerBrowserTest, AppManagement) {
   ASSERT_TRUE(
       browser_test_util::WaitForShelfItem(kOsSettingsAppId, /*exists=*/true));
 
-  base::test::TestFuture<bool> success_future;
-  chromeos::LacrosService::Get()
-      ->GetRemote<crosapi::mojom::TestController>()
-      ->CloseAllBrowserWindows(success_future.GetCallback());
-  EXPECT_TRUE(success_future.Take());
+  base::RunLoop run_loop;
+  auto* const lacros_service = chromeos::LacrosService::Get();
+  lacros_service->GetRemote<crosapi::mojom::TestController>()
+      ->CloseAllBrowserWindows(
+          base::BindLambdaForTesting([&run_loop](bool success) {
+            EXPECT_TRUE(success);
+            run_loop.Quit();
+          }));
+  run_loop.Run();
 
   // Settings should no longer exist in the shelf.
   ASSERT_TRUE(
@@ -111,15 +115,15 @@ IN_PROC_BROWSER_TEST_F(LacrosWebAppsControllerBrowserTest, AppManagement) {
 IN_PROC_BROWSER_TEST_F(LacrosWebAppsControllerBrowserTest, AppList) {
   // If ash is does not contain the relevant test controller functionality,
   // then there's nothing to do for this test.
-  if (chromeos::LacrosService::Get()
-          ->GetInterfaceVersion<crosapi::mojom::TestController>() <
+  if (chromeos::LacrosService::Get()->GetInterfaceVersion(
+          crosapi::mojom::TestController::Uuid_) <
       static_cast<int>(crosapi::mojom::TestController::MethodMinVersions::
                            kLaunchAppFromAppListMinVersion)) {
     GTEST_SKIP() << "Unsupported ash version.";
   }
 
   InstallTestWebApp();
-  const webapps::AppId app_id = test_web_app_id();
+  const AppId app_id = test_web_app_id();
 
   // No item should exist in the shelf before the web app is launched.
   ASSERT_TRUE(browser_test_util::WaitForShelfItem(app_id, /*exists=*/false));

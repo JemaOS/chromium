@@ -63,10 +63,12 @@ bool FEFlood::SetFloodOpacity(float flood_opacity) {
 sk_sp<PaintFilter> FEFlood::CreateImageFilter() {
   SkColor4f color = flood_color_;
   color.fA *= flood_opacity_;
-  std::optional<PaintFilter::CropRect> crop_rect = GetCropRect();
+  absl::optional<PaintFilter::CropRect> crop_rect = GetCropRect();
   return sk_make_sp<ColorFilterPaintFilter>(
-      cc::ColorFilter::MakeBlend(color, SkBlendMode::kSrc), nullptr,
-      base::OptionalToPtr(crop_rect));
+      // TODO(crbug.com/1308932): SkColorFilters::Blend to SkColor4f
+      SkColorFilters::Blend(Color::FromSkColor4f(color).Rgb(),
+                            SkBlendMode::kSrc),
+      nullptr, base::OptionalToPtr(crop_rect));
 }
 
 WTF::TextStream& FEFlood::ExternalRepresentation(WTF::TextStream& ts,

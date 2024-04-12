@@ -4,6 +4,7 @@
 
 #include "ash/clipboard/views/clipboard_history_main_button.h"
 
+#include "ash/clipboard/clipboard_history_util.h"
 #include "ash/clipboard/views/clipboard_history_item_view.h"
 #include "ash/style/ash_color_id.h"
 #include "ash/style/style_util.h"
@@ -29,9 +30,10 @@ ClipboardHistoryMainButton::ClipboardHistoryMainButton(
       container_(container) {
   SetFocusBehavior(views::View::FocusBehavior::ALWAYS);
   views::InkDrop::Get(this)->SetMode(views::InkDropHost::InkDropMode::ON);
+  SetID(clipboard_history_util::kMainButtonViewID);
 
   // Let the parent handle accessibility features.
-  GetViewAccessibility().SetIsIgnored(true);
+  GetViewAccessibility().OverrideIsIgnored(/*value=*/true);
 
   // TODO(crbug.com/1205227): Revisit if this comment makes sense still. It was
   // attached to CreateInkDrop() but sounds more about talking about a null
@@ -52,6 +54,18 @@ ClipboardHistoryMainButton::ClipboardHistoryMainButton(
 }
 
 ClipboardHistoryMainButton::~ClipboardHistoryMainButton() = default;
+
+void ClipboardHistoryMainButton::OnHostPseudoFocusUpdated() {
+  SetShouldHighlight(container_->IsMainButtonPseudoFocused());
+}
+
+void ClipboardHistoryMainButton::SetShouldHighlight(bool should_highlight) {
+  if (should_highlight_ == should_highlight)
+    return;
+
+  should_highlight_ = should_highlight;
+  SchedulePaint();
+}
 
 void ClipboardHistoryMainButton::OnClickCanceled(const ui::Event& event) {
   DCHECK(event.IsMouseEvent());
@@ -81,10 +95,8 @@ void ClipboardHistoryMainButton::OnGestureEvent(ui::GestureEvent* event) {
 }
 
 void ClipboardHistoryMainButton::PaintButtonContents(gfx::Canvas* canvas) {
-  // Only paint a highlight when the button has pseudo focus.
-  if (!container_->IsMainButtonPseudoFocused()) {
+  if (!should_highlight_)
     return;
-  }
 
   // Highlight the background when the menu item is selected or pressed.
   cc::PaintFlags flags;
@@ -99,7 +111,7 @@ void ClipboardHistoryMainButton::PaintButtonContents(gfx::Canvas* canvas) {
   canvas->DrawRect(GetLocalBounds(), flags);
 }
 
-BEGIN_METADATA(ClipboardHistoryMainButton)
+BEGIN_METADATA(ClipboardHistoryMainButton, views::Button)
 END_METADATA
 
 }  // namespace ash

@@ -375,7 +375,8 @@
 
 - name: 2d.fillStyle.colorObject
   desc: ctx.fillStyle works with color objects
-  canvas_types: ['HtmlCanvas']
+  canvasType:
+    ['HTMLCanvas']
   code: |
     ctx.fillStyle = {r: 1, g: 0, b: 0};
     ctx.fillRect(0, 0, 100, 50);
@@ -399,7 +400,8 @@
 
 - name: 2d.fillStyle.colorObject.transparency
   desc: ctx.fillStyle with color objects has transparency
-  canvas_types: ['HtmlCanvas']
+  canvasType:
+    ['HTMLCanvas']
   code: |
     ctx.fillStyle = {r: 0, g: 1, b: 0, a: 0};
     ctx.fillRect(0, 0, 100, 50);
@@ -420,7 +422,8 @@
 
 - name: 2d.strokeStyle.colorObject
   desc: ctx.strokeStyle works with color objects
-  canvas_types: ['HtmlCanvas']
+  canvasType:
+    ['HTMLCanvas']
   code: |
     ctx.lineWidth = 50;
     ctx.strokeStyle = {r: 1, g: 0, b: 0};
@@ -445,7 +448,8 @@
 
 - name: 2d.strokeStyle.colorObject.transparency
   desc: ctx.strokeStyle with color objects has transparency
-  canvas_types: ['HtmlCanvas']
+  canvasType:
+    ['HTMLCanvas']
   code: |
     ctx.lineWidth = 50;
     ctx.strokeStyle = {r: 0, g: 1, b: 0, a: 0};

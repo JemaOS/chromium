@@ -22,7 +22,7 @@ class XRPose : public ScriptWrappable {
   XRPose(const gfx::Transform&, bool emulated_position);
   ~XRPose() override = default;
 
-  XRRigidTransform* transform() const { return transform_.Get(); }
+  XRRigidTransform* transform() const { return transform_; }
   DOMPointReadOnly* linearVelocity() const { return nullptr; }
   DOMPointReadOnly* angularVelocity() const { return nullptr; }
   bool emulatedPosition() const { return emulated_position_; }

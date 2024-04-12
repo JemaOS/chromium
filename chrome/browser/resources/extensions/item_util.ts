@@ -4,7 +4,7 @@
 
 import './strings.m.js';
 
-import {assertNotReached} from 'chrome://resources/js/assert.js';
+import {assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 
 export enum SourceType {
@@ -14,6 +14,7 @@ export enum SourceType {
   UNPACKED = 'unpacked',
   INSTALLED_BY_DEFAULT = 'installed-by-default',
   UNKNOWN = 'unknown',
+  JEMAOS_STORE = 'jemaos_store',
 }
 
 export enum EnableControl {
@@ -63,7 +64,6 @@ export function userCanChangeEnablement(
   if (item.disableReasons.corruptInstall ||
       item.disableReasons.suspiciousInstall ||
       item.disableReasons.updateRequired ||
-      item.disableReasons.publishedInStoreRequired ||
       item.disableReasons.blockedByPolicy) {
     return false;
   }
@@ -84,6 +84,10 @@ export function getItemSource(item: chrome.developerPrivate.ExtensionInfo):
     SourceType {
   if (item.controlledInfo) {
     return SourceType.POLICY;
+  }
+
+  if (isJemaOSItem(item)) {
+    return SourceType.JEMAOS_STORE;
   }
 
   switch (item.location) {
@@ -112,6 +116,8 @@ export function getItemSourceString(source: SourceType): string {
       return loadTimeData.getString('itemSourceUnpacked');
     case SourceType.WEBSTORE:
       return loadTimeData.getString('itemSourceWebstore');
+    case SourceType.JEMAOS_STORE:
+      return loadTimeData.getString('itemSourceJemaOSStore');
     case SourceType.INSTALLED_BY_DEFAULT:
       return loadTimeData.getString('itemSourceInstalledByDefault');
     case SourceType.UNKNOWN:
@@ -122,6 +128,21 @@ export function getItemSourceString(source: SourceType): string {
       assertNotReached();
   }
 }
+
+// ---***JEMAOS BEGIN***---
+/**
+ * Returns true if the extension/app is packed by jemaos
+ * @param {!chrome.developerPrivate.ExtensionInfo} item
+ * @return {boolean}
+ */
+export function isJemaOSItem(item: chrome.developerPrivate.ExtensionInfo) {
+  const jemaosUpdateUrl = loadTimeData.getString('jemaosStoreBaseUrl');
+  if (jemaosUpdateUrl && item.updateUrl.substr(0, jemaosUpdateUrl.length) === jemaosUpdateUrl) {
+    return true;
+  }
+  return false;
+}
+// ---***JEMAOS END***---
 
 /**
  * Computes the human-facing label for the given inspectable view.
@@ -152,30 +173,6 @@ export function computeInspectableViewLabel(
   }
 
   return label;
-}
-
-/**
- * Computes the accessible human-facing aria label for an extension toggle item.
- */
-export function getEnableToggleAriaLabel(
-    toggleEnabled: boolean,
-    extensionsDataType: chrome.developerPrivate.ExtensionType,
-    appEnabled: string, extensionEnabled: string, itemOff: string): string {
-  if (!toggleEnabled) {
-    return itemOff;
-  }
-
-  const ExtensionType = chrome.developerPrivate.ExtensionType;
-  switch (extensionsDataType) {
-    case ExtensionType.HOSTED_APP:
-    case ExtensionType.LEGACY_PACKAGED_APP:
-    case ExtensionType.PLATFORM_APP:
-      return appEnabled;
-    case ExtensionType.EXTENSION:
-    case ExtensionType.SHARED_MODULE:
-      return extensionEnabled;
-  }
-  assertNotReached('Item type is not App or Extension.');
 }
 
 /**
@@ -218,19 +215,4 @@ export function getEnableControl(data: chrome.developerPrivate.ExtensionInfo):
     return EnableControl.REPAIR;
   }
   return EnableControl.ENABLE_TOGGLE;
-}
-
-/**
- * @return The tooltip to show for an extension's enable toggle.
- */
-export function getEnableToggleTooltipText(
-    data: chrome.developerPrivate.ExtensionInfo): string {
-  if (!isEnabled(data.state)) {
-    return loadTimeData.getString('enableToggleTooltipDisabled');
-  }
-
-  return loadTimeData.getString(
-      data.permissions.canAccessSiteData ?
-          'enableToggleTooltipEnabledWithSiteAccess' :
-          'enableToggleTooltipEnabled');
 }

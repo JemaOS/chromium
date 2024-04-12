@@ -2,13 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
-import * as ElementsModule from 'devtools/panels/elements/elements.js';
-
 (async function() {
   TestRunner.addResult(`Tests that src and href element targets are rewritten properly.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <div id="data">
@@ -51,7 +47,7 @@ import * as ElementsModule from 'devtools/panels/elements/elements.js';
   function step2() {
     TestRunner.addResult('=========== Loaded 5 children ===========');
     dumpElementsTree();
-    TestRunner.addSniffer(ElementsModule.ElementsTreeOutline.ElementsTreeOutline.prototype, 'updateModifiedNodes', step3);
+    TestRunner.addSniffer(Elements.ElementsTreeOutline.prototype, 'updateModifiedNodes', step3);
     TestRunner.evaluateInPage('insertNode()');
   }
 

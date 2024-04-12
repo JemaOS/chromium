@@ -4,13 +4,11 @@
 
 #include "chrome/browser/plugins/plugin_test_utils.h"
 
-#include <string_view>
-
 #include "base/strings/stringprintf.h"
 #include "content/public/test/browser_test_utils.h"
 
 // static
-std::string PluginTestUtils::RunTestScript(std::string_view test_script,
+std::string PluginTestUtils::RunTestScript(base::StringPiece test_script,
                                            content::WebContents* contents,
                                            const std::string& element_id) {
   std::string script = base::StringPrintf(

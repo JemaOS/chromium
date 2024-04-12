@@ -5,8 +5,6 @@
 /**
  * @fileoverview Store ChromeVox log.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
-
 import {BridgeConstants} from '../../common/bridge_constants.js';
 import {BridgeHelper} from '../../common/bridge_helper.js';
 import {BaseLog, LogType, TextLog, TreeLog} from '../../common/log_types.js';
@@ -158,5 +156,3 @@ export class LogStore {
 
 /** @type {LogStore} */
 LogStore.instance;
-
-TestImportManager.exportForTesting(LogStore, ['LOG_LIMIT', LOG_LIMIT]);

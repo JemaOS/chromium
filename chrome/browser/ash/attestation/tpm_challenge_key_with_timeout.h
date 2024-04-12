@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_ATTESTATION_TPM_CHALLENGE_KEY_WITH_TIMEOUT_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/memory/weak_ptr.h"
@@ -14,7 +13,7 @@
 #include "base/time/time.h"
 #include "chrome/browser/ash/attestation/tpm_challenge_key.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chromeos/ash/components/dbus/attestation/attestation_ca.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace attestation {
@@ -34,14 +33,14 @@ class TpmChallengeKeyWithTimeout final {
   // Tries to build a response for the |challenge|. Returns either timeout
   // error or result from |TpmChallengeKey::BuildResponse| via |callback|.
   void BuildResponse(base::TimeDelta timeout,
-                     ::attestation::VerifiedAccessFlow flow_type,
+                     AttestationKeyType key_type,
                      Profile* profile,
                      TpmChallengeKeyCallback callback,
                      const std::string& challenge,
                      bool register_key,
                      ::attestation::KeyType key_crypto_type,
                      const std::string& key_name_for_spkac,
-                     const std::optional<std::string>& signals);
+                     const absl::optional<std::string>& signals);
 
  private:
   void ResolveCallback(const TpmChallengeKeyResult& result);

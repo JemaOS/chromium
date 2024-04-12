@@ -3,10 +3,9 @@ Short Name: auto-service
 URL: https://github.com/google/auto/tree/master/service
 Version: 1.0-rc6
 License: Apache 2.0
-License File: LICENSE
+License File: NOT_SHIPPED
 CPEPrefix: unknown
 Security Critical: no
-Shipped: no
 
 Description:
 Provider-configuration files for ServiceLoader.

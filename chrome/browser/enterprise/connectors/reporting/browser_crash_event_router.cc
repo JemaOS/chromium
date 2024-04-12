@@ -5,13 +5,16 @@
 #include "chrome/browser/enterprise/connectors/reporting/browser_crash_event_router.h"
 
 #include "chrome/browser/enterprise/connectors/reporting/crash_reporting_context.h"
-#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/enterprise/connectors/reporting/reporting_service_settings.h"
 
 namespace enterprise_connectors {
 
 BrowserCrashEventRouter::BrowserCrashEventRouter(
     content::BrowserContext* context) {
-#if !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS)
+  if (!base::FeatureList::IsEnabled(kBrowserCrashEventsEnabled)) {
+    return;
+  }
+#if !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS_ASH)
   CrashReportingContext* crash_reporting_context =
       CrashReportingContext::GetInstance();
   Profile* profile = Profile::FromBrowserContext(context);
@@ -21,7 +24,10 @@ BrowserCrashEventRouter::BrowserCrashEventRouter(
 }
 
 BrowserCrashEventRouter::~BrowserCrashEventRouter() {
-#if !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS)
+  if (!base::FeatureList::IsEnabled(kBrowserCrashEventsEnabled)) {
+    return;
+  }
+#if !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS_ASH)
   CrashReportingContext* crash_reporting_context =
       CrashReportingContext::GetInstance();
   crash_reporting_context->RemoveProfile(this);

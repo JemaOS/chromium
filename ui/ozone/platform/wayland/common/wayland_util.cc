@@ -6,11 +6,9 @@
 
 #include <xdg-shell-client-protocol.h>
 
-#include "build/buildflag.h"
 #include "third_party/skia/include/core/SkPath.h"
 #include "third_party/skia/include/core/SkRegion.h"
 #include "ui/base/hit_test.h"
-#include "ui/events/base_event_utils.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/geometry/transform.h"
 #include "ui/ozone/platform/wayland/host/wayland_connection.h"
@@ -70,10 +68,10 @@ bool DrawBitmap(const SkBitmap& bitmap, ui::WaylandShmBuffer* out_buffer) {
 
   auto* mapped_memory = out_buffer->GetMemory();
   auto size = out_buffer->size();
-  sk_sp<SkSurface> sk_surface =
-      SkSurfaces::WrapPixels(SkImageInfo::Make(size.width(), size.height(),
-                                               kColorType, kOpaque_SkAlphaType),
-                             mapped_memory, out_buffer->stride());
+  sk_sp<SkSurface> sk_surface = SkSurface::MakeRasterDirect(
+      SkImageInfo::Make(size.width(), size.height(), kColorType,
+                        kOpaque_SkAlphaType),
+      mapped_memory, out_buffer->stride());
 
   if (!sk_surface)
     return false;
@@ -132,14 +130,12 @@ wl_output_transform ToWaylandTransform(gfx::OverlayTransform transform) {
     // directions relative to each other, so swap 90 and 270.
     // TODO(rivr): Currently all wl_buffers are created without y inverted, so
     // this may need to be revisited if that changes.
-    case gfx::OVERLAY_TRANSFORM_ROTATE_CLOCKWISE_90:
+    case gfx::OVERLAY_TRANSFORM_ROTATE_90:
       return WL_OUTPUT_TRANSFORM_270;
-    case gfx::OVERLAY_TRANSFORM_ROTATE_CLOCKWISE_180:
+    case gfx::OVERLAY_TRANSFORM_ROTATE_180:
       return WL_OUTPUT_TRANSFORM_180;
-    case gfx::OVERLAY_TRANSFORM_ROTATE_CLOCKWISE_270:
+    case gfx::OVERLAY_TRANSFORM_ROTATE_270:
       return WL_OUTPUT_TRANSFORM_90;
-    case gfx::OVERLAY_TRANSFORM_FLIP_VERTICAL_CLOCKWISE_90:
-    case gfx::OVERLAY_TRANSFORM_FLIP_VERTICAL_CLOCKWISE_270:
     default:
       break;
   }
@@ -318,33 +314,6 @@ void SkColorToWlArray(const SkColor4f& color, wl_array& array) {
     DCHECK(ptr);
     *ptr = component;
   }
-}
-
-void TransformToWlArray(
-    const absl::variant<gfx::OverlayTransform, gfx::Transform>& transform,
-    wl_array& array) {
-  if (absl::holds_alternative<gfx::OverlayTransform>(transform)) {
-    return;
-  }
-
-  gfx::Transform t = absl::get<gfx::Transform>(transform);
-  constexpr int rcs[][2] = {{0, 0}, {1, 0}, {0, 1}, {1, 1}, {0, 3}, {1, 3}};
-  for (auto* rc : rcs) {
-    float* ptr = static_cast<float*>(wl_array_add(&array, sizeof(float)));
-    DCHECK(ptr);
-    *ptr = static_cast<float>(t.rc(rc[0], rc[1]));
-  }
-}
-
-base::TimeTicks EventMillisecondsToTimeTicks(uint32_t milliseconds) {
-#if BUILDFLAG(IS_LINUX)
-  // TODO(crbug.com/1499638): `milliseconds` comes from Weston that
-  // uses timestamp from libinput, which is different from TimeTicks.
-  // Use EventTimeForNow(), for now.
-  return ui::EventTimeForNow();
-#else
-  return base::TimeTicks() + base::Milliseconds(milliseconds);
-#endif
 }
 
 }  // namespace wl

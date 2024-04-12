@@ -40,8 +40,8 @@
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 
 #if BUILDFLAG(IS_MAC)
-#include "base/apple/bundle_locations.h"
-#include "base/apple/scoped_nsautorelease_pool.h"
+#include "base/mac/bundle_locations.h"
+#include "base/mac/scoped_nsautorelease_pool.h"
 #include "chrome/browser/chrome_browser_application_mac.h"
 #endif
 
@@ -71,7 +71,7 @@ ChromeTestSuite::~ChromeTestSuite() = default;
 
 void ChromeTestSuite::Initialize() {
 #if BUILDFLAG(IS_MAC)
-  base::apple::ScopedNSAutoreleasePool autorelease_pool;
+  base::mac::ScopedNSAutoreleasePool autorelease_pool;
   chrome_browser_application_mac::RegisterBrowserCrApp();
 #endif
 
@@ -107,7 +107,7 @@ void ChromeTestSuite::Initialize() {
   base::FilePath path;
   base::PathService::Get(base::DIR_EXE, &path);
   path = path.Append(chrome::kFrameworkName);
-  base::apple::SetOverrideFrameworkBundlePath(path);
+  base::mac::SetOverrideFrameworkBundlePath(path);
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -120,7 +120,6 @@ void ChromeTestSuite::Initialize() {
       /*documents_dir=*/temp_path,
       /*downloads_dir=*/temp_path,
       /*drivefs=*/base::FilePath(),
-      /*onedrive=*/base::FilePath(),
       /*removable_media_dir=*/base::FilePath(),
       /*android_files_dir=*/base::FilePath(),
       /*linux_files_dir=*/base::FilePath(),
@@ -133,7 +132,7 @@ void ChromeTestSuite::Initialize() {
 
 void ChromeTestSuite::Shutdown() {
 #if BUILDFLAG(IS_MAC)
-  base::apple::SetOverrideFrameworkBundlePath({});
+  base::mac::SetOverrideFrameworkBundlePath({});
 #endif
 
   content::ContentTestSuiteBase::Shutdown();

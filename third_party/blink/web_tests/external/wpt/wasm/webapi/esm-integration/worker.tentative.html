@@ -10,7 +10,4 @@ worker.onmessage = (msg) => {
   assert_equals(msg, 42);
   done();
 }
-worker.onerror = () => {
-  assert_unreached("worker got an error");
-}
 </script>

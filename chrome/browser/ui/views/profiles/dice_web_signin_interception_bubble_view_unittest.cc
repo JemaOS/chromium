@@ -4,57 +4,15 @@
 
 #include "chrome/browser/ui/views/profiles/dice_web_signin_interception_bubble_view.h"
 
-#include "base/notreached.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
-#include "chrome/browser/signin/web_signin_interceptor.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-using SigninInterceptionType = WebSigninInterceptor::SigninInterceptionType;
-
-namespace {
-
-// Helper function to provide a readable test case name.
-std::string SigninInterceptTypeToString(SigninInterceptionType type) {
-  switch (type) {
-    case SigninInterceptionType::kEnterprise:
-      return "Entreprise";
-    case SigninInterceptionType::kMultiUser:
-      return "MultiUser";
-    case SigninInterceptionType::kProfileSwitch:
-      return "ProfileSwitch";
-    case SigninInterceptionType::kChromeSignin:
-      return "ChromeSignin";
-    default:
-      NOTREACHED() << "Interception type not supported in the tests.";
-      return std::string();
-  }
-}
-
-// Helper function to provide a readable test case name.
-std::string SigninInterceptResultToString(SigninInterceptionResult result) {
-  switch (result) {
-    case SigninInterceptionResult::kAccepted:
-      return "Accepted";
-    case SigninInterceptionResult::kDeclined:
-      return "Declined";
-    case SigninInterceptionResult::kIgnored:
-      return "Ignored";
-    case SigninInterceptionResult::kDismissed:
-      return "Dismissed";
-    case SigninInterceptionResult::kNotDisplayed:
-      return "NotDisplayed";
-    default:
-      NOTREACHED() << "Interception result not supported in the tests.";
-      return std::string();
-  }
-}
-
-}  // namespace
+using SigninInterceptionType = DiceWebSigninInterceptor::SigninInterceptionType;
 
 class DiceWebSigninInterceptionBubbleViewTestBase : public testing::Test {
  public:
@@ -104,53 +62,50 @@ TEST_P(DiceWebSigninInterceptionBubbleViewSyncParamTest, HistogramTests) {
 
   base::HistogramTester histogram_tester;
 
-  WebSigninInterceptor::Delegate::BubbleParameters bubble_parameters(
+  DiceWebSigninInterceptor::Delegate::BubbleParameters bubble_parameters(
       type, enterprise_account_, personal_account_);
 
   DiceWebSigninInterceptionBubbleView::RecordInterceptionResult(
       bubble_parameters, profile(), result);
 
-  base::HistogramTester::CountsMap expected_counts;
-
   // Check enterprise histograms.
   if (type == SigninInterceptionType::kEnterprise) {
     histogram_tester.ExpectUniqueSample("Signin.InterceptResult.Enterprise",
                                         result, 1);
-    histogram_tester.ExpectUniqueSample(
-        "Signin.InterceptResult.Enterprise.NewIsEnterprise", result, 1);
-    expected_counts["Signin.InterceptResult.Enterprise"] = 1;
-    expected_counts["Signin.InterceptResult.Enterprise.NoSync"] = 1;
-    expected_counts["Signin.InterceptResult.Enterprise.NewIsEnterprise"] = 1;
+  } else {
+    histogram_tester.ExpectTotalCount("Signin.InterceptResult.Enterprise", 0);
+    histogram_tester.ExpectTotalCount("Signin.InterceptResult.Enterprise.Sync",
+                                      0);
+    histogram_tester.ExpectTotalCount(
+        "Signin.InterceptResult.Enterprise.NoSync", 0);
+    histogram_tester.ExpectTotalCount(
+        "Signin.InterceptResult.Enterprise.NewIsEnterprise", 0);
+    histogram_tester.ExpectTotalCount(
+        "Signin.InterceptResult.Enterprise.PrimaryIsEnterprise", 0);
   }
 
   // Check multi-user histograms.
   if (type == SigninInterceptionType::kMultiUser) {
     histogram_tester.ExpectUniqueSample("Signin.InterceptResult.MultiUser",
                                         result, 1);
-    expected_counts["Signin.InterceptResult.MultiUser"] = 1;
-    expected_counts["Signin.InterceptResult.MultiUser.NoSync"] = 1;
+  } else {
+    histogram_tester.ExpectTotalCount("Signin.InterceptResult.MultiUser", 0);
+    histogram_tester.ExpectTotalCount("Signin.InterceptResult.MultiUser.Sync",
+                                      0);
+    histogram_tester.ExpectTotalCount("Signin.InterceptResult.MultiUser.NoSync",
+                                      0);
   }
 
   // Check switch histograms.
   if (type == SigninInterceptionType::kProfileSwitch) {
     histogram_tester.ExpectUniqueSample("Signin.InterceptResult.Switch", result,
                                         1);
-    expected_counts["Signin.InterceptResult.Switch"] = 1;
-    expected_counts["Signin.InterceptResult.Switch.NoSync"] = 1;
+  } else {
+    histogram_tester.ExpectTotalCount("Signin.InterceptResult.Switch", 0);
+    histogram_tester.ExpectTotalCount("Signin.InterceptResult.Switch.Sync", 0);
+    histogram_tester.ExpectTotalCount("Signin.InterceptResult.Switch.NoSync",
+                                      0);
   }
-
-  // Check ChromeSignin histograms.
-  if (type == SigninInterceptionType::kChromeSignin) {
-    histogram_tester.ExpectUniqueSample("Signin.InterceptResult.ChromeSignin",
-                                        result, 1);
-    expected_counts["Signin.InterceptResult.ChromeSignin"] = 1;
-    expected_counts["Signin.InterceptResult.ChromeSignin.NoSync"] = 1;
-  }
-
-  // Make sure no other histogram are recorded.
-  EXPECT_THAT(
-      histogram_tester.GetTotalCountsForPrefix("Signin.InterceptResult"),
-      testing::ContainerEq(expected_counts));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -160,24 +115,17 @@ INSTANTIATE_TEST_SUITE_P(
                          SigninInterceptionType::kEnterprise,
                          SigninInterceptionType::kMultiUser,
                          SigninInterceptionType::kProfileSwitch,
-                         SigninInterceptionType::kChromeSignin,
                      }),
                      testing::ValuesIn({
                          SigninInterceptionResult::kAccepted,
                          SigninInterceptionResult::kDeclined,
                          SigninInterceptionResult::kIgnored,
-                         SigninInterceptionResult::kDismissed,
                          SigninInterceptionResult::kNotDisplayed,
-                     })),
-    [](const testing::TestParamInfo<
-        DiceWebSigninInterceptionBubbleViewSyncParamTest::ParamType>& info) {
-      return SigninInterceptTypeToString(std::get<0>(info.param)) + "_" +
-             SigninInterceptResultToString(std::get<1>(info.param));
-    });
+                     })));
 
 TEST_F(DiceWebSigninInterceptionBubbleViewTestBase, SyncHistograms) {
   SigninInterceptionResult result = SigninInterceptionResult::kAccepted;
-  WebSigninInterceptor::Delegate::BubbleParameters bubble_parameters(
+  DiceWebSigninInterceptor::Delegate::BubbleParameters bubble_parameters(
       SigninInterceptionType::kEnterprise, enterprise_account_,
       personal_account_);
 
@@ -212,7 +160,7 @@ TEST_F(DiceWebSigninInterceptionBubbleViewTestBase, EnterpriseHistograms) {
   // New account is Enterprise.
   {
     base::HistogramTester histogram_tester;
-    WebSigninInterceptor::Delegate::BubbleParameters bubble_parameters(
+    DiceWebSigninInterceptor::Delegate::BubbleParameters bubble_parameters(
         SigninInterceptionType::kEnterprise, enterprise_account_,
         personal_account_);
     DiceWebSigninInterceptionBubbleView::RecordInterceptionResult(
@@ -228,7 +176,7 @@ TEST_F(DiceWebSigninInterceptionBubbleViewTestBase, EnterpriseHistograms) {
                                          signin::ConsentLevel::kSync);
   {
     base::HistogramTester histogram_tester;
-    WebSigninInterceptor::Delegate::BubbleParameters bubble_parameters(
+    DiceWebSigninInterceptor::Delegate::BubbleParameters bubble_parameters(
         SigninInterceptionType::kEnterprise, personal_account_,
         enterprise_account_);
     DiceWebSigninInterceptionBubbleView::RecordInterceptionResult(

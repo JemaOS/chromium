@@ -5,10 +5,9 @@
 #ifndef CHROME_BROWSER_ASH_POWER_AUTO_SCREEN_BRIGHTNESS_MODEL_CONFIG_LOADER_H_
 #define CHROME_BROWSER_ASH_POWER_AUTO_SCREEN_BRIGHTNESS_MODEL_CONFIG_LOADER_H_
 
-#include <optional>
-
 #include "base/observer_list_types.h"
 #include "chrome/browser/ash/power/auto_screen_brightness/model_config.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace power {
@@ -34,7 +33,7 @@ class ModelConfigLoader {
     // non-nullopt if a valid ModelConfig is created, either from the disk or
     // from experiment flags.
     virtual void OnModelConfigLoaded(
-        std::optional<ModelConfig> model_config) = 0;
+        absl::optional<ModelConfig> model_config) = 0;
   };
 
   virtual ~ModelConfigLoader() = default;

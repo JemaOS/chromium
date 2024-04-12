@@ -15,8 +15,7 @@ PinnedTabService* PinnedTabServiceFactory::GetForProfile(
 }
 
 PinnedTabServiceFactory* PinnedTabServiceFactory::GetInstance() {
-  static base::NoDestructor<PinnedTabServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<PinnedTabServiceFactory>::get();
 }
 
 PinnedTabServiceFactory::PinnedTabServiceFactory()
@@ -29,7 +28,8 @@ PinnedTabServiceFactory::PinnedTabServiceFactory()
               .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
-PinnedTabServiceFactory::~PinnedTabServiceFactory() = default;
+PinnedTabServiceFactory::~PinnedTabServiceFactory() {
+}
 
 KeyedService* PinnedTabServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {

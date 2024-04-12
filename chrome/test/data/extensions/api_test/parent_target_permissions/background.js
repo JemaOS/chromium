@@ -6,10 +6,11 @@ const protocolVersion = '1.3';
 
 chrome.test.getConfig(config => chrome.test.runTests([
   async function testParentTargetPermissions() {
+    const {openTab} = await import('/_test_resources/test_util/tabs_util.js');
     const fileFrameURL =
         config.testDataDirectory + '/parent_target_permissions/top_page.html';
     const subframeURL = chrome.runtime.getURL('subframe.html');
-    chrome.test.openFileUrl(fileFrameURL + '?' + subframeURL);
+    openTab(fileFrameURL + '?' + subframeURL);
     await new Promise(resolve => {
       chrome.runtime.onMessage.addListener(message => {
         if (message === 'ready')

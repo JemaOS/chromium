@@ -10,8 +10,6 @@ assert(is_chromeos_ash)
 mojom("mojom") {
   sources = [ "scanning.mojom" ]
 
-  webui_module_path = "/ash/webui/scanning"
-
   public_deps = [ "//mojo/public/mojom/base" ]
 
   cpp_typemaps = [

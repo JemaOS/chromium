@@ -70,8 +70,7 @@ class TouchEventTest : public PageTestBase {
     web_touch_event.dispatch_type = dispatch_type;
     return TouchEvent::Create(
         WebCoalescedInputEvent(web_touch_event, ui::LatencyInfo()), nullptr,
-        nullptr, nullptr, event_type_names::kTouchstart, &Window(),
-        TouchAction::kAuto);
+        nullptr, nullptr, "touchstart", &Window(), TouchAction::kAuto);
   }
 
  private:

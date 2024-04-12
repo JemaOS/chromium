@@ -10,7 +10,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "chrome/browser/password_manager/account_password_store_factory.h"
-#include "chrome/browser/password_manager/profile_password_store_factory.h"
+#include "chrome/browser/password_manager/password_store_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/sync/test/integration/passwords_helper.h"
 #include "chrome/browser/ui/browser.h"
@@ -19,7 +19,7 @@
 #include "components/browsing_data/core/counters/passwords_counter.h"
 #include "components/browsing_data/core/pref_names.h"
 #include "components/password_manager/core/browser/password_form.h"
-#include "components/password_manager/core/browser/password_store/password_store_interface.h"
+#include "components/password_manager/core/browser/password_store_interface.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/test/browser_test.h"
@@ -35,14 +35,12 @@ class PasswordsCounterTest : public InProcessBrowserTest {
     finished_ = false;
     time_ = base::Time::Now();
     times_used_in_html_form_ = 0;
-    store_ = ProfilePasswordStoreFactory::GetForProfile(
+    store_ = PasswordStoreFactory::GetForProfile(
                  browser()->profile(), ServiceAccessType::IMPLICIT_ACCESS)
                  .get();
     SetPasswordsDeletionPref(true);
     SetDeletionPeriodPref(browsing_data::TimePeriod::ALL_TIME);
   }
-
-  void TearDownOnMainThread() override { store_ = nullptr; }
 
   void AddLogin(const std::string& origin,
                 const std::string& username,
@@ -87,9 +85,8 @@ class PasswordsCounterTest : public InProcessBrowserTest {
     // At this point, the calculation on DB thread should have finished, and
     // a callback should be scheduled on the UI thread. Process the tasks until
     // we get a finished result.
-    if (finished_) {
+    if (finished_)
       return;
-    }
     run_loop_ = std::make_unique<base::RunLoop>();
     run_loop_->Run();
   }
@@ -127,9 +124,8 @@ class PasswordsCounterTest : public InProcessBrowserTest {
       result_ = password_result->Value();
       domain_examples_ = password_result->domain_examples();
     }
-    if (run_loop_ && finished_) {
+    if (run_loop_ && finished_)
       run_loop_->Quit();
-    }
   }
 
  private:
@@ -149,7 +145,7 @@ class PasswordsCounterTest : public InProcessBrowserTest {
     return result;
   }
 
-  raw_ptr<password_manager::PasswordStoreInterface> store_ = nullptr;
+  raw_ptr<password_manager::PasswordStoreInterface, DanglingUntriaged> store_;
 
   std::unique_ptr<base::RunLoop> run_loop_;
   base::Time time_;
@@ -171,11 +167,11 @@ IN_PROC_BROWSER_TEST_F(PasswordsCounterTest, SameDomain) {
 
   Profile* profile = browser()->profile();
   browsing_data::PasswordsCounter counter(
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS),
+      PasswordStoreFactory::GetForProfile(profile,
+                                          ServiceAccessType::EXPLICIT_ACCESS),
       AccountPasswordStoreFactory::GetForProfile(
           profile, ServiceAccessType::EXPLICIT_ACCESS),
-      profile->GetPrefs(), SyncServiceFactory::GetForProfile(profile));
+      SyncServiceFactory::GetForProfile(profile));
   counter.Init(profile->GetPrefs(),
                browsing_data::ClearBrowsingDataTab::ADVANCED,
                base::BindRepeating(&PasswordsCounterTest::Callback,
@@ -194,11 +190,11 @@ IN_PROC_BROWSER_TEST_F(PasswordsCounterTest, blocklisted) {
 
   Profile* profile = browser()->profile();
   browsing_data::PasswordsCounter counter(
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS),
+      PasswordStoreFactory::GetForProfile(profile,
+                                          ServiceAccessType::EXPLICIT_ACCESS),
       AccountPasswordStoreFactory::GetForProfile(
           profile, ServiceAccessType::EXPLICIT_ACCESS),
-      profile->GetPrefs(), SyncServiceFactory::GetForProfile(profile));
+      SyncServiceFactory::GetForProfile(profile));
 
   counter.Init(profile->GetPrefs(),
                browsing_data::ClearBrowsingDataTab::ADVANCED,
@@ -219,11 +215,11 @@ IN_PROC_BROWSER_TEST_F(PasswordsCounterTest, PrefChanged) {
 
   Profile* profile = browser()->profile();
   browsing_data::PasswordsCounter counter(
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS),
+      PasswordStoreFactory::GetForProfile(profile,
+                                          ServiceAccessType::EXPLICIT_ACCESS),
       AccountPasswordStoreFactory::GetForProfile(
           profile, ServiceAccessType::EXPLICIT_ACCESS),
-      profile->GetPrefs(), SyncServiceFactory::GetForProfile(profile));
+      SyncServiceFactory::GetForProfile(profile));
   counter.Init(profile->GetPrefs(),
                browsing_data::ClearBrowsingDataTab::ADVANCED,
                base::BindRepeating(&PasswordsCounterTest::Callback,
@@ -241,11 +237,11 @@ IN_PROC_BROWSER_TEST_F(PasswordsCounterTest, StoreChanged) {
 
   Profile* profile = browser()->profile();
   browsing_data::PasswordsCounter counter(
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS),
+      PasswordStoreFactory::GetForProfile(profile,
+                                          ServiceAccessType::EXPLICIT_ACCESS),
       AccountPasswordStoreFactory::GetForProfile(
           profile, ServiceAccessType::EXPLICIT_ACCESS),
-      profile->GetPrefs(), SyncServiceFactory::GetForProfile(profile));
+      SyncServiceFactory::GetForProfile(profile));
   counter.Init(profile->GetPrefs(),
                browsing_data::ClearBrowsingDataTab::ADVANCED,
                base::BindRepeating(&PasswordsCounterTest::Callback,
@@ -277,11 +273,11 @@ IN_PROC_BROWSER_TEST_F(PasswordsCounterTest, PeriodChanged) {
 
   Profile* profile = browser()->profile();
   browsing_data::PasswordsCounter counter(
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS),
+      PasswordStoreFactory::GetForProfile(profile,
+                                          ServiceAccessType::EXPLICIT_ACCESS),
       AccountPasswordStoreFactory::GetForProfile(
           profile, ServiceAccessType::EXPLICIT_ACCESS),
-      profile->GetPrefs(), SyncServiceFactory::GetForProfile(profile));
+      SyncServiceFactory::GetForProfile(profile));
   counter.Init(profile->GetPrefs(),
                browsing_data::ClearBrowsingDataTab::ADVANCED,
                base::BindRepeating(&PasswordsCounterTest::Callback,
@@ -326,11 +322,11 @@ IN_PROC_BROWSER_TEST_F(PasswordsCounterTest, MostCommonDomains) {
 
   Profile* profile = browser()->profile();
   browsing_data::PasswordsCounter counter(
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS),
+      PasswordStoreFactory::GetForProfile(profile,
+                                          ServiceAccessType::EXPLICIT_ACCESS),
       AccountPasswordStoreFactory::GetForProfile(
           profile, ServiceAccessType::EXPLICIT_ACCESS),
-      profile->GetPrefs(), SyncServiceFactory::GetForProfile(profile));
+      SyncServiceFactory::GetForProfile(profile));
   counter.Init(profile->GetPrefs(),
                browsing_data::ClearBrowsingDataTab::ADVANCED,
                base::BindRepeating(&PasswordsCounterTest::Callback,
@@ -340,29 +336,6 @@ IN_PROC_BROWSER_TEST_F(PasswordsCounterTest, MostCommonDomains) {
   WaitForCounting();
   std::vector<std::string> domain_examples = {"google.com", "chrome.com"};
   EXPECT_EQ(domain_examples, GetDomainExamples());
-}
-
-// Tests that the counter doesn't crash if restarted in a quick succession.
-// TODO(crbug.com/1458605): Upgrade this test to use SigninDataCounter.
-IN_PROC_BROWSER_TEST_F(PasswordsCounterTest, MultipleRestarts) {
-  Profile* profile = browser()->profile();
-  browsing_data::PasswordsCounter counter(
-      ProfilePasswordStoreFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS),
-      AccountPasswordStoreFactory::GetForProfile(
-          profile, ServiceAccessType::EXPLICIT_ACCESS),
-      profile->GetPrefs(), SyncServiceFactory::GetForProfile(profile));
-  counter.Init(profile->GetPrefs(),
-               browsing_data::ClearBrowsingDataTab::ADVANCED,
-               base::BindRepeating(&PasswordsCounterTest::Callback,
-                                   base::Unretained(this)));
-  counter.Restart();
-  counter.Restart();
-  counter.Restart();
-
-  // Previous restarts should be invalidated, so we only need to wait for
-  // counting once.
-  WaitForCounting();
 }
 
 }  // namespace

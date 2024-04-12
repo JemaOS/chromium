@@ -22,7 +22,9 @@ import org.chromium.ui.widget.ViewRectProvider;
 
 import java.util.ArrayList;
 
-/** Utility methods for download home toolbar. */
+/**
+ * Utility methods for download home toolbar.
+ */
 public class ToolbarUtils {
     /**
      * Sets up feature engagement tracker for the download settings in-product help text bubble.
@@ -36,11 +38,8 @@ public class ToolbarUtils {
 
     private static void maybeShowDownloadSettingsTextBubble(Tracker tracker, View toolbar) {
         // If the user doesn't have an SD card don't show the IPH.
-        DownloadDirectoryProvider.getInstance()
-                .getAllDirectoriesOptions(
-                        dirs -> {
-                            onDirectoryOptionsRetrieved(dirs, tracker, toolbar);
-                        });
+        DownloadDirectoryProvider.getInstance().getAllDirectoriesOptions(
+                dirs -> { onDirectoryOptionsRetrieved(dirs, tracker, toolbar); });
     }
 
     private static void onDirectoryOptionsRetrieved(
@@ -57,36 +56,29 @@ public class ToolbarUtils {
         if (ViewCompat.isAttachedToWindow(rootView)) {
             showDownloadSettingsInProductHelp(tracker, anchorView, rootView);
         } else {
-            rootView.addOnAttachStateChangeListener(
-                    new View.OnAttachStateChangeListener() {
-                        @Override
-                        public void onViewAttachedToWindow(View v) {
-                            showDownloadSettingsInProductHelp(tracker, anchorView, rootView);
-                            rootView.removeOnAttachStateChangeListener(this);
-                        }
-
-                        @Override
-                        public void onViewDetachedFromWindow(View v) {}
-                    });
+            rootView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                @Override
+                public void onViewAttachedToWindow(View v) {
+                    showDownloadSettingsInProductHelp(tracker, anchorView, rootView);
+                    rootView.removeOnAttachStateChangeListener(this);
+                }
+                @Override
+                public void onViewDetachedFromWindow(View v) {}
+            });
         }
     }
 
     private static void showDownloadSettingsInProductHelp(
             Tracker tracker, View anchorView, View rootView) {
-        TextBubble textBubble =
-                new TextBubble(
-                        rootView.getContext(),
-                        rootView,
-                        R.string.iph_download_settings_text,
-                        R.string.iph_download_settings_accessibility_text,
-                        new ViewRectProvider(anchorView),
-                        ChromeAccessibilityUtil.get().isAccessibilityEnabled());
+        TextBubble textBubble = new TextBubble(rootView.getContext(), rootView,
+                R.string.iph_download_settings_text,
+                R.string.iph_download_settings_accessibility_text, new ViewRectProvider(anchorView),
+                ChromeAccessibilityUtil.get().isAccessibilityEnabled());
         textBubble.setDismissOnTouchInteraction(true);
-        textBubble.addOnDismissListener(
-                () -> {
-                    tracker.dismissed(FeatureConstants.DOWNLOAD_SETTINGS_FEATURE);
-                    toggleHighlightForDownloadSettingsTextBubble(anchorView, false);
-                });
+        textBubble.addOnDismissListener(() -> {
+            tracker.dismissed(FeatureConstants.DOWNLOAD_SETTINGS_FEATURE);
+            toggleHighlightForDownloadSettingsTextBubble(anchorView, false);
+        });
         toggleHighlightForDownloadSettingsTextBubble(anchorView, true);
         textBubble.show();
     }

@@ -4,7 +4,6 @@
 
 #include "chrome/browser/lacros/remote_apps/remote_apps_proxy_lacros.h"
 
-#include <optional>
 #include <utility>
 
 #include "base/functional/callback.h"
@@ -25,6 +24,7 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace chromeos {
@@ -38,11 +38,9 @@ using chromeos::remote_apps::mojom::RemoteAppsLacrosBridge;
 using AddAppCallback = base::OnceCallback<void(AddAppResultPtr)>;
 using AddFolderCallback = base::OnceCallback<void(AddFolderResultPtr)>;
 using DeleteAppCallback =
-    base::OnceCallback<void(const std::optional<std::string>&)>;
+    base::OnceCallback<void(const absl::optional<std::string>&)>;
 using SortLauncherWithRemoteAppsFirstCallback =
-    base::OnceCallback<void(const std::optional<std::string>&)>;
-using SetPinnedAppsCallback =
-    base::OnceCallback<void(const std::optional<std::string>&)>;
+    base::OnceCallback<void(const absl::optional<std::string>&)>;
 
 using testing::_;
 
@@ -85,10 +83,6 @@ class TestRemoteAppsLacrosBridge : public RemoteAppsLacrosBridge,
   MOCK_METHOD(void,
               SortLauncherWithRemoteAppsFirst,
               (SortLauncherWithRemoteAppsFirstCallback),
-              (override));
-  MOCK_METHOD(void,
-              SetPinnedApps,
-              (const std::vector<std::string>&, SetPinnedAppsCallback),
               (override));
 
  private:
@@ -135,9 +129,6 @@ class RemoteAppsProxyLacrosUnittest : public testing::Test {
   }
 
   void TearDown() override {
-    event_router_ = nullptr;
-    testing_profile_ = nullptr;
-    proxy_.reset();
     testing_profile_manager_.DeleteAllTestingProfiles();
     testing::Test::TearDown();
   }
@@ -200,7 +191,7 @@ class RemoteAppsProxyLacrosUnittest : public testing::Test {
   void SetExpectationForDeleteAppSuccess(const std::string& app_id) {
     EXPECT_CALL(remote_apps_bridge_, DeleteApp(app_id, _))
         .WillOnce([](const std::string&, DeleteAppCallback callback) {
-          std::move(callback).Run(std::nullopt);
+          std::move(callback).Run(absl::nullopt);
         });
   }
 
@@ -215,32 +206,13 @@ class RemoteAppsProxyLacrosUnittest : public testing::Test {
   void SetExpectationForSortLauncherSuccess() {
     EXPECT_CALL(remote_apps_bridge_, SortLauncherWithRemoteAppsFirst(_))
         .WillOnce([](SortLauncherWithRemoteAppsFirstCallback callback) {
-          std::move(callback).Run(std::nullopt);
+          std::move(callback).Run(absl::nullopt);
         });
   }
 
   void SetExpectationForSortLauncherError(const std::string& error) {
     EXPECT_CALL(remote_apps_bridge_, SortLauncherWithRemoteAppsFirst(_))
         .WillOnce([error](SortLauncherWithRemoteAppsFirstCallback callback) {
-          std::move(callback).Run(error);
-        });
-  }
-
-  void SetExpectationForSetPinnedAppsSuccess(
-      const std::vector<std::string>& app_ids) {
-    EXPECT_CALL(remote_apps_bridge_, SetPinnedApps(app_ids, _))
-        .WillOnce([](const std::vector<std::string>&,
-                     SetPinnedAppsCallback callback) {
-          std::move(callback).Run(std::nullopt);
-        });
-  }
-
-  void SetExpectationForSetPinnedAppsError(
-      const std::string& error,
-      const std::vector<std::string>& app_ids) {
-    EXPECT_CALL(remote_apps_bridge_, SetPinnedApps(app_ids, _))
-        .WillOnce([error](const std::vector<std::string>&,
-                          SetPinnedAppsCallback callback) {
           std::move(callback).Run(error);
         });
   }
@@ -348,7 +320,7 @@ TEST_F(RemoteAppsProxyLacrosUnittest, AddFolderError) {
 }
 
 TEST_F(RemoteAppsProxyLacrosUnittest, DeleteApp) {
-  base::test::TestFuture<std::optional<std::string>> future;
+  base::test::TestFuture<absl::optional<std::string>> future;
 
   testing::StrictMock<MockRemoteAppLaunchObserver> mockObserver;
   mojo::Remote<chromeos::remote_apps::mojom::RemoteApps> remote;
@@ -360,7 +332,7 @@ TEST_F(RemoteAppsProxyLacrosUnittest, DeleteApp) {
 
   SetExpectationForDeleteAppSuccess(kId);
   remote->DeleteApp(kId,
-                    future.GetCallback<const std::optional<std::string>&>());
+                    future.GetCallback<const absl::optional<std::string>&>());
 
   ASSERT_FALSE(future.Get());
 }
@@ -368,7 +340,7 @@ TEST_F(RemoteAppsProxyLacrosUnittest, DeleteApp) {
 TEST_F(RemoteAppsProxyLacrosUnittest, DeleteAppError) {
   std::string error = "error";
 
-  base::test::TestFuture<std::optional<std::string>> future;
+  base::test::TestFuture<absl::optional<std::string>> future;
 
   testing::StrictMock<MockRemoteAppLaunchObserver> mockObserver;
   mojo::Remote<chromeos::remote_apps::mojom::RemoteApps> remote;
@@ -380,15 +352,15 @@ TEST_F(RemoteAppsProxyLacrosUnittest, DeleteAppError) {
 
   SetExpectationForDeleteAppError(error, kId);
   remote->DeleteApp(kId,
-                    future.GetCallback<const std::optional<std::string>&>());
+                    future.GetCallback<const absl::optional<std::string>&>());
 
-  std::optional<const std::string> result = future.Get();
+  absl::optional<const std::string> result = future.Get();
   ASSERT_TRUE(result);
   ASSERT_EQ(error, *result);
 }
 
 TEST_F(RemoteAppsProxyLacrosUnittest, SortLauncherWithRemoteAppsFirst) {
-  base::test::TestFuture<std::optional<std::string>> future;
+  base::test::TestFuture<absl::optional<std::string>> future;
 
   testing::StrictMock<MockRemoteAppLaunchObserver> mockObserver;
   mojo::Remote<chromeos::remote_apps::mojom::RemoteApps> remote;
@@ -400,7 +372,7 @@ TEST_F(RemoteAppsProxyLacrosUnittest, SortLauncherWithRemoteAppsFirst) {
 
   SetExpectationForSortLauncherSuccess();
   remote->SortLauncherWithRemoteAppsFirst(
-      future.GetCallback<const std::optional<std::string>&>());
+      future.GetCallback<const absl::optional<std::string>&>());
 
   ASSERT_FALSE(future.Get());
 }
@@ -408,7 +380,7 @@ TEST_F(RemoteAppsProxyLacrosUnittest, SortLauncherWithRemoteAppsFirst) {
 TEST_F(RemoteAppsProxyLacrosUnittest, SortLauncherWithRemoteAppsFirstError) {
   std::string error = "error";
 
-  base::test::TestFuture<std::optional<std::string>> future;
+  base::test::TestFuture<absl::optional<std::string>> future;
 
   testing::StrictMock<MockRemoteAppLaunchObserver> mockObserver;
   mojo::Remote<chromeos::remote_apps::mojom::RemoteApps> remote;
@@ -420,51 +392,9 @@ TEST_F(RemoteAppsProxyLacrosUnittest, SortLauncherWithRemoteAppsFirstError) {
 
   SetExpectationForSortLauncherError(error);
   remote->SortLauncherWithRemoteAppsFirst(
-      future.GetCallback<const std::optional<std::string>&>());
+      future.GetCallback<const absl::optional<std::string>&>());
 
-  std::optional<const std::string> result = future.Get();
-  ASSERT_TRUE(result);
-  ASSERT_EQ(error, *result);
-}
-
-TEST_F(RemoteAppsProxyLacrosUnittest, SetPinnedApps) {
-  base::test::TestFuture<std::optional<std::string>> future;
-
-  testing::StrictMock<MockRemoteAppLaunchObserver> mockObserver;
-  mojo::Remote<chromeos::remote_apps::mojom::RemoteApps> remote;
-  mojo::Receiver<chromeos::remote_apps::mojom::RemoteAppLaunchObserver>
-      observer{&mockObserver};
-  proxy_->BindRemoteAppsAndAppLaunchObserver(
-      kSource, remote.BindNewPipeAndPassReceiver(),
-      observer.BindNewPipeAndPassRemote());
-
-  std::vector<std::string> ids = {kId};
-  SetExpectationForSetPinnedAppsSuccess(ids);
-  remote->SetPinnedApps(
-      ids, future.GetCallback<const std::optional<std::string>&>());
-
-  ASSERT_FALSE(future.Get());
-}
-
-TEST_F(RemoteAppsProxyLacrosUnittest, SetPinnedAppsError) {
-  std::string error = "error";
-
-  base::test::TestFuture<std::optional<std::string>> future;
-
-  testing::StrictMock<MockRemoteAppLaunchObserver> mockObserver;
-  mojo::Remote<chromeos::remote_apps::mojom::RemoteApps> remote;
-  mojo::Receiver<chromeos::remote_apps::mojom::RemoteAppLaunchObserver>
-      observer{&mockObserver};
-  proxy_->BindRemoteAppsAndAppLaunchObserver(
-      kSource, remote.BindNewPipeAndPassReceiver(),
-      observer.BindNewPipeAndPassRemote());
-
-  std::vector<std::string> ids = {kId};
-  SetExpectationForSetPinnedAppsError(error, ids);
-  remote->SetPinnedApps(
-      ids, future.GetCallback<const std::optional<std::string>&>());
-
-  std::optional<const std::string> result = future.Get();
+  absl::optional<const std::string> result = future.Get();
   ASSERT_TRUE(result);
   ASSERT_EQ(error, *result);
 }

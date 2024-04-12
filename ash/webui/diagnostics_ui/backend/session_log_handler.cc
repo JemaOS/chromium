@@ -26,13 +26,14 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/gfx/native_widget_types.h"
 #include "ui/shell_dialogs/select_file_policy.h"
-#include "ui/shell_dialogs/selected_file_info.h"
+#include "chrome/browser/feedback/system_logs/about_system_logs_fetcher.h"
+#include "components/feedback/system_logs/system_logs_fetcher.h"
 
 namespace ash {
 namespace diagnostics {
 namespace {
 
-const char kDefaultSessionLogFileName[] = "session_log.txt";
+const char kDefaultSessionLogFileName[] = "about_system.zip";
 
 }  // namespace
 
@@ -86,7 +87,32 @@ void SessionLogHandler::RegisterMessages() {
                           weak_ptr_));
 }
 
-void SessionLogHandler::FileSelected(const ui::SelectedFileInfo& file,
+void SessionLogHandler::GetJemaOsSystemInfo() {
+  system_logs::SystemLogsFetcher* fetcher =
+    system_logs::BuildAboutSystemLogsFetcher();
+  fetcher->Fetch(base::BindOnce(
+        &SessionLogHandler::OnJemaOSSystemInfoReceived, weak_ptr_));
+}
+
+void SessionLogHandler::OnJemaOSSystemInfoReceived(
+    std::unique_ptr<system_logs::SystemLogsResponse> sys_info) {
+  jemaos_system_info_ = "";
+
+  if (!sys_info) {
+    LOG(WARNING) << "Failed to get JemaOS system info";
+    return;
+  }
+
+  for (system_logs::SystemLogsResponse::const_iterator it = sys_info->begin();
+      it != sys_info->end(); ++it) {
+    jemaos_system_info_ += it->first;
+    jemaos_system_info_ += ":\n";
+    jemaos_system_info_ += it->second;
+    jemaos_system_info_ += "\n";
+  }
+}
+
+void SessionLogHandler::FileSelected(const base::FilePath& path,
                                      int index,
                                      void* params) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(session_log_handler_sequence_checker_);
@@ -97,16 +123,9 @@ void SessionLogHandler::FileSelected(const ui::SelectedFileInfo& file,
           // base::Unretained safe here because ~DiagnosticsLogController is
           // called during shutdown of ash::Shell and will out-live
           // SessionLogHandler.
-          base::Unretained(DiagnosticsLogController::Get()), file.path()),
-      base::BindOnce(&SessionLogHandler::OnSessionLogCreated, weak_ptr_,
-                     file.path()));
-  select_file_dialog_.reset();
-}
-
-void SessionLogHandler::FileSelectionCanceled(void* params) {
-  RejectJavascriptCallback(save_session_log_callback_id_,
-                           /*response=*/false);
-  save_session_log_callback_id_ = "";
+          base::Unretained(DiagnosticsLogController::Get()),path,
+                           jemaos_system_info_),
+      base::BindOnce(&SessionLogHandler::OnSessionLogCreated, weak_ptr_, path));
   select_file_dialog_.reset();
 }
 
@@ -123,6 +142,13 @@ void SessionLogHandler::OnSessionLogCreated(const base::FilePath& file_path,
 
   if (log_created_closure_)
     std::move(log_created_closure_).Run();
+}
+
+void SessionLogHandler::FileSelectionCanceled(void* params) {
+  RejectJavascriptCallback(save_session_log_callback_id_,
+                           /*response=*/false);
+  save_session_log_callback_id_ = "";
+  select_file_dialog_.reset();
 }
 
 TelemetryLog* SessionLogHandler::GetTelemetryLog() const {
@@ -162,7 +188,7 @@ void SessionLogHandler::HandleSaveSessionLogRequest(
   content::WebContents* web_contents = web_ui()->GetWebContents();
   gfx::NativeWindow owning_window =
       web_contents ? web_contents->GetTopLevelNativeWindow()
-                   : gfx::NativeWindow();
+                   : gfx::kNullNativeWindow;
 
   // Early return if the select file dialog is already active.
   if (select_file_dialog_)
@@ -183,6 +209,8 @@ void SessionLogHandler::HandleInitialize(const base::Value::List& args) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(session_log_handler_sequence_checker_);
   DCHECK(args.empty());
   AllowJavascript();
+
+  GetJemaOsSystemInfo();
 }
 
 }  // namespace diagnostics

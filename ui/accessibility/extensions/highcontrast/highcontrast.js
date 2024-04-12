@@ -153,13 +153,13 @@ class HighContrast {
    */
   onKeyDown(evt) {
     if (evt.keyCode == 122 /* F11 */ && evt.shiftKey) {
-      chrome.runtime.sendMessage({'toggle_global': true});
+      chrome.extension.sendRequest({'toggle_global': true});
       evt.stopPropagation();
       evt.preventDefault();
       return false;
     }
     if (evt.keyCode == 123 /* F12 */ && evt.shiftKey) {
-      chrome.runtime.sendMessage({'toggle_site': true});
+      chrome.extension.sendRequest({'toggle_site': true});
       evt.stopPropagation();
       evt.preventDefault();
       return false;
@@ -174,8 +174,8 @@ class HighContrast {
     } else {
       this.mode = 'b';
     }
-    chrome.runtime.onMessage.addListener(this.onExtensionMessage.bind(this));
-    chrome.runtime.sendMessage(
+    chrome.extension.onRequest.addListener(this.onExtensionMessage.bind(this));
+    chrome.extension.sendRequest(
         {'init': true}, this.onExtensionMessage.bind(this));
     document.addEventListener('keydown', this.onKeyDown.bind(this), false);
 
@@ -301,7 +301,7 @@ class HighContrast {
   /** @const {string} */
   static cssTemplate = `
       html[hc="a0"] {
-        filter: url("#hc_extension_off");
+        -webkit-filter: url("#hc_extension_off");
       }
 
       html[hcx="0"] img[src*="jpg"],
@@ -311,11 +311,11 @@ class HighContrast {
       html[hcx="0"] embed,
       html[hcx="0"] object,
       html[hcx="0"] video {
-        filter: url("#hc_extension_off");
+        -webkit-filter: url("#hc_extension_off");
       }
 
       html[hc="a1"] {
-        filter: url("#hc_extension_highcontrast");
+        -webkit-filter: url("#hc_extension_highcontrast");
       }
 
       html[hcx="1"] img[src*="jpg"],
@@ -325,11 +325,11 @@ class HighContrast {
       html[hcx="1"] embed,
       html[hcx="1"] object,
       html[hcx="1"] video {
-        filter: url("#hc_extension_highcontrast_back");
+        -webkit-filter: url("#hc_extension_highcontrast_back");
       }
 
       html[hc="a2"] {
-        filter: url("#hc_extension_grayscale");
+        -webkit-filter: url("#hc_extension_grayscale");
       }
 
       html[hcx="2"] img[src*="jpg"],
@@ -339,11 +339,11 @@ class HighContrast {
       html[hcx="2"] embed,
       html[hcx="2"] object,
       html[hcx="2"] video {
-        filter: url("#hc_extension_grayscale_back");
+        -webkit-filter: url("#hc_extension_grayscale_back");
       }
 
       html[hc="a3"] {
-        filter: url("#hc_extension_invert");
+        -webkit-filter: url("#hc_extension_invert");
       }
 
       html[hcx="3"] img[src*="jpg"],
@@ -353,11 +353,11 @@ class HighContrast {
       html[hcx="3"] embed,
       html[hcx="3"] object,
       html[hcx="3"] video {
-        filter: url("#hc_extension_invert_back");
+        -webkit-filter: url("#hc_extension_invert_back");
       }
 
       html[hc="a4"] {
-        filter: url("#hc_extension_invert_grayscale");
+        -webkit-filter: url("#hc_extension_invert_grayscale");
       }
 
       html[hcx="4"] img[src*="jpg"],
@@ -367,11 +367,11 @@ class HighContrast {
       html[hcx="4"] embed,
       html[hcx="4"] object,
       html[hcx="4"] video {
-        filter: url("#hc_extension_invert_back");
+        -webkit-filter: url("#hc_extension_invert_back");
       }
 
       html[hc="a5"] {
-        filter: url("#hc_extension_yellow_on_black");
+        -webkit-filter: url("#hc_extension_yellow_on_black");
       }
 
       html[hcx="5"] img[src*="jpg"],
@@ -381,8 +381,8 @@ class HighContrast {
       html[hcx="5"] embed,
       html[hcx="5"] object,
       html[hcx="5"] video {
-        filter: url("#hc_extension_yellow_on_black_back");
+        -webkit-filter: url("#hc_extension_yellow_on_black_back");
       }`;
 }
 
-window.highContrast = new HighContrast();
+const highContrast = new HighContrast();

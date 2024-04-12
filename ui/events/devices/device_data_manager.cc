@@ -11,9 +11,7 @@
 #include "base/observer_list.h"
 #include "base/ranges/algorithm.h"
 #include "ui/display/types/display_constants.h"
-#include "ui/events/devices/input_device.h"
 #include "ui/events/devices/input_device_event_observer.h"
-#include "ui/events/devices/keyboard_device.h"
 #include "ui/events/devices/touch_device_transform.h"
 #include "ui/events/devices/touchscreen_device.h"
 #include "ui/gfx/geometry/point3_f.h"
@@ -31,8 +29,7 @@ namespace {
 
 bool InputDeviceEquals(const ui::InputDevice& a, const ui::InputDevice& b) {
   return a.id == b.id && a.enabled == b.enabled &&
-         a.suspected_keyboard_imposter == b.suspected_keyboard_imposter &&
-         a.suspected_mouse_imposter == b.suspected_mouse_imposter;
+         a.suspected_imposter == b.suspected_imposter;
 }
 
 }  // namespace
@@ -108,14 +105,15 @@ void DeviceDataManager::UpdateTouchInfoFromTransform(
 void DeviceDataManager::UpdateTouchMap() {
   // Remove all entries for devices from the |touch_map_| that are not currently
   // connected.
-  base::EraseIf(
-      touch_map_,
+  auto last_iter = std::remove_if(
+      touch_map_.begin(), touch_map_.end(),
       [this](const std::pair<int, TouchDeviceTransform>& map_entry) {
         // Remove the device identified by |map_entry| from |touch_map_| if it
         // is not present in the list of currently connected devices.
         return !base::Contains(touchscreen_devices_, map_entry.second.device_id,
                                &TouchscreenDevice::id);
       });
+  touch_map_.erase(last_iter, touch_map_.end());
 }
 
 void DeviceDataManager::ApplyTouchRadiusScale(int touch_device_id,
@@ -142,8 +140,7 @@ const std::vector<TouchscreenDevice>& DeviceDataManager::GetTouchscreenDevices()
   return touchscreen_devices_;
 }
 
-const std::vector<KeyboardDevice>& DeviceDataManager::GetKeyboardDevices()
-    const {
+const std::vector<InputDevice>& DeviceDataManager::GetKeyboardDevices() const {
   return keyboard_devices_;
 }
 
@@ -156,14 +153,8 @@ const std::vector<InputDevice>& DeviceDataManager::GetPointingStickDevices()
   return pointing_stick_devices_;
 }
 
-const std::vector<TouchpadDevice>& DeviceDataManager::GetTouchpadDevices()
-    const {
+const std::vector<InputDevice>& DeviceDataManager::GetTouchpadDevices() const {
   return touchpad_devices_;
-}
-
-const std::vector<InputDevice>& DeviceDataManager::GetGraphicsTabletDevices()
-    const {
-  return graphics_tablet_devices_;
 }
 
 const std::vector<InputDevice>& DeviceDataManager::GetUncategorizedDevices()
@@ -199,7 +190,7 @@ void DeviceDataManager::OnTouchscreenDevicesUpdated(
 }
 
 void DeviceDataManager::OnKeyboardDevicesUpdated(
-    const std::vector<KeyboardDevice>& devices) {
+    const std::vector<InputDevice>& devices) {
   if (base::ranges::equal(devices, keyboard_devices_, InputDeviceEquals)) {
     return;
   }
@@ -227,22 +218,12 @@ void DeviceDataManager::OnPointingStickDevicesUpdated(
 }
 
 void DeviceDataManager::OnTouchpadDevicesUpdated(
-    const std::vector<TouchpadDevice>& devices) {
+    const std::vector<InputDevice>& devices) {
   if (base::ranges::equal(devices, touchpad_devices_, InputDeviceEquals)) {
     return;
   }
   touchpad_devices_ = devices;
   NotifyObserversTouchpadDeviceConfigurationChanged();
-}
-
-void DeviceDataManager::OnGraphicsTabletDevicesUpdated(
-    const std::vector<InputDevice>& devices) {
-  if (base::ranges::equal(devices, graphics_tablet_devices_,
-                          InputDeviceEquals)) {
-    return;
-  }
-  graphics_tablet_devices_ = devices;
-  NotifyObserversGraphicsTabletDeviceConfigurationChanged();
 }
 
 void DeviceDataManager::OnUncategorizedDevicesUpdated(
@@ -280,10 +261,6 @@ NOTIFY_OBSERVERS(
 NOTIFY_OBSERVERS(
     NotifyObserversTouchpadDeviceConfigurationChanged(),
     OnInputDeviceConfigurationChanged(InputDeviceEventObserver::kTouchpad))
-
-NOTIFY_OBSERVERS(NotifyObserversGraphicsTabletDeviceConfigurationChanged(),
-                 OnInputDeviceConfigurationChanged(
-                     InputDeviceEventObserver::kGraphicsTablet))
 
 NOTIFY_OBSERVERS(
     NotifyObserversUncategorizedDeviceConfigurationChanged(),

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE ldml SYSTEM "../../common/dtd/ldml.dtd">
-<!-- Copyright © 1991-2023 Unicode, Inc.
+<!-- Copyright © 1991-2021 Unicode, Inc.
 For terms of use, see http://www.unicode.org/copyright.html
 SPDX-License-Identifier: Unicode-DFS-2016
 CLDR data files are interpreted according to the LDML specification (http://unicode.org/reports/tr35/)
@@ -14,136 +14,16 @@ Derived short names and annotations, using GenerateDerivedAnnotations.java. See 
 		<territory type="001"/>
 	</identity>
 	<annotations>
-		<annotation cp="🙌🏻">celebration | gesture | hand | hooray | light skin tone | raising hands | woo hoo | yay</annotation>
-		<annotation cp="🙌🏼">celebration | gesture | hand | hooray | medium-light skin tone | raising hands | woo hoo | yay</annotation>
-		<annotation cp="🙌🏽">celebration | gesture | hand | hooray | medium skin tone | raising hands | woo hoo | yay</annotation>
-		<annotation cp="🙌🏾">celebration | gesture | hand | hooray | medium-dark skin tone | raising hands | woo hoo | yay</annotation>
-		<annotation cp="🙌🏿">celebration | dark skin tone | gesture | hand | hooray | raising hands | woo hoo | yay</annotation>
+		<annotation cp="🙌🏻">celebration | gesture | hand | hooray | light skin tone | woo hoo | yay</annotation>
+		<annotation cp="🙌🏼">celebration | gesture | hand | hooray | medium-light skin tone | woo hoo | yay</annotation>
+		<annotation cp="🙌🏽">celebration | gesture | hand | hooray | medium skin tone | woo hoo | yay</annotation>
+		<annotation cp="🙌🏾">celebration | gesture | hand | hooray | medium-dark skin tone | woo hoo | yay</annotation>
+		<annotation cp="🙌🏿">celebration | dark skin tone | gesture | hand | hooray | woo hoo | yay</annotation>
 		<annotation cp="🙏🏻">ask | hand | high 5 | high five | light skin tone | please | pray | thanks</annotation>
 		<annotation cp="🙏🏼">ask | hand | high 5 | high five | medium-light skin tone | please | pray | thanks</annotation>
 		<annotation cp="🙏🏽">ask | hand | high 5 | high five | medium skin tone | please | pray | thanks</annotation>
 		<annotation cp="🙏🏾">ask | hand | high 5 | high five | medium-dark skin tone | please | pray | thanks</annotation>
 		<annotation cp="🙏🏿">ask | dark skin tone | hand | high 5 | high five | please | pray | thanks</annotation>
-		<annotation cp="🙇🏻‍♂">apology | bowing | favour | gesture | light skin tone | man | sorry</annotation>
-		<annotation cp="🙇🏼‍♂">apology | bowing | favour | gesture | man | medium-light skin tone | sorry</annotation>
-		<annotation cp="🙇🏽‍♂">apology | bowing | favour | gesture | man | medium skin tone | sorry</annotation>
-		<annotation cp="🙇🏾‍♂">apology | bowing | favour | gesture | man | medium-dark skin tone | sorry</annotation>
-		<annotation cp="🙇🏿‍♂">apology | bowing | dark skin tone | favour | gesture | man | sorry</annotation>
-		<annotation cp="🙇🏻‍♀">apology | bowing | favour | gesture | light skin tone | sorry | woman</annotation>
-		<annotation cp="🙇🏼‍♀">apology | bowing | favour | gesture | medium-light skin tone | sorry | woman</annotation>
-		<annotation cp="🙇🏽‍♀">apology | bowing | favour | gesture | medium skin tone | sorry | woman</annotation>
-		<annotation cp="🙇🏾‍♀">apology | bowing | favour | gesture | medium-dark skin tone | sorry | woman</annotation>
-		<annotation cp="🙇🏿‍♀">apology | bowing | dark skin tone | favour | gesture | sorry | woman</annotation>
-		<annotation cp="🧑🏻‍⚖">judge | law | light skin tone</annotation>
-		<annotation cp="🧑🏼‍⚖">judge | law | medium-light skin tone</annotation>
-		<annotation cp="🧑🏽‍⚖">judge | law | medium skin tone</annotation>
-		<annotation cp="🧑🏾‍⚖">judge | law | medium-dark skin tone</annotation>
-		<annotation cp="🧑🏿‍⚖">dark skin tone | judge | law</annotation>
-		<annotation cp="👨🏻‍⚖">judge | justice | law | light skin tone | man</annotation>
-		<annotation cp="👨🏼‍⚖">judge | justice | law | man | medium-light skin tone</annotation>
-		<annotation cp="👨🏽‍⚖">judge | justice | law | man | medium skin tone</annotation>
-		<annotation cp="👨🏾‍⚖">judge | justice | law | man | medium-dark skin tone</annotation>
-		<annotation cp="👨🏿‍⚖">dark skin tone | judge | justice | law | man</annotation>
-		<annotation cp="👩🏻‍⚖">judge | justice | law | light skin tone | woman</annotation>
-		<annotation cp="👩🏼‍⚖">judge | justice | law | medium-light skin tone | woman</annotation>
-		<annotation cp="👩🏽‍⚖">judge | justice | law | medium skin tone | woman</annotation>
-		<annotation cp="👩🏾‍⚖">judge | justice | law | medium-dark skin tone | woman</annotation>
-		<annotation cp="👩🏿‍⚖">dark skin tone | judge | justice | law | woman</annotation>
-		<annotation cp="🧑🏻‍🚒">fire engine | fire truck | firefighter | light skin tone</annotation>
-		<annotation cp="🧑🏼‍🚒">fire engine | fire truck | firefighter | medium-light skin tone</annotation>
-		<annotation cp="🧑🏽‍🚒">fire engine | fire truck | firefighter | medium skin tone</annotation>
-		<annotation cp="🧑🏾‍🚒">fire engine | fire truck | firefighter | medium-dark skin tone</annotation>
-		<annotation cp="🧑🏿‍🚒">dark skin tone | fire engine | fire truck | firefighter</annotation>
-		<annotation cp="👨🏻‍🚒">fire | fire truck | firefighter | light skin tone | man</annotation>
-		<annotation cp="👨🏼‍🚒">fire | fire truck | firefighter | man | medium-light skin tone</annotation>
-		<annotation cp="👨🏽‍🚒">fire | fire truck | firefighter | man | medium skin tone</annotation>
-		<annotation cp="👨🏾‍🚒">fire | fire truck | firefighter | man | medium-dark skin tone</annotation>
-		<annotation cp="👨🏿‍🚒">dark skin tone | fire | fire truck | firefighter | man</annotation>
-		<annotation cp="👩🏻‍🚒">fire | fire truck | firefighter | light skin tone | woman</annotation>
-		<annotation cp="👩🏼‍🚒">fire | fire truck | firefighter | medium-light skin tone | woman</annotation>
-		<annotation cp="👩🏽‍🚒">fire | fire truck | firefighter | medium skin tone | woman</annotation>
-		<annotation cp="👩🏾‍🚒">fire | fire truck | firefighter | medium-dark skin tone | woman</annotation>
-		<annotation cp="👩🏿‍🚒">dark skin tone | fire | fire truck | firefighter | woman</annotation>
-		<annotation cp="🤵🏻">groom | light skin tone | person | person in tux | person in tuxedo | tuxedo</annotation>
-		<annotation cp="🤵🏼">groom | medium-light skin tone | person | person in tux | person in tuxedo | tuxedo</annotation>
-		<annotation cp="🤵🏽">groom | medium skin tone | person | person in tux | person in tuxedo | tuxedo</annotation>
-		<annotation cp="🤵🏾">groom | medium-dark skin tone | person | person in tux | person in tuxedo | tuxedo</annotation>
-		<annotation cp="🤵🏿">dark skin tone | groom | person | person in tux | person in tuxedo | tuxedo</annotation>
-		<annotation cp="🤵🏻‍♂">light skin tone | man | man in tux | man in tuxedo | tuxedo</annotation>
-		<annotation cp="🤵🏼‍♂">man | man in tux | man in tuxedo | medium-light skin tone | tuxedo</annotation>
-		<annotation cp="🤵🏽‍♂">man | man in tux | man in tuxedo | medium skin tone | tuxedo</annotation>
-		<annotation cp="🤵🏾‍♂">man | man in tux | man in tuxedo | medium-dark skin tone | tuxedo</annotation>
-		<annotation cp="🤵🏿‍♂">dark skin tone | man | man in tux | man in tuxedo | tuxedo</annotation>
-		<annotation cp="🤵🏻‍♀">light skin tone | tuxedo | woman | woman in tux | woman in tuxedo</annotation>
-		<annotation cp="🤵🏼‍♀">medium-light skin tone | tuxedo | woman | woman in tux | woman in tuxedo</annotation>
-		<annotation cp="🤵🏽‍♀">medium skin tone | tuxedo | woman | woman in tux | woman in tuxedo</annotation>
-		<annotation cp="🤵🏾‍♀">medium-dark skin tone | tuxedo | woman | woman in tux | woman in tuxedo</annotation>
-		<annotation cp="🤵🏿‍♀">dark skin tone | tuxedo | woman | woman in tux | woman in tuxedo</annotation>
-		<annotation cp="💇🏻">barber | beauty | haircut | light skin tone | parlour | person getting haircut</annotation>
-		<annotation cp="💇🏼">barber | beauty | haircut | medium-light skin tone | parlour | person getting haircut</annotation>
-		<annotation cp="💇🏽">barber | beauty | haircut | medium skin tone | parlour | person getting haircut</annotation>
-		<annotation cp="💇🏾">barber | beauty | haircut | medium-dark skin tone | parlour | person getting haircut</annotation>
-		<annotation cp="💇🏿">barber | beauty | dark skin tone | haircut | parlour | person getting haircut</annotation>
-		<annotation cp="🧑🏻‍🦯">accessibility | blind | light skin tone | person with guide cane | person with guide cane: light skin tone | person with white cane</annotation>
-		<annotation cp="🧑🏻‍🦯" type="tts">person with guide cane: light skin tone</annotation>
-		<annotation cp="🧑🏼‍🦯">accessibility | blind | medium-light skin tone | person with guide cane | person with guide cane: medium-light skin tone | person with white cane</annotation>
-		<annotation cp="🧑🏼‍🦯" type="tts">person with guide cane: medium-light skin tone</annotation>
-		<annotation cp="🧑🏽‍🦯">accessibility | blind | medium skin tone | person with guide cane | person with guide cane: medium skin tone | person with white cane</annotation>
-		<annotation cp="🧑🏽‍🦯" type="tts">person with guide cane: medium skin tone</annotation>
-		<annotation cp="🧑🏾‍🦯">accessibility | blind | medium-dark skin tone | person with guide cane | person with guide cane: medium-dark skin tone | person with white cane</annotation>
-		<annotation cp="🧑🏾‍🦯" type="tts">person with guide cane: medium-dark skin tone</annotation>
-		<annotation cp="🧑🏿‍🦯">accessibility | blind | dark skin tone | person with guide cane | person with guide cane: dark skin tone | person with white cane</annotation>
-		<annotation cp="🧑🏿‍🦯" type="tts">person with guide cane: dark skin tone</annotation>
-		<annotation cp="👨🏻‍🦯">accessibility | blind | light skin tone | man | man with guide cane | man with guide cane: light skin tone</annotation>
-		<annotation cp="👨🏻‍🦯" type="tts">man with guide cane: light skin tone</annotation>
-		<annotation cp="👨🏼‍🦯">accessibility | blind | man | man with guide cane | man with guide cane: medium-light skin tone | medium-light skin tone</annotation>
-		<annotation cp="👨🏼‍🦯" type="tts">man with guide cane: medium-light skin tone</annotation>
-		<annotation cp="👨🏽‍🦯">accessibility | blind | man | man with guide cane | man with guide cane: medium skin tone | medium skin tone</annotation>
-		<annotation cp="👨🏽‍🦯" type="tts">man with guide cane: medium skin tone</annotation>
-		<annotation cp="👨🏾‍🦯">accessibility | blind | man | man with guide cane | man with guide cane: medium-dark skin tone | medium-dark skin tone</annotation>
-		<annotation cp="👨🏾‍🦯" type="tts">man with guide cane: medium-dark skin tone</annotation>
-		<annotation cp="👨🏿‍🦯">accessibility | blind | dark skin tone | man | man with guide cane | man with guide cane: dark skin tone</annotation>
-		<annotation cp="👨🏿‍🦯" type="tts">man with guide cane: dark skin tone</annotation>
-		<annotation cp="👩🏻‍🦯">accessibility | blind | light skin tone | woman | woman with guide cane | woman with guide cane: light skin tone</annotation>
-		<annotation cp="👩🏻‍🦯" type="tts">woman with guide cane: light skin tone</annotation>
-		<annotation cp="👩🏼‍🦯">accessibility | blind | medium-light skin tone | woman | woman with guide cane | woman with guide cane: medium-light skin tone</annotation>
-		<annotation cp="👩🏼‍🦯" type="tts">woman with guide cane: medium-light skin tone</annotation>
-		<annotation cp="👩🏽‍🦯">accessibility | blind | medium skin tone | woman | woman with guide cane | woman with guide cane: medium skin tone</annotation>
-		<annotation cp="👩🏽‍🦯" type="tts">woman with guide cane: medium skin tone</annotation>
-		<annotation cp="👩🏾‍🦯">accessibility | blind | medium-dark skin tone | woman | woman with guide cane | woman with guide cane: medium-dark skin tone</annotation>
-		<annotation cp="👩🏾‍🦯" type="tts">woman with guide cane: medium-dark skin tone</annotation>
-		<annotation cp="👩🏿‍🦯">accessibility | blind | dark skin tone | woman | woman with guide cane | woman with guide cane: dark skin tone</annotation>
-		<annotation cp="👩🏿‍🦯" type="tts">woman with guide cane: dark skin tone</annotation>
-		<annotation cp="🧑🏻‍🦼">accessibility | light skin tone | person in motorized wheelchair | person in powered wheelchair | person in powered wheelchair: light skin tone | wheelchair</annotation>
-		<annotation cp="🧑🏻‍🦼" type="tts">person in powered wheelchair: light skin tone</annotation>
-		<annotation cp="🧑🏼‍🦼">accessibility | medium-light skin tone | person in motorized wheelchair | person in powered wheelchair | person in powered wheelchair: medium-light skin tone | wheelchair</annotation>
-		<annotation cp="🧑🏼‍🦼" type="tts">person in powered wheelchair: medium-light skin tone</annotation>
-		<annotation cp="🧑🏽‍🦼">accessibility | medium skin tone | person in motorized wheelchair | person in powered wheelchair | person in powered wheelchair: medium skin tone | wheelchair</annotation>
-		<annotation cp="🧑🏽‍🦼" type="tts">person in powered wheelchair: medium skin tone</annotation>
-		<annotation cp="🧑🏾‍🦼">accessibility | medium-dark skin tone | person in motorized wheelchair | person in powered wheelchair | person in powered wheelchair: medium-dark skin tone | wheelchair</annotation>
-		<annotation cp="🧑🏾‍🦼" type="tts">person in powered wheelchair: medium-dark skin tone</annotation>
-		<annotation cp="🧑🏿‍🦼">accessibility | dark skin tone | person in motorized wheelchair | person in powered wheelchair | person in powered wheelchair: dark skin tone | wheelchair</annotation>
-		<annotation cp="🧑🏿‍🦼" type="tts">person in powered wheelchair: dark skin tone</annotation>
-		<annotation cp="👨🏻‍🦼">accessibility | light skin tone | man | man in powered wheelchair | man in powered wheelchair: light skin tone | wheelchair</annotation>
-		<annotation cp="👨🏻‍🦼" type="tts">man in powered wheelchair: light skin tone</annotation>
-		<annotation cp="👨🏼‍🦼">accessibility | man | man in powered wheelchair | man in powered wheelchair: medium-light skin tone | medium-light skin tone | wheelchair</annotation>
-		<annotation cp="👨🏼‍🦼" type="tts">man in powered wheelchair: medium-light skin tone</annotation>
-		<annotation cp="👨🏽‍🦼">accessibility | man | man in powered wheelchair | man in powered wheelchair: medium skin tone | medium skin tone | wheelchair</annotation>
-		<annotation cp="👨🏽‍🦼" type="tts">man in powered wheelchair: medium skin tone</annotation>
-		<annotation cp="👨🏾‍🦼">accessibility | man | man in powered wheelchair | man in powered wheelchair: medium-dark skin tone | medium-dark skin tone | wheelchair</annotation>
-		<annotation cp="👨🏾‍🦼" type="tts">man in powered wheelchair: medium-dark skin tone</annotation>
-		<annotation cp="👨🏿‍🦼">accessibility | dark skin tone | man | man in powered wheelchair | man in powered wheelchair: dark skin tone | wheelchair</annotation>
-		<annotation cp="👨🏿‍🦼" type="tts">man in powered wheelchair: dark skin tone</annotation>
-		<annotation cp="👩🏻‍🦼">accessibility | light skin tone | wheelchair | woman | woman in powered wheelchair | woman in powered wheelchair: light skin tone</annotation>
-		<annotation cp="👩🏻‍🦼" type="tts">woman in powered wheelchair: light skin tone</annotation>
-		<annotation cp="👩🏼‍🦼">accessibility | medium-light skin tone | wheelchair | woman | woman in powered wheelchair | woman in powered wheelchair: medium-light skin tone</annotation>
-		<annotation cp="👩🏼‍🦼" type="tts">woman in powered wheelchair: medium-light skin tone</annotation>
-		<annotation cp="👩🏽‍🦼">accessibility | medium skin tone | wheelchair | woman | woman in powered wheelchair | woman in powered wheelchair: medium skin tone</annotation>
-		<annotation cp="👩🏽‍🦼" type="tts">woman in powered wheelchair: medium skin tone</annotation>
-		<annotation cp="👩🏾‍🦼">accessibility | medium-dark skin tone | wheelchair | woman | woman in powered wheelchair | woman in powered wheelchair: medium-dark skin tone</annotation>
-		<annotation cp="👩🏾‍🦼" type="tts">woman in powered wheelchair: medium-dark skin tone</annotation>
-		<annotation cp="👩🏿‍🦼">accessibility | dark skin tone | wheelchair | woman | woman in powered wheelchair | woman in powered wheelchair: dark skin tone</annotation>
-		<annotation cp="👩🏿‍🦼" type="tts">woman in powered wheelchair: dark skin tone</annotation>
 		<annotation cp="👬🏻">couple | Gemini | holding hands | light skin tone | man | men holding hands | twins | zodiac</annotation>
 		<annotation cp="👨🏻‍🤝‍👨🏼">couple | Gemini | holding hands | light skin tone | man | medium-light skin tone | men holding hands | twins | zodiac</annotation>
 		<annotation cp="👨🏻‍🤝‍👨🏽">couple | Gemini | holding hands | light skin tone | man | medium skin tone | men holding hands | twins | zodiac</annotation>
@@ -169,23 +49,7 @@ Derived short names and annotations, using GenerateDerivedAnnotations.java. See 
 		<annotation cp="👨🏿‍🤝‍👨🏽">couple | dark skin tone | Gemini | holding hands | man | medium skin tone | men holding hands | twins | zodiac</annotation>
 		<annotation cp="👨🏿‍🤝‍👨🏾">couple | dark skin tone | Gemini | holding hands | man | medium-dark skin tone | men holding hands | twins | zodiac</annotation>
 		<annotation cp="👬🏿">couple | dark skin tone | Gemini | holding hands | man | men holding hands | twins | zodiac</annotation>
-		<annotation cp="🇧🇱">flag | flag: St Barthélemy</annotation>
-		<annotation cp="🇧🇱" type="tts">flag: St Barthélemy</annotation>
-		<annotation cp="🇰🇳">flag | flag: St Kitts &amp; Nevis</annotation>
-		<annotation cp="🇰🇳" type="tts">flag: St Kitts &amp; Nevis</annotation>
-		<annotation cp="🇱🇨">flag | flag: St Lucia</annotation>
-		<annotation cp="🇱🇨" type="tts">flag: St Lucia</annotation>
-		<annotation cp="🇲🇫">flag | flag: St Martin</annotation>
-		<annotation cp="🇲🇫" type="tts">flag: St Martin</annotation>
-		<annotation cp="🇵🇲">flag | flag: St Pierre &amp; Miquelon</annotation>
-		<annotation cp="🇵🇲" type="tts">flag: St Pierre &amp; Miquelon</annotation>
-		<annotation cp="🇸🇭">flag | flag: St Helena</annotation>
-		<annotation cp="🇸🇭" type="tts">flag: St Helena</annotation>
-		<annotation cp="🇺🇲">flag | flag: US Outlying Islands</annotation>
 		<annotation cp="🇺🇲" type="tts">flag: US Outlying Islands</annotation>
-		<annotation cp="🇻🇨">flag | flag: St Vincent &amp; the Grenadines</annotation>
-		<annotation cp="🇻🇨" type="tts">flag: St Vincent &amp; the Grenadines</annotation>
-		<annotation cp="🇻🇮">flag | flag: US Virgin Islands</annotation>
 		<annotation cp="🇻🇮" type="tts">flag: US Virgin Islands</annotation>
 	</annotations>
 </ldml>

@@ -73,11 +73,10 @@ String ProcessingInstruction::nodeName() const {
   return target_;
 }
 
-CharacterData* ProcessingInstruction::CloneWithData(Document& factory,
-                                                    const String& data) const {
+Node* ProcessingInstruction::Clone(Document& factory, CloneChildrenFlag) const {
   // FIXME: Is it a problem that this does not copy local_href_?
   // What about other data members?
-  return MakeGarbageCollected<ProcessingInstruction>(factory, target_, data);
+  return MakeGarbageCollected<ProcessingInstruction>(factory, target_, data_);
 }
 
 void ProcessingInstruction::DidAttributeChanged() {

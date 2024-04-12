@@ -23,17 +23,12 @@
 #include "ash/system/tray/tri_view.h"
 #include "base/check.h"
 #include "base/functional/bind.h"
-#include "chromeos/ash/services/bluetooth_config/public/cpp/cros_bluetooth_config_util.h"
-#include "chromeos/ash/services/bluetooth_config/public/mojom/cros_bluetooth_config.mojom.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "device/bluetooth/chromeos/bluetooth_utils.h"
-#include "ui/accessibility/ax_enums.mojom-shared.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
 #include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/gfx/geometry/insets.h"
-#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/button/toggle_button.h"
 #include "ui/views/controls/image_view.h"
@@ -46,10 +41,6 @@
 
 namespace ash {
 namespace {
-
-using bluetooth_config::IsBluetoothEnabled;
-using bluetooth_config::IsBluetoothEnabledOrEnabling;
-using bluetooth_config::mojom::BluetoothSystemState;
 
 constexpr auto kToggleRowTriViewInsets = gfx::Insets::VH(8, 24);
 constexpr auto kMainContainerMargins = gfx::Insets::TLBR(2, 0, 0, 0);
@@ -67,7 +58,7 @@ BluetoothDetailedViewImpl::BluetoothDetailedViewImpl(
   CreateScrollableList();
   CreateTopContainer();
   CreateMainContainer();
-  UpdateBluetoothEnabledState(BluetoothSystemState::kDisabled);
+  UpdateBluetoothEnabledState(/*enabled=*/false);
   device::RecordUiSurfaceDisplayed(
       device::BluetoothUiSurface::kBluetoothQuickSettings);
 }
@@ -78,49 +69,36 @@ views::View* BluetoothDetailedViewImpl::GetAsView() {
   return this;
 }
 
-void BluetoothDetailedViewImpl::UpdateBluetoothEnabledState(
-    const BluetoothSystemState system_state) {
-  bool is_enabled_or_enabling = IsBluetoothEnabledOrEnabling(system_state);
-
+void BluetoothDetailedViewImpl::UpdateBluetoothEnabledState(bool enabled) {
   // Use square corners on the bottom edge when Bluetooth is enabled.
-  top_container_->SetBehavior(is_enabled_or_enabling
+  top_container_->SetBehavior(enabled
                                   ? RoundedContainer::Behavior::kTopRounded
                                   : RoundedContainer::Behavior::kAllRounded);
-  main_container_->SetVisible(is_enabled_or_enabling);
+  main_container_->SetVisible(enabled);
 
   // Update the top container Bluetooth icon.
   toggle_icon_->SetImage(ui::ImageModel::FromVectorIcon(
-      is_enabled_or_enabling ? kSystemMenuBluetoothIcon
-                             : kSystemMenuBluetoothDisabledIcon,
+      enabled ? kSystemMenuBluetoothIcon : kSystemMenuBluetoothDisabledIcon,
       cros_tokens::kCrosSysOnSurface));
 
   // Update the top container on/off label.
   toggle_row_->text_label()->SetText(l10n_util::GetStringUTF16(
-      is_enabled_or_enabling ? IDS_ASH_STATUS_TRAY_BLUETOOTH_ENABLED_SHORT
-                             : IDS_ASH_STATUS_TRAY_BLUETOOTH_DISABLED_SHORT));
+      enabled ? IDS_ASH_STATUS_TRAY_BLUETOOTH_ENABLED_SHORT
+              : IDS_ASH_STATUS_TRAY_BLUETOOTH_DISABLED_SHORT));
 
-  // Update the toggle row and button tooltips. The entire row is clickable.
-  std::u16string tooltip_template =
-      is_enabled_or_enabling
-          ? l10n_util::GetStringUTF16(
-                IDS_ASH_STATUS_TRAY_BLUETOOTH_ENABLED_TOOLTIP)
-          : l10n_util::GetStringUTF16(
-                IDS_ASH_STATUS_TRAY_BLUETOOTH_DISABLED_TOOLTIP);
-  std::u16string tooltip_text = l10n_util::GetStringFUTF16(
-      IDS_ASH_STATUS_TRAY_BLUETOOTH_TOGGLE_TOOLTIP, tooltip_template);
-  toggle_row_->SetTooltipText(tooltip_text);
-  toggle_button_->SetTooltipText(tooltip_text);
-  toggle_button_->SetAccessibleName(
-      l10n_util::GetStringUTF16(IDS_ASH_STATUS_TRAY_BLUETOOTH));
+  // Update the toggle button tooltip.
+  std::u16string toggle_tooltip =
+      enabled ? l10n_util::GetStringUTF16(
+                    IDS_ASH_STATUS_TRAY_BLUETOOTH_ENABLED_TOOLTIP)
+              : l10n_util::GetStringUTF16(
+                    IDS_ASH_STATUS_TRAY_BLUETOOTH_DISABLED_TOOLTIP);
+  toggle_button_->SetTooltipText(l10n_util::GetStringFUTF16(
+      IDS_ASH_STATUS_TRAY_BLUETOOTH_TOGGLE_TOOLTIP, toggle_tooltip));
 
   // Ensure the toggle button is in sync with the current Bluetooth state.
-  if (toggle_button_->GetIsOn() != is_enabled_or_enabling) {
-    toggle_button_->SetIsOn(is_enabled_or_enabling);
+  if (toggle_button_->GetIsOn() != enabled) {
+    toggle_button_->SetIsOn(enabled);
   }
-
-  // Only show "Pair new device" button if bluetooth is enabled.
-  // see (b/297044914)
-  pair_new_device_view_->SetVisible(IsBluetoothEnabled(system_state));
 
   InvalidateLayout();
 }
@@ -137,7 +115,7 @@ views::View* BluetoothDetailedViewImpl::AddDeviceListSubHeader(
   header->SetInsideBorderInsets(kSubHeaderInsets);
   std::unique_ptr<views::Label> label = bubble_utils::CreateLabel(
       TypographyToken::kCrosBody2, l10n_util::GetStringUTF16(text_id),
-      cros_tokens::kCrosSysOnSurfaceVariant);
+      cros_tokens::kColorSecondary);
   label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
   label->SetSubpixelRenderingEnabled(false);
   header->AddChildView(std::move(label));
@@ -147,7 +125,7 @@ views::View* BluetoothDetailedViewImpl::AddDeviceListSubHeader(
 
 void BluetoothDetailedViewImpl::NotifyDeviceListChanged() {
   device_list_->InvalidateLayout();
-  DeprecatedLayoutImmediately();
+  Layout();
 }
 
 views::View* BluetoothDetailedViewImpl::device_list() {
@@ -205,8 +183,6 @@ void BluetoothDetailedViewImpl::CreateTopContainer() {
   toggle_icon_ = icon.get();
   toggle_row_->AddViewAndLabel(std::move(icon), u"");
   toggle_row_->text_label()->SetEnabledColorId(cros_tokens::kCrosSysOnSurface);
-  TypographyProvider::Get()->StyleLabel(ash::TypographyToken::kCrosButton1,
-                                        *toggle_row_->text_label());
 
   auto toggle = std::make_unique<Switch>(base::BindRepeating(
       &BluetoothDetailedViewImpl::OnToggleClicked, weak_factory_.GetWeakPtr()));
@@ -217,10 +193,6 @@ void BluetoothDetailedViewImpl::CreateTopContainer() {
   // Allow the row to be taller than a typical tray menu item.
   toggle_row_->SetExpandable(true);
   toggle_row_->tri_view()->SetInsets(kToggleRowTriViewInsets);
-
-  // ChromeVox users will just use the `toggle_button_` to toggle.
-  toggle_icon_->GetViewAccessibility().SetIsIgnored(true);
-  toggle_row_->text_label()->GetViewAccessibility().SetIsIgnored(true);
 }
 
 void BluetoothDetailedViewImpl::CreateMainContainer() {
@@ -248,8 +220,9 @@ void BluetoothDetailedViewImpl::CreateMainContainer() {
 
   views::Label* label = pair_new_device_view_->text_label();
   label->SetEnabledColorId(cros_tokens::kCrosSysPrimary);
-  ash::TypographyProvider::Get()->StyleLabel(ash::TypographyToken::kCrosButton2,
-                                             *label);
+  // TODO(b/252872600): Apply the correct font to the label.
+  TrayPopupUtils::SetLabelFontList(
+      label, TrayPopupUtils::FontStyle::kDetailedViewLabel);
 
   // The device list is a separate view because it cannot contain the "pair new
   // device" row.
@@ -271,17 +244,13 @@ void BluetoothDetailedViewImpl::OnToggleClicked() {
 void BluetoothDetailedViewImpl::ToggleBluetoothState(bool new_state) {
   delegate()->OnToggleClicked(new_state);
 
-  const BluetoothSystemState new_system_state =
-      new_state ? BluetoothSystemState::kEnabling
-                : BluetoothSystemState::kDisabling;
-
   // Avoid the situation where there is a delay between the toggle becoming
   // enabled/disabled and Bluetooth becoming enabled/disabled by forcing the
   // view state to match the toggle state.
-  UpdateBluetoothEnabledState(new_system_state);
+  UpdateBluetoothEnabledState(new_state);
 }
 
-BEGIN_METADATA(BluetoothDetailedViewImpl)
+BEGIN_METADATA(BluetoothDetailedViewImpl, TrayDetailedView)
 END_METADATA
 
 }  // namespace ash

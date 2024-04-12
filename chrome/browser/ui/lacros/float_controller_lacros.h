@@ -16,9 +16,7 @@ class FloatControllerLacros : public chromeos::FloatControllerBase {
   ~FloatControllerLacros() override;
 
   // chromeos::FloatControllerBase:
-  void SetFloat(aura::Window* window,
-                chromeos::FloatStartLocation float_start_location) override;
-  void UnsetFloat(aura::Window* window) override;
+  void ToggleFloat(aura::Window* window) override;
 };
 
 #endif  // CHROME_BROWSER_UI_LACROS_FLOAT_CONTROLLER_LACROS_H_

@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_UI_SIGNIN_DICE_WEB_SIGNIN_INTERCEPTOR_DELEGATE_H_
 #define CHROME_BROWSER_UI_SIGNIN_DICE_WEB_SIGNIN_INTERCEPTOR_DELEGATE_H_
 
-#include "chrome/browser/signin/web_signin_interceptor.h"
+#include "chrome/browser/signin/dice_web_signin_interceptor.h"
 
 #include "base/functional/callback_forward.h"
 
@@ -14,10 +14,10 @@ class WebContents;
 }
 
 class Browser;
-class Profile;
 struct CoreAccountId;
 
-class DiceWebSigninInterceptorDelegate : public WebSigninInterceptor::Delegate {
+class DiceWebSigninInterceptorDelegate
+    : public DiceWebSigninInterceptor::Delegate {
  public:
   DiceWebSigninInterceptorDelegate();
   ~DiceWebSigninInterceptorDelegate() override;
@@ -25,7 +25,7 @@ class DiceWebSigninInterceptorDelegate : public WebSigninInterceptor::Delegate {
   // DiceWebSigninInterceptor::Delegate
   bool IsSigninInterceptionSupported(
       const content::WebContents& web_contents) override;
-  std::unique_ptr<ScopedWebSigninInterceptionBubbleHandle>
+  std::unique_ptr<ScopedDiceWebSigninInterceptionBubbleHandle>
   ShowSigninInterceptionBubble(
       content::WebContents* web_contents,
       const BubbleParameters& bubble_parameters,
@@ -33,21 +33,12 @@ class DiceWebSigninInterceptorDelegate : public WebSigninInterceptor::Delegate {
   void ShowFirstRunExperienceInNewProfile(
       Browser* browser,
       const CoreAccountId& account_id,
-      WebSigninInterceptor::SigninInterceptionType interception_type) override;
-
-  // Returns the histogram suffix related to the given interception type.
-  static std::string GetHistogramSuffix(
-      WebSigninInterceptor::SigninInterceptionType interception_type);
-
-  // Record metrics about the result of the signin interception.
-  static void RecordInterceptionResult(
-      const WebSigninInterceptor::Delegate::BubbleParameters& bubble_parameters,
-      Profile* profile,
-      SigninInterceptionResult result);
+      DiceWebSigninInterceptor::SigninInterceptionType interception_type)
+      override;
 
  private:
   // Implemented in dice_web_signin_interception_bubble_view.cc
-  std::unique_ptr<ScopedWebSigninInterceptionBubbleHandle>
+  std::unique_ptr<ScopedDiceWebSigninInterceptionBubbleHandle>
   ShowSigninInterceptionBubbleInternal(
       Browser* browser,
       const BubbleParameters& bubble_parameters,

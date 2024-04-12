@@ -9,7 +9,6 @@
 #include <utility>
 
 #include "base/memory/raw_ptr.h"
-#include "build/build_config.h"
 #include "chrome/browser/bitmap_fetcher/bitmap_fetcher.h"
 #include "chrome/browser/media/router/chrome_media_router_factory.h"
 #include "chrome/test/base/testing_profile.h"
@@ -129,18 +128,17 @@ class CastMediaNotificationItemTest : public testing::Test {
   }
 
  protected:
-  MOCK_METHOD(std::unique_ptr<BitmapFetcher>,
-              CreateBitmapFetcher,
-              (const GURL& url,
-               BitmapFetcherDelegate* delegate,
-               const net::NetworkTrafficAnnotationTag& traffic_annotation));
+  MOCK_METHOD3(CreateBitmapFetcher,
+               std::unique_ptr<BitmapFetcher>(
+                   const GURL& url,
+                   BitmapFetcherDelegate* delegate,
+                   const net::NetworkTrafficAnnotationTag& traffic_annotation));
 
   content::BrowserTaskEnvironment task_environment_;
   TestingProfile profile_;
   testing::NiceMock<global_media_controls::test::MockMediaItemManager>
       item_manager_;
-  raw_ptr<MockSessionController, DanglingUntriaged> session_controller_ =
-      nullptr;
+  raw_ptr<MockSessionController> session_controller_ = nullptr;
   // This needs to be a NiceMock, because the uninteresting mock function calls
   // slow down the tests enough to make
   // CastMediaNotificationItemTest.MediaPositionUpdate flaky.
@@ -306,13 +304,7 @@ TEST_F(CastMediaNotificationItemTest, DownloadImage) {
   bitmap_fetcher_delegate->OnFetchComplete(image_url, &bitmap);
 }
 
-// TODO(crbug.com/327498504): Fix the test flakiness on Win Arm64.
-#if BUILDFLAG(IS_WIN) && defined(ARCH_CPU_ARM64)
-#define MAYBE_MediaPositionUpdate DISABLED_MediaPositionUpdate
-#else
-#define MAYBE_MediaPositionUpdate MediaPositionUpdate
-#endif
-TEST_F(CastMediaNotificationItemTest, MAYBE_MediaPositionUpdate) {
+TEST_F(CastMediaNotificationItemTest, MediaPositionUpdate) {
   SetView();
   const base::TimeDelta duration = base::Seconds(100);
   const base::TimeDelta current_time = base::Seconds(70);
@@ -384,5 +376,6 @@ TEST_F(CastMediaNotificationItemTest, StopCasting) {
 
   EXPECT_CALL(*mock_router, TerminateRoute(item_->route_id()));
   EXPECT_CALL(item_manager_, FocusDialog());
-  item_->StopCasting();
+  item_->StopCasting(
+      global_media_controls::GlobalMediaControlsEntryPoint::kPresentation);
 }

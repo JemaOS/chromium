@@ -5,8 +5,7 @@
   "permissions": [
     "scripting",
     "tabs",
-    "webRequest",
-    "storage"
+    "webRequest"
   ],
   "background": {
     "service_worker": "worker.js"

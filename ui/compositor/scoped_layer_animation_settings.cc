@@ -105,9 +105,8 @@ void AddScopedDeferredPaintingObserverRecursive(
     ui::ScopedLayerAnimationSettings* settings) {
   auto observer = std::make_unique<ScopedDeferredPainting>(layer);
   AddObserverToSettings(settings, std::move(observer));
-  for (ui::Layer* child : layer->children()) {
+  for (auto* child : layer->children())
     AddScopedDeferredPaintingObserverRecursive(child, settings);
-  }
 }
 
 }  // namespace
@@ -132,7 +131,7 @@ ScopedLayerAnimationSettings::~ScopedLayerAnimationSettings() {
   animator_->set_tween_type(old_tween_type_);
   animator_->set_preemption_strategy(old_preemption_strategy_);
 
-  for (ImplicitAnimationObserver* observer : observers_) {
+  for (auto* observer : observers_) {
     // Directly remove |observer| from |LayerAnimator::observers_| rather than
     // calling LayerAnimator::RemoveObserver(), to avoid removing it from the
     // observer list of LayerAnimationSequences that have already been

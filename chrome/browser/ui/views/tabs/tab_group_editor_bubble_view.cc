@@ -2,10 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/browser/ui/views/tabs/tab_group_editor_bubble_view.h"
-
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -17,14 +14,12 @@
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
 #include "base/ranges/algorithm.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/app/vector_icons/vector_icons.h"
-#include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -42,23 +37,21 @@
 #include "chrome/browser/ui/views/chrome_typography.h"
 #include "chrome/browser/ui/views/controls/hover_button.h"
 #include "chrome/browser/ui/views/tabs/color_picker_view.h"
+#include "chrome/browser/ui/views/tabs/tab_group_editor_bubble_view.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_ink_drop_util.h"
-#include "chrome/browser/user_education/user_education_service.h"
-#include "chrome/browser/user_education/user_education_service_factory.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/dialog_model_field.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/pointer/touch_ui_controller.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/events/types/event_type.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/geometry/insets.h"
@@ -68,13 +61,15 @@
 #include "ui/gfx/text_constants.h"
 #include "ui/native_theme/native_theme.h"
 #include "ui/views/border.h"
+#include "ui/views/bubble/bubble_dialog_delegate_view.h"
+#include "ui/views/bubble/bubble_dialog_model_host.h"
+#include "ui/views/bubble/bubble_frame_view.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/button/toggle_button.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/separator.h"
-#include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/layout/flex_layout_types.h"
@@ -84,8 +79,6 @@
 #include "ui/views/view_utils.h"
 
 namespace {
-
-constexpr base::TimeDelta kTemporaryBookmarkBarDuration = base::Seconds(15);
 
 std::unique_ptr<views::LabelButton> CreateMenuItem(
     int button_id,
@@ -103,15 +96,212 @@ std::unique_ptr<views::LabelButton> CreateMenuItem(
           ? gfx::Insets::VH(5 * vertical_spacing / 4, horizontal_spacing)
           : gfx::Insets::VH(vertical_spacing, horizontal_spacing);
 
-  auto button =
-      CreateBubbleMenuItem(button_id, name, std::move(callback), icon);
+  auto button = CreateBubbleMenuItem(button_id, name, callback, icon);
   button->SetBorder(views::CreateEmptyBorder(control_insets));
-  if (features::IsChromeRefresh2023()) {
-    button->SetLabelStyle(views::style::STYLE_BODY_3_EMPHASIS);
-  }
 
   return button;
 }
+
+std::unique_ptr<views::BubbleDialogModelHost::CustomView>
+CreateMenuItemCustomView(const std::u16string& name,
+                         views::Button::PressedCallback callback,
+                         const ui::ImageModel& icon = ui::ImageModel()) {
+  return std::make_unique<views::BubbleDialogModelHost::CustomView>(
+      CreateMenuItem(-1, name, std::move(callback), icon),
+      views::BubbleDialogModelHost::FieldType::kMenuItem);
+}
+
+class TabGroupEditorBubbleDelegate : public ui::DialogModelDelegate {
+ public:
+  TabGroupEditorBubbleDelegate(const Browser* browser,
+                               const tab_groups::TabGroupId& group)
+      : browser_(browser), group_(group), title_at_opening_(GetTitle()) {}
+
+  TabGroupEditorBubbleDelegate(const TabGroupEditorBubbleDelegate&) = delete;
+  TabGroupEditorBubbleDelegate& operator=(const TabGroupEditorBubbleDelegate&) =
+      delete;
+
+  ~TabGroupEditorBubbleDelegate() override = default;
+
+  void SetGroupTitle(std::u16string title) {
+    TabGroup* const tab_group =
+        browser_->tab_strip_model()->group_model()->GetTabGroup(group_);
+
+    const tab_groups::TabGroupVisualData* const current_visual_data =
+        tab_group->visual_data();
+
+    tab_groups::TabGroupVisualData new_data(
+        title, current_visual_data->color(),
+        current_visual_data->is_collapsed());
+    tab_group->SetVisualData(new_data, true);
+  }
+  void NewTabInGroupPressed() {
+    TabStripModel* const model = browser_->tab_strip_model();
+    if (!model->group_model())
+      return;
+    base::RecordAction(
+        base::UserMetricsAction("TabGroups_TabGroupBubble_NewTabInGroup"));
+    const auto tabs = model->group_model()->GetTabGroup(group_)->ListTabs();
+    model->delegate()->AddTabAt(GURL(), tabs.end(), true, group_);
+    // Close the widget to allow users to continue their work in their newly
+    // created tab.
+    dialog_model()->host()->Close();
+  }
+
+  void UngroupPressed(TabGroupHeader* header_view) {
+    TabStripModel* const model = browser_->tab_strip_model();
+    if (!model->group_model())
+      return;
+
+    // TODO(dpenning): When adding saved groups to TabGroupEditorBubbleDelegate
+    // disconnect the tab groups first.
+    base::RecordAction(
+        base::UserMetricsAction("TabGroups_TabGroupBubble_Ungroup"));
+    if (header_view) {
+      // TODO(pbos): See if this can be managed outside this dialog to prevent
+      // upcasting to BubbleDialogModelHost.
+      header_view->RemoveObserverFromWidget(
+          static_cast<views::BubbleDialogModelHost*>(dialog_model()->host())
+              ->GetWidget());
+    }
+
+    const gfx::Range tab_range =
+        model->group_model()->GetTabGroup(group_)->ListTabs();
+
+    std::vector<int> tabs;
+    tabs.reserve(tab_range.length());
+    for (auto i = tab_range.start(); i < tab_range.end(); ++i)
+      tabs.push_back(i);
+
+    model->RemoveFromGroup(tabs);
+    // Close the widget because it is no longer applicable.
+    dialog_model()->host()->Close();
+  }
+
+  void CloseGroupPressed() {
+    base::RecordAction(
+        base::UserMetricsAction("TabGroups_TabGroupBubble_CloseGroup"));
+    browser_->tab_strip_model()->CloseAllTabsInGroup(group_);
+    // Close the widget because it is no longer applicable.
+    dialog_model()->host()->Close();
+  }
+
+  void MoveGroupToNewWindowPressed() {
+    browser_->tab_strip_model()->delegate()->MoveGroupToNewWindow(group_);
+    dialog_model()->host()->Close();
+  }
+
+  void OnBubbleClose() {
+    // If we're doing the "create a tab group" tutorial, note whether the user
+    // actually entered a tab name.
+    if (browser_->window()->IsFeaturePromoActive(
+            feature_engagement::kIPHDesktopTabGroupsNewGroupFeature)) {
+      UMA_HISTOGRAM_BOOLEAN("Tutorial.TabGroup.EditedTitle",
+                            !GetTitle().empty());
+    }
+
+    if (title_at_opening_ != GetTitle()) {
+      base::RecordAction(
+          base::UserMetricsAction("TabGroups_TabGroupBubble_NameChanged"));
+    }
+  }
+
+  std::u16string GetTitle() {
+    return browser_->tab_strip_model()
+        ->group_model()
+        ->GetTabGroup(group_)
+        ->visual_data()
+        ->title();
+  }
+
+ private:
+  const raw_ptr<const Browser> browser_;
+  const tab_groups::TabGroupId group_;
+  const std::u16string title_at_opening_;
+};
+
+class TitleField : public views::Textfield {
+ public:
+  // TODO(pbos): Add me back lol.
+  //  METADATA_HEADER(TitleField);
+  TitleField(TabGroupEditorBubbleDelegate* delegate,
+             bool stop_context_menu_propagation,
+             std::u16string title)
+      : title_field_controller_(delegate),
+        stop_context_menu_propagation_(stop_context_menu_propagation) {
+    SetText(title);
+    SetAccessibleName(l10n_util::GetStringUTF16(
+        IDS_TAB_GROUP_HEADER_CXMENU_TAB_GROUP_TITLE_ACCESSIBLE_NAME));
+    SetPlaceholderText(l10n_util::GetStringUTF16(
+        IDS_TAB_GROUP_HEADER_BUBBLE_TITLE_PLACEHOLDER));
+    set_controller(&title_field_controller_);
+    SetProperty(views::kElementIdentifierKey, kTabGroupEditorBubbleId);
+  }
+
+  ~TitleField() override = default;
+
+  // views::Textfield:
+  void ShowContextMenu(const gfx::Point& p,
+                       ui::MenuSourceType source_type) override {
+    // There is no easy way to stop the propagation of a ShowContextMenu event,
+    // which is sometimes used to open the bubble itself. So when the bubble is
+    // opened this way, we manually hide the textfield's context menu the first
+    // time. Otherwise, the textfield, which is automatically focused, would
+    // show an extra context menu when the bubble first opens.
+    if (stop_context_menu_propagation_) {
+      stop_context_menu_propagation_ = false;
+      return;
+    }
+    views::Textfield::ShowContextMenu(p, source_type);
+  }
+
+ private:
+  class TitleFieldController : public views::TextfieldController {
+   public:
+    explicit TitleFieldController(TabGroupEditorBubbleDelegate* delegate)
+        : delegate_(delegate) {}
+    ~TitleFieldController() override = default;
+
+    // views::TextfieldController:
+    void ContentsChanged(views::Textfield* sender,
+                         const std::u16string& new_contents) override {
+      delegate_->SetGroupTitle(sender->GetText());
+    }
+    bool HandleKeyEvent(views::Textfield* sender,
+                        const ui::KeyEvent& key_event) override {
+      // For special actions, only respond to key pressed events, to be
+      // consistent with other views like buttons and dialogs.
+      if (key_event.type() != ui::EventType::ET_KEY_PRESSED) {
+        return false;
+      }
+
+      const ui::KeyboardCode key_code = key_event.key_code();
+      if (key_code == ui::VKEY_ESCAPE) {
+        sender->GetWidget()->CloseWithReason(
+            views::Widget::ClosedReason::kEscKeyPressed);
+        return true;
+      }
+      if (key_code == ui::VKEY_RETURN) {
+        sender->GetWidget()->CloseWithReason(
+            views::Widget::ClosedReason::kUnspecified);
+        return true;
+      }
+
+      return false;
+    }
+
+   private:
+    const raw_ptr<TabGroupEditorBubbleDelegate> delegate_;
+  };
+
+  TitleFieldController title_field_controller_;
+
+  // Whether the context menu should be hidden the first time it shows.
+  // Needed because there is no easy way to stop the propagation of a
+  // ShowContextMenu event, which is sometimes used to open the bubble
+  // itself.
+  bool stop_context_menu_propagation_;
+};
 
 }  // namespace
 
@@ -120,11 +310,84 @@ views::Widget* TabGroupEditorBubbleView::Show(
     const Browser* browser,
     const tab_groups::TabGroupId& group,
     TabGroupHeader* header_view,
-    std::optional<gfx::Rect> anchor_rect,
+    absl::optional<gfx::Rect> anchor_rect,
     views::View* anchor_view,
     bool stop_context_menu_propagation) {
-  feature_engagement::TrackerFactory::GetForBrowserContext(browser->profile())
-      ->NotifyEvent("tab_group_editor_shown");
+  // TODO(pbos): Clean this duplicate implementation up. This is only here while
+  // development of a DialogModel version of this bubble is in progress. This is
+  // also only checked in so that development on DialogModel and
+  // BubbleDialogModelHost can happen in chunks and be checked in instead of
+  // landed as a gargantuan change.
+  static constexpr bool kUseDialogModel = false;
+  if (kUseDialogModel) {
+    auto bubble_delegate_unique =
+        std::make_unique<TabGroupEditorBubbleDelegate>(browser, group);
+    TabGroupEditorBubbleDelegate* const bubble_delegate =
+        bubble_delegate_unique.get();
+
+    ui::DialogModel::Builder dialog_builder(std::move(bubble_delegate_unique));
+
+    // TODO(pbos): This does not include the color picker, or the
+    // saved-tab-group items that're under a flag.
+    dialog_builder.OverrideShowCloseButton(false)
+        .SetDialogDestroyingCallback(
+            base::BindOnce(&TabGroupEditorBubbleDelegate::OnBubbleClose,
+                           base::Unretained(bubble_delegate)))
+        .AddCustomField(
+            std::make_unique<views::BubbleDialogModelHost::CustomView>(
+                std::make_unique<::TitleField>(bubble_delegate,
+                                               stop_context_menu_propagation,
+                                               bubble_delegate->GetTitle()),
+                views::BubbleDialogModelHost::FieldType::kControl),
+            kTabGroupEditorBubbleId)
+        .SetInitiallyFocusedField(kTabGroupEditorBubbleId)
+        .AddSeparator()
+        .AddCustomField(CreateMenuItemCustomView(
+            l10n_util::GetStringUTF16(
+                IDS_TAB_GROUP_HEADER_CXMENU_NEW_TAB_IN_GROUP),
+            base::BindRepeating(
+                &TabGroupEditorBubbleDelegate::NewTabInGroupPressed,
+                base::Unretained(bubble_delegate)),
+            ui::ImageModel::FromVectorIcon(kNewTabInGroupIcon)))
+        .AddCustomField(CreateMenuItemCustomView(
+            l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_UNGROUP),
+            base::BindRepeating(&TabGroupEditorBubbleDelegate::UngroupPressed,
+                                base::Unretained(bubble_delegate), header_view),
+            ui::ImageModel::FromVectorIcon(kUngroupIcon)))
+        .AddCustomField(CreateMenuItemCustomView(
+            l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_CLOSE_GROUP),
+            base::BindRepeating(
+                &TabGroupEditorBubbleDelegate::CloseGroupPressed,
+                base::Unretained(bubble_delegate)),
+            ui::ImageModel::FromVectorIcon(kCloseGroupIcon)))
+        .AddCustomField(CreateMenuItemCustomView(
+            l10n_util::GetStringUTF16(
+                IDS_TAB_GROUP_HEADER_CXMENU_MOVE_GROUP_TO_NEW_WINDOW),
+            base::BindRepeating(
+                &TabGroupEditorBubbleDelegate::MoveGroupToNewWindowPressed,
+                base::Unretained(bubble_delegate)),
+            ui::ImageModel::FromVectorIcon(kMoveGroupToNewWindowIcon)));
+
+    // TODO(pbos): Add enabling/disabling of
+    // TAB_GROUP_HEADER_CXMENU_MOVE_GROUP_TO_NEW_WINDOW item.
+
+    std::unique_ptr<ui::DialogModel> dialog_model = dialog_builder.Build();
+
+    // If |header_view| is not null, use |header_view| as the |anchor_view|.
+    auto bubble = std::make_unique<views::BubbleDialogModelHost>(
+        std::move(dialog_model), header_view ? header_view : anchor_view,
+        views::BubbleBorder::TOP_LEFT);
+    if (anchor_rect)
+      bubble->SetAnchorRect(*anchor_rect);
+    views::BubbleDialogModelHost* const bubble_ptr = bubble.get();
+    views::Widget* const widget =
+        views::BubbleDialogDelegate::CreateBubble(std::move(bubble));
+    bubble_ptr->set_adjust_if_offscreen(true);
+    bubble_ptr->GetBubbleFrameView()->SetPreferredArrowAdjustment(
+        views::BubbleFrameView::PreferredArrowAdjustment::kOffset);
+    widget->Show();
+    return widget;
+  }
 
   // If |header_view| is not null, use |header_view| as the |anchor_view|.
   TabGroupEditorBubbleView* tab_group_editor_bubble_view =
@@ -152,58 +415,18 @@ gfx::Rect TabGroupEditorBubbleView::GetAnchorRect() const {
   // anchor view's bounds and also updates |anchor_rect_| to the views bounds.
   // It does this so that the bubble does not jump when the anchoring view is
   // deleted.
-  if (use_set_anchor_rect_) {
+  if (use_set_anchor_rect_)
     return anchor_rect().value();
-  }
   return BubbleDialogDelegateView::GetAnchorRect();
 }
 
 void TabGroupEditorBubbleView::AddedToWidget() {
-  const auto* const color_provider = GetColorProvider();
-
-  for (views::LabelButton* menu_item : menu_items_) {
-    const bool enabled = menu_item->GetEnabled();
-    views::Button::ButtonState button_state =
-        enabled ? views::Button::STATE_NORMAL : views::Button::STATE_DISABLED;
-
-    const SkColor text_color = menu_item->GetCurrentTextColor();
-
-    const SkColor enabled_icon_color =
-        features::IsChromeRefresh2023()
-            ? color_provider->GetColor(kColorTabGroupDialogIconEnabled)
-            : color_utils::DeriveDefaultIconColor(text_color);
-    const SkColor icon_color = enabled ? enabled_icon_color : text_color;
-
-    const std::optional<ui::ImageModel>& old_image_model =
-        menu_item->GetImageModel(button_state);
-    if (old_image_model.has_value() && !old_image_model->IsEmpty() &&
-        old_image_model->IsVectorIcon()) {
-      ui::VectorIconModel vector_icon_model = old_image_model->GetVectorIcon();
-      const gfx::VectorIcon* icon = vector_icon_model.vector_icon();
-      const ui::ImageModel new_image_model =
-          ui::ImageModel::FromVectorIcon(*icon, icon_color);
-      menu_item->SetImageModel(button_state, new_image_model);
-    }
-  }
-
-  if (save_group_icon_) {
-    DCHECK(save_group_label_);
-
-    const bool enabled = save_group_icon_->GetEnabled();
-    const SkColor text_color = save_group_label_->GetEnabledColor();
-    const SkColor enabled_icon_color =
-        features::IsChromeRefresh2023()
-            ? color_provider->GetColor(kColorTabGroupDialogIconEnabled)
-            : color_utils::DeriveDefaultIconColor(text_color);
-    const SkColor icon_color = enabled ? enabled_icon_color : text_color;
-
-    const ui::ImageModel& old_image_model = save_group_icon_->GetImageModel();
-    ui::VectorIconModel vector_icon_model = old_image_model.GetVectorIcon();
-    const gfx::VectorIcon* icon = vector_icon_model.vector_icon();
-
-    const ui::ImageModel saved_tab_group_line_image_model =
-        ui::ImageModel::FromVectorIcon(*icon, icon_color);
-    save_group_icon_->SetImage(saved_tab_group_line_image_model);
+  if (!move_menu_item_->GetEnabled()) {
+    const SkColor disabled_color = move_menu_item_->GetCurrentTextColor();
+    move_menu_item_->SetImageModel(
+        views::Button::STATE_DISABLED,
+        ui::ImageModel::FromVectorIcon(kMoveGroupToNewWindowIcon,
+                                       disabled_color));
   }
 }
 
@@ -211,7 +434,7 @@ TabGroupEditorBubbleView::TabGroupEditorBubbleView(
     const Browser* browser,
     const tab_groups::TabGroupId& group,
     views::View* anchor_view,
-    std::optional<gfx::Rect> anchor_rect,
+    absl::optional<gfx::Rect> anchor_rect,
     TabGroupHeader* header_view,
     bool stop_context_menu_propagation)
     : browser_(browser),
@@ -222,9 +445,8 @@ TabGroupEditorBubbleView::TabGroupEditorBubbleView(
   // |anchor_widget_|.
   DCHECK(anchor_view);
   SetAnchorView(anchor_view);
-  if (anchor_rect) {
+  if (anchor_rect)
     SetAnchorRect(anchor_rect.value());
-  }
 
   set_margins(gfx::Insets());
 
@@ -263,89 +485,73 @@ TabGroupEditorBubbleView::TabGroupEditorBubbleView(
 
   auto* const separator = AddChildView(std::make_unique<views::Separator>());
 
+  views::ImageView* save_group_icon = nullptr;
   views::View* save_group_line_container = nullptr;
+  views::Label* save_group_label = nullptr;
 
   if (base::FeatureList::IsEnabled(features::kTabGroupsSave) &&
       browser_->profile()->IsRegularProfile()) {
     save_group_line_container = AddChildView(std::make_unique<views::View>());
 
-    // The `save_group_icon_` is put in differently than the rest because it
+    // The save_group_icon is put in differently than the rest because it
     // utilizes a different view (view::Label) that does not have an option to
     // take in an image like the other line items do.
-    save_group_icon_ = save_group_line_container->AddChildView(
-        std::make_unique<views::ImageView>(ui::ImageModel::FromVectorIcon(
-            features::IsChromeRefresh2023() ? kSaveGroupRefreshIcon
-                                            : kSaveGroupIcon)));
+    save_group_icon = save_group_line_container->AddChildView(
+        std::make_unique<views::ImageView>(
+            ui::ImageModel::FromVectorIcon(kSaveGroupIcon)));
 
-    save_group_label_ =
+    save_group_label =
         save_group_line_container->AddChildView(std::make_unique<views::Label>(
             l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_SAVE_GROUP)));
-    save_group_label_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
-    if (features::IsChromeRefresh2023()) {
-      save_group_label_->SetTextStyle(views::style::STYLE_BODY_3_EMPHASIS);
-    }
+    save_group_label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
 
     save_group_toggle_ = save_group_line_container->AddChildView(
         std::make_unique<views::ToggleButton>(
             base::BindRepeating(&TabGroupEditorBubbleView::OnSaveTogglePressed,
                                 base::Unretained(this))));
+    save_group_toggle_->SetAccessibleName(
+        l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_SAVE_GROUP));
+    save_group_toggle_->SetProperty(views::kElementIdentifierKey,
+                                    kTabGroupEditorBubbleSaveToggleId);
 
-    const tab_groups::SavedTabGroupKeyedService* const saved_tab_group_service =
-        tab_groups::SavedTabGroupServiceFactory::GetForProfile(
-            browser_->profile());
-    CHECK(saved_tab_group_service);
+    const SavedTabGroupKeyedService* const saved_tab_group_service =
+        SavedTabGroupServiceFactory::GetForProfile(browser_->profile());
 
     save_group_toggle_->SetIsOn(
         saved_tab_group_service->model()->Contains(group_));
-    save_group_toggle_->SetAccessibleName(GetSaveToggleAccessibleName());
-    save_group_toggle_->SetProperty(views::kElementIdentifierKey,
-                                    kTabGroupEditorBubbleSaveToggleId);
   }
 
-  views::LabelButton* const new_tab_menu_item = AddChildView(CreateMenuItem(
+  auto* const new_tab_menu_item = AddChildView(CreateMenuItem(
       TAB_GROUP_HEADER_CXMENU_NEW_TAB_IN_GROUP,
       l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_NEW_TAB_IN_GROUP),
       base::BindRepeating(&TabGroupEditorBubbleView::NewTabInGroupPressed,
                           base::Unretained(this)),
-      ui::ImageModel::FromVectorIcon(features::IsChromeRefresh2023()
-                                         ? kNewTabInGroupRefreshIcon
-                                         : kNewTabInGroupIcon)));
-  menu_items_.push_back(new_tab_menu_item);
+      ui::ImageModel::FromVectorIcon(kNewTabInGroupIcon)));
 
-  menu_items_.push_back(AddChildView(CreateMenuItem(
+  AddChildView(CreateMenuItem(
       TAB_GROUP_HEADER_CXMENU_UNGROUP,
       l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_UNGROUP),
       base::BindRepeating(&TabGroupEditorBubbleView::UngroupPressed,
                           base::Unretained(this), header_view),
-      ui::ImageModel::FromVectorIcon(features::IsChromeRefresh2023()
-                                         ? kUngroupRefreshIcon
-                                         : kUngroupIcon))));
+      ui::ImageModel::FromVectorIcon(kUngroupIcon)));
 
-  views::LabelButton* close_group_menu_item = AddChildView(CreateMenuItem(
+  AddChildView(CreateMenuItem(
       TAB_GROUP_HEADER_CXMENU_CLOSE_GROUP, GetTextForCloseButton(),
       base::BindRepeating(&TabGroupEditorBubbleView::CloseGroupPressed,
                           base::Unretained(this)),
-      ui::ImageModel::FromVectorIcon(features::IsChromeRefresh2023()
-                                         ? kCloseGroupRefreshIcon
-                                         : kCloseGroupIcon)));
-  close_group_menu_item->SetProperty(views::kElementIdentifierKey,
-                                     kTabGroupEditorBubbleCloseGroupButtonId);
-  menu_items_.push_back(close_group_menu_item);
+      ui::ImageModel::FromVectorIcon(kCloseGroupIcon)));
 
-  views::LabelButton* move_menu_item = AddChildView(CreateMenuItem(
+  move_menu_item_ = AddChildView(CreateMenuItem(
       TAB_GROUP_HEADER_CXMENU_MOVE_GROUP_TO_NEW_WINDOW,
       l10n_util::GetStringUTF16(
           IDS_TAB_GROUP_HEADER_CXMENU_MOVE_GROUP_TO_NEW_WINDOW),
       base::BindRepeating(
           &TabGroupEditorBubbleView::MoveGroupToNewWindowPressed,
           base::Unretained(this)),
-      ui::ImageModel::FromVectorIcon(features::IsChromeRefresh2023()
-                                         ? kMoveGroupToNewWindowRefreshIcon
-                                         : kMoveGroupToNewWindowIcon)));
-  move_menu_item->SetEnabled(
+      ui::ImageModel::FromVectorIcon(kMoveGroupToNewWindowIcon)));
+  move_menu_item_->SetEnabled(
       tab_strip_model->count() !=
       tab_strip_model->group_model()->GetTabGroup(group_)->tab_count());
-  menu_items_.push_back(move_menu_item);
 
   // Setting up the layout.
 
@@ -373,12 +579,12 @@ TabGroupEditorBubbleView::TabGroupEditorBubbleView(
     gfx::Insets save_group_margins = control_insets;
     const int label_height = new_tab_menu_item->GetPreferredSize().height();
     const int control_height =
-        std::max(save_group_label_->GetPreferredSize().height(),
+        std::max(save_group_label->GetPreferredSize().height(),
                  save_group_toggle_->GetPreferredSize().height());
     save_group_margins.set_top((label_height - control_height) / 2);
     save_group_margins.set_bottom(save_group_margins.top());
 
-    save_group_icon_->SetProperty(
+    save_group_icon->SetProperty(
         views::kMarginsKey,
         gfx::Insets::TLBR(0, 0, 0, new_tab_menu_item->GetImageLabelSpacing()));
 
@@ -388,7 +594,7 @@ TabGroupEditorBubbleView::TabGroupEditorBubbleView(
         .SetCrossAxisAlignment(views::LayoutAlignment::kCenter)
         .SetInteriorMargin(save_group_margins);
 
-    save_group_label_->SetProperty(
+    save_group_label->SetProperty(
         views::kFlexBehaviorKey,
         views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
                                  views::MaximumFlexSizeRule::kUnbounded));
@@ -412,7 +618,7 @@ tab_groups::TabGroupColorId TabGroupEditorBubbleView::InitColorSet() {
 }
 
 void TabGroupEditorBubbleView::UpdateGroup() {
-  const std::optional<int> selected_element =
+  const absl::optional<int> selected_element =
       color_selector_->GetSelectedElement();
   TabGroup* const tab_group =
       browser_->tab_strip_model()->group_model()->GetTabGroup(group_);
@@ -445,57 +651,35 @@ const std::u16string TabGroupEditorBubbleView::GetTextForCloseButton() {
     return l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_CLOSE_GROUP);
   }
 
-  tab_groups::SavedTabGroupKeyedService* const saved_tab_group_service =
-      tab_groups::SavedTabGroupServiceFactory::GetForProfile(
-          browser_->profile());
+  SavedTabGroupKeyedService* const saved_tab_group_service =
+      SavedTabGroupServiceFactory::GetForProfile(browser_->profile());
 
   if (!saved_tab_group_service) {
     return l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_DELETE_GROUP);
   }
 
   return saved_tab_group_service->model()->Contains(group_)
-             ? l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_HIDE_GROUP)
+             ? l10n_util::GetStringUTF16(
+                   IDS_TAB_GROUP_HEADER_CXMENU_CLOSE_GROUP)
              : l10n_util::GetStringUTF16(
                    IDS_TAB_GROUP_HEADER_CXMENU_DELETE_GROUP);
 }
 
-const std::u16string TabGroupEditorBubbleView::GetSaveToggleAccessibleName() {
-  return l10n_util::GetStringUTF16(
-      save_group_toggle_->GetIsOn() ? IDS_TAB_GROUP_HEADER_CXMENU_UNSAVE_GROUP
-                                    : IDS_TAB_GROUP_HEADER_CXMENU_SAVE_GROUP);
-}
-
 void TabGroupEditorBubbleView::OnSaveTogglePressed() {
-  tab_groups::SavedTabGroupKeyedService* const saved_tab_group_service =
-      tab_groups::SavedTabGroupServiceFactory::GetForProfile(
-          browser_->profile());
+  SavedTabGroupKeyedService* const saved_tab_group_service =
+      SavedTabGroupServiceFactory::GetForProfile(browser_->profile());
   CHECK(saved_tab_group_service);
 
   if (save_group_toggle_->GetIsOn()) {
     base::RecordAction(
         base::UserMetricsAction("TabGroups_TabGroupBubble_GroupSaved"));
-
-    saved_tab_group_service->SaveGroup(
-        group_,
-        /*is_pinned=*/base::FeatureList::IsEnabled(features::kTabGroupsSaveV2));
-
-    views::ElementTrackerViews::GetInstance()->NotifyCustomEvent(
-        kTabGroupSavedCustomEventId, save_group_toggle_);
-
-    auto* const service =
-        UserEducationServiceFactory::GetForBrowserContext(browser_->profile());
-    if (service && !service->tutorial_service().IsRunningTutorial(
-                       kSavedTabGroupTutorialId)) {
-      browser_->window()->TemporarilyShowBookmarkBar(
-          kTemporaryBookmarkBarDuration);
-    }
+    saved_tab_group_service->SaveGroup(group_);
   } else {
     base::RecordAction(
         base::UserMetricsAction("TabGroups_TabGroupBubble_GroupUnsaved"));
     saved_tab_group_service->UnsaveGroup(group_);
   }
 
-  save_group_toggle_->SetAccessibleName(GetSaveToggleAccessibleName());
   UpdateGroup();
 }
 
@@ -516,15 +700,13 @@ void TabGroupEditorBubbleView::UngroupPressed(TabGroupHeader* header_view) {
   if (base::FeatureList::IsEnabled(features::kTabGroupsSave) &&
       browser_->profile()->IsRegularProfile() &&
       save_group_toggle_->GetIsOn()) {
-    tab_groups::SavedTabGroupKeyedService* saved_tab_group_service =
-        tab_groups::SavedTabGroupServiceFactory::GetForProfile(
-            browser_->profile());
+    SavedTabGroupKeyedService* saved_tab_group_service =
+        SavedTabGroupServiceFactory::GetForProfile(browser_->profile());
     CHECK(saved_tab_group_service);
     saved_tab_group_service->DisconnectLocalTabGroup(group_);
   }
-  if (header_view) {
+  if (header_view)
     header_view->RemoveObserverFromWidget(GetWidget());
-  }
   TabStripModel* const model = browser_->tab_strip_model();
 
   const gfx::Range tab_range =
@@ -532,9 +714,8 @@ void TabGroupEditorBubbleView::UngroupPressed(TabGroupHeader* header_view) {
 
   std::vector<int> tabs;
   tabs.reserve(tab_range.length());
-  for (auto i = tab_range.start(); i < tab_range.end(); ++i) {
+  for (auto i = tab_range.start(); i < tab_range.end(); ++i)
     tabs.push_back(i);
-  }
 
   model->RemoveFromGroup(tabs);
   // Close the widget because it is no longer applicable.
@@ -547,25 +728,12 @@ void TabGroupEditorBubbleView::CloseGroupPressed() {
   if (base::FeatureList::IsEnabled(features::kTabGroupsSave) &&
       browser_->profile()->IsRegularProfile() &&
       save_group_toggle_->GetIsOn()) {
-    tab_groups::SavedTabGroupKeyedService* saved_tab_group_service =
-        tab_groups::SavedTabGroupServiceFactory::GetForProfile(
-            browser_->profile());
+    SavedTabGroupKeyedService* saved_tab_group_service =
+        SavedTabGroupServiceFactory::GetForProfile(browser_->profile());
     CHECK(saved_tab_group_service);
     saved_tab_group_service->DisconnectLocalTabGroup(group_);
   }
-
-  TabStripModel* const model = browser_->tab_strip_model();
-
-  const int num_tabs_in_group =
-      model->group_model()->GetTabGroup(group_)->tab_count();
-
-  if (model->count() == num_tabs_in_group) {
-    // If the group about to be closed has all of the tabs in the browser, add a
-    // new tab outside the group to prevent the browser from closing.
-    model->delegate()->AddTabAt(GURL(), -1, true);
-  }
-
-  model->CloseAllTabsInGroup(group_);
+  browser_->tab_strip_model()->CloseAllTabsInGroup(group_);
   // Close the widget because it is no longer applicable.
   GetWidget()->CloseWithReason(views::Widget::ClosedReason::kUnspecified);
 }
@@ -576,24 +744,21 @@ void TabGroupEditorBubbleView::MoveGroupToNewWindowPressed() {
 }
 
 void TabGroupEditorBubbleView::OnBubbleClose() {
+  // If we're doing the "create a tab group" tutorial, note whether the user
+  // actually entered a tab name.
+  if (browser_->window()->IsFeaturePromoActive(
+          feature_engagement::kIPHDesktopTabGroupsNewGroupFeature)) {
+    UMA_HISTOGRAM_BOOLEAN("Tutorial.TabGroup.EditedTitle",
+                          !title_field_->GetText().empty());
+  }
+
   if (title_at_opening_ != title_field_->GetText()) {
     base::RecordAction(
         base::UserMetricsAction("TabGroups_TabGroupBubble_NameChanged"));
   }
-
-  if (browser_->tab_strip_model()->group_model()->ContainsTabGroup(group_)) {
-    const int tab_count = browser_->tab_strip_model()
-                              ->group_model()
-                              ->GetTabGroup(group_)
-                              ->tab_count();
-    if (tab_count > 0) {
-      base::UmaHistogramCounts100("TabGroups.TabGroupBubble.TabCount",
-                                  tab_count);
-    }
-  }
 }
 
-BEGIN_METADATA(TabGroupEditorBubbleView)
+BEGIN_METADATA(TabGroupEditorBubbleView, views::BubbleDialogDelegateView)
 END_METADATA
 
 void TabGroupEditorBubbleView::TitleFieldController::ContentsChanged(
@@ -642,5 +807,5 @@ void TabGroupEditorBubbleView::TitleField::ShowContextMenu(
   views::Textfield::ShowContextMenu(p, source_type);
 }
 
-BEGIN_METADATA(TabGroupEditorBubbleView, TitleField)
+BEGIN_METADATA(TabGroupEditorBubbleView, TitleField, views::Textfield)
 END_METADATA

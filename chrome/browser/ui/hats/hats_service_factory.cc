@@ -4,12 +4,10 @@
 
 #include "chrome/browser/ui/hats/hats_service_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/ui/android/hats/hats_service_android.h"
 #include "chrome/browser/ui/hats/hats_service.h"
-#include "chrome/browser/ui/hats/hats_service_desktop.h"
 
 // static
 HatsService* HatsServiceFactory::GetForProfile(Profile* profile,
@@ -20,8 +18,7 @@ HatsService* HatsServiceFactory::GetForProfile(Profile* profile,
 
 // static
 HatsServiceFactory* HatsServiceFactory::GetInstance() {
-  static base::NoDestructor<HatsServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<HatsServiceFactory>::get();
 }
 
 HatsServiceFactory::HatsServiceFactory()
@@ -30,15 +27,10 @@ HatsServiceFactory::HatsServiceFactory()
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
-std::unique_ptr<KeyedService>
-HatsServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* HatsServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-#if BUILDFLAG(IS_ANDROID)
-  return std::make_unique<HatsServiceAndroid>(profile);
-#else
-  return std::make_unique<HatsServiceDesktop>(profile);
-#endif
+  return new HatsService(profile);
 }
 
 HatsServiceFactory::~HatsServiceFactory() = default;

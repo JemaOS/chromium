@@ -7,6 +7,7 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/content_settings/cookie_settings_factory.h"
+#include "chrome/browser/extensions/api/identity/web_auth_flow.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/account_consistency_mode_manager.h"
 #include "chrome/browser/signin/chrome_signin_helper.h"
@@ -15,29 +16,21 @@
 #include "components/policy/core/common/policy_pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/signin_pref_names.h"
-#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/tribool.h"
 #include "components/sync/base/pref_names.h"
-#include "components/sync/service/sync_service.h"
-#include "content/public/browser/browser_thread.h"
+#include "components/sync/driver/sync_service.h"
 #include "content/public/browser/render_process_host.h"
-#include "content/public/browser/storage_partition.h"
-#include "google_apis/gaia/gaia_auth_util.h"
+#include "content/public/browser/site_instance.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
+#include "extensions/browser/guest_view/web_view/web_view_guest.h"
 #include "extensions/browser/guest_view/web_view/web_view_renderer_state.h"
 #endif
+
 #if BUILDFLAG(IS_CHROMEOS_ASH)
 #include "components/account_manager_core/pref_names.h"
-#endif
-
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-#include "chrome/browser/signin/bound_session_credentials/bound_session_cookie_refresh_service_factory.h"
-#include "chrome/browser/signin/bound_session_credentials/bound_session_registration_fetcher.h"
-#include "chrome/browser/signin/bound_session_credentials/bound_session_registration_fetcher_impl.h"
-#include "chrome/browser/signin/bound_session_credentials/unexportable_key_service_factory.h"
 #endif
 
 namespace signin {
@@ -52,27 +45,21 @@ HeaderModificationDelegateImpl::HeaderModificationDelegateImpl(
 #else
 HeaderModificationDelegateImpl::HeaderModificationDelegateImpl(Profile* profile)
     : profile_(profile),
-      cookie_settings_(CookieSettingsFactory::GetForProfile(profile_)) {}
+      cookie_settings_(CookieSettingsFactory::GetForProfile(profile_)) {
+  dontProcessHeader_ = profile_->IsJemaProfile();
+}
 #endif
 
 HeaderModificationDelegateImpl::~HeaderModificationDelegateImpl() = default;
 
 bool HeaderModificationDelegateImpl::ShouldInterceptNavigation(
     content::WebContents* contents) {
-  if (profile_->IsOffTheRecord()) {
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-    if (!switches::IsBoundSessionCredentialsEnabled(profile_->GetPrefs())) {
-      return false;
-    }
-#else
+  if (profile_->IsOffTheRecord())
     return false;
-#endif
-  }
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-  if (ShouldIgnoreGuestWebViewRequest(contents)) {
+  if (ShouldIgnoreGuestWebViewRequest(contents))
     return false;
-  }
 #endif
 
   return true;
@@ -82,17 +69,10 @@ void HeaderModificationDelegateImpl::ProcessRequest(
     ChromeRequestAdapter* request_adapter,
     const GURL& redirect_url) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  if (profile_->IsOffTheRecord()) {
-    // We expect seeing traffic from OTR profiles only if the feature is
-    // enabled.
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-    CHECK(switches::IsBoundSessionCredentialsEnabled(profile_->GetPrefs()));
-#else
-    CHECK(false);
-#endif
+  //---***JEMAOS BEGIN***---
+  if (dontProcessHeader_)
     return;
-  }
-
+  //---***JEMAOS END***---
   const PrefService* prefs = profile_->GetPrefs();
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
   syncer::SyncService* sync_service =
@@ -148,38 +128,6 @@ void HeaderModificationDelegateImpl::ProcessResponse(
     ResponseAdapter* response_adapter,
     const GURL& redirect_url) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-  if (gaia::HasGaiaSchemeHostPort(response_adapter->GetUrl()) &&
-      switches::IsBoundSessionCredentialsEnabled(profile_->GetPrefs())) {
-    BoundSessionCookieRefreshService* bound_session_cookie_refresh_service =
-        BoundSessionCookieRefreshServiceFactory::GetForProfile(profile_);
-    if (bound_session_cookie_refresh_service) {
-      // Terminate the session if session termination header is set.
-      bound_session_cookie_refresh_service->MaybeTerminateSession(
-          response_adapter->GetHeaders());
-
-      auto params = BoundSessionRegistrationFetcherParam::MaybeCreateInstance(
-          response_adapter->GetUrl(), response_adapter->GetHeaders());
-      if (params.has_value()) {
-        bound_session_cookie_refresh_service->CreateRegistrationRequest(
-            std::move(params).value());
-      }
-    }
-  }
-#endif
-
-  if (profile_->IsOffTheRecord()) {
-    // We expect seeing traffic from OTR profiles only if the feature is
-    // enabled.
-#if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
-    CHECK(switches::IsBoundSessionCredentialsEnabled(profile_->GetPrefs()));
-#else
-    CHECK(false);
-#endif
-    return;
-  }
-
   ProcessAccountConsistencyResponseHeaders(response_adapter, redirect_url,
                                            profile_->IsOffTheRecord());
 }
@@ -188,14 +136,22 @@ void HeaderModificationDelegateImpl::ProcessResponse(
 // static
 bool HeaderModificationDelegateImpl::ShouldIgnoreGuestWebViewRequest(
     content::WebContents* contents) {
-  if (!contents) {
+  if (!contents)
     return true;
-  }
 
   if (extensions::WebViewRendererState::GetInstance()->IsGuest(
           contents->GetPrimaryMainFrame()->GetProcess()->GetID())) {
+    auto identity_api_config =
+        extensions::WebAuthFlow::GetWebViewPartitionConfig(
+            extensions::WebAuthFlow::GET_AUTH_TOKEN,
+            contents->GetBrowserContext());
+    if (contents->GetSiteInstance()->GetStoragePartitionConfig() !=
+        identity_api_config)
+      return true;
+
+    // If the StoragePartitionConfig matches, but |contents| is not using a
+    // guest SiteInstance, then there is likely a serious bug.
     CHECK(contents->GetSiteInstance()->IsGuest());
-    return true;
   }
   return false;
 }

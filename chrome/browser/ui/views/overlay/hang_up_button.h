@@ -9,9 +9,9 @@
 #include "ui/base/metadata/metadata_header_macros.h"
 
 class HangUpButton : public OverlayWindowImageButton {
-  METADATA_HEADER(HangUpButton, OverlayWindowImageButton)
-
  public:
+  METADATA_HEADER(HangUpButton);
+
   explicit HangUpButton(PressedCallback callback);
   HangUpButton(const HangUpButton&) = delete;
   HangUpButton& operator=(const HangUpButton&) = delete;

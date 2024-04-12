@@ -10,6 +10,7 @@
 #include "ash/wm/overview/overview_grid.h"
 #include "ash/wm/overview/overview_item.h"
 #include "ash/wm/overview/overview_session.h"
+#include "base/functional/callback.h"
 #include "ui/views/widget/widget.h"
 
 namespace ash {
@@ -68,10 +69,10 @@ void OverviewTestApi::WaitForOverviewState(
   new OverviewAnimationStateWaiter(expected_state, std::move(callback));
 }
 
-std::optional<OverviewInfo> OverviewTestApi::GetOverviewInfo() const {
-  auto* overview_controller = OverviewController::Get();
+absl::optional<OverviewInfo> OverviewTestApi::GetOverviewInfo() const {
+  auto* overview_controller = Shell::Get()->overview_controller();
   if (!overview_controller->InOverviewSession())
-    return std::nullopt;
+    return absl::nullopt;
 
   OverviewInfo info;
   for (const auto& grid :

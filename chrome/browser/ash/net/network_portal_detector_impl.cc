@@ -15,6 +15,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "build/branding_buildflags.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/net/system_network_context_manager.h"
 #include "chromeos/ash/components/dbus/shill/shill_profile_client.h"
 #include "chromeos/ash/components/login/login_state/login_state.h"
@@ -22,6 +23,7 @@
 #include "chromeos/ash/components/network/network_handler.h"
 #include "chromeos/ash/components/network/network_state.h"
 #include "chromeos/ash/components/network/network_state_handler.h"
+#include "content/public/browser/notification_service.h"
 #include "net/http/http_status_code.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
@@ -37,8 +39,14 @@ using ::captive_portal::CaptivePortalDetector;
 // is used (for detecting proxy auth or when Shill portal state is unknown).
 constexpr base::TimeDelta kDefaultAttemptDelay = base::Seconds(1);
 
+// Delay before portal detection caused by changes in proxy settings.
+constexpr int kProxyChangeDelaySec = 1;
+
 // Timeout for attempts.
-constexpr base::TimeDelta kAttemptTimeout = base::Seconds(10);
+constexpr base::TimeDelta kAttemptTimeout = base::Seconds(15);
+
+// Number of unknown or offline results before stopping chrome detection.
+constexpr int kMaxOfflineResultsBeforeReport = 3;
 
 const NetworkState* DefaultNetwork() {
   return NetworkHandler::Get()->network_state_handler()->DefaultNetwork();
@@ -105,6 +113,11 @@ NetworkPortalDetectorImpl::NetworkPortalDetectorImpl(
   captive_portal_detector_ =
       std::make_unique<CaptivePortalDetector>(loader_factory);
 
+  registrar_.Add(this, chrome::NOTIFICATION_AUTH_SUPPLIED,
+                 content::NotificationService::AllSources());
+  registrar_.Add(this, chrome::NOTIFICATION_AUTH_CANCELLED,
+                 content::NotificationService::AllSources());
+
   network_state_handler_observer_.Observe(
       NetworkHandler::Get()->network_state_handler());
 }
@@ -139,22 +152,6 @@ void NetworkPortalDetectorImpl::Enable() {
   SetNetworkPortalState(network, NetworkState::PortalState::kUnknown);
 }
 
-void NetworkPortalDetectorImpl::RequestCaptivePortalDetection() {
-  auto* handler = NetworkHandler::Get()->network_state_handler();
-  const NetworkState* default_network = handler->DefaultNetwork();
-  if (!default_network) {
-    NET_LOG(DEBUG) << "RequestCaptivePortalDetection(): No default network";
-    return;
-  }
-  if (default_network->IsOnline()) {
-    // Network is online, no detection necessary.
-    NET_LOG(DEBUG) << "RequestCaptivePortalDetection(): Network is online";
-    return;
-  }
-  // Otherwise request shill portal detection.
-  handler->RequestPortalDetection();
-}
-
 NetworkPortalDetector::CaptivePortalStatus
 NetworkPortalDetectorImpl::GetCaptivePortalStatus() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -167,15 +164,11 @@ void NetworkPortalDetectorImpl::PortalStateChanged(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!default_network || !default_network->IsConnectedState()) {
-    NET_LOG(EVENT) << "No connected default network: "
-                   << NetworkId(default_network)
-                   << ", stopping portal detection.";
-    if ((!default_network && !default_network_id_.empty()) ||
-        (default_network && default_network->guid() != default_network_id_)) {
-      default_network_id_ = std::string();
-      StopDetection();
-      default_portal_status_ = CAPTIVE_PORTAL_STATUS_OFFLINE;
-    }
+    NET_LOG(EVENT)
+        << "No connected default network, stopping portal detection.";
+    default_network_id_ = std::string();
+    StopDetection();
+    DetectionCompleted(nullptr, CAPTIVE_PORTAL_STATUS_OFFLINE);
     return;
   }
 
@@ -197,27 +190,25 @@ void NetworkPortalDetectorImpl::PortalStateChanged(
     case NetworkState::PortalState::kOnline:
       // If a proxy is configured, use captive_portal_detector_ to detect a
       // proxy auth required (407) response.
-      if (has_proxy) {
+      if (has_proxy)
         ScheduleAttempt();
-      } else {
-        default_portal_status_ = CAPTIVE_PORTAL_STATUS_ONLINE;
-      }
+      else
+        DetectionCompleted(default_network, CAPTIVE_PORTAL_STATUS_ONLINE);
       return;
     case NetworkState::PortalState::kPortalSuspected:
       // Shill result was inconclusive.
       ScheduleAttempt();
       return;
     case NetworkState::PortalState::kPortal:
-      default_portal_status_ = CAPTIVE_PORTAL_STATUS_PORTAL;
+      DetectionCompleted(default_network, CAPTIVE_PORTAL_STATUS_PORTAL);
       return;
     case NetworkState::PortalState::kNoInternet:
       // If a proxy is configured it may be interfering with Shill portal
       // detection
-      if (has_proxy) {
+      if (has_proxy)
         ScheduleAttempt();
-      } else {
-        default_portal_status_ = CAPTIVE_PORTAL_STATUS_OFFLINE;
-      }
+      else
+        DetectionCompleted(default_network, CAPTIVE_PORTAL_STATUS_ONLINE);
       return;
     case NetworkState::PortalState::kProxyAuthRequired:
       // This may happen if a global proxy is applied. Run Chrome detection
@@ -235,10 +226,8 @@ void NetworkPortalDetectorImpl::OnShuttingDown() {
 // NetworkPortalDetectorImpl, private:
 
 void NetworkPortalDetectorImpl::StopDetection() {
-  if (is_idle()) {
-    NET_LOG(EVENT) << "StopDetection(): Attempt not running";
+  if (is_idle())
     return;
-  }
   NET_LOG(EVENT) << "StopDetection";
   attempt_task_.Cancel();
   attempt_timeout_task_.Cancel();
@@ -249,18 +238,10 @@ void NetworkPortalDetectorImpl::StopDetection() {
 }
 
 void NetworkPortalDetectorImpl::ScheduleAttempt(const base::TimeDelta& delay) {
+  DCHECK(is_idle());
+
   if (!IsEnabled())
     return;
-
-  if (!is_idle()) {
-    NET_LOG(EVENT) << "ScheduleAttempt(): Attempt already running, restarting.";
-    if (state_ == STATE_CHECKING_FOR_PORTAL) {
-      // When a new attempt is scheduled, cancel any pending attempt to avoid
-      // a DCHECK in CaptivePortalDetector when an attempt is started before
-      // the current attempt completes. See b/327072851 for details.
-      captive_portal_detector_->Cancel();
-    }
-  }
 
   attempt_task_.Cancel();
   attempt_timeout_task_.Cancel();
@@ -394,28 +375,47 @@ void NetworkPortalDetectorImpl::OnAttemptCompleted(
     base::UmaHistogramEnumeration("Network.NetworkPortalDetectorType", type);
   }
 
+  if (last_detection_status_ != status) {
+    last_detection_status_ = status;
+    same_detection_result_count_ = 1;
+  } else {
+    ++same_detection_result_count_;
+  }
+
   captive_portal_detector_run_count_++;
 
+  bool detection_completed = false;
   if (status == CAPTIVE_PORTAL_STATUS_ONLINE ||
+      status == CAPTIVE_PORTAL_STATUS_PORTAL ||
       status == CAPTIVE_PORTAL_STATUS_PROXY_AUTH_REQUIRED) {
-    // Chrome positively identified an online or proxy-auth state.
+    // Chrome positively identified an online, portal or proxy auth state.
     // No need to continue detection.
+    detection_completed = true;
+  } else if (same_detection_result_count_ >= kMaxOfflineResultsBeforeReport) {
+    NET_LOG(EVENT) << "Max identical portal detection results reached: "
+                   << same_detection_result_count_ << " Status: " << status;
+    detection_completed = true;
+  }
+
+  if (detection_completed) {
     response_code_for_testing_ = response_code;
     DetectionCompleted(network, status);
-    return;
+  } else if (is_idle()) {
+    ScheduleAttempt(results.retry_after_delta);
   }
+}
 
-  if (!is_idle()) {
-    return;
+void NetworkPortalDetectorImpl::Observe(
+    int type,
+    const content::NotificationSource& source,
+    const content::NotificationDetails& details) {
+  if (type == chrome::NOTIFICATION_AUTH_SUPPLIED ||
+      type == chrome::NOTIFICATION_AUTH_CANCELLED) {
+    NET_LOG(EVENT) << "Restarting portal detection due to auth change"
+                   << " id=" << NetworkGuidId(default_network_id_);
+    StopDetection();
+    ScheduleAttempt(base::Seconds(kProxyChangeDelaySec));
   }
-
-  // Set network portal state and continue scheduling attempts until online.
-  if (status == CAPTIVE_PORTAL_STATUS_PORTAL) {
-    response_code_for_testing_ = response_code;
-    default_portal_status_ = CAPTIVE_PORTAL_STATUS_PORTAL;
-    SetNetworkPortalState(network, NetworkState::PortalState::kPortal);
-  }
-  ScheduleAttempt(results.retry_after_delta);
 }
 
 void NetworkPortalDetectorImpl::DetectionCompleted(
@@ -442,9 +442,7 @@ void NetworkPortalDetectorImpl::DetectionCompleted(
         portal_state = NetworkState::PortalState::kPortal;
         break;
       case CAPTIVE_PORTAL_STATUS_PROXY_AUTH_REQUIRED:
-        // This case unused and largely orthogonal to captive portal detection.
-        // PortalState::kProxyAuthRequired should probably be deprecated.
-        // See b/207069182 and b/321958601 for details.
+        // TODO(b/207069182): This should state PortalState::kProxyAuthRequired.
         portal_state = NetworkState::PortalState::kUnknown;
         break;
     }
@@ -467,6 +465,8 @@ void NetworkPortalDetectorImpl::ResetCountersAndSendMetrics() {
                                    /*buckets=*/10);
     captive_portal_detector_run_count_ = 0;
   }
+  last_detection_status_ = CAPTIVE_PORTAL_STATUS_UNKNOWN;
+  same_detection_result_count_ = 0;
 }
 
 bool NetworkPortalDetectorImpl::AttemptTimeoutIsCancelledForTesting() const {

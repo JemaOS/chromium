@@ -20,17 +20,15 @@
 
 namespace blink {
 
-ScriptPromiseTyped<IDLSequence<RelatedApplication>>
-NavigatorInstalledApp::getInstalledRelatedApps(
+ScriptPromise NavigatorInstalledApp::getInstalledRelatedApps(
     ScriptState* script_state,
     Navigator& navigator,
     ExceptionState& exception_state) {
   // [SecureContext] from the IDL ensures this.
   DCHECK(ExecutionContext::From(script_state)->IsSecureContext());
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLSequence<RelatedApplication>>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
 
   if (!navigator.DomWindow()) {
     exception_state.ThrowDOMException(
@@ -52,7 +50,7 @@ NavigatorInstalledApp::getInstalledRelatedApps(
   auto* app_controller = InstalledAppController::From(*navigator.DomWindow());
   app_controller->GetInstalledRelatedApps(
       std::make_unique<
-          CallbackPromiseAdapter<IDLSequence<RelatedApplication>, void>>(
+          CallbackPromiseAdapter<HeapVector<Member<RelatedApplication>>, void>>(
           resolver));
   return promise;
 }

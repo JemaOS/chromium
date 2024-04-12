@@ -16,10 +16,10 @@ V8CSSNumberish* CSSMathInvert::value() {
   return MakeGarbageCollected<V8CSSNumberish>(value_);
 }
 
-std::optional<CSSNumericSumValue> CSSMathInvert::SumValue() const {
+absl::optional<CSSNumericSumValue> CSSMathInvert::SumValue() const {
   auto sum = value_->SumValue();
   if (!sum.has_value() || sum->terms.size() != 1) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   for (auto& unit_exponent : sum->terms[0].units) {

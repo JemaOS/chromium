@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_SUPERVISED_USER_PARENT_PERMISSION_DIALOG_VIEW_H_
 #define CHROME_BROWSER_UI_VIEWS_SUPERVISED_USER_PARENT_PERMISSION_DIALOG_VIEW_H_
 
-#include <string>
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
@@ -43,9 +42,9 @@ class ParentPermissionInputSection;
 // asynchronously fetched).
 class ParentPermissionDialogView : public views::DialogDelegateView,
                                    public GaiaAuthConsumer {
-  METADATA_HEADER(ParentPermissionDialogView, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(ParentPermissionDialogView);
+
   class Observer {
    public:
     // Tells observers that their references to the view are becoming invalid.
@@ -83,6 +82,8 @@ class ParentPermissionDialogView : public views::DialogDelegateView,
   bool GetRepromptAfterIncorrectCredential() const;
 
  private:
+  std::u16string GetActiveUserFirstName() const;
+
   // views::View:
   void AddedToWidget() override;
   void OnThemeChanged() override;
@@ -106,6 +107,7 @@ class ParentPermissionDialogView : public views::DialogDelegateView,
   void AddInvalidCredentialLabel();
   void LoadParentEmailAddresses();
   void CloseWithReason(views::Widget::ClosedReason reason);
+  void OnDialogClose();
 
   // Given an email address of the child's parent, return the parents'
   // obfuscated gaia id.
@@ -172,6 +174,10 @@ class ParentPermissionDialogView : public views::DialogDelegateView,
 
   // Used to ensure we don't try to show same dialog twice.
   bool is_showing_ = false;
+
+  // Used to set close reason if the dialog is closed without clicking
+  // "approve."
+  bool is_approve_clicked_ = false;
 
   // Used to fetch the Reauth token.
   std::unique_ptr<GaiaAuthFetcher> reauth_token_fetcher_;

@@ -2,8 +2,6 @@
 Running test: testEnabled
 Tests that Preload.ruleSetUpdated and Preload.ruleSetDeleted are dispatched.
 {
-    _selector : #prefetch
-    backendNodeId : <number>
     id : <string>
     loaderId : <string>
     sourceText : {
@@ -18,8 +16,6 @@ Tests that Preload.ruleSetUpdated and Preload.ruleSetDeleted are dispatched.
     }
 }
 {
-    _selector : #prerender
-    backendNodeId : <number>
     id : <string>
     loaderId : <string>
     sourceText : {
@@ -34,8 +30,6 @@ Tests that Preload.ruleSetUpdated and Preload.ruleSetDeleted are dispatched.
     }
 }
 {
-    _selector : #invalid-json
-    backendNodeId : <number>
     errorMessage : Line: 4, column: 7, Syntax error.
     errorType : SourceIsNotJsonObject
     id : <string>
@@ -43,8 +37,6 @@ Tests that Preload.ruleSetUpdated and Preload.ruleSetDeleted are dispatched.
     sourceText : {"prefetch":[
 }
 {
-    _selector : #not-object
-    backendNodeId : <number>
     errorMessage : Parsed JSON must be an object.
     errorType : SourceIsNotJsonObject
     id : <string>
@@ -52,8 +44,6 @@ Tests that Preload.ruleSetUpdated and Preload.ruleSetDeleted are dispatched.
     sourceText : "invalid"
 }
 {
-    _selector : #contains-invalid-rule
-    backendNodeId : <number>
     errorMessage : A rule set for a key must be an array: path = ["prerender"]
     errorType : InvalidRulesSkipped
     id : <string>

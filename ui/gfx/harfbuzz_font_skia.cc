@@ -11,7 +11,6 @@
 #include <map>
 
 #include "base/check_op.h"
-#include "base/containers/heap_array.h"
 #include "base/containers/lru_cache.h"
 #include "base/lazy_instance.h"
 #include "base/memory/raw_ptr.h"
@@ -216,24 +215,21 @@ base::LazyInstance<FontFuncs>::Leaky g_font_funcs = LAZY_INSTANCE_INITIALIZER;
 hb_blob_t* GetFontTable(hb_face_t* face, hb_tag_t tag, void* user_data) {
   SkTypeface* typeface = reinterpret_cast<SkTypeface*>(user_data);
 
-  auto buffer = base::HeapArray<char>::Uninit(typeface->getTableSize(tag));
-  // If the buffer has no data, then `getTableSize` produced a size of 0, and
-  // the buffer allocated no memory as a result.
-  if (buffer.empty()) {
-    return nullptr;
-  }
-  size_t actual_size =
-      typeface->getTableData(tag, 0, buffer.size(), buffer.data());
-  if (buffer.size() != actual_size) {
-    return nullptr;
-  }
+  const size_t table_size = typeface->getTableSize(tag);
+  if (!table_size)
+    return 0;
 
-  auto unowned_buffer = std::move(buffer).leak();
-  char* buffer_raw = unowned_buffer.data();
-  return hb_blob_create(buffer_raw,
-                        static_cast<uint32_t>(unowned_buffer.size()),
+  std::unique_ptr<char[]> buffer(new char[table_size]);
+  if (!buffer)
+    return 0;
+  size_t actual_size = typeface->getTableData(tag, 0, table_size, buffer.get());
+  if (table_size != actual_size)
+    return 0;
+
+  char* buffer_raw = buffer.release();
+  return hb_blob_create(buffer_raw, static_cast<uint32_t>(table_size),
                         HB_MEMORY_MODE_WRITABLE, buffer_raw,
-                        base::HeapArray<char>::DeleteLeakedData);
+                        DeleteArrayByType<char>);
 }
 
 // For a given skia typeface, maps to its harfbuzz face and its glyphs cache.
@@ -253,10 +249,7 @@ class TypefaceData {
   TypefaceData(const TypefaceData&) = delete;
   TypefaceData& operator=(const TypefaceData&) = delete;
 
-  ~TypefaceData() {
-    hb_face_destroy(face_);
-    face_ = nullptr;
-  }
+  ~TypefaceData() { hb_face_destroy(face_); }
 
   hb_face_t* face() { return face_; }
   GlyphCache* glyphs() { return &glyphs_; }
@@ -279,7 +272,7 @@ hb_font_t* CreateHarfBuzzFont(sk_sp<SkTypeface> skia_face,
                               const FontRenderParams& params,
                               bool subpixel_rendering_suppressed) {
   // A cache from Skia font to harfbuzz typeface information.
-  using TypefaceCache = base::LRUCache<SkTypefaceID, TypefaceData>;
+  using TypefaceCache = base::LRUCache<SkFontID, TypefaceData>;
 
   constexpr int kTypefaceCacheSize = 64;
   static base::NoDestructor<TypefaceCache> face_caches(kTypefaceCacheSize);

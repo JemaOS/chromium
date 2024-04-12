@@ -18,39 +18,29 @@ class BrowserServiceLacros;
 class ChromeKioskLaunchControllerLacros;
 class DeskTemplateClientLacros;
 class DeviceLocalAccountExtensionInstallerLacros;
-class CloudFileSystemPathCache;
+class DriveFsCache;
 class DownloadControllerClientLacros;
 class ForceInstalledTrackerLacros;
-class FullRestoreClientLacros;
 class FullscreenControllerClientLacros;
-class SuggestionServiceLacros;
-class LacrosAppsPublisher;
 class LacrosExtensionAppsController;
 class LacrosExtensionAppsPublisher;
 class LacrosFileSystemProvider;
 class KioskSessionServiceLacros;
 class FieldTrialObserver;
 class NetworkChangeManagerBridge;
-class NetworkSettingsObserver;
+class QuickAnswersController;
+class StandaloneBrowserTestController;
 class TabletModePageBehavior;
 class UiMetricRecorderLacros;
 class VpnExtensionTrackerLacros;
 class WebAuthnRequestRegistrarLacros;
-class WebKioskInstallerLacros;
 class MultitaskMenuNudgeDelegateLacros;
 
 namespace arc {
 class ArcIconCacheDelegateProvider;
 }  // namespace arc
 
-namespace chromeos {
-class ReadWriteCardsManager;
-}  // namespace chromeos
-
 namespace crosapi {
-class ClipboardHistoryLacros;
-class DebugInterfaceLacros;
-class DeskProfilesLacros;
 class SearchControllerLacros;
 class TaskManagerLacros;
 class WebAppProviderBridgeLacros;
@@ -64,10 +54,6 @@ class ScreenOrientationDelegate;
 namespace drive {
 class DriveFsNativeMessageHostBridge;
 }  // namespace drive
-
-namespace guest_os {
-class VmSkForwardingService;
-}
 
 namespace video_conference {
 class VideoConferenceManagerClientImpl;
@@ -105,10 +91,6 @@ class ChromeBrowserMainExtraPartsLacros : public ChromeBrowserMainExtraParts {
   // Handles requests for desk template data from ash-chrome.
   std::unique_ptr<DeskTemplateClientLacros> desk_template_client_;
 
-  // Handles request for session restore data used to display a nice UI in
-  // ash-chrome.
-  std::unique_ptr<FullRestoreClientLacros> full_restore_client_;
-
   // Handles queries regarding full screen control from ash-chrome.
   std::unique_ptr<FullscreenControllerClientLacros>
       fullscreen_controller_client_;
@@ -119,8 +101,8 @@ class ChromeBrowserMainExtraPartsLacros : public ChromeBrowserMainExtraParts {
   // Handles task manager crosapi from ash for sending lacros tasks to ash.
   std::unique_ptr<crosapi::TaskManagerLacros> task_manager_provider_;
 
-  // Receiver and cache of cloud file systems mount points paths updates.
-  std::unique_ptr<CloudFileSystemPathCache> cloud_file_system_cache_;
+  // Receiver and cache of drive mount point path updates.
+  std::unique_ptr<DriveFsCache> drivefs_cache_;
 
   // Handles requests from DriveFS to connect to an extension in lacros.
   std::unique_ptr<drive::DriveFsNativeMessageHostBridge>
@@ -140,7 +122,6 @@ class ChromeBrowserMainExtraPartsLacros : public ChromeBrowserMainExtraParts {
 
   std::unique_ptr<ChromeKioskLaunchControllerLacros>
       chrome_kiosk_launch_controller_;
-  std::unique_ptr<WebKioskInstallerLacros> web_kiosk_installer_;
 
   // Manages the resources used in the web Kiosk session, and sends window
   // status changes of lacros-chrome to ash when necessary.
@@ -159,20 +140,25 @@ class ChromeBrowserMainExtraPartsLacros : public ChromeBrowserMainExtraParts {
   // Receives web app control commands from ash.
   std::unique_ptr<crosapi::WebAppProviderBridgeLacros> web_app_provider_bridge_;
 
-  // Sends Lacros events to ash.
-  std::unique_ptr<LacrosAppsPublisher> lacros_apps_publisher_;
+  // Receives Chrome app (AKA extension app) events from ash.
+  std::unique_ptr<LacrosExtensionAppsController> chrome_apps_controller_;
 
   // Sends Chrome app (AKA extension app) events to ash.
   std::unique_ptr<LacrosExtensionAppsPublisher> chrome_apps_publisher_;
 
-  // Receives Chrome app (AKA extension app) events from ash.
-  std::unique_ptr<LacrosExtensionAppsController> chrome_apps_controller_;
+  // Receives extension events from ash.
+  std::unique_ptr<LacrosExtensionAppsController> extensions_controller_;
 
   // Sends extension events to ash.
   std::unique_ptr<LacrosExtensionAppsPublisher> extensions_publisher_;
 
-  // Receives extension events from ash.
-  std::unique_ptr<LacrosExtensionAppsController> extensions_controller_;
+  // A test controller that is registered with the ash-chrome's test controller
+  // service over crosapi to let tests running in ash-chrome control this Lacros
+  // instance. It is only instantiated in Linux builds AND only when Ash's test
+  // controller is available (practically, just test binaries), so this will
+  // remain null in production builds.
+  std::unique_ptr<StandaloneBrowserTestController>
+      standalone_browser_test_controller_;
 
   // Receiver of field trial updates.
   std::unique_ptr<FieldTrialObserver> field_trial_observer_;
@@ -185,8 +171,8 @@ class ChromeBrowserMainExtraPartsLacros : public ChromeBrowserMainExtraParts {
   std::unique_ptr<WebAuthnRequestRegistrarLacros>
       webauthn_request_registrar_lacros_;
 
-  // Handles read write cards requests from the Lacros browser.
-  std::unique_ptr<chromeos::ReadWriteCardsManager> read_write_cards_manager_;
+  // Handles Quick answers requests from the Lacros browser.
+  std::unique_ptr<QuickAnswersController> quick_answers_controller_;
 
   // Updates Blink preferences on tablet mode state change.
   std::unique_ptr<TabletModePageBehavior> tablet_mode_page_behavior_;
@@ -212,26 +198,6 @@ class ChromeBrowserMainExtraPartsLacros : public ChromeBrowserMainExtraParts {
   // Handles getting and setting multitask menu nudge related prefs from ash.
   std::unique_ptr<MultitaskMenuNudgeDelegateLacros>
       multitask_menu_nudge_delegate_;
-
-  // Caches the clipboard history item descriptors in Lacros. Used only when
-  // the clipboard history refresh feature is enabled.
-  std::unique_ptr<crosapi::ClipboardHistoryLacros> clipboard_history_lacros_;
-
-  // Forwards messages between VMs and the gnubbyd extension.
-  std::unique_ptr<guest_os::VmSkForwardingService> vm_sk_forwarding_service_;
-
-  // Observes profile information updates and sends summary info to ash. Used
-  // only when the desk profiles feature is enabled.
-  std::unique_ptr<crosapi::DeskProfilesLacros> desk_profiles_lacros_;
-
-  // Observers network updates from the NetworkSettingsService.
-  std::unique_ptr<NetworkSettingsObserver> network_settings_observer_;
-
-  // Handles debug commands sent from ash-chrome.
-  std::unique_ptr<crosapi::DebugInterfaceLacros> debug_interface_;
-
-  // Handles sending requested suggestions to ash.
-  std::unique_ptr<SuggestionServiceLacros> suggestion_service_;
 };
 
 #endif  // CHROME_BROWSER_LACROS_CHROME_BROWSER_MAIN_EXTRA_PARTS_LACROS_H_

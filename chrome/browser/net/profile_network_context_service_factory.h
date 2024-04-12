@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_NET_PROFILE_NETWORK_CONTEXT_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_NET_PROFILE_NETWORK_CONTEXT_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class KeyedService;
@@ -31,13 +31,14 @@ class ProfileNetworkContextServiceFactory : public ProfileKeyedServiceFactory {
       const ProfileNetworkContextServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<ProfileNetworkContextServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      ProfileNetworkContextServiceFactory>;
 
   ProfileNetworkContextServiceFactory();
   ~ProfileNetworkContextServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   bool ServiceIsNULLWhileTesting() const override;
 };

@@ -257,23 +257,6 @@ TEST_F(MetricProviderTest, OnSessionRestoreDone) {
   EXPECT_TRUE(profile.has_ms_after_boot());
 }
 
-TEST_F(MetricProviderTest, ThermalStateRecordedInProfile) {
-  metric_provider_->OnUserLoggedIn();
-  metric_provider_->SetThermalState(
-      base::PowerThermalObserver::DeviceThermalState::kSerious);
-  task_environment_.FastForwardBy(kPeriodicCollectionInterval);
-
-  // We should find a cached PERIODIC_COLLECTION profile after a profiling
-  // interval.
-  std::vector<SampledProfile> stored_profiles;
-  EXPECT_TRUE(metric_provider_->GetSampledProfiles(&stored_profiles));
-  EXPECT_EQ(stored_profiles.size(), 1u);
-
-  const SampledProfile& profile = stored_profiles[0];
-  EXPECT_EQ(SampledProfile::PERIODIC_COLLECTION, profile.trigger_event());
-  EXPECT_EQ(THERMAL_STATE_SERIOUS, profile.thermal_state());
-}
-
 TEST_F(MetricProviderTest, DisableRecording) {
   base::HistogramTester histogram_tester;
   metric_provider_->OnUserLoggedIn();
@@ -364,7 +347,7 @@ class MetricProviderSyncSettingsTest : public testing::Test {
     TestSyncService* sync_service = static_cast<TestSyncService*>(
         SyncServiceFactory::GetInstance()->SetTestingFactoryAndUse(
             profile, base::BindRepeating(&TestingSyncFactoryFunction)));
-    sync_service->SetInitialSyncFeatureSetupComplete(true);
+    sync_service->SetFirstSetupComplete(true);
     return sync_service;
   }
 
@@ -436,7 +419,7 @@ TEST_F(MetricProviderSyncSettingsTest, SyncFeatureDisabled) {
   TestSyncService* sync_service2 =
       GetSyncService(testing_profile_manager_->CreateTestingProfile("user2"));
   EnableOSAppSync(sync_service2);
-  sync_service2->SetInitialSyncFeatureSetupComplete(false);
+  sync_service2->SetFirstSetupComplete(false);
 
   task_environment_.FastForwardBy(kPeriodicCollectionInterval);
 

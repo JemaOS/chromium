@@ -4,7 +4,12 @@ The navigation should succeed. This text shouldn't appear.
 <script>
 window.onload = function()
 {
-    top.location = "http://sub2.example.test:8000/security/frameNavigation/resources/navigation-changed-iframe.html";
+    try {
+        top.location = "http://sub2.example.test:8000/security/frameNavigation/resources/navigation-changed-iframe.html";
+        top.postMessage("PASS", "*");
+    } catch(e) {
+        top.postMessage("FAIL", "*");
+    }
 }
 </script>
 </body>

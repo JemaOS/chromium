@@ -27,10 +27,8 @@ void PaintRestoredFrameBorderLinux(gfx::Canvas& canvas,
                                    views::FrameBackground* frame_background,
                                    const SkRRect& clip,
                                    bool showing_shadow,
-                                   bool is_active,
                                    const gfx::Insets& border,
-                                   const gfx::ShadowValues& shadow_values,
-                                   bool tiled);
+                                   const gfx::ShadowValues& shadow_values);
 
 // Get the insets from the native window edge to the client view when the window
 // is restored for BrowserFrameViewLayoutLinux and
@@ -38,6 +36,7 @@ void PaintRestoredFrameBorderLinux(gfx::Canvas& canvas,
 gfx::Insets GetRestoredFrameBorderInsetsLinux(
     bool showing_shadow,
     const gfx::Insets& default_border,
+    const ui::WindowTiledEdges& tiled_edges,
     const gfx::ShadowValues& shadow_values,
     int resize_border);
 

@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_PRINTING_OAUTH2_PROFILE_AUTH_SERVERS_SYNC_BRIDGE_H_
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 
@@ -16,6 +15,7 @@
 #include "components/sync/model/model_error.h"
 #include "components/sync/model/model_type_store.h"
 #include "components/sync/model/model_type_sync_bridge.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace syncer {
@@ -87,10 +87,10 @@ class ProfileAuthServersSyncBridge : public syncer::ModelTypeSyncBridge {
   // Implementation of ModelTypeSyncBridge interface. For internal use only.
   std::unique_ptr<syncer::MetadataChangeList> CreateMetadataChangeList()
       override;
-  std::optional<syncer::ModelError> MergeFullSyncData(
+  absl::optional<syncer::ModelError> MergeFullSyncData(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_data) override;
-  std::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
+  absl::optional<syncer::ModelError> ApplyIncrementalSyncChanges(
       std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
       syncer::EntityChangeList entity_changes) override;
   void GetData(StorageKeyList storage_keys, DataCallback callback) override;
@@ -105,20 +105,20 @@ class ProfileAuthServersSyncBridge : public syncer::ModelTypeSyncBridge {
       Observer* observer);
 
   // Callback for ModelTypeStore initialization.
-  void OnStoreCreated(const std::optional<syncer::ModelError>& error,
+  void OnStoreCreated(const absl::optional<syncer::ModelError>& error,
                       std::unique_ptr<syncer::ModelTypeStore> store);
 
   // Callback from the store when all data are loaded.
   void OnReadAllData(
-      const std::optional<syncer::ModelError>& error,
+      const absl::optional<syncer::ModelError>& error,
       std::unique_ptr<syncer::ModelTypeStore::RecordList> record_list);
 
   // Callback from the store when all metadata are loaded.
-  void OnReadAllMetadata(const std::optional<syncer::ModelError>& error,
+  void OnReadAllMetadata(const absl::optional<syncer::ModelError>& error,
                          std::unique_ptr<syncer::MetadataBatch> metadata_batch);
 
   // Callback to handle commit errors.
-  void OnCommit(const std::optional<syncer::ModelError>& error);
+  void OnCommit(const absl::optional<syncer::ModelError>& error);
 
   // Notifies the observer about changes.
   void NotifyObserver(const std::set<std::string>& added,

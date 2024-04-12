@@ -5,7 +5,7 @@
 // Do not test orientation or hover attributes (similar to exclusions on native
 // accessibility), since they can be inconsistent depending on the environment.
 var RemoveUntestedStates = function(state) {
-  var result = structuredClone(state);
+  var result = JSON.parse(JSON.stringify(state));
   delete result[StateType.HORIZONTAL];
   delete result[StateType.HOVERED];
   delete result[StateType.VERTICAL];
@@ -16,7 +16,9 @@ var allTests = [
   function testSimplePage() {
     var title = rootNode.docTitle;
     assertEq('Automation Tests', title);
-    assertTrue(rootNode.state.focusable);
+
+    var state = RemoveUntestedStates(rootNode.state);
+    assertEq({focusable: true, focused: true}, state);
     assertEq(undefined, rootNode.restriction);
 
     var children = rootNode.children;
@@ -47,7 +49,7 @@ var allTests = [
     assertEq(undefined, cancelButton.restriction);
 
     // Traversal.
-    assertTrue(!!rootNode.parent);
+    assertEq(undefined, rootNode.parent);
     assertEq(rootNode, body.parent);
 
     assertEq(body, rootNode.firstChild);
@@ -80,4 +82,4 @@ var allTests = [
   }
 ];
 
-setUpAndRunTabsTests(allTests);
+setUpAndRunTests(allTests);

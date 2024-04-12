@@ -4,8 +4,6 @@
 
 #include "ash/style/checkbox.h"
 
-#include <utility>
-
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ui/accessibility/ax_enums.mojom-shared.h"
 #include "ui/accessibility/ax_node_data.h"
@@ -22,13 +20,8 @@ namespace {}  // namespace
 Checkbox::Checkbox(int button_width,
                    PressedCallback callback,
                    const std::u16string& label,
-                   const gfx::Insets& insets,
-                   int image_label_spacing)
-    : OptionButtonBase(button_width,
-                       std::move(callback),
-                       label,
-                       insets,
-                       image_label_spacing) {}
+                   const gfx::Insets& insets)
+    : OptionButtonBase(button_width, callback, label, insets) {}
 
 Checkbox::~Checkbox() = default;
 
@@ -49,7 +42,7 @@ void Checkbox::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   node_data->role = ax::mojom::Role::kCheckBox;
 }
 
-BEGIN_METADATA(Checkbox)
+BEGIN_METADATA(Checkbox, OptionButtonBase)
 END_METADATA
 
 }  // namespace ash

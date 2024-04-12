@@ -12,7 +12,7 @@
 #include "chrome/updater/device_management/dm_message.h"
 #include "chrome/updater/device_management/dm_policy_builder_for_testing.h"
 #include "chrome/updater/protos/omaha_settings.pb.h"
-#include "chrome/updater/util/unit_test_util.h"
+#include "chrome/updater/util/unittest_util.h"
 #include "components/policy/proto/device_management_backend.pb.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -50,9 +50,7 @@ DMResponseValidatorTests::GetDMResponseWithOmahaPolicy(
     const edm::OmahaSettingsClientProto& omaha_settings) const {
   std::unique_ptr<DMPolicyBuilderForTesting> policy_builder =
       DMPolicyBuilderForTesting::CreateInstanceWithOptions(
-          /*first_request=*/true, /*rotate_to_new_key=*/true,
-          DMPolicyBuilderForTesting::SigningOption::kSignNormally,
-          "test-dm-token", "test-device-id");
+          true, true, DMPolicyBuilderForTesting::SigningOption::kSignNormally);
   DMPolicyMap policy_map;
   policy_map.emplace(kGoogleUpdatePolicyType,
                      omaha_settings.SerializeAsString());
@@ -114,7 +112,7 @@ TEST_F(DMResponseValidatorTests, UnexpectedDMToken) {
                                 "test-device-id");
   PolicyValidationResult validation_result;
   EXPECT_FALSE(validator.ValidatePolicyResponse(response, validation_result));
-  EXPECT_EQ(validation_result.policy_type, "google/machine-level-omaha");
+  EXPECT_TRUE(validation_result.policy_type.empty());
   EXPECT_EQ(validation_result.status,
             PolicyValidationResult::Status::kValidationBadDMToken);
   EXPECT_TRUE(validation_result.issues.empty());
@@ -134,7 +132,7 @@ TEST_F(DMResponseValidatorTests, UnexpectedDeviceID) {
                                 "unexpected-device-id");
   PolicyValidationResult validation_result;
   EXPECT_FALSE(validator.ValidatePolicyResponse(response, validation_result));
-  EXPECT_EQ(validation_result.policy_type, "google/machine-level-omaha");
+  EXPECT_TRUE(validation_result.policy_type.empty());
   EXPECT_EQ(validation_result.status,
             PolicyValidationResult::Status::kValidationBadDeviceID);
   EXPECT_TRUE(validation_result.issues.empty());
@@ -156,7 +154,7 @@ TEST_F(DMResponseValidatorTests, NoCachedPublicKey) {
                                 "test-device-id");
   PolicyValidationResult validation_result;
   EXPECT_FALSE(validator.ValidatePolicyResponse(response, validation_result));
-  EXPECT_EQ(validation_result.policy_type, "google/machine-level-omaha");
+  EXPECT_TRUE(validation_result.policy_type.empty());
   EXPECT_EQ(validation_result.status,
             PolicyValidationResult::Status::kValidationBadSignature);
   EXPECT_TRUE(validation_result.issues.empty());
@@ -180,7 +178,7 @@ TEST_F(DMResponseValidatorTests, BadSignedPublicKey) {
   DMResponseValidator validator(cached_info, "test-dm-token", "test-device-id");
   PolicyValidationResult validation_result;
   EXPECT_FALSE(validator.ValidatePolicyResponse(response, validation_result));
-  EXPECT_EQ(validation_result.policy_type, "google/machine-level-omaha");
+  EXPECT_TRUE(validation_result.policy_type.empty());
   EXPECT_EQ(
       validation_result.status,
       PolicyValidationResult::Status::kValidationBadKeyVerificationSignature);
@@ -218,7 +216,7 @@ TEST_F(DMResponseValidatorTests, OmahaPolicyWithBadValues) {
   omaha_settings.set_proxy_mode("weird_proxy_mode");
   omaha_settings.set_proxy_server("unexpected_proxy");
   omaha_settings.set_proxy_pac_url("foo.c/proxy.pa");
-  omaha_settings.set_install_default(edm::INSTALL_DEFAULT_DISABLED);
+  omaha_settings.set_install_default(edm::INSTALL_DISABLED);
   omaha_settings.set_update_default(edm::MANUAL_UPDATES_ONLY);
 
   edm::ApplicationSettings app;
@@ -277,7 +275,7 @@ TEST_F(DMResponseValidatorTests, OmahaPolicyWithBadValues) {
             "Value out of range(0 - 960): 1000");
   EXPECT_EQ(validation_result.issues[5].policy_name, "proxy_mode");
   EXPECT_EQ(validation_result.issues[5].severity,
-            PolicyValueValidationIssue::Severity::kWarning);
+            PolicyValueValidationIssue::Severity::kError);
   EXPECT_EQ(validation_result.issues[5].message,
             "Unrecognized proxy mode: weird_proxy_mode");
   EXPECT_EQ(validation_result.issues[6].policy_name, "proxy_server");

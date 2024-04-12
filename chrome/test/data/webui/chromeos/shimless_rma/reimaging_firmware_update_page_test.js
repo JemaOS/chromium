@@ -8,9 +8,10 @@ import {FakeShimlessRmaService} from 'chrome://shimless-rma/fake_shimless_rma_se
 import {setShimlessRmaServiceForTesting} from 'chrome://shimless-rma/mojo_interface_provider.js';
 import {UpdateRoFirmwarePage} from 'chrome://shimless-rma/reimaging_firmware_update_page.js';
 import {ShimlessRma} from 'chrome://shimless-rma/shimless_rma.js';
-import {UpdateRoFirmwareStatus} from 'chrome://shimless-rma/shimless_rma.mojom-webui.js';
-import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
+import {UpdateRoFirmwareStatus} from 'chrome://shimless-rma/shimless_rma_types.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
+
+import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 
 suite('reimagingFirmwareUpdatePageTest', function() {
   /**
@@ -27,7 +28,7 @@ suite('reimagingFirmwareUpdatePageTest', function() {
   let service = null;
 
   setup(() => {
-    document.body.innerHTML = trustedTypes.emptyHTML;
+    document.body.innerHTML = '';
     service = new FakeShimlessRmaService();
     setShimlessRmaServiceForTesting(service);
   });

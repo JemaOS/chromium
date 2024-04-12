@@ -21,7 +21,7 @@ class ScriptPromiseResolver;
 
 // Expose the status of a given permission type for the current
 // ExecutionContext.
-class PermissionStatus final : public EventTarget,
+class PermissionStatus final : public EventTargetWithInlineData,
                                public ActiveScriptWrappable<PermissionStatus>,
                                public ExecutionContextLifecycleStateObserver,
                                public PermissionStatusListener::Observer {

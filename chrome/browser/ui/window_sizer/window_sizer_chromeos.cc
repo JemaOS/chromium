@@ -26,7 +26,8 @@ namespace {
 constexpr int kForceMaximizeWidthLimit = 1366;
 
 bool ShouldForceMaximizeOnFirstRun(Profile* profile) {
-  return profile->GetPrefs()->GetBoolean(prefs::kForceMaximizeOnFirstRun);
+  return profile->GetPrefs()->GetBoolean(prefs::kForceMaximizeOnFirstRun) ||
+         profile->IsGuestSession();
 }
 
 }  // namespace
@@ -99,10 +100,8 @@ bool WindowSizerChromeOS::GetBrowserBounds(
       // the last active window bounds.
       if (!browser()->is_type_app() || !browser()->app_controller() ||
           !GetAppBrowserBoundsFromLastActive(bounds, show_state)) {
-        if (!browser()->create_params().can_resize ||
-            !GetSavedWindowBounds(bounds, show_state)) {
+        if (!GetSavedWindowBounds(bounds, show_state))
           *bounds = GetDefaultWindowBounds(GetDisplayForNewWindow());
-        }
       }
       determined = true;
     } else if (state_provider()) {

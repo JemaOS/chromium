@@ -17,16 +17,16 @@ class FakeCSSStyleImageValue : public CSSStyleImageValue {
       : cache_pending_(cache_pending), size_(size) {}
 
   // CSSStyleImageValue
-  std::optional<gfx::Size> IntrinsicSize() const final {
+  absl::optional<gfx::Size> IntrinsicSize() const final {
     if (cache_pending_) {
-      return std::nullopt;
+      return absl::nullopt;
     }
     return size_;
   }
 
   // CanvasImageSource
   scoped_refptr<Image> GetSourceImageForCanvas(
-      FlushReason,
+      CanvasResourceProvider::FlushReason,
       SourceImageStatus*,
       const gfx::SizeF&,
       const AlphaDisposition alpha_disposition = kPremultiplyAlpha) final {

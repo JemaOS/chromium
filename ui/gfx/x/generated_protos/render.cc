@@ -7,19 +7,36 @@
 //    ../../third_party/xcbproto/src \
 //    gen/ui/gfx/x \
 //    bigreq \
+//    composite \
+//    damage \
+//    dpms \
+//    dri2 \
 //    dri3 \
+//    ge \
 //    glx \
+//    present \
 //    randr \
+//    record \
 //    render \
+//    res \
 //    screensaver \
 //    shape \
 //    shm \
 //    sync \
+//    xc_misc \
+//    xevie \
+//    xf86dri \
+//    xf86vidmode \
 //    xfixes \
+//    xinerama \
 //    xinput \
 //    xkb \
+//    xprint \
 //    xproto \
-//    xtest
+//    xselinux \
+//    xtest \
+//    xv \
+//    xvmc
 
 #include "render.h"
 
@@ -29,7 +46,6 @@
 
 #include "base/logging.h"
 #include "base/posix/eintr_wrapper.h"
-#include "ui/gfx/x/connection.h"
 #include "ui/gfx/x/xproto_internal.h"
 
 namespace x11 {
@@ -78,9 +94,8 @@ void ReadError<Render::PictFormatError>(Render::PictFormatError* error_,
   // major_opcode
   Read(&major_opcode, &buf);
 
-  CHECK_LE(buf.offset, 32ul);
+  DCHECK_LE(buf.offset, 32ul);
 }
-
 std::string Render::PictureError::ToString() const {
   std::stringstream ss_;
   ss_ << "Render::PictureError{";
@@ -122,9 +137,8 @@ void ReadError<Render::PictureError>(Render::PictureError* error_,
   // major_opcode
   Read(&major_opcode, &buf);
 
-  CHECK_LE(buf.offset, 32ul);
+  DCHECK_LE(buf.offset, 32ul);
 }
-
 std::string Render::PictOpError::ToString() const {
   std::stringstream ss_;
   ss_ << "Render::PictOpError{";
@@ -166,9 +180,8 @@ void ReadError<Render::PictOpError>(Render::PictOpError* error_,
   // major_opcode
   Read(&major_opcode, &buf);
 
-  CHECK_LE(buf.offset, 32ul);
+  DCHECK_LE(buf.offset, 32ul);
 }
-
 std::string Render::GlyphSetError::ToString() const {
   std::stringstream ss_;
   ss_ << "Render::GlyphSetError{";
@@ -210,9 +223,8 @@ void ReadError<Render::GlyphSetError>(Render::GlyphSetError* error_,
   // major_opcode
   Read(&major_opcode, &buf);
 
-  CHECK_LE(buf.offset, 32ul);
+  DCHECK_LE(buf.offset, 32ul);
 }
-
 std::string Render::GlyphError::ToString() const {
   std::stringstream ss_;
   ss_ << "Render::GlyphError{";
@@ -254,9 +266,8 @@ void ReadError<Render::GlyphError>(Render::GlyphError* error_,
   // major_opcode
   Read(&major_opcode, &buf);
 
-  CHECK_LE(buf.offset, 32ul);
+  DCHECK_LE(buf.offset, 32ul);
 }
-
 Future<Render::QueryVersionReply> Render::QueryVersion(
     const Render::QueryVersionRequest& request) {
   if (!connection_->Ready() || !present())
@@ -333,7 +344,7 @@ std::unique_ptr<Render::QueryVersionReply> detail::ReadReply<
   Pad(&buf, 16);
 
   Align(&buf, 4);
-  CHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
+  DCHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
 
   return reply;
 }
@@ -553,7 +564,7 @@ std::unique_ptr<Render::QueryPictFormatsReply> detail::ReadReply<
   }
 
   Align(&buf, 4);
-  CHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
+  DCHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
 
   return reply;
 }
@@ -655,7 +666,7 @@ std::unique_ptr<Render::QueryPictIndexValuesReply> detail::ReadReply<
   }
 
   Align(&buf, 4);
-  CHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
+  DCHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
 
   return reply;
 }
@@ -823,19 +834,19 @@ Future<void> Render::CreatePicture(
     const Picture& pid,
     const Drawable& drawable,
     const PictFormat& format,
-    const std::optional<Repeat>& repeat,
-    const std::optional<Picture>& alphamap,
-    const std::optional<int32_t>& alphaxorigin,
-    const std::optional<int32_t>& alphayorigin,
-    const std::optional<int32_t>& clipxorigin,
-    const std::optional<int32_t>& clipyorigin,
-    const std::optional<Pixmap>& clipmask,
-    const std::optional<uint32_t>& graphicsexposure,
-    const std::optional<SubwindowMode>& subwindowmode,
-    const std::optional<PolyEdge>& polyedge,
-    const std::optional<PolyMode>& polymode,
-    const std::optional<Atom>& dither,
-    const std::optional<uint32_t>& componentalpha) {
+    const absl::optional<Repeat>& repeat,
+    const absl::optional<Picture>& alphamap,
+    const absl::optional<int32_t>& alphaxorigin,
+    const absl::optional<int32_t>& alphayorigin,
+    const absl::optional<int32_t>& clipxorigin,
+    const absl::optional<int32_t>& clipyorigin,
+    const absl::optional<Pixmap>& clipmask,
+    const absl::optional<uint32_t>& graphicsexposure,
+    const absl::optional<SubwindowMode>& subwindowmode,
+    const absl::optional<PolyEdge>& polyedge,
+    const absl::optional<PolyMode>& polymode,
+    const absl::optional<Atom>& dither,
+    const absl::optional<uint32_t>& componentalpha) {
   return Render::CreatePicture(Render::CreatePictureRequest{
       pid, drawable, format, repeat, alphamap, alphaxorigin, alphayorigin,
       clipxorigin, clipyorigin, clipmask, graphicsexposure, subwindowmode,
@@ -995,19 +1006,19 @@ Future<void> Render::ChangePicture(
 
 Future<void> Render::ChangePicture(
     const Picture& picture,
-    const std::optional<Repeat>& repeat,
-    const std::optional<Picture>& alphamap,
-    const std::optional<int32_t>& alphaxorigin,
-    const std::optional<int32_t>& alphayorigin,
-    const std::optional<int32_t>& clipxorigin,
-    const std::optional<int32_t>& clipyorigin,
-    const std::optional<Pixmap>& clipmask,
-    const std::optional<uint32_t>& graphicsexposure,
-    const std::optional<SubwindowMode>& subwindowmode,
-    const std::optional<PolyEdge>& polyedge,
-    const std::optional<PolyMode>& polymode,
-    const std::optional<Atom>& dither,
-    const std::optional<uint32_t>& componentalpha) {
+    const absl::optional<Repeat>& repeat,
+    const absl::optional<Picture>& alphamap,
+    const absl::optional<int32_t>& alphaxorigin,
+    const absl::optional<int32_t>& alphayorigin,
+    const absl::optional<int32_t>& clipxorigin,
+    const absl::optional<int32_t>& clipyorigin,
+    const absl::optional<Pixmap>& clipmask,
+    const absl::optional<uint32_t>& graphicsexposure,
+    const absl::optional<SubwindowMode>& subwindowmode,
+    const absl::optional<PolyEdge>& polyedge,
+    const absl::optional<PolyMode>& polymode,
+    const absl::optional<Atom>& dither,
+    const absl::optional<uint32_t>& componentalpha) {
   return Render::ChangePicture(Render::ChangePictureRequest{
       picture, repeat, alphamap, alphaxorigin, alphayorigin, clipxorigin,
       clipyorigin, clipmask, graphicsexposure, subwindowmode, polyedge,
@@ -1049,7 +1060,7 @@ Future<void> Render::SetPictureClipRectangles(
   buf.Write(&clip_y_origin);
 
   // rectangles
-  CHECK_EQ(static_cast<size_t>(rectangles_len), rectangles.size());
+  DCHECK_EQ(static_cast<size_t>(rectangles_len), rectangles.size());
   for (auto& rectangles_elem : rectangles) {
     // rectangles_elem
     {
@@ -1265,7 +1276,7 @@ Future<void> Render::Trapezoids(const Render::TrapezoidsRequest& request) {
   buf.Write(&src_y);
 
   // traps
-  CHECK_EQ(static_cast<size_t>(traps_len), traps.size());
+  DCHECK_EQ(static_cast<size_t>(traps_len), traps.size());
   for (auto& traps_elem : traps) {
     // traps_elem
     {
@@ -1409,7 +1420,7 @@ Future<void> Render::Triangles(const Render::TrianglesRequest& request) {
   buf.Write(&src_y);
 
   // triangles
-  CHECK_EQ(static_cast<size_t>(triangles_len), triangles.size());
+  DCHECK_EQ(static_cast<size_t>(triangles_len), triangles.size());
   for (auto& triangles_elem : triangles) {
     // triangles_elem
     {
@@ -1522,7 +1533,7 @@ Future<void> Render::TriStrip(const Render::TriStripRequest& request) {
   buf.Write(&src_y);
 
   // points
-  CHECK_EQ(static_cast<size_t>(points_len), points.size());
+  DCHECK_EQ(static_cast<size_t>(points_len), points.size());
   for (auto& points_elem : points) {
     // points_elem
     {
@@ -1604,7 +1615,7 @@ Future<void> Render::TriFan(const Render::TriFanRequest& request) {
   buf.Write(&src_y);
 
   // points
-  CHECK_EQ(static_cast<size_t>(points_len), points.size());
+  DCHECK_EQ(static_cast<size_t>(points_len), points.size());
   for (auto& points_elem : points) {
     // points_elem
     {
@@ -1779,14 +1790,14 @@ Future<void> Render::AddGlyphs(const Render::AddGlyphsRequest& request) {
   buf.Write(&glyphs_len);
 
   // glyphids
-  CHECK_EQ(static_cast<size_t>(glyphs_len), glyphids.size());
+  DCHECK_EQ(static_cast<size_t>(glyphs_len), glyphids.size());
   for (auto& glyphids_elem : glyphids) {
     // glyphids_elem
     buf.Write(&glyphids_elem);
   }
 
   // glyphs
-  CHECK_EQ(static_cast<size_t>(glyphs_len), glyphs.size());
+  DCHECK_EQ(static_cast<size_t>(glyphs_len), glyphs.size());
   for (auto& glyphs_elem : glyphs) {
     // glyphs_elem
     {
@@ -1818,7 +1829,7 @@ Future<void> Render::AddGlyphs(const Render::AddGlyphsRequest& request) {
   }
 
   // data
-  CHECK_EQ(static_cast<size_t>(data_len), data.size());
+  DCHECK_EQ(static_cast<size_t>(data_len), data.size());
   for (auto& data_elem : data) {
     // data_elem
     buf.Write(&data_elem);
@@ -1863,7 +1874,7 @@ Future<void> Render::FreeGlyphs(const Render::FreeGlyphsRequest& request) {
   buf.Write(&glyphset);
 
   // glyphs
-  CHECK_EQ(static_cast<size_t>(glyphs_len), glyphs.size());
+  DCHECK_EQ(static_cast<size_t>(glyphs_len), glyphs.size());
   for (auto& glyphs_elem : glyphs) {
     // glyphs_elem
     buf.Write(&glyphs_elem);
@@ -1935,7 +1946,7 @@ Future<void> Render::CompositeGlyphs8(
   buf.Write(&src_y);
 
   // glyphcmds
-  CHECK_EQ(static_cast<size_t>(glyphcmds_len), glyphcmds.size());
+  DCHECK_EQ(static_cast<size_t>(glyphcmds_len), glyphcmds.size());
   for (auto& glyphcmds_elem : glyphcmds) {
     // glyphcmds_elem
     buf.Write(&glyphcmds_elem);
@@ -2015,7 +2026,7 @@ Future<void> Render::CompositeGlyphs16(
   buf.Write(&src_y);
 
   // glyphcmds
-  CHECK_EQ(static_cast<size_t>(glyphcmds_len), glyphcmds.size());
+  DCHECK_EQ(static_cast<size_t>(glyphcmds_len), glyphcmds.size());
   for (auto& glyphcmds_elem : glyphcmds) {
     // glyphcmds_elem
     buf.Write(&glyphcmds_elem);
@@ -2095,7 +2106,7 @@ Future<void> Render::CompositeGlyphs32(
   buf.Write(&src_y);
 
   // glyphcmds
-  CHECK_EQ(static_cast<size_t>(glyphcmds_len), glyphcmds.size());
+  DCHECK_EQ(static_cast<size_t>(glyphcmds_len), glyphcmds.size());
   for (auto& glyphcmds_elem : glyphcmds) {
     // glyphcmds_elem
     buf.Write(&glyphcmds_elem);
@@ -2176,7 +2187,7 @@ Future<void> Render::FillRectangles(
   }
 
   // rects
-  CHECK_EQ(static_cast<size_t>(rects_len), rects.size());
+  DCHECK_EQ(static_cast<size_t>(rects_len), rects.size());
   for (auto& rects_elem : rects) {
     // rects_elem
     {
@@ -2437,7 +2448,7 @@ std::unique_ptr<Render::QueryFiltersReply> detail::ReadReply<
   }
 
   Align(&buf, 4);
-  CHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
+  DCHECK_EQ(buf.offset < 32 ? 0 : buf.offset - 32, 4 * length);
 
   return reply;
 }
@@ -2478,7 +2489,7 @@ Future<void> Render::SetPictureFilter(
   Pad(&buf, 2);
 
   // filter
-  CHECK_EQ(static_cast<size_t>(filter_len), filter.size());
+  DCHECK_EQ(static_cast<size_t>(filter_len), filter.size());
   for (auto& filter_elem : filter) {
     // filter_elem
     buf.Write(&filter_elem);
@@ -2488,7 +2499,7 @@ Future<void> Render::SetPictureFilter(
   Align(&buf, 4);
 
   // values
-  CHECK_EQ(static_cast<size_t>(values_len), values.size());
+  DCHECK_EQ(static_cast<size_t>(values_len), values.size());
   for (auto& values_elem : values) {
     // values_elem
     buf.Write(&values_elem);
@@ -2534,7 +2545,7 @@ Future<void> Render::CreateAnimCursor(
   buf.Write(&cid);
 
   // cursors
-  CHECK_EQ(static_cast<size_t>(cursors_len), cursors.size());
+  DCHECK_EQ(static_cast<size_t>(cursors_len), cursors.size());
   for (auto& cursors_elem : cursors) {
     // cursors_elem
     {
@@ -2596,7 +2607,7 @@ Future<void> Render::AddTraps(const Render::AddTrapsRequest& request) {
   buf.Write(&y_off);
 
   // traps
-  CHECK_EQ(static_cast<size_t>(traps_len), traps.size());
+  DCHECK_EQ(static_cast<size_t>(traps_len), traps.size());
   for (auto& traps_elem : traps) {
     // traps_elem
     {
@@ -2766,14 +2777,14 @@ Future<void> Render::CreateLinearGradient(
   buf.Write(&num_stops);
 
   // stops
-  CHECK_EQ(static_cast<size_t>(num_stops), stops.size());
+  DCHECK_EQ(static_cast<size_t>(num_stops), stops.size());
   for (auto& stops_elem : stops) {
     // stops_elem
     buf.Write(&stops_elem);
   }
 
   // colors
-  CHECK_EQ(static_cast<size_t>(num_stops), colors.size());
+  DCHECK_EQ(static_cast<size_t>(num_stops), colors.size());
   for (auto& colors_elem : colors) {
     // colors_elem
     {
@@ -2879,14 +2890,14 @@ Future<void> Render::CreateRadialGradient(
   buf.Write(&num_stops);
 
   // stops
-  CHECK_EQ(static_cast<size_t>(num_stops), stops.size());
+  DCHECK_EQ(static_cast<size_t>(num_stops), stops.size());
   for (auto& stops_elem : stops) {
     // stops_elem
     buf.Write(&stops_elem);
   }
 
   // colors
-  CHECK_EQ(static_cast<size_t>(num_stops), colors.size());
+  DCHECK_EQ(static_cast<size_t>(num_stops), colors.size());
   for (auto& colors_elem : colors) {
     // colors_elem
     {
@@ -2977,14 +2988,14 @@ Future<void> Render::CreateConicalGradient(
   buf.Write(&num_stops);
 
   // stops
-  CHECK_EQ(static_cast<size_t>(num_stops), stops.size());
+  DCHECK_EQ(static_cast<size_t>(num_stops), stops.size());
   for (auto& stops_elem : stops) {
     // stops_elem
     buf.Write(&stops_elem);
   }
 
   // colors
-  CHECK_EQ(static_cast<size_t>(num_stops), colors.size());
+  DCHECK_EQ(static_cast<size_t>(num_stops), colors.size());
   for (auto& colors_elem : colors) {
     // colors_elem
     {

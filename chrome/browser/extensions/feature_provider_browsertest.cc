@@ -4,7 +4,6 @@
 
 #include "extensions/common/features/feature_provider.h"
 
-#include "base/containers/contains.h"
 #include "base/test/bind.h"
 #include "chrome/common/extensions/extension_test_util.h"
 #include "chrome/test/base/in_process_browser_test.h"

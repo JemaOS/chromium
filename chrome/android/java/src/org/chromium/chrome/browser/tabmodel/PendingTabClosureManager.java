@@ -6,7 +6,6 @@ package org.chromium.chrome.browser.tabmodel;
 
 import androidx.annotation.NonNull;
 
-import org.chromium.base.ThreadUtils.ThreadChecker;
 import org.chromium.chrome.browser.tab.Tab;
 
 import java.util.ArrayList;
@@ -28,31 +27,32 @@ public class PendingTabClosureManager {
     public interface PendingTabClosureDelegate {
         /**
          * Return {@code tab} to the {@link TabList} at {@code index}.
-         *
          * @param tab The tab to insert.
          * @param index The location to insert the tab at.
          */
-        void insertUndoneTabClosureAt(Tab tab, int index);
+        public void insertUndoneTabClosureAt(Tab tab, int index);
 
         /**
          * Finalize the closure of a Tab.
-         *
          * @param tab The tab to finalize the closure of.
          */
-        void finalizeClosure(Tab tab);
+        public void finalizeClosure(Tab tab);
 
-        /** Notify observers about completion of undo action to restore all tabs. */
-        void notifyAllTabsClosureUndone();
+        /**
+         * Notify observers about completion of undo action to restore all tabs.
+         */
+        public void notifyAllTabsClosureUndone();
 
         /**
          * Request to notify observers that {@code tabs} will be closed.
-         *
          * @param tabs The list of tabs to close together.
          */
-        void notifyOnFinishingMultipleTabClosure(List<Tab> tabs);
+        public void notifyOnFinishingMultipleTabClosure(List<Tab> tabs);
     }
 
-    /** Represents a set of tabs closed together. */
+    /**
+     * Represents a set of tabs closed together.
+     */
     private class TabClosureEvent {
         private final LinkedList<Tab> mClosingTabs;
         private final HashSet<Tab> mUnhandledTabs;
@@ -63,8 +63,8 @@ public class PendingTabClosureManager {
          * @param tabs The list of closing tabs.
          */
         public TabClosureEvent(List<Tab> tabs) {
-            mClosingTabs = new LinkedList<>(tabs);
-            mUnhandledTabs = new HashSet<>(mClosingTabs);
+            mClosingTabs = new LinkedList<Tab>(tabs);
+            mUnhandledTabs = new HashSet<Tab>(mClosingTabs);
         }
 
         /**
@@ -74,7 +74,7 @@ public class PendingTabClosureManager {
             final boolean removed = mUnhandledTabs.remove(tab);
             if (removed) {
                 assert !mCancelCalled
-                        : "Committing a tab closure from an event that was partly cancelled.";
+                    : "Committing a tab closure from an event that was partly cancelled.";
                 mReadyToCommitCalled = true;
             }
             return removed;
@@ -88,7 +88,7 @@ public class PendingTabClosureManager {
             if (removed) {
                 mClosingTabs.remove(tab);
                 assert !mReadyToCommitCalled
-                        : "Cancelling a tab closure from an event that was partly ready to commit.";
+                    : "Cancelling a tab closure from an event that was partly ready to commit.";
                 mCancelCalled = true;
             }
             return removed;
@@ -111,11 +111,11 @@ public class PendingTabClosureManager {
 
     private class RewoundList implements TabList {
         /**
-         * A list of {@link Tab}s that represents the completely rewound list (if all rewindable
-         * closes were undone). If there are no possible rewindable closes this list should match
-         * {@link #mTabs}.
+         * A list of {@link Tab}s that represents the completely rewound list (if all
+         * rewindable closes were undone). If there are no possible rewindable closes this list
+         * should match {@link #mTabs}.
          */
-        private final List<Tab> mRewoundTabs = new ArrayList<>();
+        private final List<Tab> mRewoundTabs = new ArrayList<Tab>();
 
         @Override
         public boolean isIncognito() {
@@ -168,13 +168,13 @@ public class PendingTabClosureManager {
         }
 
         /**
-         * Finds the {@link Tab} specified by {@code tabId} and only returns it if it is actually a
-         * {@link Tab} that is in the middle of being closed (which means that it is present in this
-         * model but not in {@code mTabList}.
+         * Finds the {@link Tab} specified by {@code tabId} and only returns it if it is
+         * actually a {@link Tab} that is in the middle of being closed (which means that it
+         * is present in this model but not in {@code mTabList}.
          *
          * @param tabId The id of the {@link Tab} to search for.
-         * @return The {@link Tab} specified by {@code tabId} as long as that tab only exists in
-         *     this model and not in {@code mTabList}. {@code null} otherwise.
+         * @return The {@link Tab} specified by {@code tabId} as long as that tab only exists
+         *         in this model and not in {@code mTabList}. {@code null} otherwise.
          */
         public Tab getPendingRewindTab(int tabId) {
             if (TabModelUtils.getTabById(mTabList, tabId) != null) return null;
@@ -207,17 +207,15 @@ public class PendingTabClosureManager {
         }
     }
 
-    /** Thread checks to root cause crbug.com/1465745. */
-    private final ThreadChecker mThreadChecker = new ThreadChecker();
-
-    private boolean mIsCommittingAllTabClosures;
-
-    /** The {@link TabList} that this {@link PendingTabClosureManager} operates on. */
+    /**
+     * The {@link TabList} that this {@link PendingTabClosureManager} operates on.
+     */
     private TabList mTabList;
-
     private PendingTabClosureDelegate mDelegate;
 
-    /** Representation of a set of tabs that were closed together. */
+    /**
+     * Representation of a set of tabs that were closed together.
+     */
     private LinkedList<TabClosureEvent> mTabClosureEvents = new LinkedList<>();
 
     /**
@@ -243,28 +241,18 @@ public class PendingTabClosureManager {
     }
 
     public void destroy() {
-        mThreadChecker.assertOnValidThread();
-        assert !mIsCommittingAllTabClosures
-                : "Modifying mTabClosureEvents while committing all tab closures.";
-
         mRewoundList.destroy();
         mTabClosureEvents.clear();
     }
 
     public void destroyWhileReparentingInProgress() {
-        mThreadChecker.assertOnValidThread();
-        assert !mIsCommittingAllTabClosures
-                : "Modifying mTabClosureEvents while committing all tab closures.";
-
         mTabClosureEvents.clear();
     }
 
-    /** Resets the state of the rewound list based on {@code mTabList}. */
+    /**
+     * Resets the state of the rewound list based on {@code mTabList}.
+     */
     public void resetState() {
-        mThreadChecker.assertOnValidThread();
-        assert !mIsCommittingAllTabClosures
-                : "Modifying mTabClosureEvents while committing all tab closures.";
-
         assert mTabClosureEvents.isEmpty();
         mRewoundList.resetRewoundState();
     }
@@ -274,10 +262,6 @@ public class PendingTabClosureManager {
      * @param tabs The list of {@link Tab} that are closing.
      */
     public void addTabClosureEvent(List<Tab> tabs) {
-        mThreadChecker.assertOnValidThread();
-        assert !mIsCommittingAllTabClosures
-                : "Modifying mTabClosureEvents while committing all tab closures.";
-
         mTabClosureEvents.add(new TabClosureEvent(tabs));
     }
 
@@ -302,10 +286,6 @@ public class PendingTabClosureManager {
      * @param tabId The ID of the {@link Tab} to mark as ready to commit.
      */
     public void commitTabClosure(int tabId) {
-        mThreadChecker.assertOnValidThread();
-        assert !mIsCommittingAllTabClosures
-                : "Modifying mTabClosureEvents while committing all tab closures.";
-
         Tab tab = mRewoundList.getPendingRewindTab(tabId);
         if (tab == null) return;
 
@@ -327,10 +307,6 @@ public class PendingTabClosureManager {
      * @param tabId The ID of the {@link Tab} to cancel the closure of.
      */
     public void cancelTabClosure(int tabId) {
-        mThreadChecker.assertOnValidThread();
-        assert !mIsCommittingAllTabClosures
-                : "Modifying mTabClosureEvents while committing all tab closures.";
-
         Tab tab = mRewoundList.getPendingRewindTab(tabId);
         if (tab == null) return;
 
@@ -350,7 +326,9 @@ public class PendingTabClosureManager {
         }
     }
 
-    /** Notify observers about completion of undo action to restore all tabs. */
+    /**
+     * Notify observers about completion of undo action to restore all tabs.
+     */
     public void notifyAllTabsClosureUndone() {
         mDelegate.notifyAllTabsClosureUndone();
     }
@@ -360,12 +338,6 @@ public class PendingTabClosureManager {
      * called.
      */
     public void commitAllTabClosures() {
-        mThreadChecker.assertOnValidThread();
-        assert !mIsCommittingAllTabClosures
-                : "Modifying mTabClosureEvents while committing all tab closures.";
-
-        mIsCommittingAllTabClosures = true;
-
         ListIterator<TabClosureEvent> events = mTabClosureEvents.listIterator();
         while (events.hasNext()) {
             TabClosureEvent event = events.next();
@@ -374,9 +346,6 @@ public class PendingTabClosureManager {
             // intended so that tabs closed as distinct events are recorded as such.
             commitClosuresInternal(event.getList());
         }
-
-        mIsCommittingAllTabClosures = false;
-
         assert mTabClosureEvents.isEmpty();
         assert !mRewoundList.hasPendingClosures();
     }
@@ -392,10 +361,6 @@ public class PendingTabClosureManager {
      *   opened as the assumption is the most recent close event was desired to be undone.
      */
     boolean openMostRecentlyClosedEntry() {
-        mThreadChecker.assertOnValidThread();
-        assert !mIsCommittingAllTabClosures
-                : "Modifying mTabClosureEvents while committing all tab closures.";
-
         if (mTabClosureEvents.isEmpty()) return false;
 
         TabClosureEvent event = mTabClosureEvents.removeLast();

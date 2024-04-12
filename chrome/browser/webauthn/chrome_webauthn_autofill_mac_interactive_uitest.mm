@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "base/test/bind.h"
-#include "base/time/time.h"
 #include "build/build_config.h"
 #include "chrome/browser/password_manager/chrome_webauthn_credentials_delegate.h"
 #include "chrome/browser/ssl/cert_verifier_browser_test.h"
@@ -114,7 +113,7 @@ IN_PROC_BROWSER_TEST_F(WebAuthnMacAutofillIntegrationTest, SelectAccount) {
   // Interact with the username field until the popup shows up. This has the
   // effect of waiting for the browser to send the renderer the password
   // information, and waiting for the UI to render.
-  base::WeakPtr<autofill::AutofillPopupControllerImpl> popup_controller;
+  base::WeakPtr<autofill::AutofillPopupController> popup_controller;
   while (!popup_controller) {
     content::SimulateMouseClickOrTapElementWithId(web_contents, "username");
     popup_controller = autofill_client->popup_controller_for_testing();
@@ -125,8 +124,8 @@ IN_PROC_BROWSER_TEST_F(WebAuthnMacAutofillIntegrationTest, SelectAccount) {
   autofill::Suggestion webauthn_entry;
   for (suggestion_index = 0; suggestion_index < suggestions.size();
        ++suggestion_index) {
-    if (suggestions[suggestion_index].popup_item_id ==
-        autofill::PopupItemId::kWebauthnCredential) {
+    if (suggestions[suggestion_index].frontend_id ==
+        autofill::PopupItemId::POPUP_ITEM_ID_WEBAUTHN_CREDENTIAL) {
       webauthn_entry = suggestions[suggestion_index];
       break;
     }
@@ -134,13 +133,11 @@ IN_PROC_BROWSER_TEST_F(WebAuthnMacAutofillIntegrationTest, SelectAccount) {
   ASSERT_LT(suggestion_index, suggestions.size()) << "WebAuthn entry not found";
   EXPECT_EQ(webauthn_entry.main_text.value, u"flandre");
   EXPECT_EQ(webauthn_entry.labels.at(0).at(0).value,
-            l10n_util::GetStringUTF16(
-                IDS_PASSWORD_MANAGER_PASSKEY_FROM_CHROME_PROFILE));
-  EXPECT_EQ(webauthn_entry.icon, autofill::Suggestion::Icon::kGlobe);
+            l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_USE_TOUCH_ID));
+  EXPECT_EQ(webauthn_entry.icon, "globeIcon");
 
   // Click the credential.
-  popup_controller->DisableThresholdForTesting(true);
-  popup_controller->AcceptSuggestion(suggestion_index);
+  popup_controller->AcceptSuggestionWithoutThreshold(suggestion_index);
   std::string result;
   ASSERT_TRUE(message_queue.WaitForMessage(&result));
   EXPECT_EQ(result, "\"webauthn: OK\"");

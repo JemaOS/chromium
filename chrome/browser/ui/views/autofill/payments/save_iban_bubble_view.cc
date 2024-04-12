@@ -20,8 +20,6 @@
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/flex_layout_types.h"
-#include "ui/views/style/typography.h"
-#include "ui/views/style/typography_provider.h"
 #include "ui/views/view_class_properties.h"
 
 namespace autofill {
@@ -40,6 +38,8 @@ SaveIbanBubbleView::SaveIbanBubbleView(views::View* anchor_view,
   DCHECK(controller);
   SetButtonLabel(ui::DIALOG_BUTTON_OK, controller->GetAcceptButtonText());
   SetButtonLabel(ui::DIALOG_BUTTON_CANCEL, controller->GetDeclineButtonText());
+  SetCancelCallback(base::BindOnce(&SaveIbanBubbleView::OnDialogCancelled,
+                                   base::Unretained(this)));
   SetAcceptCallback(base::BindOnce(&SaveIbanBubbleView::OnDialogAccepted,
                                    base::Unretained(this)));
 
@@ -76,11 +76,6 @@ void SaveIbanBubbleView::AddedToWidget() {
           *bundle.GetImageSkiaNamed(IDR_SAVE_CARD_DARK),
           base::BindRepeating(&views::BubbleDialogDelegate::GetBackgroundColor,
                               base::Unretained(this))));
-
-  if (controller_->IsUploadSave()) {
-    GetBubbleFrameView()->SetTitleView(CreateTitleView(
-        GetWindowTitle(), TitleWithIconAndSeparatorView::Icon::GOOGLE_PAY));
-  }
 }
 
 std::u16string SaveIbanBubbleView::GetWindowTitle() const {
@@ -110,33 +105,14 @@ SaveIbanBubbleView::~SaveIbanBubbleView() = default;
 void SaveIbanBubbleView::CreateMainContentView() {
   const ChromeLayoutProvider* provider = ChromeLayoutProvider::Get();
 
-  SetLayoutManager(std::make_unique<views::BoxLayout>(
-      views::BoxLayout::Orientation::kVertical, gfx::Insets(),
-      provider->GetDistanceMetric(views::DISTANCE_UNRELATED_CONTROL_VERTICAL)));
-
-  SetID(controller_->IsUploadSave() ? DialogViewId::MAIN_CONTENT_VIEW_UPLOAD
-                                    : DialogViewId::MAIN_CONTENT_VIEW_LOCAL);
+  SetID(DialogViewId::MAIN_CONTENT_VIEW_LOCAL);
   SetProperty(views::kMarginsKey, gfx::Insets());
-
-  // If applicable, add the upload explanation label. Appears above the IBAN
-  // info.
-  std::u16string explanation = controller_->GetExplanatoryMessage();
-  if (!explanation.empty()) {
-    auto* explanation_label = AddChildView(std::make_unique<views::Label>(
-        explanation, views::style::CONTEXT_DIALOG_BODY_TEXT,
-        views::style::STYLE_SECONDARY));
-    explanation_label->SetMultiLine(true);
-    explanation_label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
-  }
-
-  const int row_height = views::TypographyProvider::Get().GetLineHeight(
+  const int row_height = views::style::GetLineHeight(
       views::style::CONTEXT_DIALOG_BODY_TEXT, views::style::STYLE_PRIMARY);
+  views::TableLayout* layout =
+      SetLayoutManager(std::make_unique<views::TableLayout>());
 
-  auto* iban_content = AddChildView(std::make_unique<views::View>());
-  auto* iban_layout =
-      iban_content->SetLayoutManager(std::make_unique<views::TableLayout>());
-
-  iban_layout
+  layout
       ->AddColumn(views::LayoutAlignment::kStart,
                   views::LayoutAlignment::kCenter,
                   views::TableLayout::kFixedSize,
@@ -159,30 +135,26 @@ void SaveIbanBubbleView::CreateMainContentView() {
       // Add a row for nickname label and the input text field.
       .AddRows(1, views::TableLayout::kFixedSize);
 
-  iban_content->AddChildView(std::make_unique<views::Label>(
+  AddChildView(std::make_unique<views::Label>(
       l10n_util::GetStringUTF16(IDS_AUTOFILL_SAVE_IBAN_LABEL),
       views::style::CONTEXT_DIALOG_BODY_TEXT, views::style::STYLE_PRIMARY));
 
-  views::Label* iban_value =
-      iban_content->AddChildView(std::make_unique<views::Label>(
-          controller_->GetIban().GetIdentifierStringForAutofillDisplay(
+  iban_value_and_toggle_ =
+      AddChildView(std::make_unique<ObscurableLabelWithToggleButton>(
+          controller_->GetIBAN().GetIdentifierStringForAutofillDisplay(
+              /*is_value_masked=*/true),
+          controller_->GetIBAN().GetIdentifierStringForAutofillDisplay(
               /*is_value_masked=*/false),
-          views::style::CONTEXT_LABEL, views::style::STYLE_SECONDARY));
+          l10n_util::GetStringUTF16(IDS_MANAGE_IBAN_VALUE_SHOW_VALUE),
+          l10n_util::GetStringUTF16(IDS_MANAGE_IBAN_VALUE_HIDE_VALUE)));
 
-  iban_value->SetProperty(
-      views::kFlexBehaviorKey,
-      views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
-                               views::MaximumFlexSizeRule::kScaleToMaximum));
-  iban_value->SetHorizontalAlignment(gfx::ALIGN_LEFT);
-  iban_value->SetMultiLine(true);
-
-  iban_content->AddChildView(std::make_unique<views::Label>(
+  AddChildView(std::make_unique<views::Label>(
       l10n_util::GetStringUTF16(IDS_AUTOFILL_SAVE_IBAN_PROMPT_NICKNAME),
       views::style::CONTEXT_DIALOG_BODY_TEXT, views::style::STYLE_PRIMARY));
 
   // Adds view that combines nickname textfield and nickname length count label.
   auto* nickname_input_textfield_view =
-      iban_content->AddChildView(std::make_unique<views::BoxLayoutView>());
+      AddChildView(std::make_unique<views::BoxLayoutView>());
   nickname_input_textfield_view->SetBorder(
       views::CreateSolidBorder(1, SK_ColorLTGRAY));
   nickname_input_textfield_view->SetInsideBorderInsets(
@@ -204,8 +176,10 @@ void SaveIbanBubbleView::CreateMainContentView() {
   nickname_textfield_->set_controller(this);
   nickname_textfield_->SetPlaceholderText(
       l10n_util::GetStringUTF16(IDS_AUTOFILL_SAVE_IBAN_PLACEHOLDER));
-  nickname_textfield_->SetProperty(views::kBoxLayoutFlexKey,
-                                   views::BoxLayoutFlexSpecification());
+  nickname_textfield_->SetProperty(
+      views::kFlexBehaviorKey,
+      views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
+                               views::MaximumFlexSizeRule::kScaleToMaximum));
   nickname_textfield_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
   nickname_textfield_->SetBorder(views::NullBorder());
 
@@ -217,12 +191,6 @@ void SaveIbanBubbleView::CreateMainContentView() {
   nickname_length_label_->SetHorizontalAlignment(
       gfx::HorizontalAlignment::ALIGN_RIGHT);
   UpdateNicknameLengthLabel();
-
-  if (std::unique_ptr<views::View> legal_message_view =
-          CreateLegalMessageView()) {
-    legal_message_view->SetID(DialogViewId::LEGAL_MESSAGE_VIEW);
-    AddChildView(std::move(legal_message_view));
-  }
 }
 
 void SaveIbanBubbleView::AssignIdsToDialogButtonsForTesting() {
@@ -234,6 +202,11 @@ void SaveIbanBubbleView::AssignIdsToDialogButtonsForTesting() {
   if (cancel_button) {
     cancel_button->SetID(DialogViewId::CANCEL_BUTTON);
   }
+
+  DCHECK(iban_value_and_toggle_);
+  iban_value_and_toggle_->value()->SetID(DialogViewId::IBAN_VALUE_LABEL);
+  iban_value_and_toggle_->toggle_obscured()->SetID(
+      DialogViewId::TOGGLE_IBAN_VALUE_MASKING_BUTTON);
 
   if (nickname_textfield_) {
     nickname_textfield_->SetID(DialogViewId::NICKNAME_TEXTFIELD);
@@ -247,48 +220,14 @@ void SaveIbanBubbleView::OnDialogAccepted() {
   }
 }
 
-void SaveIbanBubbleView::LinkClicked(const GURL& url) {
+void SaveIbanBubbleView::OnDialogCancelled() {
   if (controller_) {
-    controller()->OnLegalMessageLinkClicked(url);
+    controller_->OnCancelButton();
   }
 }
 
 void SaveIbanBubbleView::Init() {
-  // For server IBAN save, there is an explanation between the title and the
-  // controls; use DialogContentType::kText. For local IBAN save, since there is
-  // no explanation, use DialogContentType::kControl instead.
-  // For server IBANs, there are legal messages before the buttons, so use
-  // DialogContentType::kText. For local IBANs, since there is no legal message,
-  // use DialogContentType::kControl instead.
-  set_margins(ChromeLayoutProvider::Get()->GetDialogInsetsForContentType(
-      views::DialogContentType::kText,
-      !controller_->GetLegalMessageLines().empty()
-          ? views::DialogContentType::kText
-          : views::DialogContentType::kControl));
-
   CreateMainContentView();
-}
-
-std::unique_ptr<views::View> SaveIbanBubbleView::CreateLegalMessageView() {
-  const LegalMessageLines message_lines = controller()->GetLegalMessageLines();
-  if (message_lines.empty()) {
-    return nullptr;
-  }
-
-  auto legal_message_view = std::make_unique<views::BoxLayoutView>();
-  legal_message_view->SetOrientation(views::BoxLayout::Orientation::kVertical);
-  legal_message_view->SetBetweenChildSpacing(
-      ChromeLayoutProvider::Get()->GetDistanceMetric(
-          DISTANCE_RELATED_CONTROL_VERTICAL_SMALL));
-
-  legal_message_view->AddChildView(std::make_unique<LegalMessageView>(
-      message_lines, base::UTF8ToUTF16(controller()->GetAccountInfo().email),
-      GetProfileAvatar(controller()->GetAccountInfo()),
-      base::BindRepeating(&SaveIbanBubbleView::LinkClicked,
-                          base::Unretained(this))));
-
-  legal_message_view->SetID(DialogViewId::LEGAL_MESSAGE_VIEW);
-  return legal_message_view;
 }
 
 void SaveIbanBubbleView::UpdateNicknameLengthLabel() {

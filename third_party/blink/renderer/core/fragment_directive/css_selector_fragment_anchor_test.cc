@@ -35,6 +35,10 @@ class CssSelectorFragmentAnchorTest : public SimTest {
   void SetUp() override {
     SimTest::SetUp();
 
+    base::test::ScopedFeatureList feature_list;
+    feature_list.InitAndEnableFeature(
+        blink::features::kCssSelectorFragmentAnchor);
+
     // Focus handlers aren't run unless the page is focused.
     GetDocument().GetPage()->GetFocusController().SetActive(true);
     GetDocument().GetPage()->GetFocusController().SetFocused(true);
@@ -79,9 +83,9 @@ class CssSelectorFragmentAnchorTest : public SimTest {
   const CSSValue* GetComputedValue(const CSSPropertyID& property_id,
                                    const Element& element) {
     return CSSProperty::Get(property_id)
-        .CSSValueFromComputedStyle(
-            element.ComputedStyleRef(), nullptr /* layout_object */,
-            false /* allow_visited_style */, CSSValuePhase::kComputedValue);
+        .CSSValueFromComputedStyle(element.ComputedStyleRef(),
+                                   nullptr /* layout_object */,
+                                   false /* allow_visited_style */);
   }
 
   bool IsElementOutlined(const Element& element) {
@@ -122,7 +126,7 @@ TEST_F(CssSelectorFragmentAnchorTest, BasicTest) {
   test::RunPendingTasks();
   Compositor().BeginFrame();
 
-  Element& img = *GetDocument().getElementById(AtomicString("image"));
+  Element& img = *GetDocument().getElementById("image");
 
   EXPECT_EQ(img, *GetDocument().CssTarget());
   EXPECT_EQ(true, IsSelectorFragmentAnchorCreated());
@@ -158,7 +162,7 @@ TEST_F(CssSelectorFragmentAnchorTest, TwoCssSelectorFragmentsOutlineFirst) {
   test::RunPendingTasks();
   Compositor().BeginFrame();
 
-  Element& second = *GetDocument().getElementById(AtomicString("second"));
+  Element& second = *GetDocument().getElementById("second");
 
   EXPECT_EQ(second, *GetDocument().CssTarget());
   EXPECT_EQ(true, IsSelectorFragmentAnchorCreated());
@@ -189,7 +193,7 @@ TEST_F(CssSelectorFragmentAnchorTest, TwoCssSelectorFragmentsFirstNotFound) {
   test::RunPendingTasks();
   Compositor().BeginFrame();
 
-  Element& first = *GetDocument().getElementById(AtomicString("first"));
+  Element& first = *GetDocument().getElementById("first");
 
   EXPECT_EQ(first, *GetDocument().CssTarget());
   EXPECT_EQ(true, IsSelectorFragmentAnchorCreated());
@@ -220,7 +224,7 @@ TEST_F(CssSelectorFragmentAnchorTest,
   test::RunPendingTasks();
   Compositor().BeginFrame();
 
-  Element& first = *GetDocument().getElementById(AtomicString("first"));
+  Element& first = *GetDocument().getElementById("first");
 
   EXPECT_EQ(first, *GetDocument().CssTarget());
   EXPECT_EQ(true, IsSelectorFragmentAnchorCreated());
@@ -282,7 +286,7 @@ TEST_F(CssSelectorFragmentAnchorTest, FragmentStaysAfterUserClicks) {
                           ->GetHistoryItem()
                           ->Url();
 
-  Element& img = *GetDocument().getElementById(AtomicString("image"));
+  Element& img = *GetDocument().getElementById("image");
   EXPECT_EQ(img, *GetDocument().CssTarget());
   EXPECT_EQ(true, IsSelectorFragmentAnchorCreated());
 
@@ -347,7 +351,7 @@ TEST_F(CssSelectorFragmentAnchorTest, ValuePartHasCommaAndIsEncoded) {
   test::RunPendingTasks();
   Compositor().BeginFrame();
 
-  Element& first = *GetDocument().getElementById(AtomicString("first"));
+  Element& first = *GetDocument().getElementById("first");
 
   EXPECT_EQ(first, *GetDocument().CssTarget());
   EXPECT_EQ(true, IsSelectorFragmentAnchorCreated());
@@ -398,7 +402,7 @@ TEST_F(CssSelectorFragmentAnchorTest,
   test::RunPendingTasks();
   Compositor().BeginFrame();
 
-  Element& img = *GetDocument().getElementById(AtomicString("image"));
+  Element& img = *GetDocument().getElementById("image");
 
   EXPECT_FALSE(IsElementOutlined(img));
   EXPECT_EQ(img, *GetDocument().CssTarget());
@@ -419,9 +423,11 @@ TEST_F(CssSelectorFragmentAnchorTest,
 
   test::RunPendingTasks();
 
+  // Render two frames to handle the async step added by the beforematch event.
+  Compositor().BeginFrame();
   Compositor().BeginFrame();
 
-  Element& element = *GetDocument().getElementById(AtomicString("element"));
+  Element& element = *GetDocument().getElementById("element");
 
   EXPECT_FALSE(IsElementOutlined(element));
   EXPECT_EQ(element, *GetDocument().CssTarget());
@@ -452,15 +458,14 @@ TEST_F(CssSelectorFragmentAnchorTest, SelectorFragmentTargetOutline) {
   test::RunPendingTasks();
   Compositor().BeginFrame();
 
-  Element& paragraph = *GetDocument().getElementById(AtomicString("paragraph"));
-  Element& img = *GetDocument().getElementById(AtomicString("image"));
+  Element& paragraph = *GetDocument().getElementById("paragraph");
+  Element& img = *GetDocument().getElementById("image");
 
   EXPECT_TRUE(IsElementOutlined(img));
   EXPECT_EQ(img, *GetDocument().CssTarget());
   EXPECT_EQ(true, IsSelectorFragmentAnchorCreated());
 
-  auto* anchor = To<HTMLAnchorElement>(
-      GetDocument().getElementById(AtomicString("element")));
+  auto* anchor = To<HTMLAnchorElement>(GetDocument().getElementById("element"));
   anchor->click();
 
   EXPECT_FALSE(IsElementOutlined(img));

@@ -24,7 +24,7 @@ PASS SVGAnimatedTransformList inherits Object
 PASS SVGAnimationElement inherits SVGElement
 FAIL SVGCSSRule is not defined
 PASS SVGCircleElement inherits SVGGeometryElement
-PASS SVGClipPathElement inherits SVGElement
+FAIL SVGClipPathElement should inherit SVGElement but got SVGGraphicsElement instead
 FAIL SVGColorProfileElement is not defined
 FAIL SVGColorProfileRule is not defined
 FAIL SVGCursorElement is not defined

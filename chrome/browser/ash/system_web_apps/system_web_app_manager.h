@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,9 +20,10 @@
 #include "chrome/browser/ash/system_web_apps/types/system_web_app_delegate.h"
 #include "chrome/browser/ash/system_web_apps/types/system_web_app_delegate_map.h"
 #include "chrome/browser/web_applications/externally_managed_app_manager.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_ui_manager.h"
 #include "components/keyed_service/core/keyed_service.h"
-#include "components/webapps/common/web_app_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 namespace base {
@@ -57,10 +57,6 @@ class SystemWebAppManager : public KeyedService,
     // Update when the Chrome version number changes.
     kOnVersionChange,
   };
-
-  // Number of attempts to install a given version & locale of the SWAs before
-  // bailing out.
-  static constexpr int kInstallFailureAttempts = 3;
 
   static constexpr char kSystemWebAppSessionHasBrokenIconsPrefName[] =
       "web_apps.system_web_app_has_broken_icons_in_session";
@@ -101,43 +97,37 @@ class SystemWebAppManager : public KeyedService,
   // KeyedService:
   void Shutdown() override;
 
-  // By default, we don't install system web apps in browser tests to avoid
-  // running installation tasks (inefficient because most browser tests don't
-  // need SWAs).
+  // The SystemWebAppManager is disabled in browser tests by default because it
+  // pollutes the startup state (several tests expect the Extensions state to be
+  // clean).
   //
-  // Call this to install default enabled system apps if the test needs them.
-  // (e.g. test opening OS Settings from an Ash views button).
+  // Call this to install apps for SystemWebApp specific tests, e.g if a test
+  // needs to open OS Settings.
   //
-  // This can be called multiple times to simulate reinstallation from system
-  // restart.
+  // This can also be called multiple times to simulate reinstallation from
+  // system restart, e.g.
   void InstallSystemAppsForTesting();
 
   // Returns the app id for the given System App |type|.
-  std::optional<webapps::AppId> GetAppIdForSystemApp(
+  absl::optional<web_app::AppId> GetAppIdForSystemApp(
       SystemWebAppType type) const;
 
   // Returns the System App Type for the given |app_id|.
-  std::optional<SystemWebAppType> GetSystemAppTypeForAppId(
-      const webapps::AppId& app_id) const;
+  absl::optional<SystemWebAppType> GetSystemAppTypeForAppId(
+      const web_app::AppId& app_id) const;
 
   // Returns the System App Delegate for the given App |type|.
   const SystemWebAppDelegate* GetSystemApp(SystemWebAppType type) const;
 
   // Returns the App Ids for all installed System Web Apps.
-  std::vector<webapps::AppId> GetAppIds() const;
+  std::vector<web_app::AppId> GetAppIds() const;
 
   // Returns whether |app_id| points to an installed System App.
-  bool IsSystemWebApp(const webapps::AppId& app_id) const;
+  bool IsSystemWebApp(const web_app::AppId& app_id) const;
 
-  // Returns the SystemWebAppType that should handle |url|.
-  //
-  // Under the hood, it returns the system web app whose `start_url` shares
-  // the same origin with the given |url|. It does not take
-  // `SystemWebAppDelegate::IsURLInSystemAppScope` into account.
-  std::optional<SystemWebAppType> GetSystemAppForURL(const GURL& url) const;
-
-  // Returns the SystemWebAppType that should capture the navigation to |url|.
-  std::optional<SystemWebAppType> GetCapturingSystemAppForURL(
+  // Returns the SystemWebAppType that should capture the navigation to
+  // |url|.
+  absl::optional<SystemWebAppType> GetCapturingSystemAppForURL(
       const GURL& url) const;
 
   const base::OneShotEvent& on_apps_synchronized() const {
@@ -217,7 +207,7 @@ class SystemWebAppManager : public KeyedService,
 
   // web_app::WebAppUiManagerObserver:
   void OnReadyToCommitNavigation(
-      const webapps::AppId& app_id,
+      const web_app::AppId& app_id,
       content::NavigationHandle* navigation_handle) override;
   void OnWebAppUiManagerDestroyed() override;
 

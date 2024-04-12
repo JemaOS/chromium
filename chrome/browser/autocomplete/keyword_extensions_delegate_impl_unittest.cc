@@ -50,8 +50,8 @@ void KeywordExtensionsDelegateImplTest::SetUp() {
 }
 
 void KeywordExtensionsDelegateImplTest::RunTest(bool incognito) {
-  std::unique_ptr<TemplateURLService> empty_model(new TemplateURLService(
-      /*prefs=*/nullptr, /*search_engine_choice_service=*/nullptr));
+  std::unique_ptr<TemplateURLService> empty_model(
+      new TemplateURLService(nullptr, 0));
   MockAutocompleteProviderClient client;
   client.set_template_url_service(std::move(empty_model));
   scoped_refptr<KeywordProvider> keyword_provider =

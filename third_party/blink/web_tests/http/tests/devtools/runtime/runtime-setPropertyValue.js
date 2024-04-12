@@ -2,14 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
-  // This await is necessary for evaluateInPagePromise to produce accurate line numbers.
-  await TestRunner.addResult(`Tests WebInspector.RemoveObject.setPropertyValue implementation.\n`);
+  TestRunner.addResult(`Tests WebInspector.RemoveObject.setPropertyValue implementation.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
   await TestRunner.evaluateInPagePromise(`
       var object1 = { foo: 1 };
       var object2 = { bar: 2 };
@@ -36,7 +31,7 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
   `);
 
   var obj1, obj2;
-  var nameFoo = SDK.RemoteObject.RemoteObject.toCallArgument('foo');
+  var nameFoo = SDK.RemoteObject.toCallArgument('foo');
 
   TestRunner.runTestSuite([
     function testSetUp(next) {
@@ -89,8 +84,8 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
 
     async function testSetNonFiniteNumbers(next) {
       await obj1.setPropertyValue(nameFoo, 'NaN');
-      await obj1.setPropertyValue(SDK.RemoteObject.RemoteObject.toCallArgument('foo1'), 'Infinity');
-      await obj1.setPropertyValue(SDK.RemoteObject.RemoteObject.toCallArgument('foo2'), '-Infinity');
+      await obj1.setPropertyValue(SDK.RemoteObject.toCallArgument('foo1'), 'Infinity');
+      await obj1.setPropertyValue(SDK.RemoteObject.toCallArgument('foo2'), '-Infinity');
       TestRunner.evaluateInPage('dumpObject(\'Set non-finite numbers\')', next);
     },
 

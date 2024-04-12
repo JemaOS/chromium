@@ -7,15 +7,17 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
 #include "content/public/browser/navigation_throttle.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_contents_user_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if defined(__OBJC__)
+
+#import "base/mac/scoped_nsobject.h"
 
 @class ASWebAuthenticationSessionRequest;
 
@@ -24,7 +26,7 @@ class Profile;
 
 // A class to manage the WebContents running an
 // ASWebAuthenticationSessionRequest.
-class AuthSessionRequest
+class API_AVAILABLE(macos(10.15)) AuthSessionRequest
     : public content::WebContentsObserver,
       public content::WebContentsUserData<AuthSessionRequest> {
  public:
@@ -35,7 +37,7 @@ class AuthSessionRequest
   static void CancelAuthSession(ASWebAuthenticationSessionRequest* request);
 
   // Canonicalizes a scheme string. Returns nullopt if it is invalid.
-  static std::optional<std::string> CanonicalizeScheme(std::string scheme);
+  static absl::optional<std::string> CanonicalizeScheme(std::string scheme);
 
   // Create a throttle for the ongoing authentication session.
   std::unique_ptr<content::NavigationThrottle> CreateThrottle(
@@ -85,7 +87,7 @@ class AuthSessionRequest
   raw_ptr<Browser> browser_ = nullptr;
 
   // The request being serviced.
-  ASWebAuthenticationSessionRequest* __strong request_;
+  base::scoped_nsobject<ASWebAuthenticationSessionRequest> request_;
 
   // The scheme being watched for, canonicalized.
   std::string scheme_;
@@ -98,6 +100,6 @@ class AuthSessionRequest
 // If there is an authentication session in progress for the given navigation
 // handle, install a throttle.
 std::unique_ptr<content::NavigationThrottle> MaybeCreateAuthSessionThrottleFor(
-    content::NavigationHandle* handle);
+    content::NavigationHandle* handle) API_AVAILABLE(macos(10.15));
 
 #endif  // CHROME_BROWSER_MAC_AUTH_SESSION_REQUEST_H_

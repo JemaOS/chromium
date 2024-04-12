@@ -11,6 +11,7 @@
 #include <string>
 #include <tuple>
 
+#include "ash/components/arc/mojom/accessibility_helper.mojom-forward.h"
 #include "ash/components/arc/session/connection_observer.h"
 #include "ash/public/cpp/external_arc/message_center/arc_notification_surface_manager.h"
 #include "base/callback_list.h"
@@ -18,10 +19,10 @@
 #include "chrome/browser/ash/accessibility/accessibility_manager.h"
 #include "chrome/browser/ash/arc/accessibility/accessibility_helper_instance_remote_proxy.h"
 #include "chrome/browser/ash/arc/accessibility/arc_accessibility_tree_tracker.h"
+#include "chrome/browser/ash/arc/accessibility/ax_tree_source_arc.h"
 #include "components/keyed_service/core/keyed_service.h"
-#include "services/accessibility/android/ax_tree_source_android.h"
-#include "services/accessibility/android/public/mojom/accessibility_helper.mojom-forward.h"
 
+class PrefService;
 class Profile;
 
 namespace content {
@@ -36,23 +37,21 @@ namespace gfx {
 class Rect;
 }  // namespace gfx
 
-namespace ax::android {
-class AXTreeSourceAndroid;
-}
-
 namespace arc {
 
+class AXTreeSourceArc;
 class ArcBridgeService;
+
+arc::mojom::CaptionStylePtr GetCaptionStyleFromPrefs(PrefService* prefs);
 
 // ArcAccessibilityHelperBridge is an instance to receive converted Android
 // accessibility events and info via mojo interface and dispatch them to Chrome
 // OS components.
 class ArcAccessibilityHelperBridge
     : public KeyedService,
-      public ax::android::mojom::AccessibilityHelperHost,
-      public ConnectionObserver<
-          ax::android::mojom::AccessibilityHelperInstance>,
-      public ax::android::AXTreeSourceAndroid::Delegate,
+      public mojom::AccessibilityHelperHost,
+      public ConnectionObserver<mojom::AccessibilityHelperInstance>,
+      public AXTreeSourceArc::Delegate,
       public ash::ArcNotificationSurfaceManager::Observer,
       public extensions::AutomationEventRouterObserver {
  public:
@@ -89,13 +88,13 @@ class ArcAccessibilityHelperBridge
 
   // mojom::AccessibilityHelperHost overrides.
   void OnAccessibilityEvent(
-      ax::android::mojom::AccessibilityEventDataPtr event_data) override;
+      mojom::AccessibilityEventDataPtr event_data) override;
   void OnNotificationStateChanged(
       const std::string& notification_key,
-      ax::android::mojom::AccessibilityNotificationStateType state) override;
+      mojom::AccessibilityNotificationStateType state) override;
   void OnToggleNativeChromeVoxArcSupport(bool enabled) override;
 
-  // ax::android::AXTreeSourceAndroid::Delegate overrides.
+  // AXTreeSourceArc::Delegate overrides.
   void OnAction(const ui::AXActionData& data) const override;
   bool UseFullFocusMode() const override;
 
@@ -120,38 +119,37 @@ class ArcAccessibilityHelperBridge
  private:
   // virtual for testing.
   virtual extensions::EventRouter* GetEventRouter() const;
-  virtual ax::android::mojom::AccessibilityFilterType GetFilterType();
+  virtual arc::mojom::AccessibilityFilterType GetFilterType();
 
   std::unique_ptr<PrefChangeRegistrar> pref_change_registrar_;
+  void UpdateCaptionSettings() const;
 
   void OnActionResult(const ui::AXActionData& data, bool result) const;
   void OnGetTextLocationDataResult(
       const ui::AXActionData& data,
-      const std::optional<gfx::Rect>& result_rect) const;
+      const absl::optional<gfx::Rect>& result_rect) const;
 
   void PopulateActionParameters(
       const ui::AXActionData& chrome_data,
-      ax::android::mojom::AccessibilityActionData& action_data) const;
+      arc::mojom::AccessibilityActionData& action_data) const;
 
-  std::optional<gfx::Rect> OnGetTextLocationDataResultInternal(
+  absl::optional<gfx::Rect> OnGetTextLocationDataResultInternal(
       const ui::AXTreeID& ax_tree_id,
-      const std::optional<gfx::Rect>& result_rect) const;
+      const absl::optional<gfx::Rect>& result_rect) const;
 
   void OnAccessibilityStatusChanged(
       const ash::AccessibilityStatusEventDetails& event_details);
   void UpdateEnabledFeature();
-  void HandleFilterTypeFocusEvent(
-      ax::android::mojom::AccessibilityEventDataPtr event_data);
-  void HandleFilterTypeAllEvent(
-      ax::android::mojom::AccessibilityEventDataPtr event_data);
+  void HandleFilterTypeFocusEvent(mojom::AccessibilityEventDataPtr event_data);
+  void HandleFilterTypeAllEvent(mojom::AccessibilityEventDataPtr event_data);
 
   void DispatchEventTextAnnouncement(
-      ax::android::mojom::AccessibilityEventData* event_data) const;
+      mojom::AccessibilityEventData* event_data) const;
 
   bool is_focus_event_enabled_ = false;
   bool use_full_focus_mode_ = false;
-  const raw_ptr<Profile> profile_;
-  const raw_ptr<ArcBridgeService> arc_bridge_service_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
+  const raw_ptr<ArcBridgeService, ExperimentalAsh> arc_bridge_service_;
 
   const AccessibilityHelperInstanceRemoteProxy accessibility_helper_instance_;
 
@@ -159,8 +157,8 @@ class ArcAccessibilityHelperBridge
 
   base::CallbackListSubscription accessibility_status_subscription_;
 
-  ax::android::mojom::AccessibilityFilterType filter_type_ =
-      ax::android::mojom::AccessibilityFilterType::OFF;
+  arc::mojom::AccessibilityFilterType filter_type_ =
+      arc::mojom::AccessibilityFilterType::OFF;
 
   base::ScopedObservation<extensions::AutomationEventRouter,
                           extensions::AutomationEventRouterObserver>

@@ -13,7 +13,7 @@ class SimpleFactoryKey;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace notifications {
@@ -27,7 +27,8 @@ class NotificationScheduleServiceFactory : public SimpleKeyedServiceFactory {
       SimpleFactoryKey* key);
 
  private:
-  friend base::NoDestructor<NotificationScheduleServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      NotificationScheduleServiceFactory>;
 
   NotificationScheduleServiceFactory();
   NotificationScheduleServiceFactory(

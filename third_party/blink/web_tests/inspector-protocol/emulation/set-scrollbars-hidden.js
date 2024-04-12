@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startBlank('Tests Emulation.setScrollbarsHidden.');
   await dp.Emulation.setScrollbarsHidden({ hidden: true });
   await session.navigate('../resources/set-scrollbars-hidden.html');

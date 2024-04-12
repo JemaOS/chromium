@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {AvatarIcon} from 'chrome://resources/cr_elements/cr_profile_avatar_selector/cr_profile_avatar_selector.js';
+import {AvatarIcon} from 'chrome://resources/cr_elements/cr_profile_avatar_selector/cr_profile_avatar_selector.js';
 import {sendWithPromise} from 'chrome://resources/js/cr.js';
 
 /**
@@ -109,13 +109,6 @@ export interface ManageProfilesBrowserProxy {
   getProfileStatistics(profilePath: string): void;
 
   /**
-   * Stops showing the profile statistics and removes the related keep alive,
-   * unloading the profile for which the statistics are currently being shown if
-   * it has no more keep alives.
-   */
-  closeProfileStatistics(): void;
-
-  /**
    * Removes profile.
    */
   removeProfile(profilePath: string): void;
@@ -133,11 +126,18 @@ export interface ManageProfilesBrowserProxy {
   getAvailableIcons(): Promise<AvatarIcon[]>;
 
   /**
+   * Creates local profile.
+   */
+  createProfile(
+      profileName: string, profileColor: number, avatarIndex: number,
+      createShortcut: boolean): void;
+
+  /**
    * Creates local profile and opens a profile customization modal dialog on a
    * browser window.
    * TODO(https://crbug.com/1282157): Add createShortcut parameter.
    */
-  continueWithoutAccount(profileColor: number): void;
+  createProfileAndOpenCustomizationDialog(profileColor: number): void;
 
   /**
    * Sets the local profile name.
@@ -162,15 +162,6 @@ export interface ManageProfilesBrowserProxy {
    * flow.
    */
   cancelProfileSwitch(): void;
-
-  /**
-   * Sends the profile order changes
-   * @param fromIndex the initial index of the tile that was dragged.
-   * @param toIndex the index to which the profile has been moved/dropped.
-   * All other profiles between `fromIndex` and `toIndex` +/-1 should be shifted
-   * by +/-1 depending on the change direction.
-   */
-  updateProfileOrder(fromIndex: number, toIndex: number): void;
 
   // <if expr="chromeos_lacros">
   /**
@@ -236,10 +227,6 @@ export class ManageProfilesBrowserProxyImpl {
     chrome.send('getProfileStatistics', [profilePath]);
   }
 
-  closeProfileStatistics() {
-    chrome.send('closeProfileStatistics');
-  }
-
   selectNewAccount(profileColor: number|null) {
     chrome.send('selectNewAccount', [profileColor]);
   }
@@ -248,8 +235,16 @@ export class ManageProfilesBrowserProxyImpl {
     return sendWithPromise('getAvailableIcons');
   }
 
-  continueWithoutAccount(profileColor: number) {
-    chrome.send('continueWithoutAccount', [profileColor]);
+  createProfile(
+      profileName: string, profileColor: number, avatarIndex: number,
+      createShortcut: boolean) {
+    chrome.send(
+        'createProfile',
+        [profileName, profileColor, avatarIndex, createShortcut]);
+  }
+
+  createProfileAndOpenCustomizationDialog(profileColor: number) {
+    chrome.send('createProfileAndOpenCustomizationDialog', [profileColor]);
   }
 
   setProfileName(profilePath: string, profileName: string) {
@@ -270,10 +265,6 @@ export class ManageProfilesBrowserProxyImpl {
 
   cancelProfileSwitch() {
     chrome.send('cancelProfileSwitch');
-  }
-
-  updateProfileOrder(fromIndex: number, toIndex: number) {
-    chrome.send('updateProfileOrder', [fromIndex, toIndex]);
   }
 
   // <if expr="chromeos_lacros">

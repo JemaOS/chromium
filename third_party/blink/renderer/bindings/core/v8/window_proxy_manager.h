@@ -5,7 +5,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_WINDOW_PROXY_MANAGER_H_
 #define THIRD_PARTY_BLINK_RENDERER_BINDINGS_CORE_V8_WINDOW_PROXY_MANAGER_H_
 
-#include "base/memory/stack_allocated.h"
+#include <utility>
+
 #include "third_party/blink/renderer/bindings/core/v8/local_window_proxy.h"
 #include "third_party/blink/renderer/bindings/core/v8/remote_window_proxy.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -36,15 +37,8 @@ class CORE_EXPORT WindowProxyManager
   // frame when swapping frames. Global proxies are passed in a vector to ensure
   // the main world is always processed first. This is needed to prevent bugs
   // like https://crbug.com/700077.
-  struct GlobalProxyVector {
-    STACK_ALLOCATED();
-
-   public:
-    explicit GlobalProxyVector(v8::Isolate* isolate) : proxies(isolate) {}
-
-    HeapVector<Member<DOMWrapperWorld>> worlds;
-    v8::LocalVector<v8::Object> proxies;
-  };
+  using GlobalProxyVector =
+      Vector<std::pair<DOMWrapperWorld*, v8::Local<v8::Object>>>;
   void ReleaseGlobalProxies(GlobalProxyVector&);
   void SetGlobalProxies(const GlobalProxyVector&);
 
@@ -65,7 +59,7 @@ class CORE_EXPORT WindowProxyManager
   using IsolatedWorldMap = HeapHashMap<int, Member<WindowProxy>>;
   enum class FrameType { kLocal, kRemote };
 
-  WindowProxyManager(v8::Isolate*, Frame&, FrameType);
+  WindowProxyManager(Frame&, FrameType);
 
  private:
   // Creates an uninitialized WindowProxy.
@@ -92,18 +86,15 @@ class WindowProxyManagerImplHelper : public WindowProxyManager {
   }
 
  protected:
-  WindowProxyManagerImplHelper(v8::Isolate* isolate,
-                               Frame& frame,
-                               FrameType frame_type)
-      : WindowProxyManager(isolate, frame, frame_type) {}
+  WindowProxyManagerImplHelper(Frame& frame, FrameType frame_type)
+      : WindowProxyManager(frame, frame_type) {}
 };
 
 class LocalWindowProxyManager
     : public WindowProxyManagerImplHelper<LocalFrame, LocalWindowProxy> {
  public:
-  explicit LocalWindowProxyManager(v8::Isolate* isolate, LocalFrame& frame)
+  explicit LocalWindowProxyManager(LocalFrame& frame)
       : WindowProxyManagerImplHelper<LocalFrame, LocalWindowProxy>(
-            isolate,
             frame,
             FrameType::kLocal) {}
 
@@ -125,9 +116,8 @@ class LocalWindowProxyManager
 class RemoteWindowProxyManager
     : public WindowProxyManagerImplHelper<RemoteFrame, RemoteWindowProxy> {
  public:
-  explicit RemoteWindowProxyManager(v8::Isolate* isolate, RemoteFrame& frame)
+  explicit RemoteWindowProxyManager(RemoteFrame& frame)
       : WindowProxyManagerImplHelper<RemoteFrame, RemoteWindowProxy>(
-            isolate,
             frame,
             FrameType::kRemote) {}
 };

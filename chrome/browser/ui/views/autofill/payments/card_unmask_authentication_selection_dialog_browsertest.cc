@@ -4,7 +4,7 @@
 
 #include "base/test/metrics/histogram_tester.h"
 #include "build/build_config.h"
-#include "chrome/browser/ui/autofill/payments/view_factory.h"
+#include "chrome/browser/ui/autofill/payments/card_unmask_authentication_selection_dialog_controller_impl.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
@@ -12,7 +12,6 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/autofill/core/browser/autofill_test_utils.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
-#include "components/autofill/core/browser/ui/payments/card_unmask_authentication_selection_dialog_controller_impl.h"
 #include "content/public/test/browser_test.h"
 
 namespace autofill {
@@ -31,14 +30,13 @@ class CardUnmaskAuthenticationSelectionDialogBrowserTestBase
     content::WebContents* web_contents =
         browser()->tab_strip_model()->GetActiveWebContents();
 
-    card_unmask_authentication_selection_dialog_controller_ =
-        std::make_unique<CardUnmaskAuthenticationSelectionDialogControllerImpl>(
-            challenge_options_,
-            /*confirm_unmasking_method_callback=*/base::DoNothing(),
-            /*cancel_unmasking_closure=*/base::DoNothing());
+    // Do lazy initialization of controller.
+    CardUnmaskAuthenticationSelectionDialogControllerImpl::CreateForWebContents(
+        web_contents);
     controller()->ShowDialog(
-        base::BindOnce(&CreateAndShowCardUnmaskAuthenticationSelectionDialog,
-                       base::Unretained(web_contents)));
+        challenge_options_,
+        /*confirm_unmasking_method_callback=*/base::DoNothing(),
+        /*cancel_unmasking_closure=*/base::DoNothing());
   }
 
   CardUnmaskAuthenticationSelectionDialogView* GetDialog() {
@@ -64,13 +62,16 @@ class CardUnmaskAuthenticationSelectionDialogBrowserTestBase
   }
 
   CardUnmaskAuthenticationSelectionDialogControllerImpl* controller() {
-    return card_unmask_authentication_selection_dialog_controller_.get();
+    if (!browser() || !browser()->tab_strip_model() ||
+        !browser()->tab_strip_model()->GetActiveWebContents()) {
+      return nullptr;
+    }
+    return CardUnmaskAuthenticationSelectionDialogControllerImpl::
+        FromWebContents(browser()->tab_strip_model()->GetActiveWebContents());
   }
 
  protected:
   std::vector<CardUnmaskChallengeOption> challenge_options_;
-  std::unique_ptr<CardUnmaskAuthenticationSelectionDialogControllerImpl>
-      card_unmask_authentication_selection_dialog_controller_;
 };
 
 // Non-parameterized version of
@@ -147,8 +148,7 @@ INSTANTIATE_TEST_SUITE_P(
             CardUnmaskChallengeOptionType::kSmsOtp},
         std::vector<CardUnmaskChallengeOptionType>{
             CardUnmaskChallengeOptionType::kSmsOtp,
-            CardUnmaskChallengeOptionType::kCvc,
-            CardUnmaskChallengeOptionType::kThreeDomainSecure}));
+            CardUnmaskChallengeOptionType::kCvc}));
 
 // Ensures the UI can be shown.
 IN_PROC_BROWSER_TEST_P(

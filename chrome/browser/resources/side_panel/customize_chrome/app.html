@@ -1,26 +1,33 @@
-<style include="cr-icons sp-shared-style">
-  #container {
-    box-sizing: border-box;
+<style>
+  :host {
+    --horizontal-rule-color: var(--google-grey-300);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :host {
+      --horizontal-rule-color: var(--google-grey-700);
+    }
+  }
+
+  .header {
     color: var(--cr-primary-text-color);
-    display: block;
-    height: 100%;
-    padding: var(--sp-body-padding) 0;
-    position: relative;
-  }
-
-  .section {
-    display: block;
-  }
-
-  sp-heading {
-    margin: 8px 16px;
-  }
-
-  .sp-card {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
-    line-height: 16px;
-    max-width: calc(360px - 2 * var(--sp-body-padding));
+    line-height: 20px;
+    margin: 0 16px 16px;
+    padding-top: 16px;
+  }
+
+  .horizontal-rule {
+    background-color: var(--horizontal-rule-color);
+    border: none;
+    height: 2px;
+    margin: 0;
+    width: 100%;
+  }
+
+  customize-chrome-appearance {
+    margin-bottom: 16px;
   }
 
   customize-chrome-appearance,
@@ -28,121 +35,43 @@
   customize-chrome-cards,
   customize-chrome-categories,
   customize-chrome-themes,
-  customize-chrome-chrome-colors,
-  customize-chrome-wallpaper-search {
+  customize-chrome-chrome-colors {
     display: block;
-    max-width: 360px;
+    max-width: 320px;
     width: 100%;
   }
-
-  customize-chrome-appearance {
-    margin-bottom: 0;
-  }
-
-  #extensions .description {
-    color: var(--cr-secondary-text-color);
-    font-weight: 400;
-    padding: 0 16px 4px;
-  }
-
-  .description a {
-    color: var(--cr-link-color);
-    text-decoration: none;
-  }
-
-  #buttonContainer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 8px 16px;
-  }
-
-  #couponsButton .cr-icon {
-    --cr-icon-image: url(icons/coupons.svg);
-  }
-
-  #writingButton .cr-icon {
-    --cr-icon-image: url(icons/writing.svg);
-  }
-
-  #productivityButton .cr-icon {
-    --cr-icon-image: url(icons/productivity.svg);
-  }
 </style>
-<iron-pages id="container"
-    class="sp-scroller sp-scroller-top-of-page sp-scroller-bottom-of-page"
-    selected="[[page_]]" attr-for-selected="page-name">
+<iron-pages selected="[[page_]]" attr-for-selected="page-name">
   <div page-name="overview" id="overviewPage">
-    <div id="appearance" class="section sp-card">
-      <sp-heading hide-back-button>
-        <h2 slot="heading">$i18n{appearanceHeader}</h2>
-      </sp-heading>
+    <div id="appearance" class="section">
+      <h2 class="header">$i18n{appearanceHeader}</h2>
       <customize-chrome-appearance on-edit-theme-click="onEditThemeClick_"
-          on-wallpaper-search-click="onWallpaperSearchSelect_"
-          id="appearanceElement">
+        id="appearanceElement">
       </customize-chrome-appearance>
     </div>
-    <hr class="sp-cards-separator">
-    <div id="shortcuts" class="section sp-card">
-      <sp-heading hide-back-button>
-        <h2 slot="heading">$i18n{shortcutsHeader}</h2>
-      </sp-heading>
+    <hr class="horizontal-rule">
+    <div id="shortcuts" class="section">
+      <h2 class="header">$i18n{shortcutsHeader}</h2>
       <customize-chrome-shortcuts></customize-chrome-shortcuts>
     </div>
     <template is="dom-if" if="[[modulesEnabled_]]">
-      <hr class="sp-cards-separator">
-      <div id="modules" class="section sp-card">
-        <sp-heading hide-back-button>
-          <h2 slot="heading">$i18n{cardsHeader}</h2>
-        </sp-heading>
+      <hr class="horizontal-rule">
+      <div id="modules" class="section">
+        <h2 class="header">$i18n{cardsHeader}</h2>
         <customize-chrome-cards></customize-chrome-cards>
-      </div>
-    </template>
-    <template is="dom-if" if="[[extensionsCardEnabled_]]" restamp>
-      <hr class="sp-cards-separator">
-      <div id="extensions" class="section sp-card">
-        <sp-heading hide-back-button>
-          <h2 slot="heading">Extensions</h2>
-        </sp-heading>
-        <div class="description">
-          $i18nRaw{customizeWithChromeWebstoreLabel}
-        </div>
-        <div id="buttonContainer">
-          <cr-chip id="couponsButton" chip-role="link"
-            on-click="onCouponsButtonClick_">
-            <div class="cr-icon"></div>
-            $i18n{webstoreShoppingCategoryLabel}
-          </cr-chip>
-          <cr-chip id="writingButton" chip-role="link"
-            on-click="onWritingButtonClick_">
-            <div class="cr-icon"></div>
-            $i18n{webstoreWritingHelpCollectionLabel}
-          </cr-chip>
-          <cr-chip id="productivityButton" chip-role="link"
-            on-click="onProductivityButtonClick_">
-            <div class="cr-icon"></div>
-            $i18n{webstoreProductivityCategoryLabel}
-          </cr-chip>
-        </div>
       </div>
     </template>
   </div>
   <customize-chrome-categories on-back-click="onBackClick_"
       on-collection-select="onCollectionSelect_" page-name="categories"
       id="categoriesPage" on-local-image-upload="onLocalImageUpload_"
-      on-chrome-colors-select="onChromeColorsSelect_"
-      on-wallpaper-search-select="onWallpaperSearchSelect_">
+      on-chrome-colors-select="onChromeColorsSelect_">
   </customize-chrome-categories>
   <customize-chrome-themes on-back-click="onBackClick_"
-      page-name="themes" id="themesPage"
+      page-name="themes" id="themesPage" 
       selected-collection="[[selectedCollection_]]">
   </customize-chrome-themes>
   <customize-chrome-chrome-colors on-back-click="onBackClick_"
       page-name="chrome-colors" id="chromeColorsPage">
   </customize-chrome-chrome-colors>
-  <template is="dom-if" if="[[wallpaperSearchEnabled_]]">
-    <customize-chrome-wallpaper-search on-back-click="onBackClick_"
-        page-name="wallpaper-search" id="wallpaperSearchPage">
-    </customize-chrome-wallpaper-search>
-  </template>
 </iron-pages>

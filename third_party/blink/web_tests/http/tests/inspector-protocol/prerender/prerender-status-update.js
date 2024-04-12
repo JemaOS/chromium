@@ -1,41 +1,26 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
-  const {tabTargetSession} = await testRunner.startBlankWithTabTarget(
+(async function(testRunner) {
+  const {page, session, dp} = await testRunner.startBlank(
       `Test that prerender navigations receives the status updates`);
+  const enableResponse = await dp.Preload.enable();
+  testRunner.log(enableResponse);
 
-  const childTargetManager =
-      new TestRunner.ChildTargetManager(testRunner, tabTargetSession);
-  await childTargetManager.startAutoAttach();
-  const session1 = childTargetManager.findAttachedSessionPrimaryMainFrame();
-  const dp1 = session1.protocol;
-  await dp1.Preload.enable();
+  // Navigate to speculation rules Prerender Page.
+  page.navigate('resources/simple-prerender.html');
 
-  session1.navigate('resources/simple-prerender.html');
+  let statusReport = await dp.Preload.oncePrerenderStatusUpdated();
+  testRunner.log(statusReport, '', ['loaderId', 'initiatingFrameId', 'sessionId']);
+  let loaderId = statusReport.params.key.loaderId;
+  statusReport = await dp.Preload.oncePrerenderStatusUpdated();
+  testRunner.log(statusReport, '', ['loaderId', 'initiatingFrameId', 'sessionId']);
+  statusReport = await dp.Preload.oncePrerenderStatusUpdated();
+  testRunner.log(statusReport, '', ['loaderId', 'initiatingFrameId', 'sessionId']);
 
-  // Pending
-  const resultPending = await dp1.Preload.oncePrerenderStatusUpdated();
-  testRunner.log(resultPending, '', ['loaderId', 'sessionId']);
+  session.evaluate(`document.getElementById('link').click()`);
+  statusReport = await dp.Preload.oncePrerenderStatusUpdated();
+  testRunner.log(statusReport, '', ['loaderId', 'initiatingFrameId', 'sessionId']);
+  let loaderIdActivation = statusReport.params.key.loaderId;
 
-  // Running
-  testRunner.log(
-      await dp1.Preload.oncePrerenderStatusUpdated(), '',
-      ['loaderId', 'sessionId']);
-  // Ready
-  testRunner.log(
-      await dp1.Preload.oncePrerenderStatusUpdated(), '',
-      ['loaderId', 'sessionId']);
-
-  const session2 = childTargetManager.findAttachedSessionPrerender();
-  const dp2 = session2.protocol;
-  await dp2.Preload.enable();
-
-  // Activate prerendered page.
-  session1.evaluate(`document.getElementById('link').click()`);
-
-  // Success
-  const resultSuccess = await dp2.Preload.oncePrerenderStatusUpdated();
-  testRunner.log(resultSuccess, '', ['loaderId', 'sessionId']);
-
-  if (resultPending.params.key.loaderId !== resultSuccess.params.key.loaderId) {
+  if (loaderId !== loaderIdActivation) {
     testRunner.log('loaderId should remain consistent.');
   }
 

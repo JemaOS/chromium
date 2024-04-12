@@ -17,7 +17,6 @@
 #include "chrome/browser/browser_process_impl.h"
 #include "chrome/browser/download/download_request_limiter.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
-#include "chrome/browser/media/webrtc/webrtc_log_uploader.h"
 #include "chrome/browser/notifications/notification_platform_bridge.h"
 #include "chrome/browser/notifications/stub_notification_platform_bridge.h"
 #include "chrome/browser/notifications/system_notification_helper.h"
@@ -30,10 +29,8 @@
 #include "chrome/browser/status_icons/status_tray.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/test/base/testing_browser_process_platform_part.h"
-#include "components/embedder_support/origin_trials/origin_trials_settings_storage.h"
 #include "components/metrics/metrics_service.h"
 #include "components/network_time/network_time_tracker.h"
-#include "components/os_crypt/async/browser/test_utils.h"
 #include "components/permissions/permissions_client.h"
 #include "components/policy/core/browser/browser_policy_connector.h"
 #include "components/prefs/pref_service.h"
@@ -43,14 +40,14 @@
 #include "extensions/buildflags/buildflags.h"
 #include "media/media_buildflags.h"
 #include "printing/buildflags/buildflags.h"
+#include "services/device/public/cpp/geolocation/geolocation_manager.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/test/test_network_connection_tracker.h"
 #include "services/network/test/test_network_quality_tracker.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
-#include "services/device/public/cpp/geolocation/geolocation_system_permission_manager.h"
-#include "services/device/public/cpp/test/fake_geolocation_system_permission_manager.h"
+#include "services/device/public/cpp/test/fake_geolocation_manager.h"
 #endif
 
 #if BUILDFLAG(ENABLE_BACKGROUND_MODE)
@@ -72,12 +69,11 @@
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/hid/hid_policy_allowed_devices.h"
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/hid/hid_pinned_notification.h"
-#include "chrome/browser/usb/usb_pinned_notification.h"
 #else
 #include "chrome/browser/hid/hid_status_icon.h"
-#include "chrome/browser/usb/usb_status_icon.h"
 #endif  // BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/serial/serial_policy_allowed_ports.h"
 #include "components/keep_alive_registry/keep_alive_registry.h"
@@ -110,12 +106,11 @@ void TestingBrowserProcess::CreateInstance() {
   process->Init();
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
-  auto fake_geolocation_system_permission_manager =
-      std::make_unique<device::FakeGeolocationSystemPermissionManager>();
-  fake_geolocation_system_permission_manager->SetSystemPermission(
+  auto fake_geolocation_manager =
+      std::make_unique<device::FakeGeolocationManager>();
+  fake_geolocation_manager->SetSystemPermission(
       device::LocationSystemPermissionStatus::kAllowed);
-  device::GeolocationSystemPermissionManager::SetInstance(
-      std::move(fake_geolocation_system_permission_manager));
+  process->SetGeolocationManager(std::move(fake_geolocation_manager));
 #endif
 }
 
@@ -143,8 +138,7 @@ void TestingBrowserProcess::TearDownAndDeleteInstance() {
 
 TestingBrowserProcess::TestingBrowserProcess()
     : app_locale_("en"),
-      platform_part_(std::make_unique<TestingBrowserProcessPlatformPart>()),
-      os_crypt_async_(os_crypt_async::GetTestOSCryptAsyncForTesting()) {
+      platform_part_(std::make_unique<TestingBrowserProcessPlatformPart>()) {
   // TestingBrowserProcess is used in unit_tests which sets this up through
   // content::UnitTestTestSuite but also through other test binaries which don't
   // use that test suite in which case we have to set it up.
@@ -192,10 +186,8 @@ void TestingBrowserProcess::Init() {
   KeepAliveRegistry::GetInstance()->SetIsShuttingDown(false);
 #if BUILDFLAG(IS_CHROMEOS)
   hid_system_tray_icon_ = std::make_unique<HidPinnedNotification>();
-  usb_system_tray_icon_ = std::make_unique<UsbPinnedNotification>();
 #else
   hid_system_tray_icon_ = std::make_unique<HidStatusIcon>();
-  usb_system_tray_icon_ = std::make_unique<UsbStatusIcon>();
 #endif  // BUILDFLAG(IS_CHROMEOS)
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
@@ -219,13 +211,8 @@ metrics::MetricsService* TestingBrowserProcess::metrics_service() {
   return metrics_service_;
 }
 
-embedder_support::OriginTrialsSettingsStorage*
-TestingBrowserProcess::GetOriginTrialsSettingsStorage() {
-  if (!origin_trials_settings_storage_) {
-    origin_trials_settings_storage_ =
-        std::make_unique<embedder_support::OriginTrialsSettingsStorage>();
-  }
-  return origin_trials_settings_storage_.get();
+device::GeolocationManager* TestingBrowserProcess::geolocation_manager() {
+  return geolocation_manager_.get();
 }
 
 SystemNetworkContextManager*
@@ -339,6 +326,11 @@ void TestingBrowserProcess::set_background_mode_manager_for_test(
 }
 #endif
 
+void TestingBrowserProcess::SetGeolocationManager(
+    std::unique_ptr<device::GeolocationManager> geolocation_manager) {
+  geolocation_manager_ = std::move(geolocation_manager);
+}
+
 StatusTray* TestingBrowserProcess::status_tray() {
   return status_tray_.get();
 }
@@ -346,10 +338,6 @@ StatusTray* TestingBrowserProcess::status_tray() {
 safe_browsing::SafeBrowsingService*
 TestingBrowserProcess::safe_browsing_service() {
   return sb_service_.get();
-}
-
-WebRtcLogUploader* TestingBrowserProcess::webrtc_log_uploader() {
-  return webrtc_log_uploader_.get();
 }
 
 subresource_filter::RulesetService*
@@ -414,10 +402,9 @@ printing::PrintJobManager* TestingBrowserProcess::print_job_manager() {
 printing::PrintPreviewDialogController*
 TestingBrowserProcess::print_preview_dialog_controller() {
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
-  if (!print_preview_dialog_controller_) {
+  if (!print_preview_dialog_controller_.get())
     print_preview_dialog_controller_ =
-        std::make_unique<printing::PrintPreviewDialogController>();
-  }
+        new printing::PrintPreviewDialogController();
   return print_preview_dialog_controller_.get();
 #else
   NOTIMPLEMENTED();
@@ -474,6 +461,10 @@ MediaFileSystemRegistry* TestingBrowserProcess::media_file_system_registry() {
 #endif
 }
 
+WebRtcLogUploader* TestingBrowserProcess::webrtc_log_uploader() {
+  return nullptr;
+}
+
 network_time::NetworkTimeTracker*
 TestingBrowserProcess::network_time_tracker() {
   if (!network_time_tracker_) {
@@ -483,7 +474,7 @@ TestingBrowserProcess::network_time_tracker() {
     network_time_tracker_ = std::make_unique<network_time::NetworkTimeTracker>(
         std::unique_ptr<base::Clock>(new base::DefaultClock()),
         std::unique_ptr<base::TickClock>(new base::DefaultTickClock()),
-        local_state_, nullptr, std::nullopt);
+        local_state_, nullptr);
   }
   return network_time_tracker_.get();
 }
@@ -512,18 +503,18 @@ SerialPolicyAllowedPorts* TestingBrowserProcess::serial_policy_allowed_ports() {
   return serial_policy_allowed_ports_.get();
 }
 
+HidPolicyAllowedDevices* TestingBrowserProcess::hid_policy_allowed_devices() {
+  if (!hid_policy_allowed_devices_) {
+    hid_policy_allowed_devices_ =
+        std::make_unique<HidPolicyAllowedDevices>(local_state());
+  }
+  return hid_policy_allowed_devices_.get();
+}
+
 HidSystemTrayIcon* TestingBrowserProcess::hid_system_tray_icon() {
   return hid_system_tray_icon_.get();
 }
-
-UsbSystemTrayIcon* TestingBrowserProcess::usb_system_tray_icon() {
-  return usb_system_tray_icon_.get();
-}
 #endif
-
-os_crypt_async::OSCryptAsync* TestingBrowserProcess::os_crypt_async() {
-  return os_crypt_async_.get();
-}
 
 BuildState* TestingBrowserProcess::GetBuildState() {
 #if !BUILDFLAG(IS_ANDROID)
@@ -571,6 +562,7 @@ void TestingBrowserProcess::SetLocalState(PrefService* local_state) {
 #endif
 #if !BUILDFLAG(IS_ANDROID)
     serial_policy_allowed_ports_.reset();
+    hid_policy_allowed_devices_.reset();
 #endif
     ShutdownBrowserPolicyConnector();
     created_browser_policy_connector_ = false;
@@ -580,7 +572,7 @@ void TestingBrowserProcess::SetLocalState(PrefService* local_state) {
 
 void TestingBrowserProcess::ShutdownBrowserPolicyConnector() {
   if (browser_policy_connector_) {
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
     // Initial cleanup for ChromeBrowserCloudManagement, shutdown components
     // that depend on profile and notification system. For example,
     // ProfileManager observer and KeyServices observer need to be removed
@@ -606,11 +598,6 @@ void TestingBrowserProcess::SetSafeBrowsingService(
   sb_service_ = sb_service;
 }
 
-void TestingBrowserProcess::SetWebRtcLogUploader(
-    std::unique_ptr<WebRtcLogUploader> uploader) {
-  webrtc_log_uploader_ = std::move(uploader);
-}
-
 void TestingBrowserProcess::SetRulesetService(
     std::unique_ptr<subresource_filter::RulesetService> ruleset_service) {
   subresource_filter_ruleset_service_.swap(ruleset_service);
@@ -629,11 +616,6 @@ void TestingBrowserProcess::SetStatusTray(
 void TestingBrowserProcess::SetHidSystemTrayIcon(
     std::unique_ptr<HidSystemTrayIcon> hid_system_tray_icon) {
   hid_system_tray_icon_ = std::move(hid_system_tray_icon);
-}
-
-void TestingBrowserProcess::SetUsbSystemTrayIcon(
-    std::unique_ptr<UsbSystemTrayIcon> usb_system_tray_icon) {
-  usb_system_tray_icon_ = std::move(usb_system_tray_icon);
 }
 #endif
 

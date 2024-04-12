@@ -7,7 +7,7 @@
 #include <memory>
 #include <set>
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/public/cpp/select_to_speak_event_handler_delegate.h"
 #include "ash/shell.h"
 #include "ash/test/ash_test_base.h"
@@ -143,9 +143,9 @@ class SelectToSpeakEventHandlerTest : public AshTestBase {
   }
 
  protected:
-  raw_ptr<ui::test::EventGenerator> generator_ = nullptr;
+  raw_ptr<ui::test::EventGenerator, ExperimentalAsh> generator_ = nullptr;
   EventCapturer event_capturer_;
-  raw_ptr<AccessibilityController> controller_ = nullptr;
+  raw_ptr<AccessibilityControllerImpl, ExperimentalAsh> controller_ = nullptr;
   std::unique_ptr<TestDelegate> delegate_;
 };
 
@@ -337,9 +337,9 @@ TEST_F(SelectToSpeakEventHandlerTest, SearchPlusClickTwice) {
 }
 
 TEST_F(SelectToSpeakEventHandlerTest, SearchPlusKeyIgnoresClicks) {
-  // If the user presses the Search key and then some other key
-  // besides 's', we should assume the user does not want select-to-speak,
-  // and click events should be ignored.
+  // If the user presses the Search key and then some other key,
+  // we should assume the user does not want select-to-speak, and
+  // click events should be ignored.
 
   generator_->PressKey(ui::VKEY_LWIN, ui::EF_COMMAND_DOWN);
   ASSERT_TRUE(event_capturer_.last_key_event());
@@ -495,16 +495,6 @@ TEST_F(SelectToSpeakEventHandlerTest,
   event_capturer_.Reset();
   generator_->ReleaseKey(ui::VKEY_LWIN, ui::EF_COMMAND_DOWN);
   EXPECT_FALSE(event_capturer_.last_key_event());
-}
-
-TEST_F(SelectToSpeakEventHandlerTest, PassesCtrlKey) {
-  generator_->PressKey(ui::VKEY_CONTROL, /*flags=*/0);
-  ASSERT_TRUE(event_capturer_.last_key_event());
-  EXPECT_FALSE(event_capturer_.last_key_event()->handled());
-  event_capturer_.Reset();
-  generator_->ReleaseKey(ui::VKEY_CONTROL, /*flags=*/0);
-  EXPECT_TRUE(event_capturer_.last_key_event());
-  EXPECT_FALSE(event_capturer_.last_key_event()->handled());
 }
 
 TEST_F(SelectToSpeakEventHandlerTest, SelectionRequestedWorksWithMouse) {

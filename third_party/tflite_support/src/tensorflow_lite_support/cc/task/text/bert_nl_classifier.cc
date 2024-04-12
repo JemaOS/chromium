@@ -57,7 +57,8 @@ absl::Status SanityCheckOptions(const BertNLClassifierOptions& options) {
 }  // namespace
 
 absl::Status BertNLClassifier::Preprocess(
-    const std::vector<TfLiteTensor*>& input_tensors, const std::string& input) {
+    const std::vector<TfLiteTensor*>& input_tensors,
+    const std::string& input) {
   return preprocessor_->Preprocess(input);
 }
 
@@ -83,15 +84,15 @@ StatusOr<std::vector<core::Category>> BertNLClassifier::Postprocess(
 StatusOr<std::unique_ptr<BertNLClassifier>> BertNLClassifier::CreateFromOptions(
     const BertNLClassifierOptions& options,
     std::unique_ptr<tflite::OpResolver> resolver) {
-  TFLITE_RETURN_IF_ERROR(SanityCheckOptions(options));
+  RETURN_IF_ERROR(SanityCheckOptions(options));
 
   auto options_copy = absl::make_unique<BertNLClassifierOptions>(options);
 
-  TFLITE_ASSIGN_OR_RETURN(
+  ASSIGN_OR_RETURN(
       auto bert_nl_classifier,
       core::TaskAPIFactory::CreateFromBaseOptions<BertNLClassifier>(
           &options_copy->base_options(), std::move(resolver)));
-  TFLITE_RETURN_IF_ERROR(bert_nl_classifier->Initialize(std::move(options_copy)));
+  RETURN_IF_ERROR(bert_nl_classifier->Initialize(std::move(options_copy)));
   return std::move(bert_nl_classifier);
 }
 
@@ -100,9 +101,9 @@ absl::Status BertNLClassifier::Initialize(
   options_ = std::move(options);
 
   // Create preprocessor.
-  TFLITE_ASSIGN_OR_RETURN(auto input_indices,
+  ASSIGN_OR_RETURN(auto input_indices,
                    GetBertInputTensorIndices(GetTfLiteEngine()));
-  TFLITE_ASSIGN_OR_RETURN(preprocessor_,
+  ASSIGN_OR_RETURN(preprocessor_,
                    processor::BertPreprocessor::Create(
                        GetTfLiteEngine(),
                        {input_indices[0], input_indices[1], input_indices[2]}));

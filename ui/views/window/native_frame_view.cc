@@ -92,7 +92,7 @@ gfx::Size NativeFrameView::GetMaximumSize() const {
   return frame_->client_view()->GetMaximumSize();
 }
 
-BEGIN_METADATA(NativeFrameView)
+BEGIN_METADATA(NativeFrameView, NonClientFrameView)
 END_METADATA
 
 }  // namespace views

@@ -57,12 +57,11 @@ const bool PlatformStyle::kAdjustBubbleIfOffscreen =
 #endif
 
 // static
-std::unique_ptr<ScrollBar> PlatformStyle::CreateScrollBar(
-    ScrollBar::Orientation orientation) {
+std::unique_ptr<ScrollBar> PlatformStyle::CreateScrollBar(bool is_horizontal) {
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
-  return std::make_unique<OverlayScrollBar>(orientation);
+  return std::make_unique<OverlayScrollBar>(is_horizontal);
 #else
-  return std::make_unique<ScrollBarViews>(orientation);
+  return std::make_unique<ScrollBarViews>(is_horizontal);
 #endif
 }
 

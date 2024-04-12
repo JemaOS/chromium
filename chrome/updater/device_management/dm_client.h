@@ -6,15 +6,12 @@
 #define CHROME_UPDATER_DEVICE_MANAGEMENT_DM_CLIENT_H_
 
 #include <memory>
-#include <optional>
-#include <ostream>
 #include <string>
 #include <vector>
 
 #include "base/functional/callback.h"
 #include "base/memory/scoped_refptr.h"
-
-class GURL;
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace update_client {
 class NetworkFetcher;
@@ -33,7 +30,7 @@ class DMClient {
     virtual ~Configurator() = default;
 
     // URL at which to contact the DM server.
-    virtual GURL GetDMServerUrl() const = 0;
+    virtual std::string GetDMServerUrl() const = 0;
 
     // Agent reported in the "agent" query parameter.
     virtual std::string GetAgentParameter() const = 0;
@@ -81,9 +78,6 @@ class DMClient {
 
     // No POST data.
     kNoPayload,
-
-    // Failed to get the default DM storage.
-    kNoDefaultDMStorage,
   };
 
   using RegisterCallback = base::OnceCallback<void(RequestResult)>;
@@ -137,13 +131,9 @@ class DMClient {
       PolicyValidationReportCallback callback);
 
   static std::unique_ptr<Configurator> CreateDefaultConfigurator(
-      const GURL& server_url,
-      std::optional<PolicyServiceProxyConfiguration>
+      absl::optional<PolicyServiceProxyConfiguration>
           policy_service_proxy_configuration);
 };
-
-std::ostream& operator<<(std::ostream& os,
-                         const DMClient::RequestResult& result);
 
 }  // namespace updater
 

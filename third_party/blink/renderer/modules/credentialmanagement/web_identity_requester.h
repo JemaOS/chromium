@@ -5,7 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_CREDENTIALMANAGEMENT_WEB_IDENTITY_REQUESTER_H_
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_CREDENTIALMANAGEMENT_WEB_IDENTITY_REQUESTER_H_
 
-#include "third_party/blink/public/mojom/credentialmanagement/credential_manager.mojom-blink.h"
 #include "third_party/blink/public/mojom/webid/federated_auth_request.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/dom/scoped_abort_state.h"
@@ -15,65 +14,44 @@
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
 namespace blink {
-class Credential;
-class IdentityProviderRequestOptions;
-class WebIdentityWindowOnloadEventListener;
 
-using MediationRequirement = mojom::blink::CredentialMediationRequirement;
+class IdentityProviderConfig;
+class WebIdentityWindowOnloadEventListener;
 
 // Helper class to handle FedCM token requests.
 class MODULES_EXPORT WebIdentityRequester final
     : public GarbageCollected<WebIdentityRequester> {
  public:
-  WebIdentityRequester(ExecutionContext* context,
-                       MediationRequirement requirement);
+  explicit WebIdentityRequester(ExecutionContext* context);
 
   void OnRequestToken(mojom::blink::RequestTokenStatus status,
-                      const std::optional<KURL>& selected_idp_config_url,
-                      const WTF::String& token,
-                      const mojom::blink::TokenErrorPtr error,
-                      bool is_auto_selected);
+                      const absl::optional<KURL>& selected_idp_config_url,
+                      const WTF::String& token);
 
   // Invoked at most once per token request.
   void RequestToken();
   // Invoked at least once per token request, can be multiple times.
   void AppendGetCall(
-      ScriptPromiseResolverTyped<IDLNullable<Credential>>* resolver,
-      const HeapVector<Member<IdentityProviderRequestOptions>>& providers,
-      mojom::blink::RpContext rp_context,
-      mojom::blink::RpMode rp_mode);
+      ScriptPromiseResolver* resolver,
+      const HeapVector<Member<IdentityProviderConfig>>& providers,
+      bool auto_reauthn,
+      mojom::blink::RpContext rp_context);
   void InsertScopedAbortState(
       std::unique_ptr<ScopedAbortState> scoped_abort_state);
 
   // Starts the timer for recording the duration from when RequestToken is
   // called directly to when RequestToken would be called if invoked through
   // WebIdentityRequester.
-  void StartDelayTimer(
-      ScriptPromiseResolverTyped<IDLNullable<Credential>>* resolver);
+  void StartDelayTimer(ScriptPromiseResolver* resolver);
   // Stops the timer for recording the duration from when RequestToken is
   // called directly to when RequestToken would be called if invoked through
   // WebIdentityRequester.
   void StopDelayTimer(bool timer_started_before_onload);
 
-  // Abort an ongoing IdentityCredential request. This will only be called
-  // before the request finishes due to `scoped_abort_state`.
-  void AbortRequest(ScriptState* script_state);
-
   void Trace(Visitor* visitor) const;
 
  private:
-  struct ResolverAndProviders : public GarbageCollected<ResolverAndProviders> {
-    ResolverAndProviders(
-        ScriptPromiseResolverTyped<IDLNullable<Credential>>* resolver,
-        Vector<KURL> providers);
-    void Trace(Visitor*) const;
-
-    const Member<ScriptPromiseResolverTyped<IDLNullable<Credential>>> resolver_;
-    const Vector<KURL> providers_;
-  };
-
-  void InitWindowOnloadEventListener(
-      ScriptPromiseResolverTyped<IDLNullable<Credential>>* resolver);
+  void InitWindowOnloadEventListener(ScriptPromiseResolver* resolver);
 
   // A vector of pointers to mojom class objects. Each mojom class object
   // corresponds to parameters of a navigator.credentials.get call and contains
@@ -84,9 +62,7 @@ class MODULES_EXPORT WebIdentityRequester final
   Member<ExecutionContext> execution_context_;
   HashSet<std::unique_ptr<ScopedAbortState>> scoped_abort_states_;
   Member<WebIdentityWindowOnloadEventListener> window_onload_event_listener_;
-  HeapVector<Member<ResolverAndProviders>> resolvers_and_providers_;
-
-  MediationRequirement requirement_;
+  HeapHashMap<KURL, Member<ScriptPromiseResolver>> provider_to_resolver_;
   bool is_requesting_token_{false};
   bool has_posted_task_{false};
   base::TimeTicks delay_start_time_;

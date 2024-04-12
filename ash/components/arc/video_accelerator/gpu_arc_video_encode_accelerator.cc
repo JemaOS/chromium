@@ -92,7 +92,7 @@ void GpuArcVideoEncodeAccelerator::NotifyErrorStatus(
              << ", message=" << status.message();
   DCHECK(client_);
   client_->NotifyError(
-      mojom::VideoEncodeAccelerator::Error::kPlatformFailureError);
+      media::VideoEncodeAccelerator::Error::kPlatformFailureError);
 }
 
 // ::arc::mojom::VideoEncodeAccelerator implementation.
@@ -116,6 +116,10 @@ GpuArcVideoEncodeAccelerator::InitializeTask(
     const media::VideoEncodeAccelerator::Config& config,
     mojo::PendingRemote<mojom::VideoEncodeClient> client) {
   DVLOGF(2) << config.AsHumanReadableString();
+  if (!config.storage_type.has_value()) {
+    DLOG(ERROR) << "storage type must be specified";
+    return mojom::VideoEncodeAccelerator::Result::kInvalidArgumentError;
+  }
 
   if (config.input_format != media::PIXEL_FORMAT_NV12) {
     VLOGF(1) << "Unsupported pixel format: " << config.input_format;
@@ -189,7 +193,7 @@ void GpuArcVideoEncodeAccelerator::Encode(
     return;
   }
 
-  std::optional<gfx::BufferFormat> buffer_format =
+  absl::optional<gfx::BufferFormat> buffer_format =
       VideoPixelFormatToGfxBufferFormat(format);
   if (!format) {
     DLOG(ERROR) << "Unexpected format: " << format;
@@ -280,8 +284,7 @@ void GpuArcVideoEncodeAccelerator::RequestEncodingParametersChange(
   // Note that dynamic bitrate mode changes are not allowed. Attempting to
   // change the bitrate mode at runtime will result in the |accelerator_|
   // reporting an error through NotifyError.
-  accelerator_->RequestEncodingParametersChange(bitrate, framerate,
-                                                std::nullopt);
+  accelerator_->RequestEncodingParametersChange(bitrate, framerate);
 }
 
 void GpuArcVideoEncodeAccelerator::RequestEncodingParametersChangeDeprecated(
@@ -293,7 +296,7 @@ void GpuArcVideoEncodeAccelerator::RequestEncodingParametersChangeDeprecated(
     return;
   }
   accelerator_->RequestEncodingParametersChange(
-      media::Bitrate::ConstantBitrate(bitrate), framerate, std::nullopt);
+      media::Bitrate::ConstantBitrate(bitrate), framerate);
 }
 
 void GpuArcVideoEncodeAccelerator::Flush(FlushCallback callback) {

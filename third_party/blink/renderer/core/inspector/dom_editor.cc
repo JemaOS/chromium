@@ -252,7 +252,7 @@ class DOMEditor::SetOuterHTMLAction final : public InspectorHistory::Action {
     return history_->Redo(exception_state);
   }
 
-  Node* NewNode() { return new_node_.Get(); }
+  Node* NewNode() { return new_node_; }
 
   void Trace(Visitor* visitor) const override {
     visitor->Trace(node_);

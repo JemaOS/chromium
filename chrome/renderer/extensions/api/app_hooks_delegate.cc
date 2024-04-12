@@ -11,6 +11,7 @@
 #include "content/public/renderer/render_frame.h"
 #include "content/public/renderer/v8_value_converter.h"
 #include "extensions/common/constants.h"
+#include "extensions/common/extension_messages.h"
 #include "extensions/common/extension_set.h"
 #include "extensions/common/manifest.h"
 #include "extensions/renderer/api_activity_logger.h"
@@ -31,7 +32,7 @@ namespace extensions {
 
 // static
 void AppHooksDelegate::IsInstalledGetterCallback(
-    v8::Local<v8::Name> property,
+    v8::Local<v8::String> property,
     const v8::PropertyCallbackInfo<v8::Value>& info) {
   v8::HandleScope handle_scope(info.GetIsolate());
   v8::Local<v8::Context> context = info.Holder()->GetCreationContextChecked();
@@ -48,7 +49,7 @@ void AppHooksDelegate::IsInstalledGetterCallback(
   // Since this is more-or-less an API, log it as an API call.
   APIActivityLogger::LogAPICall(hooks_delegate->ipc_sender_, context,
                                 "app.getIsInstalled",
-                                v8::LocalVector<v8::Value>(info.GetIsolate()));
+                                std::vector<v8::Local<v8::Value>>());
   info.GetReturnValue().Set(hooks_delegate->GetIsInstalled(script_context));
 }
 
@@ -72,7 +73,7 @@ APIBindingHooks::RequestResult AppHooksDelegate::HandleRequest(
     const std::string& method_name,
     const APISignature* signature,
     v8::Local<v8::Context> context,
-    v8::LocalVector<v8::Value>* arguments,
+    std::vector<v8::Local<v8::Value>>* arguments,
     const APITypeReferenceMap& refs) {
   using RequestResult = APIBindingHooks::RequestResult;
 

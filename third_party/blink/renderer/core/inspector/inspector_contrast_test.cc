@@ -12,7 +12,6 @@
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -23,8 +22,6 @@ class InspectorContrastTest : public testing::Test {
   Document& GetDocument() { return dummy_page_holder_->GetDocument(); }
 
  private:
-  test::TaskEnvironment task_environment_;
-
   std::unique_ptr<DummyPageHolder> dummy_page_holder_;
 };
 
@@ -39,7 +36,7 @@ TEST_F(InspectorContrastTest, GetBackgroundColors) {
     </div>
   )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   InspectorContrast contrast(&GetDocument());
   float fg_opacity = 1.0f;
   Vector<Color> colors = contrast.GetBackgroundColors(target, &fg_opacity);
@@ -58,7 +55,7 @@ TEST_F(InspectorContrastTest, GetBackgroundColorsNoText) {
     </div>
   )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   InspectorContrast contrast(&GetDocument());
   float fg_opacity = 1.0f;
   Vector<Color> colors = contrast.GetBackgroundColors(target, &fg_opacity);
@@ -74,7 +71,7 @@ TEST_F(InspectorContrastTest, GetBackgroundColorsBgOpacity) {
     </div>
   )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   InspectorContrast contrast(&GetDocument());
   float fg_opacity = 1.0f;
   Vector<Color> colors = contrast.GetBackgroundColors(target, &fg_opacity);
@@ -90,7 +87,7 @@ TEST_F(InspectorContrastTest, GetBackgroundColorsBgOpacityParent) {
     </div>
   )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   InspectorContrast contrast(&GetDocument());
   float fg_opacity = 1.0f;
   Vector<Color> colors = contrast.GetBackgroundColors(target, &fg_opacity);
@@ -104,7 +101,7 @@ TEST_F(InspectorContrastTest, GetBackgroundColorsElementWithOpacity) {
     <div id="target" style="opacity: 0.1; color: black;">test</div>
   )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   InspectorContrast contrast(&GetDocument());
   float fg_opacity = 1.0f;
   Vector<Color> colors = contrast.GetBackgroundColors(target, &fg_opacity);
@@ -121,7 +118,7 @@ TEST_F(InspectorContrastTest, GetBackgroundColorsBgHidden) {
     </div>
   )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   InspectorContrast contrast(&GetDocument());
   float fg_opacity = 1.0f;
   Vector<Color> colors = contrast.GetBackgroundColors(target, &fg_opacity);
@@ -141,7 +138,7 @@ TEST_F(InspectorContrastTest, GetBackgroundColorsWithOpacity) {
     </div>
   )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
-  Element* target = GetDocument().getElementById(AtomicString("target"));
+  Element* target = GetDocument().getElementById("target");
   InspectorContrast contrast(&GetDocument());
   float fg_opacity = 1.0f;
   Vector<Color> colors = contrast.GetBackgroundColors(target, &fg_opacity);
@@ -164,14 +161,14 @@ TEST_F(InspectorContrastTest, GetContrast) {
   )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
   InspectorContrast contrast(&GetDocument());
-  ContrastInfo contrast_info_1 = contrast.GetContrast(
-      GetDocument().getElementById(AtomicString("target1")));
+  ContrastInfo contrast_info_1 =
+      contrast.GetContrast(GetDocument().getElementById("target1"));
   EXPECT_EQ(true, contrast_info_1.able_to_compute_contrast);
   EXPECT_EQ(4.5, contrast_info_1.threshold_aa);
   EXPECT_EQ(7.0, contrast_info_1.threshold_aaa);
   EXPECT_FLOAT_EQ(1, contrast_info_1.contrast_ratio);
-  ContrastInfo contrast_info_2 = contrast.GetContrast(
-      GetDocument().getElementById(AtomicString("target3")));
+  ContrastInfo contrast_info_2 =
+      contrast.GetContrast(GetDocument().getElementById("target3"));
   EXPECT_EQ(true, contrast_info_2.able_to_compute_contrast);
   EXPECT_EQ(4.5, contrast_info_2.threshold_aa);
   EXPECT_EQ(7.0, contrast_info_2.threshold_aaa);
@@ -188,14 +185,14 @@ TEST_F(InspectorContrastTest, GetContrastEmptyNodes) {
   )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
   InspectorContrast contrast(&GetDocument());
-  ContrastInfo contrast_info_1 = contrast.GetContrast(
-      GetDocument().getElementById(AtomicString("target1")));
+  ContrastInfo contrast_info_1 =
+      contrast.GetContrast(GetDocument().getElementById("target1"));
   EXPECT_EQ(false, contrast_info_1.able_to_compute_contrast);
-  ContrastInfo contrast_info_2 = contrast.GetContrast(
-      GetDocument().getElementById(AtomicString("target2")));
+  ContrastInfo contrast_info_2 =
+      contrast.GetContrast(GetDocument().getElementById("target2"));
   EXPECT_EQ(false, contrast_info_2.able_to_compute_contrast);
-  ContrastInfo contrast_info_3 = contrast.GetContrast(
-      GetDocument().getElementById(AtomicString("target3")));
+  ContrastInfo contrast_info_3 =
+      contrast.GetContrast(GetDocument().getElementById("target3"));
   EXPECT_EQ(false, contrast_info_3.able_to_compute_contrast);
 }
 
@@ -207,8 +204,8 @@ TEST_F(InspectorContrastTest, GetContrastMultipleNodes) {
   )HTML");
   GetDocument().View()->UpdateAllLifecyclePhasesForTest();
   InspectorContrast contrast(&GetDocument());
-  ContrastInfo contrast_info_1 = contrast.GetContrast(
-      GetDocument().getElementById(AtomicString("target1")));
+  ContrastInfo contrast_info_1 =
+      contrast.GetContrast(GetDocument().getElementById("target1"));
   EXPECT_EQ(false, contrast_info_1.able_to_compute_contrast);
 }
 

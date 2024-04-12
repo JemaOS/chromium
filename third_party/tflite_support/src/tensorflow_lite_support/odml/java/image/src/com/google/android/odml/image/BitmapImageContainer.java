@@ -16,46 +16,44 @@ limitations under the License.
 package com.google.android.odml.image;
 
 import android.graphics.Bitmap;
+
 import com.google.android.odml.image.MlImage.ImageFormat;
 
 class BitmapImageContainer implements ImageContainer {
+    private final Bitmap bitmap;
+    private final ImageProperties properties;
 
-  private final Bitmap bitmap;
-  private final ImageProperties properties;
-
-  // incompatible argument for parameter config of convertFormatCode.
-  @SuppressWarnings("nullness:argument.type.incompatible")
-  public BitmapImageContainer(Bitmap bitmap) {
-    this.bitmap = bitmap;
-    this.properties = ImageProperties.builder()
-        .setImageFormat(convertFormatCode(bitmap.getConfig()))
-        .setStorageType(MlImage.STORAGE_TYPE_BITMAP)
-        .build();
-  }
-
-  public Bitmap getBitmap() {
-    return bitmap;
-  }
-
-  @Override
-  public ImageProperties getImageProperties() {
-    return properties;
-  }
-
-  @Override
-  public void close() {
-    bitmap.recycle();
-  }
-
-  @ImageFormat
-  static int convertFormatCode(Bitmap.Config config) {
-    switch (config) {
-      case ALPHA_8:
-        return MlImage.IMAGE_FORMAT_ALPHA;
-      case ARGB_8888:
-        return MlImage.IMAGE_FORMAT_RGBA;
-      default:
-        return MlImage.IMAGE_FORMAT_UNKNOWN;
+    public BitmapImageContainer(Bitmap bitmap) {
+        this.bitmap = bitmap;
+        this.properties = ImageProperties.builder()
+                                  .setImageFormat(convertFormatCode(bitmap.getConfig()))
+                                  .setStorageType(MlImage.STORAGE_TYPE_BITMAP)
+                                  .build();
     }
-  }
+
+    public Bitmap getBitmap() {
+        return bitmap;
+    }
+
+    @Override
+    public ImageProperties getImageProperties() {
+        return properties;
+    }
+
+    @Override
+    public void close() {
+        bitmap.recycle();
+    }
+
+    @ImageFormat
+    static int convertFormatCode(Bitmap.Config config) {
+        switch (config) {
+            case ALPHA_8:
+                return MlImage.IMAGE_FORMAT_ALPHA;
+            case ARGB_8888:
+                return MlImage.IMAGE_FORMAT_RGBA;
+            default:
+                return MlImage.IMAGE_FORMAT_UNKNOWN;
+        }
+    }
 }

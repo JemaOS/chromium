@@ -7,34 +7,25 @@
 
 #include <string>
 
-#include "base/memory/raw_ptr.h"
+#include "base/functional/callback_forward.h"
 #include "base/memory/weak_ptr.h"
-#include "chrome/browser/ash/login/quickstart_controller.h"
+#include "chrome/browser/ash/login/oobe_quick_start/target_device_bootstrap_controller.h"
 #include "chrome/browser/ash/login/screens/base_screen.h"
-#include "chrome/browser/ash/login/ui/login_display_host.h"
 #include "chrome/browser/ui/webui/ash/login/quick_start_screen_handler.h"
 
 namespace ash {
 
-class QuickStartScreen : public BaseScreen,
-                         public quick_start::QuickStartController::UiDelegate {
+class QuickStartScreen
+    : public BaseScreen,
+      public quick_start::TargetDeviceBootstrapController::Observer {
  public:
   using TView = QuickStartView;
 
-  enum class Result {
-    CANCEL_AND_RETURN_TO_WELCOME,
-    CANCEL_AND_RETURN_TO_NETWORK,
-    CANCEL_AND_RETURN_TO_GAIA_INFO,
-    CANCEL_AND_RETURN_TO_SIGNIN,
-    SETUP_COMPLETE_NEXT_BUTTON,
-    WIFI_CREDENTIALS_RECEIVED,
-    FALLBACK_URL_ON_GAIA,
-  };
+  enum class Result { CANCEL };
 
   using ScreenExitCallback = base::RepeatingCallback<void(Result result)>;
 
   QuickStartScreen(base::WeakPtr<TView> view,
-                   quick_start::QuickStartController* controller,
                    const ScreenExitCallback& exit_callback);
 
   QuickStartScreen(const QuickStartScreen&) = delete;
@@ -51,17 +42,22 @@ class QuickStartScreen : public BaseScreen,
   void HideImpl() override;
   void OnUserAction(const base::Value::List& args) override;
 
-  // quick_start::QuickStartController::UiDelegate:
-  void OnUiUpdateRequested(
-      quick_start::QuickStartController::UiState state) final;
+  // quick_start::TargetDeviceBootstrapController::Observer:
+  void OnStatusChanged(
+      const quick_start::TargetDeviceBootstrapController::Status& status) final;
 
-  // Exits the screen and returns to the appropriate entry point. This is called
-  // whenever the user aborts the flow, or when an error occurs.
-  void ExitScreen();
+  void UnbindFromBootstrapController();
+  void SendRandomFiguresForTesting() const;
+
+  // Retrieves the connected phone ID and saves it for later use in OOBE on the
+  // MultideviceSetupScreen.
+  void SavePhoneInstanceID();
 
   base::WeakPtr<TView> view_;
-  raw_ptr<quick_start::QuickStartController> controller_;
   ScreenExitCallback exit_callback_;
+
+  base::WeakPtr<quick_start::TargetDeviceBootstrapController>
+      bootstrap_controller_;
 };
 
 }  // namespace ash

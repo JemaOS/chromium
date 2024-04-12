@@ -6,13 +6,12 @@
 #define UI_QT_QT_UI_H_
 
 #include <memory>
-#include <optional>
 
 #include "base/component_export.h"
-#include "base/memory/weak_ptr.h"
 #include "printing/buildflags/buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/color/color_provider.h"
-#include "ui/color/color_provider_key.h"
+#include "ui/color/color_provider_manager.h"
 #include "ui/gfx/font_render_params.h"
 #include "ui/linux/linux_ui.h"
 #include "ui/qt/qt_interface.h"
@@ -37,11 +36,11 @@ class QtUi : public ui::LinuxUiAndTheme, QtInterface::Delegate {
 
   // ui::LinuxUi:
   bool Initialize() override;
-  void InitializeFontSettings() override;
   base::TimeDelta GetCursorBlinkInterval() const override;
   gfx::Image GetIconForContentType(const std::string& content_type,
                                    int size,
                                    float scale) const override;
+  float GetDeviceScaleFactor() const override;
   base::flat_map<std::string, std::string> GetKeyboardLayoutMap() override;
 #if BUILDFLAG(ENABLE_PRINTING)
   printing::PrintDialogLinuxInterface* CreatePrintDialog(
@@ -57,9 +56,14 @@ class QtUi : public ui::LinuxUiAndTheme, QtInterface::Delegate {
       ui::LinuxInputMethodContextDelegate* delegate) const override;
   bool GetTextEditCommandsForEvent(
       const ui::Event& event,
-      int text_flags,
       std::vector<ui::TextEditCommandAuraLinux>* commands) override;
-  gfx::FontRenderParams GetDefaultFontRenderParams() override;
+  gfx::FontRenderParams GetDefaultFontRenderParams() const override;
+  void GetDefaultFontDescription(
+      std::string* family_out,
+      int* size_pixels_out,
+      int* style_out,
+      int* weight_out,
+      gfx::FontRenderParams* params_out) const override;
   bool AnimationsEnabled() const override;
   void AddWindowButtonOrderObserver(
       ui::WindowButtonOrderObserver* observer) override;
@@ -78,23 +82,18 @@ class QtUi : public ui::LinuxUiAndTheme, QtInterface::Delegate {
   void GetInactiveSelectionBgColor(SkColor* color) const override;
   void GetInactiveSelectionFgColor(SkColor* color) const override;
   bool PreferDarkTheme() const override;
-  void SetDarkTheme(bool dark) override;
   std::unique_ptr<ui::NavButtonProvider> CreateNavButtonProvider() override;
-  ui::WindowFrameProvider* GetWindowFrameProvider(bool solid_frame,
-                                                  bool tiled) override;
+  ui::WindowFrameProvider* GetWindowFrameProvider(bool solid_frame) override;
 
   // QtInterface::Delegate:
   void FontChanged() override;
   void ThemeChanged() override;
-  void ScaleFactorMaybeChanged() override;
 
  private:
   void AddNativeColorMixer(ui::ColorProvider* provider,
-                           const ui::ColorProviderKey& key);
+                           const ui::ColorProviderManager::Key& key);
 
-  void ScaleFactorMaybeChangedImpl();
-
-  std::optional<SkColor> GetColor(int id, bool use_custom_frame) const;
+  absl::optional<SkColor> GetColor(int id, bool use_custom_frame) const;
 
   // TODO(https://crbug.com/1317782): This is a fallback for any unimplemented
   // functionality in the QT backend and should eventually be removed.
@@ -104,17 +103,17 @@ class QtUi : public ui::LinuxUiAndTheme, QtInterface::Delegate {
   // `shim_` is alive.
   CmdLineArgs cmd_line_;
 
-  int qt_version_ = 0;
-
   // Cached default font settings.
-  std::optional<gfx::FontRenderParams> font_params_;
+  std::string font_family_;
+  int font_size_pixels_ = 0;
+  int font_size_points_ = 0;
+  gfx::Font::FontStyle font_style_ = gfx::Font::NORMAL;
+  int font_weight_;
+  gfx::FontRenderParams font_params_;
+
   std::unique_ptr<QtInterface> shim_;
 
   std::unique_ptr<QtNativeTheme> native_theme_;
-
-  bool scale_factor_task_active_ = false;
-
-  base::WeakPtrFactory<QtUi> weak_factory_{this};
 };
 
 // This should be the only symbol exported from this component.

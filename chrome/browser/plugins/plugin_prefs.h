@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_PLUGINS_PLUGIN_PREFS_H_
 #define CHROME_BROWSER_PLUGINS_PLUGIN_PREFS_H_
 
-#include <memory>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
@@ -79,7 +78,7 @@ class PluginPrefs : public RefcountedKeyedService {
   // Weak pointer, owned by the profile.
   raw_ptr<PrefService> prefs_ = nullptr;
 
-  std::unique_ptr<PrefChangeRegistrar> registrar_;
+  PrefChangeRegistrar registrar_;
 };
 
 #endif  // CHROME_BROWSER_PLUGINS_PLUGIN_PREFS_H_

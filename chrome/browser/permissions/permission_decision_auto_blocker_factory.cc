@@ -18,19 +18,13 @@ PermissionDecisionAutoBlockerFactory::GetForProfile(Profile* profile) {
 // static
 PermissionDecisionAutoBlockerFactory*
 PermissionDecisionAutoBlockerFactory::GetInstance() {
-  static base::NoDestructor<PermissionDecisionAutoBlockerFactory> instance;
-  return instance.get();
+  return base::Singleton<PermissionDecisionAutoBlockerFactory>::get();
 }
 
 PermissionDecisionAutoBlockerFactory::PermissionDecisionAutoBlockerFactory()
     : ProfileKeyedServiceFactory(
           "PermissionDecisionAutoBlocker",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(HostContentSettingsMapFactory::GetInstance());
 }
 

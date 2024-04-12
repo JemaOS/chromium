@@ -21,7 +21,6 @@ class BruschettaTerminalProvider : public guest_os::GuestOsTerminalProvider {
   std::string Label() override;
   guest_os::GuestId GuestId() override;
   bool RecoveryRequired(int64_t display_id) override;
-  bool AllowedByPolicy() override;
   std::string PrepareCwd(storage::FileSystemURL path) override;
   std::unique_ptr<extensions::StartupStatus> CreateStartupStatus(
       std::unique_ptr<extensions::StartupStatusPrinter> printer) override;
@@ -31,7 +30,7 @@ class BruschettaTerminalProvider : public guest_os::GuestOsTerminalProvider {
           callback) override;
 
  private:
-  raw_ptr<Profile> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
   guest_os::GuestId guest_id_;
 };
 

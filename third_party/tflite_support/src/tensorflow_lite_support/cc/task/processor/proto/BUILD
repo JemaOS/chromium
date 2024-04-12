@@ -1,6 +1,7 @@
 load("//tensorflow_lite_support/cc/port:build_defs.bzl", "support_py_proto_library")
 
 package(
+    default_applicable_licenses = ["//tensorflow_lite_support:license"],
     default_visibility = [
         "//visibility:public",
     ],
@@ -217,11 +218,6 @@ proto_library(
     ],
 )
 
-java_lite_proto_library(
-    name = "search_options_java_proto_lite",
-    deps = [":search_options_proto"],
-)
-
 cc_proto_library(
     name = "search_options_cc_proto",
     deps = [
@@ -250,11 +246,6 @@ support_py_proto_library(
 proto_library(
     name = "search_result_proto",
     srcs = ["search_result.proto"],
-)
-
-java_lite_proto_library(
-    name = "search_result_java_proto_lite",
-    deps = [":search_result_proto"],
 )
 
 cc_proto_library(

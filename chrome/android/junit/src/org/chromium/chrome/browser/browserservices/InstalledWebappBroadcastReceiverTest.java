@@ -36,7 +36,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-/** Tests for {@link InstalledWebappBroadcastReceiver}. */
+/**
+ * Tests for {@link InstalledWebappBroadcastReceiver}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class InstalledWebappBroadcastReceiverTest {
@@ -51,12 +53,8 @@ public class InstalledWebappBroadcastReceiverTest {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
 
-        mReceiver =
-                new InstalledWebappBroadcastReceiver(
-                        mMockStrategy,
-                        mDataRegister,
-                        mock(BrowserServicesStore.class),
-                        mPermissionUpdater);
+        mReceiver = new InstalledWebappBroadcastReceiver(
+                mMockStrategy, mDataRegister, mock(BrowserServicesStore.class), mPermissionUpdater);
         mContext = RuntimeEnvironment.application;
     }
 
@@ -110,12 +108,9 @@ public class InstalledWebappBroadcastReceiverTest {
     @Test
     @Feature("TrustedWebActivities")
     public void execute_ValidIntent() {
-        mReceiver =
-                new InstalledWebappBroadcastReceiver(
-                        new InstalledWebappBroadcastReceiver.ClearDataStrategy(),
-                        mDataRegister,
-                        mock(BrowserServicesStore.class),
-                        mPermissionUpdater);
+        mReceiver = new InstalledWebappBroadcastReceiver(
+                new InstalledWebappBroadcastReceiver.ClearDataStrategy(), mDataRegister,
+                mock(BrowserServicesStore.class), mPermissionUpdater);
 
         int id = 67;
         String appName = "App Name 3";
@@ -141,12 +136,9 @@ public class InstalledWebappBroadcastReceiverTest {
     @Test
     @Feature("TrustedwebActivities")
     public void execute_UpdatePermissions() {
-        mReceiver =
-                new InstalledWebappBroadcastReceiver(
-                        new InstalledWebappBroadcastReceiver.ClearDataStrategy(),
-                        mDataRegister,
-                        mock(BrowserServicesStore.class),
-                        mPermissionUpdater);
+        mReceiver = new InstalledWebappBroadcastReceiver(
+                new InstalledWebappBroadcastReceiver.ClearDataStrategy(), mDataRegister,
+                mock(BrowserServicesStore.class), mPermissionUpdater);
 
         int id = 67;
         String appName = "App Name 3";

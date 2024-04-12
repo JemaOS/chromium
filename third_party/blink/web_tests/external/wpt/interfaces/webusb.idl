@@ -14,7 +14,6 @@ dictionary USBDeviceFilter {
 
 dictionary USBDeviceRequestOptions {
   required sequence<USBDeviceFilter> filters;
-  sequence<USBDeviceFilter> exclusionFilters = [];
 };
 
 [Exposed=(Worker,Window), SecureContext]
@@ -230,16 +229,8 @@ interface USBEndpoint {
   readonly attribute unsigned long packetSize;
 };
 
-// USBBlocklistEntry is never exposed.
-dictionary USBBlocklistEntry {
-  required unsigned short idVendor;
-  required unsigned short idProduct;
-  required unsigned short bcdDevice;
-};
-
 dictionary USBPermissionDescriptor : PermissionDescriptor {
   sequence<USBDeviceFilter> filters;
-  sequence<USBDeviceFilter> exclusionFilters;
 };
 
 dictionary AllowedUSBDevice {

@@ -33,7 +33,7 @@ class CORE_EXPORT CustomElement {
   // may be a different object for a given element over its lifetime
   // as it moves between documents.
   static CustomElementRegistry* Registry(const Element&);
-  static CustomElementRegistry* Registry(const TreeScope&);
+  static CustomElementRegistry* Registry(const Document&);
 
   static CustomElementDefinition* DefinitionForElement(const Element*);
 
@@ -84,7 +84,7 @@ class CORE_EXPORT CustomElement {
 
   // Look up a definition, and create an autonomous custom element if
   // it's found.
-  static HTMLElement* CreateCustomElement(TreeScope&,
+  static HTMLElement* CreateCustomElement(Document&,
                                           const QualifiedName&,
                                           const CreateElementFlags);
 

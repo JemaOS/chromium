@@ -6,7 +6,6 @@
 
 #include <cstring>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -20,6 +19,7 @@
 #include "chrome/browser/thumbnail/cc/thumbnail.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkColor.h"
@@ -31,6 +31,7 @@
 namespace thumbnail {
 namespace {
 
+constexpr double kJpegImageRatio = 0.85;
 constexpr int kDimension = 16;
 constexpr int kKiB = 1024;
 
@@ -91,7 +92,7 @@ TEST_F(JpegThumbnailHelperTest, CompressThumbnail) {
         EXPECT_GT(bitmap->height(), 0);
       }).Then(loop1.QuitClosure());
 
-  GetInterface().Compress(image, std::move(once));
+  GetInterface().Compress(kJpegImageRatio, image, std::move(once));
   task_environment_.RunUntilIdle();
   loop1.Run();
 }
@@ -112,13 +113,7 @@ TEST_F(JpegThumbnailHelperTest, WriteThumbnail) {
 
   // Write the image
   base::RunLoop loop1;
-  GetInterface().Write(tab_id, data,
-                       base::BindOnce(
-                           [](base::OnceClosure quit, bool success) {
-                             EXPECT_TRUE(success);
-                             std::move(quit).Run();
-                           },
-                           loop1.QuitClosure()));
+  GetInterface().Write(tab_id, data, loop1.QuitClosure());
   task_environment_.RunUntilIdle();
   loop1.Run();
 
@@ -126,7 +121,7 @@ TEST_F(JpegThumbnailHelperTest, WriteThumbnail) {
   EXPECT_TRUE(base::PathExists(file_path));
 
   // Compare original data with written data
-  std::optional<std::vector<uint8_t>> read_data =
+  absl::optional<std::vector<uint8_t>> read_data =
       base::ReadFileToBytes(file_path);
   ASSERT_EQ(data.size(), read_data->size());
   EXPECT_EQ(0, memcmp(data.data(), read_data->data(), data.size()));
@@ -154,8 +149,8 @@ TEST_F(JpegThumbnailHelperTest, ReadThumbnail) {
 
   // Read the image
   base::RunLoop loop1;
-  base::OnceCallback<void(std::optional<std::vector<uint8_t>>)> once =
-      base::BindOnce([](std::optional<std::vector<uint8_t>> compressed_data) {
+  base::OnceCallback<void(absl::optional<std::vector<uint8_t>>)> once =
+      base::BindOnce([](absl::optional<std::vector<uint8_t>> compressed_data) {
         EXPECT_TRUE(compressed_data.has_value());
         EXPECT_FALSE(compressed_data->empty());
         auto bitmap = gfx::JPEGCodec::Decode(compressed_data->data(),

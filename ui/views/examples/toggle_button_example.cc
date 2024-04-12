@@ -17,8 +17,6 @@
 
 namespace views::examples {
 
-constexpr int kLayoutInset = 8;
-
 ToggleButtonExample::ToggleButtonExample()
     : ExampleBase(
           l10n_util::GetStringUTF8(IDS_TOGGLE_BUTTON_SELECT_LABEL).c_str()) {}
@@ -26,9 +24,7 @@ ToggleButtonExample::ToggleButtonExample()
 ToggleButtonExample::~ToggleButtonExample() = default;
 
 void ToggleButtonExample::CreateExampleView(View* container) {
-  auto layout =
-      std::make_unique<BoxLayout>(BoxLayout::Orientation::kVertical,
-                                  gfx::Insets(kLayoutInset), kLayoutInset);
+  auto layout = std::make_unique<BoxLayout>(BoxLayout::Orientation::kVertical);
   layout->set_cross_axis_alignment(BoxLayout::CrossAxisAlignment::kCenter);
   container->SetLayoutManager(std::move(layout));
   container

@@ -19,22 +19,16 @@ class ScrollSnapshotClient : public GarbageCollectedMixin {
   // update.
   virtual void UpdateSnapshot() = 0;
 
-  // Called for all ScrollSnapshotClients once per frame, after layout is
-  // finished. ValidateSnapshot is an opportunity for the client to update
-  // its snapshot again in the same frame (taking information from the recently
-  // finished layout into account).
-  //
-  // A return value of 'true' means the snapshot was valid(and therefore not
-  // updated by this function). A return value of 'false' means the snapshot was
-  // invalid (and therefore was updated by this function), and that the style
-  // and layout phases need to run again.
+  // Called for newly created clients only at layout clean and at most once per
+  // frame to handle clients created during style and layout recalc.
+  // Returns true if the client state is correct, or false otherwise.
   virtual bool ValidateSnapshot() = 0;
 
   // Compares the last snapshot with the current state, and returns true if a
-  // new animation frame should be scheduled due to snapshot difference.
+  // new animation frame should be schedules due to snapshot difference.
   virtual bool ShouldScheduleNextService() = 0;
 
-  virtual bool IsAnchorPositionScrollData() const { return false; }
+  virtual bool IsAnchorScrollData() const { return false; }
 };
 
 }  // namespace blink

@@ -7,15 +7,11 @@
 
 #include "base/functional/callback_forward.h"
 #include "base/gtest_prod_util.h"
-#include "chrome/browser/signin/bound_session_credentials/bound_session_cookie_controller_impl.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "net/cookies/cookie_change_dispatcher.h"
 #include "services/network/public/mojom/cookie_manager.mojom.h"
 
-namespace content {
-class StoragePartition;
-}
-
+class SigninClient;
 class GURL;
 
 // This class monitors a cookie and notifies a callback whenever the expiration
@@ -24,11 +20,10 @@ class BoundSessionCookieObserver : public network::mojom::CookieChangeListener {
  public:
   // Returns the expected expiration date of the observed cookie or
   // `base::Time()` if the cookie was removed.
-  using CookieExpirationDateUpdate =
-      base::RepeatingCallback<void(const std::string&, base::Time)>;
+  using CookieExpirationDateUpdate = base::RepeatingCallback<void(base::Time)>;
 
-  // `storage_partition_` must outlive `this`.
-  BoundSessionCookieObserver(content::StoragePartition* storage_partion_,
+  // `client_` must outlive `this`.
+  BoundSessionCookieObserver(SigninClient* client,
                              const GURL& url,
                              const std::string& cookie_name,
                              CookieExpirationDateUpdate callback);
@@ -52,7 +47,7 @@ class BoundSessionCookieObserver : public network::mojom::CookieChangeListener {
   mojo::Receiver<network::mojom::CookieChangeListener>
       cookie_listener_receiver_{this};
 
-  const raw_ptr<content::StoragePartition> storage_partition_;
+  const raw_ptr<SigninClient> client_;
   const GURL url_;
   const std::string cookie_name_;
 

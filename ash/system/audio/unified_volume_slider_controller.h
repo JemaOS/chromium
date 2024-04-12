@@ -41,7 +41,8 @@ class ASH_EXPORT UnifiedVolumeSliderController : public UnifiedSliderListener {
 
   ~UnifiedVolumeSliderController() override;
 
-  // Creates a slider view for a specific output device in `AudioDetailedView`.
+  // For QsRevamp: Creates a slider view for a specific output device in
+  // `AudioDetailedView`.
   std::unique_ptr<UnifiedVolumeView> CreateVolumeSlider(uint64_t device_id);
 
   // This callback is used to map the `device_id` to `UnifiedVolumeView` in
@@ -62,7 +63,7 @@ class ASH_EXPORT UnifiedVolumeSliderController : public UnifiedSliderListener {
   void SliderButtonPressed();
 
  private:
-  const raw_ptr<Delegate, DanglingUntriaged> delegate_;
+  const raw_ptr<Delegate, ExperimentalAsh> delegate_;
 
   // Records when the user changes the output volume via slider to metrics.
   void RecordVolumeSourceMetric();

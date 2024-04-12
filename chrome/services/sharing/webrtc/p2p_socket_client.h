@@ -82,8 +82,6 @@ class P2PSocketClient : public network::mojom::P2PSocketClient {
   void SocketCreated(const net::IPEndPoint& local_address,
                      const net::IPEndPoint& remote_address) override;
   void SendComplete(const network::P2PSendPacketMetrics& send_metrics) override;
-  void SendBatchComplete(const std::vector<::network::P2PSendPacketMetrics>&
-                             send_metrics_batch) override;
   void DataReceived(
       std::vector<network::mojom::P2PReceivedPacketPtr> packets) override;
 
@@ -92,7 +90,7 @@ class P2PSocketClient : public network::mojom::P2PSocketClient {
   mojo::SharedRemote<network::mojom::P2PSocketManager> socket_manager_;
   THREAD_CHECKER(thread_checker_);
   int socket_id_;
-  raw_ptr<P2PSocketClientDelegate> delegate_;
+  raw_ptr<P2PSocketClientDelegate, ExperimentalAsh> delegate_;
   State state_;
   const net::NetworkTrafficAnnotationTag traffic_annotation_;
 

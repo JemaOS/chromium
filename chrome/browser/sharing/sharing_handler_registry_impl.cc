@@ -54,9 +54,8 @@ SharingHandlerRegistryImpl::SharingHandlerRegistryImpl(
 
 #endif  // BUILDFLAG(IS_ANDROID)
 
-  // Profile can be null in tests.
   if (optimization_guide::features::IsPushNotificationsEnabled() &&
-      optimization_guide::features::IsOptimizationHintsEnabled() && profile) {
+      optimization_guide::features::IsOptimizationHintsEnabled()) {
     AddSharingHandler(OptimizationGuideMessageHandler::Create(profile),
                       {chrome_browser_sharing::SharingMessage::
                            kOptimizationGuidePushNotification});

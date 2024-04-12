@@ -17,9 +17,8 @@ limitations under the License.
 
 #include <string>
 
-#include "absl/memory/memory.h"  // from @com_google_absl
-#include "absl/status/status.h"  // from @com_google_absl
-#include "absl/strings/str_cat.h"  // from @com_google_absl
+#include "absl/memory/memory.h"       // from @com_google_absl
+#include "absl/status/status.h"       // from @com_google_absl
 #include "absl/strings/str_format.h"  // from @com_google_absl
 #include "absl/strings/string_view.h"  // from @com_google_absl
 #include "flatbuffers/flatbuffers.h"  // from @flatbuffers
@@ -30,7 +29,6 @@ limitations under the License.
 #include "tensorflow_lite_support/metadata/metadata_schema_generated.h"
 #include "third_party/zlib/contrib/minizip/ioapi.h"
 #include "third_party/zlib/contrib/minizip/unzip.h"
-
 
 namespace tflite {
 namespace metadata {
@@ -48,7 +46,8 @@ using ::tflite::support::TfLiteSupportStatus;
 // Util to get item from src_vector specified by index.
 template <typename T>
 const T* GetItemFromVector(
-    const flatbuffers::Vector<flatbuffers::Offset<T>>* src_vector, int index) {
+    const flatbuffers::Vector<flatbuffers::Offset<T>>* src_vector,
+    int index) {
   if (src_vector == nullptr || index < 0 || index >= src_vector->size()) {
     return nullptr;
   }
@@ -79,7 +78,7 @@ tflite::support::StatusOr<ZipFileInfo> GetCurrentZipFileInfo(
     const unzFile& zf) {
   // Open file in raw mode, as data is expected to be uncompressed.
   int method;
-  TFLITE_RETURN_IF_ERROR(UnzipErrorToStatus(
+  RETURN_IF_ERROR(UnzipErrorToStatus(
       unzOpenCurrentFile2(zf, &method, /*level=*/nullptr, /*raw=*/1)));
   if (method != Z_NO_COMPRESSION) {
     return CreateStatusWithPayload(
@@ -89,7 +88,7 @@ tflite::support::StatusOr<ZipFileInfo> GetCurrentZipFileInfo(
 
   // Get file info a first time to get filename size.
   unz_file_info64 file_info;
-  TFLITE_RETURN_IF_ERROR(UnzipErrorToStatus(unzGetCurrentFileInfo64(
+  RETURN_IF_ERROR(UnzipErrorToStatus(unzGetCurrentFileInfo64(
       zf, &file_info, /*szFileName=*/nullptr, /*szFileNameBufferSize=*/0,
       /*extraField=*/nullptr, /*extraFieldBufferSize=*/0,
       /*szComment=*/nullptr, /*szCommentBufferSize=*/0)));
@@ -97,7 +96,7 @@ tflite::support::StatusOr<ZipFileInfo> GetCurrentZipFileInfo(
   // Second call to get file name.
   auto file_name_size = file_info.size_filename;
   char* c_file_name = (char*)malloc(file_name_size);
-  TFLITE_RETURN_IF_ERROR(UnzipErrorToStatus(unzGetCurrentFileInfo64(
+  RETURN_IF_ERROR(UnzipErrorToStatus(unzGetCurrentFileInfo64(
       zf, &file_info, c_file_name, file_name_size,
       /*extraField=*/nullptr, /*extraFieldBufferSize=*/0,
       /*szComment=*/nullptr, /*szCommentBufferSize=*/0)));
@@ -113,7 +112,7 @@ tflite::support::StatusOr<ZipFileInfo> GetCurrentZipFileInfo(
   }
 
   // Close file and return.
-  TFLITE_RETURN_IF_ERROR(UnzipErrorToStatus(unzCloseCurrentFile(zf)));
+  RETURN_IF_ERROR(UnzipErrorToStatus(unzCloseCurrentFile(zf)));
 
   ZipFileInfo result{};
   result.name = file_name;
@@ -131,7 +130,7 @@ ModelMetadataExtractor::CreateFromModelBuffer(const char* buffer_data,
   // https://abseil.io/tips/126.
   std::unique_ptr<ModelMetadataExtractor> extractor =
       absl::WrapUnique(new ModelMetadataExtractor());
-  TFLITE_RETURN_IF_ERROR(extractor->InitFromModelBuffer(buffer_data, buffer_size));
+  RETURN_IF_ERROR(extractor->InitFromModelBuffer(buffer_data, buffer_size));
   return extractor;
 }
 
@@ -163,7 +162,8 @@ ModelMetadataExtractor::FindFirstProcessUnit(
 /* static */
 std::string ModelMetadataExtractor::FindFirstAssociatedFileName(
     const tflite::TensorMetadata& tensor_metadata,
-    tflite::AssociatedFileType type, absl::string_view locale) {
+    tflite::AssociatedFileType type,
+    absl::string_view locale) {
   if (tensor_metadata.associated_files() == nullptr) {
     return std::string();
   }
@@ -180,7 +180,8 @@ std::string ModelMetadataExtractor::FindFirstAssociatedFileName(
 }
 
 absl::Status ModelMetadataExtractor::InitFromModelBuffer(
-    const char* buffer_data, size_t buffer_size) {
+    const char* buffer_data,
+    size_t buffer_size) {
   // Rely on the simplest, base flatbuffers verifier. Here is not the place to
   // e.g. use an OpResolver: we just want to make sure the buffer is valid to
   // access the metadata.
@@ -239,7 +240,8 @@ absl::Status ModelMetadataExtractor::InitFromModelBuffer(
 }
 
 absl::Status ModelMetadataExtractor::ExtractAssociatedFiles(
-    const char* buffer_data, size_t buffer_size) {
+    const char* buffer_data,
+    size_t buffer_size) {
   // Create in-memory read-only zip file.
   ZipReadOnlyMemFile mem_file = ZipReadOnlyMemFile(buffer_data, buffer_size);
   // Open zip.
@@ -261,7 +263,7 @@ absl::Status ModelMetadataExtractor::ExtractAssociatedFiles(
   if (global_info.number_entry > 0) {
     int error = unzGoToFirstFile(zf);
     while (error == UNZ_OK) {
-      TFLITE_ASSIGN_OR_RETURN(auto zip_file_info, GetCurrentZipFileInfo(zf));
+      ASSIGN_OR_RETURN(auto zip_file_info, GetCurrentZipFileInfo(zf));
       // Store result in map.
       associated_files_[zip_file_info.name] = absl::string_view(
           buffer_data + zip_file_info.position, zip_file_info.size);

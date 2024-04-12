@@ -4,7 +4,7 @@
 
 package org.chromium.chrome.browser.lens;
 
-import org.jni_zero.CalledByNative;
+import org.chromium.base.annotations.CalledByNative;
 
 /**
  * Bridge class to allow for Java <-> Native communication for Lens integrations. Currently used to

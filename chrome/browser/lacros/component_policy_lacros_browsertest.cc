@@ -87,38 +87,30 @@ class TestPolicyServiceObserver : public policy::PolicyService::Observer {
   void OnPolicyUpdated(const policy::PolicyNamespace& nsp,
                        const policy::PolicyMap& previous,
                        const policy::PolicyMap& current) override {
-    policy_updated_future_.AddValue();
+    policy_updated_future_.AddValue(true);
   }
 
-  void WaitForUpdate() {
-    ASSERT_TRUE(policy_updated_future_.Wait());
-    policy_updated_future_.Take();
-  }
+  void WaitForUpdate() { policy_updated_future_.Take(); }
 
   const raw_ptr<policy::PolicyService> policy_service_;
   const policy::PolicyDomain policy_domain_;
 
-  base::test::RepeatingTestFuture<void> policy_updated_future_;
+  base::test::RepeatingTestFuture<bool> policy_updated_future_;
 };
 
 class ComponentPolicyLacrosBrowserTest : public InProcessBrowserTest {
  public:
-  // Set custom init params in CreatedBrowserMainParts, as it must happen after
-  // reading the data from Ash (happens in ContentMainRunner::Initialize) and
-  // before profile creation.
-  void CreatedBrowserMainParts(
-      content::BrowserMainParts* browser_main_parts) override {
+  void SetUp() override {
     base::Value json = base::test::ParseJson(kTestPolicy1);
     ASSERT_TRUE(json.is_dict());
 
     policy::ComponentPolicyMap component_policy;
     component_policy[ns] = std::move(json);
     crosapi::mojom::BrowserInitParamsPtr params =
-        chromeos::BrowserInitParams::GetForTests()->Clone();
+        crosapi::mojom::BrowserInitParams::New();
     params->device_account_component_policy = std::move(component_policy);
     chromeos::BrowserInitParams::SetInitParamsForTests(std::move(params));
-
-    InProcessBrowserTest::CreatedBrowserMainParts(browser_main_parts);
+    InProcessBrowserTest::SetUp();
   }
 };
 

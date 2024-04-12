@@ -3,11 +3,12 @@
 // found in the LICENSE file.
 
 import {PageToolbarElement} from 'chrome://resources/ash/common/page_toolbar.js';
-import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
-import {isVisible} from 'chrome://webui-test/test_util.js';
 
-suite('pageToolbarTestSuite', () => {
+import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
+import {isVisible} from '../test_util.js';
+
+export function pageToolbarTestSuite() {
   /** @type {?PageToolbarElement} */
   let pageToolbarElement = null;
 
@@ -48,4 +49,4 @@ suite('pageToolbarTestSuite', () => {
       assertEquals(expectedTitle, actualTitle);
     });
   });
-});
+}

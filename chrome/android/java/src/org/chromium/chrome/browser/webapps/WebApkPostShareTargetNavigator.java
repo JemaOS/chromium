@@ -6,12 +6,13 @@ package org.chromium.chrome.browser.webapps;
 
 import androidx.browser.trusted.sharing.ShareData;
 
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.browserservices.intents.WebApkShareTarget;
 import org.chromium.content_public.browser.WebContents;
 
-/** Perform navigation for share target with POST request. */
+/**
+ * Perform navigation for share target with POST request.
+ */
 public class WebApkPostShareTargetNavigator {
     public boolean navigateIfPostShareTarget(
             String url, WebApkShareTarget target, ShareData data, WebContents webContents) {
@@ -26,29 +27,18 @@ public class WebApkPostShareTargetNavigator {
             isValueFileUris[i] = postData.isValueFileUri.get(i);
         }
 
-        WebApkPostShareTargetNavigatorJni.get()
-                .nativeLoadViewForShareTargetPost(
-                        postData.isMultipartEncoding,
-                        postData.names.toArray(new String[0]),
-                        postData.values.toArray(new String[0]),
-                        isValueFileUris,
-                        postData.filenames.toArray(new String[0]),
-                        postData.types.toArray(new String[0]),
-                        url,
-                        webContents);
+        WebApkPostShareTargetNavigatorJni.get().nativeLoadViewForShareTargetPost(
+                postData.isMultipartEncoding, postData.names.toArray(new String[0]),
+                postData.values.toArray(new String[0]), isValueFileUris,
+                postData.filenames.toArray(new String[0]), postData.types.toArray(new String[0]),
+                url, webContents);
         return true;
     }
 
     @NativeMethods
     public interface Natives {
-        void nativeLoadViewForShareTargetPost(
-                boolean isMultipartEncoding,
-                String[] names,
-                String[] values,
-                boolean[] isValueFileUris,
-                String[] filenames,
-                String[] types,
-                String startUrl,
-                WebContents webContents);
+        void nativeLoadViewForShareTargetPost(boolean isMultipartEncoding,
+                String[] names, String[] values, boolean[] isValueFileUris, String[] filenames,
+                String[] types, String startUrl, WebContents webContents);
     }
 }

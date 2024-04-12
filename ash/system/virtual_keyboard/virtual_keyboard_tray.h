@@ -25,9 +25,9 @@ class VirtualKeyboardTray : public TrayBackgroundView,
                             public AccessibilityObserver,
                             public KeyboardControllerObserver,
                             public ShellObserver {
-  METADATA_HEADER(VirtualKeyboardTray, TrayBackgroundView)
-
  public:
+  METADATA_HEADER(VirtualKeyboardTray);
+
   VirtualKeyboardTray(Shelf* shelf, TrayBackgroundViewCatalogName catalog_name);
   VirtualKeyboardTray(const VirtualKeyboardTray&) = delete;
   VirtualKeyboardTray& operator=(const VirtualKeyboardTray&) = delete;
@@ -41,9 +41,7 @@ class VirtualKeyboardTray : public TrayBackgroundView,
   std::u16string GetAccessibleNameForTray() override;
   void HandleLocaleChange() override;
   void HideBubbleWithView(const TrayBubbleView* bubble_view) override;
-  void ClickedOutsideBubble(const ui::LocatedEvent& event) override;
-  void UpdateTrayItemColor(bool is_active) override;
-  void HideBubble(const TrayBubbleView* bubble_view) override;
+  void ClickedOutsideBubble() override;
 
   // AccessibilityObserver:
   void OnAccessibilityStatusChanged() override;
@@ -53,10 +51,10 @@ class VirtualKeyboardTray : public TrayBackgroundView,
 
  private:
   // Owned by the views hierarchy.
-  raw_ptr<views::ImageView> icon_ = nullptr;
+  raw_ptr<views::ImageView, ExperimentalAsh> icon_ = nullptr;
 
   // Unowned.
-  const raw_ptr<Shelf> shelf_;
+  const raw_ptr<Shelf, ExperimentalAsh> shelf_;
 };
 
 }  // namespace ash

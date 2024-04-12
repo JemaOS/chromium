@@ -19,7 +19,7 @@
 #include "components/content_settings/core/common/content_settings_pattern.h"
 #include "components/prefs/pref_service.h"
 
-using enterprise_connectors::kUserContextAwareAccessSignalsAllowlistPref;
+using enterprise_connectors::kContextAwareAccessSignalsAllowlistPref;
 
 namespace ash {
 
@@ -52,15 +52,12 @@ bool UrlMatchesPattern(const GURL& url, const base::Value::List& patterns) {
 bool AreContextAwareAccessSignalsEnabledForUrl(const GURL& url,
                                                const Profile* profile) {
   const PrefService* prefs = profile->GetPrefs();
-  if (!prefs ||
-      !prefs->HasPrefPath(kUserContextAwareAccessSignalsAllowlistPref)) {
+  if (!prefs || !prefs->HasPrefPath(kContextAwareAccessSignalsAllowlistPref))
     return false;
-  }
 
-  return prefs->IsManagedPreference(
-             kUserContextAwareAccessSignalsAllowlistPref) &&
+  return prefs->IsManagedPreference(kContextAwareAccessSignalsAllowlistPref) &&
          UrlMatchesPattern(
-             url, prefs->GetList(kUserContextAwareAccessSignalsAllowlistPref));
+             url, prefs->GetList(kContextAwareAccessSignalsAllowlistPref));
 }
 
 void LogVerifiedAccessForSAMLDeviceTrustMatchesEndpoints(bool is_matching) {
@@ -152,13 +149,13 @@ void SamlChallengeKeyHandler::BuildChallengeResponse() {
   tpm_key_challenger_ =
       std::make_unique<attestation::TpmChallengeKeyWithTimeout>();
   tpm_key_challenger_->BuildResponse(
-      GetTpmResponseTimeout(), ::attestation::ENTERPRISE_MACHINE, profile_,
+      GetTpmResponseTimeout(), attestation::KEY_DEVICE, profile_,
       base::BindOnce(&SamlChallengeKeyHandler::ReturnResult,
                      weak_factory_.GetWeakPtr()),
       decoded_challenge_, /*register_key=*/false,
       /*key_crypto_type=*/::attestation::KEY_TYPE_RSA,
       /*key_name_for_spkac=*/"",
-      /*signals=*/std::nullopt);
+      /*signals=*/absl::nullopt);
 }
 
 base::TimeDelta SamlChallengeKeyHandler::GetTpmResponseTimeout() const {
@@ -175,8 +172,8 @@ void SamlChallengeKeyHandler::ReturnResult(
     LOG(WARNING) << "Device attestation error: " << result.GetErrorMessage();
   }
 
-  std::string encoded_result_data =
-      base::Base64Encode(result.challenge_response);
+  std::string encoded_result_data;
+  base::Base64Encode(result.challenge_response, &encoded_result_data);
 
   js_result.Set(kSuccessField, result.IsSuccess());
   js_result.Set(kResponseField, encoded_result_data);

@@ -9,16 +9,11 @@
 
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/history_clusters/history_clusters_metrics_logger.h"
-#include "chrome/browser/ui/webui/top_chrome/top_chrome_web_ui_controller.h"
 #include "components/page_image_service/mojom/page_image_service.mojom.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
-#include "ui/webui/resources/cr_components/color_change_listener/color_change_listener.mojom.h"
+#include "ui/webui/mojo_bubble_web_ui_controller.h"
 #include "ui/webui/resources/cr_components/history_clusters/history_clusters.mojom-forward.h"
-
-namespace ui {
-class ColorChangeHandler;
-}
 
 namespace history_clusters {
 class HistoryClustersHandler;
@@ -28,7 +23,7 @@ namespace page_image_service {
 class ImageServiceHandler;
 }
 
-class HistoryClustersSidePanelUI : public TopChromeWebUIController,
+class HistoryClustersSidePanelUI : public ui::MojoBubbleWebUIController,
                                    public content::WebContentsObserver {
  public:
   explicit HistoryClustersSidePanelUI(content::WebUI* web_ui);
@@ -36,10 +31,6 @@ class HistoryClustersSidePanelUI : public TopChromeWebUIController,
   HistoryClustersSidePanelUI& operator=(const HistoryClustersSidePanelUI&) =
       delete;
   ~HistoryClustersSidePanelUI() override;
-
-  void BindInterface(
-      mojo::PendingReceiver<color_change_listener::mojom::PageHandler>
-          pending_receiver);
 
   // Instantiates the implementor of the mojom::PageHandlerFactory mojo
   // interface passing the pending receiver that will be internally bound.
@@ -70,12 +61,7 @@ class HistoryClustersSidePanelUI : public TopChromeWebUIController,
   void DidFinishNavigation(
       content::NavigationHandle* navigation_handle) override;
 
-  static constexpr std::string GetWebUIName() {
-    return "HistoryClustersSidePanel";
-  }
-
  private:
-  std::unique_ptr<ui::ColorChangeHandler> color_provider_handler_;
   std::unique_ptr<history_clusters::HistoryClustersHandler>
       history_clusters_handler_;
   std::unique_ptr<page_image_service::ImageServiceHandler>

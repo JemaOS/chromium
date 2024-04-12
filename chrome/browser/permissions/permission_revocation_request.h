@@ -5,18 +5,17 @@
 #ifndef CHROME_BROWSER_PERMISSIONS_PERMISSION_REVOCATION_REQUEST_H_
 #define CHROME_BROWSER_PERMISSIONS_PERMISSION_REVOCATION_REQUEST_H_
 
-#include <optional>
-
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "chrome/browser/permissions/crowd_deny_preload_data.h"
 #include "chrome/browser/permissions/crowd_deny_safe_browsing_request.h"
-#include "components/content_settings/core/common/content_settings_types.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 
 class Profile;
+enum class ContentSettingsType;
 
 // Revokes the notifications permission if an origin marked as abusive or
 // disruptive. This is the case when:
@@ -69,14 +68,14 @@ class PermissionRevocationRequest {
       CrowdDenySafeBrowsingRequest::Verdict verdict);
   void NotifyCallback(Outcome outcome);
 
-  std::optional<CrowdDenySafeBrowsingRequest> safe_browsing_request_;
+  absl::optional<CrowdDenySafeBrowsingRequest> safe_browsing_request_;
   raw_ptr<Profile> profile_;
   const GURL origin_;
   OutcomeCallback callback_;
   // The time when the Crowd Deny request starts.
-  std::optional<base::TimeTicks> crowd_deny_request_start_time_;
+  absl::optional<base::TimeTicks> crowd_deny_request_start_time_;
   // The Crowd Deny component load duration.
-  std::optional<base::TimeDelta> crowd_deny_request_duration_;
+  absl::optional<base::TimeDelta> crowd_deny_request_duration_;
   base::WeakPtrFactory<PermissionRevocationRequest> weak_factory_{this};
 };
 

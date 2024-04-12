@@ -84,14 +84,20 @@ class AboutHandler : public settings::SettingsPageUIHandler,
   void HandleOpenHelpPage(const base::Value::List& args);
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  // Opens the Extended Updates dialog. |args| must be empty.
-  void HandleOpenExtendedUpdatesDialog(const base::Value::List& args);
-
   // Checks if ReleaseNotes is enabled.
   void HandleGetEnabledReleaseNotes(const base::Value::List& args);
 
   // Checks if system is connected to internet.
   void HandleCheckInternetConnection(const base::Value::List& args);
+
+  // ---***JEMAOS BEGIN***---
+  void HandleEnableJemaOTA(const base::Value::List& args);
+  void OnEnableJemaOTA();
+  void RefreshEnableJemaOTA(const bool enabled);
+
+  void HandleGetEnabledJemaOTA(const base::Value::List& args);
+  void OnGetEnabledJemaOTA(const std::string callback_id, const bool enabled);
+  // ---***JEMAOS END***---
 
   // Opens the release notes app. |args| must be empty.
   void HandleLaunchReleaseNotes(const base::Value::List& args);
@@ -200,7 +206,7 @@ class AboutHandler : public settings::SettingsPageUIHandler,
   // Callbacks for version_updater_->IsConsumerAutoUpdateEnabled calls.
   void OnIsConsumerAutoUpdateEnabled(std::string callback_id,
                                      std::string feature,
-                                     std::optional<bool> enabled);
+                                     absl::optional<bool> enabled);
 
   void HandleSetConsumerAutoUpdate(const base::Value::List& args);
   void HandleOpenProductLicenseOther(const base::Value::List& args);

@@ -44,14 +44,14 @@ const char kUnsupportedByAsh[] = "Not supported by ash.";
 // Performs common crosapi validation. These errors are not caused by the
 // extension so they are considered recoverable. Returns an error message on
 // error, or nullopt on success.
-std::optional<std::string> ValidateCrosapi() {
+absl::optional<std::string> ValidateCrosapi() {
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
   if (!chromeos::LacrosService::Get()
            ->IsAvailable<crosapi::mojom::LoginScreenStorage>()) {
     return kUnsupportedByAsh;
   }
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 }  // namespace
@@ -64,7 +64,7 @@ LoginScreenStorageExtensionFunction::~LoginScreenStorageExtensionFunction() =
     default;
 
 void LoginScreenStorageExtensionFunction::OnDataStored(
-    const std::optional<std::string>& error_message) {
+    const absl::optional<std::string>& error_message) {
   Respond(error_message.has_value() ? Error(*error_message) : NoArguments());
 }
 
@@ -88,11 +88,11 @@ LoginScreenStorageStorePersistentDataFunction::
 
 ExtensionFunction::ResponseAction
 LoginScreenStorageStorePersistentDataFunction::Run() {
-  std::optional<login_screen_storage::StorePersistentData::Params> params =
+  absl::optional<login_screen_storage::StorePersistentData::Params> params =
       login_screen_storage::StorePersistentData::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
-  std::optional<std::string> error = ValidateCrosapi();
+  absl::optional<std::string> error = ValidateCrosapi();
   if (error.has_value()) {
     return RespondNow(Error(error.value()));
   }
@@ -125,11 +125,11 @@ LoginScreenStorageRetrievePersistentDataFunction::
 
 ExtensionFunction::ResponseAction
 LoginScreenStorageRetrievePersistentDataFunction::Run() {
-  std::optional<login_screen_storage::RetrievePersistentData::Params> params =
+  absl::optional<login_screen_storage::RetrievePersistentData::Params> params =
       login_screen_storage::RetrievePersistentData::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
-  std::optional<std::string> error = ValidateCrosapi();
+  absl::optional<std::string> error = ValidateCrosapi();
   if (error.has_value()) {
     return RespondNow(Error(error.value()));
   }
@@ -151,11 +151,11 @@ LoginScreenStorageStoreCredentialsFunction::
 
 ExtensionFunction::ResponseAction
 LoginScreenStorageStoreCredentialsFunction::Run() {
-  std::optional<login_screen_storage::StoreCredentials::Params> params =
+  absl::optional<login_screen_storage::StoreCredentials::Params> params =
       login_screen_storage::StoreCredentials::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
-  std::optional<std::string> error = ValidateCrosapi();
+  absl::optional<std::string> error = ValidateCrosapi();
   if (error.has_value()) {
     return RespondNow(Error(error.value()));
   }
@@ -183,7 +183,7 @@ LoginScreenStorageRetrieveCredentialsFunction::
 
 ExtensionFunction::ResponseAction
 LoginScreenStorageRetrieveCredentialsFunction::Run() {
-  std::optional<std::string> error = ValidateCrosapi();
+  absl::optional<std::string> error = ValidateCrosapi();
   if (error.has_value()) {
     return RespondNow(Error(error.value()));
   }

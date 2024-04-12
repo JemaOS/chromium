@@ -5,9 +5,9 @@
 #include "chrome/browser/ui/media_router/media_router_ui.h"
 
 #include <utility>
-#include <vector>
 
 #include "base/atomic_sequence_num.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/strcat.h"
@@ -246,7 +246,7 @@ bool MediaRouterUI::CreateRoute(const MediaSink::Id& sink_id,
 
   GetIssueManager()->ClearAllIssues();
 
-  current_route_request_ = std::make_optional(*params->request);
+  current_route_request_ = absl::make_optional(*params->request);
 
   // Note that `route_result_callbacks` don't get called when MediaRoterUI is
   // destroyed before the route is created, e.g. when the Cast dialog is closed
@@ -293,7 +293,7 @@ std::vector<MediaSinkWithCastModes> MediaRouterUI::GetEnabledSinks() const {
   const std::string display_sink_id =
       WiredDisplayMediaRouteProvider::GetSinkIdForDisplay(
           display_observer_->GetCurrentDisplay());
-  std::erase_if(enabled_sinks,
+  base::EraseIf(enabled_sinks,
                 [&display_sink_id](const MediaSinkWithCastModes& sink) {
                   return sink.sink.id() == display_sink_id;
                 });
@@ -536,7 +536,7 @@ void MediaRouterUI::OnIssue(const Issue& issue) {
 }
 
 void MediaRouterUI::OnIssueCleared() {
-  issue_ = std::nullopt;
+  issue_ = absl::nullopt;
   UpdateSinks();
 }
 
@@ -640,7 +640,7 @@ void MediaRouterUI::UpdateModelHeader(const std::u16string& source_name) {
 
 UIMediaSink MediaRouterUI::ConvertToUISink(const MediaSinkWithCastModes& sink,
                                            const MediaRoute* route,
-                                           const std::optional<Issue>& issue) {
+                                           const absl::optional<Issue>& issue) {
   UIMediaSink ui_sink{sink.sink.provider_id()};
   ui_sink.id = sink.sink.id();
   ui_sink.friendly_name = base::UTF8ToUTF16(sink.sink.name());
@@ -662,8 +662,9 @@ UIMediaSink MediaRouterUI::ConvertToUISink(const MediaSinkWithCastModes& sink,
           GetMediaRouter()->GetMirroringMediaControllerHost(
               route->media_route_id());
       if (mirroring_controller_host) {
-        ui_sink.freeze_info.can_freeze = mirroring_controller_host->CanFreeze();
-        ui_sink.freeze_info.is_frozen = mirroring_controller_host->IsFrozen();
+        ui_sink.freeze_info.can_freeze =
+            mirroring_controller_host->can_freeze();
+        ui_sink.freeze_info.is_frozen = mirroring_controller_host->is_frozen();
       }
     }
   } else {

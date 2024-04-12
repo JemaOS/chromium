@@ -17,7 +17,6 @@
 
 namespace blink {
 
-class DetectedFace;
 class ExecutionContext;
 class FaceDetectorOptions;
 
@@ -30,23 +29,18 @@ class MODULES_EXPORT FaceDetector final : public ShapeDetector {
   FaceDetector(ExecutionContext*, const FaceDetectorOptions*);
   ~FaceDetector() override = default;
 
-  ScriptPromiseTyped<IDLSequence<DetectedFace>> detect(
-      ScriptState* script_state,
-      const V8ImageBitmapSource* image_source,
-      ExceptionState&);
-
   void Trace(Visitor*) const override;
 
  private:
+  ScriptPromise DoDetect(ScriptState*, SkBitmap, ExceptionState&) override;
   void OnDetectFaces(
-      ScriptPromiseResolverTyped<IDLSequence<DetectedFace>>*,
+      ScriptPromiseResolver*,
       Vector<shape_detection::mojom::blink::FaceDetectionResultPtr>);
   void OnFaceServiceConnectionError();
 
   HeapMojoRemote<shape_detection::mojom::blink::FaceDetection> face_service_;
 
-  HeapHashSet<Member<ScriptPromiseResolverTyped<IDLSequence<DetectedFace>>>>
-      face_service_requests_;
+  HeapHashSet<Member<ScriptPromiseResolver>> face_service_requests_;
 };
 
 }  // namespace blink

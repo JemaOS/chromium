@@ -4,7 +4,7 @@
 
 #include "chrome/browser/profile_resetter/triggered_profile_resetter_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "chrome/browser/profile_resetter/triggered_profile_resetter.h"
 #include "chrome/browser/profiles/profile.h"
@@ -22,8 +22,7 @@ TriggeredProfileResetter* TriggeredProfileResetterFactory::GetForBrowserContext(
 // static
 TriggeredProfileResetterFactory*
 TriggeredProfileResetterFactory::GetInstance() {
-  static base::NoDestructor<TriggeredProfileResetterFactory> instance;
-  return instance.get();
+  return base::Singleton<TriggeredProfileResetterFactory>::get();
 }
 
 TriggeredProfileResetterFactory::TriggeredProfileResetterFactory()
@@ -36,14 +35,13 @@ TriggeredProfileResetterFactory::TriggeredProfileResetterFactory()
               .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
-TriggeredProfileResetterFactory::~TriggeredProfileResetterFactory() = default;
+TriggeredProfileResetterFactory::~TriggeredProfileResetterFactory() {}
 
-std::unique_ptr<KeyedService>
-TriggeredProfileResetterFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* TriggeredProfileResetterFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
-  auto service = std::make_unique<TriggeredProfileResetter>(profile);
+  TriggeredProfileResetter* service = new TriggeredProfileResetter(profile);
   service->Activate();
   return service;
 }

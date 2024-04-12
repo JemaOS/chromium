@@ -125,26 +125,3 @@ void ProfileManagementFlowController::FinishFlowAndRunInBrowser(
                                      // Hence there is no extension blocked.
       profile);
 }
-
-base::OnceClosure
-ProfileManagementFlowController::CreateSwitchToStepPopCallback(Step step) {
-  return base::BindOnce(
-      &ProfileManagementFlowController::SwitchToStep,
-      // Binding as Unretained as `this` outlives the step
-      // controllers.
-      base::Unretained(this), step,
-      /*reset_state=*/false,
-      /*step_switch_finished_callback=*/StepSwitchFinishedCallback(),
-      /*pop_step_callback=*/base::OnceClosure());
-}
-
-void ProfileManagementFlowController::CreateSignedOutFlowWebContents(
-    Profile* profile) {
-  signed_out_flow_web_contents_ =
-      content::WebContents::Create(content::WebContents::CreateParams(profile));
-}
-
-content::WebContents*
-ProfileManagementFlowController::GetSignedOutFlowWebContents() const {
-  return signed_out_flow_web_contents_.get();
-}

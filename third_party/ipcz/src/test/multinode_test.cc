@@ -6,7 +6,6 @@
 
 #include <cstring>
 #include <map>
-#include <optional>
 #include <string>
 #include <thread>
 
@@ -19,6 +18,8 @@
 #include "third_party/abseil-cpp/absl/base/macros.h"
 #include "third_party/abseil-cpp/absl/strings/str_cat.h"
 #include "third_party/abseil-cpp/absl/strings/str_split.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "third_party/abseil-cpp/absl/types/variant.h"
 
 #if BUILDFLAG(ENABLE_IPCZ_MULTIPROCESS_TESTS)
 #include "reference_drivers/file_descriptor.h"
@@ -63,11 +64,9 @@ std::vector<RegisteredMultinodeTest>& GetRegisteredMultinodeTests() {
 // connections use the synchronous single-process driver.
 class InProcessTestNodeController : public TestNode::TestNodeController {
  public:
-  InProcessTestNodeController(TestNode& source,
-                              TestDriver* test_driver,
+  InProcessTestNodeController(TestDriver* test_driver,
                               std::unique_ptr<TestNode> test_node)
-      : source_(source),
-        client_thread_(std::in_place,
+      : client_thread_(absl::in_place,
                        &RunTestNode,
                        test_driver,
                        std::move(test_node)) {}
@@ -93,10 +92,6 @@ class InProcessTestNodeController : public TestNode::TestNodeController {
     return true;
   }
 
-  TransportPair CreateNewTransports() override {
-    return source_.CreateTransports();
-  }
-
  private:
   static void RunTestNode(TestDriver* test_driver,
                           std::unique_ptr<TestNode> test_node) {
@@ -104,8 +99,7 @@ class InProcessTestNodeController : public TestNode::TestNodeController {
     test_node->NodeBody();
   }
 
-  TestNode& source_;
-  std::optional<std::thread> client_thread_;
+  absl::optional<std::thread> client_thread_;
 };
 
 class InProcessTestDriverBase : public TestDriver {
@@ -117,7 +111,7 @@ class InProcessTestDriverBase : public TestDriver {
       IpczDriverHandle their_transport) override {
     std::unique_ptr<TestNode> test_node = details.factory();
     test_node->SetTransport(their_transport);
-    return MakeRefCounted<InProcessTestNodeController>(source, this,
+    return MakeRefCounted<InProcessTestNodeController>(this,
                                                        std::move(test_node));
   }
 
@@ -135,9 +129,10 @@ class SyncTestDriver : public InProcessTestDriverBase {
 
   const char* GetName() const override { return internal::kSyncTestDriverName; }
 
-  TransportPair CreateTransports(TestNode& source,
-                                 bool for_broker_target) const override {
-    TransportPair transports;
+  TestNode::TransportPair CreateTransports(
+      TestNode& source,
+      bool for_broker_target) const override {
+    TestNode::TransportPair transports;
     const IpczResult result = GetIpczDriver().CreateTransports(
         IPCZ_INVALID_DRIVER_HANDLE, IPCZ_INVALID_DRIVER_HANDLE, IPCZ_NO_FLAGS,
         nullptr, &transports.ours, &transports.theirs);
@@ -170,8 +165,9 @@ class AsyncTestDriver : public InProcessTestDriverBase {
 
   const char* GetName() const override { return name_; }
 
-  TransportPair CreateTransports(TestNode& source,
-                                 bool for_broker_target) const override {
+  TestNode::TransportPair CreateTransports(
+      TestNode& source,
+      bool for_broker_target) const override {
     if (for_broker_target) {
       auto [ours, theirs] =
           reference_drivers::CreateAsyncTransportPairForBrokers();
@@ -217,8 +213,7 @@ TestDriverRegistration<AsyncTestDriver>
 // Controls a node running within an isolated child process.
 class ChildProcessTestNodeController : public TestNode::TestNodeController {
  public:
-  ChildProcessTestNodeController(TestNode& source, pid_t pid)
-      : source_(source), pid_(pid) {}
+  explicit ChildProcessTestNodeController(pid_t pid) : pid_(pid) {}
   ~ChildProcessTestNodeController() override {
     ABSL_ASSERT(result_.has_value());
   }
@@ -233,13 +228,8 @@ class ChildProcessTestNodeController : public TestNode::TestNodeController {
     return *result_;
   }
 
-  TransportPair CreateNewTransports() override {
-    return source_.CreateTransports();
-  }
-
-  TestNode& source_;
   const pid_t pid_;
-  std::optional<bool> result_;
+  absl::optional<bool> result_;
 };
 
 class MultiprocessTestDriver : public TestDriver {
@@ -252,9 +242,10 @@ class MultiprocessTestDriver : public TestDriver {
     return internal::kMultiprocessTestDriverName;
   }
 
-  TransportPair CreateTransports(TestNode& source,
-                                 bool for_broker_target) const override {
-    TransportPair transports;
+  TestNode::TransportPair CreateTransports(
+      TestNode& source,
+      bool for_broker_target) const override {
+    TestNode::TransportPair transports;
     const IpczResult result = GetIpczDriver().CreateTransports(
         IPCZ_INVALID_DRIVER_HANDLE, IPCZ_INVALID_DRIVER_HANDLE, IPCZ_NO_FLAGS,
         nullptr, &transports.ours, &transports.theirs);
@@ -270,7 +261,7 @@ class MultiprocessTestDriver : public TestDriver {
     reference_drivers::FileDescriptor socket =
         reference_drivers::TakeMultiprocessTransportDescriptor(their_transport);
     return MakeRefCounted<ChildProcessTestNodeController>(
-        source, child_launcher_.Launch(details.name, std::move(socket)));
+        child_launcher_.Launch(details.name, std::move(socket)));
   }
 
   IpczConnectNodeFlags GetExtraClientConnectNodeFlags() const override {
@@ -333,7 +324,8 @@ void TestNode::Initialize(TestDriver* test_driver) {
       GetDetails().is_broker ? IPCZ_CREATE_NODE_AS_BROKER : IPCZ_NO_FLAGS;
   ABSL_ASSERT(node_ == IPCZ_INVALID_HANDLE);
   const IpczResult result =
-      ipcz().CreateNode(&test_driver_->GetIpczDriver(), flags, nullptr, &node_);
+      ipcz().CreateNode(&test_driver_->GetIpczDriver(),
+                        IPCZ_INVALID_DRIVER_HANDLE, flags, nullptr, &node_);
   ABSL_ASSERT(result == IPCZ_RESULT_OK);
 }
 
@@ -373,11 +365,11 @@ IpczHandle TestNode::BoxBlob(std::string_view contents) {
   ABSL_ASSERT(result == IPCZ_RESULT_OK);
 
   IpczDriverHandle mapping;
-  volatile void* base;
+  void* base;
   result = GetDriver().MapSharedMemory(memory, IPCZ_NO_FLAGS, nullptr, &base,
                                        &mapping);
   ABSL_ASSERT(result == IPCZ_RESULT_OK);
-  memcpy(const_cast<void*>(base), contents.data(), contents.size());
+  memcpy(base, contents.data(), contents.size());
   GetDriver().Close(mapping, IPCZ_NO_FLAGS, nullptr);
 
   IpczHandle box;
@@ -404,13 +396,12 @@ std::string TestNode::UnboxBlob(IpczHandle box) {
   ABSL_ASSERT(result == IPCZ_RESULT_OK);
 
   IpczDriverHandle mapping;
-  volatile void* base;
+  void* base;
   result = GetDriver().MapSharedMemory(memory, IPCZ_NO_FLAGS, nullptr, &base,
                                        &mapping);
   ABSL_ASSERT(result == IPCZ_RESULT_OK);
 
-  std::string contents(static_cast<const char*>(const_cast<const void*>(base)),
-                       info.region_num_bytes);
+  std::string contents(static_cast<const char*>(base), info.region_num_bytes);
   GetDriver().Close(mapping, IPCZ_NO_FLAGS, nullptr);
   GetDriver().Close(memory, IPCZ_NO_FLAGS, nullptr);
   return contents;
@@ -439,11 +430,11 @@ Ref<TestNode::TestNodeController> TestNode::SpawnTestNodeImpl(
   return controller;
 }
 
-TransportPair TestNode::CreateTransports() {
+TestNode::TransportPair TestNode::CreateTransports() {
   return test_driver_->CreateTransports(*this, /*for_broker_target=*/false);
 }
 
-TransportPair TestNode::CreateBrokerToBrokerTransports() {
+TestNode::TransportPair TestNode::CreateBrokerToBrokerTransports() {
   return test_driver_->CreateTransports(*this, /*for_broker_target=*/true);
 }
 

@@ -64,8 +64,7 @@ class CORE_EXPORT IntersectionObserver final
   // This value can be used to detect transitions between non-intersecting or
   // edge-adjacent (i.e., zero area) state, and intersecting by any non-zero
   // number of pixels.
-  static constexpr float kMinimumThreshold =
-      IntersectionGeometry::kMinimumThreshold;
+  static const float kMinimumThreshold;
 
   // Used to specify when callbacks should be invoked with new notifications.
   // Blink-internal users of IntersectionObserver will have their callbacks
@@ -98,42 +97,38 @@ class CORE_EXPORT IntersectionObserver final
                                       const IntersectionObserverInit*,
                                       ExceptionState& = ASSERT_NO_EXCEPTION);
 
-  struct Params {
-    STACK_ALLOCATED();
-
-   public:
-    Vector<Length> margin;
-    MarginTarget margin_target = kApplyMarginToRoot;
-    Vector<Length> scroll_margin;
-
-    // Elements should be in the range [0,1], and are interpreted according to
-    // the given `semantics`.
-    Vector<float> thresholds;
-    ThresholdInterpretation semantics = kFractionOfTarget;
-
-    DeliveryBehavior behavior = kDeliverDuringPostLifecycleSteps;
-    // Specifies the minimum period between change notifications.
-    DOMHighResTimeStamp delay = 0;
-    bool track_visibility = false;
-    bool always_report_root_bounds = false;
-    // Indicates whether the overflow clip edge should be used instead of the
-    // bounding box if appropriate.
-    bool use_overflow_clip_edge = false;
-    bool needs_initial_observation_with_detached_target = true;
-  };
-
   // Creates an IntersectionObserver that monitors changes to the intersection
   // between its target element relative to its implicit root and notifies via
-  // the given |callback|.
+  // the given |callback|. |thresholds| should be in the range [0,1], and are
+  // interpreted according to the given |semantics|. |delay| specifies the
+  // minimum period between change notifications.
+  // `use_overflow_clip_edge` indicates whether the overflow clip edge
+  // should be used instead of the bounding box if appropriate.
   static IntersectionObserver* Create(
-      const Document& document,
+      const Vector<Length>& margin,
+      const Vector<float>& thresholds,
+      Document* document,
       EventCallback callback,
       LocalFrameUkmAggregator::MetricId ukm_metric_id,
-      Params&& params);
+      DeliveryBehavior behavior = kDeliverDuringPostLifecycleSteps,
+      ThresholdInterpretation semantics = kFractionOfTarget,
+      DOMHighResTimeStamp delay = 0,
+      bool track_visbility = false,
+      bool always_report_root_bounds = false,
+      MarginTarget margin_target = kApplyMarginToRoot,
+      bool use_overflow_clip_edge = false,
+      ExceptionState& = ASSERT_NO_EXCEPTION);
 
-  IntersectionObserver(IntersectionObserverDelegate& delegate,
-                       Node* root,
-                       Params&& params);
+  explicit IntersectionObserver(IntersectionObserverDelegate&,
+                                Node*,
+                                const Vector<Length>& margin,
+                                const Vector<float>& thresholds,
+                                ThresholdInterpretation semantics,
+                                DOMHighResTimeStamp delay,
+                                bool track_visibility,
+                                bool always_report_root_bounds,
+                                MarginTarget margin_target,
+                                bool use_overflow_clip_edge);
 
   // API methods.
   void observe(Element*, ExceptionState& = ASSERT_NO_EXCEPTION);
@@ -145,7 +140,6 @@ class CORE_EXPORT IntersectionObserver final
   // API attributes.
   Node* root() const { return root_.Get(); }
   String rootMargin() const;
-  String scrollMargin() const;
   const Vector<float>& thresholds() const { return thresholds_; }
   DOMHighResTimeStamp delay() const { return delay_; }
   bool trackVisibility() const { return track_visibility_; }
@@ -166,23 +160,16 @@ class CORE_EXPORT IntersectionObserver final
 
   DOMHighResTimeStamp GetTimeStamp(base::TimeTicks monotonic_time) const;
   DOMHighResTimeStamp GetEffectiveDelay() const;
-
   Vector<Length> RootMargin() const {
     return margin_target_ == kApplyMarginToRoot ? margin_ : Vector<Length>();
   }
-
   Vector<Length> TargetMargin() const {
     return margin_target_ == kApplyMarginToTarget ? margin_ : Vector<Length>();
   }
 
-  Vector<Length> ScrollMargin() const { return scroll_margin_; }
-
   // Returns the number of IntersectionObservations that recomputed geometry.
-  int64_t ComputeIntersections(
-      unsigned flags,
-      std::optional<base::TimeTicks>& monotonic_time,
-      gfx::Vector2dF accumulated_scroll_delta_since_last_update);
-  gfx::Vector2dF MinScrollDeltaToUpdate() const;
+  int64_t ComputeIntersections(unsigned flags,
+                               absl::optional<base::TimeTicks>& monotonic_time);
 
   bool IsInternal() const;
   LocalFrameUkmAggregator::MetricId GetUkmMetricId() const;
@@ -194,7 +181,8 @@ class CORE_EXPORT IntersectionObserver final
   // Returns false if this observer has an explicit root node which has been
   // deleted; true otherwise.
   bool RootIsValid() const;
-  void InvalidateCachedRects();
+  bool CanUseCachedRects() const { return can_use_cached_rects_; }
+  void InvalidateCachedRects() { can_use_cached_rects_ = 0; }
 
   bool UseOverflowClipEdge() const { return use_overflow_clip_edge_ == 1; }
 
@@ -223,16 +211,16 @@ class CORE_EXPORT IntersectionObserver final
   HeapLinkedHashSet<WeakMember<IntersectionObservation>> observations_;
   // Observations that have updates waiting to be delivered
   HeapHashSet<Member<IntersectionObservation>> active_observations_;
-  const Vector<float> thresholds_;
-  const DOMHighResTimeStamp delay_;
-  const Vector<Length> margin_;
-  const Vector<Length> scroll_margin_;
-  const MarginTarget margin_target_;
-  const unsigned root_is_implicit_ : 1;
-  const unsigned track_visibility_ : 1;
-  const unsigned track_fraction_of_root_ : 1;
-  const unsigned always_report_root_bounds_ : 1;
-  const unsigned use_overflow_clip_edge_ : 1;
+  Vector<float> thresholds_;
+  DOMHighResTimeStamp delay_;
+  Vector<Length> margin_;
+  MarginTarget margin_target_;
+  unsigned root_is_implicit_ : 1;
+  unsigned track_visibility_ : 1;
+  unsigned track_fraction_of_root_ : 1;
+  unsigned always_report_root_bounds_ : 1;
+  unsigned can_use_cached_rects_ : 1;
+  unsigned use_overflow_clip_edge_ : 1;
 };
 
 }  // namespace blink

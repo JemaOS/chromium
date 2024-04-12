@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "chrome/browser/extensions/permissions/site_permissions_helper.h"
+#include "chrome/browser/extensions/site_permissions_helper.h"
 #include "chrome/browser/ui/toolbar/toolbar_action_view_delegate.h"
 #include "ui/base/models/image_model.h"
 
@@ -37,11 +37,6 @@ ui::ImageModel TestToolbarActionViewController::GetIcon(
 
 std::u16string TestToolbarActionViewController::GetActionName() const {
   return action_name_;
-}
-
-std::u16string TestToolbarActionViewController::GetActionTitle(
-    content::WebContents* web_contents) const {
-  return action_title_;
 }
 
 std::u16string TestToolbarActionViewController::GetAccessibleName(
@@ -120,12 +115,6 @@ void TestToolbarActionViewController::ShowPopup(bool by_user) {
 void TestToolbarActionViewController::SetActionName(
     const std::u16string& name) {
   action_name_ = name;
-  UpdateDelegate();
-}
-
-void TestToolbarActionViewController::SetActionTitle(
-    const std::u16string& title) {
-  action_title_ = title;
   UpdateDelegate();
 }
 

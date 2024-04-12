@@ -31,20 +31,7 @@
       default: "bool",
       valid_type: "str",  // The string value should be a C++ type name
     },
-    // List of files containing the definitions of the types in 'type'.
-    include_paths: {
-      default: [],
-      valid_type: "list",
-    },
-    // The initial value. Can be a boolean, integer or string representing the
-    // value.
-    // Can be set per platform using an object with keys being any of the
-    // platforms listed in valid_keys below. The 'default' key will cover any
-    // platforms that has not been explicitly specified and should always be
-    // present.
-    initial: {
-      valid_keys: ["Android", "Win", "ChromeOS_Ash", "ChromeOS_Lacros", "Mac", "Linux"],
-    },
+    initial: {},
     invalidate: {
       default: [],
       valid_type: "list",
@@ -115,25 +102,8 @@
 
     {
       name: "editingBehaviorType",
-      // NOTEs
-      //  1) EditingMacBehavior comprises builds on Mac;
-      //  2) EditingWindowsBehavior comprises builds on Windows;
-      //  3) EditingUnixBehavior comprises all unix-based systems, but
-      //     Darwin/MacOS/Android (and then abusing the terminology);
-      //  4) EditingAndroidBehavior comprises Android builds.
-      // 99) MacEditingBehavior is used a fallback.
-      initial: {
-        "Mac": "mojom::blink::EditingBehavior::kEditingMacBehavior",
-        "Win": "mojom::blink::EditingBehavior::kEditingWindowsBehavior",
-        "Android": "mojom::blink::EditingBehavior::kEditingAndroidBehavior",
-        "ChromeOS_Ash": "mojom::blink::EditingBehavior::kEditingChromeOSBehavior",
-        "ChromeOS_Lacros": "mojom::blink::EditingBehavior::kEditingChromeOSBehavior",
-        "default": "mojom::blink::EditingBehavior::kEditingUnixBehavior",
-      },
+      initial: "EditingBehaviorTypeForPlatform()",
       type: "mojom::EditingBehavior",
-      include_paths: [
-        "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
-      ],
     },
 
     {
@@ -197,9 +167,6 @@
     {
       name: "LCDTextPreference",
       type: "LCDTextPreference",
-      include_paths: [
-        "third_party/blink/renderer/platform/graphics/lcd_text_preference.h"
-      ],
       initial: "LCDTextPreference::kStronglyPreferred",
       invalidate: ["AcceleratedCompositing"],
     },
@@ -272,6 +239,15 @@
     {
       name: "scrollAnimatorEnabled",
       initial: true,
+    },
+
+    // Used to disable threaded, compositor scrolling for testing purposes.
+    // crbug.com/410974 tracks removal once alternative solutions for selective
+    // main thread scrolling are supported.
+    {
+      name: "threadedScrollingEnabled",
+      initial: true,
+      invalidate: ["Style", "ViewportPaintProperties"],
     },
 
     // Used in web tests for gesture tap highlights. Makes the highlights square
@@ -349,6 +325,7 @@
     {
       name: "spatialNavigationEnabled",
       initial: false,
+      invalidate: ["SpatialNavigation"],
     },
 
     // This setting adds a means to enable/disable touch initiated drag & drop. If
@@ -379,7 +356,7 @@
     },
     {
       name: "selectTrailingWhitespaceEnabled",
-      initial: {"Win": true, "default": false},
+      initial: "kDefaultSelectTrailingWhitespaceEnabled",
     },
 
     {
@@ -391,12 +368,14 @@
       name: "selectionStrategy",
       initial: "SelectionStrategy::kCharacter",
       type: "SelectionStrategy",
-      include_paths: [
-        "third_party/blink/renderer/core/editing/selection_strategy.h"
-      ],
     },
 
     //////////////// Settings used by Android WebView below ////////////////
+
+    {
+      name: "useLegacyBackgroundSizeShorthandBehavior",
+      initial: false,
+    },
 
     // This quirk is to maintain compatibility with Android apps built on
     // the Android SDK prior to and including version 18.
@@ -509,20 +488,6 @@
       type: "double",
     },
 
-    // Font weight adjustment for accessibility, set at OS-level.
-    {
-      name: "accessibilityFontWeightAdjustment",
-      initial: "0",
-      type: "int",
-    },
-
-    // Text size contrast factor for accessibility, applied as part of page zoom.
-    {
-      name: "accessibilityTextSizeContrastFactor",
-      initial: "0",
-      type: "int",
-    },
-
     // Only used by web tests and inspector emulation.
     {
       name: "mediaTypeOverride",
@@ -535,26 +500,6 @@
       initial: "blink::mojom::DisplayMode::kUndefined",
       invalidate: ["MediaQuery"],
       type: "blink::mojom::DisplayMode",
-      include_paths: [
-        "third_party/blink/public/mojom/manifest/display_mode.mojom-shared.h"
-      ],
-    },
-
-    // Only used by web tests.
-    {
-      name: "windowShowState",
-      initial: "ui::WindowShowState::SHOW_STATE_DEFAULT",
-      invalidate: ["MediaQuery"],
-      type: "ui::WindowShowState",
-      include_paths: ["ui/base/ui_base_types.h"],
-    },
-
-    // Only used by web tests.
-    {
-      name: "resizable",
-      initial: true,
-      invalidate: ["MediaQuery"],
-      type: "bool",
     },
 
     // loadsImagesAutomatically only suppresses the network load of
@@ -573,9 +518,6 @@
       name: "imageAnimationPolicy",
       initial: "mojom::blink::ImageAnimationPolicy::kImageAnimationPolicyAllowed",
       type: "mojom::blink::ImageAnimationPolicy",
-      include_paths: [
-        "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
-      ],
     },
 
     // Html preload scanning is a fast, early scan of HTML documents to find loadable
@@ -623,16 +565,12 @@
     {
       name: "scriptEnabled",
       initial: false,
-      invalidate: ["MediaQuery"],
     },
 
     {
       name: "parserScriptingFlagPolicy",
       initial: "ParserScriptingFlagPolicy::kOnlyIfScriptIsEnabled",
-      type: "ParserScriptingFlagPolicy",
-      include_paths: [
-        "third_party/blink/renderer/core/html/parser/parser_scripting_flag_policy.h"
-      ],
+      type: "ParserScriptingFlagPolicy"
     },
 
     // Forces Android Overlay Scrollbar for mobile emulator.
@@ -691,9 +629,6 @@
       name: "v8CacheOptions",
       initial: "mojom::blink::V8CacheOptions::kDefault",
       type: "mojom::blink::V8CacheOptions",
-      include_paths: [
-        "third_party/blink/public/mojom/v8_cache_options.mojom-blink.h"
-      ],
     },
 
     // These values are bit fields for the properties of available pointing devices
@@ -704,14 +639,12 @@
       initial: "ui::POINTER_TYPE_NONE",
       invalidate: ["MediaQuery"],
       type: "int",
-      include_paths: ["ui/base/pointer/pointer_device.h"],
     },
     {
       name: "availableHoverTypes",
       initial: "ui::HOVER_TYPE_NONE",
       invalidate: ["MediaQuery"],
       type: "int",
-      include_paths: ["ui/base/pointer/pointer_device.h"],
     },
 
     // These values specify properties of the user's primary pointing device only.
@@ -720,18 +653,12 @@
       initial: "mojom::blink::PointerType::kPointerNone",
       invalidate: ["MediaQuery"],
       type: "blink::mojom::PointerType",
-      include_paths: [
-        "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
-      ],
     },
     {
       name: "primaryHoverType",
       initial: "mojom::blink::HoverType::kHoverNone",
       invalidate: ["MediaQuery"],
       type: "mojom::blink::HoverType",
-      include_paths: [
-        "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
-      ],
     },
 
     // The ability of the output device to modify the appearance of content once
@@ -743,14 +670,17 @@
       initial: "mojom::blink::OutputDeviceUpdateAbilityType::kFastType",
       invalidate: ["MediaQuery"],
       type: "mojom::blink::OutputDeviceUpdateAbilityType",
-      include_paths: [
-        "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
-      ],
     },
 
     // If true, the value in password fields is exposed to assistive technologies.
     {
       name: "accessibilityPasswordValuesEnabled",
+      initial: false,
+    },
+
+    // If true, static text nodes expose inline text box children.
+    {
+      name: "inlineTextBoxAccessibilityEnabled",
       initial: false,
     },
 
@@ -814,9 +744,6 @@
       initial: "mojom::blink::ViewportStyle::kDefault",
       invalidate: ["ViewportStyle"],
       type: "mojom::blink::ViewportStyle",
-      include_paths: [
-        "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
-      ],
     },
 
     // Automatic track selection is performed based on user preference for track kind specified
@@ -826,9 +753,6 @@
       initial: "TextTrackKindUserPreference::kDefault",
       invalidate: ["TextTrackKindUserPreference"],
       type: "TextTrackKindUserPreference",
-      include_paths: [
-        "third_party/blink/renderer/core/html/track/text_track_kind_user_preference.h"
-      ],
     },
 
     // User style overrides for captions and subtitles
@@ -957,7 +881,6 @@
     {
       name: "autoplayPolicy",
       type: "AutoplayPolicy::Type",
-      include_paths: ["third_party/blink/renderer/core/html/media/autoplay_policy.h"],
       initial: "AutoplayPolicy::Type::kNoUserGestureRequired",
     },
 
@@ -973,14 +896,6 @@
     // `FileOrDirectoryPickerWithoutGestureAllowedForOrigins` policy.
     {
       name: "requireTransientActivationForShowFileOrDirectoryPicker",
-      initial: true,
-    },
-
-    // HTML Fullscreen (e.g. `Element.requestFullscreen()`)'s transient
-    // activation requirement can be bypassed via the "Automatic Fullscreen"
-    // content setting.
-    {
-      name: "requireTransientActivationForHtmlFullscreen",
       initial: true,
     },
 
@@ -1001,9 +916,6 @@
       name: "lowPriorityIframesThreshold",
       initial: "WebEffectiveConnectionType::kTypeUnknown",
       type: "WebEffectiveConnectionType",
-      include_paths: [
-        "third_party/blink/public/platform/web_effective_connection_type.h"
-      ],
     },
     {
       name: "shouldProtectAgainstIpcFlooding",
@@ -1015,81 +927,71 @@
       initial: true,
     },
     //
-    // Lazy loading frame margins (distance from viewport) for different effective connection types.
+    // Lazy frame loading distance-from-viewport thresholds for different effective connection types.
     //
     {
-      name: "lazyLoadingFrameMarginPxUnknown",
+      name: "lazyFrameLoadingDistanceThresholdPxUnknown",
       initial: 4000,
       type: "int",
     },
     {
-      name: "lazyLoadingFrameMarginPxOffline",
+      name: "lazyFrameLoadingDistanceThresholdPxOffline",
       initial: 8000,
       type: "int",
     },
     {
-      name: "lazyLoadingFrameMarginPxSlow2G",
+      name: "lazyFrameLoadingDistanceThresholdPxSlow2G",
       initial: 8000,
       type: "int",
     },
     {
-      name: "lazyLoadingFrameMarginPx2G",
+      name: "lazyFrameLoadingDistanceThresholdPx2G",
       initial: 6000,
       type: "int",
     },
     {
-      name: "lazyLoadingFrameMarginPx3G",
+      name: "lazyFrameLoadingDistanceThresholdPx3G",
       initial: 3500,
       type: "int",
     },
     {
-      name: "lazyLoadingFrameMarginPx4G",
+      name: "lazyFrameLoadingDistanceThresholdPx4G",
       initial: 2500,
       type: "int",
     },
 
     //
-    // Lazy loading image margins for different effective connection types.
+    // Lazy image loading distance-from-viewport thresholds for different effective connection types.
     //
     {
-      name: "lazyLoadingImageMarginPxUnknown",
+      name: "lazyImageLoadingDistanceThresholdPxUnknown",
       initial: 3000,
       type: "int",
     },
     {
-      name: "lazyLoadingImageMarginPxOffline",
+      name: "lazyImageLoadingDistanceThresholdPxOffline",
       initial: 8000,
       type: "int",
     },
     {
-      name: "lazyLoadingImageMarginPxSlow2G",
+      name: "lazyImageLoadingDistanceThresholdPxSlow2G",
       initial: 8000,
       type: "int",
     },
     {
-      name: "lazyLoadingImageMarginPx2G",
+      name: "lazyImageLoadingDistanceThresholdPx2G",
       initial: 6000,
       type: "int",
     },
     {
-      name: "lazyLoadingImageMarginPx3G",
+      name: "lazyImageLoadingDistanceThresholdPx3G",
       initial: 2500,
       type: "int",
     },
     {
-      name: "lazyLoadingImageMarginPx4G",
+      name: "lazyImageLoadingDistanceThresholdPx4G",
       initial: 1250,
       type: "int",
-    },
-
-    // The forced colors state for the web content. The forced colors state
-    // is used to evaluate the forced-colors media query, as well as determining
-    // when to apply system color overrides to author specified styles.
-    {
-      name: "inForcedColors",
-      initial: false,
-      invalidate: ["ColorScheme"],
-      type: "bool",
     },
 
     // Preferred color scheme from the OS/application passed to the renderer for
@@ -1099,9 +1001,6 @@
       initial: "mojom::blink::PreferredColorScheme::kLight",
       invalidate: ["ColorScheme"],
       type: "mojom::blink::PreferredColorScheme",
-      include_paths: [
-        "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-shared.h"
-      ],
     },
 
     // Preferred contrast from the OS/application passed to the renderer for
@@ -1111,31 +1010,12 @@
       initial: "mojom::blink::PreferredContrast::kNoPreference",
       invalidate: ["MediaQuery"],
       type: "mojom::blink::PreferredContrast",
-      include_paths: [
-        "third_party/blink/public/mojom/css/preferred_color_scheme.mojom-shared.h"
-      ],
     },
 
     // Preferred motion-reduction setting from the OS/application passed to the
     // renderer for evaluating the prefers-reduced-motion media query.
     {
       name: "prefersReducedMotion",
-      initial: false,
-      invalidate: ["MediaQuery"],
-    },
-
-    // Preferred transparency-reduction setting from the OS/application passed to the
-    // renderer for evaluating the prefers-reduced-transparency media query.
-    {
-      name: "prefersReducedTransparency",
-      initial: false,
-      invalidate: ["MediaQuery"],
-    },
-
-    // inverted-colors setting from the OS/application passed to the
-    // renderer for evaluating the inverted-colors media query.
-    {
-      name: "invertedColors",
       initial: false,
       invalidate: ["MediaQuery"],
     },
@@ -1150,9 +1030,6 @@
       initial: "NavigationControls::kNone",
       invalidate: ["MediaQuery"],
       type: "NavigationControls",
-      include_paths: [
-        "third_party/blink/public/common/css/navigation_controls.h"
-      ],
     },
     {
       name: "accessibilityAlwaysShowFocus",
@@ -1198,7 +1075,6 @@
       name: "textAutosizingWindowSizeOverride",
       invalidate: ["TextAutosizing"],
       type: "gfx::Size",
-      include_paths: ["ui/gfx/geometry/size.h"],
     },
     {
       name: "WebXRImmersiveArAllowed",
@@ -1216,20 +1092,8 @@
       // page would have to be reduced smaller to make the widest line fit, we
       // just clip instead.
       name: "printingMaximumShrinkFactor",
-      initial: 1.5,
+      initial: 2,
       type: "float",
-    },
-    {
-      name: "prefersDefaultScrollbarStyles",
-      initial: false,
-      invalidate: ["Style"],
-      type: "bool",
-    },
-    // SubApps APIs transient activation requirement can be bypassed via
-    // `SubAppsAPIsAllowedWithoutGestureAndAuthorizationForOrigins` policy.
-    {
-      name: "requireTransientActivationAndAuthorizationForSubAppsAPI",
-      initial: true,
     },
   ],
 }

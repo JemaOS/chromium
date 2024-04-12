@@ -50,7 +50,7 @@ class GFX_KEYFRAME_ANIMATION_EXPORT KeyframeEffect {
   void RemoveKeyframeModel(int keyframe_model_id);
   void RemoveKeyframeModels(int target_property);
 
-  virtual bool Tick(base::TimeTicks monotonic_time);
+  virtual void Tick(base::TimeTicks monotonic_time);
 
   // This ticks all keyframe models until they are complete.
   void FinishAll();
@@ -116,7 +116,7 @@ class GFX_KEYFRAME_ANIMATION_EXPORT KeyframeEffect {
                          KeyframeModel* keyframe_model);
 
  private:
-  bool TickInternal(base::TimeTicks monotonic_time,
+  void TickInternal(base::TimeTicks monotonic_time,
                     bool include_infinite_animations);
   void StartKeyframeModels(base::TimeTicks monotonic_time,
                            bool include_infinite_animations);

@@ -25,15 +25,9 @@ SVGAnimatedHref::SVGAnimatedHref(SVGElement* context_element)
           MakeGarbageCollected<SVGAnimatedString>(context_element,
                                                   xlink_names::kHrefAttr)) {}
 
-SVGAnimatedPropertyBase* SVGAnimatedHref::PropertyFromAttribute(
-    const QualifiedName& attribute_name) {
-  if (attribute_name == svg_names::kHrefAttr) {
-    return this;
-  } else if (attribute_name.Matches(xlink_names::kHrefAttr)) {
-    return xlink_href_.Get();
-  } else {
-    return nullptr;
-  }
+void SVGAnimatedHref::AddToPropertyMap(SVGElement* element) {
+  element->AddToPropertyMap(this);
+  element->AddToPropertyMap(xlink_href_);
 }
 
 bool SVGAnimatedHref::IsKnownAttribute(const QualifiedName& attr_name) {

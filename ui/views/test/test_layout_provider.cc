@@ -38,13 +38,13 @@ int TestLayoutProvider::GetSnappedDialogWidth(int min_width) const {
   return snapped_dialog_width_ ? snapped_dialog_width_ : min_width;
 }
 
-ui::ResourceBundle::FontDetails TestLayoutProvider::GetFontDetailsImpl(
+ui::ResourceBundle::FontDetails TestLayoutProvider::GetFontDetails(
     int context,
     int style) const {
   auto it = details_.find({context, style});
   return it != details_.end()
              ? it->second
-             : TypographyProvider::GetFontDetailsImpl(context, style);
+             : TypographyProvider::GetFontDetails(context, style);
 }
 
 }  // namespace views::test

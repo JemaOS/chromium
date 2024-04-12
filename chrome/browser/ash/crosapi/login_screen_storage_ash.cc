@@ -37,7 +37,7 @@ void LoginScreenStorageAsh::StoreInternal(
     const std::string& data,
     StoreCallback callback) {
   if (keys.empty()) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
@@ -56,14 +56,14 @@ void LoginScreenStorageAsh::OnStored(
     const login_manager::LoginScreenStorageMetadata& metadata,
     const std::string& data,
     StoreCallback callback,
-    std::optional<std::string> error) {
+    absl::optional<std::string> error) {
   if (error) {
     std::move(callback).Run(error);
     return;
   }
 
   if (remaining_keys.empty()) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
@@ -80,8 +80,8 @@ void LoginScreenStorageAsh::Retrieve(const std::string& key,
 }
 
 void LoginScreenStorageAsh::OnRetrieved(RetrieveCallback callback,
-                                        std::optional<std::string> data,
-                                        std::optional<std::string> error) {
+                                        absl::optional<std::string> data,
+                                        absl::optional<std::string> error) {
   mojom::LoginScreenStorageRetrieveResultPtr result;
   if (error) {
     result = mojom::LoginScreenStorageRetrieveResult::NewErrorMessage(*error);

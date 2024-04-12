@@ -7,13 +7,12 @@
 
 #include "ash/ash_export.h"
 #include "chromeos/ash/components/network/network_sms_handler.h"
-#include "chromeos/ash/components/network/text_message_provider.h"
 
 namespace ash {
 
 // SmsObserver is called when a new sms message is received. Then it shows the
 // sms message to the user in the notification center.
-class ASH_EXPORT SmsObserver : public TextMessageProvider::Observer {
+class ASH_EXPORT SmsObserver : public NetworkSmsHandler::Observer {
  public:
   // The prefix of all SMS notifications.
   static const char kNotificationPrefix[];
@@ -25,9 +24,8 @@ class ASH_EXPORT SmsObserver : public TextMessageProvider::Observer {
 
   ~SmsObserver() override;
 
-  // TextMessageProvider::Observer:
-  void MessageReceived(const std::string& guid,
-                       const TextMessageData& message) override;
+  // NetworkSmsHandler::Observer:
+  void MessageReceived(const base::Value::Dict& message) override;
 
  private:
   // Used to create notification identifier.

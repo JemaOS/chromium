@@ -129,9 +129,8 @@ MediaEngagementPreloadComponentInstallerPolicy::GetInstallerAttributes() const {
 
 void RegisterMediaEngagementPreloadComponent(ComponentUpdateService* cus,
                                              base::OnceClosure on_load) {
-  if (!base::FeatureList::IsEnabled(media::kPreloadMediaEngagementData)) {
+  if (!base::FeatureList::IsEnabled(media::kPreloadMediaEngagementData))
     return;
-  }
 
   auto installer = base::MakeRefCounted<ComponentInstaller>(
       std::make_unique<MediaEngagementPreloadComponentInstallerPolicy>(

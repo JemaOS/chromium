@@ -1,7 +1,4 @@
-monorail: {
+monorail {
   component: "Blink>GarbageCollection"
 }
 team_email: "oilpan-reviews@chromium.org"
-buganizer_public: {
-  component_id: 1456254
-}

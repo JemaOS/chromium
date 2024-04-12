@@ -13,7 +13,6 @@
 #include "components/captive_portal/core/captive_portal_detector.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/views/widget/widget_delegate.h"
 #include "url/gurl.h"
 
@@ -24,16 +23,24 @@ const char* CaptivePortalStartURL() {
   return captive_portal::CaptivePortalDetector::kDefaultURL;
 }
 
+std::u16string WindowTitleForNetwork(const NetworkState* network) {
+  if (network && !network->name().empty()) {
+    return l10n_util::GetStringFUTF16(IDS_LOGIN_CAPTIVE_PORTAL_WINDOW_TITLE,
+                                      base::ASCIIToUTF16(network->name()));
+  } else {
+    NOTREACHED() << "Captive portal with no active network?";
+    return l10n_util::GetStringFUTF16(IDS_LOGIN_CAPTIVE_PORTAL_WINDOW_TITLE,
+                                      {});
+  }
+}
+
 }  // namespace
 
 CaptivePortalView::CaptivePortalView(Profile* profile,
-                                     CaptivePortalWindowProxy* proxy,
-                                     const std::string& network_name)
-    : SimpleWebViewDialog(profile),
-      proxy_(proxy),
-      network_name_(network_name) {}
+                                     CaptivePortalWindowProxy* proxy)
+    : SimpleWebViewDialog(profile), proxy_(proxy), redirected_(false) {}
 
-CaptivePortalView::~CaptivePortalView() = default;
+CaptivePortalView::~CaptivePortalView() {}
 
 void CaptivePortalView::StartLoad() {
   SimpleWebViewDialog::StartLoad(GURL(CaptivePortalStartURL()));
@@ -48,9 +55,10 @@ void CaptivePortalView::NavigationStateChanged(
   // detection will be done on the Chrome side.
   GURL url = source->GetLastCommittedURL();
   // Note, `url` will be empty for "client3.google.com/generate_204" page.
-  if (!redirected_ && url != GURL() && url != GURL(CaptivePortalStartURL())) {
+  if (!redirected_ && url != GURL::EmptyGURL() &&
+      url != GURL(CaptivePortalStartURL())) {
     redirected_ = true;
-    proxy_->OnRedirected(network_name_);
+    proxy_->OnRedirected();
   }
 }
 
@@ -69,13 +77,9 @@ std::unique_ptr<views::WidgetDelegate> CaptivePortalView::MakeWidgetDelegate() {
   delegate->SetCanResize(false);
   delegate->SetModalType(ui::MODAL_TYPE_SYSTEM);
   delegate->SetShowTitle(true);
-  delegate->SetTitle(
-      l10n_util::GetStringFUTF16(IDS_LOGIN_CAPTIVE_PORTAL_WINDOW_TITLE,
-                                 base::ASCIIToUTF16(network_name_)));
+  delegate->SetTitle(WindowTitleForNetwork(
+      NetworkHandler::Get()->network_state_handler()->DefaultNetwork()));
   return delegate;
 }
-
-BEGIN_METADATA(CaptivePortalView)
-END_METADATA
 
 }  // namespace ash

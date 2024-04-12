@@ -5,12 +5,11 @@
 #ifndef UI_DISPLAY_TEST_TEST_SCREEN_H_
 #define UI_DISPLAY_TEST_TEST_SCREEN_H_
 
-#include "build/build_config.h"
 #include "ui/display/display.h"
 #include "ui/display/screen_base.h"
-#include "ui/display/tablet_state.h"
 
-namespace display::test {
+namespace display {
+namespace test {
 
 // A dummy implementation of Screen that contains a single
 // Display only. The contained Display can be accessed and modified via
@@ -40,19 +39,13 @@ class TestScreen : public ScreenBase {
   gfx::NativeWindow GetWindowAtScreenPoint(const gfx::Point& point) override;
   Display GetDisplayNearestWindow(gfx::NativeWindow window) const override;
   void SetCursorScreenPointForTesting(const gfx::Point& point) override;
-#if BUILDFLAG(IS_CHROMEOS)
-  TabletState GetTabletState() const override;
-  void OverrideTabletStateForTesting(TabletState state) override;
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
  private:
   gfx::Point cursor_screen_point_;
   bool register_screen_ = false;
-#if BUILDFLAG(IS_CHROMEOS)
-  TabletState state_ = TabletState::kInClamshellMode;
-#endif  // BUILDFLAG(IS_CHROMEOS)
 };
 
-}  // namespace display::test
+}  // namespace test
+}  // namespace display
 
 #endif  // UI_DISPLAY_TEST_TEST_SCREEN_H_

@@ -59,7 +59,7 @@ Vector<String> BeforeInstallPromptEvent::platforms() const {
   return platforms_;
 }
 
-ScriptPromiseTyped<AppBannerPromptResult> BeforeInstallPromptEvent::userChoice(
+ScriptPromise BeforeInstallPromptEvent::userChoice(
     ScriptState* script_state,
     ExceptionState& exception_state) {
   UseCounter::Count(ExecutionContext::From(script_state),
@@ -71,7 +71,7 @@ ScriptPromiseTyped<AppBannerPromptResult> BeforeInstallPromptEvent::userChoice(
   exception_state.ThrowDOMException(
       DOMExceptionCode::kInvalidStateError,
       "userChoice cannot be accessed on this event.");
-  return ScriptPromiseTyped<AppBannerPromptResult>();
+  return ScriptPromise();
 }
 
 ScriptPromise BeforeInstallPromptEvent::prompt(

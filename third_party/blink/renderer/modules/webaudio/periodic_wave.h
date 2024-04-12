@@ -72,7 +72,7 @@ class PeriodicWave final : public ScriptWrappable {
 
   void Trace(Visitor*) const final;
 
-  PeriodicWaveImpl* impl() { return periodic_wave_impl_.Get(); }
+  PeriodicWaveImpl* impl() { return periodic_wave_impl_; }
 
  private:
   const Member<PeriodicWaveImpl> periodic_wave_impl_;

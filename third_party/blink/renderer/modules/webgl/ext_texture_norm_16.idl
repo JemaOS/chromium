@@ -5,7 +5,8 @@
 // https://www.khronos.org/registry/webgl/extensions/EXT_texture_norm16/
 
 [
-    LegacyNoInterfaceObject
+    LegacyNoInterfaceObject,
+    DoNotCheckConstants
 ] interface EXTTextureNorm16 {
   const unsigned long R16_EXT = 0x822A;
   const unsigned long RG16_EXT = 0x822C;

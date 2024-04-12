@@ -43,21 +43,20 @@ public class CreatorTabMediator {
     private WebContentsDelegateAndroid mWebContentsDelegate;
     private Profile mProfile;
 
-    /** Constructor. */
-    public CreatorTabMediator(
-            BottomSheetController bottomSheetController,
-            CreatorCoordinator.FaviconLoader faviconLoader,
-            int topControlsHeightDp) {
+    /**
+     * Constructor.
+     */
+    public CreatorTabMediator(BottomSheetController bottomSheetController,
+            CreatorCoordinator.FaviconLoader faviconLoader, int topControlsHeightDp) {
         mBottomSheetController = bottomSheetController;
         mFaviconLoader = faviconLoader;
         mTopControlsHeightDp = topControlsHeightDp;
     }
 
-    /** Initializes various objects for a new tab. */
-    void init(
-            WebContents webContents,
-            ContentView contentView,
-            CreatorTabSheetContent sheetContent,
+    /**
+     * Initializes various objects for a new tab.
+     */
+    void init(WebContents webContents, ContentView contentView, CreatorTabSheetContent sheetContent,
             Profile profile) {
         // Ensures that initialization is performed only when a new tab is opened.
         assert mProfile == null && mWebContentsObserver == null && mWebContentsDelegate == null;
@@ -70,7 +69,9 @@ public class CreatorTabMediator {
         mSheetContent.attachWebContents(mWebContents, contentView, mWebContentsDelegate);
     }
 
-    /** Loads a new URL into the tab and makes it visible. */
+    /**
+     * Loads a new URL into the tab and makes it visible.
+     */
     void requestShowContent(GURL url, String title) {
         loadUrl(url);
         mSheetContent.updateTitle(title);
@@ -83,62 +84,58 @@ public class CreatorTabMediator {
 
     private void createWebContentsObserver() {
         assert mWebContentsObserver == null;
-        mWebContentsObserver =
-                new WebContentsObserver(mWebContents) {
-                    /** Whether the currently loaded page is an error (interstitial) page. */
-                    private boolean mIsOnErrorPage;
+        mWebContentsObserver = new WebContentsObserver(mWebContents) {
+            /** Whether the currently loaded page is an error (interstitial) page. */
+            private boolean mIsOnErrorPage;
 
-                    private GURL mCurrentUrl;
+            private GURL mCurrentUrl;
 
-                    @Override
-                    public void loadProgressChanged(float progress) {
-                        if (mSheetContent != null) mSheetContent.setProgress(progress);
+            @Override
+            public void loadProgressChanged(float progress) {
+                if (mSheetContent != null) mSheetContent.setProgress(progress);
+            }
+
+            @Override
+            public void didStartNavigationInPrimaryMainFrame(NavigationHandle navigation) {
+                if (!navigation.isSameDocument()) {
+                    GURL url = navigation.getUrl();
+                    if (url.equals(mCurrentUrl)) return;
+
+                    // The link Back to Safety on the interstitial page will go to the previous
+                    // page. If there is no previous page, i.e. previous page is NTP, the preview
+                    // tab will be closed.
+                    if (mIsOnErrorPage && UrlUtilities.isNTPUrl(url)) {
+                        mBottomSheetController.hideContent(mSheetContent, /* animate= */ true);
+                        mCurrentUrl = null;
+                        return;
                     }
 
-                    @Override
-                    public void didStartNavigationInPrimaryMainFrame(NavigationHandle navigation) {
-                        if (!navigation.isSameDocument()) {
-                            GURL url = navigation.getUrl();
-                            if (url.equals(mCurrentUrl)) return;
+                    mCurrentUrl = url;
+                    mFaviconLoader.loadFavicon(
+                            url, (drawable) -> onFaviconAvailable(drawable), mProfile);
+                }
+            }
 
-                            // The link Back to Safety on the interstitial page will go to the
-                            // previous page. If there is no previous page, i.e. previous page is
-                            // NTP, the preview tab will be closed.
-                            if (mIsOnErrorPage && UrlUtilities.isNtpUrl(url)) {
-                                mBottomSheetController.hideContent(
-                                        mSheetContent, /* animate= */ true);
-                                mCurrentUrl = null;
-                                return;
-                            }
+            @Override
+            public void titleWasSet(String title) {
+                mSheetContent.updateTitle(title);
+            }
 
-                            mCurrentUrl = url;
-                            mFaviconLoader.loadFavicon(
-                                    url, (drawable) -> onFaviconAvailable(drawable), mProfile);
-                        }
-                    }
-
-                    @Override
-                    public void titleWasSet(String title) {
-                        mSheetContent.updateTitle(title);
-                    }
-
-                    @Override
-                    public void didFinishNavigationInPrimaryMainFrame(NavigationHandle navigation) {
-                        if (navigation.hasCommitted()) {
-                            mIsOnErrorPage = navigation.isErrorPage();
-                            mSheetContent.updateURL(mWebContents.get().getVisibleUrl());
-                        } else {
-                            // Not viewable contents such as download. Show a toast and close the
-                            // tab.
-                            Toast.makeText(
-                                            ContextUtils.getApplicationContext(),
-                                            "test" /*R.string.creator_tab_sheet_not_viewable*/,
-                                            Toast.LENGTH_SHORT)
-                                    .show();
-                            mBottomSheetController.hideContent(mSheetContent, /* animate= */ true);
-                        }
-                    }
-                };
+            @Override
+            public void didFinishNavigationInPrimaryMainFrame(NavigationHandle navigation) {
+                if (navigation.hasCommitted()) {
+                    mIsOnErrorPage = navigation.isErrorPage();
+                    mSheetContent.updateURL(mWebContents.get().getVisibleUrl());
+                } else {
+                    // Not viewable contents such as download. Show a toast and close the tab.
+                    Toast.makeText(ContextUtils.getApplicationContext(),
+                                 "test" /*R.string.creator_tab_sheet_not_viewable*/,
+                                 Toast.LENGTH_SHORT)
+                            .show();
+                    mBottomSheetController.hideContent(mSheetContent, /* animate= */ true);
+                }
+            }
+        };
     }
 
     private void onFaviconAvailable(Drawable drawable) {
@@ -147,65 +144,53 @@ public class CreatorTabMediator {
 
     private void createWebContentsDelegate() {
         assert mWebContentsDelegate == null;
-        mWebContentsDelegate =
-                new WebContentsDelegateAndroid() {
-                    @Override
-                    public void visibleSSLStateChanged() {
-                        if (mSheetContent == null) return;
-                        int securityLevel =
-                                SecurityStateModel.getSecurityLevelForWebContents(mWebContents);
-                        mSheetContent.setSecurityIcon(getSecurityIconResource(securityLevel));
-                        mSheetContent.updateURL(mWebContents.getVisibleUrl());
-                    }
+        mWebContentsDelegate = new WebContentsDelegateAndroid() {
+            @Override
+            public void visibleSSLStateChanged() {
+                if (mSheetContent == null) return;
+                int securityLevel = SecurityStateModel.getSecurityLevelForWebContents(mWebContents);
+                mSheetContent.setSecurityIcon(getSecurityIconResource(securityLevel));
+                mSheetContent.updateURL(mWebContents.getVisibleUrl());
+            }
 
-                    @Override
-                    public void openNewTab(
-                            GURL url,
-                            String extraHeaders,
-                            ResourceRequestBody postData,
-                            int disposition,
-                            boolean isRendererInitiated) {
-                        // We never open a separate tab when navigating in a preview tab.
-                        loadUrl(url);
-                    }
+            @Override
+            public void openNewTab(GURL url, String extraHeaders, ResourceRequestBody postData,
+                    int disposition, boolean isRendererInitiated) {
+                // We never open a separate tab when navigating in a preview tab.
+                loadUrl(url);
+            }
 
-                    @Override
-                    public boolean shouldCreateWebContents(GURL targetUrl) {
-                        loadUrl(targetUrl);
-                        return false;
-                    }
+            @Override
+            public boolean shouldCreateWebContents(GURL targetUrl) {
+                loadUrl(targetUrl);
+                return false;
+            }
 
-                    @Override
-                    public void loadingStateChanged(boolean shouldShowLoadingUI) {
-                        boolean isLoading = mWebContents != null && mWebContents.isLoading();
-                        if (isLoading) {
-                            if (mSheetContent == null) return;
-                            mSheetContent.setProgress(0);
-                            mSheetContent.setProgressVisible(true);
-                        } else {
-                            // Hides the Progress Bar after a delay to make sure it is rendered for
-                            // at least a few frames, otherwise its completion won't be visually
-                            // noticeable.
-                            new Handler()
-                                    .postDelayed(
-                                            () -> {
-                                                if (mSheetContent != null) {
-                                                    mSheetContent.setProgressVisible(false);
-                                                }
-                                            },
-                                            HIDE_PROGRESS_BAR_DELAY_MS);
-                        }
-                    }
+            @Override
+            public void loadingStateChanged(boolean shouldShowLoadingUI) {
+                boolean isLoading = mWebContents != null && mWebContents.isLoading();
+                if (isLoading) {
+                    if (mSheetContent == null) return;
+                    mSheetContent.setProgress(0);
+                    mSheetContent.setProgressVisible(true);
+                } else {
+                    // Hides the Progress Bar after a delay to make sure it is rendered for at least
+                    // a few frames, otherwise its completion won't be visually noticeable.
+                    new Handler().postDelayed(() -> {
+                        if (mSheetContent != null) mSheetContent.setProgressVisible(false);
+                    }, HIDE_PROGRESS_BAR_DELAY_MS);
+                }
+            }
 
-                    @Override
-                    public int getTopControlsHeight() {
-                        return mTopControlsHeightDp;
-                    }
-                };
+            @Override
+            public int getTopControlsHeight() {
+                return mTopControlsHeightDp;
+            }
+        };
     }
 
-    private static @DrawableRes int getSecurityIconResource(
-            @ConnectionSecurityLevel int securityLevel) {
+    @DrawableRes
+    private static int getSecurityIconResource(@ConnectionSecurityLevel int securityLevel) {
         switch (securityLevel) {
             case ConnectionSecurityLevel.NONE:
             case ConnectionSecurityLevel.WARNING:
@@ -221,7 +206,9 @@ public class CreatorTabMediator {
         return 0;
     }
 
-    /** Destroys the objects used for the current preview tab. */
+    /**
+     * Destroys the objects used for the current preview tab.
+     */
     void destroyContent() {
         if (mWebContentsObserver != null) {
             mWebContentsObserver.destroy();

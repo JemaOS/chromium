@@ -4,7 +4,6 @@
 
 import {LegacyElementMixin} from 'chrome://resources/polymer/v3_0/polymer/lib/legacy/legacy-element-mixin.js';
 interface NetworkProxyElement extends LegacyElementMixin, HTMLElement {
-  editable: boolean;
   reset(): void;
 }
 export {NetworkProxyElement};

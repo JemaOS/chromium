@@ -67,11 +67,11 @@ void FileWriterBase::Truncate(int64_t length) {
   DoTruncate(path_, length);
 }
 
-void FileWriterBase::Write(int64_t position, const Blob& blob) {
+void FileWriterBase::Write(int64_t position, const String& id) {
   DCHECK_EQ(kOperationNone, operation_);
   DCHECK_EQ(kCancelNotInProgress, cancel_state_);
   operation_ = kOperationWrite;
-  DoWrite(path_, blob, position);
+  DoWrite(path_, id, position);
 }
 
 // When we cancel a write/truncate, we always get back the result of the write

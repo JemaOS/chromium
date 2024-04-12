@@ -9,7 +9,6 @@
 
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
 #include "extensions/browser/extension_registry_observer.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/metadata/view_factory.h"
@@ -20,7 +19,7 @@ class Profile;
 namespace extensions {
 class Extension;
 class ExtensionRegistry;
-}  // namespace extensions
+}
 
 namespace views {
 class ScrollView;
@@ -30,12 +29,12 @@ class ScrollView;
 // TODO(sashab): Rename App to Extension in the class name and |app| to
 // |extension| in the member variables in this class and all AppInfoPanel
 // classes.
-class AppInfoDialog final : public views::View,
-                            public extensions::ExtensionRegistryObserver {
+class AppInfoDialog : public views::View,
+                      public extensions::ExtensionRegistryObserver,
+                      public base::SupportsWeakPtr<AppInfoDialog> {
  public:
-  METADATA_HEADER(AppInfoDialog, views::View)
+  METADATA_HEADER(AppInfoDialog);
 
- public:
   static base::WeakPtr<AppInfoDialog>& GetLastDialogForTesting();
 
   AppInfoDialog(Profile* profile, const extensions::Extension* app);
@@ -72,10 +71,9 @@ class AppInfoDialog final : public views::View,
   raw_ptr<views::View> dialog_footer_ = nullptr;
   raw_ptr<views::View> arc_app_info_links_ = nullptr;
 
-  raw_ptr<Profile, AcrossTasksDanglingUntriaged> profile_;
+  raw_ptr<Profile, DanglingUntriaged> profile_;
   std::string app_id_;
   raw_ptr<extensions::ExtensionRegistry> extension_registry_ = nullptr;
-  base::WeakPtrFactory<AppInfoDialog> weak_ptr_factory_{this};
 };
 
 BEGIN_VIEW_BUILDER(/* no export */, AppInfoDialog, views::View)

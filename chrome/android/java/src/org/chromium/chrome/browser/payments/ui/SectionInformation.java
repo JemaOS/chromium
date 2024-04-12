@@ -21,10 +21,14 @@ import java.util.List;
  * shipping address or payment method.
  */
 public class SectionInformation {
-    /** This value indicates that the user has not made a selection in this section. */
+    /**
+     * This value indicates that the user has not made a selection in this section.
+     */
     public static final int NO_SELECTION = -1;
 
-    /** This value indicates that user selection is invalid in this section. */
+    /**
+     * This value indicates that user selection is invalid in this section.
+     */
     public static final int INVALID_SELECTION = -2;
 
     protected final ArrayList<EditableOption> mItems = new ArrayList<>();
@@ -34,9 +38,12 @@ public class SectionInformation {
     private int mSelectedItem;
     private boolean mDisplayInSingleLineInNormalMode = true;
     public String mErrorMessage;
-    @Nullable public String mAddditionalText;
+    @Nullable
+    public String mAddditionalText;
 
-    /** Builds an empty section without selection. */
+    /**
+     * Builds an empty section without selection.
+     */
     public SectionInformation(@PaymentRequestUI.DataType int sectionType) {
         this(sectionType, null);
     }
@@ -58,9 +65,7 @@ public class SectionInformation {
      * @param selection      The index of the currently selected item.
      * @param itemCollection The items in the section.
      */
-    public SectionInformation(
-            @PaymentRequestUI.DataType int sectionType,
-            int selection,
+    public SectionInformation(@PaymentRequestUI.DataType int sectionType, int selection,
             Collection<? extends EditableOption> itemCollection) {
         mDataType = sectionType;
         updateItemsWithCollection(selection, itemCollection);
@@ -100,7 +105,8 @@ public class SectionInformation {
      * @param position The index of the item to return.
      * @return The item in the given position or null.
      */
-    public @Nullable EditableOption getItem(int position) {
+    @Nullable
+    public EditableOption getItem(int position) {
         if (mItems.isEmpty() || position < 0 || position >= mItems.size()) {
             return null;
         }
@@ -148,7 +154,8 @@ public class SectionInformation {
      *
      * @return The selected item or null if none selected.
      */
-    public @Nullable EditableOption getSelectedItem() {
+    @Nullable
+    public EditableOption getSelectedItem() {
         return getItem(getSelectedItemIndex());
     }
 
@@ -264,7 +271,8 @@ public class SectionInformation {
     }
 
     /** @return The optional additional text to display in this section. */
-    public @Nullable String getAdditionalText() {
+    @Nullable
+    public String getAdditionalText() {
         return mAddditionalText;
     }
 

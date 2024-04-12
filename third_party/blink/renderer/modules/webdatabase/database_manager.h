@@ -31,10 +31,7 @@
 #include "third_party/blink/renderer/modules/webdatabase/database_error.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
-
-namespace WTF {
-class String;
-}  // namespace WTF
+#include "third_party/blink/renderer/platform/wtf/forward.h"
 
 namespace blink {
 
@@ -68,20 +65,20 @@ class DatabaseManager {
 #endif
 
   static void ThrowExceptionForDatabaseError(DatabaseError,
-                                             const WTF::String& error_message,
+                                             const String& error_message,
                                              ExceptionState&);
 
   Database* OpenDatabase(ExecutionContext*,
-                         const WTF::String& name,
-                         const WTF::String& expected_version,
-                         const WTF::String& display_name,
+                         const String& name,
+                         const String& expected_version,
+                         const String& display_name,
                          V8DatabaseCallback*,
                          DatabaseError&,
-                         WTF::String& error_message);
+                         String& error_message);
 
-  WTF::String FullPathForDatabase(const SecurityOrigin*,
-                                  const WTF::String& name,
-                                  bool create_if_does_not_exist = true);
+  String FullPathForDatabase(const SecurityOrigin*,
+                             const String& name,
+                             bool create_if_does_not_exist = true);
 
  private:
   DatabaseManager();
@@ -95,15 +92,15 @@ class DatabaseManager {
   DatabaseContext* ExistingDatabaseContextFor(ExecutionContext*);
 
   Database* OpenDatabaseInternal(ExecutionContext*,
-                                 const WTF::String& name,
-                                 const WTF::String& expected_version,
-                                 const WTF::String& display_name,
+                                 const String& name,
+                                 const String& expected_version,
+                                 const String& display_name,
                                  V8DatabaseCallback*,
                                  bool set_version_in_new_database,
                                  DatabaseError&,
-                                 WTF::String& error_message);
+                                 String& error_message);
 
-  static void LogErrorMessage(ExecutionContext*, const WTF::String& message);
+  static void LogErrorMessage(ExecutionContext*, const String& message);
 
   // context_map_ can have two or more entries even though we don't support
   // Web SQL on workers because single Blink process can have multiple main

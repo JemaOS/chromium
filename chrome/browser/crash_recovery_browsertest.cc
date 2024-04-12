@@ -19,6 +19,8 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_widget_host_view.h"
@@ -122,9 +124,7 @@ IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, Reload) {
 }
 
 // Test that reload after a crash forces a cache revalidation.
-// TODO(crbug.com/323792317): Times out flakily.
-IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest,
-                       DISABLED_ReloadCacheRevalidate) {
+IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, ReloadCacheRevalidate) {
   const char kTestPath[] = "/test";
 
   // Use the test server so as not to bypass cache behavior. The title of the
@@ -153,12 +153,7 @@ IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest,
 // There was an earlier bug (1270510) in process-per-site in which the max page
 // ID of the RenderProcessHost was stale, so the NavigationEntry in the new tab
 // was not committed.  This prevents regression of that bug.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_LoadInNewTab DISABLED_LoadInNewTab
-#else
-#define MAYBE_LoadInNewTab LoadInNewTab
-#endif
-IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, MAYBE_LoadInNewTab) {
+IN_PROC_BROWSER_TEST_F(CrashRecoveryBrowserTest, LoadInNewTab) {
   const base::FilePath::CharType kTitle2File[] =
       FILE_PATH_LITERAL("title2.html");
 

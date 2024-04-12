@@ -83,16 +83,11 @@ bool IsEnd(char c) {
   return IsWhitespace(c) || c == 0;
 }
 
-// Detects path to stat file that contains temperature for CPU package that is
-// used as temperature for CPU.
-// Prefer package temperature if available. Otherwise, fall back on CPU
-// core 0. Not all cores may be covered by CPU core 0.
-// Package temperature is the weighted average of the different cores according
-// to:
-//   www.intel.com/content/www/us/en/support/articles/000058845/processors.html
+// Detects path to stat file that contains temperature for CPU Core 0 that is
+// used as temperature for CPU. Not all cores may be covered by this statistics.
+// Detected path is stored |path_|
 class CpuTemperaturePathDetector {
  public:
-  // Detected path is stored |path_|
   CpuTemperaturePathDetector() {
     base::FileEnumerator hwmon_enumerator(
         base::FilePath(FILE_PATH_LITERAL("/sys/class/hwmon/")),
@@ -109,10 +104,8 @@ class CpuTemperaturePathDetector {
         if (!base::ReadFileToString(temperature_label_path, &label))
           continue;
         base::TrimWhitespaceASCII(label, base::TRIM_TRAILING, &label);
-        bool package_temp = label == "Package id 0";
-        if (label != "Core 0" && label != "Physical id 0" && !package_temp) {
+        if (label != "Core 0" && label != "Physical id 0")
           continue;
-        }
         std::string temperature_input_path_string =
             temperature_label_path.value();
         base::ReplaceSubstringsAfterOffset(&temperature_input_path_string, 0,
@@ -124,16 +117,6 @@ class CpuTemperaturePathDetector {
         path_ = temperature_input_path;
         VLOG(1) << "Detected path to read CPU temperature (" << label
                 << "): " << temperature_input_path;
-
-        // If we already found the ideal temperature source, no need to continue
-        // iterating. Using Core 0 would require running all iterations of this
-        // loop.
-        if (package_temp) {
-          return;
-        }
-      }
-
-      if (!path_.empty()) {
         return;
       }
     }
@@ -158,7 +141,7 @@ const base::FilePath& GetCpuTemperaturePathOnFileThread() {
 bool ReadNonNegativeInt(const base::Value::Dict& root,
                         const std::string& key,
                         int* out) {
-  std::optional<int> value = root.FindInt(key);
+  absl::optional<int> value = root.FindInt(key);
   if (!value || *value < 0) {
     return false;
   }
@@ -219,7 +202,7 @@ struct ArcSystemStatCollector::Sample {
 
 struct OneValueReaderInfo {
   SystemReader reader = SystemReader::kTotal;
-  raw_ptr<int64_t> value = nullptr;
+  raw_ptr<int64_t, ExperimentalAsh> value = nullptr;
   int64_t default_value = 0;
 };
 
@@ -528,7 +511,7 @@ std::string ArcSystemStatCollector::SerializeToJson() const {
 }
 
 bool ArcSystemStatCollector::LoadFromJson(const std::string& json_data) {
-  const std::optional<base::Value> root = base::JSONReader::Read(json_data);
+  const absl::optional<base::Value> root = base::JSONReader::Read(json_data);
   if (!root)
     return false;
   return LoadFromValue(*root);

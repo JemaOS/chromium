@@ -68,7 +68,7 @@ void StereoPannerNode::Trace(Visitor* visitor) const {
 }
 
 AudioParam* StereoPannerNode::pan() const {
-  return pan_.Get();
+  return pan_;
 }
 
 void StereoPannerNode::ReportDidCreate() {

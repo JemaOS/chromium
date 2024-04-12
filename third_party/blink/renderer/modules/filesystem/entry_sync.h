@@ -60,7 +60,7 @@ class EntrySync : public EntryBase {
                     const String& name,
                     ExceptionState&) const;
   void remove(ExceptionState&) const;
-  DirectoryEntrySync* getParent() const;
+  EntrySync* getParent() const;
 
   void Trace(Visitor*) const override;
 

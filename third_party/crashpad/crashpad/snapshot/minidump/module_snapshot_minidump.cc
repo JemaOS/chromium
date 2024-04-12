@@ -17,7 +17,6 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "base/check_op.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "minidump/minidump_extensions.h"

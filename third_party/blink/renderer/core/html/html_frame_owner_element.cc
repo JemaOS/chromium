@@ -101,6 +101,10 @@ bool IsFrameLazyLoadable(ExecutionContext* context,
                          const KURL& url,
                          bool is_loading_attr_lazy,
                          bool should_lazy_load_children) {
+  if (!RuntimeEnabledFeatures::LazyFrameLoadingEnabled()) {
+    return false;
+  }
+
   // Only http:// or https:// URLs are eligible for lazy loading, excluding
   // URLs like invalid or empty URLs, "about:blank", local file URLs, etc.
   // that it doesn't make sense to lazily load.
@@ -158,7 +162,8 @@ bool CheckAndRecordIfShouldLazilyLoadFrame(const Document& document,
                                            bool is_eligible_for_lazy_ads,
                                            bool record_uma) {
   DCHECK(document.GetSettings());
-  if (!document.GetSettings()->GetLazyLoadEnabled()) {
+  if (!RuntimeEnabledFeatures::LazyFrameLoadingEnabled() ||
+      !document.GetSettings()->GetLazyLoadEnabled()) {
     return false;
   }
 
@@ -269,16 +274,6 @@ HTMLFrameOwnerElement::HTMLFrameOwnerElement(const QualifiedName& tag_name,
   document.IncrementImmediateChildFrameCreationCount();
 }
 
-const QualifiedName& HTMLFrameOwnerElement::SubResourceAttributeName() const {
-  // This doesn't really make sense, but it preserves existing behavior
-  // that may or may not matter for the one caller of this method.
-
-  // It might make more sense for this to be pure virtual and the
-  // remaining subclasses that don't override this (frame, iframe,
-  // fenced frame) to do so.
-  return QualifiedName::Null();
-}
-
 LayoutEmbeddedContent* HTMLFrameOwnerElement::GetLayoutEmbeddedContent() const {
   // HTMLObjectElement and HTMLEmbedElement may return arbitrary layoutObjects
   // when using fallback content.
@@ -365,10 +360,6 @@ void HTMLFrameOwnerElement::DisconnectContentFrame() {
   // Check if removing the subframe caused |parent_doc| to finish loading.
   if (have_to_check_if_parent_is_completed)
     parent_doc.CheckCompleted();
-
-  // Reset the collapsed state. The frame element will be collapsed again if it
-  // is blocked again in the future.
-  SetCollapsed(false);
 }
 
 HTMLFrameOwnerElement::~HTMLFrameOwnerElement() {
@@ -401,9 +392,8 @@ void HTMLFrameOwnerElement::SetSandboxFlags(
   }
 }
 
-bool HTMLFrameOwnerElement::IsKeyboardFocusable(
-    UpdateBehavior update_behavior) const {
-  return content_frame_ && HTMLElement::IsKeyboardFocusable(update_behavior);
+bool HTMLFrameOwnerElement::IsKeyboardFocusable() const {
+  return content_frame_ && HTMLElement::IsKeyboardFocusable();
 }
 
 void HTMLFrameOwnerElement::DisposePluginSoon(WebPluginContainerImpl* plugin) {
@@ -705,7 +695,8 @@ bool HTMLFrameOwnerElement::LoadOrRedirectSubframe(
 
   // If the subframe navigation is aborted or TAO fails, we report a "fallback"
   // entry that starts at navigation and ends at load/error event.
-  if (url.ProtocolIsInHTTPFamily()) {
+  if (url.ProtocolIsInHTTPFamily() ||
+      url.ProtocolIs(url::kUuidInPackageScheme)) {
     fallback_timing_info_ =
         CreateResourceTimingInfo(base::TimeTicks::Now(), url,
                                  /*response=*/nullptr);

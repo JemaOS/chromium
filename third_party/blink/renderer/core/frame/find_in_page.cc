@@ -220,8 +220,7 @@ void FindInPage::SetClient(
   // TODO(crbug.com/984878): Having to call reset() to try to bind a remote that
   // might be bound is questionable behavior and suggests code may be buggy.
   client_.reset();
-  client_.Bind(std::move(remote),
-               frame_->GetTaskRunner(blink::TaskType::kInternalDefault));
+  client_.Bind(std::move(remote));
 }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -300,7 +299,7 @@ TextFinder* WebLocalFrameImpl::GetTextFinder() const {
 }
 
 TextFinder* FindInPage::GetTextFinder() const {
-  return text_finder_.Get();
+  return text_finder_;
 }
 
 TextFinder& WebLocalFrameImpl::EnsureTextFinder() {

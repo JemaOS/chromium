@@ -7,9 +7,8 @@ import 'chrome://resources/polymer/v3_0/iron-pages/iron-pages.js';
 
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {MerchantCart} from '../../chrome_cart.mojom-webui.js';
+import {MerchantCart} from '../../chrome_cart.mojom-webui.js';
 import {I18nMixin, loadTimeData} from '../../i18n_setup.js';
-
 import {getTemplate} from './discount_consent_card.html.js';
 
 /**

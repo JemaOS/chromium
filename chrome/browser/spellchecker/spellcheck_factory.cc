@@ -24,30 +24,25 @@ SpellcheckService* SpellcheckServiceFactory::GetForContext(
 
 // static
 SpellcheckServiceFactory* SpellcheckServiceFactory::GetInstance() {
-  static base::NoDestructor<SpellcheckServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<SpellcheckServiceFactory>::get();
 }
 
 SpellcheckServiceFactory::SpellcheckServiceFactory()
     : ProfileKeyedServiceFactory(
           "SpellcheckService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   // TODO(erg): Uncomment these as they are initialized.
   // DependsOn(RequestContextFactory::GetInstance());
 }
 
-SpellcheckServiceFactory::~SpellcheckServiceFactory() = default;
+SpellcheckServiceFactory::~SpellcheckServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-SpellcheckServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SpellcheckServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   // Many variables are initialized from the |context| in the SpellcheckService.
-  return std::make_unique<SpellcheckService>(context);
+  SpellcheckService* spellcheck = new SpellcheckService(context);
+
+  return spellcheck;
 }
 
 void SpellcheckServiceFactory::RegisterProfilePrefs(

@@ -6,16 +6,13 @@
 
 #include <utility>
 
-#include "base/apple/foundation_util.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "chrome/browser/apps/app_shim/app_shim_host_bootstrap_mac.h"
-#include "chrome/browser/web_applications/os_integration/web_app_shortcut_mac.h"
 #include "chrome/common/chrome_features.h"
 #include "components/remote_cocoa/browser/application_host.h"
 #include "components/remote_cocoa/common/application.mojom.h"
-#include "content/public/browser/browser_accessibility_state.h"
 #include "content/public/browser/browser_thread.h"
 #include "mojo/public/cpp/bindings/pending_associated_receiver.h"
 
@@ -39,8 +36,7 @@ AppShimHost::AppShimHost(AppShimHost::Client* client,
         views_application_receiver;
     remote_cocoa_application_host_ =
         std::make_unique<remote_cocoa::ApplicationHost>(
-            &views_application_receiver,
-            web_app::GetBundleIdentifierForShim(app_id, profile_path));
+            &views_application_receiver);
     app_shim_->CreateRemoteCocoaApplication(
         std::move(views_application_receiver));
   }
@@ -66,26 +62,20 @@ void AppShimHost::ChannelError(uint32_t custom_reason,
   client_->OnShimProcessDisconnected(this);
 }
 
-void AppShimHost::LaunchShimInternal(
-    web_app::LaunchShimUpdateBehavior update_behavior,
-    web_app::ShimLaunchMode launch_mode) {
+void AppShimHost::LaunchShimInternal(bool recreate_shims) {
   DCHECK(launch_shim_has_been_called_);
   DCHECK(!bootstrap_);
   launch_weak_factory_.InvalidateWeakPtrs();
   client_->OnShimLaunchRequested(
-      this, update_behavior, launch_mode,
+      this, recreate_shims,
       base::BindOnce(&AppShimHost::OnShimProcessLaunched,
-                     launch_weak_factory_.GetWeakPtr(), update_behavior,
-                     launch_mode),
+                     launch_weak_factory_.GetWeakPtr(), recreate_shims),
       base::BindOnce(&AppShimHost::OnShimProcessTerminated,
-                     launch_weak_factory_.GetWeakPtr(), update_behavior,
-                     launch_mode));
+                     launch_weak_factory_.GetWeakPtr(), recreate_shims));
 }
 
-void AppShimHost::OnShimProcessLaunched(
-    web_app::LaunchShimUpdateBehavior update_behavior,
-    web_app::ShimLaunchMode launch_mode,
-    base::Process shim_process) {
+void AppShimHost::OnShimProcessLaunched(bool recreate_shims_requested,
+                                        base::Process shim_process) {
   // If a bootstrap connected, then it should have invalidated all weak
   // pointers, preventing this from being called.
   DCHECK(!bootstrap_);
@@ -97,22 +87,18 @@ void AppShimHost::OnShimProcessLaunched(
 
   // Shim launch failing is treated the same as the shim launching but
   // terminating before connecting.
-  OnShimProcessTerminated(update_behavior, launch_mode);
+  OnShimProcessTerminated(recreate_shims_requested);
 }
 
-void AppShimHost::OnShimProcessTerminated(
-    web_app::LaunchShimUpdateBehavior update_behavior,
-    web_app::ShimLaunchMode launch_mode) {
+void AppShimHost::OnShimProcessTerminated(bool recreate_shims_requested) {
   DCHECK(!bootstrap_);
 
   // If this was a launch without recreating shims, then the launch may have
   // failed because the shims were not present, or because they were out of
   // date. Try again, recreating the shims this time.
-  if (!web_app::RecreateShimsRequested(update_behavior)) {
+  if (!recreate_shims_requested) {
     DLOG(ERROR) << "Failed to launch shim, attempting to recreate.";
-    LaunchShimInternal(
-        web_app::LaunchShimUpdateBehavior::kRecreateUnconditionally,
-        launch_mode);
+    LaunchShimInternal(true /* recreate_shims */);
     return;
   }
 
@@ -164,22 +150,17 @@ void AppShimHost::OnBootstrapConnected(
     std::move(on_shim_connected_for_testing_).Run();
 }
 
-void AppShimHost::LaunchShim(web_app::ShimLaunchMode launch_mode) {
-  if (launch_shim_has_been_called_) {
+void AppShimHost::LaunchShim() {
+  if (launch_shim_has_been_called_)
     return;
-  }
   launch_shim_has_been_called_ = true;
 
   if (bootstrap_) {
-    // If there is a connected app shim process, and this is not a background
-    // launch, focus the app windows.
-    if (launch_mode != web_app::ShimLaunchMode::kBackground) {
-      client_->OnShimFocus(this);
-    }
+    // If there is a connected app shim process, focus the app windows.
+    client_->OnShimFocus(this);
   } else {
     // Otherwise, attempt to launch whatever app shims we find.
-    LaunchShimInternal(web_app::LaunchShimUpdateBehavior::kDoNotRecreate,
-                       launch_mode);
+    LaunchShimInternal(false /* recreate_shims */);
   }
 }
 
@@ -199,10 +180,6 @@ void AppShimHost::ProfileSelectedFromMenu(const base::FilePath& profile_path) {
   client_->OnShimSelectedProfile(this, profile_path);
 }
 
-void AppShimHost::OpenAppSettings() {
-  client_->OnShimOpenedAppSettings(this);
-}
-
 void AppShimHost::UrlsOpened(const std::vector<GURL>& urls) {
   client_->OnShimOpenedUrls(this, urls);
 }
@@ -211,32 +188,8 @@ void AppShimHost::OpenAppWithOverrideUrl(const GURL& override_url) {
   client_->OnShimOpenAppWithOverrideUrl(this, override_url);
 }
 
-void AppShimHost::EnableAccessibilitySupport(
-    chrome::mojom::AppShimScreenReaderSupportMode mode) {
-  content::BrowserAccessibilityState* accessibility_state =
-      content::BrowserAccessibilityState::GetInstance();
-  switch (mode) {
-    case chrome::mojom::AppShimScreenReaderSupportMode::kComplete: {
-      accessibility_state->OnScreenReaderDetected();
-      break;
-    }
-    case chrome::mojom::AppShimScreenReaderSupportMode::kPartial: {
-      if (!accessibility_state->GetAccessibilityMode().has_mode(
-              ui::kAXModeBasic.flags())) {
-        accessibility_state->AddAccessibilityModeFlags(ui::kAXModeBasic);
-      }
-      break;
-    }
-  }
-}
-
 void AppShimHost::ApplicationWillTerminate() {
   client_->OnShimWillTerminate(this);
-}
-
-void AppShimHost::NotificationPermissionStatusChanged(
-    mac_notifications::mojom::PermissionStatus status) {
-  client_->OnNotificationPermissionStatusChanged(this, status);
 }
 
 base::FilePath AppShimHost::GetProfilePath() const {

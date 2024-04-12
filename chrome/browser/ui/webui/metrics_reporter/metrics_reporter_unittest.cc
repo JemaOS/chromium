@@ -4,13 +4,12 @@
 
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter.h"
 
-#include <optional>
-
 #include "base/gtest_prod_util.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using ::testing::_;
 using ::testing::Return;
@@ -47,10 +46,10 @@ class WebUIMetricsReporterTest : public BrowserWithTestWindowTest {
   }
 
   MetricsReporter::OnGetMarkCallback TestGetMarkCallback(
-      std::optional<base::TimeTicks> expected_time) {
+      absl::optional<base::TimeTicks> expected_time) {
     return base::BindOnce(
-        [](std::optional<base::TimeTicks> expected_time,
-           std::optional<base::TimeDelta> time) {
+        [](absl::optional<base::TimeTicks> expected_time,
+           absl::optional<base::TimeDelta> time) {
           EXPECT_EQ(expected_time.has_value(), time.has_value());
           if (time.has_value())
             EXPECT_EQ(time, expected_time->since_origin());
@@ -116,7 +115,7 @@ TEST_F(WebUIMetricsReporterTest, HasMark) {
   EXPECT_CALL(page_metrics_, OnGetMark("nothing", _))
       .WillOnce([](const std::string& mark,
                    MetricsReporter::OnGetMarkCallback callback) {
-        std::move(callback).Run(std::nullopt);
+        std::move(callback).Run(absl::nullopt);
       });
   metrics_reporter_.HasMark("nothing", TestHasMarkCallback(false));
 

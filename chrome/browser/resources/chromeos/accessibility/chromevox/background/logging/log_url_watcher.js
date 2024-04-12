@@ -6,8 +6,7 @@
  * @fileoverview Watches the currently focused URL to verify if logging should
  * occur.
  */
-import {CursorRange} from '/common/cursors/range.js';
-
+import {CursorRange} from '../../../common/cursors/range.js';
 import {ChromeVoxRange, ChromeVoxRangeObserver} from '../chromevox_range.js';
 import {ChromeVoxPrefs} from '../prefs.js';
 

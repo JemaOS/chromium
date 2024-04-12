@@ -62,9 +62,8 @@ namespace {
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 class AutofillMigrationHeaderView : public views::ImageView {
-  METADATA_HEADER(AutofillMigrationHeaderView, views::ImageView)
-
  public:
+  METADATA_HEADER(AutofillMigrationHeaderView);
   AutofillMigrationHeaderView() {
     constexpr int kImageBorderBottom = 8;
     SetBorder(views::CreateEmptyBorder(
@@ -83,7 +82,7 @@ class AutofillMigrationHeaderView : public views::ImageView {
   }
 };
 
-BEGIN_METADATA(AutofillMigrationHeaderView)
+BEGIN_METADATA(AutofillMigrationHeaderView, views::ImageView)
 END_METADATA
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
@@ -293,9 +292,8 @@ constexpr int kLegalMessageScrollViewHeight = 140;
 // LocalCardMigrationDialogView class when it offers the user the
 // option to upload all browser-saved credit cards.
 class LocalCardMigrationOfferView : public views::View {
-  METADATA_HEADER(LocalCardMigrationOfferView, views::View)
-
  public:
+  METADATA_HEADER(LocalCardMigrationOfferView);
   LocalCardMigrationOfferView(LocalCardMigrationDialogController* controller,
                               LocalCardMigrationDialogView* dialog_view) {
     DCHECK(controller);
@@ -332,8 +330,8 @@ class LocalCardMigrationOfferView : public views::View {
     legal_message_container->SetHorizontalScrollBarMode(
         views::ScrollView::ScrollBarMode::kDisabled);
     legal_message_container->SetContents(std::make_unique<LegalMessageView>(
-        controller->GetLegalMessageLines(), /*user_email=*/std::u16string(),
-        /*user_avatar=*/ui::ImageModel(),
+        controller->GetLegalMessageLines(), /*user_email=*/absl::nullopt,
+        /*user_avatar=*/absl::nullopt,
         base::BindRepeating(
             &LocalCardMigrationDialogController::OnLegalMessageLinkClicked,
             base::Unretained(controller))));
@@ -352,9 +350,8 @@ class LocalCardMigrationOfferView : public views::View {
     for (views::View* child : card_list_view_->children()) {
       DCHECK(views::IsViewClass<MigratableCardView>(child));
       auto* card = static_cast<MigratableCardView*>(child);
-      if (card->GetSelected()) {
+      if (card->GetSelected())
         selected_cards.push_back(card->GetGuid());
-      }
     }
     return selected_cards;
   }
@@ -365,7 +362,7 @@ class LocalCardMigrationOfferView : public views::View {
   raw_ptr<views::View> card_list_view_ = nullptr;
 };
 
-BEGIN_METADATA(LocalCardMigrationOfferView)
+BEGIN_METADATA(LocalCardMigrationOfferView, views::View)
 ADD_READONLY_PROPERTY_METADATA(std::vector<std::string>, SelectedCardGuids)
 END_METADATA
 
@@ -460,7 +457,7 @@ void LocalCardMigrationDialogView::OnCardCheckboxToggled() {
 
 // TODO(crbug.com/913571): Figure out a way to avoid two consecutive layouts.
 void LocalCardMigrationDialogView::UpdateLayout() {
-  DeprecatedLayoutImmediately();
+  Layout();
   // Since the dialog does not have anchor view or arrow, cannot use
   // SizeToContents() for now. TODO(crbug.com/867194): Try to fix the
   // BubbleDialogDelegateView::GetBubbleBounds() when there is no anchor
@@ -526,7 +523,7 @@ LocalCardMigrationDialog* CreateLocalCardMigrationDialogView(
   return new LocalCardMigrationDialogView(controller);
 }
 
-BEGIN_METADATA(LocalCardMigrationDialogView)
+BEGIN_METADATA(LocalCardMigrationDialogView, views::BubbleDialogDelegateView)
 ADD_READONLY_PROPERTY_METADATA(bool, EnableOkButton)
 ADD_READONLY_PROPERTY_METADATA(std::u16string, OkButtonLabel)
 ADD_READONLY_PROPERTY_METADATA(std::u16string, CancelButtonLabel)

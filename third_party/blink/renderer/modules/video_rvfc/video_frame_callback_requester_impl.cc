@@ -19,7 +19,6 @@
 #include "third_party/blink/renderer/modules/xr/xr_frame_provider.h"
 #include "third_party/blink/renderer/modules/xr/xr_session.h"
 #include "third_party/blink/renderer/modules/xr/xr_system.h"
-#include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
 namespace blink {
@@ -93,7 +92,7 @@ void VideoFrameCallbackRequesterImpl::OnWebMediaPlayerCreated() {
 void VideoFrameCallbackRequesterImpl::OnWebMediaPlayerCleared() {
   // Clear existing issued weak pointers from the factory, so that
   // pending ScheduleVideoFrameCallbacksExecution are cancelled.
-  weak_factory_.Invalidate();
+  weak_factory_.InvalidateWeakPtrs();
 
   // If the HTMLVideoElement changes sources, we need to reset this flag.
   // This allows the first frame of the new media player (requested in
@@ -114,7 +113,7 @@ void VideoFrameCallbackRequesterImpl::ScheduleWindowRaf() {
       .GetScriptedAnimationController()
       .ScheduleVideoFrameCallbacksExecution(
           WTF::BindOnce(&VideoFrameCallbackRequesterImpl::OnExecution,
-                        WrapPersistent(weak_factory_.GetWeakCell())));
+                        weak_factory_.GetWeakPtr()));
 }
 
 void VideoFrameCallbackRequesterImpl::ScheduleExecution() {
@@ -186,7 +185,7 @@ bool VideoFrameCallbackRequesterImpl::TryScheduleImmersiveXRSessionRaf() {
 
   session->ScheduleVideoFrameCallbacksExecution(
       WTF::BindOnce(&VideoFrameCallbackRequesterImpl::OnExecution,
-                    WrapPersistent(weak_factory_.GetWeakCell())));
+                    weak_factory_.GetWeakPtr()));
 
   return true;
 }
@@ -355,7 +354,6 @@ void VideoFrameCallbackRequesterImpl::cancelVideoFrameCallback(int id) {
 
 void VideoFrameCallbackRequesterImpl::Trace(Visitor* visitor) const {
   visitor->Trace(callback_collection_);
-  visitor->Trace(weak_factory_);
   VideoFrameCallbackRequester::Trace(visitor);
 }
 

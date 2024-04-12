@@ -62,7 +62,7 @@ class SyncSessionsRouterTabHelperTest : public ChromeRenderViewHostTestHarness {
   FakeLocalSessionEventHandler* handler() { return &handler_; }
 
  private:
-  raw_ptr<SyncSessionsWebContentsRouter, DanglingUntriaged> router_ = nullptr;
+  raw_ptr<SyncSessionsWebContentsRouter> router_;
   FakeLocalSessionEventHandler handler_;
 };
 

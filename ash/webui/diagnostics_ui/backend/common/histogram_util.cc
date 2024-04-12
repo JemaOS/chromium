@@ -4,8 +4,6 @@
 
 #include "ash/webui/diagnostics_ui/backend/common/histogram_util.h"
 
-#include <string_view>
-
 #include "ash/webui/diagnostics_ui/backend/common/routine_properties.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
@@ -28,7 +26,7 @@ constexpr char kProbeErrorMetricSystemInfoSource[] =
 
 // Source type matches |type_name| from cros_healthd_helpers.
 const std::string GetMetricNameForSourceType(
-    const std::string_view source_type) {
+    const base::StringPiece source_type) {
   if (source_type == "battery info")
     return kProbeErrorMetricBatteryInfoSource;
   if (source_type == "cpu info")
@@ -78,7 +76,7 @@ void EmitNetworkDataError(DataError error) {
   base::UmaHistogramEnumeration("ChromeOS.DiagnosticsUi.Error.Network", error);
 }
 
-void EmitCrosHealthdProbeError(const std::string_view source_type,
+void EmitCrosHealthdProbeError(const base::StringPiece source_type,
                                cros_healthd::mojom::ErrorType error_type) {
   const std::string& metric_name = GetMetricNameForSourceType(source_type);
 

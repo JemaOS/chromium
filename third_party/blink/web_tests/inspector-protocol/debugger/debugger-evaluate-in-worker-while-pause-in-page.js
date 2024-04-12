@@ -1,10 +1,6 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startBlank(
       'Tests that one can evaluate in worker while main page is paused.');
-
-  const attachedPromise = dp.Target.onceAttachedToTarget();
-  await dp.Target.setAutoAttach(
-      {autoAttach: true, waitForDebuggerOnStart: false, flatten: true});
 
   await session.evaluate(`
     window.worker = new Worker('${testRunner.url('resources/dedicated-worker.js')}');
@@ -18,6 +14,10 @@
   dp.Runtime.evaluate({expression: 'debugger;' });
   await pausedPromise;
   testRunner.log(`Paused on 'debugger;'`);
+
+  const attachedPromise = dp.Target.onceAttachedToTarget();
+  await dp.Target.setAutoAttach({autoAttach: true, waitForDebuggerOnStart: false,
+                           flatten: true});
 
   const messageObject = await attachedPromise;
   testRunner.log('Worker created');

@@ -11,7 +11,6 @@ import androidx.annotation.NonNull;
 
 import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.base.supplier.OneshotSupplier;
-import org.chromium.base.supplier.Supplier;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
@@ -26,51 +25,40 @@ import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthController;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
 import org.chromium.chrome.browser.offlinepages.OfflinePageUtils;
-import org.chromium.chrome.browser.readaloud.ReadAloudController;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuHandler;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
+import org.chromium.chrome.features.start_surface.StartSurface;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 
-/** An {@link AppMenuPropertiesDelegateImpl} for ChromeTabbedActivity. */
+/**
+ * An {@link AppMenuPropertiesDelegateImpl} for ChromeTabbedActivity.
+ */
 public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateImpl {
     AppMenuDelegate mAppMenuDelegate;
     WebFeedSnackbarController.FeedLauncher mFeedLauncher;
     ModalDialogManager mModalDialogManager;
     SnackbarManager mSnackbarManager;
 
-    public TabbedAppMenuPropertiesDelegate(
-            Context context,
-            ActivityTabProvider activityTabProvider,
+    public TabbedAppMenuPropertiesDelegate(Context context, ActivityTabProvider activityTabProvider,
             MultiWindowModeStateDispatcher multiWindowModeStateDispatcher,
-            TabModelSelector tabModelSelector,
-            ToolbarManager toolbarManager,
-            View decorView,
+            TabModelSelector tabModelSelector, ToolbarManager toolbarManager, View decorView,
             AppMenuDelegate appMenuDelegate,
             OneshotSupplier<LayoutStateProvider> layoutStateProvider,
+            OneshotSupplier<StartSurface> startSurfaceSupplier,
             ObservableSupplier<BookmarkModel> bookmarkModelSupplier,
             WebFeedSnackbarController.FeedLauncher feedLauncher,
-            ModalDialogManager modalDialogManager,
-            SnackbarManager snackbarManager,
-            @NonNull
-                    OneshotSupplier<IncognitoReauthController>
-                            incognitoReauthControllerOneshotSupplier,
-            Supplier<ReadAloudController> readAloudControllerSupplier) {
-        super(
-                context,
-                activityTabProvider,
-                multiWindowModeStateDispatcher,
-                tabModelSelector,
-                toolbarManager,
-                decorView,
-                layoutStateProvider,
-                bookmarkModelSupplier,
-                incognitoReauthControllerOneshotSupplier,
-                readAloudControllerSupplier);
+            ModalDialogManager modalDialogManager, SnackbarManager snackbarManager,
+            @NonNull OneshotSupplier<IncognitoReauthController>
+                    incognitoReauthControllerOneshotSupplier) {
+        super(context, activityTabProvider, multiWindowModeStateDispatcher, tabModelSelector,
+                toolbarManager, decorView, layoutStateProvider, startSurfaceSupplier,
+                bookmarkModelSupplier, incognitoReauthControllerOneshotSupplier);
         mAppMenuDelegate = appMenuDelegate;
         mFeedLauncher = feedLauncher;
         mModalDialogManager = modalDialogManager;
@@ -78,11 +66,11 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     }
 
     private boolean shouldShowWebFeedMenuItem() {
-        Tab tab = mActivityTabProvider.get();
-        if (tab == null || tab.isIncognito() || OfflinePageUtils.isOfflinePage(tab)) {
+        if (!FeedFeatures.isWebFeedUIEnabled()) {
             return false;
         }
-        if (!FeedFeatures.isWebFeedUIEnabled(tab.getProfile())) {
+        Tab tab = mActivityTabProvider.get();
+        if (tab == null || tab.isIncognito() || OfflinePageUtils.isOfflinePage(tab)) {
             return false;
         }
         String url = tab.getOriginalUrl().getSpec();
@@ -102,14 +90,9 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     public void onFooterViewInflated(AppMenuHandler appMenuHandler, View view) {
         if (view instanceof WebFeedMainMenuItem) {
             ((WebFeedMainMenuItem) view)
-                    .initialize(
-                            mActivityTabProvider.get(),
-                            appMenuHandler,
-                            WebFeedFaviconFetcher.createDefault(),
-                            mFeedLauncher,
-                            mModalDialogManager,
-                            mSnackbarManager,
-                            CreatorActivity.class);
+                    .initialize(mActivityTabProvider.get(), appMenuHandler,
+                            WebFeedFaviconFetcher.createDefault(), mFeedLauncher,
+                            mModalDialogManager, mSnackbarManager, CreatorActivity.class);
         }
     }
 
@@ -131,7 +114,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
 
     @Override
     protected boolean shouldShowManagedByMenuItem(Tab currentTab) {
-        return ManagedBrowserUtils.isBrowserManaged(currentTab.getProfile());
+        Profile profile = Profile.fromWebContents(currentTab.getWebContents());
+        return profile != null && ManagedBrowserUtils.isBrowserManaged(profile);
     }
 
     @Override

@@ -5,8 +5,6 @@
 #ifndef ASH_USER_EDUCATION_VIEWS_HELP_BUBBLE_FACTORY_VIEWS_ASH_H_
 #define ASH_USER_EDUCATION_VIEWS_HELP_BUBBLE_FACTORY_VIEWS_ASH_H_
 
-#include <optional>
-
 #include "ash/ash_export.h"
 #include "base/callback_list.h"
 #include "base/memory/raw_ptr.h"
@@ -15,6 +13,7 @@
 #include "components/user_education/common/help_bubble.h"
 #include "components/user_education/common/help_bubble_factory.h"
 #include "components/user_education/common/help_bubble_params.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/interaction/element_tracker.h"
@@ -89,7 +88,7 @@ class ASH_EXPORT HelpBubbleViewsAsh : public user_education::HelpBubble,
       scoped_observation_{this};
 
   // Track the anchor element to determine if/when it goes away.
-  raw_ptr<const ui::TrackedElement, DanglingUntriaged> anchor_element_;
+  base::raw_ptr<const ui::TrackedElement, DanglingUntriaged> anchor_element_;
 
   // Listens so that the bubble can be closed if the anchor element disappears.
   // The specific anchor view is not tracked because in a few cases (e.g. Mac
@@ -129,7 +128,7 @@ class ASH_EXPORT HelpBubbleFactoryViewsAsh
       user_education::HelpBubbleParams params);
 
  private:
-  raw_ptr<const user_education::HelpBubbleDelegate> delegate_;
+  base::raw_ptr<const user_education::HelpBubbleDelegate> delegate_;
 };
 
 }  // namespace ash

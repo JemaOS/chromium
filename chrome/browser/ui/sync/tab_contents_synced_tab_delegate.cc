@@ -7,12 +7,12 @@
 #include "base/memory/ref_counted.h"
 #include "chrome/browser/complex_tasks/task_tab_helper.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/supervised_user/supervised_user_navigation_observer.h"
 #include "components/sessions/content/content_serialized_navigation_builder.h"
-#include "components/sync/base/features.h"
+#include "components/supervised_user/core/common/buildflags.h"
 #include "components/sync_sessions/sync_sessions_client.h"
 #include "components/sync_sessions/synced_window_delegate.h"
 #include "components/sync_sessions/synced_window_delegates_getter.h"
+#include "components/translate/content/browser/content_record_page_language.h"
 #include "content/public/browser/favicon_status.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -21,6 +21,10 @@
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "chrome/browser/apps/app_service/web_contents_app_id_utils.h"
+#endif
+
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+#include "chrome/browser/supervised_user/supervised_user_navigation_observer.h"
 #endif
 
 using content::NavigationEntry;
@@ -48,26 +52,10 @@ NavigationEntry* GetPossiblyPendingEntryAtIndex(
 
 }  // namespace
 
-void TabContentsSyncedTabDelegate::ResetCachedLastActiveTime() {
-  cached_last_active_time_.reset();
-}
+TabContentsSyncedTabDelegate::TabContentsSyncedTabDelegate()
+    : web_contents_(nullptr) {}
 
-base::Time TabContentsSyncedTabDelegate::GetLastActiveTime() {
-  // Use the TimeDelta common ground between the two units to make the
-  // conversion.
-  const base::TimeDelta delta_since_epoch =
-      web_contents_->GetLastActiveTime() - base::TimeTicks::UnixEpoch();
-  const base::Time converted_time = base::Time::UnixEpoch() + delta_since_epoch;
-  if (base::FeatureList::IsEnabled(syncer::kSyncSessionOnVisibilityChanged)) {
-    if (cached_last_active_time_.has_value() &&
-        converted_time - cached_last_active_time_.value() <
-            syncer::kSyncSessionOnVisibilityChangedTimeThreshold.Get()) {
-      return cached_last_active_time_.value();
-    }
-    cached_last_active_time_ = converted_time;
-  }
-  return converted_time;
-}
+TabContentsSyncedTabDelegate::~TabContentsSyncedTabDelegate() = default;
 
 bool TabContentsSyncedTabDelegate::IsBeingDestroyed() const {
   return web_contents_->IsBeingDestroyed();
@@ -99,6 +87,14 @@ GURL TabContentsSyncedTabDelegate::GetVirtualURLAtIndex(int i) const {
   return entry ? entry->GetVirtualURL() : GURL();
 }
 
+std::string TabContentsSyncedTabDelegate::GetPageLanguageAtIndex(int i) const {
+  DCHECK(web_contents_);
+  NavigationEntry* entry = GetPossiblyPendingEntryAtIndex(web_contents_, i);
+  // If we don't have an entry, return empty language.
+  return entry ? translate::GetPageLanguageFromNavigation(entry)
+               : std::string();
+}
+
 void TabContentsSyncedTabDelegate::GetSerializedNavigationAtIndex(
     int i,
     sessions::SerializedNavigationEntry* serialized_entry) const {
@@ -122,20 +118,16 @@ bool TabContentsSyncedTabDelegate::ProfileHasChildAccount() const {
 
 const std::vector<std::unique_ptr<const sessions::SerializedNavigationEntry>>*
 TabContentsSyncedTabDelegate::GetBlockedNavigations() const {
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
   SupervisedUserNavigationObserver* navigation_observer =
       SupervisedUserNavigationObserver::FromWebContents(web_contents_);
-#if BUILDFLAG(IS_ANDROID)
-  // TabHelpers::AttachTabHelpers() will not be called for a placeholder tab's
-  // WebContents that is temporarily created from a serialized state in
-  // SyncedTabDelegateAndroid::CreatePlaceholderTabSyncedTabDelegate(). When
-  // this occurs, early-out and return a nullptr.
-  if (!navigation_observer) {
-    return nullptr;
-  }
-#endif  // BUILDFLAG(IS_ANDROID)
   DCHECK(navigation_observer);
 
   return &navigation_observer->blocked_navigations();
+#else
+  NOTREACHED();
+  return nullptr;
+#endif
 }
 
 bool TabContentsSyncedTabDelegate::ShouldSync(
@@ -145,17 +137,8 @@ bool TabContentsSyncedTabDelegate::ShouldSync(
     return false;
   }
 
-  if (ProfileHasChildAccount()) {
-#if BUILDFLAG(IS_ANDROID)
-    auto* blocked_navigations = GetBlockedNavigations();
-    if (blocked_navigations && !blocked_navigations->empty()) {
-      return true;
-    }
-#else
-    if (!GetBlockedNavigations()->empty()) {
-      return true;
-    }
-#endif  // BUILDFLAG(IS_ANDROID)
+  if (ProfileHasChildAccount() && !GetBlockedNavigations()->empty()) {
+    return true;
   }
 
   if (IsInitialBlankNavigation()) {

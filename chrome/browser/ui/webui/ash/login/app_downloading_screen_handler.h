@@ -10,7 +10,8 @@
 
 namespace ash {
 
-class AppDownloadingScreenView {
+class AppDownloadingScreenView
+    : public base::SupportsWeakPtr<AppDownloadingScreenView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{"app-downloading",
                                                        "AppDownloadingScreen"};
@@ -19,14 +20,11 @@ class AppDownloadingScreenView {
 
   // Shows the contents of the screen.
   virtual void Show() = 0;
-
-  // Gets a WeakPtr to the instance.
-  virtual base::WeakPtr<AppDownloadingScreenView> AsWeakPtr() = 0;
 };
 
 // The sole implementation of the AppDownloadingScreenView, using WebUI.
-class AppDownloadingScreenHandler final : public BaseScreenHandler,
-                                          public AppDownloadingScreenView {
+class AppDownloadingScreenHandler : public BaseScreenHandler,
+                                    public AppDownloadingScreenView {
  public:
   using TView = AppDownloadingScreenView;
 
@@ -43,11 +41,7 @@ class AppDownloadingScreenHandler final : public BaseScreenHandler,
       ::login::LocalizedValuesBuilder* builder) override;
 
   // AppDownloadingScreenView:
-  void Show() override;
-  base::WeakPtr<AppDownloadingScreenView> AsWeakPtr() override;
-
- private:
-  base::WeakPtrFactory<AppDownloadingScreenView> weak_ptr_factory_{this};
+  void Show() final;
 };
 
 }  // namespace ash

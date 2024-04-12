@@ -5,8 +5,8 @@
 #include "chrome/browser/password_manager/affiliations_prefetcher_factory.h"
 
 #include "base/no_destructor.h"
-#include "chrome/browser/affiliations/affiliation_service_factory.h"
-#include "chrome/browser/password_manager/profile_password_store_factory.h"
+#include "chrome/browser/password_manager/affiliation_service_factory.h"
+#include "chrome/browser/password_manager/password_store_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/password_manager/core/browser/affiliation/affiliations_prefetcher.h"
 #include "content/public/browser/browser_context.h"
@@ -37,8 +37,7 @@ AffiliationsPrefetcherFactory::GetForProfile(Profile* profile) {
           profile, /*create=*/!profile->ShutdownStarted()));
 }
 
-std::unique_ptr<KeyedService>
-AffiliationsPrefetcherFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* AffiliationsPrefetcherFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
   // Since Password Manager doesn't work for non-standard profiles,
@@ -46,6 +45,8 @@ AffiliationsPrefetcherFactory::BuildServiceInstanceForBrowserContext(
   DCHECK(!profile->IsOffTheRecord());
   DCHECK(profile->IsRegularProfile());
 
-  return std::make_unique<password_manager::AffiliationsPrefetcher>(
-      AffiliationServiceFactory::GetForProfile(profile));
+  password_manager::AffiliationService* affiliation_service =
+      AffiliationServiceFactory::GetForProfile(profile);
+
+  return new password_manager::AffiliationsPrefetcher(affiliation_service);
 }

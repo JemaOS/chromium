@@ -20,7 +20,6 @@
 #include "base/observer_list.h"
 #include "base/timer/timer.h"
 #include "ui/aura/window.h"
-#include "ui/aura/window_occlusion_tracker.h"
 #include "ui/aura/window_tree_host_observer.h"
 #include "ui/base/ime/ime_key_event_dispatcher.h"
 #include "ui/base/ime/input_method.h"
@@ -211,15 +210,6 @@ class ASH_EXPORT WindowTreeHostManager
   void AddRoundedDisplayProviderIfNeeded(const display::Display& display);
   void RemoveRoundedDisplayProvider(const display::Display& display);
 
-  // Updates the window tree host that the RoundedDisplayProvider is attached
-  // to, for all the display providers. This ensures that the display textures
-  // are rendered on the correct display.
-  void UpdateHostOfDisplayProviders();
-
-  // True if display addition happens, and restore the windows back to it if
-  // they were previously inside it.
-  bool should_restore_windows_on_display_added_ = false;
-
   typedef std::map<int64_t, AshWindowTreeHost*> WindowTreeHostMap;
   // The mapping from display ID to its window tree host.
   WindowTreeHostMap window_tree_hosts_;
@@ -232,7 +222,7 @@ class ASH_EXPORT WindowTreeHostManager
 
   // Store the primary window tree host temporarily while replacing
   // display.
-  raw_ptr<AshWindowTreeHost> primary_tree_host_for_replace_;
+  raw_ptr<AshWindowTreeHost, ExperimentalAsh> primary_tree_host_for_replace_;
 
   std::unique_ptr<FocusActivationStore> focus_activation_store_;
 
@@ -253,14 +243,11 @@ class ASH_EXPORT WindowTreeHostManager
   int64_t cursor_display_id_for_restore_;
 
   // Receive DisplayObserver callbacks between Start and Shutdown.
-  std::optional<display::ScopedDisplayObserver> display_observer_;
+  absl::optional<display::ScopedDisplayObserver> display_observer_;
 
   // A repeating timer to trigger sending UMA metrics for primary display's
   // effective resolution at fixed intervals.
   std::unique_ptr<base::RepeatingTimer> effective_resolution_UMA_timer_;
-
-  // Pause occlusion tracking during display configuration updates.
-  std::unique_ptr<aura::WindowOcclusionTracker::ScopedPause> scoped_pause_;
 
   base::WeakPtrFactory<WindowTreeHostManager> weak_ptr_factory_{this};
 };

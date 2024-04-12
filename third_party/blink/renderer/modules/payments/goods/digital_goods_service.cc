@@ -16,6 +16,7 @@
 #include "third_party/blink/renderer/modules/payments/goods/digital_goods_type_converters.h"
 #include "third_party/blink/renderer/platform/bindings/exception_code.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
+#include "third_party/blink/renderer/platform/bindings/to_v8.h"
 #include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -34,7 +35,7 @@ using payments::mojom::blink::BillingResponseCode;
 namespace {
 
 void OnGetDetailsResponse(
-    ScriptPromiseResolverTyped<IDLSequence<ItemDetails>>* resolver,
+    ScriptPromiseResolver* resolver,
     BillingResponseCode code,
     Vector<payments::mojom::blink::ItemDetailsPtr> item_details_list) {
   if (code != BillingResponseCode::kOk) {
@@ -54,7 +55,7 @@ void OnGetDetailsResponse(
 }
 
 void ResolveWithPurchaseReferenceList(
-    ScriptPromiseResolverTyped<IDLSequence<PurchaseDetails>>* resolver,
+    ScriptPromiseResolver* resolver,
     BillingResponseCode code,
     Vector<payments::mojom::blink::PurchaseReferencePtr>
         purchase_reference_list) {
@@ -75,11 +76,11 @@ void ResolveWithPurchaseReferenceList(
   resolver->Resolve(std::move(blink_purchase_details_list));
 }
 
-void OnConsumeResponse(ScriptPromiseResolverTyped<IDLUndefined>* resolver,
+void OnConsumeResponse(ScriptPromiseResolver* resolver,
                        BillingResponseCode code) {
   if (code != BillingResponseCode::kOk) {
-    resolver->RejectWithDOMException(DOMExceptionCode::kOperationError,
-                                     mojo::ConvertTo<String>(code));
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kOperationError, mojo::ConvertTo<String>(code)));
     return;
   }
   resolver->Resolve();
@@ -99,12 +100,10 @@ DigitalGoodsService::DigitalGoodsService(
 
 DigitalGoodsService::~DigitalGoodsService() = default;
 
-ScriptPromiseTyped<IDLSequence<ItemDetails>> DigitalGoodsService::getDetails(
-    ScriptState* script_state,
-    const Vector<String>& item_ids) {
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLSequence<ItemDetails>>>(script_state);
-  auto promise = resolver->Promise();
+ScriptPromise DigitalGoodsService::getDetails(ScriptState* script_state,
+                                              const Vector<String>& item_ids) {
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   if (item_ids.empty()) {
     resolver->Reject(V8ThrowException::CreateTypeError(
@@ -117,38 +116,33 @@ ScriptPromiseTyped<IDLSequence<ItemDetails>> DigitalGoodsService::getDetails(
   return promise;
 }
 
-ScriptPromiseTyped<IDLSequence<PurchaseDetails>>
-DigitalGoodsService::listPurchases(ScriptState* script_state) {
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLSequence<PurchaseDetails>>>(script_state);
-  auto promise = resolver->Promise();
+ScriptPromise DigitalGoodsService::listPurchases(ScriptState* script_state) {
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   mojo_service_->ListPurchases(WTF::BindOnce(&ResolveWithPurchaseReferenceList,
                                              WrapPersistent(resolver)));
   return promise;
 }
 
-ScriptPromiseTyped<IDLSequence<PurchaseDetails>>
-DigitalGoodsService::listPurchaseHistory(ScriptState* script_state) {
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLSequence<PurchaseDetails>>>(script_state);
-  auto promise = resolver->Promise();
+ScriptPromise DigitalGoodsService::listPurchaseHistory(
+    ScriptState* script_state) {
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   mojo_service_->ListPurchaseHistory(WTF::BindOnce(
       &ResolveWithPurchaseReferenceList, WrapPersistent(resolver)));
   return promise;
 }
 
-ScriptPromiseTyped<IDLUndefined> DigitalGoodsService::consume(
-    ScriptState* script_state,
-    const String& purchase_token) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state);
-  auto promise = resolver->Promise();
+ScriptPromise DigitalGoodsService::consume(ScriptState* script_state,
+                                           const String& purchase_token) {
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   if (purchase_token.empty()) {
-    resolver->RejectWithTypeError("Must specify purchase token.");
+    resolver->Reject(V8ThrowException::CreateTypeError(
+        script_state->GetIsolate(), "Must specify purchase token."));
     return promise;
   }
 

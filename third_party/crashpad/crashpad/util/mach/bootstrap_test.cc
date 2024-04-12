@@ -14,7 +14,7 @@
 
 #include "util/mach/bootstrap.h"
 
-#include "base/apple/scoped_mach_port.h"
+#include "base/mac/scoped_mach_port.h"
 #include "gtest/gtest.h"
 #include "util/mach/mach_extensions.h"
 #include "util/misc/random_string.h"
@@ -25,7 +25,7 @@ namespace {
 
 TEST(Bootstrap, BootstrapCheckInAndLookUp) {
   // This should always exist.
-  base::apple::ScopedMachSendRight report_crash(
+  base::mac::ScopedMachSendRight report_crash(
       BootstrapLookUp("com.apple.ReportCrash"));
   EXPECT_NE(report_crash, kMachPortNull);
 
@@ -34,11 +34,11 @@ TEST(Bootstrap, BootstrapCheckInAndLookUp) {
 
   {
     // The new service hasn’t checked in yet, so this should fail.
-    base::apple::ScopedMachSendRight send(BootstrapLookUp(service_name));
+    base::mac::ScopedMachSendRight send(BootstrapLookUp(service_name));
     EXPECT_EQ(send, kMachPortNull);
 
     // Check it in.
-    base::apple::ScopedMachReceiveRight receive(BootstrapCheckIn(service_name));
+    base::mac::ScopedMachReceiveRight receive(BootstrapCheckIn(service_name));
     EXPECT_NE(receive, kMachPortNull);
 
     // Now it should be possible to look up the new service.
@@ -46,22 +46,21 @@ TEST(Bootstrap, BootstrapCheckInAndLookUp) {
     EXPECT_NE(send, kMachPortNull);
 
     // It shouldn’t be possible to check the service in while it’s active.
-    base::apple::ScopedMachReceiveRight receive_2(
-        BootstrapCheckIn(service_name));
+    base::mac::ScopedMachReceiveRight receive_2(BootstrapCheckIn(service_name));
     EXPECT_EQ(receive_2, kMachPortNull);
   }
 
   // The new service should be gone now.
-  base::apple::ScopedMachSendRight send(BootstrapLookUp(service_name));
+  base::mac::ScopedMachSendRight send(BootstrapLookUp(service_name));
   EXPECT_EQ(send, kMachPortNull);
 
   // It should be possible to check it in again.
-  base::apple::ScopedMachReceiveRight receive(BootstrapCheckIn(service_name));
+  base::mac::ScopedMachReceiveRight receive(BootstrapCheckIn(service_name));
   EXPECT_NE(receive, kMachPortNull);
 }
 
 TEST(Bootstrap, SystemCrashReporterHandler) {
-  base::apple::ScopedMachSendRight system_crash_reporter_handler(
+  base::mac::ScopedMachSendRight system_crash_reporter_handler(
       SystemCrashReporterHandler());
   EXPECT_TRUE(system_crash_reporter_handler.is_valid());
 }

@@ -10,20 +10,22 @@
 namespace blink {
 
 InterpolableGridTrackSize::InterpolableGridTrackSize(
-    InterpolableValue* min_value,
-    InterpolableValue* max_value,
+    std::unique_ptr<InterpolableValue> min_value,
+    std::unique_ptr<InterpolableValue> max_value,
     const GridTrackSizeType type)
-    : min_value_(min_value), max_value_(max_value), type_(type) {
+    : min_value_(std::move(min_value)),
+      max_value_(std::move(max_value)),
+      type_(type) {
   DCHECK(min_value_);
   DCHECK(max_value_);
 }
 
 // static
-InterpolableGridTrackSize* InterpolableGridTrackSize::Create(
+std::unique_ptr<InterpolableGridTrackSize> InterpolableGridTrackSize::Create(
     const GridTrackSize& grid_track_size,
     float zoom) {
-  InterpolableValue* min_value = nullptr;
-  InterpolableValue* max_value = nullptr;
+  std::unique_ptr<InterpolableValue> min_value;
+  std::unique_ptr<InterpolableValue> max_value;
 
   min_value = InterpolableGridLength::Create(
       grid_track_size.MinOrFitContentTrackBreadth(), zoom);
@@ -32,8 +34,8 @@ InterpolableGridTrackSize* InterpolableGridTrackSize::Create(
   DCHECK(min_value);
   DCHECK(max_value);
 
-  return MakeGarbageCollected<InterpolableGridTrackSize>(
-      min_value, max_value, grid_track_size.GetType());
+  return std::make_unique<InterpolableGridTrackSize>(
+      std::move(min_value), std::move(max_value), grid_track_size.GetType());
 }
 
 GridTrackSize InterpolableGridTrackSize::CreateTrackSize(
@@ -54,13 +56,13 @@ GridTrackSize InterpolableGridTrackSize::CreateTrackSize(
 }
 
 InterpolableGridTrackSize* InterpolableGridTrackSize::RawClone() const {
-  return MakeGarbageCollected<InterpolableGridTrackSize>(
-      min_value_->Clone(), max_value_->Clone(), type_);
+  return new InterpolableGridTrackSize(min_value_->Clone(), max_value_->Clone(),
+                                       type_);
 }
 
 InterpolableGridTrackSize* InterpolableGridTrackSize::RawCloneAndZero() const {
-  return MakeGarbageCollected<InterpolableGridTrackSize>(
-      min_value_->CloneAndZero(), max_value_->CloneAndZero(), type_);
+  return new InterpolableGridTrackSize(min_value_->CloneAndZero(),
+                                       max_value_->CloneAndZero(), type_);
 }
 
 bool InterpolableGridTrackSize::Equals(const InterpolableValue& other) const {

@@ -98,16 +98,16 @@ export class PhotoResolutionSettings extends BaseSettings {
     input.checked = option.checked;
 
     if (!input.checked) {
-      input.addEventListener('click', async (event) => {
-        event.preventDefault();
+      input.addEventListener('click', (event) => {
         this.focusedDeviceId = deviceId;
         this.menuScrollTop = this.menu.scrollTop;
         if (expert.isEnabled(expert.ExpertOption.SHOW_ALL_RESOLUTIONS)) {
-          await this.cameraManager.setPrefPhotoResolution(deviceId, resolution);
+          this.cameraManager.setPrefPhotoResolution(deviceId, resolution);
         } else {
-          await this.cameraManager.setPrefPhotoResolutionLevel(
+          this.cameraManager.setPrefPhotoResolutionLevel(
               deviceId, option.resolutionLevel);
         }
+        event.preventDefault();
       });
     }
     this.menu.appendChild(optionElement);

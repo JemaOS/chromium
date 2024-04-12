@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_APPS_APP_SERVICE_PUBLISHERS_STANDALONE_BROWSER_EXTENSION_APPS_FACTORY_H_
 #define CHROME_BROWSER_APPS_APP_SERVICE_PUBLISHERS_STANDALONE_BROWSER_EXTENSION_APPS_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
@@ -26,7 +26,8 @@ class StandaloneBrowserExtensionAppsFactoryForApp
   static void ShutDownForTesting(content::BrowserContext* context);
 
  private:
-  friend base::NoDestructor<StandaloneBrowserExtensionAppsFactoryForApp>;
+  friend struct base::DefaultSingletonTraits<
+      StandaloneBrowserExtensionAppsFactoryForApp>;
 
   StandaloneBrowserExtensionAppsFactoryForApp();
   StandaloneBrowserExtensionAppsFactoryForApp(
@@ -36,7 +37,7 @@ class StandaloneBrowserExtensionAppsFactoryForApp
   ~StandaloneBrowserExtensionAppsFactoryForApp() override = default;
 
   // BrowserContextKeyedServiceFactory overrides.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 
@@ -52,7 +53,8 @@ class StandaloneBrowserExtensionAppsFactoryForExtension
   static void ShutDownForTesting(content::BrowserContext* context);
 
  private:
-  friend base::NoDestructor<StandaloneBrowserExtensionAppsFactoryForExtension>;
+  friend struct base::DefaultSingletonTraits<
+      StandaloneBrowserExtensionAppsFactoryForExtension>;
 
   StandaloneBrowserExtensionAppsFactoryForExtension();
   StandaloneBrowserExtensionAppsFactoryForExtension(

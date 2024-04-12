@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/net/network_diagnostics/dns_resolver_present_routine.h"
 
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,6 +15,7 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/base/ip_address.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace network_diagnostics {
@@ -67,9 +67,7 @@ bool NameServersHaveValidAddresses(
 
 }  // namespace
 
-DnsResolverPresentRoutine::DnsResolverPresentRoutine(
-    chromeos::network_diagnostics::mojom::RoutineCallSource source)
-    : NetworkDiagnosticsRoutine(source) {
+DnsResolverPresentRoutine::DnsResolverPresentRoutine() {
   set_verdict(mojom::RoutineVerdict::kNotRun);
   network_config::BindToInProcessInstance(
       remote_cros_network_config_.BindNewPipeAndPassReceiver());

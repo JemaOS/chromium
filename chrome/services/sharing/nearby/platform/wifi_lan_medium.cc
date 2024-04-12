@@ -5,7 +5,6 @@
 #include "chrome/services/sharing/nearby/platform/wifi_lan_medium.h"
 
 #include "base/check.h"
-#include "base/containers/span.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
@@ -113,12 +112,6 @@ bool WifiLanMedium::IsNetworkConnected() const {
 std::unique_ptr<api::WifiLanSocket> WifiLanMedium::ConnectToService(
     const NsdServiceInfo& remote_service_info,
     CancellationFlag* cancellation_flag) {
-  if (cancellation_flag && cancellation_flag->Cancelled()) {
-    LOG(WARNING) << "WifiLanMedium::" << __func__
-                 << ": Cancelled before connect attempt";
-    return nullptr;
-  }
-
   return ConnectToService(remote_service_info.GetIPAddress(),
                           remote_service_info.GetPort(), cancellation_flag);
 }
@@ -127,14 +120,17 @@ std::unique_ptr<api::WifiLanSocket> WifiLanMedium::ConnectToService(
     const std::string& ip_address,
     int port,
     CancellationFlag* cancellation_flag) {
-  net::IPAddress ip(base::as_byte_span(ip_address));
+  // TODO(https://crbug.com/1261238): Possibly utilize cancellation_flag.
+
+  net::IPAddress ip(reinterpret_cast<const uint8_t*>(ip_address.data()),
+                    ip_address.length());
   const net::AddressList address_list =
       net::AddressList::CreateFromIPAddress(ip, port);
 
   // To accommodate the synchronous ConnectToService() signature, block until we
   // connect to the remote TCP server socket or fail.
   base::WaitableEvent connect_waitable_event;
-  std::optional<WifiLanSocket::ConnectedSocketParameters>
+  absl::optional<WifiLanSocket::ConnectedSocketParameters>
       connected_socket_parameters;
   task_runner_->PostTask(
       FROM_HERE,
@@ -142,13 +138,6 @@ std::unique_ptr<api::WifiLanSocket> WifiLanMedium::ConnectToService(
                      address_list, &connected_socket_parameters,
                      &connect_waitable_event));
   connect_waitable_event.Wait();
-
-  if (cancellation_flag && cancellation_flag->Cancelled()) {
-    LOG(WARNING) << "WifiLanMedium::" << __func__
-                 << ": Cancelled during connect to "
-                 << address_list.back().ToString();
-    return nullptr;
-  }
 
   bool success = connected_socket_parameters.has_value();
   if (!success) {
@@ -163,7 +152,7 @@ std::unique_ptr<api::WifiLanSocket> WifiLanMedium::ConnectToService(
 
 void WifiLanMedium::DoConnect(
     const net::AddressList& address_list,
-    std::optional<WifiLanSocket::ConnectedSocketParameters>*
+    absl::optional<WifiLanSocket::ConnectedSocketParameters>*
         connected_socket_parameters,
     base::WaitableEvent* connect_waitable_event) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
@@ -177,7 +166,7 @@ void WifiLanMedium::DoConnect(
       tcp_connected_socket.InitWithNewPipeAndPassReceiver();
   socket_factory_->CreateTCPConnectedSocket(
       /*timeout=*/kConnectTimeout,
-      /*local_addr=*/std::nullopt, address_list,
+      /*local_addr=*/absl::nullopt, address_list,
       /*tcp_connected_socket_options=*/nullptr,
       net::MutableNetworkTrafficAnnotationTag(kTrafficAnnotation),
       std::move(receiver), /*observer=*/mojo::NullRemote(),
@@ -187,14 +176,14 @@ void WifiLanMedium::DoConnect(
 }
 
 void WifiLanMedium::OnConnect(
-    std::optional<WifiLanSocket::ConnectedSocketParameters>*
+    absl::optional<WifiLanSocket::ConnectedSocketParameters>*
         connected_socket_parameters,
     base::WaitableEvent* connect_waitable_event,
     mojo::PendingRemote<network::mojom::TCPConnectedSocket>
         tcp_connected_socket,
     int32_t result,
-    const std::optional<net::IPEndPoint>& local_addr,
-    const std::optional<net::IPEndPoint>& peer_addr,
+    const absl::optional<net::IPEndPoint>& local_addr,
+    const absl::optional<net::IPEndPoint>& peer_addr,
     mojo::ScopedDataPipeConsumerHandle receive_stream,
     mojo::ScopedDataPipeProducerHandle send_stream) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
@@ -232,7 +221,7 @@ std::unique_ptr<api::WifiLanServerSocket> WifiLanMedium::ListenForService(
   // To accommodate the synchronous ListenForService() signature, block until we
   // create a server socket and start listening for connections or fail.
   base::WaitableEvent listen_waitable_event;
-  std::optional<WifiLanServerSocket::ServerSocketParameters>
+  absl::optional<WifiLanServerSocket::ServerSocketParameters>
       server_socket_parameters;
   task_runner_->PostTask(
       FROM_HERE,
@@ -254,7 +243,7 @@ std::unique_ptr<api::WifiLanServerSocket> WifiLanMedium::ListenForService(
 }
 
 void WifiLanMedium::DoListenForService(
-    std::optional<WifiLanServerSocket::ServerSocketParameters>*
+    absl::optional<WifiLanServerSocket::ServerSocketParameters>*
         server_socket_parameters,
     base::WaitableEvent* listen_waitable_event,
     int port) {
@@ -264,8 +253,8 @@ void WifiLanMedium::DoListenForService(
 
   // TcpServerSocketPort enforces any necessary restrictions on port number
   // ranges. If |port| is 0, choose a random port from the acceptable range.
-  std::optional<ash::nearby::TcpServerSocketPort> tcp_port =
-      port == 0 ? std::make_optional<ash::nearby::TcpServerSocketPort>(
+  absl::optional<ash::nearby::TcpServerSocketPort> tcp_port =
+      port == 0 ? absl::make_optional<ash::nearby::TcpServerSocketPort>(
                       ash::nearby::TcpServerSocketPort::Random())
                 : ash::nearby::TcpServerSocketPort::FromInt(port);
   if (!tcp_port) {
@@ -289,7 +278,7 @@ void WifiLanMedium::DoListenForService(
 }
 
 void WifiLanMedium::OnGetNetworkStateList(
-    std::optional<WifiLanServerSocket::ServerSocketParameters>*
+    absl::optional<WifiLanServerSocket::ServerSocketParameters>*
         server_socket_parameters,
     base::WaitableEvent* listen_waitable_event,
     const ash::nearby::TcpServerSocketPort& port,
@@ -316,7 +305,7 @@ void WifiLanMedium::OnGetNetworkStateList(
 }
 
 void WifiLanMedium::OnGetNetworkProperties(
-    std::optional<WifiLanServerSocket::ServerSocketParameters>*
+    absl::optional<WifiLanServerSocket::ServerSocketParameters>*
         server_socket_parameters,
     base::WaitableEvent* listen_waitable_event,
     const ash::nearby::TcpServerSocketPort& port,
@@ -339,7 +328,7 @@ void WifiLanMedium::OnGetNetworkProperties(
   }
 
   // Local IP fetching: Step 3) Take the first valid IPv4 address.
-  std::optional<net::IPAddress> ip_address;
+  absl::optional<net::IPAddress> ip_address;
   for (const auto& ip_config : *properties->ip_configs) {
     if (!ip_config->ip_address)
       continue;
@@ -381,14 +370,14 @@ void WifiLanMedium::OnGetNetworkProperties(
 }
 
 void WifiLanMedium::OnTcpServerSocketCreated(
-    std::optional<WifiLanServerSocket::ServerSocketParameters>*
+    absl::optional<WifiLanServerSocket::ServerSocketParameters>*
         server_socket_parameters,
     base::WaitableEvent* listen_waitable_event,
     mojo::PendingRemote<network::mojom::TCPServerSocket> tcp_server_socket,
     const net::IPAddress& ip_address,
     const ash::nearby::TcpServerSocketPort& port,
     int32_t result,
-    const std::optional<net::IPEndPoint>& local_addr) {
+    const absl::optional<net::IPEndPoint>& local_addr) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   if (result != net::OK) {
     LOG(WARNING) << "WifiLanMedium::" << __func__
@@ -426,7 +415,7 @@ void WifiLanMedium::OnTcpServerSocketCreated(
 }
 
 void WifiLanMedium::OnFirewallHoleCreated(
-    std::optional<WifiLanServerSocket::ServerSocketParameters>*
+    absl::optional<WifiLanServerSocket::ServerSocketParameters>*
         server_socket_parameters,
     base::WaitableEvent* listen_waitable_event,
     mojo::PendingRemote<network::mojom::TCPServerSocket> tcp_server_socket,
@@ -454,7 +443,7 @@ void WifiLanMedium::OnFirewallHoleCreated(
 // End: ListenForService()
 /*============================================================================*/
 
-std::optional<std::pair<std::int32_t, std::int32_t>>
+absl::optional<std::pair<std::int32_t, std::int32_t>>
 WifiLanMedium::GetDynamicPortRange() {
   return std::pair<std::int32_t, std::int32_t>(
       ash::nearby::TcpServerSocketPort::kMin,

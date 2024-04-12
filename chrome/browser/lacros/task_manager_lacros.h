@@ -33,8 +33,7 @@ class TaskManagerLacros : public crosapi::mojom::TaskManagerProvider {
                                 int64_t refresh_flags) override;
   using GetTaskManagerTasksCallback =
       base::OnceCallback<void(std::vector<crosapi::mojom::TaskPtr>,
-                              std::vector<crosapi::mojom::TaskGroupPtr>,
-                              const std::optional<std::string>&)>;
+                              std::vector<crosapi::mojom::TaskGroupPtr>)>;
   void GetTaskManagerTasks(GetTaskManagerTasksCallback callback) override;
   void OnTaskManagerClosed() override;
   void SetRefreshFlags(int64_t refresh_flags) override;

@@ -13,7 +13,7 @@
 #include "third_party/blink/renderer/platform/bindings/callback_interface_base.h"
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
-#include "third_party/blink/renderer/platform/scheduler/public/task_attribution_tracker.h"
+#include "third_party/blink/renderer/platform/scheduler/public/thread_scheduler.h"
 
 namespace blink {
 
@@ -38,8 +38,7 @@ bool CallbackInvokeHelper<CallbackBase, mode, return_type_is_promise>::
   if constexpr (mode == CallbackInvokeHelperMode::kConstructorCall) {
     // step 3. If ! IsConstructor(F) is false, throw a TypeError exception.
     if (!callback_->IsConstructor()) {
-      ExceptionState exception_state(isolate,
-                                     ExceptionContextType::kOperationInvoke,
+      ExceptionState exception_state(isolate, ExceptionState::kExecutionContext,
                                      class_like_name_, property_name_);
       exception_state.ThrowTypeError(
           "The provided callback is not a constructor.");
@@ -105,22 +104,24 @@ bool CallbackInvokeHelper<CallbackBase, mode, return_type_is_promise>::
       callback_this_ =
           callback_this.V8Value(callback_->CallbackRelevantScriptState());
     }
-    if (auto* tracker = scheduler::TaskAttributionTracker::From(isolate)) {
+    if (auto* tracker =
+            ThreadScheduler::Current()->GetTaskAttributionTracker()) {
       // There are 3 possible callbacks here:
       // a) Callbacks which track their registering task as their parent
       // b) Callbacks which don't do the above, split into two groups:
       //   1) If there's a current running task, no need to create a new scope.
       //   2) If there is no current running task, set the parent to
-      //   std::nullopt, making the current callback a root task.
-      scheduler::TaskAttributionInfo* parent_task = nullptr;
+      //   absl::nullopt, making the current callback a root task.
+      absl::optional<scheduler::TaskAttributionId> parent_id;
       if constexpr (std::is_same<
                         CallbackBase,
                         CallbackFunctionWithTaskAttributionBase>::value) {
-        parent_task = callback_->GetParentTask();
+        parent_id = callback_->GetParentTaskId();
       }
-      if (parent_task || !tracker->RunningTask()) {
+      if (parent_id || !tracker->RunningTaskAttributionId(
+                           callback_->CallbackRelevantScriptState())) {
         task_attribution_scope_ = tracker->CreateTaskScope(
-            callback_->CallbackRelevantScriptState(), parent_task,
+            callback_->CallbackRelevantScriptState(), parent_id,
             scheduler::TaskAttributionTracker::TaskScopeType::kCallback);
       }
     }
@@ -134,9 +135,9 @@ template <class CallbackBase,
           CallbackReturnTypeIsPromise return_type_is_promise>
 bool CallbackInvokeHelper<CallbackBase, mode, return_type_is_promise>::
     CallInternal(int argc, v8::Local<v8::Value>* argv) {
-  ScriptState* script_state = callback_->CallbackRelevantScriptState();
-  ExecutionContext* execution_context = ExecutionContext::From(script_state);
-  probe::InvokeCallback probe_scope(script_state, class_like_name_,
+  ExecutionContext* execution_context =
+      ExecutionContext::From(callback_->CallbackRelevantScriptState());
+  probe::InvokeCallback probe_scope(execution_context, class_like_name_,
                                     /*callback=*/nullptr, function_);
 
   if constexpr (mode == CallbackInvokeHelperMode::kConstructorCall) {

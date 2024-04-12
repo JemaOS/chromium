@@ -9,8 +9,6 @@
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
 #include "third_party/skia/include/effects/SkGradientShader.h"
-#include "ui/base/metadata/metadata_header_macros.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_owner.h"
 #include "ui/events/event.h"
@@ -36,8 +34,6 @@ constexpr int kFadeoutFrameRate = 60;
 class TouchPointView : public views::View,
                        public views::AnimationDelegateViews,
                        public views::WidgetObserver {
-  METADATA_HEADER(TouchPointView, views::View)
-
  public:
   explicit TouchPointView(views::Widget* parent_widget)
       : views::AnimationDelegateViews(this) {
@@ -130,9 +126,6 @@ class TouchPointView : public views::View,
   base::ScopedObservation<views::Widget, views::WidgetObserver>
       widget_observation_{this};
 };
-
-BEGIN_METADATA(TouchPointView)
-END_METADATA
 
 TouchHudRenderer::TouchHudRenderer(views::Widget* parent_widget)
     : parent_widget_(parent_widget) {

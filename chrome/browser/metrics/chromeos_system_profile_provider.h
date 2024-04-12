@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -65,10 +65,10 @@ class ChromeOSSystemProfileProvider : public metrics::MetricsProvider {
 
   // Updates ARC-related system profile fields, then calls the callback.
   void OnArcFeaturesParsed(base::OnceClosure callback,
-                           std::optional<arc::ArcFeatures> features);
+                           absl::optional<arc::ArcFeatures> features);
 
-  // Sets the TPM RW firmware version, then calls the callback.
-  void OnTpmManagerGetRwVersionInfo(
+  // Sets the TPM firmware version, then calls the callback.
+  void OnTpmManagerGetVersionInfo(
       base::OnceClosure callback,
       const tpm_manager::GetVersionInfoReply& reply);
 
@@ -95,10 +95,10 @@ class ChromeOSSystemProfileProvider : public metrics::MetricsProvider {
   std::string cellular_device_variant_;
 
   // ARC release version obtained from build properties.
-  std::optional<std::string> arc_release_;
+  absl::optional<std::string> arc_release_;
 
-  // The RW firmware version of the TPM (go/trusted-platform-module).
-  std::optional<std::string> tpm_rw_firmware_version_;
+  // The firmware version of the TPM (go/trusted-platform-module).
+  absl::optional<uint64_t> tpm_firmware_version_;
 
   base::WeakPtrFactory<ChromeOSSystemProfileProvider> weak_ptr_factory_;
 };

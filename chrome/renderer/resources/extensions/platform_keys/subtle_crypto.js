@@ -5,14 +5,14 @@
 var utils = require('utils');
 var internalAPI = getInternalApi('platformKeysInternal');
 var keyModule = require('platformKeys.Key');
-var getKeyIdentifier = keyModule.getKeyIdentifier;
+var getSpki = keyModule.getSpki;
 var KeyUsage = keyModule.KeyUsage;
 
 var normalizeAlgorithm =
     requireNative('platform_keys_natives').NormalizeAlgorithm;
 
 // This error is thrown by the internal and public API's token functions and
-// must be re-thrown by this custom binding. Keep this in sync with the C++ part
+// must be rethrown by this custom binding. Keep this in sync with the C++ part
 // of this API.
 var errorInvalidToken = 'The token is not valid.';
 
@@ -24,6 +24,10 @@ function CreateNotSupportedError() {
 
 function CreateInvalidAccessError() {
   return new Error('The requested operation is not valid for the provided key');
+}
+
+function CreateDataError() {
+  return new Error('Data provided to an operation does not meet requirements');
 }
 
 function CreateSyntaxError() {
@@ -38,7 +42,7 @@ function CreateOperationError() {
 // returns true.
 function catchInvalidTokenError(reject) {
   if (bindingUtil.hasLastError() &&
-      bindingUtil.getLastErrorMessage() === errorInvalidToken) {
+      chrome.runtime.lastError.message === errorInvalidToken) {
     var error = chrome.runtime.lastError;
     bindingUtil.clearLastError();
     reject(error);
@@ -79,9 +83,8 @@ $Object.setPrototypeOf(SubtleCryptoImpl.prototype, null);
 SubtleCryptoImpl.prototype.sign = function(algorithm, key, dataView) {
   var subtleCrypto = this;
   return new Promise(function(resolve, reject) {
-    if (key.type !== 'private' || key.usages.indexOf(KeyUsage.sign) === -1) {
+    if (key.type !== 'private' || key.usages.indexOf(KeyUsage.sign) === -1)
       throw CreateInvalidAccessError();
-    }
 
     var normalizedAlgorithmParameters = normalizeAlgorithm(algorithm, 'Sign');
     if (!normalizedAlgorithmParameters) {
@@ -118,12 +121,10 @@ SubtleCryptoImpl.prototype.sign = function(algorithm, key, dataView) {
     var data = dataView.buffer.slice(dataView.byteOffset,
                                      dataView.byteOffset + dataView.byteLength);
     internalAPI.sign(
-        subtleCrypto.tokenId, getKeyIdentifier(key),
-        normalizedAlgorithmParameters.name, hashAlgorithmName, data,
-        function(signature) {
-          if (catchInvalidTokenError(reject)) {
+        subtleCrypto.tokenId, getSpki(key), normalizedAlgorithmParameters.name,
+        hashAlgorithmName, data, function(signature) {
+          if (catchInvalidTokenError(reject))
             return;
-          }
           if (bindingUtil.hasLastError()) {
             bindingUtil.clearLastError();
             reject(CreateOperationError());
@@ -137,18 +138,14 @@ SubtleCryptoImpl.prototype.sign = function(algorithm, key, dataView) {
 SubtleCryptoImpl.prototype.exportKey = function(format, key) {
   return new Promise(function(resolve, reject) {
     if (format === 'pkcs8') {
-      // The 'pkcs8' format is intended for 'private' keys, which are always
-      // non-extractable in this API. The 'raw' format is intended for 'secret'
-      // keys and could also be handled with |InvalidAccessError|, but is
-      // actually handled with |NotSupportedError| below, for legacy reasons.
+      // Either key.type is not 'private' or the key is not extractable. In both
+      // cases the error is the same.
       throw CreateInvalidAccessError();
     } else if (format === 'spki') {
-      if (key.type !== 'public') {
+      if (key.type !== 'public')
         throw CreateInvalidAccessError();
-      }
-      resolve(getKeyIdentifier(key));
+      resolve(getSpki(key));
     } else {
-      // All other exporting formats are unsupported.
       // TODO(pneubeck): It should be possible to export to format 'jwk'.
       throw CreateNotSupportedError();
     }
@@ -165,7 +162,6 @@ utils.expose(SubtleCrypto, SubtleCryptoImpl, {
   ],
 });
 
-// Required for sub-classing.
-exports.$set('catchInvalidTokenError', catchInvalidTokenError);
+// Required for subclassing.
 exports.$set('SubtleCryptoImpl', SubtleCryptoImpl);
 exports.$set('SubtleCrypto', SubtleCrypto);

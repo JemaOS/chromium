@@ -43,7 +43,6 @@
 #include "third_party/blink/renderer/core/clipboard/dragged_isolated_file_system.h"
 #include "third_party/blink/renderer/core/clipboard/paste_mode.h"
 #include "third_party/blink/renderer/core/clipboard/system_clipboard.h"
-#include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/platform/blob/blob_data.h"
 #include "third_party/blink/renderer/platform/file_metadata.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
@@ -51,8 +50,7 @@
 namespace blink {
 
 // static
-DataObject* DataObject::CreateFromClipboard(ExecutionContext* context,
-                                            SystemClipboard* system_clipboard,
+DataObject* DataObject::CreateFromClipboard(SystemClipboard* system_clipboard,
                                             PasteMode paste_mode) {
   DataObject* data_object = Create();
 #if DCHECK_IS_ON()
@@ -66,19 +64,16 @@ DataObject* DataObject::CreateFromClipboard(ExecutionContext* context,
     mojom::blink::ClipboardFilesPtr files;
     if (type == kMimeTypeTextURIList) {
       files = system_clipboard->ReadFiles();
-      if (files) {
-        // Ignore ReadFiles() result if clipboard sequence number has changed.
-        if (system_clipboard->SequenceNumber() != sequence_number) {
-          files->files.clear();
-        } else {
-          for (const mojom::blink::DataTransferFilePtr& file : files->files) {
-            data_object->AddFilename(
-                context, FilePathToString(file->path),
-                FilePathToString(file->display_name), files->file_system_id,
-                base::MakeRefCounted<FileSystemAccessDropData>(
-                    std::move(file->file_system_access_token)));
-          }
-        }
+      // Ignore ReadFiles() result if clipboard sequence number has changed.
+      if (system_clipboard->SequenceNumber() != sequence_number) {
+        files->files.clear();
+      }
+      for (const mojom::blink::DataTransferFilePtr& file : files->files) {
+        data_object->AddFilename(
+            FilePathToString(file->path), FilePathToString(file->display_name),
+            files->file_system_id,
+            base::MakeRefCounted<FileSystemAccessDropData>(
+                std::move(file->file_system_access_token)));
       }
     }
     if (files && !files->files.empty()) {
@@ -92,11 +87,6 @@ DataObject* DataObject::CreateFromClipboard(ExecutionContext* context,
 #endif
   }
   return data_object;
-}
-
-DataObject* DataObject::CreateFromClipboard(SystemClipboard* system_clipboard,
-                                            PasteMode paste_mode) {
-  return CreateFromClipboard(/*context=*/nullptr, system_clipboard, paste_mode);
 }
 
 // static
@@ -120,7 +110,7 @@ uint32_t DataObject::length() const {
 DataObjectItem* DataObject::Item(uint32_t index) {
   if (index >= length())
     return nullptr;
-  return item_list_[index].Get();
+  return item_list_[index];
 }
 
 void DataObject::DeleteItem(uint32_t index) {
@@ -128,23 +118,6 @@ void DataObject::DeleteItem(uint32_t index) {
     return;
   item_list_.EraseAt(index);
   NotifyItemListChanged();
-}
-
-void DataObject::ClearStringItems() {
-  if (item_list_.empty()) {
-    return;
-  }
-
-  wtf_size_t num_items_before = item_list_.size();
-  item_list_.erase(std::remove_if(item_list_.begin(), item_list_.end(),
-                                  [](Member<DataObjectItem> item) {
-                                    return item->Kind() ==
-                                           DataObjectItem::kStringKind;
-                                  }),
-                   item_list_.end());
-  if (num_items_before != item_list_.size()) {
-    NotifyItemListChanged();
-  }
 }
 
 void DataObject::ClearAll() {
@@ -280,14 +253,13 @@ Vector<String> DataObject::Filenames() const {
 }
 
 void DataObject::AddFilename(
-    ExecutionContext* context,
     const String& filename,
     const String& display_name,
     const String& file_system_id,
     scoped_refptr<FileSystemAccessDropData> file_system_access_entry) {
   InternalAddFileItem(DataObjectItem::CreateFromFileWithFileSystemId(
-      File::CreateForUserProvidedFile(context, filename, display_name),
-      file_system_id, std::move(file_system_access_entry)));
+      File::CreateForUserProvidedFile(filename, display_name), file_system_id,
+      std::move(file_system_access_entry)));
 }
 
 void DataObject::AddFileSharedBuffer(scoped_refptr<SharedBuffer> buffer,
@@ -305,7 +277,7 @@ DataObject::DataObject() : modifiers_(0) {}
 DataObjectItem* DataObject::FindStringItem(const String& type) const {
   for (const auto& item : item_list_) {
     if (item->Kind() == DataObjectItem::kStringKind && item->GetType() == type)
-      return item.Get();
+      return item;
   }
   return nullptr;
 }
@@ -346,8 +318,7 @@ void DataObject::Trace(Visitor* visitor) const {
 }
 
 // static
-DataObject* DataObject::Create(ExecutionContext* context,
-                               const WebDragData& data) {
+DataObject* DataObject::Create(const WebDragData& data) {
   DataObject* data_object = Create();
   bool has_file_system = false;
 
@@ -365,8 +336,8 @@ DataObject* DataObject::Create(ExecutionContext* context,
             },
             [&](const WebDragData::FilenameItem& item) {
               has_file_system = true;
-              data_object->AddFilename(context, item.filename,
-                                       item.display_name, data.FilesystemId(),
+              data_object->AddFilename(item.filename, item.display_name,
+                                       data.FilesystemId(),
                                        item.file_system_access_entry);
             },
             [&](const WebDragData::BinaryDataItem& item) {
@@ -413,10 +384,6 @@ DataObject* DataObject::Create(ExecutionContext* context,
     DraggedIsolatedFileSystem::PrepareForDataObject(data_object);
 
   return data_object;
-}
-
-DataObject* DataObject::Create(const WebDragData& data) {
-  return Create(/*context=*/nullptr, data);
 }
 
 WebDragData DataObject::ToWebDragData() {

@@ -11,7 +11,6 @@
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/platform/bindings/dom_wrapper_world.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
-#include "third_party/blink/renderer/platform/network/http_names.h"
 #include "third_party/blink/renderer/platform/weborigin/security_origin.h"
 
 namespace blink {
@@ -29,10 +28,9 @@ TEST_F(XMLHttpRequestTest, ForbiddenRequestHeaderWithLocalOrigin) {
 
   auto* xhr = XMLHttpRequest::Create(ToScriptStateForMainWorld(&GetFrame()));
 
-  xhr->open(http_names::kGET, "https://example.com/", ASSERT_NO_EXCEPTION);
-  xhr->setRequestHeader(AtomicString("host"), AtomicString("example.com"),
-                        ASSERT_NO_EXCEPTION);
-  EXPECT_FALSE(xhr->HasRequestHeaderForTesting(AtomicString("host")));
+  xhr->open("GET", "https://example.com/", ASSERT_NO_EXCEPTION);
+  xhr->setRequestHeader("host", "example.com", ASSERT_NO_EXCEPTION);
+  EXPECT_FALSE(xhr->HasRequestHeaderForTesting("host"));
 }
 
 }  // namespace

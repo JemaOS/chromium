@@ -76,34 +76,32 @@ class ArcDocumentsProviderRootMapTest : public testing::Test {
   void TearDownARC() {
     arc_service_manager_->arc_bridge_service()->file_system()->CloseInstance(
         &fake_file_system_);
-    arc_service_manager_->set_browser_context(nullptr);
   }
 
   content::BrowserTaskEnvironment task_environment_;
   std::unique_ptr<TestingProfile> profile_;
   FakeFileSystemInstance fake_file_system_;
   std::unique_ptr<ArcServiceManager> arc_service_manager_;
-  raw_ptr<ArcDocumentsProviderRootMap, DanglingUntriaged>
-      arc_documents_provider_root_map_;
+  raw_ptr<ArcDocumentsProviderRootMap> arc_documents_provider_root_map_;
 };
 
 TEST_F(ArcDocumentsProviderRootMapTest, Lookup) {
-  ArcDocumentsProviderRoot* images_root =
-      GetRootMap()->Lookup(kMediaDocumentsProviderAuthority, kImagesRootId);
+  ArcDocumentsProviderRoot* images_root = GetRootMap()->Lookup(
+      kMediaDocumentsProviderAuthority, kImagesRootDocumentId);
   EXPECT_EQ(images_root->authority_, kMediaDocumentsProviderAuthority);
-  EXPECT_EQ(images_root->root_id_, kImagesRootId);
-  ArcDocumentsProviderRoot* audio_root =
-      GetRootMap()->Lookup(kMediaDocumentsProviderAuthority, kAudioRootId);
+  EXPECT_EQ(images_root->root_id_, kImagesRootDocumentId);
+  ArcDocumentsProviderRoot* audio_root = GetRootMap()->Lookup(
+      kMediaDocumentsProviderAuthority, kAudioRootDocumentId);
   EXPECT_EQ(audio_root->authority_, kMediaDocumentsProviderAuthority);
-  EXPECT_EQ(audio_root->root_id_, kAudioRootId);
-  ArcDocumentsProviderRoot* videos_root =
-      GetRootMap()->Lookup(kMediaDocumentsProviderAuthority, kVideosRootId);
+  EXPECT_EQ(audio_root->root_id_, kAudioRootDocumentId);
+  ArcDocumentsProviderRoot* videos_root = GetRootMap()->Lookup(
+      kMediaDocumentsProviderAuthority, kVideosRootDocumentId);
   EXPECT_EQ(videos_root->authority_, kMediaDocumentsProviderAuthority);
-  EXPECT_EQ(videos_root->root_id_, kVideosRootId);
-  ArcDocumentsProviderRoot* documents_root =
-      GetRootMap()->Lookup(kMediaDocumentsProviderAuthority, kDocumentsRootId);
+  EXPECT_EQ(videos_root->root_id_, kVideosRootDocumentId);
+  ArcDocumentsProviderRoot* documents_root = GetRootMap()->Lookup(
+      kMediaDocumentsProviderAuthority, kDocumentsRootDocumentId);
   EXPECT_EQ(documents_root->authority_, kMediaDocumentsProviderAuthority);
-  EXPECT_EQ(documents_root->root_id_, kDocumentsRootId);
+  EXPECT_EQ(documents_root->root_id_, kDocumentsRootDocumentId);
 
   EXPECT_EQ(GetRootMap()->Lookup(kMediaDocumentsProviderAuthority, kTestRootId),
             nullptr);

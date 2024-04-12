@@ -4,9 +4,11 @@
 
 package org.chromium.chrome.browser.about_settings;
 
-import org.jni_zero.NativeMethods;
+import org.chromium.base.annotations.NativeMethods;
 
-/** Bridge providing access to native data about Chrome application and OS. */
+/**
+ * Bridge providing access to native data about Chrome application and OS.
+ */
 public class AboutSettingsBridge {
     /**
      * @return Chrome application name and version number.
@@ -25,7 +27,6 @@ public class AboutSettingsBridge {
     @NativeMethods
     interface Natives {
         String getApplicationVersion();
-
         String getOSVersion();
     }
 }

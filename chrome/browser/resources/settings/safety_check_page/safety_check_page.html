@@ -37,21 +37,13 @@
         opened="[[shouldShowChildren_(parentStatus_)]]">
       <settings-safety-check-updates-child>
       </settings-safety-check-updates-child>
-      <settings-safety-check-passwords-child>
+      <settings-safety-check-passwords-child hidden="[[shouldShowCheckPasswordsChild_]]">
       </settings-safety-check-passwords-child>
       <settings-safety-check-safe-browsing-child>
       </settings-safety-check-safe-browsing-child>
-      <template is="dom-if"
-          if="[[!safetyCheckExtensionsReviewEnabled_]]" restamp>
-        <settings-safety-check-extensions-child>
-        </settings-safety-check-extensions-child>
-      </template>
+      <settings-safety-check-extensions-child>
+      </settings-safety-check-extensions-child>
     </iron-collapse>
-    <template is="dom-if" if="[[shouldShowSafetyCheckExtensionsReview_(
-          safetyCheckNumberOfExtensionsThatNeedReview_)]]" restamp>
-      <safety-check-extensions>
-      </safety-check-extensions>
-    </template>
     <template is="dom-if"
         if="[[shouldShowUnusedSitePermissions_(
           unusedSitePermissions_, safetyCheckUnusedSitePermissionsEnabled_)]]"
@@ -61,7 +53,7 @@
     </template>
     <template is="dom-if"
         if="[[shouldShowNotificationPermissions_(
-          notificationPermissionSites_)]]"
+          notificationPermissionSites_, safetyCheckNotificationPermissionsEnabled_)]]"
         restamp>
       <settings-safety-check-notification-permissions>
       </settings-safety-check-notification-permissions>

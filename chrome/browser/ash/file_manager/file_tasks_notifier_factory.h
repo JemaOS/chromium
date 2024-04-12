@@ -26,7 +26,7 @@ class FileTasksNotifierFactory : public ProfileKeyedServiceFactory {
 
   FileTasksNotifier* GetForProfile(Profile* profile);
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

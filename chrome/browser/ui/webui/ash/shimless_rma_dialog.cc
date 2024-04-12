@@ -27,13 +27,13 @@ ShimlessRmaDialog::ShimlessRmaDialog()
   // ui::SHOW_STATE_FULLSCREEN correctly.
   // This dialog uses DisplayObserver::OnDisplayMetricsChanged to update the
   // window size as screen size changes.
-  set_dialog_modal_type(ui::ModalType::MODAL_TYPE_SYSTEM);
+  set_modal_type(ui::ModalType::MODAL_TYPE_SYSTEM);
   set_can_minimize(false);
 }
 
 ShimlessRmaDialog::~ShimlessRmaDialog() = default;
 
-std::string ShimlessRmaDialog::Id() {
+const std::string& ShimlessRmaDialog::Id() {
   return id_;
 }
 

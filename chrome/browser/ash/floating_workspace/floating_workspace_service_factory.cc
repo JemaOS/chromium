@@ -6,7 +6,6 @@
 
 #include "base/no_destructor.h"
 #include "chrome/browser/ash/floating_workspace/floating_workspace_service.h"
-#include "chrome/browser/ash/floating_workspace/floating_workspace_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/desk_sync_service_factory.h"
 #include "chrome/browser/sync/session_sync_service_factory.h"
@@ -44,23 +43,11 @@ FloatingWorkspaceServiceFactory::FloatingWorkspaceServiceFactory()
 
 FloatingWorkspaceServiceFactory::~FloatingWorkspaceServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-FloatingWorkspaceServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* FloatingWorkspaceServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  Profile* profile = Profile::FromBrowserContext(context);
-  floating_workspace_util::FloatingWorkspaceVersion version =
-      floating_workspace_util::FloatingWorkspaceVersion::kNoVersionEnabled;
-  if (floating_workspace_util::IsFloatingWorkspaceV1Enabled()) {
-    version = floating_workspace_util::FloatingWorkspaceVersion::
-        kFloatingWorkspaceV1Enabled;
-  } else if (floating_workspace_util::IsFloatingWorkspaceV2Enabled()) {
-    version = floating_workspace_util::FloatingWorkspaceVersion::
-        kFloatingWorkspaceV2Enabled;
-  }
-  std::unique_ptr<FloatingWorkspaceService> service =
-      std::make_unique<FloatingWorkspaceService>(profile, version);
-  service->Init(SyncServiceFactory::GetForProfile(profile),
-                DeskSyncServiceFactory::GetForProfile(profile));
+  FloatingWorkspaceService* service =
+      new FloatingWorkspaceService(Profile::FromBrowserContext(context));
+  service->Init();
   return service;
 }
 

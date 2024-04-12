@@ -31,10 +31,8 @@
 #include "third_party/blink/renderer/core/dom/element_traversal.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/id_target_observer.h"
-#include "third_party/blink/renderer/core/dom/node_cloning_data.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/dom/xml_document.h"
-#include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_transformable_container.h"
 #include "third_party/blink/renderer/core/svg/svg_animated_length.h"
@@ -48,6 +46,7 @@
 #include "third_party/blink/renderer/core/xlink_names.h"
 #include "third_party/blink/renderer/core/xml/parser/xml_document_parser.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_initiator_type_names.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_parameters.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
@@ -84,6 +83,11 @@ SVGUseElement::SVGUseElement(Document& document)
       element_url_is_local_(true),
       needs_shadow_tree_recreation_(false) {
   DCHECK(HasCustomStyleCallbacks());
+
+  AddToPropertyMap(x_);
+  AddToPropertyMap(y_);
+  AddToPropertyMap(width_);
+  AddToPropertyMap(height_);
 
   CreateUserAgentShadowRoot();
 }
@@ -172,10 +176,10 @@ void SVGUseElement::CollectStyleForPresentationAttribute(
     MutableCSSPropertyValueSet* style) {
   SVGAnimatedPropertyBase* property = PropertyFromAttribute(name);
   if (property == x_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kX,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             x_->CssValue());
   } else if (property == y_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kY,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             y_->CssValue());
   } else {
     SVGGraphicsElement::CollectStyleForPresentationAttribute(name, value,
@@ -210,10 +214,8 @@ void SVGUseElement::UpdateTargetReference() {
 
   pending_event_.Cancel();
 
-  if (element_url_.ProtocolIsData()) {
-    Deprecation::CountDeprecation(GetDocument().domWindow(),
-                                  WebFeature::kDataUrlInSvgUse);
-  }
+  if (element_url_.ProtocolIsData())
+    UseCounter::Count(GetDocument(), WebFeature::kDataUrlInSvgUse);
 
   auto* context_document = &GetDocument();
   ExecutionContext* execution_context = context_document->GetExecutionContext();
@@ -437,9 +439,8 @@ static void MoveChildrenToReplacementElement(ContainerNode& source_root,
 }
 
 SVGElement* SVGUseElement::CreateInstanceTree(SVGElement& target_root) const {
-  NodeCloningData data{CloneOption::kIncludeDescendants};
-  SVGElement* instance_root = &To<SVGElement>(target_root.CloneWithChildren(
-      data, /*document*/ nullptr, /*append_to*/ nullptr));
+  SVGElement* instance_root =
+      &To<SVGElement>(target_root.CloneWithChildren(CloneChildrenFlag::kClone));
   if (IsA<SVGSymbolElement>(target_root)) {
     // Spec: The referenced 'symbol' and its contents are deep-cloned into
     // the generated tree, with the exception that the 'symbol' is replaced
@@ -634,47 +635,6 @@ void SVGUseElement::NotifyFinished(Resource* resource) {
 
 String SVGUseElement::DebugName() const {
   return "SVGUseElement";
-}
-
-SVGAnimatedPropertyBase* SVGUseElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kXAttr) {
-    return x_.Get();
-  } else if (attribute_name == svg_names::kYAttr) {
-    return y_.Get();
-  } else if (attribute_name == svg_names::kWidthAttr) {
-    return width_.Get();
-  } else if (attribute_name == svg_names::kHeightAttr) {
-    return height_.Get();
-  } else {
-    SVGAnimatedPropertyBase* ret =
-        SVGURIReference::PropertyFromAttribute(attribute_name);
-    if (ret) {
-      return ret;
-    } else {
-      return SVGGraphicsElement::PropertyFromAttribute(attribute_name);
-    }
-  }
-}
-
-void SVGUseElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{x_.Get(), y_.Get(), width_.Get(),
-                                   height_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGURIReference::SynchronizeAllSVGAttributes();
-  SVGGraphicsElement::SynchronizeAllSVGAttributes();
-}
-
-void SVGUseElement::CollectExtraStyleForPresentationAttribute(
-    MutableCSSPropertyValueSet* style) {
-  for (auto* property : (SVGAnimatedPropertyBase*[]){x_.Get(), y_.Get()}) {
-    DCHECK(property->HasPresentationAttributeMapping());
-    if (property->IsAnimating()) {
-      CollectStyleForPresentationAttribute(property->AttributeName(),
-                                           g_empty_atom, style);
-    }
-  }
-  SVGGraphicsElement::CollectExtraStyleForPresentationAttribute(style);
 }
 
 }  // namespace blink

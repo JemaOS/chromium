@@ -10,19 +10,16 @@ import 'chrome://resources/cr_elements/cr_hidden_style.css.js';
 import 'chrome://resources/cr_elements/cr_shared_style.css.js';
 import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 import 'chrome://resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
-import '../ai_page/ai_page.js';
 import '../appearance_page/appearance_page.js';
 import '../privacy_page/privacy_guide/privacy_guide_promo.js';
 import '../privacy_page/privacy_page.js';
 import '../safety_check_page/safety_check_page.js';
-import '../safety_hub/safety_hub_entry_point.js';
 import '../autofill_page/autofill_page.js';
 import '../controls/settings_idle_load.js';
 import '../on_startup_page/on_startup_page.js';
 import '../people_page/people_page.js';
 import '../performance_page/battery_page.js';
 import '../performance_page/performance_page.js';
-import '../performance_page/speed_page.js';
 import '../reset_page/reset_profile_banner.js';
 import '../search_page/search_page.js';
 import '../settings_page/settings_section.js';
@@ -35,42 +32,30 @@ import '../languages_page/languages.js';
 
 // </if>
 
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
-import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
+import {PrefsMixin} from 'chrome://resources/cr_components/settings_prefs/prefs_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {beforeNextRender, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-// clang-format off
-// <if expr="chromeos_ash">
-import {OpenWindowProxyImpl} from 'chrome://resources/js/open_window_proxy.js';
-// </if>
-// clang-format on
 
-
-
-import type {SettingsIdleLoadElement} from '../controls/settings_idle_load.js';
+import {SettingsIdleLoadElement} from '../controls/settings_idle_load.js';
 import {loadTimeData} from '../i18n_setup.js';
 // <if expr="not chromeos_ash">
-import type {LanguageHelper, LanguagesModel} from '../languages_page/languages_types.js';
+import {LanguageHelper, LanguagesModel} from '../languages_page/languages_types.js';
 // </if>
-import type {PageVisibility} from '../page_visibility.js';
-import type {PerformanceBrowserProxy} from '../performance_page/performance_browser_proxy.js';
-import {PerformanceBrowserProxyImpl} from '../performance_page/performance_browser_proxy.js';
+import {PageVisibility} from '../page_visibility.js';
+import {PerformanceBrowserProxy, PerformanceBrowserProxyImpl} from '../performance_page/performance_browser_proxy.js';
 import {PrivacyGuideAvailabilityMixin} from '../privacy_page/privacy_guide/privacy_guide_availability_mixin.js';
-import type {PrivacyGuideBrowserProxy} from '../privacy_page/privacy_guide/privacy_guide_browser_proxy.js';
-import {MAX_PRIVACY_GUIDE_PROMO_IMPRESSION, PrivacyGuideBrowserProxyImpl} from '../privacy_page/privacy_guide/privacy_guide_browser_proxy.js';
+import {MAX_PRIVACY_GUIDE_PROMO_IMPRESSION, PrivacyGuideBrowserProxy, PrivacyGuideBrowserProxyImpl} from '../privacy_page/privacy_guide/privacy_guide_browser_proxy.js';
 import {routes} from '../route.js';
-import type {Route} from '../router.js';
-import {RouteObserverMixin, Router} from '../router.js';
-import type {SearchResult} from '../search_settings.js';
-import {getSearchManager} from '../search_settings.js';
+import {Route, RouteObserverMixin, Router} from '../router.js';
+import {getSearchManager, SearchResult} from '../search_settings.js';
 import {MainPageMixin} from '../settings_page/main_page_mixin.js';
 
 import {getTemplate} from './basic_page.html.js';
 
 const SettingsBasicPageElementBase =
-    PrefsMixin(MainPageMixin(RouteObserverMixin(PrivacyGuideAvailabilityMixin(
-        WebUiListenerMixin(I18nMixin(PolymerElement))))));
+    PrefsMixin(MainPageMixin(RouteObserverMixin(
+        PrivacyGuideAvailabilityMixin(WebUiListenerMixin(PolymerElement)))));
 
 export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
   static get is() {
@@ -122,6 +107,22 @@ export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
         reflectToAttribute: true,
       },
 
+      advancedToggleExpanded: {
+        type: Boolean,
+        value: false,
+        notify: true,
+        observer: 'advancedToggleExpandedChanged_',
+      },
+
+      /**
+       * True if a section is fully expanded to hide other sections beneath it.
+       * False otherwise (even while animating a section open/closed).
+       */
+      hasExpandedSection_: {
+        type: Boolean,
+        value: false,
+      },
+
       /**
        * True if the basic page should currently display the reset profile
        * banner.
@@ -132,6 +133,16 @@ export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
           return loadTimeData.getBoolean('showResetProfileBanner');
         },
       },
+
+      // <if expr="not chromeos_ash">
+      enableDesktopDetailedLanguageSettings_: {
+        type: Boolean,
+        value() {
+          return loadTimeData.getBoolean(
+              'enableDesktopDetailedLanguageSettings');
+        },
+      },
+      // </if>
 
       /**
        * True if the basic page should currently display the privacy guide
@@ -160,11 +171,6 @@ export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
         type: Boolean,
         value: false,
       },
-
-      showAdvancedFeaturesMainControl_: {
-        type: Boolean,
-        value: () => loadTimeData.getBoolean('showAdvancedFeaturesMainControl'),
-      },
     };
   }
 
@@ -177,15 +183,17 @@ export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
   // <if expr="not chromeos_ash">
   languages?: LanguagesModel;
   languageHelper: LanguageHelper;
+  private enableDesktopDetailedLanguageSettings_: boolean;
   // </if>
   pageVisibility: PageVisibility;
   inSearchMode: boolean;
+  advancedToggleExpanded: boolean;
+  private hasExpandedSection_: boolean;
   private showResetProfileBanner_: boolean;
 
   private currentRoute_: Route;
   private advancedTogglingInProgress_: boolean;
   private showBatterySettings_: boolean;
-  private showAdvancedFeaturesMainControl_: boolean;
 
   private showPrivacyGuidePromo_: boolean;
   private privacyGuidePromoWasShown_: boolean;
@@ -198,6 +206,7 @@ export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
     super.ready();
 
     this.setAttribute('role', 'main');
+    this.addEventListener('subpage-expand', this.onSubpageExpanded_);
   }
 
 
@@ -217,12 +226,17 @@ export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
     this.currentRoute_ = newRoute;
 
     if (routes.ADVANCED && routes.ADVANCED.contains(newRoute)) {
-      // Render the advanced page now (don't wait for idle).
-      // In Polymer3, async() does not wait long enough for layout to complete.
-      // beforeNextRender() must be used instead.
-      beforeNextRender(this, () => {
-        this.getIdleLoad_();
-      });
+      this.advancedToggleExpanded = true;
+    }
+
+    if (oldRoute && oldRoute.isSubpage()) {
+      // If the new route isn't the same expanded section, reset
+      // hasExpandedSection_ for the next transition.
+      if (!newRoute.isSubpage() || newRoute.section !== oldRoute.section) {
+        this.hasExpandedSection_ = false;
+      }
+    } else {
+      assert(!this.hasExpandedSection_);
     }
 
     super.currentRouteChanged(newRoute, oldRoute);
@@ -242,10 +256,9 @@ export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
   }
 
   private getIdleLoad_(): Promise<Element> {
-    const idleLoad = this.shadowRoot!.querySelector<SettingsIdleLoadElement>(
-        '#advancedPageTemplate');
-    assert(idleLoad);
-    return idleLoad.get();
+    return (this.shadowRoot!.querySelector('#advancedPageTemplate') as
+            SettingsIdleLoadElement)
+        .get();
   }
 
   private updatePrivacyGuidePromoVisibility_() {
@@ -276,10 +289,9 @@ export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
    * @return A signal indicating that searching finished.
    */
   searchContents(query: string): Promise<SearchResult> {
-    const basicPage = this.shadowRoot!.querySelector<HTMLElement>('#basicPage');
-    assert(basicPage);
     const whenSearchDone = [
-      getSearchManager().search(query, basicPage),
+      getSearchManager().search(
+          query, this.shadowRoot!.querySelector<HTMLElement>('#basicPage')!),
     ];
 
     if (this.pageVisibility.advancedSettings !== false) {
@@ -306,13 +318,37 @@ export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
 
   // <if expr="chromeos_ash">
   private onOpenChromeOsLanguagesSettingsClick_() {
-    OpenWindowProxyImpl.getInstance().openUrl(
-        loadTimeData.getString('osSettingsLanguagesPageUrl'));
+    const chromeOSLanguagesSettingsPath =
+        loadTimeData.getString('chromeOSLanguagesSettingsPath');
+    window.location.href =
+        `chrome://os-settings/${chromeOSLanguagesSettingsPath}`;
   }
   // </if>
 
   private onResetProfileBannerClosed_() {
     this.showResetProfileBanner_ = false;
+  }
+
+  /**
+   * Hides everything but the newly expanded subpage.
+   */
+  private onSubpageExpanded_() {
+    this.hasExpandedSection_ = true;
+  }
+
+  /**
+   * Render the advanced page now (don't wait for idle).
+   */
+  private advancedToggleExpandedChanged_() {
+    if (!this.advancedToggleExpanded) {
+      return;
+    }
+
+    // In Polymer2, async() does not wait long enough for layout to complete.
+    // beforeNextRender() must be used instead.
+    beforeNextRender(this, () => {
+      this.getIdleLoad_();
+    });
   }
 
   private fire_(eventName: string, detail: any) {
@@ -321,56 +357,53 @@ export class SettingsBasicPageElement extends SettingsBasicPageElementBase {
   }
 
   /**
-   * @return Whether to show #basicPage. This is an optimization to lazy render
-   *     #basicPage only when a section/subpage within it is being shown, or
-   *     when in search mode.
+   * @return Whether to show the basic page, taking into account both routing
+   *     and search state.
    */
-  private showBasicPage_(): boolean {
-    if (this.currentRoute_ === undefined) {
-      return false;
-    }
+  private showBasicPage_(
+      currentRoute: Route, _inSearchMode: boolean,
+      hasExpandedSection: boolean): boolean {
+    return !hasExpandedSection || routes.BASIC.contains(currentRoute);
+  }
 
-    return this.inSearchMode || routes.BASIC.contains(this.currentRoute_);
+  /**
+   * @return Whether to show the advanced page, taking into account both routing
+   *     and search state.
+   */
+  private showAdvancedPage_(
+      currentRoute: Route, inSearchMode: boolean, hasExpandedSection: boolean,
+      advancedToggleExpanded: boolean): boolean {
+    return hasExpandedSection ?
+        (routes.ADVANCED && routes.ADVANCED.contains(currentRoute)) :
+        advancedToggleExpanded || inSearchMode;
   }
 
   private showAdvancedSettings_(visibility?: boolean): boolean {
-    return this.showPage_(visibility);
+    return visibility !== false;
   }
 
-  private showSafetyCheckPage_(visibility?: boolean): boolean {
-    return !loadTimeData.getBoolean('enableSafetyHub') &&
-        this.showPage_(visibility);
+  private showPerformancePage_(visibility?: boolean): boolean {
+    return visibility !== false;
   }
 
-  private showSafetyHubEntryPointPage_(visibility?: boolean): boolean {
-    return loadTimeData.getBoolean('enableSafetyHub') &&
-        this.showPage_(visibility);
-  }
-
-  private showExperimentalAdvancedPage_(visibility?: boolean): boolean {
-    return loadTimeData.getBoolean('showAdvancedFeaturesMainControl') &&
-        this.showPage_(visibility);
+  private showBatteryPage_(visibility?: boolean): boolean {
+    return visibility !== false;
   }
 
   // <if expr="_google_chrome">
   private showGetMostChrome_(visibility?: boolean): boolean {
-    return loadTimeData.getBoolean('showGetTheMostOutOfChromeSection') &&
-        this.showPage_(visibility);
+    return visibility !== false &&
+        loadTimeData.getBoolean('showGetTheMostOutOfChromeSection');
   }
 
-  private onSendMemorySaverFeedbackClick_(e: Event) {
+  private onSendHighEfficiencyFeedbackClick_(e: Event) {
     e.stopPropagation();
-    this.performanceBrowserProxy_.openMemorySaverFeedbackDialog();
+    this.performanceBrowserProxy_.openHighEfficiencyFeedbackDialog();
   }
 
   private onSendBatterySaverFeedbackClick_(e: Event) {
     e.stopPropagation();
     this.performanceBrowserProxy_.openBatterySaverFeedbackDialog();
-  }
-
-  private onSendSpeedFeedbackClick_(e: Event) {
-    e.stopPropagation();
-    this.performanceBrowserProxy_.openSpeedFeedbackDialog();
   }
   // </if>
 }

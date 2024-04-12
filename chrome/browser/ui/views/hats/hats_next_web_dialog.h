@@ -11,7 +11,6 @@
 #include "base/timer/timer.h"
 #include "chrome/browser/profiles/profile_observer.h"
 #include "chrome/browser/ui/hats/hats_service.h"
-#include "chrome/browser/ui/webui/hats/hats_page_handler.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
@@ -34,11 +33,9 @@ class Widget;
 // to the user.
 class HatsNextWebDialog : public views::BubbleDialogDelegateView,
                           public content::WebContentsDelegate,
-                          public ProfileObserver,
-                          public HatsPageHandlerDelegate {
-  METADATA_HEADER(HatsNextWebDialog, views::BubbleDialogDelegateView)
-
+                          public ProfileObserver {
  public:
+  METADATA_HEADER(HatsNextWebDialog);
   HatsNextWebDialog(Browser* browser,
                     const std::string& trigger_id,
                     base::OnceClosure success_callback,
@@ -54,14 +51,6 @@ class HatsNextWebDialog : public views::BubbleDialogDelegateView,
 
   // ProfileObserver:
   void OnProfileWillBeDestroyed(Profile* profile) override;
-
-  // HatsPageHandlerDelegate:
-  std::string GetTriggerId() override;
-  bool GetEnableTesting() override;
-  std::vector<std::string> GetLanguageList() override;
-  base::Value::Dict GetProductSpecificDataJson() override;
-  void OnSurveyLoaded() override;
-  void OnSurveyClosed() override;
 
  protected:
   friend class MockHatsNextWebDialog;
@@ -102,8 +91,7 @@ class HatsNextWebDialog : public views::BubbleDialogDelegateView,
   virtual void ShowWidget();
 
   // Called by the dialog to close the widget due to timeout or the survey being
-  // closed. After the widget is closed, both the widget and this class are
-  // destroyed. Virtual to allow mocking in tests.
+  // closed. Virtual to allow mocking in tests.
   virtual void CloseWidget();
 
   // Updates dialog size to desired contents size. Virtual to allow mocking in

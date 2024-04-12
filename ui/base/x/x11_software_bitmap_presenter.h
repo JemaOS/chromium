@@ -19,10 +19,6 @@
 
 class SkCanvas;
 
-namespace x11 {
-class Connection;
-}
-
 namespace ui {
 
 class XShmImagePool;
@@ -32,7 +28,7 @@ class COMPONENT_EXPORT(UI_BASE_X) X11SoftwareBitmapPresenter {
   // Corresponds to SwapBuffersCallback alias in SoftwareOutputDevice.
   using SwapBuffersCallback = base::OnceCallback<void(const gfx::Size&)>;
 
-  X11SoftwareBitmapPresenter(x11::Connection& connection,
+  X11SoftwareBitmapPresenter(x11::Connection* connection,
                              gfx::AcceleratedWidget widget,
                              bool enable_multibuffering);
 
@@ -64,7 +60,7 @@ class COMPONENT_EXPORT(UI_BASE_X) X11SoftwareBitmapPresenter {
   bool ShmPoolReady() const;
 
   x11::Window widget_;
-  raw_ref<x11::Connection> connection_;
+  raw_ptr<x11::Connection> connection_;
   x11::GraphicsContext gc_{};
   x11::VisualId visual_{};
   int depth_ = 0;

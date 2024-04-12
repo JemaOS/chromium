@@ -36,15 +36,8 @@ const char kArrayBufferTooBig[] =
     "The provided ArrayBuffer exceeds the maximum allowed size.";
 const char kContextGone[] = "Script context has shut down.";
 
-enum ReportType {
-  kInput,
-  kOutput,
-  kFeature,
-};
-
-bool IsProtectedReportType(
-    const device::mojom::blink::HidUsageAndPage& hid_usage_and_page,
-    ReportType report_type) {
+bool IsProtected(
+    const device::mojom::blink::HidUsageAndPage& hid_usage_and_page) {
   const uint16_t usage = hid_usage_and_page.usage;
   const uint16_t usage_page = hid_usage_and_page.usage_page;
 
@@ -61,7 +54,7 @@ bool IsProtectedReportType(
       usage == device::mojom::blink::kGenericDesktopMouse ||
       usage == device::mojom::blink::kGenericDesktopKeyboard ||
       usage == device::mojom::blink::kGenericDesktopKeypad) {
-    return report_type != ReportType::kFeature;
+    return true;
   }
 
   if (usage >= device::mojom::blink::kGenericDesktopSystemControl &&
@@ -252,27 +245,25 @@ const HeapVector<Member<HIDCollectionInfo>>& HIDDevice::collections() const {
   return collections_;
 }
 
-ScriptPromiseTyped<IDLUndefined> HIDDevice::open(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise HIDDevice::open(ScriptState* script_state,
+                              ExceptionState& exception_state) {
   if (!GetExecutionContext()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
                                       kContextGone);
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state);
-  auto promise = resolver->Promise();
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
   if (!EnsureNoDeviceChangeInProgress(resolver) ||
       !EnsureDeviceIsNotForgotten(resolver)) {
     return promise;
   }
 
   if (opened()) {
-    resolver->RejectWithDOMException(DOMExceptionCode::kInvalidStateError,
-                                     "The device is already open.");
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kInvalidStateError, "The device is already open."));
     return promise;
   }
 
@@ -289,11 +280,10 @@ ScriptPromiseTyped<IDLUndefined> HIDDevice::open(
   return promise;
 }
 
-ScriptPromiseTyped<IDLUndefined> HIDDevice::close(ScriptState* script_state) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state);
-  auto promise = resolver->Promise();
+ScriptPromise HIDDevice::close(ScriptState* script_state) {
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
   if (!EnsureNoDeviceChangeInProgress(resolver) ||
       !EnsureDeviceIsNotForgotten(resolver)) {
     return promise;
@@ -305,19 +295,17 @@ ScriptPromiseTyped<IDLUndefined> HIDDevice::close(ScriptState* script_state) {
   return promise;
 }
 
-ScriptPromiseTyped<IDLUndefined> HIDDevice::forget(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise HIDDevice::forget(ScriptState* script_state,
+                                ExceptionState& exception_state) {
   if (!GetExecutionContext()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
                                       kContextGone);
-    return ScriptPromiseTyped<IDLUndefined>();
+    return ScriptPromise();
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state);
-  auto promise = resolver->Promise();
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
   if (!EnsureNoDeviceChangeInProgress(resolver))
     return promise;
 
@@ -328,28 +316,26 @@ ScriptPromiseTyped<IDLUndefined> HIDDevice::forget(
   return promise;
 }
 
-ScriptPromiseTyped<IDLUndefined> HIDDevice::sendReport(
-    ScriptState* script_state,
-    uint8_t report_id,
-    const DOMArrayPiece& data) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state);
-  auto promise = resolver->Promise();
+ScriptPromise HIDDevice::sendReport(ScriptState* script_state,
+                                    uint8_t report_id,
+                                    const DOMArrayPiece& data) {
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
   if (!EnsureNoDeviceChangeInProgress(resolver) ||
       !EnsureDeviceIsNotForgotten(resolver)) {
     return promise;
   }
 
   if (!opened()) {
-    resolver->RejectWithDOMException(DOMExceptionCode::kInvalidStateError,
-                                     kOpenRequired);
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kInvalidStateError, kOpenRequired));
     return promise;
   }
 
   if (!base::CheckedNumeric<wtf_size_t>(data.ByteLength()).IsValid()) {
-    resolver->RejectWithDOMException(DOMExceptionCode::kNotSupportedError,
-                                     kArrayBufferTooBig);
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kNotSupportedError, kArrayBufferTooBig));
     return promise;
   }
 
@@ -364,28 +350,26 @@ ScriptPromiseTyped<IDLUndefined> HIDDevice::sendReport(
   return promise;
 }
 
-ScriptPromiseTyped<IDLUndefined> HIDDevice::sendFeatureReport(
-    ScriptState* script_state,
-    uint8_t report_id,
-    const DOMArrayPiece& data) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state);
-  auto promise = resolver->Promise();
+ScriptPromise HIDDevice::sendFeatureReport(ScriptState* script_state,
+                                           uint8_t report_id,
+                                           const DOMArrayPiece& data) {
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
   if (!EnsureNoDeviceChangeInProgress(resolver) ||
       !EnsureDeviceIsNotForgotten(resolver)) {
     return promise;
   }
 
   if (!opened()) {
-    resolver->RejectWithDOMException(DOMExceptionCode::kInvalidStateError,
-                                     kOpenRequired);
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kInvalidStateError, kOpenRequired));
     return promise;
   }
 
   if (!base::CheckedNumeric<wtf_size_t>(data.ByteLength()).IsValid()) {
-    resolver->RejectWithDOMException(DOMExceptionCode::kNotSupportedError,
-                                     kArrayBufferTooBig);
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kNotSupportedError, kArrayBufferTooBig));
     return promise;
   }
 
@@ -400,13 +384,11 @@ ScriptPromiseTyped<IDLUndefined> HIDDevice::sendFeatureReport(
   return promise;
 }
 
-ScriptPromiseTyped<NotShared<DOMDataView>> HIDDevice::receiveFeatureReport(
-    ScriptState* script_state,
-    uint8_t report_id) {
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<NotShared<DOMDataView>>>(
-          script_state);
-  auto promise = resolver->Promise();
+ScriptPromise HIDDevice::receiveFeatureReport(ScriptState* script_state,
+                                              uint8_t report_id) {
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
   if (!EnsureNoDeviceChangeInProgress(resolver) ||
       !EnsureDeviceIsNotForgotten(resolver)) {
     return promise;
@@ -439,18 +421,9 @@ void HIDDevice::UpdateDeviceInfo(device::mojom::blink::HidDeviceInfoPtr info) {
   device_info_ = std::move(info);
   collections_.clear();
   for (const auto& collection : device_info_->collections) {
-    auto* collection_info = ToHIDCollectionInfo(*collection);
-    // Omit information about protected reports.
-    if (IsProtectedReportType(*collection->usage, ReportType::kInput)) {
-      collection_info->setInputReports(HeapVector<Member<HIDReportInfo>>{});
-    }
-    if (IsProtectedReportType(*collection->usage, ReportType::kOutput)) {
-      collection_info->setOutputReports(HeapVector<Member<HIDReportInfo>>{});
-    }
-    if (IsProtectedReportType(*collection->usage, ReportType::kFeature)) {
-      collection_info->setFeatureReports(HeapVector<Member<HIDReportInfo>>{});
-    }
-    collections_.push_back(collection_info);
+    // Omit information about top-level collections with protected usages.
+    if (!IsProtected(*collection->usage))
+      collections_.push_back(ToHIDCollectionInfo(*collection));
   }
 }
 
@@ -464,7 +437,7 @@ void HIDDevice::Trace(Visitor* visitor) const {
   visitor->Trace(receiver_);
   visitor->Trace(device_requests_);
   visitor->Trace(collections_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ScriptWrappable::Trace(visitor);
   ExecutionContextLifecycleObserver::Trace(visitor);
 }
@@ -472,8 +445,8 @@ void HIDDevice::Trace(Visitor* visitor) const {
 bool HIDDevice::EnsureNoDeviceChangeInProgress(
     ScriptPromiseResolver* resolver) const {
   if (device_state_change_in_progress_) {
-    resolver->RejectWithDOMException(DOMExceptionCode::kInvalidStateError,
-                                     kDeviceStateChangeInProgress);
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kInvalidStateError, kDeviceStateChangeInProgress));
     return false;
   }
   return true;
@@ -482,15 +455,15 @@ bool HIDDevice::EnsureNoDeviceChangeInProgress(
 bool HIDDevice::EnsureDeviceIsNotForgotten(
     ScriptPromiseResolver* resolver) const {
   if (device_is_forgotten_) {
-    resolver->RejectWithDOMException(DOMExceptionCode::kInvalidStateError,
-                                     kDeviceIsForgotten);
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kInvalidStateError, kDeviceIsForgotten));
     return false;
   }
   return true;
 }
 
 void HIDDevice::FinishOpen(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver,
+    ScriptPromiseResolver* resolver,
     mojo::PendingRemote<device::mojom::blink::HidConnection> connection) {
   MarkRequestComplete(resolver);
   device_state_change_in_progress_ = false;
@@ -505,13 +478,12 @@ void HIDDevice::FinishOpen(
   } else {
     // If the connection or the context is null, the open failed.
     receiver_.reset();
-    resolver->RejectWithDOMException(DOMExceptionCode::kNotAllowedError,
-                                     kOpenFailed);
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kNotAllowedError, kOpenFailed));
   }
 }
 
-void HIDDevice::FinishForget(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver) {
+void HIDDevice::FinishForget(ScriptPromiseResolver* resolver) {
   device_state_change_in_progress_ = false;
   device_is_forgotten_ = true;
   connection_.reset();
@@ -527,40 +499,38 @@ void HIDDevice::OnServiceConnectionError() {
   device_requests_.clear();
 }
 
-void HIDDevice::FinishSendReport(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver,
-    bool success) {
+void HIDDevice::FinishSendReport(ScriptPromiseResolver* resolver,
+                                 bool success) {
   MarkRequestComplete(resolver);
   if (success) {
     resolver->Resolve();
   } else {
-    resolver->RejectWithDOMException(DOMExceptionCode::kNotAllowedError,
-                                     kSendReportFailed);
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kNotAllowedError, kSendReportFailed));
   }
 }
 
-void HIDDevice::FinishSendFeatureReport(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver,
-    bool success) {
+void HIDDevice::FinishSendFeatureReport(ScriptPromiseResolver* resolver,
+                                        bool success) {
   MarkRequestComplete(resolver);
   if (success) {
     resolver->Resolve();
   } else {
-    resolver->RejectWithDOMException(DOMExceptionCode::kNotAllowedError,
-                                     kSendFeatureReportFailed);
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kNotAllowedError, kSendFeatureReportFailed));
   }
 }
 
 void HIDDevice::FinishReceiveFeatureReport(
-    ScriptPromiseResolverTyped<NotShared<DOMDataView>>* resolver,
+    ScriptPromiseResolver* resolver,
     bool success,
-    const std::optional<Vector<uint8_t>>& data) {
+    const absl::optional<Vector<uint8_t>>& data) {
   MarkRequestComplete(resolver);
   if (success && data) {
     DOMArrayBuffer* dom_buffer =
         DOMArrayBuffer::Create(data->data(), data->size());
     DOMDataView* data_view = DOMDataView::Create(dom_buffer, 0, data->size());
-    resolver->Resolve(NotShared(data_view));
+    resolver->Resolve(data_view);
   } else {
     resolver->Reject(MakeGarbageCollected<DOMException>(
         DOMExceptionCode::kNotAllowedError, kReceiveFeatureReportFailed));
@@ -569,7 +539,7 @@ void HIDDevice::FinishReceiveFeatureReport(
 
 void HIDDevice::MarkRequestComplete(ScriptPromiseResolver* resolver) {
   auto find_result = device_requests_.find(resolver);
-  CHECK_NE(device_requests_.end(), find_result);
+  DCHECK_NE(device_requests_.end(), find_result);
   device_requests_.erase(find_result);
 }
 

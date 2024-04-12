@@ -10,11 +10,14 @@
 #include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
-#include "base/ranges/algorithm.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "chrome/browser/ash/file_manager/path_util.h"
 #include "chrome/browser/ash/file_manager/trash_common_util.h"
+#include "chrome/browser/ui/ash/thumbnail_loader.h"
+#include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/base/webui/web_ui_util.h"
+#include "jemaos/switches/misc/misc_constants.h"
 
 namespace {
 
@@ -52,13 +55,18 @@ void EnumerateFiles(const base::FilePath& path,
 // overlapse with |trash_paths|.
 std::vector<base::FilePath> EnumerateAllImages(
     const base::FilePath& search_path,
-    const std::vector<base::FilePath>& trash_paths,
-    const std::vector<std::string>& patterns) {
+    const std::vector<base::FilePath>& trash_paths) {
   std::vector<base::FilePath> image_paths;
 
-  for (const auto& pattern : patterns) {
-    EnumerateFiles(search_path, trash_paths, pattern, &image_paths);
-  }
+  EnumerateFiles(search_path, trash_paths, kPngFilePattern, &image_paths);
+  EnumerateFiles(search_path, trash_paths, kJpgFilePattern, &image_paths);
+  EnumerateFiles(search_path, trash_paths, kJpegFilePattern, &image_paths);
+
+  const base::FilePath jema_search_path =
+    base::FilePath(jemaos::constants::kJemaOSWallpapersBasePath);
+  EnumerateFiles(jema_search_path, trash_paths, kPngFilePattern, &image_paths);
+  EnumerateFiles(jema_search_path, trash_paths, kJpgFilePattern, &image_paths);
+  EnumerateFiles(jema_search_path, trash_paths, kJpegFilePattern, &image_paths);
 
   return image_paths;
 }
@@ -72,8 +80,6 @@ void EnumerateLocalWallpaperFiles(
     base::OnceCallback<void(const std::vector<base::FilePath>&)> callback) {
   const base::FilePath search_path =
       file_manager::util::GetMyFilesFolderForProfile(profile);
-  const std::vector<std::string> search_patterns = {
-      kPngFilePattern, kJpgFilePattern, kJpegFilePattern};
 
   std::vector<base::FilePath> trash_paths;
   if (file_manager::trash::IsTrashEnabledForProfile(profile)) {
@@ -91,8 +97,7 @@ void EnumerateLocalWallpaperFiles(
       FROM_HERE,
       {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
        base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
-      base::BindOnce(&EnumerateAllImages, search_path, trash_paths,
-                     search_patterns),
+      base::BindOnce(&EnumerateAllImages, search_path, trash_paths),
       std::move(callback));
 }
 

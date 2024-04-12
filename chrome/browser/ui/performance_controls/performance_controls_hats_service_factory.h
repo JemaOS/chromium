@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_UI_PERFORMANCE_CONTROLS_PERFORMANCE_CONTROLS_HATS_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_UI_PERFORMANCE_CONTROLS_PERFORMANCE_CONTROLS_HATS_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "chrome/browser/ui/hats/trust_safety_sentiment_service.h"
 #include "chrome/browser/ui/performance_controls/performance_controls_hats_service.h"
@@ -17,13 +17,14 @@ class PerformanceControlsHatsServiceFactory
   static PerformanceControlsHatsService* GetForProfile(Profile* profile);
 
  private:
-  friend base::NoDestructor<PerformanceControlsHatsServiceFactory>;
+  friend struct base::DefaultSingletonTraits<
+      PerformanceControlsHatsServiceFactory>;
 
   PerformanceControlsHatsServiceFactory();
   ~PerformanceControlsHatsServiceFactory() override = default;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

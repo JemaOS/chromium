@@ -22,9 +22,9 @@ class SmartPrivacyProtectionScreen : public BaseScreen {
   using TView = SmartPrivacyProtectionView;
 
   enum class Result {
-    kProceedWithFeatureOn,
-    kProceedWithFeatureOff,
-    kNotApplicable,
+    PROCEED_WITH_FEATURE_ON,
+    PROCEED_WITH_FEATURE_OFF,
+    NOT_APPLICABLE,
   };
 
   static std::string GetResultString(Result result);
@@ -38,10 +38,6 @@ class SmartPrivacyProtectionScreen : public BaseScreen {
       delete;
 
   ~SmartPrivacyProtectionScreen() override;
-
-  const ScreenExitCallback& get_exit_callback_for_testing() {
-    return exit_callback_;
-  }
 
   void set_exit_callback_for_testing(const ScreenExitCallback& callback) {
     exit_callback_ = callback;

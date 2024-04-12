@@ -6,7 +6,6 @@
 
 #include "base/synchronization/waitable_event.h"
 #include "base/task/single_thread_task_runner.h"
-#include "build/build_config.h"
 #include "gpu/command_buffer/client/gles2_interface.h"
 #include "gpu/command_buffer/client/raster_interface.h"
 #include "gpu/config/gpu_driver_bug_workaround_type.h"
@@ -32,25 +31,13 @@ SharedGpuContext::SharedGpuContext() = default;
 // static
 bool SharedGpuContext::IsGpuCompositingEnabled() {
   SharedGpuContext* this_ptr = GetInstanceForCurrentThread();
-  if (IsMainThread()) {
-    // On the main thread we have the opportunity to keep
-    // is_gpu_compositing_disabled_ up to date continuously without locking
-    // up the thread, so we do it. This allows user code to adapt immediately
-    // when there is a fallback to software compositing.
-    this_ptr->is_gpu_compositing_disabled_ =
-        Platform::Current()->IsGpuCompositingDisabled();
-  } else {
-    // The check for gpu compositing enabled implies a context will be
-    // desired, so we combine them into a single trip to the main thread.
-    //
-    // TODO(crbug.com/1486981): It is possible for the value of
-    // this_ptr->is_gpu_compositing_disabled_ to become stale without notice
-    // if the compositor falls back to software compositing after this
-    // initialization. There are currently no known observable bugs caused by
-    // this, but in theory, we'd need a mechanism for propagating changes in
-    // GPU compositing availability to worker threads.
-    this_ptr->CreateContextProviderIfNeeded(/*only_if_gpu_compositing=*/true);
-  }
+  // The check for gpu compositing enabled implies a context will
+  // desired, so we combine them into a single trip to the main thread.
+  // This also ensures that the compositing mode does not change before
+  // the context is created, so if it does change the context will be lost
+  // and this class will know to check the compositing mode again.
+  bool only_if_gpu_compositing = true;
+  this_ptr->CreateContextProviderIfNeeded(only_if_gpu_compositing);
   return !this_ptr->is_gpu_compositing_disabled_;
 }
 
@@ -138,7 +125,8 @@ void SharedGpuContext::CreateContextProviderIfNeeded(
 
   if (context_provider_factory_) {
     // This path should only be used in unit tests.
-    auto context_provider = context_provider_factory_.Run();
+    auto context_provider =
+        context_provider_factory_.Run(&is_gpu_compositing_disabled_);
     if (context_provider) {
       context_provider_wrapper_ =
           std::make_unique<WebGraphicsContext3DProviderWrapper>(
@@ -185,9 +173,7 @@ void SharedGpuContext::CreateContextProviderIfNeeded(
 void SharedGpuContext::SetContextProviderFactoryForTesting(
     ContextProviderFactory factory) {
   SharedGpuContext* this_ptr = GetInstanceForCurrentThread();
-  DCHECK(!this_ptr->context_provider_wrapper_)
-      << this_ptr->context_provider_wrapper_.get();
-
+  DCHECK(!this_ptr->context_provider_wrapper_);
   this_ptr->context_provider_factory_ = std::move(factory);
 }
 
@@ -219,21 +205,5 @@ bool SharedGpuContext::AllowSoftwareToAcceleratedCanvasUpgrade() {
               .IsWorkaroundEnabled(
                   gpu::DISABLE_SOFTWARE_TO_ACCELERATED_CANVAS_UPGRADE);
 }
-
-#if BUILDFLAG(IS_ANDROID)
-bool SharedGpuContext::MaySupportImageChromium() {
-  SharedGpuContext* this_ptr = GetInstanceForCurrentThread();
-  this_ptr->CreateContextProviderIfNeeded(/*only_if_gpu_compositing=*/true);
-  if (!this_ptr->context_provider_wrapper_) {
-    return false;
-  }
-  const gpu::GpuFeatureInfo& gpu_feature_info =
-      this_ptr->context_provider_wrapper_->ContextProvider()
-          ->GetGpuFeatureInfo();
-  return gpu_feature_info
-             .status_values[gpu::GPU_FEATURE_TYPE_ANDROID_SURFACE_CONTROL] ==
-         gpu::kGpuFeatureStatusEnabled;
-}
-#endif  // BUILDFLAG(IS_ANDROID)
 
 }  // blink

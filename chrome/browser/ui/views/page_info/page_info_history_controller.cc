@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ui/views/page_info/page_info_history_controller.h"
 
-#include "base/time/time.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
@@ -71,6 +70,6 @@ std::unique_ptr<views::View> PageInfoHistoryController::CreateHistoryButton(
 
 void PageInfoHistoryController::OpenHistoryPage() {
   // TODO(crbug.com/1275042): Add test for destroring web content.
-  Browser* browser = chrome::FindBrowserWithTab(web_contents_);
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents_);
   chrome::ShowHistory(browser, site_url_.host());
 }

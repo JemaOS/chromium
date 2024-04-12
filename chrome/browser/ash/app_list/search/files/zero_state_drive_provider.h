@@ -5,10 +5,10 @@
 #ifndef CHROME_BROWSER_ASH_APP_LIST_SEARCH_FILES_ZERO_STATE_DRIVE_PROVIDER_H_
 #define CHROME_BROWSER_ASH_APP_LIST_SEARCH_FILES_ZERO_STATE_DRIVE_PROVIDER_H_
 
-#include <optional>
 #include <string>
 #include <vector>
 
+#include "base/callback_list.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
@@ -19,9 +19,11 @@
 #include "chrome/browser/ash/app_list/search/search_provider.h"
 #include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/ash/file_suggest/file_suggest_keyed_service.h"
+#include "chromeos/ash/components/drivefs/mojom/drivefs.mojom-forward.h"
 #include "chromeos/dbus/power/power_manager_client.h"
 #include "components/session_manager/core/session_manager.h"
 #include "components/session_manager/core/session_manager_observer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -34,10 +36,10 @@ namespace app_list {
 class SearchController;
 
 class ZeroStateDriveProvider : public SearchProvider,
-                               drive::DriveIntegrationService::Observer,
-                               session_manager::SessionManagerObserver,
-                               chromeos::PowerManagerClient::Observer,
-                               ash::FileSuggestKeyedService::Observer {
+                               public drive::DriveIntegrationServiceObserver,
+                               public session_manager::SessionManagerObserver,
+                               public chromeos::PowerManagerClient::Observer,
+                               public ash::FileSuggestKeyedService::Observer {
  public:
   ZeroStateDriveProvider(Profile* profile,
                          SearchController* search_controller,
@@ -48,7 +50,7 @@ class ZeroStateDriveProvider : public SearchProvider,
   ZeroStateDriveProvider(const ZeroStateDriveProvider&) = delete;
   ZeroStateDriveProvider& operator=(const ZeroStateDriveProvider&) = delete;
 
-  // DriveIntegrationService::Observer implementation.
+  // drive::DriveIntegrationServiceObserver:
   void OnFileSystemMounted() override;
 
   // session_manager::SessionManagerObserver:
@@ -66,7 +68,7 @@ class ZeroStateDriveProvider : public SearchProvider,
  private:
   // Called when file suggestion data are fetched from the service.
   void OnSuggestFileDataFetched(
-      const std::optional<std::vector<ash::FileSuggestData>>& suggest_results);
+      const absl::optional<std::vector<ash::FileSuggestData>>& suggest_results);
 
   // Builds the search results from file suggestions then publishes the results.
   void SetSearchResults(
@@ -75,24 +77,25 @@ class ZeroStateDriveProvider : public SearchProvider,
   std::unique_ptr<FileResult> MakeListResult(
       const std::string& result_id,
       const base::FilePath& filepath,
-      ash::FileSuggestionJustificationType justification_type,
-      const std::optional<std::u16string>& prediction_reason,
+      const absl::optional<std::u16string>& prediction_reason,
       const float relevance);
 
   // Requests an update from the ItemSuggestCache, but only if the call is long
   // enough after the provider was constructed. This helps ease resource
   // contention at login, and prevents the call from failing because Google auth
-  // tokens haven't been set up yet.
+  // tokens haven't been set up yet. If the productivity launcher is disabled,
+  // this does nothing.
   void MaybeUpdateCache();
 
   // FileSuggestKeyedService::Observer:
   void OnFileSuggestionUpdated(ash::FileSuggestionType type) override;
 
-  const raw_ptr<Profile> profile_;
-  const raw_ptr<drive::DriveIntegrationService> drive_service_;
-  const raw_ptr<session_manager::SessionManager> session_manager_;
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
+  const raw_ptr<drive::DriveIntegrationService, ExperimentalAsh> drive_service_;
+  const raw_ptr<session_manager::SessionManager, ExperimentalAsh>
+      session_manager_;
 
-  const raw_ptr<ash::FileSuggestKeyedService> file_suggest_service_;
+  const base::raw_ptr<ash::FileSuggestKeyedService> file_suggest_service_;
 
   const base::Time construction_time_;
   base::TimeTicks query_start_time_;
@@ -100,6 +103,9 @@ class ZeroStateDriveProvider : public SearchProvider,
   // Whether or not the screen is off due to idling.
   bool screen_off_ = true;
 
+  base::ScopedObservation<drive::DriveIntegrationService,
+                          drive::DriveIntegrationServiceObserver>
+      drive_observation_{this};
   base::ScopedObservation<session_manager::SessionManager,
                           session_manager::SessionManagerObserver>
       session_observation_{this};

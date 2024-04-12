@@ -5,7 +5,6 @@
 #include "ash/system/keyboard_brightness/keyboard_backlight_color_controller.h"
 
 #include <memory>
-#include <optional>
 
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
@@ -24,8 +23,8 @@
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "components/session_manager/session_manager_types.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkColor.h"
-#include "ui/gfx/color_utils.h"
 
 namespace ash {
 
@@ -45,9 +44,6 @@ PrefService* GetUserPrefService(const AccountId& account_id) {
 
 // Determines whether to use the |kDefaultColor| instead of |color|.
 bool ShouldUseDefaultColor(SkColor color) {
-  if (color == kInvalidWallpaperColor) {
-    return true;
-  }
   color_utils::HSL hsl;
   color_utils::SkColorToHSL(color, &hsl);
   // Determines if the color is nearly black or white.
@@ -316,11 +312,27 @@ void KeyboardBacklightColorController::DisplayBacklightColor(
   DVLOG(3) << __func__ << " backlight_color=" << backlight_color;
   switch (backlight_color) {
     case personalization_app::mojom::BacklightColor::kWallpaper: {
-      SkColor wallpaper_color = GetCurrentWallpaperColor();
+      const auto* wallpaper_controller = Shell::Get()->wallpaper_controller();
+      DCHECK(wallpaper_controller);
+      SkColor color = kDefaultColor;
+      bool missing_wallpaper_color =
+          !wallpaper_controller->calculated_colors().has_value();
+      if (!missing_wallpaper_color) {
+        color = ConvertBacklightColorToSkColor(backlight_color);
+      }
+      bool invalid_color =
+          color == kInvalidWallpaperColor || missing_wallpaper_color;
+      base::UmaHistogramBoolean(
+          "Ash.Personalization.KeyboardBacklight.WallpaperColor.Valid",
+          !invalid_color);
+      // Default to |kDefaultColor| if |color| is invalid or
+      // |ShouldUseDefaultColor| is true.
+      if (invalid_color || ShouldUseDefaultColor(color)) {
+        color = kDefaultColor;
+      }
       rgb_keyboard_manager->SetStaticBackgroundColor(
-          SkColorGetR(wallpaper_color), SkColorGetG(wallpaper_color),
-          SkColorGetB(wallpaper_color));
-      displayed_color_for_testing_ = wallpaper_color;
+          SkColorGetR(color), SkColorGetG(color), SkColorGetB(color));
+      displayed_color_for_testing_ = color;
       break;
     }
     case personalization_app::mojom::BacklightColor::kWhite:
@@ -351,10 +363,18 @@ void KeyboardBacklightColorController::DisplayBacklightZoneColor(
            << " backlight_color=" << backlight_color;
   switch (backlight_color) {
     case personalization_app::mojom::BacklightColor::kWallpaper: {
-      SkColor wallpaper_color = GetCurrentWallpaperColor();
-      rgb_keyboard_manager->SetZoneColor(zone, SkColorGetR(wallpaper_color),
-                                         SkColorGetG(wallpaper_color),
-                                         SkColorGetB(wallpaper_color));
+      SkColor color = ConvertBacklightColorToSkColor(backlight_color);
+      bool valid_color = color != kInvalidWallpaperColor;
+      base::UmaHistogramBoolean(
+          "Ash.Personalization.KeyboardBacklight.WallpaperColor.Valid",
+          valid_color);
+      // Default to |kDefaultColor| if |color| is invalid or
+      // |ShouldUseDefaultColor| is true.
+      if (!valid_color || ShouldUseDefaultColor(color)) {
+        color = kDefaultColor;
+      }
+      rgb_keyboard_manager->SetZoneColor(
+          zone, SkColorGetR(color), SkColorGetG(color), SkColorGetB(color));
       break;
     }
     case personalization_app::mojom::BacklightColor::kWhite:
@@ -415,7 +435,7 @@ void KeyboardBacklightColorController::MaybeToggleOnKeyboardBrightness() {
 }
 
 void KeyboardBacklightColorController::KeyboardBrightnessPercentReceived(
-    std::optional<double> percentage) {
+    absl::optional<double> percentage) {
   if (!percentage.has_value() || percentage.value() == 0.0) {
     DVLOG(1) << __func__ << " Toggling on the keyboard brightness.";
     power_manager::SetBacklightBrightnessRequest request;
@@ -427,26 +447,6 @@ void KeyboardBacklightColorController::KeyboardBrightnessPercentReceived(
     chromeos::PowerManagerClient::Get()->SetKeyboardBrightness(
         std::move(request));
   }
-}
-
-SkColor KeyboardBacklightColorController::GetCurrentWallpaperColor() {
-  const auto* wallpaper_controller = Shell::Get()->wallpaper_controller();
-  DCHECK(wallpaper_controller);
-  SkColor color = kDefaultColor;
-  bool missing_wallpaper_color =
-      !wallpaper_controller->calculated_colors().has_value();
-  if (!missing_wallpaper_color) {
-    color = ConvertBacklightColorToSkColor(
-        personalization_app::mojom::BacklightColor::kWallpaper);
-    bool invalid_color = color == kInvalidWallpaperColor;
-    base::UmaHistogramBoolean(
-        "Ash.Personalization.KeyboardBacklight.WallpaperColor.Valid2",
-        !invalid_color);
-  }
-  if (ShouldUseDefaultColor(color)) {
-    color = kDefaultColor;
-  }
-  return color;
 }
 
 }  // namespace ash

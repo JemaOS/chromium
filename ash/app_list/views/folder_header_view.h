@@ -11,7 +11,6 @@
 #include "ash/app_list/model/app_list_item_observer.h"
 #include "ash/ash_export.h"
 #include "base/memory/raw_ptr.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/textfield/textfield_controller.h"
 #include "ui/views/view.h"
@@ -25,8 +24,6 @@ class FolderHeaderViewDelegate;
 class ASH_EXPORT FolderHeaderView : public views::View,
                                     public views::TextfieldController,
                                     public AppListItemObserver {
-  METADATA_HEADER(FolderHeaderView, views::View)
-
  public:
   FolderHeaderView(FolderHeaderViewDelegate* delegate, bool tablet_mode);
 
@@ -43,10 +40,10 @@ class ASH_EXPORT FolderHeaderView : public views::View,
 
   // views::View:
   gfx::Size CalculatePreferredSize() const override;
+  const char* GetClassName() const override;
   void OnBoundsChanged(const gfx::Rect& previous_bounds) override;
 
   views::Textfield* GetFolderNameViewForTest() const;
-  bool IsFolderNameViewActiveForTest() const;
 
   int GetMaxFolderNameCharLengthForTest() const;
 
@@ -82,7 +79,7 @@ class ASH_EXPORT FolderHeaderView : public views::View,
   bool ShouldNameViewClearFocus(const ui::KeyEvent& key_event);
 
   // views::View:
-  void Layout(PassKey) override;
+  void Layout() override;
 
   // views::TextfieldController overrides:
   void ContentsChanged(views::Textfield* sender,
@@ -97,14 +94,14 @@ class ASH_EXPORT FolderHeaderView : public views::View,
   // AppListItemObserver overrides:
   void ItemNameChanged() override;
 
-  raw_ptr<AppListFolderItem> folder_item_;  // Not owned.
+  raw_ptr<AppListFolderItem, ExperimentalAsh> folder_item_;  // Not owned.
 
-  raw_ptr<views::Textfield> folder_name_view_;
+  raw_ptr<views::Textfield, ExperimentalAsh> folder_name_view_;
   std::unique_ptr<FolderNameViewController> folder_name_controller_;
 
   const std::u16string folder_name_placeholder_text_;
 
-  raw_ptr<FolderHeaderViewDelegate> delegate_;
+  raw_ptr<FolderHeaderViewDelegate, ExperimentalAsh> delegate_;
 
   bool folder_name_visible_;
 

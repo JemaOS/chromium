@@ -11,7 +11,6 @@
 #include "chrome/browser/ui/browser_list_observer.h"
 
 class Browser;
-class Profile;
 
 class BrowserProcessPlatformPartChromeOS
     : public BrowserProcessPlatformPartBase {

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {sanitizeInnerHtml} from 'chrome://resources/js/parse_html_subset.js';
-
 /* Script used to strip anchor links from webview */
 export const webviewStripLinksContentScript = {
   name: 'stripLinks',
@@ -36,9 +34,8 @@ export class HtmlSanitizer {
   sanitizeHtml(content) {
     const doc = document.implementation.createHTMLDocument();
     const div = doc.createElement('div');
-    div.innerHTML = sanitizeInnerHtml(content, {tags: ['i', 'ul', 'li']});
-    return sanitizeInnerHtml(
-        this.sanitizeNode_(doc, div).innerHTML, {tags: ['i', 'ul', 'li']});
+    div.innerHTML = content;
+    return this.sanitizeNode_(doc, div).innerHTML;
   }
 
   /**
@@ -52,7 +49,7 @@ export class HtmlSanitizer {
    */
   sanitizeNode_(doc, node) {
     const name = node.nodeName.toLowerCase();
-    if (name === '#text') {
+    if (name == '#text') {
       return node;
     }
     if (!this.allowedTags.has(name)) {
@@ -61,8 +58,8 @@ export class HtmlSanitizer {
 
     const copy = doc.createElement(name);
     // Only allow 'href' attribute for tag 'a'.
-    if (name === 'a' && node.attributes.length === 1 &&
-        node.attributes.item(0).name === 'href') {
+    if (name == 'a' && node.attributes.length == 1 &&
+        node.attributes.item(0).name == 'href') {
       copy.setAttribute('href', node.getAttribute('href'));
     }
 

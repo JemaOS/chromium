@@ -10,7 +10,7 @@ manage changelists and try jobs associated with them.
 import collections
 import logging
 import re
-from typing import Literal, Mapping, NamedTuple, Optional, Set
+from typing import Literal, Mapping, NamedTuple, Set
 
 from blinkpy.common.checkout.git import Git
 from blinkpy.common.net.results_fetcher import filter_latest_builds
@@ -49,18 +49,6 @@ class TryJobStatus(NamedTuple):
 BuildStatuses = Mapping[Build, TryJobStatus]
 
 
-# TODO(crbug.com/41483974): Replace `issue_number` and `patchset` paired
-# arguments in `GitCL.*` with this more meaningful type.
-class CLRevisionID(NamedTuple):
-    """An identifier for a Gerrit CL patchset."""
-    issue: int
-    patchset: Optional[int] = None
-
-    def __str__(self) -> str:
-        base_url = f'https://crrev.com/c/{self.issue}'
-        return f'{base_url}/{self.patchset}' if self.patchset else base_url
-
-
 class CLStatus(NamedTuple):
     """The current status of a particular CL.
 
@@ -71,7 +59,7 @@ class CLStatus(NamedTuple):
     try_job_results: BuildStatuses
 
 
-class GitCL:
+class GitCL(object):
     def __init__(self,
                  host,
                  auth_refresh_token_json=None,
@@ -103,9 +91,6 @@ class GitCL:
         # running on Swarming bots with local git cache.
         return self._host.executive.run_command(
             command, cwd=self._cwd, return_stderr=False, ignore_stderr=True)
-
-    def close(self):
-        self.run(['set-close'])
 
     def trigger_try_jobs(self, builders, bucket=None):
         """Triggers try jobs on the given builders.
@@ -147,7 +132,7 @@ class GitCL:
             return output[output.index('number:') + 1]
         return 'None'
 
-    def get_cl_status(self) -> str:
+    def _get_cl_status(self):
         return self.run(['status', '--field=status']).strip()
 
     def _get_latest_patchset(self):
@@ -167,11 +152,12 @@ class GitCL:
         """
 
         def finished_try_job_results_or_none():
-            cl_status = self.get_cl_status()
+            cl_status = self._get_cl_status()
             _log.debug('Fetched CL status: %s', cl_status)
             issue_number = self.get_issue_number()
             try_job_results = self.latest_try_jobs(
                 issue_number, cq_only=cq_only)
+            _log.debug('Fetched try results: %s', try_job_results)
             if (cl_status == 'closed' or
                 (try_job_results and self.all_finished(try_job_results))):
                 return CLStatus(
@@ -190,7 +176,7 @@ class GitCL:
         """Waits until git cl reports that the current CL is closed."""
 
         def closed_status_or_none():
-            status = self.get_cl_status()
+            status = self._get_cl_status()
             _log.debug('CL status is: %s', status)
             if status == 'closed':
                 self._host.print_('CL is closed.')
@@ -275,15 +261,11 @@ class GitCL:
         return {b: s for b, s in try_results.items() if b in latest_builds}
 
     @staticmethod
-    def filter_incomplete(build_statuses: BuildStatuses) -> Set[Build]:
-        incomplete_statuses = {
-            TryJobStatus.from_bb_status('INFRA_FAILURE'),
-            TryJobStatus.from_bb_status('CANCELED'),
-        }
+    def filter_infra_failed(build_statuses: BuildStatuses) -> Set[Build]:
         return {
             build
             for build, status in build_statuses.items()
-            if status in incomplete_statuses
+            if status == TryJobStatus.from_bb_status('INFRA_FAILURE')
         }
 
     def try_job_results(self,

@@ -59,13 +59,10 @@ void SetScreenPositionClient(Window* root_window,
 }
 
 ScreenPositionClient* GetScreenPositionClient(const Window* root_window) {
-#if DCHECK_IS_ON()
-  if (root_window) {
+  if (root_window)
     DCHECK_EQ(root_window->GetRootWindow(), root_window);
-  }
-#endif
-  return root_window ? root_window->GetProperty(kScreenPositionClientKey)
-                     : nullptr;
+  return root_window ?
+      root_window->GetProperty(kScreenPositionClientKey) : NULL;
 }
 
 }  // namespace client

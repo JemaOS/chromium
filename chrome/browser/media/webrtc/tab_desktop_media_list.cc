@@ -13,7 +13,6 @@
 #include "base/task/thread_pool.h"
 #include "base/time/time.h"
 #include "chrome/browser/media/webrtc/desktop_media_list_layout_config.h"
-#include "chrome/browser/media/webrtc/desktop_media_picker_utils.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_list.h"
@@ -30,6 +29,8 @@
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkImage.h"
 #include "ui/gfx/favicon_size.h"
+#include "ui/gfx/image/image.h"
+#include "ui/gfx/image/image_skia_operations.h"
 
 using content::BrowserThread;
 using content::DesktopMediaID;
@@ -68,9 +69,37 @@ gfx::ImageSkia CreateEnclosedFaviconImage(gfx::Size size,
 // Update the list once per second.
 const int kDefaultTabDesktopMediaListUpdatePeriod = 1000;
 
+gfx::ImageSkia ScaleBitmap(const SkBitmap& bitmap, gfx::Size size) {
+  const gfx::Rect scaled_rect = media::ComputeLetterboxRegion(
+      gfx::Rect(0, 0, size.width(), size.height()),
+      gfx::Size(bitmap.info().width(), bitmap.info().height()));
+
+  // TODO(crbug.com/1246835): Consider changing to ResizeMethod::BEST after
+  // verifying CPU impact isn't too high.
+  const gfx::ImageSkia resized = gfx::ImageSkiaOperations::CreateResizedImage(
+      gfx::ImageSkia::CreateFromBitmap(bitmap, 1.f),
+      skia::ImageOperations::ResizeMethod::RESIZE_GOOD, scaled_rect.size());
+
+  SkBitmap result(*resized.bitmap());
+
+  // Set alpha channel values to 255 for all pixels.
+  // TODO(crbug.com/264424): Fix screen/window capturers to capture alpha
+  // channel and remove this code. Currently screen/window capturers (at least
+  // some implementations) only capture R, G and B channels and set Alpha to 0.
+  uint8_t* pixels_data = reinterpret_cast<uint8_t*>(result.getPixels());
+  for (int y = 0; y < result.height(); ++y) {
+    for (int x = 0; x < result.width(); ++x) {
+      pixels_data[result.rowBytes() * y + x * result.bytesPerPixel() + 3] =
+          0xff;
+    }
+  }
+
+  return gfx::ImageSkia::CreateFrom1xBitmap(result);
+}
+
 void HandleCapturedBitmap(
     base::OnceCallback<void(uint32_t, const gfx::ImageSkia&)> reply,
-    std::optional<uint32_t> last_hash,
+    absl::optional<uint32_t> last_hash,
     const SkBitmap& bitmap) {
   gfx::ImageSkia image;
 
@@ -94,8 +123,8 @@ TabDesktopMediaList::TabDesktopMediaList(
     : DesktopMediaListBase(
           base::Milliseconds(kDefaultTabDesktopMediaListUpdatePeriod)),
       web_contents_(web_contents
-                        ? std::make_optional(web_contents->GetWeakPtr())
-                        : std::nullopt),
+                        ? absl::make_optional(web_contents->GetWeakPtr())
+                        : absl::nullopt),
       includable_web_contents_filter_(
           std::move(includable_web_contents_filter)),
       include_chrome_app_windows_(include_chrome_app_windows) {
@@ -144,7 +173,7 @@ void TabDesktopMediaList::Refresh(bool update_thumnails) {
   }
 
   std::vector<Browser*> browsers;
-  for (Browser* browser : *BrowserList::GetInstance()) {
+  for (auto* browser : *BrowserList::GetInstance()) {
     if (browser->profile()->GetOriginalProfile() ==
         profile->GetOriginalProfile()) {
       browsers.push_back(browser);
@@ -169,7 +198,7 @@ void TabDesktopMediaList::Refresh(bool update_thumnails) {
     // Find all AppWindows for the given profile.
     const extensions::AppWindowRegistry::AppWindowList& window_list =
         extensions::AppWindowRegistry::Get(profile)->app_windows();
-    for (const extensions::AppWindow* app_window : window_list) {
+    for (const auto* app_window : window_list) {
       if (!app_window->is_hidden())
         contents_list.push_back(app_window->web_contents());
     }
@@ -329,7 +358,7 @@ void TabDesktopMediaList::OnPreviewCaptureHandled(
 }
 
 void TabDesktopMediaList::SetPreviewedSource(
-    const std::optional<content::DesktopMediaID>& id) {
+    const absl::optional<content::DesktopMediaID>& id) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   DCHECK(!(id.has_value() && id.value().is_null()));
 

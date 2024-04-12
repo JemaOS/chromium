@@ -54,7 +54,7 @@ static String CommonStyle() {
 static void CheckFlexBoxPhysicalGeometries(const LayoutBox* flex_box) {
   // 540 = border_left + padding_left + width + padding_right + border_right
   // 400 = border_top + padding_top + height + padding_bottom + border_bottom
-  EXPECT_EQ(PhysicalRect(0, 0, 540, 400), flex_box->PhysicalBorderBoxRect());
+  EXPECT_EQ(LayoutRect(0, 0, 540, 400), flex_box->BorderBoxRect());
   if (!flex_box->ShouldPlaceVerticalScrollbarOnLeft()) {
     // This excludes borders and scrollbars from BorderBoxRect.
     EXPECT_EQ(PhysicalRect(50, 20, 445, 324),
@@ -81,8 +81,7 @@ void LayoutFlexibleBoxTest::ExpectSameAsRowHTB() {
 
   EXPECT_EQ(gfx::Vector2d(), flex_box->OriginAdjustmentForScrollbars());
   // 1040 = child_height (1000) + padding_top (10) + padding_bottom (30)
-  EXPECT_EQ(PhysicalRect(50, 20, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(50, 20, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(1615, 716),
             scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(), scrollable_area->MinimumScrollOffsetInt());
@@ -90,6 +89,7 @@ void LayoutFlexibleBoxTest::ExpectSameAsRowHTB() {
   EXPECT_EQ(gfx::PointF(), scrollable_area->ScrollPosition());
 
   const auto* child = GetLayoutBoxByElementId("child");
+  EXPECT_EQ(LayoutPoint(90, 30), child->Location());
   EXPECT_EQ(PhysicalOffset(90, 30), child->PhysicalLocation());
 }
 
@@ -108,8 +108,7 @@ void LayoutFlexibleBoxTest::ExpectSameAsRowVLR() {
   CheckFlexBoxPhysicalGeometries(flex_box);
 
   EXPECT_EQ(gfx::Vector2d(), flex_box->OriginAdjustmentForScrollbars());
-  EXPECT_EQ(PhysicalRect(50, 20, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(50, 20, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(1615, 716),
             scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(), scrollable_area->MinimumScrollOffsetInt());
@@ -117,6 +116,7 @@ void LayoutFlexibleBoxTest::ExpectSameAsRowVLR() {
   EXPECT_EQ(gfx::PointF(), scrollable_area->ScrollPosition());
 
   const auto* child = GetLayoutBoxByElementId("child");
+  EXPECT_EQ(LayoutPoint(90, 30), child->Location());
   EXPECT_EQ(PhysicalOffset(90, 30), child->PhysicalLocation());
 }
 
@@ -135,8 +135,7 @@ void LayoutFlexibleBoxTest::ExpectSameAsRowVRL() {
   CheckFlexBoxPhysicalGeometries(flex_box);
 
   EXPECT_EQ(gfx::Vector2d(), flex_box->OriginAdjustmentForScrollbars());
-  EXPECT_EQ(PhysicalRect(-1565, 20, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(45, 20, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(0, 716), scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(-1615, 0), scrollable_area->MinimumScrollOffsetInt());
   EXPECT_EQ(gfx::Point(1615, 0), scrollable_area->ScrollOrigin());
@@ -144,6 +143,7 @@ void LayoutFlexibleBoxTest::ExpectSameAsRowVRL() {
 
   const auto* child = GetLayoutBoxByElementId("child");
   // 65 = border_right (30) + padding_right (20) + vertical_scrollbar_width (15)
+  EXPECT_EQ(LayoutPoint(65, 30), child->Location());
   // -1525 = full_flex_box_width (540) - 65 - child_width (2000))
   EXPECT_EQ(PhysicalOffset(-1525, 30), child->PhysicalLocation());
 }
@@ -169,14 +169,14 @@ TEST_F(LayoutFlexibleBoxTest, GeometriesWithScrollbarsRowReverseHTB) {
   CheckFlexBoxPhysicalGeometries(flex_box);
 
   EXPECT_EQ(gfx::Vector2d(), flex_box->OriginAdjustmentForScrollbars());
-  EXPECT_EQ(PhysicalRect(-1565, 20, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(-1565, 20, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(0, 716), scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(-1615, 0), scrollable_area->MinimumScrollOffsetInt());
   EXPECT_EQ(gfx::Point(1615, 0), scrollable_area->ScrollOrigin());
   EXPECT_EQ(gfx::PointF(1615, 0), scrollable_area->ScrollPosition());
 
   const auto* child = GetLayoutBoxByElementId("child");
+  EXPECT_EQ(LayoutPoint(-1525, 30), child->Location());
   EXPECT_EQ(PhysicalOffset(-1525, 30), child->PhysicalLocation());
 }
 
@@ -186,14 +186,14 @@ void LayoutFlexibleBoxTest::ExpectSameAsRowReverseVLR() {
   CheckFlexBoxPhysicalGeometries(flex_box);
 
   EXPECT_EQ(gfx::Vector2d(), flex_box->OriginAdjustmentForScrollbars());
-  EXPECT_EQ(PhysicalRect(50, -696, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(50, -696, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(1615, 0), scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(0, -716), scrollable_area->MinimumScrollOffsetInt());
   EXPECT_EQ(gfx::Point(0, 716), scrollable_area->ScrollOrigin());
   EXPECT_EQ(gfx::PointF(0, 716), scrollable_area->ScrollPosition());
 
   const auto* child = GetLayoutBoxByElementId("child");
+  EXPECT_EQ(LayoutPoint(90, -686), child->Location());
   EXPECT_EQ(PhysicalOffset(90, -686), child->PhysicalLocation());
 }
 
@@ -212,8 +212,7 @@ void LayoutFlexibleBoxTest::ExpectSameAsRowReverseVRL() {
   CheckFlexBoxPhysicalGeometries(flex_box);
 
   EXPECT_EQ(gfx::Vector2d(), flex_box->OriginAdjustmentForScrollbars());
-  EXPECT_EQ(PhysicalRect(-1565, -696, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(45, -696, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(), scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(-1615, -716),
             scrollable_area->MinimumScrollOffsetInt());
@@ -222,6 +221,7 @@ void LayoutFlexibleBoxTest::ExpectSameAsRowReverseVRL() {
 
   const auto* child = GetLayoutBoxByElementId("child");
   // 65 = border_right (30) + padding_right (20) + vertical_scrollbar_width (15)
+  EXPECT_EQ(LayoutPoint(65, -686), child->Location());
   // -1525 = full_flex_box_width (540) - 65 - child_width (2000))
   EXPECT_EQ(PhysicalOffset(-1525, -686), child->PhysicalLocation());
 }
@@ -278,14 +278,14 @@ TEST_F(LayoutFlexibleBoxTest, GeometriesWithScrollbarsColumnReverseHTB) {
   CheckFlexBoxPhysicalGeometries(flex_box);
 
   EXPECT_EQ(gfx::Vector2d(), flex_box->OriginAdjustmentForScrollbars());
-  EXPECT_EQ(PhysicalRect(50, -696, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(50, -696, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(1615, 0), scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(0, -716), scrollable_area->MinimumScrollOffsetInt());
   EXPECT_EQ(gfx::Point(0, 716), scrollable_area->ScrollOrigin());
   EXPECT_EQ(gfx::PointF(0, 716), scrollable_area->ScrollPosition());
 
   const auto* child = GetLayoutBoxByElementId("child");
+  EXPECT_EQ(LayoutPoint(90, -686), child->Location());
   EXPECT_EQ(PhysicalOffset(90, -686), child->PhysicalLocation());
 }
 
@@ -301,14 +301,14 @@ TEST_F(LayoutFlexibleBoxTest, GeometriesWithScrollbarsColumnReverseVLR) {
   CheckFlexBoxPhysicalGeometries(flex_box);
 
   EXPECT_EQ(gfx::Vector2d(), flex_box->OriginAdjustmentForScrollbars());
-  EXPECT_EQ(PhysicalRect(-1565, 20, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(-1565, 20, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(0, 716), scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(-1615, 0), scrollable_area->MinimumScrollOffsetInt());
   EXPECT_EQ(gfx::Point(1615, 0), scrollable_area->ScrollOrigin());
   EXPECT_EQ(gfx::PointF(1615, 0), scrollable_area->ScrollPosition());
 
   const auto* child = GetLayoutBoxByElementId("child");
+  EXPECT_EQ(LayoutPoint(-1525, 30), child->Location());
   EXPECT_EQ(PhysicalOffset(-1525, 30), child->PhysicalLocation());
 }
 
@@ -324,8 +324,7 @@ TEST_F(LayoutFlexibleBoxTest, GeometriesWithScrollbarsColumnReverseVRL) {
   CheckFlexBoxPhysicalGeometries(flex_box);
 
   EXPECT_EQ(gfx::Vector2d(), flex_box->OriginAdjustmentForScrollbars());
-  EXPECT_EQ(PhysicalRect(50, 20, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(-1570, 20, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(1615, 716),
             scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(), scrollable_area->MinimumScrollOffsetInt());
@@ -333,6 +332,7 @@ TEST_F(LayoutFlexibleBoxTest, GeometriesWithScrollbarsColumnReverseVRL) {
   EXPECT_EQ(gfx::PointF(), scrollable_area->ScrollPosition());
 
   const auto* child = GetLayoutBoxByElementId("child");
+  EXPECT_EQ(LayoutPoint(-1550, 30), child->Location());
   EXPECT_EQ(PhysicalOffset(90, 30), child->PhysicalLocation());
 }
 
@@ -343,14 +343,14 @@ void LayoutFlexibleBoxTest::ExpectSameAsRTLRowHTB() {
 
   // Additional origin due to the scrollbar on the left.
   EXPECT_EQ(gfx::Vector2d(15, 0), flex_box->OriginAdjustmentForScrollbars());
-  EXPECT_EQ(PhysicalRect(-1550, 20, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(-1550, 20, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(0, 716), scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(-1615, 0), scrollable_area->MinimumScrollOffsetInt());
   EXPECT_EQ(gfx::Point(1615, 0), scrollable_area->ScrollOrigin());
   EXPECT_EQ(gfx::PointF(1615, 0), scrollable_area->ScrollPosition());
 
   const auto* child = GetLayoutBoxByElementId("child");
+  EXPECT_EQ(LayoutPoint(-1510, 30), child->Location());
   EXPECT_EQ(PhysicalOffset(-1510, 30), child->PhysicalLocation());
 }
 
@@ -394,8 +394,7 @@ TEST_F(LayoutFlexibleBoxTest, GeometriesWithScrollbarsRTLRowReverseHTB) {
 
   // Additional origin due to the scrollbar on the left.
   EXPECT_EQ(gfx::Vector2d(15, 0), flex_box->OriginAdjustmentForScrollbars());
-  EXPECT_EQ(PhysicalRect(65, 20, 2060, 1040),
-            flex_box->ScrollableOverflowRect());
+  EXPECT_EQ(LayoutRect(65, 20, 2060, 1040), flex_box->LayoutOverflowRect());
   EXPECT_EQ(gfx::Vector2d(1615, 716),
             scrollable_area->MaximumScrollOffsetInt());
   EXPECT_EQ(gfx::Vector2d(0, 0), scrollable_area->MinimumScrollOffsetInt());
@@ -403,6 +402,7 @@ TEST_F(LayoutFlexibleBoxTest, GeometriesWithScrollbarsRTLRowReverseHTB) {
   EXPECT_EQ(gfx::PointF(0, 0), scrollable_area->ScrollPosition());
 
   const auto* child = GetLayoutBoxByElementId("child");
+  EXPECT_EQ(LayoutPoint(105, 30), child->Location());
   EXPECT_EQ(PhysicalOffset(105, 30), child->PhysicalLocation());
 }
 
@@ -456,8 +456,7 @@ TEST_F(LayoutFlexibleBoxTest, ResizedFlexChildRequiresVisualOverflowRecalc) {
   )HTML");
   auto* child1_element = GetElementById("child1");
   auto* child2_element = GetElementById("child2");
-  child2_element->setAttribute(html_names::kStyleAttr,
-                               AtomicString("height: 100px;"));
+  child2_element->setAttribute(html_names::kStyleAttr, "height: 100px;");
   GetDocument().View()->UpdateLifecycleToLayoutClean(
       DocumentUpdateReason::kTest);
 
@@ -467,7 +466,8 @@ TEST_F(LayoutFlexibleBoxTest, ResizedFlexChildRequiresVisualOverflowRecalc) {
 
   UpdateAllLifecyclePhasesForTest();
 
-  EXPECT_EQ(child1_box->VisualOverflowRect(), PhysicalRect(0, 0, 105, 960));
+  EXPECT_EQ(child1_box->PhysicalVisualOverflowRect(),
+            PhysicalRect(0, 0, 105, 960));
 }
 
 TEST_F(LayoutFlexibleBoxTest, PercentDefiniteGapUseCounter) {

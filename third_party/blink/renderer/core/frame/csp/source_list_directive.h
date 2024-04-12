@@ -16,7 +16,7 @@ namespace blink {
 class KURL;
 
 CORE_EXPORT
-CSPCheckResult CSPSourceListAllows(
+bool CSPSourceListAllows(
     const network::mojom::blink::CSPSourceList& source_list,
     const network::mojom::blink::CSPSource& self_source,
     const KURL&,

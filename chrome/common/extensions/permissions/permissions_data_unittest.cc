@@ -14,7 +14,6 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/values.h"
 #include "chrome/common/extensions/extension_test_util.h"
 #include "chrome/common/webui_url_constants.h"
 #include "components/crx_file/id_util.h"
@@ -35,6 +34,7 @@
 #include "extensions/common/switches.h"
 #include "extensions/common/url_pattern_set.h"
 #include "extensions/common/user_script.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -76,17 +76,18 @@ scoped_refptr<const Extension> GetExtensionWithHostPermission(
     const std::string& id,
     const std::string& host_permissions,
     ManifestLocation location) {
-  base::Value::List permissions;
+  ListBuilder permissions;
   if (!host_permissions.empty())
     permissions.Append(host_permissions);
 
   return ExtensionBuilder()
-      .SetManifest(base::Value::Dict()
+      .SetManifest(DictionaryBuilder()
                        .Set("name", id)
                        .Set("description", "an extension")
                        .Set("manifest_version", 2)
                        .Set("version", "1.0.0")
-                       .Set("permissions", std::move(permissions)))
+                       .Set("permissions", permissions.Build())
+                       .Build())
       .SetLocation(location)
       .SetID(id)
       .Build();
@@ -104,9 +105,6 @@ void CheckRestrictedUrls(const Extension* extension,
   const GURL self_url("chrome-extension://" + extension->id() + "/foo.html");
   const GURL invalid_url("chrome-debugger://foo/bar.html");
   const GURL chrome_untrusted_url(kChromeUntrustedURL);
-  const GURL blob_url("blob:https://example.com");
-  const GURL blob_opaque_origin_url =
-      url::Origin::Create(GURL("blob:null/uuid")).GetURL();
 
   std::string error;
   EXPECT_EQ(block_chrome_urls, extension->permissions_data()->IsRestrictedUrl(
@@ -160,19 +158,6 @@ void CheckRestrictedUrls(const Extension* extension,
   } else {
     EXPECT_TRUE(error.empty());
   }
-
-  // Blob URLs with a non-opaque origin should be restricted.
-  error.clear();
-  EXPECT_EQ(!allow_on_other_schemes,
-            extension->permissions_data()->IsRestrictedUrl(blob_url, &error))
-      << name;
-
-  // Blob URLs with opaque origin should be restricted.
-  error.clear();
-  EXPECT_EQ(!allow_on_other_schemes,
-            extension->permissions_data()->IsRestrictedUrl(
-                blob_opaque_origin_url, &error))
-      << name;
 }
 
 }  // namespace
@@ -190,43 +175,33 @@ TEST(PermissionsDataTest, EffectiveHostPermissions) {
                     .patterns()
                     .size());
   EXPECT_FALSE(hosts.MatchesURL(GURL("http://www.google.com")));
-  EXPECT_FALSE(extension->permissions_data()
-                   ->active_permissions()
-                   .HasEffectiveAccessToAllHosts());
+  EXPECT_FALSE(extension->permissions_data()->HasEffectiveAccessToAllHosts());
 
   extension = LoadManifest("effective_host_permissions", "one_host.json");
   hosts = extension->permissions_data()->GetEffectiveHostPermissions();
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://www.google.com")));
   EXPECT_FALSE(hosts.MatchesURL(GURL("https://www.google.com")));
-  EXPECT_FALSE(extension->permissions_data()
-                   ->active_permissions()
-                   .HasEffectiveAccessToAllHosts());
+  EXPECT_FALSE(extension->permissions_data()->HasEffectiveAccessToAllHosts());
 
   extension = LoadManifest("effective_host_permissions",
                            "one_host_wildcard.json");
   hosts = extension->permissions_data()->GetEffectiveHostPermissions();
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://google.com")));
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://foo.google.com")));
-  EXPECT_FALSE(extension->permissions_data()
-                   ->active_permissions()
-                   .HasEffectiveAccessToAllHosts());
+  EXPECT_FALSE(extension->permissions_data()->HasEffectiveAccessToAllHosts());
 
   extension = LoadManifest("effective_host_permissions", "two_hosts.json");
   hosts = extension->permissions_data()->GetEffectiveHostPermissions();
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://www.google.com")));
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://www.reddit.com")));
-  EXPECT_FALSE(extension->permissions_data()
-                   ->active_permissions()
-                   .HasEffectiveAccessToAllHosts());
+  EXPECT_FALSE(extension->permissions_data()->HasEffectiveAccessToAllHosts());
 
   extension = LoadManifest("effective_host_permissions",
                            "https_not_considered.json");
   hosts = extension->permissions_data()->GetEffectiveHostPermissions();
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://google.com")));
   EXPECT_TRUE(hosts.MatchesURL(GURL("https://google.com")));
-  EXPECT_FALSE(extension->permissions_data()
-                   ->active_permissions()
-                   .HasEffectiveAccessToAllHosts());
+  EXPECT_FALSE(extension->permissions_data()->HasEffectiveAccessToAllHosts());
 
   extension = LoadManifest("effective_host_permissions",
                            "two_content_scripts.json");
@@ -241,35 +216,27 @@ TEST(PermissionsDataTest, EffectiveHostPermissions) {
       extension->permissions_data()
           ->active_permissions()
           .HasEffectiveAccessToURL(GURL("http://news.ycombinator.com")));
-  EXPECT_FALSE(extension->permissions_data()
-                   ->active_permissions()
-                   .HasEffectiveAccessToAllHosts());
+  EXPECT_FALSE(extension->permissions_data()->HasEffectiveAccessToAllHosts());
 
   extension = LoadManifest("effective_host_permissions", "all_hosts.json");
   hosts = extension->permissions_data()->GetEffectiveHostPermissions();
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://test/")));
   EXPECT_FALSE(hosts.MatchesURL(GURL("https://test/")));
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://www.google.com")));
-  EXPECT_TRUE(extension->permissions_data()
-                  ->active_permissions()
-                  .HasEffectiveAccessToAllHosts());
+  EXPECT_TRUE(extension->permissions_data()->HasEffectiveAccessToAllHosts());
 
   extension = LoadManifest("effective_host_permissions", "all_hosts2.json");
   hosts = extension->permissions_data()->GetEffectiveHostPermissions();
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://test/")));
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://www.google.com")));
-  EXPECT_TRUE(extension->permissions_data()
-                  ->active_permissions()
-                  .HasEffectiveAccessToAllHosts());
+  EXPECT_TRUE(extension->permissions_data()->HasEffectiveAccessToAllHosts());
 
   extension = LoadManifest("effective_host_permissions", "all_hosts3.json");
   hosts = extension->permissions_data()->GetEffectiveHostPermissions();
   EXPECT_FALSE(hosts.MatchesURL(GURL("http://test/")));
   EXPECT_TRUE(hosts.MatchesURL(GURL("https://test/")));
   EXPECT_TRUE(hosts.MatchesURL(GURL("http://www.google.com")));
-  EXPECT_TRUE(extension->permissions_data()
-                  ->active_permissions()
-                  .HasEffectiveAccessToAllHosts());
+  EXPECT_TRUE(extension->permissions_data()->HasEffectiveAccessToAllHosts());
 
   // Tab-specific permissions should always be included.
   GURL tab_url("http://www.example.com/");

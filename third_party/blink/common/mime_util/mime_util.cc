@@ -7,7 +7,6 @@
 #include <stddef.h>
 #include <unordered_set>
 
-#include "base/containers/contains.h"
 #include "base/lazy_instance.h"
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
@@ -152,11 +151,12 @@ MimeUtil::MimeUtil() {
 }
 
 bool MimeUtil::IsSupportedImageMimeType(const std::string& mime_type) const {
-  return base::Contains(image_types_, base::ToLowerASCII(mime_type));
+  return image_types_.find(base::ToLowerASCII(mime_type)) != image_types_.end();
 }
 
 bool MimeUtil::IsSupportedNonImageMimeType(const std::string& mime_type) const {
-  return base::Contains(non_image_types_, base::ToLowerASCII(mime_type)) ||
+  return non_image_types_.find(base::ToLowerASCII(mime_type)) !=
+             non_image_types_.end() ||
 #if !BUILDFLAG(IS_IOS)
          media::IsSupportedMediaMimeType(mime_type) ||
 #endif
@@ -169,12 +169,13 @@ bool MimeUtil::IsSupportedNonImageMimeType(const std::string& mime_type) const {
 }
 
 bool MimeUtil::IsUnsupportedTextMimeType(const std::string& mime_type) const {
-  return base::Contains(unsupported_text_types_, base::ToLowerASCII(mime_type));
+  return unsupported_text_types_.find(base::ToLowerASCII(mime_type)) !=
+         unsupported_text_types_.end();
 }
 
 bool MimeUtil::IsSupportedJavascriptMimeType(
     const std::string& mime_type) const {
-  return base::Contains(javascript_types_, mime_type);
+  return javascript_types_.find(mime_type) != javascript_types_.end();
 }
 
 // TODO(sasebree): Allow non-application `*/*+json` MIME types.

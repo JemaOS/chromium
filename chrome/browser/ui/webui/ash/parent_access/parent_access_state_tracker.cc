@@ -4,10 +4,9 @@
 
 #include "chrome/browser/ui/webui/ash/parent_access/parent_access_state_tracker.h"
 
-#include <optional>
-
 #include "base/metrics/histogram_functions.h"
 #include "chrome/browser/ui/webui/ash/parent_access/parent_access_metrics_utils.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 bool IsDisabledStateAllowed(
@@ -44,7 +43,7 @@ ParentAccessStateTracker::ParentAccessStateTracker(
 ParentAccessStateTracker::~ParentAccessStateTracker() {
   base::UmaHistogramEnumeration(
       parent_access::GetHistogramTitleForFlowType(
-          parent_access::kParentAccessFlowResultHistogramBase, std::nullopt),
+          parent_access::kParentAccessFlowResultHistogramBase, absl::nullopt),
       flow_result_, FlowResult::kNumStates);
   base::UmaHistogramEnumeration(
       parent_access::GetHistogramTitleForFlowType(

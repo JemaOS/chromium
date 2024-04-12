@@ -6,12 +6,13 @@ package org.chromium.chrome.browser.password_manager;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-import org.jni_zero.NativeMethods;
-
 import org.chromium.base.ObserverList;
+import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.annotations.NativeMethods;
 
-/** This helper forwards lifecycle events to password manager classes. */
+/**
+ * This helper forwards lifecycle events to password manager classes.
+ */
 public class PasswordManagerLifecycleHelper {
     private static PasswordManagerLifecycleHelper sInstance;
     private ObserverList<Long> mNativeObservers = new ObserverList<>();
@@ -27,7 +28,9 @@ public class PasswordManagerLifecycleHelper {
         return sInstance;
     }
 
-    /** Notifies all observers that a foreground session has begun. */
+    /**
+     * Notifies all observers that a foreground session has begun.
+     */
     public void onStartForegroundSession() {
         for (Long observer : mNativeObservers) {
             assert observer != 0;
@@ -49,7 +52,9 @@ public class PasswordManagerLifecycleHelper {
 
     private PasswordManagerLifecycleHelper() {}
 
-    /** C++ method signatures. */
+    /**
+     * C++ method signatures.
+     */
     @NativeMethods
     interface Natives {
         void onForegroundSessionStart(long nativePasswordManagerLifecycleHelperImpl);

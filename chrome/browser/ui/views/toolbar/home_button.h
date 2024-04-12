@@ -31,9 +31,9 @@ class HomePageUndoBubbleCoordinator {
 };
 
 class HomeButton : public ToolbarButton {
-  METADATA_HEADER(HomeButton, ToolbarButton)
-
  public:
+  METADATA_HEADER(HomeButton);
+
   explicit HomeButton(PressedCallback callback = PressedCallback(),
                       PrefService* prefs = nullptr);
   HomeButton(const HomeButton&) = delete;

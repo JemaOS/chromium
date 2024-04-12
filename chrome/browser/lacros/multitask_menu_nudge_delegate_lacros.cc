@@ -4,16 +4,20 @@
 
 #include "chrome/browser/lacros/multitask_menu_nudge_delegate_lacros.h"
 
-#include <optional>
-
 #include "base/barrier_callback.h"
 #include "base/json/values_util.h"
-#include "chrome/browser/browser_process.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chromeos/lacros/lacros_service.h"
+#include "multitask_menu_nudge_delegate_lacros.h"
 
 namespace {
+
+// If we can't get the pref, run the callback with the max nudge show count
+// value so that no nudge gets shown.
+// TODO(b/267787811): The callback should instead be updated to provide a
+// success parameter.
+constexpr int kMaxNudgeShowCount = 3;
 
 chromeos::LacrosService* GetLacrosService() {
   auto* lacros_service = chromeos::LacrosService::Get();
@@ -38,14 +42,15 @@ int MultitaskMenuNudgeDelegateLacros::GetTabletNudgeYOffset() const {
 void MultitaskMenuNudgeDelegateLacros::GetNudgePreferences(
     bool tablet_mode,
     GetPreferencesCallback callback) {
+  // These prefs should be read from ash, as they are also used by frames
+  // created and maintained in ash.
   auto* lacros_service = GetLacrosService();
   if (!lacros_service) {
-    std::move(callback).Run(/*tablet_mode=*/false, std::nullopt);
+    std::move(callback).Run(/*tablet_mode=*/false, kMaxNudgeShowCount,
+                            base::Time());
     return;
   }
 
-  // These prefs should be read from ash, as they are also used by frames
-  // created and maintained in ash.
   auto barrier = base::BarrierCallback<PrefPair>(
       /*num_callbacks=*/2u, /*done_callback=*/base::BindOnce(
           &MultitaskMenuNudgeDelegateLacros::OnGotAllPreferences,
@@ -84,7 +89,7 @@ void MultitaskMenuNudgeDelegateLacros::SetNudgePreferences(bool tablet_mode,
 void MultitaskMenuNudgeDelegateLacros::OnGetPreference(
     base::OnceCallback<void(PrefPair)> callback,
     crosapi::mojom::PrefPath pref_path,
-    std::optional<base::Value> value) {
+    absl::optional<base::Value> value) {
   // If `value` is empty just pass a default `base::Value`; the other callback
   // (`OnGotAllPreferences()`) function will handle it properly.
   PrefPair pref_pair{pref_path, value ? std::move(*value) : base::Value()};
@@ -94,40 +99,31 @@ void MultitaskMenuNudgeDelegateLacros::OnGetPreference(
 void MultitaskMenuNudgeDelegateLacros::OnGotAllPreferences(
     GetPreferencesCallback callback,
     std::vector<PrefPair> pref_values) {
-  CHECK_EQ(2u, pref_values.size());
+  DCHECK_EQ(2u, pref_values.size());
 
   // The values in the array could be in any order. Parse them into the
   // `shown_count` and `last_shown_time`.
-  std::optional<int> shown_count;
-  std::optional<base::Time> last_shown_time;
+  absl::optional<int> shown_count;
+  absl::optional<base::Time> last_shown_time;
   for (const auto& pair : pref_values) {
     if (pair.first ==
         crosapi::mojom::PrefPath::kMultitaskMenuNudgeClamshellShownCount) {
-      shown_count = pair.second.GetIfInt();
+      shown_count = pair.second.GetIfInt().value_or(kMaxNudgeShowCount);
     } else {
-      CHECK_EQ(pair.first,
-               crosapi::mojom::PrefPath::kMultitaskMenuNudgeClamshellLastShown);
-      last_shown_time = base::ValueToTime(pair.second);
+      DCHECK_EQ(
+          pair.first,
+          crosapi::mojom::PrefPath::kMultitaskMenuNudgeClamshellLastShown);
+      last_shown_time = base::ValueToTime(pair.second).value_or(base::Time());
     }
   }
 
-  if (!shown_count.has_value() || !last_shown_time.has_value()) {
-    std::move(callback).Run(/*tablet_mode=*/false, std::nullopt);
-    return;
-  }
-
-  std::move(callback).Run(
-      /*tablet_mode=*/false,
-      chromeos::MultitaskMenuNudgeController::PrefValues{
-          .show_count = *shown_count, .last_shown_time = *last_shown_time});
+  DCHECK(shown_count.has_value());
+  DCHECK(last_shown_time.has_value());
+  std::move(callback).Run(/*tablet_mode=*/false, *shown_count,
+                          *last_shown_time);
 }
 
 bool MultitaskMenuNudgeDelegateLacros::IsUserNew() const {
-  auto profiles = g_browser_process->profile_manager()->GetLoadedProfiles();
-  for (auto* profile : profiles) {
-    if (profile->IsMainProfile()) {
-      return profile->IsNewProfile();
-    }
-  }
-  return false;
+  auto* profile = ProfileManager::GetPrimaryUserProfile();
+  return profile && profile->IsNewProfile();
 }

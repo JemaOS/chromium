@@ -20,7 +20,6 @@
 #include "third_party/nearby/src/internal/platform/count_down_latch.h"
 #include "third_party/nearby/src/internal/platform/future.h"
 #include "third_party/nearby/src/internal/platform/logging.h"
-#include "third_party/webrtc/api/async_dns_resolver.h"
 #include "third_party/webrtc/api/jsep.h"
 #include "third_party/webrtc/api/peer_connection_interface.h"
 #include "third_party/webrtc_overrides/task_queue_factory.h"
@@ -96,36 +95,20 @@ const std::string GetCurrentCountryCode() {
   return std::string(icu::Locale::getDefault().getCountry());
 }
 
-class ProxyAsyncDnsResolverFactory final
-    : public webrtc::AsyncDnsResolverFactoryInterface {
+class ProxyAsyncResolverFactory final : public webrtc::AsyncResolverFactory {
  public:
-  explicit ProxyAsyncDnsResolverFactory(
+  explicit ProxyAsyncResolverFactory(
       sharing::IpcPacketSocketFactory* socket_factory)
       : socket_factory_(socket_factory) {
     DCHECK(socket_factory_);
   }
 
-  std::unique_ptr<webrtc::AsyncDnsResolverInterface> Create() override {
-    return socket_factory_->CreateAsyncDnsResolver();
-  }
-  std::unique_ptr<webrtc::AsyncDnsResolverInterface> CreateAndResolve(
-      const rtc::SocketAddress& addr,
-      absl::AnyInvocable<void()> callback) override {
-    auto temp = Create();
-    temp->Start(addr, std::move(callback));
-    return temp;
-  }
-  std::unique_ptr<webrtc::AsyncDnsResolverInterface> CreateAndResolve(
-      const rtc::SocketAddress& addr,
-      int family,
-      absl::AnyInvocable<void()> callback) override {
-    auto temp = Create();
-    temp->Start(addr, family, std::move(callback));
-    return temp;
+  rtc::AsyncResolverInterface* Create() override {
+    return socket_factory_->CreateAsyncResolver();
   }
 
  private:
-  raw_ptr<sharing::IpcPacketSocketFactory> socket_factory_;
+  raw_ptr<sharing::IpcPacketSocketFactory, ExperimentalAsh> socket_factory_;
 };
 
 // This object only exists to forward incoming mojo messages. It will be created
@@ -215,7 +198,7 @@ class WebRtcSignalingMessengerImpl : public api::WebRtcSignalingMessenger {
   }
 
   // api::WebRtcSignalingMessenger:
-  bool SendMessage(std::string_view peer_id,
+  bool SendMessage(absl::string_view peer_id,
                    const ByteArray& message) override {
     bool success = false;
     if (!messenger_->SendMessage(self_id_, std::string(peer_id),
@@ -547,8 +530,8 @@ void WebRtcMedium::OnIceServersFetched(
   port_config.enable_nonproxied_udp = true;
   dependencies.allocator = std::make_unique<sharing::P2PPortAllocator>(
       network_manager_.get(), socket_factory_.get(), port_config);
-  dependencies.async_dns_resolver_factory =
-      std::make_unique<ProxyAsyncDnsResolverFactory>(socket_factory_.get());
+  dependencies.async_resolver_factory =
+      std::make_unique<ProxyAsyncResolverFactory>(socket_factory_.get());
 
   webrtc::RTCErrorOr<rtc::scoped_refptr<webrtc::PeerConnectionInterface>>
       peer_connection = peer_connection_factory_->CreatePeerConnectionOrError(
@@ -562,7 +545,7 @@ void WebRtcMedium::OnIceServersFetched(
 
 std::unique_ptr<api::WebRtcSignalingMessenger>
 WebRtcMedium::GetSignalingMessenger(
-    std::string_view self_id,
+    absl::string_view self_id,
     const location::nearby::connections::LocationHint& location_hint) {
   return std::make_unique<WebRtcSignalingMessengerImpl>(
       std::string(self_id), location_hint, webrtc_signaling_messenger_);

@@ -4,11 +4,9 @@
 
 #include "chrome/services/printing/pdf_to_emf_converter_factory.h"
 
-#include <memory>
 #include <utility>
 
 #include "chrome/services/printing/pdf_to_emf_converter.h"
-#include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "mojo/public/cpp/system/platform_handle.h"
 
@@ -38,5 +36,4 @@ void PdfToEmfConverterFactory::Create(
   mojo::MakeSelfOwnedReceiver(std::make_unique<PdfToEmfConverterFactory>(),
                               std::move(receiver));
 }
-
 }  // namespace printing

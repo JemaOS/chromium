@@ -49,7 +49,7 @@ ScriptPromise SerialPortUnderlyingSource::Pull(
   // we allow the stream to be canceled before that data is received. pull()
   // will not be called again until a chunk is enqueued or if an error has been
   // signaled to the controller.
-  return ScriptPromise::CastUndefined(script_state_.Get());
+  return ScriptPromise::CastUndefined(script_state_);
 }
 
 ScriptPromise SerialPortUnderlyingSource::Cancel(
@@ -62,12 +62,10 @@ ScriptPromise SerialPortUnderlyingSource::Cancel(
   // don't need to do it here.
   if (serial_port_->IsClosing()) {
     serial_port_->UnderlyingSourceClosed();
-    return ScriptPromise::CastUndefined(script_state_.Get());
+    return ScriptPromise::CastUndefined(script_state_);
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<IDLUndefined>>(
-          script_state_);
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(script_state_);
   serial_port_->Flush(
       device::mojom::blink::SerialPortFlushMode::kReceive,
       WTF::BindOnce(&SerialPortUnderlyingSource::OnFlush, WrapPersistent(this),
@@ -82,7 +80,7 @@ ScriptPromise SerialPortUnderlyingSource::Cancel(
 }
 
 ScriptState* SerialPortUnderlyingSource::GetScriptState() {
-  return script_state_.Get();
+  return script_state_;
 }
 
 void SerialPortUnderlyingSource::ContextDestroyed() {
@@ -184,9 +182,7 @@ void SerialPortUnderlyingSource::ReadDataOrArmWatcher() {
       watcher_.ArmOrNotify();
       break;
     default:
-      invalid_data_pipe_read_result_ = result;
-      DUMP_WILL_BE_NOTREACHED_NORETURN()
-          << "Invalid data pipe read result: " << result;
+      NOTREACHED();
       break;
   }
 }
@@ -209,8 +205,7 @@ void SerialPortUnderlyingSource::OnHandleReady(
   }
 }
 
-void SerialPortUnderlyingSource::OnFlush(
-    ScriptPromiseResolverTyped<IDLUndefined>* resolver) {
+void SerialPortUnderlyingSource::OnFlush(ScriptPromiseResolver* resolver) {
   serial_port_->UnderlyingSourceClosed();
   resolver->Resolve();
 }

@@ -27,8 +27,7 @@ class StubWebView : public WebView {
   Status Reload(const Timeout* timeout) override;
   Status Freeze(const Timeout* timeout) override;
   Status Resume(const Timeout* timeout) override;
-  Status StartBidiServer(std::string bidi_mapper_script,
-                         const base::Value::Dict& mapper_options) override;
+  Status StartBidiServer(std::string bidi_mapper_script) override;
   Status PostBidiCommand(base::Value::Dict command) override;
   Status SendCommand(const std::string& cmd,
                      const base::Value::Dict& params) override;
@@ -47,6 +46,11 @@ class StubWebView : public WebView {
                       const std::string& function,
                       const base::Value::List& args,
                       std::unique_ptr<base::Value>* result) override;
+  Status CallAsyncFunction(const std::string& frame,
+                           const std::string& function,
+                           const base::Value::List& args,
+                           const base::TimeDelta& timeout,
+                           std::unique_ptr<base::Value>* result) override;
   Status CallUserAsyncFunction(const std::string& frame,
                                const std::string& function,
                                const base::Value::List& args,
@@ -121,19 +125,12 @@ class StubWebView : public WebView {
                                  int yoffset) override;
   bool IsNonBlocking() const override;
   FrameTracker* GetFrameTracker() const override;
-  Status GetFedCmTracker(FedCmTracker** out_tracker) override;
   std::unique_ptr<base::Value> GetCastSinks() override;
   std::unique_ptr<base::Value> GetCastIssueMessage() override;
   void SetFrame(const std::string& new_frame_id) override;
   Status GetBackendNodeIdByElement(const std::string& frame,
                                    const base::Value& element,
                                    int* node_id) override;
-  bool IsDetached() const override;
-  Status CallFunctionWithTimeout(const std::string& frame,
-                                 const std::string& function,
-                                 const base::Value::List& args,
-                                 const base::TimeDelta& timeout,
-                                 std::unique_ptr<base::Value>* result) override;
 
  private:
   std::string id_;

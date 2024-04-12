@@ -5,7 +5,7 @@
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertThrows, assertTrue} from 'chrome://webui-test/chai_assert.js';
 
-suite('LoadTimeDataTest', function() {
+suite('LoadTimeDataModuleTest', function() {
   setup(function() {
     loadTimeData.resetForTesting();
   });

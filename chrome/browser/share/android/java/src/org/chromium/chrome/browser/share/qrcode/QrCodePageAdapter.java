@@ -11,7 +11,9 @@ import androidx.viewpager.widget.PagerAdapter;
 
 import java.util.ArrayList;
 
-/** QrCodePageAdapter instantiates and destroys provided tab views. */
+/**
+ * QrCodePageAdapter instantiates and destroys provided tab views.
+ */
 class QrCodePageAdapter extends PagerAdapter {
     ArrayList<View> mPages;
 

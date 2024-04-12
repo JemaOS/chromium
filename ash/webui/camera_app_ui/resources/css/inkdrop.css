@@ -7,7 +7,7 @@
 }
 
 .inkdrop .inkdrop-ripple {
-  background: var(--cros-sys-ripple_primary);
+  background: white;
   border-radius: 50%;
   height: 0;
   left: var(--drop-x);

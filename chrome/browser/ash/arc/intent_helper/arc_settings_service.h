@@ -54,8 +54,8 @@ class ArcSettingsService
   void SetInitialSettingsPending(bool pending);
   bool IsInitialSettingsPending() const;
 
-  const raw_ptr<Profile> profile_;
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<Profile, ExperimentalAsh> profile_;
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
   std::unique_ptr<ArcSettingsServiceImpl> impl_;
 };

@@ -3,9 +3,10 @@
 // found in the LICENSE file.
 
 import 'chrome://personalization/strings.m.js';
+import 'chrome://webui-test/mojo_webui_test_support.js';
 
-import {AvatarCameraMode, AvatarListElement, UserActionName, UserImageObserver} from 'chrome://personalization/js/personalization_app.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
+import {AvatarCameraMode, AvatarList, UserActionName, UserImageObserver} from 'chrome://personalization/js/personalization_app.js';
+import {loadTimeData} from 'chrome://resources/ash/common/load_time_data.m.js';
 import {assertDeepEquals, assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
 
@@ -13,8 +14,8 @@ import {baseSetup, initElement, teardownElement} from './personalization_app_tes
 import {TestPersonalizationStore} from './test_personalization_store.js';
 import {TestUserProvider} from './test_user_interface_provider.js';
 
-suite('AvatarListElementTest', function() {
-  let avatarListElement: AvatarListElement|null;
+suite('AvatarListTest', function() {
+  let avatarListElement: AvatarList|null;
 
   let testUserProvider: TestUserProvider;
   let testPersonalizationStore: TestPersonalizationStore;
@@ -33,7 +34,7 @@ suite('AvatarListElementTest', function() {
   });
 
   test('fetches list of default avatar images and saves to store', async () => {
-    avatarListElement = initElement(AvatarListElement);
+    avatarListElement = initElement(AvatarList);
     testPersonalizationStore.expectAction(
         UserActionName.SET_DEFAULT_USER_IMAGES);
     await testUserProvider.whenCalled('getDefaultUserImages');
@@ -52,7 +53,7 @@ suite('AvatarListElementTest', function() {
   test('calls selectDefaultImage with correct index on click', async () => {
     testPersonalizationStore.data.user.defaultUserImages =
         testUserProvider.defaultUserImages;
-    avatarListElement = initElement(AvatarListElement);
+    avatarListElement = initElement(AvatarList);
 
     const image =
         avatarListElement.shadowRoot!.querySelector(
@@ -66,7 +67,7 @@ suite('AvatarListElementTest', function() {
 
   test('fetches profile image and saves to store on load', async () => {
     testPersonalizationStore.setReducersEnabled(true);
-    avatarListElement = initElement(AvatarListElement);
+    avatarListElement = initElement(AvatarList);
 
     await testUserProvider.whenCalled('setUserImageObserver');
 
@@ -92,7 +93,7 @@ suite('AvatarListElementTest', function() {
   test('calls selectProfileImage on click', async () => {
     testPersonalizationStore.data.user.profileImage =
         testUserProvider.profileImage;
-    avatarListElement = initElement(AvatarListElement);
+    avatarListElement = initElement(AvatarList);
 
     const image = avatarListElement.shadowRoot!.getElementById(
                       'profileImage') as HTMLImageElement;
@@ -106,7 +107,7 @@ suite('AvatarListElementTest', function() {
 
   test('hides open camera button if no camera present', async () => {
     testPersonalizationStore.data.user.isCameraPresent = false;
-    avatarListElement = initElement(AvatarListElement);
+    avatarListElement = initElement(AvatarList);
     await waitAfterNextRender(avatarListElement);
 
     assertEquals(
@@ -125,7 +126,7 @@ suite('AvatarListElementTest', function() {
   test('click open camera button shows the avatar-camera modal', async () => {
     testPersonalizationStore.data.user.isCameraPresent = true;
 
-    avatarListElement = initElement(AvatarListElement);
+    avatarListElement = initElement(AvatarList);
     await waitAfterNextRender(avatarListElement);
 
     assertTrue(
@@ -147,7 +148,7 @@ suite('AvatarListElementTest', function() {
   test('closes camera ui if camera goes offline', async () => {
     testPersonalizationStore.data.user.isCameraPresent = true;
 
-    avatarListElement = initElement(AvatarListElement);
+    avatarListElement = initElement(AvatarList);
     await waitAfterNextRender(avatarListElement);
 
     avatarListElement.shadowRoot?.getElementById('openCamera')?.click();
@@ -172,7 +173,7 @@ suite('AvatarListElementTest', function() {
     testPersonalizationStore.data.user.isCameraPresent = true;
     testPersonalizationStore.data.user.profileImage =
         testUserProvider.profileImage;
-    avatarListElement = initElement(AvatarListElement);
+    avatarListElement = initElement(AvatarList);
 
     await waitAfterNextRender(avatarListElement);
 
@@ -196,7 +197,7 @@ suite('AvatarListElementTest', function() {
     testPersonalizationStore.data.user.isCameraPresent = true;
     testPersonalizationStore.data.user.profileImage =
         testUserProvider.profileImage;
-    avatarListElement = initElement(AvatarListElement);
+    avatarListElement = initElement(AvatarList);
 
     await waitAfterNextRender(avatarListElement);
 

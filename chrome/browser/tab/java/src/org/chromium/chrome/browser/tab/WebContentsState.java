@@ -18,17 +18,13 @@ public class WebContentsState {
     public static final int CONTENTS_STATE_CURRENT_VERSION = 2;
 
     /**
-     * mBuffer should not be modified once it is set. Also, it is required to be a "direct" buffer
-     * which is allocated outside the JVM heap, so that it can be accessed via the JNI direct buffer
-     * methods, which means it has to be allocated with ByteBuffer.allocateDirect() or similar.
+     * mBuffer should not be modified once it is set
      */
     private final ByteBuffer mBuffer;
-
     private int mVersion;
     private static WebContentsState sEmptyWebContentsState;
 
     public WebContentsState(ByteBuffer buffer) {
-        assert buffer.isDirect();
         mBuffer = buffer;
         sEmptyWebContentsState = null;
     }
@@ -57,7 +53,9 @@ public class WebContentsState {
 
     public static WebContentsState getTempWebContentsState() {
         if (sEmptyWebContentsState == null) {
-            sEmptyWebContentsState = new WebContentsState(ByteBuffer.allocateDirect(0));
+            byte[] bytes = new byte[0];
+            ByteBuffer buf = ByteBuffer.wrap(bytes);
+            sEmptyWebContentsState = new WebContentsState(buf);
             sEmptyWebContentsState.setVersion(-1);
         }
         return sEmptyWebContentsState;

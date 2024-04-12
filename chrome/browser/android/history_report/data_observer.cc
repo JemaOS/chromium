@@ -36,25 +36,30 @@ DataObserver::DataObserver(
 
 DataObserver::~DataObserver() = default;
 
-void DataObserver::BookmarkModelLoaded(bool ids_reassigned) {}
+void DataObserver::BookmarkModelLoaded(BookmarkModel* model,
+                                       bool ids_reassigned) {}
 
-void DataObserver::BookmarkModelBeingDeleted() {
+void DataObserver::BookmarkModelBeingDeleted(BookmarkModel* model) {
+  DCHECK(scoped_bookmark_model_observer_.IsObservingSource(model));
   scoped_bookmark_model_observer_.Reset();
 }
 
-void DataObserver::BookmarkNodeMoved(const BookmarkNode* old_parent,
+void DataObserver::BookmarkNodeMoved(BookmarkModel* model,
+                                     const BookmarkNode* old_parent,
                                      size_t old_index,
                                      const BookmarkNode* new_parent,
                                      size_t new_index) {}
 
-void DataObserver::BookmarkNodeAdded(const BookmarkNode* parent,
+void DataObserver::BookmarkNodeAdded(BookmarkModel* model,
+                                     const BookmarkNode* parent,
                                      size_t index,
                                      bool added_by_user) {
   delta_file_service_->PageAdded(parent->children()[index]->url());
   data_changed_callback_.Run();
 }
 
-void DataObserver::BookmarkNodeRemoved(const BookmarkNode* parent,
+void DataObserver::BookmarkNodeRemoved(BookmarkModel* model,
+                                       const BookmarkNode* parent,
                                        size_t old_index,
                                        const BookmarkNode* node,
                                        const std::set<GURL>& removed_urls) {
@@ -62,18 +67,22 @@ void DataObserver::BookmarkNodeRemoved(const BookmarkNode* parent,
 }
 
 void DataObserver::BookmarkAllUserNodesRemoved(
+    BookmarkModel* model,
     const std::set<GURL>& removed_urls) {
   DeleteBookmarks(removed_urls);
 }
 
-void DataObserver::BookmarkNodeChanged(const BookmarkNode* node) {
+void DataObserver::BookmarkNodeChanged(BookmarkModel* model,
+                                       const BookmarkNode* node) {
   delta_file_service_->PageAdded(node->url());
   data_changed_callback_.Run();
 }
 
-void DataObserver::BookmarkNodeFaviconChanged(const BookmarkNode* node) {}
+void DataObserver::BookmarkNodeFaviconChanged(BookmarkModel* model,
+                                              const BookmarkNode* node) {}
 
-void DataObserver::BookmarkNodeChildrenReordered(const BookmarkNode* node) {}
+void DataObserver::BookmarkNodeChildrenReordered(BookmarkModel* model,
+                                                 const BookmarkNode* node) {}
 
 void DataObserver::DeleteBookmarks(const std::set<GURL>& removed_urls) {
   for (std::set<GURL>::const_iterator it = removed_urls.begin();
@@ -97,7 +106,7 @@ void DataObserver::OnURLVisited(history::HistoryService* history_service,
   data_changed_callback_.Run();
   std::string id = DeltaFileEntryWithData::UrlToId(url_row.url().spec());
   usage_reports_buffer_service_->AddVisit(
-      id, new_visit.visit_time.InMillisecondsSinceUnixEpoch(),
+      id, new_visit.visit_time.ToJavaTime(),
       usage_report_util::IsTypedVisit(new_visit.transition));
   // We stop any usage reporting to wait for gmscore to query the provider
   // for this url. We do not want to report usage for a URL which might
@@ -105,9 +114,8 @@ void DataObserver::OnURLVisited(history::HistoryService* history_service,
   stop_reporting_callback_.Run();
 }
 
-void DataObserver::OnHistoryDeletions(
-    history::HistoryService* history_service,
-    const history::DeletionInfo& deletion_info) {
+void DataObserver::OnURLsDeleted(history::HistoryService* history_service,
+                                 const history::DeletionInfo& deletion_info) {
   if (deletion_info.IsAllHistory()) {
     delta_file_service_->Clear();
     data_cleared_callback_.Run();

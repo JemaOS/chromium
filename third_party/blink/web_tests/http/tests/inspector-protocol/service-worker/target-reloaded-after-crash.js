@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startURL(
       '/inspector-protocol/resources/empty.html',
       'Test that Inspector.targetReloadedAfterCrash is not fired when service worker just created(not restarted)');

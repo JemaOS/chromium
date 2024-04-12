@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <queue>
 #include <vector>
 
@@ -23,6 +22,7 @@
 #include "chrome/browser/ash/arc/process/arc_process.h"
 #include "chrome/browser/ash/process_snapshot_server.h"
 #include "components/keyed_service/core/keyed_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace content {
 class BrowserContext;
@@ -36,10 +36,10 @@ class ArcBridgeService;
 //
 // Call RequestAppProcessList() / RequestSystemProcessList() on the main UI
 // thread to get a list of all ARC app / system processes. It returns
-// std::optional<vector<arc::ArcProcess>>, which includes pid <-> nspid
+// absl::optional<vector<arc::ArcProcess>>, which includes pid <-> nspid
 // mapping. Example:
 //   void OnUpdateProcessList(
-//       std::optional<vector<arc::ArcProcess>> processes) {
+//       absl::optional<vector<arc::ArcProcess>> processes) {
 //     if (!processes) {
 //         // Arc process service is not ready.
 //        return;
@@ -71,7 +71,7 @@ class ArcProcessService : public KeyedService,
   static ArcProcessService* GetForBrowserContext(
       content::BrowserContext* context);
 
-  using OptionalArcProcessList = std::optional<std::vector<ArcProcess>>;
+  using OptionalArcProcessList = absl::optional<std::vector<ArcProcess>>;
   using RequestProcessListCallback =
       base::OnceCallback<void(OptionalArcProcessList)>;
   using RequestMemoryInfoCallback =
@@ -98,7 +98,7 @@ class ArcProcessService : public KeyedService,
 
   // If ARC IPC is ready for the process list request, the result is returned
   // as the argument of |callback|. Otherwise, |callback| is called with
-  // std::nullopt.
+  // absl::nullopt.
   // The process list maybe stale of up to |kProcessSnapshotRefreshTime|.
   void RequestAppProcessList(RequestProcessListCallback callback);
   void RequestSystemProcessList(RequestProcessListCallback callback);
@@ -180,7 +180,7 @@ class ArcProcessService : public KeyedService,
   void ContinueAppMemoryInfoRequest(RequestMemoryInfoCallback callback);
   void ContinueSystemMemoryInfoRequest(RequestMemoryInfoCallback callback);
 
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
 
   // The most recent process snapshot received from the ProcessSnapshotServer.

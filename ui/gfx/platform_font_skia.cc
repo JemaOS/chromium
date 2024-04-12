@@ -14,12 +14,10 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
-#include "skia/ext/font_utils.h"
 #include "third_party/skia/include/core/SkFont.h"
 #include "third_party/skia/include/core/SkFontMetrics.h"
 #include "third_party/skia/include/core/SkFontStyle.h"
 #include "third_party/skia/include/core/SkString.h"
-#include "third_party/skia/include/core/SkTypeface.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/font.h"
 #include "ui/gfx/font_list.h"
@@ -70,17 +68,17 @@ sk_sp<SkTypeface> CreateSkTypeface(bool italic,
       italic ? SkFontStyle::kItalic_Slant : SkFontStyle::kUpright_Slant);
   sk_sp<SkTypeface> typeface;
   {
-    TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("fonts"),
-                 "skia::MakeTypefaceFromName", "family", *family);
-    typeface = skia::MakeTypefaceFromName(family->c_str(), sk_style);
+    TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("fonts"), "SkTypeface::MakeFromName",
+                 "family", *family);
+    typeface = SkTypeface::MakeFromName(family->c_str(), sk_style);
   }
   if (!typeface) {
-    TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("fonts"),
-                 "skia::MakeTypefaceFromName", "family",
-                 kFallbackFontFamilyName);
+    TRACE_EVENT1(TRACE_DISABLED_BY_DEFAULT("fonts"), "SkTypeface::MakeFromName",
+                 "family", kFallbackFontFamilyName);
     // A non-scalable font such as .pcf is specified. Fall back to a default
     // scalable font.
-    typeface = skia::MakeTypefaceFromName(kFallbackFontFamilyName, sk_style);
+    typeface = sk_sp<SkTypeface>(
+        SkTypeface::MakeFromName(kFallbackFontFamilyName, sk_style));
     if (!typeface) {
       *out_success = false;
       return nullptr;
@@ -116,7 +114,7 @@ PlatformFontSkia::PlatformFontSkia(const std::string& font_name,
 PlatformFontSkia::PlatformFontSkia(
     sk_sp<SkTypeface> typeface,
     int font_size_pixels,
-    const std::optional<FontRenderParams>& params) {
+    const absl::optional<FontRenderParams>& params) {
   DCHECK(typeface);
 
   SkString family_name;
@@ -171,13 +169,11 @@ void PlatformFontSkia::EnsuresDefaultFontIsInitialized() {
 #if BUILDFLAG(IS_LINUX)
   // On Linux, LinuxUi is used to query the native toolkit (e.g.
   // GTK) for the default UI font.
-  if (auto* linux_ui = ui::LinuxUi::instance()) {
-    const auto& font_settings = linux_ui->GetDefaultFontDescription();
-    family = font_settings.family;
-    size_pixels = font_settings.size_pixels;
-    style = font_settings.style;
-    weight = static_cast<Font::Weight>(font_settings.weight);
-    params = linux_ui->GetDefaultFontRenderParams();
+  if (const auto* linux_ui = ui::LinuxUi::instance()) {
+    int weight_int;
+    linux_ui->GetDefaultFontDescription(
+        &family, &size_pixels, &style, static_cast<int*>(&weight_int), &params);
+    weight = static_cast<Font::Weight>(weight_int);
   } else
 #endif
       if (default_font_description_) {
@@ -210,7 +206,7 @@ void PlatformFontSkia::EnsuresDefaultFontIsInitialized() {
   // returns an instance of SkEmptyTypeface. MakeDefault() should never fail.
   // See https://crbug.com/1287371 for details.
   if (!success) {
-    typeface = skia::DefaultTypeface();
+    typeface = SkTypeface::MakeDefault();
   }
 
   // Ensure there is a typeface available. If none is available, there is
@@ -480,7 +476,7 @@ PlatformFont* PlatformFont::CreateFromNameAndSize(const std::string& font_name,
 PlatformFont* PlatformFont::CreateFromSkTypeface(
     sk_sp<SkTypeface> typeface,
     int font_size_pixels,
-    const std::optional<FontRenderParams>& params) {
+    const absl::optional<FontRenderParams>& params) {
   TRACE_EVENT0("fonts", "PlatformFont::CreateFromSkTypeface");
   return new PlatformFontSkia(typeface, font_size_pixels, params);
 }

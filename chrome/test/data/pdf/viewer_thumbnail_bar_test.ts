@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {ViewerThumbnailBarElement, ViewerThumbnailElement} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
-import {ChangePageOrigin, PAINTED_ATTRIBUTE, PluginController} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
+import {ChangePageOrigin, PAINTED_ATTRIBUTE, PluginController, ViewerThumbnailBarElement, ViewerThumbnailElement} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
 import {keyDownOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-interactions.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
@@ -23,7 +22,9 @@ function getTestThumbnailBarHeight(): number {
   const sizerThumbnail = document.createElement('viewer-thumbnail');
   sizerThumbnail.pageNumber = 1;
   document.body.appendChild(sizerThumbnail);
-  return sizerThumbnail.offsetHeight;
+  // Add 24 to cover padding between thumbnails.
+  const thumbnailBarHeight = sizerThumbnail.offsetHeight + 24;
+  return thumbnailBarHeight;
 }
 
 function keydown(element: HTMLElement, key: string) {
@@ -118,8 +119,7 @@ const tests = [
     for (let i = 2; i < 7; i++) {
       whenRequestedPaintingNext.push(whenThumbnailPainted(thumbnails[i]!));
     }
-    const thumbnailHeight = thumbnailBarHeight + 24;  // Including padding.
-    scroller.scrollTop = 5 * thumbnailHeight;
+    scroller.scrollTop = 5 * thumbnailBarHeight;
     await Promise.all(whenRequestedPaintingNext);
 
     // First seven thumbnails should be painted.
@@ -135,7 +135,7 @@ const tests = [
       whenThumbnailCleared(thumbnails[0]!),
       whenThumbnailCleared(thumbnails[1]!),
     ];
-    scroller.scrollTop = 7 * thumbnailHeight;
+    scroller.scrollTop = 7 * thumbnailBarHeight;
     await Promise.all(whenRequestedPaintingLast);
 
     // Only first two thumbnails should not be painted.

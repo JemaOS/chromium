@@ -49,7 +49,7 @@ void SecureEnclaveClient::SetInstanceForTesting(
 }
 
 // static
-std::optional<SecureEnclaveClient::KeyType>
+absl::optional<SecureEnclaveClient::KeyType>
 SecureEnclaveClient::GetTypeFromWrappedKey(
     base::span<const uint8_t> wrapped_key_label) {
   if (CheckEqual(wrapped_key_label, constants::kDeviceTrustSigningKeyLabel)) {
@@ -62,18 +62,7 @@ SecureEnclaveClient::GetTypeFromWrappedKey(
   }
 
   NOTREACHED();
-  return std::nullopt;
-}
-
-// static
-std::string_view SecureEnclaveClient::GetLabelFromKeyType(
-    SecureEnclaveClient::KeyType type) {
-  switch (type) {
-    case SecureEnclaveClient::KeyType::kTemporary:
-      return constants::kTemporaryDeviceTrustSigningKeyLabel;
-    case SecureEnclaveClient::KeyType::kPermanent:
-      return constants::kDeviceTrustSigningKeyLabel;
-  }
+  return absl::nullopt;
 }
 
 }  // namespace enterprise_connectors

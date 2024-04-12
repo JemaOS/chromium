@@ -40,7 +40,8 @@
           page-visibility="[[pageVisibility]]"
           on-subpage-expand="onShowingSubpage_"
           on-showing-main-page="onShowingMainPage_"
-          in-search-mode="[[inSearchMode_]]">
+          in-search-mode="[[inSearchMode_]]"
+          advanced-toggle-expanded="{{advancedToggleExpanded}}">
       </settings-basic-page>
     </template>
     <template is="dom-if" if="[[showPages_.about]]">

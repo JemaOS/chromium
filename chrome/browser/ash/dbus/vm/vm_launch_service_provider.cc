@@ -34,51 +34,55 @@ void OnExported(const std::string& interface_name,
                           << method_name;
 }
 
-std::unique_ptr<dbus::Response> AllowStatusToResponse(
-    borealis::BorealisFeatures::AllowStatus status,
-    dbus::MethodCall* method_call) {
-  if (status != borealis::BorealisFeatures::AllowStatus::kAllowed) {
-    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-                                               "");
-  }
-
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  writer.AppendString("");
-  return response;
-}
-
-void OnAllowChecked(Profile* profile,
+void OnTokenChecked(Profile* profile,
                     dbus::MethodCall* method_call,
                     dbus::ExportedObject::ResponseSender response_sender,
                     bool launch,
                     borealis::BorealisFeatures::AllowStatus new_allowed) {
-  if (launch) {
-    // When requested, setting the correct token should have the effect of
-    // running the client app, which will bring up the installer or launch the
-    // client as needed.
-    borealis::BorealisService::GetForProfile(profile)->AppLauncher().Launch(
-        borealis::kClientAppId, base::DoNothing());
+  // TODO(b/218403711): Remove these messages. These messages are shown to users
+  // of the Borealis Alpha based on the status of their device, however they are
+  // not translated, because this API is only a temporary measure put in place
+  // until borealis' installer UX is finalized.
+  if (new_allowed == borealis::BorealisFeatures::AllowStatus::kAllowed) {
+    if (launch) {
+      // When requested, setting the correct token should have the effect of
+      // running the client app, which will bring up the installer or launch the
+      // client as needed.
+      borealis::BorealisService::GetForProfile(profile)->AppLauncher().Launch(
+          borealis::kClientAppId, base::DoNothing());
+    }
+    std::unique_ptr<dbus::Response> response =
+        dbus::Response::FromMethodCall(method_call);
+    dbus::MessageWriter writer(response.get());
+    writer.AppendString(borealis::kInsertCoinSuccessMessage);
+    std::move(response_sender).Run(std::move(response));
+    return;
+  }
+  std::stringstream ss;
+  if (new_allowed == borealis::BorealisFeatures::AllowStatus::kIncorrectToken) {
+    ss << borealis::kInsertCoinRejectMessage;
+  } else {
+    ss << new_allowed;
   }
   std::move(response_sender)
-      .Run(AllowStatusToResponse(new_allowed, method_call));
+      .Run(dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+                                               ss.str()));
 }
 
 template <typename T>
 void HandleReturn(dbus::MethodCall* method_call,
                   dbus::ExportedObject::ResponseSender response_sender,
-                  base::expected<T, std::string> response) {
-  if (!response.has_value()) {
+                  borealis::Expected<T, std::string> response) {
+  if (!response) {
     std::move(response_sender)
         .Run(dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-                                                 response.error()));
+                                                 response.Error()));
     return;
   }
   std::unique_ptr<dbus::Response> dbus_response =
       dbus::Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(dbus_response.get());
-  writer.AppendProtoAsArrayOfBytes(response.value());
+  writer.AppendProtoAsArrayOfBytes(response.Value());
   std::move(response_sender).Run(std::move(dbus_response));
 }
 
@@ -131,11 +135,9 @@ void VmLaunchServiceProvider::ProvideVmToken(
     return;
   }
 
-  // TODO(b/317157600): Tokens are no longer required so we have the option to
-  // remove this dbus method entirely.
-  borealis::BorealisService::GetForProfile(profile)->Features().IsAllowed(
-      base::BindOnce(&OnAllowChecked, profile, method_call,
-                     std::move(response_sender), launch));
+  borealis::BorealisService::GetForProfile(profile)->Features().SetVmToken(
+      token, base::BindOnce(&OnTokenChecked, profile, method_call,
+                            std::move(response_sender), launch));
 }
 
 void VmLaunchServiceProvider::EnsureVmLaunched(

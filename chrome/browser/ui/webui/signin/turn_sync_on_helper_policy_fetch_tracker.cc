@@ -54,7 +54,6 @@ class PolicyFetchTracker
         policy::UserPolicySigninServiceFactory::GetForProfile(profile_);
     policy_service->FetchPolicyForSignedInUser(
         AccountIdFromAccountInfo(account_info_), dm_token_, client_id_,
-        user_affiliation_ids_,
         profile_->GetDefaultStoragePartition()
             ->GetURLLoaderFactoryForBrowserProcess(),
         base::BindOnce(&PolicyFetchTracker::OnPolicyFetchComplete,
@@ -69,7 +68,7 @@ class PolicyFetchTracker
     if (provider != profile_->GetUserCloudPolicyManager())
       return;
     VLOG(2) << "Policies after sign in:";
-    VLOG(2) << policy::PolicyConversions(
+    VLOG(2) << policy::DictionaryPolicyConversions(
                    std::make_unique<policy::ChromePolicyConversionsClient>(
                        profile_))
                    .ToJSON();
@@ -87,11 +86,9 @@ class PolicyFetchTracker
   }
 
  private:
-  void OnRegisteredForPolicy(
-      base::OnceCallback<void(bool)> callback,
-      const std::string& dm_token,
-      const std::string& client_id,
-      const std::vector<std::string>& user_affiliation_ids) {
+  void OnRegisteredForPolicy(base::OnceCallback<void(bool)> callback,
+                             const std::string& dm_token,
+                             const std::string& client_id) {
     // Indicates that the account isn't managed OR there is an error during the
     // registration
     if (dm_token.empty()) {
@@ -105,7 +102,6 @@ class PolicyFetchTracker
     DCHECK(client_id_.empty());
     dm_token_ = dm_token;
     client_id_ = client_id;
-    user_affiliation_ids_ = user_affiliation_ids;
     std::move(callback).Run(/*is_managed_account=*/true);
   }
 
@@ -137,7 +133,6 @@ class PolicyFetchTracker
   // a new profile for an enterprise user or not.
   std::string dm_token_;
   std::string client_id_;
-  std::vector<std::string> user_affiliation_ids_;
 
   base::OnceClosure on_policy_updated_callback_;
   base::OneShotTimer policy_update_timeout_timer_;
@@ -185,7 +180,7 @@ class LacrosPrimaryProfilePolicyFetchTracker
     return profile_->GetProfilePolicyConnector()->IsManaged();
   }
 
-  raw_ptr<Profile> profile_;
+  Profile* profile_;
 };
 #endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
 }  // namespace

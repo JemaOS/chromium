@@ -4,8 +4,7 @@
 
 /** @fileoverview Test implementation of SyncBrowserProxy. */
 
-import type {AccountInfo, SyncBrowserProxy, SyncInfo} from 'chrome://password-manager/password_manager.js';
-import {TrustedVaultBannerState} from 'chrome://password-manager/password_manager.js';
+import {AccountInfo, SyncBrowserProxy, SyncInfo, TrustedVaultBannerState} from 'chrome://password-manager/password_manager.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
 /**

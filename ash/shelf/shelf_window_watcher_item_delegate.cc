@@ -57,8 +57,7 @@ void ShelfWindowWatcherItemDelegate::ItemSelected(
 void ShelfWindowWatcherItemDelegate::GetContextMenu(
     int64_t display_id,
     GetContextMenuCallback callback) {
-  auto menu = std::make_unique<ShelfContextMenuModel>(this, display_id,
-                                                      /*menu_in_shelf=*/false);
+  auto menu = std::make_unique<ShelfContextMenuModel>(this, display_id);
   // Show a default context menu with just an extra close item.
   menu->AddItemWithStringIdAndIcon(
       CommandId::MENU_CLOSE, IDS_CLOSE,

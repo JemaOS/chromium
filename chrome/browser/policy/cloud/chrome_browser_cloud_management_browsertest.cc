@@ -18,6 +18,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/thread_pool.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/threading/thread_restrictions.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
@@ -44,6 +45,7 @@
 #include "components/policy/core/common/cloud/machine_level_user_cloud_policy_store.h"
 #include "components/policy/core/common/cloud/mock_cloud_external_data_manager.h"
 #include "components/policy/core/common/cloud/mock_device_management_service.h"
+#include "components/policy/core/common/features.h"
 #include "components/policy/core/common/policy_switches.h"
 #include "components/policy/policy_constants.h"
 #include "components/policy/test_support/client_storage.h"
@@ -114,6 +116,9 @@ void UpdatePolicyStorage(PolicyStorage* policy_storage) {
   policy_storage->SetPolicyPayload(
       dm_protocol::kChromeMachineLevelUserCloudPolicyType,
       settings.SerializeAsString());
+  policy_storage->SetPolicyPayload(
+      dm_protocol::kChromeMachineLevelUserCloudPolicyAndroidType,
+      settings.SerializeAsString());
   policy_storage->set_robot_api_auth_code("fake_auth_code");
   policy_storage->set_service_account_identity("foo@bar.com");
 }
@@ -124,6 +129,7 @@ ClientStorage::ClientInfo CreateTestClientInfo() {
   client_info.device_token = kDMToken;
   client_info.allowed_policy_types.insert(
       {dm_protocol::kChromeMachineLevelUserCloudPolicyType,
+       dm_protocol::kChromeMachineLevelUserCloudPolicyAndroidType,
        dm_protocol::kChromeMachineLevelExtensionCloudPolicyType});
   return client_info;
 }
@@ -275,18 +281,18 @@ class ChromeBrowserCloudManagementServiceIntegrationTest
           .WillOnce(InvokeWithoutArgs(&run_loop, &base::RunLoop::QuitWhenIdle));
     }
 
-    auto params = DMServerJobConfiguration::CreateParams::WithoutClient(
-        DeviceManagementService::JobConfiguration::TYPE_TOKEN_ENROLLMENT,
-        service_.get(), kClientID,
-        g_browser_process->system_network_context_manager()
-            ->GetSharedURLLoaderFactory());
-    params.auth_data = !enrollment_token.empty()
-                           ? DMAuth::FromEnrollmentToken(enrollment_token)
-                           : DMAuth::NoAuth();
-
     std::unique_ptr<FakeJobConfiguration> config =
         std::make_unique<FakeJobConfiguration>(
-            std::move(params),
+            service_.get(),
+            DeviceManagementService::JobConfiguration::TYPE_TOKEN_ENROLLMENT,
+            kClientID,
+            /*critical=*/false,
+            !enrollment_token.empty()
+                ? DMAuth::FromEnrollmentToken(enrollment_token)
+                : DMAuth::NoAuth(),
+            /*oauth_token=*/absl::nullopt,
+            g_browser_process->system_network_context_manager()
+                ->GetSharedURLLoaderFactory(),
             base::BindOnce(
                 &ChromeBrowserCloudManagementServiceIntegrationTest::OnJobDone,
                 base::Unretained(this)),
@@ -315,21 +321,20 @@ class ChromeBrowserCloudManagementServiceIntegrationTest
     EXPECT_CALL(*this, OnJobDone(_, testing::Eq(DM_STATUS_SUCCESS), _, _))
         .WillOnce(InvokeWithoutArgs(&run_loop, &base::RunLoop::QuitWhenIdle));
 
-    auto params = DMServerJobConfiguration::CreateParams::WithoutClient(
+    std::unique_ptr<FakeJobConfiguration> config = std::make_unique<
+        FakeJobConfiguration>(
+        service_.get(),
         DeviceManagementService::JobConfiguration::TYPE_CHROME_DESKTOP_REPORT,
-        service_.get(), kClientID,
+        kClientID,
+        /*critical=*/false, DMAuth::FromEnrollmentToken(kDMToken),
+        /*oauth_token=*/std::string(),
         g_browser_process->system_network_context_manager()
-            ->GetSharedURLLoaderFactory());
-    params.auth_data = DMAuth::FromEnrollmentToken(kDMToken);
-
-    std::unique_ptr<FakeJobConfiguration> config =
-        std::make_unique<FakeJobConfiguration>(
-            std::move(params),
-            base::BindOnce(
-                &ChromeBrowserCloudManagementServiceIntegrationTest::OnJobDone,
-                base::Unretained(this)),
-            /* retry_callback */ base::DoNothing(),
-            /* should_retry_callback */ base::DoNothing());
+            ->GetSharedURLLoaderFactory(),
+        base::BindOnce(
+            &ChromeBrowserCloudManagementServiceIntegrationTest::OnJobDone,
+            base::Unretained(this)),
+        /* retry_callback */ base::DoNothing(),
+        /* should_retry_callback */ base::DoNothing());
 
     std::unique_ptr<DeviceManagementService::Job> job =
         service_->CreateJob(std::move(config));
@@ -442,9 +447,9 @@ class MachineLevelUserCloudPolicyManagerTest : public PlatformBrowserTest {
     CloudPolicyStoreObserverStub observer;
 
     base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir);
-    DMToken browser_dm_token = dm_token.empty()
-                                   ? DMToken::CreateEmptyToken()
-                                   : DMToken::CreateValidToken(dm_token);
+    DMToken browser_dm_token =
+        dm_token.empty() ? DMToken::CreateEmptyTokenForTesting()
+                         : DMToken::CreateValidTokenForTesting(dm_token);
     std::unique_ptr<MachineLevelUserCloudPolicyStore> policy_store =
         MachineLevelUserCloudPolicyStore::Create(
             browser_dm_token, client_id, base::FilePath(), user_data_dir,
@@ -599,6 +604,13 @@ IN_PROC_BROWSER_TEST_P(ChromeBrowserCloudManagementEnrollmentTest, MAYBE_Test) {
   delegate_.MaybeCheckTotalBrowserCount(1u);
 
   VerifyEnrollmentResult();
+#if BUILDFLAG(IS_MAC)
+  // Verify the last mericis of launch is recorded in
+  // applicationDidFinishNotification.
+  EXPECT_EQ(1u, histogram_tester_
+                    .GetAllSamples("Startup.OSX.DockIconWillFinishBouncing")
+                    .size());
+#endif
 }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -647,6 +659,8 @@ class MachineLevelUserCloudPolicyPolicyFetchTest
       public ::testing::WithParamInterface<std::tuple<std::string, bool>> {
  public:
   MachineLevelUserCloudPolicyPolicyFetchTest() : observer_(&delegate_) {
+    feature_list_.InitAndEnableFeature(features::kDmTokenDeletion);
+
     BrowserDMTokenStorage::SetForTesting(&storage_);
     storage_.SetEnrollmentToken(kEnrollmentToken);
     storage_.SetClientId(kClientID);
@@ -715,10 +729,10 @@ class MachineLevelUserCloudPolicyPolicyFetchTest
   std::unique_ptr<EmbeddedPolicyTestServer> test_server_;
   FakeBrowserDMTokenStorage storage_;
   base::ScopedTempDir temp_dir_;
+  base::test::ScopedFeatureList feature_list_;
 };
 
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
-    BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC)
 // TODO(crbug.com/1235367): Test is flaky.
 IN_PROC_BROWSER_TEST_P(MachineLevelUserCloudPolicyPolicyFetchTest,
                        DISABLED_Test) {

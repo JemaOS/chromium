@@ -41,10 +41,6 @@ var PermissionsHelper = (function() {
         return {name: "nfc"};
       case "display-capture":
         return {name: "display-capture"};
-      case "captured-surface-control":
-          return {name: "captured-surface-control"};
-      case "speaker-selection":
-        return {name: "speaker-selection"};
       default:
         throw "Invalid permission name provided";
     }

@@ -171,24 +171,17 @@ promise_test(async t => {
 
 promise_test(async t => {
   // Establish a WebTransport session.
-  const wt = new WebTransport(webtransport_url('echo_datagram_length.py'));
+  const wt = new WebTransport(webtransport_url('echo.py'));
   await wt.ready;
 
   const writer = wt.datagrams.writable.getWriter();
   const reader = wt.datagrams.readable.getReader();
 
   // Write and read max-size datagram.
-  const maxDatagramSize = wt.datagrams.maxDatagramSize;
-  await writer.write(new Uint8Array(maxDatagramSize));
-
-  // the server should echo the datagram length encoded in JSON
+  await writer.write(new Uint8Array(wt.datagrams.maxDatagramSize));
   const { value: token, done } = await reader.read();
   assert_false(done);
-
-  const decoder = new TextDecoder();
-  const datagramStr = decoder.decode(token);
-  const jsonObject = JSON.parse(datagramStr);
-  assert_equals(jsonObject['length'], maxDatagramSize);
+  assert_equals(token.length, wt.datagrams.maxDatagramSize);
 }, 'Transfer max-size datagram');
 
 promise_test(async t => {

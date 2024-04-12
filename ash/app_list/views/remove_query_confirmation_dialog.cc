@@ -7,7 +7,7 @@
 #include <memory>
 #include <utility>
 
-#include "ash/accessibility/accessibility_controller.h"
+#include "ash/accessibility/accessibility_controller_impl.h"
 #include "ash/public/cpp/ash_typography.h"
 #include "ash/public/cpp/view_shadow.h"
 #include "ash/shell.h"
@@ -21,7 +21,6 @@
 #include "chromeos/constants/chromeos_features.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/color/color_id.h"
 #include "ui/compositor/layer.h"
@@ -100,7 +99,7 @@ RemoveQueryConfirmationDialog::RemoveQueryConfirmationDialog(
   title_->layer()->SetFillsBoundsOpaquely(false);
   // Ignore labels for accessibility - the accessible name is defined for the
   // whole dialog view.
-  title_->GetViewAccessibility().SetIsIgnored(true);
+  title_->GetViewAccessibility().OverrideIsIgnored(true);
 
   // Add dialog body.
   body_ =
@@ -125,7 +124,7 @@ RemoveQueryConfirmationDialog::RemoveQueryConfirmationDialog(
   body_->layer()->SetFillsBoundsOpaquely(false);
   // Ignore labels for accessibility - the accessible name is defined for the
   // whole dialog view.
-  body_->GetViewAccessibility().SetIsIgnored(true);
+  body_->GetViewAccessibility().OverrideIsIgnored(true);
 
   auto run_callback = [](RemoveQueryConfirmationDialog* dialog, bool accept) {
     if (!dialog->confirm_callback_)
@@ -167,6 +166,10 @@ RemoveQueryConfirmationDialog::RemoveQueryConfirmationDialog(
 
 RemoveQueryConfirmationDialog::~RemoveQueryConfirmationDialog() = default;
 
+const char* RemoveQueryConfirmationDialog::GetClassName() const {
+  return "RemoveQueryConfirmationDialog";
+}
+
 gfx::Size RemoveQueryConfirmationDialog::CalculatePreferredSize() const {
   const int default_width = kDialogWidth;
   return gfx::Size(default_width, GetHeightForWidth(default_width));
@@ -183,8 +186,5 @@ void RemoveQueryConfirmationDialog::GetAccessibleNodeData(
        l10n_util::GetStringUTF16(IDS_REMOVE_ZERO_STATE_SUGGESTION_DETAILS)},
       u", "));
 }
-
-BEGIN_METADATA(RemoveQueryConfirmationDialog)
-END_METADATA
 
 }  // namespace ash

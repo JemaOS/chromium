@@ -5,7 +5,6 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_WIDGET_WIDGET_BASE_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_WIDGET_WIDGET_BASE_H_
 
-#include "base/memory/raw_ptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "cc/animation/animation_timeline.h"
@@ -72,10 +71,8 @@ class WidgetScheduler;
 //
 // Co-orindates handled in this class can be in the "blink coordinate space"
 // which is scaled DSF baked in.
-class PLATFORM_EXPORT WidgetBase
-    : public mojom::blink::Widget,
-      public LayerTreeViewDelegate,
-      public mojom::blink::RenderInputRouterClient {
+class PLATFORM_EXPORT WidgetBase : public mojom::blink::Widget,
+                                   public LayerTreeViewDelegate {
  public:
   WidgetBase(
       WidgetBaseClient* client,
@@ -104,8 +101,7 @@ class PLATFORM_EXPORT WidgetBase
       const display::ScreenInfos& screen_infos,
       const cc::LayerTreeSettings* settings,
       base::WeakPtr<mojom::blink::FrameWidgetInputHandler>
-          frame_widget_input_handler,
-      WidgetBase* previous_widget);
+          frame_widget_input_handler);
 
   // Similar to `InitializeCompositing()` but for non-compositing widgets.
   // Exactly one of either `InitializeCompositing()` or this method must
@@ -124,7 +120,7 @@ class PLATFORM_EXPORT WidgetBase
 
   void AddPresentationCallback(
       uint32_t frame_token,
-      base::OnceCallback<void(const viz::FrameTimingDetails&)> callback);
+      base::OnceCallback<void(base::TimeTicks)> callback);
 
 #if BUILDFLAG(IS_APPLE)
   void AddCoreAnimationErrorCodeCallback(
@@ -132,13 +128,11 @@ class PLATFORM_EXPORT WidgetBase
       base::OnceCallback<void(gfx::CALayerResult)> callback);
 #endif
 
-  // mojom::blink::RenderInputRouterClient overrides;
+  // mojom::blink::Widget overrides:
+  void ForceRedraw(mojom::blink::Widget::ForceRedrawCallback callback) override;
   void GetWidgetInputHandler(
       mojo::PendingReceiver<mojom::blink::WidgetInputHandler> request,
       mojo::PendingRemote<mojom::blink::WidgetInputHandlerHost> host) override;
-
-  // mojom::blink::Widget overrides:
-  void ForceRedraw(mojom::blink::Widget::ForceRedrawCallback callback) override;
   void UpdateVisualProperties(
       const VisualProperties& visual_properties) override;
   void UpdateScreenRects(const gfx::Rect& widget_screen_rect,
@@ -152,11 +146,8 @@ class PLATFORM_EXPORT WidgetBase
       mojom::blink::RecordContentToVisibleTimeRequestPtr visible_time_request)
       override;
   void CancelSuccessfulPresentationTimeRequest() override;
-  void SetupRenderInputRouterConnections(
-      mojo::PendingReceiver<mojom::blink::RenderInputRouterClient> request)
-      override;
 
-  // LayerTreeViewDelegate overrides:
+  // LayerTreeDelegate overrides:
   // Applies viewport related properties during a commit from the compositor
   // thread.
   void ApplyViewportChanges(const cc::ApplyViewportChangesArgs& args) override;
@@ -167,7 +158,7 @@ class PLATFORM_EXPORT WidgetBase
   void OnDeferCommitsChanged(
       bool defer_status,
       cc::PaintHoldingReason reason,
-      std::optional<cc::PaintHoldingCommitTrigger> trigger) override;
+      absl::optional<cc::PaintHoldingCommitTrigger> trigger) override;
   void OnCommitRequested() override;
   void DidBeginMainFrame() override;
   void RequestNewLayerTreeFrameSink(
@@ -194,8 +185,6 @@ class PLATFORM_EXPORT WidgetBase
   void RunPaintBenchmark(int repeat_count,
                          cc::PaintBenchmarkResult& result) override;
   void ScheduleAnimationForWebTests() override;
-  std::unique_ptr<cc::RenderFrameMetadataObserver> CreateRenderFrameObserver()
-      override;
 
   cc::AnimationHost* AnimationHost() const;
   cc::AnimationTimeline* ScrollAnimationTimeline() const;
@@ -392,13 +381,9 @@ class PLATFORM_EXPORT WidgetBase
   // Returns the maximum bounds for buffers allocated for rasterization and
   // compositing.
   // Returns null if the compositing stack has not been initialized yet.
-  std::optional<int> GetMaxRenderBufferBounds() const;
-
-  bool WillBeDestroyed() const { return will_be_destroyed_; }
+  absl::optional<int> GetMaxRenderBufferBounds() const;
 
  private:
-  static void AssertAreCompatible(const WidgetBase& a, const WidgetBase& b);
-
   bool CanComposeInline();
   void UpdateTextInputStateInternal(bool show_virtual_keyboard,
                                     bool immediate_request);
@@ -446,10 +431,6 @@ class PLATFORM_EXPORT WidgetBase
       LayerTreeFrameSinkCallback callback,
       scoped_refptr<gpu::GpuChannelHost> gpu_channel_host);
 
-  // Detaches the LayerTreeView from this widget and attaches it to
-  // `new_widget`, if provided.
-  void DisconnectLayerTreeView(WidgetBase* new_widget);
-
   // Indicates that we are never visible, so never produce graphical output.
   const bool never_composited_;
   // Indicates this is for a child local root or a nested main frame.
@@ -463,12 +444,10 @@ class PLATFORM_EXPORT WidgetBase
 
   // The client which handles behaviour specific to the type of widget.
   // It's the owner of the widget and will outlive this class.
-  const raw_ptr<WidgetBaseClient> client_;
+  WidgetBaseClient* const client_;
 
   mojo::AssociatedRemote<mojom::blink::WidgetHost> widget_host_;
   mojo::AssociatedReceiver<mojom::blink::Widget> receiver_;
-
-  mojo::Receiver<mojom::blink::RenderInputRouterClient> input_receiver_{this};
 
   std::unique_ptr<LayerTreeView> layer_tree_view_;
   scoped_refptr<WidgetInputHandlerManager> widget_input_handler_manager_;
@@ -542,7 +521,7 @@ class PLATFORM_EXPORT WidgetBase
 
   // It is possible that one ImeEventGuard is nested inside another
   // ImeEventGuard. We keep track of the outermost one, and update it as needed.
-  raw_ptr<ImeEventGuard> ime_event_guard_ = nullptr;
+  ImeEventGuard* ime_event_guard_ = nullptr;
 
   // The screen rects of the view and the window that contains it. These do not
   // include any scaling by device scale factor, so are logical pixels not
@@ -557,7 +536,7 @@ class PLATFORM_EXPORT WidgetBase
   // A pending window rect that is inflight and hasn't been acknowledged by the
   // browser yet. This should only be set if |pending_window_rect_count_| is
   // non-zero.
-  std::optional<gfx::Rect> pending_window_rect_;
+  absl::optional<gfx::Rect> pending_window_rect_;
 
   // The size of the visible viewport (in DIPs).
   // TODO(dtapuska): Figure out if we can change this to Blink Space.
@@ -570,9 +549,6 @@ class PLATFORM_EXPORT WidgetBase
   // Indicates that we shouldn't bother generated paint events.
   bool is_hidden_;
 
-  // The task_runner on which Widget mojo interfaces are bound.
-  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
-
   // Delayed callback to ensure we have only one delayed ScheduleAnimation()
   // call going at a time.
   TaskRunnerTimer<WidgetBase> request_animation_after_delay_timer_;
@@ -580,16 +556,11 @@ class PLATFORM_EXPORT WidgetBase
   // The task runner on the main thread used for compositor tasks.
   scoped_refptr<base::SingleThreadTaskRunner>
       main_thread_compositor_task_runner_;
-  base::PlatformThreadId main_thread_id_ = base::kInvalidThreadId;
 
   // The maximum bounds for buffers allocated for rasterization and compositing.
   // Set when the compositor is initialized.
-  std::optional<int> max_render_buffer_bounds_gpu_;
-  std::optional<int> max_render_buffer_bounds_sw_;
-
-  // Tracks when the compositing setup for this widget has been torn down or
-  // disconnected in preparation to destroy this widget.
-  bool will_be_destroyed_ = false;
+  absl::optional<int> max_render_buffer_bounds_gpu_;
+  absl::optional<int> max_render_buffer_bounds_sw_;
 
   base::WeakPtrFactory<WidgetBase> weak_ptr_factory_{this};
 };

@@ -27,10 +27,9 @@ public class MessageCardViewUtils {
      */
     public static void setTitleTextAppearance(
             TextView title, boolean isIncognito, boolean isLargeMessageCard) {
-        int titleTextAppearance =
-                (isLargeMessageCard)
-                        ? TabUiThemeProvider.getLargeMessageCardTitleTextAppearance(isIncognito)
-                        : TabUiThemeProvider.getMessageCardTitleTextAppearance(isIncognito);
+        int titleTextAppearance = (isLargeMessageCard)
+                ? TabUiThemeProvider.getLargeMessageCardTitleTextAppearance(isIncognito)
+                : TabUiThemeProvider.getMessageCardTitleTextAppearance(isIncognito);
         ApiCompatibilityUtils.setTextAppearance(title, titleTextAppearance);
     }
 
@@ -43,11 +42,9 @@ public class MessageCardViewUtils {
      */
     public static void setDescriptionTextAppearance(
             TextView description, boolean isIncognito, boolean isLargeMessageCard) {
-        int descriptionTextAppearance =
-                (isLargeMessageCard)
-                        ? TabUiThemeProvider.getLargeMessageCardDescriptionTextAppearance(
-                                isIncognito)
-                        : TabUiThemeProvider.getMessageCardDescriptionTextAppearance(isIncognito);
+        int descriptionTextAppearance = (isLargeMessageCard)
+                ? TabUiThemeProvider.getLargeMessageCardDescriptionTextAppearance(isIncognito)
+                : TabUiThemeProvider.getMessageCardDescriptionTextAppearance(isIncognito);
         ApiCompatibilityUtils.setTextAppearance(description, descriptionTextAppearance);
     }
 
@@ -60,11 +57,9 @@ public class MessageCardViewUtils {
      */
     public static void setActionButtonTextAppearance(
             ButtonCompat actionButton, boolean isIncognito, boolean isLargeMessageCard) {
-        int actionButtonTextAppearance =
-                (isLargeMessageCard)
-                        ? TabUiThemeProvider.getLargeMessageCardActionButtonTextAppearance(
-                                isIncognito)
-                        : TabUiThemeProvider.getMessageCardActionButtonTextAppearance(isIncognito);
+        int actionButtonTextAppearance = (isLargeMessageCard)
+                ? TabUiThemeProvider.getLargeMessageCardActionButtonTextAppearance(isIncognito)
+                : TabUiThemeProvider.getMessageCardActionButtonTextAppearance(isIncognito);
 
         ApiCompatibilityUtils.setTextAppearance(actionButton, actionButtonTextAppearance);
     }
@@ -82,9 +77,8 @@ public class MessageCardViewUtils {
             return;
         }
         actionButton.setButtonColor(
-                ColorStateList.valueOf(
-                        TabUiThemeProvider.getLargeMessageCardActionButtonColor(
-                                actionButton.getContext(), isIncognito)));
+                ColorStateList.valueOf(TabUiThemeProvider.getLargeMessageCardActionButtonColor(
+                        actionButton.getContext(), isIncognito)));
     }
 
     /**
@@ -109,8 +103,7 @@ public class MessageCardViewUtils {
      * @param isIncognito Whether the tint is used for incognito mode.
      */
     public static void setCloseButtonTint(ChromeImageView closeButton, boolean isIncognito) {
-        ImageViewCompat.setImageTintList(
-                closeButton,
+        ImageViewCompat.setImageTintList(closeButton,
                 TabUiThemeProvider.getMessageCardCloseButtonTintList(
                         closeButton.getContext(), isIncognito));
     }

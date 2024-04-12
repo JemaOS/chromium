@@ -15,13 +15,17 @@ import android.app.Activity;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.widget.LinearLayout;
 
 import androidx.test.filters.SmallTest;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -34,12 +38,14 @@ import org.chromium.base.task.TaskTraits;
 import org.chromium.base.task.test.ShadowPostTask;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.suggestions.ImageFetcher;
 import org.chromium.chrome.browser.suggestions.SiteSuggestion;
 import org.chromium.chrome.browser.suggestions.SuggestionsConfig.TileStyle;
+import org.chromium.chrome.test.util.browser.Features;
+import org.chromium.chrome.test.util.browser.Features.EnableFeatures;
 import org.chromium.components.browser_ui.widget.RoundedIconGenerator;
 import org.chromium.components.favicon.IconType;
 import org.chromium.components.favicon.LargeIconBridge.LargeIconCallback;
@@ -54,15 +60,14 @@ import java.util.List;
 
 /** A simple test for {@link TileRenderer} using real {@link android.view.View} objects. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(
-        manifest = Config.NONE,
-        shadows = {ShadowPostTask.class})
+@Config(manifest = Config.NONE, shadows = {ShadowPostTask.class})
+@EnableFeatures({ChromeFeatureList.HISTORY_ORGANIC_REPEATABLE_QUERIES})
 public class TileRendererTest {
     /**
      * Backend that substitutes normal PostTask operations. Allow us to coordinate task execution
      * without having to wait or yield.
      */
-    private static class ShadowPostTaskImpl implements ShadowPostTask.TestImpl {
+    private static class ShadowPostTaskImpl extends ShadowPostTask.TestImpl {
         private final List<Runnable> mRunnables = new ArrayList<>();
 
         @Override
@@ -79,29 +84,42 @@ public class TileRendererTest {
     }
 
     private static final int TITLE_LINES = 1;
-    private static final GURL TEST_URL = JUnitTestGURLs.EXAMPLE_URL;
+    private static final GURL TEST_URL = JUnitTestGURLs.getGURL(JUnitTestGURLs.EXAMPLE_URL);
 
-    @Mock private ImageFetcher mMockImageFetcher;
+    @Rule
+    public TestRule mFeatures = new Features.JUnitProcessor();
 
-    @Mock private TileGroup.TileSetupDelegate mTileSetupDelegate;
+    @Mock
+    private ImageFetcher mMockImageFetcher;
 
-    @Mock private TileGroup.TileInteractionDelegate mTileInteractionDelegate;
+    @Mock
+    private TileGroup.TileSetupDelegate mTileSetupDelegate;
 
-    @Mock private Runnable mTileSetupCallback;
+    @Mock
+    private TileGroup.TileInteractionDelegate mTileInteractionDelegate;
 
-    @Mock private TemplateUrlService mMockTemplateUrlService;
+    @Mock
+    private Runnable mTileSetupCallback;
 
-    @Mock private Profile mProfile;
+    @Mock
+    private TemplateUrlService mMockTemplateUrlService;
 
-    @Mock private RoundedIconGenerator mIconGenerator;
+    @Mock
+    private Profile mProfile;
 
-    @Mock private Bitmap mBitmap;
+    @Mock
+    private RoundedIconGenerator mIconGenerator;
 
-    @Mock private ColorStateList mFakeColorStateList;
+    @Mock
+    private Bitmap mBitmap;
+
+    @Mock
+    private ColorStateList mFakeColorStateList;
 
     private ShadowPostTaskImpl mPostTaskRunner;
     private Activity mActivity;
     private LinearLayout mSharedParent;
+    private final ArgumentCaptor<Drawable> mIconCaptor = ArgumentCaptor.forClass(Drawable.class);
     private final ArgumentCaptor<LargeIconCallback> mImageFetcherCallbackCaptor =
             ArgumentCaptor.forClass(LargeIconCallback.class);
 
@@ -115,7 +133,7 @@ public class TileRendererTest {
         mPostTaskRunner = new ShadowPostTaskImpl();
         ShadowPostTask.setTestImpl(mPostTaskRunner);
 
-        ProfileManager.setLastUsedProfileForTesting(mProfile);
+        Profile.setLastUsedProfileForTesting(mProfile);
         TemplateUrlServiceFactory.setInstanceForTesting(mMockTemplateUrlService);
 
         mSharedParent = new LinearLayout(mActivity);
@@ -132,18 +150,23 @@ public class TileRendererTest {
         doReturn(mBitmap).when(mIconGenerator).generateIconForUrl(any(GURL.class));
     }
 
+    @After
+    public void tearDown() {
+        Profile.setLastUsedProfileForTesting(null);
+        TemplateUrlServiceFactory.setInstanceForTesting(null);
+    }
+
     private SuggestionsTileView buildTileView(@TileStyle int style, int titleLines) {
-        return TestThreadUtils.runOnUiThreadBlockingNoException(
-                () -> {
-                    TileRenderer tileRenderer =
-                            new TileRenderer(mActivity, style, titleLines, mMockImageFetcher);
-                    tileRenderer.setIconGeneratorForTesting(mIconGenerator);
-                    tileRenderer.onNativeInitializationReady();
-                    SuggestionsTileView tileView =
-                            tileRenderer.buildTileView(mTile, mSharedParent, mTileSetupDelegate);
-                    Assert.assertNotNull(tileView);
-                    return tileView;
-                });
+        return TestThreadUtils.runOnUiThreadBlockingNoException(() -> {
+            TileRenderer tileRenderer =
+                    new TileRenderer(mActivity, style, titleLines, mMockImageFetcher);
+            tileRenderer.setIconGeneratorForTesting(mIconGenerator);
+            tileRenderer.onNativeInitializationReady();
+            SuggestionsTileView tileView =
+                    tileRenderer.buildTileView(mTile, mSharedParent, mTileSetupDelegate);
+            Assert.assertNotNull(tileView);
+            return tileView;
+        });
     }
 
     @Test
@@ -173,9 +196,8 @@ public class TileRendererTest {
         verify(mMockImageFetcher, times(1))
                 .makeLargeIconRequest(any(), anyInt(), mImageFetcherCallbackCaptor.capture());
         verify(mTileSetupCallback, times(0)).run();
-        mImageFetcherCallbackCaptor
-                .getValue()
-                .onLargeIconAvailable(null, 0xace0ba5e, false, IconType.FAVICON);
+        mImageFetcherCallbackCaptor.getValue().onLargeIconAvailable(
+                null, 0xace0ba5e, false, IconType.FAVICON);
         verify(mTileSetupCallback, times(1)).run();
 
         Assert.assertEquals(IconType.FAVICON, mTile.getIconType());
@@ -195,9 +217,8 @@ public class TileRendererTest {
         verify(mMockImageFetcher, times(1))
                 .makeLargeIconRequest(any(), anyInt(), mImageFetcherCallbackCaptor.capture());
         verify(mTileSetupCallback, times(0)).run();
-        mImageFetcherCallbackCaptor
-                .getValue()
-                .onLargeIconAvailable(mBitmap, 0xace0ba5e, false, IconType.TOUCH_ICON);
+        mImageFetcherCallbackCaptor.getValue().onLargeIconAvailable(
+                mBitmap, 0xace0ba5e, false, IconType.TOUCH_ICON);
         verify(mTileSetupCallback, times(1)).run();
 
         Assert.assertEquals(IconType.TOUCH_ICON, mTile.getIconType());

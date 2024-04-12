@@ -91,14 +91,14 @@ class ASH_EXPORT MediaControllerImpl
   void MediaSessionInfoChanged(
       media_session::mojom::MediaSessionInfoPtr session_info) override;
   void MediaSessionMetadataChanged(
-      const std::optional<media_session::MediaMetadata>& metadata) override {}
+      const absl::optional<media_session::MediaMetadata>& metadata) override {}
   void MediaSessionActionsChanged(
       const std::vector<media_session::mojom::MediaSessionAction>& actions)
       override;
   void MediaSessionChanged(
-      const std::optional<base::UnguessableToken>& request_id) override {}
+      const absl::optional<base::UnguessableToken>& request_id) override {}
   void MediaSessionPositionChanged(
-      const std::optional<media_session::MediaPosition>& position) override {}
+      const absl::optional<media_session::MediaPosition>& position) override {}
 
  private:
   friend class MediaControllerTest;
@@ -158,7 +158,7 @@ class ASH_EXPORT MediaControllerImpl
   mojo::Receiver<media_session::mojom::MediaControllerObserver>
       media_controller_observer_receiver_{this};
 
-  raw_ptr<MediaClient> client_ = nullptr;
+  raw_ptr<MediaClient, ExperimentalAsh> client_ = nullptr;
 
   base::ObserverList<MediaCaptureObserver>::Unchecked observers_;
 };

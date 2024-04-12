@@ -226,12 +226,7 @@ WebAuthenticationProxyRegistrarFactory::WebAuthenticationProxyRegistrarFactory()
           // as Guest. So while we do return a `WebAuthenticationProxyRegistrar`
           // for those profile types `IsActive()` will always return false
           // there.
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedToOriginal()) {
   DependsOn(ExtensionRegistryFactory::GetInstance());
 }
 
@@ -246,10 +241,9 @@ WebAuthenticationProxyRegistrarFactory::GetForBrowserContext(
           ->GetServiceForBrowserContext(context, true));
 }
 
-std::unique_ptr<KeyedService>
-WebAuthenticationProxyRegistrarFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* WebAuthenticationProxyRegistrarFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<WebAuthenticationProxyRegistrar>(
+  return new WebAuthenticationProxyRegistrar(
       Profile::FromBrowserContext(context));
 }
 
@@ -311,7 +305,7 @@ void WebAuthenticationProxyService::CompleteCreateRequest(
              blink::mojom::WebAuthnDOMExceptionDetails::New(
                  details.error->name, details.error->message),
              nullptr);
-    std::move(respond_callback).Run(std::nullopt);
+    std::move(respond_callback).Run(absl::nullopt);
     return;
   }
   if (!details.response_json) {
@@ -345,7 +339,7 @@ void WebAuthenticationProxyService::CompleteGetRequest(
                             blink::mojom::WebAuthnDOMExceptionDetails::New(
                                 details.error->name, details.error->message),
                             nullptr);
-    std::move(respond_callback).Run(std::nullopt);
+    std::move(respond_callback).Run(absl::nullopt);
     return;
   }
   if (!details.response_json) {
@@ -457,8 +451,8 @@ void WebAuthenticationProxyService::OnParseCreateResponse(
         .Run("Parsing responseJson failed: " + value_or_error.error());
     return;
   }
-  auto [response, error] = webauthn::MakeCredentialResponseFromValue(
-      *value_or_error, webauthn::JSONUser::kRemoteDesktop);
+  auto [response, error] =
+      webauthn::MakeCredentialResponseFromValue(*value_or_error);
   if (!response) {
     std::move(respond_callback).Run("Invalid responseJson: " + error);
     return;
@@ -477,7 +471,7 @@ void WebAuthenticationProxyService::OnParseCreateResponse(
       absl::get<CreateCallback>(std::move(callback_it->second));
   pending_callbacks_.erase(callback_it);
   std::move(create_callback).Run(request_id, nullptr, std::move(response));
-  std::move(respond_callback).Run(std::nullopt);
+  std::move(respond_callback).Run(absl::nullopt);
 }
 
 void WebAuthenticationProxyService::OnParseGetResponse(
@@ -490,8 +484,8 @@ void WebAuthenticationProxyService::OnParseGetResponse(
         .Run("Parsing responseJson failed: " + value_or_error.error());
     return;
   }
-  auto [response, error] = webauthn::GetAssertionResponseFromValue(
-      *value_or_error, webauthn::JSONUser::kRemoteDesktop);
+  auto [response, error] =
+      webauthn::GetAssertionResponseFromValue(*value_or_error);
   if (!response) {
     std::move(respond_callback).Run("Invalid responseJson: " + error);
     return;
@@ -510,7 +504,7 @@ void WebAuthenticationProxyService::OnParseGetResponse(
       absl::get<GetCallback>(std::move(callback_it->second));
   pending_callbacks_.erase(callback_it);
   std::move(get_callback).Run(request_id, nullptr, std::move(response));
-  std::move(respond_callback).Run(std::nullopt);
+  std::move(respond_callback).Run(absl::nullopt);
 }
 
 bool WebAuthenticationProxyService::IsActive(const url::Origin& caller_origin) {
@@ -608,12 +602,7 @@ WebAuthenticationProxyServiceFactory::GetInstance() {
 WebAuthenticationProxyServiceFactory::WebAuthenticationProxyServiceFactory()
     : ProfileKeyedServiceFactory(
           "WebAuthenticationProxyService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(EventRouterFactory::GetInstance());
   DependsOn(ExtensionRegistryFactory::GetInstance());
 }

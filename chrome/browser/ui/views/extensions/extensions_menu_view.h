@@ -13,7 +13,7 @@
 #include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
-#include "chrome/browser/extensions/permissions/site_permissions_helper.h"
+#include "chrome/browser/extensions/site_permissions_helper.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/toolbar/toolbar_action_view_controller.h"
 #include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
@@ -36,9 +36,8 @@ class ExtensionMenuItemView;
 class ExtensionsMenuView : public views::BubbleDialogDelegateView,
                            public TabStripModelObserver,
                            public ToolbarActionsModel::Observer {
-  METADATA_HEADER(ExtensionsMenuView, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(ExtensionsMenuView);
   ExtensionsMenuView(views::View* anchor_view,
                      Browser* browser,
                      ExtensionsContainer* extensions_container);
@@ -88,8 +87,7 @@ class ExtensionsMenuView : public views::BubbleDialogDelegateView,
   void OnToolbarModelInitialized() override;
   void OnToolbarPinnedActionsChanged() override;
 
-  base::flat_set<raw_ptr<ExtensionMenuItemView, CtnExperimental>>
-  extensions_menu_items_for_testing() {
+  base::flat_set<ExtensionMenuItemView*> extensions_menu_items_for_testing() {
     return extensions_menu_items_;
   }
   views::Button* manage_extensions_button_for_testing() {
@@ -166,8 +164,7 @@ class ExtensionsMenuView : public views::BubbleDialogDelegateView,
 
   // A collection of all menu item views in the menu. Note that this is
   // *unordered*, since the menu puts extensions into different sections.
-  base::flat_set<raw_ptr<ExtensionMenuItemView, CtnExperimental>>
-      extensions_menu_items_;
+  base::flat_set<ExtensionMenuItemView*> extensions_menu_items_;
 
   raw_ptr<views::LabelButton> manage_extensions_button_ = nullptr;
 

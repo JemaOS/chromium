@@ -16,20 +16,17 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
-#include "chrome/browser/media/webrtc/desktop_media_picker_controller.h"
 #include "chrome/browser/media/webrtc/desktop_media_picker_manager.h"
 #include "chrome/browser/media/webrtc/fake_desktop_media_list.h"
 #include "chrome/browser/ui/views/desktop_capture/desktop_media_list_controller.h"
 #include "chrome/browser/ui/views/desktop_capture/desktop_media_list_view.h"
 #include "chrome/browser/ui/views/desktop_capture/desktop_media_picker_views_test_api.h"
 #include "chrome/browser/ui/views/desktop_capture/desktop_media_source_view.h"
-#include "chrome/grit/generated_resources.h"
 #include "chrome/test/views/chrome_test_views_delegate.h"
 #include "components/web_modal/test_web_contents_modal_dialog_host.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/events/event_utils.h"
 #include "ui/views/controls/button/checkbox.h"
@@ -190,8 +187,7 @@ class DesktopMediaPickerViewsTestBase : public testing::Test {
                                          "DesktopMediaPickerDialogView");
 
     const std::u16string kAppName = u"foo";
-    DesktopMediaPicker::Params picker_params{
-        DesktopMediaPicker::Params::RequestSource::kUnknown};
+    DesktopMediaPicker::Params picker_params;
     picker_params.context = test_helper_.GetContext();
     picker_params.app_name = kAppName;
     picker_params.target_name = kAppName;
@@ -231,12 +227,12 @@ class DesktopMediaPickerViewsTestBase : public testing::Test {
     run_loop_.Quit();
   }
 
-  std::optional<content::DesktopMediaID> WaitForPickerDone() {
+  absl::optional<content::DesktopMediaID> WaitForPickerDone() {
     run_loop_.Run();
     return picked_id_;
   }
 
-  std::optional<content::DesktopMediaID> picked_id() const {
+  absl::optional<content::DesktopMediaID> picked_id() const {
     return picked_id_;
   }
 
@@ -256,7 +252,7 @@ class DesktopMediaPickerViewsTestBase : public testing::Test {
   std::vector<DesktopMediaList::Type> delegated_source_types_;
 
   base::RunLoop run_loop_;
-  std::optional<content::DesktopMediaID> picked_id_;
+  absl::optional<content::DesktopMediaID> picked_id_;
   std::unique_ptr<views::test::WidgetDestroyedWaiter> widget_destroyed_waiter_;
 };
 
@@ -308,7 +304,7 @@ TEST_P(DesktopMediaPickerViewsTest, DoneCallbackNotCalledOnDoubleTap) {
 
   test_api_.SelectTabForSourceType(DesktopMediaList::Type::kScreen);
   if (test_api_.AudioSupported(DesktopMediaList::Type::kScreen)) {
-    test_api_.SetAudioSharingApprovedByUser(false);
+    test_api_.GetAudioShareCheckbox()->SetChecked(false);
   }
 
   media_lists_[DesktopMediaList::Type::kScreen]->AddSourceByFullMediaID(
@@ -325,23 +321,23 @@ TEST_P(DesktopMediaPickerViewsTest, CancelButtonAlwaysEnabled) {
 TEST_P(DesktopMediaPickerViewsTest, AudioCheckboxDefaultStates) {
   if (test_api_.AudioSupported(DesktopMediaList::Type::kScreen)) {
     test_api_.SelectTabForSourceType(DesktopMediaList::Type::kScreen);
-    EXPECT_FALSE(test_api_.IsAudioSharingApprovedByUser());
+    EXPECT_FALSE(test_api_.GetAudioShareCheckbox()->GetChecked());
   }
 
   if (test_api_.AudioSupported(DesktopMediaList::Type::kWindow)) {
     test_api_.SelectTabForSourceType(DesktopMediaList::Type::kWindow);
-    EXPECT_FALSE(test_api_.IsAudioSharingApprovedByUser());
+    EXPECT_FALSE(test_api_.GetAudioShareCheckbox()->GetChecked());
   }
 
   if (test_api_.AudioSupported(DesktopMediaList::Type::kWebContents)) {
     test_api_.SelectTabForSourceType(DesktopMediaList::Type::kWebContents);
-    EXPECT_TRUE(test_api_.IsAudioSharingApprovedByUser());
+    EXPECT_TRUE(test_api_.GetAudioShareCheckbox()->GetChecked());
   }
 
   if (PreferCurrentTab() &&
       test_api_.AudioSupported(DesktopMediaList::Type::kCurrentTab)) {
     test_api_.SelectTabForSourceType(DesktopMediaList::Type::kCurrentTab);
-    EXPECT_TRUE(test_api_.IsAudioSharingApprovedByUser());
+    EXPECT_TRUE(test_api_.GetAudioShareCheckbox()->GetChecked());
   }
 }
 
@@ -356,18 +352,21 @@ TEST_P(DesktopMediaPickerViewsTest, DistinctAudioCheckboxesHaveDistinctState) {
 
   // Record source_1's audio state.
   test_api_.SelectTabForSourceType(source_1);
-  const bool init_source_1_state = test_api_.IsAudioSharingApprovedByUser();
+  const bool init_source_1_state =
+      test_api_.GetAudioShareCheckbox()->GetChecked();
 
   // Toggle the audio state of source_2.
   test_api_.SelectTabForSourceType(source_2);
-  const bool init_source_2_state = test_api_.IsAudioSharingApprovedByUser();
+  const bool init_source_2_state =
+      test_api_.GetAudioShareCheckbox()->GetChecked();
   const bool source_2_state = !init_source_2_state;
-  test_api_.SetAudioSharingApprovedByUser(source_2_state);
-  ASSERT_EQ(test_api_.IsAudioSharingApprovedByUser(), source_2_state);
+  test_api_.GetAudioShareCheckbox()->SetChecked(source_2_state);
+  ASSERT_EQ(test_api_.GetAudioShareCheckbox()->GetChecked(), source_2_state);
 
   // The audio state of source_1 should remain unaffected.
   test_api_.SelectTabForSourceType(source_1);
-  ASSERT_EQ(test_api_.IsAudioSharingApprovedByUser(), init_source_1_state);
+  ASSERT_EQ(test_api_.GetAudioShareCheckbox()->GetChecked(),
+            init_source_1_state);
 }
 
 TEST_P(DesktopMediaPickerViewsTest, CurrentTabAndAnyTabShareAudioState) {
@@ -385,48 +384,35 @@ TEST_P(DesktopMediaPickerViewsTest, CurrentTabAndAnyTabShareAudioState) {
 
   // Record source_1's audio state.
   test_api_.SelectTabForSourceType(source_1);
-  const bool init_state = test_api_.IsAudioSharingApprovedByUser();
+  const bool init_state = test_api_.GetAudioShareCheckbox()->GetChecked();
 
   // source_2 should have the same audio state.
   test_api_.SelectTabForSourceType(source_2);
-  ASSERT_EQ(test_api_.IsAudioSharingApprovedByUser(), init_state);
+  ASSERT_EQ(test_api_.GetAudioShareCheckbox()->GetChecked(), init_state);
 
   // Toggle source_2's audio state.
   const bool new_state = !init_state;
-  test_api_.SetAudioSharingApprovedByUser(new_state);
-  ASSERT_EQ(test_api_.IsAudioSharingApprovedByUser(), new_state);
+  test_api_.GetAudioShareCheckbox()->SetChecked(new_state);
+  ASSERT_EQ(test_api_.GetAudioShareCheckbox()->GetChecked(), new_state);
 
   // source_1's audio state should be affected.
   test_api_.SelectTabForSourceType(source_1);
-  ASSERT_EQ(test_api_.IsAudioSharingApprovedByUser(), new_state);
+  ASSERT_EQ(test_api_.GetAudioShareCheckbox()->GetChecked(), new_state);
 }
 
 // Verifies the visible status of audio checkbox.
 // This test takes it as an article of faith that no checkbox is visible
 // when GetAudioShareCheckbox() returns false.
 TEST_P(DesktopMediaPickerViewsTest, AudioCheckboxVisibility) {
-  bool is_system_audio_capture_supported =
-      DesktopMediaPickerController::IsSystemAudioCaptureSupported(
-          DesktopMediaPicker::Params::RequestSource::kGetDisplayMedia);
   test_api_.SelectTabForSourceType(DesktopMediaList::Type::kScreen);
-  EXPECT_EQ(is_system_audio_capture_supported,
-            test_api_.HasAudioShareControl());
-  if (!is_system_audio_capture_supported) {
-    EXPECT_EQ(test_api_.GetAudioLabelText(),
-              l10n_util::GetStringUTF16(
-                  IDS_DESKTOP_MEDIA_PICKER_AUDIO_SHARE_HINT_TAB));
-  }
+  EXPECT_EQ(DesktopMediaPickerViews::kScreenAudioShareSupportedOnPlatform,
+            test_api_.GetAudioShareCheckbox() != nullptr);
 
   test_api_.SelectTabForSourceType(DesktopMediaList::Type::kWindow);
-  EXPECT_FALSE(test_api_.HasAudioShareControl());
-  EXPECT_EQ(test_api_.GetAudioLabelText(),
-            l10n_util::GetStringUTF16(
-                is_system_audio_capture_supported
-                    ? IDS_DESKTOP_MEDIA_PICKER_AUDIO_SHARE_HINT_TAB_OR_SCREEN
-                    : IDS_DESKTOP_MEDIA_PICKER_AUDIO_SHARE_HINT_TAB));
+  EXPECT_FALSE(test_api_.GetAudioShareCheckbox() != nullptr);
 
   test_api_.SelectTabForSourceType(DesktopMediaList::Type::kWebContents);
-  EXPECT_TRUE(test_api_.HasAudioShareControl());
+  EXPECT_TRUE(test_api_.GetAudioShareCheckbox() != nullptr);
 }
 
 // Verifies that audio share information is recorded in the ID if the checkbox
@@ -443,7 +429,7 @@ TEST_P(DesktopMediaPickerViewsTest, DoneWithAudioShare) {
       kOriginId);
 
   test_api_.SelectTabForSourceType(DesktopMediaList::Type::kWebContents);
-  test_api_.SetAudioSharingApprovedByUser(true);
+  test_api_.GetAudioShareCheckbox()->SetChecked(true);
   test_api_.FocusSourceAtIndex(0);
 
   GetPickerDialogView()->AcceptDialog();
@@ -570,7 +556,7 @@ TEST_P(DesktopMediaPickerViewsPerTypeTest, FocusMediaSourceViewToSelect) {
   EXPECT_EQ(10, test_api_.GetSelectedSourceId().value());
 
   if (test_api_.AudioSupported(type())) {
-    test_api_.FocusAudioShareControl();
+    test_api_.FocusAudioCheckbox();
     ASSERT_TRUE(test_api_.GetSelectedSourceId().has_value());
     EXPECT_EQ(10, test_api_.GetSelectedSourceId().value());
   }
@@ -636,9 +622,8 @@ TEST_F(DesktopMediaPickerViewsSystemAudioTest,
   test_api_.SelectTabForSourceType(DesktopMediaList::Type::kScreen);
 
   // System audio checkbox shown to the user iff the platform supports it.
-  EXPECT_EQ(DesktopMediaPickerController::IsSystemAudioCaptureSupported(
-                DesktopMediaPicker::Params::RequestSource::kGetDisplayMedia),
-            test_api_.HasAudioShareControl());
+  EXPECT_EQ(DesktopMediaPickerViews::kScreenAudioShareSupportedOnPlatform,
+            test_api_.GetAudioShareCheckbox() != nullptr);
 }
 
 TEST_F(DesktopMediaPickerViewsSystemAudioTest,
@@ -647,16 +632,12 @@ TEST_F(DesktopMediaPickerViewsSystemAudioTest,
 
   test_api_.SelectTabForSourceType(DesktopMediaList::Type::kScreen);
 
-  // Main expectation: System audio control not shown to the user, only a hint
-  // to select a tab instead.
-  EXPECT_FALSE(test_api_.HasAudioShareControl());
-  EXPECT_EQ(
-      test_api_.GetAudioLabelText(),
-      l10n_util::GetStringUTF16(IDS_DESKTOP_MEDIA_PICKER_AUDIO_SHARE_HINT_TAB));
+  // Main expectation: System audio checkbox not shown to the user.
+  EXPECT_EQ(test_api_.GetAudioShareCheckbox(), nullptr);
 
   // Secondary expectation: No effect on the tab-audio checkbox.
   test_api_.SelectTabForSourceType(DesktopMediaList::Type::kWebContents);
-  EXPECT_TRUE(test_api_.HasAudioShareControl());
+  EXPECT_NE(test_api_.GetAudioShareCheckbox(), nullptr);
 }
 
 TEST_F(DesktopMediaPickerViewsSystemAudioTest,
@@ -666,11 +647,11 @@ TEST_F(DesktopMediaPickerViewsSystemAudioTest,
   test_api_.SelectTabForSourceType(DesktopMediaList::Type::kScreen);
 
   // Main expectation: System audio checkbox not shown to the user.
-  EXPECT_FALSE(test_api_.HasAudioShareControl());
+  EXPECT_EQ(test_api_.GetAudioShareCheckbox(), nullptr);
 
   // Secondary expectation: No effect on the tab-audio checkbox.
   test_api_.SelectTabForSourceType(DesktopMediaList::Type::kWebContents);
-  EXPECT_FALSE(test_api_.HasAudioShareControl());  // Not requested.
+  EXPECT_EQ(test_api_.GetAudioShareCheckbox(), nullptr);  // Not requested.
 }
 
 // Creates a single pane DesktopMediaPickerViews that only has a tab list.
@@ -737,7 +718,7 @@ TEST_F(DesktopMediaPickerViewsSingleTabPaneTest,
   AddTabSource();
 
   test_api_.FocusSourceAtIndex(0, false);
-  EXPECT_EQ(std::nullopt, test_api_.GetSelectedSourceId());
+  EXPECT_EQ(absl::nullopt, test_api_.GetSelectedSourceId());
   EXPECT_FALSE(
       GetPickerDialogView()->IsDialogButtonEnabled(ui::DIALOG_BUTTON_OK));
 

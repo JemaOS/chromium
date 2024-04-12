@@ -4,11 +4,12 @@
   "icons": [
     {
       "src": "icon128.png",
-      "sizes": "144x144"
+      "sizes": "128x128"
     }
   ],
   "start_url": "icons_app.html",
   "display": "standalone",
+  "scope": "web_app_file_handling",
   "file_handlers": [
     {
       "action": "icons_app_load.html",

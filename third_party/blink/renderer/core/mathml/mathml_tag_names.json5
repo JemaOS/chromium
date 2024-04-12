@@ -109,7 +109,7 @@
     },
     {
       name: "mtd",
-      interfaceName: "MathMLTableCellElement",
+      interfaceName: "MathMLElement",
     },
     {
       name: "mtr",

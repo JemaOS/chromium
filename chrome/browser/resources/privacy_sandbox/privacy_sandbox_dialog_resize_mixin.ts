@@ -3,8 +3,7 @@
 // found in the LICENSE file.
 
 // clang-format off
-import type { PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {dedupingMixin} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {dedupingMixin, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {PrivacySandboxDialogBrowserProxy} from './privacy_sandbox_dialog_browser_proxy.js';
 // clang-format on

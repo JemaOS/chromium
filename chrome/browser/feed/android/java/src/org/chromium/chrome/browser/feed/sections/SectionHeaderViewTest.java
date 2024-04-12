@@ -10,18 +10,13 @@ import static org.mockito.Mockito.verify;
 
 import android.app.Activity;
 import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewGroup.MarginLayoutParams;
-import android.widget.LinearLayout;
 
 import androidx.test.filters.SmallTest;
 
-import org.junit.Assert;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -29,8 +24,6 @@ import org.robolectric.Robolectric;
 
 import org.chromium.base.FeatureList;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.Features;
-import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.JniMocker;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.feed.componentinterfaces.SurfaceCoordinator.StreamTabId;
@@ -42,39 +35,42 @@ import org.chromium.components.feature_engagement.Tracker;
 /** Test for the WebFeedFollowIntroView class. */
 @RunWith(BaseRobolectricTestRunner.class)
 public final class SectionHeaderViewTest {
+    private static final String TAG = "SectionHeaderViewTst";
     private SectionHeaderView mSectionHeaderView;
     private Activity mActivity;
 
-    @Rule public JniMocker mJniMocker = new JniMocker();
-
-    @Rule public TestRule mProcessor = new Features.JUnitProcessor();
-
-    @Mock private Tracker mTracker;
-    @Mock private UserEducationHelper mHelper;
-    @Mock Runnable mScroller;
+    @Rule
+    public JniMocker mJniMocker = new JniMocker();
+    @Mock
+    private Tracker mTracker;
+    @Mock
+    private UserEducationHelper mHelper;
+    @Mock
+    Runnable mScroller;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         mActivity = Robolectric.setupActivity(Activity.class);
-        mActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
+        mActivity.setTheme(R.style.Theme_MaterialComponents);
         TrackerFactory.setTrackerForTests(mTracker);
 
         // Build the class under test, and set up the fake UI.
-        mSectionHeaderView =
-                (SectionHeaderView)
-                        LayoutInflater.from(mActivity)
-                                .inflate(R.layout.new_tab_page_multi_feed_header, null, false);
-        ViewGroup contentView = new LinearLayout(mActivity);
-        mActivity.setContentView(contentView);
-        contentView.addView(mSectionHeaderView);
-
+        mSectionHeaderView = (SectionHeaderView) LayoutInflater.from(mActivity).inflate(
+                R.layout.new_tab_page_multi_feed_header, null, false);
         mSectionHeaderView.addTab();
         mSectionHeaderView.addTab();
     }
 
+    @After
+    public void tearDown() {
+        TrackerFactory.setTrackerForTests(null);
+    }
+
     private void setFeatureOverridesForIPH() {
         FeatureList.TestValues testValues = new FeatureList.TestValues();
+        testValues.addFeatureFlagOverride(ChromeFeatureList.ANDROID_SCROLL_OPTIMIZATIONS, false);
+        testValues.addFeatureFlagOverride(ChromeFeatureList.WEB_FEED, true);
         testValues.addFeatureFlagOverride(ChromeFeatureList.WEB_FEED_ONBOARDING, true);
         testValues.addFieldTrialParamOverride(
                 ChromeFeatureList.WEB_FEED_AWARENESS, "awareness_style", "IPH");
@@ -87,23 +83,5 @@ public final class SectionHeaderViewTest {
         setFeatureOverridesForIPH();
         mSectionHeaderView.showWebFeedAwarenessIph(mHelper, StreamTabId.FOLLOWING, mScroller);
         verify(mHelper, times(1)).requestShowIPH(any());
-    }
-
-    @Test
-    @SmallTest
-    @EnableFeatures({ChromeFeatureList.SURFACE_POLISH})
-    public void mainContentTopMarginTest() {
-        mSectionHeaderView.onFinishInflate();
-
-        View mainContentView =
-                mSectionHeaderView.findViewById(org.chromium.chrome.browser.feed.R.id.main_content);
-        MarginLayoutParams contentMarginLayoutParams =
-                (MarginLayoutParams) mainContentView.getLayoutParams();
-        Assert.assertEquals(
-                mSectionHeaderView
-                        .getResources()
-                        .getDimensionPixelSize(
-                                org.chromium.chrome.browser.feed.R.dimen.feed_header_top_margin),
-                contentMarginLayoutParams.topMargin);
     }
 }

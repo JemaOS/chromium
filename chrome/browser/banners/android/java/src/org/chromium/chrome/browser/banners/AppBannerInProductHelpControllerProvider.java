@@ -4,9 +4,8 @@
 
 package org.chromium.chrome.browser.banners;
 
-import org.jni_zero.CalledByNative;
-
 import org.chromium.base.UnownedUserDataKey;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.components.feature_engagement.FeatureConstants;
@@ -27,7 +26,6 @@ public class AppBannerInProductHelpControllerProvider {
     /**
      * Get the shared {@link AppBannerInProductHelpController} from the provided {@link
      * WindowAndroid}.
-     *
      * @param windowAndroid The window to pull the controller from.
      * @return A shared instance of a {@link AppBannerInProductHelpController}.
      */
@@ -45,7 +43,6 @@ public class AppBannerInProductHelpControllerProvider {
 
     /**
      * Request to show the in-product help for installing a PWA.
-     *
      * @param webContents The current WebContents.
      * @return An error message, if unsuccessful. Blank if the request was made.
      */

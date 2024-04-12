@@ -2,9 +2,8 @@ Name: Android SDK bundletool
 Short Name:  bundletool
 Version: unknown
 License: Apache Version 2.0
-License File: LICENSE
+License File: NOT_SHIPPED
 Security Critical: No
-Shipped: no
 URL: https://github.com/google/bundletool
 
 Description:

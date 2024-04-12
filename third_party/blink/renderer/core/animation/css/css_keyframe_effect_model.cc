@@ -32,14 +32,17 @@ void ResolveUnderlyingPropertyValues(Element& element,
   ActiveInterpolationsMap empty_interpolations_map;
   AnimationUtils::ForEachInterpolatedPropertyValue(
       &element, properties, empty_interpolations_map,
-      [&map](PropertyHandle property, const CSSValue* value) {
-        if (property.IsCSSProperty()) {
-          String property_name =
-              AnimationInputHelpers::PropertyHandleToKeyframeAttribute(
-                  property);
-          map.Set(property_name, value->CssText());
-        }
-      });
+      WTF::BindRepeating(
+          [](MissingPropertyValueMap* map, PropertyHandle property,
+             const CSSValue* value) {
+            if (property.IsCSSProperty()) {
+              String property_name =
+                  AnimationInputHelpers::PropertyHandleToKeyframeAttribute(
+                      property);
+              map->Set(property_name, value->CssText());
+            }
+          },
+          WTF::Unretained(&map)));
 }
 
 void AddMissingProperties(const MissingPropertyValueMap& property_map,

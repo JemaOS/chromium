@@ -17,19 +17,15 @@
 #include "ash/public/cpp/assistant/controller/assistant_controller.h"
 #include "ash/public/cpp/assistant/controller/assistant_controller_observer.h"
 #include "ash/public/cpp/assistant/controller/assistant_interaction_controller.h"
+#include "ash/public/cpp/tablet_mode_observer.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "chromeos/ash/services/assistant/public/cpp/assistant_service.h"
 #include "mojo/public/cpp/bindings/receiver.h"
-#include "ui/display/display_observer.h"
-#include "ui/display/screen.h"
 
 class PrefRegistrySimple;
-
-namespace display {
-enum class TabletState;
-}  // namespace display
 
 namespace ash {
 
@@ -43,7 +39,7 @@ class AssistantInteractionControllerImpl
       public AssistantInteractionModelObserver,
       public AssistantUiModelObserver,
       public AssistantViewDelegateObserver,
-      public display::DisplayObserver {
+      public TabletModeObserver {
  public:
   using AssistantInteractionMetadata = assistant::AssistantInteractionMetadata;
   using AssistantInteractionResolution =
@@ -92,8 +88,8 @@ class AssistantInteractionControllerImpl
   void OnUiVisibilityChanged(
       AssistantVisibility new_visibility,
       AssistantVisibility old_visibility,
-      std::optional<AssistantEntryPoint> entry_point,
-      std::optional<AssistantExitPoint> exit_point) override;
+      absl::optional<AssistantEntryPoint> entry_point,
+      absl::optional<AssistantExitPoint> exit_point) override;
 
   // assistant::AssistantInteractionSubscriber:
   void OnInteractionStarted(
@@ -123,10 +119,12 @@ class AssistantInteractionControllerImpl
   void OnSuggestionPressed(
       const base::UnguessableToken& suggestion_id) override;
 
-  // display::DisplayObserver:
-  void OnDisplayTabletStateChanged(display::TabletState state) override;
+  // TabletModeObserver:
+  void OnTabletModeStarted() override;
+  void OnTabletModeEnded() override;
 
  private:
+  void OnTabletModeChanged();
   bool HasActiveInteraction() const;
   void OnUiVisible(AssistantEntryPoint entry_point);
   void StartVoiceInteraction();
@@ -137,19 +135,19 @@ class AssistantInteractionControllerImpl
   AssistantVisibility GetVisibility() const;
   bool IsVisible() const;
 
-  const raw_ptr<AssistantControllerImpl>
+  const raw_ptr<AssistantControllerImpl, ExperimentalAsh>
       assistant_controller_;  // Owned by Shell.
   AssistantInteractionModel model_;
   bool has_had_interaction_ = false;
 
   // Owned by AssistantService.
-  raw_ptr<assistant::Assistant> assistant_ = nullptr;
+  raw_ptr<assistant::Assistant, ExperimentalAsh> assistant_ = nullptr;
 
   base::ScopedObservation<AssistantController, AssistantControllerObserver>
       assistant_controller_observation_{this};
 
-  base::ScopedObservation<display::Screen, display::DisplayObserver>
-      display_observation_{this};
+  base::ScopedObservation<TabletModeController, TabletModeObserver>
+      tablet_mode_controller_observation_{this};
 
   base::WeakPtrFactory<AssistantInteractionControllerImpl> weak_factory_{this};
 };

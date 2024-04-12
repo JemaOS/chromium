@@ -22,7 +22,6 @@
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
@@ -58,13 +57,6 @@ class RemotePlaybackTest : public testing::Test,
  public:
   RemotePlaybackTest() : ScopedRemotePlaybackBackendForTest(true) {}
 
-  void SetUp() override {
-    page_holder_ = std::make_unique<DummyPageHolder>();
-    element_ =
-        MakeGarbageCollected<HTMLVideoElement>(page_holder_->GetDocument());
-    ChangeMediaElementDuration(60);
-  }
-
  protected:
   void CancelPrompt(RemotePlayback& remote_playback) {
     remote_playback.PromptCancelled();
@@ -78,44 +70,21 @@ class RemotePlaybackTest : public testing::Test,
   bool IsListening(RemotePlayback& remote_playback) {
     return remote_playback.is_listening_;
   }
-
-  void NotifyUserActivationTest() {
-    LocalFrame::NotifyUserActivation(
-        &page_holder_->GetFrame(),
-        mojom::UserActivationNotificationType::kTest);
-  }
-
-  void DisableRemotePlaybackAttr() {
-    HTMLMediaElementRemotePlayback::SetBooleanAttribute(
-        *element_, html_names::kDisableremoteplaybackAttr, true);
-  }
-
-  void ChangeMediaElementDuration(double duration) {
-    element_->DurationChanged(duration, false);
-  }
-
-  void UpdateAvailabilityUrlsAndStartListening() {
-    get_remote_playback().UpdateAvailabilityUrlsAndStartListening();
-  }
-
-  RemotePlayback& get_remote_playback() {
-    return RemotePlayback::From(*element_);
-  }
-
-  DummyPageHolder* page_holder() { return page_holder_.get(); }
-
- private:
-  test::TaskEnvironment task_environment_;
-  std::unique_ptr<DummyPageHolder> page_holder_;
-  Persistent<HTMLVideoElement> element_ = nullptr;
 };
 
 TEST_F(RemotePlaybackTest, PromptCancelledRejectsWithNotAllowedError) {
   V8TestingScope scope;
-  RemotePlayback& remote_playback = get_remote_playback();
+
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
+
   MockFunctionScope funcs(scope.GetScriptState());
 
-  NotifyUserActivationTest();
+  LocalFrame::NotifyUserActivation(
+      &page_holder->GetFrame(), mojom::UserActivationNotificationType::kTest);
   remote_playback.prompt(scope.GetScriptState(), scope.GetExceptionState())
       .Then(funcs.ExpectNoCall(), funcs.ExpectCall());
   CancelPrompt(remote_playback);
@@ -126,13 +95,20 @@ TEST_F(RemotePlaybackTest, PromptCancelledRejectsWithNotAllowedError) {
 
 TEST_F(RemotePlaybackTest, PromptConnectedRejectsWhenCancelled) {
   V8TestingScope scope;
-  RemotePlayback& remote_playback = get_remote_playback();
+
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
+
   MockFunctionScope funcs(scope.GetScriptState());
 
   SetState(remote_playback,
            mojom::blink::PresentationConnectionState::CONNECTED);
 
-  NotifyUserActivationTest();
+  LocalFrame::NotifyUserActivation(
+      &page_holder->GetFrame(), mojom::UserActivationNotificationType::kTest);
   remote_playback.prompt(scope.GetScriptState(), scope.GetExceptionState())
       .Then(funcs.ExpectNoCall(), funcs.ExpectCall());
   CancelPrompt(remote_playback);
@@ -143,13 +119,20 @@ TEST_F(RemotePlaybackTest, PromptConnectedRejectsWhenCancelled) {
 
 TEST_F(RemotePlaybackTest, PromptConnectedResolvesWhenDisconnected) {
   V8TestingScope scope;
-  RemotePlayback& remote_playback = get_remote_playback();
+
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
+
   MockFunctionScope funcs(scope.GetScriptState());
 
   SetState(remote_playback,
            mojom::blink::PresentationConnectionState::CONNECTED);
 
-  NotifyUserActivationTest();
+  LocalFrame::NotifyUserActivation(
+      &page_holder->GetFrame(), mojom::UserActivationNotificationType::kTest);
   remote_playback.prompt(scope.GetScriptState(), scope.GetExceptionState())
       .Then(funcs.ExpectCall(), funcs.ExpectNoCall());
 
@@ -161,7 +144,12 @@ TEST_F(RemotePlaybackTest, PromptConnectedResolvesWhenDisconnected) {
 
 TEST_F(RemotePlaybackTest, StateChangeEvents) {
   V8TestingScope scope;
-  RemotePlayback& remote_playback = get_remote_playback();
+
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
 
   auto* connecting_handler = MakeGarbageCollected<
       testing::StrictMock<MockEventListenerForRemotePlayback>>();
@@ -226,13 +214,21 @@ TEST_F(RemotePlaybackTest, StateChangeEvents) {
 TEST_F(RemotePlaybackTest,
        DisableRemotePlaybackRejectsPromptWithInvalidStateError) {
   V8TestingScope scope;
-  RemotePlayback& remote_playback = get_remote_playback();
+
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
+
   MockFunctionScope funcs(scope.GetScriptState());
 
-  NotifyUserActivationTest();
+  LocalFrame::NotifyUserActivation(
+      &page_holder->GetFrame(), mojom::UserActivationNotificationType::kTest);
   remote_playback.prompt(scope.GetScriptState(), scope.GetExceptionState())
       .Then(funcs.ExpectNoCall(), funcs.ExpectCall());
-  DisableRemotePlaybackAttr();
+  HTMLMediaElementRemotePlayback::SetBooleanAttribute(
+      *element, html_names::kDisableremoteplaybackAttr, true);
 
   // Runs pending promises.
   scope.PerformMicrotaskCheckpoint();
@@ -240,7 +236,13 @@ TEST_F(RemotePlaybackTest,
 
 TEST_F(RemotePlaybackTest, DisableRemotePlaybackCancelsAvailabilityCallbacks) {
   V8TestingScope scope;
-  RemotePlayback& remote_playback = get_remote_playback();
+
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
+
   MockFunctionScope funcs(scope.GetScriptState());
 
   V8RemotePlaybackAvailabilityCallback* availability_callback =
@@ -251,7 +253,8 @@ TEST_F(RemotePlaybackTest, DisableRemotePlaybackCancelsAvailabilityCallbacks) {
                          scope.GetExceptionState())
       .Then(funcs.ExpectCall(), funcs.ExpectNoCall());
 
-  DisableRemotePlaybackAttr();
+  HTMLMediaElementRemotePlayback::SetBooleanAttribute(
+      *element, html_names::kDisableremoteplaybackAttr, true);
 
   // Runs pending promises.
   scope.PerformMicrotaskCheckpoint();
@@ -259,7 +262,12 @@ TEST_F(RemotePlaybackTest, DisableRemotePlaybackCancelsAvailabilityCallbacks) {
 
 TEST_F(RemotePlaybackTest, CallingWatchAvailabilityFromAvailabilityCallback) {
   V8TestingScope scope;
-  RemotePlayback& remote_playback = get_remote_playback();
+
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
 
   MockFunction* callback_function = MakeGarbageCollected<MockFunction>();
   V8RemotePlaybackAvailabilityCallback* availability_callback =
@@ -312,9 +320,15 @@ TEST_F(RemotePlaybackTest, CallingWatchAvailabilityFromAvailabilityCallback) {
 TEST_F(RemotePlaybackTest, PromptThrowsWhenBackendDisabled) {
   ScopedRemotePlaybackBackendForTest remote_playback_backend(false);
   V8TestingScope scope;
-  RemotePlayback& remote_playback = get_remote_playback();
 
-  NotifyUserActivationTest();
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
+
+  LocalFrame::NotifyUserActivation(
+      &page_holder->GetFrame(), mojom::UserActivationNotificationType::kTest);
   remote_playback.prompt(scope.GetScriptState(), scope.GetExceptionState());
   EXPECT_TRUE(scope.GetExceptionState().HadException());
 }
@@ -322,7 +336,12 @@ TEST_F(RemotePlaybackTest, PromptThrowsWhenBackendDisabled) {
 TEST_F(RemotePlaybackTest, WatchAvailabilityWorksWhenBackendDisabled) {
   ScopedRemotePlaybackBackendForTest remote_playback_backend(false);
   V8TestingScope scope;
-  RemotePlayback& remote_playback = get_remote_playback();
+
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
 
   MockFunctionScope funcs(scope.GetScriptState());
 
@@ -340,9 +359,14 @@ TEST_F(RemotePlaybackTest, WatchAvailabilityWorksWhenBackendDisabled) {
 
 TEST_F(RemotePlaybackTest, IsListening) {
   V8TestingScope scope;
-  RemotePlayback& remote_playback = get_remote_playback();
 
-  LocalDOMWindow& window = *page_holder()->GetFrame().DomWindow();
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
+
+  LocalDOMWindow& window = *page_holder->GetFrame().DomWindow();
   MockPresentationController* mock_controller =
       MakeGarbageCollected<MockPresentationController>(window);
   Supplement<LocalDOMWindow>::ProvideTo(
@@ -350,10 +374,10 @@ TEST_F(RemotePlaybackTest, IsListening) {
 
   EXPECT_CALL(*mock_controller,
               AddAvailabilityObserver(testing::Eq(&remote_playback)))
-      .Times(3);
+      .Times(2);
   EXPECT_CALL(*mock_controller,
               RemoveAvailabilityObserver(testing::Eq(&remote_playback)))
-      .Times(3);
+      .Times(2);
 
   MockFunction* callback_function = MakeGarbageCollected<MockFunction>();
   V8RemotePlaybackAvailabilityCallback* availability_callback =
@@ -388,18 +412,6 @@ TEST_F(RemotePlaybackTest, IsListening) {
   ASSERT_TRUE(IsListening(remote_playback));
   remote_playback.AvailabilityChanged(mojom::ScreenAvailability::AVAILABLE);
 
-  // Background monitoring is disabled for short videos.
-  ChangeMediaElementDuration(10);
-  UpdateAvailabilityUrlsAndStartListening();
-  ASSERT_TRUE(remote_playback.Urls().empty());
-  ASSERT_FALSE(IsListening(remote_playback));
-
-  ChangeMediaElementDuration(60);
-  UpdateAvailabilityUrlsAndStartListening();
-  ASSERT_EQ((size_t)1, remote_playback.Urls().size());
-  ASSERT_TRUE(IsListening(remote_playback));
-
-  // Background monitoring is disabled for invalid sources.
   remote_playback.SourceChanged(WebURL(), false);
   ASSERT_TRUE(remote_playback.Urls().empty());
   ASSERT_FALSE(IsListening(remote_playback));
@@ -418,33 +430,14 @@ TEST_F(RemotePlaybackTest, IsListening) {
 }
 
 TEST_F(RemotePlaybackTest, NullContextDoesntCrash) {
-  RemotePlayback& remote_playback = get_remote_playback();
+  auto page_holder = std::make_unique<DummyPageHolder>();
+
+  auto* element =
+      MakeGarbageCollected<HTMLVideoElement>(page_holder->GetDocument());
+  RemotePlayback& remote_playback = RemotePlayback::From(*element);
 
   remote_playback.SetExecutionContext(nullptr);
   remote_playback.PromptInternal();
-}
-
-TEST_F(RemotePlaybackTest, GetAvailabilityUrl) {
-  RemotePlayback& remote_playback = get_remote_playback();
-
-  remote_playback.SourceChanged(WebURL(KURL("http://www.example.com")), false);
-  EXPECT_TRUE(remote_playback.Urls().empty());
-
-  remote_playback.SourceChanged(WebURL(KURL("")), true);
-  EXPECT_TRUE(remote_playback.Urls().empty());
-
-  remote_playback.SourceChanged(WebURL(KURL("http://www.example.com")), true);
-  EXPECT_EQ((size_t)1, remote_playback.Urls().size());
-  EXPECT_EQ(
-      "remote-playback:media-element?source=aHR0cDovL3d3dy5leGFtcGxlLmNvbS8=",
-      remote_playback.Urls()[0]);
-
-  remote_playback.MediaMetadataChanged(media::VideoCodec::kVP9,
-                                       media::AudioCodec::kMP3);
-  EXPECT_EQ(
-      "remote-playback:media-element?source=aHR0cDovL3d3dy5leGFtcGxlLmNvbS8=&"
-      "video_codec=vp9&audio_codec=mp3",
-      remote_playback.Urls()[0]);
 }
 
 }  // namespace blink

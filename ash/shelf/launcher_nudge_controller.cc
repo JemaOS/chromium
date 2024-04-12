@@ -26,7 +26,6 @@
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "ui/compositor/scoped_animation_duration_scale_mode.h"
-#include "ui/display/tablet_state.h"
 
 namespace ash {
 namespace {
@@ -52,7 +51,7 @@ PrefService* GetPrefs() {
 base::Time GetLastShownTime(PrefService* prefs) {
   const base::Value::Dict& dictionary =
       prefs->GetDict(prefs::kShelfLauncherNudge);
-  std::optional<base::Time> last_shown_time =
+  absl::optional<base::Time> last_shown_time =
       base::ValueToTime(dictionary.Find(kLastShownTime));
   return last_shown_time.value_or(base::Time());
 }
@@ -63,7 +62,7 @@ base::Time GetLastShownTime(PrefService* prefs) {
 base::Time GetFirstLoginTime(PrefService* prefs) {
   const base::Value::Dict& dictionary =
       prefs->GetDict(prefs::kShelfLauncherNudge);
-  std::optional<base::Time> first_login_time =
+  absl::optional<base::Time> first_login_time =
       base::ValueToTime(dictionary.Find(kFirstLoginTime));
   return first_login_time.value_or(base::Time());
 }
@@ -84,11 +83,13 @@ constexpr base::TimeDelta
 LauncherNudgeController::LauncherNudgeController()
     : show_nudge_timer_(std::make_unique<base::WallClockTimer>()) {
   Shell::Get()->app_list_controller()->AddObserver(this);
+  tablet_mode_observation_.Observe(Shell::Get()->tablet_mode_controller());
 }
 
 LauncherNudgeController::~LauncherNudgeController() {
   if (Shell::Get()->app_list_controller())
     Shell::Get()->app_list_controller()->RemoveObserver(this);
+  tablet_mode_observation_.Reset();
 }
 
 // static
@@ -296,12 +297,7 @@ void LauncherNudgeController::OnAppListVisibilityChanged(bool shown,
   }
 }
 
-void LauncherNudgeController::OnDisplayTabletStateChanged(
-    display::TabletState state) {
-  if (state != display::TabletState::kInClamshellMode) {
-    return;
-  }
-
+void LauncherNudgeController::OnTabletModeEnded() {
   // If a nudge event became available while the device was in tablet mode, it
   // would have been ignored. Recheck whether the nudge can be shown again. Note
   // that the nudge is designed to be shown after
@@ -309,6 +305,10 @@ void LauncherNudgeController::OnDisplayTabletStateChanged(
   // clamshell mode where home button exists.
   earliest_available_time_ = GetNow() + kMinIntervalAfterHomeButtonAppears;
   MaybeShowNudge();
+}
+
+void LauncherNudgeController::OnTabletControllerDestroyed() {
+  tablet_mode_observation_.Reset();
 }
 
 base::Time LauncherNudgeController::GetNow() const {

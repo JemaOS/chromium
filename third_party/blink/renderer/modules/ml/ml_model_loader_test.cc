@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/modules/ml/ml_model_loader.h"
-
 #include "components/ml/mojom/web_platform_model.mojom-blink.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -12,8 +11,6 @@
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_tester.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_dom_exception.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_ml_context.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_ml_context_options.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_ml_data_type.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_ml_model.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_ml_power_preference.h"
@@ -29,7 +26,6 @@
 #include "third_party/blink/renderer/modules/ml/ml_model_loader_test_util.h"
 #include "third_party/blink/renderer/platform/bindings/exception_code.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
@@ -105,10 +101,10 @@ class FakeMLModel : public blink_mojom::Model {
       info_->output_tensor_info.insert(WTF::String(name), tensor.ToMojom());
     }
 
-    return WTF::BindRepeating(&FakeMLModel::OnCreateModel,
-                              // Safe to WTF::Unretained, this method won't be
-                              // called after test finishes.
-                              WTF::Unretained(this));
+    return WTF::BindOnce(&FakeMLModel::OnCreateModel,
+                         // Safe to WTF::Unretained, this method won't be called
+                         // after test finishes.
+                         WTF::Unretained(this));
   }
 
   void OnCreateModel(mojo_base::BigBuffer,
@@ -162,33 +158,21 @@ class MLModelLoaderTest : public testing::Test {
 
   MLModelLoader* CreateTestLoader(V8TestingScope& scope) {
     ML* ml = MakeGarbageCollected<ML>(scope.GetExecutionContext());
-
-    MLContextOptions* options = MLContextOptions::Create();
-    options->setDevicePreference(V8MLDevicePreference::Enum::kCpu);
-    options->setPowerPreference(V8MLPowerPreference::Enum::kAuto);
-    options->setModelFormat(V8MLModelFormat::Enum::kTflite);
-
-    ScriptPromise promise = ml->createContext(scope.GetScriptState(), options,
-                                              scope.GetExceptionState());
-    EXPECT_FALSE(scope.GetExceptionState().HadException());
-    ScriptPromiseTester tester(scope.GetScriptState(), promise);
-    tester.WaitUntilSettled();
-    EXPECT_TRUE(tester.IsFulfilled());
-
-    MLContext* ml_context = V8MLContext::ToWrappable(
-        tester.Value().GetIsolate(), tester.Value().V8Value());
-
+    MLContext* ml_context = MakeGarbageCollected<MLContext>(
+        V8MLDevicePreference(V8MLDevicePreference::Enum::kCpu),
+        V8MLPowerPreference(V8MLPowerPreference::Enum::kAuto),
+        V8MLModelFormat(V8MLModelFormat::Enum::kTflite), 1, ml);
     return MLModelLoader::Create(scope.GetScriptState(), ml_context,
                                  scope.GetExceptionState());
   }
 
   MLModel* ScriptValueToMLModel(const ScriptValue& value) {
-    return V8MLModel::ToWrappable(value.GetIsolate(), value.V8Value());
+    return V8MLModel::ToImplWithTypeCheck(value.GetIsolate(), value.V8Value());
   }
 
   String ScriptValueToDOMExceptionName(const ScriptValue& value) {
-    auto* exception =
-        V8DOMException::ToWrappable(value.GetIsolate(), value.V8Value());
+    auto* exception = V8DOMException::ToImplWithTypeCheck(value.GetIsolate(),
+                                                          value.V8Value());
     if (!exception) {
       return DOMException::GetErrorName(DOMExceptionCode::kNoError);
     }
@@ -196,7 +180,6 @@ class MLModelLoaderTest : public testing::Test {
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   FakeMLService service_;
   FakeMLModelLoader loader_;
   FakeMLModel model_;

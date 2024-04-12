@@ -430,11 +430,11 @@ bool WebNavigationTabObserver::IsReferenceFragmentNavigation(
 }
 
 void WebNavigationTabObserver::RenderFrameHostPendingDeletion(
-    content::RenderFrameHost* pending_delete_render_frame_host) {
-  // The |pending_delete_render_frame_host| and its children are now pending
-  // deletion. Stop tracking them.
+    content::RenderFrameHost* pending_delete_rfh) {
+  // The |pending_delete_rfh| and its children are now pending deletion.
+  // Stop tracking them.
 
-  pending_delete_render_frame_host->ForEachRenderFrameHost(
+  pending_delete_rfh->ForEachRenderFrameHost(
       [this](content::RenderFrameHost* render_frame_host) {
         auto* navigation_state =
             FrameNavigationState::GetForCurrentDocument(render_frame_host);
@@ -446,7 +446,7 @@ void WebNavigationTabObserver::RenderFrameHostPendingDeletion(
 }
 
 ExtensionFunction::ResponseAction WebNavigationGetFrameFunction::Run() {
-  std::optional<GetFrame::Params> params = GetFrame::Params::Create(args());
+  absl::optional<GetFrame::Params> params = GetFrame::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
   int tab_id = api::tabs::TAB_ID_NONE;
@@ -545,7 +545,7 @@ ExtensionFunction::ResponseAction WebNavigationGetFrameFunction::Run() {
 }
 
 ExtensionFunction::ResponseAction WebNavigationGetAllFramesFunction::Run() {
-  std::optional<GetAllFrames::Params> params =
+  absl::optional<GetAllFrames::Params> params =
       GetAllFrames::Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
   int tab_id = params->details.tab_id;

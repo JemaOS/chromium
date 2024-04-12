@@ -9,8 +9,6 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/scoped_observation.h"
-#include "chrome/browser/profiles/profile_observer.h"
 #include "chrome/browser/sharesheet/sharesheet_types.h"
 #include "chromeos/crosapi/mojom/sharesheet.mojom.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -22,7 +20,7 @@ namespace crosapi {
 
 // Implements the crosapi interface for the Sharesheet service. Lives in
 // Ash-Chrome on the UI thread.
-class SharesheetAsh : public mojom::Sharesheet, public ProfileObserver {
+class SharesheetAsh : public mojom::Sharesheet {
  public:
   SharesheetAsh();
   SharesheetAsh(const SharesheetAsh&) = delete;
@@ -44,12 +42,8 @@ class SharesheetAsh : public mojom::Sharesheet, public ProfileObserver {
                               ShowBubbleWithOnClosedCallback callback) override;
   void CloseBubble(const std::string& window_id) override;
 
-  // ProfileObserver:
-  void OnProfileWillBeDestroyed(Profile* profile) override;
-
  private:
-  raw_ptr<Profile> profile_ = nullptr;
-  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
+  raw_ptr<Profile, ExperimentalAsh> profile_ = nullptr;
   mojo::ReceiverSet<mojom::Sharesheet> receivers_;
   base::WeakPtrFactory<SharesheetAsh> weak_factory_{this};
 };

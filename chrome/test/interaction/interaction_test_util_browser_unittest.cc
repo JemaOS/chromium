@@ -63,8 +63,8 @@ class InteractionTestUtilBrowserTest : public views::ViewsTestBase {
   }
 
   void TearDown() override {
-    contents_ = nullptr;
     widget_.reset();
+    contents_ = nullptr;
     layout_provider_.reset();
     ViewsTestBase::TearDown();
   }
@@ -77,10 +77,10 @@ class InteractionTestUtilBrowserTest : public views::ViewsTestBase {
 };
 
 TEST_F(InteractionTestUtilBrowserTest, PressHoverButton) {
-  raw_ptr<HoverButton> hover_button;
+  base::raw_ptr<HoverButton> hover_button;
   auto pressed = base::BindLambdaForTesting([&]() {
-    HoverButton* button = hover_button.ExtractAsDangling();
-    button->parent()->RemoveChildViewT(button);
+    hover_button->parent()->RemoveChildViewT(hover_button);
+    hover_button = nullptr;
   });
   hover_button = contents_->AddChildView(std::make_unique<HoverButton>(
       views::Button::PressedCallback(pressed), u"Button"));

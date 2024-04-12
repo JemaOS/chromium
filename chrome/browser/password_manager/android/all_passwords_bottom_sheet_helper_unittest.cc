@@ -4,16 +4,14 @@
 
 #include "chrome/browser/password_manager/android/all_passwords_bottom_sheet_helper.h"
 
-#include "base/strings/string_piece.h"
+#include "base/strings/string_piece_forward.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/mock_callback.h"
 #include "chrome/browser/password_manager/password_manager_test_util.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/autofill/core/common/mojom/autofill_types.mojom-shared.h"
 #include "components/password_manager/core/browser/password_form.h"
-#include "components/password_manager/core/browser/password_store/test_password_store.h"
-#include "components/password_manager/core/common/password_manager_pref_names.h"
-#include "components/prefs/pref_service.h"
+#include "components/password_manager/core/browser/test_password_store.h"
 #include "content/public/test/browser_task_environment.h"
 
 using password_manager::PasswordForm;
@@ -47,44 +45,26 @@ PasswordForm MakePasswordException(const std::string& signon_realm) {
 
 }  // namespace
 
-class AllPasswordsBottomSheetHelperTest
-    : public testing::Test,
-      public testing::WithParamInterface<bool> {
- public:
-  void SetUp() override {
-    profile_.GetPrefs()->SetInteger(
-        password_manager::prefs::kPasswordsUseUPMLocalAndSeparateStores,
-        static_cast<int>(
-            password_manager::prefs::UseUpmLocalAndSeparateStoresState::kOn));
-    profile_store_ = CreateAndUseTestPasswordStore(&profile_);
-    account_store_ = CreateAndUseTestAccountPasswordStore(&profile_);
-  }
-
+class AllPasswordsBottomSheetHelperTest : public testing::Test {
  protected:
-  TestPasswordStore& profile_store() { return *profile_store_; }
-  TestPasswordStore& account_store() { return *account_store_; }
+  TestPasswordStore& store() { return *store_; }
 
   void RunUntilIdle() { task_env_.RunUntilIdle(); }
 
  private:
   content::BrowserTaskEnvironment task_env_;
   TestingProfile profile_;
-  scoped_refptr<TestPasswordStore> profile_store_;
-  scoped_refptr<TestPasswordStore> account_store_;
+  scoped_refptr<TestPasswordStore> store_ =
+      CreateAndUseTestPasswordStore(&profile_);
 };
 
-TEST_P(AllPasswordsBottomSheetHelperTest, CallbackIsCalledAfterFetch) {
-  if (GetParam()) {
-    account_store().AddLogin(MakeSavedPassword(kExampleCom, kUsername));
-  } else {
-    profile_store().AddLogin(MakeSavedPassword(kExampleCom, kUsername));
-  }
+TEST_F(AllPasswordsBottomSheetHelperTest, CallbackIsCalledAfterFetch) {
+  store().AddLogin(MakeSavedPassword(kExampleCom, kUsername));
 
   base::MockOnceClosure callback;
   EXPECT_CALL(callback, Run);
 
-  AllPasswordsBottomSheetHelper all_passwords_helper(&profile_store(),
-                                                     &account_store());
+  AllPasswordsBottomSheetHelper all_passwords_helper(&store());
   all_passwords_helper.SetUpdateCallback(callback.Get());
   all_passwords_helper.SetLastFocusedFieldType(
       autofill::mojom::FocusedFieldType::kFillableUsernameField);
@@ -92,19 +72,14 @@ TEST_P(AllPasswordsBottomSheetHelperTest, CallbackIsCalledAfterFetch) {
   RunUntilIdle();
 }
 
-TEST_P(AllPasswordsBottomSheetHelperTest, CallbackIsNotCalledForEmptyStore) {
+TEST_F(AllPasswordsBottomSheetHelperTest, CallbackIsNotCalledForEmptyStore) {
   // Exceptions don't count towards stored passwords!
-  if (GetParam()) {
-    account_store().AddLogin(MakePasswordException(kExampleCom));
-  } else {
-    profile_store().AddLogin(MakePasswordException(kExampleCom));
-  }
+  store().AddLogin(MakePasswordException(kExampleCom));
 
   base::MockOnceClosure callback;
   EXPECT_CALL(callback, Run).Times(0);
 
-  AllPasswordsBottomSheetHelper all_passwords_helper(&profile_store(),
-                                                     &account_store());
+  AllPasswordsBottomSheetHelper all_passwords_helper(&store());
   all_passwords_helper.SetUpdateCallback(callback.Get());
   all_passwords_helper.SetLastFocusedFieldType(
       autofill::mojom::FocusedFieldType::kFillableUsernameField);
@@ -112,43 +87,28 @@ TEST_P(AllPasswordsBottomSheetHelperTest, CallbackIsNotCalledForEmptyStore) {
   RunUntilIdle();
 }
 
-TEST_P(AllPasswordsBottomSheetHelperTest, CallbackIsNotCalledIfUnset) {
-  if (GetParam()) {
-    account_store().AddLogin(MakeSavedPassword(kExampleCom, kUsername));
-  } else {
-    profile_store().AddLogin(MakeSavedPassword(kExampleCom, kUsername));
-  }
+TEST_F(AllPasswordsBottomSheetHelperTest, CallbackIsNotCalledIfUnset) {
+  store().AddLogin(MakeSavedPassword(kExampleCom, kUsername));
 
   base::MockOnceClosure callback;
   EXPECT_CALL(callback, Run).Times(0);
 
-  AllPasswordsBottomSheetHelper all_passwords_helper(&profile_store(),
-                                                     &account_store());
+  AllPasswordsBottomSheetHelper all_passwords_helper(&store());
   all_passwords_helper.SetLastFocusedFieldType(
       autofill::mojom::FocusedFieldType::kFillableUsernameField);
 
   RunUntilIdle();
 }
-
-TEST_P(AllPasswordsBottomSheetHelperTest, CallbackIsNotCalledForUnknownFields) {
-  if (GetParam()) {
-    account_store().AddLogin(MakeSavedPassword(kExampleCom, kUsername));
-  } else {
-    profile_store().AddLogin(MakeSavedPassword(kExampleCom, kUsername));
-  }
+TEST_F(AllPasswordsBottomSheetHelperTest, CallbackIsNotCalledForUnknownFields) {
+  store().AddLogin(MakeSavedPassword(kExampleCom, kUsername));
 
   base::MockOnceClosure callback;
   EXPECT_CALL(callback, Run).Times(0);
 
-  AllPasswordsBottomSheetHelper all_passwords_helper(&profile_store(),
-                                                     &account_store());
+  AllPasswordsBottomSheetHelper all_passwords_helper(&store());
   all_passwords_helper.SetUpdateCallback(callback.Get());
   all_passwords_helper.SetLastFocusedFieldType(
       autofill::mojom::FocusedFieldType::kUnknown);
 
   RunUntilIdle();
 }
-
-INSTANTIATE_TEST_SUITE_P(,
-                         AllPasswordsBottomSheetHelperTest,
-                         ::testing::Bool());

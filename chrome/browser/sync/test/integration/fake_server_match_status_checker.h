@@ -24,14 +24,15 @@ class FakeServerMatchStatusChecker : public StatusChangeChecker,
   ~FakeServerMatchStatusChecker() override;
 
   // FakeServer::Observer implementation.
-  void OnCommit(syncer::ModelTypeSet committed_model_types) override;
+  void OnCommit(const std::string& committer_invalidator_client_id,
+                syncer::ModelTypeSet committed_model_types) override;
   void OnSuccessfulGetUpdates() override;
 
  protected:
   FakeServer* fake_server() const;
 
  private:
-  const raw_ptr<FakeServer> fake_server_;
+  raw_ptr<FakeServer> fake_server_;
 };
 
 }  // namespace fake_server

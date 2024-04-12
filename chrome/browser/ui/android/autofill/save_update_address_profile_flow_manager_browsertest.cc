@@ -16,9 +16,6 @@
 
 namespace autofill {
 
-using ::testing::Property;
-using profile_ref = base::optional_ref<const AutofillProfile>;
-
 class SaveUpdateAddressProfileFlowManagerBrowserTest
     : public AndroidBrowserTest {
  public:
@@ -58,10 +55,8 @@ class SaveUpdateAddressProfileFlowManagerBrowserTest
     return !!flow_manager_->GetPromptControllerForTest();
   }
 
-  AutofillProfile profile_{
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode};
-  AutofillProfile original_profile_{
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode};
+  AutofillProfile profile_;
+  AutofillProfile original_profile_;
   std::unique_ptr<SaveUpdateAddressProfileFlowManager> flow_manager_;
 };
 
@@ -76,9 +71,10 @@ IN_PROC_BROWSER_TEST_F(SaveUpdateAddressProfileFlowManagerBrowserTest,
   base::MockCallback<AutofillClient::AddressProfileSavePromptCallback>
       another_save_callback;
   AutofillProfile another_profile = test::GetFullProfile2();
-  EXPECT_CALL(another_save_callback,
-              Run(AutofillClient::AddressPromptUserDecision::kAutoDeclined,
-                  Property(&profile_ref::has_value, false)));
+  EXPECT_CALL(
+      another_save_callback,
+      Run(AutofillClient::SaveAddressProfileOfferUserDecision::kAutoDeclined,
+          another_profile));
   flow_manager_->OfferSave(GetWebContents(), another_profile,
                            /*original_profile=*/nullptr, kNotMigrationToAccount,
                            another_save_callback.Get());
@@ -99,9 +95,10 @@ IN_PROC_BROWSER_TEST_F(SaveUpdateAddressProfileFlowManagerBrowserTest,
   base::MockCallback<AutofillClient::AddressProfileSavePromptCallback>
       another_save_callback;
   AutofillProfile another_profile = test::GetFullProfile2();
-  EXPECT_CALL(another_save_callback,
-              Run(AutofillClient::AddressPromptUserDecision::kAutoDeclined,
-                  Property(&profile_ref::has_value, false)));
+  EXPECT_CALL(
+      another_save_callback,
+      Run(AutofillClient::SaveAddressProfileOfferUserDecision::kAutoDeclined,
+          another_profile));
   flow_manager_->OfferSave(GetWebContents(), another_profile,
                            /*original_profile=*/nullptr, kNotMigrationToAccount,
                            another_save_callback.Get());

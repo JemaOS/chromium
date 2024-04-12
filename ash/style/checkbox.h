@@ -19,14 +19,13 @@ namespace ash {
 // A rectangular label button with the icon on its left side. It's usually used
 // in the group of checkboxes. Please refer `CheckboxGroup` for more details.
 class ASH_EXPORT Checkbox : public OptionButtonBase {
-  METADATA_HEADER(Checkbox, OptionButtonBase)
-
  public:
+  METADATA_HEADER(Checkbox);
+
   explicit Checkbox(int button_width,
                     PressedCallback callback,
                     const std::u16string& label = std::u16string(),
-                    const gfx::Insets& insets = kDefaultPadding,
-                    int image_label_spacing = kImageLabelSpacingDP);
+                    const gfx::Insets& insets = kDefaultPadding);
   Checkbox(const Checkbox&) = delete;
   Checkbox& operator=(const Checkbox&) = delete;
   ~Checkbox() override;

@@ -10,13 +10,13 @@
 #include <xf86drmMode.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "base/logging.h"
 #include "base/notreached.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/display/display_features.h"
 #include "ui/display/types/display_constants.h"
 #include "ui/display/types/display_snapshot.h"
@@ -48,8 +48,6 @@ const char kHdcpContentType[] = "HDCP Content Type";
 
 const char kColorSpace[] = "Colorspace";
 const char kColorSpaceBT2020RGBEnumName[] = "BT2020_RGB";
-const char kColorSpaceDefaultEnumName[] = "Default";
-
 const char kHdrOutputMetadata[] = "HDR_OUTPUT_METADATA";
 
 constexpr char kPrivacyScreenPropertyNameLegacy[] = "privacy-screen";
@@ -63,7 +61,7 @@ constexpr char kVrrEnabledPropertyName[] = "VRR_ENABLED";
 template <typename InternalType>
 struct DrmPropertyEnumToInternalTypeMapping {
   const char* drm_enum;
-  const InternalType internal_state;
+  const InternalType& internal_state;
 };
 
 constexpr std::array<
@@ -127,17 +125,6 @@ GetDisplayInfosAndInvalidCrtcs(const DrmWrapper& drm);
 HardwareDisplayControllerInfoList GetAvailableDisplayControllerInfos(
     const DrmWrapper& drm);
 
-// Returns a bitmask of possible CRTCs for at least one encoder in
-// |encoder_ids|. The index in the bitmask corresponds to drm_crtc_index().
-uint32_t GetPossibleCrtcsBitmaskFromEncoders(
-    const DrmWrapper& drm,
-    const std::vector<uint32_t>& encoder_ids);
-
-// Returns a list of all possible CRTCs for encoders with IDs in |encoder_ids|.
-std::vector<uint32_t> GetPossibleCrtcIdsFromBitmask(
-    const DrmWrapper& drm,
-    const uint32_t possible_crtcs_bitmask);
-
 bool SameMode(const drmModeModeInfo& lhs, const drmModeModeInfo& rhs);
 
 std::unique_ptr<display::DisplayMode> CreateDisplayMode(
@@ -186,7 +173,6 @@ display::VariableRefreshRateState GetVariableRefreshRateState(
     const DrmWrapper& drm,
     HardwareDisplayControllerInfo* info);
 
-const char* GetNameForColorspace(const gfx::ColorSpace color_space);
 uint64_t GetEnumValueForName(const DrmWrapper& drm,
                              int property_id,
                              const char* str);
@@ -285,8 +271,8 @@ const InternalType* GetInternalTypeValueFromDrmEnum(
 }
 
 // Get the DRM driver name.
-std::optional<std::string> GetDrmDriverNameFromFd(int fd);
-std::optional<std::string> GetDrmDriverNameFromPath(
+absl::optional<std::string> GetDrmDriverNameFromFd(int fd);
+absl::optional<std::string> GetDrmDriverNameFromPath(
     const char* device_file_name);
 
 // Get an ordered list of preferred DRM driver names for the

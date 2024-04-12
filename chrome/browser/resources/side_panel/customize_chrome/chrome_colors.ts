@@ -1,39 +1,31 @@
 // Copyright 2023 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-import 'chrome://customize-chrome-side-panel.top-chrome/shared/sp_heading.js';
-import 'chrome://customize-chrome-side-panel.top-chrome/shared/sp_shared_style.css.js';
-import 'chrome://resources/cr_components/theme_color_picker/theme_color.js';
 import 'chrome://resources/cr_elements/cr_hidden_style.css.js';
 import 'chrome://resources/cr_elements/cr_grid/cr_grid.js';
 import 'chrome://resources/cr_elements/cr_icons.css.js';
 import 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import './color.js';
 
-import type {SpHeading} from 'chrome://customize-chrome-side-panel.top-chrome/shared/sp_heading.js';
-import {ThemeColorPickerBrowserProxy} from 'chrome://resources/cr_components/theme_color_picker/browser_proxy.js';
-import type {Color, SelectedColor} from 'chrome://resources/cr_components/theme_color_picker/color_utils.js';
-import {ColorType, DARK_DEFAULT_COLOR, LIGHT_DEFAULT_COLOR} from 'chrome://resources/cr_components/theme_color_picker/color_utils.js';
-import type {ThemeColorElement} from 'chrome://resources/cr_components/theme_color_picker/theme_color.js';
-import type {ChromeColor, Theme, ThemeColorPickerHandlerInterface} from 'chrome://resources/cr_components/theme_color_picker/theme_color_picker.mojom-webui.js';
 import {hexColorToSkColor, skColorToRgba} from 'chrome://resources/js/color_utils.js';
 import {FocusOutlineManager} from 'chrome://resources/js/focus_outline_manager.js';
-import type {SkColor} from 'chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
-import {BrowserColorVariant} from 'chrome://resources/mojo/ui/base/mojom/themes.mojom-webui.js';
-import type {DomRepeatEvent} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {SkColor} from 'chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
+import {DomRepeatEvent, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getTemplate} from './chrome_colors.html.js';
-import {CustomizeChromeAction, recordCustomizeChromeAction} from './common.js';
+import {ColorElement} from './color.js';
+import {Color, ColorType, DARK_DEFAULT_COLOR, LIGHT_DEFAULT_COLOR, SelectedColor} from './color_utils.js';
+import {ChromeColor, CustomizeChromePageHandlerInterface, Theme} from './customize_chrome.mojom-webui.js';
+import {CustomizeChromeApiProxy} from './customize_chrome_api_proxy.js';
 
 export interface ChromeColorsElement {
   $: {
+    backButton: HTMLElement,
     colorPicker: HTMLInputElement,
     colorPickerIcon: HTMLElement,
-    defaultColor: ThemeColorElement,
-    customColor: ThemeColorElement,
+    defaultColor: ColorElement,
+    customColor: ColorElement,
     customColorContainer: HTMLElement,
-    heading: SpHeading,
   };
 }
 
@@ -89,24 +81,20 @@ export class ChromeColorsElement extends PolymerElement {
   private customColor_: Color;
   private selectedColor_: SelectedColor;
 
-  private pageHandler_: ThemeColorPickerHandlerInterface;
+  private pageHandler_: CustomizeChromePageHandlerInterface;
 
   constructor() {
     super();
-    this.pageHandler_ = ThemeColorPickerBrowserProxy.getInstance().handler;
-    this.pageHandler_
-        .getChromeColors(
-            /* isDarkMode (unimportant for this component) */ false,
-            /* extendedList */ true)
-        .then(({colors}) => {
-          this.colors_ = colors;
-        });
+    this.pageHandler_ = CustomizeChromeApiProxy.getInstance().handler;
+    this.pageHandler_.getChromeColors().then(({colors}) => {
+      this.colors_ = colors;
+    });
   }
 
   override connectedCallback() {
     super.connectedCallback();
     this.setThemeListenerId_ =
-        ThemeColorPickerBrowserProxy.getInstance()
+        CustomizeChromeApiProxy.getInstance()
             .callbackRouter.setTheme.addListener((theme: Theme) => {
               this.theme_ = theme;
             });
@@ -116,12 +104,12 @@ export class ChromeColorsElement extends PolymerElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    ThemeColorPickerBrowserProxy.getInstance().callbackRouter.removeListener(
+    CustomizeChromeApiProxy.getInstance().callbackRouter.removeListener(
         this.setThemeListenerId_!);
   }
 
   focusOnBackButton() {
-    this.$.heading.getBackButton().focus();
+    this.$.backButton.focus();
   }
 
   private computeIsDefaultColorSelected_(): boolean {
@@ -134,8 +122,8 @@ export class ChromeColorsElement extends PolymerElement {
 
   private computeSelectedColor_(): SelectedColor {
     // None will be considered selected if it isn't classic chrome.
-    if (!this.colors_ || !this.theme_ || this.theme_.hasBackgroundImage ||
-        this.theme_.hasThirdPartyTheme) {
+    if (!this.colors_ || !this.theme_ || this.theme_.backgroundImage ||
+        this.theme_.thirdPartyThemeInfo) {
       return {type: ColorType.NONE};
     }
     if (!this.theme_.foregroundColor) {
@@ -153,7 +141,8 @@ export class ChromeColorsElement extends PolymerElement {
   }
 
   private computeDefaultColor_(): Color {
-    return this.theme_.isDarkMode ? DARK_DEFAULT_COLOR : LIGHT_DEFAULT_COLOR;
+    return this.theme_.systemDarkMode ? DARK_DEFAULT_COLOR :
+                                        LIGHT_DEFAULT_COLOR;
   }
 
   private isChromeColorSelected_(color: SkColor): boolean {
@@ -174,28 +163,23 @@ export class ChromeColorsElement extends PolymerElement {
   }
 
   private onDefaultColorClick_() {
-    recordCustomizeChromeAction(CustomizeChromeAction.DEFAULT_COLOR_CLICKED);
     this.pageHandler_.setDefaultColor();
     this.pageHandler_.removeBackgroundImage();
   }
 
   private onChromeColorClick_(e: DomRepeatEvent<ChromeColor>) {
-    recordCustomizeChromeAction(CustomizeChromeAction.CHROME_COLOR_CLICKED);
-    this.pageHandler_.setSeedColor(
-        e.model.item.seed, BrowserColorVariant.kTonalSpot);
+    this.pageHandler_.setSeedColor(e.model.item.seed);
     this.pageHandler_.removeBackgroundImage();
   }
 
   private onCustomColorClick_() {
-    recordCustomizeChromeAction(CustomizeChromeAction.CUSTOM_COLOR_CLICKED);
     this.$.colorPicker.focus();
     this.$.colorPicker.click();
   }
 
   private onCustomColorChange_(e: Event) {
     this.pageHandler_.setSeedColor(
-        hexColorToSkColor((e.target as HTMLInputElement).value),
-        BrowserColorVariant.kTonalSpot);
+        hexColorToSkColor((e.target as HTMLInputElement).value));
     this.pageHandler_.removeBackgroundImage();
   }
 

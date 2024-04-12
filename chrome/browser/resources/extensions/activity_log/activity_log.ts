@@ -14,17 +14,16 @@ import '../strings.m.js';
 import '../shared_style.css.js';
 import '../shared_vars.css.js';
 
-import {NONE_SELECTED} from 'chrome://resources/cr_elements/cr_tabs/cr_tabs.js';
-import type {CrTabsElement} from 'chrome://resources/cr_elements/cr_tabs/cr_tabs.js';
-import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
+import {CrContainerShadowMixin} from 'chrome://resources/cr_elements/cr_container_shadow_mixin.js';
 import {focusWithoutInk} from 'chrome://resources/js/focus_without_ink.js';
+import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {afterNextRender, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {navigation, Page} from '../navigation_helper.js';
 
 import {getTemplate} from './activity_log.html.js';
-import type {ActivityLogDelegate} from './activity_log_history.js';
+import {ActivityLogDelegate} from './activity_log_history.js';
 
 /**
  * Subpages/views for the activity log. HISTORY shows extension activities
@@ -33,6 +32,7 @@ import type {ActivityLogDelegate} from './activity_log_history.js';
  * real time. NONE is used when user is away from the page.
  */
 const enum ActivityLogSubpage {
+  NONE = -1,
   HISTORY = 0,
   STREAM = 1,
 }
@@ -51,11 +51,11 @@ export interface ActivityLogExtensionPlaceholder {
 export interface ExtensionsActivityLogElement {
   $: {
     closeButton: HTMLElement,
-    tabs: CrTabsElement,
   };
 }
 
-const ExtensionsActivityLogElementBase = I18nMixin(PolymerElement);
+const ExtensionsActivityLogElementBase =
+    I18nMixin(CrContainerShadowMixin(PolymerElement));
 
 export class ExtensionsActivityLogElement extends
     ExtensionsActivityLogElementBase {
@@ -78,7 +78,7 @@ export class ExtensionsActivityLogElement extends
 
       selectedSubpage_: {
         type: Number,
-        value: NONE_SELECTED,
+        value: ActivityLogSubpage.NONE,
         observer: 'onSelectedSubpageChanged_',
       },
 
@@ -114,11 +114,10 @@ export class ExtensionsActivityLogElement extends
   }
 
   /**
-   * Set |selectedSubpage_| to NONE_SELECTED to remove the active view from the
-   * DOM.
+   * Set |selectedSubpage_| to NONE to remove the active view from the DOM.
    */
   private onViewExitFinish_() {
-    this.selectedSubpage_ = NONE_SELECTED;
+    this.selectedSubpage_ = ActivityLogSubpage.NONE;
     // clear the stream if the user is exiting the activity log page.
     const activityLogStream =
         this.shadowRoot!.querySelector('activity-log-stream');

@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -113,6 +113,7 @@ export class DocumentReview extends View {
 
   constructor(protected readonly resultSaver: ResultSaver) {
     super(ViewName.DOCUMENT_REVIEW, {
+      dismissByEsc: true,
       defaultFocusSelector: '.show .primary',
     });
     this.pagesElement =
@@ -133,13 +134,14 @@ export class DocumentReview extends View {
         return;
       }
       const index = Array.from(this.pagesElement.children).indexOf(pageElement);
+      await this.waitForUpdatingPage();
       const clickOnDeleteButton =
           target.closest(DELETE_PAGE_BUTTON_SELECTOR) !== null;
       if (clickOnDeleteButton) {
         await this.onDeletePage(index);
         return;
       }
-      await this.onSelectPage(index);
+      this.selectPage(index);
     });
 
     const pagesElementMutationObserver = new MutationObserver((mutations) => {
@@ -154,10 +156,10 @@ export class DocumentReview extends View {
 
     const fixMode = new DocumentFixMode({
       target: this.previewElement,
-      onDone: async () => {
-        await this.waitForUpdatingPage(() => this.showMode(Mode.PREVIEW));
+      onDone: () => {
+        this.waitForUpdatingPage(() => this.showMode(Mode.PREVIEW));
       },
-      onUpdatePage: async ({corners, rotation}) => {
+      onUpdatePage: ({corners, rotation}) => {
         const page = this.pages[this.selectedIndex];
         const isCornersUpdated = page.isCornersUpdated ||
             page.corners.some(
@@ -165,7 +167,7 @@ export class DocumentReview extends View {
                     oldCorner.y !== corners[i].y);
         const isRotationUpdated =
             page.isRotationUpdated || page.rotation !== rotation;
-        await this.updatePage(this.selectedIndex, {
+        this.updatePage(this.selectedIndex, {
           ...page,
           corners,
           rotation,
@@ -188,13 +190,13 @@ export class DocumentReview extends View {
         this.clearPages();
         this.close();
       },
-      onFix: async () => {
+      onFix: () => {
         sendDocScanEvent(DocScanActionType.FIX);
-        await this.showMode(Mode.FIX);
+        this.showMode(Mode.FIX);
       },
-      onShare: async () => {
+      onShare: () => {
         this.sendResultEvent(DocScanResultActionType.SHARE);
-        await this.share(
+        this.share(
             this.pages.length > 1 ? MimeType.PDF : MimeType.JPEG,
         );
       },
@@ -253,11 +255,11 @@ export class DocumentReview extends View {
     const name = (new Filenamer()).newDocumentName(mimeType);
     if (mimeType === MimeType.JPEG) {
       await this.resultSaver.savePhoto(
-          blobs[0], ToteMetricFormat.kScanJpg, name, null);
+          blobs[0], ToteMetricFormat.SCAN_JPG, name, null);
     } else {
       const pdfBlob = await ChromeHelper.getInstance().convertToPdf(blobs);
       await this.resultSaver.savePhoto(
-          pdfBlob, ToteMetricFormat.kScanPdf, name, null);
+          pdfBlob, ToteMetricFormat.SCAN_PDF, name, null);
     }
   }
 
@@ -322,7 +324,7 @@ export class DocumentReview extends View {
       case Mode.PREVIEW: {
         const {src} = this.getPageImageElement(
             this.pagesElement.children[this.selectedIndex]);
-        await this.modes[mode].update({src, pageIndex: this.selectedIndex});
+        this.modes[mode].update({src, pageIndex: this.selectedIndex});
         break;
       }
       default:
@@ -344,7 +346,7 @@ export class DocumentReview extends View {
     if (this.updatingPage !== null) {
       return;
     }
-    while (this.pendingUpdatePayload !== null) {
+    while (this.pendingUpdatePayload) {
       this.updatingPage = this.updatePageInternal(...this.pendingUpdatePayload);
       this.pendingUpdatePayload = null;
       await this.updatingPage;
@@ -357,7 +359,7 @@ export class DocumentReview extends View {
    */
   private async waitForUpdatingPage<T>(onUpdated?: () => Promise<T>):
       Promise<T|undefined> {
-    if (this.updatingPage === null) {
+    if (!this.updatingPage) {
       return onUpdated?.();
     }
     nav.open(ViewName.FLASH);
@@ -389,7 +391,6 @@ export class DocumentReview extends View {
    * The handler called when users delete a page.
    */
   private async onDeletePage(index: number): Promise<void> {
-    await this.waitForUpdatingPage();
     sendDocScanEvent(DocScanActionType.DELETE_PAGE);
     await this.deletePage(index);
     speakMessage(getI18nMessage(I18nString.DELETE_PAGE_MESSAGE, index + 1));
@@ -418,12 +419,10 @@ export class DocumentReview extends View {
     pageElement.remove();
   }
 
-  // TODO(pihsun): Revisit which operations of document scanning should be on
-  // the same queue.
-  private async selectPage(index: number) {
+  private async selectPage(index: number): Promise<void> {
     this.selectedIndex = index;
-    this.selectPageView(index);
     await this.updateModeView(this.mode);
+    this.selectPageView(index);
   }
 
   /**
@@ -473,15 +472,17 @@ export class DocumentReview extends View {
   }
 
   protected override leaving(): boolean {
-    // TODO(pihsun): Should have a proper way to "pause" leaving.
-    void this.waitForUpdatingPage();
+    this.waitForUpdatingPage();
     if (this.pages.length === 0) {
       this.fixCount = 0;
     }
     return true;
   }
 
-  override handlingKey(key: KeyboardShortcut): boolean {
+  override onKeyPressed(key: KeyboardShortcut): boolean {
+    if (super.onKeyPressed(key)) {
+      return true;
+    }
     if (this.pages.length === 1 ||
         !this.pagesElement.contains(document.activeElement)) {
       return false;
@@ -489,22 +490,16 @@ export class DocumentReview extends View {
     if (key === 'ArrowUp') {
       const index = this.selectedIndex === 0 ? this.pages.length - 1 :
                                                this.selectedIndex - 1;
-      // TODO(b/301360817): Revisit which operations should be on the same
-      // queue.
-      void this.onSelectPage(index);
+      this.selectPage(index);
       return true;
     } else if (key === 'ArrowDown') {
       const index = this.selectedIndex === this.pages.length - 1 ?
           0 :
           this.selectedIndex + 1;
-      // TODO(b/301360817): Revisit which operations should be on the same
-      // queue.
-      void this.onSelectPage(index);
+      this.selectPage(index);
       return true;
     } else if (key === 'Delete') {
-      // TODO(b/301360817): Revisit which operations should be on the same
-      // queue.
-      void this.onDeletePage(this.selectedIndex);
+      this.onDeletePage(this.selectedIndex);
       return true;
     }
     return false;
@@ -545,13 +540,5 @@ export class DocumentReview extends View {
       deleteButton.setAttribute(
           'aria-label', getI18nMessage(I18nString.DELETE_PAGE_BUTTON, i + 1));
     }
-  }
-
-  /**
-   * The handler called when users select a page.
-   */
-  private async onSelectPage(index: number) {
-    await this.waitForUpdatingPage();
-    await this.selectPage(index);
   }
 }

@@ -8,15 +8,9 @@
 #include "ash/webui/grit/ash_files_internals_resources.h"
 #include "ash/webui/grit/ash_files_internals_resources_map.h"
 #include "base/memory/ref_counted_memory.h"
-#include "base/strings/escape.h"
-#include "base/strings/string_split.h"
 #include "content/public/browser/web_contents.h"
 
 namespace ash {
-
-namespace {
-const char kGetFileTasksHtmlQuestion[] = "getFileTasks.html?";
-}  // namespace
 
 FilesInternalsUI::FilesInternalsUI(
     content::WebUI* web_ui,
@@ -29,7 +23,7 @@ FilesInternalsUI::FilesInternalsUI(
   data_source->AddResourcePath("", IDR_ASH_FILES_INTERNALS_INDEX_HTML);
   data_source->AddResourcePaths(base::make_span(
       kAshFilesInternalsResources, kAshFilesInternalsResourcesSize));
-  CallSetRequestFilter(data_source);
+  SetRequestFilterDebugJson(data_source);
 }
 
 FilesInternalsUI::~FilesInternalsUI() = default;
@@ -44,70 +38,24 @@ FilesInternalsUIDelegate* FilesInternalsUI::delegate() {
   return delegate_.get();
 }
 
-void FilesInternalsUI::CallSetRequestFilter(
+void FilesInternalsUI::SetRequestFilterDebugJson(
     content::WebUIDataSource* data_source) {
-  auto should_handle_request_callback =
-      base::BindRepeating([](const std::string& url_path_query) -> bool {
-        return (url_path_query == "debug.json") ||
-               (url_path_query == "downloads_fsurls.html") ||
-               base::StartsWith(url_path_query, kGetFileTasksHtmlQuestion);
-      });
+  auto should_handle_request_callback = base::BindRepeating(
+      [](const std::string& url) -> bool { return url == "debug.json"; });
 
-  auto handle_request_callback = base::BindRepeating(
-      &FilesInternalsUI::HandleRequest, weak_ptr_factory_.GetWeakPtr());
+  auto handle_request_callback =
+      base::BindRepeating(&FilesInternalsUI::HandleRequestDebugJson,
+                          weak_ptr_factory_.GetWeakPtr());
 
   data_source->SetRequestFilter(std::move(should_handle_request_callback),
                                 std::move(handle_request_callback));
 }
 
-void FilesInternalsUI::HandleRequest(
-    const std::string& url_path_query,
+void FilesInternalsUI::HandleRequestDebugJson(
+    const std::string& url,
     content::WebUIDataSource::GotDataCallback callback) {
-  if (url_path_query == "debug.json") {
-    delegate_->GetDebugJSON(base::BindOnce(
-        [](content::WebUIDataSource::GotDataCallback callback,
-           const base::Value& value) {
-          std::move(callback).Run(base::MakeRefCounted<base::RefCountedString>(
-              value.DebugString()));
-        },
-        std::move(callback)));
-    return;
-  }
-
-  base::OnceCallback<void(const std::string_view)> string_callback =
-      base::BindOnce(
-          [](content::WebUIDataSource::GotDataCallback callback,
-             const std::string_view value) {
-            std::move(callback).Run(
-                base::MakeRefCounted<base::RefCountedString>(
-                    std::string(value)));
-          },
-          std::move(callback));
-
-  if (url_path_query == "downloads_fsurls.html") {
-    delegate_->GetDownloadsFSURLs(std::move(string_callback));
-    return;
-  }
-
-  if (base::StartsWith(url_path_query, kGetFileTasksHtmlQuestion)) {
-    std::string file_system_url;
-
-    base::StringPairs params;
-    if (base::SplitStringIntoKeyValuePairs(
-            url_path_query.substr(strlen(kGetFileTasksHtmlQuestion)), '=', '&',
-            &params)) {
-      for (const auto& param : params) {
-        if (param.first == "fsurl") {
-          file_system_url = base::UnescapeBinaryURLComponent(param.second);
-        }
-      }
-    }
-
-    delegate_->GetFileTasks(file_system_url, std::move(string_callback));
-    return;
-  }
-
-  NOTREACHED_NORETURN();
+  std::move(callback).Run(base::MakeRefCounted<base::RefCountedString>(
+      delegate_->GetDebugJSON().DebugString()));
 }
 
 WEB_UI_CONTROLLER_TYPE_IMPL(FilesInternalsUI)

@@ -28,7 +28,6 @@
 #include "third_party/blink/renderer/core/css/parser/css_parser.h"
 #include "third_party/blink/renderer/core/execution_context/security_context.h"
 #include "third_party/blink/renderer/core/svg/animation/smil_animation_effect_parameters.h"
-#include "third_party/blink/renderer/core/svg/svg_length_context.h"
 #include "third_party/blink/renderer/core/svg_names.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/math_extras.h"
@@ -118,9 +117,9 @@ float SVGLength::Value(const SVGLengthConversionData& conversion_data,
 }
 
 float SVGLength::Value(const SVGLengthContext& context) const {
-  if (const auto* math_function = DynamicTo<CSSMathFunctionValue>(*value_)) {
-    return context.ResolveValue(*math_function, UnitMode());
-  }
+  if (IsCalculated() || HasContainerRelativeUnits())
+    return context.ResolveValue(AsCSSPrimitiveValue(), UnitMode());
+
   return context.ConvertValueToUserUnits(value_->GetFloatValue(), UnitMode(),
                                          NumericLiteralType());
 }
@@ -128,6 +127,19 @@ float SVGLength::Value(const SVGLengthContext& context) const {
 void SVGLength::SetValueAsNumber(float value) {
   value_ = CSSNumericLiteralValue::Create(
       value, CSSPrimitiveValue::UnitType::kUserUnits);
+}
+
+void SVGLength::SetValue(float value, const SVGLengthContext& context) {
+  // |value| is in user units.
+  if (IsCalculated() || HasContainerRelativeUnits()) {
+    value_ = CSSNumericLiteralValue::Create(
+        value, CSSPrimitiveValue::UnitType::kUserUnits);
+    return;
+  }
+  value_ = CSSNumericLiteralValue::Create(
+      context.ConvertValueFromUserUnits(value, UnitMode(),
+                                        NumericLiteralType()),
+      NumericLiteralType());
 }
 
 void SVGLength::SetValueInSpecifiedUnits(float value) {
@@ -151,12 +163,12 @@ static bool IsSupportedCSSUnitType(CSSPrimitiveValue::UnitType type) {
          type != CSSPrimitiveValue::UnitType::kQuirkyEms;
 }
 
-static bool IsSupportedCalculationCategory(CalculationResultCategory category) {
+static bool IsSupportedCalculationCategory(CalculationCategory category) {
   switch (category) {
     case kCalcLength:
     case kCalcNumber:
     case kCalcPercent:
-    case kCalcLengthFunction:
+    case kCalcPercentLength:
       return true;
     default:
       return false;
@@ -280,14 +292,8 @@ bool SVGLength::NegativeValuesForbiddenForAnimatedLengthAttribute(
 void SVGLength::Add(const SVGPropertyBase* other,
                     const SVGElement* context_element) {
   SVGLengthContext length_context(context_element);
-  const float sum =
-      Value(length_context) + To<SVGLength>(other)->Value(length_context);
-  if (IsCalculated()) {
-    SetValueAsNumber(sum);
-    return;
-  }
-  SetValueInSpecifiedUnits(length_context.ConvertValueFromUserUnits(
-      sum, UnitMode(), NumericLiteralType()));
+  SetValue(Value(length_context) + To<SVGLength>(other)->Value(length_context),
+           length_context);
 }
 
 void SVGLength::CalculateAnimatedValue(
@@ -314,7 +320,8 @@ void SVGLength::CalculateAnimatedValue(
   const SVGLength* unit_determining_length =
       (percentage < 0.5) ? from_length : to_length;
   CSSPrimitiveValue::UnitType result_unit =
-      !unit_determining_length->IsCalculated()
+      (!unit_determining_length->IsCalculated() &&
+       !unit_determining_length->HasContainerRelativeUnits())
           ? unit_determining_length->NumericLiteralType()
           : CSSPrimitiveValue::UnitType::kUserUnits;
 

@@ -53,8 +53,6 @@ class VideoConferenceClientWrapper {
       crosapi::mojom::VideoConferenceManagerClient::
           SetSystemMediaDeviceStatusCallback callback);
 
-  void StopAllScreenShare();
-
   VideoConferenceMediaState& state();
 
  private:

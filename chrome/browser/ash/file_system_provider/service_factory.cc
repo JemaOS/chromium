@@ -11,7 +11,8 @@
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_registry_factory.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 // static
 Service* ServiceFactory::Get(content::BrowserContext* context) {
@@ -26,33 +27,27 @@ Service* ServiceFactory::FindExisting(content::BrowserContext* context) {
 }
 
 ServiceFactory* ServiceFactory::GetInstance() {
-  static base::NoDestructor<ServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<ServiceFactory>::get();
 }
 
 ServiceFactory::ServiceFactory()
     : ProfileKeyedServiceFactory(
           "Service",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {
+          ProfileSelections::BuildRedirectedInIncognito()) {
   DependsOn(extensions::ExtensionRegistryFactory::GetInstance());
   DependsOn(extensions::ExtensionSystemFactory::GetInstance());
   DependsOn(NotificationDisplayServiceFactory::GetInstance());
 }
 
-ServiceFactory::~ServiceFactory() = default;
+ServiceFactory::~ServiceFactory() {}
 
-std::unique_ptr<KeyedService>
-ServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<Service>(Profile::FromBrowserContext(profile),
-                                   extensions::ExtensionRegistry::Get(profile));
+  return new Service(Profile::FromBrowserContext(profile),
+                     extensions::ExtensionRegistry::Get(profile));
 }
 
 bool ServiceFactory::ServiceIsCreatedWithBrowserContext() const { return true; }
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash

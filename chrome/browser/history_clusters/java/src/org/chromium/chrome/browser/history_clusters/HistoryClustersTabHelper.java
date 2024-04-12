@@ -6,11 +6,12 @@ package org.chromium.chrome.browser.history_clusters;
 
 import androidx.annotation.Nullable;
 
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.content_public.browser.WebContents;
 
-/** Bridge between the C++ and Java Chrome Memories HistoryClustersTabHelper. */
+/**
+ * Bridge between the C++ and Java Chrome Memories HistoryClustersTabHelper.
+ */
 public class HistoryClustersTabHelper {
     /**
      * Notify Memories service that the current tab's URL has been copied.
@@ -37,7 +38,6 @@ public class HistoryClustersTabHelper {
     @NativeMethods
     interface Natives {
         void onCurrentTabUrlCopied(WebContents contents);
-
         void onCurrentTabUrlShared(WebContents contents);
     }
 }

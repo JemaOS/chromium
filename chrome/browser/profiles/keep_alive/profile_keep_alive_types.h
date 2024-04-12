@@ -16,7 +16,6 @@
 // numeric values should never be reused.
 //
 // Keep this in sync with ProfileKeepAliveOrigin in enums.xml.
-// LINT.IfChange
 enum class ProfileKeepAliveOrigin {
   // When a Profile gets created by ProfileManager, it initially has this type
   // of keep-alive. This ensures that the Profile has a refcount >=1, at least
@@ -115,8 +114,9 @@ enum class ProfileKeepAliveOrigin {
   // Profile, but may be a different one in Lacros.
   kProfilePickerView = 25,
 
-  // DEPRECATED
-  // kCommanderFrontend = 26,
+  // The frontend view for Commander exists (even if it's not visible). It
+  // renders to a WebUI, so we can't just destroy it whenever we want.
+  kCommanderFrontend = 26,
 
   // UI bubble that may outlive the Browser, especially on Mac.
   kDiceWebSigninInterceptionBubble = 27,
@@ -144,33 +144,8 @@ enum class ProfileKeepAliveOrigin {
   // alive.
   kProfileDeletionProcess = 32,
 
-  // Used when displaying the statistics for a profile in the Profile Picker,
-  // when deleting this profile.
-  kProfileStatistics = 33,
-
-  // Used during installation of an Isolated Web App.
-  kIsolatedWebAppInstall = 34,
-
-  // Used during update of an Isolated Web App.
-  kIsolatedWebAppUpdate = 35,
-
-  // A web app is being uninstalled.
-  kWebAppUninstall = 36,
-
-  // Used during ForceUnregistration of OsIntegrationManger's sub managers.
-  kOsIntegrationForceUnregistration = 37,
-
-  // Used for remote debugging to keep a profile alive when all pages are
-  // closed.
-  kRemoteDebugging = 38,
-
-  // Used by Headless Command Processor to retain the profile used by the
-  // command handler, which does not belong to any window.
-  kHeadlessCommand = 39,
-
-  kMaxValue = kHeadlessCommand,
+  kMaxValue = kProfileDeletionProcess,
 };
-// LINT.ThenChange(/tools/metrics/histograms/metadata/profile/enums.xml)
 
 std::ostream& operator<<(std::ostream& out,
                          const ProfileKeepAliveOrigin& origin);

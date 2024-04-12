@@ -13,8 +13,7 @@ namespace webrtc_event_logging {
 // static
 WebRtcEventLogManagerKeyedServiceFactory*
 WebRtcEventLogManagerKeyedServiceFactory::GetInstance() {
-  static base::NoDestructor<WebRtcEventLogManagerKeyedServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<WebRtcEventLogManagerKeyedServiceFactory>::get();
 }
 
 WebRtcEventLogManagerKeyedServiceFactory::
@@ -36,11 +35,10 @@ bool WebRtcEventLogManagerKeyedServiceFactory::
   return true;
 }
 
-std::unique_ptr<KeyedService>
-  WebRtcEventLogManagerKeyedServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* WebRtcEventLogManagerKeyedServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   DCHECK(!context->IsOffTheRecord());
-  return std::make_unique<WebRtcEventLogManagerKeyedService>(context);
+  return new WebRtcEventLogManagerKeyedService(context);
 }
 
 }  // namespace webrtc_event_logging

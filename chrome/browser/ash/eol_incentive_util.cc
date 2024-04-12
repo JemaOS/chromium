@@ -6,7 +6,6 @@
 
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_switches.h"
-#include "base/command_line.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
@@ -66,7 +65,7 @@ EolIncentiveType ShouldShowEolIncentive(Profile* profile,
 
   const user_manager::User* user =
       BrowserContextHelper::Get()->GetUserByBrowserContext(profile);
-  if (user && user->GetType() != user_manager::UserType::kRegular) {
+  if (user && user->GetType() != user_manager::USER_TYPE_REGULAR) {
     return EolIncentiveType::kNone;
   }
 

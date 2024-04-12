@@ -15,7 +15,6 @@
 #include <dlfcn.h>
 #include <pthread.h>
 
-#include "base/check.h"
 #include "base/logging.h"
 #include "client/crashpad_client.h"
 #include "util/misc/no_cfi_icall.h"

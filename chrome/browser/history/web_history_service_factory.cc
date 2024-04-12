@@ -7,7 +7,7 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "components/history/core/browser/web_history_service.h"
-#include "components/sync/service/sync_service.h"
+#include "components/sync/driver/sync_service.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/storage_partition.h"
 
@@ -16,7 +16,7 @@ namespace {
 // and false otherwise.
 bool IsHistorySyncEnabled(Profile* profile) {
   syncer::SyncService* sync = SyncServiceFactory::GetForProfile(profile);
-  return sync && !sync->IsLocalSyncEnabled() &&
+  return sync && sync->IsSyncFeatureActive() && !sync->IsLocalSyncEnabled() &&
          sync->GetActiveDataTypes().Has(syncer::HISTORY_DELETE_DIRECTIVES);
 }
 
@@ -24,8 +24,7 @@ bool IsHistorySyncEnabled(Profile* profile) {
 
 // static
 WebHistoryServiceFactory* WebHistoryServiceFactory::GetInstance() {
-  static base::NoDestructor<WebHistoryServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<WebHistoryServiceFactory>::get();
 }
 
 // static
@@ -38,16 +37,15 @@ history::WebHistoryService* WebHistoryServiceFactory::GetForProfile(
       GetInstance()->GetServiceForBrowserContext(profile, true));
 }
 
-std::unique_ptr<KeyedService>
-WebHistoryServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* WebHistoryServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = static_cast<Profile*>(context);
   // Ensure that the service is not instantiated or used if the user is not
-  // signed in and has enabled history sync.
+  // signed into sync, or if web history is not enabled.
   if (!IsHistorySyncEnabled(profile))
     return nullptr;
 
-  return std::make_unique<history::WebHistoryService>(
+  return new history::WebHistoryService(
       IdentityManagerFactory::GetForProfile(profile),
       profile->GetDefaultStoragePartition()
           ->GetURLLoaderFactoryForBrowserProcess());
@@ -66,4 +64,5 @@ WebHistoryServiceFactory::WebHistoryServiceFactory()
   DependsOn(SyncServiceFactory::GetInstance());
 }
 
-WebHistoryServiceFactory::~WebHistoryServiceFactory() = default;
+WebHistoryServiceFactory::~WebHistoryServiceFactory() {
+}

@@ -3,73 +3,78 @@
 // found in the LICENSE file.
 
 import '../cr_radio_button/cr_radio_button.js';
+import '../cr_shared_vars.css.js';
 
-import {assert} from '//resources/js/assert.js';
+import {assert} from '//resources/js/assert_ts.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
-import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {CrRadioButtonElement} from '../cr_radio_button/cr_radio_button.js';
+import {CrRadioButtonElement} from '../cr_radio_button/cr_radio_button.js';
 
-import {getCss} from './cr_radio_group.css.js';
-import {getHtml} from './cr_radio_group.html.js';
+import {getTemplate} from './cr_radio_group.html.js';
 
 function isEnabled(radio: HTMLElement): boolean {
   return radio.matches(':not([disabled]):not([hidden])') &&
       radio.style.display !== 'none' && radio.style.visibility !== 'hidden';
 }
 
-export class CrRadioGroupElement extends CrLitElement {
+export class CrRadioGroupElement extends PolymerElement {
   static get is() {
     return 'cr-radio-group';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
       disabled: {
         type: Boolean,
-        reflect: true,
+        value: false,
+        reflectToAttribute: true,
+        observer: 'update_',
       },
 
       selected: {
         type: String,
         notify: true,
+        observer: 'update_',
       },
 
-      selectableElements: {type: String},
-      nestedSelectable: {type: Boolean},
-      selectableRegExp_: {type: Object},
+      selectableElements: {
+        type: String,
+        value: 'cr-radio-button, cr-card-radio-button, controlled-radio-button',
+      },
+
+      selectableRegExp_: {
+        value: Object,
+        computed: 'computeSelectableRegExp_(selectableElements)',
+      },
     };
   }
 
-  disabled: boolean = false;
-  selected?: string;
-  selectableElements: string =
-      'cr-radio-button, cr-card-radio-button, controlled-radio-button';
-  nestedSelectable: boolean = false;
+  disabled: boolean;
+  selected: string;
+  selectableElements: string;
   private selectableRegExp_: RegExp;
 
   private buttons_: CrRadioButtonElement[]|null = null;
-  private buttonEventTracker_: EventTracker = new EventTracker();
+  private buttonEventTracker_: EventTracker|null = null;
   private deltaKeyMap_: Map<string, number>|null = null;
   private isRtl_: boolean = false;
   private populateBound_: (() => void)|null = null;
 
-  override firstUpdated() {
-    this.addEventListener('keydown', e => this.onKeyDown_(e));
-    this.addEventListener('click', e => this.onClick_(e));
+  override ready() {
+    super.ready();
+    this.addEventListener(
+        'keydown', e => this.onKeyDown_(/** @type {!KeyboardEvent} */ (e)));
+    this.addEventListener('click', this.onClick_.bind(this));
 
     if (!this.hasAttribute('role')) {
       this.setAttribute('role', 'radiogroup');
     }
+    this.setAttribute('aria-disabled', 'false');
   }
 
   override connectedCallback() {
@@ -83,6 +88,7 @@ export class CrRadioGroupElement extends CrLitElement {
       ['PageDown', 1],
       ['PageUp', -1],
     ]);
+    this.buttonEventTracker_ = new EventTracker();
 
     this.populateBound_ = () => this.populate_();
     assert(this.populateBound_);
@@ -97,37 +103,8 @@ export class CrRadioGroupElement extends CrLitElement {
     assert(this.populateBound_);
     this.shadowRoot!.querySelector('slot')!.removeEventListener(
         'slotchange', this.populateBound_);
+    assert(this.buttonEventTracker_);
     this.buttonEventTracker_.removeAll();
-  }
-
-  override willUpdate(changedProperties: PropertyValues<this>) {
-    super.willUpdate(changedProperties);
-
-    if (changedProperties.has('selectableElements')) {
-      const tags = this.selectableElements.split(', ').join('|');
-      this.selectableRegExp_ = new RegExp(`^(${tags})$`, 'i');
-    }
-  }
-
-  override updated(changedProperties: PropertyValues<this>) {
-    if (changedProperties.has('nestedSelectable')) {
-      this.populate_();
-    }
-
-    if (changedProperties.has('disabled') ||
-        changedProperties.has('selected')) {
-      this.update_();
-    }
-
-    this.setAttribute('aria-disabled', `${this.disabled}`);
-
-    // Clients of cr-radio-group generally expect that by the time
-    // selected-changed or disabled-changed is fired, the state of the
-    // buttons in the group (e.g. "checked", "disabled" properties) has been
-    // updated accordingly. Since these events are fired in CrLitElement's
-    // updated() method, call super.updated() only after all the button updates
-    // performed in update_() are complete.
-    super.updated(changedProperties);
   }
 
   override focus() {
@@ -193,10 +170,14 @@ export class CrRadioGroupElement extends CrLitElement {
     const name = `${radio.name}`;
     if (this.selected !== name) {
       event.preventDefault();
-      event.stopPropagation();
       this.selected = name;
       radio.focus();
     }
+  }
+
+  private computeSelectableRegExp_(): RegExp {
+    const tags = this.selectableElements.split(', ').join('|');
+    return new RegExp(`^(${tags})$`, 'i');
   }
 
   private onClick_(event: Event) {
@@ -214,20 +195,14 @@ export class CrRadioGroupElement extends CrLitElement {
   }
 
   private populate_() {
-    const elements = this.shadowRoot!.querySelector('slot')!.assignedElements(
-        {flatten: true});
-    this.buttons_ = Array.from(elements).flatMap(el => {
-      let result = [];
-      if (el.matches(this.selectableElements)) {
-        result.push(el);
-      }
-
-      if (this.nestedSelectable) {
-        result = result.concat(
-            Array.from(el.querySelectorAll(this.selectableElements)));
-      }
-      return result;
-    }) as CrRadioButtonElement[];
+    const nodes =
+        this.shadowRoot!.querySelector('slot')!.assignedNodes({flatten: true});
+    this.buttons_ =
+        Array.from(nodes).filter(
+            node => node.nodeType === Node.ELEMENT_NODE &&
+                (node as HTMLElement).matches(this.selectableElements)) as
+        CrRadioButtonElement[];
+    assert(this.buttonEventTracker_);
     this.buttonEventTracker_.removeAll();
     this.buttons_!.forEach(el => {
       this.buttonEventTracker_!.add(
@@ -270,6 +245,7 @@ export class CrRadioGroupElement extends CrLitElement {
       }
       radio.setAttribute('aria-disabled', `${disabled}`);
     });
+    this.setAttribute('aria-disabled', `${this.disabled}`);
     if (noneMadeFocusable && !this.disabled) {
       const radio = this.buttons_.find(isEnabled);
       if (radio) {

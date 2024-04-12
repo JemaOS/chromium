@@ -39,6 +39,7 @@ class AboutThisSiteSidePanelCoordinatorBrowserTest
     https_server_.SetSSLConfig(net::EmbeddedTestServer::CERT_TEST_NAMES);
     https_server_.ServeFilesFromSourceDirectory(GetChromeTestDataDir());
     ASSERT_TRUE(https_server_.Start());
+    SetUpFeatureList();
     InProcessBrowserTest::SetUp();
   }
 
@@ -69,20 +70,58 @@ class AboutThisSiteSidePanelCoordinatorBrowserTest
   }
 
   SidePanelCoordinator* side_panel_coordinator() {
-    return SidePanelUtil::GetSidePanelCoordinatorForBrowser(browser());
+    return BrowserView::GetBrowserViewForBrowser(browser())
+        ->side_panel_coordinator();
   }
 
   base::test::ScopedFeatureList feature_list_;
 
  private:
+  virtual void SetUpFeatureList() {
+    feature_list_.InitWithFeatures(
+        {}, {page_info::kPageInfoAboutThisSiteKeepSidePanelOnSameTabNavs});
+  }
+
   net::EmbeddedTestServer https_server_{net::EmbeddedTestServer::TYPE_HTTPS};
 };
 
 IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
+                       ShowAndClose) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), CreateUrl(kRegularUrl1)));
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
+
+  // Test showing a sidepanel.
+  ShowAboutThisSiteSidePanel(web_contents(), CreateUrl(kAboutThisSiteUrl));
+  EXPECT_TRUE(side_panel_coordinator()->IsSidePanelShowing());
+  EXPECT_EQ(side_panel_coordinator()->GetCurrentEntryId(),
+            SidePanelEntry::Id::kAboutThisSite);
+
+  // Check that it closes on navigation.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), CreateUrl(kRegularUrl2)));
+  EXPECT_FALSE(side_panel_coordinator()->IsSidePanelShowing());
+  EXPECT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
+
+  // Check that navigating to reloading that URL is works fine
+  // (See https://crbug.com/1393000).
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), CreateUrl(kRegularUrl2)));
+}
+
+// Tests that the ATS Side Panel remains open and updated on same tab
+// navigations including refreshes.
+class AboutThisSiteKeepSidePanelOpenBrowserTest
+    : public AboutThisSiteSidePanelCoordinatorBrowserTest {
+ private:
+  void SetUpFeatureList() override {
+    feature_list_.InitAndEnableFeature(
+        page_info::kPageInfoAboutThisSiteKeepSidePanelOnSameTabNavs);
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(AboutThisSiteKeepSidePanelOpenBrowserTest,
                        ShowOnRefresh) {
   GURL kRegularGURL1 = CreateUrl(kRegularUrl1);
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kRegularGURL1));
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 
   // Test showing a side panel.
   ShowAboutThisSiteSidePanel(web_contents(), CreateUrl(kAboutThisSiteUrl));
@@ -97,10 +136,10 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
             SidePanelEntry::Id::kAboutThisSite);
 }
 
-IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
+IN_PROC_BROWSER_TEST_F(AboutThisSiteKeepSidePanelOpenBrowserTest,
                        ShowSameTabNav) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), CreateUrl(kRegularUrl1)));
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 
   // Test showing a side panel.
   ShowAboutThisSiteSidePanel(web_contents(), CreateUrl(kAboutThisSiteUrl));
@@ -125,11 +164,11 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
             kAboutThisSiteRegularUrl2);
 }
 
-IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
+IN_PROC_BROWSER_TEST_F(AboutThisSiteKeepSidePanelOpenBrowserTest,
                        ShowSameTabNavRef) {
   GURL kRegularGURL1 = CreateUrl(kRegularUrl1);
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kRegularGURL1));
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 
   // Test showing a side panel.
   GURL kAboutThisSiteGURL = CreateUrl(kAboutThisSiteUrl);
@@ -153,11 +192,11 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
             kAboutThisSiteGURL);
 }
 
-IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
+IN_PROC_BROWSER_TEST_F(AboutThisSiteKeepSidePanelOpenBrowserTest,
                        ShowSameTabNavSameDocumentPushState) {
   GURL kRegularGURL1 = CreateUrl(kRegularUrl1);
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kRegularGURL1));
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 
   // Test showing a side panel.
   ShowAboutThisSiteSidePanel(web_contents(), CreateUrl(kAboutThisSiteUrl));
@@ -167,8 +206,8 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
 
   // Push state with new path.
   GURL kRegularGURL1WithPath2 = kRegularGURL1.Resolve("/title2.html");
-  ASSERT_TRUE(content::ExecJs(web_contents(),
-                              "history.pushState({},'','title2.html')"));
+  ASSERT_TRUE(content::ExecuteScript(web_contents(),
+                                     "history.pushState({},'','title2.html')"));
   EXPECT_TRUE(content::WaitForLoadStop(web_contents()));
 
   // Check that side panel remains open on push state.
@@ -187,11 +226,11 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
             kAboutThisSiteRegularUrl1WithPath2);
 }
 
-IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
+IN_PROC_BROWSER_TEST_F(AboutThisSiteKeepSidePanelOpenBrowserTest,
                        ShowSameTabNavSameDocumentReplaceState) {
   GURL kRegularGURL1 = CreateUrl(kRegularUrl1);
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), kRegularGURL1));
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 
   // Test showing a side panel.
   ShowAboutThisSiteSidePanel(web_contents(), CreateUrl(kAboutThisSiteUrl));
@@ -201,8 +240,8 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
 
   // Replace state with new path.
   GURL kRegularGURL1WithPath2 = kRegularGURL1.Resolve("/title2.html");
-  ASSERT_TRUE(content::ExecJs(web_contents(),
-                              "history.replaceState({},'','title2.html')"));
+  ASSERT_TRUE(content::ExecuteScript(
+      web_contents(), "history.replaceState({},'','title2.html')"));
   EXPECT_TRUE(content::WaitForLoadStop(web_contents()));
 
   // Check that side panel remains open on replace state.
@@ -221,10 +260,10 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
             kAboutThisSiteRegularUrl1WithPath2);
 }
 
-IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
+IN_PROC_BROWSER_TEST_F(AboutThisSiteKeepSidePanelOpenBrowserTest,
                        ShowSameTabNavSameDocumentReplaceStateRef) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), CreateUrl(kRegularUrl1)));
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 
   // Test showing a side panel.
   GURL kAboutThisSiteGURL = CreateUrl(kAboutThisSiteUrl);
@@ -234,8 +273,8 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
             SidePanelEntry::Id::kAboutThisSite);
 
   // Replace state with anchor.
-  ASSERT_TRUE(
-      content::ExecJs(web_contents(), "history.replaceState({},'','#ref')"));
+  ASSERT_TRUE(content::ExecuteScript(web_contents(),
+                                     "history.replaceState({},'','#ref')"));
   EXPECT_TRUE(content::WaitForLoadStop(web_contents()));
 
   // Check that side panel remains open on replace state.
@@ -251,10 +290,10 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
             kAboutThisSiteGURL);
 }
 
-IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
+IN_PROC_BROWSER_TEST_F(AboutThisSiteKeepSidePanelOpenBrowserTest,
                        ShowSameTabNavWithInvalidOrigin) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), CreateUrl(kRegularUrl1)));
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 
   // Test showing the side panel.
   ShowAboutThisSiteSidePanel(web_contents(), CreateUrl(kAboutThisSiteUrl));
@@ -283,10 +322,10 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
             kAboutThisSiteInvalidUrl);
 }
 
-IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
+IN_PROC_BROWSER_TEST_F(AboutThisSiteKeepSidePanelOpenBrowserTest,
                        RemainsClosedOnSameTabNav) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), CreateUrl(kRegularUrl1)));
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 
   // Test showing a side panel.
   ShowAboutThisSiteSidePanel(web_contents(), CreateUrl(kAboutThisSiteUrl));
@@ -297,18 +336,18 @@ IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
   // Close side panel.
   side_panel_coordinator()->Close();
   EXPECT_FALSE(side_panel_coordinator()->IsSidePanelShowing());
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 
   // Check that side panel remains closed on navigation.
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), CreateUrl(kRegularUrl2)));
   EXPECT_FALSE(side_panel_coordinator()->IsSidePanelShowing());
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 }
 
-IN_PROC_BROWSER_TEST_F(AboutThisSiteSidePanelCoordinatorBrowserTest,
+IN_PROC_BROWSER_TEST_F(AboutThisSiteKeepSidePanelOpenBrowserTest,
                        HistogramEmissionOnSameTabNav) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), CreateUrl(kRegularUrl1)));
-  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), std::nullopt);
+  ASSERT_EQ(side_panel_coordinator()->GetCurrentEntryId(), absl::nullopt);
 
   // Show side panel.
   ShowAboutThisSiteSidePanel(web_contents(), CreateUrl(kAboutThisSiteUrl));

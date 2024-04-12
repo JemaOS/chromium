@@ -5,8 +5,7 @@
 import 'chrome://history/history.js';
 import 'chrome://history/lazy_load.js';
 
-import type {HistoryAppElement, HistoryEntry} from 'chrome://history/history.js';
-import {BrowserServiceImpl, ensureLazyLoaded, HistoryPageViewHistogram, SYNCED_TABS_HISTOGRAM_NAME, SyncedTabsHistogram} from 'chrome://history/history.js';
+import {BrowserServiceImpl, ensureLazyLoaded, HistoryAppElement, HistoryEntry, HistoryPageViewHistogram, SYNCED_TABS_HISTOGRAM_NAME, SyncedTabsHistogram} from 'chrome://history/history.js';
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -223,7 +222,7 @@ suite('Metrics', function() {
   test('history-clusters-duration', async () => {
     await finishSetup([]);
 
-    navigateTo('/grouped', app);
+    navigateTo('/journeys', app);
     await flushTasks();
 
     navigateTo('/history', app);

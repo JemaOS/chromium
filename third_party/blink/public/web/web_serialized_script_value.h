@@ -33,11 +33,12 @@
 
 #include "third_party/blink/public/platform/web_common.h"
 #include "third_party/blink/public/platform/web_private_ptr.h"
-#include "v8/include/v8-local-handle.h"
 
 namespace v8 {
 class Isolate;
 class Value;
+template <class T>
+class Local;
 }
 
 namespace blink {
@@ -76,7 +77,7 @@ class BLINK_EXPORT WebSerializedScriptValue {
 #endif
 
  private:
-  WebPrivatePtrForRefCounted<SerializedScriptValue> private_;
+  WebPrivatePtr<SerializedScriptValue> private_;
 };
 
 }  // namespace blink

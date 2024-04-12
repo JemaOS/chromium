@@ -109,7 +109,7 @@ TEST_F(CalendarModelUtilsTest, SurroundingMonths) {
   // 0 months out.
   months = calendar_utils::GetSurroundingMonthsUTC(current_date, 0);
   EXPECT_EQ(1UL, months.size());
-  EXPECT_TRUE(base::Contains(months, start_of_month));
+  EXPECT_TRUE(months.find(start_of_month) != months.end());
 
   // 1 month out.
   base::Time start_of_previous_month =
@@ -118,9 +118,9 @@ TEST_F(CalendarModelUtilsTest, SurroundingMonths) {
       calendar_test_utils::GetTimeFromString("01 Nov 2009 00:00 GMT");
   months = calendar_utils::GetSurroundingMonthsUTC(current_date, 1);
   EXPECT_EQ(3UL, months.size());
-  EXPECT_TRUE(base::Contains(months, start_of_month));
-  EXPECT_TRUE(base::Contains(months, start_of_previous_month));
-  EXPECT_TRUE(base::Contains(months, start_of_next_month));
+  EXPECT_TRUE(months.find(start_of_month) != months.end());
+  EXPECT_TRUE(months.find(start_of_previous_month) != months.end());
+  EXPECT_TRUE(months.find(start_of_next_month) != months.end());
 
   // 2 months out.
   base::Time start_of_previous_month_2 =
@@ -129,11 +129,11 @@ TEST_F(CalendarModelUtilsTest, SurroundingMonths) {
       calendar_test_utils::GetTimeFromString("01 Dec 2009 00:00 GMT");
   months = calendar_utils::GetSurroundingMonthsUTC(current_date, 2);
   EXPECT_EQ(5UL, months.size());
-  EXPECT_TRUE(base::Contains(months, start_of_month));
-  EXPECT_TRUE(base::Contains(months, start_of_previous_month));
-  EXPECT_TRUE(base::Contains(months, start_of_next_month));
-  EXPECT_TRUE(base::Contains(months, start_of_previous_month_2));
-  EXPECT_TRUE(base::Contains(months, start_of_next_month_2));
+  EXPECT_TRUE(months.find(start_of_month) != months.end());
+  EXPECT_TRUE(months.find(start_of_previous_month) != months.end());
+  EXPECT_TRUE(months.find(start_of_next_month) != months.end());
+  EXPECT_TRUE(months.find(start_of_previous_month_2) != months.end());
+  EXPECT_TRUE(months.find(start_of_next_month_2) != months.end());
 
   // 3 months out, which takes us into the next year.
   base::Time start_of_previous_month_3 =
@@ -142,20 +142,19 @@ TEST_F(CalendarModelUtilsTest, SurroundingMonths) {
       calendar_test_utils::GetTimeFromString("01 Jan 2010 00:00 GMT");
   months = calendar_utils::GetSurroundingMonthsUTC(current_date, 3);
   EXPECT_EQ(7UL, months.size());
-  EXPECT_TRUE(base::Contains(months, start_of_month));
-  EXPECT_TRUE(base::Contains(months, start_of_previous_month));
-  EXPECT_TRUE(base::Contains(months, start_of_next_month));
-  EXPECT_TRUE(base::Contains(months, start_of_previous_month_2));
-  EXPECT_TRUE(base::Contains(months, start_of_next_month_2));
-  EXPECT_TRUE(base::Contains(months, start_of_previous_month_3));
-  EXPECT_TRUE(base::Contains(months, start_of_next_month_3));
+  EXPECT_TRUE(months.find(start_of_month) != months.end());
+  EXPECT_TRUE(months.find(start_of_previous_month) != months.end());
+  EXPECT_TRUE(months.find(start_of_next_month) != months.end());
+  EXPECT_TRUE(months.find(start_of_previous_month_2) != months.end());
+  EXPECT_TRUE(months.find(start_of_next_month_2) != months.end());
+  EXPECT_TRUE(months.find(start_of_previous_month_3) != months.end());
+  EXPECT_TRUE(months.find(start_of_next_month_3) != months.end());
 }
 
 class CalendarModelTest : public AshTestBase {
  public:
   CalendarModelTest()
       : AshTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
-
   CalendarModelTest(const CalendarModelTest& other) = delete;
   CalendarModelTest& operator=(const CalendarModelTest& other) = delete;
   ~CalendarModelTest() override = default;
@@ -265,8 +264,8 @@ class CalendarModelTest : public AshTestBase {
                      bool is_child = false) {
     UserSession session;
     session.session_id = session_id;
-    session.user_info.type = is_child ? user_manager::UserType::kChild
-                                      : user_manager::UserType::kRegular;
+    session.user_info.type = is_child ? user_manager::USER_TYPE_CHILD
+                                      : user_manager::USER_TYPE_REGULAR;
     session.user_info.account_id = AccountId::FromUserEmail(email);
     session.user_info.display_name = email;
     session.user_info.display_email = email;
@@ -1381,10 +1380,8 @@ TEST_F(CalendarModelTest, FindUpcomingEvents_SameDay) {
 }
 
 // If time now is 23:55 and we have an upcoming event starting at 00:05 the
-// following day, we should only show today's events. This test is needed after
-// we made the change to the logic of showing the up next view. Before the
-// change, we would show the events starting in 10 mins even if it's in the next
-// day. Now it shouldn't be shown.
+// following day, then we should also get upcoming events from the next day
+// back.
 TEST_F(CalendarModelTest, FindUpcomingEvents_NextDay) {
   // Set timezone and fake now.
   const char* kNow = "10 Nov 2022 23:55 GMT";
@@ -1414,8 +1411,8 @@ TEST_F(CalendarModelTest, FindUpcomingEvents_NextDay) {
     return base::Contains(event_list, id, &CalendarEvent::id);
   };
 
-  EXPECT_EQ(events.size(), size_t(0));
-  EXPECT_FALSE(event_list_contains(events, kEventStartingInTenMinsTomorrowId));
+  EXPECT_EQ(events.size(), size_t(1));
+  EXPECT_TRUE(event_list_contains(events, kEventStartingInTenMinsTomorrowId));
 }
 
 // If time now is 00:10 and we have an event that started <1 hour ago, then we
@@ -1451,42 +1448,6 @@ TEST_F(CalendarModelTest, FindUpcomingEvents_PreviousDay) {
 
   EXPECT_EQ(events.size(), size_t(1));
   EXPECT_TRUE(event_list_contains(events, kEventInProgressStartedYesterdayId));
-}
-
-// If the next event doesn't start in the next 10 mins, we'll still show it.
-// This is needed after we changed the logic of showing the up next view.
-TEST_F(CalendarModelTest, FindUpcomingEvents_ShowTheNextEvent) {
-  // Set timezone and fake now.
-  const char* kNow = "10 Nov 2022 13:00 GMT";
-  ash::system::ScopedTimezoneSettings timezone_settings(u"GMT");
-  SetTodayFromStr(kNow);
-
-  const char* kSummary = "summary";
-  const char* kEventStartingInThirtyMinsId = "event_starting_in_thirty_mins";
-
-  auto event_starting_in_thirty_mins = calendar_test_utils::CreateEvent(
-      kEventStartingInThirtyMinsId, kSummary, "10 Nov 2022 13:30 GMT",
-      "10 Nov 2022 15:00 GMT");
-
-  // Prepare mock events list.
-  std::unique_ptr<google_apis::calendar::EventList> event_list =
-      std::make_unique<google_apis::calendar::EventList>();
-  event_list->InjectItemForTesting(std::move(event_starting_in_thirty_mins));
-
-  // Mock the events are fetched.
-  MockOnEventsFetched(calendar_utils::GetStartOfMonthUTC(
-                          calendar_test_utils::GetTimeFromString(kNow)),
-                      google_apis::ApiErrorCode::HTTP_SUCCESS,
-                      event_list.get());
-
-  auto events = calendar_model_->FindUpcomingEvents(now_);
-
-  auto event_list_contains = [](auto& event_list, auto& id) {
-    return base::Contains(event_list, id, &CalendarEvent::id);
-  };
-
-  EXPECT_EQ(events.size(), size_t(1));
-  EXPECT_TRUE(event_list_contains(events, kEventStartingInThirtyMinsId));
 }
 
 // If two events start at the same time, show the one finishing earlier first.
@@ -1530,8 +1491,12 @@ TEST_F(CalendarModelTest, EventsSortingWithSameStartTime) {
   EXPECT_EQ(kSecondEventId, events.back().id());
 }
 
-// Shows all events that start in 10 mins.
-TEST_F(CalendarModelTest, ShowEventsStartIn10MinsAsUpNext) {
+// If one event starts later but finishes earlier than another, show the one
+// that started earlier first.
+// Returns:
+// Second event: 13:00 - 14:00
+// First event: 13:05 - 13:45
+TEST_F(CalendarModelTest, EventsSortingWithDifferentStartTime) {
   // Set timezone and fake now.
   const char* kNow = "10 Nov 2022 13:00 GMT";
   ash::system::ScopedTimezoneSettings timezone_settings(u"GMT");
@@ -1563,51 +1528,9 @@ TEST_F(CalendarModelTest, ShowEventsStartIn10MinsAsUpNext) {
 
   auto events = calendar_model_->FindUpcomingEvents(now_);
 
-  auto event_list_contains = [](auto& event_list, auto& id) {
-    return base::Contains(event_list, id, &CalendarEvent::id);
-  };
-
   EXPECT_EQ(events.size(), size_t(2));
-  EXPECT_TRUE(event_list_contains(events, kSecondEventId));
+  EXPECT_EQ(kSecondEventId, events.front().id());
+  EXPECT_EQ(kFirstEventId, events.back().id());
 }
 
-// Shows the first event if there's no events that start in 10 mins.
-TEST_F(CalendarModelTest, ShowTheFirstEventAsUpNext) {
-  // Set timezone and fake now.
-  const char* kNow = "10 Nov 2022 13:00 GMT";
-  ash::system::ScopedTimezoneSettings timezone_settings(u"GMT");
-  SetTodayFromStr(kNow);
-
-  const char* kSummary = "summary";
-  const char* kFirstEventId = "first_event";
-  const char* kSecondEventId = "second_event";
-
-  auto first_event = calendar_test_utils::CreateEvent(kFirstEventId, kSummary,
-                                                      "10 Nov 2022 15:05 GMT",
-                                                      "10 Nov 2022 15:45 GMT");
-  auto second_event = calendar_test_utils::CreateEvent(kSecondEventId, kSummary,
-                                                       "10 Nov 2022 16:00 GMT",
-                                                       "10 Nov 2022 17:00 GMT");
-
-  std::unique_ptr<google_apis::calendar::EventList> event_list =
-      std::make_unique<google_apis::calendar::EventList>();
-  event_list->InjectItemForTesting(std::move(first_event));
-  event_list->InjectItemForTesting(std::move(second_event));
-
-  // Mock the events are fetched.
-  MockOnEventsFetched(calendar_utils::GetStartOfMonthUTC(
-                          calendar_test_utils::GetTimeFromString(kNow)),
-                      google_apis::ApiErrorCode::HTTP_SUCCESS,
-                      event_list.get());
-
-  auto events = calendar_model_->FindUpcomingEvents(now_);
-
-  auto event_list_contains = [](auto& event_list, auto& id) {
-    return base::Contains(event_list, id, &CalendarEvent::id);
-  };
-
-  EXPECT_EQ(events.size(), size_t(1));
-  EXPECT_TRUE(event_list_contains(events, kFirstEventId));
-  EXPECT_FALSE(event_list_contains(events, kSecondEventId));
-}
 }  // namespace ash

@@ -4,38 +4,25 @@
 
 #include "chrome/browser/ash/policy/enrollment/enrollment_config.h"
 
-#include <optional>
 #include <string>
-#include <string_view>
 
 #include "base/logging.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/values.h"
 #include "chrome/browser/ash/login/login_pref_names.h"
 #include "chrome/browser/ash/login/ui/login_display_host.h"
 #include "chrome/browser/ash/login/wizard_context.h"
 #include "chrome/browser/ash/policy/core/device_cloud_policy_manager_ash.h"
 #include "chrome/browser/ash/policy/server_backed_state/server_backed_device_state.h"
-#include "chrome/browser/ash/settings/device_settings_service.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/common/pref_names.h"
 #include "chromeos/ash/components/install_attributes/install_attributes.h"
 #include "chromeos/ash/components/system/statistics_provider.h"
 #include "components/prefs/pref_service.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
-const char kRecoveryHistogram[] = "EnterpriseCheck.EnrollementRecoveryOnBoot";
-
-// Do not reorder or delete entries because it is used in UMA.
-enum class EnrollmentRecoveryOnBootUma {
-  kForced = 0,
-  kFalseFlag = 1,
-  kNoSerialNumber = 2,
-  kMaxValue = kNoSerialNumber,
-};
-
-std::string GetString(const base::Value::Dict& dict, std::string_view key) {
+std::string GetString(const base::Value::Dict& dict, base::StringPiece key) {
   const std::string* value = dict.FindString(key);
   return value ? *value : std::string();
 }
@@ -80,13 +67,13 @@ EnrollmentConfig::~EnrollmentConfig() = default;
 // static
 EnrollmentConfig EnrollmentConfig::GetPrescribedEnrollmentConfig() {
   return GetPrescribedEnrollmentConfig(
-      g_browser_process->local_state(), *ash::InstallAttributes::Get(),
+      *g_browser_process->local_state(), *ash::InstallAttributes::Get(),
       ash::system::StatisticsProvider::GetInstance());
 }
 
 // static
 EnrollmentConfig EnrollmentConfig::GetPrescribedEnrollmentConfig(
-    PrefService* local_state,
+    const PrefService& local_state,
     const ash::InstallAttributes& install_attributes,
     ash::system::StatisticsProvider* statistics_provider) {
   DCHECK(statistics_provider);
@@ -108,14 +95,24 @@ EnrollmentConfig EnrollmentConfig::GetPrescribedEnrollmentConfig(
       break;
 
     case ZeroTouchEnrollmentMode::FORCED:
+    case ZeroTouchEnrollmentMode::HANDS_OFF:
+      // Hands-off implies the same authentication method as Forced.
+
       // Only use attestation to authenticate since zero-touch is forced.
       config.auth_mechanism = EnrollmentConfig::AUTH_MECHANISM_ATTESTATION;
+      break;
+    case ZeroTouchEnrollmentMode::JEMA_ENABLED:
+      config.auth_mechanism = EnrollmentConfig::AUTH_MECHANISM_JEMA_BEST_AVAILABLE;
+      break;
+    case ZeroTouchEnrollmentMode::JEMA_FORCED:
+    case ZeroTouchEnrollmentMode::JEMA_HANDS_OFF:
+      config.auth_mechanism = EnrollmentConfig::AUTH_MECHANISM_JEMA;
       break;
   }
 
   // If OOBE is done and we are not enrolled, make sure we only try interactive
   // enrollment.
-  const bool oobe_complete = local_state->GetBoolean(ash::prefs::kOobeComplete);
+  const bool oobe_complete = local_state.GetBoolean(ash::prefs::kOobeComplete);
   if (oobe_complete &&
       config.auth_mechanism == EnrollmentConfig::AUTH_MECHANISM_BEST_AVAILABLE)
     config.auth_mechanism = EnrollmentConfig::AUTH_MECHANISM_INTERACTIVE;
@@ -128,28 +125,25 @@ EnrollmentConfig EnrollmentConfig::GetPrescribedEnrollmentConfig(
     // Enrollment has completed previously and installation-time attributes
     // are in place. Enrollment recovery is required when the server
     // registration gets lost.
-    if (local_state->GetBoolean(prefs::kEnrollmentRecoveryRequired)) {
-      if (ash::DeviceSettingsService::IsInitialized() &&
-          ash::DeviceSettingsService::Get()->HasDmToken()) {
-        LOG(WARNING) << "False recovery flag.";
-        local_state->ClearPref(::prefs::kEnrollmentRecoveryRequired);
-        base::UmaHistogramEnumeration(kRecoveryHistogram,
-                                      EnrollmentRecoveryOnBootUma::kFalseFlag);
-      } else {
-        LOG(WARNING) << "Enrollment recovery required according to pref.";
-        const auto serial_number = statistics_provider->GetMachineID();
-        if (!serial_number || serial_number->empty()) {
-          LOG(WARNING) << "Postponing recovery because machine id is missing.";
-          base::UmaHistogramEnumeration(
-              kRecoveryHistogram, EnrollmentRecoveryOnBootUma::kNoSerialNumber);
-        } else {
-          config.mode = EnrollmentConfig::MODE_RECOVERY;
-          base::UmaHistogramEnumeration(kRecoveryHistogram,
-                                        EnrollmentRecoveryOnBootUma::kForced);
-        }
-      }
+    if (local_state.GetBoolean(prefs::kEnrollmentRecoveryRequired)) {
+      LOG(WARNING) << "Enrollment recovery required according to pref.";
+      const auto serial_number = statistics_provider->GetMachineID();
+      if (!serial_number || serial_number->empty())
+        LOG(WARNING) << "Postponing recovery because machine id is missing.";
+      else
+        config.mode = EnrollmentConfig::MODE_RECOVERY;
     }
 
+    return config;
+  }
+
+  if (config.is_attestation_auth_jema()) {
+    config.mode = EnrollmentConfig::MODE_JEMA_LOCAL_FORCED;
+    config.license_type = LicenseType::kEnterprise;
+    // fallback logic is removed, since jema_enabled, jema_forced, jema_hands_off is enough
+    // if we need to fallback to `use as personal device`, the config.mode should be MODE_MANUAL;
+    // and config.auth_mechanism should be AUTH_MECHANISM_JEMA_BEST_AVAILABLE,
+    // it means the auth_mechanism setup before is ignored
     return config;
   }
 
@@ -159,7 +153,7 @@ EnrollmentConfig EnrollmentConfig::GetPrescribedEnrollmentConfig(
 
   // Gather enrollment signals from various sources.
   const base::Value::Dict& device_state =
-      local_state->GetDict(prefs::kServerBackedDeviceState);
+      local_state.GetDict(prefs::kServerBackedDeviceState);
 
   const std::string device_state_mode =
       GetString(device_state, kDeviceStateMode);
@@ -185,14 +179,14 @@ EnrollmentConfig EnrollmentConfig::GetPrescribedEnrollmentConfig(
       license_type, is_license_packaged_with_device, assigned_upgrade_type);
 
   const bool pref_enrollment_auto_start_present =
-      local_state->HasPrefPath(prefs::kDeviceEnrollmentAutoStart);
+      local_state.HasPrefPath(prefs::kDeviceEnrollmentAutoStart);
   const bool pref_enrollment_auto_start =
-      local_state->GetBoolean(prefs::kDeviceEnrollmentAutoStart);
+      local_state.GetBoolean(prefs::kDeviceEnrollmentAutoStart);
 
   const bool pref_enrollment_can_exit_present =
-      local_state->HasPrefPath(prefs::kDeviceEnrollmentCanExit);
+      local_state.HasPrefPath(prefs::kDeviceEnrollmentCanExit);
   const bool pref_enrollment_can_exit =
-      local_state->GetBoolean(prefs::kDeviceEnrollmentCanExit);
+      local_state.GetBoolean(prefs::kDeviceEnrollmentCanExit);
 
   const bool oem_is_managed = ash::system::StatisticsProvider::FlagValueToBool(
       statistics_provider->GetMachineFlag(
@@ -263,12 +257,13 @@ EnrollmentConfig::Mode EnrollmentConfig::GetManualFallbackMode(
     case EnrollmentConfig::MODE_LOCAL_ADVERTISED:
     case EnrollmentConfig::MODE_SERVER_FORCED:
     case EnrollmentConfig::MODE_SERVER_ADVERTISED:
+    case EnrollmentConfig::MODE_JEMA_LOCAL_FORCED:
     case EnrollmentConfig::MODE_RECOVERY:
     case EnrollmentConfig::MODE_ATTESTATION:
     case EnrollmentConfig::MODE_ATTESTATION_LOCAL_FORCED:
     case EnrollmentConfig::MODE_ATTESTATION_MANUAL_FALLBACK:
-    case EnrollmentConfig::DEPRECATED_MODE_OFFLINE_DEMO:
-    case EnrollmentConfig::DEPRECATED_MODE_ENROLLED_ROLLBACK:
+    case EnrollmentConfig::MODE_OFFLINE_DEMO_DEPRECATED:
+    case EnrollmentConfig::OBSOLETE_MODE_ENROLLED_ROLLBACK:
     case EnrollmentConfig::MODE_INITIAL_SERVER_FORCED:
     case EnrollmentConfig::MODE_ATTESTATION_INITIAL_MANUAL_FALLBACK:
     case EnrollmentConfig::MODE_ATTESTATION_ROLLBACK_MANUAL_FALLBACK:

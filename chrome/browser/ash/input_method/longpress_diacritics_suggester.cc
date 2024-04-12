@@ -4,22 +4,14 @@
 
 #include "chrome/browser/ash/input_method/longpress_diacritics_suggester.h"
 
-#include <optional>
 #include <string>
-#include <string_view>
 
-#include "ash/constants/ash_features.h"
 #include "ash/constants/notifier_catalogs.h"
-#include "ash/public/cpp/system/anchored_nudge_data.h"
-#include "ash/public/cpp/system/anchored_nudge_manager.h"
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/system/tray/system_nudge.h"
 #include "ash/system/tray/system_nudge_controller.h"
-#include "ash/webui/settings/public/constants/routes.mojom.h"
-#include "ash/webui/settings/public/constants/setting.mojom.h"
 #include "base/containers/fixed_flat_map.h"
 #include "base/containers/flat_map.h"
-#include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_number_conversions.h"
@@ -28,14 +20,16 @@
 #include "chrome/browser/ash/input_method/native_input_method_engine_observer.h"
 #include "chrome/browser/ash/input_method/suggestion_handler_interface.h"
 #include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/routes.mojom.h"
+#include "chrome/browser/ui/webui/settings/chromeos/constants/setting.mojom.h"
 #include "chrome/grit/generated_resources.h"
 #include "chromeos/ash/services/ime/public/cpp/assistive_suggestions.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/ime/ash/ime_bridge.h"
 #include "ui/base/ime/ash/text_input_target.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/chromeos/strings/grit/ui_chromeos_strings.h"
 #include "ui/events/keycodes/dom/dom_code.h"
 
 namespace content {
@@ -56,13 +50,10 @@ constexpr int kIconLabelSpacing = 16;
 // The padding which separates the nudge's border with its inner contents in px.
 constexpr int kNudgePadding = 16;
 
-// The id used for the diacritics nudge.
-constexpr char kDiacriticsNudgeId[] = "DiacriticsNudge";
-
 class DiacriticsNudge : public ash::SystemNudge {
  public:
   DiacriticsNudge()
-      : SystemNudge(kDiacriticsNudgeId,
+      : SystemNudge("DiacriticsNudge",
                     ash::NudgeCatalogName::kDisableDiacritics,
                     kIconSize,
                     kIconLabelSpacing,
@@ -74,8 +65,10 @@ class DiacriticsNudge : public ash::SystemNudge {
  protected:
   // SystemNudge:
   std::unique_ptr<SystemNudgeLabel> CreateLabelView() const override {
+    // TODO(b/274349603): convert to final copy + internationalise.
     std::u16string label_text =
-        l10n_util::GetStringUTF16(IDS_CHROMEOS_DIACRITIC_NUDGE_TEXT);
+        u"Looking for key-repeat? Turn off \"accent mark\" in Keyboard "
+        u"Settings.";
     // Set the label's text.
     auto label = std::make_unique<SystemNudgeLabel>(label_text, kMinLabelWidth);
     label->set_font_size_delta(2);
@@ -90,13 +83,13 @@ class DiacriticsNudge : public ash::SystemNudge {
 
 using AssistiveWindowButton = ui::ime::AssistiveWindowButton;
 
-std::vector<std::u16string> SplitDiacritics(std::u16string_view diacritics) {
+std::vector<std::u16string> SplitDiacritics(base::StringPiece16 diacritics) {
   return base::SplitString(diacritics, kDiacriticsSeperator,
                            base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 }
 
 std::vector<std::u16string> GetDiacriticsFor(char key_character,
-                                             std::string_view engine_id) {
+                                             base::StringPiece engine_id) {
   // Currently only supporting US English.
   // TODO(b/260915965): Add support for other engines.
   if (engine_id != "xkb:us::eng") {
@@ -107,7 +100,7 @@ std::vector<std::u16string> GetDiacriticsFor(char key_character,
   // distance from target key consistent.
   // TODO(b/260915965): Add more sets here for other engines.
   static constexpr auto kUSEnglishDiacriticsMap =
-      base::MakeFixedFlatMap<char, std::u16string_view>(
+      base::MakeFixedFlatMap<char, base::StringPiece16>(
           {{'a', u"à;á;â;ä;æ;ã;å;ā"},
            {'A', u"À;Á;Â;Ä;Æ;Ã;Å;Ā"},
            {'c', u"ç"},
@@ -125,7 +118,7 @@ std::vector<std::u16string> GetDiacriticsFor(char key_character,
            {'u', u"ú;û;ü;ù;ū"},
            {'U', u"Ú;Û;Ü;Ù;Ū"}});
 
-  if (const auto it = kUSEnglishDiacriticsMap.find(key_character);
+  if (const auto* it = kUSEnglishDiacriticsMap.find(key_character);
       it != kUSEnglishDiacriticsMap.end()) {
     return SplitDiacritics(it->second);
   }
@@ -193,7 +186,7 @@ bool LongpressDiacriticsSuggester::TrySuggestOnLongpress(char key_character) {
   std::vector<std::u16string> diacritics_candidates =
       GetDiacriticsFor(key_character, engine_id_);
   if (diacritics_candidates.empty()) {
-    ShowDiacriticsNudge();
+    nudge_controller_.ShowNudge();
     return false;
   }
   AssistiveWindowProperties properties;
@@ -229,8 +222,8 @@ SuggestionStatus LongpressDiacriticsSuggester::HandleKeyEvent(
     const ui::KeyEvent& event) {
   ui::DomCode code = event.code();
   // The diacritic suggester is not set up.
-  if (focused_context_id_ == std::nullopt ||
-      displayed_window_base_character_ == std::nullopt ||
+  if (focused_context_id_ == absl::nullopt ||
+      displayed_window_base_character_ == absl::nullopt ||
       !GetCurrentShownDiacritics().size()) {
     return SuggestionStatus::kNotHandled;
   }
@@ -258,20 +251,19 @@ SuggestionStatus LongpressDiacriticsSuggester::HandleKeyEvent(
     case kTabDomCode:
     case kPreviousDomCode:
       move_next = (code == kNextDomCode || code == kTabDomCode);
-      if (highlighted_index_ == std::nullopt) {
+      if (highlighted_index_ == absl::nullopt) {
         // We want the cursor to start at the end if you press back, and at the
         // beginning if you press next.
-        new_index = move_next ? 0 : GetCurrentShownDiacritics().size();
+        new_index = move_next ? 0 : GetCurrentShownDiacritics().size() - 1;
       } else {
         SetButtonHighlighted(*highlighted_index_, false);
-        // Size+1 since we include the highlight button add 1 to size.
         if (move_next) {
-          new_index = (*highlighted_index_ + 1) %
-                      (GetCurrentShownDiacritics().size() + 1);
+          new_index =
+              (*highlighted_index_ + 1) % GetCurrentShownDiacritics().size();
         } else {
           new_index = (*highlighted_index_ > 0)
                           ? *highlighted_index_ - 1
-                          : GetCurrentShownDiacritics().size();
+                          : GetCurrentShownDiacritics().size() - 1;
         }
       }
       SetButtonHighlighted(new_index, true);
@@ -327,10 +319,7 @@ bool LongpressDiacriticsSuggester::AcceptSuggestion(size_t index) {
   std::string error;
   suggestion_handler_->AcceptSuggestionCandidate(
       *focused_context_id_, current_suggestions[index],
-      /* delete_previous_utf16_len=*/1, /*use_replace_surrounding_text=*/
-      base::FeatureList::IsEnabled(
-          features::kDiacriticsUseReplaceSurroundingText),
-      &error);
+      /* delete_previous_utf16_len=*/1, &error);
   if (error.empty()) {
     suggestion_handler_->Announce(
         l10n_util::GetStringUTF16(IDS_SUGGESTION_DIACRITICS_INSERTED));
@@ -372,19 +361,6 @@ AssistiveType LongpressDiacriticsSuggester::GetProposeActionType() {
   return AssistiveType::kLongpressDiacritics;
 }
 
-void LongpressDiacriticsSuggester::ShowDiacriticsNudge() {
-  if (features::IsSystemNudgeMigrationEnabled()) {
-    AnchoredNudgeData nudge_data(
-        kDiacriticsNudgeId, ash::NudgeCatalogName::kDisableDiacritics,
-        l10n_util::GetStringUTF16(IDS_CHROMEOS_DIACRITIC_NUDGE_TEXT));
-    // TODO: Set an `image_model` in `nudge_data`.
-
-    AnchoredNudgeManager::Get()->Show(nudge_data);
-  } else {
-    nudge_controller_.ShowNudge();
-  }
-}
-
 void LongpressDiacriticsSuggester::SetButtonHighlighted(size_t index,
                                                         bool highlighted) {
   if (!focused_context_id_.has_value()) {
@@ -392,22 +368,10 @@ void LongpressDiacriticsSuggester::SetButtonHighlighted(size_t index,
     return;
   }
   std::string error;
-  if (index == GetCurrentShownDiacritics().size()) {
-    suggestion_handler_->SetButtonHighlighted(
-        *focused_context_id_,
-        {
-            .id = ui::ime::ButtonId::kLearnMore,
-            .window_type =
-                ash::ime::AssistiveWindowType::kLongpressDiacriticsSuggestion,
-        },
-        highlighted, &error);
-
-  } else {
-    suggestion_handler_->SetButtonHighlighted(
-        *focused_context_id_,
-        CreateButtonFor(index, GetCurrentShownDiacritics()[index]),
-        /* highlighted=*/highlighted, &error);
-  }
+  suggestion_handler_->SetButtonHighlighted(
+      *focused_context_id_,
+      CreateButtonFor(index, GetCurrentShownDiacritics()[index]),
+      /* highlighted=*/highlighted, &error);
 
   if (!error.empty()) {
     LOG(ERROR) << "suggest: Failed to set button highlighted. " << error;
@@ -416,14 +380,14 @@ void LongpressDiacriticsSuggester::SetButtonHighlighted(size_t index,
 
 std::vector<std::u16string>
 LongpressDiacriticsSuggester::GetCurrentShownDiacritics() {
-  if (displayed_window_base_character_ == std::nullopt) {
+  if (displayed_window_base_character_ == absl::nullopt) {
     return {};
   }
   return GetDiacriticsFor(*displayed_window_base_character_, engine_id_);
 }
 
 void LongpressDiacriticsSuggester::Reset() {
-  displayed_window_base_character_ = std::nullopt;
-  highlighted_index_ = std::nullopt;
+  displayed_window_base_character_ = absl::nullopt;
+  highlighted_index_ = absl::nullopt;
 }
 }  // namespace ash::input_method

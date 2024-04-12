@@ -16,21 +16,18 @@ import '//resources/polymer/v3_0/paper-spinner/paper-spinner-lite.js';
 import '../settings_shared.css.js';
 import '../site_favicon.js';
 
-import type {CrSearchFieldElement} from '//resources/cr_elements/cr_search_field/cr_search_field.js';
-import type {FindShortcutMixinInterface} from '//resources/cr_elements/find_shortcut_mixin.js';
-import {FindShortcutMixin} from '//resources/cr_elements/find_shortcut_mixin.js';
-import type {I18nMixinInterface} from '//resources/cr_elements/i18n_mixin.js';
-import {I18nMixin} from '//resources/cr_elements/i18n_mixin.js';
-import {assert} from '//resources/js/assert.js';
+import {CrSearchFieldElement} from '//resources/cr_elements/cr_search_field/cr_search_field.js';
+import {FindShortcutMixin, FindShortcutMixinInterface} from '//resources/cr_elements/find_shortcut_mixin.js';
+import {assert} from '//resources/js/assert_ts.js';
 import {focusWithoutInk} from '//resources/js/focus_without_ink.js';
-import {listenOnce} from '//resources/js/util.js';
+import {I18nMixin, I18nMixinInterface} from '//resources/cr_elements/i18n_mixin.js';
+import {listenOnce} from '//resources/js/util_ts.js';
 import {IronResizableBehavior} from '//resources/polymer/v3_0/iron-resizable-behavior/iron-resizable-behavior.js';
 import {afterNextRender, mixinBehaviors, PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
 
 import {loadTimeData} from '../i18n_setup.js';
-import type {Route, RouteObserverMixinInterface} from '../router.js';
-import {RouteObserverMixin, Router} from '../router.js';
+import {Route, RouteObserverMixin, RouteObserverMixinInterface, Router} from '../router.js';
 
 import {getTemplate} from './settings_subpage.html.js';
 
@@ -76,6 +73,11 @@ export class SettingsSubpageElement extends SettingsSubpageElementBase {
       faviconSiteUrl: String,
 
       learnMoreUrl: String,
+
+      showLearnMoreUrl: {
+        type: Boolean,
+        computed: 'computeShowLearnMoreUrl_(learnMoreUrl)',
+      },
 
       /** Setting a |searchLabel| will enable search. */
       searchLabel: String,
@@ -316,6 +318,10 @@ export class SettingsSubpageElement extends SettingsSubpageElementBase {
 
   static get template() {
     return getTemplate();
+  }
+
+  computeShowLearnMoreUrl_() {
+    return this.learnMoreUrl && !loadTimeData.getBoolean('isJemaProfile');
   }
 }
 

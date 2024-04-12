@@ -111,9 +111,7 @@ void GpuArcVideoDecoder::Initialize(
       /*frame_converter=*/nullptr,
       media::VideoDecoderPipeline::DefaultPreferredRenderableFourccs(),
       std::make_unique<media::NullMediaLog>(),
-      /*oop_video_decoder=*/{},
-      // TODO(b/195769334): Set this to true once OOP-VD is enabled for ARC.
-      /*in_video_decoder_process=*/false);
+      /*oop_video_decoder=*/{});
 
   if (!decoder_) {
     VLOGF(1) << "Failed to create video decoder";
@@ -269,7 +267,7 @@ void GpuArcVideoDecoder::OnFrameReady(scoped_refptr<media::VideoFrame> frame) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(frame);
 
-  std::optional<int32_t> video_frame_id =
+  absl::optional<int32_t> video_frame_id =
       video_frame_pool_->GetVideoFrameId(frame.get());
   if (!video_frame_id) {
     VLOGF(1) << "Failed to get video frame id.";

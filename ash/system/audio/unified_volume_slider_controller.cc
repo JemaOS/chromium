@@ -30,7 +30,7 @@ UnifiedVolumeSliderController::UnifiedVolumeSliderController(
           CrasAudioHandler::kMetricsDelayTimerInterval,
           /*receiver=*/this,
           &UnifiedVolumeSliderController::RecordVolumeSourceMetric) {
-  CHECK(delegate);
+  DCHECK(delegate);
 }
 
 UnifiedVolumeSliderController::UnifiedVolumeSliderController()
@@ -80,27 +80,18 @@ void UnifiedVolumeSliderController::SliderValueChanged(
   }
 
   const int level = value * 100;
-  auto* const audio_handler = CrasAudioHandler::Get();
 
-  // If the `level` doesn't change, don't do anything.
-  if (level == audio_handler->GetOutputVolumePercent()) {
-    return;
+  if (level != CrasAudioHandler::Get()->GetOutputVolumePercent()) {
+    TrackValueChangeUMA(/*going_up=*/level >
+                        CrasAudioHandler::Get()->GetOutputVolumePercent());
   }
 
-  TrackValueChangeUMA(/*going_up=*/level >
-                      audio_handler->GetOutputVolumePercent());
-  audio_handler->SetOutputVolumePercent(level);
-
-  // Manually sets the mute state since we don't distinguish muted and level is
-  // 0 state.
-  if (level == 0) {
-    audio_handler->SetOutputMute(/*mute_on=*/true);
-  }
+  CrasAudioHandler::Get()->SetOutputVolumePercent(level);
 
   // If the volume is above certain level and it's muted, it should be unmuted.
-  if (audio_handler->IsOutputMuted() &&
-      level > audio_handler->GetOutputDefaultVolumeMuteThreshold()) {
-    audio_handler->SetOutputMute(/*mute_on=*/false);
+  if (CrasAudioHandler::Get()->IsOutputMuted() &&
+      level > CrasAudioHandler::Get()->GetOutputDefaultVolumeMuteThreshold()) {
+    CrasAudioHandler::Get()->SetOutputMute(false);
   }
 
   output_volume_metric_delay_timer_.Reset();
@@ -109,11 +100,6 @@ void UnifiedVolumeSliderController::SliderValueChanged(
 void UnifiedVolumeSliderController::SliderButtonPressed() {
   auto* const audio_handler = CrasAudioHandler::Get();
   const bool mute = !audio_handler->IsOutputMuted();
-
-  // If the level is 0, the slider is still muted, and nothing needs to be done.
-  if (audio_handler->GetOutputVolumePercent() == 0) {
-    return;
-  }
 
   TrackToggleUMA(/*target_toggle_state=*/mute);
 

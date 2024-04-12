@@ -54,7 +54,6 @@ class CORE_EXPORT LayoutFlowThread : public LayoutBlockFlow {
   ~LayoutFlowThread() override = default;
   void Trace(Visitor*) const override;
 
-  bool IsLayoutNGObject() const final;
   bool IsLayoutFlowThread() const final {
     NOT_DESTROYED();
     return true;
@@ -97,6 +96,11 @@ class CORE_EXPORT LayoutFlowThread : public LayoutBlockFlow {
 
   PaintLayerType LayerTypeRequired() const final;
 
+  bool NeedsPreferredWidthsRecalculation() const final {
+    NOT_DESTROYED();
+    return true;
+  }
+
   virtual void FlowThreadDescendantWasInserted(LayoutObject*) {
     NOT_DESTROYED();
   }
@@ -104,13 +108,13 @@ class CORE_EXPORT LayoutFlowThread : public LayoutBlockFlow {
     NOT_DESTROYED();
   }
   virtual void FlowThreadDescendantStyleWillChange(
-      LayoutBoxModelObject*,
+      LayoutBox*,
       StyleDifference,
       const ComputedStyle& new_style) {
     NOT_DESTROYED();
   }
   virtual void FlowThreadDescendantStyleDidChange(
-      LayoutBoxModelObject*,
+      LayoutBox*,
       StyleDifference,
       const ComputedStyle& old_style) {
     NOT_DESTROYED();
@@ -123,9 +127,7 @@ class CORE_EXPORT LayoutFlowThread : public LayoutBlockFlow {
   void AddOutlineRects(OutlineRectCollector&,
                        OutlineInfo*,
                        const PhysicalOffset& additional_offset,
-                       OutlineType) const override;
-
-  void Paint(const PaintInfo& paint_info) const final;
+                       NGOutlineType) const override;
 
   bool NodeAtPoint(HitTestResult&,
                    const HitTestLocation&,
@@ -134,6 +136,11 @@ class CORE_EXPORT LayoutFlowThread : public LayoutBlockFlow {
 
   virtual void AddColumnSetToThread(LayoutMultiColumnSet*) = 0;
   virtual void RemoveColumnSetFromThread(LayoutMultiColumnSet*);
+
+  void ComputeLogicalHeight(LayoutUnit logical_height,
+                            LayoutUnit logical_top,
+                            LogicalExtentComputedValues&) const override;
+  virtual void UpdateLogicalWidth() = 0;
 
   bool HasColumnSets() const {
     NOT_DESTROYED();
@@ -161,19 +168,23 @@ class CORE_EXPORT LayoutFlowThread : public LayoutBlockFlow {
   }
   // Return the visual bounding box based on the supplied flow-thread bounding
   // box. Both rectangles are completely physical in terms of writing mode.
-  PhysicalRect FragmentsBoundingBox(
-      const PhysicalRect& layer_bounding_box) const;
+  LayoutRect FragmentsBoundingBox(const LayoutRect& layer_bounding_box) const;
 
-  virtual PhysicalOffset VisualPointToFlowThreadPoint(
-      const PhysicalOffset& visual_point) const = 0;
+  // Convert a logical position in the flow thread coordinate space to a logical
+  // position in the containing coordinate space.
+  void FlowThreadToContainingCoordinateSpace(LayoutUnit& block_position,
+                                             LayoutUnit& inline_position) const;
+
+  virtual LayoutPoint FlowThreadPointToVisualPoint(
+      const LayoutPoint& flow_thread_point) const = 0;
+  virtual LayoutPoint VisualPointToFlowThreadPoint(
+      const LayoutPoint& visual_point) const = 0;
 
   virtual LayoutMultiColumnSet* ColumnSetAtBlockOffset(
       LayoutUnit,
       PageBoundaryRule) const = 0;
 
   const char* GetName() const override = 0;
-
-  RecalcScrollableOverflowResult RecalcScrollableOverflow() final;
 
  protected:
   void GenerateColumnSetIntervalTree();

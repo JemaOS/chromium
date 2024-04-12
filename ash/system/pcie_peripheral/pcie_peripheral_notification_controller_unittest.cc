@@ -5,7 +5,6 @@
 #include "ash/system/pcie_peripheral/pcie_peripheral_notification_controller.h"
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 #include "ash/constants/ash_pref_names.h"
@@ -17,6 +16,7 @@
 #include "base/memory/raw_ptr.h"
 #include "components/prefs/pref_service.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/message_center/fake_message_center.h"
 #include "ui/message_center/message_center.h"
 #include "ui/message_center/public/cpp/notification.h"
@@ -111,20 +111,20 @@ class PciePeripheralNotificationControllerTest : public AshTestBase {
         prefs::kPciePeripheralDisplayNotificationRemaining);
   }
 
-  void ClickLimitedNotificationButton(std::optional<int> button_index) {
+  void ClickLimitedNotificationButton(absl::optional<int> button_index) {
     // No button index means the notification body was clicked.
     if (!button_index.has_value()) {
       message_center::Notification* notification =
           MessageCenter::Get()->FindVisibleNotificationById(
               kPciePeripheralLimitedPerformanceNotificationId);
-      notification->delegate()->Click(std::nullopt, std::nullopt);
+      notification->delegate()->Click(absl::nullopt, absl::nullopt);
       return;
     }
 
     message_center::Notification* notification =
         MessageCenter::Get()->FindVisibleNotificationById(
             kPciePeripheralLimitedPerformanceNotificationId);
-    notification->delegate()->Click(button_index, std::nullopt);
+    notification->delegate()->Click(button_index, absl::nullopt);
   }
 
   void ClickGuestNotification(bool is_thunderbolt_only) {
@@ -144,8 +144,7 @@ class PciePeripheralNotificationControllerTest : public AshTestBase {
   }
 
  private:
-  raw_ptr<MockNewWindowDelegate, DanglingUntriaged>
-      new_window_delegate_primary_;
+  raw_ptr<MockNewWindowDelegate, ExperimentalAsh> new_window_delegate_primary_;
   std::unique_ptr<TestNewWindowDelegateProvider> delegate_provider_;
 };
 
@@ -315,7 +314,7 @@ TEST_F(PciePeripheralNotificationControllerTest,
   EXPECT_EQ(2u, notification->buttons().size());
 
   // Click the notification body.
-  ClickLimitedNotificationButton(std::nullopt);
+  ClickLimitedNotificationButton(absl::nullopt);
   EXPECT_EQ(0, GetPrefNotificationCount());
   EXPECT_EQ(0u, MessageCenter::Get()->NotificationCount());
   EXPECT_EQ(1, GetNumOsPrivacySettingsOpened());

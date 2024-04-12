@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_ARC_FILEAPI_ARC_DOCUMENTS_PROVIDER_ROOT_MAP_FACTORY_H_
 #define CHROME_BROWSER_ASH_ARC_FILEAPI_ARC_DOCUMENTS_PROVIDER_ROOT_MAP_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace arc {
@@ -28,13 +28,14 @@ class ArcDocumentsProviderRootMapFactory : public ProfileKeyedServiceFactory {
   static ArcDocumentsProviderRootMapFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<ArcDocumentsProviderRootMapFactory>;
+  friend struct base::DefaultSingletonTraits<
+      ArcDocumentsProviderRootMapFactory>;
 
   ArcDocumentsProviderRootMapFactory();
   ~ArcDocumentsProviderRootMapFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

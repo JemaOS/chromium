@@ -61,7 +61,9 @@ test(() => {
         'x-foo/j6'
     ];
 
-    assert_focus_navigation_bidirectional(elements);
+    assert_focus_navigation_forward(elements);
+    elements.reverse();
+    assert_focus_navigation_backward(elements);
 }, 'Focus controller should treat slots as a focus scope.');
 
 test(function() {

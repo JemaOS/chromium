@@ -60,7 +60,7 @@ class MockNetworkContext : public network::TestNetworkContext {
         std::move(proxy_lookup_client));
     if (proxy_presence_table_.count(url) == 0) {
       client->OnProxyLookupComplete(net::ERR_FAILED,
-                                    /*proxy_info=*/std::nullopt);
+                                    /*proxy_info=*/absl::nullopt);
       return;
     }
     net::ProxyInfo proxy_info;
@@ -80,7 +80,8 @@ class AttestationCAClientTest : public ::testing::Test {
  public:
   AttestationCAClientTest()
       : test_shared_url_loader_factory_(
-            test_url_loader_factory_.GetSafeWeakWrapper()),
+            base::MakeRefCounted<network::WeakWrapperSharedURLLoaderFactory>(
+                &test_url_loader_factory_)),
         num_invocations_(0),
         result_(false) {}
 

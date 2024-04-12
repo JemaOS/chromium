@@ -6,8 +6,6 @@
 
 #include <memory>
 
-#include "ash/constants/ash_pref_names.h"
-#include "ash/wm/window_restore/window_restore_util.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/prefs/session_startup_pref.h"
 #include "chrome/common/pref_names.h"
@@ -21,7 +19,8 @@ namespace ash::full_restore {
 // Unit tests for full_restore_prefs.
 class FullRestorePrefsTest : public testing::Test {
  public:
-  FullRestorePrefsTest() = default;
+  FullRestorePrefsTest()
+      : user_manager_enabler_(std::make_unique<FakeChromeUserManager>()) {}
 
   void SetUp() override {
     pref_service_ =
@@ -33,22 +32,22 @@ class FullRestorePrefsTest : public testing::Test {
   }
 
   FakeChromeUserManager* GetFakeUserManager() const {
-    return fake_user_manager_.Get();
+    return static_cast<FakeChromeUserManager*>(
+        user_manager::UserManager::Get());
   }
 
   RestoreOption GetRestoreOption() const {
     return static_cast<RestoreOption>(
-        pref_service_->GetInteger(prefs::kRestoreAppsAndPagesPrefName));
+        pref_service_->GetInteger(kRestoreAppsAndPagesPrefName));
   }
 
   std::unique_ptr<sync_preferences::TestingPrefServiceSyncable> pref_service_;
-  user_manager::TypedScopedUserManager<ash::FakeChromeUserManager>
-      fake_user_manager_{std::make_unique<ash::FakeChromeUserManager>()};
+  user_manager::ScopedUserManager user_manager_enabler_;
 };
 
 // For a brand new user, set 'ask every time' as the default value.
 TEST_F(FullRestorePrefsTest, NewUser) {
-  GetFakeUserManager()->SetIsCurrentUserNew(true);
+  GetFakeUserManager()->set_current_user_new(true);
   RegisterProfilePrefs(registry());
 
   SetDefaultRestorePrefIfNecessary(pref_service_.get());
@@ -61,7 +60,7 @@ TEST_F(FullRestorePrefsTest, NewUser) {
 TEST_F(FullRestorePrefsTest, UpgradingFromRestore) {
   SessionStartupPref::RegisterProfilePrefs(registry());
   pref_service_->SetInteger(
-      ::prefs::kRestoreOnStartup,
+      prefs::kRestoreOnStartup,
       static_cast<int>(SessionStartupPref::kPrefValueLast));
 
   RegisterProfilePrefs(registry());
@@ -75,7 +74,7 @@ TEST_F(FullRestorePrefsTest, UpgradingFromRestore) {
 TEST_F(FullRestorePrefsTest, UpgradingFromNotRestore) {
   SessionStartupPref::RegisterProfilePrefs(registry());
   pref_service_->SetInteger(
-      ::prefs::kRestoreOnStartup,
+      prefs::kRestoreOnStartup,
       static_cast<int>(SessionStartupPref::kPrefValueNewTab));
 
   RegisterProfilePrefs(registry());
@@ -87,7 +86,7 @@ TEST_F(FullRestorePrefsTest, UpgradingFromNotRestore) {
 // For a new Chrome OS user, set 'always restore' as the default value if the
 // browser setting is 'continue where you left off'.
 TEST_F(FullRestorePrefsTest, NewChromeOSUserFromRestore) {
-  GetFakeUserManager()->SetIsCurrentUserNew(true);
+  GetFakeUserManager()->set_current_user_new(true);
 
   RegisterProfilePrefs(registry());
   SetDefaultRestorePrefIfNecessary(pref_service_.get());
@@ -96,7 +95,7 @@ TEST_F(FullRestorePrefsTest, NewChromeOSUserFromRestore) {
 
   SessionStartupPref::RegisterProfilePrefs(registry());
   pref_service_->SetInteger(
-      ::prefs::kRestoreOnStartup,
+      prefs::kRestoreOnStartup,
       static_cast<int>(SessionStartupPref::kPrefValueLast));
 
   UpdateRestorePrefIfNecessary(pref_service_.get());
@@ -107,7 +106,7 @@ TEST_F(FullRestorePrefsTest, NewChromeOSUserFromRestore) {
 // For a new Chrome OS user, set 'ask every time' as the default value if the
 // browser setting is 'new tab'.
 TEST_F(FullRestorePrefsTest, NewChromeOSUserFromNotRestore) {
-  GetFakeUserManager()->SetIsCurrentUserNew(true);
+  GetFakeUserManager()->set_current_user_new(true);
 
   RegisterProfilePrefs(registry());
   SetDefaultRestorePrefIfNecessary(pref_service_.get());
@@ -116,7 +115,7 @@ TEST_F(FullRestorePrefsTest, NewChromeOSUserFromNotRestore) {
 
   SessionStartupPref::RegisterProfilePrefs(registry());
   pref_service_->SetInteger(
-      ::prefs::kRestoreOnStartup,
+      prefs::kRestoreOnStartup,
       static_cast<int>(SessionStartupPref::kPrefValueNewTab));
 
   UpdateRestorePrefIfNecessary(pref_service_.get());

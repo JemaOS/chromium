@@ -3,8 +3,7 @@
 // found in the LICENSE file.
 
 #include "ui/events/ozone/evdev/device_event_dispatcher_evdev.h"
-
-#include <optional>
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ui {
 
@@ -37,8 +36,8 @@ MouseMoveEventParams::MouseMoveEventParams(int device_id,
       flags(flags),
       location(location),
       ordinal_delta(ordinal_delta
-                        ? std::optional<gfx::Vector2dF>(*ordinal_delta)
-                        : std::nullopt),
+                        ? absl::optional<gfx::Vector2dF>(*ordinal_delta)
+                        : absl::nullopt),
       pointer_details(details),
       timestamp(timestamp) {}
 

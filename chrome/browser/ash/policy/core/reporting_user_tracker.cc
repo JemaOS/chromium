@@ -26,11 +26,8 @@ std::string FullyCanonicalize(const std::string& email) {
 
 }  // namespace
 
-ReportingUserTracker::ReportingUserTracker(
-    user_manager::UserManager* user_manager)
-    : local_state_(user_manager->GetLocalState()) {
-  observation_.Observe(user_manager);
-}
+ReportingUserTracker::ReportingUserTracker(PrefService* local_state)
+    : local_state_(local_state) {}
 
 ReportingUserTracker::~ReportingUserTracker() = default;
 
@@ -56,7 +53,7 @@ void ReportingUserTracker::OnUserAffiliationUpdated(
     return;
   }
 
-  if (user.GetType() != user_manager::UserType::kRegular) {
+  if (user.GetType() != user_manager::USER_TYPE_REGULAR) {
     return;
   }
 

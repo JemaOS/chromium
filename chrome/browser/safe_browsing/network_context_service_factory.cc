@@ -11,8 +11,7 @@ namespace safe_browsing {
 
 // static
 NetworkContextServiceFactory* NetworkContextServiceFactory::GetInstance() {
-  static base::NoDestructor<NetworkContextServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<NetworkContextServiceFactory>::get();
 }
 
 // static
@@ -25,20 +24,14 @@ NetworkContextService* NetworkContextServiceFactory::GetForBrowserContext(
 NetworkContextServiceFactory::NetworkContextServiceFactory()
     : ProfileKeyedServiceFactory(
           "SafeBrowsingNetworkContextService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
 NetworkContextServiceFactory::~NetworkContextServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-NetworkContextServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* NetworkContextServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<NetworkContextService>(profile);
+  return new NetworkContextService(profile);
 }
 
 }  // namespace safe_browsing

@@ -43,9 +43,8 @@ ArcAppInfoLinksPanel::ArcAppInfoLinksPanel(Profile* profile,
 
   std::unique_ptr<ArcAppListPrefs::AppInfo> app_info =
       ArcAppListPrefs::Get(profile)->GetApp(arc::kSettingsAppId);
-  if (app_info) {
+  if (app_info)
     UpdateLink(app_info->ready);
-  }
 }
 
 ArcAppInfoLinksPanel::~ArcAppInfoLinksPanel() {}
@@ -53,23 +52,20 @@ ArcAppInfoLinksPanel::~ArcAppInfoLinksPanel() {}
 void ArcAppInfoLinksPanel::OnAppRegistered(
     const std::string& app_id,
     const ArcAppListPrefs::AppInfo& app_info) {
-  if (app_id == arc::kSettingsAppId) {
+  if (app_id == arc::kSettingsAppId)
     UpdateLink(app_info.ready);
-  }
 }
 
 void ArcAppInfoLinksPanel::OnAppStatesChanged(
     const std::string& app_id,
     const ArcAppListPrefs::AppInfo& app_info) {
-  if (app_id == arc::kSettingsAppId) {
+  if (app_id == arc::kSettingsAppId)
     UpdateLink(app_info.ready);
-  }
 }
 
 void ArcAppInfoLinksPanel::OnAppRemoved(const std::string& app_id) {
-  if (app_id == arc::kSettingsAppId) {
+  if (app_id == arc::kSettingsAppId)
     UpdateLink(false);
-  }
 }
 
 void ArcAppInfoLinksPanel::UpdateLink(bool enabled) {
@@ -87,5 +83,5 @@ void ArcAppInfoLinksPanel::LinkClicked() {
   }
 }
 
-BEGIN_METADATA(ArcAppInfoLinksPanel)
+BEGIN_METADATA(ArcAppInfoLinksPanel, AppInfoPanel)
 END_METADATA

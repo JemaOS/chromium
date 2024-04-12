@@ -16,9 +16,8 @@ class CommandUpdater;
 
 // The star icon to show a bookmark bubble.
 class StarView : public PageActionIconView {
-  METADATA_HEADER(StarView, PageActionIconView)
-
  public:
+  METADATA_HEADER(StarView);
   StarView(CommandUpdater* command_updater,
            Browser* browser,
            IconLabelBubbleView::Delegate* icon_label_bubble_delegate,
@@ -37,7 +36,6 @@ class StarView : public PageActionIconView {
   void ExecuteCommand(ExecuteSource source) override;
   views::BubbleDialogDelegate* GetBubble() const override;
   const gfx::VectorIcon& GetVectorIcon() const override;
-  std::u16string GetTextForTooltipAndAccessibleName() const override;
 
  private:
   void EditBookmarksPrefUpdated();

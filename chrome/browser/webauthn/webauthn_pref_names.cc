@@ -11,7 +11,4 @@ const char kRemoteProxiedRequestsAllowed[] =
 
 const char kAllowWithBrokenCerts[] = "webauthn.allow_with_broken_certs";
 
-extern const char kLastUsedPairingFromSyncPublicKey[] =
-    "webauthn.last_used_pairing_from_sync_public_key";
-
 }  // namespace webauthn::pref_names

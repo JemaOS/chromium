@@ -15,17 +15,16 @@ namespace blink {
 
 GPUComputePassEncoder::GPUComputePassEncoder(
     GPUDevice* device,
-    WGPUComputePassEncoder compute_pass_encoder,
-    const String& label)
-    : DawnObject<WGPUComputePassEncoder>(device, compute_pass_encoder, label) {}
+    WGPUComputePassEncoder compute_pass_encoder)
+    : DawnObject<WGPUComputePassEncoder>(device, compute_pass_encoder) {}
 
 void GPUComputePassEncoder::setBindGroup(
     uint32_t index,
     GPUBindGroup* bindGroup,
     const Vector<uint32_t>& dynamicOffsets) {
-  WGPUBindGroupImpl* bgImpl = bindGroup ? bindGroup->GetHandle() : nullptr;
   GetProcs().computePassEncoderSetBindGroup(
-      GetHandle(), index, bgImpl, dynamicOffsets.size(), dynamicOffsets.data());
+      GetHandle(), index, bindGroup->GetHandle(), dynamicOffsets.size(),
+      dynamicOffsets.data());
 }
 
 void GPUComputePassEncoder::setBindGroup(
@@ -44,8 +43,8 @@ void GPUComputePassEncoder::setBindGroup(
   const uint32_t* data =
       dynamic_offsets_data.DataMaybeOnStack() + dynamic_offsets_data_start;
 
-  WGPUBindGroupImpl* bgImpl = bind_group ? bind_group->GetHandle() : nullptr;
-  GetProcs().computePassEncoderSetBindGroup(GetHandle(), index, bgImpl,
+  GetProcs().computePassEncoderSetBindGroup(GetHandle(), index,
+                                            bind_group->GetHandle(),
                                             dynamic_offsets_data_length, data);
 }
 
@@ -54,7 +53,7 @@ void GPUComputePassEncoder::writeTimestamp(
     uint32_t queryIndex,
     ExceptionState& exception_state) {
   V8GPUFeatureName::Enum requiredFeatureEnum =
-      V8GPUFeatureName::Enum::kChromiumExperimentalTimestampQueryInsidePasses;
+      V8GPUFeatureName::Enum::kTimestampQueryInsidePasses;
   if (!device_->features()->has(requiredFeatureEnum)) {
     exception_state.ThrowTypeError(String::Format(
         "Use of the writeTimestamp() method on compute pass requires the '%s' "

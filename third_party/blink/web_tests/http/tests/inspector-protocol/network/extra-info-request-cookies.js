@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startBlank(
       `Verifies that Network.RequestWillBeSentExtraInfo events report structured request cookies.\n`);
   await dp.Network.enable();

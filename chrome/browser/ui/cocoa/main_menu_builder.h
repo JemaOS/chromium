@@ -7,12 +7,13 @@
 
 #import <Cocoa/Cocoa.h>
 
-#include <optional>
 #include <ostream>
 #include <string>
 #include <vector>
 
 #include "base/check_op.h"
+#include "base/mac/scoped_nsobject.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace chrome {
 
@@ -29,8 +30,6 @@ void BuildMainMenu(NSApplication* nsapp,
                    id<NSApplicationDelegate> app_delegate,
                    const std::u16string& product_name,
                    bool is_pwa);
-
-NSMenuItem* BuildFileMenuForTesting(bool is_pwa);
 
 // Internal ////////////////////////////////////////////////////////////////////
 
@@ -126,14 +125,8 @@ class MenuItemBuilder {
     return *this;
   }
 
-  // Marks the item as a section header menu item.
-  MenuItemBuilder& is_section_header() {
-    is_section_header_ = true;
-    return *this;
-  }
-
   // Builds a NSMenuItem instance from the properties set on the Builder.
-  NSMenuItem* Build() const;
+  base::scoped_nsobject<NSMenuItem> Build() const;
 
  private:
   bool is_separator_ = false;
@@ -143,21 +136,19 @@ class MenuItemBuilder {
 
   int tag_ = 0;
 
-  id __strong target_ = nil;
+  id target_ = nil;
   SEL action_ = nil;
 
-  NSString* __strong key_equivalent_ = @"";
+  NSString* key_equivalent_ = @"";
   NSEventModifierFlags key_equivalent_flags_ = 0;
 
   bool is_alternate_ = false;
 
   bool is_removed_ = false;
 
-  std::optional<std::vector<MenuItemBuilder>> submenu_;
+  absl::optional<std::vector<MenuItemBuilder>> submenu_;
 
   bool is_hidden_ = false;
-
-  bool is_section_header_ = false;
 
   // Copy and assign allowed.
 };

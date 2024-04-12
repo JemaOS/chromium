@@ -81,11 +81,6 @@ void AddTimeOfFirstAddChangedCallback(PrefChangeRegistrar* registrar,
   registrar->Add(kTimeOfFirstAdd, std::move(callback));
 }
 
-void AddTimeOfFirstPinChangedCallback(PrefChangeRegistrar* registrar,
-                                      base::RepeatingClosure callback) {
-  registrar->Add(kTimeOfFirstPin, std::move(callback));
-}
-
 bool IsPreviewsEnabled(PrefService* prefs) {
   return prefs->GetBoolean(kPreviewsEnabled);
 }
@@ -102,7 +97,7 @@ void SetSuggestionsExpanded(PrefService* prefs, bool expanded) {
   prefs->SetBoolean(kSuggestionsExpanded, expanded);
 }
 
-std::optional<base::Time> GetTimeOfFirstAdd(PrefService* prefs) {
+absl::optional<base::Time> GetTimeOfFirstAdd(PrefService* prefs) {
   // The `kTimeOfFirstAdd` preference was added after the `kTimeOfFirstPin`
   // preference, so if the `kTimeOfFirstAdd` has not yet been marked it's
   // possible that the user may still have pinned a file at an earlier time.
@@ -124,9 +119,9 @@ bool MarkTimeOfFirstAdd(PrefService* prefs) {
   return false;
 }
 
-std::optional<base::Time> GetTimeOfFirstAvailability(PrefService* prefs) {
+absl::optional<base::Time> GetTimeOfFirstAvailability(PrefService* prefs) {
   auto* pref = prefs->FindPreference(kTimeOfFirstAvailability);
-  return pref->IsDefaultValue() ? std::nullopt
+  return pref->IsDefaultValue() ? absl::nullopt
                                 : base::ValueToTime(pref->GetValue());
 }
 
@@ -138,9 +133,9 @@ bool MarkTimeOfFirstAvailability(PrefService* prefs) {
   return false;
 }
 
-std::optional<base::Time> GetTimeOfFirstEntry(PrefService* prefs) {
+absl::optional<base::Time> GetTimeOfFirstEntry(PrefService* prefs) {
   auto* pref = prefs->FindPreference(kTimeOfFirstEntry);
-  return pref->IsDefaultValue() ? std::nullopt
+  return pref->IsDefaultValue() ? absl::nullopt
                                 : base::ValueToTime(pref->GetValue());
 }
 
@@ -152,9 +147,9 @@ bool MarkTimeOfFirstEntry(PrefService* prefs) {
   return false;
 }
 
-std::optional<base::Time> GetTimeOfFirstPin(PrefService* prefs) {
+absl::optional<base::Time> GetTimeOfFirstPin(PrefService* prefs) {
   auto* pref = prefs->FindPreference(kTimeOfFirstPin);
-  return pref->IsDefaultValue() ? std::nullopt
+  return pref->IsDefaultValue() ? absl::nullopt
                                 : base::ValueToTime(pref->GetValue());
 }
 
@@ -166,9 +161,9 @@ bool MarkTimeOfFirstPin(PrefService* prefs) {
   return false;
 }
 
-std::optional<base::Time> GetTimeOfFirstFilesAppChipPress(PrefService* prefs) {
+absl::optional<base::Time> GetTimeOfFirstFilesAppChipPress(PrefService* prefs) {
   auto* pref = prefs->FindPreference(kTimeOfFirstFilesAppChipPress);
-  return pref->IsDefaultValue() ? std::nullopt
+  return pref->IsDefaultValue() ? absl::nullopt
                                 : base::ValueToTime(pref->GetValue());
 }
 

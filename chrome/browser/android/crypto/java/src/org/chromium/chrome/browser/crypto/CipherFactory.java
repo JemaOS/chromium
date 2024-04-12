@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.crypto;
 import android.os.Bundle;
 
 import androidx.annotation.AnyThread;
+import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Log;
 
@@ -68,10 +69,12 @@ public class CipherFactory {
         private static CipherFactory sInstance = new CipherFactory();
     }
 
+    @VisibleForTesting
     public static void resetInstanceForTesting() {
         LazyHolder.sInstance = new CipherFactory();
     }
 
+    @VisibleForTesting
     public static void resetInstanceForTesting(CipherFactory cipherFactory) {
         LazyHolder.sInstance = cipherFactory;
     }

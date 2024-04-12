@@ -15,13 +15,14 @@ namespace {
 
 #if DCHECK_IS_ON()
 // Fake input for notification testing.
-constexpr base::TimeDelta kFakeNotificationInputForTesting = base::Hours(8);
+constexpr int kFakeNotificationInputForTesting = 8;
 #endif  // DCHECK_IS_ON()
 
 }  // namespace
 
 AdaptiveChargingController::AdaptiveChargingController()
-    : notification_controller_(
+    : nudge_controller_(std::make_unique<AdaptiveChargingNudgeController>()),
+      notification_controller_(
           std::make_unique<AdaptiveChargingNotificationController>()) {
   power_manager_observation_.Observe(chromeos::PowerManagerClient::Get());
 }
@@ -29,26 +30,15 @@ AdaptiveChargingController::AdaptiveChargingController()
 AdaptiveChargingController::~AdaptiveChargingController() = default;
 
 bool AdaptiveChargingController::IsAdaptiveChargingSupported() {
-  if (is_adaptive_charging_supported_)
-    return true;
-
-  const std::optional<power_manager::PowerSupplyProperties>&
+  const absl::optional<power_manager::PowerSupplyProperties>&
       power_supply_proto = chromeos::PowerManagerClient::Get()->GetLastStatus();
 
-  is_adaptive_charging_supported_ =
-      power_supply_proto.has_value() &&
-      power_supply_proto->adaptive_charging_supported();
-  return is_adaptive_charging_supported_;
+  return power_supply_proto.has_value() &&
+         power_supply_proto->adaptive_charging_supported();
 }
 
 void AdaptiveChargingController::PowerChanged(
     const power_manager::PowerSupplyProperties& proto) {
-  // `is_adaptive_charging_supported_` is a hardware feature and we keep it
-  // unchanged if it was set true.
-  if (!is_adaptive_charging_supported_) {
-    is_adaptive_charging_supported_ = proto.adaptive_charging_supported();
-  }
-
   bool is_on_charger_now = false;
   if (proto.has_external_power()) {
     is_on_charger_now =
@@ -58,6 +48,7 @@ void AdaptiveChargingController::PowerChanged(
 #if DCHECK_IS_ON()
   if (features::IsAdaptiveChargingForTestingEnabled()) {
     if (!is_on_charger_ && is_on_charger_now) {
+      nudge_controller_->ShowNudgeForTesting();  // IN-TEST
       notification_controller_->ShowAdaptiveChargingNotification(
           kFakeNotificationInputForTesting);
     }
@@ -66,7 +57,8 @@ void AdaptiveChargingController::PowerChanged(
   }
 #endif  // DCHECK_IS_ON()
 
-  // Notification should be shown only if heuristic is enabled for this user.
+  // Nudge and notification should be shown only if heuristic is enabled for
+  // this user.
   if (proto.has_adaptive_charging_heuristic_enabled() &&
       !proto.adaptive_charging_heuristic_enabled()) {
     // |is_adaptive_delaying_charge_| is set to false when there is no
@@ -76,6 +68,12 @@ void AdaptiveChargingController::PowerChanged(
     notification_controller_->CloseAdaptiveChargingNotification();
     return;
   }
+
+  // Showing educational nudge.
+  if (proto.has_adaptive_charging_heuristic_enabled() &&
+      proto.adaptive_charging_heuristic_enabled() && !is_on_charger_ &&
+      is_on_charger_now)
+    nudge_controller_->ShowNudge();
 
   is_on_charger_ = is_on_charger_now;
 
@@ -100,7 +98,7 @@ void AdaptiveChargingController::PowerChanged(
       proto.battery_time_to_full_sec() > 0) {
     // Converts time to full from second to hours.
     notification_controller_->ShowAdaptiveChargingNotification(
-        base::Seconds(proto.battery_time_to_full_sec()));
+        static_cast<int>(proto.battery_time_to_full_sec() / 3600));
   } else {
     notification_controller_->ShowAdaptiveChargingNotification();
   }

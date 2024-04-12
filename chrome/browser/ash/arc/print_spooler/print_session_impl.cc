@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/arc/print_spooler/print_session_impl.h"
 
 #include <limits>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -23,13 +22,10 @@
 #include "base/task/thread_pool.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/arc/print_spooler/arc_print_spooler_util.h"
-#include "chrome/browser/pdf/pdf_pref_names.h"
 #include "chrome/browser/printing/print_view_manager_common.h"
 #include "chrome/browser/printing/printing_service.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/services/printing/public/mojom/printing_service.mojom.h"
 #include "components/arc/intent_helper/custom_tab.h"
-#include "components/prefs/pref_service.h"
 #include "content/public/browser/web_contents.h"
 #include "mojo/public/c/system/types.h"
 #include "net/base/filename_util.h"
@@ -39,6 +35,7 @@
 #include "printing/print_settings.h"
 #include "printing/print_settings_conversion.h"
 #include "printing/units.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/window.h"
 #include "ui/gfx/geometry/size.h"
 
@@ -54,7 +51,7 @@ constexpr int kMinimumPdfSize = 50;
 
 // Converts a color mode to its Mojo type.
 mojom::PrintColorMode ToArcColorMode(int color_mode) {
-  std::optional<bool> is_color = printing::IsColorModelSelected(
+  absl::optional<bool> is_color = printing::IsColorModelSelected(
       printing::ColorModeToColorModel(color_mode));
   return is_color.value() ? mojom::PrintColorMode::COLOR
                           : mojom::PrintColorMode::MONOCHROME;
@@ -89,14 +86,14 @@ mojom::PrintAttributesPtr GetPrintAttributes(
   if (vendor_id && !vendor_id->empty()) {
     id = *vendor_id;
   }
-  std::optional<int> width_microns =
+  absl::optional<int> width_microns =
       media_size_value->FindInt(printing::kSettingMediaSizeWidthMicrons);
-  std::optional<int> height_microns =
+  absl::optional<int> height_microns =
       media_size_value->FindInt(printing::kSettingMediaSizeHeightMicrons);
   if (!width_microns.has_value() || !height_microns.has_value())
     return nullptr;
   // Swap the width and height if layout is landscape.
-  std::optional<bool> landscape =
+  absl::optional<bool> landscape =
       job_settings.FindBool(printing::kSettingLandscape);
   if (!landscape.has_value())
     return nullptr;
@@ -124,13 +121,13 @@ mojom::PrintAttributesPtr GetPrintAttributes(
   mojom::PrintMarginsPtr margins = mojom::PrintMargins::New(0, 0, 0, 0);
 
   // PrintColorMode:
-  std::optional<int> color = job_settings.FindInt(printing::kSettingColor);
+  absl::optional<int> color = job_settings.FindInt(printing::kSettingColor);
   if (!color.has_value())
     return nullptr;
   mojom::PrintColorMode color_mode = ToArcColorMode(color.value());
 
   // PrintDuplexMode:
-  std::optional<int> duplex =
+  absl::optional<int> duplex =
       job_settings.FindInt(printing::kSettingDuplexMode);
   if (!duplex.has_value())
     return nullptr;
@@ -328,13 +325,6 @@ void PrintSessionImpl::OnPreviewDocumentRead(
     pdf_flattener_.set_disconnect_handler(
         base::BindOnce(&PrintSessionImpl::OnPdfFlattenerDisconnected,
                        weak_ptr_factory_.GetWeakPtr()));
-    const PrefService* prefs =
-        Profile::FromBrowserContext(web_contents_->GetBrowserContext())
-            ->GetPrefs();
-    if (prefs->IsManagedPreference(prefs::kPdfUseSkiaRendererEnabled)) {
-      pdf_flattener_->SetUseSkiaRendererPolicy(
-          prefs->GetBoolean(prefs::kPdfUseSkiaRendererEnabled));
-    }
   }
 
   bool inserted = callbacks_.emplace(request_id, std::move(callback)).second;
@@ -348,11 +338,9 @@ void PrintSessionImpl::OnPreviewDocumentRead(
 
 void PrintSessionImpl::OnPdfFlattened(
     int request_id,
-    printing::mojom::FlattenPdfResultPtr result) {
+    base::ReadOnlySharedMemoryRegion flattened_document_region) {
   auto it = callbacks_.find(request_id);
-  std::move(it->second)
-      .Run(result ? std::move(result->flattened_pdf_region)
-                  : base::ReadOnlySharedMemoryRegion());
+  std::move(it->second).Run(std::move(flattened_document_region));
   callbacks_.erase(it);
 }
 

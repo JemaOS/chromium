@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -40,7 +40,8 @@ class UserNetworkConfigurationUpdaterFactory
       const UserNetworkConfigurationUpdaterFactory&) = delete;
 
  private:
-  friend base::NoDestructor<UserNetworkConfigurationUpdaterFactory>;
+  friend struct base::DefaultSingletonTraits<
+      UserNetworkConfigurationUpdaterFactory>;
 
   UserNetworkConfigurationUpdaterFactory();
   ~UserNetworkConfigurationUpdaterFactory() override;
@@ -48,7 +49,7 @@ class UserNetworkConfigurationUpdaterFactory
   // BrowserContextKeyedServiceFactory:
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

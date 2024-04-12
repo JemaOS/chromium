@@ -10,7 +10,7 @@
     [CallWith=ScriptState,
      RaisesException,
      MeasureAs=KeyboardApiLock
-    ] Promise<undefined> lock(optional sequence<DOMString> keyCodes = []);
+    ] Promise<void> lock(optional sequence<DOMString> keyCodes = []);
 
     [CallWith=ScriptState,
      MeasureAs=KeyboardApiUnlock

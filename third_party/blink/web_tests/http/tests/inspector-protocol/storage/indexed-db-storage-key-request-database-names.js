@@ -1,27 +1,18 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
-  async function testBucket(bucketName) {
-    const bucket = bucketName === undefined ?
-      'window' :
-      `(await navigator.storageBuckets.open('${bucketName}'))`;
-    const frameId = (await dp.Page.getResourceTree()).result.frameTree.frame.id;
-    const storageKey =
-      (await dp.Storage.getStorageKeyForFrame({ frameId })).result.storageKey;
-    const bucketPromise = (async () => {
-      dp.Storage.setStorageBucketTracking({ storageKey, enable: true });
-      const { params: { bucketInfo: { bucket } } } =
-        await dp.Storage.onceStorageBucketCreatedOrUpdated(
-          e => e.params.bucketInfo.bucket.name === bucketName);
-      return bucket;
-    })();
+(async function(testRunner) {
+  const {dp, session} = await testRunner.startBlank(
+      `Tests that requesting database names works for IndexedDB with storageKey\n`);
 
-    testRunner.log(`Open some databases for ${bucketName ?? 'default'} bucket`);
+  await dp.IndexedDB.enable();
+  await dp.Page.enable();
 
-    // Create some databases.
-    const value = await session.evaluateAsync(`
+  testRunner.log(`Open some databases`);
+
+  // Create some databases.
+  const value = await session.evaluateAsync(`
     new Promise(async resolve => {
       let databaseNames = [];
       for (let i = 0; i < 5; i++) {
-        const request = ${bucket}.indexedDB.open("test-database" + i);
+        const request = window.indexedDB.open("test-database" + i);
         request.onerror = (event) => {
           resolve('failed');
         };
@@ -35,33 +26,25 @@
     })
   `);
 
-    testRunner.log(value, 'databases created with following names');
-    testRunner.log(`\nRequest database names for storage key`);
+  testRunner.log(value, 'databases created with following names');
+  testRunner.log(`\nRequest database names for storage key`);
 
-    const storageBucket = await bucketPromise;
-    const requestDatabaseNamesResult =
+  const frameId = (await dp.Page.getResourceTree()).result.frameTree.frame.id;
+  const storageKey =
+      (await dp.Storage.getStorageKeyForFrame({frameId})).result.storageKey;
+  const requestDatabaseNamesResult =
       (await dp.IndexedDB.requestDatabaseNames({
-        storageBucket,
+        storageKey,
       })).result;
 
-    testRunner.log(requestDatabaseNamesResult, 'database names');
+  testRunner.log(requestDatabaseNamesResult, 'database names');
 
-    // Clean up
-    let cleanUpPromises = [];
-    for (let i = 0; i < 5; i++) {
-      cleanUpPromises.push(dp.IndexedDB.deleteDatabase(
-        { storageBucket, databaseName: 'test-database' + i }));
-    }
-    await Promise.all(cleanUpPromises);
+  // Clean up
+  let cleanUpPromises = [];
+  for (let i = 0; i < 5; i++) {
+    cleanUpPromises.push(dp.IndexedDB.deleteDatabase({storageKey, databaseName: "test-database" + i}));
   }
-  const { dp, session } = await testRunner.startBlank(
-    `Tests that requesting database names works for IndexedDB with storage bucket\n`);
-
-  await dp.IndexedDB.enable();
-  await dp.Page.enable();
-
-  await testBucket();
-  await testBucket('test-bucket');
+  await Promise.all(cleanUpPromises);
 
   testRunner.completeTest();
 })

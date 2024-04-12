@@ -40,15 +40,14 @@ class PinnedTabServiceTest : public BrowserWithTestWindowTest {
   PinnedTabServiceTest& operator=(const PinnedTabServiceTest&) = delete;
 
  protected:
-  TestingProfile* CreateProfile(const std::string& profile_name) override {
-    TestingProfile* profile =
-        BrowserWithTestWindowTest::CreateProfile(profile_name);
+  TestingProfile* CreateProfile() override {
+    TestingProfile* profile = BrowserWithTestWindowTest::CreateProfile();
     pinned_tab_service_ = BuildForProfile(profile);
     return profile;
   }
 
  private:
-  raw_ptr<PinnedTabService, DanglingUntriaged> pinned_tab_service_;
+  raw_ptr<PinnedTabService> pinned_tab_service_;
 };
 
 // Makes sure closing a popup triggers writing pinned tabs.

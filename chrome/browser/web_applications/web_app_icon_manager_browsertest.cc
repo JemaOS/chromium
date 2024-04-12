@@ -72,7 +72,7 @@ IN_PROC_BROWSER_TEST_F(WebAppIconManagerBrowserTest, SingleIcon) {
   const GURL start_url =
       https_server()->GetURL("/banners/manifest_test_page.html");
 
-  webapps::AppId app_id;
+  AppId app_id;
   {
     std::unique_ptr<WebAppInstallInfo> install_info =
         std::make_unique<WebAppInstallInfo>();
@@ -91,12 +91,12 @@ IN_PROC_BROWSER_TEST_F(WebAppIconManagerBrowserTest, SingleIcon) {
     base::RunLoop run_loop;
 
     auto* provider = WebAppProvider::GetForTest(browser()->profile());
-    provider->scheduler().InstallFromInfoNoIntegrationForTesting(
+    provider->scheduler().InstallFromInfo(
         std::move(install_info),
         /*overwrite_existing_manifest_fields=*/false,
         webapps::WebappInstallSource::OMNIBOX_INSTALL_ICON,
         base::BindLambdaForTesting(
-            [&app_id, &run_loop](const webapps::AppId& installed_app_id,
+            [&app_id, &run_loop](const AppId& installed_app_id,
                                  webapps::InstallResultCode code) {
               EXPECT_EQ(webapps::InstallResultCode::kSuccessNewInstall, code);
               app_id = installed_app_id;
@@ -116,8 +116,8 @@ IN_PROC_BROWSER_TEST_F(WebAppIconManagerBrowserTest, SingleIcon) {
       app_browser->app_controller()->GetWindowAppIcon().Rasterize(nullptr);
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
-  gfx::ImageSkia image_skia =
-      app_service_test().LoadAppIconBlocking(app_id, kWebAppIconSmall);
+  gfx::ImageSkia image_skia = app_service_test().LoadAppIconBlocking(
+      apps::AppType::kWeb, app_id, kWebAppIconSmall);
   EXPECT_TRUE(app_service_test().AreIconImageEqual(image_skia, app_icon));
 #else
   const SkBitmap* bitmap = app_icon.bitmap();

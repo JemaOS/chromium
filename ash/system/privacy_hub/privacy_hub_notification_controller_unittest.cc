@@ -8,20 +8,17 @@
 #include <vector>
 
 #include "ash/constants/ash_features.h"
+#include "ash/public/cpp/sensor_disabled_notification_delegate.h"
 #include "ash/public/cpp/test/test_new_window_delegate.h"
 #include "ash/public/cpp/test/test_system_tray_client.h"
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
-#include "ash/system/privacy_hub/microphone_privacy_switch_controller.h"
 #include "ash/system/privacy_hub/privacy_hub_controller.h"
 #include "ash/system/privacy_hub/privacy_hub_metrics.h"
-#include "ash/system/privacy_hub/sensor_disabled_notification_delegate.h"
 #include "ash/system/system_notification_controller.h"
 #include "ash/test/ash_test_base.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
-#include "base/time/time.h"
-#include "base/time/time_override.h"
 #include "chromeos/ash/components/dbus/audio/fake_cras_audio_client.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -31,6 +28,14 @@
 
 namespace ash {
 namespace {
+
+class FakeSensorDisabledNotificationDelegate
+    : public SensorDisabledNotificationDelegate {
+ public:
+  std::vector<std::u16string> GetAppsAccessingSensor(Sensor sensor) override {
+    return {};
+  }
+};
 
 class MockNewWindowDelegate
     : public testing::NiceMock<ash::TestNewWindowDelegate> {
@@ -50,7 +55,7 @@ class PrivacyHubNotificationControllerTest : public AshTestBase {
  public:
   PrivacyHubNotificationControllerTest()
       : AshTestBase(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {
-    scoped_feature_list_.InitWithFeatures({features::kCrosPrivacyHub}, {});
+    scoped_feature_list_.InitAndEnableFeature(features::kCrosPrivacyHubV2);
     auto delegate = std::make_unique<MockNewWindowDelegate>();
     new_window_delegate_ = delegate.get();
     window_delegate_provider_ =
@@ -68,13 +73,16 @@ class PrivacyHubNotificationControllerTest : public AshTestBase {
   void TearDown() override { AshTestBase::TearDown(); }
 
  protected:
-  const message_center::Notification* GetCombinedNotification() const {
-    return GetNotification(
-        PrivacyHubNotificationController::kCombinedNotificationId);
-  }
-  const message_center::Notification* GetGeolocationNotification() const {
-    return GetNotification(
-        PrivacyHubNotificationController::kGeolocationSwitchNotificationId);
+  const message_center::Notification* GetNotification() const {
+    const message_center::NotificationList::Notifications& notifications =
+        message_center::MessageCenter::Get()->GetVisibleNotifications();
+    for (const auto* notification : notifications) {
+      if (notification->id() ==
+          PrivacyHubNotificationController::kCombinedNotificationId) {
+        return notification;
+      }
+    }
+    return nullptr;
   }
 
   void ClickOnNotificationButton(int button_index = 0) const {
@@ -90,8 +98,11 @@ class PrivacyHubNotificationControllerTest : public AshTestBase {
 
   void ShowNotification(Sensor sensor) {
     if (sensor == Sensor::kMicrophone) {
-      MicrophonePrivacySwitchController::Get()->OnInputMuteChanged(
-          true, CrasAudioHandler::InputMuteChangeMethod::kOther);
+      Shell::Get()
+          ->privacy_hub_controller()
+          ->microphone_controller()
+          .OnInputMuteChanged(true,
+                              CrasAudioHandler::InputMuteChangeMethod::kOther);
       FakeCrasAudioClient::Get()->SetActiveInputStreamsWithPermission(
           {{"CRAS_CLIENT_TYPE_CHROME", 1}});
     } else {
@@ -101,8 +112,11 @@ class PrivacyHubNotificationControllerTest : public AshTestBase {
 
   void RemoveNotification(Sensor sensor) {
     if (sensor == Sensor::kMicrophone) {
-      MicrophonePrivacySwitchController::Get()->OnInputMuteChanged(
-          false, CrasAudioHandler::InputMuteChangeMethod::kOther);
+      Shell::Get()
+          ->privacy_hub_controller()
+          ->microphone_controller()
+          .OnInputMuteChanged(false,
+                              CrasAudioHandler::InputMuteChangeMethod::kOther);
       FakeCrasAudioClient::Get()->SetActiveInputStreamsWithPermission(
           {{"CRAS_CLIENT_TYPE_CHROME", 0}});
     } else {
@@ -127,168 +141,69 @@ class PrivacyHubNotificationControllerTest : public AshTestBase {
   MockNewWindowDelegate* new_window_delegate() { return new_window_delegate_; }
 
  private:
-  const message_center::Notification* GetNotification(
-      const std::string& id) const {
-    const message_center::NotificationList::Notifications& notifications =
-        message_center::MessageCenter::Get()->GetVisibleNotifications();
-    for (const message_center::Notification* notification : notifications) {
-      if (notification->id() == id) {
-        return notification;
-      }
-    }
-    return nullptr;
-  }
-
-  raw_ptr<PrivacyHubNotificationController, DanglingUntriaged> controller_;
+  base::raw_ptr<PrivacyHubNotificationController> controller_;
+  const FakeSensorDisabledNotificationDelegate delegate_;
   const base::HistogramTester histogram_tester_;
   base::test::ScopedFeatureList scoped_feature_list_;
-  raw_ptr<MockNewWindowDelegate, DanglingUntriaged> new_window_delegate_ =
-      nullptr;
+  base::raw_ptr<MockNewWindowDelegate> new_window_delegate_ = nullptr;
   std::unique_ptr<ash::TestNewWindowDelegateProvider> window_delegate_provider_;
 };
 
 TEST_F(PrivacyHubNotificationControllerTest, CameraNotificationShowAndHide) {
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   ShowNotification(Sensor::kCamera);
 
-  const message_center::Notification* notification_ptr =
-      GetCombinedNotification();
+  const message_center::Notification* notification_ptr = GetNotification();
   ASSERT_TRUE(notification_ptr);
   EXPECT_EQ(
       l10n_util::GetStringUTF16(IDS_PRIVACY_HUB_CAMERA_OFF_NOTIFICATION_TITLE),
       notification_ptr->title());
-  EXPECT_EQ(1u, notification_ptr->buttons().size());
 
   RemoveNotification(Sensor::kCamera);
 
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 }
 
 TEST_F(PrivacyHubNotificationControllerTest,
        MicrophoneNotificationShowAndHide) {
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   ShowNotification(Sensor::kMicrophone);
 
-  const message_center::Notification* notification_ptr =
-      GetCombinedNotification();
+  const message_center::Notification* notification_ptr = GetNotification();
   ASSERT_TRUE(notification_ptr);
   EXPECT_EQ(l10n_util::GetStringUTF16(
                 IDS_MICROPHONE_MUTED_BY_SW_SWITCH_NOTIFICATION_TITLE),
             notification_ptr->title());
-  EXPECT_EQ(1u, notification_ptr->buttons().size());
 
   RemoveNotification(Sensor::kMicrophone);
 
-  EXPECT_FALSE(GetCombinedNotification());
-}
-
-TEST_F(PrivacyHubNotificationControllerTest,
-       GeolocationNotificationShowAndHide) {
-  EXPECT_FALSE(GetGeolocationNotification());
-
-  ShowNotification(Sensor::kLocation);
-  const message_center::Notification* notification_ptr =
-      GetGeolocationNotification();
-  ASSERT_TRUE(notification_ptr);
-  EXPECT_EQ(l10n_util::GetStringUTF16(
-                IDS_PRIVACY_HUB_GEOLOCATION_OFF_NOTIFICATION_TITLE),
-            notification_ptr->title());
-  EXPECT_EQ(2u, notification_ptr->buttons().size());
-
-  RemoveNotification(Sensor::kLocation);
-  EXPECT_FALSE(GetGeolocationNotification());
-}
-
-TEST_F(PrivacyHubNotificationControllerTest,
-       GeolocationNotificationThrottling) {
-  EXPECT_FALSE(GetGeolocationNotification());
-
-  // t = 0
-  // Show and hide the geolocation notification to trigger the throttler.
-  ShowNotification(Sensor::kLocation);
-  EXPECT_TRUE(GetGeolocationNotification());
-  message_center::MessageCenter::Get()->RemoveNotification(
-      GetGeolocationNotification()->id(), /*by_user=*/true);
-  EXPECT_FALSE(GetGeolocationNotification());
-
-  // Try to show the notification within the first hour, it shouldn't show
-  // t = 0
-  ShowNotification(Sensor::kLocation);
-  EXPECT_FALSE(GetGeolocationNotification());
-
-  // Try to show it right before the throttler allows the notification to show,
-  // it should not show. t = 0:59
-  task_environment()->FastForwardBy(base::Minutes(59));
-  ShowNotification(Sensor::kLocation);
-  EXPECT_FALSE(GetGeolocationNotification());
-
-  // Try to show the notification after over 1 hour passes, it should not show.
-  // t = 1:01
-  task_environment()->FastForwardBy(base::Minutes(2));
-  ShowNotification(Sensor::kLocation);
-  EXPECT_TRUE(GetGeolocationNotification());
-  message_center::MessageCenter::Get()->RemoveNotification(
-      GetGeolocationNotification()->id(), /*by_user=*/true);
-  EXPECT_FALSE(GetGeolocationNotification());
-
-  // Show and remove 1 more time, so that we have three dismissals and hence the
-  // 24h throttling kicks in.
-  // t = 3:01
-  task_environment()->FastForwardBy(base::Hours(2));
-  ShowNotification(Sensor::kLocation);
-  EXPECT_TRUE(GetGeolocationNotification());
-  message_center::MessageCenter::Get()->RemoveNotification(
-      GetGeolocationNotification()->id(), /*by_user=*/true);
-  EXPECT_FALSE(GetGeolocationNotification());
-
-  // Now the notification should be disabledd until t_0 + 24hours
-  // t = 5:01
-  task_environment()->FastForwardBy(base::Hours(2));
-  ShowNotification(Sensor::kLocation);
-  EXPECT_FALSE(GetGeolocationNotification());
-  // t = 7:01
-  task_environment()->FastForwardBy(base::Hours(2));
-  ShowNotification(Sensor::kLocation);
-  EXPECT_FALSE(GetGeolocationNotification());
-  // t = 17:01
-  task_environment()->FastForwardBy(base::Hours(10));
-  ShowNotification(Sensor::kLocation);
-  EXPECT_FALSE(GetGeolocationNotification());
-
-  // After 24 hours the notification should be enabled again
-  // t = 24:01
-  task_environment()->FastForwardBy(base::Hours(7));
-  ShowNotification(Sensor::kLocation);
-  EXPECT_TRUE(GetGeolocationNotification());
+  EXPECT_FALSE(GetNotification());
 }
 
 TEST_F(PrivacyHubNotificationControllerTest, CombinedNotificationShowAndHide) {
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   ShowCombinedNotification();
 
-  const message_center::Notification* notification_ptr =
-      GetCombinedNotification();
+  const message_center::Notification* notification_ptr = GetNotification();
   ASSERT_TRUE(notification_ptr);
   EXPECT_EQ(l10n_util::GetStringUTF16(
                 IDS_PRIVACY_HUB_MICROPHONE_AND_CAMERA_OFF_NOTIFICATION_TITLE),
             notification_ptr->title());
-  EXPECT_EQ(2u, notification_ptr->buttons().size());
 
   RemoveCombinedNotification();
 
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 }
 
 TEST_F(PrivacyHubNotificationControllerTest, CombinedNotificationBuilding) {
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   ShowNotification(Sensor::kMicrophone);
 
-  const message_center::Notification* notification_ptr =
-      GetCombinedNotification();
+  const message_center::Notification* notification_ptr = GetNotification();
   ASSERT_TRUE(notification_ptr);
   EXPECT_EQ(l10n_util::GetStringUTF16(
                 IDS_MICROPHONE_MUTED_BY_SW_SWITCH_NOTIFICATION_TITLE),
@@ -296,7 +211,7 @@ TEST_F(PrivacyHubNotificationControllerTest, CombinedNotificationBuilding) {
 
   ShowNotification(Sensor::kCamera);
 
-  notification_ptr = GetCombinedNotification();
+  notification_ptr = GetNotification();
   ASSERT_TRUE(notification_ptr);
   EXPECT_EQ(l10n_util::GetStringUTF16(
                 IDS_PRIVACY_HUB_MICROPHONE_AND_CAMERA_OFF_NOTIFICATION_TITLE),
@@ -304,7 +219,7 @@ TEST_F(PrivacyHubNotificationControllerTest, CombinedNotificationBuilding) {
 
   RemoveNotification(Sensor::kMicrophone);
 
-  notification_ptr = GetCombinedNotification();
+  notification_ptr = GetNotification();
   ASSERT_TRUE(notification_ptr);
   EXPECT_EQ(
       l10n_util::GetStringUTF16(IDS_PRIVACY_HUB_CAMERA_OFF_NOTIFICATION_TITLE),
@@ -312,17 +227,16 @@ TEST_F(PrivacyHubNotificationControllerTest, CombinedNotificationBuilding) {
 
   RemoveNotification(Sensor::kCamera);
 
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 }
 
 TEST_F(PrivacyHubNotificationControllerTest,
        CombinedNotificationClickedButOnlyOneSensorEnabledInSettings) {
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   ShowCombinedNotification();
 
-  const message_center::Notification* notification_ptr =
-      GetCombinedNotification();
+  const message_center::Notification* notification_ptr = GetNotification();
   ASSERT_TRUE(notification_ptr);
   EXPECT_EQ(l10n_util::GetStringUTF16(
                 IDS_PRIVACY_HUB_MICROPHONE_AND_CAMERA_OFF_NOTIFICATION_TITLE),
@@ -330,7 +244,7 @@ TEST_F(PrivacyHubNotificationControllerTest,
 
   ClickOnNotificationBody();
 
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   // Go to (quick)settings and enable microphone.
   RemoveNotification(Sensor::kMicrophone);
@@ -338,17 +252,17 @@ TEST_F(PrivacyHubNotificationControllerTest,
   // Since the user clicked on the notification body they acknowledged that
   // camera is disabled as well. So don't show that notification even though
   // the sensor is still disabled.
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   // Disable camera as well
   RemoveNotification(Sensor::kCamera);
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   // Now that no sensor is in use anymore when accessing both again the
   // combined notification should show up again.
   ShowCombinedNotification();
 
-  notification_ptr = GetCombinedNotification();
+  notification_ptr = GetNotification();
   ASSERT_TRUE(notification_ptr);
   EXPECT_EQ(l10n_util::GetStringUTF16(
                 IDS_PRIVACY_HUB_MICROPHONE_AND_CAMERA_OFF_NOTIFICATION_TITLE),
@@ -356,11 +270,11 @@ TEST_F(PrivacyHubNotificationControllerTest,
 }
 
 TEST_F(PrivacyHubNotificationControllerTest, ClickOnNotificationButton) {
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   ShowCombinedNotification();
 
-  EXPECT_TRUE(GetCombinedNotification());
+  EXPECT_TRUE(GetNotification());
   EXPECT_EQ(0, histogram_tester().GetBucketCount(
                    privacy_hub_metrics::
                        kPrivacyHubCameraEnabledFromNotificationHistogram,
@@ -372,7 +286,7 @@ TEST_F(PrivacyHubNotificationControllerTest, ClickOnNotificationButton) {
 
   ClickOnNotificationButton();
 
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
   EXPECT_EQ(1, histogram_tester().GetBucketCount(
                    privacy_hub_metrics::
                        kPrivacyHubCameraEnabledFromNotificationHistogram,
@@ -384,11 +298,11 @@ TEST_F(PrivacyHubNotificationControllerTest, ClickOnNotificationButton) {
 }
 
 TEST_F(PrivacyHubNotificationControllerTest, ClickOnSecondNotificationButton) {
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   ShowCombinedNotification();
 
-  EXPECT_TRUE(GetCombinedNotification());
+  EXPECT_TRUE(GetNotification());
 
   EXPECT_EQ(
       0, histogram_tester().GetBucketCount(
@@ -398,7 +312,7 @@ TEST_F(PrivacyHubNotificationControllerTest, ClickOnSecondNotificationButton) {
 
   ClickOnNotificationButton(1);
 
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   EXPECT_EQ(1, GetSystemTrayClient()->show_os_settings_privacy_hub_count());
   EXPECT_EQ(
@@ -408,11 +322,11 @@ TEST_F(PrivacyHubNotificationControllerTest, ClickOnSecondNotificationButton) {
 }
 
 TEST_F(PrivacyHubNotificationControllerTest, ClickOnNotificationBody) {
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 
   ShowCombinedNotification();
 
-  EXPECT_TRUE(GetCombinedNotification());
+  EXPECT_TRUE(GetNotification());
   EXPECT_EQ(
       0, histogram_tester().GetBucketCount(
              privacy_hub_metrics::kPrivacyHubOpenedHistogram,
@@ -420,7 +334,7 @@ TEST_F(PrivacyHubNotificationControllerTest, ClickOnNotificationBody) {
 
   ClickOnNotificationBody();
 
-  EXPECT_FALSE(GetCombinedNotification());
+  EXPECT_FALSE(GetNotification());
 }
 
 TEST_F(PrivacyHubNotificationControllerTest, OpenPrivacyHubSettingsPage) {

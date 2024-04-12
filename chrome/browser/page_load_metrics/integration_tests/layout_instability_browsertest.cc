@@ -10,13 +10,12 @@
 #include "components/page_load_metrics/browser/page_load_metrics_test_waiter.h"
 #include "components/page_load_metrics/browser/page_load_metrics_util.h"
 #include "content/public/test/browser_test.h"
-#include "content/public/test/browser_test_utils.h"
 #include "content/public/test/hit_test_region_observer.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 
+using absl::optional;
 using base::Bucket;
 using base::Value;
-using std::optional;
 using ShiftFrame = page_load_metrics::PageLoadMetricsTestWaiter::ShiftFrame;
 using trace_analyzer::Query;
 using trace_analyzer::TraceAnalyzer;
@@ -74,13 +73,13 @@ void LayoutInstabilityTest::RunWPT(const std::string& test_file,
       expectations.Append(std::move(d));
   }
 
-  waiter->Wait();
-  // Finish session.
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
-
   // It compares the trace data of layout shift events with |expectations| and
   // computes a score that's used to check the UKM and UMA values below.
   double final_score = CheckTraceData(expectations, *StopTracingAndAnalyze());
+
+  waiter->Wait();
+  // Finish session.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
 
   // We can only verify the layout shift metrics here in UKM and UMA if layout
   // shift only happens in the main frame. For layout shift happens in the
@@ -113,7 +112,7 @@ double LayoutInstabilityTest::CheckTraceData(Value::List& expectations,
     ++i;
 
     if (score) {
-      const std::optional<double> traced_score = data.FindDouble("score");
+      const absl::optional<double> traced_score = data.FindDouble("score");
       final_score += traced_score.has_value() ? traced_score.value() : 0;
       EXPECT_EQ(*score, final_score);
     }
@@ -281,8 +280,8 @@ IN_PROC_BROWSER_TEST_F(LayoutInstabilityTest, SimpleBlockMovement) {
   CheckUKMAndUMAMetricsWithValues(totalCls, cls);
 }
 
-// TODO(crbug.com/1454288): Disable this test on Mac.
-#if BUILDFLAG(IS_MAC)
+// TODO(crbug.com/1407011): Flaky on linux.
+#if BUILDFLAG(IS_LINUX)
 #define MAYBE_Sources_Enclosure DISABLED_Sources_Enclosure
 #else
 #define MAYBE_Sources_Enclosure Sources_Enclosure
@@ -292,15 +291,26 @@ IN_PROC_BROWSER_TEST_F(LayoutInstabilityTest, MAYBE_Sources_Enclosure) {
          /*num_layout_shifts=*/2);
 }
 
-// TODO(https://crbug.com/1400401): Fix and reenable the test.
-IN_PROC_BROWSER_TEST_F(LayoutInstabilityTest, DISABLED_Sources_MaxImpact) {
+// TODO(crbug.com/1407011): Flaky on linux.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_Sources_MaxImpact DISABLED_Sources_MaxImpact
+#else
+#define MAYBE_Sources_MaxImpact Sources_MaxImpact
+#endif
+IN_PROC_BROWSER_TEST_F(LayoutInstabilityTest, MAYBE_Sources_MaxImpact) {
   RunWPT("sources-maximpact.html");
 }
 
 // This test verifies the layout shift score in the sub-frame is recorded
 // correctly in both UKM and UMA, the layout shift score in sub-frame is
 // calculated by applying a sub-frame weighting factor to the total score.
-IN_PROC_BROWSER_TEST_F(LayoutInstabilityTest, OOPIFSubframeWeighting) {
+// TODO(crbug.com/1407011): disabled on linux for flakiness.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_OOPIFSubframeWeighting DISABLED_OOPIFSubframeWeighting
+#else
+#define MAYBE_OOPIFSubframeWeighting OOPIFSubframeWeighting
+#endif
+IN_PROC_BROWSER_TEST_F(LayoutInstabilityTest, MAYBE_OOPIFSubframeWeighting) {
   RunWPT("main-frame.html", ShiftFrame::LayoutShiftOnlyInSubFrame,
          /*num_layout_shifts=*/2);
 
@@ -351,21 +361,15 @@ IN_PROC_BROWSER_TEST_F(LayoutInstabilityTest,
   CheckUKMAndUMAMetricsWithValues(totalCls, cls);
 }
 
-// TODO(crbug.com/1500379): Disable this test on Win10
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_CumulativeLayoutShift_hadRecentInput \
-  DISABLED_CumulativeLayoutShift_hadRecentInput
-#else
-#define MAYBE_CumulativeLayoutShift_hadRecentInput \
-  CumulativeLayoutShift_hadRecentInput
-#endif
+// TODO(crbug.com/1400401): Deflake and re-enable this test.
 IN_PROC_BROWSER_TEST_F(LayoutInstabilityTest,
-                       MAYBE_CumulativeLayoutShift_hadRecentInput) {
+                       DISABLED_CumulativeLayoutShift_hadRecentInput) {
   auto waiter = std::make_unique<page_load_metrics::PageLoadMetricsTestWaiter>(
       web_contents());
 
-  waiter->AddPageLayoutShiftExpectation(ShiftFrame::LayoutShiftOnlyInMainFrame,
-                                        /*num_layout_shifts=*/1);
+  // TODO(crbug.com/1403026): Modify the AddPageLayoutShiftExpectation so we can
+  // pass number of layout shift as an argument.
+  waiter->AddPageLayoutShiftExpectation();
   Start();
 
   // Start tracking with layout_shift related information.

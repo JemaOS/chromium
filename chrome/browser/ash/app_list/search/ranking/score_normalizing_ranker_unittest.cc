@@ -42,9 +42,8 @@ class ScoreNormalizingRankerTest : public testing::Test {
 
   base::FilePath GetPath() { return temp_dir_.GetPath().Append("proto"); }
 
-  ash::PersistentProto<ScoreNormalizerProto> GetProto() {
-    return ash::PersistentProto<ScoreNormalizerProto>(GetPath(),
-                                                      base::Seconds(0));
+  PersistentProto<ScoreNormalizerProto> GetProto() {
+    return PersistentProto<ScoreNormalizerProto>(GetPath(), base::Seconds(0));
   }
 
   base::test::TaskEnvironment task_environment_{

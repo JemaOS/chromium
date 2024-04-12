@@ -22,13 +22,13 @@ namespace {
 
 // Controller for the credit card scanner UI. The controller deletes itself
 // after the view is dismissed.
-class Controller final : public CreditCardScannerViewDelegate {
+class Controller : public CreditCardScannerViewDelegate,
+                   public base::SupportsWeakPtr<Controller> {
  public:
   Controller(content::WebContents* web_contents,
              AutofillClient::CreditCardScanCallback callback)
-      : callback_(std::move(callback)) {
-    view_ = CreditCardScannerView::Create(weak_ptr_factory_.GetWeakPtr(),
-                                          web_contents);
+      : view_(CreditCardScannerView::Create(AsWeakPtr(), web_contents)),
+        callback_(std::move(callback)) {
     DCHECK(view_);
   }
   Controller(const Controller&) = delete;
@@ -66,8 +66,6 @@ class Controller final : public CreditCardScannerViewDelegate {
 
   // The time when the UI was shown.
   base::TimeTicks show_time_;
-
-  base::WeakPtrFactory<Controller> weak_ptr_factory_{this};
 };
 
 }  // namespace

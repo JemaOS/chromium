@@ -43,7 +43,7 @@ class StyleAdjuster {
  public:
   CORE_EXPORT static void AdjustComputedStyle(StyleResolverState&, Element*);
   static void AdjustStyleForCombinedText(ComputedStyleBuilder&);
-  static void AdjustStyleForEditing(ComputedStyleBuilder&, Element*);
+  static void AdjustStyleForEditing(ComputedStyleBuilder&);
   static void AdjustStyleForTextCombine(ComputedStyleBuilder&);
 
  private:
@@ -54,9 +54,7 @@ class StyleAdjuster {
                                          Element* element,
                                          bool is_svg_root);
   static void AdjustOverflow(ComputedStyleBuilder&, Element* element);
-  static void AdjustForForcedColorsMode(ComputedStyleBuilder&, Element* element);
-  static void AdjustForPrefersDefaultScrollbarStyles(Element* element,
-                                                     ComputedStyleBuilder&);
+  static void AdjustForForcedColorsMode(ComputedStyleBuilder&);
   static void AdjustForSVGTextElement(ComputedStyleBuilder&);
 };
 

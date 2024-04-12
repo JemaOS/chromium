@@ -16,9 +16,8 @@ class MenuRunner;
 class ReadAnythingMenuModel;
 
 class ReadAnythingMenuButton : public views::MenuButton {
-  METADATA_HEADER(ReadAnythingMenuButton, views::MenuButton)
-
  public:
+  METADATA_HEADER(ReadAnythingMenuButton);
   ReadAnythingMenuButton(base::RepeatingCallback<void()> callback,
                          const gfx::VectorIcon& icon,
                          const std::u16string& tooltip,
@@ -32,14 +31,15 @@ class ReadAnythingMenuButton : public views::MenuButton {
 
   void SetMenuModel(ReadAnythingMenuModel* menu_model);
   ReadAnythingMenuModel* GetMenuModel() const;
-  std::optional<size_t> GetSelectedIndex() const;
+  absl::optional<size_t> GetSelectedIndex() const;
   void SetIcon(const gfx::VectorIcon& icon,
                int icon_size,
-               ui::ColorId icon_color,
-               ui::ColorId focus_ring_color);
+               ui::ColorId icon_color);
   void SetDropdownColorIds(ui::ColorId background_color,
                            ui::ColorId foreground_color,
                            ui::ColorId selected_color);
+
+  void SetFont(const std::string& font_name);
 
  private:
   void ButtonPressed();

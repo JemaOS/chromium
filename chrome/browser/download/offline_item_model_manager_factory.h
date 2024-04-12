@@ -11,7 +11,7 @@ class OfflineItemModelManager;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }  // namespace base
 
 namespace content {
@@ -37,13 +37,13 @@ class OfflineItemModelManagerFactory : public ProfileKeyedServiceFactory {
       const OfflineItemModelManagerFactory&) = delete;
 
  private:
-  friend base::NoDestructor<OfflineItemModelManagerFactory>;
+  friend struct base::DefaultSingletonTraits<OfflineItemModelManagerFactory>;
 
   OfflineItemModelManagerFactory();
   ~OfflineItemModelManagerFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

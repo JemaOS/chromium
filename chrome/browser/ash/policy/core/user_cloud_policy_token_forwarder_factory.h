@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASH_POLICY_CORE_USER_CLOUD_POLICY_TOKEN_FORWARDER_FACTORY_H_
 #define CHROME_BROWSER_ASH_POLICY_CORE_USER_CLOUD_POLICY_TOKEN_FORWARDER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -27,13 +27,14 @@ class UserCloudPolicyTokenForwarderFactory : public ProfileKeyedServiceFactory {
       const UserCloudPolicyTokenForwarderFactory&) = delete;
 
  private:
-  friend base::NoDestructor<UserCloudPolicyTokenForwarderFactory>;
+  friend struct base::DefaultSingletonTraits<
+      UserCloudPolicyTokenForwarderFactory>;
 
   UserCloudPolicyTokenForwarderFactory();
   ~UserCloudPolicyTokenForwarderFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
   bool ServiceIsNULLWhileTesting() const override;

@@ -5,7 +5,6 @@
 #include "third_party/blink/renderer/modules/peerconnection/webrtc_set_description_observer.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -14,6 +13,7 @@
 #include "base/run_loop.h"
 #include "base/task/single_thread_task_runner.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/platform/scheduler/test/renderer_scheduler_test_support.h"
 #include "third_party/blink/public/web/web_heap.h"
 #include "third_party/blink/renderer/modules/peerconnection/mock_peer_connection_dependency_factory.h"
@@ -22,7 +22,7 @@
 #include "third_party/blink/renderer/modules/peerconnection/webrtc_media_stream_track_adapter_map.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_audio_source.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_audio_track.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
+#include "third_party/blink/renderer/platform/peerconnection/webrtc_util.h"
 #include "third_party/webrtc/api/peer_connection_interface.h"
 #include "third_party/webrtc/media/base/fake_media_engine.h"
 
@@ -255,8 +255,8 @@ class WebRtcSetDescriptionObserverHandlerTest
                 {remote_stream})));
     rtc::scoped_refptr<webrtc::RtpTransceiverInterface> transceiver(
         new rtc::RefCountedObject<blink::FakeRtpTransceiver>(
-            cricket::MEDIA_TYPE_AUDIO, sender, receiver, std::nullopt, false,
-            webrtc::RtpTransceiverDirection::kSendRecv, std::nullopt));
+            cricket::MEDIA_TYPE_AUDIO, sender, receiver, absl::nullopt, false,
+            webrtc::RtpTransceiverDirection::kSendRecv, absl::nullopt));
     transceivers_.push_back(transceiver);
     EXPECT_CALL(*pc_, GetTransceivers()).WillRepeatedly(Return(transceivers_));
   }
@@ -272,12 +272,13 @@ class WebRtcSetDescriptionObserverHandlerTest
     // Inspect transceiver states.
     EXPECT_TRUE(transceiver_state.is_initialized());
     EXPECT_EQ(transceiver.get(), transceiver_state.webrtc_transceiver());
-    EXPECT_EQ(transceiver_state.mid(), transceiver->mid());
+    EXPECT_TRUE(
+        blink::OptionalEquals(transceiver_state.mid(), transceiver->mid()));
     EXPECT_TRUE(transceiver_state.direction() == transceiver->direction());
-    EXPECT_EQ(transceiver_state.current_direction(),
-              transceiver->current_direction());
-    EXPECT_EQ(transceiver_state.fired_direction(),
-              transceiver->fired_direction());
+    EXPECT_TRUE(blink::OptionalEquals(transceiver_state.current_direction(),
+                                      transceiver->current_direction()));
+    EXPECT_TRUE(blink::OptionalEquals(transceiver_state.fired_direction(),
+                                      transceiver->fired_direction()));
     // Inspect sender states.
     EXPECT_TRUE(transceiver_state.sender_state());
     const blink::RtpSenderState& sender_state =
@@ -297,7 +298,6 @@ class WebRtcSetDescriptionObserverHandlerTest
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   rtc::scoped_refptr<MockPeerConnectionInterface> pc_;
   Persistent<MockPeerConnectionDependencyFactory> dependency_factory_;
   scoped_refptr<base::SingleThreadTaskRunner> main_thread_;

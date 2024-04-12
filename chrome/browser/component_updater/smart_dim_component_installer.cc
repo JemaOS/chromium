@@ -5,7 +5,6 @@
 #include "chrome/browser/component_updater/smart_dim_component_installer.h"
 
 #include <cstddef>
-#include <optional>
 #include <tuple>
 
 #include "ash/constants/ash_features.h"
@@ -25,6 +24,7 @@
 #include "components/component_updater/component_updater_service.h"
 #include "components/crx_file/id_util.h"
 #include "content/public/browser/browser_thread.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -58,7 +58,7 @@ const char kMLSmartDimManifestName[] = "Smart Dim";
 
 // Read files from the component to strings, should be called from a blocking
 // task runner.
-std::optional<ComponentFileContents> ReadComponentFiles(
+absl::optional<ComponentFileContents> ReadComponentFiles(
     const base::FilePath& meta_json_path,
     const base::FilePath& preprocessor_pb_path,
     const base::FilePath& model_path) {
@@ -67,7 +67,7 @@ std::optional<ComponentFileContents> ReadComponentFiles(
       !base::ReadFileToString(preprocessor_pb_path, &preprocessor_proto) ||
       !base::ReadFileToString(model_path, &model_flatbuffer)) {
     DLOG(ERROR) << "Failed reading component files.";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return std::make_tuple(std::move(metadata_json),
@@ -75,8 +75,9 @@ std::optional<ComponentFileContents> ReadComponentFiles(
                          std::move(model_flatbuffer));
 }
 
-void UpdateSmartDimMlAgent(const std::optional<ComponentFileContents>& result) {
-  if (result == std::nullopt) {
+void UpdateSmartDimMlAgent(
+    const absl::optional<ComponentFileContents>& result) {
+  if (result == absl::nullopt) {
     LogLoadComponentEvent(LoadComponentEvent::kReadComponentFilesError);
     return;
   }
@@ -96,7 +97,8 @@ SmartDimComponentInstallerPolicy::SmartDimComponentInstallerPolicy(
 SmartDimComponentInstallerPolicy::~SmartDimComponentInstallerPolicy() = default;
 
 const std::string SmartDimComponentInstallerPolicy::GetExtensionId() {
-  return crx_file::id_util::GenerateIdFromHash(kSmartDimPublicKeySHA256);
+  return crx_file::id_util::GenerateIdFromHash(
+      kSmartDimPublicKeySHA256, sizeof(kSmartDimPublicKeySHA256));
 }
 
 bool SmartDimComponentInstallerPolicy::
@@ -189,8 +191,7 @@ SmartDimComponentInstallerPolicy::GetInstallerAttributes() const {
   return attrs;
 }
 
-void RegisterSmartDimComponent(ComponentUpdateService* cus,
-                               base::OnceClosure callback) {
+void RegisterSmartDimComponent(ComponentUpdateService* cus) {
   DVLOG(1) << "Registering smart dim component.";
   const std::string expected_version = kVersion.Get();
 
@@ -200,15 +201,14 @@ void RegisterSmartDimComponent(ComponentUpdateService* cus,
     return;
   }
 
-  if (expected_version == kDefaultVersion) {
+  if (expected_version == kDefaultVersion)
     LogComponentVersionType(ComponentVersionType::kDefault);
-  } else {
+  else
     LogComponentVersionType(ComponentVersionType::kExperimental);
-  }
 
   auto installer = base::MakeRefCounted<ComponentInstaller>(
       std::make_unique<SmartDimComponentInstallerPolicy>(expected_version));
-  installer->Register(cus, std::move(callback));
+  installer->Register(cus, base::OnceClosure());
 }
 
 }  // namespace component_updater

@@ -36,14 +36,14 @@ class ExtensionSyncTypeTest : public testing::Test {
       mojom::ManifestLocation location,
       const base::FilePath& extension_path,
       int creation_flags) {
-    auto source = base::Value::Dict()
-                      .Set(keys::kName, "PossiblySyncableExtension")
-                      .Set(keys::kVersion, "0.0.0.0")
-                      .Set(keys::kManifestVersion, 2);
+    base::Value::Dict source;
+    source.Set(keys::kName, "PossiblySyncableExtension");
+    source.Set(keys::kVersion, "0.0.0.0");
+    source.Set(keys::kManifestVersion, 2);
     if (type == APP && launch_url.is_empty())
       source.Set(keys::kApp, "true");
     if (type == THEME)
-      source.Set(keys::kTheme, base::Value::Dict());
+      source.Set(keys::kTheme, base::Value(base::Value::Type::DICT));
     if (!update_url.is_empty()) {
       source.Set(keys::kUpdateURL, update_url.spec());
     }
@@ -146,9 +146,9 @@ TEST_F(ExtensionSyncTypeTest, OnlyDisplayAppsInLauncher) {
 }
 
 TEST_F(ExtensionSyncTypeTest, DisplayInXManifestProperties) {
-  auto manifest = base::Value::Dict()
-                      .Set(keys::kName, "TestComponentApp")
-                      .Set(keys::kVersion, "0.0.0.0");
+  base::Value::Dict manifest;
+  manifest.Set(keys::kName, "TestComponentApp");
+  manifest.Set(keys::kVersion, "0.0.0.0");
   manifest.SetByDottedPath(keys::kPlatformAppBackgroundPage, std::string());
 
   // Default to true.

@@ -66,14 +66,8 @@ gboolean XSourceDispatch(GSource* source,
   return G_SOURCE_CONTINUE;
 }
 
-void XSourceFinalize(GSource* source) {
-  GLibX11Source* src = static_cast<GLibX11Source*>(source);
-  src->connection = nullptr;
-  src->poll_fd = nullptr;
-}
-
 GSourceFuncs XSourceFuncs = {XSourcePrepare, XSourceCheck, XSourceDispatch,
-                             XSourceFinalize};
+                             nullptr};
 
 }  // namespace
 

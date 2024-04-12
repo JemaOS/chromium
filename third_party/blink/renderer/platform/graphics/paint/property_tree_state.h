@@ -153,7 +153,7 @@ class PLATFORM_EXPORT PropertyTreeState : public PropertyTreeStateOrAlias {
   // state to which both layer will be upcasted.
   using IsCompositedScrollFunction =
       base::FunctionRef<bool(const TransformPaintPropertyNode&)>;
-  std::optional<PropertyTreeState> CanUpcastWith(
+  absl::optional<PropertyTreeState> CanUpcastWith(
       const PropertyTreeState& guest,
       IsCompositedScrollFunction) const;
 

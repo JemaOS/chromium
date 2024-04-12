@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/functional/bind.h"
-#include "base/no_destructor.h"
 #include "base/time/default_clock.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/security_events/security_event_recorder_impl.h"
@@ -22,8 +21,7 @@
 
 // static
 SecurityEventRecorderFactory* SecurityEventRecorderFactory::GetInstance() {
-  static base::NoDestructor<SecurityEventRecorderFactory> instance;
-  return instance.get();
+  return base::Singleton<SecurityEventRecorderFactory>::get();
 }
 
 // static
@@ -45,10 +43,9 @@ SecurityEventRecorderFactory::SecurityEventRecorderFactory()
   DependsOn(ModelTypeStoreServiceFactory::GetInstance());
 }
 
-SecurityEventRecorderFactory::~SecurityEventRecorderFactory() = default;
+SecurityEventRecorderFactory::~SecurityEventRecorderFactory() {}
 
-std::unique_ptr<KeyedService>
-SecurityEventRecorderFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SecurityEventRecorderFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = static_cast<Profile*>(context);
   syncer::OnceModelTypeStoreFactory store_factory =
@@ -62,6 +59,6 @@ SecurityEventRecorderFactory::BuildServiceInstanceForBrowserContext(
   auto security_event_sync_bridge =
       std::make_unique<SecurityEventSyncBridgeImpl>(
           std::move(store_factory), std::move(change_processor));
-  return std::make_unique<SecurityEventRecorderImpl>(
-      std::move(security_event_sync_bridge), base::DefaultClock::GetInstance());
+  return new SecurityEventRecorderImpl(std::move(security_event_sync_bridge),
+                                       base::DefaultClock::GetInstance());
 }

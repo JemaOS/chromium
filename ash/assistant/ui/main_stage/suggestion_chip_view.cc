@@ -44,7 +44,7 @@ SuggestionChipView::SuggestionChipView(AssistantViewDelegate* delegate,
 
 SuggestionChipView::~SuggestionChipView() = default;
 
-BEGIN_METADATA(SuggestionChipView)
+BEGIN_METADATA(SuggestionChipView, ChipView)
 END_METADATA
 
 }  // namespace ash

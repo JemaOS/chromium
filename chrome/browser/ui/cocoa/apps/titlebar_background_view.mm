@@ -11,10 +11,7 @@
 - (void)setColor:(NSColor*)color inactiveColor:(NSColor*)inactiveColor;
 @end
 
-@implementation TitlebarBackgroundView {
-  NSColor* __strong _color;
-  NSColor* __strong _inactiveColor;
-}
+@implementation TitlebarBackgroundView
 
 + (TitlebarBackgroundView*)addToNSWindow:(NSWindow*)window
                              activeColor:(SkColor)activeColor
@@ -28,10 +25,10 @@
   NSView* window_view = [[window contentView] superview];
   CGFloat height =
       NSHeight([window_view bounds]) - NSHeight([[window contentView] bounds]);
-  TitlebarBackgroundView* titlebar_background_view =
+  base::scoped_nsobject<TitlebarBackgroundView> titlebar_background_view(
       [[TitlebarBackgroundView alloc]
           initWithFrame:NSMakeRect(0, NSMaxY([window_view bounds]) - height,
-                                   NSWidth([window_view bounds]), height)];
+                                   NSWidth([window_view bounds]), height)]);
   [titlebar_background_view
       setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
   [window_view addSubview:titlebar_background_view
@@ -40,7 +37,7 @@
 
   [titlebar_background_view setColor:skia::SkColorToSRGBNSColor(activeColor)
                        inactiveColor:skia::SkColorToSRGBNSColor(inactiveColor)];
-  return titlebar_background_view;
+  return titlebar_background_view.autorelease();
 }
 
 - (void)drawRect:(NSRect)rect {
@@ -61,8 +58,8 @@
 }
 
 - (void)setColor:(NSColor*)color inactiveColor:(NSColor*)inactiveColor {
-  _color = color;
-  _inactiveColor = inactiveColor;
+  _color.reset([color retain]);
+  _inactiveColor.reset([inactiveColor retain]);
 }
 
 @end

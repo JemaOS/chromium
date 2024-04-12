@@ -5,12 +5,12 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_API_SETTINGS_PRIVATE_SETTINGS_PRIVATE_DELEGATE_FACTORY_H__
 #define CHROME_BROWSER_EXTENSIONS_API_SETTINGS_PRIVATE_SETTINGS_PRIVATE_DELEGATE_FACTORY_H__
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
-namespace content {
+namespace context {
 class BrowserContext;
-}  // namespace content
+}
 
 namespace extensions {
 class SettingsPrivateDelegate;
@@ -29,13 +29,13 @@ class SettingsPrivateDelegateFactory : public ProfileKeyedServiceFactory {
   static SettingsPrivateDelegateFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<SettingsPrivateDelegateFactory>;
+  friend struct base::DefaultSingletonTraits<SettingsPrivateDelegateFactory>;
 
   SettingsPrivateDelegateFactory();
   ~SettingsPrivateDelegateFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation.
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

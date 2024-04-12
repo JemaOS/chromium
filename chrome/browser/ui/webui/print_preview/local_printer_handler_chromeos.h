@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_UI_WEBUI_PRINT_PREVIEW_LOCAL_PRINTER_HANDLER_CHROMEOS_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
@@ -17,6 +16,7 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/ui/webui/print_preview/printer_handler.h"
 #include "chromeos/crosapi/mojom/local_printer.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace base {
 class Value;

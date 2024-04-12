@@ -81,7 +81,7 @@ void BluetoothDeviceListItemMultipleBatteryView::UpdateBatteryInfo(
   }
 }
 
-BEGIN_METADATA(BluetoothDeviceListItemMultipleBatteryView)
+BEGIN_METADATA(BluetoothDeviceListItemMultipleBatteryView, views::View)
 END_METADATA
 
 }  // namespace ash

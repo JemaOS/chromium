@@ -73,13 +73,12 @@ void ElevationIconSetter::SetButtonIcon(base::OnceClosure callback,
     // mark this image as having been scaled for the current DPI already.
     device_scale_factor = display::win::GetDPIScale();
 #endif
-    button_->SetImageModel(
+    button_->SetImage(
         views::Button::STATE_NORMAL,
-        ui::ImageModel::FromImageSkia(
-            gfx::ImageSkia::CreateFromBitmap(icon, device_scale_factor)));
+        gfx::ImageSkia::CreateFromBitmap(icon, device_scale_factor));
     button_->SizeToPreferredSize();
     if (button_->parent())
-      button_->parent()->DeprecatedLayoutImmediately();
+      button_->parent()->Layout();
     if (!callback.is_null())
       std::move(callback).Run();
   }

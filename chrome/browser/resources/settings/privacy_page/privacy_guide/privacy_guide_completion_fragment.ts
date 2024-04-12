@@ -17,11 +17,9 @@ import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener
 import {OpenWindowProxyImpl} from 'chrome://resources/js/open_window_proxy.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {UpdateSyncStateEvent} from '../../clear_browsing_data_dialog/clear_browsing_data_browser_proxy.js';
-import {ClearBrowsingDataBrowserProxyImpl} from '../../clear_browsing_data_dialog/clear_browsing_data_browser_proxy.js';
+import {ClearBrowsingDataBrowserProxyImpl, UpdateSyncStateEvent} from '../../clear_browsing_data_dialog/clear_browsing_data_browser_proxy.js';
 import {loadTimeData} from '../../i18n_setup.js';
-import type {MetricsBrowserProxy} from '../../metrics_browser_proxy.js';
-import {MetricsBrowserProxyImpl, PrivacyGuideInteractions, PrivacyGuideStepsEligibleAndReached} from '../../metrics_browser_proxy.js';
+import {MetricsBrowserProxy, MetricsBrowserProxyImpl, PrivacyGuideInteractions, PrivacyGuideStepsEligibleAndReached} from '../../metrics_browser_proxy.js';
 
 import {getTemplate} from './privacy_guide_completion_fragment.html.js';
 
@@ -60,8 +58,7 @@ export class PrivacyGuideCompletionFragmentElement extends
 
       shouldShowPrivacySandbox_: {
         type: Boolean,
-        value: () => !loadTimeData.getBoolean('isPrivacySandboxRestricted') ||
-            loadTimeData.getBoolean('isPrivacySandboxRestrictedNoticeEnabled'),
+        value: () => !loadTimeData.getBoolean('isPrivacySandboxRestricted'),
       },
 
       shouldShowWaa_: {
@@ -84,7 +81,8 @@ export class PrivacyGuideCompletionFragmentElement extends
         'update-sync-state',
         (event: UpdateSyncStateEvent) => this.updateWaaLink_(event.signedIn));
     ClearBrowsingDataBrowserProxyImpl.getInstance().getSyncState().then(
-        (status: UpdateSyncStateEvent) => this.updateWaaLink_(status.signedIn));
+        (status: UpdateSyncStateEvent) =>
+            this.updateWaaLink_(status.signedIn));
   }
 
   override focus() {
@@ -109,7 +107,8 @@ export class PrivacyGuideCompletionFragmentElement extends
 
   /** Updates the completion card waa link depending on the signin state. */
   private updateWaaLink_(isSignedIn: boolean) {
-    this.shouldShowWaa_ = isSignedIn;
+    const isJemaProfile = loadTimeData.getBoolean('isJemaProfile');
+    this.shouldShowWaa_ = isSignedIn && !isJemaProfile;
   }
 
   private onBackButtonClick_(e: Event) {

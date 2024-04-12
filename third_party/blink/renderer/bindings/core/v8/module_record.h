@@ -40,7 +40,7 @@ class CORE_EXPORT ModuleRecordProduceCacheData final
 
   void Trace(Visitor*) const;
 
-  CachedMetadataHandler* CacheHandler() const { return cache_handler_.Get(); }
+  CachedMetadataHandler* CacheHandler() const { return cache_handler_; }
   V8CodeCache::ProduceCacheOptions GetProduceCacheOptions() const {
     return produce_cache_options_;
   }

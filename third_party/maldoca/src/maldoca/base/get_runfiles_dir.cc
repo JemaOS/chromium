@@ -15,7 +15,6 @@
 #include "maldoca/base/get_runfiles_dir.h"
 
 #include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "maldoca/base/logging.h"
 #include "maldoca/base/status_macros.h"
 

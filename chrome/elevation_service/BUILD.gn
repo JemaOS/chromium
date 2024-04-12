@@ -86,15 +86,10 @@ source_set("lib") {
 
   deps = [
     "//base",
-    "//base/version_info:channel",
     "//chrome/install_static:install_static_util",
     "//components/crx_file:crx_file",
     "//third_party/zlib/google:zip",
   ]
-
-  if (is_chrome_branded) {
-    deps += [ "//chrome/elevation_service/internal" ]
-  }
 
   public_deps = [ ":public_headers" ]
 
@@ -145,10 +140,6 @@ test("elevation_service_unittests") {
     "//testing/gtest",
     "//third_party/zlib/google:zip",
   ]
-
-  if (is_chrome_branded) {
-    deps += [ "//chrome/elevation_service/internal:unittests" ]
-  }
 
   data_deps = [
     ":elevation_service",

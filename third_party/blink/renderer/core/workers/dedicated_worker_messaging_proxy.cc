@@ -6,7 +6,6 @@
 
 #include <memory>
 #include "base/feature_list.h"
-#include "base/trace_event/typed_macros.h"
 #include "services/network/public/mojom/fetch_api.mojom-blink.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
@@ -21,7 +20,6 @@
 #include "third_party/blink/renderer/core/fetch/request.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
-#include "third_party/blink/renderer/core/inspector/inspector_trace_events.h"
 #include "third_party/blink/renderer/core/inspector/thread_debugger_common_impl.h"
 #include "third_party/blink/renderer/core/loader/worker_resource_timing_notifier_impl.h"
 #include "third_party/blink/renderer/core/messaging/blink_transferable_message.h"
@@ -34,7 +32,6 @@
 #include "third_party/blink/renderer/platform/scheduler/public/post_cross_thread_task.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/wtf.h"
-#include "third_party/perfetto/include/perfetto/tracing/track_event_args.h"
 
 namespace blink {
 
@@ -132,7 +129,7 @@ void DedicatedWorkerMessagingProxy::StartWorkerGlobalScope(
     // settings."
     UseCounter::Count(GetExecutionContext(),
                       WebFeature::kModuleDedicatedWorker);
-    std::optional<network::mojom::CredentialsMode> credentials_mode =
+    absl::optional<network::mojom::CredentialsMode> credentials_mode =
         Request::ParseCredentialsMode(options->credentials());
     DCHECK(credentials_mode);
 
@@ -235,17 +232,8 @@ void DedicatedWorkerMessagingProxy::PostMessageToWorkerObject(
       *GetExecutionContext(), std::move(message.ports));
   debugger->ExternalAsyncTaskStarted(message.sender_stack_trace_id);
   if (message.message->CanDeserializeIn(GetExecutionContext())) {
-    MessageEvent* event =
-        MessageEvent::Create(ports, std::move(message.message));
-    event->SetTraceId(message.trace_id);
-    TRACE_EVENT(
-        "devtools.timeline", "HandlePostMessage", "data",
-        [&](perfetto::TracedValue context) {
-          inspector_handle_post_message_event::Data(
-              std::move(context), GetExecutionContext(), *event);
-        },
-        perfetto::Flow::Global(event->GetTraceId()));
-    worker_object_->DispatchEvent(*event);
+    worker_object_->DispatchEvent(
+        *MessageEvent::Create(ports, std::move(message.message)));
   } else {
     worker_object_->DispatchEvent(*MessageEvent::CreateError());
   }
@@ -300,7 +288,7 @@ void DedicatedWorkerMessagingProxy::Trace(Visitor* visitor) const {
   ThreadedMessagingProxyBase::Trace(visitor);
 }
 
-std::optional<WorkerBackingThreadStartupData>
+absl::optional<WorkerBackingThreadStartupData>
 DedicatedWorkerMessagingProxy::CreateBackingThreadStartupData(
     v8::Isolate* isolate) {
   using HeapLimitMode = WorkerBackingThreadStartupData::HeapLimitMode;

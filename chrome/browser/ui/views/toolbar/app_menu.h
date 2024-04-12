@@ -21,6 +21,7 @@
 
 class BookmarkMenuDelegate;
 class Browser;
+class ScopedNewBadgeTracker;
 
 namespace views {
 class MenuButtonController;
@@ -29,14 +30,17 @@ class MenuRunner;
 }
 
 // AppMenu adapts the AppMenuModel to view's menu related classes.
-class AppMenu final : public views::MenuDelegate,
-                      public bookmarks::BaseBookmarkModelObserver,
-                      public GlobalErrorObserver {
+class AppMenu : public views::MenuDelegate,
+                public bookmarks::BaseBookmarkModelObserver,
+                public GlobalErrorObserver,
+                public base::SupportsWeakPtr<AppMenu> {
  public:
-  AppMenu(Browser* browser, ui::MenuModel* model, int run_types);
+  AppMenu(Browser* browser, int run_types);
   AppMenu(const AppMenu&) = delete;
   AppMenu& operator=(const AppMenu&) = delete;
   ~AppMenu() override;
+
+  void Init(ui::MenuModel* model);
 
   // Shows the menu relative to the specified controller's button.
   void RunMenu(views::MenuButtonController* host);
@@ -53,11 +57,9 @@ class AppMenu final : public views::MenuDelegate,
 
   views::MenuItemView* root_menu_item() { return root_; }
 
-  base::WeakPtr<AppMenu> AsWeakPtr() { return weak_ptr_factory_.GetWeakPtr(); }
-
-  // views::MenuDelegate:
+  // MenuDelegate overrides:
   const gfx::FontList* GetLabelFontList(int command_id) const override;
-  std::optional<SkColor> GetLabelColor(int command_id) const override;
+  absl::optional<SkColor> GetLabelColor(int command_id) const override;
   std::u16string GetTooltipText(int command_id,
                                 const gfx::Point& p) const override;
   bool IsTriggerableEvent(views::MenuItemView* menu,
@@ -140,10 +142,10 @@ class AppMenu final : public views::MenuDelegate,
   // in |command_id_to_entry_|.
   size_t ModelIndexFromCommandId(int command_id) const;
 
-  std::unique_ptr<views::MenuRunner> menu_runner_;
+  // The views menu. Owned by |menu_runner_|.
+  raw_ptr<views::MenuItemView, DanglingUntriaged> root_ = nullptr;
 
-  // The views menu. Owned by `menu_runner_`.
-  raw_ptr<views::MenuItemView> root_ = nullptr;
+  std::unique_ptr<views::MenuRunner> menu_runner_;
 
   // Maps from the command ID in model to the model/index pair the item came
   // from.
@@ -152,8 +154,6 @@ class AppMenu final : public views::MenuDelegate,
   // Browser the menu is being shown for.
   const raw_ptr<Browser, DanglingUntriaged> browser_;
 
-  const raw_ptr<ui::MenuModel> model_;
-
   // |CancelAndEvaluate| sets |selected_menu_model_| and |selected_index_|.
   // If |selected_menu_model_| is non-null after the menu completes
   // ActivatedAt is invoked. This is done so that ActivatedAt isn't invoked
@@ -161,9 +161,6 @@ class AppMenu final : public views::MenuDelegate,
   raw_ptr<ui::ButtonMenuItemModel, DanglingUntriaged> selected_menu_model_ =
       nullptr;
   size_t selected_index_ = 0;
-
-  std::vector<base::CallbackListSubscription>
-      profile_menu_item_selected_subscription_list_;
 
   // Used for managing the bookmark menu items.
   std::unique_ptr<BookmarkMenuDelegate> bookmark_menu_delegate_;
@@ -190,7 +187,7 @@ class AppMenu final : public views::MenuDelegate,
   // Records the time from when menu opens to when the user selects a menu item.
   base::ElapsedTimer menu_opened_timer_;
 
-  base::WeakPtrFactory<AppMenu> weak_ptr_factory_{this};
+  std::unique_ptr<ScopedNewBadgeTracker> new_badge_tracker_;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_TOOLBAR_APP_MENU_H_

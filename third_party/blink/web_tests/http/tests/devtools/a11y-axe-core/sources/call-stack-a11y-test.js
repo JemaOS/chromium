@@ -1,14 +1,10 @@
-// Copyright 2020 The Chromium Authors
+// Copyright 2020 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {AxeCoreTestRunner} from 'axe_core_test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as SourcesModule from 'devtools/panels/sources/sources.js';
-
 (async function() {
+  await TestRunner.loadTestModule('axe_core_test_runner');
+  await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
 
   TestRunner.addResult('Testing accessibility in the call stack sidebar pane.');
@@ -29,9 +25,9 @@ import * as SourcesModule from 'devtools/panels/sources/sources.js';
 
   await SourcesTestRunner.startDebuggerTestPromise(/* quiet */ true);
   await SourcesTestRunner.runTestFunctionAndWaitUntilPausedPromise();
-  await TestRunner.addSnifferPromise(SourcesModule.CallStackSidebarPane.CallStackSidebarPane.prototype, 'updatedForTest');
+  await TestRunner.addSnifferPromise(Sources.CallStackSidebarPane.prototype, 'updatedForTest');
 
-  const callStackPane = SourcesModule.CallStackSidebarPane.CallStackSidebarPane.instance();
+  const callStackPane = Sources.CallStackSidebarPane.instance();
   const callStackElement = callStackPane.contentElement;
   TestRunner.addResult(`Call stack pane content: ${TestRunner.clearSpecificInfoFromStackFrames(callStackElement.deepTextContent())}`);
   TestRunner.addResult('Running the axe-core linter on the call stack sidebar pane.');

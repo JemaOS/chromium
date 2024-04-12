@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_ASSIST_RANKER_ASSIST_RANKER_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_ASSIST_RANKER_ASSIST_RANKER_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace content {
@@ -29,13 +29,13 @@ class AssistRankerServiceFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend base::NoDestructor<AssistRankerServiceFactory>;
+  friend struct base::DefaultSingletonTraits<AssistRankerServiceFactory>;
 
   AssistRankerServiceFactory();
   ~AssistRankerServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

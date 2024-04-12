@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_CERT_PROVISIONING_CERT_PROVISIONING_COMMON_H_
 #define CHROME_BROWSER_ASH_CERT_PROVISIONING_CERT_PROVISIONING_COMMON_H_
 
-#include <optional>
 #include <string>
 
 #include "base/containers/enum_set.h"
@@ -14,11 +13,11 @@
 #include "base/time/time.h"
 #include "base/values.h"
 #include "chrome/browser/chromeos/platform_keys/platform_keys.h"
-#include "chromeos/ash/components/dbus/attestation/attestation_ca.pb.h"
 #include "chromeos/ash/components/dbus/attestation/interface.pb.h"
 #include "chromeos/ash/components/dbus/constants/attestation_constants.h"
 #include "components/policy/proto/device_management_backend.pb.h"
 #include "net/cert/x509_certificate.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PrefRegistrySimple;
 class Profile;
@@ -52,7 +51,7 @@ enum class CertScope { kUser = 0, kDevice = 1, kMaxValue = kDevice };
 // enums.xml should be updated.
 enum class CertProvisioningWorkerState {
   kInitState = 0,
-  kKeypairGenerated = 1,
+  kKeypairGenerated = 1,          // Unused in "dynamic" flow.
   kStartCsrResponseReceived = 2,  // Unused in "dynamic" flow.
   kVaChallengeFinished = 3,
   kKeyRegistered = 4,
@@ -101,7 +100,6 @@ inline constexpr base::EnumSet<CertProvisioningWorkerState,
                                CertProvisioningWorkerState::kMaxValue>
     kDynamicWorkerStates = {
         CertProvisioningWorkerState::kInitState,
-        CertProvisioningWorkerState::kKeypairGenerated,
         CertProvisioningWorkerState::kVaChallengeFinished,
         CertProvisioningWorkerState::kKeyRegistered,
         CertProvisioningWorkerState::kKeypairMarked,
@@ -166,7 +164,7 @@ enum class ProtocolVersion {
 };
 
 struct CertProfile {
-  static std::optional<CertProfile> MakeFromValue(
+  static absl::optional<CertProfile> MakeFromValue(
       const base::Value::Dict& value);
 
   CertProfile();
@@ -178,9 +176,6 @@ struct CertProfile {
               base::TimeDelta renewal_period,
               ProtocolVersion protocol_version);
   CertProfile(const CertProfile& other);
-  CertProfile& operator=(const CertProfile&);
-  CertProfile(CertProfile&& source);
-  CertProfile& operator=(CertProfile&&);
   ~CertProfile();
 
   CertProfileId profile_id;
@@ -207,8 +202,8 @@ struct CertProfileComparator {
 };
 
 // Parses `protocol_version_value` as ProtocolVersion enum.
-std::optional<ProtocolVersion> ParseProtocolVersion(
-    std::optional<int> protocol_version_value);
+absl::optional<ProtocolVersion> ParseProtocolVersion(
+    absl::optional<int> protocol_version_value);
 
 void RegisterProfilePrefs(PrefRegistrySimple* registry);
 void RegisterLocalStatePrefs(PrefRegistrySimple* registry);
@@ -217,8 +212,8 @@ const char* GetPrefNameForSerialization(CertScope scope);
 
 // Returns the nickname (CKA_LABEL) for keys created for the |profile_id|.
 std::string GetKeyName(CertProfileId profile_id);
-// Returns the flow type type for VA API calls for |scope|.
-::attestation::VerifiedAccessFlow GetVaFlowType(CertScope scope);
+// Returns the key type for VA API calls for |scope|.
+attestation::AttestationKeyType GetVaKeyType(CertScope scope);
 chromeos::platform_keys::TokenId GetPlatformKeysTokenId(CertScope scope);
 
 // This functions should be used to delete keys that were created by

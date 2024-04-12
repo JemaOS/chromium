@@ -67,13 +67,13 @@ class KioskAppUpdateService : public KeyedService,
   // KioskAppManagerObserver overrides:
   void OnKioskAppCacheUpdated(const std::string& app_id) override;
 
-  raw_ptr<Profile> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
   std::string app_id_;
 
   // After we detect an upgrade we start a one-short timer to force restart.
   base::OneShotTimer restart_timer_;
 
-  raw_ptr<system::AutomaticRebootManager>
+  raw_ptr<system::AutomaticRebootManager, ExperimentalAsh>
       automatic_reboot_manager_;  // Not owned.
 };
 
@@ -81,7 +81,7 @@ class KioskAppUpdateService : public KeyedService,
 // profiles.
 class KioskAppUpdateServiceFactory : public ProfileKeyedServiceFactory {
  public:
-  // Returns the KioskAppUpdateService for `profile`, creating it if it is not
+  // Returns the KioskAppUpdateService for |profile|, creating it if it is not
   // yet created.
   static KioskAppUpdateService* GetForProfile(Profile* profile);
 
@@ -95,7 +95,7 @@ class KioskAppUpdateServiceFactory : public ProfileKeyedServiceFactory {
   ~KioskAppUpdateServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
 };
 

@@ -239,9 +239,8 @@ void HungRendererDialogView::Show(
     return;
 
   // Only show for WebContents in a browser window.
-  if (!chrome::FindBrowserWithTab(contents)) {
+  if (!chrome::FindBrowserWithWebContents(contents))
     return;
-  }
 
   // Don't show the warning unless the foreground window is the frame. If the
   // user has another window or application selected, activating ourselves is
@@ -290,9 +289,8 @@ HungRendererDialogView::HungRendererDialogView(WebContents* web_contents)
 
   hung_pages_table_model_ = std::make_unique<HungPagesTableModel>(this);
   const std::vector<ui::TableColumn> columns = {ui::TableColumn()};
-  auto hung_pages_table =
-      std::make_unique<views::TableView>(hung_pages_table_model_.get(), columns,
-                                         views::TableType::kIconAndText, true);
+  auto hung_pages_table = std::make_unique<views::TableView>(
+      hung_pages_table_model_.get(), columns, views::ICON_AND_TEXT, true);
   hung_pages_table_ = hung_pages_table.get();
 
   SetButtonLabel(
@@ -448,5 +446,5 @@ void HungRendererDialogView::BypassActiveBrowserRequirementForTests() {
   g_bypass_active_browser_requirement = true;
 }
 
-BEGIN_METADATA(HungRendererDialogView)
+BEGIN_METADATA(HungRendererDialogView, views::DialogDelegateView)
 END_METADATA

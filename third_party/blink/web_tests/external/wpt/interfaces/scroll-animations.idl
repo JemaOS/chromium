@@ -6,8 +6,8 @@
 enum ScrollAxis {
   "block",
   "inline",
-  "x",
-  "y"
+  "horizontal",
+  "vertical"
 };
 
 dictionary ScrollTimelineOptions {
@@ -34,4 +34,9 @@ interface ViewTimeline : ScrollTimeline {
   readonly attribute Element subject;
   readonly attribute CSSNumericValue startOffset;
   readonly attribute CSSNumericValue endOffset;
+};
+
+[Exposed=Window]
+partial interface AnimationTimeline {
+  CSSNumericValue? getCurrentTime(optional CSSOMString rangeName);
 };

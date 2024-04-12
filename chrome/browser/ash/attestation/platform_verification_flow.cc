@@ -5,8 +5,6 @@
 #include "chrome/browser/ash/attestation/platform_verification_flow.h"
 
 #include <memory>
-#include <optional>
-#include <string_view>
 #include <utility>
 
 #include "ash/constants/ash_switches.h"
@@ -21,6 +19,7 @@
 #include "chrome/browser/ash/attestation/certificate_util.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ash/settings/cros_settings.h"
+#include "chrome/browser/permissions/permission_manager_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chromeos/ash/components/attestation/attestation_flow.h"
 #include "chromeos/ash/components/attestation/attestation_flow_adaptive.h"
@@ -31,6 +30,12 @@
 #include "chromeos/ash/components/dbus/constants/attestation_constants.h"
 #include "chromeos/ash/components/dbus/dbus_thread_manager.h"
 #include "chromeos/dbus/constants/dbus_switches.h"
+#include "components/content_settings/core/browser/host_content_settings_map.h"
+#include "components/content_settings/core/common/content_settings_pattern.h"
+#include "components/content_settings/core/common/content_settings_types.h"
+#include "components/permissions/permission_manager.h"
+#include "components/permissions/permission_result.h"
+#include "components/permissions/permission_util.h"
 #include "components/user_manager/user.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_thread.h"
@@ -38,7 +43,8 @@
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/url_constants.h"
-#include "media/base/media_switches.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "third_party/blink/public/mojom/permissions/permission_status.mojom.h"
 
 namespace ash::attestation {
 
@@ -57,7 +63,7 @@ void ReportError(PlatformVerificationFlow::ChallengeCallback callback,
   std::move(callback).Run(error, std::string(), std::string(), std::string());
 }
 
-std::string GetKeyName(std::string_view request_origin) {
+std::string GetKeyName(base::StringPiece request_origin) {
   return base::StrCat(
       {ash::attestation::kContentProtectionKeyPrefix, request_origin});
 }
@@ -77,7 +83,7 @@ class DefaultDelegate : public PlatformVerificationFlow::Delegate {
   bool IsInSupportedMode() override {
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
     return !command_line->HasSwitch(chromeos::switches::kSystemDevMode) ||
-           command_line->HasSwitch(::switches::kAllowRAInDevMode);
+           command_line->HasSwitch(switches::kAllowRAInDevMode);
   }
 };
 
@@ -242,7 +248,7 @@ void PlatformVerificationFlow::GetCertificate(
       /*request_origin=*/context->data.service_id,
       /*force_new_key=*/force_new_key,
       /*key_crypto_type=*/::attestation::KEY_TYPE_RSA,
-      /*key_name=*/key_name, /*profile_specific_data=*/std::nullopt,
+      /*key_name=*/key_name, /*profile_specific_data=*/absl::nullopt,
       /*callback=*/std::move(certificate_callback));
 }
 
@@ -334,7 +340,7 @@ void PlatformVerificationFlow::OnChallengeReady(
         /*force_new_key=*/true,  // force_new_key
         /*key_crypto_type=*/::attestation::KEY_TYPE_RSA,
         /*key_name=*/key_name,
-        /*profile_specific_data=*/std::nullopt,
+        /*profile_specific_data=*/absl::nullopt,
         /*callback=*/std::move(renew_callback));
   }
 }

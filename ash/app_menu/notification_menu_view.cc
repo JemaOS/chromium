@@ -9,7 +9,6 @@
 #include "ash/app_menu/notification_overflow_view.h"
 #include "ash/public/cpp/app_menu_constants.h"
 #include "base/ranges/algorithm.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/menu_separator_types.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
@@ -50,7 +49,7 @@ gfx::Size NotificationMenuView::CalculatePreferredSize() const {
           (overflow_view_ ? overflow_view_->GetPreferredSize().height() : 0));
 }
 
-void NotificationMenuView::Layout(PassKey) {
+void NotificationMenuView::Layout() {
   int y = 0;
   double_separator_->SetBoundsRect(gfx::Rect(
       gfx::Point(0, y),
@@ -110,7 +109,7 @@ void NotificationMenuView::AddNotificationItemView(
     // ensure that enough room is allocated for the overflow view.
     notification_item_view_delegate_->OnOverflowAddedOrRemoved();
   }
-  DeprecatedLayoutImmediately();
+  Layout();
 }
 
 void NotificationMenuView::UpdateNotificationItemView(
@@ -179,8 +178,5 @@ NotificationMenuView::NotificationIterForId(const std::string& id) {
   return base::ranges::find(notification_item_views_, id,
                             &NotificationItemView::notification_id);
 }
-
-BEGIN_METADATA(NotificationMenuView)
-END_METADATA
 
 }  // namespace ash

@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ash/settings/stub_cros_settings_provider.h"
 
-#include <string_view>
-
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/values.h"
@@ -29,7 +27,8 @@ StubCrosSettingsProvider::StubCrosSettingsProvider()
 StubCrosSettingsProvider::~StubCrosSettingsProvider() {
 }
 
-const base::Value* StubCrosSettingsProvider::Get(std::string_view path) const {
+const base::Value* StubCrosSettingsProvider::Get(
+    const std::string& path) const {
   DCHECK(HandlesSetting(path));
   const base::Value* value;
   if (values_.GetValue(path, &value))
@@ -44,7 +43,7 @@ StubCrosSettingsProvider::PrepareTrustedValues(base::OnceClosure* callback) {
   return trusted_status_;
 }
 
-bool StubCrosSettingsProvider::HandlesSetting(std::string_view path) const {
+bool StubCrosSettingsProvider::HandlesSetting(const std::string& path) const {
   return DeviceSettingsProvider::IsDeviceSetting(path);
 }
 

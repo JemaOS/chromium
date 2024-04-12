@@ -269,14 +269,16 @@ bool GLSurfaceEGLSurfaceControl::ScheduleOverlayPlane(
   }
 
   AHardwareBuffer* hardware_buffer = nullptr;
+  base::ScopedFD fence_fd;
   auto scoped_hardware_buffer = std::move(image);
-  bool is_primary_plane = overlay_plane_data.is_root_overlay;
+  bool is_primary_plane = false;
   if (scoped_hardware_buffer) {
     hardware_buffer = scoped_hardware_buffer->buffer();
 
     // We currently only promote the display compositor's buffer or a video
     // buffer to an overlay. So if this buffer is not for video then it implies
     // its the primary plane.
+    is_primary_plane = !scoped_hardware_buffer->is_video();
     DCHECK(!is_primary_plane || !primary_plane_fences_);
     if (is_primary_plane) {
       primary_plane_fences_.emplace();
@@ -292,15 +294,15 @@ bool GLSurfaceEGLSurfaceControl::ScheduleOverlayPlane(
     resource_ref.scoped_buffer = std::move(scoped_hardware_buffer);
   }
 
-  if (uninitialized || surface_state.hardware_buffer != hardware_buffer ||
-      gpu_fence) {
+  surface_state.buffer_updated_in_pending_transaction =
+      uninitialized || surface_state.hardware_buffer != hardware_buffer;
+  if (surface_state.buffer_updated_in_pending_transaction) {
     surface_state.hardware_buffer = hardware_buffer;
 
-    base::ScopedFD fence_fd;
     if (gpu_fence && surface_state.hardware_buffer) {
       auto fence_handle = gpu_fence->GetGpuFenceHandle().Clone();
       DCHECK(!fence_handle.is_null());
-      fence_fd = fence_handle.Release();
+      fence_fd = std::move(fence_handle.owned_fd);
     }
 
     if (is_primary_plane) {
@@ -347,15 +349,13 @@ bool GLSurfaceEGLSurfaceControl::ScheduleOverlayPlane(
     // can become larger then a buffer so we clip it here. See crbug.com/1083412
     src.Intersect(gfx::Rect(buffer_size));
 
-    auto transform =
-        absl::get<gfx::OverlayTransform>(overlay_plane_data.plane_transform);
     if (uninitialized || surface_state.src != src || surface_state.dst != dst ||
-        surface_state.transform != transform) {
+        surface_state.transform != overlay_plane_data.plane_transform) {
       surface_state.src = src;
       surface_state.dst = dst;
-      surface_state.transform = transform;
+      surface_state.transform = overlay_plane_data.plane_transform;
       pending_transaction_->SetGeometry(*surface_state.surface, src, dst,
-                                        transform);
+                                        overlay_plane_data.plane_transform);
     }
   }
 
@@ -393,7 +393,7 @@ void GLSurfaceEGLSurfaceControl::OnTransactionAckOnGpuThread(
     SwapCompletionCallback completion_callback,
     PresentationCallback presentation_callback,
     ResourceRefs released_resources,
-    std::optional<PrimaryPlaneFences> primary_plane_fences,
+    absl::optional<PrimaryPlaneFences> primary_plane_fences,
     gfx::SurfaceControl::TransactionStats transaction_stats) {
   TRACE_EVENT0("gpu",
                "GLSurfaceEGLSurfaceControl::OnTransactionAckOnGpuThread");
@@ -539,7 +539,7 @@ void GLSurfaceEGLSurfaceControl::SetFrameRate(float frame_rate) {
 }
 
 void GLSurfaceEGLSurfaceControl::SetChoreographerVsyncIdForNextFrame(
-    std::optional<int64_t> choreographer_vsync_id) {
+    absl::optional<int64_t> choreographer_vsync_id) {
   choreographer_vsync_id_for_next_frame_ = choreographer_vsync_id;
 }
 

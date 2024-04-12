@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/memory/raw_ptr.h"
-
 // DELETE LATER
 #include "base/logging.h"
 #include "chrome/browser/ui/bookmarks/bookmark_stats.h"
@@ -29,7 +27,6 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/undo/bookmark_undo_service_factory.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/grit/generated_resources.h"
@@ -123,8 +120,7 @@ BookmarkContextMenuController::BookmarkContextMenuController(
     Profile* profile,
     BookmarkLaunchLocation opened_from,
     const BookmarkNode* parent,
-    const std::vector<raw_ptr<const BookmarkNode, VectorExperimental>>&
-        selection)
+    const std::vector<const BookmarkNode*>& selection)
     : parent_window_(parent_window),
       delegate_(delegate),
       browser_(browser),
@@ -205,11 +201,6 @@ void BookmarkContextMenuController::BuildMenu() {
     AddCheckboxItem(IDC_BOOKMARK_BAR_SHOW_APPS_SHORTCUT,
                     IDS_BOOKMARK_BAR_SHOW_APPS_SHORTCUT);
   }
-  if (chrome::IsSavedTabGroupsEnabled(profile_) &&
-      base::FeatureList::IsEnabled(features::kTabGroupsSaveV2)) {
-    AddCheckboxItem(IDC_BOOKMARK_BAR_TOGGLE_SHOW_TAB_GROUPS,
-                    IDS_BOOKMARK_BAR_SHOW_TAB_GROUPS);
-  }
   AddCheckboxItem(IDC_BOOKMARK_BAR_SHOW_MANAGED_BOOKMARKS,
                   IDS_BOOKMARK_BAR_SHOW_MANAGED_BOOKMARKS_DEFAULT_NAME);
   AddCheckboxItem(IDC_BOOKMARK_BAR_ALWAYS_SHOW, IDS_SHOW_BOOKMARK_BAR);
@@ -284,7 +275,7 @@ void BookmarkContextMenuController::ExecuteCommand(int id, int event_flags) {
       base::RecordAction(
           UserMetricsAction("BookmarkBar_ContextMenu_AddToBookmarkBar"));
       const BookmarkNode* bookmark_bar_node = model_->bookmark_bar_node();
-      for (const bookmarks::BookmarkNode* node : selection_) {
+      for (const auto* node : selection_) {
         model_->Move(node, bookmark_bar_node,
                      bookmark_bar_node->children().size());
       }
@@ -295,7 +286,7 @@ void BookmarkContextMenuController::ExecuteCommand(int id, int event_flags) {
       base::RecordAction(
           UserMetricsAction("BookmarkBar_ContextMenu_RemoveFromBookmarkBar"));
       const BookmarkNode* other_node = model_->other_node();
-      for (const bookmarks::BookmarkNode* node : selection_) {
+      for (const auto* node : selection_) {
         model_->Move(node, other_node, other_node->children().size());
       }
       break;
@@ -320,9 +311,8 @@ void BookmarkContextMenuController::ExecuteCommand(int id, int event_flags) {
       RecordBookmarkRemoved(opened_from_);
 
       bookmarks::ScopedGroupBookmarkActions group_remove(model_);
-      for (const bookmarks::BookmarkNode* node : selection_) {
+      for (const auto* node : selection_)
         model_->Remove(node, bookmarks::metrics::BookmarkEditSource::kUser);
-      }
       selection_.clear();
       break;
     }
@@ -372,14 +362,6 @@ void BookmarkContextMenuController::ExecuteCommand(int id, int event_flags) {
       prefs->SetBoolean(
           bookmarks::prefs::kShowAppsShortcutInBookmarkBar,
           !prefs->GetBoolean(bookmarks::prefs::kShowAppsShortcutInBookmarkBar));
-      break;
-    }
-
-    case IDC_BOOKMARK_BAR_TOGGLE_SHOW_TAB_GROUPS: {
-      PrefService* prefs = profile_->GetPrefs();
-      prefs->SetBoolean(
-          bookmarks::prefs::kShowTabGroupsInBookmarkBar,
-          !prefs->GetBoolean(bookmarks::prefs::kShowTabGroupsInBookmarkBar));
       break;
     }
 
@@ -473,9 +455,6 @@ bool BookmarkContextMenuController::IsCommandIdChecked(int command_id) const {
     return prefs->GetBoolean(
         bookmarks::prefs::kShowManagedBookmarksInBookmarkBar);
   }
-  if (command_id == IDC_BOOKMARK_BAR_TOGGLE_SHOW_TAB_GROUPS) {
-    return prefs->GetBoolean(bookmarks::prefs::kShowTabGroupsInBookmarkBar);
-  }
 
   DCHECK_EQ(IDC_BOOKMARK_BAR_SHOW_APPS_SHORTCUT, command_id);
   return prefs->GetBoolean(bookmarks::prefs::kShowAppsShortcutInBookmarkBar);
@@ -513,21 +492,21 @@ bool BookmarkContextMenuController::IsCommandIdEnabled(int command_id) const {
       return selection_.size() == 1 && !is_root_node && can_edit;
 
     case IDC_BOOKMARK_BAR_ADD_TO_BOOKMARKS_BAR:
-      for (const bookmarks::BookmarkNode* node : selection_) {
+      for (auto* node : selection_) {
         if (node->is_permanent_node() ||
             node->parent() == model_->bookmark_bar_node()) {
           return false;
         }
       }
-      return can_edit && !model_->client()->IsNodeManaged(parent_);
+      return can_edit && model_->client()->CanBeEditedByUser(parent_);
     case IDC_BOOKMARK_BAR_REMOVE_FROM_BOOKMARKS_BAR:
-      for (const bookmarks::BookmarkNode* node : selection_) {
+      for (auto* node : selection_) {
         if (node->is_permanent_node() ||
             node->parent() != model_->bookmark_bar_node()) {
           return false;
         }
       }
-      return can_edit && !model_->client()->IsNodeManaged(parent_);
+      return can_edit && model_->client()->CanBeEditedByUser(parent_);
 
     case IDC_BOOKMARK_BAR_UNDO:
       return can_edit &&
@@ -544,7 +523,7 @@ bool BookmarkContextMenuController::IsCommandIdEnabled(int command_id) const {
 
     case IDC_BOOKMARK_BAR_NEW_FOLDER:
     case IDC_BOOKMARK_BAR_ADD_NEW_BOOKMARK:
-      return can_edit && !model_->client()->IsNodeManaged(parent_) &&
+      return can_edit && model_->client()->CanBeEditedByUser(parent_) &&
              bookmarks::GetParentForNewNodes(parent_, selection_, nullptr);
 
     case IDC_BOOKMARK_BAR_ALWAYS_SHOW:

@@ -53,8 +53,7 @@ Status StubWebView::Resume(const Timeout* timeout) {
   return Status(kOk);
 }
 
-Status StubWebView::StartBidiServer(std::string bidi_mapper_script,
-                                    const base::Value::Dict& mapper_options) {
+Status StubWebView::StartBidiServer(std::string bidi_mapper_script) {
   return Status{kOk};
 }
 
@@ -95,6 +94,14 @@ Status StubWebView::CallFunction(const std::string& frame,
                                  const std::string& function,
                                  const base::Value::List& args,
                                  std::unique_ptr<base::Value>* result) {
+  return Status(kOk);
+}
+
+Status StubWebView::CallAsyncFunction(const std::string& frame,
+                                      const std::string& function,
+                                      const base::Value::List& args,
+                                      const base::TimeDelta& timeout,
+                                      std::unique_ptr<base::Value>* result) {
   return Status(kOk);
 }
 
@@ -255,10 +262,6 @@ bool StubWebView::IsNonBlocking() const {
   return false;
 }
 
-Status StubWebView::GetFedCmTracker(FedCmTracker** out_tracker) {
-  return Status(kUnknownCommand);
-}
-
 FrameTracker* StubWebView::GetFrameTracker() const {
   return nullptr;
 }
@@ -277,17 +280,4 @@ Status StubWebView::GetBackendNodeIdByElement(const std::string& frame,
                                               const base::Value& element,
                                               int* node_id) {
   return Status(kOk);
-}
-
-bool StubWebView::IsDetached() const {
-  return false;
-}
-
-Status StubWebView::CallFunctionWithTimeout(
-    const std::string& frame,
-    const std::string& function,
-    const base::Value::List& args,
-    const base::TimeDelta& timeout,
-    std::unique_ptr<base::Value>* result) {
-  return Status{kOk};
 }

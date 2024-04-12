@@ -4,22 +4,21 @@
 
 import {assertDeepEquals} from 'chrome://webui-test/chromeos/chai_assert.js';
 
-import type {Crostini} from '../background/js/crostini.js';
 import {MockVolumeManager} from '../background/js/mock_volume_manager.js';
-import type {VolumeInfo} from '../background/js/volume_info.js';
-import type {FilesAppDirEntry} from '../common/js/files_app_entry_types.js';
-import type {DirectoryTreeNamingController} from '../foreground/js/directory_tree_naming_controller.js';
+import {DialogType} from '../common/js/dialog_type.js';
+import {Crostini} from '../externs/background/crostini.js';
+import {FilesAppDirEntry} from '../externs/files_app_entry_interfaces.js';
+import {FileKey, PropStatus, State} from '../externs/ts/state.js';
+import {VolumeInfo} from '../externs/volume_info.js';
 import {FakeFileSelectionHandler} from '../foreground/js/fake_file_selection_handler.js';
-import type {MetadataModel} from '../foreground/js/metadata/metadata_model.js';
+import {MetadataModel} from '../foreground/js/metadata/metadata_model.js';
 import {MockMetadataModel} from '../foreground/js/metadata/mock_metadata.js';
 import {createFakeDirectoryModel} from '../foreground/js/mock_directory_model.js';
-import type {TaskController} from '../foreground/js/task_controller.js';
-import type {FileManagerUI} from '../foreground/js/ui/file_manager_ui.js';
+import {TaskController} from '../foreground/js/task_controller.js';
 
-import {type EntryMetadata, updateMetadata} from './ducks/all_entries.js';
-import {changeDirectory, updateDirectoryContent, updateSelection} from './ducks/current_directory.js';
-import {DialogType, type FileKey, PropStatus, type State} from './state.js';
-import {getEmptyState, getStore, type StateSelector, type Store, waitForState} from './store.js';
+import {EntryMetadata, updateMetadata} from './actions/all_entries.js';
+import {changeDirectory, updateDirectoryContent, updateSelection} from './actions/current_directory.js';
+import {getEmptyState, getStore, StateSelector, Store, waitForState} from './store.js';
 
 /**
  * Compares 2 State objects and fails with nicely formatted message when it
@@ -144,21 +143,11 @@ export function setUpFileManagerOnWindow() {
   window.fileManager = {
     volumeManager: volumeManager,
     metadataModel: new MockMetadataModel({}) as unknown as MetadataModel,
-    ui: {} as unknown as FileManagerUI,
     crostini: {} as unknown as Crostini,
     selectionHandler: new FakeFileSelectionHandler(),
     taskController: {} as unknown as TaskController,
     dialogType: DialogType.FULL_PAGE,
     directoryModel: createFakeDirectoryModel(),
-    directoryTreeNamingController: {} as unknown as
-        DirectoryTreeNamingController,
-    getLastVisitedUrl() {
-      return '';
-    },
-    getTranslatedString(_id: string) {
-      return '';
-    },
-    onUnloadForTest() {},
   };
 }
 
@@ -171,24 +160,24 @@ export function createFakeVolumeMetadata(
     ): chrome.fileManagerPrivate.VolumeMetadata {
   return {
     volumeId: volumeInfo.volumeId,
-    volumeType: volumeInfo.volumeType as chrome.fileManagerPrivate.VolumeType,
+    volumeType: volumeInfo.volumeType,
     profile: {
       ...volumeInfo.profile,
       profileId: '',
     },
     configurable: volumeInfo.configurable,
     watchable: volumeInfo.watchable,
-    source: volumeInfo.source as chrome.fileManagerPrivate.Source,
+    source: volumeInfo.source,
     volumeLabel: volumeInfo.label,
     fileSystemId: undefined,
     providerId: volumeInfo.providerId,
     sourcePath: undefined,
-    deviceType: volumeInfo.deviceType as chrome.fileManagerPrivate.DeviceType,
+    deviceType: volumeInfo.deviceType,
     devicePath: volumeInfo.devicePath,
     isParentDevice: undefined,
     isReadOnly: volumeInfo.isReadOnly,
     isReadOnlyRemovableDevice: volumeInfo.isReadOnlyRemovableDevice,
-    hasMedia: false,
+    hasMedia: volumeInfo.hasMedia,
     mountCondition: undefined,
     mountContext: undefined,
     diskFileSystemType: volumeInfo.diskFileSystemType,

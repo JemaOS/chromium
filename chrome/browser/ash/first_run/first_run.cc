@@ -7,6 +7,7 @@
 #include "ash/components/arc/arc_prefs.h"
 #include "ash/components/arc/session/arc_service_manager.h"
 #include "ash/constants/ash_switches.h"
+#include "ash/public/cpp/tablet_mode.h"
 #include "base/command_line.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -37,10 +38,8 @@
 #include "content/public/common/content_switches.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/constants.h"
-#include "ui/display/screen.h"
 #include "ui/events/event_constants.h"
 #include "ui/gfx/geometry/rect.h"
-#include "url/gurl.h"
 
 namespace ash {
 namespace first_run {
@@ -52,8 +51,8 @@ namespace {
 // public accounts.
 bool IsRegularUserOrSupervisedChild(user_manager::UserManager* user_manager) {
   switch (user_manager->GetActiveUser()->GetType()) {
-    case user_manager::UserType::kRegular:
-    case user_manager::UserType::kChild:
+    case user_manager::USER_TYPE_REGULAR:
+    case user_manager::USER_TYPE_CHILD:
       return true;
     default:
       return false;
@@ -68,7 +67,7 @@ bool ShouldShowGetStarted(Profile* profile,
   if (profile->IsChild())
     return true;
   switch (user_manager->GetActiveUser()->GetType()) {
-    case user_manager::UserType::kRegular:
+    case user_manager::USER_TYPE_REGULAR:
       return !profile->GetProfilePolicyConnector()->IsManaged();
     default:
       return false;
@@ -78,7 +77,8 @@ bool ShouldShowGetStarted(Profile* profile,
 // Object of this class waits for system web apps to load. Then it launches the
 // help app. The object deletes itself if the app is launched or the profile is
 // destroyed.
-class AppLauncher final : public ProfileObserver {
+class AppLauncher : public ProfileObserver,
+                    public base::SupportsWeakPtr<AppLauncher> {
  public:
   // App launcher owns itself and will be deleted when the app is launched or
   // the profile is destroyed.
@@ -93,8 +93,7 @@ class AppLauncher final : public ProfileObserver {
   explicit AppLauncher(Profile* profile) : profile_(profile) {
     profile->AddObserver(this);
     SystemWebAppManager::Get(profile)->on_apps_synchronized().Post(
-        FROM_HERE, base::BindOnce(&AppLauncher::LaunchHelpApp,
-                                  weak_factory_.GetWeakPtr()));
+        FROM_HERE, base::BindOnce(&AppLauncher::LaunchHelpApp, AsWeakPtr()));
   }
 
   ~AppLauncher() override { this->profile_->RemoveObserver(this); }
@@ -102,14 +101,11 @@ class AppLauncher final : public ProfileObserver {
   AppLauncher& operator=(const AppLauncher&) = delete;
 
   void LaunchHelpApp() {
-    ash::SystemAppLaunchParams params;
-    params.url = GURL("chrome://help-app?launchSource=first-run");
-    params.launch_source = apps::LaunchSource::kFromFirstRun;
-    LaunchSystemWebAppAsync(profile_, SystemWebAppType::HELP, params);
+    LaunchSystemWebAppAsync(profile_, SystemWebAppType::HELP);
     profile_->GetPrefs()->SetBoolean(prefs::kFirstRunTutorialShown, true);
     delete this;
   }
-  raw_ptr<Profile> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
   base::WeakPtrFactory<AppLauncher> weak_factory_{this};
 };
 
@@ -134,7 +130,7 @@ bool ShouldLaunchHelpApp(Profile* profile) {
   profile->GetPrefs()->SetBoolean(prefs::kHelpAppShouldShowGetStarted,
                                   ShouldShowGetStarted(profile, user_manager));
   profile->GetPrefs()->SetBoolean(prefs::kHelpAppTabletModeDuringOobe,
-                                  display::Screen::GetScreen()->InTabletMode());
+                                  TabletMode::IsInTabletMode());
 
   if (WizardController::default_controller())
     WizardController::default_controller()->PrepareFirstRunPrefs();
@@ -152,13 +148,9 @@ bool ShouldLaunchHelpApp(Profile* profile) {
     return true;
   }
 
-  if (command_line->HasSwitch(switches::kDisableFirstRunUI)) {
+  // TabletMode does not exist in some tests.
+  if (TabletMode::Get() && TabletMode::Get()->InTabletMode())
     return false;
-  }
-
-  if (display::Screen::GetScreen()->InTabletMode()) {
-    return false;
-  }
 
   if (command_line->HasSwitch(::switches::kTestType))
     return false;

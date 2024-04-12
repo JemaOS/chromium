@@ -125,7 +125,7 @@ class HTMLParserScriptRunner final
                                     const TextPosition& script_start_position);
 
   const PendingScript* ParserBlockingScript() const {
-    return parser_blocking_script_.Get();
+    return parser_blocking_script_;
   }
 
   bool IsParserBlockingScriptReady();

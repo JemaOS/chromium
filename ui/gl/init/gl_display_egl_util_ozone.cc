@@ -32,12 +32,12 @@ void GLDisplayEglUtilOzone::ChoosePlatformCustomAlphaAndBufferSize(
     utility->ChooseEGLAlphaAndBufferSize(alpha_size, buffer_size);
 }
 
-std::optional<base::ScopedEnvironmentVariableOverride>
+absl::optional<base::ScopedEnvironmentVariableOverride>
 GLDisplayEglUtilOzone::MaybeGetScopedDisplayUnsetForVulkan() {
   auto* utility = ui::OzonePlatform::GetInstance()->GetPlatformGLEGLUtility();
   if (utility)
     return utility->MaybeGetScopedDisplayUnsetForVulkan();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 GLDisplayEglUtilOzone::GLDisplayEglUtilOzone() = default;

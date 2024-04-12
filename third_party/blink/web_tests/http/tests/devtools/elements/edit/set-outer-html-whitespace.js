@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ElementsTestRunner} from 'elements_test_runner';
-
 (async function() {
   TestRunner.addResult(`Tests that DOMAgent.setOuterHTML can handle whitespace-only text nodes.\n`);
+  await TestRunner.loadLegacyModule('elements'); await TestRunner.loadTestModule('elements_test_runner');
   await TestRunner.showPanel('elements');
   await TestRunner.loadHTML(`
       <div id="container" style="display:none">
@@ -30,7 +28,7 @@ import {ElementsTestRunner} from 'elements_test_runner';
     for (let i = 0; i < ElementsTestRunner.events.length; ++i)
       TestRunner.addResult(ElementsTestRunner.events[i]);
 
-    ElementsTestRunner.events.length = 0; // 'events' is readonly.
+    ElementsTestRunner.events = [];
     TestRunner.addResult("");
   }
 

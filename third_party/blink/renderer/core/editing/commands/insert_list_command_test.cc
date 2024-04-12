@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/editing/commands/insert_list_command.h"
 
+#include "third_party/blink/renderer/core/dom/parent_node.h"
 #include "third_party/blink/renderer/core/dom/text.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/editing/selection_template.h"
@@ -230,9 +231,9 @@ TEST_F(InsertListCommandTest, NonCanonicalVisiblePosition) {
   SetBodyInnerHTML(
       "<textarea></textarea><svg></svg><select></select><div><input></div>");
   const Position& base =
-      Position::BeforeNode(*document.QuerySelector(AtomicString("select")));
+      Position::BeforeNode(*document.QuerySelector("select"));
   const Position& extent =
-      Position::AfterNode(*document.QuerySelector(AtomicString("input")));
+      Position::AfterNode(*document.QuerySelector("input"));
   Selection().SetSelection(
       SelectionInDOMTree::Builder().Collapse(base).Extend(extent).Build(),
       SetSelectionOptions());

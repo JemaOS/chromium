@@ -5,8 +5,7 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_TABS_TAB_CONTAINER_CONTROLLER_H_
 #define CHROME_BROWSER_UI_VIEWS_TABS_TAB_CONTAINER_CONTROLLER_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/range/range.h"
@@ -31,7 +30,7 @@ class TabContainerController {
   virtual bool IsValidModelIndex(int index) const = 0;
 
   // Returns the index of the active tab.
-  virtual std::optional<int> GetActiveIndex() const = 0;
+  virtual absl::optional<int> GetActiveIndex() const = 0;
 
   // Returns the number of pinned tabs in the model. Note that this can be
   // different from the number of pinned tabs in the TabStrip view (and its
@@ -39,7 +38,7 @@ class TabContainerController {
   virtual int NumPinnedTabsInModel() const = 0;
 
   // Notifies controller of a drop index update.
-  virtual void OnDropIndexUpdate(std::optional<int> index,
+  virtual void OnDropIndexUpdate(absl::optional<int> index,
                                  bool drop_before) = 0;
 
   // Returns the |group| collapsed state. Returns false if the group does not
@@ -52,7 +51,7 @@ class TabContainerController {
   // Gets the first tab index in |group|, or nullopt if the group is
   // currently empty. This is always safe to call unlike
   // ListTabsInGroup().
-  virtual std::optional<int> GetFirstTabInGroup(
+  virtual absl::optional<int> GetFirstTabInGroup(
       const tab_groups::TabGroupId& group) const = 0;
 
   // Returns the range of tabs in the given |group|. This must not be

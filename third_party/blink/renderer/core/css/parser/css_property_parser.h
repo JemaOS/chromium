@@ -89,10 +89,9 @@ class CORE_EXPORT CSSPropertyParser {
   HeapVector<CSSPropertyValue, 64>* parsed_properties_;
 };
 
-CSSPropertyID CORE_EXPORT
-UnresolvedCSSPropertyID(const ExecutionContext*,
-                        StringView,
-                        CSSParserMode mode = kHTMLStandardMode);
+CSSPropertyID UnresolvedCSSPropertyID(const ExecutionContext*,
+                                      StringView,
+                                      CSSParserMode mode = kHTMLStandardMode);
 CSSValueID CssValueKeywordID(StringView);
 
 }  // namespace blink

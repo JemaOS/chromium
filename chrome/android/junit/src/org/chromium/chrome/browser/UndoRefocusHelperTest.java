@@ -40,8 +40,10 @@ import java.util.concurrent.TimeoutException;
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class UndoRefocusHelperTest {
-    @Mock TabModelSelector mTabModelSelector;
-    @Mock ObservableSupplier<LayoutManagerImpl> mLayoutManagerObservableSupplier;
+    @Mock
+    TabModelSelector mTabModelSelector;
+    @Mock
+    ObservableSupplier<LayoutManagerImpl> mLayoutManagerObservableSupplier;
 
     private static final String UNDO_CLOSE_TAB_USER_ACTION = "TabletTabStrip.UndoCloseTab";
     private final TestTabModel mModel = new TestTabModel();

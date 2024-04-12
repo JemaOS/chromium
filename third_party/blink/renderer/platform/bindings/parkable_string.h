@@ -15,7 +15,6 @@
 #include "base/synchronization/lock.h"
 #include "base/thread_annotations.h"
 #include "base/time/time.h"
-#include "third_party/blink/renderer/platform/bindings/buildflags.h"
 #include "third_party/blink/renderer/platform/disk_data_metadata.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
@@ -51,13 +50,6 @@ class PLATFORM_EXPORT ParkableStringImpl
     kNonTransientFailure
   };
   enum class Age { kYoung = 0, kOld = 1, kVeryOld = 2 };
-  enum class CompressionAlgorithm {
-    kZlib = 0,
-    kSnappy = 1,
-#if BUILDFLAG(HAS_ZSTD_COMPRESSION)
-    kZstd = 2
-#endif
-  };
 
   constexpr static size_t kDigestSize = 32;  // SHA256.
   using SecureDigest = Vector<uint8_t, kDigestSize>;
@@ -74,8 +66,6 @@ class PLATFORM_EXPORT ParkableStringImpl
   static scoped_refptr<ParkableStringImpl> MakeParkable(
       scoped_refptr<StringImpl>&& impl,
       std::unique_ptr<SecureDigest> digest);
-
-  static CompressionAlgorithm GetCompressionAlgorithm();
 
   ParkableStringImpl(const ParkableStringImpl&) = delete;
   ParkableStringImpl& operator=(const ParkableStringImpl&) = delete;
@@ -246,8 +236,7 @@ class PLATFORM_EXPORT ParkableStringImpl
       std::unique_ptr<Vector<uint8_t>> compressed,
       base::TimeDelta parking_thread_time);
 
-  void PostBackgroundWritingTask(std::unique_ptr<ReservedChunk> reserved_chunk)
-      EXCLUSIVE_LOCKS_REQUIRED(metadata_->lock_);
+  void PostBackgroundWritingTask() EXCLUSIVE_LOCKS_REQUIRED(metadata_->lock_);
   static void WriteToDiskInBackground(std::unique_ptr<BackgroundTaskParams>,
                                       DiskDataAllocator* data_allocator);
   // Called on the main thread after writing is done.
@@ -272,9 +261,6 @@ class PLATFORM_EXPORT ParkableStringImpl
   bool is_parked_no_lock() const EXCLUSIVE_LOCKS_REQUIRED(metadata_->lock_);
   bool is_on_disk_no_lock() const EXCLUSIVE_LOCKS_REQUIRED(metadata_->lock_);
 
-  bool is_compression_failed_no_lock() const
-      EXCLUSIVE_LOCKS_REQUIRED(metadata_->lock_);
-
   // Metadata only used for parkable ParkableStrings.
   struct ParkableMetadata {
     ParkableMetadata(String string, std::unique_ptr<SecureDigest> digest);
@@ -288,7 +274,6 @@ class PLATFORM_EXPORT ParkableStringImpl
 
     State state_ GUARDED_BY(lock_);
     bool background_task_in_progress_{false};
-    bool compression_failed_ GUARDED_BY(lock_);
     std::unique_ptr<Vector<uint8_t>> compressed_;
     std::unique_ptr<DiskDataMetadata> on_disk_metadata_;
     const SecureDigest digest_;

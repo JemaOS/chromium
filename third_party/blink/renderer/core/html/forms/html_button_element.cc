@@ -29,22 +29,16 @@
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/events/simulated_click_options.h"
-#include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
-#include "third_party/blink/renderer/core/dom/focus_params.h"
 #include "third_party/blink/renderer/core/dom/qualified_name.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html/forms/form_data.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
-#include "third_party/blink/renderer/core/html/forms/html_select_element.h"
-#include "third_party/blink/renderer/core/html/forms/html_select_list_element.h"
 #include "third_party/blink/renderer/core/html_names.h"
-#include "third_party/blink/renderer/core/layout/forms/layout_button.h"
+#include "third_party/blink/renderer/core/layout/ng/layout_ng_button.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 
 namespace blink {
-
-using mojom::blink::FormControlType;
 
 HTMLButtonElement::HTMLButtonElement(Document& document)
     : HTMLFormControlElement(html_names::kButtonTag, document) {}
@@ -62,43 +56,27 @@ LayoutObject* HTMLButtonElement::CreateLayoutObject(
       display == EDisplay::kInlineLayoutCustom ||
       display == EDisplay::kLayoutCustom)
     return HTMLFormControlElement::CreateLayoutObject(style);
-  return MakeGarbageCollected<LayoutButton>(this);
+  return MakeGarbageCollected<LayoutNGButton>(this);
 }
 
-FormControlType HTMLButtonElement::FormControlType() const {
-  return static_cast<mojom::blink::FormControlType>(base::to_underlying(type_));
-}
-
-const AtomicString& HTMLButtonElement::FormControlTypeAsString() const {
+const AtomicString& HTMLButtonElement::FormControlType() const {
   switch (type_) {
-    case Type::kButton: {
-      DEFINE_STATIC_LOCAL(const AtomicString, button, ("button"));
-      return button;
-    }
-    case Type::kSubmit: {
+    case kSubmit: {
       DEFINE_STATIC_LOCAL(const AtomicString, submit, ("submit"));
       return submit;
     }
-    case Type::kReset: {
+    case kButton: {
+      DEFINE_STATIC_LOCAL(const AtomicString, button, ("button"));
+      return button;
+    }
+    case kReset: {
       DEFINE_STATIC_LOCAL(const AtomicString, reset, ("reset"));
       return reset;
     }
-    case Type::kSelectlist: {
-      if (RuntimeEnabledFeatures::HTMLSelectListElementEnabled()) {
-        DEFINE_STATIC_LOCAL(const AtomicString, selectlist, ("selectlist"));
-        return selectlist;
-      }
-      break;
-    }
-    case Type::kPopover: {
-      if (RuntimeEnabledFeatures::StylableSelectEnabled()) {
-        DEFINE_STATIC_LOCAL(const AtomicString, popover, ("popover"));
-        return popover;
-      }
-      break;
-    }
   }
-  NOTREACHED_NORETURN();
+
+  NOTREACHED();
+  return g_empty_atom;
 }
 
 bool HTMLButtonElement::IsPresentationAttribute(
@@ -115,19 +93,12 @@ bool HTMLButtonElement::IsPresentationAttribute(
 void HTMLButtonElement::ParseAttribute(
     const AttributeModificationParams& params) {
   if (params.name == html_names::kTypeAttr) {
-    if (EqualIgnoringASCIICase(params.new_value, "reset")) {
+    if (EqualIgnoringASCIICase(params.new_value, "reset"))
       type_ = kReset;
-    } else if (EqualIgnoringASCIICase(params.new_value, "button")) {
+    else if (EqualIgnoringASCIICase(params.new_value, "button"))
       type_ = kButton;
-    } else if (RuntimeEnabledFeatures::HTMLSelectListElementEnabled() &&
-               EqualIgnoringASCIICase(params.new_value, "selectlist")) {
-      type_ = kSelectlist;
-    } else if (RuntimeEnabledFeatures::StylableSelectEnabled() &&
-               EqualIgnoringASCIICase(params.new_value, "popover")) {
-      type_ = kPopover;
-    } else {
+    else
       type_ = kSubmit;
-    }
     UpdateWillValidateCache();
     if (formOwner() && isConnected())
       formOwner()->InvalidateDefaultButtonStyle();
@@ -144,44 +115,16 @@ void HTMLButtonElement::DefaultEventHandler(Event& event) {
       if (Form() && type_ == kSubmit) {
         Form()->PrepareForSubmission(&event, this);
         event.SetDefaultHandled();
-        return;
       }
       if (Form() && type_ == kReset) {
         Form()->reset();
         event.SetDefaultHandled();
-        return;
       }
     }
   }
 
-  if (type_ == kSelectlist) {
-    CHECK(RuntimeEnabledFeatures::HTMLSelectListElementEnabled());
-    if (auto* selectlist = OwnerSelectList()) {
-      selectlist->HandleButtonEvent(event);
-    }
-  }
-
-  if (auto* select = OwnerSelect()) {
-    CHECK(RuntimeEnabledFeatures::StylableSelectEnabled());
-    // For native popups, use HTMLSelectElement's codepath. For <datalist>
-    // popover popups, use the HTMLFormControlElement popover code path.
-    if (select->IsAppearanceBikeshed()) {
-      CHECK(!event.DefaultHandled())
-          << " We shouldn't run HTMLSelectElement::DefaultEventHandler here if "
-             "the default has already been handled. event.type(): "
-          << event.type();
-      select->DefaultEventHandler(event);
-      if (event.DefaultHandled()) {
-        return;
-      }
-    }
-  }
-
-  // type=selectlist should not open the listbox when enter is pressed, which
-  // HandleKeyboardActivation would do via simulated click.
-  if (type_ != kSelectlist && HandleKeyboardActivation(event)) {
+  if (HandleKeyboardActivation(event))
     return;
-  }
 
   HTMLFormControlElement::DefaultEventHandler(event);
 }
@@ -216,7 +159,7 @@ void HTMLButtonElement::AppendToFormData(FormData& form_data) {
 
 void HTMLButtonElement::AccessKeyAction(
     SimulatedClickCreationScope creation_scope) {
-  Focus(FocusParams(FocusTrigger::kUserGesture));
+  Focus();
   DispatchSimulatedClick(nullptr, creation_scope);
 }
 
@@ -265,35 +208,6 @@ void HTMLButtonElement::DispatchBlurEvent(
   SetActive(false);
   HTMLFormControlElement::DispatchBlurEvent(new_focused_element, type,
                                             source_capabilities);
-}
-
-HTMLSelectListElement* HTMLButtonElement::OwnerSelectList() const {
-  if (type_ != kSelectlist) {
-    return nullptr;
-  }
-  for (auto& ancestor : FlatTreeTraversal::AncestorsOf(*this)) {
-    if (IsA<HTMLListboxElement>(ancestor)) {
-      // Buttons inside listboxes are excluded from triggering the listbox.
-      return nullptr;
-    }
-    if (auto* selectlist = DynamicTo<HTMLSelectListElement>(ancestor)) {
-      return selectlist;
-    }
-  }
-  return nullptr;
-}
-
-HTMLSelectElement* HTMLButtonElement::OwnerSelect() const {
-  // TODO(http://crbug.com/1511354): The first <button> can also have
-  // type=popover behavior if there are no other type=popover buttons:
-  // https://github.com/openui/open-ui/issues/939#issuecomment-1910837275
-  if (!RuntimeEnabledFeatures::StylableSelectEnabled() || type_ != kPopover) {
-    return nullptr;
-  }
-  if (auto* select = DynamicTo<HTMLSelectElement>(parentNode())) {
-    return select;
-  }
-  return nullptr;
 }
 
 }  // namespace blink

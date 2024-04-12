@@ -9,17 +9,15 @@ import android.app.Activity;
 import androidx.annotation.Nullable;
 
 import org.chromium.base.CommandLine;
-import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.chrome.browser.browserservices.intents.BrowserServicesIntentDataProvider;
 import org.chromium.chrome.browser.customtabs.content.CustomTabActivityNavigationController;
 import org.chromium.chrome.browser.dependency_injection.ActivityScope;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
+import org.chromium.chrome.browser.incognito.IncognitoCctProfileManager;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.lifecycle.DestroyObserver;
 import org.chromium.chrome.browser.lifecycle.NativeInitObserver;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.profiles.ProfileManager;
-import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.chrome.browser.tabmodel.IncognitoTabHost;
 import org.chromium.chrome.browser.tabmodel.IncognitoTabHostRegistry;
 
@@ -32,28 +30,30 @@ import javax.inject.Inject;
  */
 @ActivityScope
 public class CustomTabIncognitoManager implements NativeInitObserver, DestroyObserver {
+    private static final String TAG = "CctIncognito";
+
     private final Activity mActivity;
     private final CustomTabActivityNavigationController mNavigationController;
     private final BrowserServicesIntentDataProvider mIntentDataProvider;
 
-    @Nullable private IncognitoCustomTabHost mIncognitoTabHost;
+    @Nullable
+    private IncognitoCustomTabHost mIncognitoTabHost;
 
     private final IncognitoTabHostRegistry mIncognitoTabHostRegistry;
-    private final OneshotSupplier<ProfileProvider> mProfileProviderSupplier;
+    private final IncognitoCctProfileManager mIncognitoCctProfileManager;
 
     @Inject
-    public CustomTabIncognitoManager(
-            Activity activity,
+    public CustomTabIncognitoManager(Activity activity,
             BrowserServicesIntentDataProvider intentDataProvider,
             CustomTabActivityNavigationController navigationController,
             ActivityLifecycleDispatcher lifecycleDispatcher,
             IncognitoTabHostRegistry incognitoTabHostRegistry,
-            OneshotSupplier<ProfileProvider> profileProviderSupplier) {
+            IncognitoCctProfileManager incognitoCctProfileManager) {
         mActivity = activity;
         mIntentDataProvider = intentDataProvider;
         mNavigationController = navigationController;
         mIncognitoTabHostRegistry = incognitoTabHostRegistry;
-        mProfileProviderSupplier = profileProviderSupplier;
+        mIncognitoCctProfileManager = incognitoCctProfileManager;
 
         lifecycleDispatcher.register(this);
     }
@@ -71,16 +71,11 @@ public class CustomTabIncognitoManager implements NativeInitObserver, DestroyObs
             mIncognitoTabHostRegistry.unregister(mIncognitoTabHost);
         }
 
-        if (mProfileProviderSupplier.get().hasOffTheRecordProfile()) {
-            ProfileManager.destroyWhenAppropriate(
-                    mProfileProviderSupplier
-                            .get()
-                            .getOffTheRecordProfile(/* createIfNeeded= */ false));
-        }
+        mIncognitoCctProfileManager.destroyProfile();
     }
 
     public Profile getProfile() {
-        return mProfileProviderSupplier.get().getOffTheRecordProfile(/* createIfNeeded= */ true);
+        return mIncognitoCctProfileManager.getProfile();
     }
 
     private void initializeIncognito() {
@@ -93,8 +88,8 @@ public class CustomTabIncognitoManager implements NativeInitObserver, DestroyObs
     }
 
     private void maybeCreateIncognitoTabSnapshotController() {
-        if (!CommandLine.getInstance()
-                .hasSwitch(ChromeSwitches.ENABLE_INCOGNITO_SNAPSHOTS_IN_ANDROID_RECENTS)) {
+        if (!CommandLine.getInstance().hasSwitch(
+                    ChromeSwitches.ENABLE_INCOGNITO_SNAPSHOTS_IN_ANDROID_RECENTS)) {
             new IncognitoCustomTabSnapshotController(
                     mActivity.getWindow(), () -> mIntentDataProvider.isIncognito());
         }

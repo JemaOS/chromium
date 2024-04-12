@@ -45,19 +45,18 @@ WebrtcDesktopCapturePrivateChooseDesktopMediaFunction::Run() {
 
   mutable_args().erase(args().begin());
 
-  std::optional<Params> params = Params::Create(args());
+  absl::optional<Params> params = Params::Create(args());
   EXTENSION_FUNCTION_VALIDATE(params);
 
-  content::RenderFrameHost* render_frame_host =
-      content::RenderFrameHost::FromID(params->request.guest_process_id,
-                                       params->request.guest_render_frame_id);
+  content::RenderFrameHost* rfh = content::RenderFrameHost::FromID(
+      params->request.guest_process_id,
+      params->request.guest_render_frame_id);
 
-  if (!render_frame_host) {
+  if (!rfh) {
     return RespondNow(Error(kTargetNotFoundError));
   }
 
-  GURL origin =
-      render_frame_host->GetLastCommittedURL().DeprecatedGetOriginAsURL();
+  GURL origin = rfh->GetLastCommittedURL().DeprecatedGetOriginAsURL();
   if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
           ::switches::kAllowHttpScreenCapture) &&
       !network::IsUrlPotentiallyTrustworthy(origin)) {
@@ -75,8 +74,8 @@ WebrtcDesktopCapturePrivateChooseDesktopMediaFunction::Run() {
   // suppressLocalAudioPlaybackIntended here.
   return Execute(*sources, /*exclude_system_audio=*/false,
                  /*exclude_self_browser_surface=*/false,
-                 /*suppress_local_audio_playback_intended=*/false,
-                 render_frame_host, origin, target_name);
+                 /*suppress_local_audio_playback_intended=*/false, rfh, origin,
+                 target_name);
 }
 
 WebrtcDesktopCapturePrivateCancelChooseDesktopMediaFunction::

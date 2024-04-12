@@ -80,10 +80,6 @@ void PaymentRequestRowView::SetClickable(bool clickable) {
   OnPropertyChanged(&clickable_, views::PropertyEffects::kPropertyEffectsPaint);
 }
 
-base::WeakPtr<PaymentRequestRowView> PaymentRequestRowView::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 gfx::Insets PaymentRequestRowView::GetRowInsets() const {
   return row_insets_;
 }
@@ -162,9 +158,11 @@ void PaymentRequestRowView::OnFocus() {
   if (GetClickable())
     SetHighlighted(true);
   View::OnFocus();
-  if (views::FocusRing* focus_ring = views::FocusRing::Get(this)) {
-    focus_ring->SetProperty(views::kViewIgnoredByLayoutKey, true);
-  }
+  views::FocusRing* focus_ring = views::FocusRing::Get(this);
+  views::TableLayout* layout =
+      static_cast<views::TableLayout*>(GetLayoutManager());
+  if (focus_ring && layout)
+    layout->SetChildViewIgnoredByLayout(focus_ring, true);
 }
 
 void PaymentRequestRowView::OnBlur() {
@@ -172,7 +170,7 @@ void PaymentRequestRowView::OnBlur() {
     SetHighlighted(false);
 }
 
-BEGIN_METADATA(PaymentRequestRowView)
+BEGIN_METADATA(PaymentRequestRowView, views::Button)
 ADD_PROPERTY_METADATA(bool, Clickable)
 ADD_PROPERTY_METADATA(gfx::Insets, RowInsets)
 END_METADATA

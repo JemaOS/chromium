@@ -9,10 +9,7 @@
 
 #include "base/check_op.h"
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/css/anchor_evaluator.h"
 #include "third_party/blink/renderer/core/css/css_primitive_value.h"
-#include "third_party/blink/renderer/core/style/scoped_css_name.h"
-#include "third_party/blink/renderer/platform/geometry/length.h"
 #include "third_party/blink/renderer/platform/text/writing_mode.h"
 #include "third_party/blink/renderer/platform/wtf/math_extras.h"
 
@@ -35,8 +32,6 @@ class CORE_EXPORT CSSLengthResolver {
   virtual float RicFontSize(float zoom) const = 0;
   virtual float LineHeight(float zoom) const = 0;
   virtual float RootLineHeight(float zoom) const = 0;
-  virtual float CapFontSize(float zoom) const = 0;
-  virtual float RcapFontSize(float zoom) const = 0;
 
   // Other sizes are not pre-zoomed.
   virtual double ViewportWidth() const = 0;
@@ -49,24 +44,8 @@ class CORE_EXPORT CSSLengthResolver {
   virtual double DynamicViewportHeight() const = 0;
   virtual double ContainerWidth() const = 0;
   virtual double ContainerHeight() const = 0;
-  virtual double ContainerWidth(const ScopedCSSName&) const = 0;
-  virtual double ContainerHeight(const ScopedCSSName&) const = 0;
 
   virtual WritingMode GetWritingMode() const = 0;
-
-  // Invoked to notify the resolver that there is a function with
-  // a tree-scoped reference, e.g. anchor(--a top).
-  //
-  // https://drafts.csswg.org/css-scoping-1/#css-tree-scoped-reference
-  virtual void ReferenceTreeScope() const = 0;
-
-  // Called when anchor() or anchor-size() functions are evaluated.
-  //
-  // https://drafts.csswg.org/css-anchor-position-1/
-  virtual void ReferenceAnchor() const = 0;
-
-  // The AnchorEvaluator used to evaluate anchor()/anchor-size() queries.
-  virtual AnchorEvaluator* GetAnchorEvaluator() const { return nullptr; }
 
   float Zoom() const { return zoom_; }
   void SetZoom(float zoom) {

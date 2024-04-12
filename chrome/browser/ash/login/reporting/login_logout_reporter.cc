@@ -231,7 +231,7 @@ void LoginLogoutReporter::MaybeReportKioskLoginFailure() {
     return;
   }
 
-  std::optional<int> last_kiosk_login_failure_timestamp =
+  absl::optional<int> last_kiosk_login_failure_timestamp =
       pref->GetValue()->GetDict().FindInt(kKioskLoginFailureTimestamp);
   if (!last_kiosk_login_failure_timestamp.has_value()) {
     // No kiosk login failure to report.

@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {session, dp} = await testRunner.startURL('../resources/stacking_context.html', 'Tests DOMSnapshot.captureSnapshot method returning paint order indexes.');
 
   await session.evaluate(`

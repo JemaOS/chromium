@@ -9,7 +9,7 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "content/public/browser/web_ui_controller.h"
-#include "ui/base/resource/resource_scale_factor.h"
+#include "ui/base/layout.h"
 
 namespace base {
 class RefCountedMemory;

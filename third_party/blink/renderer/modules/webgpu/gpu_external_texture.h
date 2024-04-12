@@ -49,7 +49,8 @@ class ExternalTextureCache : public GarbageCollected<ExternalTextureCache> {
   ExternalTextureCache& operator=(const ExternalTextureCache&) = delete;
 
   // Implement importExternalTexture() auto expiry mechanism.
-  GPUExternalTexture* Import(const GPUExternalTextureDescriptor* descriptor,
+  GPUExternalTexture* Import(ExecutionContext* execution_context,
+                             const GPUExternalTextureDescriptor* descriptor,
                              ExceptionState& exception_state);
 
   // Destroy all cached GPUExternalTexture and clear all lists.
@@ -60,9 +61,6 @@ class ExternalTextureCache : public GarbageCollected<ExternalTextureCache> {
 
   void Add(VideoFrame* frame, GPUExternalTexture* external_texture);
   void Remove(VideoFrame* frame);
-
-  void ReferenceUntilGPUIsFinished(
-      scoped_refptr<WebGPUMailboxTexture> mailbox_texture);
 
   void Trace(Visitor* visitor) const;
   GPUDevice* device() const;
@@ -107,24 +105,27 @@ class GPUExternalTexture : public DawnObject<WGPUExternalTexture> {
       WGPUExternalTexture external_texture,
       scoped_refptr<WebGPUMailboxTexture> mailbox_texture,
       bool is_zero_copy,
-      bool read_lock_fences_enabled,
-      std::optional<media::VideoFrame::ID> media_video_frame_unique_id,
-      const String& label);
+      absl::optional<media::VideoFrame::ID> media_video_frame_unique_id);
 
   GPUExternalTexture(const GPUExternalTexture&) = delete;
   GPUExternalTexture& operator=(const GPUExternalTexture&) = delete;
 
   bool isZeroCopy() const;
-  bool isReadLockFenceEnabled() const;
 
   void Destroy();
   void Expire();
   void Refresh();
 
-  void SetVideo(HTMLVideoElement* video);
+  void ListenToHTMLVideoElement(HTMLVideoElement* video);
+  void ListenToVideoFrame(VideoFrame* frame);
 
-  // Returns true iff the video frame is still available
-  bool ListenToVideoFrame(VideoFrame* frame);
+  // Check whether current VideoFrame is outdated informs
+  // ScriptAnimationController.
+  // Return true if current VideoFrame is latest and still need to trigger next
+  // check.
+  // Return false if current VideoFrame is outdated and the no need to trigger
+  // future checks.
+  bool ContinueCheckingCurrentVideoFrame();
 
   // Check whether current VideoFrame is outdated from HTMLVideoElement. Pure
   // video playback might not trigger any script animation work. Check video
@@ -157,7 +158,7 @@ class GPUExternalTexture : public DawnObject<WGPUExternalTexture> {
       const GPUExternalTextureDescriptor* webgpu_desc,
       scoped_refptr<media::VideoFrame> media_video_frame,
       media::PaintCanvasVideoRenderer* video_renderer,
-      std::optional<media::VideoFrame::ID> media_video_frame_unique_id,
+      absl::optional<media::VideoFrame::ID> media_video_frame_unique_id,
       ExceptionState& exception_state);
 
   void setLabelImpl(const String& value) override {
@@ -185,18 +186,13 @@ class GPUExternalTexture : public DawnObject<WGPUExternalTexture> {
   bool is_zero_copy_ = false;
   bool remove_from_cache_task_scheduled_ = false;
 
-  // read_lock_fences_enabled_ comes from media::VideoFrame metadata.
-  // VideoFrame set this metadata as a hint to ensure all previous gpu
-  // execution complete before returning video frame to producer.
-  bool read_lock_fences_enabled_ = false;
-
-  std::optional<media::VideoFrame::ID> media_video_frame_unique_id_;
+  absl::optional<media::VideoFrame::ID> media_video_frame_unique_id_;
   WeakMember<HTMLVideoElement> video_;
   WeakMember<VideoFrame> frame_;
   WeakMember<ExternalTextureCache> cache_;
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
-  std::atomic<Status> status_ = Status::Active;
+  std::atomic<Status> status_ = Status::Expired;
 };
 
 }  // namespace blink

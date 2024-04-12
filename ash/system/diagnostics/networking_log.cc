@@ -162,8 +162,6 @@ std::string GetCellularLockType(mojom::LockType lock_type) {
       return "sim-pin";
     case mojom::LockType::kSimPuk:
       return "sim-puk";
-    case mojom::LockType::kNetworkPin:
-      return "network-pin";
   }
 }
 

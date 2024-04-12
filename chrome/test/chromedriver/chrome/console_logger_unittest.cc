@@ -25,7 +25,7 @@ class FakeDevToolsClient : public StubDevToolsClient {
  public:
   explicit FakeDevToolsClient(const std::string& id)
       : id_(id), listener_(nullptr) {}
-  ~FakeDevToolsClient() override = default;
+  ~FakeDevToolsClient() override {}
 
   std::string PopSentCommand() {
     std::string command;
@@ -40,6 +40,9 @@ class FakeDevToolsClient : public StubDevToolsClient {
                       const base::Value::Dict& params) {
     return listener_->OnEvent(this, method, params);
   }
+
+  // Overridden from DevToolsClient:
+  Status Connect() override { return listener_->OnConnected(this); }
 
   Status SendCommandAndGetResult(const std::string& method,
                                  const base::Value::Dict& params,

@@ -14,9 +14,7 @@ DEFINE_PROTO_FUZZER(const proto::AccessibilityEventData& a11y_event_data) {
   if (nbytes) {
     a11y_event_data.SerializeToArray(serialized_proto.data(), nbytes);
     AccessibilityTreeConverter converter;
-    proto::AccessibilityEventData proto_data;
-    converter.DeserializeProto(serialized_proto, &proto_data);
-    converter.ConvertEventDataProtoToMojom(proto_data);
+    converter.ConvertEventDataProtoToMojom(serialized_proto);
   }
 }
 }  // namespace ash::eche_app

@@ -89,12 +89,7 @@ void {{sink_class}}::Trace(Visitor* visitor) const
 namespace probe {
 {% macro params_list(probe) -%}
 {%- for param in probe.params %}
-{%- if probe.is_scoped and param.is_reference %}
-std::reference_wrapper<std::remove_reference_t<{{param.type}}>>
-{%- else %}
-{{param.type}}
-{%- endif %}
- {{param.name}}
+{{param.type}} {{param.name}}
 {%- if not loop.last %}, {% endif -%}
 {%- endfor -%}
 {%- endmacro %}
@@ -122,12 +117,6 @@ std::reference_wrapper<std::remove_reference_t<{{param.type}}>>
 {%- if not loop.last %},
 {% endif %}
 {% endfor %} {
-  if (!{{sink_class}}::HasAgentsGlobal(
-    {%- for agent in probe.agents|sort %}
-    {% if not loop.first %} | {% endif -%}
-    {{sink_class}}::k{{agent}}
-    {%- endfor %}))
-    return;
   probe_sink = To{{sink_class}}({{probe.params[0].name}});
 {% call probe_body(probe, "Will") %}*this{% endcall %}
 }

@@ -165,7 +165,7 @@ class TestURLLoaderClient : public network::mojom::URLLoaderClient {
   void OnReceiveResponse(
       network::mojom::URLResponseHeadPtr response_head,
       mojo::ScopedDataPipeConsumerHandle body,
-      std::optional<mojo_base::BigBuffer> cached_metadata) override {
+      absl::optional<mojo_base::BigBuffer> cached_metadata) override {
     response_body_ = std::move(body);
     observer_->OnReceiveResponse(std::move(response_head));
   }
@@ -257,8 +257,6 @@ class OfflinePageURLLoaderBuilder : public TestURLLoaderClient::Observer {
 
   OfflinePageRequestHandlerTest* test() { return test_; }
 
-  void Quit() { std::move(quit_closure_).Run(); }
-
  private:
   void OnHandleReady(MojoResult result, const mojo::HandleSignalsState& state);
   void InterceptRequestInternal(const GURL& url,
@@ -279,7 +277,6 @@ class OfflinePageURLLoaderBuilder : public TestURLLoaderClient::Observer {
   mojo::Remote<network::mojom::URLLoader> loader_;
   std::string mime_type_;
   std::string body_;
-  base::OnceClosure quit_closure_;
 };
 
 class OfflinePageRequestHandlerTest : public testing::Test {
@@ -417,6 +414,7 @@ class OfflinePageRequestHandlerTest : public testing::Test {
 
   bool async_operation_completed_ = false;
   base::OnceClosure async_operation_completed_callback_;
+
   OfflinePageURLLoaderBuilder interceptor_factory_;
 };
 
@@ -745,8 +743,8 @@ void OfflinePageRequestHandlerTest::ReadCompleted(
   response_ = response;
   is_offline_page_set_in_navigation_data_ =
       is_offline_page_set_in_navigation_data;
-
-  interceptor_factory_.Quit();
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::RunLoop::QuitCurrentWhenIdleClosureDeprecated());
 }
 
 OfflinePageURLLoaderBuilder::OfflinePageURLLoaderBuilder(
@@ -812,11 +810,8 @@ void OfflinePageURLLoaderBuilder::InterceptRequest(
     const net::HttpRequestHeaders& extra_headers,
     bool is_outermost_main_frame) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-
-  base::RunLoop loop;
-  quit_closure_ = loop.QuitWhenIdleClosure();
   InterceptRequestInternal(url, method, extra_headers, is_outermost_main_frame);
-  loop.Run();
+  base::RunLoop().Run();
 }
 
 void OfflinePageURLLoaderBuilder::MaybeStartLoader(

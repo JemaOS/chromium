@@ -119,7 +119,7 @@ SharingMessageBridgeImpl::CreateMetadataChangeList() {
   return std::make_unique<syncer::DummyMetadataChangeList>();
 }
 
-std::optional<syncer::ModelError> SharingMessageBridgeImpl::MergeFullSyncData(
+absl::optional<syncer::ModelError> SharingMessageBridgeImpl::MergeFullSyncData(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList entity_data) {
   DCHECK(entity_data.empty());
@@ -127,7 +127,7 @@ std::optional<syncer::ModelError> SharingMessageBridgeImpl::MergeFullSyncData(
   return {};
 }
 
-std::optional<syncer::ModelError>
+absl::optional<syncer::ModelError>
 SharingMessageBridgeImpl::ApplyIncrementalSyncChanges(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList entity_changes) {

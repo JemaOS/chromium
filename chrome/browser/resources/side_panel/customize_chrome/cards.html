@@ -1,11 +1,10 @@
-<style include="sp-shared-style">
+<style>
   #showToggleContainer {
     align-items: center;
     display: flex;
-    font-size: inherit;
-    line-height: inherit;
-    margin: 0;
-    padding: var(--sp-card-padding);
+    font-size: 13px;
+    line-height: 20px;
+    margin: 0 16px 16px;
   }
 
   #showToggleTitle {
@@ -14,23 +13,23 @@
 
   #cards {
     display: flex;
-    margin: 0;
+    margin: 0 16px;
   }
 
   .card {
     display: flex;
     justify-content: space-between;
-    margin: 0;
-    padding: var(--sp-card-padding);
-    padding-inline-start: 32px;
+    margin-bottom: 16px;
   }
 
   .card-name {
-    font-size: inherit;
-    line-height: inherit;
+    font-size: 13px;
+    line-height: 20px;
+    margin-inline-start: 24px;
   }
 
   .card-checkbox {
+    margin-inline-end: 3px;
     width: 16px;
   }
 
@@ -44,8 +43,11 @@
   }
 
   hr {
-    margin: var(--sp-card-block-padding) var(--sp-card-inline-padding);
-    width: auto;
+    background-color: var(--horizontal-rule-color);
+    border: none;
+    height: 1px;
+    margin-bottom: 16px;
+    width: 100%;
   }
 
   cr-toggle {
@@ -64,7 +66,7 @@
 </div>
 <div id="cards">
   <iron-collapse opened="[[show_]]" no-animation="[[!initialized_]]">
-    <hr class="sp-hr">
+    <hr>
     <template is="dom-repeat" items="[[modules_]]">
       <div class="card">
         <div class="card-name">[[item.name]]</div>

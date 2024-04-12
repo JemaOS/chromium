@@ -71,7 +71,7 @@ bool ExperimentsManager::ReloadExperiments(const std::wstring& sid) {
   experiments_file->Read(0, buffer.data(), buffer.size());
   experiments_file.reset();
 
-  std::optional<base::Value> experiments_data =
+  absl::optional<base::Value> experiments_data =
       base::JSONReader::Read(base::StringPiece(buffer.data(), buffer.size()),
                              base::JSON_ALLOW_TRAILING_COMMAS);
   if (!experiments_data || !experiments_data->is_dict()) {
@@ -79,22 +79,23 @@ bool ExperimentsManager::ReloadExperiments(const std::wstring& sid) {
     return false;
   }
 
-  const base::Value::List* experiments_value =
-      experiments_data->GetDict().FindList(kResponseExperimentsKeyName);
+  const base::Value* experiments_value =
+      experiments_data->FindListKey(kResponseExperimentsKeyName);
   if (!experiments_value) {
     LOGFN(ERROR) << "User experiments not found!";
     return false;
   }
 
-  for (const auto& item : *experiments_value) {
-    const auto& item_dict = item.GetDict();
-    auto* f = item_dict.FindString(kResponseFeatureKeyName);
-    auto* v = item_dict.FindString(kResponseValueKeyName);
-    if (!f || !v) {
-      LOGFN(WARNING) << "Either feature or value are not found!";
-    }
+  if (experiments_value->is_list()) {
+    for (const auto& item : experiments_value->GetList()) {
+      auto* f = item.FindStringKey(kResponseFeatureKeyName);
+      auto* v = item.FindStringKey(kResponseValueKeyName);
+      if (!f || !v) {
+        LOGFN(WARNING) << "Either feature or value are not found!";
+      }
 
-    experiments_to_values_[*f].second[base::WideToUTF8(sid)] = *v;
+      experiments_to_values_[*f].second[base::WideToUTF8(sid)] = *v;
+    }
   }
   return true;
 }

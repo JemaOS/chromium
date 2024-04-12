@@ -144,9 +144,7 @@ class DeclarativeContentPageUrlConditionTracker
   url_matcher::URLMatcher url_matcher_;
 
   // Grouped predicates tracked by this object.
-  std::map<const void*,
-           std::vector<raw_ptr<const DeclarativeContentPageUrlPredicate,
-                               VectorExperimental>>>
+  std::map<const void*, std::vector<const DeclarativeContentPageUrlPredicate*>>
       tracked_predicates_;
 
   // Maps WebContents to the tracker for that WebContents state.

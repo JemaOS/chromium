@@ -12,6 +12,8 @@
 
 namespace {
 
+constexpr char kCheckedHistogram[] =
+    "PasswordBubble.CompromisedBubble.CheckClicked";
 constexpr char kTypeHistogram[] = "PasswordBubble.CompromisedBubble.Type";
 
 using BubbleType = PostSaveCompromisedBubbleController::BubbleType;
@@ -54,6 +56,7 @@ TEST_F(PostSaveCompromisedBubbleControllerTest, SafeState_Destroy) {
   controller()->OnBubbleClosing();
   histogram_tester.ExpectUniqueSample(kTypeHistogram,
                                       BubbleType::kPasswordUpdatedSafeState, 1);
+  histogram_tester.ExpectUniqueSample(kCheckedHistogram, false, 1);
 }
 
 TEST_F(PostSaveCompromisedBubbleControllerTest, SafeState_DestroyImplicictly) {
@@ -92,6 +95,7 @@ TEST_F(PostSaveCompromisedBubbleControllerTest, MoreToFix_Destroy) {
   controller()->OnBubbleClosing();
   histogram_tester.ExpectUniqueSample(
       kTypeHistogram, BubbleType::kPasswordUpdatedWithMoreToFix, 1);
+  histogram_tester.ExpectUniqueSample(kCheckedHistogram, false, 1);
 }
 
 TEST_F(PostSaveCompromisedBubbleControllerTest, MoreToFix_DestroyImplicictly) {
@@ -122,6 +126,7 @@ TEST_F(PostSaveCompromisedBubbleControllerTest, MoreToFix_Click) {
                   password_manager::PasswordCheckReferrer::kMoreToFixBubble));
   controller()->OnAccepted();
   ResetController();
+  histogram_tester.ExpectUniqueSample(kCheckedHistogram, true, 1);
 }
 
 }  // namespace

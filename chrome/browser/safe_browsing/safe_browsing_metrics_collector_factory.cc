@@ -21,8 +21,7 @@ SafeBrowsingMetricsCollectorFactory::GetForProfile(Profile* profile) {
 // static
 SafeBrowsingMetricsCollectorFactory*
 SafeBrowsingMetricsCollectorFactory::GetInstance() {
-  static base::NoDestructor<SafeBrowsingMetricsCollectorFactory> instance;
-  return instance.get();
+  return base::Singleton<SafeBrowsingMetricsCollectorFactory>::get();
 }
 
 SafeBrowsingMetricsCollectorFactory::SafeBrowsingMetricsCollectorFactory()
@@ -35,11 +34,10 @@ SafeBrowsingMetricsCollectorFactory::SafeBrowsingMetricsCollectorFactory()
               .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
-std::unique_ptr<KeyedService>
-SafeBrowsingMetricsCollectorFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SafeBrowsingMetricsCollectorFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<SafeBrowsingMetricsCollector>(profile->GetPrefs());
+  return new SafeBrowsingMetricsCollector(profile->GetPrefs());
 }
 
 }  // namespace safe_browsing

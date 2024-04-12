@@ -10,7 +10,7 @@
 // clang-format off
 import {sendWithPromise} from 'chrome://resources/js/cr.js';
 
-import type {ChooserType,ContentSetting,ContentSettingsTypes,SiteSettingSource} from './constants.js';
+import {ChooserType,ContentSetting,ContentSettingsTypes,SiteSettingSource} from './constants.js';
 // clang-format on
 
 /**
@@ -55,17 +55,16 @@ export interface OriginInfo {
 }
 
 /**
- * Represents a list of related sites, grouped by 'groupingKey', which will be
- * an eTLD+1 for HTTP(S) sites, or an origin for other schemes. 'groupingKey'
- * will be unique for each SiteGroup, but should be treated as an opaque token
- * in UI code.
+ * Represents a list of sites, grouped under the same eTLD+1. For example, an
+ * origin "https://www.example.com" would be grouped together with
+ * "https://login.example.com" and "http://example.com" under a common eTLD+1 of
+ * "example.com".
  */
 export interface SiteGroup {
-  groupingKey: string;
+  etldPlus1: string;
   displayName: string;
   numCookies: number;
   origins: OriginInfo[];
-  etldPlus1?: string;
   fpsOwner?: string;
   fpsNumMembers?: number;
   fpsEnterpriseManaged?: boolean;
@@ -82,8 +81,8 @@ export interface RawSiteException {
   isEmbargoed: boolean;
   origin: string;
   displayName: string;
+  extensionNameWithId?: string;
   type: string;
-  description?: string;
   setting: ContentSetting;
   source: SiteSettingSource;
 }
@@ -100,40 +99,11 @@ export interface SiteException {
   origin: string;
   displayName: string;
   setting: ContentSetting;
-  description?: string;
   enforcement: chrome.settingsPrivate.Enforcement|null;
   controlledBy: chrome.settingsPrivate.ControlledBy;
-}
-
-/**
- * A group of storage access site exceptions with the same origin for UI use.
- * See also: StorageAccessEmbeddingException.
- */
-export interface StorageAccessSiteException {
-  origin: string;
-  displayName: string;
-  setting: ContentSetting;
-
-  // Information needed for a static row.
-  description?: string;
-  incognito?: boolean;
-
-  // Information needed for a grouped row.
-  closeDescription?: string;
-  openDescription?: string;
-
-  exceptions: StorageAccessEmbeddingException[];
-}
-
-/**
- * A storage access site exception for UI use. To be always used within
- * StorageAccessSiteException.
- */
-export interface StorageAccessEmbeddingException {
-  embeddingOrigin: string;
-  embeddingDisplayName: string;
-  description?: string;  // includes case for embargoed exception.
-  incognito: boolean;
+  // <if expr="chromeos_ash">
+  showAndroidSmsNote?: boolean;
+  // </if>
 }
 
 /**
@@ -194,26 +164,39 @@ export interface MediaPickerEntry {
 
 export interface ZoomLevelEntry {
   displayName: string;
-  hostOrSpec: string;
+  origin: string;
   originForFavicon: string;
+  setting: string;
+  source: string;
   zoom: string;
 }
 
 /**
- * TODO(crbug.com/1523673): Consider refactoring to remove the origin key from
- * the `FileSystemGrant` interface.
+ * The notification permission information passed from
+ * site_settings_handler.cc.
  */
-export interface FileSystemGrant {
+export interface NotificationPermission {
+  origin: string;
+  notificationInfoString: string;
+}
+
+/**
+ * TODO(crbug.com/1373962): Remove the origin key from `RawFileSystemGrant`
+ * before the launch of the Persistent Permissions settings page UI.
+ */
+export interface RawFileSystemGrant {
   origin: string;
   filePath: string;
-  displayName: string;
+  isWritable: boolean;
   isDirectory: boolean;
 }
 
-export interface OriginFileSystemGrants {
+export interface FileSystemGrantsForOrigin {
   origin: string;
-  viewGrants: FileSystemGrant[];
-  editGrants: FileSystemGrant[];
+  directoryReadGrants: RawFileSystemGrant[];
+  directoryWriteGrants: RawFileSystemGrant[];
+  fileReadGrants: RawFileSystemGrant[];
+  fileWriteGrants: RawFileSystemGrant[];
 }
 
 export interface SiteSettingsPrefsBrowserProxy {
@@ -246,6 +229,11 @@ export interface SiteSettingsPrefsBrowserProxy {
   getCategoryList(origin: string): Promise<ContentSettingsTypes[]>;
 
   /**
+   * Get the string which describes the current effective cookie setting.
+   */
+  getCookieSettingDescription(): Promise<string>;
+
+  /**
    * Gets most recently changed permissions grouped by host and limited to
    * numSources different origin/profile (inconigto/regular) pairings.
    * This includes permissions adjusted by embargo, but excludes any set
@@ -275,17 +263,12 @@ export interface SiteSettingsPrefsBrowserProxy {
   getExceptionList(contentType: ContentSettingsTypes):
       Promise<RawSiteException[]>;
 
-  getStorageAccessExceptionList(categorySubtype: ContentSetting):
-      Promise<StorageAccessSiteException[]>;
-
   /**
    * Gets the File System Access permission grants, grouped by origin.
    */
-  getFileSystemGrants(): Promise<OriginFileSystemGrants[]>;
+  getFileSystemGrants(): Promise<FileSystemGrantsForOrigin[]>;
 
   revokeFileSystemGrant(origin: string, filePath: string): void;
-
-  revokeFileSystemGrants(origin: string): void;
 
   /**
    * Gets a list of category permissions for a given origin. Note that this
@@ -368,18 +351,18 @@ export interface SiteSettingsPrefsBrowserProxy {
       Promise<IsValid>;
 
   /**
-   * Requests initialization of the capture device list. The list is returned
-   * through a JS call to updateDevicesMenu.
+   * Gets the list of default capture devices for a given type of media. List
+   * is returned through a JS call to updateDevicesMenu.
    * @param type The type to look up.
    */
-  initializeCaptureDevices(type: string): void;
+  getDefaultCaptureDevices(type: string): void;
 
   /**
-   * Sets a preferred device for the given type of media.
+   * Sets a default devices for a given type of media.
    * @param type The type of media to configure.
    * @param defaultValue The id of the media device to set.
    */
-  setPreferredCaptureDevice(type: string, defaultValue: string): void;
+  setDefaultCaptureDevice(type: string, defaultValue: string): void;
 
   /**
    * observes _all_ of the the protocol handler state, which includes a list
@@ -469,10 +452,10 @@ export interface SiteSettingsPrefsBrowserProxy {
   fetchBlockAutoplayStatus(): void;
 
   /**
-   * Clears all the web storage data and cookies for a given site group.
-   * @param groupingKey The group to clear data from.
+   * Clears all the web storage data and cookies for a given etld+1.
+   * @param etldPlus1 The etld+1 to clear data from.
    */
-  clearSiteGroupDataAndCookies(groupingKey: string): void;
+  clearEtldPlus1DataAndCookies(etldPlus1: string): void;
 
   /**
    * Clears all the unpartitioned web storage data and cookies for a given
@@ -482,18 +465,38 @@ export interface SiteSettingsPrefsBrowserProxy {
   clearUnpartitionedOriginDataAndCookies(origin: string): void;
 
   /**
-   * Clears all the storage for |origin| which is partitioned on |groupingKey|.
+   * Clears all the storage for |origin| which is partitioned on |etldPlus1|.
    * @param origin The origin to clear data from.
-   * @param groupingKey The groupingKey which the data is partitioned for.
+   * @param etldPlus1 The etld+1 which the data is partitioned for.
    */
-  clearPartitionedOriginDataAndCookies(origin: string, groupingKey: string):
-      void;
+  clearPartitionedOriginDataAndCookies(origin: string, etldPlus1: string): void;
 
   /**
    * Record All Sites Page action for metrics.
    * @param action number.
    */
   recordAction(action: number): void;
+
+  /** Gets the site list that send a lot of notifications. */
+  getNotificationPermissionReview(): Promise<NotificationPermission[]>;
+
+  /** Blocks the notification permission for all origins in the list. */
+  blockNotificationPermissionForOrigins(origins: string[]): void;
+
+  /** Allows the notification permission for all origins in the list */
+  allowNotificationPermissionForOrigins(origins: string[]): void;
+
+  /** Adds the origins to blocklist for the notification permissions feature. */
+  ignoreNotificationPermissionForOrigins(origins: string[]): void;
+
+  /**
+   * Removes the origins from the blocklist for the notification permissions
+   * feature.
+   */
+  undoIgnoreNotificationPermissionForOrigins(origins: string[]): void;
+
+  /** Resets the notification permission for the origins. */
+  resetNotificationPermissionForOrigins(origin: string[]): void;
 
   /**
    * Gets display string for FPS information of owner and member count.
@@ -528,6 +531,10 @@ export class SiteSettingsPrefsBrowserProxyImpl implements
     return sendWithPromise('getCategoryList', origin);
   }
 
+  getCookieSettingDescription() {
+    return sendWithPromise('getCookieSettingDescription');
+  }
+
   getRecentSitePermissions(numSources: number) {
     return sendWithPromise('getRecentSitePermissions', numSources);
   }
@@ -544,20 +551,12 @@ export class SiteSettingsPrefsBrowserProxyImpl implements
     return sendWithPromise('getExceptionList', contentType);
   }
 
-  getStorageAccessExceptionList(categorySubtype: ContentSetting) {
-    return sendWithPromise('getStorageAccessExceptionList', categorySubtype);
-  }
-
   getFileSystemGrants() {
     return sendWithPromise('getFileSystemGrants');
   }
 
   revokeFileSystemGrant(origin: string, filePath: string) {
     chrome.send('revokeFileSystemGrant', [origin, filePath]);
-  }
-
-  revokeFileSystemGrants(origin: string) {
-    chrome.send('revokeFileSystemGrants', [origin]);
   }
 
   getOriginPermissions(origin: string, contentTypes: ContentSettingsTypes[]) {
@@ -600,12 +599,12 @@ export class SiteSettingsPrefsBrowserProxyImpl implements
     return sendWithPromise('isPatternValidForType', pattern, category);
   }
 
-  initializeCaptureDevices(type: string) {
-    chrome.send('initializeCaptureDevices', [type]);
+  getDefaultCaptureDevices(type: string) {
+    chrome.send('getDefaultCaptureDevices', [type]);
   }
 
-  setPreferredCaptureDevice(type: string, defaultValue: string) {
-    chrome.send('setPreferredCaptureDevice', [type, defaultValue]);
+  setDefaultCaptureDevice(type: string, defaultValue: string) {
+    chrome.send('setDefaultCaptureDevice', [type, defaultValue]);
   }
 
   observeProtocolHandlers() {
@@ -656,20 +655,54 @@ export class SiteSettingsPrefsBrowserProxyImpl implements
     chrome.send('fetchBlockAutoplayStatus');
   }
 
-  clearSiteGroupDataAndCookies(groupingKey: string) {
-    chrome.send('clearSiteGroupDataAndCookies', [groupingKey]);
+  clearEtldPlus1DataAndCookies(etldPlus1: string) {
+    chrome.send('clearEtldPlus1DataAndCookies', [etldPlus1]);
   }
 
   clearUnpartitionedOriginDataAndCookies(origin: string) {
     chrome.send('clearUnpartitionedUsage', [origin]);
   }
 
-  clearPartitionedOriginDataAndCookies(origin: string, groupingKey: string) {
-    chrome.send('clearPartitionedUsage', [origin, groupingKey]);
+  clearPartitionedOriginDataAndCookies(origin: string, etldPlus1: string) {
+    chrome.send('clearPartitionedUsage', [origin, etldPlus1]);
   }
 
   recordAction(action: number) {
     chrome.send('recordAction', [action]);
+  }
+
+  getNotificationPermissionReview() {
+    return sendWithPromise('getNotificationPermissionReview');
+  }
+
+  blockNotificationPermissionForOrigins(origins: string[]) {
+    chrome.send('blockNotificationPermissionForOrigins', [
+      origins,
+    ]);
+  }
+
+  allowNotificationPermissionForOrigins(origins: string[]) {
+    chrome.send('allowNotificationPermissionForOrigins', [
+      origins,
+    ]);
+  }
+
+  ignoreNotificationPermissionForOrigins(origins: string[]) {
+    chrome.send('ignoreNotificationPermissionReviewForOrigins', [
+      origins,
+    ]);
+  }
+
+  undoIgnoreNotificationPermissionForOrigins(origins: string[]) {
+    chrome.send('undoIgnoreNotificationPermissionReviewForOrigins', [
+      origins,
+    ]);
+  }
+
+  resetNotificationPermissionForOrigins(origins: string[]) {
+    chrome.send('resetNotificationPermissionForOrigins', [
+      origins,
+    ]);
   }
 
   getFpsMembershipLabel(fpsNumMembers: number, fpsOwner: string) {

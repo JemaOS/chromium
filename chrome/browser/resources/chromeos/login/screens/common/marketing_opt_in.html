@@ -4,7 +4,9 @@ Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
 
-<style include="oobe-dialog-host-styles cros-color-overrides">
+
+
+<style include="oobe-dialog-host-styles">
   #legalFooter {
     margin-top: 20px;
   }
@@ -13,11 +15,15 @@ found in the LICENSE file.
     justify-content: center;
   }
 
+  :host-context([orientation=horizontal]) #contentArea {
+    margin-top: var(--oobe-adaptive-dialog-title-top-padding);
+  }
+
   :host {
     --marketing-opt-in-dialog-list-item-border:
-      1px solid var(--cros-sys-separator);
+      1px solid var(--cros-separator-color);
     --oobe-a11y-dialog-list-item-border:
-      1px solid var(--cros-sys-separator);
+      1px solid var(--cros-separator-color);
     --marketing-opt-in-row-height: 50px;
     --marketing-opt-in-line-height: 20px;
   }
@@ -30,68 +36,77 @@ found in the LICENSE file.
     width: 100%;
   }
 
-  .legal-info {
-    color: var(--cros-text-color-secondary);
+  .marketing-jemaos-image {
+    display: flex;
+    margin-top: 40px;
   }
 
-  :host-context(.jelly-enabled) .legal-info {
-    color: var(--oobe-subheader-text-color);
-    font-family: var(--oobe-marketing-opt-in-legal-info-font-family);
-    font-size: var(--oobe-marketing-opt-in-legal-info-font-size);
-    font-weight: var(--oobe-marketing-opt-in-legal-info-font-weight);
-    line-height: var(--oobe-marketing-opt-in-legal-info-line-height);
+  .legal-info {
+    color: var(--cros-text-color-secondary);
   }
 
   .toggle-title {
     color: var(--cros-text-color-primary);
   }
 
-  :host-context(.jelly-enabled) .toggle-title {
-    color: var(--oobe-text-color);
-    font-family: var(--oobe-marketing-opt-in-legal-title-font-family);
-    font-size: var(--oobe-marketing-opt-in-legal-title-font-size);
-    font-weight: var(--oobe-marketing-opt-in-legal-title-font-weight);
-    line-height: var(--oobe-marketing-opt-in-legal-title-line-height);
+  #toggleRow {
+    color: var(--cros-bg-color);
+    margin-top: 20px;
   }
 
-  #toggleRow {
-    border-bottom: var(--marketing-opt-in-dialog-list-item-border);
-    border-top: var(--marketing-opt-in-dialog-list-item-border);
+  #jemaOSImprovementPlanToggleRow {
     color: var(--cros-bg-color);
+  }
+
+  .top-toggle-row {
     margin-top: 20px;
   }
 
   /* Keep the text in the toggle row aligned to the left/right in
       LTR/RTL languages. */
+  #jemaOSImprovementPlanOptionLabel,
   #chromebookUpdatesOptionLabel {
     text-align: initial;
   }
 
   #toggleRowIcon,
+  #jemaOSImprovementPlanToggleRowIcon,
+  #jemaOSImprovementPlanOptionLabel,
+  #jemaOSImprovementPlanOption,
   #chromebookUpdatesOptionLabel,
   #chromebookUpdatesOption {
-    align-self: flex-start;
     margin-bottom: 10px;
     margin-top: 10px;
   }
 
+  /* jemaos, reduce the margin between checkbox and the text */
+  #jemaOSImprovementPlanOption,
+  #chromebookUpdatesOption {
+    margin-right: -8px;
+  }
+
+  #jemaOSImprovementPlanToggleRowIcon,
   #toggleRowIcon {
     --iron-icon-height: 20px;
     --iron-icon-width: 20px;
     --iron-icon-fill-color: var(--cros-icon-color-blue);
     padding-inline-end: 16px;
   }
-
-  :host-context(.jelly-enabled) #toggleRowIcon {
-    --iron-icon-fill-color: var(--oobe-adaptive-dialog-icon-fill-color);
+  :host-context(body.jemaos) #toggleRowIcon,
+  :host-context(body.jemaos) #jemaOSImprovementPlanToggleRowIcon {
+    --iron-icon-fill-color: var(--cros-icon-jemaos-color-pink);
   }
 
   #googleUrl {
     color: var(--cros-color-prominent);
   }
 
-  :host-context(.jelly-enabled) #googleUrl {
-    color: var(--cros-sys-primary);
+  :host-context(body.jemaos) #googleUrl {
+    color: var(--cros-jemaos-color-prominent);
+  }
+
+  cr-checkbox {
+    --cr-checkbox-border-radius: 5px;
   }
 
   #finalAccessibilityPage oobe-a11y-option {
@@ -103,101 +118,138 @@ found in the LICENSE file.
     border-bottom: var(--oobe-a11y-dialog-list-item-border);
   }
 
+  h1 {
+    color: var(--cros-text-color-primary);
+  }
+
+  #marketingOptInGameDeviceSubtitle,
+  #marketingOptInSubtitleWithDeviceName,
+  #marketingOptInSubtitle,
+  #jemaOSImprovementPlanOptionLabel,
+  #chromebookUpdatesOptionLabel {
+    color: var(--cros-text-color-secondary);
+  }
+
 </style>
 <oobe-adaptive-dialog id="marketingOptInOverviewDialog" role="dialog"
+    jemaos-layout
+    animation-url="animations/jemaos_done.json"
     for-step="overview"
     aria-label$="[[i18nDynamic(locale, 'marketingOptInScreenTitle')]]"
     aria-describedby="marketing-opt-in-subtitle">
   <iron-icon slot="icon"
-      icon="[[getIcon(isCloudGamingDevice)]]">
+      icon="[[getIcon_(isCloudGamingDevice_)]]">
   </iron-icon>
 
-  <h1 hidden="[[isCloudGamingDevice]]" slot="title">
+  <h1 hidden="[[isCloudGamingDevice_]]" slot="title">
     [[i18nDynamic(locale, 'marketingOptInScreenTitle')]]
   </h1>
   <h1 id ="marketingOptInGameDeviceTitle"
-      hidden="[[!isCloudGamingDevice]]" slot="title">
+      hidden="[[!isCloudGamingDevice_]]" slot="title">
     [[i18nDynamic(locale, 'marketingOptInScreenGameDeviceTitle')]]
   </h1>
   <div slot="subtitle">
     <!-- No marketing opt in -->
-    <div hidden="[[isCloudGamingDevice]]">
-      <div hidden="[[marketingOptInVisible]]"
+    <div hidden="[[isCloudGamingDevice_]]">
+      <div hidden="[[marketingOptInVisible_]]"
         id="marketingOptInSubtitleWithDeviceName">
         [[i18nDynamic(locale,
               'marketingOptInScreenSubtitleWithDeviceName')]]
       </div>
       <!-- Marketing opt in -->
-      <div hidden="[[!marketingOptInVisible]]" id="marketingOptInSubtitle">
+      <div hidden="[[!marketingOptInVisible_]]" id="marketingOptInSubtitle">
         [[i18nDynamic(locale,
                 'marketingOptInScreenSubtitle')]]
       </div>
     </div>
-    <div hidden="[[!isCloudGamingDevice]]"
+    <div hidden="[[!isCloudGamingDevice_]]"
           id="marketingOptInGameDeviceSubtitle">
       [[i18nDynamic(locale,
               'marketingOptInScreenGameDeviceSubtitle')]]
     </div>
+  </div>
+
+  <div id="contentArea" slot="content" class="layout flex vertical">
     <!-- Toggle row -->
     <div class="layout horizontal center"
-        hidden="[[!marketingOptInVisible]]"
-        id="toggleRow">
-      <iron-icon id="toggleRowIcon" icon="oobe-32:chromebook"></iron-icon>
+        hidden="[[!marketingOptInVisible_]]"
+        id="toggleRow" style="[[getMarginTop_(isCloudGamingDevice_)]]">
+      <iron-icon hidden id="toggleRowIcon" icon="oobe-32:chromebook"></iron-icon>
+      <cr-checkbox id="chromebookUpdatesOption" checked
+          jemaos-style
+          aria-labelledby="chromebookUpdatesOptionLabel">
+      </cr-checkbox>
       <div id="chromebookUpdatesOptionLabel" class="flex layout vertical"
           aria-hidden="true">
-        <div class="toggle-title" hidden="[[isCloudGamingDevice]]">
+        <div class="toggle-title" hidden="[[isCloudGamingDevice_]]">
           [[i18nDynamic(locale, 'marketingOptInGetChromebookUpdates')]]
         </div>
-        <div class="toggle-title" hidden="[[!isCloudGamingDevice]]">
+        <div class="toggle-title" hidden="[[!isCloudGamingDevice_]]">
           [[i18nDynamic(locale, 'marketingOptInGameDeviceUpdates')]]
         </div>
-        <div class="legal-info" hidden="[[!isCloudGamingDevice]]">
+        <div class="legal-info" hidden="[[!isCloudGamingDevice_]]" hidden>
           [[i18nDynamic(locale, 'marketingOptInScreenSubtitle')]]
         </div>
-        <div class="legal-info">
+        <div class="legal-info" hidden>
           [[i18nDynamic(locale, 'marketingOptInScreenUnsubscribeLong')]]
         </div>
       </div>
-      <cr-toggle id="chromebookUpdatesOption" checked
-          aria-labelledby="chromebookUpdatesOptionLabel">
-      </cr-toggle>
+    </div>
+
+    <div class="layout horizontal center"
+        id="jemaOSImprovementPlanToggleRow">
+      <iron-icon hidden id="jemaOSImprovementPlanToggleRowIcon" icon="oobe-32:checkmark"></iron-icon>
+      <cr-checkbox id="jemaOSImprovementPlanOption" checked
+          jemaos-style
+          aria-labelledby="jemaOSImprovementPlanOptionLabel">
+      </cr-checkbox>
+      <div id="jemaOSImprovementPlanOptionLabel" class="flex layout vertical"
+          aria-hidden="true">
+        <div class="toggle-title">
+          [[i18nDynamic(locale, 'jemaOSImprovementPlanOptionLabel')]]
+        </div>
+      </div>
     </div>
 
     <!-- Legal footer  -->
-    <div id="legalFooter" hidden="[[!hasLegalFooter]]" class="legal-info">
+    <div id="legalFooter" hidden="[[!hasLegalFooter_]]" class="legal-info">
       <div>
         Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA 94043, USA
       </div>
       <div id="googleUrl">www.google.com</div>
     </div>
-  </div>
 
-  <div hidden="[[isCloudGamingDevice]]" id="contentArea"
-        slot="content" class="layout flex vertical">
+  <!-- <div hidden="[[isCloudGamingDevice_]]" id="contentArea" -->
+  <!--       slot="content" class="layout flex vertical"> -->
     <!-- Animation -->
-    <div  class="marketing-animation-content">
-      <oobe-cr-lottie id="animation"
-          animation-url="animations/all_set.json"
-          singleLoop="true">
-      </oobe-cr-lottie>
+    <div hidden class="marketing-animation-content marketing-jemaos-image">
+      <iron-media-query query="(prefers-color-scheme: dark)"
+          query-matches="{{isDarkModeActive_}}">
+      </iron-media-query>
+      <!-- <oobe-cr-lottie id="animation" -->
+      <!--     animation-url="[[getAnimationUrl_(isDarkModeActive_)]]" -->
+      <!--     singleLoop="true"> -->
+      <!-- </oobe-cr-lottie> -->
+      <img class="oobe-illustration"
+           src="../../images/illustration-success.svg"/>
     </div>
-  </div>
-  <div hidden="[[!isCloudGamingDevice]]" slot="content"
-        class="flex layout vertical center-justified center">
-    <iron-icon icon="oobe-illos:blazey-illo"
-        class="illustration-jelly">
-    </iron-icon>
+  <!-- </div> -->
+  <!-- <div hidden="[[!isCloudGamingDevice_]]" slot="content" -->
+  <!--       class="flex layout vertical center-justified center"> -->
+    <img hidden class="oobe-illustration"
+        srcset="[[getImageSource_(isDarkModeActive_)]]" aria-hidden="true">
+  <!-- </div> -->
   </div>
   <oobe-icon-button slot="bottom-buttons"
-      hidden="[[!isA11ySettingsButtonVisible]]"
+      hidden="[[!isA11ySettingsButtonVisible_]]"
       id="marketing-opt-in-accessibility-button"
-      on-click="onToggleAccessibilityPage"
+      on-click="onToggleAccessibilityPage_"
       icon1x="oobe-32:accessibility"
       icon2x="oobe-32:accessibility"
       text-key="marketingOptInA11yButtonLabel">
   </oobe-icon-button>
   <oobe-text-button slot="bottom-buttons"
-      on-click="onGetStarted" class="focus-on-show"
+      on-click="onGetStarted_" class="focus-on-show"
       inverse text-key="marketingOptInScreenAllSet"
       id="marketing-opt-in-next-button">
   </oobe-text-button>
@@ -213,7 +265,7 @@ found in the LICENSE file.
   </h1>
   <div slot="content" class="layout vertical">
     <oobe-a11y-option id="a11yNavButtonToggle"
-        on-change="onA11yNavButtonsSettingChanged">
+        on-change="onA11yNavButtonsSettingChanged_">
       <span slot="title">
         [[i18nDynamic(locale, 'finalA11yPageNavButtonSettingTitle')]]
       </span>
@@ -226,13 +278,14 @@ found in the LICENSE file.
     </oobe-a11y-option>
   </div>
   <div slot="back-navigation">
-    <oobe-back-button on-click="onToggleAccessibilityPage"
+    <oobe-back-button on-click="onToggleAccessibilityPage_"
         id="final-accessibility-back-button"></oobe-back-button>
   </div>
   <div slot="bottom-buttons">
-    <oobe-text-button on-click="onGetStarted" class="focus-on-show"
+    <oobe-text-button on-click="onGetStarted_" class="focus-on-show"
         id="final-accessibility-next-button" inverse
         text-key="finalA11yPageDoneButtonTitle">
     </oobe-text-button>
   </div>
 </oobe-adaptive-dialog>
+ 

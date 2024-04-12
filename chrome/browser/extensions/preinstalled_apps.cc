@@ -82,14 +82,14 @@ void Provider::InitProfileState() {
   InstallState state = static_cast<InstallState>(
       profile_->GetPrefs()->GetInteger(prefs::kPreinstalledAppsInstallState));
 
-  std::optional<InstallState> new_install_state;
+  absl::optional<InstallState> new_install_state;
 
   switch (state) {
     case kUnknown: {
       // Pre-installed apps are only installed on profile creation or a new
       // chrome download.
       bool is_new_profile = profile_->WasCreatedByVersionOrLater(
-          std::string(version_info::GetVersionNumber()));
+          version_info::GetVersionNumber());
       if (is_new_profile && preinstalled_apps_enabled_) {
         new_install_state = kAlreadyInstalledPreinstalledApps;
         perform_new_installation_ = true;

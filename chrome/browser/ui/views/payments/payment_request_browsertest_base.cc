@@ -31,7 +31,6 @@
 #include "components/autofill/core/browser/data_model/autofill_profile.h"
 #include "components/autofill/core/browser/data_model/credit_card.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
-#include "components/autofill/core/browser/personal_data_manager_test_utils.h"
 #include "components/autofill/core/browser/ui/address_combobox_model.h"
 #include "components/network_session_configurator/common/network_switches.h"
 #include "components/payments/content/payment_request.h"
@@ -309,8 +308,7 @@ void PaymentRequestBrowserTestBase::InvokePaymentRequestUIWithJs(
   ResetEventWaiterForDialogOpened();
 
   content::WebContents* web_contents = GetActiveWebContents();
-  ASSERT_TRUE(content::ExecJs(web_contents, click_buy_button_js,
-                              content::EXECUTE_SCRIPT_NO_RESOLVE_PROMISES));
+  ASSERT_TRUE(content::ExecuteScript(web_contents, click_buy_button_js));
 
   ASSERT_TRUE(WaitForObservedEvent());
 
@@ -476,30 +474,56 @@ void PaymentRequestBrowserTestBase::AddAutofillProfile(
     const autofill::AutofillProfile& profile) {
   autofill::PersonalDataManager* personal_data_manager = GetDataManager();
   size_t profile_count = personal_data_manager->GetProfiles().size();
-  autofill::PersonalDataChangedWaiter waiter(*personal_data_manager);
+
+  PersonalDataLoadedObserverMock personal_data_observer;
+  personal_data_manager->AddObserver(&personal_data_observer);
+  base::RunLoop data_loop;
+  EXPECT_CALL(personal_data_observer, OnPersonalDataFinishedProfileTasks())
+      .WillOnce(QuitMessageLoop(&data_loop));
+  EXPECT_CALL(personal_data_observer, OnPersonalDataChanged())
+      .Times(testing::AnyNumber());
   personal_data_manager->AddProfile(profile);
-  std::move(waiter).Wait();
+  data_loop.Run();
+
+  personal_data_manager->RemoveObserver(&personal_data_observer);
   EXPECT_EQ(profile_count + 1, personal_data_manager->GetProfiles().size());
 }
 
 void PaymentRequestBrowserTestBase::AddCreditCard(
     const autofill::CreditCard& card) {
   autofill::PersonalDataManager* personal_data_manager = GetDataManager();
-  if (card.record_type() != autofill::CreditCard::RecordType::kLocalCard) {
+  if (card.record_type() != autofill::CreditCard::LOCAL_CARD) {
     personal_data_manager->AddServerCreditCardForTest(
         std::make_unique<autofill::CreditCard>(card));
     return;
   }
   size_t card_count = personal_data_manager->GetCreditCards().size();
-  autofill::PersonalDataChangedWaiter waiter(*personal_data_manager);
+
+  PersonalDataLoadedObserverMock personal_data_observer;
+  personal_data_manager->AddObserver(&personal_data_observer);
+  base::RunLoop data_loop;
+  EXPECT_CALL(personal_data_observer, OnPersonalDataFinishedProfileTasks())
+      .WillOnce(QuitMessageLoop(&data_loop));
+  EXPECT_CALL(personal_data_observer, OnPersonalDataChanged())
+      .Times(testing::AnyNumber());
+
   personal_data_manager->AddCreditCard(card);
-  std::move(waiter).Wait();
+  data_loop.Run();
+
+  personal_data_manager->RemoveObserver(&personal_data_observer);
   EXPECT_EQ(card_count + 1, personal_data_manager->GetCreditCards().size());
 }
 
 void PaymentRequestBrowserTestBase::WaitForOnPersonalDataChanged() {
   autofill::PersonalDataManager* personal_data_manager = GetDataManager();
-  autofill::PersonalDataChangedWaiter(*personal_data_manager).Wait();
+  PersonalDataLoadedObserverMock personal_data_observer;
+  personal_data_manager->AddObserver(&personal_data_observer);
+  base::RunLoop run_loop;
+  EXPECT_CALL(personal_data_observer, OnPersonalDataFinishedProfileTasks())
+      .WillOnce(QuitMessageLoop(&run_loop));
+  EXPECT_CALL(personal_data_observer, OnPersonalDataChanged())
+      .Times(testing::AnyNumber());
+  run_loop.Run();
 }
 
 void PaymentRequestBrowserTestBase::CreatePaymentRequestForTest(
@@ -652,8 +676,8 @@ void PaymentRequestBrowserTestBase::RetryPaymentRequest(
                                DialogEvent::PROCESSING_SPINNER_HIDDEN,
                                DialogEvent::BACK_TO_PAYMENT_SHEET_NAVIGATION});
 
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(),
-                              "retry(" + validation_errors + ");"));
+  ASSERT_TRUE(content::ExecuteScript(GetActiveWebContents(),
+                                     "retry(" + validation_errors + ");"));
 
   ASSERT_TRUE(WaitForObservedEvent());
 }
@@ -668,8 +692,8 @@ void PaymentRequestBrowserTestBase::RetryPaymentRequest(
        DialogEvent::PROCESSING_SPINNER_HIDDEN,
        DialogEvent::BACK_TO_PAYMENT_SHEET_NAVIGATION, dialog_event});
 
-  ASSERT_TRUE(content::ExecJs(GetActiveWebContents(),
-                              "retry(" + validation_errors + ");"));
+  ASSERT_TRUE(content::ExecuteScript(GetActiveWebContents(),
+                                     "retry(" + validation_errors + ");"));
 
   ASSERT_TRUE(WaitForObservedEvent());
 }
@@ -686,7 +710,7 @@ bool PaymentRequestBrowserTestBase::IsViewVisible(
 }
 
 std::u16string PaymentRequestBrowserTestBase::GetEditorTextfieldValue(
-    autofill::FieldType type) {
+    autofill::ServerFieldType type) {
   ValidatingTextfield* textfield =
       static_cast<ValidatingTextfield*>(delegate_->dialog_view()->GetViewByID(
           EditorViewController::GetInputFieldViewId(type)));
@@ -696,7 +720,7 @@ std::u16string PaymentRequestBrowserTestBase::GetEditorTextfieldValue(
 
 void PaymentRequestBrowserTestBase::SetEditorTextfieldValue(
     const std::u16string& value,
-    autofill::FieldType type) {
+    autofill::ServerFieldType type) {
   ValidatingTextfield* textfield =
       static_cast<ValidatingTextfield*>(delegate_->dialog_view()->GetViewByID(
           EditorViewController::GetInputFieldViewId(type)));
@@ -709,7 +733,7 @@ void PaymentRequestBrowserTestBase::SetEditorTextfieldValue(
 }
 
 std::u16string PaymentRequestBrowserTestBase::GetComboboxValue(
-    autofill::FieldType type) {
+    autofill::ServerFieldType type) {
   ValidatingCombobox* combobox =
       static_cast<ValidatingCombobox*>(delegate_->dialog_view()->GetViewByID(
           EditorViewController::GetInputFieldViewId(type)));
@@ -719,7 +743,7 @@ std::u16string PaymentRequestBrowserTestBase::GetComboboxValue(
 
 void PaymentRequestBrowserTestBase::SetComboboxValue(
     const std::u16string& value,
-    autofill::FieldType type) {
+    autofill::ServerFieldType type) {
   ValidatingCombobox* combobox =
       static_cast<ValidatingCombobox*>(delegate_->dialog_view()->GetViewByID(
           EditorViewController::GetInputFieldViewId(type)));
@@ -743,7 +767,7 @@ void PaymentRequestBrowserTestBase::SelectBillingAddress(
 }
 
 bool PaymentRequestBrowserTestBase::IsEditorTextfieldInvalid(
-    autofill::FieldType type) {
+    autofill::ServerFieldType type) {
   ValidatingTextfield* textfield =
       static_cast<ValidatingTextfield*>(delegate_->dialog_view()->GetViewByID(
           EditorViewController::GetInputFieldViewId(type)));
@@ -752,7 +776,7 @@ bool PaymentRequestBrowserTestBase::IsEditorTextfieldInvalid(
 }
 
 bool PaymentRequestBrowserTestBase::IsEditorComboboxInvalid(
-    autofill::FieldType type) {
+    autofill::ServerFieldType type) {
   ValidatingCombobox* combobox =
       static_cast<ValidatingCombobox*>(delegate_->dialog_view()->GetViewByID(
           EditorViewController::GetInputFieldViewId(type)));
@@ -779,23 +803,20 @@ void PaymentRequestBrowserTestBase::WaitForAnimation() {
 
 void PaymentRequestBrowserTestBase::WaitForAnimation(
     PaymentRequestDialogView* dialog_view) {
-  base::RunLoop loop;
   ViewStack* view_stack = dialog_view->view_stack_for_testing();
   if (view_stack->slide_in_animator_->IsAnimating()) {
     view_stack->slide_in_animator_->SetAnimationDuration(base::Milliseconds(1));
     view_stack->slide_in_animator_->SetAnimationDelegate(
-        view_stack->top(),
-        std::unique_ptr<gfx::AnimationDelegate>(
-            new gfx::TestAnimationDelegate(loop.QuitWhenIdleClosure())));
-    loop.Run();
+        view_stack->top(), std::unique_ptr<gfx::AnimationDelegate>(
+                               new gfx::TestAnimationDelegate()));
+    base::RunLoop().Run();
   } else if (view_stack->slide_out_animator_->IsAnimating()) {
     view_stack->slide_out_animator_->SetAnimationDuration(
         base::Milliseconds(1));
     view_stack->slide_out_animator_->SetAnimationDelegate(
-        view_stack->top(),
-        std::unique_ptr<gfx::AnimationDelegate>(
-            new gfx::TestAnimationDelegate(loop.QuitWhenIdleClosure())));
-    loop.Run();
+        view_stack->top(), std::unique_ptr<gfx::AnimationDelegate>(
+                               new gfx::TestAnimationDelegate()));
+    base::RunLoop().Run();
   }
 }
 
@@ -831,7 +852,7 @@ const std::u16string& PaymentRequestBrowserTestBase::GetStyledLabelText(
 }
 
 const std::u16string& PaymentRequestBrowserTestBase::GetErrorLabelForType(
-    autofill::FieldType type) {
+    autofill::ServerFieldType type) {
   views::View* view = dialog_view()->GetViewByID(
       static_cast<int>(DialogViewID::ERROR_LABEL_OFFSET) + type);
   DCHECK(view);

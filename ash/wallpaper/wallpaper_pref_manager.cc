@@ -5,9 +5,7 @@
 #include "ash/wallpaper/wallpaper_pref_manager.h"
 
 #include <cstdint>
-#include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "ash/constants/ash_pref_names.h"
@@ -22,41 +20,23 @@
 #include "base/check.h"
 #include "base/containers/adapters.h"
 #include "base/containers/flat_map.h"
+#include "base/files/file_path.h"
+#include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
+#include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/time/time.h"
-#include "base/types/cxx23_to_underlying.h"
 #include "base/values.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/scoped_user_pref_update.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 
 namespace {
-
-constexpr bool IsAllowedInPrefs(WallpaperType type) {
-  switch (type) {
-    case WallpaperType::kOobe:
-    case WallpaperType::kOneShot:
-    case WallpaperType::kDevice:
-    // `kThirdParty` is actually saved to `WallpaperInfo` pref as `kCustomized`.
-    case WallpaperType::kThirdParty:
-    case WallpaperType::kCount:
-      return false;
-    case WallpaperType::kDaily:
-    case WallpaperType::kCustomized:
-    case WallpaperType::kDefault:
-    case WallpaperType::kOnline:
-    case WallpaperType::kPolicy:
-    case WallpaperType::kDailyGooglePhotos:
-    case WallpaperType::kOnceGooglePhotos:
-    case WallpaperType::kSeaPen:
-      return true;
-  }
-}
 
 constexpr bool IsWallpaperTypeSyncable(WallpaperType type) {
   switch (type) {
@@ -71,8 +51,6 @@ constexpr bool IsWallpaperTypeSyncable(WallpaperType type) {
     case WallpaperType::kThirdParty:
     case WallpaperType::kDevice:
     case WallpaperType::kOneShot:
-    case WallpaperType::kOobe:
-    case WallpaperType::kSeaPen:
     case WallpaperType::kCount:
       return false;
   }
@@ -93,17 +71,17 @@ void PopulateOnlineWallpaperInfo(WallpaperInfo* info,
       WallpaperPrefManager::kNewWallpaperVariantListNodeName);
 
   info->collection_id = collection_id ? *collection_id : std::string();
-  info->dedup_key = dedup_key ? std::make_optional(*dedup_key) : std::nullopt;
+  info->dedup_key = dedup_key ? absl::make_optional(*dedup_key) : absl::nullopt;
 
   if (asset_id_str) {
     uint64_t asset_id;
     if (base::StringToUint64(*asset_id_str, &asset_id))
-      info->asset_id = std::make_optional(asset_id);
+      info->asset_id = absl::make_optional(asset_id);
   }
   if (unit_id_str) {
     uint64_t unit_id;
     if (base::StringToUint64(*unit_id_str, &unit_id))
-      info->unit_id = std::make_optional(unit_id);
+      info->unit_id = absl::make_optional(unit_id);
   }
   if (variant_list) {
     std::vector<OnlineWallpaperVariant> variants;
@@ -116,7 +94,7 @@ void PopulateOnlineWallpaperInfo(WallpaperInfo* info,
           WallpaperPrefManager::kNewWallpaperAssetIdNodeName);
       const std::string* url = variant_info.FindString(
           WallpaperPrefManager::kOnlineWallpaperUrlNodeName);
-      std::optional<int> type = variant_info.FindInt(
+      absl::optional<int> type = variant_info.FindInt(
           WallpaperPrefManager::kOnlineWallpaperTypeNodeName);
       if (variant_asset_id_str && url && type.has_value()) {
         uint64_t variant_asset_id;
@@ -150,9 +128,9 @@ bool GetWallpaperInfo(const AccountId& account_id,
       WallpaperPrefManager::kNewWallpaperLocationNodeName);
   const std::string* file_path = info_dict->FindString(
       WallpaperPrefManager::kNewWallpaperUserFilePathNodeName);
-  std::optional<int> layout =
+  absl::optional<int> layout =
       info_dict->FindInt(WallpaperPrefManager::kNewWallpaperLayoutNodeName);
-  std::optional<int> type =
+  absl::optional<int> type =
       info_dict->FindInt(WallpaperPrefManager::kNewWallpaperTypeNodeName);
   const std::string* date_string =
       info_dict->FindString(WallpaperPrefManager::kNewWallpaperDateNodeName);
@@ -160,22 +138,10 @@ bool GetWallpaperInfo(const AccountId& account_id,
   if (!location || !layout || !type || !date_string)
     return false;
 
-  // Perform special handling of pref values >= kCount before hitting the DCHECK
-  // below. This can happen in normal operation when syncing from a newer
-  // release to an older one, so should not DCHECK.
-  if (type.value() >= base::to_underlying(WallpaperType::kCount)) {
-    LOG(WARNING) << "Skipping wallpaper sync due to unrecognized WallpaperType="
-                 << type.value()
-                 << ". This likely happened due to sync from a newer version "
-                    "of ChromeOS.";
+  if (type.value() >= static_cast<int>(WallpaperType::kCount))
     return false;
-  }
 
   WallpaperType wallpaper_type = static_cast<WallpaperType>(type.value());
-  DCHECK(IsAllowedInPrefs(wallpaper_type))
-      << "Invalid WallpaperType=" << base::to_underlying(wallpaper_type)
-      << " in prefs";
-
   info->type = wallpaper_type;
 
   int64_t date_val;
@@ -202,10 +168,6 @@ bool SetWallpaperInfo(const AccountId& account_id,
                       const std::string& pref_name) {
   if (!pref_service)
     return false;
-
-  DCHECK(IsAllowedInPrefs(info.type))
-      << "Cannot save WallpaperType=" << base::to_underlying(info.type)
-      << " to prefs";
 
   ScopedDictPrefUpdate wallpaper_update(pref_service, pref_name);
   base::Value::Dict wallpaper_info_dict;
@@ -312,7 +274,7 @@ class WallpaperProfileHelperImpl : public WallpaperProfileHelper {
   }
 
  private:
-  raw_ptr<WallpaperControllerClient> wallpaper_controller_client_ =
+  base::raw_ptr<WallpaperControllerClient> wallpaper_controller_client_ =
       nullptr;  // not owned
 };
 
@@ -390,16 +352,43 @@ class WallpaperPrefManagerImpl : public WallpaperPrefManager {
                         prefs::kSyncableWallpaperInfo);
   }
 
-  std::optional<WallpaperCalculatedColors> GetCachedWallpaperColors(
-      std::string_view location) const override {
-    std::optional<SkColor> cached_k_mean_color = GetCachedKMeanColor(location);
-    std::optional<SkColor> cached_celebi_color = GetCelebiColor(location);
+  absl::optional<WallpaperCalculatedColors> GetCachedWallpaperColors(
+      base::StringPiece location) const override {
+    absl::optional<std::vector<SkColor>> cached_colors =
+        GetCachedProminentColors(location);
+    absl::optional<SkColor> cached_k_mean_color = GetCachedKMeanColor(location);
+    if (!chromeos::features::IsJellyEnabled()) {
+      if (cached_colors.has_value() && cached_k_mean_color.has_value()) {
+        return WallpaperCalculatedColors(cached_colors.value(),
+                                         cached_k_mean_color.value(),
+                                         SK_ColorTRANSPARENT);
+      }
+
+      return absl::nullopt;
+    }
+
+    absl::optional<SkColor> cached_celebi_color = GetCelebiColor(location);
     if (cached_k_mean_color.has_value() && cached_celebi_color.has_value()) {
-      return WallpaperCalculatedColors(cached_k_mean_color.value(),
+      return WallpaperCalculatedColors({}, cached_k_mean_color.value(),
                                        cached_celebi_color.value());
     }
 
-    return std::nullopt;
+    return absl::nullopt;
+  }
+
+  void CacheProminentColors(base::StringPiece location,
+                            const std::vector<SkColor>& colors) override {
+    if (location.empty()) {
+      return;
+    }
+
+    ScopedDictPrefUpdate wallpaper_colors_update(local_state_,
+                                                 prefs::kWallpaperColors);
+    base::Value::List wallpaper_colors;
+    for (SkColor color : colors)
+      wallpaper_colors.Append(static_cast<double>(color));
+    base::Value wallpaper_colors_value(std::move(wallpaper_colors));
+    wallpaper_colors_update->Set(location, std::move(wallpaper_colors_value));
   }
 
   void RemoveProminentColors(const AccountId& account_id) override {
@@ -414,13 +403,33 @@ class WallpaperPrefManagerImpl : public WallpaperPrefManager {
     wallpaper_colors_update->Remove(old_info.location);
   }
 
-  void CacheKMeanColor(std::string_view location,
+  absl::optional<std::vector<SkColor>> GetCachedProminentColors(
+      const base::StringPiece location) const override {
+    if (location.empty())
+      return absl::nullopt;
+
+    const base::Value::List* prominent_colors =
+        local_state_->GetDict(prefs::kWallpaperColors).FindList(location);
+    if (!prominent_colors)
+      return absl::nullopt;
+
+    absl::optional<std::vector<SkColor>> cached_colors_out;
+    cached_colors_out = std::vector<SkColor>();
+    cached_colors_out.value().reserve(prominent_colors->size());
+    for (const auto& value : *prominent_colors) {
+      cached_colors_out.value().push_back(
+          static_cast<SkColor>(value.GetDouble()));
+    }
+    return cached_colors_out;
+  }
+
+  void CacheKMeanColor(base::StringPiece location,
                        SkColor k_mean_color) override {
     CacheSingleColor(prefs::kWallpaperMeanColors, location, k_mean_color);
   }
 
-  std::optional<SkColor> GetCachedKMeanColor(
-      const std::string_view location) const override {
+  absl::optional<SkColor> GetCachedKMeanColor(
+      const base::StringPiece location) const override {
     return GetSingleCachedColor(prefs::kWallpaperMeanColors, location);
   }
 
@@ -428,12 +437,12 @@ class WallpaperPrefManagerImpl : public WallpaperPrefManager {
     RemoveCachedColor(prefs::kWallpaperMeanColors, account_id);
   }
 
-  void CacheCelebiColor(std::string_view location,
+  void CacheCelebiColor(base::StringPiece location,
                         SkColor celebi_color) override {
     CacheSingleColor(prefs::kWallpaperCelebiColors, location, celebi_color);
   }
-  std::optional<SkColor> GetCelebiColor(
-      const std::string_view location) const override {
+  absl::optional<SkColor> GetCelebiColor(
+      const base::StringPiece location) const override {
     return GetSingleCachedColor(prefs::kWallpaperCelebiColors, location);
   }
   void RemoveCelebiColor(const AccountId& account_id) override {
@@ -516,8 +525,6 @@ class WallpaperPrefManagerImpl : public WallpaperPrefManager {
     if (!pref_service)
       return false;
 
-    DCHECK(IsWallpaperTypeSyncable(info.type));
-
     return SetWallpaperInfo(account_id, info, pref_service,
                             prefs::kSyncableWallpaperInfo);
   }
@@ -537,7 +544,7 @@ class WallpaperPrefManagerImpl : public WallpaperPrefManager {
  private:
   // Caches a single `color` in the dictionary for `pref_name`.
   void CacheSingleColor(const std::string& pref_name,
-                        std::string_view location,
+                        base::StringPiece location,
                         SkColor color) {
     // Blank keys are not allowed and will not be stored.
     if (location.empty()) {
@@ -549,17 +556,18 @@ class WallpaperPrefManagerImpl : public WallpaperPrefManager {
   }
 
   // Returns the cached color for `location` in `pref_name` if it can be found.
-  std::optional<SkColor> GetSingleCachedColor(const std::string& pref_name,
-                                              std::string_view location) const {
+  absl::optional<SkColor> GetSingleCachedColor(
+      const std::string& pref_name,
+      base::StringPiece location) const {
     // We don't support blank keys.
     if (location.empty()) {
-      return std::nullopt;
+      return absl::nullopt;
     }
 
     const base::Value::Dict& color_dict = local_state_->GetDict(pref_name);
     auto* color_value = color_dict.Find(location);
     if (!color_value) {
-      return std::nullopt;
+      return absl::nullopt;
     }
     return static_cast<SkColor>(color_value->GetDouble());
   }
@@ -578,7 +586,7 @@ class WallpaperPrefManagerImpl : public WallpaperPrefManager {
     color_dict->Remove(old_info.location);
   }
 
-  raw_ptr<PrefService> local_state_ = nullptr;
+  raw_ptr<PrefService, ExperimentalAsh> local_state_ = nullptr;
   std::unique_ptr<WallpaperProfileHelper> profile_helper_;
 
   // Cache of wallpapers for ephemeral users.
@@ -606,8 +614,9 @@ const char WallpaperPrefManager::kOnlineWallpaperUrlNodeName[] = "url";
 
 // static
 bool WallpaperPrefManager::ShouldSyncOut(const WallpaperInfo& local_info) {
-  if (IsTimeOfDayWallpaper(local_info.collection_id)) {
+  if (IsTimeOfDayWallpaper(local_info)) {
     // Time Of Day wallpapers are not syncable.
+    // TODO(b/277804153): Confirm the sync rules for time of day wallpapers.
     return false;
   }
   return IsWallpaperTypeSyncable(local_info.type);
@@ -615,8 +624,7 @@ bool WallpaperPrefManager::ShouldSyncOut(const WallpaperInfo& local_info) {
 
 // static
 bool WallpaperPrefManager::ShouldSyncIn(const WallpaperInfo& synced_info,
-                                        const WallpaperInfo& local_info,
-                                        const bool is_oobe) {
+                                        const WallpaperInfo& local_info) {
   if (!IsWallpaperTypeSyncable(synced_info.type)) {
     LOG(ERROR) << " wallpaper type " << static_cast<int>(synced_info.type)
                << " from remote prefs is not syncable.";
@@ -625,17 +633,11 @@ bool WallpaperPrefManager::ShouldSyncIn(const WallpaperInfo& synced_info,
   if (synced_info.MatchesSelection(local_info)) {
     return false;
   }
-  if (is_oobe) {
-    // synced-in wallpaper during OOBE should always be honored. The user is
-    // setting up a new device and should see the wallpaper they last set on
-    // their account if it exists.
-    return true;
-  }
   if (synced_info.date < local_info.date) {
     return false;
   }
-  if (IsTimeOfDayWallpaper(local_info.collection_id)) {
-    // Time Of Day wallpapers cannot be overwritten by other wallpapers.
+  // TODO(b/277804153): Confirm the sync rules for time of day wallpapers.
+  if (IsTimeOfDayWallpaper(local_info)) {
     return false;
   }
   return true;

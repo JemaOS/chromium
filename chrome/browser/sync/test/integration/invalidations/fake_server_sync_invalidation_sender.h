@@ -46,7 +46,8 @@ class FakeServerSyncInvalidationSender : public FakeServer::Observer,
 
   // FakeServer::Observer implementation.
   void OnWillCommit() override;
-  void OnCommit(syncer::ModelTypeSet committed_model_types) override;
+  void OnCommit(const std::string& committer_invalidator_client_id,
+                syncer::ModelTypeSet committed_model_types) override;
 
   // gcm::GCMConnectionObserver implementation.
   void OnConnected(const net::IPEndPoint& ip_endpoint) override;
@@ -63,7 +64,7 @@ class FakeServerSyncInvalidationSender : public FakeServer::Observer,
   // data type.
   void UpdateTokenToInterestedDataTypesMap();
 
-  const raw_ptr<FakeServer> fake_server_;
+  raw_ptr<FakeServer> fake_server_;
 
   // Cache of invalidations to be dispatched by
   // DeliverInvalidationsToHandlers(), keyed by FCM registration token. If no
@@ -76,7 +77,7 @@ class FakeServerSyncInvalidationSender : public FakeServer::Observer,
   // invalidations to a corresponding client.
   std::map<std::string, syncer::ModelTypeSet> token_to_interested_data_types_;
 
-  std::vector<raw_ptr<instance_id::FakeGCMDriverForInstanceID>>
+  std::vector<base::raw_ptr<instance_id::FakeGCMDriverForInstanceID>>
       fake_gcm_drivers_;
 };
 

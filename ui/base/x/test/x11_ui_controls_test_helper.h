@@ -5,10 +5,11 @@
 #ifndef UI_BASE_X_TEST_X11_UI_CONTROLS_TEST_HELPER_H_
 #define UI_BASE_X_TEST_X11_UI_CONTROLS_TEST_HELPER_H_
 
-#include "base/component_export.h"
 #include "base/memory/raw_ptr.h"
-#include "ui/base/test/ui_controls_aura.h"
 #include "ui/gfx/native_widget_types.h"
+
+#include "base/component_export.h"
+#include "ui/base/test/ui_controls_aura.h"
 #include "ui/gfx/x/connection.h"
 
 namespace gfx {
@@ -62,7 +63,7 @@ class COMPONENT_EXPORT(UI_BASE_X) X11UIControlsTestHelper {
                                    uint32_t keysym);
 
   // Our X11 state.
-  raw_ref<x11::Connection> connection_;
+  raw_ptr<x11::Connection> connection_ = nullptr;
   x11::Window x_root_window_;
 
   // Input-only window used for events.

@@ -13,9 +13,9 @@ namespace ash {
 // An interstitial view representing an error state where the Phone Hub
 // feature is not available because Bluetooth is turned off on this device.
 class ASH_EXPORT BluetoothDisabledView : public PhoneHubContentView {
-  METADATA_HEADER(BluetoothDisabledView, PhoneHubContentView)
-
  public:
+  METADATA_HEADER(BluetoothDisabledView);
+
   BluetoothDisabledView();
   BluetoothDisabledView(const BluetoothDisabledView&) = delete;
   BluetoothDisabledView& operator=(const BluetoothDisabledView&) = delete;

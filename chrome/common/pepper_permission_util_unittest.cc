@@ -26,12 +26,15 @@ scoped_refptr<const Extension> CreateExtensionImportingModule(
     const std::string& import_id,
     const std::string& id) {
   base::Value::Dict manifest =
-      base::Value::Dict()
+      DictionaryBuilder()
           .Set("name", "Has Dependent Modules")
           .Set("version", "1.0")
           .Set("manifest_version", 2)
-          .Set("import", base::Value::List().Append(
-                             base::Value::Dict().Set("id", import_id)));
+          .Set("import",
+               ListBuilder()
+                   .Append(DictionaryBuilder().Set("id", import_id).Build())
+                   .Build())
+          .Build();
 
   return ExtensionBuilder()
       .SetManifest(std::move(manifest))
@@ -46,10 +49,11 @@ TEST(PepperPermissionUtilTest, ExtensionAllowed) {
   ScopedCurrentChannel current_channel(version_info::Channel::UNKNOWN);
   ExtensionSet extensions;
   std::string allowed_id = crx_file::id_util::GenerateId("allowed_extension");
-  base::Value::Dict manifest = base::Value::Dict()
+  base::Value::Dict manifest = DictionaryBuilder()
                                    .Set("name", "Allowed Extension")
                                    .Set("version", "1.0")
-                                   .Set("manifest_version", 2);
+                                   .Set("manifest_version", 2)
+                                   .Build();
   scoped_refptr<const Extension> ext = ExtensionBuilder()
                                            .SetManifest(std::move(manifest))
                                            .SetID(allowed_id)
@@ -62,6 +66,7 @@ TEST(PepperPermissionUtilTest, ExtensionAllowed) {
       std::string("http://") + allowed_id + std::string("/manifest.nmf");
   std::string bad_host_url = std::string("chrome-extension://") +
                              crx_file::id_util::GenerateId("bad_host");
+  std::string("/manifest.nmf");
 
   EXPECT_FALSE(
       IsExtensionOrSharedModuleAllowed(GURL(url), &extensions, allowlist));
@@ -81,17 +86,18 @@ TEST(PepperPermissionUtilTest, SharedModuleAllowed) {
   std::string bad_id = crx_file::id_util::GenerateId("bad_id");
 
   base::Value::Dict shared_module_manifest =
-      base::Value::Dict()
+      DictionaryBuilder()
           .Set("name", "Allowed Shared Module")
           .Set("version", "1.0")
           .Set("manifest_version", 2)
           .Set("export",
-               base::Value::Dict()
-                   .Set("resources", base::Value::List().Append("*"))
+               DictionaryBuilder()
+                   .Set("resources", ListBuilder().Append("*").Build())
                    // Add the extension to the allowlist.  This
                    // restricts import to |allowed_id| only.
-                   .Set("whitelist", base::Value::List().Append(  // nocheck
-                                         allowed_id)));
+                   .Set("whitelist", ListBuilder().Append(allowed_id).Build())
+                   .Build())
+          .Build();
   scoped_refptr<const Extension> shared_module =
       ExtensionBuilder().SetManifest(std::move(shared_module_manifest)).Build();
 

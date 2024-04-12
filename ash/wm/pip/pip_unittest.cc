@@ -10,7 +10,6 @@
 #include "ash/keyboard/ui/keyboard_ui_controller.h"
 #include "ash/keyboard/ui/test/keyboard_test_util.h"
 #include "ash/public/cpp/keyboard/keyboard_switches.h"
-#include "ash/public/cpp/window_properties.h"
 #include "ash/root_window_controller.h"
 #include "ash/shelf/shelf.h"
 #include "ash/shelf/shelf_navigation_widget.h"
@@ -18,7 +17,6 @@
 #include "ash/shell.h"
 #include "ash/system/status_area_widget.h"
 #include "ash/test/ash_test_base.h"
-#include "ash/test/test_window_builder.h"
 #include "ash/wm/pip/pip_positioner.h"
 #include "ash/wm/pip/pip_test_utils.h"
 #include "ash/wm/window_state.h"
@@ -232,7 +230,7 @@ TEST_F(
     PipRestoresToPreviousBoundsOnMovementAreaChangeIfTheyExistOnExternalDisplay) {
   UpdateDisplay("500x400,500x400");
   ForceHideShelvesForTest();
-  auto* root_window = Shell::GetAllRootWindows()[1].get();
+  auto* root_window = Shell::GetAllRootWindows()[1];
 
   // Position the PIP window on the side of the screen where it will be next
   // to an edge and therefore in a resting position for the whole test.
@@ -268,22 +266,20 @@ TEST_F(
 TEST_F(PipTest, PipRestoreOnWorkAreaChangeDoesNotChangeWindowSize) {
   ForceHideShelvesForTest();
   UpdateDisplay("500x400");
-  // Create a new PiP window using TestWindowBuilder().
-  // Set SetShow to false upon creation to simulate the window being created
-  // as a PiP rather than being changed to PiP.
-  // Position the PIP window on the side of the screen where it will be next
-  // to an edge and therefore in a resting position for the whole test.
-  std::unique_ptr<aura::Window> pip_window(TestWindowBuilder()
-                                               .AllowAllWindowStates()
-                                               .SetShow(false)
-                                               .Build()
-                                               .release());
-  WindowState* window_state = WindowState::Get(pip_window.get());
+  std::unique_ptr<aura::Window> window(
+      CreateTestWindowInShellWithBounds(gfx::Rect(200, 200, 100, 100)));
+  WindowState* window_state = WindowState::Get(window.get());
   const WMEvent enter_pip(WM_EVENT_PIP);
   window_state->OnWMEvent(&enter_pip);
-  pip_window->SetBounds(gfx::Rect(392, 200, 100, 100));
-  EXPECT_TRUE(window_state->IsPip());
-  pip_window->Show();
+  window->Show();
+
+  // Position the PIP window on the side of the screen where it will be next
+  // to an edge and therefore in a resting position for the whole test.
+  const gfx::Rect bounds = gfx::Rect(292, 200, 100, 100);
+  window->SetBounds(bounds);
+  // Set the restore bounds to be a different size.
+  window_state->SetRestoreBoundsInParent(gfx::Rect(342, 250, 50, 100));
+  EXPECT_TRUE(window_state->HasRestoreBounds());
 
   // Update the work area so that the PIP window should be pushed upward.
   UpdateDisplay("400x200");
@@ -291,7 +287,7 @@ TEST_F(PipTest, PipRestoreOnWorkAreaChangeDoesNotChangeWindowSize) {
 
   // The PIP snap position should be applied and the relative position
   // along the edge shouldn't change.
-  EXPECT_EQ(gfx::Rect(292, 76, 100, 100), pip_window->GetBoundsInScreen());
+  EXPECT_EQ(gfx::Rect(292, 44, 100, 100), window->GetBoundsInScreen());
 }
 
 TEST_F(PipTest, PipSnappedToEdgeWhenSavingSnapFraction) {

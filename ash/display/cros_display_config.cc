@@ -4,7 +4,6 @@
 
 #include "ash/display/cros_display_config.h"
 
-#include <optional>
 #include <utility>
 
 #include "ash/constants/ash_features.h"
@@ -24,15 +23,15 @@
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/strings/string_number_conversions.h"
-#include "components/device_event_log/device_event_log.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "mojo/public/cpp/bindings/remote_set.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/display/display.h"
 #include "ui/display/display_layout.h"
 #include "ui/display/display_layout_builder.h"
 #include "ui/display/display_observer.h"
 #include "ui/display/manager/display_manager.h"
-#include "ui/display/manager/util/display_manager_util.h"
+#include "ui/display/manager/display_manager_util.h"
 #include "ui/display/screen.h"
 
 namespace ash {
@@ -53,18 +52,16 @@ display::DisplayManager* GetDisplayManager() {
 
 int64_t GetDisplayId(const std::string& display_id_str) {
   int64_t display_id;
-  if (!base::StringToInt64(display_id_str, &display_id)) {
+  if (!base::StringToInt64(display_id_str, &display_id))
     display_id = display::kInvalidDisplayId;
-  }
   return display_id;
 }
 
 // Gets the display with the provided string id.
 display::Display GetDisplay(const std::string& display_id_str) {
   int64_t display_id = GetDisplayId(display_id_str);
-  if (display_id == display::kInvalidDisplayId) {
+  if (display_id == display::kInvalidDisplayId)
     return display::Display();
-  }
   display::DisplayManager* display_manager = GetDisplayManager();
   if (display_manager->IsInUnifiedMode() &&
       display_id != display::kUnifiedDisplayId) {
@@ -119,9 +116,8 @@ std::vector<crosapi::mojom::DisplayLayoutPtr> GetDisplayLayouts() {
     const display::DisplayPlacement placement =
         display_manager->GetCurrentResolvedDisplayLayout().FindPlacementById(
             display.id());
-    if (placement.display_id == display::kInvalidDisplayId) {
+    if (placement.display_id == display::kInvalidDisplayId)
       continue;
-    }
     auto layout = crosapi::mojom::DisplayLayout::New();
     layout->id = base::NumberToString(placement.display_id);
     layout->parent_id = base::NumberToString(placement.parent_display_id);
@@ -167,24 +163,22 @@ std::vector<crosapi::mojom::DisplayLayoutPtr> GetDisplayUnifiedLayouts() {
 crosapi::mojom::DisplayConfigResult SetDisplayLayoutMode(
     const crosapi::mojom::DisplayLayoutInfo& info) {
   display::DisplayManager* display_manager = GetDisplayManager();
-  if (display_manager->num_connected_displays() < 2) {
+  if (display_manager->num_connected_displays() < 2)
     return crosapi::mojom::DisplayConfigResult::kSingleDisplayError;
-  }
 
   if (info.layout_mode == crosapi::mojom::DisplayLayoutMode::kNormal) {
     display_manager->SetDefaultMultiDisplayModeForCurrentDisplays(
         display::DisplayManager::EXTENDED);
-    display_manager->SetMirrorMode(display::MirrorMode::kOff, std::nullopt);
+    display_manager->SetMirrorMode(display::MirrorMode::kOff, absl::nullopt);
     return crosapi::mojom::DisplayConfigResult::kSuccess;
   }
 
   if (info.layout_mode == crosapi::mojom::DisplayLayoutMode::kUnified) {
-    if (!display_manager->unified_desktop_enabled()) {
+    if (!display_manager->unified_desktop_enabled())
       return crosapi::mojom::DisplayConfigResult::kUnifiedNotEnabledError;
-    }
     display_manager->SetDefaultMultiDisplayModeForCurrentDisplays(
         display::DisplayManager::UNIFIED);
-    display_manager->SetMirrorMode(display::MirrorMode::kOff, std::nullopt);
+    display_manager->SetMirrorMode(display::MirrorMode::kOff, absl::nullopt);
     return crosapi::mojom::DisplayConfigResult::kSuccess;
   }
 
@@ -192,33 +186,30 @@ crosapi::mojom::DisplayConfigResult SetDisplayLayoutMode(
 
   // 'Normal' mirror mode.
   if (!info.mirror_source_id) {
-    display_manager->SetMirrorMode(display::MirrorMode::kNormal, std::nullopt);
+    display_manager->SetMirrorMode(display::MirrorMode::kNormal, absl::nullopt);
     return crosapi::mojom::DisplayConfigResult::kSuccess;
   }
 
   // 'Mixed' mirror mode.
   display::Display source = GetDisplay(*info.mirror_source_id);
-  if (source.id() == display::kInvalidDisplayId) {
+  if (source.id() == display::kInvalidDisplayId)
     return crosapi::mojom::DisplayConfigResult::kMirrorModeSourceIdError;
-  }
   display::DisplayIdList destination_ids;
   if (info.mirror_destination_ids) {
     for (const std::string& id_str : *info.mirror_destination_ids) {
       int64_t destination_id = GetDisplayId(id_str);
-      if (destination_id == display::kInvalidDisplayId) {
+      if (destination_id == display::kInvalidDisplayId)
         return crosapi::mojom::DisplayConfigResult::kMirrorModeDestIdError;
-      }
       destination_ids.emplace_back(destination_id);
     }
   } else {
     const std::vector<display::Display>& displays =
         display::Screen::GetScreen()->GetAllDisplays();
-    for (const display::Display& display : displays) {
+    for (const display::Display& display : displays)
       destination_ids.emplace_back(display.id());
-    }
   }
-  std::optional<display::MixedMirrorModeParams> mixed_params(
-      std::in_place, source.id(), destination_ids);
+  absl::optional<display::MixedMirrorModeParams> mixed_params(
+      absl::in_place, source.id(), destination_ids);
   const display::MixedMirrorModeParamsErrors error_type =
       display::ValidateParamsForMixedMirrorMode(
           display_manager->GetConnectedDisplayIdList(), *mixed_params);
@@ -273,17 +264,15 @@ display::Display::Rotation DisplayRotationFromRotationOptions(
 }
 
 crosapi::mojom::DisplayRotationOptions RotationOptionsFromDisplayRotation(
-    display::Display::Rotation rotation,
-    bool is_internal) {
+    display::Display::Rotation rotation) {
   auto* screen_orientation_controller =
       Shell::Get()->screen_orientation_controller();
   const bool is_auto_rotation_allowed =
       screen_orientation_controller->IsAutoRotationAllowed();
   const bool is_auto_rotate_enabled =
       !screen_orientation_controller->user_rotation_locked();
-  if (is_auto_rotation_allowed && is_auto_rotate_enabled && is_internal) {
+  if (is_auto_rotation_allowed && is_auto_rotate_enabled)
     return crosapi::mojom::DisplayRotationOptions::kAutoRotate;
-  }
 
   switch (rotation) {
     case display::Display::ROTATE_0:
@@ -324,10 +313,8 @@ crosapi::mojom::DisplayUnitInfoPtr GetDisplayUnitInfo(
   info->is_primary = display.id() == primary_id;
   info->is_internal = display.IsInternal();
   info->is_enabled = true;
-  info->is_detected = display.detected();
   info->is_auto_rotation_allowed =
-      Shell::Get()->screen_orientation_controller()->IsAutoRotationAllowed() &&
-      display.IsInternal();
+      Shell::Get()->screen_orientation_controller()->IsAutoRotationAllowed();
   const bool has_accelerometer_support =
       display.accelerometer_support() ==
       display::Display::AccelerometerSupport::AVAILABLE;
@@ -341,8 +328,8 @@ crosapi::mojom::DisplayUnitInfoPtr GetDisplayUnitInfo(
   info->dpi_y = device_dpi * display.size().height() /
                 display_info.bounds_in_native().height();
 
-  info->rotation_options = RotationOptionsFromDisplayRotation(
-      display.rotation(), display.IsInternal());
+  info->rotation_options =
+      RotationOptionsFromDisplayRotation(display.rotation());
   info->bounds = display.bounds();
   info->overscan = display_manager->GetOverscanInsets(display.id());
   info->work_area = display.work_area();
@@ -355,9 +342,8 @@ crosapi::mojom::DisplayUnitInfoPtr GetDisplayUnitInfo(
        display_info.display_modes()) {
     info->available_display_modes.emplace_back(
         GetDisplayMode(display_info, display_mode));
-    if (has_active_mode && display_mode.IsEquivalent(active_mode)) {
+    if (has_active_mode && display_mode.IsEquivalent(active_mode))
       info->selected_display_mode_index = display_mode_index;
-    }
     ++display_mode_index;
   }
 
@@ -382,23 +368,19 @@ crosapi::mojom::DisplayConfigResult ValidateDisplayProperties(
   display::DisplayManager* display_manager = GetDisplayManager();
 
   int64_t id = display.id();
-  if (id == display::kInvalidDisplayId) {
-    DISPLAY_LOG(ERROR) << "Invalid display id";
+  if (id == display::kInvalidDisplayId)
     return crosapi::mojom::DisplayConfigResult::kInvalidDisplayIdError;
-  }
 
   // Overscan cannot be changed for the internal display, and should be at most
   // half of the screen size.
   if (properties.overscan) {
-    if (display.IsInternal()) {
-      DISPLAY_LOG(ERROR) << "Overscan is not supported on the internal display";
+    if (display.IsInternal())
       return crosapi::mojom::DisplayConfigResult::
           kNotSupportedOnInternalDisplayError;
-    }
 
     if (properties.overscan->left() < 0 || properties.overscan->top() < 0 ||
         properties.overscan->right() < 0 || properties.overscan->bottom() < 0) {
-      DISPLAY_LOG(ERROR) << "Negative overscan";
+      DLOG(ERROR) << "Negative overscan";
       return crosapi::mojom::DisplayConfigResult::kPropertyValueOutOfRangeError;
     }
 
@@ -410,9 +392,9 @@ crosapi::mojom::DisplayConfigResult ValidateDisplayProperties(
             screen_width ||
         (properties.overscan->top() + properties.overscan->bottom()) * 2 >
             screen_height) {
-      DISPLAY_LOG(ERROR) << "Overscan: " << properties.overscan->ToString()
-                         << " exceeds bounds: " << screen_width << "x"
-                         << screen_height;
+      DLOG(ERROR) << "Overscan: " << properties.overscan->ToString()
+                  << " exceeds bounds: " << screen_width << "x"
+                  << screen_height;
       return crosapi::mojom::DisplayConfigResult::kPropertyValueOutOfRangeError;
     }
   }
@@ -422,15 +404,14 @@ crosapi::mojom::DisplayConfigResult ValidateDisplayProperties(
   if (properties.bounds_origin) {
     const display::Display& primary =
         display::Screen::GetScreen()->GetPrimaryDisplay();
-    if (id == primary.id() || properties.set_primary) {
+    if (id == primary.id() || properties.set_primary)
       return crosapi::mojom::DisplayConfigResult::
           kNotSupportedOnInternalDisplayError;
-    }
     if (properties.bounds_origin->x() > kMaxBoundsOrigin ||
         properties.bounds_origin->x() < -kMaxBoundsOrigin ||
         properties.bounds_origin->y() > kMaxBoundsOrigin ||
         properties.bounds_origin->y() < -kMaxBoundsOrigin) {
-      DISPLAY_LOG(ERROR) << "Bounds origin out of range";
+      DLOG(ERROR) << "Bounds origin out of range";
       return crosapi::mojom::DisplayConfigResult::kPropertyValueOutOfRangeError;
     }
   }
@@ -438,7 +419,7 @@ crosapi::mojom::DisplayConfigResult ValidateDisplayProperties(
   if (properties.display_zoom_factor > 0) {
     display::ManagedDisplayMode current_mode;
     if (!display_manager->GetActiveModeForDisplayId(id, &current_mode)) {
-      DISPLAY_LOG(ERROR) << "No active mode for display: " << id;
+      DLOG(ERROR) << "No active mode for display: " << id;
       return crosapi::mojom::DisplayConfigResult::kInvalidDisplayIdError;
     }
     // This check is added to limit the range of display zoom that can be
@@ -455,7 +436,7 @@ crosapi::mojom::DisplayConfigResult ValidateDisplayProperties(
                         current_mode.device_scale_factor();
     if (current_width / properties.display_zoom_factor > max_allowed_width ||
         current_width / properties.display_zoom_factor < min_allowed_width) {
-      DISPLAY_LOG(ERROR) << "Display zoom factor out of range";
+      DLOG(ERROR) << "Display zoom factor out of range";
       return crosapi::mojom::DisplayConfigResult::kPropertyValueOutOfRangeError;
     }
   }
@@ -491,9 +472,8 @@ crosapi::mojom::DisplayConfigResult SetDisplayMode(
   display::DisplayManager* display_manager = GetDisplayManager();
 
   display::ManagedDisplayMode current_mode;
-  if (!display_manager->GetActiveModeForDisplayId(id, &current_mode)) {
+  if (!display_manager->GetActiveModeForDisplayId(id, &current_mode))
     return crosapi::mojom::DisplayConfigResult::kInvalidDisplayIdError;
-  }
 
   display::ManagedDisplayMode new_mode(
       display_mode.size_in_native_pixels, display_mode.refresh_rate,
@@ -537,7 +517,7 @@ class CrosDisplayConfig::ObserverImpl
       public TabletModeObserver,
       public ScreenOrientationController::Observer {
  public:
-  ObserverImpl() {
+  explicit ObserverImpl() {
     Shell::Get()->tablet_mode_controller()->AddObserver(this);
     Shell::Get()->screen_orientation_controller()->AddObserver(this);
   }
@@ -584,9 +564,8 @@ class CrosDisplayConfig::ObserverImpl
 
  private:
   void NotifyObserversDisplayConfigChanged() {
-    for (auto& observer : observers_) {
+    for (auto& observer : observers_)
       observer->OnDisplayConfigChanged();
-    }
   }
 
   mojo::AssociatedRemoteSet<crosapi::mojom::CrosDisplayConfigObserver>
@@ -626,9 +605,8 @@ void CrosDisplayConfig::GetDisplayLayoutInfo(
     info->mirror_source_id =
         base::NumberToString(display_manager->mirroring_source_id());
     info->mirror_destination_ids = std::vector<std::string>();
-    for (int64_t id : display_manager->GetMirroringDestinationDisplayIdList()) {
+    for (int64_t id : display_manager->GetMirroringDestinationDisplayIdList())
       info->mirror_destination_ids->emplace_back(base::NumberToString(id));
-    }
   } else {
     info->layout_mode = crosapi::mojom::DisplayLayoutMode::kNormal;
   }
@@ -654,14 +632,13 @@ crosapi::mojom::DisplayConfigResult SetDisplayLayouts(
     const crosapi::mojom::DisplayLayout& layout = *layout_ptr;
     display::Display display = GetDisplay(layout.id);
     if (display.id() == display::kInvalidDisplayId) {
-      DISPLAY_LOG(ERROR) << "Display layout has invalid id: " << layout.id;
+      LOG(ERROR) << "Display layout has invalid id: " << layout.id;
       return crosapi::mojom::DisplayConfigResult::kInvalidDisplayIdError;
     }
     display::Display parent = GetDisplay(layout.parent_id);
     if (parent.id() == display::kInvalidDisplayId) {
       if (root_id != display::kInvalidDisplayId) {
-        DISPLAY_LOG(ERROR) << "Display layout has invalid parent: "
-                           << layout.parent_id;
+        LOG(ERROR) << "Display layout has invalid parent: " << layout.parent_id;
         return crosapi::mojom::DisplayConfigResult::kInvalidDisplayLayoutError;
       }
       root_id = display.id();
@@ -687,15 +664,14 @@ crosapi::mojom::DisplayConfigResult SetDisplayLayouts(
         }
       }
       if (root_id == display::kInvalidDisplayId) {
-        DISPLAY_LOG(ERROR) << "Invalid unified layout: No root display id";
+        LOG(ERROR) << "Invalid unified layout: No root id";
         return crosapi::mojom::DisplayConfigResult::kInvalidDisplayLayoutError;
       }
     }
     layout->primary_id = root_id;
     display::UnifiedDesktopLayoutMatrix matrix;
     if (!display::BuildUnifiedDesktopMatrix(display_ids, *layout, &matrix)) {
-      DISPLAY_LOG(ERROR)
-          << "Invalid unified layout: No proper conversion to a matrix";
+      LOG(ERROR) << "Invalid unified layout: No proper conversion to a matrix";
       return crosapi::mojom::DisplayConfigResult::kInvalidDisplayLayoutError;
     }
     Shell::Get()
@@ -703,7 +679,6 @@ crosapi::mojom::DisplayConfigResult SetDisplayLayouts(
         ->SetUnifiedDesktopLayoutMatrix(matrix);
   } else {
     if (!display::DisplayLayout::Validate(display_ids, *layout)) {
-      // No need to log an error since `Validate` already logged what's wrong.
       return crosapi::mojom::DisplayConfigResult::kInvalidDisplayLayoutError;
     }
     Shell::Get()->display_configuration_controller()->SetDisplayLayout(
@@ -742,9 +717,8 @@ void CrosDisplayConfig::GetDisplayUnitInfoList(
     displays = display::Screen::GetScreen()->GetAllDisplays();
     primary_id = display::Screen::GetScreen()->GetPrimaryDisplay().id();
   } else if (single_unified) {
-    for (size_t i = 0; i < display_manager->GetNumDisplays(); ++i) {
+    for (size_t i = 0; i < display_manager->GetNumDisplays(); ++i)
       displays.push_back(display_manager->GetDisplayAt(i));
-    }
     primary_id = display::Screen::GetScreen()->GetPrimaryDisplay().id();
   } else {
     displays = display_manager->software_mirroring_display_list();
@@ -754,9 +728,8 @@ void CrosDisplayConfig::GetDisplayUnitInfoList(
                      .id();
   }
 
-  for (const display::Display& display : displays) {
+  for (const display::Display& display : displays)
     info_list.emplace_back(GetDisplayUnitInfo(display, primary_id));
-  }
   std::move(callback).Run(std::move(info_list));
 }
 
@@ -784,9 +757,8 @@ void CrosDisplayConfig::SetDisplayProperties(
         display.id(), false /* don't throttle */);
   }
 
-  if (properties->overscan) {
+  if (properties->overscan)
     display_manager->SetOverscanInsets(display.id(), *properties->overscan);
-  }
 
   if (properties->rotation) {
     const crosapi::mojom::DisplayRotationOptions rotation_options =
@@ -797,14 +769,19 @@ void CrosDisplayConfig::SetDisplayProperties(
         screen_orientation_controller->IsAutoRotationAllowed();
     const bool auto_rotate_requested =
         rotation_options == crosapi::mojom::DisplayRotationOptions::kAutoRotate;
+    if (auto_rotate_requested && !is_auto_rotation_allowed) {
+      LOG(ERROR) << "Auto-rotate is supported when the device is in physical "
+                 << "tablet state or kSupportsClamshellAutoRotation is set. "
+                 << "This will be treated as a request to set the display "
+                 << "rotation to 0 degrees.";
+    }
 
     display::Display::Rotation rotation =
         DisplayRotationFromRotationOptions(properties->rotation->rotation);
-    if (is_auto_rotation_allowed && display.IsInternal()) {
+    if (display.id() == primary.id() && is_auto_rotation_allowed) {
       if (auto_rotate_requested) {
-        if (screen_orientation_controller->user_rotation_locked()) {
+        if (screen_orientation_controller->user_rotation_locked())
           screen_orientation_controller->ToggleUserRotationLock();
-        }
       } else {
         screen_orientation_controller->SetLockToRotation(rotation);
       }
@@ -850,7 +827,7 @@ void CrosDisplayConfig::SetUnifiedDesktopEnabled(bool enabled) {
 void CrosDisplayConfig::OverscanCalibration(
     const std::string& display_id,
     crosapi::mojom::DisplayConfigOperation op,
-    const std::optional<gfx::Insets>& delta,
+    const absl::optional<gfx::Insets>& delta,
     OverscanCalibrationCallback callback) {
   display::Display display = GetDisplay(display_id);
   if (display.id() == display::kInvalidDisplayId) {
@@ -861,7 +838,7 @@ void CrosDisplayConfig::OverscanCalibration(
 
   OverscanCalibrator* calibrator = GetOverscanCalibrator(display_id);
   if (!calibrator && op != crosapi::mojom::DisplayConfigOperation::kStart) {
-    DISPLAY_LOG(ERROR) << "Calibrator does not exist for op=" << op;
+    LOG(ERROR) << "Calibrator does not exist for op=" << op;
     std::move(callback).Run(
         crosapi::mojom::DisplayConfigResult::kCalibrationNotAvailableError);
     return;
@@ -872,9 +849,8 @@ void CrosDisplayConfig::OverscanCalibration(
       gfx::Insets insets =
           Shell::Get()->window_tree_host_manager()->GetOverscanInsets(
               display.id());
-      if (calibrator) {
+      if (calibrator)
         DVLOG(1) << "Replacing existing calibrator for id: " << display_id;
-      }
       overscan_calibrators_[display_id] =
           std::make_unique<OverscanCalibrator>(display, insets);
       break;
@@ -882,8 +858,7 @@ void CrosDisplayConfig::OverscanCalibration(
     case crosapi::mojom::DisplayConfigOperation::kAdjust:
       DVLOG(1) << "OverscanCalibrationAdjust: " << display_id;
       if (!delta) {
-        DISPLAY_LOG(ERROR) << "Delta not provided for for adjust: "
-                           << display_id;
+        LOG(ERROR) << "Delta not provided for for adjust: " << display_id;
         std::move(callback).Run(
             crosapi::mojom::DisplayConfigResult::kCalibrationFailedError);
         return;
@@ -900,7 +875,7 @@ void CrosDisplayConfig::OverscanCalibration(
       overscan_calibrators_[display_id].reset();
       break;
     case crosapi::mojom::DisplayConfigOperation::kShowNative:
-      DISPLAY_LOG(ERROR) << "Operation not supported: " << op;
+      LOG(ERROR) << "Operation not supported: " << op;
       std::move(callback).Run(
           crosapi::mojom::DisplayConfigResult::kInvalidOperationError);
       return;
@@ -920,14 +895,14 @@ void CrosDisplayConfig::TouchCalibration(
     return;
   }
   if (display.IsInternal()) {
-    DISPLAY_LOG(ERROR) << "Internal display cannot be calibrated for touch: "
-                       << display_id;
+    LOG(ERROR) << "Internal display cannot be calibrated for touch: "
+               << display_id;
     std::move(callback).Run(
         crosapi::mojom::DisplayConfigResult::kCalibrationNotAvailableError);
     return;
   }
   if (!display::HasExternalTouchscreenDevice()) {
-    DISPLAY_LOG(ERROR)
+    LOG(ERROR)
         << "Touch calibration called with no external touch screen device.";
     std::move(callback).Run(
         crosapi::mojom::DisplayConfigResult::kCalibrationNotAvailableError);
@@ -937,14 +912,13 @@ void CrosDisplayConfig::TouchCalibration(
   if (op == crosapi::mojom::DisplayConfigOperation::kStart ||
       op == crosapi::mojom::DisplayConfigOperation::kShowNative) {
     if (touch_calibrator_ && touch_calibrator_->IsCalibrating()) {
-      DISPLAY_LOG(ERROR) << "Touch calibration already active.";
+      LOG(ERROR) << "Touch calibration already active.";
       std::move(callback).Run(
           crosapi::mojom::DisplayConfigResult::kCalibrationInProgressError);
       return;
     }
-    if (!touch_calibrator_) {
+    if (!touch_calibrator_)
       touch_calibrator_ = std::make_unique<TouchCalibratorController>();
-    }
     if (op == crosapi::mojom::DisplayConfigOperation::kShowNative) {
       // For native calibration, |callback| is not run until calibration
       // completes.
@@ -969,27 +943,27 @@ void CrosDisplayConfig::TouchCalibration(
 
   if (op == crosapi::mojom::DisplayConfigOperation::kReset) {
     Shell::Get()->display_manager()->ClearTouchCalibrationData(display.id(),
-                                                               std::nullopt);
+                                                               absl::nullopt);
     std::move(callback).Run(crosapi::mojom::DisplayConfigResult::kSuccess);
     return;
   }
 
   if (op != crosapi::mojom::DisplayConfigOperation::kComplete) {
-    DISPLAY_LOG(ERROR) << "Unknown operation: " << op;
+    LOG(ERROR) << "Unknown operation: " << op;
     std::move(callback).Run(
         crosapi::mojom::DisplayConfigResult::kCalibrationNotStartedError);
     return;
   }
 
   if (!touch_calibrator_) {
-    DISPLAY_LOG(ERROR) << "Touch calibration not active.";
+    LOG(ERROR) << "Touch calibration not active.";
     std::move(callback).Run(
         crosapi::mojom::DisplayConfigResult::kCalibrationNotStartedError);
     return;
   }
 
   if (!calibration || calibration->pairs.size() != 4) {
-    DISPLAY_LOG(ERROR) << "Touch calibration requires four calibration pairs.";
+    LOG(ERROR) << "Touch calibration requires four calibration pairs.";
     std::move(callback).Run(
         crosapi::mojom::DisplayConfigResult::kCalibrationInvalidDataError);
     return;
@@ -1008,7 +982,7 @@ void CrosDisplayConfig::TouchCalibration(
     // Coordinates for display and touch point cannot be negative.
     if (calibration_point.first.x() < 0 || calibration_point.first.y() < 0 ||
         calibration_point.second.x() < 0 || calibration_point.second.y() < 0) {
-      DISPLAY_LOG(ERROR)
+      LOG(ERROR)
           << "Display points and touch points cannot have negative coordinates";
       touch_calibrator_->StopCalibrationAndResetParams();
       std::move(callback).Run(
@@ -1019,9 +993,8 @@ void CrosDisplayConfig::TouchCalibration(
     // bounds.
     if (calibration_point.first.x() > bounds.width() ||
         calibration_point.first.y() > bounds.height()) {
-      DISPLAY_LOG(ERROR)
-          << "Display point coordinates cannot be more than size of the "
-             "display.";
+      LOG(ERROR) << "Display point coordinates cannot be more than size of the "
+                    "display.";
       touch_calibrator_->StopCalibrationAndResetParams();
       std::move(callback).Run(
           crosapi::mojom::DisplayConfigResult::kCalibrationInvalidDataError);

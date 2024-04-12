@@ -24,26 +24,19 @@ BinaryUploadService* CloudBinaryUploadServiceFactory::GetForProfile(
 // static
 CloudBinaryUploadServiceFactory*
 CloudBinaryUploadServiceFactory::GetInstance() {
-  static base::NoDestructor<CloudBinaryUploadServiceFactory> instance;
-  return instance.get();
+  return base::Singleton<CloudBinaryUploadServiceFactory>::get();
 }
 
 CloudBinaryUploadServiceFactory::CloudBinaryUploadServiceFactory()
     : ProfileKeyedServiceFactory(
           "CloudBinaryUploadService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
-std::unique_ptr<KeyedService>
-CloudBinaryUploadServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* CloudBinaryUploadServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   // TODO(b/226679912): Add logic to select service based on analysis settings.
   Profile* profile = Profile::FromBrowserContext(context);
-  return std::make_unique<CloudBinaryUploadService>(profile);
+  return new CloudBinaryUploadService(profile);
 }
 
 }  // namespace safe_browsing

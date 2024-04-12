@@ -21,7 +21,6 @@
 #include "third_party/blink/renderer/core/page/scrolling/top_document_root_scroller_controller.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
-#include "third_party/blink/renderer/core/paint/transform_utils.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
@@ -36,8 +35,10 @@ bool ShouldPreferCompositingForLayoutView(const LayoutView& layout_view) {
   }
 
   auto has_direct_compositing_reasons = [](const LayoutObject* object) -> bool {
-    return object && CompositingReasonFinder::DirectReasonsForPaintProperties(
-                         *object) != CompositingReason::kNone;
+    return object &&
+           CompositingReasonFinder::
+                   DirectReasonsForPaintPropertiesExceptScrolling(*object) !=
+               CompositingReason::kNone;
   };
   if (has_direct_compositing_reasons(
           layout_view.GetFrame()->OwnerLayoutObject()))
@@ -110,9 +111,8 @@ CompositingReasons CompositingReasonsFor3DTransform(
     // In theory this should operate on fragment sizes, but using the box size
     // is probably good enough for a use counter.
     auto& box = To<LayoutBox>(layout_object);
-    const PhysicalRect reference_box = ComputeReferenceBox(box);
     gfx::Transform matrix;
-    style.ApplyTransform(matrix, &box, reference_box,
+    style.ApplyTransform(matrix, &box, box.Size(),
                          ComputedStyle::kIncludeTransformOperations,
                          ComputedStyle::kExcludeTransformOrigin,
                          ComputedStyle::kExcludeMotionPath,
@@ -150,7 +150,7 @@ CompositingReasons CompositingReasonsFor3DSceneLeaf(
   // This could be improved by skipping this if we know that the descendants
   // won't produce any quads in the render pass's quad list.
   if (layout_object.IsText()) {
-    // A LayoutBR is both IsText() and IsForElement(), but we shouldn't
+    // A LayoutNGBR is both IsText() and IsForElement(), but we shouldn't
     // produce compositing reasons if IsText() is true.  Since we only need
     // this for objects that have interesting descendants, we can just return.
     return CompositingReason::kNone;
@@ -220,13 +220,11 @@ CompositingReasons CompositingReasonsForViewportScrollEffect(
   // This ensures that the scroll_translation_for_fixed will be initialized in
   // FragmentPaintPropertyTreeBuilder::UpdatePaintOffsetTranslation which in
   // turn ensures that a TransformNode is created (for fixed elements) in cc.
-  if (frame->GetPage()->GetVisualViewport().GetOverscrollType() ==
-      OverscrollType::kTransform) {
-    reasons |= CompositingReason::kFixedPosition;
-    if (!To<LayoutBox>(layout_object)
-             .AnchorPositionScrollAdjustmentAfectedByViewportScrolling()) {
-      reasons |= CompositingReason::kUndoOverscroll;
-    }
+  if (RuntimeEnabledFeatures::FixedElementsDontOverscrollEnabled() &&
+      frame->GetPage()->GetVisualViewport().GetOverscrollType() ==
+          OverscrollType::kTransform) {
+    reasons |=
+        CompositingReason::kFixedPosition | CompositingReason::kUndoOverscroll;
   }
 
   if (layout_object.StyleRef().IsFixedToBottom()) {
@@ -254,9 +252,8 @@ CompositingReasons CompositingReasonsForScrollDependentPosition(
         reasons |= CompositingReason::kFixedPosition;
     }
 
-    if (box->NeedsAnchorPositionScrollAdjustment()) {
-      reasons |= CompositingReason::kAnchorPosition;
-    }
+    if (box->HasAnchorScrollTranslation())
+      reasons |= CompositingReason::kAnchorScroll;
   }
 
   // Don't promote sticky position elements that cannot move with scrolls.
@@ -285,37 +282,10 @@ bool ObjectTypeSupportsCompositedTransformAnimation(
   return object.IsBox();
 }
 
-// Defined by the Element Capture specification:
-// https://screen-share.github.io/element-capture/#elements-eligible-for-restriction
-bool IsEligibleForElementCapture(const LayoutObject& object) {
-  // The element forms a stacking context.
-  if (!object.IsStackingContext()) {
-    return false;
-  }
-
-  // The element is flattened in 3D.
-  if (!object.CreatesGroup()) {
-    return false;
-  }
-
-  // The element forms a backdrop root.
-  // See ViewTransitionUtils::IsViewTransitionParticipant and
-  // NeedsEffectIgnoringClipPath for how View Transitions meets this
-  // requirement.
-  // TODO(https://issuetracker.google.com/291602746): handle backdrop root case.
-
-  // The element has exactly one box fragment.
-  if (object.IsBox() && To<LayoutBox>(object).PhysicalFragmentCount() > 1) {
-    return false;
-  }
-
-  // Meets all of the conditions for element capture.
-  return true;
-}
-
 }  // anonymous namespace
 
-CompositingReasons CompositingReasonFinder::DirectReasonsForPaintProperties(
+CompositingReasons
+CompositingReasonFinder::DirectReasonsForPaintPropertiesExceptScrolling(
     const LayoutObject& object,
     const LayoutObject* container_for_fixed_position) {
   if (object.GetDocument().Printing())
@@ -326,6 +296,7 @@ CompositingReasons CompositingReasonFinder::DirectReasonsForPaintProperties(
   if (object.CanHaveAdditionalCompositingReasons())
     reasons |= object.AdditionalCompositingReasons();
 
+  // TODO(wangxianzhu): Don't depend on PaintLayer.
   if (!object.HasLayer()) {
     if (object.IsSVGChild())
       reasons |= DirectReasonsForSVGChildPaintProperties(object);
@@ -376,7 +347,7 @@ CompositingReasons CompositingReasonFinder::DirectReasonsForPaintProperties(
   }
 
   if (auto* transition =
-          ViewTransitionUtils::GetTransition(object.GetDocument())) {
+          ViewTransitionUtils::GetActiveTransition(object.GetDocument())) {
     // Note that `NeedsViewTransitionEffectNode` returns true for values that
     // are in the non-transition-pseudo tree DOM. That is, things like layout
     // view or the view transition elements that we are transitioning.
@@ -385,25 +356,17 @@ CompositingReasons CompositingReasonFinder::DirectReasonsForPaintProperties(
     }
   }
 
-  auto* element = DynamicTo<Element>(object.GetNode());
-  if (element && element->GetRestrictionTargetId()) {
-    const bool is_eligible = IsEligibleForElementCapture(object);
-    element->SetIsEligibleForElementCapture(is_eligible);
-    if (is_eligible) {
-      reasons |= CompositingReason::kElementCapture;
-    }
-  }
-
   return reasons;
 }
 
 bool CompositingReasonFinder::ShouldForcePreferCompositingToLCDText(
     const LayoutObject& object,
-    CompositingReasons reasons) {
-  DCHECK_EQ(reasons, DirectReasonsForPaintProperties(object));
-  if (reasons != CompositingReason::kNone) {
+    CompositingReasons reasons_except_scrolling) {
+  DCHECK_EQ(reasons_except_scrolling,
+            DirectReasonsForPaintPropertiesExceptScrolling(object));
+
+  if (reasons_except_scrolling != CompositingReason::kNone)
     return true;
-  }
 
   if (object.StyleRef().WillChangeScrollPosition())
     return true;
@@ -418,6 +381,25 @@ bool CompositingReasonFinder::ShouldForcePreferCompositingToLCDText(
     return ShouldPreferCompositingForLayoutView(*layout_view);
 
   return false;
+}
+
+CompositingReasons CompositingReasonFinder::DirectReasonsForPaintProperties(
+    const LayoutObject& object,
+    CompositingReasons reasons_except_scrolling) {
+  DCHECK_EQ(reasons_except_scrolling,
+            DirectReasonsForPaintPropertiesExceptScrolling(object));
+  if (auto* box = DynamicTo<LayoutBox>(object)) {
+    if (auto* scrollable_area = box->GetScrollableArea()) {
+#if DCHECK_IS_ON()
+      scrollable_area->CheckNeedsCompositedScrollingIsUpToDate(
+          ShouldForcePreferCompositingToLCDText(object,
+                                                reasons_except_scrolling));
+#endif
+      if (scrollable_area->NeedsCompositedScrolling())
+        return reasons_except_scrolling | CompositingReason::kOverflowScrolling;
+    }
+  }
+  return reasons_except_scrolling;
 }
 
 CompositingReasons

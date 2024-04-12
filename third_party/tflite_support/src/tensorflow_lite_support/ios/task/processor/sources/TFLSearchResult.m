@@ -16,7 +16,8 @@
 
 @implementation TFLNearestNeighbor
 
-- (instancetype)initWithMetadata:(NSString *)metadata distance:(CGFloat)distance {
+- (instancetype)initWithMetadata:(NSString*)metadata
+                        distance:(CGFloat)distance {
   self = [super init];
   if (self) {
     _metadata = [metadata copy];
@@ -25,15 +26,17 @@
   return self;
 }
 
-- (id)copyWithZone:(NSZone *)zone {
-  return [[TFLNearestNeighbor alloc] initWithMetadata:self.metadata distance:self.distance];
+- (id)copyWithZone:(NSZone*)zone {
+  return [[TFLNearestNeighbor alloc] initWithMetadata:self.metadata
+                                             distance:self.distance];
 }
 
 @end
 
 @implementation TFLSearchResult
 
-- (instancetype)initWithNearestNeighbors:(NSArray<TFLNearestNeighbor *> *)nearestNeighbors {
+- (instancetype)initWithNearestNeighbors:
+    (NSArray<TFLNearestNeighbor*>*)nearestNeighbors {
   self = [super init];
   if (self) {
     _nearestNeighbors = [nearestNeighbors copy];
@@ -41,8 +44,9 @@
   return self;
 }
 
-- (id)copyWithZone:(NSZone *)zone {
-  return [[TFLSearchResult alloc] initWithNearestNeighbors:self.nearestNeighbors];
+- (id)copyWithZone:(NSZone*)zone {
+  return
+      [[TFLSearchResult alloc] initWithNearestNeighbors:self.nearestNeighbors];
 }
 
 @end

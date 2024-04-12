@@ -19,17 +19,13 @@
 #include "chrome/grit/side_panel_user_notes_resources_map.h"
 #include "components/prefs/pref_service.h"
 #include "components/strings/grit/components_strings.h"
-#include "components/user_notes/user_notes_features.h"
 #include "components/user_notes/user_notes_prefs.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "ui/base/ui_base_features.h"
 
 UserNotesSidePanelUI::UserNotesSidePanelUI(content::WebUI* web_ui)
-    : TopChromeWebUIController(web_ui, true) {
-  if (!user_notes::IsUserNotesEnabled()) {
-    return;
-  }
+    : ui::MojoBubbleWebUIController(web_ui, true) {
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       web_ui->GetWebContents()->GetBrowserContext(),
       chrome::kChromeUIUserNotesSidePanelHost);

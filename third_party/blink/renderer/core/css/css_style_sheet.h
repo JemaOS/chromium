@@ -23,7 +23,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_STYLE_SHEET_H_
 
 #include "base/gtest_prod_util.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_rule.h"
 #include "third_party/blink/renderer/core/css/media_query_evaluator.h"
@@ -48,9 +47,9 @@ class CSSRuleList;
 class CSSStyleSheet;
 class CSSStyleSheetInit;
 class Document;
-class Element;
 class ExceptionState;
 class MediaQuerySet;
+class ScriptPromise;
 class ScriptState;
 class StyleSheetContents;
 class TreeScope;
@@ -97,7 +96,7 @@ class CORE_EXPORT CSSStyleSheet final : public StyleSheet,
   ~CSSStyleSheet() override;
 
   CSSStyleSheet* parentStyleSheet() const override;
-  Node* ownerNode() const override { return owner_node_.Get(); }
+  Node* ownerNode() const override { return owner_node_; }
   MediaList* media() override;
   String href() const override;
   String title() const override { return title_; }
@@ -119,39 +118,18 @@ class CORE_EXPORT CSSStyleSheet final : public StyleSheet,
     deleteRule(index, exception_state);
   }
 
-  ScriptPromiseTyped<CSSStyleSheet> replace(ScriptState* script_state,
-                                            const String& text,
-                                            ExceptionState&);
+  ScriptPromise replace(ScriptState* script_state,
+                        const String& text,
+                        ExceptionState&);
   void replaceSync(const String& text, ExceptionState&);
 
   // For CSSRuleList.
   unsigned length() const;
-  CSSRule* item(unsigned index, bool trigger_use_counters = true);
-
-  // Get an item, but signal that it's been requested internally from the
-  // engine, and not directly from a script.
-  CSSRule* ItemInternal(unsigned index) {
-    return item(index, /*trigger_use_counters=*/false);
-  }
+  CSSRule* item(unsigned index);
 
   void ClearOwnerNode() override;
 
-  CSSRule* ownerRule() const override { return owner_rule_.Get(); }
-
-  // If the CSSStyleSheet was created with an owner node, this function
-  // returns that owner node's parent element (or shadow host), if any.
-  //
-  // This is stored separately from `owner_node_`, because we need to access
-  // this element even after ClearOwnerNode() has been called in order to
-  // remove implicit scope triggers during ScopedStyleResolver::ResetStyle.
-  //
-  // Note that removing a <style> element from the document causes a call to
-  // ClearOwnerNode to immediately, but the subsequent call to ResetStyle
-  // happens during the next active style update.
-  Element* OwnerParentOrShadowHostElement() const {
-    return owner_parent_or_shadow_host_element_;
-  }
-
+  CSSRule* ownerRule() const override { return owner_rule_; }
   KURL BaseURL() const override;
   bool IsLoading() const override;
 
@@ -181,14 +159,9 @@ class CORE_EXPORT CSSStyleSheet final : public StyleSheet,
   void AddedAdoptedToTreeScope(TreeScope& tree_scope);
   void RemovedAdoptedFromTreeScope(TreeScope& tree_scope);
 
-  // True when this stylesheet is among the TreeScope's adopted style sheets.
-  //
-  // https://drafts.csswg.org/cssom/#dom-documentorshadowroot-adoptedstylesheets
-  bool IsAdoptedByTreeScope(TreeScope& tree_scope);
-
   // Associated document for constructed stylesheet. Always non-null for
   // constructed stylesheets, always null otherwise.
-  Document* ConstructorDocument() const { return constructor_document_.Get(); }
+  Document* ConstructorDocument() const { return constructor_document_; }
 
   // Set constructor document for constructed stylesheet.
   void SetConstructorDocument(Document& document) {
@@ -295,7 +268,6 @@ class CORE_EXPORT CSSStyleSheet final : public StyleSheet,
   String title_;
 
   Member<Node> owner_node_;
-  WeakMember<Element> owner_parent_or_shadow_host_element_;
   Member<CSSRule> owner_rule_;
   HeapHashSet<WeakMember<TreeScope>> adopted_tree_scopes_;
   // The Document this stylesheet was constructed for. Always non-null for

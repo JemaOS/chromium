@@ -84,8 +84,4 @@ void PinSetupScreenHandler::SetLoginSupportAvailable(bool available) {
   CallExternalAPI("setHasLoginSupport", available);
 }
 
-base::WeakPtr<PinSetupScreenView> PinSetupScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 }  // namespace ash

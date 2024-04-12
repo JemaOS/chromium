@@ -18,7 +18,6 @@
 #include "components/infobars/core/infobar.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_id.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace extensions {
@@ -130,7 +129,7 @@ IncognitoConnectability::TabContext::TabContext() : infobar(nullptr) {
 IncognitoConnectability::TabContext::~TabContext() = default;
 
 void IncognitoConnectability::OnInteractiveResponse(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     const GURL& origin,
     infobars::ContentInfoBarManager* infobar_manager,
     ScopedAlertTracker::Mode response) {

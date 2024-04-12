@@ -4,8 +4,6 @@
 
 #include "chrome/browser/ui/views/global_media_controls/media_item_ui_footer_view.h"
 
-#include <utility>
-
 #include "base/memory/raw_ptr.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
@@ -29,9 +27,8 @@ constexpr int kDeviceIconSize = 12;
 
 // Label button with custom hover effect.
 class DeviceEntryButton : public views::LabelButton {
-  METADATA_HEADER(DeviceEntryButton, views::LabelButton)
-
  public:
+  METADATA_HEADER(DeviceEntryButton);
   explicit DeviceEntryButton(PressedCallback callback,
                              const gfx::VectorIcon* icon = nullptr,
                              const std::u16string& text = std::u16string());
@@ -52,7 +49,7 @@ class DeviceEntryButton : public views::LabelButton {
 DeviceEntryButton::DeviceEntryButton(PressedCallback callback,
                                      const gfx::VectorIcon* icon,
                                      const std::u16string& text)
-    : LabelButton(std::move(callback), text), icon_(icon) {
+    : LabelButton(callback, text), icon_(icon) {
   ConfigureInkDropForToolbar(this);
   views::InkDrop::Get(this)->SetBaseColorCallback(base::BindRepeating(
       &DeviceEntryButton::GetForegroundColor, base::Unretained(this)));
@@ -89,7 +86,7 @@ void DeviceEntryButton::UpdateImage() {
                                                kDeviceIconSize));
 }
 
-BEGIN_METADATA(DeviceEntryButton)
+BEGIN_METADATA(DeviceEntryButton, views::LabelButton)
 END_METADATA
 
 }  // anonymous namespace
@@ -155,16 +152,16 @@ void MediaItemUIFooterView::OnMediaItemUIDeviceSelectorUpdated(
   UpdateButtonsColor();
 }
 
-void MediaItemUIFooterView::Layout(PassKey) {
+void MediaItemUIFooterView::Layout() {
   if (!overflow_button_) {
-    LayoutSuperclass<views::View>(this);
+    views::View::Layout();
     return;
   }
 
   overflow_button_->SetVisible(false);
   if (GetPreferredSize().width() > GetContentsBounds().width())
     overflow_button_->SetVisible(true);
-  LayoutSuperclass<views::View>(this);
+  views::View::Layout();
 }
 
 void MediaItemUIFooterView::OnColorsChanged(SkColor foreground,
@@ -178,9 +175,8 @@ void MediaItemUIFooterView::SetDelegate(Delegate* delegate) {
 }
 
 void MediaItemUIFooterView::UpdateButtonsColor() {
-  for (views::View* view : children()) {
+  for (auto* view : children())
     static_cast<DeviceEntryButton*>(view)->UpdateColor(foreground_color_);
-  }
 }
 
 void MediaItemUIFooterView::OnDeviceSelected(int tag) {
@@ -197,6 +193,3 @@ void MediaItemUIFooterView::OnOverflowButtonClicked() {
                                 ? &kMediaControlsArrowDropUpIcon
                                 : &kMediaControlsArrowDropDownIcon);
 }
-
-BEGIN_METADATA(MediaItemUIFooterView)
-END_METADATA

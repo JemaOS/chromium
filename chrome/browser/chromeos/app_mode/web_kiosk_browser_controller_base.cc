@@ -12,16 +12,15 @@
 #include "chrome/browser/ui/web_applications/web_app_ui_manager_impl.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_tab_helper.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/web_contents.h"
 #include "url/gurl.h"
 
-namespace chromeos {
+namespace ash {
 
 WebKioskBrowserControllerBase::WebKioskBrowserControllerBase(
     web_app::WebAppProvider& provider,
     Browser* browser,
-    webapps::AppId app_id)
+    web_app::AppId app_id)
     : AppBrowserController(browser, std::move(app_id), false),
       provider_(provider) {}
 
@@ -103,4 +102,4 @@ web_app::WebAppRegistrar& WebKioskBrowserControllerBase::registrar() const {
   return provider_->registrar_unsafe();
 }
 
-}  // namespace chromeos
+}  // namespace ash

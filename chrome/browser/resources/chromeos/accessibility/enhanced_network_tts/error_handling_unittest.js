@@ -13,7 +13,7 @@ EnhancedNetworkTtsErrorHandlingUnitTest =
   testGenPreamble() {
     super.testGenPreamble();
     super.testGenPreambleCommon(
-        'kEnhancedNetworkTtsExtensionId', false /* failOnConsoleError */);
+        'kSelectToSpeakExtensionId', false /* failOnConsoleError */);
   }
 };
 

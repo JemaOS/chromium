@@ -14,22 +14,11 @@
 
 namespace ui {
 
-bool IsPlatformWindowStateFullscreen(PlatformWindowState state) {
-  return state == PlatformWindowState::kFullScreen ||
-         state == PlatformWindowState::kPinnedFullscreen ||
-         state == PlatformWindowState::kTrustedPinnedFullscreen;
-}
-
 bool PlatformWindowDelegate::State::ProducesFrameOnUpdateFrom(
     const State& old) const {
-  // Changing the bounds origin won't produce a new frame. Anything else will,
-  // except for the occlusion state. We do not check that here since there isn't
-  // enough information to determine if it will produce a frame, as it depends
-  // on whether native occlusion is enabled and if the ui compositor changes
-  // visibility.
+  // Changing the bounds origin won't produce a new frame. Anything else will.
   return old.bounds_dip.size() != bounds_dip.size() || old.size_px != size_px ||
-         old.window_scale != window_scale || old.raster_scale != raster_scale ||
-         old.insets != insets;
+         old.window_scale != window_scale || old.raster_scale != raster_scale;
 }
 
 std::string PlatformWindowDelegate::State::ToString() const {
@@ -39,7 +28,6 @@ std::string PlatformWindowDelegate::State::ToString() const {
   result << ", size_px = " << size_px.ToString();
   result << ", window_scale = " << window_scale;
   result << ", raster_scale = " << raster_scale;
-  result << ", insets = " << insets.ToString();
   result << "}";
   return result.str();
 }
@@ -48,31 +36,17 @@ PlatformWindowDelegate::PlatformWindowDelegate() = default;
 
 PlatformWindowDelegate::~PlatformWindowDelegate() = default;
 
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
 void PlatformWindowDelegate::OnWindowTiledStateChanged(
     WindowTiledEdges new_tiled_edges) {}
 #endif
 
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-void PlatformWindowDelegate::OnFullscreenTypeChanged(
-    PlatformFullscreenType old_type,
-    PlatformFullscreenType new_type) {}
-#endif
-
-std::optional<gfx::Size> PlatformWindowDelegate::GetMinimumSizeForWindow() {
-  return std::nullopt;
+absl::optional<gfx::Size> PlatformWindowDelegate::GetMinimumSizeForWindow() {
+  return absl::nullopt;
 }
 
-std::optional<gfx::Size> PlatformWindowDelegate::GetMaximumSizeForWindow() {
-  return std::nullopt;
-}
-
-bool PlatformWindowDelegate::CanMaximize() {
-  return false;
-}
-
-bool PlatformWindowDelegate::CanFullscreen() {
-  return false;
+absl::optional<gfx::Size> PlatformWindowDelegate::GetMaximumSizeForWindow() {
+  return absl::nullopt;
 }
 
 SkPath PlatformWindowDelegate::GetWindowMaskForWindowShapeInPixels() {
@@ -80,6 +54,10 @@ SkPath PlatformWindowDelegate::GetWindowMaskForWindowShapeInPixels() {
 }
 
 void PlatformWindowDelegate::OnSurfaceFrameLockingChanged(bool lock) {}
+
+absl::optional<MenuType> PlatformWindowDelegate::GetMenuType() {
+  return absl::nullopt;
+}
 
 void PlatformWindowDelegate::OnOcclusionStateChanged(
     PlatformWindowOcclusionState occlusion_state) {}
@@ -90,21 +68,15 @@ int64_t PlatformWindowDelegate::OnStateUpdate(const State& old,
   return -1;
 }
 
-std::optional<OwnedWindowAnchor>
+absl::optional<OwnedWindowAnchor>
 PlatformWindowDelegate::GetOwnedWindowAnchorAndRectInDIP() {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void PlatformWindowDelegate::SetFrameRateThrottleEnabled(bool enabled) {}
 
 void PlatformWindowDelegate::OnTooltipShownOnServer(const std::u16string& text,
                                                     const gfx::Rect& bounds) {}
-
-bool PlatformWindowDelegate::OnRotateFocus(
-    PlatformWindowDelegate::RotateDirection direction,
-    bool reset) {
-  return false;
-}
 
 void PlatformWindowDelegate::OnTooltipHiddenOnServer() {}
 
@@ -122,7 +94,5 @@ gfx::PointF PlatformWindowDelegate::ConvertScreenPointToLocalDIP(
     const gfx::Point& screen_in_pixels) const {
   return gfx::PointF(screen_in_pixels);
 }
-
-void PlatformWindowDelegate::DisableNativeWindowOcclusion() {}
 
 }  // namespace ui

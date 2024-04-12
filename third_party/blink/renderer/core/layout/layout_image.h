@@ -122,6 +122,7 @@ class CORE_EXPORT LayoutImage : public LayoutReplaced {
   }
 
  protected:
+  bool NeedsPreferredWidthsRecalculation() const final;
   SVGImage* EmbeddedSVGImage() const;
   bool CanApplyObjectViewBox() const override;
   void ComputeIntrinsicSizingInfo(IntrinsicSizingInfo&) const override;
@@ -130,9 +131,9 @@ class CORE_EXPORT LayoutImage : public LayoutReplaced {
 
   void Paint(const PaintInfo&) const final;
 
-  bool IsLayoutImage() const final {
+  bool IsOfType(LayoutObjectType type) const override {
     NOT_DESTROYED();
-    return true;
+    return type == kLayoutObjectImage || LayoutReplaced::IsOfType(type);
   }
 
   void WillBeDestroyed() override;
@@ -169,7 +170,7 @@ class CORE_EXPORT LayoutImage : public LayoutReplaced {
                    HitTestPhase) final;
 
   void InvalidatePaintAndMarkForLayoutIfNeeded(CanDeferInvalidation);
-  void UpdateIntrinsicSizeIfNeeded(const PhysicalSize&);
+  void UpdateIntrinsicSizeIfNeeded(const LayoutSize&);
   bool NeedsLayoutOnIntrinsicSizeChange() const;
   // Override intrinsic sizing info to default if "unsized-media"
   // is disabled and the element has no sizing info.

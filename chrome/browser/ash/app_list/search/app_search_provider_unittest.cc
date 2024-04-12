@@ -12,14 +12,12 @@
 #include <utility>
 
 #include "ash/components/arc/test/fake_app_instance.h"
-#include "ash/constants/ash_features.h"
 #include "ash/public/cpp/app_list/internal_app_id_constants.h"
 #include "base/containers/contains.h"
 #include "base/i18n/rtl.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/test/scoped_feature_list.h"
 #include "base/time/time.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
@@ -55,6 +53,7 @@ constexpr char kGmailExtensionName[] = "Gmail Ext";
 constexpr char kGmailArcPackage[] = "com.google.android.gm";
 constexpr char kGmailArcActivity[] =
     "com.google.android.gm.ConversationListActivityGmail";
+constexpr char kKeyboardShortcutHelperInternalName[] = "Shortcuts";
 
 constexpr char kRankingAppQuery[] = "testRankingApp";
 
@@ -78,15 +77,16 @@ void UpdateIconKey(apps::AppServiceProxy& proxy, const std::string& app_id) {
       app_id, [&app_type, &icon_key](const apps::AppUpdate& update) {
         app_type = update.AppType();
         icon_key = std::make_unique<apps::IconKey>(
-            /*raw_icon_updated=*/true, update.IconKey()->icon_effects);
+            update.IconKey()->timeline + 1, update.IconKey()->resource_id,
+            update.IconKey()->icon_effects);
       });
 
   std::vector<apps::AppPtr> apps;
   apps::AppPtr app = std::make_unique<apps::App>(app_type, app_id);
   app->icon_key = std::move(*icon_key);
   apps.push_back(std::move(app));
-  proxy.OnApps(std::move(apps), apps::AppType::kUnknown,
-               false /* should_notify_initialized */);
+  proxy.AppRegistryCache().OnApps(std::move(apps), apps::AppType::kUnknown,
+                                  false /* should_notify_initialized */);
 }
 
 }  // namespace
@@ -94,14 +94,10 @@ void UpdateIconKey(apps::AppServiceProxy& proxy, const std::string& app_id) {
 class AppSearchProviderTest : public AppSearchProviderTestBase {
  public:
   AppSearchProviderTest()
-      : AppSearchProviderTestBase(/*zero_state_provider=*/false) {
-  }
+      : AppSearchProviderTestBase(/*zero_state_provider=*/false) {}
   AppSearchProviderTest(const AppSearchProviderTest&) = delete;
   AppSearchProviderTest& operator=(const AppSearchProviderTest&) = delete;
   ~AppSearchProviderTest() override = default;
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 TEST_F(AppSearchProviderTest, Basic) {
@@ -133,11 +129,11 @@ TEST_F(AppSearchProviderTest, Basic) {
   EXPECT_EQ("Hosted App", RunQuery("host"));
 
   result = RunQuery("fake");
-  EXPECT_TRUE(result == "Fake App 1,Fake App 2" ||
-              result == "Fake App 2,Fake App 1");
-  result = RunQuery("app2");
-  EXPECT_TRUE(result == "Packaged App 2,Fake App 2" ||
-              result == "Fake App 2,Packaged App 2");
+  EXPECT_TRUE(result == "Fake App 0,Fake App 1" ||
+              result == "Fake App 1,Fake App 0");
+  result = RunQuery("app1");
+  EXPECT_TRUE(result == "Packaged App 1,Fake App 1" ||
+              result == "Fake App 1,Packaged App 1");
   arc_test().TearDown();
 }
 
@@ -236,7 +232,7 @@ TEST_F(AppSearchProviderTest, InstallUninstallArc) {
   InitializeSearchProvider();
 
   EXPECT_EQ("", GetSortedResultsString());
-  EXPECT_EQ("", RunQuery("fake1"));
+  EXPECT_EQ("", RunQuery("fake0"));
 
   arc_apps.emplace_back(arc_test().fake_apps()[0]->Clone());
   arc_test().app_instance()->SendRefreshAppList(arc_apps);
@@ -244,7 +240,7 @@ TEST_F(AppSearchProviderTest, InstallUninstallArc) {
   // Allow async callbacks to run.
   base::RunLoop().RunUntilIdle();
 
-  EXPECT_EQ("Fake App 1", RunQuery("fake1"));
+  EXPECT_EQ("Fake App 0", RunQuery("fake0"));
 
   arc_apps.clear();
   arc_test().app_instance()->SendRefreshAppList(arc_apps);
@@ -253,7 +249,7 @@ TEST_F(AppSearchProviderTest, InstallUninstallArc) {
   base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ("", GetSortedResultsString());
-  EXPECT_EQ("", RunQuery("fake1"));
+  EXPECT_EQ("", RunQuery("fake0"));
 
   // Let uninstall code to clean up.
   base::RunLoop().RunUntilIdle();
@@ -322,8 +318,17 @@ TEST_F(AppSearchProviderTest, FilterDuplicate) {
   arc_test().TearDown();
 }
 
+TEST_F(AppSearchProviderTest, FetchInternalApp) {
+  InitializeSearchProvider();
+
+  // Search Keyboard Shortcut Helper.
+  EXPECT_EQ(kKeyboardShortcutHelperInternalName, RunQuery("Keyboard"));
+  EXPECT_EQ(kKeyboardShortcutHelperInternalName, RunQuery("Shortcut"));
+  EXPECT_EQ(kKeyboardShortcutHelperInternalName, RunQuery("Helper"));
+}
+
 TEST_F(AppSearchProviderTest, WebApp) {
-  const webapps::AppId app_id = web_app::test::InstallDummyWebApp(
+  const web_app::AppId app_id = web_app::test::InstallDummyWebApp(
       testing_profile(), kWebAppName, GURL(kWebAppUrl));
 
   // Allow async callbacks to run.
@@ -331,6 +336,24 @@ TEST_F(AppSearchProviderTest, WebApp) {
 
   InitializeSearchProvider();
   EXPECT_EQ("WebApp1", RunQuery("WebA"));
+}
+
+TEST_F(AppSearchProviderTest, BasicAppServiceAppResult) {
+  InitializeSearchProvider();
+  RunQuery("Keyboard");
+  std::vector<ChromeSearchResult*> keyboard_results = GetLastResults();
+  EXPECT_EQ(keyboard_results.size(), 1u);
+  EXPECT_EQ(base::UTF16ToUTF8(keyboard_results[0]->title()),
+            kKeyboardShortcutHelperInternalName);
+  EXPECT_EQ(keyboard_results[0]->display_type(),
+            ash::SearchResultDisplayType::kList);
+  EXPECT_EQ(keyboard_results[0]->result_type(),
+            ash::AppListSearchResultType::kInternalApp);
+  EXPECT_EQ(keyboard_results[0]->metrics_type(), ash::INTERNAL_APP);
+  EXPECT_EQ(keyboard_results[0]->is_recommendation(), false);
+  EXPECT_EQ(keyboard_results[0]->category(), Category::kApps);
+  EXPECT_EQ(keyboard_results[0]->id(),
+            ash::kInternalAppIdKeyboardShortcutViewer);
 }
 
 class AppSearchProviderCrostiniTest : public AppSearchProviderTest {
@@ -424,8 +447,8 @@ TEST_F(AppSearchProviderTest, AppServiceIconCache) {
       proxy->OverrideInnerIconLoaderForTesting(&stub_icon_loader);
 
   // Insert dummy map values so that the stub_icon_loader knows of these apps.
-  stub_icon_loader.update_version_by_app_id_[kPackagedApp1Id] = 1;
-  stub_icon_loader.update_version_by_app_id_[kPackagedApp2Id] = 2;
+  stub_icon_loader.timelines_by_app_id_[kPackagedApp1Id] = 1;
+  stub_icon_loader.timelines_by_app_id_[kPackagedApp2Id] = 2;
 
   // The stub_icon_loader should start with no LoadIconFromIconKey calls.
   InitializeSearchProvider();
@@ -472,6 +495,7 @@ TEST_F(AppSearchProviderTest, FuzzyAppSearchTest) {
   std::string result = RunQuery("ackaged");
   EXPECT_TRUE(result == "Packaged App 1,Packaged App 2" ||
               result == "Packaged App 2,Packaged App 1");
+  EXPECT_EQ(kKeyboardShortcutHelperInternalName, RunQuery("Helper"));
 }
 
 class AppSearchProviderOemAppTest

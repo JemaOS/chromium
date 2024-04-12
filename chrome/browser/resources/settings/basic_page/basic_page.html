@@ -9,8 +9,8 @@
         display: none;
       }
     </style>
-    <template is="dom-if" if="[[showBasicPage_(currentRoute_, inSearchMode)]]"
-        restamp>
+    <template is="dom-if" if="[[showBasicPage_(
+        currentRoute_, inSearchMode, hasExpandedSection_)]]">
       <div id="basicPage">
         <template is="dom-if" if="[[showResetProfileBanner_]]" restamp>
           <settings-reset-profile-banner on-close="onResetProfileBannerClosed_">
@@ -22,13 +22,6 @@
             <settings-people-page prefs="{{prefs}}"
                 page-visibility="[[pageVisibility]]">
             </settings-people-page>
-          </settings-section>
-        </template>
-        <template is="dom-if"
-            if="[[showExperimentalAdvancedPage_(pageVisibility.ai)]]"
-            restamp>
-          <settings-section page-title="$i18n{aiPageTitle}" section="ai">
-            <settings-ai-page prefs="{{prefs}}"></settings-ai-page>
           </settings-section>
         </template>
         <template is="dom-if" if="[[showPage_(pageVisibility.autofill)]]"
@@ -45,26 +38,13 @@
               prefs="{{prefs}}">
           </settings-privacy-guide-promo>
         </settings-section>
-        <!-- TODO(crbug/1469277): Remove after SafetyHub launched. -->
-        <template is="dom-if"
-              if="[[showSafetyCheckPage_(pageVisibility.safetyCheck)]]" restamp>
+        <template is="dom-if" if="[[showPage_(pageVisibility.safetyCheck)]]"
+            restamp>
           <settings-section page-title="$i18n{safetyCheckSectionTitle}"
               section="safetyCheck" nest-under-section="privacy"
               id="safetyCheckSettingsSection">
             <settings-safety-check-page prefs="{{prefs}}">
             </settings-safety-check-page>
-          </settings-section>
-        </template>
-        <!--  TODO(crbug.com/1443466): Add a test to basic_page_test.ts
-        to check that settings-safety-hub-entry-point is not visible
-        in the guest mode. -->
-        <template is="dom-if"
-            if="[[showSafetyHubEntryPointPage_(pageVisibility.safetyHub)]]"
-            restamp>
-          <settings-section page-title="$i18n{safetyHub}"
-              section="safetyHubEntryPoint" nest-under-section="privacy"
-              id="safetyHubEntryPointSection">
-            <settings-safety-hub-entry-point></settings-safety-hub-entry-point>
           </settings-section>
         </template>
         <template is="dom-if" if="[[showPage_(pageVisibility.privacy)]]"
@@ -77,17 +57,21 @@
           </settings-section>
         </template>
         <template is="dom-if"
-            if="[[showPage_(pageVisibility.performance)]]"
+            if="[[showPerformancePage_(pageVisibility.performance)]]"
             restamp>
-          <settings-section page-title="$i18n{memoryPageTitle}"
+          <settings-section page-title="$i18n{performancePageTitle}"
 <if expr="_google_chrome">
               show-send-feedback-button
-              on-send-feedback="onSendMemorySaverFeedbackClick_"
+              on-send-feedback="onSendHighEfficiencyFeedbackClick_"
 </if>
               section="performance" id="performanceSettingsSection">
             <settings-performance-page prefs="{{prefs}}">
             </settings-performance-page>
           </settings-section>
+        </template>
+        <template is="dom-if"
+            if="[[showBatteryPage_(pageVisibility.performance)]]"
+            restamp>
           <settings-section page-title="$i18n{batteryPageTitle}"
               section="battery" nest-under-section="performance"
 <if expr="_google_chrome">
@@ -97,15 +81,6 @@
               id="batterySettingsSection" hidden="[[!showBatterySettings_]]">
             <settings-battery-page prefs="{{prefs}}">
             </settings-battery-page>
-          </settings-section>
-          <settings-section page-title="$i18n{speedPageTitle}"
-              section="speed" nest-under-section="performance"
-<if expr="_google_chrome">
-              show-send-feedback-button
-              on-send-feedback="onSendSpeedFeedbackClick_"
-</if>
-              id="speedSettingsSection">
-            <settings-speed-page prefs="{{prefs}}"></settings-speed-page>
           </settings-section>
         </template>
         <template is="dom-if" if="[[showPage_(pageVisibility.appearance)]]"
@@ -143,7 +118,9 @@
         if="[[showAdvancedSettings_(pageVisibility.advancedSettings)]]">
       <settings-idle-load id="advancedPageTemplate">
         <template>
-          <div id="advancedPage">
+          <div id="advancedPage" hidden$="[[!showAdvancedPage_(
+              currentRoute_, inSearchMode, hasExpandedSection_,
+              advancedToggleExpanded)]]">
             <template is="dom-if" if="[[showPage_(pageVisibility.languages)]]"
                 restamp>
 <if expr="not chromeos_ash">
@@ -185,13 +162,16 @@
                 </settings-spell-check-page>
               </settings-section>
             </template>
-            <settings-section page-title="$i18n{translatePageTitle}"
-                section="translate" nest-under-section="languages">
-              <settings-translate-page prefs="{{prefs}}"
-                  languages="{{languages}}"
-                  language-helper="{{languageHelper}}">
-              </settings-translate-page>
-            </settings-section>
+            <template is="dom-if"
+                if="[[enableDesktopDetailedLanguageSettings_]]" restamp>
+              <settings-section page-title="$i18n{translatePageTitle}"
+                  section="translate" nest-under-section="languages">
+                <settings-translate-page prefs="{{prefs}}"
+                    languages="{{languages}}"
+                    language-helper="{{languageHelper}}">
+                </settings-translate-page>
+              </settings-section>
+            </template>
 </if>
             <template is="dom-if" if="[[showPage_(pageVisibility.downloads)]]"
                 restamp>

@@ -10,9 +10,7 @@ StatusIconLinux::Delegate::~Delegate() = default;
 
 StatusIconLinux::StatusIconLinux() = default;
 
-StatusIconLinux::~StatusIconLinux() {
-  delegate_ = nullptr;
-}
+StatusIconLinux::~StatusIconLinux() = default;
 
 void StatusIconLinux::RefreshPlatformContextMenu() {}
 

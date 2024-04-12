@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ui/views/sharing_hub/sharing_hub_bubble_view_impl.h"
 
+#include "chrome/browser/share/share_features.h"
 #include "chrome/browser/share/share_metrics.h"
 #include "chrome/browser/sharing_hub/sharing_hub_model.h"
 #include "chrome/browser/ui/sharing_hub/sharing_hub_bubble_controller.h"
@@ -13,7 +14,6 @@
 #include "chrome/browser/ui/views/sharing_hub/sharing_hub_bubble_action_button.h"
 #include "chrome/grit/generated_resources.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
 #include "ui/views/accessibility/view_accessibility.h"
@@ -50,15 +50,10 @@ SharingHubBubbleViewImpl::SharingHubBubbleViewImpl(
   DCHECK(anchor_view);
   DCHECK(controller);
 
-  SetAccessibleTitle(l10n_util::GetStringUTF16(IDS_SHARING_HUB_TOOLTIP));
   SetButtons(ui::DIALOG_BUTTON_NONE);
   set_fixed_width(views::LayoutProvider::Get()->GetDistanceMetric(
       views::DISTANCE_BUBBLE_PREFERRED_WIDTH));
-  RegisterWindowClosingCallback(base::BindOnce(
-      &SharingHubBubbleViewImpl::OnWindowClosing, base::Unretained(this)));
   SetEnableArrowKeyTraversal(true);
-  SetShowCloseButton(false);
-  SetShowTitle(false);
 
   controller_ = controller->GetWeakPtr();
 }
@@ -66,15 +61,56 @@ SharingHubBubbleViewImpl::SharingHubBubbleViewImpl(
 SharingHubBubbleViewImpl::~SharingHubBubbleViewImpl() = default;
 
 void SharingHubBubbleViewImpl::Hide() {
-  OnWindowClosing();
+  if (controller_) {
+    controller_->OnBubbleClosed();
+    controller_ = nullptr;
+  }
   CloseBubble();
+}
+
+bool SharingHubBubbleViewImpl::ShouldShowCloseButton() const {
+  return false;
+}
+
+bool SharingHubBubbleViewImpl::ShouldShowWindowTitle() const {
+  return false;
+}
+
+void SharingHubBubbleViewImpl::WindowClosing() {
+  if (controller_) {
+    controller_->OnBubbleClosed();
+    controller_ = nullptr;
+  }
+}
+
+std::u16string SharingHubBubbleViewImpl::GetAccessibleWindowTitle() const {
+  return l10n_util::GetStringUTF16(IDS_SHARING_HUB_TOOLTIP);
+}
+
+void SharingHubBubbleViewImpl::OnPaint(gfx::Canvas* canvas) {
+  views::BubbleDialogDelegateView::OnPaint(canvas);
+  if (show_time_) {
+    share::RecordSharingHubTimeToShow(base::Time::Now() - *show_time_);
+    show_time_ = absl::nullopt;
+  }
 }
 
 void SharingHubBubbleViewImpl::OnThemeChanged() {
   LocationBarBubbleDelegateView::OnThemeChanged();
   if (GetWidget()) {
     set_color(GetColorProvider()->GetColor(ui::kColorMenuBackground));
+    if (share_link_label_) {
+      share_link_label_->SetBackgroundColor(
+          GetColorProvider()->GetColor(ui::kColorMenuBackground));
+      share_link_label_->SetEnabledColor(
+          GetColorProvider()->GetColor(ui::kColorMenuItemForeground));
+    }
   }
+}
+
+void SharingHubBubbleViewImpl::Show(DisplayReason reason) {
+  show_time_ = base::Time::Now();
+  ShowForReason(reason);
 }
 
 void SharingHubBubbleViewImpl::OnActionSelected(
@@ -93,6 +129,11 @@ void SharingHubBubbleViewImpl::OnActionSelected(
   controller_->OnActionSelected(action);
 
   Hide();
+}
+
+const views::View* SharingHubBubbleViewImpl::GetButtonContainerForTesting()
+    const {
+  return scroll_view_->contents();
 }
 
 void SharingHubBubbleViewImpl::Init() {
@@ -127,7 +168,7 @@ void SharingHubBubbleViewImpl::PopulateScrollView(
   }
 
   MaybeSizeToContents();
-  DeprecatedLayoutImmediately();
+  Layout();
 }
 
 void SharingHubBubbleViewImpl::MaybeSizeToContents() {
@@ -135,15 +176,5 @@ void SharingHubBubbleViewImpl::MaybeSizeToContents() {
   if (GetWidget())
     SizeToContents();
 }
-
-void SharingHubBubbleViewImpl::OnWindowClosing() {
-  if (controller_) {
-    controller_->OnBubbleClosed();
-    controller_ = nullptr;
-  }
-}
-
-BEGIN_METADATA(SharingHubBubbleViewImpl)
-END_METADATA
 
 }  // namespace sharing_hub

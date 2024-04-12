@@ -8,7 +8,7 @@ import {waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chromeos/chai_assert.js';
 import {isVisible} from 'chrome://webui-test/test_util.js';
 
-suite('navigationSelectorTestSuite', () => {
+export function navigationSelectorTestSuite() {
   /** @type {?NavigationSelectorElement} */
   let navigationElement = null;
 
@@ -80,4 +80,4 @@ suite('navigationSelectorTestSuite', () => {
     const iconElement = selectorElement.querySelector('iron-icon');
     assertFalse(isVisible(iconElement));
   });
-});
+}

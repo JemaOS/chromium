@@ -33,7 +33,7 @@ TSAN_TEST(TextRendererThreadedTest, MeasureText) {
 
     FontDescription font_description;
     font_description.SetComputedSize(12.0);
-    font_description.SetLocale(LayoutLocale::Get(AtomicString("en")));
+    font_description.SetLocale(LayoutLocale::Get("en"));
     ASSERT_EQ(USCRIPT_LATIN, font_description.GetScript());
     font_description.SetGenericFamily(FontDescription::kStandardFamily);
 
@@ -42,7 +42,10 @@ TSAN_TEST(TextRendererThreadedTest, MeasureText) {
     const SimpleFontData* font_data = font.PrimaryFont();
     ASSERT_TRUE(font_data);
 
-    TextRun text_run(text);
+    TextRun text_run(
+        text, 0, 0,
+        TextRun::kAllowTrailingExpansion | TextRun::kForbidLeadingExpansion,
+        TextDirection::kLtr, false);
     text_run.SetNormalizeSpace(true);
     gfx::RectF text_bounds = font.SelectionRectForText(
         text_run, gfx::PointF(), font.GetFontDescription().ComputedSize(), 0,
@@ -69,14 +72,15 @@ TSAN_TEST(TextRendererThreadedTest, DrawText) {
 
     FontDescription font_description;
     font_description.SetComputedSize(12.0);
-    font_description.SetLocale(LayoutLocale::Get(AtomicString("en")));
+    font_description.SetLocale(LayoutLocale::Get("en"));
     ASSERT_EQ(USCRIPT_LATIN, font_description.GetScript());
     font_description.SetGenericFamily(FontDescription::kStandardFamily);
 
     Font font = Font(font_description);
 
     gfx::PointF location(0, 0);
-    TextRun text_run(text);
+    TextRun text_run(text, 0, 0, TextRun::kAllowTrailingExpansion,
+                     TextDirection::kLtr, false);
     text_run.SetNormalizeSpace(true);
 
     TextRunPaintInfo text_run_paint_info(text_run);

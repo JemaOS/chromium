@@ -48,7 +48,6 @@ CONSOLE MESSAGE:     attribute @@toStringTag
 CONSOLE MESSAGE:     method addEventListener
 CONSOLE MESSAGE:     method constructor
 CONSOLE MESSAGE:     method dispatchEvent
-CONSOLE MESSAGE:     method on
 CONSOLE MESSAGE:     method removeEventListener
 CONSOLE MESSAGE: interface MessageEvent : Event
 CONSOLE MESSAGE:     attribute @@toStringTag
@@ -62,14 +61,12 @@ CONSOLE MESSAGE:     method constructor
 CONSOLE MESSAGE:     method initMessageEvent
 CONSOLE MESSAGE: interface MessagePort : EventTarget
 CONSOLE MESSAGE:     attribute @@toStringTag
-CONSOLE MESSAGE:     getter onclose
 CONSOLE MESSAGE:     getter onmessage
 CONSOLE MESSAGE:     getter onmessageerror
 CONSOLE MESSAGE:     method close
 CONSOLE MESSAGE:     method constructor
 CONSOLE MESSAGE:     method postMessage
 CONSOLE MESSAGE:     method start
-CONSOLE MESSAGE:     setter onclose
 CONSOLE MESSAGE:     setter onmessage
 CONSOLE MESSAGE:     setter onmessageerror
 CONSOLE MESSAGE: interface ReadableByteStreamController
@@ -83,14 +80,12 @@ CONSOLE MESSAGE:     method error
 CONSOLE MESSAGE: interface ReadableStream
 CONSOLE MESSAGE:     attribute @@toStringTag
 CONSOLE MESSAGE:     getter locked
-CONSOLE MESSAGE:     method @@asyncIterator
 CONSOLE MESSAGE:     method cancel
 CONSOLE MESSAGE:     method constructor
 CONSOLE MESSAGE:     method getReader
 CONSOLE MESSAGE:     method pipeThrough
 CONSOLE MESSAGE:     method pipeTo
 CONSOLE MESSAGE:     method tee
-CONSOLE MESSAGE:     method values
 CONSOLE MESSAGE: interface ReadableStreamBYOBReader
 CONSOLE MESSAGE:     attribute @@toStringTag
 CONSOLE MESSAGE:     getter closed

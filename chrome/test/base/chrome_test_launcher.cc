@@ -19,6 +19,7 @@
 #include "base/run_loop.h"
 #include "base/sampling_heap_profiler/poisson_allocation_sampler.h"
 #include "base/strings/string_util.h"
+#include "base/test/allow_check_is_test_for_testing.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_file_util.h"
 #include "base/test/test_switches.h"
@@ -26,14 +27,11 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/chrome_content_browser_client.h"
-#include "chrome/browser/metrics/chrome_feature_list_creator.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/profiler/main_thread_stack_sampling_profiler.h"
 #include "chrome/install_static/test/scoped_install_details.h"
-#include "chrome/installer/util/taskbar_util.h"
 #include "chrome/test/base/chrome_test_suite.h"
-#include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/utility/chrome_content_utility_client.h"
 #include "components/crash/core/app/crashpad.h"
 #include "content/public/app/content_main.h"
@@ -44,11 +42,17 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/service_factory.h"
 #include "services/test/echo/echo_service.h"
+#include "ui/base/test/ui_controls.h"
 
 #if BUILDFLAG(IS_MAC)
-#include "base/apple/bundle_locations.h"
+#include "base/mac/bundle_locations.h"
 #include "chrome/browser/chrome_browser_application_mac.h"
 #endif  // BUILDFLAG(IS_MAC)
+
+#if defined(USE_AURA)
+#include "ui/aura/test/ui_controls_factory_aura.h"
+#include "ui/base/test/ui_controls_aura.h"
+#endif
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
 #include "chrome/app/chrome_crash_reporter_client.h"
@@ -72,33 +76,6 @@
 #include "chrome/browser/upgrade_detector/installed_version_poller.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #endif
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/crosapi/crosapi_ash.h"
-#include "chrome/browser/ash/crosapi/crosapi_manager.h"
-#include "chrome/browser/ash/crosapi/test_controller_ash.h"
-#include "chrome/browser/chrome_browser_main.h"
-#include "chrome/browser/chrome_browser_main_extra_parts.h"
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-namespace {
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-class TestControllerSetupMainExtraParts : public ChromeBrowserMainExtraParts {
- public:
-  TestControllerSetupMainExtraParts() = default;
-
-  void PostBrowserStart() override {
-    crosapi::CrosapiManager::Get()->crosapi_ash()->SetTestControllerForTesting(
-        std::make_unique<crosapi::TestControllerAsh>());
-  }
-
-  void PostMainMessageLoopRun() override {
-    crosapi::CrosapiManager::Get()->crosapi_ash()->SetTestControllerForTesting(
-        nullptr);
-  }
-};
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-}  // namespace
 
 // static
 int ChromeTestSuiteRunner::RunTestSuiteInternal(ChromeTestSuite* test_suite) {
@@ -215,25 +192,6 @@ ChromeTestChromeMainDelegate::CreateContentUtilityClient() {
   return chrome_content_utility_client_.get();
 }
 
-#if !BUILDFLAG(IS_ANDROID)
-std::optional<int> ChromeTestChromeMainDelegate::PostEarlyInitialization(
-    InvokedIn invoked_in) {
-  auto result = ChromeMainDelegate::PostEarlyInitialization(invoked_in);
-  if (absl::get_if<InvokedInBrowserProcess>(&invoked_in)) {
-    // If servicing an `InProcessBrowserTest`, give the test an opportunity to
-    // prepopulate Local State with preferences.
-    ChromeFeatureListCreator* chrome_feature_list_creator =
-        chrome_content_browser_client_->startup_data()
-            ->chrome_feature_list_creator();
-    PrefService* const local_state = chrome_feature_list_creator->local_state();
-    if (auto* test_instance = InProcessBrowserTest::GetCurrent()) {
-      test_instance->SetUpLocalStatePrefService(local_state);
-    }
-  }
-  return result;
-}
-#endif  // !BUILDFLAG(IS_ANDROID)
-
 #if BUILDFLAG(IS_WIN)
 bool ChromeTestChromeMainDelegate::ShouldHandleConsoleControlEvents() {
   // Allow Ctrl-C and friends to terminate the test processes forthwith.
@@ -247,14 +205,6 @@ ChromeTestLauncherDelegate::CreateContentMainDelegate() {
   return new ChromeTestChromeMainDelegate(base::TimeTicks::Now());
 }
 #endif
-
-void ChromeTestLauncherDelegate::CreatedBrowserMainParts(
-    content::BrowserMainParts* browser_main_parts) {
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  static_cast<ChromeBrowserMainParts*>(browser_main_parts)
-      ->AddParts(std::make_unique<TestControllerSetupMainExtraParts>());
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-}
 
 void ChromeTestLauncherDelegate::PreSharding() {
 #if BUILDFLAG(IS_WIN)
@@ -295,6 +245,8 @@ int LaunchChromeTests(size_t parallel_jobs,
                       content::TestLauncherDelegate* delegate,
                       int argc,
                       char** argv) {
+  base::test::AllowCheckIsTestForTesting();
+
 #if BUILDFLAG(IS_MAC)
   // Set up the path to the framework so resources can be loaded. This is also
   // performed in ChromeTestSuite, but in browser tests that only affects the
@@ -302,7 +254,7 @@ int LaunchChromeTests(size_t parallel_jobs,
   base::FilePath path;
   CHECK(base::PathService::Get(base::DIR_EXE, &path));
   path = path.Append(chrome::kFrameworkName);
-  base::apple::SetOverrideFrameworkBundlePath(path);
+  base::mac::SetOverrideFrameworkBundlePath(path);
 #endif
 
 #if BUILDFLAG(IS_WIN)
@@ -362,16 +314,6 @@ int LaunchChromeTests(size_t parallel_jobs,
         return false;
       }));
 #endif
-
-#if BUILDFLAG(IS_WIN)
-  SetCanPinToTaskbarDelegate(([]() {
-    ADD_FAILURE()
-        << "Attempting to pint shortcut to taskbar in test."
-        << " Use web_app::OsIntegrationManager::ScopedSuppressForTesting or "
-        << "other mechanism to not pin to taskbar.";
-    return false;
-  }));
-#endif  // BUILDFLAG(IS_WIN)
 
   return content::LaunchTests(delegate, parallel_jobs, argc, argv);
 }

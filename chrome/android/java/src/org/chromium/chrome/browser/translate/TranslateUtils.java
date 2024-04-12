@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.translate;
 
 import org.chromium.chrome.browser.tab.Tab;
 
-/** Utility classes related to the translate feature. */
+/**
+ * Utility classes related to the translate feature.
+ */
 public class TranslateUtils {
     /**
      * Returns true iff the content displayed in the current tab can be translated.
@@ -18,15 +20,14 @@ public class TranslateUtils {
     }
 
     /**
-     * Overloaded canTranslateCurrentTab. Logging should only be performed when this method is
-     * called to show the translate menu item.
+     * Overloaded canTranslateCurrentTab.
+     * Logging should only be performed when this method is called to show the translate menu item.
      *
      * @param tab The tab in question.
      * @param menuLogging Whether logging should be performed in this check.
      */
     public static boolean canTranslateCurrentTab(Tab tab, boolean menuLogging) {
-        return !tab.isNativePage()
-                && tab.getWebContents() != null
+        return tab.getWebContents() != null
                 && TranslateBridge.canManuallyTranslate(tab, menuLogging);
     }
 }

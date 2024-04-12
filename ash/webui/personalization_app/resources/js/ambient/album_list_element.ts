@@ -6,11 +6,11 @@
  * @fileoverview The element for displaying a list of albums.
  */
 
-import 'chrome://resources/ash/common/personalization/common.css.js';
 import 'chrome://resources/polymer/v3_0/iron-list/iron-list.js';
+import '../../css/common.css.js';
 
-import {assert} from 'chrome://resources/js/assert.js';
 import {IronListElement} from 'chrome://resources/polymer/v3_0/iron-list/iron-list.js';
+import {afterNextRender} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {AmbientModeAlbum, TopicSource} from '../../personalization_app.mojom-webui.js';
 import {WithPersonalizationStore} from '../personalization_store.js';
@@ -18,7 +18,7 @@ import {getCountText, isRecentHighlightsAlbum} from '../utils.js';
 
 import {getTemplate} from './album_list_element.html.js';
 
-export interface AlbumListElement {
+export interface AlbumList {
   $: {grid: IronListElement};
 }
 
@@ -30,7 +30,7 @@ declare global {
   }
 }
 
-export class AlbumListElement extends WithPersonalizationStore {
+export class AlbumList extends WithPersonalizationStore {
   static get is() {
     return 'album-list';
   }
@@ -42,62 +42,33 @@ export class AlbumListElement extends WithPersonalizationStore {
   static get properties() {
     return {
       topicSource: TopicSource,
-      /**
-       * List of albums received from the client.
-       */
       albums: {
         type: Array,
         value: null,
-        observer: 'onAlbumsChanged_',
-      },
-      /**
-       * List of albums used for iron-list rendering.
-       */
-      albumsForDisplay_: {
-        type: Array,
-        value: [],
       },
     };
   }
 
   topicSource: TopicSource;
   albums: AmbientModeAlbum[]|null;
-  private albumsForDisplay_: AmbientModeAlbum[];
 
-  private onAlbumsChanged_(albums: AlbumListElement['albums']) {
-    if (!albums) {
-      return;
-    }
-
-    // `albumsForDisplay_` is updated in place to avoid complete re-rendering of
-    // iron-list, which would cause the tabindex to reset. See b/291123326.
-    this.updateList(
-        /*propertyPath=*/ 'albumsForDisplay_',
-        /*identityGetter=*/
-        (album: AmbientModeAlbum) => album.id,
-        /*newList=*/ albums,
-        /*identityBasedUpdate=*/ true,
-    );
+  override ready() {
+    super.ready();
+    /** When element is ready, force rendering iron-list */
+    afterNextRender(this, () => this.$.grid.fire('iron-resize'));
   }
 
   /** Invoked on selection of an album. */
   private onAlbumSelected_(e: Event&{model: {album: AmbientModeAlbum}}) {
-    // Retrieve the actual instance of selected album from `albums`.
-    const albumIndex =
-        this.albums!.findIndex(album => album.id === e.model.album.id);
-    assert(albumIndex >= 0);
-    const albumChanged = this.albums![albumIndex];
-
-    if (this.topicSource === TopicSource.kVideo && albumChanged.checked) {
+    if (this.topicSource === TopicSource.kVideo && e.model.album.checked) {
       // De-selecting a selected video album is a no-op. Selecting a different
       // video album will unselect the other video albums in the client.
       return;
     }
-
-    albumChanged.checked = !albumChanged.checked;
+    e.model.album.checked = !e.model.album.checked;
     this.dispatchEvent(new CustomEvent(
         'album_selected_changed',
-        {bubbles: true, composed: true, detail: {album: albumChanged}}));
+        {bubbles: true, composed: true, detail: {album: e.model.album}}));
   }
 
   private isAlbumSelected_(
@@ -149,4 +120,4 @@ export class AlbumListElement extends WithPersonalizationStore {
   }
 }
 
-customElements.define(AlbumListElement.is, AlbumListElement);
+customElements.define(AlbumList.is, AlbumList);

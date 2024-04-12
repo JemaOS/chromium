@@ -78,19 +78,23 @@ AXRole: AXGenericContainer
     AXRole: AXRuby
         AXRole: AXStaticText "韓國"
             AXRole: AXInlineTextBox "韓國"
+        AXRole: AXRubyAnnotation
+            AXRole: AXStaticText "("
         AXRole: AXRubyAnnotation "한국"
             AXRole: AXStaticText "한국"
+        AXRole: AXRubyAnnotation
+            AXRole: AXStaticText ")"
     AXRole: AXDescriptionList
-        AXRole: AXTerm
+        AXRole: AXDescriptionListTerm
             AXRole: AXStaticText "Coffee"
                 AXRole: AXInlineTextBox "Coffee"
-        AXRole: AXDefinition
+        AXRole: AXDescriptionListDetail
             AXRole: AXStaticText "- black hot drink"
                 AXRole: AXInlineTextBox "- black hot drink"
-        AXRole: AXTerm
+        AXRole: AXDescriptionListTerm
             AXRole: AXStaticText "Milk"
                 AXRole: AXInlineTextBox "Milk"
-        AXRole: AXDefinition
+        AXRole: AXDescriptionListDetail
             AXRole: AXStaticText "- white cold drink"
                 AXRole: AXInlineTextBox "- white cold drink"
     AXRole: AXMath
@@ -165,7 +169,7 @@ AXRole: AXGenericContainer
         AXRole: AXParagraph
             AXRole: AXStaticText "Text that appears under aside"
                 AXRole: AXInlineTextBox "Text that appears under aside"
-    AXRole: AXGenericContainer
+    AXRole: AXPre
         AXRole: AXStaticText "Text in a    pre
 element
 "

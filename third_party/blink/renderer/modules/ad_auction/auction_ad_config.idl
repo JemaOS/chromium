@@ -14,91 +14,50 @@ dictionary AuctionReportBuyersConfig {
   required double scale;
 };
 
-dictionary AuctionAdditionalBidSignature {
-  Uint8Array key;
-  Uint8Array signature;
-};
-
-dictionary ProtectedAudiencePrivateAggregationConfig {
-  USVString aggregationCoordinatorOrigin;
-};
-
-dictionary AuctionReportBuyerDebugModeConfig {
-  boolean enabled = false;
-
-  // Must only be provided if `enabled` is true.
-  bigint? debugKey;
-};
-
 dictionary AuctionAdConfig {
   required USVString seller;
-
-  // Used for B&A auctions. If present we only look at the seller and
-  // interestGroupBuyers.
-  Promise<Uint8Array> serverResponse;
-  USVString requestId;
-
-  USVString decisionLogicURL;
-  [ImplementedAs=decisionLogicUrlDeprecated]
-  USVString decisionLogicUrl;
-  USVString trustedScoringSignalsURL;
-  [ImplementedAs=trustedScoringSignalsUrlDeprecated]
+  required USVString decisionLogicUrl;
   USVString trustedScoringSignalsUrl;
-  long maxTrustedScoringSignalsURLLength;
   sequence<USVString> interestGroupBuyers;
-  Promise<any> auctionSignals;
-  Promise<any> sellerSignals;
+  any auctionSignals;
+  any sellerSignals;
 
-  Promise<USVString> directFromSellerSignals;
-  [RuntimeEnabled=FledgeDirectFromSellerSignalsHeaderAdSlot]
-  Promise<DOMString> directFromSellerSignalsHeaderAdSlot;
-
-  [RuntimeEnabled=FledgeDeprecatedRenderURLReplacements]
-  Promise<record<USVString, USVString>> deprecatedRenderURLReplacements;
+  // Really (USVString or Promise<USVString>) directFromSellerSignals;
+  any directFromSellerSignals;
 
   unsigned long long sellerTimeout;
   unsigned short sellerExperimentGroupId;
 
-  Promise<record<USVString, any>> perBuyerSignals;
-  Promise<record<USVString, unsigned long long>> perBuyerTimeouts;
-  Promise<record<USVString, unsigned long long>> perBuyerCumulativeTimeouts;
+  // Really (record<USVString, any> or Promise<record<USVString, any>>)
+  any perBuyerSignals;
 
-  [RuntimeEnabled=FledgeReportingTimeout]
-  unsigned long long reportingTimeout;
+  // Really (record<USVString, unsigned long long> or
+  //         Promise<record<USVString, unsigned long long>>)
+  any perBuyerTimeouts;
+  any perBuyerCumulativeTimeouts;
 
   USVString sellerCurrency;
-  Promise<record<USVString, USVString>> perBuyerCurrencies;
+
+  // Really (record<USVString, USVString> or
+  //         Promise<record<USVString, USVString>>)
+  any perBuyerCurrencies;
 
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
-
-  [RuntimeEnabled=FledgeMultiBid]
-  record<USVString, unsigned short> perBuyerMultiBidLimits;
 
   // `auctionReportBuyerKeys`, `auctionReportBuyers`, and
   // `requiredSellerCapabilities` are described in:
   // https://github.com/WICG/turtledove/blob/main/FLEDGE_extended_PA_reporting.md
   sequence<bigint> auctionReportBuyerKeys;
   record<DOMString, AuctionReportBuyersConfig> auctionReportBuyers;
-  [RuntimeEnabled=PrivateAggregationAuctionReportBuyerDebugModeConfig]
-  AuctionReportBuyerDebugModeConfig auctionReportBuyerDebugModeConfig;
   sequence<DOMString> requiredSellerCapabilities;
 
   AuctionAdInterestGroupSize requestedSize;
-  [RuntimeEnabled=FledgeTrustedBiddingSignalsSlotSize]
-  sequence<AuctionAdInterestGroupSize> allSlotsRequestedSizes;
-
-  [RuntimeEnabled=FledgeNegativeTargeting]
-  Promise<undefined> additionalBids;
-
-  [RuntimeEnabled=FledgeNegativeTargeting]
-  DOMString auctionNonce;
-
-  ProtectedAudiencePrivateAggregationConfig privateAggregationConfig;
 
   sequence<AuctionAdConfig> componentAuctions;
   AbortSignal? signal;
 
-  Promise<boolean> resolveToConfig;
+  // Really (boolean or Promise<boolean>)
+  any resolveToConfig;
 };

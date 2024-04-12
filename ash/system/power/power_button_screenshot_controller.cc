@@ -8,16 +8,20 @@
 #include "ash/public/cpp/window_properties.h"
 #include "ash/shell.h"
 #include "ash/system/power/power_button_controller.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "ash/wm/window_util.h"
 #include "base/functional/bind.h"
 #include "base/metrics/user_metrics.h"
 #include "base/time/tick_clock.h"
-#include "ui/display/screen.h"
 #include "ui/events/event.h"
 
 namespace ash {
 
 namespace {
+
+bool IsTabletMode() {
+  return Shell::Get()->tablet_mode_controller()->InTabletMode();
+}
 
 bool VolumeKeyMaybeUsedByApp() {
   aura::Window* active = window_util::GetActiveWindow();
@@ -45,9 +49,8 @@ PowerButtonScreenshotController::~PowerButtonScreenshotController() {
 bool PowerButtonScreenshotController::OnPowerButtonEvent(
     bool down,
     const base::TimeTicks& timestamp) {
-  if (!display::Screen::GetScreen()->InTabletMode()) {
+  if (!IsTabletMode())
     return false;
-  }
 
   power_button_pressed_ = down;
   if (power_button_pressed_) {
@@ -67,9 +70,8 @@ bool PowerButtonScreenshotController::OnPowerButtonEvent(
 }
 
 void PowerButtonScreenshotController::OnKeyEvent(ui::KeyEvent* event) {
-  if (!display::Screen::GetScreen()->InTabletMode()) {
+  if (!IsTabletMode())
     return;
-  }
 
   ui::KeyboardCode key_code = event->key_code();
   if (key_code != ui::VKEY_VOLUME_DOWN && key_code != ui::VKEY_VOLUME_UP)
@@ -167,7 +169,7 @@ bool PowerButtonScreenshotController::InterceptScreenshotChord() {
       now <= volume_up_key_pressed_time_ + kScreenshotChordDelay;
   if (consume_volume_down_ || consume_volume_up_) {
     Shell::Get()->accelerator_controller()->PerformActionIfEnabled(
-        AcceleratorAction::kTakeScreenshot, {});
+        TAKE_SCREENSHOT, {});
 
     base::RecordAction(base::UserMetricsAction("Accel_PowerButton_Screenshot"));
   }
@@ -178,8 +180,7 @@ void PowerButtonScreenshotController::OnVolumeControlTimeout(
     const ui::Accelerator& accelerator,
     bool down) {
   Shell::Get()->accelerator_controller()->PerformActionIfEnabled(
-      down ? AcceleratorAction::kVolumeDown : AcceleratorAction::kVolumeUp,
-      accelerator);
+      down ? VOLUME_DOWN : VOLUME_UP, accelerator);
 }
 
 }  // namespace ash

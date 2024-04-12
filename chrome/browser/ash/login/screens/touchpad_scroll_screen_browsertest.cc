@@ -14,15 +14,12 @@
 #include "chrome/browser/ash/login/test/oobe_base_test.h"
 #include "chrome/browser/ash/login/test/oobe_screen_exit_waiter.h"
 #include "chrome/browser/ash/login/test/oobe_screen_waiter.h"
-#include "chrome/browser/ash/login/test/oobe_screens_utils.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/webui/ash/login/touchpad_scroll_screen_handler.h"
 #include "chrome/test/base/fake_gaia_mixin.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "content/public/test/browser_test.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "ui/events/devices/touchpad_device.h"
 
 namespace ash {
 
@@ -62,61 +59,60 @@ class TouchpadScrollScreenTest
 
     original_callback_ =
         touchpad_scroll_screen->get_exit_callback_for_testing();
-    touchpad_scroll_screen->set_exit_callback_for_testing(
-        screen_result_waiter_.GetRepeatingCallback());
+    touchpad_scroll_screen->set_exit_callback_for_testing(base::BindRepeating(
+        &TouchpadScrollScreenTest::HandleScreenExit, base::Unretained(this)));
     touchpad_scroll_screen->set_ingore_pref_sync_for_testing(true);
     OobeBaseTest::SetUpOnMainThread();
   }
 
   void ShowTouchpadScrollScreen() {
-    LoginDisplayHost::default_host()
-        ->GetWizardContextForTesting()
-        ->skip_choobe_for_tests = true;
-
     login_manager_mixin_.LoginAsNewRegularUser();
     OobeScreenExitWaiter(GetFirstSigninScreen()).Wait();
     WizardController::default_controller()->AdvanceToScreen(
         TouchpadScrollScreenView::kScreenId);
   }
 
-  TouchpadScrollScreen::Result WaitForScreenExitResult() {
-    TouchpadScrollScreen::Result result = screen_result_waiter_.Take();
-    original_callback_.Run(result);
-    return result;
+  void WaitForScreenExit() {
+    if (result_.has_value()) {
+      return;
+    }
+    base::test::TestFuture<void> waiter;
+    quit_closure_ = waiter.GetCallback();
+    EXPECT_TRUE(waiter.Wait());
   }
+
+  TouchpadScrollScreen::ScreenExitCallback original_callback_;
+  absl::optional<TouchpadScrollScreen::Result> result_;
 
  protected:
   base::test::ScopedFeatureList feature_list_;
   LoginManagerMixin login_manager_mixin_{&mixin_host_};
 
  private:
-  base::test::TestFuture<TouchpadScrollScreen::Result> screen_result_waiter_;
-  TouchpadScrollScreen::ScreenExitCallback original_callback_;
+  void HandleScreenExit(TouchpadScrollScreen::Result result) {
+    result_ = result;
+    original_callback_.Run(result);
+    if (quit_closure_) {
+      std::move(quit_closure_).Run();
+    }
+  }
+
+  base::OnceClosure quit_closure_;
 };
 
-// SKip the TouchpadScrollDirection screen if no touchpad device is available.
-IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, SkipNoTouchpadDevice) {
-  ShowTouchpadScrollScreen();
-  TouchpadScrollScreen::Result result = WaitForScreenExitResult();
-
-  EXPECT_EQ(result, TouchpadScrollScreen::Result::kNotApplicable);
-}
-
 IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, Next) {
-  test::SetFakeTouchpadDevice();
   ShowTouchpadScrollScreen();
 
   // Check Screen is visible
   test::OobeJS().ExpectVisiblePath(kTitlePath);
 
   test::OobeJS().ClickOnPath(kNextButtonPath);
-  TouchpadScrollScreen::Result result = WaitForScreenExitResult();
+  WaitForScreenExit();
 
-  EXPECT_EQ(result, TouchpadScrollScreen::Result::kNext);
+  EXPECT_EQ(result_.value(), TouchpadScrollScreen::Result::kNext);
 }
 
 IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, ToggleScrollDirectionOn) {
-  test::SetFakeTouchpadDevice();
   ShowTouchpadScrollScreen();
 
   // Check Screen is visible
@@ -129,7 +125,7 @@ IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, ToggleScrollDirectionOn) {
 
   test::OobeJS().ClickOnPath(kNextButtonPath);
 
-  TouchpadScrollScreen::Result result = WaitForScreenExitResult();
+  WaitForScreenExit();
 
   EXPECT_TRUE(
       ProfileManager::GetPrimaryUserProfile()->GetPrefs()->GetUserPrefValue(
@@ -137,11 +133,10 @@ IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, ToggleScrollDirectionOn) {
 
   EXPECT_TRUE(ProfileManager::GetPrimaryUserProfile()->GetPrefs()->GetBoolean(
       prefs::kNaturalScroll));
-  EXPECT_EQ(result, TouchpadScrollScreen::Result::kNext);
+  EXPECT_EQ(result_.value(), TouchpadScrollScreen::Result::kNext);
 }
 
 IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, ToggleScrollDirectionOff) {
-  test::SetFakeTouchpadDevice();
   login_manager_mixin_.LoginAsNewRegularUser();
   OobeScreenExitWaiter(GetFirstSigninScreen()).Wait();
 
@@ -163,7 +158,7 @@ IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, ToggleScrollDirectionOff) {
 
   test::OobeJS().ClickOnPath(kNextButtonPath);
 
-  TouchpadScrollScreen::Result result = WaitForScreenExitResult();
+  WaitForScreenExit();
 
   EXPECT_TRUE(
       ProfileManager::GetPrimaryUserProfile()->GetPrefs()->GetUserPrefValue(
@@ -171,11 +166,10 @@ IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, ToggleScrollDirectionOff) {
 
   EXPECT_FALSE(ProfileManager::GetPrimaryUserProfile()->GetPrefs()->GetBoolean(
       prefs::kNaturalScroll));
-  EXPECT_EQ(result, TouchpadScrollScreen::Result::kNext);
+  EXPECT_EQ(result_.value(), TouchpadScrollScreen::Result::kNext);
 }
 
 IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, RetainScrollDirectionOn) {
-  test::SetFakeTouchpadDevice();
   login_manager_mixin_.LoginAsNewRegularUser();
   OobeScreenExitWaiter(GetFirstSigninScreen()).Wait();
 
@@ -196,7 +190,7 @@ IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, RetainScrollDirectionOn) {
   test::OobeJS().ExpectVisiblePath(kNextButtonPath);
   test::OobeJS().ClickOnPath(kNextButtonPath);
 
-  TouchpadScrollScreen::Result result = WaitForScreenExitResult();
+  WaitForScreenExit();
 
   EXPECT_TRUE(
       ProfileManager::GetPrimaryUserProfile()->GetPrefs()->GetUserPrefValue(
@@ -204,7 +198,7 @@ IN_PROC_BROWSER_TEST_F(TouchpadScrollScreenTest, RetainScrollDirectionOn) {
 
   EXPECT_TRUE(ProfileManager::GetPrimaryUserProfile()->GetPrefs()->GetBoolean(
       prefs::kNaturalScroll));
-  EXPECT_EQ(result, TouchpadScrollScreen::Result::kNext);
+  EXPECT_EQ(result_.value(), TouchpadScrollScreen::Result::kNext);
 }
 
 }  // namespace ash

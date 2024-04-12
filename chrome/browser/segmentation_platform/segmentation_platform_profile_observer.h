@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_SEGMENTATION_PLATFORM_SEGMENTATION_PLATFORM_PROFILE_OBSERVER_H_
 #define CHROME_BROWSER_SEGMENTATION_PLATFORM_SEGMENTATION_PLATFORM_PROFILE_OBSERVER_H_
 
-#include <optional>
-
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_multi_source_observation.h"
 #include "base/scoped_observation.h"
@@ -14,6 +12,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager_observer.h"
 #include "chrome/browser/profiles/profile_observer.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class ProfileManager;
 
@@ -60,7 +59,7 @@ class SegmentationPlatformProfileObserver : public base::SupportsUserData::Data,
       observed_profiles_{this};
 
   // Whether or not we currently have any off the record profiles.
-  std::optional<bool> has_otr_profiles_;
+  absl::optional<bool> has_otr_profiles_;
 };
 
 }  // namespace segmentation_platform

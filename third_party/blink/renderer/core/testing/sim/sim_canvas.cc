@@ -4,7 +4,6 @@
 
 #include "third_party/blink/renderer/core/testing/sim/sim_canvas.h"
 
-#include "third_party/blink/renderer/platform/geometry/infinite_int_rect.h"
 #include "third_party/blink/renderer/platform/graphics/color.h"
 #include "third_party/skia/include/core/SkPaint.h"
 #include "third_party/skia/include/core/SkPath.h"
@@ -37,8 +36,7 @@ class DrawScope {
   ~DrawScope() { --g_depth; }
 };
 
-SimCanvas::SimCanvas()
-    : SkCanvas(InfiniteIntRect().width(), InfiniteIntRect().height()) {}
+SimCanvas::SimCanvas(int width, int height) : SkCanvas(width, height) {}
 
 void SimCanvas::AddCommand(CommandType type, RGBA32 color) {
   if (g_depth > 1)

@@ -5,8 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_CROSAPI_CERT_DATABASE_ASH_H_
 #define CHROME_BROWSER_ASH_CROSAPI_CERT_DATABASE_ASH_H_
 
-#include <optional>
-
 #include "base/memory/weak_ptr.h"
 #include "chromeos/ash/components/dbus/cryptohome/UserDataAuth.pb.h"
 #include "chromeos/ash/components/login/login_state/login_state.h"
@@ -15,6 +13,7 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote_set.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace crosapi {
 
@@ -43,19 +42,17 @@ class CertDatabaseAsh : public mojom::CertDatabase, ash::LoginState::Observer {
   void GetCertDatabaseInfo(GetCertDatabaseInfoCallback callback) override;
 
   // mojom::CertDatabase
-  void OnCertsChangedInLacros(
-      mojom::CertDatabaseChangeType change_type) override;
+  void OnCertsChangedInLacros() override;
   void AddAshCertDatabaseObserver(
       mojo::PendingRemote<mojom::AshCertDatabaseObserver> observer) override;
   void SetCertsProvidedByExtension(
       const std::string& extension_id,
       const chromeos::certificate_provider::CertificateInfoList&
           certificate_infos) override;
-  void OnPkcs12CertDualWritten() override;
 
   // Notifies observers that were added with `AddAshCertDatabaseObserver` about
   // cert changes in Ash.
-  void NotifyCertsChangedInAsh(mojom::CertDatabaseChangeType change_type);
+  void NotifyCertsChangedInAsh();
 
  private:
   // ash::LoginState::Observer
@@ -64,11 +61,11 @@ class CertDatabaseAsh : public mojom::CertDatabase, ash::LoginState::Observer {
   void WaitForCertDatabaseReady(GetCertDatabaseInfoCallback callback);
   void OnCertDatabaseReady(GetCertDatabaseInfoCallback callback,
                            unsigned long private_slot_id,
-                           std::optional<unsigned long> system_slot_id);
+                           absl::optional<unsigned long> system_slot_id);
 
-  std::optional<bool> is_cert_database_ready_;
+  absl::optional<bool> is_cert_database_ready_;
   unsigned long private_slot_id_;
-  std::optional<unsigned long> system_slot_id_;
+  absl::optional<unsigned long> system_slot_id_;
 
   // The observers that will receive notifications about cert changes in Ash.
   mojo::RemoteSet<mojom::AshCertDatabaseObserver> observers_;

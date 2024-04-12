@@ -38,8 +38,7 @@ class FakeAppListModelUpdater : public AppListModelUpdater {
   void RemoveItem(const std::string& id, bool is_uninstall) override;
   void SetItemIconAndColor(const std::string& id,
                            const gfx::ImageSkia& icon,
-                           const ash::IconColor& icon_color,
-                           bool is_placeholder_icon) override;
+                           const ash::IconColor& icon_color) override;
   void SetItemFolderId(const std::string& id,
                        const std::string& folder_id) override;
   void SetItemPosition(const std::string& id,
@@ -48,8 +47,7 @@ class FakeAppListModelUpdater : public AppListModelUpdater {
   // For SearchModel:
   void SetSearchEngineIsGoogle(bool is_google) override;
   void PublishSearchResults(
-      const std::vector<raw_ptr<ChromeSearchResult, VectorExperimental>>&
-          results,
+      const std::vector<ChromeSearchResult*>& results,
       const std::vector<ash::AppListSearchResultCategory>& categories) override;
   void ClearSearchResults() override;
 
@@ -74,12 +72,12 @@ class FakeAppListModelUpdater : public AppListModelUpdater {
   // For SearchModel:
   bool SearchEngineIsGoogle() override;
   void RecalculateWouldTriggerLauncherSearchIph() override;
-  const std::vector<raw_ptr<ChromeSearchResult, VectorExperimental>>&
-  search_results() const {
+  const std::vector<ChromeSearchResult*>& search_results() const {
     return search_results_;
   }
 
   void OnAppListHidden() override {}
+  void CommitTemporarySortOrder() override {}
 
   void AddObserver(AppListModelUpdaterObserver* observer) override;
   void RemoveObserver(AppListModelUpdaterObserver* observer) override;
@@ -89,11 +87,11 @@ class FakeAppListModelUpdater : public AppListModelUpdater {
   size_t update_image_count() const { return update_image_count_; }
 
  private:
-  raw_ptr<Profile> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
 
   bool search_engine_is_google_ = false;
   std::vector<std::unique_ptr<ChromeAppListItem>> items_;
-  std::vector<raw_ptr<ChromeSearchResult, VectorExperimental>> search_results_;
+  std::vector<ChromeSearchResult*> search_results_;
   base::ObserverList<AppListModelUpdaterObserver> observers_;
 
   size_t update_image_count_ = 0;

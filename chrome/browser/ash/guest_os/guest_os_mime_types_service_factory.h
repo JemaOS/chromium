@@ -30,7 +30,7 @@ class GuestOsMimeTypesServiceFactory : public ProfileKeyedServiceFactory {
   ~GuestOsMimeTypesServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

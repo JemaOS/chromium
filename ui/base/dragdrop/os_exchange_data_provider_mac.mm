@@ -6,11 +6,8 @@
 
 #import <Cocoa/Cocoa.h>
 
-#include <optional>
-
-#include "base/apple/foundation_util.h"
 #include "base/check_op.h"
-#include "base/containers/span.h"
+#include "base/mac/foundation_util.h"
 #include "base/memory/ptr_util.h"
 #include "base/notreached.h"
 #include "base/pickle.h"
@@ -31,12 +28,12 @@
 @end
 
 @implementation CrPasteboardItemWrapper {
-  NSPasteboardItem* __strong _pasteboardItem;
+  base::scoped_nsobject<NSPasteboardItem> _pasteboardItem;
 }
 
 - (instancetype)initWithPasteboardItem:(NSPasteboardItem*)pasteboardItem {
   if ((self = [super init])) {
-    _pasteboardItem = pasteboardItem;
+    _pasteboardItem.reset([pasteboardItem retain]);
   }
 
   return self;
@@ -53,7 +50,7 @@
   // is marked to receive the drags. TODO(avi): Wire up MacViews so that
   // BridgedContentView properly registers the result of View::GetDropFormats()
   // rather than OSExchangeDataProviderMac::SupportedPasteboardTypes().
-  return [_pasteboardItem.types
+  return [[_pasteboardItem types]
       arrayByAddingObject:ui::kUTTypeChromiumInitiatedDrag];
 }
 
@@ -102,7 +99,7 @@ class OwningProvider : public OSExchangeDataProviderMac {
 class WrappingProvider : public OSExchangeDataProviderMac {
  public:
   explicit WrappingProvider(NSPasteboard* pasteboard)
-      : wrapped_pasteboard_(pasteboard) {}
+      : wrapped_pasteboard_([pasteboard retain]) {}
   WrappingProvider(const WrappingProvider& provider) = default;
 
   std::unique_ptr<OSExchangeDataProvider> Clone() const override {
@@ -112,7 +109,7 @@ class WrappingProvider : public OSExchangeDataProviderMac {
   NSPasteboard* GetPasteboard() const override { return wrapped_pasteboard_; }
 
  private:
-  __strong NSPasteboard* wrapped_pasteboard_;
+  base::scoped_nsobject<NSPasteboard> wrapped_pasteboard_;
 };
 
 }  // namespace
@@ -138,33 +135,14 @@ OSExchangeDataProviderMac::CreateProviderWrappingPasteboard(
   return std::make_unique<WrappingProvider>(pasteboard);
 }
 
-void OSExchangeDataProviderMac::MarkRendererTaintedFromOrigin(
-    const url::Origin& origin) {
-  NSString* string = origin.opaque()
-                         ? [NSString string]
-                         : base::SysUTF8ToNSString(origin.Serialize());
-  [GetPasteboard() setString:string
-                     forType:kUTTypeChromiumRendererInitiatedDrag];
+void OSExchangeDataProviderMac::MarkOriginatedFromRenderer() {
+  [GetPasteboard() setData:[NSData data]
+                   forType:kUTTypeChromiumRendererInitiatedDrag];
 }
 
-bool OSExchangeDataProviderMac::IsRendererTainted() const {
+bool OSExchangeDataProviderMac::DidOriginateFromRenderer() const {
   return [GetPasteboard().types
       containsObject:kUTTypeChromiumRendererInitiatedDrag];
-}
-
-std::optional<url::Origin> OSExchangeDataProviderMac::GetRendererTaintedOrigin()
-    const {
-  NSString* item =
-      [GetPasteboard() stringForType:kUTTypeChromiumRendererInitiatedDrag];
-  if (!item) {
-    return std::nullopt;
-  }
-
-  if (0 == [item length]) {
-    return url::Origin();
-  }
-
-  return url::Origin::Create(GURL(base::SysNSStringToUTF8(item)));
 }
 
 void OSExchangeDataProviderMac::MarkAsFromPrivileged() {
@@ -207,81 +185,103 @@ void OSExchangeDataProviderMac::SetPickledData(
   [GetPasteboard() setData:ns_data forType:format.ToNSString()];
 }
 
-std::optional<std::u16string> OSExchangeDataProviderMac::GetString() const {
+bool OSExchangeDataProviderMac::GetString(std::u16string* data) const {
+  DCHECK(data);
   NSString* item = [GetPasteboard() stringForType:NSPasteboardTypeString];
   if (item) {
-    return base::SysNSStringToUTF16(item);
+    *data = base::SysNSStringToUTF16(item);
+    return true;
   }
 
   // There was no NSString, check for an NSURL.
-  if (std::optional<UrlInfo> url_info =
-          GetURLAndTitle(FilenameToURLPolicy::DO_NOT_CONVERT_FILENAMES);
-      url_info.has_value()) {
-    return base::UTF8ToUTF16(url_info->url.spec());
-  }
+  GURL url;
+  std::u16string title;
+  bool result = GetURLAndTitle(FilenameToURLPolicy::DO_NOT_CONVERT_FILENAMES,
+                               &url, &title);
+  if (result)
+    *data = base::UTF8ToUTF16(url.spec());
 
-  return std::nullopt;
+  return result;
 }
 
-std::optional<OSExchangeDataProvider::UrlInfo>
-OSExchangeDataProviderMac::GetURLAndTitle(FilenameToURLPolicy policy) const {
-  NSArray<URLAndTitle*>* urls_and_titles =
-      clipboard_util::URLsAndTitlesFromPasteboard(
-          GetPasteboard(), policy == FilenameToURLPolicy::CONVERT_FILENAMES);
-  if (!urls_and_titles.count) {
-    return std::nullopt;
+bool OSExchangeDataProviderMac::GetURLAndTitle(FilenameToURLPolicy policy,
+                                               GURL* url,
+                                               std::u16string* title) const {
+  DCHECK(url);
+  DCHECK(title);
+
+  NSArray<NSString*>* urls;
+  NSArray<NSString*>* titles;
+  if (clipboard_util::URLsAndTitlesFromPasteboard(
+          GetPasteboard(), /*include_files=*/false, &urls, &titles)) {
+    *url = GURL(base::SysNSStringToUTF8(urls.firstObject));
+    *title = base::SysNSStringToUTF16(titles.firstObject);
+    return true;
   }
 
-  GURL url(base::SysNSStringToUTF8(urls_and_titles.firstObject.URL));
-  return UrlInfo{std::move(url),
-                 base::SysNSStringToUTF16(urls_and_titles.firstObject.title)};
+  // If there are no URLs, try to convert a filename to a URL if the policy
+  // allows it. The title remains blank.
+  //
+  // This could be done in the call to `URLsAndTitlesFromPasteboard` above if
+  // `true` were passed in for the `include_files` parameter, but that function
+  // strips the trailing slashes off of paths and always returns the last path
+  // element as the title whereas no path conversion nor title is wanted.
+  //
+  // TODO(avi): What is going on here? This comment and code was written for the
+  // old pasteboard code; is this still true with the new pasteboard code? What
+  // uses this, and why does it care about titles or path conversion?
+  base::FilePath path;
+  if (policy != FilenameToURLPolicy::DO_NOT_CONVERT_FILENAMES &&
+      GetFilename(&path)) {
+    *url = net::FilePathToFileURL(path);
+    return true;
+  }
+
+  return false;
 }
 
-std::optional<std::vector<GURL>> OSExchangeDataProviderMac::GetURLs(
-    FilenameToURLPolicy policy) const {
-  NSArray<URLAndTitle*>* urls_and_titles =
-      clipboard_util::URLsAndTitlesFromPasteboard(
-          GetPasteboard(), policy == FilenameToURLPolicy::CONVERT_FILENAMES);
-  if (!urls_and_titles.count) {
-    return std::nullopt;
-  }
-
-  std::vector<GURL> local_urls;
-  for (URLAndTitle* url_and_title in urls_and_titles) {
-    local_urls.emplace_back(base::SysNSStringToUTF8(url_and_title.URL));
-  }
-  return local_urls;
-}
-
-std::optional<std::vector<FileInfo>> OSExchangeDataProviderMac::GetFilenames()
-    const {
+bool OSExchangeDataProviderMac::GetFilename(base::FilePath* path) const {
   std::vector<FileInfo> files =
       clipboard_util::FilesFromPasteboard(GetPasteboard());
   if (files.empty()) {
-    return std::nullopt;
+    return false;
   }
 
-  return files;
+  *path = files[0].path;
+  return true;
 }
 
-std::optional<base::Pickle> OSExchangeDataProviderMac::GetPickledData(
-    const ClipboardFormatType& format) const {
-  NSData* ns_data = [GetPasteboard() dataForType:format.ToNSString()];
-  if (!ns_data) {
-    return std::nullopt;
-  }
+bool OSExchangeDataProviderMac::GetFilenames(
+    std::vector<FileInfo>* filenames) const {
+  std::vector<FileInfo> files =
+      clipboard_util::FilesFromPasteboard(GetPasteboard());
+  bool result = !files.empty();
+  base::ranges::move(files, std::back_inserter(*filenames));
+  return result;
+}
 
-  base::span<const uint8_t> data_span(
-      reinterpret_cast<const uint8_t*>(ns_data.bytes), ns_data.length);
-  return base::Pickle::WithData(data_span);
+bool OSExchangeDataProviderMac::GetPickledData(
+    const ClipboardFormatType& format,
+    base::Pickle* data) const {
+  DCHECK(data);
+  NSData* ns_data = [GetPasteboard() dataForType:format.ToNSString()];
+  if (!ns_data)
+    return false;
+
+  *data =
+      base::Pickle(static_cast<const char*>([ns_data bytes]), [ns_data length]);
+  return true;
 }
 
 bool OSExchangeDataProviderMac::HasString() const {
-  return GetString().has_value();
+  std::u16string string;
+  return GetString(&string);
 }
 
 bool OSExchangeDataProviderMac::HasURL(FilenameToURLPolicy policy) const {
-  return GetURLAndTitle(policy).has_value();
+  GURL url;
+  std::u16string title;
+  return GetURLAndTitle(policy, &url, &title);
 }
 
 bool OSExchangeDataProviderMac::HasFile() const {
@@ -299,10 +299,11 @@ void OSExchangeDataProviderMac::SetFileContents(
   NOTIMPLEMENTED();
 }
 
-std::optional<OSExchangeDataProvider::FileContentsInfo>
-OSExchangeDataProviderMac::GetFileContents() const {
+bool OSExchangeDataProviderMac::GetFileContents(
+    base::FilePath* filename,
+    std::string* file_contents) const {
   NOTIMPLEMENTED();
-  return std::nullopt;
+  return false;
 }
 
 bool OSExchangeDataProviderMac::HasFileContents() const {
@@ -340,10 +341,10 @@ NSArray<NSDraggingItem*>* OSExchangeDataProviderMac::GetDraggingItems() const {
 
   NSMutableArray<NSDraggingItem*>* drag_items = [NSMutableArray array];
   for (NSPasteboardItem* item in pasteboard_items) {
-    CrPasteboardItemWrapper* wrapper =
-        [[CrPasteboardItemWrapper alloc] initWithPasteboardItem:item];
+    CrPasteboardItemWrapper* wrapper = [[[CrPasteboardItemWrapper alloc]
+        initWithPasteboardItem:item] autorelease];
     NSDraggingItem* drag_item =
-        [[NSDraggingItem alloc] initWithPasteboardWriter:wrapper];
+        [[[NSDraggingItem alloc] initWithPasteboardWriter:wrapper] autorelease];
 
     [drag_items addObject:drag_item];
   }
@@ -356,9 +357,9 @@ NSArray* OSExchangeDataProviderMac::SupportedPasteboardTypes() {
   return @[
     kUTTypeChromiumInitiatedDrag, kUTTypeChromiumPrivilegedInitiatedDrag,
     kUTTypeChromiumRendererInitiatedDrag, kUTTypeChromiumWebCustomData,
-    kUTTypeWebKitWebURLsWithTitles, kUTTypeChromiumSourceURL,
-    NSPasteboardTypeFileURL, NSPasteboardTypeHTML, NSPasteboardTypeRTF,
-    NSPasteboardTypeString, NSPasteboardTypeURL
+    kUTTypeWebKitWebURLsWithTitles, NSPasteboardTypeFileURL,
+    NSPasteboardTypeHTML, NSPasteboardTypeRTF, NSPasteboardTypeString,
+    NSPasteboardTypeURL
   ];
 }
 

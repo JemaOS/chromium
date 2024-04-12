@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "base/containers/flat_map.h"
@@ -17,6 +16,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "build/build_config.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/skia/include/core/SkRegion.h"
 #include "ui/aura/aura_export.h"
 #include "ui/aura/scoped_enable_unadjusted_mouse_events.h"
@@ -39,7 +39,7 @@ class Transform;
 
 namespace ui {
 class Compositor;
-enum class DomCode : uint32_t;
+enum class DomCode;
 class EventSink;
 class InputMethod;
 class ViewProp;
@@ -68,8 +68,6 @@ class AURA_EXPORT WindowTreeHost : public ui::ImeKeyEventDispatcher,
                                    public display::DisplayObserver,
                                    public ui::CompositorObserver {
  public:
-  static const char kWindowTreeHostUsesParent[];
-
   // VideoCaptureLock ensures state necessary for capturing video remains in
   // effect. For example, this may force keeping the compositor visible when
   // it normally would not be.
@@ -252,7 +250,7 @@ class AURA_EXPORT WindowTreeHost : public ui::ImeKeyEventDispatcher,
   // intercepted.  Returns a ScopedKeyboardHook instance which stops capturing
   // system key events when destroyed.
   std::unique_ptr<ScopedKeyboardHook> CaptureSystemKeyEvents(
-      std::optional<base::flat_set<ui::DomCode>> codes);
+      absl::optional<base::flat_set<ui::DomCode>> codes);
 
   // Returns a map of KeyboardEvent code to KeyboardEvent key values.
   virtual base::flat_map<std::string, std::string> GetKeyboardLayoutMap() = 0;
@@ -265,12 +263,11 @@ class AURA_EXPORT WindowTreeHost : public ui::ImeKeyEventDispatcher,
   bool IsNativeWindowOcclusionEnabled() const;
 
   // Remembers the current occlusion state, and if it has changed, notifies
-  // observers of the change. `raw_occluded_region` is only applicable when
-  // visible and gives the occluded region. If `raw_occluded_region` is empty,
-  // the entire AcceleratedWidget is visible.
-  virtual void SetNativeWindowOcclusionState(
-      Window::OcclusionState raw_occlusion_state,
-      const SkRegion& raw_occluded_region);
+  // observers of the change. `occluded_region` is only applicable when visible
+  // and gives the occluded region. If `occluded_region` is empty, the entire
+  // AcceleratedWidget is visible.
+  virtual void SetNativeWindowOcclusionState(Window::OcclusionState state,
+                                             const SkRegion& occluded_region);
 
   Window::OcclusionState GetNativeWindowOcclusionState() {
     return occlusion_state_;
@@ -304,14 +301,14 @@ class AURA_EXPORT WindowTreeHost : public ui::ImeKeyEventDispatcher,
 
 #if BUILDFLAG(IS_WIN)
   // Returns whether a host's window is on the current workspace or not,
-  // std::nullopt if the state is not known.
-  std::optional<bool> on_current_workspace() const {
+  // absl::nullopt if the state is not known.
+  absl::optional<bool> on_current_workspace() const {
     return on_current_workspace_;
   }
 
   // Determining if a host's window is on the current workspace can be very
   // expensive COM call on Windows, so this caches that information.
-  void set_on_current_workspace(std::optional<bool> on_current_workspace) {
+  void set_on_current_workspace(absl::optional<bool> on_current_workspace) {
     on_current_workspace_ = on_current_workspace;
   }
 #endif  // BUILDFLAG_(IS_WIN)
@@ -378,7 +375,7 @@ class AURA_EXPORT WindowTreeHost : public ui::ImeKeyEventDispatcher,
 
   // Begins capturing system key events.  Returns true if successful.
   virtual bool CaptureSystemKeyEventsImpl(
-      std::optional<base::flat_set<ui::DomCode>> dom_codes) = 0;
+      absl::optional<base::flat_set<ui::DomCode>> dom_codes) = 0;
 
   // Stops capturing system keyboard events.
   virtual void ReleaseSystemKeyEventCapture() = 0;
@@ -405,25 +402,36 @@ class AURA_EXPORT WindowTreeHost : public ui::ImeKeyEventDispatcher,
   virtual gfx::Rect CalculateRootWindowBounds() const;
 
  private:
+  class HideHelper;
+
+  friend class HideHelper;
   friend class test::WindowTreeHostTestApi;
 
   void DecrementVideoCaptureCount();
   void MaybeUpdateComposibleVisibilityForVideoLockCountChange();
-  void MaybeUpdateCompositorVisibilityForNativeOcclusion();
   bool CalculateCompositorVisibilityFromOcclusionState() const;
 
+  // See `kApplyNativeOcclusionToCompositorTypeRelease` for details.
+  bool ShouldReleaseResourcesWhenHidden() const;
+
   // See `kApplyNativeOcclusionToCompositorTypeThrottle` for details.
-  bool NativeOcclusionAffectsThrottle() const;
+  bool ShouldThrottleWhenOccluded() const;
 
-  // True if native occlusion only affects throttle, not compositor visibility.
-  bool NativeOcclusionAffectsVisibility() const;
+  // Starts the steps necessary to release viz resources and hide.
+  void StartReleasingResourcesForHide();
 
-  // True if we should throttle, assuming the native occlusion settings allow
-  // it.
-  bool ShouldThrottle() const;
+  // Restores temporary state set in StartReleasingResourcesForHide().
+  void RestoreHideTransitionState();
 
-  static const base::flat_set<raw_ptr<WindowTreeHost, CtnExperimental>>&
-  GetThrottledHostsForTesting();
+  // Completes a hide initiated to release resources.
+  void FinishHideTransition();
+
+  static const base::flat_set<WindowTreeHost*>& GetThrottledHostsForTesting();
+
+  // Returns true if in the process of releasing resources before hiding.
+  bool is_transitioning_to_hidden() const {
+    return hide_helper_.get() != nullptr;
+  }
 
   // Moves the cursor to the specified location. This method is internally used
   // by MoveCursorToLocationInDIP() and MoveCursorToLocationInPixels().
@@ -440,26 +448,18 @@ class AURA_EXPORT WindowTreeHost : public ui::ImeKeyEventDispatcher,
   // valid during its deletion. (Window's dtor notifies observers that may
   // attempt to reach back up to access this object which will be valid until
   // the end of the dtor).
-  raw_ptr<Window, AcrossTasksDanglingUntriaged> window_;  // Owning.
+  raw_ptr<Window, DanglingUntriaged> window_;  // Owning.
 
   // Keeps track of the occlusion state of the host, and used to send
   // notifications to observers when it changes.
   Window::OcclusionState occlusion_state_ = Window::OcclusionState::UNKNOWN;
-  SkRegion occluded_region_;
-
-  // If there are video capture locks, we need to force the occlusion state
-  // to visible. But, when the video capture locks are done, we need to restore
-  // the occlusion state to what the last occlusion state from the platform was.
-  // We keep the latest occlusion state from the platform in
-  // `raw_occlusion_state_` and `raw_occluded_region_`.
-  Window::OcclusionState raw_occlusion_state_ = Window::OcclusionState::UNKNOWN;
-  SkRegion raw_occluded_region_;
 
   // This is set if we know whether the window is on the current workspace.
   // This is useful on Windows, where a COM call is required to determine this,
   // which can block the UI. The native window occlusion tracking code already
   // figures this out, so it's cheaper to store the fact here.
-  std::optional<bool> on_current_workspace_;
+  absl::optional<bool> on_current_workspace_;
+  SkRegion occluded_region_;
 
   base::ObserverList<WindowTreeHostObserver>::Unchecked observers_;
 
@@ -501,6 +501,10 @@ class AURA_EXPORT WindowTreeHost : public ui::ImeKeyEventDispatcher,
 
   // Number of VideoCaptureLocks that have been created and not destroyed.
   int video_capture_count_ = 0;
+
+  // Used to set up and restore state necessary to release resources when
+  // hiding. Non-null while waiting for state to be released (transitioning).
+  std::unique_ptr<HideHelper> hide_helper_;
 
   base::WeakPtrFactory<WindowTreeHost> weak_factory_{this};
 };

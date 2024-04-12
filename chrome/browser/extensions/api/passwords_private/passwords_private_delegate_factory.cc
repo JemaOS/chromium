@@ -9,9 +9,8 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/extensions/api/passwords_private/passwords_private_delegate_impl.h"
 #include "chrome/browser/extensions/api/passwords_private/passwords_private_event_router_factory.h"
-#include "chrome/browser/password_manager/account_password_store_factory.h"
 #include "chrome/browser/password_manager/bulk_leak_check_service_factory.h"
-#include "chrome/browser/password_manager/profile_password_store_factory.h"
+#include "chrome/browser/password_manager/password_store_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "components/password_manager/core/common/password_manager_features.h"
@@ -23,23 +22,35 @@ using content::BrowserContext;
 
 PasswordsPrivateDelegateProxy::PasswordsPrivateDelegateProxy(
     BrowserContext* browser_context)
-    : browser_context_(browser_context) {}
+    : browser_context_(browser_context) {
+  if (base::FeatureList::IsEnabled(
+          password_manager::features::kPasswordManagerRedesign)) {
+    return;
+  }
+  scoped_instance_ = base::MakeRefCounted<PasswordsPrivateDelegateImpl>(
+      static_cast<Profile*>(browser_context_));
+}
 
 PasswordsPrivateDelegateProxy::PasswordsPrivateDelegateProxy(
     BrowserContext* browser_context,
     scoped_refptr<PasswordsPrivateDelegate> delegate)
-    : browser_context_(browser_context) {
-  weak_instance_ = delegate->AsWeakPtr();
-}
+    : browser_context_(browser_context),
+      scoped_instance_(std::move(delegate)) {}
 PasswordsPrivateDelegateProxy::~PasswordsPrivateDelegateProxy() = default;
 
 void PasswordsPrivateDelegateProxy::Shutdown() {
   browser_context_ = nullptr;
   weak_instance_ = nullptr;
+  scoped_instance_ = nullptr;
 }
 
 scoped_refptr<PasswordsPrivateDelegate>
 PasswordsPrivateDelegateProxy::GetOrCreateDelegate() {
+  if (!base::FeatureList::IsEnabled(
+          password_manager::features::kPasswordManagerRedesign)) {
+    return scoped_instance_;
+  }
+
   if (weak_instance_) {
     return scoped_refptr<PasswordsPrivateDelegate>(weak_instance_.get());
   }
@@ -53,7 +64,11 @@ PasswordsPrivateDelegateProxy::GetOrCreateDelegate() {
 
 scoped_refptr<PasswordsPrivateDelegate>
 PasswordsPrivateDelegateProxy::GetDelegate() {
-  return scoped_refptr<PasswordsPrivateDelegate>(weak_instance_.get());
+  if (base::FeatureList::IsEnabled(
+          password_manager::features::kPasswordManagerRedesign)) {
+    return scoped_refptr<PasswordsPrivateDelegate>(weak_instance_.get());
+  }
+  return scoped_instance_;
 }
 
 // static
@@ -84,18 +99,16 @@ PasswordsPrivateDelegateFactory::PasswordsPrivateDelegateFactory()
               .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {
   DependsOn(BulkLeakCheckServiceFactory::GetInstance());
-  DependsOn(ProfilePasswordStoreFactory::GetInstance());
-  DependsOn(AccountPasswordStoreFactory::GetInstance());
+  DependsOn(PasswordStoreFactory::GetInstance());
   DependsOn(SyncServiceFactory::GetInstance());
   DependsOn(PasswordsPrivateEventRouterFactory::GetInstance());
 }
 
 PasswordsPrivateDelegateFactory::~PasswordsPrivateDelegateFactory() = default;
 
-std::unique_ptr<KeyedService>
-PasswordsPrivateDelegateFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PasswordsPrivateDelegateFactory::BuildServiceInstanceFor(
     content::BrowserContext* profile) const {
-  return std::make_unique<PasswordsPrivateDelegateProxy>(profile);
+  return new PasswordsPrivateDelegateProxy(profile);
 }
 
 }  // namespace extensions

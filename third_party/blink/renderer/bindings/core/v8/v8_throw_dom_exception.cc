@@ -85,6 +85,7 @@ v8::Local<v8::Value> V8ThrowDOMException::AttachStackProperty(
   v8::Local<v8::Object> exception_obj =
       ToV8Traits<DOMException>::ToV8(ScriptState::From(current_context),
                                      dom_exception)
+          .ToLocalChecked()
           .As<v8::Object>();
 
   // Attach an Error object to the DOMException. This is then lazily used to get

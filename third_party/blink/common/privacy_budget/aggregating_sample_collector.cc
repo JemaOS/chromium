@@ -10,7 +10,6 @@
 
 #include "base/check.h"
 #include "base/compiler_specific.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/no_destructor.h"
 #include "base/synchronization/lock.h"
 #include "base/template_util.h"
@@ -154,13 +153,9 @@ void AggregatingSampleCollector::TryAcceptSingleSample(
     ukm::SourceId new_source,
     const IdentifiableSample& new_sample) {
   if (!seen_surfaces_.count(new_sample.surface)) {
-    if (seen_surfaces_.size() >= kMaxTrackedSurfaces) {
+    if (seen_surfaces_.size() >= kMaxTrackedSurfaces)
       // New surface, but can't add any more.
-      UMA_HISTOGRAM_ENUMERATION(
-          "PrivacyBudget.Identifiability.RecordedSample",
-          PrivacyBudgetRecordedSample::kDroppedMaxTrackedSurfaces);
       return;
-    }
   }
 
   auto surfaces_for_source_it =
@@ -168,12 +163,8 @@ void AggregatingSampleCollector::TryAcceptSingleSample(
   if (surfaces_for_source_it == per_source_per_surface_samples_.end()) {
     // First time we see this source id.
 
-    if (per_source_per_surface_samples_.size() >= kMaxTrackedSources) {
-      UMA_HISTOGRAM_ENUMERATION(
-          "PrivacyBudget.Identifiability.RecordedSample",
-          PrivacyBudgetRecordedSample::kDroppedMaxTrackedSources);
+    if (per_source_per_surface_samples_.size() >= kMaxTrackedSources)
       return;
-    }
 
     per_source_per_surface_samples_.emplace(
         new_source,
@@ -201,9 +192,6 @@ void AggregatingSampleCollector::TryAcceptSingleSample(
       if (sample_set.samples.size() >=
           kMaxTrackedSamplesPerSurfacePerSourceId) {
         sample_set.overflowed = true;
-        UMA_HISTOGRAM_ENUMERATION(
-            "PrivacyBudget.Identifiability.RecordedSample",
-            PrivacyBudgetRecordedSample::kDroppedMaxTrackedPerSurfacePerSource);
         return;
       }
 
@@ -213,8 +201,6 @@ void AggregatingSampleCollector::TryAcceptSingleSample(
 
   seen_surfaces_.insert(new_sample.surface);
 
-  UMA_HISTOGRAM_ENUMERATION("PrivacyBudget.Identifiability.RecordedSample",
-                            PrivacyBudgetRecordedSample::kAccepted);
   AddNewUnsentSample(new_source, new_sample);
 }
 

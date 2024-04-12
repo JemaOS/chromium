@@ -7,234 +7,218 @@
 #include "base/notreached.h"
 #include "chrome/common/chromeos/extensions/api/diagnostics.h"
 #include "chromeos/crosapi/mojom/diagnostics_service.mojom.h"
-#include "chromeos/crosapi/mojom/telemetry_diagnostic_routine_service.mojom.h"
 
-namespace chromeos::converters::diagnostics {
+namespace chromeos {
+namespace converters {
 
 namespace {
 
-namespace cx_diag = ::chromeos::api::os_diagnostics;
-namespace crosapi = ::crosapi::mojom;
+using MojoRoutineCommandType = crosapi::mojom::DiagnosticsRoutineCommandEnum;
+using MojoRoutineStatus = ::crosapi::mojom::DiagnosticsRoutineStatusEnum;
+using MojoRoutineType = ::crosapi::mojom::DiagnosticsRoutineEnum;
+using MojoAcPowerStatusType = crosapi::mojom::DiagnosticsAcPowerStatusEnum;
+using MojoRoutineUserMessageType =
+    crosapi::mojom::DiagnosticsRoutineUserMessageEnum;
+using MojoDiskReadRoutineType =
+    crosapi::mojom::DiagnosticsDiskReadRoutineTypeEnum;
+using MojoNvmeSelfTestType = crosapi::mojom::DiagnosticsNvmeSelfTestTypeEnum;
+
+using RoutineCommandType = ::chromeos::api::os_diagnostics::RoutineCommandType;
+using RoutineStatus = ::chromeos::api::os_diagnostics::RoutineStatus;
+using RoutineType = ::chromeos::api::os_diagnostics::RoutineType;
+using RoutineAcPowerStatusRoutineType =
+    ::chromeos::api::os_diagnostics::AcPowerStatus;
+using RoutineUserMessageType = ::chromeos::api::os_diagnostics::UserMessageType;
+using RoutineDiskReadRoutineType =
+    ::chromeos::api::os_diagnostics::DiskReadRoutineType;
+using RoutineNvmeSelfTestRoutineType =
+    ::chromeos::api::os_diagnostics::RunNvmeSelfTestRequest;
 
 }  // namespace
 
-bool ConvertMojoRoutine(crosapi::DiagnosticsRoutineEnum in,
-                        cx_diag::RoutineType* out) {
+bool ConvertMojoRoutine(MojoRoutineType in, RoutineType* out) {
   DCHECK(out);
   switch (in) {
-    case crosapi::DiagnosticsRoutineEnum::kAcPower:
-      *out = cx_diag::RoutineType::kAcPower;
+    case MojoRoutineType::kAcPower:
+      *out = RoutineType::kAcPower;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kBatteryCapacity:
-      *out = cx_diag::RoutineType::kBatteryCapacity;
+    case MojoRoutineType::kBatteryCapacity:
+      *out = RoutineType::kBatteryCapacity;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kBatteryCharge:
-      *out = cx_diag::RoutineType::kBatteryCharge;
+    case MojoRoutineType::kBatteryCharge:
+      *out = RoutineType::kBatteryCharge;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kBatteryDischarge:
-      *out = cx_diag::RoutineType::kBatteryDischarge;
+    case MojoRoutineType::kBatteryDischarge:
+      *out = RoutineType::kBatteryDischarge;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kBatteryHealth:
-      *out = cx_diag::RoutineType::kBatteryHealth;
+    case MojoRoutineType::kBatteryHealth:
+      *out = RoutineType::kBatteryHealth;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kCpuCache:
-      *out = cx_diag::RoutineType::kCpuCache;
+    case MojoRoutineType::kCpuCache:
+      *out = RoutineType::kCpuCache;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kFloatingPointAccuracy:
-      *out = cx_diag::RoutineType::kCpuFloatingPointAccuracy;
+    case MojoRoutineType::kFloatingPointAccuracy:
+      *out = RoutineType::kCpuFloatingPointAccuracy;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kPrimeSearch:
-      *out = cx_diag::RoutineType::kCpuPrimeSearch;
+    case MojoRoutineType::kPrimeSearch:
+      *out = RoutineType::kCpuPrimeSearch;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kCpuStress:
-      *out = cx_diag::RoutineType::kCpuStress;
+    case MojoRoutineType::kCpuStress:
+      *out = RoutineType::kCpuStress;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kDiskRead:
-      *out = cx_diag::RoutineType::kDiskRead;
+    case MojoRoutineType::kDiskRead:
+      *out = RoutineType::kDiskRead;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kDnsResolution:
-      *out = cx_diag::RoutineType::kDnsResolution;
+    case MojoRoutineType::kDnsResolution:
+      *out = RoutineType::kDnsResolution;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kDnsResolverPresent:
-      *out = cx_diag::RoutineType::kDnsResolverPresent;
+    case MojoRoutineType::kDnsResolverPresent:
+      *out = RoutineType::kDnsResolverPresent;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kLanConnectivity:
-      *out = cx_diag::RoutineType::kLanConnectivity;
+    case MojoRoutineType::kLanConnectivity:
+      *out = RoutineType::kLanConnectivity;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kMemory:
-      *out = cx_diag::RoutineType::kMemory;
+    case MojoRoutineType::kMemory:
+      *out = RoutineType::kMemory;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kNvmeWearLevel:
-      *out = cx_diag::RoutineType::kNvmeWearLevel;
+    case MojoRoutineType::kNvmeWearLevel:
+      *out = RoutineType::kNvmeWearLevel;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kSignalStrength:
-      *out = cx_diag::RoutineType::kSignalStrength;
+    case MojoRoutineType::kSignalStrength:
+      *out = RoutineType::kSignalStrength;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kGatewayCanBePinged:
-      *out = cx_diag::RoutineType::kGatewayCanBePinged;
+    case MojoRoutineType::kGatewayCanBePinged:
+      *out = RoutineType::kGatewayCanBePinged;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kSmartctlCheck:
-      *out = cx_diag::RoutineType::kSmartctlCheck;
+    case MojoRoutineType::kSmartctlCheck:
+      *out = RoutineType::kSmartctlCheck;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kSensitiveSensor:
-      *out = cx_diag::RoutineType::kSensitiveSensor;
+    case MojoRoutineType::kSensitiveSensor:
+      *out = RoutineType::kSensitiveSensor;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kNvmeSelfTest:
-      *out = cx_diag::RoutineType::kNvmeSelfTest;
+    case MojoRoutineType::kNvmeSelfTest:
+      *out = RoutineType::kNvmeSelfTest;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kFingerprintAlive:
-      *out = cx_diag::RoutineType::kFingerprintAlive;
+    case MojoRoutineType::kFingerprintAlive:
+      *out = RoutineType::kFingerprintAlive;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kSmartctlCheckWithPercentageUsed:
-      *out = cx_diag::RoutineType::kSmartctlCheckWithPercentageUsed;
+    case MojoRoutineType::kSmartctlCheckWithPercentageUsed:
+      *out = RoutineType::kSmartctlCheckWithPercentageUsed;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kEmmcLifetime:
-      *out = cx_diag::RoutineType::kEmmcLifetime;
+    case MojoRoutineType::kEmmcLifetime:
+      *out = RoutineType::kEmmcLifetime;
       return true;
-    case crosapi::DiagnosticsRoutineEnum::kBluetoothPower:
-      *out = cx_diag::RoutineType::kBluetoothPower;
-      return true;
-    case crosapi::DiagnosticsRoutineEnum::kUfsLifetime:
-      *out = cx_diag::RoutineType::kUfsLifetime;
-      return true;
-    case crosapi::DiagnosticsRoutineEnum::kPowerButton:
-      *out = cx_diag::RoutineType::kPowerButton;
-      return true;
-    case crosapi::DiagnosticsRoutineEnum::kAudioDriver:
-      *out = cx_diag::RoutineType::kAudioDriver;
-      return true;
-    case crosapi::DiagnosticsRoutineEnum::kBluetoothDiscovery:
-      *out = cx_diag::RoutineType::kBluetoothDiscovery;
-      return true;
-    case crosapi::DiagnosticsRoutineEnum::kBluetoothScanning:
-      *out = cx_diag::RoutineType::kBluetoothScanning;
-      return true;
-    case crosapi::DiagnosticsRoutineEnum::kBluetoothPairing:
-      *out = cx_diag::RoutineType::kBluetoothPairing;
-      return true;
-    case crosapi::DiagnosticsRoutineEnum::kFan:
-      *out = cx_diag::RoutineType::kFan;
-      return true;
-    case crosapi::DiagnosticsRoutineEnum::kUnknown:
+    default:
       return false;
   }
 }
 
-cx_diag::RoutineStatus ConvertRoutineStatus(
-    crosapi::DiagnosticsRoutineStatusEnum status) {
+RoutineStatus ConvertRoutineStatus(MojoRoutineStatus status) {
   switch (status) {
-    case crosapi::DiagnosticsRoutineStatusEnum::kUnknown:
-      return cx_diag::RoutineStatus::kUnknown;
-    case crosapi::DiagnosticsRoutineStatusEnum::kReady:
-      return cx_diag::RoutineStatus::kReady;
-    case crosapi::DiagnosticsRoutineStatusEnum::kRunning:
-      return cx_diag::RoutineStatus::kRunning;
-    case crosapi::DiagnosticsRoutineStatusEnum::kWaiting:
-      return cx_diag::RoutineStatus::kWaitingUserAction;
-    case crosapi::DiagnosticsRoutineStatusEnum::kPassed:
-      return cx_diag::RoutineStatus::kPassed;
-    case crosapi::DiagnosticsRoutineStatusEnum::kFailed:
-      return cx_diag::RoutineStatus::kFailed;
-    case crosapi::DiagnosticsRoutineStatusEnum::kError:
-      return cx_diag::RoutineStatus::kError;
-    case crosapi::DiagnosticsRoutineStatusEnum::kCancelled:
-      return cx_diag::RoutineStatus::kCancelled;
-    case crosapi::DiagnosticsRoutineStatusEnum::kFailedToStart:
-      return cx_diag::RoutineStatus::kFailedToStart;
-    case crosapi::DiagnosticsRoutineStatusEnum::kRemoved:
-      return cx_diag::RoutineStatus::kRemoved;
-    case crosapi::DiagnosticsRoutineStatusEnum::kCancelling:
-      return cx_diag::RoutineStatus::kCancelling;
-    case crosapi::DiagnosticsRoutineStatusEnum::kUnsupported:
-      return cx_diag::RoutineStatus::kUnsupported;
-    case crosapi::DiagnosticsRoutineStatusEnum::kNotRun:
-      return cx_diag::RoutineStatus::kNotRun;
+    case MojoRoutineStatus::kUnknown:
+      return RoutineStatus::kUnknown;
+    case MojoRoutineStatus::kReady:
+      return RoutineStatus::kReady;
+    case MojoRoutineStatus::kRunning:
+      return RoutineStatus::kRunning;
+    case MojoRoutineStatus::kWaiting:
+      return RoutineStatus::kWaitingUserAction;
+    case MojoRoutineStatus::kPassed:
+      return RoutineStatus::kPassed;
+    case MojoRoutineStatus::kFailed:
+      return RoutineStatus::kFailed;
+    case MojoRoutineStatus::kError:
+      return RoutineStatus::kError;
+    case MojoRoutineStatus::kCancelled:
+      return RoutineStatus::kCancelled;
+    case MojoRoutineStatus::kFailedToStart:
+      return RoutineStatus::kFailedToStart;
+    case MojoRoutineStatus::kRemoved:
+      return RoutineStatus::kRemoved;
+    case MojoRoutineStatus::kCancelling:
+      return RoutineStatus::kCancelling;
+    case MojoRoutineStatus::kUnsupported:
+      return RoutineStatus::kUnsupported;
+    case MojoRoutineStatus::kNotRun:
+      return RoutineStatus::kNotRun;
   }
 }
 
-crosapi::DiagnosticsRoutineCommandEnum ConvertRoutineCommand(
-    cx_diag::RoutineCommandType commandType) {
+MojoRoutineCommandType ConvertRoutineCommand(RoutineCommandType commandType) {
   switch (commandType) {
-    case cx_diag::RoutineCommandType::kCancel:
-      return crosapi::DiagnosticsRoutineCommandEnum::kCancel;
-    case cx_diag::RoutineCommandType::kRemove:
-      return crosapi::DiagnosticsRoutineCommandEnum::kRemove;
-    case cx_diag::RoutineCommandType::kResume:
-      return crosapi::DiagnosticsRoutineCommandEnum::kContinue;
-    case cx_diag::RoutineCommandType::kStatus:
-      return crosapi::DiagnosticsRoutineCommandEnum::kGetStatus;
-    case cx_diag::RoutineCommandType::kNone:
+    case RoutineCommandType::kCancel:
+      return MojoRoutineCommandType::kCancel;
+    case RoutineCommandType::kRemove:
+      return MojoRoutineCommandType::kRemove;
+    case RoutineCommandType::kResume:
+      return MojoRoutineCommandType::kContinue;
+    case RoutineCommandType::kStatus:
+      return MojoRoutineCommandType::kGetStatus;
+    case RoutineCommandType::kNone:
       break;
   }
-  NOTREACHED_NORETURN();
+
+  NOTREACHED() << "Unknown command type: " << ToString(commandType);
+  return static_cast<MojoRoutineCommandType>(
+      static_cast<int>(MojoRoutineCommandType::kMaxValue) + 1);
 }
 
-crosapi::DiagnosticsAcPowerStatusEnum ConvertAcPowerStatusRoutineType(
-    cx_diag::AcPowerStatus routineType) {
+MojoAcPowerStatusType ConvertAcPowerStatusRoutineType(
+    RoutineAcPowerStatusRoutineType routineType) {
   switch (routineType) {
-    case cx_diag::AcPowerStatus::kConnected:
-      return crosapi::DiagnosticsAcPowerStatusEnum::kConnected;
-    case cx_diag::AcPowerStatus::kDisconnected:
-      return crosapi::DiagnosticsAcPowerStatusEnum::kDisconnected;
-    case cx_diag::AcPowerStatus::kNone:
+    case RoutineAcPowerStatusRoutineType::kConnected:
+      return MojoAcPowerStatusType::kConnected;
+    case RoutineAcPowerStatusRoutineType::kDisconnected:
+      return MojoAcPowerStatusType::kDisconnected;
+    case RoutineAcPowerStatusRoutineType::kNone:
       break;
   }
-  NOTREACHED_NORETURN();
+
+  NOTREACHED() << "Unknown ac power status routine type: "
+               << ToString(routineType);
+  return static_cast<MojoAcPowerStatusType>(
+      static_cast<int>(MojoAcPowerStatusType::kMaxValue) + 1);
 }
 
-cx_diag::UserMessageType ConvertRoutineUserMessage(
-    crosapi::DiagnosticsRoutineUserMessageEnum userMessage) {
+RoutineUserMessageType ConvertRoutineUserMessage(
+    MojoRoutineUserMessageType userMessage) {
   switch (userMessage) {
-    case crosapi::DiagnosticsRoutineUserMessageEnum::kUnknown:
-      return cx_diag::UserMessageType::kUnknown;
-    case crosapi::DiagnosticsRoutineUserMessageEnum::kUnplugACPower:
-      return cx_diag::UserMessageType::kUnplugAcPower;
-    case crosapi::DiagnosticsRoutineUserMessageEnum::kPlugInACPower:
-      return cx_diag::UserMessageType::kPlugInAcPower;
-    case crosapi::DiagnosticsRoutineUserMessageEnum::kPressPowerButton:
-      return cx_diag::UserMessageType::kPressPowerButton;
+    case MojoRoutineUserMessageType::kUnknown:
+      return RoutineUserMessageType::kUnknown;
+    case MojoRoutineUserMessageType::kUnplugACPower:
+      return RoutineUserMessageType::kUnplugAcPower;
+    case MojoRoutineUserMessageType::kPlugInACPower:
+      return RoutineUserMessageType::kPlugInAcPower;
   }
 }
 
-crosapi::DiagnosticsDiskReadRoutineTypeEnum ConvertDiskReadRoutineType(
-    cx_diag::DiskReadRoutineType routineType) {
+MojoDiskReadRoutineType ConvertDiskReadRoutineType(
+    RoutineDiskReadRoutineType routineType) {
   switch (routineType) {
-    case cx_diag::DiskReadRoutineType::kLinear:
-      return crosapi::DiagnosticsDiskReadRoutineTypeEnum::kLinearRead;
-    case cx_diag::DiskReadRoutineType::kRandom:
-      return crosapi::DiagnosticsDiskReadRoutineTypeEnum::kRandomRead;
-    case cx_diag::DiskReadRoutineType::kNone:
+    case RoutineDiskReadRoutineType::kLinear:
+      return MojoDiskReadRoutineType::kLinearRead;
+    case RoutineDiskReadRoutineType::kRandom:
+      return MojoDiskReadRoutineType::kRandomRead;
+    case RoutineDiskReadRoutineType::kNone:
       break;
   }
-  NOTREACHED_NORETURN();
+
+  NOTREACHED() << "Unknown disk read routine type: " << ToString(routineType);
+  return static_cast<MojoDiskReadRoutineType>(
+      static_cast<int>(MojoDiskReadRoutineType::kMaxValue) + 1);
 }
 
-crosapi::DiagnosticsNvmeSelfTestTypeEnum ConvertNvmeSelfTestRoutineType(
-    cx_diag::RunNvmeSelfTestRequest routine_type) {
+MojoNvmeSelfTestType ConvertNvmeSelfTestRoutineType(
+    RoutineNvmeSelfTestRoutineType routine_type) {
   switch (routine_type.test_type) {
-    case cx_diag::NvmeSelfTestType::kNone:
-      return crosapi::DiagnosticsNvmeSelfTestTypeEnum::kUnknown;
-    case cx_diag::NvmeSelfTestType::kShortTest:
-      return crosapi::DiagnosticsNvmeSelfTestTypeEnum::kShortSelfTest;
-    case cx_diag::NvmeSelfTestType::kLongTest:
-      return crosapi::DiagnosticsNvmeSelfTestTypeEnum::kLongSelfTest;
+    case api::os_diagnostics::NvmeSelfTestType::kNone:
+      return MojoNvmeSelfTestType::kUnknown;
+    case api::os_diagnostics::NvmeSelfTestType::kShortTest:
+      return MojoNvmeSelfTestType::kShortSelfTest;
+    case api::os_diagnostics::NvmeSelfTestType::kLongTest:
+      return MojoNvmeSelfTestType::kLongSelfTest;
   }
 }
 
-crosapi::TelemetryDiagnosticVolumeButtonRoutineArgument::ButtonType
-ConvertVolumeButtonRoutineButtonType(
-    cx_diag::VolumeButtonType volume_button_type) {
-  switch (volume_button_type) {
-    case cx_diag::VolumeButtonType::kNone:
-      return crosapi::TelemetryDiagnosticVolumeButtonRoutineArgument::
-          ButtonType::kUnmappedEnumField;
-    case cx_diag::VolumeButtonType::kVolumeUp:
-      return crosapi::TelemetryDiagnosticVolumeButtonRoutineArgument::
-          ButtonType::kVolumeUp;
-    case cx_diag::VolumeButtonType::kVolumeDown:
-      return crosapi::TelemetryDiagnosticVolumeButtonRoutineArgument::
-          ButtonType::kVolumeDown;
-  }
-}
-
-}  // namespace chromeos::converters::diagnostics
+}  // namespace converters
+}  // namespace chromeos

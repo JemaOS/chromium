@@ -27,30 +27,17 @@
 
 namespace blink {
 
-namespace {
-
-class AcceleratedCompositingTestPlatform
-    : public blink::TestingPlatformSupport {
- public:
-  bool IsGpuCompositingDisabled() const override { return false; }
-};
-
-}  // namespace
-
 class HTMLCanvasPainterTest : public PaintControllerPaintTestBase {
  protected:
   void SetUp() override {
-    accelerated_compositing_scope_ = std::make_unique<
-        ScopedTestingPlatformSupport<AcceleratedCompositingTestPlatform>>();
     test_context_provider_ = viz::TestContextProvider::Create();
-    InitializeSharedGpuContextGLES2(test_context_provider_.get());
+    InitializeSharedGpuContext(test_context_provider_.get());
     PaintControllerPaintTestBase::SetUp();
   }
 
   void TearDown() override {
-    PaintControllerPaintTestBase::TearDown();
     SharedGpuContext::ResetForTesting();
-    accelerated_compositing_scope_ = nullptr;
+    PaintControllerPaintTestBase::TearDown();
   }
 
   FrameSettingOverrideFunction SettingOverrider() const override {
@@ -64,11 +51,14 @@ class HTMLCanvasPainterTest : public PaintControllerPaintTestBase {
     return GetChromeClient().HasLayer(layer);
   }
 
+  std::unique_ptr<Canvas2DLayerBridge> MakeCanvas2DLayerBridge(
+      const gfx::Size& size) {
+    return std::make_unique<Canvas2DLayerBridge>(size, RasterMode::kGPU,
+                                                 kNonOpaque);
+  }
+
  private:
   scoped_refptr<viz::TestContextProvider> test_context_provider_;
-  std::unique_ptr<
-      ScopedTestingPlatformSupport<AcceleratedCompositingTestPlatform>>
-      accelerated_compositing_scope_;
 };
 
 TEST_F(HTMLCanvasPainterTest, Canvas2DLayerAppearsInLayerTree) {
@@ -82,16 +72,14 @@ TEST_F(HTMLCanvasPainterTest, Canvas2DLayerAppearsInLayerTree) {
   CanvasRenderingContext* context =
       element->GetCanvasRenderingContext("2d", attributes);
   gfx::Size size(300, 200);
-  std::unique_ptr<Canvas2DLayerBridge> bridge =
-      std::make_unique<Canvas2DLayerBridge>();
-  element->SetPreferred2DRasterMode(RasterModeHint::kPreferGPU);
+  std::unique_ptr<Canvas2DLayerBridge> bridge = MakeCanvas2DLayerBridge(size);
   element->SetResourceProviderForTesting(nullptr, std::move(bridge), size);
   ASSERT_EQ(context, element->RenderingContext());
 
   // Force the page to paint.
   element->PreFinalizeFrame();
-  context->FinalizeFrame(FlushReason::kTesting);
-  element->PostFinalizeFrame(FlushReason::kTesting);
+  context->FinalizeFrame(CanvasResourceProvider::FlushReason::kTesting);
+  element->PostFinalizeFrame(CanvasResourceProvider::FlushReason::kTesting);
   UpdateAllLifecyclePhasesForTest();
 
   ASSERT_TRUE(context->IsComposited());

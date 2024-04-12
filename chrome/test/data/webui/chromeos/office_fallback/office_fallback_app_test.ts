@@ -10,13 +10,6 @@ import type {OfficeFallbackElement} from 'chrome://office-fallback/office_fallba
 import {assertDeepEquals, assertEquals} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 
-interface ProxyArgs {
-  titleText: string;
-  reasonMessage: string;
-  instructionsMessage: string;
-  enableRetryOption: boolean;
-  enableQuickOfficeOption: boolean;
-}
 
 /**
  * A test OfficeFallbackBrowserProxy implementation that enables to mock various
@@ -26,9 +19,14 @@ class OfficeFallbackTestBrowserProxy implements OfficeFallbackBrowserProxy {
   handler: TestMock<PageHandlerRemote>&PageHandlerRemote;
   dialogArgs: string;
 
-  constructor(args: ProxyArgs) {
+  constructor() {
     this.handler = TestMock.fromClass(PageHandlerRemote);
     // Creating JSON string as in OfficeFallbackDialog::GetDialogArgs().
+    const args = {
+      'titleText': 'a title',
+      'reasonMessage': 'a reason',
+      'instructionsMessage': 'an instruction',
+    };
     this.dialogArgs = JSON.stringify(args);
   }
 
@@ -47,17 +45,8 @@ suite('<office-fallback>', () => {
   // called.
   let testProxy: OfficeFallbackTestBrowserProxy;
 
-  const setUp = async (
-      enableRetryOption = true, enableQuickOfficeOption = true,
-      reasonMessage = 'a reason') => {
-    const dialogArgs: ProxyArgs = {
-      titleText: 'a title',
-      reasonMessage: reasonMessage,
-      instructionsMessage: 'an instruction',
-      enableRetryOption: enableRetryOption,
-      enableQuickOfficeOption: enableQuickOfficeOption,
-    };
-    testProxy = new OfficeFallbackTestBrowserProxy(dialogArgs);
+  const setUp = async () => {
+    testProxy = new OfficeFallbackTestBrowserProxy();
     OfficeFallbackBrowserProxy.setInstance(testProxy);
 
     // Creates and attaches the <office-fallback> element to the DOM tree.
@@ -80,57 +69,15 @@ suite('<office-fallback>', () => {
    * the <cloud-upload> component.
    */
   teardown(() => {
-    container.innerHTML = window.trustedTypes!.emptyHTML;
+    container.innerHTML = '';
     testProxy.handler.reset();
-  });
-
-  /**
-   * Tests that the "try again" and "cancel" buttons are shown when the
-   * `enableRetryOption` is enabled.
-   */
-  test('Try again and cancel buttons shown', async () => {
-    await setUp(true, true);
-    assertEquals(officeFallbackApp.$('#try-again-button').style.display, '');
-    assertEquals(officeFallbackApp.$('#cancel-button').style.display, '');
-    assertEquals(officeFallbackApp.$('#ok-button').style.display, 'none');
-  });
-
-  /**
-   * Tests that the "OK" button is shown when the `enableRetryOption` is
-   * disabled.
-   */
-  test('OK button shown', async () => {
-    await setUp(false, true);
-    assertEquals(
-        officeFallbackApp.$('#try-again-button').style.display, 'none');
-    assertEquals(officeFallbackApp.$('#cancel-button').style.display, 'none');
-    assertEquals(officeFallbackApp.$('#ok-button').style.display, '');
-  });
-
-  /**
-   * Tests that the "quick office" button is shown when the
-   * `enableQuickOfficeOption` is enabled.
-   */
-  test('Quick office button shown', async () => {
-    await setUp(true, true);
-    assertEquals(officeFallbackApp.$('#quick-office-button').style.display, '');
-  });
-
-  /**
-   * Tests that the "quick office" button is hidden when the
-   * `enableQuickOfficeOption` is disabled.
-   */
-  test('Quick office button hidden', async () => {
-    await setUp(true, false);
-    assertEquals(
-        officeFallbackApp.$('#quick-office-button').style.display, 'none');
   });
 
   /**
    * Tests that clicking the "quick office" button triggers the right `close`
    * mojo request.
    */
-  test('Open in basic editor button', async () => {
+  test('Open in offline editor button', async () => {
     await setUp();
 
     officeFallbackApp.$('#quick-office-button').click();
@@ -155,40 +102,13 @@ suite('<office-fallback>', () => {
   });
 
   /**
-   * Tests that clicking the "Cancel" button triggers the right `close`
+   * Tests that clicking the "close" button triggers the right `close`
    * mojo request.
    */
-  test('Cancel button', async () => {
+  test('Close button', async () => {
     await setUp();
 
     officeFallbackApp.$('#cancel-button').click();
-    await testProxy.handler.whenCalled('close');
-    assertEquals(1, testProxy.handler.getCallCount('close'));
-    assertDeepEquals(
-        [DialogChoice.kCancel], testProxy.handler.getArgs('close'));
-  });
-
-  /**
-   * Tests that clicking the "OK" button triggers the right `close`
-   * mojo request.
-   */
-  test('OK button', async () => {
-    await setUp();
-
-    officeFallbackApp.$('#ok-button').click();
-    await testProxy.handler.whenCalled('close');
-    assertEquals(1, testProxy.handler.getCallCount('close'));
-    assertDeepEquals([DialogChoice.kOk], testProxy.handler.getArgs('close'));
-  });
-
-  /**
-   * Tests that an "escape" keydown triggers the right `close`
-   * mojo request.
-   */
-  test('Escape', async () => {
-    await setUp();
-
-    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));
     await testProxy.handler.whenCalled('close');
     assertEquals(1, testProxy.handler.getCallCount('close'));
     assertDeepEquals(

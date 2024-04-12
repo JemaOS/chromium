@@ -18,6 +18,7 @@
 #include "components/invalidation/impl/fake_invalidation_service.h"
 #include "components/invalidation/public/invalidation.h"
 #include "components/invalidation/public/invalidation_util.h"
+#include "components/invalidation/public/topic_invalidation_map.h"
 #include "components/policy/core/common/cloud/cloud_policy_constants.h"
 #include "components/policy/core/common/cloud/cloud_policy_core.h"
 #include "components/policy/core/common/cloud/cloud_policy_store.h"
@@ -32,7 +33,6 @@
 
 namespace em = enterprise_management;
 
-using testing::_;
 using testing::Invoke;
 using testing::Mock;
 using testing::WithArgs;
@@ -118,10 +118,12 @@ TEST(AffiliatedCloudPolicyInvalidatorTest, CreateUseDestroy) {
   // timestamp in microseconds. The policy blob contains a timestamp in
   // milliseconds. Convert from one to the other by multiplying by 1000.
   const int64_t invalidation_version = policy.policy_data().timestamp() * 1000;
-  invalidation::Invalidation invalidation = invalidation::Invalidation(
+  invalidation::Invalidation invalidation = invalidation::Invalidation::Init(
       kPolicyInvalidationTopic, invalidation_version, "dummy payload");
 
-  invalidator->OnIncomingInvalidation(invalidation);
+  invalidation::TopicInvalidationMap invalidation_map;
+  invalidation_map.Insert(invalidation);
+  invalidator->OnIncomingInvalidation(invalidation_map);
 
   // Allow the invalidation to be handled.
   policy_client->SetFetchedInvalidationVersion(invalidation_version);
@@ -129,9 +131,7 @@ TEST(AffiliatedCloudPolicyInvalidatorTest, CreateUseDestroy) {
   policy.Build();
   policy_client->SetPolicy(dm_protocol::kChromeDevicePolicyType, std::string(),
                            policy.policy());
-  // TODO(b/298336121) Adjust expected argument once an appropriate
-  // PolicyFetchReason can be passed through.
-  EXPECT_CALL(*policy_client, FetchPolicy(_))
+  EXPECT_CALL(*policy_client, FetchPolicy())
       .WillOnce(
           Invoke(policy_client, &MockCloudPolicyClient::NotifyPolicyFetched));
   base::RunLoop().RunUntilIdle();

@@ -8,10 +8,7 @@
 #include <sstream>
 #include <string>
 
-#include "base/ranges/algorithm.h"
-#include "base/strings/strcat.h"
 #include "ui/gfx/animation/tween.h"
-#include "ui/views/view.h"
 
 namespace views {
 
@@ -41,25 +38,11 @@ bool ChildLayout::operator==(const ChildLayout& other) const {
          (!visible || bounds == other.bounds);
 }
 
-ChildLayout* ProposedLayout::GetLayoutFor(const View* child_view) {
-  // Defer to the const implementation and then cast back.
-  return const_cast<ChildLayout*>(
-      const_cast<const ProposedLayout*>(this)->GetLayoutFor(child_view));
-}
-
-const ChildLayout* ProposedLayout::GetLayoutFor(const View* child_view) const {
-  const auto found = base::ranges::find_if(
-      child_layouts, [child_view](const auto& child_layout) {
-        return child_view == child_layout.child_view;
-      });
-  return found == child_layouts.end() ? nullptr : &*found;
-}
-
 std::string ChildLayout::ToString() const {
-  return base::StrCat({"{", child_view->GetClassName(),
-                       (visible ? " visible " : " not visible "),
-                       bounds.ToString(), " / ", available_size.ToString(),
-                       "}"});
+  std::ostringstream oss;
+  oss << "{" << child_view << (visible ? " visible " : " not visible ")
+      << bounds.ToString() << " / " << available_size.ToString() << "}";
+  return oss.str();
 }
 
 ProposedLayout::ProposedLayout() = default;
@@ -73,6 +56,10 @@ ProposedLayout::~ProposedLayout() = default;
 ProposedLayout& ProposedLayout::operator=(const ProposedLayout& other) =
     default;
 ProposedLayout& ProposedLayout::operator=(ProposedLayout&& other) = default;
+
+bool ProposedLayout::operator==(const ProposedLayout& other) const {
+  return host_size == other.host_size && child_layouts == other.child_layouts;
+}
 
 std::string ProposedLayout::ToString() const {
   std::ostringstream oss;

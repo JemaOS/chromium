@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_POLICY_MESSAGING_LAYER_UPLOAD_FILE_UPLOAD_JOB_H_
 
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "base/containers/flat_map.h"
@@ -17,6 +16,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/no_destructor.h"
 #include "base/sequence_checker.h"
+#include "base/strings/string_piece.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/task_traits.h"
 #include "base/thread_annotations.h"
@@ -46,16 +46,14 @@ class FileUploadJob {
   // `session_token` and `access_parameters`.
   class Delegate {
    public:
-    using SmartPtr = std::unique_ptr<Delegate, base::OnTaskRunnerDeleter>;
-
     virtual ~Delegate();
 
     // Asynchronously initializes upload.
     // Calls back with `total` and `session_token` are set, or Status in case
     // of error.
     virtual void DoInitiate(
-        std::string_view origin_path,
-        std::string_view upload_parameters,
+        base::StringPiece origin_path,
+        base::StringPiece upload_parameters,
         base::OnceCallback<
             void(StatusOr<std::pair<int64_t /*total*/,
                                     std::string /*session_token*/>>)> cb) = 0;
@@ -67,7 +65,7 @@ class FileUploadJob {
     virtual void DoNextStep(
         int64_t total,
         int64_t uploaded,
-        std::string_view session_token,
+        base::StringPiece session_token,
         ScopedReservation scoped_reservation,
         base::OnceCallback<
             void(StatusOr<std::pair<int64_t /*uploaded*/,
@@ -76,14 +74,14 @@ class FileUploadJob {
     // Asynchronously finalizes upload (once `uploaded` reached `total`).
     // Calls back with `access_parameters`, or Status in case of error.
     virtual void DoFinalize(
-        std::string_view session_token,
+        base::StringPiece session_token,
         base::OnceCallback<void(StatusOr<std::string /*access_parameters*/>)>
             cb) = 0;
 
     // Asynchronously deletes the original file (either upon success, or when
     // the failure happened when `retry_count` dropped to 0). Doesn't wait for
     // completion and doesn't report the outcome.
-    virtual void DoDeleteFile(std::string_view origin_path) = 0;
+    virtual void DoDeleteFile(base::StringPiece origin_path) = 0;
 
     // Returns weak pointer.
     base::WeakPtr<Delegate> GetWeakPtr();
@@ -115,7 +113,7 @@ class FileUploadJob {
     void Register(Priority priority,
                   Record record_copy,
                   ::ash::reporting::LogUploadEvent log_upload_event,
-                  Delegate::SmartPtr delegate,
+                  base::WeakPtr<Delegate> delegate,
                   base::OnceCallback<void(StatusOr<FileUploadJob*>)> result_cb);
 
     // Accessor.
@@ -128,10 +126,6 @@ class FileUploadJob {
     // Private constructor, used only internally and in TestEnvironment.
     Manager();
 
-    // Task runner is not declared `const` for testing: to be able to reset it.
-    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
-    SEQUENCE_CHECKER(manager_sequence_checker_);
-
     // Access manager instance, used only internally and in TestEnvironment.
     static std::unique_ptr<FileUploadJob::Manager>& instance_ref();
 
@@ -141,6 +135,10 @@ class FileUploadJob {
     // respective event is confirmed.
     base::flat_map<std::string, std::unique_ptr<FileUploadJob>>
         uploads_in_progress_ GUARDED_BY_CONTEXT(manager_sequence_checker_);
+
+    // Task runner is not declared `const` for testing: to be able to reset it.
+    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+    SEQUENCE_CHECKER(manager_sequence_checker_);
   };
 
   // Helper class associating the job to the event currently being processed.
@@ -169,10 +167,6 @@ class FileUploadJob {
     // Repost new event if successful, then complete.
     void RepostAndComplete();
 
-    // Compose and post a retry event (with decremented retry count and no
-    // tracker - thus initiating a new FileUploadJob).
-    void PostRetry() const;
-
     SEQUENCE_CHECKER(sequence_checker_);
 
     const base::WeakPtr<FileUploadJob> job_;
@@ -188,7 +182,7 @@ class FileUploadJob {
   // event. When upload is going to be started, `tracker` is empty yet.
   FileUploadJob(const UploadSettings& settings,
                 const UploadTracker& tracker,
-                Delegate::SmartPtr delegate);
+                base::WeakPtr<Delegate> delegate);
   FileUploadJob(const FileUploadJob& other) = delete;
   FileUploadJob& operator=(const FileUploadJob& other) = delete;
   ~FileUploadJob();
@@ -249,13 +243,15 @@ class FileUploadJob {
                                  Record record_copy,
                                  base::OnceCallback<void(Status)> done_cb);
 
+  // Unowned delegate that performs actual actions (the same delegate is used by
+  // multiple jobs).
+  const base::WeakPtr<Delegate> delegate_;
+
   SEQUENCE_CHECKER(job_sequence_checker_);
 
-  // Delegate that performs actual actions.
-  const Delegate::SmartPtr delegate_;
+  // Note: Cannot be const, since `retry_count` needs to be decremented.
+  UploadSettings settings_ GUARDED_BY_CONTEXT(job_sequence_checker_);
 
-  // Job parameters matching the event.
-  const UploadSettings settings_;
   UploadTracker tracker_ GUARDED_BY_CONTEXT(job_sequence_checker_);
 
   // Event helper instance for event currently being processed by the job

@@ -13,7 +13,6 @@
 #include "base/functional/bind.h"
 #include "base/memory/ref_counted_memory.h"
 #include "base/path_service.h"
-#include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui_controller.h"
 #include "content/public/browser/web_ui_controller_factory.h"
 #include "content/public/browser/web_ui_data_source.h"
@@ -40,21 +39,14 @@ bool IsSystemAppTestURL(const GURL& url) {
 
 void HandleRequest(const std::string& url_path,
                    content::WebUIDataSource::GotDataCallback callback) {
-  const auto& path_for_key = [url_path](base::BasePathKey key) {
-    base::FilePath path;
-    CHECK(base::PathService::Get(key, &path));
-    path = path.Append(kRootDir);
-    path = path.AppendASCII(url_path.substr(0, url_path.find('?')));
-    return path;
-  };
-  // First try the source dir, then try generated files.
-  base::FilePath path = path_for_key(base::BasePathKey::DIR_SRC_TEST_DATA_ROOT);
+  base::FilePath path;
+  CHECK(base::PathService::Get(base::BasePathKey::DIR_SOURCE_ROOT, &path));
+  path = path.Append(kRootDir);
+  path = path.AppendASCII(url_path.substr(0, url_path.find('?')));
+
   std::string contents;
   {
     base::ScopedAllowBlockingForTesting allow_blocking;
-    if (!base::PathExists(path)) {
-      path = path_for_key(base::BasePathKey::DIR_GEN_TEST_DATA_ROOT);
-    }
     CHECK(base::ReadFileToString(path, &contents)) << path.value();
   }
 

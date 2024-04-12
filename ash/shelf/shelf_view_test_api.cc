@@ -12,7 +12,6 @@
 #include "ash/shelf/shelf_navigation_widget.h"
 #include "ash/shelf/shelf_view.h"
 #include "ash/shelf/shelf_widget.h"
-#include "base/functional/callback.h"
 #include "base/run_loop.h"
 #include "base/time/time.h"
 #include "ui/views/animation/bounds_animator.h"
@@ -25,8 +24,7 @@ namespace {
 // A class used to wait for animations.
 class TestAPIAnimationObserver : public views::BoundsAnimatorObserver {
  public:
-  explicit TestAPIAnimationObserver(base::OnceClosure quit_closure)
-      : quit_closure_(std::move(quit_closure)) {}
+  TestAPIAnimationObserver() = default;
 
   TestAPIAnimationObserver(const TestAPIAnimationObserver&) = delete;
   TestAPIAnimationObserver& operator=(const TestAPIAnimationObserver&) = delete;
@@ -36,11 +34,8 @@ class TestAPIAnimationObserver : public views::BoundsAnimatorObserver {
   // views::BoundsAnimatorObserver overrides:
   void OnBoundsAnimatorProgressed(views::BoundsAnimator* animator) override {}
   void OnBoundsAnimatorDone(views::BoundsAnimator* animator) override {
-    std::move(quit_closure_).Run();
+    base::RunLoop::QuitCurrentWhenIdleDeprecated();
   }
-
- private:
-  base::OnceClosure quit_closure_;
 };
 
 }  // namespace
@@ -92,18 +87,17 @@ void ShelfViewTestAPI::SetAnimationDuration(base::TimeDelta duration) {
 
 void ShelfViewTestAPI::RunMessageLoopUntilAnimationsDone(
     views::BoundsAnimator* bounds_animator) {
-  base::RunLoop loop;
   if (!bounds_animator->IsAnimating())
     return;
 
   std::unique_ptr<TestAPIAnimationObserver> observer(
-      new TestAPIAnimationObserver(loop.QuitWhenIdleClosure()));
+      new TestAPIAnimationObserver());
 
   bounds_animator->AddObserver(observer.get());
 
   // This nested loop will quit when TestAPIAnimationObserver's
   // OnBoundsAnimatorDone is called.
-  loop.Run();
+  base::RunLoop().Run();
 
   bounds_animator->RemoveObserver(observer.get());
 }
@@ -165,19 +159,12 @@ void ShelfViewTestAPI::SetShelfContextMenuCallback(
   shelf_view_->context_menu_shown_callback_ = std::move(closure);
 }
 
-std::optional<size_t> ShelfViewTestAPI::GetSeparatorIndex() const {
+absl::optional<size_t> ShelfViewTestAPI::GetSeparatorIndex() const {
   return shelf_view_->separator_index_;
 }
 
 bool ShelfViewTestAPI::IsSeparatorVisible() const {
   return shelf_view_->separator_->GetVisible();
-}
-
-bool ShelfViewTestAPI::HasPendingPromiseAppRemoval(
-    const std::string& promise_app_id) const {
-  auto found = shelf_view_->pending_promise_apps_removals_.find(promise_app_id);
-
-  return found != shelf_view_->pending_promise_apps_removals_.end();
 }
 
 }  // namespace ash

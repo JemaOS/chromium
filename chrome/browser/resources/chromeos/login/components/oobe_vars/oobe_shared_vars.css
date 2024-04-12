@@ -21,12 +21,9 @@
           deleted this could be calculated from button vars. */
       --oobe-adaptive-dialog-back-button-horizontal-padding:
         calc(var(--oobe-adaptive-dialog-buttons-horizontal-padding) - 16px);
-      --oobe-adaptive-dialog-item-vertical-padding: 24px;
       --oobe-adaptive-dialog-content-padding: 40px;
-      /* TODO(b/268463435) Remove during Jelly cleanup */
       --oobe-adaptive-dialog-header-top-padding:
             var(--oobe-adaptive-dialog-content-padding);
-      /* TODO(b/268463435) Remove during Jelly cleanup */
       --oobe-adaptive-dialog-title-top-padding: 40px;
       --oobe-adaptive-dialog-content-top-padding:
         var(--oobe-adaptive-dialog-content-padding);
@@ -46,8 +43,7 @@
       --oobe-text-color: var(--cros-text-color-secondary);
 
       --oobe-radio-card-label-line-height: 24px;
+
+      --oobe-jemaos-default-icon-color: var(--cros-icon-color-blue);
       /* Fonts vars end */
-    }
-    html.jelly-enabled {
-      --oobe-adaptive-dialog-header-top-padding: 0px;
     }

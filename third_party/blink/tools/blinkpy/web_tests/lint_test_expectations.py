@@ -32,16 +32,14 @@ import logging
 import optparse
 import re
 import traceback
-from typing import List, Optional
 
 from blinkpy.common import exit_codes
 from blinkpy.common.host import Host
-from blinkpy.common.path_finder import PathFinder
 from blinkpy.common.system.log_utils import configure_logging
 from blinkpy.web_tests.models.test_expectations import (TestExpectations,
                                                         ParseError)
-from blinkpy.web_tests.models.typ_types import Expectation, ResultType
-from blinkpy.web_tests.port.base import Port
+from blinkpy.web_tests.models.typ_types import ResultType
+from blinkpy.web_tests.port.android import ANDROID_DISABLED_TESTS
 from blinkpy.web_tests.port.factory import platform_options
 
 _log = logging.getLogger(__name__)
@@ -64,14 +62,19 @@ def lint(host, options):
     # The checks and list of expectation files are generally not
     # platform-dependent. Still, we need a port to identify test types and
     # manipulate virtual test paths.
-    finder = PathFinder(host.filesystem)
-    # Add all extra expectation files to be linted.
-    options.additional_expectations.extend([
-        finder.path_from_web_tests('ChromeTestExpectations'),
-        finder.path_from_web_tests('MobileTestExpectations'),
-        finder.path_from_web_tests('WebGPUExpectations'),
-    ])
+    #
+    # Force a manifest update to ensure it's always up-to-date.
+    # TODO(crbug.com/1411505): See if the manifest refresh can be made faster.
+    options.manifest_update = True
     port = host.port_factory.get(options=options)
+
+    # Add all extra expectation files to be linted.
+    options.additional_expectations.extend(
+        [ANDROID_DISABLED_TESTS] + [
+            host.filesystem.join(port.web_tests_dir(),
+                                 'WPTOverrideExpectations'),
+            host.filesystem.join(port.web_tests_dir(), 'WebGPUExpectations'),
+        ])
 
     failures = []
     warnings = []
@@ -127,7 +130,7 @@ def _check_directory_glob(host, port, path, expectations):
         if not exp.test or exp.is_glob:
             continue
 
-        test_name = exp.test
+        test_name, _ = port.split_webdriver_test_name(exp.test)
         index = test_name.find('?')
         if index != -1:
             test_name = test_name[:index]
@@ -394,18 +397,18 @@ def check_virtual_test_suites(host, options):
     return failures
 
 
-def check_test_lists(host, options):
+def check_smoke_tests(host, options):
     port = host.port_factory.get(options=options)
-    path = host.filesystem.join(port.web_tests_dir(), 'TestLists')
-    test_lists_files = host.filesystem.listdir(path)
+    path = host.filesystem.join(port.web_tests_dir(), 'SmokeTests')
+    smoke_tests_files = host.filesystem.listdir(path)
     failures = []
-    for test_lists_file in test_lists_files:
-        test_lists = host.filesystem.read_text_file(
-            host.filesystem.join(port.web_tests_dir(), 'TestLists',
-                                 test_lists_file))
+    for smoke_tests_file in smoke_tests_files:
+        smoke_tests = host.filesystem.read_text_file(
+            host.filesystem.join(port.web_tests_dir(), 'SmokeTests',
+                                 smoke_tests_file))
         line_number = 0
         parsed_lines = {}
-        for line in test_lists.split('\n'):
+        for line in smoke_tests.split('\n'):
             line_number += 1
             line = line.split('#')[0].strip()
             if not line:
@@ -413,10 +416,10 @@ def check_test_lists(host, options):
             if line in parsed_lines:
                 failures.append(
                     '%s:%d duplicate with line %d: %s' %
-                    (test_lists_file, line_number, parsed_lines[line], line))
+                    (smoke_tests_file, line_number, parsed_lines[line], line))
             elif not port.test_exists(line):
                 failures.append('%s:%d Test does not exist: %s' %
-                                (test_lists_file, line_number, line))
+                                (smoke_tests_file, line_number, line))
             parsed_lines[line] = line_number
 
     return failures
@@ -430,7 +433,7 @@ def run_checks(host, options):
     failures += f
     warnings += w
     failures.extend(check_virtual_test_suites(host, options))
-    failures.extend(check_test_lists(host, options))
+    failures.extend(check_smoke_tests(host, options))
 
     if options.json:
         with open(options.json, 'w') as f:
@@ -488,9 +491,8 @@ def main(argv, stderr, host=None):
         host.executive.error_output_limit = None
     else:
         # PRESUBMIT.py relies on our output, so don't include timestamps.
-        configure_logging(logging_level=logging.WARNING,
-                          stream=stderr,
-                          include_time=False)
+        configure_logging(
+            logging_level=logging.INFO, stream=stderr, include_time=False)
 
     try:
         exit_status = run_checks(host, options)

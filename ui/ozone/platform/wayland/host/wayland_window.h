@@ -7,10 +7,7 @@
 
 #include <list>
 #include <memory>
-#include <optional>
-#include <ostream>
 #include <set>
-#include <string>
 #include <vector>
 
 #include "base/containers/circular_deque.h"
@@ -22,11 +19,11 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/task/single_thread_task_runner.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/base/dragdrop/mojom/drag_drop_types.mojom-forward.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/events/event_target.h"
 #include "ui/events/platform/platform_event_dispatcher.h"
-#include "ui/gfx/frame_data.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/point_f.h"
 #include "ui/gfx/geometry/rect.h"
@@ -34,15 +31,10 @@
 #include "ui/ozone/platform/wayland/common/wayland_object.h"
 #include "ui/ozone/platform/wayland/host/wayland_output.h"
 #include "ui/ozone/platform/wayland/host/wayland_surface.h"
-#include "ui/ozone/platform/wayland/host/wayland_zaura_surface.h"
 #include "ui/platform_window/platform_window.h"
 #include "ui/platform_window/platform_window_delegate.h"
 #include "ui/platform_window/platform_window_init_properties.h"
 #include "ui/platform_window/wm/wm_drag_handler.h"
-
-#if BUILDFLAG(IS_LINUX)
-#include "ui/ozone/platform/wayland/host/wayland_async_cursor.h"
-#endif
 
 struct zwp_keyboard_shortcuts_inhibitor_v1;
 
@@ -61,15 +53,13 @@ class WaylandSubsurface;
 class WaylandWindowDragController;
 class WaylandFrameManager;
 class WaylandPopup;
-class WaylandToplevelWindow;
 
 using WidgetSubsurfaceSet = base::flat_set<std::unique_ptr<WaylandSubsurface>>;
 
 class WaylandWindow : public PlatformWindow,
                       public PlatformEventDispatcher,
                       public WmDragHandler,
-                      public EventTarget,
-                      public WaylandZAuraSurface::Delegate {
+                      public EventTarget {
  public:
   WaylandWindow(const WaylandWindow&) = delete;
   WaylandWindow& operator=(const WaylandWindow&) = delete;
@@ -102,7 +92,6 @@ class WaylandWindow : public PlatformWindow,
   const WidgetSubsurfaceSet& wayland_subsurfaces() const {
     return wayland_subsurfaces_;
   }
-  WaylandZAuraSurface* GetZAuraSurface();
 
   base::LinkedList<WaylandSubsurface>* subsurface_stack_committed() {
     return &subsurface_stack_committed_;
@@ -123,7 +112,7 @@ class WaylandWindow : public PlatformWindow,
   // subsurface_stack_below_.size() >= below.
   bool ArrangeSubsurfaceStack(size_t above, size_t below);
   bool CommitOverlays(uint32_t frame_id,
-                      const gfx::FrameData& data,
+                      int64_t seq,
                       std::vector<wl::WaylandOverlayConfig>& overlays);
 
   // Called when the focus changed on this window.
@@ -157,7 +146,7 @@ class WaylandWindow : public PlatformWindow,
   // as it seems like an expectation of Wayland. However, if all the entered
   // outputs have the same scale factor, the very first entered output is chosen
   // as there is no way to figure out what output the window occupies the most.
-  std::optional<WaylandOutput::Id> GetPreferredEnteredOutputId();
+  absl::optional<WaylandOutput::Id> GetPreferredEnteredOutputId();
 
   // Returns current type of the window.
   PlatformWindowType type() const { return type_; }
@@ -209,6 +198,7 @@ class WaylandWindow : public PlatformWindow,
   gfx::Rect GetRestoredBoundsInDIP() const override;
   bool ShouldWindowContentsBeTransparent() const override;
   void SetAspectRatio(const gfx::SizeF& aspect_ratio) override;
+  bool IsTranslucentWindowOpacitySupported() const override;
   void SetDecorationInsets(const gfx::Insets* insets_px) override;
   void SetWindowIcons(const gfx::ImageSkia& window_icon,
                       const gfx::ImageSkia& app_icon) override;
@@ -225,38 +215,25 @@ class WaylandWindow : public PlatformWindow,
   std::unique_ptr<EventTargetIterator> GetChildIterator() const override;
   EventTargeter* GetEventTargeter() override;
 
-  // WaylandZAuraSurface::Delegate:
-  void OcclusionStateChanged(
-      PlatformWindowOcclusionState occlusion_state) override;
-
   // Handles the configuration events coming from the shell objects.
   // The width and height come in DIP of the output that the surface is
   // currently bound to.
   virtual void HandleSurfaceConfigure(uint32_t serial);
 
   struct WindowStates {
-   public:
-    WindowStates();
-    ~WindowStates();
-
     bool is_maximized = false;
     bool is_fullscreen = false;
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
     bool is_immersive_fullscreen = false;
-    bool is_pinned_fullscreen = false;
-    bool is_trusted_pinned_fullscreen = false;
-#endif  // BUILDFLAG(IS_CHROMEOS_LACROS)
+#endif
     bool is_activated = false;
     bool is_minimized = false;
     bool is_snapped_primary = false;
     bool is_snapped_secondary = false;
     bool is_floated = false;
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
     WindowTiledEdges tiled_edges;
 #endif
-
-    // Dumps the values of the states into a string.
-    std::string ToString() const;
   };
 
   // Configure related:
@@ -284,11 +261,6 @@ class WaylandWindow : public PlatformWindow,
     pending_configure_state_.raster_scale = scale;
   }
 
-  // Sets the raster scale to be applied on the next configure.
-  void SetPendingOcclusionState(PlatformWindowOcclusionState occlusion_state) {
-    pending_configure_state_.occlusion_state = occlusion_state;
-  }
-
   // See comments on the member variable for an explanation of this.
   const PlatformWindowDelegate::State& applied_state() const {
     return applied_state_;
@@ -312,9 +284,10 @@ class WaylandWindow : public PlatformWindow,
 
   // Notifies about drag/drop session events. |point| is in DIP as wayland
   // sends coordinates in "surface-local" coordinates.
-  virtual void OnDragEnter(const gfx::PointF& point, int operations);
-  virtual void OnDragDataAvailable(std::unique_ptr<OSExchangeData> data);
-  virtual int OnDragMotion(const gfx::PointF& point, int operations);
+  virtual void OnDragEnter(const gfx::PointF& point,
+                           std::unique_ptr<OSExchangeData> data,
+                           int operation);
+  virtual int OnDragMotion(const gfx::PointF& point, int operation);
   virtual void OnDragDrop();
   virtual void OnDragLeave();
   virtual void OnDragSessionClose(ui::mojom::DragOperation operation);
@@ -352,20 +325,15 @@ class WaylandWindow : public PlatformWindow,
   virtual bool IsActive() const;
 
   // WaylandWindow can be any type of object - WaylandToplevelWindow,
-  // WaylandPopup. The following methods cast itself to WaylandPopup or
-  // WaylandToplevelWindow, if |this| is of that type.
+  // WaylandPopup, WaylandAuxiliaryWindow. This method casts itself to
+  // WaylandPopup, if |this| has type of WaylandPopup.
   virtual WaylandPopup* AsWaylandPopup();
-  virtual WaylandToplevelWindow* AsWaylandToplevelWindow();
 
   // Returns true if the window's bounds is in screen coordinates.
   virtual bool IsScreenCoordinatesEnabled() const;
 
   // Returns true if this window's configure state supports the minimized state.
   virtual bool SupportsConfigureMinimizedState() const;
-
-  // Returns true if this window's configure state supports the pinned
-  // fullscreen and trusted pinned states.
-  virtual bool SupportsConfigurePinnedState() const;
 
   scoped_refptr<base::SingleThreadTaskRunner> ui_task_runner() {
     return ui_task_runner_;
@@ -378,8 +346,6 @@ class WaylandWindow : public PlatformWindow,
   // Clears the state of the |frame_manager_| when the GPU channel is
   // destroyed.
   void OnChannelDestroyed();
-
-  virtual void DumpState(std::ostream& out) const;
 
 #if DCHECK_IS_ON()
   void disable_null_target_dcheck_for_testing() {
@@ -397,6 +363,11 @@ class WaylandWindow : public PlatformWindow,
   zaura_surface* aura_surface() {
     return aura_surface_ ? aura_surface_.get() : nullptr;
   }
+
+  void SetAuraSurface(zaura_surface* aura_surface);
+
+  // Returns true if `aura_surface_` version is equal or newer than `version`.
+  bool IsSupportedOnAuraSurface(uint32_t version) const;
 
   // Update the bounds of the window in DIP. Unlike SetBoundInDIP, it will not
   // send a request to the compositor even if the screen coordinate is enabled.
@@ -454,25 +425,12 @@ class WaylandWindow : public PlatformWindow,
   // requested changes (server requested changes may be throttled).
   void MaybeApplyLatestStateRequest(bool force);
 
-  // Returns the next state that will be applied, or the currently applied state
-  // if there are no later unapplied states. This is used when updating a single
-  // property (e.g. window scale) without wanting to modify the others.
-  PlatformWindowDelegate::State GetLatestRequestedState() const {
-    return in_flight_requests_.empty() ? applied_state_
-                                       : in_flight_requests_.back().state;
-  }
-
-  bool HasInFlightRequestsForStateForTesting() const {
-    return !in_flight_requests_.empty();
-  }
-
   // PendingConfigureState describes the content of a configure sent from the
   // wayland server.
   struct PendingConfigureState {
-    std::optional<gfx::Rect> bounds_dip;
-    std::optional<gfx::Size> size_px;
-    std::optional<float> raster_scale;
-    std::optional<PlatformWindowOcclusionState> occlusion_state;
+    absl::optional<gfx::Rect> bounds_dip;
+    absl::optional<gfx::Size> size_px;
+    absl::optional<float> raster_scale;
   };
 
   // This holds the requested state for the next configure from the server.
@@ -480,17 +438,6 @@ class WaylandWindow : public PlatformWindow,
   // bounds or other state. When the configure is fully received, we may
   // create a StateRequest for this pending State.
   PendingConfigureState pending_configure_state_;
-
-  // Until all tests work properly with full asynchronicity, we latch
-  // immediately based on the value of `UseTestConfigForPlatformWindows()`.
-  // However, some tests require synchronisation with the wayland server, so
-  // we also provide this flag for turning on asynchronous latching.
-  // Eventually when all tests work asynchronously, we should remove this
-  // and the code to latch immediately based on
-  // `UseTestConfigForPlatformWindows()`.
-  bool latch_immediately_for_testing_ = true;
-  int64_t latest_applied_viz_seq_for_testing_ = -1;
-  int64_t latest_latched_viz_seq_for_testing_ = -1;
 
  private:
   friend class WaylandBufferManagerViewportTest;
@@ -524,11 +471,6 @@ class WaylandWindow : public PlatformWindow,
   std::unique_ptr<WaylandSurface> TakeWaylandSurface();
 
   void UpdateCursorShape(scoped_refptr<BitmapCursor> cursor);
-
-#if BUILDFLAG(IS_LINUX)
-  void OnCursorLoaded(scoped_refptr<WaylandAsyncCursor> cursor,
-                      scoped_refptr<BitmapCursor> bitmap_cursor);
-#endif
 
   // StateRequest describes a State that we are applying to the window, and the
   // metadata about that State, such as what serial number to use for ack (if it
@@ -575,10 +517,8 @@ class WaylandWindow : public PlatformWindow,
   // |subsurface_stack_above_| refers to subsurfaces that are stacked above the
   // primary. These include the subsurfaces to be hidden as well.
   // Subsurface at the front of the list is the closest to the primary.
-  std::list<raw_ptr<WaylandSubsurface, CtnExperimental>>
-      subsurface_stack_above_;
-  std::list<raw_ptr<WaylandSubsurface, CtnExperimental>>
-      subsurface_stack_below_;
+  std::list<WaylandSubsurface*> subsurface_stack_above_;
+  std::list<WaylandSubsurface*> subsurface_stack_below_;
 
   // The stack of sub-surfaces currently committed. This list is altered when
   // the subsurface arrangement are played back by WaylandFrameManager.
@@ -586,19 +526,14 @@ class WaylandWindow : public PlatformWindow,
 
   wl::Object<zaura_surface> aura_surface_;
 
-#if BUILDFLAG(IS_LINUX)
-  // The current asynchronously loaded cursor (Linux specific).
-  scoped_refptr<WaylandAsyncCursor> async_cursor_;
-#else
   // The current cursor bitmap (immutable).
   scoped_refptr<BitmapCursor> cursor_;
-#endif
 
   // Margins between edges of the surface and the window geometry (i.e., the
   // area of the window that is visible to the user as the actual window).  The
   // areas outside the geometry are used to draw client-side window decorations.
   // TODO(crbug.com/1306688): Use DIP for frame insets.
-  std::optional<gfx::Insets> frame_insets_px_;
+  absl::optional<gfx::Insets> frame_insets_px_;
 
   bool has_touch_focus_ = false;
   // The UI scale may be forced through the command line, which means that it
@@ -679,9 +614,6 @@ class WaylandWindow : public PlatformWindow,
   // server. See the comments on applied_state_ for further explanation.
   PlatformWindowDelegate::State latched_state_;
 
-  // Stores the insets in DIP at the time of the last latched state.
-  gfx::Insets latched_insets_;
-
   // In-flight state requests. Once a frame comes from the GPU
   // process with the appropriate viz sequence number, ack_configure request
   // with |serial| will be sent to the Wayland compositor if needed.
@@ -702,10 +634,6 @@ class WaylandWindow : public PlatformWindow,
 #if DCHECK_IS_ON()
   bool disable_null_target_dcheck_for_test_ = false;
 #endif
-
-  // Set to true when the state is in the process of request. This is used to
-  // check there is no re-enterancy.
-  bool requesting_state_ = false;
 
   scoped_refptr<base::SingleThreadTaskRunner> ui_task_runner_;
 

@@ -6,7 +6,6 @@
 
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 
 namespace blink {
 
@@ -45,7 +44,6 @@ void VerifyHeap(TestPriorityQueue& queue, int round = -1) {
 }  // namespace
 
 TEST(PriorityQueueTest, Insertion) {
-  test::TaskEnvironment task_environment;
   TestPriorityQueue queue;
   EXPECT_TRUE(queue.IsEmpty());
   queue.Insert(7, MakeGarbageCollected<TestNode>());
@@ -58,7 +56,6 @@ TEST(PriorityQueueTest, Insertion) {
 }
 
 TEST(PriorityQueueTest, InsertionDuplicates) {
-  test::TaskEnvironment task_environment;
   TestPriorityQueue queue;
   EXPECT_TRUE(queue.IsEmpty());
   for (int n : {7, 1, 5, 6, 5, 5, 1, 0})
@@ -69,7 +66,6 @@ TEST(PriorityQueueTest, InsertionDuplicates) {
 }
 
 TEST(PriorityQueueTest, RemovalMin) {
-  test::TaskEnvironment task_environment;
   TestPriorityQueue queue;
   EXPECT_TRUE(queue.IsEmpty());
   for (int n : {7, 1, 2, 6, 4, 5, 3, 0})
@@ -89,7 +85,6 @@ TEST(PriorityQueueTest, RemovalMin) {
 }
 
 TEST(PriorityQueueTest, RemovalFilledFromOtherSubtree) {
-  test::TaskEnvironment task_environment;
   TestPriorityQueue queue;
   using PairType = std::pair<int, Member<TestNode>>;
   HeapVector<PairType> vector;
@@ -119,7 +114,6 @@ TEST(PriorityQueueTest, RemovalFilledFromOtherSubtree) {
 }
 
 TEST(PriorityQueueTest, RemovalReverse) {
-  test::TaskEnvironment task_environment;
   TestPriorityQueue queue;
   using PairType = std::pair<int, Member<TestNode>>;
   HeapVector<PairType> vector;
@@ -146,7 +140,6 @@ TEST(PriorityQueueTest, RemovalReverse) {
 }
 
 TEST(PriorityQueueTest, RemovalRandom) {
-  test::TaskEnvironment task_environment;
   TestPriorityQueue queue;
   HeapVector<Member<TestNode>> vector;
   EXPECT_TRUE(queue.IsEmpty());
@@ -168,7 +161,6 @@ TEST(PriorityQueueTest, RemovalRandom) {
 }
 
 TEST(PriorityQueueTest, Updates) {
-  test::TaskEnvironment task_environment;
   TestPriorityQueue queue;
   using PairType = std::pair<int, Member<TestNode>>;
   HeapVector<PairType> vector;

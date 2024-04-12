@@ -42,7 +42,11 @@ PluginVmUninstallerNotification::PluginVmUninstallerNotification(
     : profile_(profile) {
   message_center::RichNotificationData rich_notification_data;
   rich_notification_data.vector_small_image = &kNotificationPluginVmIcon;
-  rich_notification_data.accent_color_id = cros_tokens::kCrosSysPrimary;
+  if (chromeos::features::IsJellyEnabled()) {
+    rich_notification_data.accent_color_id = cros_tokens::kCrosSysOnPrimary;
+  } else {
+    rich_notification_data.accent_color = ash::kSystemNotificationColorNormal;
+  }
   rich_notification_data.pinned = true;
   rich_notification_data.never_timeout = true;
 
@@ -83,7 +87,12 @@ void PluginVmUninstallerNotification::SetFailed(FailedReason reason) {
   notification_->set_message(message);
   notification_->set_pinned(false);
   notification_->set_never_timeout(false);
-  notification_->set_accent_color_id(cros_tokens::kCrosSysError);
+  if (chromeos::features::IsJellyEnabled()) {
+    notification_->set_accent_color_id(cros_tokens::kCrosSysError);
+  } else {
+    notification_->set_accent_color(
+        ash::kSystemNotificationColorCriticalWarning);
+  }
   ForceRedisplay();
 }
 

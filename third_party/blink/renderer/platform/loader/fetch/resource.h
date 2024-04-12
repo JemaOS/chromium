@@ -25,15 +25,13 @@
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_LOADER_FETCH_RESOURCE_H_
 
 #include <memory>
-#include <optional>
-
 #include "base/auto_reset.h"
-#include "base/containers/span.h"
 #include "base/functional/callback.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "net/base/schemeful_site.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/mojom/loader/code_cache.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/scheduler/web_scoped_virtual_time_pauser.h"
 #include "third_party/blink/renderer/platform/allow_discouraged_type.h"
@@ -43,7 +41,6 @@
 #include "third_party/blink/renderer/platform/instrumentation/memory_pressure_listener.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/web_process_memory_dump.h"
 #include "third_party/blink/renderer/platform/loader/fetch/integrity_metadata.h"
-#include "third_party/blink/renderer/platform/loader/fetch/resource_client.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_error.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_load_priority.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_loader_options.h"
@@ -69,9 +66,9 @@ class Clock;
 
 namespace blink {
 
-class BackgroundResponseProcessor;
 class BlobDataHandle;
 class FetchParameters;
+class ResourceClient;
 class ResourceFinishObserver;
 class ResourceLoader;
 class ResponseBodyLoaderDrainableInterface;
@@ -97,8 +94,7 @@ enum class ResourceType : uint8_t {
   kManifest = 12,
   kSpeculationRules = 13,
   kMock = 14,  // Only for testing
-  kDictionary = 15,
-  kMaxValue = kDictionary
+  kMaxValue = kMock
 };
 
 // A resource that is held in the cache. Classes who want to use this object
@@ -279,6 +275,10 @@ class PLATFORM_EXPORT Resource : public GarbageCollected<Resource>,
   // should implement the resource-specific behavior.
   virtual void SetSerializedCachedMetadata(mojo_base::BigBuffer data);
 
+  // Gets whether the serialized cached metadata must contain a hash of the
+  // source text. For resources other than ScriptResource, this is always false.
+  virtual bool CodeCacheHashRequired() const;
+
   AtomicString HttpContentType() const;
 
   bool WasCanceled() const { return error_ && error_->IsCancellation(); }
@@ -302,12 +302,7 @@ class PLATFORM_EXPORT Resource : public GarbageCollected<Resource>,
   bool ShouldRevalidateStaleResponse() const;
   virtual bool CanUseCacheValidator() const;
   base::TimeDelta FreshnessLifetime() const;
-  bool IsCacheValidator() const {
-    return revalidation_status_ == RevalidationStatus::kRevalidating;
-  }
-  bool HasSuccessfulRevalidation() const {
-    return revalidation_status_ == RevalidationStatus::kRevalidated;
-  }
+  bool IsCacheValidator() const { return is_revalidating_; }
   bool HasCacheControlNoStoreHeader() const;
   bool MustReloadDueToVaryHeader(const ResourceRequest& new_request) const;
 
@@ -354,10 +349,6 @@ class PLATFORM_EXPORT Resource : public GarbageCollected<Resource>,
   virtual void DidDownloadToBlob(scoped_refptr<BlobDataHandle>);
 
   base::TimeTicks LoadResponseEnd() const { return load_response_end_; }
-
-  base::TimeTicks MemoryCacheLastAccessed() const {
-    return memory_cache_last_accessed_;
-  }
 
   void SetEncodedDataLength(int64_t value) {
     response_.SetEncodedDataLength(value);
@@ -434,23 +425,12 @@ class PLATFORM_EXPORT Resource : public GarbageCollected<Resource>,
 
   void DidRemoveClientOrObserver();
 
-  void SetIsPreloadedByEarlyHints() { is_preloaded_by_early_hints_ = true; }
-
-  bool IsPreloadedByEarlyHints() { return is_preloaded_by_early_hints_; }
-
-  void SetIsLoadedFromMemoryCache() { is_loaded_from_memory_cache_ = true; }
-
-  bool IsLoadedFromMemoryCache() { return is_loaded_from_memory_cache_; }
-
-  virtual scoped_refptr<BackgroundResponseProcessor>
-  MaybeCreateBackgroundResponseProcessor();
-
  protected:
   Resource(const ResourceRequestHead&,
            ResourceType,
            const ResourceLoaderOptions&);
 
-  virtual void NotifyDataReceived(base::span<const char> data);
+  virtual void NotifyDataReceived(const char* data, size_t size);
   virtual void NotifyFinished();
 
   void MarkClientFinished(ResourceClient*);
@@ -514,8 +494,6 @@ class PLATFORM_EXPORT Resource : public GarbageCollected<Resource>,
 
  private:
   friend class ResourceLoader;
-  friend class MemoryCache;
-  FRIEND_TEST_ALL_PREFIXES(MemoryCacheStrongReferenceTest, ResourceTimeout);
 
   void RevalidationSucceeded(const ResourceResponse&);
   void RevalidationFailed();
@@ -530,17 +508,12 @@ class PLATFORM_EXPORT Resource : public GarbageCollected<Resource>,
   void CheckResourceIntegrity();
   void TriggerNotificationForFinishObservers(base::SingleThreadTaskRunner*);
 
-  // Only call this from the MemoryCache. Calling it from anything else will
-  // upset the MemoryCache's LRU.
-  void UpdateMemoryCacheLastAccessedTime();
-
   ResourceType type_;
   ResourceStatus status_;
 
-  std::optional<ResourceError> error_;
+  absl::optional<ResourceError> error_;
 
   base::TimeTicks load_response_end_;
-  base::TimeTicks memory_cache_last_accessed_;
 
   size_t encoded_size_;
   size_t decoded_size_;
@@ -548,22 +521,12 @@ class PLATFORM_EXPORT Resource : public GarbageCollected<Resource>,
   String cache_identifier_;
 
   bool link_preload_;
+  bool is_revalidating_;
   bool is_alive_;
   bool is_add_remove_client_prohibited_;
   bool is_revalidation_start_forbidden_ = false;
   bool is_unused_preload_ = false;
   bool stale_revalidation_started_ = false;
-  bool is_preloaded_by_early_hints_ = false;
-  bool is_loaded_from_memory_cache_ = false;
-
-  enum class RevalidationStatus {
-    kNoRevalidatingOrFailed,  // not in revalidate procedure or
-                              // revalidate failed.
-    kRevalidating,            // in revalidate process, waiting for
-                              // network response
-    kRevalidated,             // revalidate success by 304 Not Modified
-  };
-  RevalidationStatus revalidation_status_;
 
   ResourceIntegrityDisposition integrity_disposition_;
   SubresourceIntegrity::ReportInfo integrity_report_info_;

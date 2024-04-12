@@ -5,16 +5,16 @@
 #ifndef CHROME_BROWSER_WEB_APPLICATIONS_PREINSTALLED_WEB_APP_WINDOW_EXPERIMENT_H_
 #define CHROME_BROWSER_WEB_APPLICATIONS_PREINSTALLED_WEB_APP_WINDOW_EXPERIMENT_H_
 
+#include "base/allocator/partition_allocator/pointers/raw_ptr.h"
 #include "base/feature_list.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/one_shot_event.h"
 #include "base/scoped_observation.h"
+#include "chrome/browser/web_applications/app_registrar_observer.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom-forward.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
-#include "chrome/browser/web_applications/web_app_registrar_observer.h"
 #include "components/services/app_service/public/cpp/preferred_apps_list_handle.h"
-#include "components/webapps/common/web_app_id.h"
 
 class Profile;
 
@@ -24,7 +24,6 @@ namespace web_app {
 // the experiment ends (when `kPreinstalledWebAppWindowExperiment` is disabled).
 BASE_DECLARE_FEATURE(kWebAppWindowExperimentCleanup);
 
-// TODO(crbug.com/1499749): Experiment has completed, clean up experiment code.
 // Sets up and manages a CrOS-only experiment for opening preinstalled web apps
 // in windows with link capturing.
 // - Owned/started by the PreinstalledWebAppManager, and may set in-memory
@@ -39,7 +38,7 @@ BASE_DECLARE_FEATURE(kWebAppWindowExperimentCleanup);
 // - Can be deleted once the experiment has run (likely by late 2023). See
 //   http://crbug.com/1385246 for details.
 class PreinstalledWebAppWindowExperiment
-    : public WebAppRegistrarObserver,
+    : public AppRegistrarObserver,
       public apps::PreferredAppsListHandle::Observer {
  public:
   explicit PreinstalledWebAppWindowExperiment(Profile* profile);
@@ -74,10 +73,10 @@ class PreinstalledWebAppWindowExperiment
   void StartOverridesAndObservations();
   void CleanUp();
 
-  // WebAppRegistrarObserver:
+  // AppRegistrarObserver:
   void OnAppRegistrarDestroyed() override;
   void OnWebAppUserDisplayModeChanged(
-      const webapps::AppId& app_id,
+      const AppId& app_id,
       mojom::UserDisplayMode user_display_mode) override;
 
   // PreferredAppsListHandle::Observer:
@@ -90,15 +89,14 @@ class PreinstalledWebAppWindowExperiment
 
   // Set of apps for which the experiment called `SetSupportedLinksPreference`
   // and hasn't yet observed a resulting `OnPreferredAppChanged`.
-  base::flat_set<webapps::AppId>
-      apps_that_experiment_setup_set_supported_links_;
+  base::flat_set<AppId> apps_that_experiment_setup_set_supported_links_;
 
   const raw_ptr<Profile> profile_;
   base::OneShotEvent preinstalled_apps_installed_;
 
   base::OneShotEvent setup_done_for_testing_;
 
-  base::ScopedObservation<WebAppRegistrar, WebAppRegistrarObserver>
+  base::ScopedObservation<WebAppRegistrar, AppRegistrarObserver>
       registrar_observation_{this};
 
   base::ScopedObservation<apps::PreferredAppsListHandle,

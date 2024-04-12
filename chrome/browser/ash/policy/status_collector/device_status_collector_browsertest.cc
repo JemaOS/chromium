@@ -7,16 +7,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <functional>
 #include <iterator>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "ash/constants/ash_features.h"
-#include "ash/constants/ash_pref_names.h"
 #include "base/environment.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -38,25 +35,21 @@
 #include "base/test/scoped_path_override.h"
 #include "base/test/simple_test_clock.h"
 #include "base/time/time.h"
-#include "base/values.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
-#include "chrome/browser/apps/app_service/app_service_test.h"
 #include "chrome/browser/apps/app_service/publisher_host.h"
 #include "chrome/browser/ash/app_mode/arc/arc_kiosk_app_manager.h"
 #include "chrome/browser/ash/app_mode/kiosk_app_data.h"
-#include "chrome/browser/ash/app_mode/kiosk_chrome_app_manager.h"
+#include "chrome/browser/ash/app_mode/kiosk_app_manager.h"
 #include "chrome/browser/ash/app_mode/kiosk_cryptohome_remover.h"
 #include "chrome/browser/ash/app_mode/web_app/web_kiosk_app_manager.h"
 #include "chrome/browser/ash/crostini/crostini_pref_names.h"
 #include "chrome/browser/ash/crostini/crostini_test_helper.h"
 #include "chrome/browser/ash/guest_os/guest_os_registry_service.h"
 #include "chrome/browser/ash/guest_os/guest_os_registry_service_factory.h"
-#include "chrome/browser/ash/login/demo_mode/demo_mode_test_utils.h"
 #include "chrome/browser/ash/login/users/fake_chrome_user_manager.h"
 #include "chrome/browser/ash/ownership/fake_owner_settings_service.h"
 #include "chrome/browser/ash/policy/core/device_local_account.h"
-#include "chrome/browser/ash/policy/core/reporting_user_tracker.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ash/settings/scoped_testing_cros_settings.h"
 #include "chrome/browser/chrome_content_browser_client.h"
@@ -107,11 +100,11 @@
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/testing_pref_service.h"
+#include "components/services/app_service/public/cpp/app_registry_cache.h"
 #include "components/services/app_service/public/cpp/app_types.h"
 #include "components/session_manager/core/session_manager.h"
 #include "components/upload_list/upload_list.h"
 #include "components/user_manager/scoped_user_manager.h"
-#include "components/user_manager/user_manager.h"
 #include "components/user_manager/user_type.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/common/content_client.h"
@@ -124,6 +117,7 @@
 #include "storage/common/file_system/file_system_types.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/cros_system_api/dbus/service_constants.h"
 #include "ui/aura/env.h"
 #include "ui/aura/test/test_windows.h"
@@ -284,6 +278,7 @@ constexpr uint8_t kFakeUsbInterfaceNumber1 = 1;
 // Time delta representing 1 hour time interval.
 constexpr base::TimeDelta kHour = base::Hours(1);
 
+const int64_t kMillisecondsPerDay = base::Time::kMicrosecondsPerDay / 1000;
 const char kKioskAccountId[] = "kiosk_user@localhost";
 const char kArcKioskAccountId[] = "arc_kiosk_user@localhost";
 const char kWebKioskAccountId[] = "web_kiosk_user@localhost";
@@ -352,13 +347,11 @@ class TestingDeviceStatusCollector : public DeviceStatusCollector {
   // production logic with fake tpm manager and attestation clients.
   TestingDeviceStatusCollector(
       PrefService* pref_service,
-      ReportingUserTracker* reporting_user_tracker,
       ash::system::StatisticsProvider* provider,
       ManagedSessionService* managed_session_service,
       std::unique_ptr<TestingDeviceStatusCollectorOptions> options,
       base::SimpleTestClock* clock)
       : DeviceStatusCollector(pref_service,
-                              reporting_user_tracker,
                               provider,
                               managed_session_service,
                               options->volume_info_fetcher,
@@ -398,9 +391,8 @@ class TestingDeviceStatusCollector : public DeviceStatusCollector {
 
   std::unique_ptr<DeviceLocalAccount> GetAutoLaunchedKioskSessionInfo()
       override {
-    if (kiosk_account_) {
+    if (kiosk_account_)
       return std::make_unique<DeviceLocalAccount>(*kiosk_account_);
-    }
     return nullptr;
   }
 
@@ -429,7 +421,7 @@ class TestingDeviceStatusCollector : public DeviceStatusCollector {
   }
 
  private:
-  const raw_ref<base::SimpleTestClock> test_clock_;
+  const raw_ref<base::SimpleTestClock, ExperimentalAsh> test_clock_;
 
   std::unique_ptr<DeviceLocalAccount> kiosk_account_;
 };
@@ -702,7 +694,8 @@ cros_healthd::TpmResultPtr CreatePartialTpmResult() {
       cros_healthd::TpmVersion::New(), cros_healthd::TpmStatus::New(),
       cros_healthd::TpmDictionaryAttack::New(),
       cros_healthd::TpmAttestation::New(),
-      cros_healthd::TpmSupportedFeatures::New(), std::optional<std::string>()));
+      cros_healthd::TpmSupportedFeatures::New(),
+      absl::optional<std::string>()));
 }
 
 cros_healthd::BusResultPtr CreateBusResult() {
@@ -760,36 +753,26 @@ void SetFakeCrosHealthdData() {
   cros_healthd::TelemetryInfo fake_info;
   // Always gather system result.
   telemetry_info->system_result = CreateSystemResult();
-  if (SettingEnabled(ash::kReportDevicePowerStatus)) {
+  if (SettingEnabled(ash::kReportDevicePowerStatus))
     telemetry_info->battery_result = CreateBatteryResult();
-  }
-  if (SettingEnabled(ash::kReportDeviceStorageStatus)) {
+  if (SettingEnabled(ash::kReportDeviceStorageStatus))
     telemetry_info->block_device_result = CreateBlockDeviceResult();
-  }
-  if (SettingEnabled(ash::kReportDeviceCpuInfo)) {
+  if (SettingEnabled(ash::kReportDeviceCpuInfo))
     telemetry_info->cpu_result = CreateCpuResult();
-  }
-  if (SettingEnabled(ash::kReportDeviceTimezoneInfo)) {
+  if (SettingEnabled(ash::kReportDeviceTimezoneInfo))
     telemetry_info->timezone_result = CreateTimezoneResult();
-  }
-  if (SettingEnabled(ash::kReportDeviceMemoryInfo)) {
+  if (SettingEnabled(ash::kReportDeviceMemoryInfo))
     telemetry_info->memory_result = CreateMemoryResult();
-  }
-  if (SettingEnabled(ash::kReportDeviceBacklightInfo)) {
+  if (SettingEnabled(ash::kReportDeviceBacklightInfo))
     telemetry_info->backlight_result = CreateBacklightResult();
-  }
-  if (SettingEnabled(ash::kReportDeviceFanInfo)) {
+  if (SettingEnabled(ash::kReportDeviceFanInfo))
     telemetry_info->fan_result = CreateFanResult();
-  }
-  if (SettingEnabled(ash::kReportDeviceStorageStatus)) {
+  if (SettingEnabled(ash::kReportDeviceStorageStatus))
     telemetry_info->stateful_partition_result = CreateStatefulPartitionResult();
-  }
-  if (SettingEnabled(ash::kReportDeviceBluetoothInfo)) {
+  if (SettingEnabled(ash::kReportDeviceBluetoothInfo))
     telemetry_info->bluetooth_result = CreateBluetoothResult();
-  }
-  if (SettingEnabled(ash::kReportDeviceVersionInfo)) {
+  if (SettingEnabled(ash::kReportDeviceVersionInfo))
     telemetry_info->tpm_result = CreateTpmResult();
-  }
   if (SettingEnabled(ash::kReportDeviceNetworkConfiguration)) {
     telemetry_info->bus_result = CreateBusResult();
   }
@@ -831,8 +814,6 @@ class DeviceStatusCollectorTest : public testing::Test {
   // TODO(b/216186861) Default all policies to false for each unit test
   DeviceStatusCollectorTest()
       : user_manager_(std::make_unique<ash::FakeChromeUserManager>()),
-        reporting_user_tracker_(std::make_unique<ReportingUserTracker>(
-            user_manager::UserManager::Get())),
         got_session_status_(false),
         fake_kiosk_device_local_account_(
             DeviceLocalAccount::TYPE_KIOSK_APP,
@@ -927,7 +908,7 @@ class DeviceStatusCollectorTest : public testing::Test {
 
   ~DeviceStatusCollectorTest() override {
     ash::SeneschalClient::Shutdown();
-    kiosk_chrome_app_manager_.reset();
+    kiosk_app_manager_.reset();
     // |testing_profile_| must be destroyed while ConciergeClient is alive.
     testing_profile_.reset();
     ash::ConciergeClient::Shutdown();
@@ -976,9 +957,9 @@ class DeviceStatusCollectorTest : public testing::Test {
 
   virtual void RestartStatusCollector(
       std::unique_ptr<TestingDeviceStatusCollectorOptions> options) {
+    std::vector<em::VolumeInfo> expected_volume_info;
     status_collector_ = std::make_unique<TestingDeviceStatusCollector>(
-        GetFakeChromeUserManager()->GetLocalState(),
-        reporting_user_tracker_.get(), &fake_statistics_provider_,
+        GetFakeChromeUserManager()->GetLocalState(), &fake_statistics_provider_,
         managed_session_service_.get(), std::move(options), &test_clock_);
   }
 
@@ -1049,13 +1030,11 @@ class DeviceStatusCollectorTest : public testing::Test {
   }
 
   void OnStatusReceived(StatusCollectorParams callback_params) {
-    if (callback_params.device_status) {
+    if (callback_params.device_status)
       device_status_ = *callback_params.device_status;
-    }
     got_session_status_ = callback_params.session_status != nullptr;
-    if (got_session_status_) {
+    if (got_session_status_)
       session_status_ = *callback_params.session_status;
-    }
     EXPECT_TRUE(run_loop_);
     run_loop_->Quit();
   }
@@ -1078,7 +1057,7 @@ class DeviceStatusCollectorTest : public testing::Test {
 
   void MockRegularUserWithAffiliation(const AccountId& account_id,
                                       bool is_affiliated) {
-    MockUserWithTypeAndAffiliation(account_id, user_manager::UserType::kRegular,
+    MockUserWithTypeAndAffiliation(account_id, user_manager::USER_TYPE_REGULAR,
                                    is_affiliated);
   }
 
@@ -1122,16 +1101,15 @@ class DeviceStatusCollectorTest : public testing::Test {
   void MockAutoLaunchKioskAppWithRequiredPlatformVersion(
       const DeviceLocalAccount& auto_launch_app_account,
       const std::string& required_platform_version) {
-    if (!kiosk_chrome_app_manager_) {
-      kiosk_chrome_app_manager_ =
-          std::make_unique<ash::KioskChromeAppManager>();
+    if (!kiosk_app_manager_) {
+      kiosk_app_manager_ = std::make_unique<ash::KioskAppManager>();
     }
-    kiosk_chrome_app_manager_->AddAppForTest(
+    kiosk_app_manager_->AddAppForTest(
         auto_launch_app_account.kiosk_app_id,
         AccountId::FromUserEmail(auto_launch_app_account.user_id),
         GURL("http://cws/"),  // Dummy URL to avoid setup ExtensionsClient.
         required_platform_version);
-    kiosk_chrome_app_manager_->SetEnableAutoLaunch(true);
+    kiosk_app_manager_->SetEnableAutoLaunch(true);
 
     std::vector<DeviceLocalAccount> accounts;
     accounts.push_back(auto_launch_app_account);
@@ -1143,9 +1121,8 @@ class DeviceStatusCollectorTest : public testing::Test {
 
     base::RunLoop().RunUntilIdle();
 
-    ASSERT_EQ(
-        required_platform_version,
-        kiosk_chrome_app_manager_->GetAutoLaunchAppRequiredPlatformVersion());
+    ASSERT_EQ(required_platform_version,
+              kiosk_app_manager_->GetAutoLaunchAppRequiredPlatformVersion());
   }
 
   void MockAutoLaunchArcKioskApp(
@@ -1213,9 +1190,8 @@ class DeviceStatusCollectorTest : public testing::Test {
   std::unique_ptr<ash::WebKioskAppManager> web_kiosk_app_manager_;
   // Only set after MockAutoLaunchKioskAppWithRequiredPlatformVersion was
   // called.
-  std::unique_ptr<ash::KioskChromeAppManager> kiosk_chrome_app_manager_;
+  std::unique_ptr<ash::KioskAppManager> kiosk_app_manager_;
   user_manager::ScopedUserManager user_manager_;
-  std::unique_ptr<ReportingUserTracker> reporting_user_tracker_;
   em::DeviceStatusReportRequest device_status_;
   em::SessionStatusReportRequest session_status_;
   bool got_session_status_;
@@ -1229,7 +1205,7 @@ class DeviceStatusCollectorTest : public testing::Test {
   const DeviceLocalAccount fake_web_kiosk_device_local_account_;
   base::ScopedPathOverride user_data_dir_override_;
   base::ScopedPathOverride crash_dumps_dir_override_;
-  raw_ptr<ash::FakeUpdateEngineClient, DanglingUntriaged> update_engine_client_;
+  raw_ptr<ash::FakeUpdateEngineClient, ExperimentalAsh> update_engine_client_;
   std::unique_ptr<base::RunLoop> run_loop_;
   base::test::ScopedFeatureList scoped_feature_list_;
   base::SimpleTestClock test_clock_;
@@ -1487,9 +1463,9 @@ TEST_F(DeviceStatusCollectorTest, ActivityCrossingMidnight) {
 
   // Ensure that the start and end times for the period are a day apart.
   EXPECT_EQ(time_period0.end_timestamp() - time_period0.start_timestamp(),
-            base::Time::kMillisecondsPerDay);
+            kMillisecondsPerDay);
   EXPECT_EQ(time_period1.end_timestamp() - time_period1.start_timestamp(),
-            base::Time::kMillisecondsPerDay);
+            kMillisecondsPerDay);
 }
 
 TEST_F(DeviceStatusCollectorTest, ActivityTimesKeptUntilSubmittedSuccessfully) {
@@ -1621,7 +1597,7 @@ TEST_F(DeviceStatusCollectorTest, ActivityWithAffiliatedUser) {
   const AccountId account_id0(AccountId::FromUserEmail("user0@managed.com"));
   auto* user_manager = GetFakeChromeUserManager();
   auto* user = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id0, true, user_manager::UserType::kRegular, nullptr);
+      account_id0, true, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id0, user->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
@@ -1664,7 +1640,7 @@ TEST_F(DeviceStatusCollectorTest, ActivityWithNotAffiliatedUser) {
   const AccountId account_id0(AccountId::FromUserEmail("user0@managed.com"));
   auto* user_manager = GetFakeChromeUserManager();
   auto* user = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id0, false, user_manager::UserType::kRegular, nullptr);
+      account_id0, false, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id0, user->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
@@ -1839,32 +1815,32 @@ TEST_F(DeviceStatusCollectorTest, ReportUsers) {
                              /*is_child=*/false);
 
   auto* user0 = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id0, true, user_manager::UserType::kRegular, nullptr);
+      account_id0, true, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id0, user0->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
   auto* user1 = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id1, true, user_manager::UserType::kRegular, nullptr);
+      account_id1, true, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id1, user1->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
   auto* user2 = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id2, true, user_manager::UserType::kRegular, nullptr);
+      account_id2, true, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id2, user2->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
   auto* user3 = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id3, false, user_manager::UserType::kRegular, nullptr);
+      account_id3, false, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id3, user3->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
   auto* user4 = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id4, true, user_manager::UserType::kRegular, nullptr);
+      account_id4, true, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id4, user4->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
   auto* user5 = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id5, true, user_manager::UserType::kRegular, nullptr);
+      account_id5, true, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id5, user5->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
@@ -1966,12 +1942,10 @@ TEST_F(DeviceStatusCollectorTest, TestSystemFreeRamInfo) {
   base::RunLoop().RunUntilIdle();
 
   for (int i = 0; i < sample_count; ++i) {
-    timestamp_lowerbounds.push_back(
-        base::Time::Now().InMillisecondsSinceUnixEpoch());
+    timestamp_lowerbounds.push_back(base::Time::Now().ToJavaTime());
     status_collector_->RefreshSampleResourceUsage();
     base::RunLoop().RunUntilIdle();
-    timestamp_upperbounds.push_back(
-        base::Time::Now().InMillisecondsSinceUnixEpoch());
+    timestamp_upperbounds.push_back(base::Time::Now().ToJavaTime());
   }
   GetStatus();
 
@@ -1998,8 +1972,7 @@ TEST_F(DeviceStatusCollectorTest, TestCPUInfos) {
   DisableDefaultSettings();
   // Mock 100% CPU usage.
   std::string full_cpu_usage("cpu  500 0 500 0 0 0 0");
-  int64_t timestamp_lowerbound =
-      base::Time::Now().InMillisecondsSinceUnixEpoch();
+  int64_t timestamp_lowerbound = base::Time::Now().ToJavaTime();
   auto options = CreateEmptyDeviceStatusCollectorOptions();
   options->cpu_fetcher =
       base::BindRepeating(&GetFakeCPUStatistics, full_cpu_usage);
@@ -2009,8 +1982,7 @@ TEST_F(DeviceStatusCollectorTest, TestCPUInfos) {
 
   // Force finishing tasks posted by ctor of DeviceStatusCollector.
   content::RunAllTasksUntilIdle();
-  int64_t timestamp_upperbound =
-      base::Time::Now().InMillisecondsSinceUnixEpoch();
+  int64_t timestamp_upperbound = base::Time::Now().ToJavaTime();
   GetStatus();
   ASSERT_EQ(1, device_status_.cpu_utilization_infos().size());
   EXPECT_EQ(100, device_status_.cpu_utilization_infos(0).cpu_utilization_pct());
@@ -2021,10 +1993,10 @@ TEST_F(DeviceStatusCollectorTest, TestCPUInfos) {
 
   // Now sample CPU usage again (active usage counters will not increase
   // so should show 0% cpu usage).
-  timestamp_lowerbound = base::Time::Now().InMillisecondsSinceUnixEpoch();
+  timestamp_lowerbound = base::Time::Now().ToJavaTime();
   status_collector_->RefreshSampleResourceUsage();
   base::RunLoop().RunUntilIdle();
-  timestamp_upperbound = base::Time::Now().InMillisecondsSinceUnixEpoch();
+  timestamp_upperbound = base::Time::Now().ToJavaTime();
   GetStatus();
   ASSERT_EQ(2, device_status_.cpu_utilization_infos().size());
   EXPECT_EQ(0, device_status_.cpu_utilization_infos(1).cpu_utilization_pct());
@@ -2041,12 +2013,10 @@ TEST_F(DeviceStatusCollectorTest, TestCPUInfos) {
   std::vector<int64_t> timestamp_upperbounds;
 
   for (int i = 0; i < sample_count; ++i) {
-    timestamp_lowerbounds.push_back(
-        base::Time::Now().InMillisecondsSinceUnixEpoch());
+    timestamp_lowerbounds.push_back(base::Time::Now().ToJavaTime());
     status_collector_->RefreshSampleResourceUsage();
     base::RunLoop().RunUntilIdle();
-    timestamp_upperbounds.push_back(
-        base::Time::Now().InMillisecondsSinceUnixEpoch());
+    timestamp_upperbounds.push_back(base::Time::Now().ToJavaTime());
   }
   GetStatus();
 
@@ -2069,8 +2039,7 @@ TEST_F(DeviceStatusCollectorTest, TestCPUTemp) {
   DisableDefaultSettings();
   std::vector<em::CPUTempInfo> expected_temp_info;
   int cpu_cnt = 12;
-  int64_t timestamp_lowerbound =
-      base::Time::Now().InMillisecondsSinceUnixEpoch();
+  int64_t timestamp_lowerbound = base::Time::Now().ToJavaTime();
   for (int i = 0; i < cpu_cnt; ++i) {
     em::CPUTempInfo info;
     info.set_cpu_temp(i * 10 + 100);
@@ -2090,8 +2059,7 @@ TEST_F(DeviceStatusCollectorTest, TestCPUTemp) {
   content::RunAllTasksUntilIdle();
 
   GetStatus();
-  int64_t timestamp_upperbound =
-      base::Time::Now().InMillisecondsSinceUnixEpoch();
+  int64_t timestamp_upperbound = base::Time::Now().ToJavaTime();
   EXPECT_EQ(expected_temp_info.size(),
             static_cast<size_t>(device_status_.cpu_temp_infos_size()));
 
@@ -2877,9 +2845,9 @@ TEST_F(DeviceStatusCollectorTest, ReportLastRebootTimestamp) {
   // No good way to inject specific last reboot timestamp of the test machine,
   // so just make sure UnixEpoch < RebootTime < Now.
   EXPECT_GT(device_status_.os_update_status().last_reboot_timestamp(),
-            base::Time::UnixEpoch().InMillisecondsSinceUnixEpoch());
+            base::Time::UnixEpoch().ToJavaTime());
   EXPECT_LT(device_status_.os_update_status().last_reboot_timestamp(),
-            base::Time::Now().InMillisecondsSinceUnixEpoch());
+            base::Time::Now().ToJavaTime());
 }
 
 TEST_F(DeviceStatusCollectorTest, NoRunningKioskAppByDefault) {
@@ -3051,7 +3019,7 @@ TEST_F(DeviceStatusCollectorTest, TestGraphicsStatus) {
     em::DisplayInfo* display_info = fakeGraphicsStatus.add_displays();
     display_info->set_resolution_width(1920 * i);
     display_info->set_resolution_height(1080 * i);
-    display_info->set_refresh_rate(60.0f * i);
+    display_info->set_refresh_rate(60 * i);
     display_info->set_is_internal(i == 1);
   }
 
@@ -3113,7 +3081,7 @@ TEST_F(DeviceStatusCollectorTest, TestCrashReportInfo) {
     base::Time timestamp = now - base::Hours(30) * i;
 
     em::CrashReportInfo info;
-    info.set_capture_timestamp(timestamp.InMillisecondsSinceUnixEpoch());
+    info.set_capture_timestamp(timestamp.ToJavaTime());
     info.set_remote_id(base::StringPrintf("remote_id %d", i));
     info.set_cause(base::StringPrintf("cause %d", i));
     info.set_upload_status(em::CrashReportInfo::UPLOAD_STATUS_UPLOADED);
@@ -3169,7 +3137,7 @@ TEST_F(DeviceStatusCollectorTest,
     base::Time timestamp = now - base::Hours(30) * i;
 
     em::CrashReportInfo info;
-    info.set_capture_timestamp(timestamp.InMillisecondsSinceUnixEpoch());
+    info.set_capture_timestamp(timestamp.ToJavaTime());
     info.set_remote_id(base::StringPrintf("remote_id %d", i));
     info.set_cause(base::StringPrintf("cause %d", i));
     info.set_upload_status(em::CrashReportInfo::UPLOAD_STATUS_UPLOADED);
@@ -3204,7 +3172,7 @@ TEST_F(DeviceStatusCollectorTest,
     base::Time timestamp = now - base::Hours(30) * i;
 
     em::CrashReportInfo info;
-    info.set_capture_timestamp(timestamp.InMillisecondsSinceUnixEpoch());
+    info.set_capture_timestamp(timestamp.ToJavaTime());
     info.set_remote_id(base::StringPrintf("remote_id %d", i));
     info.set_cause(base::StringPrintf("cause %d", i));
     info.set_upload_status(em::CrashReportInfo::UPLOAD_STATUS_UPLOADED);
@@ -3811,9 +3779,8 @@ TEST_F(DeviceStatusCollectorTest, GenerateAppInfo) {
   std::vector<apps::AppPtr> apps;
   apps.push_back(std::move(app1));
   apps.push_back(std::move(app2));
-  app_proxy->OnApps(std::move(apps), apps::AppType::kUnknown,
-                    /*should_notify_initialized=*/false);
-  apps::WaitForAppServiceProxyReady(app_proxy);
+  app_proxy->AppRegistryCache().OnApps(std::move(apps), apps::AppType::kUnknown,
+                                       /*should_notify_initialized=*/false);
 
   // Start app instance
   base::Time start_time;
@@ -3841,46 +3808,18 @@ TEST_F(DeviceStatusCollectorTest, GenerateAppInfo) {
       base::Time::FromUTCString("29-MAR-2020 12:00am", &reported_start_time));
   EXPECT_TRUE(
       base::Time::FromUTCString("29-MAR-2020 10:30am", &reported_end_time));
-  EXPECT_EQ(first_activity.start_timestamp(),
-            reported_start_time.InMillisecondsSinceUnixEpoch());
-  EXPECT_EQ(first_activity.end_timestamp(),
-            reported_end_time.InMillisecondsSinceUnixEpoch());
+  EXPECT_EQ(first_activity.start_timestamp(), reported_start_time.ToJavaTime());
+  EXPECT_EQ(first_activity.end_timestamp(), reported_end_time.ToJavaTime());
   auto second_activity = session_status_.app_infos(0).active_time_periods()[1];
   EXPECT_TRUE(
       base::Time::FromUTCString("30-MAR-2020 12:00am", &reported_start_time));
   EXPECT_TRUE(
       base::Time::FromUTCString("30-MAR-2020 2:30pm", &reported_end_time));
   EXPECT_EQ(second_activity.start_timestamp(),
-            reported_start_time.InMillisecondsSinceUnixEpoch());
-  EXPECT_EQ(second_activity.end_timestamp(),
-            reported_end_time.InMillisecondsSinceUnixEpoch());
+            reported_start_time.ToJavaTime());
+  EXPECT_EQ(second_activity.end_timestamp(), reported_end_time.ToJavaTime());
   EXPECT_EQ(session_status_.app_infos(1).app_id(), "id2");
   EXPECT_EQ(session_status_.app_infos(1).active_time_periods_size(), 0);
-}
-
-TEST_F(DeviceStatusCollectorTest, DemoModeDimensions) {
-  enterprise_management::DemoModeDimensions expected;
-  GetStatus();
-  ash::test::AssertDemoDimensionsEqual(device_status_.demo_mode_dimensions(),
-                                       expected);
-
-  scoped_stub_install_attributes_.Get()->SetDemoMode();
-  scoped_feature_list_.InitAndEnableFeature(
-      ash::features::kFeatureManagementFeatureAwareDeviceDemoMode);
-  scoped_local_state_.Get()->SetString(ash::prefs::kDemoModeCountry, "CA");
-  scoped_local_state_.Get()->SetString(ash::prefs::kDemoModeRetailerId,
-                                       "retailer");
-  scoped_local_state_.Get()->SetString(ash::prefs::kDemoModeStoreId, "1234");
-
-  expected.set_country("CA");
-  expected.set_retailer_name("retailer");
-  expected.set_store_number("1234");
-  expected.add_customization_facets(
-      enterprise_management::DemoModeDimensions::FEATURE_AWARE_DEVICE);
-
-  GetStatus();
-  ash::test::AssertDemoDimensionsEqual(device_status_.demo_mode_dimensions(),
-                                       expected);
 }
 
 struct FakeSimSlotInfo {
@@ -4042,10 +3981,9 @@ class DeviceStatusCollectorNetworkTest : public DeviceStatusCollectorTest {
                                          base::Value(kShillFakeProfilePath));
       if (strlen(fake_network.address) > 0) {
         // Set the IP config.
-        auto ip_config_properties =
-            base::Value::Dict()
-                .Set(shill::kAddressProperty, fake_network.address)
-                .Set(shill::kGatewayProperty, fake_network.gateway);
+        base::Value::Dict ip_config_properties;
+        ip_config_properties.Set(shill::kAddressProperty, fake_network.address);
+        ip_config_properties.Set(shill::kGatewayProperty, fake_network.gateway);
         const std::string kIPConfigPath = "test_ip_config";
         ip_config_client->AddIPConfig(kIPConfigPath,
                                       std::move(ip_config_properties));
@@ -4110,9 +4048,8 @@ class DeviceStatusCollectorNetworkInterfacesTest
   void VerifyReporting() override {
     int count = 0;
     for (const FakeDeviceData& dev : kFakeDevices) {
-      if (dev.expected_type == -1) {
+      if (dev.expected_type == -1)
         continue;
-      }
 
       // Find the corresponding entry in reporting data.
       bool found_match = false;
@@ -4135,7 +4072,7 @@ class DeviceStatusCollectorNetworkInterfacesTest
              base::ranges::equal(iface->eids().begin(), iface->eids().end(),
                                  kFakeSimSlots,
                                  kFakeSimSlots + std::size(kFakeSimSlots),
-                                 base::ranges::equal_to(), std::identity(),
+                                 base::ranges::equal_to(), base::identity(),
                                  &FakeSimSlotInfo::eid))) {
           found_match = true;
           break;
@@ -4188,7 +4125,7 @@ TEST_F(DeviceStatusCollectorNetworkInterfacesTest, IfUnaffiliatedUser) {
   const AccountId account_id0(AccountId::FromUserEmail("user0@managed.com"));
   auto* user_manager = GetFakeChromeUserManager();
   auto* user = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id0, false, user_manager::UserType::kRegular, nullptr);
+      account_id0, false, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id0, user->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
@@ -4204,7 +4141,7 @@ TEST_F(DeviceStatusCollectorNetworkInterfacesTest, IfAffiliatedUser) {
   const AccountId account_id0(AccountId::FromUserEmail("user0@managed.com"));
   auto* user_manager = GetFakeChromeUserManager();
   auto* user = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id0, true, user_manager::UserType::kRegular, nullptr);
+      account_id0, true, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id0, user->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
@@ -4289,16 +4226,14 @@ class DeviceStatusCollectorNetworkStateTest
             proto_state.has_signal_strength() == should_have_signal_strength &&
             proto_state.signal_strength() == state.expected_signal_strength &&
             proto_state.connection_state() == state.expected_state) {
-          if (proto_state.has_ip_address()) {
+          if (proto_state.has_ip_address())
             EXPECT_EQ(proto_state.ip_address(), state.address);
-          } else {
+          else
             EXPECT_EQ(0U, strlen(state.address));
-          }
-          if (proto_state.has_gateway()) {
+          if (proto_state.has_gateway())
             EXPECT_EQ(proto_state.gateway(), state.gateway);
-          } else {
+          else
             EXPECT_EQ(0U, strlen(state.gateway));
-          }
           found_match = true;
           break;
         }
@@ -4360,7 +4295,7 @@ TEST_F(DeviceStatusCollectorNetworkStateTest, IfUnaffiliatedUser) {
   const AccountId account_id0(AccountId::FromUserEmail("user0@managed.com"));
   auto* user_manager = GetFakeChromeUserManager();
   auto* user = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id0, false, user_manager::UserType::kRegular, nullptr);
+      account_id0, false, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id0, user->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);
@@ -4375,7 +4310,7 @@ TEST_F(DeviceStatusCollectorNetworkStateTest, IfAffiliatedUser) {
   const AccountId account_id0(AccountId::FromUserEmail("user0@managed.com"));
   auto* user_manager = GetFakeChromeUserManager();
   auto* user = user_manager->AddUserWithAffiliationAndTypeAndProfile(
-      account_id0, true, user_manager::UserType::kRegular, nullptr);
+      account_id0, true, user_manager::USER_TYPE_REGULAR, nullptr);
   user_manager->UserLoggedIn(account_id0, user->username_hash(),
                              /*browser_restart=*/false,
                              /*is_child=*/false);

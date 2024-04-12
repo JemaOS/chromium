@@ -8,8 +8,8 @@
  * editFieldTypes.
  */
 import '//resources/polymer/v3_0/iron-flex-layout/iron-flex-layout-classes.js';
-import '//resources/ash/common/cr_elements/cr_input/cr_input.js';
-import '//resources/ash/common/cr_elements/cr_shared_style.css.js';
+import '//resources/cr_elements/cr_input/cr_input.js';
+import '//resources/cr_elements/cr_shared_style.css.js';
 import './cr_policy_network_indicator_mojo.js';
 import './network_shared.css.js';
 
@@ -506,18 +506,21 @@ Polymer({
 
     if (key === 'tether.signalStrength') {
       assert(typeof value === 'number');
-      // Possible |signalStrength| values should be from 0 to 100. Add <=
-      // checks for robustness.
-      if (value === 0) {
-        return this.i18n('OncTether-SignalStrength_None');
+      // Possible |signalStrength| values should be 0, 25, 50, 75, and 100. Add
+      // <= checks for robustness.
+      if (value <= 24) {
+        return this.i18n('OncTether-SignalStrength_Weak');
       }
-      if (value <= 25) {
-        return this.i18n('OncTether-SignalStrength_Low');
+      if (value <= 49) {
+        return this.i18n('OncTether-SignalStrength_Okay');
       }
-      if (value <= 50) {
-        return this.i18n('OncTether-SignalStrength_Medium');
+      if (value <= 74) {
+        return this.i18n('OncTether-SignalStrength_Good');
       }
-      return this.i18n('OncTether-SignalStrength_Strong');
+      if (value <= 99) {
+        return this.i18n('OncTether-SignalStrength_Strong');
+      }
+      return this.i18n('OncTether-SignalStrength_VeryStrong');
     }
 
     if (key === 'tether.carrier') {

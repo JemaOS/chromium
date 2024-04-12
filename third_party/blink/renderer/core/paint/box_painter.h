@@ -21,6 +21,13 @@ class BoxPainter {
  public:
   BoxPainter(const LayoutBox& layout_box) : layout_box_(layout_box) {}
 
+  // Expands the bounds of the current paint chunk for hit test, and records
+  // special touch action if any. This should be called in the background paint
+  // phase even if there is no other painted content.
+  void RecordHitTestData(const PaintInfo& paint_info,
+                         const PhysicalRect& paint_rect,
+                         const DisplayItemClient& background_client);
+
   // Records the bounds of the current paint chunk for potential cropping later
   // as part of tab capture.
   void RecordRegionCaptureData(const PaintInfo& paint_info,
@@ -30,8 +37,7 @@ class BoxPainter {
   // This should be called in the background paint phase even if there is no
   // other painted content.
   void RecordScrollHitTestData(const PaintInfo& paint_info,
-                               const DisplayItemClient& background_client,
-                               const FragmentData*);
+                               const DisplayItemClient& background_client);
 
   // Calculates the visual rect (see DisplayItem::VisualRect() for definition)
   // from the self visual overflow of the LayoutBox and |paint_offset|.

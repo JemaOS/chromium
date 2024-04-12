@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {page, session, dp} = await testRunner.startHTML('<div></div>',
      "Test replacing the whole document via setOuterHTML and ensure running " +
      "an event handler in the new document does not crash");

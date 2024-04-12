@@ -115,7 +115,7 @@ TEST_F(TouchDevicesControllerSigninTest, SetTapDraggingEnabled) {
 // Tests that touchpad enabled user pref works properly under debug accelerator.
 TEST_F(TouchDevicesControllerSigninTest, ToggleTouchpad) {
   ASSERT_TRUE(GetUserPrefTouchpadEnabled());
-  debug::PerformDebugActionIfEnabled(AcceleratorAction::kDebugToggleTouchPad);
+  debug::PerformDebugActionIfEnabled(DEBUG_TOGGLE_TOUCH_PAD);
   EXPECT_FALSE(GetUserPrefTouchpadEnabled());
 
   // Switch to user 2 and switch back.
@@ -124,7 +124,7 @@ TEST_F(TouchDevicesControllerSigninTest, ToggleTouchpad) {
   SwitchActiveUser(kUser1Email);
   EXPECT_FALSE(GetUserPrefTouchpadEnabled());
 
-  debug::PerformDebugActionIfEnabled(AcceleratorAction::kDebugToggleTouchPad);
+  debug::PerformDebugActionIfEnabled(DEBUG_TOGGLE_TOUCH_PAD);
   EXPECT_TRUE(GetUserPrefTouchpadEnabled());
 }
 
@@ -154,8 +154,7 @@ TEST_F(TouchDevicesControllerSigninTest, SetTouchscreenEnabled) {
   ASSERT_TRUE(GetGlobalTouchscreenEnabled());
   ASSERT_TRUE(GetUserPrefTouchscreenEnabled());
 
-  debug::PerformDebugActionIfEnabled(
-      AcceleratorAction::kDebugToggleTouchScreen);
+  debug::PerformDebugActionIfEnabled(DEBUG_TOGGLE_TOUCH_SCREEN);
   EXPECT_TRUE(GetGlobalTouchscreenEnabled());
   EXPECT_FALSE(GetUserPrefTouchscreenEnabled());
 
@@ -166,8 +165,7 @@ TEST_F(TouchDevicesControllerSigninTest, SetTouchscreenEnabled) {
   EXPECT_TRUE(GetGlobalTouchscreenEnabled());
   EXPECT_FALSE(GetUserPrefTouchscreenEnabled());
 
-  debug::PerformDebugActionIfEnabled(
-      AcceleratorAction::kDebugToggleTouchScreen);
+  debug::PerformDebugActionIfEnabled(DEBUG_TOGGLE_TOUCH_SCREEN);
   EXPECT_TRUE(GetUserPrefTouchscreenEnabled());
   EXPECT_TRUE(GetGlobalTouchscreenEnabled());
 
@@ -192,7 +190,7 @@ TEST_F(TouchDevicesControllerPrefsTest, RecordUma) {
   // Disable auto-provision of PrefService.
   constexpr bool kProvidePrefService = false;
   // Add and switch to |kUser1Email|, but user pref service is not ready.
-  session->AddUserSession(kUser1Email, user_manager::UserType::kRegular,
+  session->AddUserSession(kUser1Email, user_manager::USER_TYPE_REGULAR,
                           kProvidePrefService);
   const AccountId kUserAccount1 = AccountId::FromUserEmail(kUser1Email);
   session->SwitchActiveUser(kUserAccount1);
@@ -203,8 +201,7 @@ TEST_F(TouchDevicesControllerPrefsTest, RecordUma) {
 
   // Simulate active user pref service is changed.
   auto pref_service = std::make_unique<TestingPrefServiceSimple>();
-  RegisterUserProfilePrefs(pref_service->registry(), /*country=*/"",
-                           true /* for_test */);
+  RegisterUserProfilePrefs(pref_service->registry(), true /* for_test */);
   GetSessionControllerClient()->SetUserPrefService(kUserAccount1,
                                                    std::move(pref_service));
   histogram_tester.ExpectTotalCount("Touchpad.TapDragging.Started", 1);

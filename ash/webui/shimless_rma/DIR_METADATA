@@ -1,4 +1,3 @@
-# ChromeOS > Software > System Services > Serviceability > Shimless RMA
-buganizer {
-  component_id: 1242658
+monorail {
+  component: "OS>Systems>Diagnostics"
 }

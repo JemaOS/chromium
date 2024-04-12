@@ -22,7 +22,7 @@
 #include "third_party/blink/renderer/platform/mediastream/media_stream_audio_track.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_component_impl.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_source.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
+#include "third_party/blink/renderer/platform/peerconnection/webrtc_util.h"
 
 using testing::AnyNumber;
 using testing::Return;
@@ -92,8 +92,8 @@ class TransceiverStateSurfacerTest : public ::testing::Test {
                 : cricket::MEDIA_TYPE_VIDEO,
             CreateWebRtcSender(local_track, local_stream_id),
             CreateWebRtcReceiver(remote_track_id, remote_stream_id),
-            std::nullopt, false, webrtc::RtpTransceiverDirection::kSendRecv,
-            std::nullopt));
+            absl::nullopt, false, webrtc::RtpTransceiverDirection::kSendRecv,
+            absl::nullopt));
     if (transport.get()) {
       transceiver->SetTransport(transport);
     }
@@ -218,11 +218,12 @@ class TransceiverStateSurfacerTest : public ::testing::Test {
                 receiver_state->webrtc_dtls_transport_information().state());
     }
     // Inspect transceiver states.
-    EXPECT_EQ(transceiver_state.mid(), webrtc_transceiver->mid());
+    EXPECT_TRUE(blink::OptionalEquals(transceiver_state.mid(),
+                                      webrtc_transceiver->mid()));
     EXPECT_TRUE(transceiver_state.direction() ==
                 webrtc_transceiver->direction());
-    EXPECT_EQ(transceiver_state.current_direction(),
-              webrtc_transceiver->current_direction());
+    EXPECT_TRUE(blink::OptionalEquals(transceiver_state.current_direction(),
+                                      webrtc_transceiver->current_direction()));
   }
 
  private:
@@ -276,7 +277,6 @@ class TransceiverStateSurfacerTest : public ::testing::Test {
   }
 
  protected:
-  test::TaskEnvironment task_environment_;
   rtc::scoped_refptr<webrtc::PeerConnectionInterface> peer_connection_;
   CrossThreadPersistent<MockPeerConnectionDependencyFactory>
       dependency_factory_;

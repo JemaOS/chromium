@@ -109,9 +109,6 @@ class UserspaceSwapPolicyTest : public ::testing::Test {
       GTEST_SKIP() << "Skip test on chromeos-linux";
     }
 
-    graph_ = std::make_unique<TestGraphImpl>();
-    graph_->SetUp();
-
     CreateAndPassMockPolicy();
 
     // Create a simple graph.
@@ -130,10 +127,6 @@ class UserspaceSwapPolicyTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    if (!base::SysInfo::IsRunningOnChromeOS()) {
-      // Also skip TearDown() if SetUp() was skipped.
-      return;
-    }
     base::RunLoop().RunUntilIdle();
 
     policy_ = nullptr;
@@ -141,8 +134,7 @@ class UserspaceSwapPolicyTest : public ::testing::Test {
     page_node_.reset();
     process_node_.reset();
     system_node_.reset();
-    graph_->TearDown();
-    graph_ = nullptr;
+    graph_.TearDown();
   }
 
   void CreateAndPassMockPolicy() {
@@ -162,7 +154,7 @@ class UserspaceSwapPolicyTest : public ::testing::Test {
                                               std::forward<Args>(args)...);
   }
 
-  TestGraphImpl* graph() { return graph_.get(); }
+  TestGraphImpl* graph() { return &graph_; }
   content::BrowserTaskEnvironment* browser_env() { return &browser_env_; }
   TestNodeWrapper<ProcessNodeImpl>& process_node() { return process_node_; }
   TestNodeWrapper<PageNodeImpl>& page_node() { return page_node_; }
@@ -179,8 +171,9 @@ class UserspaceSwapPolicyTest : public ::testing::Test {
 
  private:
   content::BrowserTaskEnvironment browser_env_;
-  std::unique_ptr<TestGraphImpl> graph_;
-  raw_ptr<MockUserspaceSwapPolicy> policy_ = nullptr;  // Not owned.
+  TestGraphImpl graph_;
+  raw_ptr<MockUserspaceSwapPolicy, ExperimentalAsh> policy_ =
+      nullptr;  // Not owned.
 
   TestNodeWrapper<ProcessNodeImpl> process_node_;
   TestNodeWrapper<PageNodeImpl> page_node_;

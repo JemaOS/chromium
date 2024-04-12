@@ -50,8 +50,4 @@ GtkUiPlatformStub::CreateInputMethodContext(
   return nullptr;
 }
 
-bool GtkUiPlatformStub::IncludeFontScaleInDeviceScale() const {
-  return false;
-}
-
 }  // namespace gtk

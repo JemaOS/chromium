@@ -12,7 +12,6 @@
 
 #include "ash/system/video_conference/video_conference_common.h"
 #include "base/functional/callback.h"
-#include "chromeos/crosapi/mojom/video_conference.mojom-forward.h"
 #include "chromeos/crosapi/mojom/video_conference.mojom.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
@@ -20,8 +19,6 @@
 namespace base {
 class UnguessableToken;
 }  // namespace base
-
-class CaptureModeVideoConferenceBrowserTests;
 
 namespace ash {
 
@@ -52,8 +49,6 @@ class VideoConferenceManagerAsh
   void SetSystemMediaDeviceStatus(
       crosapi::mojom::VideoConferenceMediaDevice device,
       bool disabled) override;
-  void StopAllScreenShare() override;
-  void CreateBackgroundImage() override;
 
   // Registers an ash-browser client. Non-mojo clients need to manually call
   // |UnregisterClient|, e.g. inside their destructor.
@@ -76,8 +71,6 @@ class VideoConferenceManagerAsh
       crosapi::mojom::VideoConferenceMediaDevice device,
       const std::u16string& app_name,
       NotifyDeviceUsedWhileDisabledCallback callback) override;
-  void NotifyClientUpdate(
-      crosapi::mojom::VideoConferenceClientUpdatePtr update) override;
 
   // Removes entry corresponding to |client_id| from
   // |client_id_to_wrapper_|. Called by the destructor of
@@ -99,9 +92,7 @@ class VideoConferenceManagerAsh
   VideoConferenceTrayController* GetTrayController();
 
  private:
-  friend class VideoConferenceAshfeatureClientTest;
   friend class VideoConferenceAppServiceClientTest;
-  friend class ::CaptureModeVideoConferenceBrowserTests;
 
   // A (client_id, client_wrapper) entry is inserted into this map
   // whenever a new client is registered on the manager and deleted

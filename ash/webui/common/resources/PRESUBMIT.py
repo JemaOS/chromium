@@ -7,6 +7,8 @@ See http://dev.chromium.org/developers/how-tos/depottools/presubmit-scripts
 for more details about the presubmit API built into depot_tools.
 """
 
+USE_PYTHON3 = True
+
 import sys
 from importlib.util import module_from_spec, spec_from_file_location
 

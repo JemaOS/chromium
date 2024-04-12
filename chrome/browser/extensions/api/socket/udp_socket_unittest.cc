@@ -142,7 +142,8 @@ static void SendMulticastPacket(base::OnceClosure quit_run_loop,
                                 UDPSocket* src,
                                 int result) {
   if (result == 0) {
-    auto data = base::MakeRefCounted<net::WrappedIOBuffer>(kTestMessage);
+    scoped_refptr<net::IOBuffer> data =
+        base::MakeRefCounted<net::WrappedIOBuffer>(kTestMessage);
     src->Write(data, kTestMessageLength, base::BindOnce(&OnSendCompleted));
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,

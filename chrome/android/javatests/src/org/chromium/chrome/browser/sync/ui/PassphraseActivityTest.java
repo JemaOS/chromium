@@ -4,16 +4,16 @@
 
 package org.chromium.chrome.browser.sync.ui;
 
+import android.app.Instrumentation.ActivityMonitor;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 
-import androidx.test.core.app.ApplicationProvider;
-import androidx.test.filters.MediumTest;
+import androidx.test.InstrumentationRegistry;
 import androidx.test.filters.SmallTest;
-import androidx.test.platform.app.InstrumentationRegistry;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -23,87 +23,60 @@ import org.junit.runner.RunWith;
 import org.chromium.base.test.BaseJUnit4ClassRunner;
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.browser.sync.FakeSyncServiceImpl;
-import org.chromium.chrome.browser.sync.SyncServiceFactory;
+import org.chromium.chrome.browser.sync.SyncService;
 import org.chromium.chrome.test.ChromeBrowserTestRule;
-import org.chromium.chrome.test.util.ActivityTestUtils;
 import org.chromium.content_public.browser.test.util.TestThreadUtils;
 
-/** Tests for PassphraseActivity. */
+/**
+ * Tests for PassphraseActivity.
+ */
 @RunWith(BaseJUnit4ClassRunner.class)
 public class PassphraseActivityTest {
-    @Rule public final ChromeBrowserTestRule mChromeBrowserTestRule = new ChromeBrowserTestRule();
+    @Rule
+    public final ChromeBrowserTestRule mChromeBrowserTestRule = new ChromeBrowserTestRule();
 
     private Context mContext;
 
     @Before
     public void setUp() {
-        mContext = ApplicationProvider.getApplicationContext();
+        mContext = InstrumentationRegistry.getTargetContext();
     }
 
-    /** This is a regression test for http://crbug.com/469890. */
+    @After
+    public void tearDown() {
+        TestThreadUtils.runOnUiThreadBlocking(() -> SyncService.resetForTests());
+    }
+
+    /**
+     * This is a regression test for http://crbug.com/469890.
+     */
     @Test
     @SmallTest
     @Feature({"Sync"})
     public void testCallbackAfterBackgrounded() {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
         // Override before signing in, otherwise regular SyncService will be created.
-        FakeSyncServiceImpl fakeSyncService = overrideSyncService();
+        overrideSyncService();
         mChromeBrowserTestRule.addTestAccountThenSigninAndEnableSync();
 
         // Create the activity.
         final PassphraseActivity activity = launchPassphraseActivity();
         Assert.assertNotNull(activity);
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    // Fake backgrounding the activity.
-                    Bundle bundle = new Bundle();
-                    InstrumentationRegistry.getInstrumentation().callActivityOnPause(activity);
-                    InstrumentationRegistry.getInstrumentation()
-                            .callActivityOnSaveInstanceState(activity, bundle);
-                    // Fake sync's backend finishing its initialization.
-                    fakeSyncService.setEngineInitialized(true);
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            // Fake backgrounding the activity.
+            Bundle bundle = new Bundle();
+            InstrumentationRegistry.getInstrumentation().callActivityOnPause(activity);
+            InstrumentationRegistry.getInstrumentation().callActivityOnSaveInstanceState(
+                    activity, bundle);
+            // Fake sync's backend finishing its initialization.
+            FakeSyncServiceImpl syncService = (FakeSyncServiceImpl) SyncService.get();
+            syncService.setEngineInitialized(true);
+        });
         // Nothing crashed; success!
 
         // Finish the activity before resetting the state.
         activity.finish();
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-    }
-
-    @Test
-    @MediumTest
-    @Feature({"Sync"})
-    public void testLaunchPassphraseDialog() {
-        // Override before signing in, otherwise regular SyncService will be created.
-        FakeSyncServiceImpl fakeSyncService = overrideSyncService();
-        mChromeBrowserTestRule.addTestAccountThenSigninAndEnableSync();
-
-        // Create the activity.
-        final PassphraseActivity activity = launchPassphraseActivity();
-        Assert.assertNotNull(activity);
-
-        TestThreadUtils.runOnUiThreadBlocking(() -> fakeSyncService.setEngineInitialized(true));
-        final PassphraseDialogFragment fragment =
-                ActivityTestUtils.waitForFragment(activity, PassphraseActivity.FRAGMENT_PASSPHRASE);
-        Assert.assertTrue(fragment.isAdded());
-    }
-
-    @Test
-    @MediumTest
-    @Feature({"Sync"})
-    public void testLaunchPassphraseDialogForSignedInUsers() {
-        // Override before signing in, otherwise regular SyncService will be created.
-        FakeSyncServiceImpl fakeSyncService = overrideSyncService();
-        mChromeBrowserTestRule.addTestAccountThenSignin();
-
-        // Create the activity.
-        final PassphraseActivity activity = launchPassphraseActivity();
-        Assert.assertNotNull(activity);
-
-        TestThreadUtils.runOnUiThreadBlocking(() -> fakeSyncService.setEngineInitialized(true));
-        final PassphraseDialogFragment fragment =
-                ActivityTestUtils.waitForFragment(activity, PassphraseActivity.FRAGMENT_PASSPHRASE);
-        Assert.assertTrue(fragment.isAdded());
     }
 
     private PassphraseActivity launchPassphraseActivity() {
@@ -114,18 +87,17 @@ public class PassphraseActivityTest {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         // Clears the task stack above this activity if it already exists.
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        ActivityMonitor monitor = InstrumentationRegistry.getInstrumentation().addMonitor(
+                PassphraseActivity.class.getName(), null, false);
         mContext.startActivity(intent);
-        return ActivityTestUtils.waitForActivity(
-                InstrumentationRegistry.getInstrumentation(), PassphraseActivity.class);
+        return (PassphraseActivity) InstrumentationRegistry.getInstrumentation().waitForMonitor(
+                monitor);
     }
 
-    private FakeSyncServiceImpl overrideSyncService() {
-        return TestThreadUtils.runOnUiThreadBlockingNoException(
-                () -> {
-                    // PSS has to be constructed on the UI thread.
-                    FakeSyncServiceImpl fakeSyncService = new FakeSyncServiceImpl();
-                    SyncServiceFactory.setInstanceForTesting(fakeSyncService);
-                    return fakeSyncService;
-                });
+    private void overrideSyncService() {
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            // PSS has to be constructed on the UI thread.
+            SyncService.overrideForTests(new FakeSyncServiceImpl());
+        });
     }
 }

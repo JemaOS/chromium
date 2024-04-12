@@ -133,12 +133,9 @@ void ViewsTextServicesContextMenuMac::UpdateTextDirection(
 
 void ViewsTextServicesContextMenuMac::LookUpInDictionary() {
   gfx::DecoratedText text;
-  gfx::Rect rect;
-  if (client()->GetWordLookupDataFromSelection(&text, &rect)) {
+  gfx::Point baseline_point;
+  if (client()->GetWordLookupDataFromSelection(&text, &baseline_point)) {
     Widget* widget = client()->GetWidget();
-
-    // We only care about the baseline of the glyph, not the space it occupies.
-    gfx::Point baseline_point = rect.origin();
     views::View::ConvertPointToTarget(client(), widget->GetRootView(),
                                       &baseline_point);
     NSView* view = widget->GetNativeView().GetNativeNSView();

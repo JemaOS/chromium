@@ -9,7 +9,6 @@
 
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/browser_interface_broker_proxy.h"
-#include "third_party/blink/renderer/bindings/core/v8/idl_types.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -18,7 +17,6 @@
 #include "third_party/blink/renderer/core/html/html_link_element.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
 #include "third_party/blink/renderer/modules/manifest/manifest_manager.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 #include "third_party/blink/renderer/platform/testing/url_test_helpers.h"
 
@@ -54,18 +52,15 @@ class InstalledAppControllerTest : public testing::Test {
 
     auto* link_manifest = MakeGarbageCollected<HTMLLinkElement>(
         GetDocument(), CreateElementFlags());
-    link_manifest->setAttribute(blink::html_names::kRelAttr,
-                                AtomicString("manifest"));
+    link_manifest->setAttribute(blink::html_names::kRelAttr, "manifest");
     GetDocument().head()->AppendChild(link_manifest);
-    link_manifest->setAttribute(
-        html_names::kHrefAttr,
-        AtomicString("https://example.com/manifest.json"));
+    link_manifest->setAttribute(html_names::kHrefAttr,
+                                "https://example.com/manifest.json");
 
     ManifestManager::From(*GetFrame().DomWindow())->DidChangeManifest();
   }
 
  private:
-  test::TaskEnvironment task_environment_;
   std::unique_ptr<DummyPageHolder> holder_;
   v8::HandleScope handle_scope_;
   v8::Local<v8::Context> context_;
@@ -74,13 +69,12 @@ class InstalledAppControllerTest : public testing::Test {
 
 TEST_F(InstalledAppControllerTest, DestroyContextBeforeCallback) {
   auto* controller = InstalledAppController::From(*GetFrame().DomWindow());
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLSequence<RelatedApplication>>>(
-      GetScriptState());
-  auto promise = resolver->Promise();
+  auto* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(GetScriptState());
+  ScriptPromise promise = resolver->Promise();
   controller->GetInstalledRelatedApps(
       std::make_unique<
-          CallbackPromiseAdapter<IDLSequence<RelatedApplication>, void>>(
+          CallbackPromiseAdapter<HeapVector<Member<RelatedApplication>>, void>>(
           resolver));
 
   ExecutionContext::From(GetScriptState())->NotifyContextDestroyed();

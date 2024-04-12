@@ -46,14 +46,14 @@ namespace {
 
 base::FilePath BlinkRootFilePath() {
   base::FilePath path;
-  base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &path);
+  base::PathService::Get(base::DIR_SOURCE_ROOT, &path);
   return base::MakeAbsoluteFilePath(
       path.Append(FILE_PATH_LITERAL("third_party/blink")));
 }
 
 base::FilePath WebTestsFilePath() {
   base::FilePath path;
-  base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &path);
+  base::PathService::Get(base::DIR_SOURCE_ROOT, &path);
   return base::MakeAbsoluteFilePath(
       path.Append(FILE_PATH_LITERAL("third_party/blink/web_tests")));
 }
@@ -61,17 +61,29 @@ base::FilePath WebTestsFilePath() {
 }  // namespace
 
 void RunPendingTasks() {
-  base::RunLoop loop;
+  // If we are already in a RunLoop fail. A posted task to exit the another
+  // nested run loop will never execute and lead to a timeout.
+  DCHECK(!base::RunLoop::IsRunningOnCurrentThread());
   scheduler::GetSingleThreadTaskRunnerForTesting()->PostTask(
-      FROM_HERE, WTF::BindOnce(loop.QuitWhenIdleClosure()));
-  loop.Run();
+      FROM_HERE, WTF::BindOnce(&ExitRunLoop));
+  EnterRunLoop();
 }
 
 void RunDelayedTasks(base::TimeDelta delay) {
-  base::RunLoop loop;
+  // If we are already in a RunLoop fail. A posted task to exit the another
+  // nested run loop will never execute and lead to a timeout.
+  DCHECK(!base::RunLoop::IsRunningOnCurrentThread());
   scheduler::GetSingleThreadTaskRunnerForTesting()->PostDelayedTask(
-      FROM_HERE, WTF::BindOnce(loop.QuitWhenIdleClosure()), delay);
-  loop.Run();
+      FROM_HERE, WTF::BindOnce(&ExitRunLoop), delay);
+  EnterRunLoop();
+}
+
+void EnterRunLoop() {
+  base::RunLoop().Run();
+}
+
+void ExitRunLoop() {
+  base::RunLoop::QuitCurrentWhenIdleDeprecated();
 }
 
 void YieldCurrentThread() {
@@ -123,9 +135,7 @@ base::FilePath HyphenationDictionaryDir() {
 scoped_refptr<SharedBuffer> ReadFromFile(const String& path) {
   base::FilePath file_path = blink::WebStringToFilePath(path);
   std::string buffer;
-  if (!base::ReadFileToString(file_path, &buffer)) {
-    return nullptr;
-  }
+  base::ReadFileToString(file_path, &buffer);
   return SharedBuffer::Create(buffer.data(), buffer.size());
 }
 
@@ -134,12 +144,6 @@ String BlinkWebTestsFontsTestDataPath(const String& relative_path) {
       WebTestsFilePath()
           .Append(FILE_PATH_LITERAL("external/wpt/fonts"))
           .Append(WebStringToFilePath(relative_path)));
-}
-
-String BlinkWebTestsImagesTestDataPath(const String& relative_path) {
-  return FilePathToWebString(WebTestsFilePath()
-                                 .Append(FILE_PATH_LITERAL("images/resources"))
-                                 .Append(WebStringToFilePath(relative_path)));
 }
 
 String StylePerfTestDataPath(const String& relative_path) {

@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 #include "chrome/browser/sync/sessions/sync_sessions_web_contents_router_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sync/sessions/sync_sessions_web_contents_router.h"
 
@@ -19,8 +19,7 @@ SyncSessionsWebContentsRouterFactory::GetForProfile(Profile* profile) {
 // static
 SyncSessionsWebContentsRouterFactory*
 SyncSessionsWebContentsRouterFactory::GetInstance() {
-  static base::NoDestructor<SyncSessionsWebContentsRouterFactory> instance;
-  return instance.get();
+  return base::Singleton<SyncSessionsWebContentsRouterFactory>::get();
 }
 
 SyncSessionsWebContentsRouterFactory::SyncSessionsWebContentsRouterFactory()
@@ -36,11 +35,9 @@ SyncSessionsWebContentsRouterFactory::SyncSessionsWebContentsRouterFactory()
 SyncSessionsWebContentsRouterFactory::~SyncSessionsWebContentsRouterFactory() =
     default;
 
-std::unique_ptr<KeyedService>
-SyncSessionsWebContentsRouterFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SyncSessionsWebContentsRouterFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<SyncSessionsWebContentsRouter>(
-      static_cast<Profile*>(context));
+  return new SyncSessionsWebContentsRouter(static_cast<Profile*>(context));
 }
 
 }  // namespace sync_sessions

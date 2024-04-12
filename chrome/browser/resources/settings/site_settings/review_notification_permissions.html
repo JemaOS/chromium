@@ -16,7 +16,7 @@
   <iron-collapse class="site-list"
       opened="[[notificationPermissionReviewListExpanded_]]">
     <template is="dom-repeat" items="[[sites_]]">
-      <div class="list-item site-entry">
+      <div class="cr-row site-entry">
         <site-favicon url="[[item.origin]]"></site-favicon>
         <div class="display-name cr-padded-text">
           <div class="site-representation">[[item.origin]]</div>
@@ -35,7 +35,7 @@
         </cr-icon-button>
       </div>
     </template>
-    <div class="list-item first">
+    <div class="cr-row first">
       <cr-button id="blockAllButton" on-click="onBlockAllClick_"
           class="bulk-action-button">
         $i18n{safetyCheckNotificationPermissionReviewBlockAllLabel}

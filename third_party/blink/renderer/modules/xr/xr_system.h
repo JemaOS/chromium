@@ -7,11 +7,9 @@
 
 #include "base/time/time.h"
 #include "device/vr/public/mojom/vr_service.mojom-blink.h"
-#include "device/vr/public/mojom/xr_session.mojom-blink.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "third_party/blink/public/mojom/devtools/console_message.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_xr_dom_overlay_init.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_xr_session_init.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
@@ -37,8 +35,8 @@
 namespace blink {
 
 class Navigator;
+class ScriptPromiseResolver;
 class XRFrameProvider;
-class XRSession;
 class XRSessionInit;
 
 // Implementation of the XRSystem interface according to
@@ -68,7 +66,7 @@ class XRSessionInit;
 //
 // The XRSystem keeps weak references to XRSession objects after they were
 // returned through a successful requestSession promise, but does not own them.
-class XRSystem final : public EventTarget,
+class XRSystem final : public EventTargetWithInlineData,
                        public Supplement<Navigator>,
                        public ExecutionContextLifecycleObserver,
                        public device::mojom::blink::VRServiceClient,
@@ -87,16 +85,16 @@ class XRSystem final : public EventTarget,
 
   DEFINE_ATTRIBUTE_EVENT_LISTENER(devicechange, kDevicechange)
 
-  ScriptPromiseTyped<IDLUndefined>
-  supportsSession(ScriptState*, const String&, ExceptionState& exception_state);
-  ScriptPromiseTyped<IDLBoolean> isSessionSupported(
-      ScriptState*,
-      const String&,
-      ExceptionState& exception_state);
-  ScriptPromiseTyped<XRSession> requestSession(ScriptState*,
-                                               const String&,
-                                               XRSessionInit*,
-                                               ExceptionState& exception_state);
+  ScriptPromise supportsSession(ScriptState*,
+                                const String&,
+                                ExceptionState& exception_state);
+  ScriptPromise isSessionSupported(ScriptState*,
+                                   const String&,
+                                   ExceptionState& exception_state);
+  ScriptPromise requestSession(ScriptState*,
+                               const String&,
+                               XRSessionInit*,
+                               ExceptionState& exception_state);
 
   XRFrameProvider* frameProvider();
 
@@ -172,7 +170,7 @@ class XRSystem final : public EventTarget,
       : public GarbageCollected<PendingRequestSessionQuery> {
    public:
     PendingRequestSessionQuery(int64_t ukm_source_id,
-                               ScriptPromiseResolverTyped<XRSession>* resolver,
+                               ScriptPromiseResolver* resolver,
                                device::mojom::blink::XRSessionMode mode,
                                RequestedXRSessionFeatureSet required_features,
                                RequestedXRSessionFeatureSet optional_features);
@@ -234,7 +232,7 @@ class XRSystem final : public EventTarget,
     void SetDOMOverlayElement(Element* element) {
       dom_overlay_element_ = element;
     }
-    Element* DOMOverlayElement() { return dom_overlay_element_.Get(); }
+    Element* DOMOverlayElement() { return dom_overlay_element_; }
 
     void SetTrackedImages(
         const Vector<device::mojom::blink::XRTrackedImage>& images) {
@@ -274,7 +272,7 @@ class XRSystem final : public EventTarget,
         mojo::PendingRemote<device::mojom::blink::XRSessionMetricsRecorder>
             metrics_recorder = mojo::NullRemote());
 
-    Member<ScriptPromiseResolverTyped<XRSession>> resolver_;
+    Member<ScriptPromiseResolver> resolver_;
     const device::mojom::blink::XRSessionMode mode_;
     RequestedXRSessionFeatureSet required_features_;
     RequestedXRSessionFeatureSet optional_features_;
@@ -365,10 +363,10 @@ class XRSystem final : public EventTarget,
   void AddConsoleMessage(mojom::blink::ConsoleMessageLevel error_level,
                          const String& message);
 
-  void InternalIsSessionSupported(ScriptPromiseResolver*,
-                                  const String&,
-                                  ExceptionState& exception_state,
-                                  bool throw_on_unsupported);
+  ScriptPromise InternalIsSessionSupported(ScriptState*,
+                                           const String&,
+                                           ExceptionState& exception_state,
+                                           bool throw_on_unsupported);
 
   const char* CheckInlineSessionRequestAllowed(
       LocalFrame* frame,

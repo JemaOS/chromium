@@ -18,6 +18,7 @@
 #include "third_party/skia/include/core/SkColor.h"
 
 namespace cc::slim {
+class Layer;
 class SolidColorLayer;
 }  // namespace cc::slim
 
@@ -138,15 +139,11 @@ class CompositorView : public content::CompositorClient,
 
   base::android::ScopedJavaGlobalRef<jobject> obj_;
   std::unique_ptr<content::Compositor> compositor_;
-
-  // TODO(crbug.com/324196360): One of these is triggering Dangling Pointer
-  // Detection. Figure out why and remove the DanglingUntriaged annotation.
-  raw_ptr<TabContentManager, DanglingUntriaged> tab_content_manager_;
+  raw_ptr<TabContentManager> tab_content_manager_;
 
   scoped_refptr<cc::slim::SolidColorLayer> root_layer_;
-  // TODO(crbug.com/324196360): One of these is triggering Dangling Pointer
-  // Detection. Figure out why and remove the DanglingUntriaged annotation.
-  raw_ptr<SceneLayer, DanglingUntriaged> scene_layer_;
+  raw_ptr<SceneLayer> scene_layer_;
+  scoped_refptr<cc::slim::Layer> scene_layer_layer_;
 
   int current_surface_format_;
   int content_width_;

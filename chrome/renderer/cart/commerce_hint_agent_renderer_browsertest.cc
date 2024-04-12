@@ -101,21 +101,21 @@ TEST_F(CommerceHintAgentRendererTest, IsAddToCartButton) {
         Add to cart
       </button>
 
-    <button class="add-to-cart-button wrong-button">加入购物车</button>
+      <input class="wrong-button" value="Move To Cart"></input>
     </body>
   )HTML";
 
   LoadHTML(html);
 
   auto correct_buttons = GetMainFrame()->GetDocument().QuerySelectorAll(
-      blink::WebString(".correct-button"));
+      blink::WebString("*[class='correct-button']"));
   EXPECT_GT(correct_buttons.size(), 0u);
   for (auto& element : correct_buttons) {
     EXPECT_TRUE(cart::CommerceHintAgent::IsAddToCartButton(element));
   }
 
   auto wrong_buttons = GetMainFrame()->GetDocument().QuerySelectorAll(
-      blink::WebString(".wrong-button"));
+      blink::WebString("*[class='wrong-button']"));
   EXPECT_GT(wrong_buttons.size(), 0u);
   for (auto& element : wrong_buttons) {
     EXPECT_FALSE(cart::CommerceHintAgent::IsAddToCartButton(element));

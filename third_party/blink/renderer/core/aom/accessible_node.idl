@@ -23,7 +23,7 @@
     attribute AccessibleNodeList? describedBy;
     attribute AccessibleNodeList? details;
     attribute boolean? disabled;
-    attribute AccessibleNodeList? errorMessage;
+    attribute AccessibleNode? errorMessage;
     attribute boolean? expanded;
     attribute AccessibleNodeList? flowTo;
     attribute DOMString? hasPopup;

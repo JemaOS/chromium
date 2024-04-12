@@ -5,7 +5,7 @@
 #include "chrome/browser/ash/file_manager/volume_manager_factory.h"
 
 #include "base/functional/bind.h"
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/ash/file_manager/volume_manager.h"
 #include "chrome/browser/ash/file_system_provider/service_factory.h"
@@ -23,8 +23,7 @@ VolumeManager* VolumeManagerFactory::Get(content::BrowserContext* context) {
 }
 
 VolumeManagerFactory* VolumeManagerFactory::GetInstance() {
-  static base::NoDestructor<VolumeManagerFactory> instance;
-  return instance.get();
+  return base::Singleton<VolumeManagerFactory>::get();
 }
 
 bool VolumeManagerFactory::ServiceIsCreatedWithBrowserContext() const {
@@ -35,11 +34,10 @@ bool VolumeManagerFactory::ServiceIsNULLWhileTesting() const {
   return true;
 }
 
-std::unique_ptr<KeyedService>
-VolumeManagerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* VolumeManagerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* const profile = Profile::FromBrowserContext(context);
-  std::unique_ptr<VolumeManager> instance = std::make_unique<VolumeManager>(
+  VolumeManager* instance = new VolumeManager(
       profile, drive::DriveIntegrationServiceFactory::GetForProfile(profile),
       chromeos::PowerManagerClient::Get(),
       ash::disks::DiskMountManager::GetInstance(),
@@ -52,10 +50,8 @@ VolumeManagerFactory::BuildServiceInstanceForBrowserContext(
 VolumeManagerFactory::VolumeManagerFactory()
     : ProfileKeyedServiceFactory(
           "VolumeManagerFactory",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          // Explicitly allow this manager in guest login mode.
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(drive::DriveIntegrationServiceFactory::GetInstance());
   DependsOn(ash::file_system_provider::ServiceFactory::GetInstance());
 }

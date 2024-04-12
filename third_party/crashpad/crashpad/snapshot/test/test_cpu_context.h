@@ -63,7 +63,6 @@ void InitializeCPUContextARM(CPUContext* context, uint32_t seed);
 void InitializeCPUContextARM64(CPUContext* context, uint32_t seed);
 void InitializeCPUContextMIPS(CPUContext* context, uint32_t seed);
 void InitializeCPUContextMIPS64(CPUContext* context, uint32_t seed);
-void InitializeCPUContextRISCV64(CPUContext* context, uint32_t seed);
 //! \}
 
 }  // namespace test

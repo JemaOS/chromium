@@ -25,17 +25,10 @@ public class SimpleStartupForegroundSessionDetector {
         sSessionDiscarded = true;
     }
 
-    public static boolean isSessionDiscarded() {
-        return sSessionDiscarded;
-    }
-
-    /** Returns whether the startup happened cleanly in the foreground. */
+    /**
+     * @return whether the startup happened cleanly in the foreground.
+     */
     public static boolean runningCleanForegroundSession() {
         return sReachedForeground && !sSessionDiscarded;
-    }
-
-    public static void resetForTesting() {
-        sReachedForeground = false;
-        sSessionDiscarded = false;
     }
 }

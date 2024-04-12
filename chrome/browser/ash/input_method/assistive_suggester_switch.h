@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_INPUT_METHOD_ASSISTIVE_SUGGESTER_SWITCH_H_
 
 #include "base/functional/callback.h"
-#include "ui/base/ime/ash/text_input_method.h"
 
 namespace ash {
 namespace input_method {
@@ -37,8 +36,7 @@ class AssistiveSuggesterSwitch {
 
   // Gets the currently enabled suggestions given the current user context.
   virtual void FetchEnabledSuggestionsThen(
-      FetchEnabledSuggestionsCallback callback,
-      const TextInputMethod::InputContext& context) = 0;
+      FetchEnabledSuggestionsCallback callback) = 0;
 };
 
 }  // namespace input_method

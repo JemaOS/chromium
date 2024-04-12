@@ -53,8 +53,3 @@ enum VariableRefreshRateState {
   kVrrEnabled = 1,
   kVrrNotCapable = 2,
 };
-
-// Corresponds to display::ModesetFlags
-struct ModesetFlags {
-  uint64 bitmask;
-};

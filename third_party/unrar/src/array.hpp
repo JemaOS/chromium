@@ -10,6 +10,7 @@ template <class T> class Array
     size_t BufSize;
     size_t AllocSize;
     size_t MaxSize;
+    bool Secure; // Clean memory if true.
   public:
     Array();
     Array(size_t Size);
@@ -23,13 +24,14 @@ template <class T> class Array
     void Alloc(size_t Items);
     void Reset();
     void SoftReset();
-    Array<T>& operator = (const Array<T> &Src);
+    void operator = (Array<T> &Src);
     void Push(T Item);
     void Append(T *Item,size_t Count);
     T* Addr(size_t Item) {return Buffer+Item;}
     void SetMaxSize(size_t Size) {MaxSize=Size;}
     T* Begin() {return Buffer;}
     T* End() {return Buffer==NULL ? NULL:Buffer+BufSize;}
+    void SetSecure() {Secure=true;}
 };
 
 
@@ -39,6 +41,7 @@ template <class T> void Array<T>::CleanData()
   BufSize=0;
   AllocSize=0;
   MaxSize=0;
+  Secure=false;
 }
 
 
@@ -68,7 +71,11 @@ template <class T> Array<T>::Array(const Array &Src)
 template <class T> Array<T>::~Array()
 {
   if (Buffer!=NULL)
+  {
+    if (Secure)
+      cleandata(Buffer,AllocSize*sizeof(T));
     free(Buffer);
+  }
 }
 
 
@@ -104,9 +111,25 @@ template <class T> void Array<T>::Add(size_t Items)
     size_t Suggested=AllocSize+AllocSize/4+32;
     size_t NewSize=Max(BufSize,Suggested);
 
-    T *NewBuffer=(T *)realloc(Buffer,NewSize*sizeof(T));
-    if (NewBuffer==NULL)
-      ErrHandler.MemoryError();
+    T *NewBuffer;
+    if (Secure)
+    {
+      NewBuffer=(T *)malloc(NewSize*sizeof(T));
+      if (NewBuffer==NULL)
+        ErrHandler.MemoryError();
+      if (Buffer!=NULL)
+      {
+        memcpy(NewBuffer,Buffer,AllocSize*sizeof(T));
+        cleandata(Buffer,AllocSize*sizeof(T));
+        free(Buffer);
+      }
+    }
+    else
+    {
+      NewBuffer=(T *)realloc(Buffer,NewSize*sizeof(T));
+      if (NewBuffer==NULL)
+        ErrHandler.MemoryError();
+    }
     Buffer=NewBuffer;
     AllocSize=NewSize;
   }
@@ -142,13 +165,12 @@ template <class T> void Array<T>::SoftReset()
 }
 
 
-template <class T> Array<T>& Array<T>::operator =(const Array<T> &Src)
+template <class T> void Array<T>::operator =(Array<T> &Src)
 {
   Reset();
   Alloc(Src.BufSize);
   if (Src.BufSize!=0)
     memcpy((void *)Buffer,(void *)Src.Buffer,Src.BufSize*sizeof(T));
-  return *this;
 }
 
 

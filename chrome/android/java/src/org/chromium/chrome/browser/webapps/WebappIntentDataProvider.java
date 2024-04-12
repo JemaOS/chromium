@@ -31,9 +31,10 @@ import org.chromium.chrome.browser.browserservices.intents.WebappExtras;
 import org.chromium.chrome.browser.flags.ActivityType;
 import org.chromium.components.browser_ui.widget.TintedDrawable;
 import org.chromium.device.mojom.ScreenOrientationLockType;
-import org.chromium.ui.util.ColorUtils;
 
-/** Stores info about a web app. */
+/**
+ * Stores info about a web app.
+ */
 public class WebappIntentDataProvider extends BrowserServicesIntentDataProvider {
     private final Drawable mCloseButtonIcon;
     private final TrustedWebActivityDisplayMode mTwaDisplayMode;
@@ -43,39 +44,25 @@ public class WebappIntentDataProvider extends BrowserServicesIntentDataProvider 
     private final @ActivityType int mActivityType;
     private final Intent mIntent;
     private final ColorProviderImpl mColorProvider;
-    private final ColorProviderImpl mDarkColorProvider;
 
-    /** Returns the toolbar color to use if a custom color is not specified by the webapp. */
+    /**
+     * Returns the toolbar color to use if a custom color is not specified by the webapp.
+     */
     public static int getDefaultToolbarColor() {
         return Color.WHITE;
     }
 
-    /** Returns the toolbar color to use if a custom dark color is not specified by the webapp. */
-    public static int getDefaultDarkToolbarColor() {
-        return Color.BLACK;
-    }
-
-    WebappIntentDataProvider(
-            @NonNull Intent intent,
-            int toolbarColor,
-            boolean hasCustomToolbarColor,
-            int darkToolbarColor,
-            boolean hasCustomDarkToolbarColor,
-            @Nullable ShareData shareData,
-            @NonNull WebappExtras webappExtras,
-            @Nullable WebApkExtras webApkExtras) {
+    WebappIntentDataProvider(@NonNull Intent intent, int toolbarColor,
+            boolean hasCustomToolbarColor, @Nullable ShareData shareData,
+            @NonNull WebappExtras webappExtras, @Nullable WebApkExtras webApkExtras) {
         mIntent = intent;
         mColorProvider = new ColorProviderImpl(toolbarColor, hasCustomToolbarColor);
-        mDarkColorProvider = new ColorProviderImpl(darkToolbarColor, hasCustomDarkToolbarColor);
-        final Context context =
-                new ContextThemeWrapper(
-                        ContextUtils.getApplicationContext(), ActivityUtils.getThemeId());
+        final Context context = new ContextThemeWrapper(
+                ContextUtils.getApplicationContext(), ActivityUtils.getThemeId());
         mCloseButtonIcon = TintedDrawable.constructTintedDrawable(context, R.drawable.btn_close);
-        mTwaDisplayMode =
-                (webappExtras.displayMode == DisplayMode.FULLSCREEN)
-                        ? new ImmersiveMode(
-                                /* sticky= */ false, LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT)
-                        : new DefaultMode();
+        mTwaDisplayMode = (webappExtras.displayMode == DisplayMode.FULLSCREEN)
+                ? new ImmersiveMode(false /* sticky */, LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT)
+                : new DefaultMode();
         mShareData = shareData;
         mWebappExtras = webappExtras;
         mWebApkExtras = webApkExtras;
@@ -88,12 +75,14 @@ public class WebappIntentDataProvider extends BrowserServicesIntentDataProvider 
     }
 
     @Override
-    public @Nullable Intent getIntent() {
+    @Nullable
+    public Intent getIntent() {
         return mIntent;
     }
 
     @Override
-    public @Nullable String getClientPackageName() {
+    @Nullable
+    public String getClientPackageName() {
         if (mWebApkExtras != null) {
             return mWebApkExtras.webApkPackageName;
         }
@@ -101,28 +90,15 @@ public class WebappIntentDataProvider extends BrowserServicesIntentDataProvider 
     }
 
     @Override
-    public @Nullable String getUrlToLoad() {
+    @Nullable
+    public String getUrlToLoad() {
         return mWebappExtras.url;
     }
 
     @Override
-    public @NonNull ColorProvider getColorProvider() {
-        boolean inDarkMode = ColorUtils.inNightMode(ContextUtils.getApplicationContext());
-        boolean hasValidDarkToolbar = mDarkColorProvider.hasCustomToolbarColor();
-        boolean hasValidLightToolbar = mColorProvider.hasCustomToolbarColor();
-        return inDarkMode && (hasValidDarkToolbar || !hasValidLightToolbar)
-                ? mDarkColorProvider
-                : mColorProvider;
-    }
-
-    @Override
-    public @NonNull ColorProvider getLightColorProvider() {
+    @NonNull
+    public ColorProvider getColorProvider() {
         return mColorProvider;
-    }
-
-    @Override
-    public @NonNull ColorProvider getDarkColorProvider() {
-        return mDarkColorProvider;
     }
 
     @Override
@@ -141,7 +117,8 @@ public class WebappIntentDataProvider extends BrowserServicesIntentDataProvider 
     }
 
     @Override
-    public @CustomTabsUiType int getUiType() {
+    @CustomTabsUiType
+    public int getUiType() {
         return CustomTabsUiType.MINIMAL_UI_WEBAPP;
     }
 
@@ -161,17 +138,20 @@ public class WebappIntentDataProvider extends BrowserServicesIntentDataProvider 
     }
 
     @Override
-    public @Nullable ShareData getShareData() {
+    @Nullable
+    public ShareData getShareData() {
         return mShareData;
     }
 
     @Override
-    public @Nullable WebappExtras getWebappExtras() {
+    @Nullable
+    public WebappExtras getWebappExtras() {
         return mWebappExtras;
     }
 
     @Override
-    public @Nullable WebApkExtras getWebApkExtras() {
+    @Nullable
+    public WebApkExtras getWebApkExtras() {
         return mWebApkExtras;
     }
 
@@ -200,12 +180,14 @@ public class WebappIntentDataProvider extends BrowserServicesIntentDataProvider 
         }
 
         @Override
-        public @Nullable Integer getNavigationBarColor() {
+        @Nullable
+        public Integer getNavigationBarColor() {
             return null;
         }
 
         @Override
-        public @Nullable Integer getNavigationBarDividerColor() {
+        @Nullable
+        public Integer getNavigationBarDividerColor() {
             return null;
         }
 

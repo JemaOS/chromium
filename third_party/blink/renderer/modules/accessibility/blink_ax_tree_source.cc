@@ -19,6 +19,8 @@
 #include "third_party/blink/renderer/modules/accessibility/ax_object_cache_impl.h"
 #include "third_party/blink/renderer/modules/accessibility/ax_selection.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_deque.h"
+#include "ui/accessibility/accessibility_features.h"
+#include "ui/accessibility/accessibility_switches.h"
 #include "ui/accessibility/ax_common.h"
 #include "ui/accessibility/ax_enum_util.h"
 #include "ui/accessibility/ax_role_properties.h"
@@ -53,12 +55,56 @@ void CheckParentUnignoredOf(AXObject* parent, AXObject* child) {
 
 }  // namespace
 
-BlinkAXTreeSource::BlinkAXTreeSource(AXObjectCacheImpl& ax_object_cache,
-                                     bool truncate_inline_textboxes)
-    : ax_object_cache_(ax_object_cache),
-      truncate_inline_textboxes_(truncate_inline_textboxes) {}
+BlinkAXTreeSource::BlinkAXTreeSource(AXObjectCacheImpl& ax_object_cache)
+    : ax_object_cache_(ax_object_cache) {}
 
 BlinkAXTreeSource::~BlinkAXTreeSource() = default;
+
+bool BlinkAXTreeSource::ShouldLoadInlineTextBoxes(const AXObject* obj) const {
+#if !BUILDFLAG(IS_ANDROID)
+  // If inline text boxes are enabled globally, no need to explicitly load them.
+  if (ax_object_cache_->GetAXMode().has_mode(ui::AXMode::kInlineTextBoxes))
+    return false;
+#endif
+
+  // On some platforms, like Android, we only load inline text boxes for
+  // a subset of nodes:
+  //
+  // Within the subtree of a focused editable text area.
+  // When specifically enabled for a subtree via |load_inline_text_boxes_ids_|.
+
+  AXObject* focused_object = GetFocusedObject();
+  AXID focus_id = -1;
+  if (focused_object && !focused_object->IsDetached())
+    focus_id = focused_object->AXObjectID();
+  const AXObject* ancestor = obj;
+  while (ancestor && !ancestor->IsDetached()) {
+    AXID ancestor_id = ancestor->AXObjectID();
+    if (load_inline_text_boxes_ids_.Contains(ancestor_id) ||
+        (ancestor_id == focus_id && ancestor->IsEditable())) {
+      return true;
+    }
+    ancestor = ancestor->ParentObjectIncludedInTree();
+  }
+
+  return false;
+}
+
+void BlinkAXTreeSource::SetLoadInlineTextBoxesForId(int32_t id) {
+  // Keeping stale IDs in the set is harmless but we don't want it to keep
+  // growing without bound, so clear out any unnecessary IDs whenever this
+  // method is called.
+  WTF::Vector<int32_t> to_remove;
+  for (auto iter : load_inline_text_boxes_ids_) {
+    auto* obj = GetFromId(iter);
+    if (!obj || obj->IsDetached())
+      to_remove.push_back(iter);
+  }
+  for (auto iter : to_remove)
+    load_inline_text_boxes_ids_.erase(iter);
+
+  load_inline_text_boxes_ids_.insert(id);
+}
 
 static ax::mojom::blink::TextAffinity ToAXAffinity(TextAffinity affinity) {
   switch (affinity) {
@@ -103,9 +149,9 @@ void BlinkAXTreeSource::Selection(
   if (!ax_selection)
     return;
 
-  const AXPosition base = ax_selection.Anchor();
+  const AXPosition base = ax_selection.Base();
   *anchor_object = const_cast<AXObject*>(base.ContainerObject());
-  const AXPosition extent = ax_selection.Focus();
+  const AXPosition extent = ax_selection.Extent();
   *focus_object = const_cast<AXObject*>(extent.ContainerObject());
 
   is_selection_backward = base > extent;
@@ -125,7 +171,7 @@ void BlinkAXTreeSource::Selection(
 }
 
 static ui::AXTreeID GetAXTreeID(LocalFrame* local_frame) {
-  const std::optional<base::UnguessableToken>& embedding_token =
+  const absl::optional<base::UnguessableToken>& embedding_token =
       local_frame->GetEmbeddingToken();
   if (embedding_token && !embedding_token->is_empty())
     return ui::AXTreeID::FromToken(embedding_token.value());
@@ -178,18 +224,15 @@ bool BlinkAXTreeSource::GetTreeData(ui::AXTreeData* tree_data) const {
     if (HTMLHeadElement* head = ax_object_cache_->GetDocument().head()) {
       for (Node* child = head->firstChild(); child;
            child = child->nextSibling()) {
-        const Element* elem = DynamicTo<Element>(*child);
-        if (!elem) {
+        if (!child->IsElementNode())
           continue;
-        }
-        if (IsA<HTMLScriptElement>(*elem)) {
-          if (elem->getAttribute(html_names::kTypeAttr) !=
-              "application/ld+json") {
+        Element* elem = To<Element>(child);
+        if (elem->IsHTMLWithTagName("SCRIPT")) {
+          if (elem->getAttribute("type") != "application/ld+json")
             continue;
-          }
-        } else if (!IsA<HTMLLinkElement>(*elem) &&
-                   !IsA<HTMLTitleElement>(*elem) &&
-                   !IsA<HTMLMetaElement>(*elem)) {
+        } else if (!elem->IsHTMLWithTagName("LINK") &&
+                   !elem->IsHTMLWithTagName("TITLE") &&
+                   !elem->IsHTMLWithTagName("META")) {
           continue;
         }
         // TODO(chrishtr): replace the below with elem->outerHTML().
@@ -212,31 +255,27 @@ bool BlinkAXTreeSource::GetTreeData(ui::AXTreeData* tree_data) const {
 void BlinkAXTreeSource::Freeze() {
   CHECK(!frozen_);
   frozen_ = true;
-
-  // The root cannot be null.
-  root_ = ax_object_cache_->Root();
-  CHECK(root_);
+  root_ = GetRoot();
   focus_ = ax_object_cache_->FocusedObject();
-  CHECK(focus_);
 }
 
 void BlinkAXTreeSource::Thaw() {
   CHECK(frozen_);
-  frozen_ = false;
   root_ = nullptr;
   focus_ = nullptr;
+  frozen_ = false;
 }
 
 AXObject* BlinkAXTreeSource::GetRoot() const {
-  CHECK(frozen_);
-  CHECK(root_);
-  return root_.Get();
+  if (root_)
+    return root_;
+  return ax_object_cache_->Root();
 }
 
 AXObject* BlinkAXTreeSource::GetFocusedObject() const {
-  CHECK(frozen_);
-  CHECK(focus_);
-  return focus_.Get();
+  if (focus_)
+    return focus_;
+  return ax_object_cache_->FocusedObject();
 }
 
 AXObject* BlinkAXTreeSource::GetFromId(int32_t id) const {
@@ -254,17 +293,19 @@ int32_t BlinkAXTreeSource::GetId(AXObject* node) const {
 }
 
 size_t BlinkAXTreeSource::GetChildCount(AXObject* node) const {
-  if (truncate_inline_textboxes_ &&
-      ui::CanHaveInlineTextBoxChildren(node->RoleValue())) {
-    return 0;
+  // TODO(aleventhal) This is work that should have done earlier. The call
+  // to load inline textboxes can just ClearChildren and mark the inline text
+  // box parent dirty. That would allow removal of a lot of specialized inline
+  // textbox methods.
+  if (ui::CanHaveInlineTextBoxChildren(node->RoleValue()) &&
+      ShouldLoadInlineTextBoxes(node)) {
+    node->LoadInlineTextBoxes();
   }
+
   return node->ChildCountIncludingIgnored();
 }
 
 AXObject* BlinkAXTreeSource::ChildAt(AXObject* node, size_t index) const {
-  if (truncate_inline_textboxes_) {
-    CHECK(!ui::CanHaveInlineTextBoxChildren(node->RoleValue()));
-  }
   auto* child = node->ChildAtIncludingIgnored(static_cast<int>(index));
 
   // The child may be invalid due to issues in blink accessibility code.
@@ -347,13 +388,69 @@ void BlinkAXTreeSource::SerializeNode(AXObject* src,
     return;
   }
 
+  dst->id = src->AXObjectID();
+  dst->role = src->RoleValue();
+
+  // TODO(crbug.com/1068668): AX onion soup - finish migrating the rest of
+  // this function inside of AXObject::Serialize and removing
+  // unneeded AXObject interfaces.
   src->Serialize(dst, ax_object_cache_->GetAXMode());
+
+  if (dst->id == ax_object_cache_->image_data_node_id()) {
+    // In general, string attributes should be truncated using
+    // TruncateAndAddStringAttribute, but ImageDataUrl contains a data url
+    // representing an image, so add it directly using AddStringAttribute.
+    dst->AddStringAttribute(ax::mojom::blink::StringAttribute::kImageDataUrl,
+                            src->ImageDataUrl(max_image_data_size_).Utf8());
+  }
 }
 
 void BlinkAXTreeSource::Trace(Visitor* visitor) const {
   visitor->Trace(ax_object_cache_);
   visitor->Trace(root_);
   visitor->Trace(focus_);
+}
+
+void BlinkAXTreeSource::OnLoadInlineTextBoxes(AXObject& obj) {
+  if (ShouldLoadInlineTextBoxes(&obj))
+    return;
+
+  SetLoadInlineTextBoxesForId(obj.AXObjectID());
+
+  ax_object_cache_->MarkSerializerSubtreeDirty(obj);
+}
+
+AXObject* BlinkAXTreeSource::GetPluginRoot() {
+  AXObject* root = GetRoot();
+
+  HeapDeque<Member<AXObject>> objs_to_explore;
+  objs_to_explore.push_back(root);
+  while (objs_to_explore.size()) {
+    AXObject* obj = objs_to_explore.front();
+    objs_to_explore.pop_front();
+
+    Node* node = obj->GetNode();
+    if (node && node->IsElementNode()) {
+      Element* element = To<Element>(node);
+      if (element->IsHTMLWithTagName("embed")) {
+        return obj;
+      }
+    }
+
+    // Explore children of this object.
+    CacheChildrenIfNeeded(obj);
+    auto num_children = GetChildCount(obj);
+    for (size_t i = 0; i < num_children; i++) {
+      auto* child = ChildAt(obj, i);
+      if (!child) {
+        continue;
+      }
+      objs_to_explore.push_back(child);
+    }
+    ClearChildCache(obj);
+  }
+
+  return nullptr;
 }
 
 }  // namespace blink

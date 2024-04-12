@@ -12,7 +12,6 @@
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/onc/onc_constants.h"
 #include "content/public/test/browser_test.h"
@@ -168,12 +167,14 @@ class TestNetworkingPrivateDelegate : public NetworkingPrivateDelegate {
   }
 
   void GetDeviceStateList(DeviceStateListCallback callback) override {
-    DeviceStateList result;
+    std::unique_ptr<DeviceStateList> result;
     if (!fail_) {
-      api::networking_private::DeviceStateProperties& properties =
-          result.emplace_back();
-      properties.type = api::networking_private::NetworkType::kEthernet;
-      properties.state = api::networking_private::DeviceStateType::kEnabled;
+      result = std::make_unique<DeviceStateList>();
+      std::unique_ptr<api::networking_private::DeviceStateProperties>
+          properties(new api::networking_private::DeviceStateProperties);
+      properties->type = api::networking_private::NetworkType::kEthernet;
+      properties->state = api::networking_private::DeviceStateType::kEnabled;
+      result->push_back(std::move(properties));
     }
     std::move(callback).Run(std::move(result));
   }
@@ -252,13 +253,13 @@ class TestNetworkingPrivateDelegate : public NetworkingPrivateDelegate {
 
   void ValueResult(const std::string& guid, PropertiesCallback callback) {
     if (fail_) {
-      std::move(callback).Run(std::nullopt, kFailure);
+      std::move(callback).Run(absl::nullopt, kFailure);
       return;
     }
     base::Value::Dict result;
     result.Set(::onc::network_config::kGUID, guid);
     result.Set(::onc::network_config::kType, ::onc::network_config::kWiFi);
-    std::move(callback).Run(std::move(result), std::nullopt);
+    std::move(callback).Run(std::move(result), absl::nullopt);
   }
 
  private:

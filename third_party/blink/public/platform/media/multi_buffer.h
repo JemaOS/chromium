@@ -19,7 +19,6 @@
 #include "base/containers/lru_cache.h"
 #include "base/functional/callback.h"
 #include "base/hash/hash.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/synchronization/lock.h"
 #include "base/task/single_thread_task_runner.h"
@@ -363,8 +362,7 @@ class BLINK_PLATFORM_EXPORT MultiBuffer {
   base::Lock data_lock_;
 
   // Keeps track of readers waiting for data.
-  std::map<MultiBufferBlockId, std::set<raw_ptr<Reader, SetExperimental>>>
-      readers_;
+  std::map<MultiBufferBlockId, std::set<Reader*>> readers_;
 
   // Keeps track of writers by their position.
   // The writers are owned by this class.

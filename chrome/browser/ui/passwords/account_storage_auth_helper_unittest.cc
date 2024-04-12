@@ -11,17 +11,11 @@
 #include "base/test/bind.h"
 #include "base/test/task_environment.h"
 #include "build/build_config.h"
-#include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
 #include "chrome/browser/signin/reauth_result.h"
-#include "chrome/browser/signin/signin_ui_delegate.h"
-#include "chrome/browser/signin/signin_ui_util.h"
-#include "chrome/browser/ui/signin/signin_view_controller.h"
-#include "chrome/test/base/testing_profile.h"
+#include "chrome/browser/ui/signin_view_controller.h"
 #include "components/password_manager/core/browser/mock_password_feature_manager.h"
-#include "components/signin/public/base/signin_buildflags.h"
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
-#include "content/public/test/browser_task_environment.h"
 #include "google_apis/gaia/core_account_id.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -44,24 +38,10 @@ class MockSigninViewController : public SigninViewController {
                signin_metrics::ReauthAccessPoint,
                base::OnceCallback<void(signin::ReauthResult)>),
               (override));
-};
 
-class MockSigninUiDelegate : public signin_ui_util::SigninUiDelegate {
- public:
   MOCK_METHOD(void,
-              ShowSigninUI,
-              (Profile*,
-               bool,
-               signin_metrics::AccessPoint,
-               signin_metrics::PromoAction),
-              (override));
-  MOCK_METHOD(void,
-              ShowReauthUI,
-              (Profile*,
-               const std::string&,
-               bool,
-               signin_metrics::AccessPoint,
-               signin_metrics::PromoAction),
+              ShowDiceAddAccountTab,
+              (signin_metrics::AccessPoint, const std::string&),
               (override));
 };
 
@@ -70,12 +50,8 @@ class MockSigninUiDelegate : public signin_ui_util::SigninUiDelegate {
 class AccountStorageAuthHelperTest : public ::testing::Test {
  public:
   AccountStorageAuthHelperTest()
-      : profile_(IdentityTestEnvironmentProfileAdaptor::
-                     CreateProfileForIdentityTestEnvironment()),
-        identity_env_adaptor_(profile_.get()),
-        auth_helper_(
-            profile_.get(),
-            identity_test_env()->identity_manager(),
+      : auth_helper_(
+            identity_test_env_.identity_manager(),
             &mock_password_feature_manager_,
             base::BindLambdaForTesting([this]() -> SigninViewController* {
               return &mock_signin_view_controller_;
@@ -83,20 +59,15 @@ class AccountStorageAuthHelperTest : public ::testing::Test {
   ~AccountStorageAuthHelperTest() override = default;
 
   CoreAccountId MakeUnconsentedAccountAvailable() {
-    return identity_test_env()
-        ->MakePrimaryAccountAvailable("alice@gmail.com",
-                                      signin::ConsentLevel::kSignin)
+    return identity_test_env_
+        .MakePrimaryAccountAvailable("alice@gmail.com",
+                                     signin::ConsentLevel::kSignin)
         .account_id;
   }
 
-  signin::IdentityTestEnvironment* identity_test_env() {
-    return identity_env_adaptor_.identity_test_env();
-  }
-
  protected:
-  content::BrowserTaskEnvironment task_environment_;
-  std::unique_ptr<TestingProfile> profile_;
-  IdentityTestEnvironmentProfileAdaptor identity_env_adaptor_;
+  base::test::SingleThreadTaskEnvironment task_environment_;
+  signin::IdentityTestEnvironment identity_test_env_;
   password_manager::MockPasswordFeatureManager mock_password_feature_manager_;
   MockSigninViewController mock_signin_view_controller_;
   AccountStorageAuthHelper auth_helper_;
@@ -138,16 +109,11 @@ TEST_F(AccountStorageAuthHelperTest, ShouldNotSetOptInOnFailedReauth) {
   auth_helper_.TriggerOptInReauth(kReauthAccessPoint, base::DoNothing());
 }
 
-TEST_F(AccountStorageAuthHelperTest, ShouldTriggerSignin) {
-  testing::StrictMock<MockSigninUiDelegate> mock_signin_ui_delegate;
-  base::AutoReset<signin_ui_util::SigninUiDelegate*> delegate_auto_reset =
-      signin_ui_util::SetSigninUiDelegateForTesting(&mock_signin_ui_delegate);
+TEST_F(AccountStorageAuthHelperTest, ShouldTriggerSigninIfDiceEnabled) {
   const signin_metrics::AccessPoint kAccessPoint =
       signin_metrics::AccessPoint::ACCESS_POINT_AUTOFILL_DROPDOWN;
-  EXPECT_CALL(mock_signin_ui_delegate,
-              ShowSigninUI(profile_.get(), /*enable_sync=*/false, kAccessPoint,
-                           signin_metrics::PromoAction::
-                               PROMO_ACTION_NEW_ACCOUNT_NO_EXISTING_ACCOUNT));
+  EXPECT_CALL(mock_signin_view_controller_,
+              ShowDiceAddAccountTab(kAccessPoint, _));
 
   auth_helper_.TriggerSignIn(kAccessPoint);
 }

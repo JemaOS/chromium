@@ -1,2 +1,2 @@
-set noparent
-file://third_party/blink/API_OWNERS
+chrishtr@chromium.org
+haraken@chromium.org

@@ -14,15 +14,14 @@ import 'chrome://resources/polymer/v3_0/iron-collapse/iron-collapse.js';
 import '../settings_shared.css.js';
 import '../site_favicon.js';
 
-import type {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
-import type {CrLazyRenderElement} from 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render.js';
+import {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
+import {CrLazyRenderElement} from 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render.js';
 import {FocusRowMixin} from 'chrome://resources/cr_elements/focus_row_mixin.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
-import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
+import {assert, assertNotReached} from 'chrome://resources/js/assert_ts.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
-import type {IronCollapseElement} from 'chrome://resources/polymer/v3_0/iron-collapse/iron-collapse.js';
-import type {DomRepeatEvent} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {afterNextRender, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {IronCollapseElement} from 'chrome://resources/polymer/v3_0/iron-collapse/iron-collapse.js';
+import {afterNextRender, DomRepeatEvent, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {BaseMixin} from '../base_mixin.js';
 import {loadTimeData} from '../i18n_setup.js';
@@ -32,7 +31,7 @@ import {Router} from '../router.js';
 import {AllSitesAction2, SortMethod} from './constants.js';
 import {getTemplate} from './site_entry.html.js';
 import {SiteSettingsMixin} from './site_settings_mixin.js';
-import type {OriginInfo, SiteGroup} from './site_settings_prefs_browser_proxy.js';
+import {OriginInfo, SiteGroup} from './site_settings_prefs_browser_proxy.js';
 
 
 export interface SiteEntryElement {
@@ -287,9 +286,8 @@ export class SiteEntryElement extends SiteEntryElementBase {
     // origin. Otherwise find the origin with largest storage, and use the
     // number of cookies as a tie breaker.
     for (const originInfo of origins) {
-      if (siteGroup.etldPlus1 &&
-          this.toUrl(originInfo.origin)!.host ===
-              'www.' + siteGroup.etldPlus1) {
+      if (this.toUrl(originInfo.origin)!.host ===
+          'www.' + siteGroup.etldPlus1) {
         return originInfo.origin;
       }
     }
@@ -469,8 +467,8 @@ export class SiteEntryElement extends SiteEntryElementBase {
         'aria-expanded', collapseChild.opened ? 'true' : 'false');
     this.$.expandIcon.setAttribute(
         'aria-expanded', collapseChild.opened ? 'true' : 'false');
-    this.$.expandIcon.classList.toggle('icon-expand-more');
-    this.$.expandIcon.classList.toggle('icon-expand-less');
+    this.$.expandIcon.toggleClass('icon-expand-more');
+    this.$.expandIcon.toggleClass('icon-expand-less');
     this.fire('iron-resize');
   }
 

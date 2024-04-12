@@ -25,21 +25,14 @@ export class OptionPanel extends View {
   private readonly observers = new Map<state.State, state.StateObserver>();
 
   constructor() {
-    super(ViewName.OPTION_PANEL, {
-      dismissByEsc: true,
-      dismissByBackgroundClick: true,
-      dismissOnStopStreaming: true,
-    });
+    super(
+        ViewName.OPTION_PANEL,
+        {dismissByEsc: true, dismissByBackgroundClick: true});
   }
 
   override entering(options: EnterOptions): void {
-    const {
-      triggerButton,
-      titleLabel,
-      stateOptions,
-      onStateChanged,
-      ariaDescribedByElement,
-    } = assertInstanceof(options, OptionPanelOptions);
+    const {triggerButton, titleLabel, stateOptions, onStateChanged} =
+        assertInstanceof(options, OptionPanelOptions);
     const {bottom, right} = triggerButton.getBoundingClientRect();
     this.panel.style.bottom = `${window.innerHeight - bottom}px`;
     this.panel.style.left = `${right + 6}px`;
@@ -47,12 +40,8 @@ export class OptionPanel extends View {
     this.title.setAttribute('i18n-text', titleLabel);
 
     this.container.replaceChildren();
-    for (const {
-           label,
-           ariaLabel,
-           state: targetState,
-           isDisableOption = false,
-         } of stateOptions) {
+    for (const {label, ariaLabel, state: targetState, isDisableOption} of
+             stateOptions) {
       const item = util.instantiateTemplate('#state-option-template');
       const span = dom.getFrom(item, 'span', HTMLSpanElement);
 
@@ -66,8 +55,8 @@ export class OptionPanel extends View {
       input.checked = checked;
       input.addEventListener('change', () => {
         if (input.checked) {
-          ariaDescribedByElement.setAttribute('i18n-text', ariaLabel);
-          util.setupI18nElements(ariaDescribedByElement);
+          triggerButton.setAttribute('i18n-aria', ariaLabel);
+          util.setupI18nElements(triggerButton);
           speak(ariaLabel);
 
           onStateChanged(isDisableOption ? null : targetState);

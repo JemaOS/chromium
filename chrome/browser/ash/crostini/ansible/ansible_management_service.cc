@@ -116,9 +116,8 @@ void AnsibleManagementService::OnInstallAnsibleInContainer(
     const guest_os::GuestId& container_id,
     CrostiniResult result) {
   // Check if cancelled.
-  if (IsCancelled(container_id)) {
+  if (IsCancelled(container_id))
     return;
-  }
   if (result == CrostiniResult::INSTALL_LINUX_PACKAGE_FAILED) {
     LOG(ERROR) << "Ansible installation failed";
     OnConfigurationFinished(container_id, false);
@@ -141,9 +140,8 @@ void AnsibleManagementService::OnInstallLinuxPackageProgress(
     int progress_percent,
     const std::string& error_message) {
   // Check if cancelled.
-  if (IsCancelled(container_id)) {
+  if (IsCancelled(container_id))
     return;
-  }
   std::stringstream status_line;
   switch (status) {
     case InstallLinuxPackageProgressStatus::SUCCEEDED: {
@@ -180,9 +178,8 @@ void AnsibleManagementService::OnInstallLinuxPackageProgress(
 void AnsibleManagementService::GetAnsiblePlaybookToApply(
     const guest_os::GuestId& container_id) {
   // Check if cancelled.
-  if (IsCancelled(container_id)) {
+  if (IsCancelled(container_id))
     return;
-  }
   const base::FilePath& ansible_playbook_file_path =
       configuration_tasks_[container_id]->path;
   bool success = base::ThreadPool::PostTaskAndReplyWithResult(
@@ -201,9 +198,8 @@ void AnsibleManagementService::OnAnsiblePlaybookRetrieved(
     const guest_os::GuestId& container_id,
     bool success) {
   // Check if cancelled.
-  if (IsCancelled(container_id)) {
+  if (IsCancelled(container_id))
     return;
-  }
   if (!success) {
     LOG(ERROR) << "Failed to retrieve Ansible playbook content";
     OnConfigurationFinished(container_id, false);
@@ -216,9 +212,8 @@ void AnsibleManagementService::OnAnsiblePlaybookRetrieved(
 void AnsibleManagementService::ApplyAnsiblePlaybook(
     const guest_os::GuestId& container_id) {
   // Check if cancelled.
-  if (IsCancelled(container_id)) {
+  if (IsCancelled(container_id))
     return;
-  }
   if (!GetCiceroneClient()->IsApplyAnsiblePlaybookProgressSignalConnected()) {
     // Technically we could still start the application, but we wouldn't be able
     // to detect when the application completes, successfully or otherwise.
@@ -242,11 +237,10 @@ void AnsibleManagementService::ApplyAnsiblePlaybook(
 
 void AnsibleManagementService::OnApplyAnsiblePlaybook(
     const guest_os::GuestId& container_id,
-    std::optional<vm_tools::cicerone::ApplyAnsiblePlaybookResponse> response) {
+    absl::optional<vm_tools::cicerone::ApplyAnsiblePlaybookResponse> response) {
   // Check if cancelled.
-  if (IsCancelled(container_id)) {
+  if (IsCancelled(container_id))
     return;
-  }
   if (!response) {
     LOG(ERROR) << "Failed to apply Ansible playbook. Empty response.";
     OnConfigurationFinished(container_id, false);
@@ -274,9 +268,8 @@ void AnsibleManagementService::OnApplyAnsiblePlaybookProgress(
   guest_os::GuestId container_id(kCrostiniDefaultVmType, signal.vm_name(),
                                  signal.container_name());
   // Check if cancelled.
-  if (IsCancelled(container_id)) {
+  if (IsCancelled(container_id))
     return;
-  }
   switch (signal.status()) {
     case vm_tools::cicerone::ApplyAnsiblePlaybookProgressSignal::SUCCEEDED:
       OnConfigurationFinished(container_id, true);
@@ -319,9 +312,8 @@ void AnsibleManagementService::OnConfigurationFinished(
     const guest_os::GuestId& container_id,
     bool success) {
   // Check if cancelled.
-  if (IsCancelled(container_id)) {
+  if (IsCancelled(container_id))
     return;
-  }
   if (success && container_id == DefaultContainerId()) {
     profile_->GetPrefs()->SetBoolean(prefs::kCrostiniDefaultContainerConfigured,
                                      true);
@@ -358,9 +350,8 @@ void AnsibleManagementService::CompleteConfiguration(
     const guest_os::GuestId& container_id,
     bool success) {
   // Check if cancelled.
-  if (IsCancelled(container_id)) {
+  if (IsCancelled(container_id))
     return;
-  }
   auto callback = std::move(configuration_tasks_[container_id]->callback);
   configuration_tasks_.erase(configuration_tasks_.find(container_id));
 

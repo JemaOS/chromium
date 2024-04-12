@@ -11,7 +11,6 @@
 #include "ash/shell.h"
 #include "ash/strings/grit/ash_strings.h"
 #include "ash/style/ash_color_provider.h"
-#include "ash/style/typography.h"
 #include "ash/system/phonehub/ui_constants.h"
 #include "ash/system/tray/tray_constants.h"
 #include "ash/system/tray/tray_popup_utils.h"
@@ -20,7 +19,6 @@
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/resource/resource_bundle.h"
-#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/compositor/layer.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/size.h"
@@ -38,7 +36,6 @@ namespace ash {
 
 namespace {
 constexpr auto kLabelInsets = gfx::Insets::VH(0, 4);
-constexpr int kTitleLabelLineHeight = 48;
 }
 
 PhoneHubInterstitialView::PhoneHubInterstitialView(bool show_progress,
@@ -55,8 +52,7 @@ PhoneHubInterstitialView::PhoneHubInterstitialView(bool show_progress,
     progress_bar_container->SetMainAxisAlignment(
         views::BoxLayout::MainAxisAlignment::kCenter);
     progress_bar_ = progress_bar_container->AddChildView(
-        std::make_unique<views::ProgressBar>());
-    progress_bar_->SetPreferredHeight(2);
+        std::make_unique<views::ProgressBar>(2));
     progress_bar_->SetForegroundColor(color_provider->GetContentLayerColor(
         AshColorProvider::ContentLayerType::kIconColorProminent));
     progress_bar_->SetValue(-1.0);
@@ -85,15 +81,12 @@ PhoneHubInterstitialView::PhoneHubInterstitialView(bool show_progress,
   title_->SetProperty(views::kCrossAxisAlignmentKey,
                       views::LayoutAlignment::kStart);
   title_->SetProperty(views::kMarginsKey, kLabelInsets);
+  title_->SetLineHeight(48);
   auto label_color = color_provider->GetContentLayerColor(
       AshColorProvider::ContentLayerType::kTextColorPrimary);
   title_->SetEnabledColor(label_color);
-  TypographyProvider::Get()->StyleLabel(ash::TypographyToken::kCrosButton1,
-                                        *title_);
-
-  // Overriding because the typography line height set does not match Phone
-  // Hub specs.
-  title_->SetLineHeight(kTitleLabelLineHeight);
+  TrayPopupUtils::SetLabelFontList(title_,
+                                   TrayPopupUtils::FontStyle::kSubHeader);
 
   // Set up multi-line description view.
   description_ =
@@ -105,13 +98,11 @@ PhoneHubInterstitialView::PhoneHubInterstitialView(bool show_progress,
       views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
                                views::MaximumFlexSizeRule::kUnbounded, true));
   description_->SetEnabledColor(label_color);
+  TrayPopupUtils::SetLabelFontList(
+      description_, TrayPopupUtils::FontStyle::kDetailedViewLabel);
   description_->SetMultiLine(true);
-  description_->SetHorizontalAlignment(gfx::HorizontalAlignment::ALIGN_LEFT);
-  // TODO(b/281844561): Migrate the `description_` to use a slightly lighter
-  // text color when tokens have been finalized.
-  TypographyProvider::Get()->StyleLabel(ash::TypographyToken::kCrosBody2,
-                                        *description_);
   description_->SetLineHeight(20);
+  description_->SetHorizontalAlignment(gfx::HorizontalAlignment::ALIGN_LEFT);
 
   // Set up button container view, which should be right-aligned.
   button_container_ =
@@ -150,7 +141,7 @@ void PhoneHubInterstitialView::AddButton(
   button_container_->AddChildView(std::move(button));
 }
 
-BEGIN_METADATA(PhoneHubInterstitialView)
+BEGIN_METADATA(PhoneHubInterstitialView, views::View)
 END_METADATA
 
 }  // namespace ash

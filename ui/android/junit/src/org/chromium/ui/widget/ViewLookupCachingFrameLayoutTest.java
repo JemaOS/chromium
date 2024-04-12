@@ -55,17 +55,13 @@ public class ViewLookupCachingFrameLayoutTest {
     public void testAddViewAndLookup() {
         mCachingLayout.addView(mView1);
 
-        assertEquals(
-                "Cache should be empty; no lookups have occurred.",
-                0,
+        assertEquals("Cache should be empty; no lookups have occurred.", 0,
                 mCachingLayout.getCache().size());
 
         assertEquals(
                 "Lookup found the wrong view.", mView1, mCachingLayout.fastFindViewById(VIEW1_ID));
 
-        assertEquals(
-                "The cache should contain the view.",
-                mView1,
+        assertEquals("The cache should contain the view.", mView1,
                 mCachingLayout.getCache().get(VIEW1_ID).get());
     }
 
@@ -74,13 +70,9 @@ public class ViewLookupCachingFrameLayoutTest {
         mCachingLayout.addView(mGroup);
         mGroup.addView(mView1);
 
-        assertEquals(
-                "View lookup methods should agree.",
-                mCachingLayout.findViewById(VIEW1_ID),
+        assertEquals("View lookup methods should agree.", mCachingLayout.findViewById(VIEW1_ID),
                 mCachingLayout.fastFindViewById(VIEW1_ID));
-        assertEquals(
-                "The cache should contain the first view.",
-                mView1,
+        assertEquals("The cache should contain the first view.", mView1,
                 mCachingLayout.getCache().get(VIEW1_ID).get());
 
         // Add the second view earlier in the hierarchy than the original.
@@ -88,13 +80,9 @@ public class ViewLookupCachingFrameLayoutTest {
 
         assertEquals("Cache should be empty.", 0, mCachingLayout.getCache().size());
 
-        assertEquals(
-                "View lookup methods should agree.",
-                mCachingLayout.findViewById(VIEW1_ID),
+        assertEquals("View lookup methods should agree.", mCachingLayout.findViewById(VIEW1_ID),
                 mCachingLayout.fastFindViewById(VIEW1_ID));
-        assertEquals(
-                "The cache should contain the view that was added second.",
-                mViewWithSameIdAs1,
+        assertEquals("The cache should contain the view that was added second.", mViewWithSameIdAs1,
                 mCachingLayout.getCache().get(VIEW1_ID).get());
     }
 
@@ -106,17 +94,13 @@ public class ViewLookupCachingFrameLayoutTest {
         assertEquals(
                 "Lookup found the wrong view.", mView1, mCachingLayout.fastFindViewById(VIEW1_ID));
 
-        assertEquals(
-                "The cache should contain the view.",
-                mView1,
+        assertEquals("The cache should contain the view.", mView1,
                 mCachingLayout.getCache().get(VIEW1_ID).get());
 
         mGroup.removeView(mView1);
 
         assertEquals("Cache should be empty.", 0, mCachingLayout.getCache().size());
-        assertEquals(
-                "The view should not longer be in the hierarchy.",
-                null,
+        assertEquals("The view should not longer be in the hierarchy.", null,
                 mCachingLayout.fastFindViewById(VIEW1_ID));
     }
 
@@ -127,9 +111,7 @@ public class ViewLookupCachingFrameLayoutTest {
         assertEquals(
                 "Lookup found the wrong view.", mView1, mCachingLayout.fastFindViewById(VIEW1_ID));
 
-        assertEquals(
-                "The cache should contain the view.",
-                mView1,
+        assertEquals("The cache should contain the view.", mView1,
                 mCachingLayout.getCache().get(VIEW1_ID).get());
 
         mCachingLayout.addView(mViewWithSameIdAs1);
@@ -145,9 +127,7 @@ public class ViewLookupCachingFrameLayoutTest {
         assertEquals(
                 "Lookup found the wrong view.", mView1, mCachingLayout.fastFindViewById(VIEW1_ID));
 
-        assertEquals(
-                "The cache should contain the view.",
-                mView1,
+        assertEquals("The cache should contain the view.", mView1,
                 mCachingLayout.getCache().get(VIEW1_ID).get());
 
         mGroup.addView(mViewWithSameIdAs1);
@@ -165,13 +145,9 @@ public class ViewLookupCachingFrameLayoutTest {
         assertEquals(
                 "Lookup found the wrong view.", mView2, mCachingLayout.fastFindViewById(VIEW2_ID));
 
-        assertEquals(
-                "The cache should contain the first view.",
-                mView1,
+        assertEquals("The cache should contain the first view.", mView1,
                 mCachingLayout.getCache().get(VIEW1_ID).get());
-        assertEquals(
-                "The cache should contain the second view.",
-                mView2,
+        assertEquals("The cache should contain the second view.", mView2,
                 mCachingLayout.getCache().get(VIEW2_ID).get());
     }
 
@@ -182,17 +158,13 @@ public class ViewLookupCachingFrameLayoutTest {
         assertEquals(
                 "Lookup found the wrong view.", mView1, mCachingLayout.fastFindViewById(VIEW1_ID));
 
-        assertEquals(
-                "The cache should contain the first view.",
-                mView1,
+        assertEquals("The cache should contain the first view.", mView1,
                 mCachingLayout.getCache().get(VIEW1_ID).get());
 
         mCachingLayout.removeView(mView1);
 
         assertEquals("Cache should be empty.", 0, mCachingLayout.getCache().size());
-        assertEquals(
-                "The view should not longer be in the hierarchy.",
-                null,
+        assertEquals("The view should not longer be in the hierarchy.", null,
                 mCachingLayout.fastFindViewById(VIEW1_ID));
     }
 }

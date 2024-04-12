@@ -55,6 +55,7 @@ WaylandTestBase::~WaylandTestBase() = default;
 
 void WaylandTestBase::SetUp() {
   disabled_features_.push_back(ui::kWaylandSurfaceSubmissionInPixelCoordinates);
+  disabled_features_.push_back(features::kWaylandScreenCoordinatesEnabled);
 
   feature_list_.InitWithFeatures(enabled_features_, disabled_features_);
 
@@ -101,36 +102,24 @@ void WaylandTestBase::TearDown() {
 }
 
 void WaylandTestBase::PostToServerAndWait(
-    base::OnceCallback<void(wl::TestWaylandServerThread* server)> callback,
-    bool no_nested_runloops) {
-  PostToServerAndWait(
-      base::BindOnce(std::move(callback), base::Unretained(&server_)),
-      no_nested_runloops);
+    base::OnceCallback<void(wl::TestWaylandServerThread* server)> callback) {
+  // Sync with the display to ensure client's requests are processed.
+  wl::SyncDisplay(connection_->display_wrapper(), *connection_->display());
+
+  server_.RunAndWait(std::move(callback));
+
+  // Sync with the display to ensure server's events are received and processed.
+  wl::SyncDisplay(connection_->display_wrapper(), *connection_->display());
 }
 
-void WaylandTestBase::PostToServerAndWait(base::OnceClosure closure,
-                                          bool no_nested_runloops) {
-  if (no_nested_runloops) {
-    // Ensure server processes pending requests.
-    connection_->RoundTripQueue();
+void WaylandTestBase::PostToServerAndWait(base::OnceClosure closure) {
+  // Sync with the display to ensure client's requests are processed.
+  wl::SyncDisplay(connection_->display_wrapper(), *connection_->display());
 
-    // Post the closure to the server's thread.
-    server_.Post(std::move(closure));
-    // Wait for server thread to complete running posted tasks.
-    server_.FlushForTesting();
+  server_.RunAndWait(std::move(closure));
 
-    // Flush all non-delayed tasks.
-    task_environment_.RunUntilIdle();
-  } else {
-    // Sync with the display to ensure client's requests are processed.
-    wl::SyncDisplay(connection_->display_wrapper(), *connection_->display());
-
-    server_.RunAndWait(std::move(closure));
-
-    // Sync with the display to ensure server's events are received and
-    // processed
-    wl::SyncDisplay(connection_->display_wrapper(), *connection_->display());
-  }
+  // Sync with the display to ensure server's events are received and processed
+  wl::SyncDisplay(connection_->display_wrapper(), *connection_->display());
 }
 
 void WaylandTestBase::DisableSyncOnTearDown() {
@@ -148,7 +137,7 @@ void WaylandTestBase::SetKeyboardFocusedWindow(WaylandWindow* window) {
 void WaylandTestBase::SendConfigureEvent(uint32_t surface_id,
                                          const gfx::Size& size,
                                          const wl::ScopedWlArray& states,
-                                         std::optional<uint32_t> serial) {
+                                         absl::optional<uint32_t> serial) {
   PostToServerAndWait([size, surface_id, states,
                        serial](wl::TestWaylandServerThread* server) {
     auto* surface = server->GetObject<wl::MockSurface>(surface_id);
@@ -178,7 +167,7 @@ void WaylandTestBase::SendConfigureEvent(uint32_t surface_id,
 }
 
 void WaylandTestBase::ActivateSurface(uint32_t surface_id,
-                                      std::optional<uint32_t> serial) {
+                                      absl::optional<uint32_t> serial) {
   wl::ScopedWlArray state({XDG_TOPLEVEL_STATE_ACTIVATED});
   SendConfigureEvent(surface_id, {0, 0}, state, serial);
 }

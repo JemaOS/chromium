@@ -20,7 +20,6 @@
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "google_apis/gaia/core_account_id.h"
-#include "google_apis/gaia/gaia_auth_util.h"
 
 namespace signin_ui_util {
 namespace {
@@ -43,12 +42,6 @@ GetAddAccountSourceFromAccessPoint(signin_metrics::AccessPoint access_point) {
     case signin_metrics::AccessPoint::ACCESS_POINT_RECENT_TABS:
       return account_manager::AccountManagerFacade::AccountAdditionSource::
           kChromeSyncPromoAddAccount;
-    case signin_metrics::AccessPoint::ACCESS_POINT_MENU:
-      return account_manager::AccountManagerFacade::AccountAdditionSource::
-          kChromeMenuTurnOnSync;
-    case signin_metrics::AccessPoint::ACCESS_POINT_AUTOFILL_DROPDOWN:
-      return account_manager::AccountManagerFacade::AccountAdditionSource::
-          kChromeSigninPromoAddAccount;
     default:
       NOTREACHED() << "Add account is requested from an unknown access point "
                    << static_cast<int>(access_point);
@@ -79,9 +72,6 @@ GetAccountReauthSourceFromAccessPoint(
     case signin_metrics::AccessPoint::ACCESS_POINT_WEB_SIGNIN:
       return account_manager::AccountManagerFacade::AccountAdditionSource::
           kContentAreaReauth;
-    case signin_metrics::AccessPoint::ACCESS_POINT_MENU:
-      return account_manager::AccountManagerFacade::AccountAdditionSource::
-          kChromeMenuTurnOnSync;
     default:
       NOTREACHED() << "Reauth is requested from an unknown access point "
                    << static_cast<int>(access_point);
@@ -130,7 +120,7 @@ void SigninUiDelegateImplLacros::ShowReauthUI(
 
   AccountReconcilor* account_reconcilor =
       AccountReconcilorFactory::GetForProfile(profile);
-  auto reauth_completed_closure =
+  base::OnceClosure reauth_completed_closure =
       base::BindOnce(&SigninUiDelegateImplLacros::OnReauthComplete,
                      // base::Unretained() is fine because
                      // SigninUiDelegateImplLacros is a singleton.
@@ -164,7 +154,10 @@ void SigninUiDelegateImplLacros::OnAccountAdded(
   if (!browser)
     return;
 
-  ShowTurnSyncOnUI(profile, access_point, promo_action, account_id,
+  ShowTurnSyncOnUI(profile, access_point, promo_action,
+                   is_reauth ? signin_metrics::Reason::kReauthentication
+                             : signin_metrics::Reason::kSigninPrimaryAccount,
+                   account_id,
                    is_reauth
                        ? TurnSyncOnHelper::SigninAbortedMode::KEEP_ACCOUNT
                        : TurnSyncOnHelper::SigninAbortedMode::REMOVE_ACCOUNT);
@@ -176,27 +169,7 @@ void SigninUiDelegateImplLacros::OnReauthComplete(
     const base::FilePath& profile_path,
     signin_metrics::AccessPoint access_point,
     signin_metrics::PromoAction promo_action,
-    const std::string& email,
-    const account_manager::AccountUpsertionResult& result) {
-  if (result.status() !=
-          account_manager::AccountUpsertionResult::Status::kSuccess &&
-      result.status() != account_manager::AccountUpsertionResult::Status::
-                             kIncompatibleMojoVersions) {
-    // Don't early return in case of incompatime mojo versions, to preserve the
-    // original behavior.
-    // TODO(b/275687807): Remove this in later Lacros version.
-    return;
-  }
-
-  if (result.account().has_value() &&
-      !gaia::AreEmailsSame(result.account()->raw_email, email)) {
-    // User has changed account, and didn't complete the reauthentication
-    // requested for `email`.
-    LOG(WARNING) << "User reauthenticated different account, don't show the "
-                    "sync UI flow";
-    return;
-  }
-
+    const std::string& email) {
   Profile* profile =
       g_browser_process->profile_manager()->GetProfileByPath(profile_path);
   if (!profile)

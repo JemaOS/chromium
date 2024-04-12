@@ -26,10 +26,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_DOCUMENT_LOAD_TIMING_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_DOCUMENT_LOAD_TIMING_H_
 
-#include <optional>
-
 #include "base/time/time.h"
-#include "third_party/blink/public/mojom/navigation/system_entropy.mojom-blink.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
@@ -93,20 +91,14 @@ class CORE_EXPORT DocumentLoadTiming final {
     can_request_from_previous_document_ = value;
   }
 
-  void SetSystemEntropyAtNavigationStart(mojom::blink::SystemEntropy value) {
-    system_entropy_at_navigation_start_ = value;
-  }
-
-  void SetCriticalCHRestart(base::TimeTicks critical_ch_restart);
-
   base::TimeTicks InputStart() const { return input_start_; }
-  std::optional<base::TimeDelta> UserTimingMarkFullyLoaded() const {
+  absl::optional<base::TimeDelta> UserTimingMarkFullyLoaded() const {
     return user_timing_mark_fully_loaded_;
   }
-  std::optional<base::TimeDelta> UserTimingMarkFullyVisible() const {
+  absl::optional<base::TimeDelta> UserTimingMarkFullyVisible() const {
     return user_timing_mark_fully_visible_;
   }
-  std::optional<base::TimeDelta> UserTimingMarkInteractive() const {
+  absl::optional<base::TimeDelta> UserTimingMarkInteractive() const {
     return user_timing_mark_interactive_;
   }
   base::TimeTicks NavigationStart() const { return navigation_start_; }
@@ -129,7 +121,6 @@ class CORE_EXPORT DocumentLoadTiming final {
   bool CanRequestFromPreviousDocument() const {
     return can_request_from_previous_document_;
   }
-  base::TimeTicks CriticalCHRestart() const { return critical_ch_restart_; }
 
   base::TimeTicks ReferenceMonotonicTime() const {
     return reference_monotonic_time_;
@@ -139,10 +130,6 @@ class CORE_EXPORT DocumentLoadTiming final {
 
   void SetTickClockForTesting(const base::TickClock* tick_clock);
   void SetClockForTesting(const base::Clock* clock);
-
-  mojom::blink::SystemEntropy SystemEntropyAtNavigationStart() const {
-    return system_entropy_at_navigation_start_;
-  }
 
  private:
   void MarkRedirectEnd();
@@ -155,9 +142,9 @@ class CORE_EXPORT DocumentLoadTiming final {
   base::TimeTicks reference_monotonic_time_;
   base::TimeDelta reference_wall_time_;
   base::TimeTicks input_start_;
-  std::optional<base::TimeDelta> user_timing_mark_fully_loaded_;
-  std::optional<base::TimeDelta> user_timing_mark_fully_visible_;
-  std::optional<base::TimeDelta> user_timing_mark_interactive_;
+  absl::optional<base::TimeDelta> user_timing_mark_fully_loaded_;
+  absl::optional<base::TimeDelta> user_timing_mark_fully_visible_;
+  absl::optional<base::TimeDelta> user_timing_mark_interactive_;
   base::TimeTicks navigation_start_;
   base::TimeTicks commit_navigation_end_;
   WTF::Vector<base::TimeTicks> bfcache_restore_navigation_starts_;
@@ -170,7 +157,6 @@ class CORE_EXPORT DocumentLoadTiming final {
   base::TimeTicks load_event_start_;
   base::TimeTicks load_event_end_;
   base::TimeTicks activation_start_;
-  base::TimeTicks critical_ch_restart_;
 
   const base::Clock* clock_;
   const base::TickClock* tick_clock_;
@@ -180,8 +166,6 @@ class CORE_EXPORT DocumentLoadTiming final {
   uint16_t redirect_count_ = 0;
   bool has_cross_origin_redirect_ = false;
   bool can_request_from_previous_document_ = false;
-  mojom::blink::SystemEntropy system_entropy_at_navigation_start_ =
-      mojom::blink::SystemEntropy::kNormal;
 };
 
 }  // namespace blink

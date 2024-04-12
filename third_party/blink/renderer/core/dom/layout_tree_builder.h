@@ -87,9 +87,8 @@ class LayoutTreeBuilder {
     auto* const parent = next->Parent();
     if (!IsAnonymousInline(parent))
       return next;
-    if (!LIKELY(parent->IsLayoutTextCombine())) {
+    if (!LIKELY(parent->IsLayoutNGTextCombine()))
       return parent;
-    }
     auto* const text_combine_parent = parent->Parent();
     if (IsAnonymousInline(text_combine_parent))
       return text_combine_parent;
@@ -103,7 +102,7 @@ class LayoutTreeBuilder {
 
   NodeType* node_;
   Node::AttachContext& context_;
-  const ComputedStyle* style_;
+  scoped_refptr<const ComputedStyle> style_;
 };
 
 class LayoutTreeBuilderForElement : public LayoutTreeBuilder<Element> {
@@ -129,8 +128,8 @@ class LayoutTreeBuilderForText : public LayoutTreeBuilder<Text> {
   void CreateLayoutObject();
 
  private:
-  const ComputedStyle* CreateInlineWrapperStyleForDisplayContentsIfNeeded()
-      const;
+  scoped_refptr<const ComputedStyle>
+  CreateInlineWrapperStyleForDisplayContentsIfNeeded() const;
   LayoutObject* CreateInlineWrapperForDisplayContentsIfNeeded(
       const ComputedStyle* wrapper_style) const;
 };

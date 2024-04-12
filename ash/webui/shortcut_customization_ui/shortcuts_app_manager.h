@@ -15,8 +15,6 @@
 
 namespace ash {
 
-class ShortcutInputProvider;
-
 namespace local_search_service {
 class LocalSearchServiceProxy;
 }
@@ -40,9 +38,8 @@ class ShortcutsAppManager
     : public KeyedService,
       public AcceleratorConfigurationProvider::AcceleratorsUpdatedObserver {
  public:
-  ShortcutsAppManager(
-      local_search_service::LocalSearchServiceProxy* local_search_service_proxy,
-      PrefService* pref_service);
+  explicit ShortcutsAppManager(local_search_service::LocalSearchServiceProxy*
+                                   local_search_service_proxy);
   ShortcutsAppManager(const ShortcutsAppManager& other) = delete;
   ShortcutsAppManager& operator=(const ShortcutsAppManager& other) = delete;
   ~ShortcutsAppManager() override;
@@ -51,9 +48,6 @@ class ShortcutsAppManager
     return accelerator_configuration_provider_.get();
   }
   SearchHandler* search_handler() { return search_handler_.get(); }
-  ShortcutInputProvider* shortcut_input_provider() {
-    return shortcut_input_provider_.get();
-  }
 
   // shortcut_ui::AcceleratorConfigurationProvider::
   void OnAcceleratorsUpdated(
@@ -72,7 +66,6 @@ class ShortcutsAppManager
 
   std::unique_ptr<AcceleratorConfigurationProvider>
       accelerator_configuration_provider_;
-  std::unique_ptr<ShortcutInputProvider> shortcut_input_provider_;
   std::unique_ptr<SearchConceptRegistry> search_concept_registry_;
   std::unique_ptr<SearchHandler> search_handler_;
 };

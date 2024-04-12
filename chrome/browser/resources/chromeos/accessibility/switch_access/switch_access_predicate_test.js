@@ -5,7 +5,17 @@
 GEN_INCLUDE(['switch_access_e2e_test_base.js']);
 
 /** Test fixture for the Switch Access predicates. */
-SwitchAccessPredicateTest = class extends SwitchAccessE2ETest {};
+SwitchAccessPredicateTest = class extends SwitchAccessE2ETest {
+  async setUpDeferred() {
+    await super.setUpDeferred();
+    await importModule(
+        'SwitchAccessPredicate', '/switch_access/switch_access_predicate.js');
+    await importModule('SACache', '/switch_access/cache.js');
+    await importModule(
+        'SARootNode', '/switch_access/nodes/switch_access_node.js');
+    await importModule('AutomationTreeWalker', '/common/tree_walker.js');
+  }
+};
 
 function fakeLoc(x) {
   return {left: x, top: x, width: x, height: x};

@@ -4,13 +4,11 @@
 
 #include "chrome/browser/ui/views/autofill/payments/card_unmask_authentication_selection_dialog_view.h"
 
-#include "chrome/browser/ui/autofill/payments/view_factory.h"
+#include "chrome/browser/ui/autofill/payments/card_unmask_authentication_selection_dialog_controller.h"
 #include "chrome/browser/ui/views/autofill/payments/payments_view_util.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/chrome_typography.h"
-#include "components/autofill/core/browser/ui/payments/card_unmask_authentication_selection_dialog_controller.h"
 #include "components/constrained_window/constrained_window_views.h"
-#include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/gfx/image/image_skia_operations.h"
 #include "ui/views/border.h"
@@ -23,27 +21,6 @@
 #include "ui/views/style/typography.h"
 
 namespace autofill {
-
-namespace {
-
-ui::ImageModel GetAuthenticationModeIcon(
-    const CardUnmaskChallengeOption& challenge_option) {
-  switch (challenge_option.type) {
-    case CardUnmaskChallengeOptionType::kSmsOtp:
-      return ui::ImageModel::FromVectorIcon(vector_icons::kSmsIcon);
-    case CardUnmaskChallengeOptionType::kEmailOtp:
-      return ui::ImageModel::FromVectorIcon(vector_icons::kEmailOutlineIcon);
-    case CardUnmaskChallengeOptionType::kCvc:
-      return ui::ImageModel();
-    case CardUnmaskChallengeOptionType::kThreeDomainSecure:
-      // TODO(crbug.com/1521960): Add kThreeDomainSecure logic.
-    case CardUnmaskChallengeOptionType::kUnknownType:
-      break;
-  }
-  NOTREACHED_NORETURN();
-}
-
-}  // namespace
 
 CardUnmaskAuthenticationSelectionDialogView::
     CardUnmaskAuthenticationSelectionDialogView(
@@ -61,7 +38,7 @@ CardUnmaskAuthenticationSelectionDialogView::
   SetModalType(ui::MODAL_TYPE_CHILD);
   SetShowCloseButton(false);
   set_fixed_width(ChromeLayoutProvider::Get()->GetDistanceMetric(
-      views::DISTANCE_MODAL_DIALOG_PREFERRED_WIDTH));
+      ChromeDistanceMetric::DISTANCE_LARGE_MODAL_DIALOG_PREFERRED_WIDTH));
   set_margins(ChromeLayoutProvider::Get()->GetDialogInsetsForContentType(
       views::DialogContentType::kText, views::DialogContentType::kText));
   InitViews();
@@ -77,6 +54,17 @@ CardUnmaskAuthenticationSelectionDialogView::
                                 /*server_success=*/false);
     controller_ = nullptr;
   }
+}
+
+// static
+CardUnmaskAuthenticationSelectionDialog*
+CardUnmaskAuthenticationSelectionDialog::CreateAndShow(
+    CardUnmaskAuthenticationSelectionDialogController* controller,
+    content::WebContents* web_contents) {
+  CardUnmaskAuthenticationSelectionDialogView* dialog_view =
+      new CardUnmaskAuthenticationSelectionDialogView(controller);
+  constrained_window::ShowWebModalDialogViews(dialog_view, web_contents);
+  return dialog_view;
 }
 
 void CardUnmaskAuthenticationSelectionDialogView::Dismiss(
@@ -106,8 +94,9 @@ std::u16string CardUnmaskAuthenticationSelectionDialogView::GetWindowTitle()
 }
 
 void CardUnmaskAuthenticationSelectionDialogView::AddedToWidget() {
-  GetBubbleFrameView()->SetTitleView(CreateTitleView(
-      GetWindowTitle(), TitleWithIconAndSeparatorView::Icon::GOOGLE_PAY));
+  GetBubbleFrameView()->SetTitleView(
+      std::make_unique<TitleWithIconAndSeparatorView>(
+          GetWindowTitle(), TitleWithIconAndSeparatorView::Icon::GOOGLE_PAY));
 }
 
 void CardUnmaskAuthenticationSelectionDialogView::InitViews() {
@@ -193,7 +182,7 @@ void CardUnmaskAuthenticationSelectionDialogView::AddChallengeOptionsViews() {
     // Instead of a radio button, create the left side image of the
     // challenge option.
     challenge_options_section->AddChildView(std::make_unique<views::ImageView>(
-        GetAuthenticationModeIcon(challenge_options[0])));
+        controller_->GetAuthenticationModeIcon(challenge_options[0])));
 
     // Since there's only one challenge option, the selected challenge
     // option id will always be the first one.
@@ -261,16 +250,6 @@ CardUnmaskAuthenticationSelectionDialogView::CreateChallengeOptionRadioButton(
       controller_->GetAuthenticationModeLabel(challenge_option) + u". " +
       challenge_option.challenge_info);
   return radio_button;
-}
-
-CardUnmaskAuthenticationSelectionDialog*
-CreateAndShowCardUnmaskAuthenticationSelectionDialog(
-    content::WebContents* web_contents,
-    CardUnmaskAuthenticationSelectionDialogController* controller) {
-  CardUnmaskAuthenticationSelectionDialogView* dialog_view =
-      new CardUnmaskAuthenticationSelectionDialogView(controller);
-  constrained_window::ShowWebModalDialogViews(dialog_view, web_contents);
-  return dialog_view;
 }
 
 }  // namespace autofill

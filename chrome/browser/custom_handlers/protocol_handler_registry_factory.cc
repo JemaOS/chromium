@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/custom_handlers/chrome_protocol_handler_registry_delegate.h"
@@ -16,8 +16,7 @@
 
 // static
 ProtocolHandlerRegistryFactory* ProtocolHandlerRegistryFactory::GetInstance() {
-  static base::NoDestructor<ProtocolHandlerRegistryFactory> instance;
-  return instance.get();
+  return base::Singleton<ProtocolHandlerRegistryFactory>::get();
 }
 
 // static
@@ -32,14 +31,10 @@ ProtocolHandlerRegistryFactory::ProtocolHandlerRegistryFactory()
     : ProfileKeyedServiceFactory(
           "ProtocolHandlerRegistry",
           // Allows the produced registry to be used in incognito mode.
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kRedirectedToOriginal)
-              .Build()) {}
+          ProfileSelections::BuildRedirectedInIncognito()) {}
 
-ProtocolHandlerRegistryFactory::~ProtocolHandlerRegistryFactory() = default;
+ProtocolHandlerRegistryFactory::~ProtocolHandlerRegistryFactory() {
+}
 
 // Will be created when initializing profile_io_data, so we might
 // as well have the framework create this along with other
@@ -56,11 +51,11 @@ bool ProtocolHandlerRegistryFactory::ServiceIsNULLWhileTesting() const {
   return true;
 }
 
-std::unique_ptr<KeyedService>
-ProtocolHandlerRegistryFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* ProtocolHandlerRegistryFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   PrefService* prefs = user_prefs::UserPrefs::Get(context);
   DCHECK(prefs);
   return custom_handlers::ProtocolHandlerRegistry::Create(
-      prefs, std::make_unique<ChromeProtocolHandlerRegistryDelegate>());
+             prefs, std::make_unique<ChromeProtocolHandlerRegistryDelegate>())
+      .release();
 }

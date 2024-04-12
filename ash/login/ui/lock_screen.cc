@@ -26,7 +26,7 @@
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
-#include "chromeos/ash/components/login/auth/auth_events_recorder.h"
+#include "chromeos/ash/components/login/auth/auth_metrics_recorder.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/wm/core/capture_controller.h"
@@ -40,17 +40,16 @@ LockScreen* instance_ = nullptr;
 
 // Record screen type for metrics.
 void RecordScreenType(LockScreen::ScreenType type) {
-  AuthEventsRecorder::AuthenticationSurface screen_type;
+  AuthMetricsRecorder::AuthenticationSurface screen_type;
   switch (type) {
     case LockScreen::ScreenType::kLogin:
-      screen_type = AuthEventsRecorder::AuthenticationSurface::kLogin;
+      screen_type = AuthMetricsRecorder::AuthenticationSurface::kLogin;
       break;
     case LockScreen::ScreenType::kLock:
-      screen_type = AuthEventsRecorder::AuthenticationSurface::kLock;
+      screen_type = AuthMetricsRecorder::AuthenticationSurface::kLock;
       break;
   }
-  AuthEventsRecorder::Get()->ResetLoginData();
-  AuthEventsRecorder::Get()->OnAuthenticationSurfaceChange(screen_type);
+  AuthMetricsRecorder::Get()->OnAuthenticationSurfaceChange(screen_type);
 }
 
 }  // namespace
@@ -90,7 +89,6 @@ LockScreen::LockScreen(ScreenType type) : type_(type) {
 }
 
 LockScreen::~LockScreen() {
-  contents_view_ = nullptr;
   widget_.reset();
 
   if (Shell::Get()->session_controller()->GetSessionState() !=

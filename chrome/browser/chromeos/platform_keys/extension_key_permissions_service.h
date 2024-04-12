@@ -18,7 +18,6 @@
 #include "chrome/browser/chromeos/platform_keys/platform_keys.h"
 #include "chromeos/crosapi/mojom/keystore_error.mojom.h"
 #include "chromeos/crosapi/mojom/keystore_service.mojom.h"
-#include "extensions/common/extension_id.h"
 
 namespace extensions {
 class StateStore;
@@ -174,7 +173,7 @@ class ExtensionKeyPermissionsService {
     bool sign_unlimited = false;
   };
 
-  void OnGotExtensionValue(std::optional<base::Value> value);
+  void OnGotExtensionValue(absl::optional<base::Value> value);
 
   // Writes the current |state_store_entries_| to the state store of
   // |extension_id_|.
@@ -196,7 +195,7 @@ class ExtensionKeyPermissionsService {
   KeyEntry* GetStateStoreEntry(const std::string& public_key_spki_der_b64);
 
   // Writes |value| to the state store of the extension.
-  void SetPlatformKeysInStateStore(std::optional<base::Value> value);
+  void SetPlatformKeysInStateStore(absl::optional<base::Value> value);
 
   bool PolicyAllowsCorporateKeyUsage() const;
 
@@ -210,9 +209,9 @@ class ExtensionKeyPermissionsService {
       SetUserGrantedPermissionCallback callback,
       bool can_user_grant_permission);
 
-  const extensions::ExtensionId extension_id_;
-  raw_ptr<extensions::StateStore, FlakyDanglingUntriaged>
-      extensions_state_store_ = nullptr;
+  const std::string extension_id_;
+  raw_ptr<extensions::StateStore, DanglingUntriaged> extensions_state_store_ =
+      nullptr;
   std::vector<KeyEntry> state_store_entries_;
   const raw_ptr<policy::PolicyService> profile_policies_;
   const raw_ptr<crosapi::mojom::KeystoreService> keystore_service_ = nullptr;

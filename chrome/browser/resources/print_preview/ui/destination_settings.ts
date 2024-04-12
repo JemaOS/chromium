@@ -23,34 +23,31 @@ import './throbber.css.js';
 import './settings_section.js';
 import '../strings.m.js';
 
-import type {CrLazyRenderElement} from 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render.js';
+import {CrLazyRenderElement} from 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
+import {EventTracker} from 'chrome://resources/js/event_tracker.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
-import {EventTracker} from 'chrome://resources/js/event_tracker.js';
 import {beforeNextRender, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {Destination, RecentDestination} from '../data/destination.js';
-import {createRecentDestinationKey, isPdfPrinter, makeRecentDestination, PrinterType} from '../data/destination.js';
-
+import {createRecentDestinationKey, Destination, isPdfPrinter, makeRecentDestination, PrinterType, RecentDestination} from '../data/destination.js';
 // <if expr="is_chromeos">
 import {SAVE_TO_DRIVE_CROS_DESTINATION_KEY} from '../data/destination.js';
 // </if>
-
 import {DestinationErrorType, DestinationStore, DestinationStoreEventType} from '../data/destination_store.js';
 import {Error, State} from '../data/state.js';
 
 // <if expr="not is_chromeos">
-import type {PrintPreviewDestinationDialogElement} from './destination_dialog.js';
+import {PrintPreviewDestinationDialogElement} from './destination_dialog.js';
 // </if>
 // <if expr="is_chromeos">
-import type {PrintPreviewDestinationDialogCrosElement} from './destination_dialog_cros.js';
+import {PrintPreviewDestinationDialogCrosElement} from './destination_dialog_cros.js';
 // </if>
 // <if expr="not is_chromeos">
-import type {PrintPreviewDestinationSelectElement} from './destination_select.js';
+import {PrintPreviewDestinationSelectElement} from './destination_select.js';
 // </if>
 // <if expr="is_chromeos">
-import type {PrintPreviewDestinationSelectCrosElement} from './destination_select_cros.js';
+import {PrintPreviewDestinationSelectCrosElement} from './destination_select_cros.js';
 // </if>
 import {getTemplate} from './destination_settings.html.js';
 import {SettingsMixin} from './settings_mixin.js';
@@ -224,10 +221,6 @@ export class PrintPreviewDestinationSettingsElement extends
         this.destinationStore_,
         DestinationStoreEventType.DESTINATION_EULA_READY,
         this.updateDestinationEulaUrl_.bind(this));
-    this.tracker_.add(
-        this.destinationStore_,
-        DestinationStoreEventType.DESTINATION_PRINTER_STATUS_UPDATE,
-        this.onPrinterStatusUpdate_.bind(this));
     // </if>
   }
 
@@ -241,27 +234,27 @@ export class PrintPreviewDestinationSettingsElement extends
   /**
    * @param defaultPrinter The system default printer ID.
    * @param pdfPrinterDisabled Whether the PDF printer is disabled.
-   * @param saveToDriveDisabled Whether the 'Save to Google Drive' destination
-   *     is disabled in print preview. Only used on Chrome OS.
+   * @param isDriveMounted Whether Google Drive is mounted. Only used
+        on Chrome OS.
    * @param serializedDefaultDestinationRulesStr String with rules
    *     for selecting a default destination.
    */
   init(
       defaultPrinter: string, pdfPrinterDisabled: boolean,
-      saveToDriveDisabled: boolean,
+      isDriveMounted: boolean,
       serializedDefaultDestinationRulesStr: string|null) {
     this.pdfPrinterDisabled_ = pdfPrinterDisabled;
     let recentDestinations =
         this.getSettingValue('recentDestinations') as RecentDestination[];
     // <if expr="is_chromeos">
     this.driveDestinationKey_ =
-        saveToDriveDisabled ? '' : SAVE_TO_DRIVE_CROS_DESTINATION_KEY;
+        isDriveMounted ? SAVE_TO_DRIVE_CROS_DESTINATION_KEY : '';
     // </if>
 
     recentDestinations = recentDestinations.slice(
         0, this.getRecentDestinationsDisplayCount_(recentDestinations));
     this.destinationStore_!.init(
-        this.pdfPrinterDisabled_, saveToDriveDisabled, defaultPrinter,
+        this.pdfPrinterDisabled_, isDriveMounted, defaultPrinter,
         serializedDefaultDestinationRulesStr, recentDestinations);
   }
 
@@ -507,35 +500,6 @@ export class PrintPreviewDestinationSettingsElement extends
   printerExistsInDisplayedDestinations(): boolean {
     return this.displayedDestinations_.some(
         destination => destination.type !== PrinterType.PDF_PRINTER);
-  }
-
-  // Trigger updates to the printer status icons and text for the selected
-  // destination and corresponding dropdown.
-  private onPrinterStatusUpdate_(
-      e: CustomEvent<{destinationKey: string, nowOnline: boolean}>): void {
-    const destinationKey = e.detail.destinationKey;
-
-    // If `destinationKey` matches the currently selected destination, use
-    // notifyPath to trigger the destination to recalculate its status icon and
-    // error status text.
-    if (this.destination && this.destination.key === destinationKey) {
-      this.notifyPath(`destination.printerStatusReason`);
-
-      // If the selected destination was unreachable and now it's online, force
-      // select it again so the capabilities and preview will now load.
-      if (e.detail.nowOnline) {
-        this.destinationStore_!.selectDestination(
-            this.destination, /*refreshDestination=*/ true);
-      }
-    }
-
-    // If this destination is in the dropdown, notify it to recalculate its
-    // status icon.
-    const index = this.displayedDestinations_.findIndex(
-        destination => destination.key === destinationKey);
-    if (index !== -1) {
-      this.notifyPath(`displayedDestinations_.${index}.printerStatusReason`);
-    }
   }
   // </if>
 }

@@ -13,6 +13,7 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "third_party/blink/public/mojom/input/handwriting_gesture_result.mojom-blink.h"
+#include "third_party/blink/public/platform/scheduler/web_thread_scheduler.h"
 #include "third_party/blink/renderer/platform/widget/frame_widget.h"
 #include "third_party/blink/renderer/platform/widget/input/ime_event_guard.h"
 #include "third_party/blink/renderer/platform/widget/input/main_thread_event_queue.h"
@@ -107,21 +108,6 @@ void FrameWidgetInputHandlerImpl::ExtendSelectionAndDelete(int32_t before,
       main_thread_frame_widget_input_handler_, before, after));
 }
 
-void FrameWidgetInputHandlerImpl::ExtendSelectionAndReplace(
-    uint32_t before,
-    uint32_t after,
-    const String& replacement_text) {
-  RunOnMainThread(base::BindOnce(
-      [](base::WeakPtr<mojom::blink::FrameWidgetInputHandler> handler,
-         uint32_t before, uint32_t after, const String& replacement_text) {
-        if (handler) {
-          handler->ExtendSelectionAndReplace(before, after, replacement_text);
-        }
-      },
-      main_thread_frame_widget_input_handler_, before, after,
-      replacement_text));
-}
-
 void FrameWidgetInputHandlerImpl::DeleteSurroundingText(int32_t before,
                                                         int32_t after) {
   RunOnMainThread(base::BindOnce(
@@ -191,21 +177,6 @@ void FrameWidgetInputHandlerImpl::HandleStylusWritingGestureAction(
       std::move(callback)));
 }
 
-#if BUILDFLAG(IS_ANDROID)
-void FrameWidgetInputHandlerImpl::PassImeRenderWidgetHost(
-    mojo::PendingRemote<mojom::blink::ImeRenderWidgetHost> pending_remote) {
-  RunOnMainThread(base::BindOnce(
-      [](base::WeakPtr<mojom::blink::FrameWidgetInputHandler> handler,
-         mojo::PendingRemote<mojom::blink::ImeRenderWidgetHost>
-             pending_remote) {
-        if (handler) {
-          handler->PassImeRenderWidgetHost(std::move(pending_remote));
-        }
-      },
-      main_thread_frame_widget_input_handler_, std::move(pending_remote)));
-}
-#endif
-
 void FrameWidgetInputHandlerImpl::ExecuteEditCommand(const String& command,
                                                      const String& value) {
   RunOnMainThread(base::BindOnce(
@@ -244,14 +215,12 @@ void FrameWidgetInputHandlerImpl::Copy() {
 }
 
 void FrameWidgetInputHandlerImpl::CopyToFindPboard() {
-#if BUILDFLAG(IS_MAC)
   RunOnMainThread(base::BindOnce(
       [](base::WeakPtr<mojom::blink::FrameWidgetInputHandler> handler) {
         if (handler)
           handler->CopyToFindPboard();
       },
       main_thread_frame_widget_input_handler_));
-#endif
 }
 
 void FrameWidgetInputHandlerImpl::CenterSelection() {

@@ -8,8 +8,6 @@
 
 #include <algorithm>
 #include <set>
-#include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -65,7 +63,7 @@ namespace media_router {
 void PostSendNetworkList(
     base::WeakPtr<DialServiceImpl> impl,
     scoped_refptr<base::SequencedTaskRunner> task_runner,
-    const std::optional<net::NetworkInterfaceList>& networks) {
+    const absl::optional<net::NetworkInterfaceList>& networks) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   task_runner->PostTask(FROM_HERE,
                         base::BindOnce(&DialServiceImpl::SendNetworkList,
@@ -127,9 +125,9 @@ std::string BuildRequest() {
       "USER-AGENT: %s/%s %s\r\n"
       "\r\n",
       kDialRequestAddress, kDialRequestPort, kDialMaxResponseDelaySecs,
-      kDialSearchType, version_info::GetProductName().data(),
-      version_info::GetVersionNumber().data(),
-      version_info::GetOSType().data()));
+      kDialSearchType, version_info::GetProductName().c_str(),
+      version_info::GetVersionNumber().c_str(),
+      version_info::GetOSType().c_str()));
   // 1500 is a good MTU value for most Ethernet LANs.
   DCHECK_LE(request.size(), 1500U);
   return request;
@@ -347,7 +345,7 @@ bool DialServiceImpl::DialSocket::ParseResponse(const std::string& response,
     return false;
   }
   std::string raw_headers = HttpUtil::AssembleRawHeaders(
-      std::string_view(response.c_str(), headers_end));
+      base::StringPiece(response.c_str(), headers_end));
   auto headers = base::MakeRefCounted<HttpResponseHeaders>(raw_headers);
 
   std::string device_url_str;
@@ -455,7 +453,7 @@ void DialServiceImpl::StartDiscovery() {
 }
 
 void DialServiceImpl::SendNetworkList(
-    const std::optional<NetworkInterfaceList>& networks) {
+    const absl::optional<NetworkInterfaceList>& networks) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   using InterfaceIndexAddressFamily = std::pair<uint32_t, net::AddressFamily>;

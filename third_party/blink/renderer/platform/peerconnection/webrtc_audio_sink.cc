@@ -32,7 +32,7 @@ namespace WTF {
 
 template <>
 struct CrossThreadCopier<scoped_refptr<webrtc::AudioProcessorInterface>>
-    : public CrossThreadCopierByValuePassThrough<
+    : public CrossThreadCopierPassThrough<
           scoped_refptr<webrtc::AudioProcessorInterface>> {
   STATIC_ONLY(CrossThreadCopier);
 };
@@ -121,7 +121,7 @@ void WebRtcAudioSink::OnData(const media::AudioBus& audio_bus,
 }
 
 void WebRtcAudioSink::OnSetFormat(const media::AudioParameters& params) {
-  CHECK(params.IsValid());
+  DCHECK(params.IsValid());
   SendLogMessage(base::StringPrintf("OnSetFormat([label=%s] {params=[%s]})",
                                     adapter_->label().c_str(),
                                     params.AsHumanReadableString().c_str()));
@@ -158,7 +158,7 @@ void WebRtcAudioSink::DeliverRebufferedAudio(const media::AudioBus& audio_bus,
 
 namespace {
 void DereferenceOnMainThread(
-    scoped_refptr<webrtc::AudioProcessorInterface> processor) {}
+    const scoped_refptr<webrtc::AudioProcessorInterface>& processor) {}
 }  // namespace
 
 WebRtcAudioSink::Adapter::Adapter(

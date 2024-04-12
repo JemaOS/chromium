@@ -33,7 +33,6 @@
 
 #include "third_party/blink/public/mojom/choosers/date_time_chooser.mojom-blink-forward.h"
 #include "third_party/blink/renderer/core/core_export.h"
-#include "third_party/blink/renderer/core/html/forms/input_type.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -42,7 +41,6 @@
 namespace blink {
 
 class AXObject;
-class Element;
 
 struct DateTimeChooserParameters {
   DISALLOW_NEW();
@@ -53,11 +51,7 @@ struct DateTimeChooserParameters {
       delete;
   CORE_EXPORT ~DateTimeChooserParameters();
 
-  // InputType::Type is a subset of FormControlType. InputType::Type is
-  // sufficient because DateTimeChooser only deals with HTMLInputElements. It's
-  // preferable over FormControlType because with InputType::TypeToString() a
-  // string conversion is already available.
-  InputType::Type type;
+  AtomicString type;
   gfx::Rect anchor_rect_in_screen;
   // Locale name for which the chooser should be localized. This
   // might be an invalid name because it comes from HTML lang
@@ -88,7 +82,7 @@ class CORE_EXPORT DateTimeChooser : public GarbageCollected<DateTimeChooser> {
 
   virtual void EndChooser() = 0;
   // Returns a root AXObject in the DateTimeChooser if it's available.
-  virtual AXObject* RootAXObject(Element* popup_owner) = 0;
+  virtual AXObject* RootAXObject() = 0;
 
   virtual void Trace(Visitor* visitor) const {}
 };

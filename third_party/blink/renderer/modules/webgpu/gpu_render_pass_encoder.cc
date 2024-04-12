@@ -19,17 +19,16 @@ namespace blink {
 
 GPURenderPassEncoder::GPURenderPassEncoder(
     GPUDevice* device,
-    WGPURenderPassEncoder render_pass_encoder,
-    const String& label)
-    : DawnObject<WGPURenderPassEncoder>(device, render_pass_encoder, label) {}
+    WGPURenderPassEncoder render_pass_encoder)
+    : DawnObject<WGPURenderPassEncoder>(device, render_pass_encoder) {}
 
 void GPURenderPassEncoder::setBindGroup(
     uint32_t index,
     GPUBindGroup* bindGroup,
     const Vector<uint32_t>& dynamicOffsets) {
-  WGPUBindGroupImpl* bgImpl = bindGroup ? bindGroup->GetHandle() : nullptr;
   GetProcs().renderPassEncoderSetBindGroup(
-      GetHandle(), index, bgImpl, dynamicOffsets.size(), dynamicOffsets.data());
+      GetHandle(), index, bindGroup->GetHandle(), dynamicOffsets.size(),
+      dynamicOffsets.data());
 }
 
 void GPURenderPassEncoder::setBindGroup(
@@ -48,8 +47,8 @@ void GPURenderPassEncoder::setBindGroup(
   const uint32_t* data =
       dynamic_offsets_data.DataMaybeOnStack() + dynamic_offsets_data_start;
 
-  WGPUBindGroupImpl* bgImpl = bind_group ? bind_group->GetHandle() : nullptr;
-  GetProcs().renderPassEncoderSetBindGroup(GetHandle(), index, bgImpl,
+  GetProcs().renderPassEncoderSetBindGroup(GetHandle(), index,
+                                           bind_group->GetHandle(),
                                            dynamic_offsets_data_length, data);
 }
 
@@ -76,7 +75,7 @@ void GPURenderPassEncoder::writeTimestamp(
     uint32_t queryIndex,
     ExceptionState& exception_state) {
   V8GPUFeatureName::Enum requiredFeatureEnum =
-      V8GPUFeatureName::Enum::kChromiumExperimentalTimestampQueryInsidePasses;
+      V8GPUFeatureName::Enum::kTimestampQueryInsidePasses;
 
   if (!device_->features()->has(requiredFeatureEnum)) {
     exception_state.ThrowTypeError(String::Format(

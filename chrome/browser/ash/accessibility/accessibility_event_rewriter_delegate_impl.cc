@@ -13,14 +13,13 @@
 #include "chrome/common/extensions/api/accessibility_private.h"
 #include "chrome/common/extensions/extension_constants.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/native_web_keyboard_event.h"
 #include "content/public/browser/web_contents.h"
-#include "content/public/common/input/native_web_keyboard_event.h"
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/extension_host.h"
 #include "extensions/common/constants.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/events/event.h"
-#include "ui/events/event_constants.h"
 
 namespace ash {
 namespace {
@@ -29,14 +28,14 @@ std::string ToString(SwitchAccessCommand command) {
   switch (command) {
     case SwitchAccessCommand::kSelect:
       return extensions::api::accessibility_private::ToString(
-          extensions::api::accessibility_private::SwitchAccessCommand::kSelect);
+          extensions::api::accessibility_private::SWITCH_ACCESS_COMMAND_SELECT);
     case SwitchAccessCommand::kNext:
       return extensions::api::accessibility_private::ToString(
-          extensions::api::accessibility_private::SwitchAccessCommand::kNext);
+          extensions::api::accessibility_private::SWITCH_ACCESS_COMMAND_NEXT);
     case SwitchAccessCommand::kPrevious:
       return extensions::api::accessibility_private::ToString(
-          extensions::api::accessibility_private::SwitchAccessCommand::
-              kPrevious);
+          extensions::api::accessibility_private::
+              SWITCH_ACCESS_COMMAND_PREVIOUS);
     case SwitchAccessCommand::kNone:
       NOTREACHED();
       return "";
@@ -47,19 +46,19 @@ std::string ToString(MagnifierCommand command) {
   switch (command) {
     case MagnifierCommand::kMoveStop:
       return extensions::api::accessibility_private::ToString(
-          extensions::api::accessibility_private::MagnifierCommand::kMoveStop);
+          extensions::api::accessibility_private::MAGNIFIER_COMMAND_MOVESTOP);
     case MagnifierCommand::kMoveUp:
       return extensions::api::accessibility_private::ToString(
-          extensions::api::accessibility_private::MagnifierCommand::kMoveUp);
+          extensions::api::accessibility_private::MAGNIFIER_COMMAND_MOVEUP);
     case MagnifierCommand::kMoveDown:
       return extensions::api::accessibility_private::ToString(
-          extensions::api::accessibility_private::MagnifierCommand::kMoveDown);
+          extensions::api::accessibility_private::MAGNIFIER_COMMAND_MOVEDOWN);
     case MagnifierCommand::kMoveLeft:
       return extensions::api::accessibility_private::ToString(
-          extensions::api::accessibility_private::MagnifierCommand::kMoveLeft);
+          extensions::api::accessibility_private::MAGNIFIER_COMMAND_MOVELEFT);
     case MagnifierCommand::kMoveRight:
       return extensions::api::accessibility_private::ToString(
-          extensions::api::accessibility_private::MagnifierCommand::kMoveRight);
+          extensions::api::accessibility_private::MAGNIFIER_COMMAND_MOVERIGHT);
   }
 
   return "";
@@ -93,9 +92,6 @@ void AccessibilityEventRewriterDelegateImpl::DispatchMouseEvent(
     std::unique_ptr<ui::Event> event) {
   ax::mojom::Event event_type;
 
-  bool is_synthesized = event->IsSynthesized() ||
-                        event->source_device_id() == ui::ED_UNKNOWN_DEVICE;
-
   switch (event->type()) {
     case ui::ET_MOUSE_MOVED:
       event_type = ax::mojom::Event::kMouseMoved;
@@ -108,8 +104,7 @@ void AccessibilityEventRewriterDelegateImpl::DispatchMouseEvent(
       return;
   }
 
-  AutomationManagerAura::GetInstance()->HandleEvent(
-      event_type, /*from_user=*/!is_synthesized);
+  AutomationManagerAura::GetInstance()->HandleEvent(event_type);
 }
 
 void AccessibilityEventRewriterDelegateImpl::SendSwitchAccessCommand(

@@ -64,11 +64,8 @@ export enum PasswordViewPageInteractions {
   TIMED_OUT_IN_EDIT_DIALOG = 9,
   TIMED_OUT_IN_VIEW_PAGE = 10,
   CREDENTIAL_REQUESTED_BY_URL = 11,
-  PASSKEY_DISPLAY_NAME_COPY_BUTTON_CLICKED = 12,
-  PASSKEY_DELETE_BUTTON_CLICKED = 13,
-  PASSKEY_EDIT_BUTTON_CLICKED = 14,
   // Must be last.
-  COUNT = 15,
+  COUNT = 12,
 }
 
 /**
@@ -201,35 +198,22 @@ export interface PasswordManagerProxy {
       Promise<void>;
 
   /**
-   * Fetches family members (password share recipients).
-   * @return A promise that resolves the FamilyFetchResults.
+   * Changes the saved password corresponding to |ids|.
+   * @param ids The ids for the password entry being updated.
+   * @return A promise that resolves with the new IDs when the password is
+   *     updated for all ids.
    */
-  fetchFamilyMembers(): Promise<chrome.passwordsPrivate.FamilyFetchResults>;
+  changeSavedPassword(
+      ids: number, params: chrome.passwordsPrivate.ChangeSavedPasswordParams):
+      Promise<number>;
 
   /**
-   * Sends sharing invitations to the recipients.
-   * @param id The id of the password entry to be shared.
-   * @param recipients The list of selected recipients.
-   */
-  sharePassword(
-      id: number, recipients: chrome.passwordsPrivate.RecipientInfo[]): void;
-
-  /**
-   * Updates the given credential. Not all parameters can be updated.
-   * @param credential the credential to update.
-   * @return A promise that resolves if the credential was found and updated,
-   *     rejects otherwise.
-   */
-  changeCredential(credential: chrome.passwordsPrivate.PasswordUiEntry):
-      Promise<void>;
-
-  /**
-   * Should remove the credential and notify that the list has changed.
-   * @param id The id for the credential being removed. No-op if |id| is not in
-   *     the list.
+   * Should remove the saved password and notify that the list has changed.
+   * @param id The id for the password entry being removed. No-op if |id| is not
+   *     in the list.
    * @param fromStores The store from which credential should be removed.
    */
-  removeCredential(
+  removeSavedPassword(
       id: number, fromStores: chrome.passwordsPrivate.PasswordStoreSet): void;
 
   /**
@@ -302,6 +286,11 @@ export interface PasswordManagerProxy {
    */
   removePasswordsFileExportProgressListener(
       listener: PasswordsFileExportProgressListener): void;
+
+  /**
+   * Cancels the export in progress.
+   */
+  cancelExportPasswords(): void;
 
   /**
    * Switches Biometric authentication before filling state after
@@ -377,9 +366,6 @@ export interface PasswordManagerProxy {
    * @param ids The ids for the password entries being moved.
    */
   movePasswordsToAccount(ids: number[]): void;
-
-  /** Dismiss the menu notifications for the Safety Hub password module. */
-  dismissSafetyHubPasswordMenuNotification(): void;
 }
 
 /**
@@ -483,13 +469,14 @@ export class PasswordManagerImpl implements PasswordManagerProxy {
     return chrome.passwordsPrivate.addPassword(options);
   }
 
-  changeCredential(credential: chrome.passwordsPrivate.PasswordUiEntry) {
-    return chrome.passwordsPrivate.changeCredential(credential);
+  changeSavedPassword(
+      id: number, params: chrome.passwordsPrivate.ChangeSavedPasswordParams) {
+    return chrome.passwordsPrivate.changeSavedPassword(id, params);
   }
 
-  removeCredential(
+  removeSavedPassword(
       id: number, fromStores: chrome.passwordsPrivate.PasswordStoreSet) {
-    chrome.passwordsPrivate.removeCredential(id, fromStores);
+    chrome.passwordsPrivate.removeSavedPassword(id, fromStores);
   }
 
   removeBlockedSite(id: number) {
@@ -508,15 +495,6 @@ export class PasswordManagerImpl implements PasswordManagerProxy {
 
   undoRemoveSavedPasswordOrException() {
     chrome.passwordsPrivate.undoRemoveSavedPasswordOrException();
-  }
-
-  fetchFamilyMembers() {
-    return chrome.passwordsPrivate.fetchFamilyMembers();
-  }
-
-  sharePassword(
-      id: number, recipients: chrome.passwordsPrivate.RecipientInfo[]) {
-    chrome.passwordsPrivate.sharePassword(id, recipients);
   }
 
   importPasswords(toStore: chrome.passwordsPrivate.PasswordStoreSet) {
@@ -548,6 +526,10 @@ export class PasswordManagerImpl implements PasswordManagerProxy {
       listener: PasswordsFileExportProgressListener) {
     chrome.passwordsPrivate.onPasswordsFileExportProgress.removeListener(
         listener);
+  }
+
+  cancelExportPasswords() {
+    chrome.passwordsPrivate.cancelExportPasswords();
   }
 
   switchBiometricAuthBeforeFillingState() {
@@ -603,10 +585,6 @@ export class PasswordManagerImpl implements PasswordManagerProxy {
 
   movePasswordsToAccount(ids: number[]) {
     chrome.passwordsPrivate.movePasswordsToAccount(ids);
-  }
-
-  dismissSafetyHubPasswordMenuNotification() {
-    chrome.send('dismissSafetyHubPasswordMenuNotification');
   }
 
   static getInstance(): PasswordManagerProxy {

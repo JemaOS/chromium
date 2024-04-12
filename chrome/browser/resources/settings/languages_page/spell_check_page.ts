@@ -11,7 +11,7 @@ import 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import 'chrome://resources/cr_elements/cr_link_row/cr_link_row.js';
 import 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 import 'chrome://resources/cr_elements/icons.html.js';
-import '/shared/settings/controls/cr_policy_pref_indicator.js';
+import 'chrome://resources/cr_elements/policy/cr_policy_pref_indicator.js';
 import 'chrome://resources/cr_elements/cr_shared_style.css.js';
 import 'chrome://resources/cr_elements/cr_shared_vars.css.js';
 import 'chrome://resources/js/action_link.js';
@@ -34,22 +34,20 @@ import './edit_dictionary_page.js';
 
 // </if>
 
-import {PrefsMixin} from '/shared/settings/prefs/prefs_mixin.js';
-import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
-import {assert} from 'chrome://resources/js/assert.js';
+import {assert} from 'chrome://resources/js/assert_ts.js';
 import {focusWithoutInk} from 'chrome://resources/js/focus_without_ink.js';
-import type {DomRepeatEvent} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
+import {PrefsMixin} from 'chrome://resources/cr_components/settings_prefs/prefs_mixin.js';
+import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
+import {DomRepeatEvent, PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {BaseMixin} from '../base_mixin.js';
-import type {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
-import type {FocusConfig} from '../focus_config.js';
+import {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
+import {FocusConfig} from '../focus_config.js';
 import {routes} from '../route.js';
 import {Router} from '../router.js';
 
-import type {LanguageSettingsMetricsProxy} from './languages_settings_metrics_proxy.js';
-import {LanguageSettingsActionType, LanguageSettingsMetricsProxyImpl} from './languages_settings_metrics_proxy.js';
-import type {LanguageHelper, LanguagesModel, LanguageState, SpellCheckLanguageState} from './languages_types.js';
+import {LanguageSettingsActionType, LanguageSettingsMetricsProxy, LanguageSettingsMetricsProxyImpl} from './languages_settings_metrics_proxy.js';
+import {LanguageHelper, LanguagesModel, LanguageState, SpellCheckLanguageState} from './languages_types.js';
 import {getTemplate} from './spell_check_page.html.js';
 
 const SettingsSpellCheckPageElementBase =
@@ -135,16 +133,16 @@ export class SettingsSpellCheckPageElement extends
 
   private onSpellCheckToggleChange_(e: Event) {
     this.languageSettingsMetricsProxy_.recordSettingsMetric(
-        (e.target as SettingsToggleButtonElement).checked ?
-            LanguageSettingsActionType.ENABLE_SPELL_CHECK_GLOBALLY :
-            LanguageSettingsActionType.DISABLE_SPELL_CHECK_GLOBALLY);
+      (e.target as SettingsToggleButtonElement).checked ?
+          LanguageSettingsActionType.ENABLE_SPELL_CHECK_GLOBALLY :
+          LanguageSettingsActionType.DISABLE_SPELL_CHECK_GLOBALLY);
   }
 
   private onSelectedSpellingServiceChange_() {
     this.languageSettingsMetricsProxy_.recordSettingsMetric(
-        this.prefs.spellcheck.use_spelling_service.value ?
-            LanguageSettingsActionType.SELECT_ENHANCED_SPELL_CHECK :
-            LanguageSettingsActionType.SELECT_BASIC_SPELL_CHECK);
+      this.prefs.spellcheck.use_spelling_service.value ?
+          LanguageSettingsActionType.SELECT_ENHANCED_SPELL_CHECK :
+          LanguageSettingsActionType.SELECT_BASIC_SPELL_CHECK);
   }
 
   // <if expr="not is_macosx">
@@ -272,9 +270,9 @@ export class SettingsSpellCheckPageElement extends
         item.language.code, !item.spellCheckEnabled);
 
     this.languageSettingsMetricsProxy_.recordSettingsMetric(
-        item.spellCheckEnabled ?
-            LanguageSettingsActionType.ENABLE_SPELL_CHECK_FOR_LANGUAGE :
-            LanguageSettingsActionType.DISABLE_SPELL_CHECK_FOR_LANGUAGE);
+      item.spellCheckEnabled ?
+          LanguageSettingsActionType.ENABLE_SPELL_CHECK_FOR_LANGUAGE :
+          LanguageSettingsActionType.DISABLE_SPELL_CHECK_FOR_LANGUAGE);
   }
 
   /**

@@ -4,16 +4,14 @@
 
 #include "ash/wm/window_resizer.h"
 
-#include <optional>
-
 #include "ash/public/cpp/presentation_time_recorder.h"
 #include "ash/wm/window_positioning_utils.h"
+#include "ash/wm/window_state.h"
 #include "ash/wm/window_util.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/time/time.h"
-#include "chromeos/ui/frame/caption_buttons/frame_caption_button_container_view.h"
 #include "chromeos/ui/frame/frame_header.h"
 #include "ui/aura/client/aura_constants.h"
 #include "ui/aura/window.h"
@@ -287,28 +285,6 @@ void WindowResizer::SetBoundsDuringResize(const gfx::Rect& bounds) {
     recorder_->RequestNext();
 }
 
-void WindowResizer::SetTransformDuringResize(const gfx::Transform& transform) {
-  aura::Window* window = GetTarget();
-  DCHECK(window);
-
-  const gfx::Transform original_transform = window->transform();
-
-  // Prepare to record presentation time (e.g. tracking Configure).
-  if (recorder_) {
-    recorder_->PrepareToRecord();
-  }
-
-  window->SetTransform(transform);
-
-  if (window->transform() == original_transform) {
-    return;
-  }
-
-  if (recorder_) {
-    recorder_->RequestNext();
-  }
-}
-
 void WindowResizer::SetPresentationTimeRecorder(
     std::unique_ptr<PresentationTimeRecorder> recorder) {
   recorder_ = std::move(recorder);
@@ -511,15 +487,10 @@ void WindowResizer::CalculateBoundsWithAspectRatio(float aspect_ratio,
                            ? GetTarget()->delegate()->GetMaximumSize()
                            : gfx::Size();
   DCHECK(!min_size.IsEmpty());
-
-  // gfx::SizeRectToAspectRatio expects std::nullopt when there is no limit, but
-  // GetMaximumSize() returns 0x0 when there is no limit.
-  auto max_size_opt = !max_size.IsEmpty()
-                          ? std::make_optional<gfx::Size>(max_size)
-                          : std::nullopt;
+  DCHECK(!max_size.IsEmpty());
 
   gfx::SizeRectToAspectRatio(GetWindowResizeEdge(details().window_component),
-                             aspect_ratio, min_size, max_size_opt, new_bounds);
+                             aspect_ratio, min_size, max_size, new_bounds);
 }
 
 }  // namespace ash

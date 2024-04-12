@@ -8,7 +8,10 @@
 
 #include <memory>
 
-@interface BridgedNativeWindowTracker : NSObject
+@interface BridgedNativeWindowTracker : NSObject {
+ @private
+  NSWindow* _window;
+}
 
 - (instancetype)initWithNSWindow:(NSWindow*)window;
 - (bool)wasNSWindowClosed;
@@ -16,21 +19,21 @@
 
 @end
 
-@implementation BridgedNativeWindowTracker {
-  NSWindow* __weak _window;
-}
+@implementation BridgedNativeWindowTracker
 
 - (instancetype)initWithNSWindow:(NSWindow*)window {
   _window = window;
-  [NSNotificationCenter.defaultCenter addObserver:self
-                                         selector:@selector(onWindowWillClose:)
-                                             name:NSWindowWillCloseNotification
-                                           object:_window];
+  NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
+  [center addObserver:self
+             selector:@selector(onWindowWillClose:)
+                 name:NSWindowWillCloseNotification
+               object:_window];
   return self;
 }
 
 - (void)dealloc {
-  [NSNotificationCenter.defaultCenter removeObserver:self];
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [super dealloc];
 }
 
 - (bool)wasNSWindowClosed {
@@ -38,7 +41,7 @@
 }
 
 - (void)onWindowWillClose:(NSNotification*)notification {
-  [NSNotificationCenter.defaultCenter
+  [[NSNotificationCenter defaultCenter]
       removeObserver:self
                 name:NSWindowWillCloseNotification
               object:_window];
@@ -49,21 +52,16 @@
 
 namespace views {
 
-struct NativeWindowTrackerCocoa::ObjCStorage {
-  BridgedNativeWindowTracker* __strong tracker;
-};
-
 NativeWindowTrackerCocoa::NativeWindowTrackerCocoa(
-    gfx::NativeWindow native_window)
-    : objc_storage_(std::make_unique<ObjCStorage>()) {
-  objc_storage_->tracker = [[BridgedNativeWindowTracker alloc]
-      initWithNSWindow:native_window.GetNativeNSWindow()];
+    gfx::NativeWindow native_window) {
+  NSWindow* window = native_window.GetNativeNSWindow();
+  bridge_.reset([[BridgedNativeWindowTracker alloc] initWithNSWindow:window]);
 }
 
-NativeWindowTrackerCocoa::~NativeWindowTrackerCocoa() = default;
+NativeWindowTrackerCocoa::~NativeWindowTrackerCocoa() {}
 
 bool NativeWindowTrackerCocoa::WasNativeWindowDestroyed() const {
-  return [objc_storage_->tracker wasNSWindowClosed];
+  return [bridge_ wasNSWindowClosed];
 }
 
 // static

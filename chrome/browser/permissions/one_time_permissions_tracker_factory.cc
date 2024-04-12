@@ -4,7 +4,7 @@
 
 #include "chrome/browser/permissions/one_time_permissions_tracker_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/permissions/one_time_permissions_tracker.h"
 #include "chrome/browser/profiles/profile.h"
 
@@ -17,19 +17,13 @@ OneTimePermissionsTrackerFactory::GetForBrowserContext(
 
 OneTimePermissionsTrackerFactory*
 OneTimePermissionsTrackerFactory::GetInstance() {
-  static base::NoDestructor<OneTimePermissionsTrackerFactory> instance;
-  return instance.get();
+  return base::Singleton<OneTimePermissionsTrackerFactory>::get();
 }
 
 OneTimePermissionsTrackerFactory::OneTimePermissionsTrackerFactory()
     : ProfileKeyedServiceFactory(
           "OneTimePermissionsTrackerKeyedService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 OneTimePermissionsTrackerFactory::~OneTimePermissionsTrackerFactory() = default;
 
@@ -38,8 +32,7 @@ bool OneTimePermissionsTrackerFactory::ServiceIsCreatedWithBrowserContext()
   return true;
 }
 
-std::unique_ptr<KeyedService>
-OneTimePermissionsTrackerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* OneTimePermissionsTrackerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<OneTimePermissionsTracker>();
+  return new OneTimePermissionsTracker();
 }

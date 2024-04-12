@@ -17,8 +17,8 @@ const char* ToString(ax::mojom::Event event) {
       return "activedescendantchanged";
     case ax::mojom::Event::kAlert:
       return "alert";
-    case ax::mojom::Event::kAriaAttributeChangedDeprecated:
-      return "ariaAttributeChangedDeprecated";
+    case ax::mojom::Event::kAriaAttributeChanged:
+      return "ariaAttributeChanged";
     case ax::mojom::Event::kAutocorrectionOccured:
       return "autocorrectionOccured";
     case ax::mojom::Event::kBlur:
@@ -198,12 +198,12 @@ const char* ToString(ax::mojom::Role role) {
       return "dateTime";
     case ax::mojom::Role::kDefinition:
       return "definition";
+    case ax::mojom::Role::kDescriptionListDetail:
+      return "descriptionListDetail";
     case ax::mojom::Role::kDescriptionList:
       return "descriptionList";
-    case ax::mojom::Role::kDescriptionListTermDeprecated:
-      return "descriptionListTermDeprecated";
-    case ax::mojom::Role::kDescriptionListDetailDeprecated:
-      return "descriptionListDetailsDeprecated";
+    case ax::mojom::Role::kDescriptionListTerm:
+      return "descriptionListTerm";
     case ax::mojom::Role::kDesktop:
       return "desktop";
     case ax::mojom::Role::kDetails:
@@ -214,8 +214,6 @@ const char* ToString(ax::mojom::Role role) {
       return "directory";
     case ax::mojom::Role::kDisclosureTriangle:
       return "disclosureTriangle";
-    case ax::mojom::Role::kDisclosureTriangleGrouped:
-      return "disclosureTriangleGrouped";
     case ax::mojom::Role::kDocAbstract:
       return "docAbstract";
     case ax::mojom::Role::kDocAcknowledgments:
@@ -462,8 +460,8 @@ const char* ToString(ax::mojom::Role role) {
       return "popUpButton";
     case ax::mojom::Role::kPortal:
       return "portal";
-    case ax::mojom::Role::kPreDeprecated:
-      return "preDeprecated";
+    case ax::mojom::Role::kPre:
+      return "pre";
     case ax::mojom::Role::kProgressIndicator:
       return "progressIndicator";
     case ax::mojom::Role::kRadioButton:
@@ -626,12 +624,12 @@ ax::mojom::Role StringToRole(const std::string& role) {
     return ax::mojom::Role::kDateTime;
   } else if (role == "kDefinition") {
     return ax::mojom::Role::kDefinition;
+  } else if (role == "kDescriptionListDetail") {
+    return ax::mojom::Role::kDescriptionListDetail;
   } else if (role == "kDescriptionList") {
     return ax::mojom::Role::kDescriptionList;
-  } else if (role == "kDescriptionListTermDeprecated") {
-    return ax::mojom::Role::kDescriptionListTermDeprecated;
-  } else if (role == "kDescriptionListDetailDeprecated") {
-    return ax::mojom::Role::kDescriptionListDetailDeprecated;
+  } else if (role == "kDescriptionListTerm") {
+    return ax::mojom::Role::kDescriptionListTerm;
   } else if (role == "kDesktop") {
     return ax::mojom::Role::kDesktop;
   } else if (role == "kDetails") {
@@ -642,8 +640,6 @@ ax::mojom::Role StringToRole(const std::string& role) {
     return ax::mojom::Role::kDirectory;
   } else if (role == "kDisclosureTriangle") {
     return ax::mojom::Role::kDisclosureTriangle;
-  } else if (role == "kDisclosureTriangleGrouped") {
-    return ax::mojom::Role::kDisclosureTriangleGrouped;
   } else if (role == "kDocAbstract") {
     return ax::mojom::Role::kDocAbstract;
   } else if (role == "kDocAcknowledgments") {
@@ -890,8 +886,8 @@ ax::mojom::Role StringToRole(const std::string& role) {
     return ax::mojom::Role::kPopUpButton;
   } else if (role == "kPortal") {
     return ax::mojom::Role::kPortal;
-  } else if (role == "kPreDeprecated") {
-    return ax::mojom::Role::kPreDeprecated;
+  } else if (role == "kPre") {
+    return ax::mojom::Role::kPre;
   } else if (role == "kProgressIndicator") {
     return ax::mojom::Role::kProgressIndicator;
   } else if (role == "kRadioButton") {
@@ -1158,8 +1154,6 @@ const char* ToString(ax::mojom::Action action) {
       return "hideTooltip";
     case ax::mojom::Action::kInternalInvalidateTree:
       return "internalInvalidateTree";
-    case ax::mojom::Action::kStitchChildTree:
-      return "stitchChildTree";
     case ax::mojom::Action::kStartDuckingMedia:
       return "startDuckingMedia";
     case ax::mojom::Action::kStopDuckingMedia:
@@ -1261,7 +1255,7 @@ const char* ToString(ax::mojom::StringAttribute string_attribute) {
       return "none";
     case ax::mojom::StringAttribute::kAccessKey:
       return "accessKey";
-    case ax::mojom::StringAttribute::kAriaInvalidValueDeprecated:
+    case ax::mojom::StringAttribute::kAriaInvalidValue:
       return "ariaInvalidValue";
     case ax::mojom::StringAttribute::kAutoComplete:
       return "autoComplete";
@@ -1269,10 +1263,6 @@ const char* ToString(ax::mojom::StringAttribute string_attribute) {
       return "ariaBrailleLabel";
     case ax::mojom::StringAttribute::kAriaBrailleRoleDescription:
       return "ariaBrailleRoleDescription";
-    case ax::mojom::StringAttribute::kAriaNotificationAnnouncementDeprecated:
-      return "ariaNotificationAnnouncement";
-    case ax::mojom::StringAttribute::kAriaNotificationIdDeprecated:
-      return "ariaNotificationId";
     case ax::mojom::StringAttribute::kCheckedStateDescription:
       return "checkedStateDescription";
     case ax::mojom::StringAttribute::kChildTreeId:
@@ -1307,8 +1297,6 @@ const char* ToString(ax::mojom::StringAttribute string_attribute) {
       return "keyShortcuts";
     case ax::mojom::StringAttribute::kLanguage:
       return "language";
-    case ax::mojom::StringAttribute::kLinkTarget:
-      return "linkTarget";
     case ax::mojom::StringAttribute::kName:
       return "name";
     case ax::mojom::StringAttribute::kLiveRelevant:
@@ -1344,18 +1332,14 @@ ax::mojom::StringAttribute StringToStringAttribute(
     return ax::mojom::StringAttribute::kNone;
   } else if (string_attribute == "kAccessKey") {
     return ax::mojom::StringAttribute::kAccessKey;
-  } else if (string_attribute == "kAriaInvalidValueDeprecated") {
-    return ax::mojom::StringAttribute::kAriaInvalidValueDeprecated;
+  } else if (string_attribute == "kAriaInvalidValue") {
+    return ax::mojom::StringAttribute::kAriaInvalidValue;
   } else if (string_attribute == "kAutoComplete") {
     return ax::mojom::StringAttribute::kAutoComplete;
   } else if (string_attribute == "kAriaBrailleLabel") {
     return ax::mojom::StringAttribute::kAriaBrailleLabel;
   } else if (string_attribute == "kAriaBrailleRoleDescription") {
     return ax::mojom::StringAttribute::kAriaBrailleRoleDescription;
-  } else if (string_attribute == "kAriaNotificationAnnouncementDeprecated") {
-    return ax::mojom::StringAttribute::kAriaNotificationAnnouncementDeprecated;
-  } else if (string_attribute == "kAriaNotificationIdDeprecated") {
-    return ax::mojom::StringAttribute::kAriaNotificationIdDeprecated;
   } else if (string_attribute == "kCheckedStateDescription") {
     return ax::mojom::StringAttribute::kCheckedStateDescription;
   } else if (string_attribute == "kChildTreeId") {
@@ -1427,7 +1411,7 @@ const char* ToString(ax::mojom::IntAttribute int_attribute) {
       return "none";
     case ax::mojom::IntAttribute::kDefaultActionVerb:
       return "defaultActionVerb";
-    case ax::mojom::IntAttribute::kDropeffectDeprecated:
+    case ax::mojom::IntAttribute::kDropeffect:
       return "dropeffect";
     case ax::mojom::IntAttribute::kScrollX:
       return "scrollX";
@@ -1489,7 +1473,7 @@ const char* ToString(ax::mojom::IntAttribute int_attribute) {
       return "descriptionFrom";
     case ax::mojom::IntAttribute::kActivedescendantId:
       return "activedescendantId";
-    case ax::mojom::IntAttribute::kErrormessageIdDeprecated:
+    case ax::mojom::IntAttribute::kErrormessageId:
       return "errormessageId";
     case ax::mojom::IntAttribute::kInPageLinkTargetId:
       return "inPageLinkTargetId";
@@ -1551,10 +1535,6 @@ const char* ToString(ax::mojom::IntAttribute int_attribute) {
       return "nextWindowFocusId";
     case ax::mojom::IntAttribute::kPreviousWindowFocusId:
       return "previousWindowFocusId";
-    case ax::mojom::IntAttribute::kAriaNotificationInterruptDeprecated:
-      return "ariaNotificationInterrupt";
-    case ax::mojom::IntAttribute::kAriaNotificationPriorityDeprecated:
-      return "ariaNotificationPriority";
   }
 
   return "";
@@ -1565,8 +1545,8 @@ ax::mojom::IntAttribute StringToIntAttribute(const std::string& int_attribute) {
     return ax::mojom::IntAttribute::kNone;
   } else if (int_attribute == "kDefaultActionVerb") {
     return ax::mojom::IntAttribute::kDefaultActionVerb;
-  } else if (int_attribute == "kDropeffectDeprecated") {
-    return ax::mojom::IntAttribute::kDropeffectDeprecated;
+  } else if (int_attribute == "kDropeffect") {
+    return ax::mojom::IntAttribute::kDropeffect;
   } else if (int_attribute == "kScrollX") {
     return ax::mojom::IntAttribute::kScrollX;
   } else if (int_attribute == "kScrollXMin") {
@@ -1628,7 +1608,7 @@ ax::mojom::IntAttribute StringToIntAttribute(const std::string& int_attribute) {
   } else if (int_attribute == "kActivedescendantId") {
     return ax::mojom::IntAttribute::kActivedescendantId;
   } else if (int_attribute == "kErrormessageId") {
-    return ax::mojom::IntAttribute::kErrormessageIdDeprecated;
+    return ax::mojom::IntAttribute::kErrormessageId;
   } else if (int_attribute == "kInPageLinkTargetId") {
     return ax::mojom::IntAttribute::kInPageLinkTargetId;
   } else if (int_attribute == "kMemberOfId") {
@@ -1689,10 +1669,6 @@ ax::mojom::IntAttribute StringToIntAttribute(const std::string& int_attribute) {
     return ax::mojom::IntAttribute::kNextWindowFocusId;
   } else if (int_attribute == "kPreviousWindowFocusId") {
     return ax::mojom::IntAttribute::kPreviousWindowFocusId;
-  } else if (int_attribute == "kAriaNotificationInterruptDeprecated") {
-    return ax::mojom::IntAttribute::kAriaNotificationInterruptDeprecated;
-  } else if (int_attribute == "kAriaNotificationPriorityDeprecated") {
-    return ax::mojom::IntAttribute::kAriaNotificationPriorityDeprecated;
   }
 
   NOTREACHED() << "An invalid IntAttribute was provided: " << int_attribute;
@@ -1736,7 +1712,7 @@ const char* ToString(ax::mojom::BoolAttribute bool_attribute) {
       return "containerLiveAtomic";
     case ax::mojom::BoolAttribute::kContainerLiveBusy:
       return "containerLiveBusy";
-    case ax::mojom::BoolAttribute::kGrabbedDeprecated:
+    case ax::mojom::BoolAttribute::kGrabbed:
       return "grabbed";
     case ax::mojom::BoolAttribute::kLiveAtomic:
       return "liveAtomic";
@@ -1766,12 +1742,10 @@ const char* ToString(ax::mojom::BoolAttribute bool_attribute) {
       return "isPageBreakingObject";
     case ax::mojom::BoolAttribute::kHasAriaAttribute:
       return "hasAriaAttribute";
-    case ax::mojom::BoolAttribute::kTouchPassthroughDeprecated:
+    case ax::mojom::BoolAttribute::kTouchPassthrough:
       return "touchPassthrough";
     case ax::mojom::BoolAttribute::kLongClickable:
       return "longClickable";
-    case ax::mojom::BoolAttribute::kHasHiddenOffscreenNodes:
-      return "hasHiddenOffscreenNodes";
   }
 
   return "";
@@ -1789,8 +1763,8 @@ ax::mojom::BoolAttribute StringToBoolAttribute(
     return ax::mojom::BoolAttribute::kContainerLiveAtomic;
   } else if (bool_attribute == "kContainerLiveBusy") {
     return ax::mojom::BoolAttribute::kContainerLiveBusy;
-  } else if (bool_attribute == "kGrabbedDeprecated") {
-    return ax::mojom::BoolAttribute::kGrabbedDeprecated;
+  } else if (bool_attribute == "kGrabbed") {
+    return ax::mojom::BoolAttribute::kGrabbed;
   } else if (bool_attribute == "kLiveAtomic") {
     return ax::mojom::BoolAttribute::kLiveAtomic;
   } else if (bool_attribute == "kModal") {
@@ -1819,8 +1793,8 @@ ax::mojom::BoolAttribute StringToBoolAttribute(
     return ax::mojom::BoolAttribute::kIsPageBreakingObject;
   } else if (bool_attribute == "kHasAriaAttribute") {
     return ax::mojom::BoolAttribute::kHasAriaAttribute;
-  } else if (bool_attribute == "kTouchPassthroughDeprecated") {
-    return ax::mojom::BoolAttribute::kTouchPassthroughDeprecated;
+  } else if (bool_attribute == "kTouchPassthrough") {
+    return ax::mojom::BoolAttribute::kTouchPassthrough;
   } else if (bool_attribute == "kLongClickable") {
     return ax::mojom::BoolAttribute::kLongClickable;
   } else {
@@ -1841,8 +1815,6 @@ const char* ToString(ax::mojom::IntListAttribute int_list_attribute) {
       return "detailsIds";
     case ax::mojom::IntListAttribute::kDescribedbyIds:
       return "describedbyIds";
-    case ax::mojom::IntListAttribute::kErrormessageIds:
-      return "errorMessageIds";
     case ax::mojom::IntListAttribute::kFlowtoIds:
       return "flowtoIds";
     case ax::mojom::IntListAttribute::kLabelledbyIds:
@@ -1875,20 +1847,6 @@ const char* ToString(ax::mojom::IntListAttribute int_list_attribute) {
       return "wordEnds";
     case ax::mojom::IntListAttribute::kCustomActionIds:
       return "customActionIds";
-    case ax::mojom::IntListAttribute::kTextOperationStartOffsets:
-      return "textOperationStartOffsets";
-    case ax::mojom::IntListAttribute::kTextOperationEndOffsets:
-      return "textOperationEndOffsets";
-    case ax::mojom::IntListAttribute::kTextOperationStartAnchorIds:
-      return "textOperationStartAnchorIds";
-    case ax::mojom::IntListAttribute::kTextOperationEndAnchorIds:
-      return "textOperationEndAnchorIds";
-    case ax::mojom::IntListAttribute::kTextOperations:
-      return "textOperations";
-    case ax::mojom::IntListAttribute::kAriaNotificationInterruptProperties:
-      return "ariaNotificationInterruptProperties";
-    case ax::mojom::IntListAttribute::kAriaNotificationPriorityProperties:
-      return "ariaNotificationPriorityProperties";
   }
 
   return "";
@@ -1898,10 +1856,6 @@ const char* ToString(ax::mojom::StringListAttribute string_list_attribute) {
   switch (string_list_attribute) {
     case ax::mojom::StringListAttribute::kNone:
       return "none";
-    case ax::mojom::StringListAttribute::kAriaNotificationAnnouncements:
-      return "ariaNotificationAnnouncements";
-    case ax::mojom::StringListAttribute::kAriaNotificationIds:
-      return "ariaNotificationIds";
     case ax::mojom::StringListAttribute::kCustomActionDescriptions:
       return "customActionDescriptions";
   }
@@ -2540,28 +2494,6 @@ const char* ToString(ax::mojom::Dropeffect dropeffect) {
   }
 
   return "";
-}
-
-const char* ToString(ax::mojom::AriaNotificationInterrupt interrupt) {
-  switch (interrupt) {
-    case ax::mojom::AriaNotificationInterrupt::kNone:
-      return "none";
-    case ax::mojom::AriaNotificationInterrupt::kAll:
-      return "all";
-    case ax::mojom::AriaNotificationInterrupt::kPending:
-      return "pending";
-  }
-  NOTREACHED_NORETURN();
-}
-
-const char* ToString(ax::mojom::AriaNotificationPriority priority) {
-  switch (priority) {
-    case ax::mojom::AriaNotificationPriority::kNone:
-      return "none";
-    case ax::mojom::AriaNotificationPriority::kImportant:
-      return "important";
-  }
-  NOTREACHED_NORETURN();
 }
 
 }  // namespace ui

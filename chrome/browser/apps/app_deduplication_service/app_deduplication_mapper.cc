@@ -12,31 +12,36 @@ AppDeduplicationMapper::AppDeduplicationMapper() = default;
 
 AppDeduplicationMapper::~AppDeduplicationMapper() = default;
 
-std::optional<proto::DeduplicateData> AppDeduplicationMapper::ToDeduplicateData(
+absl::optional<proto::DeduplicateData>
+AppDeduplicationMapper::ToDeduplicateData(
     const proto::DeduplicateResponse& response) {
   if (response.app_group().empty()) {
     LOG(ERROR) << "No duplicate groups found.";
-    return std::nullopt;
+    return absl::nullopt;
   }
+
   proto::DeduplicateData deduplicate_data;
   for (const auto& group : response.app_group()) {
+    if (group.app().empty()) {
+      LOG(ERROR) << "No apps found in duplicate group.";
+      return absl::nullopt;
+    }
+
     auto* deduplicate_group = deduplicate_data.add_app_group();
+    for (const auto& app : group.app()) {
+      if (!app.has_platform() || app.platform().empty()) {
+        LOG(ERROR) << "The platform for an app cannot be empty.";
+        return absl::nullopt;
+      }
 
-    if (group.app_group_uuid().empty()) {
-      LOG(ERROR) << "The uuid for an app group cannot be empty.";
-      return std::nullopt;
-    }
+      if (!app.has_app_id() || app.app_id().empty()) {
+        LOG(ERROR) << "The app_id for an app cannot be empty.";
+        return absl::nullopt;
+      }
 
-    deduplicate_group->set_app_group_uuid(group.app_group_uuid());
-
-    if (group.package_id().empty()) {
-      LOG(ERROR) << "An app group must have at least 1 package id.";
-      return std::nullopt;
-    }
-
-    for (int i = 0; i < group.package_id_size(); i++) {
-      deduplicate_group->add_package_id();
-      deduplicate_group->set_package_id(i, group.package_id(i));
+      auto* deduplicate_app = deduplicate_group->add_app();
+      deduplicate_app->set_app_id(app.app_id());
+      deduplicate_app->set_platform(app.platform());
     }
   }
 

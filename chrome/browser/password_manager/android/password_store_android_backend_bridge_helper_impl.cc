@@ -25,10 +25,8 @@ using JobId = PasswordStoreAndroidBackendBridgeHelper::JobId;
 }
 
 std::unique_ptr<PasswordStoreAndroidBackendBridgeHelper>
-PasswordStoreAndroidBackendBridgeHelper::Create(
-    password_manager::IsAccountStore is_account_store) {
-  return std::make_unique<PasswordStoreAndroidBackendBridgeHelperImpl>(
-      is_account_store);
+PasswordStoreAndroidBackendBridgeHelper::Create() {
+  return std::make_unique<PasswordStoreAndroidBackendBridgeHelperImpl>();
 }
 
 bool PasswordStoreAndroidBackendBridgeHelper::CanCreateBackend() {
@@ -36,10 +34,8 @@ bool PasswordStoreAndroidBackendBridgeHelper::CanCreateBackend() {
 }
 
 PasswordStoreAndroidBackendBridgeHelperImpl::
-    PasswordStoreAndroidBackendBridgeHelperImpl(
-        password_manager::IsAccountStore is_account_store)
-    : receiver_bridge_(
-          PasswordStoreAndroidBackendReceiverBridge::Create(is_account_store)),
+    PasswordStoreAndroidBackendBridgeHelperImpl()
+    : receiver_bridge_(PasswordStoreAndroidBackendReceiverBridge::Create()),
       dispatcher_bridge_(PasswordStoreAndroidBackendDispatcherBridge::Create()),
       background_task_runner_(base::ThreadPool::CreateSingleThreadTaskRunner(
           {base::TaskPriority::USER_VISIBLE})) {
@@ -82,18 +78,6 @@ PasswordStoreAndroidBackendBridgeHelperImpl::
   DCHECK(will_delete);
 }
 
-bool PasswordStoreAndroidBackendBridgeHelperImpl::
-    CanUseGetAffiliatedPasswordsAPI() {
-  return PasswordStoreAndroidBackendDispatcherBridge::
-      CanUseGetAffiliatedPasswordsAPI();
-}
-
-bool PasswordStoreAndroidBackendBridgeHelperImpl::
-    CanUseGetAllLoginsWithBrandingInfoAPI() {
-  return PasswordStoreAndroidBackendDispatcherBridge::
-      CanUseGetAllLoginsWithBrandingInfoAPI();
-}
-
 void PasswordStoreAndroidBackendBridgeHelperImpl::SetConsumer(
     base::WeakPtr<Consumer> consumer) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
@@ -102,7 +86,7 @@ void PasswordStoreAndroidBackendBridgeHelperImpl::SetConsumer(
 }
 
 JobId PasswordStoreAndroidBackendBridgeHelperImpl::GetAllLogins(
-    std::string account) {
+    Account account) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
   DCHECK(dispatcher_bridge_);
   JobId job_id = GetNextJobId();
@@ -114,21 +98,8 @@ JobId PasswordStoreAndroidBackendBridgeHelperImpl::GetAllLogins(
   return job_id;
 }
 
-JobId PasswordStoreAndroidBackendBridgeHelperImpl::GetAllLoginsWithBrandingInfo(
-    std::string account) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
-  DCHECK(dispatcher_bridge_);
-  JobId job_id = GetNextJobId();
-  background_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&PasswordStoreAndroidBackendDispatcherBridge::
-                                    GetAllLoginsWithBrandingInfo,
-                                base::Unretained(dispatcher_bridge_.get()),
-                                job_id, std::move(account)));
-  return job_id;
-}
-
 JobId PasswordStoreAndroidBackendBridgeHelperImpl::GetAutofillableLogins(
-    std::string account) {
+    Account account) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
   DCHECK(dispatcher_bridge_);
   JobId job_id = GetNextJobId();
@@ -143,7 +114,7 @@ JobId PasswordStoreAndroidBackendBridgeHelperImpl::GetAutofillableLogins(
 
 JobId PasswordStoreAndroidBackendBridgeHelperImpl::GetLoginsForSignonRealm(
     const std::string& signon_realm,
-    std::string account) {
+    Account account) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
   DCHECK(dispatcher_bridge_);
   JobId job_id = GetNextJobId();
@@ -156,23 +127,9 @@ JobId PasswordStoreAndroidBackendBridgeHelperImpl::GetLoginsForSignonRealm(
   return job_id;
 }
 
-JobId PasswordStoreAndroidBackendBridgeHelperImpl::
-    GetAffiliatedLoginsForSignonRealm(const std::string& signon_realm,
-                                      std::string account) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
-  CHECK(dispatcher_bridge_);
-  JobId job_id = GetNextJobId();
-  background_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&PasswordStoreAndroidBackendDispatcherBridge::
-                                    GetAffiliatedLoginsForSignonRealm,
-                                base::Unretained(dispatcher_bridge_.get()),
-                                job_id, signon_realm, std::move(account)));
-  return job_id;
-}
-
 JobId PasswordStoreAndroidBackendBridgeHelperImpl::AddLogin(
     const password_manager::PasswordForm& form,
-    std::string account) {
+    Account account) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
   DCHECK(dispatcher_bridge_);
   JobId job_id = GetNextJobId();
@@ -186,7 +143,7 @@ JobId PasswordStoreAndroidBackendBridgeHelperImpl::AddLogin(
 
 JobId PasswordStoreAndroidBackendBridgeHelperImpl::UpdateLogin(
     const password_manager::PasswordForm& form,
-    std::string account) {
+    Account account) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
   DCHECK(dispatcher_bridge_);
   JobId job_id = GetNextJobId();
@@ -200,7 +157,7 @@ JobId PasswordStoreAndroidBackendBridgeHelperImpl::UpdateLogin(
 
 JobId PasswordStoreAndroidBackendBridgeHelperImpl::RemoveLogin(
     const password_manager::PasswordForm& form,
-    std::string account) {
+    Account account) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
   DCHECK(dispatcher_bridge_);
   JobId job_id = GetNextJobId();
@@ -215,6 +172,16 @@ JobId PasswordStoreAndroidBackendBridgeHelperImpl::RemoveLogin(
 JobId PasswordStoreAndroidBackendBridgeHelperImpl::GetNextJobId() {
   last_job_id_ = JobId(last_job_id_.value() + 1);
   return last_job_id_;
+}
+
+void PasswordStoreAndroidBackendBridgeHelperImpl::ShowErrorNotification() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
+  DCHECK(dispatcher_bridge_);
+  background_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &PasswordStoreAndroidBackendDispatcherBridge::ShowErrorNotification,
+          base::Unretained(dispatcher_bridge_.get())));
 }
 
 }  // namespace password_manager

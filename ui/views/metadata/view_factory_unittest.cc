@@ -33,9 +33,8 @@ using ViewFactoryTest = views::test::WidgetTest;
 namespace internal {
 
 class TestView : public views::View {
-  METADATA_HEADER(TestView, views::View)
-
  public:
+  METADATA_HEADER(TestView);
   TestView() = default;
   TestView(const TestView&) = delete;
   TestView& operator=(const TestView&) = delete;
@@ -70,7 +69,7 @@ BEGIN_VIEW_BUILDER(, TestView, views::View)
 VIEW_BUILDER_METHOD(ArbitraryMethod, int, float, views::PropertyEffects)
 END_VIEW_BUILDER
 
-BEGIN_METADATA(TestView)
+BEGIN_METADATA(TestView, views::View)
 END_METADATA
 
 }  // namespace internal
@@ -200,8 +199,7 @@ TEST_F(ViewFactoryTest, TestViewBuilderCustomConfigure) {
       views::Builder<internal::TestView>()
           .CustomConfigure(base::BindOnce([](internal::TestView* view) {
             view->SetEnabled(false);
-            view->GetViewAccessibility().SetPosInSet(5);
-            view->GetViewAccessibility().SetSetSize(10);
+            view->GetViewAccessibility().OverridePosInSet(5, 10);
           }))
           .Build());
   EXPECT_FALSE(view->GetEnabled());

@@ -124,13 +124,13 @@ class PluginVmInstaller : public KeyedService,
   };
 
   explicit PluginVmInstaller(Profile* profile);
+
   PluginVmInstaller(const PluginVmInstaller&) = delete;
   PluginVmInstaller& operator=(const PluginVmInstaller&) = delete;
-  ~PluginVmInstaller() override;
 
   // Start the installation. Progress updates will be sent to the observer.
   // Returns a FailureReason if the installation couldn't be started.
-  std::optional<FailureReason> Start();
+  absl::optional<FailureReason> Start();
   // Cancel the installation, and calls OnCancelFinished() when done. Some steps
   // cannot be directly cancelled, in which case we wait for the step to
   // complete and then abort the installation.
@@ -183,6 +183,8 @@ class PluginVmInstaller : public KeyedService,
     kCancelling,
   };
 
+  ~PluginVmInstaller() override;
+
   // The entire installation flow!
 
   void CheckLicense();
@@ -191,10 +193,10 @@ class PluginVmInstaller : public KeyedService,
   void CheckForExistingVm();
   void OnConciergeAvailable(bool success);
   void OnListVmDisks(
-      std::optional<vm_tools::concierge::ListVmDisksResponse> response);
+      absl::optional<vm_tools::concierge::ListVmDisksResponse> response);
 
   void CheckDiskSpace();
-  void OnAvailableDiskSpace(std::optional<int64_t> bytes);
+  void OnAvailableDiskSpace(absl::optional<int64_t> bytes);
 
   void StartDlcDownload();
   // Called repeatedly.
@@ -215,20 +217,20 @@ class PluginVmInstaller : public KeyedService,
   void OnImageTypeDetected(bool is_iso_image);
   // Calls CreateDiskImage or ImportDiskImage, depending on whether we are
   // creating a new VM from an ISO, or importing a prepared VM image.
-  void OnFDPrepared(std::optional<base::ScopedFD> maybe_fd);
+  void OnFDPrepared(absl::optional<base::ScopedFD> maybe_fd);
   // Callback for the concierge CreateDiskImage/ImportDiskImage calls. The
   // import has just started (unless that failed).
   template <typename ReplyType>
-  void OnImportDiskImage(std::optional<ReplyType> reply);
+  void OnImportDiskImage(absl::optional<ReplyType> reply);
   // Progress updates are sent to OnDiskImageProgress(). After we get a signal
   // that the import is finished successfully, we make one final call to
   // concierge's DiskImageStatus method to get a final resolution.
   void RequestFinalStatus();
   void OnFinalDiskImageStatus(
-      std::optional<vm_tools::concierge::DiskImageStatusResponse> response);
+      absl::optional<vm_tools::concierge::DiskImageStatusResponse> response);
   // Finishes the processing of installation. If |failure_reason| has a value,
   // then the import has failed, otherwise it was successful.
-  void OnImported(std::optional<FailureReason> failure_reason);
+  void OnImported(absl::optional<FailureReason> failure_reason);
 
   // End of the install flow!
 
@@ -251,7 +253,7 @@ class PluginVmInstaller : public KeyedService,
   void CancelImport();
   // Callback for the concierge CancelDiskImageOperation call.
   void OnImportDiskImageCancelled(
-      std::optional<vm_tools::concierge::CancelDiskImageResponse> response);
+      absl::optional<vm_tools::concierge::CancelDiskImageResponse> response);
   // Called once cancel is completed, firing the OnCancelFinished() observer
   // event.
   void CancelFinished();
@@ -268,9 +270,9 @@ class PluginVmInstaller : public KeyedService,
 
   device::mojom::WakeLock* GetWakeLock();
 
-  raw_ptr<Profile> profile_ = nullptr;
-  raw_ptr<Observer, DanglingUntriaged> observer_ = nullptr;
-  raw_ptr<download::BackgroundDownloadService, DanglingUntriaged>
+  raw_ptr<Profile, ExperimentalAsh> profile_ = nullptr;
+  raw_ptr<Observer, ExperimentalAsh> observer_ = nullptr;
+  raw_ptr<download::BackgroundDownloadService, ExperimentalAsh>
       download_service_ = nullptr;
   State state_ = State::kIdle;
   InstallingState installing_state_ = InstallingState::kInactive;
@@ -290,7 +292,7 @@ class PluginVmInstaller : public KeyedService,
   bool skip_license_check_for_testing_ = false;
   // -1 indicates not set
   int64_t free_disk_space_for_testing_ = -1;
-  std::optional<base::FilePath> downloaded_image_for_testing_;
+  absl::optional<base::FilePath> downloaded_image_for_testing_;
 
   // Keep the system awake during installation.
   mojo::Remote<device::mojom::WakeLock> wake_lock_;

@@ -136,11 +136,6 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
     media::PaintCanvasVideoRenderer* video_renderer,
     const gfx::Rect& dest_rect,
     bool prefer_tagged_orientation) {
-  auto frame_sk_color_space = frame->CompatRGBColorSpace().ToSkColorSpace();
-  if (!frame_sk_color_space) {
-    frame_sk_color_space = SkColorSpace::MakeSRGB();
-  }
-
   DCHECK(frame);
   const auto transform =
       frame->metadata().transformation.value_or(media::kNoTransformation);
@@ -148,9 +143,14 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
       transform == media::kNoTransformation && CanUseZeroCopyImages(*frame)) {
     // TODO(sandersd): Do we need to be able to handle limited-range RGB? It
     // may never happen, and SkColorSpace doesn't know about it.
+    auto sk_color_space =
+        frame->ColorSpace().GetAsFullRangeRGB().ToSkColorSpace();
+    if (!sk_color_space)
+      sk_color_space = SkColorSpace::MakeSRGB();
+
     const SkImageInfo sk_image_info = SkImageInfo::Make(
         frame->coded_size().width(), frame->coded_size().height(),
-        kN32_SkColorType, kUnpremul_SkAlphaType, frame_sk_color_space);
+        kN32_SkColorType, kUnpremul_SkAlphaType, std::move(sk_color_space));
 
     // Hold a ref by storing it in the release callback.
     auto release_callback = WTF::BindOnce(
@@ -210,11 +210,11 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
   }
 
   auto raster_context_provider = GetRasterContextProvider();
-  // TODO(https://crbug.com/1341235): The choice of color type and alpha type
-  // inappropriate in many circumstances.
-  const auto resource_provider_info = SkImageInfo::Make(
-      gfx::SizeToSkISize(final_dest_rect.size()), kN32_SkColorType,
-      kPremul_SkAlphaType, frame_sk_color_space);
+  // TODO(https://crbug.com/1341235): The choice of color type, alpha type,
+  // and color space is inappropriate in many circumstances.
+  const auto resource_provider_info =
+      SkImageInfo::Make(gfx::SizeToSkISize(final_dest_rect.size()),
+                        kN32_SkColorType, kPremul_SkAlphaType, nullptr);
   std::unique_ptr<CanvasResourceProvider> local_resource_provider;
   if (!resource_provider) {
     local_resource_provider = CreateResourceProviderForVideoFrame(
@@ -238,7 +238,7 @@ scoped_refptr<StaticBitmapImage> CreateImageFromVideoFrame(
   }
 
   return resource_provider->Snapshot(
-      FlushReason::kNon2DCanvas,
+      CanvasResourceProvider::FlushReason::kNon2DCanvas,
       prefer_tagged_orientation
           ? VideoTransformationToImageOrientation(transform)
           : ImageOrientationEnum::kDefault);
@@ -262,7 +262,7 @@ bool DrawVideoFrameIntoResourceProvider(
       return false;  // Unable to get/create a shared main thread context.
     }
     if (!raster_context_provider->GrContext() &&
-        !raster_context_provider->ContextCapabilities().gpu_rasterization) {
+        !raster_context_provider->ContextCapabilities().supports_oop_raster) {
       DLOG(ERROR) << "Unable to process a texture backed VideoFrame w/o a "
                      "GrContext or OOP raster support.";
       return false;  // The context has been lost.
@@ -292,7 +292,7 @@ bool DrawVideoFrameIntoResourceProvider(
   }
 
   video_renderer->Paint(
-      frame.get(), &resource_provider->Canvas(/*needs_will_draw*/ true),
+      frame.get(), resource_provider->Canvas(/*needs_will_draw*/ true),
       gfx::RectF(dest_rect), media_flags,
       ignore_video_transformation
           ? media::kNoTransformation
@@ -337,16 +337,16 @@ scoped_refptr<viz::RasterContextProvider> GetRasterContextProvider() {
 std::unique_ptr<CanvasResourceProvider> CreateResourceProviderForVideoFrame(
     const SkImageInfo& info,
     viz::RasterContextProvider* raster_context_provider) {
-  constexpr auto kFilterQuality = cc::PaintFlags::FilterQuality::kLow;
-  constexpr auto kShouldInitialize =
-      CanvasResourceProvider::ShouldInitialize::kNo;
   if (!ShouldCreateAcceleratedImages(raster_context_provider)) {
-    return CanvasResourceProvider::CreateBitmapProvider(info, kFilterQuality,
-                                                        kShouldInitialize);
+    return CanvasResourceProvider::CreateBitmapProvider(
+        info, cc::PaintFlags::FilterQuality::kLow,
+        CanvasResourceProvider::ShouldInitialize::kNo);
   }
   return CanvasResourceProvider::CreateSharedImageProvider(
-      info, kFilterQuality, kShouldInitialize,
+      info, cc::PaintFlags::FilterQuality::kLow,
+      CanvasResourceProvider::ShouldInitialize::kNo,
       SharedGpuContext::ContextProviderWrapper(), RasterMode::kGPU,
+      false,  // Origin of GL texture is bottom left on screen
       gpu::SHARED_IMAGE_USAGE_DISPLAY_READ);
 }
 

@@ -96,7 +96,7 @@ class CORE_EXPORT DedicatedWorkerMessagingProxy
  private:
   friend class DedicatedWorkerMessagingProxyForTest;
 
-  std::optional<WorkerBackingThreadStartupData> CreateBackingThreadStartupData(
+  absl::optional<WorkerBackingThreadStartupData> CreateBackingThreadStartupData(
       v8::Isolate*);
 
   std::unique_ptr<WorkerThread> CreateWorkerThread() override;

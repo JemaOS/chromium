@@ -132,13 +132,6 @@
     --cr-customize-themes-icon-size: 36px;
   }
 
-  cr-theme-color-picker {
-    --cr-theme-color-padding: 6px;
-    --cr-theme-color-picker-column-width: 50px;
-    --cr-theme-color-picker-grid-gap: 7px;
-    --cr-theme-color-picker-grid-padding: 0;
-  }
-
   .action-container {
     padding: 0 16px 16px;
   }
@@ -180,10 +173,12 @@
   cr-profile-avatar-selector {
     --avatar-size: 72px;
     --avatar-spacing: 18px;
+    --avatar-grid-columns: 5;
     height: fit-content;
     padding-bottom: 12px;
     padding-inline-start: 16px;
     padding-top: 12px;
+    width: fit-content;
   }
 
   .select-avatar-header {
@@ -207,7 +202,7 @@
   }
 
   #selectAvatarDialog .action-container {
-    padding: 22px 24px;
+    padding: 24px;
   }
 
   #selectAvatarConfirmButton {
@@ -230,8 +225,9 @@
   }
 </style>
 
-<cr-view-manager role="dialog" id="viewManager" class="in-dialog-design"
-    aria-labelledby="title" aria-describedby="content">
+<cr-view-manager role="dialog" id="viewManager" aria-labelledby="title"
+    aria-describedby="content"
+    class$="[[getDialogDesignClass_(profileCustomizationInDialogDesign_)]]">
   <div id="customizeDialog" slot="view" class="active">
     <!-- An extra wrapper is needed because cr-view-manager incorrectly
          displays views with display: flex -->
@@ -260,6 +256,9 @@
         <div id="title">
           [[welcomeTitle_]]
         </div>
+        <template is="dom-if" if="[[!profileCustomizationInDialogDesign_]]">
+          <div id="content">$i18n{profileCustomizationText}</div>
+        </template>
       </div>
 
       <cr-input id="nameInput" pattern=".*\\S.*" value="{{profileName_}}"
@@ -270,13 +269,8 @@
       </cr-input>
 
       <div id="pickThemeContainer">
-        <template is="dom-if" if="[[isChromeRefresh2023_]]">
-          <cr-theme-color-picker columns="6"></cr-theme-color-picker>
-        </template>
-        <template is="dom-if" if="[[!isChromeRefresh2023_]]">
-          <cr-customize-themes id="themeSelector">
-          </cr-customize-themes>
-        </template>
+        <cr-customize-themes id="themeSelector">
+        </cr-customize-themes>
       </div>
 
       <div class="action-container">
@@ -314,7 +308,7 @@
       </div>
       <div id="selectAvatarWrapper" class="custom-scrollbar">
         <cr-profile-avatar-selector avatars="[[availableIcons_]]"
-            selected-avatar="{{selectedAvatar_}}" columns="5">
+            selected-avatar="{{selectedAvatar_}}">
         </cr-profile-avatar-selector>
       </div>
       <div class="action-container">

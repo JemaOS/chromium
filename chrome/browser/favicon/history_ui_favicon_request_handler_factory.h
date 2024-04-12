@@ -9,7 +9,7 @@
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace content {
@@ -34,13 +34,14 @@ class HistoryUiFaviconRequestHandlerFactory
       const HistoryUiFaviconRequestHandlerFactory&) = delete;
 
  private:
-  friend base::NoDestructor<HistoryUiFaviconRequestHandlerFactory>;
+  friend struct base::DefaultSingletonTraits<
+      HistoryUiFaviconRequestHandlerFactory>;
 
   HistoryUiFaviconRequestHandlerFactory();
   ~HistoryUiFaviconRequestHandlerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsNULLWhileTesting() const override;
 };

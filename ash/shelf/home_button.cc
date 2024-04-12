@@ -12,13 +12,10 @@
 #include "ash/app_list/model/app_list_item.h"
 #include "ash/app_list/model/app_list_model.h"
 #include "ash/app_list/quick_app_access_model.h"
-#include "ash/ash_element_identifiers.h"
 #include "ash/constants/ash_features.h"
-#include "ash/constants/ash_switches.h"
 #include "ash/public/cpp/ash_typography.h"
 #include "ash/public/cpp/shelf_config.h"
 #include "ash/public/cpp/shelf_types.h"
-#include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/shelf/shelf.h"
 #include "ash/shelf/shelf_control_button.h"
 #include "ash/shelf/shelf_focus_cycler.h"
@@ -28,21 +25,17 @@
 #include "ash/strings/grit/ash_strings.h"
 #include "ash/style/ash_color_id.h"
 #include "ash/style/ash_color_provider.h"
-#include "ash/style/typography.h"
 #include "ash/user_education/user_education_class_properties.h"
+#include "ash/user_education/user_education_constants.h"
+#include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "base/check_op.h"
 #include "base/i18n/rtl.h"
-#include "base/memory/raw_ptr.h"
-#include "base/metrics/field_trial_params.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
 #include "base/time/time.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "chromeos/strings/grit/chromeos_strings.h"
 #include "ui/aura/window.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/gfx/canvas.h"
@@ -50,14 +43,10 @@
 #include "ui/gfx/scoped_canvas.h"
 #include "ui/views/animation/animation_builder.h"
 #include "ui/views/animation/flood_fill_ink_drop_ripple.h"
-#include "ui/views/animation/ink_drop.h"
-#include "ui/views/background.h"
 #include "ui/views/border.h"
 #include "ui/views/controls/button/button_controller.h"
 #include "ui/views/controls/button/image_button.h"
-#include "ui/views/controls/highlight_path_generator.h"
 #include "ui/views/controls/label.h"
-#include "ui/views/highlight_border.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/style/typography.h"
 #include "ui/views/view.h"
@@ -120,201 +109,8 @@ constexpr base::TimeDelta kQuickAppFadeOutDuration = base::Milliseconds(100);
 
 }  // namespace
 
-class HomeButton::ButtonImageView : public views::View {
-  METADATA_HEADER(ButtonImageView, views::View)
-
- public:
-  explicit ButtonImageView(HomeButtonController* button_controller)
-      : button_controller_(button_controller) {
-    SetCanProcessEventsWithinSubtree(false);
-    SetPaintToLayer();
-    layer()->SetFillsBoundsOpaquely(false);
-    UpdateBackground();
-    UpdateIconImageModel();
-  }
-
-  ButtonImageView(const ButtonImageView&) = delete;
-  ButtonImageView& operator=(const ButtonImageView&) = delete;
-
-  ~ButtonImageView() override = default;
-
-  // views::View:
-  void OnPaint(gfx::Canvas* canvas) override {
-    views::View::OnPaint(canvas);
-
-    if (!image_.isNull()) {
-      canvas->DrawImageInt(image_, (width() - image_.width()) / 2,
-                           (height() - image_.height()) / 2, cc::PaintFlags());
-      return;
-    }
-
-    gfx::PointF circle_center(gfx::Rect(size()).CenterPoint());
-
-    const bool is_assistant_available =
-        button_controller_->IsAssistantAvailable();
-    // Paint a white ring as the foreground for the app list circle. The
-    // ceil/dsf math assures that the ring draws sharply and is centered at all
-    // scale factors.
-    const float ring_outer_radius_dp = is_assistant_available ? 8.0f : 7.0f;
-    const float ring_thickness_dp = is_assistant_available ? 1.0f : 1.5f;
-    {
-      gfx::ScopedCanvas scoped_canvas(canvas);
-      const float dsf = canvas->UndoDeviceScaleFactor();
-      circle_center.Scale(dsf);
-      cc::PaintFlags fg_flags;
-      fg_flags.setAntiAlias(true);
-      fg_flags.setStyle(cc::PaintFlags::kStroke_Style);
-      fg_flags.setColor(GetColorProvider()->GetColor(GetIconColorId()));
-
-      if (is_assistant_available) {
-        // active: 100% alpha, inactive: 54% alpha
-        fg_flags.setAlphaf(button_controller_->IsAssistantVisible()
-                               ? kAssistantVisibleAlpha / 255.0f
-                               : kAssistantInvisibleAlpha / 255.0f);
-      }
-
-      const float thickness = std::ceil(ring_thickness_dp * dsf);
-      const float radius =
-          std::ceil(ring_outer_radius_dp * dsf) - thickness / 2;
-      fg_flags.setStrokeWidth(thickness);
-      // Make sure the center of the circle lands on pixel centers.
-      canvas->DrawCircle(circle_center, radius, fg_flags);
-
-      if (is_assistant_available) {
-        fg_flags.setAlphaf(1.0f);
-        const float kCircleRadiusDp = 5.f;
-        fg_flags.setStyle(cc::PaintFlags::kFill_Style);
-        canvas->DrawCircle(circle_center, std::ceil(kCircleRadiusDp * dsf),
-                           fg_flags);
-      }
-    }
-  }
-
-  void OnThemeChanged() override {
-    views::View::OnThemeChanged();
-    if (!chromeos::features::IsJellyEnabled()) {
-      UpdateBackground();
-    }
-    if (image_model_) {
-      image_ = image_model_->Rasterize(GetColorProvider());
-    }
-    SchedulePaint();
-  }
-
-  // Updates the button image view for the new shelf config.
-  void UpdateForShelfConfigChange() {
-    layer()->SetBackgroundBlur(
-        ShelfConfig::Get()->GetShelfControlButtonBlurRadius());
-    layer()->SetBackdropFilterQuality(ColorProvider::kBackgroundBlurQuality);
-    UpdateBackground();
-    UpdateIconImageModel();
-  }
-
-  void SetToggled(bool toggled) {
-    if (toggled_ == toggled) {
-      return;
-    }
-
-    toggled_ = toggled;
-    UpdateBackground();
-    UpdateIconImageModel();
-    SchedulePaint();
-  }
-
- private:
-  // Updates the view background to match the current shelf config.
-  void UpdateBackground() {
-    auto* const shelf_config = ShelfConfig::Get();
-
-    if (shelf_config->in_tablet_mode() && shelf_config->is_in_app()) {
-      SetBackground(nullptr);
-      SetBorder(nullptr);
-      return;
-    }
-
-    const bool is_jelly_enabled = chromeos::features::IsJellyEnabled();
-    if (!is_jelly_enabled) {
-      if (GetWidget()) {
-        SetBackground(views::CreateRoundedRectBackground(
-            shelf_config->GetShelfControlButtonColor(GetWidget()),
-            shelf_config->control_border_radius()));
-      }
-    } else {
-      SetBackground(views::CreateThemedRoundedRectBackground(
-          GetBackgroundColorId(), shelf_config->control_border_radius()));
-    }
-
-    if (shelf_config->in_tablet_mode() && !shelf_config->is_in_app()) {
-      SetBorder(std::make_unique<views::HighlightBorder>(
-          shelf_config->control_border_radius(),
-          is_jelly_enabled
-              ? views::HighlightBorder::Type::kHighlightBorderOnShadow
-              : views::HighlightBorder::Type::kHighlightBorder2));
-    } else {
-      SetBorder(nullptr);
-    }
-  }
-
-  ui::ColorId GetIconColorId() {
-    if (!chromeos::features::IsJellyEnabled()) {
-      return kColorAshButtonIconColor;
-    }
-
-    return toggled_ && !ShelfConfig::Get()->in_tablet_mode()
-               ? cros_tokens::kCrosSysSystemOnPrimaryContainer
-               : cros_tokens::kCrosSysOnSurface;
-  }
-
-  ui::ColorId GetBackgroundColorId() {
-    if (ShelfConfig::Get()->in_tablet_mode()) {
-      return cros_tokens::kCrosSysSystemBaseElevated;
-    }
-
-    return toggled_ ? cros_tokens::kCrosSysSystemPrimaryContainer
-                    : cros_tokens::kCrosSysSystemOnBase;
-  }
-
-  void UpdateIconImageModel() {
-    const std::string campbell_config = base::GetFieldTrialParamValueByFeature(
-        features::kCampbellGlyph, "icon");
-
-    if (campbell_config.empty() || !switches::IsCampbellSecretKeyMatched()) {
-      image_model_ = std::nullopt;
-      image_ = gfx::ImageSkia();
-      return;
-    }
-
-    if (campbell_config == "hero") {
-      image_model_ =
-          ui::ImageModel::FromVectorIcon(kCampbellHeroIcon, GetIconColorId());
-    } else if (campbell_config == "action") {
-      image_model_ =
-          ui::ImageModel::FromVectorIcon(kCampbellActionIcon, GetIconColorId());
-    } else if (campbell_config == "text") {
-      image_model_ =
-          ui::ImageModel::FromVectorIcon(kCampbellTextIcon, GetIconColorId());
-    } else if (campbell_config == "9dot") {
-      image_model_ =
-          ui::ImageModel::FromVectorIcon(kCampbell9dotIcon, GetIconColorId());
-    }
-
-    if (image_model_ && GetColorProvider()) {
-      image_ = image_model_->Rasterize(GetColorProvider());
-    } else {
-      image_ = gfx::ImageSkia();
-    }
-  }
-
-  const raw_ptr<HomeButtonController> button_controller_;
-
-  gfx::ImageSkia image_;
-  std::optional<ui::ImageModel> image_model_;
-
-  bool toggled_ = false;
-};
-
-BEGIN_METADATA(HomeButton, ButtonImageView)
-END_METADATA
+// static
+const char HomeButton::kViewClassName[] = "ash/HomeButton";
 
 // HomeButton::ScopedNoClipRect ------------------------------------------------
 
@@ -335,42 +131,25 @@ HomeButton::ScopedNoClipRect::~ScopedNoClipRect() {
 // HomeButton::ScopedNoClipRect ------------------------------------------------
 
 HomeButton::HomeButton(Shelf* shelf)
-    : ShelfControlButton(shelf, this),
-      jelly_enabled_(chromeos::features::IsJellyEnabled()),
-      shelf_(shelf),
-      controller_(this) {
+    : ShelfControlButton(shelf, this), shelf_(shelf), controller_(this) {
   SetAccessibleName(
       l10n_util::GetStringUTF16(IDS_ASH_SHELF_APP_LIST_LAUNCHER_TITLE));
   button_controller()->set_notify_action(
       views::ButtonController::NotifyAction::kOnPress);
-
-  // When Jelly is disabled, the toggled state is achieved by activating ink
-  // drop from the home button controller. Given that the controller manages ink
-  // drop on gesture events itself, disable the default on-gesture ink drop
-  // behavior.
-  views::InkDrop::Get(this)->SetMode(
-      jelly_enabled_ ? views::InkDropHost::InkDropMode::ON
-                     : views::InkDropHost::InkDropMode::ON_NO_GESTURE_HANDLER);
-  if (!jelly_enabled_) {
-    SetHasInkDropActionOnClick(false);
-  }
+  SetHasInkDropActionOnClick(false);
 
   SetEventTargeter(std::make_unique<views::ViewTargeter>(this));
   layer()->SetName("shelf/Homebutton");
 
-  // Added at 0 index to ensure it's painted below focus ring view.
-  button_image_view_ =
-      AddChildViewAt(std::make_unique<ButtonImageView>(&controller_), 0);
-
-  if (features::IsHomeButtonWithTextEnabled()) {
+  if (features::IsHomeButtonWithTextEnabled() &&
+      !features::IsHomeButtonQuickAppAccessEnabled()) {
     // Directly shows the nudge label if the text-in-shelf feature is enabled.
     CreateNudgeLabel();
     expandable_container_->SetVisible(true);
     shelf_->shelf_layout_manager()->LayoutShelf(false);
   }
 
-  if (features::IsHomeButtonQuickAppAccessEnabled() &&
-      !features::IsHomeButtonWithTextEnabled()) {
+  if (features::IsHomeButtonQuickAppAccessEnabled()) {
     shell_observation_.Observe(Shell::Get());
     app_list_model_observation_.Observe(AppListModelProvider::Get());
     quick_app_model_observation_.Observe(
@@ -381,38 +160,25 @@ HomeButton::HomeButton(Shelf* shelf)
     // NOTE: Set `kHelpBubbleContextKey` before `views::kElementIdentifierKey`
     // in case registration causes a help bubble to be created synchronously.
     SetProperty(kHelpBubbleContextKey, HelpBubbleContext::kAsh);
+    SetProperty(views::kElementIdentifierKey, kHomeButtonElementId);
   }
-  SetProperty(views::kElementIdentifierKey, kHomeButtonElementId);
-
-  ShelfConfig::Get()->AddObserver(this);
 }
 
-HomeButton::~HomeButton() {
-  ShelfConfig::Get()->RemoveObserver(this);
-}
+HomeButton::~HomeButton() = default;
 
 gfx::Size HomeButton::CalculatePreferredSize() const {
-  const gfx::Size control_button_size =
-      ShelfControlButton::CalculatePreferredSize();
-
   // Take the preferred size of the expandable container into consideration when
   // it is visible. Note that the button width is already included in the label
   // width.
   if (expandable_container_ && expandable_container_->GetVisible()) {
-    const gfx::Size container_size = expandable_container_->GetPreferredSize();
-    return gfx::Size(
-        std::max(control_button_size.width(), container_size.width()),
-        std::max(control_button_size.height(), container_size.height()));
+    return expandable_container_->GetPreferredSize();
   }
 
-  return control_button_size;
+  return ShelfControlButton::CalculatePreferredSize();
 }
 
-void HomeButton::Layout(PassKey) {
-  LayoutSuperclass<ShelfControlButton>(this);
-
-  button_image_view_->SetBoundsRect(
-      gfx::Rect(ShelfControlButton::CalculatePreferredSize()));
+void HomeButton::Layout() {
+  ShelfControlButton::Layout();
 
   if (expandable_container_) {
     if (shelf_->IsHorizontalAlignment()) {
@@ -454,6 +220,10 @@ std::u16string HomeButton::GetTooltipText(const gfx::Point& p) const {
   return IsShowingAppList() ? std::u16string() : GetAccessibleName();
 }
 
+const char* HomeButton::GetClassName() const {
+  return kViewClassName;
+}
+
 void HomeButton::OnShelfButtonAboutToRequestFocusFromTabTraversal(
     ShelfButton* button,
     bool reverse) {
@@ -480,7 +250,7 @@ void HomeButton::OnShelfButtonAboutToRequestFocusFromTabTraversal(
 void HomeButton::ButtonPressed(views::Button* sender,
                                const ui::Event& event,
                                views::InkDrop* ink_drop) {
-  if (display::Screen::GetScreen()->InTabletMode()) {
+  if (Shell::Get()->tablet_mode_controller()->InTabletMode()) {
     base::RecordAction(
         base::UserMetricsAction("AppList_HomeButtonPressedTablet"));
   } else {
@@ -510,17 +280,8 @@ void HomeButton::ButtonPressed(views::Button* sender,
   }
 }
 
-void HomeButton::OnShelfConfigUpdated() {
-  button_image_view_->UpdateForShelfConfigChange();
-}
-
 void HomeButton::OnAssistantAvailabilityChanged() {
-  // `button_image_view_` may not be set during `HomeButton` construction -
-  // `button_image_view_` is created after `controller_`, which can end up
-  // calling this method in response to registering assistant state observer.
-  if (button_image_view_) {
-    button_image_view_->SchedulePaint();
-  }
+  SchedulePaint();
 }
 
 bool HomeButton::IsShowingAppList() const {
@@ -643,10 +404,6 @@ void HomeButton::StartNudgeAnimation() {
   AnimateNudgeRipple(builder);
 }
 
-void HomeButton::SetToggled(bool toggled) {
-  button_image_view_->SetToggled(toggled);
-}
-
 void HomeButton::AddNudgeAnimationObserverForTest(
     NudgeAnimationObserver* observer) {
   observers_.AddObserver(observer);
@@ -656,40 +413,84 @@ void HomeButton::RemoveNudgeAnimationObserverForTest(
   observers_.RemoveObserver(observer);
 }
 
+void HomeButton::PaintButtonContents(gfx::Canvas* canvas) {
+  gfx::PointF circle_center(gfx::Rect(size()).CenterPoint());
+
+  // Paint a white ring as the foreground for the app list circle. The ceil/dsf
+  // math assures that the ring draws sharply and is centered at all scale
+  // factors.
+  float ring_outer_radius_dp = 7.f;
+  float ring_thickness_dp = 1.5f;
+  if (controller_.IsAssistantAvailable()) {
+    ring_outer_radius_dp = 8.f;
+    ring_thickness_dp = 1.f;
+  }
+  {
+    gfx::ScopedCanvas scoped_canvas(canvas);
+    const float dsf = canvas->UndoDeviceScaleFactor();
+    circle_center.Scale(dsf);
+    cc::PaintFlags fg_flags;
+    fg_flags.setAntiAlias(true);
+    fg_flags.setStyle(cc::PaintFlags::kStroke_Style);
+    fg_flags.setColor(AshColorProvider::Get()->GetContentLayerColor(
+        AshColorProvider::ContentLayerType::kButtonIconColor));
+
+    if (controller_.IsAssistantAvailable()) {
+      // active: 100% alpha, inactive: 54% alpha
+      fg_flags.setAlphaf(controller_.IsAssistantVisible()
+                             ? kAssistantVisibleAlpha / 255.0f
+                             : kAssistantInvisibleAlpha / 255.0f);
+    }
+
+    const float thickness = std::ceil(ring_thickness_dp * dsf);
+    const float radius = std::ceil(ring_outer_radius_dp * dsf) - thickness / 2;
+    fg_flags.setStrokeWidth(thickness);
+    // Make sure the center of the circle lands on pixel centers.
+    canvas->DrawCircle(circle_center, radius, fg_flags);
+
+    if (controller_.IsAssistantAvailable()) {
+      fg_flags.setAlphaf(1.0f);
+      const float kCircleRadiusDp = 5.f;
+      fg_flags.setStyle(cc::PaintFlags::kFill_Style);
+      canvas->DrawCircle(circle_center, std::ceil(kCircleRadiusDp * dsf),
+                         fg_flags);
+    }
+  }
+}
+
 void HomeButton::OnThemeChanged() {
   ShelfControlButton::OnThemeChanged();
-
   if (ripple_layer_delegate_) {
-    ripple_layer_delegate_->set_color(GetColorProvider()->GetColor(
-        jelly_enabled_ ? static_cast<ui::ColorId>(
-                             cros_tokens::kCrosSysRippleNeutralOnSubtle)
-                       : kColorAshInkDropOpaqueColor));
+    ripple_layer_delegate_->set_color(
+        GetColorProvider()->GetColor(kColorAshInkDropOpaqueColor));
   }
   if (expandable_container_) {
-    expandable_container_->layer()->SetColor(GetColorProvider()->GetColor(
-        jelly_enabled_
-            ? static_cast<ui::ColorId>(cros_tokens::kCrosSysSystemOnBase)
-            : kColorAshControlBackgroundColorInactive));
+    expandable_container_->layer()->SetColor(
+        AshColorProvider::Get()->GetControlsLayerColor(
+            AshColorProvider::ControlsLayerType::
+                kControlBackgroundColorInactive));
+    if (nudge_label_) {
+      nudge_label_->SetEnabledColor(
+          AshColorProvider::Get()->GetContentLayerColor(
+              AshColorProvider::ContentLayerType::kTextColorPrimary));
+    }
   }
+  SchedulePaint();
 }
 
 void HomeButton::CreateExpandableContainer() {
   const int home_button_width =
       ShelfControlButton::CalculatePreferredSize().width();
 
-  // Add container at 0 index so it's stacked under other views (e.g.
-  // `button_image_view_`, and focus ring).
-  expandable_container_ = AddChildViewAt(std::make_unique<views::View>(), 0);
+  expandable_container_ = AddChildView(std::make_unique<views::View>());
   expandable_container_->SetLayoutManager(
       std::make_unique<views::FillLayout>());
   expandable_container_->SetPaintToLayer(ui::LAYER_SOLID_COLOR);
   expandable_container_->layer()->SetMasksToBounds(true);
-  if (GetColorProvider()) {
-    expandable_container_->layer()->SetColor(GetColorProvider()->GetColor(
-        jelly_enabled_
-            ? static_cast<ui::ColorId>(cros_tokens::kCrosSysSystemOnBase)
-            : kColorAshControlBackgroundColorInactive));
-  }
+  expandable_container_->layer()->SetColor(
+      AshColorProvider::Get()->GetControlsLayerColor(
+          AshColorProvider::ControlsLayerType::
+              kControlBackgroundColorInactive));
   expandable_container_->layer()->SetRoundedCornerRadius(
       gfx::RoundedCornersF(home_button_width / 2.f));
   expandable_container_->layer()->SetName("NudgeLabelContainer");
@@ -720,15 +521,11 @@ void HomeButton::CreateNudgeLabel() {
   nudge_label_->layer()->SetFillsBoundsOpaquely(false);
   nudge_label_->SetTextContext(CONTEXT_LAUNCHER_NUDGE_LABEL);
   nudge_label_->SetTextStyle(views::style::STYLE_EMPHASIZED);
-  nudge_label_->SetEnabledColorId(
-      jelly_enabled_ ? static_cast<ui::ColorId>(cros_tokens::kCrosSysOnSurface)
-                     : kColorAshTextColorPrimary);
-  if (jelly_enabled_) {
-    TypographyProvider::Get()->StyleLabel(TypographyToken::kCrosButton2,
-                                          *nudge_label_);
-  }
+  nudge_label_->SetEnabledColor(AshColorProvider::Get()->GetContentLayerColor(
+      AshColorProvider::ContentLayerType::kTextColorPrimary));
+
   expandable_container_->SetVisible(false);
-  DeprecatedLayoutImmediately();
+  Layout();
 }
 
 void HomeButton::CreateQuickAppButton() {
@@ -749,8 +546,8 @@ void HomeButton::CreateQuickAppButton() {
   quick_app_button_ = expandable_container_->AddChildView(
       std::make_unique<views::ImageButton>(base::BindRepeating(
           &HomeButton::QuickAppButtonPressed, base::Unretained(this))));
-  quick_app_button_->SetAccessibleName(
-      AppListModelProvider::Get()->quick_app_access_model()->GetAppName());
+  // TODO(b/266734005): Replace with localized string once finalized.
+  quick_app_button_->SetAccessibleName(u"QuickApp");
 
   const int control_size = ShelfControlButton::CalculatePreferredSize().width();
 
@@ -758,18 +555,10 @@ void HomeButton::CreateQuickAppButton() {
 
   quick_app_button_->SetPaintToLayer();
   quick_app_button_->layer()->SetFillsBoundsOpaquely(false);
-  quick_app_button_->SetImageModel(
+  quick_app_button_->SetImage(
       views::Button::STATE_NORMAL,
-      ui::ImageModel::FromImageSkia(
-          AppListModelProvider::Get()->quick_app_access_model()->GetAppIcon(
-              preferred_size)));
-  views::HighlightPathGenerator::Install(
-      quick_app_button_,
-      std::make_unique<views::RoundRectHighlightPathGenerator>(
-          gfx::Insets(views::FocusRing::kDefaultHaloThickness / 2),
-          ShelfConfig::Get()->control_border_radius()));
-  views::FocusRing::Get(quick_app_button_)
-      ->SetColorId(cros_tokens::kCrosSysFocusRing);
+      AppListModelProvider::Get()->quick_app_access_model()->GetAppIcon(
+          preferred_size));
   quick_app_button_->SetSize(preferred_size);
 
   shelf_->shelf_layout_manager()->LayoutShelf(false);
@@ -988,13 +777,15 @@ void HomeButton::OnLabelFadeOutAnimationEnded() {
 }
 
 void HomeButton::RemoveNudgeLabel() {
+  RemoveChildViewT(expandable_container_.get());
+  expandable_container_ = nullptr;
   nudge_label_ = nullptr;
-  RemoveChildViewT(expandable_container_.ExtractAsDangling());
 }
 
 void HomeButton::RemoveQuickAppButton() {
+  RemoveChildViewT(expandable_container_.get());
+  expandable_container_ = nullptr;
   quick_app_button_ = nullptr;
-  RemoveChildViewT(expandable_container_.ExtractAsDangling());
 }
 
 bool HomeButton::DoesIntersectRect(const views::View* target,
@@ -1051,11 +842,10 @@ void HomeButton::OnQuickAppIconChanged() {
   }
 
   const int control_size = ShelfControlButton::CalculatePreferredSize().width();
-  quick_app_button_->SetImageModel(
+  quick_app_button_->SetImage(
       views::Button::STATE_NORMAL,
-      ui::ImageModel::FromImageSkia(
-          AppListModelProvider::Get()->quick_app_access_model()->GetAppIcon(
-              gfx::Size(control_size, control_size))));
+      AppListModelProvider::Get()->quick_app_access_model()->GetAppIcon(
+          gfx::Size(control_size, control_size)));
 }
 
 void HomeButton::AnimateQuickAppButtonIn() {
@@ -1156,8 +946,5 @@ gfx::Rect HomeButton::GetExpandableContainerClipRectToHomeButton() {
 
   return clip_rect;
 }
-
-BEGIN_METADATA(HomeButton)
-END_METADATA
 
 }  // namespace ash

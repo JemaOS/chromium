@@ -8,8 +8,8 @@ import 'chrome://resources/polymer/v3_0/iron-collapse/iron-collapse.js';
 import './print_preview_shared.css.js';
 import './settings_section.js';
 
-import type {CrCheckboxElement} from 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
-import type {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
+import {CrCheckboxElement} from 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
+import {CrInputElement} from 'chrome://resources/cr_elements/cr_input/cr_input.js';
 import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
@@ -63,10 +63,10 @@ export class PrintPreviewPinSettingsElement extends
         observer: 'onInputChanged_',
       },
 
-      isPinValid: {
+      inputValid_: {
         type: Boolean,
+        value: true,
         reflectToAttribute: true,
-        notify: true,
       },
     };
   }
@@ -80,9 +80,9 @@ export class PrintPreviewPinSettingsElement extends
 
   state: State;
   disabled: boolean;
-  isPinValid: boolean;
   private checkboxDisabled_: boolean;
   private inputString_: string;
+  private inputValid_: boolean;
   private pinEnabled_: boolean;
 
   override ready() {
@@ -121,7 +121,7 @@ export class PrintPreviewPinSettingsElement extends
    * @return Whether to disable the pin value input.
    */
   private inputDisabled_(): boolean {
-    return !this.pinEnabled_ || (this.isPinValid && this.disabled);
+    return !this.pinEnabled_ || (this.inputValid_ && this.disabled);
   }
 
   /**
@@ -142,7 +142,7 @@ export class PrintPreviewPinSettingsElement extends
     // after unchecking the pin and to check the validity again after checking
     // the pin.
     if (!this.$.pin.checked) {
-      this.isPinValid = true;
+      this.setSettingValid('pinValue', true);
     } else {
       this.changePinValueSetting_();
     }
@@ -176,11 +176,12 @@ export class PrintPreviewPinSettingsElement extends
     if (this.state !== State.READY && this.settings.pinValue!.valid) {
       return;
     }
-    this.isPinValid = this.computeValid_();
+    this.inputValid_ = this.computeValid_();
+    this.setSettingValid('pinValue', this.inputValid_);
 
     // We allow to save the empty string as sticky setting value to give users
     // the opportunity to unset their PIN in sticky settings.
-    if ((this.isPinValid || this.inputString_ === '') &&
+    if ((this.inputValid_ || this.inputString_ === '') &&
         this.inputString_ !== this.getSettingValue('pinValue')) {
       this.setSetting('pinValue', this.inputString_);
     }
@@ -193,11 +194,12 @@ export class PrintPreviewPinSettingsElement extends
   private computeValid_(): boolean {
     // Make sure value updates first, in case inputString_ was updated by JS.
     this.$.pinValue.value = this.inputString_;
-    return this.$.pinValue.validate();
+    this.$.pinValue.validate();
+    return !this.$.pinValue.invalid;
   }
 
   private getPinErrorMessage_(): string {
-    return this.isPinValid ? '' : this.i18n('pinErrorMessage');
+    return this.inputValid_ ? '' : this.i18n('pinErrorMessage');
   }
 }
 

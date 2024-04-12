@@ -10,10 +10,8 @@
 #include <string>
 #include <utility>
 
-#include "base/apple/bridging.h"
-#include "base/apple/scoped_cftyperef.h"
 #include "base/containers/span.h"
-#include "base/memory/raw_ptr.h"
+#include "base/mac/scoped_cftyperef.h"
 #include "base/strings/sys_string_conversions.h"
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/mac/mock_secure_enclave_client.h"
 #include "chrome/browser/enterprise/connectors/device_trust/key_management/core/mac/secure_enclave_signing_key.h"
@@ -23,25 +21,22 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 using BPKUR = enterprise_management::BrowserPublicKeyUploadRequest;
-using base::apple::CFToNSPtrCast;
-using base::apple::NSToCFPtrCast;
 using ::testing::_;
 using ::testing::InSequence;
 
 namespace enterprise_connectors {
 
 using test::MockSecureEnclaveClient;
-using KeyType = SecureEnclaveClient::KeyType;
 
 class MacKeyPersistenceDelegateTest : public testing::Test {
  public:
   MacKeyPersistenceDelegateTest() {
-    SetNextMockClient();
+    SetMockClient();
     persistence_delegate_ = std::make_unique<MacKeyPersistenceDelegate>();
   }
 
  protected:
-  void SetNextMockClient() {
+  void SetMockClient() {
     auto mock_secure_enclave_client =
         std::make_unique<MockSecureEnclaveClient>();
     mock_secure_enclave_client_ = mock_secure_enclave_client.get();
@@ -56,23 +51,29 @@ class MacKeyPersistenceDelegateTest : public testing::Test {
   }
 
   // Creates a test key.
-  base::apple::ScopedCFTypeRef<SecKeyRef> CreateTestKey() {
-    NSDictionary* test_attributes = @{
-      CFToNSPtrCast(kSecAttrLabel) : @"fake-label",
-      CFToNSPtrCast(kSecAttrKeyType) :
-          CFToNSPtrCast(kSecAttrKeyTypeECSECPrimeRandom),
-      CFToNSPtrCast(kSecAttrKeySizeInBits) : @256,
-      CFToNSPtrCast(kSecPrivateKeyAttrs) :
-          @{CFToNSPtrCast(kSecAttrIsPermanent) : @NO}
-    };
-
-    return base::apple::ScopedCFTypeRef<SecKeyRef>(
-        SecKeyCreateRandomKey(NSToCFPtrCast(test_attributes), nullptr));
+  base::ScopedCFTypeRef<SecKeyRef> CreateTestKey() {
+    base::ScopedCFTypeRef<CFMutableDictionaryRef> test_attributes(
+        CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+                                  &kCFTypeDictionaryKeyCallBacks,
+                                  &kCFTypeDictionaryValueCallBacks));
+    CFDictionarySetValue(test_attributes, kSecAttrLabel,
+                         base::SysUTF8ToNSString("fake-label"));
+    CFDictionarySetValue(test_attributes, kSecAttrKeyType,
+                         kSecAttrKeyTypeECSECPrimeRandom);
+    CFDictionarySetValue(test_attributes, kSecAttrKeySizeInBits, @256);
+    base::ScopedCFTypeRef<CFMutableDictionaryRef> private_key_params(
+        CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+                                  &kCFTypeDictionaryKeyCallBacks,
+                                  &kCFTypeDictionaryValueCallBacks));
+    CFDictionarySetValue(private_key_params, kSecAttrIsPermanent, @NO);
+    CFDictionarySetValue(test_attributes, kSecPrivateKeyAttrs,
+                         private_key_params);
+    return base::ScopedCFTypeRef<SecKeyRef>(
+        SecKeyCreateRandomKey(test_attributes, nullptr));
   }
 
   std::unique_ptr<MacKeyPersistenceDelegate> persistence_delegate_;
-  raw_ptr<MockSecureEnclaveClient, DanglingUntriaged>
-      mock_secure_enclave_client_ = nullptr;
+  MockSecureEnclaveClient* mock_secure_enclave_client_ = nullptr;
 };
 
 // Tests that storing a key with an OS key trust level invokes the clients'
@@ -87,9 +88,10 @@ TEST_F(MacKeyPersistenceDelegateTest, StoreKeyPair_OSKey_Success) {
 
   // Correct wrapped data consists of the wrapped temporary key label.
   EXPECT_CALL(*mock_secure_enclave_client_, UpdateStoredKeyLabel(_, _))
-      .WillOnce([](KeyType current_key_type, KeyType new_key_type) {
-        EXPECT_EQ(KeyType::kTemporary, current_key_type);
-        EXPECT_EQ(KeyType::kPermanent, new_key_type);
+      .WillOnce([](SecureEnclaveClient::KeyType current_key_type,
+                   SecureEnclaveClient::KeyType new_key_type) {
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kTemporary, current_key_type);
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, new_key_type);
         return true;
       });
   EXPECT_TRUE(persistence_delegate_->StoreKeyPair(
@@ -101,9 +103,10 @@ TEST_F(MacKeyPersistenceDelegateTest, StoreKeyPair_OSKey_Success) {
 // UpdateStoredKeyLabel method returns false.
 TEST_F(MacKeyPersistenceDelegateTest, StoreKeyPair_OSKey_Failure) {
   EXPECT_CALL(*mock_secure_enclave_client_, UpdateStoredKeyLabel(_, _))
-      .WillOnce([](KeyType current_key_type, KeyType new_key_type) {
-        EXPECT_EQ(KeyType::kTemporary, current_key_type);
-        EXPECT_EQ(KeyType::kPermanent, new_key_type);
+      .WillOnce([](SecureEnclaveClient::KeyType current_key_type,
+                   SecureEnclaveClient::KeyType new_key_type) {
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kTemporary, current_key_type);
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, new_key_type);
         return false;
       });
   EXPECT_FALSE(persistence_delegate_->StoreKeyPair(
@@ -117,8 +120,8 @@ TEST_F(MacKeyPersistenceDelegateTest, StoreKeyPair_UnspecifiedKey_Success) {
   InSequence s;
 
   EXPECT_CALL(*mock_secure_enclave_client_, DeleteKey(_))
-      .WillOnce([](KeyType current_key_type) {
-        EXPECT_EQ(KeyType::kPermanent, current_key_type);
+      .WillOnce([](SecureEnclaveClient::KeyType current_key_type) {
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, current_key_type);
         return true;
       });
   EXPECT_TRUE(persistence_delegate_->StoreKeyPair(
@@ -138,9 +141,10 @@ TEST_F(MacKeyPersistenceDelegateTest, StoreKeyPair_HardwareKey_Success) {
 
   // Correct wrapped data consists of the wrapped temporary key label.
   EXPECT_CALL(*mock_secure_enclave_client_, UpdateStoredKeyLabel(_, _))
-      .WillOnce([](KeyType current_key_type, KeyType new_key_type) {
-        EXPECT_EQ(KeyType::kTemporary, current_key_type);
-        EXPECT_EQ(KeyType::kPermanent, new_key_type);
+      .WillOnce([](SecureEnclaveClient::KeyType current_key_type,
+                   SecureEnclaveClient::KeyType new_key_type) {
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kTemporary, current_key_type);
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, new_key_type);
         return true;
       });
   EXPECT_TRUE(persistence_delegate_->StoreKeyPair(
@@ -152,9 +156,10 @@ TEST_F(MacKeyPersistenceDelegateTest, StoreKeyPair_HardwareKey_Success) {
 // UpdateStoredKeyLabel method returns false.
 TEST_F(MacKeyPersistenceDelegateTest, StoreKeyPair_HardwareKey_Failure) {
   EXPECT_CALL(*mock_secure_enclave_client_, UpdateStoredKeyLabel(_, _))
-      .WillOnce([](KeyType current_key_type, KeyType new_key_type) {
-        EXPECT_EQ(KeyType::kTemporary, current_key_type);
-        EXPECT_EQ(KeyType::kPermanent, new_key_type);
+      .WillOnce([](SecureEnclaveClient::KeyType current_key_type,
+                   SecureEnclaveClient::KeyType new_key_type) {
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kTemporary, current_key_type);
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, new_key_type);
         return false;
       });
   EXPECT_FALSE(persistence_delegate_->StoreKeyPair(
@@ -164,61 +169,75 @@ TEST_F(MacKeyPersistenceDelegateTest, StoreKeyPair_HardwareKey_Failure) {
 
 // Tests loading a key pair when no key previously existed.
 TEST_F(MacKeyPersistenceDelegateTest, LoadKeyPair_NoKey) {
-  SetNextMockClient();
-  EXPECT_CALL(*mock_secure_enclave_client_,
-              CopyStoredKey(KeyType::kPermanent, _))
-      .WillOnce([](KeyType key_type, OSStatus* error) {
-        *error = errSecItemNotFound;
-        return base::apple::ScopedCFTypeRef<SecKeyRef>(nullptr);
-      });
-  LoadPersistedKeyResult result;
-  EXPECT_FALSE(
-      persistence_delegate_->LoadKeyPair(KeyStorageType::kPermanent, &result));
-  EXPECT_EQ(result, LoadPersistedKeyResult::kNotFound);
+  InSequence s;
+
+  EXPECT_CALL(*mock_secure_enclave_client_, GetStoredKeyLabel(_, _))
+      .WillOnce(
+          [](SecureEnclaveClient::KeyType type, std::vector<uint8_t>& output) {
+            EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, type);
+            return false;
+          });
+  EXPECT_FALSE(persistence_delegate_->LoadKeyPair());
+
+  EXPECT_CALL(*mock_secure_enclave_client_, GetStoredKeyLabel(_, _))
+      .WillOnce(
+          [](SecureEnclaveClient::KeyType type, std::vector<uint8_t>& output) {
+            EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, type);
+            return true;
+          });
+  EXPECT_FALSE(persistence_delegate_->LoadKeyPair());
 }
 
 // Tests loading a key pair when a key previously existed.
 TEST_F(MacKeyPersistenceDelegateTest, LoadKeyPair_Key) {
-  SetNextMockClient();
-  EXPECT_CALL(*mock_secure_enclave_client_,
-              CopyStoredKey(KeyType::kPermanent, _))
+  EXPECT_CALL(*mock_secure_enclave_client_, GetStoredKeyLabel(_, _))
       .WillOnce(
-          [this](KeyType type, OSStatus* error) { return CreateTestKey(); });
+          [](SecureEnclaveClient::KeyType type, std::vector<uint8_t>& output) {
+            EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, type);
+            std::string label = constants::kDeviceTrustSigningKeyLabel;
+            output.assign(label.begin(), label.end());
+            return true;
+          });
 
-  LoadPersistedKeyResult result;
-  auto key_pair =
-      persistence_delegate_->LoadKeyPair(KeyStorageType::kPermanent, &result);
-  ASSERT_TRUE(key_pair);
-  EXPECT_EQ(result, LoadPersistedKeyResult::kSuccess);
+  SetMockClient();
+  EXPECT_CALL(*mock_secure_enclave_client_, CopyStoredKey(_))
+      .WillOnce([this](SecureEnclaveClient::KeyType type) {
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, type);
+        return CreateTestKey();
+      });
+
+  auto key_pair = persistence_delegate_->LoadKeyPair();
   EXPECT_EQ(BPKUR::CHROME_BROWSER_HW_KEY, key_pair->trust_level());
   EXPECT_TRUE(key_pair->key());
 }
 
 // Tests a failure to create a new key pair.
-TEST_F(MacKeyPersistenceDelegateTest, CreateKeyPair_EmptySigningKey) {
+TEST_F(MacKeyPersistenceDelegateTest, CreateKeyPair__EmptySigningKey) {
   EXPECT_CALL(*mock_secure_enclave_client_, UpdateStoredKeyLabel(_, _))
-      .WillOnce([](KeyType current_key_type, KeyType new_key_type) {
-        EXPECT_EQ(KeyType::kPermanent, current_key_type);
-        EXPECT_EQ(KeyType::kTemporary, new_key_type);
+      .WillOnce([](SecureEnclaveClient::KeyType current_key_type,
+                   SecureEnclaveClient::KeyType new_key_type) {
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, current_key_type);
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kTemporary, new_key_type);
         return true;
       });
 
-  SetNextMockClient();
+  SetMockClient();
   EXPECT_CALL(*mock_secure_enclave_client_, CreatePermanentKey())
-      .WillOnce([]() { return base::apple::ScopedCFTypeRef<SecKeyRef>(); });
+      .WillOnce([]() { return base::ScopedCFTypeRef<SecKeyRef>(); });
   EXPECT_FALSE(persistence_delegate_->CreateKeyPair());
 }
 
 // Tests a successful call to create a new key pair.
 TEST_F(MacKeyPersistenceDelegateTest, CreateKeyPair_Success) {
   EXPECT_CALL(*mock_secure_enclave_client_, UpdateStoredKeyLabel(_, _))
-      .WillOnce([](KeyType current_key_type, KeyType new_key_type) {
-        EXPECT_EQ(KeyType::kPermanent, current_key_type);
-        EXPECT_EQ(KeyType::kTemporary, new_key_type);
+      .WillOnce([](SecureEnclaveClient::KeyType current_key_type,
+                   SecureEnclaveClient::KeyType new_key_type) {
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kPermanent, current_key_type);
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kTemporary, new_key_type);
         return true;
       });
 
-  SetNextMockClient();
+  SetMockClient();
   EXPECT_CALL(*mock_secure_enclave_client_, CreatePermanentKey())
       .WillOnce([this]() { return CreateTestKey(); });
   auto key_pair = persistence_delegate_->CreateKeyPair();
@@ -230,21 +249,11 @@ TEST_F(MacKeyPersistenceDelegateTest, CreateKeyPair_Success) {
 // DeleteKey method with the correct key type.
 TEST_F(MacKeyPersistenceDelegateTest, CleanupTemporaryKeyData) {
   EXPECT_CALL(*mock_secure_enclave_client_, DeleteKey(_))
-      .WillOnce([](KeyType key_type) {
-        EXPECT_EQ(KeyType::kTemporary, key_type);
+      .WillOnce([](SecureEnclaveClient::KeyType key_type) {
+        EXPECT_EQ(SecureEnclaveClient::KeyType::kTemporary, key_type);
         return true;
       });
   persistence_delegate_->CleanupTemporaryKeyData();
-}
-
-// TODO(b/290068552): Add test coverage for this method.
-TEST_F(MacKeyPersistenceDelegateTest, PromoteTemporaryKeyPair) {
-  EXPECT_TRUE(persistence_delegate_->PromoteTemporaryKeyPair());
-}
-
-// TODO(b/290068552): Add test coverage for this method.
-TEST_F(MacKeyPersistenceDelegateTest, DeleteKeyPair) {
-  EXPECT_TRUE(persistence_delegate_->DeleteKeyPair(KeyStorageType::kTemporary));
 }
 
 }  // namespace enterprise_connectors

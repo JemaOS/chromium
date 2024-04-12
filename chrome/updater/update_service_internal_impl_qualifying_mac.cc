@@ -4,8 +4,6 @@
 
 #include "chrome/updater/update_service_internal_impl_qualifying.h"
 
-#include <optional>
-
 #include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/process/launch.h"
@@ -22,7 +20,7 @@ namespace {
 // and exit with exit code 0 if so. This function returns true if the launcher
 // exits with 0.
 bool CheckLauncherCanLaunchServer(UpdaterScope scope) {
-  std::optional<base::FilePath> app_bundle_path =
+  absl::optional<base::FilePath> app_bundle_path =
       GetUpdaterAppBundlePath(scope);
   if (!app_bundle_path) {
     VLOG(1) << "No app bundle path.";

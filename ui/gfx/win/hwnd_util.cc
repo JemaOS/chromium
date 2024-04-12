@@ -122,13 +122,13 @@ bool IsWindowCloaked(HWND hwnd) {
          is_cloaked;
 }
 
-std::optional<bool> IsWindowOnCurrentVirtualDesktop(
+absl::optional<bool> IsWindowOnCurrentVirtualDesktop(
     HWND window,
     Microsoft::WRL::ComPtr<IVirtualDesktopManager> virtual_desktop_manager) {
   BOOL on_current_desktop;
   if (FAILED(virtual_desktop_manager->IsWindowOnCurrentVirtualDesktop(
           window, &on_current_desktop))) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   if (on_current_desktop)
     return true;
@@ -140,7 +140,7 @@ std::optional<bool> IsWindowOnCurrentVirtualDesktop(
   GUID workspace_guid;
   if (FAILED(virtual_desktop_manager->GetWindowDesktopId(window,
                                                          &workspace_guid))) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return workspace_guid == GUID_NULL;
 }

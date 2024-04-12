@@ -22,30 +22,22 @@ BackgroundFetchDelegateImpl* BackgroundFetchDelegateFactory::GetForProfile(
 
 // static
 BackgroundFetchDelegateFactory* BackgroundFetchDelegateFactory::GetInstance() {
-  static base::NoDestructor<BackgroundFetchDelegateFactory> instance;
-  return instance.get();
+  return base::Singleton<BackgroundFetchDelegateFactory>::get();
 }
 
 BackgroundFetchDelegateFactory::BackgroundFetchDelegateFactory()
     : ProfileKeyedServiceFactory(
           "BackgroundFetchService",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {
+          ProfileSelections::BuildForRegularAndIncognito()) {
   DependsOn(BackgroundDownloadServiceFactory::GetInstance());
   DependsOn(HostContentSettingsMapFactory::GetInstance());
   DependsOn(OfflineContentAggregatorFactory::GetInstance());
   DependsOn(ukm::UkmBackgroundRecorderFactory::GetInstance());
 }
 
-BackgroundFetchDelegateFactory::~BackgroundFetchDelegateFactory() = default;
+BackgroundFetchDelegateFactory::~BackgroundFetchDelegateFactory() {}
 
-std::unique_ptr<KeyedService>
-BackgroundFetchDelegateFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* BackgroundFetchDelegateFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<BackgroundFetchDelegateImpl>(
-      Profile::FromBrowserContext(context));
+  return new BackgroundFetchDelegateImpl(Profile::FromBrowserContext(context));
 }

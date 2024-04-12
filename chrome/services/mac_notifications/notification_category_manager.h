@@ -8,13 +8,14 @@
 #import <Foundation/Foundation.h>
 #import <UserNotifications/UserNotifications.h>
 
-#include <optional>
 #include <string>
 #include <tuple>
 #include <vector>
 
 #include "base/containers/flat_map.h"
 #include "base/gtest_prod_util.h"
+#include "base/mac/scoped_nsobject.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace mac_notifications {
 
@@ -24,10 +25,10 @@ namespace mac_notifications {
 // categories that can be used on notifications shown with it. This class
 // manages that set and returns category identifiers for a given set of action
 // buttons.
-class NotificationCategoryManager {
+class API_AVAILABLE(macos(10.14)) NotificationCategoryManager {
  public:
   using Button = std::pair</*title*/ std::u16string,
-                           /*placeholder*/ std::optional<std::u16string>>;
+                           /*placeholder*/ absl::optional<std::u16string>>;
   using Buttons = std::vector<Button>;
 
   explicit NotificationCategoryManager(
@@ -38,8 +39,9 @@ class NotificationCategoryManager {
   ~NotificationCategoryManager();
 
   // Initializes notification categories from displayed notifications.
-  void InitializeExistingCategories(NSArray<UNNotification*>* notifications,
-                                    NSSet<UNNotificationCategory*>* categories);
+  void InitializeExistingCategories(
+      base::scoped_nsobject<NSArray<UNNotification*>> notifications,
+      base::scoped_nsobject<NSSet<UNNotificationCategory*>> categories);
 
   // Gets an existing category identifier that matches the given action buttons
   // or creates a new one. The returned identifier will stay valid until all
@@ -66,12 +68,11 @@ class NotificationCategoryManager {
   void UpdateNotificationCenterCategories();
 
   using CategoryKey = std::pair<Buttons, /*settings_button*/ bool>;
-  using CategoryEntry = std::pair<UNNotificationCategory*,
+  using CategoryEntry = std::pair<base::scoped_nsobject<UNNotificationCategory>,
                                   /*refcount*/ int>;
 
   // Creates a new category that shows the buttons given via |key|.
   static UNNotificationCategory* CreateCategory(const CategoryKey& key);
-
   // Gets the CategoryKey used to create |category|.
   static CategoryKey GetCategoryKey(UNNotificationCategory* category);
 
@@ -81,7 +82,7 @@ class NotificationCategoryManager {
   // Maps a notification id to its set of notification action buttons.
   base::flat_map<std::string, CategoryKey> notification_id_buttons_map_;
 
-  UNUserNotificationCenter* __strong notification_center_;
+  base::scoped_nsobject<UNUserNotificationCenter> notification_center_;
 };
 
 }  // namespace mac_notifications

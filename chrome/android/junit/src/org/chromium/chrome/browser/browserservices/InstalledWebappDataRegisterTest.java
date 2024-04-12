@@ -16,7 +16,9 @@ import org.chromium.components.embedder_support.util.Origin;
 
 import java.util.Set;
 
-/** Tests for {@link InstalledWebappDataRegister}. */
+/**
+ * Tests for {@link InstalledWebappDataRegister}.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class InstalledWebappDataRegisterTest {

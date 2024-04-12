@@ -38,9 +38,9 @@ std::vector<history::URLAndTitle> ChromeHistoryBackendClient::GetPinnedURLs() {
   // HistoryBackendClient is used to determine the set of bookmarked URLs. The
   // data is loaded on a separate thread and may not be done when this method is
   // called, therefore blocks until the bookmarks have finished loading.
+  std::vector<bookmarks::UrlAndTitle> url_and_titles;
   model_loader_->BlockTillLoaded();
-  std::vector<bookmarks::UrlAndTitle> url_and_titles =
-      model_loader_->history_bookmark_model()->GetUniqueUrls();
+  model_loader_->history_bookmark_model()->GetBookmarks(&url_and_titles);
 
   result.reserve(url_and_titles.size());
   for (const auto& url_and_title : url_and_titles) {

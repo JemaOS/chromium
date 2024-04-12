@@ -11,7 +11,7 @@ class Profile;
 
 namespace base {
 template <typename T>
-class NoDestructor;
+struct DefaultSingletonTraits;
 }
 
 namespace device_signals {
@@ -28,7 +28,7 @@ class SystemSignalsServiceHostFactory : public ProfileKeyedServiceFactory {
       Profile* profile);
 
  private:
-  friend base::NoDestructor<SystemSignalsServiceHostFactory>;
+  friend struct base::DefaultSingletonTraits<SystemSignalsServiceHostFactory>;
 
   SystemSignalsServiceHostFactory();
   ~SystemSignalsServiceHostFactory() override;

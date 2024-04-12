@@ -24,29 +24,26 @@ public class ChromeNativeBackgroundTaskDelegate implements NativeBackgroundTaskD
     @Override
     public void initializeNativeAsync(
             boolean minimalBrowserMode, Runnable onSuccess, Runnable onFailure) {
-        final BrowserParts parts =
-                new EmptyBrowserParts() {
-                    @Override
-                    public void finishNativeInitialization() {
-                        PostTask.postTask(TaskTraits.UI_DEFAULT, onSuccess);
-                    }
-
-                    @Override
-                    public boolean startMinimalBrowser() {
-                        return minimalBrowserMode;
-                    }
-
-                    @Override
-                    public void onStartupFailure(Exception failureCause) {
-                        PostTask.postTask(TaskTraits.UI_DEFAULT, onFailure);
-                    }
-                };
+        final BrowserParts parts = new EmptyBrowserParts() {
+            @Override
+            public void finishNativeInitialization() {
+                PostTask.postTask(TaskTraits.UI_DEFAULT, onSuccess);
+            }
+            @Override
+            public boolean startMinimalBrowser() {
+                return minimalBrowserMode;
+            }
+            @Override
+            public void onStartupFailure(Exception failureCause) {
+                PostTask.postTask(TaskTraits.UI_DEFAULT, onFailure);
+            }
+        };
 
         try {
             ChromeBrowserInitializer.getInstance().handlePreNativeStartupAndLoadLibraries(parts);
 
-            ChromeBrowserInitializer.getInstance()
-                    .handlePostNativeStartup(/* isAsync= */ true, parts);
+            ChromeBrowserInitializer.getInstance().handlePostNativeStartup(
+                    true /* isAsync */, parts);
         } catch (ProcessInitException e) {
             Log.e(TAG, "Background Launch Error", e);
             onFailure.run();

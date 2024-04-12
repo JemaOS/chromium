@@ -22,6 +22,7 @@
 #include "extensions/buildflags/buildflags.h"
 #include "extensions/common/extension_set.h"
 #include "extensions/common/manifest_constants.h"
+#include "jemaos/switches/services/services_switches.h"
 
 namespace safe_browsing {
 
@@ -55,7 +56,8 @@ void PopulateExtensionInfo(
   extension_info->set_type(extension.GetType());
   if (const std::string* update_url = extension.manifest()->FindStringPath(
           extensions::manifest_keys::kUpdateURL)) {
-    extension_info->set_update_url(*update_url);
+    extension_info->set_update_url(
+        jemaos::switches::MayConvertWebStoreUpdateUrl(*update_url));
   }
 
   extension_info->set_installed_by_default(
@@ -68,8 +70,7 @@ void PopulateExtensionInfo(
       extension.converted_from_user_script());
   extension_info->set_may_be_untrusted(extension.may_be_untrusted());
   extension_info->set_install_time_msec(
-      extension_prefs.GetLastUpdateTime(extension.id())
-          .InMillisecondsSinceUnixEpoch());
+      extension_prefs.GetLastUpdateTime(extension.id()).ToJavaTime());
 
   std::unique_ptr<extensions::InstallSignature> signature_from_prefs =
       extensions::InstallSignature::FromDict(

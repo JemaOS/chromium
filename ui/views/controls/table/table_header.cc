@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <utility>
 #include <vector>
 
 #include "base/i18n/rtl.h"
@@ -29,7 +28,6 @@
 #include "ui/views/controls/table/table_view.h"
 #include "ui/views/focus/focus_manager.h"
 #include "ui/views/style/platform_style.h"
-#include "ui/views/view_utils.h"
 
 namespace views {
 
@@ -89,17 +87,13 @@ class TableHeader::HighlightPathGenerator
 
 using Columns = std::vector<TableView::VisibleColumn>;
 
-TableHeader::TableHeader(base::WeakPtr<TableView> table)
-    : table_(std::move(table)) {
+TableHeader::TableHeader(TableView* table) : table_(table) {
   HighlightPathGenerator::Install(
       this, std::make_unique<TableHeader::HighlightPathGenerator>());
   FocusRing::Install(this);
-  views::FocusRing::Get(this)->SetHasFocusPredicate(
-      base::BindRepeating([](const View* view) {
-        const auto* v = views::AsViewClass<TableHeader>(view);
-        CHECK(v);
-        return v->GetHeaderRowHasFocus();
-      }));
+  views::FocusRing::Get(this)->SetHasFocusPredicate([&](View* view) {
+    return static_cast<TableHeader*>(view)->GetHeaderRowHasFocus();
+  });
 }
 
 TableHeader::~TableHeader() = default;
@@ -315,7 +309,7 @@ bool TableHeader::GetHeaderRowHasFocus() const {
 }
 
 gfx::Rect TableHeader::GetActiveHeaderCellBounds() const {
-  const std::optional<size_t> active_index =
+  const absl::optional<size_t> active_index =
       table_->GetActiveVisibleColumnIndex();
   DCHECK(active_index.has_value());
   const TableView::VisibleColumn& column =
@@ -331,7 +325,7 @@ bool TableHeader::StartResize(const ui::LocatedEvent& event) {
   if (is_resizing())
     return false;
 
-  const std::optional<size_t> index =
+  const absl::optional<size_t> index =
       GetResizeColumn(GetMirroredXInView(event.x()));
   if (!index.has_value())
     return false;
@@ -367,7 +361,7 @@ void TableHeader::ToggleSortOrder(const ui::LocatedEvent& event) {
     return;
 
   const int x = GetMirroredXInView(event.x());
-  const std::optional<size_t> index = GetClosestVisibleColumnIndex(*table_, x);
+  const absl::optional<size_t> index = GetClosestVisibleColumnIndex(table_, x);
   if (!index.has_value())
     return;
   const TableView::VisibleColumn& column(
@@ -378,12 +372,12 @@ void TableHeader::ToggleSortOrder(const ui::LocatedEvent& event) {
   }
 }
 
-std::optional<size_t> TableHeader::GetResizeColumn(int x) const {
+absl::optional<size_t> TableHeader::GetResizeColumn(int x) const {
   const Columns& columns(table_->visible_columns());
   if (columns.empty())
-    return std::nullopt;
+    return absl::nullopt;
 
-  const std::optional<size_t> index = GetClosestVisibleColumnIndex(*table_, x);
+  const absl::optional<size_t> index = GetClosestVisibleColumnIndex(table_, x);
   DCHECK(index.has_value());
   const TableView::VisibleColumn& column(
       table_->GetVisibleColumn(index.value()));
@@ -393,11 +387,10 @@ std::optional<size_t> TableHeader::GetResizeColumn(int x) const {
   }
   const int max_x = column.x + column.width;
   return (x >= max_x - kResizePadding && x <= max_x + kResizePadding)
-             ? std::make_optional(index.value())
-             : std::nullopt;
+             ? absl::make_optional(index.value())
+             : absl::nullopt;
 }
-
-BEGIN_METADATA(TableHeader)
+BEGIN_METADATA(TableHeader, View)
 END_METADATA
 
 }  // namespace views

@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_ASH_INPUT_METHOD_EMOJI_SUGGESTER_H_
 #define CHROME_BROWSER_ASH_INPUT_METHOD_EMOJI_SUGGESTER_H_
 
-#include <optional>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
@@ -16,6 +15,7 @@
 #include "chrome/browser/ash/input_method/suggestion_handler_interface.h"
 #include "chrome/browser/ash/input_method/ui/assistive_delegate.h"
 #include "chromeos/ash/services/ime/public/cpp/assistive_suggestions.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class Profile;
 
@@ -35,8 +35,7 @@ class EmojiSuggester : public Suggester {
   void OnFocus(int context_id) override;
   void OnBlur() override;
   void OnExternalSuggestionsUpdated(
-      const std::vector<ime::AssistiveSuggestion>& suggestions,
-      const std::optional<ime::SuggestionsTextContext>& context) override;
+      const std::vector<ime::AssistiveSuggestion>& suggestions) override;
   SuggestionStatus HandleKeyEvent(const ui::KeyEvent& event) override;
   bool TrySuggestWithSurroundingText(const std::u16string& text,
                                      gfx::Range selection_range) override;
@@ -63,12 +62,12 @@ class EmojiSuggester : public Suggester {
   void SetButtonHighlighted(const ui::ime::AssistiveWindowButton& button,
                             bool highlighted);
 
-  const raw_ptr<SuggestionHandlerInterface, DanglingUntriaged>
+  const raw_ptr<SuggestionHandlerInterface, ExperimentalAsh>
       suggestion_handler_;
-  raw_ptr<Profile, DanglingUntriaged> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
 
   // ID of the focused text field, nullopt if none is focused.
-  std::optional<int> focused_context_id_;
+  absl::optional<int> focused_context_id_;
 
   // If we are showing a suggestion right now.
   bool suggestion_shown_ = false;

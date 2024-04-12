@@ -52,8 +52,7 @@ class TabLifecycleUnitSource::TabLifecycleUnit
   // nullptr.
   TabLifecycleUnit(
       TabLifecycleUnitSource* source,
-      base::ObserverList<TabLifecycleObserver>::UncheckedAndDanglingUntriaged*
-          observers,
+      base::ObserverList<TabLifecycleObserver>::Unchecked* observers,
       UsageClock* usage_clock,
       content::WebContents* web_contents,
       TabStripModel* tab_strip_model);
@@ -145,12 +144,10 @@ class TabLifecycleUnitSource::TabLifecycleUnit
 
   // List of observers to notify when the discarded state or the auto-
   // discardable state of this tab changes.
-  raw_ptr<
-      base::ObserverList<TabLifecycleObserver>::UncheckedAndDanglingUntriaged>
-      observers_;
+  raw_ptr<base::ObserverList<TabLifecycleObserver>::Unchecked> observers_;
 
   // TabStripModel to which this tab belongs.
-  raw_ptr<TabStripModel, DanglingUntriaged> tab_strip_model_;
+  raw_ptr<TabStripModel> tab_strip_model_;
 
   // Last time at which this tab was focused, or TimeTicks::Max() if it is
   // currently focused. For tabs that aren't currently focused this is

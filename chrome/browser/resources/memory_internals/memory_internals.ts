@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import {addWebUiListener, sendWithPromise} from 'chrome://resources/js/cr.js';
-import {getRequiredElement} from 'chrome://resources/js/util.js';
+import {getRequiredElement} from 'chrome://resources/js/util_ts.js';
 
 type Process = [number, string, boolean];
 
@@ -20,9 +20,12 @@ function saveDump() {
   chrome.send('saveDump');
 }
 
+function reportProcess(pid: number) {
+  chrome.send('reportProcess', [pid]);
+}
+
 function startProfiling(pid: number) {
-  // After profiling starts, the browser will send an updated process list.
-  sendWithPromise('startProfiling', pid).then(onProcessListReceived);
+  chrome.send('startProfiling', [pid]);
 }
 
 // celltype should either be "td" or "th". The contents of the |cols| will be
@@ -69,7 +72,8 @@ function onProcessListReceived(data: ProcessList) {
 
     const button = document.createElement('button');
     if (profiled) {
-      button.innerText = 'Profiling...';
+      button.innerText = '\uD83D\uDC1E Report';
+      button.onclick = () => reportProcess(procId);
     } else {
       button.innerText = '\u2600 Start profiling';
       button.onclick = () => startProfiling(procId);

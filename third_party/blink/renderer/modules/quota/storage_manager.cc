@@ -8,6 +8,7 @@
 #include "third_party/blink/public/mojom/quota/quota_types.mojom-blink.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_storage_estimate.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_storage_usage_details.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
@@ -20,7 +21,6 @@
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/modules/permissions/permission_utils.h"
 #include "third_party/blink/renderer/modules/quota/quota_utils.h"
-#include "third_party/blink/renderer/platform/bindings/v8_throw_exception.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/wtf/assertions.h"
@@ -36,36 +36,20 @@ namespace {
 
 const char kUniqueOriginErrorMessage[] =
     "The operation is not supported in this context.";
-const char kGenericErrorMessage[] =
-    "Internal error when calculating storage usage.";
-const char kAbortErrorMessage[] = "The operation was aborted due to shutdown.";
 
 void QueryStorageUsageAndQuotaCallback(
-    ScriptPromiseResolverTyped<StorageEstimate>* resolver,
+    ScriptPromiseResolver* resolver,
     mojom::blink::QuotaStatusCode status_code,
     int64_t usage_in_bytes,
     int64_t quota_in_bytes,
     UsageBreakdownPtr usage_breakdown) {
-  const char* error_message = nullptr;
-  switch (status_code) {
-    case mojom::blink::QuotaStatusCode::kOk:
-      break;
-    case mojom::blink::QuotaStatusCode::kErrorNotSupported:
-    case mojom::blink::QuotaStatusCode::kErrorInvalidModification:
-    case mojom::blink::QuotaStatusCode::kErrorInvalidAccess:
-      NOTREACHED();
-      error_message = kGenericErrorMessage;
-      break;
-    case mojom::blink::QuotaStatusCode::kUnknown:
-      error_message = kGenericErrorMessage;
-      break;
-    case mojom::blink::QuotaStatusCode::kErrorAbort:
-      error_message = kAbortErrorMessage;
-      break;
-  }
-  if (error_message) {
-    resolver->Reject(V8ThrowException::CreateTypeError(
-        resolver->GetScriptState()->GetIsolate(), error_message));
+  if (status_code != mojom::blink::QuotaStatusCode::kOk) {
+    // TODO(sashab): Replace this with a switch statement, and remove the enum
+    // values from QuotaStatusCode.
+    // TODO(crbug.com/1293949): Add an error message.
+    resolver->Reject(V8ThrowDOMException::CreateOrDie(
+        resolver->GetScriptState()->GetIsolate(),
+        static_cast<DOMExceptionCode>(status_code), ""));
     return;
   }
 
@@ -106,19 +90,18 @@ StorageManager::StorageManager(ExecutionContext* execution_context)
 
 StorageManager::~StorageManager() = default;
 
-ScriptPromiseTyped<IDLBoolean> StorageManager::persist(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise StorageManager::persist(ScriptState* script_state,
+                                      ExceptionState& exception_state) {
   LocalDOMWindow* window = LocalDOMWindow::From(script_state);
   DCHECK(window->IsSecureContext());  // [SecureContext] in IDL
   if (window->GetSecurityOrigin()->IsOpaque()) {
     exception_state.ThrowTypeError(kUniqueOriginErrorMessage);
-    return ScriptPromiseTyped<IDLBoolean>();
+    return ScriptPromise();
   }
 
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<IDLBoolean>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
 
   GetPermissionService(window)->RequestPermission(
       CreatePermissionDescriptor(PermissionName::DURABLE_STORAGE),
@@ -129,21 +112,20 @@ ScriptPromiseTyped<IDLBoolean> StorageManager::persist(
   return promise;
 }
 
-ScriptPromiseTyped<IDLBoolean> StorageManager::persisted(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise StorageManager::persisted(ScriptState* script_state,
+                                        ExceptionState& exception_state) {
   ExecutionContext* execution_context = ExecutionContext::From(script_state);
   DCHECK(execution_context->IsSecureContext());  // [SecureContext] in IDL
   const SecurityOrigin* security_origin =
       execution_context->GetSecurityOrigin();
   if (security_origin->IsOpaque()) {
     exception_state.ThrowTypeError(kUniqueOriginErrorMessage);
-    return ScriptPromiseTyped<IDLBoolean>();
+    return ScriptPromise();
   }
 
-  auto* resolver = MakeGarbageCollected<ScriptPromiseResolverTyped<IDLBoolean>>(
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
       script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  ScriptPromise promise = resolver->Promise();
 
   GetPermissionService(ExecutionContext::From(script_state))
       ->HasPermission(
@@ -153,9 +135,8 @@ ScriptPromiseTyped<IDLBoolean> StorageManager::persisted(
   return promise;
 }
 
-ScriptPromiseTyped<StorageEstimate> StorageManager::estimate(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise StorageManager::estimate(ScriptState* script_state,
+                                       ExceptionState& exception_state) {
   ExecutionContext* execution_context = ExecutionContext::From(script_state);
   DCHECK(execution_context->IsSecureContext());  // [SecureContext] in IDL
 
@@ -167,13 +148,12 @@ ScriptPromiseTyped<StorageEstimate> StorageManager::estimate(
       execution_context->GetSecurityOrigin();
   if (security_origin->IsOpaque()) {
     exception_state.ThrowTypeError(kUniqueOriginErrorMessage);
-    return ScriptPromiseTyped<StorageEstimate>();
+    return ScriptPromise();
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<StorageEstimate>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
   auto callback = resolver->WrapCallbackInScriptScope(
       WTF::BindOnce(&QueryStorageUsageAndQuotaCallback));
@@ -188,7 +168,7 @@ void StorageManager::Trace(Visitor* visitor) const {
   visitor->Trace(change_listener_receiver_);
   visitor->Trace(permission_service_);
   visitor->Trace(quota_host_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
   ExecutionContextClient::Trace(visitor);
   ScriptWrappable::Trace(visitor);
 }
@@ -216,14 +196,16 @@ void StorageManager::AddedEventListener(
     // This method will bind quota_host_.
     GetQuotaHost(execution_context);
   }
-  EventTarget::AddedEventListener(event_type, registered_listener);
+  EventTargetWithInlineData::AddedEventListener(event_type,
+                                                registered_listener);
   StartObserving();
 }
 
 void StorageManager::RemovedEventListener(
     const AtomicString& event_type,
     const RegisteredEventListener& registered_listener) {
-  EventTarget::RemovedEventListener(event_type, registered_listener);
+  EventTargetWithInlineData::RemovedEventListener(event_type,
+                                                  registered_listener);
   if (!HasEventListeners())
     StopObserving();
 }
@@ -247,7 +229,7 @@ void StorageManager::PermissionServiceConnectionError() {
 }
 
 void StorageManager::PermissionRequestComplete(
-    ScriptPromiseResolverTyped<IDLBoolean>* resolver,
+    ScriptPromiseResolver* resolver,
     mojom::blink::PermissionStatus status) {
   if (!resolver->GetExecutionContext() ||
       resolver->GetExecutionContext()->IsContextDestroyed())
@@ -287,5 +269,14 @@ mojom::blink::QuotaManagerHost* StorageManager::GetQuotaHost(
   }
   return quota_host_.get();
 }
+
+STATIC_ASSERT_ENUM(mojom::blink::QuotaStatusCode::kErrorNotSupported,
+                   DOMExceptionCode::kNotSupportedError);
+STATIC_ASSERT_ENUM(mojom::blink::QuotaStatusCode::kErrorInvalidModification,
+                   DOMExceptionCode::kInvalidModificationError);
+STATIC_ASSERT_ENUM(mojom::blink::QuotaStatusCode::kErrorInvalidAccess,
+                   DOMExceptionCode::kInvalidAccessError);
+STATIC_ASSERT_ENUM(mojom::blink::QuotaStatusCode::kErrorAbort,
+                   DOMExceptionCode::kAbortError);
 
 }  // namespace blink

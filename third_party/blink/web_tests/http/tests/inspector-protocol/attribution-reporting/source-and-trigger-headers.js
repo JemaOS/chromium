@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   const {dp} = await testRunner.startBlank(
       'Test that an attributionsrc request that is eligible for sources and triggers triggers an issue when it tries to register a source and trigger together.');
 
@@ -13,8 +13,7 @@
   await dp.Runtime.evaluate({
     expression: `
     fetch('/inspector-protocol/attribution-reporting/resources/register-source-and-trigger.php',
-        {keepalive: true,
-         attributionReporting: {
+        {attributionReporting: {
           eventSourceEligible: true,
           triggerEligible: true,
         }});

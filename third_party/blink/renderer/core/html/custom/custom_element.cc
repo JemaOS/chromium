@@ -6,7 +6,6 @@
 
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/qualified_name.h"
-#include "third_party/blink/renderer/core/dom/shadow_root.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/html/custom/ce_reactions_scope.h"
 #include "third_party/blink/renderer/core/html/custom/custom_element_definition.h"
@@ -23,20 +22,12 @@
 namespace blink {
 
 CustomElementRegistry* CustomElement::Registry(const Element& element) {
-  return Registry(element.GetTreeScope());
+  return Registry(element.GetDocument());
 }
 
-CustomElementRegistry* CustomElement::Registry(const TreeScope& tree_scope) {
-  if (RuntimeEnabledFeatures::ScopedCustomElementRegistryEnabled()) {
-    if (const ShadowRoot* shadow = DynamicTo<ShadowRoot>(tree_scope)) {
-      if (CustomElementRegistry* registry = shadow->registry()) {
-        return registry;
-      }
-    }
-  }
-  if (LocalDOMWindow* window = tree_scope.GetDocument().domWindow()) {
+CustomElementRegistry* CustomElement::Registry(const Document& document) {
+  if (LocalDOMWindow* window = document.domWindow())
     return window->customElements();
-  }
   return nullptr;
 }
 
@@ -84,20 +75,17 @@ void CustomElement::AddEmbedderCustomElementNameForTesting(
 }
 
 bool CustomElement::IsHyphenatedSpecElementName(const AtomicString& name) {
-  // Even if Blink does not implement one of the related specs, we must prohibit
-  // using the name because that is required by the HTML spec which we *do*
-  // implement. Don't remove names from this list without removing them from the
-  // HTML spec first.
+  // Even if Blink does not implement one of the related specs, (for
+  // example annotation-xml is from MathML, which Blink does not
+  // implement) we must prohibit using the name because that is
+  // required by the HTML spec which we *do* implement. Don't remove
+  // names from this list without removing them from the HTML spec
+  // first.
   DEFINE_STATIC_LOCAL(HashSet<AtomicString>, hyphenated_spec_element_names,
                       ({
-                          AtomicString("annotation-xml"),
-                          AtomicString("color-profile"),
-                          AtomicString("font-face"),
-                          AtomicString("font-face-src"),
-                          AtomicString("font-face-uri"),
-                          AtomicString("font-face-format"),
-                          AtomicString("font-face-name"),
-                          AtomicString("missing-glyph"),
+                          "annotation-xml", "color-profile", "font-face",
+                          "font-face-src", "font-face-uri", "font-face-format",
+                          "font-face-name", "missing-glyph",
                       }));
   return hyphenated_spec_element_names.Contains(name);
 }
@@ -126,25 +114,23 @@ bool CustomElement::ShouldCreateCustomizedBuiltinElement(
 }
 
 static CustomElementDefinition* DefinitionFor(
-    const TreeScope& tree_scope,
+    const Document& document,
     const CustomElementDescriptor desc) {
-  if (CustomElementRegistry* registry = CustomElement::Registry(tree_scope)) {
+  if (CustomElementRegistry* registry = CustomElement::Registry(document))
     return registry->DefinitionFor(desc);
-  }
   return nullptr;
 }
 
 // https://dom.spec.whatwg.org/#concept-create-element
-HTMLElement* CustomElement::CreateCustomElement(TreeScope& tree_scope,
+HTMLElement* CustomElement::CreateCustomElement(Document& document,
                                                 const QualifiedName& tag_name,
                                                 CreateElementFlags flags) {
   DCHECK(ShouldCreateCustomElement(tag_name)) << tag_name;
-  Document& document = tree_scope.GetDocument();
   // 4. Let definition be the result of looking up a custom element
   // definition given document, namespace, localName, and is.
   if (auto* definition = DefinitionFor(
-          tree_scope, CustomElementDescriptor(tag_name.LocalName(),
-                                              tag_name.LocalName()))) {
+          document, CustomElementDescriptor(tag_name.LocalName(),
+                                            tag_name.LocalName()))) {
     DCHECK(definition->Descriptor().IsAutonomous());
     // 6. Otherwise, if definition is non-null, then:
     return definition->CreateElement(document, tag_name, flags);

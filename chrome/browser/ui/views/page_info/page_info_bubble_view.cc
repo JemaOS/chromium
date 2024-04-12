@@ -22,7 +22,7 @@
 #include "components/dom_distiller/core/url_utils.h"
 #include "components/page_info/core/features.h"
 #include "components/privacy_sandbox/privacy_sandbox_features.h"
-#include "components/strings/grit/components_branded_strings.h"
+#include "components/strings/grit/components_chromium_strings.h"
 #include "components/strings/grit/components_strings.h"
 #include "content/public/common/url_constants.h"
 #include "extensions/common/constants.h"
@@ -39,9 +39,8 @@ using bubble_anchor_util::GetPageInfoAnchorRect;
 // extension pages. Instead of the |PageInfoBubbleView|, the
 // |InternalPageInfoBubbleView| is displayed.
 class InternalPageInfoBubbleView : public PageInfoBubbleViewBase {
-  METADATA_HEADER(InternalPageInfoBubbleView, PageInfoBubbleViewBase)
-
  public:
+  METADATA_HEADER(InternalPageInfoBubbleView);
   // If |anchor_view| is nullptr, or has no Widget, |parent_window| may be
   // provided to ensure this bubble is closed when the parent closes.
   InternalPageInfoBubbleView(views::View* anchor_view,
@@ -120,7 +119,7 @@ InternalPageInfoBubbleView::InternalPageInfoBubbleView(
 
 InternalPageInfoBubbleView::~InternalPageInfoBubbleView() = default;
 
-BEGIN_METADATA(InternalPageInfoBubbleView)
+BEGIN_METADATA(InternalPageInfoBubbleView, PageInfoBubbleViewBase)
 END_METADATA
 
 PageInfoBubbleView::PageInfoBubbleView(
@@ -165,7 +164,7 @@ PageInfoBubbleView::PageInfoBubbleView(
   SetShowCloseButton(false);
   // The title isn't visible, it is set for a11y purposes and the actual visible
   // title is a custom label in the content view.
-  SetTitle(presenter_->GetSubjectNameForDisplay());
+  SetTitle(presenter_->GetSiteNameOrAppNameToDisplay());
 
   SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical));
@@ -178,10 +177,7 @@ PageInfoBubbleView::PageInfoBubbleView(
   views::BubbleDialogDelegateView::CreateBubble(this);
 }
 
-PageInfoBubbleView::~PageInfoBubbleView() {
-  page_container_ = nullptr;
-  RemoveAllChildViews();
-}
+PageInfoBubbleView::~PageInfoBubbleView() = default;
 
 // static
 views::BubbleDialogDelegateView* PageInfoBubbleView::CreatePageInfoBubble(
@@ -216,7 +212,7 @@ void PageInfoBubbleView::OpenMainPage(base::OnceClosure initialized_callback) {
 
 void PageInfoBubbleView::OpenSecurityPage() {
   presenter_->RecordPageInfoAction(
-      page_info::PAGE_INFO_SECURITY_DETAILS_OPENED);
+      PageInfo::PageInfoAction::PAGE_INFO_SECURITY_DETAILS_OPENED);
   std::unique_ptr<views::View> security_page_view =
       view_factory_->CreateSecurityPageView();
   security_page_view->SetID(
@@ -228,9 +224,9 @@ void PageInfoBubbleView::OpenSecurityPage() {
 
 void PageInfoBubbleView::OpenPermissionPage(ContentSettingsType type) {
   presenter_->RecordPageInfoAction(
-      page_info::PAGE_INFO_PERMISSION_DIALOG_OPENED);
+      PageInfo::PageInfoAction::PAGE_INFO_PERMISSION_DIALOG_OPENED);
   std::unique_ptr<views::View> permissions_page_view =
-      view_factory_->CreatePermissionPageView(type, web_contents());
+      view_factory_->CreatePermissionPageView(type);
   permissions_page_view->SetID(
       PageInfoViewFactory::VIEW_ID_PAGE_INFO_CURRENT_VIEW);
   page_container_->SwitchToPage(std::move(permissions_page_view));
@@ -239,18 +235,22 @@ void PageInfoBubbleView::OpenPermissionPage(ContentSettingsType type) {
 
 void PageInfoBubbleView::OpenAdPersonalizationPage() {
   presenter_->RecordPageInfoAction(
-      page_info::PAGE_INFO_AD_PERSONALIZATION_PAGE_OPENED);
+      PageInfo::PageInfoAction::PAGE_INFO_AD_PERSONALIZATION_PAGE_OPENED);
   std::unique_ptr<views::View> ad_personalization_page_view =
       view_factory_->CreateAdPersonalizationPageView();
   ad_personalization_page_view->SetID(
       PageInfoViewFactory::VIEW_ID_PAGE_INFO_CURRENT_VIEW);
   page_container_->SwitchToPage(std::move(ad_personalization_page_view));
-  AnnouncePageOpened(
-      l10n_util::GetStringUTF16(IDS_PAGE_INFO_AD_PRIVACY_HEADER));
+  const auto header_id =
+      base::FeatureList::IsEnabled(privacy_sandbox::kPrivacySandboxSettings4)
+          ? IDS_PAGE_INFO_AD_PRIVACY_HEADER
+          : IDS_PAGE_INFO_AD_PERSONALIZATION_HEADER;
+  AnnouncePageOpened(l10n_util::GetStringUTF16(header_id));
 }
 
 void PageInfoBubbleView::OpenCookiesPage() {
-  presenter_->OnCookiesPageOpened();
+  presenter_->RecordPageInfoAction(
+      PageInfo::PageInfoAction::PAGE_INFO_COOKIES_PAGE_OPENED);
   std::unique_ptr<views::View> cookies_page_view =
       view_factory_->CreateCookiesPageView();
   cookies_page_view->SetID(PageInfoViewFactory::VIEW_ID_PAGE_INFO_CURRENT_VIEW);
@@ -302,14 +302,20 @@ gfx::Size PageInfoBubbleView::CalculatePreferredSize() const {
 }
 
 void PageInfoBubbleView::ChildPreferredSizeChanged(views::View* child) {
-  DeprecatedLayoutImmediately();
+  Layout();
   SizeToContents();
 }
 
 void PageInfoBubbleView::AnnouncePageOpened(std::u16string announcement) {
   // Announce that the subpage was opened to inform the user about the changes
   // in the UI.
+#if BUILDFLAG(IS_MAC)
+  GetViewAccessibility().OverrideRole(ax::mojom::Role::kAlert);
+  GetViewAccessibility().OverrideName(announcement);
+  NotifyAccessibilityEvent(ax::mojom::Event::kAlert, true);
+#else
   GetViewAccessibility().AnnounceText(announcement);
+#endif
 
   // Focus the back button by default to ensure that focus is set when new
   // content is displayed.
@@ -339,6 +345,3 @@ void ShowPageInfoDialogImpl(Browser* browser,
   bubble->SetArrow(configuration.bubble_arrow);
   bubble->GetWidget()->Show();
 }
-
-BEGIN_METADATA(PageInfoBubbleView)
-END_METADATA

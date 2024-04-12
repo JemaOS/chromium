@@ -15,13 +15,13 @@
 #include "chrome/browser/password_manager/password_reuse_manager_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/safe_browsing/chrome_password_protection_service.h"
+#include "chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service.h"
+#include "chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service_factory.h"
+#include "chrome/browser/safe_browsing/extension_telemetry/password_reuse_signal.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/browser/sync/sync_service_factory.h"
 #include "components/password_manager/content/browser/password_manager_log_router_factory.h"
 #include "components/password_manager/core/browser/password_sync_util.h"
 #include "components/safe_browsing/core/common/features.h"
-#include "components/sync/base/model_type.h"
-#include "components/sync/service/sync_service.h"
 #include "components/url_formatter/url_formatter.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/buildflags/buildflags.h"
@@ -30,12 +30,6 @@
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "extensions/common/constants.h"
-#endif
-
-#if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service.h"
-#include "chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service_factory.h"
-#include "chrome/browser/safe_browsing/extension_telemetry/password_reuse_signal.h"
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
@@ -156,19 +150,11 @@ void ChromePasswordReuseDetectionManagerClient::
   }
 }
 
-bool ChromePasswordReuseDetectionManagerClient::IsHistorySyncAccountEmail(
+bool ChromePasswordReuseDetectionManagerClient::IsSyncAccountEmail(
     const std::string& username) {
-  Profile* original_profile = profile_->GetOriginalProfile();
-  // Password reuse detection is tied to history sync.
-  syncer::SyncService* sync_service =
-      SyncServiceFactory::GetForProfile(original_profile);
-  if (!sync_service || !sync_service->GetPreferredDataTypes().Has(
-                           syncer::HISTORY_DELETE_DIRECTIVES)) {
-    return false;
-  }
   return password_manager::sync_util::IsSyncAccountEmail(
-      username, IdentityManagerFactory::GetForProfile(original_profile),
-      signin::ConsentLevel::kSignin);
+      username,
+      IdentityManagerFactory::GetForProfile(profile_->GetOriginalProfile()));
 }
 
 bool ChromePasswordReuseDetectionManagerClient::
@@ -249,9 +235,7 @@ ChromePasswordReuseDetectionManagerClient::
       content::WebContentsUserData<ChromePasswordReuseDetectionManagerClient>(
           *web_contents),
       password_reuse_detection_manager_(this),
-      profile_(Profile::FromBrowserContext(web_contents->GetBrowserContext())),
-      phishy_interaction_tracker_(
-          safe_browsing::PhishyInteractionTracker(web_contents)) {
+      profile_(Profile::FromBrowserContext(web_contents->GetBrowserContext())) {
   log_manager_ = autofill::LogManager::Create(
       password_manager::PasswordManagerLogRouterFactory::GetForBrowserContext(
           profile_),
@@ -267,7 +251,6 @@ void ChromePasswordReuseDetectionManagerClient::PrimaryPageChanged(
 
   AddToWidgetInputEventObservers(page.GetMainDocument().GetRenderWidgetHost(),
                                  this);
-  phishy_interaction_tracker_.HandlePageChanged();
 }
 
 void ChromePasswordReuseDetectionManagerClient::RenderFrameCreated(
@@ -316,12 +299,10 @@ void ChromePasswordReuseDetectionManagerClient::OnPaste() {
   }
 
   password_reuse_detection_manager_.OnPaste(std::move(text));
-  phishy_interaction_tracker_.HandlePasteEvent();
 }
 
 void ChromePasswordReuseDetectionManagerClient::OnInputEvent(
     const blink::WebInputEvent& event) {
-  phishy_interaction_tracker_.HandleInputEvent(event);
 #if BUILDFLAG(IS_ANDROID)
   // On Android, key down events are triggered if a user types in through a
   // number bar on Android keyboard. If text is typed in through other parts of

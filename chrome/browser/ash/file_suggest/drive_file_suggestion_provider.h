@@ -31,8 +31,18 @@ class DriveFileSuggestionProvider : public FileSuggestionProvider {
 
   // FileSuggestionProvider:
   void GetSuggestFileData(GetSuggestFileDataCallback callback) override;
-  void MaybeUpdateItemSuggestCache(
-      base::PassKey<FileSuggestKeyedService>) override;
+
+  // Requests to update the data in `item_suggest_cache_`. Only used by the file
+  // suggest keyed service.
+  // TODO(https://crbug.com/1356347): Now the app list relies on this service to
+  // fetch the drive suggestion data. Meanwhile, this service relies on the app
+  // list to trigger the item cache update. This cyclic dependency could be
+  // confusing. The service should update the data cache by its own without
+  // depending on the app list code.
+  void MaybeUpdateItemSuggestCache(base::PassKey<FileSuggestKeyedService>);
+
+  // Returns true if there is pending fetch on file suggestions.
+  bool HasPendingDriveSuggestionFetchForTest() const;
 
   ItemSuggestCache* item_suggest_cache_for_test() {
     return item_suggest_cache_.get();
@@ -44,17 +54,17 @@ class DriveFileSuggestionProvider : public FileSuggestionProvider {
   // file suggestion data before validation.
   void OnDriveFilePathsLocated(
       std::vector<ItemSuggestCache::Result> raw_suggest_results,
-      std::optional<std::vector<drivefs::mojom::FilePathOrErrorPtr>> paths);
+      absl::optional<std::vector<drivefs::mojom::FilePathOrErrorPtr>> paths);
 
   // Ends the validation on drive suggestion file paths and publishes the
   // result.
   void EndDriveFilePathValidation(
       DriveSuggestValidationStatus validation_status,
-      const std::optional<std::vector<FileSuggestData>>& suggest_results);
+      const absl::optional<std::vector<FileSuggestData>>& suggest_results);
 
-  const raw_ptr<Profile> profile_;
+  const base::raw_ptr<Profile> profile_;
 
-  const raw_ptr<drive::DriveIntegrationService> drive_service_;
+  const base::raw_ptr<drive::DriveIntegrationService> drive_service_;
 
   // The drive client from which the raw suggest data (i.e. the data before
   // validation) is fetched.

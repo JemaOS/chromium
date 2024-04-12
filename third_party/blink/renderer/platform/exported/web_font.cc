@@ -20,11 +20,12 @@ WebFont* WebFont::Create(const WebFontDescription& description) {
   return new WebFont(description);
 }
 
-class WebFont::Impl final : public GarbageCollected<WebFont::Impl> {
- public:
-  explicit Impl(const WebFontDescription& description) : font_(description) {}
+class WebFont::Impl final {
+  USING_FAST_MALLOC(WebFont::Impl);
 
-  void Trace(Visitor* visitor) const { visitor->Trace(font_); }
+ public:
+  explicit Impl(const WebFontDescription& description) : font_(description) {
+  }
 
   const Font& GetFont() const { return font_; }
 
@@ -33,7 +34,7 @@ class WebFont::Impl final : public GarbageCollected<WebFont::Impl> {
 };
 
 WebFont::WebFont(const WebFontDescription& description)
-    : private_(MakeGarbageCollected<Impl>(description)) {}
+    : private_(std::make_unique<Impl>(description)) {}
 
 WebFont::~WebFont() = default;
 

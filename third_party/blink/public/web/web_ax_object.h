@@ -38,10 +38,6 @@
 #include "ui/accessibility/ax_enums.mojom-shared.h"
 #include "ui/accessibility/ax_event_intent.h"
 #include "ui/accessibility/ax_mode.h"
-#include "ui/accessibility/ax_node_id_forward.h"
-#include "ui/accessibility/ax_tree_data.h"
-#include "ui/accessibility/ax_tree_id.h"
-#include "ui/accessibility/ax_tree_source.h"
 
 namespace gfx {
 class Point;
@@ -53,7 +49,6 @@ class Transform;
 
 namespace ui {
 struct AXActionData;
-class AXNode;
 struct AXNodeData;
 }
 
@@ -109,6 +104,7 @@ class BLINK_EXPORT WebAXObject {
   void Serialize(ui::AXNodeData* node_data,
                  ui::AXMode accessibility_mode) const;
 
+  void MarkSerializerSubtreeDirty() const;
   void OnLoadInlineTextBoxes() const;
   void SetImageAsDataNodeId(const gfx::Size& max_size) const;
   int ImageDataNodeId() const;
@@ -210,6 +206,7 @@ class BLINK_EXPORT WebAXObject {
   //
   // OLD: the od way is that we had separate APIs for every individual
   // action. We're migrating to use PerformAction() for everything.
+  bool SetSelected(bool) const;
   bool SetSelection(const WebAXObject& anchor_object,
                     int anchor_offset,
                     const WebAXObject& focus_object,
@@ -274,8 +271,10 @@ class BLINK_EXPORT WebAXObject {
                          gfx::Transform& container_transform,
                          bool* clips_children = nullptr) const;
 
-  // Marks this object as dirty (needing serialization).
-  void AddDirtyObjectToSerializationQueue(
+  // Marks ths object as dirty (needing serialization). If subtree is true,
+  // the entire AX subtree should be invalidated as well.
+  void MarkAXObjectDirtyWithDetails(
+      bool subtree,
       ax::mojom::EventFrom event_from,
       ax::mojom::Action event_from_action,
       std::vector<ui::AXEventIntent> event_intents) const;
@@ -284,19 +283,7 @@ class BLINK_EXPORT WebAXObject {
   // role and name.
   WebString ToString(bool verbose = false) const;
 
-  void HandleAutofillSuggestionAvailabilityChanged(
-      WebAXAutofillSuggestionAvailability suggestion_availability) const;
-
-  // Methods for plugins to stitch a tree into this node.
-
-  // Get a new AXID that's not used by any accessibility node in this process,
-  // for when the client needs to insert additional nodes into the accessibility
-  // tree.
-  int GenerateAXID();
-  void SetPluginTreeSource(
-      ui::AXTreeSource<const ui::AXNode*, ui::AXTreeData*, ui::AXNodeData>*
-          source);
-  void MarkPluginDescendantDirty(ui::AXNodeID node_id);
+  void HandleAutofillStateChanged(const WebAXAutofillState state) const;
 
   // For testing only, returns whether or not we have the permission to
   // call AOM event listeners.
@@ -309,7 +296,7 @@ class BLINK_EXPORT WebAXObject {
 #endif
 
  private:
-  WebPrivatePtrForGC<AXObject> private_;
+  WebPrivatePtr<AXObject> private_;
 };
 
 }  // namespace blink

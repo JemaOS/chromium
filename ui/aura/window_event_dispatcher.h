@@ -341,11 +341,10 @@ class AURA_EXPORT WindowEventDispatcher : public ui::EventProcessor,
   // a scroll sequence or not.
   bool has_seen_gesture_scroll_update_after_begin_ = false;
 
-  // Tracks metrics for the event currently being dispatched. For nested events,
-  // e.g. mouse drag events during dragging, the new event concludes the
-  // previous one.
-  std::unique_ptr<cc::EventsMetricsManager::ScopedMonitor>
-      event_metrics_monitor_;
+  // A stack of scoped monitors for events to track metrics for the currently
+  // active event.
+  std::vector<std::unique_ptr<cc::EventsMetricsManager::ScopedMonitor>>
+      event_metrics_monitors_;
 
   bool in_shutdown_ = false;
 

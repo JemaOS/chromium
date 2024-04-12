@@ -10,11 +10,11 @@
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/values.h"
+#include "chrome/browser/extensions/active_tab_permission_granter.h"
 #include "chrome/browser/extensions/api/extension_action/extension_action_api.h"
 #include "chrome/browser/extensions/extension_action_runner.h"
-#include "chrome/browser/extensions/permissions/active_tab_permission_granter.h"
-#include "chrome/browser/extensions/permissions/permissions_updater.h"
-#include "chrome/browser/extensions/permissions/scripting_permissions_modifier.h"
+#include "chrome/browser/extensions/permissions_updater.h"
+#include "chrome/browser/extensions/scripting_permissions_modifier.h"
 #include "chrome/browser/extensions/tab_helper.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/testing_profile.h"
@@ -28,11 +28,11 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/extension_features.h"
-#include "extensions/common/extension_id.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/mojom/injection_type.mojom-shared.h"
 #include "extensions/common/mojom/run_location.mojom-shared.h"
 #include "extensions/common/user_script.h"
+#include "extensions/common/value_builder.h"
 
 namespace extensions {
 
@@ -73,26 +73,25 @@ class ExtensionActionRunnerUnitTest : public ChromeRenderViewHostTestHarness {
                         mojom::RunLocation run_location);
 
   // Returns the number of times a given extension has had a script execute.
-  size_t GetExecutionCountForExtension(const ExtensionId& extension_id) const;
+  size_t GetExecutionCountForExtension(const std::string& extension_id) const;
 
   ExtensionActionRunner* runner() const { return extension_action_runner_; }
 
  private:
   // Returns a closure to use as a script execution for a given extension.
   ExtensionActionRunner::ScriptInjectionCallback
-  GetExecutionCallbackForExtension(const ExtensionId& extension_id);
+  GetExecutionCallbackForExtension(const std::string& extension_id);
 
   // Increment the number of executions for the given |extension_id|.
-  void IncrementExecutionCount(const ExtensionId& extension_id, bool granted);
+  void IncrementExecutionCount(const std::string& extension_id, bool granted);
 
   void SetUp() override;
 
   // The associated ExtensionActionRunner.
-  raw_ptr<ExtensionActionRunner, DanglingUntriaged> extension_action_runner_ =
-      nullptr;
+  raw_ptr<ExtensionActionRunner> extension_action_runner_ = nullptr;
 
   // The map of observed executions, keyed by extension id.
-  std::map<ExtensionId, int> extension_executions_;
+  std::map<std::string, int> extension_executions_;
 
   scoped_refptr<const Extension> extension_;
 };
@@ -101,16 +100,18 @@ ExtensionActionRunnerUnitTest::ExtensionActionRunnerUnitTest() = default;
 ExtensionActionRunnerUnitTest::~ExtensionActionRunnerUnitTest() = default;
 
 const Extension* ExtensionActionRunnerUnitTest::AddExtension() {
-  const ExtensionId kId = crx_file::id_util::GenerateId("all_hosts_extension");
+  const std::string kId = crx_file::id_util::GenerateId("all_hosts_extension");
   extension_ =
       ExtensionBuilder()
-          .SetManifest(base::Value::Dict()
-                           .Set("name", "all_hosts_extension")
-                           .Set("description", "an extension")
-                           .Set("manifest_version", 2)
-                           .Set("version", "1.0.0")
-                           .Set("permissions", base::Value::List().Append(
-                                                   kAllHostsPermission)))
+          .SetManifest(
+              DictionaryBuilder()
+                  .Set("name", "all_hosts_extension")
+                  .Set("description", "an extension")
+                  .Set("manifest_version", 2)
+                  .Set("version", "1.0.0")
+                  .Set("permissions",
+                       ListBuilder().Append(kAllHostsPermission).Build())
+                  .Build())
           .SetLocation(mojom::ManifestLocation::kInternal)
           .SetID(kId)
           .Build();
@@ -152,17 +153,16 @@ void ExtensionActionRunnerUnitTest::RequestInjection(
 }
 
 size_t ExtensionActionRunnerUnitTest::GetExecutionCountForExtension(
-    const ExtensionId& extension_id) const {
+    const std::string& extension_id) const {
   auto iter = extension_executions_.find(extension_id);
-  if (iter != extension_executions_.end()) {
+  if (iter != extension_executions_.end())
     return iter->second;
-  }
   return 0u;
 }
 
 ExtensionActionRunner::ScriptInjectionCallback
 ExtensionActionRunnerUnitTest::GetExecutionCallbackForExtension(
-    const ExtensionId& extension_id) {
+    const std::string& extension_id) {
   // We use base unretained here, but if this ever gets executed outside of
   // this test's lifetime, we have a major problem anyway.
   return base::BindOnce(&ExtensionActionRunnerUnitTest::IncrementExecutionCount,
@@ -170,11 +170,10 @@ ExtensionActionRunnerUnitTest::GetExecutionCallbackForExtension(
 }
 
 void ExtensionActionRunnerUnitTest::IncrementExecutionCount(
-    const ExtensionId& extension_id,
+    const std::string& extension_id,
     bool granted) {
-  if (!granted) {
+  if (!granted)
     return;
-  }
   ++extension_executions_[extension_id];
 }
 
@@ -313,9 +312,8 @@ TEST_F(ExtensionActionRunnerUnitTest, MultiplePendingInjection) {
 
   const size_t kNumInjections = 3u;
   // Queue multiple pending injections.
-  for (size_t i = 0u; i < kNumInjections; ++i) {
+  for (size_t i = 0u; i < kNumInjections; ++i)
     RequestInjection(extension);
-  }
 
   EXPECT_EQ(0u, GetExecutionCountForExtension(extension->id()));
 

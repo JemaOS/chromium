@@ -33,7 +33,7 @@ class ExternalLogoutRequestEventHandlerFactory
   ~ExternalLogoutRequestEventHandlerFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* browser_context) const override;
   bool ServiceIsNULLWhileTesting() const override;
   bool ServiceIsCreatedWithBrowserContext() const override;

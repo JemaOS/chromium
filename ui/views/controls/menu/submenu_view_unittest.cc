@@ -14,24 +14,24 @@ namespace views {
 using SubmenuViewTest = ViewsTestBase;
 
 TEST_F(SubmenuViewTest, GetLastItem) {
-  auto parent_owning = std::make_unique<MenuItemView>();
-  MenuItemView* parent = parent_owning.get();
-  MenuRunner menu_runner(std::move(parent_owning), 0);
+  MenuItemView* parent = new MenuItemView();
+  MenuRunner menu_runner(parent, 0);
 
   SubmenuView* submenu = parent->CreateSubmenu();
   EXPECT_EQ(nullptr, submenu->GetLastItem());
 
-  submenu->AddChildView(std::make_unique<View>());
+  submenu->AddChildView(new View());
   EXPECT_EQ(nullptr, submenu->GetLastItem());
 
-  MenuItemView* first = submenu->AddChildView(std::make_unique<MenuItemView>());
+  MenuItemView* first = new MenuItemView();
+  submenu->AddChildView(first);
   EXPECT_EQ(first, submenu->GetLastItem());
 
-  submenu->AddChildView(std::make_unique<View>());
+  submenu->AddChildView(new View());
   EXPECT_EQ(first, submenu->GetLastItem());
 
-  MenuItemView* second =
-      submenu->AddChildView(std::make_unique<MenuItemView>());
+  MenuItemView* second = new MenuItemView();
+  submenu->AddChildView(second);
   EXPECT_EQ(second, submenu->GetLastItem());
 }
 

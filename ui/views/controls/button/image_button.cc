@@ -49,6 +49,14 @@ gfx::ImageSkia ImageButton::GetImage(ButtonState state) const {
   return images_[state].Rasterize(GetColorProvider());
 }
 
+void ImageButton::SetImage(ButtonState for_state, const gfx::ImageSkia* image) {
+  SetImage(for_state, image ? *image : gfx::ImageSkia());
+}
+
+void ImageButton::SetImage(ButtonState for_state, const gfx::ImageSkia& image) {
+  SetImageModel(for_state, ui::ImageModel::FromImageSkia(image));
+}
+
 void ImageButton::SetImageModel(ButtonState for_state,
                                 const ui::ImageModel& image_model) {
   if (for_state == STATE_HOVERED)
@@ -151,14 +159,19 @@ std::unique_ptr<ImageButton> ImageButton::CreateIconButton(
     PressedCallback callback,
     const gfx::VectorIcon& icon,
     const std::u16string& accessible_name,
-    MaterialIconStyle icon_style,
-    std::optional<gfx::Insets> insets) {
-  const int kSmallIconSize = 16;
+    MaterialIconStyle icon_style) {
+  const int kSmallIconSize = 14;
   const int kLargeIconSize = 20;
   int icon_size = (icon_style == MaterialIconStyle::kLarge) ? kLargeIconSize
                                                             : kSmallIconSize;
+  // Icon images have padding between the image and image border. To account
+  // for that padding, add a general padding value. This value might be
+  // incorrect depending on the icon image.
+  icon_size +=
+      LayoutProvider::Get()->GetDistanceMetric(DISTANCE_VECTOR_ICON_PADDING);
+
   std::unique_ptr<ImageButton> icon_button =
-      std::make_unique<ImageButton>(std::move(callback));
+      std::make_unique<ImageButton>(callback);
   icon_button->SetImageModel(
       ButtonState::STATE_NORMAL,
       ui::ImageModel::FromVectorIcon(icon, ui::kColorIcon, icon_size));
@@ -173,13 +186,11 @@ std::unique_ptr<ImageButton> ImageButton::CreateIconButton(
       ui::ImageModel::FromVectorIcon(icon, ui::kColorIconDisabled, icon_size));
 
   const gfx::Insets target_insets =
-      insets.has_value() ? insets.value()
-                         : LayoutProvider::Get()->GetInsetsMetric(
-                               InsetsMetric::INSETS_ICON_BUTTON);
+      LayoutProvider::Get()->GetInsetsMetric(InsetsMetric::INSETS_ICON_BUTTON);
   icon_button->SetBorder(views::CreateEmptyBorder(target_insets));
 
   const int kSmallIconButtonSize = 24;
-  const int kLargeIconButtonSize = 28;
+  const int kLargeIconButtonSize = 32;
   int button_size = (icon_style == MaterialIconStyle::kLarge)
                         ? kLargeIconButtonSize
                         : kSmallIconButtonSize;
@@ -200,7 +211,6 @@ std::unique_ptr<ImageButton> ImageButton::CreateIconButton(
           icon_button.get()));
 
   icon_button->SetAccessibleName(accessible_name);
-  icon_button->SetTooltipText(accessible_name);
 
   return icon_button;
 }
@@ -407,13 +417,13 @@ void ToggleImageButton::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   }
 }
 
-BEGIN_METADATA(ImageButton)
+BEGIN_METADATA(ImageButton, Button)
 ADD_PROPERTY_METADATA(HorizontalAlignment, ImageHorizontalAlignment)
 ADD_PROPERTY_METADATA(VerticalAlignment, ImageVerticalAlignment)
 ADD_PROPERTY_METADATA(gfx::Size, MinimumImageSize)
 END_METADATA
 
-BEGIN_METADATA(ToggleImageButton)
+BEGIN_METADATA(ToggleImageButton, ImageButton)
 ADD_PROPERTY_METADATA(bool, Toggled)
 ADD_PROPERTY_METADATA(std::unique_ptr<Background>, ToggledBackground)
 ADD_PROPERTY_METADATA(std::u16string, ToggledTooltipText)

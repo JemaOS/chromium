@@ -16,6 +16,7 @@
 #include "ui/views/view_targeter_delegate.h"
 #include "ui/views/widget/widget_observer.h"
 
+class SavedTabGroupKeyedService;
 class TabSlotController;
 class TabGroupStyle;
 struct TabSizeInfo;
@@ -25,11 +26,7 @@ namespace views {
 class ImageView;
 class Label;
 class View;
-}  // namespace views
-
-namespace tab_groups {
-class SavedTabGroupKeyedService;
-}  // namespace tab_groups
+}
 
 // View for tab group headers in the tab strip, which are markers of group
 // boundaries. There is one header for each group, which is included in the tab
@@ -37,9 +34,9 @@ class SavedTabGroupKeyedService;
 class TabGroupHeader : public TabSlotView,
                        public views::ContextMenuController,
                        public views::ViewTargeterDelegate {
-  METADATA_HEADER(TabGroupHeader, TabSlotView)
-
  public:
+  METADATA_HEADER(TabGroupHeader);
+
   TabGroupHeader(TabSlotController& tab_slot_controller,
                  const tab_groups::TabGroupId& group,
                  const TabGroupStyle& style);
@@ -104,7 +101,7 @@ class TabGroupHeader : public TabSlotView,
   const raw_ptr<views::ImageView> sync_icon_;
 
   // Used to verify if this tab group is saved.
-  const raw_ptr<tab_groups::SavedTabGroupKeyedService> saved_tab_group_service_;
+  const raw_ptr<SavedTabGroupKeyedService> saved_tab_group_service_;
 
   const raw_ref<const TabGroupStyle> group_style_;
   const raw_ptr<const TabStyle> tab_style_;
@@ -128,7 +125,7 @@ class TabGroupHeader : public TabSlotView,
 
    private:
     bool is_open_ = false;
-    raw_ptr<views::Widget, AcrossTasksDanglingUntriaged> widget_;
+    raw_ptr<views::Widget, DanglingUntriaged> widget_;
     // Outlives this because it's a dependency inversion interface for the
     // header's parent View.
     raw_ref<TabSlotController> tab_slot_controller_;

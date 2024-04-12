@@ -19,7 +19,7 @@ class WebTestBuilders(builders.Builders):
     def _BuilderRunsTestOfInterest(self, test_map: Dict[str, Any]) -> bool:
         tests = test_map.get('isolated_scripts', [])
         for t in tests:
-            if t.get('test') in self.GetIsolateNames():
+            if t.get('isolate_name') in self.GetIsolateNames():
                 return True
         return False
 
@@ -43,6 +43,12 @@ class WebTestBuilders(builders.Builders):
                 'linux-blink-rel-dummy': {
                     'linux-blink-rel',
                     'v8_linux_blink_rel',
+                },
+                'mac10.13-blink-rel-dummy': {
+                    'mac10.13-blink-rel',
+                },
+                'mac10.14-blink-rel-dummy': {
+                    'mac10.14-blink-rel',
                 },
                 'mac10.15-blink-rel-dummy': {
                     'mac10.15-blink-rel',

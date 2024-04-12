@@ -15,13 +15,14 @@ limitations under the License.
 
 package org.tensorflow.lite.support.common;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.tensorflow.lite.support.common.internal.SupportPreconditions;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.tensorflow.lite.support.common.internal.SupportPreconditions;
 
 /**
  * A processor base class that chains a serial of {@code Operator<T>} and executes them.
@@ -32,52 +33,50 @@ import org.tensorflow.lite.support.common.internal.SupportPreconditions;
  * @param <T> The type that the Operator is handling.
  */
 public class SequentialProcessor<T> implements Processor<T> {
+    /** List of operators added to this {@link SequentialProcessor}. */
+    protected final List<Operator<T>> operatorList;
+    /**
+     * The {@link Map} between the operator name and the corresponding op indexes in {@code
+     * operatorList}. An operator may be added multiple times into this {@link SequentialProcessor}.
+     */
+    protected final Map<String, List<Integer>> operatorIndex;
 
-  /** List of operators added to this {@link SequentialProcessor}. */
-  protected final List<Operator<T>> operatorList;
-  /**
-   * The {@link Map} between the operator name and the corresponding op indexes in {@code
-   * operatorList}. An operator may be added multiple times into this {@link SequentialProcessor}.
-   */
-  protected final Map<String, List<Integer>> operatorIndex;
-
-  protected SequentialProcessor(Builder<T> builder) {
-    operatorList = builder.operatorList;
-    operatorIndex = Collections.unmodifiableMap(builder.operatorIndex);
-  }
-
-  @Override
-  public T process(T x) {
-    for (Operator<T> op : operatorList) {
-      x = op.apply(x);
-    }
-    return x;
-  }
-
-  /** The inner builder class to build a Sequential Processor. */
-  protected static class Builder<T> {
-
-    private final List<Operator<T>> operatorList;
-    private final Map<String, List<Integer>> operatorIndex;
-
-    protected Builder() {
-      operatorList = new ArrayList<>();
-      operatorIndex = new HashMap<>();
+    protected SequentialProcessor(Builder<T> builder) {
+        operatorList = builder.operatorList;
+        operatorIndex = Collections.unmodifiableMap(builder.operatorIndex);
     }
 
-    public Builder<T> add(@NonNull Operator<T> op) {
-      SupportPreconditions.checkNotNull(op, "Adding null Op is illegal.");
-      operatorList.add(op);
-      String operatorName = op.getClass().getName();
-      if (!operatorIndex.containsKey(operatorName)) {
-        operatorIndex.put(operatorName, new ArrayList<Integer>());
-      }
-      operatorIndex.get(operatorName).add(operatorList.size() - 1);
-      return this;
+    @Override
+    public T process(T x) {
+        for (Operator<T> op : operatorList) {
+            x = op.apply(x);
+        }
+        return x;
     }
 
-    public SequentialProcessor<T> build() {
-      return new SequentialProcessor<T>(this);
+    /** The inner builder class to build a Sequential Processor. */
+    protected static class Builder<T> {
+        private final List<Operator<T>> operatorList;
+        private final Map<String, List<Integer>> operatorIndex;
+
+        protected Builder() {
+            operatorList = new ArrayList<>();
+            operatorIndex = new HashMap<>();
+        }
+
+        public Builder<T> add(@NonNull Operator<T> op) {
+            SupportPreconditions.checkNotNull(op, "Adding null Op is illegal.");
+            operatorList.add(op);
+            String operatorName = op.getClass().getName();
+            if (!operatorIndex.containsKey(operatorName)) {
+                operatorIndex.put(operatorName, new ArrayList<Integer>());
+            }
+            operatorIndex.get(operatorName).add(operatorList.size() - 1);
+            return this;
+        }
+
+        public SequentialProcessor<T> build() {
+            return new SequentialProcessor<T>(this);
+        }
     }
-  }
 }

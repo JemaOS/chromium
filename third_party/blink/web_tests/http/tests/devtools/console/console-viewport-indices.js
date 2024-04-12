@@ -2,14 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
-import * as Platform from 'devtools/core/platform/platform.js';
-import * as Console from 'devtools/panels/console/console.js';
-
 (async function() {
     TestRunner.addResult(`Verifies viewport's visible and active message ranges.\n`);
+    await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
     await TestRunner.showPanel('console');
     await TestRunner.evaluateInPagePromise(`
         function addNormalMessages(count)
@@ -34,7 +29,7 @@ import * as Console from 'devtools/panels/console/console.js';
       `);
 
     ConsoleTestRunner.fixConsoleViewportDimensions(600, 200);
-    var consoleView = Console.ConsoleView.ConsoleView.instance();
+    var consoleView = Console.ConsoleView.instance();
     var viewport = consoleView.viewport;
 
     function logMessages(count, type) {
@@ -50,7 +45,7 @@ import * as Console from 'devtools/panels/console/console.js';
           }
         }
         ConsoleTestRunner.addConsoleSniffer(messageAdded, false);
-        TestRunner.evaluateInPage(Platform.StringUtilities.sprintf(`add${type}Messages(%d)`, count));
+        TestRunner.evaluateInPage(String.sprintf(`add${type}Messages(%d)`, count));
       });
     }
 
@@ -81,13 +76,13 @@ Actual visible range: ${first} to ${last}, Total: ${count}`);
 
     TestRunner.runTestSuite([
       async function testEmptyViewport(next) {
-        Console.ConsoleView.ConsoleView.clearConsole();
+        Console.ConsoleView.clearConsole();
         dumpVisibleIndices();
         next();
       },
 
       async function testFirstLastVisibleIndices(next) {
-        Console.ConsoleView.ConsoleView.clearConsole();
+        Console.ConsoleView.clearConsole();
         await logMessages(100, 'Normal');
 
         forceItemAndDump(0, true);
@@ -105,7 +100,7 @@ Actual visible range: ${first} to ${last}, Total: ${count}`);
       },
 
       async function testMultilineMessages(next) {
-        Console.ConsoleView.ConsoleView.clearConsole();
+        Console.ConsoleView.clearConsole();
         await logMessages(100, 'Multiline');
 
         forceItemAndDump(0, true);
@@ -123,7 +118,7 @@ Actual visible range: ${first} to ${last}, Total: ${count}`);
       },
 
       async function testSlightlyBiggerMessages(next) {
-        Console.ConsoleView.ConsoleView.clearConsole();
+        Console.ConsoleView.clearConsole();
         await logMessages(100, 'SlightlyBigger');
 
         forceItemAndDump(0, true);

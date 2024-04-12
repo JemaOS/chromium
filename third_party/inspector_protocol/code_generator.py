@@ -304,7 +304,6 @@ def create_binary_type_definition():
     "raw_type": "Binary",
     "raw_pass_type": "const Binary&",
     "raw_return_type": "Binary",
-    "is_primitive": True
   }
 
 

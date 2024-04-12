@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.gsa;
 
 import androidx.annotation.Nullable;
 
-/** The interface that allows the current browsing context to be reported to GSA. */
+/**
+ * The interface that allows the current browsing context to be reported to GSA.
+ */
 public interface GSAContextReportDelegate {
     /**
      * Report the current url and title (i.e. the context) to GSA. This method marks the start of a
@@ -18,6 +20,8 @@ public interface GSAContextReportDelegate {
     void reportContext(
             String url, String title, @Nullable GSAContextDisplaySelection displaySelection);
 
-    /** Report the end of usage for the previously reported context. */
+    /**
+     * Report the end of usage for the previously reported context.
+     */
     void reportContextUsageEnded();
 }

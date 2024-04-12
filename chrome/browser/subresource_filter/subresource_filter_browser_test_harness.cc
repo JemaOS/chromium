@@ -4,7 +4,6 @@
 
 #include "chrome/browser/subresource_filter/subresource_filter_browser_test_harness.h"
 
-#include <string_view>
 #include <utility>
 
 #include "base/check.h"
@@ -12,6 +11,7 @@
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/path_service.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/bind.h"
@@ -31,7 +31,7 @@
 #include "components/subresource_filter/content/browser/ruleset_service.h"
 #include "components/subresource_filter/content/browser/subresource_filter_profile_context.h"
 #include "components/subresource_filter/content/browser/test_ruleset_publisher.h"
-#include "components/subresource_filter/core/browser/verified_ruleset_dealer.h"
+#include "components/subresource_filter/content/browser/verified_ruleset_dealer.h"
 #include "components/subresource_filter/core/common/common_features.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_paths.h"
@@ -44,6 +44,7 @@
 namespace subresource_filter {
 
 // static
+const char SubresourceFilterBrowserTest::kDocumentLoadActivationLevel[];
 const char SubresourceFilterBrowserTest::kSubresourceLoadsTotalForPage[];
 const char SubresourceFilterBrowserTest::kSubresourceLoadsEvaluatedForPage[];
 const char SubresourceFilterBrowserTest::kSubresourceLoadsMatchedRulesForPage[];
@@ -239,7 +240,7 @@ void SubresourceFilterBrowserTest::SetRulesetToDisallowURLsWithPathSuffix(
 }
 
 void SubresourceFilterBrowserTest::SetRulesetToDisallowURLsWithSubstrings(
-    std::vector<std::string_view> substrings) {
+    std::vector<base::StringPiece> substrings) {
   TestRulesetPair test_ruleset_pair;
   ruleset_creator_.CreateRulesetToDisallowURLWithSubstrings(
       std::move(substrings), &test_ruleset_pair);
@@ -312,7 +313,7 @@ SubresourceFilterPrerenderingBrowserTest::
     ~SubresourceFilterPrerenderingBrowserTest() = default;
 
 void SubresourceFilterPrerenderingBrowserTest::SetUp() {
-  prerender_helper_.RegisterServerRequestMonitor(embedded_test_server());
+  prerender_helper_.SetUp(embedded_test_server());
   SubresourceFilterListInsertingBrowserTest::SetUp();
 }
 

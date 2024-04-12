@@ -28,7 +28,6 @@ class GtkUiPlatformStub : public GtkUiPlatform {
   void ShowGtkWindow(GtkWindow* window) override;
   std::unique_ptr<ui::LinuxInputMethodContext> CreateInputMethodContext(
       ui::LinuxInputMethodContextDelegate* delegate) const override;
-  bool IncludeFontScaleInDeviceScale() const override;
 };
 
 }  // namespace gtk

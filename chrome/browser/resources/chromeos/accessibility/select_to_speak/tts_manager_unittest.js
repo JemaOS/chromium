@@ -31,6 +31,8 @@ SelectToSpeakTtsManagerUnitTest = class extends SelectToSpeakE2ETest {
   /** @override */
   async setUpDeferred() {
     await super.setUpDeferred();
+    const module = await import('/select_to_speak/tts_manager.js');
+    window.TtsManager = module.TtsManager;
 
     this.mockTtsClient = new MockTtsClient();
     this.ttsManager = new TtsManager();

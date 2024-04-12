@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ui/views/permissions/permission_prompt_chip.h"
 
-#include "base/containers/to_vector.h"
 #include "base/memory/raw_ptr.h"
 #include "base/ranges/algorithm.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -15,7 +14,6 @@
 #include "components/permissions/permission_ui_selector.h"
 #include "components/permissions/test/mock_permission_request.h"
 #include "ui/events/base_event_utils.h"
-#include "ui/gfx/animation/animation_test_api.h"
 #include "ui/views/test/ax_event_counter.h"
 #include "ui/views/test/button_test_api.h"
 
@@ -31,38 +29,31 @@ class TestDelegate : public permissions::PermissionPrompt::Delegate {
       : TestDelegate(origin,
                      request_types,
                      with_gesture,
-                     std::nullopt,
+                     absl::nullopt,
                      web_contents) {}
 
   explicit TestDelegate(
       const GURL& origin,
       const std::vector<permissions::RequestType> request_types,
       bool with_gesture,
-      std::optional<permissions::PermissionUiSelector::QuietUiReason>
+      absl::optional<permissions::PermissionUiSelector::QuietUiReason>
           quiet_ui_reason,
       content::WebContents* web_contents)
       : quiet_ui_reason_(quiet_ui_reason), web_contents_(web_contents) {
-    requests_ = base::ToVector(
-        request_types,
-        [&](auto request_type)
-            -> std::unique_ptr<permissions::PermissionRequest> {
+    base::ranges::transform(
+        request_types, std::back_inserter(requests_), [&](auto& request_type) {
           return std::make_unique<permissions::MockPermissionRequest>(
               origin, request_type,
               with_gesture
                   ? permissions::PermissionRequestGestureType::GESTURE
                   : permissions::PermissionRequestGestureType::NO_GESTURE);
         });
-    raw_requests_ = base::ToVector(
-        requests_,
-        [](const auto& request)
-            -> raw_ptr<permissions::PermissionRequest, VectorExperimental> {
-          return request.get();
-        });
+    base::ranges::transform(
+        requests_, std::back_inserter(raw_requests_),
+        &std::unique_ptr<permissions::PermissionRequest>::get);
   }
 
-  const std::vector<
-      raw_ptr<permissions::PermissionRequest, VectorExperimental>>&
-  Requests() override {
+  const std::vector<permissions::PermissionRequest*>& Requests() override {
     return raw_requests_;
   }
 
@@ -79,8 +70,6 @@ class TestDelegate : public permissions::PermissionPrompt::Delegate {
   void Deny() override { requests_.clear(); }
   void Dismiss() override { requests_.clear(); }
   void Ignore() override { requests_.clear(); }
-  void FinalizeCurrentRequests() override { NOTREACHED(); }
-  void OpenHelpCenterLink(const ui::Event& event) override {}
   void PreIgnoreQuietPrompt() override { requests_.clear(); }
   void SetManageClicked() override { requests_.clear(); }
   void SetLearnMoreClicked() override { requests_.clear(); }
@@ -97,7 +86,7 @@ class TestDelegate : public permissions::PermissionPrompt::Delegate {
   bool ShouldCurrentRequestUseQuietUI() const override {
     return quiet_ui_reason_.has_value();
   }
-  std::optional<permissions::PermissionUiSelector::QuietUiReason>
+  absl::optional<permissions::PermissionUiSelector::QuietUiReason>
   ReasonForUsingQuietUi() const override {
     return quiet_ui_reason_;
   }
@@ -119,10 +108,9 @@ class TestDelegate : public permissions::PermissionPrompt::Delegate {
 
  private:
   std::vector<std::unique_ptr<permissions::PermissionRequest>> requests_;
-  std::vector<raw_ptr<permissions::PermissionRequest, VectorExperimental>>
-      raw_requests_;
+  std::vector<permissions::PermissionRequest*> raw_requests_;
   bool was_current_request_already_displayed_ = false;
-  std::optional<permissions::PermissionUiSelector::QuietUiReason>
+  absl::optional<permissions::PermissionUiSelector::QuietUiReason>
       quiet_ui_reason_;
   raw_ptr<content::WebContents> web_contents_;
   base::WeakPtrFactory<TestDelegate> weak_factory_{this};
@@ -132,9 +120,8 @@ class TestDelegate : public permissions::PermissionPrompt::Delegate {
 class PermissionChipUnitTest : public TestWithBrowserView {
  public:
   PermissionChipUnitTest()
-      : TestWithBrowserView(base::test::TaskEnvironment::TimeSource::MOCK_TIME),
-        animation_mode_reset_(gfx::AnimationTestApi::SetRichAnimationRenderMode(
-            gfx::Animation::RichAnimationRenderMode::FORCE_ENABLED)) {}
+      : TestWithBrowserView(
+            base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
 
   PermissionChipUnitTest(const PermissionChipUnitTest&) = delete;
   PermissionChipUnitTest& operator=(const PermissionChipUnitTest&) = delete;
@@ -146,17 +133,14 @@ class PermissionChipUnitTest : public TestWithBrowserView {
     web_contents_ = browser()->tab_strip_model()->GetWebContentsAt(0);
   }
 
-  void ClickOnChip(PermissionChipView& chip) {
+  void ClickOnChip(OmniboxChipButton& chip) {
     views::test::ButtonTestApi(&chip).NotifyClick(
         ui::MouseEvent(ui::ET_MOUSE_PRESSED, gfx::Point(), gfx::Point(),
                        ui::EventTimeForNow(), ui::EF_LEFT_MOUSE_BUTTON, 0));
     base::RunLoop().RunUntilIdle();
   }
 
-  raw_ptr<content::WebContents, DanglingUntriaged> web_contents_;
-  // Some of these tests rely on animation being enabled. This forces
-  // animation on even if it's turned off in the OS.
-  gfx::AnimationTestApi::RenderModeResetter animation_mode_reset_;
+  raw_ptr<content::WebContents> web_contents_;
 
   base::TimeDelta kChipCollapseDuration = base::Seconds(12);
   base::TimeDelta kNormalChipDismissDuration = base::Seconds(6);
@@ -200,7 +184,7 @@ TEST_F(PermissionChipUnitTest, AlreadyDisplayedRequestTest) {
   ASSERT_TRUE(delegate.IsRequestInProgress());
 }
 
-TEST_F(PermissionChipUnitTest, ClickOnRequestChipTest) {
+TEST_F(PermissionChipUnitTest, DisplayChipAutoPopupTest) {
   TestDelegate delegate(GURL("https://test.origin"),
                         {permissions::RequestType::kNotifications}, true,
                         web_contents_);
@@ -230,11 +214,96 @@ TEST_F(PermissionChipUnitTest, ClickOnRequestChipTest) {
   EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
   EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
 
-  // A click on the chip hides the popup bubble and resolves a permission
-  // request.
+  // The seconds click on the chip hides the popup bubble.
   ClickOnChip(*chip_controller->chip());
   EXPECT_FALSE(chip_controller->IsBubbleShowing());
-  EXPECT_FALSE(delegate.IsRequestInProgress());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  // After the second click, only dismiss timer should be active.
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_TRUE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  task_environment()->AdvanceClock(kNormalChipDismissDuration +
+                                   base::Seconds(1));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_FALSE(delegate.IsRequestInProgress());
+}
+
+TEST_F(PermissionChipUnitTest, MultiClickOnChipAutoPopupTest) {
+  TestDelegate delegate(GURL("https://test.origin"),
+                        {permissions::RequestType::kNotifications}, true,
+                        web_contents_);
+  PermissionPromptChip chip_prompt(browser(), web_contents_, &delegate);
+  ChipController* chip_controller =
+      chip_prompt.get_chip_controller_for_testing();
+
+  EXPECT_FALSE(chip_controller->IsBubbleShowing());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  // Animation does not work. Most probably it is unit tests limitations.
+  // `chip.is_fully_collapsed()` will not work as well.
+  EXPECT_TRUE(chip_controller->IsAnimating());
+  chip_controller->stop_animation_for_test();
+  EXPECT_FALSE(chip_controller->IsAnimating());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  // The permission prompt bubble is open automatically
+  EXPECT_TRUE(chip_controller->IsBubbleShowing());
+
+  task_environment()->AdvanceClock(kLongerThanAllTimersDuration);
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+  EXPECT_TRUE(chip_controller->IsBubbleShowing());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  ClickOnChip(*chip_controller->chip());
+
+  // The permission prompt bubble is open automatically, hence the first click
+  // on the chip should close the bubble.
+  EXPECT_FALSE(chip_controller->IsBubbleShowing());
+  EXPECT_TRUE(delegate.IsRequestInProgress());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_TRUE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  task_environment()->AdvanceClock(kNormalChipDismissDuration -
+                                   base::Seconds(1));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_FALSE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  ClickOnChip(*chip_controller->chip());
+  EXPECT_TRUE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  task_environment()->AdvanceClock(kLongerThanAllTimersDuration);
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  ClickOnChip(*chip_controller->chip());
+  EXPECT_FALSE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_TRUE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  task_environment()->AdvanceClock(kNormalChipDismissDuration +
+                                   base::Seconds(1));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_FALSE(delegate.IsRequestInProgress());
 }
 
 TEST_F(PermissionChipUnitTest, DisplayQuietChipNoAbusiveTest) {
@@ -283,7 +352,7 @@ TEST_F(PermissionChipUnitTest, DisplayQuietChipNoAbusiveTest) {
   ASSERT_FALSE(delegate.IsRequestInProgress());
 }
 
-TEST_F(PermissionChipUnitTest, ClickOnQuietChipNoAbusiveTest) {
+TEST_F(PermissionChipUnitTest, MultiClickOnQuietChipNoAbusiveTest) {
   TestDelegate delegate(
       GURL("https://test.origin"), {permissions::RequestType::kNotifications},
       true, permissions::PermissionUiSelector::QuietUiReason::kEnabledInPrefs,
@@ -335,7 +404,45 @@ TEST_F(PermissionChipUnitTest, ClickOnQuietChipNoAbusiveTest) {
   // The seconds click on the chip hides the popup bubble.
   ClickOnChip(*chip_controller->chip());
   EXPECT_FALSE(chip_controller->IsBubbleShowing());
-  EXPECT_FALSE(delegate.IsRequestInProgress());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  // After the second click, only dismiss timer should be active.
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_TRUE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  task_environment()->AdvanceClock(kNormalChipDismissDuration -
+                                   base::Seconds(1));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_FALSE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  // The third click on the chip opens the popup bubble again.
+  ClickOnChip(*chip_controller->chip());
+  EXPECT_TRUE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  task_environment()->AdvanceClock(kLongerThanAllTimersDuration);
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  ClickOnChip(*chip_controller->chip());
+  EXPECT_FALSE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_TRUE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  task_environment()->AdvanceClock(kNormalChipDismissDuration +
+                                   base::Seconds(1));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_FALSE(delegate.IsRequestInProgress());
 }
 
 TEST_F(PermissionChipUnitTest, DisplayQuietChipAbusiveTest) {
@@ -373,7 +480,7 @@ TEST_F(PermissionChipUnitTest, DisplayQuietChipAbusiveTest) {
   ASSERT_FALSE(delegate.IsRequestInProgress());
 }
 
-TEST_F(PermissionChipUnitTest, ClickOnQuietChipAbusiveTest) {
+TEST_F(PermissionChipUnitTest, MultiClickOnQuietChipAbusiveTest) {
   TestDelegate delegate(GURL("https://test.origin"),
                         {permissions::RequestType::kNotifications}, true,
                         permissions::PermissionUiSelector::QuietUiReason::
@@ -401,7 +508,6 @@ TEST_F(PermissionChipUnitTest, ClickOnQuietChipAbusiveTest) {
   EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
   EXPECT_TRUE(chip_controller->is_dismiss_timer_running_for_testing());
 
-  // Click to open a permission popup bubble.
   ClickOnChip(*chip_controller->chip());
   EXPECT_TRUE(chip_controller->IsBubbleShowing());
 
@@ -416,9 +522,46 @@ TEST_F(PermissionChipUnitTest, ClickOnQuietChipAbusiveTest) {
   EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
   EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
 
-  // The second click on the chip hides the prompt and resolves the permission
-  // request.
+  // The seconds click on the chip hides the popup bubble.
   ClickOnChip(*chip_controller->chip());
   EXPECT_FALSE(chip_controller->IsBubbleShowing());
-  EXPECT_FALSE(delegate.IsRequestInProgress());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  // After the second click, only dismiss timer should be active.
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_TRUE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  task_environment()->AdvanceClock(kQuietChipDismissDuration -
+                                   base::Seconds(1));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_FALSE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  // The third click on the chip opens the popup bubble again.
+  ClickOnChip(*chip_controller->chip());
+  EXPECT_TRUE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  task_environment()->AdvanceClock(kLongerThanAllTimersDuration);
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_FALSE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  ClickOnChip(*chip_controller->chip());
+  EXPECT_FALSE(chip_controller->IsBubbleShowing());
+  ASSERT_TRUE(delegate.IsRequestInProgress());
+
+  EXPECT_FALSE(chip_controller->is_collapse_timer_running_for_testing());
+  EXPECT_TRUE(chip_controller->is_dismiss_timer_running_for_testing());
+
+  task_environment()->AdvanceClock(kQuietChipDismissDuration +
+                                   base::Seconds(1));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_FALSE(delegate.IsRequestInProgress());
 }

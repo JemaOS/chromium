@@ -4,17 +4,14 @@
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
 <script>
-    setup({allow_uncaught_exception: true});
-
     window.log = [];
 
     window.addEventListener("error", ev => log.push(ev.error));
 
     const test_load = async_test(
-        "Test that invalid module assertion leads to SyntaxError on window.");
+        "Test that no error occurs when an unsupported import assertion is provided.");
     window.addEventListener("load", test_load.step_func_done(ev => {
-      assert_equals(log.length, 1);
-      assert_equals(log[0].constructor, SyntaxError);
+      assert_array_equals(window.log, ["hello", "unsupported-assertion"]);
     }));
 
     function unreachable() { log.push("unexpected"); }

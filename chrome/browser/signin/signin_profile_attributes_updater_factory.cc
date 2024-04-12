@@ -20,20 +20,25 @@ SigninProfileAttributesUpdaterFactory::GetForProfile(Profile* profile) {
 // static
 SigninProfileAttributesUpdaterFactory*
 SigninProfileAttributesUpdaterFactory::GetInstance() {
-  static base::NoDestructor<SigninProfileAttributesUpdaterFactory> instance;
-  return instance.get();
+  return base::Singleton<SigninProfileAttributesUpdaterFactory>::get();
 }
 
 SigninProfileAttributesUpdaterFactory::SigninProfileAttributesUpdaterFactory()
-    : ProfileKeyedServiceFactory("SigninProfileAttributesUpdater") {
+    : ProfileKeyedServiceFactory(
+          "SigninProfileAttributesUpdater",
+          ProfileSelections::Builder()
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
+              .Build()) {
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
 SigninProfileAttributesUpdaterFactory::
-    ~SigninProfileAttributesUpdaterFactory() = default;
+    ~SigninProfileAttributesUpdaterFactory() {}
 
-std::unique_ptr<KeyedService>
-SigninProfileAttributesUpdaterFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* SigninProfileAttributesUpdaterFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
 
@@ -42,7 +47,7 @@ SigninProfileAttributesUpdaterFactory::BuildServiceInstanceForBrowserContext(
     return nullptr;
   }
 
-  return std::make_unique<SigninProfileAttributesUpdater>(
+  return new SigninProfileAttributesUpdater(
       IdentityManagerFactory::GetForProfile(profile),
       &g_browser_process->profile_manager()->GetProfileAttributesStorage(),
       profile->GetPath(), profile->GetPrefs());

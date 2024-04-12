@@ -16,6 +16,7 @@
 #include "components/vector_icons/vector_icons.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/base/resource/resource_bundle.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
 #include "ui/gfx/paint_vector_icon.h"
@@ -80,7 +81,8 @@ std::string MigratableCardView::GetGuid() const {
 }
 
 std::u16string MigratableCardView::GetCardIdentifierString() const {
-  return migratable_credit_card_.credit_card().CardNameAndLastFourDigits();
+  return migratable_credit_card_.credit_card()
+      .CardIdentifierStringForAutofillDisplay();
 }
 
 std::unique_ptr<views::View>
@@ -117,8 +119,8 @@ MigratableCardView::GetMigratableCardDescriptionView(
         // TODO(crbug/867194): Currently the ink drop animation circle is
         // cropped by the border of scroll bar view. Find a way to adjust the
         // format.
-        views::InkDrop::Get(checkbox_->ink_drop_view())
-            ->SetMode(views::InkDropHost::InkDropMode::OFF);
+        views::InkDrop::Get(checkbox_)->SetMode(
+            views::InkDropHost::InkDropMode::OFF);
         checkbox_->SetAccessibleName(card_description.get());
       }
       break;
@@ -150,11 +152,13 @@ MigratableCardView::GetMigratableCardDescriptionView(
           views::BoxLayout::Orientation::kHorizontal, gfx::Insets(),
           provider->GetDistanceMetric(DISTANCE_RELATED_LABEL_HORIZONTAL_LIST)));
 
+  ui::ResourceBundle& rb = ui::ResourceBundle::GetSharedInstance();
   std::unique_ptr<views::ImageView> card_image =
       std::make_unique<views::ImageView>();
   card_image->SetImage(
-      ui::ImageModel::FromResourceId(CreditCard::IconResourceId(
-          migratable_credit_card.credit_card().network())));
+      rb.GetImageNamed(CreditCard::IconResourceId(
+                           migratable_credit_card.credit_card().network()))
+          .AsImageSkia());
   card_image->SetAccessibleName(
       migratable_credit_card.credit_card().NetworkForDisplay());
   card_network_and_last_four_digits->AddChildView(card_image.release());
@@ -211,7 +215,7 @@ void MigratableCardView::CheckboxPressed() {
   parent_dialog_->UpdateLayout();
 }
 
-BEGIN_METADATA(MigratableCardView)
+BEGIN_METADATA(MigratableCardView, views::View)
 ADD_READONLY_PROPERTY_METADATA(bool, Selected)
 ADD_READONLY_PROPERTY_METADATA(std::string, Guid)
 ADD_READONLY_PROPERTY_METADATA(std::u16string, CardIdentifierString)

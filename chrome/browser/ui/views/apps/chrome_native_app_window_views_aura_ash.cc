@@ -9,168 +9,63 @@
 #include "apps/ui/views/app_window_frame_view.h"
 #include "ash/constants/app_types.h"
 #include "ash/frame/non_client_frame_view_ash.h"
+#include "ash/public/cpp/shelf_types.h"
 #include "ash/public/cpp/shell_window_ids.h"
 #include "ash/public/cpp/tablet_mode.h"
 #include "ash/public/cpp/window_backdrop.h"
 #include "ash/public/cpp/window_properties.h"
-#include "base/check.h"
 #include "base/functional/bind.h"
-#include "base/scoped_observation.h"
-#include "base/trace_event/trace_event.h"
+#include "base/logging.h"
 #include "chrome/browser/apps/app_service/app_service_proxy.h"
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/apps/icon_standardizer.h"
 #include "chrome/browser/ash/note_taking_helper.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/profiles/profiles_state.h"
 #include "chrome/browser/ui/ash/ash_util.h"
 #include "chrome/browser/ui/ash/multi_user/multi_user_context_menu.h"
+#include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/views/exclusive_access_bubble_views.h"
 #include "chrome/common/extensions/extension_constants.h"
-#include "chromeos/components/mgs/managed_guest_session_utils.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "chromeos/ui/base/chromeos_ui_constants.h"
 #include "chromeos/ui/base/window_properties.h"
 #include "chromeos/ui/base/window_state_type.h"
-#include "chromeos/ui/frame/frame_utils.h"
 #include "chromeos/ui/frame/immersive/immersive_fullscreen_controller.h"
 #include "components/app_restore/app_restore_utils.h"
 #include "components/app_restore/window_properties.h"
 #include "components/services/app_service/public/cpp/app_types.h"
+#include "components/session_manager/core/session_manager.h"
 #include "extensions/browser/app_window/app_delegate.h"
+#include "extensions/common/constants.h"
 #include "ui/aura/client/aura_constants.h"
-#include "ui/aura/window_observer.h"
 #include "ui/base/hit_test.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/models/simple_menu_model.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/display/screen.h"
-#include "ui/display/tablet_state.h"
 #include "ui/events/event_constants.h"
-#include "ui/gfx/geometry/rounded_corners_f.h"
+#include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/image/image_skia.h"
+#include "ui/views/controls/menu/menu_model_adapter.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/widget/widget.h"
-#include "ui/views/window/client_view.h"
 #include "ui/wm/core/coordinate_conversion.h"
 
 using extensions::AppWindow;
-namespace {
 
-// NonClientFrameView implementation for frameless chrome apps (i.e apps that do
-// not use ash style NonClientFrameView).
-class NativeAppWindowFrameView : public apps::AppWindowFrameView,
-                                 public aura::WindowObserver {
- public:
-  NativeAppWindowFrameView(views::Widget* widget,
-                           ChromeNativeAppWindowViewsAuraAsh* app_window,
-                           bool draw_frame,
-                           const SkColor& active_frame_color,
-                           const SkColor& inactive_frame_color)
-      : apps::AppWindowFrameView(widget,
-                                 app_window,
-                                 draw_frame,
-                                 active_frame_color,
-                                 inactive_frame_color) {
-    frame_window_observation_.Observe(widget->GetNativeWindow());
-  }
+ChromeNativeAppWindowViewsAuraAsh::ChromeNativeAppWindowViewsAuraAsh()
+    : exclusive_access_manager_(
+          std::make_unique<ExclusiveAccessManager>(this)) {
+  if (ash::TabletMode::Get())
+    ash::TabletMode::Get()->AddObserver(this);
+}
 
-  NativeAppWindowFrameView(const NativeAppWindowFrameView&) = delete;
-  NativeAppWindowFrameView& operator=(const NativeAppWindowFrameView&) = delete;
-
-  ~NativeAppWindowFrameView() override = default;
-
-  // views::NonClientFrameView
-  void UpdateWindowRoundedCorners() override {
-    DCHECK(GetWidget());
-
-    if (!chromeos::features::IsRoundedWindowsEnabled()) {
-      return;
-    }
-
-    aura::Window* frame_window = GetWidget()->GetNativeWindow();
-
-    const int corner_radius = chromeos::GetFrameCornerRadius(frame_window);
-    frame_window->SetProperty(aura::client::kWindowCornerRadiusKey,
-                              corner_radius);
-
-    if (draw_frame()) {
-      SetFrameCornerRadius(corner_radius);
-    }
-
-    GetWidget()->client_view()->UpdateWindowRoundedCorners(corner_radius);
-  }
-
-  // aura::WindowObserver:
-  void OnWindowPropertyChanged(aura::Window* window,
-                               const void* key,
-                               intptr_t old) override {
-    // Windows in ChromeOS are rounded for certain window states. If these
-    // states change, we need to update the rounded corners accordingly. See
-    // `chromeos::ShouldWindowHaveRoundedCorners()` for more details.
-    if (chromeos::CanPropertyEffectFrameRadius(key)) {
-      UpdateWindowRoundedCorners();
-    }
-  }
-
-  void OnWindowDestroyed(aura::Window* window) override {
-    frame_window_observation_.Reset();
-  }
-
- private:
-  base::ScopedObservation<aura::Window, aura::WindowObserver>
-      frame_window_observation_{this};
-};
-
-class ChromeNativeAppNonClientView : public views::ClientView {
- public:
-  ChromeNativeAppNonClientView(views::Widget* frame,
-                               ChromeNativeAppWindowViewsAuraAsh* app_window,
-                               bool has_non_standard_frame,
-                               bool draw_non_standard_frame)
-      : views::ClientView(frame, app_window),
-        has_non_standard_frame_(has_non_standard_frame),
-        draw_non_standard_frame_(draw_non_standard_frame) {}
-
-  ChromeNativeAppNonClientView(const ChromeNativeAppNonClientView&) = delete;
-  ChromeNativeAppNonClientView& operator=(const ChromeNativeAppNonClientView&) =
-      delete;
-
-  ~ChromeNativeAppNonClientView() override = default;
-
-  // views::ClientView:
-  void UpdateWindowRoundedCorners(int corner_radius) override {
-    DCHECK(GetWidget());
-
-    gfx::RoundedCornersF radii(0, 0, corner_radius, corner_radius);
-
-    // If the chrome app's non-standard frame is not drawn, then round all four
-    // corners of the web contents to achieve a rounded window.
-    // For an app with a standard frame, we always draw the frame.
-    if (has_non_standard_frame_ && !draw_non_standard_frame_) {
-      radii.set_upper_right(corner_radius);
-      radii.set_upper_left(corner_radius);
-    }
-
-    static_cast<ChromeNativeAppWindowViewsAuraAsh*>(contents_view())
-        ->web_view()
-        ->holder()
-        ->SetCornerRadii(radii);
-  }
-
- private:
-  const bool has_non_standard_frame_ = true;
-  const bool draw_non_standard_frame_ = true;
-};
-
-}  // namespace
-
-ChromeNativeAppWindowViewsAuraAsh::ChromeNativeAppWindowViewsAuraAsh() =
-    default;
-
-ChromeNativeAppWindowViewsAuraAsh::~ChromeNativeAppWindowViewsAuraAsh() =
-    default;
+ChromeNativeAppWindowViewsAuraAsh::~ChromeNativeAppWindowViewsAuraAsh() {
+  if (ash::TabletMode::Get())
+    ash::TabletMode::Get()->RemoveObserver(this);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // NativeAppWindowViews implementation:
@@ -198,7 +93,7 @@ void ChromeNativeAppWindowViewsAuraAsh::OnBeforeWidgetInit(
                                                      widget);
   // Some windows need to be placed in special containers, for example to make
   // them visible at the login or lock screen.
-  std::optional<int> container_id;
+  absl::optional<int> container_id;
   if (create_params.is_ime_window)
     container_id = ash::kShellWindowId_ImeWindowParentContainer;
   else if (create_params.show_on_lock_screen)
@@ -238,7 +133,7 @@ void ChromeNativeAppWindowViewsAuraAsh::OnBeforeWidgetInit(
 
 std::unique_ptr<views::NonClientFrameView>
 ChromeNativeAppWindowViewsAuraAsh::CreateNonStandardAppFrame() {
-  auto frame = std::make_unique<NativeAppWindowFrameView>(
+  auto frame = std::make_unique<apps::AppWindowFrameView>(
       widget(), this, HasFrameColor(), ActiveFrameColor(),
       InactiveFrameColor());
   frame->Init();
@@ -252,7 +147,6 @@ ChromeNativeAppWindowViewsAuraAsh::CreateNonStandardAppFrame() {
 }
 
 ui::ImageModel ChromeNativeAppWindowViewsAuraAsh::GetWindowIcon() {
-  TRACE_EVENT0("ui", "ChromeNativeAppWindowViewsAuraAsh::GetWindowIcon");
   const ui::ImageModel& image = ChromeNativeAppWindowViews::GetWindowIcon();
   if (image.IsEmpty())
     return ui::ImageModel();
@@ -271,7 +165,6 @@ bool ChromeNativeAppWindowViewsAuraAsh::ShouldRemoveStandardFrame() {
 }
 
 void ChromeNativeAppWindowViewsAuraAsh::EnsureAppIconCreated() {
-  TRACE_EVENT0("ui", "ChromeNativeAppWindowViewsAuraAsh::EnsureAppIconCreated");
   LoadAppIcon(true /* allow_placeholder_icon */);
 }
 
@@ -379,23 +272,15 @@ ChromeNativeAppWindowViewsAuraAsh::CreateNonClientFrameView(
   return custom_frame_view;
 }
 
-views::ClientView* ChromeNativeAppWindowViewsAuraAsh::CreateClientView(
-    views::Widget* widget) {
-  return new ChromeNativeAppNonClientView(
-      widget, this,
-      /*has_non_standard_frame=*/IsFrameless(),
-      /*draw_non_standard_frame=*/HasFrameColor());
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // NativeAppWindow implementation:
 void ChromeNativeAppWindowViewsAuraAsh::SetFullscreen(int fullscreen_types) {
   ChromeNativeAppWindowViewsAura::SetFullscreen(fullscreen_types);
   UpdateImmersiveMode();
 
-  // In a managed guest session, display a toast with instructions on exiting
+  // In a public session, display a toast with instructions on exiting
   // fullscreen.
-  if (chromeos::IsManagedGuestSession()) {
+  if (profiles::IsPublicSession()) {
     UpdateExclusiveAccessExitBubbleContent(
         GURL(),
         fullscreen_types & (AppWindow::FULLSCREEN_TYPE_HTML_API |
@@ -407,8 +292,10 @@ void ChromeNativeAppWindowViewsAuraAsh::SetFullscreen(int fullscreen_types) {
         /*force_update=*/false);
   }
 
-  // Autohide the shelf instead of hiding it completely for OS fullscreen.
+  // Autohide the shelf instead of hiding the shelf completely when only in
+  // OS fullscreen or when in a public session.
   const bool should_hide_shelf =
+      !profiles::IsPublicSession() &&
       fullscreen_types != AppWindow::FULLSCREEN_TYPE_OS;
   widget()->GetNativeWindow()->SetProperty(
       chromeos::kHideShelfWhenFullscreenKey, should_hide_shelf);
@@ -425,20 +312,13 @@ void ChromeNativeAppWindowViewsAuraAsh::SetActivateOnPointer(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// display::DisplayObserver implementation:
-void ChromeNativeAppWindowViewsAuraAsh::OnDisplayTabletStateChanged(
-    display::TabletState state) {
-  switch (state) {
-    case display::TabletState::kEnteringTabletMode:
-    case display::TabletState::kExitingTabletMode:
-      break;
-    case display::TabletState::kInTabletMode:
-      OnTabletModeToggled(true);
-      break;
-    case display::TabletState::kInClamshellMode:
-      OnTabletModeToggled(false);
-      break;
-  }
+// TabletModeObserver implementation:
+void ChromeNativeAppWindowViewsAuraAsh::OnTabletModeStarted() {
+  OnTabletModeToggled(true);
+}
+
+void ChromeNativeAppWindowViewsAuraAsh::OnTabletModeEnded() {
+  OnTabletModeToggled(false);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -483,6 +363,7 @@ void ChromeNativeAppWindowViewsAuraAsh::UpdateExclusiveAccessExitBubbleContent(
     ExclusiveAccessBubbleHideCallback bubble_first_hide_callback,
     bool notify_download,
     bool force_update) {
+  DCHECK(!notify_download || exclusive_access_bubble_);
   if (bubble_type == EXCLUSIVE_ACCESS_BUBBLE_TYPE_NONE && !notify_download) {
     exclusive_access_bubble_.reset();
     if (bubble_first_hide_callback) {
@@ -500,8 +381,7 @@ void ChromeNativeAppWindowViewsAuraAsh::UpdateExclusiveAccessExitBubbleContent(
   }
 
   exclusive_access_bubble_ = std::make_unique<ExclusiveAccessBubbleViews>(
-      this, url, bubble_type, notify_download,
-      std::move(bubble_first_hide_callback));
+      this, url, bubble_type, std::move(bubble_first_hide_callback));
 }
 
 bool ChromeNativeAppWindowViewsAuraAsh::IsExclusiveAccessBubbleDisplayed()
@@ -569,7 +449,7 @@ void ChromeNativeAppWindowViewsAuraAsh::DestroyAnyExclusiveAccessBubble() {
   exclusive_access_bubble_.reset();
 }
 
-bool ChromeNativeAppWindowViewsAuraAsh::CanTriggerOnMousePointer() const {
+bool ChromeNativeAppWindowViewsAuraAsh::CanTriggerOnMouse() const {
   return true;
 }
 
@@ -635,7 +515,7 @@ void ChromeNativeAppWindowViewsAuraAsh::OnWindowDestroying(
 void ChromeNativeAppWindowViewsAuraAsh::OnTabletModeToggled(bool enabled) {
   tablet_mode_enabled_ = enabled;
   UpdateImmersiveMode();
-  widget()->non_client_view()->DeprecatedLayoutImmediately();
+  widget()->non_client_view()->Layout();
 }
 
 void ChromeNativeAppWindowViewsAuraAsh::OnMenuClosed() {
@@ -659,8 +539,7 @@ bool ChromeNativeAppWindowViewsAuraAsh::ShouldEnableImmersiveMode() const {
   // is no need for immersive mode.
   // TODO(crbug.com/801619): This adds a little extra animation
   // when minimizing or unminimizing window.
-  return display::Screen::GetScreen()->InTabletMode() && CanResize() &&
-         !IsMinimized() &&
+  return ash::TabletMode::IsInTabletMode() && CanResize() && !IsMinimized() &&
          GetNativeWindow()->GetProperty(chromeos::kWindowStateTypeKey) !=
              chromeos::WindowStateType::kFloated;
 }
@@ -671,7 +550,6 @@ void ChromeNativeAppWindowViewsAuraAsh::UpdateImmersiveMode() {
 }
 
 gfx::Image ChromeNativeAppWindowViewsAuraAsh::GetCustomImage() {
-  TRACE_EVENT0("ui", "ChromeNativeAppWindowViewsAuraAsh::GetCustomImage");
   gfx::Image image = ChromeNativeAppWindowViews::GetCustomImage();
   return !image.IsEmpty()
              ? gfx::Image(apps::CreateStandardIconImage(image.AsImageSkia()))
@@ -679,7 +557,6 @@ gfx::Image ChromeNativeAppWindowViewsAuraAsh::GetCustomImage() {
 }
 
 gfx::Image ChromeNativeAppWindowViewsAuraAsh::GetAppIconImage() {
-  TRACE_EVENT0("ui", "ChromeNativeAppWindowViewsAuraAsh::GetAppIconImage");
   if (!app_icon_image_skia_.isNull())
     return gfx::Image(app_icon_image_skia_);
 
@@ -688,7 +565,6 @@ gfx::Image ChromeNativeAppWindowViewsAuraAsh::GetAppIconImage() {
 
 void ChromeNativeAppWindowViewsAuraAsh::LoadAppIcon(
     bool allow_placeholder_icon) {
-  TRACE_EVENT0("ui", "ChromeNativeAppWindowViewsAuraAsh::LoadAppIcon");
   if (apps::AppServiceProxyFactory::IsAppServiceAvailableForProfile(
           Profile::FromBrowserContext(app_window()->browser_context()))) {
     apps::AppServiceProxy* proxy = apps::AppServiceProxyFactory::GetForProfile(
@@ -699,7 +575,7 @@ void ChromeNativeAppWindowViewsAuraAsh::LoadAppIcon(
 
     if (app_type != apps::AppType::kUnknown) {
       proxy->LoadIcon(
-          app_window()->extension_id(), apps::IconType::kStandard,
+          app_type, app_window()->extension_id(), apps::IconType::kStandard,
           app_window()->app_delegate()->PreferredIconSize(),
           allow_placeholder_icon,
           base::BindOnce(&ChromeNativeAppWindowViewsAuraAsh::OnLoadIcon,
@@ -714,7 +590,6 @@ void ChromeNativeAppWindowViewsAuraAsh::LoadAppIcon(
 
 void ChromeNativeAppWindowViewsAuraAsh::OnLoadIcon(
     apps::IconValuePtr icon_value) {
-  TRACE_EVENT0("ui", "ChromeNativeAppWindowViewsAuraAsh::OnLoadIcon");
   if (!icon_value || icon_value->icon_type != apps::IconType::kStandard)
     return;
 

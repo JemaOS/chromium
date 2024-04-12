@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/policy/reporting/metrics_reporting/cros_healthd_sampler_handlers/cros_healthd_display_sampler_handler.h"
 
-#include <optional>
 #include <utility>
 
 #include "base/logging.h"
@@ -12,6 +11,7 @@
 #include "chrome/browser/ash/policy/reporting/metrics_reporting/cros_healthd_metric_sampler.h"
 #include "components/reporting/metrics/sampler.h"
 #include "components/reporting/proto/synced/metric_data.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -26,7 +26,7 @@ CrosHealthdDisplaySamplerHandler::~CrosHealthdDisplaySamplerHandler() = default;
 void CrosHealthdDisplaySamplerHandler::HandleResult(
     OptionalMetricCallback callback,
     cros_healthd::TelemetryInfoPtr result) const {
-  std::optional<MetricData> metric_data;
+  absl::optional<MetricData> metric_data;
   const auto& display_result = result->display_result;
   if (!display_result.is_null()) {
     switch (display_result->which()) {
@@ -43,9 +43,8 @@ void CrosHealthdDisplaySamplerHandler::HandleResult(
           break;
         }
 
-        metric_data = std::make_optional<MetricData>();
-        const auto* const embedded_display_info =
-            display_info->embedded_display.get();
+        metric_data = absl::make_optional<MetricData>();
+        const auto* const embedded_display_info = display_info->edp_info.get();
         if (metric_type_ == MetricType::kInfo) {
           // Gather e-privacy screen info.
           auto* const privacy_screen_info_out =
@@ -82,9 +81,9 @@ void CrosHealthdDisplaySamplerHandler::HandleResult(
             internal_dp_out->set_manufacture_year(
                 embedded_display_info->manufacture_year->value);
           }
-          if (display_info->external_displays) {
+          if (display_info->dp_infos) {
             for (const auto& current_external_display :
-                 *display_info->external_displays) {
+                 *display_info->dp_infos) {
               auto* const external_dp_out = metric_data->mutable_info_data()
                                                 ->mutable_display_info()
                                                 ->add_display_device();
@@ -137,9 +136,9 @@ void CrosHealthdDisplaySamplerHandler::HandleResult(
             internal_dp_out->set_refresh_rate(
                 embedded_display_info->refresh_rate->value);
           }
-          if (display_info->external_displays) {
+          if (display_info->dp_infos) {
             for (const auto& current_external_display :
-                 *display_info->external_displays) {
+                 *display_info->dp_infos) {
               auto* const external_dp_out =
                   metric_data->mutable_telemetry_data()
                       ->mutable_displays_telemetry()

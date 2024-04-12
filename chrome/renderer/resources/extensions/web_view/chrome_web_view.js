@@ -141,10 +141,6 @@ class ChromeWebViewImpl extends WebViewImpl {
   }
 }
 
-ChromeWebViewImpl.prototype.createWebViewContextMenus = function () {
-  return new WebViewContextMenus(this.viewInstanceId);
-}
-
 ChromeWebViewImpl.prototype.setupContextMenus = function() {
   if (!this.contextMenusOnContextMenuEvent_) {
     var eventName = 'chromeWebViewInternal.onContextMenuShow';
@@ -161,7 +157,7 @@ ChromeWebViewImpl.prototype.setupContextMenus = function() {
         return this.contextMenus_;
       }
 
-      this.contextMenus_ = this.createWebViewContextMenus();
+      this.contextMenus_ = new WebViewContextMenus(this.viewInstanceId);
 
       // Define 'onClicked' event property on |this.contextMenus_|.
       var getOnClickedEvent = $Function.bind(function() {
@@ -207,5 +203,4 @@ ChromeWebViewImpl.prototype.setupContextMenus = function() {
       });
 };
 
-exports.$set('WebViewContextMenusImpl', WebViewContextMenusImpl);
 exports.$set('ChromeWebViewImpl', ChromeWebViewImpl);

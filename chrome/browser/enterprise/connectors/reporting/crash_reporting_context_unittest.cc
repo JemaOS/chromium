@@ -31,7 +31,7 @@ using ::testing::Return;
 
 namespace enterprise_connectors {
 
-#if !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS)
+#if !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS_ASH)
 
 namespace {
 
@@ -67,7 +67,7 @@ class MockRealtimeCrashReportingClient : public RealtimeReportingClient {
   MockRealtimeCrashReportingClient& operator=(
       const MockRealtimeCrashReportingClient&) = delete;
 
-  std::optional<ReportingSettings> GetReportingSettings() override {
+  absl::optional<ReportingSettings> GetReportingSettings() override {
     return ReportingSettings();
   }
 
@@ -131,7 +131,8 @@ TEST_F(CrashReportingContextTest, UploadToReportingServer) {
 
   TestingProfile* profile =
       profile_manager_.CreateTestingProfile("fake-profile");
-  policy::SetDMTokenForTesting(policy::DMToken::CreateValidToken("fake-token"));
+  policy::SetDMTokenForTesting(
+      policy::DMToken::CreateValidTokenForTesting("fake-token"));
   RealtimeReportingClientFactory::GetInstance()->SetTestingFactory(
       profile, base::BindRepeating(&CreateMockRealtimeCrashReportingClient));
   MockRealtimeCrashReportingClient* reporting_client =
@@ -142,8 +143,7 @@ TEST_F(CrashReportingContextTest, UploadToReportingServer) {
               ReportPastEvent(ReportingServiceSettings::kBrowserCrashEvent, _,
                               _, base::Time::FromTimeT(timestamp)))
       .Times(1);
-  UploadToReportingServer(reporting_client->GetWeakPtr(), &pref_service,
-                          reports);
+  UploadToReportingServer(reporting_client, &pref_service, reports);
   EXPECT_EQ(timestamp, GetLatestCrashReportTime(&pref_service));
 }
 
@@ -190,6 +190,6 @@ INSTANTIATE_TEST_SUITE_P(
 
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
-#endif  // !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS)
+#endif  // !BUILDFLAG(IS_FUCHSIA) && !BUILDFLAG(IS_CHROMEOS_ASH)
 
 }  // namespace enterprise_connectors

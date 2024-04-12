@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/metrics/chrome_metrics_service_client.h"
 
@@ -24,7 +23,6 @@
 #include "chromeos/ash/services/multidevice_setup/public/cpp/multidevice_setup_client_impl.h"
 #include "chromeos/dbus/power/power_manager_client.h"
 #include "chromeos/dbus/tpm_manager/tpm_manager_client.h"
-#include "components/metrics/content/subprocess_metrics_provider.h"
 #include "components/metrics/log_decoder.h"
 #include "components/metrics/metrics_logs_event_manager.h"
 #include "components/metrics/metrics_service.h"
@@ -39,7 +37,6 @@
 #include "components/ukm/unsent_log_store_metrics_impl.h"
 #include "components/unified_consent/pref_names.h"
 #include "components/unified_consent/unified_consent_service.h"
-#include "components/variations/synthetic_trial_registry.h"
 #include "content/public/test/browser_task_environment.h"
 #include "services/metrics/public/cpp/ukm_entry_builder.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -83,14 +80,10 @@ class ChromeMetricsServiceClientTestWithoutUKMProviders
  public:
   // Equivalent to ChromeMetricsServiceClient::Create
   static std::unique_ptr<ChromeMetricsServiceClientTestWithoutUKMProviders>
-  Create(metrics::MetricsStateManager* metrics_state_manager,
-         variations::SyntheticTrialRegistry* synthetic_trial_registry) {
-    // Needed because RegisterMetricsServiceProviders() checks for this.
-    metrics::SubprocessMetricsProvider::CreateInstance();
-
+  Create(metrics::MetricsStateManager* metrics_state_manager) {
     std::unique_ptr<ChromeMetricsServiceClientTestWithoutUKMProviders> client(
         new ChromeMetricsServiceClientTestWithoutUKMProviders(
-            metrics_state_manager, synthetic_trial_registry));
+            metrics_state_manager));
     client->Initialize();
 
     return client;
@@ -98,9 +91,8 @@ class ChromeMetricsServiceClientTestWithoutUKMProviders
 
  private:
   explicit ChromeMetricsServiceClientTestWithoutUKMProviders(
-      metrics::MetricsStateManager* state_manager,
-      variations::SyntheticTrialRegistry* synthetic_trial_registry)
-      : ChromeMetricsServiceClient(state_manager, synthetic_trial_registry) {}
+      metrics::MetricsStateManager* state_manager)
+      : ChromeMetricsServiceClient(state_manager) {}
 
   void RegisterUKMProviders() override {}
 };
@@ -125,7 +117,7 @@ class MockSyncService : public syncer::TestSyncService {
     GetUserSettings()->SetSelectedTypes(
         /*sync_everything=*/false,
         /*types=*/history_enabled ? syncer::UserSelectableTypeSet(
-                                        {syncer::UserSelectableType::kHistory})
+                                        syncer::UserSelectableType::kHistory)
                                   : syncer::UserSelectableTypeSet());
 
     // It doesn't matter what exactly we set here, it's only relevant that the
@@ -204,11 +196,10 @@ class ChromeMetricsServiceClientTestIgnoredForAppMetrics
     metrics_state_manager_ = metrics::MetricsStateManager::Create(
         &prefs_, &enabled_state_provider_, std::wstring(), base::FilePath());
     metrics_state_manager_->InstantiateFieldTrialList();
-    synthetic_trial_registry_ =
-        std::make_unique<variations::SyntheticTrialRegistry>();
     ASSERT_TRUE(profile_manager_->SetUp());
-    scoped_feature_list_.InitAndEnableFeature(features::kUmaStorageDimensions);
-
+    scoped_feature_list_.InitWithFeatures(
+        {features::kUmaStorageDimensions, ukm::kAppMetricsOnlyRelyOnAppSync},
+        {});
     // ChromeOs Metrics Provider require g_login_state and power manager client
     // initialized before they can be instantiated.
     chromeos::PowerManagerClient::InitializeFake();
@@ -246,7 +237,7 @@ class ChromeMetricsServiceClientTestIgnoredForAppMetrics
 
     std::unique_ptr<ChromeMetricsServiceClient> chrome_metrics_service_client =
         ChromeMetricsServiceClientTestWithoutUKMProviders::Create(
-            metrics_state_manager_.get(), synthetic_trial_registry_.get());
+            metrics_state_manager_.get());
     chrome_metrics_service_client->StartObserving(&sync_service_, &prefs);
 
     chrome_metrics_service_client_ = chrome_metrics_service_client.get();
@@ -356,18 +347,17 @@ class ChromeMetricsServiceClientTestIgnoredForAppMetrics
   std::unique_ptr<TestingProfileManager> profile_manager_;
   base::UserActionTester user_action_runner_;
   std::unique_ptr<metrics::MetricsStateManager> metrics_state_manager_;
-  std::unique_ptr<variations::SyntheticTrialRegistry> synthetic_trial_registry_;
   metrics::TestEnabledStateProvider enabled_state_provider_;
   base::test::ScopedFeatureList scoped_feature_list_;
 
   std::vector<ukm::SourceId> source_ids_;
-  raw_ptr<ChromeMetricsServiceClient, DanglingUntriaged>
+  raw_ptr<ChromeMetricsServiceClient, ExperimentalAsh>
       chrome_metrics_service_client_;
 
   MockSyncService sync_service_;
   ash::system::ScopedFakeStatisticsProvider fake_statistics_provider_;
-  raw_ptr<TestingProfile, DanglingUntriaged> testing_profile_ = nullptr;
-  raw_ptr<ash::multidevice_setup::FakeMultiDeviceSetupClient, DanglingUntriaged>
+  raw_ptr<TestingProfile, ExperimentalAsh> testing_profile_ = nullptr;
+  raw_ptr<ash::multidevice_setup::FakeMultiDeviceSetupClient, ExperimentalAsh>
       fake_multidevice_setup_client_;
   std::unique_ptr<FakeMultiDeviceSetupClientImplFactory>
       fake_multidevice_setup_client_impl_factory_;

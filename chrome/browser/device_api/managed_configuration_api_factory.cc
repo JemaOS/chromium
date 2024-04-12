@@ -4,15 +4,15 @@
 
 #include "chrome/browser/device_api/managed_configuration_api_factory.h"
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/device_api/managed_configuration_api.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/pref_registry/pref_registry_syncable.h"
+#include "components/prefs/pref_service_factory.h"
 
 // static
 ManagedConfigurationAPIFactory* ManagedConfigurationAPIFactory::GetInstance() {
-  static base::NoDestructor<ManagedConfigurationAPIFactory> instance;
-  return instance.get();
+  return base::Singleton<ManagedConfigurationAPIFactory>::get();
 }
 
 // static

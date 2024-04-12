@@ -50,7 +50,6 @@ enum class ASH_EXPORT TypographyToken {
   kCrosDisplay7,
 
   kCrosTitle1,
-  kCrosTitle2,
   kCrosHeadline1,
 
   kCrosButton1,

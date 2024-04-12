@@ -28,13 +28,13 @@ class GlobalCacheStorageImpl final
     GlobalCacheStorageImpl* supplement =
         Supplement<T>::template From<GlobalCacheStorageImpl>(supplementable);
     if (!supplement) {
-      supplement = MakeGarbageCollected<GlobalCacheStorageImpl>(supplementable);
+      supplement = MakeGarbageCollected<GlobalCacheStorageImpl>();
       Supplement<T>::ProvideTo(supplementable, supplement);
     }
     return *supplement;
   }
 
-  GlobalCacheStorageImpl(T& supplementable) : Supplement<T>(supplementable) {}
+  GlobalCacheStorageImpl() : Supplement<T>(nullptr) {}
   ~GlobalCacheStorageImpl() = default;
 
   CacheStorage* Caches(T& fetching_scope, ExceptionState& exception_state) {
@@ -58,7 +58,7 @@ class GlobalCacheStorageImpl final
       caches_ = MakeGarbageCollected<CacheStorage>(
           context, GlobalFetch::ScopedFetcher::From(fetching_scope));
     }
-    return caches_.Get();
+    return caches_;
   }
 
   void Trace(Visitor* visitor) const override {

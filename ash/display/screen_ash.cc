@@ -15,7 +15,6 @@
 #include "base/check.h"
 #include "base/command_line.h"
 #include "base/notreached.h"
-#include "chromeos/dbus/power_manager/backlight.pb.h"
 #include "ui/aura/client/screen_position_client.h"
 #include "ui/aura/env.h"
 #include "ui/aura/window.h"
@@ -94,22 +93,9 @@ class ScreenForShutdown : public display::Screen {
 
 }  // namespace
 
-ScreenAsh::ScreenAsh() {
-  auto* power_manager = chromeos::PowerManagerClient::Get();
-  if (power_manager)
-    power_manager->AddObserver(this);
-}
+ScreenAsh::ScreenAsh() = default;
 
-ScreenAsh::~ScreenAsh() {
-  auto* power_manager = chromeos::PowerManagerClient::Get();
-  if (power_manager)
-    power_manager->RemoveObserver(this);
-}
-
-void ScreenAsh::ScreenBrightnessChanged(
-    const power_manager::BacklightBrightnessChange& change) {
-  GetDisplayManager()->OnScreenBrightnessChanged(change.percent());
-}
+ScreenAsh::~ScreenAsh() = default;
 
 gfx::Point ScreenAsh::GetCursorScreenPoint() {
   return aura::Env::GetInstance()->last_mouse_location();
@@ -157,6 +143,7 @@ display::Display ScreenAsh::GetDisplayNearestWindow(
   const RootWindowSettings* rws = GetRootWindowSettings(root_window);
   int64_t id = rws->display_id;
   // if id is |kInvaildDisplayID|, it's being deleted.
+  DCHECK(id != display::kInvalidDisplayId);
   if (id == display::kInvalidDisplayId)
     return GetPrimaryDisplay();
 

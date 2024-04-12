@@ -29,14 +29,13 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_FRAME_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_FRAME_H_
 
-#include <optional>
-
 #include "base/check_op.h"
 #include "base/i18n/rtl.h"
 #include "base/unguessable_token.h"
 #include "mojo/public/cpp/bindings/pending_associated_receiver.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/fenced_frame/redacted_fenced_frame_config.h"
 #include "third_party/blink/public/common/frame/frame_ad_evidence.h"
 #include "third_party/blink/public/common/frame/user_activation_state.h"
@@ -189,7 +188,7 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   void SetOwner(FrameOwner*);
   HTMLFrameOwnerElement* DeprecatedLocalOwner() const;
 
-  DOMWindow* DomWindow() const { return dom_window_.Get(); }
+  DOMWindow* DomWindow() const { return dom_window_; }
 
   FrameTree& Tree() const;
   ChromeClient& GetChromeClient() const;
@@ -234,7 +233,7 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   virtual void CheckCompleted() = 0;
 
   WindowProxyManager* GetWindowProxyManager() const {
-    return window_proxy_manager_.Get();
+    return window_proxy_manager_;
   }
   WindowProxy* GetWindowProxy(DOMWrapperWorld&);
   WindowProxy* GetWindowProxyMaybeUninitialized(DOMWrapperWorld&);
@@ -255,12 +254,6 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   // nature.
   bool LastActivationWasRestricted() const {
     return user_activation_state_.LastActivationWasRestricted();
-  }
-
-  // Sets the sticky user activation state of this frame. This does not change
-  // the transient user activation state.
-  void SetStickyUserActivationState() {
-    user_activation_state_.SetHasBeenActive();
   }
 
   // Resets the user activation state of this frame.
@@ -309,7 +302,7 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   const std::string& GetFrameIdForTracing();
 
   void SetEmbeddingToken(const base::UnguessableToken& embedding_token);
-  const std::optional<base::UnguessableToken>& GetEmbeddingToken() const {
+  const absl::optional<base::UnguessableToken>& GetEmbeddingToken() const {
     return embedding_token_;
   }
 
@@ -378,7 +371,7 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   void SetOpenerDoNotNotify(Frame* opener);
 
   // Returns the frame that opened this frame or null if there is none.
-  Frame* Opener() const { return opener_.Get(); }
+  Frame* Opener() const { return opener_; }
 
   // Returns the parent frame or null if this is the top-most frame.
   Frame* Parent() const;
@@ -387,16 +380,16 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   Frame* Top();
 
   // Returns the first child frame.
-  Frame* FirstChild() const { return first_child_.Get(); }
+  Frame* FirstChild() const { return first_child_; }
 
   // Returns the previous sibling frame.
-  Frame* PreviousSibling() const { return previous_sibling_.Get(); }
+  Frame* PreviousSibling() const { return previous_sibling_; }
 
   // Returns the next sibling frame.
-  Frame* NextSibling() const { return next_sibling_.Get(); }
+  Frame* NextSibling() const { return next_sibling_; }
 
   // Returns the last child frame.
-  Frame* LastChild() const { return last_child_.Get(); }
+  Frame* LastChild() const { return last_child_; }
 
   // TODO(dcheng): these should probably all have restricted visibility. They
   // are not intended for general usage.
@@ -424,7 +417,7 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   // Removes the given child from this frame.
   void RemoveChild(Frame* child);
 
-  LocalFrame* ProvisionalFrame() const { return provisional_frame_.Get(); }
+  LocalFrame* ProvisionalFrame() const { return provisional_frame_; }
   void SetProvisionalFrame(LocalFrame* provisional_frame) {
     // There should only be null -> non-null or non-null -> null transitions
     // here. Anything else indicates a logic error in the code managing this
@@ -447,9 +440,9 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   bool IsFencedFrameRoot() const;
 
   // Returns the mode set on the fenced frame if the frame is inside a fenced
-  // frame tree. Otherwise returns `std::nullopt`. This should not be called
+  // frame tree. Otherwise returns `absl::nullopt`. This should not be called
   // on a detached frame.
-  std::optional<blink::FencedFrame::DeprecatedFencedFrameMode>
+  absl::optional<blink::FencedFrame::DeprecatedFencedFrameMode>
   GetDeprecatedFencedFrameMode() const;
 
   // Returns all the resources under the frame tree of this node.
@@ -489,14 +482,16 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   void ApplyFrameOwnerProperties(
       mojom::blink::FrameOwnerPropertiesPtr properties);
 
-  void NotifyUserActivationInFrameTreeStickyOnly();
   void NotifyUserActivationInFrameTree(
-      mojom::blink::UserActivationNotificationType notification_type,
-      bool sticky_only = false);
+      mojom::blink::UserActivationNotificationType notification_type);
   bool ConsumeTransientUserActivationInFrameTree();
   void ClearUserActivationInFrameTree();
 
   void RenderFallbackContent();
+
+  // Only implemented for LocalFrames.
+  virtual void ActivateHistoryUserActivationState() {}
+  virtual void ClearHistoryUserActivationState() {}
 
   mutable FrameTree tree_node_;
 
@@ -559,13 +554,13 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
   bool is_loading_;
   // Contains token to be used as a frame id in the devtools protocol.
   base::UnguessableToken devtools_frame_token_;
-  std::optional<std::string> trace_value_;
+  absl::optional<std::string> trace_value_;
 
   // Embedding token, if existing, associated to this frame. For local frames
   // this will only be valid if the frame has committed a navigation and will
   // change when a new document is committed. For remote frames this will only
   // be valid when owned by an HTMLFrameOwnerElement.
-  std::optional<base::UnguessableToken> embedding_token_;
+  absl::optional<base::UnguessableToken> embedding_token_;
 
   // The user activation state of the current frame.  See |UserActivationState|
   // for details on how this state is maintained.
@@ -610,11 +605,11 @@ class CORE_EXPORT Frame : public GarbageCollected<Frame> {
 };
 
 inline FrameClient* Frame::Client() const {
-  return client_.Get();
+  return client_;
 }
 
 inline FrameOwner* Frame::Owner() const {
-  return owner_.Get();
+  return owner_;
 }
 
 inline FrameTree& Frame::Tree() const {

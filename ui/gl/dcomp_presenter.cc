@@ -8,15 +8,29 @@
 #include <utility>
 
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
+#include "base/metrics/histogram_macros.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/trace_event/trace_event.h"
 #include "ui/gfx/presentation_feedback.h"
 #include "ui/gfx/swap_result.h"
 #include "ui/gl/dc_layer_tree.h"
+#include "ui/gl/direct_composition_child_surface_win.h"
 #include "ui/gl/direct_composition_support.h"
+#include "ui/gl/gl_angle_util_win.h"
+#include "ui/gl/gl_surface_egl.h"
 #include "ui/gl/vsync_thread_win.h"
 
 namespace gl {
+
+namespace {
+
+bool SupportsLowLatencyPresentation() {
+  return base::FeatureList::IsEnabled(
+      features::kDirectCompositionLowLatencyPresentation);
+}
+
+}  // namespace
 
 DCompPresenter::PendingFrame::PendingFrame(
     Microsoft::WRL::ComPtr<ID3D11Query> query,
@@ -27,24 +41,39 @@ DCompPresenter::PendingFrame::~PendingFrame() = default;
 DCompPresenter::PendingFrame& DCompPresenter::PendingFrame::operator=(
     PendingFrame&& other) = default;
 
-DCompPresenter::DCompPresenter(const Settings& settings)
-    : task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
+DCompPresenter::DCompPresenter(
+    GLDisplayEGL* display,
+    VSyncCallback vsync_callback,
+    const DirectCompositionSurfaceWin::Settings& settings)
+    : vsync_callback_(std::move(vsync_callback)),
+      vsync_thread_(VSyncThreadWin::GetInstance()),
+      task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       max_pending_frames_(settings.max_pending_frames),
       layer_tree_(std::make_unique<DCLayerTree>(
           settings.disable_nv12_dynamic_textures,
-          settings.disable_vp_auto_hdr,
           settings.disable_vp_scaling,
           settings.disable_vp_super_resolution,
-          settings.force_dcomp_triple_buffer_video_swap_chain,
-          settings.no_downscaled_overlay_promotion)) {
-  CHECK(DirectCompositionSupported());
-  d3d11_device_ = GetDirectCompositionD3D11Device();
-  child_window_.Initialize();
-  layer_tree_->Initialize(child_window_.window(), d3d11_device_);
-}
+          settings.no_downscaled_overlay_promotion)) {}
 
 DCompPresenter::~DCompPresenter() {
   Destroy();
+}
+
+bool DCompPresenter::Initialize() {
+  if (!DirectCompositionSupported()) {
+    DLOG(ERROR) << "Direct composition not supported";
+    return false;
+  }
+
+  d3d11_device_ = QueryD3D11DeviceObjectFromANGLE();
+
+  child_window_.Initialize();
+
+  if (!layer_tree_->Initialize(window())) {
+    return false;
+  }
+
+  return true;
 }
 
 void DCompPresenter::Destroy() {
@@ -52,9 +81,8 @@ void DCompPresenter::Destroy() {
     std::move(frame.callback).Run(gfx::PresentationFeedback::Failure());
   pending_frames_.clear();
 
-  if (observing_vsync_) {
-    VSyncThreadWin::GetInstance()->RemoveObserver(this);
-  }
+  if (vsync_thread_started_)
+    vsync_thread_->RemoveObserver(this);
 
   // Freeing DComp resources such as visuals and surfaces causes the
   // device to become 'dirty'. We must commit the changes to the device
@@ -75,15 +103,27 @@ bool DCompPresenter::Resize(const gfx::Size& size,
     return false;
   }
 
-  return child_window_.Resize(size);
+  // Force a resize and redraw (but not a move, activate, etc.).
+  if (!SetWindowPos(window(), nullptr, 0, 0, size.width(), size.height(),
+                    SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOCOPYBITS |
+                        SWP_NOOWNERZORDER | SWP_NOZORDER)) {
+    return false;
+  }
+  return true;
 }
 
 gfx::VSyncProvider* DCompPresenter::GetVSyncProvider() {
-  return VSyncThreadWin::GetInstance()->vsync_provider();
+  return vsync_thread_->vsync_provider();
 }
 
 void DCompPresenter::OnVSync(base::TimeTicks vsync_time,
                              base::TimeDelta interval) {
+  // Main thread will run vsync callback in low latency presentation mode.
+  if (VSyncCallbackEnabled() && !SupportsLowLatencyPresentation()) {
+    DCHECK(vsync_callback_);
+    vsync_callback_.Run(vsync_time, interval);
+  }
+
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&DCompPresenter::HandleVSyncOnMainThread,
@@ -137,8 +177,16 @@ bool DCompPresenter::SetDrawRectangle(const gfx::Rect& rect) {
   return true;
 }
 
-bool DCompPresenter::SupportsViewporter() const {
+bool DCompPresenter::SupportsGpuVSync() const {
   return true;
+}
+
+void DCompPresenter::SetGpuVSyncEnabled(bool enabled) {
+  {
+    base::AutoLock auto_lock(vsync_callback_enabled_lock_);
+    vsync_callback_enabled_ = enabled;
+  }
+  StartOrStopVSyncThread();
 }
 
 bool DCompPresenter::SupportsDelegatedInk() {
@@ -180,20 +228,34 @@ void DCompPresenter::HandleVSyncOnMainThread(base::TimeTicks vsync_time,
                                              base::TimeDelta interval) {
   last_vsync_time_ = vsync_time;
   last_vsync_interval_ = interval;
+
   CheckPendingFrames();
+
+  UMA_HISTOGRAM_COUNTS_100("GPU.DirectComposition.NumPendingFrames",
+                           pending_frames_.size());
+
+  if (SupportsLowLatencyPresentation() && VSyncCallbackEnabled() &&
+      pending_frames_.size() < max_pending_frames_) {
+    DCHECK(vsync_callback_);
+    vsync_callback_.Run(vsync_time, interval);
+  }
 }
 
 void DCompPresenter::StartOrStopVSyncThread() {
-  bool needs_vsync = !pending_frames_.empty();
-  if (observing_vsync_ == needs_vsync) {
+  bool start_vsync_thread = VSyncCallbackEnabled() || !pending_frames_.empty();
+  if (vsync_thread_started_ == start_vsync_thread)
     return;
-  }
-  observing_vsync_ = needs_vsync;
-  if (needs_vsync) {
-    VSyncThreadWin::GetInstance()->AddObserver(this);
+  vsync_thread_started_ = start_vsync_thread;
+  if (start_vsync_thread) {
+    vsync_thread_->AddObserver(this);
   } else {
-    VSyncThreadWin::GetInstance()->RemoveObserver(this);
+    vsync_thread_->RemoveObserver(this);
   }
+}
+
+bool DCompPresenter::VSyncCallbackEnabled() const {
+  base::AutoLock auto_lock(vsync_callback_enabled_lock_);
+  return vsync_callback_enabled_;
 }
 
 void DCompPresenter::CheckPendingFrames() {
@@ -248,10 +310,6 @@ void DCompPresenter::EnqueuePendingFrame(PresentationCallback callback,
   pending_frames_.emplace_back(std::move(query), std::move(callback));
 
   StartOrStopVSyncThread();
-}
-
-HWND DCompPresenter::GetWindow() const {
-  return child_window_.window();
 }
 
 }  // namespace gl

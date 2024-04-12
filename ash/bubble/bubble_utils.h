@@ -6,11 +6,11 @@
 #define ASH_BUBBLE_BUBBLE_UTILS_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 
 #include "ash/ash_export.h"
 #include "ash/style/ash_color_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/color/color_id.h"
 #include "ui/gfx/font.h"
 
@@ -43,7 +43,7 @@ ASH_EXPORT void ApplyStyle(
 // Creates a label with optional `text` and `text_color` matching the specified
 // `style`. The label will paint correctly even if it is not added to the view
 // hierarchy.
-ASH_EXPORT std::unique_ptr<views::Label> CreateLabel(
+std::unique_ptr<views::Label> CreateLabel(
     TypographyToken style,
     const std::u16string& text = std::u16string(),
     ui::ColorId text_color_id = kColorAshTextColorPrimary);

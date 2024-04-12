@@ -55,7 +55,7 @@ void Presentation::Trace(Visitor* visitor) const {
 }
 
 PresentationRequest* Presentation::defaultRequest() const {
-  return default_request_.Get();
+  return default_request_;
 }
 
 void Presentation::setDefaultRequest(PresentationRequest* request) {
@@ -80,7 +80,7 @@ void Presentation::MaybeInitReceiver() {
 
 PresentationReceiver* Presentation::receiver() {
   MaybeInitReceiver();
-  return receiver_.Get();
+  return receiver_;
 }
 
 }  // namespace blink

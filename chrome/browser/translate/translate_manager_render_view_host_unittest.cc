@@ -13,7 +13,6 @@
 #include "base/command_line.h"
 #include "base/containers/contains.h"
 #include "base/functional/bind.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/scoped_observation.h"
 #include "base/strings/stringprintf.h"
@@ -54,6 +53,10 @@
 #include "components/variations/scoped_variations_ids_provider.h"
 #include "content/public/browser/navigation_details.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/notification_details.h"
+#include "content/public/browser/notification_registrar.h"
+#include "content/public/browser/notification_source.h"
+#include "content/public/browser/notification_types.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/url_constants.h"
 #include "content/public/test/navigation_simulator.h"
@@ -152,7 +155,7 @@ class TranslateManagerRenderViewHostTest
       return bubble != nullptr;
     } else {
       bool result = (GetTranslateInfoBar() != nullptr);
-      EXPECT_EQ(infobar_manager()->infobars().size() != 0, result);
+      EXPECT_EQ(infobar_manager()->infobar_count() != 0, result);
       return result;
     }
   }
@@ -259,8 +262,8 @@ class TranslateManagerRenderViewHostTest
 
     // Reset
     fake_agent_.called_translate_ = false;
-    fake_agent_.source_lang_ = std::nullopt;
-    fake_agent_.target_lang_ = std::nullopt;
+    fake_agent_.source_lang_ = absl::nullopt;
+    fake_agent_.target_lang_ = absl::nullopt;
 
     return true;
   }
@@ -277,9 +280,9 @@ class TranslateManagerRenderViewHostTest
   // Returns the translate infobar if there is 1 infobar and it is a translate
   // infobar.
   translate::TranslateInfoBarDelegate* GetTranslateInfoBar() {
-    return (infobar_manager()->infobars().size() == 1)
+    return (infobar_manager()->infobar_count() == 1)
                ? infobar_manager()
-                     ->infobars()[0]
+                     ->infobar_at(0)
                      ->delegate()
                      ->AsTranslateInfoBarDelegate()
                : nullptr;
@@ -293,7 +296,7 @@ class TranslateManagerRenderViewHostTest
     if (!infobar)
       return false;
     infobar->InfoBarDismissed();  // Simulates closing the infobar.
-    infobar_manager()->RemoveInfoBar(infobar_manager()->infobars()[0]);
+    infobar_manager()->RemoveInfoBar(infobar_manager()->infobar_at(0));
     return true;
   }
 
@@ -320,7 +323,7 @@ class TranslateManagerRenderViewHostTest
       if (!infobar)
         return false;
       infobar->TranslationDeclined();
-      infobar_manager()->RemoveInfoBar(infobar_manager()->infobars()[0]);
+      infobar_manager()->RemoveInfoBar(infobar_manager()->infobar_at(0));
       return true;
     }
   }
@@ -457,8 +460,7 @@ class TranslateManagerRenderViewHostTest
 
   // The infobars that have been removed.
   // WARNING: the pointers point to deleted objects, use only for comparison.
-  std::set<raw_ptr<infobars::InfoBarDelegate, SetExperimental>>
-      removed_infobars_;
+  std::set<infobars::InfoBarDelegate*> removed_infobars_;
 
   std::unique_ptr<MockTranslateBubbleFactory> bubble_factory_;
   FakeTranslateAgent fake_agent_;
@@ -506,8 +508,8 @@ class TranslateManagerRenderViewHostInvalidLocaleTest
 // display names in English locale. To save space, Chrome's copy of ICU
 // does not have the display name for a language unless it's in the
 // Accept-Language list.
-static const char* kServerLanguageList[] = {"ak",    "af", "en-CA", "zh", "yi",
-                                            "fr-FR", "tl", "iw",    "hz", "xx"};
+static const char* kServerLanguageList[] = {
+    "ach", "ak", "af", "en-CA", "zh", "yi", "fr-FR", "tl", "iw", "in", "xx"};
 
 // Test the fetching of languages from the translate server
 TEST_F(TranslateManagerRenderViewHostTest, FetchLanguagesFromTranslateServer) {
@@ -541,17 +543,13 @@ TEST_F(TranslateManagerRenderViewHostTest, FetchLanguagesFromTranslateServer) {
   current_supported_languages.clear();
   translate::TranslateDownloadManager::GetSupportedLanguages(
       true /* translate_allowed */, &current_supported_languages);
-  // "in" is not in the kAcceptList and "xx" can't be displayed, so both are
-  // removed from the downloaded list.
-  EXPECT_EQ(server_languages.size() - 2, current_supported_languages.size());
+  // "xx" can't be displayed in the Translate infobar, so this is eliminated.
+  EXPECT_EQ(server_languages.size() - 1, current_supported_languages.size());
   // Not sure we need to guarantee the order of languages, so we find them.
   for (size_t i = 0; i < server_languages.size(); ++i) {
     const std::string& lang = server_languages[i];
-    if (lang == "xx") {
+    if (lang == "xx")
       continue;
-    } else if (lang == "hz") {
-      continue;
-    }
     EXPECT_TRUE(base::Contains(current_supported_languages, lang))
         << "lang=" << lang;
   }

@@ -64,6 +64,7 @@ class CORE_EXPORT HTMLTableCellElement final : public HTMLTablePartElement {
 
   bool IsURLAttribute(const Attribute&) const override;
   bool HasLegalLinkAttribute(const QualifiedName&) const override;
+  const QualifiedName& SubResourceAttributeName() const override;
 };
 
 template <>

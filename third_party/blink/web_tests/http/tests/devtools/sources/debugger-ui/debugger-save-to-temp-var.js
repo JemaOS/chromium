@@ -2,15 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as UIModule from 'devtools/ui/legacy/legacy.js';
-import * as SDK from 'devtools/core/sdk/sdk.js';
-
 (async function() {
   TestRunner.addResult(`Tests saving objects to temporary variables while paused.\n`);
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.evaluateInPagePromise(`
       var thisObj;
@@ -73,11 +68,11 @@ import * as SDK from 'devtools/core/sdk/sdk.js';
 
     function didEvaluate(result) {
       TestRunner.assertTrue(!result.exceptionDetails, 'FAIL: was thrown. Expression: ' + expression);
-      SDK.consoleModel.saveToTempVariable(UIModule.Context.Context.instance().flavor(SDK.RuntimeModel.RuntimeModel.ExecutionContext), result.object);
+      SDK.consoleModel.saveToTempVariable(UI.context.flavor(SDK.ExecutionContext), result.object);
       ConsoleTestRunner.waitUntilNthMessageReceived(2, evaluateNext);
     }
 
-    UIModule.Context.Context.instance().flavor(SDK.RuntimeModel.RuntimeModel.ExecutionContext)
+    UI.context.flavor(SDK.ExecutionContext)
         .evaluate({expression: expression, objectGroup: 'console'})
         .then(didEvaluate);
   }

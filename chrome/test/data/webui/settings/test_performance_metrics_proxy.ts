@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {BatterySaverModeState, MemorySaverModeExceptionListAction, MemorySaverModeState, PerformanceMetricsProxy} from 'chrome://settings/settings.js';
+import {BatterySaverModeState, HighEfficiencyModeExceptionListAction, PerformanceMetricsProxy} from 'chrome://settings/settings.js';
 import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 
 export class TestPerformanceMetricsProxy extends TestBrowserProxy implements
@@ -10,7 +10,7 @@ export class TestPerformanceMetricsProxy extends TestBrowserProxy implements
   constructor() {
     super([
       'recordBatterySaverModeChanged',
-      'recordMemorySaverModeChanged',
+      'recordHighEfficiencyModeChanged',
       'recordExceptionListAction',
     ]);
   }
@@ -19,11 +19,11 @@ export class TestPerformanceMetricsProxy extends TestBrowserProxy implements
     this.methodCalled('recordBatterySaverModeChanged', state);
   }
 
-  recordMemorySaverModeChanged(state: MemorySaverModeState) {
-    this.methodCalled('recordMemorySaverModeChanged', state);
+  recordHighEfficiencyModeChanged(enabled: boolean) {
+    this.methodCalled('recordHighEfficiencyModeChanged', enabled);
   }
 
-  recordExceptionListAction(action: MemorySaverModeExceptionListAction) {
+  recordExceptionListAction(action: HighEfficiencyModeExceptionListAction) {
     this.methodCalled('recordExceptionListAction', action);
   }
 }

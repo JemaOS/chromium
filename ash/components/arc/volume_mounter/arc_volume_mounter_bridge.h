@@ -24,9 +24,6 @@ class BrowserContext;
 
 namespace arc {
 
-constexpr char kArcppMediaSharingServicesJobName[] =
-    "arcpp_2dmedia_2dsharing_2dservices";
-
 class ArcBridgeService;
 
 // This class handles Volume mount/unmount requests from cros-disks and
@@ -62,6 +59,8 @@ class ArcVolumeMounterBridge
   // or nullptr if the browser |context| is not allowed to use ARC.
   static ArcVolumeMounterBridge* GetForBrowserContext(
       content::BrowserContext* context);
+  static ArcVolumeMounterBridge* GetForBrowserContextForTesting(
+      content::BrowserContext* context);
 
   // Returns Factory instance for ArcVolumeMounterBridge.
   static KeyedServiceBaseFactory* GetFactory();
@@ -85,6 +84,7 @@ class ArcVolumeMounterBridge
 
   // mojom::VolumeMounterHost overrides:
   void RequestAllMountPoints() override;
+  void ReportMountFailureCount(uint16_t count) override;
   void SetUpExternalStorageMountPoints(
       uint32_t media_provider_uid,
       SetUpExternalStorageMountPointsCallback callback) override;
@@ -114,21 +114,20 @@ class ArcVolumeMounterBridge
   bool IsReadyToSendMountingEvents();
 
   void OnSetUpExternalStorageMountPoints(
-      const std::string& job_name,
       SetUpExternalStorageMountPointsCallback callback,
       bool result,
-      std::optional<std::string> error_name,
-      std::optional<std::string> error_message);
+      absl::optional<std::string> error_name,
+      absl::optional<std::string> error_message);
 
-  raw_ptr<Delegate, DanglingUntriaged> delegate_ = nullptr;
+  raw_ptr<Delegate, DanglingUntriaged | ExperimentalAsh> delegate_ = nullptr;
 
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
 
-  const raw_ptr<PrefService> pref_service_;
+  const raw_ptr<PrefService, ExperimentalAsh> pref_service_;
   PrefChangeRegistrar change_registerar_;
 
-  bool external_storage_mount_points_are_ready_ = false;
+  bool arcvm_external_storage_mount_points_are_ready_ = false;
 
   SEQUENCE_CHECKER(sequence_checker_);
 

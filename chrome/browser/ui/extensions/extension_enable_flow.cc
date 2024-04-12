@@ -10,19 +10,24 @@
 #include "base/functional/bind.h"
 #include "base/notreached.h"
 #include "build/chromeos_buildflags.h"
+#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profiles_state.h"
 #include "chrome/browser/ui/extensions/extension_enable_flow_delegate.h"
-#include "components/supervised_user/core/browser/supervised_user_preferences.h"
-#include "extensions/browser/api/management/management_api.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_system.h"
 
 #if !BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ui/profiles/profile_picker.h"
+#include "chrome/browser/ui/profile_picker.h"
 #endif  // !BUILDFLAG(IS_CHROMEOS_ASH)
+
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+#include "chrome/browser/supervised_user/supervised_user_service.h"
+#include "chrome/browser/supervised_user/supervised_user_service_factory.h"
+#include "extensions/browser/api/management/management_api.h"
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
 using extensions::Extension;
 
@@ -90,14 +95,16 @@ void ExtensionEnableFlow::CheckPermissionAndMaybePromptUser() {
   const Extension* extension =
       registry->disabled_extensions().GetByID(extension_id_);
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
   extensions::SupervisedUserExtensionsDelegate*
       supervised_user_extensions_delegate =
           extensions::ManagementAPI::GetFactoryInstance()
               ->Get(profile_)
               ->GetSupervisedUserExtensionsDelegate();
   DCHECK(supervised_user_extensions_delegate);
-  if (supervised_user::AreExtensionsPermissionsEnabled(*profile_->GetPrefs()) &&
-      extension &&
+  SupervisedUserService* supervised_user_service =
+      SupervisedUserServiceFactory::GetForProfile(profile_);
+  if (supervised_user_service->AreExtensionsPermissionsEnabled() && extension &&
 
       // Only ask for parent approval if the extension still requires approval.
       !supervised_user_extensions_delegate->IsExtensionAllowedByParent(
@@ -111,6 +118,7 @@ void ExtensionEnableFlow::CheckPermissionAndMaybePromptUser() {
         *extension, parent_contents_, std::move(extension_approval_callback));
     return;
   }
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
   bool abort = !extension ||
                // The extension might be force-disabled by policy.
@@ -159,6 +167,7 @@ void ExtensionEnableFlow::CreatePrompt() {
                     : new ExtensionInstallPrompt(profile_, nullptr));
 }
 
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
 void ExtensionEnableFlow::OnExtensionApprovalDone(
     extensions::SupervisedUserExtensionsDelegate::ExtensionApprovalResult
         result) {
@@ -181,6 +190,7 @@ void ExtensionEnableFlow::OnExtensionApprovalDone(
       break;
   }
 }
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
 
 void ExtensionEnableFlow::StartObserving() {
   extension_registry_observation_.Observe(
@@ -236,7 +246,10 @@ void ExtensionEnableFlow::EnableExtension() {
         /*user_initiated=*/true);  // |delegate_| may delete us.
     return;
   }
-  if (supervised_user::AreExtensionsPermissionsEnabled(*profile_->GetPrefs())) {
+#if BUILDFLAG(ENABLE_SUPERVISED_USERS)
+  SupervisedUserService* supervised_user_service =
+      SupervisedUserServiceFactory::GetForProfile(profile_);
+  if (supervised_user_service->AreExtensionsPermissionsEnabled()) {
     // We need to add parent approval first.
     extensions::SupervisedUserExtensionsDelegate*
         supervised_user_extensions_delegate =
@@ -248,6 +261,7 @@ void ExtensionEnableFlow::EnableExtension() {
     supervised_user_extensions_delegate->RecordExtensionEnablementUmaMetrics(
         /*enabled=*/true);
   }
+#endif  // BUILDFLAG(ENABLE_SUPERVISED_USERS)
   service->GrantPermissionsAndEnableExtension(extension);
 
   DCHECK(service->IsExtensionEnabled(extension_id_));

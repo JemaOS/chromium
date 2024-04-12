@@ -18,42 +18,41 @@ HoldingSpaceMetricsDelegate::HoldingSpaceMetricsDelegate(
 HoldingSpaceMetricsDelegate::~HoldingSpaceMetricsDelegate() {
   // Scheduled recordings should be immediately run on destruction so as to
   // prevent metrics loss.
-  if (record_total_item_counts_timer_.IsRunning()) {
-    record_total_item_counts_timer_.FireNow();
-  }
+  if (record_item_counts_timer_.IsRunning())
+    record_item_counts_timer_.FireNow();
 }
 
 void HoldingSpaceMetricsDelegate::OnPersistenceRestored() {
-  RescheduleRecordTotalItemCounts();
+  RescheduleRecordItemCounts();
 }
 
 void HoldingSpaceMetricsDelegate::OnHoldingSpaceItemsAdded(
     const std::vector<const HoldingSpaceItem*>& items) {
   if (!is_restoring_persistence())
-    RescheduleRecordTotalItemCounts();
+    RescheduleRecordItemCounts();
 }
 
 void HoldingSpaceMetricsDelegate::OnHoldingSpaceItemsRemoved(
     const std::vector<const HoldingSpaceItem*>& items) {
   if (!is_restoring_persistence())
-    RescheduleRecordTotalItemCounts();
+    RescheduleRecordItemCounts();
 }
 
-void HoldingSpaceMetricsDelegate::RescheduleRecordTotalItemCounts() {
+void HoldingSpaceMetricsDelegate::RescheduleRecordItemCounts() {
   // NOTE: It is intentional that any previously scheduled recordings are
   // invalidated. This is done to give the model time to settle after being
   // modified to debounce recordings.
-  record_total_item_counts_timer_.Start(
+  record_item_counts_timer_.Start(
       FROM_HERE, base::Seconds(30),
-      base::BindRepeating(&HoldingSpaceMetricsDelegate::RecordTotalItemCounts,
+      base::BindRepeating(&HoldingSpaceMetricsDelegate::RecordItemCounts,
                           base::Unretained(this)));
 }
 
-void HoldingSpaceMetricsDelegate::RecordTotalItemCounts() {
+void HoldingSpaceMetricsDelegate::RecordItemCounts() {
   std::vector<const HoldingSpaceItem*> items;
   for (const auto& item : model()->items())
     items.push_back(item.get());
-  holding_space_metrics::RecordTotalItemCounts(items);
+  holding_space_metrics::RecordItemCounts(items);
 }
 
 }  // namespace ash

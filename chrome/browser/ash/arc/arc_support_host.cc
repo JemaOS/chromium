@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include "ash/constants/ash_features.h"
 #include "base/functional/bind.h"
 #include "base/hash/sha1.h"
 #include "base/i18n/timezone.h"
@@ -60,9 +59,13 @@ constexpr char kActionSetWindowBounds[] = "setWindowBounds";
 constexpr char kActionCloseWindow[] = "closeWindow";
 
 // Action to show a page. The message should have "page" field, which is one of
-// IDs for section div elements.
+// IDs for section div elements. For the "active-directory-auth" page, the
+// "federationUrl" and "deviceManagementUrlPrefix" options are required.
 constexpr char kActionShowPage[] = "showPage";
 constexpr char kPage[] = "page";
+constexpr char kOptions[] = "options";
+constexpr char kFederationUrl[] = "federationUrl";
+constexpr char kDeviceManagementUrlPrefix[] = "deviceManagementUrlPrefix";
 
 // Action to show the error page. The message should have "errorMessage",
 // which is a localized error text, and "shouldShowSendFeedback" boolean value.
@@ -83,6 +86,13 @@ constexpr char kEvent[] = "event";
 // "onWindowClosed" is fired when the extension window is closed.
 // No data will be provided.
 constexpr char kEventOnWindowClosed[] = "onWindowClosed";
+
+// "onAuthSucceeded" is fired when Active Directory authentication succeeds.
+constexpr char kEventOnAuthSucceeded[] = "onAuthSucceeded";
+
+// "onAuthFailed" is fired when Active Directory authentication failed.
+constexpr char kEventOnAuthFailed[] = "onAuthFailed";
+constexpr char kAuthErrorMessage[] = "errorMessage";
 
 // "onAgreed" is fired when a user clicks "Agree" button.
 // The message should have the following fields:
@@ -117,21 +127,6 @@ constexpr char kEventOnSendFeedbackClicked[] = "onSendFeedbackClicked";
 // button.
 constexpr char kEventOnRunNetworkTestsClicked[] = "onRunNetworkTestsClicked";
 
-// "onTosLoadResult" is fired when terms of service page is loaded or fails to
-// load.
-constexpr char kEventOnTosLoadResult[] = "onTosLoadResult";
-
-// "onTosLoadResult" should have the following fields:
-// - success
-constexpr char kSuccess[] = "success";
-
-// "onErrorPageShown" is fired when the error page is shown.
-constexpr char kEventOnErrorPageShown[] = "onErrorPageShown";
-
-// "OnErrorPageShown" should have the following fields:
-// - networkTestsShown
-constexpr char kNetworkTestsShown[] = "networkTestsShown";
-
 // "onOpenPrivacySettingsPageClicked" is fired when a user clicks privacy
 // settings link.
 constexpr char kEventOnOpenPrivacySettingsPageClicked[] =
@@ -160,6 +155,8 @@ std::ostream& operator<<(std::ostream& os, ArcSupportHost::UIPage ui_page) {
       return os << "TERMS";
     case ArcSupportHost::UIPage::ARC_LOADING:
       return os << "ARC_LOADING";
+    case ArcSupportHost::UIPage::ACTIVE_DIRECTORY_AUTH:
+      return os << "ACTIVE_DIRECTORY_AUTH";
     case ArcSupportHost::UIPage::ERROR:
       return os << "ERROR";
   }
@@ -203,8 +200,9 @@ std::ostream& operator<<(std::ostream& os, ArcSupportHost::Error error) {
 }  // namespace
 
 ArcSupportHost::ErrorInfo::ErrorInfo(Error error)
-    : error(error), arg(std::nullopt) {}
-ArcSupportHost::ErrorInfo::ErrorInfo(Error error, const std::optional<int>& arg)
+    : error(error), arg(absl::nullopt) {}
+ArcSupportHost::ErrorInfo::ErrorInfo(Error error,
+                                     const absl::optional<int>& arg)
     : error(error), arg(arg) {}
 ArcSupportHost::ErrorInfo::ErrorInfo(const ErrorInfo&) = default;
 ArcSupportHost::ErrorInfo& ArcSupportHost::ErrorInfo::operator=(
@@ -218,6 +216,7 @@ ArcSupportHost::ArcSupportHost(Profile* profile)
 
 ArcSupportHost::~ArcSupportHost() {
   // Delegates should have been reset to nullptr at this point.
+  DCHECK(!auth_delegate_);
   DCHECK(!tos_delegate_);
   DCHECK(!error_delegate_);
 
@@ -225,8 +224,18 @@ ArcSupportHost::~ArcSupportHost() {
     DisconnectMessageHost();
 }
 
+void ArcSupportHost::SetAuthDelegate(AuthDelegate* delegate) {
+  // Since AuthDelegate and TermsOfServiceDelegate should not have overlapping
+  // life cycle, both delegates can't be non-null at the same time.
+  DCHECK(!(delegate && tos_delegate_));
+  auth_delegate_ = delegate;
+}
+
 void ArcSupportHost::SetTermsOfServiceDelegate(
     TermsOfServiceDelegate* delegate) {
+  // Since AuthDelegate and TermsOfServiceDelegate should not have overlapping
+  // life cycle, both delegates can't be non-null at the same time.
+  DCHECK(!(delegate && auth_delegate_));
   tos_delegate_ = delegate;
 }
 
@@ -237,13 +246,11 @@ void ArcSupportHost::SetErrorDelegate(ErrorDelegate* delegate) {
 gfx::NativeWindow ArcSupportHost::GetNativeWindow() const {
   extensions::AppWindowRegistry* registry =
       extensions::AppWindowRegistry::Get(profile_);
-  if (!registry) {
-    return gfx::NativeWindow();
-  }
+  if (!registry) return gfx::kNullNativeWindow;
 
   extensions::AppWindow* window =
       registry->GetCurrentAppWindowForApp(arc::kPlayStoreAppId);
-  return window ? window->GetNativeWindow() : gfx::NativeWindow();
+  return window ? window->GetNativeWindow() : gfx::kNullNativeWindow;
 }
 
 bool ArcSupportHost::GetShouldShowRunNetworkTests() {
@@ -280,6 +287,15 @@ void ArcSupportHost::ShowArcLoading() {
   ShowPage(UIPage::ARC_LOADING);
 }
 
+void ArcSupportHost::ShowActiveDirectoryAuth(
+    const GURL& federation_url,
+    const std::string& device_management_url_prefix) {
+  active_directory_auth_federation_url_ = federation_url;
+  active_directory_auth_device_management_url_prefix_ =
+      device_management_url_prefix;
+  ShowPage(UIPage::ACTIVE_DIRECTORY_AUTH);
+}
+
 void ArcSupportHost::ShowPage(UIPage ui_page) {
   ui_page_ = ui_page;
   if (!message_host_) {
@@ -301,6 +317,17 @@ void ArcSupportHost::ShowPage(UIPage ui_page) {
       break;
     case UIPage::ARC_LOADING:
       message.Set(kPage, "arc-loading");
+      break;
+    case UIPage::ACTIVE_DIRECTORY_AUTH:
+      DCHECK(active_directory_auth_federation_url_.is_valid());
+      DCHECK(!active_directory_auth_device_management_url_prefix_.empty());
+      message.Set(kPage, "active-directory-auth");
+      message.SetByDottedPath(
+          base::JoinString({kOptions, kFederationUrl}, "."),
+          base::Value(active_directory_auth_federation_url_.spec()));
+      message.SetByDottedPath(
+          base::JoinString({kOptions, kDeviceManagementUrlPrefix}, "."),
+          base::Value(active_directory_auth_device_management_url_prefix_));
       break;
     default:
       NOTREACHED();
@@ -553,11 +580,6 @@ bool ArcSupportHost::Initialize() {
       l10n_util::GetStringUTF16(
           is_child ? IDS_ARC_OPT_IN_DIALOG_METRICS_MANAGED_DISABLED_CHILD
                    : IDS_ARC_OPT_IN_DIALOG_METRICS_MANAGED_DISABLED));
-  loadtime_data.Set(
-      "textBackupRestoreLabel",
-      l10n_util::GetStringUTF16(
-          is_child ? IDS_ARC_OPT_IN_DIALOG_BACKUP_RESTORE_CHILD_LABEL
-                   : IDS_ARC_OPT_IN_DIALOG_BACKUP_RESTORE_LABEL));
   loadtime_data.Set("textBackupRestore",
                     l10n_util::GetStringUTF16(
                         is_child ? IDS_ARC_OPT_IN_DIALOG_BACKUP_RESTORE_CHILD
@@ -567,17 +589,10 @@ bool ArcSupportHost::Initialize() {
   loadtime_data.Set(
       "textGoogleServiceConfirmation",
       l10n_util::GetStringUTF16(IDS_ARC_OPT_IN_GOOGLE_SERVICE_CONFIRMATION));
-  if (ash::features::IsCrosPrivacyHubLocationEnabled()) {
-    loadtime_data.Set("textLocationService",
-                      l10n_util::GetStringUTF16(
-                          is_child ? IDS_CROS_OPT_IN_LOCATION_SETTING_CHILD
-                                   : IDS_CROS_OPT_IN_LOCATION_SETTING));
-  } else {
-    loadtime_data.Set("textLocationService",
-                      l10n_util::GetStringUTF16(
-                          is_child ? IDS_ARC_OPT_IN_LOCATION_SETTING_CHILD
-                                   : IDS_ARC_OPT_IN_LOCATION_SETTING));
-  }
+  loadtime_data.Set(
+      "textLocationService",
+      l10n_util::GetStringUTF16(is_child ? IDS_ARC_OPT_IN_LOCATION_SETTING_CHILD
+                                         : IDS_ARC_OPT_IN_LOCATION_SETTING));
   loadtime_data.Set("serverError", l10n_util::GetStringUTF16(
                                        IDS_ARC_SERVER_COMMUNICATION_ERROR));
   loadtime_data.Set("controlledByPolicy",
@@ -600,19 +615,11 @@ bool ArcSupportHost::Initialize() {
   loadtime_data.Set("learnMoreLocationServicesTitle",
                     l10n_util::GetStringUTF16(
                         IDS_ARC_OPT_IN_LEARN_MORE_LOCATION_SERVICES_TITLE));
-  if (ash::features::IsCrosPrivacyHubLocationEnabled()) {
-    loadtime_data.Set(
-        "learnMoreLocationServices",
-        l10n_util::GetStringUTF16(
-            is_child ? IDS_CROS_OPT_IN_LEARN_MORE_LOCATION_SERVICES_CHILD
-                     : IDS_CROS_OPT_IN_LEARN_MORE_LOCATION_SERVICES));
-  } else {
-    loadtime_data.Set(
-        "learnMoreLocationServices",
-        l10n_util::GetStringUTF16(
-            is_child ? IDS_ARC_OPT_IN_LEARN_MORE_LOCATION_SERVICES_CHILD
-                     : IDS_ARC_OPT_IN_LEARN_MORE_LOCATION_SERVICES));
-  }
+  loadtime_data.Set(
+      "learnMoreLocationServices",
+      l10n_util::GetStringUTF16(
+          is_child ? IDS_ARC_OPT_IN_LEARN_MORE_LOCATION_SERVICES_CHILD
+                   : IDS_ARC_OPT_IN_LEARN_MORE_LOCATION_SERVICES));
   loadtime_data.Set(
       "learnMorePaiServiceTitle",
       l10n_util::GetStringUTF16(IDS_ARC_OPT_IN_LEARN_MORE_PAI_SERVICE_TITLE));
@@ -624,6 +631,12 @@ bool ArcSupportHost::Initialize() {
   loadtime_data.Set(
       "privacyPolicyLink",
       l10n_util::GetStringUTF16(IDS_ARC_OPT_IN_PRIVACY_POLICY_LINK));
+  loadtime_data.Set(
+      "activeDirectoryAuthTitle",
+      l10n_util::GetStringUTF16(IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_TITLE));
+  loadtime_data.Set(
+      "activeDirectoryAuthDesc",
+      l10n_util::GetStringUTF16(IDS_ARC_OPT_IN_ACTIVE_DIRECTORY_AUTH_DESC));
   loadtime_data.Set("overlayLoading",
                     l10n_util::GetStringUTF16(IDS_ARC_POPUP_HELP_LOADING));
 
@@ -684,18 +697,33 @@ void ArcSupportHost::OnMessage(const base::Value::Dict& message) {
       DCHECK(error_delegate_);
       error_delegate_->OnWindowClosed();
     }
+  } else if (*event == kEventOnAuthSucceeded) {
+    DCHECK(auth_delegate_);
+    auth_delegate_->OnAuthSucceeded();
+  } else if (*event == kEventOnAuthFailed) {
+    DCHECK(auth_delegate_);
+    const std::string* error_message = message.FindString(kAuthErrorMessage);
+    if (!error_message) {
+      NOTREACHED();
+      return;
+    }
+    // TODO(https://crbug.com/756144): Remove once reason for crash has been
+    // determined.
+    LOG_IF(ERROR, !auth_delegate_)
+        << "auth_delegate_ is NULL, error: " << *error_message;
+    auth_delegate_->OnAuthFailed(*error_message);
   } else if (*event == kEventOnAgreed || *event == kEventOnCanceled) {
     DCHECK(tos_delegate_);
-    std::optional<bool> tos_shown = message.FindBool(kTosShown);
-    std::optional<bool> is_metrics_enabled =
+    absl::optional<bool> tos_shown = message.FindBool(kTosShown);
+    absl::optional<bool> is_metrics_enabled =
         message.FindBool(kIsMetricsEnabled);
-    std::optional<bool> is_backup_restore_enabled =
+    absl::optional<bool> is_backup_restore_enabled =
         message.FindBool(kIsBackupRestoreEnabled);
-    std::optional<bool> is_backup_restore_managed =
+    absl::optional<bool> is_backup_restore_managed =
         message.FindBool(kIsBackupRestoreManaged);
-    std::optional<bool> is_location_service_enabled =
+    absl::optional<bool> is_location_service_enabled =
         message.FindBool(kIsLocationServiceEnabled);
-    std::optional<bool> is_location_service_managed =
+    absl::optional<bool> is_location_service_managed =
         message.FindBool(kIsLocationServiceManaged);
 
     const std::string* tos_content = message.FindString(kTosContent);
@@ -761,43 +789,34 @@ void ArcSupportHost::OnMessage(const base::Value::Dict& message) {
     // If the user - not policy - controls Location Services setting, record
     // whether consent was given.
     if (!is_location_service_managed.value()) {
-      // TODO(b/327350824): Stop sending ARC controls to consent auditor.
-      if (!ash::features::IsCrosPrivacyHubLocationEnabled()) {
-        UserConsentTypes::ArcGoogleLocationServiceConsent
-            location_service_consent;
-        location_service_consent.set_confirmation_grd_id(
-            IDS_ARC_OPT_IN_DIALOG_BUTTON_AGREE);
-        location_service_consent.add_description_grd_ids(
-            is_child ? IDS_ARC_OPT_IN_LOCATION_SETTING_CHILD
-                     : IDS_ARC_OPT_IN_LOCATION_SETTING);
-        location_service_consent.set_status(is_location_service_enabled.value()
-                                                ? UserConsentTypes::GIVEN
-                                                : UserConsentTypes::NOT_GIVEN);
+      UserConsentTypes::ArcGoogleLocationServiceConsent
+          location_service_consent;
+      location_service_consent.set_confirmation_grd_id(
+          IDS_ARC_OPT_IN_DIALOG_BUTTON_AGREE);
+      location_service_consent.add_description_grd_ids(
+          is_child ? IDS_ARC_OPT_IN_LOCATION_SETTING_CHILD
+                   : IDS_ARC_OPT_IN_LOCATION_SETTING);
+      location_service_consent.set_status(is_location_service_enabled.value()
+                                              ? UserConsentTypes::GIVEN
+                                              : UserConsentTypes::NOT_GIVEN);
 
-        ConsentAuditorFactory::GetForProfile(profile_)
-            ->RecordArcGoogleLocationServiceConsent(account_id,
-                                                    location_service_consent);
-      }
+      ConsentAuditorFactory::GetForProfile(profile_)
+          ->RecordArcGoogleLocationServiceConsent(account_id,
+                                                  location_service_consent);
     }
 
     if (accepted) {
-      // tos_delegate_->OnTermsAgreed() will free tos_delegate_. But will update
-      // optin UI async to loading page. It is possible that user can click the
-      // accept button again before optin UI is updated. b/284000632
-      if (!tos_delegate_) {
-        LOG(ERROR) << "tos_delegate_ has been freed.";
-        return;
-      }
-
       tos_delegate_->OnTermsAgreed(is_metrics_enabled.value(),
                                    is_backup_restore_enabled.value(),
                                    is_location_service_enabled.value());
     }
   } else if (*event == kEventOnRetryClicked) {
-    // If ToS negotiation is ongoing, call the corresponding delegate.
-    // Otherwise, call the general retry function.
+    // If ToS negotiation or manual authentication is ongoing, call the
+    // corresponding delegate.  Otherwise, call the general retry function.
     if (tos_delegate_) {
       tos_delegate_->OnTermsRetryClicked();
+    } else if (auth_delegate_) {
+      auth_delegate_->OnAuthRetryClicked();
     } else {
       DCHECK(error_delegate_);
       error_delegate_->OnRetryClicked();
@@ -808,15 +827,6 @@ void ArcSupportHost::OnMessage(const base::Value::Dict& message) {
   } else if (*event == kEventOnRunNetworkTestsClicked) {
     DCHECK(error_delegate_);
     error_delegate_->OnRunNetworkTestsClicked();
-  } else if (*event == kEventOnTosLoadResult) {
-    if (tos_delegate_) {
-      tos_delegate_->OnTermsLoadResult(
-          message.FindBool(kSuccess).value_or(false));
-    }
-  } else if (*event == kEventOnErrorPageShown) {
-    DCHECK(error_delegate_);
-    error_delegate_->OnErrorPageShown(
-        message.FindBool(kNetworkTestsShown).value_or(false));
   } else if (*event == kEventOnOpenPrivacySettingsPageClicked) {
     chrome::ShowSettingsSubPageForProfile(profile_, chrome::kPrivacySubPage);
   } else if (*event == kEventRequestWindowBounds) {

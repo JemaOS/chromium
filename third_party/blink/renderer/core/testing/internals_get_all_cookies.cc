@@ -18,22 +18,21 @@
 namespace blink {
 
 // static
-ScriptPromiseTyped<IDLSequence<InternalCookie>>
-InternalsGetAllCookies::getAllCookies(ScriptState* script_state, Internals&) {
+ScriptPromise InternalsGetAllCookies::getAllCookies(ScriptState* script_state,
+                                                    Internals&) {
   LocalDOMWindow* window = LocalDOMWindow::From(script_state);
   mojo::Remote<test::mojom::blink::CookieManagerAutomation> cookie_manager;
   window->GetBrowserInterfaceBroker().GetInterface(
       cookie_manager.BindNewPipeAndPassReceiver());
 
-  auto* resolver = MakeGarbageCollected<
-      ScriptPromiseResolverTyped<IDLSequence<InternalCookie>>>(script_state);
-  auto promise = resolver->Promise();
+  ScriptPromiseResolver* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver>(script_state);
+  ScriptPromise promise = resolver->Promise();
   // Get the interface so `cookie_manager` can be moved below.
   test::mojom::blink::CookieManagerAutomation* raw_cookie_manager =
       cookie_manager.get();
   raw_cookie_manager->GetAllCookies(WTF::BindOnce(
-      [](ScriptPromiseResolverTyped<IDLSequence<InternalCookie>>* resolver,
-         ScriptState* script_state,
+      [](ScriptPromiseResolver* resolver, ScriptState* script_state,
          mojo::Remote<test::mojom::blink::CookieManagerAutomation>,
          WTF::Vector<network::mojom::blink::CookieWithAccessResultPtr>
              cookies) {

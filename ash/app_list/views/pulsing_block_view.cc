@@ -13,7 +13,6 @@
 #include "ash/style/dark_light_mode_controller_impl.h"
 #include "base/check_op.h"
 #include "third_party/skia/include/core/SkColor.h"
-#include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animation_element.h"
 #include "ui/compositor/layer_animation_sequence.h"
@@ -46,8 +45,7 @@ void SchedulePulsingAnimation(ui::Layer* layer) {
 namespace ash {
 
 PulsingBlockView::PulsingBlockView(const gfx::Size& size,
-                                   base::TimeDelta animation_delay,
-                                   float corner_radius)
+                                   base::TimeDelta animation_delay)
     : block_size_(size) {
   views::BoxLayout* layout_manager =
       SetLayoutManager(std::make_unique<views::BoxLayout>(
@@ -82,14 +80,18 @@ PulsingBlockView::PulsingBlockView(const gfx::Size& size,
       ColorProvider::kBackgroundBlurSigma);
   stacked_views->layer()->SetBackdropFilterQuality(
       ColorProvider::kBackgroundBlurQuality);
-  stacked_views->layer()->SetRoundedCornerRadius(
-      {corner_radius, corner_radius, corner_radius, corner_radius});
+  const float radii = block_size_.height() / 2.0f;
+  stacked_views->layer()->SetRoundedCornerRadius({radii, radii, radii, radii});
 
   start_delay_timer_.Start(FROM_HERE, animation_delay, this,
                            &PulsingBlockView::OnStartDelayTimer);
 }
 
 PulsingBlockView::~PulsingBlockView() {}
+
+const char* PulsingBlockView::GetClassName() const {
+  return "PulsingBlockView";
+}
 
 void PulsingBlockView::OnStartDelayTimer() {
   background_color_view_->SetPaintToLayer();
@@ -121,8 +123,5 @@ bool PulsingBlockView::FireAnimationTimerForTest() {
   start_delay_timer_.FireNow();
   return true;
 }
-
-BEGIN_METADATA(PulsingBlockView)
-END_METADATA
 
 }  // namespace ash

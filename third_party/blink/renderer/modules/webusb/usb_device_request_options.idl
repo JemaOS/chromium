@@ -6,5 +6,4 @@
 
 dictionary USBDeviceRequestOptions {
     required sequence<USBDeviceFilter> filters;
-    sequence<USBDeviceFilter> exclusionFilters = [];
 };

@@ -82,35 +82,5 @@ bool IsHdcpKeyProvisioningRequired() {
   return base::FeatureList::IsEnabled(kRequireHdcpKeyProvisioning);
 }
 
-BASE_FEATURE(kPanelSelfRefresh2,
-             "PanelSelfRefresh2",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsPanelSelfRefresh2Enabled() {
-  return base::FeatureList::IsEnabled(kPanelSelfRefresh2);
-}
-
-BASE_FEATURE(kTiledDisplaySupport,
-             "TiledDisplaySupport",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsTiledDisplaySupportEnabled() {
-  return base::FeatureList::IsEnabled(kTiledDisplaySupport);
-}
-
-#if BUILDFLAG(IS_IOS)
-
-// A kill-switch that guards refactoring ScreenIos to stop calling
-// into deprecated methods on UIScreen.
-BASE_FEATURE(kScreenIosRefactor,
-             "ScreenIosRefactor",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsScreenIosRefactorEnabled() {
-  return base::FeatureList::IsEnabled(kScreenIosRefactor);
-}
-
-#endif
-
 }  // namespace features
 }  // namespace display

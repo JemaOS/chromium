@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "base/mac/mac_util.h"
+#import "base/mac/scoped_nsobject.h"
 #include "chrome/browser/ui/browser.h"
 #import "chrome/browser/ui/cocoa/touchbar/browser_window_default_touch_bar.h"
 #import "chrome/browser/ui/cocoa/touchbar/web_textfield_touch_bar_controller.h"
@@ -17,11 +18,11 @@
 #import "ui/base/cocoa/touch_bar_util.h"
 
 @interface BrowserWindowTouchBarController () {
-  NSWindow* __weak _window;
+  NSWindow* _window;  // Weak.
 
-  BrowserWindowDefaultTouchBar* __strong _defaultTouchBar;
+  base::scoped_nsobject<BrowserWindowDefaultTouchBar> _defaultTouchBar;
 
-  WebTextfieldTouchBarController* __strong _webTextfieldTouchBar;
+  base::scoped_nsobject<WebTextfieldTouchBarController> _webTextfieldTouchBar;
 }
 @end
 
@@ -32,22 +33,23 @@
     DCHECK(browser);
     _window = window;
 
-    _defaultTouchBar = [[BrowserWindowDefaultTouchBar alloc] init];
-    _defaultTouchBar.controller = self;
-    _defaultTouchBar.browser = browser;
-    _webTextfieldTouchBar =
-        [[WebTextfieldTouchBarController alloc] initWithController:self];
+    _defaultTouchBar.reset([[BrowserWindowDefaultTouchBar alloc] init]);
+    _defaultTouchBar.get().controller = self;
+    _defaultTouchBar.get().browser = browser;
+    _webTextfieldTouchBar.reset(
+        [[WebTextfieldTouchBarController alloc] initWithController:self]);
   }
 
   return self;
 }
 
 - (void)dealloc {
-  _defaultTouchBar.browser = nullptr;
+  _defaultTouchBar.get().browser = nullptr;
+  [super dealloc];
 }
 
 - (void)invalidateTouchBar {
-  _window.touchBar = nil;
+  [_window setTouchBar:nil];
 }
 
 - (NSTouchBar*)makeTouchBar {
@@ -63,11 +65,11 @@
 @implementation BrowserWindowTouchBarController (ExposedForTesting)
 
 - (BrowserWindowDefaultTouchBar*)defaultTouchBar {
-  return _defaultTouchBar;
+  return _defaultTouchBar.get();
 }
 
 - (WebTextfieldTouchBarController*)webTextfieldTouchBar {
-  return _webTextfieldTouchBar;
+  return _webTextfieldTouchBar.get();
 }
 
 @end

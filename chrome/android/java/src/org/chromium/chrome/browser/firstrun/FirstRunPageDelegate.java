@@ -8,12 +8,15 @@ import android.os.Bundle;
 
 import org.chromium.base.Promise;
 import org.chromium.base.supplier.OneshotSupplier;
-import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.ui.base.WindowAndroid;
 
-/** Defines the host interface for First Run Experience pages. */
+/**
+ * Defines the host interface for First Run Experience pages.
+ */
 public interface FirstRunPageDelegate {
-    /** Returns FRE properties bundle. */
+    /**
+     * Returns FRE properties bundle.
+     */
     Bundle getProperties();
 
     /**
@@ -50,7 +53,9 @@ public interface FirstRunPageDelegate {
      */
     boolean didAcceptTermsOfService();
 
-    /** Returns whether chrome is launched as a custom tab. */
+    /**
+     * Returns whether chrome is launched as a custom tab.
+     */
     boolean isLaunchedFromCct();
 
     /**
@@ -81,17 +86,14 @@ public interface FirstRunPageDelegate {
     void recordNativeInitializedHistogram();
 
     /**
-     * @return The supplier that provides the Profile (when available).
-     */
-    OneshotSupplier<ProfileProvider> getProfileProviderSupplier();
-
-    /**
      * The supplier that supplies whether reading policy value is necessary.
      * See {@link PolicyLoadListener} for details.
      */
     OneshotSupplier<Boolean> getPolicyLoadListener();
 
-    /** Returns the supplier that supplies child account status. */
+    /**
+     * Returns the supplier that supplies child account status.
+     */
     OneshotSupplier<Boolean> getChildAccountStatusSupplier();
 
     /**
@@ -106,6 +108,8 @@ public interface FirstRunPageDelegate {
      */
     boolean canUseLandscapeLayout();
 
-    /** Return the {@link WindowAndroid} for the FirstRunActivity. */
+    /**
+     * Return the {@link WindowAndroid} for the FirstRunActivity.
+     */
     WindowAndroid getWindowAndroid();
 }

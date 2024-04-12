@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "extensions/renderer/bindings/api_binding_hooks_delegate.h"
 #include "v8/include/v8.h"
@@ -35,7 +34,7 @@ class AppHooksDelegate : public APIBindingHooksDelegate {
       const std::string& method_name,
       const APISignature* signature,
       v8::Local<v8::Context> context,
-      v8::LocalVector<v8::Value>* arguments,
+      std::vector<v8::Local<v8::Value>>* arguments,
       const APITypeReferenceMap& refs) override;
   void InitializeTemplate(v8::Isolate* isolate,
                           v8::Local<v8::ObjectTemplate> object_template,
@@ -48,7 +47,7 @@ class AppHooksDelegate : public APIBindingHooksDelegate {
 
  private:
   static void IsInstalledGetterCallback(
-      v8::Local<v8::Name> property,
+      v8::Local<v8::String> property,
       const v8::PropertyCallbackInfo<v8::Value>& info);
 
   // Returns the manifest of the extension associated with the frame.
@@ -68,13 +67,13 @@ class AppHooksDelegate : public APIBindingHooksDelegate {
   void OnAppInstallStateResponse(int request_id, const std::string& state);
 
   // Dispatcher handle. Not owned.
-  raw_ptr<Dispatcher> dispatcher_ = nullptr;
+  Dispatcher* dispatcher_ = nullptr;
 
-  raw_ptr<APIRequestHandler> request_handler_ = nullptr;
+  APIRequestHandler* request_handler_ = nullptr;
 
   // IPC sender used for activity log call.
   // Not owned. This is owned by NativeExtensionBindingsSystem.
-  raw_ptr<IPCMessageSender> ipc_sender_ = nullptr;
+  IPCMessageSender* ipc_sender_ = nullptr;
 
   base::WeakPtrFactory<AppHooksDelegate> weak_factory_{this};
 };

@@ -5,7 +5,6 @@
 #include "chrome/browser/ui/views/sharing_hub/sharing_hub_bubble_view_impl.h"
 
 #include "base/containers/adapters.h"
-#include "base/containers/to_vector.h"
 #include "base/memory/raw_ptr.h"
 #include "base/ranges/algorithm.h"
 #include "chrome/browser/ui/sharing_hub/fake_sharing_hub_bubble_controller.h"
@@ -18,7 +17,6 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/accessibility/ax_node_data.h"
-#include "ui/gfx/vector_icon_types.h"
 #include "ui/views/accessibility/view_accessibility.h"
 
 using ::testing::Truly;
@@ -28,7 +26,7 @@ namespace {
 void EnumerateDescendants(views::View* root,
                           std::vector<views::View*>& result) {
   result.push_back(root);
-  for (views::View* child : root->children()) {
+  for (auto* child : root->children()) {
     EnumerateDescendants(child, result);
   }
 }
@@ -78,12 +76,10 @@ views::View* FocusedViewOf(views::Widget* widget) {
   return widget->GetFocusManager()->GetFocusedView();
 }
 
-const gfx::VectorIcon kEmptyIcon;
-
 const std::vector<sharing_hub::SharingHubAction> kFirstPartyActions = {
-    {0, u"Feed to Dino", &kEmptyIcon, "feed-to-dino", 0},
-    {1, u"Reverse Star", &kEmptyIcon, "reverse-star", 0},
-    {2, u"Pastelify", &kEmptyIcon, "pastelify", 0},
+    {0, u"Feed to Dino", nullptr, "feed-to-dino", 0},
+    {1, u"Reverse Star", nullptr, "reverse-star", 0},
+    {2, u"Pastelify", nullptr, "pastelify", 0},
 };
 
 }  // namespace
@@ -109,7 +105,7 @@ class SharingHubBubbleTest : public ChromeViewsTestBase {
         &controller_);
     bubble_ = bubble.get();
     views::BubbleDialogDelegateView::CreateBubble(std::move(bubble));
-    bubble_->ShowForReason(sharing_hub::SharingHubBubbleViewImpl::USER_GESTURE);
+    bubble_->Show(sharing_hub::SharingHubBubbleViewImpl::USER_GESTURE);
     bubble_widget_ = bubble_->GetWidget();
   }
 
@@ -121,22 +117,24 @@ class SharingHubBubbleTest : public ChromeViewsTestBase {
   }
 
   std::vector<sharing_hub::SharingHubBubbleActionButton*> GetActionButtons() {
-    return base::ToVector(
-        DescendantsMatchingPredicate(
-            bubble(), base::BindRepeating(&ViewHasClassName,
-                                          "SharingHubBubbleActionButton")),
-        [](views::View* view) {
+    std::vector<views::View*> actions = DescendantsMatchingPredicate(
+        bubble(),
+        base::BindRepeating(&ViewHasClassName, "SharingHubBubbleActionButton"));
+    std::vector<sharing_hub::SharingHubBubbleActionButton*> concrete_actions;
+    base::ranges::transform(
+        actions, std::back_inserter(concrete_actions), [](views::View* view) {
           return static_cast<sharing_hub::SharingHubBubbleActionButton*>(view);
         });
+    return concrete_actions;
   }
 
  private:
-  raw_ptr<sharing_hub::SharingHubBubbleViewImpl, DanglingUntriaged> bubble_;
+  raw_ptr<sharing_hub::SharingHubBubbleViewImpl> bubble_;
   testing::NiceMock<sharing_hub::FakeSharingHubBubbleController> controller_{
       kFirstPartyActions};
 
   std::unique_ptr<views::Widget> anchor_widget_;
-  raw_ptr<views::Widget, DanglingUntriaged> bubble_widget_;
+  raw_ptr<views::Widget> bubble_widget_;
 };
 
 TEST_F(SharingHubBubbleTest, AllFirstPartyActionsAppearInOrder) {

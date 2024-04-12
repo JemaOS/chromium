@@ -14,7 +14,6 @@
 #include "content/public/common/content_switches.h"
 #include "content/shell/browser/shell_paths.h"
 #include "ui/base/resource/resource_bundle.h"
-#include "ui/base/resource/resource_scale_factor.h"
 #include "ui/base/ui_base_paths.h"
 #include "ui/views_content_client/views_content_browser_client.h"
 #include "ui/views_content_client/views_content_client.h"
@@ -44,7 +43,7 @@ ViewsContentMainDelegate::ViewsContentMainDelegate(
 ViewsContentMainDelegate::~ViewsContentMainDelegate() {
 }
 
-std::optional<int> ViewsContentMainDelegate::BasicStartupComplete() {
+absl::optional<int> ViewsContentMainDelegate::BasicStartupComplete() {
   const base::CommandLine& command_line =
       *base::CommandLine::ForCurrentProcess();
   std::string process_type =
@@ -61,7 +60,7 @@ std::optional<int> ViewsContentMainDelegate::BasicStartupComplete() {
 
   content::RegisterShellPathProvider();
 
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void ViewsContentMainDelegate::PreSandboxStartup() {
@@ -76,7 +75,7 @@ void ViewsContentMainDelegate::PreSandboxStartup() {
       content_resources_pak_path.AppendASCII("content_resources.pak"),
       ui::k100Percent);
 
-  if (ui::IsScaleFactorSupported(ui::k200Percent)) {
+  if (ui::ResourceBundle::IsScaleFactorSupported(ui::k200Percent)) {
     base::FilePath ui_test_resources_200 = ui_test_pak_path.DirName().Append(
         FILE_PATH_LITERAL("ui_test_200_percent.pak"));
     ui::ResourceBundle::GetSharedInstance().AddDataPackFromPath(
@@ -86,13 +85,14 @@ void ViewsContentMainDelegate::PreSandboxStartup() {
   views_content_client_->OnResourcesLoaded();
 }
 
-std::optional<int> ViewsContentMainDelegate::PreBrowserMain() {
-  std::optional<int> exit_code = content::ContentMainDelegate::PreBrowserMain();
+absl::optional<int> ViewsContentMainDelegate::PreBrowserMain() {
+  absl::optional<int> exit_code =
+      content::ContentMainDelegate::PreBrowserMain();
   if (exit_code.has_value())
     return exit_code;
 
   ViewsContentClientMainParts::PreBrowserMain();
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 content::ContentClient* ViewsContentMainDelegate::CreateContentClient() {

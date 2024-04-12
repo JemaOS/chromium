@@ -1,35 +1,25 @@
 function validateHoverState(elementList, hoverIndex, hoverMismatch) {
   for (let i = 0; i < elementList.length; i++) {
-    if (elementList[i].matches(':hover') != (i == hoverIndex)) {
-      hoverMismatch();
-    }
+    if (elementList[i].matches(':hover') != (i == hoverIndex))
+      hoverMismatch(document.scrollingElement.scrollTop);
   }
 }
 
-function elementHeight() {
-  let height = undefined;
-  document.querySelectorAll('div').forEach((div) => {
-    if (height === undefined) {
-      height = getComputedStyle(div).height;
-    } else {
-      if (height !== getComputedStyle(div).height) {
-        throw new Error("Test requires all 'divs' to have the same height");
-      }
-    }
-  });
-  return parseInt(height);
-}
-
 function runHoverStateOnScrollTest(scrollCallback, targetIndex) {
-  verifyTestDriverLoaded();
   const runTest = async (resolve, reject) => {
     await waitForCompositorCommit();
 
     const array = document.getElementsByClassName('hoverme');
-    const center = elementCenter(array[0]);
+    let x = array[0].offsetLeft + array[0].clientWidth / 2;
+    let y = array[0].offsetTop + array[0].clientHeight / 2;
     // Move cursor to 1st element.
-    await mouseClick(center.x, center.y);
+    await mouseMoveTo(x, y);
+    await waitFor( () => {
+      return array[0].matches(":hover");
+    }, 'wait for move to 1st element');
+
     assert_equals(document.scrollingElement.scrollTop, 0);
+
     validateHoverState(array, 0, () => {
       reject('Not hovering over the first element');
     });
@@ -42,14 +32,16 @@ function runHoverStateOnScrollTest(scrollCallback, targetIndex) {
       validateHoverState(array, 0, () => {
         if (!firstHoverUpdate) {
           firstHoverUpdate = document.scrollingElement.scrollTop;
-        }
+        };
       });
     };
 
     const scrollListener =
         document.addEventListener('scroll', hoverStateCheck);
 
-    await scrollCallback(center.x, center.y);
+    const scrollEndPromise = waitForScrollendEvent(document);
+    await scrollCallback(x, y);
+    await scrollEndPromise;
 
     // If the hover change occurs after the last scroll event then
     // firstHoverUpdate remains undefined.  If the last scroll event is delayed

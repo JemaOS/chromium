@@ -78,8 +78,7 @@ bool WebInputMethodControllerImpl::SetComposition(
   if (!replacement_range.IsNull()) {
     web_frame_->SelectRange(replacement_range,
                             WebLocalFrame::kHideSelectionHandle,
-                            blink::mojom::SelectionMenuBehavior::kHide,
-                            WebLocalFrame::kSelectionSetFocus);
+                            blink::mojom::SelectionMenuBehavior::kHide);
   }
 
   // We should verify the parent node of this IME composition node are
@@ -157,11 +156,9 @@ bool WebInputMethodControllerImpl::CommitText(
   GetFrame()->GetDocument()->UpdateStyleAndLayout(DocumentUpdateReason::kInput);
 
   if (!replacement_range.IsNull()) {
-    return GetInputMethodController().ReplaceTextAndMoveCaret(
-        text,
-        PlainTextRange(replacement_range.StartOffset(),
-                       replacement_range.EndOffset()),
-        InputMethodController::MoveCaretBehavior::kDoNotMove);
+    return GetInputMethodController().ReplaceText(
+        text, PlainTextRange(replacement_range.StartOffset(),
+                             replacement_range.EndOffset()));
   }
 
   return GetInputMethodController().CommitText(
@@ -183,6 +180,9 @@ int WebInputMethodControllerImpl::ComputeWebTextInputNextPreviousFlags() {
 }
 
 WebTextInputType WebInputMethodControllerImpl::TextInputType() {
+  if (IsEditContextActive())
+    return GetInputMethodController().GetActiveEditContext()->TextInputType();
+
   return GetFrame()->GetInputMethodController().TextInputType();
 }
 
@@ -192,7 +192,16 @@ void WebInputMethodControllerImpl::GetLayoutBounds(
   GetInputMethodController().GetLayoutBounds(control_bounds, selection_bounds);
 }
 
-WebRange WebInputMethodControllerImpl::CompositionRange() const {
+bool WebInputMethodControllerImpl::IsVirtualKeyboardPolicyManual() const {
+  if (IsEditContextActive()) {
+    return GetInputMethodController()
+        .GetActiveEditContext()
+        ->IsVirtualKeyboardPolicyManual();
+  }
+  return false;  // Default should always be automatic.
+}
+
+WebRange WebInputMethodControllerImpl::CompositionRange() {
   if (IsEditContextActive()) {
     return GetInputMethodController()
         .GetActiveEditContext()
@@ -207,9 +216,6 @@ WebRange WebInputMethodControllerImpl::CompositionRange() const {
 
   Element* editable =
       GetFrame()->Selection().RootEditableElementOrDocumentElement();
-  if (!editable) {
-    return WebRange();
-  }
 
   editable->GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kInput);
 
@@ -240,7 +246,7 @@ bool WebInputMethodControllerImpl::GetCompositionCharacterBounds(
     result[i] = rect;
   }
 
-  bounds.swap(result);
+  bounds.Swap(result);
   return true;
 }
 

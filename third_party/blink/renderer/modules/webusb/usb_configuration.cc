@@ -39,7 +39,7 @@ USBConfiguration::USBConfiguration(const USBDevice* device,
 }
 
 const USBDevice* USBConfiguration::Device() const {
-  return device_.Get();
+  return device_;
 }
 
 wtf_size_t USBConfiguration::Index() const {

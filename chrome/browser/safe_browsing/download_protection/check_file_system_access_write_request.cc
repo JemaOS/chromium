@@ -52,10 +52,6 @@ CheckFileSystemAccessWriteRequest::CheckFileSystemAccessWriteRequest(
 CheckFileSystemAccessWriteRequest ::~CheckFileSystemAccessWriteRequest() =
     default;
 
-download::DownloadItem* CheckFileSystemAccessWriteRequest::item() const {
-  return nullptr;
-}
-
 bool CheckFileSystemAccessWriteRequest::IsSupportedDownload(
     DownloadCheckResultReason* reason) {
   if (!FileTypePolicies::GetInstance()->IsCheckedBinaryFile(
@@ -104,10 +100,10 @@ void CheckFileSystemAccessWriteRequest::MaybeStorePingsForDownload(
   // TODO(https://crbug.com/996797): Integrate with DownloadFeedbackService.
 }
 
-std::optional<enterprise_connectors::AnalysisSettings>
+absl::optional<enterprise_connectors::AnalysisSettings>
 CheckFileSystemAccessWriteRequest::ShouldUploadBinary(
     DownloadCheckResultReason reason) {
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 void CheckFileSystemAccessWriteRequest::UploadBinary(
@@ -115,27 +111,8 @@ void CheckFileSystemAccessWriteRequest::UploadBinary(
     DownloadCheckResultReason reason,
     enterprise_connectors::AnalysisSettings settings) {}
 
-bool CheckFileSystemAccessWriteRequest::ShouldImmediatelyDeepScan(
-    bool server_requests_prompt) const {
-  return false;
-}
-
 bool CheckFileSystemAccessWriteRequest::ShouldPromptForDeepScanning(
     bool server_requests_prompt) const {
-  return false;
-}
-
-bool CheckFileSystemAccessWriteRequest::ShouldPromptForLocalDecryption(
-    bool server_requests_prompt) const {
-  return false;
-}
-
-bool CheckFileSystemAccessWriteRequest::ShouldPromptForIncorrectPassword()
-    const {
-  return false;
-}
-
-bool CheckFileSystemAccessWriteRequest::ShouldShowScanFailure() const {
   return false;
 }
 
@@ -151,11 +128,6 @@ bool CheckFileSystemAccessWriteRequest::IsAllowlistedByPolicy() const {
   if (!profile)
     return false;
   return IsURLAllowlistedByPolicy(item_->frame_url, *profile->GetPrefs());
-}
-
-void CheckFileSystemAccessWriteRequest::LogDeepScanningPrompt(
-    bool did_prompt) const {
-  NOTREACHED();
 }
 
 }  // namespace safe_browsing

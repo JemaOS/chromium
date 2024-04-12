@@ -171,8 +171,7 @@ Only provisional loads that meet the following criteria are tracked:
 * Main frame page loads (page load timing and metadata updates are collected for
   child frames and reported to observers for the main frame, as long as the main
   frame meets all other tracking criteria)
-* By default, pages with HTTP or HTTPS URLs. Different schemes can be tracked
-  by overriding `PageLoadMetricsObserver::ShouldObserveScheme()`.
+* Pages with HTTP or HTTPS URLs
 * Non-New Tab Page URLs (on desktop, the NTP may be served over HTTPS. These
   loads are not tracked)
 * Non same-page navigations (e.g. navigations using pushState, or using a

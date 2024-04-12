@@ -5,7 +5,6 @@
 #include "chrome/browser/apps/app_service/app_icon/app_icon_source.h"
 
 #include <string>
-#include <string_view>
 
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
@@ -30,7 +29,7 @@ namespace apps {
 namespace {
 
 void LoadDefaultImage(content::URLDataSource::GotDataCallback callback) {
-  std::string_view contents =
+  base::StringPiece contents =
       ui::ResourceBundle::GetSharedInstance().GetRawDataResourceForScale(
           IDR_APP_DEFAULT_ICON, apps_util::GetPrimaryDisplayUIScaleFactor());
 
@@ -86,9 +85,8 @@ void AppIconSource::StartDataRequest(
   // Check whether data is of correct type, load default image if not.
   std::string size_param = base::ToLowerASCII(path_parts[1]);
   size_t query_position = size_param.find("?");
-  if (query_position != std::string::npos) {
+  if (query_position != std::string::npos)
     size_param = size_param.substr(0, query_position);
-  }
   int size_in_dip = 0;
   if (!base::StringToInt(size_param, &size_in_dip) || size_in_dip < 1) {
     LoadDefaultImage(std::move(callback));
@@ -99,7 +97,8 @@ void AppIconSource::StartDataRequest(
       apps::AppServiceProxyFactory::GetForProfile(profile_);
   const std::string app_id = path_parts[0];
   app_service_proxy->LoadIcon(
-      app_id, IconType::kCompressed, size_in_dip,
+      app_service_proxy->AppRegistryCache().GetAppType(app_id), app_id,
+      IconType::kCompressed, size_in_dip,
       /*allow_placeholder_icon=*/false,
       base::BindOnce(&RunCallback, std::move(callback)));
 }

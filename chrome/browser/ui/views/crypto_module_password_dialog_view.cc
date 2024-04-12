@@ -29,17 +29,17 @@ CryptoModulePasswordDialogView::CryptoModulePasswordDialogView(
   SetButtonLabel(
       ui::DIALOG_BUTTON_OK,
       l10n_util::GetStringUTF16(IDS_CRYPTO_MODULE_AUTH_DIALOG_OK_BUTTON_LABEL));
-  constexpr bool kAccepted = true;
-  constexpr bool kCancelled = false;
-  SetAcceptCallback(
-      base::BindOnce(&CryptoModulePasswordDialogView::DialogAcceptedOrCancelled,
-                     base::Unretained(this), kAccepted));
-  SetCancelCallback(
-      base::BindOnce(&CryptoModulePasswordDialogView::DialogAcceptedOrCancelled,
-                     base::Unretained(this), kCancelled));
-  SetCloseCallback(
-      base::BindOnce(&CryptoModulePasswordDialogView::DialogAcceptedOrCancelled,
-                     base::Unretained(this), kCancelled));
+  SetAcceptCallback(base::BindOnce(
+      [](CryptoModulePasswordDialogView* dialog) {
+        std::move(dialog->callback_)
+            .Run(base::UTF16ToUTF8(dialog->password_entry_->GetText()));
+      },
+      base::Unretained(this)));
+  SetCancelCallback(base::BindOnce(
+      [](CryptoModulePasswordDialogView* dialog) {
+        std::move(dialog->callback_).Run(std::string());
+      },
+      base::Unretained(this)));
   SetModalType(ui::MODAL_TYPE_WINDOW);
   set_margins(ChromeLayoutProvider::Get()->GetDialogInsetsForContentType(
       views::DialogContentType::kText, views::DialogContentType::kControl));
@@ -129,15 +129,7 @@ void CryptoModulePasswordDialogView::Init(const std::string& hostname,
   password_container->SetFlexForView(password_entry_, 1);
 }
 
-void CryptoModulePasswordDialogView::DialogAcceptedOrCancelled(bool accepted) {
-  CHECK(callback_);
-
-  std::string result =
-      accepted ? base::UTF16ToUTF8(password_entry_->GetText()) : std::string();
-  std::move(callback_).Run(result);
-}
-
-BEGIN_METADATA(CryptoModulePasswordDialogView)
+BEGIN_METADATA(CryptoModulePasswordDialogView, views::DialogDelegateView)
 END_METADATA
 
 void ShowCryptoModulePasswordDialog(const std::string& slot_name,

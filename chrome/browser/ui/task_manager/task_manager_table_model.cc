@@ -630,11 +630,7 @@ int TaskManagerTableModel::CompareValues(size_t row1,
       return ValueCompare(proc1_fd_count, proc2_fd_count);
     }
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC)
-    case IDS_TASK_MANAGER_KEEPALIVE_COUNT_COLUMN: {
-      return ValueCompare(
-          observed_task_manager()->GetKeepaliveCount(tasks_[row1]),
-          observed_task_manager()->GetKeepaliveCount(tasks_[row2]));
-    }
+
     default:
       NOTREACHED();
       return 0;
@@ -694,13 +690,6 @@ void TaskManagerTableModel::OnTasksRefreshed(
     const TaskIdList& task_ids) {
   tasks_ = task_ids;
   OnRefresh();
-}
-
-void TaskManagerTableModel::OnActiveTaskFetched(TaskId id) {
-  if (!active_task_id_.has_value()) {
-    active_task_id_ = id;
-    table_view_delegate_->MaybeHighlightActiveTask();
-  }
 }
 
 void TaskManagerTableModel::ActivateTask(size_t row_index) {
@@ -891,31 +880,19 @@ void TaskManagerTableModel::StoreColumnsSettings() {
 
 void TaskManagerTableModel::ToggleColumnVisibility(int column_id) {
   bool new_visibility = !table_view_delegate_->IsColumnVisible(column_id);
-  if (table_view_delegate_->SetColumnVisibility(column_id, new_visibility)) {
-    columns_settings_.SetByDottedPath(GetColumnIdAsString(column_id),
-                                      new_visibility);
-    UpdateRefreshTypes(column_id, new_visibility);
-  }
+  table_view_delegate_->SetColumnVisibility(column_id, new_visibility);
+  columns_settings_.SetByDottedPath(GetColumnIdAsString(column_id),
+                                    new_visibility);
+  UpdateRefreshTypes(column_id, new_visibility);
 }
 
-std::optional<size_t> TaskManagerTableModel::GetRowForWebContents(
+absl::optional<size_t> TaskManagerTableModel::GetRowForWebContents(
     content::WebContents* web_contents) {
   TaskId task_id =
       observed_task_manager()->GetTaskIdForWebContents(web_contents);
   auto index = base::ranges::find(tasks_, task_id);
   if (index == tasks_.end())
-    return std::nullopt;
-  return static_cast<size_t>(index - tasks_.begin());
-}
-
-std::optional<size_t> TaskManagerTableModel::GetRowForActiveTask() {
-  if (!active_task_id_.has_value()) {
-    return std::nullopt;
-  }
-  auto index = base::ranges::find(tasks_, active_task_id_.value());
-  if (index == tasks_.end()) {
-    return std::nullopt;
-  }
+    return absl::nullopt;
   return static_cast<size_t>(index - tasks_.begin());
 }
 

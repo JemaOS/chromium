@@ -7,10 +7,15 @@
 
 #import <Cocoa/Cocoa.h>
 
+#import "base/mac/scoped_nsobject.h"
 #include "third_party/skia/include/core/SkColor.h"
 
 // A view that paints a solid color. Used to change the title bar background.
-@interface TitlebarBackgroundView : NSView
+@interface TitlebarBackgroundView : NSView {
+ @private
+  base::scoped_nsobject<NSColor> _color;
+  base::scoped_nsobject<NSColor> _inactiveColor;
+}
 
 // Adds a TitlebarBackgroundView to the [[window contentView] superView].
 + (TitlebarBackgroundView*)addToNSWindow:(NSWindow*)window

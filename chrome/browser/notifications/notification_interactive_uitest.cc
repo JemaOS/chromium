@@ -31,13 +31,14 @@
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/interactive_test_utils.h"
 #include "chrome/test/base/ui_test_utils.h"
-#include "components/content_settings/core/browser/content_settings_uma_util.h"
 #include "components/content_settings/core/common/content_settings_pattern.h"
 #include "components/history/core/browser/history_service.h"
 #include "components/infobars/content/content_infobar_manager.h"
 #include "components/permissions/permission_uma_util.h"
 #include "components/permissions/permission_util.h"
 #include "components/ukm/test_ukm_recorder.h"
+#include "content/public/browser/notification_service.h"
+#include "content/public/browser/notification_source.h"
 #include "content/public/browser/notification_types.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/web_contents.h"
@@ -71,7 +72,7 @@ class ToggledNotificationBlocker : public message_center::NotificationBlocker {
   ToggledNotificationBlocker(const ToggledNotificationBlocker&) = delete;
   ToggledNotificationBlocker& operator=(const ToggledNotificationBlocker&) =
       delete;
-  ~ToggledNotificationBlocker() override = default;
+  ~ToggledNotificationBlocker() override {}
 
   void SetNotificationsEnabled(bool enabled) {
     if (notifications_enabled_ != enabled) {
@@ -134,7 +135,7 @@ IN_PROC_BROWSER_TEST_F(NotificationsTest, DISABLED_TestUserGestureInfobar) {
   infobars::ContentInfoBarManager* infobar_manager =
       infobars::ContentInfoBarManager::FromWebContents(
           browser()->tab_strip_model()->GetWebContentsAt(0));
-  EXPECT_EQ(1U, infobar_manager->infobars().size());
+  EXPECT_EQ(1U, infobar_manager->infobar_count());
 }
 
 IN_PROC_BROWSER_TEST_F(NotificationsTest, TestCreateSimpleNotification) {
@@ -157,7 +158,6 @@ IN_PROC_BROWSER_TEST_F(NotificationsTest, TestCreateSimpleNotification) {
 
 IN_PROC_BROWSER_TEST_F(NotificationsTest, NotificationBlockerTest) {
   ToggledNotificationBlocker blocker;
-  blocker.Init();
   TestMessageCenterObserver observer;
 
   ASSERT_TRUE(embedded_test_server()->Start());
@@ -407,16 +407,17 @@ IN_PROC_BROWSER_TEST_F(NotificationsTest, InlinePermissionRevokeUkm) {
 
   auto entries = ukm_recorder.GetEntriesByName("Permission");
   EXPECT_EQ(1u, entries.size());
-  auto* entry = entries.front().get();
+  auto* entry = entries.front();
 
   ukm_recorder.ExpectEntrySourceHasUrl(entry,
                                        embedded_test_server()->base_url());
   EXPECT_EQ(
       *ukm_recorder.GetEntryMetric(entry, "Source"),
       static_cast<int64_t>(permissions::PermissionSourceUI::INLINE_SETTINGS));
+  size_t num_values = 0;
   EXPECT_EQ(*ukm_recorder.GetEntryMetric(entry, "PermissionType"),
-            content_settings_uma_util::ContentSettingTypeToHistogramValue(
-                ContentSettingsType::NOTIFICATIONS));
+            ContentSettingTypeToHistogramValue(
+                ContentSettingsType::NOTIFICATIONS, &num_values));
   EXPECT_EQ(*ukm_recorder.GetEntryMetric(entry, "Action"),
             static_cast<int64_t>(permissions::PermissionAction::REVOKED));
 }
@@ -645,7 +646,13 @@ IN_PROC_BROWSER_TEST_F(NotificationsTest, TestShouldDisplayFullscreen) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestPageURL()));
 
   // Set the page fullscreen
-  ui_test_utils::ToggleFullscreenModeAndWait(browser());
+  browser()->exclusive_access_manager()->fullscreen_controller()->
+      ToggleBrowserFullscreenMode();
+
+  {
+    FullscreenStateWaiter fs_state(browser(), true);
+    fs_state.Wait();
+  }
 
   ASSERT_TRUE(ui_test_utils::ShowAndFocusNativeWindow(
       browser()->window()->GetNativeWindow()));
@@ -680,13 +687,24 @@ IN_PROC_BROWSER_TEST_F(NotificationsTest, TestShouldDisplayMultiFullscreen) {
   EXPECT_NE("-1", result);
 
   // Set the notification page fullscreen
-  ui_test_utils::ToggleFullscreenModeAndWait(browser());
+  browser()->exclusive_access_manager()->fullscreen_controller()->
+      ToggleBrowserFullscreenMode();
+  {
+    FullscreenStateWaiter fs_state(browser(), true);
+    fs_state.Wait();
+  }
 
   // Set the other browser fullscreen
-  ui_test_utils::ToggleFullscreenModeAndWait(other_browser);
+  other_browser->exclusive_access_manager()->fullscreen_controller()->
+      ToggleBrowserFullscreenMode();
+  {
+    FullscreenStateWaiter fs_state(other_browser, true);
+    fs_state.Wait();
+  }
 
-  ASSERT_TRUE(browser()->window()->IsFullscreen());
-  ASSERT_TRUE(other_browser->window()->IsFullscreen());
+  ASSERT_TRUE(browser()->exclusive_access_manager()->context()->IsFullscreen());
+  ASSERT_TRUE(
+      other_browser->exclusive_access_manager()->context()->IsFullscreen());
 
   ui_test_utils::BrowserActivationWaiter waiter(other_browser);
   waiter.WaitForActivation();
@@ -716,7 +734,13 @@ IN_PROC_BROWSER_TEST_F(NotificationsTest, TestShouldDisplayPopupNotification) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetTestPageURL()));
 
   // Set the page fullscreen
-  ui_test_utils::ToggleFullscreenModeAndWait(browser());
+  browser()->exclusive_access_manager()->fullscreen_controller()->
+      ToggleBrowserFullscreenMode();
+
+  {
+    FullscreenStateWaiter fs_state(browser(), true);
+    fs_state.Wait();
+  }
 
   ASSERT_TRUE(ui_test_utils::ShowAndFocusNativeWindow(
       browser()->window()->GetNativeWindow()));
@@ -771,7 +795,9 @@ IN_PROC_BROWSER_TEST_F(NotificationsTestWithFakeMediaStream,
 
   // Start a screen capture session.
   content::WebContents* web_contents = GetActiveWebContents(browser());
-  ASSERT_EQ("success", content::EvalJs(web_contents, "startScreenCapture();"));
+  EXPECT_TRUE(content::ExecuteScriptAndExtractString(
+      web_contents, "startScreenCapture();", &result));
+  ASSERT_EQ("success", result);
 
   // Showing a notification during the screen capture session should show the
   // "Notifications muted" notification.
@@ -802,14 +828,16 @@ IN_PROC_BROWSER_TEST_F(NotificationsTestWithFakeMediaStream,
 
   // Stop the screen capture session.
   browser()->tab_strip_model()->ActivateTabAt(screen_capture_tab);
-  ASSERT_EQ("success", content::EvalJs(web_contents, "stopScreenCapture();"));
+  EXPECT_TRUE(content::ExecuteScriptAndExtractString(
+      web_contents, "stopScreenCapture();", &result));
+  ASSERT_EQ("success", result);
 
   // Stopping the screen capture session should display the queued notifications
   // and close the "Notifications muted" notification.
   notifications =
       message_center::MessageCenter::Get()->GetVisibleNotifications();
   ASSERT_EQ(3u, notifications.size());
-  for (const message_center::Notification* notification : notifications) {
+  for (const auto* notification : notifications) {
     EXPECT_EQ(u"My Title", notification->title());
     EXPECT_EQ(u"My Body", notification->message());
   }

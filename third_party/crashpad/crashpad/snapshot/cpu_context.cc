@@ -20,7 +20,6 @@
 #include <iterator>
 
 #include "base/notreached.h"
-#include "cpu_architecture.h"
 #include "util/misc/arraysize.h"
 #include "util/misc/implicit_cast.h"
 
@@ -171,8 +170,6 @@ uint64_t CPUContext::InstructionPointer() const {
       return arm->pc;
     case kCPUArchitectureARM64:
       return arm64->pc;
-    case kCPUArchitectureRISCV64:
-      return riscv64->pc;
     default:
       NOTREACHED();
       return ~0ull;
@@ -189,8 +186,6 @@ uint64_t CPUContext::StackPointer() const {
       return arm->sp;
     case kCPUArchitectureARM64:
       return arm64->sp;
-    case kCPUArchitectureRISCV64:
-      return riscv64->regs[1];
     default:
       NOTREACHED();
       return ~0ull;
@@ -231,7 +226,6 @@ bool CPUContext::Is64Bit() const {
     case kCPUArchitectureX86_64:
     case kCPUArchitectureARM64:
     case kCPUArchitectureMIPS64EL:
-    case kCPUArchitectureRISCV64:
       return true;
     case kCPUArchitectureX86:
     case kCPUArchitectureARM:

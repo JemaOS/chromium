@@ -32,11 +32,6 @@ class MockFileTransferAnalysisDelegate : public FileTransferAnalysisDelegate {
               GetAnalysisResultAfterScan,
               (storage::FileSystemURL url),
               (override));
-
-  MOCK_METHOD(std::vector<storage::FileSystemURL>,
-              GetWarnedFiles,
-              (),
-              (const override));
 };
 
 }  // namespace enterprise_connectors

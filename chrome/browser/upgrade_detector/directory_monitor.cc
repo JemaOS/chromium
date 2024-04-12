@@ -22,14 +22,14 @@
 #include "chrome/browser/upgrade_detector/installed_version_monitor.h"
 
 #if BUILDFLAG(IS_MAC)
-#include "base/apple/bundle_locations.h"
+#include "base/mac/bundle_locations.h"
 #endif
 
 namespace {
 
 base::FilePath GetDefaultMonitorLocation() {
 #if BUILDFLAG(IS_MAC)
-  return base::apple::OuterBundlePath();
+  return base::mac::OuterBundlePath();
 #else
   return base::PathService::CheckedGet(base::DIR_EXE);
 #endif

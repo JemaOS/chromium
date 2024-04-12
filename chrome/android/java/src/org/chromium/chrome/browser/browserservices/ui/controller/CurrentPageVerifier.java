@@ -36,7 +36,8 @@ public class CurrentPageVerifier implements NativeInitObserver {
     private final BrowserServicesIntentDataProvider mIntentDataProvider;
     private final Verifier mDelegate;
 
-    @Nullable private VerificationState mState;
+    @Nullable
+    private VerificationState mState;
 
     private final ObserverList<Runnable> mObservers = new ObserverList<>();
 
@@ -52,7 +53,8 @@ public class CurrentPageVerifier implements NativeInitObserver {
     public static class VerificationState {
         public final String scope;
         public final String url;
-        @VerificationStatus public final int status;
+        @VerificationStatus
+        public final int status;
 
         public VerificationState(String scope, String url, @VerificationStatus int status) {
             this.scope = scope;
@@ -62,31 +64,26 @@ public class CurrentPageVerifier implements NativeInitObserver {
     }
 
     /** A {@link TabObserver} that checks whether we are on a verified page on navigation. */
-    private final CustomTabTabObserver mVerifyOnPageLoadObserver =
-            new CustomTabTabObserver() {
-                @Override
-                public void onDidFinishNavigationInPrimaryMainFrame(
-                        Tab tab, NavigationHandle navigation) {
-                    if (!navigation.hasCommitted() || navigation.isSameDocument()) return;
-                    verify(navigation.getUrl().getSpec());
-                }
+    private final CustomTabTabObserver mVerifyOnPageLoadObserver = new CustomTabTabObserver() {
+        @Override
+        public void onDidFinishNavigationInPrimaryMainFrame(Tab tab, NavigationHandle navigation) {
+            if (!navigation.hasCommitted() || navigation.isSameDocument()) return;
+            verify(navigation.getUrl().getSpec());
+        }
 
-                @Override
-                public void onObservingDifferentTab(@NonNull Tab tab) {
-                    // When a link with target="_blank" is followed and the user navigates back, we
-                    // don't get the onDidFinishNavigation event (because the original page wasn't
-                    // navigated away from, it was only ever hidden). https://crbug.com/942088
-                    verify(tab.getUrl().getSpec());
-                }
-            };
+        @Override
+        public void onObservingDifferentTab(@NonNull Tab tab) {
+            // When a link with target="_blank" is followed and the user navigates back, we
+            // don't get the onDidFinishNavigation event (because the original page wasn't
+            // navigated away from, it was only ever hidden). https://crbug.com/942088
+            verify(tab.getUrl().getSpec());
+        }
+    };
 
     @Inject
-    public CurrentPageVerifier(
-            ActivityLifecycleDispatcher lifecycleDispatcher,
-            TabObserverRegistrar tabObserverRegistrar,
-            CustomTabActivityTabProvider tabProvider,
-            BrowserServicesIntentDataProvider intentDataProvider,
-            Verifier delegate) {
+    public CurrentPageVerifier(ActivityLifecycleDispatcher lifecycleDispatcher,
+            TabObserverRegistrar tabObserverRegistrar, CustomTabActivityTabProvider tabProvider,
+            BrowserServicesIntentDataProvider intentDataProvider, Verifier delegate) {
         mTabProvider = tabProvider;
         mIntentDataProvider = intentDataProvider;
         mDelegate = delegate;
@@ -99,7 +96,8 @@ public class CurrentPageVerifier implements NativeInitObserver {
      * @return the {@link VerificationState} of the page we are currently on.
      * Since verification may require native, may return null before native is loaded.
      */
-    public @Nullable VerificationState getState() {
+    @Nullable
+    public VerificationState getState() {
         return mState;
     }
 
@@ -116,7 +114,9 @@ public class CurrentPageVerifier implements NativeInitObserver {
         verify(mIntentDataProvider.getUrlToLoad());
     }
 
-    /** Perform verification for the given page. */
+    /**
+     * Perform verification for the given page.
+     */
     private void verify(String url) {
         Promise<Boolean> result = mDelegate.verify(url);
         String scope = mDelegate.getVerifiedScope(url);
@@ -126,10 +126,7 @@ public class CurrentPageVerifier implements NativeInitObserver {
             updateState(scope, url, statusFromBoolean(result.getResult()));
         } else {
             updateState(scope, url, VerificationStatus.PENDING);
-            result.then(
-                    verified -> {
-                        onVerificationResult(scope, verified);
-                    });
+            result.then(verified -> { onVerificationResult(scope, verified); });
         }
     }
 
@@ -144,9 +141,7 @@ public class CurrentPageVerifier implements NativeInitObserver {
         boolean resultStillApplies =
                 tab != null && scope.equals(mDelegate.getVerifiedScope(tab.getUrl().getSpec()));
         if (resultStillApplies) {
-            updateState(
-                    scope,
-                    tab.getUrl().getSpec(),
+            updateState(scope, tab.getUrl().getSpec(),
                     verified ? VerificationStatus.SUCCESS : VerificationStatus.FAILURE);
         }
     }

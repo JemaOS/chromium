@@ -45,11 +45,17 @@ class FileEntryPicker : public ui::SelectFileDialog::Listener {
   ~FileEntryPicker() override;  // FileEntryPicker deletes itself.
 
   // ui::SelectFileDialog::Listener implementation.
-  void FileSelected(const ui::SelectedFileInfo& file,
+  void FileSelected(const base::FilePath& path,
                     int index,
                     void* params) override;
-  void MultiFilesSelected(const std::vector<ui::SelectedFileInfo>& files,
+  void FileSelectedWithExtraInfo(const ui::SelectedFileInfo& file,
+                                 int index,
+                                 void* params) override;
+  void MultiFilesSelected(const std::vector<base::FilePath>& files,
                           void* params) override;
+  void MultiFilesSelectedWithExtraInfo(
+      const std::vector<ui::SelectedFileInfo>& files,
+      void* params) override;
   void FileSelectionCanceled(void* params) override;
 
   FileSystemDelegate::FilesSelectedCallback files_selected_callback_;

@@ -20,7 +20,7 @@ class CORE_EXPORT CascadeLayerMap : public GarbageCollected<CascadeLayerMap> {
   static constexpr unsigned kImplicitOuterLayerOrder =
       std::numeric_limits<unsigned>::max();
 
-  CascadeLayerMap(const ActiveStyleSheetVector& sheets);
+  explicit CascadeLayerMap(const ActiveStyleSheetVector&);
 
   unsigned GetLayerOrder(const CascadeLayer& layer) const {
     return layer_order_map_.at(&layer);

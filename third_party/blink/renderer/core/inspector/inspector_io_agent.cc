@@ -28,10 +28,15 @@ protocol::Response InspectorIOAgent::resolveBlob(const String& object_id,
         ToCoreString(std::move(error)).Utf8());
   }
 
-  Blob* blob = V8Blob::ToWrappable(isolate_, value);
-  if (!blob) {
+  if (!V8Blob::HasInstance(value, isolate_)) {
     return protocol::Response::ServerError(
         "Object id doesn't reference a Blob");
+  }
+
+  Blob* blob = V8Blob::ToImpl(v8::Local<v8::Object>::Cast(value));
+  if (!blob) {
+    return protocol::Response::ServerError(
+        "Couldn't convert object with given objectId to Blob");
   }
 
   *uuid = blob->Uuid();

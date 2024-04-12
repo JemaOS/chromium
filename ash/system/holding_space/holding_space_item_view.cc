@@ -7,10 +7,7 @@
 #include "ash/public/cpp/holding_space/holding_space_client.h"
 #include "ash/public/cpp/holding_space/holding_space_constants.h"
 #include "ash/public/cpp/holding_space/holding_space_controller.h"
-#include "ash/public/cpp/holding_space/holding_space_file.h"
 #include "ash/public/cpp/holding_space/holding_space_item.h"
-#include "ash/public/cpp/holding_space/holding_space_item_updated_fields.h"
-#include "ash/public/cpp/holding_space/holding_space_metrics.h"
 #include "ash/public/cpp/holding_space/holding_space_progress.h"
 #include "ash/public/cpp/holding_space/holding_space_util.h"
 #include "ash/public/cpp/shelf_config.h"
@@ -20,7 +17,6 @@
 #include "ash/system/holding_space/holding_space_util.h"
 #include "ash/system/holding_space/holding_space_view_delegate.h"
 #include "base/functional/bind.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "ui/base/class_property.h"
 #include "ui/base/dragdrop/drag_drop_types.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -93,8 +89,6 @@ class CallbackPainter : public views::Painter {
 
 // A view which respects a minimum size restriction.
 class MinimumSizableView : public views::View {
-  METADATA_HEADER(MinimumSizableView, views::View)
-
  public:
   explicit MinimumSizableView(const gfx::Size& min_size)
       : min_size_(min_size) {}
@@ -117,9 +111,6 @@ class MinimumSizableView : public views::View {
 
   const gfx::Size min_size_;
 };
-
-BEGIN_METADATA(MinimumSizableView)
-END_METADATA
 
 }  // namespace
 
@@ -144,24 +135,20 @@ HoldingSpaceItemView::HoldingSpaceItemView(HoldingSpaceViewDelegate* delegate,
   SetNotifyEnterExitOnChild(true);
 
   // Accessibility.
-  GetViewAccessibility().SetRole(ax::mojom::Role::kListItem);
-  GetViewAccessibility().SetName(item->GetAccessibleName(),
-                                 ax::mojom::NameFrom::kAttribute);
+  GetViewAccessibility().OverrideRole(ax::mojom::Role::kListItem);
+  GetViewAccessibility().OverrideName(item->GetAccessibleName());
 
   // When the description is not specified, tooltip text will be used.
   // That text is redundant to the name, but different enough that it is
   // still exposed to assistive technologies which may then present both.
   // To avoid that redundant presentation, set the description explicitly
   // to the empty string. See crrev.com/c/3218112.
-  GetViewAccessibility().SetDescription(
+  GetViewAccessibility().OverrideDescription(
       std::u16string(), ax::mojom::DescriptionFrom::kAttributeExplicitlyEmpty);
 
   // Background.
   SetBackground(views::CreateThemedRoundedRectBackground(
-      chromeos::features::IsJellyEnabled()
-          ? static_cast<ui::ColorId>(cros_tokens::kCrosSysSystemOnBase)
-          : kColorAshControlBackgroundColorInactive,
-      kHoldingSpaceCornerRadius));
+      kColorAshControlBackgroundColorInactive, kHoldingSpaceCornerRadius));
 
   // Layer.
   SetPaintToLayer();
@@ -214,8 +201,6 @@ bool HoldingSpaceItemView::IsInstance(const views::View* view) {
 }
 
 void HoldingSpaceItemView::Reset() {
-  set_context_menu_controller(nullptr);
-  set_drag_controller(nullptr);
   delegate_ = nullptr;
 }
 
@@ -289,14 +274,13 @@ void HoldingSpaceItemView::OnThemeChanged() {
 
 void HoldingSpaceItemView::OnHoldingSpaceItemUpdated(
     const HoldingSpaceItem* item,
-    const HoldingSpaceItemUpdatedFields& updated_fields) {
+    uint32_t updated_fields) {
   if (item_ != item)
     return;
 
   // Accessibility.
-  if (updated_fields.previous_accessible_name) {
-    GetViewAccessibility().SetName(item_->GetAccessibleName(),
-                                   ax::mojom::NameFrom::kAttribute);
+  if (updated_fields & UpdatedField::kAccessibleName) {
+    GetViewAccessibility().OverrideName(item_->GetAccessibleName());
     NotifyAccessibilityEvent(ax::mojom::Event::kTextChanged, true);
   }
 
@@ -353,7 +337,6 @@ HoldingSpaceItemView::CreateCheckmarkBuilder() {
 }
 
 views::Builder<views::View> HoldingSpaceItemView::CreatePrimaryActionBuilder(
-    bool apply_accent_colors,
     const gfx::Size& min_size) {
   DCHECK(!primary_action_container_);
   DCHECK(!primary_action_cancel_);
@@ -390,28 +373,14 @@ views::Builder<views::View> HoldingSpaceItemView::CreatePrimaryActionBuilder(
           views::Builder<views::ToggleImageButton>()
               .CopyAddressTo(&primary_action_pin_)
               .SetID(kHoldingSpaceItemPinButtonId)
-              .SetBackground(
-                  apply_accent_colors
-                      ? holding_space_util::CreateCircleBackground(
-                            cros_tokens::kCrosSysSystemPrimaryContainer)
-                      : nullptr)
               .SetCallback(base::BindRepeating(
                   &HoldingSpaceItemView::OnPrimaryActionPressed,
                   base::Unretained(this)))
               .SetFocusBehavior(views::View::FocusBehavior::NEVER)
-              .SetImageModel(
-                  views::Button::STATE_NORMAL,
-                  ui::ImageModel::FromVectorIcon(
-                      views::kUnpinIcon,
-                      apply_accent_colors
-                          ? static_cast<ui::ColorId>(
-                                cros_tokens::kCrosSysSystemOnPrimaryContainer)
-                          : static_cast<ui::ColorId>(kColorAshButtonIconColor),
-                      kHoldingSpaceIconSize))
-              .SetToggledBackground(
-                  apply_accent_colors
-                      ? views::CreateSolidBackground(SK_ColorTRANSPARENT)
-                      : nullptr)
+              .SetImageModel(views::Button::STATE_NORMAL,
+                             ui::ImageModel::FromVectorIcon(
+                                 views::kUnpinIcon, kColorAshButtonIconColor,
+                                 kHoldingSpaceIconSize))
               .SetToggledImageModel(
                   views::Button::STATE_NORMAL,
                   ui::ImageModel::FromVectorIcon(views::kPinIcon,
@@ -477,8 +446,7 @@ void HoldingSpaceItemView::OnPrimaryActionPressed() {
   // Cancel.
   if (primary_action_cancel_->GetVisible()) {
     if (!holding_space_util::ExecuteInProgressCommand(
-            item(), HoldingSpaceCommandId::kCancelItem,
-            holding_space_metrics::EventSource::kHoldingSpaceItem)) {
+            item(), HoldingSpaceCommandId::kCancelItem)) {
       NOTREACHED();
     }
     return;
@@ -487,17 +455,14 @@ void HoldingSpaceItemView::OnPrimaryActionPressed() {
   // Pin.
   const bool is_item_pinned =
       HoldingSpaceController::Get()->model()->ContainsItem(
-          HoldingSpaceItem::Type::kPinnedFile, item()->file().file_path);
+          HoldingSpaceItem::Type::kPinnedFile, item()->file_path());
 
   // Unpinning `item()` may result in the destruction of this view.
   auto weak_ptr = weak_factory_.GetWeakPtr();
-  if (is_item_pinned) {
-    HoldingSpaceController::Get()->client()->UnpinItems(
-        {item()}, holding_space_metrics::EventSource::kHoldingSpaceItem);
-  } else {
-    HoldingSpaceController::Get()->client()->PinItems(
-        {item()}, holding_space_metrics::EventSource::kHoldingSpaceItem);
-  }
+  if (is_item_pinned)
+    HoldingSpaceController::Get()->client()->UnpinItems({item()});
+  else
+    HoldingSpaceController::Get()->client()->PinItems({item()});
 
   if (weak_ptr)
     UpdatePrimaryAction();
@@ -525,7 +490,7 @@ void HoldingSpaceItemView::UpdatePrimaryAction() {
   // Pin.
   const bool is_item_pinned =
       HoldingSpaceController::Get()->model()->ContainsItem(
-          HoldingSpaceItem::Type::kPinnedFile, item()->file().file_path);
+          HoldingSpaceItem::Type::kPinnedFile, item()->file_path());
   primary_action_pin_->SetToggled(!is_item_pinned);
   primary_action_pin_->SetVisible(!is_item_in_progress);
 
@@ -535,7 +500,7 @@ void HoldingSpaceItemView::UpdatePrimaryAction() {
   OnPrimaryActionVisibilityChanged(primary_action_container_->GetVisible());
 }
 
-BEGIN_METADATA(HoldingSpaceItemView)
+BEGIN_METADATA(HoldingSpaceItemView, views::View)
 END_METADATA
 
 }  // namespace ash

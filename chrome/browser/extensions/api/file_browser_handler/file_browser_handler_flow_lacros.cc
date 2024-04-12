@@ -175,9 +175,7 @@ void FileBrowserHandlerExecutorFlow::PrepareToLaunch() {
   // available, or it might be in the process of being unloaded, in which case
   // the lazy background task queue is used to load the extension and then
   // call back to us.
-  const auto context_id =
-      extensions::LazyContextId::ForExtension(profile_, extension_.get());
-  CHECK(context_id.IsForBackgroundPage());
+  const extensions::LazyContextId context_id(profile_, extension_->id());
   extensions::LazyContextTaskQueue* task_queue = context_id.GetTaskQueue();
 
   if (task_queue->ShouldEnqueueTask(profile_, extension_.get())) {

@@ -11,9 +11,9 @@
 #include "components/account_manager_core/account_manager_util.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/sync/chromeos/explicit_passphrase_mojo_utils.h"
+#include "components/sync/driver/sync_service.h"
+#include "components/sync/driver/sync_user_settings.h"
 #include "components/sync/engine/nigori/nigori.h"
-#include "components/sync/service/sync_service.h"
-#include "components/sync/service/sync_user_settings.h"
 
 namespace {
 
@@ -160,8 +160,7 @@ void SyncExplicitPassphraseClientLacros::QueryDecryptionKeyFromAsh() {
 void SyncExplicitPassphraseClientLacros::SendDecryptionKeyToAsh() {
   DCHECK(sync_service_);
   std::unique_ptr<syncer::Nigori> decryption_key =
-      sync_service_->GetUserSettings()
-          ->GetExplicitPassphraseDecryptionNigoriKey();
+      sync_service_->GetUserSettings()->GetDecryptionNigoriKey();
   if (!decryption_key) {
     return;
   }
@@ -183,6 +182,6 @@ void SyncExplicitPassphraseClientLacros::OnQueryDecryptionKeyFromAshCompleted(
     // Nigori key.
     return;
   }
-  sync_service_->GetUserSettings()->SetExplicitPassphraseDecryptionNigoriKey(
+  sync_service_->GetUserSettings()->SetDecryptionNigoriKey(
       std::move(nigori_key));
 }

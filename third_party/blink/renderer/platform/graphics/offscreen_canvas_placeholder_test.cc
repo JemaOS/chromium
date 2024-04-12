@@ -9,7 +9,6 @@
 #include "third_party/blink/public/platform/scheduler/test/renderer_scheduler_test_support.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_dispatcher.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/testing_platform_support.h"
 
 using testing::_;
@@ -63,7 +62,6 @@ class OffscreenCanvasPlaceholderTest : public Test {
   void TearDown() override;
 
  private:
-  test::TaskEnvironment task_environment_;
   OffscreenCanvasPlaceholder placeholder_;
   std::unique_ptr<MockCanvasResourceDispatcher> dispatcher_;
   std::unique_ptr<CanvasResourceProvider> resource_provider_;
@@ -92,12 +90,13 @@ void OffscreenCanvasPlaceholderTest::TearDown() {
 void OffscreenCanvasPlaceholderTest::DrawSomething() {
   // 'needs_will_draw=true' is required to ensure the CanvasResourceProvider
   // does not retain a reference on the previous frame.
-  resource_provider_->Canvas(/*needs_will_draw=*/true).clear(SkColors::kWhite);
+  resource_provider_->Canvas(/*needs_will_draw=*/true)->clear(SkColors::kWhite);
 }
 
 CanvasResource* OffscreenCanvasPlaceholderTest::DispatchOneFrame() {
   scoped_refptr<CanvasResource> resource =
-      resource_provider_->ProduceCanvasResource(FlushReason::kTesting);
+      resource_provider_->ProduceCanvasResource(
+          CanvasResourceProvider::FlushReason::kTesting);
   CanvasResource* resource_raw_ptr = resource.get();
   dispatcher_->DispatchFrame(
       std::move(resource), base::TimeTicks(), SkIRect::MakeEmpty(),

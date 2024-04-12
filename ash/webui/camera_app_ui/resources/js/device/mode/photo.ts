@@ -44,11 +44,6 @@ export interface PhotoHandler {
   onPhotoError(): void;
 
   onPhotoCaptureDone(pendingPhotoResult: Promise<PhotoResult>): Promise<void>;
-
-  /**
-   * Whether the photo taking should be done by using preview frame as photo.
-   */
-  shouldUsePreviewAsPhoto(): boolean;
 }
 
 /**
@@ -97,11 +92,11 @@ export class Photo extends ModeBase {
   }
 
   private async waitPreviewReady(): Promise<void> {
-    // Chrome using muted state on video track representing no frame input
-    // returned from preview video for a while and calling |takePhoto()| with
+    // Chrome use muted state on video track representing no frame input
+    // returned from preview video for a while and call |takePhoto()| with
     // video track in muted state will fail with |kInvalidStateError| exception.
     // To mitigate chance of hitting this error, here we ensure frame inputs
-    // from the preview and check video muted state before taking photo.
+    // from the preview and checked video muted state before taking photo.
     const track = this.video.getVideoTrack();
     const videoEl = this.video.video;
     const waitFrame = async () => {
@@ -109,11 +104,7 @@ export class Photo extends ModeBase {
       const callbackId = videoEl.requestVideoFrameCallback(() => {
         onReady.signal(true);
       });
-      // This is indirectly waited by onReady.wait().
-      // TODO(pihsun): To avoid memory leak, we should have a callback list for
-      // things need to be done when video.onExpired, and remove the callback
-      // after onReady.wait().
-      void (async () => {
+      (async () => {
         await this.video.onExpired.wait();
         videoEl.cancelVideoFrameCallback(callbackId);
         onReady.signal(false);
@@ -139,7 +130,9 @@ export class Photo extends ModeBase {
     track.addEventListener('ended', stopTakingPhoto, {once: true});
 
     (async () => {
-      if (this.handler.shouldUsePreviewAsPhoto()) {
+      if (state.get(state.State.ENABLE_PTZ)) {
+        // Workaround for b/184089334 on PTZ camera to use preview frame as
+        // photo result.
         const blob = await this.getImageCapture().grabJpegFrame();
         this.handler.playShutterEffect();
         photoResult.signal({
@@ -149,7 +142,7 @@ export class Photo extends ModeBase {
         return;
       }
       let photoSettings: PhotoSettings;
-      if (this.captureResolution !== null) {
+      if (this.captureResolution) {
         photoSettings = {
           imageWidth: this.captureResolution.width,
           imageHeight: this.captureResolution.height,

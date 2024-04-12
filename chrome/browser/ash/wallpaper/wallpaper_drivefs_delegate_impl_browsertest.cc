@@ -38,11 +38,17 @@
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/codec/jpeg_codec.h"
 #include "ui/gfx/image/image_skia.h"
-#include "ui/gfx/image/image_unittest_util.h"
 
 namespace ash {
 
 namespace {
+
+gfx::ImageSkia CreateTestImage() {
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(16, 16);
+  bitmap.eraseColor(SK_ColorGREEN);
+  return gfx::ImageSkia::CreateFrom1xBitmap(bitmap);
+}
 
 scoped_refptr<base::RefCountedBytes> EncodeImage(const gfx::ImageSkia& image) {
   auto output = base::MakeRefCounted<base::RefCountedBytes>();
@@ -65,7 +71,7 @@ void SaveTestWallpaperFile(const AccountId& account_id, base::FilePath target) {
   if (!base::DirectoryExists(target.DirName())) {
     ASSERT_TRUE(base::CreateDirectory(target.DirName()));
   }
-  auto data = EncodeImage(gfx::test::CreateImageSkia(/*size=*/16));
+  auto data = EncodeImage(CreateTestImage());
   ASSERT_TRUE(
       base::WriteFile(target, base::make_span(data->front(), data->size())));
 }

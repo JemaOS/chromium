@@ -39,10 +39,6 @@ class COMPONENT_EXPORT(AX_PLATFORM) AutomationV8Bindings {
   void SendNodesRemovedEvent(const ui::AXTreeID& tree_id,
                              const std::vector<int>& ids);
   void SendChildTreeIDEvent(const ui::AXTreeID& child_tree_id);
-  void SendTreeDestroyedEvent(const AXTreeID& tree_id);
-  void SendActionResultEvent(const ui::AXActionData& data, bool result);
-  void SendGetTextLocationResult(const ui::AXActionData& data,
-                                 const std::optional<gfx::Rect>& rect);
   void SendAutomationEvent(
       const AXTreeID& tree_id,
       const AXEvent& event,
@@ -197,15 +193,6 @@ class COMPONENT_EXPORT(AX_PLATFORM) AutomationV8Bindings {
   // Returns: string tree_id and int node_id of a node which has global
   // accessibility focus.
   void GetAccessibilityFocus(
-      const v8::FunctionCallbackInfo<v8::Value>& args) const;
-
-  // Args: string ax_tree_id.
-  // returns: token.high and token.low used to represent an
-  // AXTreeID in is unguessable token format. Note that they are returned in
-  // string format and later converted to BigInt in JS. This is necessary
-  // because when converting uint64_t to JS number format they lose precision,
-  // which fails to build the correct AXTreeID.
-  void StringAXTreeIDToUnguessableToken(
       const v8::FunctionCallbackInfo<v8::Value>& args) const;
 
   // Args: string ax_tree_id.

@@ -23,11 +23,15 @@ import org.robolectric.annotation.Implements;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 
-/** Unit tests for the {@link TabViewManager} class. */
+/**
+ * Unit tests for the {@link TabViewManager} class.
+ */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(shadows = {TabViewManagerUnitTest.TabBrowserControlsOffsetHelperShadow.class})
 public class TabViewManagerUnitTest {
-    /** A shadow implementation of {@link TabBrowserControlsOffsetHelper}. */
+    /**
+     * A shadow implementation of {@link TabBrowserControlsOffsetHelper}.
+     */
     @Implements(TabBrowserControlsOffsetHelper.class)
     public static class TabBrowserControlsOffsetHelperShadow {
         @Implementation
@@ -40,13 +44,20 @@ public class TabViewManagerUnitTest {
         }
     }
 
-    @Mock private TabImpl mTab;
-    @Mock private TabViewProvider mTabViewProvider0;
-    @Mock private TabViewProvider mTabViewProvider1;
-    @Mock private TabViewProvider mTabViewProvider2;
-    @Mock private View mTabView0;
-    @Mock private View mTabView1;
-    @Mock private View mTabView2;
+    @Mock
+    private TabImpl mTab;
+    @Mock
+    private TabViewProvider mTabViewProvider0;
+    @Mock
+    private TabViewProvider mTabViewProvider1;
+    @Mock
+    private TabViewProvider mTabViewProvider2;
+    @Mock
+    private View mTabView0;
+    @Mock
+    private View mTabView1;
+    @Mock
+    private View mTabView2;
 
     private TabViewManagerImpl mTabViewManager;
 
@@ -72,16 +83,14 @@ public class TabViewManagerUnitTest {
     @Test
     public void testAddTabViewProvider() {
         mTabViewManager.addTabViewProvider(mTabViewProvider1);
-        Assert.assertTrue(
-                "TabViewProvider with the highest priority should be shown",
+        Assert.assertTrue("TabViewProvider with the highest priority should be shown",
                 mTabViewManager.isShowing(mTabViewProvider1));
         verify(mTab).setCustomView(mTabView1);
         verifyTabViewProviderOnShownCalled(mTabViewProvider1, 1);
         verifyTabViewProviderOnHiddenCalled(mTabViewProvider1, 0);
 
         mTabViewManager.addTabViewProvider(mTabViewProvider2);
-        Assert.assertTrue(
-                "TabViewProvider with the highest priority should be shown",
+        Assert.assertTrue("TabViewProvider with the highest priority should be shown",
                 mTabViewManager.isShowing(mTabViewProvider1));
         verify(mTab).setCustomView(mTabView1);
         verifyTabViewProviderOnShownCalled(mTabViewProvider1, 1);
@@ -90,8 +99,7 @@ public class TabViewManagerUnitTest {
         verifyTabViewProviderOnHiddenCalled(mTabViewProvider2, 0);
 
         mTabViewManager.addTabViewProvider(mTabViewProvider0);
-        Assert.assertTrue(
-                "TabViewProvider with the highest priority should be shown",
+        Assert.assertTrue("TabViewProvider with the highest priority should be shown",
                 mTabViewManager.isShowing(mTabViewProvider0));
         verify(mTab).setCustomView(mTabView0);
         verifyTabViewProviderOnShownCalled(mTabViewProvider0, 1);
@@ -111,13 +119,11 @@ public class TabViewManagerUnitTest {
         mTabViewManager.addTabViewProvider(mTabViewProvider0);
         mTabViewManager.addTabViewProvider(mTabViewProvider2);
         mTabViewManager.addTabViewProvider(mTabViewProvider1);
-        Assert.assertTrue(
-                "TabViewProvider with the highest priority should be shown",
+        Assert.assertTrue("TabViewProvider with the highest priority should be shown",
                 mTabViewManager.isShowing(mTabViewProvider0));
 
         mTabViewManager.removeTabViewProvider(mTabViewProvider0);
-        Assert.assertTrue(
-                "TabViewProvider with the highest priority should be shown",
+        Assert.assertTrue("TabViewProvider with the highest priority should be shown",
                 mTabViewManager.isShowing(mTabViewProvider1));
         verify(mTab).setCustomView(mTabView1);
         verifyTabViewProviderOnShownCalled(mTabViewProvider0, 1);
@@ -128,8 +134,7 @@ public class TabViewManagerUnitTest {
         verifyTabViewProviderOnHiddenCalled(mTabViewProvider2, 0);
 
         mTabViewManager.removeTabViewProvider(mTabViewProvider2);
-        Assert.assertTrue(
-                "TabViewProvider with the highest priority should be shown",
+        Assert.assertTrue("TabViewProvider with the highest priority should be shown",
                 mTabViewManager.isShowing(mTabViewProvider1));
         verify(mTab).setCustomView(mTabView1);
         verifyTabViewProviderOnShownCalled(mTabViewProvider1, 1);
@@ -151,21 +156,15 @@ public class TabViewManagerUnitTest {
 
     private void verifyTabViewProviderOnShownCalled(
             TabViewProvider mockTabViewProvider, int numberOfCalls) {
-        String description =
-                "onShown() should have been called "
-                        + numberOfCalls
-                        + " times on TabViewProvider type "
-                        + mockTabViewProvider.getTabViewProviderType();
+        String description = "onShown() should have been called " + numberOfCalls
+                + " times on TabViewProvider type " + mockTabViewProvider.getTabViewProviderType();
         verify(mockTabViewProvider, times(numberOfCalls).description(description)).onShown();
     }
 
     private void verifyTabViewProviderOnHiddenCalled(
             TabViewProvider mockTabViewProvider, int numberOfCalls) {
-        String description =
-                "onHidden() should have been called "
-                        + numberOfCalls
-                        + " times on TabViewProvider type "
-                        + mockTabViewProvider.getTabViewProviderType();
+        String description = "onHidden() should have been called " + numberOfCalls
+                + " times on TabViewProvider type " + mockTabViewProvider.getTabViewProviderType();
         verify(mockTabViewProvider, times(numberOfCalls).description(description)).onHidden();
     }
 }

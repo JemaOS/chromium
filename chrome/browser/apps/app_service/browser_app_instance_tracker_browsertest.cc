@@ -10,8 +10,8 @@
 #include "chrome/browser/apps/app_service/browser_app_instance.h"
 #include "chrome/browser/apps/app_service/browser_app_instance_observer.h"
 #include "chrome/browser/apps/app_service/browser_app_instance_tracker.h"
-#include "chrome/browser/ash/system_web_apps/apps/crosh_system_web_app_info.h"
 #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
+#include "chrome/browser/ash/web_applications/crosh_system_web_app_info.h"
 #include "chrome/browser/devtools/devtools_window_testing.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser.h"
@@ -20,16 +20,15 @@
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
-#include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/browser/web_applications/web_app_id_constants.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/page_navigator.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "extensions/common/constants.h"
@@ -118,7 +117,8 @@ struct TestInstance {
 bool operator==(const TestInstance& e1, const TestInstance& e2) {
   return e1.name == e2.name && e1.id == e2.id && e1.type == e2.type &&
          e1.app_id == e2.app_id && e1.window == e2.window &&
-         e1.title == e2.title && e1.is_browser_active == e2.is_browser_active &&
+         e1.title == e2.title &&
+         e1.is_browser_active == e2.is_browser_active &&
          e1.is_web_contents_active == e2.is_web_contents_active;
 }
 
@@ -220,7 +220,7 @@ class Recorder : public apps::BrowserAppInstanceObserver {
     return {};
   }
 
-  const raw_ref<apps::BrowserAppInstanceTracker> tracker_;
+  const raw_ref<apps::BrowserAppInstanceTracker, ExperimentalAsh> tracker_;
   std::vector<TestInstance> calls_;
 };
 
@@ -264,7 +264,8 @@ class BrowserAppInstanceTrackerTest : public InProcessBrowserTest {
     params.disposition = disposition;
     Navigate(&params);
     auto* contents = params.navigated_or_inserted_contents;
-    DCHECK_EQ(chrome::FindBrowserWithTab(params.navigated_or_inserted_contents),
+    DCHECK_EQ(chrome::FindBrowserWithWebContents(
+                  params.navigated_or_inserted_contents),
               browser);
     content::TestNavigationObserver observer(contents);
     observer.Wait();
@@ -287,10 +288,10 @@ class BrowserAppInstanceTrackerTest : public InProcessBrowserTest {
                            WindowOpenDisposition::NEW_FOREGROUND_TAB);
   }
 
-  webapps::AppId InstallWebApp(
+  web_app::AppId InstallWebApp(
       const std::string& start_url,
       web_app::mojom::UserDisplayMode user_display_mode) {
-    auto info = std::make_unique<web_app::WebAppInstallInfo>();
+    auto info = std::make_unique<WebAppInstallInfo>();
     info->start_url = GURL(start_url);
     info->user_display_mode = user_display_mode;
     Profile* profile = ProfileManager::GetPrimaryUserProfile();
@@ -298,16 +299,16 @@ class BrowserAppInstanceTrackerTest : public InProcessBrowserTest {
     return app_id;
   }
 
-  webapps::AppId InstallWebAppOpeningAsTab(const std::string& start_url) {
+  web_app::AppId InstallWebAppOpeningAsTab(const std::string& start_url) {
     return InstallWebApp(start_url, web_app::mojom::UserDisplayMode::kBrowser);
   }
 
-  webapps::AppId InstallWebAppOpeningAsWindow(const std::string& start_url) {
+  web_app::AppId InstallWebAppOpeningAsWindow(const std::string& start_url) {
     return InstallWebApp(start_url,
                          web_app::mojom::UserDisplayMode::kStandalone);
   }
 
-  void UninstallWebApp(const webapps::AppId& app_id) {
+  void UninstallWebApp(const web_app::AppId& app_id) {
     Profile* profile = ProfileManager::GetPrimaryUserProfile();
     web_app::test::UninstallWebApp(profile, app_id);
   }
@@ -504,13 +505,8 @@ IN_PROC_BROWSER_TEST_F(BrowserAppInstanceTrackerTest, PopupBrowserWindow) {
     });
   }
 }
-// Broken on ChromeOS <https://crbug.com/1493240>
-#if BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_DevtoolsWindow DISABLED_DevtoolsWindow
-#else
-#define MAYBE_DevtoolsWindow DevtoolsWindow
-#endif
-IN_PROC_BROWSER_TEST_F(BrowserAppInstanceTrackerTest, MAYBE_DevtoolsWindow) {
+
+IN_PROC_BROWSER_TEST_F(BrowserAppInstanceTrackerTest, DevtoolsWindow) {
   Browser* browser = CreateBrowser();
   InsertForegroundTab(browser, "https://c.example.org");
   aura::Window* window1 = browser->window()->GetNativeWindow();
@@ -918,16 +914,16 @@ IN_PROC_BROWSER_TEST_F(BrowserAppInstanceTrackerTest, TabDrag) {
 
   // Detach.
   int src_index = browser2->tab_strip_model()->GetIndexOfWebContents(b2_tab3);
-  std::unique_ptr<tabs::TabModel> detached_tab =
-      browser2->tab_strip_model()->DetachTabAtForInsertion(src_index);
+  auto detached =
+      browser2->tab_strip_model()->DetachWebContentsAtForInsertion(src_index);
 
   // Target browser window goes into foreground right before drop.
   browser1->window()->Activate();
 
   // Attach.
   int dst_index = browser1->tab_strip_model()->count();
-  browser1->tab_strip_model()->InsertDetachedTabAt(
-      dst_index, std::move(detached_tab), AddTabTypes::ADD_ACTIVE);
+  browser1->tab_strip_model()->InsertWebContentsAt(
+      dst_index, std::move(detached), AddTabTypes::ADD_ACTIVE);
   recorder.Verify({
       // background tab in the dragged-from browser gets activated when the
       // active tab is detached
@@ -975,13 +971,13 @@ IN_PROC_BROWSER_TEST_F(BrowserAppInstanceTrackerTest, MoveTabToAppWindow) {
 
   // Detach.
   int src_index = browser1->tab_strip_model()->GetIndexOfWebContents(tab);
-  std::unique_ptr<tabs::TabModel> detached_tab =
-      browser1->tab_strip_model()->DetachTabAtForInsertion(src_index);
+  auto detached =
+      browser1->tab_strip_model()->DetachWebContentsAtForInsertion(src_index);
 
   // Attach.
   int dst_index = browser2->tab_strip_model()->count();
-  browser2->tab_strip_model()->InsertDetachedTabAt(
-      dst_index, std::move(detached_tab), AddTabTypes::ADD_ACTIVE);
+  browser2->tab_strip_model()->InsertWebContentsAt(
+      dst_index, std::move(detached), AddTabTypes::ADD_ACTIVE);
   recorder.Verify({
       // source browser goes into background when app browser is created
       {"updated", 1, kChromeWindow, "", window1, "", kInactive, false},

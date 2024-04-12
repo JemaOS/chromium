@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_ARC_ENTERPRISE_CERT_STORE_CERT_STORE_SERVICE_H_
 
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -22,6 +21,7 @@
 #include "net/cert/cert_database.h"
 #include "net/cert/nss_cert_database.h"
 #include "net/cert/scoped_nss_types.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace arc {
 
@@ -49,7 +49,7 @@ class CertStoreService : public KeyedService,
   CertStoreService& operator=(const CertStoreService&) = delete;
 
   // CertDatabase::Observer overrides.
-  void OnClientCertStoreChanged() override;
+  void OnCertDBChanged() override;
 
   std::vector<std::string> get_required_cert_names() const {
     return certificate_cache_.get_required_cert_names();
@@ -127,28 +127,13 @@ class CertStoreService : public KeyedService,
       keymanagement::mojom::ChapsSlot slot,
       base::queue<net::ScopedCERTCertificate> cert_queue,
       std::vector<CertDescription> allowed_certs,
-      std::optional<CertDescription> cert_description) const;
+      absl::optional<CertDescription> cert_description) const;
   // Final callback called once all |cert_descriptions| have been processed by
   // BuildAllowedCertDescriptionsRecursively on the given |slot|. May either
   // restart the process to gather certificates on the system slot (when |slot|
   // is the user slot), or proceed to update keymaster keys.
   void OnBuiltAllowedCertDescriptions(
       keymanagement::mojom::ChapsSlot slot,
-      std::vector<CertDescription> cert_descriptions) const;
-  void OnBuiltAllowedCertDescriptionsForKeymaster(
-      keymanagement::mojom::ChapsSlot slot,
-      std::vector<CertDescription> cert_descriptions) const;
-  void OnBuiltAllowedCertDescriptionsForKeyMint(
-      keymanagement::mojom::ChapsSlot slot,
-      std::vector<CertDescription> cert_descriptions) const;
-
-  // Done with the user slot, so try to process additional certs in the system
-  // slot. If there is no system slot (e.g. the user is not allowed to access
-  // it), this call won't mutate |cert_descriptions|, and only return the user
-  // slot certificates. However, it's necessary to perform this check
-  // asynchronously on the IO thread (through ListCerts), because that's the
-  // only thread that knows if the system slot is enabled.
-  void ListCertsInSystemSlot(
       std::vector<CertDescription> cert_descriptions) const;
 
   // Processes metadata from |allowed_certs| stored in the given |slot| and
@@ -157,10 +142,11 @@ class CertStoreService : public KeyedService,
       keymanagement::mojom::ChapsSlot slot,
       std::vector<CertDescription> certificates,
       net::ScopedCERTCertificateList allowed_certs);
-  void OnUpdatedKeys(std::vector<CertDescription> certificates, bool success);
+  void OnUpdatedKeymasterKeys(std::vector<CertDescription> certificates,
+                              bool success);
   void OnArcCertsInstalled(bool need_policy_update, bool success);
 
-  const raw_ptr<content::BrowserContext> context_;
+  const raw_ptr<content::BrowserContext, ExperimentalAsh> context_;
 
   std::unique_ptr<ArcCertInstaller> installer_;
   CertificateCache certificate_cache_;

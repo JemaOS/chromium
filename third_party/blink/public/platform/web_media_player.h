@@ -31,20 +31,19 @@
 #ifndef THIRD_PARTY_BLINK_PUBLIC_PLATFORM_WEB_MEDIA_PLAYER_H_
 #define THIRD_PARTY_BLINK_PUBLIC_PLATFORM_WEB_MEDIA_PLAYER_H_
 
-#include <optional>
-
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "components/viz/common/surfaces/surface_id.h"
 #include "media/base/video_frame.h"
 #include "media/base/video_frame_metadata.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/media/display_type.h"
-#include "third_party/blink/public/platform/web_audio_source_provider_impl.h"
 #include "third_party/blink/public/platform/web_content_decryption_module.h"
 #include "third_party/blink/public/platform/web_media_source.h"
 #include "third_party/blink/public/platform/web_set_sink_id_callbacks.h"
 #include "third_party/blink/public/platform/web_string.h"
+#include "third_party/blink/public/platform/webaudiosourceprovider_impl.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
 #include "url/gurl.h"
@@ -130,6 +129,7 @@ class WebMediaPlayer {
     int height;
     base::TimeDelta media_time;
     media::VideoFrameMetadata metadata;
+    scoped_refptr<media::VideoFrame> frame;
     base::TimeDelta rendering_interval;
     base::TimeDelta average_frame_duration;
   };
@@ -266,11 +266,6 @@ class WebMediaPlayer {
   // this just means the first frame has been delivered.
   virtual bool HasAvailableVideoFrame() const = 0;
 
-  // Returns true if the player has a frame available for presentation, and the
-  // frame is readable, i.e. it's not protected and can be read back into CPU
-  // memory.
-  virtual bool HasReadableVideoFrame() const = 0;
-
   // Renders the current frame into the provided cc::PaintCanvas.
   virtual void Paint(cc::PaintCanvas*, const gfx::Rect&, cc::PaintFlags&) = 0;
 
@@ -281,9 +276,9 @@ class WebMediaPlayer {
   virtual scoped_refptr<media::VideoFrame> GetCurrentFrameThenUpdate() = 0;
 
   // Return current video frame unique id from compositor. The query is readonly
-  // and should avoid any extra ops. Function returns std::nullopt if current
+  // and should avoid any extra ops. Function returns absl::nullopt if current
   // frame is invalid or fails to access current frame.
-  virtual std::optional<media::VideoFrame::ID> CurrentFrameId() const = 0;
+  virtual absl::optional<media::VideoFrame::ID> CurrentFrameId() const = 0;
 
   // Provides a PaintCanvasVideoRenderer instance owned by this WebMediaPlayer.
   // Useful for ensuring that the paint/texturing operation for current frame is
@@ -357,9 +352,11 @@ class WebMediaPlayer {
   virtual int GetDelegateId() { return -1; }
 
   // Returns the SurfaceId the video element is currently using.
-  // Returns std::nullopt if the element isn't a video or doesn't have a
+  // Returns absl::nullopt if the element isn't a video or doesn't have a
   // SurfaceId associated to it.
-  virtual std::optional<viz::SurfaceId> GetSurfaceId() { return std::nullopt; }
+  virtual absl::optional<viz::SurfaceId> GetSurfaceId() {
+    return absl::nullopt;
+  }
 
   // Provide the media URL, after any redirects are applied.  May return an
   // empty GURL, which will be interpreted as "use the original URL".

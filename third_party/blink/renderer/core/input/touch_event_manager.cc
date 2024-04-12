@@ -392,8 +392,7 @@ TouchEventManager::DispatchTouchEventFromAccumulatdTouchPoints() {
 
   // A different view on the 'touches' list above, filtered and grouped by
   // event target. Used for the |targetTouches| list in the JS event.
-  using TargetTouchesHeapMap =
-      HeapHashMap<Member<EventTarget>, Member<TouchList>>;
+  using TargetTouchesHeapMap = HeapHashMap<EventTarget*, Member<TouchList>>;
   TargetTouchesHeapMap touches_by_target;
 
   // Array of touches per state, used to assemble the |changedTouches| list.
@@ -669,7 +668,7 @@ void TouchEventManager::AllTouchesReleasedCleanup() {
   // we still get here and if |touch_sequence_document| was of the type which
   // cannot block scroll, then the flag is certainly set
   // (https://crbug.com/345372).
-  delayed_effective_touch_action_ = std::nullopt;
+  delayed_effective_touch_action_ = absl::nullopt;
   should_enforce_vertical_scroll_ = false;
 }
 
@@ -702,7 +701,7 @@ WebInputEventResult TouchEventManager::EnsureVerticalScrollIsPossible(
     // (https://crbug.com/844493).
     frame_->GetPage()->GetChromeClient().SetTouchAction(
         frame_, delayed_effective_touch_action_.value());
-    delayed_effective_touch_action_ = std::nullopt;
+    delayed_effective_touch_action_ = absl::nullopt;
   }
 
   // If the event was canceled the result is ignored to make sure vertical

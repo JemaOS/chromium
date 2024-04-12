@@ -6,9 +6,11 @@ package org.chromium.chrome.browser.share;
 
 import android.graphics.Bitmap;
 
-import org.jni_zero.NativeMethods;
+import org.chromium.base.annotations.NativeMethods;
 
-/** A Java API for requesting bitmap download from Chrome's download manager service. */
+/**
+ * A Java API for requesting bitmap download from Chrome's download manager service.
+ */
 public class BitmapDownloadRequest {
     public static void downloadBitmap(String fileName, Bitmap bitmap) {
         BitmapDownloadRequestJni.get().downloadBitmap(fileName, bitmap);

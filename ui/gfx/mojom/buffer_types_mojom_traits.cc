@@ -45,7 +45,7 @@ gfx::mojom::GpuMemoryBufferPlatformHandlePtr StructTraits<
           IOSurfaceCreateMachPort(handle.io_surface.get()));
       return gfx::mojom::GpuMemoryBufferPlatformHandle::NewMachPort(
           mojo::PlatformHandle(
-              base::apple::RetainMachSendRight(io_surface_mach_port.get())));
+              base::mac::RetainMachSendRight(io_surface_mach_port.get())));
 #else
       break;
 #endif

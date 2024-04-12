@@ -11,7 +11,6 @@
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
-#include "base/values.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/test_extension_system.h"
@@ -28,6 +27,7 @@
 #include "extensions/browser/extension_registry.h"
 #include "extensions/common/extension_builder.h"
 #include "extensions/common/manifest_handlers/background_info.h"
+#include "extensions/common/value_builder.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -45,7 +45,7 @@ const char kNonPersistentExtensionId[] = "cccccccccccccccccccccccccccccccc";
 
 std::unique_ptr<KeyedService> BuildEventRouter(
     content::BrowserContext* profile) {
-  return std::make_unique<EventRouter>(profile, nullptr);
+  return std::make_unique<extensions::EventRouter>(profile, nullptr);
 }
 
 scoped_refptr<const Extension> CreateApp(const std::string& extension_id,
@@ -53,15 +53,20 @@ scoped_refptr<const Extension> CreateApp(const std::string& extension_id,
   scoped_refptr<const Extension> app =
       ExtensionBuilder()
           .SetManifest(
-              base::Value::Dict()
+              DictionaryBuilder()
                   .Set("name", "Test app")
                   .Set("version", version)
                   .Set("manifest_version", 2)
-                  .Set("app", base::Value::Dict().Set(
-                                  "background",
-                                  base::Value::Dict().Set(
-                                      "scripts", base::Value::List().Append(
-                                                     "background.js")))))
+                  .Set("app",
+                       DictionaryBuilder()
+                           .Set("background",
+                                DictionaryBuilder()
+                                    .Set("scripts", ListBuilder()
+                                                        .Append("background.js")
+                                                        .Build())
+                                    .Build())
+                           .Build())
+                  .Build())
           .SetID(extension_id)
           .Build();
   return app;
@@ -73,13 +78,15 @@ scoped_refptr<const Extension> CreateExtension(const std::string& extension_id,
   scoped_refptr<const Extension> extension =
       ExtensionBuilder()
           .SetManifest(
-              base::Value::Dict()
+              DictionaryBuilder()
                   .Set("name", "Test extension")
                   .Set("version", version)
                   .Set("manifest_version", 2)
-                  .Set("background", base::Value::Dict()
+                  .Set("background", DictionaryBuilder()
                                          .Set("page", "background.html")
-                                         .Set("persistent", persistent)))
+                                         .Set("persistent", persistent)
+                                         .Build())
+                  .Build())
           .SetID(extension_id)
           .Build();
   return extension;
@@ -215,18 +222,18 @@ class UpdateInstallGateTest : public testing::Test {
   // and RenderProcessHosts.
   content::RenderViewHostTestEnabler render_view_host_test_enabler_;
 
-  raw_ptr<TestingProfile, DanglingUntriaged> profile_ = nullptr;
+  raw_ptr<TestingProfile> profile_ = nullptr;
   std::unique_ptr<TestingProfileManager> profile_manager_;
   std::unique_ptr<content::RenderProcessHost> render_process_host_;
 
-  raw_ptr<TestExtensionSystem, DanglingUntriaged> system_ = nullptr;
-  raw_ptr<ExtensionService, DanglingUntriaged> service_ = nullptr;
-  raw_ptr<ExtensionRegistry, DanglingUntriaged> registry_ = nullptr;
-  raw_ptr<EventRouter, DanglingUntriaged> event_router_ = nullptr;
+  raw_ptr<TestExtensionSystem> system_ = nullptr;
+  raw_ptr<ExtensionService> service_ = nullptr;
+  raw_ptr<ExtensionRegistry> registry_ = nullptr;
+  raw_ptr<EventRouter> event_router_ = nullptr;
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   // Needed for creating ExtensionService.
-  raw_ptr<ash::FakeChromeUserManager, DanglingUntriaged> fake_user_manager_ =
+  raw_ptr<ash::FakeChromeUserManager, ExperimentalAsh> fake_user_manager_ =
       nullptr;
   std::unique_ptr<user_manager::ScopedUserManager> scoped_user_manager_enabler_;
 #endif

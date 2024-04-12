@@ -44,7 +44,7 @@ class ArcBridgeHostImpl : public mojom::ArcBridgeHost {
 
   // ArcBridgeHost overrides.
   void OnAccessibilityHelperInstanceReady(
-      mojo::PendingRemote<ax::android::mojom::AccessibilityHelperInstance>
+      mojo::PendingRemote<mojom::AccessibilityHelperInstance>
           accessibility_helper_remote) override;
   void OnAdbdMonitorInstanceReady(
       mojo::PendingRemote<mojom::AdbdMonitorInstance> adbd_monitor_remote)
@@ -70,9 +70,6 @@ class ArcBridgeHostImpl : public mojom::ArcBridgeHost {
           boot_phase_monitor_remote) override;
   void OnCameraInstanceReady(
       mojo::PendingRemote<mojom::CameraInstance> camera_remote) override;
-  void OnChromeFeatureFlagsInstanceReady(
-      mojo::PendingRemote<mojom::ChromeFeatureFlagsInstance>
-          chrome_feature_flags_remote) override;
   void OnClipboardInstanceReady(
       mojo::PendingRemote<mojom::ClipboardInstance> clipboard_remote) override;
   void OnCompatibilityModeInstanceReady(
@@ -111,6 +108,8 @@ class ArcBridgeHostImpl : public mojom::ArcBridgeHost {
       override;
   void OnKioskInstanceReady(
       mojo::PendingRemote<mojom::KioskInstance> kiosk_remote) override;
+  void OnLockScreenInstanceReady(mojo::PendingRemote<mojom::LockScreenInstance>
+                                     lock_screen_remote) override;
   void OnMediaSessionInstanceReady(
       mojo::PendingRemote<mojom::MediaSessionInstance> media_session_remote)
       override;
@@ -132,9 +131,8 @@ class ArcBridgeHostImpl : public mojom::ArcBridgeHost {
                                      obb_mounter_remote) override;
   void OnOemCryptoInstanceReady(
       mojo::PendingRemote<mojom::OemCryptoInstance> oemcrypto_remote) override;
-  void OnPaymentAppInstanceReady(
-      mojo::PendingRemote<chromeos::payments::mojom::PaymentAppInstance>
-          payment_app_remote) override;
+  void OnPaymentAppInstanceReady(mojo::PendingRemote<mojom::PaymentAppInstance>
+                                     payment_app_remote) override;
   void OnPipInstanceReady(
       mojo::PendingRemote<mojom::PipInstance> policy_remote) override;
   void OnPolicyInstanceReady(
@@ -151,6 +149,9 @@ class ArcBridgeHostImpl : public mojom::ArcBridgeHost {
       mojo::PendingRemote<mojom::ProcessInstance> process_remote) override;
   void OnPropertyInstanceReady(
       mojo::PendingRemote<mojom::PropertyInstance> property_remote) override;
+  void OnRotationLockInstanceReady(
+      mojo::PendingRemote<mojom::RotationLockInstance> rotation_lock_remote)
+      override;
   void OnScreenCaptureInstanceReady(
       mojo::PendingRemote<mojom::ScreenCaptureInstance> screen_capture_remote)
       override;
@@ -203,7 +204,7 @@ class ArcBridgeHostImpl : public mojom::ArcBridgeHost {
   THREAD_CHECKER(thread_checker_);
 
   // Owned by ArcServiceManager.
-  const raw_ptr<ArcBridgeService> arc_bridge_service_;
+  const raw_ptr<ArcBridgeService, ExperimentalAsh> arc_bridge_service_;
 
   mojo::Receiver<mojom::ArcBridgeHost> receiver_;
 

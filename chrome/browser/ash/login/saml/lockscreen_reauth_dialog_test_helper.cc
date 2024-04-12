@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/login/saml/lockscreen_reauth_dialog_test_helper.h"
 
-#include "ash/constants/ash_features.h"
 #include "base/test/test_future.h"
 #include "chrome/browser/ash/login/login_pref_names.h"
 #include "chrome/browser/ash/login/test/js_checker.h"
@@ -27,7 +26,7 @@ namespace ash {
 namespace {
 
 // Main dialog
-const test::UIPath kWebviewContainer = {"main-element", "body"};
+const test::UIPath kSamlContainer = {"main-element", "body"};
 const test::UIPath kMainVerifyButton = {"main-element",
                                         "nextButtonVerifyScreen"};
 const test::UIPath kMainCancelButton = {"main-element",
@@ -36,13 +35,7 @@ const test::UIPath kErrorCancelButton = {"main-element",
                                          "cancelButtonErrorScreen"};
 const test::UIPath kSamlCancelButton = {"main-element", "saml-close-button"};
 const test::UIPath kChangeIdPButton = {"main-element", "change-account"};
-const test::UIPath kChangeIdPButtonContainer = {"main-element",
-                                                "saml-footer-container"};
-const test::UIPath kGaiaButtons = {"main-element", "buttons-container"};
-const test::UIPath kGaiaPrimaryButton = {"main-element", "gaia-buttons",
-                                         "primary-button"};
-const test::UIPath kNativeVerifyScreen = {"main-element",
-                                          "verifyAccountScreen"};
+const test::UIPath kMainScreen = {"main-element", "verifyAccountScreen"};
 const test::UIPath kErrorScreen = {"main-element", "errorScreen"};
 const test::UIPath kSamlConfirmPasswordScreen = {"main-element",
                                                  "samlConfirmPasswordScreen"};
@@ -69,45 +62,34 @@ LockScreenReauthDialogTestHelper& LockScreenReauthDialogTestHelper::operator=(
     LockScreenReauthDialogTestHelper&& other) = default;
 
 // static
-std::optional<LockScreenReauthDialogTestHelper>
+absl::optional<LockScreenReauthDialogTestHelper>
 LockScreenReauthDialogTestHelper::ShowDialogAndWait() {
   LockScreenReauthDialogTestHelper dialog_test_helper;
   if (!dialog_test_helper.ShowDialogAndWaitImpl())
-    return std::nullopt;
+    return absl::nullopt;
   return dialog_test_helper;
 }
 
 // static
-std::optional<LockScreenReauthDialogTestHelper>
+absl::optional<LockScreenReauthDialogTestHelper>
 LockScreenReauthDialogTestHelper::StartSamlAndWaitForIdpPageLoad() {
-  std::optional<LockScreenReauthDialogTestHelper> reauth_dialog_helper =
+  absl::optional<LockScreenReauthDialogTestHelper> reauth_dialog_helper =
       LockScreenReauthDialogTestHelper::ShowDialogAndWait();
   if (!reauth_dialog_helper.has_value()) {
-    return std::nullopt;
+    return absl::nullopt;
   }
 
-  bool is_reauth_endpoint_used = features::IsGaiaReauthEndpointEnabled();
+  reauth_dialog_helper->ForceSamlRedirect();
 
-  if (!is_reauth_endpoint_used) {
-    // Expect the native 'Verify Account' screen to be visible and proceed to
-    // the SAML page.
-    reauth_dialog_helper->WaitForVerifyAccountScreen();
-    reauth_dialog_helper->ClickVerifyButton();
-  }
+  // Expect the 'Verify Account' screen (the first screen the dialog shows) to
+  // be visible and proceed to the SAML page.
+  reauth_dialog_helper->WaitForVerifyAccountScreen();
+  reauth_dialog_helper->ClickVerifyButton();
 
-  reauth_dialog_helper->WaitForSigninWebview();
+  reauth_dialog_helper->WaitForSamlScreen();
   reauth_dialog_helper->ExpectVerifyAccountScreenHidden();
 
-  if (is_reauth_endpoint_used) {
-    // With reauth endpoint we start on a Gaia page where user needs to click
-    // "Next" before being redirected to SAML IdP page.
-    reauth_dialog_helper->WaitForPrimaryGaiaButtonToBeEnabled();
-    reauth_dialog_helper->ClickPrimaryGaiaButton();
-  }
-
   reauth_dialog_helper->WaitForIdpPageLoad();
-  reauth_dialog_helper->ExpectGaiaButtonsHidden();
-
   return reauth_dialog_helper;
 }
 
@@ -118,7 +100,7 @@ bool LockScreenReauthDialogTestHelper::ShowDialogAndWaitImpl() {
     return false;
   }
 
-  ProfileManager::GetPrimaryUserProfile()->GetPrefs()->SetBoolean(
+  ProfileManager::GetActiveUserProfile()->GetPrefs()->SetBoolean(
       prefs::kLockScreenReauthenticationEnabled, true);
 
   LockScreenStartReauthDialog::Show();
@@ -144,10 +126,14 @@ bool LockScreenReauthDialogTestHelper::ShowDialogAndWaitImpl() {
   return true;
 }
 
+void LockScreenReauthDialogTestHelper::ForceSamlRedirect() {
+  main_handler_->force_saml_redirect_for_testing();
+}
+
 void LockScreenReauthDialogTestHelper::WaitForVerifyAccountScreen() {
   test::JSChecker js_checker = DialogJS();
-  js_checker.CreateVisibilityWaiter(true, kNativeVerifyScreen)->Wait();
-  js_checker.ExpectVisiblePath(kNativeVerifyScreen);
+  js_checker.CreateVisibilityWaiter(true, kMainScreen)->Wait();
+  js_checker.ExpectVisiblePath(kMainScreen);
 }
 
 void LockScreenReauthDialogTestHelper::ClickVerifyButton() {
@@ -168,53 +154,27 @@ void LockScreenReauthDialogTestHelper::ClickCancelButtonOnErrorScreen() {
 }
 
 void LockScreenReauthDialogTestHelper::ClickCancelButtonOnSamlScreen() {
-  ExpectSigninWebviewVisible();
+  ExpectSamlScreenVisible();
   DialogJS().TapOnPath(kSamlCancelButton);
 }
 
 void LockScreenReauthDialogTestHelper::ClickChangeIdPButtonOnSamlScreen() {
-  ExpectSigninWebviewVisible();
+  ExpectSamlScreenVisible();
   DialogJS().TapOnPath(kChangeIdPButton);
 }
 
-void LockScreenReauthDialogTestHelper::ClickPrimaryGaiaButton() {
-  DialogJS().TapOnPath(kGaiaPrimaryButton);
-}
-
-void LockScreenReauthDialogTestHelper::WaitForPrimaryGaiaButtonToBeEnabled() {
-  DialogJS().CreateEnabledWaiter(true, kGaiaPrimaryButton)->Wait();
-}
-
-void LockScreenReauthDialogTestHelper::ExpectGaiaButtonsVisible() {
-  ExpectSigninWebviewVisible();
-  DialogJS().ExpectVisiblePath(kGaiaButtons);
-}
-
-void LockScreenReauthDialogTestHelper::ExpectGaiaButtonsHidden() {
-  DialogJS().ExpectHiddenPath(kGaiaButtons);
-}
-
-void LockScreenReauthDialogTestHelper::ExpectChangeIdPButtonVisible() {
-  ExpectSigninWebviewVisible();
-  DialogJS().ExpectVisiblePath(kChangeIdPButtonContainer);
-}
-
-void LockScreenReauthDialogTestHelper::ExpectChangeIdPButtonHidden() {
-  DialogJS().ExpectHiddenPath(kChangeIdPButtonContainer);
-}
-
-void LockScreenReauthDialogTestHelper::WaitForSigninWebview() {
+void LockScreenReauthDialogTestHelper::WaitForSamlScreen() {
   WaitForAuthenticatorToLoad();
-  DialogJS().CreateVisibilityWaiter(true, kWebviewContainer)->Wait();
-  DialogJS().ExpectVisiblePath(kWebviewContainer);
+  DialogJS().CreateVisibilityWaiter(true, kSamlContainer)->Wait();
+  DialogJS().ExpectVisiblePath(kSamlContainer);
 }
 
 void LockScreenReauthDialogTestHelper::ExpectVerifyAccountScreenVisible() {
-  DialogJS().ExpectVisiblePath(kNativeVerifyScreen);
+  DialogJS().ExpectVisiblePath(kMainScreen);
 }
 
 void LockScreenReauthDialogTestHelper::ExpectVerifyAccountScreenHidden() {
-  DialogJS().ExpectHiddenPath(kNativeVerifyScreen);
+  DialogJS().ExpectHiddenPath(kMainScreen);
 }
 
 void LockScreenReauthDialogTestHelper::ExpectErrorScreenVisible() {
@@ -222,12 +182,12 @@ void LockScreenReauthDialogTestHelper::ExpectErrorScreenVisible() {
   DialogJS().ExpectVisiblePath(kErrorScreen);
 }
 
-void LockScreenReauthDialogTestHelper::ExpectSigninWebviewVisible() {
-  DialogJS().ExpectVisiblePath(kWebviewContainer);
+void LockScreenReauthDialogTestHelper::ExpectSamlScreenVisible() {
+  DialogJS().ExpectVisiblePath(kSamlContainer);
 }
 
-void LockScreenReauthDialogTestHelper::ExpectSigninWebviewHidden() {
-  DialogJS().ExpectHiddenPath(kWebviewContainer);
+void LockScreenReauthDialogTestHelper::ExpectSamlScreenHidden() {
+  DialogJS().ExpectHiddenPath(kSamlContainer);
 }
 
 void LockScreenReauthDialogTestHelper::ExpectGaiaScreenVisible() {

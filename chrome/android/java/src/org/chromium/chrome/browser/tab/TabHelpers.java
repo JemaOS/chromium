@@ -16,7 +16,9 @@ import org.chromium.chrome.browser.password_check.PasswordCheckUkmRecorder;
 import org.chromium.chrome.browser.price_tracking.PriceTrackingFeatures;
 import org.chromium.chrome.browser.tab.state.ShoppingPersistedTabData;
 
-/** Helper class that initializes various tab UserData objects. */
+/**
+ * Helper class that initializes various tab UserData objects.
+ */
 public final class TabHelpers {
     private TabHelpers() {}
 
@@ -40,11 +42,9 @@ public final class TabHelpers {
 
         // The following will start prefetching data for the price drops feature, so
         // we should only do it if the user is eligible for the feature (e.g. has sync enabled).
-        if (!tab.isIncognito()
-                && !((TabImpl) tab).isCustomTab()
-                && PriceTrackingFeatures.isPriceTrackingEligible(tab.getProfile())
-                && ShoppingPersistedTabData.isPriceTrackingWithOptimizationGuideEnabled(
-                        tab.getProfile())) {
+        if (!tab.isIncognito() && !((TabImpl) tab).isCustomTab()
+                && PriceTrackingFeatures.isPriceTrackingEligible()
+                && ShoppingPersistedTabData.isPriceTrackingWithOptimizationGuideEnabled()) {
             ShoppingPersistedTabData.initialize(tab);
         }
     }

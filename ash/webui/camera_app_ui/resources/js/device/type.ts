@@ -46,8 +46,7 @@ export class CameraInfo {
         rawDevicesInfo.map((d) => assertExists(d.v3Info)) :
         null;
     this.idToDeviceInfo = new Map(this.devicesInfo.map((d) => [d.deviceId, d]));
-    this.idToCamera3DeviceInfo = this.camera3DevicesInfo === null ?
-        null :
+    this.idToCamera3DeviceInfo = this.camera3DevicesInfo &&
         new Map(this.camera3DevicesInfo.map((d) => [d.deviceId, d]));
   }
 
@@ -63,11 +62,6 @@ export class CameraInfo {
     }
     const info = this.idToCamera3DeviceInfo.get(deviceId);
     return assertInstanceof(info, Camera3DeviceInfo);
-  }
-
-  hasBuiltinPTZSupport(deviceId: string): boolean {
-    const info = this.getCamera3DeviceInfo(deviceId);
-    return info === null ? false : info.builtinPTZSupport;
   }
 }
 

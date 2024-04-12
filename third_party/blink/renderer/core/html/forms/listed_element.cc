@@ -24,7 +24,6 @@
 
 #include "third_party/blink/renderer/core/html/forms/listed_element.h"
 
-#include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/core/dom/element_traversal.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/focus_params.h"
@@ -56,22 +55,18 @@ namespace blink {
 namespace {
 
 void InvalidateShadowIncludingAncestorForms(ContainerNode& insertion_point) {
+  if (!RuntimeEnabledFeatures::AutofillShadowDOMEnabled())
+    return;
+
   // Let any forms in the shadow including ancestors know that this
-  // ListedElement has changed. If `kAutofillIncludeFormElementsInShadowDom` is
-  // disabled, forms inside the same `TreeScope` do not need to be included
-  // because their listed elements track their association elsewhere.
-  // If `kAutofillIncludeFormElementsInShadowDom` is enabled, we also cache
-  // listed elements inside (descendant) nested forms in and therefore need to
-  // invalidate the caches also inside the same `TreeScope`.
-  ContainerNode* starting_node =
-      base::FeatureList::IsEnabled(
-          features::kAutofillIncludeFormElementsInShadowDom)
-          ? insertion_point.ParentOrShadowHostNode()
-          : insertion_point.OwnerShadowHost();
-  for (ContainerNode* parent = starting_node; parent;
+  // ListedElement has changed. Don't include any forms inside the same
+  // TreeScope know because that relationship isn't tracked by listed elements
+  // including shadow trees.
+  for (ContainerNode* parent = insertion_point.OwnerShadowHost(); parent;
        parent = parent->ParentOrShadowHostNode()) {
     if (HTMLFormElement* form = DynamicTo<HTMLFormElement>(parent)) {
       form->InvalidateListedElementsIncludingShadowTrees();
+      return;
     }
   }
 }
@@ -150,10 +145,8 @@ void ListedElement::InsertedInto(ContainerNode& insertion_point) {
   }
 
   // Trigger for elements outside of forms.
-  if (!form_ && insertion_point.isConnected()) {
-    element.GetDocument().DidChangeFormRelatedElementDynamically(
-        &element, WebFormRelatedChangeType::kAdd);
-  }
+  if (!form_ && insertion_point.isConnected())
+    element.GetDocument().DidAddOrRemoveFormRelatedElement(&element);
 
   InvalidateShadowIncludingAncestorForms(insertion_point);
 }
@@ -162,20 +155,9 @@ void ListedElement::RemovedFrom(ContainerNode& insertion_point) {
   FieldSetAncestorsSetNeedsValidityCheck(&insertion_point);
   HideVisibleValidationMessage();
   has_validation_message_ = false;
-  // Two values that might change as a result of being removed are
-  // `may_have_fieldset_ancestor_` and `data_list_ancestor_state_`. Both of
-  // these values feed into the WillValidate cache. If this ListedElement is
-  // not in a fieldset and not in a data-list, then it won't be in a fieldset
-  // or fieldset after the removal, so that the cache does not need to be
-  // updated.
-  if (!may_have_fieldset_ancestor_ &&
-      data_list_ancestor_state_ == DataListAncestorState::kNotInsideDataList) {
-    DCHECK_EQ(will_validate_, RecalcWillValidate());
-  } else {
-    ancestor_disabled_state_ = AncestorDisabledState::kUnknown;
-    data_list_ancestor_state_ = DataListAncestorState::kUnknown;
-    UpdateWillValidateCache();
-  }
+  ancestor_disabled_state_ = AncestorDisabledState::kUnknown;
+  data_list_ancestor_state_ = DataListAncestorState::kUnknown;
+  UpdateWillValidateCache();
 
   HTMLElement& element = ToHTMLElement();
   if (insertion_point.isConnected() &&
@@ -183,18 +165,15 @@ void ListedElement::RemovedFrom(ContainerNode& insertion_point) {
     SetFormAttributeTargetObserver(nullptr);
     ResetFormOwner();
   } else if (!form_ && insertion_point.isConnected()) {
-    // If there is no associated form, then there won't be one after removing,
-    // so don't need to call ResetFormOwner(). While this doesn't need to call
-    // ResetFormOwner(), it needs to call SetForm() to ensure Document level
-    // state is updated.
-    form_was_set_by_parser_ = false;
-    SetForm(nullptr);
-  } else if (form_ && NodeTraversal::HighestAncestorOrSelf(element) !=
-                          NodeTraversal::HighestAncestorOrSelf(*form_.Get())) {
+    // An unassociated listed element is detached from the document.
+    ResetFormOwner();
+  } else {
     // If the form and element are both in the same tree, preserve the
     // connection to the form.  Otherwise, null out our form and remove
     // ourselves from the form's list of elements.
-    ResetFormOwner();
+    if (form_ && NodeTraversal::HighestAncestorOrSelf(element) !=
+                     NodeTraversal::HighestAncestorOrSelf(*form_.Get()))
+      ResetFormOwner();
   }
 
   DisabledStateMightBeChanged();
@@ -209,11 +188,12 @@ void ListedElement::RemovedFrom(ContainerNode& insertion_point) {
 
   InvalidateShadowIncludingAncestorForms(insertion_point);
 
-  if (insertion_point.isConnected()) {
+  if (base::FeatureList::IsEnabled(
+          blink::features::kAutofillDetectRemovedFormControls) &&
+      insertion_point.isConnected()) {
     // We don't insist on form_ being non-null as the form does not take care of
     // reporting the removal.
-    element.GetDocument().DidChangeFormRelatedElementDynamically(
-        &element, WebFormRelatedChangeType::kRemove);
+    element.GetDocument().DidAddOrRemoveFormRelatedElement(&element);
   }
 }
 
@@ -280,8 +260,7 @@ void ListedElement::WillChangeForm() {
 void ListedElement::DidChangeForm() {
   if (!form_was_set_by_parser_ && form_ && form_->isConnected()) {
     auto& element = ToHTMLElement();
-    element.GetDocument().DidChangeFormRelatedElementDynamically(
-        &element, WebFormRelatedChangeType::kReassociate);
+    element.GetDocument().DidAddOrRemoveFormRelatedElement(&element);
   }
   FormOwnerSetNeedsValidityCheck();
 }
@@ -290,8 +269,6 @@ void ListedElement::FormOwnerSetNeedsValidityCheck() {
   if (HTMLFormElement* form = Form()) {
     form->PseudoStateChanged(CSSSelector::kPseudoValid);
     form->PseudoStateChanged(CSSSelector::kPseudoInvalid);
-    form->PseudoStateChanged(CSSSelector::kPseudoUserValid);
-    form->PseudoStateChanged(CSSSelector::kPseudoUserInvalid);
   }
 }
 
@@ -306,8 +283,6 @@ void ListedElement::FieldSetAncestorsSetNeedsValidityCheck(Node* node) {
        field_set = Traversal<HTMLFieldSetElement>::FirstAncestor(*field_set)) {
     field_set->PseudoStateChanged(CSSSelector::kPseudoValid);
     field_set->PseudoStateChanged(CSSSelector::kPseudoInvalid);
-    field_set->PseudoStateChanged(CSSSelector::kPseudoUserValid);
-    field_set->PseudoStateChanged(CSSSelector::kPseudoUserInvalid);
   }
 }
 
@@ -334,12 +309,10 @@ void ListedElement::FormAttributeChanged() {
 bool ListedElement::RecalcWillValidate() const {
   const HTMLElement& element = ToHTMLElement();
   if (data_list_ancestor_state_ == DataListAncestorState::kUnknown) {
-    if (element.GetDocument().HasAtLeastOneDataList() &&
-        Traversal<HTMLDataListElement>::FirstAncestor(element)) {
+    if (Traversal<HTMLDataListElement>::FirstAncestor(element))
       data_list_ancestor_state_ = DataListAncestorState::kInsideDataList;
-    } else {
+    else
       data_list_ancestor_state_ = DataListAncestorState::kNotInsideDataList;
-    }
   }
   return data_list_ancestor_state_ ==
              DataListAncestorState::kNotInsideDataList &&
@@ -466,7 +439,7 @@ void ListedElement::FindCustomValidationMessageTextDirection(
 }
 
 void ListedElement::UpdateVisibleValidationMessage() {
-  Element& element = ValidationAnchor();
+  const Element& element = ValidationAnchor();
   Page* page = element.GetDocument().GetPage();
   if (!page || !page->IsPageVisible() || element.GetDocument().UnloadStarted())
     return;
@@ -548,9 +521,9 @@ void ListedElement::ShowValidationMessage() {
   Element& element = ValidationAnchor();
   element.scrollIntoViewIfNeeded(false);
   if (element.IsFocusable())
-    element.Focus();
+    element.Focus(FocusParams(/*gate_on_user_activation=*/true));
   else
-    ToHTMLElement().Focus();
+    ToHTMLElement().Focus(FocusParams(/*gate_on_user_activation=*/true));
   UpdateVisibleValidationMessage();
 }
 
@@ -591,8 +564,6 @@ void ListedElement::SetNeedsValidityCheck() {
     FieldSetAncestorsSetNeedsValidityCheck(element.parentNode());
     element.PseudoStateChanged(CSSSelector::kPseudoValid);
     element.PseudoStateChanged(CSSSelector::kPseudoInvalid);
-    element.PseudoStateChanged(CSSSelector::kPseudoUserValid);
-    element.PseudoStateChanged(CSSSelector::kPseudoUserInvalid);
   }
 
   // Updates only if this control already has a validation message.

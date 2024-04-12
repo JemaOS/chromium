@@ -5,12 +5,20 @@
 /** @fileoverview Suite of tests for extension-options-dialog. */
 import 'chrome://extensions/extensions.js';
 
-import type {ExtensionsOptionsDialogElement} from 'chrome://extensions/extensions.js';
-import {OptionsDialogMaxHeight, OptionsDialogMinWidth, Service} from 'chrome://extensions/extensions.js';
+import {ExtensionsOptionsDialogElement, OptionsDialogMaxHeight, OptionsDialogMinWidth, Service} from 'chrome://extensions/extensions.js';
 import {assertEquals, assertFalse, assertGE, assertLE, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
 
-suite('ExtensionOptionsDialogTests', function() {
+const extension_options_dialog_tests = {
+  suiteName: 'ExtensionOptionsDialogTests',
+  TestNames: {
+    Layout: 'Layout',
+  },
+};
+
+Object.assign(window, {extension_options_dialog_tests});
+
+suite(extension_options_dialog_tests.suiteName, function() {
   let optionsDialog: ExtensionsOptionsDialogElement;
   let data: chrome.developerPrivate.ExtensionInfo;
 
@@ -32,7 +40,7 @@ suite('ExtensionOptionsDialogTests', function() {
     return rect.width * rect.height > 0;
   }
 
-  test('Layout', function() {
+  test(extension_options_dialog_tests.TestNames.Layout, function() {
     // Try showing the dialog.
     assertFalse(isDialogVisible());
     optionsDialog.show(data);

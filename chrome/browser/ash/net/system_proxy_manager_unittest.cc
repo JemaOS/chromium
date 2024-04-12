@@ -18,7 +18,6 @@
 #include "chrome/test/base/testing_profile.h"
 #include "chromeos/ash/components/dbus/system_proxy/system_proxy_client.h"
 #include "chromeos/ash/components/dbus/system_proxy/system_proxy_service.pb.h"
-#include "chromeos/ash/components/login/login_state/login_state.h"
 #include "chromeos/ash/components/network/network_handler.h"
 #include "chromeos/ash/components/network/network_handler_test_helper.h"
 #include "components/prefs/pref_service.h"
@@ -86,9 +85,9 @@ network::NetworkService* GetNetworkService() {
 
 void SetManagedProxy(Profile* profile) {
   // Configure a proxy via user policy.
-  auto proxy_config = base::Value::Dict()
-                          .Set("mode", ProxyPrefs::kFixedServersProxyModeName)
-                          .Set("server", kProxyAuthUrl);
+  base::Value::Dict proxy_config;
+  proxy_config.Set("mode", ProxyPrefs::kFixedServersProxyModeName);
+  proxy_config.Set("server", kProxyAuthUrl);
   profile->GetPrefs()->SetDict(proxy_config::prefs::kProxy,
                                std::move(proxy_config));
   base::RunLoop().RunUntilIdle();

@@ -42,8 +42,7 @@ MediaControlOverlayPlayButtonElement::MediaControlOverlayPlayButtonElement(
   SetShadowPseudoId(AtomicString("-webkit-media-controls-overlay-play-button"));
 
   internal_button_ = MediaControlElementsHelper::CreateDiv(
-      AtomicString("-internal-media-controls-overlay-play-button-internal"),
-      GetShadowRoot());
+      "-internal-media-controls-overlay-play-button-internal", GetShadowRoot());
 }
 
 void MediaControlOverlayPlayButtonElement::UpdateDisplayType() {

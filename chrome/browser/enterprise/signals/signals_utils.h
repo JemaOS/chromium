@@ -5,9 +5,9 @@
 #ifndef CHROME_BROWSER_ENTERPRISE_SIGNALS_SIGNALS_UTILS_H_
 #define CHROME_BROWSER_ENTERPRISE_SIGNALS_SIGNALS_UTILS_H_
 
-#include <optional>
-
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
+
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PolicyBlocklistService;
 class PrefService;
@@ -15,11 +15,11 @@ class PrefService;
 namespace enterprise_signals {
 namespace utils {
 
-std::optional<bool> GetThirdPartyBlockingEnabled(PrefService* local_state);
+absl::optional<bool> GetThirdPartyBlockingEnabled(PrefService* local_state);
 
 bool GetBuiltInDnsClientEnabled(PrefService* local_state);
 
-std::optional<safe_browsing::PasswordProtectionTrigger>
+absl::optional<safe_browsing::PasswordProtectionTrigger>
 GetPasswordProtectionWarningTrigger(PrefService* profile_prefs);
 
 safe_browsing::SafeBrowsingState GetSafeBrowsingProtectionLevel(

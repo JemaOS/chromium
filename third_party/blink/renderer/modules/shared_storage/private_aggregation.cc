@@ -8,12 +8,12 @@
 
 #include <iterator>
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/check.h"
 #include "base/ranges/algorithm.h"
 #include "third_party/abseil-cpp/absl/numeric/int128.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/shared_storage/shared_storage_worklet_service.mojom-blink.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom-blink.h"
@@ -59,7 +59,7 @@ void PrivateAggregation::Trace(Visitor* visitor) const {
 }
 
 // TODO(alexmt): Consider merging parsing logic with FLEDGE worklet.
-void PrivateAggregation::contributeToHistogram(
+void PrivateAggregation::sendHistogramReport(
     ScriptState* script_state,
     const PrivateAggregationHistogramContribution* contribution,
     ExceptionState& exception_state) {
@@ -70,7 +70,7 @@ void PrivateAggregation::contributeToHistogram(
   ExecutionContext* execution_context = ExecutionContext::From(script_state);
   CHECK(execution_context->IsSharedStorageWorkletGlobalScope());
 
-  EnsureGeneralUseCountersAreRecorded();
+  EnsureUseCountersAreRecorded();
 
   if (!global_scope_->private_aggregation_permissions_policy_allowed()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidAccessError,
@@ -78,7 +78,7 @@ void PrivateAggregation::contributeToHistogram(
     return;
   }
 
-  std::optional<absl::uint128> bucket = contribution->bucket().ToUInt128();
+  absl::optional<absl::uint128> bucket = contribution->bucket().ToUInt128();
   if (!bucket) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kDataError,
@@ -93,18 +93,16 @@ void PrivateAggregation::contributeToHistogram(
     return;
   }
 
-  Vector<mojom::blink::AggregatableReportHistogramContributionPtr>
-      mojom_contribution_vector;
-  mojom_contribution_vector.push_back(
+  mojom::blink::AggregatableReportHistogramContributionPtr mojom_contribution =
       mojom::blink::AggregatableReportHistogramContribution::New(bucket.value(),
-                                                                 value));
+                                                                 value);
 
   int64_t operation_id = global_scope_->GetCurrentOperationId();
   CHECK(operation_states_.Contains(operation_id));
   OperationState* operation_state = operation_states_.at(operation_id);
 
-  operation_state->private_aggregation_host->ContributeToHistogram(
-      std::move(mojom_contribution_vector));
+  operation_state->private_aggregation_contributions.push_back(
+      std::move(mojom_contribution));
 }
 
 void PrivateAggregation::enableDebugMode(ScriptState* script_state,
@@ -123,8 +121,7 @@ void PrivateAggregation::enableDebugMode(
   ExecutionContext* execution_context = ExecutionContext::From(script_state);
   CHECK(execution_context->IsSharedStorageWorkletGlobalScope());
 
-  EnsureGeneralUseCountersAreRecorded();
-  EnsureEnableDebugModeUseCounterIsRecorded();
+  EnsureUseCountersAreRecorded();
 
   if (!global_scope_->private_aggregation_permissions_policy_allowed()) {
     exception_state.ThrowDOMException(DOMExceptionCode::kInvalidAccessError,
@@ -136,34 +133,32 @@ void PrivateAggregation::enableDebugMode(
   CHECK(base::Contains(operation_states_, operation_id));
   OperationState* operation_state = operation_states_.at(operation_id);
 
-  if (operation_state->enable_debug_mode_called) {
+  mojom::blink::DebugModeDetails& debug_mode_details =
+      operation_state->debug_mode_details;
+  if (debug_mode_details.is_enabled) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kDataError,
         "enableDebugMode may be called at most once");
     return;
   }
-  operation_state->enable_debug_mode_called = true;
-
-  mojom::blink::DebugKeyPtr debug_key;
 
   // If `options` is not provided, no debug key is set.
   if (options) {
-    std::optional<absl::uint128> maybe_debug_key =
+    absl::optional<absl::uint128> maybe_debug_key =
         options->debugKey().ToUInt128();
 
     if (!maybe_debug_key || absl::Uint128High64(maybe_debug_key.value()) != 0) {
       exception_state.ThrowDOMException(
           DOMExceptionCode::kDataError,
-          "options['debugKey'] is negative or does not fit in 64 bits");
+          "options['debug_key'] is negative or does not fit in 64 bits");
       return;
     }
 
-    debug_key = mojom::blink::DebugKey::New(
-        absl::Uint128Low64(maybe_debug_key.value()));
+    uint64_t debug_key = absl::Uint128Low64(maybe_debug_key.value());
+    debug_mode_details.debug_key = mojom::blink::DebugKey::New(debug_key);
   }
 
-  operation_state->private_aggregation_host->EnableDebugMode(
-      std::move(debug_key));
+  debug_mode_details.is_enabled = true;
 }
 
 void PrivateAggregation::OnOperationStarted(
@@ -180,7 +175,16 @@ void PrivateAggregation::OnOperationStarted(
 
 void PrivateAggregation::OnOperationFinished(int64_t operation_id) {
   CHECK(operation_states_.Contains(operation_id));
-  operation_states_.at(operation_id)->private_aggregation_host.reset();
+  OperationState* operation_state = operation_states_.at(operation_id);
+
+  if (!operation_state->private_aggregation_contributions.empty()) {
+    operation_state->private_aggregation_host->SendHistogramReport(
+        std::move(operation_state->private_aggregation_contributions),
+        // TODO(alexmt): consider allowing this to be set
+        mojom::blink::AggregationServiceMode::kDefault,
+        operation_state->debug_mode_details.Clone());
+  }
+
   operation_states_.erase(operation_id);
 }
 
@@ -199,20 +203,12 @@ void PrivateAggregation::OnWorkletDestroyed() {
   CHECK(operation_states_.empty());
 }
 
-void PrivateAggregation::EnsureGeneralUseCountersAreRecorded() {
-  if (!has_recorded_general_use_counters_) {
-    has_recorded_general_use_counters_ = true;
+void PrivateAggregation::EnsureUseCountersAreRecorded() {
+  if (!has_recorded_use_counters_) {
+    has_recorded_use_counters_ = true;
     global_scope_->GetSharedStorageWorkletServiceClient()->RecordUseCounters(
         {mojom::blink::WebFeature::kPrivateAggregationApiAll,
          mojom::blink::WebFeature::kPrivateAggregationApiSharedStorage});
-  }
-}
-
-void PrivateAggregation::EnsureEnableDebugModeUseCounterIsRecorded() {
-  if (!has_recorded_enable_debug_mode_use_counter_) {
-    has_recorded_enable_debug_mode_use_counter_ = true;
-    global_scope_->GetSharedStorageWorkletServiceClient()->RecordUseCounters(
-        {mojom::blink::WebFeature::kPrivateAggregationApiEnableDebugMode});
   }
 }
 

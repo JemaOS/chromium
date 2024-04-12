@@ -7,7 +7,6 @@
 
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
-#include "chrome/browser/ash/input_method/assistive_input_denylist.h"
 #include "chrome/browser/ash/input_method/assistive_suggester_switch.h"
 #include "chrome/browser/ash/input_method/get_current_window_properties.h"
 
@@ -30,20 +29,12 @@ class AssistiveSuggesterClientFilter : public AssistiveSuggesterSwitch {
 
   // AssistiveSuggesterSwitch overrides
   void FetchEnabledSuggestionsThen(
-      FetchEnabledSuggestionsCallback callback,
-      const TextInputMethod::InputContext& context) override;
+      FetchEnabledSuggestionsCallback callback) override;
 
  private:
-  void ReturnEnabledSuggestions(
-      AssistiveSuggesterSwitch::FetchEnabledSuggestionsCallback callback,
-      WindowProperties window_properties,
-      const TextInputMethod::InputContext& context,
-      const std::optional<GURL>& current_url);
-
   // Used to fetch the url from the current browser instance.
   GetUrlCallback get_url_;
   GetFocusedWindowPropertiesCallback get_window_properties_;
-  AssistiveInputDenylist denylist_;
   base::WeakPtrFactory<AssistiveSuggesterClientFilter> weak_ptr_factory_{this};
 };
 

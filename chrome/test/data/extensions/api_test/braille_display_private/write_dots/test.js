@@ -58,13 +58,5 @@ chrome.test.runTests([
           createBuffer(1000000, 2), 1000000, 1);
       chrome.brailleDisplayPrivate.getDisplayState(pass());
     }));
-  },
-
-  function testWriteUndersizedCellsNoCrash() {
-    waitForDisplay(pass(function(state) {
-      chrome.brailleDisplayPrivate.writeDots(
-          createBuffer(state.textColumnCount - 2, 3), state.textColumnCount, 1);
-      chrome.brailleDisplayPrivate.getDisplayState(pass());
-    }));
   }
 ]);

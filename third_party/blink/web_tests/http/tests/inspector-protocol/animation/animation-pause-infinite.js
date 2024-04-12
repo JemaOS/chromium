@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startHTML(`
     <script src='../../resources/run-after-layout-and-paint.js'></script>
     <div id='node' style='background-color: red; height: 100px'></div>

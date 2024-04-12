@@ -54,7 +54,7 @@ class ChromeManagementServiceTest : public testing::Test {
                             const bool& permissions_callback_result,
                             const int& rotation_callback_result,
                             std::unique_ptr<MojoHelper> mojo_helper,
-                            std::optional<ManagementServiceError> error) {
+                            absl::optional<ManagementServiceError> error) {
     base::HistogramTester histogram_tester;
     base::test::SingleThreadTaskEnvironment single_threaded_task_environment;
     base::MockCallback<ChromeManagementService::PermissionsCallback>
@@ -148,7 +148,7 @@ class ChromeManagementServiceTest : public testing::Test {
 // rotate the key.
 MULTIPROCESS_TEST_MAIN(Successful) {
   return ChromeManagementServiceTest::TestRunProcess(
-      "Successful", true, kSuccess, MojoHelper::Create(), std::nullopt);
+      "Successful", true, kSuccess, MojoHelper::Create(), absl::nullopt);
 }
 
 TEST_F(ChromeManagementServiceTest, Success_Nonce) {
@@ -475,7 +475,8 @@ TEST_F(ChromeManagementServiceTest,
 // key rotation.
 MULTIPROCESS_TEST_MAIN(RotateDTKeyFailure) {
   return ChromeManagementServiceTest::TestRunProcess(
-      "RotateDTKeyFailure", true, kFailure, MojoHelper::Create(), std::nullopt);
+      "RotateDTKeyFailure", true, kFailure, MojoHelper::Create(),
+      absl::nullopt);
 }
 
 TEST_F(ChromeManagementServiceTest, Failure_RotateDTKeyFailure) {

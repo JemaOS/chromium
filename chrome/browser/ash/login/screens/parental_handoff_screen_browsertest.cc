@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/login/screens/parental_handoff_screen.h"
 
 #include <memory>
-#include <optional>
 
 #include "ash/constants/ash_features.h"
 #include "base/auto_reset.h"
@@ -16,6 +15,7 @@
 #include "chrome/browser/ash/child_accounts/family_features.h"
 #include "chrome/browser/ash/login/screens/assistant_optin_flow_screen.h"
 #include "chrome/browser/ash/login/screens/edu_coexistence_login_screen.h"
+#include "chrome/browser/ash/login/test/embedded_policy_test_server_mixin.h"
 #include "chrome/browser/ash/login/test/js_checker.h"
 #include "chrome/browser/ash/login/test/login_manager_mixin.h"
 #include "chrome/browser/ash/login/test/oobe_base_test.h"
@@ -25,7 +25,7 @@
 #include "chrome/browser/ash/login/test/wizard_controller_screen_exit_waiter.h"
 #include "chrome/browser/ash/login/wizard_context.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
-#include "chrome/browser/ash/policy/test_support/embedded_policy_test_server_mixin.h"
+#include "chrome/browser/supervised_user/supervised_user_service.h"
 #include "chrome/browser/ui/webui/ash/login/assistant_optin_flow_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/parental_handoff_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/sync_consent_screen_handler.h"
@@ -34,6 +34,7 @@
 #include "chrome/test/base/fake_gaia_mixin.h"
 #include "components/account_id/account_id.h"
 #include "content/public/test/browser_test.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace {
@@ -60,7 +61,7 @@ class ParentalHandoffScreenBrowserTest : public OobeBaseTest {
 
   void SkipToParentalHandoffScreen();
 
-  const std::optional<ParentalHandoffScreen::Result>& result() const {
+  const absl::optional<ParentalHandoffScreen::Result>& result() const {
     return result_;
   }
 
@@ -73,7 +74,7 @@ class ParentalHandoffScreenBrowserTest : public OobeBaseTest {
 
   base::OnceCallback<void()> quit_closure_;
 
-  std::optional<ParentalHandoffScreen::Result> result_;
+  absl::optional<ParentalHandoffScreen::Result> result_;
 
   ParentalHandoffScreen::ScreenExitCallback original_callback_;
 
@@ -146,7 +147,7 @@ IN_PROC_BROWSER_TEST_F(ParentalHandoffScreenBrowserTest, RegularUserLogin) {
   WaitForScreenExit();
 
   // Regular user login shouldn't show the EduCoexistenceLoginScreen.
-  EXPECT_EQ(result().value(), ParentalHandoffScreen::Result::kSkipped);
+  EXPECT_EQ(result().value(), ParentalHandoffScreen::Result::SKIPPED);
 
   histogram_tester().ExpectTotalCount(
       "OOBE.StepCompletionTimeByExitReason.Parental-handoff.Done", 0);

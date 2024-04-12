@@ -22,10 +22,7 @@ typedef struct _drmModeModeInfo drmModeModeInfo;
 
 namespace display {
 class DisplaySnapshot;
-class GammaCurve;
-struct ColorTemperatureAdjustment;
-struct ColorCalibration;
-struct GammaAdjustment;
+struct GammaRampRGBEntry;
 }  // namespace display
 
 namespace ui {
@@ -53,7 +50,8 @@ class DrmDisplay {
     drmModePropertyRes* GetWritePrivacyScreenProperty() const;
 
     const scoped_refptr<DrmDevice> drm_;
-    raw_ptr<drmModeConnector> connector_ = nullptr;  // not owned.
+    raw_ptr<drmModeConnector, ExperimentalAsh> connector_ =
+        nullptr;  // not owned.
 
     display::PrivacyScreenState property_last_ =
         display::kPrivacyScreenStateLast;
@@ -87,36 +85,32 @@ class DrmDisplay {
                     display::ContentProtectionMethod* protection_method);
   bool SetHDCPState(display::HDCPState state,
                     display::ContentProtectionMethod protection_method);
-  void SetColorTemperatureAdjustment(
-      const display::ColorTemperatureAdjustment& cta);
-  void SetColorCalibration(const display::ColorCalibration& calibration);
-  void SetGammaAdjustment(const display::GammaAdjustment& adjustment);
   void SetColorMatrix(const std::vector<float>& color_matrix);
   void SetBackgroundColor(const uint64_t background_color);
-  void SetGammaCorrection(const display::GammaCurve& degamma,
-                          const display::GammaCurve& gamma);
+  void SetGammaCorrection(
+      const std::vector<display::GammaRampRGBEntry>& degamma_lut,
+      const std::vector<display::GammaRampRGBEntry>& gamma_lut);
   bool SetPrivacyScreen(bool enabled);
-  bool SetHdrOutputMetadata(const gfx::ColorSpace color_space);
-  bool SetColorspaceProperty(const gfx::ColorSpace color_space);
-
-  void set_crtc(uint32_t crtc_id) { crtc_ = crtc_id; }
+  bool SetHDR10Mode();
+  void SetColorSpace(const gfx::ColorSpace& color_space);
 
   void set_is_hdr_capable_for_testing(bool value) { is_hdr_capable_ = value; }
 
  private:
-  gfx::HDRStaticMetadata::Eotf GetEotf(
-      const gfx::ColorSpace::TransferID transfer_id);
+  void CommitGammaCorrection(
+      const std::vector<display::GammaRampRGBEntry>& degamma_lut,
+      const std::vector<display::GammaRampRGBEntry>& gamma_lut);
 
   const int64_t display_id_;
   const int64_t base_connector_id_;
   const scoped_refptr<DrmDevice> drm_;
-  uint32_t crtc_;
+  const uint32_t crtc_;
   const ScopedDrmConnectorPtr connector_;
   std::vector<drmModeModeInfo> modes_;
   gfx::Point origin_;
   bool is_hdr_capable_ = false;
-  std::optional<gfx::HDRStaticMetadata> hdr_static_metadata_;
   gfx::ColorSpace current_color_space_;
+  absl::optional<gfx::HDRStaticMetadata> hdr_static_metadata_;
   std::unique_ptr<PrivacyScreenProperty> privacy_screen_property_;
 };
 

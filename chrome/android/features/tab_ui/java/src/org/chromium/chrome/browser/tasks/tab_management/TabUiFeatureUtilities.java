@@ -4,104 +4,94 @@
 
 package org.chromium.chrome.browser.tasks.tab_management;
 
+import static org.chromium.chrome.browser.device.DeviceClassManager.GTS_ACCESSIBILITY_SUPPORT;
+import static org.chromium.chrome.browser.device.DeviceClassManager.GTS_LOW_END_SUPPORT;
+
 import android.content.Context;
 
 import org.chromium.base.Log;
-import org.chromium.base.ResettersForTesting;
 import org.chromium.base.SysUtils;
-import org.chromium.base.cached_flags.BooleanCachedFieldTrialParameter;
-import org.chromium.base.cached_flags.IntCachedFieldTrialParameter;
-import org.chromium.base.cached_flags.StringCachedFieldTrialParameter;
-import org.chromium.build.BuildConfig;
+import org.chromium.chrome.browser.device.DeviceClassManager;
+import org.chromium.chrome.browser.flags.BooleanCachedFieldTrialParameter;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
-import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
+import org.chromium.chrome.browser.flags.DoubleCachedFieldTrialParameter;
+import org.chromium.chrome.browser.flags.IntCachedFieldTrialParameter;
+import org.chromium.chrome.browser.tasks.ReturnToChromeUtil;
+import org.chromium.chrome.browser.util.ChromeAccessibilityUtil;
 import org.chromium.ui.base.DeviceFormFactor;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
-/** A class to handle the state of flags for tab_management. */
+/**
+ * A class to handle the state of flags for tab_management.
+ */
 public class TabUiFeatureUtilities {
     private static final String TAG = "TabFeatureUtilities";
-    private static final String SAMSUNG_LOWER_CASE = "samsung";
 
     // Field trial parameters:
     private static final String SKIP_SLOW_ZOOMING_PARAM = "skip-slow-zooming";
     public static final BooleanCachedFieldTrialParameter SKIP_SLOW_ZOOMING =
-            ChromeFeatureList.newBooleanCachedFieldTrialParameter(
+            new BooleanCachedFieldTrialParameter(
                     ChromeFeatureList.TAB_TO_GTS_ANIMATION, SKIP_SLOW_ZOOMING_PARAM, true);
+
+    private static final String GTS_ACCESSIBILITY_LIST_MODE_PARAM = "gts-accessibility-list-mode";
+    public static final BooleanCachedFieldTrialParameter GTS_ACCESSIBILITY_LIST_MODE =
+            new BooleanCachedFieldTrialParameter(ChromeFeatureList.TAB_GROUPS_CONTINUATION_ANDROID,
+                    GTS_ACCESSIBILITY_LIST_MODE_PARAM, false);
+
+    public static final String THUMBNAIL_ASPECT_RATIO_PARAM = "thumbnail_aspect_ratio";
+    public static final DoubleCachedFieldTrialParameter THUMBNAIL_ASPECT_RATIO =
+            new DoubleCachedFieldTrialParameter(
+                    ChromeFeatureList.TAB_GRID_LAYOUT_ANDROID, THUMBNAIL_ASPECT_RATIO_PARAM, 0.85);
 
     // Field trial parameter for the minimum physical memory size to enable zooming animation.
     private static final String MIN_MEMORY_MB_PARAM = "zooming-min-memory-mb";
     public static final IntCachedFieldTrialParameter ZOOMING_MIN_MEMORY =
-            ChromeFeatureList.newIntCachedFieldTrialParameter(
+            new IntCachedFieldTrialParameter(
                     ChromeFeatureList.TAB_TO_GTS_ANIMATION, MIN_MEMORY_MB_PARAM, 2048);
 
-    // Field trial parameter for animation start timeout for new Android based shrink and expand
-    // animations in TabSwitcherLayout.
-    private static final String ANIMATION_START_TIMEOUT_MS_PARAM = "animation_start_timeout_ms";
-    public static final IntCachedFieldTrialParameter ANIMATION_START_TIMEOUT_MS =
-            ChromeFeatureList.newIntCachedFieldTrialParameter(
-                    ChromeFeatureList.GRID_TAB_SWITCHER_ANDROID_ANIMATIONS,
-                    ANIMATION_START_TIMEOUT_MS_PARAM,
-                    300);
+    // Field trial parameter for removing tab group auto creation from target-blank links and adding
+    // both "Open in new tab" and "Open in new tab in group" as context menu items.
+    private static final String TAB_GROUP_AUTO_CREATION_PARAM = "enable_tab_group_auto_creation";
 
-    private static final String ENABLE_NON_SPLIT_MODE_TAB_DRAG_MANUFACTURER_ALLOWLIST_PARAM =
-            "enable_non_split_mode_tab_drag_manufacturer_allowlist";
-    public static final StringCachedFieldTrialParameter
-            ENABLE_NON_SPLIT_MODE_TAB_DRAG_MANUFACTURER_ALLOWLIST =
-                    ChromeFeatureList.newStringCachedFieldTrialParameter(
-                            ChromeFeatureList.TAB_LINK_DRAG_DROP_ANDROID,
-                            ENABLE_NON_SPLIT_MODE_TAB_DRAG_MANUFACTURER_ALLOWLIST_PARAM,
-                            SAMSUNG_LOWER_CASE);
+    public static final BooleanCachedFieldTrialParameter ENABLE_TAB_GROUP_AUTO_CREATION =
+            new BooleanCachedFieldTrialParameter(ChromeFeatureList.TAB_GRID_LAYOUT_ANDROID,
+                    TAB_GROUP_AUTO_CREATION_PARAM, false);
 
-    // Field trail params for tab drag and drop.
-    private static final String DISABLE_STRIP_TO_CONTENT_DD_PARAM = "disable_strip_to_content_dd";
-    private static final String DISABLE_STRIP_TO_STRIP_DD_PARAM = "disable_strip_to_strip_dd";
-    private static final String DISABLE_STRIP_TO_STRIP_DIFF_MODEL_DD_PARAM =
-            "disable_strip_to_strip_diff_model_dd";
-    private static final String DISABLE_DRAG_TO_NEW_INSTANCE_DD_PARAM =
-            "disable_drag_to_new_instance";
+    // Field trial parameter for configuring the "Open in new tab" and "Open in new tab in group"
+    // item order in the context menu.
+    private static final String SHOW_OPEN_IN_TAB_GROUP_MENU_ITEM_FIRST_PARAM =
+            "show_open_in_tab_group_menu_item_first";
 
-    // Manufacturer list that supports tab drag in non-split mode.
-    static Set<String> sTabDragNonSplitManufacturerAllowlist;
+    public static final BooleanCachedFieldTrialParameter SHOW_OPEN_IN_TAB_GROUP_MENU_ITEM_FIRST =
+            new BooleanCachedFieldTrialParameter(ChromeFeatureList.TAB_GRID_LAYOUT_ANDROID,
+                    SHOW_OPEN_IN_TAB_GROUP_MENU_ITEM_FIRST_PARAM, true);
 
-    public static final BooleanCachedFieldTrialParameter DISABLE_STRIP_TO_CONTENT_DD =
-            ChromeFeatureList.newBooleanCachedFieldTrialParameter(
-                    ChromeFeatureList.TAB_LINK_DRAG_DROP_ANDROID,
-                    DISABLE_STRIP_TO_CONTENT_DD_PARAM,
-                    false);
-    public static final BooleanCachedFieldTrialParameter DISABLE_STRIP_TO_STRIP_DD =
-            ChromeFeatureList.newBooleanCachedFieldTrialParameter(
-                    ChromeFeatureList.TAB_LINK_DRAG_DROP_ANDROID,
-                    DISABLE_STRIP_TO_STRIP_DD_PARAM,
-                    false);
-    public static final BooleanCachedFieldTrialParameter DISABLE_STRIP_TO_STRIP_DIFF_MODEL_DD =
-            ChromeFeatureList.newBooleanCachedFieldTrialParameter(
-                    ChromeFeatureList.TAB_LINK_DRAG_DROP_ANDROID,
-                    DISABLE_STRIP_TO_STRIP_DIFF_MODEL_DD_PARAM,
-                    false);
-    public static final BooleanCachedFieldTrialParameter DISABLE_DRAG_TO_NEW_INSTANCE_DD =
-            ChromeFeatureList.newBooleanCachedFieldTrialParameter(
-                    ChromeFeatureList.TAB_LINK_DRAG_DROP_ANDROID,
-                    DISABLE_DRAG_TO_NEW_INSTANCE_DD_PARAM,
-                    false);
+    // Field trial parameter for disabling new tab button anchor for tab strip redesign.
+    private static final String TAB_STRIP_REDESIGN_DISABLE_NTB_ANCHOR_PARAM = "disable_ntb_anchor";
+    public static final BooleanCachedFieldTrialParameter TAB_STRIP_REDESIGN_DISABLE_NTB_ANCHOR =
+            new BooleanCachedFieldTrialParameter(ChromeFeatureList.TAB_STRIP_REDESIGN,
+                    TAB_STRIP_REDESIGN_DISABLE_NTB_ANCHOR_PARAM, false);
 
-    // Cached and fixed values.
-    private static boolean sTabListEditorLongPressEntryEnabled;
-    private static Boolean sIsTabToGtsAnimationEnabled;
+    private static boolean sTabSelectionEditorLongPressEntryEnabled;
 
-    /** Set whether the longpress entry for TabListEditor is enabled. Currently only in tests. */
-    public static void setTabListEditorLongPressEntryEnabledForTesting(boolean enabled) {
-        var oldValue = sTabListEditorLongPressEntryEnabled;
-        sTabListEditorLongPressEntryEnabled = enabled;
-        ResettersForTesting.register(() -> sTabListEditorLongPressEntryEnabled = oldValue);
+    /**
+     * Set whether the longpress entry for TabSelectionEditor is enabled. Currently only in tests.
+     */
+    public static void setTabSelectionEditorLongPressEntryEnabledForTesting(boolean enabled) {
+        sTabSelectionEditorLongPressEntryEnabled = enabled;
     }
 
-    /** Whether the longpress entry for TabListEditor is enabled. Currently only in tests. */
-    public static boolean isTabListEditorLongPressEntryEnabled() {
-        return sTabListEditorLongPressEntryEnabled;
+    /**
+     * @return Whether New tab button anchor for tab strip redesign is disabled.
+     */
+    public static boolean isTabStripNtbAnchorDisabled() {
+        return TAB_STRIP_REDESIGN_DISABLE_NTB_ANCHOR.getValue();
+    }
+
+    /**
+     * Whether the longpress entry for TabSelectionEditor is enabled. Currently only in tests.
+     */
+    public static boolean isTabSelectionEditorLongPressEntryEnabled() {
+        return sTabSelectionEditorLongPressEntryEnabled;
     }
 
     /**
@@ -113,76 +103,107 @@ public class TabUiFeatureUtilities {
                 && ChromeFeatureList.sDelayTempStripRemoval.isEnabled();
     }
 
-    /** Returns whether the Grid Tab Switcher UI should use list mode. */
-    public static boolean shouldUseListMode() {
-        // Low-end forces list mode.
-        return SysUtils.isLowEndDevice();
+    /**
+     * @return Whether the Grid Tab Switcher UI is enabled and available for use.
+     * @param context The activity context.
+     */
+    public static boolean isGridTabSwitcherEnabled(Context context) {
+        if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)) {
+            return true;
+        }
+
+        // Having Tab Groups or Start implies Grid Tab Switcher.
+        return isTabGroupsAndroidEnabled(context)
+                || ReturnToChromeUtil.isStartSurfaceEnabled(context);
+    }
+
+    /**
+     * @return Whether the Grid Tab Switcher UI should use list mode.
+     * @param context The activity context.
+     */
+    public static boolean shouldUseListMode(Context context) {
+        if (!isTabGroupsAndroidContinuationEnabled(context)) {
+            return false;
+        }
+        // Low-end forces list mode regardless of accessibility behavior.
+        if (GTS_LOW_END_SUPPORT.getValue() && SysUtils.isLowEndDevice()) {
+            return true;
+        }
+        if (GTS_ACCESSIBILITY_SUPPORT.getValue()
+                && ChromeAccessibilityUtil.get().isAccessibilityEnabled()) {
+            return GTS_ACCESSIBILITY_LIST_MODE.getValue();
+        }
+        return false;
+    }
+
+    /**
+     * @return Whether tab groups are enabled for tablet.
+     * @param context The activity context.
+     */
+    public static boolean isTabletTabGroupsEnabled(Context context) {
+        return DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)
+                && ChromeFeatureList.sTabGroupsForTablets.isEnabled()
+                && !DeviceClassManager.enableAccessibilityLayout(context);
+    }
+
+    /**
+     * @return Whether the tab group feature is enabled and available for use.
+     * @param context The activity context.
+     */
+    public static boolean isTabGroupsAndroidEnabled(Context context) {
+        // Disable tab group for tablet.
+        if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)) {
+            return isTabletTabGroupsEnabled(context);
+        }
+
+        return !DeviceClassManager.enableAccessibilityLayout(context)
+                && ChromeFeatureList.sTabGroupsAndroid.isEnabled();
+    }
+
+    /**
+     * @return Whether the tab group continuation feature is enabled and available for use.
+     * @param context The activity context.
+     */
+    public static boolean isTabGroupsAndroidContinuationEnabled(Context context) {
+        return isTabGroupsAndroidEnabled(context)
+                && ChromeFeatureList.sTabGroupsContinuationAndroid.isEnabled();
+    }
+
+    /**
+     * @return Whether the thumbnail_aspect_ratio field trail is set.
+     */
+    public static boolean isTabThumbnailAspectRatioNotOne() {
+        return Double.compare(1.0, THUMBNAIL_ASPECT_RATIO.getValue()) != 0;
     }
 
     /**
      * @return Whether the Tab-to-Grid (and Grid-to-Tab) transition animation is enabled.
      */
     public static boolean isTabToGtsAnimationEnabled(Context context) {
-        if (sIsTabToGtsAnimationEnabled == null || BuildConfig.IS_FOR_TEST) {
-            if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)) {
-                sIsTabToGtsAnimationEnabled = false;
-            } else {
-                Log.d(TAG, "GTS.MinMemoryMB = " + ZOOMING_MIN_MEMORY.getValue());
-                sIsTabToGtsAnimationEnabled =
-                        ChromeFeatureList.sTabToGTSAnimation.isEnabled()
-                                && SysUtils.amountOfPhysicalMemoryKB() / 1024
-                                        >= ZOOMING_MIN_MEMORY.getValue()
-                                && !shouldUseListMode();
-            }
-        }
-        return sIsTabToGtsAnimationEnabled;
+        Log.d(TAG, "GTS.MinMemoryMB = " + ZOOMING_MIN_MEMORY.getValue());
+        return ChromeFeatureList.sTabToGTSAnimation.isEnabled()
+                && SysUtils.amountOfPhysicalMemoryKB() / 1024 >= ZOOMING_MIN_MEMORY.getValue()
+                && !shouldUseListMode(context);
     }
 
     /**
-     * @return whether tab drag is enabled (either via drag as window or drag as tab).
-     *     TODO(crbug.com/1485628) - merge both flags and use device property instead to
-     *     differentiate.
+     * @return Whether the instant start is supported.
      */
-    public static boolean isTabDragEnabled() {
-        if (!MultiWindowUtils.isMultiInstanceApi31Enabled()) {
-            return false;
-        }
-        // Both flags should not be enabled together.
-        assert !(ChromeFeatureList.sTabLinkDragDropAndroid.isEnabled()
-                && isTabDragAsWindowEnabled());
-        return isTabDragAsWindowEnabled() || ChromeFeatureList.sTabLinkDragDropAndroid.isEnabled();
+    public static boolean supportInstantStart(boolean isTablet, Context context) {
+        return !DeviceClassManager.enableAccessibilityLayout(context)
+                && ChromeFeatureList.sInstantStart.isEnabled() && !isTablet
+                && !SysUtils.isLowEndDevice();
     }
+
+    public static Float sTabMinWidthForTesting;
 
     /**
-     * @return whether tab drag as window is enabled.
+     * @return Whether the "Open in new tab in group" context menu item should show before the
+     * "Open in new tab" item.
      */
-    public static boolean isTabDragAsWindowEnabled() {
-        return ChromeFeatureList.sTabDragDropAsWindowAndroid.isEnabled();
-    }
+    public static boolean showContextMenuOpenNewTabInGroupItemFirst() {
+        assert !ENABLE_TAB_GROUP_AUTO_CREATION.getValue();
 
-    public static Set getTabDragNonSplitModeAllowlist() {
-        if (sTabDragNonSplitManufacturerAllowlist == null) {
-            sTabDragNonSplitManufacturerAllowlist = new HashSet<>();
-
-            String allowlist = ENABLE_NON_SPLIT_MODE_TAB_DRAG_MANUFACTURER_ALLOWLIST.getValue();
-            if (allowlist != null && !allowlist.isEmpty()) {
-                Collections.addAll(sTabDragNonSplitManufacturerAllowlist, allowlist.split(","));
-            }
-        }
-        return sTabDragNonSplitManufacturerAllowlist;
-    }
-
-    /** Returns if the tab group pane should be displayed in the hub. */
-    public static boolean isTabGroupPaneEnabled() {
-        return ChromeFeatureList.sTabGroupPaneAndroid.isEnabled();
-    }
-
-    /** Returns whether drag drop from tab strip to create new instance is enabled. */
-    // TODO(crbug/328511660): This flag is similar with {@link #isTabDragAsWindowEnabled()}.
-    // Consider merge code logic.
-    public static boolean isTabTearingEnabled() {
-        // TODO(crbug/328511660): Add OS version check once available.
-        return ChromeFeatureList.sTabLinkDragDropAndroid.isEnabled()
-                && ChromeFeatureList.isEnabled(ChromeFeatureList.DRAG_DROP_TAB_TEARING);
+        return SHOW_OPEN_IN_TAB_GROUP_MENU_ITEM_FIRST.getValue();
     }
 }

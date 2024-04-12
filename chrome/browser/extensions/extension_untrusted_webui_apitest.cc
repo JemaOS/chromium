@@ -7,10 +7,9 @@
 #include "base/path_service.h"
 #include "base/strings/strcat.h"
 #include "base/threading/thread_restrictions.h"
+#include "build/build_config.h"
 #include "chrome/browser/extensions/extension_apitest.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -29,8 +28,7 @@ namespace {
 class ExtensionUntrustedWebUITest : public ExtensionApiTest {
  public:
   ExtensionUntrustedWebUITest() {
-    scoped_feature_list_.InitWithFeatures(
-        {features::kReadAnything, features::kReadAnythingLocalSidePanel}, {});
+    scoped_feature_list_.InitWithFeatures({features::kReadAnything}, {});
   }
 
   ~ExtensionUntrustedWebUITest() override = default;
@@ -63,12 +61,12 @@ class ExtensionUntrustedWebUITest : public ExtensionApiTest {
     ASSERT_TRUE(ui_test_utils::NavigateToURL(
         browser(), GURL("chrome-untrusted://api-test/title1.html")));
 
-    content::RenderFrameHost* render_frame_host = browser()
-                                                      ->tab_strip_model()
-                                                      ->GetActiveWebContents()
-                                                      ->GetPrimaryMainFrame();
-    ASSERT_TRUE(render_frame_host);
-    content::ExecuteScriptAsync(render_frame_host, script);
+    content::RenderFrameHost* rfh = browser()
+                                        ->tab_strip_model()
+                                        ->GetActiveWebContents()
+                                        ->GetPrimaryMainFrame();
+    ASSERT_TRUE(rfh);
+    content::ExecuteScriptAsync(rfh, script);
 
     EXPECT_TRUE(catcher.GetNextResult());
   }
@@ -93,27 +91,17 @@ class ExtensionUntrustedWebUITest : public ExtensionApiTest {
       script = "(function(){'use strict';" + script + "}());";
     }
 
-    // Run the test. Navigating to the URL will trigger the read anything
-    // navigation throttle and open the side panel instead of loading read
-    // anything in the main content area.
+    // Run the test.
     EXPECT_TRUE(ui_test_utils::NavigateToURL(
-        browser(), GURL(chrome::kChromeUIUntrustedReadAnythingSidePanelURL)));
-    // Get the side panel entry registry.
-    auto* side_panel_ui = SidePanelUI::GetSidePanelUIForBrowser(browser());
-    auto* side_panel_web_contents =
-        side_panel_ui->GetWebContentsForTest(SidePanelEntryId::kReadAnything);
-
-    if (!side_panel_web_contents) {
-      return testing::AssertionFailure() << "Failed to navigate to WebUI";
-    }
-    // Wait for the view to load before trying to run the test. This ensures
-    // that chrome.readingMode is set.
-    content::WaitForLoadStop(side_panel_web_contents);
-    // Eval the JS test.
-    bool result =
-        content::EvalJs(side_panel_web_contents, script).ExtractBool();
-    return result ? testing::AssertionSuccess()
-                  : (testing::AssertionFailure() << "Check console output");
+        browser(),
+        GURL("chrome-untrusted://read-anything-side-panel.top-chrome/")));
+    content::RenderFrameHost* webui = browser()
+                                          ->tab_strip_model()
+                                          ->GetActiveWebContents()
+                                          ->GetPrimaryMainFrame();
+    bool result = content::EvalJs(webui, script).ExtractBool();
+    return (result) ? testing::AssertionSuccess()
+                    : (testing::AssertionFailure() << "Check console output");
   }
 
  private:

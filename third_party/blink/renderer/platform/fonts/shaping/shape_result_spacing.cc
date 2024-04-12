@@ -58,13 +58,18 @@ void ShapeResultSpacing<TextRun>::SetSpacingAndExpansion(
     const FontDescription& font_description) {
   letter_spacing_ = font_description.LetterSpacing();
   word_spacing_ = font_description.WordSpacing();
-  expansion_ = 0;
-  has_spacing_ = letter_spacing_ || word_spacing_;
+  expansion_ = text_.Expansion();
+  has_spacing_ = letter_spacing_ || word_spacing_ || expansion_;
   if (!has_spacing_)
     return;
 
   normalize_space_ = text_.NormalizeSpace();
-  allow_tabs_ = false;
+  allow_tabs_ = text_.AllowTabs();
+
+  if (expansion_) {
+    ComputeExpansion(text_.AllowsLeadingExpansion(),
+                     text_.AllowsTrailingExpansion(), text_.Direction());
+  }
 }
 
 template <typename TextContainerType>

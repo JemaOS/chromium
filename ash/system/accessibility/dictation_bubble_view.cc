@@ -16,7 +16,6 @@
 #include "ash/strings/grit/ash_strings.h"
 #include "ash/style/ash_color_id.h"
 #include "ash/style/ash_color_provider.h"
-#include "base/memory/raw_ptr.h"
 #include "cc/paint/skottie_wrapper.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/accessibility/ax_enums.mojom.h"
@@ -38,13 +37,13 @@ namespace ash {
 
 namespace {
 constexpr int kIconSizeDip = 16;
-constexpr int kSpaceBetweenTopRowAndDictationHintViewsDip = 4;
+constexpr int kSpaceBetweenTopRowAndHintViewsDip = 4;
 constexpr int kSpaceBetweenHintLabelsDip = 4;
 constexpr int kSpaceBetweenIconAndTextDip = 4;
 constexpr int kMaxNumHints = 5;
 
 std::unique_ptr<views::ImageView> CreateImageView(
-    raw_ptr<views::ImageView>* destination_view,
+    views::ImageView** destination_view,
     const gfx::VectorIcon& icon) {
   return views::Builder<views::ImageView>()
       .CopyAddressTo(destination_view)
@@ -53,10 +52,9 @@ std::unique_ptr<views::ImageView> CreateImageView(
       .Build();
 }
 
-std::unique_ptr<views::Label> CreateLabelView(
-    raw_ptr<views::Label>* destination_view,
-    const std::u16string& text,
-    ui::ColorId enabled_color_id) {
+std::unique_ptr<views::Label> CreateLabelView(views::Label** destination_view,
+                                              const std::u16string& text,
+                                              ui::ColorId enabled_color_id) {
   return views::Builder<views::Label>()
       .CopyAddressTo(destination_view)
       .SetText(text)
@@ -90,9 +88,8 @@ int ToMessageId(DictationBubbleHintType hint_type) {
 // View for the Dictation bubble top row. Responsible for displaying icons,
 // animations, and non-finalized speech results.
 class ASH_EXPORT TopRowView : public views::View {
-  METADATA_HEADER(TopRowView, views::View)
-
  public:
+  METADATA_HEADER(TopRowView);
   TopRowView() {
     std::unique_ptr<views::BoxLayout> layout =
         std::make_unique<views::BoxLayout>(
@@ -116,7 +113,7 @@ class ASH_EXPORT TopRowView : public views::View {
   // Updates the visibility of all child views. Also updates the text content
   // of `label_` and updates the size of this view.
   void Update(DictationBubbleIconType icon,
-              const std::optional<std::u16string>& text) {
+              const absl::optional<std::u16string>& text) {
     // Update visibility.
     bool is_standby = icon == DictationBubbleIconType::kStandby;
     if (use_standby_animation_) {
@@ -154,7 +151,7 @@ class ASH_EXPORT TopRowView : public views::View {
   // can successfully be loaded. Otherwise, returns a std::unique_ptr<ImageView>
   // as a fallback.
   std::unique_ptr<views::View> CreateStandbyView() {
-    std::optional<std::string> json =
+    absl::optional<std::string> json =
         ui::ResourceBundle::GetSharedInstance().LoadDataResourceString(
             IDR_DICTATION_BUBBLE_ANIMATION);
     if (json.has_value()) {
@@ -174,22 +171,95 @@ class ASH_EXPORT TopRowView : public views::View {
 
   // Owned by the views hierarchy.
   // An animation that is shown when Dictation is standing by.
-  raw_ptr<views::AnimatedImageView> standby_animation_ = nullptr;
+  views::AnimatedImageView* standby_animation_ = nullptr;
   // An image that is shown when Dictation is standing by. Only used if the
   // above AnimatedImageView fails to initialize.
-  raw_ptr<views::ImageView> standby_image_ = nullptr;
+  views::ImageView* standby_image_ = nullptr;
   // If true, this view will use `standby_animation_`. Otherwise, will use
   // `standby_image_`.
   bool use_standby_animation_ = false;
   // An image that is shown when a macro is successfully run.
-  raw_ptr<views::ImageView> macro_succeeded_image_ = nullptr;
+  views::ImageView* macro_succeeded_image_ = nullptr;
   // An image that is shown when a macro fails to run.
-  raw_ptr<views::ImageView> macro_failed_image_ = nullptr;
+  views::ImageView* macro_failed_image_ = nullptr;
   // A label that displays non-final speech results.
-  raw_ptr<views::Label> label_ = nullptr;
+  views::Label* label_ = nullptr;
 };
 
-BEGIN_METADATA(TopRowView)
+// View responsible for showing hints for Dictation commands.
+class ASH_EXPORT HintView : public views::View {
+ public:
+  METADATA_HEADER(HintView);
+  HintView() {
+    std::unique_ptr<views::BoxLayout> layout =
+        std::make_unique<views::BoxLayout>(
+            views::BoxLayout::Orientation::kVertical);
+    layout->set_between_child_spacing(kSpaceBetweenHintLabelsDip);
+    SetLayoutManager(std::move(layout));
+
+    for (size_t i = 0; i < labels_.size(); ++i) {
+      // The first label should use the secondary text color. All other labels
+      // should use the primary text color.
+      ui::ColorId color_id =
+          i == 0 ? kColorAshTextColorSecondary : kColorAshTextColorPrimary;
+      AddChildView(CreateLabelView(&labels_[i], std::u16string(), color_id));
+    }
+  }
+
+  HintView(const HintView&) = delete;
+  HintView& operator=(const HintView&) = delete;
+  ~HintView() override = default;
+
+  // Updates the text content and visibility of all labels in this view.
+  void Update(
+      const absl::optional<std::vector<DictationBubbleHintType>>& hints) {
+    int num_visible_hints = 0;
+    if (hints.has_value()) {
+      DCHECK(hints.value().size() <= kMaxNumHints);
+      num_visible_hints = hints.value().size();
+    }
+
+    // Update labels.
+    for (size_t i = 0; i < labels_.size(); ++i) {
+      bool has_hint_for_index = hints.has_value() && (i < hints.value().size());
+      labels_[i]->SetVisible(has_hint_for_index);
+      if (has_hint_for_index) {
+        labels_[i]->SetText(
+            l10n_util::GetStringUTF16(ToMessageId(hints.value()[i])));
+      } else {
+        labels_[i]->SetText(std::u16string());
+      }
+    }
+
+    // Set visibility of this view based on the number of visible hints.
+    // If the hint view is visible, send an alert event so that ChromeVox reads
+    // hints to the user.
+    if (num_visible_hints > 0) {
+      SetVisible(true);
+      NotifyAccessibilityEvent(ax::mojom::Event::kAlert, true);
+    } else {
+      SetVisible(false);
+    }
+    SizeToPreferredSize();
+  }
+
+  // views::View:
+  void GetAccessibleNodeData(ui::AXNodeData* node_data) override {
+    node_data->role = ax::mojom::Role::kGenericContainer;
+  }
+
+ private:
+  friend class ash::DictationBubbleView;
+
+  // Labels containing hints for users of Dictation. A max of five hints can be
+  // shown at any given time.
+  std::vector<views::Label*> labels_{5, nullptr};
+};
+
+BEGIN_METADATA(TopRowView, views::View)
+END_METADATA
+
+BEGIN_METADATA(HintView, views::View)
 END_METADATA
 
 }  // namespace
@@ -205,8 +275,8 @@ DictationBubbleView::~DictationBubbleView() = default;
 
 void DictationBubbleView::Update(
     DictationBubbleIconType icon,
-    const std::optional<std::u16string>& text,
-    const std::optional<std::vector<DictationBubbleHintType>>& hints) {
+    const absl::optional<std::u16string>& text,
+    const absl::optional<std::vector<DictationBubbleHintType>>& hints) {
   top_row_view_->Update(icon, text);
   hint_view_->Update(hints);
   SizeToContents();
@@ -215,13 +285,12 @@ void DictationBubbleView::Update(
 void DictationBubbleView::Init() {
   std::unique_ptr<views::BoxLayout> layout = std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical);
-  layout->set_between_child_spacing(
-      kSpaceBetweenTopRowAndDictationHintViewsDip);
+  layout->set_between_child_spacing(kSpaceBetweenTopRowAndHintViewsDip);
   SetLayoutManager(std::move(layout));
   UseCompactMargins();
 
   top_row_view_ = AddChildView(std::make_unique<TopRowView>());
-  hint_view_ = AddChildView(std::make_unique<DictationHintView>());
+  hint_view_ = AddChildView(std::make_unique<HintView>());
 }
 
 void DictationBubbleView::OnBeforeBubbleWidgetInit(
@@ -275,63 +344,7 @@ std::vector<std::u16string> DictationBubbleView::GetVisibleHintsForTesting() {
   return hints;
 }
 
-BEGIN_METADATA(DictationBubbleView)
-END_METADATA
-
-DictationHintView::DictationHintView() {
-  std::unique_ptr<views::BoxLayout> layout = std::make_unique<views::BoxLayout>(
-      views::BoxLayout::Orientation::kVertical);
-  layout->set_between_child_spacing(kSpaceBetweenHintLabelsDip);
-  SetLayoutManager(std::move(layout));
-
-  for (size_t i = 0; i < labels_.size(); ++i) {
-    // The first label should use the secondary text color. All other labels
-    // should use the primary text color.
-    ui::ColorId color_id =
-        i == 0 ? kColorAshTextColorSecondary : kColorAshTextColorPrimary;
-    AddChildView(CreateLabelView(&labels_[i], std::u16string(), color_id));
-  }
-}
-
-DictationHintView::~DictationHintView() = default;
-
-void DictationHintView::Update(
-    const std::optional<std::vector<DictationBubbleHintType>>& hints) {
-  int num_visible_hints = 0;
-  if (hints.has_value()) {
-    DCHECK(hints.value().size() <= kMaxNumHints);
-    num_visible_hints = hints.value().size();
-  }
-
-  // Update labels.
-  for (size_t i = 0; i < labels_.size(); ++i) {
-    bool has_hint_for_index = hints.has_value() && (i < hints.value().size());
-    labels_[i]->SetVisible(has_hint_for_index);
-    if (has_hint_for_index) {
-      labels_[i]->SetText(
-          l10n_util::GetStringUTF16(ToMessageId(hints.value()[i])));
-    } else {
-      labels_[i]->SetText(std::u16string());
-    }
-  }
-
-  // Set visibility of this view based on the number of visible hints.
-  // If the hint view is visible, send an alert event so that ChromeVox reads
-  // hints to the user.
-  if (num_visible_hints > 0) {
-    SetVisible(true);
-    NotifyAccessibilityEvent(ax::mojom::Event::kAlert, true);
-  } else {
-    SetVisible(false);
-  }
-  SizeToPreferredSize();
-}
-
-void DictationHintView::GetAccessibleNodeData(ui::AXNodeData* node_data) {
-  node_data->role = ax::mojom::Role::kGenericContainer;
-}
-
-BEGIN_METADATA(DictationHintView)
+BEGIN_METADATA(DictationBubbleView, views::View)
 END_METADATA
 
 }  // namespace ash

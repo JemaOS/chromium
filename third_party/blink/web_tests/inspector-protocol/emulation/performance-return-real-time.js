@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   let {page, session, dp} = await testRunner.startHTML(`
     <script>
       // Function returns true if the JavaScript time does advance during the

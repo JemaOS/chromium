@@ -7,24 +7,21 @@
  * 'privacy-guide-history-sync-fragment' is the fragment in a privacy guide
  * card that contains the history sync setting and its description.
  */
-import '/shared/settings/prefs/prefs.js';
+import 'chrome://resources/cr_components/settings_prefs/prefs.js';
 import './privacy_guide_description_item.js';
 import './privacy_guide_fragment_shared.css.js';
 import './privacy_guide_fragment_shared.css.js';
 import '../../controls/settings_toggle_button.js';
 
-import type {SyncBrowserProxy, SyncPrefs} from '/shared/settings/people_page/sync_browser_proxy.js';
-import {SyncBrowserProxyImpl, syncPrefsIndividualDataTypes} from '/shared/settings/people_page/sync_browser_proxy.js';
+import {SyncBrowserProxy, SyncBrowserProxyImpl, SyncPrefs, syncPrefsIndividualDataTypes} from '/shared/settings/people_page/sync_browser_proxy.js';
 import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener_mixin.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {BaseMixin} from '../../base_mixin.js';
-import type {SettingsToggleButtonElement} from '../../controls/settings_toggle_button.js';
-import type {MetricsBrowserProxy} from '../../metrics_browser_proxy.js';
-import {MetricsBrowserProxyImpl, PrivacyGuideSettingsStates, PrivacyGuideStepsEligibleAndReached} from '../../metrics_browser_proxy.js';
+import {SettingsToggleButtonElement} from '../../controls/settings_toggle_button.js';
+import {MetricsBrowserProxy, MetricsBrowserProxyImpl, PrivacyGuideSettingsStates, PrivacyGuideStepsEligibleAndReached} from '../../metrics_browser_proxy.js';
 import {routes} from '../../route.js';
-import type {Route} from '../../router.js';
-import {RouteObserverMixin, Router} from '../../router.js';
+import {Route, RouteObserverMixin, Router} from '../../router.js';
 
 import {PrivacyGuideStep} from './constants.js';
 import {getTemplate} from './privacy_guide_history_sync_fragment.html.js';
@@ -103,11 +100,6 @@ export class PrivacyGuideHistorySyncFragmentElement extends
   }
 
   override focus() {
-    // The fragment element is focused when it becomes visible. Move the focus
-    // to the fragment header, so that the newly shown content of the fragment
-    // is downwards from the focus position. This allows users of screen readers
-    // to continue navigating the screen reader position downwards through the
-    // newly visible content.
     this.shadowRoot!.querySelector<HTMLElement>('[focus-element]')!.focus();
   }
 

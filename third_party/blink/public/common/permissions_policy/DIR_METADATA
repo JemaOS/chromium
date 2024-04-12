@@ -1,1 +1,3 @@
-mixins: "//third_party/blink/common/permissions_policy/COMMON_METADATA"
+monorail {
+  component: "Blink>FeaturePolicy"
+}

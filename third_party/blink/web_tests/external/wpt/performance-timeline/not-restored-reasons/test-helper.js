@@ -1,46 +1,36 @@
-// META: script=../../html/browsers/browsing-the-web/back-forward-cache/resources/rc-helper.js
-
 async function assertNotRestoredReasonsEquals(
-    remoteContextHelper, url, src, id, name, reasons, children) {
+    remoteContextHelper, blocked, url, src, id, name, reasons, children) {
   let result = await remoteContextHelper.executeScript(() => {
     return performance.getEntriesByType('navigation')[0].notRestoredReasons;
   });
   assertReasonsStructEquals(
-      result, url, src, id, name, reasons, children);
+      result, blocked, url, src, id, name, reasons, children);
 }
 
 function assertReasonsStructEquals(
-    result, url, src, id, name, reasons, children) {
+    result, blocked, url, src, id, name, reasons, children) {
+  assert_equals(result.blocked, blocked);
   assert_equals(result.url, url);
   assert_equals(result.src, src);
   assert_equals(result.id, id);
   assert_equals(result.name, name);
-
   // Reasons should match.
-  let expected = new Set(reasons);
-  let actual = new Set(result.reasons);
-  matchReasons(extractReason(expected), extractReason(actual));
-
+  assert_equals(result.reasons.length, reasons.length);
+  reasons.sort();
+  result.reasons.sort();
+  for (let i = 0; i < reasons.length; i++) {
+    assert_equals(result.reasons[i], reasons[i]);
+  }
   // Children should match.
-  if (children == null) {
-    assert_equals(result.children, children);
-  } else {
-    for (let j = 0; j < children.length; j++) {
-      assertReasonsStructEquals(
-          result.children[0], children[0].url,
-          children[0].src, children[0].id, children[0].name, children[0].reasons,
-          children[0].children);
-    }
+  assert_equals(result.children.length, children.length);
+  children.sort();
+  result.children.sort();
+  for (let j = 0; j < children.length; j++) {
+    assertReasonsStructEquals(
+        result.children[0], children[0].blocked, children[0].url,
+        children[0].src, children[0].id, children[0].name, children[0].reasons,
+        children[0].children);
   }
-}
-
-function ReasonsInclude(reasons, targetReason) {
-  for (const reason of reasons) {
-    if (reason.reason == targetReason) {
-      return true;
-    }
-  }
-  return false;
 }
 
 // Requires:

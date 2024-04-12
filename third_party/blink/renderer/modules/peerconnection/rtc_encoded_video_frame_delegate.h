@@ -31,16 +31,13 @@ class RTCEncodedVideoFrameDelegate
       std::unique_ptr<webrtc::TransformableVideoFrameInterface> webrtc_frame);
 
   String Type() const;
-  uint32_t RtpTimestamp() const;
-  bool SetRtpTimestamp(uint32_t timestamp, String& error_message);
-  std::optional<webrtc::Timestamp> PresentationTimestamp() const;
+  uint32_t Timestamp() const;
+  absl::optional<webrtc::Timestamp> CaptureTimeIdentifier() const;
   DOMArrayBuffer* CreateDataBuffer() const;
   void SetData(const DOMArrayBuffer* data);
-  std::optional<uint8_t> PayloadType() const;
-  std::optional<std::string> MimeType() const;
-  std::optional<webrtc::VideoFrameMetadata> GetMetadata() const;
-  bool SetMetadata(const webrtc::VideoFrameMetadata& metadata,
-                   String& error_message);
+  absl::optional<uint8_t> PayloadType() const;
+  absl::optional<webrtc::VideoFrameMetadata> GetMetadata() const;
+  void SetMetadata(const webrtc::VideoFrameMetadata& metadata);
   std::unique_ptr<webrtc::TransformableVideoFrameInterface> PassWebRtcFrame();
   std::unique_ptr<webrtc::TransformableVideoFrameInterface> CloneWebRtcFrame();
 

@@ -15,7 +15,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 
-import androidx.test.core.app.ApplicationProvider;
+import androidx.test.InstrumentationRegistry;
 import androidx.test.filters.LargeTest;
 
 import org.junit.Assert;
@@ -30,7 +30,6 @@ import org.chromium.base.task.TaskTraits;
 import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.DisabledTest;
-import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.MinAndroidSdkLevel;
 import org.chromium.chrome.browser.document.ChromeLauncherActivity;
@@ -52,7 +51,6 @@ import java.util.concurrent.TimeoutException;
 /** Integration tests for WebAPK feature. */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
-@DoNotBatch(reason = "Tests activity start behavior")
 public class WebApkIntegrationTest {
     public final WebApkActivityTestRule mActivityTestRule = new WebApkActivityTestRule();
 
@@ -60,8 +58,9 @@ public class WebApkIntegrationTest {
             new MockCertVerifierRuleAndroid(0 /* net::OK */);
 
     @Rule
-    public RuleChain mRuleChain =
-            RuleChain.emptyRuleChain().around(mActivityTestRule).around(mCertVerifierRule);
+    public RuleChain mRuleChain = RuleChain.emptyRuleChain()
+                                          .around(mActivityTestRule)
+                                          .around(mCertVerifierRule);
 
     private static final long STARTUP_TIMEOUT = 15000L;
 
@@ -70,13 +69,14 @@ public class WebApkIntegrationTest {
         mActivityTestRule.getEmbeddedTestServerRule().setServerUsesHttps(true);
         Uri mapToUri =
                 Uri.parse(mActivityTestRule.getEmbeddedTestServerRule().getServer().getURL("/"));
-        CommandLine.getInstance()
-                .appendSwitchWithValue(
-                        ContentSwitches.HOST_RESOLVER_RULES, "MAP * " + mapToUri.getAuthority());
+        CommandLine.getInstance().appendSwitchWithValue(
+                ContentSwitches.HOST_RESOLVER_RULES, "MAP * " + mapToUri.getAuthority());
         WebApkValidator.setDisableValidationForTesting(true);
     }
 
-    /** Tests that sending deep link intent to WebAPK launches WebAPK Activity. */
+    /**
+     * Tests that sending deep link intent to WebAPK launches WebAPK Activity.
+     */
     @Test
     @LargeTest
     @Feature({"Webapps"})
@@ -87,7 +87,7 @@ public class WebApkIntegrationTest {
         intent.setPackage("org.chromium.webapk.test");
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-        ApplicationProvider.getApplicationContext().startActivity(intent);
+        InstrumentationRegistry.getTargetContext().startActivity(intent);
 
         WebappActivity lastActivity =
                 ChromeActivityTestRule.waitFor(WebappActivity.class, STARTUP_TIMEOUT);
@@ -96,15 +96,15 @@ public class WebApkIntegrationTest {
     }
 
     /**
-     * Tests that Chrome will trampoline out to WebAPKs if they exist but are not verified. See
-     * https://crbug.com/1232514
+     * Tests that Chrome will trampoline out to WebAPKs if they exist but are not verified.
+     * See https://crbug.com/1232514
      */
     @Test
     @LargeTest
     @Feature({"Webapps"})
     @MinAndroidSdkLevel(Build.VERSION_CODES.S)
     public void testWebApkTrampoline() {
-        Context targetContext = ApplicationProvider.getApplicationContext();
+        Context targetContext = InstrumentationRegistry.getTargetContext();
         String pageUrl = "https://pwa-directory.appspot.com/defaultresponse";
 
         // Make a standard browsable Intent to a page within the WebAPK's scope.
@@ -126,7 +126,9 @@ public class WebApkIntegrationTest {
         ChromeActivityTestRule.waitFor(WebappActivity.class, STARTUP_TIMEOUT);
     }
 
-    /** Tests launching WebAPK via POST share intent. */
+    /**
+     * Tests launching WebAPK via POST share intent.
+     */
     @Test
     @LargeTest
     @Feature({"Webapps"})
@@ -143,7 +145,7 @@ public class WebApkIntegrationTest {
         intent.putExtra(Intent.EXTRA_TEXT, sharedText);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-        ApplicationProvider.getApplicationContext().startActivity(intent);
+        InstrumentationRegistry.getTargetContext().startActivity(intent);
 
         WebappActivity lastActivity =
                 ChromeActivityTestRule.waitFor(WebappActivity.class, STARTUP_TIMEOUT);
@@ -151,9 +153,8 @@ public class WebApkIntegrationTest {
 
         Tab tab = lastActivity.getActivityTab();
         ChromeTabUtils.waitForTabPageLoaded(tab, expectedShareUrl);
-        String postDataJson =
-                JavaScriptUtils.executeJavaScriptAndWaitForResult(
-                        tab.getWebContents(), "document.getElementsByTagName('pre')[0].innerText");
+        String postDataJson = JavaScriptUtils.executeJavaScriptAndWaitForResult(
+                tab.getWebContents(), "document.getElementsByTagName('pre')[0].innerText");
         assertEquals("\"title=Fun+tea+parties\\ntext=Boston\\n\"", postDataJson);
     }
 
@@ -163,15 +164,14 @@ public class WebApkIntegrationTest {
      */
     @Test
     @LargeTest
+    @DisabledTest(message = "https://crbug.com/1246127")
     @Feature({"Webapps"})
     public void testWebApkServiceIntegration() throws Exception {
-        Context context = ApplicationProvider.getApplicationContext();
+        Context context = InstrumentationRegistry.getTargetContext();
 
         // Launch WebAPK in order to cache host browser.
-        Intent intent =
-                new Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse("https://pwa-directory.appspot.com/defaultresponse"));
+        Intent intent = new Intent(
+                Intent.ACTION_VIEW, Uri.parse("https://pwa-directory.appspot.com/defaultresponse"));
         intent.setPackage("org.chromium.webapk.test");
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
@@ -184,13 +184,9 @@ public class WebApkIntegrationTest {
                 res.getIdentifier("notification_badge", "drawable", "org.chromium.webapk.test");
 
         CallbackHelper callbackHelper = new CallbackHelper();
-        WebApkServiceConnectionManager connectionManager =
-                new WebApkServiceConnectionManager(
-                        TaskTraits.UI_DEFAULT,
-                        WebApkServiceClient.CATEGORY_WEBAPK_API,
-                        /* action= */ null);
-        connectionManager.connect(
-                ApplicationProvider.getApplicationContext(),
+        WebApkServiceConnectionManager connectionManager = new WebApkServiceConnectionManager(
+                TaskTraits.UI_DEFAULT, WebApkServiceClient.CATEGORY_WEBAPK_API, null /* action */);
+        connectionManager.connect(InstrumentationRegistry.getTargetContext(),
                 "org.chromium.webapk.test",
                 new WebApkServiceConnectionManager.ConnectionCallback() {
                     @Override

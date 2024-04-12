@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_ASH_POLICY_REPORTING_USER_ADDED_REMOVED_USER_ADDED_REMOVED_REPORTER_H_
 
 #include <memory>
-#include <string_view>
 
 #include "base/containers/flat_map.h"
 #include "base/scoped_observation.h"
@@ -41,12 +40,12 @@ class UserAddedRemovedReporter
 
   ~UserAddedRemovedReporter() override;
 
-  // Check the UserManager removed user cache for users removed before
+  // Check the ChromeUserManager removed user cache for users removed before
   // the reporter is created.
   void ProcessRemoveUserCache();
 
   // Processes the removed user.
-  void ProcessRemovedUser(std::string_view user_email,
+  void ProcessRemovedUser(base::StringPiece user_email,
                           user_manager::UserRemovalReason reason);
 
   // ManagedSessionService::Observer overrides.

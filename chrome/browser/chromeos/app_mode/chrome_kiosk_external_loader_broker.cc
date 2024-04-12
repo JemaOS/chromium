@@ -9,7 +9,7 @@
 #include "chrome/browser/extensions/external_provider_impl.h"
 #include "extensions/common/extension_urls.h"
 
-namespace chromeos {
+namespace ash {
 
 namespace {
 static ChromeKioskExternalLoaderBroker* g_broker_instance = nullptr;
@@ -101,4 +101,4 @@ void ChromeKioskExternalLoaderBroker::CallSecondaryAppObserver() {
   }
 }
 
-}  // namespace chromeos
+}  // namespace ash

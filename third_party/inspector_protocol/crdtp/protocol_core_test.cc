@@ -351,18 +351,18 @@ class TestTypeOptional : public ProtocolObject<TestTypeOptional> {
  public:
   TestTypeOptional() = default;
 
-  bool HasIntField() const { return int_field_.has_value(); }
-  int GetIntField() const { return int_field_.value(); }
+  bool HasIntField() const { return int_field_.isJust(); }
+  int GetIntField() const { return int_field_.fromJust(); }
   void SetIntField(int value) { int_field_ = value; }
 
-  bool HasStrField() { return str_field_.has_value(); }
-  const std::string& GetStrField() const { return str_field_.value(); }
+  bool HasStrField() { return str_field_.isJust(); }
+  const std::string& GetStrField() const { return str_field_.fromJust(); }
   void SetStrField(std::string value) { str_field_ = std::move(value); }
 
-  bool HasTestTypeBasicField() { return test_type_basic_field_.has_value(); }
+  bool HasTestTypeBasicField() { return test_type_basic_field_.isJust(); }
   const TestTypeBasic* GetTestTypeBasicField() const {
-    return test_type_basic_field_.has_value() ? &test_type_basic_field_.value()
-                                              : nullptr;
+    return test_type_basic_field_.isJust() ? test_type_basic_field_.fromJust()
+                                           : nullptr;
   }
   void SetTestTypeBasicField(std::unique_ptr<TestTypeBasic> value) {
     test_type_basic_field_ = std::move(value);

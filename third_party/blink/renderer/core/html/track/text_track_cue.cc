@@ -60,7 +60,7 @@ void TextTrackCue::CueDidChange(CueMutationAffectsOrder affects_order) {
 }
 
 TextTrack* TextTrackCue::track() const {
-  return track_.Get();
+  return track_;
 }
 
 void TextTrackCue::SetTrack(TextTrack* track) {
@@ -135,7 +135,7 @@ const AtomicString& TextTrackCue::InterfaceName() const {
 
 void TextTrackCue::Trace(Visitor* visitor) const {
   visitor->Trace(track_);
-  EventTarget::Trace(visitor);
+  EventTargetWithInlineData::Trace(visitor);
 }
 
 }  // namespace blink

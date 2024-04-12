@@ -10,19 +10,14 @@
 #include <string>
 
 #include "build/build_config.h"
-#include "net/base/host_port_pair.h"
 #include "net/ssl/client_cert_identity.h"
 
-struct AccountInfo;
 class GURL;
 class PrefRegistrySimple;
 class Profile;
 
 namespace chrome {
 namespace enterprise_util {
-
-// Represents which type of managed environment we have.
-enum class ManagementEnvironment { kNone, kSchool, kWork };
 
 // Determines whether the browser with `profile` as its primary profile is
 // managed. This is determined by looking it there are any policies applied or
@@ -32,11 +27,6 @@ bool IsBrowserManaged(Profile* profile);
 // Extracts the domain from provided |email| if it's an email address and
 // returns an empty string, otherwise.
 std::string GetDomainFromEmail(const std::string& email);
-
-// Returns an HTTPS URL for the host and port identified by `host_port_pair`.
-// This is intended to be used to build a `requesting_url` for
-// `AutoSelectCertificates`.
-GURL GetRequestingUrl(const net::HostPortPair host_port_pair);
 
 // Partitions |client_certs| according to the value of the
 // |ContentSettingsType::AUTO_SELECT_CERTIFICATE| content setting for the
@@ -68,15 +58,20 @@ bool UserAcceptedAccountManagement(Profile* profile);
 // management through the enterprise account confirmation dialog.
 bool ProfileCanBeManaged(Profile* profile);
 
-ManagementEnvironment GetManagementEnvironment(Profile* profile,
-                                               const AccountInfo& account_info);
-
 // Checks `email_domain` against the list of pre-defined known consumer domains.
 // Use this for optimization purposes when you want to skip some code paths for
 // most non-managed (=consumer) users with domains like gmail.com. Note that it
 // can still return `false` for consumer domains which are not hardcoded in
 // implementation.
 bool IsKnownConsumerDomain(const std::string& email_domain);
+
+#if BUILDFLAG(IS_ANDROID)
+
+// Returns the UTF8-encoded string representation of the entity that manages
+// `profile` or nullopt if unmanaged. `profile` must be not-null.
+std::string GetBrowserManagerName(Profile* profile);
+
+#endif  // BUILDFLAG(IS_ANDROID)
 
 }  // namespace enterprise_util
 }  // namespace chrome

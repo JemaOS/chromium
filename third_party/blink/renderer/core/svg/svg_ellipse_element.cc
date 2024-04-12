@@ -24,7 +24,6 @@
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_ellipse.h"
 #include "third_party/blink/renderer/core/svg/svg_animated_length.h"
 #include "third_party/blink/renderer/core/svg/svg_length.h"
-#include "third_party/blink/renderer/core/svg/svg_length_functions.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 
 namespace blink {
@@ -54,7 +53,12 @@ SVGEllipseElement::SVGEllipseElement(Document& document)
           svg_names::kRyAttr,
           SVGLengthMode::kHeight,
           SVGLength::Initial::kUnitlessZero,
-          CSSPropertyID::kRy)) {}
+          CSSPropertyID::kRy)) {
+  AddToPropertyMap(cx_);
+  AddToPropertyMap(cy_);
+  AddToPropertyMap(rx_);
+  AddToPropertyMap(ry_);
+}
 
 void SVGEllipseElement::Trace(Visitor* visitor) const {
   visitor->Trace(cx_);
@@ -67,11 +71,11 @@ void SVGEllipseElement::Trace(Visitor* visitor) const {
 Path SVGEllipseElement::AsPath() const {
   Path path;
 
-  const SVGViewportResolver viewport_resolver(*this);
+  SVGLengthContext length_context(this);
   const ComputedStyle& style = ComputedStyleRef();
 
   gfx::Vector2dF radii =
-      VectorForLengthPair(style.Rx(), style.Ry(), viewport_resolver, style);
+      length_context.ResolveLengthPair(style.Rx(), style.Ry(), style);
   if (style.Rx().IsAuto())
     radii.set_x(radii.y());
   else if (style.Ry().IsAuto())
@@ -79,8 +83,8 @@ Path SVGEllipseElement::AsPath() const {
   if (radii.x() < 0 || radii.y() < 0 || (!radii.x() && !radii.y()))
     return path;
 
-  gfx::PointF center =
-      PointForLengthPair(style.Cx(), style.Cy(), viewport_resolver, style);
+  gfx::PointF center = gfx::PointAtOffsetFromOrigin(
+      length_context.ResolveLengthPair(style.Cx(), style.Cy(), style));
   path.AddEllipse(center, radii.x(), radii.y());
   return path;
 }
@@ -91,16 +95,16 @@ void SVGEllipseElement::CollectStyleForPresentationAttribute(
     MutableCSSPropertyValueSet* style) {
   SVGAnimatedPropertyBase* property = PropertyFromAttribute(name);
   if (property == cx_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kCx,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             cx_->CssValue());
   } else if (property == cy_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kCy,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             cy_->CssValue());
   } else if (property == rx_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kRx,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             rx_->CssValue());
   } else if (property == ry_) {
-    AddPropertyToPresentationAttributeStyle(style, CSSPropertyID::kRy,
+    AddPropertyToPresentationAttributeStyle(style, property->CssPropertyId(),
                                             ry_->CssValue());
   } else {
     SVGGeometryElement::CollectStyleForPresentationAttribute(name, value,
@@ -129,40 +133,6 @@ bool SVGEllipseElement::SelfHasRelativeLengths() const {
 
 LayoutObject* SVGEllipseElement::CreateLayoutObject(const ComputedStyle&) {
   return MakeGarbageCollected<LayoutSVGEllipse>(this);
-}
-
-SVGAnimatedPropertyBase* SVGEllipseElement::PropertyFromAttribute(
-    const QualifiedName& attribute_name) const {
-  if (attribute_name == svg_names::kCxAttr) {
-    return cx_.Get();
-  } else if (attribute_name == svg_names::kCyAttr) {
-    return cy_.Get();
-  } else if (attribute_name == svg_names::kRxAttr) {
-    return rx_.Get();
-  } else if (attribute_name == svg_names::kRyAttr) {
-    return ry_.Get();
-  } else {
-    return SVGGeometryElement::PropertyFromAttribute(attribute_name);
-  }
-}
-
-void SVGEllipseElement::SynchronizeAllSVGAttributes() const {
-  SVGAnimatedPropertyBase* attrs[]{cx_.Get(), cy_.Get(), rx_.Get(), ry_.Get()};
-  SynchronizeListOfSVGAttributes(attrs);
-  SVGGeometryElement::SynchronizeAllSVGAttributes();
-}
-
-void SVGEllipseElement::CollectExtraStyleForPresentationAttribute(
-    MutableCSSPropertyValueSet* style) {
-  for (auto* property : (SVGAnimatedPropertyBase*[]){cx_.Get(), cy_.Get(),
-                                                     rx_.Get(), ry_.Get()}) {
-    DCHECK(property->HasPresentationAttributeMapping());
-    if (property->IsAnimating()) {
-      CollectStyleForPresentationAttribute(property->AttributeName(),
-                                           g_empty_atom, style);
-    }
-  }
-  SVGGeometryElement::CollectExtraStyleForPresentationAttribute(style);
 }
 
 }  // namespace blink

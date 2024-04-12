@@ -23,9 +23,9 @@ namespace ash {
 // static
 std::string DemoSetupScreen::GetResultString(Result result) {
   switch (result) {
-    case Result::kCompleted:
+    case Result::COMPLETED:
       return "Completed";
-    case Result::kCanceled:
+    case Result::CANCELED:
       return "Canceled";
   }
 }
@@ -50,9 +50,9 @@ void DemoSetupScreen::OnUserAction(const base::Value::List& args) {
   if (action_id == kUserActionStartSetup) {
     StartEnrollment();
   } else if (action_id == kUserActionClose) {
-    exit_callback_.Run(Result::kCanceled);
+    exit_callback_.Run(Result::CANCELED);
   } else if (action_id == kUserActionPowerwash) {
-    SessionManagerClient::Get()->StartDeviceWipe(base::DoNothing());
+    SessionManagerClient::Get()->StartDeviceWipe();
   } else {
     BaseScreen::OnUserAction(args);
   }
@@ -92,7 +92,7 @@ void DemoSetupScreen::OnSetupError(
 }
 
 void DemoSetupScreen::OnSetupSuccess() {
-  exit_callback_.Run(Result::kCompleted);
+  exit_callback_.Run(Result::COMPLETED);
 }
 
 }  // namespace ash

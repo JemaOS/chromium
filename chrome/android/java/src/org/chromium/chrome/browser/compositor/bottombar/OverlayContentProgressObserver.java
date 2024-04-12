@@ -4,10 +4,14 @@
 
 package org.chromium.chrome.browser.compositor.bottombar;
 
-/** Default implementation of an observer of events on the progress bar. */
+/**
+ * Default implementation of an observer of events on the progress bar.
+ */
 public class OverlayContentProgressObserver {
 
-    /** Called when the progress bar would start showing (loading started). */
+    /**
+     * Called when the progress bar would start showing (loading started).
+     */
     public void onProgressBarStarted() {}
 
     /**
@@ -16,6 +20,8 @@ public class OverlayContentProgressObserver {
      */
     public void onProgressBarUpdated(float progress) {}
 
-    /** Called when the progress bar has finished. */
+    /**
+     * Called when the progress bar has finished.
+     */
     public void onProgressBarFinished() {}
 }

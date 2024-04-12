@@ -60,11 +60,11 @@ class WebPrescientNetworking;
 namespace {
 
 // Decide the prerender type based on the link rel attribute. Returns
-// std::nullopt if the attribute doesn't indicate the prerender type.
-std::optional<mojom::blink::PrerenderTriggerType>
+// absl::nullopt if the attribute doesn't indicate the prerender type.
+absl::optional<mojom::blink::PrerenderTriggerType>
 PrerenderTriggerTypeFromRelAttribute(const LinkRelAttribute& rel_attribute,
                                      Document& document) {
-  std::optional<mojom::blink::PrerenderTriggerType> trigger_type;
+  absl::optional<mojom::blink::PrerenderTriggerType> trigger_type;
   if (rel_attribute.IsLinkPrerender()) {
     UseCounter::Count(document, WebFeature::kLinkRelPrerender);
     trigger_type = mojom::blink::PrerenderTriggerType::kLinkRelPrerender;
@@ -141,9 +141,8 @@ bool LinkLoader::LoadLink(const LinkLoadParameters& params,
     PreloadHelper::PrefetchIfNeeded(params, document, pending_preload_);
   PreloadHelper::ModulePreloadIfNeeded(
       params, document, nullptr /* viewport_description */, pending_preload_);
-  PreloadHelper::FetchDictionaryIfNeeded(params, document, pending_preload_);
 
-  std::optional<mojom::blink::PrerenderTriggerType> trigger_type =
+  absl::optional<mojom::blink::PrerenderTriggerType> trigger_type =
       PrerenderTriggerTypeFromRelAttribute(params.rel, document);
   if (trigger_type) {
     // The previous prerender should already be aborted by Abort().
@@ -167,6 +166,8 @@ void LinkLoader::LoadStylesheet(
 
   mojom::blink::FetchPriorityHint fetch_priority_hint =
       GetFetchPriorityAttributeValue(params.fetch_priority_hint);
+  DCHECK(fetch_priority_hint == mojom::blink::FetchPriorityHint::kAuto ||
+         RuntimeEnabledFeatures::PriorityHintsEnabled(context));
   resource_request.SetFetchPriorityHint(fetch_priority_hint);
 
   ResourceLoaderOptions options(context->GetCurrentWorld());

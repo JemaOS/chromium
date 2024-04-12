@@ -25,19 +25,17 @@ BorealisServiceFactory::BorealisServiceFactory()
     : ProfileKeyedServiceFactory(
           "BorealisService",
           ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kRedirectedToOriginal)
-              .WithGuest(ProfileSelection::kNone)
-              .WithAshInternals(ProfileSelection::kNone)
-              .WithSystem(ProfileSelection::kNone)
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
               .Build()) {}
 
 BorealisServiceFactory::~BorealisServiceFactory() = default;
 
-std::unique_ptr<KeyedService>
-BorealisServiceFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* BorealisServiceFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<BorealisServiceImpl>(
-      Profile::FromBrowserContext(context));
+  return new BorealisServiceImpl(Profile::FromBrowserContext(context));
 }
 
 bool BorealisServiceFactory::ServiceIsCreatedWithBrowserContext() const {

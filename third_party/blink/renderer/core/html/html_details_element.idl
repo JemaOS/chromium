@@ -23,5 +23,4 @@
     HTMLConstructor
 ] interface HTMLDetailsElement : HTMLElement {
     [CEReactions, Reflect] attribute boolean open;
-    [CEReactions, Reflect] attribute DOMString name;
 };

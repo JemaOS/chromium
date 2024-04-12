@@ -5,7 +5,6 @@
 #include "chrome/browser/ash/app_list/search/test/test_search_controller.h"
 
 #include "ash/public/cpp/app_list/app_list_types.h"
-#include "base/functional/bind.h"
 #include "chrome/browser/ash/app_list/search/search_provider.h"
 
 namespace app_list {
@@ -24,33 +23,32 @@ void TestSearchController::ClearSearch() {
 
 void TestSearchController::StartSearch(const std::u16string& query) {
   // The search controller used when categorical search is enabled clears all
-  // results when starting another search query - simulate this behavior in
+  // results when starging another search query - simulate this behavior in
   // tests when categorical search is enabled.
   if (!ash::IsZeroStateResultType(provider_->ResultType())) {
     last_results_.clear();
   }
-  provider_->Start(query, base::BindRepeating(&TestSearchController::SetResults,
-                                              base::Unretained(this)));
+  provider_->Start(query);
 }
 
 void TestSearchController::StartZeroState(base::OnceClosure on_done,
                                           base::TimeDelta timeout) {
   last_results_.clear();
-  provider_->StartZeroState(base::BindRepeating(
-      &TestSearchController::SetResults, base::Unretained(this)));
+  provider_->StartZeroState();
 }
 
 void TestSearchController::AddProvider(
     std::unique_ptr<SearchProvider> provider) {
   DCHECK(!provider_);
   provider_ = std::move(provider);
+  provider_->set_controller(this);
 }
 
-void TestSearchController::SetResults(ash::AppListSearchResultType result_type,
+void TestSearchController::SetResults(const SearchProvider* provider,
                                       Results results) {
   last_results_ = std::move(results);
   if (results_changed_callback_) {
-    results_changed_callback_.Run(result_type);
+    results_changed_callback_.Run(provider->ResultType());
   }
 }
 

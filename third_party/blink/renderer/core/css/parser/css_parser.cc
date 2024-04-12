@@ -47,17 +47,14 @@ base::span<CSSSelector> CSSParser::ParseSelector(
     const CSSParserContext* context,
     CSSNestingType nesting_type,
     StyleRule* parent_rule_for_nesting,
-    bool is_within_scope,
     StyleSheetContents* style_sheet_contents,
     const String& selector,
     HeapVector<CSSSelector>& arena) {
   CSSTokenizer tokenizer(selector);
   const auto tokens = tokenizer.TokenizeToEOF();
-  return CSSSelectorParser::ParseSelector(
-      CSSParserTokenRange(tokens), context, nesting_type,
-      parent_rule_for_nesting, is_within_scope,
-      /* semicolon_aborts_nested_selector */ false, style_sheet_contents,
-      arena);
+  return CSSSelectorParser::ParseSelector(CSSParserTokenRange(tokens), context,
+                                          nesting_type, parent_rule_for_nesting,
+                                          style_sheet_contents, arena);
 }
 
 CSSSelectorList* CSSParser::ParsePageSelector(
@@ -101,7 +98,7 @@ void CSSParser::ParseSheetForInspector(const CSSParserContext* context,
 MutableCSSPropertyValueSet::SetResult CSSParser::ParseValue(
     MutableCSSPropertyValueSet* declaration,
     CSSPropertyID unresolved_property,
-    StringView string,
+    const String& string,
     bool important,
     const ExecutionContext* execution_context) {
   return ParseValue(
@@ -144,7 +141,7 @@ static inline const CSSParserContext* GetParserContext(
 MutableCSSPropertyValueSet::SetResult CSSParser::ParseValue(
     MutableCSSPropertyValueSet* declaration,
     CSSPropertyID unresolved_property,
-    StringView string,
+    const String& string,
     bool important,
     SecureContextMode secure_context_mode,
     StyleSheetContents* style_sheet,
@@ -156,12 +153,10 @@ MutableCSSPropertyValueSet::SetResult CSSParser::ParseValue(
 
   CSSPropertyID resolved_property = ResolveCSSPropertyID(unresolved_property);
   CSSParserMode parser_mode = declaration->CssParserMode();
-  const CSSParserContext* context = GetParserContext(
-      secure_context_mode, style_sheet, execution_context, parser_mode);
 
   // See if this property has a specific fast-path parser.
-  const CSSValue* value =
-      CSSParserFastPaths::MaybeParseValue(resolved_property, string, context);
+  const CSSValue* value = CSSParserFastPaths::MaybeParseValue(
+      resolved_property, string, parser_mode);
   if (value) {
     return declaration->SetLonghandProperty(CSSPropertyValue(
         CSSPropertyName(resolved_property), *value, important));
@@ -175,6 +170,8 @@ MutableCSSPropertyValueSet::SetResult CSSParser::ParseValue(
   //
   // We only allow this path in standards mode, which rules out situations
   // like @font-face parsing etc. (which have their own rules).
+  const CSSParserContext* context = GetParserContext(
+      secure_context_mode, style_sheet, execution_context, parser_mode);
   const CSSProperty& property = CSSProperty::Get(resolved_property);
   if (parser_mode == kHTMLStandardMode && property.IsProperty() &&
       !property.IsShorthand()) {
@@ -196,7 +193,7 @@ MutableCSSPropertyValueSet::SetResult CSSParser::ParseValue(
 MutableCSSPropertyValueSet::SetResult CSSParser::ParseValueForCustomProperty(
     MutableCSSPropertyValueSet* declaration,
     const AtomicString& property_name,
-    StringView value,
+    const String& value,
     bool important,
     SecureContextMode secure_context_mode,
     StyleSheetContents* style_sheet,
@@ -224,7 +221,7 @@ MutableCSSPropertyValueSet::SetResult CSSParser::ParseValueForCustomProperty(
 MutableCSSPropertyValueSet::SetResult CSSParser::ParseValue(
     MutableCSSPropertyValueSet* declaration,
     CSSPropertyID unresolved_property,
-    StringView string,
+    const String& string,
     bool important,
     const CSSParserContext* context) {
   DCHECK(ThreadState::Current()->IsAllocationAllowed());
@@ -239,8 +236,8 @@ const CSSValue* CSSParser::ParseSingleValue(CSSPropertyID property_id,
   if (string.empty()) {
     return nullptr;
   }
-  if (CSSValue* value =
-          CSSParserFastPaths::MaybeParseValue(property_id, string, context)) {
+  if (CSSValue* value = CSSParserFastPaths::MaybeParseValue(property_id, string,
+                                                            context->Mode())) {
     return value;
   }
   CSSTokenizer tokenizer(string);
@@ -258,10 +255,9 @@ ImmutableCSSPropertyValueSet* CSSParser::ParseInlineStyleDeclaration(
 ImmutableCSSPropertyValueSet* CSSParser::ParseInlineStyleDeclaration(
     const String& style_string,
     CSSParserMode parser_mode,
-    SecureContextMode secure_context_mode,
-    const Document* document) {
-  return CSSParserImpl::ParseInlineStyleDeclaration(
-      style_string, parser_mode, secure_context_mode, document);
+    SecureContextMode secure_context_mode) {
+  return CSSParserImpl::ParseInlineStyleDeclaration(style_string, parser_mode,
+                                                    secure_context_mode);
 }
 
 std::unique_ptr<Vector<KeyframeOffset>> CSSParser::ParseKeyframeKeyList(
@@ -276,10 +272,6 @@ StyleRuleKeyframe* CSSParser::ParseKeyframeRule(const CSSParserContext* context,
       rule, context, CSSNestingType::kNone, /*parent_rule_for_nesting=*/nullptr,
       nullptr, CSSParserImpl::kKeyframeRules);
   return To<StyleRuleKeyframe>(keyframe);
-}
-
-String CSSParser::ParseCustomPropertyName(const String& name_text) {
-  return CSSParserImpl::ParseCustomPropertyName(name_text);
 }
 
 bool CSSParser::ParseSupportsCondition(
@@ -350,14 +342,13 @@ bool CSSParser::ParseColor(Color& color, const String& string, bool strict) {
 
 bool CSSParser::ParseSystemColor(Color& color,
                                  const String& color_string,
-                                 mojom::blink::ColorScheme color_scheme,
-                                 const ui::ColorProvider* color_provider) {
+                                 mojom::blink::ColorScheme color_scheme) {
   CSSValueID id = CssValueKeywordID(color_string);
   if (!StyleColor::IsSystemColorIncludingDeprecated(id)) {
     return false;
   }
 
-  color = LayoutTheme::GetTheme().SystemColor(id, color_scheme, color_provider);
+  color = LayoutTheme::GetTheme().SystemColor(id, color_scheme);
   return true;
 }
 

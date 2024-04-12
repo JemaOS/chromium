@@ -43,19 +43,6 @@
 namespace blink {
 
 namespace {
-// Spacing, in degrees, between every azimuth loaded from resource.
-constexpr unsigned kAzimuthSpacing = 15;
-
-// Number of azimuths loaded from resource.
-constexpr unsigned kNumberOfRawAzimuths = 360 / kAzimuthSpacing;
-
-// Interpolates by this factor to get the total number of azimuths from every
-// azimuth loaded from resource.
-constexpr unsigned kInterpolationFactor = 8;
-
-// Total number of azimuths after interpolation.
-constexpr unsigned kNumberOfTotalAzimuths =
-    kNumberOfRawAzimuths * kInterpolationFactor;
 
 // Total number of components of an HRTF database.
 constexpr size_t kTotalNumberOfResponses = 240;
@@ -188,7 +175,7 @@ bool HRTFElevation::CalculateKernelsForAzimuthElevation(
   // order. So for a given azimuth and elevation we need to compute
   // the index of the wanted audio frames in the concatenated table.
   unsigned index =
-      ((azimuth / kAzimuthSpacing) * HRTFDatabase::NumberOfRawElevations()) +
+      ((azimuth / kAzimuthSpacing) * HRTFDatabase::kNumberOfRawElevations) +
       elevation_index;
   DCHECK_LE(index, kTotalNumberOfResponses);
 
@@ -283,16 +270,17 @@ std::unique_ptr<HRTFElevation> HRTFElevation::CreateForSubject(
     }
   }
 
-  std::unique_ptr<HRTFElevation> hrtf_elevation =
-      base::WrapUnique(new HRTFElevation(std::move(kernel_list_l),
-                                         std::move(kernel_list_r), elevation));
+  std::unique_ptr<HRTFElevation> hrtf_elevation = base::WrapUnique(
+      new HRTFElevation(std::move(kernel_list_l), std::move(kernel_list_r),
+                        elevation, sample_rate));
   return hrtf_elevation;
 }
 
 std::unique_ptr<HRTFElevation> HRTFElevation::CreateByInterpolatingSlices(
     HRTFElevation* hrtf_elevation1,
     HRTFElevation* hrtf_elevation2,
-    float x) {
+    float x,
+    float sample_rate) {
   DCHECK(hrtf_elevation1);
   DCHECK(hrtf_elevation2);
 
@@ -318,17 +306,13 @@ std::unique_ptr<HRTFElevation> HRTFElevation::CreateByInterpolatingSlices(
   }
 
   // Interpolate elevation angle.
-  const double angle = (1.0 - x) * hrtf_elevation1->elevation_angle_ +
-                       x * hrtf_elevation2->elevation_angle_;
+  const double angle = (1.0 - x) * hrtf_elevation1->ElevationAngle() +
+                       x * hrtf_elevation2->ElevationAngle();
 
   std::unique_ptr<HRTFElevation> hrtf_elevation = base::WrapUnique(
       new HRTFElevation(std::move(kernel_list_l), std::move(kernel_list_r),
-                        static_cast<int>(angle)));
+                        static_cast<int>(angle), sample_rate));
   return hrtf_elevation;
-}
-
-unsigned HRTFElevation::NumberOfAzimuths() {
-  return kNumberOfTotalAzimuths;
 }
 
 void HRTFElevation::GetKernelsFromAzimuth(double azimuth_blend,

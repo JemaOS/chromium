@@ -5,7 +5,7 @@
 #include <tuple>
 #include <vector>
 
-#include "base/memory/raw_ptr.h"
+#include "base/test/scoped_feature_list.h"
 #include "chrome/browser/sync/test/integration/contact_info_helper.h"
 #include "chrome/browser/sync/test/integration/status_change_checker.h"
 #include "chrome/browser/sync/test/integration/sync_test.h"
@@ -13,6 +13,7 @@
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/personal_data_manager.h"
 #include "components/autofill/core/browser/personal_data_manager_observer.h"
+#include "components/autofill/core/common/autofill_features.h"
 #include "components/sync/base/features.h"
 #include "components/sync/test/fake_server_http_post_provider.h"
 #include "content/public/test/browser_test.h"
@@ -37,8 +38,7 @@ class AutofillProfilesEqualChecker
     : public StatusChangeChecker,
       public autofill::PersonalDataManagerObserver {
  public:
-  explicit AutofillProfilesEqualChecker(
-      std::vector<raw_ptr<Profile, VectorExperimental>> profiles) {
+  explicit AutofillProfilesEqualChecker(std::vector<Profile*> profiles) {
     for (Profile* profile : profiles) {
       pdms_.push_back(contact_info_helper::GetPersonalDataManager(profile));
       pdms_.back()->AddObserver(this);
@@ -74,12 +74,21 @@ class AutofillProfilesEqualChecker
   void OnPersonalDataChanged() override { CheckExitCondition(); }
 
  private:
-  std::vector<raw_ptr<PersonalDataManager, VectorExperimental>> pdms_;
+  std::vector<PersonalDataManager*> pdms_;
 };
 
 class TwoClientContactInfoSyncTest : public SyncTest {
  public:
-  TwoClientContactInfoSyncTest() : SyncTest(TWO_CLIENT) {}
+  TwoClientContactInfoSyncTest() : SyncTest(TWO_CLIENT) {
+    features_.InitWithFeatures(
+        /*enabled_features=*/{syncer::kSyncEnableContactInfoDataType,
+                              autofill::features::
+                                  kAutofillAccountProfilesUnionView},
+        /*disabled_features=*/{});
+  }
+
+ private:
+  base::test::ScopedFeatureList features_;
 };
 
 IN_PROC_BROWSER_TEST_F(TwoClientContactInfoSyncTest, SyncAddUpdateDelete) {

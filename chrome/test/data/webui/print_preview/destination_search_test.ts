@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {DestinationStore, PrintPreviewDestinationDialogElement} from 'chrome://print/print_preview.js';
-import {Destination, DestinationOrigin, DestinationStoreEventType, NativeLayerImpl} from 'chrome://print/print_preview.js';
+import {Destination, DestinationOrigin, DestinationStore, DestinationStoreEventType, NativeLayerImpl, PrintPreviewDestinationDialogElement} from 'chrome://print/print_preview.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {assertEquals, assertNotEquals} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
@@ -11,7 +10,17 @@ import {eventToPromise} from 'chrome://webui-test/test_util.js';
 import {NativeLayerStub} from './native_layer_stub.js';
 import {createDestinationStore, getCddTemplate, setupTestListenerElement} from './print_preview_test_utils.js';
 
-suite('DestinationSearchTest', function() {
+const destination_search_test = {
+  suiteName: 'DestinationSearchTest',
+  TestNames: {
+    GetCapabilitiesSucceeds: 'get capabilities succeeds',
+    GetCapabilitiesFails: 'get capabilities fails',
+  },
+};
+
+Object.assign(window, {destination_search_test: destination_search_test});
+
+suite(destination_search_test.suiteName, function() {
   let dialog: PrintPreviewDestinationDialogElement;
 
   let destinationStore: DestinationStore;
@@ -30,7 +39,7 @@ suite('DestinationSearchTest', function() {
     nativeLayer.setLocalDestinationCapabilities(
         getCddTemplate('FooDevice', 'FooName'));
     destinationStore.init(
-        false /* pdfPrinterDisabled */, true /* saveToDriveDisabled */,
+        false /* pdfPrinterDisabled */, false /* isDriveMounted */,
         'FooDevice' /* printerName */,
         '' /* serializedDefaultDestinationSelectionRulesStr */,
         [] /* recentDestinations */);
@@ -75,7 +84,8 @@ suite('DestinationSearchTest', function() {
   // Tests that a destination is selected if the user clicks on it and
   // capabilities fetch succeeds.
   test(
-      'GetCapabilitiesSucceeds', async function() {
+      destination_search_test.TestNames.GetCapabilitiesSucceeds,
+      async function() {
         const destId = '00112233DEADBEEF';
         nativeLayer.setLocalDestinationCapabilities(getCddTemplate(destId));
 
@@ -94,14 +104,16 @@ suite('DestinationSearchTest', function() {
 
   // Tests what happens when capabilities cannot be retrieved for the chosen
   // destination. The destination will still be selected in this case.
-  test('GetCapabilitiesFails', async function() {
-    const destId = '001122DEADBEEF';
-    nativeLayer.setLocalDestinationCapabilities(getCddTemplate(destId), true);
-    requestSetup(destId);
-    const args = await nativeLayer.whenCalled('getPrinterCapabilities');
-    assertEquals(destId, args.destinationId);
-    // The destination is selected even though capabilities cannot be
-    // retrieved.
-    assertEquals(destId, destinationStore.selectedDestination!.id);
-  });
+  test(
+      destination_search_test.TestNames.GetCapabilitiesFails, async function() {
+        const destId = '001122DEADBEEF';
+        nativeLayer.setLocalDestinationCapabilities(
+            getCddTemplate(destId), true);
+        requestSetup(destId);
+        const args = await nativeLayer.whenCalled('getPrinterCapabilities');
+        assertEquals(destId, args.destinationId);
+        // The destination is selected even though capabilities cannot be
+        // retrieved.
+        assertEquals(destId, destinationStore.selectedDestination!.id);
+      });
 });

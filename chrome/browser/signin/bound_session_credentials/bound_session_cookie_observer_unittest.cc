@@ -10,14 +10,18 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
+#include "base/run_loop.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "chrome/browser/signin/bound_session_credentials/bound_session_test_cookie_manager.h"
-#include "content/public/test/test_storage_partition.h"
+#include "components/signin/public/base/test_signin_client.h"
+#include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "net/cookies/canonical_cookie.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
+
+using signin::ConsentLevel;
 
 namespace {
 constexpr char kSIDTSCookieName[] = "__Secure-1PSIDTS";
@@ -25,7 +29,9 @@ constexpr char kSIDTSCookieName[] = "__Secure-1PSIDTS";
 class BoundSessionCookieObserverTest : public testing::Test {
  public:
   const GURL kGaiaUrl = GURL("https://google.com");
-  BoundSessionCookieObserverTest() { ResetCookieManager(); }
+  BoundSessionCookieObserverTest() : signin_client_(&prefs_) {
+    ResetCookieManager();
+  }
 
   ~BoundSessionCookieObserverTest() override = default;
 
@@ -33,7 +39,7 @@ class BoundSessionCookieObserverTest : public testing::Test {
     if (!bound_session_cookie_observer_) {
       bound_session_cookie_observer_ =
           std::make_unique<BoundSessionCookieObserver>(
-              &storage_partition_, kGaiaUrl, kSIDTSCookieName,
+              &signin_client_, kGaiaUrl, kSIDTSCookieName,
               base::BindRepeating(
                   &BoundSessionCookieObserverTest::UpdateExpirationDate,
                   base::Unretained(this)));
@@ -41,12 +47,10 @@ class BoundSessionCookieObserverTest : public testing::Test {
   }
 
   void ResetCookieManager() {
-    auto cookie_manager = std::make_unique<BoundSessionTestCookieManager>();
-    storage_partition_.set_cookie_manager_for_browser_process(
-        cookie_manager.get());
-    // Reset storage partition's cookie manager before resetting
-    // `cookie_manager_` to avoid having a dangling raw pointer.
-    cookie_manager_ = std::move(cookie_manager);
+    std::unique_ptr<BoundSessionTestCookieManager> fake_cookie_manager =
+        std::make_unique<BoundSessionTestCookieManager>();
+    cookie_manager_ = fake_cookie_manager.get();
+    signin_client_.set_cookie_manager(std::move(fake_cookie_manager));
   }
 
   void Reset() {
@@ -57,30 +61,30 @@ class BoundSessionCookieObserverTest : public testing::Test {
   }
 
   void SetNextCookieChangeCallback(
-      base::OnceCallback<void(const std::string&, base::Time)> callback) {
+      base::OnceCallback<void(base::Time)> callback) {
     // Old expectations should have been verified.
     EXPECT_FALSE(on_cookie_change_callback_);
     on_cookie_change_callback_ = std::move(callback);
   }
 
-  void UpdateExpirationDate(const std::string& cookie_name,
-                            base::Time expiration_date) {
+  void UpdateExpirationDate(base::Time expiration_date) {
     update_expiration_date_call_count_++;
     cookie_expiration_date_ = expiration_date;
     if (on_cookie_change_callback_) {
-      std::move(on_cookie_change_callback_).Run(cookie_name, expiration_date);
+      std::move(on_cookie_change_callback_).Run(expiration_date);
     }
   }
 
  protected:
   base::test::TaskEnvironment task_environment_;
-  std::unique_ptr<BoundSessionTestCookieManager> cookie_manager_;
-  content::TestStoragePartition storage_partition_;
+  sync_preferences::TestingPrefServiceSyncable prefs_;
+  TestSigninClient signin_client_;
+
+  raw_ptr<BoundSessionTestCookieManager> cookie_manager_;
   std::unique_ptr<BoundSessionCookieObserver> bound_session_cookie_observer_;
   size_t update_expiration_date_call_count_ = 0;
   base::Time cookie_expiration_date_;
-  base::OnceCallback<void(const std::string&, base::Time)>
-      on_cookie_change_callback_;
+  base::OnceCallback<void(base::Time)> on_cookie_change_callback_;
 };
 
 TEST_F(BoundSessionCookieObserverTest, CookieAvailableOnStartup) {
@@ -112,13 +116,12 @@ TEST_F(BoundSessionCookieObserverTest, CookieInserted) {
   // Insert event.
   net::CanonicalCookie cookie =
       BoundSessionTestCookieManager::CreateCookie(kGaiaUrl, kSIDTSCookieName);
-  base::test::TestFuture<const std::string&, base::Time> future;
+  base::test::TestFuture<base::Time> future;
   SetNextCookieChangeCallback(future.GetCallback());
   cookie_manager_->DispatchCookieChange(net::CookieChangeInfo(
       cookie, net::CookieAccessResult(), net::CookieChangeCause::INSERTED));
 
-  EXPECT_EQ(future.Get<0>(), cookie.Name());
-  EXPECT_EQ(future.Get<1>(), cookie.ExpiryDate());
+  EXPECT_EQ(cookie.ExpiryDate(), future.Get());
   EXPECT_EQ(update_expiration_date_call_count_, 1u);
   EXPECT_EQ(cookie_expiration_date_, cookie.ExpiryDate());
 }
@@ -158,13 +161,12 @@ TEST_F(BoundSessionCookieObserverTest, CookieDeleted) {
       update_expiration_date_call_count_;
   for (auto cookie_change_cause : cookie_deleted) {
     SCOPED_TRACE(net::CookieChangeCauseToString(cookie_change_cause));
-    base::test::TestFuture<const std::string&, base::Time> future;
+    base::test::TestFuture<base::Time> future;
     SetNextCookieChangeCallback(future.GetCallback());
     cookie_manager_->DispatchCookieChange(net::CookieChangeInfo(
         cookie, net::CookieAccessResult(), cookie_change_cause));
     expected_update_expiration_date_call_count++;
-    EXPECT_EQ(future.Get<0>(), cookie.Name());
-    EXPECT_EQ(future.Get<1>(), base::Time());
+    EXPECT_EQ(future.Get(), base::Time());
     EXPECT_EQ(update_expiration_date_call_count_,
               expected_update_expiration_date_call_count);
     EXPECT_TRUE(cookie_expiration_date_.is_null());
@@ -177,12 +179,11 @@ TEST_F(BoundSessionCookieObserverTest, CookieExpired) {
   net::CanonicalCookie cookie = BoundSessionTestCookieManager::CreateCookie(
       kGaiaUrl, kSIDTSCookieName, base::Time::Now() - base::Minutes(1));
 
-  base::test::TestFuture<const std::string&, base::Time> future;
+  base::test::TestFuture<base::Time> future;
   SetNextCookieChangeCallback(future.GetCallback());
   cookie_manager_->DispatchCookieChange(net::CookieChangeInfo(
       cookie, net::CookieAccessResult(), net::CookieChangeCause::EXPIRED));
-  EXPECT_EQ(future.Get<0>(), cookie.Name());
-  EXPECT_EQ(future.Get<1>(), cookie.ExpiryDate());
+  EXPECT_EQ(future.Get(), cookie.ExpiryDate());
   EXPECT_EQ(update_expiration_date_call_count_, 2u);
   EXPECT_EQ(cookie_expiration_date_, cookie.ExpiryDate());
 }
@@ -197,7 +198,7 @@ TEST_F(BoundSessionCookieObserverTest, OnCookieChangeListenerConnectionError) {
   EXPECT_EQ(update_expiration_date_call_count_, 1u);
   EXPECT_EQ(cookie_expiration_date_, cookie.ExpiryDate());
 
-  base::test::TestFuture<const std::string&, base::Time> future_removed;
+  base::test::TestFuture<base::Time> future_removed;
   SetNextCookieChangeCallback(future_removed.GetCallback());
 
   // Reset the cookie manager to simulate
@@ -207,19 +208,19 @@ TEST_F(BoundSessionCookieObserverTest, OnCookieChangeListenerConnectionError) {
   ResetCookieManager();
 
   // Expect a notification that the cookie was removed.
-  EXPECT_EQ(future_removed.Get<1>(), base::Time());
+  EXPECT_EQ(base::Time(), future_removed.Get());
   EXPECT_EQ(update_expiration_date_call_count_, 2u);
   EXPECT_TRUE(cookie_expiration_date_.is_null());
 
   // Trigger a cookie change to verify the cookie listener has been hooked up
   // to the new `cookie_manager_`.
   // Insert event.
-  base::test::TestFuture<const std::string&, base::Time> future_inserted;
+  base::test::TestFuture<base::Time> future_inserted;
   SetNextCookieChangeCallback(future_inserted.GetCallback());
   cookie_manager_->DispatchCookieChange(net::CookieChangeInfo(
       cookie, net::CookieAccessResult(), net::CookieChangeCause::INSERTED));
 
-  EXPECT_EQ(future_inserted.Get<1>(), cookie.ExpiryDate());
+  EXPECT_EQ(cookie.ExpiryDate(), future_inserted.Get());
   EXPECT_EQ(update_expiration_date_call_count_, 3u);
   EXPECT_EQ(cookie_expiration_date_, cookie.ExpiryDate());
 }

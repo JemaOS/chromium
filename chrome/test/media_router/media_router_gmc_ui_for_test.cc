@@ -21,7 +21,7 @@ namespace media_router {
 MediaRouterGmcUiForTest::MediaRouterGmcUiForTest(
     content::WebContents* web_contents)
     : MediaRouterUiForTestBase(web_contents),
-      browser_(chrome::FindBrowserWithTab(web_contents)) {
+      browser_(chrome::FindBrowserWithWebContents(web_contents)) {
   DCHECK(browser_);
 }
 
@@ -55,14 +55,6 @@ CastDialogView::SourceType MediaRouterGmcUiForTest::GetChosenSourceType()
     const {
   NOTIMPLEMENTED();
   return CastDialogView::SourceType();
-}
-
-void MediaRouterGmcUiForTest::StartCasting(const std::string& sink_name) {
-  ClickOnView(GetSinkButton(sink_name));
-}
-
-void MediaRouterGmcUiForTest::StopCasting(const std::string& sink_name) {
-  NOTIMPLEMENTED();
 }
 
 std::string MediaRouterGmcUiForTest::GetRouteIdForSink(
@@ -133,7 +125,7 @@ CastDeviceEntryView* MediaRouterGmcUiForTest::GetDeviceView(
 
 void MediaRouterGmcUiForTest::ObserveDialog(
     WatchType watch_type,
-    std::optional<std::string> sink_name) {
+    absl::optional<std::string> sink_name) {
   CHECK(!watch_sink_name_);
   CHECK(!watch_callback_);
   CHECK_EQ(watch_type_, WatchType::kNone);

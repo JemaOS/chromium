@@ -14,8 +14,8 @@ import {ActivationStateType, CrosNetworkConfigRemote, InhibitReason, SecurityTyp
 import {ConnectionStateType, NetworkType, OncSource, PortalState} from 'chrome://resources/mojo/chromeos/services/network_config/public/mojom/network_types.mojom-webui.js';
 import {keyDownOn} from 'chrome://resources/polymer/v3_0/iron-test-helpers/mock-interactions.js';
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import {FakeNetworkConfig} from 'chrome://webui-test/chromeos/fake_network_config_mojom.js';
-import {FakeESimManagerRemote} from 'chrome://webui-test/cr_components/chromeos/cellular_setup/fake_esim_manager_remote.js';
+import {FakeNetworkConfig} from 'chrome://test/chromeos/fake_network_config_mojom.js';
+import {FakeESimManagerRemote} from 'chrome://test/cr_components/chromeos/cellular_setup/fake_esim_manager_remote.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
 
 suite('NetworkListItemTest', function() {
@@ -47,16 +47,14 @@ suite('NetworkListItemTest', function() {
     flush();
   }
 
-  function initCellularNetwork(iccid, eid, simLocked, simLockType, name) {
+  function initCellularNetwork(iccid, eid, simLocked, name) {
     const properties = OncMojo.getDefaultManagedProperties(
         NetworkType.kCellular, 'cellular', name);
     properties.typeProperties.cellular.iccid = iccid;
     properties.typeProperties.cellular.eid = eid;
     properties.typeProperties.cellular.simLocked = simLocked;
     mojoApi_.setManagedPropertiesForTest(properties);
-    const networkState = OncMojo.managedPropertiesToNetworkState(properties);
-    networkState.typeState.cellular.simLockType = simLockType;
-    return networkState;
+    return OncMojo.managedPropertiesToNetworkState(properties);
   }
 
   function setEventListeners() {
@@ -165,8 +163,7 @@ suite('NetworkListItemTest', function() {
     const euicc = eSimManagerRemote.addEuiccForTest(/*numProfiles=*/ 1);
     const providerName = 'provider1';
     listItem.item = initCellularNetwork(
-        /*iccid=*/ '1', /*eid=*/ '1', /*simlock=*/ false, /*simlocktype*/ '',
-        'nickname');
+        /*iccid=*/ '1', /*eid=*/ '1', /*simlock=*/ false, 'nickname');
     await flushAsync();
     assertEquals(
         listItem.i18n('networkListItemTitle', 'nickname', providerName),
@@ -175,29 +172,26 @@ suite('NetworkListItemTest', function() {
     // Change eSIM network's name to the same as provider name, verifies that
     // the title only show the network name.
     listItem.item = initCellularNetwork(
-        /*iccid=*/ '1', /*eid=*/ '1', /*simlock=*/ false, /*simlocktype*/ '',
-        providerName);
+        /*iccid=*/ '1', /*eid=*/ '1', /*simlock=*/ false, providerName);
     await flushAsync();
     assertEquals(providerName, getTitle());
   });
 
-  test('Network title does not allow XSS', async () => {
+  test('Network title is escaped', async () => {
     init();
 
-    const getTitle = () => {
-      const element = listItem.$$('#itemTitle');
-      return element ? element.textContent.trim() : '';
+    listItem.item = {
+      customItemType: NetworkList.CustomItemType.ESIM_PENDING_PROFILE,
+      customItemName: '<a>Bad Name</a>',
+      customItemSubtitle: '<a>Bad Subtitle</a>',
+      polymerIcon: 'network:cellular-0',
+      showBeforeNetworksList: false,
+      customData: {
+        iccid: 'iccid',
+      },
     };
-
-    eSimManagerRemote.addEuiccForTest(/*numProfiles=*/ 1);
-
-    const badName = '<script>alert("Bad Name");</script>';
-    listItem.item = initCellularNetwork(
-        /*iccid=*/ '1', /*eid=*/ '1', /*simlock=*/ false,
-        /*simlocktype*/ '', /*name=*/ badName);
     await flushAsync();
-    assertTrue(!!listItem);
-    assertTrue(getTitle().startsWith(badName));
+    assertFalse(!!listItem.$$('a'));
   });
 
   test('Pending activation pSIM UI visibility', async () => {
@@ -211,7 +205,6 @@ suite('NetworkListItemTest', function() {
     // Set item to an activated pSIM network first.
     const managedPropertiesActivated =
         OncMojo.getDefaultManagedProperties(NetworkType.kCellular, 'cellular');
-    managedPropertiesActivated.typeProperties.cellular.iccid = '100000';
     managedPropertiesActivated.typeProperties.cellular.activationState =
         ActivationStateType.kActivated;
     managedPropertiesActivated.typeProperties.cellular.paymentPortal = {
@@ -229,11 +222,9 @@ suite('NetworkListItemTest', function() {
     assertTrue(sublabel.hidden);
 
     // Set item to an unactivated eSIM network with a payment URL.
-    eSimManagerRemote.addEuiccForTest(/*numProfiles=*/ 1);
     const managedPropertiesESimNotActivated =
         OncMojo.getDefaultManagedProperties(NetworkType.kCellular, 'cellular');
     managedPropertiesESimNotActivated.typeProperties.cellular.eid = 'eid';
-    managedPropertiesESimNotActivated.typeProperties.cellular.iccid = '100000';
     managedPropertiesESimNotActivated.typeProperties.cellular.activationState =
         ActivationStateType.kNotActivated;
     managedPropertiesESimNotActivated.typeProperties.cellular.paymentPortal = {
@@ -252,7 +243,6 @@ suite('NetworkListItemTest', function() {
     // Set item to an unactivated pSIM network with a payment URL.
     const managedPropertiesNotActivated =
         OncMojo.getDefaultManagedProperties(NetworkType.kCellular, 'cellular');
-    managedPropertiesNotActivated.typeProperties.cellular.iccid = '100000';
     managedPropertiesNotActivated.typeProperties.cellular.activationState =
         ActivationStateType.kNotActivated;
     managedPropertiesNotActivated.typeProperties.cellular.paymentPortal = {
@@ -307,11 +297,9 @@ suite('NetworkListItemTest', function() {
     assertFalse(!!listItem.$$('#activateButton'));
 
     // Set item to an unactivated eSIM network without a payment URL.
-    eSimManagerRemote.addEuiccForTest(/*numProfiles=*/ 1);
     const managedPropertiesESimUnavailable =
         OncMojo.getDefaultManagedProperties(NetworkType.kCellular, 'cellular');
     managedPropertiesESimUnavailable.typeProperties.cellular.eid = 'eid';
-    managedPropertiesESimUnavailable.typeProperties.cellular.iccid = '100000';
     managedPropertiesESimUnavailable.typeProperties.cellular.activationState =
         ActivationStateType.kNotActivated;
     managedPropertiesESimUnavailable.typeProperties.cellular.paymentPortal = {};
@@ -341,7 +329,6 @@ suite('NetworkListItemTest', function() {
     // Set item to an unactivated pSIM network without a payment URL.
     const managedPropertiesUnavailable =
         OncMojo.getDefaultManagedProperties(NetworkType.kCellular, 'cellular');
-    managedPropertiesUnavailable.typeProperties.cellular.iccid = '1000000';
     managedPropertiesUnavailable.typeProperties.cellular.activationState =
         ActivationStateType.kNotActivated;
     managedPropertiesUnavailable.typeProperties.cellular.paymentPortal = {};
@@ -378,7 +365,6 @@ suite('NetworkListItemTest', function() {
     // Set item to an activated pSIM network first.
     const managedPropertiesActivated =
         OncMojo.getDefaultManagedProperties(NetworkType.kCellular, 'cellular');
-    managedPropertiesActivated.typeProperties.cellular.iccid = '100000';
     managedPropertiesActivated.typeProperties.cellular.activationState =
         ActivationStateType.kActivated;
     mojoApi_.setManagedPropertiesForTest(managedPropertiesActivated);
@@ -391,12 +377,10 @@ suite('NetworkListItemTest', function() {
     assertFalse(!!listItem.$$('#activatingPSimSpinner'));
 
     // Set item to an activating eSIM network.
-    eSimManagerRemote.addEuiccForTest(/*numProfiles=*/ 1);
     const managedPropertiesESimActivating =
         OncMojo.getDefaultManagedProperties(NetworkType.kCellular, 'cellular');
 
     managedPropertiesESimActivating.typeProperties.cellular.eid = 'eid';
-    managedPropertiesESimActivating.typeProperties.cellular.iccid = '100000';
     managedPropertiesESimActivating.typeProperties.cellular.activationState =
         ActivationStateType.kActivating;
     mojoApi_.setManagedPropertiesForTest(managedPropertiesESimActivating);
@@ -411,7 +395,6 @@ suite('NetworkListItemTest', function() {
     // Set item to an activating pSIM network.
     const managedPropertiesActivating =
         OncMojo.getDefaultManagedProperties(NetworkType.kCellular, 'cellular');
-    managedPropertiesActivating.typeProperties.cellular.iccid = '100000';
     managedPropertiesActivating.typeProperties.cellular.activationState =
         ActivationStateType.kActivating;
     mojoApi_.setManagedPropertiesForTest(managedPropertiesActivating);
@@ -684,46 +667,6 @@ suite('NetworkListItemTest', function() {
   });
 
   test(
-      'Show carrier locked sublabel when cellular network is carrier locked',
-      async () => {
-        loadTimeData.overrideValues({
-          'isUserLoggedIn': true,
-          'isCellularCarrierLockEnabled': true,
-        });
-        init();
-        const iccid = '11111111111111111111';
-        const eid = '1';
-        eSimManagerRemote.addEuiccForTest(/*numProfiles=*/ 1);
-        const networkStateLockedText =
-            listItem.i18n('networkListItemUpdatedCellularSimCardCarrierLocked');
-        listItem.item = initCellularNetwork(
-            iccid, eid, /*simlocked=*/ true, /*simlocktype*/ 'network-pin');
-
-        await flushAsync();
-        const sublabel = listItem.$$('#sublabel');
-        assertTrue(!!sublabel);
-        assertEquals(networkStateLockedText, sublabel.textContent.trim());
-      });
-
-  test('Show sim locked sublabel when carrier lock is disabled', async () => {
-    loadTimeData.overrideValues(
-        {'isUserLoggedIn': true, 'isCellularCarrierLockEnabled': false});
-    init();
-    const iccid = '11111111111111111111';
-    const eid = '1';
-    eSimManagerRemote.addEuiccForTest(/*numProfiles=*/ 1);
-    const networkStateLockedText =
-        listItem.i18n('networkListItemUpdatedCellularSimCardLocked');
-    listItem.item = initCellularNetwork(
-        iccid, eid, /*simlocked=*/ true, /*simlocktype*/ 'network-pin');
-
-    await flushAsync();
-    const sublabel = listItem.$$('#sublabel');
-    assertTrue(!!sublabel);
-    assertEquals(networkStateLockedText, sublabel.textContent.trim());
-  });
-
-  test(
       'Show locked sublabel when cellular network is locked and scanning',
       async () => {
         init();
@@ -803,7 +746,6 @@ suite('NetworkListItemTest', function() {
 
       const managedPropertiesNotActivated = OncMojo.getDefaultManagedProperties(
           NetworkType.kCellular, 'cellular');
-      managedPropertiesNotActivated.typeProperties.cellular.iccid = '1000000';
       managedPropertiesNotActivated.typeProperties.cellular.activationState =
           ActivationStateType.kNotActivated;
       managedPropertiesNotActivated.typeProperties.cellular.paymentPortal = {

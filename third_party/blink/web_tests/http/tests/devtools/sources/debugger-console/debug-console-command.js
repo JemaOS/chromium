@@ -2,12 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-import {ConsoleTestRunner} from 'console_test_runner';
-
 (async function() {
   TestRunner.addResult(`Tests debug(fn) console command.\n`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
+  await TestRunner.loadLegacyModule('console'); await TestRunner.loadTestModule('console_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.evaluateInPagePromise(`
       function simpleTestFunction()
@@ -46,7 +44,7 @@ import {ConsoleTestRunner} from 'console_test_runner';
         TestRunner.addResult('Script execution paused.');
         TestRunner.addResult(
             'Reason for pause: ' +
-            (reason ==  Protocol.Debugger.PausedEventReason.DebugCommand ? 'debug command' : 'debugger statement') + '.');
+            (reason == SDK.DebuggerModel.BreakReason.DebugCommand ? 'debug command' : 'debugger statement') + '.');
         next();
       }
     }
@@ -65,7 +63,7 @@ import {ConsoleTestRunner} from 'console_test_runner';
       await SourcesTestRunner.captureStackTrace(callFrames);
       await ConsoleTestRunner.evaluateInConsolePromise('undebug(' + functionName + ')');
       TestRunner.addResult('Breakpoint removed.');
-      TestRunner.assertEquals(reason,  Protocol.Debugger.PausedEventReason.DebugCommand);
+      TestRunner.assertEquals(reason, SDK.DebuggerModel.BreakReason.DebugCommand);
       SourcesTestRunner.resumeExecution(didResume);
     }
 

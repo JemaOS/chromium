@@ -5,9 +5,7 @@
 #ifndef ASH_WM_TABLET_MODE_TABLET_MODE_TOGGLE_FULLSCREEN_EVENT_HANDLER_H_
 #define ASH_WM_TABLET_MODE_TABLET_MODE_TOGGLE_FULLSCREEN_EVENT_HANDLER_H_
 
-#include <optional>
-
-#include "base/memory/raw_ptr.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/window_observer.h"
 #include "ui/events/event_handler.h"
 
@@ -33,7 +31,7 @@ class TabletModeToggleFullscreenEventHandler : public ui::EventHandler,
  private:
   struct DragData {
     int start_y_location;
-    raw_ptr<aura::Window> window;
+    aura::Window* window;
   };
 
   // ui::EventHandler:
@@ -52,7 +50,7 @@ class TabletModeToggleFullscreenEventHandler : public ui::EventHandler,
 
   // Valid if a processable drag is in progress. Contains the event initial
   // location and the window that was active when the drag started.
-  std::optional<DragData> drag_data_;
+  absl::optional<DragData> drag_data_;
 };
 
 }  // namespace ash

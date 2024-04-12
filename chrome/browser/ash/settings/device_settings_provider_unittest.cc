@@ -14,7 +14,6 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/scoped_path_override.h"
 #include "base/values.h"
-#include "chrome/browser/ash/ownership/owner_key_loader.h"
 #include "chrome/browser/ash/policy/core/device_local_account.h"
 #include "chrome/browser/ash/settings/device_settings_test_helper.h"
 #include "chrome/common/chrome_paths.h"
@@ -63,11 +62,6 @@ class DeviceSettingsProviderTest : public DeviceSettingsTestBase {
   void SetUp() override {
     DeviceSettingsTestBase::SetUp();
 
-    // Disable owner key migration.
-    feature_list_.InitWithFeatures(
-        /*enabled_features=*/{kStoreOwnerKeyInPrivateSlot},
-        /*disabled_features=*/{kMigrateOwnerKeyToPrivateSlot});
-
     EXPECT_CALL(*this, SettingChanged(_)).Times(AnyNumber());
     provider_ = std::make_unique<DeviceSettingsProvider>(
         base::BindRepeating(&DeviceSettingsProviderTest::SettingChanged,
@@ -115,14 +109,12 @@ class DeviceSettingsProviderTest : public DeviceSettingsTestBase {
     proto->set_report_print_jobs(enable_reporting);
     proto->set_report_login_logout(enable_reporting);
     proto->set_report_crd_sessions(enable_reporting);
-    proto->set_report_runtime_counters(enable_reporting);
     proto->set_device_activity_heartbeat_enabled(enable_reporting);
     proto->set_report_network_events(enable_reporting);
     proto->set_report_network_telemetry_collection_rate_ms(frequency);
     proto->set_report_network_telemetry_event_checking_rate_ms(frequency);
     proto->set_device_status_frequency(frequency);
     proto->set_report_device_audio_status_checking_rate_ms(frequency);
-    proto->set_device_report_runtime_counters_checking_rate_ms(frequency);
     proto->set_device_activity_heartbeat_collection_rate_ms(frequency);
     BuildAndInstallDevicePolicy();
   }
@@ -184,9 +176,9 @@ class DeviceSettingsProviderTest : public DeviceSettingsTestBase {
   void VerifyReportingSettings(bool expected_enable_state,
                                int expected_frequency) {
     const char* reporting_settings[] = {
-        kDeviceReportRuntimeCounters, kReportDeviceVersionInfo,
-        kReportDeviceActivityTimes, kReportDeviceAudioStatus,
-        kReportDeviceBoardStatus, kReportDeviceBootMode,
+        kReportDeviceVersionInfo, kReportDeviceActivityTimes,
+        kReportDeviceAudioStatus, kReportDeviceBoardStatus,
+        kReportDeviceBootMode,
         // Device location reporting is not currently supported.
         // kReportDeviceLocation,
         kReportDeviceNetworkConfiguration, kReportDeviceNetworkStatus,
@@ -205,11 +197,9 @@ class DeviceSettingsProviderTest : public DeviceSettingsTestBase {
     }
 
     const char* const reporting_frequency_settings[] = {
-        kReportUploadFrequency,
-        kReportDeviceNetworkTelemetryCollectionRateMs,
+        kReportUploadFrequency, kReportDeviceNetworkTelemetryCollectionRateMs,
         kReportDeviceNetworkTelemetryEventCheckingRateMs,
         kReportDeviceAudioStatusCheckingRateMs,
-        kDeviceReportRuntimeCountersCheckingRateMs,
         kDeviceActivityHeartbeatCollectionRateMs};
     const base::Value expected_frequency_value(expected_frequency);
     for (auto* frequency_setting : reporting_frequency_settings) {
@@ -228,22 +218,15 @@ class DeviceSettingsProviderTest : public DeviceSettingsTestBase {
   void VerifyPolicyValue(const char* policy_key,
                          const base::Value* ptr_to_expected_value) {
     // The pointer might be null, so check before dereferencing.
-    const base::Value* value = provider_->Get(policy_key);
-    if (ptr_to_expected_value) {
-      // This prevents tests from crashing if provider returns nullptr.
-      ASSERT_TRUE(value);
-      EXPECT_EQ(*ptr_to_expected_value, *value);
-    } else {
-      EXPECT_EQ(nullptr, value);
-    }
+    if (ptr_to_expected_value)
+      EXPECT_EQ(*ptr_to_expected_value, *provider_->Get(policy_key));
+    else
+      EXPECT_EQ(nullptr, provider_->Get(policy_key));
   }
 
   void VerifyPolicyList(const char* policy_key,
                         const base::Value::List& expected_value) {
-    const base::Value* value = provider_->Get(policy_key);
-    // This prevents tests from crashing if provider returns nullptr.
-    ASSERT_TRUE(value);
-    EXPECT_TRUE(value->is_list());
+    EXPECT_TRUE(provider_->Get(policy_key)->is_list());
     EXPECT_EQ(expected_value, provider_->Get(policy_key)->GetList());
   }
 
@@ -322,6 +305,14 @@ class DeviceSettingsProviderTest : public DeviceSettingsTestBase {
     session_manager_client_.set_device_policy(device_policy_->GetBlob());
     ReloadDeviceSettings();
     Mock::VerifyAndClearExpectations(this);
+  }
+
+  // Helper routine that sets the device DeviceWilcoDtcAllowed policy.
+  void SetDeviceWilcoDtcAllowedSetting(bool device_wilco_dtc_allowed) {
+    em::DeviceWilcoDtcAllowedProto* proto =
+        device_policy_->payload().mutable_device_wilco_dtc_allowed();
+    proto->set_device_wilco_dtc_allowed(device_wilco_dtc_allowed);
+    BuildAndInstallDevicePolicy();
   }
 
   void SetDeviceDockMacAddressSourceSetting(
@@ -441,8 +432,6 @@ class DeviceSettingsProviderTest : public DeviceSettingsTestBase {
     EXPECT_EQ(expected_value,
               *provider_->Get(kDeviceShowLowDiskSpaceNotification));
   }
-
-  base::test::ScopedFeatureList feature_list_;
 
   ScopedTestingLocalState local_state_;
 
@@ -816,7 +805,7 @@ TEST_F(DeviceSettingsProviderTest, DecodeDeviceState) {
 TEST_F(DeviceSettingsProviderTest, DecodeReportingSettings) {
   // Turn on all reporting and verify that the reporting settings have been
   // decoded correctly.
-  constexpr int status_frequency = 500000000;
+  const int status_frequency = 50000;
   SetReportingSettings(true, status_frequency);
   VerifyReportingSettings(true, status_frequency);
 
@@ -1011,6 +1000,17 @@ TEST_F(DeviceSettingsProviderTest, DeviceRebootAfterUserSignout) {
     base::Value expected_value(PolicyProto::VM_STARTED_OR_ARC_SESSION);
     VerifyPolicyValue(kDeviceRebootOnUserSignout, &expected_value);
   }
+}
+
+TEST_F(DeviceSettingsProviderTest, DeviceWilcoDtcAllowedSetting) {
+  // Policy should not be set by default
+  VerifyPolicyValue(kDeviceWilcoDtcAllowed, nullptr);
+
+  SetDeviceWilcoDtcAllowedSetting(true);
+  EXPECT_EQ(base::Value(true), *provider_->Get(kDeviceWilcoDtcAllowed));
+
+  SetDeviceWilcoDtcAllowedSetting(false);
+  EXPECT_EQ(base::Value(false), *provider_->Get(kDeviceWilcoDtcAllowed));
 }
 
 TEST_F(DeviceSettingsProviderTest, DeviceDockMacAddressSourceSetting) {
@@ -1356,95 +1356,6 @@ TEST_F(DeviceSettingsProviderTest, DeviceSystemAecDisabled) {
       ->set_device_system_aec_enabled(false);
   BuildAndInstallDevicePolicy();
   EXPECT_EQ(base::Value(false), *provider_->Get(kDeviceSystemAecEnabled));
-}
-
-TEST_F(DeviceSettingsProviderTest, DeviceHindiInscriptLayoutEnabled) {
-  device_policy_->payload()
-      .mutable_device_hindi_inscript_layout_enabled()
-      ->set_enabled(true);
-  BuildAndInstallDevicePolicy();
-  EXPECT_EQ(base::Value(true),
-            *provider_->Get(kDeviceHindiInscriptLayoutEnabled));
-}
-
-TEST_F(DeviceSettingsProviderTest, DeviceDlcPredownloadListUnset) {
-  // Device setting must be unset if the policy is not set.
-  VerifyPolicyValue(kDeviceDlcPredownloadList, nullptr);
-}
-
-TEST_F(DeviceSettingsProviderTest, DeviceDlcPredownloadListEmpty) {
-  // Device setting must be unset if there are no DLCs to pre download.
-  device_policy_->payload().clear_device_dlc_predownload_list();
-  BuildAndInstallDevicePolicy();
-  VerifyPolicyValue(kDeviceDlcPredownloadList, nullptr);
-}
-
-TEST_F(DeviceSettingsProviderTest, DeviceDlcPredownloadListNonempty) {
-  device_policy_->payload()
-      .mutable_device_dlc_predownload_list()
-      ->mutable_value()
-      ->add_entries("scanner_drivers");
-
-  BuildAndInstallDevicePolicy();
-
-  VerifyPolicyList(kDeviceDlcPredownloadList,
-                   base::Value::List().Append("sane-backends-pfu"));
-}
-
-TEST_F(DeviceSettingsProviderTest, DeviceDlcPredownloadListInvalidDlc) {
-  device_policy_->payload()
-      .mutable_device_dlc_predownload_list()
-      ->mutable_value()
-      ->add_entries("scanner_drivers");
-  device_policy_->payload()
-      .mutable_device_dlc_predownload_list()
-      ->mutable_value()
-      ->add_entries("invalid_dlc_name");
-
-  BuildAndInstallDevicePolicy();
-
-  // Device setting must contain only the valid DLCs that can be pre downloaded.
-  VerifyPolicyList(kDeviceDlcPredownloadList,
-                   base::Value::List().Append("sane-backends-pfu"));
-}
-
-TEST_F(DeviceSettingsProviderTest, DeviceDlcPredownloadListDuplicateDlc) {
-  device_policy_->payload()
-      .mutable_device_dlc_predownload_list()
-      ->mutable_value()
-      ->add_entries("scanner_drivers");
-  device_policy_->payload()
-      .mutable_device_dlc_predownload_list()
-      ->mutable_value()
-      ->add_entries("scanner_drivers");
-
-  BuildAndInstallDevicePolicy();
-
-  // Device setting must not contain any duplicate values.
-  VerifyPolicyList(kDeviceDlcPredownloadList,
-                   base::Value::List().Append("sane-backends-pfu"));
-}
-
-TEST_F(DeviceSettingsProviderTest, DeviceExtendedAutoUpdateEnabledValueSet) {
-  device_policy_->payload()
-      .mutable_deviceextendedautoupdateenabled()
-      ->set_value(true);
-  BuildAndInstallDevicePolicy();
-
-  const base::Value* actual_value =
-      provider_->Get(kDeviceExtendedAutoUpdateEnabled);
-
-  EXPECT_TRUE(actual_value->GetBool());
-}
-
-TEST_F(DeviceSettingsProviderTest, DeviceExtendedAutoUpdateEnabledValueUnset) {
-  device_policy_->payload().clear_deviceextendedautoupdateenabled();
-  BuildAndInstallDevicePolicy();
-
-  const base::Value* actual_value =
-      provider_->Get(kDeviceExtendedAutoUpdateEnabled);
-
-  EXPECT_FALSE(actual_value);
 }
 
 }  // namespace ash

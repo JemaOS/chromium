@@ -8,11 +8,11 @@
 
 #include <limits>
 
-#include "base/containers/contains.h"
-#include "base/test/scoped_feature_list.h"
+#include "base/time/time.h"
 #include "third_party/blink/public/common/input/web_pointer_properties.h"
+#include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/page/page.h"
-#include "third_party/blink/renderer/core/script/classic_script.h"
+#include "third_party/blink/renderer/core/pointer_type_names.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_test.h"
 
 namespace {
@@ -50,8 +50,6 @@ class PointerEventFactoryTest : public testing::Test {
     web_pointer_event.force = 1.0;
     web_pointer_event.hovering = hovering;
     web_pointer_event.button = button;
-    web_pointer_event.tilt_x = 1.5;
-    web_pointer_event.tilt_y = 0.5;
     web_pointer_event.SetPositionInScreen(100, 100);
     Vector<WebPointerEvent> coalesced_events;
     for (wtf_size_t i = 0; i < coalesced_event_count; i++) {
@@ -79,11 +77,6 @@ class PointerEventFactoryTest : public testing::Test {
     EXPECT_EQ(!!(modifiers & WebInputEvent::kAltKey), pointer_event->altKey());
     EXPECT_EQ(!!(modifiers & WebInputEvent::kMetaKey),
               pointer_event->metaKey());
-
-    EXPECT_EQ(pointer_event->tiltX(), 2);
-    EXPECT_EQ(pointer_event->tiltY(), 1);
-    EXPECT_EQ(pointer_event->altitudeAngle(), 1.5432015087805078);
-    EXPECT_EQ(pointer_event->azimuthAngle(), 0.3216896250354046);
 
     if (type == WebInputEvent::Type::kPointerMove) {
       EXPECT_EQ(coalesced_event_count,
@@ -128,6 +121,7 @@ class PointerEventFactoryTest : public testing::Test {
   PointerEventFactory pointer_event_factory_;
   int expected_mouse_id_;
   int mapped_id_start_;
+
 };
 
 void PointerEventFactoryTest::SetUp() {
@@ -178,7 +172,7 @@ void PointerEventFactoryTest::CheckNonHoveringPointers(
       pointer_event_factory_.GetPointerIdsOfNonHoveringPointers();
   EXPECT_EQ(pointers.size(), expected_pointers.size());
   for (int p : pointers) {
-    EXPECT_TRUE(base::Contains(expected_pointers, p));
+    EXPECT_TRUE(expected_pointers.find(p) != expected_pointers.end());
   }
 }
 
@@ -657,9 +651,6 @@ TEST_F(PointerEventFactoryTest, MousePointerKeyStates) {
 
 class PointerEventFactoryDeviceIdTest : public SimTest {
  protected:
-  PointerEventFactoryDeviceIdTest() {
-    feature_list_.InitAndEnableFeature(features::kPointerEventDeviceId);
-  }
   PointerEvent* CreatePointerEvent(
       WebPointerProperties::PointerType pointer_type,
       int raw_id,
@@ -703,7 +694,6 @@ class PointerEventFactoryDeviceIdTest : public SimTest {
   }
 
   PointerEventFactory pointer_event_factory_;
-  base::test::ScopedFeatureList feature_list_;
 };
 
 // This test validates that the unique device id provided to blink is reset upon
@@ -787,25 +777,6 @@ TEST_F(PointerEventFactoryDeviceIdTest, DeviceIdForMousePointerType) {
       /* Device id */ -1);
   ASSERT_EQ(1, blink_device_id_6);
   pointer_event_factory_.Clear();
-}
-
-TEST_F(PointerEventFactoryDeviceIdTest, DeviceIdUseCounterUpdated) {
-  // CreatePointerEventAndGetDeviceId invokes deviceIdForBindings() so make
-  // sure that the use counter is updated.
-  EXPECT_FALSE(GetDocument().IsUseCounted(
-      WebFeature::kV8PointerEvent_DeviceId_AttributeGetter));
-
-  GetDocument().GetSettings()->SetScriptEnabled(true);
-  ClassicScript::CreateUnspecifiedScript(
-      "const pe = new PointerEvent(\"pointermove\");"
-      "pe.deviceId();")
-      ->RunScript(GetDocument().domWindow());
-
-  CreatePointerEventAndGetDeviceId(WebPointerProperties::PointerType::kPen,
-                                   /* Raw pointer id */ 0,
-                                   /* Device id */ kBrowserDeviceId0);
-  EXPECT_TRUE(GetDocument().IsUseCounted(
-      WebFeature::kV8PointerEvent_DeviceId_AttributeGetter));
 }
 
 }  // namespace blink

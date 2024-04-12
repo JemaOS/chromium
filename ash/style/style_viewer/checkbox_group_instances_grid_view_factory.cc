@@ -43,8 +43,7 @@ CreateCheckboxGroupInstancesGridView() {
           kCheckboxGroupWidth,
           /*inside_border_insets=*/gfx::Insets(2),
           /*between_child_spacing=*/2,
-          /*checkbox_padding*/ gfx::Insets::TLBR(8, 24, 8, 12),
-          /*image_label_spacing=*/16);
+          /*checkbox_padding*/ gfx::Insets::TLBR(8, 24, 8, 12));
   checkbox_group_with_disabled_button->AddButton(Checkbox::PressedCallback(),
                                                  u"Test Button1");
   checkbox_group_with_disabled_button->AddButton(Checkbox::PressedCallback(),

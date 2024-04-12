@@ -7,7 +7,6 @@
 #include <memory>
 #include <vector>
 
-#include "ash/public/cpp/holding_space/holding_space_file.h"
 #include "ash/public/cpp/holding_space/holding_space_image.h"
 #include "ash/public/cpp/holding_space/holding_space_progress.h"
 #include "ash/public/cpp/holding_space/holding_space_util.h"
@@ -16,9 +15,7 @@
 #include "base/test/bind.h"
 #include "base/test/scoped_locale.h"
 #include "base/values.h"
-#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/skia/include/core/SkColor.h"
 #include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/gfx/paint_vector_icon.h"
 
@@ -26,11 +23,12 @@ namespace ash {
 
 namespace {
 
-// Aliases
-using testing::AllOf;
-using testing::Eq;
-using testing::Property;
-using testing::VariantWith;
+std::vector<HoldingSpaceItem::Type> GetHoldingSpaceItemTypes() {
+  std::vector<HoldingSpaceItem::Type> types;
+  for (int i = 0; i <= static_cast<int>(HoldingSpaceItem::Type::kMaxValue); ++i)
+    types.push_back(static_cast<HoldingSpaceItem::Type>(i));
+  return types;
+}
 
 std::unique_ptr<HoldingSpaceImage> CreateFakeHoldingSpaceImage(
     HoldingSpaceItem::Type type,
@@ -46,12 +44,11 @@ using HoldingSpaceItemTest = testing::TestWithParam<HoldingSpaceItem::Type>;
 
 // Tests round-trip serialization for each holding space item type.
 TEST_P(HoldingSpaceItemTest, Serialization) {
-  const HoldingSpaceFile file(base::FilePath("file_path"),
-                              HoldingSpaceFile::FileSystemType::kTest,
-                              GURL("filesystem:file_system_url"));
+  const base::FilePath file_path("file_path");
+  const GURL file_system_url("filesystem:file_system_url");
 
   const auto holding_space_item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetParam(), file,
+      /*type=*/GetParam(), file_path, file_system_url,
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 
   const base::Value::Dict serialized_holding_space_item =
@@ -62,12 +59,9 @@ TEST_P(HoldingSpaceItemTest, Serialization) {
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 
   EXPECT_FALSE(deserialized_holding_space_item->IsInitialized());
-  EXPECT_TRUE(
-      deserialized_holding_space_item->file().file_system_url.is_empty());
-  EXPECT_EQ(deserialized_holding_space_item->file().file_system_type,
-            HoldingSpaceFile::FileSystemType::kUnknown);
+  EXPECT_TRUE(deserialized_holding_space_item->file_system_url().is_empty());
 
-  deserialized_holding_space_item->Initialize(file);
+  deserialized_holding_space_item->Initialize(file_system_url);
   EXPECT_TRUE(deserialized_holding_space_item->IsInitialized());
   EXPECT_EQ(*deserialized_holding_space_item, *holding_space_item);
 }
@@ -75,10 +69,8 @@ TEST_P(HoldingSpaceItemTest, Serialization) {
 // Tests deserialization of id for each holding space item type.
 TEST_P(HoldingSpaceItemTest, DeserializeId) {
   const auto holding_space_item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetParam(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem:file_system_url")),
+      /*type=*/GetParam(), base::FilePath("file_path"),
+      GURL("filesystem:file_system_url"),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 
   const base::Value::Dict serialized_holding_space_item =
@@ -97,10 +89,8 @@ TEST_P(HoldingSpaceItemTest, AccessibleName) {
 
   // Create a `holding_space_item`.
   auto holding_space_item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetParam(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/GetParam(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 
   // Initially the accessible name should be based on the backing file.
@@ -124,7 +114,7 @@ TEST_P(HoldingSpaceItemTest, AccessibleName) {
   EXPECT_EQ(holding_space_item->GetAccessibleName(), u"Accessible name");
 
   // It should be possible to remove the accessible name override.
-  EXPECT_TRUE(holding_space_item->SetAccessibleName(std::nullopt));
+  EXPECT_TRUE(holding_space_item->SetAccessibleName(absl::nullopt));
   EXPECT_EQ(holding_space_item->GetAccessibleName(),
             u"Primary text, Secondary text");
 }
@@ -133,10 +123,8 @@ TEST_P(HoldingSpaceItemTest, AccessibleName) {
 TEST_P(HoldingSpaceItemTest, InProgressCommands) {
   // Create an in-progress `holding_space_item`.
   auto holding_space_item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetParam(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/GetParam(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       HoldingSpaceProgress(/*current_bytes=*/50, /*total_bytes=*/100),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 
@@ -186,7 +174,6 @@ TEST_P(HoldingSpaceItemTest, IsCameraAppType) {
     case HoldingSpaceItem::Type::kLocalSuggestion:
     case HoldingSpaceItem::Type::kNearbyShare:
     case HoldingSpaceItem::Type::kPhoneHubCameraRoll:
-    case HoldingSpaceItem::Type::kPhotoshopWeb:
     case HoldingSpaceItem::Type::kPinnedFile:
     case HoldingSpaceItem::Type::kPrintedPdf:
     case HoldingSpaceItem::Type::kScan:
@@ -220,7 +207,6 @@ TEST_P(HoldingSpaceItemTest, IsScreenCapture) {
     case HoldingSpaceItem::Type::kLocalSuggestion:
     case HoldingSpaceItem::Type::kNearbyShare:
     case HoldingSpaceItem::Type::kPhoneHubCameraRoll:
-    case HoldingSpaceItem::Type::kPhotoshopWeb:
     case HoldingSpaceItem::Type::kPinnedFile:
     case HoldingSpaceItem::Type::kPrintedPdf:
     case HoldingSpaceItem::Type::kScan:
@@ -233,10 +219,8 @@ TEST_P(HoldingSpaceItemTest, IsScreenCapture) {
 TEST_P(HoldingSpaceItemTest, Progress) {
   // Create a `holding_space_item` w/ explicitly specified progress.
   auto holding_space_item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetParam(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/GetParam(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       HoldingSpaceProgress(/*current_bytes=*/50, /*total_bytes=*/100),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 
@@ -255,7 +239,7 @@ TEST_P(HoldingSpaceItemTest, Progress) {
 
   // It should be possible to set indeterminate progress.
   EXPECT_TRUE(holding_space_item->SetProgress(HoldingSpaceProgress(
-      /*current_bytes=*/std::nullopt, /*total_bytes=*/100)));
+      /*current_bytes=*/absl::nullopt, /*total_bytes=*/100)));
   EXPECT_TRUE(holding_space_item->progress().IsIndeterminate());
 
   // It should be possible to set progress complete.
@@ -270,10 +254,8 @@ TEST_P(HoldingSpaceItemTest, Progress) {
 
   // Create a `holding_space_item` w/ default progress.
   holding_space_item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetParam(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/GetParam(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 
   // Since not specified during construction, progress should be complete.
@@ -289,10 +271,8 @@ TEST_P(HoldingSpaceItemTest, Progress) {
 TEST_P(HoldingSpaceItemTest, SecondaryText) {
   // Create a `holding_space_item`.
   auto holding_space_item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetParam(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/GetParam(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 
   // Initially the secondary text should be absent.
@@ -307,7 +287,7 @@ TEST_P(HoldingSpaceItemTest, SecondaryText) {
   EXPECT_EQ(holding_space_item->secondary_text().value(), u"secondary_text");
 
   // It should be possible to unset secondary text.
-  EXPECT_TRUE(holding_space_item->SetSecondaryText(std::nullopt));
+  EXPECT_TRUE(holding_space_item->SetSecondaryText(absl::nullopt));
   EXPECT_FALSE(holding_space_item->secondary_text());
 }
 
@@ -315,52 +295,37 @@ TEST_P(HoldingSpaceItemTest, SecondaryText) {
 TEST_P(HoldingSpaceItemTest, SecondaryTextColor) {
   // Create a `holding_space_item`.
   auto holding_space_item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetParam(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/GetParam(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 
-  // Initially the secondary text color variant should be absent.
-  EXPECT_FALSE(holding_space_item->secondary_text_color_variant());
+  // Initially the secondary text color id should be absent.
+  EXPECT_FALSE(holding_space_item->secondary_text_color_id());
 
-  // It should be possible to update secondary text color to a new color id.
-  EXPECT_TRUE(holding_space_item->SetSecondaryTextColorVariant(
+  // It should be possible to update secondary text color id to a new value.
+  EXPECT_TRUE(holding_space_item->SetSecondaryTextColorId(
       cros_tokens::kTextColorAlert));
-  EXPECT_THAT(holding_space_item->secondary_text_color_variant().value(),
-              VariantWith<ui::ColorId>(cros_tokens::kTextColorAlert));
+  EXPECT_EQ(holding_space_item->secondary_text_color_id().value(),
+            cros_tokens::kTextColorAlert);
 
-  // It should no-op to try to update secondary text color to existing values.
-  EXPECT_FALSE(holding_space_item->SetSecondaryTextColorVariant(
+  // It should no-op to try to update secondary text color id to existing
+  // values.
+  EXPECT_FALSE(holding_space_item->SetSecondaryTextColorId(
       cros_tokens::kTextColorAlert));
-  EXPECT_THAT(holding_space_item->secondary_text_color_variant().value(),
-              VariantWith<ui::ColorId>(cros_tokens::kTextColorAlert));
+  EXPECT_EQ(holding_space_item->secondary_text_color_id().value(),
+            cros_tokens::kTextColorAlert);
 
-  // It should be possible to update secondary text color to a new
-  // `HoldingSpaceColors` instance. NOTE: Use a light/dark text color for
-  // dark/light modes to improve readability.
-  EXPECT_TRUE(holding_space_item->SetSecondaryTextColorVariant(
-      HoldingSpaceColors(/*dark_mode=*/SK_ColorWHITE,
-                         /*light_mode=*/SK_ColorBLACK)));
-  EXPECT_THAT(
-      holding_space_item->secondary_text_color_variant().value(),
-      VariantWith<HoldingSpaceColors>(
-          AllOf(Property(&HoldingSpaceColors::dark_mode, Eq(SK_ColorWHITE)),
-                Property(&HoldingSpaceColors::light_mode, Eq(SK_ColorBLACK)))));
-
-  // It should be possible to unset secondary text color.
-  EXPECT_TRUE(holding_space_item->SetSecondaryTextColorVariant(std::nullopt));
-  EXPECT_FALSE(holding_space_item->secondary_text_color_variant());
+  // It should be possible to unset secondary text color id.
+  EXPECT_TRUE(holding_space_item->SetSecondaryTextColorId(absl::nullopt));
+  EXPECT_FALSE(holding_space_item->secondary_text_color_id());
 }
 
 // Tests setting the text for each holding space item type.
 TEST_P(HoldingSpaceItemTest, Text) {
   // Create a `holding_space_item`.
   auto holding_space_item = HoldingSpaceItem::CreateFileBackedItem(
-      /*type=*/GetParam(),
-      HoldingSpaceFile(base::FilePath("file_path"),
-                       HoldingSpaceFile::FileSystemType::kTest,
-                       GURL("filesystem::file_system_url")),
+      /*type=*/GetParam(), base::FilePath("file_path"),
+      GURL("filesystem::file_system_url"),
       /*image_resolver=*/base::BindOnce(&CreateFakeHoldingSpaceImage));
 
   // Initially the text should reflect the backing file.
@@ -376,13 +341,12 @@ TEST_P(HoldingSpaceItemTest, Text) {
 
   // It should be possible to unset text which will once again cause text to
   // reflect the backing file.
-  EXPECT_TRUE(holding_space_item->SetText(std::nullopt));
+  EXPECT_TRUE(holding_space_item->SetText(absl::nullopt));
   EXPECT_EQ(holding_space_item->GetText(), u"file_path");
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    All,
-    HoldingSpaceItemTest,
-    testing::ValuesIn(holding_space_util::GetAllItemTypes()));
+INSTANTIATE_TEST_SUITE_P(All,
+                         HoldingSpaceItemTest,
+                         testing::ValuesIn(GetHoldingSpaceItemTypes()));
 
 }  // namespace ash

@@ -14,10 +14,10 @@ void ArcWindowObserver::StartObserving(
     const ObserverStateChangedCallback& callback) {
   ThrottleObserver::StartObserving(context, callback);
 
-  if (auto* instance = ash::ArcWindowWatcher::instance()) {
-    OnArcWindowCountChanged(instance->GetArcWindowCount());
-    observation_.Observe(instance);
-  }
+  OnArcWindowCountChanged(
+      ash::ArcWindowWatcher::instance()->GetArcWindowCount());
+
+  observation_.Observe(ash::ArcWindowWatcher::instance());
 }
 
 ArcWindowObserver::~ArcWindowObserver() = default;
@@ -29,10 +29,6 @@ void ArcWindowObserver::StopObserving() {
 
 void ArcWindowObserver::OnArcWindowCountChanged(uint32_t count) {
   SetActive(count > 0);
-}
-
-void ArcWindowObserver::OnWillDestroyWatcher() {
-  observation_.Reset();
 }
 
 }  // namespace arc

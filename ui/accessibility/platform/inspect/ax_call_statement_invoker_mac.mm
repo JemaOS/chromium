@@ -93,7 +93,7 @@ AXOptionalNSObject AXCallStatementInvoker::Invoke(
   // Case 2: try to get target from the tree indexer. The target may refer to
   // an accessible element by DOM id or by a line number (:LINE_NUM format) in
   // a result accessible tree. The tree indexer keeps the mappings between
-  // accessible elements and their DOM ids and line numbers.
+  // accesible elements and their DOM ids and line numbers.
   if (!target)
     target = indexer_->NodeBy(property_node.name_or_value);
 
@@ -165,7 +165,7 @@ AXOptionalNSObject AXCallStatementInvoker::InvokeFor(
   }
 
   if (AXElementWrapper::IsValidElement(target))
-    return InvokeForAXElement(AXElementWrapper{target}, property_node);
+    return InvokeForAXElement({target}, property_node);
 
   if (IsAXTextMarkerRange(target)) {
     return InvokeForAXTextMarkerRange(target, property_node);
@@ -262,7 +262,7 @@ AXOptionalNSObject AXCallStatementInvoker::InvokeForAXElement(
   // need to handle the returned value differently than methods whose return
   // types are id.
   if (base::StartsWith(property_node.name_or_value, "isAccessibility")) {
-    std::optional<SEL> optional_arg_selector;
+    absl::optional<SEL> optional_arg_selector;
     std::string selector_string = property_node.name_or_value;
     // In some cases, we might want to pass a SEL as argument instead of an id.
     // When an argument is prefixed with "@SEL:", transform the string into a
@@ -283,7 +283,7 @@ AXOptionalNSObject AXCallStatementInvoker::InvokeForAXElement(
         optional_arg_selector
             ? ax_element.Invoke<BOOL, SEL>(selector, *optional_arg_selector)
             : ax_element.Invoke<BOOL>(selector);
-    return AXOptionalNSObject(@(return_value));
+    return AXOptionalNSObject([NSNumber numberWithBool:return_value]);
   }
 
   if (property_node.name_or_value == "setAccessibilityFocused")
@@ -311,7 +311,7 @@ AXOptionalNSObject AXCallStatementInvoker::InvokeForAXElement(
 
   if (base::StartsWith(property_node.name_or_value, "accessibility")) {
     if (property_node.arguments.size() == 1) {
-      std::optional<id> optional_id =
+      absl::optional<id> optional_id =
           ax_element.PerformSelector(property_node.name_or_value,
                                      property_node.arguments[0].name_or_value);
       if (optional_id) {
@@ -394,7 +394,7 @@ AXOptionalNSObject AXCallStatementInvoker::InvokeForArray(
     return AXOptionalNSObject::Error();
   }
 
-  std::optional<int> maybe_index = property_node.arguments[0].AsInt();
+  absl::optional<int> maybe_index = property_node.arguments[0].AsInt();
   if (!maybe_index || *maybe_index < 0) {
     LOG(ERROR) << "Wrong index for array operator[], got: "
                << property_node.arguments[0].ToString();
@@ -540,7 +540,7 @@ id AXCallStatementInvoker::PropertyNodeToNSObject(
 NSNumber* AXCallStatementInvoker::PropertyNodeToInt(
     const AXPropertyNode& intnode,
     bool log_failure) const {
-  std::optional<int> param = intnode.AsInt();
+  absl::optional<int> param = intnode.AsInt();
   if (!param) {
     if (log_failure)
       INT_FAIL(intnode, "not a number")
@@ -569,7 +569,7 @@ NSArray* AXCallStatementInvoker::PropertyNodeToIntArray(
   NSMutableArray* array =
       [[NSMutableArray alloc] initWithCapacity:arraynode.arguments.size()];
   for (const auto& paramnode : arraynode.arguments) {
-    std::optional<int> param = paramnode.AsInt();
+    absl::optional<int> param = paramnode.AsInt();
     if (!param) {
       if (log_failure)
         INTARRAY_FAIL(arraynode, paramnode.name_or_value + " is not a number")
@@ -615,14 +615,14 @@ NSValue* AXCallStatementInvoker::PropertyNodeToRange(
     return nil;
   }
 
-  std::optional<int> loc = dictnode.FindIntKey("loc");
+  absl::optional<int> loc = dictnode.FindIntKey("loc");
   if (!loc) {
     if (log_failure)
       NSRANGE_FAIL(dictnode, "no loc or loc is not a number")
     return nil;
   }
 
-  std::optional<int> len = dictnode.FindIntKey("len");
+  absl::optional<int> len = dictnode.FindIntKey("len");
   if (!len) {
     if (log_failure)
       NSRANGE_FAIL(dictnode, "no len or len is not a number")
@@ -669,7 +669,7 @@ id AXCallStatementInvoker::DictionaryNodeToTextMarker(
     return nil;
   }
 
-  std::optional<int> offset = dictnode.arguments[1].AsInt();
+  absl::optional<int> offset = dictnode.arguments[1].AsInt();
   if (!offset) {
     if (log_failure)
       TEXTMARKER_FAIL(dictnode, "2nd argument: wrong offset")

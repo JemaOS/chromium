@@ -22,7 +22,7 @@ SigninErrorControllerFactory::SigninErrorControllerFactory()
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
-SigninErrorControllerFactory::~SigninErrorControllerFactory() = default;
+SigninErrorControllerFactory::~SigninErrorControllerFactory() {}
 
 // static
 SigninErrorController* SigninErrorControllerFactory::GetForProfile(
@@ -33,8 +33,7 @@ SigninErrorController* SigninErrorControllerFactory::GetForProfile(
 
 // static
 SigninErrorControllerFactory* SigninErrorControllerFactory::GetInstance() {
-  static base::NoDestructor<SigninErrorControllerFactory> instance;
-  return instance.get();
+  return base::Singleton<SigninErrorControllerFactory>::get();
 }
 
 KeyedService* SigninErrorControllerFactory::BuildServiceInstanceFor(

@@ -44,7 +44,7 @@ chrome.test.getConfig(function(config) {
       chrome.test.succeed();
     },
     function getMessageFromContentScript() {
-      chrome.runtime.onMessage.addListener(
+      chrome.extension.onRequest.addListener(
         function(request, sender, sendResponse) {
           chrome.test.assertEq(request, "Number of errors: 19");
         }

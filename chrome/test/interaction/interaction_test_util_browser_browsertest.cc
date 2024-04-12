@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chrome/test/interaction/feature_engagement_initialized_observer.h"
 #include "chrome/test/interaction/interaction_test_util_browser.h"
 
 #include "base/functional/bind.h"
@@ -61,7 +60,7 @@ IN_PROC_BROWSER_TEST_F(InteractionTestUtilBrowserTest, CompareScreenshot_View) {
                               kSkipPixelTestsReason),
       // This adds a callback that calls
       // InteractionTestUtilBrowser::CompareScreenshot().
-      Screenshot(kToolbarAppMenuButtonElementId, "AppMenuButton", "3924454"));
+      Screenshot(kAppMenuButtonElementId, "AppMenuButton", "3924454"));
 }
 
 IN_PROC_BROWSER_TEST_F(InteractionTestUtilBrowserTest,
@@ -89,12 +88,6 @@ IN_PROC_BROWSER_TEST_F(InteractionTestUtilBrowserTest, ConfirmOmnibox) {
       InstrumentTab(kWebContentsElementId),
       EnterText(kOmniboxElementId, kNewUrl), Confirm(kOmniboxElementId),
       WaitForWebContentsNavigation(kWebContentsElementId, GURL(kNewUrl)));
-}
-
-IN_PROC_BROWSER_TEST_F(InteractionTestUtilBrowserTest,
-                       ObserveFeatureEngagementInitialized) {
-  RunTestSequence(ObserveState(kFeatureEngagementInitializedState, browser()),
-                  WaitForState(kFeatureEngagementInitializedState, true));
 }
 
 class InteractionTestUtilBrowserSelectTabTest

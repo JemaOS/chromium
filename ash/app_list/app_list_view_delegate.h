@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "ash/app_list/app_list_metrics.h"
 #include "ash/assistant/ui/assistant_view_delegate.h"
@@ -17,7 +16,6 @@
 #include "ash/public/cpp/ash_public_export.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/weak_ptr.h"
-#include "chromeos/ash/services/assistant/public/cpp/assistant_enums.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
@@ -50,17 +48,12 @@ class ASH_PUBLIC_EXPORT AppListViewDelegate {
   virtual std::unique_ptr<ScopedIphSession>
   CreateLauncherSearchIphSession() = 0;
 
+  // Opens the url in a browser for the search box IPH.
+  virtual void OpenSearchBoxIphUrl() = 0;
+
   // Invoked to start a new Google Assistant session.
-  virtual void StartAssistant(assistant::AssistantEntryPoint entry_point) = 0;
-
-  // Invoked to end a Google Assistant session.
-  virtual void EndAssistant(assistant::AssistantExitPoint exit_point) = 0;
-
-  // Returns the search categories that are available for users to choose if
-  // they want to have the results in the categories displayed in launcher
-  // search.
-  virtual std::vector<AppListSearchControlCategory> GetToggleableCategories()
-      const = 0;
+  virtual void StartAssistant() = 0;
+  virtual void CloseAssistant() = 0;
 
   // Invoked to start a new search. This collects a list of search results
   // matching the raw query, which is an unhandled string typed into the search
@@ -187,7 +180,7 @@ class ASH_PUBLIC_EXPORT AppListViewDelegate {
   virtual int GetSystemShelfInsetsInTabletMode() = 0;
 
   // Returns whether tablet mode is currently enabled.
-  virtual bool IsInTabletMode() const = 0;
+  virtual bool IsInTabletMode() = 0;
 
   // Loads the icon of an app item identified by `app_id`.
   virtual void LoadIcon(const std::string& app_id) = 0;
@@ -204,12 +197,8 @@ class ASH_PUBLIC_EXPORT AppListViewDelegate {
   // Used by productivity launcher only.
   virtual void SetHideContinueSection(bool hide) = 0;
 
-  // Returns whether the search category `category` is enabled.
-  virtual bool IsCategoryEnabled(AppListSearchControlCategory category) = 0;
-
-  // Sets the preference of displaying `category` to users to `enabled`.
-  virtual void SetCategoryEnabled(AppListSearchControlCategory category,
-                                  bool enabled) = 0;
+  // Commits the app list item positions under the temporary sort order.
+  virtual void CommitTemporarySortOrder() = 0;
 };
 
 }  // namespace ash

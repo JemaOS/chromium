@@ -6,15 +6,15 @@
 
 #import <Cocoa/Cocoa.h>
 
-#import "base/apple/foundation_util.h"
-#import "base/apple/scoped_objc_class_swizzler.h"
+#import "base/mac/foundation_util.h"
+#import "base/mac/scoped_objc_class_swizzler.h"
 
-using base::apple::ScopedObjCClassSwizzler;
+using base::mac::ScopedObjCClassSwizzler;
 
 namespace {
 
 NSWindow* g_fake_focused_window = nil;
-base::apple::ScopedObjCClassSwizzler* g_order_out_swizzler = nullptr;
+base::mac::ScopedObjCClassSwizzler* g_order_out_swizzler = nullptr;
 
 void SetFocus(NSWindow* window) {
   g_fake_focused_window = window;
@@ -29,14 +29,6 @@ void SetFocus(NSWindow* window) {
 void ClearFocus() {
   NSWindow* window = g_fake_focused_window;
   g_fake_focused_window = nil;
-
-  // Some observers of these notifications (e.g. NSRemoteView) expect a
-  // non-nil window, and throw an exception otherwise. When the window's
-  // nil, just skip posting the notification.
-  if (window == nil) {
-    return;
-  }
-
   [[NSNotificationCenter defaultCenter]
       postNotificationName:NSWindowDidResignKeyNotification
                     object:window];
@@ -55,17 +47,17 @@ void ClearFocus() {
 @implementation FakeNSWindowFocusDonor
 
 - (BOOL)isKeyWindow {
-  NSWindow* selfAsWindow = base::apple::ObjCCastStrict<NSWindow>(self);
+  NSWindow* selfAsWindow = base::mac::ObjCCastStrict<NSWindow>(self);
   return selfAsWindow == g_fake_focused_window;
 }
 
 - (BOOL)isMainWindow {
-  NSWindow* selfAsWindow = base::apple::ObjCCastStrict<NSWindow>(self);
+  NSWindow* selfAsWindow = base::mac::ObjCCastStrict<NSWindow>(self);
   return selfAsWindow == g_fake_focused_window;
 }
 
 - (void)makeKeyWindow {
-  NSWindow* selfAsWindow = base::apple::ObjCCastStrict<NSWindow>(self);
+  NSWindow* selfAsWindow = base::mac::ObjCCastStrict<NSWindow>(self);
   if (selfAsWindow == g_fake_focused_window ||
       ![selfAsWindow canBecomeKeyWindow])
     return;
@@ -79,7 +71,7 @@ void ClearFocus() {
 }
 
 - (void)orderOut:(id)sender {
-  NSWindow* selfAsWindow = base::apple::ObjCCastStrict<NSWindow>(self);
+  NSWindow* selfAsWindow = base::mac::ObjCCastStrict<NSWindow>(self);
   if (selfAsWindow == g_fake_focused_window)
     ClearFocus();
   g_order_out_swizzler->InvokeOriginal<void, id>(self, _cmd, sender);
@@ -93,7 +85,8 @@ void ClearFocus() {
 
 @end
 
-namespace ui::test {
+namespace ui {
+namespace test {
 
 ScopedFakeNSWindowFocus::ScopedFakeNSWindowFocus()
     : is_main_swizzler_(
@@ -132,4 +125,5 @@ ScopedFakeNSWindowFocus::~ScopedFakeNSWindowFocus() {
   ClearFocus();
 }
 
-}  // namespace ui::test
+}  // namespace test
+}  // namespace ui

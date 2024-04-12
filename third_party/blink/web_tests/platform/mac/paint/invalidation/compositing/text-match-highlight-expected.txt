@@ -1,7 +1,7 @@
 {
   "layers": [
     {
-      "name": "Scrolling background of LayoutView #document",
+      "name": "Scrolling background of LayoutNGView #document",
       "bounds": [800, 600],
       "contentsOpaque": true,
       "backgroundColor": "#FFFFFF",
@@ -16,6 +16,20 @@
       "transform": 1
     },
     {
+      "name": "LayoutNGBlockFlow DIV",
+      "bounds": [785, 1340],
+      "invalidations": [
+        [10, 72, 227, 18],
+        [20, 160, 200, 72],
+        [10, 126, 139, 12],
+        [268, 0, 46, 18],
+        [90, 0, 46, 18],
+        [224, 0, 45, 18],
+        [52, 18, 45, 18]
+      ],
+      "transform": 1
+    },
+    {
       "name": "HorizontalScrollbar",
       "position": [0, 485],
       "bounds": [800, 15],
@@ -26,20 +40,6 @@
       "position": [785, 0],
       "bounds": [15, 485],
       "contentsOpaque": true,
-      "transform": 1
-    },
-    {
-      "name": "LayoutNGBlockFlow DIV",
-      "bounds": [785, 1340],
-      "invalidations": [
-        [10, 72, 227, 18],
-        [20, 160, 200, 72],
-        [10, 127, 139, 12],
-        [268, 0, 46, 18],
-        [90, 0, 46, 18],
-        [224, 0, 45, 18],
-        [52, 18, 45, 18]
-      ],
       "transform": 1
     }
   ],

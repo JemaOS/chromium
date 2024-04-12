@@ -5,11 +5,9 @@
 #ifndef ASH_QUICK_PAIR_COMMON_FAST_PAIR_FAST_PAIR_HTTP_RESULT_H_
 #define ASH_QUICK_PAIR_COMMON_FAST_PAIR_FAST_PAIR_HTTP_RESULT_H_
 
-#include <optional>
-#include <string>
-
 #include "base/component_export.h"
 #include "services/network/public/mojom/url_response_head.mojom-forward.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace ash {
 namespace quick_pair {
@@ -25,8 +23,8 @@ class COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairHttpResult {
   FastPairHttpResult& operator=(FastPairHttpResult&&) = delete;
   ~FastPairHttpResult();
 
-  std::optional<int> net_error() const { return net_error_; }
-  std::optional<int> http_response_error() const {
+  absl::optional<int> net_error() const { return net_error_; }
+  absl::optional<int> http_response_error() const {
     return http_response_error_;
   }
 
@@ -37,8 +35,8 @@ class COMPONENT_EXPORT(QUICK_PAIR_COMMON) FastPairHttpResult {
   enum class Type { kSuccess, kNetworkFailure, kHttpFailure } type_;
 
   // Only set if the code is an error, i.e., not set on success.
-  std::optional<int> net_error_;
-  std::optional<int> http_response_error_;
+  absl::optional<int> net_error_;
+  absl::optional<int> http_response_error_;
 };
 
 }  // namespace quick_pair

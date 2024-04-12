@@ -46,7 +46,6 @@
 #include "net/base/file_stream.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/page_transition_types.h"
-#include "ui/base/resource/resource_scale_factor.h"
 #include "ui/gfx/codec/png_codec.h"
 #include "ui/gfx/favicon_size.h"
 #include "ui/gfx/image/image_skia.h"
@@ -244,12 +243,9 @@ void UpdateOverridesLists(Profile* profile,
   for (const auto& page_override_pair : overrides) {
     base::Value::List* page_overrides =
         all_overrides.FindList(page_override_pair.first);
+    // If it's being unregistered, it should already be in the list.
     if (!page_overrides) {
-      // If it's being unregistered it may or may not be in the list. Eg: On
-      // uninstalling an externally loaded extension, which has not been enabled
-      // once.
-      // But if it's being deactivated, it should already be in the list.
-      DCHECK_NE(behavior, UPDATE_DEACTIVATE);
+      NOTREACHED();
       continue;
     }
     if (UpdateOverridesList(*page_overrides, page_override_pair.second.spec(),
@@ -604,7 +600,9 @@ void ExtensionWebUI::GetFaviconForURL(
     gfx::ImageSkia placeholder_skia(placeholder_image.AsImageSkia());
     // Ensure the ImageSkia has representation at all scales we would use for
     // favicons.
-    for (const auto scale_factor : ui::GetSupportedResourceScaleFactors()) {
+    std::vector<ui::ResourceScaleFactor> scale_factors =
+        ui::GetSupportedResourceScaleFactors();
+    for (const auto& scale_factor : scale_factors) {
       placeholder_skia.GetRepresentation(
           ui::GetScaleForResourceScaleFactor(scale_factor));
     }

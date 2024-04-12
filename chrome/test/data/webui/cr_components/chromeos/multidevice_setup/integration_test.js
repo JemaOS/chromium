@@ -123,7 +123,7 @@ suite('MultiDeviceSetup', () => {
 
   setup(async () => {
     browserProxy = new TestMultideviceSetupBrowserProxy();
-    BrowserProxyImpl.setInstance(browserProxy);
+    BrowserProxyImpl.instance_ = browserProxy;
 
     multiDeviceSetupElement = document.createElement('multidevice-setup');
     multiDeviceSetupElement.delegate = new FakeDelegate();

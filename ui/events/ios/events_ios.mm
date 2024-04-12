@@ -28,7 +28,7 @@ int EventFlagsFromNative(const PlatformEvent& native_event) {
 
 base::TimeTicks EventTimeFromNative(const PlatformEvent& native_event) {
   base::TimeTicks timestamp =
-      ui::EventTimeStampFromSeconds(native_event.Get().timestamp);
+      ui::EventTimeStampFromSeconds([native_event timestamp]);
   ValidateEventTimeClock(&timestamp);
   return timestamp;
 }
@@ -73,26 +73,23 @@ gfx::Vector2d GetMouseWheelTick120ths(const PlatformEvent& native_event) {
   return gfx::Vector2d();
 }
 
-bool ShouldCopyPlatformEvents() {
-  return true;
+PlatformEvent CopyNativeEvent(const PlatformEvent& event) {
+  NOTIMPLEMENTED() << "Don't know how to copy PlatformEvent for this platform";
+  return NULL;
 }
 
-PlatformEvent CreateInvalidPlatformEvent() {
-  return PlatformEvent();
-}
-
-bool IsPlatformEventValid(const PlatformEvent& event) {
-  return !!event;
-}
+void ReleaseCopiedNativeEvent(const PlatformEvent& event) {}
 
 PointerDetails GetTouchPointerDetailsFromNative(
     const PlatformEvent& native_event) {
   NOTIMPLEMENTED();
   return PointerDetails(EventPointerType::kUnknown,
-                        /*pointer_id=*/0,
-                        /*radius_x=*/1.0,
-                        /*radius_y=*/1.0,
-                        /*force=*/0.f);
+                        /* radius_x */ 1.0,
+                        /* radius_y */ 1.0,
+                        /* force */ 0.f,
+                        /* twist */ 0.f,
+                        /* tilt_x */ 0.f,
+                        /* tilt_y */ 0.f);
 }
 
 bool GetScrollOffsets(const PlatformEvent& native_event,

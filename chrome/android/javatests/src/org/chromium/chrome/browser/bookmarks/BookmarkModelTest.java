@@ -4,7 +4,6 @@
 
 package org.chromium.chrome.browser.bookmarks;
 
-import androidx.test.annotation.UiThreadTest;
 import androidx.test.filters.SmallTest;
 
 import org.junit.After;
@@ -15,10 +14,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.chromium.base.test.BaseJUnit4ClassRunner;
+import org.chromium.base.test.UiThreadTest;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.test.ChromeBrowserTestRule;
 import org.chromium.chrome.test.util.BookmarkTestUtil;
 import org.chromium.components.bookmarks.BookmarkId;
@@ -27,15 +26,15 @@ import org.chromium.content_public.browser.test.util.TestThreadUtils;
 import org.chromium.url.GURL;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Tests for {@link BookmarkModel}, the data layer of bookmarks. */
+/**
+ * Tests for {@link BookmarkModel}, the data layer of bookmarks.
+ */
 @RunWith(BaseJUnit4ClassRunner.class)
 @Batch(Batch.PER_CLASS)
 public class BookmarkModelTest {
@@ -44,7 +43,8 @@ public class BookmarkModelTest {
     public static final GURL C_COM = new GURL("http://c.com");
     public static final GURL AA_COM = new GURL("http://aa.com");
 
-    @Rule public final ChromeBrowserTestRule mChromeBrowserTestRule = new ChromeBrowserTestRule();
+    @Rule
+    public final ChromeBrowserTestRule mChromeBrowserTestRule = new ChromeBrowserTestRule();
 
     private static final int TIMEOUT_MS = 5000;
     private BookmarkModel mBookmarkModel;
@@ -54,20 +54,18 @@ public class BookmarkModelTest {
 
     @Before
     public void setUp() {
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    Profile profile = ProfileManager.getLastUsedRegularProfile();
-                    mBookmarkModel = BookmarkModel.getForProfile(profile);
-                    mBookmarkModel.loadEmptyPartnerBookmarkShimForTesting();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            Profile profile = Profile.getLastUsedRegularProfile();
+            mBookmarkModel = BookmarkModel.getForProfile(profile);
+            mBookmarkModel.loadEmptyPartnerBookmarkShimForTesting();
+        });
 
         BookmarkTestUtil.waitForBookmarkModelLoaded();
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mMobileNode = mBookmarkModel.getMobileFolderId();
-                    mDesktopNode = mBookmarkModel.getDesktopFolderId();
-                    mOtherNode = mBookmarkModel.getOtherFolderId();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            mMobileNode = mBookmarkModel.getMobileFolderId();
+            mDesktopNode = mBookmarkModel.getDesktopFolderId();
+            mOtherNode = mBookmarkModel.getOtherFolderId();
+        });
     }
 
     @After
@@ -156,36 +154,12 @@ public class BookmarkModelTest {
     @SmallTest
     @UiThreadTest
     @Feature({"Bookmark"})
-    public void testMoveBookmarksMixed() {
-        // Inspired by https://crbug.com/1441847 where a move during a search would have bookmarks
-        // from a mixed set of parent folders. Need to be able to handle interleaving url bookmarks
-        // where only some of which are in the same destination folder.
-        BookmarkId folderA = mBookmarkModel.addFolder(mMobileNode, 0, "fa");
-        BookmarkId folderC = mBookmarkModel.addFolder(mMobileNode, 0, "fc");
-        BookmarkId bookmarkA = addBookmark(folderA, 0, "a", A_COM);
-        BookmarkId bookmarkB = addBookmark(folderA, 1, "b", B_COM);
-        BookmarkId bookmarkC = addBookmark(folderC, 0, "c", C_COM);
-
-        List<BookmarkId> movedBookmarks = new ArrayList<>();
-        movedBookmarks.add(bookmarkA);
-        movedBookmarks.add(bookmarkC);
-        movedBookmarks.add(bookmarkB);
-        mBookmarkModel.moveBookmarks(movedBookmarks, folderC);
-
-        verifyBookmarkListNoOrder(mBookmarkModel.getChildIds(folderA), Collections.emptyList());
-        verifyBookmarkListNoOrder(mBookmarkModel.getChildIds(folderC), movedBookmarks);
-    }
-
-    @Test
-    @SmallTest
-    @UiThreadTest
-    @Feature({"Bookmark"})
     public void testDeleteBookmarks() {
         BookmarkId bookmarkA = addBookmark(mDesktopNode, 0, "a", A_COM);
         BookmarkId bookmarkB = addBookmark(mOtherNode, 0, "b", B_COM);
         BookmarkId bookmarkC = addBookmark(mMobileNode, 0, "c", C_COM);
 
-        // Delete a single bookmark.
+        // Dete a single bookmark
         mBookmarkModel.deleteBookmarks(bookmarkA);
         Assert.assertNull(mBookmarkModel.getBookmarkById(bookmarkA));
         Assert.assertNotNull(mBookmarkModel.getBookmarkById(bookmarkB));
@@ -287,19 +261,14 @@ public class BookmarkModelTest {
         return addBookmark(mBookmarkModel, parent, index, title, url);
     }
 
-    public static BookmarkId addBookmark(
-            BookmarkModel model,
-            final BookmarkId parent,
-            final int index,
-            final String title,
-            final GURL url) {
+    public static BookmarkId addBookmark(BookmarkModel model, final BookmarkId parent,
+            final int index, final String title, final GURL url) {
         final AtomicReference<BookmarkId> result = new AtomicReference<>();
         final Semaphore semaphore = new Semaphore(0);
-        TestThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    result.set(model.addBookmark(parent, index, title, url));
-                    semaphore.release();
-                });
+        TestThreadUtils.runOnUiThreadBlocking(() -> {
+            result.set(model.addBookmark(parent, index, title, url));
+            semaphore.release();
+        });
         try {
             if (semaphore.tryAcquire(TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
                 return result.get();
@@ -311,12 +280,8 @@ public class BookmarkModelTest {
         }
     }
 
-    private void verifyBookmark(
-            BookmarkId idToVerify,
-            String expectedTitle,
-            String expectedUrl,
-            boolean isFolder,
-            BookmarkId expectedParent) {
+    private void verifyBookmark(BookmarkId idToVerify, String expectedTitle,
+            String expectedUrl, boolean isFolder, BookmarkId expectedParent) {
         Assert.assertNotNull(idToVerify);
         BookmarkItem item = mBookmarkModel.getBookmarkById(idToVerify);
         Assert.assertEquals(expectedTitle, item.getTitle());
@@ -329,8 +294,8 @@ public class BookmarkModelTest {
      * Before using this helper method, always make sure @param listToVerify does not contain
      * duplicates.
      */
-    private void verifyBookmarkListNoOrder(
-            List<BookmarkId> listToVerify, Collection<BookmarkId> expectedIds) {
+    private void verifyBookmarkListNoOrder(List<BookmarkId> listToVerify,
+            HashSet<BookmarkId> expectedIds) {
         HashSet<BookmarkId> expectedIdsCopy = new HashSet<>(expectedIds);
         Assert.assertEquals(expectedIdsCopy.size(), listToVerify.size());
         for (BookmarkId id : listToVerify) {

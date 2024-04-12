@@ -5,8 +5,7 @@
 #ifndef UI_AURA_CLIENT_CURSOR_SHAPE_CLIENT_H_
 #define UI_AURA_CLIENT_CURSOR_SHAPE_CLIENT_H_
 
-#include <optional>
-
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/aura/aura_export.h"
 
 namespace ui {
@@ -21,7 +20,7 @@ class AURA_EXPORT CursorShapeClient {
  public:
   virtual ~CursorShapeClient();
 
-  virtual std::optional<ui::CursorData> GetCursorData(
+  virtual absl::optional<ui::CursorData> GetCursorData(
       const ui::Cursor& cursor) const = 0;
 };
 

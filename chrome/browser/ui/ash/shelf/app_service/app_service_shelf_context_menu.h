@@ -78,6 +78,8 @@ class AppServiceShelfContextMenu : public ShelfContextMenu {
   // Helpers to get the launch type for the extension item.
   extensions::LaunchType GetExtensionLaunchType() const;
 
+  bool ShouldAddPinMenu();
+
   void ExecutePublisherContextMenuCommand(int command_id);
 
   apps::AppType app_type_;

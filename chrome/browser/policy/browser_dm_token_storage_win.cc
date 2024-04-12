@@ -16,7 +16,6 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -26,6 +25,7 @@
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
+#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/thread_pool.h"
@@ -38,7 +38,7 @@
 #include "content/public/browser/browser_thread.h"
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-#include "chrome/updater/app/server/win/updater_legacy_idl.h"
+#include "google_update/google_update_idl.h"
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 namespace policy {
@@ -60,44 +60,22 @@ void ConfigureProxyBlanket(IUnknown* interface_pointer) {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 Microsoft::WRL::ComPtr<IAppCommandWeb> GetUpdaterAppCommand(
     const std::wstring& command_name) {
-  Microsoft::WRL::ComPtr<IUnknown> server;
-  HRESULT hr = ::CoCreateInstance(CLSID_GoogleUpdate3WebSystemClass, nullptr,
-                                  CLSCTX_ALL, IID_PPV_ARGS(&server));
+  Microsoft::WRL::ComPtr<IGoogleUpdate3Web> google_update;
+  HRESULT hr = ::CoCreateInstance(CLSID_GoogleUpdate3WebServiceClass, nullptr,
+                                  CLSCTX_ALL, IID_PPV_ARGS(&google_update));
   if (FAILED(hr))
     return nullptr;
 
-  ConfigureProxyBlanket(server.Get());
-
-  // Chrome queries for the SxS IIDs first, with a fallback to the legacy IID.
-  // Without this change, marshaling can load the typelib from the wrong hive
-  // (HKCU instead of HKLM, or vice-versa).
-  Microsoft::WRL::ComPtr<IGoogleUpdate3Web> google_update;
-  hr = server.CopyTo(__uuidof(IGoogleUpdate3WebSystem),
-                     IID_PPV_ARGS_Helper(&google_update));
-  if (FAILED(hr)) {
-    hr = server.As(&google_update);
-    if (FAILED(hr)) {
-      return nullptr;
-    }
-  }
-
+  ConfigureProxyBlanket(google_update.Get());
   Microsoft::WRL::ComPtr<IDispatch> dispatch;
   hr = google_update->createAppBundleWeb(&dispatch);
   if (FAILED(hr))
     return nullptr;
 
-  // Chrome queries for the SxS IIDs first, with a fallback to the legacy IID.
-  // Without this change, marshaling can load the typelib from the wrong hive
-  // (HKCU instead of HKLM, or vice-versa).
   Microsoft::WRL::ComPtr<IAppBundleWeb> app_bundle;
-  hr = dispatch.CopyTo(__uuidof(IAppBundleWebSystem),
-                       IID_PPV_ARGS_Helper(&app_bundle));
-  if (FAILED(hr)) {
-    hr = dispatch.As(&app_bundle);
-    if (FAILED(hr)) {
-      return nullptr;
-    }
-  }
+  hr = dispatch.As(&app_bundle);
+  if (FAILED(hr))
+    return nullptr;
 
   dispatch.Reset();
   ConfigureProxyBlanket(app_bundle.Get());
@@ -112,13 +90,9 @@ Microsoft::WRL::ComPtr<IAppCommandWeb> GetUpdaterAppCommand(
     return nullptr;
 
   Microsoft::WRL::ComPtr<IAppWeb> app;
-  hr = dispatch.CopyTo(__uuidof(IAppWebSystem), IID_PPV_ARGS_Helper(&app));
-  if (FAILED(hr)) {
-    hr = dispatch.As(&app);
-    if (FAILED(hr)) {
-      return nullptr;
-    }
-  }
+  hr = dispatch.As(&app);
+  if (FAILED(hr))
+    return nullptr;
 
   dispatch.Reset();
   ConfigureProxyBlanket(app.Get());
@@ -128,14 +102,9 @@ Microsoft::WRL::ComPtr<IAppCommandWeb> GetUpdaterAppCommand(
     return nullptr;
 
   Microsoft::WRL::ComPtr<IAppCommandWeb> app_command;
-  hr = dispatch.CopyTo(__uuidof(IAppCommandWebSystem),
-                       IID_PPV_ARGS_Helper(&app_command));
-  if (FAILED(hr)) {
-    hr = dispatch.As(&app_command);
-    if (FAILED(hr)) {
-      return nullptr;
-    }
-  }
+  hr = dispatch.As(&app_command);
+  if (FAILED(hr))
+    return nullptr;
 
   ConfigureProxyBlanket(app_command.Get());
   return app_command;
@@ -152,7 +121,8 @@ bool StoreDMTokenInRegistry(const std::string& token) {
   if (!app_command)
     return false;
 
-  std::string token_base64 = base::Base64Encode(token);
+  std::string token_base64;
+  base::Base64Encode(token, &token_base64);
   VARIANT var;
   VariantInit(&var);
   _variant_t token_var = token_base64.c_str();
@@ -250,7 +220,7 @@ std::string BrowserDMTokenStorageWin::InitDMToken() {
 
     DCHECK_LE(size, installer::kMaxDMTokenLength);
     return std::string(base::TrimWhitespaceASCII(
-        std::string_view(raw_value.data(), size), base::TRIM_ALL));
+        base::StringPiece(raw_value.data(), size), base::TRIM_ALL));
   }
 
   DVLOG(1) << "Failed to get DMToken from Registry.";

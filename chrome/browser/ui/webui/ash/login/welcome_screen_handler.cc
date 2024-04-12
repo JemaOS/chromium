@@ -33,8 +33,7 @@
 #include "chrome/browser/ui/webui/ash/login/oobe_ui.h"
 #include "chrome/browser/ui/webui/ash/login/reset_screen_handler.h"
 #include "chrome/common/pref_names.h"
-#include "chrome/grit/branded_strings.h"
-#include "chrome/grit/chrome_unscaled_resources.h"
+#include "chrome/grit/chromium_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "chromeos/ash/components/settings/cros_settings_names.h"
 #include "chromeos/dbus/constants/dbus_switches.h"
@@ -46,14 +45,18 @@
 #include "ui/base/ime/ash/component_extension_ime_manager.h"
 #include "ui/base/ime/ash/extension_ime_util.h"
 #include "ui/base/ime/ash/input_method_manager.h"
-#include "ui/base/resource/resource_bundle.h"
 #include "ui/chromeos/devicetype_utils.h"
+#include "base/system/sys_info.h"
+#include "jemaos/switches/misc//misc_switches.h"
 
 namespace ash {
 
 // WelcomeScreenHandler, public: -----------------------------------------------
 
-WelcomeScreenHandler::WelcomeScreenHandler() : BaseScreenHandler(kScreenId) {}
+WelcomeScreenHandler::WelcomeScreenHandler(CoreOobeView* core_oobe_view)
+    : BaseScreenHandler(kScreenId), core_oobe_view_(core_oobe_view) {
+  DCHECK(core_oobe_view_);
+}
 
 WelcomeScreenHandler::~WelcomeScreenHandler() = default;
 
@@ -77,7 +80,8 @@ void WelcomeScreenHandler::Show() {
 
 void WelcomeScreenHandler::SetLanguageList(base::Value::List language_list) {
   language_list_ = std::move(language_list);
-  GetOobeUI()->GetCoreOobe()->ReloadContent();
+  base::Value::Dict localized_strings = GetOobeUI()->GetLocalizedStrings();
+  core_oobe_view_->ReloadContent(std::move(localized_strings));
 }
 
 void WelcomeScreenHandler::SetInputMethodId(
@@ -111,20 +115,9 @@ void WelcomeScreenHandler::DeclareLocalizedValues(
                   IDS_INSTALLED_PRODUCT_OS_NAME);
     builder->Add("welcomeScreenGreetingSubtitle",
                  IDS_WELCOME_SCREEN_GREETING_SUBTITLE);
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  } else if (features::IsBootAnimationEnabled()) {
-    auto product_name =
-        ui::ResourceBundle::GetSharedInstance().GetRawDataResource(
-            IDR_CROS_OOBE_PRODUCT_NAME);
-    builder->AddF("welcomeScreenGreeting",
-                  IDS_WELCOME_SCREEN_GREETING_CLOUD_READY,
-                  base::UTF8ToUTF16(product_name));
-    builder->Add("welcomeScreenGreetingSubtitle",
-                 IDS_WELCOME_SCREEN_GREETING_SUBTITLE);
-#endif
   } else {
     builder->AddF("welcomeScreenGreeting", IDS_NEW_WELCOME_SCREEN_GREETING,
-                  ui::GetChromeOSDeviceTypeResourceId());
+                  IDS_INSTALLED_PRODUCT_OS_NAME);
     builder->Add("welcomeScreenGreetingSubtitle",
                  IDS_WELCOME_SCREEN_GREETING_SUBTITLE);
   }
@@ -188,19 +181,11 @@ void WelcomeScreenHandler::DeclareLocalizedValues(
   // Strings for ChromeVox hint.
   builder->Add("activateChromeVox", IDS_OOBE_ACTIVATE_CHROMEVOX);
   builder->Add("continueWithoutChromeVox", IDS_OOBE_CONTINUE_WITHOUT_CHROMEVOX);
-  builder->Add("chromevoxHintClose", IDS_OOBE_CHROMEVOX_HINT_CLOSE);
-  builder->Add("chromevoxHintTitle", IDS_OOBE_CHROMEVOX_HINT_TITLE);
   builder->Add("chromeVoxHintText", IDS_OOBE_CHROMEVOX_HINT_TEXT);
-  builder->Add("chromeVoxHintTextExpanded",
-               IDS_OOBE_CHROMEVOX_HINT_TEXT_EXPANDED);
   builder->Add("chromeVoxHintAnnouncementTextLaptop",
                IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_LAPTOP);
   builder->Add("chromeVoxHintAnnouncementTextTablet",
                IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_TABLET);
-  builder->Add("chromeVoxHintAnnouncementTextLaptopExpanded",
-               IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_LAPTOP_EXPANDED);
-  builder->Add("chromeVoxHintAnnouncementTextTabletExpanded",
-               IDS_OOBE_CHROMEVOX_HINT_ANNOUNCEMENT_TEXT_TABLET_EXPANDED);
 
   // Strings for the device requisition prompt.
   builder->Add("deviceRequisitionPromptCancel",
@@ -267,6 +252,10 @@ void WelcomeScreenHandler::GetAdditionalParameters(base::Value::Dict* dict) {
   dict->Set("timezoneList", GetTimezoneList());
   dict->Set("demoModeCountryList", DemoSession::GetCountryList());
 
+  const std::string board = base::SysInfo::GetLsbReleaseBoardWithoutSuffix();
+  dict->Set("lsbReleaseBoard", board);
+  dict->Set("nonForYouBoard", jemaos::switches::IsNonForYouBoard(board));
+
   // If this switch is set allow to open advanced options and configure device
   // requisition.
   dict->Set("isDeviceRequisitionConfigurable",
@@ -282,11 +271,8 @@ void WelcomeScreenHandler::GiveChromeVoxHint() {
 }
 
 void WelcomeScreenHandler::SetQuickStartEnabled() {
+  DCHECK(features::IsOobeQuickStartEnabled());
   CallExternalAPI("setQuickStartEnabled");
-}
-
-base::WeakPtr<WelcomeView> WelcomeScreenHandler::AsWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
 }
 
 void WelcomeScreenHandler::HandleRecordChromeVoxHintSpokenSuccess() {

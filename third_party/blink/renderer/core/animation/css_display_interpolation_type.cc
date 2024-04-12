@@ -70,11 +70,10 @@ class UnderlyingDisplayChecker final
   ~UnderlyingDisplayChecker() final = default;
 
  private:
-  bool IsValid(const StyleResolverState& state,
+  bool IsValid(const StyleResolverState&,
                const InterpolationValue& underlying) const final {
     double underlying_fraction =
-        To<InterpolableNumber>(*underlying.interpolable_value)
-            .Value(state.CssToLengthConversionData());
+        To<InterpolableNumber>(*underlying.interpolable_value).Value();
     EDisplay underlying_display =
         To<CSSDisplayNonInterpolableValue>(*underlying.non_interpolable_value)
             .Display(underlying_fraction);
@@ -101,24 +100,20 @@ class InheritedDisplayChecker
 InterpolationValue CSSDisplayInterpolationType::CreateDisplayValue(
     EDisplay display) const {
   return InterpolationValue(
-      MakeGarbageCollected<InterpolableNumber>(0),
+      std::make_unique<InterpolableNumber>(0),
       CSSDisplayNonInterpolableValue::Create(display, display));
 }
 
 InterpolationValue CSSDisplayInterpolationType::MaybeConvertNeutral(
     const InterpolationValue& underlying,
     ConversionCheckers& conversion_checkers) const {
-  // Note: using default CSSToLengthConversionData here as it's
-  // guaranteed to be a double.
-  // TODO(crbug.com/325821290): Avoid InterpolableNumber here.
   double underlying_fraction =
-      To<InterpolableNumber>(*underlying.interpolable_value)
-          .Value(CSSToLengthConversionData());
+      To<InterpolableNumber>(*underlying.interpolable_value).Value();
   EDisplay underlying_display =
       To<CSSDisplayNonInterpolableValue>(*underlying.non_interpolable_value)
           .Display(underlying_fraction);
   conversion_checkers.push_back(
-      MakeGarbageCollected<UnderlyingDisplayChecker>(underlying_display));
+      std::make_unique<UnderlyingDisplayChecker>(underlying_display));
   return CreateDisplayValue(underlying_display);
 }
 
@@ -137,7 +132,7 @@ InterpolationValue CSSDisplayInterpolationType::MaybeConvertInherit(
   }
   EDisplay inherited_display = state.ParentStyle()->Display();
   conversion_checkers.push_back(
-      MakeGarbageCollected<InheritedDisplayChecker>(inherited_display));
+      std::make_unique<InheritedDisplayChecker>(inherited_display));
   return CreateDisplayValue(inherited_display);
 }
 
@@ -187,8 +182,8 @@ PairwiseInterpolationValue CSSDisplayInterpolationType::MaybeMergeSingles(
   EDisplay end_display =
       To<CSSDisplayNonInterpolableValue>(*end.non_interpolable_value).Display();
   return PairwiseInterpolationValue(
-      MakeGarbageCollected<InterpolableNumber>(0),
-      MakeGarbageCollected<InterpolableNumber>(1),
+      std::make_unique<InterpolableNumber>(0),
+      std::make_unique<InterpolableNumber>(1),
       CSSDisplayNonInterpolableValue::Create(start_display, end_display));
 }
 
@@ -206,8 +201,7 @@ void CSSDisplayInterpolationType::ApplyStandardPropertyValue(
     StyleResolverState& state) const {
   // Display interpolation has been deferred to application time here due to
   // its non-linear behaviour.
-  double fraction = To<InterpolableNumber>(interpolable_value)
-                        .Value(state.CssToLengthConversionData());
+  double fraction = To<InterpolableNumber>(interpolable_value).Value();
   EDisplay display = To<CSSDisplayNonInterpolableValue>(non_interpolable_value)
                          ->Display(fraction);
   state.StyleBuilder().SetDisplay(display);

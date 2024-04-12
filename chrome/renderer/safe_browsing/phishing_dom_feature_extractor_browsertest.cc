@@ -5,7 +5,6 @@
 #include "components/safe_browsing/content/renderer/phishing_classifier/phishing_dom_feature_extractor.h"
 
 #include <memory>
-#include <string_view>
 #include <unordered_map>
 
 #include "base/functional/bind.h"
@@ -133,7 +132,7 @@ class TestChromeContentRendererClient : public ChromeContentRendererClient {
   ~TestChromeContentRendererClient() override {}
   // Since visited_link_reader_ in ChromeContentRenderClient never get
   // initiated, overrides VisitedLinkedHash() function to prevent crashing.
-  uint64_t VisitedLinkHash(std::string_view canonical_url) override {
+  uint64_t VisitedLinkHash(const char* canonical_url, size_t length) override {
     return 0;
   }
 };
@@ -141,12 +140,12 @@ class TestChromeContentRendererClient : public ChromeContentRendererClient {
 class PhishingDOMFeatureExtractorTest : public ChromeRenderViewTest {
  public:
   PhishingDOMFeatureExtractorTest()
-      : success_(false), run_loop_(std::make_unique<base::RunLoop>()) {}
+      : success_(false), message_loop_(new content::MessageLoopRunner) {}
 
   bool GetSuccess() { return success_; }
   void ResetTest() {
     success_ = false;
-    run_loop_ = std::make_unique<base::RunLoop>();
+    message_loop_ = new content::MessageLoopRunner;
     extractor_->Reset();
   }
 
@@ -162,7 +161,7 @@ class PhishingDOMFeatureExtractorTest : public ChromeRenderViewTest {
         GetMainFrame()->GetDocument(), features,
         base::BindOnce(&PhishingDOMFeatureExtractorTest::AnotherExtractionDone,
                        weak_factory_.GetWeakPtr()));
-    run_loop_->Run();
+    message_loop_->Run();
   }
 
   void ExtractFeatures(const std::string& document_domain,
@@ -175,7 +174,7 @@ class PhishingDOMFeatureExtractorTest : public ChromeRenderViewTest {
         GetMainFrame()->GetDocument(), features,
         base::BindOnce(&PhishingDOMFeatureExtractorTest::AnotherExtractionDone,
                        weak_factory_.GetWeakPtr()));
-    run_loop_->Run();
+    message_loop_->Run();
   }
 
   // Helper for the SubframeRemoval test that posts a message to remove
@@ -210,7 +209,7 @@ class PhishingDOMFeatureExtractorTest : public ChromeRenderViewTest {
 
   void AnotherExtractionDone(bool success) {
     success_ = success;
-    run_loop_->QuitClosure().Run();
+    message_loop_->QuitClosure().Run();
   }
 
   // Does the actual work of removing the iframe "frame1" from the document.
@@ -223,7 +222,7 @@ class PhishingDOMFeatureExtractorTest : public ChromeRenderViewTest {
 
   bool success_;
   std::unique_ptr<TestPhishingDOMFeatureExtractor> extractor_;
-  std::unique_ptr<base::RunLoop> run_loop_;
+  scoped_refptr<content::MessageLoopRunner> message_loop_;
   base::WeakPtrFactory<PhishingDOMFeatureExtractorTest> weak_factory_{this};
 };
 
@@ -529,7 +528,7 @@ TEST_F(PhishingDOMFeatureExtractorTest, SubframeRemoval) {
       .WillOnce(Return(now))
       // Time check after the first 10 elements.  Enough time has passed
       // to stop extraction.  Schedule the iframe removal to happen as soon as
-      // the feature extractor returns control to the run loop.
+      // the feature extractor returns control to the message loop.
       .WillOnce(DoAll(
           Invoke(this, &PhishingDOMFeatureExtractorTest::ScheduleRemoveIframe),
           Return(now + base::Milliseconds(21))))

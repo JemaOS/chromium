@@ -30,11 +30,12 @@
 #include "chrome/browser/download/download_history.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
+#include "base/metrics/histogram_functions.h"
+#include "base/metrics/histogram_macros.h"
 #include "base/observer_list.h"
 #include "build/build_config.h"
 #include "chrome/browser/download/download_crx_util.h"
@@ -51,13 +52,10 @@
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/storage_partition_config.h"
 #include "extensions/buildflags/buildflags.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "chrome/browser/extensions/api/downloads/downloads_api.h"
-#endif
-
-#if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/download/download_item_web_app_data.h"
 #endif
 
 using history::DownloadState;
@@ -182,12 +180,6 @@ history::DownloadRow GetDownloadRow(download::DownloadItem* item) {
   download.transient = item->IsTransient();
   download.by_ext_id = by_ext_id;
   download.by_ext_name = by_ext_name;
-#if !BUILDFLAG(IS_ANDROID)
-  if (DownloadItemWebAppData* web_app_data = DownloadItemWebAppData::Get(item);
-      web_app_data != nullptr) {
-    download.by_web_app_id = web_app_data->id();
-  }
-#endif
   download.download_slice_info = history::GetHistoryDownloadSliceInfos(*item);
   TruncatedDataUrlAtTheEndIfNeeded(&download.url_chain);
   return download;
@@ -231,7 +223,6 @@ ShouldUpdateHistoryResult ShouldUpdateHistory(
       (previous->transient != current.transient) ||
       (previous->by_ext_id != current.by_ext_id) ||
       (previous->by_ext_name != current.by_ext_name) ||
-      (previous->by_web_app_id != current.by_web_app_id) ||
       (previous->download_slice_info != current.download_slice_info)) {
     return ShouldUpdateHistoryResult::UPDATE;
   }
@@ -332,9 +323,8 @@ DownloadHistory::DownloadHistory(content::DownloadManager* manager,
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   download::SimpleDownloadManager::DownloadVector items;
   notifier_.GetManager()->GetAllDownloads(&items);
-  for (download::DownloadItem* item : items) {
+  for (auto* item : items)
     OnDownloadCreated(notifier_.GetManager(), item);
-  }
   history_->QueryDownloads(base::BindOnce(&DownloadHistory::QueryCallback,
                                           weak_ptr_factory_.GetWeakPtr()));
 }
@@ -375,11 +365,17 @@ void DownloadHistory::LoadHistoryDownloads(
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   DCHECK(notifier_.GetManager());
 
+  base::UmaHistogramCounts1000("Download.LoadHistoryDownloads.DownloadRows",
+                               rows.size());
+  SCOPED_UMA_HISTOGRAM_TIMER("Download.LoadHistoryDownloadsTime");
+
   std::map<std::string, int> file_name_count;
   CountFilePathOccurences(rows, &file_name_count);
 
+  int overwritten_download_removals = 0;
   for (const history::DownloadRow& row : rows) {
     if (ShouldSkipLoadingDownload(row, &file_name_count)) {
+      ++overwritten_download_removals;
       ScheduleRemoveDownload(row.id);
       continue;
     }
@@ -402,6 +398,9 @@ void DownloadHistory::LoadHistoryDownloads(
           notifier_.GetManager()->GetStoragePartitionConfigForSiteUrl(
               row.site_url);
     } else {
+      SCOPED_UMA_HISTOGRAM_TIMER(
+          "Download.LoadHistoryDownloads."
+          "DeserializeStoragePartitionConfigTime");
       storage_partition_config =
           notifier_.GetManager()
               ->SerializedEmbedderDownloadDataToStoragePartitionConfig(
@@ -410,7 +409,7 @@ void DownloadHistory::LoadHistoryDownloads(
     download::DownloadItem* item = notifier_.GetManager()->CreateDownloadItem(
         row.guid, loading_id_, row.current_path, row.target_path, url_chain,
         row.referrer_url, storage_partition_config, row.tab_url,
-        row.tab_referrer_url, std::nullopt, row.mime_type,
+        row.tab_referrer_url, absl::nullopt, row.mime_type,
         row.original_mime_type, row.start_time, row.end_time, row.etag,
         row.last_modified, row.received_bytes, row.total_bytes,
         std::string(),  // TODO(asanka): Need to persist and restore hash of
@@ -436,41 +435,32 @@ void DownloadHistory::LoadHistoryDownloads(
                                   history_reason)) {
       OnDownloadUpdated(notifier_.GetManager(), item);
     }
-
-    // The item was created already and observers were notified of its creation
-    // via OnDownloadCreated(). Since we are about to possibly add extra info to
-    // it (for extensions and web apps), we must notify observers again, after
-    // modification, so that observers who care about the extra info may have an
-    // updated view of the item.
-    bool should_update_observers = false;
 #if BUILDFLAG(ENABLE_EXTENSIONS)
     if (!row.by_ext_id.empty() && !row.by_ext_name.empty()) {
+      SCOPED_UMA_HISTOGRAM_TIMER(
+          "Download.LoadHistoryDownloads.AddExtensionInfoAndNotifyTime");
       new extensions::DownloadedByExtension(item, row.by_ext_id,
                                             row.by_ext_name);
-      should_update_observers = true;
-    }
-#endif
-#if !BUILDFLAG(IS_ANDROID)
-    if (!row.by_web_app_id.empty()) {
-      DownloadItemWebAppData::CreateAndAttachToItem(item, row.by_web_app_id);
-      should_update_observers = true;
-    }
-#endif
-    if (should_update_observers) {
       item->UpdateObservers();
     }
-
+#endif
     DCHECK_EQ(DownloadHistoryData::PERSISTED,
               DownloadHistoryData::Get(item)->state());
   }
+  UMA_HISTOGRAM_COUNTS_1000("Download.OverwrittenDownloadRemovedFromHistory",
+                            overwritten_download_removals);
 
   // Indicate that the history db is initialized.
   notifier_.GetManager()->PostInitialization(
       content::DownloadManager::DOWNLOAD_INITIALIZATION_DEPENDENCY_HISTORY_DB);
 
   initial_history_query_complete_ = true;
-  for (Observer& observer : observers_) {
-    observer.OnHistoryQueryComplete();
+  {
+    SCOPED_UMA_HISTOGRAM_TIMER(
+        "Download.LoadHistoryDownloads.NotifyObserversTime");
+    for (Observer& observer : observers_) {
+      observer.OnHistoryQueryComplete();
+    }
   }
 }
 

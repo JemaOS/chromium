@@ -10,7 +10,7 @@ import org.chromium.base.ObserverList;
 import org.chromium.chrome.browser.dependency_injection.ActivityScope;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.lifecycle.DestroyObserver;
-import org.chromium.chrome.browser.page_load_metrics.PageLoadMetrics;
+import org.chromium.chrome.browser.metrics.PageLoadMetrics;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabCreationState;
@@ -75,7 +75,9 @@ public class TabObserverRegistrar implements TabModelObserver, DestroyObserver {
                 }
             };
 
-    /** Registers a {@link PageLoadMetrics.Observer} to be managed by this Registrar. */
+    /**
+     * Registers a {@link PageLoadMetrics.Observer} to be managed by this Registrar.
+     */
     public void registerPageLoadMetricsObserver(PageLoadMetrics.Observer observer) {
         mPageLoadMetricsObservers.add(observer);
     }
@@ -121,10 +123,8 @@ public class TabObserverRegistrar implements TabModelObserver, DestroyObserver {
     }
 
     @Inject
-    public TabObserverRegistrar(
-            ActivityLifecycleDispatcher lifecycleDispatcher,
-            CustomTabActivityTabProvider tabProvider,
-            CustomTabCountObserver tabCountObserver) {
+    public TabObserverRegistrar(ActivityLifecycleDispatcher lifecycleDispatcher,
+            CustomTabActivityTabProvider tabProvider, CustomTabCountObserver tabCountObserver) {
         mTabProvider = tabProvider;
         mTabCountObserver = tabCountObserver;
         mTabProvider.addObserver(mActivityTabProviderObserver);
@@ -172,7 +172,9 @@ public class TabObserverRegistrar implements TabModelObserver, DestroyObserver {
         }
     }
 
-    /** Called when the {@link CustomTabActivityTabProvider}'s active tab has changed. */
+    /**
+     * Called when the {@link CustomTabActivityTabProvider}'s active tab has changed.
+     */
     private void onTabProviderTabUpdated() {
         if (mTabProviderTab != null) {
             removeTabObservers(mTabProviderTab, mActivityTabObservers.iterator());

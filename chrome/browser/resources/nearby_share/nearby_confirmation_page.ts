@@ -8,19 +8,18 @@
  * are not currently in the contacts of this user.
  */
 
-import 'chrome://resources/ash/common/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/ash/common/cr_elements/cr_checkbox/cr_checkbox.js';
-import 'chrome://resources/ash/common/cr_elements/cr_lottie/cr_lottie.js';
-import 'chrome://resources/cros_components/lottie_renderer/lottie-renderer.js';
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
+import 'chrome://resources/cr_elements/cr_checkbox/cr_checkbox.js';
+import 'chrome://resources/cr_elements/cr_lottie/cr_lottie.js';
+import 'chrome://resources/polymer/v3_0/iron-media-query/iron-media-query.js';
 import '/shared/nearby_page_template.js';
 import '/shared/nearby_preview.js';
 import '/shared/nearby_progress.js';
 import './strings.m.js';
 
-import type {ConfirmationManagerInterface, PayloadPreview, ShareTarget, TransferUpdateListenerInterface, TransferUpdateListenerPendingReceiver} from '/shared/nearby_share.mojom-webui.js';
-import {TransferStatus, TransferUpdateListenerReceiver} from '/shared/nearby_share.mojom-webui.js';
+import {ConfirmationManagerInterface, PayloadPreview, ShareTarget, TransferStatus, TransferUpdateListenerInterface, TransferUpdateListenerPendingReceiver, TransferUpdateListenerReceiver} from '/shared/nearby_share.mojom-webui.js';
 import {CloseReason} from '/shared/types.js';
-import {I18nMixin} from 'chrome://resources/ash/common/cr_elements/i18n_mixin.js';
+import {I18nMixin} from 'chrome://resources/cr_elements/i18n_mixin.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {getDiscoveryManager} from './discovery_manager.js';
@@ -50,9 +49,15 @@ class TransferUpdateListener implements TransferUpdateListenerInterface {
 }
 
 /**
- * The progress bar asset URL.
+ * The progress bar asset URL for light mode
  */
-const PROGRESS_BAR_URL: string = 'nearby_share_progress_bar.json';
+const PROGRESS_BAR_URL_LIGHT: string = 'nearby_share_progress_bar_light.json';
+
+/**
+ * The progress bar asset URL for dark mode
+ */
+const PROGRESS_BAR_URL_DARK: string = 'nearby_share_progress_bar_dark.json';
+
 
 const NearbyConfirmationPageElementBase = I18nMixin(PolymerElement);
 
@@ -152,6 +157,15 @@ export class NearbyConfirmationPageElement extends
         type: TransferStatus,
         value: null,
       },
+
+      /**
+       * Whether the confirmation page is being rendered in dark mode.
+       */
+      isDarkModeActive_: {
+        type: Boolean,
+        value: false,
+      },
+
     };
   }
 
@@ -165,6 +179,7 @@ export class NearbyConfirmationPageElement extends
   private errorDescription_: string|null;
   private needsConfirmation_: boolean;
   private lastTransferStatus_: TransferStatus;
+  private isDarkModeActive_: boolean;
 
   private transferUpdateListener_: TransferUpdateListener|null = null;
 
@@ -332,7 +347,8 @@ export class NearbyConfirmationPageElement extends
    * progress bar.
    */
   private getAnimationUrl_(): string {
-    return PROGRESS_BAR_URL;
+    return this.isDarkModeActive_ ? PROGRESS_BAR_URL_DARK :
+                                    PROGRESS_BAR_URL_LIGHT;
   }
 }
 

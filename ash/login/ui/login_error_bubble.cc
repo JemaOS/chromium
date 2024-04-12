@@ -10,12 +10,10 @@
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/shell.h"
 #include "ash/style/ash_color_id.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/image_model.h"
-#include "ui/chromeos/styles/cros_tokens_color_mappings.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/layout/box_layout.h"
@@ -34,12 +32,9 @@ LoginErrorBubble::LoginErrorBubble()
 LoginErrorBubble::LoginErrorBubble(base::WeakPtr<views::View> anchor_view)
     : LoginBaseBubbleView(std::move(anchor_view)) {
   alert_icon_ = AddChildView(std::make_unique<views::ImageView>());
+  alert_icon_->SetPreferredSize(gfx::Size(kAlertIconSizeDp, kAlertIconSizeDp));
   alert_icon_->SetImage(ui::ImageModel::FromVectorIcon(
-      kLockScreenAlertIcon,
-      chromeos::features::IsJellyrollEnabled()
-          ? static_cast<ui::ColorId>(cros_tokens::kCrosSysOnSurface)
-          : kColorAshIconColorPrimary,
-      kAlertIconSizeDp));
+      kLockScreenAlertIcon, kColorAshIconColorPrimary));
 }
 
 LoginErrorBubble::~LoginErrorBubble() = default;
@@ -65,7 +60,7 @@ void LoginErrorBubble::GetAccessibleNodeData(ui::AXNodeData* node_data) {
   node_data->SetName(GetAccessibleName());
 }
 
-BEGIN_METADATA(LoginErrorBubble)
+BEGIN_METADATA(LoginErrorBubble, LoginBaseBubbleView)
 END_METADATA
 
 }  // namespace ash

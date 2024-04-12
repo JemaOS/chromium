@@ -14,22 +14,16 @@ class StyleIntrinsicLength {
   DISALLOW_NEW();
 
  public:
-  // Style data for contain-intrinsic-size:
-  //  none | <length> | auto && <length> | auto && none.
-  StyleIntrinsicLength(bool has_auto, const std::optional<Length>& length)
+  // Style data for aspect-ratio: none | <length> | auto && <length>. none is
+  // represented as an empty absl::optional.
+  StyleIntrinsicLength(bool has_auto, const Length& length)
       : has_auto_(has_auto), length_(length) {}
 
   StyleIntrinsicLength() = default;
 
-  // This returns true if the value is "none" without auto. It's not named
-  // "IsNone" to avoid confusion with "auto none" grammar.
-  bool IsNoOp() const { return !has_auto_ && !length_.has_value(); }
-
   bool HasAuto() const { return has_auto_; }
 
-  void SetHasAuto() { has_auto_ = true; }
-
-  const std::optional<Length>& GetLength() const { return length_; }
+  const Length& GetLength() const { return length_; }
 
   bool operator==(const StyleIntrinsicLength& o) const {
     return has_auto_ == o.has_auto_ && length_ == o.length_;
@@ -39,7 +33,7 @@ class StyleIntrinsicLength {
 
  private:
   bool has_auto_ = false;
-  std::optional<Length> length_;
+  Length length_;
 };
 
 }  // namespace blink

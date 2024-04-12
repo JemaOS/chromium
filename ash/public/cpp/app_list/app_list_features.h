@@ -28,6 +28,13 @@ ASH_PUBLIC_EXPORT BASE_DECLARE_FEATURE(kEnableExactMatchForNonLatinLocale);
 // suggestions.
 ASH_PUBLIC_EXPORT BASE_DECLARE_FEATURE(kForceShowContinueSection);
 
+// Enables iconified text and inline icons in launcher search.
+ASH_PUBLIC_EXPORT BASE_DECLARE_FEATURE(kSearchResultInlineIcon);
+
+// Enables a fling gesture or mouse scroll from the shelf to show the bubble
+// launcher.
+ASH_PUBLIC_EXPORT BASE_DECLARE_FEATURE(kQuickActionShowBubbleLauncher);
+
 // Enable shortened search result update animations when in progress animations
 // are interrupted by search model updates.
 ASH_PUBLIC_EXPORT BASE_DECLARE_FEATURE(kDynamicSearchUpdateAnimation);
@@ -38,27 +45,18 @@ ASH_PUBLIC_EXPORT BASE_DECLARE_FEATURE(kLauncherPlayStoreSearch);
 // Enables app list drag and drop refactor to use views drag and drop APIs.
 ASH_PUBLIC_EXPORT BASE_DECLARE_FEATURE(kDragAndDropRefactor);
 
-// Enables the Launcher Apps Collection UI in ChromeOS - a modular view with
-// different categories filled with predefined apps.
-ASH_PUBLIC_EXPORT BASE_DECLARE_FEATURE(kAppsCollections);
-
-// Forces the user elegibility of the AppsCollections feature. When this is
-// enabled, the regular checks for the account are ignored and AppsCollection
-// show by default.
-ASH_PUBLIC_EXPORT BASE_DECLARE_FEATURE(kForceShowAppsCollections);
-
 ASH_PUBLIC_EXPORT bool IsAppReinstallZeroStateEnabled();
 ASH_PUBLIC_EXPORT bool IsAppListLaunchRecordingEnabled();
 ASH_PUBLIC_EXPORT bool IsExactMatchForNonLatinLocaleEnabled();
 ASH_PUBLIC_EXPORT bool IsForceShowContinueSectionEnabled();
 ASH_PUBLIC_EXPORT bool IsAggregatedMlSearchRankingEnabled();
 ASH_PUBLIC_EXPORT bool IsLauncherSearchNormalizationEnabled();
+ASH_PUBLIC_EXPORT bool IsSearchResultInlineIconEnabled();
+ASH_PUBLIC_EXPORT bool IsQuickActionShowBubbleLauncherEnabled();
 ASH_PUBLIC_EXPORT bool IsDynamicSearchUpdateAnimationEnabled();
 ASH_PUBLIC_EXPORT base::TimeDelta DynamicSearchUpdateAnimationDuration();
 ASH_PUBLIC_EXPORT bool IsLauncherPlayStoreSearchEnabled();
 ASH_PUBLIC_EXPORT bool IsDragAndDropRefactorEnabled();
-ASH_PUBLIC_EXPORT bool IsAppsCollectionsEnabled();
-ASH_PUBLIC_EXPORT bool IsForceShowAppsCollectionsEnabled();
 
 }  // namespace app_list_features
 

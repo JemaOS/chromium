@@ -4,8 +4,7 @@
 
 package org.chromium.chrome.browser.share;
 
-import org.jni_zero.NativeMethods;
-
+import org.chromium.base.annotations.NativeMethods;
 import org.chromium.chrome.browser.profiles.Profile;
 
 /**
@@ -26,7 +25,6 @@ public class ShareHistoryBridge {
     @NativeMethods
     public interface Natives {
         void addShareEntry(Profile profile, String string);
-
         void clear(Profile profile);
     }
 }

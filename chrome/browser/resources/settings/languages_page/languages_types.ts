@@ -112,6 +112,11 @@ export interface LanguageHelper {
   disableLanguage(languageCode: string): void;
 
   /**
+   * Returns true iff provided languageState is the only blocked language.
+   */
+  isOnlyTranslateBlockedLanguage(languageState: LanguageState): boolean;
+
+  /**
    * Returns true iff provided languageState can be disabled.
    */
   canDisableLanguage(languageState: LanguageState): boolean;

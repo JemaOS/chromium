@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-GEN_INCLUDE(['chromevox_e2e_test_base.js']);
+GEN_INCLUDE(['../../common/testing/accessibility_test_base.js']);
 
 function speak(text, opt_properties) {
   ChromeVox.tts.speak(text, 0, opt_properties);
@@ -21,14 +21,32 @@ function braille(text) {
 /**
  * Test fixture.
  */
-MockFeedbackUnitTest = class extends ChromeVoxE2ETest {
+MockFeedbackUnitTest = class extends AccessibilityTestBase {
   constructor() {
     super();
     this.expectedCalls = [];
   }
+
+  async setUpDeferred() {
+    await super.setUpDeferred();
+
+    // Alphabetical based on file path.
+    await importModule('ChromeVox', '/chromevox/background/chromevox.js');
+    await importModule(
+        'NavBraille', '/chromevox/common/braille/nav_braille.js');
+    await importModule('EarconId', '/chromevox/common/earcon_id.js');
+    await importModule('Spannable', '/chromevox/common/spannable.js');
+    await importModule('QueueMode', '/chromevox/common/tts_types.js');
+  }
 };
 
-AX_TEST_F('MockFeedbackUnitTest', 'speechAndCallbacks', function() {
+MockFeedbackUnitTest.prototype.extraLibraries = [
+  '../../common/testing/assert_additions.js',
+  '../testing/fake_dom.js',  // Must come before other files
+  'mock_feedback.js',
+];
+
+TEST_F('MockFeedbackUnitTest', 'speechAndCallbacks', function() {
   let afterThirdStringCalled = false;
   let spruiousStringEndCallbackCalled = false;
   let finishCalled = false;
@@ -62,7 +80,7 @@ AX_TEST_F('MockFeedbackUnitTest', 'speechAndCallbacks', function() {
   assertTrue(finishCalled);
 });
 
-AX_TEST_F('MockFeedbackUnitTest', 'startAndEndCallbacks', function() {
+TEST_F('MockFeedbackUnitTest', 'startAndEndCallbacks', function() {
   let onlyStartCallbackCalled = false;
   let onlyEndCallbackCalled = false;
   let bothCallbacksStartCalled = false;
@@ -103,7 +121,7 @@ AX_TEST_F('MockFeedbackUnitTest', 'startAndEndCallbacks', function() {
   assertTrue(bothCallbacksEndCalled);
 });
 
-AX_TEST_F('MockFeedbackUnitTest', 'SpeechAndBraille', function() {
+TEST_F('MockFeedbackUnitTest', 'SpeechAndBraille', function() {
   let secondCallbackCalled = false;
   let finishCalled = false;
   const mock = new MockFeedback(function() {
@@ -130,7 +148,7 @@ AX_TEST_F('MockFeedbackUnitTest', 'SpeechAndBraille', function() {
   assertTrue(finishCalled);
 });
 
-AX_TEST_F('MockFeedbackUnitTest', 'expectWithRegex', function() {
+TEST_F('MockFeedbackUnitTest', 'expectWithRegex', function() {
   let done = false;
   const mock = new MockFeedback();
   mock.install();
@@ -145,7 +163,7 @@ AX_TEST_F('MockFeedbackUnitTest', 'expectWithRegex', function() {
   assertTrue(done);
 });
 
-AX_TEST_F('MockFeedbackUnitTest', 'expectAfterReplayThrows', function() {
+TEST_F('MockFeedbackUnitTest', 'expectAfterReplayThrows', function() {
   const mock = new MockFeedback();
   mock.replay();
   assertException('', function() {
@@ -153,7 +171,7 @@ AX_TEST_F('MockFeedbackUnitTest', 'expectAfterReplayThrows', function() {
   }, 'AssertionError');
 });
 
-AX_TEST_F('MockFeedbackUnitTest', 'NoMatchDoesNotFinish', function() {
+TEST_F('MockFeedbackUnitTest', 'NoMatchDoesNotFinish', function() {
   let firstCallbackCalled = false;
   const mock = new MockFeedback(function() {
     throw Error('Should not be called');
@@ -172,7 +190,7 @@ AX_TEST_F('MockFeedbackUnitTest', 'NoMatchDoesNotFinish', function() {
   assertTrue(firstCallbackCalled);
 });
 
-AX_TEST_F('MockFeedbackUnitTest', 'SpeechAndEarcons', function() {
+TEST_F('MockFeedbackUnitTest', 'SpeechAndEarcons', function() {
   let finishCalled = false;
   const mock = new MockFeedback(function() {
     finishCalled = true;
@@ -202,7 +220,7 @@ AX_TEST_F('MockFeedbackUnitTest', 'SpeechAndEarcons', function() {
   assertTrue(finishCalled);
 });
 
-AX_TEST_F('MockFeedbackUnitTest', 'SpeechWithLanguage', function() {
+TEST_F('MockFeedbackUnitTest', 'SpeechWithLanguage', function() {
   let finishCalled = false;
   const mock = new MockFeedback(function() {
     finishCalled = true;

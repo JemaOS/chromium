@@ -148,11 +148,9 @@ XMLPUBFUN xmlNotationTablePtr
 XMLPUBFUN void
 		xmlFreeNotationTable	(xmlNotationTablePtr table);
 #ifdef LIBXML_OUTPUT_ENABLED
-XML_DEPRECATED
 XMLPUBFUN void
 		xmlDumpNotationDecl	(xmlBufferPtr buf,
 					 xmlNotationPtr nota);
-/* XML_DEPRECATED, still used in lxml */
 XMLPUBFUN void
 		xmlDumpNotationTable	(xmlBufferPtr buf,
 					 xmlNotationTablePtr table);
@@ -184,12 +182,13 @@ XMLPUBFUN void
 	                                 xmlElementContentPtr content,
 					 int englob);
 #ifdef LIBXML_OUTPUT_ENABLED
-XML_DEPRECATED
+/* DEPRECATED */
 XMLPUBFUN void
 		xmlSprintfElementContent(char *buf,
 	                                 xmlElementContentPtr content,
 					 int englob);
 #endif /* LIBXML_OUTPUT_ENABLED */
+/* DEPRECATED */
 
 /* Element */
 XMLPUBFUN xmlElementPtr
@@ -205,11 +204,9 @@ XMLPUBFUN xmlElementTablePtr
 XMLPUBFUN void
 		xmlFreeElementTable	(xmlElementTablePtr table);
 #ifdef LIBXML_OUTPUT_ENABLED
-XML_DEPRECATED
 XMLPUBFUN void
 		xmlDumpElementTable	(xmlBufferPtr buf,
 					 xmlElementTablePtr table);
-XML_DEPRECATED
 XMLPUBFUN void
 		xmlDumpElementDecl	(xmlBufferPtr buf,
 					 xmlElementPtr elem);
@@ -243,23 +240,15 @@ XMLPUBFUN xmlAttributeTablePtr
 XMLPUBFUN void
 		xmlFreeAttributeTable  (xmlAttributeTablePtr table);
 #ifdef LIBXML_OUTPUT_ENABLED
-XML_DEPRECATED
 XMLPUBFUN void
 		xmlDumpAttributeTable  (xmlBufferPtr buf,
 					xmlAttributeTablePtr table);
-XML_DEPRECATED
 XMLPUBFUN void
 		xmlDumpAttributeDecl   (xmlBufferPtr buf,
 					xmlAttributePtr attr);
 #endif /* LIBXML_OUTPUT_ENABLED */
 
 /* IDs */
-XMLPUBFUN int
-		xmlAddIDSafe	       (xmlDocPtr doc,
-					const xmlChar *value,
-					xmlAttrPtr attr,
-					int streaming,
-					xmlIDPtr *id);
 XMLPUBFUN xmlIDPtr
 		xmlAddID	       (xmlValidCtxtPtr ctxt,
 					xmlDocPtr doc,

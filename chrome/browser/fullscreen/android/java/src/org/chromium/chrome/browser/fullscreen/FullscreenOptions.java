@@ -4,7 +4,9 @@
 
 package org.chromium.chrome.browser.fullscreen;
 
-/** Options to control a fullscreen request. */
+/**
+ * Options to control a fullscreen request.
+ */
 public class FullscreenOptions {
     /** Whether the navigation bar should be shown. */
     public final boolean showNavigationBar;
@@ -47,12 +49,7 @@ public class FullscreenOptions {
 
     @Override
     public String toString() {
-        return "FullscreenOptions(showNavigationBar="
-                + showNavigationBar
-                + ",showStatusBar="
-                + showStatusBar
-                + ", canceled="
-                + mCanceled
-                + ")";
+        return "FullscreenOptions(showNavigationBar=" + showNavigationBar
+                + ",showStatusBar=" + showStatusBar + ", canceled=" + mCanceled + ")";
     }
 }

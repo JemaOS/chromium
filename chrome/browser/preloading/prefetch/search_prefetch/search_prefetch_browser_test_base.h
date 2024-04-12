@@ -19,7 +19,6 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "content/public/test/content_mock_cert_verifier.h"
-#include "content/public/test/preloading_test_util.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "net/test/embedded_test_server/http_request.h"
 
@@ -51,7 +50,7 @@ class SearchPrefetchBaseBrowserTest : public InProcessBrowserTest,
   GURL GetSuggestServerURL(const std::string& path) const;
 
   void WaitUntilStatusChangesTo(const GURL& canonical_search_url,
-                                std::optional<SearchPrefetchStatus> status);
+                                absl::optional<SearchPrefetchStatus> status);
 
   content::WebContents* GetWebContents() const;
 
@@ -59,7 +58,7 @@ class SearchPrefetchBaseBrowserTest : public InProcessBrowserTest,
 
   void WaitForDuration(base::TimeDelta duration);
 
-  void ClearBrowsingCacheData(std::optional<GURL> url_origin);
+  void ClearBrowsingCacheData(absl::optional<GURL> url_origin);
 
   void SetDSEWithURL(const GURL& url, bool dse_allows_prefetch);
 
@@ -172,8 +171,6 @@ class SearchPrefetchBaseBrowserTest : public InProcessBrowserTest,
       static_files_;
 
   raw_ptr<DevToolsWindow> window_ = nullptr;
-  // Disable sampling for UKM preloading logs.
-  content::test::PreloadingConfigOverride preloading_config_override_;
 };
 
 #endif  // CHROME_BROWSER_PRELOADING_PREFETCH_SEARCH_PREFETCH_SEARCH_PREFETCH_BROWSER_TEST_BASE_H_

@@ -76,6 +76,12 @@ std::string COMPONENT_EXPORT(UI_BASE_IME_ASH)
 bool COMPONENT_EXPORT(UI_BASE_IME_ASH)
     IsExtensionIME(const std::string& input_method_id);
 
+bool COMPONENT_EXPORT(UI_BASE_IME_ASH)
+    IsJemaOSProvidedIME(const std::string& input_method_id);
+
+bool COMPONENT_EXPORT(UI_BASE_IME_ASH)
+    IsJemaOSProvidedIMEByExtensionId(const std::string& extension_id);
+
 // Returns true if |input_method_id| is component extension IME ID. This
 // function does not check |input_method_id| is really allowlisted one or not.
 // If you want to check |input_method_id| is allowlisted component extension
@@ -99,10 +105,10 @@ bool COMPONENT_EXPORT(UI_BASE_IME_ASH)
 std::string COMPONENT_EXPORT(UI_BASE_IME_ASH)
     GetComponentIDByInputMethodID(const std::string& input_method_id);
 
-// Only used when ash::features::kImeKoreanModeSwitchDebug flag is enabled.
-// TODO(b/302460634): Remove when no longer needed.
+// Returns true if |input_method_id| refers to a CrOS 1P experimental
+// multilingual input method.
 bool COMPONENT_EXPORT(UI_BASE_IME_ASH)
-    IsCros1pKorean(const std::string& input_method_id);
+    IsExperimentalMultilingual(const std::string& input_method_id);
 
 }  // namespace extension_ime_util
 }  // namespace ash

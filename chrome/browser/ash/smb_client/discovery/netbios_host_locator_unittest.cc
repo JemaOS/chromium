@@ -14,7 +14,8 @@
 #include "net/base/ip_endpoint.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 namespace {
 
 // Helper method to create a NetworkInterface for testing.
@@ -431,4 +432,5 @@ TEST_F(NetBiosHostLocatorTest, SecondIPUsedForResults) {
   task_runner_->FastForwardBy(base::Seconds(kNetBiosDiscoveryTimeoutSeconds));
 }
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

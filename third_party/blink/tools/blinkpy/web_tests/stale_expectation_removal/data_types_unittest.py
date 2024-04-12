@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 """Unittests for the web test stale expectation remover data types."""
 
-import datetime
 from typing import Dict
 import unittest
 
@@ -47,13 +46,19 @@ class WebTestExpectationUnittest(unittest.TestCase):
 
 
 class WebTestResultUnittest(unittest.TestCase):
+    def testSetDurationString(self) -> None:
+        """Tests that strings are properly converted when setting durations."""
+        result = data_types.WebTestResult('foo', ['debug'], 'Pass', 'step',
+                                          'build_id')
+        result.SetDuration(str(1), str(2))
+        self.assertTrue(result.is_slow_result)
+
     def testSetDurationNotSlow(self) -> None:
         """Tests that setting a duration for a non-slow result works."""
         result = data_types.WebTestResult('foo', ['debug'], 'Pass', 'step',
                                           'build_id')
         # The cutoff should be 30% of the timeout.
-        result.SetDuration(datetime.timedelta(seconds=30),
-                           datetime.timedelta(seconds=100))
+        result.SetDuration(30, 100000)
         self.assertFalse(result.is_slow_result)
 
     def testSetDurationSlow(self) -> None:
@@ -61,8 +66,21 @@ class WebTestResultUnittest(unittest.TestCase):
         result = data_types.WebTestResult('foo', ['debug'], 'Pass', 'step',
                                           'build_id')
         # The cutoff should be 30% of the timeout.
-        result.SetDuration(datetime.timedelta(seconds=30.01),
-                           datetime.timedelta(seconds=100))
+        result.SetDuration(30.01, 100)
+        self.assertTrue(result.is_slow_result)
+
+    def testSetDurationNotSlowSeconds(self) -> None:
+        """Tests that setting a duration for non-slow in seconds works."""
+        result = data_types.WebTestResult('foo', ['debug'], 'Pass', 'step',
+                                          'build_id')
+        result.SetDuration(30, 100)
+        self.assertFalse(result.is_slow_result)
+
+    def testSetDurationSlowSeconds(self) -> None:
+        """Tests that setting a duration for a slow result in seconds works."""
+        result = data_types.WebTestResult('foo', ['debug'], 'Pass', 'step',
+                                          'build_id')
+        result.SetDuration(30.01, 100)
         self.assertTrue(result.is_slow_result)
 
 
@@ -216,8 +234,7 @@ class WebTestTestExpectationMapUnittest(unittest.TestCase):
         result = data_types.WebTestResult('foo', ['debug'], 'Pass', 'step',
                                           'build_id')
         # Test adding a non-slow result.
-        result.SetDuration(datetime.timedelta(seconds=1),
-                           datetime.timedelta(seconds=10))
+        result.SetDuration(1, 10)
         stats = data_types.WebTestBuildStats()
         expectation_map._AddSingleResult(result, stats)
         expected_stats = data_types.WebTestBuildStats()
@@ -225,8 +242,7 @@ class WebTestTestExpectationMapUnittest(unittest.TestCase):
         self.assertEqual(stats, expected_stats)
 
         # Test adding a slow result.
-        result.SetDuration(datetime.timedelta(seconds=1),
-                           datetime.timedelta(seconds=2))
+        result.SetDuration(1, 2)
         stats = data_types.WebTestBuildStats()
         expectation_map._AddSingleResult(result, stats)
         expected_stats = data_types.WebTestBuildStats()

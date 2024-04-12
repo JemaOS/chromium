@@ -6,8 +6,6 @@
  * @fileoverview Defines a Tts interface.
  * All TTS engines in ChromeVox conform to the this interface.
  */
-import {TestImportManager} from '/common/testing/test_import_manager.js';
-
 import {QueueMode, TtsSpeechProperties} from '../common/tts_types.js';
 
 /**
@@ -96,5 +94,3 @@ export class TtsInterface {
    */
   toggleSpeechOnOrOff() {}
 }
-
-TestImportManager.exportForTesting(TtsInterface);

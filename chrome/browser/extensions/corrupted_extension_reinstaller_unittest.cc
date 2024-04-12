@@ -51,7 +51,7 @@ class TestReinstallerTracker {
 
  private:
   int call_count_ = 0;
-  std::optional<base::OnceClosure> saved_callback_;
+  absl::optional<base::OnceClosure> saved_callback_;
   CorruptedExtensionReinstaller::ReinstallCallback action_;
 };
 

@@ -64,7 +64,7 @@ class GpuArcVideoKeyedService : public KeyedService {
   ~GpuArcVideoKeyedService() override;
 
  private:
-  const raw_ptr<ArcBridgeService>
+  const raw_ptr<ArcBridgeService, ExperimentalAsh>
       arc_bridge_service_;  // Owned by ArcServiceManager.
 };
 

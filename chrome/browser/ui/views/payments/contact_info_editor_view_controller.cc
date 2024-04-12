@@ -80,7 +80,7 @@ ContactInfoEditorViewController::GetFieldDefinitions() {
 }
 
 std::u16string ContactInfoEditorViewController::GetInitialValueForType(
-    autofill::FieldType type) {
+    autofill::ServerFieldType type) {
   if (!profile_to_edit_)
     return std::u16string();
   return GetValueForType(*profile_to_edit_, type);
@@ -100,11 +100,8 @@ bool ContactInfoEditorViewController::ValidateModelAndSave() {
     std::move(on_edited_).Run();
     on_added_.Reset();
   } else {
-    // There are no address fields in this form, therefore we create the profile
-    // with an empty country.
     std::unique_ptr<autofill::AutofillProfile> profile =
-        std::make_unique<autofill::AutofillProfile>(
-            autofill::i18n_model_definition::kLegacyHierarchyCountryCode);
+        std::make_unique<autofill::AutofillProfile>();
     PopulateProfile(profile.get());
     if (!is_incognito())
       state()->GetPersonalDataManager()->AddProfile(*profile);
@@ -123,7 +120,7 @@ ContactInfoEditorViewController::CreateValidationDelegate(
 
 std::unique_ptr<ui::ComboboxModel>
 ContactInfoEditorViewController::GetComboboxModelForType(
-    const autofill::FieldType& type) {
+    const autofill::ServerFieldType& type) {
   NOTREACHED_NORETURN();
 }
 
@@ -149,6 +146,7 @@ void ContactInfoEditorViewController::PopulateProfile(
         state()->GetApplicationLocale(),
         autofill::VerificationStatus::kUserVerified);
   }
+  profile->set_origin(autofill::kSettingsOrigin);
 }
 
 bool ContactInfoEditorViewController::GetSheetId(DialogViewID* sheet_id) {
@@ -158,7 +156,7 @@ bool ContactInfoEditorViewController::GetSheetId(DialogViewID* sheet_id) {
 
 std::u16string ContactInfoEditorViewController::GetValueForType(
     const autofill::AutofillProfile& profile,
-    autofill::FieldType type) {
+    autofill::ServerFieldType type) {
   if (type == autofill::PHONE_HOME_WHOLE_NUMBER) {
     return autofill::i18n::GetFormattedPhoneNumberForDisplay(
         profile, state()->GetApplicationLocale());

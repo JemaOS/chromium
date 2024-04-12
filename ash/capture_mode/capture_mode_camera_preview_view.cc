@@ -8,7 +8,6 @@
 #include "ash/capture_mode/capture_mode_constants.h"
 #include "ash/capture_mode/capture_mode_controller.h"
 #include "ash/capture_mode/capture_mode_session.h"
-#include "ash/capture_mode/capture_mode_types.h"
 #include "ash/capture_mode/capture_mode_util.h"
 #include "ash/resources/vector_icons/vector_icons.h"
 #include "ash/shell.h"
@@ -39,6 +38,10 @@ constexpr base::TimeDelta kResizeButtonFadeInDuration = base::Milliseconds(150);
 
 // The duration for the reize button fading out process.
 constexpr base::TimeDelta kResizeButtonFadeOutDuration = base::Milliseconds(50);
+
+gfx::PointF GetEventScreenLocation(const ui::LocatedEvent& event) {
+  return event.target()->GetScreenLocationF(event);
+}
 
 const gfx::VectorIcon& GetIconOfResizeButton(
     const bool is_camera_preview_collapsed) {
@@ -89,7 +92,7 @@ void CameraPreviewResizeButton::PseudoBlur() {
   camera_preview_view_->ScheduleRefreshResizeButtonVisibility();
 }
 
-BEGIN_METADATA(CameraPreviewResizeButton)
+BEGIN_METADATA(CameraPreviewResizeButton, IconButton)
 END_METADATA
 
 // -----------------------------------------------------------------------------
@@ -130,6 +133,7 @@ CameraPreviewView::CameraPreviewView(
   accessibility_observation_.Observe(Shell::Get()->accessibility_controller());
   RefreshResizeButtonVisibility();
   UpdateResizeButtonTooltip();
+  capture_mode_util::MaybeUpdateCaptureModePrivacyIndicators();
 }
 
 CameraPreviewView::~CameraPreviewView() {
@@ -137,16 +141,6 @@ CameraPreviewView::~CameraPreviewView() {
   if (controller->IsActive() && !controller->is_recording_in_progress())
     controller->capture_mode_session()->OnCameraPreviewDestroyed();
   capture_mode_util::MaybeUpdateCaptureModePrivacyIndicators();
-  controller->MaybeUpdateVcPanel();
-}
-
-void CameraPreviewView::Initialize() {
-  CHECK(GetWidget()) << "The view should have been added to a widget first.";
-
-  camera_video_renderer_.Initialize();
-
-  capture_mode_util::MaybeUpdateCaptureModePrivacyIndicators();
-  CaptureModeController::Get()->MaybeUpdateVcPanel();
 }
 
 void CameraPreviewView::SetIsCollapsible(bool value) {
@@ -258,29 +252,27 @@ void CameraPreviewView::AddedToWidget() {
   // `Initialize()` will create a layer tree frame sink for the `host_window()`
   // and we're not allowed to change the event targeting policy after that.
   DisableEventHandlingInCameraVideoHostHierarchy();
+
+  camera_video_renderer_.Initialize();
 }
 
 bool CameraPreviewView::OnMousePressed(const ui::MouseEvent& event) {
-  camera_controller_->StartDraggingPreview(
-      capture_mode_util::GetEventScreenLocation(event));
+  camera_controller_->StartDraggingPreview(GetEventScreenLocation(event));
   return true;
 }
 
 bool CameraPreviewView::OnMouseDragged(const ui::MouseEvent& event) {
-  camera_controller_->ContinueDraggingPreview(
-      capture_mode_util::GetEventScreenLocation(event));
+  camera_controller_->ContinueDraggingPreview(GetEventScreenLocation(event));
   return true;
 }
 
 void CameraPreviewView::OnMouseReleased(const ui::MouseEvent& event) {
-  camera_controller_->EndDraggingPreview(
-      capture_mode_util::GetEventScreenLocation(event),
-      /*is_touch=*/false);
+  camera_controller_->EndDraggingPreview(GetEventScreenLocation(event),
+                                         /*is_touch=*/false);
 }
 
 void CameraPreviewView::OnGestureEvent(ui::GestureEvent* event) {
-  const gfx::PointF screen_location =
-      capture_mode_util::GetEventScreenLocation(*event);
+  const gfx::PointF screen_location = GetEventScreenLocation(*event);
 
   switch (event->type()) {
     case ui::ET_GESTURE_SCROLL_BEGIN:
@@ -325,7 +317,7 @@ void CameraPreviewView::OnMouseExited(const ui::MouseEvent& event) {
   ScheduleRefreshResizeButtonVisibility();
 }
 
-void CameraPreviewView::Layout(PassKey) {
+void CameraPreviewView::Layout() {
   const gfx::Size resize_button_size = resize_button_->GetPreferredSize();
   const gfx::Rect bounds(
       (width() - resize_button_size.width()) / 2.f,
@@ -469,7 +461,7 @@ void CameraPreviewView::BlurA11yFocus() {
   UpdateA11yOverrideWindow();
 }
 
-BEGIN_METADATA(CameraPreviewView)
+BEGIN_METADATA(CameraPreviewView, views::View)
 END_METADATA
 
 }  // namespace ash

@@ -33,7 +33,7 @@ bool TestCupsPrintJobManager::ResumePrintJob(CupsPrintJob* job) {
 bool TestCupsPrintJobManager::CreatePrintJob(
     const std::string& printer_id,
     const std::string& title,
-    uint32_t job_id,
+    int job_id,
     int total_page_number,
     ::printing::PrintJob::Source source,
     const std::string& source_id,

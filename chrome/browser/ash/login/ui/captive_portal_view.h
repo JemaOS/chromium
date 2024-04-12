@@ -7,18 +7,13 @@
 
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ash/login/ui/simple_web_view_dialog.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 
 namespace ash {
 class CaptivePortalWindowProxy;
 
 class CaptivePortalView : public SimpleWebViewDialog {
-  METADATA_HEADER(CaptivePortalView, SimpleWebViewDialog)
-
  public:
-  CaptivePortalView(Profile* profile,
-                    CaptivePortalWindowProxy* proxy,
-                    const std::string& network_name);
+  CaptivePortalView(Profile* profile, CaptivePortalWindowProxy* proxy);
 
   CaptivePortalView(const CaptivePortalView&) = delete;
   CaptivePortalView& operator=(const CaptivePortalView&) = delete;
@@ -40,10 +35,9 @@ class CaptivePortalView : public SimpleWebViewDialog {
  private:
   // Contains CaptivePortalWindowProxy to be notified when redirection state is
   // resolved.
-  raw_ptr<CaptivePortalWindowProxy, DanglingUntriaged> proxy_;
+  raw_ptr<CaptivePortalWindowProxy, ExperimentalAsh> proxy_;
 
-  const std::string network_name_;
-  bool redirected_ = false;
+  bool redirected_;
 };
 
 }  // namespace ash

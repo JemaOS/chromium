@@ -11,7 +11,8 @@
 
 namespace ash {
 
-class SamlConfirmPasswordView {
+class SamlConfirmPasswordView
+    : public base::SupportsWeakPtr<SamlConfirmPasswordView> {
  public:
   inline constexpr static StaticOobeScreenId kScreenId{
       "saml-confirm-password", "ConfirmSamlPasswordScreen"};
@@ -23,12 +24,11 @@ class SamlConfirmPasswordView {
 
   virtual void Show(const std::string& email, bool is_manual) = 0;
   virtual void ShowPasswordStep(bool retry) = 0;
-  virtual base::WeakPtr<SamlConfirmPasswordView> AsWeakPtr() = 0;
 };
 
 // A class that handles WebUI hooks in Gaia screen.
-class SamlConfirmPasswordHandler final : public BaseScreenHandler,
-                                         public SamlConfirmPasswordView {
+class SamlConfirmPasswordHandler : public BaseScreenHandler,
+                                   public SamlConfirmPasswordView {
  public:
   using TView = SamlConfirmPasswordView;
 
@@ -43,13 +43,9 @@ class SamlConfirmPasswordHandler final : public BaseScreenHandler,
   // SamlConfirmPasswordView:
   void Show(const std::string& email, bool is_manual) override;
   void ShowPasswordStep(bool retry) override;
-  base::WeakPtr<SamlConfirmPasswordView> AsWeakPtr() override;
 
   // BaseScreenHandler:
   void DeclareLocalizedValues(::login::LocalizedValuesBuilder* builder) final;
-
- private:
-  base::WeakPtrFactory<SamlConfirmPasswordView> weak_ptr_factory_{this};
 };
 
 }  // namespace ash

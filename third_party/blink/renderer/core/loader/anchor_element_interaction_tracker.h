@@ -11,7 +11,6 @@
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
-#include "third_party/blink/renderer/platform/wtf/deque.h"
 
 namespace blink {
 
@@ -19,7 +18,6 @@ class Document;
 class EventTarget;
 class HTMLAnchorElement;
 class KURL;
-class MouseEvent;
 class Node;
 class PointerEvent;
 
@@ -31,67 +29,18 @@ class PointerEvent;
 class BLINK_EXPORT AnchorElementInteractionTracker
     : public GarbageCollected<AnchorElementInteractionTracker> {
  public:
-  class BLINK_EXPORT MouseMotionEstimator
-      : public GarbageCollected<MouseMotionEstimator> {
-   public:
-    MouseMotionEstimator() = delete;
-    explicit MouseMotionEstimator(
-        scoped_refptr<base::SingleThreadTaskRunner> task_runner);
-    ~MouseMotionEstimator() = default;
-
-    void Trace(Visitor* visitor) const;
-    void OnTimer(TimerBase*);
-    void OnMouseMoveEvent(gfx::PointF position);
-    void SetTaskRunnerForTesting(
-        scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-        const base::TickClock* clock);
-    bool IsEmpty() { return mouse_position_and_timestamps_.empty(); }
-
-    void SetMouseAccelerationForTesting(gfx::Vector2dF acceleration) {
-      acceleration_ = acceleration;
-    }
-    void SetMouseVelocityForTesting(gfx::Vector2dF velocity) {
-      velocity_ = velocity;
-    }
-    gfx::Vector2dF GetMouseAcceleration() const { return acceleration_; }
-    gfx::Vector2dF GetMouseVelocity() const { return velocity_; }
-    double GetMouseTangentialAcceleration() const;
-
-   private:
-    void AddDataPoint(base::TimeTicks timestamp, gfx::PointF position);
-    void RemoveOldDataPoints(base::TimeTicks now);
-    void Update();
-
-    struct MousePositionAndTimeStamp {
-      gfx::PointF position;
-      base::TimeTicks ts;
-    };
-    // Mouse acceleration in (pixels/second**2).
-    gfx::Vector2dF acceleration_;
-    // Mouse velocity in (pixels/second).
-    gfx::Vector2dF velocity_;
-    WTF::Deque<MousePositionAndTimeStamp> mouse_position_and_timestamps_;
-    HeapTaskRunnerTimer<AnchorElementInteractionTracker::MouseMotionEstimator>
-        update_timer_;
-    const base::TickClock* clock_;
-  };
-
   explicit AnchorElementInteractionTracker(Document& document);
   ~AnchorElementInteractionTracker();
 
   static bool IsFeatureEnabled();
-  static bool IsMouseMotionEstimatorEnabled();
   static base::TimeDelta GetHoverDwellTime();
 
-  void OnMouseMoveEvent(const WebMouseEvent& mouse_event);
   void OnPointerEvent(EventTarget& target, const PointerEvent& pointer_event);
-  void OnClickEvent(HTMLAnchorElement& anchor, const MouseEvent& click_event);
   void HoverTimerFired(TimerBase*);
   void Trace(Visitor* visitor) const;
-  void SetTaskRunnerForTesting(
-      scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-      const base::TickClock* clock);
-  Document* GetDocument() { return document_.Get(); }
+  void FireHoverTimerForTesting();
+  void SetTickClockForTesting(const base::TickClock* clock);
+  Document* GetDocument() { return document_; }
 
  private:
   HTMLAnchorElement* FirstAnchorElementIncludingSelf(Node* node);
@@ -100,24 +49,13 @@ class BLINK_EXPORT AnchorElementInteractionTracker
   // of the HTTP family
   KURL GetHrefEligibleForPreloading(const HTMLAnchorElement& anchor);
 
-  Member<MouseMotionEstimator> mouse_motion_estimator_;
   HeapMojoRemote<mojom::blink::AnchorElementInteractionHost> interaction_host_;
-  // This hashmap contains the anchor element's url, whether the pointer event
-  // was from a mouse and the timetick at which a hover event should be reported
-  // if not canceled.
-  struct HoverEventCandidate {
-    bool is_mouse;
-    uint32_t anchor_id;
-    base::TimeTicks timestamp;
-  };
-  HashMap<KURL, HoverEventCandidate> hover_event_candidates_;
+  // This hash map contains anchor element's url and the timetick at which a
+  // hover event should be reported if not cancelled.
+  HashMap<KURL, base::TimeTicks> hover_events_;
   HeapTaskRunnerTimer<AnchorElementInteractionTracker> hover_timer_;
   const base::TickClock* clock_;
   Member<Document> document_;
-  // Stores y-coordinate of the two most recent pointerdowns (first entry is
-  // the most recent pointer down).
-  std::array<std::optional<double>, 2> last_pointer_down_locations_ = {
-      std::nullopt, std::nullopt};
 };
 
 }  // namespace blink

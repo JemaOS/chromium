@@ -4,6 +4,7 @@ import errno
 import http.server
 import os
 import socket
+from socketserver import ThreadingMixIn
 import ssl
 import sys
 import threading
@@ -32,7 +33,7 @@ from .logger import get_logger
 from .request import Server, Request, H2Request
 from .response import Response, H2Response
 from .router import Router
-from .utils import HTTPException, get_error_cause, isomorphic_decode, isomorphic_encode
+from .utils import HTTPException, isomorphic_decode, isomorphic_encode
 from .constants import h2_headers
 from .ws_h2_handshake import WsH2Handshaker
 
@@ -128,11 +129,9 @@ class RequestRewriter:
                 request_handler.path = new_url
 
 
-class WebTestServer(http.server.ThreadingHTTPServer):
+class WebTestServer(ThreadingMixIn, http.server.HTTPServer):
     allow_reuse_address = True
-    # Older versions of Python might throw `OSError: [Errno 0] Error`
-    # instead of `SSLEOFError`.
-    acceptable_errors = (errno.EPIPE, errno.ECONNABORTED, 0)
+    acceptable_errors = (errno.EPIPE, errno.ECONNABORTED)
     request_queue_size = 2000
 
     # Ensure that we don't hang on shutdown waiting for requests
@@ -191,7 +190,7 @@ class WebTestServer(http.server.ThreadingHTTPServer):
         else:
             hostname_port = ("",server_address[1])
 
-        super().__init__(hostname_port, request_handler_cls)
+        http.server.HTTPServer.__init__(self, hostname_port, request_handler_cls, **kwargs)
 
         if config is not None:
             Server.config = config
@@ -216,20 +215,13 @@ class WebTestServer(http.server.ThreadingHTTPServer):
                 ssl_context.load_cert_chain(keyfile=self.key_file, certfile=self.certificate)
                 ssl_context.set_alpn_protocols(['h2'])
                 self.socket = ssl_context.wrap_socket(self.socket,
-                                                      do_handshake_on_connect=False,
                                                       server_side=True)
 
             else:
-                ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-                ssl_context.load_cert_chain(keyfile=self.key_file, certfile=self.certificate)
-                self.socket = ssl_context.wrap_socket(self.socket,
-                                                      do_handshake_on_connect=False,
-                                                      server_side=True)
-
-    def finish_request(self, request, client_address):
-        if isinstance(self.socket, ssl.SSLSocket):
-            request.do_handshake()
-        super().finish_request(request, client_address)
+                self.socket = ssl.wrap_socket(self.socket,
+                                              keyfile=self.key_file,
+                                              certfile=self.certificate,
+                                              server_side=True)
 
     def handle_error(self, request, client_address):
         error = sys.exc_info()[1]
@@ -238,11 +230,7 @@ class WebTestServer(http.server.ThreadingHTTPServer):
              isinstance(error.args, tuple) and
              error.args[0] in self.acceptable_errors) or
             (isinstance(error, IOError) and
-             error.errno in self.acceptable_errors) or
-            # `SSLEOFError` and `SSLError` may occur when a client
-            # (e.g., wptrunner's `TestEnvironment`) tests for connectivity
-            # but doesn't perform the handshake.
-            isinstance(error, ssl.SSLEOFError) or isinstance(error, ssl.SSLError)):
+             error.errno in self.acceptable_errors)):
             pass  # remote hang up before the result is sent
         else:
             msg = traceback.format_exc()
@@ -255,27 +243,27 @@ class BaseWebTestRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
         self.logger = get_logger()
-        super().__init__(*args, **kwargs)
+        http.server.BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def finish_handling_h1(self, request_line_is_valid):
 
         self.server.rewriter.rewrite(self)
 
-        with Request(self) as request:
-            response = Response(self, request)
+        request = Request(self)
+        response = Response(self, request)
 
-            if request.method == "CONNECT":
-                self.handle_connect(response)
-                return
+        if request.method == "CONNECT":
+            self.handle_connect(response)
+            return
 
-            if not request_line_is_valid:
-                response.set_error(414)
-                response.write()
-                return
+        if not request_line_is_valid:
+            response.set_error(414)
+            response.write()
+            return
 
-            self.logger.debug(f"{request.method} {request.request_path}")
-            handler = self.server.router.get_handler(request)
-            self.finish_handling(request, response, handler)
+        self.logger.debug(f"{request.method} {request.request_path}")
+        handler = self.server.router.get_handler(request)
+        self.finish_handling(request, response, handler)
 
     def finish_handling(self, request, response, handler):
         # If the handler we used for the request had a non-default base path
@@ -300,10 +288,12 @@ class BaseWebTestRequestHandler(http.server.BaseHTTPRequestHandler):
             try:
                 handler(request, response)
             except HTTPException as e:
-                exc = get_error_cause(e) if 500 <= e.code < 600 else e
-                response.set_error(e.code, exc)
+                if 500 <= e.code < 600:
+                    self.logger.warning("HTTPException in handler: %s" % e)
+                    self.logger.warning(traceback.format_exc())
+                response.set_error(e.code, str(e))
             except Exception as e:
-                response.set_error(500, e)
+                self.respond_with_error(response, e)
         self.logger.debug("%i %s %s (%s) %i" % (response.status[0],
                                                 request.method,
                                                 request.request_path,
@@ -335,12 +325,21 @@ class BaseWebTestRequestHandler(http.server.BaseHTTPRequestHandler):
         response.write()
         if self.server.encrypt_after_connect:
             self.logger.debug("Enabling SSL for connection")
-            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            ssl_context.load_cert_chain(keyfile=self.server.key_file, certfile=self.server.certificate)
-            self.request = ssl_context.wrap_socket(self.connection,
-                                                   server_side=True)
+            self.request = ssl.wrap_socket(self.connection,
+                                           keyfile=self.server.key_file,
+                                           certfile=self.server.certificate,
+                                           server_side=True)
             self.setup()
         return
+
+    def respond_with_error(self, response, e):
+        message = str(e)
+        if message:
+            err = [message]
+        else:
+            err = []
+        err.append(traceback.format_exc())
+        response.set_error(500, "\n".join(err))
 
 
 class Http2WebTestRequestHandler(BaseWebTestRequestHandler):
@@ -381,11 +380,7 @@ class Http2WebTestRequestHandler(BaseWebTestRequestHandler):
             data = connection.data_to_send()
             window_size = connection.remote_settings.initial_window_size
 
-        try:
-            self.request.sendall(data)
-        except ConnectionResetError:
-            self.logger.warning("Connection reset during h2 setup")
-            return
+        self.request.sendall(data)
 
         # Dict of { stream_id: (thread, queue) }
         stream_queues = {}
@@ -495,8 +490,8 @@ class Http2WebTestRequestHandler(BaseWebTestRequestHandler):
             try:
                 handshaker.do_handshake()
             except HandshakeException as e:
-                self.logger.info("Handshake failed")
-                h2response.set_error(e.status, e)
+                self.logger.info('Handshake failed for error: %s' % e)
+                h2response.set_error(e.status)
                 h2response.write()
                 return
             except AbortedByUserException:
@@ -547,7 +542,7 @@ class Http2WebTestRequestHandler(BaseWebTestRequestHandler):
         dispatcher = request._dispatcher
         try:
             dispatcher.transfer_data(request)
-        except (StreamClosedError, ProtocolError):
+        except StreamClosedError:
             # work around https://github.com/web-platform-tests/wpt/issues/27786
             # The stream was already closed.
             queue.put(None)
@@ -559,7 +554,7 @@ class Http2WebTestRequestHandler(BaseWebTestRequestHandler):
                 connection.end_stream(stream_id)
                 data = connection.data_to_send()
                 stream_handler.request.sendall(data)
-            except (StreamClosedError, ProtocolError):  # maybe the stream has already been closed
+            except StreamClosedError:  # maybe the stream has already been closed
                 pass
         queue.put(None)
 
@@ -648,11 +643,10 @@ class Http2WebTestRequestHandler(BaseWebTestRequestHandler):
         try:
             return handler.frame_handler(request)
         except HTTPException as e:
-            exc = get_error_cause(e) if 500 <= e.code < 600 else e
-            response.set_error(exc.code, exc)
+            response.set_error(e.code, str(e))
             response.write()
         except Exception as e:
-            response.set_error(500, e)
+            self.respond_with_error(response, e)
             response.write()
 
 
@@ -732,9 +726,10 @@ class Http1WebTestRequestHandler(BaseWebTestRequestHandler):
             self.close_connection = True
             return
 
-        except Exception as e:
+        except Exception:
+            err = traceback.format_exc()
             if response:
-                response.set_error(500, e)
+                response.set_error(500, err)
                 response.write()
 
     def get_request_line(self):

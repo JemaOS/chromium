@@ -41,6 +41,7 @@
 
 namespace blink {
 
+class FontDescription;
 class Image;
 class KURL;
 
@@ -57,6 +58,7 @@ class CORE_EXPORT DragImage {
 
   static std::unique_ptr<DragImage> Create(const KURL&,
                                            const String& label,
+                                           const FontDescription& system_font,
                                            float device_scale_factor);
 
   DragImage(const DragImage&) = delete;

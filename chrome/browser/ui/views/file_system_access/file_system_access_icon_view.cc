@@ -11,7 +11,6 @@
 #include "chrome/browser/file_system_access/file_system_access_permission_context_factory.h"
 #include "chrome/browser/ui/views/file_system_access/file_system_access_usage_bubble_view.h"
 #include "chrome/grit/generated_resources.h"
-#include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
@@ -29,7 +28,7 @@ FileSystemAccessIconView::FileSystemAccessIconView(
                          "FileSystemAccess") {
   SetVisible(false);
   SetAccessibilityProperties(
-      /*role*/ std::nullopt,
+      /*role*/ absl::nullopt,
       l10n_util::GetStringUTF16(
           IDS_FILE_SYSTEM_ACCESS_DIRECTORY_USAGE_TOOLTIP));
 }
@@ -85,7 +84,7 @@ void FileSystemAccessIconView::OnExecuting(ExecuteSource execute_source) {
   }
 
   ChromeFileSystemAccessPermissionContext::Grants grants =
-      context->ConvertObjectsToGrants(context->GetGrantedObjects(origin));
+      context->GetPermissionGrants(origin);
 
   FileSystemAccessUsageBubbleView::Usage usage;
   usage.readable_files = std::move(grants.file_read_grants);
@@ -98,14 +97,9 @@ void FileSystemAccessIconView::OnExecuting(ExecuteSource execute_source) {
 }
 
 const gfx::VectorIcon& FileSystemAccessIconView::GetVectorIcon() const {
-  if (OmniboxFieldTrial::IsChromeRefreshIconsEnabled()) {
-    return has_write_access_ ? kFileSaveChromeRefreshIcon
-                             : vector_icons::kInsertDriveFileOutlineIcon;
-  }
-
-  return has_write_access_ ? kFileSaveIcon
+  return has_write_access_ ? vector_icons::kSaveOriginalFileIcon
                            : vector_icons::kInsertDriveFileOutlineIcon;
 }
 
-BEGIN_METADATA(FileSystemAccessIconView)
+BEGIN_METADATA(FileSystemAccessIconView, PageActionIconView)
 END_METADATA

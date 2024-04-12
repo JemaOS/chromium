@@ -39,7 +39,7 @@ bool g_ui_enabled = true;
 // tests, even when the tests are set to skip creating UI.
 bool g_enable_arc_terms_of_service_oobe_negotiator_in_tests = false;
 
-std::optional<bool> g_enable_check_android_management_in_tests;
+absl::optional<bool> g_enable_check_android_management_in_tests;
 
 policy::DeviceManagementService* GetDeviceManagementService() {
   policy::BrowserPolicyConnectorAsh* const connector =
@@ -158,8 +158,7 @@ void ArcRequirementChecker::StartRequirementChecks(
     VLOG(1) << "Use default negotiator.";
     terms_of_service_negotiator_ =
         std::make_unique<ArcTermsOfServiceDefaultNegotiator>(
-            profile_->GetPrefs(), support_host_,
-            g_browser_process->metrics_service());
+            profile_->GetPrefs(), support_host_);
   } else {
     DCHECK(!g_ui_enabled) << "Negotiator is not created on production.";
     return;

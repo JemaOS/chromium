@@ -14,7 +14,6 @@
 #include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/forms/form_controller.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
-#include "third_party/blink/renderer/core/html/forms/html_option_element.h"
 #include "third_party/blink/renderer/core/html/forms/select_type.h"
 #include "third_party/blink/renderer/core/layout/layout_theme.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
@@ -64,7 +63,7 @@ class HTMLSelectElementTest : public PageTestBase {
 
 void HTMLSelectElementTest::SetUp() {
   PageTestBase::SetUp();
-  GetDocument().SetMimeType(AtomicString("text/html"));
+  GetDocument().SetMimeType("text/html");
   original_delegates_flag_ =
       LayoutTheme::GetTheme().DelegatesMenuListRendering();
 }
@@ -73,24 +72,6 @@ void HTMLSelectElementTest::TearDown() {
   LayoutTheme::GetTheme().SetDelegatesMenuListRenderingForTesting(
       original_delegates_flag_);
   PageTestBase::TearDown();
-}
-
-// Tests that HtmlSelectElement::SetAutofillValue() doesn't change the
-// `user_has_edited_the_field_` attribute of the field.
-TEST_F(HTMLSelectElementTest, SetAutofillValuePreservesEditedState) {
-  SetHtmlInnerHTML(
-      "<!DOCTYPE HTML><select id='sel'>"
-      "<option value='111' selected>111</option>"
-      "<option value='222'>222</option></select>");
-  HTMLSelectElement* select = To<HTMLSelectElement>(GetElementById("sel"));
-
-  select->ClearUserHasEditedTheField();
-  select->SetAutofillValue("222", WebAutofillState::kAutofilled);
-  EXPECT_EQ(select->UserHasEditedTheField(), false);
-
-  select->SetUserHasEditedTheField();
-  select->SetAutofillValue("111", WebAutofillState::kAutofilled);
-  EXPECT_EQ(select->UserHasEditedTheField(), true);
 }
 
 TEST_F(HTMLSelectElementTest, SaveRestoreSelectSingleFormControlState) {
@@ -500,13 +481,13 @@ TEST_F(HTMLSelectElementTest, CrashOnAttachingMenuList) {
   ASSERT_TRUE(select->GetLayoutObject());
 
   // Detach LayoutMenuList.
-  select->setAttribute(html_names::kStyleAttr, AtomicString("display:none;"));
+  select->setAttribute("style", "display:none;");
   GetDocument().UpdateStyleAndLayoutTree();
   ASSERT_FALSE(select->GetLayoutObject());
 
   // Attach LayoutMenuList again.  It triggered null-dereference in
   // LayoutMenuList::AdjustInnerStyle().
-  select->removeAttribute(html_names::kStyleAttr);
+  select->removeAttribute("style");
   GetDocument().UpdateStyleAndLayoutTree();
   ASSERT_TRUE(select->GetLayoutObject());
 }
@@ -519,12 +500,12 @@ TEST_F(HTMLSelectElementTest, CrashOnAttachingMenuList2) {
   select->setTextContent("foo");
 
   // Detach LayoutObject.
-  select->setAttribute(html_names::kStyleAttr, AtomicString("display:none;"));
+  select->setAttribute("style", "display:none;");
   GetDocument().UpdateStyleAndLayoutTree();
 
   // Attach LayoutObject.  It triggered a DCHECK failure in
   // MenuListSelectType::OptionToBeShown()
-  select->removeAttribute(html_names::kStyleAttr);
+  select->removeAttribute("style");
   GetDocument().UpdateStyleAndLayoutTree();
 }
 
@@ -671,12 +652,12 @@ TEST_F(HTMLSelectElementTest, ChangeRenderingCrash3) {
     <div id="green">Green</div>
   )HTML");
 
-  auto* host = GetDocument().getElementById(AtomicString("host"));
-  auto* select = GetDocument().getElementById(AtomicString("select"));
-  auto* green = GetDocument().getElementById(AtomicString("green"));
+  auto* host = GetDocument().getElementById("host");
+  auto* select = GetDocument().getElementById("select");
+  auto* green = GetDocument().getElementById("green");
 
   // Make sure the select is outside the flat tree.
-  host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
+  host->AttachShadowRootInternal(ShadowRootType::kOpen);
   GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kTest);
 
   // Changing the select rendering should not clear the style recalc root set by

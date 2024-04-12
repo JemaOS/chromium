@@ -273,16 +273,35 @@ display::PanelOrientation GetPanelOrientation(const DrmWrapper& drm,
   return static_cast<display::PanelOrientation>(connector->prop_values[index]);
 }
 
+bool HasPerPlaneColorCorrectionMatrix(const DrmWrapper& drm,
+                                      drmModeCrtc* crtc) {
+  ScopedDrmPlaneResPtr plane_resources = drm.GetPlaneResources();
+  DCHECK(plane_resources);
+  for (uint32_t i = 0; i < plane_resources->count_planes; ++i) {
+    ScopedDrmObjectPropertyPtr plane_props = drm.GetObjectProperties(
+        plane_resources->planes[i], DRM_MODE_OBJECT_PLANE);
+    DCHECK(plane_props);
+
+    if (!FindDrmProperty(drm, plane_props.get(), "PLANE_CTM")) {
+      return false;
+    }
+  }
+
+  // On legacy, if no planes are exposed then the property isn't available.
+  return plane_resources->count_planes > 0;
+}
+
 // Read a file and trim whitespace. If the file can't be read, returns
 // nullopt.
-std::optional<std::string> ReadFileAndTrim(const base::FilePath& path) {
+absl::optional<std::string> ReadFileAndTrim(const base::FilePath& path) {
   std::string data;
   if (!base::ReadFileToString(path, &data))
-    return std::nullopt;
+    return absl::nullopt;
 
   return std::string(
       base::TrimWhitespaceASCII(data, base::TrimPositions::TRIM_ALL));
 }
+
 }  // namespace
 
 ScopedDrmPropertyPtr FindDrmProperty(const DrmWrapper& drm,
@@ -383,34 +402,27 @@ GetDisplayInfosAndInvalidCrtcs(const DrmWrapper& drm) {
 
     ScopedDrmConnectorPtr connector =
         drm.GetConnector(resources->connectors[i]);
-    // In case of zombie connectors, verify that the connector is valid by
-    // checking if it has props.
-    // Zombie connectors can occur when an MST (which creates a new connector ID
-    // upon connection) is disconnected but the kernel hasn't cleaned up the old
-    // connector ID yet.
-    if (!connector || !drm.GetObjectProperties(resources->connectors[i],
-                                               DRM_MODE_OBJECT_CONNECTOR)) {
+    if (!connector)
       continue;
-    }
 
-    if (connector->connection == DRM_MODE_CONNECTED) {
-      if (connector->count_modes != 0) {
-        available_connectors.push_back(connector.get());
-      } else {
-        LOG(WARNING) << "[CONNECTOR:" << connector->connector_id
-                     << "] is connected but has no modes. Connector ignored.";
-      }
+    if (connector->connection == DRM_MODE_CONNECTED &&
+        connector->count_modes != 0) {
+      available_connectors.push_back(connector.get());
     }
 
     connectors.emplace_back(std::move(connector));
   }
 
   base::flat_map<drmModeConnector*, int> connector_crtcs;
-  for (auto* connector : available_connectors) {
-    std::vector<uint32_t> encoder_ids(
-        connector->encoders, connector->encoders + connector->count_encoders);
-    connector_crtcs[connector] =
-        GetPossibleCrtcsBitmaskFromEncoders(drm, encoder_ids);
+  for (auto* c : available_connectors) {
+    uint32_t possible_crtcs = 0;
+    for (int i = 0; i < c->count_encoders; ++i) {
+      ScopedDrmEncoderPtr encoder = drm.GetEncoder(c->encoders[i]);
+      if (!encoder)
+        continue;
+      possible_crtcs |= encoder->possible_crtcs;
+    }
+    connector_crtcs[c] = possible_crtcs;
   }
   // Make sure to start assigning a crtc to the connector that supports the
   // fewest crtcs first.
@@ -460,38 +472,6 @@ HardwareDisplayControllerInfoList GetAvailableDisplayControllerInfos(
   return GetDisplayInfosAndInvalidCrtcs(drm).first;
 }
 
-uint32_t GetPossibleCrtcsBitmaskFromEncoders(
-    const DrmWrapper& drm,
-    const std::vector<uint32_t>& encoder_ids) {
-  uint32_t possible_crtcs = 0;
-  for (uint32_t encoder_id : encoder_ids) {
-    ScopedDrmEncoderPtr encoder = drm.GetEncoder(encoder_id);
-    if (!encoder) {
-      continue;
-    }
-    possible_crtcs |= encoder->possible_crtcs;
-  }
-
-  return possible_crtcs;
-}
-
-std::vector<uint32_t> GetPossibleCrtcIdsFromBitmask(
-    const DrmWrapper& drm,
-    const uint32_t possible_crtcs_bitmask) {
-  std::vector<uint32_t> crtcs;
-  ScopedDrmResourcesPtr resources = drm.GetResources();
-  for (int i = 0; i < resources->count_crtcs; i++) {
-    // CRTC mask of |possible_crtcs_bitmask| is just 1 offset by the index in
-    // drm_crtc_index().
-    const uint32_t current_crtc_mask = 1 << i;
-    if (possible_crtcs_bitmask & current_crtc_mask) {
-      crtcs.push_back(resources->crtcs[i]);
-    }
-  }
-
-  return crtcs;
-}
-
 bool SameMode(const drmModeModeInfo& lhs, const drmModeModeInfo& rhs) {
   return lhs.clock == rhs.clock && lhs.hdisplay == rhs.hdisplay &&
          lhs.vdisplay == rhs.vdisplay && lhs.vrefresh == rhs.vrefresh &&
@@ -505,9 +485,8 @@ bool SameMode(const drmModeModeInfo& lhs, const drmModeModeInfo& rhs) {
 std::unique_ptr<display::DisplayMode> CreateDisplayMode(
     const drmModeModeInfo& mode) {
   return std::make_unique<display::DisplayMode>(
-      gfx::Size{mode.hdisplay, mode.vdisplay},
-      mode.flags & DRM_MODE_FLAG_INTERLACE, GetRefreshRate(mode), mode.htotal,
-      mode.vtotal, mode.clock);
+      gfx::Size(mode.hdisplay, mode.vdisplay),
+      mode.flags & DRM_MODE_FLAG_INTERLACE, GetRefreshRate(mode));
 }
 
 display::DisplaySnapshot::DisplayModeList ExtractDisplayModes(
@@ -582,9 +561,14 @@ std::unique_ptr<display::DisplaySnapshot> CreateDisplaySnapshot(
       GetPrivacyScreenState(drm, info->connector());
   const bool has_content_protection_key =
       HasContentProtectionKey(drm, info->connector());
-  display::DisplaySnapshot::ColorInfo color_info;
-  color_info.supports_color_temperature_adjustment =
-      HasColorCorrectionMatrix(drm, info->crtc());
+  const bool has_color_correction_matrix =
+      HasColorCorrectionMatrix(drm, info->crtc()) ||
+      HasPerPlaneColorCorrectionMatrix(drm, info->crtc());
+  // On rk3399 we can set a color correction matrix that will be applied in
+  // linear space. https://crbug.com/839020 to track if it will be possible to
+  // disable the per-plane degamma/gamma.
+  const bool color_correction_in_linear_space =
+      has_color_correction_matrix && drm.GetDriverName() == "rockchip";
   const gfx::Size maximum_cursor_size = GetMaximumCursorSize(drm);
   const display::VariableRefreshRateState variable_refresh_rate_state =
       GetVariableRefreshRateState(drm, info);
@@ -596,10 +580,12 @@ std::unique_ptr<display::DisplaySnapshot> CreateDisplaySnapshot(
   int64_t product_code = display::DisplaySnapshot::kInvalidProductCode;
   int32_t year_of_manufacture = display::kInvalidYearOfManufacture;
   bool has_overscan = false;
-  color_info.bits_per_channel = 8u;
+  gfx::ColorSpace display_color_space;
+  uint32_t bits_per_channel = 8u;
+  absl::optional<gfx::HDRStaticMetadata> hdr_static_metadata{};
   // Active pixels size from the first detailed timing descriptor in the EDID.
   gfx::Size active_pixel_size;
-  std::optional<uint16_t> vsync_rate_min;
+  absl::optional<uint16_t> vsync_rate_min;
 
   ScopedDrmPropertyBlobPtr edid_blob(
       GetDrmPropertyBlob(drm, info->connector(), "EDID"));
@@ -620,24 +606,13 @@ std::unique_ptr<display::DisplaySnapshot> CreateDisplaySnapshot(
     year_of_manufacture = edid_parser.year_of_manufacture();
     has_overscan =
         edid_parser.has_overscan_flag() && edid_parser.overscan_flag();
-    color_info.color_space = display::GetColorSpaceFromEdid(edid_parser);
-    // Populate the EDID primaries and gamma from the gfx::ColorSpace.
-    // TODO(https://crbug.com/1505062): Extract this directly.
-    if (auto sk_color_space = color_info.color_space.ToSkColorSpace()) {
-      skcms_TransferFunction fn;
-      skcms_Matrix3x3 to_xyzd50;
-      sk_color_space->toXYZD50(&to_xyzd50);
-      sk_color_space->transferFn(&fn);
-      color_info.edid_primaries =
-          skia::GetD65PrimariesFromToXYZD50Matrix(to_xyzd50);
-      color_info.edid_gamma = fn.g;
-    }
+    display_color_space = display::GetColorSpaceFromEdid(edid_parser);
     base::UmaHistogramBoolean("DrmUtil.CreateDisplaySnapshot.IsHDR",
-                              color_info.color_space.IsHDR());
-    color_info.bits_per_channel = std::max(edid_parser.bits_per_channel(), 0);
+                              display_color_space.IsHDR());
+    bits_per_channel = std::max(edid_parser.bits_per_channel(), 0);
     base::UmaHistogramCounts100("DrmUtil.CreateDisplaySnapshot.BitsPerChannel",
-                                color_info.bits_per_channel);
-    color_info.hdr_static_metadata = edid_parser.hdr_static_metadata();
+                                bits_per_channel);
+    hdr_static_metadata = edid_parser.hdr_static_metadata();
     vsync_rate_min = edid_parser.vsync_rate_min();
   } else {
     VLOG(1) << "Failed to get EDID blob for connector "
@@ -656,15 +631,17 @@ std::unique_ptr<display::DisplaySnapshot> CreateDisplaySnapshot(
       port_display_id, port_display_id, edid_display_id, connector_index,
       gfx::Point(), physical_size, type, base_connector_id, path_topology,
       is_aspect_preserving_scaling, has_overscan, privacy_screen_state,
-      has_content_protection_key, color_info, display_name, drm.device_path(),
-      std::move(modes), panel_orientation, edid, current_mode, native_mode,
-      product_code, year_of_manufacture, maximum_cursor_size,
-      variable_refresh_rate_state, vsync_rate_min, drm_formats_and_modifiers);
+      has_content_protection_key, has_color_correction_matrix,
+      color_correction_in_linear_space, display_color_space, bits_per_channel,
+      hdr_static_metadata, display_name, drm.device_path(), std::move(modes),
+      panel_orientation, edid, current_mode, native_mode, product_code,
+      year_of_manufacture, maximum_cursor_size, variable_refresh_rate_state,
+      vsync_rate_min, drm_formats_and_modifiers);
 }
 
 int GetFourCCFormatForOpaqueFramebuffer(gfx::BufferFormat format) {
   // DRM atomic interface doesn't currently support specifying an alpha
-  // blending. We can simulate disabling alpha blending creating an fb
+  // blending. We can simulate disabling alpha bleding creating an fb
   // with a format without the alpha channel.
   switch (format) {
     case gfx::BufferFormat::RGBA_8888:
@@ -689,13 +666,6 @@ int GetFourCCFormatForOpaqueFramebuffer(gfx::BufferFormat format) {
       NOTREACHED();
       return 0;
   }
-}
-
-const char* GetNameForColorspace(const gfx::ColorSpace color_space) {
-  if (color_space == gfx::ColorSpace::CreateHDR10())
-    return kColorSpaceBT2020RGBEnumName;
-
-  return kColorSpaceDefaultEnumName;
 }
 
 uint64_t GetEnumValueForName(const DrmWrapper& drm,
@@ -796,22 +766,22 @@ std::string GetEnumNameForProperty(
   return std::string();
 }
 
-std::optional<std::string> GetDrmDriverNameFromFd(int fd) {
+absl::optional<std::string> GetDrmDriverNameFromFd(int fd) {
   ScopedDrmVersionPtr version(drmGetVersion(fd));
   if (!version) {
     LOG(ERROR) << "Failed to query DRM version";
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return std::string(version->name, version->name_len);
 }
 
-std::optional<std::string> GetDrmDriverNameFromPath(
+absl::optional<std::string> GetDrmDriverNameFromPath(
     const char* device_file_name) {
   base::ScopedFD fd(open(device_file_name, O_RDWR));
   if (!fd.is_valid()) {
     LOG(ERROR) << "Failed to open DRM device " << device_file_name;
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   return GetDrmDriverNameFromFd(fd.get());

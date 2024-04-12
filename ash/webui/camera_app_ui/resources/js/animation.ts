@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import {assertExists, assertInstanceof} from './assert.js';
-import {AsyncJobInfo, AsyncJobQueue} from './async_job_queue.js';
+import {AsyncJobQueue} from './async_job_queue.js';
 
 const jobQueueMap = new Map<HTMLElement, AsyncJobQueue>();
 
@@ -23,12 +23,6 @@ function getQueueFor(el: HTMLElement): AsyncJobQueue {
  * pseudo-elements.
  */
 function getAnimations(el: HTMLElement): Animation[] {
-  if (el.shadowRoot !== null) {
-    // The element is a custom web component, assuming that we want to wait for
-    // all inner animations to settle down when applying animation to the
-    // element.
-    return el.shadowRoot.getAnimations();
-  }
   return el.getAnimations({subtree: true})
       .filter((a) => assertInstanceof(a.effect, KeyframeEffect).target === el);
 }
@@ -50,18 +44,20 @@ export function cancel(el: HTMLElement): void {
  *
  * @param el Target element to apply "animate" class.
  * @param changeElement Function to change the target element before animation.
+ * @return Promise resolved when the animation is settled.
  */
-export function play(
-    el: HTMLElement, changeElement?: () => void): AsyncJobInfo {
+export async function play(
+    el: HTMLElement, changeElement?: () => void): Promise<void> {
   cancel(el);
   const queue = getQueueFor(el);
-  return queue.push(async () => {
+  async function job() {
     void el.offsetWidth;  // Force repaint before applying the animation.
-    if (changeElement !== undefined) {
+    if (changeElement) {
       changeElement();
     }
     el.classList.add('animate');
     await Promise.allSettled(getAnimations(el).map((a) => a.finished));
     el.classList.remove('animate');
-  });
+  }
+  await queue.push(job);
 }

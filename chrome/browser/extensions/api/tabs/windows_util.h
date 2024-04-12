@@ -48,7 +48,7 @@ enum IncognitoResult { kRegular, kIncognito, kError };
 // which may not be opened in incognito mode.  If window creation leads the
 // browser into an erroneous state, `error` is populated.
 IncognitoResult ShouldOpenIncognitoWindow(Profile* profile,
-                                          std::optional<bool> incognito,
+                                          absl::optional<bool> incognito,
                                           std::vector<GURL>* urls,
                                           std::string* error);
 

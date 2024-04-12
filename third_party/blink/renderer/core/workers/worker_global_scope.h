@@ -43,7 +43,6 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/policy_container.h"
-#include "third_party/blink/renderer/core/frame/window_or_worker_global_scope.h"
 #include "third_party/blink/renderer/core/script/script.h"
 #include "third_party/blink/renderer/core/workers/worker_classic_script_loader.h"
 #include "third_party/blink/renderer/core/workers/worker_or_worklet_global_scope.h"
@@ -77,7 +76,6 @@ class WorkerThread;
 
 class CORE_EXPORT WorkerGlobalScope
     : public WorkerOrWorkletGlobalScope,
-      public WindowOrWorkerGlobalScope,
       public ActiveScriptWrappable<WorkerGlobalScope>,
       public Supplementable<WorkerGlobalScope> {
   DEFINE_WRAPPERTYPEINFO();
@@ -103,11 +101,6 @@ class CORE_EXPORT WorkerGlobalScope
   const base::UnguessableToken& GetDevToolsToken() const override;
   bool IsInitialized() const final { return !url_.IsNull(); }
   CodeCacheHost* GetCodeCacheHost() override;
-  std::optional<mojo::PendingRemote<network::mojom::blink::URLLoaderFactory>>
-  FindRaceNetworkRequestURLLoaderFactory(
-      const base::UnguessableToken& token) override {
-    return std::nullopt;
-  }
 
   void ExceptionUnhandled(int exception_id);
 
@@ -153,7 +146,7 @@ class CORE_EXPORT WorkerGlobalScope
     return agent_group_scheduler_compositor_task_runner_;
   }
 
-  OffscreenFontSelector* GetFontSelector() { return font_selector_.Get(); }
+  OffscreenFontSelector* GetFontSelector() { return font_selector_; }
 
   CoreProbeSink* GetProbeSink() final;
 
@@ -189,7 +182,7 @@ class CORE_EXPORT WorkerGlobalScope
   // Spec: https://html.spec.whatwg.org/C/#run-a-worker Step 12 is completed,
   // and it's ready to proceed to Step 23.
   void WorkerScriptFetchFinished(Script&,
-                                 std::optional<v8_inspector::V8StackTraceId>);
+                                 absl::optional<v8_inspector::V8StackTraceId>);
 
   // Fetches and evaluates the top-level classic script.
   virtual void FetchAndRunClassicScript(
@@ -218,13 +211,12 @@ class CORE_EXPORT WorkerGlobalScope
 
   void Trace(Visitor*) const override;
 
-  // ActiveScriptWrappable.
-  bool HasPendingActivity() const override;
-
   virtual InstalledScriptsManager* GetInstalledScriptsManager() {
     return nullptr;
   }
 
+  // TODO(fserb): This can be removed once we WorkerGlobalScope implements
+  // FontFaceSource on the IDL.
   FontFaceSet* fonts();
 
   // https://html.spec.whatwg.org/C/#windoworworkerglobalscope-mixin
@@ -259,7 +251,7 @@ class CORE_EXPORT WorkerGlobalScope
     main_resource_identifier_ = identifier;
   }
 
-  std::optional<uint64_t> MainResourceIdentifier() const {
+  absl::optional<uint64_t> MainResourceIdentifier() const {
     return main_resource_identifier_;
   }
 
@@ -307,6 +299,7 @@ class CORE_EXPORT WorkerGlobalScope
   // Used for importScripts().
   void ImportScriptsInternal(const Vector<String>& urls);
   // ExecutionContext
+  void AddInspectorIssue(mojom::blink::InspectorIssueInfoPtr) final;
   void AddInspectorIssue(AuditsIssue) final;
   EventTarget* ErrorEventTarget() final { return this; }
 
@@ -361,7 +354,7 @@ class CORE_EXPORT WorkerGlobalScope
   ScriptEvalState script_eval_state_;
 
   Member<Script> worker_script_;
-  std::optional<v8_inspector::V8StackTraceId> stack_id_;
+  absl::optional<v8_inspector::V8StackTraceId> stack_id_;
 
   HttpsState https_state_;
 
@@ -376,7 +369,7 @@ class CORE_EXPORT WorkerGlobalScope
   // |main_resource_identifier_| is used to track main script that was started
   // in the browser process. This field not having a value does not imply
   // anything.
-  std::optional<uint64_t> main_resource_identifier_;
+  absl::optional<uint64_t> main_resource_identifier_;
 
   // This is the interface that handles generated code cache
   // requests both to fetch code cache when loading resources.

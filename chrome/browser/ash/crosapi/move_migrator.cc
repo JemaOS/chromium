@@ -10,7 +10,6 @@
 #include <string>
 
 #include "base/containers/contains.h"
-#include "base/debug/dump_without_crashing.h"
 #include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -26,7 +25,6 @@
 #include "chrome/browser/ash/crosapi/browser_data_migrator.h"
 #include "chrome/browser/ash/crosapi/browser_data_migrator_util.h"
 #include "chrome/browser/ash/crosapi/migration_progress_tracker.h"
-#include "chrome/browser/extensions/extension_keeplist_chromeos.h"
 #include "chrome/common/chrome_constants.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
@@ -52,6 +50,8 @@ MoveMigrator::MoveMigrator(
 
 MoveMigrator::~MoveMigrator() = default;
 
+// TODO(ythjkt): Add UMA for each step to detect failures and measure time taken
+// for critical steps.
 void MoveMigrator::Migrate() {
   ResumeStep resume_step = GetResumeStep(local_state_, user_id_hash_);
 
@@ -68,8 +68,6 @@ void MoveMigrator::Migrate() {
     if (resume_count > kMoveMigrationResumeCountLimit) {
       LOG(ERROR) << "The number of resume attempt limit has reached. Marking "
                     "move migration as completed.";
-      base::UmaHistogramBoolean(kMoveMigratorMaxResumeReached, true);
-      base::debug::DumpWithoutCrashing();
       SetResumeStep(local_state_, user_id_hash_, ResumeStep::kCompleted);
       resume_step = ResumeStep::kCompleted;
     }
@@ -158,8 +156,10 @@ bool MoveMigrator::IsResumeStep(ResumeStep resume_step) {
 
 // static
 void MoveMigrator::RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
-  registry->RegisterDictionaryPref(kMoveMigrationResumeStepPref);
-  registry->RegisterDictionaryPref(kMoveMigrationResumeCountPref);
+  registry->RegisterDictionaryPref(kMoveMigrationResumeStepPref,
+                                   base::Value(base::Value::Type::DICT));
+  registry->RegisterDictionaryPref(kMoveMigrationResumeCountPref,
+                                   base::Value(base::Value::Type::DICT));
 }
 
 // static
@@ -268,14 +268,14 @@ MoveMigrator::TaskResult MoveMigrator::PreMigrationCleanUp(
     }
   }
 
-  const int64_t estimated_extra_bytes_created =
+  const int64_t extra_bytes_created =
       browser_data_migrator_util::EstimatedExtraBytesCreated(
           original_profile_dir);
   // Now check if there is enough disk space for the migration to be carried
   // out.
   const int64_t extra_bytes_required_to_be_freed =
       browser_data_migrator_util::ExtraBytesRequiredToBeFreed(
-          estimated_extra_bytes_created, original_profile_dir);
+          extra_bytes_created, original_profile_dir);
 
   UMA_HISTOGRAM_MEDIUM_TIMES(kMoveMigratorPreMigrationCleanUpTimeUMA,
                              timer.Elapsed());
@@ -287,12 +287,11 @@ MoveMigrator::TaskResult MoveMigrator::PreMigrationCleanUp(
                   "safely. Need to free up "
                << extra_bytes_required_to_be_freed << " bytes from "
                << original_profile_dir;
-    return {TaskStatus::kPreMigrationCleanUpNotEnoughSpace, std::nullopt,
+    return {TaskStatus::kPreMigrationCleanUpNotEnoughSpace, absl::nullopt,
             extra_bytes_required_to_be_freed};
   }
 
-  return {TaskStatus::kSucceeded, std::nullopt, std::nullopt,
-          estimated_extra_bytes_created};
+  return {TaskStatus::kSucceeded};
 }
 
 void MoveMigrator::OnPreMigrationCleanUp(MoveMigrator::TaskResult result) {
@@ -301,8 +300,6 @@ void MoveMigrator::OnPreMigrationCleanUp(MoveMigrator::TaskResult result) {
     InvokeCallback(result);
     return;
   }
-
-  estimated_extra_bytes_created_ = *result.estimated_extra_bytes_created;
 
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE,
@@ -361,7 +358,7 @@ MoveMigrator::TaskResult MoveMigrator::SetupLacrosDir(
                              timer_for_copy.Elapsed());
 
   if (!base::WriteFile(tmp_user_dir.Append(chrome::kFirstRunSentinel), "")) {
-    PLOG(ERROR) << "WriteFile() failed for " << chrome::kFirstRunSentinel;
+    LOG(ERROR) << "WriteFile() failed for " << chrome::kFirstRunSentinel;
     return {TaskStatus::kSetupLacrosDirWriteFirstRunSentinelFileFailed, errno};
   }
 
@@ -379,22 +376,18 @@ void MoveMigrator::OnSetupLacrosDir(TaskResult result) {
     return;
   }
 
-  DCHECK(estimated_extra_bytes_created_.has_value());
-
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE,
       {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
        base::TaskShutdownBehavior::BLOCK_SHUTDOWN},
-      base::BindOnce(&MoveMigrator::SetupAshSplitDir, original_profile_dir_,
-                     *estimated_extra_bytes_created_),
+      base::BindOnce(&MoveMigrator::SetupAshSplitDir, original_profile_dir_),
       base::BindOnce(&MoveMigrator::OnSetupAshSplitDir,
                      weak_factory_.GetWeakPtr()));
 }
 
 // static
 MoveMigrator::TaskResult MoveMigrator::SetupAshSplitDir(
-    const base::FilePath& original_profile_dir,
-    const int64_t estimated_extra_bytes_created) {
+    const base::FilePath& original_profile_dir) {
   LOG(WARNING) << "Running SetupAshSplitDir()";
 
   const base::FilePath tmp_user_dir =
@@ -439,10 +432,10 @@ MoveMigrator::TaskResult MoveMigrator::SetupAshSplitDir(
       return {TaskStatus::kSetupAshDirCreateDirFailed, errno};
     }
 
-    for (const auto& extension_id :
-         extensions::GetExtensionsAndAppsRunInOSAndStandaloneBrowser()) {
+    for (const char* extension_id :
+         browser_data_migrator_util::kExtensionsBothChromes) {
       if (!browser_data_migrator_util::MigrateAshIndexedDB(
-              original_profile_dir, split_indexed_db_dir, extension_id.data(),
+              original_profile_dir, split_indexed_db_dir, extension_id,
               /*copy=*/true)) {
         return {TaskStatus::kSetupAshDirCopyIndexedDBFailed, errno};
       }
@@ -507,26 +500,6 @@ MoveMigrator::TaskResult MoveMigrator::SetupAshSplitDir(
       return {TaskStatus::kSetupAshDirMigrateSyncDataLevelDBFailed};
     }
   }
-
-  // Collect UMAs on sizes of artifacts created by migration.
-  const int64_t tmp_profile_dir_size =
-      base::ComputeDirectorySize(tmp_profile_dir);
-  const int64_t tmp_split_dir_size = base::ComputeDirectorySize(tmp_split_dir);
-  const int64_t extra_bytes_created = tmp_profile_dir_size + tmp_split_dir_size;
-  const int64_t extra_bytes_over_estimate =
-      extra_bytes_created - estimated_extra_bytes_created;
-  base::UmaHistogramCustomCounts(kMoveMigratorTmpProfileDirSize,
-                                 tmp_profile_dir_size / 1024 / 1024, 1, 10000,
-                                 100);
-  base::UmaHistogramCustomCounts(kMoveMigratorTmpSplitDirSize,
-                                 tmp_split_dir_size / 1024 / 1024, 1, 10000,
-                                 100);
-  base::UmaHistogramCustomCounts(kMoveMigratorExtraDiskSpaceOccupied,
-                                 extra_bytes_created / 1024 / 1024, 1, 10000,
-                                 100);
-  base::UmaHistogramCustomCounts(kMoveMigratorExtraDiskSpaceOccupiedDiffWithEst,
-                                 extra_bytes_over_estimate / 1024 / 1024,
-                                 -10000, 10000, 100);
 
   return {TaskStatus::kSucceeded};
 }
@@ -800,8 +773,8 @@ MoveMigrator::TaskResult MoveMigrator::CopyBothChromesSubdirs(
     }
 
     // Copy objects that belong to both Ash and Lacros.
-    for (const auto& extension_id :
-         extensions::GetExtensionsAndAppsRunInOSAndStandaloneBrowser()) {
+    for (const char* extension_id :
+         browser_data_migrator_util::kExtensionsBothChromes) {
       base::FilePath original_target_path =
           original_target_dir.Append(extension_id);
 

@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include "base/base_paths.h"
 #include "base/containers/flat_map.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -21,10 +20,9 @@
 #include "chrome/browser/ash/login/test/logged_in_user_mixin.h"
 #include "chrome/browser/extensions/mixin_based_extension_apitest.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #include "chrome/test/base/devtools_listener.h"
-#include "components/webapps/common/web_app_id.h"
 #include "content/public/browser/devtools_agent_host_observer.h"
-#include "storage/browser/file_system/file_system_url.h"
 
 class NotificationDisplayServiceTester;
 class SelectFileDialogExtensionTestFactory;
@@ -34,7 +32,6 @@ class FakeFileSystemInstance;
 }  // namespace arc
 
 namespace content {
-class TestNavigationObserver;
 class WebContents;
 }  // namespace content
 
@@ -52,27 +49,25 @@ enum TestAccountType {
   kNonManaged,
   // Non-managed account as a non owner profile on a device.
   kNonManagedNonOwner,
-  kGoogler,
 };
 enum DeviceMode { kDeviceModeNotSet, kConsumerOwned, kEnrolled };
 
-class AndroidFilesTestVolume;
-class CrostiniTestVolume;
-class DocumentsProviderTestVolume;
-class DownloadsTestVolume;
 class DriveFsTestVolume;
 class FakeTestVolume;
-class FileSystemProviderTestVolume;
-class GuestOsTestVolume;
-class HiddenTestVolume;
-class MediaViewTestVolume;
+class DownloadsTestVolume;
+class CrostiniTestVolume;
+class AndroidFilesTestVolume;
 class RemovableTestVolume;
+class DocumentsProviderTestVolume;
+class MediaViewTestVolume;
 class SmbfsTestVolume;
+class HiddenTestVolume;
+class GuestOsTestVolume;
 
 ash::LoggedInUserMixin::LogInType LogInTypeFor(
     TestAccountType test_account_type);
 
-std::optional<AccountId> AccountIdFor(TestAccountType test_account_type);
+absl::optional<AccountId> AccountIdFor(TestAccountType test_account_type);
 
 class FileManagerBrowserTestBase
     : public content::DevToolsAgentHostObserver,
@@ -85,12 +80,6 @@ class FileManagerBrowserTestBase
 
     // Should test run in Guest or Incognito mode?
     GuestMode guest_mode = NOT_IN_GUEST_MODE;
-
-    // Locale used for this test to run.
-    std::string locale;
-
-    // A stored permanent country in `VariationsService` for this test to run.
-    std::string country;
 
     // Account type used to log-in for a test session. This option is valid only
     // for `LoggedInUserFilesAppBrowserTest`. This won't work with `guest_mode`
@@ -110,9 +99,6 @@ class FileManagerBrowserTestBase
 
     // Whether test requires Android documents provider for Google Photos.
     bool photos_documents_provider = false;
-
-    // Whether test requires a fake file system provider.
-    bool fake_file_system_provider = false;
 
     // Whether test requires ARC++.
     bool arc = false;
@@ -147,9 +133,6 @@ class FileManagerBrowserTestBase
     // Whether test should enable trash.
     bool enable_trash = false;
 
-    // Whether test should enable Drive trash.
-    bool enable_drive_trash = false;
-
     // Whether test should run Files app UI as JS modules.
     bool enable_js_modules = true;
 
@@ -160,9 +143,6 @@ class FileManagerBrowserTestBase
     // feature.
     bool enable_dlp_files_restriction = false;
 
-    // Whether test should enable Files policy new UX feature.
-    bool enable_files_policy_new_ux = false;
-
     // Whether test should run with the Upload Office to Cloud feature.
     bool enable_upload_office_to_cloud = false;
 
@@ -172,40 +152,26 @@ class FileManagerBrowserTestBase
     // Whether test should run with the DriveFsMirroring flag.
     bool enable_mirrorsync = false;
 
+    // Whether test should run with the FilesInlineSyncStatus flag.
+    bool enable_inline_status_sync = false;
+
     // Whether test should enable the file transfer connector.
     bool enable_file_transfer_connector = false;
-
-    // Whether test should enable the new UX for the file transfer connector.
-    bool enable_file_transfer_connector_new_ux = false;
 
     // Whether test should use report-only mode for the file transfer connector.
     bool file_transfer_connector_report_only = false;
 
-    // Whether tests should set up justification mode for the file transfer
-    // connector.
-    bool bypass_requires_justification = false;
+    // Whether tests should enable V2 of search.
+    bool enable_search_v2 = false;
 
-    // Whether tests should enable local image search by query.
-    bool enable_local_image_search = false;
+    // Whether tests should enable OS Feedback.
+    bool enable_os_feedback = false;
 
-    // Whether test should run with the fsps-in-recents flag.
-    bool enable_fsps_in_recents = false;
-
-    // Whether tests should enable Google One offer Files banner. This flag is
-    // enabled by default.
-    bool enable_google_one_offer_files_banner = true;
+    // Whether tests should enable Google One offer Files banner.
+    bool enable_google_one_offer_files_banner = false;
 
     // Whether tests should enable the Google Drive bulk pinning feature.
     bool enable_drive_bulk_pinning = false;
-
-    // Whether to enable Drive shortcuts showing a badge or not.
-    bool enable_drive_shortcuts = false;
-
-    // Whether to enable jellybean UI elements.
-    bool enable_cros_components = false;
-
-    // Whether to enable new directory tree implementation.
-    bool enable_new_directory_tree = false;
 
     // Feature IDs associated for mapping test cases and features.
     std::vector<std::string> feature_ids;
@@ -247,8 +213,6 @@ class FileManagerBrowserTestBase
   // implementation.
   virtual AccountId GetAccountId();
 
-  content::WebContents* GetWebContentsForId(const std::string& app_id);
-
   // Launches the test extension from GetTestExtensionManifestName() and uses
   // it to drive the testing the actual FileManager component extension under
   // test by calling RunTestMessageLoop().
@@ -259,12 +223,10 @@ class FileManagerBrowserTestBase
 
   class MockFileTasksObserver;
 
-  // Launches the test extension with manifest `manifest_name`. The extension
-  // manifest_name file should reside in the specified `path` relative to the
-  // Chromium `root` directory.
-  void LaunchExtension(base::BasePathKey root,
-                       const base::FilePath& path,
-                       const char* manifest_name);
+  // Launches the test extension with manifest |manifest_name|. The extension
+  // manifest_name file should reside in the specified |path| relative to the
+  // Chromium src directory.
+  void LaunchExtension(const base::FilePath& path, const char* manifest_name);
 
   // Runs the test: awaits chrome.test messsage commands and chrome.test PASS
   // or FAIL messsages to process. |OnCommand| is used to handle the commands
@@ -317,6 +279,9 @@ class FileManagerBrowserTestBase
   // File Manager app.
   content::WebContents* GetLastOpenWindowWebContents();
 
+  // Loads the test utils in the WebContents.
+  void LoadSwaTestUtils(content::WebContents*);
+
   // Returns appId from its WebContents.
   std::string GetSwaAppId(content::WebContents*);
 
@@ -338,7 +303,7 @@ class FileManagerBrowserTestBase
   std::unique_ptr<CrostiniTestVolume> crostini_volume_;
   std::unique_ptr<AndroidFilesTestVolume> android_files_volume_;
   std::map<Profile*, std::unique_ptr<DriveFsTestVolume>> drive_volumes_;
-  raw_ptr<DriveFsTestVolume> drive_volume_ = nullptr;
+  raw_ptr<DriveFsTestVolume, ExperimentalAsh> drive_volume_ = nullptr;
   std::unique_ptr<FakeTestVolume> usb_volume_;
   std::unique_ptr<FakeTestVolume> mtp_volume_;
   std::unique_ptr<RemovableTestVolume> partition_1_;
@@ -354,8 +319,6 @@ class FileManagerBrowserTestBase
   std::unique_ptr<MediaViewTestVolume> media_view_documents_;
   std::unique_ptr<SmbfsTestVolume> smbfs_volume_;
   std::unique_ptr<HiddenTestVolume> hidden_volume_;
-  std::unique_ptr<FileSystemProviderTestVolume> file_system_provider_volume_;
-  std::unique_ptr<content::TestNavigationObserver> test_navigation_observer_;
 
   // Map from source path (e.g. sftp://1:2) to volume.
   base::flat_map<std::string, std::unique_ptr<GuestOsTestVolume>>
@@ -370,7 +333,8 @@ class FileManagerBrowserTestBase
 
   std::unique_ptr<NotificationDisplayServiceTester> display_service_;
   std::unique_ptr<MockFileTasksObserver> file_tasks_observer_;
-  raw_ptr<SelectFileDialogExtensionTestFactory> select_factory_;  // Not owned.
+  raw_ptr<SelectFileDialogExtensionTestFactory, ExperimentalAsh>
+      select_factory_;  // Not owned.
 
   base::HistogramTester histograms_;
   base::UserActionTester user_actions_;
@@ -381,8 +345,6 @@ class FileManagerBrowserTestBase
   base::FilePath devtools_code_coverage_dir_;
   DevToolsAgentMap devtools_agent_;
   uint32_t process_id_ = 0;
-
-  storage::FileSystemURL error_url_;
 };
 
 std::ostream& operator<<(std::ostream& out, GuestMode mode);

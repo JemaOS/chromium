@@ -54,33 +54,12 @@ class TestExtensionEnvironment {
     kInheritExistingTaskEnvironment,
   };
 
-  enum class ProfileCreationType {
-    kNoCreate,
-    kCreate,
-  };
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  enum class OSSetupType {
-    kNoSetUp,
-    kSetUp,
-  };
-#endif
-
-  explicit TestExtensionEnvironment(
-      Type type = Type::kWithTaskEnvironment,
-      ProfileCreationType profile_creation_type = ProfileCreationType::kCreate
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-      ,
-      OSSetupType os_setup_type = OSSetupType::kSetUp
-#endif
-  );
+  explicit TestExtensionEnvironment(Type type = Type::kWithTaskEnvironment);
 
   TestExtensionEnvironment(const TestExtensionEnvironment&) = delete;
   TestExtensionEnvironment& operator=(const TestExtensionEnvironment&) = delete;
 
   ~TestExtensionEnvironment();
-
-  void SetProfile(TestingProfile* profile);
 
   TestingProfile* profile() const;
 
@@ -134,16 +113,8 @@ class TestExtensionEnvironment {
   ui::ScopedOleInitializer ole_initializer_;
 #endif
 
-  // TestingProfile may be created or not, depending on the caller's
-  // configuration passed to the constructor. This member keeps the ownership
-  // if the mode is kCreate.
   std::unique_ptr<TestingProfile> profile_;
-
-  // Unowned pointer of Profile for this test environment. May be the pointer
-  // to `profile_`, or may be injected by SetProfile().
-  raw_ptr<TestingProfile, DanglingUntriaged> profile_ptr_;
-
-  raw_ptr<ExtensionService, DanglingUntriaged> extension_service_ = nullptr;
+  raw_ptr<ExtensionService> extension_service_ = nullptr;
 };
 
 }  // namespace extensions

@@ -20,7 +20,7 @@ enum class DownloadItemMode {
 };
 
 // Returns the mode that best reflects the current model state.
-DownloadItemMode GetDesiredDownloadItemMode(const DownloadUIModel* download);
+DownloadItemMode GetDesiredDownloadItemMode(DownloadUIModel* download);
 
 }  // namespace download
 

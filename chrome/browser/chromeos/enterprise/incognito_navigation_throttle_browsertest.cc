@@ -14,9 +14,8 @@
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/extensions/extension_util.h"
-#include "chrome/browser/extensions/navigation_extension_enabler.h"
+#include "chrome/browser/extensions/navigation_observer.h"
 #include "chrome/browser/sync/test/integration/extensions_helper.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/policy/core/browser/browser_policy_connector.h"
@@ -164,10 +163,9 @@ class IncognitoNavigationThrottleBrowserTest
   }
 
   scoped_refptr<const extensions::Extension> extension_;
-  raw_ptr<extensions::ExtensionRegistry, AcrossTasksDanglingUntriaged>
-      registry_;
+  raw_ptr<extensions::ExtensionRegistry, DanglingUntriaged> registry_;
   testing::NiceMock<policy::MockConfigurationPolicyProvider> policy_provider_;
-  raw_ptr<Browser, AcrossTasksDanglingUntriaged> incognito_browser_ = nullptr;
+  raw_ptr<Browser, DanglingUntriaged> incognito_browser_ = nullptr;
 };
 
 // Verify that when the `MandatoryExtensionsForIncognitoNavigation` policy is

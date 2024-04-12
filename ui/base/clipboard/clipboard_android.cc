@@ -29,7 +29,6 @@
 #include "ui/base/clipboard/clipboard_constants.h"
 #include "ui/base/clipboard/clipboard_format_type.h"
 #include "ui/base/clipboard/clipboard_metrics.h"
-#include "ui/base/clipboard/clipboard_util.h"
 #include "ui/base/data_transfer_policy/data_transfer_endpoint.h"
 #include "ui/base/ui_base_jni_headers/Clipboard_jni.h"
 #include "ui/gfx/android/java_bitmap.h"
@@ -52,14 +51,13 @@
 // These "other formats" only work within the same process, and can't be copied
 // between Android applications.
 
+using base::android::AttachCurrentThread;
+using base::android::ClearException;
 using base::android::ConvertJavaStringToUTF8;
 using base::android::ConvertUTF8ToJavaString;
-using base::android::JavaByteArrayToByteVector;
 using base::android::ScopedJavaGlobalRef;
 using base::android::ScopedJavaLocalRef;
 using base::android::ToJavaByteArray;
-using jni_zero::AttachCurrentThread;
-using jni_zero::ClearException;
 
 namespace ui {
 
@@ -119,7 +117,7 @@ class ClipboardMap {
   std::vector<ClipboardFormatType> GetFormats();
   void OnPrimaryClipboardChanged();
   void OnPrimaryClipTimestampInvalidated(int64_t timestamp_ms);
-  void Set(const ClipboardFormatType& format, base::StringPiece data);
+  void Set(const ClipboardFormatType& format, const std::string& data);
   void CommitToAndroidClipboard();
   void Clear();
 
@@ -304,8 +302,7 @@ void ClipboardMap::OnPrimaryClipboardChanged() {
 }
 
 void ClipboardMap::OnPrimaryClipTimestampInvalidated(int64_t timestamp_ms) {
-  base::Time timestamp =
-      base::Time::FromMillisecondsSinceUnixEpoch(timestamp_ms);
+  base::Time timestamp = base::Time::FromJavaTime(timestamp_ms);
   if (GetLastModifiedTime() < timestamp) {
     sequence_number_ = ClipboardSequenceNumberToken();
     UpdateLastModifiedTime(timestamp);
@@ -314,7 +311,7 @@ void ClipboardMap::OnPrimaryClipTimestampInvalidated(int64_t timestamp_ms) {
 }
 
 void ClipboardMap::Set(const ClipboardFormatType& format,
-                       base::StringPiece data) {
+                       const std::string& data) {
   base::AutoLock lock(lock_);
   map_[format] = data;
   map_state_ = MapState::kPreparingCommit;
@@ -444,7 +441,7 @@ void ClipboardAndroid::OnPrimaryClipTimestampInvalidated(
 }
 
 int64_t ClipboardAndroid::GetLastModifiedTimeToJavaTime(JNIEnv* env) {
-  return GetLastModifiedTime().InMillisecondsSinceUnixEpoch();
+  return GetLastModifiedTime().ToJavaTime();
 }
 
 void ClipboardAndroid::SetModifiedCallback(ModifiedCallback cb) {
@@ -468,11 +465,11 @@ ClipboardAndroid::~ClipboardAndroid() {
 void ClipboardAndroid::OnPreShutdown() {}
 
 // DataTransferEndpoint is not used on this platform.
-std::optional<DataTransferEndpoint> ClipboardAndroid::GetSource(
+DataTransferEndpoint* ClipboardAndroid::GetSource(
     ClipboardBuffer buffer) const {
   DCHECK(CalledOnValidThread());
   DCHECK_EQ(buffer, ClipboardBuffer::kCopyPaste);
-  return std::nullopt;
+  return nullptr;
 }
 
 const ClipboardSequenceNumberToken& ClipboardAndroid::GetSequenceNumber(
@@ -670,34 +667,44 @@ void ClipboardAndroid::WritePortableAndPlatformRepresentations(
     ClipboardBuffer buffer,
     const ObjectMap& objects,
     std::vector<Clipboard::PlatformRepresentation> platform_representations,
-    std::unique_ptr<DataTransferEndpoint> data_src,
-    uint32_t privacy_types) {
+    std::unique_ptr<DataTransferEndpoint> data_src) {
   DCHECK(CalledOnValidThread());
   DCHECK_EQ(buffer, ClipboardBuffer::kCopyPaste);
   g_map.Get().Clear();
 
   DispatchPlatformRepresentations(std::move(platform_representations));
   for (const auto& object : objects)
-    DispatchPortableRepresentation(object.second);
+    DispatchPortableRepresentation(object.first, object.second);
 
   g_map.Get().CommitToAndroidClipboard();
 }
 
-void ClipboardAndroid::WriteText(base::StringPiece text) {
-  g_map.Get().Set(ClipboardFormatType::PlainTextType(), text);
+void ClipboardAndroid::WriteText(const char* text_data, size_t text_len) {
+  g_map.Get().Set(ClipboardFormatType::PlainTextType(),
+                  std::string(text_data, text_len));
 }
 
-void ClipboardAndroid::WriteHTML(
-    base::StringPiece markup,
-    std::optional<base::StringPiece> /* source_url */) {
-  g_map.Get().Set(ClipboardFormatType::HtmlType(), markup);
+void ClipboardAndroid::WriteHTML(const char* markup_data,
+                                 size_t markup_len,
+                                 const char* url_data,
+                                 size_t url_len) {
+  g_map.Get().Set(ClipboardFormatType::HtmlType(),
+                  std::string(markup_data, markup_len));
 }
 
-void ClipboardAndroid::WriteSvg(base::StringPiece markup) {
-  g_map.Get().Set(ClipboardFormatType::SvgType(), markup);
+void ClipboardAndroid::WriteUnsanitizedHTML(const char* markup_data,
+                                            size_t markup_len,
+                                            const char* url_data,
+                                            size_t url_len) {
+  WriteHTML(markup_data, markup_len, url_data, url_len);
 }
 
-void ClipboardAndroid::WriteRTF(base::StringPiece rtf) {
+void ClipboardAndroid::WriteSvg(const char* markup_data, size_t markup_len) {
+  g_map.Get().Set(ClipboardFormatType::SvgType(),
+                  std::string(markup_data, markup_len));
+}
+
+void ClipboardAndroid::WriteRTF(const char* rtf_data, size_t data_len) {
   NOTIMPLEMENTED();
 }
 
@@ -707,9 +714,12 @@ void ClipboardAndroid::WriteFilenames(std::vector<ui::FileInfo> filenames) {
 
 // According to other platforms implementations, this really writes the
 // URL spec.
-void ClipboardAndroid::WriteBookmark(base::StringPiece title,
-                                     base::StringPiece url) {
-  g_map.Get().Set(ClipboardFormatType::UrlType(), url);
+void ClipboardAndroid::WriteBookmark(const char* title_data,
+                                     size_t title_len,
+                                     const char* url_data,
+                                     size_t url_len) {
+  g_map.Get().Set(ClipboardFormatType::UrlType(),
+                  std::string(url_data, url_len));
 }
 
 // Write an extra flavor that signifies WebKit was the last to modify the
@@ -721,11 +731,6 @@ void ClipboardAndroid::WriteWebSmartPaste() {
 // Encoding SkBitmap to PNG data. Then, |g_map| can commit the PNG data to
 // Android system clipboard without encode/decode.
 void ClipboardAndroid::WriteBitmap(const SkBitmap& sk_bitmap) {
-  // Encode the bitmap to a PNG from the UI thread. Ideally this CPU-intensive
-  // encoding operation would be performed on a background thread, but
-  // ui::base::Clipboard writes are (unfortunately) synchronous.
-  // We could consider making writes async, then moving this image encoding to a
-  // background sequence.
   scoped_refptr<base::RefCountedMemory> image_memory =
       gfx::Image::CreateFrom1xBitmap(sk_bitmap).As1xPNGBytes();
   std::string packed(image_memory->front_as<char>(), image_memory->size());
@@ -734,22 +739,9 @@ void ClipboardAndroid::WriteBitmap(const SkBitmap& sk_bitmap) {
 }
 
 void ClipboardAndroid::WriteData(const ClipboardFormatType& format,
-                                 base::span<const uint8_t> data) {
-  g_map.Get().Set(
-      format,
-      std::string(reinterpret_cast<const char*>(data.data()), data.size()));
-}
-
-void ClipboardAndroid::WriteClipboardHistory() {
-  // TODO(crbug.com/40945200): Add support for this.
-}
-
-void ClipboardAndroid::WriteUploadCloudClipboard() {
-  // TODO(crbug.com/40945200): Add support for this.
-}
-
-void ClipboardAndroid::WriteConfidentialDataForPassword() {
-  // TODO(crbug.com/40945200): Add support for this.
+                                 const char* data_data,
+                                 size_t data_len) {
+  g_map.Get().Set(format, std::string(data_data, data_len));
 }
 
 }  // namespace ui

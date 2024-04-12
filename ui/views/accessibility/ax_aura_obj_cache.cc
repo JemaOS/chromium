@@ -5,7 +5,6 @@
 #include "ui/views/accessibility/ax_aura_obj_cache.h"
 
 #include <utility>
-#include <vector>
 
 #include "base/containers/contains.h"
 #include "base/memory/raw_ptr.h"
@@ -161,7 +160,7 @@ AXAuraObjWrapper* AXAuraObjCache::Get(int32_t id) {
 }
 
 void AXAuraObjCache::GetTopLevelWindows(
-    std::vector<raw_ptr<AXAuraObjWrapper, VectorExperimental>>* children) {
+    std::vector<AXAuraObjWrapper*>* children) {
   for (aura::Window* root : root_windows_)
     children->push_back(GetOrCreate(root));
 }
@@ -169,7 +168,7 @@ void AXAuraObjCache::GetTopLevelWindows(
 AXAuraObjWrapper* AXAuraObjCache::GetFocus() {
   View* focused_view = GetFocusedView();
   while (focused_view &&
-         (focused_view->GetViewAccessibility().GetIsIgnored() ||
+         (focused_view->GetViewAccessibility().IsIgnored() ||
           focused_view->GetViewAccessibility().propagate_focus_to_ancestor())) {
     focused_view = focused_view->parent();
   }
@@ -299,7 +298,7 @@ void AXAuraObjCache::OnRootWindowObjCreated(aura::Window* window) {
 }
 
 void AXAuraObjCache::OnRootWindowObjDestroyed(aura::Window* window) {
-  std::erase_if(root_windows_, [window](aura::Window* current_window) {
+  base::EraseIf(root_windows_, [window](aura::Window* current_window) {
     return current_window == window;
   });
   if (root_windows_.empty() && GetFocusClient(window))

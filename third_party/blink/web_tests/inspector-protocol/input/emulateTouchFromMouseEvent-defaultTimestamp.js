@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   var {page, session, dp} = await testRunner.startBlank(`Tests default timestamp in Input.emulateTouchFromMouseEvent uses monotonic clock.`);
 
   await session.evaluate(`

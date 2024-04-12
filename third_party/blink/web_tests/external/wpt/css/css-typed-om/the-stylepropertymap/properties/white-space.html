@@ -13,39 +13,12 @@
 <script>
 'use strict';
 
-runPropertyTests('white-space-collapse', [
-  { syntax: 'collapse'},
-  { syntax: 'discard' },
-  { syntax: 'preserve' },
-  { syntax: 'preserve-breaks' },
-  { syntax: 'preserve-spaces' },
-  { syntax: 'break-spaces' },
-]);
-
-runPropertyTests('text-wrap-mode', [
-  { syntax: 'wrap'},
+runPropertyTests('white-space', [
+  { syntax: 'normal'},
+  { syntax: 'pre' },
   { syntax: 'nowrap' },
-]);
-
-runPropertyTests('text-wrap-style', [
-  { syntax: 'auto' },
-  { syntax: 'balance' },
-  { syntax: 'stable' },
-  { syntax: 'pretty' },
-]);
-
-runPropertyTests('white-space-trim', [
-  { syntax: 'none'},
-  { syntax: 'discard-before' },
-  { syntax: 'discard-after' },
-  { syntax: 'discard-inner' },
-]);
-
-runUnsupportedPropertyTests('white-space-trim', [
-  'discard-before discard-after',
-  'discard-before discard-inner',
-  'discard-after discard-inner',
-  'discard-before discard-after discard-inner'
+  { syntax: 'pre-wrap' },
+  { syntax: 'pre-line' },
 ]);
 
 </script>

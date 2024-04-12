@@ -16,7 +16,9 @@ namespace base {
 class FilePath;
 }  // namespace base
 
-namespace ash::file_system_provider::operations {
+namespace ash {
+namespace file_system_provider {
+namespace operations {
 
 // Opens a file for either read or write. The file must exist, otherwise the
 // operation will fail. Created per request.
@@ -48,6 +50,8 @@ class OpenFile : public Operation {
   ProvidedFileSystemInterface::OpenFileCallback callback_;
 };
 
-}  // namespace ash::file_system_provider::operations
+}  // namespace operations
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_OPERATIONS_OPEN_FILE_H_

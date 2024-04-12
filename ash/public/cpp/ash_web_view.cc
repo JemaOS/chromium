@@ -4,8 +4,6 @@
 
 #include "ash/public/cpp/ash_web_view.h"
 
-#include "ui/base/metadata/metadata_impl_macros.h"
-
 namespace ash {
 
 // AshWebView ------------------------------------------------------------
@@ -13,7 +11,10 @@ namespace ash {
 AshWebView::AshWebView() = default;
 AshWebView::~AshWebView() = default;
 
-BEGIN_METADATA(AshWebView)
-END_METADATA
+// AshWebView::InitParams ------------------------------------------------
+
+AshWebView::InitParams::InitParams() = default;
+AshWebView::InitParams::InitParams(const InitParams& copy) = default;
+AshWebView::InitParams::~InitParams() = default;
 
 }  // namespace ash

@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// https://w3c.github.io/compute-pressure/#the-pressureobserveroptions-dictionary
+// https://wicg.github.io/compute-pressure/#dom-pressureobserveroptions
+
 dictionary PressureObserverOptions {
-  [EnforceRange] unsigned long sampleInterval = 0;
+  double sampleRate = 1.0;
 };

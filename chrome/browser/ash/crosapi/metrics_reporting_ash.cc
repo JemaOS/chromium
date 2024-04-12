@@ -54,10 +54,10 @@ class DelegateImpl : public MetricsReportingAsh::Delegate {
   const raw_ptr<metrics::MetricsService, DanglingUntriaged> metrics_service_;
 };
 
-std::optional<std::string> MaybeGetClientId(
+absl::optional<std::string> MaybeGetClientId(
     bool enabled,
     MetricsReportingAsh::Delegate* delegate) {
-  return enabled ? std::make_optional(delegate->GetClientId()) : std::nullopt;
+  return enabled ? absl::make_optional(delegate->GetClientId()) : absl::nullopt;
 }
 
 }  // namespace

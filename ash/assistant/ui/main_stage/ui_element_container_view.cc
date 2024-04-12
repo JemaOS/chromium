@@ -47,9 +47,9 @@ constexpr int kScrollIndicatorHeightDip = 1;
 // thickness to 0 with ScrollView::SetCustomOverflowIndicator. This view is not
 // visible.
 class ObservableOverflowIndicator : public views::View {
-  METADATA_HEADER(ObservableOverflowIndicator, views::View)
-
  public:
+  METADATA_HEADER(ObservableOverflowIndicator);
+
   explicit ObservableOverflowIndicator(
       UiElementContainerView* ui_element_container_view)
       : ui_element_container_view_(ui_element_container_view) {}
@@ -64,10 +64,11 @@ class ObservableOverflowIndicator : public views::View {
   }
 
  private:
-  raw_ptr<UiElementContainerView> ui_element_container_view_ = nullptr;
+  raw_ptr<UiElementContainerView, ExperimentalAsh> ui_element_container_view_ =
+      nullptr;
 };
 
-BEGIN_METADATA(ObservableOverflowIndicator)
+BEGIN_METADATA(ObservableOverflowIndicator, views::View)
 END_METADATA
 
 // This is views::View. We define InvisibleOverflowIndicator as we can add
@@ -75,10 +76,11 @@ END_METADATA
 // ScrollView::SetCustomOverflowIndicator. The background of this view is NOT
 // transparent, i.e. it becomes visible if you set thickness larger than 0.
 class InvisibleOverflowIndicator : public views::View {
-  METADATA_HEADER(InvisibleOverflowIndicator, views::View)
+ public:
+  METADATA_HEADER(InvisibleOverflowIndicator);
 };
 
-BEGIN_METADATA(InvisibleOverflowIndicator)
+BEGIN_METADATA(InvisibleOverflowIndicator, views::View)
 END_METADATA
 
 }  // namespace
@@ -93,6 +95,10 @@ UiElementContainerView::UiElementContainerView(AssistantViewDelegate* delegate)
 }
 
 UiElementContainerView::~UiElementContainerView() = default;
+
+const char* UiElementContainerView::GetClassName() const {
+  return "UiElementContainerView";
+}
 
 gfx::Size UiElementContainerView::CalculatePreferredSize() const {
   return gfx::Size(INT_MAX, GetHeightForWidth(INT_MAX));
@@ -115,8 +121,8 @@ gfx::Size UiElementContainerView::GetMinimumSize() const {
   return gfx::Size(INT_MAX, 1);
 }
 
-void UiElementContainerView::Layout(PassKey) {
-  LayoutSuperclass<AnimatedContainerView>(this);
+void UiElementContainerView::Layout() {
+  AnimatedContainerView::Layout();
 
   // Scroll indicator.
   scroll_indicator_->SetBounds(0, height() - kScrollIndicatorHeightDip, width(),
@@ -257,8 +263,5 @@ SkColor UiElementContainerView::GetOverflowIndicatorBackgroundColor() const {
   return ColorProvider::Get()->GetContentLayerColor(
       ColorProvider::ContentLayerType::kSeparatorColor);
 }
-
-BEGIN_METADATA(UiElementContainerView)
-END_METADATA
 
 }  // namespace ash

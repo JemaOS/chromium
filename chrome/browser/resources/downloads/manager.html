@@ -16,10 +16,6 @@
 
   #toolbar {
     z-index: 1;
-    --cr-toolbar-center-basis: 680px;
-    --cr-toolbar-field-max-width: var(--cr-toolbar-center-basis);
-    --cr-toolbar-field-width: 100%;
-    --cr-toolbar-header-white-space: nowrap;
   }
 
   :host([has-shadow_]) #drop-shadow {
@@ -27,11 +23,9 @@
   }
 
   downloads-item,
-  #downloadsList,
-  cr-toast-manager {
+  #downloadsList {
     --downloads-card-margin: 24px;
-    --downloads-card-width: clamp(550px, 80%, 680px);
-    --cr-toast-max-width: var(--downloads-card-width);
+    --downloads-card-width: 680px;
   }
 
   #downloadsList {
@@ -105,8 +99,7 @@
     on-search-changed="onSearchChanged_">
 </downloads-toolbar>
 <div id="drop-shadow" class="cr-container-shadow"></div>
-<div id="mainContainer" on-scroll="onScroll_"
-    on-save-dangerous-click="onSaveDangerousClick_">
+<div id="mainContainer" on-scroll="onScroll_">
   <managed-footnote hidden="[[inSearchMode_]]"></managed-footnote>
   <iron-list id="downloadsList" items="[[items_]]"
       role="grid" aria-rowcount$="[[items_.length]]"
@@ -131,11 +124,3 @@
     $i18n{undo}
   </cr-button>
 </cr-toast-manager>
-<template is="dom-if"
-    if="[[shouldShowBypassWarningDialog_(bypassDialogItemId_)]]"
-    restamp>
-  <download-bypass-warning-confirmation-dialog
-      file-name="[[computeBypassWarningDialogFileName_(bypassDialogItemId_)]]"
-      on-close="onBypassWarningConfirmationDialogClose_">
-  </download-bypass-warning-confirmation-dialog>
-</template>

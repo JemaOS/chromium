@@ -21,11 +21,12 @@ class LoadtimesExtensionBindingsTest : public InProcessBrowserTest {
     // zero it out so the test is stable.
     content::WebContents* contents =
         browser()->tab_strip_model()->GetActiveWebContents();
-    ASSERT_TRUE(content::ExecJs(contents,
-                                "window.before.firstPaintAfterLoadTime = 0;"
-                                "window.before.firstPaintTime = 0;"
-                                "window.after.firstPaintAfterLoadTime = 0;"
-                                "window.after.firstPaintTime = 0;"));
+    ASSERT_TRUE(content::ExecuteScript(
+        contents,
+        "window.before.firstPaintAfterLoadTime = 0;"
+        "window.before.firstPaintTime = 0;"
+        "window.after.firstPaintAfterLoadTime = 0;"
+        "window.after.firstPaintTime = 0;"));
 
     std::string before =
         content::EvalJs(contents, "JSON.stringify(before)").ExtractString();
@@ -35,36 +36,34 @@ class LoadtimesExtensionBindingsTest : public InProcessBrowserTest {
   }
 };
 
-// TODO: crbug.com/329102379 - The test is flaky on all platforms.
 IN_PROC_BROWSER_TEST_F(LoadtimesExtensionBindingsTest,
-                       DISABLED_LoadTimesSameAfterClientInDocNavigation) {
+                       LoadTimesSameAfterClientInDocNavigation) {
   ASSERT_TRUE(embedded_test_server()->Start());
   GURL plain_url = embedded_test_server()->GetURL("/simple.html");
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), plain_url));
   content::WebContents* contents =
       browser()->tab_strip_model()->GetActiveWebContents();
-  ASSERT_TRUE(
-      content::ExecJs(contents, "window.before = window.chrome.loadTimes()"));
-  ASSERT_TRUE(content::ExecJs(
+  ASSERT_TRUE(content::ExecuteScript(
+      contents, "window.before = window.chrome.loadTimes()"));
+  ASSERT_TRUE(content::ExecuteScript(
       contents, "window.location.href = window.location + \"#\""));
-  ASSERT_TRUE(
-      content::ExecJs(contents, "window.after = window.chrome.loadTimes()"));
+  ASSERT_TRUE(content::ExecuteScript(
+      contents, "window.after = window.chrome.loadTimes()"));
   CompareBeforeAndAfter();
 }
 
-// TODO: crbug.com/329102379 - The test is flaky on all platforms.
 IN_PROC_BROWSER_TEST_F(LoadtimesExtensionBindingsTest,
-                       DISABLED_LoadTimesSameAfterUserInDocNavigation) {
+                       LoadTimesSameAfterUserInDocNavigation) {
   ASSERT_TRUE(embedded_test_server()->Start());
   GURL plain_url = embedded_test_server()->GetURL("/simple.html");
   GURL hash_url(plain_url.spec() + "#");
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), plain_url));
   content::WebContents* contents =
       browser()->tab_strip_model()->GetActiveWebContents();
-  ASSERT_TRUE(
-      content::ExecJs(contents, "window.before = window.chrome.loadTimes()"));
+  ASSERT_TRUE(content::ExecuteScript(
+      contents, "window.before = window.chrome.loadTimes()"));
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), hash_url));
-  ASSERT_TRUE(
-      content::ExecJs(contents, "window.after = window.chrome.loadTimes()"));
+  ASSERT_TRUE(content::ExecuteScript(
+      contents, "window.after = window.chrome.loadTimes()"));
   CompareBeforeAndAfter();
 }

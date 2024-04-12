@@ -7,11 +7,10 @@
 #include "build/build_config.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/core/layout/hit_test_location.h"
-#include "third_party/blink/renderer/core/layout/inline/inline_cursor.h"
 #include "third_party/blink/renderer/core/layout/layout_block_flow.h"
-#include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
-#include "third_party/blink/renderer/core/paint/box_fragment_painter.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_inline_cursor.h"
+#include "third_party/blink/renderer/core/layout/ng/ng_physical_box_fragment.h"
+#include "third_party/blink/renderer/core/paint/ng/ng_box_fragment_painter.h"
 #include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
@@ -31,9 +30,9 @@ class LayoutInlineTest : public RenderingTest {
     }
     const LayoutBox& box = To<LayoutBox>(object);
     DCHECK_EQ(box.PhysicalFragmentCount(), 1u);
-    const PhysicalBoxFragment& fragment = *box.GetPhysicalFragment(0);
-    return BoxFragmentPainter(fragment).HitTestAllPhases(result, location,
-                                                         offset);
+    const NGPhysicalBoxFragment& fragment = *box.GetPhysicalFragment(0);
+    return NGBoxFragmentPainter(fragment).HitTestAllPhases(result, location,
+                                                           offset);
   }
 };
 
@@ -131,8 +130,7 @@ TEST_F(LayoutInlineTest, BlockInInlineRemove) {
   // Insert another block before the "after" text node.
   // This should be in the existing anonymous block, next to the `#block`.
   Document& document = GetDocument();
-  Element* block2_element =
-      document.CreateElementForBinding(AtomicString("div"));
+  Element* block2_element = document.CreateElementForBinding("div");
   after_block->parentNode()->insertBefore(block2_element, after_block);
   UpdateAllLifecyclePhasesForTest();
   EXPECT_EQ(block2_element->GetLayoutObject(), block->NextSibling());
@@ -176,15 +174,22 @@ TEST_F(LayoutInlineTest, RegionHitTest) {
   //
   // TODO(xiaochengh): Expose this issue in a real Chrome use case.
 
-  ASSERT_TRUE(lots_of_boxes->IsInLayoutNGInlineFormattingContext());
+  if (!lots_of_boxes->IsInLayoutNGInlineFormattingContext()) {
+    bool hit_outcome =
+        lots_of_boxes->HitTestCulledInline(hit_result, location, hit_offset);
+    // Assert checks that we both hit something and that the area covered
+    // by "something" totally contains the hit region.
+    EXPECT_TRUE(hit_outcome);
+    return;
+  }
 
   const auto* div = To<LayoutBlockFlow>(lots_of_boxes->Parent());
-  InlineCursor cursor(*div);
+  NGInlineCursor cursor(*div);
   for (cursor.MoveToFirstLine(); cursor; cursor.MoveToNextLine()) {
     DCHECK(cursor.Current().IsLineBox());
-    InlineCursor line_cursor = cursor.CursorForDescendants();
+    NGInlineCursor line_cursor = cursor.CursorForDescendants();
     bool hit_outcome = lots_of_boxes->HitTestCulledInline(
-        hit_result, location, hit_offset, line_cursor);
+        hit_result, location, hit_offset, &line_cursor);
     EXPECT_FALSE(hit_outcome);
   }
   // Make sure that the inline is hit
@@ -206,8 +211,8 @@ TEST_F(LayoutInlineTest, RelativePositionedHitTest) {
   const PhysicalOffset hit_location(18, 15);
   HitTestLocation location(hit_location);
 
-  Element* div = GetDocument().QuerySelector(AtomicString("div"));
-  Element* span = GetDocument().QuerySelector(AtomicString("span"));
+  Element* div = GetDocument().QuerySelector("div");
+  Element* span = GetDocument().QuerySelector("span");
   Node* text = span->firstChild();
 
   // Shouldn't hit anything in SPAN as it's in another paint layer
@@ -301,7 +306,7 @@ TEST_F(LayoutInlineTest, MultilineRelativePositionedHitTest) {
   {
     PhysicalOffset hit_location(13, 33);
     HitTestLocation location(hit_location);
-    Node* target = GetDocument().QuerySelector(AtomicString("img"));
+    Node* target = GetDocument().QuerySelector("img");
 
     HitTestResult hit_result(hit_request, location);
     bool hit_outcome =
@@ -466,7 +471,7 @@ TEST_F(LayoutInlineTest, DISABLED_FocusRingRecursiveContinuations) {
   )HTML");
 
   auto rects = GetLayoutObjectByElementId("target")->OutlineRects(
-      nullptr, PhysicalOffset(), OutlineType::kIncludeBlockInkOverflow);
+      nullptr, PhysicalOffset(), NGOutlineType::kIncludeBlockVisualOverflow);
 
   EXPECT_THAT(
       rects, UnorderedElementsAre(PhysicalRect(0, 0, 100, 20),   // 'SPAN0'
@@ -502,7 +507,7 @@ TEST_F(LayoutInlineTest, DISABLED_FocusRingRecursiveInlinesVerticalRL) {
   auto* target = GetLayoutObjectByElementId("target");
   auto rects =
       target->OutlineRects(nullptr, target->FirstFragment().PaintOffset(),
-                           OutlineType::kIncludeBlockInkOverflow);
+                           NGOutlineType::kIncludeBlockVisualOverflow);
   EXPECT_THAT(rects, UnorderedElementsAre(
                          PhysicalRect(180, 0, 20, 120),     // 'INLINE'
                          PhysicalRect(160, 0, 20, 80),      // 'TEXT'
@@ -537,7 +542,7 @@ TEST_F(LayoutInlineTest, DISABLED_FocusRingRecursiveContinuationsVerticalRL) {
   auto* target = GetLayoutObjectByElementId("target");
   auto rects =
       target->OutlineRects(nullptr, target->FirstFragment().PaintOffset(),
-                           OutlineType::kIncludeBlockInkOverflow);
+                           NGOutlineType::kIncludeBlockVisualOverflow);
   EXPECT_THAT(rects, UnorderedElementsAre(
                          PhysicalRect(180, 0, 20, 100),   // 'SPAN0'
                          PhysicalRect(140, 0, 40, 400),   // div DIV1
@@ -570,7 +575,7 @@ TEST_F(LayoutInlineTest, DISABLED_FocusRingRecursiveInlines) {
   )HTML");
 
   auto rects = GetLayoutObjectByElementId("target")->OutlineRects(
-      nullptr, PhysicalOffset(), OutlineType::kIncludeBlockInkOverflow);
+      nullptr, PhysicalOffset(), NGOutlineType::kIncludeBlockVisualOverflow);
 
   EXPECT_THAT(rects, UnorderedElementsAre(
                          PhysicalRect(0, 0, 120, 20),     // 'INLINE'
@@ -761,29 +766,29 @@ TEST_F(LayoutInlineTest, VisualOverflowRecalcLegacyLayout) {
   )HTML");
 
   auto* span = To<LayoutInline>(GetLayoutObjectByElementId("span"));
-  auto* span_element = GetElementById("span");
-  auto* span2_element = GetElementById("span2");
+  auto* span_element = GetDocument().getElementById("span");
+  auto* span2_element = GetDocument().getElementById("span2");
 
-  span_element->setAttribute(html_names::kStyleAttr,
-                             AtomicString("outline: 50px solid red"));
+  span_element->setAttribute(html_names::kStyleAttr, "outline: 50px solid red");
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(PhysicalRect(-50, -50, 200, 120), span->VisualOverflowRect());
+  EXPECT_EQ(PhysicalRect(-50, -50, 200, 120),
+            span->PhysicalVisualOverflowRect());
 
-  span_element->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  span_element->setAttribute(html_names::kStyleAttr, "");
   span2_element->setAttribute(html_names::kStyleAttr,
-                              AtomicString("outline: 50px solid red"));
+                              "outline: 50px solid red");
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(PhysicalRect(0, 0, 100, 20), span->VisualOverflowRect());
+  EXPECT_EQ(PhysicalRect(0, 0, 100, 20), span->PhysicalVisualOverflowRect());
 
-  span2_element->setAttribute(html_names::kStyleAttr, g_empty_atom);
-  span_element->setAttribute(html_names::kStyleAttr,
-                             AtomicString("outline: 50px solid red"));
+  span2_element->setAttribute(html_names::kStyleAttr, "");
+  span_element->setAttribute(html_names::kStyleAttr, "outline: 50px solid red");
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(PhysicalRect(-50, -50, 200, 120), span->VisualOverflowRect());
+  EXPECT_EQ(PhysicalRect(-50, -50, 200, 120),
+            span->PhysicalVisualOverflowRect());
 
-  span_element->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  span_element->setAttribute(html_names::kStyleAttr, "");
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(PhysicalRect(0, 0, 100, 20), span->VisualOverflowRect());
+  EXPECT_EQ(PhysicalRect(0, 0, 100, 20), span->PhysicalVisualOverflowRect());
 }
 
 TEST_F(LayoutInlineTest, VisualOverflowRecalcLayoutNG) {
@@ -805,29 +810,29 @@ TEST_F(LayoutInlineTest, VisualOverflowRecalcLayoutNG) {
   )HTML");
 
   auto* span = To<LayoutInline>(GetLayoutObjectByElementId("span"));
-  auto* span_element = GetElementById("span");
-  auto* span2_element = GetElementById("span2");
+  auto* span_element = GetDocument().getElementById("span");
+  auto* span2_element = GetDocument().getElementById("span2");
 
-  span_element->setAttribute(html_names::kStyleAttr,
-                             AtomicString("outline: 50px solid red"));
+  span_element->setAttribute(html_names::kStyleAttr, "outline: 50px solid red");
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(PhysicalRect(-50, -50, 200, 120), span->VisualOverflowRect());
+  EXPECT_EQ(PhysicalRect(-50, -50, 200, 120),
+            span->PhysicalVisualOverflowRect());
 
-  span_element->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  span_element->setAttribute(html_names::kStyleAttr, "");
   span2_element->setAttribute(html_names::kStyleAttr,
-                              AtomicString("outline: 50px solid red"));
+                              "outline: 50px solid red");
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(PhysicalRect(0, 0, 100, 20), span->VisualOverflowRect());
+  EXPECT_EQ(PhysicalRect(0, 0, 100, 20), span->PhysicalVisualOverflowRect());
 
-  span2_element->setAttribute(html_names::kStyleAttr, g_empty_atom);
-  span_element->setAttribute(html_names::kStyleAttr,
-                             AtomicString("outline: 50px solid red"));
+  span2_element->setAttribute(html_names::kStyleAttr, "");
+  span_element->setAttribute(html_names::kStyleAttr, "outline: 50px solid red");
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(PhysicalRect(-50, -50, 200, 120), span->VisualOverflowRect());
+  EXPECT_EQ(PhysicalRect(-50, -50, 200, 120),
+            span->PhysicalVisualOverflowRect());
 
-  span_element->setAttribute(html_names::kStyleAttr, g_empty_atom);
+  span_element->setAttribute(html_names::kStyleAttr, "");
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(PhysicalRect(0, 0, 100, 20), span->VisualOverflowRect());
+  EXPECT_EQ(PhysicalRect(0, 0, 100, 20), span->PhysicalVisualOverflowRect());
 }
 
 TEST_F(LayoutInlineTest, VisualOverflowRecalcLegacyLayoutPositionRelative) {
@@ -846,12 +851,12 @@ TEST_F(LayoutInlineTest, VisualOverflowRecalcLegacyLayoutPositionRelative) {
   )HTML");
 
   auto* span = To<LayoutInline>(GetLayoutObjectByElementId("span"));
-  auto* span_element = GetElementById("span");
+  auto* span_element = GetDocument().getElementById("span");
 
-  span_element->setAttribute(html_names::kStyleAttr,
-                             AtomicString("outline: 50px solid red"));
+  span_element->setAttribute(html_names::kStyleAttr, "outline: 50px solid red");
   UpdateAllLifecyclePhasesForTest();
-  EXPECT_EQ(PhysicalRect(-50, -50, 180, 120), span->VisualOverflowRect());
+  EXPECT_EQ(PhysicalRect(-50, -50, 180, 120),
+            span->PhysicalVisualOverflowRect());
 }
 
 }  // namespace blink

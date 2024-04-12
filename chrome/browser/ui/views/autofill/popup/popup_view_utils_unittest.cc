@@ -4,36 +4,10 @@
 
 #include "chrome/browser/ui/views/autofill/popup/popup_view_utils.h"
 
-#include <vector>
-
-#include "chrome/browser/platform_util.h"
-#include "chrome/browser/ui/views/autofill/popup/popup_base_view.h"
-#include "chrome/browser/ui/views/frame/browser_view.h"
-#include "chrome/test/base/browser_with_test_window_test.h"
-#include "chrome/test/base/test_browser_window.h"
-#include "components/user_education/common/help_bubble_params.h"
-#include "components/user_education/test/mock_feature_promo_controller.h"
-#include "components/user_education/views/help_bubble_view.h"
-#include "components/user_education/views/help_bubble_views_test_util.h"
-#include "testing/gmock/include/gmock/gmock.h"
+#include "base/cxx17_backports.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "ui/aura/client/window_parenting_client.h"
-#include "ui/aura/test/test_window_parenting_client.h"
-#include "ui/gfx/geometry/rect.h"
-#include "ui/gfx/native_widget_types.h"
-#include "ui/views/widget/widget.h"
-#include "ui/views/window/dialog_delegate.h"
-
-using testing::Return;
-using user_education::test::MockFeaturePromoController;
-using views::Widget;
 
 namespace autofill {
-
-std::vector<views::BubbleArrowSide> GetDefaultPopupSides() {
-  return {PopupBaseView::kDefaultPreferredPopupSides.begin(),
-          PopupBaseView::kDefaultPreferredPopupSides.end()};
-}
 
 TEST(PopupViewsUtilsTest, GetOptimalArrowSide) {
   const gfx::Size default_preferred_size{200, 600};
@@ -43,8 +17,6 @@ TEST(PopupViewsUtilsTest, GetOptimalArrowSide) {
     gfx::Rect content_area_bounds;
     gfx::Rect element_bounds;
     gfx::Size preferred_size;
-    std::vector<views::BubbleArrowSide> preferred_sides =
-        GetDefaultPopupSides();
   } test_cases[]{
       // Default case where there is enough space on all sides.
       // In this case, the popup is placed below meaning that the arrow is on
@@ -55,13 +27,6 @@ TEST(PopupViewsUtilsTest, GetOptimalArrowSide) {
           gfx::Rect(400, 0, 200, 200),
           default_preferred_size,
       },
-      // Default case where there is enough space on all sides.
-      // A different set of the preferred sides.
-      {views::BubbleArrowSide::kLeft,
-       gfx::Rect(0, 0, 1000, 2000),
-       gfx::Rect(400, 0, 200, 200),
-       default_preferred_size,
-       {views::BubbleArrowSide::kLeft, views::BubbleArrowSide::kRight}},
       // The popup cannot be placed below the element and needs to be placed on
       // top, meaning the arrow is on the bottom of the popup.
       {
@@ -101,20 +66,13 @@ TEST(PopupViewsUtilsTest, GetOptimalArrowSide) {
       // the element than below resulting in a placement above with the arrow
       // below the popup.
       {views::BubbleArrowSide::kBottom, gfx::Rect(0, 0, 1000, 1000),
-       gfx::Rect(0, 900, 200, 200), gfx::Size(1200, 1200)},
-      // There is enough space, but the preferred sides list is empty,
-      // the popup should still be placed with no exceptions.
-      {views::BubbleArrowSide::kTop,
-       gfx::Rect(0, 0, 1000, 1000),
-       gfx::Rect(0, 100, 200, 200),
-       gfx::Size(200, 200),
-       {}}};
+       gfx::Rect(0, 900, 200, 200), gfx::Size(1200, 1200)}};
 
   for (auto& test_case : test_cases) {
     EXPECT_EQ(test_case.expected_arrow_side,
-              GetOptimalArrowSide(
-                  test_case.content_area_bounds, test_case.element_bounds,
-                  test_case.preferred_size, test_case.preferred_sides));
+              GetOptimalArrowSide(test_case.content_area_bounds,
+                                  test_case.element_bounds,
+                                  test_case.preferred_size));
   }
 }
 
@@ -195,13 +153,13 @@ TEST(PopupViewsUtilsTest, CalculatePopupBounds) {
       // Corner cases, there is not enough space to grow to the top.
       {10, 10 + element_height},
       {0, 0 + element_height},
-      {90, 100 - desired_prompt_height},
+      {90, 90 - desired_prompt_height},
       {100, 100 - desired_prompt_height},
       // Extreme case: The field is outside of the viewport.
       {120, 100 - desired_prompt_height},
       // Special case: There is not enough space for the desired height.
-      {0, 0 + element_height, 0, 30, 30},
-      {5, 5 + element_height, 0, 30, 30}};
+      {0, 0 + element_height, 0, 30, 30 - element_height},
+      {5, 5 + element_height, 0, 30, 25 - element_height}};
 
   for (const auto& x_dim : x_dimension_cases) {
     for (const auto& y_dim : y_dimension_cases) {
@@ -367,7 +325,7 @@ TEST(PopupViewsUtilsTest, GetOptimalPopupArrowSide) {
 
   for (TestCase& test_case : test_cases) {
     EXPECT_EQ(GetOptimalArrowSide(content_area_bounds, test_case.element_bounds,
-                                  preferred_popup_size, GetDefaultPopupSides()),
+                                  preferred_popup_size),
               test_case.expected_arrow_side);
   }
 }
@@ -440,158 +398,10 @@ TEST(PopupViewsUtilsTest, GetOptimalPopupPlacement) {
                   kContentsAreaBounds, test_case.element_bounds,
                   kPreferredPopupSize, test_case.right_to_left, kScrollbarWidth,
                   kMaximumPixelOffsetTowardsCenter,
-                  kMaximumWidthPercentageTowardsCenter, popup_bounds,
-                  GetDefaultPopupSides()));
+                  kMaximumWidthPercentageTowardsCenter, popup_bounds));
 
     EXPECT_EQ(popup_bounds, test_case.expected_popup_bounds);
   }
 }
-
-struct PopupViewUtilsOverlapTestParams {
-  using ParamsAsTuple = std::tuple<gfx::Rect, bool, bool>;
-
-  gfx::Rect prompt_bounds;
-  bool is_help_bubble;
-  bool is_promo_showing;
-
-  explicit PopupViewUtilsOverlapTestParams(ParamsAsTuple tuple)
-      : prompt_bounds(std::get<0>(tuple)),
-        is_help_bubble(std::get<1>(tuple)),
-        is_promo_showing(std::get<2>(tuple)) {}
-};
-
-class PopupViewUtilsOverlapTest
-    : public BrowserWithTestWindowTest,
-      public testing::WithParamInterface<PopupViewUtilsOverlapTestParams> {
- public:
-  void SetUp() override {
-    BrowserWithTestWindowTest::SetUp();
-    // Create the first tab so that `web_contents()` exists.
-    AddTab(browser(), GURL(chrome::kChromeUINewTabURL));
-
-    static_cast<TestBrowserWindow*>(window())->SetFeaturePromoController(
-        std::make_unique<MockFeaturePromoController>());
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-    test_window_parenting_client_ =
-        std::make_unique<aura::test::TestWindowParentingClient>(
-            GetContext()->GetRootWindow());
-    aura::client::SetWindowParentingClient(GetContext(),
-                                           test_window_parenting_client_.get());
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
-
-    // Create the `anchor_widget_` and its view. This is needed to create the
-    // `help_bubble_view_`.
-    Widget::InitParams anchor_widget_params(Widget::InitParams::TYPE_POPUP);
-    anchor_widget_params.ownership =
-        Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
-    anchor_widget_params.context = GetContext();
-    anchor_widget_params.parent =
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-        GetContext();
-#elif BUILDFLAG(IS_MAC)
-        web_contents()->GetContentNativeView();
-#else
-        platform_util::GetViewForWindow(
-            web_contents()->GetTopLevelNativeWindow());
-#endif
-    anchor_widget_ = std::make_unique<Widget>();
-    anchor_widget_->Init(std::move(anchor_widget_params));
-    views::View* anchor_view =
-        anchor_widget_->SetContentsView(std::make_unique<views::View>());
-
-    // The `HelpBubbleView` constructor also creates its own widget.
-    help_bubble_view_ = new user_education::HelpBubbleView(
-        &test_help_bubble_delegate_,
-        user_education::internal::HelpBubbleAnchorParams{.view = anchor_view},
-        user_education::HelpBubbleParams());
-
-    // Create the `dialog_delegate_widget_`.
-    gfx::NativeView dialog_delegate_parent =
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-        GetContext();
-#elif BUILDFLAG(IS_MAC)
-        web_contents()->GetContentNativeView();
-#else
-        platform_util::GetViewForWindow(
-            web_contents()->GetTopLevelNativeWindow());
-#endif
-    auto dialog_delegate = std::make_unique<views::DialogDelegate>();
-    dialog_delegate->SetOwnedByWidget(true);
-    dialog_delegate_widget_ = views::DialogDelegate::CreateDialogWidget(
-        std::move(dialog_delegate), GetContext(), dialog_delegate_parent);
-  }
-
-  void TearDown() override {
-    // Close widgets.
-    help_bubble_view_.ExtractAsDangling()->GetWidget()->Close();
-    anchor_widget_.reset();
-    dialog_delegate_widget_.ExtractAsDangling()->Close();
-
-    // The `TestWindowParentingClient` needs to be destroyed before
-    // `BrowserWithTestWindowTest::TearDown()`. Otherwise, it will try to access
-    // its `root_window_`, which doesn't exist anymore.
-    test_window_parenting_client_.reset();
-
-    BrowserWithTestWindowTest::TearDown();
-  }
-
-  Widget* GetHelpBubbleWidget() { return help_bubble_view_->GetWidget(); }
-
-  Widget* GetDialogDelegateWidget() { return dialog_delegate_widget_; }
-
-  content::WebContents* web_contents() {
-    return browser()->tab_strip_model()->GetActiveWebContents();
-  }
-
-  MockFeaturePromoController* feature_promo_controller() {
-    return static_cast<MockFeaturePromoController*>(
-        static_cast<TestBrowserWindow*>(window())->GetFeaturePromoController());
-  }
-
- private:
-  user_education::test::TestHelpBubbleDelegate test_help_bubble_delegate_;
-  std::unique_ptr<aura::test::TestWindowParentingClient>
-      test_window_parenting_client_;
-  std::unique_ptr<Widget> anchor_widget_;
-  raw_ptr<user_education::HelpBubbleView> help_bubble_view_;
-  // This is a widget for a simple `DialogDelegate` which is not a help bubble.
-  raw_ptr<Widget> dialog_delegate_widget_;
-};
-
-TEST_P(PopupViewUtilsOverlapTest, BoundsOverlapWithAnyWidget) {
-  const PopupViewUtilsOverlapTestParams& params = GetParam();
-  gfx::Rect screen_bounds = {0, 0, 200, 200};
-  Widget::Widgets widget_list;
-
-  if (params.is_help_bubble) {
-    EXPECT_CALL(*feature_promo_controller(), GetPromoStatus)
-        .WillOnce(
-            Return(params.is_promo_showing
-                       ? user_education::FeaturePromoStatus::kBubbleShowing
-                       : user_education::FeaturePromoStatus::kNotRunning));
-    GetHelpBubbleWidget()->SetBounds(params.prompt_bounds);
-    widget_list.insert(GetHelpBubbleWidget());
-  } else {
-    EXPECT_CALL(*feature_promo_controller(), GetPromoStatus).Times(0);
-    GetDialogDelegateWidget()->SetBounds(params.prompt_bounds);
-    widget_list.insert(GetDialogDelegateWidget());
-  }
-
-  bool intersects = params.prompt_bounds.Intersects(screen_bounds);
-
-  EXPECT_EQ(BoundsOverlapWithAnyWidget(widget_list, screen_bounds, nullptr,
-                                       web_contents()),
-            intersects && !(params.is_help_bubble && params.is_promo_showing));
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    PopupViewsUtilsTest,
-    PopupViewUtilsOverlapTest,
-    testing::ConvertGenerator<PopupViewUtilsOverlapTestParams::ParamsAsTuple>(
-        testing::Combine(testing::Values(gfx::Rect{100, 100, 200, 200},
-                                         gfx::Rect{300, 300, 100, 100}),
-                         testing::Bool(),
-                         testing::Bool())));
 
 }  // namespace autofill

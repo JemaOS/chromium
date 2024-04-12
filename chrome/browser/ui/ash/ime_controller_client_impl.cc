@@ -32,7 +32,7 @@ ImeControllerClientImpl::ImeControllerClientImpl(InputMethodManager* manager)
   input_method_manager_->AddObserver(this);
   input_method_manager_->AddImeMenuObserver(this);
   if (input_method_manager_->GetImeKeyboard())
-    observation_.Observe(input_method_manager_->GetImeKeyboard());
+    input_method_manager_->GetImeKeyboard()->AddObserver(this);
   InputMethodMenuManager::GetInstance()->AddObserver(this);
 
   // This does not need to send the initial state to ash because that happens
@@ -50,6 +50,8 @@ ImeControllerClientImpl::~ImeControllerClientImpl() {
   InputMethodMenuManager::GetInstance()->RemoveObserver(this);
   input_method_manager_->RemoveImeMenuObserver(this);
   input_method_manager_->RemoveObserver(this);
+  if (input_method_manager_->GetImeKeyboard())
+    input_method_manager_->GetImeKeyboard()->RemoveObserver(this);
 }
 
 void ImeControllerClientImpl::Init() {
@@ -192,7 +194,7 @@ ash::ImeInfo ImeControllerClientImpl::GetAshImeInfo(
   info.id = ime.id();
   info.name = util->GetInputMethodLongName(ime);
   info.short_name = ime.GetIndicator();
-  info.third_party = ash::extension_ime_util::IsExtensionIME(ime.id());
+  info.third_party = ash::extension_ime_util::IsExtensionIME(ime.id()) && !ash::extension_ime_util::IsJemaOSProvidedIME(ime.id());
   return info;
 }
 

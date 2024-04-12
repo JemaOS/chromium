@@ -9,17 +9,20 @@
  * of this element to take the user to another page in the app or to an external
  * page (somewhat like an HTML link).
  */
+import '../cr_actionable_row_style.css.js';
 import '../cr_icon_button/cr_icon_button.js';
+import '../cr_hidden_style.css.js';
 import '../icons.html.js';
+import '../cr_shared_style.css.js';
+import '../cr_shared_vars.css.js';
 import '//resources/polymer/v3_0/iron-icon/iron-icon.js';
 
 import {loadTimeData} from '//resources/js/load_time_data.js';
-import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import type {CrIconButtonElement} from '../cr_icon_button/cr_icon_button.js';
+import {CrIconButtonElement} from '../cr_icon_button/cr_icon_button.js';
 
-import {getCss} from './cr_link_row.css.js';
-import {getHtml} from './cr_link_row.html.js';
+import {getTemplate} from './cr_link_row.html.js';
 
 export interface CrLinkRowElement {
   $: {
@@ -28,73 +31,99 @@ export interface CrLinkRowElement {
   };
 }
 
-export class CrLinkRowElement extends CrLitElement {
+export class CrLinkRowElement extends PolymerElement {
   static get is() {
     return 'cr-link-row';
   }
 
-  static override get styles() {
-    return getCss();
+  static get template() {
+    return getTemplate();
   }
 
-  override render() {
-    return getHtml.bind(this)();
-  }
-
-  static override get properties() {
+  static get properties() {
     return {
       ariaShowLabel: {
         type: Boolean,
-        reflect: true,
+        reflectToAttribute: true,
+        value: false,
       },
 
       ariaShowSublabel: {
         type: Boolean,
-        reflect: true,
+        reflectToAttribute: true,
+        value: false,
       },
 
-      startIcon: {type: String},
-      label: {type: String},
-      subLabel: {type: String},
+      startIcon: {
+        type: String,
+        value: '',
+      },
+
+      label: {
+        type: String,
+        value: '',
+      },
+
+      subLabel: {
+        type: String,
+        /* Value used for noSubLabel attribute. */
+        value: '',
+      },
 
       disabled: {
         type: Boolean,
-        reflect: true,
+        reflectToAttribute: true,
       },
 
-      external: {type: Boolean},
-      usingSlottedLabel: {type: Boolean},
-      roleDescription: {type: String},
-      buttonAriaDescription: {type: String},
+      external: {
+        type: Boolean,
+        value: false,
+      },
+
+      usingSlottedLabel: {
+        type: Boolean,
+        value: false,
+      },
+
+      roleDescription: String,
+
+      buttonAriaDescription: String,
+
+      hideLabelWrapper_: {
+        type: Boolean,
+        computed: 'computeHideLabelWrapper_(label, usingSlottedLabel)',
+      },
     };
   }
 
-  ariaShowLabel: boolean = false;
-  ariaShowSublabel: boolean = false;
-  startIcon: string = '';
-  label: string = '';
-  subLabel: string = '';
-  disabled: boolean = false;
-  external: boolean = false;
-  usingSlottedLabel: boolean = false;
-  roleDescription?: string;
-  buttonAriaDescription?: string;
+  ariaShowLabel: boolean;
+  ariaShowSublabel: boolean;
+  startIcon: string;
+  label: string;
+  subLabel: string;
+  disabled: boolean;
+  external: boolean;
+  usingSlottedLabel: boolean;
+  roleDescription: string;
+  buttonAriaDescription: string;
+  private hideLabelWrapper_: boolean;
 
   override focus() {
     this.$.icon.focus();
   }
 
-  protected shouldHideLabelWrapper_(): boolean {
+  private computeHideLabelWrapper_(): boolean {
     return !(this.label || this.usingSlottedLabel);
   }
 
-  protected getIcon_(): string {
+  private getIcon_(): string {
     return this.external ? 'cr:open-in-new' : 'cr:arrow-right';
   }
 
-  protected getButtonAriaDescription_(): string {
-    return this.buttonAriaDescription ??
-        (this.external ? loadTimeData.getString('opensInNewTab') : '');
+  private computeButtonAriaDescription_(
+      external: boolean, buttonAriaDescription?: string): string {
+    return buttonAriaDescription ??
+        (external ? loadTimeData.getString('opensInNewTab') : '');
   }
 }
 

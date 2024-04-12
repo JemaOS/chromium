@@ -5,18 +5,15 @@
 #ifndef CHROME_BROWSER_ASH_CROSAPI_BROWSER_DATA_BACK_MIGRATOR_H_
 #define CHROME_BROWSER_ASH_CROSAPI_BROWSER_DATA_BACK_MIGRATOR_H_
 
-#include <optional>
-#include <string_view>
-
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
-#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/ash/crosapi/browser_data_migrator_util.h"
 #include "chrome/browser/ash/crosapi/browser_util.h"
 #include "components/account_id/account_id.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class PrefService;
 
@@ -97,7 +94,7 @@ class BrowserDataBackMigrator : public BrowserDataBackMigratorBase {
     TaskStatus status;
 
     // Value of `errno` set after a task has failed.
-    std::optional<int> posix_errno;
+    absl::optional<int> posix_errno;
   };
 
   explicit BrowserDataBackMigrator(const base::FilePath& ash_profile_dir,
@@ -159,8 +156,6 @@ class BrowserDataBackMigrator : public BrowserDataBackMigratorBase {
   FRIEND_TEST_ALL_PREFIXES(BrowserDataBackMigratorFilesSetupTest,
                            MovesLacrosItemsToAshDirCorrectly);
   FRIEND_TEST_ALL_PREFIXES(BrowserDataBackMigratorTest,
-                           MovesMergedItemsBackToAshCorrectly);
-  FRIEND_TEST_ALL_PREFIXES(BrowserDataBackMigratorTest,
                            MergesAshOnlyPreferencesCorrectly);
   FRIEND_TEST_ALL_PREFIXES(BrowserDataBackMigratorTest,
                            MergesDictSplitPreferencesCorrectly);
@@ -168,14 +163,6 @@ class BrowserDataBackMigrator : public BrowserDataBackMigratorBase {
                            MergesListSplitPreferencesCorrectly);
   FRIEND_TEST_ALL_PREFIXES(BrowserDataBackMigratorTest,
                            MergesLacrosPreferencesCorrectly);
-  FRIEND_TEST_ALL_PREFIXES(BrowserDataBackMigratorTest,
-                           MergesDictWithKeysContainingDot);
-  FRIEND_TEST_ALL_PREFIXES(BrowserDataBackMigratorShouldMigrateBackTest,
-                           CommandLineForceMigration);
-  FRIEND_TEST_ALL_PREFIXES(BrowserDataBackMigratorShouldMigrateBackTest,
-                           CommandLineForceSkip);
-  FRIEND_TEST_ALL_PREFIXES(BrowserDataBackMigratorShouldMigrateBackTest,
-                           MaybeRestartToMigrateSecondaryUser);
 
   enum class MigrationStep {
     kStart = 0,
@@ -297,12 +284,13 @@ class BrowserDataBackMigrator : public BrowserDataBackMigratorBase {
   // Traverse all JSON dotted paths in Lacros preferences using
   // depth-first search and merge them into |ash_root_dict|.
   static bool MergeLacrosPreferences(base::Value::Dict& ash_root_dict,
-                                     const std::vector<std::string>& path,
-                                     const base::Value& current_value);
+                                     std::string& current_path,
+                                     const base::Value& current_value,
+                                     unsigned int recursion_depth);
 
   // Decides whether preferences for the given `extension_id` should be migrated
   // back from Lacros to Ash.
-  static bool IsLacrosOnlyExtension(const std::string_view extension_id);
+  static bool IsLacrosOnlyExtension(const base::StringPiece extension_id);
 
   // Copy the LevelDB database from Lacros to the temporary directory to be used
   // as basis for the merge.
@@ -361,7 +349,7 @@ class BrowserDataBackMigrator : public BrowserDataBackMigratorBase {
   const std::string user_id_hash_;
 
   // Local state prefs, not owned.
-  raw_ptr<PrefService> local_state_ = nullptr;
+  raw_ptr<PrefService, ExperimentalAsh> local_state_ = nullptr;
 
   // Used to record how long the migration takes in UMA.
   base::TimeTicks migration_start_time_;

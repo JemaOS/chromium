@@ -219,11 +219,7 @@ void AdvancedProtectionStatusManager::RefreshAdvancedProtectionStatus() {
   if (access_token_fetcher_)
     return;
 
-  // Refresh OAuth access token. This class isn't actually interested in the
-  // access token itself, but the account's "under advanced protection" status
-  // can be determined from the "service flags" contained in the response.
-  // Note that the (quite powerful) `kOAuth1LoginScope` is required for the
-  // server to return the service flags.
+  // Refresh OAuth access token.
   signin::ScopeSet scopes;
   scopes.insert(GaiaConstants::kOAuth1LoginScope);
 
@@ -233,8 +229,7 @@ void AdvancedProtectionStatusManager::RefreshAdvancedProtectionStatus() {
           base::BindOnce(
               &AdvancedProtectionStatusManager::OnAccessTokenFetchComplete,
               base::Unretained(this), unconsented_primary_account_id),
-          signin::PrimaryAccountAccessTokenFetcher::Mode::kImmediate,
-          signin::ConsentLevel::kSignin);
+          signin::PrimaryAccountAccessTokenFetcher::Mode::kImmediate);
 }
 
 void AdvancedProtectionStatusManager::ScheduleNextRefresh() {
@@ -316,6 +311,7 @@ AdvancedProtectionStatusManager::AdvancedProtectionStatusManager(
     const base::TimeDelta& min_delay)
     : pref_service_(pref_service),
       identity_manager_(identity_manager),
+      is_under_advanced_protection_(false),
       minimum_delay_(min_delay) {
   DCHECK(identity_manager_);
   DCHECK(pref_service_);

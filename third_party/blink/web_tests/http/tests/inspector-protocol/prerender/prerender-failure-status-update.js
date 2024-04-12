@@ -1,26 +1,15 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
-  const {tabTargetSession} = await testRunner.startBlankWithTabTarget(
+ (async function(testRunner) {
+  const {page, session, dp} = await testRunner.startBlank(
       `Test that prerender navigations receives the failure status updates`);
-
-  const childTargetManager =
-      new TestRunner.ChildTargetManager(testRunner, tabTargetSession);
-  await childTargetManager.startAutoAttach();
-  const session1 = childTargetManager.findAttachedSessionPrimaryMainFrame();
-  const dp1 = session1.protocol;
-  await dp1.Preload.enable();
+  await dp.Preload.enable();
 
   // Navigate to speculation rules Prerender Page.
-  session1.navigate('resources/bad-http-prerender.html');
-
-  testRunner.log(
-      await dp1.Preload.oncePrerenderStatusUpdated(), '',
-      ['loaderId', 'sessionId']);
-  testRunner.log(
-      await dp1.Preload.oncePrerenderStatusUpdated(), '',
-      ['loaderId', 'sessionId']);
-  testRunner.log(
-      await dp1.Preload.oncePrerenderStatusUpdated(), '',
-      ['loaderId', 'sessionId']);
-
+  page.navigate('resources/bad-http-prerender.html');
+  let statusReport = await dp.Preload.oncePrerenderStatusUpdated();
+  testRunner.log(statusReport, '', ['loaderId', 'initiatingFrameId', 'sessionId']);
+  statusReport = await dp.Preload.oncePrerenderStatusUpdated();
+  testRunner.log(statusReport, '', ['loaderId', 'initiatingFrameId', 'sessionId']);
+  statusReport = await dp.Preload.oncePrerenderStatusUpdated();
+  testRunner.log(statusReport, '', ['loaderId', 'initiatingFrameId', 'sessionId']);
   testRunner.completeTest();
 });

@@ -4,6 +4,7 @@
 
 #include "base/containers/contains.h"
 #include "base/files/file_util.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
@@ -31,12 +32,9 @@ enum class ApiApprovalState;
 namespace {
 const char16_t kAppName[] = u"Test App";
 
-// A few tests have Windows specific assertions because Windows is the only
-// OS where protocols are registered on the OS differently compared to
-// other OSes where protocols are bundled into the shortcut
-// registration/update/unregistration flow.
 class UpdateProtocolHandlerApprovalCommandTest
-    : public WebAppControllerBrowserTest {
+    : public WebAppControllerBrowserTest,
+      public ::testing::WithParamInterface<OsIntegrationSubManagersState> {
  public:
   const GURL kTestAppUrl = GURL("https://example.com");
 
@@ -44,7 +42,6 @@ class UpdateProtocolHandlerApprovalCommandTest
   ~UpdateProtocolHandlerApprovalCommandTest() override = default;
 
   void SetUpOnMainThread() override {
-    // Suppress the OS hooks to allow OS integration to proceed.
     os_hooks_suppress_.reset();
     {
       base::ScopedAllowBlockingForTesting allow_blocking;
@@ -52,6 +49,18 @@ class UpdateProtocolHandlerApprovalCommandTest
           OsIntegrationTestOverrideImpl::OverrideForTesting(base::GetHomeDir());
     }
     WebAppControllerBrowserTest::SetUpOnMainThread();
+  }
+
+  void SetUp() override {
+    WebAppControllerBrowserTest::SetUp();
+    if (EnableOsIntegrationSubManager()) {
+      scoped_feature_list_.InitAndEnableFeatureWithParameters(
+          features::kOsIntegrationSubManagers, {{"stage", "write_config"}});
+    } else {
+      scoped_feature_list_.InitWithFeatures(
+          /*enabled_features=*/{},
+          /*disabled_features=*/{features::kOsIntegrationSubManagers});
+    }
   }
 
   void TearDownOnMainThread() override {
@@ -67,7 +76,7 @@ class UpdateProtocolHandlerApprovalCommandTest
     WebAppControllerBrowserTest::TearDownOnMainThread();
   }
 
-  webapps::AppId InstallWebAppWithProtocolHandlers(
+  web_app::AppId InstallWebAppWithProtocolHandlers(
       const std::vector<apps::ProtocolHandlerInfo>& protocol_handlers) {
     std::unique_ptr<WebAppInstallInfo> info =
         std::make_unique<WebAppInstallInfo>();
@@ -75,8 +84,7 @@ class UpdateProtocolHandlerApprovalCommandTest
     info->title = kAppName;
     info->user_display_mode = web_app::mojom::UserDisplayMode::kStandalone;
     info->protocol_handlers = protocol_handlers;
-    base::test::TestFuture<const webapps::AppId&, webapps::InstallResultCode>
-        result;
+    base::test::TestFuture<const AppId&, webapps::InstallResultCode> result;
     // InstallFromInfoWithParams is used instead of InstallFromInfo, because
     // InstallFromInfo doesn't register OS integration.
     provider().scheduler().InstallFromInfoWithParams(
@@ -86,15 +94,15 @@ class UpdateProtocolHandlerApprovalCommandTest
     bool success = result.Wait();
     EXPECT_TRUE(success);
     if (!success)
-      return webapps::AppId();
+      return AppId();
     EXPECT_EQ(result.Get<webapps::InstallResultCode>(),
               webapps::InstallResultCode::kSuccessNewInstall);
-    return result.Get<webapps::AppId>();
+    return result.Get<AppId>();
   }
 
 #if BUILDFLAG(IS_MAC)
   std::vector<std::string> GetAppShimRegisteredProtocolHandlers(
-      const webapps::AppId& app_id) {
+      const AppId& app_id) {
     std::vector<std::string> protocol_schemes;
     for (const auto& [file_path, handler] :
          AppShimRegistry::Get()->GetHandlersForApp(app_id)) {
@@ -114,18 +122,23 @@ class UpdateProtocolHandlerApprovalCommandTest
 #endif
   }
 
+  bool EnableOsIntegrationSubManager() {
+    return GetParam() == OsIntegrationSubManagersState::kSaveStateToDB;
+  }
+
  private:
+  base::test::ScopedFeatureList scoped_feature_list_;
   std::unique_ptr<OsIntegrationTestOverrideImpl::BlockingRegistration>
       test_override_;
 };
 
-IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest, Install) {
+IN_PROC_BROWSER_TEST_P(UpdateProtocolHandlerApprovalCommandTest, Install) {
   apps::ProtocolHandlerInfo protocol_handler;
   const std::string handler_url =
       std::string(kTestAppUrl.spec()) + "/testing=%s";
   protocol_handler.url = GURL(handler_url);
   protocol_handler.protocol = "web+test";
-  webapps::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
+  web_app::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
 
   EXPECT_THAT(provider().registrar_unsafe().IsAllowedLaunchProtocol(
                   app_id, protocol_handler.protocol),
@@ -148,14 +161,14 @@ IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest, Install) {
   }
 }
 
-IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
+IN_PROC_BROWSER_TEST_P(UpdateProtocolHandlerApprovalCommandTest,
                        ProtocolHandlersRegisteredAndAllowed) {
   apps::ProtocolHandlerInfo protocol_handler;
   const std::string handler_url =
       std::string(kTestAppUrl.spec()) + "/testing=%s";
   protocol_handler.url = GURL(handler_url);
   protocol_handler.protocol = "web+test";
-  webapps::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
+  web_app::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
 
   base::test::TestFuture<void> future;
   provider().scheduler().UpdateProtocolHandlerUserApproval(
@@ -185,14 +198,14 @@ IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
   }
 }
 
-IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
+IN_PROC_BROWSER_TEST_P(UpdateProtocolHandlerApprovalCommandTest,
                        ProtocolHandlersAllowedBackToBack) {
   apps::ProtocolHandlerInfo protocol_handler;
   const std::string handler_url =
       std::string(kTestAppUrl.spec()) + "/testing=%s";
   protocol_handler.url = GURL(handler_url);
   protocol_handler.protocol = "web+test";
-  webapps::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
+  web_app::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
 
   base::test::TestFuture<void> future_first;
   base::test::TestFuture<void> future_second;
@@ -227,14 +240,14 @@ IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
   }
 }
 
-IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
+IN_PROC_BROWSER_TEST_P(UpdateProtocolHandlerApprovalCommandTest,
                        ProtocolHandlersDisallowed) {
   apps::ProtocolHandlerInfo protocol_handler;
   const std::string handler_url =
       std::string(kTestAppUrl.spec()) + "/testing=%s";
   protocol_handler.url = GURL(handler_url);
   protocol_handler.protocol = "web+test";
-  webapps::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
+  web_app::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
 
   base::test::TestFuture<void> future;
   provider().scheduler().UpdateProtocolHandlerUserApproval(
@@ -254,29 +267,23 @@ IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
 #endif
 
   if (AreProtocolsRegisteredWithOs()) {
-#if BUILDFLAG(IS_WIN)
+    // They should be registered on first install, then removed on disallow.
     EXPECT_THAT(
         OsIntegrationTestOverrideImpl::Get()->protocol_scheme_registrations(),
         testing::ElementsAre(
             std::make_tuple(app_id, std::vector({protocol_handler.protocol})),
             std::make_tuple(app_id, std::vector<std::string>())));
-#else
-    EXPECT_THAT(
-        OsIntegrationTestOverrideImpl::Get()->protocol_scheme_registrations(),
-        testing::ElementsAre(
-            std::make_tuple(app_id, std::vector({protocol_handler.protocol}))));
-#endif  // BUILDFLAG(IS_WIN)
   }
 }
 
-IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
+IN_PROC_BROWSER_TEST_P(UpdateProtocolHandlerApprovalCommandTest,
                        ProtocolHandlersDisallowedBackToBack) {
   apps::ProtocolHandlerInfo protocol_handler;
   const std::string handler_url =
       std::string(kTestAppUrl.spec()) + "/testing=%s";
   protocol_handler.url = GURL(handler_url);
   protocol_handler.protocol = "web+test";
-  webapps::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
+  web_app::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
 
   base::test::TestFuture<void> future_first;
   base::test::TestFuture<void> future_second;
@@ -301,29 +308,25 @@ IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
 #endif
 
   if (AreProtocolsRegisteredWithOs()) {
-#if BUILDFLAG(IS_WIN)
+    // They should be registered on first install, then removed on disallow. On
+    // the 2nd command run with the same inputs, this should not change because
+    // OS integration does not re-run again.
     EXPECT_THAT(
         OsIntegrationTestOverrideImpl::Get()->protocol_scheme_registrations(),
         testing::ElementsAre(
             std::make_tuple(app_id, std::vector({protocol_handler.protocol})),
             std::make_tuple(app_id, std::vector<std::string>())));
-#else
-    EXPECT_THAT(
-        OsIntegrationTestOverrideImpl::Get()->protocol_scheme_registrations(),
-        testing::ElementsAre(
-            std::make_tuple(app_id, std::vector({protocol_handler.protocol}))));
-#endif  // BUILDFLAG(IS_WIN)
   }
 }
 
-IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
+IN_PROC_BROWSER_TEST_P(UpdateProtocolHandlerApprovalCommandTest,
                        ProtocolHandlersAllowedThenDisallowed) {
   apps::ProtocolHandlerInfo protocol_handler;
   const std::string handler_url =
       std::string(kTestAppUrl.spec()) + "/testing=%s";
   protocol_handler.url = GURL(handler_url);
   protocol_handler.protocol = "web+test";
-  webapps::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
+  web_app::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
 
   {
     base::test::TestFuture<void> future;
@@ -351,29 +354,23 @@ IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
 #endif
 
   if (AreProtocolsRegisteredWithOs()) {
-#if BUILDFLAG(IS_WIN)
+    // They should be registered on first install, then removed on disallow.
     EXPECT_THAT(
         OsIntegrationTestOverrideImpl::Get()->protocol_scheme_registrations(),
         testing::ElementsAre(
             std::make_tuple(app_id, std::vector({protocol_handler.protocol})),
             std::make_tuple(app_id, std::vector<std::string>())));
-#else
-    EXPECT_THAT(
-        OsIntegrationTestOverrideImpl::Get()->protocol_scheme_registrations(),
-        testing::ElementsAre(
-            std::make_tuple(app_id, std::vector({protocol_handler.protocol}))));
-#endif  // BUILDFLAG(IS_WIN)
   }
 }
 
-IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
+IN_PROC_BROWSER_TEST_P(UpdateProtocolHandlerApprovalCommandTest,
                        ProtocolHandlersDisallowedThenAllowed) {
   apps::ProtocolHandlerInfo protocol_handler;
   const std::string handler_url =
       std::string(kTestAppUrl.spec()) + "/testing=%s";
   protocol_handler.url = GURL(handler_url);
   protocol_handler.protocol = "web+test";
-  webapps::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
+  web_app::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
 
   {
     base::test::TestFuture<void> future;
@@ -403,27 +400,23 @@ IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
 #endif
 
   if (AreProtocolsRegisteredWithOs()) {
-    // The sub managers first add a protocol, then remove it on being
-    // disallowed and then adds it again.
     EXPECT_THAT(
         OsIntegrationTestOverrideImpl::Get()->protocol_scheme_registrations(),
         testing::ElementsAre(
             std::make_tuple(app_id, std::vector({protocol_handler.protocol})),
-#if BUILDFLAG(IS_WIN)
             std::make_tuple(app_id, std::vector<std::string>()),
-#endif  // BUILDFLAG(IS_WIN)
             std::make_tuple(app_id, std::vector({protocol_handler.protocol}))));
   }
 }
 
-IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
+IN_PROC_BROWSER_TEST_P(UpdateProtocolHandlerApprovalCommandTest,
                        ProtocolHandlersDisallowedThenAsked) {
   apps::ProtocolHandlerInfo protocol_handler;
   const std::string handler_url =
       std::string(kTestAppUrl.spec()) + "/testing=%s";
   protocol_handler.url = GURL(handler_url);
   protocol_handler.protocol = "web+test";
-  webapps::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
+  web_app::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
 
   {
     base::test::TestFuture<void> future;
@@ -453,26 +446,26 @@ IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
               testing::ElementsAre(protocol_handler.protocol));
 #endif
 
+  // They should be registered on first install, removed on Disallow and then
+  // added back when removed from the disallowed list.
   if (AreProtocolsRegisteredWithOs()) {
     EXPECT_THAT(
         OsIntegrationTestOverrideImpl::Get()->protocol_scheme_registrations(),
         testing::ElementsAre(
             std::make_tuple(app_id, std::vector({protocol_handler.protocol})),
-#if BUILDFLAG(IS_WIN)
             std::make_tuple(app_id, std::vector<std::string>()),
-#endif  // BUILDFLAG(IS_WIN)
             std::make_tuple(app_id, std::vector({protocol_handler.protocol}))));
   }
 }
 
-IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
+IN_PROC_BROWSER_TEST_P(UpdateProtocolHandlerApprovalCommandTest,
                        ProtocolHandlersAllowedThenAsked) {
   apps::ProtocolHandlerInfo protocol_handler;
   const std::string handler_url =
       std::string(kTestAppUrl.spec()) + "/testing=%s";
   protocol_handler.url = GURL(handler_url);
   protocol_handler.protocol = "web+test";
-  webapps::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
+  web_app::AppId app_id = InstallWebAppWithProtocolHandlers({protocol_handler});
 
   {
     base::test::TestFuture<void> future;
@@ -511,6 +504,13 @@ IN_PROC_BROWSER_TEST_F(UpdateProtocolHandlerApprovalCommandTest,
             std::make_tuple(app_id, std::vector({protocol_handler.protocol}))));
   }
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    UpdateProtocolHandlerApprovalCommandTest,
+    ::testing::Values(OsIntegrationSubManagersState::kSaveStateToDB,
+                      OsIntegrationSubManagersState::kDisabled),
+    test::GetOsIntegrationSubManagersTestName);
 
 }  // namespace
 }  // namespace web_app

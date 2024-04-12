@@ -12,7 +12,6 @@
 namespace blink {
 
 class FontDescription;
-class TextRun;
 
 // A context object to apply letter-spacing, word-spacing, and justification to
 // ShapeResult.

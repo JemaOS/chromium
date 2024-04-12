@@ -21,7 +21,7 @@ class DemoSetupScreenView;
 // user to setup retail demo mode on the device.
 class DemoSetupScreen : public BaseScreen {
  public:
-  enum class Result { kCompleted, kCanceled };
+  enum class Result { COMPLETED, CANCELED };
 
   static std::string GetResultString(Result result);
 

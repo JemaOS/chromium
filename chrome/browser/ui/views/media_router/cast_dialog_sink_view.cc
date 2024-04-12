@@ -4,13 +4,10 @@
 
 #include "chrome/browser/ui/views/media_router/cast_dialog_sink_view.h"
 
-#include <utility>
-
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/media/router/discovery/access_code/access_code_cast_feature.h"
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/media_router/cast_dialog_helper.h"
 #include "chrome/browser/ui/views/media_router/cast_dialog_sink_button.h"
@@ -18,7 +15,6 @@
 #include "components/vector_icons/vector_icons.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/base/ui_base_types.h"
 #include "ui/gfx/paint_vector_icon.h"
 #include "ui/views/background.h"
 #include "ui/views/border.h"
@@ -35,7 +31,7 @@ std::unique_ptr<views::ImageView> CreateConnectedIconView(
   auto icon_view = std::make_unique<views::ImageView>();
   icon_view->SetImage(ui::ImageModel::FromVectorIcon(
       *media_router::CastDialogSinkButton::GetVectorIcon(sink),
-      kColorMediaRouterIconActive, media_router::kPrimaryIconSize));
+      ui::kColorAccent, media_router::kPrimaryIconSize));
   icon_view->SetBorder(
       views::CreateEmptyBorder(media_router::kPrimaryIconBorder));
   return icon_view;
@@ -49,17 +45,8 @@ std::unique_ptr<views::StyledLabel> CreateTitle(
   return title;
 }
 
-std::unique_ptr<views::View> CreateSubtitle(
-    const media_router::UIMediaSink& sink,
-    views::Button::PressedCallback issue_pressed_callback) {
-  if (sink.issue) {
-    auto subtitle_button = std::make_unique<views::LabelButton>(
-        std::move(issue_pressed_callback), sink.GetStatusTextForDisplay());
-    subtitle_button->SetLabelStyle(views::style::STYLE_SECONDARY);
-    subtitle_button->SetAccessibleName(sink.GetStatusTextForDisplay());
-    return subtitle_button;
-  }
-
+std::unique_ptr<views::Label> CreateSubtitle(
+    const media_router::UIMediaSink& sink) {
   auto subtitle = std::make_unique<views::Label>(sink.GetStatusTextForDisplay(),
                                                  views::style::CONTEXT_BUTTON,
                                                  views::style::STYLE_SECONDARY);
@@ -76,16 +63,18 @@ CastDialogSinkView::CastDialogSinkView(
     Profile* profile,
     const UIMediaSink& sink,
     views::Button::PressedCallback sink_pressed_callback,
-    views::Button::PressedCallback issue_pressed_callback,
     views::Button::PressedCallback stop_pressed_callback,
     views::Button::PressedCallback freeze_pressed_callback)
     : profile_(profile), sink_(sink) {
   SetLayoutManager(std::make_unique<views::BoxLayout>(
       views::BoxLayout::Orientation::kVertical));
 
-  // If the sink is connected, then add labels and buttons. Else, default to a
+  // If the sink is connected, and one of the features that allow new UI is
+  // enabled, then add labels and buttons. Else, default to a
   // CastDialogSinkButton.
-  if (sink.state == UIMediaSinkState::CONNECTED) {
+  if (sink.state == UIMediaSinkState::CONNECTED &&
+      (IsAccessCodeCastFreezeUiEnabled(profile_) ||
+       base::FeatureList::IsEnabled(kCastDialogStopButton))) {
     // When sink is connected, the sink view looks like this:
     //
     // *----------------------------------*
@@ -95,18 +84,17 @@ CastDialogSinkView::CastDialogSinkView(
     // |----------------------------------|
     // |            | Button 1 | Button 2 | Buttons View
     // *----------------------------------*
-    AddChildView(CreateLabelView(sink, std::move(issue_pressed_callback)));
-    AddChildView(CreateButtonsView(std::move(stop_pressed_callback),
-                                   std::move(freeze_pressed_callback)));
+    AddChildView(CreateLabelView(sink));
+    AddChildView(
+        CreateButtonsView(stop_pressed_callback, freeze_pressed_callback));
   } else {
-    cast_sink_button_ = AddChildView(std::make_unique<CastDialogSinkButton>(
-        std::move(sink_pressed_callback), sink));
+    cast_sink_button_ = AddChildView(
+        std::make_unique<CastDialogSinkButton>(sink_pressed_callback, sink));
   }
 }
 
 std::unique_ptr<views::View> CastDialogSinkView::CreateLabelView(
-    const UIMediaSink& sink,
-    views::Button::PressedCallback issue_pressed_callback) {
+    const UIMediaSink& sink) {
   // The spacing and padding needed to mimic the layout of the icon and labels
   // from the CastDialogSinkButton, which is implemented as a HoverButton.
   const int horizontal_padding = ChromeLayoutProvider::Get()->GetDistanceMetric(
@@ -131,18 +119,19 @@ std::unique_ptr<views::View> CastDialogSinkView::CreateLabelView(
   // Create the wrapper so labels can stack.
   auto label_wrapper = std::make_unique<views::View>();
   title_ = label_wrapper->AddChildView(CreateTitle(sink));
-  subtitle_ = label_wrapper->AddChildView(
-      CreateSubtitle(sink, std::move(issue_pressed_callback)));
+  subtitle_ = label_wrapper->AddChildView(CreateSubtitle(sink));
 
   // Set wrapper properties.
   label_wrapper->SetLayoutManager(std::make_unique<views::FlexLayout>())
       ->SetOrientation(views::LayoutOrientation::kVertical)
       .SetMainAxisAlignment(views::LayoutAlignment::kCenter);
-  label_wrapper->SetProperty(views::kBoxLayoutFlexKey,
-                             views::BoxLayoutFlexSpecification());
+  label_wrapper->SetProperty(
+      views::kFlexBehaviorKey,
+      views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
+                               views::MaximumFlexSizeRule::kUnbounded));
   label_wrapper->SetProperty(views::kMarginsKey,
                              gfx::Insets::VH(vertical_spacing, 0));
-
+  label_wrapper->SetCanProcessEventsWithinSubtree(false);
   label_container->AddChildView(std::move(label_wrapper));
 
   return label_container;
@@ -180,22 +169,20 @@ std::unique_ptr<views::View> CastDialogSinkView::CreateButtonsView(
   if (IsAccessCodeCastFreezeUiEnabled(profile_) &&
       sink_.freeze_info.can_freeze) {
     auto freeze_button = std::make_unique<views::MdTextButton>(
-        std::move(freeze_pressed_callback),
+        freeze_pressed_callback,
         l10n_util::GetStringUTF16(sink_.freeze_info.is_frozen
                                       ? IDS_MEDIA_ROUTER_SINK_VIEW_RESUME
                                       : IDS_MEDIA_ROUTER_SINK_VIEW_PAUSE));
-    freeze_button->SetStyle(ui::ButtonStyle::kText);
-    freeze_button->SetAccessibleName(GetFreezeButtonAccessibleName());
+    freeze_button->SetStyle(views::MdTextButton::Style::kText);
     freeze_button_ = button_container->AddChildView(std::move(freeze_button));
   }
 
   // Always create the stop button, since at this point we know the sink is
   // connected.
   auto stop_button = std::make_unique<views::MdTextButton>(
-      std::move(stop_pressed_callback),
+      stop_pressed_callback,
       l10n_util::GetStringUTF16(IDS_MEDIA_ROUTER_SINK_VIEW_STOP));
-  stop_button->SetStyle(ui::ButtonStyle::kText);
-  stop_button->SetAccessibleName(GetStopButtonAccessibleName());
+  stop_button->SetStyle(views::MdTextButton::Style::kText);
   stop_button_ = button_container->AddChildView(std::move(stop_button));
 
   return button_container;
@@ -204,10 +191,6 @@ std::unique_ptr<views::View> CastDialogSinkView::CreateButtonsView(
 void CastDialogSinkView::RequestFocus() {
   if (cast_sink_button_) {
     cast_sink_button_->RequestFocus();
-  } else if (freeze_button_) {
-    freeze_button_->RequestFocus();
-  } else if (stop_button_) {
-    stop_button_->RequestFocus();
   }
 }
 
@@ -223,62 +206,9 @@ void CastDialogSinkView::SetEnabledState(bool enabled) {
   }
 }
 
-std::u16string CastDialogSinkView::GetFreezeButtonAccessibleName() const {
-  // If there is no route for the sink or the route may not be frozen, no freeze
-  // button should be displayed.
-  if (!sink_.route || !sink_.freeze_info.can_freeze) {
-    NOTREACHED();
-    return std::u16string();
-  }
-
-  const MediaSource& source = sink_.route->media_source();
-  int accessible_name = 0;
-  if (sink_.freeze_info.is_frozen) {
-    if (source.IsTabMirroringSource()) {
-      accessible_name = IDS_MEDIA_ROUTER_SINK_VIEW_RESUME_TAB_ACCESSIBLE_NAME;
-    } else if (source.IsDesktopMirroringSource()) {
-      accessible_name =
-          IDS_MEDIA_ROUTER_SINK_VIEW_RESUME_SCREEN_ACCESSIBLE_NAME;
-    } else {
-      accessible_name =
-          IDS_MEDIA_ROUTER_SINK_VIEW_RESUME_GENERIC_ACCESSIBLE_NAME;
-    }
-  } else {
-    if (source.IsTabMirroringSource()) {
-      accessible_name = IDS_MEDIA_ROUTER_SINK_VIEW_PAUSE_TAB_ACCESSIBLE_NAME;
-    } else if (source.IsDesktopMirroringSource()) {
-      accessible_name = IDS_MEDIA_ROUTER_SINK_VIEW_PAUSE_SCREEN_ACCESSIBLE_NAME;
-    } else {
-      accessible_name =
-          IDS_MEDIA_ROUTER_SINK_VIEW_PAUSE_GENERIC_ACCESSIBLE_NAME;
-    }
-  }
-
-  return l10n_util::GetStringFUTF16(accessible_name, sink_.friendly_name);
-}
-
-std::u16string CastDialogSinkView::GetStopButtonAccessibleName() const {
-  if (!sink_.route) {
-    NOTREACHED();
-    return std::u16string();
-  }
-
-  const MediaSource& source = sink_.route->media_source();
-  int accessible_name = 0;
-  if (source.IsTabMirroringSource()) {
-    accessible_name = IDS_MEDIA_ROUTER_SINK_VIEW_STOP_TAB_ACCESSIBLE_NAME;
-  } else if (source.IsDesktopMirroringSource()) {
-    accessible_name = IDS_MEDIA_ROUTER_SINK_VIEW_STOP_SCREEN_ACCESSIBLE_NAME;
-  } else {
-    accessible_name = IDS_MEDIA_ROUTER_SINK_VIEW_STOP_GENERIC_ACCESSIBLE_NAME;
-  }
-
-  return l10n_util::GetStringFUTF16(accessible_name, sink_.friendly_name);
-}
-
 CastDialogSinkView::~CastDialogSinkView() = default;
 
-BEGIN_METADATA(CastDialogSinkView)
+BEGIN_METADATA(CastDialogSinkView, views::View)
 END_METADATA
 
 }  // namespace media_router

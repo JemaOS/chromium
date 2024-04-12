@@ -4,8 +4,6 @@
 
 #include "chrome/browser/accessibility/live_caption/live_caption_surface.h"
 
-#include <optional>
-
 #include "base/functional/callback_forward.h"
 #include "base/unguessable_token.h"
 #include "build/build_config.h"
@@ -22,6 +20,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_contents_user_data.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/views/widget/widget.h"
 
 namespace captions {
@@ -59,7 +58,7 @@ void LiveCaptionSurface::Activate() {
   // Activate the web contents and the browser window that the web contents is
   // in. Order matters: web contents needs to be active in order for the widget
   // getter to work.
-  Browser* browser = chrome::FindBrowserWithTab(web_contents());
+  Browser* browser = chrome::FindBrowserWithWebContents(web_contents());
   if (!browser) {
     return;
   }
@@ -82,14 +81,14 @@ void LiveCaptionSurface::Activate() {
 
 void LiveCaptionSurface::GetBounds(GetBoundsCallback callback) {
   if (!web_contents()) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
   views::Widget* context_widget = views::Widget::GetTopLevelWidgetForNativeView(
       web_contents()->GetNativeView());
   if (!context_widget) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 

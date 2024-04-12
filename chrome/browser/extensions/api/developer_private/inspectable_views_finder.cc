@@ -38,40 +38,44 @@ api::developer_private::ViewType ConvertViewType(const mojom::ViewType type) {
   api::developer_private::ViewType developer_private_type;
   switch (type) {
     case mojom::ViewType::kAppWindow:
-      developer_private_type = api::developer_private::ViewType::kAppWindow;
+      developer_private_type = api::developer_private::VIEW_TYPE_APP_WINDOW;
       break;
     case mojom::ViewType::kBackgroundContents:
       developer_private_type =
-          api::developer_private::ViewType::kBackgroundContents;
+          api::developer_private::VIEW_TYPE_BACKGROUND_CONTENTS;
       break;
     case mojom::ViewType::kComponent:
-      developer_private_type = api::developer_private::ViewType::kComponent;
+      developer_private_type = api::developer_private::VIEW_TYPE_COMPONENT;
       break;
     case mojom::ViewType::kExtensionBackgroundPage:
       developer_private_type =
-          api::developer_private::ViewType::kExtensionBackgroundPage;
+          api::developer_private::VIEW_TYPE_EXTENSION_BACKGROUND_PAGE;
+      break;
+    case mojom::ViewType::kExtensionDialog:
+      developer_private_type =
+          api::developer_private::VIEW_TYPE_EXTENSION_DIALOG;
       break;
     case mojom::ViewType::kExtensionGuest:
       developer_private_type =
-          api::developer_private::ViewType::kExtensionGuest;
+          api::developer_private::VIEW_TYPE_EXTENSION_GUEST;
       break;
     case mojom::ViewType::kExtensionPopup:
       developer_private_type =
-          api::developer_private::ViewType::kExtensionPopup;
+          api::developer_private::VIEW_TYPE_EXTENSION_POPUP;
       break;
     case mojom::ViewType::kTabContents:
-      developer_private_type = api::developer_private::ViewType::kTabContents;
+      developer_private_type = api::developer_private::VIEW_TYPE_TAB_CONTENTS;
       break;
     case mojom::ViewType::kOffscreenDocument:
       developer_private_type =
-          api::developer_private::ViewType::kOffscreenDocument;
+          api::developer_private::VIEW_TYPE_OFFSCREEN_DOCUMENT;
       break;
     case mojom::ViewType::kExtensionSidePanel:
       developer_private_type =
-          api::developer_private::ViewType::kExtensionSidePanel;
+          api::developer_private::VIEW_TYPE_EXTENSION_SIDE_PANEL;
       break;
     default:
-      developer_private_type = api::developer_private::ViewType::kNone;
+      developer_private_type = api::developer_private::VIEW_TYPE_NONE;
       NOTREACHED();
   }
   return developer_private_type;
@@ -146,7 +150,7 @@ void InspectableViewsFinder::GetViewsForExtensionForProfile(
       !process_manager->GetBackgroundHostForExtension(extension.id())) {
     result->push_back(ConstructView(
         BackgroundInfo::GetBackgroundURL(&extension), -1, -1, is_incognito,
-        false, api::developer_private::ViewType::kExtensionBackgroundPage));
+        false, api::developer_private::VIEW_TYPE_EXTENSION_BACKGROUND_PAGE));
   }
   if (BackgroundInfo::IsServiceWorkerBased(&extension) &&
       process_manager->GetServiceWorkersForExtension(extension.id()).empty()) {
@@ -154,7 +158,7 @@ void InspectableViewsFinder::GetViewsForExtensionForProfile(
         extension.GetResourceURL(
             BackgroundInfo::GetBackgroundServiceWorkerScript(&extension)),
         -1, -1, is_incognito, false,
-        api::developer_private::ViewType::kExtensionServiceWorkerBackground));
+        api::developer_private::VIEW_TYPE_EXTENSION_SERVICE_WORKER_BACKGROUND));
   }
 }
 
@@ -171,6 +175,7 @@ void InspectableViewsFinder::GetViewsForExtensionProcess(
     mojom::ViewType host_type = GetViewType(web_contents);
     if (host_type == mojom::ViewType::kInvalid ||
         host_type == mojom::ViewType::kExtensionPopup ||
+        host_type == mojom::ViewType::kExtensionDialog ||
         host_type == mojom::ViewType::kAppWindow) {
       continue;
     }
@@ -198,7 +203,7 @@ void InspectableViewsFinder::GetViewsForExtensionProcess(
         extension.GetResourceURL(
             BackgroundInfo::GetBackgroundServiceWorkerScript(&extension)),
         service_worker_id.render_process_id, -1, is_incognito, false,
-        api::developer_private::ViewType::kExtensionServiceWorkerBackground));
+        api::developer_private::VIEW_TYPE_EXTENSION_SERVICE_WORKER_BACKGROUND));
   }
 }
 

@@ -5,7 +5,6 @@
 #include "chrome/browser/policy/messaging_layer/util/user_dm_token_retriever.h"
 
 #include <memory>
-#include <string_view>
 
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
@@ -42,7 +41,8 @@ class UserDMTokenRetrieverTest : public ::testing::Test {
   }
 
   void SetUp() override {
-    policy::SetDMTokenForTesting(policy::DMToken::CreateValidToken(kDMToken));
+    policy::SetDMTokenForTesting(
+        policy::DMToken::CreateValidTokenForTesting(kDMToken));
 
     // Use the mock profile retrieval callback for setting up the retriever
     user_dm_token_retriever_ = UserDMTokenRetriever::CreateForTest(
@@ -52,11 +52,11 @@ class UserDMTokenRetrieverTest : public ::testing::Test {
 
   void TearDown() override {
     // Unset mocks and test hooks
-    policy::SetDMTokenForTesting(policy::DMToken::CreateEmptyToken());
+    policy::SetDMTokenForTesting(policy::DMToken::CreateEmptyTokenForTesting());
   }
 
   // Creates a new profile with the current context for testing purposes.
-  TestingProfile* CreateProfile(std::string_view id) {
+  TestingProfile* CreateProfile(base::StringPiece id) {
     TestingProfile* const profile =
         testing_profile_manager_.CreateTestingProfile(std::string(id));
     return profile;
@@ -77,8 +77,8 @@ TEST_F(UserDMTokenRetrieverTest, GetDMToken) {
   std::move(user_dm_token_retriever_)
       ->RetrieveDMToken(dm_token_retrieved_event.cb());
   const auto dm_token_result = dm_token_retrieved_event.result();
-  ASSERT_TRUE(dm_token_result.has_value());
-  EXPECT_THAT(dm_token_result.value(), StrEq(kDMToken));
+  ASSERT_OK(dm_token_result);
+  EXPECT_THAT(dm_token_result.ValueOrDie(), StrEq(kDMToken));
 }
 
 TEST_F(UserDMTokenRetrieverTest, GetDMTokenMultipleRequests) {
@@ -95,20 +95,20 @@ TEST_F(UserDMTokenRetrieverTest, GetDMTokenMultipleRequests) {
 
   const auto dm_token_result_1 = dm_token_retrieved_event_1.result();
   const auto dm_token_result_2 = dm_token_retrieved_event_2.result();
-  ASSERT_TRUE(dm_token_result_1.has_value());
-  ASSERT_TRUE(dm_token_result_2.has_value());
-  EXPECT_THAT(dm_token_result_1.value(), StrEq(kDMToken));
-  EXPECT_THAT(dm_token_result_2.value(), StrEq(kDMToken));
+  ASSERT_OK(dm_token_result_1);
+  ASSERT_OK(dm_token_result_2);
+  EXPECT_THAT(dm_token_result_1.ValueOrDie(), StrEq(kDMToken));
+  EXPECT_THAT(dm_token_result_2.ValueOrDie(), StrEq(kDMToken));
 }
 
 TEST_F(UserDMTokenRetrieverTest, GetDMTokenInvalid) {
-  policy::SetDMTokenForTesting(policy::DMToken::CreateInvalidToken());
+  policy::SetDMTokenForTesting(policy::DMToken::CreateInvalidTokenForTesting());
   EXPECT_CALL(profile_retrieval_cb_, Call()).WillOnce(Return(profile_.get()));
 
   test::TestEvent<StatusOr<std::string>> dm_token_retrieved_event;
   std::move(user_dm_token_retriever_)
       ->RetrieveDMToken(dm_token_retrieved_event.cb());
-  EXPECT_FALSE(dm_token_retrieved_event.result().has_value());
+  EXPECT_FALSE(dm_token_retrieved_event.result().ok());
 }
 
 }  // namespace

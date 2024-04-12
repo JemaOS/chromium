@@ -4,8 +4,6 @@
 
 #include "third_party/blink/renderer/modules/mediarecorder/audio_track_pcm_encoder.h"
 
-#include <optional>
-
 #include "base/logging.h"
 #include "media/base/audio_sample_types.h"
 #include "media/base/audio_timestamp_helper.h"
@@ -48,7 +46,7 @@ void AudioTrackPcmEncoder::EncodeAudio(
       capture_time - media::AudioTimestampHelper::FramesToTime(
                          input_bus->frames(), input_params_.sample_rate());
   on_encoded_audio_cb_.Run(input_params_, std::move(encoded_data_string),
-                           std::nullopt, capture_time_of_first_sample);
+                           capture_time_of_first_sample);
 }
 
 }  // namespace blink

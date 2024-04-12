@@ -55,28 +55,6 @@ async function testActivationOnExecution() {
   });
 }
 
-async function testEventRouter() {
-  chrome.scripting.executeScript(
-      {
-        target: {tabId: tabId, frameIds: [prerenderingFrameId]},
-        func: async () => {
-          return new Promise(resolve => {
-            chrome.storage.onChanged.addListener(function(
-                changes, event_namespace) {
-              resolve('ok');
-            });
-
-            chrome.storage.local.set({'test': 1}).then(() => {});
-          });
-        }
-      },
-      results => {
-        chrome.test.assertEq(1, results.length);
-        chrome.test.assertEq('ok', results[0].result);
-        chrome.test.succeed();
-      });
-}
-
 chrome.test.getConfig(async config => {
   const tabs = await chrome.tabs.query({active: true});
   chrome.test.assertEq(1, tabs.length);
@@ -108,10 +86,8 @@ chrome.test.getConfig(async config => {
   });
 
   chrome.test.runTests([
-    // TODO(crbug.com/1351648): disabled due to flakiness.
-    // testGetTitleByFrameId,
-    // testGetTitleByDocumentId,
-    testEventRouter,
-    // testActivationOnExecution,
+    testGetTitleByFrameId,
+    testGetTitleByDocumentId,
+    testActivationOnExecution,
   ]);
 });

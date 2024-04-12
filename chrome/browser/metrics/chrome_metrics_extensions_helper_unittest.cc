@@ -39,7 +39,8 @@ TEST(ChromeMetricsExtensionsHelperTest, Basic) {
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   // Tag |host| so that it's an extensions host.
-  extensions::ProcessMap::Get(profile)->Insert("1", host->GetID());
+  extensions::ProcessMap::Get(profile)->Insert("1", host->GetID(),
+                                               site_instance->GetId());
   EXPECT_TRUE(extensions_helper.IsExtensionProcess(host));
 #endif
   rph_factory.reset();

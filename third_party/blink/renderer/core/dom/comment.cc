@@ -36,9 +36,8 @@ String Comment::nodeName() const {
   return "#comment";
 }
 
-CharacterData* Comment::CloneWithData(Document& factory,
-                                      const String& data) const {
-  return Create(factory, data);
+Node* Comment::Clone(Document& factory, CloneChildrenFlag) const {
+  return Create(factory, data());
 }
 
 }  // namespace blink

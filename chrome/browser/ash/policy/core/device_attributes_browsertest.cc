@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <optional>
+#include "chrome/browser/ash/policy/core/device_attributes_impl.h"
 
 #include "base/run_loop.h"
+
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
-#include "chrome/browser/ash/policy/core/device_attributes_impl.h"
 #include "chrome/browser/ash/policy/core/device_cloud_policy_manager_ash.h"
 #include "chrome/browser/ash/policy/core/device_cloud_policy_store_ash.h"
 #include "chrome/browser/ash/policy/core/device_policy_cros_browser_test.h"
@@ -25,6 +25,7 @@
 #include "content/public/test/browser_test.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using testing::InvokeWithoutArgs;
 
@@ -43,6 +44,7 @@ constexpr char kFakeHostname[] = "fake-hostname";
 constexpr char kFakeDirectoryApiID[] = "fake directory API ID";
 constexpr char kFakeObfuscatedCustomerID[] = "fake obfuscated customer ID";
 constexpr char kFakeLogoURL[] = "www.fakelogo.com/url";
+constexpr char kFakeRealm[] = "fake realm";
 constexpr char kFakeDeviceID[] = "fake device ID";
 
 }  // namespace
@@ -73,11 +75,12 @@ IN_PROC_BROWSER_TEST_F(DeviceAttributesTest, ReturnsAttributes) {
   EXPECT_EQ("", attributes_.GetEnterpriseEnrollmentDomain());
   EXPECT_EQ("", attributes_.GetEnterpriseDomainManager());
   EXPECT_EQ("", attributes_.GetSSOProfile());
+  EXPECT_EQ("", attributes_.GetRealm());
   EXPECT_EQ("", attributes_.GetDeviceAssetID());
   EXPECT_EQ("", attributes_.GetDeviceSerialNumber());
   EXPECT_EQ("", attributes_.GetMachineName());
   EXPECT_EQ("", attributes_.GetDeviceAnnotatedLocation());
-  EXPECT_EQ(std::nullopt, attributes_.GetDeviceHostname());
+  EXPECT_EQ(absl::nullopt, attributes_.GetDeviceHostname());
   EXPECT_EQ("", attributes_.GetDirectoryApiID());
   EXPECT_EQ("", attributes_.GetObfuscatedCustomerID());
   EXPECT_EQ("", attributes_.GetCustomerLogoURL());
@@ -108,6 +111,7 @@ IN_PROC_BROWSER_TEST_F(DeviceAttributesTest, ReturnsAttributes) {
   EXPECT_EQ(kFakeDomain, attributes_.GetEnterpriseEnrollmentDomain());
   EXPECT_EQ(kFakeDisplayDomain, attributes_.GetEnterpriseDomainManager());
   EXPECT_EQ(kFakeSSOProfile, attributes_.GetSSOProfile());
+  EXPECT_EQ("", attributes_.GetRealm());
   EXPECT_EQ(kFakeAssetId, attributes_.GetDeviceAssetID());
   EXPECT_EQ(kFakeSerialNumber, attributes_.GetDeviceSerialNumber());
   EXPECT_EQ(kFakeMachineName, attributes_.GetMachineName());
@@ -118,6 +122,11 @@ IN_PROC_BROWSER_TEST_F(DeviceAttributesTest, ReturnsAttributes) {
   EXPECT_EQ(kFakeLogoURL, attributes_.GetCustomerLogoURL());
   EXPECT_EQ(MarketSegment::ENTERPRISE,
             attributes_.GetEnterpriseMarketSegment());
+
+  // Set a fake active directory realm and verify it is returned.
+  stub_install_attributes()->SetActiveDirectoryManaged(kFakeRealm,
+                                                       kFakeDeviceID);
+  EXPECT_EQ(kFakeRealm, attributes_.GetRealm());
 }
 
 }  // namespace policy

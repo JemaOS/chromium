@@ -14,24 +14,21 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
-import org.jni_zero.CalledByNative;
-
 import org.chromium.base.ContextUtils;
 import org.chromium.base.PackageUtils;
 import org.chromium.base.StrictModeContext;
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.task.AsyncTask;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.TaskTraits;
-import org.chromium.chrome.browser.browserservices.intents.WebappInfo;
 import org.chromium.chrome.browser.browserservices.metrics.WebApkUmaRecorder;
 import org.chromium.chrome.browser.browserservices.permissiondelegation.InstalledWebappPermissionStore;
 import org.chromium.chrome.browser.browsing_data.UrlFilter;
 import org.chromium.chrome.browser.browsing_data.UrlFilterBridge;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.components.embedder_support.util.Origin;
-import org.chromium.components.sync.protocol.WebApkSpecifics;
 import org.chromium.webapk.lib.common.WebApkConstants;
 
 import java.util.ArrayList;
@@ -80,7 +77,6 @@ public class WebappRegistry {
 
     /** Maps webapp ids to storages. */
     private Map<String, WebappDataStorage> mStorages;
-
     private SharedPreferences mPreferences;
     private InstalledWebappPermissionStore mPermissionStore;
 
@@ -98,7 +94,9 @@ public class WebappRegistry {
         mPermissionStore = new InstalledWebappPermissionStore();
     }
 
-    /** Returns the singleton WebappRegistry instance. Creates the instance on first call. */
+    /**
+     * Returns the singleton WebappRegistry instance. Creates the instance on first call.
+     */
     public static WebappRegistry getInstance() {
         return Holder.sInstance;
     }
@@ -120,6 +118,7 @@ public class WebappRegistry {
         getInstance().initStorages(null);
     }
 
+    @VisibleForTesting
     public static void refreshSharedPrefsForTesting() {
         Holder.sInstance = new WebappRegistry();
         getInstance().clearStoragesForTesting();
@@ -158,7 +157,8 @@ public class WebappRegistry {
                 storage.updateLastUsedTime();
                 if (callback != null) callback.onWebappDataStorageRetrieved(storage);
             }
-        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        }
+                .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     /**
@@ -205,6 +205,9 @@ public class WebappRegistry {
 
         String scope = storage.getScope();
 
+        // Scope shouldn't be empty.
+        assert (!scope.isEmpty());
+
         return scope;
     }
 
@@ -222,7 +225,9 @@ public class WebappRegistry {
         return false;
     }
 
-    /** Returns a Set of all origins that have an installed WebAPK. */
+    /**
+     * Returns a Set of all origins that have an installed WebAPK.
+     */
     private Set<String> getOriginsWithWebApk() {
         Set<String> origins = new HashSet<>();
         for (WebappDataStorage storage : mStorages.values()) {
@@ -234,73 +239,18 @@ public class WebappRegistry {
         return origins;
     }
 
-    /** Returns an array of all origins that have an installed WebAPK. */
-    @CalledByNative
-    private static String[] getOriginsWithWebApkAsArray() {
-        Set<String> origins = WebappRegistry.getInstance().getOriginsWithWebApk();
-        String[] originsArray = new String[origins.size()];
-        return origins.toArray(originsArray);
-    }
-
-    /*
-     * Returns an array of serialized |WebApkSpecifics| protos in byte[] format.
+    /**
+     * Checks whether a TWA is installed for the origin, and no WebAPK.
      */
-    @CalledByNative
-    public static byte[][] getWebApkSpecifics() {
-        List<WebApkSpecifics> webApkSpecifics =
-                WebappRegistry.getInstance()
-                        .getWebApkSpecificsImpl(/* setWebappInfoForTesting= */ null);
-        List<byte[]> specificsBytes = new ArrayList<byte[]>();
-        for (WebApkSpecifics specifics : webApkSpecifics) {
-            specificsBytes.add(specifics.toByteArray());
-        }
-
-        byte[][] specificsBytesArray = new byte[specificsBytes.size()][];
-        return specificsBytes.toArray(specificsBytesArray);
-    }
-
-    /*
-     * Callback interface used for testing getWebApkSpecificsImpl().
-     */
-    public interface GetWebApkSpecificsImplSetWebappInfoForTesting {
-        void run(String scope);
-    }
-
-    /*
-     * Returns a List of |WebApkSpecifics| protos.
-     */
-    public List<WebApkSpecifics> getWebApkSpecificsImpl(
-            GetWebApkSpecificsImplSetWebappInfoForTesting setWebappInfoForTesting) {
-        List<WebApkSpecifics> webApkSpecificsList = new ArrayList<WebApkSpecifics>();
-        for (WebappDataStorage storage : mStorages.values()) {
-            String scope = getWebApkScopeFromStorage(storage);
-            if (scope.isEmpty()) {
-                continue;
-            }
-
-            if (setWebappInfoForTesting != null) {
-                setWebappInfoForTesting.run(scope);
-            }
-
-            WebappInfo webApkInfo = WebApkDataProvider.getPartialWebappInfo(scope);
-            WebApkSpecifics webApkSpecifics =
-                    WebApkSyncService.getWebApkSpecifics(webApkInfo, storage);
-            if (webApkSpecifics == null) {
-                continue;
-            }
-            webApkSpecificsList.add(webApkSpecifics);
-        }
-        return webApkSpecificsList;
-    }
-
-    /** Checks whether a TWA is installed for the origin, and no WebAPK. */
     public boolean isTwaInstalled(String origin) {
         Set<String> webApkOrigins = getOriginsWithWebApk();
         Set<String> installedWebappOrigins = mPermissionStore.getStoredOrigins();
         return installedWebappOrigins.contains(origin) && !webApkOrigins.contains(origin);
     }
 
-    /** Returns all origins that have a WebAPK or TWA installed. */
+    /**
+     * Returns all origins that have a WebAPK or TWA installed.
+     */
     public Set<String> getOriginsWithInstalledApp() {
         Set<String> origins = new HashSet<>();
         origins.addAll(getOriginsWithWebApk());
@@ -308,38 +258,10 @@ public class WebappRegistry {
         return origins;
     }
 
-    /** Returns an array of all origins that have a WebAPK or TWA installed. */
-    @CalledByNative
-    public static String[] getOriginsWithInstalledAppAsArray() {
-        Set<String> origins = WebappRegistry.getInstance().getOriginsWithInstalledApp();
-        String[] originsArray = new String[origins.size()];
-        return origins.toArray(originsArray);
-    }
-
-    /**
-     * Sets an Android Shared Preference bit to indicate that there are WebAPKs that need to be
-     * restored from Sync on Chrome's 2nd run.
-     */
-    @CalledByNative
-    public static void setNeedsPwaRestore(boolean needs) {
-        ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.PWA_RESTORE_APPS_AVAILABLE, needs);
-    }
-
-    /**
-     * Gets the value of an Android Shared Preference bit which indicates whether or not there are
-     * WebAPKs that need to be restored from Sync on Chrome's 2nd run.
-     */
-    @CalledByNative
-    public static boolean getNeedsPwaRestore() {
-        return ChromeSharedPreferences.getInstance()
-                .readBoolean(ChromePreferenceKeys.PWA_RESTORE_APPS_AVAILABLE, false);
-    }
-
     /**
      * Returns the list of WebAPK IDs with pending updates. Filters out WebAPKs which have been
      * uninstalled.
-     */
+     * */
     public List<String> findWebApksWithPendingUpdate() {
         List<String> webApkIdsWithPendingUpdate = new ArrayList<>();
         for (HashMap.Entry<String, WebappDataStorage> entry : mStorages.entrySet()) {
@@ -385,13 +307,17 @@ public class WebappRegistry {
         return null;
     }
 
-    /** Returns the list of web app IDs which are written to SharedPreferences. */
+    /**
+     * Returns the list of web app IDs which are written to SharedPreferences.
+     */
+    @VisibleForTesting
     public static Set<String> getRegisteredWebappIdsForTesting() {
         // Wrap with unmodifiableSet to ensure it's never modified. See crbug.com/568369.
         return Collections.unmodifiableSet(
                 openSharedPreferences().getStringSet(KEY_WEBAPP_SET, Collections.emptySet()));
     }
 
+    @VisibleForTesting
     void clearForTesting() {
         Iterator<HashMap.Entry<String, WebappDataStorage>> it = mStorages.entrySet().iterator();
         while (it.hasNext()) {
@@ -403,12 +329,11 @@ public class WebappRegistry {
 
     /**
      * Deletes the data for all "old" web apps, as well as all WebAPKs that have been uninstalled in
-     * the last month, and removes all WebAPKs from Sync which haven't been used in the last month.
-     * "Old" web apps have not been opened by the user in the last 3 months, or have had their last
-     * used time set to 0 by the user clearing their history. Cleanup is run, at most, once a month.
-     *
+     * the last month. "Old" web apps have not been opened by the user in the last 3 months, or have
+     * had their last used time set to 0 by the user clearing their history. Cleanup is run, at
+     * most, once a month.
      * @param currentTime The current time which will be checked to decide if the task should be run
-     *     and if a web app should be cleaned up.
+     *                    and if a web app should be cleaned up.
      */
     public void unregisterOldWebapps(long currentTime) {
         if ((currentTime - mPreferences.getLong(KEY_LAST_CLEANUP, 0)) < FULL_CLEANUP_DURATION) {
@@ -432,10 +357,7 @@ public class WebappRegistry {
             it.remove();
         }
 
-        WebApkSyncService.removeOldWebAPKsFromSync(currentTime);
-
-        mPreferences
-                .edit()
+        mPreferences.edit()
                 .putLong(KEY_LAST_CLEANUP, currentTime)
                 .putStringSet(KEY_WEBAPP_SET, mStorages.keySet())
                 .apply();
@@ -454,8 +376,8 @@ public class WebappRegistry {
 
         // Do not delete WebappDataStorage if we still need it for UKM logging.
         Set<String> webApkPackagesWithPendingUkm =
-                ChromeSharedPreferences.getInstance()
-                        .readStringSet(ChromePreferenceKeys.WEBAPK_UNINSTALLED_PACKAGES);
+                SharedPreferencesManager.getInstance().readStringSet(
+                        ChromePreferenceKeys.WEBAPK_UNINSTALLED_PACKAGES);
         if (webApkPackagesWithPendingUkm.contains(webApkPackageName)) return false;
 
         return !PackageUtils.isPackageInstalled(webApkPackageName);
@@ -519,8 +441,8 @@ public class WebappRegistry {
         // InstalledWebappPermissionStore.
         // This is required to fix https://crbug.com/952841.
         try (StrictModeContext ignored = StrictModeContext.allowDiskReads()) {
-            return ContextUtils.getApplicationContext()
-                    .getSharedPreferences(REGISTRY_FILE_NAME, Context.MODE_PRIVATE);
+            return ContextUtils.getApplicationContext().getSharedPreferences(
+                    REGISTRY_FILE_NAME, Context.MODE_PRIVATE);
         }
     }
 
@@ -557,11 +479,8 @@ public class WebappRegistry {
             }
         }
 
-        PostTask.runOrPostTask(
-                TaskTraits.UI_DEFAULT,
-                () -> {
-                    initStoragesOnUiThread(initedStorages, initializing);
-                });
+        PostTask.runOrPostTask(TaskTraits.UI_DEFAULT,
+                () -> { initStoragesOnUiThread(initedStorages, initializing); });
     }
 
     private void initStoragesOnUiThread(

@@ -16,25 +16,19 @@ PdfOcrController* PdfOcrControllerFactory::GetForProfile(Profile* profile) {
 
 // static
 PdfOcrControllerFactory* PdfOcrControllerFactory::GetInstance() {
-  static base::NoDestructor<PdfOcrControllerFactory> instance;
-  return instance.get();
+  return base::Singleton<PdfOcrControllerFactory>::get();
 }
 
 PdfOcrControllerFactory::PdfOcrControllerFactory()
     : ProfileKeyedServiceFactory(
           "PdfOcrController",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              .WithGuest(ProfileSelection::kOffTheRecordOnly)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 PdfOcrControllerFactory::~PdfOcrControllerFactory() = default;
 
-std::unique_ptr<KeyedService>
-PdfOcrControllerFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* PdfOcrControllerFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<PdfOcrController>(
-      Profile::FromBrowserContext(context));
+  return new PdfOcrController(Profile::FromBrowserContext(context));
 }
 
 }  // namespace screen_ai

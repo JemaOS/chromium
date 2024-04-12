@@ -18,13 +18,8 @@ OcclusionTrackerPauser::~OcclusionTrackerPauser() {
 }
 
 void OcclusionTrackerPauser::PauseUntilAnimationsEnd(base::TimeDelta timeout) {
-  for (aura::Window* root : Shell::GetAllRootWindows()) {
-    // Compositors may not be animating yet - start observing all of them. In
-    // fact, it is the common case that none will be animating at this point. We
-    // assume at least one compositor will start animating very soon, and
-    // unpause when all compositors are not animating after that.
+  for (auto* root : Shell::GetAllRootWindows())
     Pause(root->GetHost()->compositor());
-  }
 
   if (!scoped_pause_) {
     scoped_pause_ =
@@ -34,14 +29,9 @@ void OcclusionTrackerPauser::PauseUntilAnimationsEnd(base::TimeDelta timeout) {
   timer_.Stop();
   if (!timeout.is_zero()) {
     timer_.Start(FROM_HERE, timeout,
-                 base::BindOnce(&OcclusionTrackerPauser::Shutdown,
-                                base::Unretained(this), /*timed_out=*/true));
+                 base::BindOnce(&OcclusionTrackerPauser::Timeout,
+                                base::Unretained(this)));
   }
-}
-
-void OcclusionTrackerPauser::OnFirstAnimationStarted(
-    ui::Compositor* compositor) {
-  animating_compositors_.insert(compositor);
 }
 
 void OcclusionTrackerPauser::OnFirstNonAnimatedFrameStarted(
@@ -57,35 +47,28 @@ void OcclusionTrackerPauser::OnCompositingShuttingDown(
 void OcclusionTrackerPauser::Pause(ui::Compositor* compositor) {
   if (!observations_.IsObservingSource(compositor))
     observations_.AddObservation(compositor);
-  if (compositor->IsAnimating()) {
-    animating_compositors_.insert(compositor);
-  }
 }
 
 void OcclusionTrackerPauser::OnFinish(ui::Compositor* compositor) {
-  animating_compositors_.erase(compositor);
-  if (observations_.IsObservingSource(compositor)) {
-    observations_.RemoveObservation(compositor);
-  }
-
-  if (!animating_compositors_.empty()) {
+  if (!observations_.IsObservingSource(compositor))
     return;
-  }
 
-  Shutdown(/*timed_out=*/false);
-}
+  observations_.RemoveObservation(compositor);
 
-void OcclusionTrackerPauser::Shutdown(bool timed_out) {
+  if (observations_.IsObservingAnySource())
+    return;
+
   DCHECK(scoped_pause_);
-  LOG_IF(WARNING, timed_out)
-      << "Unpausing because animations didn't start and end in time";
-
-  // We are finished pausing, cancel any outstanding timer which would call
-  // `Shutdown` again.
   timer_.Stop();
   scoped_pause_.reset();
+}
+
+void OcclusionTrackerPauser::Timeout() {
+  DCHECK(scoped_pause_);
+  LOG(WARNING) << "Unpausing because animations didn't start and end in time";
+
+  scoped_pause_.reset();
   observations_.RemoveAllObservations();
-  animating_compositors_.clear();
 }
 
 }  // namespace ash

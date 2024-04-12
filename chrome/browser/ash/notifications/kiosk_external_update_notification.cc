@@ -35,10 +35,8 @@ const int kPreferredHeight = 250;
 }  // namespace
 
 class KioskExternalUpdateNotificationView : public views::WidgetDelegateView {
-  METADATA_HEADER(KioskExternalUpdateNotificationView,
-                  views::WidgetDelegateView)
-
  public:
+  METADATA_HEADER(KioskExternalUpdateNotificationView);
   explicit KioskExternalUpdateNotificationView(
       KioskExternalUpdateNotification* owner)
       : owner_(owner), widget_closed_(false) {
@@ -103,8 +101,8 @@ class KioskExternalUpdateNotificationView : public views::WidgetDelegateView {
 
   // The owner of this message which needs to get notified when the message
   // closes.
-  raw_ptr<KioskExternalUpdateNotification> owner_;
-  raw_ptr<views::Label> label_;  // owned by views hierarchy.
+  raw_ptr<KioskExternalUpdateNotification, ExperimentalAsh> owner_;
+  raw_ptr<views::Label, ExperimentalAsh> label_;  // owned by views hierarchy.
 
   // True if the widget got already closed.
   bool widget_closed_;
@@ -162,7 +160,7 @@ void KioskExternalUpdateNotification::Dismiss() {
   }
 }
 
-BEGIN_METADATA(KioskExternalUpdateNotificationView)
+BEGIN_METADATA(KioskExternalUpdateNotificationView, views::WidgetDelegateView)
 END_METADATA
 
 }  // namespace ash

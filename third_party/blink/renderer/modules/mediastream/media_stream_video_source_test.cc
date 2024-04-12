@@ -5,7 +5,6 @@
 #include <utility>
 
 #include "base/memory/ptr_util.h"
-#include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
@@ -25,7 +24,6 @@
 #include "third_party/blink/renderer/modules/mediastream/video_track_adapter_settings.h"
 #include "third_party/blink/renderer/platform/mediastream/media_stream_source.h"
 #include "third_party/blink/renderer/platform/testing/io_task_runner_testing_platform_support.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
@@ -56,7 +54,7 @@ class MediaStreamVideoSourceTest : public testing::Test {
     stream_source_ = MakeGarbageCollected<MediaStreamSource>(
         String::FromUTF8("dummy_source_id"), MediaStreamSource::kTypeVideo,
         String::FromUTF8("dummy_source_name"), false /* remote */,
-        base::WrapUnique(mock_stream_video_source_.get()));
+        base::WrapUnique(mock_stream_video_source_));
     ON_CALL(*mock_stream_video_source_, OnSourceCanDiscardAlpha)
         .WillByDefault(Return());
     ON_CALL(*mock_stream_video_source_, SupportsEncodedOutput)
@@ -86,13 +84,14 @@ class MediaStreamVideoSourceTest : public testing::Test {
   WebMediaStreamTrack CreateTrack(
       const String& id,
       const VideoTrackAdapterSettings& adapter_settings,
-      const std::optional<bool>& noise_reduction,
+      const absl::optional<bool>& noise_reduction,
       bool is_screencast,
       double min_frame_rate) {
     bool enabled = true;
     return MediaStreamVideoTrack::CreateVideoTrack(
         mock_stream_video_source_, adapter_settings, noise_reduction,
-        is_screencast, min_frame_rate, nullptr, false,
+        is_screencast, min_frame_rate, absl::nullopt, absl::nullopt,
+        absl::nullopt, false,
         WTF::BindOnce(&MediaStreamVideoSourceTest::OnConstraintsApplied,
                       base::Unretained(this)),
         enabled);
@@ -101,17 +100,17 @@ class MediaStreamVideoSourceTest : public testing::Test {
   WebMediaStreamTrack CreateTrack() {
     return CreateTrack("123",
                        VideoTrackAdapterSettings(gfx::Size(100, 100), 30.0),
-                       std::optional<bool>(), false, 0.0);
+                       absl::optional<bool>(), false, 0.0);
   }
 
   WebMediaStreamTrack CreateTrackAndStartSource(
       int width,
       int height,
-      std::optional<double> frame_rate,
+      absl::optional<double> frame_rate,
       bool detect_rotation = false) {
     WebMediaStreamTrack track = CreateTrack(
         "123", VideoTrackAdapterSettings(gfx::Size(width, height), frame_rate),
-        std::optional<bool>(), false, 0.0);
+        absl::optional<bool>(), false, 0.0);
 
     EXPECT_EQ(0, NumberOfSuccessConstraintsCallbacks());
     mock_stream_video_source_->StartMockedSource();
@@ -234,7 +233,7 @@ class MediaStreamVideoSourceTest : public testing::Test {
         "dummy",
         VideoTrackAdapterSettings(gfx::Size(expected_width2, expected_height2),
                                   MediaStreamVideoSource::kDefaultFrameRate),
-        std::optional<bool>(), false, 0.0);
+        absl::optional<bool>(), false, 0.0);
 
     MockMediaStreamVideoSink sink1;
     sink1.ConnectToTrack(track1);
@@ -284,7 +283,6 @@ class MediaStreamVideoSourceTest : public testing::Test {
       track_to_release_.Reset();
     }
   }
-  test::TaskEnvironment task_environment_;
   ScopedTestingPlatformSupport<IOTaskRunnerTestingPlatformSupport> platform_;
   WebMediaStreamTrack track_to_release_;
   int number_of_successful_constraints_applied_;
@@ -293,8 +291,7 @@ class MediaStreamVideoSourceTest : public testing::Test {
   WebString result_name_;
   Persistent<MediaStreamSource> stream_source_;
   // |mock_stream_video_source_| is owned by |stream_source_|.
-  raw_ptr<MockMediaStreamVideoSource, DanglingUntriaged>
-      mock_stream_video_source_;
+  MockMediaStreamVideoSource* mock_stream_video_source_;
 };
 
 TEST_F(MediaStreamVideoSourceTest, AddTrackAndStartSource) {
@@ -348,7 +345,8 @@ TEST_F(MediaStreamVideoSourceTest, SourceChangeFrameSize) {
   // Expect the source to start capture with the supported resolution.
   // Disable frame-rate adjustment in spec-compliant mode to ensure no frames
   // are dropped.
-  WebMediaStreamTrack track = CreateTrackAndStartSource(800, 700, std::nullopt);
+  WebMediaStreamTrack track =
+      CreateTrackAndStartSource(800, 700, absl::nullopt);
 
   MockMediaStreamVideoSink sink;
   sink.ConnectToTrack(track);
@@ -383,7 +381,7 @@ TEST_F(MediaStreamVideoSourceTest, RotatedSourceDetectionDisabled) {
   // Disable frame-rate adjustment in spec-compliant mode to ensure no frames
   // are dropped.
   WebMediaStreamTrack track =
-      CreateTrackAndStartSource(1280, 720, std::nullopt, true);
+      CreateTrackAndStartSource(1280, 720, absl::nullopt, true);
 
   MockMediaStreamVideoSink sink;
   sink.ConnectToTrack(track);
@@ -412,7 +410,7 @@ TEST_F(MediaStreamVideoSourceTest, RotatedSourceDetectionEnabled) {
   // Disable frame-rate adjustment in spec-compliant mode to ensure no frames
   // are dropped.
   WebMediaStreamTrack track =
-      CreateTrackAndStartSource(1280, 720, std::nullopt, true);
+      CreateTrackAndStartSource(1280, 720, absl::nullopt, true);
 
   MockMediaStreamVideoSink sink;
   sink.ConnectToTrack(track);
@@ -552,16 +550,18 @@ TEST_F(MediaStreamVideoSourceTest, ForwardsAtMaxFrameRateAndDropsWhenTooClose) {
   base::OnceClosure quit_closure = run_loop.QuitClosure();
 
   EXPECT_CALL(sink, OnVideoFrame).Times(3).WillRepeatedly(Return());
-  EXPECT_CALL(sink, OnNotifyFrameDropped(
-                        media::VideoCaptureFrameDropReason::
-                            kResolutionAdapterFrameRateIsHigherThanRequested))
+  EXPECT_CALL(*mock_source(),
+              OnFrameDropped(media::VideoCaptureFrameDropReason::
+                                 kResolutionAdapterTimestampTooCloseToPrevious))
       .Times(1)
       .WillOnce([&] { std::move(quit_closure).Run(); });
 
   DeliverVideoFrame(100, 100, base::Milliseconds(100));
   DeliverVideoFrame(100, 100, base::Milliseconds(200));
   DeliverVideoFrame(100, 100, base::Milliseconds(300));
-  DeliverVideoFrame(100, 100, base::Milliseconds(304));
+  DeliverVideoFrame(
+      100, 100,
+      base::Milliseconds(300 + VideoTrackAdapter::kMinTimeBetweenFramesMs - 1));
   run_loop.Run();
   EXPECT_EQ(3, sink.number_of_frames());
 

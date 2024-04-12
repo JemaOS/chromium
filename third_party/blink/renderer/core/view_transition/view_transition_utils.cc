@@ -13,38 +13,17 @@
 namespace blink {
 
 // static
-ViewTransition* ViewTransitionUtils::GetTransition(const Document& document) {
+ViewTransition* ViewTransitionUtils::GetActiveTransition(
+    const Document& document) {
   auto* supplement = ViewTransitionSupplement::FromIfExists(document);
   if (!supplement) {
     return nullptr;
   }
-  ViewTransition* transition = supplement->GetTransition();
+  auto* transition = supplement->GetActiveTransition();
   if (!transition || transition->IsDone()) {
     return nullptr;
   }
   return transition;
-}
-
-// static
-ViewTransition* ViewTransitionUtils::GetIncomingCrossDocumentTransition(
-    const Document& document) {
-  if (auto* transition = GetTransition(document);
-      transition && transition->IsForNavigationOnNewDocument()) {
-    return transition;
-  }
-  return nullptr;
-}
-
-// static
-DOMViewTransition* ViewTransitionUtils::GetTransitionScriptDelegate(
-    const Document& document) {
-  ViewTransition* view_transition =
-      ViewTransitionUtils::GetTransition(document);
-  if (!view_transition) {
-    return nullptr;
-  }
-
-  return view_transition->GetScriptDelegate();
 }
 
 // static
@@ -55,7 +34,7 @@ PseudoElement* ViewTransitionUtils::GetRootPseudo(const Document& document) {
 
   PseudoElement* view_transition_pseudo =
       document.documentElement()->GetPseudoElement(kPseudoIdViewTransition);
-  DCHECK(!view_transition_pseudo || GetTransition(document));
+  DCHECK(!view_transition_pseudo || GetActiveTransition(document));
   return view_transition_pseudo;
 }
 
@@ -86,7 +65,7 @@ bool ViewTransitionUtils::IsViewTransitionParticipant(
   if (const Element* element = DynamicTo<Element>(object.GetNode())) {
     if (const ComputedStyle* style = element->GetComputedStyle()) {
       DCHECK_EQ(style->ElementIsViewTransitionParticipant(),
-                IsViewTransitionElementExcludingRootFromSupplement(*element))
+                IsViewTransitionParticipantFromSupplement(*element))
           << object.DebugName();
       return style->ElementIsViewTransitionParticipant();
     }
@@ -97,16 +76,16 @@ bool ViewTransitionUtils::IsViewTransitionParticipant(
 }
 
 // static
-bool ViewTransitionUtils::IsViewTransitionElementExcludingRootFromSupplement(
+bool ViewTransitionUtils::IsViewTransitionParticipantFromSupplement(
     const Element& element) {
-  ViewTransition* transition = GetTransition(element.GetDocument());
-  return transition && transition->IsTransitionElementExcludingRoot(element);
+  ViewTransition* transition = GetActiveTransition(element.GetDocument());
+  return transition && transition->IsRepresentedViaPseudoElements(element);
 }
 
 // static
 bool ViewTransitionUtils::IsViewTransitionParticipantFromSupplement(
     const LayoutObject& object) {
-  ViewTransition* transition = GetTransition(object.GetDocument());
+  ViewTransition* transition = GetActiveTransition(object.GetDocument());
   return transition && transition->IsRepresentedViaPseudoElements(object);
 }
 

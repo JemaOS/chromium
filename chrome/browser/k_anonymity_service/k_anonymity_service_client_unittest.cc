@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors
+// Copyright 2022 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,14 +10,11 @@
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "chrome/browser/k_anonymity_service/k_anonymity_service_metrics.h"
-#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
-#include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
-#include "components/signin/public/identity_manager/identity_manager.h"
 #include "content/public/browser/k_anonymity_service_delegate.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/test/browser_task_environment.h"
@@ -43,37 +40,28 @@ class KAnonymityServiceClientTest : public testing::Test {
 
  protected:
   void SetUp() override {
-    feature_list_.InitWithFeatures(
-        /*enabled_features=*/{network::features::kPrivateStateTokens},
-        /*disabled_features=*/{features::kKAnonymityServiceOHTTPRequests});
+    feature_list_.InitAndEnableFeature(network::features::kPrivateStateTokens);
     TestingProfile::Builder builder;
     builder.SetSharedURLLoaderFactory(
         base::MakeRefCounted<network::WeakWrapperSharedURLLoaderFactory>(
             &test_url_loader_factory_));
     profile_ = IdentityTestEnvironmentProfileAdaptor::
-        CreateProfileForIdentityTestEnvironment(builder);
+        CreateProfileForIdentityTestEnvironment(
+            builder, signin::AccountConsistencyMethod::kMirror);
   }
 
   void InitializeIdentity(bool signed_on) {
-    const std::string kTestEmail = "user@gmail.com";
     auto identity_test_env_adaptor =
         std::make_unique<IdentityTestEnvironmentProfileAdaptor>(profile_.get());
     auto* identity_test_env = identity_test_env_adaptor->identity_test_env();
     auto* identity_manager = identity_test_env->identity_manager();
     identity_test_env->SetAutomaticIssueOfAccessTokens(true);
-
     if (signed_on) {
       identity_test_env->MakePrimaryAccountAvailable(
-          kTestEmail, signin::ConsentLevel::kSignin);
+          "user@gmail.com", signin::ConsentLevel::kSignin);
       ASSERT_TRUE(
           identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin));
       EXPECT_EQ(1U, identity_manager->GetAccountsWithRefreshTokens().size());
-
-      auto account_info =
-          identity_manager->FindExtendedAccountInfoByEmailAddress(kTestEmail);
-      AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
-      mutator.set_can_run_chrome_privacy_sandbox_trials(true);
-      signin::UpdateAccountInfoForAccount(identity_manager, account_info);
     }
   }
 
@@ -164,9 +152,7 @@ class KAnonymityServiceClientTest : public testing::Test {
   data_decoder::test::InProcessDataDecoder decoder_;
 };
 
-// JoinSet fails because the user is not logged in and doesn't have the
-// capability needed to use the K-AnonymityService.
-TEST_F(KAnonymityServiceClientTest, TryJoinSetFails) {
+TEST_F(KAnonymityServiceClientTest, TryJoinSetFetchTokenFails) {
   InitializeIdentity(false);
   KAnonymityServiceClient k_service(profile());
   base::HistogramTester hist;
@@ -179,7 +165,10 @@ TEST_F(KAnonymityServiceClientTest, TryJoinSetFails) {
                     }));
   run_loop.Run();
   EXPECT_EQ(0, GetNumPendingURLRequests());
-  CheckJoinSetHistogramActions(hist, {});
+  CheckJoinSetHistogramActions(
+      hist, {
+                {KAnonymityServiceJoinSetAction::kJoinSet, 1},
+            });
 }
 
 TEST_F(KAnonymityServiceClientTest, TryJoinSetSuccess) {
@@ -327,29 +316,7 @@ TEST_F(KAnonymityServiceClientTest, TryJoinSetOverflowQueue) {
              {KAnonymityServiceJoinSetAction::kJoinSetQueueFull, 1}});
 }
 
-// Query fails because the user is not logged in and doesn't have the
-// capability needed to use the K-AnonymityService.
-TEST_F(KAnonymityServiceClientTest, TryQuerySetFailed) {
-  KAnonymityServiceClient k_service(profile());
-
-  base::HistogramTester hist;
-  base::RunLoop run_loop;
-  std::vector<std::string> sets;
-  sets.push_back("1");
-  sets.push_back("2");
-  k_service.QuerySets(
-      std::move(sets),
-      base::BindLambdaForTesting([&run_loop](std::vector<bool> result) {
-        run_loop.Quit();
-        EXPECT_EQ(0u, result.size());
-      }));
-  run_loop.Run();
-  EXPECT_EQ(0, GetNumPendingURLRequests());
-  CheckQuerySetHistogramActions(hist, {});
-}
-
 TEST_F(KAnonymityServiceClientTest, TryQuerySetAllNotKAnon) {
-  InitializeIdentity(true);
   KAnonymityServiceClient k_service(profile());
 
   base::HistogramTester hist;
@@ -485,9 +452,9 @@ class OhttpTestNetworkContext : public network::TestNetworkContext {
   }
 
  private:
-  std::optional<net::Error> error_;
-  std::optional<int> outer_response_error_code_;
-  std::optional<int> inner_response_code_;
+  absl::optional<net::Error> error_;
+  absl::optional<int> outer_response_error_code_;
+  absl::optional<int> inner_response_code_;
   bool drop_requests_ = false;
   network::mojom::ObliviousHttpRequestPtr pending_request_;
   mojo::Remote<network::mojom::ObliviousHttpClient> remote_;
@@ -520,7 +487,8 @@ class KAnonymityServiceClientJoinQueryTest
         base::MakeRefCounted<network::WeakWrapperSharedURLLoaderFactory>(
             &test_url_loader_factory_));
     profile_ = IdentityTestEnvironmentProfileAdaptor::
-        CreateProfileForIdentityTestEnvironment(builder);
+        CreateProfileForIdentityTestEnvironment(
+            builder, signin::AccountConsistencyMethod::kMirror);
     profile_->GetDefaultStoragePartition()->SetNetworkContextForTesting(
         network_context_receiver_.BindNewPipeAndPassRemote());
   }
@@ -785,7 +753,6 @@ TEST_F(KAnonymityServiceClientJoinQueryTest, TryQuerySetGetOHTTPKeyFailed) {
 }
 
 TEST_F(KAnonymityServiceClientJoinQueryTest, TryQuerySetBadResponse) {
-  InitializeIdentity(true);
   base::HistogramTester hist;
   std::vector<std::string> sets;
   sets.push_back("1");
@@ -866,7 +833,6 @@ TEST_F(KAnonymityServiceClientJoinQueryTest, TryQuerySetBadResponse) {
 }
 
 TEST_F(KAnonymityServiceClientJoinQueryTest, TryQuerySet) {
-  InitializeIdentity(true);
   KAnonymityServiceClient k_service(profile());
   base::HistogramTester hist;
   std::vector<std::string> sets;
@@ -897,7 +863,6 @@ TEST_F(KAnonymityServiceClientJoinQueryTest, TryQuerySet) {
 }
 
 TEST_F(KAnonymityServiceClientJoinQueryTest, TryQuerySetMultipleSets) {
-  InitializeIdentity(true);
   KAnonymityServiceClient k_service(profile());
   base::HistogramTester hist;
   std::vector<std::string> sets;
@@ -948,7 +913,6 @@ TEST_F(KAnonymityServiceClientJoinQueryTest, TryQuerySetMultipleSets) {
 }
 
 TEST_F(KAnonymityServiceClientJoinQueryTest, TryQuerySetCoalescesSplitSets) {
-  InitializeIdentity(true);
   KAnonymityServiceClient k_service(profile());
   base::HistogramTester hist;
   std::vector<std::string> sets;
@@ -989,7 +953,6 @@ TEST_F(KAnonymityServiceClientJoinQueryTest, TryQuerySetCoalescesSplitSets) {
 
 TEST_F(KAnonymityServiceClientJoinQueryTest,
        TryQuerySetSingleFailureDropsAllRequests) {
-  InitializeIdentity(true);
   KAnonymityServiceClient k_service(profile());
   base::HistogramTester hist;
   std::vector<std::string> sets;
@@ -1024,11 +987,8 @@ TEST_F(KAnonymityServiceClientJoinQueryTest,
        {KAnonymityServiceQuerySetAction::kFetchQuerySetOHTTPKeyFailed, 1}});
 }
 
-// This test is disabled as the current policy blocks running in OTR mode
-// entirely.
-// TODO(behamilton): Re-enable this test when we are allowed to run in OTR mode.
 TEST_F(KAnonymityServiceClientJoinQueryTest,
-       DISABLED_StorageDoesNotPersistWhenOffTheRecord) {
+       StorageDoesNotPersistWhenOffTheRecord) {
   CreateOffTheRecordProfile();
   std::vector<std::string> sets;
   sets.push_back("1");

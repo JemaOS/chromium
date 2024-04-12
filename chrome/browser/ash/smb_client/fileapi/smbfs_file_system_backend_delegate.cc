@@ -11,7 +11,8 @@
 #include "storage/browser/file_system/file_stream_reader.h"
 #include "storage/browser/file_system/file_stream_writer.h"
 
-namespace ash::smb_client {
+namespace ash {
+namespace smb_client {
 
 SmbFsFileSystemBackendDelegate::SmbFsFileSystemBackendDelegate(Profile* profile)
     : async_file_util_(std::make_unique<SmbFsAsyncFileUtil>(profile)) {}
@@ -57,4 +58,5 @@ void SmbFsFileSystemBackendDelegate::GetRedirectURLForContents(
   NOTREACHED();
 }
 
-}  // namespace ash::smb_client
+}  // namespace smb_client
+}  // namespace ash

@@ -5,14 +5,11 @@
 #include "third_party/blink/renderer/core/fetch/body_stream_buffer.h"
 
 #include <memory>
-
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_testing.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_readable_stream.h"
-#include "third_party/blink/renderer/core/dom/abort_controller.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/fetch/blob_bytes_consumer.h"
 #include "third_party/blink/renderer/core/fetch/bytes_consumer_test_util.h"
@@ -35,7 +32,6 @@
 #include "third_party/blink/renderer/platform/loader/testing/replaying_bytes_consumer.h"
 #include "third_party/blink/renderer/platform/network/encoded_form_data.h"
 #include "third_party/blink/renderer/platform/scheduler/test/fake_task_runner.h"
-#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
 
 namespace blink {
@@ -77,8 +73,7 @@ class BodyStreamBufferTest : public testing::Test {
     v8::TryCatch block(script_state->GetIsolate());
     ScriptValue r = Eval(script_state, s);
     if (block.HasCaught()) {
-      ADD_FAILURE() << ToCoreString(script_state->GetIsolate(),
-                                    block.Exception()
+      ADD_FAILURE() << ToCoreString(block.Exception()
                                         ->ToString(script_state->GetContext())
                                         .ToLocalChecked())
                            .Utf8();
@@ -92,9 +87,6 @@ class BodyStreamBufferTest : public testing::Test {
     uint64_t length = data->length();
     return BlobDataHandle::Create(std::move(data), length);
   }
-
- private:
-  test::TaskEnvironment task_environment;
 };
 
 class MockFetchDataLoader : public FetchDataLoader {
@@ -188,10 +180,12 @@ TEST_F(BodyStreamBufferTest, TeeFromHandleMadeFromStream) {
 
   underlying_source->Enqueue(ScriptValue(
       scope.GetIsolate(),
-      ToV8Traits<DOMUint8Array>::ToV8(scope.GetScriptState(), chunk1)));
+      ToV8Traits<DOMUint8Array>::ToV8(scope.GetScriptState(), chunk1)
+          .ToLocalChecked()));
   underlying_source->Enqueue(ScriptValue(
       scope.GetIsolate(),
-      ToV8Traits<DOMUint8Array>::ToV8(scope.GetScriptState(), chunk2)));
+      ToV8Traits<DOMUint8Array>::ToV8(scope.GetScriptState(), chunk2)
+          .ToLocalChecked()));
   underlying_source->Close();
 
   Checkpoint checkpoint;
@@ -256,8 +250,7 @@ TEST_F(BodyStreamBufferTest, DrainAsBlobDataHandle) {
   EXPECT_EQ(side_data_blob, buffer->GetSideDataBlobForTest());
   scoped_refptr<BlobDataHandle> output_blob_data_handle =
       buffer->DrainAsBlobDataHandle(
-          BytesConsumer::BlobSizePolicy::kAllowBlobWithInvalidSize,
-          ASSERT_NO_EXCEPTION);
+          BytesConsumer::BlobSizePolicy::kAllowBlobWithInvalidSize);
 
   EXPECT_TRUE(buffer->IsStreamLocked());
   EXPECT_TRUE(buffer->IsStreamDisturbed());
@@ -281,8 +274,7 @@ TEST_F(BodyStreamBufferTest, DrainAsBlobDataHandleReturnsNull) {
   EXPECT_EQ(side_data_blob, buffer->GetSideDataBlobForTest());
 
   EXPECT_FALSE(buffer->DrainAsBlobDataHandle(
-      BytesConsumer::BlobSizePolicy::kAllowBlobWithInvalidSize,
-      ASSERT_NO_EXCEPTION));
+      BytesConsumer::BlobSizePolicy::kAllowBlobWithInvalidSize));
 
   EXPECT_FALSE(buffer->IsStreamLocked());
   EXPECT_FALSE(buffer->IsStreamDisturbed());
@@ -304,8 +296,7 @@ TEST_F(BodyStreamBufferTest,
   EXPECT_TRUE(buffer->IsStreamReadable());
 
   EXPECT_FALSE(buffer->DrainAsBlobDataHandle(
-      BytesConsumer::BlobSizePolicy::kAllowBlobWithInvalidSize,
-      ASSERT_NO_EXCEPTION));
+      BytesConsumer::BlobSizePolicy::kAllowBlobWithInvalidSize));
 
   EXPECT_FALSE(buffer->IsStreamLocked());
   EXPECT_FALSE(buffer->IsStreamDisturbed());
@@ -331,8 +322,7 @@ TEST_F(BodyStreamBufferTest, DrainAsFormData) {
   EXPECT_FALSE(buffer->IsStreamLocked());
   EXPECT_FALSE(buffer->IsStreamDisturbed());
   EXPECT_EQ(side_data_blob, buffer->GetSideDataBlobForTest());
-  scoped_refptr<EncodedFormData> output_form_data =
-      buffer->DrainAsFormData(ASSERT_NO_EXCEPTION);
+  scoped_refptr<EncodedFormData> output_form_data = buffer->DrainAsFormData();
 
   EXPECT_TRUE(buffer->IsStreamLocked());
   EXPECT_TRUE(buffer->IsStreamDisturbed());
@@ -356,7 +346,7 @@ TEST_F(BodyStreamBufferTest, DrainAsFormDataReturnsNull) {
   EXPECT_FALSE(buffer->IsStreamDisturbed());
   EXPECT_EQ(side_data_blob, buffer->GetSideDataBlobForTest());
 
-  EXPECT_FALSE(buffer->DrainAsFormData(ASSERT_NO_EXCEPTION));
+  EXPECT_FALSE(buffer->DrainAsFormData());
 
   EXPECT_FALSE(buffer->IsStreamLocked());
   EXPECT_FALSE(buffer->IsStreamDisturbed());
@@ -376,7 +366,7 @@ TEST_F(BodyStreamBufferTest,
   EXPECT_FALSE(buffer->IsStreamDisturbed());
   EXPECT_TRUE(buffer->IsStreamReadable());
 
-  EXPECT_FALSE(buffer->DrainAsFormData(ASSERT_NO_EXCEPTION));
+  EXPECT_FALSE(buffer->DrainAsFormData());
 
   EXPECT_FALSE(buffer->IsStreamLocked());
   EXPECT_FALSE(buffer->IsStreamDisturbed());
@@ -630,7 +620,7 @@ TEST_F(BodyStreamBufferTest, SourceShouldBeCanceledWhenCanceled) {
   ScriptValue reason(scope.GetIsolate(),
                      V8String(scope.GetIsolate(), "reason"));
   EXPECT_FALSE(consumer->IsCancelled());
-  buffer->Cancel(reason.V8Value(), ASSERT_NO_EXCEPTION);
+  buffer->Cancel(scope.GetScriptState(), reason);
   EXPECT_TRUE(consumer->IsCancelled());
 }
 
@@ -649,8 +639,7 @@ TEST_F(BodyStreamBufferTest, NestedPull) {
       scope.GetScriptState()->GetContext()->Global()->CreateDataProperty(
           scope.GetScriptState()->GetContext(),
           V8String(scope.GetIsolate(), "stream"),
-          ToV8Traits<ReadableStream>::ToV8(scope.GetScriptState(),
-                                           buffer->Stream()));
+          ToV8(buffer->Stream(), scope.GetScriptState()));
 
   ASSERT_TRUE(result.IsJust());
   ASSERT_TRUE(result.FromJust());
@@ -683,13 +672,12 @@ TEST_F(BodyStreamBufferTest, AbortSignalMakesAborted) {
   // This BytesConsumer is not drainable.
   BytesConsumer* src = MakeGarbageCollected<ReplayingBytesConsumer>(
       scope.GetDocument().GetTaskRunner(TaskType::kNetworking));
-  auto* controller = AbortController::Create(scope.GetScriptState());
+  auto* signal = MakeGarbageCollected<AbortSignal>(scope.GetExecutionContext());
   BodyStreamBuffer* buffer = BodyStreamBuffer::Create(
-      scope.GetScriptState(), src, controller->signal(),
-      /*cached_metadata_handler=*/nullptr);
+      scope.GetScriptState(), src, signal, /*cached_metadata_handler=*/nullptr);
 
   EXPECT_FALSE(buffer->IsAborted());
-  controller->abort(scope.GetScriptState());
+  signal->SignalAbort(scope.GetScriptState());
   EXPECT_TRUE(buffer->IsAborted());
 }
 
@@ -716,13 +704,12 @@ TEST_F(BodyStreamBufferTest,
 
   EXPECT_CALL(checkpoint, Call(3));
 
-  auto* controller = AbortController::Create(scope.GetScriptState());
+  auto* signal = MakeGarbageCollected<AbortSignal>(scope.GetExecutionContext());
   BodyStreamBuffer* buffer = BodyStreamBuffer::Create(
-      scope.GetScriptState(), src, controller->signal(),
-      /*cached_metadata_handler=*/nullptr);
+      scope.GetScriptState(), src, signal, /*cached_metadata_handler=*/nullptr);
 
   checkpoint.Call(1);
-  controller->abort(scope.GetScriptState());
+  signal->SignalAbort(scope.GetScriptState());
 
   checkpoint.Call(2);
   buffer->StartLoading(loader, client, ASSERT_NO_EXCEPTION);
@@ -751,16 +738,15 @@ TEST_F(BodyStreamBufferTest, AbortAfterStartLoadingCallsDataLoaderClientAbort) {
 
   EXPECT_CALL(checkpoint, Call(3));
 
-  auto* controller = AbortController::Create(scope.GetScriptState());
+  auto* signal = MakeGarbageCollected<AbortSignal>(scope.GetExecutionContext());
   BodyStreamBuffer* buffer = BodyStreamBuffer::Create(
-      scope.GetScriptState(), src, controller->signal(),
-      /*cached_metadata_handler=*/nullptr);
+      scope.GetScriptState(), src, signal, /*cached_metadata_handler=*/nullptr);
 
   checkpoint.Call(1);
   buffer->StartLoading(loader, client, ASSERT_NO_EXCEPTION);
 
   checkpoint.Call(2);
-  controller->abort(scope.GetScriptState());
+  signal->SignalAbort(scope.GetScriptState());
 
   checkpoint.Call(3);
 }
@@ -787,17 +773,16 @@ TEST_F(BodyStreamBufferTest,
 
   EXPECT_CALL(checkpoint, Call(3));
 
-  auto* controller = AbortController::Create(scope.GetScriptState());
+  auto* signal = MakeGarbageCollected<AbortSignal>(scope.GetExecutionContext());
   BodyStreamBuffer* buffer = BodyStreamBuffer::Create(
-      scope.GetScriptState(), src, controller->signal(),
-      /*cached_metadata_handler=*/nullptr);
+      scope.GetScriptState(), src, signal, /*cached_metadata_handler=*/nullptr);
 
   checkpoint.Call(1);
   buffer->StartLoading(loader, client, ASSERT_NO_EXCEPTION);
   test::RunPendingTasks();
 
   checkpoint.Call(2);
-  controller->abort(scope.GetScriptState());
+  signal->SignalAbort(scope.GetScriptState());
 
   checkpoint.Call(3);
 }
@@ -818,7 +803,7 @@ TEST_F(BodyStreamBufferTest, CachedMetadataHandler) {
     EXPECT_EQ(handler, buffer->GetCachedMetadataHandler());
     EXPECT_NE(weak_handler.Get(), nullptr);
 
-    buffer->CloseAndLockAndDisturb(ASSERT_NO_EXCEPTION);
+    buffer->CloseAndLockAndDisturb();
   }
 
   ThreadState::Current()->CollectAllGarbageForTesting();

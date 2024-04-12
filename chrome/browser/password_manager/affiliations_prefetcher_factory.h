@@ -31,7 +31,7 @@ class AffiliationsPrefetcherFactory : public ProfileKeyedServiceFactory {
   AffiliationsPrefetcherFactory();
   ~AffiliationsPrefetcherFactory() override;
 
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

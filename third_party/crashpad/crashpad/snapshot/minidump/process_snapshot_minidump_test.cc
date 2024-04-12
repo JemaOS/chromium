@@ -868,9 +868,8 @@ TEST(ProcessSnapshotMinidump, ThreadsWithNames) {
 }
 
 TEST(ProcessSnapshotMinidump, System) {
-  const char cpu_info[] = "GenuineIntel";
-  uint32_t cpu_info_bytes[3];
-  memcpy(cpu_info_bytes, cpu_info, sizeof(cpu_info_bytes));
+  const char* cpu_info = "GenuineIntel";
+  const uint32_t* cpu_info_bytes = reinterpret_cast<const uint32_t*>(cpu_info);
   StringFile string_file;
 
   MINIDUMP_HEADER header = {};

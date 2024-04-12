@@ -7,8 +7,6 @@
 
 #include "base/task/single_thread_task_runner.h"
 #include "third_party/blink/public/mojom/bluetooth/web_bluetooth.mojom-blink.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_typedefs.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/modules/bluetooth/bluetooth_device.h"
@@ -22,8 +20,9 @@
 namespace blink {
 
 class BluetoothDevice;
-class BluetoothRemoteGATTService;
 class ExceptionState;
+class ScriptPromise;
+class ScriptPromiseResolver;
 class ScriptState;
 
 // BluetoothRemoteGATTServer provides a way to interact with a connected
@@ -67,36 +66,33 @@ class BluetoothRemoteGATTServer
   void Trace(Visitor*) const override;
 
   // IDL exposed interface:
-  BluetoothDevice* device() { return device_.Get(); }
+  BluetoothDevice* device() { return device_; }
   bool connected() { return connected_; }
-  ScriptPromiseTyped<BluetoothRemoteGATTServer> connect(ScriptState*,
-                                                        ExceptionState&);
+  ScriptPromise connect(ScriptState*, ExceptionState&);
   void disconnect(ScriptState*, ExceptionState&);
-  ScriptPromiseTyped<BluetoothRemoteGATTService> getPrimaryService(
-      ScriptState* script_state,
-      const V8BluetoothServiceUUID* service,
-      ExceptionState& exception_state);
-  ScriptPromiseTyped<IDLSequence<BluetoothRemoteGATTService>>
-  getPrimaryServices(ScriptState* script_state,
-                     const V8BluetoothServiceUUID* service,
-                     ExceptionState& exception_state);
-  ScriptPromiseTyped<IDLSequence<BluetoothRemoteGATTService>>
-  getPrimaryServices(ScriptState*, ExceptionState&);
+  ScriptPromise getPrimaryService(ScriptState* script_state,
+                                  const V8BluetoothServiceUUID* service,
+                                  ExceptionState& exception_state);
+  ScriptPromise getPrimaryServices(ScriptState* script_state,
+                                   const V8BluetoothServiceUUID* service,
+                                   ExceptionState& exception_state);
+  ScriptPromise getPrimaryServices(ScriptState*, ExceptionState&);
 
  private:
-  void GetPrimaryServicesImpl(ScriptPromiseResolver*,
-                              ExceptionState&,
-                              mojom::blink::WebBluetoothGATTQueryQuantity,
-                              String service_uuid = String());
+  ScriptPromise GetPrimaryServicesImpl(
+      ScriptState*,
+      ExceptionState&,
+      mojom::blink::WebBluetoothGATTQueryQuantity,
+      String service_uuid = String());
 
-  void ConnectCallback(ScriptPromiseResolverTyped<BluetoothRemoteGATTServer>*,
+  void ConnectCallback(ScriptPromiseResolver*,
                        mojom::blink::WebBluetoothResult);
   void GetPrimaryServicesCallback(
       const String& requested_service_uuid,
       mojom::blink::WebBluetoothGATTQueryQuantity,
       ScriptPromiseResolver*,
       mojom::blink::WebBluetoothResult,
-      std::optional<Vector<mojom::blink::WebBluetoothRemoteGATTServicePtr>>
+      absl::optional<Vector<mojom::blink::WebBluetoothRemoteGATTServicePtr>>
           services);
 
   // Contains a ScriptPromiseResolver corresponding to each active algorithm

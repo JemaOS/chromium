@@ -7,7 +7,6 @@
 #include "base/containers/contains.h"
 #include "base/containers/span.h"
 #include "base/logging.h"
-#include "media/base/video_frame_converter.h"
 #include "media/base/video_util.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/platform/modules/webrtc/webrtc_logging.h"
@@ -194,6 +193,7 @@ scoped_refptr<media::VideoFrame> MakeScaledVideoFrame(
         shared_resources,
     bool source_is_nv12) {
   media::VideoPixelFormat dst_format = media::PIXEL_FORMAT_UNKNOWN;
+  bool tmp_buffer_needed = false;
   if (source_is_nv12) {
     DCHECK_EQ(source_frame->format(), media::PIXEL_FORMAT_NV12);
     dst_format = media::PIXEL_FORMAT_NV12;
@@ -205,11 +205,12 @@ scoped_refptr<media::VideoFrame> MakeScaledVideoFrame(
              source_frame->format() == media::PIXEL_FORMAT_XRGB ||
              source_frame->format() == media::PIXEL_FORMAT_ABGR ||
              source_frame->format() == media::PIXEL_FORMAT_XBGR);
+      tmp_buffer_needed = true;
     }
 
-    dst_format = source_frame->format() == media::PIXEL_FORMAT_I420A
-                     ? media::PIXEL_FORMAT_I420A
-                     : media::PIXEL_FORMAT_I420;
+    const bool has_alpha = source_frame->format() == media::PIXEL_FORMAT_I420A;
+    dst_format =
+        has_alpha ? media::PIXEL_FORMAT_I420A : media::PIXEL_FORMAT_I420;
   }
 
   // Convert to dst format and scale to the natural size specified in
@@ -224,7 +225,18 @@ scoped_refptr<media::VideoFrame> MakeScaledVideoFrame(
   }
   dst_frame->metadata().MergeMetadataFrom(source_frame->metadata());
 
-  auto status = shared_resources->ConvertAndScale(*source_frame, *dst_frame);
+  if (tmp_buffer_needed) {
+    std::unique_ptr<std::vector<uint8_t>> tmp_buffer =
+        shared_resources->CreateTemporaryVectorBuffer();
+    media::EncoderStatus status =
+        media::ConvertAndScaleFrame(*source_frame, *dst_frame, *tmp_buffer);
+    shared_resources->ReleaseTemporaryVectorBuffer(std::move(tmp_buffer));
+    return status.is_ok() ? dst_frame : nullptr;
+  }
+
+  std::vector<uint8_t> tmp_buffer;
+  media::EncoderStatus status =
+      media::ConvertAndScaleFrame(*source_frame, *dst_frame, tmp_buffer);
   return status.is_ok() ? dst_frame : nullptr;
 }
 
@@ -295,11 +307,6 @@ rtc::scoped_refptr<webrtc::VideoFrameBuffer> ConvertToWebRtcVideoFrameBuffer(
       << "Can not create WebRTC frame buffer for frame "
       << video_frame->AsHumanReadableString();
 
-  auto create_placeholder_frame = [](const media::VideoFrame& frame) {
-    return MakeFrameAdapter(media::VideoFrame::CreateColorFrame(
-        frame.natural_size(), 0u, 0x80, 0x80, frame.timestamp()));
-  };
-
   if (video_frame->storage_type() ==
       media::VideoFrame::StorageType::STORAGE_GPU_MEMORY_BUFFER) {
     auto converted_frame =
@@ -309,7 +316,9 @@ rtc::scoped_refptr<webrtc::VideoFrameBuffer> ConvertToWebRtcVideoFrameBuffer(
     converted_frame =
         MaybeConvertAndScaleFrame(converted_frame, shared_resources);
     if (!converted_frame) {
-      return create_placeholder_frame(*video_frame);
+      return MakeFrameAdapter(media::VideoFrame::CreateColorFrame(
+          video_frame->natural_size(), 0u, 0x80, 0x80,
+          video_frame->timestamp()));
     }
     return MakeFrameAdapter(std::move(converted_frame));
   } else if (video_frame->HasTextures()) {
@@ -321,17 +330,17 @@ rtc::scoped_refptr<webrtc::VideoFrameBuffer> ConvertToWebRtcVideoFrameBuffer(
         MaybeConvertAndScaleFrame(converted_frame, shared_resources);
     if (!converted_frame) {
       DLOG(ERROR) << "Texture backed frame cannot be accessed.";
-      return create_placeholder_frame(*video_frame);
+      return MakeFrameAdapter(media::VideoFrame::CreateColorFrame(
+          video_frame->natural_size(), 0u, 0x80, 0x80,
+          video_frame->timestamp()));
     }
     return MakeFrameAdapter(std::move(converted_frame));
   }
 
   // Since scaling is required, hard-apply both the cropping and scaling
   // before we hand the frame over to WebRTC.
-  auto scaled_frame = MaybeConvertAndScaleFrame(video_frame, shared_resources);
-  if (!scaled_frame) {
-    return create_placeholder_frame(*video_frame);
-  }
+  scoped_refptr<media::VideoFrame> scaled_frame =
+      MaybeConvertAndScaleFrame(video_frame, shared_resources);
   return MakeFrameAdapter(std::move(scaled_frame));
 }
 
@@ -447,9 +456,6 @@ scoped_refptr<media::VideoFrame> ConvertFromMappedWebRtcVideoFrameBuffer(
     default:
       NOTREACHED();
       return nullptr;
-  }
-  if (!video_frame) {
-    return nullptr;
   }
   // The bind ensures that we keep a reference to the underlying buffer.
   video_frame->AddDestructionObserver(

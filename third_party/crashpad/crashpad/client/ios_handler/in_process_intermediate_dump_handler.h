@@ -56,12 +56,8 @@ class InProcessIntermediateDumpHandler final {
   //! \brief Write SystemSnapshot data to the intermediate dump.
   //!
   //! \param[in] writer The dump writer
-  //! \param[in] system_data An object containing various system data points.
-  //! \param[in] report_time Report creation time in nanoseconds as returned by
-  //!     ClockMonotonicNanoseconds().
   static void WriteSystemInfo(IOSIntermediateDumpWriter* writer,
-                              const IOSSystemDataCollector& system_data,
-                              uint64_t report_time_nanos);
+                              const IOSSystemDataCollector& system_data);
 
   //! \brief Write ThreadSnapshot data to the intermediate dump.
   //!

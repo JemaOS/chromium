@@ -68,11 +68,6 @@ void AmbientAccessTokenController::RequestAccessToken(
   RefreshAccessToken();
 }
 
-base::WeakPtr<AmbientAccessTokenController>
-AmbientAccessTokenController::AsWeakPtr() {
-  return weak_factory_.GetWeakPtr();
-}
-
 void AmbientAccessTokenController::RefreshAccessToken() {
   DCHECK(!token_refresh_timer_.IsRunning());
 

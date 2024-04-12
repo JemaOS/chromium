@@ -13,7 +13,6 @@
 #include "chrome/installer/util/delete_after_reboot_helper.h"
 
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "base/files/file_enumerator.h"
@@ -331,7 +330,7 @@ bool MatchPendingDeletePath(const base::FilePath& short_form_needle,
   std::wstring match_path(reg_path.value());
 
   // First chomp the prefix since that will mess up GetShortPathName.
-  std::wstring_view prefix(L"\\??\\");
+  base::WStringPiece prefix(L"\\??\\");
   if (base::StartsWith(match_path, prefix, base::CompareCase::SENSITIVE))
     match_path = match_path.substr(prefix.size());
 

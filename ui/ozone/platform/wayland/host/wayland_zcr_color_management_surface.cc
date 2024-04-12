@@ -26,13 +26,12 @@ WaylandZcrColorManagementSurface::WaylandZcrColorManagementSurface(
     : zcr_color_management_surface_(color_management_surface),
       connection_(connection) {
   DCHECK(color_management_surface);
-  static constexpr zcr_color_management_surface_v1_listener
-      kColorManagementSurfaceListener = {
-          .preferred_color_space = &OnPreferredColorSpace,
-      };
+  static const zcr_color_management_surface_v1_listener listener = {
+      &WaylandZcrColorManagementSurface::OnPreferredColorSpace,
+  };
+
   zcr_color_management_surface_v1_add_listener(
-      zcr_color_management_surface_.get(), &kColorManagementSurfaceListener,
-      this);
+      zcr_color_management_surface_.get(), &listener, this);
 }
 
 WaylandZcrColorManagementSurface::~WaylandZcrColorManagementSurface() = default;
@@ -53,10 +52,11 @@ void WaylandZcrColorManagementSurface::SetColorSpace(
 // static
 void WaylandZcrColorManagementSurface::OnPreferredColorSpace(
     void* data,
-    zcr_color_management_surface_v1* cms,
-    wl_output* output) {
-  auto* self = static_cast<WaylandZcrColorManagementSurface*>(data);
-  DCHECK(self);
+    struct zcr_color_management_surface_v1* cms,
+    struct wl_output* output) {
+  WaylandZcrColorManagementSurface* zcr_color_management_surface =
+      static_cast<WaylandZcrColorManagementSurface*>(data);
+  DCHECK(zcr_color_management_surface);
   // TODO(b/229646816): Determine what should happen upon receiving this event.
 }
 

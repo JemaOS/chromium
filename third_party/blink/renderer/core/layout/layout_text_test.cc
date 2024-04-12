@@ -15,7 +15,7 @@
 #include "third_party/blink/renderer/core/editing/position_with_affinity.h"
 #include "third_party/blink/renderer/core/editing/selection_template.h"
 #include "third_party/blink/renderer/core/editing/testing/selection_sample.h"
-#include "third_party/blink/renderer/core/layout/inline/inline_node_data.h"
+#include "third_party/blink/renderer/core/layout/ng/inline/ng_inline_node_data.h"
 #include "third_party/blink/renderer/core/testing/core_unit_test_helper.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/testing/font_test_helpers.h"
@@ -50,7 +50,7 @@ class LayoutTextTest : public RenderingTest {
     const SelectionInDOMTree selection =
         SelectionSample::SetSelectionText(GetDocument().body(), selection_text);
     UpdateAllLifecyclePhasesForTest();
-    Selection().SetSelection(selection, SetSelectionOptions());
+    Selection().SetSelectionAndEndTyping(selection);
     Selection().CommitAppearanceIfNeeded();
   }
 
@@ -69,7 +69,7 @@ class LayoutTextTest : public RenderingTest {
     stream << "<div style='font: 10px/10px Ahem;'>" << selection_text
            << "</div>";
     SetSelectionAndUpdateLayoutSelection(stream.str());
-    const Node* target = GetElementById("target");
+    const Node* target = GetDocument().getElementById("target");
     const LayoutObject* layout_object =
         target ? target->GetLayoutObject() : FindFirstLayoutText();
     return layout_object->LocalSelectionVisualRect();
@@ -95,9 +95,8 @@ class LayoutTextTest : public RenderingTest {
     // accept out-of-bound offset but |IsAfterNonCollapsedCharacter()| doesn't.
     result[0] = layout_text.IsBeforeNonCollapsedCharacter(offset) ? 'B' : '-';
     result[1] = layout_text.ContainsCaretOffset(offset) ? 'C' : '-';
-    if (offset <= layout_text.TransformedTextLength()) {
+    if (offset <= layout_text.TextLength())
       result[2] = layout_text.IsAfterNonCollapsedCharacter(offset) ? 'A' : '-';
-    }
     return result;
   }
   static constexpr unsigned kIncludeSnappedWidth = 1;
@@ -115,10 +114,10 @@ class LayoutTextTest : public RenderingTest {
     if (block_flow.NeedsCollectInlines()) {
       return "LayoutBlockFlow has NeedsCollectInlines";
     }
-    const InlineNodeData& data = *block_flow.GetInlineNodeData();
+    const NGInlineNodeData& data = *block_flow.GetNGInlineNodeData();
     std::ostringstream stream;
-    for (const InlineItem& item : data.items) {
-      if (item.Type() != InlineItem::kText) {
+    for (const NGInlineItem& item : data.items) {
+      if (item.Type() != NGInlineItem::kText) {
         continue;
       }
       if (item.GetLayoutObject() == layout_text) {
@@ -152,9 +151,9 @@ class LayoutTextTest : public RenderingTest {
   }
 
   unsigned CountNumberOfGlyphs(const LayoutText& layout_text) {
-    auto* const items = layout_text.GetInlineItems();
+    auto* const items = layout_text.GetNGInlineItems();
     return std::accumulate(items->begin(), items->end(), 0u,
-                           [](unsigned sum, const InlineItem& item) {
+                           [](unsigned sum, const NGInlineItem& item) {
                              return sum + item.TextShapeResult()->NumGlyphs();
                            });
   }
@@ -221,7 +220,7 @@ TEST_F(LayoutTextTest, PrewarmGenericFamily) {
 }
 #endif
 
-struct OffsetMappingTestData {
+struct NGOffsetMappingTestData {
   const char* text;
   unsigned dom_start;
   unsigned dom_end;
@@ -241,7 +240,7 @@ struct OffsetMappingTestData {
     {"<div id=target> a  b  </div>", 6, 7, true, 3, 3},
     {"<div>a <span id=target> </span>b</div>", 0, 1, false, 0, 1}};
 
-std::ostream& operator<<(std::ostream& out, OffsetMappingTestData data) {
+std::ostream& operator<<(std::ostream& out, NGOffsetMappingTestData data) {
   return out << "\"" << data.text << "\" " << data.dom_start << ","
              << data.dom_end << " => " << (data.success ? "true " : "false ")
              << data.text_start << "," << data.text_end;
@@ -249,7 +248,7 @@ std::ostream& operator<<(std::ostream& out, OffsetMappingTestData data) {
 
 class MapDOMOffsetToTextContentOffset
     : public LayoutTextTest,
-      public testing::WithParamInterface<OffsetMappingTestData> {};
+      public testing::WithParamInterface<NGOffsetMappingTestData> {};
 
 INSTANTIATE_TEST_SUITE_P(LayoutTextTest,
                          MapDOMOffsetToTextContentOffset,
@@ -259,7 +258,7 @@ TEST_P(MapDOMOffsetToTextContentOffset, Basic) {
   const auto data = GetParam();
   SetBodyInnerHTML(data.text);
   LayoutText* layout_text = GetBasicText();
-  const OffsetMapping* mapping = layout_text->GetOffsetMapping();
+  const NGOffsetMapping* mapping = layout_text->GetNGOffsetMapping();
   ASSERT_TRUE(mapping);
   unsigned start = data.dom_start;
   unsigned end = data.dom_end;
@@ -594,7 +593,7 @@ TEST_F(LayoutTextTest, ContainsCaretOffsetWithTrailingSpace3) {
   const auto& text_a = *GetLayoutTextById("target");
   const auto& layout_br1 = *To<LayoutText>(text_a.NextSibling());
   const auto& text_space = *To<LayoutText>(layout_br1.NextSibling());
-  EXPECT_EQ(1u, text_space.TransformedTextLength());
+  EXPECT_EQ(1u, text_space.TextLength());
   const auto& layout_br2 = *To<LayoutText>(text_space.NextSibling());
   const auto& text_b = *To<LayoutText>(layout_br2.NextSibling());
   // Note: the last <br> doesn't have layout object.
@@ -629,19 +628,19 @@ TEST_F(LayoutTextTest, GetTextBoxInfoWithCollapsedWhiteSpace) {
 
   EXPECT_EQ(1u, results[0].dom_start_offset);
   EXPECT_EQ(4u, results[0].dom_length);
-  EXPECT_EQ(PhysicalRect(0, 0, 40, 10), results[0].local_rect);
+  EXPECT_EQ(LayoutRect(0, 0, 40, 10), results[0].local_rect);
 
   EXPECT_EQ(6u, results[1].dom_start_offset);
   EXPECT_EQ(3u, results[1].dom_length);
-  EXPECT_EQ(PhysicalRect(40, 0, 30, 10), results[1].local_rect);
+  EXPECT_EQ(LayoutRect(40, 0, 30, 10), results[1].local_rect);
 
   EXPECT_EQ(9u, results[2].dom_start_offset);
   EXPECT_EQ(1u, results[2].dom_length);
-  EXPECT_EQ(PhysicalRect(70, 0, 0, 10), results[2].local_rect);
+  EXPECT_EQ(LayoutRect(70, 0, 0, 10), results[2].local_rect);
 
   EXPECT_EQ(14u, results[3].dom_start_offset);
   EXPECT_EQ(3u, results[3].dom_length);
-  EXPECT_EQ(PhysicalRect(0, 10, 30, 10), results[3].local_rect);
+  EXPECT_EQ(LayoutRect(0, 10, 30, 10), results[3].local_rect);
 }
 
 TEST_F(LayoutTextTest, GetTextBoxInfoWithGeneratedContent) {
@@ -667,22 +666,22 @@ TEST_F(LayoutTextTest, GetTextBoxInfoWithGeneratedContent) {
   EXPECT_EQ(1u, boxes_xyz.size());
   EXPECT_EQ(0u, boxes_xyz[0].dom_start_offset);
   EXPECT_EQ(3u, boxes_xyz[0].dom_length);
-  EXPECT_EQ(PhysicalRect(40, 0, 30, 10), boxes_xyz[0].local_rect);
+  EXPECT_EQ(LayoutRect(40, 0, 30, 10), boxes_xyz[0].local_rect);
 
   auto boxes_first_letter = layout_text_first_letter.GetTextBoxInfo();
   EXPECT_EQ(1u, boxes_first_letter.size());
   EXPECT_EQ(2u, boxes_first_letter[0].dom_start_offset);
   EXPECT_EQ(1u, boxes_first_letter[0].dom_length);
-  EXPECT_EQ(PhysicalRect(0, 0, 10, 10), boxes_first_letter[0].local_rect);
+  EXPECT_EQ(LayoutRect(0, 0, 10, 10), boxes_first_letter[0].local_rect);
 
   auto boxes_remaining = layout_text_remaining.GetTextBoxInfo();
   EXPECT_EQ(2u, boxes_remaining.size());
   EXPECT_EQ(0u, boxes_remaining[0].dom_start_offset);
   EXPECT_EQ(1u, boxes_remaining[0].dom_length) << "two spaces to one space";
-  EXPECT_EQ(PhysicalRect(10, 0, 10, 10), boxes_remaining[0].local_rect);
+  EXPECT_EQ(LayoutRect(10, 0, 10, 10), boxes_remaining[0].local_rect);
   EXPECT_EQ(3u, boxes_remaining[1].dom_start_offset);
   EXPECT_EQ(2u, boxes_remaining[1].dom_length);
-  EXPECT_EQ(PhysicalRect(20, 0, 20, 10), boxes_remaining[1].local_rect);
+  EXPECT_EQ(LayoutRect(20, 0, 20, 10), boxes_remaining[1].local_rect);
 }
 
 // For http://crbug.com/985488
@@ -708,11 +707,11 @@ TEST_F(LayoutTextTest, GetTextBoxInfoWithHidden) {
 
   EXPECT_EQ(2u, boxes[0].dom_start_offset);
   EXPECT_EQ(6u, boxes[0].dom_length);
-  EXPECT_EQ(PhysicalRect(0, 0, 60, 10), boxes[0].local_rect);
+  EXPECT_EQ(LayoutRect(0, 0, 60, 10), boxes[0].local_rect);
 
   EXPECT_EQ(9u, boxes[1].dom_start_offset);
   EXPECT_EQ(5u, boxes[1].dom_length);
-  EXPECT_EQ(PhysicalRect(60, 0, 50, 10), boxes[1].local_rect);
+  EXPECT_EQ(LayoutRect(60, 0, 50, 10), boxes[1].local_rect);
 }
 
 // For http://crbug.com/985488
@@ -739,11 +738,11 @@ TEST_F(LayoutTextTest, GetTextBoxInfoWithEllipsis) {
 
   EXPECT_EQ(2u, boxes[0].dom_start_offset);
   EXPECT_EQ(6u, boxes[0].dom_length);
-  EXPECT_EQ(PhysicalRect(0, 0, 60, 10), boxes[0].local_rect);
+  EXPECT_EQ(LayoutRect(0, 0, 60, 10), boxes[0].local_rect);
 
   EXPECT_EQ(9u, boxes[1].dom_start_offset);
   EXPECT_EQ(5u, boxes[1].dom_length);
-  EXPECT_EQ(PhysicalRect(60, 0, 50, 10), boxes[1].local_rect);
+  EXPECT_EQ(LayoutRect(60, 0, 50, 10), boxes[1].local_rect);
 }
 
 // For http://crbug.com/1003413
@@ -774,7 +773,7 @@ TEST_F(LayoutTextTest, GetTextBoxInfoWithEllipsisForPseudoAfter) {
 
   EXPECT_EQ(0u, boxes[0].dom_start_offset);
   EXPECT_EQ(1u, boxes[0].dom_length);
-  EXPECT_EQ(PhysicalRect(30, 0, 10, 10), boxes[0].local_rect);
+  EXPECT_EQ(LayoutRect(30, 0, 10, 10), boxes[0].local_rect);
 }
 
 // Test the specialized code path in |PlainText| for when |!GetNode()|.
@@ -1041,9 +1040,9 @@ TEST_F(LayoutTextTest, PhysicalLinesBoundingBox) {
   //     Box offset:0,-17 size:89x53
   //       Box offset:20,15 size:49x23
   //         Text offset:5,5 size:39x13 start: 8 end: 11
-  const Element& div = *GetElementById("div");
-  const Element& one = *GetElementById("one");
-  const Element& two = *GetElementById("two");
+  const Element& div = *GetDocument().getElementById("div");
+  const Element& one = *GetDocument().getElementById("one");
+  const Element& two = *GetDocument().getElementById("two");
   EXPECT_EQ(PhysicalRect(3, 6, 52, 13),
             To<LayoutText>(div.firstChild()->GetLayoutObject())
                 ->PhysicalLinesBoundingBox());
@@ -1073,7 +1072,7 @@ TEST_F(LayoutTextTest, PhysicalLinesBoundingBoxTextCombine) {
   //         LayoutText {#text} at (15,0) size 100x100
   //           text run at (15,0) width 100: "a"
   //         LayoutInline {C} at (15,100) size 100x100
-  //           LayoutTextCombine (anonymous) at (15,100) size 100x100
+  //           LayoutNGTextCombine (anonymous) at (15,100) size 100x100
   //             LayoutText {#text} at (-5,0) size 110x100
   //               text run at (0,0) width 500: "01234"
   //         LayoutText {#text} at (15,200) size 100x100
@@ -1082,7 +1081,7 @@ TEST_F(LayoutTextTest, PhysicalLinesBoundingBoxTextCombine) {
 
   EXPECT_EQ(PhysicalRect(15, 0, 100, 100), text_a.PhysicalLinesBoundingBox());
   // Note: Width 110 comes from |100px * kTextCombineMargin| in
-  // |LayoutTextCombine::DesiredWidth()|.
+  // |LayoutNGTextCombine::DesiredWidth()|.
   EXPECT_EQ(PhysicalRect(-5, 0, 110, 100),
             text_01234.PhysicalLinesBoundingBox());
   EXPECT_EQ(PhysicalRect(15, 200, 100, 100), text_b.PhysicalLinesBoundingBox());
@@ -1111,9 +1110,9 @@ TEST_F(LayoutTextTest, PhysicalLinesBoundingBoxVerticalRL) {
   )HTML");
   // Similar to the previous test, with logical coordinates converted to
   // physical coordinates.
-  const Element& div = *GetElementById("div");
-  const Element& one = *GetElementById("one");
-  const Element& two = *GetElementById("two");
+  const Element& div = *GetDocument().getElementById("div");
+  const Element& one = *GetDocument().getElementById("one");
+  const Element& two = *GetDocument().getElementById("two");
   EXPECT_EQ(PhysicalRect(25, 3, 13, 52),
             To<LayoutText>(div.firstChild()->GetLayoutObject())
                 ->PhysicalLinesBoundingBox());
@@ -1128,7 +1127,7 @@ TEST_F(LayoutTextTest, PhysicalLinesBoundingBoxVerticalRL) {
 TEST_F(LayoutTextTest, WordBreakElement) {
   SetBasicBody("foo <wbr> bar");
 
-  const Element* wbr = GetDocument().QuerySelector(AtomicString("wbr"));
+  const Element* wbr = GetDocument().QuerySelector("wbr");
   DCHECK(wbr->GetLayoutObject()->IsText());
   const auto* layout_wbr = To<LayoutText>(wbr->GetLayoutObject());
 
@@ -1573,9 +1572,8 @@ TEST_F(LayoutTextTest, SetTextWithOffsetDeleteWithBidiControl) {
   Text& text = To<Text>(*GetElementById("target")->firstChild());
   text.deleteData(0, 1, ASSERT_NO_EXCEPTION);  // remove "\n"
 
-  // FirstLetterPseudoElement::FirstLetterLength() change (due to \n removed)
-  // makes ShouldUpdateLayoutByReattaching() (in text.cc) return true.
-  EXPECT_TRUE(text.GetForceReattachLayoutTree());
+  EXPECT_EQ("LayoutText has NeedsCollectInlines",
+            GetItemsAsString(*text.GetLayoutObject()));
 }
 
 // http://crbug.com/1125262

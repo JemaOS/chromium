@@ -5,19 +5,17 @@
 #include "chrome/browser/password_manager/password_manager_test_util.h"
 
 #include "chrome/browser/password_manager/account_password_store_factory.h"
-#include "chrome/browser/password_manager/profile_password_store_factory.h"
-#include "chrome/browser/profiles/profile.h"
-#include "components/password_manager/core/browser/features/password_features.h"
-#include "components/password_manager/core/browser/features/password_manager_features_util.h"
+#include "chrome/browser/password_manager/password_store_factory.h"
 #include "components/password_manager/core/browser/password_manager_test_utils.h"
-#include "components/password_manager/core/browser/password_store/test_password_store.h"
+#include "components/password_manager/core/browser/test_password_store.h"
+#include "components/password_manager/core/common/password_manager_features.h"
 
 using password_manager::TestPasswordStore;
 
 scoped_refptr<TestPasswordStore> CreateAndUseTestPasswordStore(
     content::BrowserContext* context) {
   TestPasswordStore* store = static_cast<TestPasswordStore*>(
-      ProfilePasswordStoreFactory::GetInstance()
+      PasswordStoreFactory::GetInstance()
           ->SetTestingFactoryAndUse(
               context,
               base::BindRepeating(&password_manager::BuildPasswordStore<
@@ -28,8 +26,8 @@ scoped_refptr<TestPasswordStore> CreateAndUseTestPasswordStore(
 
 scoped_refptr<TestPasswordStore> CreateAndUseTestAccountPasswordStore(
     content::BrowserContext* context) {
-  if (!password_manager::features_util::CanCreateAccountStore(
-          Profile::FromBrowserContext(context)->GetPrefs())) {
+  if (!base::FeatureList::IsEnabled(
+          password_manager::features::kEnablePasswordsAccountStorage)) {
     return nullptr;
   }
   TestPasswordStore* store = static_cast<TestPasswordStore*>(

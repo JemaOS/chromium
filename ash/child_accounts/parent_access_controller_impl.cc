@@ -137,7 +137,7 @@ void RecordParentCodeValidationResult(ParentCodeValidationResult result,
   // Record the action to the aggregated histogram.
   const std::string all_results_histogram =
       ParentAccessControllerImpl::GetUMAParentCodeValidationResultHistorgam(
-          std::nullopt);
+          absl::nullopt);
   RecordParentCodeValidationResultToHistogram(result, all_results_histogram);
 }
 
@@ -152,7 +152,7 @@ constexpr char ParentAccessControllerImpl::kUMAParentAccessCodeUsage[];
 // static
 std::string
 ParentAccessControllerImpl::GetUMAParentCodeValidationResultHistorgam(
-    std::optional<SupervisedAction> action) {
+    absl::optional<SupervisedAction> action) {
   const std::string separator = ".";
   if (!action) {
     return base::JoinString({kUMAParentAccessCodeValidationResultBase,

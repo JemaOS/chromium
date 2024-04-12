@@ -1,4 +1,4 @@
-(async function(/** @type {import('test_runner').TestRunner} */ testRunner) {
+(async function(testRunner) {
   await testRunner.startBlank(
       `Tests that browser.Target.setAutoAttach() attaches to new page targets.`);
 

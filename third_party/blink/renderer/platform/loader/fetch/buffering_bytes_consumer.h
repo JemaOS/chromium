@@ -74,7 +74,7 @@ class PLATFORM_EXPORT BufferingBytesConsumer final
   void Cancel() override;
   PublicState GetPublicState() const override;
   Error GetError() const override;
-  String DebugName() const override;
+  String DebugName() const override { return "BufferingBytesConsumer"; }
 
   void Trace(Visitor*) const override;
 
@@ -100,7 +100,6 @@ class PLATFORM_EXPORT BufferingBytesConsumer final
   bool has_seen_end_of_data_ = false;
   bool has_seen_error_ = false;
   Member<BytesConsumer::Client> client_;
-  SEQUENCE_CHECKER(sequence_checker_);
 };
 
 }  // namespace blink

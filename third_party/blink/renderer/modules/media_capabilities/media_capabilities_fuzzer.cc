@@ -18,6 +18,7 @@
 #include "third_party/blink/renderer/modules/media_capabilities/media_capabilities.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
+#include "third_party/blink/renderer/platform/bindings/v8_per_isolate_data.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/testing/blink_fuzzer_test_support.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
@@ -177,7 +178,7 @@ DEFINE_TEXT_PROTO_FUZZER(const mc_fuzzer::MediaConfigProto& proto) {
   // a chain of persistent handles), so some objects may not be collected until
   // a subsequent iteration. This is slow enough as is, so we compromise on one
   // major GC, as opposed to the 5 used in V8GCController for unit tests.
-  script_state->GetIsolate()->RequestGarbageCollectionForTesting(
+  V8PerIsolateData::MainThreadIsolate()->RequestGarbageCollectionForTesting(
       v8::Isolate::kFullGarbageCollection);
 }
 

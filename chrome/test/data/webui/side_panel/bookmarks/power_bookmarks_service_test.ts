@@ -2,21 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://webui-test/mojo_webui_test_support.js';
 import 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_list.js';
 
 import {BookmarksApiProxyImpl} from 'chrome://bookmarks-side-panel.top-chrome/bookmarks_api_proxy.js';
+import {ShoppingListApiProxyImpl} from 'chrome://bookmarks-side-panel.top-chrome/commerce/shopping_list_api_proxy.js';
 import {PowerBookmarksService} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_service.js';
-import {BrowserProxyImpl as ShoppingServiceApiProxyImpl} from 'chrome://resources/cr_components/commerce/browser_proxy.js';
 import {PageImageServiceBrowserProxy} from 'chrome://resources/cr_components/page_image_service/browser_proxy.js';
 import {PageImageServiceHandlerRemote} from 'chrome://resources/cr_components/page_image_service/page_image_service.mojom-webui.js';
-import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
 import {assertEquals} from 'chrome://webui-test/chai_assert.js';
-import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {TestPluralStringProxy} from 'chrome://webui-test/test_plural_string_proxy.js';
 
-import {TestBrowserProxy as TestShoppingServiceApiProxy} from './commerce/test_shopping_service_api_proxy.js';
+import {TestShoppingListApiProxy} from './commerce/test_shopping_list_api_proxy.js';
 import {TestBookmarksApiProxy} from './test_bookmarks_api_proxy.js';
 import {TestPowerBookmarksDelegate} from './test_power_bookmarks_delegate.js';
 
@@ -31,7 +30,7 @@ suite('SidePanelPowerBookmarksServiceTest', () => {
   let delegate: ServiceTestPowerBookmarksDelegate;
   let service: PowerBookmarksService;
   let bookmarksApi: TestBookmarksApiProxy;
-  let shoppingServiceApi: TestShoppingServiceApiProxy;
+  let shoppingListApi: TestShoppingListApiProxy;
   let imageServiceHandler: TestMock<PageImageServiceHandlerRemote>&
       PageImageServiceHandlerRemote;
 
@@ -171,11 +170,11 @@ suite('SidePanelPowerBookmarksServiceTest', () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
 
     bookmarksApi = new TestBookmarksApiProxy();
-    bookmarksApi.setFolders(structuredClone(folders));
+    bookmarksApi.setFolders(JSON.parse(JSON.stringify(folders)));
     BookmarksApiProxyImpl.setInstance(bookmarksApi);
 
-    shoppingServiceApi = new TestShoppingServiceApiProxy();
-    ShoppingServiceApiProxyImpl.setInstance(shoppingServiceApi);
+    shoppingListApi = new TestShoppingListApiProxy();
+    ShoppingListApiProxyImpl.setInstance(shoppingListApi);
 
     const pluralString = new TestPluralStringProxy();
     PluralStringProxyImpl.setInstance(pluralString);
@@ -186,10 +185,6 @@ suite('SidePanelPowerBookmarksServiceTest', () => {
     imageServiceHandler.setResultFor('getPageImageUrl', Promise.resolve({
       result: {imageUrl: {url: 'https://example.com/image.png'}},
     }));
-
-    loadTimeData.overrideValues({
-      urlImagesEnabled: true,
-    });
 
     delegate = new ServiceTestPowerBookmarksDelegate();
     service = new PowerBookmarksService(delegate);
@@ -216,15 +211,6 @@ suite('SidePanelPowerBookmarksServiceTest', () => {
     assertEquals(searchBookmarks.length, 3);
   });
 
-  test('FiltersByFolderAndSearchQuery', () => {
-    const folder = service.findBookmarkWithId('5');
-    const primaryList = service.filterBookmarks(folder, 0, 'http', []);
-    const secondaryList =
-        service.filterBookmarks(undefined, 0, 'http', [], folder);
-    assertEquals(primaryList.length, 1);
-    assertEquals(secondaryList.length, 2);
-  });
-
   test('FiltersByPriceTracking', () => {
     const searchBookmarks = service.filterBookmarks(
         undefined, 0, undefined,
@@ -242,7 +228,7 @@ suite('SidePanelPowerBookmarksServiceTest', () => {
   });
 
   test('SortsByNewestWithComplexDescendants', async () => {
-    bookmarksApi.setFolders(structuredClone(complexFolders));
+    bookmarksApi.setFolders(JSON.parse(JSON.stringify(complexFolders)));
     service.startListening();
 
     await delegate.whenCalled('onBookmarksLoaded');
@@ -264,7 +250,7 @@ suite('SidePanelPowerBookmarksServiceTest', () => {
   });
 
   test('SortsByOldestWithComplexDescendants', async () => {
-    bookmarksApi.setFolders(structuredClone(complexFolders));
+    bookmarksApi.setFolders(JSON.parse(JSON.stringify(complexFolders)));
     service.startListening();
 
     await delegate.whenCalled('onBookmarksLoaded');
@@ -286,7 +272,7 @@ suite('SidePanelPowerBookmarksServiceTest', () => {
   });
 
   test('SortsByLastOpenedWithComplexDescendants', async () => {
-    bookmarksApi.setFolders(structuredClone(complexFolders));
+    bookmarksApi.setFolders(JSON.parse(JSON.stringify(complexFolders)));
     service.startListening();
 
     await delegate.whenCalled('onBookmarksLoaded');
@@ -368,20 +354,5 @@ suite('SidePanelPowerBookmarksServiceTest', () => {
     assertEquals(service.canAddUrl('http://new/url/', folder), true);
     assertEquals(service.canAddUrl('http://child/bookmark/1/', folder), false);
     assertEquals(service.canAddUrl('http://nested/bookmark/', folder), true);
-  });
-
-  test('RequestsImages', async () => {
-    assertEquals(imageServiceHandler.getCallCount('getPageImageUrl'), 0);
-
-    service.setMaxImageServiceRequestsForTesting(2);
-    service.refreshDataForBookmarks([
-      service.findBookmarkWithId('3')!,
-      service.findBookmarkWithId('4')!,
-      service.findBookmarkWithId('6')!,
-    ]);
-
-    assertEquals(imageServiceHandler.getCallCount('getPageImageUrl'), 2);
-    await flushTasks();
-    assertEquals(imageServiceHandler.getCallCount('getPageImageUrl'), 3);
   });
 });

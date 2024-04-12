@@ -19,12 +19,18 @@ DiceWebSigninInterceptor* DiceWebSigninInterceptorFactory::GetForProfile(
 //  static
 DiceWebSigninInterceptorFactory*
 DiceWebSigninInterceptorFactory::GetInstance() {
-  static base::NoDestructor<DiceWebSigninInterceptorFactory> instance;
-  return instance.get();
+  return base::Singleton<DiceWebSigninInterceptorFactory>::get();
 }
 
 DiceWebSigninInterceptorFactory::DiceWebSigninInterceptorFactory()
-    : ProfileKeyedServiceFactory("DiceWebSigninInterceptor") {
+    : ProfileKeyedServiceFactory(
+          "DiceWebSigninInterceptor",
+          ProfileSelections::Builder()
+              .WithRegular(ProfileSelection::kOriginalOnly)
+              // TODO(crbug.com/1418376): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kOriginalOnly)
+              .Build()) {
   DependsOn(IdentityManagerFactory::GetInstance());
 }
 
@@ -35,10 +41,9 @@ void DiceWebSigninInterceptorFactory::RegisterProfilePrefs(
   DiceWebSigninInterceptor::RegisterProfilePrefs(registry);
 }
 
-std::unique_ptr<KeyedService>
-DiceWebSigninInterceptorFactory::BuildServiceInstanceForBrowserContext(
+KeyedService* DiceWebSigninInterceptorFactory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<DiceWebSigninInterceptor>(
+  return new DiceWebSigninInterceptor(
       Profile::FromBrowserContext(context),
       std::make_unique<DiceWebSigninInterceptorDelegate>());
 }

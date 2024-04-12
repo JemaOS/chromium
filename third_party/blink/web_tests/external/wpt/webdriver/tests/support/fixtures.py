@@ -31,7 +31,7 @@ def pytest_configure(config):
     )
 
 
-def pytest_sessionfinish():
+def pytest_sessionfinish(session, exitstatus):
     # Cleanup at the end of a test run
     global _current_session
 
@@ -108,43 +108,6 @@ async def reset_current_session_if_necessary(caps):
             _current_session = None
 
 
-@pytest.fixture()
-def screen_size(session):
-    """Return the size (width/height) of the screen."""
-    return tuple(session.execute_script("""
-        return [
-            screen.width,
-            screen.height,
-        ];
-        """))
-
-
-@pytest.fixture()
-def available_screen_size(session):
-    """Return the effective available screen size (width/height).
-
-    This is size which excludes any fixed window manager elements like menu
-    bars, and the dock on MacOS.
-    """
-    return tuple(session.execute_script("""
-        return [
-            screen.availWidth,
-            screen.availHeight,
-        ];
-        """))
-
-
-@pytest.fixture()
-def minimal_screen_position(session):
-    """Return the minimal position (x/y) a window can be positioned at."""
-    return tuple(session.execute_script("""
-        return [
-            screen.availLeft,
-            screen.availTop,
-        ];
-        """))
-
-
 @pytest_asyncio.fixture(scope="function")
 async def session(capabilities, configuration):
     """Create and start a session for a test that does not itself test session creation.
@@ -174,12 +137,8 @@ async def session(capabilities, configuration):
 
     # Enforce a fixed default window size and position
     if _current_session.capabilities.get("setWindowRect"):
-        # Only resize and reposition if needed to workaround a bug for Chrome:
-        # https://bugs.chromium.org/p/chromedriver/issues/detail?id=4642#c4
-        if _current_session.window.size != defaults.WINDOW_SIZE:
-            _current_session.window.size = defaults.WINDOW_SIZE
-        if _current_session.window.position != defaults.WINDOW_POSITION:
-            _current_session.window.position = defaults.WINDOW_POSITION
+        _current_session.window.size = defaults.WINDOW_SIZE
+        _current_session.window.position = defaults.WINDOW_POSITION
 
     # Set default timeouts
     multiplier = configuration["timeout_multiplier"]
@@ -226,12 +185,8 @@ async def bidi_session(capabilities, configuration):
 
     # Enforce a fixed default window size and position
     if _current_session.capabilities.get("setWindowRect"):
-        # Only resize and reposition if needed to workaround a bug for Chrome:
-        # https://bugs.chromium.org/p/chromedriver/issues/detail?id=4642#c4
-        if _current_session.window.size != defaults.WINDOW_SIZE:
-            _current_session.window.size = defaults.WINDOW_SIZE
-        if _current_session.window.position != defaults.WINDOW_POSITION:
-            _current_session.window.position = defaults.WINDOW_POSITION
+        _current_session.window.size = defaults.WINDOW_SIZE
+        _current_session.window.position = defaults.WINDOW_POSITION
 
     yield _current_session.bidi_session
 
@@ -246,7 +201,7 @@ def current_session():
 
 @pytest.fixture
 def url(server_config):
-    def url(path, protocol="https", domain="", subdomain="", query="", fragment=""):
+    def url(path, protocol="http", domain="", subdomain="", query="", fragment=""):
         domain = server_config["domains"][domain][subdomain]
         port = server_config["ports"][protocol][0]
         host = "{0}:{1}".format(domain, port)
@@ -256,8 +211,8 @@ def url(server_config):
 
 
 @pytest.fixture
-def modifier_key(current_session):
-    if current_session.capabilities["platformName"] == "mac":
+def modifier_key(session):
+    if session.capabilities["platformName"] == "mac":
         return Keys.META
     else:
         return Keys.CONTROL
@@ -301,32 +256,13 @@ def iframe(inline):
 
 
 @pytest.fixture
-def get_actions_origin_page(inline):
-    """Create a test pagefor action origin tests, recording mouse coordinates
-    automatically on window.coords."""
-
-    def get_actions_origin_page(inner_style, outer_style=""):
-        return inline(
-            f"""
-          <div id="outer" style="{outer_style}"
-               onmousemove="window.coords = {{x: event.clientX, y: event.clientY}}">
-            <div id="inner" style="{inner_style}"></div>
-          </div>
-        """
-        )
-
-    return get_actions_origin_page
-
-
-@pytest.fixture
 def get_test_page(iframe, inline):
     def get_test_page(
         as_frame=False,
         frame_doc=None,
         shadow_doc=None,
         nested_shadow_dom=False,
-        shadow_root_mode="open",
-        **kwargs
+        shadow_root_mode="open"
     ):
         if frame_doc is None:
             frame_doc = """<div id="in-frame"><input type="checkbox"/></div>"""
@@ -375,7 +311,7 @@ def get_test_page(iframe, inline):
             <input id="hidden" type="hidden"/>
             <input id="text" type="text"/>
 
-            {iframe(frame_doc, **kwargs)}
+            {iframe(frame_doc)}
 
             <img />
             <svg></svg>
@@ -401,10 +337,9 @@ def get_test_page(iframe, inline):
             </script>"""
 
         if as_frame:
-            iframe_data = iframe(page_data, **kwargs)
-            return inline(iframe_data, **kwargs)
+            return inline(iframe(page_data))
         else:
-            return inline(page_data, **kwargs)
+            return inline(page_data)
 
     return get_test_page
 
@@ -466,16 +401,16 @@ def test_page_with_pdf_js(inline):
 <canvas></canvas>
 <script>
 async function getText() {
-  const pages = [];
-  const loadingTask = pdfjsLib.getDocument({data: atob("%s")});
-  const pdf = await loadingTask.promise;
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-    const page = await pdf.getPage(pageNumber);
-    const textContent = await page.getTextContent();
-    const text = textContent.items.map(x => x.str).join("");
+  pages = [];
+  let loadingTask = pdfjsLib.getDocument({data: atob("%s")});
+  let pdf = await loadingTask.promise;
+  for (let pageNumber=1; pageNumber<=pdf.numPages; pageNumber++) {
+    let page = await pdf.getPage(pageNumber);
+    textContent = await page.getTextContent()
+    text = textContent.items.map(x => x.str).join("");
     pages.push(text);
   }
-  return pages;
+  return pages
 }
 </script>
 """ % encoded_pdf_data)

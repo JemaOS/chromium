@@ -18,9 +18,8 @@ void CryptData::SetKey30(bool Encrypt,SecPassword *Password,const wchar *PwdW,co
   if (!Cached)
   {
     byte RawPsw[2*MAXPASSWORD+SIZE_SALT30];
-    size_t PswLength = wcslen(PwdW);
-    size_t RawLength = 2 * PswLength;
-    WideToRaw(PwdW, PswLength, RawPsw, RawLength);
+    WideToRaw(PwdW,RawPsw,ASIZE(RawPsw));
+    size_t RawLength=2*wcslen(PwdW);
     if (Salt!=NULL)
     {
       memcpy(RawPsw+RawLength,Salt,SIZE_SALT30);

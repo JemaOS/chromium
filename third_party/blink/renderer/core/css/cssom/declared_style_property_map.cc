@@ -4,10 +4,11 @@
 
 #include "third_party/blink/renderer/core/css/cssom/declared_style_property_map.h"
 
+#include "third_party/blink/renderer/core/css/css_custom_property_declaration.h"
 #include "third_party/blink/renderer/core/css/css_property_value_set.h"
 #include "third_party/blink/renderer/core/css/css_style_rule.h"
 #include "third_party/blink/renderer/core/css/css_style_sheet.h"
-#include "third_party/blink/renderer/core/css/css_unparsed_declaration_value.h"
+#include "third_party/blink/renderer/core/css/css_variable_reference_value.h"
 #include "third_party/blink/renderer/core/css/style_property_serializer.h"
 #include "third_party/blink/renderer/core/css/style_rule.h"
 
@@ -68,11 +69,11 @@ void DeclaredStylePropertyMap::SetCustomProperty(
   }
   CSSStyleSheet::RuleMutationScope mutation_scope(owner_rule_);
 
-  const auto& variable_value = To<CSSUnparsedDeclarationValue>(value);
+  const auto& variable_value = To<CSSVariableReferenceValue>(value);
   CSSVariableData* variable_data = variable_value.VariableDataValue();
   GetStyleRule()->MutableProperties().SetProperty(
       CSSPropertyName(property_name),
-      *MakeGarbageCollected<CSSUnparsedDeclarationValue>(
+      *MakeGarbageCollected<CSSCustomPropertyDeclaration>(
           variable_data, variable_value.ParserContext()));
 }
 

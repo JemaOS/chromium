@@ -39,8 +39,6 @@ TestCaptureModeDelegate::TestCaptureModeDelegate()
   DCHECK(created_dir);
   created_dir = fake_linux_files_path_.CreateUniqueTempDir();
   DCHECK(created_dir);
-  created_dir = fake_one_drive_mount_path_.CreateUniqueTempDir();
-  DCHECK(created_dir);
 }
 
 TestCaptureModeDelegate::~TestCaptureModeDelegate() = default;
@@ -81,11 +79,6 @@ bool TestCaptureModeDelegate::IsDoingAudioRecording() const {
   return recording_service_ && recording_service_->IsDoingAudioRecording();
 }
 
-int TestCaptureModeDelegate::GetNumberOfAudioCapturers() const {
-  return recording_service_ ? recording_service_->GetNumberOfAudioCapturers()
-                            : 0;
-}
-
 base::FilePath TestCaptureModeDelegate::GetUserDefaultDownloadsFolder() const {
   DCHECK(Shell::Get()->session_controller()->IsActiveUserSessionStarted());
 
@@ -93,9 +86,6 @@ base::FilePath TestCaptureModeDelegate::GetUserDefaultDownloadsFolder() const {
 }
 
 void TestCaptureModeDelegate::ShowScreenCaptureItemInFolder(
-    const base::FilePath& file_path) {}
-
-void TestCaptureModeDelegate::OpenScreenCaptureItem(
     const base::FilePath& file_path) {}
 
 void TestCaptureModeDelegate::OpenScreenshotInImageEditor(
@@ -152,8 +142,6 @@ void TestCaptureModeDelegate::BindAudioStreamFactory(
     mojo::PendingReceiver<media::mojom::AudioStreamFactory> receiver) {}
 
 void TestCaptureModeDelegate::OnSessionStateChanged(bool started) {
-  is_session_active_ = started;
-
   if (on_session_state_changed_callback_)
     std::move(on_session_state_changed_callback_).Run();
 }
@@ -179,15 +167,6 @@ base::FilePath TestCaptureModeDelegate::GetLinuxFilesPath() const {
   return fake_linux_files_path_.GetPath();
 }
 
-base::FilePath TestCaptureModeDelegate::GetOneDriveMountPointPath() const {
-  return fake_one_drive_mount_path_.GetPath();
-}
-
-TestCaptureModeDelegate::PolicyCapturePath
-TestCaptureModeDelegate::GetPolicyCapturePath() const {
-  return policy_capture_path_;
-}
-
 std::unique_ptr<RecordingOverlayView>
 TestCaptureModeDelegate::CreateRecordingOverlayView() const {
   return std::make_unique<TestRecordingOverlayView>();
@@ -210,18 +189,5 @@ bool TestCaptureModeDelegate::IsCameraDisabledByPolicy() const {
 bool TestCaptureModeDelegate::IsAudioCaptureDisabledByPolicy() const {
   return is_audio_capture_disabled_by_policy_;
 }
-
-void TestCaptureModeDelegate::RegisterVideoConferenceManagerClient(
-    crosapi::mojom::VideoConferenceManagerClient* client,
-    const base::UnguessableToken& client_id) {}
-
-void TestCaptureModeDelegate::UnregisterVideoConferenceManagerClient(
-    const base::UnguessableToken& client_id) {}
-
-void TestCaptureModeDelegate::UpdateVideoConferenceManager(
-    crosapi::mojom::VideoConferenceMediaUsageStatusPtr status) {}
-
-void TestCaptureModeDelegate::NotifyDeviceUsedWhileDisabled(
-    crosapi::mojom::VideoConferenceMediaDevice device) {}
 
 }  // namespace ash

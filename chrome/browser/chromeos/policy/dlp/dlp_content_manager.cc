@@ -5,13 +5,13 @@
 #include "chrome/browser/chromeos/policy/dlp/dlp_content_manager.h"
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/check.h"
 #include "base/check_op.h"
 #include "base/containers/contains.h"
+#include "base/containers/cxx20_erase.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/weak_ptr.h"
@@ -22,18 +22,19 @@
 #include "chrome/browser/chromeos/policy/dlp/dlp_confidential_contents.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_content_manager_observer.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_content_restriction_set.h"
+#include "chrome/browser/chromeos/policy/dlp/dlp_histogram_helper.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_notification_helper.h"
+#include "chrome/browser/chromeos/policy/dlp/dlp_reporting_manager.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager_factory.h"
-#include "chrome/browser/enterprise/data_controls/dlp_reporting_manager.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "components/enterprise/data_controls/dlp_histogram_helper.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/browser/guest_view/mime_handler_view/mime_handler_view_guest.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/views/widget/widget.h"
 #include "url/gurl.h"
 
@@ -49,7 +50,7 @@ base::TimeDelta kScreenShareResumeDelay = base::Milliseconds(500);
 void ReportEvent(GURL url,
                  DlpRulesManager::Restriction restriction,
                  DlpRulesManager::Level level,
-                 data_controls::DlpReportingManager* reporting_manager) {
+                 DlpReportingManager* reporting_manager) {
   DCHECK(reporting_manager);
 
   DlpRulesManager* rules_manager =
@@ -58,9 +59,9 @@ void ReportEvent(GURL url,
     return;
 
   DlpRulesManager::RuleMetadata rule_metadata;
-  const std::string src_pattern = rules_manager->GetSourceUrlPattern(
+  const std::string src_url = rules_manager->GetSourceUrlPattern(
       url, restriction, level, &rule_metadata);
-  const std::string src_url = url.is_empty() ? src_pattern : url.spec();
+
   reporting_manager->ReportEvent(src_url, restriction, level,
                                  rule_metadata.name,
                                  rule_metadata.obfuscated_id);
@@ -85,45 +86,25 @@ bool IsReported(RestrictionLevelAndUrl restriction_info) {
 
 // Maps restriction to the correct suffix used for logging WarnProceeded
 // metrics. Returns the suffix for supported restrictions and null otherwise.
-const std::optional<std::string> RestrictionToWarnProceededUMASuffix(
+const absl::optional<std::string> RestrictionToWarnProceededUMASuffix(
     DlpRulesManager::Restriction restriction) {
   switch (restriction) {
     case DlpRulesManager::Restriction::kScreenShare:
-      return std::make_optional(
-          data_controls::dlp::kScreenShareWarnProceededUMA);
+      return absl::make_optional(dlp::kScreenShareWarnProceededUMA);
     case DlpRulesManager::Restriction::kPrinting:
-      return std::make_optional(data_controls::dlp::kPrintingWarnProceededUMA);
+      return absl::make_optional(dlp::kPrintingWarnProceededUMA);
     case DlpRulesManager::Restriction::kScreenshot:
-      return std::make_optional(
-          data_controls::dlp::kScreenshotWarnProceededUMA);
+      return absl::make_optional(dlp::kScreenshotWarnProceededUMA);
     case DlpRulesManager::Restriction::kUnknownRestriction:
     case DlpRulesManager::Restriction::kClipboard:
     case DlpRulesManager::Restriction::kPrivacyScreen:
     case DlpRulesManager::Restriction::kFiles:
       NOTREACHED();
-      return std::nullopt;
+      return absl::nullopt;
   }
 }
 
 }  // namespace
-
-DlpContentManager::WebContentsInfo::WebContentsInfo() = default;
-
-DlpContentManager::WebContentsInfo::WebContentsInfo(
-    content::WebContents* web_contents,
-    DlpContentRestrictionSet restriction_set,
-    std::vector<DlpContentTabHelper::RfhInfo> rfh_info_vector)
-    : web_contents(web_contents),
-      restriction_set(std::move(restriction_set)),
-      rfh_info_vector(std::move(rfh_info_vector)) {}
-
-DlpContentManager::WebContentsInfo::WebContentsInfo(const WebContentsInfo&) =
-    default;
-
-DlpContentManager::WebContentsInfo&
-DlpContentManager::WebContentsInfo::operator=(const WebContentsInfo&) = default;
-
-DlpContentManager::WebContentsInfo::~WebContentsInfo() = default;
 
 // static
 DlpContentManager* DlpContentManager::Get() {
@@ -147,14 +128,12 @@ bool DlpContentManager::IsScreenShareBlocked(
 void DlpContentManager::CheckPrintingRestriction(
     content::WebContents* web_contents,
     content::GlobalRenderFrameHostId rfh_id,
-    WarningCallback callback) {
+    OnDlpRestrictionCheckedCallback callback) {
   const RestrictionLevelAndUrl restriction_info =
       GetPrintingRestrictionInfo(web_contents, rfh_id);
   MaybeReportEvent(restriction_info, DlpRulesManager::Restriction::kPrinting);
-  data_controls::DlpBooleanHistogram(data_controls::dlp::kPrintingBlockedUMA,
-                                     IsBlocked(restriction_info));
-  data_controls::DlpBooleanHistogram(data_controls::dlp::kPrintingWarnedUMA,
-                                     IsWarn(restriction_info));
+  DlpBooleanHistogram(dlp::kPrintingBlockedUMA, IsBlocked(restriction_info));
+  DlpBooleanHistogram(dlp::kPrintingWarnedUMA, IsWarn(restriction_info));
   if (IsBlocked(restriction_info)) {
     ShowDlpPrintDisabledNotification();
     std::move(callback).Run(false);
@@ -168,8 +147,7 @@ void DlpContentManager::CheckPrintingRestriction(
       ReportWarningProceededEvent(restriction_info.url,
                                   DlpRulesManager::Restriction::kPrinting,
                                   reporting_manager_);
-      data_controls::DlpBooleanHistogram(
-          data_controls::dlp::kPrintingWarnSilentProceededUMA, true);
+      DlpBooleanHistogram(dlp::kPrintingWarnSilentProceededUMA, true);
       std::move(callback).Run(true);
       return;
     }
@@ -204,16 +182,14 @@ bool DlpContentManager::IsScreenshotApiRestricted(
   if (IsWarn(restriction_info))
     ReportWarningEvent(restriction_info.url,
                        DlpRulesManager::Restriction::kScreenshot);
-  data_controls::DlpBooleanHistogram(data_controls::dlp::kScreenshotBlockedUMA,
-                                     IsBlocked(restriction_info));
-  data_controls::DlpBooleanHistogram(data_controls::dlp::kScreenshotWarnedUMA,
-                                     IsWarn(restriction_info));
+  DlpBooleanHistogram(dlp::kScreenshotBlockedUMA, IsBlocked(restriction_info));
+  DlpBooleanHistogram(dlp::kScreenshotWarnedUMA, IsWarn(restriction_info));
   // TODO(crbug.com/1252736): Properly handle WARN for screenshots API.
   return IsBlocked(restriction_info) || IsWarn(restriction_info);
 }
 
 void DlpContentManager::SetReportingManagerForTesting(
-    data_controls::DlpReportingManager* reporting_manager) {
+    DlpReportingManager* reporting_manager) {
   DCHECK(!reporting_manager_);
   DCHECK(reporting_manager);
   reporting_manager_ = reporting_manager;
@@ -318,6 +294,8 @@ const std::string& DlpContentManager::ScreenShareInfo::label() const {
 
 const std::u16string& DlpContentManager::ScreenShareInfo::application_title()
     const {
+  // TODO(crbug.com/1264793): Don't cache the application name, but compute it
+  // here.
   return application_title_;
 }
 
@@ -492,22 +470,6 @@ void DlpContentManager::RemoveObserver(
   observer_lists_[static_cast<int>(restriction)].RemoveObserver(observer);
 }
 
-std::vector<DlpContentManager::WebContentsInfo>
-DlpContentManager::GetWebContentsInfo() const {
-  std::vector<WebContentsInfo> web_contents_info_vector;
-  for (const auto& [web_contents, restriction_set] :
-       confidential_web_contents_) {
-    DlpContentManager::WebContentsInfo web_contents_info(web_contents,
-                                                         restriction_set, {});
-    auto* tab_helper = DlpContentTabHelper::FromWebContents(web_contents);
-    if (tab_helper) {
-      web_contents_info.rfh_info_vector = tab_helper->GetFramesInfo();
-    }
-    web_contents_info_vector.push_back(std::move(web_contents_info));
-  }
-  return web_contents_info_vector;
-}
-
 DlpContentManager::DlpContentManager() {
   // Start observing tab strip models for all browsers.
   BrowserList* browser_list = BrowserList::GetInstance();
@@ -527,7 +489,7 @@ DlpContentManager::~DlpContentManager() {
 void DlpContentManager::ReportWarningProceededEvent(
     const GURL& url,
     DlpRulesManager::Restriction restriction,
-    data_controls::DlpReportingManager* reporting_manager) {
+    DlpReportingManager* reporting_manager) {
   if (!reporting_manager)
     return;
 
@@ -535,9 +497,8 @@ void DlpContentManager::ReportWarningProceededEvent(
       DlpRulesManagerFactory::GetForPrimaryProfile();
   if (rules_manager) {
     DlpRulesManager::RuleMetadata rule_metadata;
-    const std::string src_pattern = rules_manager->GetSourceUrlPattern(
+    const std::string src_url = rules_manager->GetSourceUrlPattern(
         url, restriction, DlpRulesManager::Level::kWarn, &rule_metadata);
-    const std::string src_url = url.is_empty() ? src_pattern : url.spec();
     reporting_manager->ReportWarningProceededEvent(
         src_url, restriction, rule_metadata.name, rule_metadata.obfuscated_id);
   }
@@ -547,7 +508,7 @@ void DlpContentManager::ReportWarningProceededEvent(
 bool DlpContentManager::MaybeReportWarningProceededEvent(
     GURL url,
     DlpRulesManager::Restriction restriction,
-    data_controls::DlpReportingManager* reporting_manager,
+    DlpReportingManager* reporting_manager,
     bool should_proceed) {
   if (should_proceed) {
     ReportWarningProceededEvent(url, restriction, reporting_manager);
@@ -647,11 +608,11 @@ DlpContentManager::GetScreenShareConfidentialContentsInfoForWebContents(
 void DlpContentManager::ProcessScreenShareRestriction(
     const std::u16string& application_title,
     ConfidentialContentsInfo info,
-    WarningCallback callback) {
-  data_controls::DlpBooleanHistogram(data_controls::dlp::kScreenShareBlockedUMA,
-                                     IsBlocked(info.restriction_info));
-  data_controls::DlpBooleanHistogram(data_controls::dlp::kScreenShareWarnedUMA,
-                                     IsWarn(info.restriction_info));
+    OnDlpRestrictionCheckedCallback callback) {
+  DlpBooleanHistogram(dlp::kScreenShareBlockedUMA,
+                      IsBlocked(info.restriction_info));
+  DlpBooleanHistogram(dlp::kScreenShareWarnedUMA,
+                      IsWarn(info.restriction_info));
   if (IsBlocked(info.restriction_info)) {
     MaybeReportEvent(info.restriction_info,
                      DlpRulesManager::Restriction::kScreenShare);
@@ -666,8 +627,7 @@ void DlpContentManager::ProcessScreenShareRestriction(
                           DlpRulesManager::Restriction::kScreenShare);
     if (info.confidential_contents.IsEmpty()) {
       // The user already allowed all the visible content.
-      data_controls::DlpBooleanHistogram(
-          data_controls::dlp::kScreenShareWarnSilentProceededUMA, true);
+      DlpBooleanHistogram(dlp::kScreenShareWarnSilentProceededUMA, true);
       std::move(callback).Run(true);
       return;
     }
@@ -717,8 +677,7 @@ void DlpContentManager::AddOrUpdateScreenShare(
                ScreenShareInfo::State::kRunningBeforeSourceChange);
     if (screen_share->state() ==
         ScreenShareInfo::State::kPausedBeforeSourceChange) {
-      data_controls::DlpBooleanHistogram(
-          data_controls::dlp::kScreenSharePausedOrResumedUMA, false);
+      DlpBooleanHistogram(dlp::kScreenSharePausedOrResumedUMA, false);
     }
     screen_share->UpdateAfterSourceChange(
         media_id, application_title, std::move(stop_callback),
@@ -734,7 +693,7 @@ void DlpContentManager::AddOrUpdateScreenShare(
 void DlpContentManager::RemoveScreenShare(
     const std::string& label,
     const content::DesktopMediaID& media_id) {
-  std::erase_if(
+  base::EraseIf(
       running_screen_shares_,
       [=](const std::unique_ptr<ScreenShareInfo>& screen_share_info) -> bool {
         return screen_share_info->label() == label &&
@@ -787,17 +746,14 @@ void DlpContentManager::CheckRunningScreenShares() {
 
     screen_share->set_latest_confidential_contents_info(info);
 
-    data_controls::DlpBooleanHistogram(
-        data_controls::dlp::kScreenShareBlockedUMA,
-        IsBlocked(info.restriction_info));
-    data_controls::DlpBooleanHistogram(
-        data_controls::dlp::kScreenShareWarnedUMA,
-        IsWarn(info.restriction_info));
+    DlpBooleanHistogram(dlp::kScreenShareBlockedUMA,
+                        IsBlocked(info.restriction_info));
+    DlpBooleanHistogram(dlp::kScreenShareWarnedUMA,
+                        IsWarn(info.restriction_info));
     if (IsBlocked(info.restriction_info)) {
       if (screen_share->state() == ScreenShareInfo::State::kRunning) {
         screen_share->Pause();
-        data_controls::DlpBooleanHistogram(
-            data_controls::dlp::kScreenSharePausedOrResumedUMA, true);
+        DlpBooleanHistogram(dlp::kScreenSharePausedOrResumedUMA, true);
         screen_share->MaybeUpdateNotifications();
       }
       continue;
@@ -823,8 +779,7 @@ void DlpContentManager::CheckRunningScreenShares() {
           screen_share->Resume();
           screen_share->MaybeUpdateNotifications();
         }
-        data_controls::DlpBooleanHistogram(
-            data_controls::dlp::kScreenShareWarnSilentProceededUMA, true);
+        DlpBooleanHistogram(dlp::kScreenShareWarnSilentProceededUMA, true);
         continue;
       }
       if (screen_share->state() == ScreenShareInfo::State::kRunning) {
@@ -867,8 +822,7 @@ void DlpContentManager::MaybeResumeScreenShare(
     return;
   }
   screen_share->Resume();
-  data_controls::DlpBooleanHistogram(
-      data_controls::dlp::kScreenSharePausedOrResumedUMA, false);
+  DlpBooleanHistogram(dlp::kScreenSharePausedOrResumedUMA, false);
   screen_share->MaybeUpdateNotifications();
 }
 
@@ -883,8 +837,7 @@ void DlpContentManager::OnDlpScreenShareWarnDialogReply(
     // to do anything.
     return;
 
-  data_controls::DlpBooleanHistogram(
-      data_controls::dlp::kScreenShareWarnProceededUMA, should_proceed);
+  DlpBooleanHistogram(dlp::kScreenShareWarnProceededUMA, should_proceed);
   if (should_proceed) {
     if (reporting_manager_ &&
         last_reported_screen_share_.ShouldReportAndUpdate(
@@ -910,11 +863,11 @@ void DlpContentManager::OnDlpScreenShareWarnDialogReply(
 void DlpContentManager::OnDlpWarnDialogReply(
     const DlpConfidentialContents& confidential_contents,
     DlpRulesManager::Restriction restriction,
-    WarningCallback callback,
+    OnDlpRestrictionCheckedCallback callback,
     bool should_proceed) {
   auto suffix = RestrictionToWarnProceededUMASuffix(restriction);
   if (suffix.has_value())
-    data_controls::DlpBooleanHistogram(suffix.value(), should_proceed);
+    DlpBooleanHistogram(suffix.value(), should_proceed);
   if (should_proceed) {
     for (const auto& content : confidential_contents.GetContents()) {
       user_allowed_contents_cache_.Cache(content, restriction);

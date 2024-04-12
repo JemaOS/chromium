@@ -129,8 +129,8 @@ void SigninPartitionManager::SetClearStoragePartitionTaskForTesting(
 }
 
 void SigninPartitionManager::SetGetSystemNetworkContextForTesting(
-    network::NetworkContextGetter get_system_network_context_task) {
-  get_system_network_context_task_ = std::move(get_system_network_context_task);
+    GetSystemNetworkContextTask get_system_network_context_task) {
+  get_system_network_context_task_ = get_system_network_context_task;
 }
 
 void SigninPartitionManager::SetOnCreateNewStoragePartitionForTesting(
@@ -158,12 +158,7 @@ bool SigninPartitionManager::IsCurrentSigninStoragePartition(
 SigninPartitionManager::Factory::Factory()
     : ProfileKeyedServiceFactory(
           "SigninPartitionManager",
-          ProfileSelections::Builder()
-              .WithRegular(ProfileSelection::kOwnInstance)
-              // TODO(crbug.com/1418376): Check if this service is needed in
-              // Guest mode.
-              .WithGuest(ProfileSelection::kOwnInstance)
-              .Build()) {}
+          ProfileSelections::BuildForRegularAndIncognito()) {}
 
 SigninPartitionManager::Factory::~Factory() = default;
 
@@ -181,10 +176,9 @@ SigninPartitionManager::Factory::GetInstance() {
   return base::Singleton<SigninPartitionManager::Factory>::get();
 }
 
-std::unique_ptr<KeyedService>
-SigninPartitionManager::Factory::BuildServiceInstanceForBrowserContext(
+KeyedService* SigninPartitionManager::Factory::BuildServiceInstanceFor(
     content::BrowserContext* context) const {
-  return std::make_unique<SigninPartitionManager>(context);
+  return new SigninPartitionManager(context);
 }
 
 }  // namespace login

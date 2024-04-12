@@ -7,13 +7,8 @@
 #include "chrome/browser/policy/messaging_layer/util/test_response_payload.h"
 
 #include "base/base64.h"
-#include "base/strings/strcat.h"
 #include "base/values.h"
 
-#include "chrome/browser/policy/messaging_layer/util/reporting_server_connector.h"
-#include "components/reporting/util/encrypted_reporting_json_keys.h"
-#include "components/reporting/util/status.h"
-#include "components/reporting/util/statusor.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace reporting {
@@ -51,17 +46,16 @@ ResponseBuilder& ResponseBuilder::SetSuccess(bool success) {
   return *this;
 }
 
-StatusOr<base::Value::Dict> ResponseBuilder::Build() const {
+absl::optional<base::Value::Dict> ResponseBuilder::Build() const {
   if (params_.null) {
-    return base::unexpected(
-        Status(error::FAILED_PRECONDITION, "No parameters set"));
+    return absl::nullopt;
   }
 
   base::Value::Dict response;
 
   // Attach sequenceInformation.
   if (const base::Value::List* const encrypted_record_list =
-          request_.FindList(json_keys::kEncryptedRecordList);
+          request_.FindList("encryptedRecord");
       encrypted_record_list != nullptr) {
     EXPECT_FALSE(encrypted_record_list->empty());
 
@@ -70,79 +64,43 @@ StatusOr<base::Value::Dict> ResponseBuilder::Build() const {
     // failed record if the response is failure.
     const auto seq_info_it = std::prev(encrypted_record_list->cend());
     const auto* const seq_info =
-        seq_info_it->GetDict().FindDict(json_keys::kSequenceInformation);
+        seq_info_it->GetDict().FindDict("sequenceInformation");
     EXPECT_NE(seq_info, nullptr);
     if (params_.success) {
-      response.Set(json_keys::kLastSucceedUploadedRecord, seq_info->Clone());
+      response.Set("lastSucceedUploadedRecord", seq_info->Clone());
     } else {
-      response.Set(json_keys::kFirstFailedUploadedRecord,
-                   base::Value::Dict().Set(json_keys::kFailedUploadedRecord,
-                                           seq_info->Clone()));
-      response.Set(json_keys::kFirstFailedUploadedRecord,
-                   base::Value::Dict().Set(
-                       json_keys::kFailureStatus,
-                       base::Value::Dict().Set(json_keys::kErrorCode, 12345)));
-      response.Set(json_keys::kFirstFailedUploadedRecord,
-                   base::Value::Dict().Set(
-                       json_keys::kFailureStatus,
-                       base::Value::Dict().Set(json_keys::kErrorCode,
-                                               "You've got a fake error.")));
+      response.SetByDottedPath("firstFailedUploadedRecord.failedUploadedRecord",
+                               seq_info->Clone());
+      response.SetByDottedPath("firstFailedUploadedRecord.failureStatus.code",
+                               12345);
+      response.SetByDottedPath(
+          "firstFailedUploadedRecord.failureStatus.errorMessage",
+          "You've got a fake error.");
       const auto* const last_success_seq_info =
-          std::prev(seq_info_it)
-              ->GetDict()
-              .FindDict(json_keys::kSequenceInformation);
+          std::prev(seq_info_it)->GetDict().FindDict("sequenceInformation");
       EXPECT_NE(last_success_seq_info, nullptr);
-      response.Set(json_keys::kLastSucceedUploadedRecord,
-                   last_success_seq_info->Clone());
+      response.Set("lastSucceedUploadedRecord", last_success_seq_info->Clone());
     }
   }
 
   // If forceConfirm confirm is expected, set it.
   if (params_.force_confirm) {
-    response.Set(json_keys::kForceConfirm, true);
+    response.Set("forceConfirm", true);
   }
 
   // If attach_encryption_settings is true, process that.
   const auto attach_encryption_settings =
-      request_.FindBool(json_keys::kAttachEncryptionSettings);
+      request_.FindBool("attachEncryptionSettings");
   if (attach_encryption_settings.has_value() &&
       attach_encryption_settings.value()) {
     base::Value::Dict encryption_settings;
-    std::string encoded = base::Base64Encode("PUBLIC KEY");
-    encryption_settings.Set(json_keys::kPublicKey, std::move(encoded));
-    encryption_settings.Set(json_keys::kPublicKeyId, 12345);
-    encryption_settings.Set(json_keys::kPublicKeySignature,
-                            base::Base64Encode("PUBLIC KEY SIG"));
-    response.Set(json_keys::kEncryptionSettings,
-                 std::move(encryption_settings));
-  }
-
-  // If configurationFileVersion is provided, attach the configuration file.
-  const auto configuration_file_version =
-      request_.FindInt(json_keys::kConfigurationFileVersion);
-  if (configuration_file_version.has_value()) {
-    base::Value::Dict configuration_file;
-    base::Value::List event_configs;
-    base::Value::Dict heartbeat;
-    heartbeat.Set(json_keys::kConfigurationFileDestination, "HEARTBEAT_EVENTS");
-    heartbeat.Set(json_keys::kConfigurationFileMinimumReleaseVerision, 11111);
-    event_configs.Append(std::move(heartbeat));
-    base::Value::Dict login;
-    login.Set(json_keys::kConfigurationFileDestination, "LOGIN_LOGOUT_EVENTS");
-    login.Set(json_keys::kConfigurationFileMinimumReleaseVerision, 22222);
-    login.Set(json_keys::kConfigurationFileMaximumReleaseVerision, 33333);
-    event_configs.Append(std::move(login));
-    base::Value::Dict lock;
-    lock.Set(json_keys::kConfigurationFileDestination, "LOCK_UNLOCK_EVENTS");
-    event_configs.Append(std::move(lock));
-    std::string encoded = base::Base64Encode("Fake signature");
-    configuration_file.Set(json_keys::kConfigurationFileSignature,
-                           base::Base64Encode("Fake signature"));
-    configuration_file.Set(json_keys::kBlockedEventConfigs,
-                           std::move(event_configs));
-    configuration_file.Set(json_keys::kConfigurationFileVersionResponse,
-                           123456);
-    response.Set(json_keys::kConfigurationFile, std::move(configuration_file));
+    std::string encoded;
+    base::Base64Encode("PUBLIC KEY", &encoded);
+    encryption_settings.Set("publicKey", std::move(encoded));
+    encryption_settings.Set("publicKeyId", 12345);
+    base::Base64Encode("PUBLIC KEY SIG", &encoded);
+    encryption_settings.Set("publicKeySignature", std::move(encoded));
+    response.Set("encryptionSettings", std::move(encryption_settings));
   }
 
   return response;
@@ -154,18 +112,10 @@ MakeUploadEncryptedReportAction::MakeUploadEncryptedReportAction(
 
 void MakeUploadEncryptedReportAction::operator()(
     base::Value::Dict request,
-    std::optional<base::Value::Dict> context,
-    ReportingServerConnector::ResponseCallback callback) {
+    absl::optional<base::Value::Dict> context,
+    ::policy::CloudPolicyClient::ResponseCallback callback) {
   response_builder_.SetRequest(std::move(request));
-  auto response_result = response_builder_.Build();
-  if (!response_result.has_value()) {
-    std::move(callback).Run(base::unexpected(response_result.error()));
-    return;
-  }
-  UploadResponseParser response_parser(
-      EncryptedReportingClient::GenerationGuidIsRequired(),
-      std::move(response_result.value()));
-  std::move(callback).Run(std::move(response_parser));
+  std::move(callback).Run(response_builder_.Build());
 }
 
 }  // namespace reporting

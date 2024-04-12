@@ -24,9 +24,9 @@ class Profile;
 // The Bruschetta uninstaller. Provides a warning to the user and
 // uninstalls Bruschetta if the user chooses to do so.
 class BruschettaUninstallerView : public views::BubbleDialogDelegateView {
-  METADATA_HEADER(BruschettaUninstallerView, views::BubbleDialogDelegateView)
-
  public:
+  METADATA_HEADER(BruschettaUninstallerView);
+
   BruschettaUninstallerView(const BruschettaUninstallerView&) = delete;
   BruschettaUninstallerView& operator=(const BruschettaUninstallerView&) =
       delete;
@@ -42,10 +42,6 @@ class BruschettaUninstallerView : public views::BubbleDialogDelegateView {
     destructor_callback_for_testing_.ReplaceClosure(std::move(callback));
   }
 
- protected:
-  // WidgetDelegate overrides
-  void OnWidgetInitialized() override;
-
  private:
   enum class State {
     PROMPT,  // Prompting the user to allow uninstallation.
@@ -57,7 +53,7 @@ class BruschettaUninstallerView : public views::BubbleDialogDelegateView {
                                      guest_os::GuestId guest_id);
   ~BruschettaUninstallerView() override;
 
-  void HandleError();
+  void HandleError(const std::u16string& error_message);
   void UninstallBruschettaFinished(bool success);
 
   State state_ = State::PROMPT;

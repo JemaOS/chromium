@@ -10,9 +10,13 @@ import android.net.Uri;
 import org.chromium.base.Callback;
 import org.chromium.content_public.browser.RenderFrameHost;
 
-/** Interface to handle context menu actions in native. */
+/**
+ * Interface to handle context menu actions in native.
+ */
 public interface ContextMenuNativeDelegate {
-    /** Called when this {@link ContextMenuNativeDelegate} is being destroyed. */
+    /**
+     * Called when this {@link ContextMenuNativeDelegate} is being destroyed.
+     */
     void destroy();
 
     /**
@@ -38,7 +42,9 @@ public interface ContextMenuNativeDelegate {
      */
     void startDownload(boolean isLink);
 
-    /** Does a reverse image search for the current image that the context menu was triggered on. */
+    /**
+     * Does a reverse image search for the current image that the context menu was triggered on.
+     */
     void searchForImage();
 
     /**

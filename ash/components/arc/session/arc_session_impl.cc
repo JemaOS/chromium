@@ -15,7 +15,6 @@
 #include "ash/components/arc/arc_features.h"
 #include "ash/components/arc/arc_util.h"
 #include "ash/components/arc/session/arc_bridge_host_impl.h"
-#include "ash/components/arc/session/arc_service_manager.h"
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_switches.h"
 #include "base/command_line.h"
@@ -35,6 +34,7 @@
 #include "base/threading/thread_restrictions.h"
 #include "chromeos/ash/components/cryptohome/cryptohome_parameters.h"
 #include "chromeos/ash/components/dbus/spaced/spaced_client.h"
+#include "chromeos/ash/components/memory/memory.h"
 #include "chromeos/ash/components/system/scheduler_configuration_manager_base.h"
 #include "components/user_manager/user_manager.h"
 #include "components/version_info/channel.h"
@@ -59,9 +59,9 @@ constexpr int kClassify8GbDeviceInKb = 7500000;
 constexpr int kClassify16GbDeviceInKb = 15500000;
 
 std::string GenerateRandomToken() {
-  uint8_t random_bytes[16];
-  base::RandBytes(random_bytes);
-  return base::HexEncode(random_bytes);
+  char random_bytes[16];
+  base::RandBytes(random_bytes, 16);
+  return base::HexEncode(random_bytes, 16);
 }
 
 // Waits until |raw_socket_fd| is readable.
@@ -123,29 +123,36 @@ void ApplyDalvikMemoryProfile(
           << (mem_info.total / 1024) << "Mb device.";
 }
 
-void ApplyHostUreadaheadMode(StartParams* params) {
-  // Check if deprecated flags are in use, override later if necessary
-  const arc::ArcUreadaheadMode mode =
-      arc::GetArcUreadaheadMode(ash::switches::kArcHostUreadaheadMode);
-  switch (mode) {
-    case arc::ArcUreadaheadMode::READAHEAD: {
-      params->host_ureadahead_mode =
-          StartParams::HostUreadaheadMode::MODE_READAHEAD;
-      break;
-    }
-    case arc::ArcUreadaheadMode::GENERATE: {
-      params->host_ureadahead_mode =
-          StartParams::HostUreadaheadMode::MODE_GENERATE;
-      break;
-    }
-    case arc::ArcUreadaheadMode::DISABLED: {
-      params->host_ureadahead_mode =
-          StartParams::HostUreadaheadMode::MODE_DISABLED;
-      break;
-    }
-    default: {
-      NOTREACHED_NORETURN();
-    }
+// Applies USAP profile to the ARC mini instance start params.
+// Profile is determined based on enable feature and available memory on the
+// device. Possible profiles 16G,8G and 4G. For low memory devices USAP
+// profile is not overridden. If |memory_stat_file_for_testing| is set,
+// it specifies the file to read in tests instead of /proc/meminfo in
+// production.
+// Note: This is only used for VM. This profile does nothing for container.
+void ApplyUsapProfile(
+    ArcSessionImpl::SystemMemoryInfoCallback system_memory_info_callback,
+    StartParams* params) {
+  // Check if enabled.
+  if (!base::FeatureList::IsEnabled(arc::kEnableUsap)) {
+    VLOG(1) << "USAP profile is not enabled.";
+    return;
+  }
+
+  base::SystemMemoryInfoKB mem_info;
+  if (!system_memory_info_callback.Run(&mem_info)) {
+    LOG(ERROR) << "Failed to get system memory info";
+    return;
+  }
+
+  if (mem_info.total >= kClassify16GbDeviceInKb) {
+    params->usap_profile = StartParams::UsapProfile::M16G;
+  } else if (mem_info.total >= kClassify8GbDeviceInKb) {
+    params->usap_profile = StartParams::UsapProfile::M8G;
+  } else if (mem_info.total >= kClassify4GbDeviceInKb) {
+    params->usap_profile = StartParams::UsapProfile::M4G;
+  } else {
+    params->usap_profile = StartParams::UsapProfile::DEFAULT;
   }
 }
 
@@ -155,8 +162,14 @@ void ApplyDisableDownloadProvider(StartParams* params) {
           ash::switches::kArcDisableDownloadProvider);
 }
 
-void ApplyUseDevCaches(StartParams* params) {
-  params->use_dev_caches = IsArcUseDevCaches();
+void ApplyDisableUreadahed(StartParams* params) {
+  // Host ureadahead generation implies disabling ureadahead.
+  params->disable_ureadahead =
+      IsUreadaheadDisabled() || IsHostUreadaheadGeneration();
+}
+
+void ApplyHostUreadahedGeneration(StartParams* params) {
+  params->host_ureadahead_generation = IsHostUreadaheadGeneration();
 }
 
 // Real Delegate implementation to connect Mojo.
@@ -197,7 +210,7 @@ class ArcSessionDelegateImpl : public ArcSessionImpl::Delegate {
                        mojo::ScopedMessagePipeHandle server_pipe);
 
   // Owned by ArcServiceManager.
-  const raw_ptr<ArcBridgeService> arc_bridge_service_;
+  const raw_ptr<ArcBridgeService, ExperimentalAsh> arc_bridge_service_;
 
   const version_info::Channel channel_;
 
@@ -459,9 +472,9 @@ void ArcSessionImpl::DoStartMiniInstance(size_t num_cores_disabled) {
       ash::features::kConsumerAutoUpdateToggleAllowed);
   params.enable_privacy_hub_for_chrome =
       base::FeatureList::IsEnabled(ash::features::kCrosPrivacyHub);
-  params.arc_switch_to_keymint = ShouldUseArcKeyMint();
+  params.arc_switch_to_keymint =
+      base::FeatureList::IsEnabled(kSwitchToKeyMintOnT);
   params.use_virtio_blk_data = use_virtio_blk_data_;
-  params.arc_signed_in = arc_signed_in_;
 
   // TODO (b/196460968): Remove after CTS run is complete.
   if (params.enable_notifications_refresh) {
@@ -499,13 +512,13 @@ void ArcSessionImpl::DoStartMiniInstance(size_t num_cores_disabled) {
 
   VLOG(1) << "Starting ARC mini instance with lcd_density="
           << params.lcd_density
-          << ", num_cores_disabled=" << params.num_cores_disabled
-          << ", arc_signed_in=" << params.arc_signed_in;
+          << ", num_cores_disabled=" << params.num_cores_disabled;
 
   ApplyDalvikMemoryProfile(system_memory_info_callback_, &params);
+  ApplyUsapProfile(system_memory_info_callback_, &params);
   ApplyDisableDownloadProvider(&params);
-  ApplyUseDevCaches(&params);
-  ApplyHostUreadaheadMode(&params);
+  ApplyDisableUreadahed(&params);
+  ApplyHostUreadahedGeneration(&params);
 
   client_->StartMiniArc(std::move(params),
                         base::BindOnce(&ArcSessionImpl::OnMiniInstanceStarted,
@@ -583,7 +596,7 @@ void ArcSessionImpl::DoUpgrade() {
                                              weak_factory_.GetWeakPtr()));
 }
 
-void ArcSessionImpl::OnFreeDiskSpace(std::optional<int64_t> space) {
+void ArcSessionImpl::OnFreeDiskSpace(absl::optional<int64_t> space) {
   // Ensure there's sufficient space on disk for the container.
   if (!space.has_value()) {
     LOG(ERROR) << "Could not determine free disk space";
@@ -686,6 +699,9 @@ void ArcSessionImpl::OnMojoConnected(
 
   VLOG(0) << "ARC ready.";
   state_ = State::RUNNING_FULL_INSTANCE;
+
+  // Some memory parameters may be changed when ARC is launched.
+  ash::UpdateMemoryParameters(arc::IsArcAvailable());
 }
 
 void ArcSessionImpl::Stop() {
@@ -863,10 +879,6 @@ void ArcSessionImpl::SetDefaultDeviceScaleFactor(float scale_factor) {
 
 void ArcSessionImpl::SetUseVirtioBlkData(bool use_virtio_blk_data) {
   use_virtio_blk_data_ = use_virtio_blk_data;
-}
-
-void ArcSessionImpl::SetArcSignedIn(bool arc_signed_in) {
-  arc_signed_in_ = arc_signed_in;
 }
 
 void ArcSessionImpl::OnConfigurationSet(bool success,

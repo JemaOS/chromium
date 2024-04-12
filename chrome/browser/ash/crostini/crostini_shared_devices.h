@@ -55,8 +55,6 @@ class CrostiniSharedDevices : public KeyedService,
                          bool shared,
                          ResultCallback callback);
 
-  static void EnsureFactoryBuilt();
-
  private:
   void ApplySharingState(guest_os::GuestId container_id,
                          base::Value::Dict next_shared_devices,
@@ -69,10 +67,10 @@ class CrostiniSharedDevices : public KeyedService,
       const guest_os::GuestId container_id,
       base::Value::Dict next_shared_devices,
       ResultCallback callback,
-      std::optional<vm_tools::cicerone::UpdateContainerDevicesResponse>
+      absl::optional<vm_tools::cicerone::UpdateContainerDevicesResponse>
           response);
 
-  raw_ptr<Profile> profile_;
+  raw_ptr<Profile, ExperimentalAsh> profile_;
 
   base::WeakPtrFactory<CrostiniSharedDevices> weak_ptr_factory_{this};
 };

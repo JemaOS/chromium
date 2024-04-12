@@ -6,7 +6,8 @@
 
 #include "base/task/single_thread_task_runner.h"
 #include "third_party/blink/public/common/browser_interface_broker_proxy.h"
-#include "third_party/blink/renderer/bindings/modules/v8/v8_permission_state.h"
+#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
+#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/modules/permissions/permission_utils.h"
@@ -40,9 +41,8 @@ IdleManager::IdleManager(ExecutionContext* context)
 
 IdleManager::~IdleManager() = default;
 
-ScriptPromiseTyped<V8PermissionState> IdleManager::RequestPermission(
-    ScriptState* script_state,
-    ExceptionState& exception_state) {
+ScriptPromise IdleManager::RequestPermission(ScriptState* script_state,
+                                             ExceptionState& exception_state) {
   ExecutionContext* context = GetSupplementable();
   DCHECK_EQ(context, ExecutionContext::From(script_state));
 
@@ -54,7 +54,7 @@ ScriptPromiseTyped<V8PermissionState> IdleManager::RequestPermission(
     exception_state.ThrowDOMException(
         DOMExceptionCode::kNotAllowedError,
         "Must be handling a user gesture to show a permission request.");
-    return ScriptPromiseTyped<V8PermissionState>();
+    return ScriptPromise();
   }
 
   // This interface is annotated with [SecureContext].
@@ -69,10 +69,9 @@ ScriptPromiseTyped<V8PermissionState> IdleManager::RequestPermission(
         permission_service_.BindNewPipeAndPassReceiver(std::move(task_runner)));
   }
 
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolverTyped<V8PermissionState>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver>(
+      script_state, exception_state.GetContext());
+  ScriptPromise promise = resolver->Promise();
 
   permission_service_->RequestPermission(
       CreatePermissionDescriptor(mojom::blink::PermissionName::IDLE_DETECTION),
@@ -113,7 +112,7 @@ void IdleManager::InitForTesting(
 }
 
 void IdleManager::OnPermissionRequestComplete(
-    ScriptPromiseResolverTyped<V8PermissionState>* resolver,
+    ScriptPromiseResolver* resolver,
     mojom::blink::PermissionStatus status) {
   resolver->Resolve(PermissionStatusToString(status));
 }

@@ -5,9 +5,8 @@
 #ifndef UI_EVENTS_ANDROID_EVENT_HANDLER_ANDROID_H_
 #define UI_EVENTS_ANDROID_EVENT_HANDLER_ANDROID_H_
 
-#include <optional>
-
 #include "base/time/time.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "ui/events/events_export.h"
 
 namespace gfx {
@@ -36,7 +35,7 @@ class EVENTS_EXPORT EventHandlerAndroid {
   virtual bool OnGestureEvent(const GestureEventAndroid& event);
   virtual void OnSizeChanged();
   virtual void OnPhysicalBackingSizeChanged(
-      std::optional<base::TimeDelta> deadline_override);
+      absl::optional<base::TimeDelta> deadline_override);
   virtual void OnBrowserControlsHeightChanged();
   virtual void OnControlsResizeViewChanged();
 

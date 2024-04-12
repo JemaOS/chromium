@@ -7,13 +7,10 @@
 
 #include "services/device/public/mojom/pressure_manager.mojom-blink.h"
 #include "services/device/public/mojom/pressure_update.mojom-blink.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_pressure_source.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_pressure_state.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_pressure_update_callback.h"
 #include "third_party/blink/renderer/core/dom/dom_high_res_time_stamp.h"
-#include "third_party/blink/renderer/modules/compute_pressure/change_rate_monitor.h"
 #include "third_party/blink/renderer/platform/bindings/exception_code.h"
 #include "third_party/blink/renderer/platform/bindings/script_wrappable.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_set.h"
@@ -26,7 +23,7 @@ namespace blink {
 
 namespace {
 
-// https://w3c.github.io/compute-pressure/#dfn-max-queued-records
+// https://wicg.github.io/compute-pressure/#dfn-max-queued-records
 constexpr wtf_size_t kMaxQueuedRecords = 10;
 
 }  // namespace
@@ -36,6 +33,8 @@ class ExceptionState;
 class PressureObserverManager;
 class PressureObserverOptions;
 class PressureRecord;
+class ScriptPromise;
+class ScriptPromiseResolver;
 class ScriptState;
 
 class PressureObserver final : public ScriptWrappable {
@@ -51,10 +50,10 @@ class PressureObserver final : public ScriptWrappable {
                                   PressureObserverOptions*,
                                   ExceptionState&);
 
+  static wtf_size_t ToSourceIndex(V8PressureSource::Enum);
+
   // PressureObserver IDL implementation.
-  ScriptPromiseTyped<IDLUndefined> observe(ScriptState*,
-                                           V8PressureSource,
-                                           ExceptionState&);
+  ScriptPromise observe(ScriptState*, V8PressureSource, ExceptionState&);
   void unobserve(V8PressureSource);
   void disconnect();
   HeapVector<Member<PressureRecord>> takeRecords();
@@ -84,17 +83,6 @@ class PressureObserver final : public ScriptWrappable {
   // Verifies if there is data change in between last update and new one.
   bool HasChangeInData(V8PressureSource::Enum, V8PressureState::Enum) const;
 
-  // Verifies if there is data changes in a defined time span is not too high.
-  bool PassesRateObfuscation(V8PressureSource::Enum) const;
-
-  // Queues valid `PressureRecord` to be reported after penalty.
-  void QueueAfterPenaltyRecord(ExecutionContext*, V8PressureSource::Enum);
-
-  // Queues valid `PressureRecord` to be reported.
-  void QueuePressureRecord(ExecutionContext*,
-                           V8PressureSource::Enum,
-                           PressureRecord*);
-
   // Resolve/reject pending resolvers.
   void ResolvePendingResolvers(V8PressureSource::Enum);
   void RejectPendingResolvers(V8PressureSource::Enum,
@@ -110,23 +98,16 @@ class PressureObserver final : public ScriptWrappable {
   // The callback that receives pressure state updates.
   Member<V8PressureUpdateCallback> observer_callback_;
 
-  // Requested sample interval from the user.
-  // https://w3c.github.io/compute-pressure/#dfn-sampleinterval
-  uint32_t sample_interval_;
+  // Requested sample rate from the user.
+  // https://wicg.github.io/compute-pressure/#dfn-samplerate
+  double sample_rate_;
 
-  HeapHashSet<Member<ScriptPromiseResolverTyped<IDLUndefined>>>
+  HeapHashSet<Member<ScriptPromiseResolver>>
       pending_resolvers_[V8PressureSource::kEnumSize];
 
-  // Manages rate obfuscation mitigation parameters.
-  ChangeRateMonitor change_rate_monitor_;
-
-  // Last received valid record from PressureClientImpl.
+  // The last valid record received from PressureClientImpl.
   // Stored to avoid sending updates whenever the new record is the same.
   Member<PressureRecord> last_record_map_[V8PressureSource::kEnumSize];
-
-  // Last received valid record from PressureClientImpl during
-  // the penalty duration, to restore when the penalty duration is over.
-  Member<PressureRecord> after_penalty_records_[V8PressureSource::kEnumSize];
 
   // Last received records from the platform collector.
   // The records are only collected when there is a change in the status.
@@ -134,9 +115,6 @@ class PressureObserver final : public ScriptWrappable {
 
   // Task handle to check if the posted task is still pending.
   TaskHandle pending_report_to_callback_;
-
-  // Task handle array to check if the posted task is still pending.
-  TaskHandle pending_delayed_report_to_callback_[V8PressureSource::kEnumSize];
 };
 
 }  // namespace blink

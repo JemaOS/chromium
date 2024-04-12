@@ -51,7 +51,7 @@ void AppListBubbleAssistantPage::InitializeUIForBubbleView() {
   main_stage_->InitializeUIForBubbleView();
 }
 
-BEGIN_METADATA(AppListBubbleAssistantPage)
+BEGIN_METADATA(AppListBubbleAssistantPage, views::View)
 END_METADATA
 
 }  // namespace ash

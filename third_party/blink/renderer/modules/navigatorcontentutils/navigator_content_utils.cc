@@ -31,7 +31,6 @@
 #include "third_party/blink/public/common/scheme_registry.h"
 #include "third_party/blink/public/common/security/protocol_handler_security_level.h"
 #include "third_party/blink/public/platform/platform.h"
-#include "third_party/blink/public/platform/web_security_origin.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
@@ -179,9 +178,8 @@ void NavigatorContentUtils::registerProtocolHandler(
   if (!window)
     return;
 
-  WebSecurityOrigin origin(window->GetSecurityOrigin());
   ProtocolHandlerSecurityLevel security_level =
-      Platform::Current()->GetProtocolHandlerSecurityLevel(origin);
+      Platform::Current()->GetProtocolHandlerSecurityLevel();
 
   // Per the HTML specification, exceptions for arguments must be surfaced in
   // the order of the arguments.
@@ -221,9 +219,8 @@ void NavigatorContentUtils::unregisterProtocolHandler(
   if (!window)
     return;
 
-  WebSecurityOrigin origin(window->GetSecurityOrigin());
   ProtocolHandlerSecurityLevel security_level =
-      Platform::Current()->GetProtocolHandlerSecurityLevel(origin);
+      Platform::Current()->GetProtocolHandlerSecurityLevel();
 
   String error_message;
   if (!VerifyCustomHandlerScheme(scheme, error_message, security_level)) {

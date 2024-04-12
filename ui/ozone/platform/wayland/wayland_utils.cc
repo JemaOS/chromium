@@ -12,6 +12,22 @@
 
 namespace ui {
 
+namespace {
+
+class WaylandScopedDisableClientSideDecorationsForTest
+    : public PlatformUtils::ScopedDisableClientSideDecorationsForTest {
+ public:
+  WaylandScopedDisableClientSideDecorationsForTest() {
+    wl::AllowClientSideDecorationsForTesting(false);
+  }
+
+  ~WaylandScopedDisableClientSideDecorationsForTest() override {
+    wl::AllowClientSideDecorationsForTesting(true);
+  }
+};
+
+}  // namespace
+
 WaylandUtils::WaylandUtils(WaylandConnection* connection)
     : connection_(connection) {}
 
@@ -24,6 +40,11 @@ gfx::ImageSkia WaylandUtils::GetNativeWindowIcon(intptr_t target_window_id) {
 std::string WaylandUtils::GetWmWindowClass(
     const std::string& desktop_base_name) {
   return desktop_base_name;
+}
+
+std::unique_ptr<PlatformUtils::ScopedDisableClientSideDecorationsForTest>
+WaylandUtils::DisableClientSideDecorationsForTest() {
+  return std::make_unique<WaylandScopedDisableClientSideDecorationsForTest>();
 }
 
 void WaylandUtils::OnUnhandledKeyEvent(const KeyEvent& key_event) {

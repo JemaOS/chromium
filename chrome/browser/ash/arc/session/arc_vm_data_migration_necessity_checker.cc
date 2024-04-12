@@ -72,7 +72,7 @@ void ArcVmDataMigrationNecessityChecker::OnArcVmDataMigratorStarted(
     bool result) {
   if (!result) {
     LOG(ERROR) << "Failed to start arcvm-data-migrator";
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(absl::nullopt);
     return;
   }
 
@@ -88,7 +88,7 @@ void ArcVmDataMigrationNecessityChecker::OnArcVmDataMigratorStarted(
 
 void ArcVmDataMigrationNecessityChecker::OnHasDataToMigrateResponse(
     CheckCallback callback,
-    std::optional<bool> response) {
+    absl::optional<bool> response) {
   if (!response.has_value()) {
     LOG(ERROR) << "Failed to check whether /data has any content: "
                << "No valid D-Bus response";

@@ -10,7 +10,6 @@
 #include "base/metrics/field_trial.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/run_loop.h"
-#include "base/test/scoped_feature_list.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
@@ -27,7 +26,6 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/content_settings/browser/page_specific_content_settings.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
-#include "components/content_settings/core/common/features.h"
 #include "components/permissions/contexts/camera_pan_tilt_zoom_permission_context.h"
 #include "components/permissions/permission_context_base.h"
 #include "components/permissions/permission_manager.h"
@@ -55,11 +53,6 @@ class MediaStreamDevicesControllerTest : public WebRtcTestBase {
         example_video_id_("fake_video_dev"),
         media_stream_result_(
             blink::mojom::MediaStreamRequestResult::NUM_MEDIA_REQUEST_RESULTS) {
-    // `kLeftHandSideActivityIndicators` should be disabled as it changes the UI
-    // of the camera/mic activity indicator. The new UI will be tested
-    // separately.
-    scoped_feature_list_.InitWithFeatures(
-        {}, {content_settings::features::kLeftHandSideActivityIndicators});
   }
 
   void OnMediaStreamResponse(
@@ -185,9 +178,8 @@ class MediaStreamDevicesControllerTest : public WebRtcTestBase {
         GetWebContents()->GetPrimaryMainFrame()->GetRoutingID();
     return content::MediaStreamRequest(
         render_process_id, render_frame_id, 0,
-        url::Origin::Create(example_url()), false, request_type,
-        /*requested_audio_device_ids=*/{audio_id},
-        /*requested_video_device_ids=*/{video_id}, audio_type, video_type,
+        example_url().DeprecatedGetOriginAsURL(), false, request_type, audio_id,
+        video_id, audio_type, video_type,
         /*disable_local_echo=*/false, request_pan_tilt_zoom_permission);
   }
 
@@ -197,14 +189,15 @@ class MediaStreamDevicesControllerTest : public WebRtcTestBase {
       bool request_pan_tilt_zoom_permission) {
     return CreateRequestWithType(audio_id, video_id,
                                  request_pan_tilt_zoom_permission,
-                                 blink::MEDIA_GENERATE_STREAM);
+                                 blink::MEDIA_DEVICE_ACCESS);
   }
 
   void InitWithUrl(const GURL& url) {
     DCHECK(example_url_.is_empty());
     example_url_ = url;
     ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), example_url_));
-    EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().Empty());
+    EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_CAMERA_NOT_ACCESSED,
+              GetContentSettings()->GetMicrophoneCameraState());
   }
 
   virtual media::VideoCaptureControlSupport GetControlSupport() const {
@@ -258,7 +251,7 @@ class MediaStreamDevicesControllerTest : public WebRtcTestBase {
     blink::MediaStreamDevice fake_video_device(
         blink::mojom::MediaStreamType::DEVICE_VIDEO_CAPTURE, example_video_id_,
         "Fake Video Device", GetControlSupport(),
-        media::MEDIA_VIDEO_FACING_NONE, std::nullopt);
+        media::MEDIA_VIDEO_FACING_NONE, absl::nullopt);
     video_devices.push_back(fake_video_device);
     MediaCaptureDevicesDispatcher::GetInstance()->SetTestVideoCaptureDevices(
         video_devices);
@@ -284,7 +277,6 @@ class MediaStreamDevicesControllerTest : public WebRtcTestBase {
 
   std::unique_ptr<PermissionBubbleMediaAccessHandler>
       permission_bubble_media_access_handler_;
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 class MediaStreamDevicesControllerPtzTest
@@ -311,8 +303,16 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest, RequestAndAllowMic) {
       ContentSettingsType::MEDIASTREAM_MIC));
   EXPECT_FALSE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_MIC));
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().Has(
-      PageSpecificContentSettings::kMicrophoneAccessed));
+  EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_ACCESSED,
+            GetContentSettings()->GetMicrophoneCameraState());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_selected_audio_device());
+  EXPECT_EQ(std::string(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(std::string(),
+            GetContentSettings()->media_stream_selected_video_device());
 }
 
 // Request and allow camera access.
@@ -330,8 +330,16 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest, RequestAndAllowCam) {
       ContentSettingsType::MEDIASTREAM_CAMERA));
   EXPECT_FALSE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_CAMERA));
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().Has(
-      PageSpecificContentSettings::kCameraAccessed));
+  EXPECT_EQ(PageSpecificContentSettings::CAMERA_ACCESSED,
+            GetContentSettings()->GetMicrophoneCameraState());
+  EXPECT_EQ(std::string(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(std::string(),
+            GetContentSettings()->media_stream_selected_audio_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_selected_video_device());
 }
 
 // Request and block microphone access.
@@ -349,9 +357,17 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest, RequestAndBlockMic) {
       ContentSettingsType::MEDIASTREAM_MIC));
   EXPECT_TRUE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_MIC));
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().HasAll(
-      {PageSpecificContentSettings::kMicrophoneAccessed,
-       PageSpecificContentSettings::kMicrophoneBlocked}));
+  EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_ACCESSED |
+                PageSpecificContentSettings::MICROPHONE_BLOCKED,
+            GetContentSettings()->GetMicrophoneCameraState());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_selected_audio_device());
+  EXPECT_EQ(std::string(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(std::string(),
+            GetContentSettings()->media_stream_selected_video_device());
 }
 
 // Request and block camera access.
@@ -369,9 +385,17 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest, RequestAndBlockCam) {
       ContentSettingsType::MEDIASTREAM_CAMERA));
   EXPECT_TRUE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_CAMERA));
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().HasAll(
-      {PageSpecificContentSettings::kCameraAccessed,
-       PageSpecificContentSettings::kCameraBlocked}));
+  EXPECT_EQ(PageSpecificContentSettings::CAMERA_ACCESSED |
+                PageSpecificContentSettings::CAMERA_BLOCKED,
+            GetContentSettings()->GetMicrophoneCameraState());
+  EXPECT_EQ(std::string(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(std::string(),
+            GetContentSettings()->media_stream_selected_audio_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_selected_video_device());
 }
 
 // Request and allow microphone and camera access.
@@ -396,9 +420,17 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
       ContentSettingsType::MEDIASTREAM_CAMERA));
   EXPECT_FALSE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_CAMERA));
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().HasAll(
-      {PageSpecificContentSettings::kMicrophoneAccessed,
-       PageSpecificContentSettings::kCameraAccessed}));
+  EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_ACCESSED |
+                PageSpecificContentSettings::CAMERA_ACCESSED,
+            GetContentSettings()->GetMicrophoneCameraState());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_selected_audio_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_selected_video_device());
 }
 
 // Request and block microphone and camera access.
@@ -423,11 +455,19 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
       ContentSettingsType::MEDIASTREAM_CAMERA));
   EXPECT_TRUE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_CAMERA));
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().HasAll(
-      {PageSpecificContentSettings::kMicrophoneAccessed,
-       PageSpecificContentSettings::kMicrophoneBlocked,
-       PageSpecificContentSettings::kCameraAccessed,
-       PageSpecificContentSettings::kCameraBlocked}));
+  EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_ACCESSED |
+                PageSpecificContentSettings::MICROPHONE_BLOCKED |
+                PageSpecificContentSettings::CAMERA_ACCESSED |
+                PageSpecificContentSettings::CAMERA_BLOCKED,
+            GetContentSettings()->GetMicrophoneCameraState());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_selected_audio_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_selected_video_device());
 }
 
 // Request microphone and camera access. Camera is denied, thus everything
@@ -453,11 +493,19 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
       ContentSettingsType::MEDIASTREAM_CAMERA));
   EXPECT_TRUE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_CAMERA));
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().HasAll(
-      {PageSpecificContentSettings::kMicrophoneAccessed,
-       PageSpecificContentSettings::kMicrophoneBlocked,
-       PageSpecificContentSettings::kCameraAccessed,
-       PageSpecificContentSettings::kCameraBlocked}));
+  EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_ACCESSED |
+                PageSpecificContentSettings::MICROPHONE_BLOCKED |
+                PageSpecificContentSettings::CAMERA_ACCESSED |
+                PageSpecificContentSettings::CAMERA_BLOCKED,
+            GetContentSettings()->GetMicrophoneCameraState());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_selected_audio_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_selected_video_device());
 }
 
 // Request microphone and camera access. Microphone is denied, thus everything
@@ -483,11 +531,19 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
       ContentSettingsType::MEDIASTREAM_CAMERA));
   EXPECT_TRUE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_CAMERA));
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().HasAll(
-      {PageSpecificContentSettings::kMicrophoneAccessed,
-       PageSpecificContentSettings::kMicrophoneBlocked,
-       PageSpecificContentSettings::kCameraAccessed,
-       PageSpecificContentSettings::kCameraBlocked}));
+  EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_ACCESSED |
+                PageSpecificContentSettings::MICROPHONE_BLOCKED |
+                PageSpecificContentSettings::CAMERA_ACCESSED |
+                PageSpecificContentSettings::CAMERA_BLOCKED,
+            GetContentSettings()->GetMicrophoneCameraState());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_selected_audio_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_selected_video_device());
 }
 
 // Request microphone access. Requesting camera should not change microphone
@@ -507,6 +563,10 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
       ContentSettingsType::MEDIASTREAM_MIC));
   EXPECT_TRUE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_MIC));
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_selected_audio_device());
 
   // Request cam and allow
   SetDevicePolicy(DEVICE_TYPE_VIDEO, ACCESS_ALLOWED);
@@ -516,12 +576,20 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
       ContentSettingsType::MEDIASTREAM_CAMERA));
   EXPECT_FALSE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_CAMERA));
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_selected_video_device());
 
   // Mic state should not have changed.
   EXPECT_FALSE(GetContentSettings()->IsContentAllowed(
       ContentSettingsType::MEDIASTREAM_MIC));
   EXPECT_TRUE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_MIC));
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_selected_audio_device());
 }
 
 // Denying mic access after camera access should still show the camera as state.
@@ -540,8 +608,12 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
       ContentSettingsType::MEDIASTREAM_CAMERA));
   EXPECT_FALSE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_CAMERA));
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().Has(
-      PageSpecificContentSettings::kCameraAccessed));
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_selected_video_device());
+  EXPECT_EQ(PageSpecificContentSettings::CAMERA_ACCESSED,
+            GetContentSettings()->GetMicrophoneCameraState());
 
   // Simulate that an a video stream is now being captured.
   blink::mojom::StreamDevices devices;
@@ -571,23 +643,31 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
       ContentSettingsType::MEDIASTREAM_MIC));
   EXPECT_TRUE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_MIC));
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_requested_audio_device());
+  EXPECT_EQ(example_audio_id(),
+            GetContentSettings()->media_stream_selected_audio_device());
 
   // Cam should still be included in the state.
   EXPECT_TRUE(GetContentSettings()->IsContentAllowed(
       ContentSettingsType::MEDIASTREAM_CAMERA));
   EXPECT_FALSE(GetContentSettings()->IsContentBlocked(
       ContentSettingsType::MEDIASTREAM_CAMERA));
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().HasAll(
-      {PageSpecificContentSettings::kMicrophoneAccessed,
-       PageSpecificContentSettings::kMicrophoneBlocked,
-       PageSpecificContentSettings::kCameraAccessed}));
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_requested_video_device());
+  EXPECT_EQ(example_video_id(),
+            GetContentSettings()->media_stream_selected_video_device());
+  EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_ACCESSED |
+                PageSpecificContentSettings::MICROPHONE_BLOCKED |
+                PageSpecificContentSettings::CAMERA_ACCESSED,
+            GetContentSettings()->GetMicrophoneCameraState());
 
   // After ending the camera capture, the camera permission is no longer
   // relevant, so it should no be included in the mic/cam state.
   video_stream_ui.reset();
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().HasAll(
-      {PageSpecificContentSettings::kMicrophoneAccessed,
-       PageSpecificContentSettings::kMicrophoneBlocked}));
+  EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_ACCESSED |
+                PageSpecificContentSettings::MICROPHONE_BLOCKED,
+            GetContentSettings()->GetMicrophoneCameraState());
 }
 
 // Stores the ContentSettings inputs for a particular test and has functions
@@ -898,10 +978,8 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
   // PermissionRequestManager for the WebContents and uses that reference in its
   // destructor, it has to be destroyed before the tab.
   prompt_factory_.reset();
-  int previous_tab_count = browser()->tab_strip_model()->count();
-  browser()->tab_strip_model()->CloseWebContentsAt(
-      prompt_contents_index, TabCloseTypes::CLOSE_USER_GESTURE);
-  EXPECT_EQ(previous_tab_count - 1, browser()->tab_strip_model()->count());
+  ASSERT_TRUE(browser()->tab_strip_model()->CloseWebContentsAt(
+      prompt_contents_index, TabCloseTypes::CLOSE_USER_GESTURE));
   base::RunLoop().RunUntilIdle();
 
   VerifyResultState(
@@ -965,7 +1043,8 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
 
   VerifyResultState(blink::mojom::MediaStreamRequestResult::PERMISSION_DENIED,
                     false, false);
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().Empty());
+  EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_CAMERA_NOT_ACCESSED,
+            GetContentSettings()->GetMicrophoneCameraState());
 }
 
 IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
@@ -996,7 +1075,8 @@ IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,
 
   VerifyResultState(blink::mojom::MediaStreamRequestResult::PERMISSION_DENIED,
                     false, false);
-  EXPECT_TRUE(GetContentSettings()->GetMicrophoneCameraState().Empty());
+  EXPECT_EQ(PageSpecificContentSettings::MICROPHONE_CAMERA_NOT_ACCESSED,
+            GetContentSettings()->GetMicrophoneCameraState());
 }
 
 IN_PROC_BROWSER_TEST_F(MediaStreamDevicesControllerTest,

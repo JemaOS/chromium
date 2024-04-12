@@ -6,8 +6,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_MODULES_FILE_SYSTEM_ACCESS_FILE_SYSTEM_UNDERLYING_SINK_H_
 
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_file_writer.mojom-blink.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/core/streams/underlying_sink_base.h"
 #include "third_party/blink/renderer/platform/bindings/exception_code.h"
@@ -17,6 +15,7 @@
 namespace blink {
 
 class ExceptionState;
+class ScriptPromiseResolver;
 class V8UnionArrayBufferOrArrayBufferViewOrBlobOrUSVString;
 class WriteParams;
 
@@ -27,18 +26,17 @@ class FileSystemUnderlyingSink final : public UnderlyingSinkBase {
       mojo::PendingRemote<mojom::blink::FileSystemAccessFileWriter>);
 
   // UnderlyingSinkBase
-  ScriptPromiseTyped<IDLUndefined> start(ScriptState*,
-                                         WritableStreamDefaultController*,
-                                         ExceptionState&) override;
-  ScriptPromiseTyped<IDLUndefined> write(ScriptState*,
-                                         ScriptValue chunk,
-                                         WritableStreamDefaultController*,
-                                         ExceptionState&) override;
-  ScriptPromiseTyped<IDLUndefined> close(ScriptState*,
-                                         ExceptionState&) override;
-  ScriptPromiseTyped<IDLUndefined> abort(ScriptState*,
-                                         ScriptValue reason,
-                                         ExceptionState&) override;
+  ScriptPromise start(ScriptState*,
+                      WritableStreamDefaultController*,
+                      ExceptionState&) override;
+  ScriptPromise write(ScriptState*,
+                      ScriptValue chunk,
+                      WritableStreamDefaultController*,
+                      ExceptionState&) override;
+  ScriptPromise close(ScriptState*, ExceptionState&) override;
+  ScriptPromise abort(ScriptState*,
+                      ScriptValue reason,
+                      ExceptionState&) override;
 
   void Trace(Visitor*) const override;
 
@@ -53,20 +51,14 @@ class FileSystemUnderlyingSink final : public UnderlyingSinkBase {
   void ThrowTypeErrorAndInvalidateSink(ExceptionState& exception_state,
                                        const char* message);
 
-  ScriptPromiseTyped<IDLUndefined> HandleParams(ScriptState*,
-                                                const WriteParams&,
-                                                ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> WriteData(
+  ScriptPromise HandleParams(ScriptState*, const WriteParams&, ExceptionState&);
+  ScriptPromise WriteData(
       ScriptState*,
       uint64_t position,
       const V8UnionArrayBufferOrArrayBufferViewOrBlobOrUSVString* data,
       ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> Truncate(ScriptState*,
-                                            uint64_t size,
-                                            ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> Seek(ScriptState*,
-                                        uint64_t offset,
-                                        ExceptionState&);
+  ScriptPromise Truncate(ScriptState*, uint64_t size, ExceptionState&);
+  ScriptPromise Seek(ScriptState*, uint64_t offset, ExceptionState&);
   void WriteComplete(mojom::blink::FileSystemAccessErrorPtr result,
                      uint64_t bytes_written);
   void TruncateComplete(uint64_t to_size,
@@ -76,7 +68,7 @@ class FileSystemUnderlyingSink final : public UnderlyingSinkBase {
   HeapMojoRemote<mojom::blink::FileSystemAccessFileWriter> writer_remote_;
 
   uint64_t offset_ = 0;
-  Member<ScriptPromiseResolverTyped<IDLUndefined>> pending_operation_;
+  Member<ScriptPromiseResolver> pending_operation_;
 };
 
 }  // namespace blink

@@ -38,9 +38,9 @@ class ASH_EXPORT DictationButtonTray : public TrayBackgroundView,
                                        public AccessibilityObserver,
                                        public SessionObserver,
                                        public ui::InputMethodObserver {
-  METADATA_HEADER(DictationButtonTray, TrayBackgroundView)
-
  public:
+  METADATA_HEADER(DictationButtonTray);
+
   DictationButtonTray(Shelf* shelf, TrayBackgroundViewCatalogName catalog_name);
   DictationButtonTray(const DictationButtonTray&) = delete;
   DictationButtonTray& operator=(const DictationButtonTray&) = delete;
@@ -58,14 +58,12 @@ class ASH_EXPORT DictationButtonTray : public TrayBackgroundView,
 
   // TrayBackgroundView:
   void Initialize() override;
-  void ClickedOutsideBubble(const ui::LocatedEvent& event) override;
-  void UpdateTrayItemColor(bool is_active) override;
+  void ClickedOutsideBubble() override;
   std::u16string GetAccessibleNameForTray() override;
   void HandleLocaleChange() override;
   void HideBubbleWithView(const TrayBubbleView* bubble_view) override;
   void OnThemeChanged() override;
-  void Layout(PassKey) override;
-  void HideBubble(const TrayBubbleView* bubble_view) override;
+  void Layout() override;
 
   // ui::InputMethodObserver:
   void OnFocus() override {}
@@ -105,7 +103,7 @@ class ASH_EXPORT DictationButtonTray : public TrayBackgroundView,
   void TextInputChanged(const ui::TextInputClient* client);
 
   // Weak pointer, will be parented by TrayContainer for its lifetime.
-  raw_ptr<views::ImageView> icon_ = nullptr;
+  raw_ptr<views::ImageView, ExperimentalAsh> icon_ = nullptr;
 
   // SODA download progress. A value of 0 < X < 100 indicates that download is
   // in-progress.

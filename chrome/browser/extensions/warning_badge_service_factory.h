@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_WARNING_BADGE_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_EXTENSIONS_WARNING_BADGE_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace extensions {
@@ -23,13 +23,13 @@ class WarningBadgeServiceFactory : public ProfileKeyedServiceFactory {
   static WarningBadgeServiceFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<WarningBadgeServiceFactory>;
+  friend struct base::DefaultSingletonTraits<WarningBadgeServiceFactory>;
 
   WarningBadgeServiceFactory();
   ~WarningBadgeServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory implementation
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };

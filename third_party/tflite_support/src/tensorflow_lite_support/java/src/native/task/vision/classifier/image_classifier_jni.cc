@@ -54,7 +54,8 @@ using ::tflite::task::vision::ImageClassifier;
 using ::tflite::task::vision::ImageClassifierOptions;
 
 // Creates an ImageClassifierOptions proto based on the Java class.
-ImageClassifierOptions ConvertToProtoOptions(JNIEnv* env, jobject java_options,
+ImageClassifierOptions ConvertToProtoOptions(JNIEnv* env,
+                                             jobject java_options,
                                              jlong base_options_handle) {
   ImageClassifierOptions proto_options;
 
@@ -175,7 +176,9 @@ jlong CreateImageClassifierFromOptions(JNIEnv* env,
 
 extern "C" JNIEXPORT void JNICALL
 Java_org_tensorflow_lite_task_vision_classifier_ImageClassifier_deinitJni(
-    JNIEnv* env, jobject thiz, jlong native_handle) {
+    JNIEnv* env,
+    jobject thiz,
+    jlong native_handle) {
   delete reinterpret_cast<ImageClassifier*>(native_handle);
 }
 
@@ -184,9 +187,13 @@ Java_org_tensorflow_lite_task_vision_classifier_ImageClassifier_deinitJni(
 // values will be ignored.
 extern "C" JNIEXPORT jlong JNICALL
 Java_org_tensorflow_lite_task_vision_classifier_ImageClassifier_initJniWithModelFdAndOptions(
-    JNIEnv* env, jclass thiz, jint file_descriptor,
-    jlong file_descriptor_length, jlong file_descriptor_offset,
-    jobject java_options, jlong base_options_handle) {
+    JNIEnv* env,
+    jclass thiz,
+    jint file_descriptor,
+    jlong file_descriptor_length,
+    jlong file_descriptor_offset,
+    jobject java_options,
+    jlong base_options_handle) {
   ImageClassifierOptions proto_options =
       ConvertToProtoOptions(env, java_options, base_options_handle);
   auto file_descriptor_meta = proto_options.mutable_base_options()
@@ -204,7 +211,10 @@ Java_org_tensorflow_lite_task_vision_classifier_ImageClassifier_initJniWithModel
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_org_tensorflow_lite_task_vision_classifier_ImageClassifier_initJniWithByteBuffer(
-    JNIEnv* env, jclass thiz, jobject model_buffer, jobject java_options,
+    JNIEnv* env,
+    jclass thiz,
+    jobject model_buffer,
+    jobject java_options,
     jlong base_options_handle) {
   ImageClassifierOptions proto_options =
       ConvertToProtoOptions(env, java_options, base_options_handle);
@@ -220,7 +230,10 @@ Java_org_tensorflow_lite_task_vision_classifier_ImageClassifier_initJniWithByteB
 
 extern "C" JNIEXPORT jobject JNICALL
 Java_org_tensorflow_lite_task_vision_classifier_ImageClassifier_classifyNative(
-    JNIEnv* env, jclass thiz, jlong native_handle, jlong frame_buffer_handle,
+    JNIEnv* env,
+    jclass thiz,
+    jlong native_handle,
+    jlong frame_buffer_handle,
     jintArray jroi) {
   auto* classifier = reinterpret_cast<ImageClassifier*>(native_handle);
   // frame_buffer will be deleted after inference is done in

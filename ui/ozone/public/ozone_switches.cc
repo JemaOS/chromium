@@ -29,6 +29,9 @@ const char kUseWaylandExplicitGrab[] = "use-wayland-explicit-grab";
 // Disable explicit DMA-fences
 const char kDisableExplicitDmaFences[] = "disable-explicit-dma-fences";
 
+// Disable buffer bandwidth compression
+const char kDisableBufferBWCompression[] = "disable-buffer-bw-compression";
+
 // Specifies ozone screen size.
 const char kOzoneOverrideScreenSize[] = "ozone-override-screen-size";
 

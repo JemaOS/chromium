@@ -23,8 +23,7 @@ ReadAnythingMenuButton::ReadAnythingMenuButton(
                                      base::Unretained(this))) {
   ConfigureInkDropForToolbar(this);
   views::InstallCircleHighlightPathGenerator(this);
-  SetIcon(icon, kIconSize, /* icon_color= */ gfx::kPlaceholderColor,
-          /* focus_ring_color= */ gfx::kPlaceholderColor);
+  SetIcon(icon, kIconSize, gfx::kPlaceholderColor);
   SetAccessibleName(tooltip);
   SetTooltipText(tooltip);
   SetFocusBehavior(FocusBehavior::ALWAYS);
@@ -62,23 +61,20 @@ ReadAnythingMenuModel* ReadAnythingMenuButton::GetMenuModel() const {
   return menu_model_;
 }
 
-std::optional<size_t> ReadAnythingMenuButton::GetSelectedIndex() const {
+absl::optional<size_t> ReadAnythingMenuButton::GetSelectedIndex() const {
   if (!menu_model_) {
-    return std::nullopt;
+    return absl::nullopt;
   }
   return menu_model_->GetSelectedIndex();
 }
 
 void ReadAnythingMenuButton::SetIcon(const gfx::VectorIcon& icon,
                                      int icon_size,
-                                     ui::ColorId icon_color,
-                                     ui::ColorId focus_ring_color) {
+                                     ui::ColorId icon_color) {
   SetImageModel(views::Button::STATE_NORMAL,
                 ui::ImageModel::FromVectorIcon(icon, icon_color, icon_size));
   DCHECK(views::InkDrop::Get(this));
-  DCHECK(views::FocusRing::Get(this));
   views::InkDrop::Get(this)->SetBaseColorId(icon_color);
-  views::FocusRing::Get(this)->SetColorId(focus_ring_color);
 }
 
 void ReadAnythingMenuButton::SetDropdownColorIds(ui::ColorId background_color,
@@ -89,6 +85,10 @@ void ReadAnythingMenuButton::SetDropdownColorIds(ui::ColorId background_color,
   menu_model_->SetSelectedBackgroundColorId(selected_color);
 }
 
-BEGIN_METADATA(ReadAnythingMenuButton)
+void ReadAnythingMenuButton::SetFont(const std::string& font_name) {
+  menu_model_->SetLabelFontList(font_name);
+}
+
+BEGIN_METADATA(ReadAnythingMenuButton, MenuButton)
 ADD_PROPERTY_METADATA(ReadAnythingMenuModel*, MenuModel)
 END_METADATA

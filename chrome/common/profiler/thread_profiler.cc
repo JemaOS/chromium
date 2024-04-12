@@ -26,8 +26,8 @@
 #include "chrome/common/profiler/process_type.h"
 #include "chrome/common/profiler/thread_profiler_configuration.h"
 #include "chrome/common/profiler/unwind_util.h"
-#include "components/metrics/call_stacks/call_stack_profile_builder.h"
-#include "components/metrics/call_stacks/call_stack_profile_metrics_provider.h"
+#include "components/metrics/call_stack_profile_builder.h"
+#include "components/metrics/call_stack_profile_metrics_provider.h"
 #include "content/public/common/content_switches.h"
 #include "sandbox/policy/sandbox.h"
 
@@ -56,11 +56,9 @@ constexpr double kFractionOfExecutionTimeToSample = 0.02;
 bool IsCurrentProcessBackgrounded() {
 #if BUILDFLAG(IS_MAC)
   base::SelfPortProvider provider;
-  return base::Process::Current().GetPriority(&provider) ==
-         base::Process::Priority::kBestEffort;
+  return base::Process::Current().IsProcessBackgrounded(&provider);
 #else   // BUILDFLAG(IS_MAC)
-  return base::Process::Current().GetPriority() ==
-         base::Process::Priority::kBestEffort;
+  return base::Process::Current().IsProcessBackgrounded();
 #endif  // BUILDFLAG(IS_MAC)
 }
 
@@ -181,7 +179,9 @@ void ThreadProfiler::SetAuxUnwinderFactory(
   }
 
   aux_unwinder_factory_ = factory;
-  startup_profiler_->AddAuxUnwinder(aux_unwinder_factory_.Run());
+  if (startup_profiler_) {
+    startup_profiler_->AddAuxUnwinder(aux_unwinder_factory_.Run());
+  }
   if (periodic_profiler_)
     periodic_profiler_->AddAuxUnwinder(aux_unwinder_factory_.Run());
 }
@@ -246,22 +246,19 @@ ThreadProfiler::ThreadProfiler(
   const base::StackSamplingProfiler::SamplingParams sampling_params =
       ThreadProfilerConfiguration::Get()->GetSamplingParams();
 
-  startup_profiler_ = std::make_unique<StackSamplingProfiler>(
-      base::GetSamplingProfilerCurrentThreadToken(), sampling_params,
-      std::make_unique<CallStackProfileBuilder>(
-          CallStackProfileParams(
-              process_, thread,
-              CallStackProfileParams::Trigger::kProcessStartup),
-          work_id_recorder_.get()),
-#if BUILDFLAG(IS_ANDROID)
-      CreateCoreUnwindersFactory(
-          ThreadProfilerConfiguration::Get()->IsJavaNameHashingEnabled()),
-#else
-      CreateCoreUnwindersFactory(),
-#endif  // BUILDFLAG(IS_ANDROID)
-      GetApplyPerSampleMetadataCallback(process_));
+  if (ThreadProfilerConfiguration::Get()->IsStartupProfilingEnabled()) {
+    startup_profiler_ = std::make_unique<StackSamplingProfiler>(
+        base::GetSamplingProfilerCurrentThreadToken(), sampling_params,
+        std::make_unique<CallStackProfileBuilder>(
+            CallStackProfileParams(
+                process_, thread,
+                CallStackProfileParams::Trigger::kProcessStartup),
+            work_id_recorder_.get()),
+        CreateCoreUnwindersFactory(),
+        GetApplyPerSampleMetadataCallback(process_));
 
-  startup_profiler_->Start();
+    startup_profiler_->Start();
+  }
 
   // Estimated time at which the startup profiling will be completed. It's OK if
   // this doesn't exactly coincide with the end of the startup profiling, since
@@ -327,12 +324,7 @@ void ThreadProfiler::StartPeriodicSamplingCollection() {
           base::BindOnce(&ThreadProfiler::OnPeriodicCollectionCompleted,
                          owning_thread_task_runner_,
                          weak_factory_.GetWeakPtr())),
-#if BUILDFLAG(IS_ANDROID)
-      CreateCoreUnwindersFactory(
-          ThreadProfilerConfiguration::Get()->IsJavaNameHashingEnabled()),
-#else
       CreateCoreUnwindersFactory(),
-#endif  // BUILDFLAG(IS_ANDROID)
       GetApplyPerSampleMetadataCallback(process_));
   if (aux_unwinder_factory_)
     periodic_profiler_->AddAuxUnwinder(aux_unwinder_factory_.Run());

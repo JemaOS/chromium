@@ -7,13 +7,13 @@
  * current user and allows changing device avatar image.
  */
 
-import {PersonalizationRouterElement} from '../personalization_router_element.js';
+import {PersonalizationRouter} from '../personalization_router_element.js';
 import {WithPersonalizationStore} from '../personalization_store.js';
 
 import {UserImageObserver} from './user_image_observer.js';
 import {getTemplate} from './user_subpage_element.html.js';
 
-export class UserSubpageElement extends WithPersonalizationStore {
+export class UserSubpage extends WithPersonalizationStore {
   static get is() {
     return 'user-subpage';
   }
@@ -39,7 +39,7 @@ export class UserSubpageElement extends WithPersonalizationStore {
   override connectedCallback() {
     super.connectedCallback();
     UserImageObserver.initUserImageObserverIfNeeded();
-    this.watch<UserSubpageElement['isUserImageEnterpriseManaged_']>(
+    this.watch<UserSubpage['isUserImageEnterpriseManaged_']>(
         'isUserImageEnterpriseManaged_',
         state => state.user.imageIsEnterpriseManaged);
     this.updateFromStore();
@@ -49,7 +49,7 @@ export class UserSubpageElement extends WithPersonalizationStore {
                                                      boolean|null) {
     if (isUserImageEnterpriseManaged) {
       // This page should not be accessible if the image is enterprise managed.
-      PersonalizationRouterElement.reloadAtRoot();
+      PersonalizationRouter.reloadAtRoot();
     }
   }
 
@@ -59,4 +59,4 @@ export class UserSubpageElement extends WithPersonalizationStore {
   }
 }
 
-customElements.define(UserSubpageElement.is, UserSubpageElement);
+customElements.define(UserSubpage.is, UserSubpage);

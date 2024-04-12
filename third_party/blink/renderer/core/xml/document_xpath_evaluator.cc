@@ -56,12 +56,13 @@ XPathExpression* DocumentXPathEvaluator::createExpression(
   DocumentXPathEvaluator& suplement = From(document);
   if (!suplement.xpath_evaluator_)
     suplement.xpath_evaluator_ = XPathEvaluator::Create();
-  return suplement.xpath_evaluator_->createExpression(
-      document.GetExecutionContext(), expression, resolver, exception_state);
+  return suplement.xpath_evaluator_->createExpression(expression, resolver,
+                                                      exception_state);
 }
 
-Node* DocumentXPathEvaluator::createNSResolver(Document& document,
-                                               Node* node_resolver) {
+NativeXPathNSResolver* DocumentXPathEvaluator::createNSResolver(
+    Document& document,
+    Node* node_resolver) {
   DocumentXPathEvaluator& suplement = From(document);
   if (!suplement.xpath_evaluator_)
     suplement.xpath_evaluator_ = XPathEvaluator::Create();
@@ -79,8 +80,7 @@ XPathResult* DocumentXPathEvaluator::evaluate(Document& document,
   if (!suplement.xpath_evaluator_)
     suplement.xpath_evaluator_ = XPathEvaluator::Create();
   return suplement.xpath_evaluator_->evaluate(
-      document.GetExecutionContext(), expression, context_node, resolver, type,
-      ScriptValue(), exception_state);
+      expression, context_node, resolver, type, ScriptValue(), exception_state);
 }
 
 void DocumentXPathEvaluator::Trace(Visitor* visitor) const {

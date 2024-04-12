@@ -38,7 +38,6 @@
 #include "third_party/blink/public/platform/web_source_buffer_client.h"
 #include "third_party/blink/renderer/bindings/core/v8/active_script_wrappable.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
-#include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_typedefs.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
 #include "third_party/blink/renderer/core/typed_arrays/array_buffer_view_helpers.h"
@@ -60,13 +59,14 @@ class ExceptionState;
 class MediaSource;
 class MediaSourceTracer;
 class MediaSourceAttachmentSupplement;
+class ScriptPromiseResolver;
 class ScriptState;
 class SourceBufferConfig;
 class TimeRanges;
 class VideoTrackList;
 class WebSourceBuffer;
 
-class SourceBuffer final : public EventTarget,
+class SourceBuffer final : public EventTargetWithInlineData,
                            public ActiveScriptWrappable<SourceBuffer>,
                            public ExecutionContextLifecycleObserver,
                            public WebSourceBufferClient {
@@ -89,10 +89,9 @@ class SourceBuffer final : public EventTarget,
   void setTimestampOffset(double, ExceptionState&);
   void appendBuffer(DOMArrayBuffer* data, ExceptionState&);
   void appendBuffer(NotShared<DOMArrayBufferView> data, ExceptionState&);
-  ScriptPromiseTyped<IDLUndefined> appendEncodedChunks(
-      ScriptState* script_state,
-      const V8EncodedChunks* chunks,
-      ExceptionState& exception_state);
+  ScriptPromise appendEncodedChunks(ScriptState* script_state,
+                                    const V8EncodedChunks* chunks,
+                                    ExceptionState& exception_state);
   void abort(ExceptionState&);
   void remove(double start, double end, ExceptionState&);
   void changeType(const String& type, ExceptionState&);
@@ -266,8 +265,7 @@ class SourceBuffer final : public EventTarget,
   // This resolver is set and valid only during the scope of synchronous and
   // asynchronous follow-up of appendEncodedChunks().
   std::unique_ptr<media::StreamParser::BufferQueue> pending_chunks_to_buffer_;
-  Member<ScriptPromiseResolverTyped<IDLUndefined>>
-      append_encoded_chunks_resolver_;
+  Member<ScriptPromiseResolver> append_encoded_chunks_resolver_;
   TaskHandle append_encoded_chunks_async_task_handle_;
 
   // These are valid only during the scope of synchronous and asynchronous

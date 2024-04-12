@@ -163,4 +163,4 @@ var allTests = [
   }
 ];
 
-setUpAndRunTabsTests(allTests, 'bounds_for_range.html');
+setUpAndRunTests(allTests, 'bounds_for_range.html');

@@ -8,18 +8,15 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_typedefs.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
-
-namespace WTF {
-class String;
-}  // namespace WTF
+#include "third_party/blink/renderer/platform/wtf/forward.h"
 
 namespace blink {
 
 class CanvasContextCreationAttributesModule;
 class ExceptionState;
+class ExecutionContext;
 class HTMLCanvasElement;
 class OffscreenCanvas;
-class ScriptState;
 
 class MODULES_EXPORT HTMLCanvasElementModule {
   STATIC_ONLY(HTMLCanvasElementModule);
@@ -29,15 +26,15 @@ class MODULES_EXPORT HTMLCanvasElementModule {
  public:
   static V8RenderingContext* getContext(
       HTMLCanvasElement& canvas,
-      const WTF::String& context_id,
+      const String& context_id,
       const CanvasContextCreationAttributesModule* attributes,
       ExceptionState& exception_state);
-  static OffscreenCanvas* transferControlToOffscreen(ScriptState*,
+  static OffscreenCanvas* transferControlToOffscreen(ExecutionContext*,
                                                      HTMLCanvasElement&,
                                                      ExceptionState&);
 
  private:
-  static OffscreenCanvas* TransferControlToOffscreenInternal(ScriptState*,
+  static OffscreenCanvas* TransferControlToOffscreenInternal(ExecutionContext*,
                                                              HTMLCanvasElement&,
                                                              ExceptionState&);
 };

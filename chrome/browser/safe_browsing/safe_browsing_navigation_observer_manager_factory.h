@@ -5,7 +5,7 @@
 #ifndef CHROME_BROWSER_SAFE_BROWSING_SAFE_BROWSING_NAVIGATION_OBSERVER_MANAGER_FACTORY_H_
 #define CHROME_BROWSER_SAFE_BROWSING_SAFE_BROWSING_NAVIGATION_OBSERVER_MANAGER_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class KeyedService;
@@ -35,13 +35,14 @@ class SafeBrowsingNavigationObserverManagerFactory
   static SafeBrowsingNavigationObserverManagerFactory* GetInstance();
 
  private:
-  friend base::NoDestructor<SafeBrowsingNavigationObserverManagerFactory>;
+  friend struct base::DefaultSingletonTraits<
+      SafeBrowsingNavigationObserverManagerFactory>;
 
   SafeBrowsingNavigationObserverManagerFactory();
   ~SafeBrowsingNavigationObserverManagerFactory() override = default;
 
   // BrowserContextKeyedServiceFactory:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* context) const override;
 };
 

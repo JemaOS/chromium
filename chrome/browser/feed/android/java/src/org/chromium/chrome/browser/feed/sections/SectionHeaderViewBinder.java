@@ -15,12 +15,11 @@ import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
  * SectionHeaderView}.
  */
 public class SectionHeaderViewBinder
-        implements PropertyModelChangeProcessor.ViewBinder<
-                        PropertyModel, SectionHeaderView, PropertyKey>,
-                ListModelChangeProcessor.ViewBinder<
-                        PropertyListModel<PropertyModel, PropertyKey>,
-                        SectionHeaderView,
-                        PropertyKey> {
+        implements PropertyModelChangeProcessor
+                           .ViewBinder<PropertyModel, SectionHeaderView, PropertyKey>,
+                   ListModelChangeProcessor
+                           .ViewBinder<PropertyListModel<PropertyModel, PropertyKey>,
+                                   SectionHeaderView, PropertyKey> {
     @Override
     public void bind(PropertyModel model, SectionHeaderView view, PropertyKey key) {
         if (key == SectionHeaderListProperties.IS_SECTION_ENABLED_KEY) {
@@ -36,8 +35,7 @@ public class SectionHeaderViewBinder
                     model.get(SectionHeaderListProperties.ON_TAB_SELECTED_CALLBACK_KEY));
         } else if (key == SectionHeaderListProperties.MENU_DELEGATE_KEY
                 || key == SectionHeaderListProperties.MENU_MODEL_LIST_KEY) {
-            view.setMenuDelegate(
-                    model.get(SectionHeaderListProperties.MENU_MODEL_LIST_KEY),
+            view.setMenuDelegate(model.get(SectionHeaderListProperties.MENU_MODEL_LIST_KEY),
                     model.get(SectionHeaderListProperties.MENU_DELEGATE_KEY));
         } else if (key == SectionHeaderListProperties.IS_TAB_MODE_KEY) {
             view.setTabMode(model.get(SectionHeaderListProperties.IS_TAB_MODE_KEY));
@@ -59,9 +57,6 @@ public class SectionHeaderViewBinder
         } else if (key == SectionHeaderListProperties.STICKY_HEADER_MUTABLE_MARGIN_KEY) {
             view.updateStickyHeaderMargin(
                     model.get(SectionHeaderListProperties.STICKY_HEADER_MUTABLE_MARGIN_KEY));
-        } else if (key == SectionHeaderListProperties.IS_NARROW_WINDOW_ON_TABLET_KEY) {
-            view.updateTabLayoutHeaderWidth(
-                    model.get(SectionHeaderListProperties.IS_NARROW_WINDOW_ON_TABLET_KEY));
         }
     }
 
@@ -74,11 +69,8 @@ public class SectionHeaderViewBinder
     }
 
     @Override
-    public void onItemsInserted(
-            PropertyListModel<PropertyModel, PropertyKey> headers,
-            SectionHeaderView view,
-            int index,
-            int count) {
+    public void onItemsInserted(PropertyListModel<PropertyModel, PropertyKey> headers,
+            SectionHeaderView view, int index, int count) {
         for (int i = index; i < count + index; i++) {
             view.addTab();
         }
@@ -86,11 +78,8 @@ public class SectionHeaderViewBinder
     }
 
     @Override
-    public void onItemsRemoved(
-            PropertyListModel<PropertyModel, PropertyKey> model,
-            SectionHeaderView view,
-            int index,
-            int count) {
+    public void onItemsRemoved(PropertyListModel<PropertyModel, PropertyKey> model,
+            SectionHeaderView view, int index, int count) {
         if (model.size() == 0) {
             // All headers were removed.
             view.removeAllTabs();
@@ -102,15 +91,10 @@ public class SectionHeaderViewBinder
     }
 
     @Override
-    public void onItemsChanged(
-            PropertyListModel<PropertyModel, PropertyKey> headers,
-            SectionHeaderView view,
-            int index,
-            int count,
-            PropertyKey payload) {
+    public void onItemsChanged(PropertyListModel<PropertyModel, PropertyKey> headers,
+            SectionHeaderView view, int index, int count, PropertyKey payload) {
         PropertyModel header = headers.get(0);
-        if (payload == null
-                || payload == SectionHeaderProperties.HEADER_TEXT_KEY
+        if (payload == null || payload == SectionHeaderProperties.HEADER_TEXT_KEY
                 || payload == SectionHeaderProperties.UNREAD_CONTENT_KEY
                 || payload == SectionHeaderProperties.BADGE_TEXT_KEY) {
             // Only use 1st tab for legacy headerText;
@@ -121,12 +105,9 @@ public class SectionHeaderViewBinder
                 PropertyModel tabModel = headers.get(i);
                 boolean hasUnreadContent = tabModel.get(SectionHeaderProperties.UNREAD_CONTENT_KEY);
 
-                view.setHeaderAt(
-                        tabModel.get(SectionHeaderProperties.HEADER_TEXT_KEY),
-                        hasUnreadContent,
-                        tabModel.get(SectionHeaderProperties.BADGE_TEXT_KEY),
-                        tabModel.get(SectionHeaderProperties.ANIMATION_START_KEY),
-                        i);
+                view.setHeaderAt(tabModel.get(SectionHeaderProperties.HEADER_TEXT_KEY),
+                        hasUnreadContent, tabModel.get(SectionHeaderProperties.BADGE_TEXT_KEY),
+                        tabModel.get(SectionHeaderProperties.ANIMATION_START_KEY), i);
             }
         }
         if (payload == null || payload == SectionHeaderProperties.ANIMATION_START_KEY) {

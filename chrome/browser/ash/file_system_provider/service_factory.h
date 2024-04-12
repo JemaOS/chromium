@@ -5,11 +5,12 @@
 #ifndef CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_SERVICE_FACTORY_H_
 
-#include "base/no_destructor.h"
+#include "base/memory/singleton.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
 #include "content/public/browser/browser_context.h"
 
-namespace ash::file_system_provider {
+namespace ash {
+namespace file_system_provider {
 
 class Service;
 
@@ -30,17 +31,18 @@ class ServiceFactory : public ProfileKeyedServiceFactory {
   ServiceFactory& operator=(const ServiceFactory&) = delete;
 
  private:
-  friend base::NoDestructor<ServiceFactory>;
+  friend struct base::DefaultSingletonTraits<ServiceFactory>;
 
   ServiceFactory();
   ~ServiceFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
+  KeyedService* BuildServiceInstanceFor(
       content::BrowserContext* profile) const override;
   bool ServiceIsCreatedWithBrowserContext() const override;
 };
 
-}  // namespace ash::file_system_provider
+}  // namespace file_system_provider
+}  // namespace ash
 
 #endif  // CHROME_BROWSER_ASH_FILE_SYSTEM_PROVIDER_SERVICE_FACTORY_H_

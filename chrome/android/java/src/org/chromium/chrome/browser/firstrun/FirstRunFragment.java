@@ -6,9 +6,9 @@ package org.chromium.chrome.browser.firstrun;
 
 import android.app.Activity;
 
-import androidx.annotation.Nullable;
-
-/** This interface is implemented by FRE fragments. */
+/**
+ * This interface is implemented by FRE fragments.
+ */
 public interface FirstRunFragment {
     /**
      * Notifies that the object returned by {@link #getPageDelegate()} and its dependencies have
@@ -20,8 +20,9 @@ public interface FirstRunFragment {
     @Deprecated
     default void onNativeInitialized() {}
 
-    /** @see androidx.fragment.app.Fragment#getActivity(). */
-    @Nullable
+    /**
+     * @see Fragment#getActivity().
+     */
     Activity getActivity();
 
     /**
@@ -37,10 +38,9 @@ public interface FirstRunFragment {
     void setInitialA11yFocus();
 
     /**
-     * Convenience method to get {@link FirstRunPageDelegate}. Be carefully calling this in response
-     * to async events, as once this fragment is detached, this will return null.
+     * Convenience method to get {@link FirstRunPageDelegate}.
      */
-    default @Nullable FirstRunPageDelegate getPageDelegate() {
+    default FirstRunPageDelegate getPageDelegate() {
         return (FirstRunPageDelegate) getActivity();
     }
 

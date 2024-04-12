@@ -17,12 +17,13 @@
 #include "chrome/browser/task_manager/providers/web_contents/extension_tag.h"
 #include "chrome/browser/task_manager/providers/web_contents/guest_tag.h"
 #include "chrome/browser/task_manager/providers/web_contents/no_state_prefetch_tag.h"
+#include "chrome/browser/task_manager/providers/web_contents/portal_tag.h"
 #include "chrome/browser/task_manager/providers/web_contents/printing_tag.h"
 #include "chrome/browser/task_manager/providers/web_contents/tab_contents_tag.h"
 #include "chrome/browser/task_manager/providers/web_contents/tool_tag.h"
 #include "chrome/browser/task_manager/providers/web_contents/web_app_tag.h"
 #include "chrome/browser/task_manager/providers/web_contents/web_contents_tags_manager.h"
-#include "components/webapps/common/web_app_id.h"
+#include "chrome/browser/web_applications/web_app_id.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -163,7 +164,7 @@ void WebContentsTags::CreateForExtension(
 #if !BUILDFLAG(IS_ANDROID)
 // static
 void WebContentsTags::CreateForWebApp(content::WebContents* web_contents,
-                                      const webapps::AppId& app_id,
+                                      const web_app::AppId& app_id,
                                       const bool is_isolated_web_app) {
   if (!WebContentsTag::FromWebContents(web_contents)) {
     TagWebContents(web_contents,
@@ -173,6 +174,16 @@ void WebContentsTags::CreateForWebApp(content::WebContents* web_contents,
   }
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+// static
+void WebContentsTags::CreateForPortal(content::WebContents* web_contents) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (!WebContentsTag::FromWebContents(web_contents)) {
+    TagWebContents(web_contents, base::WrapUnique(new PortalTag(web_contents)),
+                   WebContentsTag::kTagKey);
+  }
+#endif  // !BUILDFLAG(IS_ANDROID)
+}
 
 // static
 void WebContentsTags::CreateForToolContents(content::WebContents* web_contents,

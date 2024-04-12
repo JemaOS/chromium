@@ -2,21 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {TestRunner} from 'test_runner';
-import {SourcesTestRunner} from 'sources_test_runner';
-
-import * as Sources from 'devtools/panels/sources/sources.js';
-import * as Breakpoints from 'devtools/models/breakpoints/breakpoints.js';
-
 (async function() {
   TestRunner.addResult(
       `Tests that there is no exception in front-end on page reload when breakpoint is set in HTML document and some dynamic scripts are loaded before the script with the breakpoint is loaded.`);
+  await TestRunner.loadLegacyModule('sources'); await TestRunner.loadTestModule('sources_test_runner');
   await TestRunner.showPanel('sources');
   await TestRunner.navigatePromise(
       'resources/dynamic-scripts-breakpoints.html');
 
-  Breakpoints.BreakpointManager.BreakpointManager.instance().storage.breakpoints = new Map();
-  var panel = Sources.SourcesPanel.SourcesPanel.instance();
+  Bindings.breakpointManager.storage.breakpoints = new Map();
+  var panel = UI.panels.sources;
 
   SourcesTestRunner.startDebuggerTest();
 
@@ -28,7 +23,7 @@ import * as Breakpoints from 'devtools/models/breakpoints/breakpoints.js';
   }
 
   function dumpBreakpointStorage() {
-    var breakpointManager = Breakpoints.BreakpointManager.BreakpointManager.instance();
+    var breakpointManager = Bindings.breakpointManager;
     var breakpoints = breakpointManager.storage.setting.get();
     TestRunner.addResult('    Dumping breakpoint storage');
     for (var i = 0; i < breakpoints.length; ++i)
@@ -40,7 +35,7 @@ import * as Breakpoints from 'devtools/models/breakpoints/breakpoints.js';
   async function didShowScriptSource(sourceFrame) {
     TestRunner.addResult('Setting breakpoint:');
     TestRunner.addSniffer(
-        Breakpoints.BreakpointManager.ModelBreakpoint.prototype,
+        Bindings.BreakpointManager.ModelBreakpoint.prototype,
         'addResolvedLocation', breakpointResolved);
     await SourcesTestRunner.setBreakpoint(sourceFrame, 7, '', true);
   }

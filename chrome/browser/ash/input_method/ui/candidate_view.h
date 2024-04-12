@@ -20,9 +20,8 @@ namespace ime {
 
 // CandidateView renderes a row of a candidate.
 class UI_CHROMEOS_EXPORT CandidateView : public views::Button {
-  METADATA_HEADER(CandidateView, views::Button)
-
  public:
+  METADATA_HEADER(CandidateView);
   CandidateView(PressedCallback callback,
                 ui::CandidateWindow::Orientation orientation);
   CandidateView(const CandidateView&) = delete;
@@ -42,6 +41,9 @@ class UI_CHROMEOS_EXPORT CandidateView : public views::Button {
 
   void SetPositionData(int index, int total);
 
+  void SetIndexData(int index, int total);
+
+  void SetBackgroundRadius(float radius);
  private:
   friend class CandidateWindowViewTest;
   FRIEND_TEST_ALL_PREFIXES(CandidateWindowViewTest, ShortcutSettingTest);
@@ -51,7 +53,7 @@ class UI_CHROMEOS_EXPORT CandidateView : public views::Button {
 
   // Overridden from View:
   bool OnMouseDragged(const ui::MouseEvent& event) override;
-  void Layout(PassKey) override;
+  void Layout() override;
   gfx::Size CalculatePreferredSize() const override;
   void GetAccessibleNodeData(ui::AXNodeData* node_data) override;
 
@@ -62,21 +64,24 @@ class UI_CHROMEOS_EXPORT CandidateView : public views::Button {
   // child views will be deleted when |this| is deleted.
 
   // The shortcut label renders shortcut numbers like 1, 2, and 3.
-  raw_ptr<views::Label> shortcut_label_ = nullptr;
+  raw_ptr<views::Label, ExperimentalAsh> shortcut_label_ = nullptr;
   // The candidate label renders candidates.
-  raw_ptr<views::Label> candidate_label_ = nullptr;
+  raw_ptr<views::Label, ExperimentalAsh> candidate_label_ = nullptr;
   // The annotation label renders annotations.
-  raw_ptr<views::Label> annotation_label_ = nullptr;
+  raw_ptr<views::Label, ExperimentalAsh> annotation_label_ = nullptr;
   // The infolist icon.
-  raw_ptr<views::View> infolist_icon_ = nullptr;
+  raw_ptr<views::View, ExperimentalAsh> infolist_icon_ = nullptr;
 
   int shortcut_width_ = 0;
   int candidate_width_ = 0;
   bool highlighted_ = false;
 
+  int index_in_page_;
+  int page_size_;
+  float background_radius_;
   // 0-based index of this candidate e.g. [0, total_candidates_ -1].
-  int candidate_index_ = 0;
-  int total_candidates_ = 0;
+  int candidate_index_;
+  int total_candidates_;
 };
 
 BEGIN_VIEW_BUILDER(UI_CHROMEOS_EXPORT, CandidateView, views::Button)

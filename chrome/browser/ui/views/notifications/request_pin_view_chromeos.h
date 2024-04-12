@@ -29,9 +29,9 @@ class Label;
 // SecurityTokenPinDialogHostPopupImpl.
 class RequestPinView final : public views::DialogDelegateView,
                              public views::TextfieldController {
-  METADATA_HEADER(RequestPinView, views::DialogDelegateView)
-
  public:
+  METADATA_HEADER(RequestPinView);
+
   using PinEnteredCallback =
       base::RepeatingCallback<void(const std::string& user_input)>;
   using ViewDestructionCallback = base::OnceClosure;

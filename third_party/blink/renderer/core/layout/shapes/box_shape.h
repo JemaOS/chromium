@@ -39,7 +39,7 @@ class BoxShape final : public Shape {
  public:
   BoxShape(const FloatRoundedRect& bounds) : Shape(), bounds_(bounds) {}
 
-  LogicalRect ShapeMarginLogicalBoundingBox() const override;
+  LayoutRect ShapeMarginLogicalBoundingBox() const override;
   bool IsEmpty() const override { return bounds_.IsEmpty(); }
   LineSegment GetExcludedInterval(LayoutUnit logical_top,
                                   LayoutUnit logical_height) const override;

@@ -5,7 +5,8 @@
 // https://www.khronos.org/registry/webgl/extensions/OES_draw_buffers_indexed/
 
 [
-    LegacyNoInterfaceObject
+    LegacyNoInterfaceObject,
+    DoNotCheckConstants
 ] interface OESDrawBuffersIndexed {
     void enableiOES(GLenum target, GLuint index);
 

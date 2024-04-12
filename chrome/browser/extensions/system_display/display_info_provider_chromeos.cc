@@ -30,7 +30,7 @@ namespace system_display = api::system_display;
 namespace {
 
 void RunResultCallback(DisplayInfoProvider::ErrorCallback callback,
-                       std::optional<std::string> error) {
+                       absl::optional<std::string> error) {
   if (error) {
     LOG(ERROR) << "API call failed: " << *error;
   }
@@ -38,11 +38,11 @@ void RunResultCallback(DisplayInfoProvider::ErrorCallback callback,
       FROM_HERE, base::BindOnce(std::move(callback), std::move(error)));
 }
 
-std::optional<std::string> GetStringResult(
+absl::optional<std::string> GetStringResult(
     crosapi::mojom::DisplayConfigResult result) {
   switch (result) {
     case crosapi::mojom::DisplayConfigResult::kSuccess:
-      return std::nullopt;
+      return absl::nullopt;
     case crosapi::mojom::DisplayConfigResult::kInvalidOperationError:
       return "Invalid operation";
     case crosapi::mojom::DisplayConfigResult::kInvalidDisplayIdError:
@@ -81,7 +81,7 @@ std::optional<std::string> GetStringResult(
 }
 
 void LogErrorResult(crosapi::mojom::DisplayConfigResult result) {
-  std::optional<std::string> str_result = GetStringResult(result);
+  absl::optional<std::string> str_result = GetStringResult(result);
   if (!str_result) {
     return;
   }
@@ -101,7 +101,7 @@ void DisplayInfoProviderChromeOS::SetDisplayProperties(
     const std::string& display_id_str,
     const api::system_display::DisplayProperties& properties,
     ErrorCallback callback) {
-  std::optional<std::string> error =
+  absl::optional<std::string> error =
       ValidateDisplayPropertiesInput(display_id_str, properties);
   if (error) {
     RunResultCallback(std::move(callback), std::move(*error));
@@ -296,7 +296,7 @@ void DisplayInfoProviderChromeOS::GetDisplayLayout(
 bool DisplayInfoProviderChromeOS::OverscanCalibrationStart(
     const std::string& id) {
   cros_display_config_->OverscanCalibration(
-      id, crosapi::mojom::DisplayConfigOperation::kStart, std::nullopt,
+      id, crosapi::mojom::DisplayConfigOperation::kStart, absl::nullopt,
       base::BindOnce(&LogErrorResult));
   return true;
 }
@@ -313,7 +313,7 @@ bool DisplayInfoProviderChromeOS::OverscanCalibrationAdjust(
 bool DisplayInfoProviderChromeOS::OverscanCalibrationReset(
     const std::string& id) {
   cros_display_config_->OverscanCalibration(
-      id, crosapi::mojom::DisplayConfigOperation::kReset, std::nullopt,
+      id, crosapi::mojom::DisplayConfigOperation::kReset, absl::nullopt,
       base::BindOnce(&LogErrorResult));
   return true;
 }
@@ -321,7 +321,7 @@ bool DisplayInfoProviderChromeOS::OverscanCalibrationReset(
 bool DisplayInfoProviderChromeOS::OverscanCalibrationComplete(
     const std::string& id) {
   cros_display_config_->OverscanCalibration(
-      id, crosapi::mojom::DisplayConfigOperation::kComplete, std::nullopt,
+      id, crosapi::mojom::DisplayConfigOperation::kComplete, absl::nullopt,
       base::BindOnce(&LogErrorResult));
   return true;
 }
@@ -377,7 +377,7 @@ void DisplayInfoProviderChromeOS::CallTouchCalibration(
             }
             std::move(callback).Run(
                 result == crosapi::mojom::DisplayConfigResult::kSuccess
-                    ? std::nullopt
+                    ? absl::nullopt
                     : GetStringResult(result));
           },
           std::move(callback)));
@@ -405,7 +405,7 @@ void DisplayInfoProviderChromeOS::SetMirrorMode(
       }
       display_layout_info->mirror_source_id = *info.mirroring_source_id;
       display_layout_info->mirror_destination_ids =
-          std::make_optional<std::vector<std::string>>(
+          absl::make_optional<std::vector<std::string>>(
               *info.mirroring_destination_ids);
     }
   }

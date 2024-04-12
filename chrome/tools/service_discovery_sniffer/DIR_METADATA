@@ -1,6 +1,3 @@
 monorail: {
   component: "Services>CloudPrint"
 }
-buganizer_public: {
-  component_id: 1457101
-}

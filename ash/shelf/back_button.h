@@ -10,7 +10,6 @@
 #include "ash/ash_export.h"
 #include "ash/shelf/shelf_button_delegate.h"
 #include "ash/shelf/shelf_control_button.h"
-#include "ui/base/metadata/metadata_header_macros.h"
 
 namespace ash {
 
@@ -21,9 +20,9 @@ class ShelfButtonDelegate;
 // in/out of the icon matches the movement of ShelfView's items.
 class ASH_EXPORT BackButton : public ShelfControlButton,
                               public ShelfButtonDelegate {
-  METADATA_HEADER(BackButton, ShelfControlButton)
-
  public:
+  static const char kViewClassName[];
+
   explicit BackButton(Shelf* shelf);
 
   BackButton(const BackButton&) = delete;
@@ -37,6 +36,7 @@ class ASH_EXPORT BackButton : public ShelfControlButton,
 
   // views::Button:
   void PaintButtonContents(gfx::Canvas* canvas) override;
+  const char* GetClassName() const override;
   std::u16string GetTooltipText(const gfx::Point& p) const override;
 
   // views::View:

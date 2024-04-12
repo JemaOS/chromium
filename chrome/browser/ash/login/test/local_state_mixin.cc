@@ -29,15 +29,14 @@ class TestMainExtraPart : public ChromeBrowserMainExtraParts {
     // be updated, and do ephemeral user checks.
     // Given that user manager does not exist yet (by design), create a
     // temporary fake user manager instance.
-    auto scoped_user_manager =
-        user_manager::TypedScopedUserManager<user_manager::FakeUserManager>(
-            std::make_unique<user_manager::FakeUserManager>(
-                g_browser_process->local_state()));
+    auto user_manager = std::make_unique<user_manager::FakeUserManager>(
+        g_browser_process->local_state());
+    user_manager::ScopedUserManager scoper(std::move(user_manager));
     delegate_->SetUpLocalStateBase();
   }
 
  private:
-  const raw_ptr<LocalStateMixin::Delegate> delegate_;
+  const raw_ptr<LocalStateMixin::Delegate, ExperimentalAsh> delegate_;
 };
 
 }  // namespace

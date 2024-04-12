@@ -18,10 +18,6 @@ class TransportHoverListModel : public HoverListModel {
   explicit TransportHoverListModel(
       base::span<const AuthenticatorRequestDialogModel::Mechanism> mechanisms);
 
-  TransportHoverListModel(
-      base::span<const AuthenticatorRequestDialogModel::Mechanism> mechanisms,
-      std::vector<int> mechanism_indices_to_display);
-
   TransportHoverListModel(const TransportHoverListModel&) = delete;
   TransportHoverListModel& operator=(const TransportHoverListModel&) = delete;
 
@@ -38,7 +34,6 @@ class TransportHoverListModel : public HoverListModel {
  private:
   const base::span<const AuthenticatorRequestDialogModel::Mechanism>
       mechanisms_;
-  const std::vector<int> mechanism_indices_to_display_;
 };
 
 #endif  // CHROME_BROWSER_UI_WEBAUTHN_TRANSPORT_HOVER_LIST_MODEL_H_

@@ -35,30 +35,64 @@
 
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#include "third_party/blink/renderer/platform/heap/collection_support/heap_vector.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
+#include "third_party/blink/renderer/platform/wtf/vector.h"
 
 namespace blink {
 
+class EventTarget;
 class ExceptionState;
 class StructuredSerializeOptions;
 class ScriptState;
 class ScriptValue;
+class V8Function;
 
 class CORE_EXPORT WindowOrWorkerGlobalScope {
- public:
-  void reportError(ScriptState*, const ScriptValue&);
-  String btoa(const String& string_to_encode, ExceptionState&);
-  String atob(const String& encoded_string, ExceptionState&);
-  bool crossOriginIsolated();
-  String crossOriginEmbedderPolicy();
-  ScriptValue structuredClone(ScriptState*,
-                              const ScriptValue& message,
-                              const StructuredSerializeOptions*,
-                              ExceptionState&);
+  STATIC_ONLY(WindowOrWorkerGlobalScope);
 
- protected:
-  virtual ExecutionContext* GetExecutionContext() const = 0;
+ public:
+  static void reportError(ScriptState*, EventTarget&, const ScriptValue&);
+
+  static String btoa(EventTarget&,
+                     const String& string_to_encode,
+                     ExceptionState&);
+  static String atob(EventTarget&,
+                     const String& encoded_string,
+                     ExceptionState&);
+
+  static int setTimeout(ScriptState*,
+                        EventTarget&,
+                        V8Function* handler,
+                        int timeout,
+                        const HeapVector<ScriptValue>& arguments);
+  static int setTimeout(ScriptState*,
+                        EventTarget&,
+                        const String& handler,
+                        int timeout,
+                        const HeapVector<ScriptValue>&);
+  static int setInterval(ScriptState*,
+                         EventTarget&,
+                         V8Function* handler,
+                         int timeout,
+                         const HeapVector<ScriptValue>&);
+  static int setInterval(ScriptState*,
+                         EventTarget&,
+                         const String& handler,
+                         int timeout,
+                         const HeapVector<ScriptValue>&);
+  static void clearTimeout(EventTarget&, int timeout_id);
+  static void clearInterval(EventTarget&, int timeout_id);
+
+  static bool crossOriginIsolated(const ExecutionContext&);
+  static String crossOriginEmbedderPolicy(const ExecutionContext&);
+
+  static ScriptValue structuredClone(ScriptState*,
+                                     EventTarget&,
+                                     const ScriptValue& message,
+                                     const StructuredSerializeOptions*,
+                                     ExceptionState&);
 };
 
 }  // namespace blink

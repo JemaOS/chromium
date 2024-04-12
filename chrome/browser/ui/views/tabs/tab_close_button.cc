@@ -14,7 +14,6 @@
 #include "chrome/browser/ui/views/tabs/tab.h"
 #include "chrome/browser/ui/views/tabs/tab_slot_controller.h"
 #include "components/strings/grit/components_strings.h"
-#include "components/vector_icons/vector_icons.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/pointer/touch_ui_controller.h"
@@ -24,7 +23,6 @@
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/image/image_skia_operations.h"
 #include "ui/gfx/paint_vector_icon.h"
-#include "ui/gfx/vector_icon_types.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/controls/focus_ring.h"
 #include "ui/views/controls/highlight_path_generator.h"
@@ -37,13 +35,14 @@
 #endif
 
 namespace {
-constexpr int kIconSize = 16;
-constexpr gfx::Size kButtonSize = {28, 28};
-}  // namespace
+constexpr int kGlyphSize = 16;
+constexpr int kTouchGlyphSize = 24;
+
+}  //  namespace
 
 TabCloseButton::TabCloseButton(PressedCallback pressed_callback,
                                MouseEventCallback mouse_event_callback)
-    : views::LabelButton(std::move(pressed_callback)),
+    : views::ImageButton(std::move(pressed_callback)),
       mouse_event_callback_(std::move(mouse_event_callback)) {
   SetEventTargeter(std::make_unique<views::ViewTargeter>(this));
   SetAccessibleName(l10n_util::GetStringUTF16(IDS_ACCNAME_CLOSE));
@@ -52,8 +51,6 @@ TabCloseButton::TabCloseButton(PressedCallback pressed_callback,
   views::InkDrop::Get(this)->SetMode(views::InkDropHost::InkDropMode::ON);
   views::InkDrop::Get(this)->SetHighlightOpacity(0.16f);
   views::InkDrop::Get(this)->SetVisibleOpacity(0.14f);
-
-  SetImageCentered(true);
 
   // Disable animation so that the hover indicator shows up immediately to help
   // avoid mis-clicks.
@@ -80,28 +77,36 @@ TabCloseButton::TabCloseButton(PressedCallback pressed_callback,
   ring_highlight_path->set_use_contents_bounds(true);
   views::FocusRing::Get(this)->SetPathGenerator(std::move(ring_highlight_path));
 
-  UpdateIcon();
+  // Always have a value on this property so we can modify it directly without
+  // a heap allocation.
+  SetProperty(views::kInternalPaddingKey, gfx::Insets());
 }
 
-TabCloseButton::~TabCloseButton() = default;
+TabCloseButton::~TabCloseButton() {}
+
+// static
+int TabCloseButton::GetGlyphSize() {
+  return ui::TouchUiController::Get()->touch_ui() ? kTouchGlyphSize
+                                                  : kGlyphSize;
+}
 
 TabStyle::TabColors TabCloseButton::GetColors() const {
   return colors_;
 }
 
 void TabCloseButton::SetColors(TabStyle::TabColors colors) {
-  if (colors == colors_) {
+  if (colors == colors_)
     return;
-  }
   colors_ = std::move(colors);
   views::InkDrop::Get(this)->SetBaseColor(
       color_utils::GetColorWithMaxContrast(colors_.background_color));
   views::FocusRing::Get(this)->SetColorId(
       colors_.close_button_focus_ring_color);
-
-  UpdateIcon();
-
   OnPropertyChanged(&colors_, views::kPropertyEffectsPaint);
+}
+
+void TabCloseButton::SetButtonPadding(const gfx::Insets& padding) {
+  *GetProperty(views::kInternalPaddingKey) = padding;
 }
 
 views::View* TabCloseButton::GetTooltipHandlerForPoint(
@@ -109,16 +114,15 @@ views::View* TabCloseButton::GetTooltipHandlerForPoint(
   // Tab close button has no children, so tooltip handler should be the same
   // as the event handler. In addition, a hit test has to be performed for the
   // point (as GetTooltipHandlerForPoint() is responsible for it).
-  if (!HitTestPoint(point)) {
+  if (!HitTestPoint(point))
     return nullptr;
-  }
   return GetEventHandlerForPoint(point);
 }
 
 bool TabCloseButton::OnMousePressed(const ui::MouseEvent& event) {
   mouse_event_callback_.Run(this, event);
 
-  bool handled = LabelButton::OnMousePressed(event);
+  bool handled = ImageButton::OnMousePressed(event);
   // Explicitly mark midle-mouse clicks as non-handled to ensure the tab
   // sees them.
   return !event.IsMiddleMouseButton() && handled;
@@ -137,21 +141,40 @@ void TabCloseButton::OnMouseMoved(const ui::MouseEvent& event) {
 void TabCloseButton::OnGestureEvent(ui::GestureEvent* event) {
   // Consume all gesture events here so that the parent (Tab) does not
   // start consuming gestures.
-  LabelButton::OnGestureEvent(event);
+  ImageButton::OnGestureEvent(event);
   event->SetHandled();
 }
 
+gfx::Insets TabCloseButton::GetInsets() const {
+  return ImageButton::GetInsets() + *GetProperty(views::kInternalPaddingKey);
+}
+
 gfx::Size TabCloseButton::CalculatePreferredSize() const {
-  return kButtonSize;
+  const int glyph_size = GetGlyphSize();
+  return gfx::Size(glyph_size, glyph_size) + GetInsets().size();
+}
+
+void TabCloseButton::PaintButtonContents(gfx::Canvas* canvas) {
+  cc::PaintFlags flags;
+  constexpr float kStrokeWidth = 1.5f;
+  float touch_scale = static_cast<float>(GetGlyphSize()) / kGlyphSize;
+  float size = (kGlyphSize - 8) * touch_scale - kStrokeWidth;
+  gfx::RectF glyph_bounds(GetContentsBounds());
+  glyph_bounds.ClampToCenteredSize(gfx::SizeF(size, size));
+  flags.setAntiAlias(true);
+  flags.setStrokeWidth(kStrokeWidth);
+  flags.setStrokeCap(cc::PaintFlags::kRound_Cap);
+  flags.setColor(colors_.foreground_color);
+  canvas->DrawLine(glyph_bounds.origin(), glyph_bounds.bottom_right(), flags);
+  canvas->DrawLine(glyph_bounds.bottom_left(), glyph_bounds.top_right(), flags);
 }
 
 views::View* TabCloseButton::TargetForRect(views::View* root,
                                            const gfx::Rect& rect) {
   CHECK_EQ(root, this);
 
-  if (!views::UsePointBasedTargeting(rect)) {
+  if (!views::UsePointBasedTargeting(rect))
     return ViewTargeterDelegate::TargetForRect(root, rect);
-  }
 
   // Ignore the padding set on the button.
   gfx::Rect contents_bounds = GetMirroredRect(GetContentsBounds());
@@ -164,11 +187,10 @@ views::View* TabCloseButton::TargetForRect(views::View* root,
   // touch happens to be occurring.  In such a case, maybe we don't want this
   // code to run?  It's possible this block should be removed, or maybe this
   // whole function deleted.  Note that in these cases, we should probably
-  // also remove the padding on the close button bounds (see Tab::Layout()), as
-  // it will be pointless.
-  if (aura::Env::GetInstance()->is_touch_down()) {
+  // also remove the padding on the close button bounds (see Tab::Layout()),
+  // as it will be pointless.
+  if (aura::Env::GetInstance()->is_touch_down())
     contents_bounds = GetLocalBounds();
-  }
 #endif
 
   return contents_bounds.Intersects(rect) ? this : parent();
@@ -179,20 +201,7 @@ bool TabCloseButton::GetHitTestMask(SkPath* mask) const {
   mask->addRect(gfx::RectToSkRect(GetMirroredRect(GetContentsBounds())));
   return true;
 }
-void TabCloseButton::UpdateIcon() {
-  const auto& icon = kCloseTabChromeRefreshIcon;
 
-  SetImageModel(views::Button::STATE_NORMAL,
-                ui::ImageModel::FromVectorIcon(icon, colors_.foreground_color,
-                                               kIconSize));
-  SetImageModel(views::Button::STATE_HOVERED,
-                ui::ImageModel::FromVectorIcon(icon, colors_.foreground_color,
-                                               kIconSize));
-  SetImageModel(views::Button::STATE_PRESSED,
-                ui::ImageModel::FromVectorIcon(icon, colors_.foreground_color,
-                                               kIconSize));
-}
-
-BEGIN_METADATA(TabCloseButton)
+BEGIN_METADATA(TabCloseButton, views::ImageButton)
 ADD_PROPERTY_METADATA(TabStyle::TabColors, Colors)
 END_METADATA

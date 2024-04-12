@@ -4,7 +4,6 @@
 
 #include "chrome/browser/ash/sync/synced_session_client_ash.h"
 
-#include "base/memory/raw_ptr.h"
 #include "base/test/bind.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
@@ -104,7 +103,7 @@ class FakeCrosapiSessionSyncFaviconDelegate
  private:
   mojo::Receiver<crosapi::mojom::SyncedSessionClientFaviconDelegate> receiver_{
       this};
-  raw_ptr<gfx::ImageSkia> result_image_ = nullptr;
+  gfx::ImageSkia* result_image_ = nullptr;
 };
 
 gfx::ImageSkia GetTestImage() {

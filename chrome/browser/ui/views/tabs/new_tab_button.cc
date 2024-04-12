@@ -16,7 +16,6 @@
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/tabs/tab_types.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
-#include "chrome/browser/ui/views/frame/top_container_background.h"
 #include "chrome/browser/ui/views/tabs/browser_tab_strip_controller.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/grit/generated_resources.h"
@@ -54,24 +53,37 @@ class NewTabButton::HighlightPathGenerator
   // views::HighlightPathGenerator:
   SkPath GetHighlightPath(const views::View* view) override {
     return static_cast<const NewTabButton*>(view)->GetBorderPath(
-        view->GetContentsBounds().origin(), false);
+        view->GetContentsBounds().origin(), 1.0f, false);
   }
 };
 
 NewTabButton::NewTabButton(TabStrip* tab_strip, PressedCallback callback)
     : views::ImageButton(std::move(callback)), tab_strip_(tab_strip) {
   SetAnimateOnStateChange(true);
+// TODO(crbug.com/1052397): Revisit the macro expression once build flag switch
+// of lacros-chrome is complete.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+  SetTriggerableEventFlags(GetTriggerableEventFlags() |
+                           ui::EF_MIDDLE_MOUSE_BUTTON);
+#endif
 
-  // If there is an image for the NewTabButton it is set by the theme. Theme
-  // images should not be flipped for RTL.
-  SetFlipCanvasOnPaintForRTLUI(false);
-
-  foreground_frame_active_color_id_ = kColorNewTabButtonForegroundFrameActive;
-  foreground_frame_inactive_color_id_ =
-      kColorNewTabButtonForegroundFrameInactive;
-  background_frame_active_color_id_ = kColorNewTabButtonBackgroundFrameActive;
-  background_frame_inactive_color_id_ =
-      kColorNewTabButtonBackgroundFrameInactive;
+  if (features::IsChromeRefresh2023()) {
+    foreground_frame_active_color_id_ =
+        kColorNewTabButtonCRForegroundFrameActive;
+    foreground_frame_inactive_color_id_ =
+        kColorNewTabButtonCRForegroundFrameInactive;
+    background_frame_active_color_id_ =
+        kColorNewTabButtonCRBackgroundFrameActive;
+    background_frame_inactive_color_id_ =
+        kColorNewTabButtonCRBackgroundFrameInactive;
+  } else {
+    foreground_frame_active_color_id_ = kColorNewTabButtonForegroundFrameActive;
+    foreground_frame_inactive_color_id_ =
+        kColorNewTabButtonForegroundFrameInactive;
+    background_frame_active_color_id_ = kColorNewTabButtonBackgroundFrameActive;
+    background_frame_inactive_color_id_ =
+        kColorNewTabButtonBackgroundFrameInactive;
+  }
 
   ink_drop_container_ =
       AddChildView(std::make_unique<views::InkDropContainerView>());
@@ -100,7 +112,7 @@ void NewTabButton::FrameColorsChanged() {
   const auto* const color_provider = GetColorProvider();
   views::FocusRing::Get(this)->SetColorId(kColorNewTabButtonFocusRing);
   views::InkDrop::Get(this)->SetBaseColor(
-      color_provider->GetColor(GetWidget()->ShouldPaintAsActive()
+      color_provider->GetColor(tab_strip_->ShouldPaintAsActiveFrame()
                                    ? kColorNewTabButtonInkDropFrameActive
                                    : kColorNewTabButtonInkDropFrameInactive));
   SchedulePaint();
@@ -122,7 +134,7 @@ void NewTabButton::RemoveLayerFromRegions(ui::Layer* old_layer) {
 SkColor NewTabButton::GetForegroundColor() const {
   if (features::IsChromeRefresh2023()) {
     return GetColorProvider()->GetColor(
-        GetWidget()->ShouldPaintAsActive()
+        tab_strip_->ShouldPaintAsActiveFrame()
             ? foreground_frame_active_color_id_
             : foreground_frame_inactive_color_id_);
   }
@@ -135,20 +147,24 @@ int NewTabButton::GetCornerRadius() const {
 }
 
 SkPath NewTabButton::GetBorderPath(const gfx::Point& origin,
+                                   float scale,
                                    bool extend_to_top) const {
-  const float radius = GetCornerRadius();
+  gfx::PointF scaled_origin(origin);
+  scaled_origin.Scale(scale);
+  const float radius = GetCornerRadius() * scale;
 
   SkPath path;
   if (extend_to_top) {
-    path.moveTo(origin.x(), 0);
+    path.moveTo(scaled_origin.x(), 0);
     const float diameter = radius * 2;
     path.rLineTo(diameter, 0);
-    path.rLineTo(0, origin.y() + radius);
+    path.rLineTo(0, scaled_origin.y() + radius);
     path.rArcTo(radius, radius, 0, SkPath::kSmall_ArcSize, SkPathDirection::kCW,
                 -diameter, 0);
     path.close();
   } else {
-    path.addCircle(origin.x() + radius, origin.y() + radius, radius);
+    path.addCircle(scaled_origin.x() + radius, scaled_origin.y() + radius,
+                   radius);
   }
   return path;
 }
@@ -187,9 +203,8 @@ void NewTabButton::OnMouseReleased(const ui::MouseEvent& event) {
   point = display::win::ScreenWin::DIPToScreenPoint(point);
   auto weak_this = weak_factory_.GetWeakPtr();
   views::ShowSystemMenuAtScreenPixelLocation(views::HWNDForView(this), point);
-  if (!weak_this) {
+  if (!weak_this)
     return;
-  }
   SetState(views::Button::STATE_NORMAL);
 }
 #endif
@@ -208,6 +223,8 @@ void NewTabButton::NotifyClick(const ui::Event& event) {
 }
 
 void NewTabButton::PaintButtonContents(gfx::Canvas* canvas) {
+  gfx::ScopedCanvas scoped_canvas(canvas);
+  canvas->Translate(GetContentsBounds().OffsetFromOrigin());
   PaintFill(canvas);
   PaintIcon(canvas);
 }
@@ -223,51 +240,55 @@ bool NewTabButton::GetHitTestMask(SkPath* mask) const {
   DCHECK(mask);
 
   gfx::Point origin = GetContentsBounds().origin();
-  if (base::i18n::IsRTL()) {
+  if (base::i18n::IsRTL())
     origin.set_x(GetInsets().right());
-  }
-  SkPath border =
-      GetBorderPath(origin, tab_strip_->controller()->IsFrameCondensed());
-  mask->addPath(border);
+  const float scale = GetWidget()->GetCompositor()->device_scale_factor();
+  SkPath border = GetBorderPath(origin, scale,
+                                tab_strip_->controller()->IsFrameCondensed());
+  mask->addPath(border, SkMatrix::Scale(1 / scale, 1 / scale));
   return true;
 }
 
 void NewTabButton::PaintFill(gfx::Canvas* canvas) const {
   gfx::ScopedCanvas scoped_canvas(canvas);
+  canvas->UndoDeviceScaleFactor();
+  cc::PaintFlags flags;
+  flags.setAntiAlias(true);
 
-  const std::optional<int> bg_id =
+  const float scale = canvas->image_scale();
+  const absl::optional<int> bg_id =
       tab_strip_->GetCustomBackgroundId(BrowserFrameActiveState::kUseCurrent);
   if (bg_id.has_value()) {
-    // The shape and location of the background texture is defined by a clip
-    // path. This needs to be translated to center it in the view.
-    auto path = GetBorderPath(gfx::Point(), false);
-    auto offset = GetContentsBounds().OffsetFromOrigin();
-    path.offset(offset.x(), offset.y());
-    canvas->ClipPath(path, /*do_anti_alias=*/true);
+    float x_scale = scale;
+    const gfx::Rect& contents_bounds = GetContentsBounds();
+    gfx::RectF bounds_in_tab_strip(GetLocalBounds());
+    View::ConvertRectToTarget(this, tab_strip_, &bounds_in_tab_strip);
+    int x = bounds_in_tab_strip.x() + contents_bounds.x() +
+            tab_strip_->GetBackgroundOffset();
+    if (base::i18n::IsRTL()) {
+      // The new tab background is mirrored in RTL mode, but the theme
+      // background should never be mirrored. Mirror it here to compensate.
+      x_scale = -scale;
+      // Offset by |width| such that the same region is painted as if there
+      // was no flip.
+      x += contents_bounds.width();
+    }
 
-    // But the background image itself must not be translated in order to align
-    // with the same background image painted across different views.
-    TopContainerBackground::PaintThemeAlignedImage(
-        canvas, this,
-        BrowserView::GetBrowserViewForBrowser(tab_strip_->GetBrowser()),
-        GetThemeProvider()->GetImageSkiaNamed(bg_id.value()));
+    canvas->InitPaintFlagsForTiling(
+        *GetThemeProvider()->GetImageSkiaNamed(bg_id.value()), x,
+        contents_bounds.y(), x_scale, scale, 0, 0, SkTileMode::kRepeat,
+        SkTileMode::kRepeat, &flags);
   } else {
-    // In the non themed-image case, we simply draw a solid color button. Note
-    // that cc::PaintFlags defaults to fill.
-    cc::PaintFlags flags;
-    flags.setAntiAlias(true);
-    canvas->Translate(GetContentsBounds().OffsetFromOrigin());
     flags.setColor(GetColorProvider()->GetColor(
-        GetWidget()->ShouldPaintAsActive()
+        tab_strip_->ShouldPaintAsActiveFrame()
             ? background_frame_active_color_id_
             : background_frame_inactive_color_id_));
-    canvas->DrawPath(GetBorderPath(gfx::Point(), false), flags);
   }
+
+  canvas->DrawPath(GetBorderPath(gfx::Point(), scale, false), flags);
 }
 
 void NewTabButton::PaintIcon(gfx::Canvas* canvas) {
-  gfx::ScopedCanvas scoped_canvas(canvas);
-  canvas->Translate(GetContentsBounds().OffsetFromOrigin());
   cc::PaintFlags flags;
   flags.setAntiAlias(true);
   flags.setColor(GetForegroundColor());
@@ -290,5 +311,5 @@ void NewTabButton::PaintIcon(gfx::Canvas* canvas) {
   canvas->DrawLine(gfx::PointF(center, start), gfx::PointF(center, end), flags);
 }
 
-BEGIN_METADATA(NewTabButton)
+BEGIN_METADATA(NewTabButton, views::ImageButton)
 END_METADATA

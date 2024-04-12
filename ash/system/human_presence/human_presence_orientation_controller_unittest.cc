@@ -80,13 +80,12 @@ class HumanPresenceOrientationControllerTest : public AshTestBase {
         display::Display::RotationSource::ACTIVE);
   }
 
-  raw_ptr<HumanPresenceOrientationController, DanglingUntriaged>
+  raw_ptr<HumanPresenceOrientationController, ExperimentalAsh>
       orientation_controller_ = nullptr;
-  raw_ptr<TabletModeController, DanglingUntriaged> tablet_mode_controller_ =
+  raw_ptr<TabletModeController, ExperimentalAsh> tablet_mode_controller_ =
       nullptr;
-  raw_ptr<display::DisplayManager, DanglingUntriaged> display_manager_ =
-      nullptr;
-  raw_ptr<chromeos::FakePowerManagerClient, DanglingUntriaged>
+  raw_ptr<display::DisplayManager, ExperimentalAsh> display_manager_ = nullptr;
+  raw_ptr<chromeos::FakePowerManagerClient, ExperimentalAsh>
       power_manager_client_ = nullptr;
 
  private:

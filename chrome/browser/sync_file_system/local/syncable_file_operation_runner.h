@@ -25,7 +25,9 @@ namespace sync_file_system {
 
 // This class must run only on IO thread.
 // Owned by LocalFileSyncContext.
-class SyncableFileOperationRunner final : public LocalFileSyncStatus::Observer {
+class SyncableFileOperationRunner
+    : public base::SupportsWeakPtr<SyncableFileOperationRunner>,
+      public LocalFileSyncStatus::Observer {
  public:
   // Represents an operation task (which usually wraps one FileSystemOperation).
   class Task {
@@ -88,10 +90,6 @@ class SyncableFileOperationRunner final : public LocalFileSyncStatus::Observer {
 
   int64_t num_inflight_tasks() const { return num_inflight_tasks_; }
 
-  base::WeakPtr<SyncableFileOperationRunner> AsWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
  private:
   // Returns true if we should start more tasks.
   bool ShouldStartMoreTasks() const;
@@ -102,8 +100,7 @@ class SyncableFileOperationRunner final : public LocalFileSyncStatus::Observer {
   std::list<std::unique_ptr<Task>> pending_tasks_;
 
   const int64_t max_inflight_tasks_;
-  int64_t num_inflight_tasks_ = 0;
-  base::WeakPtrFactory<SyncableFileOperationRunner> weak_ptr_factory_{this};
+  int64_t num_inflight_tasks_;
 };
 
 }  // namespace sync_file_system

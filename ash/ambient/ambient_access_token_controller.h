@@ -42,8 +42,6 @@ class ASH_EXPORT AmbientAccessTokenController {
   void RequestAccessToken(AccessTokenCallback callback,
                           bool may_refresh_token_on_lock = false);
 
-  base::WeakPtr<AmbientAccessTokenController> AsWeakPtr();
-
  private:
   friend class AmbientAshTestBase;
 

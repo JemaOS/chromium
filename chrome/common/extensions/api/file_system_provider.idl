@@ -52,21 +52,6 @@ namespace fileSystemProvider {
     SHARE
   };
 
-  // Cloud storage representation of a file system entry.
-  dictionary CloudIdentifier {
-    // Identifier for the cloud storage provider (e.g. 'drive.google.com').
-    DOMString providerName;
-
-    // The provider's identifier for the given file/directory.
-    DOMString id;
-  };
-
-  // Information relating to files that are served by a cloud file system.
-  dictionary CloudFileInfo {
-    // A tag that represents the version of the file.
-    DOMString? versionTag;
-  };
-
   // Represents metadata of a file or a directory.
   dictionary EntryMetadata {
     // True if it is a directory. Must be provided if requested in
@@ -93,17 +78,6 @@ namespace fileSystemProvider {
     // 32 KB in size. Optional, but can be provided only when explicitly
     // requested by the $(ref:onGetMetadataRequested) event.
     DOMString? thumbnail;
-
-    // Cloud storage representation of this entry. Must be provided if requested
-    // in <code>options</code> and the file is backed by cloud storage. For
-    // local files not backed by cloud storage, it should be undefined when
-    // requested.
-    CloudIdentifier? cloudIdentifier;
-
-    // Information that identifies a specific file in the underlying cloud file
-    // system. Must be provided if requested in <code>options</code> and the
-    // file is backed by cloud storage.
-    CloudFileInfo? cloudFileInfo;
   };
 
   // Represents a watcher.
@@ -136,7 +110,7 @@ namespace fileSystemProvider {
     // The identifier of the file system.
     DOMString fileSystemId;
 
-    // A human-readable name for the file system.
+    // A human-readable name for the file system. 
     DOMString displayName;
 
     // Whether the file system supports operations which may change contents
@@ -164,7 +138,7 @@ namespace fileSystemProvider {
     // extension.
     DOMString fileSystemId;
 
-    // A human-readable name for the file system.
+    // A human-readable name for the file system. 
     DOMString displayName;
 
     // Whether the file system supports operations which may change contents
@@ -226,16 +200,8 @@ namespace fileSystemProvider {
     // Set to <code>true</code> if <code>mimeType</code> value is requested.
     boolean mimeType;
 
-    // Set to <code>true</code> if <code>thumbnail</code> value is requested.
+    // Set to <code>true</code> if the thumbnail is requested.
     boolean thumbnail;
-
-    // Set to <code>true</code> if <code>cloudIdentifier</code> value is
-    // requested.
-    boolean cloudIdentifier;
-
-    // Set to <code>true</code> if <code>cloudFileInfo</code> value is
-    // requested.
-    boolean cloudFileInfo;
   };
 
   // Options for the $(ref:onGetActionsRequested) event.
@@ -258,7 +224,7 @@ namespace fileSystemProvider {
     // The unique identifier of this request.
     long requestId;
 
-    // The path of the directory which contents are requested.
+    // The path of the directory which contents are requested. 
     DOMString directoryPath;
 
     // Set to <code>true</code> if <code>is_directory</code> value is requested.
@@ -277,7 +243,7 @@ namespace fileSystemProvider {
     // Set to <code>true</code> if <code>mimeType</code> value is requested.
     boolean mimeType;
 
-    // Set to <code>true</code> if <code>thumbnail</code> value is requested.
+    // Set to <code>true</code> if the thumbnail is requested.
     boolean thumbnail;
   };
 
@@ -508,9 +474,6 @@ namespace fileSystemProvider {
 
     // The type of the change which happened to the entry.
     ChangeType changeType;
-
-    // Information relating to the file if backed by a cloud file system.
-    CloudFileInfo? cloudFileInfo;
   };
 
   // Options for the $(ref:notify) method.
@@ -582,10 +545,6 @@ namespace fileSystemProvider {
   [nocompile] callback FileDataCallback = void(
       ArrayBuffer data, boolean hasMore);
 
-  // Success callback for the $(ref:onOpenFileRequested) event.
-  [nocompile] callback OpenFileSuccessCallback = void(
-      optional EntryMetadata metadata);
-
   // A generic result callback to indicate success or failure.
   callback ResultCallback = void();
 
@@ -602,9 +561,8 @@ namespace fileSystemProvider {
     //
     // In case of an error, $(ref:runtime.lastError) will be set with a
     // corresponding error code.
-    static void mount(
-        MountOptions options,
-        optional ResultCallback callback);
+    [supportsPromises] static void mount(MountOptions options,
+                                         optional ResultCallback callback);
 
     // Unmounts a file system with the given <code>fileSystemId</code>. It
     // must be called after $(ref:onUnmountRequested) is invoked. Also,
@@ -613,22 +571,20 @@ namespace fileSystemProvider {
     //
     // In case of an error, $(ref:runtime.lastError) will be set with a
     // corresponding error code.
-    static void unmount(
-        UnmountOptions options,
-        optional ResultCallback callback);
+    [supportsPromises] static void unmount(UnmountOptions options,
+                                           optional ResultCallback callback);
 
     // Returns all file systems mounted by the extension.
-    static void getAll(GetAllCallback callback);
+    [supportsPromises] static void getAll(GetAllCallback callback);
 
     // Returns information about a file system with the passed
     // <code>fileSystemId</code>.
-    static void get(
-        DOMString fileSystemId,
-        GetCallback callback);
+    [supportsPromises] static void get(DOMString fileSystemId,
+                                       GetCallback callback);
 
     // Notifies about changes in the watched directory at
     // <code>observedPath</code> in <code>recursive</code> mode. If the file
-    // system is mounted with <code>supportsNotifyTag</code>, then
+    // system is mounted with <code>supportsNofityTag</code>, then
     // <code>tag</code> must be provided, and all changes since the last
     // notification always reported, even if the system was shutdown. The last
     // tag can be obtained with $(ref:getAll).
@@ -655,9 +611,8 @@ namespace fileSystemProvider {
     //
     // In case of an error, $(ref:runtime.lastError) will be set
     // will a corresponding error code.
-    static void notify(
-        NotifyOptions options,
-        optional ResultCallback callback);
+    [supportsPromises] static void notify(NotifyOptions options,
+                                          optional ResultCallback callback);
   };
 
   interface Events {
@@ -705,7 +660,7 @@ namespace fileSystemProvider {
     // files opened at once can be specified with <code>MountOptions</code>.
     [maxListeners=1] static void onOpenFileRequested(
         OpenFileRequestedOptions options,
-        OpenFileSuccessCallback successCallback,
+        ProviderSuccessCallback successCallback,
         ProviderErrorCallback errorCallback);
 
     // Raised when opening a file previously opened with
@@ -831,3 +786,4 @@ namespace fileSystemProvider {
       ProviderErrorCallback errorCallback);
   };
 };
+

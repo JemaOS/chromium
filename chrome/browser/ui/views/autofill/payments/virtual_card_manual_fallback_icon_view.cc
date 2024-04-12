@@ -11,7 +11,6 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/autofill/payments/virtual_card_manual_fallback_bubble_views.h"
 #include "chrome/grit/generated_resources.h"
-#include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/strings/grit/components_strings.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -29,7 +28,7 @@ VirtualCardManualFallbackIconView::VirtualCardManualFallbackIconView(
                          delegate,
                          "VirtualCardManualFallback") {
   SetAccessibilityProperties(
-      /*role*/ std::nullopt,
+      /*role*/ absl::nullopt,
       l10n_util::GetStringUTF16(
           IDS_AUTOFILL_VIRTUAL_CARD_MANUAL_FALLBACK_ICON_TOOLTIP));
 }
@@ -40,18 +39,16 @@ VirtualCardManualFallbackIconView::~VirtualCardManualFallbackIconView() =
 views::BubbleDialogDelegate* VirtualCardManualFallbackIconView::GetBubble()
     const {
   VirtualCardManualFallbackBubbleController* controller = GetController();
-  if (!controller) {
+  if (!controller)
     return nullptr;
-  }
 
   return static_cast<VirtualCardManualFallbackBubbleViews*>(
       controller->GetBubble());
 }
 
 void VirtualCardManualFallbackIconView::UpdateImpl() {
-  if (!GetWebContents()) {
+  if (!GetWebContents())
     return;
-  }
 
   // |controller| may be nullptr due to lazy initialization.
   VirtualCardManualFallbackBubbleController* controller = GetController();
@@ -64,22 +61,19 @@ void VirtualCardManualFallbackIconView::OnExecuting(
 
 const gfx::VectorIcon& VirtualCardManualFallbackIconView::GetVectorIcon()
     const {
-  return OmniboxFieldTrial::IsChromeRefreshIconsEnabled()
-             ? kCreditCardChromeRefreshIcon
-             : kCreditCardIcon;
+  return kCreditCardIcon;
 }
 
 VirtualCardManualFallbackBubbleController*
 VirtualCardManualFallbackIconView::GetController() const {
   content::WebContents* web_contents = GetWebContents();
-  if (!web_contents) {
+  if (!web_contents)
     return nullptr;
-  }
 
   return VirtualCardManualFallbackBubbleController::Get(web_contents);
 }
 
-BEGIN_METADATA(VirtualCardManualFallbackIconView)
+BEGIN_METADATA(VirtualCardManualFallbackIconView, PageActionIconView)
 END_METADATA
 
 }  // namespace autofill

@@ -20,7 +20,6 @@
 
   :host-context(body.jelly-enabled):host-context(user-subpage) #container {
     grid-template-rows: 6px 96px;
-    padding-left: 10px;
   }
 
   #imageContainer {
@@ -91,8 +90,7 @@
   }
 
   :host-context(body.jelly-enabled) #infoContainer > h2 {
-    font: var(--cros-display-6_regular-font);
-    line-height: 24px;
+    font: 400 22px/24px var(--cros-font-family-google-sans);
   }
 
   .avatar-link {
@@ -117,6 +115,7 @@
 
   :host-context(body.jelly-enabled) .avatar-link > span {
     color: var(--cros-sys-secondary, var(--cros-link-color));
+    font: 400 13px/20px var(--cros-font-family-google-sans);
   }
 
   iron-icon[icon='cr:open-in-new'] {
@@ -193,10 +192,9 @@
     background-color: var(--cros-sys-on_primary_container);
   }
 
-  :host-context(body.jelly-enabled) #enterpriseIconContainer iron-icon {
-    --iron-icon-fill-color: var(--cros-sys-on_primary);
-    --iron-icon-height: 12px;
-    --iron-icon-width: 13.33px;
+  :host-context(body.jelly-enabled) #enterpriseIconContainer svg {
+    fill: var(--cros-sys-on_primary);
+    margin-top: 10px;
     text-align: center;
   }
 
@@ -213,9 +211,16 @@
         <img id="avatar" class="managed" src$="[[getAvatarUrl_(imageUrl_.url)]]"
             alt="$i18n{managedSetting}" title="$i18n{managedSetting}">
         <div id="enterpriseIconContainer">
-          <iron-icon icon="personalization:managed"
-              title$="$i18n{managedSetting}">
-          </iron-icon>
+          <template is="dom-if" if="[[!isPersonalizationJellyEnabled_]]">
+            <iron-icon icon="personalization:managed">
+            </iron-icon>
+          </template>
+          <template is="dom-if" if="[[isPersonalizationJellyEnabled_]]">
+            <svg width="13.33" height="12" viewBox="0 0 13.33 12" xmlns="http://www.w3.org/2000/svg">
+              <path d="M7.00004 2.66667V0H0.333374V12H13.6667V2.66667H7.00004ZM5.66671 10.6667H1.66671V9.33333H5.66671V10.6667ZM5.66671 8H1.66671V6.66667H5.66671V8ZM5.66671 5.33333H1.66671V4H5.66671V5.33333ZM5.66671 2.66667H1.66671V1.33333H5.66671V2.66667ZM12.3334 10.6667H7.00004V4H12.3334V10.6667ZM11 5.33333H8.33337V6.66667H11V5.33333ZM11 8H8.33337V9.33333H11V8Z">
+              </path>
+            </svg>
+          </template>
         </div>
       </template>
       <template is="dom-if"
@@ -264,11 +269,9 @@
     <template is="dom-if" if="[[info_]]">
       <h2 id="name">[[info_.name]]</h2>
       <template is="dom-if" if="[[info_.email]]">
-        <!-- TODO(b/326488045) Update Settings path to /osPeople when Settings
-          revamp is launched. -->
         <a id="emailContainer"
             class="avatar-link"
-            href="chrome://os-settings/accountManager"
+            href="chrome://os-settings/osPeople"
             target="_blank"
             aria-description="$i18n{ariaLabelGoToAccountSettings}">
           <span id="email">[[info_.email]]</span>

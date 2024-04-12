@@ -84,7 +84,7 @@ void ExternalDisplayBrightnessService::SetExternalDisplayALSBrightness(
 
 void ExternalDisplayBrightnessService::OnGetExternalDisplayALSBrightness(
     GetExternalDisplayALSBrightnessCallback callback,
-    std::optional<bool> enabled) {
+    absl::optional<bool> enabled) {
   std::move(callback).Run(enabled.value_or(false));
 }
 
@@ -105,7 +105,7 @@ void ExternalDisplayBrightnessService::SetExternalDisplayBrightnessPercent(
 
 void ExternalDisplayBrightnessService::OnGetExternalDisplayBrightnessPercent(
     GetExternalDisplayBrightnessPercentCallback callback,
-    std::optional<double> percent) {
+    absl::optional<double> percent) {
   std::move(callback).Run(percent.value_or(-1.0));
 }
 
